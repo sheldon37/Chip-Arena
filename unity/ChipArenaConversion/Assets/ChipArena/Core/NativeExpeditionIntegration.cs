@@ -94,6 +94,8 @@ namespace ChipArena.UnityConversion
             var random=new NativePveRandom(NativePveRandom.Hash(s.seed,s.run,key));
             var rolled=NativeContentRules.Offers(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count),random.Next,r.id.Contains("drop:rain-")?1:3,
                 c=>(ChipFilter==null||ChipFilter(c))&&(r.id.Contains("drop:rain-")?c.rarity=="common":!r.highQuality||c.rarity=="epic"||c.rarity=="legendary"||c.rarity=="unique"),abilityLoadout:AbilityLoadout?.Invoke(account)??"").ToArray();
+            // A boss's reward: rarely, one of that boss's own relics (docs/BOSS-CHIPS.md).
+            if(r.source=="boss"){var boss=NativeBossChips.RewardBoss(r.id,Sources.Director?.Layout);var offered=rolled;rolled=NativeBossChips.Place(rolled,NativeBossChips.Drop(boss,chip=>!offered.Contains(chip)&&Eligible(account,chip),random.Next));}
             frozenOffers[key]=rolled;return (string[])rolled.Clone();
         }
         public Func<string,string,ExpeditionCommandResult> MachineReprint;

@@ -129,6 +129,8 @@ namespace ChipArena.UnityConversion
         public static List<string> Offers(ConversionContent data,string spec,IReadOnlyDictionary<string,int> held,Func<double> random,int count=6,Func<ContentChip,bool> filter=null,Dictionary<string,double> weights=null,bool exclusives=true,string abilityLoadout=null)
         {
             var pool=Eligible(data,spec,held,abilityLoadout);if(filter!=null)pool.RemoveAll(c=>!filter(c));var result=new List<string>();count=Math.Max(1,Math.Min(12,count));
+            // A boss relic is only ever its boss's rare drop (NativeBossChips.Drop), never an ordinary draft, pick, shop or drop: out of the pool before any roll, so the rolls are as without them.
+            pool.RemoveAll(c=>NativeBossChips.IsTier(c.rarity));
             // Reserve at most one slot, before ordinary picks; no extra RNG draws for legacy callers.
             var abilityPool=abilityLoadout==null?new List<ContentChip>():pool.Where(c=>NativeAbilityChips.Requires(c.id)!=null&&(weights==null||weights.TryGetValue(c.rarity,out double w)&&w>0)).ToList();
             if(abilityPool.Count>0&&random()<NativeAbilityChipRules.OfferChance)

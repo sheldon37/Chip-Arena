@@ -102,7 +102,7 @@ namespace ChipArena.UnityConversion
             if(Has(p,"revenge-mail")&&direct&&attacker!=null&&ChipReady(p,"revenge",4))Field(p,"bomb",attacker.Body.position,3,1,25,"revenge-mail");
         }
         private void ChipRoll(NativePilot p)
-        {WildRoll(p);
+        {WildRoll(p);RelicRoll(p);
             Vector3 at=p.Body.position;if(p.Stats["dashBlast"]>0)ChipBlast(p,at,3,(float)p.Stats["dashBlast"],(float)p.Stats["dashBlast"]/14*380,effect:"dash-blast");
             if(Has(p,"bread-crumbs"))Field(p,"mine",at,2.8f,5,24,"bread-crumbs");if(Has(p,"hot-foot"))Field(p,"fire",at,3,3,15,"hot-foot");
             if(Has(p,"comet"))Field(p,"bomb",at,3.5f,.32f,45*(float)p.Stats["damage"],"comet",p);

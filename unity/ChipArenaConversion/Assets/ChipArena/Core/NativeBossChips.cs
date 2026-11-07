@@ -6,14 +6,16 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// Boss relics: each boss's own two chips (the owner, 2026-11-07: "Give the bosses exclusive chip drops ... themed around the boss, a special design and pick effect ... ONLY possible from the boss drop chip
     /// selection and a rare chance"). Twelve chips, two per boss, one copy each, in the boss's own tier (its card, its 3D chip, its pick: Runtime NativeBossChipArt). docs/BOSS-CHIPS.md.
-    /// Staged, as the wild chips were: the rows are here, but no draft, shop or drop offers them and no rule applies them until Astra adds them (the boss reward roll and each mechanic; the doc's contract).
-    /// The DEV Sandbox's preview shows them (Preview · Rarity, a boss tier) on its own copy of the content. Pure.
+    /// Live: the content carries the rows (Runtime NativeStructures), every ordinary offer leaves them out (NativeContentRules.Offers), and a boss's reward screen swaps one offer for one of
+    /// that boss's relics at <see cref="DropChance"/> (<see cref="RewardBoss"/>, <see cref="Drop"/>). Their rules: Runtime NativeBossRelicRules. Pure.
     /// </summary>
     public static class NativeBossChips
     {
         public const string Prefix="boss-",TierPrefix="boss-";
-        /// <summary>The proposal for Astra: the chance each boss reward screen swaps one of its three offers for one of that boss's relics (one at most, never one already held).</summary>
+        /// <summary>The chance a boss reward screen swaps one of its offers for one of that boss's relics (one at most, never one already held).</summary>
         public const float DropChance=.12f;
+        public const string LastVerse="boss-siren-last-verse",Lullaby="boss-siren-lullaby",Express="boss-647-express",MindGap="boss-647-mind-the-gap",SlagHeart="boss-converter-slag-heart",Pour="boss-converter-pour",
+            MaxHum="boss-hum-max-hum",Noclip="boss-hum-noclip",Undertow="boss-deepend-undertow",Warm="boss-deepend-warm",Feather="boss-noctiel-feather-fall",Lux="boss-noctiel-lux-cecidit";
         /// <summary>One boss's relics: its tier, the archetype it drops from, its name on the card, the line the pick confirms with, and its two chips.</summary>
         public readonly struct Set
         {
@@ -64,11 +66,29 @@ namespace ChipArena.UnityConversion
         public static string Icon(string id){int i=Find(id);return i<0?null:Relics[i].Icon;}
         public static ContentChip Chip(in Relic r)=>new ContentChip{id=r.Id,name=r.Name,description=r.Rule,rarity=r.Tier,max=1,icon=r.Icon,tags=new[]{"all"},excludes=Array.Empty<string>(),mechanic=r.Id,effects=Array.Empty<ChipEffect>(),author="",sourcePack="",sourceCard=""};
         public static ContentChip[] Chips()=>Relics.Select(r=>Chip(r)).ToArray();
-        /// <summary>Adds the rows to a content (nothing if they are there). The live content doesn't call it yet: the DEV Sandbox's preview does, on its own copy.</summary>
+        /// <summary>The boss an expedition boss reward came from: the zone in its id (the run's key, loop:area:boss:id:n, the final's loop:area:final:boss:n) and that zone's map. A zone with no zone
+        /// boss of its own fights the Siren (as the runtime spawns it). Null when the layout doesn't know the zone.</summary>
+        public static string RewardBoss(string rewardId,ExpeditionLayout layout)
+        {
+            if(string.IsNullOrEmpty(rewardId)||layout?.areas==null)return null;var parts=rewardId.Split(':');if(parts.Length<4)return null;
+            var area=layout.Area(parts[1]);if(area==null)return null;return NativeZoneBossRules.Archetype(area.map)??"siren";
+        }
+        /// <summary>The rare drop: with <see cref="DropChance"/> one of the boss's relics the pilot may take (`eligible`), else null. The chance is drawn first, always.</summary>
+        public static string Drop(string boss,Func<string,bool> eligible,Func<double> random)
+        {
+            if(random==null)return null;double roll=random();if(roll>=DropChance||boss==null)return null;
+            var own=Of(boss).Where(r=>eligible==null||eligible(r.Id)).ToArray();if(own.Length==0)return null;
+            return own[Math.Min(own.Length-1,(int)(Math.Max(0,random())*own.Length))].Id;
+        }
+        /// <summary>Puts a dropped relic in an offer list: in the last place (the rest stay the order they rolled), or added when the list is short.</summary>
+        public static string[] Place(string[] offers,string relic,int count=3)
+        {if(relic==null)return offers;offers=offers??Array.Empty<string>();if(offers.Length>=count){var o=(string[])offers.Clone();o[o.Length-1]=relic;return o;}return offers.Concat(new[]{relic}).ToArray();}
+        /// <summary>Adds the rows to a content (nothing if they are there): the live content (Runtime NativeStructures) and the DEV Sandbox's preview.</summary>
         public static void Apply(ConversionContent content)
         {
             if(content.chips.Any(c=>Is(c.id)))return;content.chips=content.chips.Concat(Chips()).ToArray();
             if(content.rarities!=null&&!content.rarities.Any(r=>IsTier(r.id)))content.rarities=content.rarities.Concat(Sets.Select(s=>new RarityData{id=s.Tier,name=s.Name,color="#"+s.Rarity.ToString("x6"),weight=0,leetWeight=0})).ToArray();
+            content.contentRevision=NativeMapRules.Revision(content.contentRevision+"\nboss-relics-v1");
         }
     }
 }
