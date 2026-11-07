@@ -1,3 +1,29 @@
+## 2026-11-07 — Claude: every boss's attack warnings on the shared renderer
+
+- Owner: "better visual indicators ... Honestly all bosses and enemies need better visual indicators" (2026-11-06; NOCTIEL first, merged `60bbec3`), then "Go ahead and continue your work for the other bosses now".
+- Branch `claude/telegraphs-bosses`, base shared `60bbec3`; merged into shared and synced to the builder after the full suite. Not seen in Unity or on Windows yet.
+- **Moved onto the shared renderer** (Core `NativeTelegraph`; docs/TELEGRAPHS.md "Adopted"), each warning built from its rule's own geometry and times:
+  - THE HUM: `NativeBackroomsBossRules.Contacts`.
+  - THE DEEP END: the same rules, drawn on the pool's surface.
+  - THE 6:47 and THE CONVERTER: the zone boss authority's moves, and the Converter's hazard pools.
+  - The Siren's kit: Runtime `NativeSiren` fields, a pilot's or the horde Siren's. The warning is drawn from the replicated fields inside the frame's warning window.
+  - One look per family: Fluorescent, Water, Industrial, Molten, Siren.
+- **Changes on top:**
+  - Warnings for moves that had none: the 6:47's Buffer Swipe and Shunt, Max Hum's charge, the Converter's slam box.
+  - Warnings that were the wrong size or in the wrong place: Departure's run (the rule hits at 2.1 m, the old lane was 1.6 m); THE HUM's Wall Hand (the old ring sat 1.3 m off the rule's point and was smaller); Live Rail (the old rings used the puddles' own radii, the rule hits at 2.2 m).
+  - A move the authority calls off takes its warning with it.
+  - The old strips, rings, wedges and dashes are gone. The attacks' own effects stay.
+- **Views now carry replicated fields the warnings need:** `HumBossView.actionYaw` and `StationBossView.actionYaw` (the swipes' aim), and `IronworksBossView.hitAt`/`laneX0`/`laneZ0`. The DEV previews fill them as the authority does.
+- **Animation, timing and rules:** no hit timing, hitbox, damage, cooldown, movement or networking change; nothing here is read by a rule.
+- **Checks:**
+  - `CoreTests --telegraphs`: 85,496 PASS. THE HUM's moves, and the DEEP END's, 6:47's and Converter's whole scripted fights with their real rigs, are sampled against the rules: every point a rule would hit, at that moment, is inside a warning drawn then. The Converter's pools and the Siren's fields are checked the same way.
+  - Also PASS: `--hum-boss` 24,890; `--backrooms-boss-rules` 2,519; `--boss-sounds` 731; `--deepend-boss` 26,591; `--station-boss`, `--station-boss-presentation`, `--station-boss-body`; `--ironworks-boss`, `--ironworks-boss-presentation`, `--ironworks-visuals`.
+  - `--boss-vfx` 22,813 PASS. The 6:47's and Converter's telegraph baselines were re-recorded on purpose: the 6:47 3,062, the Converter preview 13,699, the authority scenario 3,071 warning-frames. Their cue baselines are unchanged.
+  - Unity 2021.3 reference type-check: at its 271-error baseline.
+  - Full managed suite: exit 0, 977 groups PASS, none failed (`FieldChecks` included: the Siren's Core geometry is unchanged).
+- **Not run:** Unity Editor, play mode, Windows build; the warnings' look in each arena needs the owner's playtest.
+- **Next:** the enemies (the horde's kinds with the Hulk's charge and jump-down, the Ironworks' and the Station's kinds), then the stages' own hazard warnings.
+
 ## 2026-11-06 — Claude: shared attack warnings (telegraphs), NOCTIEL first
 
 - Owner: "We need better visual indicators of his attacks ... Honestly all bosses and enemies need better visual indicators. I want something that players can see and it's not a basic design." Then "Go ahead and do that". Branch `claude/telegraphs` off shared `3f89709`. Doc: `docs/TELEGRAPHS.md`.
