@@ -156,8 +156,8 @@ public static class FallenIntroMocapChecks
             if(lowName!=lastLowName)lowSince=p;
             // A foot touching down still has its step's speed for a moment; a skate is a contact that keeps sliding once it is down.
             // Known, documented windows (docs section 19, for the tuning in Unity): the rise from the kneel (clip 02 frames 60-150, the kneel's last breath and the rise: a
-            // kneeling body is where one camera's depth is weakest) and the chop's step into the lunge (clip 04 frames 126-137).
-            bool known=(pose.Clip==0&&pose.Frame>=60&&pose.Frame<=150&&!pose.Held)||(pose.Clip==2&&pose.Frame>=126&&pose.Frame<=137);
+            // kneeling body is where one camera's depth is weakest) and the chop's step into the lunge (clip 04 frames 121-137: the foot barely leaves the floor, as the reference's).
+            bool known=(pose.Clip==0&&pose.Frame>=60&&pose.Frame<=150&&!pose.Held)||(pose.Clip==2&&pose.Frame>=121&&pose.Frame<=137);
             if(!first&&lowName==lastLowName&&pose.Held==prev.Held&&p-lowSince>.1f&&known){var dk=new Vector2(low.X-lastLow.X,low.Z-lastLow.Z).Length()/dt/Math.Max(1,speed);if(dk>knownSlide){knownSlide=dk;knownAt=p.ToString("0.00")+" ("+lowName+", "+m.Clips[pose.Clip].Name+" frame "+pose.Frame.ToString("0.0")+")";}}
             if(!first&&lowName==lastLowName&&pose.Held==prev.Held&&p-lowSince>.1f&&!known){var d=new Vector2(low.X-lastLow.X,low.Z-lastLow.Z).Length()/dt/Math.Max(1,speed);if(d>.35f&&speed==1){var key=m.Clips[pose.Clip].Name+" "+(int)(pose.Frame/4)*4;slides[key]=Math.Max(slides.TryGetValue(key,out var o)?o:0,d);}if(d>worstSlide){worstSlide=d;slideAt=p.ToString("0.00")+" ("+lowName+", "+m.Clips[pose.Clip].Name+" frame "+pose.Frame.ToString("0.0")+")";}}
             lastLow=low;lastLowName=lowName;
