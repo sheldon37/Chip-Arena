@@ -1,0 +1,13 @@
+CHIP ARENA - FACTORY AND CYBER CITY MUSIC
+Owner-supplied recordings, added 2026-10-12. Original MP3 bytes preserved.
+Embedded artist credit: Xtrr - musiccreator.
+
+Anvil Loop Arena
+Map: factory
+Track ID: factory-anvil-loop
+SHA-256: ae53e07f3ec1388395fbac29d539313464f9401ca6b2327f6224bc4613a8d487
+
+Neon Riot Circuit
+Map: cybercity
+Track ID: cybercity-neon-riot
+SHA-256: 98555a256ddb91a99291f1de45cb35e936c8486ca02fe27f3d7f0821ac51a196

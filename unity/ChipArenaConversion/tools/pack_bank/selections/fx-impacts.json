@@ -1,0 +1,13 @@
+{
+ "schema": 1,
+ "note": "Bullet holes for the surface kinds the impacts bake may lack (docs/PACK-EFFECTS.md, Core NativeSurfaceImpacts.HoleTexture), loaded by id. Names only: no pack content.",
+ "texture_max": 512,
+ "sources": {
+  "impacts": "Impacts and Muzzle Flashes/Assets/KriptoFX/MuzzleFlashes"
+ },
+ "textures": [
+  {"id": "impact-hole-brick", "source": "impacts", "path": "Textures/Effects/Impact/BrickBulletDecal3.png", "alpha": true, "clamp": true, "max": 256},
+  {"id": "impact-hole-glass", "source": "impacts", "path": "Textures/Effects/Impact/BrokenGlassDecal.png", "alpha": true, "clamp": true, "max": 512},
+  {"id": "impact-hole-dirt", "source": "impacts", "path": "Textures/Effects/Impact/DirtBulletDecal3.png", "alpha": true, "clamp": true, "max": 256}
+ ]
+}

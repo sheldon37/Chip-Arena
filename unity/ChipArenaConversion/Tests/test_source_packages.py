@@ -18,6 +18,31 @@ class SourcePackageTests(unittest.TestCase):
     def test_current_dependencies_exist_in_official_editor_catalog(self):
         validate_dependencies(self.dependencies, self.catalog)
 
+    def test_controller_backend_survives_builder_prepare(self):
+        project = (ROOT / "ProjectSettings/ProjectSettings.asset").read_text()
+        builder = (ROOT / "Assets/ChipArena/Editor/PrototypeBuild.cs").read_text()
+        self.assertIn("activeInputHandler: 2", project)
+        self.assertIn("input.intValue=2;", builder)
+        self.assertNotIn("input.intValue=0;", builder)
+        self.assertEqual(self.dependencies["com.unity.inputsystem"], "1.17.0")
+
+    def test_controller_pointer_preserves_mouse_capture_and_gui_events(self):
+        runtime = ROOT / "Assets/ChipArena/Runtime"
+        controller = (runtime / "NativeController.cs").read_text()
+        game = (runtime / "ConversionGame.cs").read_text()
+        pointer = (runtime / "NativeControllerPointer.cs").read_text()
+        # Update runs between MouseDown/MouseUp even without a gamepad. Clearing hotControl
+        # there cancels genuine GUI.Button presses and slider drags.
+        self.assertIn("padState.Step(options.bindings,buttons,modifier,ui);", controller)
+        self.assertNotIn("GUIUtility.hotControl=", controller)
+        self.assertNotIn("Event.current=", controller)
+        self.assertNotIn("Event.current=", game)
+        self.assertIn("Event.current.type!=EventType.Repaint", controller)
+        self.assertIn("finally{Event.current.mousePosition=originalMouse;}", game)
+        self.assertIn("NativeControllerPointer.BeginGui();", controller)
+        self.assertIn("screenOrigin=GUIUtility.GUIToScreenPoint(Vector2.zero)", pointer)
+        self.assertNotIn("GUIToScreenPoint(Event.current.mousePosition)", pointer)
+
     def test_windows_log_failures_are_rejected(self):
         for module in ('inputlegacy', 'physicscore2d', 'tetgen', 'timelinefoundation'):
             with self.subTest(module=module):
@@ -31,6 +56,16 @@ class SourcePackageTests(unittest.TestCase):
         dependencies['com.unity.modules.physics'] = '99.0.0'
         with self.assertRaisesRegex(ValueError, 'Unsupported dependency'):
             validate_dependencies(dependencies, self.catalog)
+
+    def test_editor_ability_ceiling_validation_matches_runtime_events(self):
+        # UBA #32 passed managed source CI but its real PreExport failed here when the
+        # ability-shot emitter was intentionally removed and this Editor-only assertion
+        # still required a hologram. Keep both sides of the contract synchronized.
+        ability = (ROOT / 'Assets/ChipArena/Runtime/NativeAbilities.cs').read_text()
+        editor = (ROOT / 'Assets/ChipArena/Runtime/NativeFollowupValidation.cs').read_text()
+        self.assertNotIn('Emit(EventKind.CeilingHit', ability)
+        self.assertIn('int ceilingHitsBefore=Events.Count(e=>e.Kind==EventKind.CeilingHit);', editor)
+        self.assertIn('AbilityShots.Count==0&&Events.Count(e=>e.Kind==EventKind.CeilingHit)==ceilingHitsBefore', editor)
 
     def test_empty_manifest_is_rejected(self):
         with self.assertRaises(ValueError):

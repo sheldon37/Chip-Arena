@@ -4,8 +4,9 @@
 PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 28
+  m_ColorSpace: 1
   companyName: ChipArenaConversion
-  productName: Chip Arena Native Conversion TEST
+  productName: Chip Arena
   bundleVersion: 0.1.0-native-foundation
   defaultScreenWidth: 1600
   defaultScreenHeight: 900
@@ -13,6 +14,6 @@ PlayerSettings:
   runInBackground: 1
   resizableWindow: 1
   fullscreenMode: 3
-  activeInputHandler: 0
+  activeInputHandler: 2
   scriptingBackend:
     Standalone: 0

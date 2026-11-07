@@ -1,0 +1,13 @@
+CHIP ARENA - ZONE BOSS THEMES (CENTRAL STATION AND CITY IRONWORKS)
+Owner-supplied recordings by sheldon_deans, added 2026-10-17. Original MP3 bytes preserved.
+Beat maps: Assets/ChipArena/Resources/ZoneBossMusic.json (tools/zone_boss_beatmap.py; docs/ZONE-BOSS-MUSIC.md).
+
+Station Chime of Doom
+Map: expedition-transit (Central Station boss)
+Track ID: central-station-boss
+SHA-256: 849ecc028752973e63b1819f45fa06ad7bc1a264783dae1eb1eeb79bcc8d18a8
+
+Hydraulic Hell
+Map: expedition-foundry (City Ironworks boss; also expedition-ironworks)
+Track ID: city-ironworks-boss
+SHA-256: cb9e828c17f2ed8a7010c911e79324f7e8dd4013ea4624f5b4e258ce78d278d3

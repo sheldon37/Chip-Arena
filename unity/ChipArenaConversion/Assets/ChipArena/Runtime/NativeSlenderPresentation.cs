@@ -17,7 +17,8 @@ namespace ChipArena.UnityConversion
             droneGain=Mathf.Lerp(droneGain,f==null?0:.04f+.22f*tension,1-Mathf.Exp(-dt/.25f));noiseGain=Mathf.Lerp(noiseGain,f==null?0:sanity*(f.Seen?.32f:.12f),1-Mathf.Exp(-dt/.08f));
             stalkDrone.volume=Muted?0:droneGain*Effects;stalkNoise.volume=Muted?0:noiseGain*Effects;
             double now=AudioSettings.dspTime;if(f==null||now<beatAt||Muted||Effects<=0)return;beatAt=now+NativeSlenderRules.BeatGap(tension);
-            var available=voices.Where(v=>!v.isPlaying).Take(2).ToArray();for(int i=0;i<available.Length;i++){var voice=available[i];voice.clip=heartClip;voice.volume=(.18f+.5f*tension)*(i==0?1:.7f)*Effects;voice.panStereo=0;voice.pitch=1;voice.PlayScheduled(now+.005+i*.17);}
+            // Two free voices for the lub-dub, cleared of any limited-cue mark so Play's 8-voice cue cap counts them as plays.
+            for(int v=0,pulse=0;v<voices.Length&&pulse<2;v++){var voice=voices[v];if(voice.isPlaying)continue;keyedVoices[v]=false;voice.clip=heartClip;voice.volume=(.18f+.5f*tension)*(pulse==0?1:.7f)*Effects;voice.panStereo=0;voice.pitch=1;voice.PlayScheduled(now+.005+pulse*.17);pulse++;}
         }
         private void ClearSlender(){CapturedAnimation.Release(droneClip);CapturedAnimation.Release(noiseClip);CapturedAnimation.Release(heartClip);}
     }

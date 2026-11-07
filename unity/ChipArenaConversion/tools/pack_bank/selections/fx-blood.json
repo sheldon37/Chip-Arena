@@ -1,0 +1,13 @@
+{
+ "schema": 1,
+ "note": "Blood splats on floors and walls (docs/PACK-EFFECTS.md, Core NativeBloodSplatLook): the first frame of three splat sheets, shaded, loaded by id. Names only: no pack content.",
+ "texture_max": 1024,
+ "sources": {
+  "toon": "Epic Toon FX/Assets/Epic Toon FX"
+ },
+ "textures": [
+  {"id": "blood-splat-round", "source": "toon", "path": "Textures/splat03_shaded_3x3.png", "crop": [0, 0, 682, 682], "alpha": true, "clamp": true},
+  {"id": "blood-splat-splash", "source": "toon", "path": "Textures/splat02_shaded_3x3.png", "crop": [0, 0, 341, 341], "alpha": true, "clamp": true},
+  {"id": "blood-splat-streak", "source": "toon", "path": "Textures/splat01_shaded_3x3.png", "crop": [0, 0, 682, 341], "alpha": true, "clamp": true}
+ ]
+}

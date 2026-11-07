@@ -11,6 +11,7 @@ namespace ChipArena.UnityConversion
         private static System.Numerics.Quaternion Source(Quaternion q)=>CapturedRig.Mirror(CapturedAnimation.Num(q));
         private void SetupCollapse(NativeArena arena,CapturedAnimation.Player rig)
         {
+            if(Halved)return;
             if(!Death.kneel||Death.model!="pilot"||Style!="impact-ragdoll")return;
             var sourceParts=NativeSourceModels.WoundParts;var parts=new List<CollapsePart>();var reflection=Matrix4x4.Scale(new Vector3(-1,1,1));
             foreach(var pair in Parts)
@@ -23,7 +24,7 @@ namespace ChipArena.UnityConversion
                 p.Boxes=boxes.ToArray();if(b==15||b==19){int foot=b+1;p.HasAnkle=true;p.AnklePivot=Source(body.transform.InverseTransformPoint(Bind[foot].GetColumn(3)));p.AnkleFrame=Source(Quaternion.Inverse(body.rotation)*Bind[foot].rotation);}parts.Add(p);collapseBones[p.Name]=b;
             }
             if(!NativeCollapse.Supports(parts))return;float ground=Death.position.y-.865f;if(arena.Root.scene.GetPhysicsScene().Raycast(Death.position,Vector3.down,out var hit,2,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))ground=hit.point.y;
-            var props=arena.Props.Where(p=>p!=null).Select(p=>new CollapseProp{Position=Source(p.transform.position),Rotation=Source(p.transform.rotation),Size=CapturedAnimation.Num(p.transform.lossyScale)}).ToArray();var direction=Death.wound.direction;
+            var props=arena.AllBlocks.Where(p=>p!=null).Select(p=>new CollapseProp{Position=Source(p.transform.position),Rotation=Source(p.transform.rotation),Size=CapturedAnimation.Num(p.transform.lossyScale)}).ToArray();var direction=Death.wound.direction;
             collapse=new NativeCollapse(parts.ToArray(),-Death.yaw*Mathf.Deg2Rad,Source(Death.velocity),ground,new System.Numerics.Vector3(direction.x,direction.y,direction.z),Death.wound.severity,props);
             DriveCollapse(0);
         }

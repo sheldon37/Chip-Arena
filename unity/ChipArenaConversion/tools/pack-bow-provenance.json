@@ -1,0 +1,369 @@
+{
+ "pack": "Explosive RPG Character Mecanim Animation Pack (owner licence; FBX never committed)",
+ "calibration": "1Hand-Sword/RPG-Character@Sword-Attack-R1.FBX",
+ "channels": 64,
+ "quantum": 0.00390625,
+ "clips": [
+  {
+   "clip": "bow/slow",
+   "source": "2Hand-Bow-Walk-Slow",
+   "range": [
+    0,
+    48
+   ],
+   "fps": 30,
+   "frames": 49,
+   "loop": true,
+   "strike": 1.283,
+   "sha256": "e80cd8fb7d67a527596a436c838472c86ee738ab6d10d226f8ac6e5193b18d20",
+   "input": "f7a2baf6f1cbde72206b3026b782f3797b3f37b38eac51ee9ab91dbf27184b28"
+  },
+  {
+   "clip": "bow/walk-forward",
+   "source": "2Hand-Bow-Walk",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.65,
+   "sha256": "f3a2e844df1ea975b510701fbcddf6ab062338afbc48af507d7cda3f149be40c",
+   "input": "6c8886c5845ddbe2e02514c2921dafeeca898de6aafc99ca157f7e533b39614b"
+  },
+  {
+   "clip": "bow/walk-forward-left",
+   "source": "2Hand-Bow-Strafe-Forward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.017,
+   "sha256": "2d1ae5e80f510cddbbd7e8458970387984ad68d0aaa26e53a9037b981ee10133",
+   "input": "89378571e9c679fd226fdb721aa53f5e6282e4a468c27399732308df6205792c"
+  },
+  {
+   "clip": "bow/walk-left",
+   "source": "2Hand-Bow-Strafe-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.017,
+   "sha256": "2d8992813e9af71af4b9c0f135c4bac7c1df64adb7262e4fb32d84d67ca03581",
+   "input": "666b92367f00dba39fc00da5494e9c83771d766f89b1e18c053d75fe2d7d8c67"
+  },
+  {
+   "clip": "bow/walk-backward-left",
+   "source": "2Hand-Bow-Strafe-Backward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.45,
+   "sha256": "d2689e7a5731c878bef34bfafa847aff5303ab26048b75e8fb90df60190beb65",
+   "input": "1a5e76a4b7af7a176d82bbcce73dd2a097af0822d29d56362098f34b0f5d6dff"
+  },
+  {
+   "clip": "bow/walk-backward",
+   "source": "2Hand-Bow-Strafe-Backward",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.417,
+   "sha256": "a092d4930d5027898729b8ac2cf6cd6573d344abb5df759098a0fafb34a91a72",
+   "input": "53bffaf71f032ca6e1ed85abdb6cf2d05986c04333fd28f131fd92c18fab7e13"
+  },
+  {
+   "clip": "bow/walk-backward-right",
+   "source": "2Hand-Bow-Strafe-Backward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.383,
+   "sha256": "bfd8e4cc26db417507490632786e8c8b43157b7cf774b661ac18d916f1319782",
+   "input": "d04c4046ea66999512449ef7d700ce5968883c81202be5bb8b1873f1c2b5fa7c"
+  },
+  {
+   "clip": "bow/walk-right",
+   "source": "2Hand-Bow-Strafe-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.45,
+   "sha256": "75f50e2748f2f7d8a533f403e3ddfd837426f2e0d712bf3aa3e9a45cc81b790d",
+   "input": "11b36b794652ba31e46d41ae433973badc5a44454b4deead214d9b949be356ce"
+  },
+  {
+   "clip": "bow/walk-forward-right",
+   "source": "2Hand-Bow-Strafe-Forward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.017,
+   "sha256": "b976df402688b1f55363d1f549e02744a99d6a11d1f41f2b296bcec3eb6cf636",
+   "input": "49f9d3fb719409fd1fc5ab79c8093887e7dc46ffac7286223dfa1e2915f03408"
+  },
+  {
+   "clip": "bow/run-forward",
+   "source": "2Hand-Bow-Run-Foward",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.717,
+   "sha256": "ebe67fb65c4834bd6be0476939314720243341f805c16b8ecdaf0e0f5d677d39",
+   "input": "35f4f6421dfb1642139788f589487cba1c517b532bf4e76c01217d8959ab0c1d"
+  },
+  {
+   "clip": "bow/run-forward-left",
+   "source": "2Hand-Bow-Run-Foward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.683,
+   "sha256": "fd8d33e6f77853d1379989d4e61c7446baa2ba33ea2b55e6a2c3f0b11f28f28a",
+   "input": "b955c5506d2a32c5f838e7ee80cd19e7d980c4d977de4b58758e9dafcf4c43ea"
+  },
+  {
+   "clip": "bow/run-left",
+   "source": "2Hand-Bow-Run-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.317,
+   "sha256": "b238dc163898f348f24cda227cf45405d08f51f7f4e448fe7cc8871bab5d528c",
+   "input": "fda85f0dded365be7e98327eab86ba75592a8105ea7c022035ab5b51ff7aba64"
+  },
+  {
+   "clip": "bow/run-backward-left",
+   "source": "2Hand-Bow-Run-Backward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.383,
+   "sha256": "b19586076468a8335851f89b8aaf47bfba32bdb842d8e0df4c36a1002c50e157",
+   "input": "fe9d8790a73aef2ffe59308b91127dc1d7c38dca014977a8fd1777df344d9cca"
+  },
+  {
+   "clip": "bow/run-backward",
+   "source": "2Hand-Bow-Run-Backward",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.417,
+   "sha256": "8f492747e71763964c52439f43e1925ad5ded93f9a79cd4a1740577f593fa863",
+   "input": "0d2cf4e1ace245a383bc9174a2fd6986a1b66af984a6bb97edb640df17be034b"
+  },
+  {
+   "clip": "bow/run-backward-right",
+   "source": "2Hand-Bow-Run-Backward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.317,
+   "sha256": "85d6c97ccb1b3c86c67453ae13298593d3f690b585007d3acf2336602b8ec662",
+   "input": "b505d8996d3e2fa4aba7b8c6e3316c2d5ca1cfa1adb14ab79890c5eabbd93884"
+  },
+  {
+   "clip": "bow/run-right",
+   "source": "2Hand-Bow-Run-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.317,
+   "sha256": "f3b91948fe4ec6840a638ad2fb352d94a0e1d2b6a327dd56f400732efa83afe0",
+   "input": "2b11eb3541b39009965b53c5fa1912e8fb1502897c815edbad82186c704e246f"
+  },
+  {
+   "clip": "bow/run-forward-right",
+   "source": "2Hand-Bow-Run-Foward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.683,
+   "sha256": "661fe45238736fa3c12dfdab324d57ac9a298edaf5a9816a41e6373f2173873e",
+   "input": "fc5a84306cd1cf51ffa8423be5950b6165128067a7a7f54152048d9023c88798"
+  }
+ ],
+ "shots": [
+  {
+   "clip": "2Hand-Bow-Attack1",
+   "shoot": 0.4838,
+   "extended": 0.3333,
+   "followPeak": 0.0667,
+   "followTravel": 0.4174,
+   "input": "b5b2a4c4f4bfdb2f1e8695f9cc6e20b2dd2dd1666881a2692d2f67ea873504e0"
+  },
+  {
+   "clip": "2Hand-Bow-Attack2",
+   "shoot": 0.4446,
+   "extended": 0.2,
+   "followPeak": 0.1667,
+   "followTravel": 0.2635,
+   "input": "f5e197271415b44522ec1ee5af9fb18761bf6f24095c1da52f1632199ab03068"
+  },
+  {
+   "clip": "2Hand-Bow-Attack3",
+   "shoot": 0.4892,
+   "extended": 0.5,
+   "followPeak": 0.0667,
+   "followTravel": 0.4922,
+   "input": "b8dd66a59040efd19787799b9f1b6b438b75389bcd0a8d7abeaeff5792d44faf"
+  },
+  {
+   "clip": "2Hand-Bow-Attack4",
+   "shoot": 0.3444,
+   "extended": 0.2,
+   "followPeak": 0.1333,
+   "followTravel": 0.299,
+   "input": "dbc627b1490c61d970aa1ab477a59b7a3b81ec71f0f6c98f505610fcf0d65ffd"
+  },
+  {
+   "clip": "2Hand-Bow-Attack5",
+   "shoot": 0.4858,
+   "extended": 0.3333,
+   "followPeak": 0.0667,
+   "followTravel": 0.6283,
+   "input": "3209cf6847fc71af57aa2f5418cc1b124ef3c6a0961a14276c40a2cb3f9c9ea5"
+  },
+  {
+   "clip": "2Hand-Bow-Attack6",
+   "shoot": 0.4809,
+   "extended": 0.3667,
+   "followPeak": 0.1,
+   "followTravel": 0.636,
+   "input": "df10dccbe81f42bcca3e9a598fb2592c2d8d9b02379a7c4ac61722d75827f7bc"
+  }
+ ],
+ "sources": [
+  {
+   "clip": "2Hand-Bow-Aiming",
+   "input": "91840d98a030e78999cafbcf72bb0fff6c123acb6dac6345e73a0e80096f3eea"
+  },
+  {
+   "clip": "2Hand-Bow-Aiming-Pull",
+   "input": "0ce06a042b866571ca12f5ac3c64539d297e4a0251e660a081aa984ccea58d75"
+  },
+  {
+   "clip": "2Hand-Bow-Aiming-Fire",
+   "input": "f61bc8eff0b9add3bbb5cd561a2f42a6acd24444e02d693e41f429d6634dab69"
+  },
+  {
+   "clip": "2Hand-Bow-Idle",
+   "input": "c1b65f69684c82b6cc702ec8a3722eed73435ce3e9f14062fd914204cb1be840"
+  }
+ ],
+ "derived": {
+  "drawToAnchor": 0.3222,
+  "shoot": 0.4548,
+  "quickFollowPeak": 0.1,
+  "quickFollowTravel": 0.4561,
+  "release": {
+   "peak": 0.1,
+   "settle": 0.2667,
+   "back": 0.2402,
+   "down": 0.1182,
+   "out": 0.0574
+  },
+  "drawLength": 0.9435,
+  "readyLength": 0.5388,
+  "blade": {
+   "hips": 0.7206,
+   "spine": 0.4997,
+   "chest": 0.3246,
+   "neck": 0.8285,
+   "head": 0.1599,
+   "total": 1.5449
+  },
+  "lean": {
+   "spine": 0.213,
+   "chest": 0.2547,
+   "pitchUp": 0.1269,
+   "spineDown": -0.2903,
+   "chestDown": -0.3432
+  },
+  "carry": {
+   "bowHand": [
+    0.5325,
+    -0.2307,
+    0.0922
+   ],
+   "drawHand": [
+    0.0425,
+    0.0271,
+    0.2148
+   ]
+  },
+  "ready": {
+   "bowHand": [
+    0.6576,
+    0.1586,
+    0.0481
+   ],
+   "drawHand": [
+    0.1267,
+    0.2057,
+    0.1272
+   ]
+  },
+  "note": "chest space (x the rig's left); blade: hips (heading), spine and chest yaw at full draw (rad, turning the left shoulder to the target), neck/head turn back; lean: roll added for the up hold against its aim pitch; release: Aiming-Fire CM draw-hand travel from the anchor (peak/settle s, back along the arrow, down, out m)"
+ }
+}

@@ -1,0 +1,29 @@
+CHIP ARENA - BRICKFALL MUSIC
+
+Brickfall Run
+Artist: Xtrr - musiccreator (embedded recording credit)
+Owner-supplied recording, added 2026-10-11.
+Original file: Brickfall Run.mp3
+Full original MP3 retained without transcoding: 199.944 seconds, 48 kHz stereo.
+Internal stage track ID: brickfall-demolition-row
+SHA-256: 3093119a80cdac42bf46a3cbb44b5da2ec6920ec5580ef153f01ea3bc6417d25
+
+CHIP ARENA - MAIN MENU MUSIC
+
+Midnight Arena Skyline
+Owner-supplied recording, added 2026-10-13.
+Original file: Midnight_Arena_Skyline_2026-10-13T230445.mp4
+Full 120-second audio stream extracted to MP3 VBR q2, 48 kHz stereo.
+Internal menu track ID: menu-afterglow
+SHA-256: 2f2455bc7defe8e3c2d2fa07e580f080e5a1bd33bb3ee2dc64dd950714b69ebc
+
+CHIP ARENA - WARD ZERO MUSIC
+
+Siren Ward
+Owner-supplied recording, added 2026-10-14.
+Original file: Siren_Ward_2026-10-14T022254.mp3
+Full original MP3 retained without transcoding: 120.033 seconds, 44.1 kHz stereo.
+Internal stage track ID: restricted-zone-pulse
+SHA-256: 9f1b0a124563d76b7bd723ce525b5e827fe8155a7c5eb372e799a4bf692d631e
+Siren boss music remains Black Siren Protocol.
+No loudness remaster or seamless-loop edit.

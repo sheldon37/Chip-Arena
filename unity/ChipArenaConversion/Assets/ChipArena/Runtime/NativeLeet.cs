@@ -17,45 +17,65 @@ namespace ChipArena.UnityConversion
         public readonly List<NativeLeetField> LeetFields=new List<NativeLeetField>();private readonly Dictionary<NativePilot,InputFrame> originalInputs=new Dictionary<NativePilot,InputFrame>();
         public NativePilot ViewPilot=>Local?.Controlling??Local;
         private bool Leet(NativePilot p,string chip=null)=>Dev(p,"leet")&&(chip==null||Has(p,"l44t-"+chip));
-        private bool Frozen(NativePilot p)=>p!=null&&(Time<p.FrozenUntil||Time<p.ScareUntil);
+        private bool ExpeditionChoosing(NativePilot p)=>p!=null&&p.Hp>0&&p.Seat.connected&&Expedition?.Session.Run.IsChoosingSeat(p.Seat.id,Expedition.Session.Sources.Seat)==true;
+        private bool ChoiceCanFall(NativePilot p)=>ExpeditionChoosing(p)&&!p.ExpeditionTransferHeld&&Time>=p.FrozenUntil&&Time>=p.ScareUntil;
+        private bool Frozen(NativePilot p)=>p!=null&&(p.ExpeditionTransferHeld||Time<p.FrozenUntil||Time<p.ScareUntil||ExpeditionChoosing(p));
         private void ReleaseControl(NativePilot p)
         {var controller=p.Controlling!=null?p:p.ControlledBy;var target=controller?.Controlling;if(controller!=null){controller.Controlling=null;controller.ControlUntil=0;}if(target!=null){target.ControlledBy=null;target.ControlUntil=0;}}
         private void RouteLeetInputs()
         {
             originalInputs.Clear();foreach(var p in Pilots)
-            {if(p.Controlling!=null&&(p.Hp<=0||!p.Seat.connected||p.Controlling.Hp<=0||!p.Controlling.Seat.connected||Time>=p.ControlUntil||!Leet(p,"brain")))ReleaseControl(p);}
+            {if(p.Controlling!=null&&(ExpeditionChoosing(p)||ExpeditionChoosing(p.Controlling)||p.Hp<=0||!p.Seat.connected||p.Controlling.Hp<=0||!p.Controlling.Seat.connected||Time>=p.ControlUntil||!Leet(p,"brain")))ReleaseControl(p);}
             foreach(var p in Pilots)if(p.Controlling!=null){var q=p.Controlling;originalInputs[p]=p.Input;originalInputs[q]=q.Input;q.Input=p.Input;p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};}
-            foreach(var p in Pilots)if(Frozen(p)){if(!p.FrozenPosition.HasValue)p.FrozenPosition=p.Body.position;if(!originalInputs.ContainsKey(p))originalInputs[p]=p.Input;p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};CancelFighter(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.BlockEnd=0;p.MoveVelocity=p.Knockback=Vector3.zero;p.Body.linearVelocity=Vector3.zero;}
+            foreach(var p in Pilots)if(Frozen(p)){if(ExpeditionChoosing(p)){p.Roll=null;p.RollEnd=0;p.ReloadEnd=0;p.Pose.Sprinting=false;}if(!p.FrozenPosition.HasValue)p.FrozenPosition=p.Body.position;if(!originalInputs.ContainsKey(p))originalInputs[p]=p.Input;p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};CancelFighter(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.BlockEnd=0;p.MoveVelocity=p.Knockback=Vector3.zero;p.Body.linearVelocity=ChoiceCanFall(p)?new Vector3(0,Math.Min(0,p.Body.linearVelocity.y),0):Vector3.zero;}
         }
         private void RestoreLeetInputs()
         {
-            foreach(var p in Pilots){if(Frozen(p)&&p.Hp>0&&p.FrozenPosition.HasValue){p.Body.position=p.FrozenPosition.Value;p.Body.linearVelocity=Vector3.zero;p.Body.useGravity=false;}else p.FrozenPosition=null;}
+            foreach(var p in Pilots)
+            {
+                if(Frozen(p)&&p.Hp>0&&p.FrozenPosition.HasValue)
+                {
+                    if(ChoiceCanFall(p))
+                    {
+                        // Hold the chooser's horizontal anchor, not their jump height. Keep
+                        // downward speed across ticks so gravity can land on real geometry.
+                        var anchor=p.FrozenPosition.Value;anchor.y=p.Body.position.y;p.Body.position=anchor;
+                        var velocity=new Vector3(0,Math.Min(0,p.Body.linearVelocity.y),0);
+                        velocity.y-=(float)(23*(p.Stats["playerGravity"]-1)/60);
+                        p.Body.useGravity=!GroundMotion(p,ref velocity,false,false,0);
+                        p.Body.linearVelocity=velocity;p.FrozenPosition=p.Body.position;
+                    }
+                    else {p.Body.position=p.FrozenPosition.Value;p.Body.linearVelocity=Vector3.zero;p.Body.useGravity=false;}
+                }
+                else p.FrozenPosition=null;
+            }
             foreach(var pair in originalInputs)pair.Key.Input=pair.Value;originalInputs.Clear();
         }
         private NativePilot LeetTarget(NativePilot owner,Vector3 point)=>Pilots.Where(p=>p.Hp>0&&p.Seat.connected&&Enemy(owner,p)&&Vector3.Distance(p.Body.position,point)<=28&&MeleeVisible(point,p.Body.position,owner,p.Collider)).OrderBy(p=>(p.Body.position-point).sqrMagnitude).FirstOrDefault();
         private void Possess(NativePilot owner,NativePilot target)
-        {if(!Leet(owner,"brain")||!Enemy(owner,target)||target.Hp<=0||!target.Seat.connected||owner.ControlledBy!=null||target.Controlling!=null||target.ControlledBy!=null)return;ReleaseControl(owner);owner.Controlling=target;target.ControlledBy=owner;target.ControlUntil=owner.ControlUntil=Time+5;CancelAbilities(owner);CancelMelee(owner);CancelAbilities(target);CancelMelee(target);Fx(target.Body.position,1,2,owner.Body.position);}
+        {if(!Leet(owner,"brain")||!Enemy(owner,target)||target.Hp<=0||!target.Seat.connected||owner.ControlledBy!=null||target.Controlling!=null||target.ControlledBy!=null)return;ReleaseControl(owner);owner.Controlling=target;target.ControlledBy=owner;target.ControlUntil=owner.ControlUntil=Time+5;CancelAbilities(owner);CancelMelee(owner);CancelAbilities(target);CancelMelee(target);Fx(target.Body.position,1,2,owner.Body.position,owner,"leet-control");}
         private void LeetOrb(NativePilot p,Vector3 position,Vector3 dir,string kind,Vector3? target=null,float release=0)
         {if(ProjectileCount>=100)return;Bullets.Add(new NativeBullet{Id=nextBullet++,Attack=nextAttack++,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=position,Velocity=dir*(kind=="brain"?23:32),Damage=kind=="brain"?0:24,Impulse=180,Life=7,Radius=kind=="brain"?.27f:.16f,Direct=false,ChipImpact=kind=="copy",EffectsUsed=true,Travel=100,LeetKind=kind,LockTarget=target,ReleaseAt=release,LeetLaunched=kind=="brain"});}
         private bool LeetBlock(NativePilot p)
         {if(!Leet(p,"brain"))return false;CancelAbilities(p);CancelMelee(p);p.BlockAt=Time;p.BlockReady=Time+6;p.BlockEnd=0;Vector3 dir=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));LeetOrb(p,p.Body.position+Vector3.up*.2f+dir*.8f,dir,"brain");return true;}
         private void StepLeetPilot(NativePilot p)
         {
-            if(!Leet(p)||!p.Input.AbilityE||AbilityBusy(p)||Time<p.EReady||Time<p.BlockEnd||Frozen(p))return;float cost=30*(float)p.Stats["resourceCost"];if(p.Mana<cost)return;p.Mana-=cost;p.EReady=Time+12;p.Ready=Time+.4f;p.LastAttack=p.AttackAt=Time;
-            if(Leet(p,"time"))foreach(var q in Pilots)if(q.Hp>0&&Enemy(p,q)&&!SirenArmor(q))q.FrozenUntil=Time+4;
+            if(!Leet(p)||!p.Input.AbilityE||AbilityBusy(p)||Time<p.Ready||Time<p.EReady||Time<p.BlockEnd||Frozen(p))return;float cost=30*(float)p.Stats["resourceCost"];if(p.Mana<cost)return;p.Mana-=cost;p.EReady=Time+12;p.Ready=Time+.4f;p.LastAttack=p.AttackAt=Time;
+            if(Leet(p,"time")){foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q)&&!SirenArmor(q))q.FrozenUntil=Time+4;Emit(EventKind.Leet,p,0,p.Body.position,0,"leet-freeze",28);}
             if(Leet(p,"scare")){foreach(var f in LeetFields.Where(f=>f.Owner==p&&f.Kind=="tree").ToArray())RemoveLeetField(f);Vector3 pos=p.Body.position+Vec(V3.Forward(p.Input.Yaw))*2;pos.y=.05f;LeetFields.Add(new NativeLeetField{Id=nextEvent++,Owner=p,Kind="tree",Position=pos,At=Time,Until=Time+22});}
-            if(!Leet(p,"time")&&!Leet(p,"scare"))ChipBlast(p,p.Body.position,6,35,1200);
+            if(!Leet(p,"time")&&!Leet(p,"scare"))ChipBlast(p,p.Body.position,6,35,1200,effect:"leet-block");
         }
         private void LeetSpawned(NativePilot p,List<NativeBullet> shots)
         {if(!Leet(p))return;foreach(var b in shots){b.LeetKind="bolt";b.Homing=b.Gravity=0;b.Boomerang=b.Zigzag=false;b.Life=7;}}
         private bool LeetShotStep(NativeBullet b,NativePilot owner,float dt)
         {
             if(Frozen(owner))return false;if(b.LeetKind==null||b.LeetKind=="brain"||b.LeetLaunched)return true;if(b.Reflections>0){b.LeetLaunched=true;return true;}
-            if(!b.LockTarget.HasValue){var enemy=LeetTarget(owner,b.Position);if(enemy==null)return true;b.LockTarget=enemy.Body.position;b.ReleaseAt=Time+.42f;b.FixedSpeed=Math.Max(25,b.Velocity.magnitude);b.Velocity=Vector3.zero;Fx(b.Position,.25f,2,b.LockTarget.Value);}
+            if(!b.LockTarget.HasValue){var enemy=LeetTarget(owner,b.Position);if(enemy==null)return true;b.LockTarget=enemy.Body.position;b.ReleaseAt=Time+.42f;b.FixedSpeed=Math.Max(25,b.Velocity.magnitude);b.Velocity=Vector3.zero;Fx(b.Position,.25f,2,b.LockTarget.Value,owner,"leet-lock");}
             if(Time<b.ReleaseAt){b.Life-=dt;return false;}b.Velocity=(b.LockTarget.Value-b.Position).normalized*(b.FixedSpeed>0?b.FixedSpeed:32);b.LeetLaunched=true;return true;
         }
         private void LeetImpact(NativePilot p,NativeBullet b,Vector3 at)
         {
+            if(Leet(p))Emit(EventKind.Leet,p,0,at,b.Damage,b.LeetKind);
             if(!Leet(p)||b.Reflections>0||!(b.Direct||b.ChipImpact)||!ProcOnce("leet:"+b.Id))return;
             if(Leet(p,"nuke"))LeetFields.Add(new NativeLeetField{Id=nextEvent++,Owner=p,Kind="nuke",Position=at,At=Time,Until=Time+1.4f});
             if(b.Direct&&Leet(p,"copy"))for(int i=0;i<3;i++)LeetOrb(p,at+new Vector3((i-1)*1.1f,2.5f,.4f),Vector3.zero,"copy",at,Time+.5f+i*.16f);
@@ -74,7 +94,7 @@ namespace ChipArena.UnityConversion
             foreach(var f in LeetFields.ToArray())
             {
                 if(!f.Owner.Seat.connected||f.Kind=="tree"&&f.Owner.Hp<=0){RemoveLeetField(f);continue;}
-                if(Time>=f.Until){RemoveLeetField(f);if(f.Kind=="nuke"){foreach(var q in Pilots)if(Enemy(f.Owner,q)&&Vector3.Distance(q.Body.position,f.Position)<11)q.LaunchUntil=Time+1;ChipBlast(f.Owner,f.Position,11,160,42000);}continue;}
+                if(Time>=f.Until){RemoveLeetField(f);if(f.Kind=="nuke"){foreach(var q in Pilots)if(CanHit(f.Owner,q)&&Vector3.Distance(q.Body.position,f.Position)<11)q.LaunchUntil=Time+1;ChipBlast(f.Owner,f.Position,11,160,42000,effect:"leet-nuke");}continue;}
                 if(f.Kind!="tree"||Time-f.At<.9f)continue;
                 if(f.Slender==null)
                 {
@@ -92,7 +112,7 @@ namespace ChipArena.UnityConversion
                 {
                     float aggression=Mathf.Clamp01((Time-f.At)/Math.Max(1,f.Until-f.At)),noise=Mathf.Sin((f.Hops+1)*12.9898f+f.At*78.233f)*43758.5453f,r=noise-Mathf.Floor(noise),angle=target.Input.Yaw+180+(r-.5f)*2*.85f*Mathf.Rad2Deg,want=Math.Max(1.35f,gap*Mathf.Lerp(.72f,.5f,aggression));Vector3 dir=Vec(V3.Forward(angle));float distance=want;
                     if(root.scene.GetPhysicsScene().Raycast(tp+Vector3.up*.2f,dir,out var hit,want,WorldMask))distance=Math.Max(Math.Min(want,1.35f),hit.distance-.45f);
-                    Vector3 spot=tp+dir*distance;spot.x=Mathf.Clamp(spot.x,-31,31);spot.z=Mathf.Clamp(spot.z,-27,27);spot.y=tp.y-.85f;f.From=feetAt;f.Hops++;f.HopAt=Time+Mathf.Lerp(3.2f,1.3f,aggression);m.Body.position=spot+Vector3.up*1.23f;Fx(spot,1,2,feetAt);
+                    Vector3 spot=tp+dir*distance;spot=ClampMap(spot);spot.y=tp.y-.85f;f.From=feetAt;f.Hops++;f.HopAt=Time+Mathf.Lerp(3.2f,1.3f,aggression);m.Body.position=spot+Vector3.up*1.23f;Fx(spot,1,2,feetAt,f.Owner,"slender-hop");
                 }
             }
         }

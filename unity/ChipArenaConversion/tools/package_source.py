@@ -9,7 +9,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 TOP = {'Assets', 'Packages', 'ProjectSettings', 'Tests', 'tools', 'Relay', 'Updater'}
-FILES = {'README.md', 'CONVERSION-STATUS.md', 'VALIDATION.md', 'ICON.md', 'ANIMATIONS.md', 'Build-Windows.cmd', '.gitignore'}
+FILES = {'README.md', 'CONVERSION-STATUS.md', 'VALIDATION.md', 'ICON.md', 'ANIMATIONS.md', 'Build-Windows.cmd', 'Publish-Native.cmd', '.gitignore', '.dockerignore'}
 SKIP = {'bin', 'obj', '__pycache__', 'LocalAssets', 'Library', 'Temp', 'Logs', 'Builds', 'UserSettings'}
 
 
@@ -35,6 +35,8 @@ def selected():
 
 
 def check():
+    import sound_queue
+    sound_queue.check_bundle()
     manifest = json.loads((ROOT / 'Packages/manifest.json').read_text())
     catalog = json.loads((ROOT / 'tools/builtin-packages-6000.3.24f1.json').read_text())
     project_version = (ROOT / 'ProjectSettings/ProjectVersion.txt').read_text()

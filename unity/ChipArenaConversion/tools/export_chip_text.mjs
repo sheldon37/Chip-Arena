@@ -1,0 +1,13 @@
+// Card text for the native chip cards: the source's chipDescription and chipStatLines evaluated over every chip (PvP catalog,
+// PvE money chips, the Siren boss track), so the C# cards print exactly what the source cards print. Data only.
+// Usage: node tools/export_chip_text.mjs <pinned source>
+import fs from 'node:fs';import path from 'node:path';import {pathToFileURL,fileURLToPath} from 'node:url';import {registerHooks,stripTypeScriptTypes} from 'node:module';import {createHash} from 'node:crypto';
+const project=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),source=path.resolve(process.argv[2]);const inventory=JSON.parse(fs.readFileSync(path.join(project,'tools/conversion-inventory.json'),'utf8'));const root=pathToFileURL(source+path.sep).href;
+registerHooks({resolve(s,c,next){if(c.parentURL?.startsWith(root)&&s.endsWith('.js')){let u=new URL(s.slice(0,-3)+'.ts',c.parentURL);if(fs.existsSync(u))return {url:u.href,shortCircuit:true};}return next(s,c);},load(url,c,next){if(url.startsWith(root)&&url.endsWith('.ts')){const file=fileURLToPath(url),rel=path.relative(source,file),bytes=fs.readFileSync(file),entry=inventory.files.find(f=>f.path===rel),sha=createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');if(!entry||entry.gitBlob!==sha)throw Error('Pinned source mismatch '+rel);let code=bytes.toString().replace('import {Material,Vec,v}','import {type Material,type Vec,v}').replace('import {v,Material}','import {v,type Material}');return {format:'module',source:stripTypeScriptTypes(code,{mode:'transform'}),shortCircuit:true};}return next(url,c);}});
+const get=p=>import(pathToFileURL(path.join(source,'src/shared',p+'.ts')).href);
+const content=await get('content'),{chipDescription}=await get('chip-description'),{chipStatLines}=await get('chip-stats'),money=await get('pve/money-chips'),bosses=await get('pve/bosses');
+const text=c=>({id:c.id,description:chipDescription(c),lines:chipStatLines(c).map(l=>({text:l.text,tone:l.tone}))});
+const chips=[...content.CHIPS,...money.PVE_MONEY_CHIPS,...bosses.SIREN_BOSS_CHIPS];if(new Set(chips.map(c=>c.id)).size!==chips.length)throw Error('Duplicate chip id');
+const data={commit:inventory.sourceCommit,chips:chips.map(text),sirenTrack:bosses.SIREN_BOSS_CHIPS.map(c=>({id:c.id,name:c.name,description:c.description,icon:c.icon,rarity:c.rarity,max:c.max,tags:c.tags}))};
+fs.writeFileSync(path.join(project,'Assets/Conversion/Resources/ChipText.json'),JSON.stringify(data)+'\n');
+console.log('Chip text exported',data.chips.length,'chips',data.chips.reduce((n,c)=>n+c.lines.length,0),'stat lines');

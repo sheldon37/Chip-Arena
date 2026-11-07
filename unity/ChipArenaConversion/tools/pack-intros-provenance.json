@@ -1,0 +1,1100 @@
+{
+ "pack": "Explosive RPG Character Mecanim Animation Pack (owner licence; FBX never committed)",
+ "channels": 64,
+ "quantum": 0.00390625,
+ "fps": 60,
+ "duration": 4.8,
+ "entrances": [
+  {
+   "style": "weapon-sword",
+   "fps": 60,
+   "frames": 289,
+   "hit": 1.8,
+   "facing": -0.25,
+   "twoHand": false,
+   "support": null,
+   "breathe": true,
+   "grip": "blade",
+   "lift": 0.021,
+   "plants": {
+    "left": [
+     0,
+     0.8667,
+     1,
+     1.75,
+     1.8833,
+     2.1833,
+     2.3167,
+     4.8
+    ],
+    "right": [
+     0,
+     1.05,
+     1.3333,
+     1.55,
+     1.6833,
+     1.9,
+     2.0833,
+     2.1833,
+     2.3167,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "Relax-Unsheath-R-Hips",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       1.2,
+       0.1
+      ]
+     ],
+     "blend": 0,
+     "loop": false,
+     "input": "e7207096226d1d725ec56d91000d09a921bbef25e2aa5bf809c9d42deac47c23"
+    },
+    {
+     "source": "Sword-Attack-R2",
+     "keys": [
+      [
+       0.75,
+       0
+      ],
+      [
+       1.45,
+       0.15
+      ],
+      [
+       1.64,
+       0.2
+      ],
+      [
+       1.8,
+       0.3156
+      ],
+      [
+       2.2,
+       0.62
+      ]
+     ],
+     "blend": 0.5,
+     "loop": false,
+     "input": "5afe9741465c1aeb91b89608c0fefce251349973b27d1fa27eb26eec062c5332"
+    },
+    {
+     "source": "Armed-Boost1",
+     "keys": [
+      [
+       2.1,
+       0.2
+      ],
+      [
+       2.55,
+       0.5
+      ],
+      [
+       2.85,
+       0.75
+      ]
+     ],
+     "blend": 0.15,
+     "loop": false,
+     "input": "5f25cdb86218a15d8d0ef82fb0c2c02e79a89f91b0a8518e15256626201e1aad"
+    },
+    {
+     "source": "Armed-Boost1",
+     "keys": [
+      [
+       2.75,
+       0.04
+      ],
+      [
+       3.15,
+       0.09
+      ],
+      [
+       4.8,
+       0.12
+      ]
+     ],
+     "blend": 0.3,
+     "loop": false,
+     "input": "5f25cdb86218a15d8d0ef82fb0c2c02e79a89f91b0a8518e15256626201e1aad"
+    }
+   ],
+   "sha256": "32175a1d47db58eac32ff6ff132974245e0573dddb468e00f998ca78428d3af6"
+  },
+  {
+   "style": "weapon-greatsword",
+   "fps": 60,
+   "frames": 289,
+   "hit": 1.8,
+   "facing": -0.25,
+   "twoHand": true,
+   "support": [
+    0,
+    0,
+    -0.11,
+    1
+   ],
+   "breathe": false,
+   "grip": "blade",
+   "lift": 0.0276,
+   "plants": {
+    "left": [
+     0,
+     0.8,
+     0.9333,
+     1.0833,
+     2.6667,
+     2.8,
+     2.9333,
+     4.8
+    ],
+    "right": [
+     0,
+     0.8333,
+     0.9667,
+     1.0667,
+     1.8,
+     2.7667,
+     2.9,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Sword-Idle-Alert1",
+     "keys": [
+      [
+       0,
+       0.15
+      ],
+      [
+       0.8,
+       0.85
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "ca7487e6da9bc39840b50b15a83bc8f188392664b921ef92899536930a32dbc8"
+    },
+    {
+     "source": "2Hand-Sword-Jump",
+     "keys": [
+      [
+       0.65,
+       0
+      ],
+      [
+       1.12,
+       0.06
+      ],
+      [
+       1.25,
+       0.1
+      ],
+      [
+       1.62,
+       0.55
+      ]
+     ],
+     "blend": 0.25,
+     "loop": false,
+     "input": "d53abc7c53acee3ef278004e0f414404fedcc970d525518b9e6538cc977b930e"
+    },
+    {
+     "source": "2Hand-Sword-Attack2",
+     "keys": [
+      [
+       1.62,
+       0.52
+      ],
+      [
+       1.8,
+       0.62
+      ],
+      [
+       2.7,
+       1
+      ]
+     ],
+     "blend": 0.1,
+     "loop": false,
+     "input": "4f04a74cf1d9a73c8583680fe03c96fd032580a59e815b7322c6d866beb7acc8"
+    },
+    {
+     "source": "2Hand-Sword-Idle",
+     "keys": [
+      [
+       2.6,
+       0.3
+      ],
+      [
+       4.8,
+       2.5
+      ]
+     ],
+     "blend": 0.45,
+     "loop": true,
+     "input": "69af4eeab2f93345b89459800d0809af1f5b2a7ffc45ff8d7b04a4f3872126b5"
+    }
+   ],
+   "sha256": "f0cdff2c41a5d651414b51413a1dbb7ea9f58b6aca3d2218c4258928e6967707"
+  },
+  {
+   "style": "weapon-shield",
+   "fps": 60,
+   "frames": 289,
+   "hit": 1.45,
+   "facing": -0.25,
+   "twoHand": false,
+   "support": null,
+   "breathe": false,
+   "grip": "shield",
+   "lift": 0.0279,
+   "plants": {
+    "left": [
+     0,
+     1.0667,
+     1.4333,
+     4.8
+    ],
+    "right": [
+     0,
+     1.05,
+     1.4333,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "Armed-Shield-Idle",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       0.6,
+       0.6
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "95132d0d2a26b017db203e3ffeb6e12f3be2019988114baf94f4a46f9d49674e"
+    },
+    {
+     "source": "Armed-Shield-Boost1",
+     "keys": [
+      [
+       0.45,
+       0
+      ],
+      [
+       1.1,
+       0.6
+      ]
+     ],
+     "blend": 0.15,
+     "loop": false,
+     "input": "a5f49c077e98db154348b1a6cf1daf4a427d4618b227044b52f15a8cc622a3ca"
+    },
+    {
+     "source": "Armed-Shield-Block",
+     "keys": [
+      [
+       1.15,
+       0
+      ],
+      [
+       4.8,
+       2.4
+      ]
+     ],
+     "blend": 0.18,
+     "loop": true,
+     "input": "a47637d60d1d42bb27cc84d1f68124210941645471b25de724f139cc3220ab35"
+    }
+   ],
+   "sha256": "372c6f010d532cb12d41c3ea6ed947fa57d0e2699137275a2ae90af41d4b1c48"
+  },
+  {
+   "style": "weapon-pistol",
+   "fps": 60,
+   "frames": 289,
+   "hit": 2.12,
+   "facing": -0.25,
+   "twoHand": false,
+   "support": null,
+   "breathe": false,
+   "grip": "gun",
+   "lift": 0.0219,
+   "plants": {
+    "left": [
+     0,
+     4.8
+    ],
+    "right": [
+     0,
+     1.9667,
+     2.1,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "Pistol-Reload-R1",
+     "keys": [
+      [
+       0,
+       0.3
+      ],
+      [
+       1.05,
+       1.5
+      ]
+     ],
+     "blend": 0,
+     "loop": false,
+     "input": "6e46795795404af6c350631d483821f90300b96072f163605e40932e1fb36a89"
+    },
+    {
+     "source": "Armed-Idle-Pistol-R",
+     "keys": [
+      [
+       0.85,
+       0
+      ],
+      [
+       2.1,
+       0.75
+      ]
+     ],
+     "blend": 0.3,
+     "loop": true,
+     "input": "6046cb6e05aaebba143b4dcde77c85f094187f1e431518bf4be713ae25b8de7c"
+    },
+    {
+     "source": "Pistol-Attack-R1",
+     "keys": [
+      [
+       1.9,
+       0.25
+      ],
+      [
+       2.12,
+       0.365
+      ],
+      [
+       2.3,
+       0.47
+      ],
+      [
+       2.6,
+       0.52
+      ],
+      [
+       4.8,
+       0.55
+      ]
+     ],
+     "blend": 0.12,
+     "loop": false,
+     "input": "e25af49a41a46406de3a6ad1242277632d5b370c56f2267e16b150ccad4e2a90"
+    }
+   ],
+   "sha256": "c28d2caf5ff662244f7103c35c7b7215b51aa00501f631315994f3de5ffdef62"
+  },
+  {
+   "style": "weapon-rifle",
+   "fps": 60,
+   "frames": 289,
+   "hit": 1.8,
+   "facing": -0.25,
+   "twoHand": false,
+   "support": [
+    0.025,
+    -0.03,
+    0.1,
+    1
+   ],
+   "breathe": false,
+   "grip": "gun",
+   "lift": 0.0157,
+   "plants": {
+    "left": [
+     0,
+     0.8,
+     2.7333,
+     2.9167,
+     3.05,
+     4.8
+    ],
+    "right": [
+     0,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Shooting-Idle",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       0.8,
+       0.8
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "23f90ae142cf556f0dad9d44921a59e1279a1eab165e6d3531f87097e78e4e79"
+    },
+    {
+     "source": "2Hand-Shooting-Crouch-Idle",
+     "keys": [
+      [
+       0.65,
+       0
+      ],
+      [
+       2.6,
+       1.4
+      ]
+     ],
+     "blend": 0.35,
+     "loop": true,
+     "input": "a76562d26c69798100c39dc65f5d1a15b9c8210b326b5be3da9f2691c742c0dc"
+    },
+    {
+     "source": "2Hand-Shooting-Fire-Rifle1",
+     "keys": [
+      [
+       0.8,
+       0
+      ],
+      [
+       1.8,
+       0.02
+      ],
+      [
+       1.9,
+       0.08
+      ],
+      [
+       2.5,
+       0.12
+      ]
+     ],
+     "blend": 0.3,
+     "loop": false,
+     "input": "e56f00356bd55c4b141962d48291412c8abb1b278ed3788a714620b306c007c0"
+    },
+    {
+     "source": "2Hand-Shooting-Idle",
+     "keys": [
+      [
+       2.55,
+       0
+      ],
+      [
+       4.8,
+       2.25
+      ]
+     ],
+     "blend": 0.5,
+     "loop": true,
+     "input": "23f90ae142cf556f0dad9d44921a59e1279a1eab165e6d3531f87097e78e4e79"
+    }
+   ],
+   "sha256": "63c9a79896670703fd21f82a97f5bbf2cfd8fbc146f7d2d3bec10c78ed47cdb6"
+  },
+  {
+   "style": "weapon-machinegun",
+   "fps": 60,
+   "frames": 289,
+   "hit": 2.12,
+   "facing": -0.25,
+   "twoHand": false,
+   "support": [
+    0.025,
+    -0.03,
+    0.1,
+    1
+   ],
+   "breathe": false,
+   "grip": "gun",
+   "lift": 0.0218,
+   "plants": {
+    "left": [
+     0,
+     4.8
+    ],
+    "right": [
+     0,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Shooting-Idle",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       0.6,
+       0.6
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "23f90ae142cf556f0dad9d44921a59e1279a1eab165e6d3531f87097e78e4e79"
+    },
+    {
+     "source": "2Hand-Shooting-Activate",
+     "keys": [
+      [
+       0.5,
+       0
+      ],
+      [
+       1.35,
+       0.85
+      ]
+     ],
+     "blend": 0.15,
+     "loop": false,
+     "input": "82cd701271b57bff57d7805d52fdf65972ede72b1befb849ede7b096f2a3a99d"
+    },
+    {
+     "source": "2Hand-Shooting-Fire-Rifle2",
+     "keys": [
+      [
+       1.3,
+       0
+      ],
+      [
+       1.93,
+       0.02
+      ],
+      [
+       2.4,
+       0.1
+      ],
+      [
+       2.9,
+       0.3
+      ],
+      [
+       4.8,
+       0.55
+      ]
+     ],
+     "blend": 0.3,
+     "loop": false,
+     "input": "09f18e96dcf9b002137bd2970e5b390c7f2e0bb5d1e75d610477d86b8166c00c"
+    }
+   ],
+   "sha256": "040e5f940842f417a2462fa71f074327f5829b136c4de9e3fa7c9e94947873b0"
+  },
+  {
+   "style": "weapon-fire",
+   "fps": 60,
+   "frames": 289,
+   "hit": 1.8,
+   "facing": 0,
+   "twoHand": false,
+   "support": null,
+   "breathe": false,
+   "grip": "blade",
+   "lift": 0.0289,
+   "plants": {
+    "left": [
+     0,
+     0.5833,
+     0.7167,
+     1.5333,
+     1.6667,
+     3.0833,
+     3.2167,
+     4.8
+    ],
+    "right": [
+     0,
+     1.4833,
+     1.7333,
+     2.9833,
+     3.1167,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       0.5,
+       0.5
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    },
+    {
+     "source": "2Hand-Staff-Cast-L-Summon1",
+     "keys": [
+      [
+       0.35,
+       0
+      ],
+      [
+       0.5,
+       0.06
+      ],
+      [
+       0.72,
+       0.15
+      ],
+      [
+       0.85,
+       0.22
+      ],
+      [
+       1.1,
+       0.47
+      ],
+      [
+       1.5,
+       0.8
+      ]
+     ],
+     "blend": 0.2,
+     "loop": false,
+     "input": "8269124303c1ccdca90e2701356365ad21eb1feb0d4005339ea4799d881bf3c8"
+    },
+    {
+     "source": "Armed-Cast-L-Attack-Hand3",
+     "keys": [
+      [
+       1.45,
+       0
+      ],
+      [
+       1.72,
+       0.2
+      ],
+      [
+       1.8,
+       0.27
+      ],
+      [
+       2.4,
+       0.6
+      ],
+      [
+       2.9,
+       1
+      ]
+     ],
+     "blend": 0.15,
+     "loop": false,
+     "input": "92d561ec247daa57bb82b3a88fda6d5e810ad246051035d85cc757a6e79fc82b"
+    },
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       2.8,
+       0
+      ],
+      [
+       4.8,
+       2
+      ]
+     ],
+     "blend": 0.45,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    }
+   ],
+   "sha256": "6aabfd95924eb63170256e99d940ab73ecbe7d9fc9df5c6bee630486b4c054ae"
+  },
+  {
+   "style": "weapon-water",
+   "fps": 60,
+   "frames": 289,
+   "hit": 2.12,
+   "facing": 0,
+   "twoHand": false,
+   "support": null,
+   "breathe": false,
+   "grip": "blade",
+   "lift": 0.0243,
+   "plants": {
+    "left": [
+     0,
+     0.5667,
+     1.0333,
+     1.8167,
+     2.0167,
+     2.5333,
+     2.9333,
+     4.8
+    ],
+    "right": [
+     0,
+     0.5167,
+     0.65,
+     1.1167,
+     2.0333,
+     2.9333,
+     3.0333,
+     3.3167,
+     3.45,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       0.5,
+       0.5
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    },
+    {
+     "source": "2Hand-Staff-Cast-L-AOE1",
+     "keys": [
+      [
+       0.4,
+       0
+      ],
+      [
+       0.75,
+       0.2
+      ],
+      [
+       1.15,
+       0.47
+      ],
+      [
+       1.8,
+       0.85
+      ]
+     ],
+     "blend": 0.2,
+     "loop": false,
+     "input": "822eb2d51d613916255417c4452d55567a2ba10e58de258b8e2c94a03321ad99"
+    },
+    {
+     "source": "2Hand-Staff-Cast-L-AOE2",
+     "keys": [
+      [
+       1.75,
+       0.3
+      ],
+      [
+       2.12,
+       0.53
+      ],
+      [
+       2.7,
+       0.75
+      ],
+      [
+       3.2,
+       1.2
+      ]
+     ],
+     "blend": 0.15,
+     "loop": false,
+     "input": "16ab235a1a3eb642fadac63867ffbcc7592d331ad6e80d155e536be316f7dd00"
+    },
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       3,
+       0
+      ],
+      [
+       4.8,
+       1.8
+      ]
+     ],
+     "blend": 0.4,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    }
+   ],
+   "sha256": "348d65636352dcd3bd841fe01d2aef5fe40defbbebbba9c6a1f9e0d40dab1c3a"
+  },
+  {
+   "style": "weapon-lightning",
+   "fps": 60,
+   "frames": 289,
+   "hit": 1.45,
+   "facing": 0,
+   "twoHand": false,
+   "support": null,
+   "breathe": false,
+   "grip": "blade",
+   "lift": 0.0244,
+   "plants": {
+    "left": [
+     1.85,
+     3.3,
+     3.4333,
+     4.8
+    ],
+    "right": [
+     1.45,
+     1.7167,
+     1.9167,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Staff-Fall",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       1,
+       1
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "db190075b4951a859c644a5225a388cdc5c46f2b4fb35ecea88120f9f121b389"
+    },
+    {
+     "source": "2Hand-Staff-Jump",
+     "keys": [
+      [
+       0.95,
+       0.45
+      ],
+      [
+       1.45,
+       0.7
+      ],
+      [
+       1.75,
+       0.8
+      ],
+      [
+       2.3,
+       1.1
+      ]
+     ],
+     "blend": 0.3,
+     "loop": false,
+     "input": "6c08e447d94b4353ea29edf4a6b34ce8d84f060f2100a3552e948df3a27b7992"
+    },
+    {
+     "source": "2Hand-Staff-Idle-Alert1",
+     "keys": [
+      [
+       2.25,
+       0
+      ],
+      [
+       3.2,
+       0.95
+      ]
+     ],
+     "blend": 0.3,
+     "loop": false,
+     "input": "59dcc811f728db7bd7c0aeb774bcf0c19f49739828e620e745b6cb3b93cb1f2e"
+    },
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       3,
+       0
+      ],
+      [
+       4.8,
+       1.8
+      ]
+     ],
+     "blend": 0.4,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    }
+   ],
+   "sha256": "6fd55efc86eb67940427484c6c6a50709dc6aecadfd76c35f5371a48d04fb79e"
+  },
+  {
+   "style": "weapon-darkness",
+   "fps": 60,
+   "frames": 289,
+   "hit": 2.12,
+   "facing": 0,
+   "twoHand": false,
+   "support": null,
+   "breathe": false,
+   "grip": "blade",
+   "lift": 0.024,
+   "plants": {
+    "left": [
+     0,
+     0.5333,
+     1.5167,
+     1.9167,
+     2.8333,
+     3.2333,
+     3.3667,
+     4.8
+    ],
+    "right": [
+     0,
+     0.45,
+     0.5833,
+     1.9,
+     2.0333,
+     2.9333,
+     3.0667,
+     3.2667,
+     3.4,
+     4.8
+    ]
+   },
+   "segments": [
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       0,
+       0
+      ],
+      [
+       0.4,
+       0.4
+      ]
+     ],
+     "blend": 0,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    },
+    {
+     "source": "2Hand-Staff-Cast-L-Summon2",
+     "keys": [
+      [
+       0.3,
+       0
+      ],
+      [
+       0.55,
+       0.13
+      ],
+      [
+       0.95,
+       0.45
+      ],
+      [
+       1.35,
+       0.8
+      ]
+     ],
+     "blend": 0.2,
+     "loop": false,
+     "input": "18b1ef88f7a3a3c55b1ca9b7c22418debf3fb1839ba441ee69f4b41e3ef3e4b7"
+    },
+    {
+     "source": "2Hand-Staff-Cast-L-Summon1",
+     "keys": [
+      [
+       1.3,
+       0.35
+      ],
+      [
+       1.6,
+       0.55
+      ],
+      [
+       1.95,
+       0.8
+      ]
+     ],
+     "blend": 0.2,
+     "loop": false,
+     "input": "8269124303c1ccdca90e2701356365ad21eb1feb0d4005339ea4799d881bf3c8"
+    },
+    {
+     "source": "Armed-Cast-L-Attack-Hand2",
+     "keys": [
+      [
+       1.85,
+       0.04
+      ],
+      [
+       2.02,
+       0.13
+      ],
+      [
+       2.12,
+       0.2
+      ],
+      [
+       2.7,
+       0.55
+      ],
+      [
+       3.1,
+       0.9
+      ]
+     ],
+     "blend": 0.15,
+     "loop": false,
+     "input": "034877404b9c5a6c80f5a830b23a47e7d243395e8dcc965c6b020c5c85078e3d"
+    },
+    {
+     "source": "2Hand-Staff-Idle",
+     "keys": [
+      [
+       3,
+       0
+      ],
+      [
+       4.8,
+       1.8
+      ]
+     ],
+     "blend": 0.4,
+     "loop": true,
+     "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+    }
+   ],
+   "sha256": "3f1f1aed84857799506bff8896777b46661a3f3184d558183291504650b7a32b"
+  }
+ ]
+}

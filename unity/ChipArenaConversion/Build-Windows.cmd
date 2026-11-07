@@ -17,6 +17,7 @@ if exist "%~dp0Builds\build.log" (
 )
 echo Close this project in the Unity Editor before running this build.
 echo Unity must be activated in Hub and Windows Build Support must be installed.
+echo This replaces Builds\Windows and the starter ZIP. Keep your installed test copy outside this project.
 echo Building isolated Unity TEST package. Logs: "%~dp0Builds\build.log"
 start "" /wait "%UNITY_EDITOR%" -batchmode -nographics -projectPath "%~dp0." -buildTarget Win64 -executeMethod ChipArena.UnityConversion.Editor.PrototypeBuild.BuildWindows -quit -logFile "%~dp0Builds\build.log"
 if errorlevel 1 (
@@ -30,9 +31,13 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo Ready: "%~dp0Builds\Chip-Arena-Native-Conversion-TEST-Windows.zip"
-echo Play: "%~dp0Builds\Windows\ChipArena-Native-Conversion-TEST.exe"
+echo Ready: "%~dp0Builds\Chip-Arena-Windows.zip"
+echo Preview newest build: "%~dp0Builds\Windows\Chip Arena.exe"
 echo The EXE carries the voxel CA icon. Keep the launcher and app folder together.
-echo Update feed prepared at Builds\NativeUpdateFeed. See Updater\README.md to publish it.
+echo First install: extract the ZIP outside this project, then open Chip Arena\Chip Arena.exe.
+echo Test future updates from that older installed copy, not from Builds\Windows.
+echo Update feed prepared locally at Builds\NativeUpdateFeed; nothing was published.
+echo Compare published status: Publish-Native.cmd --status
+echo After testing this build, run Publish-Native.cmd to review and publish it.
 start "" "%~dp0Builds\Windows"
 pause

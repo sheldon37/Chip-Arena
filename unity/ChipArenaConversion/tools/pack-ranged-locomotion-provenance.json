@@ -1,0 +1,735 @@
+{
+ "pack": "Explosive RPG Character Mecanim Animation Pack (owner licence; FBX never committed)",
+ "channels": 64,
+ "quantum": 0.00390625,
+ "clips": [
+  {
+   "clip": "pistol/slow",
+   "source": "Armed-Walk-Slow",
+   "range": [
+    0,
+    48
+   ],
+   "fps": 30,
+   "frames": 49,
+   "loop": true,
+   "strike": 1.283,
+   "sha256": "a0d8cae7c129b7df53c62b632a98b417c424257d203545a7e7ec063b4cb8e6cc",
+   "input": "fbf26fc07271be946df0144b18a5ba4966ea08054fa53701330d99289f5aebde"
+  },
+  {
+   "clip": "pistol/walk-forward",
+   "source": "Armed-Walk",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.65,
+   "sha256": "5fa3e307e057499d82666c6b8bf4ebeaa85bcf4bb396eb086314f3e2b2f8b987",
+   "input": "90c9fbcf441747bf56b41a735256509174ac30a8a1692b694bbddda397a1defb"
+  },
+  {
+   "clip": "pistol/walk-forward-left",
+   "source": "Armed-Strafe-Forward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.017,
+   "sha256": "002e7d8a1d42447741b4340a1a11c70fb091cd78aa65535bc513cd0fa7484de6",
+   "input": "311cdbd8cdc807e32d64627e73276760216bc09616909952f8e3b4efafe344b7"
+  },
+  {
+   "clip": "pistol/walk-left",
+   "source": "Armed-Strafe-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.017,
+   "sha256": "325df79ec4933dcd222847c82305fca9df7d8155b1616033682e169b9a970291",
+   "input": "226a451df5b4787fcc7725edd46f291210e0021329e3791c8a885fee6e713c2b"
+  },
+  {
+   "clip": "pistol/walk-backward-left",
+   "source": "Armed-Strafe-Backward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.45,
+   "sha256": "f61254d21517aa86d76da267916ac028fb4ecd745f0350a57c3787cc1e8e81bf",
+   "input": "579261847a849d39da5c425e3661971c801aaef53719bcfc68438d8e994c39c1"
+  },
+  {
+   "clip": "pistol/walk-backward",
+   "source": "Armed-Strafe-Backward",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.417,
+   "sha256": "792d4537e4317733addf17847e7a117a27cc4dea883e1c5579d817b1b5304a6d",
+   "input": "88eea9cf01c76c14a76a297db9b5040d08b6e06453954f971f6f1113d566a707"
+  },
+  {
+   "clip": "pistol/walk-backward-right",
+   "source": "Armed-Strafe-Backward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.383,
+   "sha256": "efe5f4d7ea2bb3ae429a7f60828da594b739b81c32ac9d5b63b5614297743ea3",
+   "input": "acebaaef98f73ebde389e8d3082e48236b98ae732aa75b157f64678a52008a6d"
+  },
+  {
+   "clip": "pistol/walk-right",
+   "source": "Armed-Strafe-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.417,
+   "sha256": "fd6fdb4e17b208ad39b2c30c2c83b66a3a956969a1f01e860e37dbcb341e6dac",
+   "input": "9636d0ee3be828b24e0ae22f0354becb993b31e8d4d80e568e95a1b495c428f8"
+  },
+  {
+   "clip": "pistol/walk-forward-right",
+   "source": "Armed-Strafe-Forward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.017,
+   "sha256": "dc5b2f4d0e33d1b81a09565b83d38a1bf5bdf74864da24d780b863bac834e6a6",
+   "input": "66f287a60417065a979175953a08db8c9a3accc1fd207c7d1dc1c667426aea9c"
+  },
+  {
+   "clip": "pistol/run-forward",
+   "source": "Unarmed-Run-Forward",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.667,
+   "sha256": "0155b70768ca086f96ba076ff82804946d67634adf916d2fba54c28f4f781f87",
+   "input": "c00e32f62c6c3538a581785ba96bb97d573bfa437d2b95ebf97ee077a8953935"
+  },
+  {
+   "clip": "pistol/run-forward-left",
+   "source": "Unarmed-Run-Forward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.683,
+   "sha256": "f4aaeb7a315ed1a880dfd57c4a661532d3cc41218ba3eec8494d3d395da27283",
+   "input": "39b1ebe9fec6df47a138f6698bb306d464834bb7e96e6b38ea506e43be0d0ebb"
+  },
+  {
+   "clip": "pistol/run-left",
+   "source": "Unarmed-Run-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.75,
+   "sha256": "332539cd835c7054c1fea9bf84cf9f739da15df3eae82674c8c53752af2b0823",
+   "input": "d223d34a3c8a63b6da5b978694d6be956368c5263f5df8fb91a977ce0f421c06"
+  },
+  {
+   "clip": "pistol/run-backward-left",
+   "source": "Unarmed-Run-Backward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.417,
+   "sha256": "907d8dbbadd59f9b6f8066d64a602fdf11752090b3bebcc9f4549bcbec0c9e42",
+   "input": "8638bf1fea33649d4481f65bb2c977744a29ff155220c499de6c0092e1f92494"
+  },
+  {
+   "clip": "pistol/run-backward",
+   "source": "Unarmed-Run-Backward",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.317,
+   "sha256": "dd6c9368920bb90e8af6dd22e4b246305bfbed3d175de9df69d8d2902ea96556",
+   "input": "051392fd18751ff91832df22c43641105a89b773c2046d73bb75a44fdebe46ad"
+  },
+  {
+   "clip": "pistol/run-backward-right",
+   "source": "Unarmed-Run-Backward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.317,
+   "sha256": "c9c2953b427bb9bb579979bd0a4be393e2d2048f271efca4552fbf3044d9efa3",
+   "input": "2464fc9f22fcc986c6cc1c20b7265b92bbd473e482d3be82eb5c15bbfc094dbb"
+  },
+  {
+   "clip": "pistol/run-right",
+   "source": "Unarmed-Run-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.717,
+   "sha256": "56b94dbef692d76d75fdbb19e1f236f8834317589f6d6f1a86571177edd2570d",
+   "input": "33454a2c185df05fecabad678194fd0bed1a9b4a63aeb8c05add624af4f823e1"
+  },
+  {
+   "clip": "pistol/run-forward-right",
+   "source": "Unarmed-Run-Forward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.683,
+   "sha256": "7f69a16e7edb9e2aa739c73e7c2894293fd63e4c5669a74403db336ab3397fb8",
+   "input": "86130dae3d9c894ec932942c478f278f0a5c744505ba586442a826a396532c97"
+  },
+  {
+   "clip": "shooting/slow",
+   "source": "2Hand-Shooting-Walk-Slow",
+   "range": [
+    0,
+    48
+   ],
+   "fps": 30,
+   "frames": 49,
+   "loop": true,
+   "strike": 1.25,
+   "sha256": "96bcb530f05a240467fe7aa66c763700069605838f6293a341919ec478c5cd2e",
+   "input": "7ba2ac330019108bf5931a951e11a491977ccd6be50910e9086482f5e12344c2"
+  },
+  {
+   "clip": "shooting/walk-forward",
+   "source": "2Hand-Shooting-Walk",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.65,
+   "sha256": "cdc2386128bbcf1c02c82c4b385390e092c2bdfc007d40433d45469de5735895",
+   "input": "7545a9e06f7b510ddd22b2596901e1422e1e08f3991b3502a81ce33f26418ec0"
+  },
+  {
+   "clip": "shooting/walk-forward-left",
+   "source": "2Hand-Shooting-Strafe-Forward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.017,
+   "sha256": "eb13262233e1a338f495390a5ecb854960a9a819833056b186cc51871520f9c0",
+   "input": "c76b4fc2f119058b5a8eb5d25d6c3ba9d7b039e686b10bb11d667fd3e59b122a"
+  },
+  {
+   "clip": "shooting/walk-left",
+   "source": "2Hand-Shooting-Strafe-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.317,
+   "sha256": "c407e0642c4bd40000d30c9a404de06dcdf1ef8ea9e8f902fc87087aa584cb85",
+   "input": "50e425465fb1a827a280624a46e8c0297f5e6f2d013f379c90be2a1b0dff6ca9"
+  },
+  {
+   "clip": "shooting/walk-backward-left",
+   "source": "2Hand-Shooting-Strafe-Backward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.45,
+   "sha256": "8c3c601b5fe0effb8cf596e0518ef84dace5eb7f987d1cbc9f29d00e66adb7a6",
+   "input": "e3b27cd8a41d8fc3420765cfb0f6de8f3807e22b8c1e5c0832b863af0824f4ed"
+  },
+  {
+   "clip": "shooting/walk-backward",
+   "source": "2Hand-Shooting-Strafe-Backward",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.717,
+   "sha256": "a5a3a184017c7b946ea63b92b10ec1d7181b54d0fd4eac0f38420d6e45964e65",
+   "input": "122e63644db1ab81e2587f01b7d5bc0b69b4f16f8fc0dd9d7d910c9282e86a33"
+  },
+  {
+   "clip": "shooting/walk-backward-right",
+   "source": "2Hand-Shooting-Strafe-Backward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.383,
+   "sha256": "9390e850b0fa752017a82e6d272205c355cc3fbfa00e97bcf98316ce31252615",
+   "input": "7f3c8ecf9b62eb14ffbd64b572d3af9cd83aec2818c3f0c0bff2bec27198e6ab"
+  },
+  {
+   "clip": "shooting/walk-right",
+   "source": "2Hand-Shooting-Strafe-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.317,
+   "sha256": "2ab456b00b37e4ce9a20db9cc82d366bca44f61ec668dfc0c55d290da0e71f4a",
+   "input": "7b4978a0cacc7d9091a2d1744bdc5a10bb5a92b57a2f0bb3e4d843fee5e2b134"
+  },
+  {
+   "clip": "shooting/walk-forward-right",
+   "source": "2Hand-Shooting-Strafe-Forward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.017,
+   "sha256": "f37c9487b492fddf18e4f6ac2a6ca33cbba9a88379785b3efbb4726d889d2629",
+   "input": "c319caf80653a5c6ccb30c5b607bb2808e2e0e425bb7e2861e926a06964cdb5c"
+  },
+  {
+   "clip": "shooting/run-forward",
+   "source": "2Hand-Shooting-Run-Forward",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.717,
+   "sha256": "90077878e75421d499596e7a0ce2f115a87d90b20aa291a9738da4f241009b4e",
+   "input": "9054f74dcd1d1e4fe20a547776c68b5b2e7929c8b89e48d6209be09d5301217c"
+  },
+  {
+   "clip": "shooting/run-forward-left",
+   "source": "2Hand-Shooting-Run-Forward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.683,
+   "sha256": "779aef25c39b07a0068376e4dd55ca72375d63c03c2375f92c7454d70c20b95d",
+   "input": "659875d9180b995dc9054330a95dc8d56d7f67c29e63e9014fd19ad8f538c069"
+  },
+  {
+   "clip": "shooting/run-left",
+   "source": "2Hand-Shooting-Run-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.317,
+   "sha256": "73118b4537e45c102d35fff3a1049ae51ec1c16b63d675134f57eab0a42cae9f",
+   "input": "cb4fee4e2e64af4fd779f5b62893804125d3a310b831379a151818aff2b94c3a"
+  },
+  {
+   "clip": "shooting/run-backward-left",
+   "source": "2Hand-Shooting-Run-Backward-Left",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.383,
+   "sha256": "9027739aab50b441dde1b2715faa7986a24fb748a328ecc9ca924a7da8ac203b",
+   "input": "5df965ef9f755792a0818745be15f4fc67626db72ca1e6974406e76440f66f09"
+  },
+  {
+   "clip": "shooting/run-backward",
+   "source": "2Hand-Shooting-Run-Backward",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.417,
+   "sha256": "40cb40e56653f9fbdc18fe77b65c53ca1a03c7a0816e8ac08d2961d61b8c74fc",
+   "input": "996afc4368663813c9bfc3fa1556208dec8973e431ce57ffc0bdd44b46d18c63"
+  },
+  {
+   "clip": "shooting/run-backward-right",
+   "source": "2Hand-Shooting-Run-Backward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.317,
+   "sha256": "a5346ef4a2e1c72795d3b028d0745ca773ea5ea87b6153e465c2e45194ba485a",
+   "input": "03c1950e2d9a99d758adc89b5cd8413e2919758a48402f0c2545db93f2d03f60"
+  },
+  {
+   "clip": "shooting/run-right",
+   "source": "2Hand-Shooting-Run-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.317,
+   "sha256": "cca9ea774b5bc8dac3d64b129ebf59e76b3075799710974a9cf41e70b111d9e4",
+   "input": "58e692af78f2a38059c4beb0643ae77405d95079e62cc88a1bb0bb8f1c7f8b6c"
+  },
+  {
+   "clip": "shooting/run-forward-right",
+   "source": "2Hand-Shooting-Run-Forward-Right",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.683,
+   "sha256": "a2d0844187292a4f9d89330ca8a275b97862810e7ec796772b37c71616d509bb",
+   "input": "691f9cbcecf1eecb21d4f3878ce7f66d72fbb7e767719cd22c6023abf71fd907"
+  },
+  {
+   "clip": "staff/slow",
+   "source": "2Hand-Staff-Walk-Slow-WithStaff (mirrored)",
+   "range": [
+    0,
+    48
+   ],
+   "fps": 30,
+   "frames": 49,
+   "loop": true,
+   "strike": 0.55,
+   "sha256": "56050de8061648baf4875f40ca93188a2e950d4c522f4fdcbe3f3da1546bcb3b",
+   "input": "20a03886719da8c30136dd9e87b87b1c0ede44f5e9b03034f3f1c391fb2e96e8"
+  },
+  {
+   "clip": "staff/walk-forward",
+   "source": "2Hand-Staff-Walk-WithStaff (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.283,
+   "sha256": "afc2565819c91b546aebd15249f6162cfe03a42d67226839596498f0774a6662",
+   "input": "6fa38e68c0e60cc54b09096875085500aed09dee523c5e6f4208037a3c8383d2"
+  },
+  {
+   "clip": "staff/walk-forward-left",
+   "source": "2Hand-Staff-Strafe-Forward-Right (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.417,
+   "sha256": "6ab6963915a91fdf574ae9e206db69252b8152413b681a3212703184d6ec7109",
+   "input": "eb7c394e92daa625a22f9cc1c180c25d7a5dadb85b2c1830e43a4ac91e040778"
+  },
+  {
+   "clip": "staff/walk-left",
+   "source": "2Hand-Staff-Strafe-Right (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.017,
+   "sha256": "9e980deeb5397878b7dbd16fd79b7a6703f8b3878c0a52b5f5c221427efdaa49",
+   "input": "6f958ea24978492a5e9ff6723e70cc82ea33a907b822e39ac5e55f8330e98179"
+  },
+  {
+   "clip": "staff/walk-backward-left",
+   "source": "2Hand-Staff-Strafe-Backward-Right (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.017,
+   "sha256": "c8217cb2e6d6fd6200c3bfd13abe11242074c6617be75182a87cc97fc9080175",
+   "input": "29c794c0c51a5359a019209d97a560c128a04fbc49d5b7bf1ba42ddbc9adab77"
+  },
+  {
+   "clip": "staff/walk-backward",
+   "source": "2Hand-Staff-Strafe-Backward (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.017,
+   "sha256": "598e6cb2866ef50ac2297ac5eb5a538d8fb00ad8c73e2647a7350a64558ba0a6",
+   "input": "740ff11fe4bc9f13bd15799c6873e480e98d503a879517c7822a434257553d63"
+  },
+  {
+   "clip": "staff/walk-backward-right",
+   "source": "2Hand-Staff-Strafe-Backward-Left (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.783,
+   "sha256": "baac93992b16e1f45ca7c7c6d7e09d83f95c7f7685167933abd1b50e27442dc4",
+   "input": "b2d4809fff18330324e3b551bedf01eb4fda914d4781ac7fa3676069c76357dc"
+  },
+  {
+   "clip": "staff/walk-right",
+   "source": "2Hand-Staff-Strafe-Left (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.45,
+   "sha256": "70060915c26f312a7dead45ba4d192b7287245972e224e39786e412cebcd220e",
+   "input": "0be72edc7ea42e7b9abdc2a678609b9871e9b37a4eb0baa052f4948c2ab01603"
+  },
+  {
+   "clip": "staff/walk-forward-right",
+   "source": "2Hand-Staff-Strafe-Forward-Left (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.417,
+   "sha256": "7aa538e7237492fc8c39c9c96c19a349a9e5ac7e2f5f66284e18fbc27297be5a",
+   "input": "80ce81316c453695328d7b4c4c410be0ae2b6d1a305dfd085853d606aa2f02cb"
+  },
+  {
+   "clip": "staff/run-forward",
+   "source": "2Hand-Staff-Run-Forward (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.283,
+   "sha256": "27115d748d5e65bd5538cd269c1524ef5fe02c217b010bd7c8c115d2facfcae0",
+   "input": "43916d19d8163c30c6929708984c0d0f1c981ec29f200118d9439cadeb5623f9"
+  },
+  {
+   "clip": "staff/run-forward-left",
+   "source": "2Hand-Staff-Run-Forward-Right (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.3,
+   "sha256": "155551cbf1144df557cc9a720cd7973804042c19310b564f9f3c8b801cf78089",
+   "input": "9a18c924e5f2aadf4a0dd65c9d84cc6eac57ac0cbee5f0120f3e044c28d295ba"
+  },
+  {
+   "clip": "staff/run-left",
+   "source": "2Hand-Staff-Run-Right (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.717,
+   "sha256": "5b6b6f037edcbc4cbf5f8c9d3f0be218e37d26107e98a707d6e478877b0ed4b0",
+   "input": "c3de8b4a4065894e55126123ae9ada7d3fa5b396f4f70de4924e99845203f274"
+  },
+  {
+   "clip": "staff/run-backward-left",
+   "source": "2Hand-Staff-Run-Backward-Right (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.717,
+   "sha256": "df23fee7a26105220800d4a5f0f3133145cfc626b52f6ca578285f31ab491443",
+   "input": "e9c4d5b80fe38d42eafe503ca95c1cc9488ee2a5c130a21cd57502cc2aaef454"
+  },
+  {
+   "clip": "staff/run-backward",
+   "source": "2Hand-Staff-Run-Backward (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.75,
+   "sha256": "cff8364838436881bed80e1fdd4e10a1360acd77854c15278185a1a852b94dde",
+   "input": "d54ca3ffd609588d0668958bf76d5e02200626733d6526e601a56bf105a097a6"
+  },
+  {
+   "clip": "staff/run-backward-right",
+   "source": "2Hand-Staff-Run-Backward-Left (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.717,
+   "sha256": "6d9294b5e79f013fb3795cee0fcbb6eb8d54653e6ab7efe7e490371a3046b793",
+   "input": "af99541415330622bc2441dc6f59f248afc37fd18f80a8e33fde0cb6d4820b6e"
+  },
+  {
+   "clip": "staff/run-right",
+   "source": "2Hand-Staff-Run-Left (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.717,
+   "sha256": "988f46b0831a7e0867fa1a5ba9f0f8fd169c6f2720c9d09b1783a00b3803af39",
+   "input": "bfc1d5a260e6ef774c4c4dbaa5da337f320c1b72223a51c56f28bdc982e5f9f0"
+  },
+  {
+   "clip": "staff/run-forward-right",
+   "source": "2Hand-Staff-Run-Forward-Left (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 30,
+   "frames": 25,
+   "loop": true,
+   "strike": 0.317,
+   "sha256": "4d5b2b489c7dbfaf36914091db88f0fc59c04e795981dd626a3a79c2860cca62",
+   "input": "e6a85229f56fd93dc50c801291894b4599084d7ba1197a17ded991bf41c39904"
+  },
+  {
+   "clip": "sprint",
+   "source": "Unarmed-Sprint",
+   "range": [
+    0,
+    18
+   ],
+   "fps": 30,
+   "frames": 19,
+   "loop": true,
+   "strike": 0.5,
+   "sha256": "36c2ca500bd75285979e15c517d488690a1374aff6ef6dee622cc4c2e7b26c2a",
+   "input": "70379235aec9b863d6c023aee3a80d97bb6786e5a79e207fef4fdff412f2e28b"
+  }
+ ]
+}

@@ -17,6 +17,15 @@ namespace ChipArena.UnityConversion
             new SirenRule{Id="eruption",Windup=.3f,Recovery=.3f,Cooldown=5,Damage=28,Radius=2.2f},
             new SirenRule{Id="rain",Windup=.6f,Recovery=.4f,Cooldown=18,Damage=9,Radius=7},
             new SirenRule{Id="mark",Windup=2.4f,Recovery=.5f,Cooldown=35,Damage=85,Speed=3,Radius=.32f,Range=40}};
+        // Last Laugh keeps its raised-hand pose after the timed crush, until the original move ends.
+        public static bool GrabPose(bool caught,float now,float until)=>caught&&now<until;
+        // The rendered captive faces the holder's yaw + 180 (NativeInteractionPresentation).
+        // Store that facing on the death, not the victim's pre-catch aim yaw.
+        public static float CrushDeathYaw(float holderYaw)
+        {float yaw=(holderYaw+180f)%360f;return yaw<0?yaw+360f:yaw;}
+        // Only the actual timed crush has the Siren-death style, not an unrelated kill during a grab.
+        public static string DeathStyle(string spec,bool crush,string killEffect)
+        =>spec=="siren"?"siren-dissipate":crush?"siren-crush":killEffect??"impact-ragdoll";
         public static SirenRule Rule(string id)=>Array.Find(Moves,m=>m.Id==id);
         public static float Duration(SirenRule r)=>r.Windup+r.Active+r.Recovery+r.Travel;
     }

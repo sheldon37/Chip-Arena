@@ -1,0 +1,2324 @@
+# BoZo characters + Magica Cloth 2: integration plan
+
+Status (2026-10-22, Claude): steps 1–2 done on the owner's PC (`claude/bozo-inventory`, docs only, merged into shared
+after the owner's review): both packs imported, moved under `Assets/LocalAssets/`, and inventoried below; the owner's
+decisions follow the inventory. Step 3 (rig adapter): `claude/bozo-rig-adapter`, merged into shared; its drift on BoZo is
+measured in Unity (step 3 below). Step 4 (first character): outfit A is wired into the arena's pilot bodies
+(`claude/bozo-body`, below), drawn on our own lighting (`claude/bozo-toon`) with its outline matched to the map's lines
+(`claude/bozo-outline`), with the hit flash and the spawn-in (`claude/bozo-flash`), the chest core and the right-wrist
+chip device (`claude/bozo-core`); the chip-select display's move to the right wrist, hats and the other rigs are still to
+do. Owner decision: player characters come from the **BoZo: Stylized Modular
+Characters – Anime Pack** (Unity Asset Store, v2.6.4), with **Magica Cloth 2** (v2.18.4) for hair and cloth motion. Both are
+bought by the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
+core and right-wrist device (with the closed / opening / insert / accepted / active states) are kept as attachments for BoZo
+characters. `docs/CHARACTER-LOWPOLY.md` (Phase A) still holds for the rig adapter, cosmetic schema, death compatibility,
+the performance pass criteria and the Astra contract. Its triangle, LOD and bone caps do not apply to BoZo (owner,
+2026-10-22). This file records what changes for an asset-pack body. Map restyle to match:
+`docs/MAP-STYLE-ANIME.md` (branch `claude/anime-map-style`).
+
+## Rules
+- **Licensed, never committed.** Both packs live under `unity/ChipArenaConversion/Assets/LocalAssets/` (already git-ignored).
+  After an Asset Store import, move the pack folders there before doing anything else, and check `git status` shows nothing
+  from them.
+- **Optional at compile time.** CI, the cloud checks and any machine without the packs must still compile and run, falling
+  back to today's characters. All code that names BoZo or Magica types sits in an optional assembly (asmdef with
+  `defineConstraints`), enabled by a local scripting define that an editor check sets only when the pack folders exist.
+- **Presentation only.** Hit volumes, colliders, weapon frames, shot origins and the wire are unchanged; cloth and hair are
+  simulated per client and never networked; first person never runs cloth.
+- **Package manifest.** BoZo's shader needs Shader Graph; Magica Cloth 2 needs Burst, Collections and Mathematics. Changes to
+  `Packages/manifest.json` are a build-tooling change: coordinate with Astra before committing them.
+
+## Where the work runs
+Unity-dependent steps (import, inventory, rig mapping, cloth, captures, profiling) run in a Claude Code session on the owner's
+PC, which has the editor, the licence, a GPU and the packs. Docs, the repo check suite (`run5b`), Blender work and parallel
+agents run in the cloud session. Both push to GitHub branches.
+
+## Steps
+1. **Import and verify** (owner's PC). Import Magica Cloth 2, then BoZo; accept their package dependencies; move both folders
+   under `Assets/LocalAssets/`; open BoZo's character-creator scene once in the Built-in pipeline (pink materials mean Shader
+   Graph is missing). Record versions.
+2. **Inventory** (write into this file): BoZo skeleton (bone names, hierarchy, rest pose, height), body and outfit meshes per
+   slot (head, eyes, tops, bottoms, footwear, gloves, hats, front and back hair, head and face accessories), blendshapes (body
+   type, chest, weight, face, expressions), shader (BMAC_Toon properties, the 9 colour channels, outline), the merge-to-one-mesh
+   path, the equip and save systems, triangle counts. Magica Cloth 2: version, runtime-build API, BoneCloth vs MeshCloth,
+   colliders, culling and LOD.
+3. **Rig adapter.** Map BoZo's humanoid bones onto the 22 `CapturedRig` joints (CHARACTER-LOWPOLY section c). Extra bones
+   (spine segments, twist, fingers) are derived or held. BoZo's proportions are the visual skeleton; foot IK to the authority
+   contacts and support-hand IK as designed; weapon on the visual hand (P1, owner 2026-10-22). Drift table vs the authority
+   volumes, measured in Unity.
+4. **First character.** A male preset (body blend, a hair, a default outfit) plus the chest core and the right-wrist device,
+   player colours through BoZo's colour channels, and our lighting (picked lights, actor lights, muzzle lights) reaching its
+   shader (bridge or port). Neutral turnaround and gameplay poses captured in Unity.
+5. **Magica Cloth.** BoneCloth on BoZo's hair bones and cloth on every applicable outfit piece (owner 2026-10-22: hair,
+   clothes, skirts, coats, hoods, scarves, straps): presets, body colliders including the core and device, distance and quality culling, a budget for 8 pilots, off in first
+   person; killcams, corpses and intros re-simulate locally.
+6. **Wider integration.** Cosmetic slots mapped to BoZo categories; Astra's look-map contract updated with BoZo ids; death and
+   dismemberment on skinned BoZo meshes (regions from bone weights); legacy voxel fallback kept until parity; performance vs
+   the voxel renderer (draws, skinning, cloth) on the owner's PC.
+
+## Step 1 result: import and verify (2026-10-22, owner's PC)
+
+Unity 6000.3.24f1, Built-in pipeline, worktree `Chip-Arena-Unity` on `claude/bozo-inventory` from shared `c4c4672`.
+
+- **Versions** (Asset Store package headers in `%APPDATA%/Unity/Asset Store-5.x/`): BoZo 2.6.4 (product 323550, published
+  16 Oct 2026, authored on 2022.3.62f1); Magica Cloth 2 2.18.4 (product 242307, 4 Oct 2026, authored on 2022.3.0f1).
+- **Location.** Both imported to the Asset Store default (`Assets/BoZo_StylizedModularCharacters`, `Assets/MagicaCloth2`),
+  where git does not ignore them and `tools/package_source.py` would package them. Moved with their `.meta` files to
+  `Assets/LocalAssets/` (GUIDs kept; the Editor registered 1,695 moved assets). `Assets/LocalAssets.meta` uses the GUID
+  `tools/install_local_assets.py` writes. `git status` shows nothing from either pack. An Asset Store re-import or update
+  lands in the default folders again: move it, or re-import into the moved folders (GUIDs match).
+- **Built-in shaders.** BoZo's three hand-written shaders (`BMAC_Toon`, `BoZo_LayerTextureShader` = `Hidden/TextureLayerer`,
+  `BoZo_Decal`) arrive as URP versions; they fail on Built-in ("Couldn't open include file
+  .../universal/ShaderLibrary/Core.hlsl"). The pack ships the Built-in versions in `STYLIZED_Built-In_Shaders.unitypackage`
+  (same GUIDs); installed them. The URP originals are kept in the git-ignored `unity/ChipArenaConversion/LocalAssets/BoZo-URP-shaders/`.
+  Its Shader Graphs carry both Built-in and Universal targets.
+- **Compile.** Magica's `Example (Can be deleted)` (145 MB, own asmdef) failed: `WindDemo.cs` needs `WindZone` from the Wind
+  module, which this project's manifest leaves out. Moved to the git-ignored `unity/ChipArenaConversion/LocalAssets/MagicaCloth2-Example/`
+  (outside `Assets`, not compiled) rather than adding a module. The Editor then compiled with no script errors.
+- **Import warnings left (pack content):** `BSMC_Head.fbx` (an old head no preset uses): "Avatar creation failed:
+  Transform 'Hips' not found"; `BSMC_Head_02.fbx`: no smoothing groups for blendshape normals.
+- **Shaders compile on Built-in:** all ten in the pack compile with no errors in the Editor: `Bozo/Bozo_Toon`, the six Shader
+  Graphs, `Hidden/TextureLayerer`, `Hidden/BoZo_Decal` and the demo graph.
+- **Broken materials (pack content):** 7 of 204 point at missing shaders and draw pink: three brow materials, `BSMC_BakeMat`,
+  `UnderUpper_SimpleUnderShirt_Mat`, and two TextMeshPro font materials for the creator UI.
+- **Not done:** opening `Scenes/StylizedCharacterCreator.unity`, which would replace the owner's open scene. The local
+  inventory tool (below) renders all nine presets in a preview scene instead; none draw pink.
+
+**Package manifest (not committed; Astra's call).** The imports added one line, `"com.unity.shadergraph": "17.3.0"`, and an
+untracked `Packages/packages-lock.json`. Burst 1.8.30, Collections 2.6.8 and Mathematics 1.3.3 resolve only as Shader Graph's
+dependencies (through `com.unity.render-pipelines.core` 17.3.0, with searcher 4.9.5, ugui 2.0.0, test-framework 1.6.0,
+test-framework.performance 3.5.0, nuget.mono-cecil 1.11.6 and ext.nunit 2.0.5). Magica's asmdef compiles only while those
+three resolve (`versionDefines` `MC2_BURST`/`MC2_COLLECTIONS`); without them its importer asmdefs `Client.Add` them into the
+manifest on load. Committing it needs:
+- the three listed explicitly;
+- `tools/builtin-packages-6000.3.24f1.json` (the packager's catalog) extended: today `package_source.py` and
+  `test_source_packages` reject `com.unity.shadergraph@17.3.0` on this PC.
+
+**Tracked and shared settings the Editor and packs write (none committed).**
+- Opening the project rewrites the minimal tracked `ProjectSettings/ProjectSettings.asset` (+691 lines) and re-serialises
+  `InputManager.asset`; it creates 20 untracked `ProjectSettings/*.asset`. The stub's `m_ColorSpace: 1` is not a Unity
+  key: the Editor runs Gamma. Builds still force Linear (`Editor/PrototypeBuild.cs:59`), so in-Editor looks differ from builds.
+- Magica: `MagicaManager` `[InitializeOnLoadMethod]` adds `MAGICACLOTH2` to the selected target's Scripting Define Symbols on
+  every domain reload (`Scripts/Core/Manager/MagicaManager.cs:151-170`). It lands in `ProjectSettings.asset` when the Editor
+  saves. If that is ever committed, CI gets the define without the assembly.
+- BoZo: `BoZo_AutoIncludeShaders` adds five shaders to Always Included in `GraphicsSettings.asset` (untracked) on every load.
+
+## Step 2: inventory
+
+Sources: the packs' files and code (static, file:line from the packs), a static FBX reader over all 140 BoZo FBX, and a
+local Editor tool (`Assets/LocalAssets/ChipArenaLocalTools/Editor/BozoInventory.cs`, git-ignored with the packs).
+
+### Skeleton
+- `Outfits/Common/Body/BodyRig.fbx`: one Humanoid avatar (Mixamo-style mapping), Unreal-mannequin names, 107 transforms:
+  `root` → `pelvis` → `spine_01`…`spine_05` → `neck_01`, `neck_02` → `head`; `clavicle`/`upperarm`/`lowerarm`/`hand` with
+  metacarpals and 3-joint fingers; `thigh`/`calf`/`foot`/`ball`. There are also IK helpers (`ik_foot_*`, `ik_hand_gun`/`_l`/`_r`),
+  `center_of_mass`, `interaction`, `breast_l/r`, and face bones (`brow`, `cheek`, `jaw`, `chin`, `mouth`, `nose`, `nosebridge`).
+  Heads add `eyeRoot`/`IrisRoot` bones and hair adds chains (`additionalBones`, below).
+- **Twist bones exist**: `upperarm_twist_01/02`, `shoulder_twist`, `lowerarm_twist_01/02`, `thigh_twist_01` (+`01_l1`) and
+  `calf_twist_01` (+`01_l1`) per side. So the 22-joint candy-wrapper risk is solvable by deriving twist, not by cuffs.
+- **Rest pose:**
+  - The model's default and bind pose is an **A-pose**, measured in Unity: upper arms 53° below horizontal, hands at 1.06 m.
+  - The avatar's Humanoid configuration stores a separate T-pose; only Mecanim uses it.
+  - Bone frames are non-identity (local x runs down each chain). The game's `CapturedRig` rests arms-down with identity
+    frames, so "copy local rotations 1:1" (section c of the Phase B design) does not apply as is.
+  - The adapter needs a per-joint rest alignment computed once at bind: BoZo world = game world delta × BoZo rest world,
+    where the delta is relative to each rig's own rest.
+- **Rest joint positions** (Unity, metres; left is −x, front +z):
+
+  | Joint | Position |
+  |---|---|
+  | pelvis | .987 |
+  | spine_02 | 1.075 |
+  | spine_05 | 1.395 |
+  | neck_01 | 1.491 |
+  | head | 1.573 |
+  | chin bone | 1.546 |
+  | upper arms | ±.133 at 1.425 |
+  | elbows | ±.291 at 1.215 |
+  | wrists | ±.427 at 1.060 |
+  | hips | ±.093 at .961 |
+  | knees | .536 |
+  | ankles | .110 |
+  | balls | .013 (z +.116) |
+
+  Segments: upper arm .263, forearm .224, thigh .425, shin .428. Leg (hip to ankle) .852 m against the game's .50 m, so
+  `legRatio` ≈ 1.70 (the Blender base's was 1.64).
+
+**Mapping onto the 22 `CapturedRig` joints** (proposal for step 3; derived bones are presentation only):
+
+| CapturedRig | BoZo | Notes |
+|---|---|---|
+| motion-root (0) | `root` + height offset | BoZo `root` is at the soles; the game's root is feet + .865 m |
+| pelvis (1) | `pelvis` | |
+| spine (2) | `spine_01`, `spine_02` | rotation shared between the two |
+| chest (3) | `spine_03`, `spine_04`, `spine_05` | shared; `breast_l/r` held |
+| neck (4) | `neck_01`, `neck_02` | shared |
+| head (5) | `head` | face bones, `eyeRoot`, `IrisRoot` ride it |
+| clavicle (6, 10) | `clavicle_l/r` | |
+| shoulder (7, 11) | `upperarm_l/r` | `shoulder_twist`, `upperarm_twist_01/02` derived from the upper arm's roll |
+| elbow (8, 12) | `lowerarm_l/r` | `lowerarm_twist_01/02` derived from the wrist's roll |
+| wrist (9, 13) | `hand_l/r` | fingers held in a grip pose per weapon (none today) |
+| hip (14, 18) | `thigh_l/r` | `thigh_twist_01*` derived |
+| knee (15, 19) | `calf_l/r` | `calf_twist_01*` derived |
+| ankle (16, 20) | `foot_l/r` | |
+| toe (17, 21) | `ball_l/r` | |
+
+Unmapped and held: `ik_*`, `center_of_mass`, `interaction`, fingers, face, hair chains (Magica).
+
+### Bodies, slots and outfits
+- **Slots:** 36 `OutfitType` assets, empty ScriptableObjects used only as name keys. Six have no outfits (Ears, HeadDetail,
+  Iris, Overall, Shoulders, Waist). One outfit per slot; equipping replaces.
+- **166 outfit prefabs** (each an `Outfit` component plus a nested FBX with its own skeleton copy). By slot: Top 24, HairBack 19,
+  Bottom 16, Feet 13, HairFront 11, Hat 9, Gloves 8, Pupil 8, EyeBrows 6, Socks 6, FaceDetails 5, UpperFace 5, EyeLashes 4,
+  HeadAcc 4, LowerFace 3, UnderLower 3, UnderUpper 3, and 1–2 each for Body, Head, Eyes, EyeShine, Teeth, MakeUp (×3),
+  Neck, Leggings and FaceTexture. Underwear, socks, leggings, pupils, shine, make-up and face details are texture-only
+  layers (0 triangles). `Top_ThickHenslay` has no Type and throws when equipped (pack bug).
+- **Body:** `Body_AnimeBasic` / `Body_BasicBody` are 14 part meshes (ankles, back, chest, feet, hands, hips, lower arms,
+  lower legs, neck, shoulders, upper arms, upper legs, waist, wrists). Outfit `tags` (CoverChest, CoverHips, CoverUpperArms…)
+  switch the covered parts off (`OutfitHideByTag`) and set `Tag_*` blendshapes. Only four tops use `HideTypes` (they hide
+  Bottom).
+- **Rigid pieces:** every outfit is skinned (`AttachPoint` is empty on all 166).
+- **Heads:** `Head_AnimeYoung` (presets) and `Head_BasicHead`. The face is a mesh with eyes, iris, pupil, shine, lashes,
+  brows and teeth as separate pieces. It is a human face (not a mask) in the anime style, with large eyes. The owner keeps
+  it as authored (2026-10-22).
+- **LODs:** none. No LODGroup and no reduced meshes in the pack.
+
+**Triangles** (static FBX count; Unity triangulates the same way). Body 9,600 (hands 2,976, feet 1,894, the other 12 parts
+4,730); head 3,136; eyes 424; hair 546–2,585 per piece; tops 3,016–5,130; bottoms 878–2,742; feet 816–3,900; gloves
+682–1,884. Per preset, as drawn after the body-part hides:
+
+| Preset | Look | Sum | Body parts hidden | Drawn |
+|---|---|---|---|---|
+| Default_Boy | boxers | 16,536 | none | 16,536 |
+| Zell | baggy pants, arm bands | 19,280 | hips, legs (1,900) | 17,380 |
+| Kenji | suit, khakis, loafers | 22,828 | 5,888 | 16,940 |
+| Jackal | jacket, capris, boots, gloves | 28,110 | 4,904 | 23,206 |
+| Glover | cardigan, shorts, flats, gloves, cap | 30,221 | 4,520 | 25,701 |
+| Default_Girl / Jayda / Hana | | 16,722 / 21,412 / 24,614 | | 16,722 / 16,892 / 22,520 |
+
+So a dressed character draws about 17–26 k triangles: the store's "about 19 k" holds, and it is 2.4–3.7 × the Phase A LOD0
+budget of 7,000. That budget is dropped for BoZo: the owner set no triangle cap (2026-10-22).
+
+**Bones and weights** (Unity):
+- Up to 38 weighted bones per mesh piece (hands, tops, gloves 26–38).
+- 4 influences per vertex everywhere except the legacy `Body_BasicBody.fbx` parts (back and shoulders 6; chest, neck and
+  upper arms 5).
+- An assembled preset weights 85–93 distinct bones and references 107–117. These come from the humanoid set, twist,
+  `breast`, the face, `eyeRoot`/`eyeSocket`/`IrisSize` and the hair chains. That is far over Phase A's 22.
+- Heads, eyes and lashes bring a `headAnime` parent for their eye bones. It is not in `BodyRig`, so a binder has to add
+  it under `head` (BoZo does this through `additionalBones`).
+- Vertex colours are on 136 of 139 meshes; one UV set.
+
+### Blendshapes and body shaping
+- **Body** (9 per part, and the same 9 on tops, bottoms, gloves and some shoes, so clothes follow): `Shape_BodyType`
+  (male ↔ female), `Chest`, `Weight`, `Belly`, `Muscle`, `Curvy`, `NeckThickness`, `WaistSize`, `ButtSize`.
+- **Head_AnimeYoung** (53): face shapes (`BodyType`, `EarLength`, `EyeRoundness`, `Maturity`, `MouthWidth`, `Muscle`,
+  `NeckThickness`, `Roundness`, `Sharpness`, `Weight`) plus about 43 `Expression_*` driven by animation clips only.
+- `Tag_*` shapes (hair under hats and hoods, `Tag_HighKnee`, `Tag_ArmCover`) are set by outfit tags.
+- **Bone modifiers.** `BodyShapeModifier` writes per-bone scale, position and rotation offsets by bone name, mirroring `_l`
+  to `_r`. `Default_Boy` uses 16 of them, for example root ×1.025, spine_04 ×1.018, clavicle ×1.068 and the twist bones ×1.098.
+  These are presentation-only offsets, many of them on bones outside the 22 joints.
+- **Male/female:** `Shape_BodyType` plus an Animator float `Stance` (idle and walk trees). The base mesh (BodyType 0) is the
+  female or neutral body; the male presets sit at 26–67 (Zell 26, Kenji 30, Default_Boy 45, Jackal 67) and the female ones at
+  −15 to 0. Default_Boy: BodyType 45, Weight 15, NeckThickness 27, stance .25.
+
+### Measured proportions
+Stature and head come from the Unity inventory, with the presets assembled by bone name and their blendshapes applied.
+Widths are read from the body FBX in bind pose under the same blendshape weights, because the hanging A-pose arms spoil a
+width slice taken in Unity (see the note on the tool below). BoZo's bone modifiers (for example Default_Boy's root ×1.025)
+are not applied.
+
+| | BoZo male (Default_Boy) | Owner's target | Stopped Blender base | Authority (unchanged) |
+|---|---|---|---|---|
+| Stature, soles to crown | 1.787 m (1.83 m with its root ×1.025) | | 1.74 m | capsule 1.70 m |
+| Head, chin to crown | .270 m (width .216, depth .235) | | .218 m | |
+| Heads tall | **6.6** | 7.5–8, superseded: BoZo's normal head (2026-10-22) | 8 | |
+| Head centre | 1.651 m | | 1.631 m | head box 1.49 m |
+| Hair top | 1.81–1.83 m | | | |
+| Shoulders, bideltoid | .462 m | broad | | voxel joints ±.345 |
+| Chest (torso width) | .300 m | | | |
+| Waist, narrowest | .241 m | | | |
+| Hips | .350 m | | | |
+| Shoulder ÷ waist / ÷ hip | 1.92 / 1.32 | V-taper | | |
+
+How the shapes move the widths (bind pose, metres; shoulders / chest / waist / hips):
+- BodyType 0 (the neutral base): .445 / .281 / .204 / .344.
+- BodyType 100: .469 / .317 / .242 / .339.
+- BodyType 100 with Muscle 100: .498 / .353 / .266 / .339.
+- Jackal (BodyType 67, Muscle 26): .468 / .313 / .238 / .341.
+
+All the presets have the same head (Head_AnimeYoung) and skeleton. Every one measures 6.5–6.8 heads tall, at 1.787–1.821 m
+stature. Shoes put the soles 1–3.5 cm below the floor (BoZo raises the root only for heels), so the floor fit has to read
+the shoes.
+
+Reading it:
+- BoZo's male is not narrow: about 46 cm across the shoulders over a 24 cm waist is a strong V-taper. The torso is shallow
+  and narrow at the chest (30 cm). BodyType toward 100 plus some Muscle would broaden it, but the owner keeps BoZo's
+  shapes as its presets set them (2026-10-22).
+- **Head: keep BoZo's normal size (owner decision, 2026-10-22).** The figure stays about 6.6 heads tall, which supersedes
+  the earlier 7.5–8 target. The anime "young" head is .27 m tall, against .22–.23 m for an adult.
+  - If this is revisited, a scale through BoZo's `head` bone modifier changes it: about .87 gives 7.5 heads (crown about
+    1.76 m), and about .80 gives 8.
+  - Hair and hats scale with the head bone.
+- Drift against authority, to re-measure through the adapter in step 3:
+  - The visual head centre sits .16 m above the head box at rest (the Blender base .14 m; the voxel head .015 m).
+  - The visual hands hang .43 m out to the side in the A-pose. That only matters before the adapter poses them.
+
+Renders (preview scene, Gamma Editor; local scratch only, never committed):
+- All nine presets were rendered front, side, back and three-quarter, both on their own lit Shader Graph materials and with
+  a per-renderer approximation of the anime toon material.
+- They show what our binder must add:
+  - **body-part hiding**: skin pokes through the sleeves and trousers at the elbows and knees without it;
+  - **BoZo's colour bake**: every hair is the material's default purple and the texture-only underwear is missing without it.
+- The faces read as young anime faces with large eyes.
+
+### Shaders, lighting and outlines
+- **Materials:** 165 of the pack's 204 materials (Unity count; 157 of them outfit materials) use
+  `BSMC_ClothesCustom.shadergraph` (Built-in Lit target, PBR-ish). The anime look
+  is a different material: `Materials/BSMC_AnimeShader.mat` on `Bozo/Bozo_Toon` (the Built-in `BMAC_Toon`), applied to the
+  merged character through the `BSMC_AnimeShader` MaterialPackage. Every preset uses it.
+- **`Bozo/Bozo_Toon`** is a hand-written `.shader`, not a Shader Graph:
+  - Passes: ForwardBase, ForwardAdd, an inverted-hull outline pass (no LightMode tag) and ShadowCaster.
+  - Properties: `_Texture2D`, `_NormalMap`, `_IDMap`, `_Color_1`…`_Color_9`, outline (`_UseOutline`, `_OutlineColor`,
+    `_OutlineDistance`), `_LightHeightDirectionStrength`, `_Brightness`, rim light (power, sharpness, colour, overlay),
+    shadow colour, edge colour, edge and sharpness, `_RecieveShadows`, ambient, multi-light, decal and pattern maps with
+    3 colours each.
+- **How it reads light:** only Unity's main directional light (`_WorldSpaceLightPos0`, `_LightColor0`, shadow attenuation)
+  through a smoothstep ramp with an edge-colour band, plus `ShadeSH9` ambient, rim light and fog. The ForwardAdd pass is
+  broken:
+  - its keyword `_USEMILTIPLELIGHTS` is misspelt, and the `[ToggleUI]` property never sets it;
+  - it treats point-light positions as directions;
+  - it swizzles colour `.rbg`.
+  `_USEAMBIANT` is also a keyword behind a `[ToggleUI]`.
+  None of our lights (picked practical lights, actor lights, muzzle lights, `ToonPoints`) reach it. **Recommendation for
+  step 4: a port, not a bridge.** Our own skinned toon shader in the `ArenaToon`/SourceLit family, reading BoZo's inputs: the
+  albedo or ID map, 9 colours with vertex-colour layer select, and the outline from vertex alpha.
+- **Colour channels:** in the shader, texture RGB weights 3 colours inside a layer and vertex-colour RGB picks the layer
+  (1–3, 4–6, 7–9). BoZo's runtime bakes colours into textures instead (below), where the `_IDMap` picks the layer.
+  Only 29 of 162 outfit materials have an ID map.
+- **Outline:** an inverted hull. Normals are pushed out by `_OutlineDistance` × 1 mm × vertex alpha in object space,
+  drawn in `_OutlineColor`, and clipped where vertex alpha < .5. Its width is in metres, so it thins with distance, unlike
+  our 1–2 px screen-space map lines.
+- **Stencil:** every pass writes `Ref 221, WriteMask 221` (bits 1, 4, 8, 16, 64, 128), so it **sets** bit 16. Our edge pass
+  draws where bit 16 is set (`NativeToonEdge` `Ref 16 ReadMask 16 Comp Equal`), so map lines would cross BoZo characters.
+  This corrects `MAP-STYLE-ANIME.md` section 6: the shader is not a Shader Graph, and the fix is the port, which writes 0
+  to bit 16 like SourceLit and NativeZombieLit.
+
+### BoZo's runtime systems (`OutfitSystem`, `BoZo_CharacterOptimizer`, `BMAC_SaveSystem`)
+- **Equip API:** `AttachOutfit`, `RemoveOutfit`, `LoadFromObject`/`LoadFromID`/`LoadCharacter`, `SetShape`, `SetStance`,
+  `UpdateMaterial` and `MergeCharacter`. The caller instantiates outfits.
+  - Bones are bound by name. Each outfit's renderer bones are remapped onto the body's bones, and `additionalBones` (hair
+    chains, head eye bones) are reparented by parent name.
+  - Loading is `async void` and Task-based (`Task.Yield`, `Resources.LoadAsync`), not coroutines.
+- **Merge, runtime, on every equip, remove and load:**
+  - Every active outfit is combined into one new mesh on the body renderer. Bone weights are remapped by name with the legacy
+    4-influence `BoneWeight`; bind poses are recomputed. Blendshapes merge by name with frames collapsed. Only UV0 is kept.
+  - Colours are not atlased: each outfit's 2048² textures share one UV space and are layered through `Hidden/TextureLayerer`
+    into **five 2048² RenderTextures per character** (about 80 MB of GPU memory, so about 640 MB for 8 pilots).
+  - Every colour change re-blits all of them, then rebinds and replays the Animator.
+  - Outfits with `mergeTexture` off keep their own submesh and material.
+  - The atlas code in the optimizer is never called and needs a shader that is not in the pack.
+- **Allocation:** every equip instantiates, builds LINQ lists, dictionaries and bone arrays, and uses `DestroyImmediate`.
+  This cannot meet Phase A's "0 B GC per frame once warm" or the presentation clock, so **use BoZo's assets, not its
+  MonoBehaviours**. Recommendation: our own combine, once per outfit signature (Phase A section g). It covers name
+  binding, part hides from tags, `Shape_`/`Tag_` weights, bone-modifier offsets, additional bones, and colours through
+  our shader or a once-only bake.
+- **Death and dismemberment:** the merged and source meshes keep normal 4-influence weights on named bones. Regions from
+  dominant bones map cleanly onto the 11 Phase A regions, and the 14 body parts already split at the elbows, wrists, knees
+  and ankles. Stump caps still have to be generated.
+- **Saves:** `JsonUtility` `CharacterData` (`versionID` 4): body and face shape ids and values, bone modifiers, outfit ids
+  (`"<Type>/<prefab>"` Resources paths), colours, decals, patterns, part visibility, stance and material package name. Files go
+  to `persistentDataPath/BoZo_StylizedModularCharacters/CustomCharacters`. Ids are names, never GUIDs, which suits Astra's
+  `look` map (CHARACTER-LOWPOLY section i) if we keep BoZo's ids.
+- **Animation:** six Humanoid clips (idle and walk, male and female, a dizzy clip), expression clips on
+  `blendShape.Expression_*`, and `HeeledFeet`. No Animator is required. Our poses drive the bones, and expressions could be
+  driven by us.
+- **Builds:** BoZo's `Resources` folders ship whole (about 174 outfits, 287 textures at 2048²), and Always Included adds
+  its shaders. A build with the packs grows accordingly unless our own bake writes only what we use. That is
+  Astra's build tooling.
+- **Assemblies:** BoZo has no asmdef, so it compiles into Assembly-CSharp, as all our game code does (this project has no
+  asmdefs). Any direct reference to BoZo types from tracked code breaks CI. At runtime we need Unity types only (meshes,
+  materials, textures); an Editor-side baker can read BoZo data through `SerializedObject`.
+- **Editor tools broken by the move (we don't need them):**
+  - TextureBaker would write into a recreated `Assets/BoZo_StylizedModularCharacters/CustomOutfits/Resources`;
+  - IconCapture's path rewrite breaks on `LocalAssets`;
+  - the legacy CharacterObject upgrade fails;
+  - one inspector banner is missing.
+  The `Resources` loads and saved ids are unaffected.
+
+### Magica Cloth 2
+- **Cloth types:**
+  - BoneCloth (Transform chains under root bones): the fit for BoZo hair, which brings its own chains (`Hair_Front`,
+    `Hair_Back`…), and for `Cloth_Cape`.
+  - BoneSpring: no gravity, a spring back to the pose; for stiff accessories.
+  - MeshCloth (a reduced proxy of a readable skinned mesh): for skirts, dresses and other loose garments. Only 7 skirts and
+    dresses ship a paint map (`MC2Map`); since the owner wants cloth on every applicable piece, the others need maps
+    painted on BoZo's UVs, which stay local with the pack. It clones the mesh, uploads all vertices every frame and swaps the original back when culled; its build is
+    asynchronous over several frames and allocates heavily. Not measured; it is the main cost risk.
+- **Runtime build:**
+  1. `AddComponent<MagicaCloth>()`, `Initialize()`, `DisableAutoBuild()`.
+  2. Set `SerializeData` (cloth type, root bones or source renderers, paint, reduction, colliders).
+  3. Load presets with `ImportJson` (parameters only).
+  4. `ReplaceTransform` for name remaps, then `BuildAndRun()`. It runs once; a rebuild means a new component.
+  Other calls: `SetParameterChange`, `ResetCloth(keepPose)`, `SetTimeScale(0–1)`, `SetSkipWriting`, `AddForce`; a
+  disable mode of Reset or Keep.
+- **Colliders:** sphere, capsule and infinite plane. Collision mode is Point or Edge; there is no per-cloth limit, but each
+  particle checks every collider. Keep self-collision off (it is expensive). BoZo's base prefab adds 13 capsules to body
+  bones.
+- **Culling:**
+  - Camera culling: Off, Reset, Keep, or follow the Animator (the default). It uses `Renderer.isVisible`, which includes
+    shadow cameras and lags a frame, so first-person cloth must be switched off explicitly.
+  - Distance culling: off by default; up to 100 m, from `Camera.main` by default, with a reset on crossing.
+  - No LOD tiers. The levers are frequency, step cap, reduction, blend weight, time scale and disabling.
+- **Time:** 90 Hz by default (30–150), at most 3 steps per frame. It hooks the PlayerLoop around LateUpdate and steps from
+  `UnityEngine.Time` (scaled, unscaled or fixed); **manual stepping from our presentation clock is not possible without
+  changing its source.** It is not deterministic: step counts follow frame time and build timing varies. Killcams, corpses
+  and intros re-simulate locally (presentation only, nothing networked), but a replay's cloth will not match the live one
+  exactly. Use `ResetCloth` on respawns and cuts, and Keep or `SetSkipWriting` to freeze corpses.
+- **Burst jobs:** steady-state managed allocation looked absent in the hot paths read (not profiled).
+- **Platforms:** the readme says every platform except WebGL; there are no shader or SRP dependencies.
+- **BoZo's integration** (`ThirdParty/MagicaCloth`, `#if MAGICACLOTH2`): four cloths on `BSMC_CharacterBase` — Cape
+  (Bone, Skirt preset), FrontHair and BackHair (Bone, ShortHair preset; BackHair off under a hood), and one MeshCloth (Skirt
+  preset, the outfit's `MC2Map`). It destroys and rebuilds them after every merge. Use it as a reference only.
+
+### What this changes in the plan
+- **Optional compile.** Prefer no compile-time dependency at runtime: render BoZo data with Unity types; let an Editor or
+  load-time baker turn it into our combined meshes in `LocalAssets`; fall back to voxel when the bake is absent. Only cloth
+  needs Magica types at runtime. Put that bridge in its own asmdef referencing `MagicaClothV2`, with `defineConstraints` on
+  a local define. Our Assembly-CSharp code reaches it through a registration hook, never by type.
+  - Don't use `MAGICACLOTH2` as the guard: it is written into the tracked ProjectSettings.
+  - Candidate: a git-ignored `Assets/csc.rsp` with `-define:CHIPARENA_LOCAL_BOZO`, written by a local install step.
+  - Still to verify in the Editor: that `defineConstraints` sees `csc.rsp` defines.
+- **Budget (owner, 2026-10-22: "as much as you need").** BoZo characters draw as authored, with no triangle cap; Phase A's
+  caps (LOD0 7,000, 22 bones, 1 submesh) do not apply.
+  - Today's dressed presets draw 17–26 k triangles, with about 90 bones and 4 influences.
+  - LODs are optional, made only if the Phase C benchmark calls for them. The pack has none; the Editor's mesh LOD
+    generation is one candidate, not verified on 6000.3.
+  - Texture memory: one bake per outfit signature at BoZo's 2048², not five live 2048² RenderTextures per character, so the
+    look is unchanged.
+  - The Phase C pass criteria are unchanged: +0.5 ms CPU and +5 % GPU over voxel at 8 pilots, and 0 B GC per frame.
+- **Shader:** ported in step 4 (`ChipArena/VisualBodyToon`), its outline matched to the map's `lineColor` and width.
+- **First person:** the view rig needs the lower arms, wrists, hands, and the sleeves and gloves weighted to `lowerarm`/`hand`.
+  Hands are 2,976 triangles. Cloth is off.
+
+### The local inventory tool
+`Assets/LocalAssets/ChipArenaLocalTools/Editor/BozoInventory.cs` is git-ignored with the packs.
+- **How it runs:** when `Temp/bozo-inventory.request` exists (its text names an output folder), or from Tools > Chip Arena
+  (local).
+- **What it does:** it builds each preset in a preview scene. It binds the outfits to `BodyRig` by bone name, after
+  removing BoZo's own scripts before activation. Then it measures the result, reports shaders, materials, models and outfits,
+  and renders the views.
+- **Run on 2026-10-22:** Editor 6000.3.24f1, Built-in, Gamma. The standalone defines read `MAGICACLOTH2`, which Magica
+  had added. Every section ran without errors.
+- **Edits only compile on Editor focus,** but its request poll also runs in the background. A request written before the
+  recompile therefore runs the old code. Its per-part width pass (the same measurement as the FBX widths above) is in the
+  file for the next focused run.
+
+## Step 3: rig adapter (`claude/bozo-rig-adapter`)
+
+Presentation only. Nothing here reads or writes authority:
+- the capsule, head box, melee sector, shot and aim origins, weapon frames, the network pose and every wire field stay on the
+  22 `CapturedRig` joints;
+- hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged.
+
+The adapter is not wired into the live body path yet; that is step 4.
+
+**Files.**
+- `Core/NativeVisualRig.cs`: the adapter. Pure System.Numerics in the source frame and the `Pose`'s body space (floor −.865).
+  It allocates nothing per frame.
+- `Runtime/NativeVisualRigBinding.cs`: binds it to a Unity bone hierarchy. It reads the rest pose once, mirrored into the
+  source frame, and writes local turns plus the pelvis position each frame. It uses Unity types only and names no pack
+  types, so it compiles on machines without the packs.
+- `Tests/VisualRigChecks.cs` (`CoreTests --visual-rig`): checks the adapter against a synthetic Unreal-mannequin skeleton
+  built from our own numbers, with no pack data.
+
+**Bind (once per skeleton).**
+- **Mapping:** bones are mapped by name (`NativeVisualRig.Mannequin`) using the table in step 2:
+  - pelvis;
+  - `spine_01`–`02` share the spine's turn half and half; `spine_03`–`05` share the chest's 34/33/33; `neck_01`–`02` share
+    the neck's;
+  - head, clavicles, upper arms, forearms, hands, thighs, calves, feet and balls one to one;
+  - everything else rides its parent.
+- **Rest alignment:** upper arms, forearms, thighs and calves are turned so they point down the game's rest directions
+  (arms and legs straight down). BoZo's A-pose then lines up with the game's arms-down rest. Hands and fingers follow their
+  forearm. Pelvis, spine, neck, head and clavicles keep BoZo's authored posture. Feet keep their flat world rest.
+- **Leg ratio:** the visual hip-to-ankle over the game's .50 m (BoZo: see the measurements below).
+
+**Per frame** (`NativeVisualRig.Pose`):
+1. **Joint turns:** each bone's world turn is the game joint's world turn (identity rest frames, so the turn since rest)
+   applied to its aligned rest. Split chains slerp the joint's local turn by their share. Arm and leg directions therefore
+   equal the game's exactly, until the IK steps below. Feet and head carry the game joint's turn.
+   - **Hands** (`NativeVisualRig.Wrist`, owner review 2026-10-22): the game's wrist frame is the voxel fist's and the
+     weapon's, so holds bend it 90–150° off the forearm (rifle 107°, pistol 112°, greatsword idle 152°). An open BoZo hand
+     there pointed at the floor.
+   - The visual hand keeps the game wrist's roll in full and its bend up to 25°. Beyond that it takes a quarter of the
+     bend: a rifle hold becomes 45°, and the deepest captured bend is now 60°.
+   - The weapon frame keeps the game wrist turn, so aim and the drawn weapon are unchanged.
+   - **Hanging arms** (`NativeVisualRig.Spread`, owner review 2026-10-22): the game hangs its arms straight down from voxel
+     shoulders .35 m out. From BoZo's shoulder joints (.13 m out) the same arms buried the forearms and hands in the hips.
+     - While a game upper arm hangs, the visual shoulder turns it 15° out, in the clavicle's frame so the arm's own roll is
+       kept.
+     - The turn fades out as the arm rises past 60° from down, so raised arms and weapon holds stay exactly the game's.
+     - It carries down the limb, because limb chains hang from their visual parent.
+   - **Fingers** (`NativeVisualRig.Curl`): each finger and the thumb curl by joint.
+     - The curl axis comes from the chain's own slight rest curl, so no pack bone axes are assumed.
+     - Angles: relaxed 15° / 25° / 15° (thumb 5° / 10° / 10°); closed round a grip 55° / 75° / 45° (thumb 20° / 30° / 30°).
+     - The caller passes `rightGrip` (the weapon) and `leftGrip` (a shield, an off-hand blade). The left also closes while
+       it supports a two-handed grip. Open hands relax.
+2. **Twist helpers:**
+   - forearm helpers take the hand's roll, and calf helpers the foot's, by their place along the bone;
+   - upper-arm and thigh helpers counter the limb's own roll: all of it at the root (`shoulder_twist`), none at the far end;
+   - arm helpers take these from the final pose, after the hands and IK (step 7).
+3. **Root:** the pelvis moves by the game pelvis's offset from rest × the leg ratio, so crouches and bobs keep the game's
+   knee angles.
+4. **Hands inside the shoulder line** (`NativeVisualRig.Inside`; owner reviews 2026-10-22: the elbows looked inverted,
+   then a first fix drew the arms in). The game's shoulders sit .35 m out from its spine, BoZo's shoulder joints .13 m.
+   Copying the arm directions crossed BoZo's forearms whenever the game brought a hand in (pistol and rifle holds, the
+   greatsword). The support arm then folded back out to its grip: its forearm pointed 115–177° off the game's.
+   - **Sideways:** inside the game's shoulder line, each visual hand keeps its place from the chest's middle, scaled from the
+     game's shoulder width to the visual one.
+   - **Height:** the game's head joint rises .24 m over its shoulders, BoZo's head bone .15 m. A hold at the voxel's chest
+     (a rifle .34 m under the head-box centre) put BoZo's hands at its mouth. Between the shoulder and the head, the hand's
+     rise scales the same way. The drop peaks at the head's height and is gone by twice it, so raised swings stay raised.
+   - **Reach:** the moved hand is drawn back out to the copied arm's extension (how straight the arm is) along its own
+     direction. Solving the depth alone went steep near its limit: a raised greatsword's hand jumped 0.4 m in a frame.
+   - **Elbow:** the whole arm swings at the shoulder by the shortest turn that brings the hand there, so the elbow keeps
+     the game's bend exactly and the hand keeps its turn.
+   - The shift fades in over the first .10 m inside the line. Hands at or outside it (hanging arms, swings out to the side)
+     keep the copied arm.
+   - The weapon rides the moved right hand (P1), and the support grip follows it.
+   - **Ruled out on the way** (none of these merged):
+     - The twist helpers: renders with the upper-arm counter-twist at full, a third and none looked alike.
+     - A sideways shift alone: it bent the arms and drew aimed hands back to the chest and face (rifle arm 67 % extended
+       against the game's 99 %).
+     - Two-bone IK in place of the swing: it re-solved the elbow plane and turned the greatsword's weapon forearm up to
+       91° off the game's.
+5. **Fists and weapons out of the body** (`NativeVisualRig.Clear`; owner review 2026-10-22: the greatsword's fists and
+   hilt in the face, long-gun stocks in the chest). The game keeps its blades off its own blocky body (`MeleeClearance`),
+   not off BoZo's. A different head and chest, and hands moved inside the shoulder line, ran fists and weapons into them.
+   - **The body:** the head is an ellipsoid and the torso an elliptic cylinder from the pelvis up to the shoulders
+     (`Rig.HeadCenter`, `HeadRadii`, `TorsoHalfWidth`, `TorsoHalfDepth`). They are set from the skeleton by the proportions
+     measured on outfit A, and a caller with the meshes may set its own:
+     - head .22 × .27 × .23 m round a point .08 m over the head bone, which rises .148 m over the shoulder joints;
+     - hooded top .30 × .22 m round the spine.
+   - **What keeps out:**
+     - each fist, turned as it will ride its handle: 8 cm from the head, which keeps the back of a closed hand out, and
+       5 cm from the torso, where a hand may rest;
+     - the held weapon's lines (`Hold.Tail` to `Tip`, `CrossA` to `CrossB`, each with its half-width): a blade from its
+       pommel to 20 cm past its guard plus the crossguard bar; a gun from its back to its muzzle; a shield's height and
+       breadth;
+     - a two-handed weapon's support fist, at its handle, with the weapon hand's margins.
+   - **How it moves:** fist and weapon move as one, straight out by the inside points' pushes averaged by depth. The arm
+     reaches the wrist there, hinged, with the elbow on the animation's side, and the hand keeps its turn. Only that arm
+     moves: the weapon rides its fist and a support hand follows the weapon. The fist is estimated as it will ride (its turn
+     steadied from last frame's hand, as the hold turns it).
+   - **Limits:** the move changes each frame by at most 3 cm more than the game's own hand moved. It keeps up with a cut
+     that brings the hands to the head, and the greatsword's overhead raise passes them over it.
+     - All at once, it jerked the greatsword's hands 16 cm and its support hand 40 cm in a frame.
+     - Held to 3 cm a frame (owner review 2026-10-22: "greatsword cut A raised-hands face graze"), the raise's fists
+       reached the head's middle while the game's hands moved 7–10 cm a frame. The push then flipped and the fists crossed
+       the face (6 cm deep for two frames).
+     - The game's head drop was not the cause: there the game's hands rise only 60 % of the way to its head.
+     - BoZo's head sits low on a short neck, so the voxel's hands, which sweep under its chin, come at BoZo's jaw.
+   - **Ruled out:**
+     - a single deepest point: it flipped between two near-equal contacts frame to frame;
+     - reaching with the elbow history: it was measured from a different elbow than the hold's reach after it, and rocked
+       the elbows 5–7 cm a frame;
+     - clearing a long blade's outer part: it sweeps past the head within a frame or two and jerked the hands 13 cm;
+     - pushing the way the game's hand lies from its own head (under the chin, as the voxel's go): it held clear, but moved
+       the raise's hands down by up to 30 cm, where the straight-out push moves them over the head by at most 12 cm;
+     - keeping the wrist off the head too: it made the support hand jump 36 cm in a frame on the synthetic skeleton.
+6. **Planted feet:** two-bone IK puts a planted foot's ankle on the game ankle's ground point. The knee bends toward
+   where it is in the visual pose before IK, falling back to the game knee's side when that is degenerate. A foot counts as planted while the game ankle is within .03 m of its rest height, blending out by
+   .10 m. Turn this off for rolls and airborne takes.
+7. **Arms, kept anatomical** (`NativeVisualRig.Reach`; owner review 2026-10-22: arms and wrists still unnatural, hands
+   not held through animations). Every arm the hands move (weapons, support grips, give-way) is posed here. Measured on
+   the merged adapter, two causes were in the solve, not the animations or Unity:
+   - **Inverted elbows:** the IK turned each bone the shortest way, so the upper arm's crease drifted off the fold, up to
+     175° (rifle and machine-gun weapon arms; 40-60° on pistol and shield). Now the elbow is a hinge: the upper arm's
+     fold side (+z of the game-aligned frame, where the game's own elbow folds) faces the forearm, and the forearm shares
+     the hinge (`HingeTurns`).
+   - **Twisted forearms:** the forearm twist bones kept the game's wrist roll after the hand was turned onto a handle, up to
+     147° off. Arm twist bones now follow the final pose (`ArmTwists`): forearm bones take their share of the hand's roll
+     on the forearm, and upper-arm bones counter the upper arm's roll on the shoulder.
+   - **Elbow placement:** the elbow sits on the circle the bones allow, on the animation's side, swinging about the
+     shoulder-wrist line only to spare the wrist a bend past 60°, the forearm a roll past 90°, the humerus a roll past 110°
+     and the torso an elbow or forearm inside it. The swing is a soft minimum over the circle (at most ±90°). The
+     greatsword's cuts need it: the game's own arm there rolls the upper arm 153-169° in the shoulder, past any human's.
+   - **Torso:** an elbow or forearm resting against the torso line costs little (2 cm, as a 24° swing), sinking in steeply
+     more (5 cm, as a 97° swing: the depth squared plus its fourth power). With the square alone a dagger cut's elbow sank
+     9 cm into the belly.
+   - **Frame to frame:**
+     - The elbow moves with the animation's own elbow, keeping its correction (the swing off the animation's side), and only
+       the correction is held and changes by at most 4° a frame. Measured from last frame's elbow alone, a fast dagger cut's
+       elbow trailed the animation's by 68°, into the torso.
+     - It follows only while the animation's side is sure and has moved under 45° since last frame; otherwise it stays with
+       last frame's elbow. A straight arm names no side, and blending the two set a greatsword's support elbow circling 20°
+       a frame.
+     - A riding hand rolls about its handle by at most 8° a frame. Two-handed and shouldered weights move by at most .08 a
+       frame.
+     - The game can drop a two-handed grip, or a cut can whip the forearm across the handle's line, within a frame; these
+       keep hands and elbows from snapping.
+     - `State.Forget()` clears the history. The game body calls it after a gap in posing (death, first person, a hidden
+       frame), a teleport or a weapon change. It does not call it on a cut: the transition checks cross cuts smoothly
+       without it.
+8. **Support grip:** on a weapon that may be held two-handed, the left fist closes on its `SupportHold` (without one, the
+   left hand keeps the game's right-to-left wrist offset, carried onto the visual right wrist).
+   - It engages while the game's own wrists hold together (within .18 m, released by .30 m; `HandsTogether`), eased.
+   - **Reaching a far grip:**
+     - the fist slides back along its handle (`Hold.Slide`: a long gun's handguard toward the receiver);
+     - then the left shoulder reaches, as a body does (the clavicle turns toward the grip, up to 25°);
+     - only what is still out of reach makes the weapon give way toward the left shoulder, with the right fist staying on it.
+   - **The fist's turn** is set by the weapon where it has one (`Hold.Ahead`, rolling up to `Hold.Spread` toward the
+     straightest wrist: a long gun's palm-up cup ±60°, a pistol grip ±25°), else by the straightest wrist.
+   - **A long gun's handguard is cradled** (owner review 2026-10-22: rifle and machine-gun wrists): the palm lays it across
+     the hand, the fist's axis turned 40° toward the gun's left (`Hold.Lay`; `Cradle`). A fist closed along the barrel
+     bent BoZo's support wrist 91° as the arm reached along it; cradled, 46°. The fist still slides along the barrel.
+     - It is aimed from the animation's forearm, the arm reaches, then four passes re-aim it halfway for the forearm the
+       reach made.
+     - Hand and forearm can't always agree: the fist sits ~9 cm off the wrist, so turning it swings the forearm, and some
+       greatsword cuts have no turn straightest for the forearm it causes. A fixed number of smooth steps stays continuous
+       frame to frame.
+     - The last pass places the wrist so the fist sits on its grip exactly.
+9. **Fists on handles** (`NativeVisualRig.HoldWeapon`; owner review 2026-10-22: the hands weren't holding the weapons).
+   The game's wrist frame is the voxel fist's and the weapon's: a gun's raked pistol grip hangs 13-18 cm under the wrist,
+   and a melee grip runs along the blade through the wrist. A voxel fist is a box over that spot.
+   - **The fist, measured at bind** (`Rig.Fists`): each finger at its closed curl wraps the handle, so the handle runs
+     through the centres of the circles its three joints draw. That gives the fist's centre, its axis (toward the thumb)
+     and the hand's forward, from bone positions only.
+   - **The weapon rides the hand (P1):** the weapon hand stays where the animation put the wrist. Its fist lays its axis
+     along the handle with the straightest wrist the handle allows, and the weapon frame is placed so its grip sits in
+     that fist. (Moving the hand to a weapon left at the old wrist bent the aiming arm to 81° against the animation's 28°.)
+   - **Shouldered long guns:** while the game holds a rifle or machine gun up (its stock butt within .30 m of the game
+     shoulder, fading by .45 m), the stock butt sits at the visual shoulder pocket, along the game's aim. The pocket is just
+     inside and under the shoulder joint, on the body's front: `Rig.ShoulderFront`, measured .13 m ahead of BoZo's joint
+     with the hood, less 2 cm where the butt presses in. At .05 m ahead the stock sat 8 cm inside the chest. The right fist
+     reaches for its pistol grip (knuckles toward the muzzle, ±25°).
+   - **The shield is braced** (owner review 2026-10-22: the arm through the shield). The game's forearm runs along the
+     shield's back 15 cm behind its grip bar, so a shield moved onto BoZo's fist put the forearm inside it, out through
+     the face. The shield now keeps the game's place on the wrist (its frame at the fist the animation gives), and the fist
+     reaches back to the bar (`Hold.Braced`).
+   - **Daggers** are held in a reverse grip (the blade out of the little-finger side): fresh solves chose it for 92 % of
+     their poses, the only way round their forearms roll naturally. A fixed grip cannot flip mid-cut (the earlier
+     either-way choice flipped a hand 176° in a frame).
+   - **The handles** (`Blade`, `GreatswordSupport`, `ShieldBar`, `PistolGrip`, `GunSupport`, `Stock`; `Melee(spec)` adds
+     a melee weapon's extent) follow `NativeWeaponModels`. Melee holds take `NativeSpecialPose.HeldRotation` (identity outside special moves). The shield
+     draws on the right hand (its clips are mirrored); its fist holds the grip bar.
+   - Callers pass a `Grasp` (finger curls, both hands' holds, the two-handed weight, support hold and stock). The older
+     `Pose` form seats nothing.
+   - Weapons draw at `WeaponFrame` (the off-hand's at `LeftWeaponFrame`): the frame placed in the fist, with the game
+     wrist's turn, so the drawn weapon follows the visual hand while its aim stays the game's.
+10. **Floor fit:** optional. For rolls and tucks, it lifts the body until every bone clears the floor by its rest height
+   (capped at .12 m). It only ever lifts, like `Pose.Lowest()`.
+
+**Checked** (`CoreTests --visual-rig`, 129,260 checks since the raised-hands fix; 43,217 at first), over:
+- every captured clip in the four melee sets (8 samples each);
+- the gun gait: pistol, rifle and machine gun in idle, aimed, run, sprint and roll, 647 poses in all;
+- 2,492 transition frames at 60 Hz: every melee set from idle crossfading into each cut and the block, through it and back
+  to idle, and every gun through idle, aim, firing, a run and back to aim.
+
+On the synthetic skeleton (leg ratio 1.703):
+- **Bind:** the limbs point straight down at the game's rest, keep their lengths, and the trunk, head and feet keep their
+  authored turns.
+- **Per pose:**
+  - every limb's direction equals the game's (within 0.11°), and split chains end on the game joint's turn;
+  - a hand inside the game's shoulder line (816 arm poses) reaches its chest-relative place, keeping the copied arm's
+    extension, by the shortest swing at the shoulder; the elbow keeps the game's bend. Where the game's hands cross the
+    middle (304), the visual ones cross at most .41 as far;
+  - a far support grip: the left shoulder reaches at most 25° (114 poses); the weapon hand gives way only past that
+    (at most .041 m), and only by the excess;
+  - hands, feet and head carry the game turn, and the root moves by the leg ratio;
+  - twist helpers take exactly their share of the roll;
+  - all 524 planted feet reach the ground point, with the knee to the game knee's side;
+  - all 351 two-handed grips with the hands together reach, at up to 97 % of the arm;
+  - every arm is hinged: its bones lie along it, both share the elbow's axis, and the crease faces the fold (within 1°);
+  - arm twist bones take their share of the final roll;
+  - with each weapon's handles (1,078 seated fists): every fist closes on its handle's grip point (after any slide) with
+    its axis along the handle, and its fingers turn with it. A riding fist keeps the animation's wrist and the straightest
+    wrist the handle allows (within 3°); a reaching fist points as its weapon sets it, within its spread. A shouldered
+    stock butt sits at the shoulder pocket, and a braced shield stays on the fist the animation gives;
+  - every fist ends 8 cm outside the head and 5 cm outside the torso (within 1 cm, where its arm is not at full stretch);
+    226 grasps moved a fist and weapon out, at most .16 m;
+  - transitions: frame to frame, each hand turns at most three times the game's own hand plus 20° and moves at most three
+    times its move plus 5 cm (6 cm for an elbow); the snaps this caught flipped a hand 37-177° in a frame. No fist centre
+    enters the head in any transition frame. On the synthetic skeleton the greatsword raise never reaches the head, so
+    this guards regressions only; the BoZo renders below are the evidence;
+  - without handles the support hand keeps the game wrist turn, and the grip is the game socket on the weapon frame;
+  - the locals rebuild the pose.
+- **Roll:** the floor fit keeps every bone over the floor.
+- **Runtime:** no allocation over 1,000 frames, bit-for-bit repeats (a fresh state each), about 34 µs a pose on the
+  owner's PC (46-bone synthetic rig; BoZo has 148 transforms), and the binding mirrors at the boundary and names no pack
+  types.
+
+The synthetic skeleton's visual grip sits 0.33 m (mean; 0.37 before the inside reach) from the game's. That is the expected P1 cost, because its shoulders
+are narrower and higher than the voxel rig's.
+
+**Measured on BoZo in Unity (2026-10-22, owner's PC; local tool, renders in local scratch).**
+
+BoZo's skeleton, dressed in outfit A, was posed through this adapter and binding on 15 gun and melee poses (re-measured
+with the seated fists; 46 poses rendered in all, with every melee set's idle, run, block and cuts at three points in the
+swing, holding the real Standard weapon models at the adapter's weapon frames).
+- **Mapping:** all 22 joints map. Twist shares: forearm .61/.26, shoulder −1.0, upper arm −.66/−.39, thigh −.56/−.23,
+  calf .45/.78.
+- **Leg ratio:** 1.707 (thigh .425, shin .428; arm .263/.224). The binding covers 148 transforms, the rig plus hair chains.
+- **Reference points** (metres, Unity frame, floor 0):
+  - head box centre 1.49, the voxel head centre being the game head joint + .165;
+  - shot origin (.2 right, 1.15 up, .48 ahead).
+
+| Pose | Head to box: BoZo / voxel | BoZo weapon frame to game wrist | Muzzle to shot origin: BoZo / game | Support reach | Planted feet (reach) | Shoe soles |
+|---|---|---|---|---|---|---|
+| Rifle idle | .11 / .09 | .19 | 1.11 / 1.05 | 1.00 | .90, .90 | −.030 |
+| Rifle aim | .11 / .09 | .19 | 1.11 / 1.05 | 1.00 | .90, .90 | −.030 |
+| Rifle run | .21 / .14 | .51 | 1.23 / 1.21 | .95 | – | .075 |
+| Rifle sprint | .26 / .24 | .50 | 1.21 / 1.23 | .94 | .88 | −.019 |
+| Pistol aim | .12 / .03 | .39 | .69 / .40 | .97 | .92, .93 | −.030 |
+| Pistol run | .21 / .14 | .39 | .54 / .67 | hands apart | – | .075 |
+| Machine gun aim | .10 / .10 | .18 | .81 / .75 | 1.00 | .88, .88 | −.030 |
+| Machine gun run | .21 / .14 | .51 | .93 / .92 | .95 | – | .075 |
+| Sword idle | .38 / .42 | .29 | – | – | .81 | −.010 |
+| Sword run | .43 / .45 | .32 | – | – | – | .031 |
+| Sword cut A | .28 / .17 | .52 | – | – | – | .195 |
+| Greatsword cut A | .26 / .26 | .30 | – | .77 | – | .149 |
+| Shield block | .41 / .45 | .28 | – | – | .76, .76 | −.028 |
+| Daggers run | .43 / .45 | .34 | – | – | – | .031 |
+
+Reading it:
+- **Head:** BoZo's head stays as close to the head box as the voxel head does, within −.04 to +.11 m of it in every pose
+  (the game's crouched sword and shield stances lower both). No head-volume change is needed (P3 not needed).
+- **Weapon (P1):** the drawn weapon sits .18-.52 m from today's (mean .35), because BoZo's shoulders are narrower and
+  higher and long guns now shoulder. Tracers already converge on the simulated path within 4.5 m (`NativeShotLaunch`), and
+  hits are unaffected.
+- **IK reach:** every two-handed grip reaches (at most 95 % of the arm). The long guns' support fists slide back along the
+  handguard (up to their limit in the run) and need no give-way. The pistol run lets go as the game's hands do. Planted
+  feet use 76-93 % of the leg, so nothing hyperextends.
+- **Arms against the merged adapter (`6470906c`),** at identical timestamps (62 poses, front, three-quarter and side, with
+  hand close-ups; every attack at 10, 30, 50, 70 and 90 % of its swing):
+  - Elbow crease off its fold: worst 175° before, 0° after.
+  - Hand roll against its forearm twist bones: worst 147° before, 0° after.
+  - Wrist bend: median 35° before, 29° after; worst 100° before, 98° after. The long guns' support hands bend about 92°:
+    BoZo's nearly straight arm reaching along the barrel to a palm-up cup.
+  - Torso clearance: no elbow or forearm newly inside the torso line.
+  - Long-gun stocks: 23 cm in front of the shoulder before, 8 cm (in the pocket) after.
+  - Every seated fist on its grip (the tool reported the long guns' support fists 11-18 cm off before its report counted the
+    slide along the handguard; the Core checks place them exactly).
+- **Renders:** pistol arms extend forward with both hands on the grip; rifles and machine guns shoulder with a bent weapon
+  arm and the support hand under the barrel; sword, greatsword and dagger fists wrap their hilts through every attack
+  frame; the shield block holds the shield before the forearm. The greatsword and sword cuts keep their trajectories.
+
+**Final visual pass (2026-10-22, owner review: full-body validation, not hand close-ups).**
+
+*Method.* BoZo in outfit A held the real Standard weapon models, posed through the adapter and binding in Unity (local
+tool, renders in local scratch):
+- **Melee:** every set's cut A, cut B, run and block: idle, a .15 s crossfade, the action, a .2 s crossfade, then idle.
+  Front, three-quarter and side renders, body-framed, at idle, the action's start, every 15 % of it, its end, recovery and
+  back at idle (11 timestamps).
+- **Guns:** pistol, rifle and machine gun through idle, run, aim, firing, run, aim and idle (16 timestamps).
+- **Measures:** every third frame and every rendered one, against BoZo's own meshes: weapon into head and torso, sleeve
+  into torso and head, hand into head, and, for the shield, hand or forearm past its back face. Also the arm's elbow bend,
+  wrist bend, hand and upper-arm roll and elbow-to-spine distance.
+- **Baseline:** the merged adapter (`62f4e049`), at identical timestamps.
+
+*Results, merged adapter → this pass* (depths in cm, frames affected out of those measured):
+
+| Check | Before | After |
+|---|---|---|
+| Shield: hand or forearm past the back face | every frame of all four shield sequences, through the front face, up to 24 | 8 of 43 frames of the cut A bash, at most 4, behind the face |
+| Greatsword: weapon into head | idle, block, cut B and run, up to 7 | none (cut A's 30 % since the raised-hands fix) |
+| Greatsword: hand into head | cut A 30 % (6) | none at the marked frames; every frame of the raise: one, 2.4, the wrist's back (below) |
+| Rifle and machine gun: weapon into chest | every frame, up to 7.5 | 20 and 27 of 123, at most 5 (run carry) |
+| Rifle and machine gun: support wrist bend (90th percentile) | 93° | 46° |
+| Daggers cut A: left elbow to spine, at least | 5 (9 into the belly) | 19 |
+| Daggers cut A: right wrist bend and hand roll, worst | 126°, 174° | 40°, 80° |
+| Daggers cut B: left wrist bend and hand roll, worst | 89°, 179° | 31°, 73° |
+| Sword cut B: right wrist bend (90th percentile) | 114° | 64° |
+| Pistol: right hand and upper-arm roll, worst | 141°, 165° | 50°, 57° |
+| Greatsword block: support wrist bend (90th percentile) and upper-arm roll, worst | 80°, 179° | 44°, 77° |
+
+*Greatsword raise, every frame* (raised-hands fix, against shared `3c303dfd`):
+- **0.58–0.75 s at 60 fps:** the hands and pommel no longer cross the face. Before, at 0.667 s and 0.683 s, 246 and 204
+  hand points sat 5.9 and 5.7 cm deep and the weapon 3.3 and 1.9 cm; at 0.733 s the weapon was 2.9 cm deep.
+- **Path:** the hands now pass over the head, the push at most 12 cm.
+- **Elsewhere:** the greatsword run's weapon-in-chest fell from 4 frames (5.9 cm) to one (2.4 cm), and cut A's worst right
+  wrist bend from 118° to 67°. Nothing else changed beyond a centimetre or a few degrees.
+
+*Remaining defects.* These are not hidden by grip seating:
+- **Greatsword cut A raise:** for one frame (0.683 s) the back of the right wrist, 12 cm off the grip, brushes the cranium's
+  side (2.4 cm). Keeping the wrist out too made the support hand jump (above).
+- **Greatsword support elbow:** in idle, block and run it now rests 2-3 cm into the hoodie's front (25 of 56 block
+  frames). It sits on the animation's side; before, it was 90-180° off it, with the wrist bent 80° and the upper arm
+  rolled 179°.
+- **Shield cut A bash (44-60 %):** the forearm grazes the shield's back face, at most 4 cm.
+- **Rifle and machine-gun run carry:** the gun's body touches the chest, at most 5 cm.
+- **Forearm roll:** some cuts still roll the hand 170-180° on the forearm: sword cuts A and B, the greatsword cuts, and the
+  shield cut A swing. This roll is the game's own wrist animation, kept by design, and the twist bones share it.
+- **A long blade's outer part** (beyond 20 cm past the guard) is not kept out of the head.
+- **Rifle stance:** the weapon arm's elbow is raised level with the shoulder, as the game's own arm is. Not changed.
+- **Transitions:** checked frame by frame on the synthetic skeleton at 60 Hz (2,492 frames), and rendered and measured on
+  BoZo at the timestamps above. Still not watched in motion in the game (step 4).
+
+**Found by the renders, for step 4:**
+- **Shoes:** they put the soles 1–3 cm under the floor on planted feet, because BoZo raises the root only for heels. Done
+  in step 4: the bake lifts the dressed body by its rest sole gap (outfit A: 2.8 cm).
+- **Hands on weapons:** fixed by the seated fists. With the real weapon models drawn at the frames, every closed fist
+  had floated beside its grip or hilt. A step 4 caller passes each weapon's `Grasp` (handles above, `Stock` for long
+  guns), draws the weapons at `WeaponFrame` / `LeftWeaponFrame`, and calls `State.Forget()` on a cut, respawn or weapon
+  swap.
+- **Transitions in Unity:** frame-to-frame continuity is checked in Core on the synthetic rig. On BoZo, the final visual
+  pass rendered and measured idle, movement, aim, fire, attack and recovery sequences (above). Watch the first wired
+  character in motion (step 4).
+- **Body for the clearance:** a step 4 caller sets `Rig.HeadCenter`, `HeadRadii`, `TorsoHalfWidth`, `TorsoHalfDepth` and
+  `ShoulderFront` from the outfit's head and top meshes when they differ from outfit A's, and passes `Melee(spec)` holds
+  (with the weapon's extent) and `PistolGrip`.
+- **Fingers:** fixed. They stayed in BoZo's open rest, and the first renders also showed drooping wrists, hands buried at
+  rest, and the leap cut's elbow. The grips, the eased wrist, the hanging spread and the IK bend side above fix all four,
+  confirmed in Unity renders. Finger poses per weapon (trigger finger, two-handed overlap) can be tuned later.
+- **Animator on the rig:** BoZo's `BodyRig` carries an enabled Animator with the humanoid `BodyRigAvatar` and no
+  controller. The step 4 bake removes it, so nothing but the binding writes the bones.
+- **Multiple renders per frame:** Unity skins a mesh once per frame unless `SkinnedMeshRenderer.forceMatrixRecalculationPerRender`
+  is set. Any path that draws one character in several poses in a frame (pooled puppets, portraits) must set it.
+- **Roll:** the gun "roll" sample landed after the roll ended (it reads as idle), so a roll is not measured here. The Core
+  checks cover the roll's floor fit.
+
+## Step 4: first character (`claude/bozo-body`)
+
+Outfit A (candidate A above, the techwear palette) draws in place of the voxel pilot body in arena matches on the owner's
+PC. Presentation only: the 22-joint rig still poses every frame, and authority reads neither body. Hit volumes, shot
+origins, the weapon frames authority uses and the wire are unchanged.
+
+**The bake (local, git-ignored).**
+- `Tools > Chip Arena (local) > Bake visual body (outfit A)`, or a `Temp/bozo-bake.request` (an output folder, then the
+  outfit ids), runs in the local tool. It dresses BoZo's `BodyRig` as the step 3 renders did: the pack's anime toon
+  material per part, outfit A's palette, and the covered body parts dropped.
+- It removes BoZo's scripts and the rig's Animator, and lifts the body so the shoe soles meet the floor.
+- It names each renderer by slot (`Top.Top_OpenHoodie`) and the skeleton root `VisualSkeleton`.
+- It saves `Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaVisualBody.prefab`, with its materials beside it, in Unity
+  types only.
+- Outfit A: 16 renderers, 20,031 triangles, 148 bone transforms, 15 materials.
+- Nothing from the bake is committed. A machine without it (CI, the cloud builder, any checkout without the packs) draws
+  voxel pilots exactly as before.
+
+**The wiring** (`Runtime/NativeVisualBodyPresentation.cs`, part of `ArenaPresentation`).
+- **Switch:** when `Resources/ChipArenaVisualBody` exists, every arena pilot (players and bots; not the Siren) gets a
+  visual body. `--ca-voxel-bodies` keeps the voxel bodies.
+- **Settings · Player model** (owner, 2026-10-23, a fallback while the body is tested in game): New body (the default) or
+  Classic voxel, saved with the preferences, shown only where the bake is installed. Classic applies at once, mid-match
+  too (the pause menu's Settings): the visual bodies are not posed, so they hide and every pilot draws voxel. It changes
+  only how this PC draws; nothing is sent to other players (`ClassicBodies`, `VisualBodyInstalled`).
+- **Lifetime:** the body is instantiated under the pilot rig's root, at the floor point (.865 m under it), so it is
+  destroyed with the rig.
+- **Posing:** after the rig poses (`PrepareCapturedPose`), the body takes the same game pose through `NativeVisualRig` and
+  the binding. Feet plant while grounded and not rolling or juggled; rolls and juggles fit the floor. History is cleared
+  after a gap, a teleport or a weapon change.
+- **Grasp:** guns hold `PistolGrip`, `GunSupport` and `Stock`. The melee sets hold `Melee(spec, held)`, with
+  `NativeSpecialPose.HeldRotation` and the greatsword's support. Daggers hold both hands. A thrown shield or dagger opens
+  the hand. Other kits (staffs, the bow, the DEV fighters) close the hand without a seat.
+- **Hands:** the rig's hand bones are moved onto the visual weapon frames after posing, and put back before the rig poses
+  again, so its own blends never read them. The drawn weapon, its modules, muzzle flash, blade sweeps and wrist effects
+  therefore follow the visual hands with no change to the weapon code.
+- **Colour:** each pilot's accent colour fills the outfit's accent channels (`_Color_3`, `_6`, `_9`) through a property
+  block.
+- **What is skipped:** `SourceCharacter` skips the voxel body, the spawn hologram, the living wounds, the hat or halo, the
+  body dressing, the DEV Cyber Lord's look and the parry flash for a pilot with a visual body. The local pilot's body is
+  hidden in first person.
+
+**Verified in Unity (Play mode on the owner's PC; local tool, captures in local scratch).**
+- **How:** the tool enters Play mode, starts a match with three bots through the game's own `StartMatch`, and renders the
+  match camera and front, three-quarter and side views of each pilot. The shots render inside the game frame, so its
+  instanced weapons and effects appear in them. The Editor's preference file is restored afterwards.
+- **Matches:** three, with the local pilot on the rifle, the greatsword and the daggers. Every pilot drew outfit A in its
+  own accent colour. The bots carried a machine gun, fire and darkness staffs, rifles, swords and shields.
+- **Holds:**
+  - the rifle shouldered with the scope at the eye and the support hand under the handguard;
+  - the machine gun held two-handed;
+  - the greatsword upright in both hands;
+  - daggers in reverse grip in both hands;
+  - shields braced before the body;
+  - staffs in the right hand;
+  - a thrown shield leaving the hands open, as the game's `WeaponAway` says.
+- **Errors:** none from the new code.
+- **Seen during the runs, probably not caused by this change:** twice, `NativeCorpse` threw "Scene with name 'Cosmetic body
+  1 n' already exists". Corpses are keyed by death id and their physics scenes unload asynchronously, so a presentation
+  reset while a death is shown can rebuild the same corpse. A voxel control run did not die the same way, so this is not
+  proven pre-existing.
+- **Frame rate:** in the Editor with the window in the background, one matched run each: about 105 fps with visual bodies,
+  116 with voxel. Not a benchmark; the Phase C measurement is still to do.
+
+**The shader port (`claude/bozo-toon`).** `Resources/NativeVisualBodyToon.shader` (`ChipArena/VisualBodyToon`), our own
+shader reading the pack's material inputs. The bake converts each part's material onto it (`shader=pack` keeps the
+pack's for comparisons).
+- **Colour, as BoZo's:** a part's texture weights three colours in its rgb, and the vertex colour's rgb picks among three
+  such layers (nine colours: the outfit's palette; the third of each is the accent the pilot's colour fills). Alpha cuts
+  out lashes and hair tips. Outfit A uses no pattern or decal overlays, so they are not ported yet.
+- **Light, as `ChipArena/SourceLit`'s (the voxel pilots'):**
+  - the anime map style's model for the key and every pixel light (`ArenaToon`: Lambert while the style is off);
+  - the actor lights while a map turns them on (the practical slots and the ceiling field: Ward Zero's revamp, the
+    expedition zones);
+  - the guns' muzzle lights on every map, wrapped and stepped as `SourceLit` adds them.
+- **Outline:** BoZo's inverted hull, its width from the vertex alpha (outfit A: 2 mm), drawn in the fog; matched to the
+  map's lines since (below).
+- **Stencil:** every pass writes 0 to bit 16, as characters do, so the anime style's outline pass never lines a pilot.
+- **Checked in Unity:**
+  - **Stencil:** a wall marked as scenery behind the baked body, then the outline pass's stencil test at its own camera
+    event (local editor render).
+    - With the pack's shader, 36,649 of the body's 36,649 pixels stayed marked, so the map's lines
+      would cross the character.
+    - With ours, 0 of 36,649 (the wall's 157,751 marked pixels round it).
+  - **Lights:** in Play mode on Moonlit and Ward Zero, one muzzle light and one practical light set beside the local
+    pilot through the game's own light globals, for that camera only.
+    - The pack's shader ignored both: only the drawn rifle took them.
+    - Ours takes both: warm on the hoodie, pockets, face and hair from the muzzle light, blue from the practical light.
+  - Matches on both maps drew normally, with the bots' own shots.
+- **Look:** BoZo's own ramp kept a shaded side at about .89 of the lit one. On our lighting a pilot's shaded side takes the
+  map's ambient, as the voxel pilots' does. On the moonlit maps a face turned from the key reads darker and cooler than in
+  BoZo's previews. The anime-style maps lift their shade (`_ArenaToonShade`). Owner decision (2026-10-22): keep it.
+
+**The outline matched to the map's lines (`claude/bozo-outline`).** The anime map style's lines (`NativeToonEdge`) are
+1–2 px on screen at any distance and darken the surface they belong to toward the map's tint. BoZo's hull was 2 mm in
+the world and flat black: about 1.2 px at 2.5 m, under a pixel past 4 m.
+- **Width:** the hull is pushed out by the map's silhouette width: two lines of one pixel per 1080 screen lines
+  (`max(1, round(height / 1080))`, as `NativeToonOutline` sets the map's), times the vertex alpha (none under .5, as
+  BoZo's).
+- **Colour:** the map's rule.
+  - The pilot's own lit colour (key, ambient, actor and muzzle lights as the body takes them), multiplied toward
+    `_ArenaEdgeColor` by the line strength `_ArenaEdge.x`, faded out from `_ArenaEdge.y` to `.z` m.
+  - The hull is lit with its normal turned across the view, so a line takes the light of the edge it borders, not the
+    far side's.
+  - A map without the style writes no line globals. The pilot then keeps the style's own line: #2A1E40 (the menus' and
+    most maps' tint), full strength, faded 40 to 110 m. The low tier is the same, with the map's tint and distances.
+- **Depth:** the hull sits back along the view ray (the same pixel on screen) by 2 cm and four times its push.
+  - Clothing layers don't speck through each other (a shoe's opening on the sock).
+  - Small steps (a chin over the neck, hair strands) stop being lined as pixels grow, as the map's creases fade out
+    with their footprint.
+  - Limbs in front of the body keep their lines.
+- **Material inputs:** `_OutlineColor` and `_OutlineDistance` are no longer read (the bake stops copying them);
+  `_UseOutline` and the vertex alpha still choose where a line is drawn.
+- **Checked in Unity:**
+  - **Width and colour** (local editor render of the baked body, fov 40, 1080 lines; the area the line adds over the
+    bare silhouette's perimeter):
+
+    | Distance | Before: BoZo's 2 mm black | After: matched to the map |
+    | --- | --- | --- |
+    | 2.5 m | 1.24 px | 2.05 px |
+    | 5 m | 0.62 px | 2.03 px |
+    | 10 m | 0.32 px | 2.03 px |
+    | 20 m | 0.16 px | 2.05 px |
+    | 60 m | 0.04 px | 2.14 px |
+
+    Line over body colour (median, per channel):
+    - with Cyber City's line (#1A1438): (.077, .062, .176);
+    - with no line globals: (.133, .090, .200), the fallback #2A1E40.
+
+    That is about .75–.8 of each tint, so a line reads as a darker version of the pilot, as a map line does of a wall.
+  - **Stencil:** 0 of 39,710 body-and-line pixels marked; the hull clears bit 16 too.
+  - **Matches:** in Play mode on Brickfall (the style on; the map's own lines drawn on the shot cameras too) and Moonlit
+    (no style), the local pilot at 4, 8 and 12 m at the match camera's field of view, 1920 × 1080: the line traces the
+    silhouette at the map lines' weight. Matches ran normally.
+- **Remaining:**
+  - A black outfit hides most of its own line (black darkened is black), as on BoZo's previews.
+  - Where outfit A's head turns its vertex alpha off (the jaw and neck), a short line can break into dots at mid range.
+  - The Editor shots have no MSAA: stair-stepped edges, as the map lines'.
+  - Weapons, drawn by `ChipArena/SourceLit`, have no outline, as before.
+
+**The hit flash and the spawn-in (`claude/bozo-flash`).** The visual body takes the voxel pilot's struck flash and
+match-start spawn-in in its own shaders, from the same values the voxel parts read. `Resources/NativeVisualBodyFx.cginc`
+is shared by the body, its outline and the hologram. `SourceCharacter` hands a visual body its flash code and spawn-in
+frame (`VisualBodyLook`), which writes them per renderer only while a spawn-in runs or the flash changes.
+- **Hit flash:** SourceLit's shared block (its colour and blend, the code `NativeHitFlash` writes: a hit, a headshot).
+  - It applies after the light and before the fog, more on the silhouette, not in the add passes.
+  - The outline is the darker version of the flash.
+- **Spawn-in, per pixel** where the voxel body works per part:
+  - Core `NativeSpawnIn`'s solid, heat and slice at each pixel's height over the presented feet, from the same build front
+    (the spawn-in presentation's `SpawnVisualLook` hands the constants over, so the shader holds none of its own).
+  - The body, its outline and its cast shadow form from the feet up in the voxel parts' world-cell dither, in the
+    hardlight tint (hottest where just formed) and the completion flash, then cool.
+- **The hologram** (`Resources/NativeVisualBodyGhost.shader`): the voxel pilot's look (rim, scanlines on world height, the
+  clock), on three extra material slots of each renderer, only while a spawn-in shows one. None on the low graphics tier
+  (as `SpawnHologram`), and the split only on Full effects.
+  - The slice leading the solid front, in the pilot's hologram colour.
+  - The completion's flash silhouette over the whole body.
+  - The RGB split: magenta and cyan copies moved along the camera's right, at the completion and the countdown's two blips.
+- **Checks:**
+  - `VisualRigChecks`: the flash block equals SourceLit's; the shader's solid, heat and slice equal Core's per-part
+    functions at the same height (worst 1e-5 over a grid); the tint and flash are `SpawnTintOf`'s; the wiring; no
+    spawn-in names in the visual body file (the spawn-in's own presentation-only rule); no pack names.
+  - In Play mode on Brickfall, the property blocks read back after each shot:
+    - the front climbs from 0.6 m under the floor to 2.16 m over it through the build, then turns formed;
+    - the hologram slots are on while building, at the completion and at the two blips, and off after;
+    - the tint fades from 1 to 0 over half a second;
+    - the completion frame had flash .47 and a 3.4 cm split;
+    - a hit and a headshot set through the game's own hit record drew codes 1.52–1.66 and 3.52–3.72, and the body
+      flashed white through red, headshots brighter.
+- **Fixed on the way:** at world-sized arguments the dither hash resolves to about 1/256, so cells hashing to exactly 0
+  drew dark specks over the unformed body (SourceLit skips an unformed part whole). The hash is now floored above 0.
+- **Remaining:**
+  - The hologram has no depth pre-pass (the voxel one's single layer), so overlapping cloth layers can stack slightly
+    brighter in the slice.
+  - The dither cells are world-fixed, as the voxel body's, so a floating body's dither crawls as it bobs.
+  - Still skipped on a visual body (`!visual`) at the time: Body Chips dressing, living wounds, the parry flash, the Cyber
+    Lord's hardlight pieces, hats. All of them draw on the model since 2026-10-25 (below).
+
+**The chest core and the right-wrist chip device (`claude/bozo-core`).** Our own pieces, kept from the stopped base
+(docs/CHARACTER-LOWPOLY.md section e), built in code (`Core/NativePilotGear.cs`, SourceLit sections; models
+`Runtime/NativePilotGearModels.cs`) and drawn on the visual body (`VisualGear`). Owner decision (2026-10-22): the device
+sits on the right wrist for every class, and the chip-select display moves there too (done: below).
+- **Placement:** the local bake measures two anchors on the baked outfit and saves them in the prefab, so the runtime holds
+  no outfit numbers.
+  - **Core:** on the outfit's front surface over the heart, 5.8 cm left of the midline at the sternum's height, facing
+    along the surface. Outfit A's open jacket leaves only 3 cm of shirt between its flaps, so the core sits on the jacket
+    as a housing (the plan's "core: housing" case).
+  - **Device:** on the right forearm's axis 4.5 cm up from the wrist (the forearm twist bone), its housing on the back of
+    the forearm (away from the palm), its band fitted to the sleeve's 95th-percentile radius there (4.7 cm on outfit A).
+- **Pieces:**
+  - **Core:** a faceted shield housing (7.6 cm across) with a bevelled rim and a gem glowing in the pilot's accent.
+  - **Device:** a band with an accent strip, a housing with accent side strips and a screen, a raised frame round the
+    chip bay, a lid hinged at the elbow end with a lens, and the game's chip cartridge seated in the bay.
+- **States** (pure functions of what the pilot already presents; nothing written back):
+  - **Core:** a slow pulse; a flicker under 30 % health; a flare as the body appears (a respawn, a revive, the end of the
+    spawn-in build). It takes the body's hit flash and spawn-in reveal.
+  - **Device, from the chip-select slot:**
+    - the lid opens with the look's weight;
+    - the bay glows ready in the accent;
+    - from the plant's carry end the chip shows in the bay;
+    - the bay pulses in the chip's rarity colour through the accepted pulse;
+    - after the lid shuts, the lens keeps that colour, fading over 1.5 s.
+- **Checks:**
+  - `VisualRigChecks`:
+    - every section faces out where it is seen; the shut lid clears the seated chip;
+    - the states follow health and the plant's timeline;
+    - the wiring; no pack names; values only per frame.
+  - In Play mode on Brickfall, a staged pick and plant (the local tool sets the game's own Expedition hooks between Update
+    and the render) walked the device through rest, open, the chip seated in its legendary orange, the pulse, the lid
+    shutting and the lens fading. The core showed on the chest throughout.
+- **Remaining:**
+  - At full body the right forearm sits behind a held rifle's grip, so the device mostly shows in close views.
+  - The sleeve's folds can cover the band's edge.
+
+**The chip-select display on the right wrist (`claude/chip-wrist-right`).** Owner (2026-10-22): "Keep the weapon in the
+right hand pointing down", short weapons from the wrist raised at chest height, the rifles and the greatsword from a lower
+wrist beside the leg, and "the left hand taps and inserts the chip". The pose is the game rig's, so voxel pilots change
+too (contract: `docs/PVE-CHIP-SELECT.md`).
+- **Every pilot:** the right wrist comes up and its weapon hangs pointing down. The owner raised the short-weapon wrist to
+  mid-chest on 2026-10-23 (`claude/chip-wrist-chest`). On the BoZo pistol pilot the hand now sits 1.26 m up, 10 cm under
+  `spine_05` and between it and `spine_04`; it sat 18–20 cm under before. The left hand taps, swipes and takes the
+  chip in the Expedition plant and on the draft stage. The shield, the staffs and the bow keep their left-hand hold, and the
+  chip drops down the cone. First person puts a long weapon away while the look is up.
+- **Visual body:**
+  - The hologram, the Expedition screen and the plant's chip move from the game wrist to the device's bay
+    (`VisualEmitter`). The two wrists sit 0.2 to 0.4 m apart, because the rigs' proportions differ.
+  - The support grip lets go while the look is up.
+- **Checks:**
+  - `--chip-select`: per class, the weapon hangs, its tip stays off the floor, the head and panel stay clear and the eyes'
+    line to the panel is open.
+  - `--draft-stage` (new flag), `--chooser-camera` and `--chip-screen` pass.
+  - In Play mode on Moonlit, a staged pick and plant was captured for the pistol, rifle and sword pilots and a voxel
+    pistol pilot. The screen's emitter and the planted chip landed on the device bay, and the left hand carried the chip
+    to it.
+- **Remaining:**
+  - The visual body's left hand follows the game rig's hand proportionally. It ends 10 to 15 cm (its hand bone) from the
+    chip it carries, which reads as the fingers holding it but is not pinned.
+  - Captures show a red and yellow wedge between the Expedition screen and the pilot, on voxel pilots too and before the
+    emitter move. Not traced yet: the demo has a bot firing, and a hit turns the screen's edge red.
+
+**Accent glow, first person and death (2026-10-23, `claude/visual-body-glow`).** Owner, after the first in-game test:
+"lights still show where old player model limbs are. I actually want to make lights accentuate the blue colors on the
+clothes for new model", "First person still shows voxel", "Death turns model into voxel".
+- **Accent glow:**
+  - The combat glow's armour halos sit at the game rig's joints; on a visual body they are skipped.
+  - The armour spill light comes from in front of the chest core.
+  - The toon shader's `_AccentGlow` adds emission over the accent channels (the pilot's colour on the clothing trims). It is
+    1.2 (.6 with Reduced effects) and pulses with the block cooldown as the halos did.
+- **First person:**
+  - The view model wears the visual body's forearms and hands, as the voxel view shows the elbows and hands only.
+  - A second instance sits under the view rig, its skinned meshes cut once (at runtime; the meshes import readable) to the
+    triangles weighted half or more below the elbows, on layer 10 without shadows.
+  - It is moved rigidly so its right weapon frame lands on the view rig's weapon hand, so the sights, aim and muzzle stay the
+    game's. The left hand's item rides the visual left hand, and the wrist device shows.
+- **Death:**
+  - A pilot's corpse makes an instance posed from the rig at death. Each bone rides the ragdoll part of its game joint
+    (`NativeCorpse.PartFrom`), with the sink, overlay and shrink.
+  - The authored death scenes move each bone with its joint's motion since death.
+  - A cut, crushed, smashed or bisected corpse, the swarm, soul and frost looks and a cinematic's own layer keep the voxel
+    body, since their effects are made of its parts.
+- **Checks:** `--visual-rig` (wiring) and Play mode on Moonlit:
+  - the trims glow and the halos are gone;
+  - first person with the pistol, sword and rifle shows the sleeve, glove and device on the weapon;
+  - a forced self-kill shows the new body falling as the ragdoll.
+
+**Life-size weapons (2026-10-24, `claude/visual-weapons`).** Owner (2026-10-23): "the guns seem "comically" big lol. I have
+new asset bundles im adding to my drive, can we utilize these?" The visual body draws life-size models from two of the
+owner's new packs (POLY Mega Weapons Kit, SciFantasy Sword Pack; `docs/ASSET-CREDITS.md`) in place of the Standard skin's:
+- **Which:**
+  - pistol: `SM_Army_Pistol`, 19 cm long (the game's runs 60 cm from its back to its muzzle);
+  - rifle: `SM_Assault_Rifle_5,56`, .92 m (the game's 1.5 m);
+  - machine gun: `SM_Light_Machine_Gun`, .93 m (the game's 1.2 m), its deployed bipod cut off in the bake;
+  - sword: `RB_Falchion`, its tip 1.27 m from the fist (the game's 1.275 m);
+  - greatsword: `RB_Greatsword` at 1.15 times, its tip 1.64 m from the fist (the game's 1.685 m).
+  - The daggers, shield, bow, staffs and magic keep the game's models, as do the Prototype Series skin, the Classic body
+    and first person.
+- **The bake** (the local tool's weapons step; the body bake runs it too) adds `VisualWeapons` to the prefab, one entry per
+  spec:
+  - `Model`: inactive, so the first-person, corpse and scene instances never show it. The kit's meshes are on our toon with
+    the kit texture as drawn (the sword pack's 2048 texture as a 1024 copy). The model is placed in the visual weapon frame
+    with its fist point where the visual fist closes on the game's handle, the bore or blade along +z.
+  - For the guns, `Fit` is the scale about a centre that lays the Standard gun's bore, muzzle and back on the kit's
+    (pistol .313, rifle .609, machine gun .776). `Support` is where the support hand holds: the handguard, or the pistol
+    grip's left panel for the two-handed pistol. `Stock` is the butt.
+- **The runtime** (`Runtime/NativeVisualWeaponPresentation.cs`):
+  - While the model is drawn, the right hand bone takes the fitted frame. Everything drawn there therefore lands on the model
+    at its size: the muzzle flash and its light, where the rounds leave, the chip modules and the Q kit's pieces.
+  - The visual hands' grasp uses its Support and Stock. The hand's scale goes back with its place before the rig poses again.
+  - The blades need no fit: their tips stay where the game's were, so trails, blood and enchants keep their place.
+  - Presentation only: aim, muzzle rules, reach, hit volumes, timing and the wire are unchanged.
+- **Builds:** the packed bake grows to 202 files and 19.3 MB (the kit meshes, texture and the cut machine-gun mesh, the two
+  sword meshes and the sword texture's copy).
+- **Checks:** `--visual-rig` (wiring), and Play mode on Moonlit with each weapon:
+  - every grip sits in its fist; the rifle and machine gun are shouldered with the support hand on the handguard; the pistol
+    is held two-handed;
+  - the rounds leave 4–11 mm from each kit muzzle;
+  - forced shots light the face with the muzzle light.
+  - The flash's shapes draw on the match camera only, so they are not seen in the orbit shots.
+- **Not yet:**
+  - ~~first person~~: done 2026-10-29 ("First person, body chips and summons on the model" below);
+  - the Standard skin's accent lights in the pilot's colour (the kit models have none);
+  - the daggers.
+
+**Pack weapons (2026-10-28, `claude/pack-weapons`).** Owner (2026-10-28): "Lets do all of those", "Do whatever needs to be
+done". The bake's life-size guns and swords left the daggers, shield, bow and caster staffs on the game's procedural models
+in the model's hands. Those now draw pack models from the weapons pack bank (`docs/PACK-BANK.md`; no local bake needed):
+- **Which** (each fitted to the game's weapon frame, `Core/NativePackWeapons.cs`):
+  - daggers: the sword pack's gladius at 1.19 (the falchion's and greatsword's style), on both hands in the reverse grip;
+    its point on the game's (.832), its pommel .16 behind the grip;
+  - shield: the knights pack's quartered heater (blue and violet field, steel rim) at 1.12. Its left arm loop sits on the
+    braced grip bar (0, .09, .15), the second loop on the forearm's side (the shield set's forearm leaves the hand toward
+    the frame's +x). It spans -.33 to .43 high (the game's -.34 to .425); its top dips at the middle, 5 cm under the game's
+    edge socket;
+  - bow: the low-poly pack's longbow at 1.141, its baked string and nocked arrow dropped (only its largest piece is kept).
+    Its string nocks sit on the game's string anchors. The game's grip (0, -.06, .035) is on its riser, which is 4 cm thick
+    there, thicker than the fist's curl;
+  - staffs: the fantasy pack's crystal staff. The four schools' are shortened to the game's: the head at .75, the shaft at
+    .54; the crystal at .77, the hook's top at .96, the heel at -.36, so the charge orb's muzzle (.88) sits inside the hook.
+    L33t H4x's is at .935 of its length: crystal 1.29, top at its 1.52 muzzle, heel -.52. The crystal is its own piece in
+    each school's core colour from its Standard staff (fire #ff7c3e, water #65d8ed, lightning #c2a2ff, darkness #b98bff,
+    L33t #52ff83), glowing.
+- **Fits** (`NativePackWeapons.Fit`): the prop, its grip point and axes, the cross-section scale and a piecewise map along
+  the axis, where the grip lands in the frame, the hands, whether the left fist closes on it, the bow's limbs, the largest
+  or marked piece, and the tip, end and handle measured on the prop (for the checks). `Shape` turns the prop into one mesh in
+  the weapon frame (Unity's: the source frame with x mirrored), the faces' winding kept.
+- **The runtime** (`Runtime/NativePackWeaponPresentation.cs`, through `NativeVisualWeaponPresentation.cs`):
+  - Where the bake has no `VisualWeapons` entry for a spec, an arena pilot's body draws the pack weapon. An arena body is
+    one made for the rig the arena poses (`VisualBody.Arena`) or the first-person view body (2026-10-29), so the entrances,
+    draft, menus, portraits and corpses keep the game's model, as do the Prototype Series and the Classic voxel body.
+  - Each weapon is built once (its mesh and its materials on the visual body's toon, the pack texture as drawn, outline off;
+    the crystal on the toon's nine-colour mode with its accent in the school's colour and glow). Each body makes its mount
+    and model once per weapon under its root (the daggers an off-hand copy, the bow skinned to a riser and two limb bones).
+    They show and hide as the bake's models do, so nothing is allocated per frame once warm.
+  - Rules: the Standard skin in hand; `WeaponAway` hides it; `MainWeaponAway` hides the main dagger's copy only.
+    `SourceCharacter` passes the off-hand blade's frame (`WeaponBone(LHand)`, with the reach stretch).
+  - Staffs: the left fist closes on the shaft at the game's main grip (a left blade hold), so the staff frame, and the
+    charge orb, muzzle and effects on it, follow the fist instead of the bare wrist.
+  - Bow: `BowDraw` draws it in the riser's and limbs' place; the string, arrows, quiver and modules draw as before. Its limb
+    weight rises from the limb pocket (`NativeBow.PivotY`) to 1 within .16 m, and each limb bone takes the game's limb piece
+    (`NativeBowRig.Limb`) at the pull. The tips therefore move as the game's limbs do and the string's halves stay on them.
+  - Without the bank, its prop or the shader, every pilot draws today's model.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Only the visual left
+  hand changes: a caster's fist closes on the staff, which moves to the fist about 9 cm from the wrist, with its effects.
+  The daggers and shield stretch along their frame with reach, as the bake's blades do (the whole model).
+- **Checks:** `CoreTests --pack-weapons` (in the full run, 436 checks):
+  - every grip is on the visual rig's seat (reverse blade grip, braced shield bar, the staff's left seat, the bow grip on
+    its riser), and every measured tip is within 2 to 6 cm of the game's sockets (blade tip, shield edge, staff tip, the
+    muzzle inside the head, L33t's top on its muzzle, the bow's nocks on the string anchors at every pull, with the limb
+    bone's turn equal to the game's limb piece's);
+  - the shaping on a synthetic bank: the marked piece, the largest piece, the parts' places, the axis map, unit normals,
+    the faces' winding;
+  - the runtime pins and no pack names in the code.
+  - With the bank on the machine (`CHIP_PACK_WEAPONS=<bank file>`, or the checkout's `Assets/LocalAssets`), the real meshes
+    are measured too: triangle budgets (128 to 938), the handle at each grip (radius 2.0 cm daggers, 2.3 cm shield loop,
+    3.4 cm staffs, 4.0 cm bow riser), the tips and the crystals (481 checks).
+- **Offline renders** (local scratch; WebGL from the bank's shaped meshes against the game's own models as silhouettes):
+  the grips, tips, shield edge, the staff tip and muzzle, and the bow at rest, half and full draw with the game's string
+  line up as above; a contact sheet of the final picks.
+- **Not yet (owner's PC):**
+  - the Play-mode look on the toon and the arena lighting;
+  - the fist round the bow's thick riser;
+  - the staff's left seat under the casters' own clips;
+  - a single detail tier;
+  - the crystal's glow with Reduced effects;
+  - ~~first person~~: done 2026-10-29 (below).
+
+**First person, body chips and summons on the model (2026-10-29, `claude/model-zombie-motion`).** Owner (2026-10-29):
+"update the first person view to reflect the updated models for weapons. Finally, go through the chips that provide visual
+changes and update them according to the new models (NO VOXEL appearances)".
+- **First person** (`Runtime/NativeVisualBodyPresentation.cs` VisualViewPose, `NativeVisualWeaponPresentation.cs` "First
+  person"):
+  - the view body (forearms and hands) holds the visual body's own weapon models, as the arena body does: the bake's guns
+    and swords, the pack's daggers, shield, bow and staffs (the view body is `Arena`);
+  - the grasp takes the model's handguard, stock and staff seat before the view body poses;
+  - once it is placed, the view rig's right hand takes the model's fitted frame (VisualWeaponFit), so the muzzle flash, the
+    rounds' origin, the modules and the Q kit's pieces sit on the model; `VisualViewRestore` puts the hand back (position,
+    turn and scale) before the view rig poses again;
+  - the model draws where the game's view weapon would (`VisualWeaponDrawn` and `PackBowDrawn` resolve the view rig to the
+    view body, `VisualHolder`); its renderers are switched on and shadowless on the view layer (the arm cut leaves
+    non-skinned renderers off); it hides after the draw the frame it is not drawn (`VisualViewWeaponShown`);
+  - aiming down the sights lines up the model's rear sight: an entry's optional `Sight` child (weapon frame), else the
+    Standard rear sight taken through the fit (`VisualViewSight`);
+  - unchanged: Classic, no bake, the Siren, an active scope and the Prototype Series keep the game's view weapon; the aim,
+    the camera, FOV, sway and every rule are the game's.
+- **Body chips** (`Core/NativeBodyChipGear.cs`, `Runtime/NativeBodyChipPresentation.cs` BodyChipModel): on a model pilot each
+  of the source's body-chip pieces (NativeBodyChips, still the Classic body's) becomes a sculpted part at the model's size:
+  - on the chest core's anchor: red vital gems round the core, three teal block studs above it, green stamina lights down
+    the ribs, the frame's two pectoral plates, the violet mana orbs circling the torso (parked behind the back under the
+    plates, as the source's are);
+  - on the shoulders (the model's joint, the game arm's axes): the frame's pauldrons, three lames each;
+  - on the ankles: the boot chips' sabaton (instep plate and cuff, gold with Salvage) and the dash chips' heel thruster,
+    its flame lit while dashing.
+  The first-person view body (forearms only) wears none of them; the Classic body keeps the source's pieces. Part meshes are
+  built once at bank load (`Runtime/NativeBodyChipModels.cs`).
+- **Team colours:** a model pilot's team shows as a band round each upper arm (`NativeStatusVisuals.Armband`), not the voxel
+  bands' boxes at the voxel joints.
+- **Summons:** Graveyard Shift's and Corpse Party's zombie draws on the zombie model (a shambler variant), falls on it and
+  bleeds blood drops instead of voxel puffs; bodies are made ahead for a pilot holding either Chip. The Toy Soldier (Puppet
+  Master) draws a sculpted tin toy (`Core/NativeToySoldier.cs`: red coat, cross belts, shako, musket) on its own rig.
+- **Not done here (needs the bake, the owner's PC):**
+  - the Standard chip modules' sockets on the bake's and pack's meshes: they still use the Standard models' sockets (the
+    guns through the fit; blades and pack props as the Standard's), so rails, pods and strips may float or sink a little;
+  - the bake's `Sight` children (until then the fitted Standard sight), and the ADS distance with the life-size guns;
+  - the Prototype Series skin keeps its voxel weapons and modules (it is that skin's look; owner 2026-10-29: "Keep it voxel",
+    "Prototype can keep there weapons / addons. It fits the model"); the thrown dagger and shield fly as the Standard models.
+- **Checks:** `CoreTests --body-chip-model` (the parts, their layout, mirrors, the armband, the toy, the runtime routes),
+  `--visual-rig` and `--pack-weapons` (the first-person pins). Not a render: the parts on each outfit, the first-person grip
+  and sight picture are verified in Unity only.
+- **On the PC (2026-10-29, `claude/zombie-motion-pc`; Unity Editor captures, local tool v221-v228):**
+  - First person, every spec: the bake's pistol, rifle, machine gun, sword and greatsword sit in the gloved hands; the muzzle
+    flash and smoke leave the model's muzzle; swings, the bow's draw and the casters' charge play on the model. The shield and
+    the daggers at rest frame as the game's own view does (the Prototype skin's voxel ones sit the same way: the shield edge-on
+    low, the daggers mostly below the screen). Prototype, Classic and the Siren keep the game's view weapons; L33t and the
+    Siren need developer access (a run without it falls back to the pistol).
+  - Aim down the sights exists for the rifle only (`NativeRangedRules.Scope`, the Q key): past 60% of the blend it is the scope,
+    and the model is hidden within about two frames, so there is no lasting sight picture on the model and no `Sight` child is
+    needed. The pistol and the machine gun have no ADS.
+  - The pack weapons (the gladius daggers, the heater shield, the longbow, the crystal staffs) do not show on this PC: the pack
+    banks (`docs/PACK-BANK.md`, `ChipArenaPack*.bytes`) were never built here, and no LocalAssets zip on the Drive (10-16 to
+    10-29) carries them, so the builder lacks them too. Pilots draw the Standard weapons there. Building them needs the
+    packs unpacked from the Drive's zips (Synty and others, tens of GB).
+  - Body chips on the open hoodie, the tee and the hard jacket (pistol: vital x6, frame, endurance, stabilizer, salvage, dash,
+    rebound): the vital gems, block studs and stamina lights sit on the cloth round the core, the sabatons (gold with Salvage)
+    and heel thrusters on the shoes, none in first person. The pauldrons rode the upper arm alone and stood off a raised arm
+    like a wing: they now take `NativeBodyChipGear.PauldronArm` (30%) of the arm's turn and the rest the chest's
+    (`VisualShoulderFrame`). Mana, reservoir and stamina chips are magic- or melee-only (refused on a pistol); the orbs and
+    the stamina run were captured on the fire staff and the sword.
+  - Team armbands (two a side): a band round each upper arm in the team's colour; the local pilot shows none (the game's own
+    `!own` rule).
+  - Summons: Puppet Master's toy soldier draws the sculpted toy, fights beside the add and is gone at its 6 s (no voxel
+    blocks). Graveyard Shift and Corpse Party need a successful block, which the tool could not trigger (a held or tapped
+    block from input injection did not register as one): not verified.
+  - Chip modules on the model guns: rings and coils sit on the barrels; on the rifle the top run (the homing seeker's beads,
+    the rail strip) floats about 3-4 cm over the handguard (the Standard rifle's top-rail height through the uniform fit). The
+    fix is per-model socket tables (the top run's height and the pods' and magazine's places measured on each bake mesh),
+    not made here.
+
+**The free arm's run (2026-10-29, `claude/model-run-arm`).** Owner (2026-10-29): "For sprinting/running, I noticed the other
+arm not holding the weapon tends to extend outward. Its a bit flamboyant looking, can we adjust this animation?"
+- **Cause:** every set plays the Explosive pack's clips whole on the model (`NativeVisualMotion`). The pack's character is
+  built broad, and its armed and staff runs fling the free arm up and out on each stride. Measured on the clips (scratch
+  tools over the pack's FBX; degrees out of the body's middle plane; hand out in shoulder half-widths from the middle):
+
+  | Clip, free arm | Shoulder-to-hand line | Upper arm | Hand height (vs the shoulder) | Hand out |
+  |---|---|---|---|---|
+  | Armed run forward (sword, pistol, daggers, shield's off hand) | 37-63 | 28-69 | -35 to +3 | 2.2-2.9 |
+  | 2Hand-Staff run forward (the casters' right arm, mirrored) | 21-57 | 13-68 | -69 to +19 | 1.6-2.4 |
+  | Unarmed sprint (fighters, both arms) | 6-32 | 21-46 | -70 to +7 | 1.1-1.9 |
+  | Armed walk / idle (unchanged) | 24-36 | 21-33 | -59 to -45 | 1.8-2.2 |
+  | Pack's plain runs (Relax-Run, Unarmed-Run) | 5-33 | 13-40 | -73 to -14 | 1.1-2.0 |
+
+- **Change (`Core/NativeRunArm.cs`, the motion's `VisualRunArm`):**
+  - While running or sprinting (the blend's run and sprint share; walks keep their carry), each free arm is lowered in the
+    chest's frontal plane. It turns about the chest's forward axis, out toward down, the whole arm about the shoulder.
+  - It is lowered as far as brings its shoulder-to-hand line under a soft cap (kept to 26, eased toward 34) and its elbow
+    under another (kept to 30, toward 38).
+  - It is never lowered so far that the upper arm stands less than 14 out (against the chest), and it is lowered less as the
+    arm points forward or back out of the frontal plane.
+  - Its forward and back swing, its bend and its hand are the clip's.
+  - It does not act under a raised upper layer (an aim, a cast).
+  - Free arms: the off hand of the one-handed sets (sword, pistol, daggers' second blade, shield), the right beside the staff
+    and the bow, both of a fighter's. None for the greatsword or the long guns (the support fist rides the handle).
+- **After (same clips):**
+  - The armed run's hand line is 33-40, its upper arm 16-31, the hand at least 25 degrees under the shoulder line and 2.1-2.3
+    half-widths out.
+  - The staff run's upper arm is 13-38, its hand no higher than the shoulder.
+  - The bow's run needs none: its free right arm hangs 2-15 out.
+  - The plain runs, the walks and the idles move by 0-5.
+  - The largest change between two frames is 4.9 degrees at 75 per second.
+  - Gameplay, hit timing and networking are untouched.
+- **Checks:** `CoreTests --run-arm` (synthetic arms: flung, raised, forward, hanging, mirrored; a stride's sweep for
+  smoothness; the free arms per set; the running share; the runtime's place). How it reads on the outfits is the PC's to
+  capture.
+- **On the PC (2026-10-29, `claude/run-arm-pc`; Unity Editor, local tool v229: a walk at a third of the input, run, sprint,
+  standing, run, then a strike, shot or cast, per frame the free arm's angles in the body's frame):**
+  - Pistol, sword, daggers, shield, fire staff, bow, Emperor and Ansatsuken. In runs and sprints the free arm's hand stays
+    under the shoulder line (at least 23 degrees under for the staff, 29 for the fighters, 38 for the one-handed sets); its hand
+    line peaks 28-41 degrees out of the middle plane (the bow's 15); it keeps its forward and back swing and does not cut into the
+    torso in the captures. The fighters keep their guard; the staff and bow carry the weapon across. The caps are unchanged.
+  - The walk-to-run blend is smooth: no frame over 400 degrees a second (about 6 degrees at the Editor's frame rate) while the
+    locomotion owns the pose. The largest steps are a strike's own swing coming in, and the pistol's first three frames of a
+    shot (about 5 degrees a frame) as the aim layer takes the arm.
+  - The bake's bank already carries the bow's forward runs as "2Hand-Bow-Run-Forward", "-Forward-Left" and "-Forward-Right"
+    (the clips' own names; only the pack's file names say "Foward"): no fix is needed. Every bow clip the set asks for is in
+    the bank (its block is the pack's own "Hand-Bow-Block").
+
+**Chip select and the intros on the model (2026-10-29, `claude/chip-select-model`; Unity Editor, local tool v231).** Owner
+(2026-10-29): "The player is under chips if theres around 12 chips, and inserting the chip animation could be improved for the
+new model as well. Again, lets improve the design of the chips in selection mode too. (The design looked good for voxels, but
+now, Id like to have a lot more detail put into them) Intros will need reworking too; They are based in a voxel atmosphere or
+models, review and revise." Both the draft's cards and the 3D chip get the detail (owner's answer).
+- **Twelve chips:** the draft's close framing seats the pilot lower (`NativeDraftStage.MinSeat` .3, was .5) and frames the
+  model by its own head (`ModelHeadTop`); with two rows of cards the pilot's head and shoulders sit above both rows, its face
+  turned to the cards it reads (`OuterDrop`, the look's depth). Captured at 12 cards (1470x719 Game view).
+- **The 3D chip (`NativeMachineModels.Pickup`):** inside the bezel a circuit board: a processor with pins on four sides (the
+  core's bus into its top row, the connector's bus off its bottom), capacitors, a can, resistors, a memory package and the
+  clock, traces with vias; beside the core the rank's pips (the kits' alternate) and a status lamp over a vent; a bolted
+  collar with its iris in six arcs and a dial of ticks round the crystal; machined notches and a lit ID slot on the bezel,
+  clamps over the edge band, fifteen fine gold pads. About 4,700-6,300 triangles a chip (was 1,900-3,400).
+- **The draft's cards (`NativeChipArt`, `NativeChipBake`):** a seamless circuit-board tile under the face (faint under the
+  text, clearer between the content and the footer), machined notches down the bezel and two status lamps (one breathing),
+  a ruler of ticks under the header, bolts and a tick dial on the core's collar. The text stays legible in the captures.
+- **The insert on the model (`NativeDraftPlant.Device`):** the model's wrist device was not drawn in the draft and the chip
+  sank into the palm side of the glove. Now the receiving forearm is presented with the device's bay toward the camera (its
+  roll from the bay's normal as measured on the model each frame), the lid opens as the arm rises, the left hand comes down
+  beside the bay (not over it) and the chip slides out of the palm into the bay, shrinking to the bay's chip by the carry's end;
+  the bay takes the chip's colour, a tight ring opens over it and light runs up the sleeve; the lid shuts on the return and the
+  lens keeps the colour (`NativePilotGear.Device`'s states on the plant's clock). The model's arms are its own proportions,
+  so its left hand is placed by the visual rig's support grip (`Grasp.Bound`) with an offset learnt from where its palm lands
+  (kept between picks). The voxel pilot keeps the palm-side cuff and the big rings. Timing unchanged (the plant at 1.14 s).
+- **The intros:** the model took only the key light and the ambient in the entrances (its toon shader never read the stage's
+  point lights), so it stood as a dark silhouette. It now takes the stage block's rim, fill, flash and set lights while an
+  entrance lights the screen (`Resources/NativeVisualStageLight.cginc`, `_VisualStageLit` set by `NativeLighting.Intro` and
+  `Entrance`, cleared by `EndIntro` and the draft), the top end eased so a light at arm's length does not burn a patch. The
+  directed entrances' pylons, dais and Orbital Drop's pod and door are sculpted models (`NativeEntranceStageModels`: light
+  towers with segmented strips and lamp heads, a panelled dais with nothing glowing on it, a ribbed pod with a faceted nose),
+  drawn through `INativeEntranceProps.Model` with the boxes kept as the fallback.
+- **The effects (owner's follow-up, "Restyle them too", `claude/fx-restyle`):** the shared renderer's smoke and fire puffs
+  (blasts, the melee kits' dust, the fuse, in play and in the intros) take their shape from the billowy smoke atlas instead
+  of the toon sheet's outlined cartoon lobes: see-through at their thin edges, dense in the core, eaten into wisps over their
+  life, a soft terminator between two tones and rims that catch the light (`NativeVfx.shader` `VfxSoftMask`, `VfxSoftSmoke`;
+  fire keeps its white-hot to ash ramp). Toon water and the flash, crescent and spark sprites keep the toon sheet. Rubble is
+  finer (debris x1.1, rock x.95 of the voxel edge, was 1.45 and 1.3), never a flat card (its thinnest edge at least .45 of its
+  longest), and rock reads as stone: a trace of self-glow, a seeded tone per chunk and two soft dust puffs behind it while it
+  flies fast. The earthsplitter's glowing crystal shards (the kit's light bursting up) and Brickfall's wind-blown scraps are
+  unchanged.
+- **Not changed (decisions for the owner):** the smaller set pieces (Holo Projection's projectors, Blackout's
+  lamps, Skyline Zip's anchors and trolley, Overclock's chip) are still primitives; the DEV intros' baked stages (Emperor,
+  Ansatsuken, Matrix, Siren) are the source's voxel scenes, now lighting the model but not rebuilt.
+
+**Animation revamp (started 2026-10-24).** Owner (2026-10-23): "Some of these animations really dont fit the new body",
+"We may need to revamp the animations as well due to new body + height", "I thought we have a running animation pack
+already? Cant we utilize that?"
+- **Where the motion comes from today:**
+  - The game's clips are the Explosive RPG Character pack's clips, captured onto the 22-joint rig (`tools/pack-*-provenance.json`
+    names each source clip and frame range).
+  - While travelling, the legs come from the procedural gait, not the clips. The visual body copies the rig's limb directions
+    (`NativeVisualRig`).
+  - The pistol's walk uses the sword set's `Armed-Walk` and its run the `Unarmed` runs; the pack's `1Hand-Pistol` set has
+    no locomotion.
+- **First look (local tool `bozo-retarget.request`):** the pack's own humanoid clips play on the body through Unity's humanoid
+  retargeting (the body rig's avatar), sampled in the Editor:
+  - The runs come out as natural full-body runs on the new proportions: forward lean, long strides, pumping arms.
+  - Today's runs are upright and crouched with short strides.
+  - The comparison sheets are in local scratch.
+- **The stride (2026-10-24, `claude/visual-stride`; owner: "Implement whatever we have on asset packs that would work good on
+  this project, make them fit").** While a pilot runs or walks on the ground, the visual body's legs and hips come from the
+  pack's own locomotion clips; everything above the hips stays the game's.
+  - **Clips:** the pack's 17 `Unarmed` locomotion clips: eight run directions, eight strafing walks and the sprint. They are
+    measured on the body at 4.2 m/s for the run, 2.1 for the walks and 6.9 for the sprint. The legs need only one set,
+    whatever the weapon.
+  - **The bake** (the local tool's stride step; the body bake runs it too): a disabled Animator on `VisualSkeleton` with the
+    body rig's avatar and `VisualStride.controller`, whose states are the clips.
+  - **Mixing** (`Core/NativeVisualStride`, tested): the two neighbouring directions by the travel's angle; walk to run
+    between 2.6 and 4.0 m/s; the sprint forward only, from 7.4 m/s. The rate makes the mix travel at the body's own speed:
+    the game's 6.8 m/s run plays the run 1.6 times as fast, its 9.2 m/s sprint the sprint 1.34 times.
+  - **Runtime** (`Runtime/NativeVisualStridePresentation.cs`):
+    - A proxy copy of the skeleton without renderers plays the mix in a manually evaluated PlayableGraph.
+    - After the game pose is on the body, each leg bone takes the proxy's turn, and the hips its place over the root (the
+      two skeletons share it). The upper body rides the hips, so the weapon frames move with them; aim, holds and arm layers
+      are the game's.
+    - A foot the clip puts down locks where it landed: a two-bone reach of its leg, the foot keeping the clip's turn. The lock
+      holds fully once the clips carry half the legs, and eases back to the clip as the foot lifts.
+    - The legs blend in from 0.35 to 0.95 m/s. They are off in the air, rolling, attacking, stunned, juggled, in a special or
+      a hit reaction, and standing (the game's stance). `--ca-no-stride` keeps the game gait's legs.
+    - Footsteps sound when the drawn feet plant, while the clips carry the legs.
+  - **Measured** (Play mode, bots at 2–9 m/s, `track=` in the local tool): a locked foot's median slip is 0.000 m/s (90th
+    percentile under 0.04 m/s) whenever the clips carry half the legs or more, as with the game gait. Without the lock it was
+    0.4–1.0 m/s, and 1–1.5 m/s with the game's hip sway.
+  - **Builds:** the clips, the controller and the pack's source character (the clips' humanoid import copies its avatar)
+    bring the packed bake to 247 files and 28.0 MB. The packer and installer now carry animator controllers.
+  - **Not yet:**
+    - the clips' forward lean, since the upper body is the game's;
+    - stairs and ramps (the clips' feet assume a level floor);
+    - idles, jumps and reactions from the pack.
+  - Hit volumes, timing, movement and the wire are unchanged.
+- **The model's own animation (2026-10-24, `claude/motion-greatsword`; owner, after reviewing recordings: "Pack animations
+  whole, and adjust hit timing as needed", "Retime clips to rules", greatsword first, then sword, daggers, shield, guns,
+  casters).** For a weapon whose set has moved over, the model plays the RPG pack's own clips whole in place of the game's
+  pose retargeted.
+  - **Greatsword set** (`Core/NativeVisualMotion`, tested), from the pack's `2Hand-Sword` clips:
+    - idle; the run, walk and sprint blend (the stride's weights and rate);
+    - six combo attacks, in the order Attack1, 2, 4, 3, 5, 6; the sprint attack; the plunging air attack;
+    - jump, air-jump flip, fall, landing, roll, block, stun, and hit reactions from front, back, left and right.
+  - **Timing:** each attack plays from the strike's start. The clip's own `Hit` event lands mid hit window, and its recovery
+    ends with the strike. The roll fills the roll; the plunge's `Hit` lands on its impact.
+  - **Dash (sprint) attacks leave the floor (2026-10-26, `claude/model-dash-attacks`; owner: "dash attacks need fixing on
+    melee, it looks like they need to be in the air when dash attacking? Reference the melee dash attacks"):**
+    - The pack's run attacks leap through their strides (both feet up to about 0.3 m off the floor). The model's floor
+      guard put every swing's lowest point on the floor, so those flights read as a kneeling crawl.
+    - A grounded sprint attack now keeps its clip's flight, under the run's rule: the body is only kept out of the floor
+      (`Pick.Flight`, `NativeVisualMotion.Flies`). This covers the sword, daggers and shield.
+    - The greatsword's dash attack is the game's own hop, so its clip stays on the pilot's feet in the air. Once it
+      lands, its run attack would stride on through its follow-through on a stopped pilot. Instead its legs become the
+      set's landing (`2Hand-Sword-Land`, from the touchdown), under the take's upper body, laid on at once (`Upper.Snap`).
+      That is the Classic's planted landing (`DashLanded`, `DashUpper`). The touchdown is the replicated `SwingAt`, then
+      the attack start plus its wind-up once the hit window has closed.
+    - Hit timing, steps, reach and the hop are unchanged.
+  - **Motion polish (2026-10-27, `claude/model-motion-polish`; owner: "Make the movements look realistic and not
+    'glitchy'. For everything, movements, attacks, for all weapons").** Measured first: the local tool's new `motion=T,D`
+    log (every frame, every tracked bone in the body's frame, the feet and blade in the world, the clip mix and the pilot's
+    state) over a scripted routine per weapon (`hold=` windows, `turn=`, presses). Causes found and fixed:
+    - **Swings hitched near the end of every hit window:** the clip's Hit sat on the replicated window's middle, then on
+      the wind-up alone once the window reset, so the clip jumped 0.08-0.11 s (the sword thrust's hand 95 cm in a frame).
+      `NativeVisualMotion.HitAt` is the same middle from the swing's own wind-up and active span.
+    - **Strikes played too fast:** the pack's wind-ups are long beside the rules' (a dagger cut's Hit 0.5 s in, the rules'
+      0.22 s), so fitted whole they ran at 2-4 times. A strike now plays at most `MaxStrikeRate` (1.5) times its clip's pace:
+      a short wind-up starts further into its clip (the Hit still mid window), a short recovery is cut by what follows.
+      The fighters' jabs, moves and tatsu kicks likewise.
+    - **Hit reactions, landings and rolls** were squeezed to the rules' spans (2-2.7, 2 and 1.7 times). A reaction plays
+      at 0.7-1.5 times, a landing at about its pace (`LandRate`, within `LandFor`), a roll at most `MaxRollRate` (1.3); each
+      finishes as it fades into what follows.
+    - **The jump** played its crouch and push after the take-off: the legs snapped straight in a frame. It starts at its
+      launch (`JumpLaunch`).
+    - **A held block** begun again every few tenths of a second (the rules raise it again) pumped the arms: it goes on.
+    - **The floor guard's switch** between pinning the lowest point (attacks, jumps, idles) and only keeping the body out
+      of the floor (the run's stride, a leaping dash attack) moved the body 27-37 cm in a frame at take-offs, landings and
+      rolls out of a run. The switch's difference is carried off by a critically damped spring (about 0.25 s), never
+      leaving the body under the floor.
+    - **Clip restarts and upper-layer switches** (a reaction begun again, a cast's start into its end, a throw into the
+      aim, a recoil restarted) popped the pose. The presentation now keeps the last drawn pose; when the mix would jump,
+      the difference is carried off by a spring with its motion (inertial blending, `VisualMotionInertia`). Crossfades are
+      eased in and out, and a clip fading out goes on at its own pace instead of freezing.
+    - **The pack's runs and walks are out of step** (their left feet land up to 0.4 of a stride apart), so direction and
+      walk-to-run blends scissored the legs (knees 13-34 cm in a frame). Each stride's phase is read from its knees
+      (`NativeVisualMotionClips.StridePhase`) and the clips play offset onto one phase. The gait's walk-to-run share
+      follows a slower speed (about 0.2 s), so a stop no longer whips the sword arm from the run's swing to the walk's carry.
+    - **Feet skated** (planted feet 0.8-1.0 m/s while running, pivoting while turning in place): a foot the clip puts down
+      is locked where it is drawn and keeps its heading, dragged within reach and let go as the clip lifts it or the leg
+      nears full stretch (its knee then has no side). Standing, a planted foot steps across once the body has turned 40
+      degrees or drifted 16 cm. Footsteps now sound on the drawn feet.
+    - **Between the bank's frames** the pose followed straight lines, bending the motion 30 times a second; it follows a
+      monotone cubic through the frames either side (no overshoot).
+    - **The sword's running carry** moved the clip's own wrist twist into the forearm even at a sliver of weight, spinning
+      it 75-80 degrees in a frame as the carry came and went: only the carry's own turn of the fist moves now.
+    - Left as the pack made it: a few strikes cross most of their arc between two of the pack's own frames (the sword's
+      thrust, 1.5 m in 60 ms in the source clip); a 180-degree flick of the look in a tenth of a second.
+    - Hit timing (the Hit still mid window), hit volumes, damage, steps, cooldowns, movement and networking are unchanged.
+  - **Kept on the game's pose for now:** specials, kit moves (Whirlwind, Earthsplitter), knockdowns and juggles. The model
+    fades to the game's pose and back over 0.15 s.
+  - **The bake** (local tool, the stride step and the body bake) writes the motion bank
+    `Resources/ChipArenaVisualMotion.bytes` (`Core/NativeVisualMotionClips`). It plays each named clip on the body through
+    Unity's own in-place playback with foot IK, and reads back the humanoid pose 30 times a second: body position and
+    rotation and every muscle. It also stores each clip's length, `Hit`, loop and travel speed. The greatsword is 37 clips in
+    0.43 MB, where the clip files would add about 18 MB.
+  - **Runtime** (`Runtime/NativeVisualMotionPresentation.cs`):
+    - the picked clip fades in and the rest fade out, mixed by weight in muscle space;
+    - the mix goes onto a renderer-less copy of the skeleton through its avatar, then onto the body, every bone;
+    - a contact guard puts the body's lowest point (feet, knees, hips, chest, head, hands) on the pilot's floor point; jumps
+      and plunges carry their own lift, which the game's height already gives; running, it only keeps the feet out of the
+      floor;
+    - the weapon rides the model's right hand at the game hold's fist-on-handle offset, and the rig's weapon hand follows it,
+      so trails, the slash pack, blood and effects stay on the drawn blade;
+    - the support fist reaches the handle 10 cm behind the right, easing in and out.
+    - `--ca-no-stride` keeps the game's pose.
+  - **Measured** (Play mode, the local tool's new `press=`, `hold=` and per-frame `pose=` log):
+    - the right fist stays 0.099 m from the weapon's grip point in every state;
+    - standing, the lowest vertex is 0.000 m over the floor (before: 2.8 cm under);
+    - landing and the plunge no longer sink 25 cm under the floor.
+  - **Packing:** the packer ships the bake's `.bytes` beside the prefab; the installer accepts them. The visual body is 357
+    files, 36.0 MB.
+  - Hit windows, reach, movement and the wire are unchanged.
+  - **Sword (2026-10-24, `claude/motion-sword`):** the pack's `Armed` set (one weapon in the right hand) for idle,
+    locomotion, jump, flip, fall, landing, roll, block, stun and reactions. Its overhead `Armed-Air-Attack-R1` plays the
+    plunge and `Armed-Run-Attack-R1` the sprint attack.
+    - The combo plays the one-handed `Sword-Attack-R` cuts in the game's three: a forehand cut right to left, a backhand left
+      to right, then the thrust. The order is R1, R3, R4, then R6, R2, R4, chosen by each clip's blade-tip sweep measured on
+      the body (the local tool's `path=1`).
+    - The idle is an upright ready stance: hips 0.76 m (the game's squat had 0.69 m) with the feet on the floor.
+    - The bank holds 73 clips in 0.81 MB.
+  - **Daggers (2026-10-24, `claude/motion-daggers`):** the pack's `Armed` set for idle, locomotion, jump, flip, fall,
+    landing, roll, `Block-Dual`, stun and reactions; `Armed-Air-Attack-L1` for the plunge; `Armed-Run-Attack-Dual` for the
+    sprint attack, both blades opening as the game's twin sweeps do.
+    - The combo alternates hands in the game's four (a forehand right to left, then three left to right, the fourth the
+      claw-mark finisher): `Dagger-Attack-R1, L3, R2, L2`, chosen by both blade tips' sweeps.
+    - The off hand's frame (the second blade) rides the model's left hand. The hold is kept for weapons the bake has no
+      model of, so the game's own daggers draw in the model's hands.
+    - The bank holds 81 clips in 0.91 MB.
+  - **Shield (2026-10-24, `claude/motion-shield`):** the game holds its shield in the right hand; the pack's `Armed-Shield`
+    set carries it on the left arm, so the shield plays that set mirrored.
+    - **Mirroring:** the bake mirrors any clip named with `NativeVisualMotion.Mirror`. Each left muscle swaps with its right
+      twin, the middle's sideways and twisting muscles turn the other way, and the body's position and turn reflect. A
+      mirrored run to the left runs right.
+    - **Clips:** idle, locomotion, block and its hit, and the bashes and sweeps `Attack2, 3, 1`; mirrored, they sweep left
+      to right, as all the game's shield cuts do. Jumps, roll, stun and reactions come from the `Armed` set.
+    - The shield draws braced on the right forearm, its face forward.
+    - The bank holds 103 clips in 1.17 MB.
+  - **Guns (2026-10-24, `claude/motion-guns`; owner: rifle and machine gun "shouldered when aiming and firing"):** the rifle
+    and machine gun play the pack's `2Hand-Shooting` set, the pistol its `Armed` set.
+    - **Carry:** each carries low by default: the pack's ready idle, the muzzle tipped 20° down.
+    - **Upper-body layer** (every muscle but the legs', over the legs' motion, eased in 0.12 s) raises the gun while aiming
+      or within the game's own shot hold: the pack's aim grid's down, level and up poses blended by the pilot's pitch, and
+      the long guns' recoil per shot. The pistol holds its aimed stance (its own firing cut throws the arm overhead).
+    - **Reload:** the pack's reload is fitted to the game's reload, and the support hand lets go.
+    - **In the hand:** the gun's turn is calibrated from the pack's own level aim (there its bore points straight ahead).
+      While raised, the barrel turns onto the aim line about its grip (within 35°), so the rounds leave the drawn muzzle. The
+      long guns' support fist reaches the model's handguard.
+    - **Measured** (local tool `keep=` for held inputs): aiming raised the layer; shots kept it up (rifle 3 rounds, machine
+      gun 26); the empty rifle's reload played the reload; sprint ran the pack's runs.
+    - The bank holds 144 clips in 1.59 MB.
+    - **On the look (2026-10-24, `claude/motion-casters`; owner: the rifle and machine gun "pointed down each direction we
+      look"):** the low carry is now only for sprinting. Whenever the body's own motion leaves the arms free (idle,
+      locomotion, a jump's rise or fall, a landing), the gun is shouldered on the look. Rolls, strikes, reactions and blocks
+      keep their own arms. Unity places a human pose by its centre of mass, so a raised upper body used to swing the hips
+      and lift a foot. The legs' motion is now posed first and its hips kept under the upper body.
+  - **Casters (2026-10-24, `claude/motion-casters`):** the four schools and L33t H4x play the pack's `2Hand-Staff` set,
+    mirrored (the game's staff is in the left fist, the pack's in the right). Mirrored reactions swap sides.
+    - **Casts on the upper body,** over the legs' motion: the pack's cast start is fitted from the cast to the game's
+      release (`MagicPose.Windup`), its end plays after at its own pace, then the layer lowers. A Q/E ability plays the
+      pack's area cast likewise, to the ability's release. A cast is no melee strike: the legs keep idling or running.
+    - **The staff in the fist:** its shaft runs along the left fist's grip (the knuckles' line, toward the thumb).
+    - **Measured:** fire and water casters cast, the Q ability, running and a jump, all on the pack's clips.
+    - The bank holds 186 clips in 2.00 MB; the zip's visual body is 37.61 MB of its 40 MB budget.
+  - **Bow (2026-10-24, `claude/motion-bow`):** the bow plays the pack's `2Hand-Bow` set, the bow in the left fist as the
+    game's.
+    - **Upper-body layer,** over the legs' motion: drawn from the draw to the loose (the pack's drawn poses blended by the
+      pitch). After the loose or any arrow (the Volley's and the Rain's), its release plays for 0.6 s. Otherwise the bow is
+      carried at rest.
+    - **In the fist:** the bow's turn is calibrated from the pack's own level aim (limbs upright, the arrow line ahead).
+      While raised, the bow turns onto the aim about its riser (within 35°).
+    - **Measured:** draws at 25° up and 20° down, the loose, drawing while running, the Q volley.
+    - The bank holds 227 clips in 2.36 MB.
+  - **Fighters (2026-10-24, `claude/motion-fighters`):** the Emperor and the Ansatsuken play the pack's `Unarmed` set.
+    - **Jabs and combos:** each strike follows the replicated action. The clip's Hit lands on the rules' share of the
+      strike (0.45 of a jab or a combo hit, 0.35 of a chain's last, as `NativeFighters` times them), and the recovery
+      plays out at up to twice its pace. The fists alternate, and a chain's last is the heavy right.
+    - **Their own moves** play the pack's clips too (see the fighters' own moves below). The Emperor rolls the pack's
+      roll.
+    - **Measured** (local tool `devweapon=` gives the offline seat developer access): the Emperor's jab chain, Q, run and
+      jump; the Ansatsuken's combo, E and Demon Step.
+    - The bank holds 264 clips in 2.75 MB; the zip's visual body is 38.36 MB of its 40 MB budget.
+  - **Greatsword kit moves (2026-10-24, `claude/motion-gs-kit`):** a set's mapped kit moves (by `MeleeKitMotion`'s
+    replicated clock) play pack clips; the other weapons' kit moves keep the game's pose for now.
+    - **Earthsplitter (Q):** the pack's overhead slam (`2Hand-Sword-Attack11`), its Hit on the release, its end on the
+      cast's end.
+    - **Whirlwind (E), reworked 2026-10-26 (`claude/model-whirlwind`; owner: "need to fix whirlwind on greatsword, the
+      player spin is not good"):** the first version held the pack's spin (`2Hand-Sword-Attack8`) at its Hit. That frame
+      is upright, with a narrow stance and the blade raised about 20°, and the whole frozen pose turned like a statue on a
+      turntable, its blade about 57° off the game's tip. Now:
+      - **Legs:** the set's stance (`2Hand-Sword-Idle`), sat into a crouch by the spin's Low. The pack's level sweeps all
+        end in lunges, whose trailing leg the spin would sweep round.
+      - **Upper body:** the low level sweep of `2Hand-Sword-Attack2`, laid over the legs with the upper-body mask (the
+        legs' hips kept). It plays into its hold (`WhirlHold`, 0.6 of the clip) through the wind-up, is held through the
+        spin (arms long and low, the blade level out past the knees, about 20° down), and plays to its end through the stop.
+      - **Steps:** while the blade spins, each foot marks time once per turn of the hands, the other half a turn on
+        (thigh and knee muscle offsets, by the spin's speed; `NativeVisualMotion.SpinLegs`).
+      - **Turn:** the body turns about its hips so the drawn blade's bearing (the hold's +z off the right hand) lies on
+        `MeleeKitMotion.Spin`'s tip, which crosses the facing on each of the rules' pulses. The alignment rises through the
+        uncoil and falls as the stopped pilot settles; before and after, the body follows the hands' turn as before.
+      - The bank is unchanged (both clips were already in it).
+      - Measured in play: the blade within 0-12° of the tip (the render clock runs up to one 60 Hz step behind the
+        arena's), the feet on the floor, the hips bobbing 0.70-0.77 m with the steps.
+    - A mapped move's tail (its special still running past the cast) goes on to the idle instead of the game's pose.
+    - The bank holds 266 clips in 2.78 MB.
+  - **Sword, daggers and shield kit moves (2026-10-24, `claude/motion-kits`):** every melee weapon's Q and E now play
+    pack clips.
+    - **Sword:** Flash Step plays the armed dash's lunge on the release. Rising Dragon plays the pack's rising thrust
+      (`Armed-Boost1`), and its Skyfall recast plays the armed air slash.
+    - **Daggers:** Shadow Step plays the dash's lunge. Kunai Mark plays the cast's wind-back fitted to the release, then
+      its overhand throw fitted to the cast's end; its recast plays the dash.
+    - **Shield:** Bulwark Charge plays the pack's shield charge run (mirrored) at its own pace. Aegis Ricochet plays the
+      wind-back and the throw.
+    - **Measured:** each Q and E in play.
+    - The bank holds 271 clips in 2.82 MB.
+  - **Knockdowns and juggles (2026-10-25, `claude/motion-knockdown`):** a downed pilot plays its set's pack `Knockdown1`
+    and `Roll-Backward` (the shield uses the armed set's; the staff's mirrored).
+    - **Phases:** the game's knockdown phases (`NativeSpecialRules.Phase`) choose the clip time.
+      - Airborne, the fall's flight plays, held short of the impact (`KnockImpact` .52 of the clip, its flight .8 of that).
+      - On landing, the impact and lying play from the impact on.
+      - The roll and rise play the backward roll from on its back (`RollFromBack` .22), fitted to the get-up.
+    - **Juggles:** a juggled pilot holds the fall's flight.
+    - **Measured:** a bot launched by Rising Dragon was blown back, fell legs-up, lay flat, rolled up and stood.
+    - The bank holds 283 clips in 3.00 MB; the zip's visual body is 38.61 MB of its 40 MB budget.
+  - **Fighters' own moves (2026-10-25, `claude/motion-fighter-moves`):** `FighterMove` plays the pack's unarmed clips by
+    NativeFighters' timings. The attack rate, which is not replicated, is recovered from the move's own span.
+    - **Emperor:**
+      - electric punch: the running punch, its Hit at a quarter of the move;
+      - wavedash: the dash's lunge.
+    - **Ansatsuken:**
+      - tatsu: the high kicks alternating right and left, each wind-up in the gap before its hit;
+      - shoryuken: the rising thrust (`Boost1`), its Hit on the first hit;
+      - hadoken and shinku: the two-hand push (`Cast-Dual-Attack1` end) across the move;
+      - shinku charge: the gathering (`Cast-Dual-AOE1` start), then its hold;
+      - Demon Step: the dash.
+    - **Measured:** each move in play (local tool `devweapon=`).
+    - The bank holds 290 clips in 3.06 MB.
+  - **Gun and caster abilities (2026-10-25, `claude/motion-abilities`):** each Q/E has its own upper-body clip
+    (`AbilityIds`/`AbilityStarts`/`AbilityEnds`): a start fitted to the release, an end after it.
+    - **Casters:** each school ability has its own cast, mirrored:
+      - flame lance: the thrust cast;
+      - meteor strike: the raised buff;
+      - tidal wave: the area cast;
+      - geyser wall and ball lightning: the summons;
+      - blink strike: the second buff;
+      - shadow shackles: the second attack cast;
+      - singularity: the second area cast.
+    - **Guns:**
+      - the pistol's frag grenade: the off hand's overhand throw (wind-up, then the throw);
+      - the machine gun's overdrive: the power-up at its own pace;
+      - the rifle's orbital mark and the machine gun's rocket: hold the gun on the aim through the cast, even sprinting.
+    - The fan hammer and ADS keep the aim layer; the bow's Volley and Rain keep the bow's own.
+    - **Measured:** the water caster's Q and E (hold and release), the pistol's grenade and the machine gun's overdrive.
+    - The bank holds 303 clips in 3.14 MB.
+  - **Echoes (2026-10-25, `claude/visual-ghosts`; owner: "The dodge effect still shows the voxel model"):** a pilot drawn
+    as the model leaves the model's roll afterimages, dash ghosts (Flash Step, Bulwark Charge) and Demon Step ghosts.
+    - Each ghost bakes the model's drawn renderers (skinned ones through `BakeMesh`, into pooled meshes; the shown weapon
+      with them) when the voxel ghost would snapshot the rig.
+    - It draws through the same ghost shader in the same tint and fade, at 55% of the voxel ghost's opacity (the model's
+      layered meshes add up under the additive ghost).
+    - A small depth offset toward the eye (`_EchoOffset`, 0 for the voxel ghosts) stops the baked copy z-fighting the
+      GPU-skinned body while they overlap.
+    - Pilots drawn voxel (Classic) keep the voxel ghosts.
+  - **Severed kills (2026-10-25, `claude/visual-sever`; owner: slash and saw kills "revert to voxel", "Sever at joints"):**
+    a pilot's cut corpse now wears the model.
+    - **A split body** (a blade's killing blow, a Factory saw): each half wears the model's parts on its side of the cut.
+      Whole parts only: a part the cut crosses goes to the side its joint is on (`BisectRequest.HalfOf`). Since 2026-10-28
+      only where the shader cut (below) cannot read the body.
+    - **A sliced or crushed corpse** (the slice's fallback joints, a sever wound): the parts cut off fly as model pieces;
+      a crushed part's triangles go, and its fragments and the stumps' blood are the kill wound's.
+    - **How it splits (until 2026-10-28; now only where the shader cut cannot read the body):** each skinned mesh is copied per corpse. Every vertex keeps only the bones of the piece most of its
+      weight is in, so a piece moves rigidly with its ragdoll part and nothing stretches across the gap; triangles across
+      pieces go. The copies are freed with the corpse.
+    - **Caps (2026-10-25, `claude/visual-caps`):** each piece's cut holes are closed.
+      - Detection: an edge whose neighbour went with another piece is a cut (vertices welded by position across seams; the
+        mesh's own open edges are not cuts).
+      - Fill: the cut edges are chained into loops and fanned on the piece's own vertices, so the cap moves with it.
+      - Material: a last submesh in a copy of the body material, in flesh (`NativeModelGore.Flesh`; until 2026-10-27 the
+        voxel bodies' dark insides, which read as a robot's) in every colour, both sides, no cut-out, outline or accent glow.
+        It dissolves with the corpse.
+    - **Flesh and bones (2026-10-27, `claude/model-mask-hats`; owner: "Can you show bones + flesh on gibs too? correct on
+      anamonics too"):** at each joint a cut parts, each side shows the bones that run through it (`Core/NativeModelGore`,
+      `VisualCorpseBones`), where they lie in the cross-section and sized for the model's slim build:
+      - the upper arm's humerus; the forearm's radius (outside) and ulna (inside); the hand's carpals;
+      - the thigh's femur; the shin's tibia (forward, inside, thicker) and fibula (behind, outside); the foot's talus;
+      - the vertebrae behind the middle of the neck and back, the neck's windpipe ahead; the skull's base; the hip bone at a
+        hip cut; the collarbone at the shoulder.
+      - Each is a short stub on that side's bone (it flies with the piece), sticking out 6 mm from the cut piece and 2 mm from
+        the stump, its marrow dark at the end, in the body's own shader (it dissolves and takes the kill looks with the
+        corpse).
+    - **Kill looks and smashes (2026-10-25, `claude/visual-kill-looks`):** every kill style now wears the model.
+      - **Swarm styles** (ember, static, gravity, pinball, fireworks, petals, singularity): the model ragdoll collapses by
+        the swarm.
+      - **Soul Drift:** the model through the fresnel ghost shader in the soul's colour.
+      - **Frostbreak:** every colour of the model the ice's.
+      - **Smashes:** the crushed parts dropped (their fragments stay voxel), and a pinned smash's flattening applied
+        through the corpse root's scale about the body.
+  - **Cut in the shader (2026-10-28, `claude/model-plane-gibs`; owner: "Can we improve gib slicing? (Kinda like how we did
+    for voxel, we "slice" right on the trail of a hit) Think like how we did the saw for the factory level. Also, prevent fps
+    drops during enemy kill"; "Also hat still seems to remove on death"):** no mesh is copied on a kill
+    (`Runtime/NativeVisualCutPresentation.cs`).
+    - **The shaders:** the toon, its outline and the hologram (`NativeWeaponGhost`) read a keep value per vertex by its index
+      (`NativeVisualBodyFx.cginc` `CutKeep`: `_CutTex`, `_CutBase`, `_CutWidth`, `_CutPick`), interpolate it and cut under 0.
+      Unset, nothing is read. Needs shader model 3.5 (`SV_VertexID`, `Texture2D.Load`). A mesh drawn from a submesh base
+      vertex, or a machine without float textures, falls back to the copies.
+    - **A split body:** both halves wear the whole model. A vertex keeps its half's side of the bisect's plane: its signed
+      distance in the death pose (blend shapes and four bones applied on a worker), or half 0 where its body is outside the
+      request's mask. The cut runs straight through skin, clothes and hair on the blade's trail.
+      - Each half's bones ride its own parts. One with no part of its own above it rides the nearest one below (a cut-off
+        head's neck rides the head), never the stand-in pelvis, so nothing stretches.
+      - Caps as the voxel halves' (Core `NativeBisect.CapOf`, `ModelLook`: a 5 mm rim in the shell's colour, no lining, then
+        the flesh layers). Each outline is kept where the plane decides most of it. The two faces mirror, and each piece of the
+        face rides the crossed bone nearest it. The bones the plane crosses show as stubs (`NativeModelGore`).
+      - The second half waits hidden until the worker is in (the first draws the whole body), and the halves wait for it
+        before they part, as for the voxel split.
+      - The Dev Sandbox saw preview splits the model too.
+    - **A severed body** (the slice's fallback joints, a sever wound, a crush, a smash): one body keeping each vertex all of
+      whose weight is on one uncrushed piece, so nothing stretches between pieces. Each opening is capped once (its widest
+      layer): a skin rim, then flesh to a dark middle. The joint stubs are as before.
+    - **No kill-frame cost:**
+      - corpse, bust and pilot bodies come from a pool filled by `InstantiateAsync`;
+      - gone bodies are taken apart 12 pieces a frame;
+      - the death code is compiled on a worker when the model loads (`GetFunctionPointer`);
+      - the cut's mesh data is read ahead from the live bodies, a renderer a frame;
+      - the broadcast's bust is cut in the hologram shader by a keep texture per mesh.
+    - **Hats:** a model corpse wears its hat on its head, fitted as the live body wears it (`VisualHatFit`), on the half its
+      head went to. A Sheldon Head corpse keeps the cloth hood, its void and its face as it died.
+  - **The skeleton inside (2026-10-29, `claude/model-skeleton`; owner: "Can you design a full skeleton inside the player
+    (From skull to toe) that can be visible during gibs + wounds? Ananomically correct and in the same style of the model,
+    this should also improve slicing graphics"):**
+    - **The bones:** `Core/NativeModelSkeleton` builds one mesh from the model's rest joints (root space, the bake's mannequin
+      names), fitted inside the base body as measured from the bake (the local tool's `bozo-skel.request`):
+      - the skull (cranium, face, dark orbits and nasal opening, cheekbones) and the mandible on the jaw;
+      - 7 cervical, 12 thoracic and 5 lumbar vertebrae, 3-5 cm in from the back skin, with discs; the sacrum and coccyx;
+      - 12 pairs of ribs with costal cartilage, the manubrium and sternum;
+      - the clavicles and scapulae, the humerus, ulna and radius, the carpals, metacarpals and every finger's phalanges;
+      - the iliac wings, acetabula and rami, the femur, patella, tibia and fibula, the talus, calcaneus, midfoot,
+        metatarsals and toes.
+      Each piece rides one bone rigidly. About 6.8k vertices and 10k triangles, ivory in the body's toon with its outline
+      (`_VertexAlbedo`, a faint glow). It was checked at rest against the skin (nothing shows through the face, hands or feet),
+      and posed on a living bot.
+    - **Corpses** wear it inside (`NativeVisualSkeletonPresentation.cs`), so the cut stubs are gone:
+      - a split's bones stand 4 mm proud of the flesh's cut face, each section with its own face on 1.2 mm cells: a long
+        bone's cortex round its marrow, spongy bone's honeycomb, the skull round the brain, cartilage solid;
+      - a severed body's bones stay whole with their pieces (a femur's head stands out of a thigh cut at the hip);
+      - the soul look hides it.
+    - **Open wounds** (`NativeVisualWoundPresentation.cs`): a living pilot's punctures, cavities and cuts (four at most, not
+      bruises or burns) open holes through its skin and clothes (`NativeVisualBodyFx.cginc` `WoundClip`: a capsule round the
+      wound's line), each onto a flesh pit.
+      - Where the mark meets the model is found once per wound on a worker: the closest point on that body part's skin,
+        facing out, moved onto the outermost layer over it.
+      - A limb's pit reaches just past its bone (aimed at it within 20 degrees of straight in), so the bone shows. The pit's
+        rim is sunk by the limb's curve.
+      - The body's skeleton is on only while a wound shows. A corpse keeps its pilot's holes (a split body's on their halves).
+  - **Intros (2026-10-25, `claude/model-intros`; owner: "Model everywhere, classic will be stored as backup"):** the
+    entrance's pilot wears the model.
+    - `VisualIntroPose` binds the intro rig's own authored pose (the clip intros' and the directed entrances' pose) to a
+      visual body: no pack clips or stride, the feet as authored.
+    - While an entrance builds the body in or glitches it (its per-bone reveal), the model takes that reveal bone by bone
+      (2026-10-28; owner: "Sheldon intro still needs revisions, it uses voxel model in the "glitching""). Each game bone is a
+      world segment (`Core/NativeBodyReveal`); the body's toon gives each pixel its nearest segment's share and dithers it in
+      the voxel reveal's cells (`NativeVisualBodyFx.cginc` `RevealClip`: the body, its outline and its cast shadow). The voxel
+      body no longer stands in while the reveal is under half.
+    - The model holds its own weapon where the entrance shows one; the bow keeps its live voxel bow, as in the arena.
+    - **The Sheldon intro on the model (2026-10-27; owner: "Still doesn't show correct model in intro (Tested with Sheldon
+      Intro)"):** it had kept the voxel body because its look is the Sheldon Head, a whole voxel head. The intro now poses
+      the model, and the Sheldon Head is a hood over the model's head with its live face (`NativeModelHats.SheldonScale`,
+      `SheldonOffset`: the face screen just in front of the model's face from chin to brow, the hood round the hair laid
+      flat by the hood shape). Its voxel mantle and drapes, cut for the voxel chest, are left off; the model wears its own
+      top. The same hood shows wherever the Sheldon Head is worn on the model.
+      - **Since 2026-10-27 (`claude/sheldon-clothes`):** the cloth Sheldon hood (Sheldon's clothes, below) in place of the
+        voxel one; the intro's first beat still forms the voxel body out of its data streams, as every entrance's reveal does.
+    - The arena pose and the intro share `VisualBodyOf` and `VisualBodyBind`.
+    - Settings · Player model is now set at the top of every frame, so Classic reaches intros, previews, replays and the
+      draft (they return before the arena renders).
+  - **The sky death broadcast (2026-10-25, `claude/model-broadcast`):** the victim's portrait is the model.
+    - The model is made on the broadcast rig, its meshes cut to the bust: the portrait's chest, neck, head and collarbones,
+      plus the upper spine and arms, where the model's shoulders are.
+    - It draws through the fresnel ghost shader in the broadcast's cyan, so the face reads without the voxel edge lines.
+    - It is scaled 1.6 about its neck to fill the frame fitted to the voxel head; the head drifts as before. The scanlines,
+      frame and nameplate stay.
+    - It wears no hat (as in the arena). Classic keeps the voxel portrait and its edges.
+    - Local tool: `cam=x,y,z,lx,ly,lz[,fov]` adds a fixed-eye shot (the broadcast hangs at (0 or ±43, 72, -115)).
+  - **Live ghosts (2026-10-25, `claude/model-ghosts`):** the ghosts posed every frame are the model where their pilot wears
+    it.
+    - Which ghosts: the Shadow Step decoy, the directed entrances' afterimages and hologram (while the intro pilot is the
+      model), and the Cyber Lord's split, clone and idle-glitch copies.
+    - Each is a pooled visual body on its holder rig, bound to the ghost's pose and drawn through that ghost's own shader
+      (`NativeWeaponGhost`, or the entrance's one-layer `NativeEntranceGhost` with its scanlines), in its tint and opacity.
+    - Body only: the ghost weapons stay voxel. It hides once a frame passes without it.
+    - The Cyber Lord's fork bomb clones are live ghosts too (2026-10-25, `claude/model-revive`). The Siren's crush drop
+      keeps the voxel body.
+  - **The co-op revive (2026-10-25, `claude/model-revive`):**
+    - **The kept body:** a model posed from the kept body's joints (lifted with the repair), in place of the voxel
+      wounded/healed bodies, the split halves, the hat, and the voxel hologram band and crater glows.
+    - **Missing parts:** grow back from the top of each lost subtree as their repair solidifies (`NativeReviveHolo.Solid`).
+    - **Kept as before:** the scan slab, the repair voxels flying in, the ring and column.
+    - **The stand-up:** the revived pilot's model is bound again from the rig after `StandFromBody`, so it stands up from
+      the kept body.
+    - **Simplifications:** a split body's halves no longer float together (the model lies whole). The second scan band
+      (voxel) is off on a model pilot.
+    - The local tool's `gallery=T,ReviveGallery` turns on the sandbox revive gallery.
+  - **A corpse a co-op revive makes first** (NativeInteractionPresentation: the revive reads the body before the death
+    presentation has drawn it) now wears its visual body too; it had stayed voxel (2026-10-25, `claude/model-revive-corpse`).
+
+**Faces (2026-10-30, `claude/faces`; Unity Editor, local tool v233).** Owner: "I think we have facial expressions available?
+Can we begin utizling those in the game as well? For zombies as well. Characters are currently emotionless".
+- **What the pack has.** Head_AnimeYoung carries 43 `Expression_*` blend shapes (brows raised, lowered, angry, sad; eyes closed,
+  narrowed, opened wide; the mouth smiling, sad, wide, grimacing, puckered; the jaw open and aside; clenched teeth, a big smile,
+  the tongue, the vowels A E I O U, a kitty mouth, blank eyes and mouth), the lashes the same 43, the brows the 8 brow shapes, the
+  teeth the 23 mouth and jaw shapes (listed by the local tool's `shapes` option). Its expression clips (Angry, Devious, Evil, Happy,
+  Sad, Smile, Surprised, Blink) set them; nothing in the game did.
+- **Core/NativeFace.** 35 of those shapes in 24 moods (the pack's Happy, Sad, Surprised and Devious as clipped; the rest composed):
+  layered from what a body does this frame, eased (in .06 s, out .2 s; the lids at most .035 s) and blinking on its own clock (every
+  2.2 to 5.6 s, sometimes twice).
+  - A pilot in a match: a set, narrowed focus; a shout through a blow, a special or an ability; gritted teeth through a block or a
+    roll; a squint down the sights; a wince when hit (by the hit's strength), strain under 40% health, a daze when stunned, a grin
+    for 1.6 s after a kill, a breath sprinting tired; slack and closed-eyed once dead. In the menus (the rooftop, the lobby cards,
+    the draft, the intros) a smile.
+  - A zombie: its kind's own face (the shambler's moan, the runner's bared teeth, the spitter's slack mouth, the brute's grimace,
+    the Hulk's rage), its jaw where its gait opens it (the voxel jaw's own opening: moans, bites, a roar; a bite snarls wide), a roar
+    through a blow, a wince when hit, the spitter's mouth gathering through a spit, slack once dying.
+- **Runtime (NativeVisualFacePresentation).** Each model body finds its face meshes once (the shapes by name), and its face is set
+  where it is posed: every pilot body in `VisualBodyBind` (the match, the menus, the intros, the draft, a revive), a zombie in
+  `ZombieModelBind` (at the crowd clock's rate). A weight is written only when it moved half a point; a hidden head (the Sheldon
+  hood) is left.
+- **Checks:** `CoreTests --faces` (the shapes on the pack's head, the moods in range, a pilot's focus, wince, shout, grin, smile and
+  death, the blink, easing at most 18 points a 60 Hz frame, five zombie kinds' own faces, jaws and the spitter's pucker, nothing
+  allocated a frame, the wiring).
+- **Not yet:** voice-driven mouths (no voice lines speak), the Sheldon Head's own face (it has its own expressions), the death
+  scenes and corpses (not posed through the bind: they keep the face they had).
+
+**Not yet (step 4 continues):**
+- **The owner's concept pieces: the tech mask and the glowing visor (2026-10-25, `claude/model-cyberlord`):**
+  - Our own pieces, built in code (`Core/NativePilotGear.cs` `Mask`, `Visor`), so nothing licensed is committed.
+  - **Fit:** measured on the baked head in its head bone's frame (the local tool's `bozo-face.request`).
+    - The mask covers the nose, mouth and chin about 5 mm off the face. Its lower edge follows the jaw and curls under
+      the chin, and its top tucks under the visor. Accent vents sit on the cheeks, a strip runs down the chin, and straps
+      go back into the hair.
+    - The visor is a band of accent glass over the eyes (4.2 cm with its frame), wrapping in front of the hair to pods at
+      the temples.
+  - **Refit (2026-10-27; owner: "Mask seems to glitch on face still"):** measured in play (the local tool's `face=` log of
+    the face against the shell, every frame through every move and attack: the face is rigid on the head bone, the clips
+    never move the jaw) and on the baked head:
+    - the nose bridge came through between the mask's two top rows (to 4 mm; the face and the shell fought there): the top
+      rows now clear it by at least 3 mm;
+    - the sides stood 14-16 mm off the cheeks and past the jaw (a plate with gaps that opened as the head turned): now 5-6 mm
+      off the cheeks, wrapping the jaw;
+    - the straps floated up to 3 cm off the head (a stray line across the cheek in profile): they run 5-7 mm off the cheek
+      to the ear.
+  - **Who wears it:** the Prototype body skin on the model. The Standard keeps BoZo's face as authored (owner,
+    2026-10-22). One presentation rule (`WearsFaceGear`) sets this. **Owner decision (2026-10-26):** keep the mask and
+    visor on the Prototype skin; the default keeps the face. **Superseded (2026-10-30, the default outfit):** on the model
+    the `face` pick alone decides, whatever the body skin, and its default is the robot's helmet (see "The default outfit"
+    below).
+  - **Variants (2026-10-26, `claude/model-face-variants`):** the skin map's last entry `face` picks both (the default,
+    never written), the visor alone or the mask alone.
+    - The account server (`src/relay/accounts.ts`) still drops the entry, so a signed-in pilot's pick resets to both at
+      the next sign-in until Astra adds it there. In a session, in matches and in local saves it works.
+  - **The Locker on the model:** while the model draws (installed, Player model not Classic), the body cards describe the
+    model ("Your pilot's own face", "Tech mask, glowing visor", "Coat in Classic mode") with model thumbnails.
+    - The face gears follow the Prototype body in Appearance's BODY SKIN row and have their own Skins card. Picking one
+      also puts on the Prototype body.
+    - The Locker's live preview is still the voxel portrait stage (the portrait files).
+- **Switching the clothes (2026-10-26, `claude/model-wardrobe`; owner: "integrate switching the clothes on the model"):**
+  - **The outfit:** `Core/NativeLook.cs` is the client half of the look contract (CHARACTER-LOWPOLY section i). It has five
+    slots with our own ids:
+    - hair: spiky, wild locks, side swept, tied back, fringe and tail;
+    - top: open hoodie, hard jacket, hoodie, T-shirt, tank top, sweater;
+    - bottoms: belted pants, baggy pants, skinny jeans, cuffed shorts, khakis;
+    - hands: fingerless gloves, gloves, arm bands, sweat bands, bare hands;
+    - shoes: mid-tops, work boots, sneakers, lace-ups.
+
+    The first of each slot is the concept outfit. The map lives in `prefs.look`.
+  - **Who wears it:** this client's own pilot. Every other pilot wears the default until the seat carries a look: Astra's
+    part of the contract (field, frames, account allowlist, gates).
+  - **The bake (local tool, `wardrobe=1`):**
+    - Every wardrobe piece is baked into the prefab with its object off. The covered body parts are kept, off.
+    - `Resources/ChipArenaVisualLook.bytes` holds each id's renderers, covers and tags, plus the head's always-on tag
+      (`anime`).
+    - It also holds the `Tag_*` shapes (hair under hats and hoods, trousers tucked into high boots).
+    - It also holds the gear's anchors, measured for each top with each hands: the core, the device and its sleeve
+      radius (3.2 to 7.8 cm), and the back emblem's distance and tilt.
+    - 97 renderers in all; an outfit draws about 20 k triangles.
+  - **Runtime:**
+    - `VisualDress` dresses every model instance when it is made: the live and first-person bodies, corpses, revive
+      bodies and death scenes.
+    - From then on only the worn renderers are listed, so ghosts, echoes and cut corpses never see hidden pieces.
+    - A changed outfit makes the body again. The gear takes the top's anchors, with one device model per sleeve radius.
+  - **The Locker:** Appearance has an OUTFIT section while the model draws. Save Pilot keeps it, and Revert and the
+    unsaved-changes baseline cover it. Since 2026-10-28 it is one fixed-height row a slot (`NativeOutfitPicker` in
+    `Runtime/NativeLockerOutfitUI.cs`): the slot's icon and name, then wrapping arrows round the worn piece's name and a
+    dot a piece. Two columns from 700 px. More pieces add dots (a count past 14), not rows.
+  - **Skin tone and masks (2026-10-28, owner: "Give skin color customization, along with a 'Color selector circle' for
+    more color options. Remove Body Skin Options 'Prototype' and 'Sheldon Clothes' and just add 'Masks' section"):**
+    - On the model, Appearance reads CALLSIGN, MASKS, SKIN TONE, ACCENT COLOUR, OUTFIT. BODY SKIN and BODY COLOUR show
+      only in Classic (the voxel bodies), and the Skins tab lists only the weapons.
+    - MASKS: No mask (the Standard body), Mask + visor, Visor, Mask (the Prototype body's face gear, `face` entry of the
+      skin map). Hovering one tries it on the stage.
+    - SKIN TONE: DEFAULT (the model's own skin), ten tones light to deep (`NativeLook.SkinTones`) and a colour wheel
+      (`Runtime/NativeColorWheelUI.cs`: hue round the disc, saturation outward, a brightness track). Hovering a tone tries
+      it on the stage; a drag on the wheel retints the stage pilot live.
+    - The tone rides the look map as its last entry, `skin:rrggbb` (`Core/NativeLook.cs`). The DEV gate keeps it. A map that
+      differs only in it is the same outfit (`SameOutfit`), so a body takes a new tone in place (`VisualRetone`), never
+      made again.
+    - Drawing: the toon shader scales each pixel that reads as skin (`SkinShare`, mirrored in `Core/NativeColorWheel.cs`)
+      by the tone over its part's base skin (the brightest skin colour of the part's palette, or the body's for a textured
+      part). The base skin itself becomes the tone exactly, and shade, blush and lips keep their ratio. Whites, greys, the
+      cyber palette and dark cloth keep their colour. Only body parts and the `Head.`/`Body.` meshes take it (not hair, not
+      clothes). It is written once when a body is dressed or the tone changes, never per frame.
+    - **Account:** the account Worker (`src/relay/accounts.ts` `lookMap`, Astra's) drops keys it does not know, so a
+      signed-in pilot's tone is kept on this PC (`NativeLook.KeepSkin`) until the Worker that stores `skin` (Astra, #296) is deployed.
+      Rooms carry it already (the look travels as it is through `NativeLook.Gate`).
+  - **Install:** the body grew to 58.2 MB. The installer's budget is now 72 MB, and the zip's member total cap 96 MiB
+    (`tools/install_local_assets.py`).
+- **Cloth (step 5, 2026-10-26):**
+  - **The hook:** `Runtime/NativeVisualCloth.cs` is what a local simulation registers into.
+    - A body attaches when it is made (never the first-person body).
+    - It resets on a gap in the body's frames.
+    - It holds the pose as drawn on the low tier and past 30 m from the arena's camera.
+  - **The local bridge** (git-ignored, `LocalAssets/ChipArenaLocalTools/Runtime/ChipArenaClothBridge.cs`): Magica Cloth 2
+    BoneCloth on the worn hair's chains (`Hair_*`, `Tassle*`, `Cloth_*`).
+    - It uses the hair pack's ShortHair and LongHair presets.
+    - It adds capsule colliders on the head, the upper back (`spine_04`) and the upper arms.
+    - It runs on scaled time after the binding poses the bones in `LateUpdate`.
+    - Checked in play: the chain tips swing up to about 20 degrees as a pilot runs and stops, then settle.
+  - **Builds:** cloth runs only where the bridge and the package are installed (the owner's Editor and local builds). The
+    builder's test builds have none until the build carries the package (Burst, Collections, Mathematics in the manifest)
+    and the zip carries Magica and the bridge: Astra's build tooling, with the owner's go-ahead.
+    - **2026-10-28 (`claude/cloth-bridge-regen`):** the manifest pins are in shared (Astra, #294/#296), and the bridge is
+      regenerated to the bundle's spec (the session's `cloth_bridge3.py`: the three hooks, every piece guarded so one bad
+      piece is skipped with one warning, readable meshes and maps only, Magica's Normal step and pose ratio 0, its camera and
+      distance culling off, modest MeshCloth reduction, cowl colliders on `neck_01`, `spine_05` and the collarbones). The
+      licensed-assets zip packed with `--with-cloth` carries it with Magica 2.18.4 (414 files, 2.42 MiB of the 12 MiB
+      budget); the owner puts it on Drive as the builder's `LocalAssets.zip`.
+    - Only bodies the game holds still get cloth: the live and draft pilots and whole corpses (`CreateVisualBody`'s
+      `simulate`), not the death broadcast's bust, the live ghosts or the menu portraits.
+  - **MeshCloth (2026-10-27, `claude/sheldon-clothes`):** a worn piece with a paint map (red fixed, green moving) runs as
+    MeshCloth on the pack's skirt preset: the pack's own maps (`MC2Map`; the bake copies them, readable, to
+    `Resources/ChipArenaVisualCloth/<renderer>`: the kimono's skirt) and the game's own (`NativeVisualCloth.PaintMaps`: the
+    Sheldon hood's cowl). The bridge adds colliders on the hips, thighs and calves and a floor plane under the pilot.
+  - **Not yet:** maps for the other pack pieces (none ships one).
+  - **Where:** the live body, the draft's pilot and a whole corpse, which keeps them as it fades.
+  - **Not drawn yet:** on a split half, a crushed head or a corpse under a kill look, the death broadcast's bust, or echoes
+    and ghosts.
+- **Sheldon's clothes on the model (2026-10-27, `claude/sheldon-clothes`; owner: "Can you remake Sheldon clothes into
+  functional clothing items (Hood/face, robe, pants, shoes. Shoeless option too - these are all dev items)", "I want it to
+  utilize magica cloth for any kind of fabric movement. I want a very clean design that fits the model perfectly.", "Id like
+  to utilize the same face on the sheldon face"):** the DEV Sheldon Clothes (the voxel body skin's long dark coat with
+  glowing seams) and the Sheldon Head as pieces the model wears.
+  - **The pieces** (`Core/NativeSheldonWear`, `Core/NativeLook`): upper `sheldon-robe` (the pack's long kimono: a wrap front,
+    a sash, wide cuffs, a skirt to the ankles), lower `sheldon-pants` (its slim dress trousers), feet `sheldon-boots` (its
+    work boots, shared with Work boots) and `barefoot` (no shoes).
+    - DEV only: each slot's last pieces; `NativeLook.Gate` drops them without live DEV access (the Locker, which lists and
+      marks them only then, and the pilot's own bodies through `LookShown`). The look's network half must gate them too.
+    - **Palette:** the Sheldon Head's dark navy cloth (`Cloth` 0x1f2538), a lighter navy on the trims (`Trim` 0x343d5c), the
+      accent the glow, set per renderer (`VisualSheldonPalette`); the glow is the Sheldon glow (`NativeBodySkins.SheldonGlow`).
+    - **Piping:** the bake writes each piece's colour weights with every trim region's edge against the cloth (its green
+      texels within 5 mm of red) turned to the accent (`SheldonMap`, `Resources/ChipArenaVisualWear/<renderer>`): the robe's
+      collar, cuffs, front and hem edges, the trousers' seams, the boots' caps and laces glow.
+    - **Bare feet** stand on the floor: the bake writes each feet piece's lift (its sole against the default shoes'), and a
+      body's skeleton is set by it before the binding reads its rest (`VisualLiftOf`), the feet's clearances with it. Bare
+      feet sit 2.65 cm lower; the sneakers and lace-ups, which stood 1.8 cm over the floor, now stand on it.
+  - **The hood** (`Core/NativeSheldonHood`, `Runtime/NativeSheldonHoodPresentation.cs`): the Sheldon Head worn on the model
+    is a cloth hood, made with the body (`VisualHooded`: a body is made again when the hat changes).
+    - **Shape:** horizontal superellipse sections round the head's middle; the half width, back and front from smooth
+      profiles; a dome over the crown with a soft point up the back seam. Measured on the bake (`bozo-face` with `hood=1`:
+      every hair style laid flat by its hood shape, every top's collar and shoulders): at least 2.3 cm clear of the head and
+      hair, clear of every top's shoulders.
+    - **Opening:** an arch from the chin to over the brow (20 cm wide), its rim 18 to 20.5 cm ahead of the head bone (a brim
+      over the brow, the walls standing out past the face), piped with a rolled tube; a cowl over the neck and the tops of
+      the shoulders, its hem down to the chest and back with a piped band; a dark lining inside.
+    - **Face:** the Sheldon Head's own (owner: "the same face"): a void plate shaped to the opening (`NativeSheldonHood.Void`,
+      with the face's baked soft glow), the live crescent eyes, jagged grin and broken ring (`SheldonHoodFace`;
+      `SheldonHoodStill` on the portraits and the rooftop), on the face's fit (`NativeModelHats.SheldonScale`). The void
+      reaches 1.6 cm under the chin, so a look down through the opening never meets the gap over the chest.
+    - **Skinning:** the head to the chin (the face's frame and the rim), its back easing onto the neck from 6 cm higher
+      (the nape follows the neck over a hoodie's hood); the cowl through the neck to `spine_05`, its sides partly on their
+      collarbone.
+    - **Cloth:** its paint map holds the hood to the chin fixed and lets the cowl move (`NativeSheldonHood.Maps`).
+    - The hair hides under it. Where it shows: play, the intros (the Sheldon intro's resolve), the draft, revives, the
+      portraits and the rooftop (where the model had shown no Sheldon Head).
+    - **The face everywhere (2026-10-29; owner: "sheldon helmet seems to remove the "face" on the mask, and instead show
+      the player model face"):** the draft's pilot wore the hood without its face (its hat draw left the Sheldon Head
+      out), so the chip-select close-up showed the model's face in the opening; so did the authored death scenes and a
+      revive's kept body (they draw no hat) and the revive gallery's stand-in.
+      - All four now draw the void and the face (`SheldonHoodStill` on the draft and the gallery, `VisualDeadHood` on the
+        scenes, the revive body and corpses).
+      - Under the hood the model's head and face pieces are hidden with the hair (`VisualUnderHood`: `Head.`, `Eyes.`,
+        `EyeBrows.`, `EyeLashes.`, `Teeth.`), so wherever the void does not draw the dark lining shows, never a face.
+      - The face gear (the masks) is left off under the hood (live, draft, corpse): it would break through the void.
+  - **Where cloth runs:** the Editor and local builds (the bridge); builder builds once the owner's Drive zip carries the
+    cloth runtime (packed 2026-10-28, above).
+- **The concept's back emblem (2026-10-25, `claude/model-cyberlord`):** a smiley with X eyes in flat accent-glow strokes
+  (`NativePilotGear.Emblem`, our own), about 8 cm across on the upper back. It sits on the chest's model bone, measured on
+  the baked hoodie, and glows as the core does. Every model pilot wears it, as the concept's default outfit does.
+  - **Why not the pack's decals:** the pack projects decals into textures at runtime, and the hoodie's back is split and
+    stretched in its UV layout, so a UV decal would distort.
+  - **The pack's pattern, decal and normal-map inputs are not ported:** no baked material uses them (of the pack's 73 toon
+    materials, 4 head and skin materials carry a pattern, 5 a normal map with the switch off, none a decal). They wait
+    for an outfit that does.
+- **Done on the model (2026-10-25, `claude/model-dressing`; owner: "Lets work on all these"):**
+  - **Joint frames:** each game joint's frame is captured on its mapped model bone at the first bind (`VisualJointFrame`),
+    so what rides a joint follows the model through the pack's clips.
+  - **Hats** sit on the model's head at their own size, resting on the hair. The pack's under-hat hair shapes left the
+    model nearly bald and were not used. The Auditor halo floats there too; the Sheldon Head (a whole head) stays Classic
+    only.
+  - **Hats fitted to the model (2026-10-27, `claude/model-mask-hats`; owner: "the hats still don't sit naturally and are
+    too big"):** the hats are built for the voxel head (about 36 cm across); on the model's head bone they stood 15 cm low
+    and 9 cm ahead of the skull at that size. `Core/NativeModelHats`:
+    - scaled 0.55 (halos 0.45) about the voxel crown onto the model's (the pressed hair's top, the skull's middle), then
+      sunk by kind: brimmed and knitted hats and the party cone down to a band about 5 cm over the brows, the open crown up
+      in the spiky hair, the antenna and halos raised clear of it;
+    - a hat that covers the crown presses the hair under it with each hair piece's own hood shape (`Tag_Hood`: the spikes
+      laid into a ring round the head; the pack's hat shape bares the scalp down the back, which only its own deep hats
+      cover);
+    - the Sheldon Head is a cloth hood (Sheldon's clothes, below).
+  - **Hats made for the model (2026-10-30, `claude/model-hats`; owner: "Need to rework hats, they were all designed voxel
+    style and a lot of them have fitting issues (Player head shows outside of hat)", then "Hats still cutting hair
+    completely"):** every bank hat (cap, beanie, top hat, wizard, crown, party cone, antenna, halo, cowboy) is now a smooth
+    model of its own, built round the model's skull in the head bone's frame (`Core/NativeModelHatMeshes`; band 12.1 by
+    12.7 cm half-widths, 1.6 cm over the brows, the crown 1.5 cm over the skull). These are drawn as `hat-<id>+model` and
+    `+model+tint` wherever a hat sits on the model's head: the arena, the rooftop, portraits, the draft, the revive
+    stand-in and corpses. The voxel hats stay for the voxel body, gibs and holograms.
+    - **The hair under a hat.** The pack's one `Tag_Hood` shape flattened the whole style, so a hat had to be sized round
+      the flattened hair, and the scalp showed. Now each closed hat holds the hair as its own crown would
+      (`NativeModelHatMeshes.HairPress`, applied by `VisualHatHair` and `VisualPressedHair`):
+      - hair above the band is tucked inside the crown, toward the head's middle;
+      - hair just under the band goes in at its own height onto a rim that widens fast below the band; lower down the hair
+        is untouched;
+      - the hat holds the hair it moves (weights onto the head, or the piece's own bone under it) as far as it moved it, so
+        the cloth cannot swing that hair back out;
+      - a lock the press would tear (the fringe-tail's tail) goes under the hat whole.
+    - Each hair piece's pressed copy is made once per piece and hat, off the main thread, from the piece at rest on the
+      head. Some pieces hang off their own bone (`HairFront`/`HairBack`) rather than the head. Corpses wear the live
+      body's pressed hair; the Sheldon hood still lays the hair flat with `Tag_Hood`.
+    - The crown, antenna and halo stand in the hair; the cone holds only the hair in its own footprint.
+    - Also fixed: the band's dip down the back of the head had run up the whole crown, sinking the back of domed hats
+      onto the scalp; the cowboy's crease and pinches left its peak folded.
+    - Checks: `Tests/ModelHatChecks.cs` (`--hats`), on a skull of the head's measure.
+  - **The robot suit (2026-10-30, `claude/robot-suit`; owner: "Lets also design clothing that resembles our previous player
+    model (Robotic style) and reference the previous face. Of course, in the new player style."):** the original voxel
+    robot's build worn as plates over a dark fitted under-suit, in the model's smooth style (`Core/NativeRobotSuit`). Our own
+    pieces, built in code: nothing licensed is committed.
+    - **From the robot:** its shell (here the pilot's body colour over an off-white, a little self-lit so it stays bright
+      in any arena's light) and the accent's light along its edges and round its waist. Its back carries the reactor panel
+      with the glowing cross, its neck the segmented dark collar, and the square ear modules with their light sit either side
+      of the head. The robot's face (the visor bar, the mouth plate) is the MASKS row's face gear, which can be worn with it.
+    - **The pieces:** chest and back plates, belt, collar, ear modules, pauldrons, vambraces (the right one stops short of
+      the wrist device), thigh plates, knee caps and shin guards, about 12,300 triangles. Each rides one bone. It is authored
+      on the pack body at rest (its bind pose) and drawn with that bone's matrix times its bind pose, read off the body's own
+      skinned meshes (`Runtime/NativeRobotSuitPresentation.cs`).
+    - **The fit:** measured in Unity on the rest body in the under-suit (sweater, skinny jeans, gloves, work boots): the
+      torso's outline every 15 degrees at 13 heights, each limb's and the neck's cross-sections. The plates sit about a
+      centimetre over them.
+    - **The pick (superseded by "The robot armour as clothing" below):** the skin map's `suit` entry (`robot`, the default
+      since "The default outfit" below and never written, or `none`). It is set by a SUIT row
+      under the Locker's OUTFIT slots, and is independent of the masks and body skins. Worn, its under-suit takes the clothes'
+      place (`VisualLookOf`); the pilot's hair and skin tone stay. The live body, the draft's seat and a corpse wear it; the
+      first-person arms wear the under-suit's sleeves. The back emblem stays under the back plate. Classic and older clients
+      ignore the entry.
+    - The account server (`src/relay/accounts.ts`) still drops the entry. A signed-in pilot's suit therefore resets at the
+      next sign-in until Astra adds it there (`suit`: `none` / `robot`, default `none`). In a session, in matches and in
+      local saves it works.
+    - Checks: `Tests/RobotSuitChecks.cs` (`--suit`).
+  - **The robot's helmet and half mask (2026-10-30, `claude/robot-helm`; owner: "Can we develop essentially a full helmet and
+    a half mask similar to what we had on voxel?"):** the original voxel robot's head made for the model's head, in its smooth
+    style (`Core/NativeRobotHelm`). Our own pieces, built in code: nothing licensed is committed.
+    - **The helmet:** a rounded shell (flatter at the face, rounder behind, squarer at the jaw) a centimetre or so round the
+      model's head and open under the jaw. It carries a recessed visor of accent glass in a dark frame over the eyes, the
+      robot's three grille slots, a seam from the chin up to the ear modules, back vents and a dark seal round its foot.
+      About 7,900 triangles.
+    - **The half mask:** a plate over the nose, mouth and chin that curls under the chin, with wings back to ear modules over
+      the ears. It has the grille slots and a light on each cheek. Its sections were fitted per height to the face, 7 mm or
+      more off it. About 2,500 triangles.
+    - Both take the body colour, as the suit's plates do, and the accent's light. They were measured against the head
+      dumped from Unity (head, eyes, lashes and brows, in the head bone's frame).
+    - **The pick:** keys in the skin map's `face` entry, `helm` and `half`, picked in the Locker's MASKS row ("Helmet",
+      "Half mask") with thumbnails. No key is longer than `visor`, so `MaxLength` holds.
+    - **Where they draw:** wherever the face gear draws (the live body, the draft's seat, the menu's and the Locker's pilots,
+      a whole corpse). The face gear now also shows in death scenes and on revive bodies. The helmet also stays on the half of
+      a split corpse that holds the head.
+    - **Under the helmet:**
+      - the hair is hidden: each hair piece draws a copy of itself without triangles (`VisualPressedHair`), on corpses too;
+      - a hat sits on the helmet. Each model hat has a fit there (`NativeRobotHelm.HatFit`): the closed hats about an eighth
+        larger and 2 cm up, the crown, cone, antenna and halo lifted. Each clears the shell by 2 mm or more (a cone's elastic
+        runs into it).
+    - With the robot suit, the suit's own ear modules are left off under either piece.
+    - Checks: `Tests/RobotHelmChecks.cs` (`--helm`).
+  - **The default outfit (2026-10-30, `claude/robot-default`; owner: "I think we will make the default outfit the new
+    designed armor and that full helmet"):** a model pilot with no picks wears the robot suit and the robot's helmet.
+    - **Face:** the `face` keys are now `helm` (the default), `half`, `both` (the mask and visor; it was `mask-visor`, which
+      was the default and so never written), `visor`, `mask` and `none` (the model's own face). The longest map, with
+      `face:visor` and `suit:none`, is 319 characters, under `MaxLength` 320.
+    - **On the model the `face` pick alone decides** (`FaceGearOf`), whatever the body skin. The body skin still picks the
+      voxel bodies in Classic, whose defaults are unchanged. The Locker's MASKS row lists the face keys in order (Helmet
+      first, No mask last) and no longer puts on the Prototype body.
+    - **Suit:** the `suit` default is `robot`; "None" is written as `suit:none` (superseded: the suit is four clothing pieces
+      since "The robot armour as clothing" below).
+    - **Who gets it:** every pilot without picks, including bots, the draft and a fresh profile. A pilot who had picked
+      "Mask + visor" (the old default, never written) now wears the helmet until they pick again.
+    - The menu rooftop's crowd keeps its own faces and clothes (`face:none,suit:none`); the rooftop's own pilot wears its
+      owner's picks. Other pilots' portrait cards carry only the body skin, so they show the default.
+    - **Older clients:** they draw no suit for a default pilot, show the face gear only on the Prototype body, and read the
+      new keys as their own default.
+    - **The account server** (`src/relay/accounts.ts`) still knows only `mask-visor`, `visor` and `mask`, with `mask-visor`
+      as the default, and drops `suit`. Until Astra updates it, a signed-in pilot keeps the helmet and suit (the defaults, never
+      written), the Visor and the Mask across a sign-in; Half mask, Mask + visor (`both`), No mask and No suit reset to the
+      default at the next sign-in. The update: `FACE_SKINS`
+      {`helm`, `half`, `both`, `visor`, `mask`, `none`} with default `helm`; `suit` in `SKIN_WEAPONS` with {`robot`,
+      `none`} and default `robot`.
+    - Unity's Jobs IL post-processor (Mono.Cecil) cannot read an Assembly-CSharp PDB with exactly 65,535 local variables
+      ("ILPostProcessor has thrown ... ArgumentOutOfRangeException ... ReadLocalScope"). This change briefly landed there;
+      two named locals took it to 65,537. Any later change that lands on 65,535 needs the same nudge.
+  - **The robot armour as clothing (2026-11-01, `claude/robot-clothes`; owner: "It seems the clothes no longer show with this
+    new skin. Can we make the armor portion into clothing? Like separate them like we have other clothes currently."):**
+    the suit's plates are four clothing pieces in the outfit's slots (`Core/NativeLook`), each the slot's first id and
+    default, so any of them goes with any other piece.
+    - **The pieces:**
+      - Top, "Robot armour" (`robot-armour`): the sweater with the chest and back plates, collar, pauldrons, vambraces and
+        ear modules.
+      - Bottoms, "Robot legs" (`robot-legs`): skinny jeans with the belt, thigh plates, knee caps and shin guards.
+      - Hands, "Robot gauntlets" (`robot-gauntlets`): gloves with a plate on the back of each hand (a dark knuckle guard
+        with four studs, a light strip). New; about 1,400 triangles.
+      - Shoes, "Robot boots" (`robot-boots`): work boots with a toe cap round the front of each toe (a light strip across
+        its back) and a heel guard (a light strip along its top). New; about 2,600 triangles. The whole set is about 16,300.
+    - **How a piece is worn:** the body is dressed in each robot piece's garment (`NativeRobotSuit.Dress`, cached per outfit
+      in `VisualLookOf`), and each slot's plates draw only with its piece (`NativeRobotSuit.Shown`, a bit per bone). The
+      vambraces are left off under arm bands, which wrap the forearms they sit on. The ear modules are still left off under
+      the helmet or half mask. The back emblem hides only under the armour's back plate.
+    - **The new plates' fit:** measured on the rest body's gloves and work boots dumped from Unity. The glove backs (the
+      higher of the left glove and the mirrored right one) are on a grid in the hand's frame, with the plate 3.5 mm over
+      them. The toe cap is a shell over the smallest ellipsoid that holds the boot's front. The heel guard follows the heel's
+      reach per height. The gauntlets ride the hand bones, the toe cap and heel guard the foot bones (the stiff boot's toe
+      follows the foot, not the toes). The boots' plates stay under 7.5 cm, below the khakis' hem; baggy and belted pants
+      tuck into the boots.
+    - **Gone:** the skin map's `suit` entry (a saved `suit:none` is dropped as an unknown entry) and the Locker's SUIT row.
+      The longest skin map is now 309 characters.
+    - **The rooftop crowd** wears the concept's clothes (`NativeLook.Concept`: open hoodie, belted pants, fingerless gloves,
+      mid-tops) and no face gear (`face:none`).
+    - **Defaults moved:** a saved outfit never names its default, so the old defaults (open hoodie, belted pants,
+      fingerless gloves, mid-tops) are now written when picked. A pilot who had them, unsaved, now wears the robot pieces.
+      The feet lift still measures against the bake's rest shoes (the concept's mid-tops).
+    - **Older clients** (the last test build) read a missing `suit` entry as the full robot suit, so they draw it over
+      every new-build pilot who has no robot piece; cosmetic only.
+    - **The account server** (`src/relay/accounts.ts`): `LOOK_SLOTS` still lists the old ids with the old defaults first and
+      drops a pick equal to its default. Until Astra updates it, a signed-in pilot who picks the open hoodie, belted pants,
+      fingerless gloves or mid-tops gets the robot piece back at the next sign-in (the robot pieces, never written, and every
+      other pick survive). The update: `robot-armour`, `robot-legs`, `robot-gauntlets` and `robot-boots` first in `upper`,
+      `lower`, `hands` and `feet`. The `suit` entry asked for earlier is no longer needed.
+    - Checks: `Tests/RobotSuitChecks.cs` (`--suit`), with pins in the visual rig, Locker, helmet, body skin and Cyber Lord
+      checks.
+  - **Hats that never drew on the model:** the source-model bank kept one draw list per part and layer, holding the camera
+    it was first queued for. The menu rooftop's crowd wears the cap, beanie, antenna, cowboy hat and halo for the menu
+    camera, so in a match those five drew only to the camera the menu used (other cameras, portraits and captures showed
+    none). A part queued for another camera now gets its own list (`NativeSourceModels.DrawsFor`).
+  - **Body chips, the spell charge orb and the hand motes** now draw for model pilots (they had been skipped).
+  - **Living wounds' blood and chips** spray from the hit point on the model.
+  - **The parry flash:** the model's own silhouette, snapshotted each frame of the flash.
+- **The Cyber Lord's hardlight pieces (2026-10-25, `claude/model-cyberlord`)** ride the model's joints, both the aura and
+  the gauntlets. The joint frames are now taken after the rig's hands go onto the model's wrists, so the gauntlets and
+  hand chips close round the model's hands.
+- **Pattern and decal overlays** for other outfits; normal maps (none of the baked materials uses them; see the back
+  emblem above).
+- **The draft (2026-10-25, `claude/model-draft`):** the drafting pilot wears the model in the cyber corridor.
+  - `VisualDraftPose` binds the stage's pose (hat on the model's head, no weapon) and puts the model's hips on the pose's
+    pelvis; the stage's camera framing is unchanged.
+  - The catch palm, the chip's carry and the plant rings move from the stage's wrists onto the model's (the rig's hands
+    sit on the model's wrists after the bind).
+  - The Siren and Classic keep the voxel body. The local tool's `choose=T` makes the drafting seat pick.
+- **Every kill style wears the model** (cut, crushed and split bodies severed at the joints).
+  - A whole corpse keeps the model's lengths (2026-10-26, `claude/model-portraits`; owner: "ragdoll effect is currently
+    stretching the player model"). Placing every bone on its ragdoll part stretched the skin as the parts drift apart in
+    the fall. Each bone now turns with its part and keeps its rest offset; only the root and a severed piece's first bone
+    take their part's place. Split halves keep the old placement.
+- **The menu portraits (2026-10-26, `claude/model-portraits`; owner: "Player model still shows voxel in customization?"):**
+  while the model draws, every pilot portrait is the model: the Locker's live preview, the home pilot card, and the lobby
+  and results cards.
+  - `Runtime/NativeVisualPortraitPresentation.cs` poses a model instance per card in the voxel portrait's lobby pose and
+    framing, so the backdrop and ring sit where they did.
+  - The portrait shows the outfit (this client's own cards), the body skin's face gear, the hat, the held weapon, the
+    gear, and the podium and chair.
+  - Its own key and rim lights and a hemisphere ambient light it. Fog is off, and the scene's settings are restored.
+  - The body's lit passes keep the target's alpha, so a second, alpha-only render
+    (`Resources/NativeVisualPortraitMask.shader`) writes the coverage. The voxel portraits' resolve then gives straight
+    alpha.
+  - The Siren and Classic keep the voxel portraits. The portrait files (`NativePortraits.cs` and its shaders) are
+    unchanged; the model path is chosen in `NativePortraitUI.Portrait`.
+  - Its outline is lost at the silhouette (the hull is not in the coverage).
+- **Relaxed arms on the model (2026-10-28, `claude/model-pose-fix`; owner: "Fix idle animations, lobby card poses, and
+  intros to fully support the new player model. Since the transfer, a lot of unnatural arm positioning and movements"):**
+  `NativeVisualRig.Relax`, opted into per caller with `Grasp.Relax` and `Grasp.Still` (0 keeps the adapter as before).
+  - **Causes** (measured on a skeleton with outfit A's rest joints, step 2):
+    - The game's free hands are placed for the voxel body: shoulders .345 m out, a chest .53 m wide, arms .175 m thick.
+      Copied by direction onto shoulder joints .133 m out, with the hanging Spread on top, relaxed arms stood 22-38 degrees
+      out with the hands 13-28 cm off the thighs (an A-pose).
+    - Inside's shoulder ratio (.39) is narrower than the torso ratio (.57), so hands in front of the body sank into the hips
+      (the daggers card's fists 8-11 cm deep).
+    - The voxel's folded arms cannot reach across its chest, so 'Arms crossed' has its elbows 10 degrees from straight. The
+      copy kept that bend, and the arms reached straight forward across the belly.
+    - The voxel's thick thighs left the seated hands hovering 16 cm beside the model's thin lap.
+    - The portrait and rooftop actors kept the sword's weapon id and set. The daggers, greatsword, shield and guns were held
+      as a sword or not at all, so the support hands had no grip and the wrists rolled up to 180 degrees.
+    - Entrances that show no weapon still closed the fists on the pilot's unseen one.
+  - **What it does:** a free hand is placed by the body's landmarks:
+    - its height under the shoulder line is scaled by the arm lengths;
+    - across, inside the body it keeps its share of the width at that height (chest, waist, hips:
+      `TorsoHalfWidth`, `WaistHalfWidth`, `HipHalfWidth`); outside, its gap off the side is compressed (`RelaxGap`: a voxel
+      hand's 10 cm hang becomes 3 cm, a wide gesture keeps its offset);
+    - in depth, it keeps its share of the torso and its offset in front of it.
+    - The arm is no straighter than the game's own. A hand flung clear of the body (`RelaxNear` to `RelaxFar`) keeps the
+      game arm's extension.
+    - The elbow sits on the two bones' circle out, down and back, or on the game elbow's side where the game bends the arm.
+      It swings only as far as keeps it, the forearm and the upper arm out of the torso, and moves at most 10 degrees a frame.
+    - The hand keeps its turn on the forearm. Hands at or over the shoulder line keep the copied arm.
+    - A still stance (`Still`) also relaxes the weapon arms (not a braced shield), and seated hands rest on the lap, palm
+      down (`OnLap`: both thighs level).
+  - **Callers** (`VisualArms` on `VisualBodyBind`):
+    - Live: the arena (only where the pack clips do not cover the state), a revive standing up, and an entrance that shows
+      a weapon.
+    - Unarmed: an entrance that shows none. Its hands hold nothing; the fighters keep their fists.
+    - Still: the portraits and the rooftop's seated pilot and watcher.
+    - Reach: the draft, whose hands reach for the chips on screen.
+    - First person keeps the game's arms. Relax is off while the chip-select look is up. A caster's staff and the bow ride
+      a carrying hand (`LeftCarries`).
+    - The portrait and rooftop actors now carry the pilot's weapon id and set (`VisualArmedAs`).
+  - **Measured on the outfit A skeleton**, copied, then relaxed:
+    - the hero stance's free arm: 23-30 degrees out, then 16-17; hand off the thigh 10-14 cm, then 4-6;
+    - 'Sitting on chair': 25 degrees out, then 8-9, with the hands on the thighs and the palms down;
+    - 'Arms crossed': elbows 10 degrees, then 104-108; fists 23-26 cm in front of the chest, then 1-2;
+    - the procedural entrances' free arms: 24-30 degrees out, then 16-23;
+    - the Cyber Lord's idle: 20 and 15 degrees out, then 15 and 12.
+    - `CoreTests --model-poses` pins these.
+  - **Not seen yet:** the real meshes in the Editor. The torso is measured as a proxy from step 2's widths, and the
+    forearms rest 3-3.5 cm into it on the folded arms and lap.
+- **Captures:** the neutral turnaround.
+- **The performance pass** (Phase C).
+- **Builds (2026-10-23, `claude/visual-body-install`):** the owner's builder installs the bake from the licensed-assets
+  zip it already reads (`G:\My Drive\Chip Arena Build Logs\LocalAssets.zip`), so test builds draw the new body and show
+  Settings · Player model.
+  - `tools/pack_visual_body.py BASE_ZIP OUTPUT_ZIP` adds the bake to a copy of that zip. It follows the bake prefab's GUID
+    references through the text assets and every `.meta`. Outfit A comes to 176 files and 14.9 MB: the meshes, materials and
+    textures it uses, their metas and the folder metas. A `visual-body.json` lists each file with its SHA-256. Shaders, shader
+    graphs and scripts stay out (the body uses our tracked toon shader); the pack's own outfit materials are kept as text.
+  - `tools/install_local_assets.py` checks that section and copies the files over `Assets/LocalAssets`, deleting nothing. The
+    checks cover paths, kinds, hashes, metas, unique GUIDs, a 56 MB budget (40 MB until 2026-10-25, when the motion bank had
+    grown the body to 38.7 MB) and the prefab in a Resources folder. A full local
+    pack is never trimmed, and a zip without the section installs the audio as before.
+  - After a new bake, run the packer on the Drive zip and replace it (keep the old one). The 2026-10-16 zip is kept beside it
+    as `LocalAssets-2026-10-16.zip`.
+  - Only the bake's dependencies ship, not the pack's own Resources folders, so builds grow by about the outfit's textures
+    and meshes.
+
+## Decisions and design carried from the stopped Phase B branch
+
+From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there, sections c, j and k), adapted to BoZo.
+
+- **Proportions (owner, 2026-10-20, "Option B in principle").** The visual body has human proportions on a presentation-only
+  visual skeleton driven by the game's poses. With BoZo, its skeleton is the visual skeleton. The authoritative rig is
+  unchanged: `CapturedRig`, 22 joints, motion-root at feet + .865 m, a stocky 1.70 m layout, the capsule (radius .42, half
+  height .85), the head box, melee sector, shot origin, aim origin, weapon frames and the network pose.
+- **Adapter steps** (Phase B design; step 1 now needs the rest alignment above):
+  1. Carry the game pose's joint rotations onto the visual joints.
+  2. Visual root height = rest height + the game root translation × `legRatio` (1.64 for the Blender base, about 1.70 for
+     BoZo), so crouches and bobs keep the game's knee angles.
+  3. Planted feet (within about .03 m of the floor) use two-bone IK onto the game ankle's ground point, with the knee toward
+     the game knee's plane, blending out as the foot lifts. The `Lowest()` floor fit is evaluated on the visual joints.
+  4. Weapons ride the visual right hand at the same socket (P1). Two-handed holds IK the left hand to the game's
+     right-to-left hand offset. One-handed weapons, empty hands and casts stay FK.
+  5. Authority stays as it is.
+- **Drift, measured for the Blender base** (1.74 m, 8 heads; to be re-measured for BoZo in Unity):
+  - The visual head stays as close to the authoritative head box as the voxel head does (within .01–.06 m in every clip).
+  - The weapon on the visual hand sits .21–.34 m from today's drawn frame. The visual muzzle is .26–.40 m from the shot
+    origin at idle and aim (voxel .12–.18 m). Tracers already converge within 4.5 m (`NativeShotLaunch`), and hits are
+    unaffected.
+  - Support-hand IK needs .31–.33 m, within 87 % of reach. Foot IK needs up to .29 m, within 92 % of reach.
+- **Proposals (owner chose P1 on 2026-10-22):**
+  - **P1** (Claude, chosen): the weapon on the visual hand.
+  - **P2** (Claude): the visual right hand IKs to today's weapon frame.
+  - **P3** (Astra, authority, only if the owner wants hits to match the taller body): raise the head box and shot origin.
+  - **P4**: corpse, wound, clearance, hat and claw code take fit volumes from the model instead of voxel box sizes.
+- **Who reads joint positions today:**
+  - Authoritative, unchanged: the capsule, the headshot box, the melee sector, the shot and aim origins.
+  - Presentation that follows the visual skeleton: weapon sockets (`NativeKillBoxes.RightHandSocket`), muzzle FX,
+    footfalls, the cinematic head, chest glows, the grab claw, corpses and gibs (`CapturedRig.Boxes`), wounds, arrows,
+    band/armour/hat anchors, blade clearance, and the first-person view rig (elbows and hands).
+- **Secondary motion (Phase B section k).** Nothing networked; never in first person. Off on the Low tier and with Reduced
+  effects. Frozen beyond 15–20 m. A budget for 8 pilots. Killcams, replays, spectators and corpses re-simulate locally, and a
+  corpse's chains settle then freeze with the ragdoll's sleep. Garment chains use the body's fit volumes as colliders.
+  Magica Cloth 2 replaces the proposed custom spring solver. Its fixed sub-steps come from Unity time, not our presentation
+  clock (above).
+- **Owner's art direction (2026-10-20/21; the reference images are the owner's, not in the repo):**
+  - Body: lean athletic, broad shoulders, V-taper, not overly muscular. The brief's "about 7.5–8 heads tall" is superseded
+    for BoZo: on 2026-10-22 the owner chose BoZo's normal, unscaled head, which puts the figure at about 6.6 heads.
+  - Face: a human face, not a mask; natural eyes without eyeliner; hair sits on the scalp.
+  - Silhouette: clean stylization, not blocky or over-carved.
+  - Maps: anime/toon with a cool, saturated shade palette (`MAP-STYLE-ANIME.md`).
+  - **BoZo as authored (owner, 2026-10-22):** keep BoZo's design exactly as it is: body, head, face and eyes, with the
+    shapes and bone modifiers its presets set. Where the brief above differs (head size, "natural eyes"), BoZo's design wins.
+- **Pack choice:** BoZo over P09 Modular Humanoid Lite (2026-10-21).
+  - Asset Store claims now checked:
+    - about 104 items: the pack has 166 outfit prefabs, many of them texture layers;
+    - male/female blend: yes, `Shape_BodyType` plus stance;
+    - Mixamo-compatible humanoid: yes, with hair on its own chains;
+    - toon shader with 9 colours and an outline: yes, but hand-written, and the URP version is the default;
+    - merge to one mesh: yes, at runtime, with layered RenderTextures rather than an atlas;
+    - JSON/ScriptableObject save: yes;
+    - Built-in and URP: yes, with the bundled Built-in shader package;
+    - Magica support: yes;
+    - about 19 k triangles: 17–26 k drawn per dressed preset.
+- **Kept from the stopped base:** the chest core and right-wrist device (closed / opening / insert / accepted / active).
+  Their geometry is in `build_male_base.py` on that branch and can be exported as attachments on BoZo's `spine_04`/`spine_05`
+  and `hand_r`/`lowerarm_twist_01_r`.
+- **Builds with BoZo** are made on the owner's PC (with `Assets/LocalAssets/` populated). Cloud and CI builds show the voxel
+  fallback. Extending the LocalAssets install for builds is Astra's tooling.
+- **PC setup used:** `git worktree add -b claude/bozo-inventory ../Chip-Arena-unity origin/claude/sleepy-ritchie-g8ruhv`,
+  opened in Unity Hub with 6000.3.24f1. The original checkout stays on `main`.
+
+## Owner decisions after the inventory (2026-10-22)
+- **Design:** keep BoZo's design exactly as it is: body, head (normal size, about 6.6 heads), face and eyes, with the
+  presets' own shapes and bone modifiers. No head scale, no extra body shaping.
+- **Budget:** no triangle cap for BoZo characters ("as much as you need"). The Phase C frame-time and GC criteria still apply.
+- **Weapon placement: P1.** The weapon rides BoZo's visual right hand. P3 (authority) is not requested. P4 (fit volumes)
+  stays a step 6 task.
+- **Cloth: on every applicable piece.** Hair chains, capes, skirts, dresses, coats, hoods and other loose clothing. The
+  standing rules still hold: off in first person, never networked, a budget for 8 pilots, tier and distance culling.
+- **Animations may be fitted to the model** ("sizing and everything").
+  - Claude's part: holds, grips, wrist angles and pose tuning for the BoZo body. They stay BoZo-only while the voxel
+    bodies remain, through the adapter or a BoZo pose layer.
+  - Astra's part: any change to authority sizing (capsule, head box, shot origin, weapon frames), decided by the owner.
+- **Default outfit: the owner's "Player model concept" sheet** (an image the owner shared on 2026-10-22, not in the repo).
+  It describes:
+  - short spiky dark hair;
+  - a lower-face tech mask with a glowing visor band over the eyes;
+  - a black jacket over a black tee, with a light-grey hood and trims and a glowing chevron on the chest;
+  - a glowing emblem on the back (a smiley with X eyes);
+  - forearm guards and armoured fingerless gloves, with glow strips;
+  - black cargo joggers with straps, pouches on the belt, and knee plates with glow;
+  - chunky black-and-white high-top sneakers with glowing strips.
+
+  The sheet sets the rest of the look too:
+  - **Glow colour:** the glow is the player's colour (cyan, red, purple, green, orange, yellow, pink or white).
+  - **Same base for every class:** ranged, melee and magic.
+  - **Customisation examples:** hood up, cap, headphones, mask variants, an antenna or tech piece.
+  - **Scale:** about 1.8 m beside a zombie, which matches BoZo's 1.79 m.
+  - **Style:** the sheet says "low poly", but BoZo's design stays as authored; the sheet sets the outfit, palette and glow,
+    not the mesh style.
+
+### Default outfit: concept against BoZo
+**Owner choice (2026-10-22): candidate A**:
+- `HairFront_Messy` + `HairBack_PineappleCut`;
+- `Top_OpenHoodie`;
+- `Bottom_BeltedPants`;
+- `Feet_AthleticMidTop`;
+- `Gloves_FingerlessGloves`.
+
+It was rendered against candidate B (hard jacket, baggy pants, Wild Locks) in the concept's black, grey and cyan, with the
+covered body parts hidden. A draws about 20 k triangles. The base pieces come from BoZo, and the tech pieces and glow are
+ours to author.
+
+| Concept element | From BoZo | To author |
+|---|---|---|
+| Short spiky dark hair | `HairFront_Messy` + `HairBack_PineappleCut` (or `HairBack_WildLocks`) | colour only |
+| Jacket over a tee, light hood | `Top_OpenHoodie` (or `Top_HardJacket` for the high collar) | glow strips, the chest chevron |
+| Back emblem | BoZo's decal system can place it | built in code as glowing strokes (2026-10-25), on every model pilot |
+| Cargo joggers with straps | `Bottom_BeltedPants` (or `Bottom_BaggyPants`) | knee plates, belt pouches, glow strips |
+| High-top sneakers | `Feet_AthleticMidTop` | glow strips |
+| Fingerless gloves | `Gloves_FingerlessGloves` | forearm guards with glow |
+| Tech mask with glowing visor | none | built in code (2026-10-25), worn with the Prototype body skin; variants open |
+| Glow in the player colour | none: BoZo's toon shader has no emission | an emission mask and player colour in our ported shader (step 4) |
+| Hood up, cap, headphones, antenna | `Hat_BallCap`; `HeadAcc_AlienAttena` is a cartoon antenna | hood-up, headphones, tech antenna |
+| Chest core, right-wrist device | none | kept from the stopped base |
+
+**Where the pieces live.**
+- Our own meshes (mask, visor, guards, plates, headphones) skinned to BoZo's bone names, and our own emblem art, contain no
+  licensed content.
+- Glow masks painted on BoZo's UV layouts, and BoZo-derived recolours, stay local with the pack.
+
+## Open owner decisions
+- **DEV-only pieces:** which BoZo pieces are DEV-only (the Sheldon adaptation of the "Sheldon Clothes" robe and the "Sheldon
+  Head" hood).
+- **From Phase A section j, still open:**
+  - (decided 2026-10-22: the right wrist for every class);
+  - a skin-tone palette or free colours, and whether faces and hair need entitlements;
+  - today's hats on BoZo heads;
+  - team identity (bands or a paint channel);
+  - whether zombies stay voxel (decided 2026-10-29: zombies on the model, docs/ZOMBIE-MODELS.md);
+  - the backend allowlist deploy (a Sites deploy with owner approval).
+- **Female body:** BoZo blends with `Shape_BodyType`. When it follows the male is undecided.
+- **For Astra:**
+  - the manifest and catalog change;
+  - packaging guards against the packs' default import folders;
+  - builds that need `Assets/LocalAssets` content;
+  - the Editor running Gamma while builds force Linear.
