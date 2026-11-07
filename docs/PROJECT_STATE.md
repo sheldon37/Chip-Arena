@@ -1,3 +1,5 @@
+2026-11-07 Claude (`claude/boss-anim-pass`): THE DEEP END's jet straight from the mouth with a splash; THE HUM's faster swipe and a real flip up and down; NOCTIEL walks without its stance mixing in and stands as the reference walk does.
+
 2026-11-07 Claude (`claude/boss-room-guide`): an animated way to the boss room once a quota is met; the Boss Battle's shared 30 s opening with a waiting screen; the Drain weaker far away and holding airborne pilots (fixes the failed build at a8e68115).
 
 2026-11-07 Claude (`claude/backrooms-boss-rules`, at the owner's word): THE HUM's Noclip faster and aimed, NOCLIP's raised room collides; the Drain a current with a throat counter; boss relics live: never ordinary offers, a 12% boss drop, all twelve rules and their effects (docs/BOSS-CHIPS.md).

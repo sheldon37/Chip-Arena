@@ -33,6 +33,22 @@ namespace ChipArena.UnityConversion
         public const float SlowWalkMost=1.35f;
         /// <summary>Travel (m/s) that starts a glide, and below which it lands; the walk's floor; the glide's height.</summary>
         public const float GlideFrom=3.2f,GlideUntil=1.8f,WalkFrom=.6f,GlideAir=.5f;
+        /// <summary>Once walking it walks on until its travel falls under <see cref="WalkStop"/> and it has walked <see cref="WalkHold"/> s (the owner, 2026-11-07: "When Noctiel walks,
+        /// I think its mixing in his idle combat pose": travel hovering at the floor dropped it into its stance mid-stride, crossfading in and out).</summary>
+        public const float WalkStop=.25f,WalkHold=.4f;
+        /// <summary>
+        /// Its idle (the owner, 2026-11-07, with a still from the reference walk: "Id like his idle pose to be the same as this (With both feet down)"): the slow walk held where both its feet are
+        /// down, upright, the claymore trailing low from its right hand as it walks. The clip time Runtime finds in the bank (<see cref="BothFeetDown"/>); NaN keeps the old stance.
+        /// </summary>
+        public float StandAt=float.NaN;
+        /// <summary>The slow walk's time with both feet down: where its knees are bent alike (the first harmonic's zero crossing of a walk is its double support), from the Lower Leg Stretch muscles.</summary>
+        public static float BothFeetDown(NativeVisualMotionClips.Library clips,int leftKnee,int rightKnee)
+        {
+            if(clips==null||!clips.Clips.TryGetValue(SlowWalk,out var c)||c.Frames<2||leftKnee<0||rightKnee<0||NativeVisualMotionClips.Head+Math.Max(leftKnee,rightKnee)>=c.Stride||!(c.Rate>0))return float.NaN;
+            int n=c.Loop&&c.Frames>2?c.Frames-1:c.Frames,best=0;float least=float.MaxValue;
+            for(int f=0;f<n;f++){int o=f*c.Stride+NativeVisualMotionClips.Head;float d=Math.Abs(c.Data[o+leftKnee]-c.Data[o+rightKnee]);if(d<least-1e-5f){least=d;best=f;}}
+            return best/c.Rate;
+        }
         /// <summary>A standing turn starts past this many degrees off its quarry.</summary>
         public const float TurnFrom=18;
         private const byte Hold=0,Looped=1,Strike=2,Paced=3;
@@ -41,7 +57,7 @@ namespace ChipArena.UnityConversion
         public const int MaxShots=4;
         private readonly Shot[] plan=new Shot[MaxShots];private int planCount;private string planAction;private float planAt=float.NaN,planEnd=-1,takeoff,leapHeight;
         private Shot cur,prev;private bool curSet;private float switchAt;
-        private bool started,gliding,turning;private float last,yaw,yawV,yawGoal,air,airV,speed,carry,kneel,kneelV,track,walkPhase;
+        private bool started,gliding,turning,walking;private float last,yaw,yawV,yawGoal,air,airV,speed,carry,kneel,kneelV,track,walkPhase,walkSince;
         private Vector3 at,atV,lastFact,heading;
         /// <summary>The plan for the action now running (empty between moves), for the checks and the DEV readout.</summary>
         public ReadOnlySpan<Shot> Plan=>new ReadOnlySpan<Shot>(plan,0,planCount);
@@ -51,7 +67,7 @@ namespace ChipArena.UnityConversion
         /// <summary>It has stepped since the last Reset (the next Step continues rather than starting over).</summary>
         public bool Active=>started;
         /// <summary>Forget everything: the next Step starts from the facts (a new fight, after the intro or a death).</summary>
-        public void Reset(){started=false;curSet=false;planAction=null;planAt=float.NaN;planCount=0;planEnd=-1;}
+        public void Reset(){started=false;curSet=false;planAction=null;planAt=float.NaN;planCount=0;planEnd=-1;walking=false;}
 
         /// <summary>
         /// Writes f's pose for this frame. The binding has filled the rest of f (phase, kind, the Slash, the wings' phase opening,
@@ -63,7 +79,7 @@ namespace ChipArena.UnityConversion
             float now=x.Now,dt=started?Clamp(now-last,0,.1f):0;
             if(!started)
             {
-                started=true;at=x.At;atV=Vector3.Zero;lastFact=x.At;yaw=yawGoal=x.Yaw;yawV=0;air=airV=0;speed=0;gliding=turning=false;carry=1;kneel=f.Kneel;kneelV=0;track=0;walkPhase=0;heading=Vector3.Zero;
+                started=true;at=x.At;atV=Vector3.Zero;lastFact=x.At;yaw=yawGoal=x.Yaw;yawV=0;air=airV=0;speed=0;gliding=turning=walking=false;walkSince=now;carry=1;kneel=f.Kneel;kneelV=0;track=0;walkPhase=0;heading=Vector3.Zero;
                 curSet=false;planAction=null;planAt=float.NaN;planCount=0;planEnd=-1;
                 if(seedClip!=null){cur=new Shot{Clip=seedClip,Mode=Hold,From=seedTime,Key=-1};curSet=true;switchAt=now-10;}
             }
@@ -84,12 +100,15 @@ namespace ChipArena.UnityConversion
             // Chasing again before the plan's last settle is done: the glide takes over.
             if(inPlan&&!live&&speed>GlideFrom){planCount=0;inPlan=false;}
             if(gliding){if(speed<GlideUntil||inPlan)gliding=false;}else if(!inPlan&&speed>GlideFrom)gliding=true;
+            // Walking holds once begun (no dropping into the stance mid-stride).
+            if(!walking&&speed>WalkFrom){walking=true;walkSince=now;}else if(walking&&speed<WalkStop&&now-walkSince>=WalkHold){walking=false;walkSince=now;}
             // What plays now.
             Shot want;
             if(inPlan){int i=0;for(int j=0;j<planCount;j++)if(now>=plan[j].T0)i=j;want=plan[i];}
             else if(gliding)want=new Shot{Clip=Pick(Glide,clips),Mode=Looped,Rate=1.6f,Fade=.16f,Key=1};
-            else if(speed>WalkFrom&&WalkOf(clips,speed,out var w,out float rate))
+            else if(walking&&WalkOf(clips,Math.Max(speed,WalkFrom),out var w,out float rate))
             {walkPhase=(walkPhase+dt*rate/Math.Max(.1f,w.Length))%1f;want=new Shot{Clip=w.Name,Mode=Paced,Fade=.22f,Key=w.Name==SlowWalk?3:2};}
+            else if(!float.IsNaN(StandAt)&&clips!=null&&clips.Has(SlowWalk))want=new Shot{Clip=SlowWalk,Mode=Hold,From=StandAt,Fade=.35f,Key=0};
             else want=new Shot{Clip=Stance,Mode=Looped,Rate=1,Fade=.26f,Key=0};
             if(!curSet){cur=want;curSet=true;switchAt=now-10;}
             else if(want.Key!=cur.Key||want.T0!=cur.T0){prev=cur;cur=want;switchAt=now;}

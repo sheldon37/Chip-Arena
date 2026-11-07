@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     // presentation: no rule, hit, hitbox, damage, cooldown, movement or wire value is read back from here.
     public sealed partial class ArenaPresentation
     {
-        private readonly NativeFallenLiveMotion fbLive=new NativeFallenLiveMotion();
+        private readonly NativeFallenLiveMotion fbLive=new NativeFallenLiveMotion();private bool fbStandSought;
         private string fbShownClip;private float fbShownTime;private bool fbLiveNow;
         /// <summary>The live director's pose over the binding's (the fight and the draft; the intro and the death keep the script's).</summary>
         private void FallenLiveMotion(NativeArena a,FallenBossFrame f,float now)
@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
             var facts=new NativeFallenLiveMotion.Facts{Now=now,At=ToNV(m.Body.position),Yaw=m.Yaw,Target=target!=null?ToNV(target.Body.position):ToNV(m.Body.position)+new NV(0,0,1),
                 Action=z.action,ActionAt=z.actionAt,HitAt=z.hitAt,Duration=z.duration,ActionYaw=z.actionYaw,From=new NV(z.laneX0,0,z.laneZ0),To=new NV(z.laneX1,0,z.laneZ1),
                 SecondWing=NativeFallenRules.Chip(z.fallen,"second-wing")};
+            // Its idle is the slow walk held with both feet down (the owner's picture): found once in the bank from the knees.
+            if(float.IsNaN(fbLive.StandAt)&&VisualMotionBank!=null&&!fbStandSought){fbStandSought=true;var muscle=HumanTrait.MuscleName;fbLive.StandAt=NativeFallenLiveMotion.BothFeetDown(VisualMotionBank,System.Array.IndexOf(muscle,"Left Lower Leg Stretch"),System.Array.IndexOf(muscle,"Right Lower Leg Stretch"));}
             fbLive.Step(f,facts,VisualMotionBank,fbLive.Active?null:fbShownClip,fbShownTime);fbLiveNow=true;
         }
         /// <summary>What the body showed this frame (the director starts from it after the intro).</summary>

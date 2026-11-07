@@ -121,7 +121,7 @@ Each change is a 3.5 s scripted window, as the 6:47's are.
 
 | Id | Move | Phase | Wind | Strike | Follow | Recover | Cooldown | Damage | Shape |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `reach` | Reach | 1 | .6 | .2 | .3 | .5 | 3 | 22 | 130° arc, 6 m, through walls |
+| `reach` | Reach | 1 | .48 | .16 | .24 | .42 | 3 | 22 | 130° arc, 6 m, through walls |
 | `stoop` | Stoop | 1 | .7 | .15 | .4 | .6 | 7 | 30 | 4.5 m circle at its feet |
 | `row` | Row Burst | 1 | 1.1 | .1 | .5 | .4 | 10 | 16 | every fixture on alternate rows of one axis bursts: lanes 1.4 m wide, the whole room long |
 | `lunge` | Noclip | 1 | .75 | .8 | .4 | .7 | 12 | 34 | a 3 m wide lane, 26 m at 32.5 m/s, through everything; it follows its target through the wind and holds its line .3 s before it goes |
@@ -667,3 +667,14 @@ however, make the pull weaker if players are further away." The current holds ai
 room's corners). A pilot the current carries toward the pit without fighting it still counts as standing still (the stillness meter follows
 them), so the Lull still finds a camper: the build's no-safe-spot gate (a still pilot in every corner hit within 8.5 s) failed without it
 once the pull weakened, as the old drag had carried corner pilots into the pit.
+
+**And the owner's next look (2026-11-07):** THE HUM's swipe ("turn their arm and actually swipe at them, make it a little faster"): Reach is
+.48 s wind, .16 s strike, .24 follow, .42 recover (was .6, .2, .3, .5); the arm is cocked high behind it with the elbow up, then turns over as
+it comes (the elbow rolling down and through), the hand driven out through the space in front of it where its target stands, the body
+lunging after it. Its turn over ("animate actually flipping upside down and when they flip back"): the same flip both ways in its own frame,
+`HumBossMoves.TurnKeys` on the turn's clock: a crouch with the arms swung back, a push with the arms thrown toward the surface it's going to,
+a tuck as it turns, hands then feet planting with a give, straightening; the rotation (`HumBossView.Turn`) waits through the crouch (none
+before .3 of TurnOver) and is over by .76. Its colliders follow the drawn body as before. THE DEEP END's Hydro Jet ("make the water more
+realistic, it currently has a unrealistic curve to it"): the jet leaves the mouth dead straight along the rule's aim, its head reaching where it
+lands in a tenth of a second, drops peeling off it; a crown of water is thrown up again and again where it lands; beyond, spray skips on along
+the line to its end (no sheet of water). The rule's line is unchanged.

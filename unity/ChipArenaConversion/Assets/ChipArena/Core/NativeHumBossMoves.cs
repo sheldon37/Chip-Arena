@@ -72,6 +72,26 @@ namespace ChipArena.UnityConversion
         public static readonly HumSnap[][] Keys=new HumSnap[NativeHumBoss.Moves.Length][];
         public static readonly int[] Side=new int[NativeHumBoss.Moves.Length];
         public static BossActionDef Scream,RearUp,Stagger,Choke,Flinch;public static HumSnap[] ScreamKeys,RearKeys,StaggerKeys,ChokeKeys,FlinchKeys;
+        /// <summary>
+        /// The turn over, animated (the owner, 2026-11-07: "when they go upside down, introduce an animation for this (Currently it just rotates them, animate actually flipping upside down and when they
+        /// flip back to normal)"). Up or down, the same flip in the body's own frame: it crouches, arms swung back; pushes off, arms thrown out toward the surface it's going to; tucks as it turns over,
+        /// knees to its chest; plants its hands and then its feet on the new floor (the ceiling, or the carpet coming down), sinking to take the weight; and straightens. Keyed on the turn's own clock
+        /// (<see cref="TurnKey"/>); the rotation itself waits through the crouch (<see cref="HumBossView.TurnStart"/>).
+        /// </summary>
+        public static readonly HumSnap[] TurnKeys=MakeTurn();
+        /// <summary>The turn's key at `u` (0..1 of <see cref="NativeHumBossMotion.TurnOver"/>): crouch at .2, push at .36, tuck at .56, plant at .8; each stretch eased.</summary>
+        private static readonly float[] TurnAt={0,.2f,.36f,.56f,.8f,1};
+        public static float TurnKey(float u)
+        {
+            var at=TurnAt;u=BossMath.Clamp01(u);for(int k=0;k<at.Length-1;k++)if(u<=at[k+1])return k+BossMath.Smooth((u-at[k])/(at[k+1]-at[k]));return at.Length-1;
+        }
+        private static HumSnap[] MakeTurn()=>new[]{
+            N(),
+            N().Lean(0,-.75f,-.12f,14,0,0).Spine(20).Reach(ArmL,-1.15f,1.05f,-1.35f,-.5f,.3f,-1).Reach(ArmR,1.15f,1.05f,-1.35f,.5f,.3f,-1).Hands(.3f,.3f).Head(0,-.45f,.25f,12).Shrug(.12f),
+            N().Lean(0,.6f,.15f,-12,0,0).Spine(-10).Reach(ArmL,-.6f,4.5f,.45f,-1,0,-.3f).Reach(ArmR,.6f,4.5f,.45f,1,0,-.3f).Reach(LegL,-.32f,.55f,-.25f,-.1f,0,1).Reach(LegR,.32f,.55f,-.25f,.1f,0,1).Hands(-.6f,-.6f,.8f,.8f).Head(0,.15f,.1f,-14),
+            N().Lean(0,.45f,0,32,0,0).Spine(44).Reach(ArmL,-.75f,2.05f,1.15f,-1,.2f,.3f).Reach(ArmR,.75f,2.05f,1.15f,1,.2f,.3f).Reach(LegL,-.45f,1.55f,.75f,-.1f,0,1).Reach(LegR,.45f,1.55f,.75f,.1f,0,1).Hands(.8f,.8f).Head(0,-.35f,.3f,22),
+            N().Lean(0,-.6f,.12f,12,0,0).Spine(16).Reach(ArmL,-1.25f,.22f,1.15f,-.8f,.6f,.2f,.85f).Reach(ArmR,1.25f,.22f,1.25f,.8f,.6f,.2f,.85f).Hands(-.8f,-.8f,.6f,.6f).Head(0,-.3f,.4f,8).Jaw(.3f),
+            N()};
         /// <summary>The intro's and the death's poses, and the clipped hold.</summary>
         public static readonly HumSnap Stand=new HumSnap(),Folded=MakeFolded(),Upright=MakeUpright(),Clipped=MakeClipped(),Lunging=MakeLunging();
         private const int LegL=0,LegR=1,ArmL=2,ArmR=3;
@@ -84,14 +104,17 @@ namespace ChipArena.UnityConversion
             // ---- Reach, thrown with the whole body (the owner, 2026-11-07: "make it look like they're actually using their body for momentum"). A small gather, then it coils: weight back over its right side and low, the shoulders
             // wound far round to the right, the arm cocked behind it. The throw goes up the chain: the hips unwind first while the chest still faces back, then the chest, then the arm, which whips across 130 degrees at chest
             // height, fingers straight; the arm's weight drags the whole body on round after it, lunging forward and down to the left, and it has to settle back off that. The head never leaves the target ----
+            // Faster, and at them (the owner, again: "turn their arm and actually swipe at them, make it a little faster"): the arm is cocked high behind it with the elbow up, then turns over as it comes
+            // (the elbow rolling from up and back to down and through, the palm turning to face the stroke) and the hand is driven out through the space in front of it where the target stands, the body
+            // lunging after it, before the swing carries it across and down.
             var m=NativeHumBoss.Move("reach");
-            Def("reach",1,new BossActionDef("reach",.12f,.34f,P(A,.2f,1,BossEase.InOut),P(A,m.Wind-.3f,2,BossEase.InOut),P(S,.1f,3,BossEase.In,2.6f),P(C,m.Strike,4,BossEase.InOut),P(F,m.Follow,5,BossEase.OutBack,1.5f),P(R,m.Recover,6,BossEase.Settle,1.3f)),
+            Def("reach",1,new BossActionDef("reach",.12f,.34f,P(A,.14f,1,BossEase.InOut),P(A,m.Wind-.24f,2,BossEase.InOut),P(S,.1f,3,BossEase.In,2.8f),P(C,m.Strike,4,BossEase.InOut),P(F,m.Follow,5,BossEase.OutBack,1.6f),P(R,m.Recover,6,BossEase.Settle,1.3f)),
                 N(),
-                N().Lean(.08f,.05f,-.1f,-2,8,-2).Spine(-2,10,-2).Reach(ArmR,1.95f,2.3f,.15f,.5f,1,-.5f).Hands(0,-.4f,0,.6f).Head(0,0,0).Shrug(.06f),
-                N().Lean(.38f,-.4f,-.45f,-5,30,-7).Spine(5,36,-9).Reach(ArmR,2.55f,2.85f,-1.75f,.5f,1,-.7f).Hands(0,-.85f,0,1).Head(0,-.12f,0).Jaw(.35f).Shrug(.16f),
-                N().Lean(.12f,-.46f,.12f,6,6,-1).Spine(10,24,-4).Reach(ArmR,3.15f,1.75f,.9f,.3f,1,-.5f).Hands(0,-1,0,1).Head(0,-.16f,.05f).Jaw(.6f).Shrug(.08f),
-                N().Lean(-.28f,-.36f,.58f,11,-24,8).Spine(16,-30,8).Reach(ArmR,-2.2f,1.45f,2.6f,-.1f,1,-.4f).Hands(0,-1,0,.9f).Head(0,-.2f,.12f).Jaw(.85f),
-                N().Lean(-.36f,-.44f,.64f,13,-32,10).Spine(19,-38,10).Reach(ArmR,-2.95f,1.05f,.85f,-.3f,1,-.2f).Hands(0,-.5f,0,.6f).Head(0,-.18f,.08f,0,.85f).Jaw(.4f),
+                N().Lean(.08f,.05f,-.12f,-2,10,-2).Spine(-2,12,-2).Reach(ArmR,1.9f,2.45f,-.2f,.6f,1,-.6f).Hands(0,-.4f,0,.6f).Head(0,0,0).Shrug(.08f),
+                N().Lean(.4f,-.42f,-.5f,-5,34,-8).Spine(5,40,-10).Reach(ArmR,2.35f,3.05f,-1.95f,.45f,1,-.85f).Hands(0,-.9f,0,1).Head(0,-.12f,0).Jaw(.35f).Shrug(.18f),
+                N().Lean(.1f,-.4f,.35f,7,4,-1).Spine(11,18,-4).Reach(ArmR,2.75f,2.0f,2.55f,.75f,.35f,.35f).Hands(0,-1,0,1).Head(0,-.16f,.08f).Jaw(.6f).Shrug(.1f),
+                N().Lean(-.22f,-.42f,.95f,14,-22,9).Spine(18,-28,8).Reach(ArmR,-1.6f,1.4f,3.9f,-.25f,-.85f,.45f).Hands(0,-1,0,1).Head(0,-.22f,.18f).Jaw(.9f),
+                N().Lean(-.38f,-.48f,.72f,14,-34,11).Spine(20,-40,11).Reach(ArmR,-3.0f,.95f,1.1f,-.55f,-.75f,.1f).Hands(0,-.5f,0,.6f).Head(0,-.2f,.1f,0,.85f).Jaw(.4f),
                 N());
             // ---- Stoop: it gathers itself up (the back presses the ceiling, both arms rising wide, the head dropping low and forward, in reach, the fingers fanned), then folds: both hands and the head down at its own feet.
             // The head comes down to 1.2 m at the hit. The head's weak point is open through the wind-up and the recovery ----
