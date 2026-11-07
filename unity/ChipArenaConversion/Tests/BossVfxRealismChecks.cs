@@ -27,8 +27,8 @@ namespace ChipArena.UnityConversion
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Boss effects realism: "+what);count++;}
         // The baseline: recorded on the code before the pass (claude/sleepy-ritchie-g8ruhv 351c26f) with these procedures.
         private const int IwPreviewFrames=8092,IwPreviewCues=303,IwAuthorityCues=15,StPreviewFrames=6480,StPreviewCues=354;
-        private const long IwPreviewTele=166089,IwAuthorityTele=65378,StPreviewTele=45120;
-        private const uint IwPreviewHash=3043605766u,IwPreviewCueHash=1961581023u,IwAuthorityHash=1763906170u,IwAuthorityCueHash=285182648u,StPreviewHash=4237512322u,StPreviewCueHash=3946706737u;
+        private const long IwPreviewTele=166089,IwAuthorityTele=65378,StPreviewTele=3062;// the 6:47: warnings on the shared renderer since 2026-11-07 (docs/TELEGRAPHS.md); its cues unchanged
+        private const uint IwPreviewHash=3043605766u,IwPreviewCueHash=1961581023u,IwAuthorityHash=1763906170u,IwAuthorityCueHash=285182648u,StPreviewHash=276087788u,StPreviewCueHash=3946706737u;
         private static readonly Vector3 Target=new Vector3(-28f,1.6f,2.6f);
         public static void Run(string root)
         {
@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
                     int n=NativeStationBossCues.Collect(v,rig,t-1/60f,t,cbuf);for(int i=0;i<n;i++){cues++;cueHash=Mix(Mix(Mix(Mix(cueHash,cbuf[i].Key),Bits(cbuf[i].At)),Bits(cbuf[i].At3.X)),Bits(cbuf[i].At3.Z));}
                 }
                 Check(frames==StPreviewFrames,"the 6:47 preview's length is the baseline's ("+frames+")");
-                Check(tele==StPreviewTele&&hash==StPreviewHash,"THE 6:47's telegraphs (lanes, doors, glass rings, puddles, Terminus, the horns) are the ones before the pass, quad for quad and frame for frame ("+tele+", "+hash+")");
+                Check(tele==StPreviewTele&&hash==StPreviewHash,"THE 6:47's warnings (the shared renderer's: swipes, lanes, doors, glass, puddles, Terminus) are the recorded ones, warning for warning and frame for frame ("+tele+", "+hash+")");
                 Check(cues==StPreviewCues&&cueHash==StPreviewCueHash,"THE 6:47's cues are the ones before the pass ("+cues+", "+cueHash+")");
             }
             summary="telegraphs and cues identical to the pre-pass baseline (Converter preview "+IwPreviewTele+" telegraph quads and "+IwPreviewCues+" cues over "+IwPreviewFrames+" frames, its authority scenario "+IwAuthorityTele+" and "+IwAuthorityCues+", the 6:47 preview "+StPreviewTele+" and "+StPreviewCues+")";

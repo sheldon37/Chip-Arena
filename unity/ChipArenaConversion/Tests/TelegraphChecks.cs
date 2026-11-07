@@ -16,7 +16,7 @@ public static class TelegraphChecks
     public static void Run(string root)
     {
         count=0;string R(string p)=>File.ReadAllText(Path.Combine(root,p));
-        Shapes();Timing();Noctiel();Hum();DeepEnd();
+        Shapes();Timing();Noctiel();Hum();DeepEnd();Station();
         // The shader and the renderer.
         var shader=R("Assets/ChipArena/Resources/NativeTelegraph.shader");
         Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeTelegraph.shader.meta"))&&shader.Contains("Shader \"ChipArena/NativeTelegraph\"")&&shader.Contains("Blend One OneMinusSrcAlpha")&&shader.Contains("float _TgClock;"),"the shader, premultiplied, on its clock");
@@ -27,7 +27,7 @@ public static class TelegraphChecks
         var draw=R("Assets/ChipArena/Runtime/NativeTelegraphPresentation.cs");var frame=R("Assets/ChipArena/Runtime/NativeAbilityPresentation.cs");var fallen=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");
         Check(frame.Contains("TelegraphsBegin();SourceWorld(arena);")&&frame.Contains("WorldEffects(arena);TelegraphsDraw(hazardClock);"),"cleared before the world, drawn after its effects");
         Check(draw.Contains("NativeTelegraph.Corners(s,")&&draw.Contains("mesh.SetUVs(3,tgK);")&&fallen.Contains("for(int i=0;i<fbFx.Telegraphs.Count;i++)Telegraph(fbFx.Telegraphs.Items[i],origin);"),"one quad a warning; NOCTIEL's on its stage");
-        Console.WriteLine("PASS telegraphs ("+count+" checks: six shapes, the fill and the lock-on, every NOCTIEL, HUM and DEEP END warning covers what its rule hits)");
+        Console.WriteLine("PASS telegraphs ("+count+" checks: six shapes, the fill and the lock-on, every NOCTIEL, HUM, DEEP END and 6:47 warning covers what its rule hits)");
     }
     private static void Shapes()
     {
@@ -204,6 +204,41 @@ public static class TelegraphChecks
         }
         foreach(var id in new[]{"breach","flop","thrash","lull","drain","seiche","jet","lap"})Check(seen.ContainsKey(id),id+": the preview's samples found its area");
         foreach(var id in new[]{"breach","flop","thrash","lull","drain","seiche","jet"})Check(windup.Contains(id),id+": warned through its anticipation");
+    }
+    // THE 6:47 (the Station), through its scripted fight: wherever Runtime NativeZoneBossAuthority's station moves (and the zone's
+    // glass) would hit, a warning drawn at that moment covers it; each move with a hit is warned through its windup.
+    private static void Station()
+    {
+        var rig=new StationBossRig();var fx=new NativeStationBossFx();var v=StationBossView.None;var rnd=new Random(29);float dt=1/30f;
+        var seen=new System.Collections.Generic.HashSet<string>();var windup=new System.Collections.Generic.HashSet<string>();
+        bool Warned(Vector3 p){var w=fx.Telegraphs;for(int k=0;k<w.Count;k++)if(NativeTelegraph.Distance(w.Items[k],NativeTelegraph.Local(w.Items[k],p))<=.05f)return true;return false;}
+        int frames=(int)(NativeStationBossPreview.Loop*30);
+        for(int n=0;n<frames;n++)
+        {
+            float t=n*dt;NativeStationBossPreview.View(t,0,ref v,out var vel,out var tg);rig.Update(t,dt,v,StationBossGround.Station,vel,false,true,new Vector3(tg.X,1.6f,tg.Y));
+            fx.GlassCount=NativeStationBossPreview.Glass(v,fx.GlassXZ);fx.DrawGlass=true;fx.Build(rig,v,t,4,3,14,1,0,0,0,1,0,1,false);
+            for(int i=0;i<fx.Telegraphs.Count;i++)Check(fx.Telegraphs.Items[i].Style==NativeTelegraph.Industrial&&float.IsFinite(fx.Telegraphs.Items[i].At.X),"the 6:47: the industrial look, at a real place");
+            if(v.action==null||!StationBossView.At(v.actionAt)||!StationBossView.At(v.hitAt))continue;if(StationBossView.At(v.cancelAt)&&v.cancelAt>=v.actionAt&&t>=v.cancelAt)continue;
+            string id=v.action;float tr=t-v.hitAt;
+            if(tr<-.05f&&t>v.actionAt+.05f&&NativeStationBoss.Move(id).Damage>0&&(id!="alteration"||fx.GlassCount>0)){Check(fx.Telegraphs.Count>0,id+": a warning through its windup");windup.Add(id);}
+            if(tr<0||n%2!=0)continue;
+            var boss=new Vector3(v.x,0,v.z);var c=StationBossView.At(v.laneX0)?new Vector3(v.laneX0,0,v.laneZ0):boss;var e=new Vector3(v.laneX1,0,v.laneZ1);
+            for(int i=0;i<600;i++)
+            {
+                var p=new Vector3((float)(rnd.NextDouble()*2-1)*27,0,(float)(rnd.NextDouble()*2-1)*13);bool hit=false;
+                switch(id)
+                {
+                    case "departure":{var m=NativeStationBoss.Move("departure");int leg=NativeZoneBossRules.DepartureLeg(v.phase,tr,m.Strike);if(leg<0||!StationBossView.At(v.laneX1))break;float ct=leg==1?tr-2:tr;var a=leg==1?e:c;var b=leg==1?c:e;var at=Vector3.Lerp(a,b,Math.Clamp(ct/m.Strike,0,1));hit=Vector3.Distance(p,at)<2.1f;break;}
+                    case "doors":{var m=NativeStationBoss.Move("doors");if(tr>m.Strike)break;int side=v.holdSide<0?-1:1;var d=p-boss;float lx=Vector3.Dot(d,BossMath.Right(v.yaw*BossMath.Deg)),lz=Vector3.Dot(d,BossMath.Forward(v.yaw*BossMath.Deg));hit=Math.Abs(lx-side*3)<1.6f&&Math.Abs(lz+.35f)<1.3f;break;}
+                    case "buffer":case "shunt":{var m=NativeStationBoss.Move(id);if(tr>m.Strike)break;var d=p-c;float reach=id=="buffer"?4.4f:5,arc=id=="buffer"?60:35;var lp=new Vector3(Vector3.Dot(d,BossMath.Right(v.actionYaw*BossMath.Deg)),0,Vector3.Dot(d,BossMath.Forward(v.actionYaw*BossMath.Deg)));hit=lp.Length()<=reach&&Math.Abs(Math.Atan2(lp.X,lp.Z)*180/Math.PI)<=arc;break;}
+                    case "alteration":{if(tr>.1f)break;for(int g=0;g<fx.GlassCount&&!hit;g++)hit=Vector3.Distance(p,new Vector3(fx.GlassXZ[g*2],0,fx.GlassXZ[g*2+1]))<1.4f;break;}
+                    case "live-rail":{if(!v.Live(t)||v.PantoBroken(t))break;for(int q=0;q<NativeStationBossArena.PuddleCount&&!hit;q++)hit=Vector3.Distance(p,new Vector3(NativeStationBossArena.Puddles[q*3],0,NativeStationBossArena.Puddles[q*3+1]))<2.2f;break;}
+                    case "terminus":{float d=Vector3.Distance(p,c);hit=(tr<.15f&&d<3)||(tr<10/12f&&Math.Abs(d-Math.Min(10,tr*12))<.65f);break;}
+                }
+                if(!hit)continue;seen.Add(id);Check(Warned(p),id+": the rule hits "+p+" "+tr.ToString("0.00")+" s in and a warning shows it");
+            }
+        }
+        foreach(var id in new[]{"buffer","shunt","departure","doors","alteration","live-rail","terminus"}){Check(seen.Contains(id),id+": the preview's samples found its area");Check(windup.Contains(id),id+": warned through its windup");}
     }
     // The authority's hit tests (NativeFallenAuthority.FallenAttack), on the floor. sure: the point is clearly in (not on an edge).
     private static bool RuleHits(string id,Vector2 q,NativeFallenBossPreview.Act a,NativeFallenRecord f,out bool sure)

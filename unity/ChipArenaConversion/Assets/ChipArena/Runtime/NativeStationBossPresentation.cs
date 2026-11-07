@@ -112,7 +112,9 @@ namespace ChipArena.UnityConversion
             StationBossDressing(NativeStationBossStage.Shown.BarrierFall,NativeStationBossPreview.On);
             // Effects, the joints' light, the practical lights.
             var fx=stationBossFx;fx.DrawGlass=NativeStationBossPreview.On;fx.GlassCount=NativeStationBossPreview.On?NativeStationBossPreview.Glass(stationBossView,fx.GlassXZ):LiveGlass(fx.GlassXZ);
-            if(eye!=null){var t=eye.transform;Vector3 e=t.position,r=t.right,u=t.up;fx.Build(stationBoss,stationBossView,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);}
+            if(eye!=null){var t=eye.transform;Vector3 e=t.position,r=t.right,u=t.up;fx.Build(stationBoss,stationBossView,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);
+                // Its attack warnings through the shared renderer (Runtime NativeTelegraphPresentation; docs/TELEGRAPHS.md).
+                for(int i=0;i<fx.Telegraphs.Count;i++)Telegraph(fx.Telegraphs.Items[i]);}
             if(eye!=null&&fx.LightCount>0){NativeLighting.KitLights(fx.LightPos,fx.LightRgb,fx.LightCount,eye.transform.position,fx.LightBeam);stationBossLights=true;}
             else if(stationBossLights){NativeLighting.KitLights(null,null,0,Vector3.zero);stationBossLights=false;}
             DrawStationBoss(eye);DrawStationBossFx(eye,now);
