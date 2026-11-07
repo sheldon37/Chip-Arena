@@ -1,3 +1,12 @@
+## 2026-11-07 — Claude: the bosses' animation pass (owner requests): a straight Hydro Jet, THE HUM's swipe and flip, NOCTIEL's walk and idle
+
+- Branch `claude/boss-anim-pass`, base `claude/boss-room-guide` (`4fac7103`).
+- **THE DEEP END:** the Hydro Jet leaves the mouth straight along the rule's aim (no sag), its head reaching the landing in .1 s, drops peeling off; a crown splash repeats where it lands; spray skips on along the line (no sliding sheet). Presentation only.
+- **THE HUM:** Reach faster (.48 / .16 / .24 / .42 s, was .6 / .2 / .3 / .5), the arm cocked elbow-up and turning over through the stroke, the hand driven out where its target stands. The turn over is a flip both ways (crouch, push, tuck, plant; `HumBossMoves.TurnKeys`), the rotation waiting through the crouch (`HumBossView.Turn`).
+- **NOCTIEL:** the cause: the motion bank never had `Armed-Walk-Slow` or `Armed-Walk` (the bake only takes the players' weapon sets' clips), so its walk found nothing and it slid along in its stance. The two pack walks are now baked (the local tool's new `bozo-motionextra.request`: named clips into a bank of their own) and appended to the live bank unchanged otherwise (319 clips + 2), in the local checkout and in the Drive `LocalAssets.zip` (visual-body.json's sha256 updated; installer check passes; old zip kept in the scratchpad). Walking also holds once begun (stops under 0.25 m/s after 0.4 s); its idle is the slow walk held with both feet down at 1.07 s (both knees alike), the sword trailing as carried (the owner's still).
+- **Animation impact:** Reach's warning and contact move to its new, shorter timings (the telegraph reads the table; contacts stay on `hitAt`). THE HUM's colliders follow its flip as drawn (a crouch before it turns, a faster turn). Nothing else on hit timing, hitboxes, damage, cooldowns or networking.
+- **Checks:** `--hum-boss` (timings from the doc's table, no allocation, contacts on the hit), `--telegraphs`, `--backrooms-boss-sweep`, `--backrooms-boss-rules`, `--fallen-boss` (a pace hovering at the walk's floor never drops it, the idle held, the stand frame), Unity compile PASS.
+
 ## 2026-11-07 — Claude: the way to the boss room, the Boss Battle's shared countdown, the Drain's falloff (owner requests)
 
 - Branch `claude/boss-room-guide`, base `claude/backrooms-boss-rules` (`e109e914`), shared merged in at `78935822` (Astra's #377 kept: normal-rarity opening picks, silent selection).

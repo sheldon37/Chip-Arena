@@ -351,3 +351,12 @@ Known differences:
 - Clip 04 frames after 148 are only approached: the layer lets go for the fight (above). In the DEV preview the stand-in fight then turns the body over 0.2 s (51.7–51.95) while the blade crosses to the carry; the preview's timeline does that, not the intro. The live fight's own hand-back has not been seen.
 - Clip 01, the feather, was not compared: it is still section 18's.
 - The blade often reads black with a pale edge: the flat of it faces away from the key light. Left as it is.
+
+### Live walk and idle (Claude, 2026-11-07, the owner)
+
+"When Noctiel walks, I think its mixing in his idle combat pose ... Id like his idle pose to be the same as this (With both feet down)", with a
+still from the reference walk. The motion bank had no walk at all (`Armed-Walk-Slow` and `Armed-Walk` were never baked: the bake takes the
+players' weapon sets' clips), so it slid along in its stance; both are in the bank now (the Drive LocalAssets.zip). Travel hovering at the walk's floor dropped it into its stance mid-stride: once walking it walks on until its
+travel is under `WalkStop` (0.25 m/s) and it has walked `WalkHold` (0.4 s). Its idle is no longer the unarmed stance: the slow walk held where
+both feet are down (`StandAt`, the frame where the knees bend alike, found once in the bank by `BothFeetDown`), upright, the claymore trailing
+low from the right hand as the carry has it.
