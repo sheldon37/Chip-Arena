@@ -4,14 +4,14 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// THE DEEP END's room, the natatorium (docs/EXPEDITION-BOSS-BACKROOMS.md section 4 "The arena"): 20 x 20 cells (40 m square), the ceiling at 7.2 m, no pillars, no chairs, no boards. A
+    /// THE DEEP END's room, the natatorium (docs/EXPEDITION-BOSS-BACKROOMS.md section 4 "The arena"): 20 x 20 cells (40 m square), the ceiling at 12 m (the owner raised it from 7.2 on 2026-11-07: its rises came up against it), no pillars, no chairs, no boards. A
     /// central deep pool 10 x 10 cells with steps on all four sides, and in its middle a 4 x 4 abyss where the floor falls away into black. Round lights in the ceiling, and lights under the
     /// water that stay on when the rest die. <see cref="Carve"/> is pure, used by the DEV preview and later by Astra's generator. Places are relative to the room's centre (the abyss's middle
     /// on the deck's level); <see cref="Centre"/> gives it on a layout.
     /// </summary>
     public static class NativeDeepEndArena
     {
-        public const int Cells=20,PoolCells=10,AbyssCells=4;public const float Ceiling=7.2f,Half=Cells*PoolroomsLayout.Cell*.5f,PoolHalf=PoolCells*PoolroomsLayout.Cell*.5f,AbyssHalf=AbyssCells*PoolroomsLayout.Cell*.5f;
+        public const int Cells=20,PoolCells=10,AbyssCells=4;public const float Ceiling=12f,Half=Cells*PoolroomsLayout.Cell*.5f,PoolHalf=PoolCells*PoolroomsLayout.Cell*.5f,AbyssHalf=AbyssCells*PoolroomsLayout.Cell*.5f;
         public const int RoomId=9000;
         /// <summary>The arches' half width (m) and their top (m; the level's arch springing at 1.5).</summary>
         public const float ArchHalf=PoolroomsLayout.Cell,ArchTop=PoolroomsLayout.ArchSpring+2;

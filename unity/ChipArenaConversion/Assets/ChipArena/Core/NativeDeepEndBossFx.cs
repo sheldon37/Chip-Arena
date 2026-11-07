@@ -104,7 +104,8 @@ namespace ChipArena.UnityConversion
                 {
                     var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=12;k++){var q=Vector3.Lerp(tp,e,k/12f);w.Disturb(q.X,q.Z,3.1f,-.5f,1);w.Disturb(q.X,q.Z,6,.1f,.2f);}
                 }
-                if(m.Id=="jet"&&age>=hit&&age<hit+m.Strike&&s.Tide>-.5f){var head=rig.MouthAt-o;var d=DeepEndBossRig.JetDir(v,age,hit,m,head,s.Tide);float T=(head.Y-s.Tide)/Math.Max(.05f,-d.Y);var land=head+d*Math.Min(T,m.Reach);w.Disturb(land.X,land.Z,1.5f,-Math.Min(.14f,.13f*(dt*60)),.5f);}
+                if(m.Id=="jet"&&age>=hit&&age<hit+m.Strike&&s.Tide>-.5f){var head=rig.MouthAt-o;var d=DeepEndBossRig.JetDir(v,age,hit,m,head,s.Tide);float T=(head.Y-s.Tide)/Math.Max(.05f,-d.Y);var land=head+d*Math.Min(T,m.Reach);w.Disturb(land.X,land.Z,1.5f,-Math.Min(.14f,.13f*(dt*60)),.5f);
+                    var flatD=new Vector3(d.X,0,d.Z);float fl=flatD.Length();if(fl>.01f){flatD/=fl;for(int k=1;k<=3;k++){var q=land+flatD*(k*5);if(Math.Abs(q.X)<NativeDeepEndArena.Half&&Math.Abs(q.Z)<NativeDeepEndArena.Half){w.Disturb(q.X,q.Z,1.1f,-Math.Min(.07f,.06f*(dt*60)),.4f);w.AddFoam(q.X,q.Z,1.2f,.7f*dt*7);}}}}
                 if(m.Id=="lull"&&In(at)){w.Disturb(tp.X,tp.Z,2.2f,.25f,.8f);}
                 if(m.Id=="seiche"){var ax=s.SeicheAxis;float half=NativeDeepEndArena.Half;float t0=age-hit,tl=t0-dt;float cross=2*half/m.Speed;if(t0>=cross&&tl<cross){for(int k=-8;k<=8;k++){float side=k*2.5f;w.Disturb(ax.X*(half-1.2f)+ax.Z*side,ax.Z*(half-1.2f)-ax.X*side,2.4f,.32f,.9f);}}}
                 if(m.Id=="whistle"&&In(at))for(int k=0;k<PilotCount;k++){var pl=Pilots[k];w.Disturb(pl.X+1.2f,pl.Y+.8f,1.4f,-.2f,.7f);}
@@ -393,7 +394,7 @@ namespace ChipArena.UnityConversion
                     case "flop":if(age>=hit){var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=6;k++){var q=Vector3.Lerp(t,e,k/6f);var c=o+new Vector3(q.X,Math.Max(surface,0),q.Z);Spray(now,c,Vector3.UnitY,.75f,10.5f,54,1.5f,at,.14f,10+k,.05f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.6f,0),2.8f,4,1.9f,.8f,3.2f,.15f,at,.3f,20+k,floor);}var w0=o+new Vector3(t.X,Math.Max(surface,0),t.Z);var w1=o+new Vector3(e.X,Math.Max(surface,0),e.Z);CrownLine(w0,w1,now-at,1.3f,3.6f,m.Width*.42f,3);}break;
                     case "jet":Jet(rig,v,s,waves,now,age,hit,m,low);break;
                     case "lull":Hands(rig,v,s,waves,now,age,hit,m,low);break;
-                    case "drain":if(age<hit+m.Strike){float k=BossMath.Smooth((age-hit*.6f)/.6f)*(1-BossMath.Smooth((age-hit-m.Strike+.3f)/.3f));if(k>.02f){var hd=rig.MouthAt;Vfx.SmokeFlow(now,new Vector3(hd.X,o.Y+surface+.4f,hd.Z),new Vector3(0,.2f,0),1.4f,.22f,14,1.5f,.5f,2.4f,WaterWhite,.2f*k,v.actionAt,v.actionAt+hit+m.Strike,Seed,41,lit:.6f);}}break;
+                    case "drain":if(age<hit+m.Strike&&!(DeepEndBossView.At(v.cancelAt)&&now>=v.cancelAt)){float k=BossMath.Smooth((age-hit*.6f)/.6f)*(1-BossMath.Smooth((age-hit-m.Strike+.3f)/.3f));if(k>.02f){DrainPull(rig,s,waves,now,k,low);var hd=rig.MouthAt;Vfx.SmokeFlow(now,new Vector3(hd.X,o.Y+surface+.4f,hd.Z),new Vector3(0,.2f,0),1.4f,.22f,14,1.5f,.5f,2.4f,WaterWhite,.2f*k,v.actionAt,v.actionAt+hit+m.Strike,Seed,41,lit:.6f);}}break;
                     case "whistle":if(age>=hit*.5f&&age<hit+m.Strike){var pl=Pilots;for(int k=0;k<PilotCount;k++){float e=age-hit*.5f,y=Math.Max(SurfaceAt(waves,pl[k].X,pl[k].Y),.02f)+.05f;Over.Billboard(o+new Vector3(pl[k].X+1.2f,y,pl[k].Y+.8f),new Vector3(1.4f,0,0),new Vector3(0,0,1.4f),Vector3.UnitY,DeepEndFlow.Shadow,2,new Vector3(.01f,.1f,.12f),.6f*BossMath.Smooth(e/.4f)*(1-BossMath.Smooth((age-hit-m.Strike+.5f)/.5f)));}}break;
                     case "lap":if(age>=hit&&age<hit+m.Strike+1){var c=rig.Shown.Position[1];Vfx.SmokeFlow(now,new Vector3(c.X,o.Y+surface+.4f,c.Z),new Vector3(0,1,0),1.2f,.3f,12,1.1f,.6f,2.2f,WaterWhite,.22f,at,at+m.Strike+1,Seed,43,lit:.6f,trail:rig.Velocity[1]*.8f);}break;
                 }
@@ -406,33 +407,77 @@ namespace ChipArena.UnityConversion
                 Vfx.SmokeFlow(now,at,new Vector3(0,-.15f,0),.25f,.02f,5,2.8f,.4f,1.8f,new Vector3(.03f,.08f,.1f),.5f,t0,now+1,Seed,70+i,floor:NativeBossVfx.NoFloor);
             }
         }
-        // Hydro Jet: a solid-looking beam, a mist sheath, a hard splash where it lands, rainbow in the mist if it reads.
+        // Hydro Jet, drawn on the rule's own line (the owner, 2026-11-07: it hit without looking as if it did). The rule sweeps JetDir, flat, 2 m wide and the table's reach long, whatever the mouth's axis is doing, so the beam is that line and no other:
+        // a solid column from the mouth to where it lands, then the same water tearing on along the surface to the end of the line (or the wall). Whoever stands in the line is struck, and it shows on them.
         private void Jet(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now,float age,float hit,in DeepEndBossMove m,bool low)
         {
-            float on=BossMath.Smooth((age-hit)/.08f)*(1-BossMath.Smooth((age-hit-m.Strike)/.18f));if(on<.01f)return;var o=rig.Origin;var mouth=rig.MouthAt;var head=mouth-o;var d=rig.MouthDir;float surface=s.Tide;
-            // The beam leaves along the mouth's axis, bending under its own weight to the water.
-            const int rings=14;float speed=26;Vector3 land=mouth;float travel=0;
-            for(int i=0;i<rings;i++)
+            float on=BossMath.Smooth((age-hit)/.06f)*(1-BossMath.Smooth((age-hit-m.Strike)/.18f));if(on<.01f)return;var o=rig.Origin;var mouth=rig.MouthAt;var head=mouth-o;float surface=s.Tide;
+            var d=DeepEndBossRig.JetDir(v,age,hit,m,head,surface);var flat=new Vector3(d.X,0,d.Z);float fl=flat.Length();flat=fl>1e-3f?flat/fl:Vector3.UnitZ;float reach=m.Reach*fl;
+            // Up to the room's walls.
+            float halfRoom=NativeDeepEndArena.Half-.25f;if(Math.Abs(flat.X)>1e-3f)reach=Math.Min(reach,((flat.X>0?halfRoom:-halfRoom)-head.X)/flat.X);if(Math.Abs(flat.Z)>1e-3f)reach=Math.Min(reach,((flat.Z>0?halfRoom:-halfRoom)-head.Z)/flat.Z);reach=Math.Max(1,reach);
+            // Where it lands: on the water, or on the tile where the deck is dry.
+            float Ground(float x,float z)=>DeepEndBossPaths.Wet(x,z,surface)?Math.Max(SurfaceAt(waves,x,z),surface):0;
+            float T=(head.Y-surface)/Math.Max(.05f,-d.Y);var land=head+d*T;if(!DeepEndBossPaths.Wet(land.X,land.Z,surface)){T=head.Y/Math.Max(.05f,-d.Y);land=head+d*T;}
+            float landAt=Math.Min(reach,T*fl);land=head+flat*landAt;land.Y=Ground(land.X,land.Z);
+            // It leaves the mouth and is there at once: the rule hits from the first moment.
+            const int rings=14;
+            for(int i=0;i<rings;i++){float u=i/(float)(rings-1);var c=Vector3.Lerp(mouth,o+land,u);c.Y+=-.75f*4*u*(1-u);tubeC[i]=c;tubeR[i]=(.34f+.66f*u)*on;}
+            Over.Tube(tubeC,tubeR,rings,low?8:14,DeepEndFlow.Jet,0,new Vector3(.86f,.97f,1f),on,rings*.6f);
+            for(int i=0;i<rings;i++)tubeR[i]*=.5f;Over.Tube(tubeC,tubeR,rings,low?6:10,DeepEndFlow.Jet,1,new Vector3(1.8f,2.2f,2.4f),on,rings*.9f);
+            // On along the surface: a low wall of white water the width of the rule's line, racing to the line's end.
+            var side=new Vector3(flat.Z,0,-flat.X);float run=reach-landAt;
+            if(run>.4f)
             {
-                float tau=i/(float)(rings-1)*1.05f;var p=mouth+d*(speed*tau)+new Vector3(0,-.5f*BossMath.Gravity*.55f*tau*tau,0);
-                if(p.Y-o.Y<surface&&i>0){var q=tubeC[i-1];float kk=(surface-(q.Y-o.Y))/Math.Min(-.01f,(p.Y-q.Y));p=Vector3.Lerp(q,p,BossMath.Clamp01(kk));p.Y=o.Y+surface;tubeC[i]=p;tubeR[i]=(.36f+.62f*(i/(float)(rings-1)))*on;land=p;travel=i+1;break;}
-                tubeC[i]=p;tubeR[i]=(.36f+.62f*(i/(float)(rings-1)))*on;land=p;travel=i+1;
+                const int runs=10;
+                for(int i=0;i<runs;i++){float u=i/(float)(runs-1),a=landAt+run*u;var c=head+flat*a;c.Y=Ground(c.X,c.Z)+.26f*(1-.45f*u)+.05f*(float)Math.Sin(now*23+u*17);tubeC[i]=o+c;tubeR[i]=(.56f-.2f*u)*on;}
+                Over.Tube(tubeC,tubeR,runs,low?6:10,DeepEndFlow.Jet,2,new Vector3(.9f,.98f,1f),.9f*on,runs*.9f);
+                var mid=head+flat*(landAt+run*.5f);mid.Y=Ground(mid.X,mid.Z)+.05f;
+                Over.Billboard(o+mid,flat*(run*.5f),side*(m.Width*.62f),Vector3.UnitY,DeepEndFlow.Mark,0,new Vector3(.8f,.97f,1f)*(1.25f*on),0);
+                int rush=Vfx.Scale(54);for(int i=0;i<rush;i++)
+                {
+                    int k=2100+i*5;float ph=BossMath.Frac(now*(1.5f+.9f*H(k))+H(k+1));var p0=head+flat*(landAt+run*H(k+2))+side*((H(k+3)-.5f)*m.Width);p0.Y=Ground(p0.X,p0.Z);var vel0=side*((H(k+3)-.5f)*7)+flat*(5+6*H(k+4))+new Vector3(0,2.4f+4.2f*H(k+1),0);
+                    var at=NativeBossVfx.Fly(o+p0,vel0,.3f,BossMath.Gravity,ph*.62f,out var vel);if(at.Y<o.Y+p0.Y)continue;Vfx.Drop(at,-vel*.03f,WaterWhite,.06f+.07f*H(k+2),.85f*on*(1-ph*.6f),ph,i);
+                }
             }
-            int count=(int)travel;Over.Tube(tubeC,tubeR,count,low?8:14,DeepEndFlow.Jet,0,new Vector3(.86f,.97f,1f),on,count*.6f);
-            // The core, narrower and brighter.
-            for(int i=0;i<count;i++)tubeR[i]*=.5f;Over.Tube(tubeC,tubeR,count,low?6:10,DeepEndFlow.Jet,1,new Vector3(1.8f,2.2f,2.4f),on,count*.9f);
-            // The mist sheath along it; the splash where it lands, moving with the sweep.
-            float start=v.actionAt+hit,end=start+m.Strike;int sheath=Vfx.Scale(26);
-            for(int i=0;i<sheath;i++){float ph=BossMath.Frac(now*1.3f+H(i+1200));int seg=(int)(H(i+1300)*(count-1));var c=Vector3.Lerp(tubeC[seg],tubeC[Math.Min(count-1,seg+1)],H(i+1400));float sz=.5f+1.5f*ph;Vfx.Smoke(c+new Vector3(H(i+1500)-.5f,H(i+1600)-.5f+ph*.8f,H(i+1700)-.5f)*(1.2f+ph*1.4f),WaterWhite,.2f*on*(1-ph)*BossMath.Smooth(ph/.2f),sz,ph,i,NativeBossVfx.NoFloor,.65f);}
-            var lc=new Vector3(land.X,o.Y+surface,land.Z);int spr=Vfx.Scale(70);for(int i=0;i<spr;i++)
+            // The hard splash where the column lands.
+            float start=v.actionAt+hit,end=start+m.Strike;var lc=new Vector3(land.X,o.Y+land.Y,land.Z)+new Vector3(o.X,0,o.Z);int spr=Vfx.Scale(70);
+            for(int i=0;i<spr;i++)
             {
-                int k=1800+i*7;float ph=BossMath.Frac(now*(1.1f+.7f*H(k))+H(k+1)),age2=ph*1.05f;var dir=NativeBossVfx.Cone(new Vector3(d.X*.8f,1,d.Z*.8f),.7f,H(k+2),H(k+3),H(k+4));var p0=lc+new Vector3(H(k+5)-.5f,0,H(k+6)-.5f)*1.2f;var at=NativeBossVfx.Fly(p0,dir*(5+9*H(k+1)),.3f,BossMath.Gravity,age2,out var vel);if(at.Y<o.Y+surface)continue;Vfx.Drop(at,-vel*.03f,WaterWhite,.07f+.07f*H(k+7),.85f*on*(1-ph*.5f),ph,i);
+                int k=1800+i*7;float ph=BossMath.Frac(now*(1.1f+.7f*H(k))+H(k+1)),age2=ph*1.05f;var dir=NativeBossVfx.Cone(new Vector3(flat.X*.8f,1,flat.Z*.8f),.7f,H(k+2),H(k+3),H(k+4));var p0=lc+new Vector3(H(k+5)-.5f,0,H(k+6)-.5f)*1.2f;var at=NativeBossVfx.Fly(p0,dir*(5+9*H(k+1)),.3f,BossMath.Gravity,age2,out var vel);if(at.Y<lc.Y)continue;Vfx.Drop(at,-vel*.03f,WaterWhite,.07f+.07f*H(k+7),.85f*on*(1-ph*.5f),ph,i);
             }
-            Vfx.SmokeFlow(now,lc+new Vector3(0,.5f,0),new Vector3(0,2.4f,0),1.6f,.4f,24,1.3f,.7f,3.2f,WaterWhite,.34f*on,start,end,Seed,81,lit:.7f);
-            // A faint rainbow in the mist, on the side away from the mouth.
-            var bow=lc+new Vector3(d.X,0,d.Z)*2.6f+new Vector3(0,1.8f,0);Vfx.Glow(bow,new Vector3(.18f,.06f,.04f)*on,3.4f,NativeBossVfx.RingGlow);Vfx.Glow(bow,new Vector3(.04f,.14f,.05f)*on,3.0f,NativeBossVfx.RingGlow);Vfx.Glow(bow,new Vector3(.03f,.06f,.18f)*on,2.6f,NativeBossVfx.RingGlow);
+            Vfx.SmokeFlow(now,lc+new Vector3(0,.4f,0),new Vector3(0,2,0),1.2f,.3f,14,1f,.5f,2.2f,WaterWhite,.16f*on,start,end,Seed,81,lit:.7f);
+            // The line's end: against a wall it climbs it.
+            if(reach<m.Reach*fl-.5f){var e=head+flat*reach;var ec=o+new Vector3(e.X,Ground(e.X,e.Z)+.2f,e.Z);int up=Vfx.Scale(26);for(int i=0;i<up;i++){int k=2400+i*5;float ph=BossMath.Frac(now*(1.3f+.6f*H(k))+H(k+1));var at=NativeBossVfx.Fly(ec+side*((H(k+2)-.5f)*2),new Vector3(0,7+4*H(k+3),0)-flat*(2*H(k+4)),.3f,BossMath.Gravity,ph*.8f,out var vel);if(at.Y<ec.Y)continue;Vfx.Drop(at,-vel*.03f,WaterWhite,.08f+.06f*H(k+2),.8f*on*(1-ph*.5f),ph,i);}}
+            // Whoever stands in the line: the water bursting on them, so a hit looks like one.
+            for(int n=0;n<PilotCount;n++)
+            {
+                var q=new Vector3(Pilots[n].X,0,Pilots[n].Y)-new Vector3(head.X,0,head.Z);float along=Vector3.Dot(q,flat);if(along<0||along>reach)continue;float across=Math.Abs(Vector3.Dot(q,side));if(across>m.Width*.5f+.15f)continue;
+                var bp=o+new Vector3(Pilots[n].X,Ground(Pilots[n].X,Pilots[n].Y),Pilots[n].Y);int burst=Vfx.Scale(40);
+                for(int i=0;i<burst;i++){int k=2600+n*211+i*3;float ph=BossMath.Frac(now*(1.9f+.8f*H(k))+H(k+1));var dir=NativeBossVfx.Cone(Vector3.Normalize(new Vector3(flat.X*.9f,1,flat.Z*.9f)),.85f,H(k+2),H(k+3),H(k+4));var at=NativeBossVfx.Fly(bp+new Vector3(0,.5f+.9f*H(k+5),0),dir*(4+8*H(k+1)),.2f,BossMath.Gravity,ph*.5f,out var vel);Vfx.Drop(at,-vel*.03f,WaterWhite,.07f+.08f*H(k+6),.95f*on*(1-ph*.6f),ph,i);}
+                Over.Billboard(bp+new Vector3(0,.05f,0),flat*1.5f,side*1.5f,Vector3.UnitY,DeepEndFlow.Shadow,2,new Vector3(.75f,.92f,.96f),.55f*on);
+                Vfx.Glow(bp+new Vector3(0,1,0),new Vector3(.4f,.7f,.85f)*(.8f*on),2.2f,NativeBossVfx.Core);
+            }
             // The throat's light, a glow at the mouth.
-            Vfx.Glow(mouth+d*.5f,new Vector3(.5f,.9f,1.2f)*(1.6f*on),2.6f,NativeBossVfx.Core);
+            Vfx.Glow(mouth+rig.MouthDir*.5f,new Vector3(.5f,.9f,1.2f)*(1.6f*on),2.6f,NativeBossVfx.Core);
+        }
+        // The Drain: the whole room is going down the pit, so its pull has to show wherever you stand: sheets of water racing in over the surface and over the dry deck, spiralling tighter as they near the pit; spray dragged along with them; the throat bright with what it's taking in.
+        private void DrainPull(DeepEndBossRig rig,in DeepEndBossStage s,DeepEndWaves waves,float now,float k,bool low)
+        {
+            var o=rig.Origin;float surface=s.Tide;int n=low?18:44;
+            for(int i=0;i<n;i++)
+            {
+                int q=3000+i*4;float cyc=BossMath.Frac(now*(.34f+.2f*H(q))+H(q+1));float r0=8+22*H(q+2),rad=Math.Max(1.2f,r0*(1-cyc*cyc));float a0=H(q+3)*BossMath.Tau;float an=a0+2.1f*(float)Math.Log((r0+1)/(rad+1));float cs=(float)Math.Cos(an),sn=(float)Math.Sin(an);float x=cs*rad,z=sn*rad;
+                if(!NativeDeepEndArena.InRoom(x,z))continue;
+                bool wet=DeepEndBossPaths.Wet(x,z,surface);float y=(wet?Math.Max(SurfaceAt(waves,x,z),surface):0)+.05f;var inward=new Vector3(-cs,0,-sn);var swirl=new Vector3(sn,0,-cs);var along=Vector3.Normalize(inward+swirl*.42f);var across=new Vector3(along.Z,0,-along.X);
+                float len=(1.4f+2.8f*(1-rad/30f))*(.7f+.6f*H(q+2));float fade=BossMath.Smooth(cyc/.12f)*(1-BossMath.Smooth((cyc-.82f)/.18f))*k;
+                Over.Billboard(o+new Vector3(x,y,z),along*len,across*(.1f+.14f*H(q+1)),Vector3.UnitY,DeepEndFlow.Mark,0,new Vector3(.72f,.96f,1f)*((wet?.9f:.75f)*fade),0);
+            }
+            int sprays=Vfx.Scale(30);for(int i=0;i<sprays;i++)
+            {
+                int q=3300+i*4;float cyc=BossMath.Frac(now*(.5f+.3f*H(q))+H(q+1));float r0=5+21*H(q+2),rad=Math.Max(.8f,r0*(1-cyc));float an=H(q+3)*BossMath.Tau+1.7f*cyc;float x=(float)Math.Cos(an)*rad,z=(float)Math.Sin(an)*rad;if(!NativeDeepEndArena.InRoom(x,z))continue;
+                float y=DeepEndBossPaths.Wet(x,z,surface)?surface:0;Vfx.Drop(o+new Vector3(x,y+.25f+.5f*H(q),z),new Vector3(-(float)Math.Cos(an),.05f,-(float)Math.Sin(an))*.28f,WaterWhite,.05f+.05f*H(q+1),.7f*k*(1-cyc*.4f),cyc,i);
+            }
+            Vfx.Glow(rig.MouthAt+rig.MouthDir*.3f,new Vector3(.45f,.85f,1.1f)*(1.5f*k*(.8f+.2f*(float)Math.Sin(now*6.3f))),3.1f,NativeBossVfx.Core);
         }
         // The Lull's hands: formed from the surface, rising round the pilot, pulling down.
         private void Hands(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now,float age,float hit,in DeepEndBossMove m,bool low)

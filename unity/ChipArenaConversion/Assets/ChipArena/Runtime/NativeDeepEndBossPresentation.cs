@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
             bool preview=NativeDeepEndBossPreview.On;float now=wall;NVector2 target=default;bool hasLook=false;
             if(preview)
             {
-                NativeDeepEndBossBeats.UseSong(NativeZoneBossSongs.Installed(NativeZoneMusic.PoolroomsBoss)?NativeZoneBossSongs.Music?.Song(NativeZoneMusic.PoolroomsBoss):null);
+                NativeDeepEndBossBeats.UseSong(NativeZoneBossSongs.Installed(NativeZoneMusic.PoolroomsBoss)?NativeZoneBossSongs.Music?.Song(NativeZoneMusic.PoolroomsBoss):null);deepEndFx.Pilots=NativeDeepEndBossPreview.Pilots;deepEndFx.PilotCount=NativeDeepEndBossPreview.Pilots.Length;
                 if(double.IsNaN(NativeDeepEndBossPreview.Start))NativeDeepEndBossPreview.Start=wall;
                 var localPilot=arena.Local;NativeDeepEndBossPreview.HasLocal=false;if(localPilot?.Body!=null&&poolroomsLayout!=null&&DeepEndBossCentre(out var roomAt)){var lp=localPilot.Body.position;var lr=new NVector2(lp.x-roomAt.X,lp.z-roomAt.Z);if(NativeDeepEndArena.InRoom(lr.X,lr.Y)){NativeDeepEndBossPreview.HasLocal=true;NativeDeepEndBossPreview.Local=lr;}}
                 NativeDeepEndBossPreview.FillLampTimes();
@@ -63,6 +63,8 @@ namespace ChipArena.UnityConversion
                 deepEndView=DeepEndBossViewOf(arena);
                 if(deepEndView.live)
                 {
+                    // The effects' pilots, in the room's frame: the Jet bursts on whoever stands in its line, the Whistle's rings rise round them.
+                    if(DeepEndBossCentre(out var pilotsAt)){int np=0;foreach(var q in arena.Pilots){if(q?.Body==null||q.Seat==null||q.Seat.AuthorityBoss||q.Hp<=0||np>=deepEndPilots.Length)continue;var qp=q.Body.position;deepEndPilots[np++]=new NVector2(qp.x-pilotsAt.X,qp.z-pilotsAt.Z);}deepEndFx.Pilots=deepEndPilots;deepEndFx.PilotCount=np;}
                     NativeDeepEndBossBeats.UseSong(NativeZoneBossSongs.ForMap(arena.MapId));double song=arena.BossSongTime;
                     if(song>=0&&song<1e6)
                     {
