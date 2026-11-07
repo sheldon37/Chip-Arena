@@ -49,6 +49,7 @@ namespace ChipArena.UnityConversion
                 NativeUi.Text(new Rect(mr.x+14,mr.y+34,mr.width-28,16),row.Kills+" kills  ·  F interact / revive",11,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft);
                 if(row.Picks.Count!=pvePending){if(row.Picks.Count>pvePending)pvePendingAt=Time.unscaledTime;pvePending=row.Picks.Count;}
                 if(row.Picks.Count>0&&!PvePickOpen)PveChipsTag(W,H,row.Picks.Count,Time.unscaledTime-pvePendingAt);
+                BossLeftoverHud(W,H);
                 if(p.Hp<=0)Prompt(H/2+5,arena.InShaft(p)?"FALLING THROUGH THE VENT":row.SelfAt>=0?"Self-revive in "+Math.Ceiling(row.SelfAt-arena.Time)+"s":"DOWNED  ·  A teammate can revive you",16,NativeCyberTheme.Danger());
             }
         }

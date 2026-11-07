@@ -68,7 +68,7 @@ namespace ChipArena.UnityConversion
             if(ZoneBoss!=null){ZoneBoss.action=null;ZoneBoss.actionAt=ZoneBoss.hitAt=-100;ZoneBoss.duration=0;}
             foreach(var p in Members())
             {
-                for(int i=0;i<5;i++)GrantPvePick(p,"common",false);
+                for(int i=0;i<5;i++)GrantPvePick(p,"common",false,NativeBossPicks.Source);
                 OpenPvePick(p);
             }
         }
@@ -86,14 +86,15 @@ namespace ChipArena.UnityConversion
                 {if(row.Open==null)OpenPvePick(p);if(row.Open?.Offers?.Count>0&&ChoosePve(p,row.Open.Id,row.Open.Offers[0]))continue;break;}
             }
             var connected=Pve.Rows.Values.Where(r=>r.Pilot.Seat.connected&&!r.Pilot.Seat.bot).ToArray();
-            // One shared countdown for everyone's five (the owner: 30 s), on the authority's ticks while the arena's clock stands still. When it runs out,
-            // any pick still open is made for its pilot (the first offer, as a bot picks) and the fight goes on.
+            // One shared countdown for everyone's five (the owner: 30 s), on the authority's ticks while the arena's clock stands still. When it runs out
+            // the fight starts, and a chip a pilot hasn't chosen waits for them: C opens it in the fight, as in an Expedition (the owner, 2026-11-07). Its
+            // offers are rolled now, under the opening's rules (normal rarity, no money chips), and the screen is closed so the intro plays clean.
             if(connected.Any(r=>r.Picks.Count>0))
             {
                 Pve.PickLeft=NativeBossPicks.Tick(Pve.PickLeft,1f/60);if(Pve.PickLeft>0)return true;
-                foreach(var row in connected){var p=row.Pilot;int guard=0;while(row.Picks.Count>0&&guard++<16){if(row.Open==null)OpenPvePick(p);if(row.Open?.Offers?.Count>0&&ChoosePve(p,row.Open.Id,row.Open.Offers[0]))continue;break;}}
+                foreach(var row in connected)foreach(var pick in row.Picks)if(pick.Offers==null)RollPveOffers(row.Pilot,pick);
             }
-            foreach(var row in Pve.Rows.Values){row.Open=null;row.Picks.Clear();}
+            foreach(var row in Pve.Rows.Values){row.Open=null;if(row.Pilot.Seat.bot)row.Picks.Clear();}
             if(connected.Length==0){BeginPveHold("defeat");Pve.Stage="ended";return true;}
             Pve.Stage="boss";
             if(ZoneBoss==null)

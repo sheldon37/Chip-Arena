@@ -36,12 +36,11 @@ namespace ChipArena.UnityConversion
                 else U.Pill(r,new Color(deep.r,deep.g,deep.b,.18f*enter),new Color(deep.r,deep.g,deep.b,breath*enter));
                 px+=pip+gap;
             }
-            // The shared countdown, draining in the boss's colours.
-            float left=v.PickLeft,fill=NativeBossPicks.Fill(left);string clock=NativeBossPicks.Clock(left);var bar=new Rect(x,panel.yMax-34,w-64,8);
+            // The shared countdown, draining in the boss's colours (its figures are the big clock at the top, NativeBossPicksClock.cs).
+            float left=v.PickLeft,fill=NativeBossPicks.Fill(left);var bar=new Rect(x,panel.yMax-34,w,8);
             U.Pill(bar,U.Hex(0xffffff,.08f*enter),Color.clear);
-            if(fill>0){var f=new Rect(bar.x,bar.y,Mathf.Max(bar.height,bar.width*fill),bar.height);bool urgent=left<=5;var tone=urgent?U.Hex(0xff5a4e):deep;
+            if(fill>0){var f=new Rect(bar.x,bar.y,Mathf.Max(bar.height,bar.width*fill),bar.height);bool urgent=NativeBossPicks.IsUrgent(left);var tone=urgent?U.Hex(0xff5a4e):deep;
                 if(!reduced)U.Glow(f,new Color(tone.r,tone.g,tone.b,.3f*enter),8);U.Pill(f,new Color(tone.r,tone.g,tone.b,enter),Color.clear);}
-            U.Text(new Rect(bar.xMax+10,bar.center.y-11,54,22),clock,16,left<=5?U.Hex(0xff8a80,enter):U.Hex(0xf4f4f5,enter),TextAnchor.MiddleRight,bold:true,mono:true,shadow:shade);
             U.Text(new Rect(x,bar.y-22,w,16),"THE FIGHT STARTS WHEN EVERYONE IS IN, OR AT 0:00",10,U.Hex(0x9a9daa,enter),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f,shadow:shade);
         }
         private void BossPicksWaitReset(){if(!BossPicksWaiting)bossPickSince=-1;}
