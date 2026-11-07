@@ -122,6 +122,9 @@ namespace ChipArena.UnityConversion
                 var a=acts[i];if(p<a.At)continue;if(p>a.At+a.Dur+1.2f)break;
                 v.action=a.Id;v.actionId=1000+i+(int)Math.Round(baseAt*4)%997*100;v.actionAt=baseAt+a.At;v.hitAt=baseAt+a.Hit;v.duration=a.Dur;v.actionTarget=a.Target;target=Pilots[a.Target];
                 if(!float.IsNaN(a.LaneX0)){v.laneX0=a.LaneX0;v.laneZ0=a.LaneZ0;v.laneX1=a.LaneX1;v.laneZ1=a.LaneZ1;}
+                // As the authority has it: the move's origin where it stood when it began, its aim the way it faces on the hit.
+                else{Root(a.At,out float ox,out float oz,out _);v.laneX0=ox;v.laneZ0=oz;}
+                Root(a.Hit,out _,out _,out float aim);v.actionYaw=aim;
                 break;
             }
             // Row Burst's rows hold after the move, so the scorch and the return play out.

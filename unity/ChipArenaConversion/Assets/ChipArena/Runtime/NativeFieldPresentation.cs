@@ -203,26 +203,16 @@ namespace ChipArena.UnityConversion
                 vfx.Streak(at,velocity,NativeVfxDraw.Linear(c.Color)*2.2f,(float)c.Sx*1.2f,(float)c.Sx,.06f,.9f);
             }
         }
-        // siren/fx.ts: a black scorch decal under every fire patch; an eruption's pulsing warning ring and the dark fill that
-        // grows to its radius until the burst. The black flames, the eruption column and the rain stay with C12.
+        // siren/fx.ts: a black scorch decal under every fire patch. The eruption's warning (once siren/fx.ts's ring and fill) is the
+        // shared renderer's (Runtime NativeTelegraphPresentation SirenWarnings). The black flames, the column and the rain stay with C12.
         private void SirenTelegraphs(NativeArena arena,float now)
         {
-            var list=arena.SirenFields;Color scorch=Vertex(NativeFieldRules.Scorch,(float)NativeFieldRules.ScorchAlpha),fill=Display(NativeFieldRules.WarnDeep,1,(float)NativeFieldRules.FillAlpha);
-            Color ringColor=Display(NativeFieldRules.Warn,NativeFieldRules.Flicker(now),(float)NativeFieldRules.WarnAlpha);
-            // The warning layer is one mesh, drawn in index order: every fill first, then every ring. In the source they are
-            // separate meshes that three.js depth-sorts, and the ring sits 1 cm above its fill, so the ring lands on top once
-            // the fill grows under it (the last ~0.1 s before the burst).
-            for(int pass=0;pass<2;pass++)
-                for(int i=0;i<list.Count;i++)
-                {
-                    var f=list[i];Vector3 at=f.Position;
-                    if(NativeFieldRules.SirenPatch(f.Kind)){if(pass==0&&NativeFieldRules.ScorchDecal(f.At,f.Until,f.Radius,now,out double scale))Append(decal,NativeFieldRules.SirenDisc,at+Vector3.up*(float)NativeFieldRules.ScorchLift,(float)scale,scorch,true);}
-                    else if(f.Kind=="eruption"&&NativeFieldRules.EruptionWarn(f.At,f.At+NativeFieldRules.EruptionWarning,f.Radius,now,out double ring,out double grown))
-                    {
-                        if(pass==0)Append(warn,NativeFieldRules.SirenDisc,at+Vector3.up*(float)NativeFieldRules.FillLift,(float)grown,fill);
-                        else Append(warn,NativeFieldRules.WarnRing,at+Vector3.up*(float)NativeFieldRules.RingLift,(float)ring,ringColor);
-                    }
-                }
+            var list=arena.SirenFields;Color scorch=Vertex(NativeFieldRules.Scorch,(float)NativeFieldRules.ScorchAlpha);
+            for(int i=0;i<list.Count;i++)
+            {
+                var f=list[i];Vector3 at=f.Position;
+                if(NativeFieldRules.SirenPatch(f.Kind)&&NativeFieldRules.ScorchDecal(f.At,f.Until,f.Radius,now,out double scale))Append(decal,NativeFieldRules.SirenDisc,at+Vector3.up*(float)NativeFieldRules.ScorchLift,(float)scale,scorch,true);
+            }
         }
         // ability-preview.ts: motes rising on the gameplay radius of a point-targeted E ability (Geyser Wall: three circles 3 m
         // apart across the aim, as NativeAbilities places them; Singularity: x1.25 with Abyssal Core).

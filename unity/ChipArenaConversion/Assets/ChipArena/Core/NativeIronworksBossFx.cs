@@ -47,6 +47,37 @@ namespace ChipArena.UnityConversion
         public readonly float[] LightPos=new float[LightMax*4],LightRgb=new float[LightMax*3],LightBeam=new float[LightMax];public int LightCount;
         public readonly NativeHeatSource[] Heat=new NativeHeatSource[HeatMax];public int HeatCount;
         public int Telegraphs,SparkCount,SmokeCount;
+        /// <summary>This frame's attack warnings (Core NativeTelegraph; docs/TELEGRAPHS.md), each its rule's own geometry and time (the
+        /// zone boss authority's converter moves and its hazard pools, in Runtime), in the molten look; the presenter hands them to the
+        /// shared renderer. Telegraphs counts them, TelegraphHash hashes them (deterministic across peers).</summary>
+        public readonly NativeTelegraphList Warnings=new NativeTelegraphList(96);
+        private void Warn(NativeTelegraph.Spec sp,float start,float hit,float now,float live=0)
+        {
+            sp.Style=NativeTelegraph.Molten;sp.Strength=sp.Strength<=0?1:sp.Strength;if(!NativeTelegraph.Timed(ref sp,start,hit,now,live)||!Warnings.Add(sp))return;Telegraphs++;
+            uint h=TelegraphHash;void F(float x){h=(h^(uint)BitConverter.SingleToInt32Bits(x))*16777619u;}
+            h=(h^sp.Shape)*16777619u;F(sp.At.X);F(sp.At.Z);F(sp.Yaw);F(sp.A);F(sp.B);F(sp.C);F(sp.Fill01);F(sp.Lock);F(sp.After);F(sp.Live);TelegraphHash=h;
+        }
+        // The moves' warnings from the view (the authority's times, origin and aim).
+        private void MoveWarnings(in IronworksBossView v,float t)
+        {
+            if(v.action==null||!BossAt(v.actionAt)||!BossAt(v.hitAt))return;float A0=v.actionAt,H0=v.hitAt;var act=NativeIronworksBoss.Find(v.action);
+            var o=BossAt(v.laneX0)?new Vector3(v.laneX0,0,v.laneZ0):new Vector3(v.x,0,v.z);float aim=BossAt(v.actionYaw)?v.actionYaw:v.yaw;var target=BossAt(v.targetX)?new Vector3(v.targetX,0,v.targetZ):o+BossMath.Forward(aim*BossMath.Deg)*6;
+            switch(v.action)
+            {
+                // Pour: the stream's fan, 1.2 to 8 m, 26 degrees either side of its aim, through the pour.
+                case "pour":Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Cone,Fill=NativeTelegraph.FromCentre,At=o,Yaw=aim,A=8,B=26,C=1.2f,Seed=71},A0,H0,t,act.Strike);break;
+                // Stomp: 1.9 m where the foot comes down. Grab: 1.2 m where the tongs close.
+                case "stomp":Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=target,A=1.9f,Seed=72},A0,H0,t,act.Strike);break;
+                case "grab":Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=target,A=1.2f,Seed=73},A0,H0,t,act.Strike);break;
+                // Slam: the ground its shock ring rolls over (to 9 m at 15 m/s), then its front; then 6 m ahead, 3 m either side.
+                case "slam":
+                    if(t<H0)Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromCentre,At=o,A=9.65f,Strength=.6f,Seed=74},A0,H0,t);
+                    else{float k=t-H0;if(k<.6f)Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Wave,At=o,A=Math.Min(9,k*15),B=.65f,C=180,Seed=75},H0,H0,t,.6f);}
+                    Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.Along,At=o,Yaw=aim,A=6,B=3,C=0,Seed=76},H0,H0+.6f,t,.6f);break;
+                // Charge: 3.2 m round the body all the way down its 14 m run.
+                case "charge":Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.Along,At=o,Yaw=aim,A=14+3.2f,B=3.2f,C=3.2f,Seed=77},A0,H0,t,act.Strike);break;
+            }
+        }
         /// <summary>FNV-1a over every telegraph quad this frame (corners, colour, mode, blend, layer; in order): the checks pin it to
         /// the telegraphs the presentation drew before the realism pass.</summary>
         public uint TelegraphHash;
@@ -66,13 +97,13 @@ namespace ChipArena.UnityConversion
 
         public void Build(IronworksBossRig rig,in IronworksBossView v,float t,float camX,float camY,float camZ,float rightX,float rightY,float rightZ,float upX,float upY,float upZ,float effects,bool lowTier)
         {
-            Quads.Clear();Vfx.Begin(effects,lowTier);Melt.Clear(lowTier);LightCount=0;HeatCount=0;Telegraphs=SparkCount=SmokeCount=0;RainCount=0;TelegraphHash=2166136261u;
+            Quads.Clear();Warnings.Clear();Vfx.Begin(effects,lowTier);Melt.Clear(lowTier);LightCount=0;HeatCount=0;Telegraphs=SparkCount=SmokeCount=0;RainCount=0;TelegraphHash=2166136261u;
             ex=camX;ey=camY;ez=camZ;rx=rightX;ry=rightY;rz=rightZ;ux=upX;uy=upY;uz=upZ;quality=effects;low=lowTier;
             if(rig==null||!v.live||!rig.Visible){expiredCount=0;return;}seed=rig.Seed^(uint)(BossAt(v.spawned)?(int)(v.spawned*16):0);
             var ch=rig.Channels;bool dead=!float.IsNaN(rig.DeathAge);drift=BossMath.Flat(rig.Follow.Velocity);
             Always(rig,v,t,ch,dead);
             if(rig.Arriving)Arrival(rig,v,rig.ArrivalAge,t);
-            if(rig.ActIndex>=0)Action(rig,v,t);
+            MoveWarnings(v,t);if(rig.ActIndex>=0)Action(rig,v,t);
             PhaseFx(rig,v,t);MomentFx(rig,v,t);if(v.hazards==null)Leftovers(rig,v,t);else AuthorityHazards(rig,v,t);
             if(dead)Death(rig,v,rig.DeathAge,t);
             HallVessels(v,t,rig);
@@ -94,55 +125,7 @@ namespace ChipArena.UnityConversion
         // A soft square of light on the floor (radial falloff), half size h.
         private void FloorGlow(Vector3 c,float h,Vector3 col){float y=c.Y+.012f;FloorQuad(new Vector3(c.X-h,y,c.Z-h),new Vector3(c.X+h,y,c.Z-h),new Vector3(c.X+h,y,c.Z+h),new Vector3(c.X-h,y,c.Z+h),col,1,1);}
         private Vector3 Cream(float k)=>new Vector3(CreamR,CreamG,CreamB)*(CreamGain*k);
-        // The telegraph hash: the quads added since `from` (FNV-1a over their floats' bits, mode, blend and layer).
-        private void TeleHash(int from)
-        {
-            uint h=TelegraphHash;
-            for(int q=from;q<Quads.Count;q++)
-            {
-                for(int k=0;k<12;k++)h=(h^(uint)BitConverter.SingleToInt32Bits(Quads.Corners[q*12+k]))*16777619u;
-                for(int k=0;k<4;k++)h=(h^(uint)BitConverter.SingleToInt32Bits(Quads.Colors[q*4+k]))*16777619u;
-                h=(h^Quads.Modes[q])*16777619u;h=(h^Quads.Additive[q])*16777619u;h=(h^Quads.Layers[q])*16777619u;
-            }
-            TelegraphHash=h;
-        }
-        /// <summary>A hard-edged cream ring on the floor (radius r, width w), dashed when `dash` (segments marching slowly).</summary>
-        private void Ring(float cx,float cz,float r,float k,float t,bool dash=false,float w=DecalW,Vector3? color=null)
-        {
-            if(k<=0||r<=.05f)return;var col=color??Cream(k);int n=Math.Max(12,Math.Min(64,(int)(r*7)));float spin=dash?t*.4f:0;
-            for(int i=0;i<n;i++)
-            {
-                if(dash&&(i&1)==1)continue;float a0=spin+i*BossMath.Tau/n,a1=spin+(i+1)*BossMath.Tau/n+(dash?0:.002f);
-                float c0=(float)Math.Cos(a0),s0=(float)Math.Sin(a0),c1=(float)Math.Cos(a1),s1=(float)Math.Sin(a1),ri=r-w;
-                int q0=Quads.Count;FloorQuad(new Vector3(cx+c0*r,DecalY,cz+s0*r),new Vector3(cx+c1*r,DecalY,cz+s1*r),new Vector3(cx+c1*ri,DecalY,cz+s1*ri),new Vector3(cx+c0*ri,DecalY,cz+s0*ri),col,1);Telegraphs++;TeleHash(q0);
-            }
-        }
-        /// <summary>A cream wedge outline: an arc at r0 and r1 over ±half (radians) about yaw, and its two radial edges; a soft fill.</summary>
-        private void Wedge(Vector3 o,float yaw,float half,float r0,float r1,float k,float t)
-        {
-            if(k<=0)return;var col=Cream(k);int n=18;int q0=Quads.Count;
-            for(int e=0;e<2;e++)
-            {
-                float r=e==0?r0:r1;for(int i=0;i<n;i++)
-                {
-                    float a0=yaw-half+2*half*i/n,a1=yaw-half+2*half*(i+1)/n;var p0=o+BossMath.Forward(a0)*r;var p1=o+BossMath.Forward(a1)*r;var q0e=o+BossMath.Forward(a0)*(r-DecalW);var q1=o+BossMath.Forward(a1)*(r-DecalW);
-                    FloorQuad(Y(p0),Y(p1),Y(q1),Y(q0e),col,1);Telegraphs++;
-                }
-            }
-            for(int s=-1;s<=1;s+=2){float a=yaw+s*half;var dir=BossMath.Forward(a);var side=BossMath.Right(a)*(DecalW*.5f);var p0=o+dir*r0;var p1=o+dir*r1;FloorQuad(Y(p0-side),Y(p1-side),Y(p1+side),Y(p0+side),col,1);Telegraphs++;}
-            // The fill: a faint soft wash inside so the whole area reads, under the edge's brightness.
-            for(int i=0;i<6;i++){float a0=yaw-half+2*half*i/6,a1=yaw-half+2*half*(i+1)/6;var p0=o+BossMath.Forward(a0)*r0;var p1=o+BossMath.Forward(a1)*r0;var q1=o+BossMath.Forward(a1)*r1;var qq=o+BossMath.Forward(a0)*r1;FloorQuad(Y(p0),Y(p1),Y(q1),Y(qq),col*.12f,1);}
-            TeleHash(q0);
-        }
         private static Vector3 Y(Vector3 p)=>new Vector3(p.X,DecalY,p.Z);
-        /// <summary>A dashed cyan line on the floor from a to b (dashes marching toward b), `w` wide.</summary>
-        private void Dashes(Vector3 a,Vector3 b,float k,float t,float w=.16f,float dash=.55f)
-        {
-            if(k<=0)return;var d=new Vector3(b.X-a.X,0,b.Z-a.Z);float len=d.Length();if(len<.1f)return;d/=len;var side=new Vector3(-d.Z,0,d.X)*(w*.5f);var col=Cyan*k;
-            float off=BossMath.Frac(t*1.4f)*dash*2;int q0=Quads.Count;
-            for(float s=-off;s<len;s+=dash*2){float s0=Math.Max(0,s),s1=Math.Min(len,s+dash);if(s1<=s0)continue;var p0=a+d*s0;var p1=a+d*s1;FloorQuad(Y(p0-side),Y(p1-side),Y(p1+side),Y(p0+side),col,1);Telegraphs++;}
-            TeleHash(q0);
-        }
         private void AddHeat(Vector3 p,float w,float h,float s){if(HeatCount>=HeatMax||s<=.02f)return;Heat[HeatCount++]=new NativeHeatSource{X=p.X,Y=p.Y,Z=p.Z,W=w,H=h,Strength=s};}
         private void AddLight(Vector3 p,float range,Vector3 rgb,float beam=0)
         {
@@ -243,7 +226,7 @@ namespace ChipArena.UnityConversion
             {
                 case "pour":Pour(rig,v,age,hit,act,yaw,target,tk,t);break;
                 case "blow":Blow(rig,v,age,hit,act,tk,t);break;
-                case "stomp":{var land=BossAt(v.targetX)?target:rig.Foot(Math.Max(0,Math.Min(3,v.variant)));if(age<hit+act.Strike)Ring(land.X,land.Z,1.9f,tk,t);
+                case "stomp":{var land=BossAt(v.targetX)?target:rig.Foot(Math.Max(0,Math.Min(3,v.variant)));
                     if(age<hit){int leg=Math.Max(0,Math.Min(3,v.variant));Vfx.Glow(rig.Foot(leg),White*.55f*BossMath.Smooth(age/hit),1.1f,NativeBossVfx.Core);}
                     float k=age-hit;if(k>=0&&k<2.4f){Impact(land,age,hit,1,100);
                         for(int i=0;i<N(8);i++){float ang=i*BossMath.Tau/8+.3f;var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));float l=1.4f+.8f*H(seed,i+5);FloorQuad(Y(land+d*.4f-new Vector3(-d.Z,0,d.X)*.04f),Y(land+d*l),Y(land+d*l),Y(land+d*.4f+new Vector3(-d.Z,0,d.X)*.04f),new Vector3(.02f,.015f,.012f),.8f*(1-k/2.4f),0);}}
@@ -285,7 +268,6 @@ namespace ChipArena.UnityConversion
         private void Pour(IronworksBossRig rig,in IronworksBossView v,float age,float hit,in NativeIronworksBoss.Action act,float yaw,Vector3 target,float tk,float t)
         {
             var root=rig.Root;float aimYaw=BossMath.YawOf(target-root);if(float.IsNaN(aimYaw))aimYaw=yaw;
-            if(age<hit+act.Strike){Wedge(root,aimYaw,26*BossMath.Deg,1.2f,8,tk,t);}
             var lip=rig.Mouth+rig.MouthAxis*.2f;var land=PourLanding(v,hit,yaw);var ax=rig.MouthAxis;float axh=(float)Math.Sqrt(ax.X*ax.X+ax.Z*ax.Z);
             var v0=NativeMoltenFlow.Launch(lip,land,axh>1e-3f?ax.Y/axh:-.6f,out float flight);
             // The metal leaves the lip just before the hit so it lands on it; it stops at the follow-through's end and what is in
@@ -327,7 +309,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<RainCount;i++)
             {
                 float x=Rain[i*4],z=Rain[i*4+1],r=Rain[i*4+2],land=rainStart+Rain[i*4+3];if(age>land+.05f)continue;
-                float k=age<hit?BossMath.Smooth(age/hit)*tk:.85f;Ring(x,z,r,k,t);
+                Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=new Vector3(x,0,z),A=r,Seed=80+i},v.actionAt,v.actionAt+land,t,1);
                 // The droplet falling from under the roof onto its circle in the last .9 s.
                 float f=age-(land-.9f);if(f>=0){var top=new Vector3(x+(H(seed,i*3)-.5f)*1.5f,13.5f,z+(H(seed,i*3+1)-.5f)*1.5f);var bot=new Vector3(x,0,z);float u=BossMath.Clamp01(f/.9f);float uu=u*u;var p=Vector3.Lerp(top,bot,uu);
                     Droplet(p,(bot-top)*(2*u/.9f),r>1.2f?.17f:.12f);}
@@ -395,7 +377,7 @@ namespace ChipArena.UnityConversion
         {
             int leg=rig.ActLeg<0?M.FR:rig.ActLeg;var tip=rig.TongTip[leg<2?leg:0];
             // The cyan line from the tongs to the target and the cyan ring on it through the reach; a glint at the open jaws.
-            if(age<hit+act.Strike){Dashes(tip,target,tk,t);Ring(target.X,target.Z,1.2f,1,t,true,.12f,Cyan*tk);Vfx.Glow(tip,White*(.65f*BossMath.Smooth(age/hit)),.9f,NativeBossVfx.Core);}
+            if(age<hit+act.Strike){Vfx.Glow(tip,White*(.65f*BossMath.Smooth(age/hit)),.9f,NativeBossVfx.Core);}
             float k=age-hit;if(k>=0&&k<.35f){Vfx.Glow(tip,White*(1.1f*(1-k/.35f)),1.6f,NativeBossVfx.Core);}
             if(k>=0&&k<1.2f)Vfx.SparkBurst(age,tip,Vector3.UnitY,.8f,3.2f,26,.6f,hit,.06f,seed,180);
             // Held: the hinge glows when allies hit it (the rig's flinch time), sparks as the jaws grind; freed early: the jaws spring.
@@ -407,7 +389,6 @@ namespace ChipArena.UnityConversion
         {
             var c=rig.Root;
             // The preview ring at 9 m through the rear-up; the white shock ring (0.6 m tall: a jump clears it) expanding 0 to 9 m.
-            if(age<hit)Ring(c.X,c.Z,9,tk,t);
             float k=age-hit;if(k<0)return;
             if(k<act.Strike)
             {
@@ -415,7 +396,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<n;i++)
                 {
                     float a0=i*BossMath.Tau/n,a1=(i+1)*BossMath.Tau/n;var p0=new Vector3(c.X+(float)Math.Cos(a0)*r,.02f,c.Z+(float)Math.Sin(a0)*r);var p1=new Vector3(c.X+(float)Math.Cos(a1)*r,.02f,c.Z+(float)Math.Sin(a1)*r);
-                    int q0=Quads.Count;Quads.Add(p0.X,p0.Y,p0.Z,p1.X,p1.Y,p1.Z,p1.X,.6f,p1.Z,p0.X,.6f,p0.Z,White.X*2.4f*fade,White.Y*2.4f*fade,White.Z*2.4f*fade,.85f,0,true,1);Telegraphs++;TeleHash(q0);
+                    Quads.Add(p0.X,p0.Y,p0.Z,p1.X,p1.Y,p1.Z,p1.X,.6f,p1.Z,p0.X,.6f,p0.Z,White.X*2.4f*fade,White.Y*2.4f*fade,White.Z*2.4f*fade,.85f,0,true,1);
                 }
             }
             // The dust wall rolling out behind the shock ring: low puffs left in its wake, curling up and spreading.
@@ -436,7 +417,7 @@ namespace ChipArena.UnityConversion
                 // The three landing points, 7 to 9 m behind (fixed offsets from the locked facing).
                 float dist=7+i,side=(i-1)*2.6f;var land=c+back*dist+right*side;land.X=BossMath.Clamp(land.X,A.HallX0+1,A.HallX1-1);land.Z=BossMath.Clamp(land.Z,A.HallZ0+1,A.HallZ1-1);
                 Lumps[i*3]=land.X;Lumps[i*3+1]=land.Z;Lumps[i*3+2]=hit+i*.4f+.9f;
-                float launch=hit+i*.4f,landAt=launch+.9f;if(age<landAt+.05f)Ring(land.X,land.Z,1.4f,age<hit?tk:.85f,t);
+                float launch=hit+i*.4f,landAt=launch+.9f;Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=new Vector3(land.X,0,land.Z),A=1.4f,Seed=90+i},v.actionAt,v.actionAt+landAt,t,6);
                 // The lump: lobbed out of the mouth on a smoke trail, tumbling, landing on its circle.
                 float f=age-launch;if(f>=0&&f<.9f)Lump(rig.Mouth,land,f/.9f,i);
             }
@@ -453,7 +434,7 @@ namespace ChipArena.UnityConversion
         {
             var start=rig.Root;if(age>=hit&&BossAt(chargeFrom.X))start=chargeFrom;else chargeFrom=rig.Root;
             // The cyan dashed path and its two edge lines over the windup and the run.
-            if(age<hit+act.Strike){var d=new Vector3(target.X-start.X,0,target.Z-start.Z);float len=d.Length();if(len>.5f){d/=len;var side=new Vector3(-d.Z,0,d.X)*2.7f;Dashes(start,target,tk,t,.2f);Dashes(start+side,target+side,tk*.75f,t,.1f,.3f);Dashes(start-side,target-side,tk*.75f,t,.1f,.3f);}}
+            // Its warning is MoveWarnings' (the rule's 3.2 m round the body down the run).
             // The bogies dig back throwing sparks; the gallop's sparks under every foot that lands; the skid.
             if(age<hit)for(int s=2;s<4;s++)Vfx.SparkFlow(age,rig.Foot(s),-BossMath.Forward(rig.Yaw)+Vector3.UnitY*.5f,.5f,4.2f,26,.6f,0,hit,seed,240+s,1,.024f,1.1f,true,0,default,BossMath.Smooth(age/hit));
             for(int leg=0;leg<4;leg++)if((rig.Landed&(1<<leg))!=0)landSpark[leg]=age;
@@ -486,9 +467,10 @@ namespace ChipArena.UnityConversion
             {
                 if(t>h.until)continue;
                 var ground=new Vector3(h.x,h.y,h.z);float age=t-h.hitAt;Remember(h.id,h.kind,ground,h.radius,h.hitAt,h.until);
+                // The pool's warning: its radius, filling to its hit, live (it burns) until it is gone.
+                Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=new Vector3(h.x,h.y,h.z),A=h.radius,Seed=100+h.id},h.hitAt-1.2f,h.hitAt,t,h.until-h.hitAt);
                 if(age<0)
                 {
-                    Ring(h.x,h.z,h.radius,.85f,t);
                     if(age>=-.9f&&(h.kind=="blow"||h.kind=="deslag"))
                     {
                         float u=BossMath.Clamp01(1+age/.9f);
@@ -499,8 +481,6 @@ namespace ChipArena.UnityConversion
                     continue;
                 }
                 PoolFx(h.id,h.kind,ground,h.radius,age,h.until-h.hitAt,t);
-                float cool=BossMath.Clamp01(age/Math.Max(.01f,h.until-h.hitAt));
-                Ring(h.x,h.z,h.radius,.5f*(1-cool),t);
             }
             // Pools gone from the record (expired): solidifying and sinking away (no longer hot, no telegraph).
             for(int i=0;i<expiredCount;i++)
@@ -559,11 +539,13 @@ namespace ChipArena.UnityConversion
             switch(v.action)
             {
                 case "pour":{float k=age-hit;if(k<0||k>PourPoolDelay+PourPoolLife+SolidifySeconds)break;var p=new Vector3(v.x,v.y,v.z)+BossMath.Forward(yaw)*PourPoolAhead;
-                    PoolFx(800,"pour",p,PourPoolRadius,k-PourPoolDelay,PourPoolLife,t);break;}
+                    PoolFx(800,"pour",p,PourPoolRadius,k-PourPoolDelay,PourPoolLife,t);
+                    Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=new Vector3(p.X,0,p.Z),A=PourPoolRadius,Seed=95},v.actionAt+hit,v.actionAt+hit+PourPoolDelay,t,PourPoolLife);break;}
                 case "deslag":for(int i=0;i<3;i++){float landAt=hit+i*.4f+.9f,k=age-landAt;if(k<0||k>6+SolidifySeconds)continue;if(!(Lumps[i*3]!=0||Lumps[i*3+1]!=0))continue;var p=new Vector3(Lumps[i*3],0,Lumps[i*3+1]);
                         PoolFx(810+i,"deslag",p,1.4f,k,6,t);}break;
                 case "charge":{float k=age-hit;if(k<0||k>a.Strike+3+SolidifySeconds)break;var from=BossAt(chargeFrom.X)?chargeFrom:rig.Root;var to=rig.Root;var d=to-from;d.Y=0;float len=d.Length();if(len<.5f)break;d/=len;
-                        int n=Math.Min(10,(int)(a.Strike/.2f));for(int i=0;i<n;i++){float born=hit+i*.2f,run=Math.Min(1,(born-hit)/a.Strike);if(age<born)continue;var p=from+d*(len*run);PoolFx(820+i,"charge",new Vector3(p.X,0,p.Z),1.8f,age-born,3,t);}break;}
+                        int n=Math.Min(10,(int)(a.Strike/.2f));for(int i=0;i<n;i++){float born=hit+i*.2f,run=Math.Min(1,(born-hit)/a.Strike);if(age<born)continue;var p=from+d*(len*run);PoolFx(820+i,"charge",new Vector3(p.X,0,p.Z),1.8f,age-born,3,t);
+                            Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=new Vector3(p.X,0,p.Z),A=1.8f,Seed=96+i},v.actionAt+born-.01f,v.actionAt+born,t,3);}break;}
             }
         }
 

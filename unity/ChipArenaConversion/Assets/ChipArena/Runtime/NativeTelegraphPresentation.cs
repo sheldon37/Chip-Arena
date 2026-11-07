@@ -20,6 +20,12 @@ namespace ChipArena.UnityConversion
         internal void Telegraph(in NativeTelegraph.Spec s,Vector3 offset){var w=s;w.At+=new NV(offset.x,offset.y,offset.z);telegraphs.Add(w);}
         internal void Telegraph(in NativeTelegraph.Spec s)=>telegraphs.Add(s);
         private void TelegraphsBegin()=>telegraphs.Clear();
+        // The Siren's kit's ground warnings (a pilot's casts or the horde Siren's), on the field clock, from the replicated fields.
+        private void SirenWarnings(NativeArena arena)
+        {
+            var list=arena.SirenFields;if(list==null||list.Count==0)return;float now=FieldClock(arena);
+            for(int i=0;i<list.Count;i++){var f=list[i];if(NativeTelegraph.SirenField(f.Kind,new NV(f.Position.x,f.Position.y,f.Position.z),f.Radius,f.At,f.Until,now,out var s))Telegraph(s);}
+        }
 
         private void TelegraphsDraw(float clock)
         {

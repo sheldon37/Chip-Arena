@@ -251,6 +251,16 @@ for f in range(70, 99):
     P.blade[f] = P.hand_world(f) @ BLADE_L
     P.fixed[f] = 1
     CLIPS[1]['swordFilled'][f] = 1
+# Out to the side (frames 100-156): the solve took the blade's depth the wrong way, back into the wings. The reference's tip is nearer the camera than its hilt
+# (it is wider there at 119): the same way in the picture, its depth turned forward, back to the solve's as it lowers.
+for f in range(100, 157):
+    w = float(smooth((f - 100) / 4)) * (1 - float(smooth((f - 146) / 10)))
+    b = P.hand_world(f) @ BLADE_L
+    want = nrm(np.array((b[0], b[1], b[2] * (1 - 2 * w))))
+    P.m['hand_r'][f] = min_rot(b, want) @ P.m['hand_r'][f]
+    P.blade[f] = P.hand_world(f) @ BLADE_L
+    P.fixed[f] = 1
+    CLIPS[1]['swordFilled'][f] = 1
 hips_fit(P, 0, P.n)
 from_grip = P.grip(56)
 for f in range(P.n):

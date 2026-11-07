@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
             age=0;
             if(f.Intro.On){if(fbIntroEnd>=0||!fbIntroLast.On){fbIntroL=default;fbIntroR=default;}pose=f.Intro;weight=1;fbIntroLast=f.Intro;fbIntroEnd=-1;return true;}
             pose=fbIntroLast;weight=0;if(!fbIntroLast.On)return false;
-            if(fbIntroEnd<0)fbIntroEnd=now;age=now-fbIntroEnd;
+            if(fbIntroEnd<0)fbIntroEnd=now;age=now-fbIntroEnd;if(NativeFallenBossPreview.On)age*=(float)NativeFallenBossPreview.Rate;
             float hold=fbIntroLast.Mocap?FbMocapHold:FbIntroHold,release=fbIntroLast.Mocap?FbMocapRelease:FbIntroRelease;
             if(age<0||age>hold+release){fbIntroLast.On=false;fbIntroL=default;fbIntroR=default;fbPlantL=fbPlantR=default;fbPlantL.StepAt=fbPlantR.StepAt=-1;return false;}
             float k=Mathf.Clamp01((age-hold)/release);weight=1-k*k*(3-2*k);return true;

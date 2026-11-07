@@ -27,8 +27,8 @@ namespace ChipArena.UnityConversion
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Boss effects realism: "+what);count++;}
         // The baseline: recorded on the code before the pass (claude/sleepy-ritchie-g8ruhv 351c26f) with these procedures.
         private const int IwPreviewFrames=8092,IwPreviewCues=303,IwAuthorityCues=15,StPreviewFrames=6480,StPreviewCues=354;
-        private const long IwPreviewTele=166089,IwAuthorityTele=65378,StPreviewTele=45120;
-        private const uint IwPreviewHash=3043605766u,IwPreviewCueHash=1961581023u,IwAuthorityHash=1763906170u,IwAuthorityCueHash=285182648u,StPreviewHash=4237512322u,StPreviewCueHash=3946706737u;
+        private const long IwPreviewTele=13699,IwAuthorityTele=3071,StPreviewTele=3062;// the 6:47: warnings on the shared renderer since 2026-11-07 (docs/TELEGRAPHS.md); its cues unchanged
+        private const uint IwPreviewHash=73163197u,IwPreviewCueHash=1961581023u,IwAuthorityHash=784745204u,IwAuthorityCueHash=285182648u,StPreviewHash=276087788u,StPreviewCueHash=3946706737u;
         private static readonly Vector3 Target=new Vector3(-28f,1.6f,2.6f);
         public static void Run(string root)
         {
@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
                     lastArr=arr;lastDeath=death;
                 }
                 Check(frames==IwPreviewFrames,"the Converter preview's length is the baseline's ("+frames+")");
-                Check(tele==IwPreviewTele&&hash==IwPreviewHash,"THE CONVERTER's telegraphs in its DEV preview are the ones before the pass, quad for quad and frame for frame ("+tele+", "+hash+")");
+                Check(tele==IwPreviewTele&&hash==IwPreviewHash,"THE CONVERTER's warnings in its DEV preview (the shared renderer's, since 2026-11-07) are the recorded ones, warning for warning and frame for frame ("+tele+", "+hash+")");
                 Check(cues==IwPreviewCues&&cueHash==IwPreviewCueHash,"THE CONVERTER's cues in its DEV preview are the ones before the pass ("+cues+", "+cueHash+")");
             }
             {
@@ -77,7 +77,7 @@ namespace ChipArena.UnityConversion
                     fx.Build(rig,v,t,-26,3,-6,1,0,0,0,1,0,1,false);tele+=fx.Telegraphs;hash=Mix(Mix(hash,(uint)fx.Telegraphs),fx.TelegraphHash);
                     int n=NativeIronworksBossCues.Collect(v,rig,fx,t-1/60f,t,-1,-1,-1,-1,buf);for(int i=0;i<n;i++){cues++;cueHash=Mix(Mix(Mix(Mix(cueHash,buf[i].Key),Bits(buf[i].At)),Bits(buf[i].At3.X)),Bits(buf[i].At3.Z));}
                 }
-                Check(tele==IwAuthorityTele&&hash==IwAuthorityHash,"THE CONVERTER's telegraphs from the authority's hazards (warning rings before each hit, the fading ring on each pool) are the ones before the pass ("+tele+", "+hash+")");
+                Check(tele==IwAuthorityTele&&hash==IwAuthorityHash,"THE CONVERTER's warnings from the authority's hazards (each pool filling to its hit, live while it burns) are the recorded ones ("+tele+", "+hash+")");
                 Check(cues==IwAuthorityCues&&cueHash==IwAuthorityCueHash,"the authority's landing cues are the ones before the pass ("+cues+", "+cueHash+")");
             }
             {
@@ -90,10 +90,10 @@ namespace ChipArena.UnityConversion
                     int n=NativeStationBossCues.Collect(v,rig,t-1/60f,t,cbuf);for(int i=0;i<n;i++){cues++;cueHash=Mix(Mix(Mix(Mix(cueHash,cbuf[i].Key),Bits(cbuf[i].At)),Bits(cbuf[i].At3.X)),Bits(cbuf[i].At3.Z));}
                 }
                 Check(frames==StPreviewFrames,"the 6:47 preview's length is the baseline's ("+frames+")");
-                Check(tele==StPreviewTele&&hash==StPreviewHash,"THE 6:47's telegraphs (lanes, doors, glass rings, puddles, Terminus, the horns) are the ones before the pass, quad for quad and frame for frame ("+tele+", "+hash+")");
+                Check(tele==StPreviewTele&&hash==StPreviewHash,"THE 6:47's warnings (the shared renderer's: swipes, lanes, doors, glass, puddles, Terminus) are the recorded ones, warning for warning and frame for frame ("+tele+", "+hash+")");
                 Check(cues==StPreviewCues&&cueHash==StPreviewCueHash,"THE 6:47's cues are the ones before the pass ("+cues+", "+cueHash+")");
             }
-            summary="telegraphs and cues identical to the pre-pass baseline (Converter preview "+IwPreviewTele+" telegraph quads and "+IwPreviewCues+" cues over "+IwPreviewFrames+" frames, its authority scenario "+IwAuthorityTele+" and "+IwAuthorityCues+", the 6:47 preview "+StPreviewTele+" and "+StPreviewCues+")";
+            summary="warnings and cues identical to the recorded baseline (Converter preview "+IwPreviewTele+" warning-frames and "+IwPreviewCues+" cues over "+IwPreviewFrames+" frames, its authority scenario "+IwAuthorityTele+" and "+IwAuthorityCues+", the 6:47 preview "+StPreviewTele+" and "+StPreviewCues+")";
         }
         // The Converter's authority scenario: standing at boss point 0 facing east, a pour from 1 s (windup 1.2 s), its pool by the
         // rule (6 m ahead from the strike + 1.6 s, 4 s, 3 m), four drops of a blow, the deslag's three patches, a charge's trail.

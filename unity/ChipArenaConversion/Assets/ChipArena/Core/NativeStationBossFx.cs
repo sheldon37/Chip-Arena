@@ -36,6 +36,17 @@ namespace ChipArena.UnityConversion
         public readonly float[] LightPos=new float[MaxLights*4],LightRgb=new float[MaxLights*3],LightBeam=new float[MaxLights];public int LightCount;
         /// <summary>This frame's counts by family (budget lines, checks).</summary>
         public int Telegraph,Beam,Sparks,Steam,Dust,Arcs,Glints;
+        /// <summary>This frame's attack warnings (Core NativeTelegraph; docs/TELEGRAPHS.md), each its rule's own geometry and time
+        /// (the zone boss authority's station moves and the zone's glass, in Runtime), in the industrial look; the presenter
+        /// hands them to the shared renderer. Telegraph counts them, TelegraphHash hashes them (deterministic across peers).</summary>
+        public readonly NativeTelegraphList Telegraphs=new NativeTelegraphList(48);
+        private void Warn(NativeTelegraph.Spec sp,float start,float hit,float now,float live=0)
+        {
+            sp.Style=NativeTelegraph.Industrial;sp.Strength=sp.Strength<=0?1:sp.Strength;if(!NativeTelegraph.Timed(ref sp,start,hit,now,live)||!Telegraphs.Add(sp))return;Telegraph++;
+            uint h=TelegraphHash;void F(float x){h=(h^(uint)BitConverter.SingleToInt32Bits(x))*16777619u;}
+            h=(h^sp.Shape)*16777619u;F(sp.At.X);F(sp.At.Z);F(sp.Yaw);F(sp.A);F(sp.B);F(sp.C);F(sp.Fill01);F(sp.Lock);F(sp.After);F(sp.Live);TelegraphHash=h;
+        }
+        private static float YawOf(float dx,float dz)=>(float)(Math.Atan2(dx,dz)*180/Math.PI);
         /// <summary>Optional: Alteration's targets the station's glass events land on (x, z pairs), and whether this presentation
         /// draws the falling glass itself (the DEV preview: the station's own glass is drawn from the zone frame in play).</summary>
         public readonly float[] GlassXZ=new float[8];public int GlassCount;public bool DrawGlass;
@@ -49,7 +60,7 @@ namespace ChipArena.UnityConversion
 
         public void Build(StationBossRig rig,in StationBossView v,float t,double eyeX,double eyeY,double eyeZ,double rightX,double rightY,double rightZ,double upX,double upY,double upZ,float effects,bool lowTier)
         {
-            Quads.Clear();pn=0;LightCount=0;Telegraph=Beam=Sparks=Steam=Dust=Arcs=Glints=0;TelegraphHash=2166136261u;Vfx.Begin(effects,lowTier);
+            Quads.Clear();Telegraphs.Clear();pn=0;LightCount=0;Telegraph=Beam=Sparks=Steam=Dust=Arcs=Glints=0;TelegraphHash=2166136261u;Vfx.Begin(effects,lowTier);
             for(int i=0;i<Glow.Length;i++){Glow[i]=1;Hidden[i]=false;}
             if(rig==null||!rig.Visible||!v.live)return;
             ex=eyeX;ey=eyeY;ez=eyeZ;rx=rightX;ry=rightY;rz=rightZ;ux=upX;uy=upY;uz=upZ;fx=ry*uz-rz*uy;fy=rz*ux-rx*uz;fz=rx*uy-ry*ux;quality=effects<0?0:effects>1?1:effects;low=lowTier;
@@ -62,21 +73,9 @@ namespace ChipArena.UnityConversion
             bool tunnel=rig.Arriving&&rig.Root.X<NativeStationBossArena.WestMouth-5;if(tunnel)for(int i=0;i<Hidden.Length;i++)Hidden[i]=true;
             Glows(rig,v,t);
             // Telegraphs first (never thinned), then the rest.
-            Lane(rig,v,t);Doors(rig,v,t);Alteration(rig,v,t);LiveRail(rig,v,t);Terminus(rig,v,t);
+            Warnings(v,t);Doors(rig,v,t);Alteration(rig,v,t);LiveRail(rig,v,t);Terminus(rig,v,t);
             Headlamp(rig,v,t,tunnel);if(!tunnel){Horns(rig,v,t);Heart(rig,v,t);Brakes(rig,v,t);Arrival(rig,v,t);Changes(rig,v,t);Breaks(rig,v,t);Staggers(rig,v,t);Death(rig,v,t);Steps(rig,t);Cables(rig,t);Spill(rig,v,t);}
             Flush();Sparks=Vfx.Sparks;
-        }
-        // The telegraph hash over the quads added since `from`.
-        private void TeleHash(int from)
-        {
-            uint h=TelegraphHash;
-            for(int q=from;q<Quads.Count;q++)
-            {
-                for(int k=0;k<12;k++)h=(h^(uint)BitConverter.SingleToInt32Bits(Quads.Corners[q*12+k]))*16777619u;
-                for(int k=0;k<4;k++)h=(h^(uint)BitConverter.SingleToInt32Bits(Quads.Colors[q*4+k]))*16777619u;
-                h=(h^Quads.Modes[q])*16777619u;h=(h^Quads.Additive[q])*16777619u;h=(h^Quads.Layers[q])*16777619u;
-            }
-            TelegraphHash=h;
         }
 
         // ---------------- glows per joint ----------------
@@ -155,44 +154,62 @@ namespace ChipArena.UnityConversion
             for(int side=0;side<2;side++)
             {
                 int j=side==0?NativeStationBossLook.HornL:NativeStationBossLook.HornR;var q=rig.Shown.Rotation[j];var mouth=rig.Shown.Position[j]+BossMath.Rotate(q,new Vector3(0,.38f,.42f));var dir=BossMath.Rotate(q,Vector3.UnitZ);
-                for(int r=0;r<3;r++){float ph=(float)Frac(t*1.6f+r/3.0);var c=mouth+dir*(ph*1.6f);int q0=Quads.Count;Ring(c,dir,.25f+ph*1.1f,.04f,R(WarnHex)*k*(1-ph),G(WarnHex)*k*(1-ph),B(WarnHex)*k*(1-ph),.8f);Telegraph++;TeleHash(q0);}
+                for(int r=0;r<3;r++){float ph=(float)Frac(t*1.6f+r/3.0);var c=mouth+dir*(ph*1.6f);Ring(c,dir,.25f+ph*1.1f,.04f,R(WarnHex)*k*(1-ph),G(WarnHex)*k*(1-ph),B(WarnHex)*k*(1-ph),.8f);}
                 Vfx.Glow(mouth,new Vector3(R(WarnHex),G(WarnHex)*.8f,B(WarnHex)*.5f)*(k*.7f),.9f,NativeBossVfx.Core);
             }
         }
         // ---------------- Departure's lane: amber rails and chevrons pulsing on each note, locked on the fourth, red at the launch ----------------
-        private void Lane(StationBossRig rig,in StationBossView v,float t)
+        // ---------------- the warnings, from the view (the authority's times and places) ----------------
+        private void Warnings(in StationBossView v,float t)
         {
-            if(rig.ActMove<0||NativeStationBoss.Moves[rig.ActMove].Id!="departure")return;var m=NativeStationBoss.Moves[rig.ActMove];var a=rig.Act;
-            float s=m.Anticipation>0?a.HitAt/m.Anticipation:1,lockAt=m.Note(NativeStationBoss.ChimeNotes-1)*s;
-            Vector3 p0,p1;
-            if(StationBossView.At(v.laneX0)&&StationBossView.At(v.laneX1)){p0=new Vector3(v.laneX0,0,v.laneZ0);p1=new Vector3(v.laneX1,0,v.laneZ1);}
-            else{var f=BossMath.Forward(rig.Yaw);p0=rig.Root+f*4.5f;p1=rig.Root+f*(4.5f+m.Reach);}
-            float life=a.Age<a.HitAt?BossMath.Smoother(a.Age/.25f):1-BossMath.Smoother((a.Age-a.HitAt)/(m.Strike*.9f));
-            float note=0;for(int n=0;n<NativeStationBoss.ChimeNotes;n++){float k=a.Age-m.Note(n)*s;if(k>=0&&k<.3f)note=Math.Max(note,1-k/.3f);}
-            if(life>.01f){int q0=Quads.Count;DrawLane(p0,p1,m.Radius,a.Age>=lockAt,a.Age>=a.HitAt,a.Age-a.HitAt,note,life,a.Age);TeleHash(q0);}
-            if(!rig.DoubleCharge)return;
-            // TERMINUS's second charge: the lane swings round with the turn (from the boss along its facing), two chime notes, locks
-            // as the turn ends and burns red through the second charge.
-            var dd=StationBossMoves.DepartureDouble;float after=dd.Seconds-dd.HitAt,k2=after>0?Math.Max(.3f,(a.Duration-a.HitAt)/after):1;
-            float turnAt=a.HitAt+m.Strike*k2,second=a.HitAt+StationBossMoves.SecondCharge*k2,age=a.Age;
-            float life2=age<turnAt?0:age<second?BossMath.Smoother((age-turnAt)/.2f):1-BossMath.Smoother((age-second)/(m.Strike*.9f*k2));if(life2<=.01f)return;
-            var fw=BossMath.Forward(rig.Yaw);var q0l=rig.Root+fw*4.5f;var q1=q0l+fw*m.Reach;
-            float note2=0;for(int n=0;n<2;n++){float k=age-(turnAt+(.1f+.25f*n)*k2);if(k>=0&&k<.3f)note2=Math.Max(note2,1-k/.3f);}
-            int q2=Quads.Count;DrawLane(q0l,q1,m.Radius,age>=second-.15f*k2,age>=second,age-second,note2,life2,age);TeleHash(q2);
-        }
-        // A charge lane on the floor: the edges, the fill, the chevrons racing toward the far end (standing still once locked);
-        // amber through the telegraph, red from the strike.
-        private void DrawLane(Vector3 p0,Vector3 p1,float hw,bool locked,bool strike,float sinceStrike,float note,float life,float age)
-        {
-            int hex=strike?DangerHex:WarnHex;float glow=(locked?1.35f:.7f+.6f*note)*life*(strike?1.6f*(1-BossMath.Smooth(sinceStrike/.4f))+.4f:1);
-            var along=p1-p0;along.Y=0;float L=along.Length();if(L<.5f)return;var u=along/L;var side=new Vector3(-u.Z,0,u.X);float y=.035f;
-            for(int sg=-1;sg<=1;sg+=2){var c=p0+u*(L/2)+side*(sg*hw);FlatRect(c,y,u,L/2,side,.07f,R(hex)*glow*1.6f,G(hex)*glow*1.6f,B(hex)*glow*1.6f,.95f);Telegraph++;}
-            FlatRect(p0+u*(L/2),y-.004f,u,L/2,side,hw,R(hex)*glow*.16f,G(hex)*glow*.16f,B(hex)*glow*.16f,.5f);Telegraph++;
-            int count=(int)(L/2.2f);float wave=locked?0:(float)Frac(age/.3f);
-            for(int i=0;i<count;i++)
+            if(v.action==null||!StationBossView.At(v.actionAt)||!StationBossView.At(v.hitAt))return;
+            if(StationBossView.At(v.cancelAt)&&v.cancelAt>=v.actionAt-1e-3f&&t>=v.cancelAt)return;
+            float A=v.actionAt,H=v.hitAt;var o=StationBossView.At(v.laneX0)?new Vector3(v.laneX0,0,v.laneZ0):new Vector3(v.x,0,v.z);
+            switch(v.action)
             {
-                float d=1.1f+(i+wave)*2.2f;if(d>L-.4f)continue;var c=p0+u*d;float fade=(1-(float)i/count*.55f)*glow;
-                for(int sg=-1;sg<=1;sg+=2){var a0=c+side*(sg*hw*.82f);var a1=c+u*.75f;StripFlat(a0,a1,y+.002f,.07f,R(hex)*fade*1.2f,G(hex)*fade*1.2f,B(hex)*fade*1.2f,.85f);Telegraph++;}
+                // Buffer Swipe and Shunt: the rule's arc from where it stood on its aim (4.4 m, 60 degrees either side; 5 m, 35).
+                case "buffer":case "shunt":
+                {
+                    var m=NativeStationBoss.Move(v.action);bool buffer=v.action=="buffer";
+                    Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Cone,Fill=NativeTelegraph.FromCentre,At=o,Yaw=v.actionYaw,A=buffer?4.4f:5,B=buffer?60:35,Seed=buffer?49:50},A,H,t,m.Strike);break;
+                }
+                // Departure: 2.1 m round the body all the way from where it stood to the lane's end (the rule's own reach round each
+                // step of the run), live while it runs; in phase 3 it runs back the same lane two seconds after.
+                case "departure":
+                {
+                    var m=NativeStationBoss.Move("departure");if(!StationBossView.At(v.laneX1))break;var e=new Vector3(v.laneX1,0,v.laneZ1);var d=e-o;float len=d.Length();if(len<.1f)break;const float r=2.1f;
+                    Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.Along,At=o,Yaw=YawOf(d.X,d.Z),A=len+r,B=r,C=r,Seed=51},A,H,t,m.Strike);
+                    if(v.phase>=3)Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.Along,At=e,Yaw=YawOf(-d.X,-d.Z),A=len+r,B=r,C=r,Seed=52},H+m.Strike,H+2,t,m.Strike);
+                    break;
+                }
+                // All Aboard: the box by the doors on the held side (3 m out, 1.6 m either way; 1.3 m about 0.35 m behind its middle).
+                case "doors":
+                {
+                    var m=NativeStationBoss.Move("doors");int side=v.holdSide<0?-1:1;var right=BossMath.Right(v.yaw*BossMath.Deg);var fwd=BossMath.Forward(v.yaw*BossMath.Deg);
+                    var back=new Vector3(v.x,0,v.z)+right*(side*3)+fwd*(-.35f-1.3f);
+                    Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.FromEdge,At=back,Yaw=v.yaw,A=2.6f,B=1.6f,C=0,Seed=53},A,H,t,m.Strike);break;
+                }
+                // Platform Alteration: 1.4 m under each pane, its 0.1 s.
+                case "alteration":
+                {
+                    for(int i=0;i<GlassCount;i++)Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=new Vector3(GlassXZ[i*2],0,GlassXZ[i*2+1]),A=1.4f,Seed=54+i},A,H,t,.1f);break;
+                }
+                // Live Rail: 2.2 m round every puddle, live while the rail is (the lever or the broken pantograph end it).
+                case "live-rail":
+                {
+                    var m=NativeStationBoss.Move("live-rail");bool before=t<H,live=v.Live(t)&&!v.PantoBroken(t);if(!before&&!live)break;float until=StationBossView.At(v.liveUntil)&&StationBossView.At(v.liveAt)?v.liveUntil-v.liveAt:m.Strike;
+                    for(int i=0;i<NativeStationBossArena.PuddleCount;i++)Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=new Vector3(NativeStationBossArena.Puddles[i*3],0,NativeStationBossArena.Puddles[i*3+1]),A=m.Radius,Seed=60+i},A,H,t,until);
+                    break;
+                }
+                // Terminus: the slam's 3 m and the ground it will roll across to 10 m; then the rolling lip (0.65 m either side, 12 m/s).
+                case "terminus":
+                {
+                    var m=NativeStationBoss.Move("terminus");
+                    Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromCentre,At=o,A=m.Radius,Seed=66},A,H,t,m.Strike);
+                    if(t<H)Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Ring,Fill=NativeTelegraph.FromCentre,At=o,A=m.Reach+.65f,B=m.Radius,Strength=.6f,Seed=67},A,H,t);
+                    else{float k=t-H;if(k<m.Reach/m.Speed)Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Wave,At=o,A=Math.Min(m.Reach,k*m.Speed),B=.65f,C=180,Seed=68},H,H,t,m.Reach/m.Speed);}
+                    break;
+                }
             }
         }
         // ---------------- All Aboard: the doors' light blades and the reach rectangle; the hold's drag marks ----------------
@@ -201,13 +218,7 @@ namespace ChipArena.UnityConversion
             if(rig.ActMove<0||NativeStationBoss.Moves[rig.ActMove].Id!="doors")return;var a=rig.Act;var m=NativeStationBoss.Moves[rig.ActMove];
             int side=rig.ActSide==1?1:-1;var body=rig.Shown.Rotation[NativeStationBossModel.Body];var right=BossMath.Right(rig.Yaw);var fwd=BossMath.Forward(rig.Yaw);
             var door=rig.Root+right*(side*(NativeStationBossArena.DoorX+.05f))+fwd*NativeStationBossArena.DoorZ;
-            float tele=a.Age<a.HitAt?BossMath.Smoother(a.Age/.3f):1-BossMath.Smoother((a.Age-a.HitAt-m.Strike)/.4f);bool strike=a.Age>=a.HitAt;
-            if(tele>.01f)
-            {
-                int hex=strike?DangerHex:WarnHex;float pulse=strike?1.4f:.75f+.25f*(float)Math.Sin(a.Age*BossMath.Tau*3);var c=door+right*(side*(m.Reach/2+.1f));int q0=Quads.Count;
-                FlatOutline(c,.03f,right,m.Reach/2,fwd,m.Radius*.81f,.06f,R(hex)*pulse*tele*1.5f,G(hex)*pulse*tele*1.5f,B(hex)*pulse*tele*1.5f);Telegraph+=4;
-                FlatRect(c,.028f,right,m.Reach/2,fwd,m.Radius*.81f,R(hex)*pulse*tele*.14f,G(hex)*pulse*tele*.14f,B(hex)*pulse*tele*.14f,.45f);Telegraph++;TeleHash(q0);
-            }
+            // Its warning is Warnings' (the rule's box by the doors).
             // Light blades through the cracked doors, the full spill once they slam open; the slam's dust.
             float open=BossMath.Clamp01(rig.Channels[side<0?StationBossCh.DoorL:StationBossCh.DoorR]);if(open>.02f)
             {
@@ -227,7 +238,6 @@ namespace ChipArena.UnityConversion
                 if(age<land&&age>=a.HitAt*.5f)
                 {
                     float u=BossMath.Clamp01((age-a.HitAt*.5f)/(land-a.HitAt*.5f)),pulse=.7f+.3f*(float)Math.Sin(age*BossMath.Tau*4);
-                    int q0=Quads.Count;RingFlat(new Vector3(x,.035f,z),m.Radius,.1f,R(WarnHex)*pulse*1.4f,G(WarnHex)*pulse*1.4f,B(WarnHex)*pulse*1.4f,.85f);Telegraph+=12;TeleHash(q0);
                     if(DrawGlass){Flat(x,.03f,z,.4f+u*1.2f,.4f+u*1.2f,0,0,0,0,.25f+.5f*u,false,1);float fy=NativeExpeditionStationKit.VaultY(z)-.5f-u*u*12;
                         var pane=new Vector3(x,Math.Max(.6f,fy),z);Vfx.Spark(pane,new Vector3(0,-24*u-1,0),new Vector3(1.4f,1.6f,1.8f)*.8f,.3f+.3f*u,.4f,.03f,.6f);Vfx.Glow(pane,new Vector3(.9f,1f,1.1f)*.6f,.9f,NativeBossVfx.Mote);Glints++;}
                 }
@@ -265,16 +275,11 @@ namespace ChipArena.UnityConversion
                 float x=NativeStationBossArena.Puddles[i*3],z=NativeStationBossArena.Puddles[i*3+1],r=NativeStationBossArena.Puddles[i*3+2];
                 if(live)
                 {
-                    float crackle=.75f+.25f*(float)Math.Sin(t*41+i*7)*(float)Math.Sin(t*13+i);int q0=Quads.Count;
-                    Flat(x,.03f,z,r,r,0,R(LiveHex)*.5f*crackle,G(LiveHex)*.5f*crackle,B(LiveHex)*.5f*crackle,.7f,true,1);RingFlat(new Vector3(x,.035f,z),r,.08f,R(LiveHex)*1.6f,G(LiveHex)*1.6f,B(LiveHex)*1.6f,.85f);Telegraph+=13;TeleHash(q0);
+                    float crackle=.75f+.25f*(float)Math.Sin(t*41+i*7)*(float)Math.Sin(t*13+i);
+                    Flat(x,.03f,z,r,r,0,R(LiveHex)*.5f*crackle,G(LiveHex)*.5f*crackle,B(LiveHex)*.5f*crackle,.7f,true,1);
                     // Little arcs dancing on the water, each strike a crack of sparks.
                     int sparks=Budget(3);for(int k=0;k<sparks;k++){uint seed=(uint)(Math.Floor(t*15)+i*97+k*13);float ang=(float)(H((int)seed,4)*Math.PI*2),rr=(float)H((int)seed,5)*r;var a0=new Vector3(x+(float)Math.Cos(ang)*rr,.04f,z+(float)Math.Sin(ang)*rr);
                         Bolt(a0,a0+new Vector3((float)(H((int)seed,6)-.5),.5f+(float)H((int)seed,7)*.6f,(float)(H((int)seed,8)-.5)),(int)seed,Strike(t*1.25f,(int)seed),.025f);Arcs++;}
-                }
-                else if(tele>0)
-                {
-                    float pulse=(.6f+.4f*(float)Math.Sin(t*BossMath.Tau*3))*tele;int q0=Quads.Count;RingFlat(new Vector3(x,.035f,z),r,.1f,R(WarnHex)*pulse*1.4f,G(WarnHex)*pulse*1.4f,B(WarnHex)*pulse*1.4f,.85f);
-                    Flat(x,.03f,z,r,r,0,R(LiveHex)*.15f*pulse,G(LiveHex)*.15f*pulse,B(LiveHex)*.15f*pulse,.5f,true,1);Telegraph+=13;TeleHash(q0);
                 }
             }
             // Arcs from the kneeling hands to the nearest puddles while live.
@@ -292,20 +297,14 @@ namespace ChipArena.UnityConversion
         {
             if(rig.ActMove<0||NativeStationBoss.Moves[rig.ActMove].Id!="terminus")return;var a=rig.Act;var m=NativeStationBoss.Moves[rig.ActMove];
             Vector3 c;if(StationBossView.At(v.laneX0))c=new Vector3(v.laneX0,0,v.laneZ0);else c=rig.Root+BossMath.Forward(rig.Yaw)*6.6f;
-            if(a.Age<a.HitAt)
-            {
-                float tele=BossMath.Smoother(a.Age/.4f),pulse=.7f+.3f*(float)Math.Sin(a.Age*BossMath.Tau*2.86f);int q0=Quads.Count;
-                RingFlat(new Vector3(c.X,.035f,c.Z),m.Reach,.12f,R(WarnHex)*pulse*tele*1.5f,G(WarnHex)*pulse*tele*1.5f,B(WarnHex)*pulse*tele*1.5f,.85f);
-                RingFlat(new Vector3(c.X,.035f,c.Z),m.Radius,.18f,R(DangerHex)*pulse*tele*1.2f,G(DangerHex)*pulse*tele*1.2f,B(DangerHex)*pulse*tele*1.2f,.85f);Telegraph+=24;TeleHash(q0);
-                return;
-            }
+            // Its warnings are Warnings' (the slam's 3 m, the ground to 10 m, the rolling lip's front).
+            if(a.Age<a.HitAt)return;
             float k=a.Age-a.HitAt,run=m.Reach/m.Speed;
             if(k<run+.4f)
             {
                 // The lip: a ring of lifted floor tiles rolling out at 12 m/s to 10 m (0.6 m tall), red-hot at the front.
-                float r=Math.Min(m.Reach,.5f+m.Speed*k),fade=k<run?1:1-(k-run)/.4f;int q0=Quads.Count;
+                float r=Math.Min(m.Reach,.5f+m.Speed*k),fade=k<run?1:1-(k-run)/.4f;
                 RingWall(new Vector3(c.X,0,c.Z),r,.6f*fade,R(DangerHex)*1.3f*fade,G(DangerHex)*1.3f*fade,B(DangerHex)*1.3f*fade);
-                RingFlat(new Vector3(c.X,.04f,c.Z),r,.35f,R(WarnHex)*fade,G(WarnHex)*fade,B(WarnHex)*fade,.8f);Telegraph+=24;TeleHash(q0);
             }
             // The slam: dust thrown up behind the rolling lip (born where the lip passed), tiles flung, a cloud at the centre.
             if(k<4.5f)

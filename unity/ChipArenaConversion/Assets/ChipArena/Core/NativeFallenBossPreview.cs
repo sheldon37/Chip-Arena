@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
         private static readonly float[] R={21,27,16},W={.33f,-.26f,.42f},Ph={.2f,2.4f,4.3f};
         public static Vector3 At(int i,float p)
         {
-            if(p<CutsceneEnd){float x=i==0?-3.2f:i==1?4.4f:-7.8f,start=i==0?13.5f:i==1?15:16.6f;float z=-49+Math.Max(0,p-start)*1.5f;return new Vector3(x,0,z);}
+            if(p<CutsceneEnd){float x=i==0?-3.2f:i==1?6.4f:-7.8f,start=i==0?13.5f:i==1?15:16.6f;float z=-49+Math.Max(0,p-start)*1.5f;return new Vector3(x,0,z);}
             float a=W[i]*p+Ph[i],r=R[i]+3.5f*(float)Math.Sin(.31f*p+i*1.7f);return new Vector3(r*(float)Math.Cos(a),0,r*(float)Math.Sin(a));
         }
         public static float Yaw(int i,float p)
