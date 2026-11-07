@@ -10,6 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import sound_queue as q
 REAL_COMMAND = q.command
+REAL_WHICH = shutil.which
 
 class QueueTests(unittest.TestCase):
     def setUp(self):
@@ -28,7 +29,8 @@ class QueueTests(unittest.TestCase):
         self.base = self.root / 'base.zip'; self.base.write_bytes(b'BASE')
         self.calls = []
         original = q.gen.generate
-        self.patches = [patch.object(q, 'protect', return_value=b'PRIVATE'),
+        self.patches = [patch.object(q.shutil, 'which', side_effect=lambda name: '/mock/ffmpeg' if name == 'ffmpeg' else REAL_WHICH(name)),
+                        patch.object(q, 'protect', return_value=b'PRIVATE'),
                         patch.object(q.gen, 'validate_audio'), patch.object(q, 'command', side_effect=self.command),
                         patch.object(q.gen, 'generate', side_effect=lambda f,r,j,s: original(f,r,j,s,fetch=self.fetch))]
         for p in self.patches: p.start()
@@ -43,6 +45,12 @@ class QueueTests(unittest.TestCase):
             Path(args[args.index('--out') + 1]).write_bytes(b'IMPORTED')
             q.write(Path(args[args.index('--report') + 1]), dict(problems=[], keys={'selected': dict(accepted=1)}))
     def run_queue(self): return q.process(self.base, self.root, self.queue, self.repo)
+    def test_missing_ffmpeg_blocks_before_any_request(self):
+        with patch.object(q.shutil, 'which', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'ffmpeg is required'):
+                self.run_queue()
+        self.assertFalse(self.calls)
+
     def test_rebuild_and_changed_base_never_regenerate(self):
         output = self.run_queue(); self.assertTrue(output.exists()); self.assertEqual(len(self.calls), 1)
         self.assertEqual(self.run_queue(), output); self.assertEqual(len(self.calls), 1)

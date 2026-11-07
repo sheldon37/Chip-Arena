@@ -55,6 +55,8 @@ public static class HumBossSweep
                     if(best!=null){var m=NativeHumBoss.Move(best);playing=best;hit=t+m.Wind;MoveEnd=t+m.Duration;ready[best]=t+m.Cooldown*(Phase>=3?.8f:1);nextMoveAt=MoveEnd+NativeHumBoss.MoveGap;Begin(best,pilot,t);}
                 }
             }
+            // Noclip follows its target through the wind and holds its line LungeLock s before it goes (the rules' AimLunge).
+            if(playing=="lunge"&&t<hit-NativeHumBoss.LungeLock)AimLunge(pilot);
             if(playing!=null&&t>=hit&&t<hit+Step*1.01f)threat|=Land(playing,pilot,t);
             // A lunge's body and Max Hum's ring land over a stretch.
             if(playing=="lunge"){if(t>=hit&&t<hit+MLunge.Strike){float k=(t-hit)/MLunge.Strike;var at=LaneA+(LaneB-LaneA)*k;if(Lane(pilot,LaneA,LaneB,MLunge.Width*.5f+Near)&&(pilot-at).Length()<MLunge.Width+Near)threat=true;Boss=at;}}
@@ -65,9 +67,10 @@ public static class HumBossSweep
         private void Begin(string id,Vector2 pilot,float t)
         {
             if(id=="row"){rowAxis=(rowAxis+1)%2;rowMask=(int)(Rand()*2)==0?0b010101:0b101010;}
-            if(id=="lunge"){var v=pilot-Boss;float dl=v.Length();var d=Vector2.Normalize(v+new Vector2(.001f,.001f));LaneA=Boss;float L=Math.Min(MLunge.Reach,dl+5);var e=Boss+d*L;e.X=BossMath.Clamp(e.X,Room.MinX+1,Room.MaxX-1);e.Y=BossMath.Clamp(e.Y,Room.MinZ+1,Room.MaxZ-1);LaneB=e;}
+            if(id=="lunge"){LaneA=Boss;AimLunge(pilot);}
             if(id=="cut"){var d=pilot-Boss;Yaw=(float)Math.Atan2(d.X,d.Y);var f=new Vector2((float)Math.Sin(Yaw),(float)Math.Cos(Yaw));Boss=pilot-f*2.4f;}
         }
+        private void AimLunge(Vector2 pilot){var v=pilot-LaneA;float dl=v.Length();var d=Vector2.Normalize(v+new Vector2(.001f,.001f));float L=Math.Min(MLunge.Reach,dl+5);var e=LaneA+d*L;e.X=BossMath.Clamp(e.X,Room.MinX+1,Room.MaxX-1);e.Y=BossMath.Clamp(e.Y,Room.MinZ+1,Room.MaxZ-1);LaneB=e;}
         private bool Land(string id,Vector2 pilot,float t)
         {
             var m=NativeHumBoss.Move(id);var d=pilot-Boss;float dist=d.Length();var f=new Vector2((float)Math.Sin(Yaw),(float)Math.Cos(Yaw));
