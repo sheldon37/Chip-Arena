@@ -15,6 +15,7 @@ read by Core `NativeFallenIntroMocap` and Runtime `NativeFallenIntroMocapBody.cs
 | Rig motion | `solve.py`: each limb aimed along the reference's, hinges (elbow, knee) from the bend, solved on NOCTIEL's own rest skeleton | **Retargeted** |
 | Clean-up | smoothing; held contacts kept on the floor (two-bone IK); backward elbow/knee bends straightened; wrist kept within 80 degrees | **Corrected**, counted per clip |
 | Unreadable frames | named per clip in `clips/NN.json`: frames held, blade filled between readable frames or two keys read off the frames by eye | **Filled**, flagged per frame in the file |
+| Depth errors seen in Unity | `correct.py`: the legs and hips (the solve got them wrong in depth), the arm on the plant, two stretches of the blade, the chest's lean in the kneel, read off the reference frames beside Unity | **Corrected by hand**, flagged per frame and limb in the file's `corrected` track (1 legs and hips, 2 right arm, 4 left arm, 8 blade, 16 chest). The spine, the head and everything else unflagged stay extracted |
 
 ## Setup (once, any Linux or Windows machine with Python 3.10+)
 
@@ -35,12 +36,20 @@ On a headless Linux box MediaPipe also needs `libegl1 libgles2`. ffmpeg and ffpr
 .venv/bin/python sword2d.py 04-intro-reference.mp4 clip04.json sword04.json
 .venv/bin/python solve.py clip04.json sword04.json solved04.json clips/04.json
 .venv/bin/python render.py 04-intro-reference.mp4 clip04.json solved04.json compare04.jpg 0,48,96,126,134,160
-.venv/bin/python bake.py ../../Assets/ChipArena/Resources/FallenIntroMocap.json kneel-rise=solved02.json pull-salute=solved03.json raise-cut=solved04.json
+.venv/bin/python bake.py solved/FallenIntroMocap.solved.json kneel-rise=solved02.json pull-salute=solved03.json raise-cut=solved04.json
+.venv/bin/python correct.py solved/FallenIntroMocap.solved.json ../../Assets/ChipArena/Resources/FallenIntroMocap.json
 ```
+
+`solved/FallenIntroMocap.solved.json` is the solve's own bake, kept so `correct.py` can be re-run without the clips: to change a
+correction, edit `correct.py` and run its line alone (it needs only numpy and scipy). `correct.py` is written for this bake's frames;
+a new solve of the clips means reading its corrections off the frames again.
 
 `overlay.py` and `swordsheet.py` draw the extracted skeleton and the blade track over the frames, to check the extraction itself.
 `render.py` puts the reference frame beside NOCTIEL's rig from the same camera and from the side (bones and sword, not the
 game's renderer). The managed checks (`CoreTests --fallen-mocap`) then hold the baked file to its contract.
+
+To compare in the game itself, the DEV preview takes a locked camera in the Editor: `Temp/fallen-preview-cam.txt` holds
+"yaw distance height lookHeight fov". The Editor's slowed preview reads `Temp/fallen-preview-rate.txt`.
 
 ## Per-clip settings (`clips/NN.json`)
 
