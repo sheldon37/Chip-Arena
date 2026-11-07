@@ -15,10 +15,12 @@ the spine, the head, the arms' paths after the pull and the blade's tracked way,
     It was the kneel's solved grip, out of the arm's reach for 70% of the rise, so the arm locked straight and the sword slid through the water.
   The pull (clip 03): the fist leaves the plant onto the extracted path over a second, without a jump.
   The wheel across the body (clip 03): the blade at frames 68-104 read off the video's own frames: its angle in the picture, how foreshortened it is, its tip toward the lens
-    (the solve had it trailing 20-30 degrees low at 85-89, nearly at the lens by 89).
+    (the solve had it trailing 20-30 degrees low at 85-89, nearly at the lens by 89). The arm through it is level with the shoulder as the video's is: the fist up to 0.13 m higher,
+    and the elbow's bend turned back in depth, so it reads straight from the front (the solve's elbow drooped into a V).
   Out to the side (clip 03): the blade's depth at frames 100-156 turned forward (the solve had it back into the wings; the reference's tip is nearer the camera).
-  The lunge (clip 04): the reference lands the right foot out to the side at the contact, flat, 0.68 m from the left, with the hips at 0.89 m sinking to 0.78 m. The
-    solve had the foot forward and 0.1 m off the floor and the hips 0.15 m high. Now: the step and the hips are keyed from the frames at 126, 134 and 160.
+  The lunge (clip 04): the reference lands the right foot out to the side at the contact, 0.68 m from the left, with the hips at 0.89 m sinking to 0.78 m. The
+    solve had the foot forward and 0.1 m off the floor and the hips 0.15 m high. Now: the hips are keyed from the frames at 126, 134 and 160. The step is read off the video frame by frame:
+    the foot barely leaves the floor (0.05 m over its toes), toes down and back, and lands heel first, flattening by 140; it is turned well out before it, from 60, and points nearly at the camera after.
   The raise (clip 04): the blade at 52-76 read off the video (the track jumped about 60 degrees back and forth at 64-70, where the blade leaves the picture); 8 degrees up through the
     long hold, 76-118, measured on the video by tools/motion/vidblade.py. Stretches within 5 degrees of the video are left as extracted.
   The chop (clip 04, 120-135): one overhand swing of about 300 degrees, read frame by frame: the tip low behind the head, straight back, up to the picture's left, across the chest toward
@@ -304,7 +306,7 @@ for f in range(K.n):
     leg_to(K, f, 'l', STANCE['l'], pole, FLAT['l'])
 # The left hand on the left knee until it stands; the fist on the plant throughout.
 for f in range(K.n):
-    k = 1 - float(smooth((f - 132) / 20))
+    k = 1 - float(smooth((f - 127) / 15))
     knee = K.pos(f, 'calf_l')
     wrist_on_knee = knee + np.array((.03, .1, .03))
     if k > 0:
@@ -338,6 +340,21 @@ for f in range(P.n):
     elif f < 84:
         k = 1 - float(smooth((f - 56) / 28))
         arm_to(P, f, 'r', P.pos(f, 'hand_r') + (PLANT - from_grip) * k)
+# The arm through the wheel: level with the shoulder and reading straight from the front, as the video's. The fist up; then the bend turned about the shoulder-to-wrist line, away from the lens.
+ELBOW_BACK = {}
+for f in range(56, 105):
+    w = float(smooth((f - 60) / 16)) * (1 - float(smooth((f - 94) / 10)))
+    arm_to(P, f, 'r', P.pos(f, 'hand_r') + np.array((0, .13 * w, 0)))
+    e = float(smooth((f - 56) / 8)) * (1 - float(smooth((f - 92) / 12)))
+    sh, wr, el = P.pos(f, 'upperarm_r'), P.pos(f, 'hand_r'), P.pos(f, 'lowerarm_r')
+    axis = nrm(wr - sh)
+    off = el - (sh + axis * axis.dot(el - sh))
+    back = np.array((0, 0, -1.0)) - axis * axis[2] * -1
+    if np.linalg.norm(off) > 1e-3 and np.linalg.norm(back) > 1e-3 and e > 0:
+        R = slerpm(np.eye(3), min_rot(off, back), e)
+        P.m['upperarm_r'][f] = R @ P.m['upperarm_r'][f]
+        P.m['lowerarm_r'][f] = R @ P.m['lowerarm_r'][f]
+    P.fixed[f] |= ARM_R
 
 # ---------------- clip 04: the raise, the guard, the windup on the stance; the step and the lunge from the frames ----------------
 HIPS_Y = keys([(0, C.root[0][1])] + [(120, C.root[120][1]), (126, .9), (134, .87), (140, .81), (150, .78), (168, .775)])
@@ -347,20 +364,28 @@ HIPS_Y = keys([(0, C.root[0][1]), (120, C.root[120][1]), (126, .9), (134, .87), 
 for f in range(121, C.n):
     C.root[f][1] = HIPS_Y(f)
     C.root[f][0] = HIPS_X(f)
-LAND = np.array((.46, .11, -.04))
-LAND_TURN = Ry(38) @ FLAT['r']
-STEP0, STEP1 = 123, 134.5
+# The step, frame by frame off the video: the ankle's way (x its right, z its front), the foot's pitch (toes down +), its turn out from the stance's.
+STEP_X = keys([(0, STANCE['r'][0]), (120, STANCE['r'][0]), (122, .155), (125, .21), (128, .26), (131, .34), (134, .41), (136, .445), (138, .46), (168, .46)])
+STEP_Z = keys([(0, STANCE['r'][2]), (120, STANCE['r'][2]), (125, -.09), (128, -.14), (131, -.12), (134, -.05), (138, -.04), (168, -.04)])
+STEP_PITCH = keys([(0, 0), (119, 0), (122, 32), (125, 50), (128, 50), (131, 35), (133, 10), (134, -26), (136, -24), (138, -8), (140, 0), (168, 0)])
+STEP_LIFT = keys([(0, 0), (122, 0), (123, .04), (125, .05), (128, .05), (131, .05), (133, .04), (134, 0), (168, 0)])
+STEP_OUT = keys([(0, 10), (60, 20), (100, 40), (120, 40), (128, 30), (134, 5), (168, 5)])
+TOE_REST = RP['ball_r'] - RP['foot_r']
 LEFT_TURN = {f: C.m['foot_l'][f].copy() for f in range(C.n)}
 for f in range(C.n):
-    u = (f - STEP0) / (STEP1 - STEP0)
-    su = float(smooth(u))
-    foot = STANCE['r'] + (LAND - STANCE['r']) * su
-    foot[1] += .25 * math.sin(math.pi * min(1, max(0, u)) ** .8)
+    pitch = Rot.from_euler('x', float(STEP_PITCH(f)), degrees=True).as_matrix()
+    # The ankle high enough for the toes at the floor (or the heel, toes up), and the lift on that.
+    toe, heel = pitch @ (TOE_REST + np.array((0, -.01, .075))), pitch @ np.array((0, -.1, -.06))
+    y = max(RP['foot_r'][1], .001 - toe[1], .001 - heel[1]) + float(STEP_LIFT(f))
+    foot = np.array((float(STEP_X(f)), y, float(STEP_Z(f))))
+    turn = Ry(float(STEP_OUT(f))) @ FLAT['r'] @ pitch
+    # The heel comes up over the toes, which stay where they stand until the foot leaves the floor at 122.
+    tip = TOE_REST + np.array((0, -.01, .075))
+    toe_at = STANCE['r'] + Ry(float(STEP_OUT(119))) @ FLAT['r'] @ tip
+    held = 1 - float(smooth((f - 122) / 1.5))
+    foot = foot * (1 - held) + (toe_at - turn @ tip) * held if f >= 118 else foot
     k = float(smooth((f - 120) / 14))
     pole = np.array(POLE_STAND['r'], float) * (1 - k) + np.array((.62, 0, .78)) * k
-    turn = slerpm(FLAT['r'], LAND_TURN, su)
-    if 0 < u < 1:
-        turn = Rot.from_euler('x', 28 * math.sin(math.pi * u), degrees=True).as_matrix() @ turn
     leg_to(C, f, 'r', foot, pole, turn)
     # The rear foot stays where it is and pivots as the body turns over it.
     pole = np.array(POLE_STAND['l'], float) * (1 - k) + np.array((-.78, 0, .55)) * k

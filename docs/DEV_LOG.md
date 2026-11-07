@@ -1,3 +1,10 @@
+## 2026-11-07 — Claude: NOCTIEL's intro against the real videos, the arm, the step and the left hand
+
+- A second pass over the same videos (made separately, its commits never pushed: `claude/noctiel-mocap` local `62d5a56f`, `f1235675`) reached the same reading of the chop and found three things the first had not fixed. Compared on the same frames: its step and left hand were closer and are taken; its blade was further (clip 04 median 3.8 against 1.6 degrees) and is not. Branch `claude/noctiel-video-step`, on `claude/noctiel-video-check`.
+- **Changed (`tools/motion/correct.py`, rebaked):** the right arm level through the wheel (fist up to 0.13 m higher, the elbow's bend turned back in depth, so no V from the front), which also lays the blade closer on the video's at 72–88; the lunge's step read off the video frame by frame (barely off the floor, lands heel first); the left hand off the knee 127–142. `FallenIntroMocapChecks`: the step's known window now starts at 121, since the foot stays near the floor through it.
+- **Animation impact:** presentation only. No rule, hit timing, hitbox, damage, cooldown, movement or network change.
+- **Checks:** `--fallen-mocap` PASS 120,180 (held feet slide 0.04 m/s, was 0.15). Blade angle against the video: median 2.7 degrees, 95th 5.6 (clip 03, was 6.0); median 1.6, 95th 10.8 (clip 04). Seen in the Editor beside the video, front and side: the arm 56–104, the step 118–144 at a tenth of speed.
+
 ## 2026-11-07 — Claude: NOCTIEL's intro against the real videos
 
 - Owner supplied the real reference clips 01–04 and asked for the check to be done in the main conversation. Branch `claude/noctiel-video-check`, base shared `b9b21553`. The clips stay out of git.
