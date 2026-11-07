@@ -10,7 +10,8 @@ namespace ChipArena.UnityConversion
     public sealed class NativeShotScale {public float Value=1;}
     public static class NativeChipRanks
     {
-        public static int RarityRank(string rarity){int rank=System.Array.IndexOf(new[]{"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren","bombadier"},rarity);return rank<0?11:rank;}
+        // The cartridge's own tier order (the boss relics last), so a sort and the sandbox know every tier there is.
+        public static int RarityRank(string rarity){int rank=System.Array.IndexOf(NativeChipCartridge.Tiers,rarity);return rank<0?NativeChipCartridge.Tiers.Length:rank;}
         public static int BotRank(string rarity)=>System.Math.Min(5,RarityRank(rarity));
     }
 }
