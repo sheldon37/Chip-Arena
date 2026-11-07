@@ -121,7 +121,7 @@ namespace ChipArena.UnityConversion
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             CyberCityCues(arena,menu);
             if(menu)Track("music/menu-afterglow",Menu*MenuTrackGain);
-            else if(arena.ZoneBoss?.fallen!=null){var fs=arena.FallenSongClock();Track(NativeFallenSong.Id,Music*.55f,StageCovered,fs.clip,arena,fs.epoch);}
+            else if(arena.ZoneBoss?.fallen!=null&&!arena.BossOpening){var fs=arena.FallenSongClock();Track(NativeFallenSong.Id,Music*.55f,StageCovered,fs.clip,arena,fs.epoch);}
             else if(arena.BossSongTime>=0)
             {
                 // The zone's own boss track when its file is installed (Core/NativeZoneMusic), else the Siren's song on its intro/loop map.
