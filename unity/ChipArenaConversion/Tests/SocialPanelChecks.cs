@@ -16,7 +16,7 @@ internal static class SocialPanelChecks
         string ui=R("NativeSocialPanelUI.cs"),logic=R("NativeAccountSocial.cs"),game=R("ConversionGame.cs"),home=R("NativeHomeMenu.cs"),lobby=R("NativeLobbyUI.cs");
         Check(!ui.Contains("GUI.Box(")&&!ui.Contains("GUILayout.")&&!ui.Contains("Screen.width")&&!ui.Contains("GUI.Button("),"kit-drawn on the virtual canvas: no default skin, no physical-pixel placement");
         Check(!logic.Contains("partial class ConversionGame")&&logic.Contains("public void InvitePlayer(")&&logic.Contains("public void AnswerInvite("),"the account service's file keeps the logic only");
-        Check(ui.Contains("account.InvitePlayer(p.id,roomCode)")&&ui.Contains("account.AnswerInvite(inv.id,true,code=>{if(!CanAcceptInvite)return;internetRooms=true;relayOverride=\"\";joinCode=code;")&&ui.Contains("JoinRoom();")&&ui.Contains("account.AnswerInvite(inv.id,false,null)"),
+        Check(ui.Contains("account.InvitePlayer(p.id,roomCode,()=>socialSent[p.id]=Time.unscaledTime)")&&ui.Contains("account.AnswerInvite(inv.id,true,code=>{if(!CanAcceptInvite)return;internetRooms=true;relayOverride=\"\";joinCode=code;")&&ui.Contains("JoinRoom();")&&ui.Contains("account.AnswerInvite(inv.id,false,null)"),
             "Invite, Accept (joining by the code through the trusted path) and Decline are the existing actions");
         Check(ui.Contains("relayHost!=null&&!relayHost.Closed&&!UseManagedRelay&&arena==null&&!deploymentLocked")&&ui.Contains("arena==null&&!Hosting&&server==null&&connecting==null&&relayConnecting==null&&!StageInputHeld"),
             "who may invite and accept is unchanged");
