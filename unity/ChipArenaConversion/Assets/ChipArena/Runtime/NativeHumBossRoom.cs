@@ -11,6 +11,8 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private BackroomsLayout humLayoutFrom,humLayoutCarved;private HumRoom humRoomLive;
+        // The room's own ceiling and the band of wall that carries its walls up to it when it rises (NOCLIP), built once per room.
+        private Mesh humLid,humBandPaper,humBandTrim;private HumRoom humLidRoom;
         private Mesh humPartitionPaper,humPartitionTrim;private MaterialPropertyBlock humLampBlock,humVoidBlock;
         private readonly Mesh[] humPatch=new Mesh[3];private Mesh humVoid;private readonly int[] humPatchVerts={-1,-1,-1},humPatchIndex={-1,-1,-1};private int humVoidVerts=-1,humVoidIndex=-1;
         private static readonly VertexAttributeDescriptor[] HumPatchLayout=
@@ -54,7 +56,20 @@ namespace ChipArena.UnityConversion
                 var mat=backroomsMats[off?(int)BackroomsMesh.Surface.DeadLight:(int)BackroomsMesh.Surface.Light];
                 if(!off){b.SetColor(BrColorId,tint);b.SetFloat(BrEmitId,BackroomsGlow[(int)BackroomsMesh.Surface.Light]*lv);}
                 else{var dead=new Color(.3f,.3f,.28f);if(st.Burst[i])dead=new Color(.04f,.035f,.03f);b.SetColor(BrColorId,linear?dead.linear:dead);b.SetFloat(BrEmitId,0);}
-                Graphics.DrawMesh(backroomsFixture,Matrix4x4.Translate(new Vector3(f.X,f.Y,f.Z)),mat,0,null,0,b,ShadowCastingMode.Off,false);HumBossDraws++;
+                Graphics.DrawMesh(backroomsFixture,Matrix4x4.Translate(new Vector3(f.X,f.Y+st.Lift,f.Z)),mat,0,null,0,b,ShadowCastingMode.Off,false);HumBossDraws++;
+            }
+            // The ceiling (the level's leaves this room out) at its height, and above the level's walls the band that carries them up to it.
+            if(!ReferenceEquals(humLidRoom,room)||humLid==null)
+            {
+                HumLidRelease();humLidRoom=room;var lb=new BackroomsMesh();lb.Lid(new NVector(room.MinX,room.Origin.Y,room.MinZ),NativeHumArena.Cells);humLid=BackroomsMeshOf(lb.Parts[(int)BackroomsMesh.Surface.Ceiling],"THE HUM ceiling");
+                lb.Band(room.MinX,room.MinZ,room.MaxX,room.MaxZ,room.Origin.Y+BackroomsLayout.Height,room.Origin.Y+NativeHumBoss.HighCeiling);humBandPaper=BackroomsMeshOf(lb.Parts[(int)BackroomsMesh.Surface.Wallpaper],"THE HUM band paper");humBandTrim=BackroomsMeshOf(lb.Parts[(int)BackroomsMesh.Surface.Trim],"THE HUM band trim");
+            }
+            if(humLid!=null){Graphics.DrawMesh(humLid,Matrix4x4.Translate(new Vector3(0,BackroomsLayout.Height+st.Lift,0)),backroomsMats[(int)BackroomsMesh.Surface.Ceiling],0,null,0,backroomsProps,ShadowCastingMode.TwoSided,true);HumBossDraws++;}
+            if(st.Lift>.005f&&humBandPaper!=null)
+            {
+                // Scaled up from the level's wall tops while it rises (a second and a bit), full height after.
+                float y0=room.Origin.Y+BackroomsLayout.Height,k=st.Lift/(NativeHumBoss.HighCeiling-BackroomsLayout.Height);var band=Matrix4x4.Translate(new Vector3(0,y0,0))*Matrix4x4.Scale(new Vector3(1,k,1))*Matrix4x4.Translate(new Vector3(0,-y0,0));
+                Graphics.DrawMesh(humBandPaper,band,backroomsMats[(int)BackroomsMesh.Surface.Wallpaper],0,null,0,backroomsProps,ShadowCastingMode.TwoSided,true);if(humBandTrim!=null)Graphics.DrawMesh(humBandTrim,band,backroomsMats[(int)BackroomsMesh.Surface.Trim],0,null,0,backroomsProps,ShadowCastingMode.Off,true);HumBossDraws+=2;
             }
             // The partitions in their places.
             for(int s=0;s<NativeHumArena.Partitions;s++)
@@ -94,8 +109,10 @@ namespace ChipArena.UnityConversion
             mesh.SetSubMesh(0,new SubMeshDescriptor(0,src.IndexCount){bounds=HumEverywhere,firstVertex=0,vertexCount=src.VertexCount},HumQuiet);mesh.bounds=HumEverywhere;
         }
         private void HumRoomHide(){}
+        private void HumLidRelease(){if(humLid!=null)CapturedAnimation.Release(humLid);if(humBandPaper!=null)CapturedAnimation.Release(humBandPaper);if(humBandTrim!=null)CapturedAnimation.Release(humBandTrim);humLid=humBandPaper=humBandTrim=null;humLidRoom=null;}
         private void HumRoomDispose()
         {
+            HumLidRelease();
             if(humPartitionPaper!=null)CapturedAnimation.Release(humPartitionPaper);if(humPartitionTrim!=null)CapturedAnimation.Release(humPartitionTrim);humPartitionPaper=humPartitionTrim=null;
             for(int i=0;i<humPatch.Length;i++){if(humPatch[i]!=null)CapturedAnimation.Release(humPatch[i]);humPatch[i]=null;humPatchVerts[i]=-1;humPatchIndex[i]=-1;}if(humVoid!=null)CapturedAnimation.Release(humVoid);humVoid=null;humVoidVerts=-1;humVoidIndex=-1;
         }

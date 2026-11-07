@@ -58,6 +58,12 @@ namespace ChipArena.UnityConversion
         /// <summary>The move this record plays (an index into <see cref="NativeHumBoss.Moves"/>), or -1.</summary>
         public int Move{get{if(action==null)return -1;var m=NativeHumBoss.Moves;for(int i=0;i<m.Length;i++)if(m[i].Id==action)return i;return -1;}}
         public bool Dead(float time)=>Since(diedAt,time);
+        /// <summary>The room's ceiling over the floor (m) at `time`: the level's own until NOCLIP; through that change it rises to <see cref="NativeHumBoss.HighCeiling"/> and stays.</summary>
+        public float Ceiling(float time)
+        {
+            if(phase<3)return BackroomsLayout.Height;if(!At(phaseAt))return NativeHumBoss.HighCeiling;
+            return BackroomsLayout.Height+(NativeHumBoss.HighCeiling-BackroomsLayout.Height)*BossMath.Smoother((time-phaseAt-NativeHumBoss.CeilingRise)/NativeHumBoss.CeilingRiseFor);
+        }
         public bool TubeBroken(int i)=>(parts>>i&1)!=0;public bool HeadBroken=>(parts>>7&1)!=0;
         /// <summary>When a part broke (NaN: not yet, or not recorded).</summary>
         public float PartAt(int i)=>partAt!=null&&i<partAt.Length?partAt[i]:float.NaN;

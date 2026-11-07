@@ -37,7 +37,9 @@ namespace ChipArena.UnityConversion
         private readonly Quaternion[] linkRot=new Quaternion[Count];private readonly bool[] linked=new bool[Count];private readonly Vector3[] bindDir=new Vector3[Count];
         private bool started;private float seenSpawned=float.NaN,seenAt=float.NaN;private int actionSide=1,actionSideId;private float lastT=float.NaN;private bool arrivedBefore;
         // The turn over: the fixed line it turns about, latched as it begins; how far round (0 the floor .. 1 the ceiling).
-        private Vector3 flipPoint,flipAxis=Vector3.UnitZ;private bool flipLatched,flipDown;private Quaternion flipTurn=Quaternion.Identity;private const float FlipMid=BackroomsLayout.Height*.5f;
+        private Vector3 flipPoint,flipAxis=Vector3.UnitZ;private bool flipLatched,flipDown;private Quaternion flipTurn=Quaternion.Identity;
+        /// <summary>The room's ceiling this frame (m over the floor): the turn over is about half way up it.</summary>
+        public float Ceiling=BackroomsLayout.Height;
         // ---- outputs the effects read ----
         public bool Visible,Arriving;public float ArrivalAge=float.NaN;
         /// <summary>The root as presented (in the room's world), its yaw (rad), ground speed; this frame's landings (bit per limb) and where.</summary>
@@ -86,8 +88,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>A blow landed: the body flinches, the tubes flicker.</summary>
         public void Hit(double at,Vector3 push,float size){Flinch.Add(at,push,size,Follow.Yaw);LastHit=(float)at;}
-        /// <summary>A pose in the room's world from one on the rig's floor (on the floor: the same).</summary>
-        public Vector3 ToWorld(Vector3 p)=>Flip<=0?p:flipPoint+BossMath.Rotate(flipTurn,p-flipPoint);
+        /// <summary>A place on <see cref="Shown"/> in the room's world: the same place, since the half turn on the ceiling is already in the pose. (Turning it again put the colliders back on the floor while the body hung from the ceiling.)</summary>
+        public Vector3 ToWorld(Vector3 p)=>p;
 
         /// <summary>Poses the boss at `t` after a frame of `dt`. `velocity` the root's ground velocity when the caller has it; `externalRoot` when the caller stepped <see cref="Follow"/> itself (a guest); `target` what the head holds on.
         /// `arrival` is the room's arrival path (null: no intro).</summary>
@@ -98,6 +100,7 @@ namespace ChipArena.UnityConversion
             Reduced=ReducedEffects;
             // ---- the turn over ----
             // Up: the line it turns about is the root's as it begins, along its facing. Down: a new line through where it is then (the body on the ceiling is re-seated on it; the pop killer takes the difference).
+            Ceiling=v.Ceiling(t);float FlipMid=Ceiling*.5f;
             float wantFlip=v.Turned(t);bool reseat=false;
             bool goingDown=HumBossView.At(v.floorAt)&&(!HumBossView.At(v.ceilingAt)||v.floorAt>=v.ceilingAt)&&t>=v.floorAt;
             if(wantFlip>0&&!flipLatched){flipLatched=true;flipDown=false;flipAxis=BossMath.Forward(v.yaw*Deg);flipPoint=new Vector3(v.x,v.y+FlipMid,v.z);}
@@ -118,7 +121,7 @@ namespace ChipArena.UnityConversion
             {
                 // On the ceiling the record's root lies mirrored on the rig's floor. A teleport (Lights Out's reappearance) is a snap: nobody saw it.
                 var goal=vroot;var gv=velocity;float gy=vyaw;
-                if(flipLatched){var q=BossMath.AxisAngle(flipAxis,BossMath.Pi);goal=flipPoint+BossMath.Rotate(q,new Vector3(v.x,v.y+BackroomsLayout.Height,v.z)-flipPoint);gv=BossMath.Rotate(q,velocity);gv.Y=0;var fw=BossMath.Rotate(q,BossMath.Forward(vyaw));gy=BossMath.YawOf(fw);goal.Y=v.y;}
+                if(flipLatched){var q=BossMath.AxisAngle(flipAxis,BossMath.Pi);goal=flipPoint+BossMath.Rotate(q,new Vector3(v.x,v.y+Ceiling,v.z)-flipPoint);gv=BossMath.Rotate(q,velocity);gv.Y=0;var fw=BossMath.Rotate(q,BossMath.Forward(vyaw));gy=BossMath.YawOf(fw);goal.Y=v.y;}
                 bool cut=v.action=="cut"||v.action=="lunge";Follow.MaxTurnRate=(cut?NativeHumBossMotion.TurnRateFast:NativeHumBossMotion.TurnRate)*Deg;Follow.MaxTurnAccel=(cut?420:160)*Deg;
                 float jumpAt=v.action=="cut"?2.5f:10;jump=(started&&Vector3.DistanceSquared(goal,Follow.Position)>jumpAt*jumpAt)||reseat;
                 Follow.Follow(goal,gv,gy,dt,!started||jump);
@@ -148,6 +151,8 @@ namespace ChipArena.UnityConversion
             if(HumBossView.At(v.clipAt)&&v.clipSeconds>0&&t>=v.clipAt){float k=t-v.clipAt;Blend(HumBossMoves.Clipped,BossMath.Smooth(k/.12f)*(1-BossMath.Smooth((k-v.clipSeconds+.3f)/.3f)));}
             if(v.Dead(t))DeathLayer(t-v.diedAt);
             Additive(v,t);
+            // Hanging from a raised ceiling its feet stay planted up there, so whatever it strikes with reaches the rest of the way down: the arms a move drives, and the head as the move comes in.
+            {float drop=(Ceiling-BackroomsLayout.Height)*Flip;if(drop>.01f){float act=Act.Active?Act.Weight:0;for(int l=2;l<4;l++){float w=ch[HumCh.Limb(l,HumCh.W)];if(w>0)ch[HumCh.Limb(l,HumCh.Y)]+=drop*w;}ch[HumCh.HY]+=drop*.75f*act;}}
             // ---- the body through the gait (planted limbs stay planted) ----
             Stagger.Sample(t,out var sShift,out float sPitch,out float sBank,out float sCrouch,out _);Flinch.Sample(t,out float fPitch,out float fBank,out var fShift);
             var lean=BossMath.Euler(ch[HumCh.BP]*Deg,ch[HumCh.BW]*Deg,ch[HumCh.BR]*Deg);float lead=BossMath.Clamp(Follow.YawRate*.14f,-9*Deg,9*Deg);
@@ -172,7 +177,7 @@ namespace ChipArena.UnityConversion
             var chest=Quaternion.Normalize(sp1*unbendC*BossMath.Euler(bend*.38f+lag.X*.5f,twist*.4f+Legs.TwistOffset*-.5f+lag.Y*.5f,roll*.4f+lag.Z*.5f));
             var pSp0=pelvis+BossMath.Rotate(bodyRot,NativeHumBossLook.Rest[NativeHumBossLook.Spine0]);var pSp1=pSp0+BossMath.Rotate(sp0,NativeHumBossLook.Rest[NativeHumBossLook.Spine1]);var pChest=pSp1+BossMath.Rotate(sp1,NativeHumBossLook.Rest[NativeHumBossLook.Chest]);
             // The back scrapes the ceiling: it never pushes up through it unless it means to rear.
-            if(rear<.05f){float over=pChest.Y+.26f-(BackroomsLayout.Height-.25f);if(over>0){pChest.Y-=over;pSp1.Y-=over*.7f;pSp0.Y-=over*.35f;}}
+            if(rear<.05f){float over=pChest.Y+.26f-(Ceiling-.25f);if(over>0){pChest.Y-=over;pSp1.Y-=over*.7f;pSp0.Y-=over*.35f;}}
             P.Set(NativeHumBossLook.Spine0,pSp0,sp0);P.Set(NativeHumBossLook.Spine1,pSp1,sp1);P.Set(NativeHumBossLook.Chest,pChest,chest);
             // ---- the head: level, holding its place, locked on its target; the neck solved between ----
             HasTarget=hasTarget;Target=hasTarget?(Flip>0?flipPoint+BossMath.Rotate(BossMath.Inverse(flipTurn),target-flipPoint):target):Vector3.Zero;

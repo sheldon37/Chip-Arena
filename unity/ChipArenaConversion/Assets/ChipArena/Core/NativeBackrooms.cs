@@ -193,6 +193,8 @@ namespace ChipArena.UnityConversion
         public readonly Part[] Parts=new Part[(int)Surface.Count];
         /// <summary>The flickering fixtures of the block (centre, circuit, cell): drawn one by one at their level.</summary>
         public readonly List<(Vector3 at,int cell)> Flickers=new List<(Vector3,int)>();
+        /// <summary>Cells (x0..x1-1, z0..z1-1) left without the level's ceiling: THE HUM's room, whose ceiling its presenter draws (it rises in NOCLIP). Empty by default.</summary>
+        public int LidlessX0,LidlessZ0,LidlessX1,LidlessZ1;
         public BackroomsMesh(){for(int i=0;i<Parts.Length;i++)Parts[i]=new Part();}
 
         /// <summary>Builds the cells x0..x1-1, z0..z1-1 of the layout with its corner cell (0, 0) at `origin`.</summary>
@@ -205,7 +207,7 @@ namespace ChipArena.UnityConversion
                 int i=l.Index(x,z);float ax=origin.X+x*c,az=origin.Z+z*c,y=origin.Y;
                 if(l.Floor[i]!=BackroomsLayout.Pit)Quad(Surface.Carpet,new Vector3(ax,y,az),new Vector3(c,0,0),new Vector3(0,0,c),Vector3.UnitY,CarpetRepeat,CarpetRepeat);
                 // The ceiling: one tile sheet per cell, facing down, its grid lined up with the cell.
-                Quad(Surface.Ceiling,new Vector3(ax,y+h,az),new Vector3(0,0,c),new Vector3(c,0,0),-Vector3.UnitY,c,c,true);
+                if(!(x>=LidlessX0&&x<LidlessX1&&z>=LidlessZ0&&z<LidlessZ1))Quad(Surface.Ceiling,new Vector3(ax,y+h,az),new Vector3(0,0,c),new Vector3(c,0,0),-Vector3.UnitY,c,c,true);
                 if(l.Light[i])
                 {
                     var at=new Vector3(ax+c*.5f,y+h-FixtureDrop,az+c*.5f);byte state=l.Circuits[l.Circuit[i]];
@@ -237,6 +239,26 @@ namespace ChipArena.UnityConversion
         private Vector3 Origin;
         /// <summary>Builds the whole layout.</summary>
         public void Build(BackroomsLayout l,Vector3 origin)=>Build(l,origin,0,0,l.Width,l.Depth);
+        /// <summary>A ceiling `cells` square with its corner at `corner`, facing down (THE HUM's room's own, which its presenter lifts).</summary>
+        public void Lid(Vector3 corner,int cells)
+        {
+            Origin=corner;foreach(var p in Parts)p.Clear();Flickers.Clear();float c=BackroomsLayout.Cell;
+            for(int z=0;z<cells;z++)for(int x=0;x<cells;x++)Quad(Surface.Ceiling,new Vector3(corner.X+x*c,corner.Y,corner.Z+z*c),new Vector3(0,0,c),new Vector3(c,0,0),-Vector3.UnitY,c,c,true);
+        }
+        /// <summary>The papered band round the inside of a room from y0 up to y1 (its walls carried on up to a raised ceiling), with a trim strip under the ceiling.</summary>
+        public void Band(float minX,float minZ,float maxX,float maxZ,float y0,float y1)
+        {
+            Origin=Vector3.Zero;foreach(var p in Parts)p.Clear();Flickers.Clear();float h=y1-y0,w=maxX-minX,d=maxZ-minZ,t=BackroomsLayout.Thickness*.5f;minX+=t;minZ+=t;maxX-=t;maxZ-=t;w=maxX-minX;d=maxZ-minZ;
+            Quad(Surface.Wallpaper,new Vector3(maxX,y0,minZ),new Vector3(-w,0,0),new Vector3(0,h,0),Vector3.UnitZ,WallpaperRepeat,WallpaperRepeat,false,true);
+            Quad(Surface.Wallpaper,new Vector3(minX,y0,maxZ),new Vector3(w,0,0),new Vector3(0,h,0),-Vector3.UnitZ,WallpaperRepeat,WallpaperRepeat,false,true);
+            Quad(Surface.Wallpaper,new Vector3(minX,y0,minZ),new Vector3(0,0,d),new Vector3(0,h,0),Vector3.UnitX,WallpaperRepeat,WallpaperRepeat,false,true);
+            Quad(Surface.Wallpaper,new Vector3(maxX,y0,maxZ),new Vector3(0,0,-d),new Vector3(0,h,0),-Vector3.UnitX,WallpaperRepeat,WallpaperRepeat,false,true);
+            float o=TrimOut,th=TrimHeight;float ty=y1-th;
+            Quad(Surface.Trim,new Vector3(maxX,ty,minZ+o),new Vector3(-w,0,0),new Vector3(0,th,0),Vector3.UnitZ,TrimRepeat,TrimRepeat,false,true);
+            Quad(Surface.Trim,new Vector3(minX,ty,maxZ-o),new Vector3(w,0,0),new Vector3(0,th,0),-Vector3.UnitZ,TrimRepeat,TrimRepeat,false,true);
+            Quad(Surface.Trim,new Vector3(minX+o,ty,minZ),new Vector3(0,0,d),new Vector3(0,th,0),Vector3.UnitX,TrimRepeat,TrimRepeat,false,true);
+            Quad(Surface.Trim,new Vector3(maxX-o,ty,maxZ),new Vector3(0,0,-d),new Vector3(0,th,0),-Vector3.UnitX,TrimRepeat,TrimRepeat,false,true);
+        }
         /// <summary>Builds one free-standing wall centred on the origin, along x, `length` long (THE HUM's partitions, drawn where they stand).</summary>
         public void Partition(float length){Origin=Vector3.Zero;foreach(var p in Parts)p.Clear();Flickers.Clear();float t=BackroomsLayout.Thickness*.5f;Wall(-length*.5f-t,length*.5f+t,0,true);}
         // A box's four sides papered, with a baseboard strip standing off each side at its foot (top and bottom hidden by the

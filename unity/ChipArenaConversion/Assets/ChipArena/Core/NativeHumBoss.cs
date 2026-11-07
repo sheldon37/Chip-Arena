@@ -32,6 +32,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The Peripheral Shift's period by phase, and the proposed health multiplier over NativePveRules.BossHp.</summary>
         public static readonly float[] ShiftEvery={18,12,8};
         public const float HealthScale=1.1f;
+        /// <summary>NOCLIP's ceiling (m): as it rears up into the last phase it pushes the room's ceiling up from the level's 4 m to this, so on the ceiling it hangs with clear air under it (the owner, 2026-11-07:
+        /// upside down it looked the same as standing). It rises through the rear's push (<see cref="CeilingRise"/> s from the change's start, over <see cref="CeilingRiseFor"/>). Collision is Astra's: until the rules lift the
+        /// room's ceiling and walls too, the old ceiling still stops shots at 4 m.</summary>
+        public const float HighCeiling=6.4f,CeilingRise=1.25f,CeilingRiseFor=1.3f;
         /// <summary>A Noclip lunge that ends this close to a surface leaves it half inside it for <see cref="ClippedSeconds"/>, taking 2x.</summary>
         public const float ClipReach=1,ClippedSeconds=2.2f;
         /// <summary>Breaks: a tube's share of max health, the head and the Ballast's multipliers, and three broken in a charge staggers it.</summary>

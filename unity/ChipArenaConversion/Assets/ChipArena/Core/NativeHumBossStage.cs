@@ -78,6 +78,8 @@ namespace ChipArena.UnityConversion
         public readonly int[] Place=new int[NativeHumArena.Partitions];
         /// <summary>The mean light (the ambient and the haze follow it), the whole room's tint away from the lamps' own (NOCLIP's wrong light), the body's stutter, the shudder, dust from the grid, the hum's level 0..1 and its pitch 0..1, the swim of the textures.</summary>
         public float Air=1,Wrong,Hitch,Shake,Dust,Hum,Pitch,Slip;
+        /// <summary>The room's ceiling this frame (m over its floor; HumBossView.Ceiling) and how far it has risen over the level's (the fixtures go up with it).</summary>
+        public float CeilingH=BackroomsLayout.Height,Lift;
         /// <summary>The silence of Lights Out (1: every sound and tube cut).</summary>
         public float Silent;
         private static float Ramp(float x)=>x<=0?0:x>=1?1:x*x*(3-2*x);
@@ -90,7 +92,7 @@ namespace ChipArena.UnityConversion
         }
         public void Evaluate(in HumBossView v,float t,in HumBossBeats b,HumRoom room,bool reduced)
         {
-            On=v.live;Air=1;Wrong=0;Hitch=0;Shake=0;Dust=0;Hum=.2f;Pitch=.2f;Slip=0;Silent=0;
+            On=v.live;Air=1;Wrong=0;Hitch=0;Shake=0;Dust=0;Hum=.2f;Pitch=.2f;Slip=0;Silent=0;CeilingH=v.live?v.Ceiling(t):BackroomsLayout.Height;Lift=CeilingH-BackroomsLayout.Height;
             for(int i=0;i<Lamp.Length;i++){Lamp[i]=1;Burst[i]=false;}
             int from=v.shiftFrom,to=v.shiftMask;float swap=HumBossView.At(v.shiftAt)?v.shiftAt+.07f:float.PositiveInfinity;
             for(int s=0;s<Place.Length;s++)Place[s]=NativeHumArena.PlaceOf(s,t>=swap?to:from);
@@ -242,7 +244,7 @@ namespace ChipArena.UnityConversion
             var tint=Vector3.Lerp(lamp,new Vector3(lamp.X*.62f,lamp.Y*.98f,lamp.Z*1.22f),Wrong);
             for(int k=0;k<count;k++)
             {
-                int i=at[k];var f=room.FixtureAt[i];float lv=Lamp[i];pos[n*4]=f.X;pos[n*4+1]=f.Y-.2f;pos[n*4+2]=f.Z;pos[n*4+3]=range*(lv>1?Math.Min(1.5f,.9f+.1f*lv):1);rgb[n*3]=tint.X*lv;rgb[n*3+1]=tint.Y*lv;rgb[n*3+2]=tint.Z*lv;n++;
+                int i=at[k];var f=room.FixtureAt[i];float lv=Lamp[i];pos[n*4]=f.X;pos[n*4+1]=f.Y+Lift-.2f;pos[n*4+2]=f.Z;pos[n*4+3]=range*(lv>1?Math.Min(1.5f,.9f+.1f*lv):1);rgb[n*3]=tint.X*lv;rgb[n*3+1]=tint.Y*lv;rgb[n*3+2]=tint.Z*lv;n++;
             }
             for(int k=n;k<slots;k++){pos[k*4]=0;pos[k*4+1]=-10000;pos[k*4+2]=0;pos[k*4+3]=.0001f;rgb[k*3]=rgb[k*3+1]=rgb[k*3+2]=0;}
             return n;

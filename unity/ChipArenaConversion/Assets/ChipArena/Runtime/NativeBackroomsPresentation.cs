@@ -100,6 +100,8 @@ namespace ChipArena.UnityConversion
         private void BackroomsBuild(BackroomsLayout l,Vector3 origin)
         {
             BackroomsRelease();backroomsLayout=l;backroomsOrigin=origin;var builder=new BackroomsMesh();var o=new NVector(origin.x,origin.y,origin.z);int n=BackroomsBlockCells;float c=BackroomsLayout.Cell;
+            // THE HUM's room draws its own ceiling (it rises in NOCLIP): Runtime NativeHumBossRoom.cs.
+            if(ReferenceEquals(l,humLayoutCarved)&&humRoomLive!=null){builder.LidlessX0=humRoomLive.X0;builder.LidlessZ0=humRoomLive.Z0;builder.LidlessX1=humRoomLive.X0+NativeHumArena.Cells;builder.LidlessZ1=humRoomLive.Z0+NativeHumArena.Cells;}
             for(int z0=0;z0<l.Depth;z0+=n)for(int x0=0;x0<l.Width;x0+=n)
             {
                 builder.Build(l,o,x0,z0,x0+n,z0+n);var b=new BackroomsBlock{Centre=origin+new Vector3((x0+n*.5f)*c,0,(z0+n*.5f)*c)};
