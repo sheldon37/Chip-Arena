@@ -114,6 +114,10 @@ namespace ChipArena.UnityConversion
         public void HoldMusic(){musicHeld=true;if(music.isPlaying||musicStarting){music.Pause();musicPaused=true;musicStarting=false;}}
         public void Render(NativeArena arena,bool menu,Camera camera)
         {
+            // The opening draft has a frozen simulation clock: keep its audio silent, including already-playing loops.
+            // Source mute is transient and restores on intro, leaving the player's sound preferences untouched.
+            bool opening=arena?.BossOpening==true;
+            foreach(var voice in voices)voice.mute=opening;music.mute=opening;introVoice.mute=opening;
             // audio.ts update: falloff and pan are heard from the local pilot (`listener=self.pos`), turned by the view yaw.
             if(camera!=null){listener=camera.transform.position;yaw=camera.transform.eulerAngles.y*Mathf.Deg2Rad;}if(arena?.Local?.Body!=null)listener=arena.Local.Body.position;
             Slender(arena,menu);StructureQueue(arena);EffectsFrame(arena,menu);KitAudio(arena,menu);DoorHumFrame(arena,menu);IronworksBossLoopFrame(arena,menu);if(arena==null){CyberCityCues(null,true);Track("music/menu-afterglow",Menu*MenuTrackGain);return;}
