@@ -274,7 +274,7 @@ namespace ChipArena.UnityConversion
             var c=new Vector2(r.x+32,r.y+30);SocialAvatar(c,16,inv.username,false,a,now);
             var mail=new Rect(c.x+7,c.y+7,15,15);U.Disc(new Rect(mail.x-1,mail.y-1,mail.width+2,mail.height+2),C.Panel(a));U.Disc(mail,C.Magenta(a));NativeIcons.DrawMarkup(new Rect(mail.x+2.5f,mail.y+2.5f,10,10),"social-mail",SocialMail,24,new Color(1,1,1,a));
             U.Text(new Rect(r.x+58,r.y+10,r.width-150,19),inv.username,13,C.Ink(a),TextAnchor.MiddleLeft,bold:true);
-            if(canAccept||joining)U.Text(new Rect(r.x+58,r.y+29,r.width-98,15),"invited you to their room",10.5f,C.Muted(.95f*a),TextAnchor.MiddleLeft);
+            if(canAccept||joining)U.Text(new Rect(r.x+58,r.y+29,r.width-98,15),"invited you to their room",10.5f,C.Ink(.8f*a),TextAnchor.MiddleLeft);
             else U.Text(new Rect(r.x+58,r.y+29,r.width-74,15),"Leave your room or match to accept",10.5f,C.Warn(.95f*a),TextAnchor.MiddleLeft);
             // Two minutes to answer (the service's milliseconds; hidden when this clock disagrees).
             double left=(inv.expires-DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())/1000.0;
