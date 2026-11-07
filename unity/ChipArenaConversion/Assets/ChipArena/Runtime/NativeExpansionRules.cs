@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     {
         private float ExpansionDamage(NativePilot p,float damage,bool hit=true)
         {
-            if(p==null)return damage;if(hit&&Has(p,"wild-haymaker")&&Time>=p.Wild.HayAt)damage*=6;
+            if(p==null)return damage;damage=RelicDamage(p,damage,hit);if(hit&&Has(p,"wild-haymaker")&&Time>=p.Wild.HayAt)damage*=6;
             if(p.Hp>.9f*p.Stats["hp"])damage*=1+.2f*ExpansionStacks(p,"wild-top-shape");
             if(!p.Grounded)damage*=1+.25f*ExpansionStacks(p,"wild-hangtime");
             if(p.ExpansionStill>=0&&Time-p.ExpansionStill>=1)damage*=1+.25f*ExpansionStacks(p,"wild-planted");
@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
         }
         private void ExpansionHit(NativePilot p,int target,Vector3 at,float actual,bool melee,Vector3 direction=default,bool projectile=false)
         {
-            if(p==null||actual<=0)return;WildHit(p,target,at,actual,direction,projectile);p.ExpansionLastHit=Time;EnvenomHit(p,target,at);
+            if(p==null||actual<=0)return;WildHit(p,target,at,actual,direction,projectile);RelicHit(p,target,at,actual);p.ExpansionLastHit=Time;EnvenomHit(p,target,at);
             var victim=Pilots.Find(q=>q.Seat.id==target);if(victim!=null&&Has(p,"wild-time-thief")&&Time>=p.ExpansionThiefAt){p.ExpansionThiefAt=Time+.25f;p.QReady=Math.Max(Time,p.QReady-.25f);p.EReady=Math.Max(Time,p.EReady-.25f);victim.QReady=Math.Max(Time,victim.QReady)+.25f;victim.EReady=Math.Max(Time,victim.EReady)+.25f;ChipProc(p,"wild-time-thief",at,target,.25f,from:p.Body.position);}
             int mana=ExpansionStacks(p,"wild-mana-tap"),stamina=melee?ExpansionStacks(p,"wild-follow-through"):0;
             if(mana>0)p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+4*mana);

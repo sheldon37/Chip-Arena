@@ -1,3 +1,5 @@
+2026-11-07 Claude (`claude/backrooms-boss-rules`, at the owner's word): THE HUM's Noclip faster and aimed, NOCLIP's raised room collides; the Drain a current with a throat counter; boss relics live: never ordinary offers, a 12% boss drop, all twelve rules and their effects (docs/BOSS-CHIPS.md).
+
 2026-11-07 Claude (`claude/backrooms-boss-pass`): THE HUM's real intro plays (it stood frozen), its hit box follows it on the ceiling, NOCLIP's room rises to 6.4 m, Reach thrown with its body; THE DEEP END without folds, nothing out of dry tile, the Flop a real leap, the Jet drawn on its rule's line, its room 12 m high; no pilots in boss intros; boss relics built and staged (docs/BOSS-CHIPS.md). The rules' half is Astra's (EXPEDITION-BOSS-BACKROOMS section 10).
 
 2026-11-07 Claude (`claude/invite-popup`): an invitation pop-up with Accept and Decline on the menus and end screens, never in a fight (docs/ONLINE-INVITES.md). A real two-account invitation hasn't been played through.

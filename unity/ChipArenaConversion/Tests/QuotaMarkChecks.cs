@@ -292,7 +292,9 @@ namespace ChipArena.UnityConversion
             // The feature is read by its own files and the hooks only; no authority file (rules, AI, spawning, director, network) names it.
             // The quota module (Claude, 2026-10-20) hands off to the markers: it reads their threshold and words and draws their kite.
             var allowed=new HashSet<string>{"Core/NativeQuotaMarks.cs","Runtime/NativeQuotaMarksPresentation.cs","Runtime/NativeQuotaMarkAudio.cs","Runtime/NativeExpeditionLiveUI.cs","Runtime/NativeExpeditionHud.cs","Runtime/NativeAudio.cs",
-                "Core/NativeExpeditionQuotaModel.cs","Runtime/NativeExpeditionQuotaHud.cs"};
+                "Core/NativeExpeditionQuotaModel.cs","Runtime/NativeExpeditionQuotaHud.cs",
+                // Noclip's reveal (a boss relic) draws the markers' kite in the HUM's colour over the one a roll went through: presentation only.
+                "Runtime/NativeBossRelicHud.cs"};
             var names=new Regex(@"\b(NativeQuotaMarks|QuotaMarkSet|QuotaArrowSet|QuotaMarkCue|QuotaCandidate|QuotaMarksHud|NativeQuotaMarksHud|HordeDrawnRoot|ClearQuotaMark|QuotaMark)\b");
             foreach(var file in Directory.GetFiles(A,"*.cs",SearchOption.AllDirectories))
             {

@@ -34,8 +34,10 @@ namespace ChipArena.UnityConversion
         public const float HealthScale=1.1f;
         /// <summary>NOCLIP's ceiling (m): as it rears up into the last phase it pushes the room's ceiling up from the level's 4 m to this, so on the ceiling it hangs with clear air under it (the owner, 2026-11-07:
         /// upside down it looked the same as standing). It rises through the rear's push (<see cref="CeilingRise"/> s from the change's start, over <see cref="CeilingRiseFor"/>). Collision is Astra's: until the rules lift the
-        /// room's ceiling and walls too, the old ceiling still stops shots at 4 m.</summary>
+        /// room's ceiling and walls rise with it (the authority's room colliders: NativeBackroomsBossRules.Ceiling).</summary>
         public const float HighCeiling=6.4f,CeilingRise=1.25f,CeilingRiseFor=1.3f;
+        /// <summary>Noclip follows its target through the wind and holds its line from this long (s) before it goes (the owner, 2026-11-07: "easily dodgeable"; a sidestep as the wind began beat it).</summary>
+        public const float LungeLock=.3f;
         /// <summary>A Noclip lunge that ends this close to a surface leaves it half inside it for <see cref="ClippedSeconds"/>, taking 2x.</summary>
         public const float ClipReach=1,ClippedSeconds=2.2f;
         /// <summary>Breaks: a tube's share of max health, the head and the Ballast's multipliers, and three broken in a charge staggers it.</summary>
@@ -52,7 +54,7 @@ namespace ChipArena.UnityConversion
             new HumBossMove{Id="reach",Title="Reach",Phase=1,Wind=.6f,Strike=.2f,Follow=.3f,Recover=.5f,Cooldown=3,Damage=22,Reach=6,Arc=130},
             new HumBossMove{Id="stoop",Title="Stoop",Phase=1,Wind=.7f,Strike=.15f,Follow=.4f,Recover=.6f,Cooldown=7,Damage=30,Radius=4.5f},
             new HumBossMove{Id="row",Title="Row Burst",Phase=1,Wind=1.1f,Strike=.1f,Follow=.5f,Recover=.4f,Cooldown=10,Damage=16,Width=1.4f},
-            new HumBossMove{Id="lunge",Title="Noclip",Phase=1,Wind=1.2f,Strike=1.2f,Follow=.4f,Recover=.7f,Cooldown=12,Damage=34,Reach=26,Width=3,Speed=22},
+            new HumBossMove{Id="lunge",Title="Noclip",Phase=1,Wind=.75f,Strike=.8f,Follow=.4f,Recover=.7f,Cooldown=12,Damage=34,Reach=26,Width=3,Speed=32.5f},
             new HumBossMove{Id="tear",Title="Fall Through",Phase=1,Wind=1.5f,Strike=.2f,Follow=0,Recover=0,Cooldown=0,Damage=12,Radius=2.4f},
             new HumBossMove{Id="shift",Title="Peripheral Shift",Phase=1,Wind=0,Strike=0,Follow=0,Recover=0,Cooldown=18,Damage=0},
             new HumBossMove{Id="pulse",Title="Max Hum",Phase=2,Wind=1.4f,Strike=1.3f,Follow=.3f,Recover=.8f,Cooldown=14,Damage=14,Speed=14},

@@ -51,6 +51,9 @@ namespace ChipArena.UnityConversion
         {
             bool rainbow=pick.Tier=="rainbow";var weights=Pve.Content.offerWeights.First(x=>x.id==pick.Tier).weights.ToDictionary(x=>x.name,x=>x.value);if(p.Seat.spec=="leet"&&!rainbow)weights["l44t"]=weights["legendary"];
             const int count=3;pick.Offers=NativeContentRules.Offers(Content,p.Seat.spec,p.Seat.chips,Pve.EconomyRandom.Next,count,c=>ImplementedChip(c)&&c.rarity!="siren",weights,!rainbow,p.Seat.bot?"":p.Seat.weaponTechniques??"");
+            // A boss's own pick (NOCTIEL's draft): rarely, one of that boss's relics.
+            if(pick.Source=="boss"&&ZoneBoss?.archetype!=null){var offered=pick.Offers;var eligible=NativeContentRules.Eligible(Content,p.Seat.spec,p.Seat.chips,p.Seat.bot?"":p.Seat.weaponTechniques??"");
+                pick.Offers=NativeBossChips.Place(offered.ToArray(),NativeBossChips.Drop(ZoneBoss.archetype,chip=>!offered.Contains(chip)&&ImplementedChip(Content.Chip(chip))&&eligible.Any(c=>c.id==chip),Pve.EconomyRandom.Next),count).ToList();}
             if(!p.Seat.bot&&!rainbow&&!BossOpening&&Pve.EconomyRandom.Next()<.3){var available=Pve.Content.moneyChips.Where(c=>!p.Seat.chips.TryGetValue(c.id,out int n)||n<c.max).ToArray();if(available.Length>0){var tiers=Content.rarities.Where(r=>weights.TryGetValue(r.id,out double w)&&w>0&&available.Any(c=>c.rarity==r.id)).Select(r=>new NumberValue{name=r.id,value=weights[r.id]}).ToArray();string tier=tiers.Length>0?NativePveRules.Weighted(tiers,Pve.EconomyRandom.Next):null;var pool=tier!=null?available.Where(c=>c.rarity==tier).ToArray():available;if(pool.Length==0)pool=available;var chosen=pool[Math.Min(pool.Length-1,(int)(Pve.EconomyRandom.Next()*pool.Length))];if(pick.Offers.Count>=count)pick.Offers.RemoveAt(pick.Offers.Count-1);pick.Offers.Add(chosen.id);}}
         }
         public ContentChip PveChip(string id)=>Content.chips.FirstOrDefault(c=>c.id==id)??Pve?.Content.moneyChips.FirstOrDefault(c=>c.id==id);

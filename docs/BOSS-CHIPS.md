@@ -4,9 +4,9 @@ Owner, 2026-11-07: "Give the bosses 'exclusive' chip drops (maybe like 2-3 uniqu
 is themed around the boss, it has a special design and pick effect. Make these visuals beautiful. These unique chips are ONLY possible
 from the boss drop chip selection and a rare chance."
 
-**Status: the cards, their art, the 3D chip's looks and the pick are built (Claude). Nothing offers them and no rule applies them
-until Astra adds the drop and the twelve mechanics (the contract below).** They can be seen now: DEV Sandbox, Preview, Rarity, one of
-the six `boss-*` tiers (the preview adds the rows to its own copy of the content and lets them be picked).
+**Status: live (Claude, 2026-11-07; the owner asked Claude to make the rules too).** The cards, art, 3D looks and pick; the rows in the
+live content; never an ordinary offer; the rare boss drop; all twelve rules; each one's moment drawn in the world. DEV Sandbox, Preview,
+Rarity, a `boss-*` tier still shows the cards and the pick.
 
 ## The twelve
 
@@ -45,7 +45,25 @@ Every number is a proposal; Astra owns them. The card's short line and its green
 - **The tray's entrance:** a relic falls in from above, too bright, and settles.
 - **The 3D chip** (the Expedition reward screen) takes the tier's look from `NativeChipCartridge.Of`.
 
-## Astra's contract
+## How they work (built)
+
+1. **Rows and rarities.** `NativeBossChips.Apply(content)` adds the twelve rows and six rarities (weight 0) where the live content loads
+   (Runtime `NativeStructures`, beside the other overlays).
+2. **Never in an ordinary offer.** `NativeContentRules.Offers` leaves every relic out of its pool before any roll (so every ordinary roll is
+   exactly as it was without them): drafts, PvE picks, chests, machines, monster drops, the Boss Battle's opening picks.
+3. **The drop.** An Expedition boss reward (`source` "boss", `ExpeditionSession.Offers`): its boss is its zone's (`RewardBoss`: the zone in
+   the reward's id, that zone's map, `NativeZoneBossRules.Archetype`, else the Siren); with `DropChance` (12%) one of that boss's relics the
+   pilot can take replaces the screen's last offer (`Drop`, `Place`). NOCTIEL's own draft (a PvE pick with source "boss") rolls the same.
+   The frozen offers keep it once rolled. At most one per screen.
+4. **The rules** (Runtime `NativeBossRelicRules`, hooked beside the wild chips'): every id is in `SupportedMechanics`. Zone bosses can't be
+   moved or stunned by them. Lux Cecidit's "once a round" also comes back after a death (an Expedition is one long round). Their counters
+   and rails are the authority's own (not in the host handoff frame, as the wild chips' timers aren't).
+5. **In the world:** each proc is a ChipProc with the relic's id; Core `NativeBossRelicFx` draws it (the Siren's rings and ribbon, the
+   express's headlight and strike, the live rail, molten slag and its pool, the hum building and bursting, Noclip's glitch, the undertow,
+   the warm light, the ring of light on landing, the beam that saves). Noclip's reveal: the quota marker's kite in the HUM's white over the
+   one the roll went through, through walls for 3 s (Runtime `NativeBossRelicHud`).
+
+## The old contract (for reference)
 
 1. **Rows and rarities.** `NativeBossChips.Apply(content)` adds the twelve rows and six rarities (weight 0). Call it where the live
    content loads, beside `NativeBombChips.Apply`.
@@ -58,5 +76,6 @@ Every number is a proposal; Astra owns them. The card's short line and its green
    `ImplementedChip` keeps it out (the preview adds them itself).
 5. **Proc events** for the pick in the world, if wanted: an `Install` event for a relic id already reaches the presentation.
 
-The checks: `Tests/BossChipChecks.cs` (`--boss-chips`): twelve, two per boss, one copy, own tier and look, copy and icons, not in the
-live content.
+The checks: `Tests/BossChipChecks.cs` (`--boss-chips`): twelve, two per boss, one copy, own tier and look, copy and icons; in the live
+content and never in an ordinary offer (and the ordinary rolls unchanged); the drop's rate, only its boss's, never one it can't take, placed
+last; a reward's boss by its zone; every relic's moment drawn finite through its life and thinner with Reduced effects.

@@ -154,8 +154,9 @@ public static class TelegraphChecks
         foreach(int phase in new[]{1,3})
         {
             var v=V("lunge",10,10+lunge.Wind,phase);var a=o;var b=o+new Vector3(14,0,9);v.laneX1=b.X;v.laneZ1=b.Z;
-            Move("lunge",v,phase==3?3.6f:1.2f,(p,dt)=>{bool second=phase==3&&dt>=2.4f;float age=second?dt-2.4f:dt;if(age<0||age>1.2f)return false;var s0=second?b:a;var s1=second?a:b;
-                var q=Vector3.Lerp(s0,s1,Math.Clamp(age/1.2f,0,1));var prev=Vector3.Lerp(s0,s1,Math.Clamp((age-1/30f)/1.2f,0,1));return NativeBackroomsBossRules.Line(p,prev,q,3);},phase);
+            float strike=lunge.Strike;
+            Move("lunge",v,phase==3?3*strike:strike,(p,dt)=>{bool second=phase==3&&dt>=2*strike;float age=second?dt-2*strike:dt;if(age<0||age>strike)return false;var s0=second?b:a;var s1=second?a:b;
+                var q=Vector3.Lerp(s0,s1,Math.Clamp(age/strike,0,1));var prev=Vector3.Lerp(s0,s1,Math.Clamp((age-1/30f)/strike,0,1));return NativeBackroomsBossRules.Line(p,prev,q,3);},phase);
         }
         // Called off (a stagger before the hit): no warning after it.
         {var v=V("reach",10,10+reach.Wind);v.cancelAt=10.3f;Frame(v,10.4f);Check(fx.Telegraphs.Count==0,"reach: called off, its warning goes");}

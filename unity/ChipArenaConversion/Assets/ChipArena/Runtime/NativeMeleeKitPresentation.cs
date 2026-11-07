@@ -21,12 +21,14 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<int,DecoyRig> decoys=new Dictionary<int,DecoyRig>();private readonly List<int> staleDecoys=new List<int>();
         private sealed class DashGhost{public GhostPose Pose=new GhostPose();public float At;public string Weapon,Body;public Color Tint;public bool Live,Model;public VisualEcho Echo;}
         private readonly DashGhost[] dashGhosts=new DashGhost[NativeMeleeKitFx.DashGhostSlots];private int dashNext;
+        // The boss relics' moments in the world (Core NativeBossRelicFx), on the kit's sink.
+        private readonly NativeBossRelicFx bossRelicFx=new NativeBossRelicFx();
         private readonly Dictionary<int,(Vector3 At,float Cast)> dashLast=new Dictionary<int,(Vector3,float)>();
 
         /// <summary>End of Render: the frame's kit events, the decoys and the dash ghosts (after the rigs are posed).</summary>
         private void RenderMeleeKit(Snapshot s,float time)
         {
-            kitSnapshot=s;kitClock=time;if(s?.Actors==null)return;meleeKitFx.Observe(s.Events,time);
+            kitSnapshot=s;kitClock=time;if(s?.Actors==null)return;meleeKitFx.Observe(s.Events,time);bossRelicFx.Observe(s.Events,time);
             if(sourceModels==null)return;
             Decoys(s,time);
             DashGhosts(s,time);
@@ -90,10 +92,11 @@ namespace ChipArena.UnityConversion
             var s=kitSnapshot;if(s?.Actors==null||vfx==null)return;var draw=WeaponFxDraw;if(draw==null)return;
             kitScene??=new KitScene(this);kitSink??=new KitSink();kitScene.Bind(s,arena,kitClock);kitSink.Bind(vfx,draw,FirstPerson&&!ScopeActive&&ViewCamera!=null);
             meleeKitFx.Draw(kitSink,kitScene,kitClock,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics);
+            bossRelicFx.Draw(kitSink,kitClock,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics);
         }
         private void ClearMeleeKit()
         {
-            ClearTechnique();ClearBomb();meleeKitFx.Clear();kitSnapshot=null;dashLast.Clear();foreach(var g in dashGhosts)if(g!=null)g.Live=false;
+            ClearTechnique();ClearBomb();meleeKitFx.Clear();bossRelicFx.Clear();kitSnapshot=null;dashLast.Clear();foreach(var g in dashGhosts)if(g!=null)g.Live=false;
             foreach(var d in decoys.Values)d.Rig.Dispose();decoys.Clear();
         }
 

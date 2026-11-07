@@ -124,7 +124,7 @@ Each change is a 3.5 s scripted window, as the 6:47's are.
 | `reach` | Reach | 1 | .6 | .2 | .3 | .5 | 3 | 22 | 130° arc, 6 m, through walls |
 | `stoop` | Stoop | 1 | .7 | .15 | .4 | .6 | 7 | 30 | 4.5 m circle at its feet |
 | `row` | Row Burst | 1 | 1.1 | .1 | .5 | .4 | 10 | 16 | every fixture on alternate rows of one axis bursts: lanes 1.4 m wide, the whole room long |
-| `lunge` | Noclip | 1 | 1.2 | 1.2 | .4 | .7 | 12 | 34 | a 3 m wide lane, 26 m at 22 m/s, through everything |
+| `lunge` | Noclip | 1 | .75 | .8 | .4 | .7 | 12 | 34 | a 3 m wide lane, 26 m at 32.5 m/s, through everything; it follows its target through the wind and holds its line .3 s before it goes |
 | `tear` | Fall Through | 1 | 1.5 | .2 | 0 | 0 | meter | 12 + moved | 2.4 m circle under a still pilot; see below |
 | `shift` | Peripheral Shift | 1 | 0 | 0 | 0 | 0 | 18 / 12 / 8 | 0 | partitions rearrange where no pilot is looking |
 | `pulse` | Max Hum | 2 | 1.4 | 1.3 | .3 | .8 | 14 | 14 + .5 s stagger | a ring from its chest, through walls, to the room's edge at 14 m/s; jump it or roll through it |
@@ -288,7 +288,7 @@ the fight gets slower on your feet and those tools matter more.
 | `jet` | Hydro Jet | 1 | 1.0 | 2.2 | .3 | .8 | 12 | 10 per .25 s | a 2 m beam, swept 110° over 30 m, starting on the farthest pilot |
 | `flop` | Belly Flop | 1 | 1.8 | .2 | .6 | 1 | 14 | 30 | a line 4 m wide and 24 m long where its body falls; its shadow and a line of bubbles or spray mark it |
 | `thrash` | Thrash | 1 | .4 | .3 | .2 | .4 | 6 | 18 | 5 m round the surfaced body, a tail sweep, when someone hugs it |
-| `drain` | The Drain | 1 | 1.4 | 4 | .3 | .8 | 20 | 40 at the mouth | the whole room's water pulls toward the pit at 5 to 9 m/s; it's the mouth open at the centre |
+| `drain` | The Drain | 1 | 1.4 | 4 | .3 | .8 | 20 | 40 at the mouth | the whole room's water runs toward the pit at 2.5 to 4.5 m/s, a current a pilot fights (none in the air or a roll); 3% of its health to the open throat shuts it, a 2 s stagger |
 | `lull` | The Lull | 1 | 1.5 | .3 | 1.5 | 0 | meter | 8 + 8/s | hands of water take a pilot still for 6 s, or above 1.6 m for 2 s |
 | `seiche` | Seiche | 2 | 1.4 | 7 | 0 | .5 | 16 | 18 + knockback | a wave .9 m tall crosses the room wall to wall, then reflects back. Jump it or roll through |
 | `whistle` | Whistle | 2 | 1 | 2 | 0 | .5 | 25 | 0 | a Lifeguard's whistle from nowhere: Drowned surface round each pilot, Tilers peel off the walls |
@@ -635,3 +635,28 @@ on the record's `hitAt`; nothing else changes (`--backrooms-boss-rules` passes).
    `NativeDeepEndArena.Ceiling` (the 6:00 flood can rise to it or stay at 7.2).
 5. **Boss relics:** docs/BOSS-CHIPS.md.
 6. **For a check:** the HUM's colliders follow `Shown` on the ceiling (Core `HumBossRig.ToWorld` is the identity now).
+
+## 11. The rules' half, done (2026-11-07, Claude at the owner's word: "Go ahead and make the changes yourself")
+
+The owner asked Claude to make section 10's "For Astra" list itself. What changed in the rules (Core `NativeBackroomsBossRules`, Runtime
+`NativeBackroomsBossAuthority`):
+
+- **Noclip is faster and follows you.** Wind .75 s (was 1.2), strike .8 s (was 1.2) over the same 26 m, so 32.5 m/s; the table is read
+  everywhere (the contacts, the second pass in NOCLIP at 2x the strike, the clip check, the authority's immunity while it is inside a wall).
+  Through its wind the lane follows its target (its warning, pose and facing follow the lane) and holds its line from
+  `NativeHumBoss.LungeLock` (.3 s) before it goes: a sidestep at the start no longer beats it, one in the last .3 s does.
+- **NOCLIP's room really is taller.** `NativeBackroomsBossRules.Ceiling(z)`: 4 m until NOCLIP, `HumBossView`'s 6.4 m from it. The authority's
+  seals rise to it, `Inside` reads it, and the level's one ceiling block is set aside for the fight: the room gets its own lid at 6.4 m and
+  the rest of the level keeps its ceiling at 4 m around it (so nobody climbs onto the maze's walls elsewhere). Shots now carry up to the
+  room's new ceiling.
+- **The Drain has counters.** It no longer takes a pilot's control: `ZoneCurrent` adds a current toward the pit, 2.5 m/s at the room's
+  edge to 4.5 m/s at the pit (a run is 6.8 m/s), with no hold on a pilot in the air or rolling. And its throat shuts it: 3% of its health
+  to the open throat while it drains (the throat already takes 2x then) chokes it shut with a 2 s stagger (`staggerCause` "throat"); the
+  presentation already closes the iris and stops the pull's look on `cancelAt`. The 40 at the pit is unchanged. THE HUM's Wall Hand
+  still drags (a grab).
+- **The Deep End room's 12 m** is in the rules: `Inside` and the seals read `NativeDeepEndArena.Ceiling`. The 6:00 flood still rises to 7.2 m
+  (it ends the fight either way).
+
+**Animation impact:** Noclip's phrase reads the table, so its sink and its run are shorter (.6 s gather and a .15 s set, .8 s run); its
+facing turns with the lane through the wind (the rig's fast turn for the lunge). Contacts stay on `hitAt`. The Drain's stagger poses as
+any other. Networking: the lane's re-aim is in the replicated frame (laneX1/Z1, actionYaw, target), as before.

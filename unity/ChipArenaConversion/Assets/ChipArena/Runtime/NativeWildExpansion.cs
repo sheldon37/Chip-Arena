@@ -44,7 +44,7 @@ namespace ChipArena.UnityConversion
         {var t=MeleeTarget(p,id);if(t.pilot!=null)Damage(t.pilot,p,amount,Vector3.zero,0,false,direct:false,primary:false,damageKind:"expansion-copy");else if(t.minion!=null)HitMinion(t.minion,p,amount,Vector3.zero,0,at,"expansion-copy");}
         private void WildOverkill(NativePilot p,int id,Vector3 at,float extra)
         {
-            if(p==null||extra<=0||!Has(p,"wild-overkill"))return;var t=MeleeTargets(p).Where(t=>t.id!=id&&Vector3.Distance(t.at,at)<=12&&MeleeVisible(at,t.at,p,t.collider)).OrderBy(t=>(t.at-at).sqrMagnitude).FirstOrDefault();
+            RelicKill(p,id,at);if(p==null||extra<=0||!Has(p,"wild-overkill"))return;var t=MeleeTargets(p).Where(t=>t.id!=id&&Vector3.Distance(t.at,at)<=12&&MeleeVisible(at,t.at,p,t.collider)).OrderBy(t=>(t.at-at).sqrMagnitude).FirstOrDefault();
             if(t.collider!=null){WildNoProcHit(p,t.id,extra,t.at);ChipProc(p,"wild-overkill",t.at,t.id,extra,from:at);}
         }
         private bool WildSave(NativePilot p,float amount)
@@ -90,9 +90,11 @@ namespace ChipArena.UnityConversion
             if(Has(p,"wild-head-stomp")&&Time>=w.StompAt&&p.Body.linearVelocity.y<0&&w.PeakY-p.Body.position.y>1)
             {var t=MeleeTargets(p).FirstOrDefault(t=>Math.Abs(t.at.x-p.Body.position.x)<.6f&&Math.Abs(t.at.z-p.Body.position.z)<.6f&&w.PreviousY-.865f>=t.collider.bounds.max.y&&p.Body.position.y-.865f<=t.collider.bounds.max.y+.1f);if(t.collider!=null){w.StompAt=Time+1;WildNoProcHit(p,t.id,30,t.at);var v=p.Body.linearVelocity;v.y=(float)Math.Sqrt(2*23*6);p.Body.linearVelocity=v;ChipProc(p,"wild-head-stomp",t.at,t.id,30);}}if(p.Grounded)w.PeakY=p.Body.position.y;w.PreviousY=p.Body.position.y;
             if(Has(p,"wild-evil-twin")&&Time>=w.TwinAt&&!Minions.Any(m=>m.Owner==p&&m.Kind=="wild-evil-twin"&&m.Hp>0)){ExpansionDecoy(p,"wild-evil-twin",60,3600,p.Body.position+Vector3.right*3);w.TwinAt=Time+8;}
+            StepRelicPilot(p,ref speed);
         }
         private void StepWildConstraints()
         {
+            StepRelicWorld();
             foreach(var a in wildAfflictions.ToArray())
             {
                 var owner=Pilots.Find(p=>p.Seat.id==a.By);var p=Pilots.Find(p=>p.Seat.id==a.Target);var m=Minions.Find(m=>m.Id==a.Target);
