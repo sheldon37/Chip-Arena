@@ -91,8 +91,15 @@ namespace ChipArena.UnityConversion
             if(hum&&z.action=="lunge"&&z.cancelAt<0&&now<z.hitAt-NativeHumBoss.LungeLock)AimLunge(z,pilots);
             if(now>=b.checkedAt){b.checkedAt=now+1;if(hum&&z.phase==3)foreach(var p in pilots)for(int i=0;i<b.torn.Length;i+=3)if(Dist(p.Feet.X,p.Feet.Z,b.torn[i],b.torn[i+1])<=2.4f&&now>b.torn[i+2]+.5f){output.Add(new BackroomsBossContact{Seat=p.Seat,Damage=12,Return=true,Stun=.6f,Point=new Vector3(b.x,2,b.z)});break;}foreach(var p in pilots)if(!Inside(z,p.Feet,.3f))output.Add(new BackroomsBossContact{Seat=p.Seat,Damage=12,Return=true,Stun=.6f,Point=new Vector3(b.cx,hum?2:0,b.cz+(hum?0:14))});}
             b.meters=b.meters.Where(m=>pilots.Any(p=>p.Seat==m.seat)).ToArray();
+            // A pilot the Drain's current carries toward the pit without fighting it is still standing still: the stillness meter follows them (the Lull still finds a camper), and resets for anyone moving any other way.
+            bool draining=!hum&&z.action=="drain"&&z.cancelAt<0&&now>=z.hitAt&&now<=z.hitAt+4.5f;
             foreach(var p in pilots){var meter=b.meters.FirstOrDefault(m=>m.seat==p.Seat);if(meter==null){meter=new NativeBossMeter{seat=p.Seat,x=p.Feet.X,z=p.Feet.Z,since=now};b.meters=b.meters.Concat(new[]{meter}).Take(8).ToArray();}
-                if(Dist(p.Feet.X,p.Feet.Z,meter.x,meter.z)>3){meter.x=p.Feet.X;meter.z=p.Feet.Z;meter.since=now;}
+                if(Dist(p.Feet.X,p.Feet.Z,meter.x,meter.z)>3)
+                {
+                    var moved=new Vector2(p.Feet.X-meter.x,p.Feet.Z-meter.z);var toPit=new Vector2(b.cx-meter.x,b.cz-meter.z);
+                    bool carried=draining&&toPit.Length()>.5f&&Vector2.Dot(Vector2.Normalize(moved),Vector2.Normalize(toPit))>.8f;
+                    meter.x=p.Feet.X;meter.z=p.Feet.Z;if(!carried)meter.since=now;
+                }
                 if(p.Feet.Y>1.6f){if(meter.highAt<0)meter.highAt=now;}else meter.highAt=-100;
                 meter.value=Clamp(Math.Max((now-meter.since)/(z.phase==3?4:6),meter.highAt<0?0:(now-meter.highAt)/2));}
             if(hum&&now>=b.shiftDue){b.shiftDue=now+NativeHumBoss.ShiftEvery[z.phase-1];var room=Room(b);int mask=b.shiftMask;
@@ -151,7 +158,7 @@ namespace ChipArena.UnityConversion
                 if(id=="thrash"&&t<=.3f&&Vector3.Distance(Flat(p.Feet),origin)<=5)Hit(z,output,p,18,origin);
                 if(id=="jet"&&t<=2.2f){var view=NativeZoneBossViews.DeepEnd(z,b.x,0,b.z,b.yaw,1,1,NativeZoneBossViews.BackroomsArrival(z));var head=rig.MouthAt;var dir=DeepEndBossRig.JetDir(view,now-z.actionAt,z.hitAt-z.actionAt,NativeDeepEndBoss.Move("jet"),head-centre,Tide(z,now));if(Line(p.Feet,head,head+dir*30,2))Hit(z,output,p,10,head,(int)(t/.25f));}
                 if(id=="lull"&&t<=1.8f&&Vector3.Distance(Flat(p.Feet),target)<=1.8f)Hit(z,output,p,t<.3f?8:2,target,t<.3f?0:1+(int)((t-.3f)/.25f),false,.3f);
-                if(id=="drain"&&t<=4){output.Add(new BackroomsBossContact{Seat=p.Seat,Point=centre,Pull=NativeDeepEndBoss.DrainPullMin+(NativeDeepEndBoss.DrainPullMax-NativeDeepEndBoss.DrainPullMin)*(1-Clamp(Vector3.Distance(Flat(p.Feet),centre)/28))});if(Vector3.Distance(Flat(p.Feet),centre)<=2.6f)Hit(z,output,p,40,centre);}
+                if(id=="drain"&&t<=4){output.Add(new BackroomsBossContact{Seat=p.Seat,Point=centre,Pull=NativeDeepEndBoss.DrainPull(Vector3.Distance(Flat(p.Feet),centre))});if(Vector3.Distance(Flat(p.Feet),centre)<=2.6f)Hit(z,output,p,40,centre);}
                 if(id=="seiche"&&t<=7){float travel=t*11.4f,along=Vector3.Dot(Flat(p.Feet)-centre,Dir(z.actionYaw));bool back=travel>40;float wave=back?60-travel:travel-20;if(Math.Abs(along-wave)<=1.3f)Hit(z,output,p,18,centre,back?1:0,true);}
                 if(id=="lap"&&t<=6)for(int j=1;j<NativeDeepEndBossLook.Spine;j++){var a=rig.Shown.Position[j-1];var q=rig.Shown.Position[j];if(Math.Max(a.Y,q.Y)+NativeDeepEndBossLook.Radius(j*NativeDeepEndBossLook.Seg)>=p.Feet.Y&&Line(p.Feet,a,q,3.2f))Hit(z,output,p,24,q);}
             }}

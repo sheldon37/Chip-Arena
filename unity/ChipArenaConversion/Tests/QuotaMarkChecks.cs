@@ -294,7 +294,9 @@ namespace ChipArena.UnityConversion
             var allowed=new HashSet<string>{"Core/NativeQuotaMarks.cs","Runtime/NativeQuotaMarksPresentation.cs","Runtime/NativeQuotaMarkAudio.cs","Runtime/NativeExpeditionLiveUI.cs","Runtime/NativeExpeditionHud.cs","Runtime/NativeAudio.cs",
                 "Core/NativeExpeditionQuotaModel.cs","Runtime/NativeExpeditionQuotaHud.cs",
                 // Noclip's reveal (a boss relic) draws the markers' kite in the HUM's colour over the one a roll went through: presentation only.
-                "Runtime/NativeBossRelicHud.cs"};
+                "Runtime/NativeBossRelicHud.cs",
+                // The way to the boss room draws the markers' kite, dart and distances in the boss's colours: presentation only.
+                "Runtime/NativeBossGuidePresentation.cs"};
             var names=new Regex(@"\b(NativeQuotaMarks|QuotaMarkSet|QuotaArrowSet|QuotaMarkCue|QuotaCandidate|QuotaMarksHud|NativeQuotaMarksHud|HordeDrawnRoot|ClearQuotaMark|QuotaMark)\b");
             foreach(var file in Directory.GetFiles(A,"*.cs",SearchOption.AllDirectories))
             {

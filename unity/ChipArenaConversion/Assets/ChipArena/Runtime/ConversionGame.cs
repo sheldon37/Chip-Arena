@@ -401,6 +401,8 @@ namespace ChipArena.UnityConversion
             // Chip selection is a full screen: the PvP draft, and the Siren personal pick (main HUD hidden while it is open).
             if(arena!=null&&!menu&&previewArena==null&&match.Phase==NativePhase.Draft){DraftScreen();return;}
             if(previewArena==null&&PvePickScreen){PveChipScreen();return;}
+            // The Boss Battle's opening: five chips in, waiting for the others (NativeBossPicksScreen.cs).
+            BossPicksWaitReset();if(previewArena==null&&BossPicksWaiting){BossPicksWaitScreen(width,height);return;}
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             // The Last Laugh cutscene hides the HUD behind its letterbox (style.css data-cutscene); the board and pause menu stay.
             if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(cinematic.ZoneArrival)ZoneBossArrivalHud(width,height);else KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu){PauseMenu();TrainingControls();}return;}

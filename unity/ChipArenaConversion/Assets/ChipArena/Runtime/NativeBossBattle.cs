@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
         public bool BossOpening=>Pve!=null&&Expedition==null&&Pve.Stage=="boss-picks";
         private void BeginBossOpening()
         {
-            Pve.Stage="boss-picks";Pve.Holding=false;Pve.Cinematic=null;
+            Pve.Stage="boss-picks";Pve.Holding=false;Pve.Cinematic=null;Pve.PickLeft=NativeBossPicks.Seconds;
             if(ZoneBoss!=null){ZoneBoss.action=null;ZoneBoss.actionAt=ZoneBoss.hitAt=-100;ZoneBoss.duration=0;}
             foreach(var p in Members())
             {
@@ -86,7 +86,13 @@ namespace ChipArena.UnityConversion
                 {if(row.Open==null)OpenPvePick(p);if(row.Open?.Offers?.Count>0&&ChoosePve(p,row.Open.Id,row.Open.Offers[0]))continue;break;}
             }
             var connected=Pve.Rows.Values.Where(r=>r.Pilot.Seat.connected&&!r.Pilot.Seat.bot).ToArray();
-            if(connected.Any(r=>r.Picks.Count>0))return true;
+            // One shared countdown for everyone's five (the owner: 30 s), on the authority's ticks while the arena's clock stands still. When it runs out,
+            // any pick still open is made for its pilot (the first offer, as a bot picks) and the fight goes on.
+            if(connected.Any(r=>r.Picks.Count>0))
+            {
+                Pve.PickLeft=NativeBossPicks.Tick(Pve.PickLeft,1f/60);if(Pve.PickLeft>0)return true;
+                foreach(var row in connected){var p=row.Pilot;int guard=0;while(row.Picks.Count>0&&guard++<16){if(row.Open==null)OpenPvePick(p);if(row.Open?.Offers?.Count>0&&ChoosePve(p,row.Open.Id,row.Open.Offers[0]))continue;break;}}
+            }
             foreach(var row in Pve.Rows.Values){row.Open=null;row.Picks.Clear();}
             if(connected.Length==0){BeginPveHold("defeat");Pve.Stage="ended";return true;}
             Pve.Stage="boss";

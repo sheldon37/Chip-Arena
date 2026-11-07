@@ -121,6 +121,8 @@ namespace ChipArena.UnityConversion
             QuotaMarksHud(v,width,height);
             // Noclip's reveal (THE HUM's relic, NativeBossRelicHud.cs): whoever the local roll went through, through walls for 3 s.
             RelicRevealHud(width,height);
+            // The way to the boss room once the quota is met (NativeBossGuidePresentation.cs): the trail, the marker, the arrow, the tag.
+            BossGuideHud(v,width,height);
             // Chips waiting: the Boss Test's CHIPS tag with its C key (ExpeditionChipsTag) in place of the minimal HUD's. The top centre
             // is the quota module's while a zone quota is the objective, or the ending's strip while one holds (the objective tag steps aside).
             bool ending=ExpeditionEndingTag(width);E.SceneQuota=ending||expeditionQuota.Shown;

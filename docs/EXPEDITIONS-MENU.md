@@ -175,3 +175,13 @@ the picker does not skip them; C reopens it. Siren party bots pick automatically
 Disconnected seats do not block the start. The normal Expedition opening is unchanged.
 DEV > Chips now lists connected pilots and dummies by name/seat, and sends chip
 add/remove commands for the selected target through the existing verified DEV authority.
+
+### Boss Battle opening: one shared countdown (Claude, 2026-11-07, at the owner's word)
+
+The owner: "Everyone gets their own selection screen. There is a 30 second countdown for all players to get their 5 chips. If a player
+finishes selecting, it will bring them to a 'Waiting for x/x players to select their chips' / 'Still selecting: (NAME)'". Every pilot picks
+on their own screen at once (as before); one shared countdown of `NativeBossPicks.Seconds` (30 s) runs on the authority's ticks while the
+arena's clock stands still (`Pve.PickLeft`, replicated as `pickLeft`); the pick screen's corner shows it; when it runs out, any pick still
+open is made for its pilot (its first offer, as a bot picks) and the fight starts. A pilot with five in sees the waiting screen
+(`Runtime/NativeBossPicksScreen.cs`): the line, who is still selecting, a pip per player, the countdown draining in the boss's colours.
+Astra's normal-rarity picks and the silent selection are unchanged.

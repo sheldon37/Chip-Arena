@@ -104,11 +104,11 @@ namespace ChipArena.UnityConversion
                 if(hit.Damage>0){float actual=Damage(p,null,hit.Damage*(float)(Pve.Boss.Stats["damage"]/NativePveRules.BossDamage(1)),p.Body.position-at,0,false,primary:false,rollAvoidable:true,causeKind:z.archetype,attackerMinion:m);if(actual>0){p.StunEnd=Math.Max(p.StunEnd,Time+hit.Stun);if(hit.Return){p.Body.position=at+Vector3.up*p.Collider.height/2;p.Body.linearVelocity=Vector3.zero;}}}
             }
         }
-        /// <summary>THE DEEP END's Drain: a current added to the pilot's own movement (they keep control, so they can run, roll or jump out of it, and fight it in the water); none in the air or
-        /// in a roll; never through a wall. (ZoneDrag, a grab's, takes the pilot's control away.)</summary>
+        /// <summary>THE DEEP END's Drain: a current added to the pilot's own movement (they keep control, so they can run or roll out of it, and fight it in the water); it holds a pilot in the
+        /// air too (the owner: "which is fine"), not one rolling; never through a wall. (ZoneDrag, a grab's, takes the pilot's control away.)</summary>
         private void ZoneCurrent(NativePilot p,Vector3 direction,float speed)
         {
-            if(!p.Grounded||Time<p.RollEnd)return;direction.y=0;if(direction.sqrMagnitude<1e-4f)return;
+            if(Time<p.RollEnd)return;direction.y=0;if(direction.sqrMagnitude<1e-4f)return;
             var delta=direction.normalized*(speed/60);var at=p.Body.position;if(!SceneLinecast(at,at+delta*2,WorldMask)){p.Body.position=at+delta;p.Body.transform.position=p.Body.position;}
         }
         private Vector3 BackroomContactPoint(NativeMinion m,Vector3 from)

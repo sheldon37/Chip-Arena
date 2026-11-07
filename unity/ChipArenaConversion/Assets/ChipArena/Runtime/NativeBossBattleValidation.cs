@@ -14,8 +14,9 @@ namespace ChipArena.UnityConversion
             foreach(var p in members)Check(Pve.Rows[p.Seat.id].Picks.Count==5&&Pve.Rows[p.Seat.id].Picks.All(pick=>pick.Tier=="common"),"five normal-rarity choices per pilot");
             for(int i=0;i<120;i++)BossOpeningTick();
             Check(Time==clock&&BossOpening&&!Pve.Holding,"combat and clock frozen while choosing");
+            Check(Math.Abs(Pve.PickLeft-(NativeBossPicks.Seconds-120/60f))<.05f,"the shared countdown runs while they choose");
             var packet=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=NetworkFrame()})).frame;
-            Check(packet.Valid(Content)&&packet.pve.rows.All(r=>r.picks.Length==5&&r.open>0),"opening picks survive real codec");
+            Check(packet.Valid(Content)&&packet.pve.rows.All(r=>r.picks.Length==5&&r.open>0)&&Math.Abs(packet.pve.pickLeft-Pve.PickLeft)<.001f,"opening picks and the countdown survive real codec");
             if(members.Length>1)
             {
                 var other=members[1];other.Seat.connected=false;
