@@ -93,6 +93,7 @@ namespace ChipArena.UnityConversion
             kitScene??=new KitScene(this);kitSink??=new KitSink();kitScene.Bind(s,arena,kitClock);kitSink.Bind(vfx,draw,FirstPerson&&!ScopeActive&&ViewCamera!=null);
             meleeKitFx.Draw(kitSink,kitScene,kitClock,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics);
             bossRelicFx.Draw(kitSink,kitClock,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics);
+            DrawBossGuide(kitSink,kitClock);
         }
         private void ClearMeleeKit()
         {

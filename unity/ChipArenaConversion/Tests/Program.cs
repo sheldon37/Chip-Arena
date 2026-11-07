@@ -153,6 +153,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--deepend-boss"){DeepEndBossChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--deepend-motion"){DeepEndMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--boss-chips"){BossChipChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--boss-guide"){BossGuideChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--boss-picks"){BossPicksChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--fallen-boss"){FallenBossChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--telegraphs"){TelegraphChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--fallen-mocap"){FallenIntroMocapChecks.Run(ProjectRoot());return 0;}
@@ -252,7 +254,7 @@ internal static class Program
             HudPlaceholderChecks.Run(root);HudCyberChecks.Run(root,data);
             DeathFxChecks.Run(root);CorpseChecks.Run(data);
             StageVentChecks.Run(root);MinionFxChecks.Run(root);MinionHintChecks.Run(root);
-            HordeDropChecks.Run(root);HordeKindChecks.Run(root);IronworksKindChecks.Run(root);IronworksPropChecks.Run(root);StationEnemyChecks.Run(root);FallenBossChecks.Run(root);BossChipChecks.Run(root);TelegraphChecks.Run(root);FallenIntroMocapChecks.Run(root);StationBossModelChecks.Run(root);HumBossChecks.Run(root);DeepEndBossChecks.Run(root);BackroomsBossSoundChecks.Run(root);BackroomsBossSafeSpotChecks.Run(root);StationBossPresentationChecks.Run(root);ZombieMotionChecks.Run(root);ZombieFlowChecks.Run(root);ZombieTwitchChecks.Run(root);ZombieLocoChecks.Run(root);ZombieGoreChecks.Run(root);HordeRoamChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
+            HordeDropChecks.Run(root);HordeKindChecks.Run(root);IronworksKindChecks.Run(root);IronworksPropChecks.Run(root);StationEnemyChecks.Run(root);FallenBossChecks.Run(root);BossChipChecks.Run(root);BossGuideChecks.Run(root);BossPicksChecks.Run(root);TelegraphChecks.Run(root);FallenIntroMocapChecks.Run(root);StationBossModelChecks.Run(root);HumBossChecks.Run(root);DeepEndBossChecks.Run(root);BackroomsBossSoundChecks.Run(root);BackroomsBossSafeSpotChecks.Run(root);StationBossPresentationChecks.Run(root);ZombieMotionChecks.Run(root);ZombieFlowChecks.Run(root);ZombieTwitchChecks.Run(root);ZombieLocoChecks.Run(root);ZombieGoreChecks.Run(root);HordeRoamChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             CameraRigChecks.Run(root);
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
