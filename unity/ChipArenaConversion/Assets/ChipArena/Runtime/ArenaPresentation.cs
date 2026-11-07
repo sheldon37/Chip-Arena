@@ -142,6 +142,7 @@ namespace ChipArena.UnityConversion
             foreach(int id in rigs.Keys) { bool exists=false; foreach(var a in s.Actors) if(a.Id==id) { exists=true; break; } if(!exists) removedRigs.Add(id); }
             foreach(int id in removedRigs) { rigs[id].Dispose(); rigs.Remove(id); visualPositions.Remove(id); stepTrackers.Remove(id); }
             animationTimer.Restart();
+            bool offStage=PilotsOffStage;
             foreach(Actor a in s.Actors)
             {
                 Vector3 old; Vector3 target=Vec(a.Position);
@@ -149,18 +150,19 @@ namespace ChipArena.UnityConversion
                 Vector3 p=smooth?Vector3.Lerp(old,target,1-Mathf.Exp(-18*Time.unscaledDeltaTime)):target;
                 // The match-start spawn-in (NativeSpawnInPresentation.cs): the beam holds the feet; the rig is posed on the ground
                 // while it does and in the air for its drop, with the replicated flag restored after posing.
-                p=SpawnPlace(a,p,renderTime);p=CyberKit2Place(a,p);p=TechniquePlace(a,p,renderTime);p=ReviveMachinePlace(a,p,renderTime);
+                if(!offStage)p=SpawnPlace(a,p,renderTime);p=CyberKit2Place(a,p);p=TechniquePlace(a,p,renderTime);p=ReviveMachinePlace(a,p,renderTime);
                 visualPositions[a.Id]=p;
-                bool posed=a.Alive&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon));
+                bool posed=a.Alive&&!offStage&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon));
                 if(posed){bool ground=a.Grounded;a.Grounded=SpawnContact(a.Id,ground);try{VisualBodyRestore(a.Id);PrepareCapturedPose(a,p,renderTime);VisualBodyPose(a,renderTime);}finally{a.Grounded=ground;}SpawnBones(a);}
                 // Its footfalls from the gait just posed (NativeFootfallPresentation.cs).
-                PilotFootfall(a,p,renderTime,posed);
+                if(!offStage)PilotFootfall(a,p,renderTime,posed);
             }
             // Pose everyone before drawing: a held victim must use this frame's claw, regardless of seat order.
             PrepareInteractions(s,renderTime);
             foreach(Actor a in s.Actors)
             {
                 Vector3 p=visualPositions[a.Id];
+                if(offStage)continue;
                 if(FirstPerson&&a.Id==LocalId&&a.Alive)HiddenSweep(a,p,renderTime,CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon));
                 if(!a.Alive||(FirstPerson&&a.Id==LocalId)) continue;
                 int color=a.Bot?2:a.Id-1;
@@ -223,6 +225,8 @@ namespace ChipArena.UnityConversion
             // The PvE chip selection's wrist holograms (NativeChipSelectPresentation.cs).
             RenderChipSelect(s);
         }
+        /// <summary>Whether this frame's pilots are off stage: a zone boss's intro hold (Core NativeIntroRules.PilotsOffStage).</summary>
+        private bool PilotsOffStage=>WeaponLoadout!=null&&NativeIntroRules.PilotsOffStage(WeaponLoadout.Pve?.Holding==true,WeaponLoadout.Pve?.Cinematic,WeaponLoadout.ZoneBoss?.archetype);
         private void PrepareCapturedPose(Actor a,Vector3 position,float time)
         {
             CapturedAnimation.Player rig;
