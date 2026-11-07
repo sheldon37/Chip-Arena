@@ -68,10 +68,13 @@ namespace ChipArena.UnityConversion
         /// <summary>When a part broke (NaN: not yet, or not recorded).</summary>
         public float PartAt(int i)=>partAt!=null&&i<partAt.Length?partAt[i]:float.NaN;
         /// <summary>Whether it walks on the ceiling at `time`, and how far through the turn over: 0 the floor .. 1 the ceiling.</summary>
+        /// <summary>The flip's rotation over its own clock (0..1 of TurnOver): none through the crouch, then over fast between the push and the plant (HumBossMoves.TurnKeys).</summary>
+        public const float TurnStart=.3f,TurnEnd=.76f;
+        public static float Turn(float u)=>BossMath.Smoother((u-TurnStart)/(TurnEnd-TurnStart));
         public float Turned(float time)
         {
-            float up=At(ceilingAt)?BossMath.Smoother((time-ceilingAt)/NativeHumBossMotion.TurnOver):0;
-            float down=At(floorAt)?BossMath.Smoother((time-floorAt)/NativeHumBossMotion.TurnOver):0;
+            float up=At(ceilingAt)?Turn((time-ceilingAt)/NativeHumBossMotion.TurnOver):0;
+            float down=At(floorAt)?Turn((time-floorAt)/NativeHumBossMotion.TurnOver):0;
             return At(floorAt)&&At(ceilingAt)&&floorAt>=ceilingAt?up*(1-down):At(floorAt)&&At(ceilingAt)?Math.Max(up,1-down)*up:up;
         }
     }

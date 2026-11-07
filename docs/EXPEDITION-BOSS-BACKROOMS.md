@@ -121,7 +121,7 @@ Each change is a 3.5 s scripted window, as the 6:47's are.
 
 | Id | Move | Phase | Wind | Strike | Follow | Recover | Cooldown | Damage | Shape |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `reach` | Reach | 1 | .6 | .2 | .3 | .5 | 3 | 22 | 130° arc, 6 m, through walls |
+| `reach` | Reach | 1 | .48 | .16 | .24 | .42 | 3 | 22 | 130° arc, 6 m, through walls |
 | `stoop` | Stoop | 1 | .7 | .15 | .4 | .6 | 7 | 30 | 4.5 m circle at its feet |
 | `row` | Row Burst | 1 | 1.1 | .1 | .5 | .4 | 10 | 16 | every fixture on alternate rows of one axis bursts: lanes 1.4 m wide, the whole room long |
 | `lunge` | Noclip | 1 | .75 | .8 | .4 | .7 | 12 | 34 | a 3 m wide lane, 26 m at 32.5 m/s, through everything; it follows its target through the wind and holds its line .3 s before it goes |

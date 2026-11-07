@@ -151,6 +151,15 @@ namespace ChipArena.UnityConversion
             if(HumBossView.At(v.clipAt)&&v.clipSeconds>0&&t>=v.clipAt){float k=t-v.clipAt;Blend(HumBossMoves.Clipped,BossMath.Smooth(k/.12f)*(1-BossMath.Smooth((k-v.clipSeconds+.3f)/.3f)));}
             if(v.Dead(t))DeathLayer(t-v.diedAt);
             Additive(v,t);
+            // ---- the turn over, animated: crouch, push off, tuck, plant (HumBossMoves.TurnKeys), up to the ceiling or back down ----
+            {
+                bool down=HumBossView.At(v.floorAt)&&t>=v.floorAt&&(!HumBossView.At(v.ceilingAt)||v.floorAt>=v.ceilingAt);float since=down?t-v.floorAt:HumBossView.At(v.ceilingAt)&&t>=v.ceilingAt?t-v.ceilingAt:float.NaN;
+                if(!float.IsNaN(since)&&since<NativeHumBossMotion.TurnOver&&!Arriving)
+                {
+                    float u=since/NativeHumBossMotion.TurnOver,w=BossMath.Smooth(u/.08f)*BossMath.Smooth((1-u)/.1f);HumBossMoves.Sample(HumBossMoves.TurnKeys,HumBossMoves.TurnKey(u),false,sample);
+                    for(int c=0;c<ch.Length;c++)ch[c]+=(sample[c]-ch[c])*w;
+                }
+            }
             // Hanging from a raised ceiling its feet stay planted up there, so whatever it strikes with reaches the rest of the way down: the arms a move drives, and the head as the move comes in.
             {float drop=(Ceiling-BackroomsLayout.Height)*Flip;if(drop>.01f){float act=Act.Active?Act.Weight:0;for(int l=2;l<4;l++){float w=ch[HumCh.Limb(l,HumCh.W)];if(w>0)ch[HumCh.Limb(l,HumCh.Y)]+=drop*w;}ch[HumCh.HY]+=drop*.75f*act;}}
             // ---- the body through the gait (planted limbs stay planted) ----

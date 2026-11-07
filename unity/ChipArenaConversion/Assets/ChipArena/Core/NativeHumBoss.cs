@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
         /// `Arc` degrees, `Width` a lane's, `Speed` the lunge's or ring's. `Grab` a grab's reach from a surface, `PerSecond` its damage while held.
         /// </summary>
         public static readonly HumBossMove[] Moves={
-            new HumBossMove{Id="reach",Title="Reach",Phase=1,Wind=.6f,Strike=.2f,Follow=.3f,Recover=.5f,Cooldown=3,Damage=22,Reach=6,Arc=130},
+            new HumBossMove{Id="reach",Title="Reach",Phase=1,Wind=.48f,Strike=.16f,Follow=.24f,Recover=.42f,Cooldown=3,Damage=22,Reach=6,Arc=130},
             new HumBossMove{Id="stoop",Title="Stoop",Phase=1,Wind=.7f,Strike=.15f,Follow=.4f,Recover=.6f,Cooldown=7,Damage=30,Radius=4.5f},
             new HumBossMove{Id="row",Title="Row Burst",Phase=1,Wind=1.1f,Strike=.1f,Follow=.5f,Recover=.4f,Cooldown=10,Damage=16,Width=1.4f},
             new HumBossMove{Id="lunge",Title="Noclip",Phase=1,Wind=.75f,Strike=.8f,Follow=.4f,Recover=.7f,Cooldown=12,Damage=34,Reach=26,Width=3,Speed=32.5f},

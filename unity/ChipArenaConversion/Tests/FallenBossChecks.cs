@@ -331,6 +331,23 @@ public static class FallenBossChecks
             }
             float cadence=2*advance/len/3.5f;Check(Math.Abs(cadence-steps)<.06f*steps,"at "+pace+" m/s, "+cadence.ToString("0.00")+" steps a second (want "+steps.ToString("0.00")+")");
         }
+        // The owner, 2026-11-07: walking never drops into the stance mid-stride, and it stands as the reference walk does, both feet down (the slow walk held).
+        {
+            var d=new NativeFallenLiveMotion{StandAt=.4f};var at=Vector3.Zero;var x=new NativeFallenLiveMotion.Facts{At=at,Yaw=0,Target=new Vector3(0,0,80)};float step=0;int drops=0;string lastTo=null;
+            for(float now=0;now<6;now+=1/144f)
+            {
+                while(step<=now){float pace=now<3.5f?.62f+.3f*(float)Math.Sin(now*9):0;at+=new Vector3(0,0,pace/60);step+=1/60f;}x.Now=now;x.At=at;d.Step(f,x,bank);
+                if(now>.8f&&now<3.4f&&f.ClipTo!="Armed-Walk-Slow")drops++;
+                if(now>5)Check(f.ClipTo=="Armed-Walk-Slow"&&Math.Abs(f.TimeTo-.4f)<1e-4f&&f.Carry>.9f&&f.Air<.05f,"it stands as the reference does: the slow walk held with both feet down, the sword carried, at "+now);
+                lastTo=f.ClipTo;
+            }
+            Check(drops==0,"a pace hovering at the walk's floor never drops it into the stance ("+drops+" frames)");
+            Check(float.IsNaN(new NativeFallenLiveMotion().StandAt),"without the bank's frame it keeps the old stance");
+            var lib=new NativeVisualMotionClips.Library{Muscles=4};int stride=NativeVisualMotionClips.Head+4;var c=new NativeVisualMotionClips.Clip{Name="Armed-Walk-Slow",Length=1,Rate=10,Loop=true,Frames=11,Stride=stride,Data=new float[11*stride]};
+            for(int k=0;k<11;k++){float ph=k/10f*6.2832f;c.Data[k*stride+NativeVisualMotionClips.Head+1]=(float)Math.Sin(ph+.6f);c.Data[k*stride+NativeVisualMotionClips.Head+2]=-(float)Math.Sin(ph+.6f);}lib.Clips[c.Name]=c;
+            float feet=NativeFallenLiveMotion.BothFeetDown(lib,1,2);Check(Math.Abs(feet-.4f)<.051f||Math.Abs(feet-.9f)<.051f,"both feet down where the knees bend alike ("+feet+")");
+            Check(float.IsNaN(NativeFallenLiveMotion.BothFeetDown(lib,-1,2))&&float.IsNaN(NativeFallenLiveMotion.BothFeetDown(null,1,2)),"no frame without the knees or the bank");
+        }
         // A standing turn: past 18 degrees off its quarry it turns to it, smoothly.
         {
             var d=new NativeFallenLiveMotion();var x=new NativeFallenLiveMotion.Facts{At=Vector3.Zero,Yaw=0,Target=new Vector3(0,0,20)};float lastYaw=0;
