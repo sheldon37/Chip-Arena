@@ -52,6 +52,7 @@ HAND_SCALE = 1.3        # the gloves'
 SHOE_SCALE = 1.2        # the shoes' length and width (their height kept so the ankle is the pilot's)
 TEXTURE = 1024          # the painted texture's size
 SPINE_SPREAD = .12      # how far each spine bone's hold on the sausage reaches (m, the bell's width)
+SPINE_HOLD = {'neck_01': .6, 'head': .35}  # the neck's and head's lighter hold on the sausage's top
 
 # The pilot's spine the sausage rides, bottom to top (its twins carry the weights).
 SPINE = ['pelvis', 'spine_02', 'spine_03', 'spine_04', 'spine_05', 'neck_01', 'head']
@@ -361,8 +362,9 @@ class Retarget:
         spine_y = np.array([self.P[b][1] for b in SPINE])
         # Each height's share of the spine's bones: a bell round each bone (SPINE_SPREAD wide), heights past the ends held at
         # them, so a bend of the pilot's spine spreads down the sausage instead of folding it at one joint.
+        # The neck's and head's held lighter (SPINE_HOLD): they pitch a lot in the pack's stances, and the sausage is not a head.
         y = np.clip(X[:, 1], spine_y[0], spine_y[-1])
-        bell = np.exp(-.5 * ((y[:, None] - spine_y[None, :]) / SPINE_SPREAD) ** 2)
+        bell = np.exp(-.5 * ((y[:, None] - spine_y[None, :]) / SPINE_SPREAD) ** 2) * np.array([SPINE_HOLD.get(b, 1.0) for b in SPINE])
         rows = []
         sausage = self.parts.kind == 'sausage'
         for i in range(n):
