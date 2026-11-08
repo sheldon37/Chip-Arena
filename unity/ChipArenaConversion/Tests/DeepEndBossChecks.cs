@@ -32,7 +32,7 @@ public static class DeepEndBossChecks
             Check(Near(m.Duration,m.Anticipation+m.Strike+m.Follow+m.Recover),m.Id+" duration");Check(NativeDeepEndBoss.Index(m.Id)>=0&&NativeDeepEndBoss.Move(m.Id).Title==m.Title,m.Id+" looks up");
         }
         Check(NativeDeepEndBoss.Move("jet").Arc==110&&NativeDeepEndBoss.Move("jet").Reach==30&&NativeDeepEndBoss.Move("breach").Radius==3.2f&&NativeDeepEndBoss.Move("flop").Reach==24&&NativeDeepEndBoss.Move("flop").Width==4&&NativeDeepEndBoss.Move("thrash").Radius==5,"the shapes");
-        Check(NativeDeepEndBoss.Move("lap").Radius==19&&NativeDeepEndBoss.LapInner==9&&NativeDeepEndBoss.SeicheHeight==.9f&&NativeDeepEndBoss.DrainPullMin==.6f&&NativeDeepEndBoss.DrainPullMax==4.5f,"Last Lap, Seiche, the Drain");
+        Check(NativeDeepEndBoss.Move("lap").Radius==19&&NativeDeepEndBoss.LapInner==9&&NativeDeepEndBoss.SeicheHeight==.9f&&NativeDeepEndBoss.DrainPullMin==1.4f&&NativeDeepEndBoss.DrainPullMax==6.5f,"Last Lap, Seiche, the Drain (stronger again: the owner, 2026-11-07)");
         Check(NativeDeepEndBoss.Parts.Length==NativeDeepEndBossLook.Spine+1+NativeDeepEndBossLook.Lamps,"the hit volumes");Check(NativeDeepEndBoss.Parts.Count(p=>p.Share>0)==12&&NativeDeepEndBoss.Parts.All(p=>p.Radius>.1f),"twelve breakable lamps");Check(NativeDeepEndBoss.Parts.Single(p=>p.Id=="throat").Multiplier==2,"the throat 2x");
         Check(NativeDeepEndBoss.StillSeconds==6&&NativeDeepEndBoss.StillSecondsLast==4&&NativeDeepEndBoss.HighRule==1.6f&&NativeDeepEndBoss.ImmuneMost==6,"the no-safe-place numbers");
     }

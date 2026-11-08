@@ -200,6 +200,11 @@ def undersuit(tier):
                                ('thigh_r', 'thigh_r', 'calf_r', .07, .05), ('calf_r', 'calf_r', 'foot_r', .05, .034), ('thigh_l', 'thigh_l', 'calf_l', .07, .05), ('calf_l', 'calf_l', 'foot_l', .05, .034)):
         pc = Piece('under-' + bone)
         cyl(pc, J(a), J(b), r0, 'cloth', segs=n, r1=r1)
+        # The legs' quilting: rings that catch the light between the plates (the backs of the knees, a raised leg).
+        if tier == 0 and bone.startswith(('thigh', 'calf')):
+            d = (J(b) - J(a)).normalized()
+            for k in (.22, .4, .58, .76):
+                torus(pc, J(a).lerp(J(b), k), d, r0 + (r1 - r0) * k + .002, .0028, 'cloth-edge', segs=n + 4, rsegs=4)
         sphere(pc, J(a), (r0, r0, r0), 'cloth', u=n, v=6)
         sphere(pc, J(b), (r1, r1, r1), 'cloth', u=n, v=6)
         parts[bone] = pc.make()
@@ -572,29 +577,98 @@ def gauntlet_left(tier):
     return pc.make()
 
 
+def leg_frame(a, b):
+    """A limb's frame: down it, its across (the body's x), its front."""
+    d = (b - a).normalized()
+    u = V((1, 0, 0))
+    u = (u - d * u.dot(d)).normalized()
+    v = d.cross(u).normalized()
+    if v.y < 0:
+        v = -v
+    return d, u, v
+
+
+def interp(st, t):
+    """(half width, half depth) at t along stations [(t, rx, ry), ...], linear, held past the ends."""
+    if t <= st[0][0]:
+        return st[0][1], st[0][2]
+    for (t0, x0, y0), (t1, x1, y1) in zip(st, st[1:]):
+        if t <= t1:
+            k = (t - t0) / (t1 - t0)
+            return x0 + (x1 - x0) * k, y0 + (y1 - y0) * k
+    return st[-1][1], st[-1][2]
+
+
+def on_limb(a, b, st, side, t, ang, lift=0.0):
+    """A point on a leg plate: `t` along it, `ang` round it from the front toward the leg's outside (radians), `lift` off the surface."""
+    d, u, v = leg_frame(a, b)
+    rx, ry = interp(st, t)
+    return a + (b - a) * t + v * (math.cos(ang) * (ry + lift)) + u * (side * math.sin(ang) * (rx + lift))
+
+
+def fin_frame(way, d):
+    """A fin lying in the plane of `way` and `d`: its across and its thickness."""
+    acr = (d - way * d.dot(way)).normalized()
+    return acr, way.cross(acr).normalized()
+
+
+CUISSE = [(.06, .085, .09), (.4, .08, .084), (.75, .066, .068), (.94, .059, .061)]
+GREAVE = [(.04, .057, .065), (.3, .063, .074), (.62, .051, .057), (.95, .043, .049)]
+
+
 def cuisse(side, tier):
-    n = 16 if tier == 0 else 9
+    """The thigh: a plate in three lames, each lapping the next with a rolled edge and two rivets, engraved down the front; the knee a domed cop
+    ringed in trim, a fan of fins on its outside and a beak below."""
+    n = 18 if tier == 0 else 10
     pc = Piece('cuisse-%d' % side)
     a, b = J('thigh_r' if side > 0 else 'thigh_l'), J('calf_r' if side > 0 else 'calf_l')
-    limb(pc, a, b, [(.1, .082, .088, .004), (.4, .078, .082, .006), (.75, .064, .066, .006), (.94, .058, .06, .004)], 'plate', n, V((1, 0, 0)), keel=.008)
-    # The knee, pointed.
-    sphere(pc, b + V((0, .018, 0)), (.058, .056, .06), 'plate-trim', u=n, v=8)
+    d, u, v = leg_frame(a, b)
+    limb(pc, a, b, [(s, rx, ry, .005) for s, rx, ry in CUISSE], 'plate', n, V((1, 0, 0)), keel=.009)
+    for t0 in (.08, .34, .6):
+        t1 = t0 + .25
+        (x0, y0), (x1, y1) = interp(CUISSE, t0), interp(CUISSE, t1)
+        limb(pc, a, b, [(t0, x0 + .007, y0 + .007, .005), (t1, x1 + .009, y1 + .009, .005)], 'plate', n, V((1, 0, 0)), keel=.01, caps=False)
+        if tier == 0:
+            tube(pc, [on_limb(a, b, CUISSE, side, t1, 2 * math.pi * k / n, .0105) for k in range(n)], .0032, 'plate-trim', segs=5, closed=True)
+            for ang in (1.2, 1.55):
+                sphere(pc, on_limb(a, b, CUISSE, side, t0 + .06, ang, .0115), (.0045, .0045, .0045), 'steel', u=8, v=5)
+    if tier == 0:
+        for s in (-1, 1):
+            tube(pc, [on_limb(a, b, CUISSE, side, t, s * (.14 + .32 * (t - .1)), .0125) for t in (.12, .3, .5, .7, .82)], .0018, 'plate-trim', segs=4)
+    knee = b + v * .022
+    sphere(pc, knee, (.066, .06, .068), 'plate', u=n, v=10)
+    torus(pc, knee + v * .006, v, .05, .0042, 'plate-trim', segs=n + 4, rsegs=4)
+    for k in range(3 if tier == 0 else 2):
+        way = (u * side - v * .35 + d * (-.3 + .3 * k)).normalized()
+        acr, thk = fin_frame(way, d)
+        blade_shape(pc, knee + u * side * .046 - v * .01, way, acr, thk, .088 - .014 * k, [.0, .015, .018, .012, .0], 'plate-trim')
     blade_shape(pc, b + V((0, .05, .06)), V((0, .3, -1)).normalized(), V((1, 0, 0)), V((0, 1, .2)).normalized(), .1, [.02, .03, .02, .0], 'plate')
     return pc.make()
 
 
 def greave(side, tier):
-    n = 16 if tier == 0 else 9
+    """The shin: a ridged plate flaring under the knee, rolled trim at its top and over the ankle, engraved chevrons and lines down the front,
+    a dark fin down the back of the calf, a flared cuff over the foot."""
+    n = 18 if tier == 0 else 10
     pc = Piece('greave-%d' % side)
     a, b = J('calf_r' if side > 0 else 'calf_l'), J('foot_r' if side > 0 else 'foot_l')
-    limb(pc, a, b, [(.05, .052, .058, .004), (.3, .058, .066, .002), (.65, .046, .052, .0), (.96, .04, .046, .0)], 'plate', n, V((1, 0, 0)), keel=.012)
-    d = (b - a).normalized()
+    d, u, v = leg_frame(a, b)
+    limb(pc, a, b, [(s, rx, ry, .002) for s, rx, ry in GREAVE], 'plate', n, V((1, 0, 0)), keel=.016)
     blade_shape(pc, a + (b - a) * .08 + V((0, .058, 0)), d, V((1, 0, 0)), V((0, 1, 0)), .24, [.0, .008, .012, .009, .0], 'plate-trim')
-    torus(pc, a + (b - a) * .92, d, .048, .004, 'plate-trim', segs=n + 4, rsegs=4)
+    for s in ((.06, .88) if tier == 0 else (.88,)):
+        tube(pc, [on_limb(a, b, GREAVE, side, s, 2 * math.pi * k / n, .006) for k in range(n)], .0036, 'plate-trim', segs=5, closed=True)
+    if tier == 0:
+        for s in (-1, 1):
+            tube(pc, [on_limb(a, b, GREAVE, side, t, s * .34, .0065) for t in (.14, .4, .66, .82)], .0017, 'plate-trim', segs=4)
+        for t in (.3, .46, .62):
+            tube(pc, [on_limb(a, b, GREAVE, side, t + .06, -.55, .0065), on_limb(a, b, GREAVE, side, t, 0, .019), on_limb(a, b, GREAVE, side, t + .06, .55, .0065)], .0017, 'plate-trim', segs=4)
+    blade_shape(pc, on_limb(a, b, GREAVE, side, .1, math.pi, -.004), d, -v, u, .4, [.0, .012, .017, .014, .008, .0], 'plate-dark')
+    limb(pc, a, b, [(.88, .047, .053, 0), (1.0, .057, .063, 0)], 'plate-trim', n, V((1, 0, 0)), caps=False)
     return pc.make()
 
 
 def sabaton(side, tier):
+    """The foot: the shoe's plate, three lames across the instep each with a rolled edge, a pointed toe cap, a hinge disc at the ankle and a spur."""
     n = 12 if tier == 0 else 8
     pc = Piece('sabaton-%d' % side)
     f, b = J('foot_r' if side > 0 else 'foot_l'), J('ball_r' if side > 0 else 'ball_l')
@@ -608,6 +682,18 @@ def sabaton(side, tier):
         ring(toe + V((0, 0, .004)), V((1, 0, 0)), V((0, 0, 1)), .006, .006, n, 2.0),
     ]
     loft(pc, rings, 'plate')
+    # The lames over the instep, from the ankle to the ball: each a band over the top with a rolled edge.
+    stops = [(f + V((0, .03, -.03)), .05, .064), (f.lerp(b, .45) + V((0, 0, -.012)), .05, .052), (b + V((0, -.01, .012)), .048, .036)]
+    for (c0, x0, y0), (c1, x1, y1) in zip(stops, stops[1:]):
+        r0 = ring(c0, V((1, 0, 0)), V((0, 0, 1)), x0 + .004, y0 + .004, n, 2.4)
+        r1 = ring(c1, V((1, 0, 0)), V((0, 0, 1)), x1 + .006, y1 + .006, n, 2.4)
+        top = [k for k in range(n) if k <= n // 2]
+        loft(pc, [[r0[k] for k in top], [r1[k] for k in top]], 'plate', caps=False)
+        if tier == 0:
+            tube(pc, [r1[k] + V((0, 0, .002)) for k in top], .0028, 'plate-trim', segs=4)
+    sphere(pc, toe + V((0, -.03, .01)), (.016, .03, .012), 'plate-trim', u=n, v=6)
+    sphere(pc, f + V((side * .05, -.005, .0)), (.01, .024, .024), 'plate-trim', u=n, v=6)
+    blade_shape(pc, heel + V((0, -.012, .03)), V((0, -1, -.12)).normalized(), V((0, 0, 1)), V((1, 0, 0)), .07, [.008, .01, .006, .0], 'steel')
     return pc.make()
 
 
@@ -1106,13 +1192,8 @@ def shown(name, phase):
     if name.startswith('halo-shard'):
         return phase == 3
     if name.startswith('robe'):
-        burnt = name.endswith('-burnt')
-        last = name.split('-')[1] == str(len(ROBE_LEN) - 1)
-        if phase == 1:
-            return not burnt
-        if phase == 2:
-            return (burnt if last else True)
-        return False if last else (name.split('-')[1] == '0')
+        # The game hangs a cloth skirt in phases 1 and 2 (Core NativeFallenRobe), drawn by the game alone; the strips are phase 3's remnant.
+        return phase == 3 and name.split('-')[1] == '0' and not name.endswith('-burnt')
     if name.startswith('wing'):
         pair = int(name[4])
         kind = name.split('-')[2] if name.count('-') >= 2 else 'feather'

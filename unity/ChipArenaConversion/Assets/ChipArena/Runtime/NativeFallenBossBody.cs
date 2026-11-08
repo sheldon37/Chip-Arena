@@ -71,6 +71,8 @@ namespace ChipArena.UnityConversion
             var life=gameObject.GetComponent<NativeStationLifetime>();if(life==null)life=gameObject.AddComponent<NativeStationLifetime>();life.Gone+=DisposeFallenBoss;
             // The owner's reference clips for the intro, when their file is there (Runtime NativeFallenIntroMocapBody.cs).
             FallenMocapRig(most,skeleton);
+            // The robe as cloth on the same skeleton (Runtime NativeFallenCloth.cs).
+            FallenClothBuild(most,skeleton);
             fbFailed=false;return true;
         }
         // ---------------- the pose ----------------
@@ -141,13 +143,15 @@ namespace ChipArena.UnityConversion
         // still, 2026-11-07): the claymore hangs from the right hand at its side, the arm nearly straight and a touch forward, the blade
         // laid out to its right (a few degrees ahead of square, never back) and down about thirty degrees, its broad side to the front,
         // its point resting on the water. The wrist hangs from the clip's own shoulder, so the hand rides the walk's sway and bob; the
-        // blade's pitch is solved each frame from the grip's height, so the point stays on the water whatever the stride does.
+        // blade's pitch is solved each frame from the grip's height, so the point stays on the water whatever the stride does. The
+        // hand hangs well out from the hip and a little behind it, the hilt beside the thigh as the reference has it (the owner,
+        // 2026-11-07: "a little further from his body and also further back (Currently its almost right in front of his stomach)").
         private const float FbDragTip=.02f;private static readonly Vector3 FbDragWay=new Vector3(.99f,0,.1f).normalized;
         private void FallenCarryGoal(FallenBossFrame f,float floor,out Vector3 grip,out Quaternion world,out Vector3 pole)
         {
             var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);float s=NativeFallenBoss.Scale,breath=.02f*Mathf.Sin(fbPoseClock*.8f);
             var shoulder=fbUpperR.position;float reach=(fbLowerR.position-shoulder).magnitude+(fbHandR.position-fbLowerR.position).magnitude;
-            var wrist=shoulder+yawRot*new Vector3(.07f*s,0,.09f*s)+Vector3.down*(reach*.93f-breath);
+            var wrist=shoulder+yawRot*new Vector3(.17f*s,0,-.05f*s)+Vector3.down*(reach*.9f-breath);
             var flat=FbFlatWay;var way=FbBladeWayCopy;Vector3.OrthoNormalize(ref way,ref flat);var inHand=Quaternion.LookRotation(way,flat);
             float along=(FbBladeFrom+FbBladeLength)*s;var outward=yawRot*FbDragWay;var front=yawRot*Vector3.forward;grip=wrist;world=yawRot;
             for(int i=0;i<2;i++)
@@ -341,6 +345,8 @@ namespace ChipArena.UnityConversion
             foreach(var part in fbParts)
             {
                 if((part.Phases&bit)==0)continue;var mesh=part.Mesh[tier]??part.Mesh[0];if(mesh==null)continue;bool glows=mesh.subMeshCount>1;var world=fbWorld[part.Group];
+                // The cloth skirt hangs in phases 1 and 2 in place of the strips; phase 3's remnant at the waist stays rigid.
+                if(FallenClothOn&&f.Phase<=2&&part.Name.StartsWith("robe",StringComparison.Ordinal))continue;
                 Vector4? c=part.Name=="sword-veins-1"?cut:(Vector4?)null;
                 float gs=part.Name=="sword-blade-light"?.72f:part.Name=="head-light"?.8f:1;FbDraw(mesh,glows,world,inner,flash,0,c,gs);FbDraw(mesh,glows,mirror*world,inner,flash,1,c,gs);
             }
@@ -366,7 +372,7 @@ namespace ChipArena.UnityConversion
         private void FallenBodyShow(){if(fbRoot!=null&&!fbRoot.activeSelf)fbRoot.SetActive(true);}
         private void FallenBodyDispose()
         {
-            fbHandler?.Dispose();fbHandler=null;if(fbRoot!=null)Destroy(fbRoot);fbRoot=null;fbBuilt=false;fbFailed=false;fbBone.Clear();fbBind.Clear();fbGroupIndex.Clear();
+            FallenClothDispose();fbHandler?.Dispose();fbHandler=null;if(fbRoot!=null)Destroy(fbRoot);fbRoot=null;fbBuilt=false;fbFailed=false;fbBone.Clear();fbBind.Clear();fbGroupIndex.Clear();
             foreach(var p in fbParts)foreach(var m in p.Mesh)if(m!=null)CapturedAnimation.Release(m);fbParts.Clear();foreach(var p in fbFree.Values)foreach(var m in p.Mesh)if(m!=null)CapturedAnimation.Release(m);fbFree.Clear();if(fbBody!=null)CapturedAnimation.Release(fbBody);fbBody=null;
         }
     }

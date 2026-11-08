@@ -354,6 +354,41 @@ public static class FallenBossChecks
             float feet=NativeFallenLiveMotion.BothFeetDown(lib,1,2);Check(Math.Abs(feet-.4f)<.051f||Math.Abs(feet-.9f)<.051f,"both feet down where the knees bend alike ("+feet+")");
             Check(float.IsNaN(NativeFallenLiveMotion.BothFeetDown(lib,-1,2))&&float.IsNaN(NativeFallenLiveMotion.BothFeetDown(null,1,2)),"no frame without the knees or the bank");
         }
+        // The robe as cloth (the owner, 2026-11-07: "Its hard to see his legs ... integrate magica cloth"): open across the front, the sides to the knee,
+        // the back to mid-calf, phase 2's shorter; the waist rows fixed for the simulation; both faces wound out and in; under the faulds' last ring.
+        {
+            float lowest1=9,lowest2=9,sideHem=9;bool open=true,wound=true,flipped=true,weights=true;
+            foreach(int phase in new[]{1,2})
+            {
+                var g=NativeFallenRobe.Build(phase);int n=g.Side;
+                Check(g.Positions.Length==n*2&&g.Normals.Length==n*2&&g.Triangles.Length%6==0,"phase "+phase+"'s robe has an outer and an inner copy");
+                for(int i=0;i<n;i++)
+                {
+                    var q=g.Positions[i];float ang=(float)(Math.Atan2(q.X,q.Z-NativeFallenRobe.CentreZ)*180/Math.PI);if(Math.Abs(ang)<55)open=false;
+                    if(phase==1)lowest1=Math.Min(lowest1,q.Y);else lowest2=Math.Min(lowest2,q.Y);
+                    if(phase==1&&Math.Abs(ang)<110&&Math.Abs(ang)>=55&&g.Uv[i].Y<.01f)sideHem=Math.Min(sideHem,q.Y);
+                    if(g.Normals[n+i]!=-g.Normals[i]||g.Alpha[i]!=255||g.Alpha[n+i]!=0)flipped=false;
+                    if(g.Weight1[i]<0||g.Weight1[i]>.5f||g.Bone1[i]<0||g.Bone1[i]>2)weights=false;
+                }
+                int half=g.Triangles.Length/2;
+                for(int k=0;k<half;k+=3)
+                {
+                    int a=g.Triangles[k],b=g.Triangles[k+1],c=g.Triangles[k+2];var face=System.Numerics.Vector3.Cross(g.Positions[b]-g.Positions[a],g.Positions[c]-g.Positions[a]);var o=g.Positions[a]+g.Positions[b]+g.Positions[c];o=new System.Numerics.Vector3(o.X/3,0,o.Z/3-NativeFallenRobe.CentreZ);
+                    if(System.Numerics.Vector3.Dot(face,new System.Numerics.Vector3(o.X,0,o.Z))<0)wound=false;
+                    if(g.Triangles[half+k]!=a+n||g.Triangles[half+k+1]!=c+n||g.Triangles[half+k+2]!=b+n)wound=false;
+                }
+            }
+            Check(open,"the robe is open across the front: nothing within 55 degrees of it, the legs show whole");
+            Check(sideHem>.5f&&sideHem<.6f,"the side panels end at the knee ("+sideHem.ToString("0.000")+" m, the knee at .536)");
+            Check(lowest1<.3f&&lowest2>lowest1+.08f,"the back hangs to mid-calf in phase 1 ("+lowest1.ToString("0.00")+"), burnt shorter in phase 2 ("+lowest2.ToString("0.00")+")");
+            Check(wound&&flipped,"the outer faces face out, the inner copy faces in, the outline only outside");
+            Check(weights,"skinned to the pelvis, the side hems leaning on their thighs at most half");
+            Check(NativeFallenRobe.Fixed(1)&&NativeFallenRobe.Fixed(1-1f/NativeFallenRobe.Rows)&&!NativeFallenRobe.Fixed(1-2f/NativeFallenRobe.Rows),"the waist's two rows are fixed, the rest move");
+            var paint=NativeFallenRobe.Paint(4,32);Check(paint[31*4]==0xFF0000u&&paint[30*4]==0xFF0000u&&paint[0]==0x00FF00u&&paint[27*4]==0x00FF00u,"the paint map: red at the waist, green below");
+            Check(NativeFallenRobe.WaistX>=.158f&&NativeFallenRobe.WaistZ>=.126f&&NativeFallenRobe.Top<=.905f,"it hangs from under the faulds' last ring, outside it");
+            var cloth=R("Assets/ChipArena/Runtime/NativeFallenCloth.cs");var body2=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");var shown2=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");
+            Check(cloth.Contains("NativeVisualCloth.PaintMaps[name]=paint;")&&cloth.Contains("handle=NativeVisualCloth.Attach(root,skeleton);")&&body2.Contains("FallenClothBuild(most,skeleton);")&&body2.Contains("if(FallenClothOn&&f.Phase<=2&&part.Name.StartsWith(\"robe\",StringComparison.Ordinal))continue;")&&shown2.Contains("FallenClothFrame(f,eyeAt,flash,mirror,shown);"),"the skirt is built with the body, handed to the cloth, drawn after the pose, and the strips step aside");
+        }
         // A standing turn: past 18 degrees off its quarry it turns to it, smoothly.
         {
             var d=new NativeFallenLiveMotion();var x=new NativeFallenLiveMotion.Facts{At=Vector3.Zero,Yaw=0,Target=new Vector3(0,0,20)};float lastYaw=0;
@@ -370,7 +405,7 @@ public static class FallenBossChecks
         Check(body.Contains("FallenFeetPlant(f,now,hover);")&&body.IndexOf("FallenFeetPlant(f,now,hover);")<body.IndexOf("FallenGrip(f,origin,origin.y+f.Air+hover,intro,ip,iw,at,yawRot);")&&body.IndexOf("FallenGrip(f,origin,origin.y+f.Air+hover,intro,ip,iw,at,yawRot);")<body.IndexOf("FallenBladeClear(f,yawRot,now);")&&body.IndexOf("FallenBladeClear(f,yawRot,now);")<body.IndexOf("FallenChains(f,now,dt,yawRot,local);"),"feet, then the grip, then the blade cleared, then the chains");
         Check(!body.Contains("if(f.Plant>0)FallenPlant(f,origin);else if(f.Carry>0)FallenCarry(f);")&&body.Contains("g=Vector3.Lerp(cg,pg,plant);r=Quaternion.Slerp(cr,pr,plant);o=Vector3.Lerp(co,po,plant);w=Mathf.Clamp01(plant+carry);"),"a sword passing from the plant to the carry goes straight from one to the other");
         Check(body.Contains("Quaternion.FromToRotation(Vector3.down,FallenRobeWay(c.Pivot.X,c.Pivot.Z-.03f,c.Segment,yawRot))*yawRot"),"the robe drapes over the legs");
-        Check(body.Contains("FbDragTip=.02f;private static readonly Vector3 FbDragWay=new Vector3(.99f,0,.1f)")&&body.Contains("var wrist=shoulder+yawRot*new Vector3(.07f*s,0,.09f*s)+Vector3.down*(reach*.93f-breath);")&&body.Contains("float drop=Mathf.Clamp((grip.y-floor-FbDragTip*s)/along,.08f,.95f);"),"the sword carried as the reference carries it: from a hanging arm, laid out to its right side and down, its point on the water");
+        Check(body.Contains("FbDragTip=.02f;private static readonly Vector3 FbDragWay=new Vector3(.99f,0,.1f)")&&body.Contains("var wrist=shoulder+yawRot*new Vector3(.17f*s,0,-.05f*s)+Vector3.down*(reach*.9f-breath);")&&body.Contains("float drop=Mathf.Clamp((grip.y-floor-FbDragTip*s)/along,.08f,.95f);"),"the sword carried as the reference carries it: from a hanging arm out from the hip and a little behind it, laid out to its right side and down, its point on the water");
         Check(body.Contains("if(fbLiveNow&&f.Stand>0)")&&body.IndexOf("if(fbLiveNow&&f.Stand>0)")<body.IndexOf("fbHandler.SetHumanPose(ref fbPose);")&&body.Contains("FbStandTo={.02f,.15f,0,.88f,0,0,.4f,.15f,0,.88f,0,0,0}"),"at rest the reference's stance is laid over the held stride before the pose is set");
         Check(scenery.Contains("if(tip.y<floor+.25f&&f.Plant<.5f&&now-fbWakeLast>.07f&&moved>=.6f)"),"the dragged point's wake is a ring every 0.6 m, none at rest");
         var audio=R("Assets/ChipArena/Runtime/NativeAudio.cs");var loading=R("Assets/ChipArena/Runtime/NativeStageLoadingUI.cs");var game=R("Assets/ChipArena/Runtime/ConversionGame.cs");
