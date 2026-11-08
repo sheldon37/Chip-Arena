@@ -285,10 +285,10 @@ the fight gets slower on your feet and those tools matter more.
 | Id | Move | Phase | Wind | Strike | Follow | Recover | Cooldown | Damage | Shape |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `breach` | Breach | 1 | 1.1 | .25 | .5 | .6 | 5 | 28 + launch | 3.2 m circle at the target's position when it locked, mouth up, then the body arcs over and dives |
-| `jet` | Hydro Jet | 1 | 1.0 | 2.2 | .3 | .8 | 12 | 10 per .25 s | a 2 m beam, swept 110° over 30 m, starting on the farthest pilot |
+| `jet` | Hydro Jet | 1 | 1.0 | 2.2 | .3 | .8 | 12 | 10 per .25 s | a 2 m beam, swept 110° over 30 m, starting on the farthest pilot; drawn as a stream 1 m or more over the floor down its lane |
 | `flop` | Belly Flop | 1 | 1.8 | .2 | .6 | 1 | 14 | 30 | a line 4 m wide and 24 m long where its body falls; its shadow and a line of bubbles or spray mark it |
 | `thrash` | Thrash | 1 | .4 | .3 | .2 | .4 | 6 | 18 | 5 m round the surfaced body, a tail sweep, when someone hugs it |
-| `drain` | The Drain | 1 | 1.4 | 4 | .3 | .8 | 20 | 40 at the mouth | the whole room's water runs toward the pit at 2.5 to 4.5 m/s, a current a pilot fights (none in the air or a roll); 3% of its health to the open throat shuts it, a 2 s stagger |
+| `drain` | The Drain | 1 | 1.4 | 4 | .3 | .8 | 20 | 40 at the mouth | the whole room's water runs toward the pit: 9.15 m/s there, 7.8 at 10 m, 3.7 at 20, a 1.4 m/s drift from 24 m, slowed by wading as the pilot is; a run loses to it, only a sprint gets out (none in a roll; held in the air); 3% of its health to the open throat shuts it, a 2 s stagger |
 | `lull` | The Lull | 1 | 1.5 | .3 | 1.5 | 0 | meter | 8 + 8/s | hands of water take a pilot still for 6 s, or above 1.6 m for 2 s |
 | `seiche` | Seiche | 2 | 1.4 | 7 | 0 | .5 | 16 | 18 + knockback | a wave .9 m tall crosses the room wall to wall, then reflects back. Jump it or roll through |
 | `whistle` | Whistle | 2 | 1 | 2 | 0 | .5 | 25 | 0 | a Lifeguard's whistle from nowhere: Drowned surface round each pilot, Tilers peel off the walls |
@@ -726,3 +726,19 @@ turned each joint toward the aim on its own (at most `NeckBend` each), so the he
 under it. Through the Hydro Jet the neck curls joint on joint over `CurlJoints` (8), each turn carried up to the joints above, until the skull
 lies straight on the beam; the aim is taken again from where the curl puts the mouth (eased out under the water or past `JetReaim`). CoreTests
 `--deepend-boss`: "through the Jet it faces where it shoots".
+
+**THE DEEP END's Drain and jet (the owner, 2026-11-08; the Drain's pull at the owner's word, a rule):** "deep end vortex ability still needs more pull.
+Essentially we need to sprint away to "barely" make it out. Walking will not be fast enough", then "their spray attack seems to be flat. It usually ends
+up being UNDER the hit indicator".
+- **The Drain:** `DrainPull(d)` = 9.15 m/s x (1 - (d/26)^2), never under 1.4 (was 6.5 x (1 - d/28)^1.2): 9.06 at the mouth's edge, 7.8 at 10 m, 6.5 at
+  14, 3.7 at 20. A pilot's run is 6.8 m/s and a sprint 9.18, so anywhere in the pool a run loses ground and only a sprint gains it, by about 0.1 m/s at
+  the mouth's edge and 0.9 at 8 m. Running away from 6 or 8 m for its 4 s ends in the mouth; sprinting from 4 m ends about 5.3 m out (CoreTests
+  `--backrooms-boss-rules`). The authority slows the current by the same wading the pilot's own speed takes (`PoolMove`), so the same holds in the
+  pool's water and the flood, only slower. Still held in the air, still free in a roll, still shut by the throat.
+- **The jet:** it aimed at the water's level at its target's distance, so beyond the target its spray lay on the floor as a sheet, under the lane's
+  warning, and over the dry deck (which stands above the pool's water) under the tile. `JetDir` now tips the beam down only so far that it is
+  `JetEndHeight` (1 m) over the floor (the water, or the deck) at its full reach; the effects draw it as one stream down the whole lane the rule hits
+  (`JetAt`): straight from the mouth, coming down to the floor only in its last stretch with the splash there, or striking the wall that stops it and
+  climbing it. Drops peel off it and rain onto the lane; the warning's mist line lies on the deck where the deck is dry. The rule's lane is the
+  same 2 m by 30 m, a little longer on the ground than before when the mouth stood high over a near target (up to about 3 m). CoreTests
+  `--deepend-boss`: "the Jet's beam stays over the floor along its lane".

@@ -76,9 +76,14 @@ public static class BackroomsBossRuleChecks
             var d=NativeBackroomsBossRules.Create(NativeDeepEndBoss.Archetype,10001,40,40,0);Check(NativeBackroomsBossRules.Ceiling(d)==NativeDeepEndArena.Ceiling&&NativeBackroomsBossRules.Inside(d,new Vector3(40,10,40)),"THE DEEP END's 12 m room");
             d.phase=3;d.action=null;var rig=new DeepEndBossRig();var q=new BackroomsBossPilot{Seat=4,Feet=new Vector3(40,0,52)};NativeBackroomsBossRules.Start(d,"drain",q,10);
             NativeBackroomsBossRules.Step(d,200,1000,d.hitAt+.1f,1f/60,new[]{q},output,rig);float pull=output.Where(h=>h.Seat==4&&h.Pull>0).Select(h=>h.Pull).DefaultIfEmpty(0).Max();
-            Check(pull>=NativeDeepEndBoss.DrainPullMin&&pull<=NativeDeepEndBoss.DrainPullMax&&NativeDeepEndBoss.DrainPullMax<6.8f,"the Drain is a current a run beats ("+pull+")");
+            Check(pull>=NativeDeepEndBoss.DrainPullMin&&pull<=NativeDeepEndBoss.DrainPullMax&&NativeDeepEndBoss.DrainPullMax>6.8f&&NativeDeepEndBoss.DrainPullMax<6.8f*1.35f,"the Drain is a current a run loses to and a sprint beats ("+pull+")");
             Check(NativeDeepEndBoss.DrainThroatShare>0&&NativeDeepEndBoss.DrainThroatShare<=.05f&&NativeDeepEndBoss.DrainStagger>0,"the throat shuts it");
             Check(NativeDeepEndBoss.DrainPull(2.6f)>3.5f&&NativeDeepEndBoss.DrainPull(10)>NativeDeepEndBoss.DrainPull(20)*1.8f&&NativeDeepEndBoss.DrainPull(27)==NativeDeepEndBoss.DrainPullMin&&NativeDeepEndBoss.DrainPull(0)==NativeDeepEndBoss.DrainPullMax,"weaker the further away (the owner)");
+            // The owner, 2026-11-08: "we need to sprint away to "barely" make it out. Walking will not be fast enough". Away from the pit at a run (6.8 m/s) for the Drain's 4 s, from
+            // 6 or 8 m: pulled into its mouth (2.6 m). At a sprint (1.35 times): out, and barely, near the pit.
+            float DrainEscape(float drainFrom,float drainSpeed){float drainAt=drainFrom;for(int drainTick=0;drainTick<240;drainTick++){drainAt+=(drainSpeed-NativeDeepEndBoss.DrainPull(drainAt))/60;if(drainAt<=2.6f)return drainAt;}return drainAt;}
+            Check(DrainEscape(8,6.8f)<=2.6f&&DrainEscape(6,6.8f)<=2.6f&&DrainEscape(3,6.8f*1.35f)>3&&DrainEscape(4,6.8f*1.35f)>4&&DrainEscape(4,6.8f*1.35f)<4+4*1.2f,
+                "walking away from the Drain is pulled in; a sprint just gets out (walk from 8 m: "+DrainEscape(8,6.8f).ToString("0.0")+" m, sprint from 4 m: "+DrainEscape(4,6.8f*1.35f).ToString("0.0")+" m)");
             // Carried by the current toward the pit without fighting it is still standing still: the Lull still finds them inside the build's deadline (8.5 s).
             {
                 var e=NativeBackroomsBossRules.Create(NativeDeepEndBoss.Archetype,10001,40,40,0);e.phase=1;e.action=null;var er=new DeepEndBossRig();var c=new BackroomsBossPilot{Seat=5,Feet=new Vector3(21,0,59)};

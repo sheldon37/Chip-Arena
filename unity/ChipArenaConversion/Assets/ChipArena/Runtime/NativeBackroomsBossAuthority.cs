@@ -105,11 +105,12 @@ namespace ChipArena.UnityConversion
             }
         }
         /// <summary>THE DEEP END's Drain: a current added to the pilot's own movement (they keep control, so they can run or roll out of it, and fight it in the water); it holds a pilot in the
-        /// air too (the owner: "which is fine"), not one rolling; never through a wall. (ZoneDrag, a grab's, takes the pilot's control away.)</summary>
+        /// air too (the owner: "which is fine"), not one rolling; never through a wall. Slowed by the water as the pilot's own speed is (PoolMove), so only a sprint beats it, wading
+        /// or not (the owner, 2026-11-08). (ZoneDrag, a grab's, takes the pilot's control away.)</summary>
         private void ZoneCurrent(NativePilot p,Vector3 direction,float speed)
         {
             if(Time<p.RollEnd)return;direction.y=0;if(direction.sqrMagnitude<1e-4f)return;
-            var delta=direction.normalized*(speed/60);var at=p.Body.position;if(!SceneLinecast(at,at+delta*2,WorldMask)){p.Body.position=at+delta;p.Body.transform.position=p.Body.position;}
+            var delta=direction.normalized*(speed*PoolMove(p.Body.position)/60);var at=p.Body.position;if(!SceneLinecast(at,at+delta*2,WorldMask)){p.Body.position=at+delta;p.Body.transform.position=p.Body.position;}
         }
         private Vector3 BackroomContactPoint(NativeMinion m,Vector3 from)
         {if(m!=zoneBossActor||ZoneBoss?.backrooms==null)return m.Body.position;Vector3 best=m.Body.position;float d=float.MaxValue;foreach(var c in backroomParts)if(c!=null&&c.enabled){var at=c.ClosestPoint(from);float dist=(at-from).sqrMagnitude;if(dist<d){d=dist;best=at;}}return best;}
