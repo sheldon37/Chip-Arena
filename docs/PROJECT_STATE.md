@@ -1,3 +1,5 @@
+2026-11-07 Claude (`claude/deepend-body`): THE DEEP END's body no longer folds through itself on tight turns (a bend limit and self-separation on its spine); stranded on tile it curls round in a U.
+
 2026-11-07 Claude (`claude/boss-looks`): NOCTIEL's sword hand out past the hip, a cloth skirt that shows the legs, detailed leg armour (Drive zip bank); THE DEEP END slams on tile and splashes in water, no warnings for Seiche or the Drain, a stronger Drain.
 
 2026-11-07 Claude (`claude/boss-picks-clock`): the Boss Battle opening's countdown big and glowing at the top centre, urgent in its last 10 s; chips not chosen in time wait and C opens them in the fight.

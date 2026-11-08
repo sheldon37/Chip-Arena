@@ -697,3 +697,15 @@ pull stronger ... we can also remove hit indicators from that one too."
   splash (spray up and out, mist, a crown of water); on dry tile a white flash, chips of tile and grout thrown up that bounce, dust rolling out
   in a ring and a column of it, and a dark scar that fades. The Belly Flop comes down along its line head first, a slam or splash at each of
   seven places, the water's wall only where most of it is wet; Breach bursts up through dry tile; Thrash hits round itself four times.
+
+**THE DEEP END's body, the owner again (2026-11-07):** "can we make the movement more realistic? A lot of turns (mostly upward) the body clips
+into itself". Every joint traced the head's route exactly, so wherever the route turned tighter than the body is thick (over the top of a rise,
+out of the water into a leap, a dive that turns back behind the head) the body folded through itself: through the scripted fight two parts of
+it came to 0.17 of their radii apart and a joint bent 170 degrees. Now, after the trail, `DeepEndBossRig.Relax` makes a few passes on the
+frame's joints alone (two frame rates still give one pose; nothing allocated): joints either side of one held at least as far as a bend of
+`MostBend` (0.62 rad) allows, parts three or more joints apart kept their radii apart (`Apart`), each segment at least its own length, the
+rest drawn back toward the trail; the skull stays on the route, so every contact is where it was. Through the same fight the closest two
+parts come is now 0.95 of their radii and the sharpest bend 72 degrees (CoreTests `--deepend-boss`, "the body never folds into itself").
+Stranded on dry tile with the pool behind it, it curls round in a U (`DeepEndBossPaths.UTurn`, 2.6 m) instead of turning back over its neck.
+The DEV preview's script planned every move before the flood on the flood's water (its phase times read 0 while it was written), so its
+Flop dove through dry deck: fixed. Last Lap's body contact (the rule reads the same rig) follows the body as drawn, a little wider in turns.

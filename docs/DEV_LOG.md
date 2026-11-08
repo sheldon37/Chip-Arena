@@ -1,3 +1,12 @@
+## 2026-11-07 — Claude: THE DEEP END's body can't fold into itself (owner request)
+
+- Branch `claude/deepend-body`, base shared `97a70052`.
+- **What** (owner: "can we make the movement more realistic? A lot of turns (mostly upward) the body clips into itself"): every joint traced the head's route exactly, so tight turns (over a rise's top, out of the water into a leap, a dive turning back behind the head) folded the body through itself. `DeepEndBossRig.Relax` now makes 12 passes on the frame's joints after the trail: a bend limit (0.62 rad a joint), parts three or more joints apart kept their radii apart, segments at least their length, the rest drawn back toward the trail; the skull stays on the route. Stranded on dry tile with the pool behind, it curls round in a 2.6 m U instead of turning over its neck. The DEV preview's script read its phase times as 0 while it was written, so every phase 1 move was planned on the flood's water (the Flop dove through dry deck): fixed.
+- **Measured** through the scripted fight (new CoreTests check): closest approach of two body parts 0.17 of their radii before, 0.95 after; sharpest bend of a thick joint 170 degrees before, 72 after.
+- **Animation impact:** the drawn body (and Last Lap's body contact, which reads the same rig on the authority) bends wider in tight turns; the skull, every other move's contact, timings and damage unchanged.
+- **Checks:** `--deepend-boss` (the new body check, two frame rates one pose, no allocation, a visible joint's speed), `--telegraphs`, `--backrooms-boss-rules`, `--backrooms-boss-sweep`; Unity compile in the release. Seen in a real Boss Battle in the Editor: Breach's arch, the Jet's neck curling over, the Flop's flight and the Drain's hook, none through itself.
+- **Not run:** no person or two-client run; the Unity no-safe-spot gate only on the builder.
+
 ## 2026-11-07 — Claude: NOCTIEL's hand, cloth skirt and legs; THE DEEP END's slams, unwarned waves and vortex, stronger Drain (owner requests; the Drain's pull at the owner's word)
 
 - Branch `claude/boss-looks`, base shared `4e245e7e`.
