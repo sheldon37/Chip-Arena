@@ -27,6 +27,7 @@
   - The local tool gained `dogtrack=T,D` (the head twin's lean, scale and offset per frame) for the jiggle.
 - **Not run:** no person or two-client run; corpses and cuts (the capture's camera missed the corpse), portraits and the Locker preview not looked at; the reduced-graphics tier not looked at.
 - **Rights:** this assumes a Tripo Pro export (the owner said on 2026-11-05 they would buy Pro). It stays DEV only and out of git.
+- **Released:** full suite at `173219b9` (shared merged in): 982 groups, exit 0; pins 0 broken; `git diff --check` clean; Unity compile PASS. Merged `78ec9425`. The Drive zip gained the bank and its meta (`LocalAssets-2026-11-08-before-hotdog.zip` is the old one beside it; `install_local_assets.py --check` passed). Builder succeeded and published to the test channel: revision 639297727637888787, 246.4 MiB; its build log imports `ChipArenaHotDog.bytes`. No live release. On the way three runs stopped on source checks that pin the body presentation lines (hats, skeleton, cloth, hood, face gear, suit); the Hot Dog now routes around them.
 
 ## 2026-11-08 — Claude: vote to skip cutscenes (owner request; rules and networking at the owner's word)
 
