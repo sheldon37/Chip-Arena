@@ -4,7 +4,7 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     // The Hot Dog (owner 2026-11-04: a playable skin; 2026-11-08, with the model made in Tripo: "Implement this model as a dev skin
-    // (Do clean up on it if necessary)", "Id like to also give the body physics (Its a hotdog lol)"; docs/BOZO-INTEGRATION.md):
+    // (Do clean up on it if necessary)", "Id like to also give the body physics (Its a hotdog lol)"; docs/HOT-DOG-SKIN.md):
     // the owner's model on the model's own skeleton, worn in place of the whole outfit. It is picked as a piece of the outfit map
     // (NativeLook's upper slot, "upper:hot-dog"), so the Locker, prefs, the seat frames, replays, portraits and corpses carry it as
     // they carry any other top, and it is DEV only (NativeLook.DevOnly, as Sheldon's clothes are). tools/gear/hotdog_tripo.py
