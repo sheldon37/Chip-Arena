@@ -547,12 +547,13 @@ public static class FallenBossChecks
             Check(adds.Contains("FbDrawKit(m,fbAddGlowOnly[i],world,g,flash,0,FbAboveWater);")&&show.Contains("FallenAddsStep(now,dt,origin,eyeAt);")&&show.Contains("FallenAddsDraw(origin,mirror,inner,flash);"),"the adds drawn cut at the water, reflected");
         }
         // The owner, 2026-11-08: "The ripples are too excessive I think maybe lower the opacity but a LOT", "remove the text from the sword of noctiel",
-        // "revise the face (Maybe just make it blink) so remove the little eyes and eyebrows". The rings faint (the moves' waves as they were); the
+        // "revise the face (Maybe just make it blink) so remove the little eyes and eyebrows". Every ripple faint (the rings and the waves); the
         // claymore's words gone; the mask built in C# without its brows or slits, its eyes blinking.
         {
             var water3=R("Assets/ChipArena/Resources/NativeFallenWater.shader");
-            Check(water3.Contains("#define RING_LIGHT .16")&&water3.Contains("#define RING_SLOPE .42")&&water3.Contains("rings+=d/len*cos(ph)*env*kk*.06;ringLit+=")&&!water3.Contains("grad+=d/len*cos(ph)*env*kk*.06")
-                &&water3.Contains("float glint=waves+max(0,Glint(all,hv)-waves)*RING_GLINT;lit+=glint*1.6*exp(-dist*.012)+ringLit*RING_LIGHT;grad=all;")&&water3.Contains("ph=x*3.4;grad+=d/len*cos(ph)*env*.42;"),"the steps' rings faint in the water's own colour, the moves' waves as they were");
+            Check(water3.Contains("#define RIPPLE_LIGHT .16")&&water3.Contains("#define RIPPLE_SLOPE .42")&&water3.Contains("#define RIPPLE_GLINT .33")&&water3.Contains("grad*=RIPPLE_SLOPE;")
+                &&water3.Contains("lit=lit*RIPPLE_LIGHT+Glint(grad,hv)*RIPPLE_GLINT*1.6*exp(-dist*.012);")&&water3.IndexOf("grad*=RIPPLE_SLOPE;")>water3.IndexOf("for(int k=0;k<(int)_FbWaveCount;k++)")
+                &&water3.IndexOf("grad*=RIPPLE_SLOPE;")<water3.IndexOf("float2 uv=i.grab.xy/i.grab.w+grad"),"every ripple faint in the water's own colour, the steps' rings and the moves' waves alike, the reflection bent by what's left");
             var sword3=R("Assets/ChipArena/Runtime/NativeFallenSwordBody.cs");
             Check(!sword3.Contains("sword-words")&&!sword3.Contains("fbSwordWords")&&sword3.Contains("FbSwordPart(string name)=>name.StartsWith(\"sword\",StringComparison.Ordinal);"),"the claymore carries no words (the bank's hidden with its other sword pieces)");
             for(int split=0;split<2;split++)for(int tier=0;tier<2;tier++)
