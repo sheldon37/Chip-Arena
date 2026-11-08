@@ -3,7 +3,7 @@ Shader "ChipArena/NativeFallenWater"
     // The Still Water (docs/EXPEDITION-BOSS-FINAL.md section 5): a black mirror. It reflects what's mirrored below it (the frame so far, GrabPass, bent by the water: the void and its
     // music, Resources/NativeFallenVoid.shader). What touches it rings it (_FbRing): each a packet of ripples like a step in shallow water, a steep front with a train of smaller
     // ripples inside it, their wavelength growing as they spread and fade, bending the reflection and catching the light on their slopes (glints, not a line round the ring).
-    // The waves of the moves (_FbWave) cross the disc. A faint web of light moves with the song's level. Eclipse's dim and pools, a strike's white. Past the edge, nothing.
+    // The waves of the moves (_FbWave) cross the disc. Eclipse's dim and pools, a strike's white. Past the edge, nothing.
     // Since 2026-11-08 the song's bass no longer rings the floor from the boss (the owner: "more water-like like were stepping in water, not just random ripples"): the void
     // carries the music. Output is opaque: the disc is the only thing down here.
     Properties {}
@@ -49,9 +49,7 @@ Shader "ChipArena/NativeFallenWater"
                 // only what moves shows), fading with distance.
                 float3 nrm=normalize(float3(-grad.x*2.2,1,-grad.y*2.2));float3 lgt=normalize(float3(.35,.8,.45));float3 hv=normalize(lgt+v);
                 float glint=max(0,pow(saturate(dot(nrm,hv)),90.)-pow(saturate(hv.y),90.));lit+=glint*1.6*exp(-dist*.012);
-                // The song's level in a faint moving web, more of it the louder it is.
-                float level=tex2Dlod(_FbSong,float4(_FbSongAt.x*_FbSongAt.y,.5,0,0)).r;float web=Web(q,t*.9)*smoothstep(.42,.95,level);
-                lit+=web*.055*exp(-dist*.016);
+                // (The song's web of light left the floor with its bass, 2026-11-08: it read as random ripples. The void carries the music.)
                 // The reflection.
                 float2 uv=i.grab.xy/i.grab.w+grad*float2(.055,.11)*saturate(14./(dist+6.));
                 float3 refl=tex2D(_FbGrab,uv).rgb;float fres=.3+.56*pow(1-saturate(v.y),2.4);

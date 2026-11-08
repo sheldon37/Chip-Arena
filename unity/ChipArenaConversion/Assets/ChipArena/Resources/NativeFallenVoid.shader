@@ -28,10 +28,10 @@ Shader "ChipArena/NativeFallenVoid"
                 float horizon=exp(-abs(y)*13.)*(.012+.06*level*level);
                 // Curtains of light falling from above: thin, drifting, brighter where the bass is (the bass at a height is the bass of a moment ago, so a beat climbs).
                 float wander=sin(a*2.3+t*.041)*2.2+sin(a*5.1-t*.027)*.6;
-                float sheet=pow(.5+.5*sin(a*11.+wander),24.)+.55*pow(.5+.5*sin(a*23.-t*.033+1.7),36.)+.35*pow(.5+.5*sin(a*41.+t*.019+.4),48.);
+                float sheet=pow(.5+.5*sin(a*11.+wander),16.)+.45*pow(.5+.5*sin(a*23.-t*.033+1.7),28.);
                 float up=max(y,0);float heard=Song(_FbSongAt.x-up*1.6).y;heard*=heard;
                 float rise=smoothstep(-.03,.08,y)*exp(-up*1.7);
-                float curtains=sheet*rise*(.008+.2*heard+.035*level);
+                float curtains=sheet*rise*(.0025+.17*heard+.012*level);
                 // A slam: the horizon flashes and a band of light runs up the sky.
                 float s=_FbVoidSlam;float slam=0;
                 if(s>=0&&s<2.4){slam=exp(-s*3.2)*.09*exp(-abs(y)*5.)+exp(-(up-s*.55)*(up-s*.55)*70.)*.07*exp(-s*1.3)*smoothstep(-.02,.05,y);}
