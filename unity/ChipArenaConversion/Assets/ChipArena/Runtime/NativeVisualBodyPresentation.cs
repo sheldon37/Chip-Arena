@@ -1034,8 +1034,8 @@ namespace ChipArena.UnityConversion
             // scenes draw its face).
             var hood=VisualHooded(death.actor)?VisualHoodMake(root,skeleton):null;
             if(hood!=null){sheldon.Add(hood);VisualUnderHood(root);}
-            // The skeleton inside (a cut or wound shows it; none in the Hot Dog).
-            if(!NativeHotDog.Worn(look))VisualSkeletonMake(root,skeleton);
+            // The skeleton inside (a cut or wound shows it).
+            VisualSkeletonMake(root,skeleton);
             var at=rig.Root.transform;root.transform.SetPositionAndRotation(at.TransformPoint(new Vector3(0,NativeVisualRig.Floor,0))+offset,at.rotation);
             var binding=new NativeVisualRigBinding(root.transform,skeleton);var pose=rig.Pose;pose.World();
             binding.Apply(pose,VisualGrasp(death.actor??new Actor(),pose,death.at,0),false,false);
