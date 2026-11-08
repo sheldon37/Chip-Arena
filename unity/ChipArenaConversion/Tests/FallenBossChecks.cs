@@ -390,7 +390,7 @@ public static class FallenBossChecks
                     if(g.Triangles[half+k]!=a+n||g.Triangles[half+k+1]!=c+n||g.Triangles[half+k+2]!=b+n)wound=false;
                 }
             }
-            Check(open&&front,"a narrow panel hangs between the legs, and nothing else within 55 degrees of the front: the legs show whole");
+            Check(open&&!front,"nothing of the skirt within 55 degrees of the front (the tabard hangs there since 2026-11-08): the legs show whole");
             Check(sideHem>.5f&&sideHem<.6f,"the side panels end at the knee ("+sideHem.ToString("0.000")+" m, the knee at .536)");
             Check(lowest1<.3f&&lowest2>lowest1+.08f,"the back hangs to mid-calf in phase 1 ("+lowest1.ToString("0.00")+"), burnt shorter in phase 2 ("+lowest2.ToString("0.00")+")");
             Check(wound&&flipped,"the outer faces face out, the inner copy faces in, the outline only outside");
@@ -399,7 +399,7 @@ public static class FallenBossChecks
             var paint=NativeFallenRobe.Paint(4,32);Check(paint[31*4]==0xFF0000u&&paint[30*4]==0xFF0000u&&paint[0]==0x00FF00u&&paint[27*4]==0x00FF00u,"the paint map: red at the waist, green below");
             Check(NativeFallenRobe.WaistX>=.158f&&NativeFallenRobe.WaistZ>=.126f&&NativeFallenRobe.Top<=.905f,"it hangs from under the faulds' last ring, outside it");
             var cloth=R("Assets/ChipArena/Runtime/NativeFallenCloth.cs");var body2=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");var shown2=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");
-            Check(cloth.Contains("NativeVisualCloth.PaintMaps[name]=paint;")&&cloth.Contains("handle=NativeVisualCloth.Attach(root,skeleton);")&&body2.Contains("FallenClothBuild(most,skeleton);")&&body2.Contains("if(FallenClothOn&&f.Phase<=2&&part.Name.StartsWith(\"robe\",StringComparison.Ordinal))continue;")&&shown2.Contains("FallenClothFrame(f,eyeAt,flash,mirror,shown);"),"the skirt is built with the body, handed to the cloth, drawn after the pose, and the strips step aside");
+            Check(cloth.Contains("NativeVisualCloth.PaintMaps[name]=paint;")&&cloth.Contains("handle=NativeVisualCloth.Attach(root,skeleton);")&&body2.Contains("FallenClothBuild(most,skeleton);")&&body2.Contains("if(FallenClothOn&&f.Phase<=2&&part.Name.StartsWith(\"robe\",StringComparison.Ordinal))continue;")&&shown2.Contains("FallenClothFrame(f,origin,eyeAt,flash,mirror,shown,now);"),"the skirt is built with the body, handed to the cloth, drawn after the pose, and the strips step aside");
         }
         // The hood as cloth (the owner, 2026-11-07: "Assuming he has a hood on? ... integrate magica cloth into that as well; give it more of a fabric
         // appearance"): it covers the old cowl's head (crown to neck), closed over the crown and open round the mask, which shows whole; a skirt of it
@@ -433,7 +433,7 @@ public static class FallenBossChecks
             var paint=NativeFallenHood.Paint(4,64);Check(paint[63*4]==0xFF0000u&&paint[0]==0x00FF00u,"the hood's paint map: red on the head, green at the hem");
             Check(NativeFallenHood.Name.StartsWith("Hat.",StringComparison.Ordinal),"named for the cloth bridge's hood tuning");
             var cloth=R("Assets/ChipArena/Runtime/NativeFallenCloth.cs");var body2=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");
-            Check(cloth.Contains("FallenClothPiece(NativeFallenHood.Name,NativeFallenHood.Build(),NativeFallenHood.Bones,")&&cloth.Contains("bool show=k==FbHood?hood:k==want")&&body2.Contains("if(FallenHoodOn&&f.Phase<=3&&part.Name==\"cowl\")continue;"),"the hood is built with the body and drawn in the cowl's place in phases 1 to 3");
+            Check(cloth.Contains("FallenClothPiece(NativeFallenHood.Name,NativeFallenHood.Build(),NativeFallenHood.Bones,")&&cloth.Contains("bool show=k==FbHood?hood:")&&body2.Contains("if(FallenHoodOn&&f.Phase<=3&&part.Name==\"cowl\")continue;"),"the hood is built with the body and drawn in the cowl's place in phases 1 to 3");
         }
         // It breathes (the owner, 2026-11-08: "they sit there like a statue a lot? no indication of breathing"): a slow breath, smooth, every fourth deeper;
         // all of its life at rest, some of it walking.
@@ -446,6 +446,31 @@ public static class FallenBossChecks
             for(float now=0;now<8;now+=1/144f){while(stepAt<=now){at+=new Vector3(0,0,(now<4?1.4f:0)/60);stepAt+=1/60f;}x.Now=now;x.At=at;d.Step(f,x,bank);if(now>2&&now<3.8f)walkLife=f.Life;if(now>7.5f)restLife=f.Life;}
             Check(restLife>.98f&&Math.Abs(walkLife-NativeFallenLiveMotion.LifeWalking)<.05f,"all of its life at rest ("+restLife.ToString("0.00")+"), some walking ("+walkLife.ToString("0.00")+")");
             var body3=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");Check(body3.Contains("if(fbLiveNow&&f.Life>0)")&&body3.Contains("f.Life*NativeFallenLiveMotion.BreathAt("),"Runtime lays the breath through the body and the wings");
+        }
+        // Armour and robe together (the owner, 2026-11-08: "maybe we can give them clothes attached to the hood? like some kind of robe ... Maybe like a armor /
+        // robe combo"): a tabard from under the hood over the breastplate, narrower than it, cinched over the belt's clasp, hanging to the shin (phase 2 burnt
+        // shorter); a sash's knot and tails at the left hip; held to the belt and at the knot, moving below; its hems where the cloth sheds its motes.
+        {
+            // The breastplate's front down its middle (tools/gear/fallen_boss.py CHEST_RINGS with its keel).
+            float PlateFront(float y){float[] ys={1.205f,1.25f,1.31f,1.37f,1.42f},zs={.144f,.154f,.164f,.16f,.131f};for(int k=0;k<4;k++)if(y<=ys[k+1])return zs[k]+(zs[k+1]-zs[k])*(y-ys[k])/(ys[k+1]-ys[k]);return zs[4];}
+            var g1=NativeFallenTabard.Build(1);var g2=NativeFallenTabard.Build(2);int n=g1.Side;bool onPlate=true,narrow=true,overClasp=false,bones=true,held=true,flipped=true;float low1=9,low2=9;int sash=0;
+            for(int i=0;i<n;i++)
+            {
+                var q=g1.Positions[i];float u=g1.Uv[i].X,v=g1.Uv[i].Y;bool tab=u<NativeFallenTabard.TabardU+.005f;
+                if(tab){low1=Math.Min(low1,q.Y);if(q.Y>1.205f&&q.Y<1.42f&&Math.Abs(q.X)<.02f&&q.Z<PlateFront(q.Y)+.01f)onPlate=false;if(q.Y>1.2f&&q.Y<1.42f&&Math.Abs(q.X)>.11f)narrow=false;if(Math.Abs(q.Y-NativeFallenTabard.Belt)<.01f&&Math.Abs(q.X)<.02f&&q.Z>.16f)overClasp=true;
+                    if(NativeFallenTabard.Fixed(u,v)!=(q.Y>=NativeFallenTabard.Belt-.005f))held=false;}
+                else sash++;
+                if(g1.Bone0[i]<0||g1.Bone0[i]>4||g1.Bone1[i]<0||g1.Bone1[i]>4||g1.Weight1[i]<0||g1.Weight1[i]>1)bones=false;
+                if(g1.Normals[n+i]!=-g1.Normals[i]||g1.Alpha[i]!=255||g1.Alpha[n+i]!=0)flipped=false;
+            }
+            for(int i=0;i<g2.Side;i++)if(g2.Uv[i].X<NativeFallenTabard.TabardU+.005f)low2=Math.Min(low2,g2.Positions[i].Y);
+            Check(onPlate&&narrow,"the tabard lies on the breastplate, narrower than it, so the plate shows either side");Check(overClasp,"cinched over the belt's clasp");
+            Check(low1<.42f&&low2>low1+.1f,"to the shin in phase 1 ("+low1.ToString("0.00")+"), burnt shorter in phase 2 ("+low2.ToString("0.00")+")");
+            Check(held,"held to the belt, moving below it");Check(sash>30&&NativeFallenTabard.Fixed(.99f,1)&&!NativeFallenTabard.Fixed(.9f,.1f),"a sash knotted at the left hip, its tails moving");
+            Check(bones&&flipped&&g1.Hem.Length>10,"skinned to the chest, waist, hips and thighs; both faces; its hems marked");
+            Check(NativeFallenRobe.Build(1).Hem.Length>20&&NativeFallenHood.Build().Hem.Length>10,"the skirt's and the hood's hems marked");
+            var cloth=R("Assets/ChipArena/Runtime/NativeFallenCloth.cs");
+            Check(cloth.Contains("FallenClothPiece(NativeFallenTabard.Name+\" \"+(k+1),NativeFallenTabard.Build(k+1),NativeFallenTabard.Bones,")&&cloth.Contains("k>=FbTabard?k-FbTabard==want")&&cloth.Contains("FallenClothShed(c,tr,dt,f.Phase==2)")&&cloth.Contains("fbFx.ClothMote("),"the tabard built and shown by phase, its hems shedding motes through the boss's effects");
         }
         // A standing turn: past 18 degrees off its quarry it turns to it, smoothly.
         {

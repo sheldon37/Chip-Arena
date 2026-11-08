@@ -106,8 +106,8 @@ namespace ChipArena.UnityConversion
             // (the owner, 2026-11-08: "they sit there like a statue a lot? no indication of breathing"). Offsets on the muscles, scaled by how much life shows.
             if(fbLiveNow&&f.Life>0)
             {
-                int head=NativeVisualMotionClips.Head;float b=f.Breath,sway=Mathf.Sin(now*.86f),drift=Mathf.Sin(now*.37f)+.5f*Mathf.Sin(now*.91f+1),tilt=Mathf.Sin(now*.29f+2),hand=Mathf.Sin(now*.53f+.4f);
-                for(int i=0;i<FbBreathAt.Length;i++){if(FbBreathAt[i]<0)continue;var w=FbBreathBy[i];fbMix[head+FbBreathAt[i]]+=f.Life*(w.x*b+w.y*sway+w.z*drift+w.w*(i==FbTiltRow?tilt:hand));}
+                int head=NativeVisualMotionClips.Head;float inhale=f.Breath,sway=Mathf.Sin(now*.86f),drift=Mathf.Sin(now*.37f)+.5f*Mathf.Sin(now*.91f+1),tilt=Mathf.Sin(now*.29f+2),hand=Mathf.Sin(now*.53f+.4f);
+                for(int i=0;i<FbBreathAt.Length;i++){if(FbBreathAt[i]<0)continue;var w=FbBreathBy[i];fbMix[head+FbBreathAt[i]]+=f.Life*(w.x*inhale+w.y*sway+w.z*drift+w.w*(i==FbTiltRow?tilt:hand));}
             }
             fbPose.bodyPosition=new Vector3(fbMix[0],fbMix[1],fbMix[2]);fbPose.bodyRotation=new Quaternion(fbMix[3],fbMix[4],fbMix[5],fbMix[6]);Array.Copy(fbMix,NativeVisualMotionClips.Head,fbPose.muscles,0,fbPose.muscles.Length);
             // Leaning into what it does: its weight lags its speed.
