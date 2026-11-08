@@ -19,6 +19,7 @@
 - **Checks:** CoreTests `--fallen-boss` (new source checks: the floor carries no song, rings are packets with glints, the void drawn first and playing the song, pilots' steps and lifting feet ring the water, the hand's least-bent turn, the guard's pitch). Unity compile PASS.
 - **Seen in the Editor** (real Boss Battles and the intro preview): the hand at rest wrapped round the handle with the wrist near straight (front and side close-ups); the intro's guard from the front at 49.8, 50.1 and 50.4 s holding the blade near level over the head toward the left, where before it hung under the head's level; the water ringing in packets at NOCTIEL's feet and nothing else on the floor (the web of arcs left with the bass); the void's curtains faint between beats. The void shader built in the Editor.
 - **Not run:** no person or two-client run (the pilots' rings seen only with the capture's own pilots); the void's music judged from stills, not heard and watched together; the hand only at rest.
+- **Released:** full suite at `2bf05cdd` (shared merged in): 981 groups, exit 0; Unity compile PASS; pins: 2 flagged, both false (the new check asserts the floor no longer contains the bass line and the slam wave, and the pins tool reads those strings as pins). Merged `a6ffddcb`; builder succeeded and published to the test channel: revision 639297189901105948, 246.0 MiB.
 
 ## 2026-11-08 — Claude: NOCTIEL breathes and wears armour and robe (tabard, sash, motes off the cloth); THE DEEP END faces its jet (owner requests)
 
