@@ -5,6 +5,7 @@
 - **Unchanged:** the account service, polling, who may invite or accept, and every action (the same calls).
 - **Checks:** `SocialPanelChecks` gains the chip's placement, its own panel and switching, both chips counted as inside for click-outside and menu blocking, and the pop-up's new rule (47 pinned strings verified). Seen in the Editor (6000.3.24f1) with a stubbed account, players and invitations. Real clicks through the Game View: "+N MORE" opened the invitations, ONLINE switched to the players, INVITES switched back, and INVITES again closed it. Also seen: the empty inbox, the drop-in, the room setup screen and the pause menu.
 - **Not run:** a hosted room's lobby (the chips beside the connection pill; the bar has room), a real invitation between two signed-in accounts, the controller's pointer. No gameplay, rule, hit timing or network change.
+- **Released:** full suite at `790d73c9`: 981 groups, exit 0; Unity compile PASS; the pin checker flagged only the new negative check (`!ui.Contains("badge=invites.ToString()")`, its known false positive on absent strings). Merged `121b1304`; builder succeeded and published to the test channel: revision 639297048862940334, 246.0 MiB. No live release.
 
 ## 2026-11-07 — Claude: THE DEEP END's body can't fold into itself (owner request)
 
