@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
             Check(z.archetype==NativeFallenBoss.Archetype&&z.Valid()&&Pve.HoldDuration==NativeFallenPilots.CutsceneEnd,"intro and initial record");
             foreach(var pilot in Members())Check(ExpeditionSupported(Vec(pilot.Body.position)-new V3(0,NativeLocomotionRules.HalfHeight,0),NativeLocomotionRules.Radius,NativeLocomotionRules.HalfHeight*2),"supported landing");
             void Wire(){var frame=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=9,frame=NetworkFrame()})).frame;Check(frame.Valid(Content),"real codec frame valid at phase "+z.phase);replicaCheck(frame);}
-            Wire();PveHoldTick(Pve.HoldDuration+.01f);Check(!Pve.Holding&&z.action==null,"intro releases");
+            Wire();ValidateCutsceneSkip((ok,why)=>Check(ok,"skip vote: "+why));PveHoldTick(Pve.HoldDuration+.01f);Check(!Pve.Holding&&z.action==null,"intro releases");
             var life=f.hush.First(s=>s.id==p.Seat.id);p.ShieldUntil=0;bossHits.Clear();FallenHurt(p,0,true);Check(p.Hp==0&&life.lives==4&&life.respawnAt>=0,"OHK consumes one life");
             Match.SynchronizeExpeditionClock(Time+3.01f);FallenLives();Check(p.Hp>0&&life.lives==4&&Vector3.Distance(p.Body.position,m.Body.position)>=25,"respawn health and distance");
             if(wipe){foreach(var pilot in Members()){var s=f.hush.First(s=>s.id==pilot.Seat.id);s.lives=1;pilot.ShieldUntil=0;bossHits.Clear();FallenHurt(pilot,0,true);}StepFallenBattle();Check(Pve.Holding&&Pve.Cinematic=="defeat","last life wipe");PveHoldTick(4);Check(Match.Phase==NativePhase.Match&&Pve.Outcome=="defeat","wipe completion");Debug.Log("PASS native NOCTIEL wipe: "+PartySize+" pilots / "+n+" checks");return;}
