@@ -44,7 +44,9 @@ model's skeleton, so the pack's clips, planted feet, weapon grips, IK, corpses a
   1.3 times.
   - Its bottom sits at 0.92 m, just under the hip joints at 0.961 m.
   - It is centred on the spine at the shoulders, so the arms leave its sides.
-  - Its weights follow the pilot's spine by height, on twins of the spine's bones.
+  - Its weights follow the pilot's spine by height: a bell round each spine bone 0.12 m wide, the neck's held at 0.6 and the
+    head's at 0.35, so a bent spine bends it smoothly and the head's pitch doesn't fold its top. They sit on twins of the
+    spine's bones.
 - **The arm and leg tubes** are mapped bone by bone onto the pilot's bones. They are stretched along each bone to the pilot's
   length and thickened 1.3 times across. The legs grow about 3.6 times: the skeleton's stride is the pilot's, so the Hot Dog has
   long noodle legs.
@@ -57,11 +59,13 @@ It stands about 1.86 m to the top of its crown sprigs. The pilot's hair tops out
 ## The jiggle (body physics)
 
 The sausage's weights sit on twins of the pelvis, spine_02 to spine_05, neck_01 and the head. Each twin is a child of its bone,
-at rest where the bone is. Each frame after the pose, a damped spring on the sausage's top steps on the pelvis's motion
-(`NativeHotDog.Step`). Its tuning:
+at rest where the bone is. Each frame after the pose, a damped spring on the sausage's top steps on the pilot's floor point
+(`NativeHotDog.Step`). The floor point carries the pilot's motion without the clips' bob, so a run doesn't set it bouncing.
+Its tuning:
 
-- about 3.5 wobbles a second (ω 22 rad/s, damping ratio 0.2);
-- the top keeps half of each change in the body's velocity, which counts for at most 6 m/s a frame.
+- a soft wobble, about 2.4 a second (ω 15 rad/s, damping ratio 0.25);
+- the top keeps 0.8 of each sideways change in the body's velocity and 0.35 of each upright one, a change counting for at most
+  6 m/s a frame.
 
 It lags behind a start, a stop, a turn or a jump and wobbles back:
 
