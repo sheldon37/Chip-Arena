@@ -32,7 +32,8 @@ namespace ChipArena.UnityConversion
         public int FallenBossDraws{get;private set;}
         // The sword in hand_r (tools/gear/fallen_boss.py to_sword): the fist's centre, the blade's way, the flat's way. Metres on the skeleton before its scale.
         private static readonly Vector3 FbGrip=new Vector3(.096f,-.018f,-.015f),FbBladeWay=new Vector3(.144f,.468f,.872f).normalized;private static Vector3 FbFlatWay=new Vector3(.349f,-.848f,.398f);
-        private const float FbBladeFrom=.15f,FbBladeLength=1.5f;
+        // The blade's foot and length past it, in hand_r's sword frame: the built claymore's (Core NativeFallenSword: to 1.9; the bank's ran to 1.65).
+        private const float FbBladeFrom=.15f,FbBladeLength=NativeFallenSword.Point-FbBladeFrom;
         private Vector3 FbTipLocal=>FbGrip+FbBladeWay*(FbBladeFrom+FbBladeLength);private Vector3 FbHiltLocal=>FbGrip+FbBladeWay*(FbBladeFrom+.1f);
 
         private bool FallenBodyBuild()
@@ -73,6 +74,8 @@ namespace ChipArena.UnityConversion
             }
             foreach(var lp in NativeFallenBossLook.Parts){var part=Part(lp.Name);if(part==null)continue;part.Group=fbGroupIndex[lp.Group];part.Phases=lp.Phases;fbParts.Add(part);}
             foreach(var n in new[]{"feather-one","cantor","penitent","throne-ring","throne-eye"}){var part=Part(n);if(part!=null)fbFree[n]=part;}
+            // The claymore built in C# in the bank's sword's place (Runtime NativeFallenSwordBody.cs).
+            FallenSwordBuild();
             var life=gameObject.GetComponent<NativeStationLifetime>();if(life==null)life=gameObject.AddComponent<NativeStationLifetime>();life.Gone+=DisposeFallenBoss;
             // The owner's reference clips for the intro, when their file is there (Runtime NativeFallenIntroMocapBody.cs).
             FallenMocapRig(most,skeleton);
@@ -368,15 +371,18 @@ namespace ChipArena.UnityConversion
                 // The cloth skirt hangs in phases 1 and 2 in place of the strips; phase 3's remnant at the waist stays rigid.
                 if(FallenClothOn&&f.Phase<=2&&part.Name.StartsWith("robe",StringComparison.Ordinal))continue;
                 if(FallenHoodOn&&f.Phase<=3&&part.Name=="cowl")continue;
+                if(FallenSwordOn&&FbSwordPart(part.Name))continue;
                 Vector4? c=part.Name=="sword-veins-1"?cut:(Vector4?)null;
                 float gs=part.Name=="sword-blade-light"?.72f:part.Name=="head-light"?.8f:1;FbDraw(mesh,glows,world,inner,flash,0,c,gs);FbDraw(mesh,glows,mirror*world,inner,flash,1,c,gs);
             }
+            if(FallenSwordOn)FallenSwordDraw(f.Phase,fbHandR.localToWorldMatrix,inner,flash,mirror,cut,tier,f.P,true);
         }
         /// <summary>The sword alone, standing in the water after it's gone.</summary>
         private void FallenSwordAlone(FallenBossFrame f,Vector3 origin,float inner,Matrix4x4 mirror)
         {
             int bit=1<<(f.Phase-1);var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);var grip=origin+FallenPlantPoint(f,0);var flat=FbFlatWay;Vector3.OrthoNormalize(ref FbBladeWayCopy,ref flat);var inHand=Quaternion.LookRotation(FbBladeWayCopy,flat);var hand=Quaternion.LookRotation(Vector3.down,yawRot*Vector3.forward)*Quaternion.Inverse(inHand);
             float s=NativeFallenBoss.Scale;var world=Matrix4x4.TRS(grip-hand*(FbGrip*s),hand,Vector3.one*s);
+            if(FallenSwordOn){FallenSwordDraw(f.Phase,world,inner,0,mirror,new Vector4(0,0,0,1),0,f.P,false);return;}
             foreach(var part in fbParts)
             {
                 if(!part.Name.StartsWith("sword",StringComparison.Ordinal)||part.Name=="sword-flakes"||(part.Phases&bit)==0)continue;var mesh=part.Mesh[0];if(mesh==null)continue;bool glows=mesh.subMeshCount>1;
@@ -394,7 +400,7 @@ namespace ChipArena.UnityConversion
         private void FallenBodyDispose()
         {
             FallenClothDispose();fbHandler?.Dispose();fbHandler=null;if(fbRoot!=null)Destroy(fbRoot);fbRoot=null;fbBuilt=false;fbFailed=false;fbBone.Clear();fbBind.Clear();fbGroupIndex.Clear();
-            foreach(var p in fbParts)foreach(var m in p.Mesh)if(m!=null)CapturedAnimation.Release(m);fbParts.Clear();foreach(var p in fbFree.Values)foreach(var m in p.Mesh)if(m!=null)CapturedAnimation.Release(m);fbFree.Clear();if(fbBody!=null)CapturedAnimation.Release(fbBody);fbBody=null;
+            FallenSwordDispose();foreach(var p in fbParts)foreach(var m in p.Mesh)if(m!=null)CapturedAnimation.Release(m);fbParts.Clear();foreach(var p in fbFree.Values)foreach(var m in p.Mesh)if(m!=null)CapturedAnimation.Release(m);fbFree.Clear();if(fbBody!=null)CapturedAnimation.Release(fbBody);fbBody=null;
         }
     }
 }

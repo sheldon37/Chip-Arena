@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     /// <summary>One frame of NOCTIEL's presentation: what the body, the camera, the water and the screen do. Stage coordinates (the disc's centre at the origin, the water at y 0).</summary>
     public sealed class FallenBossFrame
     {
-        public NativeFallenRecord Live;public NativeFallenBossPreview.Act[] Actions;public FallenFxProp[] LiveAdds;public Vector3 Target;
+        public NativeFallenRecord Live;public NativeFallenBossPreview.Act[] Actions;public FallenFxProp[] LiveAdds;public NativeFallenAdds.Seen[] Adds;public Vector3 Target;
         public float P;public int Section,Phase=1;public byte Kind;
         public float SongClip;public int SongEpoch;
         public Vector3 Boss;public float Yaw;public bool BossShown=true;

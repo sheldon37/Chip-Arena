@@ -17,13 +17,15 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ArenaPresentation
     {
+        /// <summary>A fallen add's lifetime (Runtime NativeFallenAuthority FallenSummon: Until is its birth plus this): its birth for the animation.</summary>
+        private const float FallenAddLife=45;
         // Binding only: uses Claude's existing intro/death shots, clips, shaders and effects.
         private void FallenBossViewOf(NativeArena a,FallenBossFrame f)
         {
             var z=a.ZoneBoss;var state=z.fallen;float now=a.Time;
             bool intro=a.Pve.Holding&&a.Pve.Cinematic=="intro",death=z.deathAt>=0;
             float script=intro?a.Pve.HoldDuration-a.Pve.HoldLeft:death?NativeFallenBossPreview.Sections[8].From+now-z.deathAt:NativeFallenBossPreview.Sections[z.phase==1?1:z.phase==2?3:z.phase==3?5:7].From+2;
-            NativeFallenBossPreview.Eval(script,VisualMotionBank,f);f.Live=state;var song=a.FallenSongClock();f.SongClip=(float)song.clip;f.SongEpoch=(int)song.epoch;f.Actions=Array.Empty<NativeFallenBossPreview.Act>();f.LiveAdds=Array.Empty<FallenFxProp>();
+            NativeFallenBossPreview.Eval(script,VisualMotionBank,f);f.Live=state;var song=a.FallenSongClock();f.SongClip=(float)song.clip;f.SongEpoch=(int)song.epoch;f.Actions=Array.Empty<NativeFallenBossPreview.Act>();f.LiveAdds=Array.Empty<FallenFxProp>();f.Adds=Array.Empty<NativeFallenAdds.Seen>();
             if(intro||death){f.Target=NV.Zero;return;}
             var m=a.Minions.FirstOrDefault(m=>m.Id==z.actor);if(m==null)return;
             f.P=now;f.Boss=ToNV(m.Body.position);f.Yaw=m.Yaw;f.Phase=z.phase;f.Kind=state.draftAt>=0?NativeFallenBossPreview.KindChips:NativeFallenBossPreview.KindFight;f.ChipAge=state.draftAt>=0?now-state.draftAt:-1;f.ChipPhase=z.phase;f.Black=0;f.SlashAge=-1;f.CardAge=-1;f.Plant=0;f.Kneel=0;f.Air=0;f.Trail=0;f.Flare=0;f.Carry=1;f.Track=0;f.ClipFrom=f.ClipTo="Unarmed-Idle";f.TimeFrom=f.TimeTo=now;f.Mix=1;f.BossShown=true;
@@ -37,8 +39,15 @@ namespace ChipArena.UnityConversion
                 if(z.action=="verdict"||z.action=="last")act.To=new NV(z.targetX,0,z.targetZ);
                 if(z.action=="severance"&&NativeFallenRules.Chip(state,"second-wing")){var second=act;second.At+=.6f;second.Hit+=.6f;second.End+=.6f;f.Actions=new[]{act,second};}else f.Actions=new[]{act};
             }
-            var acts=new System.Collections.Generic.List<NativeFallenBossPreview.Act>(f.Actions);var props=new System.Collections.Generic.List<FallenFxProp>();foreach(var add in a.Minions.Where(m=>m.Hp>0&&m.Kind.StartsWith("fallen-",StringComparison.Ordinal)))
-            {string kind=add.Kind.Substring(7);var victim=a.Pilots.Where(p=>!p.Seat.AuthorityBoss&&p.Hp>0&&p.Seat.connected).OrderBy(p=>(p.Body.position-add.Body.position).sqrMagnitude).FirstOrDefault();if(victim!=null&&kind!="penitent")acts.Add(new NativeFallenBossPreview.Act{Id=kind+"-beam",At=now-1,Hit=now,End=now+1,From=ToNV(add.Body.position)+NV.UnitY,To=ToNV(victim.Body.position)});props.Add(new FallenFxProp{Id=kind=="cantor"?"cantor":kind=="penitent"?"penitent":"throne-ring",At=ToNV(add.Body.position),Turn=System.Numerics.Quaternion.CreateFromAxisAngle(NV.UnitY,add.Yaw*Mathf.Deg2Rad),Scale=1,Glow=1});if(kind=="throne")props.Add(new FallenFxProp{Id="throne-eye",At=ToNV(add.Body.position),Turn=System.Numerics.Quaternion.Identity,Scale=1,Glow=2});}f.LiveAdds=props.ToArray();f.Actions=acts.ToArray();
+            // The adds: what the authority says of each (place, birth and lifetime, last blow, last hit, quarry); Core NativeFallenAdds animates them,
+            // their songs and shots from where they leave them (Runtime NativeFallenAddsBody). The quarry is the nearest pilot (the authority's).
+            var adds=new System.Collections.Generic.List<NativeFallenAdds.Seen>();foreach(var add in a.Minions.Where(m=>m.Hp>0&&m.Kind.StartsWith("fallen-",StringComparison.Ordinal)))
+            {
+                var victim=a.Pilots.Where(p=>!p.Seat.AuthorityBoss&&p.Hp>0&&p.Seat.connected).OrderBy(p=>(p.Body.position-add.Body.position).sqrMagnitude).FirstOrDefault();var feet=victim!=null?victim.Body.position:Vector3.zero;if(victim!=null)feet.y=victim.Collider!=null?victim.Collider.bounds.min.y:feet.y-.865f;
+                bool lasts=!float.IsPositiveInfinity(add.Until);float born=lasts?add.Until-FallenAddLife:now;
+                adds.Add(new NativeFallenAdds.Seen{Id=add.Id,Kind=NativeFallenAdds.KindOf(add.Kind.Substring(7)),At=ToNV(add.Body.position),Born=born,Until=lasts?add.Until:0,LastAttack=add.LastAttack,LastHit=add.LastHitAt,Strength=NativeFallenAdds.CantorStrength(now-born),Target=ToNV(feet),HasTarget=victim!=null});
+            }
+            f.Adds=adds.ToArray();
         }
     }
 }

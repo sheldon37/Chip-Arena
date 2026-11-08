@@ -14,19 +14,23 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private Mesh fbVoidMesh;private Material fbVoidMat;private bool fbVoidFailed;
-        private static readonly int FbVoidSlamId=Shader.PropertyToID("_FbVoidSlam"),FbVoidDimId=Shader.PropertyToID("_FbVoidDim");
+        private static readonly int FbVoidSlamId=Shader.PropertyToID("_FbVoidSlam"),FbVoidDimId=Shader.PropertyToID("_FbVoidDim"),FbVoidLiveId=Shader.PropertyToID("_FbVoidLive");
+        // The void holds still through the intro (the owner, 2026-11-08: "only start animating the background AFTER the intro completes"): no song in
+        // it and its curtains unmoving, then the song eases in over FbVoidEase seconds and its own clock starts, so nothing jumps.
+        private float fbVoidLive,fbVoidClock;private const float FbVoidEase=2.5f;
         /// <summary>The void's sphere: its radius (m, inside the stage camera's far plane).</summary>
         private const float FbVoidRadius=380;
-        private void FallenVoidDraw(Vector3 eye,float clip,float dim,float now)
+        private void FallenVoidDraw(Vector3 eye,float clip,float dim,float dt,bool intro)
         {
+            if(intro){fbVoidLive=0;fbVoidClock=0;}else{fbVoidLive=Mathf.Min(1,fbVoidLive+Mathf.Max(0,dt)/FbVoidEase);fbVoidClock+=Mathf.Max(0,dt)*fbVoidLive;}
             if(fbVoidMat==null)
             {
                 if(fbVoidFailed)return;var sh=Resources.Load<Shader>("NativeFallenVoid");if(sh==null||!sh.isSupported){fbVoidFailed=true;Debug.LogWarning("NOCTIEL: the void's shader is missing");return;}
                 fbVoidMat=new Material(sh){name="NOCTIEL void",hideFlags=HideFlags.HideAndDontSave};
             }
             if(fbVoidMesh==null)fbVoidMesh=FallenVoidSphere();
-            if(fbSongTex!=null)fbVoidMat.SetTexture(FbSongId,fbSongTex);fbVoidMat.SetVector(FbSongAtId,new Vector4(clip,1f/NativeFallenSong.End,fbSongTex!=null?1:0,0));fbVoidMat.SetFloat(FbClockId,now%1000);
-            float slam=fbSong.LastSlam(clip);fbVoidMat.SetFloat(FbVoidSlamId,float.IsNaN(slam)?-1:clip-slam);fbVoidMat.SetFloat(FbVoidDimId,dim);
+            if(fbSongTex!=null)fbVoidMat.SetTexture(FbSongId,fbSongTex);fbVoidMat.SetVector(FbSongAtId,new Vector4(clip,1f/NativeFallenSong.End,fbSongTex!=null?1:0,0));fbVoidMat.SetFloat(FbClockId,fbVoidClock%1000);
+            float slam=fbSong.LastSlam(clip);fbVoidMat.SetFloat(FbVoidSlamId,float.IsNaN(slam)?-1:clip-slam);fbVoidMat.SetFloat(FbVoidDimId,dim);fbVoidMat.SetFloat(FbVoidLiveId,Mathf.SmoothStep(0,1,fbVoidLive));
             Graphics.DrawMesh(fbVoidMesh,Matrix4x4.TRS(eye,Quaternion.identity,Vector3.one*FbVoidRadius),fbVoidMat,0,null,0,null,ShadowCastingMode.Off,false);FallenBossDraws++;
         }
         // A unit sphere, faces in (the shader culls front), its vertices its directions.
@@ -37,7 +41,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<lat;i++)for(int j=0;j<lon;j++){int a=i*(lon+1)+j,b=a+1,c=a+lon+1,d=c+1;t.Add(a);t.Add(b);t.Add(d);t.Add(a);t.Add(d);t.Add(c);}
             var m=new Mesh{name="NOCTIEL void",hideFlags=HideFlags.HideAndDontSave};m.SetVertices(v);m.SetTriangles(t,0);m.bounds=new Bounds(Vector3.zero,Vector3.one*2);return m;
         }
-        private void FallenVoidDispose(){if(fbVoidMat!=null)CapturedAnimation.Release(fbVoidMat);fbVoidMat=null;if(fbVoidMesh!=null)CapturedAnimation.Release(fbVoidMesh);fbVoidMesh=null;fbVoidFailed=false;fbPilotSteps.Clear();}
+        private void FallenVoidDispose(){if(fbVoidMat!=null)CapturedAnimation.Release(fbVoidMat);fbVoidMat=null;if(fbVoidMesh!=null)CapturedAnimation.Release(fbVoidMesh);fbVoidMesh=null;fbVoidFailed=false;fbVoidLive=fbVoidClock=0;fbPilotSteps.Clear();}
 
         // ---- the pilots on the water ----
         private struct FbPilotStep{public Vector3 Last,Prev;public bool Air;public int Side;}
@@ -49,7 +53,7 @@ namespace ChipArena.UnityConversion
             if(arena==null)return;fbPilotSeen.Clear();float floor=origin.y;
             foreach(var p in arena.Pilots)
             {
-                if(p?.Body==null||p.Hp<=0||p.Seat==null)continue;int id=p.Seat.id;fbPilotSeen.Add(id);var at=p.Body.position;
+                if(p?.Body==null||p.Hp<=0||p.Seat==null)continue;int id=p.Seat.id;fbPilotSeen.Add(id);var at=p.Body.position;at.y=p.Collider!=null?p.Collider.bounds.min.y:at.y-.865f;
                 if(!fbPilotSteps.TryGetValue(id,out var s)){fbPilotSteps[id]=new FbPilotStep{Last=at,Prev=at,Side=1};continue;}
                 float up=at.y-floor;var flat=at-s.Last;flat.y=0;float travelled=flat.magnitude;
                 if(up>FbPilotAir){s.Air=true;s.Last=at;}
