@@ -19,9 +19,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The renderers' names, "NOCTIEL robe 1" and "NOCTIEL robe 2" (phase 1's, phase 2's): the paint maps are registered by them.</summary>
         public const string Name="NOCTIEL robe";
         public struct Panel{public float From,To,Length;public int Columns,Pleats;public int Thigh;}
-        /// <summary>Round the waist in degrees from the front toward its right (x = sin, z = cos); Thigh: which leg its hem leans on (0 none, 1 left, 2 right).</summary>
-        public static readonly Panel[] Long={new Panel{From=-15,To=15,Length=.4f,Columns=6,Pleats=1},new Panel{From=58,To=124,Length=.36f,Columns=10,Pleats=2,Thigh=2},new Panel{From=132,To=228,Length=.66f,Columns=14,Pleats=3},new Panel{From=236,To=302,Length=.36f,Columns=10,Pleats=2,Thigh=1}};
-        public static readonly Panel[] Burnt={new Panel{From=-15,To=15,Length=.31f,Columns=6,Pleats=1},new Panel{From=58,To=124,Length=.29f,Columns=10,Pleats=2,Thigh=2},new Panel{From=132,To=228,Length=.5f,Columns=14,Pleats=3},new Panel{From=236,To=302,Length=.29f,Columns=10,Pleats=2,Thigh=1}};
+        /// <summary>Round the waist in degrees from the front toward its right (x = sin, z = cos); Thigh: which leg its hem leans on (0 none, 1 left, 2 right).
+        /// Since 2026-11-08 the front panel is the tabard's (NativeFallenTabard): nothing of the skirt hangs within <see cref="Open"/> of the front.</summary>
+        public static readonly Panel[] Long={new Panel{From=58,To=124,Length=.36f,Columns=10,Pleats=2,Thigh=2},new Panel{From=132,To=228,Length=.66f,Columns=14,Pleats=3},new Panel{From=236,To=302,Length=.36f,Columns=10,Pleats=2,Thigh=1}};
+        public static readonly Panel[] Burnt={new Panel{From=58,To=124,Length=.29f,Columns=10,Pleats=2,Thigh=2},new Panel{From=132,To=228,Length=.5f,Columns=14,Pleats=3},new Panel{From=236,To=302,Length=.29f,Columns=10,Pleats=2,Thigh=1}};
         /// <summary>The front panel's half width (degrees): nothing else hangs within <see cref="Open"/> of the front, where the legs are.</summary>
         public const float Front=15,Open=55;
         /// <summary>The waist ring it hangs from (just under the faulds' last ring at y .9), its half sizes, and how far the hem flares out from them.</summary>
@@ -33,6 +34,8 @@ namespace ChipArena.UnityConversion
         public sealed class Grid
         {
             public Vector3[] Positions,Normals;public Vector2[] Uv;public uint[] Colors;public byte[] Alpha;public int[] Triangles;public int[] Bone1;public float[] Weight1;
+            /// <summary>Each vertex's first bone (null: bone 0 for all), and the outer copy's hem vertices (where the cloth sheds its motes).</summary>
+            public int[] Bone0,Hem;
             /// <summary>Vertices in one side's copy (the inner copy follows, the same order).</summary>
             public int Side;
         }
@@ -41,7 +44,7 @@ namespace ChipArena.UnityConversion
         public static Grid Build(int phase)
         {
             var panels=Of(phase);bool burnt=phase==2;
-            var pos=new List<Vector3>();var uv=new List<Vector2>();var col=new List<uint>();var bone=new List<int>();var weight=new List<float>();var tris=new List<int>();var outward=new List<Vector3>();
+            var pos=new List<Vector3>();var uv=new List<Vector2>();var col=new List<uint>();var bone=new List<int>();var weight=new List<float>();var tris=new List<int>();var outward=new List<Vector3>();var hem=new List<int>();
             for(int p=0;p<panels.Length;p++)
             {
                 var q=panels[p];int cols=q.Columns,first=pos.Count;
@@ -56,7 +59,7 @@ namespace ChipArena.UnityConversion
                         float pleat=Pleat*(.35f+.65f*t)*(float)Math.Sin(u*Math.PI*2*q.Pleats),rx=WaistX+FlareX*(float)Math.Pow(t,1.15)+pleat,rz=WaistZ+FlareZ*t+pleat;
                         float y=Top-length*t;var at=new Vector3((float)Math.Sin(a)*rx,y,CentreZ+(float)Math.Cos(a)*rz);
                         pos.Add(at);uv.Add(new Vector2(u,1-t));outward.Add(Vector3.Normalize(new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a))));
-                        bool edge=c==0||c==cols||r==Rows;col.Add(edge?(burnt&&r>=Rows-1?Ash:Trim):Cloth);
+                        bool edge=c==0||c==cols||r==Rows;col.Add(edge?(burnt&&r>=Rows-1?Ash:Trim):Cloth);if(r==Rows)hem.Add(pos.Count-1);
                         bone.Add(q.Thigh);weight.Add(q.Thigh==0?0:.5f*t*t);
                     }
                 }
@@ -67,7 +70,7 @@ namespace ChipArena.UnityConversion
                     Tri(tris,pos,outward,a,b,e);Tri(tris,pos,outward,a,e,d);
                 }
             }
-            int n=pos.Count;var g=new Grid{Side=n,Positions=new Vector3[n*2],Normals=new Vector3[n*2],Uv=new Vector2[n*2],Colors=new uint[n*2],Alpha=new byte[n*2],Bone1=new int[n*2],Weight1=new float[n*2]};
+            int n=pos.Count;var g=new Grid{Hem=hem.ToArray(),Side=n,Positions=new Vector3[n*2],Normals=new Vector3[n*2],Uv=new Vector2[n*2],Colors=new uint[n*2],Alpha=new byte[n*2],Bone1=new int[n*2],Weight1=new float[n*2]};
             var normals=Normals(pos,tris,outward);
             for(int i=0;i<n;i++)
             {

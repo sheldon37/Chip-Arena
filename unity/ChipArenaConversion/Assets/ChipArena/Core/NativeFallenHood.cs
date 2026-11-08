@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The hood: the outer copy first, then the inner, flipped (NativeFallenRobe's grid).</summary>
         public static NativeFallenRobe.Grid Build()
         {
-            int rows=Rows,cols=Columns;var pos=new List<Vector3>();var uv=new List<Vector2>();var col=new List<uint>();var bone=new List<int>();var weight=new List<float>();var outward=new List<Vector3>();var tris=new List<int>();
+            int rows=Rows,cols=Columns;var pos=new List<Vector3>();var uv=new List<Vector2>();var col=new List<uint>();var bone=new List<int>();var weight=new List<float>();var outward=new List<Vector3>();var tris=new List<int>();var hems=new List<int>();
             for(int r=0;r<=rows;r++)
             {
                 int k=Math.Min(Rings.Length-2,r/Sub);float f=(r-k*Sub)/(float)Sub;var a=Rings[k];var b=Rings[k+1];
@@ -59,12 +59,12 @@ namespace ChipArena.UnityConversion
                     col.Add(rim||hem?Trim:crease<-.006f?Fold:Cloth);
                     // Skinned: the head; the skirt handed down to the neck, then the chest.
                     int bi=0;float w=0;if(skirt>0){if(skirt<.5f){bi=1;w=skirt*2*.6f;}else{bi=2;w=.3f+(skirt-.5f)*2*.5f;}}
-                    bone.Add(bi);weight.Add(w);
+                    bone.Add(bi);weight.Add(w);if(hem)hems.Add(pos.Count-1);
                 }
             }
             int wdt=cols+1;
             for(int r=0;r<rows;r++)for(int c=0;c<cols;c++){int a=r*wdt+c,b=a+1,d=a+wdt,e=d+1;Tri(tris,pos,outward,a,b,e);Tri(tris,pos,outward,a,e,d);}
-            int n=pos.Count;var g=new NativeFallenRobe.Grid{Side=n,Positions=new Vector3[n*2],Normals=new Vector3[n*2],Uv=new Vector2[n*2],Colors=new uint[n*2],Alpha=new byte[n*2],Bone1=new int[n*2],Weight1=new float[n*2]};
+            int n=pos.Count;var g=new NativeFallenRobe.Grid{Hem=hems.ToArray(),Side=n,Positions=new Vector3[n*2],Normals=new Vector3[n*2],Uv=new Vector2[n*2],Colors=new uint[n*2],Alpha=new byte[n*2],Bone1=new int[n*2],Weight1=new float[n*2]};
             var normals=Normals(pos,tris,outward);
             for(int i=0;i<n;i++)
             {
