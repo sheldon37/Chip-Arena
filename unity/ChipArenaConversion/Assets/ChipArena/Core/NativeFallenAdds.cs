@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
         public static float DeathTime(byte kind)=>kind==NativeFallenAdds.Cantor?1.4f:kind==NativeFallenAdds.Penitent?1.5f:1.8f;
         /// <summary>A Penitent's reach ahead of its shoulders, the distance its planted hand may fall behind before it reaches again, and how close
         /// it rears up to claw.</summary>
-        public const float Reach=.9f,Stride=1.3f,Latch=2.4f;
+        public const float Reach=.58f,Stride=1.1f,Latch=2.4f;
         public sealed class Add
         {
             public int Id;public byte Kind;public NativeFallenAdds.Seen Last;public Vector3 At,Vel;public float Yaw,Born,GoneAt=-1,LastSeen;public bool Killed;
@@ -137,9 +137,10 @@ namespace ChipArena.UnityConversion
             int strips=tier==0?7:4;for(int s=0;s<strips;s++)
             {
                 int j=(int)((s+.5f)/strips*n)%n;var p0=hem[j];var outw=Vector3.Normalize(new Vector3(p0.X-cs[cs.Count-1].X,0,p0.Z-cs[cs.Count-1].Z)+new Vector3(0,.0001f,0));
-                float sw=.22f*(float)Math.Sin(t*1.9f+s*2.3f+id)+.06f*hit*(float)Math.Sin(t*25);float len=.38f+.3f*Hash(a.Id*13+s);
-                var trail=-(f*vf+r*vr)*.05f;var p1=p0+outw*.05f-up*(.2f)+(r*sw*.25f+trail)*.5f;var p2=p1-up*len+(r*sw+f*(.15f*(float)Math.Sin(t*1.4f+s))*.6f+trail)*len;
-                k.Tube(new[]{p0,p1,p2},new[]{.05f*crumple,.04f,.018f},tier==0?5:4,NativeFallenKit.FeatherDark,false,false,true);
+                // A torn ribbon of the robe itself, short, flat along the hem, fluttering (not a string hanging to the water).
+                float sw=.25f*(float)Math.Sin(t*2.3f+s*2.3f+id)+.08f*hit*(float)Math.Sin(t*25);float len=.16f+.2f*Hash(a.Id*13+s);var along=Vector3.Normalize(Vector3.Cross(up,outw));
+                var trail=-(f*vf+r*vr)*.04f;var p1=p0+outw*(.03f+.04f*Math.Abs(sw))-up*(len*.5f)+(along*sw*.12f+trail)*.5f;var p2=p0+outw*(.05f+.08f*Math.Abs(sw))-up*len+(along*sw*.25f+trail);
+                k.Quill(new[]{p0+up*.04f,p1,p2},new[]{along,along,along},new[]{.085f*crumple,.05f,0},NativeFallenKit.Feather,false,false,.12f);
             }
             // The hood, tipped back as it sings (more on each note), the mouth open wider.
             var neck=origin+up*(2.2f*(1-.35f*d));float pitch=-(.18f*sing+.12f*pulse)+.55f*d*d+.06f*(float)Math.Sin(t*1.2f+id);float tilt=.07f*(float)Math.Sin(t*.9f+id*2);
@@ -192,13 +193,13 @@ namespace ChipArena.UnityConversion
             if(age<PenitentRise+.3f)Splashes.Add((body+f*.5f,age,a.Id*11));
             for(int h=0;h<2;h++)
             {
-                int side=h==0?-1:1;var want=body+f*(Reach+Math.Min(.5f,speed*.06f))+r*(side*.3f);want.Y=0;
+                int side=h==0?-1:1;var want=body+f*(Reach+Math.Min(.25f,speed*.03f))+r*(side*.3f);want.Y=0;
                 if(!a.HandsSet){a.Hand[h]=a.To[h]=want;a.Up[h]=false;if(h==1)a.HandsSet=true;continue;}
                 if(a.Up[h])
                 {
                     float dur=Math.Max(.09f,Math.Min(.26f,.3f-speed*.03f));float u=(now-a.SwingAt[h])/dur;
                     // The hand reaches for a point the body will pass, so it lands ahead.
-                    a.To[h]=want+f*(Math.Min(Stride*.45f,speed*dur*1.4f));a.To[h].Y=0;
+                    a.To[h]=want+f*(Math.Min(Stride*.3f,speed*dur*.8f));a.To[h].Y=0;
                     if(u>=1){a.Up[h]=false;a.Hand[h]=a.To[h];if(!dying&&a.Rear<.5f)Rings.Add((a.Hand[h],.32f+Math.Min(.3f,speed*.05f)));}
                     else{float e=Smooth(u);a.Hand[h]=Vector3.Lerp(a.From[h],a.To[h],e)+Vector3.UnitY*(float)(.22f*Math.Sin(Math.PI*u)*(.5f+.5f*Math.Min(1,speed/4)));}
                 }
@@ -264,7 +265,7 @@ namespace ChipArena.UnityConversion
                 else hand=a.Hand[h]+(rise<1?up*-(1-Smooth(age/(PenitentRise*.45f)))*.8f:Vector3.Zero)+push*(d>0?1:0);
                 if(d>0)hand=Vector3.Lerp(hand,o+f*1.05f+r*(side*.35f)+up*(-d*1.2f),Smooth(d*1.5f));
                 var elbow=Elbow(sh,hand,.47f,.5f,Vector3.Normalize(r*side*(1.1f-.5f*rear)+up*(.7f-1f*rear)-f*(.2f+.2f*rear)));
-                k.Tube(new[]{sh,elbow,hand},new[]{.05f,.04f,.035f},tier==0?7:5,NativeFallenKit.Bone,false,true,true);
+                k.Tube(new[]{sh,elbow,hand},new[]{.066f,.052f,.04f},tier==0?7:5,NativeFallenKit.Bone,false,true,true);
                 // Fingers spread on the water, curled when clawing.
                 var fw=Vector3.Normalize(new Vector3(hand.X-elbow.X,0,hand.Z-elbow.Z)+f*.5f);var fr=Vector3.Cross(up,fw);
                 for(int g=-1;g<=1;g++){var tipAt=hand+fw*(.11f-.04f*rear)+fr*(g*.05f)-up*(.02f-.08f*rear)+up*(.06f*rear*Math.Abs(g));k.Tube(new[]{hand,hand+fw*.05f+fr*(g*.03f),tipAt},.012f,4,NativeFallenKit.Bone,false,true,true);}
