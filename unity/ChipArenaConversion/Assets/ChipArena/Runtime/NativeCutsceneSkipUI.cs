@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private NativeArena skipArena;private string skipKeySeen;private int skipSerialSeen=-1;private float skipShownAt=-100,skipDipAt=-100,skipVotedAt=-100;
-        private const float SkipPromptH=38,SkipKeyW=26,SkipDot=8,SkipDotGap=5,SkipMargin=28;
+        private const float SkipPromptH=38,SkipKeyW=26,SkipDot=8,SkipDotGap=5,SkipMargin=34,SkipTracking=.6f;
         private const string SkipSolo="SKIP",SkipVote="VOTE TO SKIP",SkipVoted="VOTED · WAITING",SkipKeyLabel="F";
         private static readonly string[] SkipCounts=BuildSkipCounts();
         private static string[] BuildSkipCounts()
@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
             // It eases in a beat after the cutscene starts (F counts from the first frame).
             float a=Mathf.Clamp01((now-skipShownAt-.35f)/.35f);if(a<=0)return;
             string label=mine?SkipVoted:many?SkipVote:SkipSolo;
-            float labelW=U.Measure(label,13,true,false,1.5f).x,dotsW=many?need*SkipDot+(need-1)*SkipDotGap+10+U.Measure(SkipCount(votes,need),12,false,true).x:0;
+            float labelW=U.Measure(label,13,true,false,SkipTracking).x,dotsW=many?need*SkipDot+(need-1)*SkipDotGap+10+U.Measure(SkipCount(votes,need),12,false,true).x:0;
             float w=12+SkipKeyW+10+labelW+(many?14+dotsW:0)+14;
             var r=new Rect(width-SkipMargin-w,height-SkipMargin-SkipPromptH,w,SkipPromptH);
             // Waiting on this pilot, with someone already in: a soft pulse on the border.
@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
             U.Round(key,mine?C.Cyan(.18f*a):C.Panel(.95f*a),6,mine?C.Cyan(.6f*a):C.Ink(.55f*a));
             U.Text(key,SkipKeyLabel,14,mine?C.Cyan(.8f*a):C.Ink(a),TextAnchor.MiddleCenter,true,true);
             float x=key.xMax+10;
-            U.Text(new Rect(x,r.y,labelW+4,SkipPromptH),label,13,mine?C.Cyan(a):C.Ink(a),TextAnchor.MiddleLeft,true,false,1.5f);x+=labelW+14;
+            U.Text(new Rect(x,r.y,labelW+4,SkipPromptH),label,13,mine?C.Cyan(a):C.Ink(a),TextAnchor.MiddleLeft,true,false,SkipTracking);x+=labelW+14;
             if(!many)return;
             for(int i=0;i<need;i++)
             {
