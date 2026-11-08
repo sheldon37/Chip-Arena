@@ -13,6 +13,7 @@
 - **Checks:** CoreTests `--deepend-boss` (new: smooth at 144 fps through the Jet's burst and the Flop, 35 pops and a 10 mm mean, was 424 and 84; the body still never folds, closest 0.96 of the radii, sharpest bend 74 degrees; two frame rates one pose), `--deepend-motion`, `--telegraphs`, `--fallen-boss` (new: walking it faces its way, stopped it turns to its quarry; the hood covers the cowl's head, the mask shows whole, closed over the crown, both faces wound, the crown fixed and the skirt moving, built in the cowl's place). Unity compile PASS.
 - **Seen in the Editor** (real Boss Battles and NOCTIEL's preview): from the Deep End room's near corner, shared shows the black box behind the boss and the branch doesn't; the Drain pulls with no lines on the floor. NOCTIEL's hood built and simulated ("the hood (simulated)"), charcoal, peaked, framing the mask, in the fight and the intro; from behind, the intro's raised blade (cutscene 50.0 to 50.3 s) no longer lies through it.
 - **Not run:** no person or two-client run; the hood's cloth judged in stills only (its motion not watched); the walk's facing checked in Core, not watched in a live chase.
+- **Released:** full suite at `988b5cc1` (shared merged in): 981 groups, exit 0; pins 0 broken; Unity compile PASS. Merged `b8b24bf3`; builder succeeded and published to the test channel: revision 639297084867946223, 246.0 MiB.
 
 ## 2026-11-07 — Claude: the INVITES chip beside ONLINE (owner request)
 
