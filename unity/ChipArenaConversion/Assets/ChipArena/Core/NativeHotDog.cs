@@ -22,17 +22,19 @@ namespace ChipArena.UnityConversion
 
         // ---- The sausage's jiggle ----
         // A damped spring on the sausage's top (its offset from where the pose puts it, m, world): it lags behind the body's
-        // changes of velocity (a start, a stop, a turn of the run, a jump's take-off and landing) and wobbles back. Its sideways
+        // changes of velocity (a start, a stop, a turn of the run, a jump's take-off and landing) and wobbles back. It steps on
+        // the pilot's floor point, not the pelvis, so the run's own bob (already in the pose) doesn't set it bouncing. Its sideways
         // part leans the sausage (more toward the top: a bend), its upright part squashes or stretches it (a landing squashes
         // it). The runtime turns it into the sausage bones' frames (NativeHotDogPresentation.cs HotDogJiggle); the arms and legs
         // never move with it.
         /// <summary>The sausage's height over the pelvis (m; the lean's lever and the squash's measure).</summary>
         public const float Height=.85f;
-        /// <summary>The spring's natural frequency (rad/s) and damping ratio: about three and a half wobbles a second, dying away
-        /// in about four.</summary>
-        public const float Omega=22,Damping=.2f;
-        /// <summary>How much of a change in the body's velocity the top keeps (it lags by this share, then springs back).</summary>
-        public const float Kick=.5f;
+        /// <summary>The spring's natural frequency (rad/s) and damping ratio: a soft wobble, about two and a half a second, dying
+        /// away in about four.</summary>
+        public const float Omega=15,Damping=.25f;
+        /// <summary>How much of a change in the body's velocity the top keeps, sideways and upright (it lags by this share, then
+        /// springs back): a start or a stop leans it well over, a landing squashes it.</summary>
+        public const float Kick=.8f,KickUp=.35f;
         /// <summary>The most a frame's change of velocity counts (m/s: a teleport or a respawn is not a lurch).</summary>
         public const float KickMax=6;
         /// <summary>The furthest it leans (m, at the top) and the most it squashes or stretches (a share of its height).</summary>
@@ -45,14 +47,14 @@ namespace ChipArena.UnityConversion
             public Vector3 Offset,Velocity,LastAt,LastVelocity;public bool Primed;
         }
 
-        /// <summary>Advance `j` by `dt` seconds with the body's pelvis now at `at` (world, m). A first frame, a long gap or a jump of
-        /// more than two metres starts it at rest.</summary>
+        /// <summary>Advance `j` by `dt` seconds with the body's floor point now at `at` (world, m). A first frame, a long gap or a
+        /// jump of more than two metres starts it at rest.</summary>
         public static void Step(ref Jiggle j,Vector3 at,float dt)
         {
             if(!j.Primed||!(dt>0)||dt>.25f||Vector3.DistanceSquared(at,j.LastAt)>4){j=default;j.LastAt=at;j.Primed=true;return;}
             var velocity=(at-j.LastAt)/dt;var change=velocity-j.LastVelocity;
             float size=change.Length();if(size>KickMax)change*=KickMax/size;
-            j.Velocity-=change*Kick;
+            j.Velocity-=new Vector3(change.X*Kick,change.Y*KickUp,change.Z*Kick);
             int n=Math.Max(1,(int)Math.Ceiling(dt/Substep));float h=dt/n;
             for(int i=0;i<n;i++)
             {

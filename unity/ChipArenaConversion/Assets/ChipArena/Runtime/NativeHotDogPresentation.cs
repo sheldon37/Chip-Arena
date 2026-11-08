@@ -116,8 +116,9 @@ namespace ChipArena.UnityConversion
         {
             public Transform Pelvis;public Transform[] Twins;public NativeHotDog.Jiggle Spring;public bool Moved;
         }
-        // VisualBodyPose, once the live pilot's body is posed: the spring stepped on its pelvis's motion and its twins set so the
-        // sausage leans about the pelvis (bending: more toward its top) and squashes along the body's up.
+        // VisualBodyPose, once the live pilot's body is posed: the spring stepped on the body's floor point (its root: the pilot's
+        // motion without the clips' bob) and its twins set so the sausage leans about the pelvis (bending: more toward its top)
+        // and squashes along the body's up.
         private void HotDogJiggle(VisualBody body)
         {
             if(!NativeHotDog.Worn(body.Look))return;
@@ -129,8 +130,8 @@ namespace ChipArena.UnityConversion
                 rig.Twins=twins.ToArray();
             }
             if(rig.Pelvis==null||rig.Twins.Length==0)return;
-            var pelvis=rig.Pelvis.position;
-            NativeHotDog.Step(ref rig.Spring,new System.Numerics.Vector3(pelvis.x,pelvis.y,pelvis.z),Time.deltaTime);
+            var pelvis=rig.Pelvis.position;var floor=body.Root.transform.position;
+            NativeHotDog.Step(ref rig.Spring,new System.Numerics.Vector3(floor.x,floor.y,floor.z),Time.deltaTime);
             NativeHotDog.Pose(rig.Spring,out var ax,out float angle,out float squash);
             if(angle<1e-4f&&Mathf.Abs(squash)<1e-4f){if(rig.Moved){foreach(var t in rig.Twins){t.localPosition=Vector3.zero;t.localRotation=Quaternion.identity;t.localScale=Vector3.one;}rig.Moved=false;}return;}
             var axis=new Vector3(ax.X,ax.Y,ax.Z);var up=Vector3.up;
