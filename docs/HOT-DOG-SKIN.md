@@ -24,10 +24,11 @@ blender --background --factory-startup --python tools/gear/hotdog_tripo.py -- --
 ```
 
 - `--dump` is a bind dump of the model, the local tool's play `binddump=T` (`bind.txt`, `rest.Body.Body_AnimeBasic*.obj`).
-- `--texture` takes the export's own colour image, which is embedded as it is. **The FBX received on 2026-11-08 names
-  `tripo_rgb_ccbeb702-c64d-47fb-b348-6aaf8fce7a49.jpg` but does not carry it.** The owner showed it in chat on 2026-11-08 but
-  hasn't sent the file. Until it arrives, the script paints a 1024 px texture from the model's parts and the sausage's relief, in
-  the colours the owner's image shows:
+- `--texture` takes the export's own colour image, which is embedded as it is. The FBX names
+  `tripo_rgb_ccbeb702-c64d-47fb-b348-6aaf8fce7a49.jpg` but does not carry it; the owner's Tripo download zip
+  (`tripo_convert_3edf9985-....zip`: the same FBX and that 2048 px JPEG in its `.fbm` folder) does. The bank in the Drive zip is
+  built with it since 2026-11-08. Without `--texture` the script paints a 1024 px stand-in from the model's parts and the
+  sausage's relief, in the image's colours:
   - a hot dog red sausage, its ends browned;
   - yellow mustard, dark brows, white eyes with black pupils in red-rimmed lids;
   - white teeth in a dark mouth;
