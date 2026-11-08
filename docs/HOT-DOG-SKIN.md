@@ -76,6 +76,12 @@ The arms, hands, legs and whatever the hands hold stay on the real bones, so wea
 with it. Hats ride the head's twin, so they wobble with the crown. Only the live arena pilot's body jiggles. Corpses, portraits,
 the draft and first person keep the twins at rest.
 
+## Wounds and cuts
+
+The Hot Dog has no human skeleton inside, alive or dead (the body's and the corpse's `VisualSkeletonMake` are skipped for it).
+Its wounds still open holes with their pits of flesh, and its cuts show the cut cap. In the first live capture a falling brick
+wounded it, and the pilot's skeleton showed as ribs inside the sausage, its leg bones out past the noodle legs.
+
 ## Open items
 
 - **Rights:** this assumes a Tripo Pro export (the owner said on 2026-11-05 they would buy Pro). The free plan gives no rights to
