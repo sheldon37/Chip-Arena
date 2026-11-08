@@ -154,6 +154,7 @@ namespace ChipArena.UnityConversion
             else if(message.type=="pve-pick"&&message.chip?.Length<=64)arena.ChoosePve(pilot,message.pick,message.chip);
             else if(message.type=="pve-open")arena.OpenPvePick(pilot);
             else if(message.type=="pve-close")arena.ClosePvePick(pilot);
+            else if(message.type=="skip-vote")arena.VoteSkip(seat.id);
             else if(message.type=="rematch"&&match.Phase==NativePhase.Match){endFlow.Reconcile(match.Seats.Where(s=>!s.bot&&s.connected).Select(s=>s.id));endFlow.Vote(seat.id);}
         }
         private NativeSeat SanitizedSeat(int id,NativeProfile profile,string token)
@@ -255,6 +256,8 @@ namespace ChipArena.UnityConversion
         // Leave Room: close the connection or room and drop any running match (the source's Leave Room / Return to Main Menu).
         private void LeaveRoom(){ClearReplay();CloseNetwork();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();menu=true;Go(MenuScreen.Home);}
         private void ChooseChip(int seat,string chip){if(server!=null)SendServer(new NativeNetMessage{type="chip",chip=chip});else match.Choose(seat,chip);}
+        // Vote to skip the cutscene playing (Core NativeCutsceneSkip): a guest asks the host; the host and a solo pilot vote at once.
+        private void VoteSkipCutscene(){if(server!=null)SendServer(new NativeNetMessage{type="skip-vote"});else if(arena?.Local!=null)arena.VoteSkip(arena.Local.Seat.id);}
         private void ChoosePveChip(int pick,string chip){if(server!=null)SendServer(new NativeNetMessage{type="pve-pick",pick=pick,chip=chip});else arena.ChoosePve(arena.Local,pick,chip);}
         private void PveOpen(bool open){if(server!=null)SendServer(new NativeNetMessage{type=open?"pve-open":"pve-close"});else if(open)arena.OpenPvePick(arena.Local);else arena.ClosePvePick(arena.Local);}
     }

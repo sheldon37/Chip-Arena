@@ -52,6 +52,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in Members())Check(ExpeditionSupported(Vec(p.Body.position)-new V3(0,NativeLocomotionRules.HalfHeight,0),NativeLocomotionRules.Radius,NativeLocomotionRules.HalfHeight*2),"supported party landing "+p.Seat.id);
             var packet=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=NetworkFrame()})).frame;
             Check(packet.Valid(Content)&&packet.areaIdentity==null,"normal co-op wire frame");replicaCheck(packet);
+            ValidateCutsceneSkip((ok,why)=>Check(ok,"skip vote: "+why));
             PveHoldTick(Pve.HoldDuration+.01f);Match.SynchronizeExpeditionClock(4);StepZoneBoss();
             Check(!Pve.Holding&&Pve.Stage=="boss"&&ZoneBoss.action!="arrive","normal intro released");
             zoneBossActor.Hp=zoneBossActor.MaxHp*.25f;StepZoneBoss();Check(ZoneBoss.phase>=2,"normal phase authority");

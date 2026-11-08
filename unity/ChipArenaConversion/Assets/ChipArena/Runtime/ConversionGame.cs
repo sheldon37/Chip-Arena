@@ -149,7 +149,7 @@ namespace ChipArena.UnityConversion
             bool typing=GUIUtility.keyboardControl!=0;
             if(Input.GetKeyDown(KeyCode.M)&&!typing&&!BoardOpen){prefs.sound=!prefs.sound;if(nativeAudio!=null)nativeAudio.Muted=!prefs.sound;Save();Notice(prefs.sound?"Sound on · M to mute":"Sound muted · M to unmute");}
             if((Input.GetKeyDown(KeyCode.V)&&!(arena?.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)||PadDown(PadAction.Camera))&&arena!=null&&!typing&&!BoardOpen){prefs.firstPerson=!prefs.firstPerson;Save();Notice(CameraName+" · V to switch");}
-            CameraKeys(typing);DevUpdate(typing);
+            CameraKeys(typing);DevUpdate(typing);CutsceneSkipKeys(typing);
             // C in an Expedition opens its chip screen instead (ExpeditionLiveKeys, NativeExpeditionChipScreen.cs).
             if((Input.GetKeyDown(KeyCode.C)||PadDown(PadAction.Chips))&&arena?.Pve!=null&&LiveExpedition==null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
@@ -374,7 +374,7 @@ namespace ChipArena.UnityConversion
         private void OnGUI()
         {
             // The stage loading screen holds the GUI's input while it closes and while it is closed; it draws over every screen.
-            if(dedicated)return;var originalMouse=Event.current.mousePosition;try{ControllerGuiEvent();if(SlenderGUI())return;Styles();StageInputGate();bool socialWasEnabled=GUI.enabled;if(socialOpen&&menu&&account?.Account!=null&&!StageInputHeld)GUI.enabled=false;GuiFrame();GUI.enabled=socialWasEnabled;SocialGui();if(error.Length==0)NoticeToast();BuildCorner();ExpeditionTransferGui();StageLoadingGui();ControllerCursor();}finally{Event.current.mousePosition=originalMouse;}
+            if(dedicated)return;var originalMouse=Event.current.mousePosition;try{ControllerGuiEvent();if(SlenderGUI())return;Styles();StageInputGate();bool socialWasEnabled=GUI.enabled;if(socialOpen&&menu&&account?.Account!=null&&!StageInputHeld)GUI.enabled=false;GuiFrame();GUI.enabled=socialWasEnabled;CutsceneSkipGui();SocialGui();if(error.Length==0)NoticeToast();BuildCorner();ExpeditionTransferGui();StageLoadingGui();ControllerCursor();}finally{Event.current.mousePosition=originalMouse;}
         }
         private void GuiFrame()
         {

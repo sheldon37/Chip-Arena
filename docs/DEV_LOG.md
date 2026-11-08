@@ -28,6 +28,29 @@
 - **Not run:** no person or two-client run; corpses and cuts (the capture's camera missed the corpse), portraits and the Locker preview not looked at; the reduced-graphics tier not looked at.
 - **Rights:** this assumes a Tripo Pro export (the owner said on 2026-11-05 they would buy Pro). It stays DEV only and out of git.
 
+## 2026-11-08 — Claude: vote to skip cutscenes (owner request; rules and networking at the owner's word)
+
+- Branch `claude/skip-vote`, base shared `841cc75d`.
+- **The owner:** "On another note, lets add a Vote to skip option on cutscenes like boss intros. Once all players agree, the scene transitions to the next thing."
+- **What:** F (or the pad's Interact) votes to skip a boss's arrival (the PvE `intro` hold: NOCTIEL's 51 s intro, the 9 s zone and Backrooms arrivals), its phase reveals, and the pilots' intros before a match. Victory and defeat holds are not skippable. Votes stop 0.6 s before a cutscene's end. Every connected human in the arena must agree (bots, recruits and the boss's seat never count); a lone pilot skips with one press. docs/CUTSCENE-SKIP.md.
+- **How:** the host keeps one ballot per cutscene (Core `NativeCutsceneSkip`). `NativeArena.StepCutsceneSkip` runs each tick before the hold ticks. When all agree it spends the hold (`HoldLeft=0`), so `PveHoldTick` releases it on that tick exactly as at its natural end: the stage, the boss's arrival cleared, NOCTIEL's phase clock, and the boss song carried on from the fight's start by `NativeBossSongClock`'s lead. The pilots' intros go to the countdown (`NativeMatch.SkipIntros`).
+  - Guests send `skip-vote` (`NativeNetwork.cs`); in a split Expedition a vote counts only in the voter's own area (`NativeExpeditionSplitRuntime.cs`).
+  - The ballot rides every frame (`NativeGameFrame.cutsceneSkip`); an older host sends none and its guests show no prompt.
+  - On screen (`NativeCutsceneSkipUI.cs`): a key-cap prompt at the bottom right (`F · SKIP`, or `VOTE TO SKIP` with a dot per pilot and the count, then `VOTED · WAITING`), a soft pulse on those still to vote, and a 0.55 s black dip on every screen at the skip.
+- **Affected systems:** PvE hold flow, the match intro phase, the host message routing (normal and split Expedition), the game frame, the HUD.
+- **Animation and rules impact:** none to hit timing, hitboxes, damage, cooldowns or movement. A skip only ends a cutscene early, the same way its end does; the arena clock does not move across it.
+- **Checks:**
+  - CoreTests `--cutscene-skip`: 31 checks (the ballot: members only, once each, a leaver's vote dropped, a new cutscene a new ballot, lone pilot, bounded; the frame round trip and an older host; the wiring pins; the prompt builds no strings per frame and its pulse rests with reduced effects).
+  - The boss build checks now run `ValidateCutsceneSkip` on every boss (Station, Converter, THE HUM, THE DEEP END, NOCTIEL; parties of 1 and 4): each human votes once, the ballot crosses the real codec, and when all agree the intro ends on the next tick with the clock unmoved and the boss song at the fight's start (NOCTIEL's from the drop).
+  - Unity compile PASS.
+- **Builder project checks in the Editor** (PrototypeBuild.Validate at `35867811`): ok, 390 passes, the skip run on every boss for parties of 1 and 4 (direct boss station, converter, hum and deepend: 18 and 27 checks; NOCTIEL: 182 and 192, its wipe 17 and 26).
+- **Seen in the Editor** (BoZo, real Boss Battles, one pilot; the local tool gained `bskip`/`bdip`):
+  - THE DEEP END: the `F · SKIP` prompt over its arrival. F 3.0 s into its 9.07 s arrival started the fight on the next tick, with the fight HUD up and its song at 9.15 s.
+  - NOCTIEL: F 8 s into his 51 s intro started the fight with his song at 54.83 (the drop is 54.81).
+  - The dip fires on the fight's first frame. A shot with it pinned 0.12 s in shows the whole screen black over the fight; the Editor's captures run too slow to catch the 0.55 s dip on their own.
+- **Not run:** two real clients over the network; a split Expedition with pilots in two areas; the pilots' intros with several humans; a gamepad. The prompt shows F, not a pad glyph.
+- **Next:** watch it in a real co-op room.
+
 ## 2026-11-08 — Claude: NOCTIEL's ripples faint, no words on the claymore, a blank mask whose eyes blink (owner requests)
 
 - Branch `claude/noctiel-face`, base shared `841cc75d`.
@@ -52,6 +75,7 @@
   - The live fight's rings round NOCTIEL's feet, the same shots before and after: bright grey rings before, faint dark ones after. The bright fan at the fight's start is Severance's warning and measured the same before and after.
   - The moves' waves made faint were not caught in a frame.
 - **Not run:** no person or two-client run. The low-graphics tier and phase 3's split mask were not looked at in the Editor.
+- **Released:** merged to shared as `698e8861`, then `b1bf5e5d` to take in the builder's PR #380 merge (no content of its own), and published from `b1bf5e5d` to the test channel as revision 639297673616329035 (246.0 MiB). Suite 981 groups, exit 0; Unity compile PASS; the one pin flag is a comment's comma and newline, not a pin.
 
 ## 2026-11-08 — Claude: NOCTIEL's void holds through the intro; a new claymore with its light; the adds animated (owner requests)
 
