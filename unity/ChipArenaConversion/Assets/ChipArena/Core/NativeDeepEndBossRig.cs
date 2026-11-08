@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         private long lastTick=long.MinValue;private float lastNow=float.NaN;private int seenAction=-1,seenPhase=1;private float seenDied=float.NaN,seenSpawned=float.NaN;
         // Springs and second order.
         private BossSpring iris,spin;private BossSecondOrder fold,rail,mouthKick;private float grateAngle;
-        private BossSpringQ lookQ;private bool lookReady;private BossSpring lookWeight;private float lookHalf=.34f;
+        private BossSpringQ lookQ;private bool lookReady,lookCurl;private BossSpring lookWeight;private float lookHalf=.34f;private readonly Vector3[] curlFrom=new Vector3[CurlJoints+1];
         // The back at the head (carried by the frames below it), and the Flop's line while its arc comes down.
         private float slamAt=float.NaN;private Vector2 slamA,slamB;
         // Each joint's back and tangent as they were last frame: a joint's back goes with it through time, so a turn at the head can't roll the tail.
@@ -163,7 +163,20 @@ namespace ChipArena.UnityConversion
             if(!lookReady){lookQ.Reset(BossMath.LookRotation(lookD,Vector3.UnitY));lookReady=true;}
             lookQ.Step(BossMath.LookRotation(lookD,Vector3.UnitY),lookHalf,dtl);var goalDir=BossMath.Rotate(lookQ.Value,new Vector3(0,0,1));
             float w=BossMath.Clamp01(lookWeight.Value);
-            if(w>.001f)
+            if(w>.001f&&lookCurl)
+            {
+                // The Hydro Jet: the neck curls joint on joint (each one's turn carried up to those above it) until the skull lies straight on the beam
+                // (the owner, 2026-11-08: "when its shooting water; Have it face the direction its shooting water"). Turned each on its own the
+                // joints left the head as much as 80 degrees off the water it shot, the body standing upright under it. The beam leaves the mouth
+                // where the curl puts it, so the aim is taken again from there and the neck curled once more.
+                Array.Copy(pos,curlFrom,CurlJoints+1);Curl(pos,goalDir,w,headDir);
+                if(v.Moving(now,out var jm,out float jage,out float jhit)&&jm.Id=="jet")
+                {
+                    var again=JetDir(v,jage,jhit,jm,pos[0],surface);float k=BossMath.Smooth((pos[0].Y-surface)/1.5f)*(1-BossMath.Smooth((Angle(lookD,again)-JetReaim*.6f)/(JetReaim*.4f)));
+                    Curl(pos,BossMath.Rotate(Turn(lookD,again,k),goalDir),w,headDir);
+                }
+            }
+            else if(w>.001f)
             {
                 const int K=7;for(int i=K;i>0;i--)
                 {
@@ -245,8 +258,27 @@ namespace ChipArena.UnityConversion
             }
             if(keep)for(int i=0;i<n;i++)tickOff[i]=i<Fixed?Vector3.Zero:pos[i]-relaxFrom[i];
         }
-        /// <summary>How far the neck's look bends one joint at most (rad).</summary>
-        public const float NeckBend=.5f;
+        // The curl from the joints as the trail laid them (curlFrom): the neck's joints share what's left of the turn, the skull (joints 0 to 3) straight on the last.
+        private void Curl(Vector3[] pos,Vector3 goal,float w,Vector3 headDir)
+        {
+            var carry=Quaternion.Identity;var top=headDir;
+            for(int i=CurlJoints;i>0;i--)
+            {
+                var d0=SafeDir(curlFrom[i-1]-curlFrom[i],headDir);Vector3 nd;
+                if(i>3){var d=BossMath.Rotate(carry,d0);nd=Toward(d,goal,1,Math.Min(NeckBend*1.4f,Angle(d,goal)*w/(i-3)));carry=Turn(d0,nd);top=nd;}else nd=top;
+                pos[i-1]=pos[i]+nd*NativeDeepEndBossLook.Seg;
+            }
+        }
+        /// <summary>How far the neck's look bends one joint at most (rad); the joints the Jet's curl runs over.</summary>
+        public const float NeckBend=.5f;public const int CurlJoints=8;
+        /// <summary>Past this the Jet's aim is no longer taken again from the curled mouth (rad; eased out from 0.6 of it), nor with the mouth under the water: there the line swings.</summary>
+        public const float JetReaim=.6f;
+        private static float Angle(Vector3 a,Vector3 b)=>(float)Math.Atan2(Vector3.Cross(a,b).Length(),Vector3.Dot(a,b));
+        // The rotation taking one direction to another, the short way round.
+        private static Quaternion Turn(Vector3 from,Vector3 to,float share=1)
+        {
+            var axis=Vector3.Cross(from,to);float al=axis.Length();if(al<1e-6f||share<=0)return Quaternion.Identity;return BossMath.AxisAngle(axis/al,(float)Math.Atan2(al,Vector3.Dot(from,to))*share);
+        }
         /// <summary>How sharply one joint may bend at most (rad), and how close two parts of the body three joints or more apart may come (a share of their radii summed).</summary>
         public const float MostBend=.62f,Apart=1f;
         private static Vector3 Toward(Vector3 d,Vector3 goal,float share,float most)
@@ -345,14 +377,14 @@ namespace ChipArena.UnityConversion
         // The mouth's aim, by what plays.
         private void Aim(in DeepEndBossView v,float now,float surface,Vector3 head,bool hasLook,Vector3 lookAt,Vector3 backFlat,ref float weight,ref Vector3 dir)
         {
-            lookHalf=.34f;
+            lookHalf=.34f;lookCurl=false;
             if(v.Moving(now,out var m,out float age,out float hit))
             {
                 float end=v.duration>0?v.duration:m.Duration;
                 if(m.Id=="jet")
                 {
                     // The sweep is the hit: the neck holds on the rule's own line, not behind it.
-                    lookHalf=.05f;
+                    lookHalf=.05f;lookCurl=true;
                     weight=BossMath.Smooth(age/(hit*.8f))*(1-BossMath.Smooth((age-(hit+m.Strike+m.Follow))/.5f));
                     dir=JetDir(v,age,hit,m,head,surface);return;
                 }
