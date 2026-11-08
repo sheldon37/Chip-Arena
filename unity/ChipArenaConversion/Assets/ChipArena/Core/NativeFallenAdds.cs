@@ -298,6 +298,8 @@ namespace ChipArena.UnityConversion
                 float tau=now-a.GoneAt;if(a.SplashDone==0&&tau>.85f){a.SplashDone=1;Rings.Add((Floor(c),1.2f));for(int i=0;i<5;i++){var w=Dir(a.Id*31+i*5);Rings.Add((Floor(c)+w*(3+i*.8f),.6f));}}
             }
         }
+        /// <summary>A Throne's charge before its next shot (0 to 1).</summary>
+        public static float ChargeOf(Add a,float now)=>Charge(a,now);
         // The charge before each shot (the authority's 1.2 s between blows).
         private static float Charge(Add a,float now){float b=Blow(a);if(float.IsNaN(b)||!a.Last.HasTarget||a.GoneAt>=0)return 0;float next=b+(a.Last.Period>0?a.Last.Period:NativeFallenAdds.Every);return Smooth((now-(next-.5f))/.5f)*(now<next+.15f?1:0);}
         public static void ThronePose(Add a,float now,int tier,NativeFallenKit k)

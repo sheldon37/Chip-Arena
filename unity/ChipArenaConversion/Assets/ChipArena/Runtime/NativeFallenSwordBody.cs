@@ -32,11 +32,13 @@ namespace ChipArena.UnityConversion
                 fbSwordBuilt=true;
             }
             catch(Exception e){Debug.LogWarning("NOCTIEL's sword: "+e.Message);FallenSwordDispose();return;}
-            // The bank's words, fitted to these flats: centred in the fuller above the ricasso, laid on the faces.
+            // The bank's words, fitted to these flats: centred in the fuller above the ricasso, laid on the faces. The bank's meshes aren't readable, so
+            // their middle comes from their bounds and their faces from the bank's script (tools/gear/fallen_boss.py sword_words: .0145 off the middle,
+            // .0008 deep).
             foreach(var part in fbParts)if(part.Name=="sword-words"&&part.Mesh[0]!=null)
             {
-                fbSwordWords=part.Mesh[0];var inv=frame.inverse;float z0=float.MaxValue,z1=float.MinValue,y=0;foreach(var v in fbSwordWords.vertices){var q=inv.MultiplyPoint3x4(v);z0=Mathf.Min(z0,q.z);z1=Mathf.Max(z1,q.z);y=Mathf.Max(y,Mathf.Abs(q.y));}
-                if(y>1e-4f&&z1>z0){float face=NativeFallenSword.Surface(.1f,.12f)+.0012f;var fit=Matrix4x4.Translate(new Vector3(0,0,.53f-(z0+z1)*.5f))*Matrix4x4.Scale(new Vector3(.92f,face/y,.92f));fbSwordWordsFit=frame*fit*inv;}
+                fbSwordWords=part.Mesh[0];var inv=frame.inverse;var mid=inv.MultiplyPoint3x4(fbSwordWords.bounds.center);const float bankFace=.0149f;
+                float face=NativeFallenSword.Surface(.1f,.12f)+.0012f;var fit=Matrix4x4.Translate(new Vector3(-mid.x*.92f,0,.53f-mid.z*.92f))*Matrix4x4.Scale(new Vector3(.92f,face/bankFace,.92f));fbSwordWordsFit=frame*fit*inv;
             }
         }
         private void FallenSwordDispose()

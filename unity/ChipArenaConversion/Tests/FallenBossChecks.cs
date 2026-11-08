@@ -481,9 +481,65 @@ public static class FallenBossChecks
             var show=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");var fx2=R("Assets/ChipArena/Core/NativeFallenBossFx.cs");var body4=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");var mocap=R("Assets/ChipArena/Runtime/NativeFallenIntroMocapBody.cs");
             Check(!water2.Contains("float heard=_FbSongAt.x-br/34.")&&!fx2.Contains("Cross(f.Boss,f.SongClip-slam"),"the song no longer rings the floor");
             Check(water2.Contains("float spread=1.+r.z*.14;")&&water2.Contains("glint"),"the rings are ripple packets with glints");
-            Check(voidShader.Contains("\"Queue\"=\"Background\"")&&voidShader.Contains("_FbSong")&&voidShader.Contains("_FbVoidSlam")&&show.Contains("FallenVoidDraw(eyeAt,clip,fbFx.Dim,now);"),"the void is drawn first and plays the song");
+            Check(voidShader.Contains("\"Queue\"=\"Background\"")&&voidShader.Contains("_FbSong")&&voidShader.Contains("_FbVoidSlam")&&show.Contains("FallenVoidDraw(eyeAt,clip,fbFx.Dim,dt,"),"the void is drawn first and plays the song");
             Check(stage.Contains("private void FallenPilotSteps(")&&show.Contains("if(live)FallenPilotSteps(arena,origin,now,dt);")&&show.Contains("if(!downL&&fbFootDownL)FbStepAdd("),"the pilots' steps and NOCTIEL's lifting feet ring the water");
             Check(body4.Contains("Vector3.SignedAngle(fingers,fore,blade)")&&mocap.Contains("GuardPitch=-12"),"the hand at rest bends its wrist least; the intro's guard is held near level");
+        }
+        // The owner, 2026-11-08: "only start animating the background AFTER the intro completes", "make his sword more stylized. Maybe slightly longer,
+        // thinner and overall a better design with glow effects", "Begin animating his minions as well". The void holds still through the intro and eases
+        // in after it; the claymore built in C# (longer, thinner, closed, its light by phase) in the bank's sword's place; the adds posed every frame.
+        {
+            var voidShader=R("Assets/ChipArena/Resources/NativeFallenVoid.shader");var stage=R("Assets/ChipArena/Runtime/NativeFallenVoid.cs");var show=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");
+            Check(voidShader.Contains("_FbVoidLive")&&voidShader.Contains("float level=now.x*live;")&&stage.Contains("if(intro){fbVoidLive=0;fbVoidClock=0;}")&&stage.Contains("fbVoidMat.SetFloat(FbClockId,fbVoidClock%1000);")
+                &&show.Contains("FallenVoidDraw(eyeAt,clip,fbFx.Dim,dt,f.Kind==NativeFallenBossPreview.KindCutscene);"),"the void holds still through the intro, its song and clock easing in after");
+            Check(stage.Contains("at.y=p.Collider!=null?p.Collider.bounds.min.y:at.y-.865f;"),"a pilot's steps are measured from its feet, not its middle");
+            // The claymore: a little longer and narrower than the bank's (to 1.65, .068 wide), every piece finite, the solid ones closed and facing out.
+            Check(NativeFallenSword.Point>1.8f&&NativeFallenSword.Point<2.05f,"the blade a little longer than the bank's");
+            float widest=0;for(float u=.06f;u<=1;u+=.01f)widest=Math.Max(widest,NativeFallenSword.Width(u));Check(widest<.068f*.75f&&NativeFallenSword.Width(1)<1e-4f,"the blade thinner than the bank's, to a point ("+widest.ToString("0.000")+")");
+            Check(NativeFallenSword.Flat(.5f)<.0095f,"thinner through the flats");
+            for(int piece=0;piece<NativeFallenSword.Count;piece++)for(int tier=0;tier<2;tier++)
+            {
+                var k=NativeFallenSword.Build(piece,tier);string nm=NativeFallenSword.Names[piece]+" tier "+tier;Check(k.Count>0&&k.Lit.Count+k.Glow.Count>0,nm+" is built");
+                Check(k.P.All(q=>float.IsFinite(q.X+q.Y+q.Z))&&k.N.All(q=>Math.Abs(q.Length()-1)<1e-3f),nm+" finite with unit normals");
+                if(piece<=NativeFallenSword.Hilt){double v=0;foreach(var l in new[]{k.Lit,k.Glow})for(int i=0;i+2<l.Count;i+=3){var p0=k.P[l[i]];v+=Vector3.Dot(p0,Vector3.Cross(k.P[l[i+1]]-p0,k.P[l[i+2]]-p0));}Check(v>0,nm+" faces out");}
+            }
+            Check(NativeFallenSword.Build(NativeFallenSword.Fuller,0).Glow.Count>0&&NativeFallenSword.Build(NativeFallenSword.BladeDark,0).Glow.Count>0&&NativeFallenSword.Build(NativeFallenSword.BladeLight,0).Lit.Count==0&&NativeFallenSword.Build(NativeFallenSword.EyeOpen,0).Glow.Count>0,"the light: the fuller's line, phase 3's edges, phase 4's blade, the eye");
+            for(int phase=1;phase<=4;phase++){int bit=1<<(phase-1);Check(new[]{NativeFallenSword.BladeSteel,NativeFallenSword.BladeDark,NativeFallenSword.BladeLight}.Count(x=>(NativeFallenSword.Phases[x]&bit)!=0)==1&&(NativeFallenSword.Phases[NativeFallenSword.Hilt]&bit)!=0,"one blade and the hilt in phase "+phase);}
+            var body5=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");var sword=R("Assets/ChipArena/Runtime/NativeFallenSwordBody.cs");
+            Check(body5.Contains("FbBladeLength=NativeFallenSword.Point-FbBladeFrom;")&&body5.Contains("if(FallenSwordOn&&FbSwordPart(part.Name))continue;")&&body5.Contains("if(FallenSwordOn)FallenSwordDraw(f.Phase,fbHandR.localToWorldMatrix,")&&body5.Contains("FallenSwordBuild();")
+                &&sword.Contains("fbFx.SwordLight(")&&show.Contains("if(FallenSwordOn)FallenSwordLight(f,now,dt,origin,fbHandR.localToWorldMatrix,f.Plant<.5f);"),"the built claymore drawn in the bank's sword's place, its tip the trail's, its light round it");
+            // The adds: a Cantor rises out of the water and sings from its mouth; a Penitent's planted hand stays where it came down, rings the water when it
+            // lands, and it rears up close to its quarry; a Throne charges before each shot and fires on it; each, gone, plays out its death and leaves.
+            var m=new NativeFallenAddMotion();var seen=new System.Collections.Generic.List<NativeFallenAdds.Seen>();var kit=new NativeFallenKit();var held=new Vector3[2];var wasUp=new bool[2];int plantedFrames=0,landings=0;float cantorLow=0,cantorRisen=0;bool sang=false,reared=false,charged=false,fired=false;
+            const float dt=1/60f;
+            for(int i=0;i<=720;i++)
+            {
+                float now=i*dt;seen.Clear();float last=now>2?2+(float)Math.Floor((now-2)/NativeFallenAdds.Every)*NativeFallenAdds.Every:float.NaN;
+                if(now<9){seen.Add(new NativeFallenAdds.Seen{Id=1,Kind=NativeFallenAdds.Cantor,At=new Vector3(6,1,6),Born=0,Until=45,LastAttack=last,LastHit=-100,Strength=NativeFallenAdds.CantorStrength(now),Target=Vector3.Zero,HasTarget=true});
+                    float z=Math.Max(1.6f,12-Math.Max(0,now-1.4f)*7);seen.Add(new NativeFallenAdds.Seen{Id=2,Kind=NativeFallenAdds.Penitent,At=new Vector3(0,1,z),Born=0,Until=45,LastAttack=z<=1.61f?last:float.NaN,LastHit=-100,Target=Vector3.Zero,HasTarget=true});
+                    seen.Add(new NativeFallenAdds.Seen{Id=3,Kind=NativeFallenAdds.Throne,At=new Vector3(-8,6,4),Born=0,Until=45,LastAttack=last,LastHit=-100,Target=Vector3.Zero,HasTarget=true});}
+                m.Step(seen,seen.Count,now,dt);
+                foreach(var add in m.Adds)
+                {
+                    kit.Clear();NativeFallenAddMotion.Pose(add,now,0,kit);kit.Finish();Check(kit.Count>0&&kit.P.All(q=>float.IsFinite(q.X+q.Y+q.Z)),"add "+add.Id+" posed at "+now);
+                    float low=kit.P.Min(q=>q.Y);
+                    if(add.Kind==NativeFallenAdds.Cantor){if(now<.05f)cantorLow=low;if(Math.Abs(now-3)<dt/2)cantorRisen=low;}
+                    if(add.Kind==NativeFallenAdds.Penitent&&add.GoneAt<0&&add.Rear<.05f)for(int h=0;h<2;h++){if(!add.Up[h]&&!wasUp[h]&&now>2){Check(Vector3.Distance(add.Hand[h],held[h])<1e-4f,"a planted hand stays put at "+now);plantedFrames++;}held[h]=add.Hand[h];wasUp[h]=add.Up[h];}
+                    if(add.Kind==NativeFallenAdds.Penitent&&add.Rear>.9f)reared=true;
+                }
+                m.BeamsOf(now);var c=m.Adds.Find(x=>x.Id==1);var th=m.Adds.Find(x=>x.Id==3);
+                if(c!=null&&c.GoneAt<0&&now>3&&c.Sing>.3f&&m.Beams.Any(b=>Vector3.Distance(b.from,c.Mouth)<1e-4f))sang=true;
+                foreach(var r in m.Rings)if(r.strength<.7f)landings++;
+                if(th!=null&&now>3&&now<8.9f){float to=(now-2)%NativeFallenAdds.Every;if(to>NativeFallenAdds.Every-.12f&&to<NativeFallenAdds.Every-.03f)charged|=NativeFallenAddMotion.ChargeOf(th,now)>.6f;if(to>.005f&&to<.05f)fired|=th.Fire>.7f&&m.Beams.Any(b=>Vector3.Distance(b.from,th.Mouth)<1e-4f);}
+                if(now>9+NativeFallenAddMotion.DeathTime(NativeFallenAdds.Throne)+.05f)Check(m.Adds.Count==0,"the dead are gone after their deaths");
+                if(Math.Abs(now-9.3f)<dt/2)Check(m.Adds.Count==3&&m.Adds.All(x=>x.GoneAt>=0&&x.Killed),"each plays its death");
+            }
+            Check(cantorLow<-1.5f&&cantorRisen>-.05f,"the Cantor rises out of the water ("+cantorLow.ToString("0.0")+" then "+cantorRisen.ToString("0.00")+")");
+            Check(sang,"the Cantor sings from its mouth");Check(plantedFrames>30&&landings>4,"the Penitent's hands planted ("+plantedFrames+" frames) and ringing the water ("+landings+")");Check(reared,"the Penitent rears up at its quarry");
+            Check(charged&&fired,"the Throne charges before its shot and fires on it");
+            var bind=R("Assets/ChipArena/Runtime/NativeFallenBinding.cs");var adds=R("Assets/ChipArena/Runtime/NativeFallenAddsBody.cs");var fx3=R("Assets/ChipArena/Core/NativeFallenBossFx.cs");
+            Check(bind.Contains("f.Adds=adds.ToArray();")&&!bind.Contains("Id=kind+\"-beam\"")&&!fx3.Contains("Prop(\"cantor\"")&&!fx3.Contains("Prop(\"throne-ring\"")&&fx3.Contains("if(f.Adds!=null)AddsSeen.AddRange(f.Adds)"),"the adds come from their facts, live and in the preview, not rigid props");
+            Check(adds.Contains("FbDrawKit(m,fbAddGlowOnly[i],world,g,flash,0,FbAboveWater);")&&show.Contains("FallenAddsStep(now,dt,origin,eyeAt);")&&show.Contains("FallenAddsDraw(origin,mirror,inner,flash);"),"the adds drawn cut at the water, reflected");
         }
         // A standing turn: past 18 degrees off its quarry it turns to it, smoothly.
         {
