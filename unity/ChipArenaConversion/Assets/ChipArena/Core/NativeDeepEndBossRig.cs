@@ -163,6 +163,8 @@ namespace ChipArena.UnityConversion
             // ---- the skull is rigid: its joints on one line ----
             var skull=SafeDir(pos[0]-pos[3],headDir);pos[1]=pos[3]+skull*(NativeDeepEndBossLook.Seg*2);pos[2]=pos[3]+skull*NativeDeepEndBossLook.Seg;pos[0]=pos[3]+skull*(NativeDeepEndBossLook.Seg*3);
             for(int i=0;i<4;i++)pos[i]=OnTile(pos[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface);
+            // ---- a body that can't fold: no joint bends tighter than it can, no part passes into another ----
+            Relax(pos);
             // ---- the frames ----
             float rollBase=RollOf(v,now,sp);
             int above=0;
@@ -182,8 +184,53 @@ namespace ChipArena.UnityConversion
             lastNow=now;
         }
         private readonly Vector3[] rawScratch=new Vector3[NativeDeepEndBossLook.Spine],rawNScratch=new Vector3[NativeDeepEndBossLook.Spine];
+        private readonly Vector3[] relaxFrom=new Vector3[NativeDeepEndBossLook.Spine];private readonly float[] relaxLen=new float[NativeDeepEndBossLook.Spine];
+        /// <summary>Passes of the body's relaxation a frame.</summary>
+        public const int RelaxPasses=12;
+        // The body as a body (the owner, 2026-11-07: "A lot of turns (mostly upward) the body clips into itself"): the trail can turn tighter than a body
+        // this thick can (over the top of a rise, a hairpin behind the head), and the neck's look or a sweep can lay one part through another. A few
+        // passes on this frame's joints alone (so two frame rates still give one pose): joints two apart held at least as far as a bend of MostBend
+        // allows, parts three or more joints apart kept out of each other (their radii times Apart), each segment kept its trail length, the rest drawn
+        // back toward the trail. The skull (joints 0 to 3) stays on the route, so every move's contact is where it was.
+        private void Relax(Vector3[] pos)
+        {
+            int n=NativeDeepEndBossLook.Spine;const int Fixed=4;Array.Copy(pos,relaxFrom,n);
+            // A segment keeps at least its own length: in a tight bend the trail's chord between two joints is shorter than the body between them.
+            for(int i=1;i<n;i++)relaxLen[i]=Math.Max(NativeDeepEndBossLook.Seg*.985f,Vector3.Distance(relaxFrom[i],relaxFrom[i-1]));
+            float half=(float)Math.Cos(MostBend*.5f);
+            for(int pass=0;pass<RelaxPasses;pass++)
+            {
+                // Drawn back toward the trail where nothing below needs it elsewhere (first, so the limits have the last word).
+                if(pass>0)for(int i=Fixed;i<n;i++)pos[i]=Vector3.Lerp(pos[i],relaxFrom[i],.08f);
+                // The bend: two joints either side of one no closer than its limit allows.
+                for(int i=1;i<n-1;i++)
+                {
+                    var d=pos[i+1]-pos[i-1];float l=d.Length(),want=(relaxLen[i]+relaxLen[i+1])*half;if(l>=want||l<1e-5f)continue;
+                    d/=l;float push=want-l;if(i-1<Fixed)pos[i+1]+=d*push;else{pos[i-1]-=d*(push*.5f);pos[i+1]+=d*(push*.5f);}
+                }
+                // Apart: parts three or more joints apart keep out of each other.
+                for(int i=0;i<n;i++)
+                {
+                    float ri=NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg);
+                    for(int j=i+3;j<n;j++)
+                    {
+                        float want=(ri+NativeDeepEndBossLook.Radius(j*NativeDeepEndBossLook.Seg))*Apart;var d=pos[j]-pos[i];float l2=d.LengthSquared();if(l2>=want*want)continue;
+                        float l=(float)Math.Sqrt(l2);Vector3 dir;if(l>1e-4f)dir=d/l;else{dir=SafeDir(relaxFrom[j]-relaxFrom[i],Vector3.UnitY);l=0;}
+                        float push=want-l;if(i<Fixed)pos[j]+=dir*push;else{pos[i]-=dir*(push*.5f);pos[j]+=dir*(push*.5f);}
+                    }
+                }
+                // Each segment its trail length, from the head down.
+                for(int i=1;i<n;i++)
+                {
+                    var d=pos[i]-pos[i-1];float l=d.Length();if(l<1e-5f)continue;float err=l-relaxLen[i];d/=l;
+                    if(i-1<Fixed)pos[i]-=d*err;else{pos[i-1]+=d*(err*.5f);pos[i]-=d*(err*.5f);}
+                }
+            }
+        }
         /// <summary>How far the neck's look bends one joint at most (rad).</summary>
         public const float NeckBend=.5f;
+        /// <summary>How sharply one joint may bend at most (rad), and how close two parts of the body three joints or more apart may come (a share of their radii summed).</summary>
+        public const float MostBend=.62f,Apart=1f;
         private static Vector3 Toward(Vector3 d,Vector3 goal,float share,float most)
         {
             var axis=Vector3.Cross(d,goal);float al=axis.Length(),dot=Vector3.Dot(d,goal);if(al<1e-3f){if(dot>0)return d;axis=Vector3.Cross(d,Math.Abs(d.Y)<.9f?Vector3.UnitY:Vector3.UnitX);al=axis.Length();}
