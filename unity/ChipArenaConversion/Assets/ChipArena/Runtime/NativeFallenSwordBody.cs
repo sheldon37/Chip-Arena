@@ -13,8 +13,8 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private readonly Mesh[,] fbSword=new Mesh[NativeFallenSword.Count,2];private readonly bool[,] fbSwordGlowOnly=new bool[NativeFallenSword.Count,2];private bool fbSwordBuilt;
-        private Mesh fbSwordWords;private Matrix4x4 fbSwordWordsFit=Matrix4x4.identity;
-        /// <summary>The bank's sword pieces stay hidden while the built claymore is there.</summary>
+        /// <summary>The bank's sword pieces stay hidden while the built claymore is there, its words with them (the owner, 2026-11-08: "remove the text
+        /// from the sword of noctiel").</summary>
         private bool FallenSwordOn=>fbSwordBuilt;
         private static bool FbSwordPart(string name)=>name.StartsWith("sword",StringComparison.Ordinal);
         /// <summary>The sword's frame on hand_r (the bank's to_sword(): x across the edges, y through the flats, z up the blade, the fist at the origin).</summary>
@@ -32,19 +32,11 @@ namespace ChipArena.UnityConversion
                 fbSwordBuilt=true;
             }
             catch(Exception e){Debug.LogWarning("NOCTIEL's sword: "+e.Message);FallenSwordDispose();return;}
-            // The bank's words, fitted to these flats: centred in the fuller above the ricasso, laid on the faces. The bank's meshes aren't readable, so
-            // their middle comes from their bounds and their faces from the bank's script (tools/gear/fallen_boss.py sword_words: .0145 off the middle,
-            // .0008 deep).
-            foreach(var part in fbParts)if(part.Name=="sword-words"&&part.Mesh[0]!=null)
-            {
-                fbSwordWords=part.Mesh[0];var inv=frame.inverse;var mid=inv.MultiplyPoint3x4(fbSwordWords.bounds.center);const float bankFace=.0149f;
-                float face=NativeFallenSword.Surface(.1f,.12f)+.0012f;var fit=Matrix4x4.Translate(new Vector3(-mid.x*.92f,0,.53f-mid.z*.92f))*Matrix4x4.Scale(new Vector3(.92f,face/bankFace,.92f));fbSwordWordsFit=frame*fit*inv;
-            }
         }
         private void FallenSwordDispose()
         {
             for(int p=0;p<NativeFallenSword.Count;p++)for(int t=0;t<2;t++){if(fbSword[p,t]!=null)CapturedAnimation.Release(fbSword[p,t]);fbSword[p,t]=null;}
-            fbSwordBuilt=false;fbSwordWords=null;fbSwordWordsFit=Matrix4x4.identity;
+            fbSwordBuilt=false;
         }
         private static readonly List<Vector3> FbKitVs=new List<Vector3>(),FbKitNs=new List<Vector3>();private static readonly List<Color> FbKitCs=new List<Color>();private static readonly List<int> FbKitT0=new List<int>(),FbKitT1=new List<int>();
         /// <summary>A kit's mesh through `m` (its corners turned round if `m` mirrors), the bank's hex made linear as ZombieGearBuild makes the bank's.</summary>
@@ -95,7 +87,6 @@ namespace ChipArena.UnityConversion
                 Vector4? c=p==NativeFallenSword.Veins1?cut:(Vector4?)null;float glow=inner*FbSwordGlow(p,phase,now);
                 FbDrawKit(mesh,g,world,glow,flash,0,c);FbDrawKit(mesh,g,mirror*world,glow,flash,1,c);
             }
-            if(fbSwordWords!=null&&phase<=2){var w=world*fbSwordWordsFit;bool glows=fbSwordWords.subMeshCount>1;FbDraw(fbSwordWords,glows,w,inner,flash,0,null);FbDraw(fbSwordWords,glows,mirror*w,inner,flash,1,null);}
         }
 
         // ---- the light round it ----
