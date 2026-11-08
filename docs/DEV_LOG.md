@@ -8,6 +8,7 @@
 - **Checks:** CoreTests `--fallen-boss` (new: a slow smooth breath, every fourth deeper, all of its life at rest and some walking; the tabard on the breastplate and narrower than it, over the clasp, to the shin and burnt shorter, held to the belt, the sash's knot and tails, bones, both faces, hems marked on every cloth; the skirt open at the front for the tabard), `--deepend-boss` (new: through the Jet it faces where it shoots; body, smoothness at 144 fps and two frame rates still pass), Unity compile PASS.
 - **Seen in the Editor** (real Boss Battles): the cloth built and simulated ("the robe is cloth (simulated), the hood (simulated), the tabard (simulated)"); the charcoal tabard over the white plate with its thin pale border and stripe, front, three-quarter and side; motes drifting off the cloth in a free fight. The breath is motion: not judged from stills.
 - **Not run:** no person or two-client run; the breath and the cloth's motion judged from stills and a short run, not watched at length.
+- **Released:** full suite at `2200a160` (shared merged in): 981 groups, exit 0; pins 0 broken; Unity compile PASS. Merged `fdcb9eed`; builder succeeded and published to the test channel: revision 639297142540669940, 246.0 MiB.
 
 ## 2026-11-08 — Claude: THE DEEP END's black box, Drain streaks and judder; NOCTIEL's walk, cloth hood and raised blade (owner requests)
 
