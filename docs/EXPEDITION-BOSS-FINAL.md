@@ -160,7 +160,7 @@ The pack's sword clips carry it, retimed to the move table: a long, slow windup 
 - **The knee:** a true one-knee kneel set on the muscles (no clip has one), used for the cutscene, each threshold and the death. The fist closes on the planted sword by IK.
 - **Gliding:** a dash leaves the water, feet off it, with a wake laid behind.
 - **Wings:** rooted on the chest but square to the body so the pair stays a pair, opening and flaring on an underdamped spring, thrown past their mark and shivering back, each pair behind the one above; they lag turns and blow back with speed.
-- **Robe, halo, ring of blades:** the strips drape from the waist over the legs (the front strips along the thigh and shin, the back ones only a little, a slight skirt flare) and swing with its speed, so parted legs never show a straight column of strips between them; the halo tilts by phase; the blades turn.
+- **Robe, halo, ring of blades:** in phases 1 and 2 the robe is a cloth skirt (below, "The robe as cloth"): open across the front so the legs show whole, a panel each side to the knee and a long one behind; phase 3 keeps the strips' remnant at the waist. The halo tilts by phase; the blades turn.
 - **The blade clears the body:** after the arm's pose the hand turns about the wrist until the blade (guard to point) is out of capsules round the torso, head, legs and free arm, leaving on the side it was last pushed to (Runtime `FallenBladeClear`). A planted sword is left alone. Drawn from the water, the fist goes straight from the planted grip to the carry (`FallenGrip`), never back through the clip's open hand.
 - **The sword** trails a thin bright edge on every fast swing and drags a wake when its point meets the water.
 
@@ -369,3 +369,25 @@ feet planted apart, the left a little ahead, the blade out to the right side wit
 (`FbStandNames`/`FbStandTo`, muscle targets: the soles level within 3 cm, the left foot 26 cm ahead, the feet half a metre apart, the knees
 nearly straight, no twist; found by rendering the frame on the body and measuring), and the carry lays the blade out to its right side
 (`FbDragWay` 0.99, 0, 0.1) with its point 2 cm over the water (`FbDragTip`). The walk keeps its own legs (Stand is 0 while walking).
+
+### The robe as cloth, the legs, the sword hand (Claude, 2026-11-07, the owner)
+
+"I think noctiel needs his arm thats holding the sword a little further from his body and also further back (Currently its almost right in
+front of his stomach) ... Its hard to see his legs. Make this a lot more details, and integrate magica cloth into their clothes to simulate cloth
+movement."
+
+- **The hand:** the carry's wrist hangs from the shoulder 0.17 out and 0.05 back (was 0.07 out, 0.09 forward), the arm a touch less straight
+  (0.9 of its reach), so the fist sits out past the hip and the hilt beside the thigh, not over the stomach.
+- **The robe as cloth:** the seven rigid strips hung to the ankles all round, the front two right over the legs. Now phases 1 and 2 hang a
+  skirt (Core `NativeFallenRobe`, Runtime `NativeFallenCloth.cs`) from under the faulds: open across the front (nothing within 55 degrees),
+  a side panel each side to the knee, a long panel behind to mid-calf, slits between, pleated, the hem a little ragged; phase 2's shorter and
+  burnt. It is a skinned renderer on the body's own skeleton (bind poses shared with the bake's body mesh), drawn with NOCTIEL's material and
+  mirrored in the water from a bake each frame. Its paint map (the waist's two rows fixed, the rest moving) is registered by name and it is
+  handed to the licensed cloth simulation through `NativeVisualCloth` (the local Magica bridge: the Skirt preset, capsules on the hips,
+  thighs and calves, a plane at the water), one handle per phase's skirt so only the shown one runs; it holds as drawn past 90 m or on the
+  low tier and starts over after a jump. Without the bridge it is skinned to the pelvis (the side hems leaning on their thighs) and follows
+  the legs. Phase 3's remnant stays rigid; phase 4 has none.
+- **The legs** (tools/gear/fallen_boss.py, the bank in the Drive zip): the cuisse in three lames, each lapping the next with a rolled edge and
+  two rivets, engraved down the front; the knee a bigger domed cop ringed in trim with a fan of fins on its outside; the greave ridged,
+  rolled trim at its top and over the ankle, engraved chevrons, a dark fin down the back of the calf, a flared cuff; the sabaton with three
+  lames over the instep, a toe cap, a hinge disc and a heel spur; quilted rings on the undersuit's legs.

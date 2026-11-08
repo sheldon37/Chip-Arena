@@ -686,3 +686,14 @@ bends it back at the wrist. Reach lays the wrist back 40 degrees as it winds, tu
 together), is flat at the hit and flicks the fingers through after it; mirrored for the left hand. At the hit the palm faces the hand's travel
 within 16 degrees and stays on it through the sweep (CoreTests `--hum-boss`, both hands). A fixed roll angle couldn't do it: the forearm
 swings so far through the stroke that "palm to the left" in its frame came out palm-down at the hit.
+
+**THE DEEP END, the owner's next look (2026-11-07):** "we dont need hit indicators for the waves. Also, add slam effects when the deep end slams
+onto the tiles. (Add slam into water effects [Splashing]) when done in water." Then: "the vortex ability seems too weak now, we need to make the
+pull stronger ... we can also remove hit indicators from that one too."
+- **No warnings** for Seiche or the Drain (`NativeDeepEndBossFx.Unwarned`): the wave and the whirlpool are their own tells.
+- **The Drain stronger:** `DrainPull(d)` = 6.5 m/s x (1 - d/28)^1.2, never under 1.4 m/s (5.8 at the pit's edge, 3.8 at 10 m, 1.4 at the
+  corners; was 4.5, ^1.5, 0.6). Still under the 6.8 a run beats; airborne pilots still held, rolls still free, a carried pilot still Lulled.
+- **Slams and splashes** where it comes down (`NativeDeepEndBossFx.Slam`), wet or dry by the tide against the floor there (`Wet`): in water a
+  splash (spray up and out, mist, a crown of water); on dry tile a white flash, chips of tile and grout thrown up that bounce, dust rolling out
+  in a ring and a column of it, and a dark scar that fades. The Belly Flop comes down along its line head first, a slam or splash at each of
+  seven places, the water's wall only where most of it is wet; Breach bursts up through dry tile; Thrash hits round itself four times.
