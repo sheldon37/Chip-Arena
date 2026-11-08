@@ -370,6 +370,23 @@ feet planted apart, the left a little ahead, the blade out to the right side wit
 nearly straight, no twist; found by rendering the frame on the body and measuring), and the carry lays the blade out to its right side
 (`FbDragWay` 0.99, 0, 0.1) with its point 2 cm over the water (`FbDragTip`). The walk keeps its own legs (Stand is 0 while walking).
 
+### Breathing, armour and robe, motes off the cloth (Claude, 2026-11-08, the owner)
+
+"seems like they sit there like a statue a lot? no indication of breathing or anything. Give better design to the body as well; it still looks
+overall simple, maybe we can give them clothes attached to the hood? like some kind of robe (Also integrate effects with magica cloth)", then
+"Maybe like a armor / robe combo actually".
+
+- **It breathes:** `NativeFallenLiveMotion.BreathAt` (4.6 s, in quicker than out, every fourth breath deeper) and `FallenBossFrame.Life` (1 at
+  rest, 0.55 walking, 0.25 through a move, 0 on a knee). Runtime lays them on the muscles (`FbBreathNames`: the back, chest and shoulders with
+  the breath, the weight easing foot to foot, the head drifting and tilting, the free hand flexing) and on the folded wings' roll.
+- **Armour and robe:** a tabard (Core `NativeFallenTabard`, phases 1 and 2) from under the hood over the breastplate, narrower than it so the
+  plate shows either side, cinched over the belt's clasp, hanging before the legs to the shin; pale border, a stripe down its middle; phase 2
+  burnt shorter. The skirt's front panel is gone (the tabard hangs there). A sash knotted at the left hip, two tails to the knee. Skinned to
+  the chest, waist and hips by height (the grid's `Bone0`), held to the belt and at the knot, simulated below.
+- **Motes off the cloth:** each cloth's hem (`Grid.Hem`) is read back from the cloth as drawn each frame; a point sheds a mote of light more
+  the faster it moves (`FbMoteRest` 0.05 a second at rest, `FbMoteBySpeed` 0.32 per metre a second), embers off phase 2's burnt hems; they
+  drift up and fade over 1.6 to 2.8 s, drawn with the boss's effects (`NativeFallenBossFx.ClothMote`); none on the low tier or past 90 m.
+
 ### Walking toward its quarry, the hood as cloth, the raised blade (Claude, 2026-11-08, the owner)
 
 "his walk seems to not be correct? ... re-evauluate animations during slash. Assuming he has a hood on? Can we also integrate magica cloth into

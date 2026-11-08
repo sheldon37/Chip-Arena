@@ -720,3 +720,9 @@ of the water). Between ticks each joint now goes on as its next tick will take i
 arc, and the sway's phase is interpolated. The relax runs on the ticks from the last tick's solution (solved afresh each frame, the Thrash's
 tail jumped from one side of the body to the other) with `FramePasses` on each frame for the neck. At 144 fps through the fight the visible
 pops fell from about 45,600 to 2,400 (CoreTests `--deepend-boss`, "the body moves smoothly between ticks at 144 fps").
+
+**THE DEEP END faces its jet (the owner, 2026-11-08):** "when its shooting water; Have it face the direction its shooting water". The neck's look
+turned each joint toward the aim on its own (at most `NeckBend` each), so the head stayed about 80 degrees off the beam with the body upright
+under it. Through the Hydro Jet the neck curls joint on joint over `CurlJoints` (8), each turn carried up to the joints above, until the skull
+lies straight on the beam; the aim is taken again from where the curl puts the mouth (eased out under the water or past `JetReaim`). CoreTests
+`--deepend-boss`: "through the Jet it faces where it shoots".
