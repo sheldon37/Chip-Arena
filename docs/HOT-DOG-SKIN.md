@@ -25,13 +25,14 @@ blender --background --factory-startup --python tools/gear/hotdog_tripo.py -- --
 
 - `--dump` is a bind dump of the model, the local tool's play `binddump=T` (`bind.txt`, `rest.Body.Body_AnimeBasic*.obj`).
 - `--texture` takes the export's own colour image, which is embedded as it is. **The FBX received on 2026-11-08 names
-  `tripo_rgb_ccbeb702-c64d-47fb-b348-6aaf8fce7a49.jpg` but does not carry it.** Until that image is supplied, the script paints a
-  1024 px texture from the model's parts and the sausage's relief:
+  `tripo_rgb_ccbeb702-c64d-47fb-b348-6aaf8fce7a49.jpg` but does not carry it.** The owner showed it in chat on 2026-11-08 but
+  hasn't sent the file. Until it arrives, the script paints a 1024 px texture from the model's parts and the sausage's relief, in
+  the colours the owner's image shows:
   - a hot dog red sausage, its ends browned;
-  - yellow mustard, dark brows, white eyes outlined in dark, black pupils;
+  - yellow mustard, dark brows, white eyes with black pupils in red-rimmed lids;
   - white teeth in a dark mouth;
-  - black noodle limbs and white gloves;
-  - red shoes with white soles, toe caps, laces and cuffs.
+  - a yellow and orange crown, charcoal noodle limbs, white gloves with yellow-trimmed cuffs;
+  - red shoes with yellow rims and white laces.
 - `--preview` renders a sheet beside the pilot's body, plus close-ups of the face, a hand and a shoe.
 
 ## The clean-up and retarget
