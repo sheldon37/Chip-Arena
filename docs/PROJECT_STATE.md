@@ -1,3 +1,5 @@
+2026-11-07 Claude (`claude/invites-button`): invitations have their own INVITES chip beside ONLINE, each chip opening its own panel (docs/ONLINE-INVITES.md). A real two-account invitation hasn't been played through.
+
 2026-11-07 Claude (`claude/deepend-body`): THE DEEP END's body no longer folds through itself on tight turns (a bend limit and self-separation on its spine); stranded on tile it curls round in a U.
 
 2026-11-07 Claude (`claude/boss-looks`): NOCTIEL's sword hand out past the hip, a cloth skirt that shows the legs, detailed leg armour (Drive zip bank); THE DEEP END slams on tile and splashes in water, no warnings for Seiche or the Drain, a stronger Drain.
