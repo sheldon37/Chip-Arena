@@ -535,7 +535,9 @@ namespace ChipArena.UnityConversion
             var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock(),Look=look,Sheldon=sheldon.ToArray(),Lift=lift,Hood=hood,HoodRenderer=hoodRenderer};
             body.All=VisualWorn(root);body.Plain=new Material[body.All.Length][];VisualCutWarm(body.All);
             // Its skeleton, off until a wound opens into it (an arena pilot's body; not the view body, busts, ghosts or portraits).
-            if(simulate&&id!=ViewBodyId){body.Skeleton=VisualSkeletonMake(root,skeleton);if(body.Skeleton!=null)body.Skeleton.enabled=false;}
+            // (The Hot Dog has none: it is sausage through, its wounds' pits of flesh with no human bones in them or out past its
+            // noodle limbs.)
+            if(simulate&&id!=ViewBodyId&&!NativeHotDog.Worn(look)){body.Skeleton=VisualSkeletonMake(root,skeleton);if(body.Skeleton!=null)body.Skeleton.enabled=false;}
             foreach(var t in root.GetComponentsInChildren<Transform>(true))
             {
                 if(t.name=="VisualGearCore")body.GearCore=t;else if(t.name=="VisualGearDevice")body.GearDevice=t;
@@ -1031,8 +1033,8 @@ namespace ChipArena.UnityConversion
             // scenes draw its face).
             var hood=VisualHooded(death.actor)?VisualHoodMake(root,skeleton):null;
             if(hood!=null){sheldon.Add(hood);VisualUnderHood(root);}
-            // The skeleton inside (a cut or wound shows it).
-            VisualSkeletonMake(root,skeleton);
+            // The skeleton inside (a cut or wound shows it; none in the Hot Dog).
+            if(!NativeHotDog.Worn(look))VisualSkeletonMake(root,skeleton);
             var at=rig.Root.transform;root.transform.SetPositionAndRotation(at.TransformPoint(new Vector3(0,NativeVisualRig.Floor,0))+offset,at.rotation);
             var binding=new NativeVisualRigBinding(root.transform,skeleton);var pose=rig.Pose;pose.World();
             binding.Apply(pose,VisualGrasp(death.actor??new Actor(),pose,death.at,0),false,false);

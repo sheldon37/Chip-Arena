@@ -57,5 +57,6 @@ internal static class HotDogChecks
         Check(body.Contains("VisualBigHead(body);\n            HotDogJiggle(body);")||body.Contains("VisualBigHead(body);\r\n            HotDogJiggle(body);"),"the jiggle runs once the body is posed");
         Check(dog.Contains("foreach(var t in body.Root.GetComponentsInChildren<Transform>(true))if(t.name.StartsWith(HotDogTwin,StringComparison.Ordinal))")&&dog.Contains("bool twin=name.StartsWith(\"~\",StringComparison.Ordinal)"),"the jiggle moves only the twins");
         Check(body.Contains("VisualHatFit(HotDogHead(body,head),hat,body.Helm,HotDogHatOffset)"),"a hat rides the sausage's crown");
+        Check(body.Contains("if(simulate&&id!=ViewBodyId&&!NativeHotDog.Worn(look)){body.Skeleton=VisualSkeletonMake(root,skeleton);")&&body.Contains("if(!NativeHotDog.Worn(look))VisualSkeletonMake(root,skeleton);"),"no human skeleton in the sausage, alive or dead");
     }
 }
