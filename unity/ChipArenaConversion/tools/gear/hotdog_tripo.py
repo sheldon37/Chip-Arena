@@ -22,8 +22,9 @@ The retarget, each part by what it is:
 - the shoes' soles set on the floor.
 
 Colour: the export's texture when it is given (--texture, embedded as it is), else one painted here from the parts and the
-sausage's relief (a hot dog red, the mustard yellow, white eyes with black pupils, dark brows, white teeth in a dark mouth,
-black noodle limbs, white gloves, red shoes with white soles, toe caps, laces and cuffs). The texture sits in the bank.
+sausage's relief in the export's own colours as the owner showed them (a hot dog red, the mustard yellow, white eyes with black
+pupils in red-rimmed lids, dark brows, white teeth in a dark mouth, a yellow and orange crown, charcoal noodle limbs, white
+gloves with yellow-trimmed cuffs, red shoes with yellow rims and white laces). The texture sits in the bank.
 
 The bank (HDOG v2): the bone names its weights use (a twin's "~" + its bone), then per vertex its place, normal, RGBA colour (sRGB
 bytes), texture coordinate, four bone indices and four weights, the triangles (cross(b - a, c - a) outward, as the body's own),
@@ -400,13 +401,18 @@ def srgb(h):
     return np.array([(h >> 16 & 255) / 255.0, (h >> 8 & 255) / 255.0, (h & 255) / 255.0])
 
 
+# Matched to the export's own texture as the owner showed it (2026-11-08: red sausage with the yellow squiggle, white eyes with
+# black pupils in red-rimmed lids, a white tooth row, yellow and orange crown pieces, charcoal limbs, white gloves and cuffs
+# with yellow trim, red shoes with yellow rims and white laces).
 COL = {
-    'sausage': srgb(0xC8452F), 'sausage_end': srgb(0x9E3324), 'sprig': srgb(0xA6382A), 'knot': srgb(0xA6382A),
-    'mustard': srgb(0xF4C316), 'brow': srgb(0x2A1714), 'eye': srgb(0xF7F4EC), 'eye_line': srgb(0x2A1714),
-    'pupil': srgb(0x16110F), 'mouth': srgb(0x3A1412), 'tooth': srgb(0xF7F4EC),
-    'limb': srgb(0x1F1E22), 'glove': srgb(0xF4F3EF), 'upper': srgb(0xD8322C), 'toecap': srgb(0xF4F3EF),
-    'sole': srgb(0xF4F3EF), 'midsole': srgb(0xB9271F), 'lace': srgb(0xF4F3EF), 'cuff': srgb(0xF4F3EF),
+    'sausage': srgb(0xC8452F), 'sausage_end': srgb(0x9E3324), 'sprig': srgb(0xF4C316), 'sprig2': srgb(0xEE8A1E),
+    'knot': srgb(0xA6382A), 'mustard': srgb(0xF4C316), 'brow': srgb(0x2A1714), 'eye': srgb(0xF7F4EC),
+    'eye_line': srgb(0xA32C1E), 'pupil': srgb(0x16110F), 'mouth': srgb(0x3A1412), 'tooth': srgb(0xF7F4EC),
+    'limb': srgb(0x3B3C42), 'glove': srgb(0xF4F3EF), 'glove_trim': srgb(0xF2C21A), 'upper': srgb(0xD8322C),
+    'toecap': srgb(0xD8322C), 'sole': srgb(0xF2C21A), 'midsole': srgb(0xF2C21A), 'lace': srgb(0xF4F3EF),
+    'cuff': srgb(0xF2C21A),
 }
+GLOVE_TRIM = .404  # the gloves' cuffs: their rim above this height (the export's units) in the yellow trim
 
 
 def relief(V, F, sausage):
@@ -436,9 +442,15 @@ def eyes(V, parts):
     return out
 
 
-def paint_colour(P, Nrm, R, paint, eye_list):
-    """The colour at points P (Blender's space) of a part painted `paint` (relief R: the sausage's)."""
+def paint_colour(P, Nrm, R, paint, eye_list, rank=0):
+    """The colour at points P (Blender's space) of a part painted `paint` (relief R: the sausage's; `rank` the part's)."""
     n = len(P)
+    if paint == 'sprig':
+        return np.repeat(COL['sprig' if rank % 2 else 'sprig2'][None], n, axis=0)
+    if paint == 'glove':
+        c = np.repeat(COL['glove'][None], n, axis=0)
+        c[P[:, 2] > GLOVE_TRIM] = COL['glove_trim']
+        return c
     if paint != 'sausage':
         return np.repeat(COL[paint][None], n, axis=0)
     c = np.repeat(COL['sausage'][None], n, axis=0)
@@ -493,7 +505,7 @@ def paint(V, F, UVt, parts, size=TEXTURE):
         P = L @ V[[a, b, c]]
         Nr = unit(L @ N[[a, b, c]])
         Rr = L @ R[[a, b, c]]
-        col = paint_colour(P, Nr, Rr, parts.paint[a], eye_list)
+        col = paint_colour(P, Nr, Rr, parts.paint[a], eye_list, parts.rank[a])
         px, py = p[inside, 0].astype(int), p[inside, 1].astype(int)
         img[size - 1 - py, px] = col
         filled[size - 1 - py, px] = True
