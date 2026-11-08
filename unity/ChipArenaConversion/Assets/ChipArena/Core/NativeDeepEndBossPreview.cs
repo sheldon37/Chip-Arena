@@ -32,6 +32,8 @@ namespace ChipArena.UnityConversion
         static NativeDeepEndBossPreview()
         {
             var a=new System.Collections.Generic.List<Act>();var beats=DeepEndBossBeats.Fallback;
+            // Not yet at either phase while the script is written (TideAt reads them: unset they were 0, and every move before the flood was planned on the flood's water).
+            Phase2At=Phase3At=float.PositiveInfinity;
             DeepEndBossPaths.Arrival(Route,SpawnAt,beats,0);ArrivalEnd=SpawnAt+beats.Hold;float t=ArrivalEnd+3.0f;
             float At(string id,float at,int target,float tx,float tz,float ax=float.NaN,float az=float.NaN,float? dur=null)
             {

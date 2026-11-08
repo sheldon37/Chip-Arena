@@ -13,10 +13,12 @@ namespace ChipArena.UnityConversion
         public struct Leg{public float T0,T1,Span,G;public Vector3 P0,V0,P1,V1;}
         private readonly Leg[] legs;private int first,count;
         public float EndTime{get;private set;}public Vector3 EndP{get;private set;}public Vector3 EndV{get;private set;}public float StartTime=>count>0?legs[first].T0:EndTime;
+        /// <summary>The way it last travelled across the room (level, unit): where its body lies behind it when it has come to rest.</summary>
+        public Vector3 Heading{get;private set;}=new Vector3(0,0,1);
         public int Count=>count;
         public DeepEndRoute(int capacity=256){legs=new Leg[capacity];}
         public void Reset(float t,Vector3 p,Vector3 v){first=count=0;EndTime=t;EndP=p;EndV=v;last=0;}
-        private void Push(in Leg l){if(count==legs.Length){first=(first+1)%legs.Length;count--;}legs[(first+count)%legs.Length]=l;count++;EndTime=l.T1;EndP=l.P1;EndV=l.V1;}
+        private void Push(in Leg l){if(count==legs.Length){first=(first+1)%legs.Length;count--;}legs[(first+count)%legs.Length]=l;count++;EndTime=l.T1;EndP=l.P1;EndV=l.V1;var m=l.P1-l.P0;m.Y=0;float ml=m.Length();if(ml>.2f)Heading=m/ml;}
         /// <summary>A Hermite leg from the end state to `p1` moving at `v1` at time `t1`.</summary>
         public void To(float t1,Vector3 p1,Vector3 v1){if(!(t1>EndTime+1e-4f)){EndP=p1;EndV=v1;EndTime=Math.Max(EndTime,t1);return;}Push(new Leg{T0=EndTime,T1=t1,Span=t1-EndTime,P0=EndP,V0=EndV,P1=p1,V1=v1,G=-1});}
         /// <summary>Holds still until `t1` (eased in from the end state, ending at rest).</summary>
@@ -68,6 +70,8 @@ namespace ChipArena.UnityConversion
         public const float SwimDepth=4.6f,LeapHorizontal=7f,LeapRise=9.6f,FlopDepth=4.4f;
         /// <summary>How high the Jet holds its mouth over the water, the Flop's leap (its flight's seconds, its height), how high the head rides when it hauls itself over dry deck.</summary>
         public const float JetRise=7.2f,DrainRise=6.4f,FlopFlight=1.4f,FlopHeight=5.4f,DeckRide=1.02f;
+        /// <summary>The radius of the U it curls round on dry tile to get back to the pool behind it (m): wider than its body is thick.</summary>
+        public const float UTurn=2.6f;
         /// <summary>Whether (x, z) has water over it: the pool always, the deck only once the tide covers it.</summary>
         public static bool Wet(float x,float z,float surface)=>surface>.02f||NativeDeepEndArena.InPool(x,z);
         /// <summary>A place brought into the water: with the decks dry, `margin` inside the pool's edge; with the tide up it stays.</summary>
@@ -86,7 +90,18 @@ namespace ChipArena.UnityConversion
             var p=r.EndP;var v=r.EndV;
             if(!Wet(p.X,p.Z,surface))
             {
-                var edge=InWater(p,surface,1.6f);var to=edge-p;to.Y=0;float d=to.Length();var dir=d>.01f?to/d:new Vector3(0,0,1);float T=Math.Max(.28f,Math.Min(1.9f,d/8.5f));
+                var edge=InWater(p,surface,1.6f);var to=edge-p;to.Y=0;float d=to.Length();var dir=d>.01f?to/d:new Vector3(0,0,1);
+                // The pool behind it (a Flop that came over the edge): it curls round on the tile in a U, never back over its own neck (the owner, 2026-11-07:
+                // "A lot of turns ... the body clips into itself").
+                var head=new Vector2(v.X,v.Z).Length()>.5f?Flat(v):r.Heading;
+                if(Vector3.Dot(head,dir)<-.2f)
+                {
+                    var side=Vector3.Cross(Vector3.UnitY,head);if(Vector3.Dot(side,dir)<0)side=-side;if(!NativeDeepEndArena.InRoom(p.X+side.X*(UTurn+1),p.Z+side.Z*(UTurn+1)))side=-side;
+                    r.To(r.EndTime+.55f,new Vector3(p.X,DeckRide,p.Z)+head*UTurn+side*UTurn,side*4.2f);
+                    r.To(r.EndTime+.55f,new Vector3(p.X,DeckRide,p.Z)+side*(2*UTurn),-head*4.2f);
+                    p=r.EndP;to=edge-p;to.Y=0;d=to.Length();dir=d>.01f?to/d:-head;
+                }
+                float T=Math.Max(.28f,Math.Min(1.9f,d/8.5f));
                 r.To(r.EndTime+T,new Vector3(edge.X,DeckRide,edge.Z),dir*7);r.To(r.EndTime+.42f,new Vector3(edge.X,surface-2.7f,edge.Z)+dir*2.6f,dir*3.2f+new Vector3(0,-6.4f,0));return;
             }
             if(p.Y<surface-1.6f)return;

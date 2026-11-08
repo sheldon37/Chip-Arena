@@ -16,7 +16,7 @@ public static class DeepEndBossChecks
         count=0;
         Check(NativeDeepEndBoss.Archetype=="poolrooms-deep-end","the archetype Astra binds");
         Check(NativeBackroomsBossIntro.Mine(NativeDeepEndBoss.Archetype)&&NativeBackroomsBossIntro.Card(NativeDeepEndBoss.Archetype)==NativeDeepEndBoss.Card,"the intro knows the boss");
-        Moves(root);Look(root);Off();Routes();Rig();Frames();Arena();Water();Stage();Intro();Hits();Cues(root);Preview();
+        Moves(root);Look(root);Off();Routes();Rig();Body();Frames();Arena();Water();Stage();Intro();Hits();Cues(root);Preview();
         var acts=new System.Text.StringBuilder("deepend preview script:");for(int i=0;i<NativeDeepEndBossPreview.ActCount;i++){var a=NativeDeepEndBossPreview.ActAt(i);acts.Append($" {a.Id}@{a.At:F1}");}acts.Append($" lamps@{NativeDeepEndBossPreview.LampsAt:F1} p2@{NativeDeepEndBossPreview.Phase2At:F1} p3@{NativeDeepEndBossPreview.Phase3At:F1} death@{NativeDeepEndBossPreview.DeathAt:F1} loop@{NativeDeepEndBossPreview.Loop:F1}");Console.WriteLine(acts);
         Console.WriteLine("PASS deepend-boss ("+count+" checks)");
     }
@@ -119,6 +119,28 @@ public static class DeepEndBossChecks
         // The lamps sit on the flanks, at the coping.
         for(int i=0;i<NativeDeepEndBossLook.Lamps;i++){rig.LampFrame(i,out var at,out var q,out float s);NativeDeepEndBossLook.Lamp(i,out float ls,out _,out _);rig.SpineFrame(ls,out var c,out _);float d=Vector3.Distance(at,c);float rad=NativeDeepEndBossLook.Radius(ls);Check(d>rad*.7f&&d<rad*1.25f,"lamp "+i+" on the flank: "+d);Check(s>.1f&&s<.5f,"lamp size");}
         Check(rig.BladeScale.All(x=>x>.3f&&x<1),"the blades' scale");
+    }
+    // ---- the body never folds into itself (the owner, 2026-11-07: "A lot of turns (mostly upward) the body clips into itself") ----
+    // Through the whole scripted fight, every frame: two parts of the body three or more joints apart are never closer than their radii allow, and no
+    // joint bends tighter than the rig's limit; both measured on what's in sight (above the water).
+    private static void Body()
+    {
+        var o=new Vector3(24,0,24);var rig=new DeepEndBossRig();var r=NativeDeepEndBossPreview.Route;var v=DeepEndBossView.None;const float dt=1/30f;
+        float least=9,leastT=0,bend=0,bendT=0;int li=0,lj=0,bi=0;float water=o.Y+PoolroomsLayout.WaterY;
+        for(float t=NativeDeepEndBossPreview.ArrivalEnd;t<NativeDeepEndBossPreview.DeathAt;t+=dt)
+        {
+            NativeDeepEndBossPreview.View(t,ref v,out _);var st=NativeDeepEndBossStage.Evaluate(v,t,DeepEndBossBeats.Fallback);rig.Update(t,dt,v,r,o,st.Tide,false,default);var P=rig.Shown.Position;float surf=o.Y+st.Tide;
+            for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
+            {
+                if(P[i].Y<surf)continue;float ri=NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg);
+                for(int j=i+3;j<NativeDeepEndBossLook.Spine;j++){if(P[j].Y<surf)continue;float k=Vector3.Distance(P[i],P[j])/(ri+NativeDeepEndBossLook.Radius(j*NativeDeepEndBossLook.Seg));if(k<least){least=k;leastT=t;li=i;lj=j;}}
+                if(i>=4&&i<NativeDeepEndBossLook.Spine-1&&ri>=.9f&&P[i-1].Y>=surf&&P[i+1].Y>=surf){var a=Vector3.Normalize(P[i]-P[i-1]);var b=Vector3.Normalize(P[i+1]-P[i]);float ang=(float)Math.Acos(Math.Max(-1,Math.Min(1,Vector3.Dot(a,b))));if(ang>bend){bend=ang;bendT=t;bi=i;}}
+            }
+        }
+        Console.WriteLine("INFO deepend times: arrive "+NativeDeepEndBossPreview.ArrivalEnd+" breach "+NativeDeepEndBossPreview.BreachAt+" jet "+NativeDeepEndBossPreview.JetAt+" flop "+NativeDeepEndBossPreview.FlopAt+" thrash "+NativeDeepEndBossPreview.ThrashAt+" drain "+NativeDeepEndBossPreview.DrainAt+" p2 "+NativeDeepEndBossPreview.Phase2At+" seiche "+NativeDeepEndBossPreview.SeicheAt+" breach2 "+NativeDeepEndBossPreview.Breach2At+" jet2 "+NativeDeepEndBossPreview.Jet2At+" flop2 "+NativeDeepEndBossPreview.Flop2At+" p3 "+NativeDeepEndBossPreview.Phase3At+" lap "+NativeDeepEndBossPreview.LapAt+" drain2 "+NativeDeepEndBossPreview.Drain2At+" breach3 "+NativeDeepEndBossPreview.Breach3At+" death "+NativeDeepEndBossPreview.DeathAt);
+        Console.WriteLine("INFO deepend body: closest "+least.ToString("0.00")+" of the radii (joints "+li+","+lj+" at "+leastT.ToString("0.0")+"), sharpest bend "+(bend*180/Math.PI).ToString("0")+" deg (joint "+bi+" at "+bendT.ToString("0.0")+")");
+        Check(least>=DeepEndBossRig.Apart*.9f,"the body never folds into itself: joints "+li+" and "+lj+" at "+leastT.ToString("0.0")+" s come to "+least.ToString("0.00")+" of their radii");
+        Check(bend<=1.4f,"no thick joint folds (past 80 deg; the limit is "+(DeepEndBossRig.MostBend*180/Math.PI).ToString("0")+", met unless its parts would touch): joint "+bi+" at "+bendT.ToString("0.0")+" s bends "+(bend*180/Math.PI).ToString("0"));
     }
     // ---- determinism and allocation ----
     private static void Frames()
