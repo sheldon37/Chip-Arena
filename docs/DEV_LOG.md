@@ -45,6 +45,7 @@
   - The live fight's rings round NOCTIEL's feet, the same shots before and after: bright grey rings before, faint dark ones after. The bright fan at the fight's start is Severance's warning and measured the same before and after.
   - The moves' waves made faint were not caught in a frame.
 - **Not run:** no person or two-client run. The low-graphics tier and phase 3's split mask were not looked at in the Editor.
+- **Released:** merged to shared as `698e8861`, then `b1bf5e5d` to take in the builder's PR #380 merge (no content of its own), and published from `b1bf5e5d` to the test channel as revision 639297673616329035 (246.0 MiB). Suite 981 groups, exit 0; Unity compile PASS; the one pin flag is a comment's comma and newline, not a pin.
 
 ## 2026-11-08 — Claude: NOCTIEL's void holds through the intro; a new claymore with its light; the adds animated (owner requests)
 
