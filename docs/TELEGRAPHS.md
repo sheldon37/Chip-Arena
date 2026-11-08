@@ -76,8 +76,9 @@ Checks make each adopter honest: sample the floor, and every point the rule woul
   - Fall Through's 2.4 m; Max Hum's charge, then its travelling front.
   - Wall Hand's 2.5 m round the wall point (the old ring was 1.3 m off it and smaller).
 - **THE DEEP END** (2026-11-07, `Water`, on the pool's surface):
-  - Breach's 3.2 m; Belly Flop's lane (2 m either side); Thrash's 5 m; the Lull's 1.8 m; the Drain's 2.6 m.
-  - The Seiche's front, crossing the pool and back.
+  - Breach's 3.2 m; Belly Flop's lane (2 m either side); Thrash's 5 m; the Lull's 1.8 m.
+  - The Drain and the Seiche draw none (the owner, 2026-11-07: "we dont need hit indicators for the waves", and the vortex "too"): the
+    whirlpool and the wave are their own tells (`NativeDeepEndBossFx.Unwarned`).
   - The Hydro Jet's lane from the mouth, following the sweep.
   - Last Lap's body where it breaks the surface.
 - **THE 6:47** (the Station, 2026-11-07, `Industrial`), each against the zone boss authority:

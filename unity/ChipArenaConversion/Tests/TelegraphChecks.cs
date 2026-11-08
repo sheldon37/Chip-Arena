@@ -182,7 +182,9 @@ public static class TelegraphChecks
             if(!v.Moving(t,out var m,out float age,out float hit))continue;bool sampled=n%2==0;
             var st=NativeDeepEndBossStage.Evaluate(v,t,DeepEndBossBeats.Fallback);waves.Compose(st);fx.Build(rig,v,st,waves,t,o+new Vector3(0,6,-30),Vector3.UnitX,Vector3.UnitY,1,false,false);
             for(int i=0;i<fx.Telegraphs.Count;i++)Check(fx.Telegraphs.Items[i].Style==NativeTelegraph.Water&&float.IsFinite(fx.Telegraphs.Items[i].At.X),m.Id+": the water look, at a real place");
-            if(m.Id!="whistle"&&age<hit-.05f&&age>.05f){Check(fx.Telegraphs.Count>0||m.Id=="lap",m.Id+": a warning through its anticipation");windup.Add(m.Id);}
+            // The waves and the vortex draw none (the owner, 2026-11-07).
+            if(NativeDeepEndBossFx.Unwarned(m.Id))Check(fx.Telegraphs.Count==0,m.Id+": no warning drawn (the owner: the waves and the vortex are their own tells)");
+            else if(m.Id!="whistle"&&age<hit-.05f&&age>.05f){Check(fx.Telegraphs.Count>0||m.Id=="lap",m.Id+": a warning through its anticipation");windup.Add(m.Id);}
             float tr=age-hit;if(tr<0||!sampled)continue;
             var tp=new Vector3(v.targetX,0,v.targetZ);var org=new Vector3(v.x,0,v.z);var aim=new Vector3(v.aimX,0,v.aimZ);float water=o.Y+st.Tide;
             for(int i=0;i<500;i++)
@@ -200,11 +202,11 @@ public static class TelegraphChecks
                     case "lap":{if(tr>6)break;var feet=new Vector3(q.X,water-o.Y,q.Z);for(int j=1;j<NativeDeepEndBossLook.Spine&&!hitHere;j++){var a=rig.Shown.Position[j-1]-o;var b=rig.Shown.Position[j]-o;if(Math.Max(a.Y,b.Y)+NativeDeepEndBossLook.Radius(j*NativeDeepEndBossLook.Seg)>=feet.Y&&NativeBackroomsBossRules.Line(feet,a,b,3.2f))hitHere=true;}break;}
                 }
                 if(!hitHere)continue;seen[m.Id]=seen.TryGetValue(m.Id,out int c)?c+1:1;
-                Check(Warned(q),m.Id+": the rule hits "+q+" "+tr.ToString("0.00")+" s in and a warning shows it");
+                Check(NativeDeepEndBossFx.Unwarned(m.Id)||Warned(q),m.Id+": the rule hits "+q+" "+tr.ToString("0.00")+" s in and a warning shows it");
             }
         }
         foreach(var id in new[]{"breach","flop","thrash","lull","drain","seiche","jet","lap"})Check(seen.ContainsKey(id),id+": the preview's samples found its area");
-        foreach(var id in new[]{"breach","flop","thrash","lull","drain","seiche","jet"})Check(windup.Contains(id),id+": warned through its anticipation");
+        foreach(var id in new[]{"breach","flop","thrash","lull","jet"})Check(windup.Contains(id),id+": warned through its anticipation");
     }
     // THE 6:47 (the Station), through its scripted fight: wherever Runtime NativeZoneBossAuthority's station moves (and the zone's
     // glass) would hit, a warning drawn at that moment covers it; each move with a hit is warned through its windup.

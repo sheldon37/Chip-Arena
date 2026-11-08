@@ -50,9 +50,9 @@ namespace ChipArena.UnityConversion
         /// <see cref="DrainPullMin"/> drift at the room's edge (the owner, 2026-11-07: "make the pull weaker if players are further away"). The pilot keeps control in it (a run is 6.8 m/s);
         /// it holds a pilot in the air too (the owner: "which is fine"), not one rolling. Hurting the throat by <see cref="DrainThroatShare"/> of its health while it drains shuts it, with a
         /// <see cref="DrainStagger"/> s stagger (the owner: "no counter play to the ability that sucks everyone in").</summary>
-        public const float SeicheHeight=.9f,DrainPullMin=.6f,DrainPullMax=4.5f,DrainReach=28,DrainThroatShare=.03f,DrainStagger=2;
+        public const float SeicheHeight=.9f,DrainPullMin=1.4f,DrainPullMax=6.5f,DrainReach=28,DrainThroatShare=.03f,DrainStagger=2;
         /// <summary>The Drain's current `distance` m from the pit: <see cref="DrainPullMax"/> times (1 - d / <see cref="DrainReach"/>)^1.5, never under <see cref="DrainPullMin"/>.</summary>
-        public static float DrainPull(float distance){float u=1-Math.Max(0,Math.Min(1,distance/DrainReach));return Math.Max(DrainPullMin,DrainPullMax*(float)Math.Pow(u,1.5));}
+        public static float DrainPull(float distance){float u=1-Math.Max(0,Math.Min(1,distance/DrainReach));return Math.Max(DrainPullMin,DrainPullMax*(float)Math.Pow(u,1.2));}
 
         // ---- weak points and breaks ----
         /// <summary>The throat's damage multiplier while the mouth is open; a lamp's share of max health to break it; lamps broken for the stagger, its seconds; a stranding Flop's seconds.</summary>

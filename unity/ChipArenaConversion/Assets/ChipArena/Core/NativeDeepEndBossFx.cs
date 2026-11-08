@@ -270,6 +270,32 @@ namespace ChipArena.UnityConversion
                 Vfx.Drop(at,-vel*.028f,WaterWhite,width*(.6f+.7f*H(k+6)),cover*(1-age/lf*.4f),age/lf,i);
             }
         }
+        /// <summary>Whether (x, z) from the room's centre is under water at this tide (a few centimetres or more).</summary>
+        public static bool Wet(float tide,float x,float z)=>tide>NativeDeepEndArena.Floor(x,z)+.06f;
+        private static readonly Vector3 TileChip=new Vector3(.86f,.88f,.86f),Grout=new Vector3(.38f,.42f,.42f),TileDust=new Vector3(.78f,.8f,.78f),Scar=new Vector3(.01f,.012f,.014f);
+        // A slam where it comes down (the owner, 2026-11-07: "add slam effects when the deep end slams onto the tiles. (Add slam into water effects [Splashing])
+        // when done in water"). In water a splash: spray thrown up and out, mist, a crown of water. On dry tile a white flash, chips of tile and grout
+        // thrown up that bounce, dust rolling out along the floor in a ring and a column of it, and a dark scar that fades. `burst`: out of the floor
+        // (Breach) rather than onto it: the chips fly higher.
+        private void Slam(float now,Vector3 o,float x,float z,float tide,float at,float size,int key,bool burst)
+        {
+            float age=now-at;if(age<0||age>3.4f)return;
+            if(Wet(tide,x,z))
+            {
+                var c=o+new Vector3(x,tide,z);float floor=o.Y+tide-.1f;
+                Spray(now,c,Vector3.UnitY,.75f,10.5f*size,60,1.5f,at,.14f,key,.05f,floor);Spray(now,c,Vector3.UnitY,1.25f,6*size,40,1.1f,at,.2f,key+400,.035f,floor);
+                Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.6f,0),2.8f*size,5,1.9f,.8f,3.2f*size,.17f,at,.3f,key+800,floor);
+                CrownRing(c,age,1.2f,2.6f*size,.8f*size,key);return;
+            }
+            float fy=NativeDeepEndArena.Floor(x,z);var p=o+new Vector3(x,fy,z);float ground=o.Y+fy;
+            if(age<.2f)Vfx.Glow(p+new Vector3(0,.35f,0),new Vector3(1,1,1)*(2.4f*(1-age/.2f)),1.8f*size,NativeBossVfx.Core);
+            Vfx.RubbleBurst(now,p+new Vector3(0,.06f,0),Vector3.UnitY,burst?.55f:.9f,(burst?8.5f:6.2f)*size,16,1.7f,at,.075f*size,TileChip,Seed,key,0,ground);
+            Vfx.RubbleBurst(now,p+new Vector3(0,.04f,0),Vector3.UnitY,1.1f,4.2f*size,10,1.4f,at,.045f*size,Grout,Seed,key+500,0,ground);
+            for(int k=0;k<9;k++){float an=k*BossMath.Tau/9+H(key*13+k);var dir=new Vector3((float)Math.Cos(an),0,(float)Math.Sin(an));
+                Vfx.SmokeBurst(now,p+dir*(.6f*size)+new Vector3(0,.18f,0),dir*(3.6f*size)+new Vector3(0,.3f,0),.25f,.12f,2,1.5f,.45f*size,1.7f*size,TileDust,.36f,at,.05f,Seed,key*20+k,floor:ground,lit:.6f);}
+            Vfx.SmokeBurst(now,p+new Vector3(0,.35f,0),new Vector3(0,burst?2.6f:1.5f,0),.7f*size,.45f,6,2f,.6f*size,2.4f*size,TileDust,.3f,at,.12f,Seed,key*20+9,floor:ground,lit:.6f);
+            float scar=1-BossMath.Smooth((age-1.4f)/2f);if(scar>.01f)Over.Billboard(p+new Vector3(0,.014f,0),new Vector3(1.4f*size,0,0),new Vector3(0,0,1.4f*size),Vector3.UnitY,DeepEndFlow.Shadow,1,Scar,.8f*scar);
+        }
         // A wall of water thrown up by an impact: rises fast, hangs, collapses, tearing from its top as it goes. Along a line (both sides) or round a ring.
         private void CrownLine(Vector3 a,Vector3 b,float age,float life,float height,float width,float seed)
         {
@@ -306,6 +332,8 @@ namespace ChipArena.UnityConversion
         public readonly NativeTelegraphList Telegraphs=new NativeTelegraphList(96);
         /// <summary>The warnings this frame (the old water marks are the moves' own tells and stay).</summary>
         public int Telegraph;
+        /// <summary>Moves with no warning drawn: the waves and the vortex show themselves.</summary>
+        public static bool Unwarned(string id)=>id=="seiche"||id=="drain";
         private void Warnings(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now)
         {
             Telegraphs.Clear();Telegraph=0;if(!v.Moving(now,out var m,out float age,out float hit))return;
@@ -325,11 +353,8 @@ namespace ChipArena.UnityConversion
                 case "thrash":W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromCentre,At=On(v.x,v.z),A=m.Radius,Seed=33},start,at,m.Strike);break;
                 // The Lull: 1.8 m where the hands rise, live while they hold (1.8 s).
                 case "lull":W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=On(tp.X,tp.Z),A=m.Radius,Seed=34},start,at,1.8f);break;
-                // The Drain: 2.6 m round the drain itself, live its 4 s (the pull toward it is no hit).
-                case "drain":W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=On(0,0),A=m.Radius,Seed=35},start,at,4);break;
-                // Seiche: the front across the whole pool on its aim, 1.3 m either side, crossing and coming back (11.4 m/s, 7 s).
-                case "seiche":{var dir=new Vector3(v.aimX,0,v.aimZ);if(dir.LengthSquared()<1e-4f)break;dir=Vector3.Normalize(dir);float t=Math.Max(0,now-at),travel=t*11.4f,wave=travel>40?60-travel:travel-20;var c=dir*wave;
-                    W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.FromEdge,At=On(c.X,c.Z),Yaw=Yaw(dir.Z,-dir.X),A=NativeDeepEndArena.Half+2,B=1.3f,C=NativeDeepEndArena.Half+2,Seed=36},start,at,7);break;}
+                // The Drain and Seiche draw none (the owner, 2026-11-07: "we dont need hit indicators for the waves", "we can also remove hit indicators
+                // from that one too"): the vortex and the wave are their own tells (<see cref="Unwarned"/>).
                 // Hydro Jet: from the mouth along the sweep, 1 m either side, 30 m (the rule's own line, recomputed as it sweeps).
                 case "jet":{var head=rig.MouthAt-o;var d=DeepEndBossRig.JetDir(v,Math.Max(age,hit),hit,m,head,s.Tide);var flat=new Vector3(d.X,0,d.Z);float l=flat.Length();if(l<1e-3f)break;
                     W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.Along,At=On(head.X,head.Z),Yaw=Yaw(flat.X,flat.Z),A=m.Reach*l+1,B=m.Width*.5f,C=1,Seed=37},start,at,2.2f);break;}
@@ -390,8 +415,14 @@ namespace ChipArena.UnityConversion
                 float at=v.actionAt+hit;var t=new Vector3(v.targetX,0,v.targetZ);float surface=s.Tide;float floor=o.Y+surface-.1f;
                 switch(m.Id)
                 {
-                    case "breach":{var c=o+new Vector3(t.X,surface,t.Z);Spray(now,c,Vector3.UnitY,.65f,9,150,1.5f,at,.12f,1,.05f,floor);Spray(now,c,Vector3.UnitY,1.2f,5,110,1.1f,at,.25f,2,.03f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.8f,0),2.4f,12,1.9f,.8f,3.2f,.2f,at,.3f,3,floor);CrownRing(c,now-at,1.15f,3.4f,m.Radius*.62f,1);break;}
-                    case "flop":if(age>=hit){var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=6;k++){var q=Vector3.Lerp(t,e,k/6f);var c=o+new Vector3(q.X,Math.Max(surface,0),q.Z);Spray(now,c,Vector3.UnitY,.75f,10.5f,54,1.5f,at,.14f,10+k,.05f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.6f,0),2.8f,4,1.9f,.8f,3.2f,.15f,at,.3f,20+k,floor);}var w0=o+new Vector3(t.X,Math.Max(surface,0),t.Z);var w1=o+new Vector3(e.X,Math.Max(surface,0),e.Z);CrownLine(w0,w1,now-at,1.3f,3.6f,m.Width*.42f,3);}break;
+                    // Breach: out of the water a burst of spray; out of dry tile it bursts up through it.
+                    case "breach":if(Wet(surface,t.X,t.Z)){var c=o+new Vector3(t.X,surface,t.Z);Spray(now,c,Vector3.UnitY,.65f,9,150,1.5f,at,.12f,1,.05f,floor);Spray(now,c,Vector3.UnitY,1.2f,5,110,1.1f,at,.25f,2,.03f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.8f,0),2.4f,12,1.9f,.8f,3.2f,.2f,at,.3f,3,floor);CrownRing(c,now-at,1.15f,3.4f,m.Radius*.62f,1);}
+                        else Slam(now,o,t.X,t.Z,surface,at,1.25f,80,true);break;
+                    // Belly Flop: its body comes down along its line, head first: each place a splash in water, a slam on tile; the water's wall where it's wet.
+                    case "flop":if(age>=hit){var e=new Vector3(v.aimX,0,v.aimZ);int wet=0;for(int k=0;k<=6;k++){var q=Vector3.Lerp(e,t,k/6f);if(Wet(surface,q.X,q.Z))wet++;Slam(now,o,q.X,q.Z,surface,at+.035f*k,1.3f,10+k,false);}
+                        if(wet>=4){var w0=o+new Vector3(t.X,Math.Max(surface,0),t.Z);var w1=o+new Vector3(e.X,Math.Max(surface,0),e.Z);CrownLine(w0,w1,now-at,1.3f,3.6f,m.Width*.42f,3);}}break;
+                    // Thrash: the body hits round it, four blows a beat apart.
+                    case "thrash":if(age>=hit)for(int k=0;k<4;k++){float an=k*1.7f+v.actionAt*.37f,rr=2.6f+.9f*H(k*7+(int)(v.actionAt*10));Slam(now,o,v.x+(float)Math.Cos(an)*rr,v.z+(float)Math.Sin(an)*rr,surface,at+.07f*k,.8f,90+k,false);}break;
                     case "jet":Jet(rig,v,s,waves,now,age,hit,m,low);break;
                     case "lull":Hands(rig,v,s,waves,now,age,hit,m,low);break;
                     case "drain":if(age<hit+m.Strike&&!(DeepEndBossView.At(v.cancelAt)&&now>=v.cancelAt)){float k=BossMath.Smooth((age-hit*.6f)/.6f)*(1-BossMath.Smooth((age-hit-m.Strike+.3f)/.3f));if(k>.02f){DrainPull(rig,s,waves,now,k,low);var hd=rig.MouthAt;Vfx.SmokeFlow(now,new Vector3(hd.X,o.Y+surface+.4f,hd.Z),new Vector3(0,.2f,0),1.4f,.22f,14,1.5f,.5f,2.4f,WaterWhite,.2f*k,v.actionAt,v.actionAt+hit+m.Strike,Seed,41,lit:.6f);}}break;
