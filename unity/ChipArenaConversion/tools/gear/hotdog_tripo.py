@@ -12,9 +12,9 @@ so a point there is (-x, z, -y) of Blender's.
 The retarget, each part by what it is:
 - the sausage and everything on it (face, mouth, pupils, sprigs, knot) one rigid, uniformly scaled piece (SAUSAGE_SCALE) set
   on the pilot's spine: its bottom just under the hip joints (SAUSAGE_BOTTOM), centred on the spine where the shoulders are,
-  and its weights the pilot's spine by height (each vertex between the two spine bones round it), on the spine's twins (bone
-  names "~pelvis" ..: the runtime makes each a child of that bone, where the sausage's jiggle goes, so the arms, the hands and
-  whatever they hold never move with it);
+  and its weights the pilot's spine by height (a bell round each spine bone, so a bent spine bends it smoothly), on the
+  spine's twins (bone names "~pelvis" ..: the runtime makes each a child of that bone, where the sausage's jiggle goes, so the
+  arms, the hands and whatever they hold never move with it);
 - the limbs (arm and leg tubes, gloves, shoes) bone by bone: each Tripo bone's frame onto the pilot's matching bone, stretched
   along the bone to the pilot's length (the noodle limbs grow to the pilot's reach and stride) and scaled across by
   LIMB_THICK; the hands, fingers and feet not stretched, only scaled (HAND_SCALE, SHOE_SCALE), each finger laid along the
@@ -51,6 +51,7 @@ LIMB_THICK = 1.3        # the noodle limbs' girth against the export's
 HAND_SCALE = 1.3        # the gloves'
 SHOE_SCALE = 1.2        # the shoes' length and width (their height kept so the ankle is the pilot's)
 TEXTURE = 1024          # the painted texture's size
+SPINE_SPREAD = .12      # how far each spine bone's hold on the sausage reaches (m, the bell's width)
 
 # The pilot's spine the sausage rides, bottom to top (its twins carry the weights).
 SPINE = ['pelvis', 'spine_02', 'spine_03', 'spine_04', 'spine_05', 'neck_01', 'head']
@@ -358,17 +359,14 @@ class Retarget:
         W, names = self.W, self.names
         n = len(X)
         spine_y = np.array([self.P[b][1] for b in SPINE])
-
-        def spine_w(y):
-            k = np.clip(np.searchsorted(spine_y, y) - 1, 0, len(SPINE) - 2)
-            t = np.clip((y - spine_y[k]) / (spine_y[k + 1] - spine_y[k]), 0, 1)
-            return k, t
+        # Each height's share of the spine's bones: a bell round each bone (SPINE_SPREAD wide), heights past the ends held at
+        # them, so a bend of the pilot's spine spreads down the sausage instead of folding it at one joint.
+        y = np.clip(X[:, 1], spine_y[0], spine_y[-1])
+        bell = np.exp(-.5 * ((y[:, None] - spine_y[None, :]) / SPINE_SPREAD) ** 2)
         rows = []
         sausage = self.parts.kind == 'sausage'
-        k_all, t_all = spine_w(X[:, 1])
         for i in range(n):
             row = {}
-            k, t = int(k_all[i]), float(t_all[i])
             if sausage[i]:
                 share = 1.0
             else:
@@ -382,9 +380,11 @@ class Retarget:
                     else:
                         share += W[i, j] / tot
             if share > 0:
-                for b, w in ((SPINE[k], 1 - t), (SPINE[k + 1], t)):
-                    if w * share > 0:
-                        row['~' + b] = row.get('~' + b, 0) + w * share
+                top = np.argsort(-bell[i])[:4]
+                ws = bell[i, top] / bell[i, top].sum()
+                for k, w in zip(top, ws):
+                    if w * share > 1e-4:
+                        row['~' + SPINE[k]] = row.get('~' + SPINE[k], 0) + w * share
             top = sorted(row.items(), key=lambda x: -x[1])[:4]
             tot = sum(w for _, w in top)
             rows.append([(b, w / tot) for b, w in top])
