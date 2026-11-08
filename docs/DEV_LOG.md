@@ -19,7 +19,7 @@
 - **Animation impact:**
   - Presentation only. No hit time, hitbox, damage, cooldown, movement, wire value or the authority's add rules change.
   - The longer blade is drawn only. Every move's reach, lane and telegraph are the move table's as before, and the sword's trail and water wake follow the drawn tip.
-  - The Cantor is drawn about 0.3 m lower than the rigid one was live; its collider is unchanged. The Penitent now sits on the water instead of a metre over it, inside its capsule; the collider is unchanged.
+  - The Cantor is drawn about half a metre lower than the rigid one was live (its hem 0.5 to 0.9 m over the water), more of it inside its capsule; the collider is unchanged. The Penitent now sits on the water instead of a metre over it, inside its capsule; the collider is unchanged.
   - The binding reads an add's birth as its `Until` minus 45 s (the authority's `FallenSummon` lifetime).
 - **Checks:**
   - CoreTests `--fallen-boss`: the void holds then eases in; steps measured from the feet; the blade longer and thinner, every piece finite and closed with one blade a phase; the adds scenario: the Cantor rises and sings from its mouth, the Penitent's planted hands stay put and ring the water, it rears up, the Throne charges before each shot and fires on it, the dead play out and leave, a latched Penitent drawn at arm's length.
