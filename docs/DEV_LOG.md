@@ -50,6 +50,7 @@
   - The dip fires on the fight's first frame. A shot with it pinned 0.12 s in shows the whole screen black over the fight; the Editor's captures run too slow to catch the 0.55 s dip on their own.
 - **Not run:** two real clients over the network; a split Expedition with pilots in two areas; the pilots' intros with several humans; a gamepad. The prompt shows F, not a pad glyph.
 - **Next:** watch it in a real co-op room.
+- **Released:** full suite at `60723b49` (shared merged in; PROJECT_STATE's conflict kept every line): 982 groups, exit 0; pins 0 broken; Unity compile PASS. Merged `d7a7c0e3`; builder succeeded and published to the test channel: revision 639297690345658493, 246.0 MiB. No live release.
 
 ## 2026-11-08 — Claude: NOCTIEL's ripples faint, no words on the claymore, a blank mask whose eyes blink (owner requests)
 
