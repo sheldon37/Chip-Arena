@@ -1,3 +1,5 @@
+2026-11-08 Claude (`claude/noctiel-water`): NOCTIEL's sword hand at rest and the intro's guard fixed; the Still Water rings where pilots and NOCTIEL touch it; the void reacts to the song.
+
 2026-11-08 Claude (`claude/boss-life`): NOCTIEL breathes at rest, wears a tabard and sash over its plate as cloth (motes of light off the swinging hems); THE DEEP END faces where its Hydro Jet shoots.
 
 2026-11-08 Claude (`claude/boss-polish`): THE DEEP END: no black box from the room's corners, no Drain streaks, the body smooth at any frame rate (no judder, tail flicks or side-to-side jumps); NOCTIEL faces where it walks, wears a cloth hood, and the raised blade turns round it.
