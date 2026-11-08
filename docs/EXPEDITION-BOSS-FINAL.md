@@ -370,6 +370,24 @@ feet planted apart, the left a little ahead, the blade out to the right side wit
 nearly straight, no twist; found by rendering the frame on the body and measuring), and the carry lays the blade out to its right side
 (`FbDragWay` 0.99, 0, 0.1) with its point 2 cm over the water (`FbDragTip`). The walk keeps its own legs (Stand is 0 while walking).
 
+### The void held through the intro, the claymore remade, the adds alive (Claude, 2026-11-08, the owner)
+
+"For noctiel fight, only start animating the background AFTER the intro completes. Also, lets make his sword more stylized. Maybe slightly
+longer, thinner and overall a better design with glow effects. Begin animating his minions as well."
+
+- **The void:** still through the intro, the song easing in over 2.5 s after it (Runtime `FallenVoidDraw`).
+- **The claymore** (Core `NativeFallenSword`, Runtime `NativeFallenSwordBody.cs`, in place of the bank's sword pieces):
+  - Its blade runs to 1.9 in the sword's frame (about 3.6 m from the fist as drawn), about two thirds the bank's width, a barb at its foot.
+  - A line of light in the fuller; phase 3 black with edges of light, phase 4 all light.
+  - A guard of three notched primaries and coverts a side, a chain-wrapped ricasso, and a pommel eye that opens in phase 3.
+  - A soft glow along it, edge glints and rising motes. The section 4 table's phase looks hold.
+- **The adds** (Core `NativeFallenAdds`, Runtime `NativeFallenAddsBody.cs`, in place of the bank's rigid adds):
+  - Posed every frame from the authority's facts.
+  - The Cantor rises, sways and sings with its sleeves and open hood.
+  - The Penitent crawls on planted hands and rears up to claw.
+  - The Throne breathes its blades, charges, fires and kicks back.
+  - Each has its own death; anything under the water is cut at its surface.
+
 ### The hand at rest, the intro's guard, water that rings where it's touched, a void that plays the song (Claude, 2026-11-08, the owner)
 
 "Might need to fix hand positioning here- I attached video of animation that still needs to be fixed as well. Lets also make the ripple effect on

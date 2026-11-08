@@ -1,3 +1,35 @@
+## 2026-11-08 — Claude: NOCTIEL's void holds through the intro; a new claymore with its light; the adds animated (owner requests)
+
+- Branch `claude/noctiel-sword`, base shared `809fb242`. Forwarded from the parent session.
+- **The owner:** "For noctiel fight, only start animating the background AFTER the intro completes. Also, lets make his sword more stylized. Maybe slightly longer, thinner and overall a better design with glow effects. Begin animating his minions as well."
+- **The void:** through the intro (the frame's cutscene) it holds still: no song in it and its curtains unmoving. When the intro ends the song eases in over 2.5 s and its own clock starts from rest, so nothing jumps (`_FbVoidLive`, Runtime `FallenVoidDraw`).
+- **The claymore:** built in C# in place of the gear bank's sword pieces (Core `NativeFallenSword`, Runtime `NativeFallenSwordBody.cs`; a small mesh kit, Core `NativeFallenKit`, in the body shader's terms).
+  - The blade runs from the ricasso to the point at 1.9 (the bank's ran to 1.65), about 15% longer. It is about two thirds as wide (.046 half width to .068) and thinner through the flats.
+  - A barb each side where it leaves the ricasso, a slight waist, a long leaf and a needle point. Hollow-ground: bright edge bevels, the flats, a fuller up the lower two thirds and a ridge to the point.
+  - A thin line of white light runs down the fuller. Phase 3's blade is black with edges of light; phase 4's is all light with black flakes coming off it.
+  - The guard is broken wings folding forward: three primaries a side, the longest notched, coverts on each face and a hook under them. A point of light sits on each face of its boss. The ricasso is wrapped in chain, the grip is long and wrapped, and the pommel is a closed eye (a slit of light) that opens in phases 3 and 4.
+  - The veins climb from the guard as before. The bank's words LUX CECIDIT are fitted to the new flats; the bank's meshes aren't readable, so the fit comes from their bounds.
+  - Its light: a soft glow along the blade, a glint running up an edge every few seconds, the guard's and the pommel's points, and motes drifting off it. More motes come off phase 3's edges (they drip upward) and phase 4's light.
+- **The adds** (Core `NativeFallenAdds`, Runtime `NativeFallenAddsBody.cs`): each is posed and rebuilt every frame from the authority's facts (place, birth from its lifetime, last blow, last hit, quarry) in the bank's shapes and finishes. They no longer slide as rigid props. Live, the Penitents had hung a metre over the water and nothing turned.
+  - **Cantor:** rises out of the water and unfurls. The robe sways, its hem ripples and it trails as it moves; its torn hem flutters in short ribbons (the bank's strips hung to the water like legs). The empty sleeves lift as it sings and the open hood tips back, wider on each note that hurts. The beam leaves its mouth and strengthens as the authority's damage does. It flinches when struck; killed, the robe crumples into the water.
+  - **Penitent:** claws up out of the water by its hands, then crawls on all fours. Each hand stays planted where it came down until the body has passed it, with a ring on the water as it lands; the back heaves and the knees drag. Close to its quarry it rears up on its knees and claws, striking on each blow. Latched, the authority walks it onto the pilot, so it is drawn at arm's length on the side it came from, still facing the pilot; several ring it. Killed, it falls forward and sinks.
+  - **Throne:** comes down folded like a bud and opens. The ring turns, its blades breathing in a wave round it, and the eye follows its quarry, glances and blinks. Before each shot (the authority's 1.2 s between blows) the blades close and pitch toward the quarry, the ring spins up and the eye narrows. On the shot they throw open, the ring kicks back, the eye flares, the needle fires from the eye and a ring spreads where it lands. Brought down, its blades fly apart into the water and the eye drops dark.
+  - What is under the water (rising, sinking) is cut at the surface, so it neither shows nor reflects.
+- **Fixed in passing:** last round's live pilots' footfalls measured height from the body's middle (0.87 m up), so in a real fight they never rang the water. They now measure from the collider's foot.
+- **Animation impact:**
+  - Presentation only. No hit time, hitbox, damage, cooldown, movement, wire value or the authority's add rules change.
+  - The longer blade is drawn only. Every move's reach, lane and telegraph are the move table's as before, and the sword's trail and water wake follow the drawn tip.
+  - The Cantor is drawn about 0.3 m lower than the rigid one was live; its collider is unchanged. The Penitent now sits on the water instead of a metre over it, inside its capsule; the collider is unchanged.
+  - The binding reads an add's birth as its `Until` minus 45 s (the authority's `FallenSummon` lifetime).
+- **Checks:**
+  - CoreTests `--fallen-boss`: the void holds then eases in; steps measured from the feet; the blade longer and thinner, every piece finite and closed with one blade a phase; the adds scenario: the Cantor rises and sings from its mouth, the Penitent's planted hands stay put and ring the water, it rears up, the Throne charges before each shot and fires on it, the dead play out and leave, a latched Penitent drawn at arm's length.
+  - Unity compile PASS.
+- **Seen in the Editor** (BoZo, the Final boss preview and a real Boss Battle with the adds summoned on the fight's clock):
+  - The void black through the intro, its curtains in after it.
+  - The claymore in each phase: steel with the fuller's line, the soft light, black with edges of light, all light with flakes. Close up: the guard's quills, the wrapped grip, the words on the flat.
+  - The Cantors rising and singing from the hood. The Penitents crawling on planted hands and ringing the water, then clinging round the pilot. The Throne hanging, its eye on the pilot, charging and firing.
+- **Not run:** no person or two-client run. The adds' motion and the sword's light were judged from stills, not watched moving. The Thrones were seen only in the capture's wide shots. The reduced-graphics tier was not looked at.
+
 ## 2026-11-08 — Claude: THE DEEP END's Drain only a sprint escapes; its Hydro Jet over its lane (owner requests; the Drain's pull at the owner's word)
 
 - Owner: "deep end vortex ability still needs more pull. Essentially we need to sprint away to "barely" make it out. Walking will not be fast enough", then "their spray attack seems to be flat. It usually ends up being UNDER the hit indicator". Branch `claude/drain-pull`, base shared `e3b61999`.

@@ -1,3 +1,5 @@
+2026-11-08 Claude (`claude/noctiel-sword`): NOCTIEL's void holds through the intro; a new longer, thinner claymore with its light; his adds animated.
+
 2026-11-08 Claude (`claude/drain-pull`, the Drain's pull at the owner's word): THE DEEP END's Drain beats a run and only a sprint gets out; its Hydro Jet is a raised beam over its lane, not a sheet under the warning.
 
 2026-11-08 Claude (`claude/noctiel-water`): NOCTIEL's sword hand at rest and the intro's guard fixed; the Still Water rings where pilots and NOCTIEL touch it; the void reacts to the song.
