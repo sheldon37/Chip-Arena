@@ -5,7 +5,10 @@ Shader "ChipArena/NativeFallenWater"
     // ripples inside it, their wavelength growing as they spread and fade, bending the reflection and catching the light on their slopes (glints, not a line round the ring).
     // The waves of the moves (_FbWave) cross the disc. Eclipse's dim and pools, a strike's white. Past the edge, nothing.
     // Since 2026-11-08 the song's bass no longer rings the floor from the boss (the owner: "more water-like like were stepping in water, not just random ripples"): the void
-    // carries the music. Output is opaque: the disc is the only thing down here.
+    // carries the music. Since 2026-11-08 again (the owner: "The ripples are too excessive I think maybe lower the opacity but a LOT (You know, kind of
+    // similar color but you can tell theirs small ripples.)") every ripple is faint, the steps' rings and the moves' waves alike: a sixth of its light,
+    // a third of its glints, under half its slope, so it reads in the water's own dark colour, the reflection bending a little where it passes.
+    // Output is opaque: the disc is the only thing down here.
     Properties {}
     SubShader
     {
@@ -24,6 +27,11 @@ Shader "ChipArena/NativeFallenWater"
             float _FbRingCount,_FbWaveCount,_FbPoolCount,_FbDim,_FbStrike,_FbClock;
             struct v2f{float4 pos:SV_POSITION;float3 world:TEXCOORD0;float4 grab:TEXCOORD1;};
             v2f vert(float4 v:POSITION){v2f o;float4 w=mul(unity_ObjectToWorld,v);o.pos=mul(UNITY_MATRIX_VP,w);o.world=w.xyz;o.grab=ComputeGrabScreenPos(o.pos);return o;}
+            // The ripples' share (the rings and the waves): their light, their slope (the glints and the bent reflection), the glints that slope makes.
+            #define RIPPLE_LIGHT .16
+            #define RIPPLE_SLOPE .42
+            #define RIPPLE_GLINT .33
+            float Glint(float2 grad,float3 hv){float3 nrm=normalize(float3(-grad.x*2.2,1,-grad.y*2.2));return max(0,pow(saturate(dot(nrm,hv)),90.)-pow(saturate(hv.y),90.));}
             float Web(float2 q,float t)
             {
                 float2 a=q*.32+float2(sin(q.y*.21+t*.31),sin(q.x*.19-t*.27))*1.4;float2 b=q*.61+float2(sin(q.y*.43-t*.23),sin(q.x*.37+t*.19))*1.1;
@@ -47,8 +55,9 @@ Shader "ChipArena/NativeFallenWater"
                 }
                 // The ripples' slopes catch the light: a glint where a slope turns the light toward the eye (the flat water's own highlight taken off, so
                 // only what moves shows), fading with distance.
-                float3 nrm=normalize(float3(-grad.x*2.2,1,-grad.y*2.2));float3 lgt=normalize(float3(.35,.8,.45));float3 hv=normalize(lgt+v);
-                float glint=max(0,pow(saturate(dot(nrm,hv)),90.)-pow(saturate(hv.y),90.));lit+=glint*1.6*exp(-dist*.012);
+                // All of it faint: a sixth of the ripples' light, under half their slope, a third of the glints that slope makes.
+                float3 lgt=normalize(float3(.35,.8,.45));float3 hv=normalize(lgt+v);grad*=RIPPLE_SLOPE;
+                lit=lit*RIPPLE_LIGHT+Glint(grad,hv)*RIPPLE_GLINT*1.6*exp(-dist*.012);
                 // (The song's web of light left the floor with its bass, 2026-11-08: it read as random ripples. The void carries the music.)
                 // The reflection.
                 float2 uv=i.grab.xy/i.grab.w+grad*float2(.055,.11)*saturate(14./(dist+6.));

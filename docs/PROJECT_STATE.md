@@ -1,5 +1,7 @@
 2026-11-08 Claude (`claude/skip-vote`, at the owner's word): vote to skip a boss's intro, its phase reveals and the pilots' intros (F); all connected humans must agree, a lone pilot skips at once (docs/CUTSCENE-SKIP.md). Two real clients not tried yet.
 
+2026-11-08 Claude (`claude/noctiel-face`): NOCTIEL's ripples faint; no words on the claymore; a blank mask whose eyes blink.
+
 2026-11-08 Claude (`claude/noctiel-sword`): NOCTIEL's void holds through the intro; a new longer, thinner claymore with its light; his adds animated.
 
 2026-11-08 Claude (`claude/drain-pull`, the Drain's pull at the owner's word): THE DEEP END's Drain beats a run and only a sprint gets out; its Hydro Jet is a raised beam over its lane, not a sheet under the warning.

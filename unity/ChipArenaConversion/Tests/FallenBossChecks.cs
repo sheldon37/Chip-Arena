@@ -546,6 +546,38 @@ public static class FallenBossChecks
             Check(bind.Contains("f.Adds=adds.ToArray();")&&!bind.Contains("Id=kind+\"-beam\"")&&!fx3.Contains("Prop(\"cantor\"")&&!fx3.Contains("Prop(\"throne-ring\"")&&fx3.Contains("if(f.Adds!=null)AddsSeen.AddRange(f.Adds)"),"the adds come from their facts, live and in the preview, not rigid props");
             Check(adds.Contains("FbDrawKit(m,fbAddGlowOnly[i],world,g,flash,0,FbAboveWater);")&&show.Contains("FallenAddsStep(now,dt,origin,eyeAt);")&&show.Contains("FallenAddsDraw(origin,mirror,inner,flash);"),"the adds drawn cut at the water, reflected");
         }
+        // The owner, 2026-11-08: "The ripples are too excessive I think maybe lower the opacity but a LOT", "remove the text from the sword of noctiel",
+        // "revise the face (Maybe just make it blink) so remove the little eyes and eyebrows". Every ripple faint (the rings and the waves); the
+        // claymore's words gone; the mask built in C# without its brows or slits, its eyes blinking.
+        {
+            var water3=R("Assets/ChipArena/Resources/NativeFallenWater.shader");
+            Check(water3.Contains("#define RIPPLE_LIGHT .16")&&water3.Contains("#define RIPPLE_SLOPE .42")&&water3.Contains("#define RIPPLE_GLINT .33")&&water3.Contains("grad*=RIPPLE_SLOPE;")
+                &&water3.Contains("lit=lit*RIPPLE_LIGHT+Glint(grad,hv)*RIPPLE_GLINT*1.6*exp(-dist*.012);")&&water3.IndexOf("grad*=RIPPLE_SLOPE;")>water3.IndexOf("for(int k=0;k<(int)_FbWaveCount;k++)")
+                &&water3.IndexOf("grad*=RIPPLE_SLOPE;")<water3.IndexOf("float2 uv=i.grab.xy/i.grab.w+grad"),"every ripple faint in the water's own colour, the steps' rings and the moves' waves alike, the reflection bent by what's left");
+            var sword3=R("Assets/ChipArena/Runtime/NativeFallenSwordBody.cs");
+            Check(!sword3.Contains("sword-words")&&!sword3.Contains("fbSwordWords")&&sword3.Contains("FbSwordPart(string name)=>name.StartsWith(\"sword\",StringComparison.Ordinal);"),"the claymore carries no words (the bank's hidden with its other sword pieces)");
+            for(int split=0;split<2;split++)for(int tier=0;tier<2;tier++)
+            {
+                var k=NativeFallenMask.Build(split==1,tier);string nm=(split==1?"the split mask":"the mask")+" tier "+tier;
+                Check(k.Count>0&&k.Glow.Count==0&&k.P.All(q=>float.IsFinite(q.X+q.Y+q.Z))&&k.N.All(q=>Math.Abs(q.Length()-1)<1e-3f),nm+" is built, finite, unlit");
+                double vol=0;for(int i=0;i+2<k.Lit.Count;i+=3){var p0=k.P[k.Lit[i]];vol+=Vector3.Dot(p0,Vector3.Cross(k.P[k.Lit[i+1]]-p0,k.P[k.Lit[i+2]]-p0));}Check(vol>0,nm+" faces out");
+                // No brows: the only black on it is the crack down the left cheek, below the eyes; nothing above them but plate.
+                Check(Enumerable.Range(0,k.Count).All(i=>k.Color[i]==NativeFallenKit.Plate||(split==0&&k.Color[i]==NativeFallenKit.Vein&&k.P[i].X<-.02f&&k.P[i].Y<1.67f)),nm+": no brows, only the crack below the left eye");
+                var lo=k.P.Aggregate((a,b)=>Vector3.Min(a,b));var hi=k.P.Aggregate((a,b)=>Vector3.Max(a,b));Check(Math.Abs(lo.Y-1.555f)<1e-3f&&Math.Abs(hi.Y-1.79f)<1e-3f&&hi.Z>.11f&&hi.Z<.13f,nm+" the bank's size, its front under the hood's opening");
+            }
+            var eyes=new NativeFallenKit();NativeFallenMask.Eyes(eyes,1,0);eyes.Finish();var shut=new NativeFallenKit();NativeFallenMask.Eyes(shut,0,0);shut.Finish();
+            float Tall(NativeFallenKit k)=>k.P.Where(q=>q.X>0).Max(q=>q.Y)-k.P.Where(q=>q.X>0).Min(q=>q.Y);
+            Check(eyes.Glow.Count>0&&eyes.Lit.Count>0&&shut.Glow.Count==0&&Tall(eyes)>.009f&&Tall(shut)<Tall(eyes)*.65f,"open, dark almonds with their light; shut, a hairline and no light ("+Tall(eyes).ToString("0.0000")+", "+Tall(shut).ToString("0.0000")+")");
+            Check(eyes.P.All(q=>{float off=q.Z-NativeFallenMask.FaceDepth(q.X,q.Y);return off>.0012f&&off<.0028f;})&&eyes.P.All(q=>Math.Abs(Math.Abs(q.X)-NativeFallenMask.EyeX)<.022f),"each eye laid on the face, standing just off it, one each side");
+            float last=-10,minGap=99,maxGap=0,shutFor=0;int blinks=0;float prev=1;const float st=1/240f;
+            for(int i=0;i<600*240;i++){float tt=i*st,op=NativeFallenMask.Open(tt);if(op<.5f&&prev>=.5f){if(last>-10){minGap=Math.Min(minGap,tt-last);maxGap=Math.Max(maxGap,tt-last);}last=tt;blinks++;}if(op<.5f)shutFor+=st;prev=op;}
+            Check(blinks>120&&blinks<200&&minGap>.25f&&maxGap<7&&shutFor/600<.07f,"a blink every few seconds, now and then two together ("+blinks+" in 10 minutes, "+minGap.ToString("0.00")+" to "+maxGap.ToString("0.00")+" s apart)");
+            int introBlinks=0;float at=0;prev=1;for(float tt=NativeFallenBossPreview.MaskAt;tt<NativeFallenBossPreview.PullAt;tt+=st){float op=NativeFallenMask.Blink(tt,true);if(op<.5f&&prev>=.5f){introBlinks++;at=tt;}prev=op;}
+            Check(introBlinks==1&&Math.Abs(at-(NativeFallenBossPreview.MaskAt+NativeFallenMask.IntroBlink))<.1f,"one blink in the intro's close-up of the mask, face on");
+            var body6=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");var maskBody=R("Assets/ChipArena/Runtime/NativeFallenMaskBody.cs");
+            Check(body6.Contains("FallenMaskBuild();")&&body6.Contains("if(FallenMaskOn&&FbMaskPart(part.Name))continue;")&&body6.Contains("if(FallenMaskOn)FallenMaskDraw(f.Phase,inner,flash,mirror,tier,f.P,NativeFallenMask.Blink(f.P,f.Kind==NativeFallenBossPreview.KindCutscene));")
+                &&maskBody.Contains("FbMaskPart(string name)=>name==\"mask\"||name==\"mask-split\"||name==\"mask-eyes\";")&&maskBody.Contains("fbBind.TryGetValue(\"head\",out fbMaskBind)"),"the built mask drawn on the head in the bank's mask, split mask and slits' place");
+        }
         // A standing turn: past 18 degrees off its quarry it turns to it, smoothly.
         {
             var d=new NativeFallenLiveMotion();var x=new NativeFallenLiveMotion.Facts{At=Vector3.Zero,Yaw=0,Target=new Vector3(0,0,20)};float lastYaw=0;
