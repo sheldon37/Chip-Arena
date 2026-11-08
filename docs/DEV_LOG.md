@@ -14,6 +14,15 @@
 - **Seen in the Editor** (real Boss Battles and NOCTIEL's preview): from the Deep End room's near corner, shared shows the black box behind the boss and the branch doesn't; the Drain pulls with no lines on the floor. NOCTIEL's hood built and simulated ("the hood (simulated)"), charcoal, peaked, framing the mask, in the fight and the intro; from behind, the intro's raised blade (cutscene 50.0 to 50.3 s) no longer lies through it.
 - **Not run:** no person or two-client run; the hood's cloth judged in stills only (its motion not watched); the walk's facing checked in Core, not watched in a live chase.
 
+## 2026-11-07 — Claude: the INVITES chip beside ONLINE (owner request)
+
+- Owner: "Lets make a separate button for invites, place it next to the "Online" Button". Branch `claude/invites-button`, base shared `26811205`.
+- **Changed (presentation only; `Runtime/NativeSocialPanelUI.cs`, `docs/ONLINE-INVITES.md`):** the invitations leave the ONLINE chip's magenta badge for an INVITES chip of their own, just left of ONLINE wherever it sits (home under the hexagons, a room's lobby left of the connection pill, the panel screens and the pause menu). It shows the envelope, INVITES and the count in a pill: quiet with none waiting, magenta while any wait (the pill beats, the edge lights on the beat, the arrival burst moved here). Each chip opens its own panel: ONLINE the players with Invite, INVITES the invitation cards with Accept / Decline, or "No invitations right now". The open chip closes its panel and the other switches it over (rows stagger in again, the caret slides). The pop-up's "+N MORE" opens the invitations. While either panel is open the pop-up steps aside. It comes back after unless the invitations panel already showed it, and doesn't chime twice.
+- **Unchanged:** the account service, polling, who may invite or accept, and every action (the same calls).
+- **Checks:** `SocialPanelChecks` gains the chip's placement, its own panel and switching, both chips counted as inside for click-outside and menu blocking, and the pop-up's new rule (47 pinned strings verified). Seen in the Editor (6000.3.24f1) with a stubbed account, players and invitations. Real clicks through the Game View: "+N MORE" opened the invitations, ONLINE switched to the players, INVITES switched back, and INVITES again closed it. Also seen: the empty inbox, the drop-in, the room setup screen and the pause menu.
+- **Not run:** a hosted room's lobby (the chips beside the connection pill; the bar has room), a real invitation between two signed-in accounts, the controller's pointer. No gameplay, rule, hit timing or network change.
+- **Released:** full suite at `790d73c9`: 981 groups, exit 0; Unity compile PASS; the pin checker flagged only the new negative check (`!ui.Contains("badge=invites.ToString()")`, its known false positive on absent strings). Merged `121b1304`; builder succeeded and published to the test channel: revision 639297048862940334, 246.0 MiB. No live release.
+
 ## 2026-11-07 — Claude: THE DEEP END's body can't fold into itself (owner request)
 
 - Branch `claude/deepend-body`, base shared `97a70052`.
