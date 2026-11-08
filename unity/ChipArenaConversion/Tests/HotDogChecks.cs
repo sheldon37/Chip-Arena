@@ -56,7 +56,8 @@ internal static class HotDogChecks
         var body=R("NativeVisualBodyPresentation.cs");var dog=R("NativeHotDogPresentation.cs");
         Check(body.Contains("VisualBigHead(body);\n            HotDogJiggle(body);")||body.Contains("VisualBigHead(body);\r\n            HotDogJiggle(body);"),"the jiggle runs once the body is posed");
         Check(dog.Contains("foreach(var t in body.Root.GetComponentsInChildren<Transform>(true))if(t.name.StartsWith(HotDogTwin,StringComparison.Ordinal))")&&dog.Contains("bool twin=name.StartsWith(\"~\",StringComparison.Ordinal)"),"the jiggle moves only the twins");
-        Check(body.Contains("VisualHatFit(HotDogHead(body,head),hat,body.Helm,HotDogHatOffset)"),"a hat rides the sausage's crown");
-        Check(body.Contains("if(simulate&&id!=ViewBodyId&&!NativeHotDog.Worn(look)){body.Skeleton=VisualSkeletonMake(root,skeleton);")&&body.Contains("if(!NativeHotDog.Worn(look))VisualSkeletonMake(root,skeleton);"),"no human skeleton in the sausage, alive or dead");
+        Check(body.Contains("{var head=HotDogHatOn(VisualHeadOf(body));if(head!=null)return VisualHatFit(head,hat,body.Helm);}")&&body.Contains("var dogHat=HotDogHatOn(c.Bones[c.Head]);if(dogHat!=c.Bones[c.Head])corpseHat=VisualHatFit(dogHat,hat);")&&dog.Contains("if(hotDogBones[i]==\"~head\"){var hat=new GameObject(HotDogHat).transform;hat.SetParent(twin,false);"),"a hat rides the sausage's crown, alive or dead");
+        Check(body.Contains("if(NativeHotDog.Worn(look))simulate=false;")&&body.Contains("if(!NativeHotDog.Worn(look))VisualSkeletonMake(root,skeleton);"),"no human skeleton in the sausage (and no hair or cloth simulated), alive or dead");
+        Check(R("NativeSheldonHoodPresentation.cs").Contains("if(hoodFailed||HotDogOn(root))return null;")&&NativeRobotSuit.Shown(NativeLook.With("",NativeLook.Upper,NativeHotDog.Id),false)==0&&NativeRobotSuit.Shown("",false)!=0,"no Sheldon hood or robot plates on it");
     }
 }

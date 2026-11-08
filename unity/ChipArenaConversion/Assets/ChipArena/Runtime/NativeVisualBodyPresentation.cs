@@ -87,8 +87,8 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,string> robotDressed=new Dictionary<string,string>(StringComparer.Ordinal);
         private string VisualLookOf(int id)
         {
-            var look=VisualOutfitOf(id)??"";
-            if(!robotDressed.TryGetValue(look,out var dressed)){if(robotDressed.Count>64)robotDressed.Clear();robotDressed[look]=dressed=NativeRobotSuit.Dress(HotDogOrTop(look));}
+            var look=HotDogOrTop(VisualOutfitOf(id)??"");
+            if(!robotDressed.TryGetValue(look,out var dressed)){if(robotDressed.Count>64)robotDressed.Clear();robotDressed[look]=dressed=NativeRobotSuit.Dress(look);}
             return dressed;
         }
         private string VisualOutfitOf(int id)
@@ -297,17 +297,16 @@ namespace ChipArena.UnityConversion
         private Matrix4x4 VisualHatFrame(CapturedAnimation.Player rig,string hat,int b)
         {
             if(b==CapturedRig.Head&&rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.PosedFrame==Time.frameCount)
-            {var head=VisualHeadOf(body);if(head!=null)return NativeHotDog.Worn(body.Look)?VisualHatFit(HotDogHead(body,head),hat,body.Helm,HotDogHatOffset):VisualHatFit(head,hat,body.Helm);}
+            {var head=HotDogHatOn(VisualHeadOf(body));if(head!=null)return VisualHatFit(head,hat,body.Helm);}
             return VisualJointFrame(rig,b);
         }
         // Hat `hat` fitted to the model's head bone `head` (the Sheldon Head's face on its own fit), on the robot's helmet when
         // `helm` (Core NativeRobotHelm.HatFit).
-        // `ride`: where it rides against where it sits, in the head's frame (the Hot Dog's crown: NativeHotDog.HatOffset).
-        private static Matrix4x4 VisualHatFit(Transform head,string hat,bool helm=false,Vector3 ride=default)
+        // (In the Hot Dog `head` is its hat anchor on the sausage's crown: HotDogHatOn.)
+        private static Matrix4x4 VisualHatFit(Transform head,string hat,bool helm=false)
         {
-            var on=ride==Vector3.zero?head.localToWorldMatrix:head.localToWorldMatrix*Matrix4x4.Translate(ride);
-            if(hat==NativeSheldonHead.Hat){var k=NativeModelHats.SheldonScale;var o=NativeModelHats.SheldonOffset;return on*Matrix4x4.TRS(new Vector3(o.X,o.Y,o.Z),Quaternion.identity,new Vector3(k.X,k.Y,k.Z));}
-            var frame=helm?on*HelmHatFit(hat):on;
+            if(hat==NativeSheldonHead.Hat){var k=NativeModelHats.SheldonScale;var o=NativeModelHats.SheldonOffset;return head.localToWorldMatrix*Matrix4x4.TRS(new Vector3(o.X,o.Y,o.Z),Quaternion.identity,new Vector3(k.X,k.Y,k.Z));}
+            var frame=helm?head.localToWorldMatrix*HelmHatFit(hat):head.localToWorldMatrix;
             // (A hat made for the model is authored in its head bone's frame.)
             if(NativeModelHatMeshes.Has(hat))return frame;
             NativeModelHats.Fit(hat,out float scale,out var offset);return frame*Matrix4x4.TRS(new Vector3(offset.X,offset.Y,offset.Z),Quaternion.identity,Vector3.one*scale);
@@ -528,16 +527,17 @@ namespace ChipArena.UnityConversion
             // Dressed in the pilot's outfit (only the worn pieces' renderers from here on), its skeleton set by its shoes' lift
             // before the binding reads the rest pose.
             var look=VisualLookOf(id);var sheldon=new List<Renderer>();VisualDress(root,look,sheldon);float lift=VisualLiftOf(look);if(lift!=0)skeleton.localPosition+=new Vector3(0,lift,0);
+            // The Hot Dog simulates nothing (no hair or cloth on it) and has no skeleton inside: it is sausage through, its wounds'
+            // pits of flesh with no human bones in them or out past its noodle limbs.
+            if(NativeHotDog.Worn(look))simulate=false;
             // The Sheldon hood, when its pilot wears the Sheldon Head (its piping in the Sheldon glow with the Sheldon pieces').
-            var hoodRenderer=hood&&!NativeHotDog.Worn(look)?VisualHoodMake(root,skeleton):null;if(hoodRenderer!=null)sheldon.Add(hoodRenderer);
+            var hoodRenderer=hood?VisualHoodMake(root,skeleton):null;if(hoodRenderer!=null)sheldon.Add(hoodRenderer);
             // Under it the hair, the head and the face are hidden (VisualUnderHood: the void covers the opening).
             if(hoodRenderer!=null)VisualUnderHood(root);
             var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock(),Look=look,Sheldon=sheldon.ToArray(),Lift=lift,Hood=hood,HoodRenderer=hoodRenderer};
             body.All=VisualWorn(root);body.Plain=new Material[body.All.Length][];VisualCutWarm(body.All);
             // Its skeleton, off until a wound opens into it (an arena pilot's body; not the view body, busts, ghosts or portraits).
-            // (The Hot Dog has none: it is sausage through, its wounds' pits of flesh with no human bones in them or out past its
-            // noodle limbs.)
-            if(simulate&&id!=ViewBodyId&&!NativeHotDog.Worn(look)){body.Skeleton=VisualSkeletonMake(root,skeleton);if(body.Skeleton!=null)body.Skeleton.enabled=false;}
+            if(simulate&&id!=ViewBodyId){body.Skeleton=VisualSkeletonMake(root,skeleton);if(body.Skeleton!=null)body.Skeleton.enabled=false;}
             foreach(var t in root.GetComponentsInChildren<Transform>(true))
             {
                 if(t.name=="VisualGearCore")body.GearCore=t;else if(t.name=="VisualGearDevice")body.GearDevice=t;
@@ -559,7 +559,7 @@ namespace ChipArena.UnityConversion
             if(id!=ViewBodyId)body.Stride=VisualStrideOf(root.transform,skeleton);
             // Its hair and cloth, when the local install simulates them: the live and draft pilots and whole corpses, never the
             // first-person body, the broadcast's bust, the ghosts or the menu portraits (`simulate` false: nothing holds them still).
-            if(simulate&&id!=ViewBodyId&&NativeVisualCloth.Attach!=null&&!NativeHotDog.Worn(look))
+            if(simulate&&id!=ViewBodyId&&NativeVisualCloth.Attach!=null)
             {try{body.ClothSim=NativeVisualCloth.Attach(root,skeleton);}catch(Exception e){NativeVisualCloth.Attach=null;Debug.LogWarning("Visual body: the cloth simulation failed and is off: "+e.Message);}}
             return body;
         }
@@ -1589,7 +1589,7 @@ namespace ChipArena.UnityConversion
             if(corpse.Twin!=null&&corpse.Bisect is BisectFx fx&&fx.Request!=null&&fx.Request.HalfOf(CapturedRig.Head,CutNum(corpse.Bind[CapturedRig.Head].GetColumn(3)))==1)on=corpse.Twin;
             if(!visualCorpses.TryGetValue(on,out var c)||c.Root==null||!c.Root.activeSelf||c.Look!=0)return false;
             if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");if(c.Head<0)return false;
-            corpseHat=VisualHatFit(c.Bones[c.Head],hat,!c.Hood&&WearsHelm(death.id),NativeHotDog.Worn(VisualOutfitOf(death.id))?HotDogHatOffset:default);corpseHatBone??=_=>corpseHat;
+            corpseHat=VisualHatFit(c.Bones[c.Head],hat,!c.Hood&&WearsHelm(death.id));var dogHat=HotDogHatOn(c.Bones[c.Head]);if(dogHat!=c.Bones[c.Head])corpseHat=VisualHatFit(dogHat,hat);corpseHatBone??=_=>corpseHat;
             if(hat==NativeSheldonHead.Hat)return c.Hood&&VisualDeadHood(corpseHat,death,alpha);
             if(!AuditorHalo(hat,corpseHat,clock,alpha,HaloReduced,0,null,color:a.HatColor)&&corpse.HatModel!=null)sourceModels.QueueShadowless(VisualHatModel(hat,a.HatColor)??corpse.HatModel,Matrix4x4.identity,corpseHatBone,null,HatBody(hat,a.HatColor),null,alpha);
             return true;

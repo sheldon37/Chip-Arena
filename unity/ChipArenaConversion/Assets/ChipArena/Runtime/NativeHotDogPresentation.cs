@@ -16,15 +16,14 @@ namespace ChipArena.UnityConversion
     {
         public const string HotDogBank="ChipArenaHotDog";
         public const string HotDogRenderer="HotDog";
-        /// <summary>A sausage twin's name: this and its bone's ("HotDog~pelvis").</summary>
-        public const string HotDogTwin="HotDog~";
+        /// <summary>A sausage twin's name: this and its bone's ("HotDog~pelvis"); the hat anchor on the head's twin.</summary>
+        public const string HotDogTwin="HotDog~",HotDogHat="HotDog hat";
         /// <summary>How much further it reaches than the body's bake bounds (m): its crown over the pilot's head, its jiggle, its
         /// longer shoes and gloves.</summary>
         private const float HotDogBoundsPad=.3f;
         private static Mesh hotDogMesh;private static string[] hotDogBones;private static Texture2D hotDogTexture;private static Material hotDogMaterial;
         private static int hotDogState; // 0 unread, 1 read, -1 none
         private static bool hotDogBound;
-        private static readonly Vector3 HotDogHatOffset=new Vector3(NativeHotDog.HatOffset.X,NativeHotDog.HatOffset.Y,NativeHotDog.HatOffset.Z);
         private static bool HotDogRead()
         {
             if(hotDogState!=0)return hotDogState>0;hotDogState=-1;
@@ -101,6 +100,8 @@ namespace ChipArena.UnityConversion
             {
                 if(!hotDogBones[i].StartsWith("~",StringComparison.Ordinal)){bones[i]=parents[i];continue;}
                 var twin=new GameObject(HotDogTwin+hotDogBones[i].Substring(1)).transform;twin.SetParent(parents[i],false);bones[i]=twin;
+                // Hats ride an anchor on the head's twin, on the sausage's crown (HotDogHatOn), so they wobble with it.
+                if(hotDogBones[i]=="~head"){var hat=new GameObject(HotDogHat).transform;hat.SetParent(twin,false);hat.localPosition=new Vector3(NativeHotDog.HatOffset.X,NativeHotDog.HatOffset.Y,NativeHotDog.HatOffset.Z);}
             }
             var weaponHolder=root.transform.Find("VisualWeapons");
             foreach(var s in skins)if(weaponHolder==null||!s.transform.IsChildOf(weaponHolder))s.gameObject.SetActive(false);
@@ -147,11 +148,16 @@ namespace ChipArena.UnityConversion
             }
             rig.Moved=true;
         }
-        /// <summary>The frame hats ride on a body in the Hot Dog: its head twin's (so a hat wobbles with the sausage's top) or
-        /// the head bone's.</summary>
-        private static Transform HotDogHead(VisualBody body,Transform head)
+        /// <summary>The frame hats ride on head bone `head`: in the Hot Dog, the anchor on its head's twin (on the sausage's crown,
+        /// wobbling with it); otherwise the head itself (null for null).</summary>
+        private static Transform HotDogHatOn(Transform head)
         {
-            if(body?.Dog?.Twins==null)return head;foreach(var t in body.Dog.Twins)if(t!=null&&t.parent==head)return t;return head;
+            if(head==null)return null;var anchor=head.Find(HotDogTwin+"head/"+HotDogHat);return anchor!=null?anchor:head;
+        }
+        /// <summary>Whether a body being made (`root`) wears the Hot Dog (its renderer is there): no Sheldon hood on it.</summary>
+        private static bool HotDogOn(GameObject root)
+        {
+            foreach(var r in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))if(r.name==HotDogRenderer)return true;return false;
         }
     }
 }

@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         // voxel hood shows then).
         private static SkinnedMeshRenderer VisualHoodMake(GameObject root,Transform skeleton)
         {
-            if(hoodFailed)return null;
+            if(hoodFailed||HotDogOn(root))return null; // (No hood on the Hot Dog: NativeHotDogPresentation.cs.)
             var bones=new Transform[NativeSheldonHood.Bones.Length];
             foreach(var t in skeleton.GetComponentsInChildren<Transform>(true)){int i=Array.IndexOf(NativeSheldonHood.Bones,t.name);if(i>=0&&bones[i]==null)bones[i]=t;}
             foreach(var b in bones)if(b==null){hoodFailed=true;Debug.LogWarning("Visual body: the bake has no "+string.Join(", ",NativeSheldonHood.Bones)+"; the Sheldon Head stays the voxel hood.");return null;}
