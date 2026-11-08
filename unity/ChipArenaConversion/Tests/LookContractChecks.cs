@@ -12,7 +12,13 @@ internal static class LookContractChecks
             Check(result==(allowed||!NativeLook.DevOnly(id)?map:""),"slot/id DEV gate "+id);
             Check(NativeLook.Normalize(result)==result&&result.Length<=NativeLook.MaxLength,"canonical bounded map");
         }
+        // The Hot Dog (owner 2026-11-08: "a dev skin"): a DEV piece of the map (dropped without live DEV access), kept across an
+        // account load until the Worker lists it, worn as one whole body.
+        string dog=NativeLook.With("feet:sneakers",NativeLook.Upper,NativeHotDog.Id);
+        Check(NativeHotDog.Worn(dog)&&!NativeHotDog.Worn("")&&!NativeHotDog.Worn("upper:tee")&&NativeLook.DevOnly(NativeHotDog.Id)&&NativeLook.Gate(dog,true)==dog&&NativeLook.Gate(dog,false)=="feet:sneakers","the Hot Dog's a DEV piece");
+        Check(NativeHotDog.Worn(NativeLook.KeepSkin("hair:wild",dog))&&!NativeHotDog.Worn(NativeLook.KeepSkin("hair:wild","upper:tee"))&&NativeHotDog.Worn(NativeRobotSuit.Dress(dog)),"the Hot Dog survives a load and dressing");
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
+        Check(R("NativeVisualBodyPresentation.cs").Contains("if(NativeHotDog.Worn(look))HotDogWear(root);")&&R("NativeRobotHelmPresentation.cs").Contains("NativeHotDog.Worn(VisualOutfitOf(id))?NativeWeaponSkins.FaceNone")&&R("NativeRobotSuitPresentation.cs").Contains("NativeHotDog.Worn(look)?0:"),"the Hot Dog dresses every body, without the robot's helmet or plates");
         Check(R("NativeNetwork.cs").Contains("look=GatedLook()")&&R("NativeNetwork.cs").Contains("look=NativeLook.Gate(c.look,NativeCosmeticRules.Allowed(access,"),"host uses verified access, profile sends look");
         Check(R("NativeNetwork.cs").Contains("s.look.Length>NativeLook.MaxLength")&&R("NativeNetworkFrame.cs").Contains("s.look.Length>NativeLook.MaxLength"),"both wire bounds");
         Check(R("NativeNetworkFrame.cs").Contains("look=s.look,")&&R("NativeLobbyLogic.cs").Contains("look=s.look,")&&R("NativeNetworkFrame.cs").Contains("seat.look=NativeLook.Normalize(sf.look);"),"capture, lobby and apply");

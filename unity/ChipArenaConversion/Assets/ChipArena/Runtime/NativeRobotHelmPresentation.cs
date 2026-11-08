@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
         // is made) and a hat sits on the helmet's shell (VisualHatFit: Core NativeRobotHelm.HatFit). Either one takes the place of
         // the robot armour's ear modules (VisualSuit).
         // The face gear pilot `id` wears on the model (NativeWeaponSkins.FaceHelm, the default, .. FaceNone), whatever its body skin.
-        private int FaceGearOf(int id)=>NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);
+        private int FaceGearOf(int id)=>NativeHotDog.Worn(VisualOutfitOf(id))?NativeWeaponSkins.FaceNone:NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);
         private bool WearsHelm(int id)=>FaceGearOf(id)==NativeWeaponSkins.FaceHelm;
         // Whether its face gear brings its own ear modules (the helmet's or the half mask's), in place of the robot armour's.
         private bool HelmEars(int id){int gear=FaceGearOf(id);return gear==NativeWeaponSkins.FaceHelm||gear==NativeWeaponSkins.FaceHalf;}

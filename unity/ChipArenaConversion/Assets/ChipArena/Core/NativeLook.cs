@@ -11,8 +11,8 @@ namespace ChipArena.UnityConversion
     // clothes currently."). Each other id names a piece of the local visual-body bake's wardrobe; the bake's look data maps it
     // onto its meshes (Runtime/NativeVisualBodyPresentation.cs VisualDress), and a robot piece dresses as the fitted garment it
     // is worn over (NativeRobotSuit.Dress). It is kept in prefs.look; carrying it to other clients and the account is Astra's
-    // part of the contract, with the DEV gate (Gate: Sheldon's clothes and bare feet, NativeSheldonWear, need live DEV access,
-    // as the Sheldon Clothes body skin does). Presentation only: no rule, hit volume, timing or network authority reads it.
+    // part of the contract, with the DEV gate (Gate: Sheldon's clothes and bare feet, NativeSheldonWear, and the Hot Dog,
+    // NativeHotDog, need live DEV access, as the Sheldon Clothes body skin does; they come last in their slots). Presentation only: no rule, hit volume, timing or network authority reads it.
     // The skin tone (owner 2026-10-28: "Give skin color customization, along with a Color selector circle") rides the same map
     // as its last entry, "skin:rrggbb" (six lowercase hex digits, no '#'); absent, the model keeps its own skin. It is not
     // DEV gated. A map that differs only in it is the same outfit (SameOutfit): a body retints in place instead of being made
@@ -26,13 +26,13 @@ namespace ChipArena.UnityConversion
         /// <summary>Each slot's ids in Slots order (the first is the default: below the hair, the robot's piece) and their labels.</summary>
         public static readonly string[][] Ids={
             new[]{"spiky","wild","side-swept","tied-back","fringe-tail"},
-            new[]{"robot-armour","open-hoodie","hard-jacket","hoodie","tee","tank","sweater",NativeSheldonWear.Robe},
+            new[]{"robot-armour","open-hoodie","hard-jacket","hoodie","tee","tank","sweater",NativeHotDog.Id,NativeSheldonWear.Robe},
             new[]{"robot-legs","belted-pants","baggy-pants","skinny-jeans","cuffed-shorts","khakis",NativeSheldonWear.Pants},
             new[]{"robot-gauntlets","fingerless","gloves","arm-bands","sweat-bands","bare"},
             new[]{"robot-boots","mid-tops","work-boots","sneakers","lace-ups",NativeSheldonWear.Boots,NativeSheldonWear.Barefoot}};
         public static readonly string[][] Labels={
             new[]{"Spiky","Wild locks","Side swept","Tied back","Fringe and tail"},
-            new[]{"Robot armour","Open hoodie","Hard jacket","Hoodie","T-shirt","Tank top","Sweater","Sheldon robe"},
+            new[]{"Robot armour","Open hoodie","Hard jacket","Hoodie","T-shirt","Tank top","Sweater",NativeHotDog.Label,"Sheldon robe"},
             new[]{"Robot legs","Belted pants","Baggy pants","Skinny jeans","Cuffed shorts","Khakis","Sheldon pants"},
             new[]{"Robot gauntlets","Fingerless gloves","Gloves","Arm bands","Sweat bands","Bare hands"},
             new[]{"Robot boots","Mid-tops","Work boots","Sneakers","Lace-ups","Sheldon boots","Barefoot"}};
@@ -67,8 +67,8 @@ namespace ChipArena.UnityConversion
             return result;
         }
         public static string Of(string map,string slot){int s=SlotIndex(slot);return s<0?null:Ids[s][Index(map,slot)];}
-        /// <summary>Whether a piece is DEV only (Sheldon's clothes and bare feet; NativeSheldonWear).</summary>
-        public static bool DevOnly(string id)=>NativeSheldonWear.DevOnly(id);
+        /// <summary>Whether a piece is DEV only (Sheldon's clothes and bare feet, NativeSheldonWear; the Hot Dog, NativeHotDog).</summary>
+        public static bool DevOnly(string id)=>NativeSheldonWear.DevOnly(id)||id==NativeHotDog.Id;
         /// <summary>The map (normalized) with every DEV piece back to its slot's default unless `allowed` (live DEV access): the
         /// Locker's picks, the pilot's own bodies and, when the look travels, the host's seat. The same string when nothing drops.</summary>
         public static string Gate(string map,bool allowed)
@@ -133,6 +133,8 @@ namespace ChipArena.UnityConversion
         /// the tone on every load. Once it does, a saved map without one means DEFAULT and this can go.</summary>
         public static string KeepSkin(string saved,string local)
         {
+            // (The Hot Dog likewise: the Worker drops an id it does not list, until it lists this one.)
+            if(NativeHotDog.Worn(local)&&!NativeHotDog.Worn(saved))saved=With(saved,Upper,NativeHotDog.Id);
             if(SkinOf(saved)>=0)return saved??"";int tone=SkinOf(local);return tone<0?saved??"":WithSkin(saved,tone);
         }
         /// <summary>The map's skin tone as "#rrggbb", or "" without one (the Locker's hex label).</summary>

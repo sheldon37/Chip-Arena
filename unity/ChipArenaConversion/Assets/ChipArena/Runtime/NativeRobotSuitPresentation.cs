@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
         // plate. Under the robot's helmet or half mask (Core NativeRobotHelm, its own ear modules) the armour's ear modules are
         // left off, and under arm bands its vambraces (NativeRobotSuit.Shown). A corpse keeps them (VisualCorpseSuit).
         // (The first-person arms are the local pilot's: they wear the armour's sweater sleeves and its gauntlets' gloves.)
-        private int SuitShown(int id)=>NativeRobotSuit.Shown(VisualOutfitOf(id),HelmEars(id));
+        private int SuitShown(int id){var look=VisualOutfitOf(id);return NativeHotDog.Worn(look)?0:NativeRobotSuit.Shown(look,HelmEars(id));}
         private bool WearsArmour(int id)=>NativeRobotSuit.Worn(VisualOutfitOf(id),NativeRobotSuit.BoneSlot[NativeRobotSuit.Chest]);
         private sealed class SuitRig{public Transform[] Bones;public Matrix4x4[] Bind;public int Found;}
         private readonly Dictionary<GameObject,SuitRig> suitRigs=new Dictionary<GameObject,SuitRig>();
