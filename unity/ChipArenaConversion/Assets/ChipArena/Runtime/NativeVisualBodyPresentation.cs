@@ -849,6 +849,7 @@ namespace ChipArena.UnityConversion
         // whole corpse, a death scene; the helmet also on the half of a split corpse that holds the head.
         private void VisualFaceGear(Transform head,int id,string bodyColor,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash)
         {
+            if(NativeHotDog.Worn(VisualOutfitOf(id)))return; // (None on the Hot Dog: the sausage's face is its own.)
             int gear=FaceGearOf(id);if(head==null||gear==NativeWeaponSkins.FaceNone||!sourceModels.PilotFace())return;
             gearBone??=GearBoneOf;gearMatrix=head.localToWorldMatrix;var accent=AccentTint(accentColor);var lit=new Vector4(1,1,1,1);
             bool helm=gear==NativeWeaponSkins.FaceHelm;
