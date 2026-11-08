@@ -66,6 +66,9 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>A mote of light off the cloth (Runtime sheds them from the simulated hems): a soft point facing the eye, on the stage's frame.</summary>
         public void ClothMote(Vector3 at,float size,float alpha){if(alpha>.01f)Spot(at,size,alpha,.6f);}
+        /// <summary>The claymore's soft light along its blade and a point of its light (Runtime NativeFallenSwordBody), on the stage's frame.</summary>
+        public void SwordLight(Vector3 a,Vector3 b,float width,float alpha,float strength){if(alpha>.004f)Beam(a,b,width,alpha,strength,FallenFxQuads.Line);}
+        public void SwordSpot(Vector3 at,float size,float alpha,float strength){if(alpha>.01f)Spot(at,size,alpha,strength);}
         private void Spot(Vector3 at,float size,float alpha,float strength,byte mode=FallenFxQuads.Droplet,float grey=1)
         {
             var r=right*size;var u=up*size;Quads.Add(at-r-u,at+r-u,at+r+u,at-r+u,alpha,strength,mode,grey);
@@ -103,7 +106,7 @@ namespace ChipArena.UnityConversion
         // ---- the build ----
         public void Build(FallenBossFrame f,Vector3 eyePos,Vector3 eyeRight,Vector3 eyeUp,NativeFallenSong song,bool reduced)
         {
-            live=f.Live!=null;eye=eyePos;right=eyeRight;up=eyeUp;RingCount=WaveCount=PoolCount=PropCount=0;Quads.Clear();Telegraphs.Clear();Dim=1;Strike=0;Shake=0;White=0;KeyBoost=0;float p=f.P;
+            live=f.Live!=null;eye=eyePos;right=eyeRight;up=eyeUp;RingCount=WaveCount=PoolCount=PropCount=0;Quads.Clear();AddsSeen.Clear();Telegraphs.Clear();Dim=1;Strike=0;Shake=0;White=0;KeyBoost=0;float p=f.P;
             Motes=f.Phase==1?260:f.Phase==2?420:f.Phase==3?620:900;if(f.Kind==NativeFallenBossPreview.KindCutscene)Motes=p<NativeFallenBossPreview.RiseAt?60:180;
             if(f.Kind==NativeFallenBossPreview.KindChips)return;
             // The pilots' steps (stand-ins for now: the rules' pilots step the same way).
@@ -116,7 +119,7 @@ namespace ChipArena.UnityConversion
             if(f.Kind==NativeFallenBossPreview.KindCutscene)Cutscene(f);
             if(f.Kind==NativeFallenBossPreview.KindDeath)Death(f);
             foreach(var a in f.Actions??NativeFallenBossPreview.Acts){if(p<a.At-.2f||p>a.End+3)continue;Move(a,f,p);Warn(a,f,p);}
-            if(f.Live==null){GlideWake(p);AddsOf(f,p);}else{if(NativeFallenRules.Chip(f.Live,"black-water"))Dim*=.75f;foreach(var h in f.Live.hush){float k=C((p-h.hushAt)/NativeFallenRules.HushSeconds(f.Live,f.Phase,(float)Math.Sqrt(h.x*h.x+h.z*h.z)));if(k>=.4f&&k<1){var s=new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Style=NativeTelegraph.Fallen,Fill=NativeTelegraph.FromEdge,At=new Vector3(h.x,0,h.z),A=3,Fill01=(k-.4f)/.6f,After=-1,Strength=C((k-.4f)/.1f),Seed=h.id};s.Lock=k>.9f?(k-.9f)/.1f:0;Telegraphs.Add(s);}}if(f.LiveAdds!=null)foreach(var a in f.LiveAdds)Prop(a.Id,a.At,a.Turn,a.Scale,a.Glow);}
+            if(f.Live==null){GlideWake(p);AddsOf(f,p);}else{if(NativeFallenRules.Chip(f.Live,"black-water"))Dim*=.75f;foreach(var h in f.Live.hush){float k=C((p-h.hushAt)/NativeFallenRules.HushSeconds(f.Live,f.Phase,(float)Math.Sqrt(h.x*h.x+h.z*h.z)));if(k>=.4f&&k<1){var s=new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Style=NativeTelegraph.Fallen,Fill=NativeTelegraph.FromEdge,At=new Vector3(h.x,0,h.z),A=3,Fill01=(k-.4f)/.6f,After=-1,Strength=C((k-.4f)/.1f),Seed=h.id};s.Lock=k>.9f?(k-.9f)/.1f:0;Telegraphs.Add(s);}}if(f.LiveAdds!=null)foreach(var a in f.LiveAdds)Prop(a.Id,a.At,a.Turn,a.Scale,a.Glow);if(f.Adds!=null)AddsSeen.AddRange(f.Adds);}
         }
         private void GlideWake(float p)
         {
@@ -387,43 +390,47 @@ namespace ChipArena.UnityConversion
             }
         }
         // ---- the adds (docs section 9): hollow robes, husks, rings of blades ----
+        /// <summary>The adds this frame, the preview's script's or the authority's (FallenBossFrame.Adds): Core NativeFallenAdds animates them, Runtime
+        /// NativeFallenAddsBody draws them, their songs and shots, and the water they ring.</summary>
+        public readonly List<NativeFallenAdds.Seen> AddsSeen=new List<NativeFallenAdds.Seen>();
+        /// <summary>A crown of water where an add rises (its age), a beam of an add's, a point of light: on the stage's frame.</summary>
+        public void Splash(Vector3 at,float age,int seed)=>Burst(at,age,seed,10,2,4,.035f,2.3f);
+        public void AddBeam(Vector3 a,Vector3 b,float width,float alpha,float strength){if(alpha>.01f)Beam(a,b,width,alpha,strength);}
+        public void Glow(Vector3 at,float size,float alpha,float strength){if(alpha>.01f)Spot(at,size,alpha,strength);}
+        // The preview's adds: where each is and what it does; the motion is theirs (Core NativeFallenAdds).
         private void AddsOf(FallenBossFrame f,float p)
         {
             foreach(var a in NativeFallenBossPreview.Acts)
             {
-                float t=p-a.Hit,life=a.End-a.Hit;if(t<0||t>life)continue;float gone=life-t;
+                float t=p-a.Hit,life=a.End-a.Hit;if(t<0||t>life)continue;int act=((int)(a.Hit*10)&0xFFFF)*32;
                 if(a.Id=="choir")
                 {
                     for(int i=0;i<6;i++)
                     {
-                        int who=i%NativeFallenPilots.Count;float o=i*1.05f+a.Seed;var near=NativeFallenPilots.At(who,a.Hit);var at=near+new Vector3((float)Math.Cos(o)*13,0,(float)Math.Sin(o)*13);float killed=life-1.2f*i-1;float k=Smooth(t/1.1f)*(1-Smooth((t-killed)/.6f));if(k<=0)continue;
-                        float bob=.7f+.18f*(float)Math.Sin(p*1.7f+i)+(1-k)*2.2f;var pilot=NativeFallenPilots.At(who,p)+new Vector3(0,1.2f,0);var mouth=at+new Vector3(0,bob+2.46f,.18f);
-                        var look=pilot-at;float yaw=(float)Math.Atan2(look.X,look.Z);var turn=Quaternion.CreateFromAxisAngle(Vector3.UnitY,yaw)*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,.05f*(float)Math.Sin(p*1.1f+i));Prop("cantor",at+new Vector3(0,bob,0),turn,k,1.9f);
-                        Step(at.X,at.Z,(p*.8f+i*.37f)%2.2f,.35f*k,2.2f);
-                        // The thin beam it sings, strengthening.
-                        float sing=C((t-1.4f)/5);if(sing>0)Beam(mouth,pilot,.03f+.09f*sing,k*(.35f+.65f*sing),2.2f);
+                        int who=i%NativeFallenPilots.Count;float o=i*1.05f+a.Seed;var near=NativeFallenPilots.At(who,a.Hit);var at=near+new Vector3((float)Math.Cos(o)*13,0,(float)Math.Sin(o)*13);float killed=life-1.2f*i-1;if(t>=killed)continue;
+                        float sung=t-1.4f;AddsSeen.Add(new NativeFallenAdds.Seen{Id=act+i,Kind=NativeFallenAdds.Cantor,At=at,Born=a.Hit,LastAttack=sung>=0?a.Hit+1.4f+(float)Math.Floor(sung/NativeFallenAdds.Every)*NativeFallenAdds.Every:float.NaN,LastHit=-100,Strength=C(sung/5),Target=NativeFallenPilots.At(who,p),HasTarget=true});
+                        Step(at.X,at.Z,(p*.8f+i*.37f)%2.2f,.3f,2.2f);
                     }
                 }
                 else if(a.Id=="penance")
                 {
                     for(int i=0;i<9;i++)
                     {
-                        int who=i%NativeFallenPilots.Count;float o=i*2.2f+a.Seed;float rise=Smooth(t/1.2f-i*.06f);float crawl=Math.Max(0,t-1.1f-i*.07f);var start=NativeFallenPilots.At(who,a.Hit)+new Vector3((float)Math.Cos(o)*11,0,(float)Math.Sin(o)*11);
-                        var goal=NativeFallenPilots.At(who,p);var run=goal-start;float g=run.Length();float along=Math.Min(g-1.5f,crawl*9);var at=g>.01f?start+run/g*Math.Max(0,along):start;float killed=life-(i%3)*.8f-1;float k=1-Smooth((t-killed)/.5f);if(k<=0)continue;
-                        float lurch=.09f*(float)Math.Abs(Math.Sin(p*9+i));float yaw=(float)Math.Atan2(run.X,run.Z);var turn=Quaternion.CreateFromAxisAngle(Vector3.UnitY,yaw)*Quaternion.CreateFromAxisAngle(Vector3.UnitX,.12f+.1f*(float)Math.Sin(p*9+i));
-                        Prop("penitent",at+new Vector3(0,(rise-1)*1.3f+lurch-(1-k)*1.3f,0),turn,1.05f,1);Step(at.X,at.Z,(p*2+i*.41f)%.8f,.5f,.8f);
-                        if(t<1.6f+i*.07f)Burst(start,t-i*.06f,a.Seed+i*5,10,2,4,.035f,2.3f);
+                        int who=i%NativeFallenPilots.Count;float o=i*2.2f+a.Seed;float born=a.Hit+i*.072f;float crawl=Math.Max(0,t-1.1f-i*.07f);var start=NativeFallenPilots.At(who,a.Hit)+new Vector3((float)Math.Cos(o)*11,0,(float)Math.Sin(o)*11);
+                        var goal=NativeFallenPilots.At(who,p);var run=goal-start;float g=run.Length();float along=Math.Min(g-1.5f,crawl*9);var at=g>.01f?start+run/g*Math.Max(0,along):start;float killed=life-(i%3)*.8f-1;if(t>=killed||p<born)continue;
+                        float arrived=1.1f+i*.07f+Math.Max(0,g-1.5f)/9;float held=t-arrived;
+                        AddsSeen.Add(new NativeFallenAdds.Seen{Id=act+8+i,Kind=NativeFallenAdds.Penitent,At=at,Born=born,LastAttack=held>=0?a.Hit+arrived+(float)Math.Floor(held/NativeFallenAdds.Every)*NativeFallenAdds.Every:float.NaN,LastHit=-100,Target=goal,HasTarget=true});
                     }
                 }
                 else if(a.Id=="thrones")
                 {
+                    float period=NativeFallenSong.Bar;
                     for(int i=0;i<2;i++)
                     {
-                        float o=a.Seed+i*3.14f;var at=new Vector3((float)Math.Cos(o+p*.05f)*20,16+Math.Min(2,t)*0+.5f*(float)Math.Sin(p*.7f+i),(float)Math.Sin(o+p*.05f)*20);float k=Smooth(t/1.4f)*(1-Smooth((t-life+1.4f)/.9f));if(k<=0)continue;at.Y+=(1-k)*14;
-                        var target=NativeFallenPilots.At((i+1)%NativeFallenPilots.Count,p)+new Vector3(0,1,0);var d=Vector3.Normalize(target-at);var eyeTurn=FromTo(Vector3.UnitZ,d);var ring=eyeTurn*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,p*.7f+i);Prop("throne-ring",at,ring,1.6f,1);Prop("throne-eye",at,eyeTurn,1.6f,2.6f);
-                        // It shoots on the song's beats, a white needle and a ring where it lands.
-                        float period=NativeFallenSong.Bar;float shot=(t+i*period/2)%period;if(shot<.42f){float q=1-shot/.42f;Beam(at+d*1.1f,target,.06f+.2f*q,q,3.4f);Step(target.X,target.Z,shot,1.1f,.9f);Spot(target,1.1f*q,q,2.4f);Spot(at+d*1.2f,1.5f*q,q,3);}
-                        Spot(target-new Vector3(0,.95f,0),.5f,.5f,1,FallenFxQuads.Droplet);
+                        if(t>=life-1.4f)continue;float o=a.Seed+i*3.14f;var at=new Vector3((float)Math.Cos(o+p*.05f)*20,16,(float)Math.Sin(o+p*.05f)*20);
+                        // It shoots on the song's beats.
+                        float shot=(t+i*period/2)%period;float last=p-shot;
+                        AddsSeen.Add(new NativeFallenAdds.Seen{Id=act+20+i,Kind=NativeFallenAdds.Throne,At=at,Born=a.Hit,LastAttack=last>=a.Hit+.6f?last:float.NaN,LastHit=-100,Period=period,Target=NativeFallenPilots.At((i+1)%NativeFallenPilots.Count,p),HasTarget=true});
                     }
                 }
             }
