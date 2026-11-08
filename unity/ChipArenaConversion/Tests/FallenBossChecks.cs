@@ -357,14 +357,14 @@ public static class FallenBossChecks
         // The robe as cloth (the owner, 2026-11-07: "Its hard to see his legs ... integrate magica cloth"): open across the front, the sides to the knee,
         // the back to mid-calf, phase 2's shorter; the waist rows fixed for the simulation; both faces wound out and in; under the faulds' last ring.
         {
-            float lowest1=9,lowest2=9,sideHem=9;bool open=true,wound=true,flipped=true,weights=true;
+            float lowest1=9,lowest2=9,sideHem=9;bool open=true,front=false,wound=true,flipped=true,weights=true;
             foreach(int phase in new[]{1,2})
             {
                 var g=NativeFallenRobe.Build(phase);int n=g.Side;
                 Check(g.Positions.Length==n*2&&g.Normals.Length==n*2&&g.Triangles.Length%6==0,"phase "+phase+"'s robe has an outer and an inner copy");
                 for(int i=0;i<n;i++)
                 {
-                    var q=g.Positions[i];float ang=(float)(Math.Atan2(q.X,q.Z-NativeFallenRobe.CentreZ)*180/Math.PI);if(Math.Abs(ang)<55)open=false;
+                    var q=g.Positions[i];float ang=(float)(Math.Atan2(q.X,q.Z-NativeFallenRobe.CentreZ)*180/Math.PI);if(Math.Abs(ang)>NativeFallenRobe.Front+5&&Math.Abs(ang)<NativeFallenRobe.Open)open=false;if(Math.Abs(ang)<5)front=true;
                     if(phase==1)lowest1=Math.Min(lowest1,q.Y);else lowest2=Math.Min(lowest2,q.Y);
                     if(phase==1&&Math.Abs(ang)<110&&Math.Abs(ang)>=55&&g.Uv[i].Y<.01f)sideHem=Math.Min(sideHem,q.Y);
                     if(g.Normals[n+i]!=-g.Normals[i]||g.Alpha[i]!=255||g.Alpha[n+i]!=0)flipped=false;
@@ -378,7 +378,7 @@ public static class FallenBossChecks
                     if(g.Triangles[half+k]!=a+n||g.Triangles[half+k+1]!=c+n||g.Triangles[half+k+2]!=b+n)wound=false;
                 }
             }
-            Check(open,"the robe is open across the front: nothing within 55 degrees of it, the legs show whole");
+            Check(open&&front,"a narrow panel hangs between the legs, and nothing else within 55 degrees of the front: the legs show whole");
             Check(sideHem>.5f&&sideHem<.6f,"the side panels end at the knee ("+sideHem.ToString("0.000")+" m, the knee at .536)");
             Check(lowest1<.3f&&lowest2>lowest1+.08f,"the back hangs to mid-calf in phase 1 ("+lowest1.ToString("0.00")+"), burnt shorter in phase 2 ("+lowest2.ToString("0.00")+")");
             Check(wound&&flipped,"the outer faces face out, the inner copy faces in, the outline only outside");

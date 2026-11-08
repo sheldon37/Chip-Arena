@@ -7,8 +7,8 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// NOCTIEL's robe as cloth (the owner, 2026-11-07: "Its hard to see his legs ... integrate magica cloth into their clothes to simulate cloth
     /// movement"). In place of the seven rigid strips that hung to its ankles all round (the front two right over the legs), a skirt hangs from
-    /// under the faulds: open across the front so both legs show whole, a side panel each side ending at the knee, a long panel behind to mid-calf,
-    /// slits between them. Pleated, its hem a little ragged; phase 2's is shorter and burnt. One double-sided grid per phase in the skeleton's bind
+    /// under the faulds: a narrow panel hanging between the legs to above the knee (the cloth the eye meets from in front), open either side of it
+    /// so both legs show whole, a side panel each side ending at the knee, a long panel behind to mid-calf, slits between them. Pleated, its hem a little ragged; phase 2's is shorter and burnt. One double-sided grid per phase in the skeleton's bind
     /// space (x right, y up, z forward, the body about 1.76 m tall: the game draws it scaled), skinned to the pelvis with the side panels' hems
     /// leaning on their thighs, so without the cloth simulation it still follows the legs. Runtime (NativeFallenCloth) makes it a skinned renderer
     /// and hands it to the licensed cloth simulation through NativeVisualCloth with its paint map: the top <see cref="FixedRows"/> rows fixed (red),
@@ -20,8 +20,10 @@ namespace ChipArena.UnityConversion
         public const string Name="NOCTIEL robe";
         public struct Panel{public float From,To,Length;public int Columns,Pleats;public int Thigh;}
         /// <summary>Round the waist in degrees from the front toward its right (x = sin, z = cos); Thigh: which leg its hem leans on (0 none, 1 left, 2 right).</summary>
-        public static readonly Panel[] Long={new Panel{From=58,To=124,Length=.36f,Columns=10,Pleats=2,Thigh=2},new Panel{From=132,To=228,Length=.66f,Columns=14,Pleats=3},new Panel{From=236,To=302,Length=.36f,Columns=10,Pleats=2,Thigh=1}};
-        public static readonly Panel[] Burnt={new Panel{From=58,To=124,Length=.29f,Columns=10,Pleats=2,Thigh=2},new Panel{From=132,To=228,Length=.5f,Columns=14,Pleats=3},new Panel{From=236,To=302,Length=.29f,Columns=10,Pleats=2,Thigh=1}};
+        public static readonly Panel[] Long={new Panel{From=-15,To=15,Length=.4f,Columns=6,Pleats=1},new Panel{From=58,To=124,Length=.36f,Columns=10,Pleats=2,Thigh=2},new Panel{From=132,To=228,Length=.66f,Columns=14,Pleats=3},new Panel{From=236,To=302,Length=.36f,Columns=10,Pleats=2,Thigh=1}};
+        public static readonly Panel[] Burnt={new Panel{From=-15,To=15,Length=.31f,Columns=6,Pleats=1},new Panel{From=58,To=124,Length=.29f,Columns=10,Pleats=2,Thigh=2},new Panel{From=132,To=228,Length=.5f,Columns=14,Pleats=3},new Panel{From=236,To=302,Length=.29f,Columns=10,Pleats=2,Thigh=1}};
+        /// <summary>The front panel's half width (degrees): nothing else hangs within <see cref="Open"/> of the front, where the legs are.</summary>
+        public const float Front=15,Open=55;
         /// <summary>The waist ring it hangs from (just under the faulds' last ring at y .9), its half sizes, and how far the hem flares out from them.</summary>
         public const float Top=.905f,CentreZ=.03f,WaistX=.168f,WaistZ=.142f,FlareX=.1f,FlareZ=.09f,Pleat=.011f;
         public const int Rows=14,FixedRows=2;
