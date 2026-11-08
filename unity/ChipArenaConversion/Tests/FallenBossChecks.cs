@@ -537,6 +537,11 @@ public static class FallenBossChecks
             Check(cantorLow<-1.5f&&cantorRisen>-.05f,"the Cantor rises out of the water ("+cantorLow.ToString("0.0")+" then "+cantorRisen.ToString("0.00")+")");
             Check(sang,"the Cantor sings from its mouth");Check(plantedFrames>30&&landings>4,"the Penitent's hands planted ("+plantedFrames+" frames) and ringing the water ("+landings+")");Check(reared,"the Penitent rears up at its quarry");
             Check(charged&&fired,"the Throne charges before its shot and fires on it");
+            {
+                var on=new NativeFallenAddMotion();var one=new System.Collections.Generic.List<NativeFallenAdds.Seen>();
+                for(int i=0;i<240;i++){float now=i*dt;one.Clear();float z=Math.Max(.05f,6-now*7);one.Add(new NativeFallenAdds.Seen{Id=7,Kind=NativeFallenAdds.Penitent,At=new Vector3(0,1,z),Born=-5,Until=40,LastAttack=float.NaN,LastHit=-100,Target=Vector3.Zero,HasTarget=true});on.Step(one,1,now,dt);}
+                var pen=on.Adds[0];Check(Math.Abs(new Vector2(pen.Place.X,pen.Place.Z).Length()-.75f)<.05f&&pen.Place.Z>0,"a Penitent on its quarry is drawn at arm's length on the side it came from ("+pen.Place+")");
+            }
             var bind=R("Assets/ChipArena/Runtime/NativeFallenBinding.cs");var adds=R("Assets/ChipArena/Runtime/NativeFallenAddsBody.cs");var fx3=R("Assets/ChipArena/Core/NativeFallenBossFx.cs");
             Check(bind.Contains("f.Adds=adds.ToArray();")&&!bind.Contains("Id=kind+\"-beam\"")&&!fx3.Contains("Prop(\"cantor\"")&&!fx3.Contains("Prop(\"throne-ring\"")&&fx3.Contains("if(f.Adds!=null)AddsSeen.AddRange(f.Adds)"),"the adds come from their facts, live and in the preview, not rigid props");
             Check(adds.Contains("FbDrawKit(m,fbAddGlowOnly[i],world,g,flash,0,FbAboveWater);")&&show.Contains("FallenAddsStep(now,dt,origin,eyeAt);")&&show.Contains("FallenAddsDraw(origin,mirror,inner,flash);"),"the adds drawn cut at the water, reflected");

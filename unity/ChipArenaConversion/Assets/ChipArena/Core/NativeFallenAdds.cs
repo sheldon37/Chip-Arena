@@ -50,6 +50,9 @@ namespace ChipArena.UnityConversion
             public Vector3 Facing=Vector3.UnitZ;public float Spin,Recoil,Rear,Gait;public float ShotSeen=float.NaN;
             /// <summary>A Penitent's hands: where each is (planted on the water, or swinging from From to To since SwingAt).</summary>
             public readonly Vector3[] Hand=new Vector3[2],From=new Vector3[2],To=new Vector3[2];public readonly float[] SwingAt={-10,-10};public readonly bool[] Up=new bool[2];public bool HandsSet;
+            /// <summary>Where a Penitent is drawn: on the water under it, or, latched (the authority walks it onto its quarry), at arm's length on the side
+            /// it came from.</summary>
+            public Vector3 Place;public bool PlaceSet;
             /// <summary>After the pose: where its song or shot leaves it, and how strongly.</summary>
             public Vector3 Mouth;public float Sing,Fire;
             public float SplashDone;
@@ -79,7 +82,9 @@ namespace ChipArena.UnityConversion
             foreach(var a in Adds)
             {
                 bool dying=a.GoneAt>=0;var s=a.Last;
-                if(!dying){float want=YawTo(a.At,s.Target,s.HasTarget,a.Yaw);a.Yaw=TurnTo(a.Yaw,want,dt*(a.Kind==NativeFallenAdds.Penitent?7f:2.4f));}
+                // A Penitent on its quarry keeps the way it came (the way to it is nothing there).
+                bool onIt=a.Kind==NativeFallenAdds.Penitent&&s.HasTarget&&Flat(s.Target-a.At)<.9f;
+                if(!dying&&!onIt){float want=YawTo(a.At,s.Target,s.HasTarget,a.Yaw);a.Yaw=TurnTo(a.Yaw,want,dt*(a.Kind==NativeFallenAdds.Penitent?7f:2.4f));}
                 if(a.Kind==NativeFallenAdds.Penitent)PenitentStep(a,now,dt,dying);
                 else if(a.Kind==NativeFallenAdds.Throne)ThroneStep(a,now,dt,dying);
                 else CantorStep(a,now,dt,dying);
@@ -187,7 +192,9 @@ namespace ChipArena.UnityConversion
         // ---- the Penitent ----
         private void PenitentStep(Add a,float now,float dt,bool dying)
         {
-            var s=a.Last;float age=now-a.Born;var f=Fwd(a.Yaw);var r=Right(a.Yaw);var body=Floor(a.At);float speed=Flat(a.Vel);
+            var s=a.Last;float age=now-a.Born;var f=Fwd(a.Yaw);var r=Right(a.Yaw);float speed=Flat(a.Vel);
+            var place=Floor(a.At);if(s.HasTarget&&!dying&&Flat(s.Target-a.At)<.75f)place=Floor(s.Target)-f*.75f;
+            a.Place=a.PlaceSet?Vector3.Lerp(a.Place,place,1-(float)Math.Exp(-dt*12)):place;a.PlaceSet=true;var body=a.Place;
             float dist=s.HasTarget?Flat(s.Target-a.At):99;bool latch=!dying&&s.HasTarget&&dist<Latch&&speed<3.5f&&age>PenitentRise;a.Rear+=((latch?1:0)-a.Rear)*(1-(float)Math.Exp(-dt*(latch?9:5)));
             a.Gait+=speed*dt;
             if(age<PenitentRise+.3f)Splashes.Add((body+f*.5f,age,a.Id*11));
@@ -214,7 +221,7 @@ namespace ChipArena.UnityConversion
         public static void PenitentPose(Add a,float now,int tier,NativeFallenKit k)
         {
             float age=now-a.Born,rise=Smooth(age/PenitentRise),d=a.GoneAt>=0?C((now-a.GoneAt)/DeathTime(a.Kind)):0,id=a.Id*1.618f;
-            var f=Fwd(a.Yaw);var r=Right(a.Yaw);var up=Vector3.UnitY;var o=Floor(a.At);float speed=Flat(a.Vel),crawl=Smooth(speed/3f),rear=a.Rear,hit=Flinch(a,now),blow=Pulse(a,now,6);
+            var f=Fwd(a.Yaw);var r=Right(a.Yaw);var up=Vector3.UnitY;var o=a.PlaceSet?a.Place:Floor(a.At);float speed=Flat(a.Vel),crawl=Smooth(speed/3f),rear=a.Rear,hit=Flinch(a,now),blow=Pulse(a,now,6);
             // The gait: a heave with each reach, the back swaying to the planted side.
             float ph=a.Gait/Stride*(float)Math.PI*2;float heave=.07f*crawl*(float)Math.Abs(Math.Sin(ph))+.02f*(float)Math.Sin(now*1.3f+id)*(1-crawl);
             float sway=.12f*crawl*(float)Math.Sin(ph);float rock=.05f*(float)Math.Sin(now*1.1f+id)*(1-crawl)*(1-rear);
