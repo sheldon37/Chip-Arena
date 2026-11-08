@@ -1,3 +1,5 @@
+2026-11-08 Claude (`claude/hotdog-tripo`): the owner's Tripo hot dog is a DEV skin (Locker, Tops), retargeted onto the model (`docs/HOT-DOG-SKIN.md`; the bank in the Drive zip); its sausage jiggles on starts, stops and landings. It wears a painted texture until the owner sends the export's own image. Not played by a person.
+
 2026-11-08 Claude (`claude/skip-vote`, at the owner's word): vote to skip a boss's intro, its phase reveals and the pilots' intros (F); all connected humans must agree, a lone pilot skips at once (docs/CUTSCENE-SKIP.md). Two real clients not tried yet.
 
 2026-11-08 Claude (`claude/noctiel-face`): NOCTIEL's ripples faint; no words on the claymore; a blank mask whose eyes blink.

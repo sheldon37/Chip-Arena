@@ -43,9 +43,11 @@ namespace ChipArena.UnityConversion
         // the robot armour's ear modules (VisualSuit).
         // The face gear pilot `id` wears on the model (NativeWeaponSkins.FaceHelm, the default, .. FaceNone), whatever its body skin.
         private int FaceGearOf(int id)=>NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);
-        private bool WearsHelm(int id)=>FaceGearOf(id)==NativeWeaponSkins.FaceHelm;
+        // The face gear it shows: none in the Hot Dog (Core NativeHotDog: the sausage's face is its own), else its pick.
+        private int FaceGearWorn(int id)=>NativeHotDog.Worn(VisualOutfitOf(id))?NativeWeaponSkins.FaceNone:FaceGearOf(id);
+        private bool WearsHelm(int id)=>FaceGearWorn(id)==NativeWeaponSkins.FaceHelm;
         // Whether its face gear brings its own ear modules (the helmet's or the half mask's), in place of the robot armour's.
-        private bool HelmEars(int id){int gear=FaceGearOf(id);return gear==NativeWeaponSkins.FaceHelm||gear==NativeWeaponSkins.FaceHalf;}
+        private bool HelmEars(int id){int gear=FaceGearWorn(id);return gear==NativeWeaponSkins.FaceHelm||gear==NativeWeaponSkins.FaceHalf;}
         // A hat's place on the helmet, in the head bone's frame.
         private static Matrix4x4 HelmHatFit(string hat){NativeRobotHelm.HatFit(hat,out float k,out var move);return Matrix4x4.TRS(new Vector3(move.X,move.Y,move.Z),Quaternion.identity,Vector3.one*k);}
         // Whether a corpse holds its head: a whole one, or the half of a split one its cut left the head on (VisualCorpseHat's test).

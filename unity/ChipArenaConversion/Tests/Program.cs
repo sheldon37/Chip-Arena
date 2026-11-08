@@ -13,6 +13,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--boss-battle")return 0;
             if(args.Length==1&&args[0]=="--backrooms-collision"){BackroomsRouteChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--backrooms-boss-rules"){BackroomsBossRuleChecks.Run();return 0;}
+            if(args.Length==1&&args[0]=="--hot-dog"){LookContractChecks.Run(ProjectRoot());HotDogChecks.Run(ProjectRoot());Console.WriteLine("PASS hot dog");return 0;}
             if(args.Length==1&&args[0]=="--cutscene-skip"){CutsceneSkipChecks.Run(ProjectRoot());return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--runtime-performance")RuntimePerformanceChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--runtime-performance")return 0;
@@ -247,7 +248,7 @@ internal static class Program
             BuildLabelChecks.Run(root);SocialPanelChecks.Run(root);CutsceneSkipChecks.Run(root);
             FinalKillcamChecks.Run(root);ReplayShotChecks.Run(data);
             HatLookChecks.Run(root);ModelHatChecks.Run(root);RobotSuitChecks.Run(root);RobotHelmChecks.Run(root);
-            LookContractChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);TilerLookChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);ZombieStageChecks.Source();ZombieKnockChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);
+            LookContractChecks.Run(root);HotDogChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);TilerLookChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);ZombieStageChecks.Source();ZombieKnockChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);
             MovementModsChecks.Run(root);RoundsCardsChecks.Run(root);NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);WoundSkinChecks.Run(root);BisectChecks.Run(root);MeleeBisectChecks.Run(root);GibChecks.Run(root);ReviveHoloChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
             StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();KillEffectChecks.Run(root);SirenFxChecks.Run(root);SirenMarkChecks.Run(root);SirenLookChecks.Run(root);DevFxChecks.Run(root);

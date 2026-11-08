@@ -50,6 +50,7 @@ namespace ChipArena.UnityConversion
         /// modules under the robot's helmet or half mask (`helmEars`: their own) and the vambraces under arm bands. Allocation free.</summary>
         public static int Shown(string look,bool helmEars)
         {
+            if(NativeHotDog.Worn(look))return 0; // (The Hot Dog wears none: NativeHotDog.)
             int worn=0;for(int s=1;s<NativeLook.Slots.Length;s++)if(Worn(look,s))worn|=1<<s;if(worn==0)return 0;
             int shown=0;for(int b=0;b<Bones.Length;b++)if((worn>>BoneSlot[b]&1)!=0)shown|=1<<b;
             if(helmEars)shown&=~(1<<Head);

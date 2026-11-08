@@ -44,6 +44,7 @@ namespace ChipArena.UnityConversion
         // A body being made (`root`, its skeleton at rest): its skeleton's renderer on its own bones, or null.
         private static SkinnedMeshRenderer VisualSkeletonMake(GameObject root,Transform skeleton)
         {
+            if(HotDogOn(root))return null; // (None in the Hot Dog: it is sausage through, NativeHotDogPresentation.cs.)
             if(!VisualSkeletonAssets())return null;var named=new Dictionary<string,Transform>();
             foreach(var t in skeleton.GetComponentsInChildren<Transform>(true))if(!named.ContainsKey(t.name))named[t.name]=t;
             var bones=new Transform[skeletonBones.Length];for(int b=0;b<bones.Length;b++)if(!named.TryGetValue(skeletonBones[b],out bones[b]))return null;
