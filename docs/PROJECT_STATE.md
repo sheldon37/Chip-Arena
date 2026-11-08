@@ -1,3 +1,5 @@
+2026-11-08 Claude (`claude/boss-polish`): THE DEEP END: no black box from the room's corners, no Drain streaks, the body smooth at any frame rate (no judder, tail flicks or side-to-side jumps); NOCTIEL faces where it walks, wears a cloth hood, and the raised blade turns round it.
+
 2026-11-07 Claude (`claude/deepend-body`): THE DEEP END's body no longer folds through itself on tight turns (a bend limit and self-separation on its spine); stranded on tile it curls round in a U.
 
 2026-11-07 Claude (`claude/boss-looks`): NOCTIEL's sword hand out past the hip, a cloth skirt that shows the legs, detailed leg armour (Drive zip bank); THE DEEP END slams on tile and splashes in water, no warnings for Seiche or the Drain, a stronger Drain.
