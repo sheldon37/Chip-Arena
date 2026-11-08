@@ -6,6 +6,7 @@
 - **Animation impact:** the drawn body (and Last Lap's body contact, which reads the same rig on the authority) bends wider in tight turns; the skull, every other move's contact, timings and damage unchanged.
 - **Checks:** `--deepend-boss` (the new body check, two frame rates one pose, no allocation, a visible joint's speed), `--telegraphs`, `--backrooms-boss-rules`, `--backrooms-boss-sweep`; Unity compile in the release. Seen in a real Boss Battle in the Editor: Breach's arch, the Jet's neck curling over, the Flop's flight and the Drain's hook, none through itself.
 - **Not run:** no person or two-client run; the Unity no-safe-spot gate only on the builder.
+- **Released:** full suite at `cfcf7ea5` (shared merged in): 981 groups, exit 0; pins 0 broken; Unity compile PASS. Merged `c2e10746`; builder succeeded and published to the test channel: revision 639296996596053050, 246.0 MiB.
 
 ## 2026-11-07 — Claude: NOCTIEL's hand, cloth skirt and legs; THE DEEP END's slams, unwarned waves and vortex, stronger Drain (owner requests; the Drain's pull at the owner's word)
 
