@@ -35,12 +35,12 @@ Frame: the pack skeleton every pilot uses, scaled about 1.9x (about 3.5 m tall) 
 
 | Phase | Name | Body | Wings | Halo | Sword |
 | --- | --- | --- | --- | --- | --- |
-| 1 | GRACE | Whole white plate, long black robe split at the front, face a smooth porcelain mask with no features | Six, feathered, folded close like a cloak | A thin, whole ring behind the head, one crack | Clean pale steel. Black veins only at the hilt |
+| 1 | GRACE | Whole white plate, long black robe split at the front, face a smooth porcelain mask, blank but for two narrow eyes that blink | Six, feathered, folded close like a cloak | A thin, whole ring behind the head, one crack | Clean pale steel. Black veins only at the hilt |
 | 2 | WRATH | Hairline cracks in the plate with light behind them, robe burning away upward into ash | The lower pair sheds into floating blades | Cracked through, tilting | Veins halfway up the blade |
 | 3 | RUIN | Chest and left arm plate gone, showing black glass with white light moving inside. The mask has split | Bare bone and chain; feathers gone, the top pair are huge blades | Three shards orbiting | Blade black to the tip, a white edge. Drips upward |
 | 4 | LUX CECIDIT | Hollow: a shell of plate round a figure of white light. The mask is gone | A ring of black blades turning behind it, no wings left | Gone. A hole of light where it was | A shard of pure white light in the shape of the blade, with the black steel flaking off it |
 
-**The claymore** is 3.4 m, longer than the wielder is tall, always in the right hand and never two-handed. The crossguard is a pair of broken wings folding forward. The ricasso is wrapped in chain. The fuller carries engraved words, LUX CECIDIT, that fill with black as the veins climb. The pommel is a closed eye that opens in phase 3.
+**The claymore** is 3.4 m, longer than the wielder is tall, always in the right hand and never two-handed. The crossguard is a pair of broken wings folding forward. The ricasso is wrapped in chain. The fuller carries a thin line of light, and the veins climb the blade (no words on it since 2026-11-08, the owner). The pommel is a closed eye that opens in phase 3.
 
 ## 5. The arena: the Still Water (rule for its size, presentation for its look)
 
@@ -369,6 +369,19 @@ feet planted apart, the left a little ahead, the blade out to the right side wit
 (`FbStandNames`/`FbStandTo`, muscle targets: the soles level within 3 cm, the left foot 26 cm ahead, the feet half a metre apart, the knees
 nearly straight, no twist; found by rendering the frame on the body and measuring), and the carry lays the blade out to its right side
 (`FbDragWay` 0.99, 0, 0.1) with its point 2 cm over the water (`FbDragTip`). The walk keeps its own legs (Stand is 0 while walking).
+
+### Faint ripples, a claymore without words, a blank mask that blinks (Claude, 2026-11-08, the owner)
+
+"The ripples are too excessive I think maybe lower the opacity but a LOT (You know, kind of similar color but you can tell theirs small
+ripples.) Also, remove the text from the sword of noctiel. Finally, revise the face (Maybe just make it blink) so remove the little eyes and
+eyebrows"
+
+- **The ripples:** every ripple on the water, the steps' rings and the moves' waves, is drawn faint, in the water's own dark colour (Resources
+  `NativeFallenWater.shader`). The attack warnings are unchanged.
+- **The claymore:** no words on it.
+- **The face** (Core `NativeFallenMask`, Runtime `NativeFallenMaskBody.cs`, in place of the bank's mask, split mask and slits):
+  - The bank's mask, blank: no brows, no slits. The crack below the left eye stays.
+  - Two narrow, dark almond eyes with a soft light inside, which blink every few seconds, once in the intro's close-up.
 
 ### The void held through the intro, the claymore remade, the adds alive (Claude, 2026-11-08, the owner)
 

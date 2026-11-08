@@ -1,3 +1,28 @@
+## 2026-11-08 — Claude: NOCTIEL's ripples faint, no words on the claymore, a blank mask whose eyes blink (owner requests)
+
+- Branch `claude/noctiel-face`, base shared `841cc75d`.
+- **The owner:** "The ripples are too excessive I think maybe lower the opacity but a LOT (You know, kind of similar color but you can tell theirs small ripples.) Also, remove the text from the sword of noctiel. Finally, revise the face (Maybe just make it blink) so remove the little eyes and eyebrows"
+- **The ripples** (Resources `NativeFallenWater.shader`): every ripple on the Still Water (the rings of footfalls, hits and the adds' splashes, and the waves the moves send across it) keeps its shape, size and timing but is drawn faint. It keeps a sixth of its light, a third of its glints and under half its slope, so it reads in the water's own dark colour and bends the reflection a little where it passes.
+  - The attack warnings are not ripples and are unchanged, such as Severance's bright fan and its wave fronts (the shared telegraph renderer).
+- **The claymore:** the bank's words LUX CECIDIT are no longer fitted to the blade or drawn; the bank's piece stays hidden with the other sword pieces (Runtime `NativeFallenSwordBody.cs`).
+- **The face** (Core `NativeFallenMask`, Runtime `NativeFallenMaskBody.cs`): the mask is built in C# from the bank's own rings (tools/gear/fallen_boss.py `head_mask`) in place of the bank's mask, split mask and eye slits. The face is the same shape but blank: no brow lines and no slits.
+  - The crack down from the left eye stays, as the bank had it.
+  - Phase 3's split mask is the bank's split without its brows.
+  - The eyes are two narrow almonds, dark with a soft light inside, a little longer than the old slits and nearly level. They sit 1.6 mm off the mask's own faces.
+  - The eyes blink: the upper lid comes down in 0.07 s, holds 0.05 s and lifts in 0.13 s. A blink comes every 2 to 6 s, and about one in five has a second close behind it. Shut, an eye is a hairline and its light goes out.
+  - In the intro's close-up of the mask (44.46 to 47.0) it blinks once, 1.6 s in, face on.
+  - Built in the skeleton's bind space and taken onto the head by its bind pose, as the hood is. Without a head bind the bank's mask stays.
+- **Animation impact:** presentation only. No hit time, hitbox, damage, cooldown, movement, wire value or rule changes. The blink runs on the frame's clock and reads nothing back.
+- **Checks:**
+  - CoreTests `--fallen-boss`: every ripple faint, the rings and the waves; no words on the claymore; the mask whole and split at both tiers, closed and facing out, the bank's size, no brows (its only black is the crack below the left eye); the eyes open with their light and shut to a hairline, laid just off the face; a blink every few seconds, now and then two together; one blink in the intro's close-up; the wiring.
+  - Unity compile PASS.
+- **Seen in the Editor:**
+  - The intro's close-up of the mask (preview, 45.5 to 46.8): no brows, the eyes open and lit; one frame caught the blink shut to a hairline at 46.0 and the eyes open again by 46.2.
+  - A live Boss Battle, a camera on the head in phase 1: the eyes, no brows.
+  - The live fight's rings round NOCTIEL's feet, the same shots before and after: bright grey rings before, faint dark ones after. The bright fan at the fight's start is Severance's warning and measured the same before and after.
+  - The moves' waves made faint were not caught in a frame.
+- **Not run:** no person or two-client run. The low-graphics tier and phase 3's split mask were not looked at in the Editor.
+
 ## 2026-11-08 — Claude: NOCTIEL's void holds through the intro; a new claymore with its light; the adds animated (owner requests)
 
 - Branch `claude/noctiel-sword`, base shared `809fb242`. Forwarded from the parent session.
