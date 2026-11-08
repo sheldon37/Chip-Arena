@@ -435,6 +435,18 @@ public static class FallenBossChecks
             var cloth=R("Assets/ChipArena/Runtime/NativeFallenCloth.cs");var body2=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");
             Check(cloth.Contains("FallenClothPiece(NativeFallenHood.Name,NativeFallenHood.Build(),NativeFallenHood.Bones,")&&cloth.Contains("bool show=k==FbHood?hood:k==want")&&body2.Contains("if(FallenHoodOn&&f.Phase<=3&&part.Name==\"cowl\")continue;"),"the hood is built with the body and drawn in the cowl's place in phases 1 to 3");
         }
+        // It breathes (the owner, 2026-11-08: "they sit there like a statue a lot? no indication of breathing"): a slow breath, smooth, every fourth deeper;
+        // all of its life at rest, some of it walking.
+        {
+            float most=0,step=0,last=NativeFallenLiveMotion.BreathAt(0);int ups=0;bool wasUp=last>0;float[] peaks=new float[8];
+            for(float t=1/144f;t<4*NativeFallenLiveMotion.BreathSeconds;t+=1/144f){float b=NativeFallenLiveMotion.BreathAt(t);step=Math.Max(step,Math.Abs(b-last));if(b>0&&!wasUp)ups++;wasUp=b>0;int k=(int)(t/NativeFallenLiveMotion.BreathSeconds);peaks[k]=Math.Max(peaks[k],b);most=Math.Max(most,Math.Abs(b));last=b;}
+            Check(ups>=3&&ups<=5&&step<.025f&&most<=1.25f,"a slow, smooth breath ("+ups+" breaths in "+(4*NativeFallenLiveMotion.BreathSeconds)+" s, largest step "+step.ToString("0.0000")+")");
+            Check(peaks[3]>peaks[0]*1.2f||peaks[2]>peaks[0]*1.2f,"every fourth breath deeper ("+peaks[0].ToString("0.00")+" to "+Math.Max(peaks[2],peaks[3]).ToString("0.00")+")");
+            var d=new NativeFallenLiveMotion{StandAt=.4f};var at=Vector3.Zero;var x=new NativeFallenLiveMotion.Facts{At=at,Yaw=0,Target=new Vector3(0,0,80)};float stepAt=0,walkLife=0,restLife=0;
+            for(float now=0;now<8;now+=1/144f){while(stepAt<=now){at+=new Vector3(0,0,(now<4?1.4f:0)/60);stepAt+=1/60f;}x.Now=now;x.At=at;d.Step(f,x,bank);if(now>2&&now<3.8f)walkLife=f.Life;if(now>7.5f)restLife=f.Life;}
+            Check(restLife>.98f&&Math.Abs(walkLife-NativeFallenLiveMotion.LifeWalking)<.05f,"all of its life at rest ("+restLife.ToString("0.00")+"), some walking ("+walkLife.ToString("0.00")+")");
+            var body3=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");Check(body3.Contains("if(fbLiveNow&&f.Life>0)")&&body3.Contains("f.Life*NativeFallenLiveMotion.BreathAt("),"Runtime lays the breath through the body and the wings");
+        }
         // A standing turn: past 18 degrees off its quarry it turns to it, smoothly.
         {
             var d=new NativeFallenLiveMotion();var x=new NativeFallenLiveMotion.Facts{At=Vector3.Zero,Yaw=0,Target=new Vector3(0,0,20)};float lastYaw=0;

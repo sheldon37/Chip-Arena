@@ -19,6 +19,9 @@ namespace ChipArena.UnityConversion
         public float Kneel,Carry;
         /// <summary>At rest (0..1): Runtime squares the held stride into the owner's reference stance (feet planted apart, the left a little ahead, knees nearly straight, hips and chest square).</summary>
         public float Stand;
+        /// <summary>Its breath (-1 out .. 1 in; NativeFallenLiveMotion.BreathAt) and how much of its life shows (0..1: all of it at rest, some under a walk or
+        /// a move, none on a knee); Runtime lays them through the chest, shoulders, head and wings, with its weight and head drifting.</summary>
+        public float Breath,Life;
         /// <summary>The head follows this pilot while it stands (0..1 how hard); gliding: it runs on nothing, its feet off the water.</summary>
         public float Track;public int TrackPilot;public bool Gliding;
         /// <summary>The sword draws its trail (the strike itself, not every move of the arm).</summary>
