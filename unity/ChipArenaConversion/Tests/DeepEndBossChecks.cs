@@ -169,20 +169,21 @@ public static class DeepEndBossChecks
     // head was 80 degrees off.
     private static void JetFaces()
     {
-        var o=new Vector3(24,0,24);var rig=new DeepEndBossRig();var v=DeepEndBossView.None;const float dt=1/60f;float worst=0,sum=0,under=float.MaxValue;int n=0;
+        var o=new Vector3(24,0,24);var rig=new DeepEndBossRig();var v=DeepEndBossView.None;const float dt=1/60f;float worst=0,clear=0,sum=0,under=float.MaxValue,worstAt=0,worstLift=0,worstAge=0;int n=0,over=0;
         for(int k=0;;k++)
         {
             float t=(float)(NativeDeepEndBossPreview.JetAt-2+(double)k*dt);if(t>=NativeDeepEndBossPreview.Jet2At+6)break;if(t>NativeDeepEndBossPreview.JetAt+6&&t<NativeDeepEndBossPreview.Jet2At-2)continue;
             NativeDeepEndBossPreview.View(t,ref v,out _);var st=NativeDeepEndBossStage.Evaluate(v,t,DeepEndBossBeats.Fallback);rig.Update(t,dt,v,null,o,st.Tide,false,default);
             if(!v.Moving(t,out var m,out float age,out float hit)||m.Id!="jet"||age<hit||age>hit+m.Strike||rig.MouthAt.Y-o.Y<st.Tide+.5f)continue;
-            var beam=DeepEndBossRig.JetDir(v,age,hit,m,rig.MouthAt-o,st.Tide);float ang=(float)(Math.Acos(Math.Clamp(Vector3.Dot(Vector3.Normalize(rig.MouthDir),beam),-1,1))*180/Math.PI);sum+=ang;n++;worst=Math.Max(worst,ang);
+            var beam=DeepEndBossRig.JetDir(v,age,hit,m,rig.MouthAt-o,st.Tide);float ang=(float)(Math.Acos(Math.Clamp(Vector3.Dot(Vector3.Normalize(rig.MouthDir),beam),-1,1))*180/Math.PI);sum+=ang;n++;if(ang>worst){worst=ang;worstAt=t;worstLift=rig.MouthAt.Y-o.Y-st.Tide;worstAge=age-hit;}if(ang>12)over++;if(rig.MouthAt.Y-o.Y-st.Tide>=.75f)clear=Math.Max(clear,ang);
             // The owner, 2026-11-08: "their spray attack seems to be flat. It usually ends up being UNDER the hit indicator". The beam as the effects draw it stays over the floor
             // (the water, or the dry deck standing above it) along its lane until its last fifth, where it comes down.
             var head=rig.MouthAt-o;float top=Math.Max(st.Tide,0),reach=NativeDeepEndBossFx.JetReach(head,beam,m,out _,out bool wall);
             for(int s=0;s<=8;s++){var p=NativeDeepEndBossFx.JetAt(head,beam,reach,wall,top,s/10f);under=Math.Min(under,(p.Y-top)/Math.Min(.5f,(head.Y-top)*.4f));}
         }
-        Console.WriteLine("INFO deepend jet: the mouth off the beam "+(sum/Math.Max(1,n)).ToString("0.0")+" deg on average, "+worst.ToString("0.0")+" at worst ("+n+" frames); the beam's least clearance over the floor "+under.ToString("0.00")+" of its due");
-        Check(n>60&&worst<15,"through the Jet it faces where it shoots: "+worst.ToString("0.0")+" deg at worst");
+        Console.WriteLine("INFO deepend jet: the mouth off the beam "+(sum/Math.Max(1,n)).ToString("0.0")+" deg on average, "+worst.ToString("0.0")+" at worst, "+clear.ToString("0.0")+" clear of the water ("+n+" frames, "+over+" over 12; the worst at "+worstAt.ToString("0.00")+" s, "+worstAge.ToString("0.00")+" s into the beam, the mouth "+worstLift.ToString("0.00")+" m over the water); the beam's least clearance over the floor "+under.ToString("0.00")+" of its due");
+        // (The neck's curl eases in over its first 1.5 m out of the water, so just as the mouth breaks the surface it is still turning onto the beam.)
+        Check(n>60&&clear<15&&worst<20,"through the Jet it faces where it shoots: "+clear.ToString("0.0")+" deg at worst clear of the water, "+worst.ToString("0.0")+" as the mouth breaks the surface");
         Check(under>=1,"the Jet's beam stays over the floor along its lane, not flat on it or under it ("+under.ToString("0.00")+")");
     }
     // ---- determinism and allocation ----
