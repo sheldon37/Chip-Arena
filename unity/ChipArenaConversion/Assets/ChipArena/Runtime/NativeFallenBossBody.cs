@@ -169,7 +169,12 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<2;i++)
             {
                 float drop=Mathf.Clamp((grip.y-floor-FbDragTip*s)/along,.08f,.95f);var blade=(outward*Mathf.Sqrt(1-drop*drop)+Vector3.down*drop).normalized;
-                world=Quaternion.LookRotation(blade,Vector3.ProjectOnPlane(front,blade));grip=wrist+world*Quaternion.Inverse(inHand)*(FbGrip*s);
+                world=Quaternion.LookRotation(blade,Vector3.ProjectOnPlane(front,blade));
+                // Turned round the blade so the wrist bends least: the fingers as near the forearm's own line as the grip allows (the owner, 2026-11-08,
+                // a screenshot of the sword hand at rest: the fist sat cocked over the handle, the pommel across the thigh).
+                var fingers=Vector3.ProjectOnPlane(world*Quaternion.Inverse(inHand)*Vector3.right,blade);var fore=Vector3.ProjectOnPlane(wrist-shoulder,blade);
+                if(fingers.sqrMagnitude>1e-6f&&fore.sqrMagnitude>1e-6f)world=Quaternion.AngleAxis(Vector3.SignedAngle(fingers,fore,blade),blade)*world;
+                grip=wrist+world*Quaternion.Inverse(inHand)*(FbGrip*s);
             }
             pole=yawRot*new Vector3(.35f,-.1f,-1f);
         }

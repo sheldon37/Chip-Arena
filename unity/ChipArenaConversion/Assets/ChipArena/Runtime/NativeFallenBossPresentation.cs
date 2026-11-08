@@ -104,7 +104,7 @@ namespace ChipArena.UnityConversion
             // Its attack warnings go to the shared renderer (NativeTelegraphPresentation.cs), on its stage.
             for(int i=0;i<fbFx.Telegraphs.Count;i++)Telegraph(fbFx.Telegraphs.Items[i],origin);
             bool shown=f.BossShown&&f.Kind!=NativeFallenBossPreview.KindChips;
-            if(shown){FallenFeet(f,now,dt,origin);FallenTrail(f,now,origin);}FbStepsInto(fbFx,now);
+            if(shown){FallenFeet(f,now,dt,origin);FallenTrail(f,now,origin);}if(live)FallenPilotSteps(arena,origin,now,dt);FbStepsInto(fbFx,now);
             if(live)FallenPilotsHide();else FallenPilots(f,now,origin);
             // The light on the plate: the shot's, driven by the song, the fight's moves.
             var keyDir=(Quaternion.AngleAxis(f.Yaw+24,Vector3.up)*new Vector3(.45f,.72f,.6f)).normalized;float key=Mathf.Max(.02f,f.Key+fbFx.KeyBoost)*(1+.1f*bass*bass);if(f.Phase==4)key*=.62f;Shader.SetGlobalVector(FbKeyId,new Vector4(keyDir.x,keyDir.y,keyDir.z,key));
@@ -114,7 +114,7 @@ namespace ChipArena.UnityConversion
             FallenClothFrame(f,origin,eyeAt,flash,mirror,shown,now);
             if(f.FeatherShown)FallenPropDraw(new FallenFxProp{Id="feather-one",At=f.Feather,Turn=System.Numerics.Quaternion.CreateFromYawPitchRoll(f.FeatherTurn*Mathf.Deg2Rad,f.FeatherPitch*Mathf.Deg2Rad,f.FeatherRoll*Mathf.Deg2Rad),Scale=1.6f,Glow=1.5f},origin,mirror,1);
             for(int i=0;i<fbFx.PropCount;i++)FallenPropDraw(fbFx.Props[i],origin,mirror,1);
-            FallenWaterDraw(f,origin,clip,level,bass,now);
+            FallenVoidDraw(eyeAt,clip,fbFx.Dim,now);FallenWaterDraw(f,origin,clip,level,bass,now);
             FallenFxDraw(origin,mirror,now);
             FallenMotesDraw(origin,level,now);
             FallenSlashStep(f,eye);
@@ -175,14 +175,16 @@ namespace ChipArena.UnityConversion
         }
         // ---- what the posed body does to the water: each footfall a ring, the sword's point a wake, and the sword's trail ----
         private struct FbStep{public float X,Z,At,Strength;}
-        private readonly FbStep[] fbSteps=new FbStep[16];private int fbStepAt;private bool fbFootDownL,fbFootDownR;private float fbWakeLast;private Vector3 fbWakeAt;
+        private readonly FbStep[] fbSteps=new FbStep[40];private int fbStepAt;private bool fbFootDownL,fbFootDownR;private float fbWakeLast;private Vector3 fbWakeAt;
         private void FbStepsClear(){Array.Clear(fbSteps,0,fbSteps.Length);fbStepAt=0;}
         private void FbStepAdd(Vector3 at,Vector3 origin,float now,float strength){fbSteps[fbStepAt]=new FbStep{X=at.x-origin.x,Z=at.z-origin.z,At=now,Strength=strength};fbStepAt=(fbStepAt+1)%fbSteps.Length;}
         private void FbStepsInto(NativeFallenBossFx fx,float now){for(int i=0;i<fbSteps.Length;i++){var s=fbSteps[i];if(s.Strength>0&&now-s.At<2.6f)fx.Step(s.X,s.Z,now-s.At,s.Strength);}}
         private void FallenFeet(FallenBossFrame f,float now,float dt,Vector3 origin)
         {
             float s=NativeFallenBoss.Scale,floor=origin.y;bool downL=fbFootL.position.y-.11f*s<floor+.06f,downR=fbFootR.position.y-.11f*s<floor+.06f;
-            if(downL&&!fbFootDownL){FbStepAdd(fbFootL.position,origin,now,.75f);FallenStepCue(fbFootL.position,now);}if(downR&&!fbFootDownR){FbStepAdd(fbFootR.position,origin,now,.75f);FallenStepCue(fbFootR.position,now);}fbFootDownL=downL;fbFootDownR=downR;
+            if(downL&&!fbFootDownL){FbStepAdd(fbFootL.position,origin,now,.75f);FallenStepCue(fbFootL.position,now);}if(downR&&!fbFootDownR){FbStepAdd(fbFootR.position,origin,now,.75f);FallenStepCue(fbFootR.position,now);}
+            // A foot leaving the water rings it too, smaller (the owner, 2026-11-08: "like were stepping in water").
+            if(!downL&&fbFootDownL)FbStepAdd(fbFootL.position,origin,now,.3f);if(!downR&&fbFootDownR)FbStepAdd(fbFootR.position,origin,now,.3f);fbFootDownL=downL;fbFootDownR=downR;
             // The point in the water lays a wake: a ring each 0.6 m it travels (a drag at a walk, a swing through the water), none while
             // it rests; a fast swing's rings are the brighter.
             var tip=FallenHandPoint(FbTipLocal);float moved=(tip-fbWakeAt).magnitude;
@@ -252,7 +254,7 @@ namespace ChipArena.UnityConversion
         }
         private void DisposeFallenBoss()
         {
-            FallenStageLeave();FallenBodyDispose();if(fbFill!=null)Destroy(fbFill.gameObject);fbFill=null;foreach(var p in new Material[]{fbWater,fbFxMat,fbFxMirror,fbMotes,fbSlashMat})if(p!=null)CapturedAnimation.Release(p);fbWater=fbFxMat=fbFxMirror=fbMotes=fbSlashMat=null;foreach(var m in new[]{fbPlane,fbFxMesh,fbMoteMesh})if(m!=null)CapturedAnimation.Release(m);fbPlane=fbFxMesh=fbMoteMesh=null;
+            FallenVoidDispose();FallenStageLeave();FallenBodyDispose();if(fbFill!=null)Destroy(fbFill.gameObject);fbFill=null;foreach(var p in new Material[]{fbWater,fbFxMat,fbFxMirror,fbMotes,fbSlashMat})if(p!=null)CapturedAnimation.Release(p);fbWater=fbFxMat=fbFxMirror=fbMotes=fbSlashMat=null;foreach(var m in new[]{fbPlane,fbFxMesh,fbMoteMesh})if(m!=null)CapturedAnimation.Release(m);fbPlane=fbFxMesh=fbMoteMesh=null;
             if(fbSongTex!=null)CapturedAnimation.Release(fbSongTex);fbSongTex=null;fbSongRead=false;for(int i=0;i<fbPilots.Length;i++){var q=fbPilots[i];if(q==null)continue;q.Handler?.Dispose();q.MirrorHandler?.Dispose();if(q.Body!=null)Destroy(q.Body);if(q.Reflection!=null)Destroy(q.Reflection);fbPilots[i]=null;}
         }
     }
