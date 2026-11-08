@@ -24,14 +24,18 @@ namespace ChipArena.UnityConversion
         public struct Row{public float Y,Half,Z,Wrap;public Row(float y,float half,float z,float wrap){Y=y;Half=half;Z=z;Wrap=wrap;}}
         public static readonly Row[] Rows=
         {
-            new Row(1.47f,.055f,.075f,1f),new Row(1.42f,.083f,.15f,2.4f),new Row(1.37f,.094f,.178f,2.6f),new Row(1.31f,.1f,.184f,2.6f),new Row(1.25f,.097f,.175f,2.4f),
-            new Row(1.2f,.09f,.165f,2.2f),new Row(1.11f,.085f,.157f,1.8f),new Row(Belt,.085f,.172f,1.6f),new Row(.95f,.098f,.182f,1.4f),new Row(.8f,.11f,.18f,1.1f),
-            new Row(.62f,.12f,.174f,.9f),new Row(.45f,.128f,.17f,.7f),new Row(.34f,.132f,.167f,.6f),
+            new Row(1.47f,.06f,.075f,1f),new Row(1.42f,.092f,.15f,2.4f),new Row(1.37f,.108f,.178f,2.6f),new Row(1.31f,.116f,.184f,2.6f),new Row(1.25f,.112f,.175f,2.4f),
+            new Row(1.2f,.102f,.165f,2.2f),new Row(1.11f,.094f,.157f,1.8f),new Row(Belt,.094f,.172f,1.6f),new Row(.95f,.11f,.182f,1.4f),new Row(.8f,.122f,.18f,1.1f),
+            new Row(.62f,.13f,.174f,.9f),new Row(.45f,.137f,.17f,.7f),new Row(.34f,.14f,.167f,.6f),
         };
         /// <summary>The belt's height: down to it the tabard is held (fixed), below it hangs.</summary>
         public const float Belt=1.03f;
         /// <summary>Phase 2's hem (burnt shorter), the point the hem is cut to (m higher at the edges), columns across, rows between two of <see cref="Rows"/>.</summary>
-        public const float BurntHem=.52f,Point=.05f;public const int Columns=8,Sub=2;
+        public const float BurntHem=.52f,Point=.05f;public const int Sub=2;
+        /// <summary>The columns across (0 one edge, 1 the other): close pairs at the edges and the middle so the pale border and stripe stay thin bands
+        /// (a vertex colour spreads to its neighbours) and the cloth between reads dark.</summary>
+        public static readonly float[] Across={0,.035f,.14f,.25f,.36f,.465f,.5f,.535f,.64f,.75f,.86f,.965f,1};
+        public static int Columns=>Across.Length-1;
         /// <summary>The sash: its knot on the left hip (x, y, z), its two tails' lengths, width, rows.</summary>
         public static readonly Vector3 Knot=new Vector3(-.118f,1.02f,.108f);public const float TailA=.4f,TailB=.33f,TailWidth=.045f;public const int TailRows=8;
         public const uint Cloth=0x111114,Trim=0x8E8E92,Sash=0x55555C,SashEnd=0xB4B4BA,Ash=0x55555A;
@@ -51,12 +55,12 @@ namespace ChipArena.UnityConversion
                 float t=(float)r/rows,below=Smooth((Belt-y)/.25f);
                 for(int c=0;c<=Columns;c++)
                 {
-                    float u=(float)c/Columns,x=(u*2-1)*half;bool last=r==rows;
+                    float u=Across[c],x=(u*2-1)*half;bool last=r==rows;
                     float yy=y;if(last){yy+=Point*Math.Abs(u*2-1);if(burnt)yy+=.05f*(Hash(c*13+7)*2-1)+.03f;}
                     // Folds below the belt, deepening toward the hem.
                     float fold=.009f*below*(float)Math.Sin(u*Math.PI*3+.4f)*(.4f+.6f*t);
                     var p=new Vector3(x,yy,z-wrap*x*x+fold);pos.Add(p);uv.Add(new Vector2(u*TabardU,1-t));outward.Add(Vector3.Normalize(new Vector3(x*4,0,1)));
-                    bool edge=c==0||c==Columns||last||r==0,stripe=c==Columns/2;col.Add(burnt&&r>=rows-2?Ash:edge||stripe?Trim:Cloth);
+                    bool edge=c==0||c==Columns||last,stripe=Math.Abs(u-.5f)<.001f;col.Add(burnt&&r>=rows-2?Ash:edge||stripe?Trim:Cloth);
                     // Skinned by height: the chest, the waist, the hips; the hem leaning on its thigh.
                     int i0,i1;float w;
                     if(yy>=1.33f){i0=0;i1=0;w=0;}else if(yy>=1.18f){i0=0;i1=1;w=Smooth((1.33f-yy)/.15f);}else if(yy>=1.05f){i0=1;i1=2;w=Smooth((1.18f-yy)/.13f);}

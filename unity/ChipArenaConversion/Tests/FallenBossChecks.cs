@@ -457,7 +457,7 @@ public static class FallenBossChecks
             for(int i=0;i<n;i++)
             {
                 var q=g1.Positions[i];float u=g1.Uv[i].X,v=g1.Uv[i].Y;bool tab=u<NativeFallenTabard.TabardU+.005f;
-                if(tab){low1=Math.Min(low1,q.Y);if(q.Y>1.205f&&q.Y<1.42f&&Math.Abs(q.X)<.02f&&q.Z<PlateFront(q.Y)+.01f)onPlate=false;if(q.Y>1.2f&&q.Y<1.42f&&Math.Abs(q.X)>.11f)narrow=false;if(Math.Abs(q.Y-NativeFallenTabard.Belt)<.01f&&Math.Abs(q.X)<.02f&&q.Z>.16f)overClasp=true;
+                if(tab){low1=Math.Min(low1,q.Y);if(q.Y>1.205f&&q.Y<1.42f&&Math.Abs(q.X)<.02f&&q.Z<PlateFront(q.Y)+.01f)onPlate=false;if(q.Y>1.2f&&q.Y<1.42f&&Math.Abs(q.X)>.125f)narrow=false;if(Math.Abs(q.Y-NativeFallenTabard.Belt)<.01f&&Math.Abs(q.X)<.02f&&q.Z>.16f)overClasp=true;
                     if(NativeFallenTabard.Fixed(u,v)!=(q.Y>=NativeFallenTabard.Belt-.005f))held=false;}
                 else sash++;
                 if(g1.Bone0[i]<0||g1.Bone0[i]>4||g1.Bone1[i]<0||g1.Bone1[i]>4||g1.Weight1[i]<0||g1.Weight1[i]>1)bones=false;
