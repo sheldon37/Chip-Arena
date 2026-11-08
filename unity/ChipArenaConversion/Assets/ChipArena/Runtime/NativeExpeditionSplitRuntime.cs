@@ -267,6 +267,12 @@ namespace ChipArena.UnityConversion
                 }
                 var reply=splitRouters[member.Area].Execute(who,message.expeditionCommand);peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-reply",expeditionReply=reply}));return true;
             }
+            // A vote to skip the cutscene in the voter's own area (Core NativeCutsceneSkip), never the host's displayed one.
+            if(message.type=="skip-vote")
+            {
+                if(member!=null&&peer.Seat.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()&&message.epoch==networkEpoch&&splitCohorts.Accepts(who,message.areaIdentity))SplitPilotArena(who)?.VoteSkip(peer.Seat.id);
+                return true;
+            }
             // The area protocol owns readiness and combat commands. Legacy PvE / stage
             // commands cannot address the host's displayed arena on behalf of another area.
             return message.type=="dev-command"||message.type=="stage-ready"||message.type=="pve-pick"||message.type=="pve-open"||message.type=="pve-close"||message.type=="chip";

@@ -66,6 +66,8 @@ namespace ChipArena.UnityConversion
             RoundsPerSet=Math.Max(1,Math.Min(10,RoundsPerSet));SetsToWin=Math.Max(1,Math.Min(20,SetsToWin));Choices=Math.Max(1,Math.Min(12,Choices));SelectionSeconds=Math.Max(5,Math.Min(120,Math.Round(SelectionSeconds)));
             CompletionId=Guid.NewGuid().ToString("N");CompletionStarted=Time;CompletionSeconds=0;Round=Set=1;foreach(var p in Seats){data.Weapon(p.spec);p.chips.Clear();p.roundWins=p.score=0;p.offers.Clear();}BeginRound();if(ShowIntros){introIndex=0;NextIntro();}return true;
         }
+        /// <summary>Vote to skip (NativeCutsceneSkip): the pilots' intros end at once and the countdown starts, as after the last one.</summary>
+        public bool SkipIntros(){if(Phase!=NativePhase.Intro)return false;Phase=NativePhase.Countdown;PhaseEnd=Time+3;return true;}
         private void NextIntro(){var order=Seats.Where(p=>p.connected&&!p.AuthorityBoss&&(!p.bot||p.spec=="siren")).OrderBy(p=>p.spec=="siren").ToArray();if(introIndex>=order.Length){Phase=NativePhase.Countdown;PhaseEnd=Time+3;return;}var p=order[introIndex++];IntroSeat=p.id;IntroStarted=Time;IntroStyle=NativeIntroRules.Style(p);Phase=NativePhase.Intro;PhaseEnd=Time+NativeIntroRules.Duration(IntroStyle);}
         private void BeginRound()
         { FinalVictim=FinalSeed=0;ResultAt=0;HasFinalKillcam=false;Winner=SetWinner=DraftSeat=0;Chosen=null;foreach(var p in Seats)p.alive=p.connected;ResetRound?.Invoke();Phase=NativePhase.Countdown;PhaseEnd=Time+3; }
