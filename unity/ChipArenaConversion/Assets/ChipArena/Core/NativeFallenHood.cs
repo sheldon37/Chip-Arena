@@ -33,7 +33,9 @@ namespace ChipArena.UnityConversion
         public const int FixedRings=9;
         /// <summary>Rows between two rings, columns round.</summary>
         public const int Sub=2,Columns=26;
-        public const uint Cloth=0x1A1A1F,Fold=0x101013,Trim=0x8E8E92;
+        /// <summary>Charcoal (dark like the cowl it replaces, but in the body shader's cloth band, so it has its velvet sheen), its creases darker (out of
+        /// the band: no sheen), the trim round the face and the hem pale.</summary>
+        public const uint Cloth=0x111114,Fold=0x0A0A0C,Trim=0x8E8E92;
         public static int Rows=>(Rings.Length-1)*Sub;
         /// <summary>The hood: the outer copy first, then the inner, flipped (NativeFallenRobe's grid).</summary>
         public static NativeFallenRobe.Grid Build()
