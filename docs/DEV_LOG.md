@@ -1,3 +1,33 @@
+## 2026-11-08 — Claude: the Hot Dog, the owner's Tripo model, as a DEV skin; its sausage jiggles (owner request)
+
+- Branch `claude/hotdog-tripo`, base shared `841cc75d` (shared merged in since). A side session continuing the parent's task.
+- **The owner:** "Implement this model as a dev skin (Do clean up on it if necessary)", then "Id like to also give the body physics (Its a hotdog lol)". The model is the owner's Tripo hot dog (FBX with Tripo's auto-rig). Full notes: `docs/HOT-DOG-SKIN.md`.
+- **The clean-up and retarget** (`tools/gear/hotdog_tripo.py`, Blender headless, reading the FBX it is given into the local bank `ChipArenaHotDog.bytes`, HDOG v2):
+  - The export is 14,814 triangles in 36 closed parts on Tripo's 67-bone humanoid. At rest its arms hang; the crossed arms it shows are its stored animations, unused.
+  - Retargeted onto the model's skeleton, so the pack's clips, grips, IK, corpses and first person work as on the pilot.
+  - The sausage and everything on it is one rigid piece, 1.3 times the export's size, its bottom just under the hip joints. Its weights are a bell round each spine bone (the neck and head held lighter), on twins of those bones.
+  - The noodle limbs are stretched along each bone to the pilot's lengths (the legs about 3.6 times). The gloves are laid along the pilot's fingers, and the shoes' soles sit on the floor.
+  - It stands about 1.86 m to the crown's sprigs.
+- **Colour:** the FBX names its texture (`tripo_rgb_ccbeb702-....jpg`) but does not carry it. Until the owner sends that image, the script paints one from the parts and the sausage's relief: hot dog red, mustard, white eyes with black pupils, dark brows, teeth, black limbs, white gloves and red shoes with white trims. `--texture` takes the real image.
+- **DEV only:** `NativeLook.DevOnly` lists `hot-dog` (upper slot, before the Sheldon robe, so the Locker hides both without DEV access). The account Worker (`src/relay/accounts.ts`, Astra's) doesn't list it yet. `NativeLook.KeepSkin` keeps the local pick across a load, as before. **For Astra:** add `hot-dog` to `LOOK_SLOTS.upper` and `DEV_LOOK`.
+- **The jiggle** (Core `NativeHotDog.Jiggle`/`Step`/`Pose`/`Bend`, Runtime `HotDogJiggle` after `VisualBodyPose`):
+  - A damped spring on the sausage's top, stepped on the pilot's floor point (not the pelvis, whose run bob drove it near its own wobble: 14% squash on every stride in the first live log): ω 15, ζ 0.25, keeping 0.8 of each sideways velocity change and 0.35 of each upright one (at most 6 m/s a frame).
+  - It leans the sausage about the pelvis, bending more toward the top (up to 0.14 m), and squashes or stretches it along up (up to 16%).
+  - Only the twins move. Hats ride the head's twin.
+- **No skeleton inside:** a falling brick's wound in a live capture showed the pilot's human skeleton as ribs inside the sausage, its leg bones out past the noodle legs. The Hot Dog now makes none, alive or dead. Its wounds keep their pits of flesh, and its cuts show the cut cap.
+- **Animation impact:** presentation only. No hit timing, hitbox, damage, cooldown, movement, wire value or authority reads it. The arms, hands, legs and weapons stay on the real bones, so grips, IK and the weapon frames are the pilot's.
+- **Checks:**
+  - `Tests/HotDogChecks.cs` (`CoreTests --hot-dog`, also in the full run): still at rest; a sprint start leans it back within its lean and it settles; a landing squashes it within its limit and it springs back; the lean axis; the bend; a teleport resets it; bounded at random frame rates; the runtime's hooks.
+  - LookContractChecks: the Hot Dog is a DEV piece.
+  - Unity compile PASS.
+- **Seen in the Editor** (BoZo, a DEV pilot in `upper:hot-dog` on Brickfall with the sword, captured on the Editor's newer tree):
+  - Idle, a sprint start and stop, a jump, and first person (only the noodle forearm and glove show; the camera is clear of the sausage).
+  - The jiggle logged per frame (the head twin): a sprint start leans the sausage about 7° and it settles within half a second, a stop about 4.5°, no squash while running; a jump squashes it 13% on take-off and stretches it 11% rising, and a landing squashes it about 8% before it springs back.
+  - The first capture showed the sausage folding at mid-spine in the sprint lean. The bell weights (and the lighter neck and head) fixed it.
+  - The local tool gained `dogtrack=T,D` (the head twin's lean, scale and offset per frame) for the jiggle.
+- **Not run:** no person or two-client run; corpses and cuts (the capture's camera missed the corpse), portraits and the Locker preview not looked at; the reduced-graphics tier not looked at.
+- **Rights:** this assumes a Tripo Pro export (the owner said on 2026-11-05 they would buy Pro). It stays DEV only and out of git.
+
 ## 2026-11-08 — Claude: NOCTIEL's ripples faint, no words on the claymore, a blank mask whose eyes blink (owner requests)
 
 - Branch `claude/noctiel-face`, base shared `841cc75d`.
