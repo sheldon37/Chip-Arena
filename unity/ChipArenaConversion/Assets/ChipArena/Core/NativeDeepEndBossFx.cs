@@ -503,18 +503,12 @@ namespace ChipArena.UnityConversion
             // The throat's light, a glow at the mouth.
             Vfx.Glow(mouth+rig.MouthDir*.5f,new Vector3(.5f,.9f,1.2f)*(1.6f*on),2.6f,NativeBossVfx.Core);
         }
-        // The Drain: the whole room is going down the pit, so its pull has to show wherever you stand: sheets of water racing in over the surface and over the dry deck, spiralling tighter as they near the pit; spray dragged along with them; the throat bright with what it's taking in.
+        // The Drain: the whole room is going down the pit, so its pull has to show wherever you stand: spray dragged in along the surface and the dry deck, spiralling
+        // tighter as it nears the pit (the water's own whirl turns the surface); the throat bright with what it's taking in. No streaks on the floor (the owner,
+        // 2026-11-07: "the lines don't need to be there during that ability").
         private void DrainPull(DeepEndBossRig rig,in DeepEndBossStage s,DeepEndWaves waves,float now,float k,bool low)
         {
-            var o=rig.Origin;float surface=s.Tide;int n=low?18:44;
-            for(int i=0;i<n;i++)
-            {
-                int q=3000+i*4;float cyc=BossMath.Frac(now*(.34f+.2f*H(q))+H(q+1));float r0=8+22*H(q+2),rad=Math.Max(1.2f,r0*(1-cyc*cyc));float a0=H(q+3)*BossMath.Tau;float an=a0+2.1f*(float)Math.Log((r0+1)/(rad+1));float cs=(float)Math.Cos(an),sn=(float)Math.Sin(an);float x=cs*rad,z=sn*rad;
-                if(!NativeDeepEndArena.InRoom(x,z))continue;
-                bool wet=DeepEndBossPaths.Wet(x,z,surface);float y=(wet?Math.Max(SurfaceAt(waves,x,z),surface):0)+.05f;var inward=new Vector3(-cs,0,-sn);var swirl=new Vector3(sn,0,-cs);var along=Vector3.Normalize(inward+swirl*.42f);var across=new Vector3(along.Z,0,-along.X);
-                float len=(1.4f+2.8f*(1-rad/30f))*(.7f+.6f*H(q+2));float fade=BossMath.Smooth(cyc/.12f)*(1-BossMath.Smooth((cyc-.82f)/.18f))*k;
-                Over.Billboard(o+new Vector3(x,y,z),along*len,across*(.1f+.14f*H(q+1)),Vector3.UnitY,DeepEndFlow.Mark,0,new Vector3(.72f,.96f,1f)*((wet?.9f:.75f)*fade),0);
-            }
+            var o=rig.Origin;float surface=s.Tide;
             int sprays=Vfx.Scale(30);for(int i=0;i<sprays;i++)
             {
                 int q=3300+i*4;float cyc=BossMath.Frac(now*(.5f+.3f*H(q))+H(q+1));float r0=5+21*H(q+2),rad=Math.Max(.8f,r0*(1-cyc));float an=H(q+3)*BossMath.Tau+1.7f*cyc;float x=(float)Math.Cos(an)*rad,z=(float)Math.Sin(an)*rad;if(!NativeDeepEndArena.InRoom(x,z))continue;

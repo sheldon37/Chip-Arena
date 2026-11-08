@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
         public const int TickRate=60;public const float SpeedLimit=9.5f,HiddenSpeed=46;
         private const int RingSize=4096;public const float RingStep=.05f;
         private readonly Vector3[] ringP=new Vector3[RingSize],ringN=new Vector3[RingSize];private readonly float[] ringS=new float[RingSize];private int ringCount;private long ringEnd;
-        private readonly float[] arc=new float[NativeDeepEndBossLook.Spine];
+        private readonly float[] arc=new float[NativeDeepEndBossLook.Spine],stepMax=new float[NativeDeepEndBossLook.Spine];
         private readonly Vector3[] raw=new Vector3[NativeDeepEndBossLook.Spine],rawN=new Vector3[NativeDeepEndBossLook.Spine],prev=new Vector3[NativeDeepEndBossLook.Spine];
         /// <summary>This frame's pose in the world (the room's frame plus <see cref="Origin"/>). Spine joints: z toward the mouth, y the back.</summary>
         public readonly BossPose Shown=new BossPose(NativeDeepEndBossLook.Count);
@@ -46,11 +46,11 @@ namespace ChipArena.UnityConversion
         public float FreeUntil=float.NegativeInfinity;
         /// <summary>The flop's lift this frame (m at its highest), the thrash's sweep 0..1 and its side; the roll about the body (rad).</summary>
         public float Lift{get;private set;}
-        private float fxRoll;private float undulate;
+        private float fxRoll;private float undulate,undulateBefore;
 
         public DeepEndBossRig(){iris.Reset(0);spin.Reset(.5f);fold.Configure(.75f,.42f,0);rail.Configure(1.1f,.34f,0);mouthKick.Configure(1.4f,.5f,0);fold.Reset(.8f);rail.Reset(0);mouthKick.Reset(0);lookWeight.Reset(0);}
         /// <summary>Back to nothing (a new arena).</summary>
-        public void Clear(){lastTick=long.MinValue;lastNow=float.NaN;seenAction=-1;seenPhase=1;seenDied=float.NaN;seenSpawned=float.NaN;ringCount=0;Route=null;slamAt=float.NaN;backsReady=false;}
+        public void Clear(){lastTick=long.MinValue;lastNow=float.NaN;seenAction=-1;seenPhase=1;seenDied=float.NaN;seenSpawned=float.NaN;ringCount=0;Route=null;slamAt=float.NaN;backsReady=false;tickOffReady=false;}
 
         private void RingAdd(Vector3 p)
         {
@@ -78,11 +78,12 @@ namespace ChipArena.UnityConversion
         {
             float floor=NativeDeepEndArena.Floor(p.X,p.Z);return BossMath.Smooth((Math.Max(floor,surface-8.5f)-(p.Y+radius))/2f);
         }
-        private void Tick(long tick,float surface,float cancelBefore)
+        private void Tick(long tick,float surface,float cancelBefore,in DeepEndBossView v)
         {
             float t=tick/(float)TickRate,dt=1f/TickRate;Route.At(t,out var h,out var hv);h=OnTile(h,1.4f,surface);RingAdd(h);if(!float.IsNaN(slamAt)&&t>=slamAt-.14f&&t<=slamAt+.34f)Slam(surface);
-            int li=(int)(ringEnd%RingSize);float head=ringS[li];
-            float limit=h.Y>surface-1.5f||t<FreeUntil?Math.Max(SpeedLimit,hv.Length()):SpeedLimit;undulate+=dt*1.5f*(.55f+.45f*BossMath.Clamp01(hv.Length()/5f));if(undulate>4000)undulate-=BossMath.Tau*600;
+            // The head's arc at the tick (beyond the trail's last sample by what it moved since), as the frames between read it.
+            int li=(int)(ringEnd%RingSize);float head=ringS[li]+Vector3.Distance(h,ringP[li]);
+            float limit=h.Y>surface-1.5f||t<FreeUntil?Math.Max(SpeedLimit,hv.Length()):SpeedLimit;undulateBefore=undulate;undulate+=dt*1.5f*(.55f+.45f*BossMath.Clamp01(hv.Length()/5f));if(undulate>4000){undulate-=BossMath.Tau*600;undulateBefore-=BossMath.Tau*600;}
             for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
             {
                 float want=head-i*NativeDeepEndBossLook.Seg,s=arc[i];float hide=Hiddenness(raw[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface);
@@ -90,7 +91,13 @@ namespace ChipArena.UnityConversion
                 float next=i<4?want:Math.Min(want,s+BossMath.Lerp(limit,HiddenSpeed,hide)*dt);if(i>0)next=Math.Min(next,arc[i-1]-NativeDeepEndBossLook.Seg*.985f);if(next<s)next=s;arc[i]=next;
                 Trail(next,h,head,out raw[i],out rawN[i]);
                 if(raw[i].Y<surface-.15f)EmergedAt[i]=t;
+                // How far it may go by the next tick (the frames between go on as that tick will).
+                stepMax[i]=BossMath.Lerp(limit,HiddenSpeed,Hiddenness(raw[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface))*dt;
             }
+            // The body's relaxation on the tick, started from the last tick's (so a part pushed to one side of another stays on it, and two frame rates share it):
+            // this tick's pose with its layers relaxed, kept as each joint's offset from it.
+            int n=NativeDeepEndBossLook.Spine;Array.Copy(tickOff,tickOffBefore,n);Array.Copy(raw,tickPose,n);Array.Copy(rawN,tickNrm,n);float lift=Lift;Layers(t,v,surface,hv.Length(),undulate,tickPose,tickNrm);Lift=lift;
+            Relax(tickPose,tickOffReady,RelaxPasses,true);tickOffReady=true;
         }
         /// <summary>A place on the body held up on dry tile: where there's no water over the deck it lies on the deck, never in it (it may be well under, out of sight, in the fight's first moments).</summary>
         private static Vector3 OnTile(Vector3 p,float radius,float surface)
@@ -114,13 +121,13 @@ namespace ChipArena.UnityConversion
             }
         }
         // A fresh start at the clock: the trail laid from the route's last dozen seconds (a jump, a new arena, a late join).
-        private void Rebuild(long tick,float surface)
+        private void Rebuild(long tick,float surface,in DeepEndBossView v)
         {
-            long from=tick-TickRate*14;ringCount=0;Route.At(from/(float)TickRate,out var h,out _);RingAdd(h);
+            long from=tick-TickRate*14;ringCount=0;tickOffReady=false;Array.Clear(tickOff,0,tickOff.Length);Array.Clear(tickOffBefore,0,tickOffBefore.Length);Route.At(from/(float)TickRate,out var h,out _);RingAdd(h);
             for(int i=0;i<arc.Length;i++){arc[i]=-i*NativeDeepEndBossLook.Seg;raw[i]=h-new Vector3(0,i*NativeDeepEndBossLook.Seg,0);rawN[i]=Vector3.UnitZ;EmergedAt[i]=from/(float)TickRate;}
             // A long way behind the start, straight down, so the tail has somewhere to come from.
             ringCount=0;for(int k=48;k>=0;k--)RingAdd(h-new Vector3(0,k*1.4f,0));float top=ringS[(int)(ringEnd%RingSize)];for(int i=0;i<arc.Length;i++)arc[i]=top-i*NativeDeepEndBossLook.Seg;
-            for(long k=from+1;k<=tick;k++)Tick(k,surface,float.NegativeInfinity);
+            for(long k=from+1;k<=tick;k++)Tick(k,surface,float.NegativeInfinity,v);
         }
 
         /// <summary>The frame's pose at `now` (seconds, the presentation clock) for the record: `origin` the room's centre in the world, `surface` the tide (room frame), `look` where the mouth aims when it aims.</summary>
@@ -131,20 +138,24 @@ namespace ChipArena.UnityConversion
             if(own)Observe(v,now,surface);
             if(v.Moving(now,out var slamMove,out _,out float slamHit)&&slamMove.Id=="flop"){slamAt=v.actionAt+slamHit;slamA=new Vector2(v.targetX,v.targetZ);slamB=new Vector2(v.aimX,v.aimZ);}
             long tick=(long)Math.Floor(now*TickRate);
-            if(lastTick==long.MinValue||tick<lastTick||tick-lastTick>TickRate*2||ringCount==0)Rebuild(tick,surface);
-            else for(long k=lastTick+1;k<=tick;k++)Tick(k,surface,float.NegativeInfinity);
+            if(lastTick==long.MinValue||tick<lastTick||tick-lastTick>TickRate*2||ringCount==0)Rebuild(tick,surface,v);
+            else for(long k=lastTick+1;k<=tick;k++)Tick(k,surface,float.NegativeInfinity,v);
             lastTick=tick;
             int li=(int)(ringEnd%RingSize);Route.At(now,out var hp,out var hv);hp=OnTile(hp,1.4f,surface);float headS=ringS[li]+Vector3.Distance(hp,ringP[li]);float extra=headS-ringS[li];
             // The death draws the whole body back along its trail.
             float retract=0;if(DeepEndBossView.At(v.diedAt))retract=Retract(now-v.diedAt);
-            float sp=hv.Length();Speed=sp;
+            float sp=hv.Length();Speed=sp;float tf=BossMath.Clamp01(now*TickRate-tick);
             var pos=rawScratch;var nrm=rawNScratch;
+            float sPrev=0;
             for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
             {
-                // Between ticks a joint on the head's heels moves with it; one lagging holds where its tick put it.
-                float want=ringS[li]-i*NativeDeepEndBossLook.Seg,lag=want-arc[i];float s=arc[i]+extra*BossMath.Clamp01(1-lag/.3f)-retract;Trail(s,hp,headS,out pos[i],out nrm[i]);
+                // Between ticks each joint goes on as its next tick will take it: toward its place behind the head, no faster than that tick allows (the skull on the
+                // route). Held where its tick put it, a lagging joint stood still between ticks and jumped at each, a judder at any frame rate but the ticks' own;
+                // carried with the head, it went where the next tick's limit pulled it back from, and the tail flicked out of the water when the head burst away.
+                float want=headS-i*NativeDeepEndBossLook.Seg;float s=i<4?want:Math.Min(want,arc[i]+stepMax[i]*tf);if(i>0)s=Math.Min(s,sPrev-NativeDeepEndBossLook.Seg*.985f);if(s<arc[i])s=arc[i];sPrev=s;
+                Trail(s-retract,hp,headS,out pos[i],out nrm[i]);
             }
-            Layers(now,v,surface,sp,pos,nrm);
+            Layers(now,v,surface,sp,undulateBefore+(undulate-undulateBefore)*tf,pos,nrm);
             // ---- the neck: the head's last joints bent toward where the mouth aims ----
             var headDir=SafeDir(pos[0]-pos[3],new Vector3(0,0,1));
             float lookW=0;Vector3 lookD=headDir;var backFlat=nrm[2];backFlat.Y=0;Aim(v,now,surface,pos[0],hasLook,lookAt,backFlat,ref lookW,ref lookD);
@@ -163,8 +174,10 @@ namespace ChipArena.UnityConversion
             // ---- the skull is rigid: its joints on one line ----
             var skull=SafeDir(pos[0]-pos[3],headDir);pos[1]=pos[3]+skull*(NativeDeepEndBossLook.Seg*2);pos[2]=pos[3]+skull*NativeDeepEndBossLook.Seg;pos[0]=pos[3]+skull*(NativeDeepEndBossLook.Seg*3);
             for(int i=0;i<4;i++)pos[i]=OnTile(pos[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface);
-            // ---- a body that can't fold: no joint bends tighter than it can, no part passes into another ----
-            Relax(pos);
+            // ---- a body that can't fold: no joint bends tighter than it can, no part passes into another (the ticks' relaxation, between the last two) ----
+            for(int i=4;i<NativeDeepEndBossLook.Spine;i++)pos[i]+=Vector3.Lerp(tickOffBefore[i],tickOff[i],tf);
+            // and a few passes on the frame's own joints from there, for the neck's look and the skull the tick doesn't have (started where the ticks left it, so nothing it does jumps).
+            Relax(pos,false,FramePasses,false);
             // ---- the frames ----
             float rollBase=RollOf(v,now,sp);
             int above=0;
@@ -185,20 +198,24 @@ namespace ChipArena.UnityConversion
         }
         private readonly Vector3[] rawScratch=new Vector3[NativeDeepEndBossLook.Spine],rawNScratch=new Vector3[NativeDeepEndBossLook.Spine];
         private readonly Vector3[] relaxFrom=new Vector3[NativeDeepEndBossLook.Spine];private readonly float[] relaxLen=new float[NativeDeepEndBossLook.Spine];
-        /// <summary>Passes of the body's relaxation a frame.</summary>
-        public const int RelaxPasses=12;
+        // The relaxation's offsets at the last tick and the one before, and the tick's pose they are made on.
+        private readonly Vector3[] tickPose=new Vector3[NativeDeepEndBossLook.Spine],tickNrm=new Vector3[NativeDeepEndBossLook.Spine],tickOff=new Vector3[NativeDeepEndBossLook.Spine],tickOffBefore=new Vector3[NativeDeepEndBossLook.Spine];private bool tickOffReady;
+        /// <summary>Passes of the body's relaxation a tick, and on each frame after it.</summary>
+        public const int RelaxPasses=12,FramePasses=4;
         // The body as a body (the owner, 2026-11-07: "A lot of turns (mostly upward) the body clips into itself"): the trail can turn tighter than a body
         // this thick can (over the top of a rise, a hairpin behind the head), and the neck's look or a sweep can lay one part through another. A few
-        // passes on this frame's joints alone (so two frame rates still give one pose): joints two apart held at least as far as a bend of MostBend
-        // allows, parts three or more joints apart kept out of each other (their radii times Apart), each segment kept its trail length, the rest drawn
-        // back toward the trail. The skull (joints 0 to 3) stays on the route, so every move's contact is where it was.
-        private void Relax(Vector3[] pos)
+        // passes on each tick's pose: joints two apart held at least as far as a bend of MostBend allows, parts three or more joints apart kept out of each
+        // other (their radii times Apart), each segment kept its trail length, the rest drawn back toward the trail. Each tick starts from the last
+        // tick's offsets (`warm`): solved afresh every frame, a part the Thrash's sweep carried through another was pushed out on whichever side it
+        // was on that frame, and it jumped from side to side (the owner, 2026-11-07: "some 'glitchy' movement"). The skull (joints 0 to 3) stays on
+        // the route, so every move's contact is where it was. Leaves each joint's offset in tickOff.
+        private void Relax(Vector3[] pos,bool warm,int passes,bool keep)
         {
-            int n=NativeDeepEndBossLook.Spine;const int Fixed=4;Array.Copy(pos,relaxFrom,n);
+            int n=NativeDeepEndBossLook.Spine;const int Fixed=4;Array.Copy(pos,relaxFrom,n);if(warm)for(int i=Fixed;i<n;i++)pos[i]+=tickOff[i];
             // A segment keeps at least its own length: in a tight bend the trail's chord between two joints is shorter than the body between them.
             for(int i=1;i<n;i++)relaxLen[i]=Math.Max(NativeDeepEndBossLook.Seg*.985f,Vector3.Distance(relaxFrom[i],relaxFrom[i-1]));
             float half=(float)Math.Cos(MostBend*.5f);
-            for(int pass=0;pass<RelaxPasses;pass++)
+            for(int pass=0;pass<passes;pass++)
             {
                 // Drawn back toward the trail where nothing below needs it elsewhere (first, so the limits have the last word).
                 if(pass>0)for(int i=Fixed;i<n;i++)pos[i]=Vector3.Lerp(pos[i],relaxFrom[i],.08f);
@@ -226,6 +243,7 @@ namespace ChipArena.UnityConversion
                     if(i-1<Fixed)pos[i]-=d*err;else{pos[i-1]+=d*(err*.5f);pos[i]-=d*(err*.5f);}
                 }
             }
+            if(keep)for(int i=0;i<n;i++)tickOff[i]=i<Fixed?Vector3.Zero:pos[i]-relaxFrom[i];
         }
         /// <summary>How far the neck's look bends one joint at most (rad).</summary>
         public const float NeckBend=.5f;
@@ -281,7 +299,7 @@ namespace ChipArena.UnityConversion
             if(DeepEndBossView.At(v.diedAt)&&!(v.diedAt==seenDied)){seenDied=v.diedAt;Own.CutAt(v.diedAt);DeepEndBossPaths.Death(Own,v.diedAt,surface,DeathSettle);}
         }
         // The offsets on the trail: the Flop's lift, the Thrash's sweep, the travelling undulation, the stagger's shudder.
-        private void Layers(float now,in DeepEndBossView v,float surface,float speed,Vector3[] pos,Vector3[] nrm)
+        private void Layers(float now,in DeepEndBossView v,float surface,float speed,float undulation,Vector3[] pos,Vector3[] nrm)
         {
             float seg=NativeDeepEndBossLook.Seg;Lift=0;
             // The body's axes at each joint come from its own neighbours.
@@ -314,7 +332,7 @@ namespace ChipArena.UnityConversion
             {
                 float s=i*seg,k=BossMath.Smooth((s-3.5f)/10f);float grow=.22f+.5f*BossMath.Clamp01(s/30f);
                 var tan=SafeDir(pos[i-1]-pos[Math.Min(NativeDeepEndBossLook.Spine-1,i+1)],new Vector3(0,0,1));var side=Level(tan,out float level);
-                float ph=s*wave-undulate;pos[i]+=side*(level*k*grow*(.55f+.45f*swim)*(float)Math.Sin(ph))+new Vector3(0,k*.09f*(float)Math.Sin(ph*.61f+1.1f),0);
+                float ph=s*wave-undulation;pos[i]+=side*(level*k*grow*(.55f+.45f*swim)*(float)Math.Sin(ph))+new Vector3(0,k*.09f*(float)Math.Sin(ph*.61f+1.1f),0);
             }
             // The stagger: a shudder running down the body.
             if(DeepEndBossView.At(v.staggerAt)&&now>=v.staggerAt&&now<v.staggerAt+v.staggerSeconds)

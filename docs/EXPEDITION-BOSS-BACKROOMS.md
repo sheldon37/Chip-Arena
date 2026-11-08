@@ -709,3 +709,14 @@ parts come is now 0.95 of their radii and the sharpest bend 72 degrees (CoreTest
 Stranded on dry tile with the pool behind it, it curls round in a U (`DeepEndBossPaths.UTurn`, 2.6 m) instead of turning back over its neck.
 The DEV preview's script planned every move before the flood on the flood's water (its phase times read 0 while it was written), so its
 Flop dove through dry deck: fixed. Last Lap's body contact (the rule reads the same rig) follows the body as drawn, a little wider in turns.
+
+**THE DEEP END, the owner's recording (2026-11-07):** the black box, the Drain's lines, "glitchy" movement. The black box was the level's own
+blocks undrawn: the Poolrooms draws its 16 m blocks within `PoolroomsReach` (46 m) of the eye, and from the room's right side its far corner
+fell outside that, so the void showed through the wall, ceiling and deck there. Every block reaching into the room is drawn while the boss's
+room is on (`DeepEndRoomBlock`, the caustics too). The Drain draws no streaks on the floor (the sprays, the throat and the whirl show its pull).
+The judder: between the trail's 60 Hz ticks a lagging joint held its tick's place and jumped at the next, the sway's phase stepped with the
+ticks, and a joint carried with a head that burst away (the Jet's move under the water) was pulled back at the next tick (the tail flicked out
+of the water). Between ticks each joint now goes on as its next tick will take it (`stepMax`, its own limit), the tick reads the head's exact
+arc, and the sway's phase is interpolated. The relax runs on the ticks from the last tick's solution (solved afresh each frame, the Thrash's
+tail jumped from one side of the body to the other) with `FramePasses` on each frame for the neck. At 144 fps through the fight the visible
+pops fell from about 45,600 to 2,400 (CoreTests `--deepend-boss`, "the body moves smoothly between ticks at 144 fps").

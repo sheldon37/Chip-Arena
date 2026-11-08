@@ -194,10 +194,12 @@ namespace ChipArena.UnityConversion
             FallenBladePushes=0;float weight=1-Mathf.Clamp01(f.Plant);if(weight<=0)return;
             float s=NativeFallenBoss.Scale;int n=0;
             void Cap(Vector3 a,Vector3 b,float r){if(n<FbCapsules){fbCapA[n]=a;fbCapB[n]=b;fbCapR[n]=r*s;n++;}}
-            if(fbPelvis!=null)Cap(fbPelvis.position,fbSpine.position,.17f);if(fbNeck!=null){Cap(fbSpine.position,fbNeck.position,.19f);Cap(fbHead.position,fbHead.position+(fbHead.position-fbNeck.position).normalized*.17f*s,.13f);}
+            // The head is the hood's (the owner's screenshots, 2026-11-07: the raised blade lay through it): its axis set back to the hood's middle, as wide
+            // as its back and up to its peak; the arms as wide as their pauldrons.
+            if(fbPelvis!=null)Cap(fbPelvis.position,fbSpine.position,.17f);if(fbNeck!=null){Cap(fbSpine.position,fbNeck.position,.21f);var up=(fbHead.position-fbNeck.position).normalized;var aft=-fbHead.forward*(.035f*s);Cap(fbHead.position+aft-up*(.04f*s),fbHead.position+aft+up*(.2f*s),.15f);}
             if(fbThighL!=null&&fbCalfL!=null){Cap(fbThighL.position,fbCalfL.position,.1f);Cap(fbCalfL.position,fbFootL.position,.075f);}
             if(fbThighR!=null&&fbCalfR!=null){Cap(fbThighR.position,fbCalfR.position,.1f);Cap(fbCalfR.position,fbFootR.position,.075f);}
-            if(fbUpperL!=null&&fbLowerL!=null){Cap(fbUpperL.position,fbLowerL.position,.075f);if(fbHandL!=null)Cap(fbLowerL.position,fbHandL.position,.065f);}
+            if(fbUpperL!=null&&fbLowerL!=null){Cap(fbUpperL.position,fbLowerL.position,.1f);if(fbHandL!=null)Cap(fbLowerL.position,fbHandL.position,.065f);}
             var start=fbHandR.rotation;var wrist=fbHandR.position;float margin=.03f*s;Vector3 firstPush=default;
             for(int it=0;it<4;it++)
             {
@@ -347,6 +349,7 @@ namespace ChipArena.UnityConversion
                 if((part.Phases&bit)==0)continue;var mesh=part.Mesh[tier]??part.Mesh[0];if(mesh==null)continue;bool glows=mesh.subMeshCount>1;var world=fbWorld[part.Group];
                 // The cloth skirt hangs in phases 1 and 2 in place of the strips; phase 3's remnant at the waist stays rigid.
                 if(FallenClothOn&&f.Phase<=2&&part.Name.StartsWith("robe",StringComparison.Ordinal))continue;
+                if(FallenHoodOn&&f.Phase<=3&&part.Name=="cowl")continue;
                 Vector4? c=part.Name=="sword-veins-1"?cut:(Vector4?)null;
                 float gs=part.Name=="sword-blade-light"?.72f:part.Name=="head-light"?.8f:1;FbDraw(mesh,glows,world,inner,flash,0,c,gs);FbDraw(mesh,glows,mirror*world,inner,flash,1,c,gs);
             }

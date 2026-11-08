@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
             if(deepEndCausticsMat!=null&&s.Caustics>.005f)
             {
                 deepEndCausticsMat.SetFloat(DeepCausticsId,s.Caustics);var e=eye.transform.position;float r2=PoolroomsReach*PoolroomsReach;
-                foreach(var b in poolroomsBlocks){var dc=b.Centre-e;dc.y=0;if(dc.sqrMagnitude>r2)continue;for(int k=0;k<b.Meshes.Length;k++){if(b.Meshes[k]==null||k==(int)PoolroomsMesh.Surface.Water||k==(int)PoolroomsMesh.Surface.Light)continue;Graphics.DrawMesh(b.Meshes[k],Matrix4x4.identity,deepEndCausticsMat,0,null,0,null,ShadowCastingMode.Off,false);}}
+                foreach(var b in poolroomsBlocks){var dc=b.Centre-e;dc.y=0;if(dc.sqrMagnitude>r2&&!DeepEndRoomBlock(b.Centre))continue;for(int k=0;k<b.Meshes.Length;k++){if(b.Meshes[k]==null||k==(int)PoolroomsMesh.Surface.Water||k==(int)PoolroomsMesh.Surface.Light)continue;Graphics.DrawMesh(b.Meshes[k],Matrix4x4.identity,deepEndCausticsMat,0,null,0,null,ShadowCastingMode.Off,false);}}
             }
             // The screen's two moments.
             if(deepEndScreenMat!=null&&(s.Soft>.005f||s.Wash>.005f)){deepEndScreenMat.SetFloat(DeepSoftId,s.Soft);deepEndScreenMat.SetFloat(DeepWashId,s.Wash);deepEndScreenMat.SetFloat(DeepScreenClockId,now);Graphics.DrawMesh(deepEndScreenTri,Matrix4x4.identity,deepEndScreenMat,0,eye,0,null,ShadowCastingMode.Off,false);}

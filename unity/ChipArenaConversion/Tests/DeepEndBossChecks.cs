@@ -16,7 +16,7 @@ public static class DeepEndBossChecks
         count=0;
         Check(NativeDeepEndBoss.Archetype=="poolrooms-deep-end","the archetype Astra binds");
         Check(NativeBackroomsBossIntro.Mine(NativeDeepEndBoss.Archetype)&&NativeBackroomsBossIntro.Card(NativeDeepEndBoss.Archetype)==NativeDeepEndBoss.Card,"the intro knows the boss");
-        Moves(root);Look(root);Off();Routes();Rig();Body();Frames();Arena();Water();Stage();Intro();Hits();Cues(root);Preview();
+        Moves(root);Look(root);Off();Routes();Rig();Body();Smooth();Frames();Arena();Water();Stage();Intro();Hits();Cues(root);Preview();
         var acts=new System.Text.StringBuilder("deepend preview script:");for(int i=0;i<NativeDeepEndBossPreview.ActCount;i++){var a=NativeDeepEndBossPreview.ActAt(i);acts.Append($" {a.Id}@{a.At:F1}");}acts.Append($" lamps@{NativeDeepEndBossPreview.LampsAt:F1} p2@{NativeDeepEndBossPreview.Phase2At:F1} p3@{NativeDeepEndBossPreview.Phase3At:F1} death@{NativeDeepEndBossPreview.DeathAt:F1} loop@{NativeDeepEndBossPreview.Loop:F1}");Console.WriteLine(acts);
         Console.WriteLine("PASS deepend-boss ("+count+" checks)");
     }
@@ -141,6 +141,28 @@ public static class DeepEndBossChecks
         Console.WriteLine("INFO deepend body: closest "+least.ToString("0.00")+" of the radii (joints "+li+","+lj+" at "+leastT.ToString("0.0")+"), sharpest bend "+(bend*180/Math.PI).ToString("0")+" deg (joint "+bi+" at "+bendT.ToString("0.0")+")");
         Check(least>=DeepEndBossRig.Apart*.9f,"the body never folds into itself: joints "+li+" and "+lj+" at "+leastT.ToString("0.0")+" s come to "+least.ToString("0.00")+" of their radii");
         Check(bend<=1.4f,"no thick joint folds (past 80 deg; the limit is "+(DeepEndBossRig.MostBend*180/Math.PI).ToString("0")+", met unless its parts would touch): joint "+bi+" at "+bendT.ToString("0.0")+" s bends "+(bend*180/Math.PI).ToString("0"));
+    }
+    // At 144 fps, through the Jet's underwater burst (the head races 20 m in a tenth of a second) and the Flop after it, live (the rig's own route): the body
+    // seen out of the water moves smoothly between the trail's 60 Hz ticks. Before 2026-11-08 a joint the speed limit held stood still between ticks and
+    // jumped at each, the sway stepped with them, and the tail flicked out of the water as the head burst away (424 pops, a 84 mm mean).
+    private static void Smooth()
+    {
+        var o=new Vector3(24,0,24);var rig=new DeepEndBossRig();var v=DeepEndBossView.None;const float fps=144;float dt=1/fps,norm=(fps/60)*(fps/60);int n=NativeDeepEndBossLook.Spine;
+        var p0=new Vector3[n];var p1=new Vector3[n];var p=new Vector3[n];int frames=0,pops=0,count=0;double sum=0;
+        for(int k=0;;k++)
+        {
+            float t=(float)(84+(double)k*dt);if(t>=96)break;NativeDeepEndBossPreview.View(t,ref v,out _);var st=NativeDeepEndBossStage.Evaluate(v,t,DeepEndBossBeats.Fallback);rig.Update(t,dt,v,null,o,st.Tide,false,default);
+            Array.Copy(rig.Shown.Position,p,n);
+            if(frames>=2&&t>85)for(int j=0;j<n;j++)
+            {
+                var q=p1[j]-o;if(q.Y<Math.Max(NativeDeepEndArena.Floor(q.X,q.Z),st.Tide)-.3f)continue;
+                // The second difference as a 60 fps frame would show it.
+                float d=(p[j]-2*p1[j]+p0[j]).Length()*norm;sum+=d;count++;if(d>.3f)pops++;
+            }
+            Array.Copy(p1,p0,n);Array.Copy(p,p1,n);frames++;
+        }
+        float mean=(float)(sum/Math.Max(1,count));Console.WriteLine("INFO deepend smoothness at 144 fps: "+pops+" pops over 30 cm, mean "+(mean*1000).ToString("0.0")+" mm");
+        Check(mean<.02f&&pops<100,"the body moves smoothly between ticks at 144 fps: "+pops+" pops, mean "+(mean*1000).ToString("0.0")+" mm");
     }
     // ---- determinism and allocation ----
     private static void Frames()

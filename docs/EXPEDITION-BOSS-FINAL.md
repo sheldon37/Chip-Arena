@@ -370,6 +370,20 @@ feet planted apart, the left a little ahead, the blade out to the right side wit
 nearly straight, no twist; found by rendering the frame on the body and measuring), and the carry lays the blade out to its right side
 (`FbDragWay` 0.99, 0, 0.1) with its point 2 cm over the water (`FbDragTip`). The walk keeps its own legs (Stand is 0 while walking).
 
+### Walking toward its quarry, the hood as cloth, the raised blade (Claude, 2026-11-08, the owner)
+
+"his walk seems to not be correct? ... re-evauluate animations during slash. Assuming he has a hood on? Can we also integrate magica cloth into
+that as well; give it more of a fabric appearance", with two screenshots of the intro's raised blade lying through the hood.
+
+- **The walk:** the authority walks it toward the nearest pilot (`NativeFallenApproach`) while its quarry, which it faced, may be another: it
+  strode forward while sliding sideways. Walking, it faces where it walks (`WalkTurn` 0.2 s); stopped, it turns to its quarry.
+- **The hood:** phases 1 to 3 wear a fabric hood in the cowl's place (Core `NativeFallenHood`, built with the skirts in Runtime
+  `NativeFallenCloth.cs`): drawn up to a soft peak behind, open round the mask with a rolled trim, creased under the jaw, a short skirt of it
+  over the collar. Skinned to the head (the skirt handed to the neck and chest), named `Hat.NOCTIEL hood` for the bridge's hood tuning, its
+  crown and face fixed and the skirt simulated; held as drawn past 90 m or on the low tier; mirrored in the water.
+- **The raised blade:** the blade's keep-out round the head (`FallenBladeClear`) is the hood's: set back to its middle, 0.15 wide, up to the
+  peak; the left arm's is as wide as its pauldron.
+
 ### The robe as cloth, the legs, the sword hand (Claude, 2026-11-07, the owner)
 
 "I think noctiel needs his arm thats holding the sword a little further from his body and also further back (Currently its almost right in

@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
             var e=live?eye.transform.position:NativePoolroomsPreview.Eye??eye.transform.position;float r2=PoolroomsReach*PoolroomsReach;
             foreach(var b in poolroomsBlocks)
             {
-                var dc=b.Centre-e;dc.y=0;if(dc.sqrMagnitude>r2)continue;PoolroomsBlocksDrawn++;
+                var dc=b.Centre-e;dc.y=0;if(dc.sqrMagnitude>r2&&!DeepEndRoomBlock(b.Centre))continue;PoolroomsBlocksDrawn++;
                 for(int s=0;s<b.Meshes.Length;s++)
                 {
                     if(b.Meshes[s]==null)continue;bool solid=s!=(int)PoolroomsMesh.Surface.Water&&s!=(int)PoolroomsMesh.Surface.Light;if(!solid&&DeepEndBossRoomOn)continue;

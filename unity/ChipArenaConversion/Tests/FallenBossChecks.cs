@@ -331,6 +331,18 @@ public static class FallenBossChecks
             }
             float cadence=2*advance/len/3.5f;Check(Math.Abs(cadence-steps)<.06f*steps,"at "+pace+" m/s, "+cadence.ToString("0.00")+" steps a second (want "+steps.ToString("0.00")+")");
         }
+        // The owner, 2026-11-07 ("his walk seems to not be correct"): the authority walks it toward the nearest pilot while its quarry may be another. Walking,
+        // it faces its way, not its quarry (its stride went sideways); stopped, it turns to its quarry.
+        {
+            var d=new NativeFallenLiveMotion();var at=Vector3.Zero;var x=new NativeFallenLiveMotion.Facts{At=at,Yaw=0,Target=new Vector3(80,0,0)};float step=0,worst=0,end=0;
+            for(float now=0;now<8;now+=1/144f)
+            {
+                while(step<=now){at+=new Vector3(0,0,(now<4?1.4f:0)/60);step+=1/60f;}x.Now=now;x.At=at;d.Step(f,x,bank);
+                if(now>1&&now<4)worst=Math.Max(worst,Angle(f.Yaw,0));if(now>7.5f)end=Angle(f.Yaw,90);
+            }
+            Check(worst<3,"walking it faces where it walks, not its quarry to the side (off by "+worst.ToString("0.0")+" deg)");
+            Check(end<5,"stopped, it turns to its quarry (off by "+end.ToString("0.0")+" deg)");
+        }
         // The owner, 2026-11-07: walking never drops into the stance mid-stride, and it stands as the reference walk does, both feet down (the slow walk held).
         {
             var d=new NativeFallenLiveMotion{StandAt=.4f};var at=Vector3.Zero;var x=new NativeFallenLiveMotion.Facts{At=at,Yaw=0,Target=new Vector3(0,0,80)};float step=0;int drops=0;string lastTo=null;float standJump=0,lastStand=0;
@@ -388,6 +400,40 @@ public static class FallenBossChecks
             Check(NativeFallenRobe.WaistX>=.158f&&NativeFallenRobe.WaistZ>=.126f&&NativeFallenRobe.Top<=.905f,"it hangs from under the faulds' last ring, outside it");
             var cloth=R("Assets/ChipArena/Runtime/NativeFallenCloth.cs");var body2=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");var shown2=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");
             Check(cloth.Contains("NativeVisualCloth.PaintMaps[name]=paint;")&&cloth.Contains("handle=NativeVisualCloth.Attach(root,skeleton);")&&body2.Contains("FallenClothBuild(most,skeleton);")&&body2.Contains("if(FallenClothOn&&f.Phase<=2&&part.Name.StartsWith(\"robe\",StringComparison.Ordinal))continue;")&&shown2.Contains("FallenClothFrame(f,eyeAt,flash,mirror,shown);"),"the skirt is built with the body, handed to the cloth, drawn after the pose, and the strips step aside");
+        }
+        // The hood as cloth (the owner, 2026-11-07: "Assuming he has a hood on? ... integrate magica cloth into that as well; give it more of a fabric
+        // appearance"): it covers the old cowl's head (crown to neck), closed over the crown and open round the mask, which shows whole; a skirt of it
+        // over the collar; its crown and face fixed on the head, the skirt moving; both faces wound; built and drawn in the cowl's place.
+        {
+            var g=NativeFallenHood.Build();int n=g.Side;bool flipped=true,wound=true,weights=true,crownClosed=false,maskClear=true;float top=0,low=9,back=0,opening=0;
+            Check(g.Positions.Length==n*2&&g.Triangles.Length%6==0&&g.Triangles.Length>0,"the hood has an outer and an inner copy");
+            for(int i=0;i<n;i++)
+            {
+                var q=g.Positions[i];top=Math.Max(top,q.Y);low=Math.Min(low,q.Y);back=Math.Min(back,q.Z);
+                float ang=(float)(Math.Atan2(q.X,q.Z+.03f)*180/Math.PI);
+                // The mask: its front at z .11, x within .07, from 1.555 to 1.75 high. Nothing of the hood in front of it.
+                if(q.Y>1.56f&&q.Y<1.745f&&Math.Abs(q.X)<.06f&&q.Z>.04f)maskClear=false;
+                if(q.Y>1.6f&&q.Y<1.7f&&q.Z>0)opening=Math.Max(opening,90-Math.Abs(ang));
+                if(q.Y>1.79f&&g.Uv[i].X==0&&Math.Abs(q.X)<1e-3f&&q.Z>-.03f)crownClosed=true;
+                if(g.Normals[n+i]!=-g.Normals[i]||g.Alpha[i]!=255||g.Alpha[n+i]!=0)flipped=false;
+                if(g.Weight1[i]<0||g.Weight1[i]>.8f||g.Bone1[i]<0||g.Bone1[i]>2||(NativeFallenHood.Fixed(g.Uv[i].Y)&&g.Weight1[i]>0))weights=false;
+            }
+            int half=g.Triangles.Length/2;
+            for(int k=0;k<half;k+=3)
+            {
+                int a=g.Triangles[k],b=g.Triangles[k+1],c=g.Triangles[k+2];var face=System.Numerics.Vector3.Cross(g.Positions[b]-g.Positions[a],g.Positions[c]-g.Positions[a]);var o=(g.Positions[a]+g.Positions[b]+g.Positions[c])/3;
+                var ho=o-new System.Numerics.Vector3(0,1.66f,-.03f);if(System.Numerics.Vector3.Dot(face,ho)<-.2f*face.Length()*ho.Length())wound=false;
+                if(g.Triangles[half+k]!=a+n||g.Triangles[half+k+1]!=c+n||g.Triangles[half+k+2]!=b+n)wound=false;
+            }
+            Check(top>1.815f&&low<1.5f&&back<-.14f,"it covers the old cowl's head: crown "+top.ToString("0.000")+", hem "+low.ToString("0.000")+", back "+back.ToString("0.000"));
+            Check(maskClear&&opening>0,"the mask shows whole through the opening");Check(crownClosed,"closed over the crown");
+            Check(wound&&flipped,"the hood's outer faces face out, its inner copy in, the outline only outside");
+            Check(weights,"the crown and face on the head alone; the skirt handed to the neck and chest");
+            Check(NativeFallenHood.Fixed(1)&&NativeFallenHood.Fixed(1-((NativeFallenHood.FixedRings-1f)*NativeFallenHood.Sub)/NativeFallenHood.Rows)&&!NativeFallenHood.Fixed(0)&&!NativeFallenHood.Fixed(.5f/NativeFallenHood.Rows),"the crown and face fixed, the skirt moves");
+            var paint=NativeFallenHood.Paint(4,64);Check(paint[63*4]==0xFF0000u&&paint[0]==0x00FF00u,"the hood's paint map: red on the head, green at the hem");
+            Check(NativeFallenHood.Name.StartsWith("Hat.",StringComparison.Ordinal),"named for the cloth bridge's hood tuning");
+            var cloth=R("Assets/ChipArena/Runtime/NativeFallenCloth.cs");var body2=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");
+            Check(cloth.Contains("FallenClothPiece(NativeFallenHood.Name,NativeFallenHood.Build(),NativeFallenHood.Bones,")&&cloth.Contains("bool show=k==FbHood?hood:k==want")&&body2.Contains("if(FallenHoodOn&&f.Phase<=3&&part.Name==\"cowl\")continue;"),"the hood is built with the body and drawn in the cowl's place in phases 1 to 3");
         }
         // A standing turn: past 18 degrees off its quarry it turns to it, smoothly.
         {
