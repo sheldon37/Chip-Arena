@@ -104,8 +104,10 @@ namespace ChipArena.UnityConversion
                 {
                     var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=12;k++){var q=Vector3.Lerp(tp,e,k/12f);w.Disturb(q.X,q.Z,3.1f,-.5f,1);w.Disturb(q.X,q.Z,6,.1f,.2f);}
                 }
-                if(m.Id=="jet"&&age>=hit&&age<hit+m.Strike&&s.Tide>-.5f){var head=rig.MouthAt-o;var d=DeepEndBossRig.JetDir(v,age,hit,m,head,s.Tide);float T=(head.Y-s.Tide)/Math.Max(.05f,-d.Y);var land=head+d*Math.Min(T,m.Reach);w.Disturb(land.X,land.Z,1.5f,-Math.Min(.14f,.13f*(dt*60)),.5f);
-                    var flatD=new Vector3(d.X,0,d.Z);float fl=flatD.Length();if(fl>.01f){flatD/=fl;for(int k=1;k<=3;k++){var q=land+flatD*(k*5);if(Math.Abs(q.X)<NativeDeepEndArena.Half&&Math.Abs(q.Z)<NativeDeepEndArena.Half){w.Disturb(q.X,q.Z,1.1f,-Math.Min(.07f,.06f*(dt*60)),.4f);w.AddFoam(q.X,q.Z,1.2f,.7f*dt*7);}}}}
+                // The jet: hard where it comes down at its end, the spray raining off it pocking the water under its line.
+                if(m.Id=="jet"&&age>=hit&&age<hit+m.Strike&&s.Tide>-.5f){var head=rig.MouthAt-o;var d=DeepEndBossRig.JetDir(v,age,hit,m,head,s.Tide);float reach=JetReach(head,d,m,out var flatD,out _);var land=head+flatD*reach;
+                    w.Disturb(land.X,land.Z,1.5f,-Math.Min(.14f,.13f*(dt*60)),.5f);
+                    for(int k=1;k<=5;k++){var q=head+flatD*(reach*k/6f);if(Math.Abs(q.X)<NativeDeepEndArena.Half&&Math.Abs(q.Z)<NativeDeepEndArena.Half){w.Disturb(q.X,q.Z,1.1f,-Math.Min(.04f,.035f*(dt*60)),.4f);w.AddFoam(q.X,q.Z,1.2f,.5f*dt*7);}}}
                 if(m.Id=="lull"&&In(at)){w.Disturb(tp.X,tp.Z,2.2f,.25f,.8f);}
                 if(m.Id=="seiche"){var ax=s.SeicheAxis;float half=NativeDeepEndArena.Half;float t0=age-hit,tl=t0-dt;float cross=2*half/m.Speed;if(t0>=cross&&tl<cross){for(int k=-8;k<=8;k++){float side=k*2.5f;w.Disturb(ax.X*(half-1.2f)+ax.Z*side,ax.Z*(half-1.2f)-ax.X*side,2.4f,.32f,.9f);}}}
                 if(m.Id=="whistle"&&In(at))for(int k=0;k<PilotCount;k++){var pl=Pilots[k];w.Disturb(pl.X+1.2f,pl.Y+.8f,1.4f,-.2f,.7f);}
@@ -393,8 +395,11 @@ namespace ChipArena.UnityConversion
                 case "jet":if(age<hit)
                 {
                     // The mouth irises, the throat brightens, a thin line of mist tracks the sweep's start.
-                    var head=rig.MouthAt-o;var dir0=DeepEndBossRig.JetDir(v,hit,hit,m,head,s.Tide);float T=(head.Y-s.Tide)/Math.Max(.05f,-dir0.Y);var land=head+dir0*Math.Min(T,m.Reach);var flat=BossMath.Flat(dir0);float l=Math.Max(.1f,flat.Length());flat/=l;
-                    var near=new Vector3(head.X,s.Tide+.06f,head.Z);float rise=BossMath.Smooth(age/hit);var far=Vector3.Lerp(near,new Vector3(land.X,s.Tide+.06f,land.Z),rise);var midp=(near+far)*.5f;var span=(far-near)*.5f;var nrm=new Vector3(flat.Z,0,-flat.X);
+                    // (On the water, or just over the dry deck, which stands above the pool's water: the line used to lie at the water's level there, under the tile.)
+                    var head=rig.MouthAt-o;var dir0=DeepEndBossRig.JetDir(v,hit,hit,m,head,s.Tide);float reach0=JetReach(head,dir0,m,out var flat,out _);var land=head+flat*reach0;
+                    float rise=BossMath.Smooth(age/hit);var farAt=Vector3.Lerp(new Vector3(head.X,0,head.Z),new Vector3(land.X,0,land.Z),rise);
+                    float lineY=(DeepEndBossPaths.Wet(head.X,head.Z,s.Tide)&&DeepEndBossPaths.Wet(farAt.X,farAt.Z,s.Tide)?s.Tide:Math.Max(s.Tide,0))+.06f;
+                    var near=new Vector3(head.X,lineY,head.Z);var far=new Vector3(farAt.X,lineY,farAt.Z);var midp=(near+far)*.5f;var span=(far-near)*.5f;var nrm=new Vector3(flat.Z,0,-flat.X);
                     Over.Billboard(o+midp,span,nrm*.22f,Vector3.UnitY,DeepEndFlow.Mark,0,new Vector3(.7f,.95f,1f)*(1.1f*rise),0);
                     Vfx.SmokeFlow(now,o+far+new Vector3(0,.15f,0),new Vector3(0,.5f,0),.4f,.2f,14,.7f,.25f,.9f,WaterWhite,.3f*rise,v.actionAt,v.actionAt+hit,Seed,33,lit:.6f);
                 }break;
@@ -442,54 +447,57 @@ namespace ChipArena.UnityConversion
         // shooting straight from their mouth and splashing"). The rule sweeps JetDir, flat, 2 m wide and the table's reach long. The jet leaves the mouth dead straight along JetDir, its head reaching
         // where it lands in a tenth of a second, drops peeling off it as it goes; where it lands a crown of water is thrown up again and again with spray and mist; beyond, the water skips on along the
         // line as spray (no sheet) to its end or the wall. Whoever stands in the line is struck, and it shows on them.
+        /// <summary>How far (m, on the ground) the jet from `head` along `d` runs before the room's walls stop it (its full reach otherwise), its flat direction, and whether a wall stops it.</summary>
+        public static float JetReach(Vector3 head,Vector3 d,in DeepEndBossMove m,out Vector3 flat,out bool wall)
+        {
+            flat=new Vector3(d.X,0,d.Z);float fl=flat.Length();flat=fl>1e-3f?flat/fl:Vector3.UnitZ;float full=m.Reach*fl,reach=full;
+            float halfRoom=NativeDeepEndArena.Half-.25f;if(Math.Abs(flat.X)>1e-3f)reach=Math.Min(reach,((flat.X>0?halfRoom:-halfRoom)-head.X)/flat.X);if(Math.Abs(flat.Z)>1e-3f)reach=Math.Min(reach,((flat.Z>0?halfRoom:-halfRoom)-head.Z)/flat.Z);
+            reach=Math.Max(1,reach);wall=reach<full-.5f;return reach;
+        }
+        /// <summary>A point `u` of the way along the jet (0 the mouth, 1 its end, `reach` m on the ground): down its straight line from the mouth; where no wall stops it, its last
+        /// stretch comes down to the floor (`endY`) at its end.</summary>
+        public static Vector3 JetAt(Vector3 head,Vector3 d,float reach,bool wall,float endY,float u)
+        {
+            float fl=Math.Max(1e-3f,new Vector3(d.X,0,d.Z).Length()),length=reach/fl;var p=head+d*(length*u);
+            if(!wall){float lineEnd=head.Y+d.Y*length;p.Y+=(endY-lineEnd)*(float)Math.Pow(BossMath.Clamp01(u),5);}
+            return p;
+        }
         private void Jet(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now,float age,float hit,in DeepEndBossMove m,bool low)
         {
             float on=BossMath.Smooth((age-hit)/.06f)*(1-BossMath.Smooth((age-hit-m.Strike)/.18f));if(on<.01f)return;var o=rig.Origin;var mouth=rig.MouthAt;var head=mouth-o;float surface=s.Tide;
-            var d=DeepEndBossRig.JetDir(v,age,hit,m,head,surface);var flat=new Vector3(d.X,0,d.Z);float fl=flat.Length();flat=fl>1e-3f?flat/fl:Vector3.UnitZ;float reach=m.Reach*fl;
-            // Up to the room's walls.
-            float halfRoom=NativeDeepEndArena.Half-.25f;if(Math.Abs(flat.X)>1e-3f)reach=Math.Min(reach,((flat.X>0?halfRoom:-halfRoom)-head.X)/flat.X);if(Math.Abs(flat.Z)>1e-3f)reach=Math.Min(reach,((flat.Z>0?halfRoom:-halfRoom)-head.Z)/flat.Z);reach=Math.Max(1,reach);
-            // Where it lands: on the water, or on the tile where the deck is dry.
+            var d=DeepEndBossRig.JetDir(v,age,hit,m,head,surface);float reach=JetReach(head,d,m,out var flat,out bool wall);
+            // The floor under it: the water, or the tile where the deck is dry.
             float Ground(float x,float z)=>DeepEndBossPaths.Wet(x,z,surface)?Math.Max(SurfaceAt(waves,x,z),surface):0;
-            float T=(head.Y-surface)/Math.Max(.05f,-d.Y);var land=head+d*T;if(!DeepEndBossPaths.Wet(land.X,land.Z,surface)){T=head.Y/Math.Max(.05f,-d.Y);land=head+d*T;}
-            float landAt=Math.Min(reach,T*fl);land=head+flat*landAt;land.Y=Ground(land.X,land.Z);
-            // Straight from the mouth: its head reaches where it lands in a tenth of a second (the rule hits from the first moment; the eye needs to see it go), a narrow jet that spreads a little as
-            // it flies, its surface shivering, a bright core down its middle.
-            float grow=BossMath.Smooth((age-hit)/.1f);var target=o+land;var front=Vector3.Lerp(mouth,target,grow);var toLand=target-mouth;float flight=toLand.Length();var axis=flight>1e-3f?toLand/flight:d;
-            const int rings=14;
-            for(int i=0;i<rings;i++){float u=i/(float)(rings-1);tubeC[i]=Vector3.Lerp(mouth,front,u);tubeR[i]=(.15f+.3f*u*grow)*(1+.09f*(float)Math.Sin(now*41+i*1.9f))*on;}
+            var endFlat=head+flat*reach;float endY=Ground(endFlat.X,endFlat.Z);
+            // One stream over the whole lane the rule hits, above the floor and its warning (the owner, 2026-11-08: "their spray attack seems to be flat. It usually ends up being
+            // UNDER the hit indicator"): straight from the mouth along its line, coming down to the floor only in its last stretch, or striking the wall that stops it. Its head
+            // reaches the end in a tenth of a second (the rule hits from the first moment; the eye needs to see it go); a narrow jet that spreads as it flies, its surface shivering,
+            // a bright core down its middle.
+            float grow=BossMath.Smooth((age-hit)/.1f);
+            const int rings=22;
+            for(int i=0;i<rings;i++){float u=i/(float)(rings-1);tubeC[i]=o+JetAt(head,d,reach,wall,endY,u*grow);tubeR[i]=(.15f+.3f*u*grow)*(1+.09f*(float)Math.Sin(now*41+i*1.9f))*on;}
             Over.Tube(tubeC,tubeR,rings,low?8:14,DeepEndFlow.Jet,0,new Vector3(.86f,.97f,1f),on,rings*.6f);
             for(int i=0;i<rings;i++)tubeR[i]*=.45f;Over.Tube(tubeC,tubeR,rings,low?6:10,DeepEndFlow.Jet,1,new Vector3(1.8f,2.2f,2.4f),on,rings*.9f);
-            // Drops peeling off the jet along its length, flung on and out, falling.
-            int peel=Vfx.Scale(44);var spreadDir=Vector3.Cross(axis,Vector3.UnitY);if(spreadDir.LengthSquared()<1e-4f)spreadDir=Vector3.UnitX;else spreadDir=Vector3.Normalize(spreadDir);
+            // Drops peeling off the jet along its length, flung on and out, raining onto the lane.
+            int peel=Vfx.Scale(60);var spreadDir=Vector3.Cross(d,Vector3.UnitY);if(spreadDir.LengthSquared()<1e-4f)spreadDir=Vector3.UnitX;else spreadDir=Vector3.Normalize(spreadDir);
             for(int i=0;i<peel;i++)
             {
-                int k=2600+i*7;float ph=BossMath.Frac(now*(2.2f+H(k))+H(k+1)),at0=H(k+2)*grow;var p0=Vector3.Lerp(mouth,target,at0);float sideways=(H(k+3)-.5f)*3.2f;
-                var vel0=axis*(9+8*H(k+4))+spreadDir*sideways+new Vector3(0,.4f+1.4f*H(k+5),0);var at=NativeBossVfx.Fly(p0,vel0,.3f,BossMath.Gravity,ph*.45f,out var vel);if(at.Y<o.Y+surface-.05f)continue;
+                int k=2600+i*7;float ph=BossMath.Frac(now*(2.2f+H(k))+H(k+1)),at0=H(k+2)*grow;var p0=o+JetAt(head,d,reach,wall,endY,at0);float sideways=(H(k+3)-.5f)*3.2f;
+                var vel0=d*(9+8*H(k+4))+spreadDir*sideways+new Vector3(0,.4f+1.4f*H(k+5),0);var at=NativeBossVfx.Fly(p0,vel0,.3f,BossMath.Gravity,ph*.45f,out var vel);if(at.Y<o.Y+Ground(at.X-o.X,at.Z-o.Z)-.05f)continue;
                 Vfx.Drop(at,-vel*.03f,WaterWhite,.04f+.05f*H(k+6),.8f*on*(1-ph*.7f),ph,i);
             }
-            var side=new Vector3(flat.Z,0,-flat.X);float run=reach-landAt;
+            var side=new Vector3(flat.Z,0,-flat.X);
             if(grow<.98f)goto Struck;
-            // Beyond where it lands the water skips on along the line as spray, low and fast, to its end (no sheet of water).
-            if(run>.4f)
-            {
-                var mid=head+flat*(landAt+run*.5f);mid.Y=Ground(mid.X,mid.Z)+.05f;
-                Over.Billboard(o+mid,flat*(run*.5f),side*(m.Width*.62f),Vector3.UnitY,DeepEndFlow.Mark,0,new Vector3(.8f,.97f,1f)*(1.25f*on),0);
-                int rush=Vfx.Scale(54);for(int i=0;i<rush;i++)
-                {
-                    int k=2100+i*5;float ph=BossMath.Frac(now*(1.5f+.9f*H(k))+H(k+1));var p0=head+flat*(landAt+run*H(k+2))+side*((H(k+3)-.5f)*m.Width);p0.Y=Ground(p0.X,p0.Z);var vel0=side*((H(k+3)-.5f)*7)+flat*(5+6*H(k+4))+new Vector3(0,2.4f+4.2f*H(k+1),0);
-                    var at=NativeBossVfx.Fly(o+p0,vel0,.3f,BossMath.Gravity,ph*.62f,out var vel);if(at.Y<o.Y+p0.Y)continue;Vfx.Drop(at,-vel*.03f,WaterWhite,.06f+.07f*H(k+2),.85f*on*(1-ph*.6f),ph,i);
-                }
-            }
-            // The hard splash where it lands: a crown of water thrown up and out again and again, spray and mist.
-            float start=v.actionAt+hit,end=start+m.Strike;var lc=new Vector3(land.X,o.Y+land.Y,land.Z)+new Vector3(o.X,0,o.Z);int spr=Vfx.Scale(70);
+            // The hard splash where it comes down (at a wall's foot, the water running down it): a crown of water thrown up and out again and again, spray and mist.
+            float start=v.actionAt+hit,end=start+m.Strike;var lc=o+new Vector3(endFlat.X,endY,endFlat.Z);int spr=Vfx.Scale(70);
             const float crownEvery=.42f;for(int c=0;c<(low?2:3);c++){float ca=(age-hit-.1f+c*crownEvery/3)%crownEvery;if(age-hit-.1f+c*crownEvery/3<0)continue;CrownRing(lc,ca,crownEvery,(1.05f+.25f*H(c+91))*on,.3f,53+c);}
             for(int i=0;i<spr;i++)
             {
                 int k=1800+i*7;float ph=BossMath.Frac(now*(1.1f+.7f*H(k))+H(k+1)),age2=ph*1.05f;var dir=NativeBossVfx.Cone(new Vector3(flat.X*.8f,1,flat.Z*.8f),.7f,H(k+2),H(k+3),H(k+4));var p0=lc+new Vector3(H(k+5)-.5f,0,H(k+6)-.5f)*1.2f;var at=NativeBossVfx.Fly(p0,dir*(5+9*H(k+1)),.3f,BossMath.Gravity,age2,out var vel);if(at.Y<lc.Y)continue;Vfx.Drop(at,-vel*.03f,WaterWhite,.07f+.07f*H(k+7),.85f*on*(1-ph*.5f),ph,i);
             }
             Vfx.SmokeFlow(now,lc+new Vector3(0,.4f,0),new Vector3(0,2,0),1.2f,.3f,14,1f,.5f,2.2f,WaterWhite,.16f*on,start,end,Seed,81,lit:.7f);
-            // The line's end: against a wall it climbs it.
-            if(reach<m.Reach*fl-.5f){var e=head+flat*reach;var ec=o+new Vector3(e.X,Ground(e.X,e.Z)+.2f,e.Z);int up=Vfx.Scale(26);for(int i=0;i<up;i++){int k=2400+i*5;float ph=BossMath.Frac(now*(1.3f+.6f*H(k))+H(k+1));var at=NativeBossVfx.Fly(ec+side*((H(k+2)-.5f)*2),new Vector3(0,7+4*H(k+3),0)-flat*(2*H(k+4)),.3f,BossMath.Gravity,ph*.8f,out var vel);if(at.Y<ec.Y)continue;Vfx.Drop(at,-vel*.03f,WaterWhite,.08f+.06f*H(k+2),.8f*on*(1-ph*.5f),ph,i);}}
+            // The line's end: against a wall it climbs it from where it strikes.
+            if(wall){var ec=o+JetAt(head,d,reach,true,endY,1);int up=Vfx.Scale(26);for(int i=0;i<up;i++){int k=2400+i*5;float ph=BossMath.Frac(now*(1.3f+.6f*H(k))+H(k+1));var at=NativeBossVfx.Fly(ec+side*((H(k+2)-.5f)*2),new Vector3(0,7+4*H(k+3),0)-flat*(2*H(k+4)),.3f,BossMath.Gravity,ph*.8f,out var vel);if(at.Y<ec.Y)continue;Vfx.Drop(at,-vel*.03f,WaterWhite,.08f+.06f*H(k+2),.8f*on*(1-ph*.5f),ph,i);}}
             Struck:
             // Whoever stands in the line: the water bursting on them, so a hit looks like one.
             for(int n=0;n<PilotCount;n++)

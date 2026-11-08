@@ -399,13 +399,18 @@ namespace ChipArena.UnityConversion
             // Above the water with nothing else to do it turns its blind face toward whoever it's after, a little.
             if(hasLook&&head.Y>surface+.8f){var to=lookAt-head;float l=to.Length();if(l>.5f){weight=.38f*BossMath.Clamp01((head.Y-surface-.8f)/1.5f);dir=to/l;}}
         }
-        /// <summary>The jet's direction at `age`: toward its first aim, swept by the table's arc toward its last, from where the mouth is; level with the water.</summary>
+        /// <summary>How high over the floor (the water, or the dry deck where it stands above the water) the jet's line is at its full reach (m).</summary>
+        public const float JetEndHeight=1f;
+        /// <summary>The jet's direction at `age`: toward its first aim, swept by the table's arc toward its last, from where the mouth is; tipped down only so far that its line
+        /// is still <see cref="JetEndHeight"/> over the floor at its full reach: a beam over the whole lane the rule hits (the owner, 2026-11-08: "their spray attack seems to be
+        /// flat. It usually ends up being UNDER the hit indicator"). It used to aim at the water's level at the target's distance, so past that it was a sheet on the floor, and over
+        /// the dry deck, which stands above the pool's water, under it.</summary>
         public static Vector3 JetDir(in DeepEndBossView v,float age,float hit,in DeepEndBossMove m,Vector3 head,float surface)
         {
             float u=BossMath.Clamp01((age-hit)/Math.Max(.01f,m.Strike));float eased=BossMath.Smooth(u);
             var a=new Vector3(v.targetX-head.X,0,v.targetZ-head.Z);float ya=(float)Math.Atan2(a.X,a.Z);float sweep=m.Arc*BossMath.Deg*(float)(v.actionId%2==0?1:-1);
             float yaw=ya-sweep*.5f+sweep*eased;var flat=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));
-            float drop=Math.Max(.5f,head.Y-surface)/Math.Max(8,Math.Min(26,a.Length()));
+            float drop=Math.Max(.15f,head.Y-Math.Max(surface,0)-JetEndHeight)/Math.Max(1,m.Reach);
             return Vector3.Normalize(flat+new Vector3(0,-drop,0));
         }
         // The slow extra roll by what plays: rolled to show its flank on Last Lap, on its side when it is stranded or falling.
