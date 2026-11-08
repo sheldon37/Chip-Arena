@@ -15,6 +15,8 @@ namespace ChipArena.UnityConversion
         public NativePlayerInvite[] Invitations=Array.Empty<NativePlayerInvite>();
         public string SocialStatus="";
         public bool SocialBusy{get;private set;}
+        // 75 background polls per five minutes stays below the service's 100/action limit.
+        private const float SocialPollSeconds=4;
         private int socialEpoch;private float socialNext,socialActionStatusUntil;private Action<string> invitationAccepted;
         private void ResetSocial(){socialEpoch++;SocialBusy=false;socialNext=0;socialActionStatusUntil=0;OnlinePlayers=Array.Empty<NativeOnlinePlayer>();Invitations=Array.Empty<NativePlayerInvite>();SocialStatus="";invitationAccepted=null;}
         private void TickSocial(){if(Account!=null&&session.Length>0&&!SocialBusy&&Time.unscaledTime>=socialNext)SocialRequest("social","{}");}
@@ -24,7 +26,7 @@ namespace ChipArena.UnityConversion
             SocialRequest("invite",JsonUtility.ToJson(new NativeInviteRequest{target=target,code=NativeRoomDirectory.Key(code)}),sent);
         }
         public void AnswerInvite(string id,bool accept,Action<string> accepted){if(SocialBusy)return;invitationAccepted=accepted;SocialRequest("invite-answer",JsonUtility.ToJson(new NativeInviteRequest{id=id,accept=accept}));}
-        private void SocialRequest(string action,string body,Action sent=null){if(Account==null||session.Length==0||SocialBusy)return;SocialBusy=true;if(action!="social")SocialStatus="";socialNext=Time.unscaledTime+20;StartCoroutine(SocialSend(action,body,sent));}
+        private void SocialRequest(string action,string body,Action sent=null){if(Account==null||session.Length==0||SocialBusy)return;SocialBusy=true;if(action!="social")SocialStatus="";socialNext=Time.unscaledTime+SocialPollSeconds;StartCoroutine(SocialSend(action,body,sent));}
         private IEnumerator SocialSend(string action,string body,Action sent)
         {
             int epoch=socialEpoch;string owner=Account.id,origin=Origin;
@@ -43,7 +45,7 @@ namespace ChipArena.UnityConversion
                 }
                 if(action=="social"){
                     if(r.players==null||r.invites==null||r.players.Length>100||r.invites.Length>20){SocialStatus="Invalid online-player response.";yield break;}
-                    OnlinePlayers=r.players;Invitations=r.invites;if(Time.unscaledTime>=socialActionStatusUntil)SocialStatus="";
+                    socialNext=Time.unscaledTime+SocialPollSeconds;OnlinePlayers=r.players;Invitations=r.invites;if(Time.unscaledTime>=socialActionStatusUntil)SocialStatus="";
                 }else{
                     SocialStatus=action=="invite"?"Invitation sent.":"Invitation answered.";socialActionStatusUntil=Time.unscaledTime+15;socialNext=0;
                     var callback=invitationAccepted;invitationAccepted=null;
