@@ -36,6 +36,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Once walking it walks on until its travel falls under <see cref="WalkStop"/> and it has walked <see cref="WalkHold"/> s (the owner, 2026-11-07: "When Noctiel walks,
         /// I think its mixing in his idle combat pose": travel hovering at the floor dropped it into its stance mid-stride, crossfading in and out).</summary>
         public const float WalkStop=.25f,WalkHold=.4f;
+        /// <summary>How quickly it turns to face where it walks (the yaw spring's time, s): a heavy body's turn, slower than its glide's.</summary>
+        public const float WalkTurn=.2f;
         /// <summary>
         /// Its idle (the owner, 2026-11-07, with a still from the reference walk: "Id like his idle pose to be the same as this (With both feet down)"): the slow walk held where both its feet are
         /// down, upright, the claymore trailing low from its right hand as it walks. The clip time Runtime finds in the bank (<see cref="BothFeetDown"/>); NaN keeps the old stance.
@@ -127,10 +129,13 @@ namespace ChipArena.UnityConversion
             else if(Vector3.DistanceSquared(at,x.At)>64||dt<=0){at=x.At;atV=Vector3.Zero;}
             else{Spring(ref at.X,ref atV.X,x.At.X,dt,.06f);Spring(ref at.Y,ref atV.Y,x.At.Y,dt,.06f);Spring(ref at.Z,ref atV.Z,x.At.Z,dt,.06f);}
             f.Boss=at;
-            // Which way it faces: the move's aim (fast), its glide's heading, or its quarry in standing turns.
+            // Which way it faces: the move's aim (fast), its glide's heading, where it walks, or its quarry in standing turns. Walking it faces its way: the
+            // authority walks it toward the nearest pilot while its quarry may be another, and facing that one its stride went sideways (the owner,
+            // 2026-11-07: "his walk seems to not be correct"). Once it stops it turns to its quarry.
             float smooth;
             if(inPlan){yawGoal=x.ActionYaw;smooth=.07f;turning=false;}
             else if(gliding&&heading!=Vector3.Zero){yawGoal=YawOf(heading);smooth=.16f;turning=false;}
+            else if(walking&&heading!=Vector3.Zero&&speed>WalkFrom){yawGoal=YawOf(heading);smooth=WalkTurn;turning=false;}
             else
             {
                 var d=x.Target-at;d.Y=0;if(d.LengthSquared()>.25f){float want2=YawOf(d);if(turning||Math.Abs(Delta(yaw,want2))>TurnFrom){yawGoal=want2;turning=true;}}
