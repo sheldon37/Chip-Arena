@@ -29,6 +29,7 @@
   - The claymore in each phase: steel with the fuller's line, the soft light, black with edges of light, all light with flakes. Close up: the guard's quills, the wrapped grip, the words on the flat.
   - The Cantors rising and singing from the hood. The Penitents crawling on planted hands and ringing the water, then clinging round the pilot. The Throne hanging, its eye on the pilot, charging and firing.
 - **Not run:** no person or two-client run. The adds' motion and the sword's light were judged from stills, not watched moving. The Thrones were seen only in the capture's wide shots. The reduced-graphics tier was not looked at.
+- **Released:** full suite at `98dec654` (shared merged in): 981 groups, exit 0; pins: one flag, a false one (this round's own check that the old beam code is gone); Unity compile PASS. Merged `34035a77`; builder succeeded and published to the test channel: revision 639297590685735554, 246.0 MiB. No live release.
 
 ## 2026-11-08 — Claude: THE DEEP END's Drain only a sprint escapes; its Hydro Jet over its lane (owner requests; the Drain's pull at the owner's word)
 
