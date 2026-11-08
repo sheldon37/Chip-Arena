@@ -64,6 +64,8 @@ namespace ChipArena.UnityConversion
         {
             var lo=new Vector3(0,bottom,0);var hi=new Vector3(0,top,0);Quads.Add(a+lo,b+lo,b+hi,a+hi,alpha,strength,mode,grey);
         }
+        /// <summary>A mote of light off the cloth (Runtime sheds them from the simulated hems): a soft point facing the eye, on the stage's frame.</summary>
+        public void ClothMote(Vector3 at,float size,float alpha){if(alpha>.01f)Spot(at,size,alpha,.6f);}
         private void Spot(Vector3 at,float size,float alpha,float strength,byte mode=FallenFxQuads.Droplet,float grey=1)
         {
             var r=right*size;var u=up*size;Quads.Add(at-r-u,at+r-u,at+r+u,at-r+u,alpha,strength,mode,grey);

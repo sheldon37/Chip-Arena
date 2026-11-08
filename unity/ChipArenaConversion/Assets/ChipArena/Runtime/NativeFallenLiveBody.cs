@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The live director's pose over the binding's (the fight and the draft; the intro and the death keep the script's).</summary>
         private void FallenLiveMotion(NativeArena a,FallenBossFrame f,float now)
         {
-            fbLiveNow=false;f.Stand=0;var z=a?.ZoneBoss;
+            fbLiveNow=false;f.Stand=0;f.Life=0;var z=a?.ZoneBoss;
             bool fight=z?.fallen!=null&&!(a.Pve.Holding&&a.Pve.Cinematic=="intro")&&z.deathAt<0;
             var m=fight?a.Minions.Find(x=>x.Id==z.actor):null;
             if(m==null){fbLive.Reset();return;}

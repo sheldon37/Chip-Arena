@@ -16,7 +16,7 @@ public static class DeepEndBossChecks
         count=0;
         Check(NativeDeepEndBoss.Archetype=="poolrooms-deep-end","the archetype Astra binds");
         Check(NativeBackroomsBossIntro.Mine(NativeDeepEndBoss.Archetype)&&NativeBackroomsBossIntro.Card(NativeDeepEndBoss.Archetype)==NativeDeepEndBoss.Card,"the intro knows the boss");
-        Moves(root);Look(root);Off();Routes();Rig();Body();Smooth();Frames();Arena();Water();Stage();Intro();Hits();Cues(root);Preview();
+        Moves(root);Look(root);Off();Routes();Rig();Body();Smooth();JetFaces();Frames();Arena();Water();Stage();Intro();Hits();Cues(root);Preview();
         var acts=new System.Text.StringBuilder("deepend preview script:");for(int i=0;i<NativeDeepEndBossPreview.ActCount;i++){var a=NativeDeepEndBossPreview.ActAt(i);acts.Append($" {a.Id}@{a.At:F1}");}acts.Append($" lamps@{NativeDeepEndBossPreview.LampsAt:F1} p2@{NativeDeepEndBossPreview.Phase2At:F1} p3@{NativeDeepEndBossPreview.Phase3At:F1} death@{NativeDeepEndBossPreview.DeathAt:F1} loop@{NativeDeepEndBossPreview.Loop:F1}");Console.WriteLine(acts);
         Console.WriteLine("PASS deepend-boss ("+count+" checks)");
     }
@@ -163,6 +163,22 @@ public static class DeepEndBossChecks
         }
         float mean=(float)(sum/Math.Max(1,count));Console.WriteLine("INFO deepend smoothness at 144 fps: "+pops+" pops over 30 cm, mean "+(mean*1000).ToString("0.0")+" mm");
         Check(mean<.02f&&pops<100,"the body moves smoothly between ticks at 144 fps: "+pops+" pops, mean "+(mean*1000).ToString("0.0")+" mm");
+    }
+    // The owner, 2026-11-08: "when its shooting water; Have it face the direction its shooting water". Through both of the script's Jets, live (the rig's
+    // own route): the mouth on the beam's line (JetDir from the mouth, as the effects draw it) whenever the mouth is out of the water. Before, its neck turned each joint on its own and the
+    // head was 80 degrees off.
+    private static void JetFaces()
+    {
+        var o=new Vector3(24,0,24);var rig=new DeepEndBossRig();var v=DeepEndBossView.None;const float dt=1/60f;float worst=0,sum=0;int n=0;
+        for(int k=0;;k++)
+        {
+            float t=(float)(NativeDeepEndBossPreview.JetAt-2+(double)k*dt);if(t>=NativeDeepEndBossPreview.Jet2At+6)break;if(t>NativeDeepEndBossPreview.JetAt+6&&t<NativeDeepEndBossPreview.Jet2At-2)continue;
+            NativeDeepEndBossPreview.View(t,ref v,out _);var st=NativeDeepEndBossStage.Evaluate(v,t,DeepEndBossBeats.Fallback);rig.Update(t,dt,v,null,o,st.Tide,false,default);
+            if(!v.Moving(t,out var m,out float age,out float hit)||m.Id!="jet"||age<hit||age>hit+m.Strike||rig.MouthAt.Y-o.Y<st.Tide+.5f)continue;
+            var beam=DeepEndBossRig.JetDir(v,age,hit,m,rig.MouthAt-o,st.Tide);float ang=(float)(Math.Acos(Math.Clamp(Vector3.Dot(Vector3.Normalize(rig.MouthDir),beam),-1,1))*180/Math.PI);sum+=ang;n++;worst=Math.Max(worst,ang);
+        }
+        Console.WriteLine("INFO deepend jet: the mouth off the beam "+(sum/Math.Max(1,n)).ToString("0.0")+" deg on average, "+worst.ToString("0.0")+" at worst ("+n+" frames)");
+        Check(n>60&&worst<15,"through the Jet it faces where it shoots: "+worst.ToString("0.0")+" deg at worst");
     }
     // ---- determinism and allocation ----
     private static void Frames()

@@ -46,6 +46,14 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public float StandAt=float.NaN;
         public const float StandIn=.45f,StandOut=.22f;
+        /// <summary>A breath's length (s: a giant's, slow and deep), how much of its life shows walking and through a move.</summary>
+        public const float BreathSeconds=4.6f,LifeWalking=.55f,LifeInMove=.25f;
+        /// <summary>Its breath at a clock (s): -1 all out .. 1 all in, in quicker than out, every fourth breath a deeper one. Pure.</summary>
+        public static float BreathAt(float now)
+        {
+            double p=now/BreathSeconds*Math.PI*2;float b=(float)((Math.Sin(p)+.24*Math.Sin(2*p+.55))/1.1);
+            float deep=(float)Math.Pow(.5-.5*Math.Cos(p/4),6);return Clamp(b*(.85f+.45f*deep),-1.25f,1.25f);
+        }
         /// <summary>The slow walk's time with both feet down: where its knees are bent alike (the first harmonic's zero crossing of a walk is its double support), from the Lower Leg Stretch muscles.</summary>
         public static float BothFeetDown(NativeVisualMotionClips.Library clips,int leftKnee,int rightKnee)
         {
@@ -62,7 +70,7 @@ namespace ChipArena.UnityConversion
         public const int MaxShots=4;
         private readonly Shot[] plan=new Shot[MaxShots];private int planCount;private string planAction;private float planAt=float.NaN,planEnd=-1,takeoff,leapHeight;
         private Shot cur,prev;private bool curSet;private float switchAt;
-        private bool started,gliding,turning,walking;private float last,yaw,yawV,yawGoal,air,airV,speed,carry,stand,kneel,kneelV,track,walkPhase,walkSince;
+        private bool started,gliding,turning,walking;private float last,yaw,yawV,yawGoal,air,airV,speed,carry,stand,life,kneel,kneelV,track,walkPhase,walkSince;
         private Vector3 at,atV,lastFact,heading;
         /// <summary>The plan for the action now running (empty between moves), for the checks and the DEV readout.</summary>
         public ReadOnlySpan<Shot> Plan=>new ReadOnlySpan<Shot>(plan,0,planCount);
@@ -84,7 +92,7 @@ namespace ChipArena.UnityConversion
             float now=x.Now,dt=started?Clamp(now-last,0,.1f):0;
             if(!started)
             {
-                started=true;at=x.At;atV=Vector3.Zero;lastFact=x.At;yaw=yawGoal=x.Yaw;yawV=0;air=airV=0;speed=0;gliding=turning=walking=false;walkSince=now;carry=1;stand=0;kneel=f.Kneel;kneelV=0;track=0;walkPhase=0;heading=Vector3.Zero;
+                started=true;at=x.At;atV=Vector3.Zero;lastFact=x.At;yaw=yawGoal=x.Yaw;yawV=0;air=airV=0;speed=0;gliding=turning=walking=false;walkSince=now;carry=1;stand=0;life=0;kneel=f.Kneel;kneelV=0;track=0;walkPhase=0;heading=Vector3.Zero;
                 curSet=false;planAction=null;planAt=float.NaN;planCount=0;planEnd=-1;
                 if(seedClip!=null){cur=new Shot{Clip=seedClip,Mode=Hold,From=seedTime,Key=-1};curSet=true;switchAt=now-10;}
             }
@@ -156,6 +164,9 @@ namespace ChipArena.UnityConversion
             // The sword carried while it stands; the clip's hand through a move or a glide (Runtime turns the blade out of the body).
             float carryGoal=inPlan||gliding?0:1;carry=MoveTo(carry,carryGoal,dt/Math.Max(.1f,cur.Fade));f.Carry=Smooth(carry);
             stand=MoveTo(stand,resting?1:0,dt/(resting?StandIn:StandOut));f.Stand=Smooth(stand);
+            // It breathes (the owner, 2026-11-08, a recording of it standing: "they sit there like a statue a lot? no indication of breathing"): all of it at
+            // rest, less walking, a little through a move, none down on a knee.
+            life=MoveTo(life,(inPlan?LifeInMove:resting?1:LifeWalking)*(1-Clamp01(f.Kneel)),dt/.6f);f.Breath=BreathAt(now);f.Life=Smooth(life);
             if(dt<=0)kneel=f.Kneel;else Spring(ref kneel,ref kneelV,f.Kneel,dt,.16f);f.Kneel=Clamp01(kneel);
             float trackGoal=inPlan?(now<x.HitAt?.5f:0):gliding?.5f:1;track=MoveTo(track,trackGoal,dt*3);f.Track=track;
             // The strike: the trail and the wings' throw from the shot now playing.
