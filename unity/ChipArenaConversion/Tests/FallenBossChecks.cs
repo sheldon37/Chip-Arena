@@ -472,6 +472,19 @@ public static class FallenBossChecks
             var cloth=R("Assets/ChipArena/Runtime/NativeFallenCloth.cs");
             Check(cloth.Contains("FallenClothPiece(NativeFallenTabard.Name+\" \"+(k+1),NativeFallenTabard.Build(k+1),NativeFallenTabard.Bones,")&&cloth.Contains("k>=FbTabard?k-FbTabard==want")&&cloth.Contains("FallenClothShed(c,tr,dt,f.Phase==2)")&&cloth.Contains("fbFx.ClothMote("),"the tabard built and shown by phase, its hems shedding motes through the boss's effects");
         }
+        // The stage, the owner 2026-11-08: "make the ripple effect on the stage more 'water-like' like were stepping in water, not just random ripples. Have the
+        // background (The void area) react with the music as well". What touches the water rings it (the pilots' steps, landings and dashes, NOCTIEL's feet down
+        // and up), drawn as ripple packets; the song leaves the floor for the void. And the sword hand at rest turned so the wrist bends least; the intro's guard
+        // held near level over the head as the reference holds it.
+        {
+            var water2=R("Assets/ChipArena/Resources/NativeFallenWater.shader");var voidShader=R("Assets/ChipArena/Resources/NativeFallenVoid.shader");var stage=R("Assets/ChipArena/Runtime/NativeFallenVoid.cs");
+            var show=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");var fx2=R("Assets/ChipArena/Core/NativeFallenBossFx.cs");var body4=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");var mocap=R("Assets/ChipArena/Runtime/NativeFallenIntroMocapBody.cs");
+            Check(!water2.Contains("float heard=_FbSongAt.x-br/34.")&&!fx2.Contains("Cross(f.Boss,f.SongClip-slam"),"the song no longer rings the floor");
+            Check(water2.Contains("float spread=1.+r.z*.14;")&&water2.Contains("glint"),"the rings are ripple packets with glints");
+            Check(voidShader.Contains("\"Queue\"=\"Background\"")&&voidShader.Contains("_FbSong")&&voidShader.Contains("_FbVoidSlam")&&show.Contains("FallenVoidDraw(eyeAt,clip,fbFx.Dim,now);"),"the void is drawn first and plays the song");
+            Check(stage.Contains("private void FallenPilotSteps(")&&show.Contains("if(live)FallenPilotSteps(arena,origin,now,dt);")&&show.Contains("if(!downL&&fbFootDownL)FbStepAdd("),"the pilots' steps and NOCTIEL's lifting feet ring the water");
+            Check(body4.Contains("Vector3.SignedAngle(fingers,fore,blade)")&&mocap.Contains("GuardPitch=-12"),"the hand at rest bends its wrist least; the intro's guard is held near level");
+        }
         // A standing turn: past 18 degrees off its quarry it turns to it, smoothly.
         {
             var d=new NativeFallenLiveMotion();var x=new NativeFallenLiveMotion.Facts{At=Vector3.Zero,Yaw=0,Target=new Vector3(0,0,20)};float lastYaw=0;

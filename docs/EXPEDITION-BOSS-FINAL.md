@@ -370,6 +370,22 @@ feet planted apart, the left a little ahead, the blade out to the right side wit
 nearly straight, no twist; found by rendering the frame on the body and measuring), and the carry lays the blade out to its right side
 (`FbDragWay` 0.99, 0, 0.1) with its point 2 cm over the water (`FbDragTip`). The walk keeps its own legs (Stand is 0 while walking).
 
+### The hand at rest, the intro's guard, water that rings where it's touched, a void that plays the song (Claude, 2026-11-08, the owner)
+
+"Might need to fix hand positioning here- I attached video of animation that still needs to be fixed as well. Lets also make the ripple effect on
+the stage more 'water-like' like were stepping in water, not just random ripples. Have the background (The void area) react with the music as well."
+
+- **The hand at rest:** the carry turns the sword round its blade so the wrist bends least (the fingers as near the forearm's line as the grip
+  allows); before, the fist sat cocked over the handle with the pommel across the thigh.
+- **The intro's guard:** through clip 04's guard (frames 88 to 121) the blade is turned to 12 degrees under level, 20 degrees behind the
+  left, as the reference holds it over the head (it hung 40 degrees under, behind the left shoulder).
+- **The water:** the bass no longer runs out from the boss on the floor, the slams no longer cross it and the level's web is gone. What touches the water rings it:
+  the pilots' footfalls (Runtime `FallenPilotSteps`: alternate feet, every 0.75 m), landings and dashes, NOCTIEL's feet down and up. Each ring
+  is a ripple packet (steep front, a train of smaller ripples inside, the wavelength growing as it spreads) bending the reflection, with
+  glints on its slopes.
+- **The void:** Resources/NativeFallenVoid.shader on a sphere round the eye, drawn first: a horizon glow with the level, curtains of light
+  flaring with the bass and climbing the sky, a flash and a rising band on each slam. The water mirrors it.
+
 ### Breathing, armour and robe, motes off the cloth (Claude, 2026-11-08, the owner)
 
 "seems like they sit there like a statue a lot? no indication of breathing or anything. Give better design to the body as well; it still looks

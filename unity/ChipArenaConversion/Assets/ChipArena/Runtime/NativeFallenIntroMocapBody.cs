@@ -56,6 +56,8 @@ namespace ChipArena.UnityConversion
         }
 
         // The clip's body this frame: after the clip pose and the floor, before the feet, the grip and the head.
+        /// <summary>The guard's frames in clip 04 and how far under level the blade is held there (degrees; the reference's).</summary>
+        private const float GuardFrom=88,GuardTo=121,GuardPitch=-12,GuardBack=20;
         private bool FallenMocapApply(in FallenIntroPose ip,float w,float age,Vector3 at,float floor,Quaternion yawRot)
         {
             var m=NativeFallenIntroMocap.Active;if(!ip.Mocap||m==null||fbMocapBone==null||w<=0)return false;
@@ -66,6 +68,20 @@ namespace ChipArena.UnityConversion
             {
                 var q=pose.Turn[fbMocapTurn[i]];var goal=mesh*new Quaternion(q.X,q.Y,q.Z,q.W)*fbMocapRest[i];
                 fbMocapBone[i].rotation=w>=1?goal:Quaternion.Slerp(fbMocapBone[i].rotation,goal,w);
+            }
+            // The guard held over the head before the chop (clip 04, about frames 88 to 124): the owner's reference holds the blade nearly level over the
+            // top of the head, pointing to its left and a little back; ours hung about 40 degrees under level behind the left shoulder (the owner,
+            // 2026-11-08, a recording of the intro), and lifted on its own heading it crossed in front of the brow. The fist turns it to the reference's
+            // way (GuardBack degrees behind the left, GuardPitch under level), easing in and out of the hold.
+            if(pose.Clip==NativeFallenIntroMocap.Cut&&fbHandR!=null)
+            {
+                float g=Mathf.SmoothStep(0,1,(pose.Frame-GuardFrom)/6f)*(1-Mathf.SmoothStep(0,1,(pose.Frame-GuardTo)/5f))*w;
+                if(g>0)
+                {
+                    var way=fbHandR.rotation*FbBladeWay;var flat=yawRot*(Quaternion.AngleAxis(-GuardBack,Vector3.up)*Vector3.left);
+                    var want=flat*Mathf.Cos(GuardPitch*Mathf.Deg2Rad)+Vector3.up*Mathf.Sin(GuardPitch*Mathf.Deg2Rad);
+                    fbHandR.rotation=Quaternion.Slerp(Quaternion.identity,Quaternion.FromToRotation(way,want),g)*fbHandR.rotation;
+                }
             }
             // The held kneel breathes (the keyed breath, small): a frame held for twenty seconds would look frozen.
             if(pose.Held&&ip.Breath!=0&&fbSpine!=null)fbSpine.rotation=Quaternion.AngleAxis(-1.2f*ip.Breath*w,yawRot*Vector3.right)*fbSpine.rotation;

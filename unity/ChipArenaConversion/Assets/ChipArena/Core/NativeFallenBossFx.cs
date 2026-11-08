@@ -112,8 +112,7 @@ namespace ChipArena.UnityConversion
                 if(!NativeFallenPilots.Shown(i,p))continue;bool walk=NativeFallenPilots.Walking(p);float every=walk?NativeFallenPilots.WalkStep:NativeFallenPilots.StepEvery;float now=(float)Math.Floor(p/every)*every;
                 for(int k=0;k<5;k++){float t=now-k*every;if(!NativeFallenPilots.Shown(i,t)||walk!=NativeFallenPilots.Walking(t))break;var q=NativeFallenPilots.At(i,t);float side=(k+(int)(now/every))%2==0?.22f:-.22f;Step(q.X+side,q.Z,p-t,walk?.5f:.26f,1.9f);}
             }
-            // The song's slams run out from the boss across the whole disc.
-            if(song!=null){float slam=song.LastSlam(f.SongClip);if(!float.IsNaN(slam))Cross(f.Boss,f.SongClip-slam,44,.85f,2.6f);}
+            // The song's slams no longer run across the water (the owner, 2026-11-08: "not just random ripples"): the void flashes with them (Runtime NativeFallenVoid.cs).
             if(f.Kind==NativeFallenBossPreview.KindCutscene)Cutscene(f);
             if(f.Kind==NativeFallenBossPreview.KindDeath)Death(f);
             foreach(var a in f.Actions??NativeFallenBossPreview.Acts){if(p<a.At-.2f||p>a.End+3)continue;Move(a,f,p);Warn(a,f,p);}
