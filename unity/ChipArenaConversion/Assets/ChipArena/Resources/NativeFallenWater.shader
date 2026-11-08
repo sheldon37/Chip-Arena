@@ -1,8 +1,11 @@
 Shader "ChipArena/NativeFallenWater"
 {
-    // The Still Water (docs/EXPEDITION-BOSS-FINAL.md section 5): a black mirror, the song on it. It reflects what's mirrored below it (the frame so far, GrabPass, bent by the water). Footsteps' rings (_FbRing) and the waves that cross the disc (_FbWave) catch a thin white
-    // light on their crests and bend the reflection. The song runs out from the boss: the rings on the floor are the bass as it was r/34 s ago (_FbSong, the file's own measure), so the floor is the music's waveform moving outward, and goes dark when the bass stops.
-    // A faint web of light moves with the song's level. Eclipse's dim and pools, a strike's white. Past the edge, nothing. Output is opaque: the disc is the only thing down here.
+    // The Still Water (docs/EXPEDITION-BOSS-FINAL.md section 5): a black mirror. It reflects what's mirrored below it (the frame so far, GrabPass, bent by the water: the void and its
+    // music, Resources/NativeFallenVoid.shader). What touches it rings it (_FbRing): each a packet of ripples like a step in shallow water, a steep front with a train of smaller
+    // ripples inside it, their wavelength growing as they spread and fade, bending the reflection and catching the light on their slopes (glints, not a line round the ring).
+    // The waves of the moves (_FbWave) cross the disc. Eclipse's dim and pools, a strike's white. Past the edge, nothing.
+    // Since 2026-11-08 the song's bass no longer rings the floor from the boss (the owner: "more water-like like were stepping in water, not just random ripples"): the void
+    // carries the music. Output is opaque: the disc is the only thing down here.
     Properties {}
     SubShader
     {
@@ -32,24 +35,21 @@ Shader "ChipArena/NativeFallenWater"
                 float2 grad=0;float lit=0;
                 for(int k=0;k<(int)_FbRingCount;k++)
                 {
-                    float4 r=_FbRing[k];float2 d=q-r.xy;float len=length(d)+.001;float x=len-r.z;float env=exp(-x*x*(3.2-min(1.6,r.z*.18)))*r.w;
-                    float ph=x*(11.-min(5.,r.z*.8));grad+=d/len*cos(ph)*env*.5;float crest=saturate(sin(ph+1.57));crest*=crest;lit+=env*crest*crest*.8;
+                    // A packet: steep ahead of its front, a long train of smaller ripples behind it; the wavelength grows as it spreads, the height falls.
+                    float4 r=_FbRing[k];float2 d=q-r.xy;float len=length(d)+.001;float x=len-r.z;float spread=1.+r.z*.14;float kk=10./spread;
+                    float env=(x>0?exp(-x*x*8.):exp(-x*x*.9/spread))*r.w*rsqrt(1.+r.z*.3);
+                    float ph=x*kk;grad+=d/len*cos(ph)*env*kk*.06;lit+=env*.12*pow(saturate(sin(ph+1.2)),3.);
                 }
                 for(int k=0;k<(int)_FbWaveCount;k++)
                 {
                     float4 r=_FbWave[k];float2 d=q-r.xy;float len=length(d)+.001;float x=len-r.z;float env=exp(-x*x*.22)*r.w;
                     float ph=x*3.4;grad+=d/len*cos(ph)*env*.42;float crest=saturate(sin(ph+1.57));crest*=crest;lit+=env*(crest*crest*.42+.4*exp(-x*x*14.));
                 }
-                // The bass, moving out from the boss.
-                float2 fromBoss=q-_FbBoss.xy;float br=length(fromBoss)+.001;float2 dir=fromBoss/br;float wob=sin(atan2(fromBoss.y,fromBoss.x)*3.+t*.31)*.26+sin(atan2(fromBoss.y,fromBoss.x)*7.-t*.23)*.1;
-                float heard=_FbSongAt.x-br/34.;float bass=tex2Dlod(_FbSong,float4(heard*_FbSongAt.y,.5,0,0)).g;bass=bass*bass*bass;
-                float ph2=(br+wob*min(1.,br*.08))*1.85-t*1.4;float lines=pow(.5+.5*sin(ph2),22.);float reach=exp(-br*.024);
-                // Far off, where the lines are finer than a pixel, their mean; and thin at a grazing eye, where they'd stack into bars.
-                float fine=saturate(fwidth(br*1.85)*.55);lines=lerp(lines,.09,fine);float graze=.3+.7*smoothstep(.02,.2,v.y);
-                lit+=bass*lines*reach*.3*graze;grad+=dir*cos(ph2)*bass*reach*.075*(1-fine);
-                // The song's level in a faint moving web, more of it the louder it is.
-                float level=tex2Dlod(_FbSong,float4(_FbSongAt.x*_FbSongAt.y,.5,0,0)).r;float web=Web(q,t*.9)*smoothstep(.42,.95,level);
-                lit+=web*.055*exp(-dist*.016);
+                // The ripples' slopes catch the light: a glint where a slope turns the light toward the eye (the flat water's own highlight taken off, so
+                // only what moves shows), fading with distance.
+                float3 nrm=normalize(float3(-grad.x*2.2,1,-grad.y*2.2));float3 lgt=normalize(float3(.35,.8,.45));float3 hv=normalize(lgt+v);
+                float glint=max(0,pow(saturate(dot(nrm,hv)),90.)-pow(saturate(hv.y),90.));lit+=glint*1.6*exp(-dist*.012);
+                // (The song's web of light left the floor with its bass, 2026-11-08: it read as random ripples. The void carries the music.)
                 // The reflection.
                 float2 uv=i.grab.xy/i.grab.w+grad*float2(.055,.11)*saturate(14./(dist+6.));
                 float3 refl=tex2D(_FbGrab,uv).rgb;float fres=.3+.56*pow(1-saturate(v.y),2.4);
