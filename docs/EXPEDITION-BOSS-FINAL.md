@@ -160,7 +160,7 @@ The pack's sword clips carry it, retimed to the move table: a long, slow windup 
 - **The knee:** a true one-knee kneel set on the muscles (no clip has one), used for the cutscene, each threshold and the death. The fist closes on the planted sword by IK.
 - **Gliding:** a dash leaves the water, feet off it, with a wake laid behind.
 - **Wings:** rooted on the chest but square to the body so the pair stays a pair, opening and flaring on an underdamped spring, thrown past their mark and shivering back, each pair behind the one above; they lag turns and blow back with speed.
-- **Robe, halo, ring of blades:** in phases 1 and 2 the robe is a cloth skirt (below, "The robe as cloth"): open across the front so the legs show whole, a panel each side to the knee and a long one behind; phase 3 keeps the strips' remnant at the waist. The halo tilts by phase; the blades turn.
+- **Robe, halo, ring of blades:** in phases 1 and 2 the robe is a cloth skirt (below, "The robe as cloth"): a narrow panel between the legs, open either side so the legs show whole, a panel each side to the knee and a long one behind; phase 3 keeps the strips' remnant at the waist. The halo tilts by phase; the blades turn.
 - **The blade clears the body:** after the arm's pose the hand turns about the wrist until the blade (guard to point) is out of capsules round the torso, head, legs and free arm, leaving on the side it was last pushed to (Runtime `FallenBladeClear`). A planted sword is left alone. Drawn from the water, the fist goes straight from the planted grip to the carry (`FallenGrip`), never back through the clip's open hand.
 - **The sword** trails a thin bright edge on every fast swing and drags a wake when its point meets the water.
 
@@ -379,8 +379,8 @@ movement."
 - **The hand:** the carry's wrist hangs from the shoulder 0.17 out and 0.05 back (was 0.07 out, 0.09 forward), the arm a touch less straight
   (0.9 of its reach), so the fist sits out past the hip and the hilt beside the thigh, not over the stomach.
 - **The robe as cloth:** the seven rigid strips hung to the ankles all round, the front two right over the legs. Now phases 1 and 2 hang a
-  skirt (Core `NativeFallenRobe`, Runtime `NativeFallenCloth.cs`) from under the faulds: open across the front (nothing within 55 degrees),
-  a side panel each side to the knee, a long panel behind to mid-calf, slits between, pleated, the hem a little ragged; phase 2's shorter and
+  skirt (Core `NativeFallenRobe`, Runtime `NativeFallenCloth.cs`) from under the faulds: a narrow panel between the legs to above the knee
+  (the cloth seen from in front), open either side of it (nothing else within 55 degrees) so the legs show whole, a side panel each side to the knee, a long panel behind to mid-calf, slits between, pleated, the hem a little ragged; phase 2's shorter and
   burnt. It is a skinned renderer on the body's own skeleton (bind poses shared with the bake's body mesh), drawn with NOCTIEL's material and
   mirrored in the water from a bake each frame. Its paint map (the waist's two rows fixed, the rest moving) is registered by name and it is
   handed to the licensed cloth simulation through `NativeVisualCloth` (the local Magica bridge: the Skirt preset, capsules on the hips,
