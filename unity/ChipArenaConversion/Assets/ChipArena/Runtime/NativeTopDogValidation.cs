@@ -71,6 +71,47 @@ namespace ChipArena.UnityConversion
                 Setup();a.Dog.Meter=1;Cast(6);Step(NativeTopDog.Twirl+.2f);var f2=a.Dog.Feast;Step(f2.Release-Time+.05f);a.Hp=0;a.Seat.alive=false;Step(f2.Pop-Time+.05f);Check(b.Hp<=0&&b.Death?.style==NativeTopDog.Burst,"a dead Top Dog's victim still pops");
                 // A miss gives half the meter back.
                 Setup();b.Body.position=o+new Vector3(0,0,60);Physics.SyncTransforms();a.Dog.Meter=1;Cast(6);Step(NativeTopDog.Twirl+NativeTopDog.LassoReach/NativeTopDog.LassoSpeed+.2f);Check(a.Dog.Feast==null||a.Dog.Feast.Miss,"the lasso misses");Check(Math.Abs(a.Dog.Meter-NativeTopDog.MissRefund)<.02f,"half the meter back");
+                // ---- the chips (Core NativeDogChips) ----
+                void Give(string id,int n=1)=>a.Seat.chips[id]=n;
+                foreach(var id in NativeDogChips.Ids)Check(Content.chips.Any(c=>c.id==id&&ImplementedChip(c)),"live supported chip "+id);
+                // Bigger Mallet: it reaches what a plain mallet cannot, and the record says how big.
+                Setup();b.Body.position=o+new Vector3(0,0,3.7f);Physics.SyncTransforms();hp=b.Hp;Cast(shoot:true);Step(NativeTopDog.SwingLength[0]);Check(b.Hp==hp,"a plain mallet falls short at 3.7 m");
+                Setup();Give(NativeDogChips.BiggerMallet,2);b.Body.position=o+new Vector3(0,0,3.7f);Physics.SyncTransforms();hp=b.Hp;Cast(shoot:true);Step(NativeTopDog.SwingLength[0]);Check(b.Hp<hp&&a.Dog.Mallet==2,"Bigger Mallet reaches it, the record two sizes up");
+                // Hammerspace: the fourth swing that lands drops a piano on them.
+                Setup();Give(NativeDogChips.Hammerspace);for(int i=0;i<4;i++){b.StunEnd=0;b.StaggerImmune=0;b.Hp=(float)b.Stats["hp"];a.Dog.ComboUntil=Time+1;Cast(shoot:true);Step(NativeTopDog.SwingLength[a.Dog.CastStep]+.02f);}
+                var piano=a.DogFlights.FirstOrDefault(f=>f.Record.Kind==NativeTopDog.PropPiano);Check(piano!=null&&piano.Record.Hit==b.Seat.id,"the fourth hit pulls a piano out of nowhere");
+                piano.Record.Pos=Vec(b.Body.position-Vector3.up*.865f);piano.Record.LandAt=Time+.05f;b.Hp=(float)b.Stats["hp"];b.StunEnd=0;hp=b.Hp;Step(.1f);Check(b.Hp<=hp-NativeDogChips.PianoDamage*.8f&&b.StunEnd>Time,"the piano lands on them and flattens");
+                // Anvil Shower: three anvils, two smaller to the sides.
+                Setup();Give(NativeDogChips.AnvilShower);Cast(1);Step(NativeTopDog.AnvilRelease+.02f);Check(a.Dog.Props.Count(p=>p.Kind==NativeTopDog.PropAnvil)==3&&a.Dog.Props.Count(p=>p.Kind==NativeTopDog.PropAnvil&&p.Size>0)==2,"Anvil Shower drops three");
+                // Banana Bonanza: more peels in hand, and a peel that flies on with its victim.
+                Setup();Give(NativeDogChips.BananaBonanza,2);Step(.02f);Check(a.Dog.Peels==4&&a.Dog.PeelCap==4,"two more peels in hand");
+                Cast(2);Step(NativeTopDog.PeelRelease+.02f);var peel2=a.DogFlights.First(f=>f.Record.Kind==NativeTopDog.PropPeel);peel2.Record.To=Vec(b.Body.position-Vector3.up*.865f);peel2.Record.LandAt=Time;b.Grounded=true;Step(.05f);
+                Check(b.Down!=null&&a.DogFlights.Contains(peel2)&&!peel2.Landed&&peel2.Target==b.Seat.id,"the peel flies on with them to land again");
+                // Hot Sauce: it burns.
+                Setup();Give(NativeDogChips.HotSauce);Cast(3);hp=b.Hp;Step(1);Check(b.Hp<hp&&b.Dots.Keys.Any(x=>x.EndsWith(":fire"))&&a.Dog.Marks.Any(m=>m.Id==b.Seat.id&&m.Kind==NativeTopDog.Sauced)&&a.Dog.Sauce,"Hot Sauce sets them burning");
+                // Pie Volley: three pies.
+                Setup();Give(NativeDogChips.PieVolley);Cast(5);Step(NativeTopDog.PieRelease+.02f);Check(a.Dog.Props.Count(p=>p.Kind==NativeTopDog.PropPie)==3,"Pie Volley throws three");
+                // Knockout Glove: the whole line, and a splat against a wall.
+                Setup();Give(NativeDogChips.Knockout);var wall=GameObject.CreatePrimitive(PrimitiveType.Cube);wall.transform.SetParent(root.transform);wall.layer=PropLayer;wall.transform.position=o+new Vector3(0,1,6);wall.transform.localScale=new Vector3(8,4,.5f);Physics.SyncTransforms();
+                try
+                {
+                    Cast(4);Step(NativeTopDog.GloveRelease+.02f);var line=a.DogFlights.FirstOrDefault(f=>f.Line!=null);Check(line!=null&&line.Line.Any(x=>x.id==b.Seat.id)&&line.Record.Size<6,"the glove's line, stopped at the wall");
+                    hp=b.Hp;Step(NativeTopDog.GloveOut*2+.05f);Check(b.Hp<hp,"punched");b.Body.position=o+new Vector3(0,0,5.3f);Physics.SyncTransforms();b.StunEnd=0;Step(.05f);
+                    Check(a.Dog.Marks.Any(m=>m.Id==b.Seat.id&&m.Kind==NativeTopDog.Walled)&&b.StunEnd>Time,"punched into the wall, splatted on it");
+                }
+                finally{UnityEngine.Object.DestroyImmediate(wall);Physics.SyncTransforms();}
+                // Double Boing: a second bounce in hand, spent by the second; the landing flattens.
+                Setup();Give(NativeDogChips.DoubleBoing);Cast(q:true);Check(a.DogBoingSecond&&a.Dog.Ready[0]-Time<.5f,"a second bounce in hand");Step(.4f);Cast(q:true);Check(!a.DogBoingSecond&&a.Dog.Ready[0]-Time>5,"the second spends it");
+                Setup();Give(NativeDogChips.DoubleBoing);a.DogAirborne=true;a.DogAirAt=Time-1;a.Grounded=true;hp=b.Hp;Step(.02f);Check(b.Hp<hp&&a.Dog.Marks.Any(m=>m.Id==b.Seat.id&&m.Kind==NativeTopDog.Pancake),"the landing flattens");
+                // Second Helpings: the meter, and the pop's hot dogs that heal.
+                Setup();Give(NativeDogChips.SecondHelpings);a.Dog.Meter=0;Step(1);Check(Math.Abs(a.Dog.Meter-NativeTopDog.MeterPerSecond*NativeDogChips.HelpingMeter)<.003f,"the meter fills faster");
+                a.Dog.Meter=1;Cast(6);Step(NativeTopDog.Twirl+.2f);var f3=a.Dog.Feast;Check(f3!=null&&f3.Catch>-50,"caught");Step(f3.Pop-Time+.03f);Check(a.Dog.Props.Count(p=>p.Kind==NativeTopDog.PropSnack)==NativeDogChips.Snacks,"the pop throws out hot dogs");
+                var snack=a.DogFlights.First(f=>f.Record.Kind==NativeTopDog.PropSnack);snack.Record.LandAt=Time;snack.Record.To=Vec(a.Body.position-Vector3.up*.865f);a.Hp=50;Step(.05f);Check(a.Hp>50&&!a.DogFlights.Contains(snack),"walking over one heals");
+                // Toon Logic: flattened instead of dying, back up, once.
+                Setup();Give(NativeDogChips.ToonLogic);Damage(a,b,a.Hp+50,Vector3.forward,0,false);Check(a.Hp==1&&a.DogToonUsed&&a.DogToonUntil>Time&&a.DogMarks.Any(m=>m.Id==a.Seat.id&&m.Kind==NativeTopDog.Pancake),"Toon Logic flattens it instead");
+                Step(NativeDogChips.ToonFlat+.05f);Check(a.Hp>=(float)a.Stats["hp"]*NativeDogChips.ToonHealth-.01f&&a.DogToonUntil==0&&b.Hp<(float)b.Stats["hp"],"it springs back up and knocks them away");
+                Step(.4f);Damage(a,b,a.Hp+50,Vector3.forward,0,false);Check(a.Hp<=0,"once a round");
+                {var cf=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=NetworkFrame()})).frame;Check(cf.Valid(Content),"the chips' record crosses the codec");}
                 // A bot spends a full meter.
                 Setup();a.Dog.Meter=1;var bot=new InputFrame();BotDog(a,ref bot,b.Body.position,2.5f,true);Check(bot.SirenAbility==6,"a bot uses the ultimate");
                 var empty=NativeFrameCodec.Clone(NetworkFrame());Check(empty.snapshot.Actors.First(x=>x.Id==b.Seat.id).Dog==null&&empty.snapshot.Actors.First(x=>x.Id==a.Seat.id).Dog?.Feast==null,"a null kit and an idle feast survive the clone");

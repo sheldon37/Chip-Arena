@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
         public const int Rate=48000;public const float Peak=.82f;
         public const string Prefix="topdog.";
         /// <summary>Every sound, by id.</summary>
-        public static readonly string[] Ids={"bonk","slam","swing","boing","zip","windup","slide-up","slide-down","whistle-fall","clang","slip","splat","squirt","sproing","punch","pie","gulp","burp","inflate","pop","bell","honk","tweet","sizzle","fanfare","drumroll","crash","poof","squeak","wobble","hiccup","whirl","stretch","chomp"};
+        public static readonly string[] Ids={"bonk","slam","swing","boing","zip","windup","slide-up","slide-down","whistle-fall","clang","slip","splat","squirt","sproing","punch","pie","gulp","burp","inflate","pop","bell","honk","tweet","sizzle","fanfare","drumroll","crash","poof","squeak","wobble","hiccup","whirl","stretch","chomp","piano"};
         public static bool Known(string id)=>Array.IndexOf(Ids,id)>=0;
         /// <summary>The sound's samples (a new array each call; the runtime keeps one clip per id).</summary>
         public static float[] Samples(string id){lock(Gate)return Make(id);}
@@ -56,6 +56,7 @@ namespace ChipArena.UnityConversion
                 case "hiccup":Noise(b,0,.008f,1000,8000,1,.5f);Chirp(b,.004f,.05f,940,600,.6f,Wave.Tri,1);break;
                 case "whirl":Whirl(b);break;
                 case "stretch":Chirp(b,0,.5f,180,520,.35f,Wave.Saw,1,vibrato:.05f,vibratoHz:11,cutoff:1400);break;
+                case "piano":Piano(b);break;
                 case "chomp":Noise(b,0,.02f,600,5000,1,.5f);Thump(b,.005f,150,30,.6f);Gulp(b,.06f,260,150,.07f,.4f);break;
                 default:return Array.Empty<float>();
             }
@@ -71,7 +72,7 @@ namespace ChipArena.UnityConversion
                 case "squirt":return 1.6f;case "sproing":return .65f;case "punch":return .42f;case "pie":return .7f;case "gulp":return .46f;case "burp":return .72f;
                 case "inflate":return 1.35f;case "pop":return .7f;case "bell":return 1.6f;case "honk":return .66f;case "tweet":return .62f;case "sizzle":return 2.2f;
                 case "fanfare":return 1.15f;case "drumroll":return 1.3f;case "crash":return 2.2f;case "poof":return .6f;case "squeak":return .14f;case "wobble":return .85f;
-                case "hiccup":return .26f;case "whirl":return .7f;case "stretch":return .55f;case "chomp":return .2f;default:return .1f;
+                case "hiccup":return .26f;case "whirl":return .7f;case "stretch":return .55f;case "chomp":return .2f;case "piano":return 2.4f;default:return .1f;
             }
         }
 
@@ -238,6 +239,13 @@ namespace ChipArena.UnityConversion
             }
         }
         // A struck dinner bell: a bright triangle with its clapper's click.
+        // A grand piano landing: a low cluster struck all at once (the keys under it), the case's thump, the strings ringing out.
+        private static void Piano(Buf b)
+        {
+            float[] notes={55,82.4f,98,116.5f,130.8f,155.6f,185,233.1f};
+            for(int i=0;i<notes.Length;i++){float f=notes[i],g=.55f-.04f*i;Tone(b,.004f*i,2.3f,f,1.6f+.25f*i,g,Wave.Tri);Tone(b,.004f*i,1.6f,f*2.003f,2.6f,g*.4f,Wave.Sine);Tone(b,.004f*i,1,f*3.01f,4,g*.18f,Wave.Sine);}
+            Thump(b,0,58,6,1);Noise(b,0,.18f,120,2600,14,.75f);Noise(b,.01f,.05f,2000,9000,40,.3f);
+        }
         private static void Bell(Buf b,float at,float f0,float amp)
         {
             float[] r={1,2,2.76f,5.4f},g={1,.4f,.3f,.12f},d={2.2f,3,4,7};

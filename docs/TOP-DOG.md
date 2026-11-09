@@ -99,6 +99,53 @@ Its sound is its own toon cues, no music bed.
 - **The cameras:** the caster's twirl and throw, then side-on to both through the feeding and the swelling to the pop; the victim's
   own feeding and swelling, face on.
 
+## The chips
+
+The owner's follow-up, 2026-11-08: "we can also make exclusive chips for this character; about 10 of them with their own really well
+animated effects when selected. Make them significant effects too"
+
+Ten chips of its own, a signature set like the Bombadier's: their own tier (`topdog`, "TOP DOG SPECIAL"), offered only to the Top Dog
+and likely in its drafts (two guaranteed, 85%: the content's `exclusiveOdds`). Rules, numbers and copy: Core `NativeDogChips`; the rules
+Runtime `NativeTopDogAuthority.cs` (Claude builds this class's rules at the owner's word).
+
+| Chip (`id`) | Copies | What it does |
+| --- | --- | --- |
+| Bigger Mallet (`dog-bigger-mallet`) | 2 | The mallet 25% bigger a copy (you can see it): +0.5 m reach and about 10 degrees more arc, the slam 0.5 m wider, +12% mallet damage |
+| Hammerspace (`dog-hammerspace`) | 1 | Every 4th swing that lands pulls a grand piano out of nowhere onto the first one it struck: 0.55 s later, 30 within 2.3 m, flattened 1.2 s |
+| Anvil Shower (`dog-anvil-shower`) | 1 | Anvil drops three: two smaller ones 2.6 m either side across the aim, 0.18 s apart, 20 each, flattened 0.8 s |
+| Banana Bonanza (`dog-banana-bonanza`) | 2 | +1 peel charge and 2 more peels out a copy; a slip slides 60% farther and the peel flies on with them to land again (once, never under the same one) |
+| Hot Sauce (`dog-hot-sauce`) | 1 | The Mustard Blaster squirts hot sauce: +30%, burning 8 a second for 3 s, its puddles burn 6 a second; steam out of the victims' ears |
+| Pie Volley (`dog-pie-volley`) | 1 | Three pies in a fan (10 degrees apart), the cream on 50% longer |
+| Knockout Glove (`dog-knockout`) | 1 | The glove reaches 17 m (to a wall) and punches everyone in its line; one sent into a wall within 0.6 s splats on it: 15 more, stunned 1 s |
+| Double Boing (`dog-double-boing`) | 1 | Boing! bounces again within 3 s, in the air too; the landing reaches 3.2 m and flattens for 0.6 s instead of a knock-up |
+| Second Helpings (`dog-second-helpings`) | 1 | The meter fills 35% faster; the lasso 60% wider and 24 m long; the pop throws out 6 hot dogs, each a heal of 8 for the Top Dog who walks over it (10 s) |
+| Toon Logic (`dog-toon-logic`) | 1 | Once a round (and again after a death), a blow that would kill flattens it instead: 1.5 s flat and untouchable, then back up with 35% health, 20 and a throw to enemies within 3 m |
+
+Every number is in `NativeDogChips`. The record carries what the look needs (`Mallet`, `PeelCap`, `Sauce`, `Wide`, `Bounce`) and the new
+props (`piano`, `snack`), marks (`sauced`, `walled`) and hits (`piano`, `wall`, `munch`, `toon-flat`, `toon-pop`; PLUNK!, SPLAT!, MUNCH!,
+SPLUT!, TA-DA!). A new synthesized sound, the piano's crash (`piano`).
+
+**The card** (Runtime `NativeDogChipArt.Face`): a diner card, a red and white check along the top, a mustard zigzag along the foot, bulbs
+chasing round the edge as on the intro's sign, each chip's emblem in the core and large behind the text, and its own small loop.
+
+**The pick** (`NativeDogChipArt.Reveal` and `Pose`, over the INSTALLED card; its toon cues in Core `NativeTopDogSounds.Picks`): a gag for
+each, the card itself squashed, stretched, knocked and bounced in time:
+
+- Bigger Mallet: a mallet as big as the card comes over the top and BONKS it flat; stars; it lifts away bigger still.
+- Hammerspace: a hole opens beside the card, a gloved hand pulls out a mallet, an anvil, then a grand piano that drops on it: PLUNK!, keys
+  and notes flying.
+- Anvil Shower: three shadows, three anvils, CLANG CLANG CLANG, the card knocked down further each time.
+- Banana Bonanza: peels rain under the card; it slips, turns over nearly flat and scrambles back up: WHOOPS!
+- Hot Sauce: a bottle swings in and squirts along the card; flames climb out under it, steam whistles off it: HOT HOT HOT!
+- Pie Volley: three pies SPLAT across the screen in front of the card, cream sliding down, then a squeegee wipes them off.
+- Knockout Glove: a scissor arm springs out of the left and POWs the card off to the right; stars round it as it wobbles back.
+- Double Boing: a giant spring throws the card up; it lands, boings, boings again.
+- Second Helpings: a dinner bell, DING!; a silver cloche comes down and lifts in steam; hot dogs shower over the card: SECONDS!
+- Toon Logic: an anvil flattens the card to a pancake; a bicycle pump puffs it back up in three strokes; it pops round with stars and a
+  halo: TA-DA!
+
+Reduced effects keeps one soft glow. The draft holds 5.2 s on one of these (`NativeDogChips.RevealSeconds`).
+
 ## Sound
 
 Every cue is a toon sound synthesized in C# (Core `NativeToonSynth`, 34 of them: bonk, slam, boing, slide whistles, the anvil's whistle
@@ -133,6 +180,7 @@ Replicated in snapshots, late join, death records and the killcam like the Bomba
 | Poses | `Core/NativeVisualMotion.cs` (`TopDog`, `DogCast`) |
 | The burst | `Core/NativeSmashGib.cs` (`Burst`), `Runtime/NativeSmashPresentation.cs` |
 | Sandbox preview | `Core/NativeTopDogPreview.cs` |
+| The chips | `Core/NativeDogChips.cs`; the card and the pick `Runtime/NativeDogChipArt.cs`; the rules in `Runtime/NativeTopDogAuthority.cs` |
 | Checks | `Tests/TopDogChecks.cs` (`CoreTests --top-dog`) |
 
 ## To see it

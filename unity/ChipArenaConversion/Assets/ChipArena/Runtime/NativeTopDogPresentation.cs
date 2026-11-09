@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
         private Mesh DogFixed(string id)
         {
             int tier=LowGraphics?1:0;string key=id+tier;if(dogMeshes.TryGetValue(key,out var m))return m;
-            NativeFallenKit k=id=="anvil"?NativeTopDogModels.Anvil(tier):id=="peel"?NativeTopDogModels.BananaPeel(tier):id=="pie"?NativeTopDogModels.Pie(tier):id=="glove"?NativeTopDogModels.Glove(tier):id=="bottle"?NativeTopDogModels.Bottle(tier):id=="star"?NativeTopDogModels.StarShape(tier):null;
+            NativeFallenKit k=id=="anvil"?NativeTopDogModels.Anvil(tier):id=="peel"?NativeTopDogModels.BananaPeel(tier):id=="pie"?NativeTopDogModels.Pie(tier):id=="glove"?NativeTopDogModels.Glove(tier):id=="bottle"?NativeTopDogModels.Bottle(tier):id=="star"?NativeTopDogModels.StarShape(tier):id=="piano"?NativeTopDogModels.Piano(tier):null;
             if(k==null)return null;m=FbKitMesh(k,Matrix4x4.identity,"Top Dog "+id,out _);dogMeshes[key]=m;return m;
         }
         // The moving ones (a wiggling hot dog, the spring, the scissor arm, the links), rebuilt each frame into a pool.
@@ -178,8 +178,23 @@ namespace ChipArena.UnityConversion
                 {
                     if(time>=p.Until)return;float h=NativeDogView.AnvilDrop(p,time,out float squash);float shrink=1-Mathf.Clamp01((time-(p.Until-.3f))/.3f);if(shrink<=.01f)return;
                     var fwd=new Vector3(dir.x,0,dir.z);if(fwd.sqrMagnitude<1e-4f)fwd=Vector3.forward;float tilt=time<p.LandAt?Mathf.Sin(time*3+p.Id)*6:0;
-                    DogDraw(DogFixed("anvil"),Matrix4x4.TRS(at+Vector3.up*h,Quaternion.LookRotation(fwd.normalized,Vector3.up)*Quaternion.Euler(tilt,p.Id*37%360,0),new Vector3(1.35f/Mathf.Sqrt(squash),1.35f*squash,1.35f/Mathf.Sqrt(squash))*shrink));
+                    DogDraw(DogFixed("anvil"),Matrix4x4.TRS(at+Vector3.up*h,Quaternion.LookRotation(fwd.normalized,Vector3.up)*Quaternion.Euler(tilt,p.Id*37%360,0),new Vector3(1.35f/Mathf.Sqrt(squash),1.35f*squash,1.35f/Mathf.Sqrt(squash))*shrink*(p.Size>0?p.Size:1)));
                     break;
+                }
+                case NativeTopDog.PropPiano:
+                {
+                    // Hammerspace's grand piano: down out of nowhere, a squash on landing, then it sits there till it goes in a puff.
+                    if(time>=p.Until)return;float h=NativeDogView.AnvilDrop(p,time,out float squash);float shrink=1-Mathf.Clamp01((time-(p.Until-.3f))/.3f);if(shrink<=.01f)return;
+                    var fwd=new Vector3(dir.x,0,dir.z);if(fwd.sqrMagnitude<1e-4f)fwd=Vector3.forward;float tilt=time<p.LandAt?Mathf.Sin(time*4+p.Id)*9:0;float grow=Mathf.Clamp01((time-p.At)/.12f);
+                    DogDraw(DogFixed("piano"),Matrix4x4.TRS(at+Vector3.up*h,Quaternion.LookRotation(-fwd.normalized,Vector3.up)*Quaternion.Euler(tilt,0,tilt*.6f),new Vector3(1/Mathf.Sqrt(squash),squash,1/Mathf.Sqrt(squash))*shrink*grow));
+                    break;
+                }
+                case NativeTopDog.PropSnack:
+                {
+                    // Second Helpings' hot dogs: flying out of the pop, then wiggling on the floor, blinking out at the end.
+                    if(time>=p.Until)return;var hn=NativeDogView.PropAt(p,time);var here=new Vector3(hn.X,hn.Y,hn.Z);bool down=time>=p.LandAt;float left=p.Until-time;if(left<1.5f&&Mathf.Repeat(left*6,1)<.35f)return;
+                    var turn=down?Quaternion.Euler(0,p.Id*47%360+Mathf.Sin(time*3+p.Id)*12,0):Quaternion.Euler((time-p.At)*500,(time-p.At)*200+p.Id*40,0);float bob=down?.06f+.03f*Mathf.Abs(Mathf.Sin(time*5+p.Id)):0;
+                    DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,time*9+p.Id,down?.6f:1,0,1,tier)),Matrix4x4.TRS(here+Vector3.up*bob,turn,Vector3.one*1.1f));break;
                 }
                 case NativeTopDog.PropPeel:
                 {
@@ -205,18 +220,19 @@ namespace ChipArena.UnityConversion
                 case NativeTopDog.PropPuddle:
                 {
                     if(time>=p.Until)return;float grow=Mathf.Clamp01((time-p.At)/.25f),dry=1-Mathf.Clamp01((time-(p.Until-.6f))/.6f);float r=p.Size*grow*dry;if(r<.02f)return;
-                    DogDraw(DogPuddleMesh(),Matrix4x4.TRS(at+Vector3.up*.012f,Quaternion.Euler(0,p.Id*71%360,0),new Vector3(r,1,r*.85f)));break;
+                    DogDraw(DogPuddleMesh(p.Hit==1),Matrix4x4.TRS(at+Vector3.up*.012f,Quaternion.Euler(0,p.Id*71%360,0),new Vector3(r,1,r*.85f)));break;
                 }
             }
         }
         // A flat mustard puddle of radius 1 (a squashed blob with lobes), built once.
-        private Mesh dogPuddle;
-        private Mesh DogPuddleMesh()
+        private Mesh dogPuddle,dogSaucePuddle;
+        /// <summary>The puddle mesh: mustard, or Hot Sauce's red.</summary>
+        private Mesh DogPuddleMesh(bool sauce=false)
         {
-            if(dogPuddle!=null)return dogPuddle;var k=new NativeFallenKit();var ring=new NVector[28];var lid=new NVector[28];
+            if(sauce?dogSaucePuddle!=null:dogPuddle!=null)return sauce?dogSaucePuddle:dogPuddle;var k=new NativeFallenKit();var ring=new NVector[28];var lid=new NVector[28];
             for(int i=0;i<28;i++){float a=i*Mathf.PI*2/28,r=1+.14f*Mathf.Sin(a*3+1)+.08f*Mathf.Sin(a*5);ring[i]=new NVector(Mathf.Cos(a)*r,0,Mathf.Sin(a)*r);lid[i]=new NVector(ring[i].X*.92f,.018f,ring[i].Z*.92f);}
-            k.Loft(new List<NVector[]>{ring,lid},new[]{NVector.Zero,new NVector(0,.018f,0)},NativeTopDogModels.Mustard,line:false,capLast:true);k.Finish();
-            return dogPuddle=FbKitMesh(k,Matrix4x4.identity,"Top Dog puddle",out _);
+            k.Loft(new List<NVector[]>{ring,lid},new[]{NVector.Zero,new NVector(0,.018f,0)},sauce?NativeTopDogModels.Ketchup:NativeTopDogModels.Mustard,line:false,capLast:true);k.Finish();
+            var made=FbKitMesh(k,Matrix4x4.identity,sauce?"Top Dog sauce":"Top Dog puddle",out _);if(sauce)dogSaucePuddle=made;else dogPuddle=made;return made;
         }
 
         // ---- All You Can Eat ----
@@ -368,6 +384,7 @@ namespace ChipArena.UnityConversion
             float b=shot.Blend;view.transform.SetPositionAndRotation(Vector3.Lerp(view.transform.position,position+new Vector3(-dx,dy,0),b),Quaternion.Slerp(view.transform.rotation,rotation,b));view.fieldOfView=Mathf.Lerp(view.fieldOfView,shot.Fov,b);FirstPerson=false;AimHeld=false;return true;
         }
         /// <summary>The mallet's share shown in the hands this moment (hidden away while the hands are busy with a prop or the feast).</summary>
-        internal static float TopDogMallet(Actor a,float time)=>a?.SourceSpec!=NativeTopDog.Spec?1:NativeDogView.MalletShown(NativeDogView.Of(a),time);
+        /// <summary>The held mallet's scale: in or out of hammerspace, and Bigger Mallet's copies (Core NativeDogChips).</summary>
+        internal static float TopDogMallet(Actor a,float time){if(a?.SourceSpec!=NativeTopDog.Spec)return 1;var k=NativeDogView.Of(a);return NativeDogView.MalletShown(k,time)*(1+NativeDogChips.MalletGrow*(k?.Mallet??0));}
     }
 }

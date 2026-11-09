@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     // steps it at 60 Hz and writes NativeTopDogKit, the only thing guests, late joiners and the killcam see. The mallet is its own left click (the
     // shared melee rules are the four standard blades'); Q, E and 1 to 5 are cooldown slots; 6 spends the meter on All You Can Eat.
     internal sealed class DogFlight
-    {public NativeDogProp Record;public bool Landed,Done;public float Tick;public int Target;public bool TargetMinion;}
+    {public NativeDogProp Record;public bool Landed,Done;public float Tick;public int Target;public bool TargetMinion;public List<(int id,bool minion)> Line;}
     public sealed partial class NativePilot
     {
         public NativeTopDogKit Dog=new NativeTopDogKit{Peels=NativeTopDog.PeelCharges,Ready=new float[NativeTopDog.Slots]};
@@ -23,6 +23,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The Top Dog feeding on this pilot (null: none).</summary>
         internal NativePilot DogHolder;
         internal NativeMinion DogMinion;
+        // The chips' (Core NativeDogChips): mallet hits toward the piano, the peels held, the second bounce's window, Toon Logic's flat, punched pilots who may hit a wall.
+        internal int DogHammer,DogPeelCap=NativeTopDog.PeelCharges;internal bool DogBoingSecond,DogToonUsed;internal float DogBoingAt=-100,DogBoingUntil,DogToonUntil;
+        internal readonly List<(int id,float until,Vector3 dir)> DogSplats=new List<(int,float,Vector3)>();
     }
     public sealed partial class NativeArena
     {
@@ -41,6 +44,13 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether pilot `id` is caught in someone's feast.</summary>
         private bool DogHeld(NativePilot q)=>q.DogHolder!=null;
         private float DogScale(NativePilot p)=>NativeAbilityRules.Scale(p.Stats,false);
+        // ---- the chips (Core NativeDogChips; owner 2026-11-08: ten of its own, significant) ----
+        private int DogStacks(NativePilot p,string id,int cap=1)=>p.Seat.spec==NativeTopDog.Spec&&Has(p,id)&&p.Seat.chips.TryGetValue(id,out int n)?Math.Min(cap,Math.Max(0,n)):0;
+        private bool DogChip(NativePilot p,string id)=>DogStacks(p,id)>0;
+        private int DogPeelCharges(NativePilot p)=>NativeTopDog.PeelCharges+NativeDogChips.BananaCharges*DogStacks(p,NativeDogChips.BananaBonanza,NativeDogChips.BananaMax);
+        private int DogMaxPeels(NativePilot p)=>NativeTopDog.MaxPeels+NativeDogChips.BananaOut*DogStacks(p,NativeDogChips.BananaBonanza,NativeDogChips.BananaMax);
+        private float DogLassoReach(NativePilot p)=>DogChip(p,NativeDogChips.SecondHelpings)?NativeDogChips.HelpingReach:NativeTopDog.LassoReach;
+        private float DogCream(NativePilot p)=>DogChip(p,NativeDogChips.PieVolley)?NativeDogChips.PieCream:1;
         private void DogMotion(NativePilot p,ref Vector3 v)
         {
             if(p.Seat.spec!=NativeTopDog.Spec)return;var k=p.Dog;
@@ -96,14 +106,15 @@ namespace ChipArena.UnityConversion
                 case NativeTopDog.Feast:
                 {
                     k.Meter=0;p.DogPopped=false;p.DogFed=false;p.DogTaken=0;var hand=p.Body.position+Vector3.up*.7f;
-                    k.Feast=new NativeDogFeast{At=Time,Throw=Time+NativeTopDog.Twirl,Until=Time+NativeTopDog.Twirl+NativeTopDog.LassoReach/NativeTopDog.LassoSpeed+NativeTopDog.After,Dir=Vec(p.DogFacing),From=Vec(hand),Lasso=Vec(hand),LassoAt=Time};
+                    k.Feast=new NativeDogFeast{At=Time,Throw=Time+NativeTopDog.Twirl,Until=Time+NativeTopDog.Twirl+DogLassoReach(p)/NativeTopDog.LassoSpeed+NativeTopDog.After,Dir=Vec(p.DogFacing),From=Vec(hand),Lasso=Vec(hand),LassoAt=Time};
                     k.CastRelease=k.Feast.Throw;k.CastUntil=k.Feast.Until;break;
                 }
             }
             if(slot>=0)
             {
                 if(slot==3){k.Peels--;if(p.DogPeelReady<=0)p.DogPeelReady=Time+NativeTopDog.Cooldown[3]*(float)p.Stats["abilityCooldown"];k.Ready[3]=k.Peels>0?0:p.DogPeelReady;}
-                else k.Ready[slot]=Time+NativeTopDog.Cooldown[slot]*(float)p.Stats["abilityCooldown"];
+                else if(slot==0&&DogChip(p,NativeDogChips.DoubleBoing)&&!p.DogBoingSecond){p.DogBoingSecond=true;p.DogBoingAt=Time;p.DogBoingUntil=Time+NativeDogChips.BoingWindow;k.Ready[0]=Time+NativeDogChips.BoingAgain;}
+                else{if(slot==0)p.DogBoingSecond=false;k.Ready[slot]=Time+NativeTopDog.Cooldown[slot]*(float)p.Stats["abilityCooldown"];}
             }
             p.Ready=kind==NativeTopDog.Mallet?k.CastUntil-.04f:k.CastUntil;
             Emit(EventKind.AbilityCast,p,0,p.Body.position,0,kind);
@@ -112,7 +123,7 @@ namespace ChipArena.UnityConversion
         // ---- who can be hit, and hitting them ----
         private IEnumerable<NativePilot> DogPilots(NativePilot p){foreach(var q in Pilots.ToArray())if(q!=p&&q.Hp>0&&q.Seat.connected&&CanHit(p,q)&&!HubInside(q.Body.position))yield return q;}
         private IEnumerable<NativeMinion> DogMinions(NativePilot p){foreach(var m in Minions.ToArray())if(m.Hp>0&&CanHit(p,m)&&!HubInside(m.Body.position))yield return m;}
-        private void DogMeter(NativePilot p,float share){if(p.Hp>0&&DogAllowed(p)&&p.Dog.Feast==null)p.Dog.Meter=Math.Min(1,p.Dog.Meter+share);}
+        private void DogMeter(NativePilot p,float share){if(p.Hp>0&&DogAllowed(p)&&p.Dog.Feast==null)p.Dog.Meter=Math.Min(1,p.Dog.Meter+share*(DogChip(p,NativeDogChips.SecondHelpings)?NativeDogChips.HelpingMeter:1));}
         private float DogHurt(NativePilot p,NativePilot q,float amount,Vector3 dir,string kind,float impulse=0,bool melee=false)
         {
             float actual=Damage(q,p,amount*(melee?(float)p.Stats["damage"]:DogScale(p)),dir,impulse,false,primary:melee,melee:melee,weaponHit:melee,damageKind:"topdog-"+kind,hitPoint:q.Body.position+Vector3.up*.3f);
@@ -162,7 +173,7 @@ namespace ChipArena.UnityConversion
                 case NativeTopDog.Mallet:DogSwing(p);break;
                 case NativeTopDog.Boing:
                 {
-                    DogProp(p,NativeTopDog.PropSpring,GroundPoint(feet),Time,Time+.9f,out _);DogHit(p,NativeTopDog.HitBoing,feet,Vector3.up);
+                    DogProp(p,NativeTopDog.PropSpring,p.Grounded?GroundPoint(feet):feet,Time,Time+.9f,out _);DogHit(p,NativeTopDog.HitBoing,feet,Vector3.up);
                     BombLaunch(p,p,p.DogFacing*NativeTopDog.BoingAlong,Mathf.Sqrt(2*23*NativeTopDog.BoingHeight),0);p.DogAirborne=true;p.DogAirAt=Time;break;
                 }
                 case NativeTopDog.Zip:
@@ -175,21 +186,28 @@ namespace ChipArena.UnityConversion
                 }
                 case NativeTopDog.Anvil:
                 {
-                    float land=Time+NativeTopDog.AnvilFall;DogProp(p,NativeTopDog.PropAnvil,p.DogPoint,land,land+NativeTopDog.AnvilStays,out var f);f.Tick=land;break;
+                    float land=Time+NativeTopDog.AnvilFall;DogProp(p,NativeTopDog.PropAnvil,p.DogPoint,land,land+NativeTopDog.AnvilStays,out var f);f.Tick=land;
+                    if(DogChip(p,NativeDogChips.AnvilShower))
+                    {
+                        var across=new Vector3(p.DogAim.x,0,p.DogAim.z);if(across.sqrMagnitude<1e-4f)across=p.DogFacing;var side=Vector3.Cross(Vector3.up,across.normalized);
+                        for(int i=0;i<2;i++){float at=land+NativeDogChips.ShowerGap*(i+1);var r2=DogProp(p,NativeTopDog.PropAnvil,GroundPoint(p.DogPoint+side*((i==0?-1:1)*NativeDogChips.ShowerSide)+Vector3.up*.5f),at,at+NativeTopDog.AnvilStays,out var f2);r2.Size=.75f;f2.Tick=at;}
+                    }
+                    break;
                 }
                 case NativeTopDog.Peel:
                 {
                     float t=NativeTopDog.PeelFlight;var r=DogProp(p,NativeTopDog.PropPeel,hand,Time+t,Time+t+NativeTopDog.PeelLife,out var f);
                     r.Vel=Vec((p.DogPoint-hand)/t+Vector3.up*(23*t/2));r.To=Vec(p.DogPoint);
-                    var peels=p.DogFlights.Where(x=>x.Record.Kind==NativeTopDog.PropPeel).ToList();while(peels.Count>NativeTopDog.MaxPeels){p.DogFlights.Remove(peels[0]);peels.RemoveAt(0);}
+                    var peels=p.DogFlights.Where(x=>x.Record.Kind==NativeTopDog.PropPeel).ToList();while(peels.Count>DogMaxPeels(p)){p.DogFlights.Remove(peels[0]);peels.RemoveAt(0);}
                     break;
                 }
                 case NativeTopDog.Mustard:
                 {
-                    var r=DogProp(p,NativeTopDog.PropSquirt,hand,Time,k.CastUntil,out _);r.Dir=Vec(p.DogAim);r.Size=NativeTopDog.MustardReach;p.DogTick=Time;p.DogPuddleTick=Time+.15f;break;
+                    var r=DogProp(p,NativeTopDog.PropSquirt,hand,Time,k.CastUntil,out _);r.Dir=Vec(p.DogAim);r.Size=NativeTopDog.MustardReach;r.Hit=DogChip(p,NativeDogChips.HotSauce)?1:0;p.DogTick=Time;p.DogPuddleTick=Time+.15f;break;
                 }
                 case NativeTopDog.Glove:
                 {
+                    if(DogChip(p,NativeDogChips.Knockout)){DogKnockout(p,hand);break;}
                     var aim=p.DogAim;float reach=NativeTopDog.GloveReach;int victim=0;bool minion=false;
                     var hit=SweepNative(hand,aim*reach,NativeTopDog.GloveRadius,c=>c!=p.Collider&&(c.GetComponent<NativePilotBody>()?.Pilot is NativePilot q?q.Hp>0&&CanHit(p,q):c.GetComponent<NativeMinionBody>()?.Minion is NativeMinion m?m.Hp>0&&CanHit(p,m):!c.isTrigger));
                     if(hit.HasValue){reach=Math.Max(.3f,hit.Value.Distance);var q=hit.Value.Collider.GetComponent<NativePilotBody>()?.Pilot;var m=hit.Value.Collider.GetComponent<NativeMinionBody>()?.Minion;if(q!=null)victim=q.Seat.id;else if(m!=null){victim=m.Id;minion=true;}}
@@ -199,35 +217,40 @@ namespace ChipArena.UnityConversion
                 }
                 case NativeTopDog.Pie:
                 {
-                    var r=DogProp(p,NativeTopDog.PropPie,hand,-100,Time+NativeTopDog.PieMaxFlight,out var f);r.Vel=Vec(p.DogAim*NativeTopDog.PieSpeed+Vector3.up*1.5f);break;
+                    int pies=DogChip(p,NativeDogChips.PieVolley)?NativeDogChips.Pies:1;
+                    for(int i=0;i<pies;i++){var aim=Quaternion.AngleAxis((i-(pies-1)*.5f)*NativeDogChips.PieSpread*Mathf.Rad2Deg,Vector3.up)*p.DogAim;var r=DogProp(p,NativeTopDog.PropPie,hand,-100,Time+NativeTopDog.PieMaxFlight,out _);r.Vel=Vec(aim*NativeTopDog.PieSpeed+Vector3.up*1.5f);}
+                    break;
                 }
             }
         }
         private void DogSwing(NativePilot p)
         {
             var k=p.Dog;int step=Math.Max(0,Math.Min(2,k.CastStep));var at=p.Body.position;var f=p.DogFacing;
-            var slam=GroundPoint(at+f*NativeTopDog.SlamAhead);float damage=NativeTopDog.SwingDamage[step];int first=0;
+            int big=DogStacks(p,NativeDogChips.BiggerMallet,NativeDogChips.MalletMax);var slam=GroundPoint(at+f*(NativeTopDog.SlamAhead+.25f*big));float damage=NativeTopDog.SwingDamage[step]*(1+NativeDogChips.MalletDamage*big);int first=0;var firstAt=Vector3.zero;
             bool Inside(Vector3 q)
             {
-                if(step==2){var s=q-slam;if(new Vector2(s.x,s.z).magnitude<=NativeTopDog.SlamRadius+.35f&&s.y>-.6f&&s.y<2.4f)return true;}
-                return DogCone(at,f,q,NativeTopDog.SwingReach[step],NativeTopDog.SwingArc[step]);
+                if(step==2){var s=q-slam;if(new Vector2(s.x,s.z).magnitude<=NativeTopDog.SlamRadius+.35f+NativeDogChips.MalletSlam*big&&s.y>-.6f&&s.y<2.4f)return true;}
+                return DogCone(at,f,q,NativeTopDog.SwingReach[step]+NativeDogChips.MalletReach*big,NativeTopDog.SwingArc[step]+NativeDogChips.MalletArc*big);
             }
             foreach(var q in DogPilots(p))
             {
                 if(!Inside(q.Body.position)||!MeleeVisible(at+Vector3.up*.3f,q.Body.position,p,q.Collider))continue;
-                float actual=DogHurt(p,q,damage,q.Body.position-at,NativeTopDog.Mallet,step==2?0:(float)p.Weapon.impulse,true);if(actual<=0)continue;if(first==0)first=q.Seat.id;
+                float actual=DogHurt(p,q,damage,q.Body.position-at,NativeTopDog.Mallet,step==2?0:(float)p.Weapon.impulse,true);if(actual<=0)continue;if(first==0){first=q.Seat.id;firstAt=q.Body.position;}
                 if(step==2)DogPancake(p,q,NativeTopDog.PancakeSeconds);else StaggerMelee(q,NativeMeleeRules.HitStun(p.Weapon,(float)p.Stats["attackRate"]));
                 DogHit(p,step==2?NativeTopDog.HitSlam:NativeTopDog.HitBonk,q.Body.position+Vector3.up*.55f,q.Body.position-at,q.Seat.id);
             }
             foreach(var m in DogMinions(p))
             {
                 if(!Inside(m.Body.position)||!MeleeVisible(at+Vector3.up*.3f,m.Body.position,p,m.Collider))continue;
-                if(DogHurt(p,m,damage,m.Body.position-at,NativeTopDog.Mallet,0,true)<=0)continue;if(first==0)first=m.Id;
+                if(DogHurt(p,m,damage,m.Body.position-at,NativeTopDog.Mallet,0,true)<=0)continue;if(first==0){first=m.Id;firstAt=m.Body.position;}
                 if(step!=2)DogPush(m,(m.Body.position-at).normalized*NativeTopDog.SwingPush,1.5f);else SlowMinion(m,.4f,NativeTopDog.PancakeSeconds);
                 DogHit(p,step==2?NativeTopDog.HitSlam:NativeTopDog.HitBonk,m.Body.position+Vector3.up*.55f,m.Body.position-at,m.Id);
             }
             // The slam always lands: its ring and the floor's crack, hit or miss.
             if(step==2)DogHit(p,NativeTopDog.HitClang,slam,Vector3.up,first);
+            // Hammerspace: every fourth swing that lands pulls a grand piano out of nowhere onto the first one it struck.
+            if(first!=0&&DogChip(p,NativeDogChips.Hammerspace)&&++p.DogHammer>=NativeDogChips.PianoEvery)
+            {p.DogHammer=0;float land=Time+NativeDogChips.PianoFall;var r=DogProp(p,NativeTopDog.PropPiano,GroundPoint(firstAt+Vector3.up*.3f),land,land+NativeDogChips.PianoStays,out var pf);r.Hit=first;r.Dir=Vec(f);pf.Tick=land;}
         }
 
         // ---- the world: flights, the channel, the dash, the feast ----
@@ -236,8 +259,9 @@ namespace ChipArena.UnityConversion
             foreach(var p in Pilots)
             {
                 if(p.Seat.spec!=NativeTopDog.Spec)continue;var k=p.Dog;if(k.Ready==null||k.Ready.Length!=NativeTopDog.Slots)k.Ready=new float[NativeTopDog.Slots];
-                while(p.DogPeelReady>0&&Time>=p.DogPeelReady){k.Peels=Math.Min(NativeTopDog.PeelCharges,k.Peels+1);p.DogPeelReady=k.Peels<NativeTopDog.PeelCharges?p.DogPeelReady+NativeTopDog.Cooldown[3]*(float)p.Stats["abilityCooldown"]:0;k.Ready[3]=0;}
-                if(p.Hp>0&&p.Seat.connected&&DogAllowed(p)&&k.Feast==null)k.Meter=Math.Min(1,k.Meter+NativeTopDog.MeterPerSecond/60);
+                int cap=DogPeelCharges(p);if(cap>p.DogPeelCap)k.Peels+=cap-p.DogPeelCap;else if(cap<p.DogPeelCap)k.Peels=Math.Min(k.Peels,cap);p.DogPeelCap=k.PeelCap=cap;
+                while(p.DogPeelReady>0&&Time>=p.DogPeelReady){k.Peels=Math.Min(cap,k.Peels+1);p.DogPeelReady=k.Peels<cap?p.DogPeelReady+NativeTopDog.Cooldown[3]*(float)p.Stats["abilityCooldown"]:0;k.Ready[3]=0;}
+                if(p.Hp>0&&p.Seat.connected&&DogAllowed(p)&&k.Feast==null)k.Meter=Math.Min(1,k.Meter+NativeTopDog.MeterPerSecond/60*(DogChip(p,NativeDogChips.SecondHelpings)?NativeDogChips.HelpingMeter:1));
                 bool able=p.Hp>0&&p.Seat.connected&&!Incapacitated(p);
                 // A cast cut short (stunned, knocked down, killed) ends; a feast keeps its own clock.
                 if(k.CastKind!=null&&k.CastKind!=NativeTopDog.Feast&&Time<k.CastUntil&&!able){k.CastUntil=Time;if(k.CastKind==NativeTopDog.Mustard)foreach(var f in p.DogFlights)if(f.Record.Kind==NativeTopDog.PropSquirt)f.Record.Until=Time;}
@@ -245,7 +269,7 @@ namespace ChipArena.UnityConversion
                 if(able)DogChannel(p);
                 // The boing's landing.
                 if(p.DogAirborne&&Time-p.DogAirAt>.3f&&(p.Grounded||Time-p.DogAirAt>4)){p.DogAirborne=false;if(p.Hp>0&&p.Grounded)DogThud(p);}
-                DogFlightsStep(p);
+                DogFlightsStep(p);DogSplatStep(p);DogChipsStep(p);
                 if(k.Feast!=null)DogFeastStep(p);
                 k.Props=p.DogFlights.Select(f=>f.Record).ToArray();
                 p.DogHits.RemoveAll(h=>Time-h.At>1.5f);k.Hits=p.DogHits.ToArray();
@@ -261,23 +285,23 @@ namespace ChipArena.UnityConversion
                 foreach(var f in p.DogFlights)if(f.Record.Kind==NativeTopDog.PropSquirt){f.Record.Pos=Vec(nozzle);f.Record.Dir=Vec(aim);f.Record.SampleAt=Time;}
                 if(Time>=p.DogTick)
                 {
-                    p.DogTick+=NativeTopDog.MustardTick;
+                    p.DogTick+=NativeTopDog.MustardTick;bool sauce=DogChip(p,NativeDogChips.HotSauce);float hot=sauce?NativeDogChips.SauceDamage:1;
                     foreach(var q in DogPilots(p))
                     {
                         var d=q.Body.position-nozzle;if(d.magnitude>NativeTopDog.MustardReach+.4f||Vector3.Angle(aim,d)*Mathf.Deg2Rad>NativeTopDog.MustardArc+Mathf.Atan2(.45f,Math.Max(.5f,d.magnitude))||!MeleeVisible(nozzle,q.Body.position,p,q.Collider))continue;
-                        if(DogHurt(p,q,NativeTopDog.MustardDamage,d,NativeTopDog.Mustard)>0){Slow(q,NativeTopDog.MustardSlow,NativeTopDog.MustardSlowFor);DogMark(p,q.Seat.id,NativeTopDog.Mustarded,NativeTopDog.MustardSlowFor);}
+                        if(DogHurt(p,q,NativeTopDog.MustardDamage*hot,d,NativeTopDog.Mustard)>0){Slow(q,NativeTopDog.MustardSlow,NativeTopDog.MustardSlowFor);DogMark(p,q.Seat.id,sauce?NativeTopDog.Sauced:NativeTopDog.Mustarded,sauce?NativeDogChips.SauceBurnFor:NativeTopDog.MustardSlowFor);if(sauce)RefreshDot(q,p,"fire",NativeDogChips.SauceBurn,NativeDogChips.SauceBurnFor);}
                     }
                     foreach(var m in DogMinions(p))
                     {
                         var d=m.Body.position-nozzle;if(d.magnitude>NativeTopDog.MustardReach+.4f||Vector3.Angle(aim,d)*Mathf.Deg2Rad>NativeTopDog.MustardArc+.1f||!MeleeVisible(nozzle,m.Body.position,p,m.Collider))continue;
-                        if(DogHurt(p,m,NativeTopDog.MustardDamage,d,NativeTopDog.Mustard)>0)SlowMinion(m,NativeTopDog.MustardSlow,NativeTopDog.MustardSlowFor);
+                        if(DogHurt(p,m,NativeTopDog.MustardDamage*hot,d,NativeTopDog.Mustard)>0){SlowMinion(m,NativeTopDog.MustardSlow,NativeTopDog.MustardSlowFor);if(sauce)BurnMinion(m,p,NativeDogChips.SauceBurn);}
                     }
                 }
                 if(Time>=p.DogPuddleTick)
                 {
                     p.DogPuddleTick+=NativeTopDog.PuddleEvery;
                     var end=root.scene.GetPhysicsScene().Raycast(nozzle,aim,out var hit,NativeTopDog.MustardReach,WorldMask)?hit.point:GroundPoint(nozzle+aim*NativeTopDog.MustardReach);
-                    var spot=GroundPoint(end+Vector3.up*.3f);if(!HubInside(spot)){var r=DogProp(p,NativeTopDog.PropPuddle,spot,Time,Time+NativeTopDog.PuddleLife,out _);r.Size=NativeTopDog.PuddleRadius;}
+                    var spot=GroundPoint(end+Vector3.up*.3f);if(!HubInside(spot)){var r=DogProp(p,NativeTopDog.PropPuddle,spot,Time,Time+NativeTopDog.PuddleLife,out _);r.Size=NativeTopDog.PuddleRadius;if(DogChip(p,NativeDogChips.HotSauce))r.Hit=1;}
                 }
             }
             // The dash: carried along its path, swatting what it passes.
@@ -300,9 +324,10 @@ namespace ChipArena.UnityConversion
         }
         private void DogThud(NativePilot p)
         {
-            var feet=p.Body.position-Vector3.up*.865f;DogHit(p,NativeTopDog.HitThud,feet,Vector3.up);
-            foreach(var q in DogPilots(p)){var d=q.Body.position-p.Body.position;if(d.magnitude>NativeTopDog.ThudRadius||!MeleeVisible(feet+Vector3.up*.2f,q.Body.position,p,q.Collider))continue;if(DogHurt(p,q,NativeTopDog.ThudDamage,d,NativeTopDog.Boing)>0)BombLaunch(q,p,new Vector3(d.x,0,d.z).normalized*3,NativeTopDog.ThudLift,0);}
-            foreach(var m in DogMinions(p)){var d=m.Body.position-p.Body.position;if(d.magnitude>NativeTopDog.ThudRadius)continue;if(DogHurt(p,m,NativeTopDog.ThudDamage,d,NativeTopDog.Boing)>0)DogPush(m,new Vector3(d.x,0,d.z).normalized*3,NativeTopDog.ThudLift);}
+            var feet=p.Body.position-Vector3.up*.865f;bool flat=DogChip(p,NativeDogChips.DoubleBoing);float radius=flat?NativeDogChips.BoingRadius:NativeTopDog.ThudRadius;
+            DogHit(p,NativeTopDog.HitThud,feet,flat?Vector3.up*(radius/NativeTopDog.ThudRadius):Vector3.up);
+            foreach(var q in DogPilots(p)){var d=q.Body.position-p.Body.position;if(d.magnitude>radius||!MeleeVisible(feet+Vector3.up*.2f,q.Body.position,p,q.Collider))continue;if(DogHurt(p,q,NativeTopDog.ThudDamage,d,NativeTopDog.Boing)>0){if(flat)DogPancake(p,q,NativeDogChips.BoingFlat);else BombLaunch(q,p,new Vector3(d.x,0,d.z).normalized*3,NativeTopDog.ThudLift,0);}}
+            foreach(var m in DogMinions(p)){var d=m.Body.position-p.Body.position;if(d.magnitude>radius)continue;if(DogHurt(p,m,NativeTopDog.ThudDamage,d,NativeTopDog.Boing)>0){if(flat)SlowMinion(m,.4f,NativeDogChips.BoingFlat);else DogPush(m,new Vector3(d.x,0,d.z).normalized*3,NativeTopDog.ThudLift);}}
         }
         private void DogFlightsStep(NativePilot p)
         {
@@ -315,28 +340,45 @@ namespace ChipArena.UnityConversion
                         if(!f.Done&&Time>=r.LandAt)
                         {
                             f.Done=true;var at=Vec(r.Pos);DogHit(p,NativeTopDog.HitAnvil,at,Vector3.up);
-                            foreach(var q in DogPilots(p)){var d=q.Body.position-at;if(new Vector2(d.x,d.z).magnitude>NativeTopDog.AnvilRadius+.35f||d.y<-.5f||d.y>2.6f)continue;if(DogHurt(p,q,NativeTopDog.AnvilDamage,Vector3.down,NativeTopDog.Anvil)>0){DogPancake(p,q,NativeTopDog.AnvilPancake);r.Hit=q.Seat.id;}}
-                            foreach(var m in DogMinions(p)){var d=m.Body.position-at;if(new Vector2(d.x,d.z).magnitude>NativeTopDog.AnvilRadius+.3f||d.y<-.5f||d.y>2.6f)continue;if(DogHurt(p,m,NativeTopDog.AnvilDamage,Vector3.down,NativeTopDog.Anvil)>0)SlowMinion(m,.4f,NativeTopDog.AnvilPancake);}
+                            foreach(var q in DogPilots(p)){var d=q.Body.position-at;if(new Vector2(d.x,d.z).magnitude>NativeTopDog.AnvilRadius*(r.Size>0?r.Size+.1f:1)+.35f||d.y<-.5f||d.y>2.6f)continue;if(DogHurt(p,q,r.Size>0?NativeDogChips.ShowerDamage:NativeTopDog.AnvilDamage,Vector3.down,NativeTopDog.Anvil)>0){DogPancake(p,q,r.Size>0?NativeDogChips.ShowerFlat:NativeTopDog.AnvilPancake);r.Hit=q.Seat.id;}}
+                            foreach(var m in DogMinions(p)){var d=m.Body.position-at;if(new Vector2(d.x,d.z).magnitude>NativeTopDog.AnvilRadius*(r.Size>0?r.Size+.1f:1)+.3f||d.y<-.5f||d.y>2.6f)continue;if(DogHurt(p,m,r.Size>0?NativeDogChips.ShowerDamage:NativeTopDog.AnvilDamage,Vector3.down,NativeTopDog.Anvil)>0)SlowMinion(m,.4f,r.Size>0?NativeDogChips.ShowerFlat:NativeTopDog.AnvilPancake);}
+                        }
+                        break;
+                    case NativeTopDog.PropPiano:
+                        if(!f.Done&&Time>=r.LandAt)
+                        {
+                            f.Done=true;var at=Vec(r.Pos);DogHit(p,NativeTopDog.HitPiano,at,Vector3.up,r.Hit);
+                            foreach(var q in DogPilots(p)){var d=q.Body.position-at;if(new Vector2(d.x,d.z).magnitude>NativeDogChips.PianoRadius+.35f||d.y<-.5f||d.y>2.8f)continue;if(DogHurt(p,q,NativeDogChips.PianoDamage,Vector3.down,"piano")>0)DogPancake(p,q,NativeDogChips.PianoFlat);}
+                            foreach(var m in DogMinions(p)){var d=m.Body.position-at;if(new Vector2(d.x,d.z).magnitude>NativeDogChips.PianoRadius+.3f||d.y<-.5f||d.y>2.8f)continue;if(DogHurt(p,m,NativeDogChips.PianoDamage,Vector3.down,"piano")>0)SlowMinion(m,.4f,NativeDogChips.PianoFlat);}
                         }
                         break;
                     case NativeTopDog.PropPeel:
                     {
                         if(!f.Landed&&Time>=r.LandAt){f.Landed=true;r.Pos=r.To;r.Vel=default;r.SampleAt=Time;}
                         if(!f.Landed)break;var at=Vec(r.Pos);
-                        NativePilot slipped=DogPilots(p).FirstOrDefault(q=>q.Grounded&&Vector3.Distance(q.Body.position-Vector3.up*.865f,at)<=NativeTopDog.PeelTouch&&!Invulnerable(q));
+                        NativePilot slipped=DogPilots(p).FirstOrDefault(q=>q.Grounded&&Vector3.Distance(q.Body.position-Vector3.up*.865f,at)<=NativeTopDog.PeelTouch&&!Invulnerable(q)&&q.Seat.id!=f.Target);
                         if(slipped!=null)
                         {
                             var along=slipped.Body.linearVelocity;along.y=0;if(along.sqrMagnitude<.5f)along=Vec(V3.Forward(slipped.Yaw))*2;
                             DogHurt(p,slipped,NativeTopDog.PeelDamage,along,NativeTopDog.Peel);
                             // The launch first (it clears a knockdown), then the fall onto the back.
-                            if(slipped.Hp>0&&!SirenArmor(slipped)&&Pve?.Boss!=slipped){BombLaunch(slipped,p,along.normalized*6,5,0);StunMelee(slipped,.24f);slipped.Down=new NativeRecovery{At=Time,Until=Time+5,PickupUsed=true,Source=p.Seat.id};DogMark(p,slipped.Seat.id,NativeTopDog.Slipped,NativeTopDog.PeelDown+.6f);}
-                            DogHit(p,NativeTopDog.HitSlip,at,along,slipped.Seat.id);p.DogFlights.Remove(f);break;
+                            if(slipped.Hp>0&&!SirenArmor(slipped)&&Pve?.Boss!=slipped){BombLaunch(slipped,p,along.normalized*(6*(DogChip(p,NativeDogChips.BananaBonanza)?NativeDogChips.BananaSlide:1)),5,0);StunMelee(slipped,.24f);slipped.Down=new NativeRecovery{At=Time,Until=Time+5,PickupUsed=true,Source=p.Seat.id};DogMark(p,slipped.Seat.id,NativeTopDog.Slipped,NativeTopDog.PeelDown+.6f);}
+                            DogHit(p,NativeTopDog.HitSlip,at,along,slipped.Seat.id);
+                            if(DogChip(p,NativeDogChips.BananaBonanza)&&f.Target==0)
+                            {
+                                // It flies on with them and lands again where they end up (once; never under the same one).
+                                f.Target=slipped.Seat.id;f.Landed=false;var dest=GroundPoint(at+along.normalized*(2.2f*NativeDogChips.BananaSlide)+Vector3.up*.4f);float t2=NativeDogChips.BananaReland;
+                                r.Pos=Vec(at+Vector3.up*.1f);r.Vel=Vec((dest-at)/t2+Vector3.up*(23*t2/2));r.To=Vec(dest);r.LandAt=Time+t2;r.SampleAt=Time;r.Until=Math.Max(r.Until,r.LandAt+NativeTopDog.PeelLife*.5f);
+                            }
+                            else p.DogFlights.Remove(f);
+                            break;
                         }
                         var minion=DogMinions(p).FirstOrDefault(m=>Vector3.Distance(m.Body.position-Vector3.up*m.Collider.height*.5f,at)<=NativeTopDog.PeelTouch+.2f);
                         if(minion!=null){DogHurt(p,minion,NativeTopDog.PeelDamage,Vector3.up,NativeTopDog.Peel);DogPush(minion,Vector3.zero,5);SlowMinion(minion,.4f,NativeTopDog.PeelDown);DogHit(p,NativeTopDog.HitSlip,at,Vector3.up,minion.Id);p.DogFlights.Remove(f);}
                         break;
                     }
                     case NativeTopDog.PropGlove:
+                        if(!f.Done&&Time>=f.Tick&&f.Line!=null){DogKnockoutHit(p,f);break;}
                         if(!f.Done&&Time>=f.Tick)
                         {
                             f.Done=true;var tip=Vec(r.Pos)+Vec(r.Dir)*r.Size;
@@ -353,17 +395,24 @@ namespace ChipArena.UnityConversion
                         {
                             var h=hit.Value;var at=from+delta.normalized*Math.Max(0,h.Distance-.02f);f.Done=true;r.Pos=Vec(at);r.Vel=default;r.LandAt=Time;r.Until=Time+3;r.Dir=Vec(h.Normal);
                             var q=h.Collider.GetComponent<NativePilotBody>()?.Pilot;var m=h.Collider.GetComponent<NativeMinionBody>()?.Minion;
-                            if(q!=null){r.Hit=q.Seat.id;if(DogHurt(p,q,NativeTopDog.PieDamage,delta,NativeTopDog.Pie)>0)DogMark(p,q.Seat.id,NativeTopDog.Pied,NativeTopDog.PieFor);}
+                            if(q!=null){r.Hit=q.Seat.id;if(DogHurt(p,q,NativeTopDog.PieDamage,delta,NativeTopDog.Pie)>0)DogMark(p,q.Seat.id,NativeTopDog.Pied,NativeTopDog.PieFor*DogCream(p));}
                             else if(m!=null){r.Hit=m.Id;DogHurt(p,m,NativeTopDog.PieDamage,delta,NativeTopDog.Pie);}
-                            foreach(var o in DogPilots(p))if(o!=q&&Vector3.Distance(o.Body.position,at)<=NativeTopDog.PieSplash){if(DogHurt(p,o,NativeTopDog.PieSplashDamage,o.Body.position-at,NativeTopDog.Pie)>0)DogMark(p,o.Seat.id,NativeTopDog.Pied,NativeTopDog.PieFor*.45f);}
+                            foreach(var o in DogPilots(p))if(o!=q&&Vector3.Distance(o.Body.position,at)<=NativeTopDog.PieSplash){if(DogHurt(p,o,NativeTopDog.PieSplashDamage,o.Body.position-at,NativeTopDog.Pie)>0)DogMark(p,o.Seat.id,NativeTopDog.Pied,NativeTopDog.PieFor*.45f*DogCream(p));}
                             DogHit(p,NativeTopDog.HitPie,at,-delta,r.Hit);
                         }
                         else {r.Pos=Vec(from+delta);r.Vel=Vec(vel);}
                         r.SampleAt=Time;break;
                     }
+                    case NativeTopDog.PropSnack:
+                    {
+                        if(!f.Landed&&Time>=r.LandAt){f.Landed=true;r.Pos=r.To;r.Vel=default;r.SampleAt=Time;}
+                        if(!f.Landed||p.Hp<=0)break;var at=Vec(r.Pos);
+                        if(Vector3.Distance(p.Body.position-Vector3.up*.865f,at)<=NativeDogChips.SnackTouch){Heal(p,NativeDogChips.SnackHeal,"topdog-snack");DogHit(p,NativeTopDog.HitMunch,at+Vector3.up*.3f,Vector3.up,p.Seat.id);p.DogFlights.Remove(f);}
+                        break;
+                    }
                     case NativeTopDog.PropPuddle:
                     {
-                        var at=Vec(r.Pos);foreach(var q in DogPilots(p))if(q.Grounded&&new Vector2(q.Body.position.x-at.x,q.Body.position.z-at.z).magnitude<=r.Size&&Math.Abs(q.Body.position.y-.865f-at.y)<.6f)Slow(q,NativeTopDog.PuddleSlow,.25f);
+                        var at=Vec(r.Pos);foreach(var q in DogPilots(p))if(q.Grounded&&new Vector2(q.Body.position.x-at.x,q.Body.position.z-at.z).magnitude<=r.Size&&Math.Abs(q.Body.position.y-.865f-at.y)<.6f){Slow(q,NativeTopDog.PuddleSlow,.25f);if(r.Hit==1)RefreshDot(q,p,"fire",NativeDogChips.SaucePuddle,.6f);}
                         break;
                     }
                 }
@@ -379,7 +428,7 @@ namespace ChipArena.UnityConversion
             {
                 if(f.LassoAt<f.Throw){p.DogAim=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)).normalized;p.DogFacing=Vec(V3.Forward(p.Input.Yaw));p.Yaw=p.Input.Yaw;f.Lasso=Vec(p.Body.position+Vector3.up*.75f+p.DogFacing*.4f);f.LassoVel=Vec(p.DogAim*NativeTopDog.LassoSpeed);f.LassoAt=Time;f.From=f.Lasso;DogHit(p,NativeTopDog.Feast,Vec(f.Lasso),p.DogAim);}
                 var from=Vec(f.Lasso);var delta=Vec(f.LassoVel)/60;
-                var hit=SweepNative(from,delta,NativeTopDog.LassoRadius,c=>c!=p.Collider&&(c.GetComponent<NativePilotBody>()?.Pilot is NativePilot q?q.Hp>0&&CanHit(p,q)&&!Invulnerable(q)&&q.DogHolder==null:c.GetComponent<NativeMinionBody>()?.Minion is NativeMinion m?m.Hp>0&&CanHit(p,m):!c.isTrigger&&c.gameObject.layer!=ActorLayer));
+                var hit=SweepNative(from,delta,NativeTopDog.LassoRadius*(DogChip(p,NativeDogChips.SecondHelpings)?NativeDogChips.HelpingWidth:1),c=>c!=p.Collider&&(c.GetComponent<NativePilotBody>()?.Pilot is NativePilot q?q.Hp>0&&CanHit(p,q)&&!Invulnerable(q)&&q.DogHolder==null:c.GetComponent<NativeMinionBody>()?.Minion is NativeMinion m?m.Hp>0&&CanHit(p,m):!c.isTrigger&&c.gameObject.layer!=ActorLayer));
                 if(hit.HasValue)
                 {
                     var h=hit.Value;f.Lasso=Vec(from+delta.normalized*Math.Max(0,h.Distance));var q=h.Collider.GetComponent<NativePilotBody>()?.Pilot;var m=h.Collider.GetComponent<NativeMinionBody>()?.Minion;
@@ -393,7 +442,7 @@ namespace ChipArena.UnityConversion
                 else
                 {
                     f.Lasso=Vec(from+delta);
-                    if(Vector3.Distance(Vec(f.Lasso),Vec(f.From))>=NativeTopDog.LassoReach||HubInside(Vec(f.Lasso)))DogFeastMiss(p,false);
+                    if(Vector3.Distance(Vec(f.Lasso),Vec(f.From))>=DogLassoReach(p)||HubInside(Vec(f.Lasso)))DogFeastMiss(p,false);
                 }
                 f.LassoAt=Time;
             }
@@ -473,6 +522,12 @@ namespace ChipArena.UnityConversion
             // The burst: hot dog shrapnel for the Top Dog's other enemies near it.
             foreach(var o in DogPilots(p)){if(o==q)continue;var d=o.Body.position-at;if(d.magnitude>NativeTopDog.PopRadius)continue;if(DogHurt(p,o,NativeTopDog.PopDamage,d,NativeTopDog.Feast)>0)BombLaunch(o,p,new Vector3(d.x,0,d.z).normalized*NativeTopDog.PopPush,NativeTopDog.PopLift,0);}
             foreach(var o in DogMinions(p)){if(o==m)continue;var d=o.Body.position-at;if(d.magnitude>NativeTopDog.PopRadius)continue;if(DogHurt(p,o,NativeTopDog.PopDamage,d,NativeTopDog.Feast)>0)DogPush(o,new Vector3(d.x,0,d.z).normalized*NativeTopDog.PopPush,NativeTopDog.PopLift);}
+            // Second Helpings: hot dogs thrown out all round, each a heal for the Top Dog who walks over it.
+            if(DogChip(p,NativeDogChips.SecondHelpings))for(int i=0;i<NativeDogChips.Snacks;i++)
+            {
+                float a=i*Mathf.PI*2/NativeDogChips.Snacks+.4f,far=1.6f+1.4f*((i*37)%10)/10f;var dest=GroundPoint(at+new Vector3(Mathf.Cos(a),0,Mathf.Sin(a))*far+Vector3.up*.5f);float t2=.7f+.05f*i;var from=at+Vector3.up*.4f;
+                var r=DogProp(p,NativeTopDog.PropSnack,from,Time+t2,Time+t2+NativeDogChips.SnackLife,out _);r.Vel=Vec((dest-from)/t2+Vector3.up*(23*t2/2));r.To=Vec(dest);
+            }
         }
         private void DogEndFeast(NativePilot p){var f=p.Dog.Feast;if(f==null)return;f.Until=Math.Min(f.Until,Time+.5f);p.Dog.CastUntil=Math.Min(p.Dog.CastUntil,f.Until);DogFree(p);if(f.Catch>-50&&f.Snap<-50&&!p.DogPopped)f.Snap=Time;}
         private void DogFree(NativePilot p)
@@ -483,7 +538,66 @@ namespace ChipArena.UnityConversion
         /// <summary>Damage the Top Dog took (Damage's tail): it counts toward snapping the links while it feeds.</summary>
         private void DogDamaged(NativePilot target,float actual)
         {var f=target.Dog?.Feast;if(target.Seat.spec==NativeTopDog.Spec&&f!=null&&f.Catch>-50&&f.Snap<-50&&Time<f.Release)target.DogTaken+=actual;}
+        // ---- the chips' own steps ----
+        /// <summary>Knockout Glove's cast: the glove's whole line, to a wall or 17 m, and everyone in it to be punched as it lands.</summary>
+        private void DogKnockout(NativePilot p,Vector3 hand)
+        {
+            var aim=p.DogAim;float reach=NativeDogChips.KnockReach;
+            var wall=SweepNative(hand,aim*reach,NativeTopDog.GloveRadius*.6f,c=>c!=p.Collider&&c.GetComponent<NativePilotBody>()==null&&c.GetComponent<NativeMinionBody>()==null&&!c.isTrigger);
+            if(wall.HasValue)reach=Math.Max(.3f,wall.Value.Distance);
+            float land=Time+NativeTopDog.GloveOut*Math.Max(.25f,reach/NativeTopDog.GloveReach);
+            var r=DogProp(p,NativeTopDog.PropGlove,hand,land,land+NativeTopDog.GloveBack,out var f);r.Dir=Vec(aim);r.Size=reach;f.Tick=land;f.Target=-1;f.Line=new List<(int,bool)>();
+            foreach(var q in DogPilots(p)){var d=q.Body.position-hand;float along=Vector3.Dot(d,aim);if(along<0||along>reach+.4f||(d-aim*along).magnitude>NativeTopDog.GloveRadius+.45f||!MeleeVisible(hand,q.Body.position,p,q.Collider))continue;f.Line.Add((q.Seat.id,false));if(r.Hit==0)r.Hit=q.Seat.id;}
+            foreach(var m in DogMinions(p)){var d=m.Body.position-hand;float along=Vector3.Dot(d,aim);if(along<0||along>reach+.4f||(d-aim*along).magnitude>NativeTopDog.GloveRadius+.55f)continue;f.Line.Add((m.Id,true));if(r.Hit==0)r.Hit=m.Id;}
+        }
+        /// <summary>Knockout Glove landing: each one in its line punched; a pilot sent into a wall soon after is splatted on it (DogSplatStep).</summary>
+        private void DogKnockoutHit(NativePilot p,DogFlight f)
+        {
+            f.Done=true;var r=f.Record;var dir=Vec(r.Dir);
+            foreach(var (id,minion) in f.Line)
+            {
+                if(!minion){var q=Pilots.Find(x=>x.Seat.id==id);if(q==null||q.Hp<=0||!CanHit(p,q)||DogHurt(p,q,NativeTopDog.GloveDamage,dir,NativeTopDog.Glove,0,true)<=0)continue;BombLaunch(q,p,dir*NativeTopDog.GlovePush,NativeTopDog.GloveLift,0);DogDaze(p,q,NativeTopDog.GloveDaze);DogHit(p,NativeTopDog.HitPow,q.Body.position+Vector3.up*.4f,dir,q.Seat.id);p.DogSplats.Add((q.Seat.id,Time+NativeDogChips.SplatWindow,dir));}
+                else{var m=Minions.Find(x=>x.Id==id);if(m==null||m.Hp<=0||DogHurt(p,m,NativeTopDog.GloveDamage,dir,NativeTopDog.Glove,0,true)<=0)continue;DogPush(m,dir*NativeTopDog.GlovePush,NativeTopDog.GloveLift);DogHit(p,NativeTopDog.HitPow,m.Body.position+Vector3.up*.4f,dir,m.Id);}
+            }
+            if(f.Line.Count==0&&r.Size<NativeDogChips.KnockReach-.05f)DogHit(p,NativeTopDog.HitBoing,Vec(r.Pos)+dir*r.Size,-dir);
+        }
+        /// <summary>Knockout Glove: a punched pilot who reaches a wall within the window is splatted on it.</summary>
+        private void DogSplatStep(NativePilot p)
+        {
+            for(int i=p.DogSplats.Count-1;i>=0;i--)
+            {
+                var (id,until,dir)=p.DogSplats[i];var q=Pilots.Find(x=>x.Seat.id==id);var flat=new Vector3(dir.x,0,dir.z);
+                if(q==null||q.Hp<=0||Time>until||flat.sqrMagnitude<1e-4f){p.DogSplats.RemoveAt(i);continue;}flat.Normalize();
+                if(!root.scene.GetPhysicsScene().Raycast(q.Body.position,flat,out var hit,.75f,WorldMask))continue;
+                p.DogSplats.RemoveAt(i);if(SirenArmor(q)||Pve?.Boss==q)continue;
+                DogHurt(p,q,NativeDogChips.SplatDamage,flat,NativeTopDog.Glove);if(q.Hp<=0)continue;q.Body.linearVelocity=Vector3.zero;q.Knockback=Vector3.zero;StunMelee(q,NativeDogChips.SplatStun);
+                DogMark(p,q.Seat.id,NativeTopDog.Walled,NativeDogChips.SplatStun+.3f);DogHit(p,NativeTopDog.HitWall,hit.point,-flat,q.Seat.id);
+            }
+        }
+        /// <summary>Each step: Double Boing's window closing, Toon Logic's spring back, and the chips' share of the record.</summary>
+        private void DogChipsStep(NativePilot p)
+        {
+            var k=p.Dog;
+            if(p.DogBoingSecond&&Time>p.DogBoingUntil){p.DogBoingSecond=false;k.Ready[0]=Math.Max(k.Ready[0],p.DogBoingAt+NativeTopDog.Cooldown[0]*(float)p.Stats["abilityCooldown"]);}
+            if(p.DogToonUntil>0&&Time>=p.DogToonUntil)DogToonPop(p);
+            if(p.Hp<=0){p.DogToonUsed=false;p.DogToonUntil=0;p.DogSplats.Clear();}
+            k.Mallet=DogStacks(p,NativeDogChips.BiggerMallet,NativeDogChips.MalletMax);k.Sauce=DogChip(p,NativeDogChips.HotSauce);k.Wide=DogChip(p,NativeDogChips.SecondHelpings);k.Bounce=p.DogBoingSecond;
+        }
+        /// <summary>A blow that would kill (Damage, before it lands): Toon Logic, once a round, flattens the Top Dog instead; DogToonPop puts it back up.</summary>
+        private bool DogSave(NativePilot p,float amount)
+        {
+            if(amount<p.Hp||p.Hp<=0||p.DogToonUsed||!DogChip(p,NativeDogChips.ToonLogic))return false;
+            p.DogToonUsed=true;p.Hp=1;p.Wild.ImmuneUntil=Math.Max(p.Wild.ImmuneUntil,Time+NativeDogChips.ToonFlat+.25f);p.DogToonUntil=Time+NativeDogChips.ToonFlat;
+            StunMelee(p,NativeDogChips.ToonFlat);p.Knockback=Vector3.zero;DogMark(p,p.Seat.id,NativeTopDog.Pancake,NativeDogChips.ToonFlat);
+            DogHit(p,NativeTopDog.HitToonFlat,p.Body.position-Vector3.up*.6f,Vector3.up,p.Seat.id);return true;
+        }
+        private void DogToonPop(NativePilot p)
+        {
+            p.DogToonUntil=0;if(p.Hp<=0)return;p.Hp=Math.Max(p.Hp,(float)p.Stats["hp"]*NativeDogChips.ToonHealth);var at=p.Body.position;DogHit(p,NativeTopDog.HitToonPop,at,Vector3.up,p.Seat.id);
+            foreach(var q in DogPilots(p)){var d=q.Body.position-at;if(d.magnitude>NativeDogChips.ToonRadius)continue;if(DogHurt(p,q,NativeDogChips.ToonDamage,d,NativeTopDog.Boing)>0)BombLaunch(q,p,new Vector3(d.x,0,d.z).normalized*7,5,0);}
+            foreach(var m in DogMinions(p)){var d=m.Body.position-at;if(d.magnitude>NativeDogChips.ToonRadius)continue;if(DogHurt(p,m,NativeDogChips.ToonDamage,d,NativeTopDog.Boing)>0)DogPush(m,new Vector3(d.x,0,d.z).normalized*7,5);}
+        }
         /// <summary>Clears a pilot's Top Dog state when it stops being one (a new round makes a new pilot).</summary>
-        private void DogClear(NativePilot p){p.Dog=new NativeTopDogKit{Peels=NativeTopDog.PeelCharges,Ready=new float[NativeTopDog.Slots]};p.DogFlights.Clear();p.DogMarks.Clear();p.DogHits.Clear();DogFree(p);}
+        private void DogClear(NativePilot p){p.Dog=new NativeTopDogKit{Peels=NativeTopDog.PeelCharges,Ready=new float[NativeTopDog.Slots]};p.DogFlights.Clear();p.DogMarks.Clear();p.DogHits.Clear();p.DogHammer=0;p.DogBoingSecond=false;p.DogToonUsed=false;p.DogToonUntil=0;p.DogSplats.Clear();p.DogPeelCap=NativeTopDog.PeelCharges;DogFree(p);}
     }
 }

@@ -42,6 +42,9 @@ namespace ChipArena.UnityConversion
         public NativeDogProp[] Props;public NativeDogHit[] Hits;public NativeDogMark[] Marks;public NativeDogFeast Feast;
         /// <summary>The meter (0..1), the banana peels in hand, the mallet's combo step (0, 1, 2) and when it lapses.</summary>
         public float Meter,ComboUntil;public int Peels,Combo;
+        /// <summary>The chips' share of what is seen (Core NativeDogChips): Bigger Mallet's copies, the peels it can hold, Hot Sauce in the stream,
+        /// Second Helpings' wide lasso, Double Boing's second bounce in hand.</summary>
+        public int Mallet,PeelCap;public bool Sauce,Wide,Bounce;
         /// <summary>Absolute ready times in NativeTopDog.Slot order: Q, E, 1, 2, 3, 4, 5.</summary>
         public float[] Ready;
         /// <summary>What the pilot is doing, for the pose: the ability's id and its times (CastRelease: the moment it lands or leaves the hand).</summary>
@@ -62,7 +65,7 @@ namespace ChipArena.UnityConversion
         public bool Valid()
         {
             bool F(float v)=>MathUtil.Finite(v)&&Math.Abs(v)<10000000;bool V(V3 v)=>F(v.x)&&F(v.y)&&F(v.z)&&v.Length<100000;bool K(string s)=>s==null||s.Length<=24;
-            if(!F(Meter)||Meter<0||Meter>1||Peels<0||Peels>NativeTopDog.PeelCharges||Combo<0||Combo>2||!F(ComboUntil)||!F(CastAt)||!F(CastRelease)||!F(CastUntil)||CastStep<0||CastStep>8||!K(CastKind))return false;
+            if(!F(Meter)||Meter<0||Meter>1||Peels<0||Peels>NativeTopDog.MaxPeelCharges||PeelCap<0||PeelCap>NativeTopDog.MaxPeelCharges||Mallet<0||Mallet>NativeDogChips.MalletMax||Combo<0||Combo>2||!F(ComboUntil)||!F(CastAt)||!F(CastRelease)||!F(CastUntil)||CastStep<0||CastStep>8||!K(CastKind))return false;
             if(Props!=null){if(Props.Length>NativeTopDog.MaxProps)return false;foreach(var p in Props)if(p==null||!NativeTopDog.IsKind(p.Kind)||!V(p.Pos)||!V(p.Vel)||!V(p.To)||!V(p.Dir)||!F(p.At)||!F(p.SampleAt)||!F(p.LandAt)||!F(p.Until)||!F(p.Size)||p.Size<0||p.Size>64)return false;}
             if(Hits!=null){if(Hits.Length>NativeTopDog.MaxHits)return false;foreach(var h in Hits)if(h==null||!K(h.Kind)||!F(h.At)||!V(h.Pos)||!V(h.Dir))return false;}
             if(Marks!=null){if(Marks.Length>NativeTopDog.MaxMarks)return false;foreach(var m in Marks)if(m==null||!NativeTopDog.IsMark(m.Kind)||!F(m.At)||!F(m.Until))return false;}

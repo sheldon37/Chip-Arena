@@ -15,10 +15,12 @@ namespace ChipArena.UnityConversion
         public const string Burst="hot-dog-burst";
         public const string Mallet="big-mallet",Boing="boing",Zip="zip",Anvil="anvil",Peel="banana-peel",Mustard="mustard",Glove="spring-glove",Pie="cream-pie",Feast="all-you-can-eat";
         // Prop kinds (NativeDogProp.Kind), marks (NativeDogMark.Kind) and hit kinds (NativeDogHit.Kind).
-        public const string PropAnvil="anvil",PropPeel="peel",PropPie="pie",PropGlove="glove",PropSquirt="squirt",PropPuddle="puddle",PropSpring="spring",PropZip="zip";
-        public const string Pancake="pancake",Slipped="slip",Pied="pied",Mustarded="mustard",Dazed="dazed",Stuffed="stuffed";
-        public const string HitBonk="bonk",HitSlam="slam",HitThud="thud",HitSwat="swat",HitAnvil="anvil",HitSlip="slip",HitSplat="splat",HitPow="pow",HitPie="pie",HitGulp="gulp",HitPop="pop",HitSnap="snap",HitBoing="boing",HitClang="clang";
+        public const string PropAnvil="anvil",PropPeel="peel",PropPie="pie",PropGlove="glove",PropSquirt="squirt",PropPuddle="puddle",PropSpring="spring",PropZip="zip",PropPiano="piano",PropSnack="snack";
+        public const string Pancake="pancake",Slipped="slip",Pied="pied",Mustarded="mustard",Dazed="dazed",Stuffed="stuffed",Sauced="sauced",Walled="walled";
+        public const string HitBonk="bonk",HitSlam="slam",HitThud="thud",HitSwat="swat",HitAnvil="anvil",HitSlip="slip",HitSplat="splat",HitPow="pow",HitPie="pie",HitGulp="gulp",HitPop="pop",HitSnap="snap",HitBoing="boing",HitClang="clang",HitPiano="piano",HitWall="wall",HitMunch="munch",HitToonFlat="toon-flat",HitToonPop="toon-pop";
         public const int MaxProps=32,MaxHits=48,MaxMarks=24,Slots=7,PeelCharges=2,MaxPeels=3,Feeds=6;
+        /// <summary>The most peels in hand: two, and Banana Bonanza's (Core NativeDogChips).</summary>
+        public const int MaxPeelCharges=PeelCharges+NativeDogChips.BananaMax*NativeDogChips.BananaCharges;
         /// <summary>The ability cards in their HUD order with their keys (the ultimate is apart, on 6).</summary>
         public static readonly string[] Slot={Boing,Zip,Anvil,Peel,Mustard,Glove,Pie};
         public static readonly string[] SlotKeys={"Q","E","1","2","3","4","5"};
@@ -26,8 +28,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Cooldowns (s) in Slot order; the peel's is per charge.</summary>
         public static readonly float[] Cooldown={8,7,10,6,11,9,12};
         public static int SlotOf(string id)=>Array.IndexOf(Slot,id);
-        public static bool IsKind(string k)=>k==PropAnvil||k==PropPeel||k==PropPie||k==PropGlove||k==PropSquirt||k==PropPuddle||k==PropSpring||k==PropZip;
-        public static bool IsMark(string k)=>k==Pancake||k==Slipped||k==Pied||k==Mustarded||k==Dazed||k==Stuffed;
+        public static bool IsKind(string k)=>k==PropAnvil||k==PropPeel||k==PropPie||k==PropGlove||k==PropSquirt||k==PropPuddle||k==PropSpring||k==PropZip||k==PropPiano||k==PropSnack;
+        public static bool IsMark(string k)=>k==Pancake||k==Slipped||k==Pied||k==Mustarded||k==Dazed||k==Stuffed||k==Sauced||k==Walled;
         public static string AbilityName(string id)
         {
             switch(id){case Mallet:return "Big Mallet";case Boing:return "Boing!";case Zip:return "Zip";case Anvil:return "Anvil";case Peel:return "Banana Peel";case Mustard:return "Mustard Blaster";case Glove:return "Spring Glove";case Pie:return "Cream Pie";case Feast:return "All You Can Eat";default:return "";}
@@ -102,6 +104,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Icon `id`'s markup ("dog:" and an ability id), or null when it is not one of the Top Dog's.</summary>
         public static string Glyph(string id)
         {
+            if(NativeDogChips.Is(id))return NativeDogChips.Glyph(id);
             if(id==null||!id.StartsWith("dog:",StringComparison.Ordinal))return null;int i=Array.IndexOf(glyphIds,id.Substring(4));if(i<0)return null;
             return glyphs[i]??(glyphs[i]="<path d=\""+GlyphPath(i)+"\" fill=\"#fff\"/>");
         }

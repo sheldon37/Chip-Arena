@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<NativeTopDog.Slots;i++)
             {
                 string id=NativeTopDog.Slot[i];float ready=k?.Ready!=null&&i<k.Ready.Length?k.Ready[i]:0,left=ready-t;bool busy=k?.CastKind==id&&t>=k.CastAt&&t<k.CastUntil;float cd=NativeTopDog.Cooldown[i]*(float)(p.Stats?["abilityCooldown"]??1);
-                string key=NativeTopDog.SlotKeys[i]+" · "+NativeTopDog.AbilityName(id).ToUpperInvariant();if(id==NativeTopDog.Peel&&k!=null&&k.Peels>1)key+=" ×"+k.Peels;
+                string key=NativeTopDog.SlotKeys[i]+" · "+NativeTopDog.AbilityName(id).ToUpperInvariant();if(id==NativeTopDog.Peel&&k!=null&&k.Peels>1)key+=" ×"+k.Peels;if(id==NativeTopDog.Boing&&k!=null&&k.Bounce)key+=" ×2";
                 cards.Add(new Card{Key=key,State=busy?"ACTIVE":left>0?left.ToString("0.0")+"s":"READY",Icon=NativeTopDog.Icon(id),Ready=!busy&&left<=0,Active=busy,Dial=left>0?1-Mathf.Clamp01(left/Mathf.Max(.1f,cd)):1});
             }
             float meter=k?.Meter??0;bool full=meter>=1,feast=k?.Feast!=null&&t>=k.Feast.At&&t<k.Feast.Until;
@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
         {
             switch(kind){case NativeTopDog.HitBonk:return "BONK!";case NativeTopDog.HitSlam:return "WHAM!";case NativeTopDog.HitClang:return "KA-THUNK!";case NativeTopDog.HitThud:return "THUD!";case NativeTopDog.HitSwat:return "WHAP!";
                 case NativeTopDog.HitAnvil:return "CLANG!";case NativeTopDog.HitSlip:return "WHOOPS!";case NativeTopDog.HitPow:return "POW!";case NativeTopDog.HitPie:return "SPLAT!";case NativeTopDog.HitGulp:return "GULP!";
-                case NativeTopDog.HitPop:return "KA-POP!";case NativeTopDog.HitSnap:return "SNAP!";case NativeTopDog.HitBoing:return "BOING!";case NativeTopDog.Zip:return "ZOOM!";default:return null;}
+                case NativeTopDog.HitPop:return "KA-POP!";case NativeTopDog.HitSnap:return "SNAP!";case NativeTopDog.HitBoing:return "BOING!";case NativeTopDog.HitPiano:return "PLUNK!";case NativeTopDog.HitWall:return "SPLAT!";case NativeTopDog.HitMunch:return "MUNCH!";case NativeTopDog.HitToonFlat:return "SPLUT!";case NativeTopDog.HitToonPop:return "TA-DA!";case NativeTopDog.Zip:return "ZOOM!";default:return null;}
         }
         private static readonly Color[] DogInks={new Color(1,.86f,.2f),new Color(1,.38f,.25f),new Color(.45f,.85f,1),new Color(1,1,1),new Color(.6f,1,.45f)};
         private void DogWord(NativeDogHit h,float t,float height,bool reduced)
@@ -188,7 +188,7 @@ namespace ChipArena.UnityConversion
             if(k.Props!=null)foreach(var pr in k.Props)
             {
                 if(pr==null)continue;var at=new Vector3(pr.Pos.x,pr.Pos.y,pr.Pos.z);
-                if(pr.Kind==NativeTopDog.PropAnvil&&t>=pr.At&&t-pr.At<.15f&&Once(p.Seat.id+"dogfall"+pr.Id,pr.At))Toon("whistle-fall",at+Vector3.up*6,.9f,mine);
+                if((pr.Kind==NativeTopDog.PropAnvil||pr.Kind==NativeTopDog.PropPiano)&&t>=pr.At&&t-pr.At<.15f&&Once(p.Seat.id+"dogfall"+pr.Id,pr.At))Toon("whistle-fall",at+Vector3.up*6,.9f,mine);
                 if(pr.Kind==NativeTopDog.PropSquirt&&t>=pr.At&&t<pr.Until){float step=Mathf.Floor((t-pr.At)/1.5f);if(Once(p.Seat.id+"dogsquirt"+pr.Id,pr.At+step*1000))Toon("squirt",pos,.75f,mine);}
                 if(pr.Kind==NativeTopDog.PropGlove&&t>=pr.At&&t-pr.At<.15f&&Once(p.Seat.id+"dogglove"+pr.Id,pr.At))Toon("sproing",pos,.85f,mine);
             }
@@ -197,6 +197,14 @@ namespace ChipArena.UnityConversion
             if(f!=null&&t>=f.At&&t-f.At<.15f&&Once(p.Seat.id+"dogbell",f.At))Toon("bell",pos,.95f,true);
             if(f!=null&&f.Catch>-50&&f.Snap<-50&&t>=f.Release&&t<f.Pop){float step=Mathf.Floor((t-f.Release)/.5f);if(Once(p.Seat.id+"dogswell",f.Release+step*1000))Toon(step==0?"inflate":step%2==0?"stretch":"wobble",pos,.8f,true,1+.08f*step);}
             if(f!=null&&f.Catch>-50&&f.Snap<-50&&t>=f.Release+.6f&&t-f.Release-.6f<.15f&&Once(p.Seat.id+"doghic",f.Release))Toon("hiccup",pos,.9f,true);
+        }
+        private int dogPickCue;private string dogPickId;private float dogPickLast=-1;
+        /// <summary>A Top Dog chip's pick: its gag's toon cues (Core NativeTopDogSounds.Picks) on the spotlight's clock, `age` s after the pick.</summary>
+        public void DogPick(string chip,float age)
+        {
+            int i=NativeDogChips.Index(chip);if(i<0)return;float s=age-NativeDraftPlant.DetailsAt-NativeDogChipArt.Start;
+            if(chip!=dogPickId||age<dogPickLast-.2f){dogPickId=chip;dogPickCue=0;}dogPickLast=age;var list=NativeTopDogSounds.Picks[i];
+            while(dogPickCue<list.Length&&s>=list[dogPickCue].At){var c=list[dogPickCue++];if(s-c.At<.25f)Toon(c.Id,null,c.Gain,true,c.Rate);}
         }
         /// <summary>The Top Dog's entrance cues on its clock, each once as `age` passes it.</summary>
         public void DogIntro(float age)
