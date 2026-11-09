@@ -1368,6 +1368,16 @@ namespace ChipArena.UnityConversion
             Check(!body.Contains("bool whole=")&&body.Contains("if(c.Placed[v])b.SetPositionAndRotation(m.GetColumn(3),m.rotation);else{b.localPosition=c.Rest[v];b.rotation=m.rotation;}")
                 &&body.Contains("c.Parent[v]=u<v?u:-1;")&&body.Contains("int p=c.Parent[v];c.Placed[v]=p<0||c.Part[v]!=c.Part[p]&&(corpse.Severed.Contains(c.Part[v])||!corpse.Jointed(c.Part[v]));")
                 &&R("Runtime/NativeDeathPresentation.cs").Contains("internal bool Jointed(int part)=>Parts.TryGetValue(part,out var body)&&body.GetComponent<ConfigurableJoint>()!=null;"),"a ragdoll never stretches the model: rotations with the rest lengths, places only at the root and where the ragdoll has no joint");
+            // The ragdoll on the model's own shape (owner 2026-11-09: "We need to fix ragdolling... stretched limbs, clipping into floor"):
+            // built on the classic rig's joints, a model's longer or lifted limbs reached past their parts and through the floor. Before
+            // the first step the cosmetic body's parts move onto the model's joints (the pelvis on its pelvis bone) and re-anchor, each
+            // part's box is the model's skin on its bones (a shin's foot apart, turned with the ankle when a collapse lets go), and the
+            // collapse begins again on those boxes.
+            string fit=R("Runtime/NativeCorpseFitPresentation.cs"),fall=R("Runtime/NativeCollapsePresentation.cs");
+            Check(R("Runtime/NativeDeathPresentation.cs").Contains("if(pilot)VisualCorpseFit(corpse,arena);")&&fit.Contains("corpse.Retarget(at);")&&fit.Contains("corpse.Refit(arena);")
+                &&fit.Contains("string.Equals(c.Bones[v].name,\"pelvis\",System.StringComparison.OrdinalIgnoreCase)")
+                &&fall.Contains("joint.connectedAnchor=joint.connectedBody.transform.InverseTransformPoint(body.transform.position);")&&fall.Contains("inverse[kv.Key]=body.transform.worldToLocalMatrix;")
+                &&fall.Contains("if(FitBox.TryGetValue(b,out var fb))")&&fall.Contains("});collapseReleased=release;if(release)FootBoxesAtRelease();"),"a corpse rests on the model's own shape: its parts on the model's joints, its boxes the model's skin, its collapse on those boxes");
             // The menu portraits on the model (owner 2026-10-26: "Player model still shows voxel in customization?").
             string portrait=R("Runtime/NativeVisualPortraitPresentation.cs"),portraitUi=R("Runtime/NativePortraitUI.cs");
             Check(portraitUi.Contains("if(presentation.ModelPortraitFor(look)){presentation.ModelPortraitReduced=prefs.reducedEffects;return presentation.ModelPortrait(key,look,own?LookShown():PortraitOutfit(key),PortraitSkins(look,own),stage.width,stage.height,U.S,out top);}")

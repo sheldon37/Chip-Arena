@@ -1016,7 +1016,7 @@ namespace ChipArena.UnityConversion
         // pinned one flattened by the smash's overlay). A swarm's collapse shrinks it; the soul and frost looks are its own
         // (VisualCorpseLook). It wears its hat (VisualCorpseHat). It hides while the voxel body would be under half opacity and
         // goes with its corpse.
-        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;public int Look;public string LookHex;public int Head=-2;
+        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public int[] Joint;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;public int Look;public string LookHex;public int Head=-2;
             // A split body's cut (both halves share it; the first half owns its texture), whether it wears the Sheldon hood, and its
             // skeleton (NativeVisualSkeletonPresentation.cs).
             public CutJob Cut;public Texture2D CutTexture;public bool Hood;public Renderer Skeleton;
@@ -1146,8 +1146,8 @@ namespace ChipArena.UnityConversion
         // head the neck's weights reach stays on it), else its parent bone.
         private VisualCorpse VisualCorpseFor(NativeCorpse corpse,NativeDeath death,CapturedAnimation.Player rig,out int[] joint)
         {
-            var root=VisualDeathBody(rig,death,death.position-rig.Root.transform.position,out var bones,out joint);if(root==null)return null;
-            var c=new VisualCorpse{Root=root,Bones=bones,Part=new int[bones.Length],Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death),Hood=root.transform.Find(NativeSheldonHood.Renderer)!=null,Skeleton=root.transform.Find(SkeletonRenderer)?.GetComponent<Renderer>()};
+            var root=VisualDeathBody(rig,death,death.position-rig.Root.transform.position,out var bones,out joint);if(root==null)return null;var joints=joint;
+            var c=new VisualCorpse{Root=root,Bones=bones,Joint=joints,Part=new int[bones.Length],Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death),Hood=root.transform.Find(NativeSheldonHood.Renderer)!=null,Skeleton=root.transform.Find(SkeletonRenderer)?.GetComponent<Renderer>()};
             var parentOf=new Dictionary<Transform,int>();for(int v=0;v<bones.Length;v++)if(bones[v]!=null)parentOf[bones[v]]=v;
             bool stand=corpse.RootStandIn;bool Own(int j)=>corpse.Parts.ContainsKey(j)&&!(stand&&j==CapturedRig.Pelvis);
             for(int v=0;v<bones.Length;v++)
