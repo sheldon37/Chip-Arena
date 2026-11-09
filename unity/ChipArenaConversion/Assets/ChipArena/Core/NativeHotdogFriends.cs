@@ -20,11 +20,11 @@ namespace ChipArena.UnityConversion
         public const string Style="dev-hotdog-friends",Label="Hotdog Friends · DEV ONLY",Text="Tiny hot dogs carry the pieces off through a tiny door.";public const int Swatch=0xf4c430;
         /// <summary>The body rests this long (s after the death) before the door rises; the door's rise, opening, shutting and sinking (s);
         /// its height and width, and how far past the pieces it stands (m).</summary>
-        public const float Settle=1.3f,DoorUp=.25f,DoorOpen=.18f,DoorShut=.2f,DoorDown=.25f,DoorHeight=.46f,DoorWidth=.3f,DoorAway=.55f,DoorSwing=105;
+        public const float Settle=1.2f,DoorUp=.25f,DoorOpen=.18f,DoorShut=.2f,DoorDown=.25f,DoorHeight=.46f,DoorWidth=.3f,DoorAway=.55f,DoorSwing=105;
         /// <summary>The friends: their height (m); walking and carrying speeds (m/s) and the longest walk and carry (s: farther pieces are
         /// hurried, so the scene ends inside the body's five seconds); the lift (s, m); the stagger between loads and within a file (s); the
         /// squeeze through the door (s); a step (m).</summary>
-        public const float Height=.27f,Walk=2.4f,CarrySpeed=1.7f,MostWalk=.6f,MostCarry=.95f,LiftTime=.22f,LiftHeight=.14f,Stagger=.12f,File=.06f,Squeeze=.28f,Stride=.1f;
+        public const float Height=.27f,Walk=2.4f,CarrySpeed=1.7f,MostWalk=.5f,MostCarry=.8f,LiftTime=.22f,LiftHeight=.14f,Stagger=.08f,File=.05f,Squeeze=.25f,Stride=.1f;
         public const int MaxLoads=12,MostFriends=6,WalkFrames=8;
         /// <summary>The door is open from here (s after the death).</summary>
         public const float Opened=Settle+DoorUp+DoorOpen;
