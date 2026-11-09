@@ -12,6 +12,7 @@
 - **Seen in the Editor:** the feeding (the jaw held, each sausage pushed in, several stuck in the mouth wiggling, the slurp); the Hot Dog no longer vanishing in the ult's twirl or the intro; the mallet landing on its face; the face close up through Order Up! and in play: the gritted grin, the eyes glancing about and blinking, a laugh with the tongue out, a squint, the lids shut.
   - Not seen: X eyes on a Hot Dog corpse, the dizzy roll (no daze in the captures); the face in the Locker.
 - **Not run:** no person, no two real clients.
+- **Released:** full suite at `e93a03f9` (shared merged in): 983 groups, exit 0; pins 0 broken; Unity compile PASS. Merged into shared at `03daa34f` and the builder synced; the test channel's build succeeded and published revision `639298002857748998` (2026-11-09 05:55 UTC). No live or Site release.
 
 ## 2026-11-08 — Claude: the Top Dog's ten chips, their picks animated (owner request; rules and look)
 
