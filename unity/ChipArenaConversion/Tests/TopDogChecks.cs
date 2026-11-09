@@ -39,6 +39,7 @@ namespace ChipArena.UnityConversion
             public bool Shot(int index,out Vector3 at,out Vector3 velocity,out string fx,out int owner){at=velocity=default;fx=null;owner=0;return false;}
         }
         private sealed class One:ITopDogSource{public NativeTopDogKit K;public int Id;public NativeTopDogKit Of(int actor)=>actor==Id?K:null;}
+        private sealed class Book:NativeVisualMotion.IClips{public bool Has(string c)=>c!=null;public float Length(string c)=>1.2f;public float Hit(string c)=>.42f;}
         private static bool Finite(Vector3 v)=>MathUtil.Finite(v.X)&&MathUtil.Finite(v.Y)&&MathUtil.Finite(v.Z);
         public static void Run(string root)
         {
@@ -205,6 +206,29 @@ namespace ChipArena.UnityConversion
                 string vm=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeVisualMotion.cs"));Check(vm.Contains("case NativeTopDog.Dash:return Hit(DogDashSwing,")&&vm.Contains("case NativeTopDog.Slam:")&&vm.Contains("\"2Hand-Sword-Air-Attack1\""),"their poses: the running swing and the jumping strike");
                 string au=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeTopDogAuthority.cs"));
                 Check(au.Contains("kind=DogMalletMove(p);")&&au.Contains("if(able){DogChannel(p);DogMalletMoves(p);}")&&au.Contains("NativeMeleeFeel.SprintAttack(p.Input,p.Pose.Sprinting))return NativeTopDog.Dash;")&&au.Contains("p.AirAttackUsed=true;p.DogAirborne=false;"),"the rules: an attack on a sprint dashes, one in the air slams (once an airtime)");
+            }
+            // ---- casts on the move (owner 2026-11-09: "when they cast abilities while running, they start sliding") ----
+            {
+                var dogSet=NativeVisualMotion.For(NativeTopDog.Spec);var book=new Book();var me=new Actor{Id=1,Grounded=true,SourceSpec=NativeTopDog.Spec};
+                src.K=new NativeTopDogKit{CastKind=NativeTopDog.Mallet,CastAt=200,CastRelease=200.2f,CastUntil=200.5f};
+                Check(NativeVisualMotion.Choose(dogSet,me,200.1f,new NativeVisualMotion.Memory(),book,false,out var still)&&still.Clip=="2Hand-Sword-Attack1"&&!still.Locomotion,"standing, the swing takes the whole body");
+                Check(NativeVisualMotion.Layer(dogSet,me,200.1f,book,out var stillUp)&&stillUp.Raised&&stillUp.A==still.Clip&&Math.Abs(stillUp.TimeA-still.Time)<1e-5f,"and its upper body is the same swing at the same moment (no pop on starting to run)");
+                Check(NativeVisualMotion.Choose(dogSet,me,200.1f,new NativeVisualMotion.Memory(),book,true,out var run)&&run.Locomotion&&NativeVisualMotion.Layer(dogSet,me,200.1f,book,out var runUp,true)&&runUp.Raised&&runUp.A==still.Clip&&Math.Abs(runUp.TimeA-still.Time)<1e-5f,"running, the legs keep the stride and the swing is the upper body");
+                me.Grounded=false;Check(NativeVisualMotion.Choose(dogSet,me,200.1f,new NativeVisualMotion.Memory(),book,false,out var air)&&air.Clip!=still.Clip&&NativeVisualMotion.Layer(dogSet,me,200.1f,book,out var airUp,true)&&airUp.A==still.Clip,"in the air, the jump's legs and the swing over them");me.Grounded=true;
+                foreach(var kind in new[]{NativeTopDog.Anvil,NativeTopDog.Peel,NativeTopDog.Mustard,NativeTopDog.Glove,NativeTopDog.Pie})
+                {
+                    src.K=new NativeTopDogKit{CastKind=kind,CastAt=200,CastRelease=200.2f,CastUntil=200.6f};
+                    foreach(float at in new[]{200.1f,200.4f})
+                    {
+                        Check(NativeVisualMotion.Choose(dogSet,me,at,new NativeVisualMotion.Memory(),book,false,out var stand)&&!stand.Locomotion&&NativeVisualMotion.Choose(dogSet,me,at,new NativeVisualMotion.Memory(),book,true,out var move)&&move.Locomotion
+                            &&NativeVisualMotion.Layer(dogSet,me,at,book,out var arms,true)&&arms.Raised&&arms.A==stand.Clip,kind+" at "+(at-200).ToString("0.0")+" s: the whole body standing, the stride and the arms running");
+                    }
+                }
+                var feastKit=new NativeTopDogKit{Feast=new NativeDogFeast{At=200,Throw=200.4f,Until=205}};src.K=feastKit;
+                Check(NativeVisualMotion.Choose(dogSet,me,200.2f,new NativeVisualMotion.Memory(),book,true,out var twirl)&&twirl.Locomotion&&NativeVisualMotion.Layer(dogSet,me,200.2f,book,out var twirlUp,true)&&twirlUp.A=="Armed-Cast-R-Attack3_start","the feast's twirl on the move: the stride and the arms");
+                src.K=new NativeTopDogKit{CastKind=NativeTopDog.Dash,CastAt=200,CastRelease=200+NativeTopDog.DashWind,CastUntil=200+NativeTopDog.DashWind+NativeTopDog.DashTime+NativeTopDog.DashRecover};
+                Check(NativeVisualMotion.Choose(dogSet,me,200.2f,new NativeVisualMotion.Memory(),book,true,out var dash)&&dash.Clip=="2Hand-Sword-Run-Forward-Attack1"&&!NativeVisualMotion.Layer(dogSet,me,200.2f,book,out _,true),"the dash stays the running swing on the whole body");
+                src.K=kit;
             }
             // ---- the wiring (the Runtime is read as text: CoreTests compiles Core only) ----
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
