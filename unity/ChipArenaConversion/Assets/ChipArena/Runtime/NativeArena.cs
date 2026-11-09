@@ -119,7 +119,9 @@ namespace ChipArena.UnityConversion
             RouteLeetInputs();
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Input.Roll)TryRoll(p);
             // The parry: its own press (a pad's block, a bot), or F that no interaction in reach took (the interactions ran with the input).
-            foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&(p.Input.Block||p.Input.Parry&&p.Input.Interact&&ZoneBoss?.fallen==null))TryBlock(p);
+            // In NOCTIEL's fight F is held to give a life to a hushed teammate: there it parries unless one is in reach (owner 2026-11-09:
+            // "parry isn't activating during boss battles").
+            foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&(p.Input.Block||p.Input.Parry&&p.Input.Interact&&!FallenGiveInReach(p)))TryBlock(p);
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected)StepGuard(p);
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected){AdvanceDots(p);if(p.Hp>0&&!Frozen(p))StepPilot(p);}
             StepBombWorld();StepDogWorld();StepTechniqueWorld();StepAbilityExpansion();StepWildEchoes();StepMeleeKitWorld();StepCyberWorld();StepBullets();StepAbilityWorld();StepMeleeShots();StepChipFields();StepMinions();StepDevMonsters();StepFighterWorld();StepLeetWorld();StepSirenWorld();RestoreLeetInputs();
