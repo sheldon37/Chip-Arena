@@ -33,13 +33,13 @@ namespace ChipArena.UnityConversion
             if(arena==null){StageGate.Clear();gateArena=null;return;}
             if(!arena.Replica)
             {
-                StageAuthorityReady();if(!Hosting||Time.unscaledTime<gateNextSend)return;gateNextSend=Time.unscaledTime+.25f;
+                StageAuthorityReady();if(!Hosting||Time.unscaledTime<gateNextSend)return;gateNextSend=Time.unscaledTime+(StageGate.Waiting?.25f:5f);
                 string packet=NativeNetCodec.Encode(new NativeNetMessage{type="stageGate",epoch=networkEpoch,generation=arena.Generation,stageMap=arena.MapId,stageSerial=gateSerial,stageWaiting=StageGate.Waiting,stageReady=StageGate.Ready,stageRequired=StageGate.Required,remainingSeconds=StageGate.Remaining});
                 foreach(var peer in peers)if(peer.Seat!=null&&peer.Connection?.Closed==false)peer.Connection.Send(packet);
             }
-            else if(server?.Closed==false&&guestGateSerial>0&&StagePresentationReady&&StagePresentation.Generation==guestGateGeneration&&Time.unscaledTime>=gateNextReady)
+            else if(server?.Closed==false&&StageGate.Waiting&&guestGateSerial>0&&StagePresentationReady&&StagePresentation.Generation==guestGateGeneration&&Time.unscaledTime>=gateNextReady)
             {
-                gateNextReady=Time.unscaledTime+.5f;
+                gateNextReady=Time.unscaledTime+5f;
                 SendServer(new NativeNetMessage{type="stage-ready",stageMap=arena.MapId,stageSerial=guestGateSerial});
             }
         }

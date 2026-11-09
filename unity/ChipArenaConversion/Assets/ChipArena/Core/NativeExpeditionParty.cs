@@ -22,6 +22,8 @@ namespace ChipArena.UnityConversion
     public sealed class NativeExpeditionLoadWindow
     {
         public const double Seconds=60,RetrySeconds=5;
+        public static bool ProgressDue(float progress,float previous,double elapsed)=>elapsed>=.25&&
+            (previous<0||progress>=1&&previous<1||progress-previous>=.02f||elapsed>=RetrySeconds);
         private string identity;private double until,next;
         public void Begin(string key,double now){if(key==null||key==identity)return;identity=key;until=now+Seconds;next=0;}
         public bool Active(double now)=>identity!=null&&now<until;
