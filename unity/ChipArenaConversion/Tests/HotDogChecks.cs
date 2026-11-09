@@ -89,7 +89,9 @@ internal static class HotDogChecks
         for(float ft=0;ft<NativeTopDogIntro.Total;ft+=.05f){NativeHotDogFace.Intro(ft,out float since);Check(since<=ft+1e-4f,"an intro mood begun no later than now at "+ft.ToString("0.00"));}
         // The runtime: the painted face is blanked at load, the toon face rides the head's twin, and the mood source is set each frame.
         var face=R("NativeHotDogFacePresentation.cs");
-        Check(dog.Contains("else{tri=HotDogFaceOff(tex,pos,nor,uv,tri);")&&dog.Contains("if(head>=0)HotDogFaceAttach(bones[head],r);")&&R("NativeTopDogPresentation.cs").Contains("HotDogFaceSource=hotDogFaceSource??=HotDogFaceMood;"),"the face is blanked, attached and driven");
+        Check(dog.Contains("else{tri=HotDogFaceOff(tex,pos,nor,uv,weights,tri);")&&dog.Contains("if(head>=0)HotDogFaceAttach(bones[head],r);")&&R("NativeTopDogPresentation.cs").Contains("HotDogFaceSource=hotDogFaceSource??=HotDogFaceMood;"),"the face is blanked, attached and driven");
         Check(face.Contains("if(dead)mood=HotDogMood.Dead;")&&face.Contains("if(!host){if(view.enabled){view.enabled=false;hidden=true;}return;}"),"a corpse's face is dead, and it hides with the Hot Dog without overriding the body's own hiding");
+        Check(face.Contains("var sr=go.AddComponent<SkinnedMeshRenderer>();")&&face.Contains("sr.bones=hotDog.bones;sr.rootBone=hotDog.rootBone;")&&face.Contains("weights[i]=fit.WeightAt(fit.Theta(q),q.Y);"),"the face is skinned on the Hot Dog's bones, each corner weighted as the skin under it, so it stays on the head (owner 2026-11-09)");
+        Check(body.Contains("if(!NativeHotDog.Worn(body.Look)&&!NativeHotDog.Worn(VisualOutfitOf(a.Id)))"),"no chest core on the Hot Dog (owner 2026-11-09)");
     }
 }

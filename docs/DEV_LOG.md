@@ -1,3 +1,15 @@
+## 2026-11-09 — Claude: the Hot Dog's face stays on the head; no core on the Hot Dog (owner request; look)
+
+- Branch `claude/top-dog`, after the face's release. Design: `docs/TOP-DOG.md` "Its face".
+- **The owner:** "Fix the eyes; I noticed on some screenshots it goes into the body. ideally, it should be attached the body; should clipping inside shouldn't be an issue"; "Can we also remove the core on them? (The little blue gem near the mouth)".
+- **The face skinned to the head** (Runtime `NativeHotDogFacePresentation.cs`): it rode the head's bone rigidly while the skin under it is weighted across the head, neck and sausage twins, so when the sausage bent or jiggled the skin came through the eyes. It is now a skinned mesh on the Hot Dog's own bones, each corner weighted as the skin under it (a map of the skin's weights over the face, read at load), so it bends, jiggles and squashes with the head.
+- **The old face's shading painted out:** the texture has shading painted into its red, darker in the old crevices round the sculpted eyes and brows, which showed as a dark patch round the eyes; the pressed region is repainted whole in the head's own red (the median round the face), and its folded triangles dropped.
+- **No chest core on the Hot Dog** (Runtime `NativeVisualBodyPresentation.cs` `VisualGear`): its chest anchor sits under the sausage's mouth.
+- **Animation impact:** presentation only.
+- **Checks:** CoreTests `--hot-dog` (the skinned face and the core's absence among them) and `--top-dog`; the Unity compile; pins. The full suite runs with the release.
+- **Seen in the Editor:** the face from the front, three-quarter and side through the intro's landing and slam and the feast, staying on the head; no core; the face's red even with the rest of the sausage; a dead Hot Dog's X eyes and frown.
+- **Not run:** no person, no two real clients.
+
 ## 2026-11-09 — Claude: the Top Dog's feast fed by hand, the Hot Dog's animated face, the ult and intro fixes (owner request; look)
 
 - Branch `claude/top-dog`. Design: `docs/TOP-DOG.md` (the feeding, the cameras, "Its face", the mallet).
