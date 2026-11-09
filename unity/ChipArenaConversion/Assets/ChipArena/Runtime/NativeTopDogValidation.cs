@@ -51,9 +51,16 @@ namespace ChipArena.UnityConversion
                 Setup();a.Ready=0;a.Pose.Sprinting=true;a.Input=new InputFrame{Shoot=true,Attack=true,Sprint=true,Z=1};StepDogInput(a);Check(a.Dog.CastKind==NativeTopDog.Dash,"an attack on a sprint is the dash");
                 start=a.Body.position;hp=b.Hp;Step(NativeTopDog.DashWind+NativeTopDog.DashTime+.05f);Check(a.Body.position.z>start.z+2&&b.Hp<hp&&a.Dog.Hits.Any(h=>h.Kind==NativeTopDog.HitPow&&h.Victim==b.Seat.id),"dashed ahead and batted the one in its path");
                 Step(NativeTopDog.DashRecover);a.Ready=0;a.Pose.Sprinting=false;a.Input=new InputFrame{Shoot=true};StepDogInput(a);Check(a.Dog.CastKind==NativeTopDog.Mallet,"off the sprint it swings");
-                // The slam in the air: hung, dropped straight down, the ring round the landing hurt and its middle flattened.
+                // The smash in the air looking ahead (owner 2026-11-09): hung, then down and carried on along the facing, its head landing ahead:
+                // the one standing there hurt.
+                Setup();b.Body.position=o+new Vector3(0,0,2.2f);a.Body.position+=Vector3.up*3;a.Grounded=false;a.AirborneAt=Time-.3f;a.AirAttackUsed=false;Physics.SyncTransforms();
+                a.Ready=0;a.Input=new InputFrame{Shoot=true,Attack=true};StepDogInput(a);Check(a.Dog.CastKind==NativeTopDog.Smash&&a.AirAttackUsed,"an attack in the air looking ahead is the smash");
+                float sHigh=a.Body.position.y,sz=a.Body.position.z;Step(NativeTopDog.SmashHang*.5f);Check(Math.Abs(a.Body.position.y-sHigh)<.05f,"the smash hangs a moment");
+                hp=b.Hp;b.StunEnd=0;b.StaggerImmune=0;Step(NativeTopDog.SmashHang*.5f+.4f);
+                Check(NativeTopDog.Landed(a.Dog)>0&&a.Body.position.y<sHigh-2.5f&&a.Body.position.z>sz+.2f&&b.Hp<hp&&a.Dog.Hits.Any(h=>h.Kind==NativeTopDog.HitClang),"it drops forward, its head lands ahead and hurts the one there");
+                // The slam in the air looking down: hung, dropped straight down, the ring round the landing hurt and its middle flattened.
                 Setup();b.Body.position=o+new Vector3(0,0,1.5f);a.Body.position+=Vector3.up*3;a.Grounded=false;a.AirborneAt=Time-.3f;a.AirAttackUsed=false;Physics.SyncTransforms();
-                a.Ready=0;a.Input=new InputFrame{Shoot=true,Attack=true};StepDogInput(a);Check(a.Dog.CastKind==NativeTopDog.Slam&&a.AirAttackUsed,"an attack in the air is the slam");
+                a.Ready=0;a.Input=new InputFrame{Shoot=true,Attack=true,Pitch=-60};StepDogInput(a);Check(a.Dog.CastKind==NativeTopDog.Slam&&a.AirAttackUsed,"an attack in the air looking down is the slam");
                 float high=a.Body.position.y;Step(NativeTopDog.SlamHang*.5f);Check(Math.Abs(a.Body.position.y-high)<.05f,"it hangs a moment");
                 hp=b.Hp;b.StunEnd=0;b.StaggerImmune=0;Step(NativeTopDog.SlamHang*.5f+.3f);
                 Check(NativeTopDog.SlamLanded(a.Dog)>0&&a.Body.position.y<high-2.5f&&b.Hp<hp&&b.StunEnd>Time&&a.Dog.Hits.Any(h=>h.Kind==NativeTopDog.HitQuake),"it lands, hurts and flattens round it");
