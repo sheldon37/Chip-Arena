@@ -175,7 +175,7 @@ namespace ChipArena.UnityConversion
                 // A melee Q/E cast's release (the dash, throw, slash or leap leaving): the replicated kit's Release, once per cast.
                 var kit=p.Pose?.MeleeKit;if(kit!=null&&MeleeKitMotion.Known(kit.Kind)&&t>=kit.Release&&t-kit.Release<.15f&&kit.Phase!="windup"&&kit.Phase!="recast"&&Once(id+"kit",kit.Release)){bool recast=kit.Phase=="fall"||p.Pose.SpecialKind=="skyfall"||p.Pose.SpecialKind=="kunai-recast";int k=NativeMeleeKitSounds.Release(kit.Kind,recast,kitSounds);for(int i=0;i<k;i++)Cue(kitSounds[i].Key,kitSounds[i].Clip,pos,kitSounds[i].Gain,mine:mine);}
                 // The Bombadier's blasts and casts (Core/NativeBombSounds), each once.
-                BombMoments(p,pos,t,mine);DogMoments(p,pos,t,mine);
+                BombMoments(p,pos,t,mine);DogMoments(p,pos,t,mine);GlaiveMoments(p,pos,t,mine);
                 // A technique's moments (Core/NativeTechniqueSounds), each once.
                 {var tech=NativeTechniques.Of(p.Pose);if(tech?.Kind!=null)for(int m=0;m<NativeTechniqueSounds.Moments;m++){float at=NativeTechniqueSounds.At(tech,m);if(float.IsNaN(at)||t<at||t-at>=.15f||!Once(id+"tech"+m,at))continue;int cn=NativeTechniqueSounds.Moment(tech.Kind,m,kitSounds,out bool here);var where=here?new Vector3(tech.Point.x,tech.Point.y,tech.Point.z):pos;for(int i=0;i<cn;i++)Cue(kitSounds[i].Key,kitSounds[i].Clip,where,kitSounds[i].Gain,mine:mine);}}
                 // The Whirlwind's whoosh each turn and its heavy stop (Core/NativeMeleeKitSounds.Spin), each cue once.

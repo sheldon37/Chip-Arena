@@ -245,6 +245,10 @@ const dogParts=(small=false)=>{
   return {bun,sausage,eyes,pupils,smile,tongue};
 };
 icons['spec-topdog']=()=>{const d=dogParts();return [L(d.bun,{opacity:TONE}),L(d.sausage,{knock:1.1}),L(d.eyes,{cut:true}),L(d.pupils),L(d.smile,{cut:true}),L(d.tongue,{opacity:TONE})];};
+// THE GLAIVE (owner 2026-11-09): a ring blade, three swept hooks round its rim, the grip bar across its middle, two motion arcs trailing it.
+const arcLine=(r,a0,a1,n=6)=>line(Array.from({length:n+1},(_,i)=>at(12,12,r,a0+(a1-a0)*i/n)));
+const glaiveParts=()=>({blade:ring(12,12,5.2,8.6),hooks:[-60,60,180].map(a=>poly([at(12,12,8.1,a-10),at(12,12,11.4,a+16),at(12,12,8.1,a+26)])),grip:crect(6.9,11,10.2,2,.6),inlay:arcLine(6.9,0,359.9,24),trail:[arcLine(10.6,200,245),arcLine(10.6,320,365)]});
+icons['spec-glaive']=()=>{const g=glaiveParts();return [L(g.trail,{line:1,opacity:TONE}),L(g.blade,{evenodd:true}),L(g.hooks,{knock:.6}),L(g.inlay,{cut:true,line:.55}),L(g.grip,{knock:.7})];};
 // THE CYBER LORD'S RANGED SET (Core/CyberLordRanged.cs; key 5 switches): hardlight emitters, hex rings and RGB-split bolts.
 // BIT BOLT (ranged LMB): a split hardlight bolt off a hex emitter, trailing bits.
 icons['ability-bit-bolt']=()=>{
@@ -429,6 +433,7 @@ small['spec-cyberlord']=()=>{
   return [L(ringP,{evenodd:true,opacity:.5}),L(palm,{knock:1.2}),L(knuckles,{knock:.7}),L(thumb,{knock:.9})];
 };
 small['spec-topdog']=()=>{const d=dogParts(true);return [L(d.bun,{opacity:.5}),L(d.sausage,{knock:1.3}),L(d.eyes,{cut:true}),L(d.smile,{cut:true})];};
+small['spec-glaive']=()=>{const g=glaiveParts();return [L(g.blade,{evenodd:true}),L(g.hooks,{knock:.7}),L(g.grip,{knock:.8})];};
 small['spec-ansatsuken']=()=>{
   const aura=poly([[4.4,19],[1.8,12.6],[1.8,6.8],[5.2,9.4],[7,2.6],[10,6.4],[12,.4],[14,6.4],[17,2.6],[18.8,9.4],[22.2,6.8],[22.2,12.6],[19.6,19]]);
   const fingers=[7.6,6.3,6.5,7.8].map((y,i)=>crect(5+i*3.55,y,3.1,13-y,1));
@@ -439,7 +444,7 @@ small['spec-ansatsuken']=()=>{
 
 // ---- export ----
 const CLASSES={dev:'class-dev',magic:'class-magic',melee:'class-melee',ranged:'class-ranged'};
-const SPECS=Object.fromEntries(['ansatsuken','bow','cyberlord','daggers','darkness','emperor','fire','greatsword','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','topdog','water'].map(id=>[id,'spec-'+id]));
+const SPECS=Object.fromEntries(['ansatsuken','bow','cyberlord','daggers','darkness','emperor','fire','glaive','greatsword','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','topdog','water'].map(id=>[id,'spec-'+id]));
 const entries=Object.keys(icons).sort().map(id=>{const e={id,markup:markup(icons[id]())};if(small[id])e.small=markup(small[id]());return e;});
 const pairs=o=>Object.entries(o).sort(([a],[b])=>a<b?-1:1).map(([id,icon])=>({id,icon}));
 const data={schema:1,source:'tools/export_class_icons.mjs',note:'Original Chip Arena class and weapon artwork authored for this project as geometry; not derived from any third-party icon set.',box:24,smallPx:22,fallback:'class-dev',icons:entries,classes:pairs(CLASSES),specs:pairs(SPECS)};

@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
         public const int Rate=48000;public const float Peak=.82f;
         public const string Prefix="topdog.";
         /// <summary>Every sound, by id.</summary>
-        public static readonly string[] Ids={"bonk","slam","swing","boing","zip","windup","slide-up","slide-down","whistle-fall","clang","slip","splat","squirt","sproing","punch","pie","gulp","burp","inflate","pop","bell","honk","tweet","sizzle","fanfare","drumroll","crash","poof","squeak","wobble","hiccup","whirl","stretch","chomp","piano"};
+        public static readonly string[] Ids={"bonk","slam","swing","boing","zip","windup","slide-up","slide-down","whistle-fall","clang","slip","splat","squirt","sproing","punch","pie","gulp","burp","inflate","pop","bell","honk","tweet","sizzle","fanfare","drumroll","crash","poof","squeak","wobble","hiccup","whirl","stretch","chomp","piano","ring-cut","ring-slice","ring-throw","ring-ping","ring-hum","ring-burst","ring-catch","ring-flick"};
         public static bool Known(string id)=>Array.IndexOf(Ids,id)>=0;
         /// <summary>The sound's samples (a new array each call; the runtime keeps one clip per id).</summary>
         public static float[] Samples(string id){lock(Gate)return Make(id);}
@@ -57,6 +57,16 @@ namespace ChipArena.UnityConversion
                 case "whirl":Whirl(b);break;
                 case "stretch":Chirp(b,0,.5f,180,520,.35f,Wave.Saw,1,vibrato:.05f,vibratoHz:11,cutoff:1400);break;
                 case "piano":Piano(b);break;
+                // The Glaive's (docs/GLAIVE.md "Sound"): a thin blade's swish, a slice, a spun throw, a ricochet's ping, the halo's hum, the burst,
+                // the catch and the flick.
+                case "ring-cut":Whoosh(b,0,.24f,900,3800,1500,.85f);Tone(b,.02f,.2f,2350,14,.08f,Wave.Sine);break;
+                case "ring-slice":Noise(b,0,.05f,2500,11000,50,.8f);Clang(b,0,1650,.35f);Thump(b,0,110,22,.45f);break;
+                case "ring-throw":Whoosh(b,0,.36f,700,4200,1800,.8f);Chirp(b,0,.3f,600,1400,.18f,Wave.Tri,1,vibrato:.08f,vibratoHz:28,cutoff:3000);break;
+                case "ring-ping":Clang(b,0,2100,.7f);Tone(b,0,.4f,3150,9,.25f,Wave.Sine);Noise(b,0,.02f,3000,12000,80,.5f);break;
+                case "ring-hum":Chirp(b,0,.8f,420,470,.4f,Wave.Saw,1,vibrato:.1f,vibratoHz:24,cutoff:1600);Whoosh(b,0,.8f,500,1500,700,.3f);break;
+                case "ring-burst":Thump(b,0,70,6,1);Crash(b,0,.8f,3.5f);Noise(b,0,.1f,800,9000,18,.8f);Clang(b,0,1900,.4f);Rumble(b,0,260,4,.5f);break;
+                case "ring-catch":Clang(b,0,900,.45f);Thump(b,0,180,30,.5f);Tone(b,0,.2f,1800,20,.12f,Wave.Sine);break;
+                case "ring-flick":Whoosh(b,0,.3f,1100,5200,2000,.75f);Tone(b,.04f,.3f,2600,8,.1f,Wave.Sine);break;
                 case "chomp":Noise(b,0,.02f,600,5000,1,.5f);Thump(b,.005f,150,30,.6f);Gulp(b,.06f,260,150,.07f,.4f);break;
                 default:return Array.Empty<float>();
             }
@@ -72,7 +82,7 @@ namespace ChipArena.UnityConversion
                 case "squirt":return 1.6f;case "sproing":return .65f;case "punch":return .42f;case "pie":return .7f;case "gulp":return .46f;case "burp":return .72f;
                 case "inflate":return 1.35f;case "pop":return .7f;case "bell":return 1.6f;case "honk":return .66f;case "tweet":return .62f;case "sizzle":return 2.2f;
                 case "fanfare":return 1.15f;case "drumroll":return 1.3f;case "crash":return 2.2f;case "poof":return .6f;case "squeak":return .14f;case "wobble":return .85f;
-                case "hiccup":return .26f;case "whirl":return .7f;case "stretch":return .55f;case "chomp":return .2f;case "piano":return 2.4f;default:return .1f;
+                case "hiccup":return .26f;case "whirl":return .7f;case "stretch":return .55f;case "chomp":return .2f;case "piano":return 2.4f;case "ring-cut":return .28f;case "ring-slice":return .4f;case "ring-throw":return .42f;case "ring-ping":return .55f;case "ring-hum":return .85f;case "ring-burst":return 1.6f;case "ring-catch":return .32f;case "ring-flick":return .36f;default:return .1f;
             }
         }
 

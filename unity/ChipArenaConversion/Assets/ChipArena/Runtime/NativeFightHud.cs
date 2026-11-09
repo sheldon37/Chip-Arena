@@ -154,7 +154,7 @@ namespace ChipArena.UnityConversion
             cards.Add(new Card{Key="F · PARRY",State=away?"SHIELD OUT":t<p.BlockEnd?"ACTIVE":p.BlockReady>t?(p.BlockReady-t).ToString("0.0")+"s":"READY",Ready=!away&&t>=p.BlockEnd&&p.BlockReady<=t,Active=!away&&t<p.BlockEnd,Low=away,Dial=away?-1:SpanDial(blockSpan,p.BlockReady-t)});
             bool roll=p.Weapon.@class=="melee";string rollState=t<p.RollEnd?"ROLLING":p.RollReady>t?(p.RollReady-t).ToString("0.0")+"s":"READY";cards.Add(new Card{Key="SHIFT · "+(roll?"ROLL":"DODGE"),State=rollState,Ready=rollState=="READY",Active=t<p.RollEnd,Dial=SpanDial(rollSpan,p.RollReady-t)});
             // The DEV Cyber Lord's Q, E and 1-4 cards (NativeCyberLordScreen.cs) in place of the content Q / E cards.
-            if(p.Seat.spec==NativeTopDog.Spec)DogCards(p);else if(p.Seat.spec==NativeBombs.Spec)BombCards(p);
+            if(p.Seat.spec==NativeTopDog.Spec)DogCards(p);else if(p.Seat.spec==NativeBombs.Spec)BombCards(p);else if(p.Seat.spec==NativeGlaive.Spec)GlaiveCards(p);
             else if(CyberLordFeed.Handles(p.Seat.spec))CyberLordCards(p);
             else foreach(var slot in new[]{"q","e"})
             {
