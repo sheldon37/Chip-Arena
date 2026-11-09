@@ -20,10 +20,12 @@ namespace ChipArena.UnityConversion
         public const int MaxReliablePackets=128,MaxReliableBytes=8*1024*1024;
         private static readonly UTF8Encoding Utf8=new UTF8Encoding(false,true);
         private readonly TcpClient client;private readonly Stream stream;private readonly CancellationTokenSource stop=new CancellationTokenSource();
-        private readonly ConcurrentQueue<byte[]> reliable=new ConcurrentQueue<byte[]>();private readonly SemaphoreSlim ready=new SemaphoreSlim(0,1);private byte[] latest;private string receivedState;
+        private readonly ConcurrentQueue<byte[]> reliable=new ConcurrentQueue<byte[]>();private readonly SemaphoreSlim ready=new SemaphoreSlim(0,1);private byte[] latest,ping,pong;private string receivedState;private int heartbeatStarted;
         // Only host-to-guest state is replaceable; commands and replies remain ordered.
         private static readonly Regex StateEnvelope=new Regex(@"^\{""version"":7,""epoch"":-?[0-9]+,""type"":""(?:frame|expedition-state)"",",RegexOptions.CultureInvariant);
-        public readonly NativeConnectionMetrics Metrics=new NativeConnectionMetrics();public readonly ConcurrentQueue<string> Received=new ConcurrentQueue<string>();public string Error{get;private set;}public bool Closed=>stop.IsCancellationRequested;public DateTime LastReceived{get;private set;}=DateTime.UtcNow;
+        private static readonly Regex HeartbeatEnvelope=new Regex(@"^\{""version"":7,""epoch"":0,""type"":""(ping|pong)"",""id"":([1-9][0-9]{0,9})\}$",RegexOptions.CultureInvariant);
+        private long lastReceived=DateTime.UtcNow.Ticks;
+        public readonly NativeConnectionMetrics Metrics=new NativeConnectionMetrics();public readonly ConcurrentQueue<string> Received=new ConcurrentQueue<string>();public string Error{get;private set;}public bool Closed=>stop.IsCancellationRequested;public DateTime LastReceived=>new DateTime(Interlocked.Read(ref lastReceived),DateTimeKind.Utc);
         private readonly int receiveLimit;private int reliableCount,receivedCount,reliableBytes;private readonly Task reader,writer;
         public NativeConnection(TcpClient socket,int inboundLimit=MaxFrame)
         {client=socket;client.NoDelay=true;receiveLimit=inboundLimit;stream=client.GetStream();reader=Task.Run(ReadLoop);writer=Task.Run(WriteLoop);}
@@ -49,16 +51,41 @@ namespace ChipArena.UnityConversion
         {if(!Closed)SendEncoded(Encode(json),snapshot);}
         public void Reject(string json){Send(json);_=Task.Run(async()=>{await Task.Delay(100).ConfigureAwait(false);Dispose();});}
         public void ClearSnapshot()=>Interlocked.Exchange(ref latest,null);
+        // Enable only after the application handshake. Loading/first-use work on Unity's
+        // main thread must not stop keepalives or require that thread to drain ping/pong.
+        public void StartHeartbeat(){if(Interlocked.Exchange(ref heartbeatStarted,1)==0&&!Closed)_=Task.Run(HeartbeatLoop);}
+        private async Task HeartbeatLoop()
+        {
+            try{while(!Closed){QueueHeartbeat(false,Metrics.Ping(NativeConnectionMetrics.Now));await Task.Delay(1000,stop.Token).ConfigureAwait(false);}}
+            catch(OperationCanceledException){}catch(ObjectDisposedException){}
+        }
+        private void QueueHeartbeat(bool reply,int id)
+        {
+            if(Closed)return;
+            var packet=Encode("{\"version\":7,\"epoch\":0,\"type\":\""+(reply?"pong":"ping")+"\",\"id\":"+id.ToString(System.Globalization.CultureInfo.InvariantCulture)+"}");
+            // At most one unsent probe and one reply. The existing single writer owns
+            // all socket writes, including these, and retains its flood-rate pacing.
+            if(reply)Interlocked.Exchange(ref pong,packet);else Interlocked.Exchange(ref ping,packet);Signal();
+        }
+        private bool ReceiveHeartbeat(string message)
+        {
+            if(message.Length>80)return false;var match=HeartbeatEnvelope.Match(message);
+            if(!match.Success||!int.TryParse(match.Groups[2].Value,out int id))return false;
+            if(match.Groups[1].Value=="ping")QueueHeartbeat(true,id);else Metrics.Pong(id,NativeConnectionMetrics.Now);
+            return true;
+        }
+        private void Signal(){if(ready.CurrentCount==0)try{ready.Release();}catch(SemaphoreFullException){}catch(ObjectDisposedException){}}
         public void SendEncoded(byte[] packet,bool snapshot=false)
-        {if(Closed)return;if(packet==null||packet.Length<2||packet.Length>MaxFrame+1)throw new InvalidDataException("Invalid encoded packet");if(snapshot)Interlocked.Exchange(ref latest,packet);else{int count=Interlocked.Increment(ref reliableCount);int bytes=Interlocked.Add(ref reliableBytes,packet.Length);if(count>MaxReliablePackets||bytes>MaxReliableBytes){Interlocked.Decrement(ref reliableCount);Interlocked.Add(ref reliableBytes,-packet.Length);Fail("Reliable queue overflow (send backlog exceeded bounded budget)");return;}reliable.Enqueue(packet);}if(ready.CurrentCount==0)try{ready.Release();}catch(SemaphoreFullException){}catch(ObjectDisposedException){}}
+        {if(Closed)return;if(packet==null||packet.Length<2||packet.Length>MaxFrame+1)throw new InvalidDataException("Invalid encoded packet");if(snapshot)Interlocked.Exchange(ref latest,packet);else{int count=Interlocked.Increment(ref reliableCount);int bytes=Interlocked.Add(ref reliableBytes,packet.Length);if(count>MaxReliablePackets||bytes>MaxReliableBytes){Interlocked.Decrement(ref reliableCount);Interlocked.Add(ref reliableBytes,-packet.Length);Fail("Reliable queue overflow (send backlog exceeded bounded budget)");return;}reliable.Enqueue(packet);}Signal();}
         public bool TryReceive(out string json){if(Received.TryDequeue(out json)){Interlocked.Decrement(ref receivedCount);return true;}json=Interlocked.Exchange(ref receivedState,null);return json!=null;}
         private async Task Exact(byte[] buffer,int count)
         {int at=0;while(at<count){int n=await stream.ReadAsync(buffer,at,count-at,stop.Token).ConfigureAwait(false);if(n==0)throw new EndOfStreamException();at+=n;}}
         private async Task ReadLoop()
         {
             try{var header=new byte[8];DateTime interval=DateTime.UtcNow;int rate=0;while(!Closed){await Exact(header,8).ConfigureAwait(false);if(header[0]!=67||header[1]!=65||header[2]!=85||header[3]!=Protocol)throw new InvalidDataException("Incompatible conversion protocol");int size=header[4]<<24|header[5]<<16|header[6]<<8|header[7];if(size<2||size>Math.Min(MaxFrame+1,receiveLimit+1024))throw new InvalidDataException("Invalid packet length");var data=new byte[size];await Exact(data,size).ConfigureAwait(false);var now=DateTime.UtcNow;if((now-interval).TotalSeconds>=1){interval=now;rate=0;}if(++rate>180)throw new InvalidDataException("Peer exceeded message rate");string message=Decode(data,receiveLimit);Metrics.Received(Utf8.GetByteCount(message));
-                if(receiveLimit==MaxFrame&&StateEnvelope.IsMatch(message))Interlocked.Exchange(ref receivedState,message);
-                else{if(Interlocked.Increment(ref receivedCount)>128)throw new InvalidDataException("Peer exceeded reliable receive budget");Received.Enqueue(message);}LastReceived=now;}}
+                if(ReceiveHeartbeat(message)){}
+                else if(receiveLimit==MaxFrame&&StateEnvelope.IsMatch(message))Interlocked.Exchange(ref receivedState,message);
+                else{if(Interlocked.Increment(ref receivedCount)>128)throw new InvalidDataException("Peer exceeded reliable receive budget");Received.Enqueue(message);}Interlocked.Exchange(ref lastReceived,now.Ticks);}}
             catch(Exception e)when(e is WebSocketException||e is InvalidDataException||e is IOException||e is SocketException||e is OperationCanceledException||e is ObjectDisposedException||e is ArgumentException){if(!Closed)Fail(e is EndOfStreamException?"Peer disconnected":e.Message);}
         }
         private async Task WriteLoop()
@@ -73,7 +100,7 @@ namespace ChipArena.UnityConversion
                     {
                         byte[] data;
                         if(reliable.TryDequeue(out data)){Interlocked.Decrement(ref reliableCount);Interlocked.Add(ref reliableBytes,-data.Length);}
-                        else data=Interlocked.Exchange(ref latest,null);
+                        else data=Interlocked.Exchange(ref pong,null)??Interlocked.Exchange(ref ping,null)??Interlocked.Exchange(ref latest,null);
                         if(data==null)break;
                         // Drain a recovered backlog below the peer's 180 packets/second guard.
                         // Small bursts avoid adding a timer delay to normal 60 Hz input on Windows.
