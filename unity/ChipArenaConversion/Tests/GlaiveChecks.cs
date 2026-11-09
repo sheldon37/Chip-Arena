@@ -52,6 +52,8 @@ namespace ChipArena.UnityConversion
             foreach(var broken in new Func<NativeGlaiveKit,NativeGlaiveKit>[]{x=>{x.Disc=9;return x;},x=>{x.Bounces=9;return x;},x=>{x.CastStep=7;return x;},x=>{x.DiscPos=new V3(float.NaN,0,0);return x;},x=>{x.Hits=new[]{new NativeGlaiveHit{Kind="nope",Pos=default,Dir=default}};return x;},x=>{x.CastKind=new string('x',40);return x;}})
                 Check(!broken(k.ViewCopy()).Valid(),"a broken record is refused");
             Check(NativeGlaive.Throw.Length<=24&&NativeGlaive.Halo.Length<=24&&NativeGlaive.Skim.Length<=24&&NativeGlaive.Burst.Length<=24,"its kinds fit the wire");
+            {var down=NativeGlaive.ThrowAim(0,-.5f,.866f);var up=NativeGlaive.ThrowAim(0,.95f,.31f);var level=NativeGlaive.ThrowAim(.6f,0,.8f);
+             Check(Math.Abs(Math.Asin(down.Y)*180/Math.PI-NativeGlaive.ThrowLowest)<.05f&&Math.Abs(Math.Asin(up.Y)*180/Math.PI-NativeGlaive.ThrowHighest)<.05f&&Math.Abs(level.Y)<1e-4f&&Math.Abs(level.Length()-1)<1e-4f&&level.X>.59f,"the throw keeps near level (a camera's downward look does not bury it), its heading kept");}
             // ---- the disc's paths ----
             var from=new Vector3(0,1.2f,0);var dir=Vector3.UnitZ;
             var mid=NativeGlaive.FlickAt(from,dir,.5f);Check(Math.Abs(mid.Z-NativeGlaive.FlickReach)<.05f,"the flick goes out its reach");

@@ -48,6 +48,14 @@ namespace ChipArena.UnityConversion
         /// HaloTime s, cutting each enemy it passes (HaloDamage, each at most every HaloEvery s); then it comes back to the hand.</summary>
         public const float HaloRelease=.2f,HaloRadius=1.7f,HaloTurns=2.2f,HaloTime=4,HaloDamage=10,HaloEvery=.35f,HaloHitRadius=.7f;
 
+        /// <summary>The throw's way from the aim (`x`, `y`, `z`, unit): its pitch kept between ThrowLowest and ThrowHighest degrees.</summary>
+        public const float ThrowLowest=-6,ThrowHighest=35;
+        public static Vector3 ThrowAim(float x,float y,float z)
+        {
+            var flat=new Vector3(x,0,z);float l=flat.Length();if(l<1e-4f)flat=Vector3.UnitZ;else flat/=l;
+            float p=(float)(Math.Asin(Math.Max(-1,Math.Min(1,y)))*180/Math.PI);p=Math.Max(ThrowLowest,Math.Min(ThrowHighest,p));float r=p*(float)Math.PI/180;
+            return flat*(float)Math.Cos(r)+Vector3.UnitY*(float)Math.Sin(r);
+        }
         public static string AbilityName(string id)
         {
             switch(id){case Swing:return "Ring Cuts";case Skim:return "Skimming Cut";case Throw:return "Ricochet Throw";case Halo:return "Halo";case Burst:return "Burst";default:return "";}

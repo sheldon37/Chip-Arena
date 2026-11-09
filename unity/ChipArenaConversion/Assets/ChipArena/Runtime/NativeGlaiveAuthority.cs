@@ -118,7 +118,9 @@ namespace ChipArena.UnityConversion
                 }
                 case NativeGlaive.Throw:
                 {
-                    p.GlaivePos=GlaiveHand(p)+p.GlaiveAim*.4f;p.GlaiveVel=p.GlaiveAim*NativeGlaive.ThrowSpeed;p.GlaiveTravel=0;p.GlaiveStruck.Clear();p.GlaiveFromThrow=true;
+                    // Thrown near level (the camera's own downward look would bury it in the floor a few metres out).
+                    var aim=NativeGlaive.ThrowAim(p.GlaiveAim.x,p.GlaiveAim.y,p.GlaiveAim.z);var throwAim=new Vector3(aim.X,aim.Y,aim.Z);
+                    p.GlaivePos=GlaiveHand(p)+throwAim*.4f;p.GlaiveVel=throwAim*NativeGlaive.ThrowSpeed;p.GlaiveTravel=0;p.GlaiveStruck.Clear();p.GlaiveFromThrow=true;
                     k.Disc=NativeGlaive.Out;k.DiscAt=Time;k.Bounces=0;k.Reformed=false;GlaiveSample(p);break;
                 }
                 case NativeGlaive.Halo:
@@ -190,7 +192,13 @@ namespace ChipArena.UnityConversion
                     var from=p.GlaivePos;var to=from+p.GlaiveVel*Rules.Dt;float step=(to-from).magnitude;
                     // A wall turns it back with a spark.
                     var wall=SweepNative(from,to-from,.12f,c=>c.gameObject.layer==PropLayer||c.GetComponent<NativePilotBody>()==null&&c.GetComponent<NativeMinionBody>()==null&&!c.isTrigger);
-                    if(wall.HasValue){p.GlaivePos=from+(to-from).normalized*Math.Max(0,wall.Value.Distance-.1f);GlaiveHit(p,NativeGlaive.HitRicochet,p.GlaivePos,-p.GlaiveVel);Return();break;}
+                    if(wall.HasValue)
+                    {
+                        p.GlaivePos=from+(to-from).normalized*Math.Max(0,wall.Value.Distance-.1f);
+                        // A floor skips it on (it bounces off, a little slower, with a spark); a wall turns it back.
+                        var n=wall.Value.Normal;if(n.y>.6f&&p.GlaiveVel.y<0){p.GlaiveVel=Vector3.Reflect(p.GlaiveVel,n)*.92f;p.GlaiveVel.y=Math.Max(p.GlaiveVel.y,1.5f);p.GlaivePos+=n*.05f;GlaiveHit(p,NativeGlaive.HitReturn,p.GlaivePos,n);GlaiveSample(p);break;}
+                        GlaiveHit(p,NativeGlaive.HitRicochet,p.GlaivePos,-p.GlaiveVel);Return();break;
+                    }
                     p.GlaivePos=to;p.GlaiveTravel+=step;
                     // The first enemy it reaches: cut, then on to the nearest other in sight, or back.
                     NativePilot hitPilot=null;NativeMinion hitMinion=null;
