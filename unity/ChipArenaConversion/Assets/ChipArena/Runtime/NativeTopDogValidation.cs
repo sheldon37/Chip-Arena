@@ -44,6 +44,9 @@ namespace ChipArena.UnityConversion
                 Setup();Cast(q:true);Check(a.Dog.Ready[0]>Time,"the spring's cooldown");Step(.15f);Check(a.Body.linearVelocity.y>18&&a.DogAirborne&&a.Dog.Props.Any(p=>p.Kind==NativeTopDog.PropSpring),"the spring throws it high");
                 // Zip: rooted through the wind-up, then carried ahead, swatting on the way.
                 Setup();Cast(e:true);var vel=Vector3.one;DogMotion(a,ref vel);Check(vel.x==0&&vel.z==0,"rooted through the wind-up");var start=a.Body.position;hp=b.Hp;Step(NativeTopDog.ZipWind+NativeTopDog.ZipTime+.05f);Check(a.Body.position.z>start.z+2&&b.Hp<hp,"zipped ahead and swatted");
+                // It walks and sprints as any pilot (the movement step's own velocity).
+                Setup();a.Input=new InputFrame{Z=1,Sprint=true};for(int s=0;s<20;s++)StepPilot(a);
+                Check(a.MoveVelocity.z>5&&!a.Body.isKinematic,"the Top Dog walks and sprints (velocity "+a.MoveVelocity.ToString("F2")+", kinematic "+a.Body.isKinematic+", stats speed "+a.Stats["speed"]+")");
                 // The mallet's dash on a sprint: carried ahead, whoever is in its path batted on (owner 2026-11-09).
                 Setup();a.Ready=0;a.Pose.Sprinting=true;a.Input=new InputFrame{Shoot=true,Attack=true,Sprint=true,Z=1};StepDogInput(a);Check(a.Dog.CastKind==NativeTopDog.Dash,"an attack on a sprint is the dash");
                 start=a.Body.position;hp=b.Hp;Step(NativeTopDog.DashWind+NativeTopDog.DashTime+.05f);Check(a.Body.position.z>start.z+2&&b.Hp<hp&&a.Dog.Hits.Any(h=>h.Kind==NativeTopDog.HitPow&&h.Victim==b.Seat.id),"dashed ahead and batted the one in its path");
