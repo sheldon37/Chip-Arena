@@ -34,7 +34,22 @@ namespace ChipArena.UnityConversion
         {
             if(a.MagicVisual>0||a.SourceSpec=="leet")return StaffMatrix(rig,first);
             var m=a.Weapon==WeaponId.Sword&&!NativeWeaponDressing.Fist(a.SourceSpec)?MeleeHand(rig,a,time,bone==CapturedRig.LHand):rig.Bones[bone].localToWorldMatrix;
+            if(!first&&(bone==CapturedRig.RHand||bone==CapturedRig.LHand))m=PalmGrip(rig,a,m,bone==CapturedRig.LHand);
             return reach!=1?m*Matrix4x4.Scale(new Vector3(1,1,reach)):m;
+        }
+        // Where a model's fist closes, in its hand bone's frame (the hand's own skin centre, measured on the model and the Hot Dog's
+        // gloves alike; the left mirrored).
+        private static readonly Vector3 PalmR=new Vector3(.088f,-.014f,-.006f),PalmL=new Vector3(-.088f,.014f,.006f);
+        // A weapon the game draws on a model posed by its own motion (the Top Dog's mallet, the Bombadier's TNT: Core NativeVisualMotion)
+        // hangs from the model's hand bone, the wrist; the pack weapons are mounted in the palm. Moved (across its handle only) so the
+        // handle runs through the palm, where the fist closes (owner 2026-11-09: "On top dog, the hands are off the handle").
+        private Matrix4x4 PalmGrip(CapturedAnimation.Player rig,Actor a,Matrix4x4 m,bool left)
+        {
+            if(a==null||a.SourceSpec!=NativeTopDog.Spec&&a.SourceSpec!=NativeBombs.Spec)return m;
+            var body=VisualHolder(rig);if(body?.Binding?.Rig==null||body.Binding.Bones==null)return m;var of=body.Binding.Rig.Of;int j=left?CapturedRig.LHand:CapturedRig.RHand;
+            int v=j<of.Length?of[j]:-1;if(v<0||v>=body.Binding.Bones.Length||body.Binding.Bones[v]==null)return m;var hand=body.Binding.Bones[v];
+            Vector3 palm=hand.TransformPoint(left?PalmL:PalmR),o=m.GetColumn(3),z=m.GetColumn(2);if(z.sqrMagnitude<1e-10f)return m;z.Normalize();
+            var d=palm-o;return Matrix4x4.Translate(d-z*Vector3.Dot(d,z))*m;
         }
         // `dim`: the block-cooldown factor of the rig the piece belongs to (block-cooldown-tint.ts tints the weapon group too).
         private void QueuePiece(in WeaponPiece p,Matrix4x4 parent,int layer,Camera camera,float dim=1)
