@@ -14,14 +14,16 @@ namespace ChipArena.UnityConversion
         {
             var a=Pilots[0];var b=Pilots[1];int checks=0;
             var grant=new NativeAccess();typeof(NativeAccess).GetProperty("Developer").GetSetMethod(true).Invoke(grant,new object[]{true});typeof(NativeAccess).GetProperty("Expires").GetSetMethod(true).Invoke(grant,new object[]{double.MaxValue});
-            var floor=GameObject.CreatePrimitive(PrimitiveType.Cube);floor.transform.SetParent(root.transform);floor.layer=PropLayer;floor.transform.position=new Vector3(1000,98.635f,1000);floor.transform.localScale=new Vector3(80,1,80);
+            // A floor floating over the middle of the map (the travel and the ground points keep to the map's x and z, not its height).
+            var bounds=Map?.bounds;var o=new Vector3(bounds==null?0:(bounds.minX+bounds.maxX)*.5f,100,bounds==null?0:(bounds.minZ+bounds.maxZ)*.5f);
+            var floor=GameObject.CreatePrimitive(PrimitiveType.Cube);floor.transform.SetParent(root.transform);floor.layer=PropLayer;floor.transform.position=new Vector3(o.x,98.635f,o.z);floor.transform.localScale=new Vector3(80,1,80);
             void Check(bool ok,string label){if(!ok)throw new Exception("Native Top Dog: "+label);checks++;}
             void Advance(float t){Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=Match.Time+t,fightAt=0});}
             void Step(float seconds){int n=Mathf.Max(1,Mathf.RoundToInt(seconds*60));for(int i=0;i<n;i++){Advance(1f/60);StepDogWorld();}}
             void Setup()
             {
                 Advance(10);ChipFields.Clear();Match.Teams=false;Match.Cooperative=false;
-                foreach(var p in Pilots){p.Seat.chips.Clear();DogClear(p);p.DogHolder=null;p.DogPopped=false;p.Death=null;p.Seat.connected=p.Seat.alive=true;p.Seat.bot=false;p.Seat.spec=p==a?NativeTopDog.Spec:"pistol";p.Seat.access=p==a?grant:NativeAccess.Guest;p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,new Dictionary<string,int>());p.Hp=(float)p.Stats["hp"];p.Mana=p.Stamina=100;p.Ammo=6;p.Ready=p.BlockEnd=p.RollEnd=p.ReloadEnd=p.AttackEnd=p.StunEnd=p.ShieldUntil=p.SlowEnd=0;p.SlowFactor=1;p.Down=null;p.Kernel=null;p.Technique=null;p.Swing=null;p.Special=null;p.AbilityCast=null;p.DevGod=false;p.Body.isKinematic=false;p.Body.useGravity=true;p.Collider.enabled=true;p.Body.position=new Vector3(1000,100,p==a?1000:1002.5f);p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;p.Input=new InputFrame();p.Grounded=true;}
+                foreach(var p in Pilots){p.Seat.chips.Clear();DogClear(p);p.DogHolder=null;p.DogPopped=false;p.Death=null;p.Seat.connected=p.Seat.alive=true;p.Seat.bot=false;p.Seat.spec=p==a?NativeTopDog.Spec:"pistol";p.Seat.access=p==a?grant:NativeAccess.Guest;p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,new Dictionary<string,int>());p.Hp=(float)p.Stats["hp"];p.Mana=p.Stamina=100;p.Ammo=6;p.Ready=p.BlockEnd=p.RollEnd=p.ReloadEnd=p.AttackEnd=p.StunEnd=p.ShieldUntil=p.SlowEnd=0;p.SlowFactor=1;p.Down=null;p.Kernel=null;p.Technique=null;p.Swing=null;p.Special=null;p.AbilityCast=null;p.DevGod=false;p.Body.isKinematic=false;p.Body.useGravity=true;p.Collider.enabled=true;p.Body.position=o+new Vector3(0,0,p==a?0:2.5f);p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;p.Input=new InputFrame();p.Grounded=true;}
                 Physics.SyncTransforms();
             }
             void Cast(byte n=0,bool q=false,bool e=false,bool shoot=false){a.Ready=0;a.Input=new InputFrame{SirenAbility=n,AbilityQ=q,AbilityE=e,Shoot=shoot};StepDogInput(a);}
@@ -68,7 +70,7 @@ namespace ChipArena.UnityConversion
                 // A dead Top Dog's pop still comes once it has let go.
                 Setup();a.Dog.Meter=1;Cast(6);Step(NativeTopDog.Twirl+.2f);var f2=a.Dog.Feast;Step(f2.Release-Time+.05f);a.Hp=0;a.Seat.alive=false;Step(f2.Pop-Time+.05f);Check(b.Hp<=0&&b.Death?.style==NativeTopDog.Burst,"a dead Top Dog's victim still pops");
                 // A miss gives half the meter back.
-                Setup();b.Body.position=new Vector3(1000,100,1060);Physics.SyncTransforms();a.Dog.Meter=1;Cast(6);Step(NativeTopDog.Twirl+NativeTopDog.LassoReach/NativeTopDog.LassoSpeed+.2f);Check(a.Dog.Feast==null||a.Dog.Feast.Miss,"the lasso misses");Check(Math.Abs(a.Dog.Meter-NativeTopDog.MissRefund)<.02f,"half the meter back");
+                Setup();b.Body.position=o+new Vector3(0,0,60);Physics.SyncTransforms();a.Dog.Meter=1;Cast(6);Step(NativeTopDog.Twirl+NativeTopDog.LassoReach/NativeTopDog.LassoSpeed+.2f);Check(a.Dog.Feast==null||a.Dog.Feast.Miss,"the lasso misses");Check(Math.Abs(a.Dog.Meter-NativeTopDog.MissRefund)<.02f,"half the meter back");
                 // A bot spends a full meter.
                 Setup();a.Dog.Meter=1;var bot=new InputFrame();BotDog(a,ref bot,b.Body.position,2.5f,true);Check(bot.SirenAbility==6,"a bot uses the ultimate");
                 var empty=NativeFrameCodec.Clone(NetworkFrame());Check(empty.snapshot.Actors.First(x=>x.Id==b.Seat.id).Dog==null&&empty.snapshot.Actors.First(x=>x.Id==a.Seat.id).Dog?.Feast==null,"a null kit and an idle feast survive the clone");
