@@ -8,6 +8,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The held guard (NativeArena.StepGuard): up while right click is held on a melee weapon, since `GuardAt`; broken
         /// (out of stamina) it cannot go up again before `GuardBrokenUntil`.</summary>
         public bool Guarding;public float GuardAt=-100,GuardBrokenUntil=-100;
+        /// <summary>When a hit was last taken on the guard (that hit neither wounds nor staggers).</summary>
+        public float GuardedAt=-100;
     }
 
     public sealed partial class NativeArena
@@ -41,7 +43,7 @@ namespace ChipArena.UnityConversion
             var toward=from-target.Body.position;toward.y=0;if(toward.sqrMagnitude<1e-6f){toward=-direction;toward.y=0;}if(toward.sqrMagnitude<1e-6f)return amount;
             var faces=Vec(V3.Forward(target.Yaw));faces.y=0;if(!NativeMeleeRules.GuardFaces(faces.x,faces.z,toward.x,toward.z))return amount;
             float blocked=amount*NativeMeleeRules.GuardShare,cost=blocked*NativeMeleeRules.GuardStamina;var at=target.Body.position+Vector3.up*.35f+toward.normalized*.55f;
-            if(target.Stamina>=cost){target.Stamina-=cost;target.RegenAt=Math.Max(target.RegenAt,Time+NativeMeleeRules.GuardRegenPause);Emit(EventKind.Block,target,source!=null&&source!=target?source.Seat.id:0,at,blocked,"hold");return amount-blocked;}
+            if(target.Stamina>=cost){target.Stamina-=cost;target.GuardedAt=Time;target.RegenAt=Math.Max(target.RegenAt,Time+NativeMeleeRules.GuardRegenPause);Emit(EventKind.Block,target,source!=null&&source!=target?source.Seat.id:0,at,blocked,"hold");return amount-blocked;}
             float covered=cost>0?blocked*target.Stamina/cost:0;target.Stamina=0;target.Guarding=false;target.GuardBrokenUntil=Time+NativeMeleeRules.GuardBreak;
             Emit(EventKind.Block,target,source!=null&&source!=target?source.Seat.id:0,at,covered,"guard-break");return amount-covered;
         }

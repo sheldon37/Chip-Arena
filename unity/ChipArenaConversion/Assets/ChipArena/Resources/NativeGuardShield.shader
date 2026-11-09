@@ -58,7 +58,7 @@ Shader "ChipArena/NativeGuardShield"
                 for(int k=0;k<4;k++){float4 h=_Hits[k];if(h.z<0||h.w<=0)continue;float d=distance(uv*float2(1.25,1),h.xy*float2(1.25,1)),r=h.z*1.6;rings+=exp(-abs(d-r)*40)*exp(-h.z*3.5)*h.w;flashes+=exp(-d*14)*exp(-h.z*8)*h.w*2;}
                 // Broken: the cells' edges flare and the panel falls apart, cell by cell.
                 float shatter=1,crack=0;if(_Break>=0){float p=saturate(_Break/.4);crack=smoothstep(.12,0,edge)*(1-p)*2.5;shatter=step(p,hash(id)*.9+.05)*(1-p*.5);}
-                float glow=.035*body+cell*.22*breathe*body+sheen*.3*body+edgeGlow*.65+front*1.8+rings*2.2+flashes+crack;
+                float glow=.018*body+cell*.1*breathe*body+sheen*.16*body+edgeGlow*.34+front*1.1+rings*1.5+flashes*.8+crack;
                 float3 c=_ShieldColor.rgb*glow*grown*shatter*_ShieldFade*_Strength;
                 UNITY_APPLY_FOG_COLOR(i.fogCoord,c,fixed4(0,0,0,0));
                 return float4(c,0);

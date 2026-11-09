@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
             if(fade<=0){if(h.On){foreach(var c in h.Copies)if(c!=null)c.enabled=false;h.On=false;}return;}
             // A parried blow: the latest Block event this pilot made, its age and where it landed.
             float flash=-1;Vector3 hit=Vector3.zero;foreach(var r in blockRecords)if(r.Blocker==a.Id&&r.At<=time&&r.At>=a.BlockAt-.05f&&(flash<0||time-r.At<flash)){flash=time-r.At;hit=r.Point;}
-            var accent=AccentTint(a.AccentColor);var colour=new Color(accent.r*.55f+.12f,accent.g*.55f+.42f,accent.b*.55f+.55f)*2.2f;
+            var accent=AccentTint(a.AccentColor);var colour=new Color(accent.r*.45f+.1f,accent.g*.45f+.45f,accent.b*.45f+.6f)*1.1f;
             float feet=body.Root.transform.position.y;h.Block.SetColor(HoloColorId,colour.linear);h.Block.SetFloat(HoloFadeId,fade);h.Block.SetFloat(HoloAgeId,time-a.BlockAt);
             h.Block.SetFloat(HoloFlashId,flash);h.Block.SetVector(HoloHitId,hit);h.Block.SetVector(HoloSpanId,new Vector4(feet,feet+1.9f,0,0));
             for(int i=0;i<h.Copies.Length;i++)

@@ -26,7 +26,7 @@ internal static class GuardChecks
         Check(arena.Contains("a.Guarding=p.Guarding;a.GuardAt=p.GuardAt;")&&arena.Contains("bool sprint=i.Sprint&&!p.Guarding&&")&&arena.Contains("*(p.Guarding?NativeMeleeRules.GuardMove:1)"),"the guard on the actor; no sprint and a slower walk while it is up");
         Check(guard.Contains("at,blocked,\"hold\");")&&guard.Contains("\"guard-break\"")&&guard.Contains("target.Stamina-=cost;"),"blocked hits cost stamina and are events; a break too");
         Check(game.Contains("pending.Parry|=Input.GetKeyDown(KeyCode.F)")&&game.Contains("pending.Guard=NativeMeleeRules.Guards(p.Weapon?.@class)&&(Input.GetMouseButton(1)")
-            &&game.Contains("bool aiming=ads!=null&&p.Weapon?.@class==\"ranged\"&&(Input.GetMouseButton(1)")&&!game.Contains("pending.Block|=(Input.GetMouseButtonDown(1)"),"the keys: F parry, right click aim or guard");
+            &&game.Contains("bool aiming=ads!=null&&p.Weapon?.@class==\"ranged\"&&(Input.GetMouseButton(1)")&&game.Contains("pending.Block|=PadDown(PadAction.Block);"),"the keys: F parry, right click aim or guard (a pad's block button parries and guards)");
         Check(net.Contains("input.Parry|=taps.Parry;")&&pve.Contains("Pve.Content.machines.Any(x=>Flat(Vec(x.front.Position()))<=2.2f))p.Input.Interact=false;"),"a remote parry press is kept; a PvE revive or machine in reach takes F");
         Check(content.Contains("public ContentAds Ads(string spec) {if(ads!=null)foreach(var x in ads)if(x.spec==spec)return x;return null;}"),"every gun with an aim row aims");
         Console.WriteLine("PASS guard: "+n+" checks (F parries unless an interaction takes it; right click aims a gun or guards a melee weapon; the guard's arc, share, stamina, break and walk)");

@@ -255,7 +255,8 @@ namespace ChipArena.UnityConversion
             TrainingHit(target,source,actual,head,damageKind??eventKind.ToString());if(!forced&&direct&&source!=target)ExpansionHit(source,target.Seat.id,hitPoint??target.Body.position,actual,melee,direction,projectile>0);
             if(shadowHit&&actual>0)source.MeleeKit.EmpowerUntil=0;
             target.ArmourHitUntil=NativeMeleeKitRules.LightArmour(target.MeleeKit,Time,actual)?Time+.001f:0;
-            Wound(target,source,amount,target.Hp<=0,head,melee,direct,direction,impact,hitPoint);MeleeHitReaction(target,direction,hitPoint,actual,head,direct||melee);
+            // A guarded hit (NativeGuard.cs) neither wounds nor staggers, unless it kills.
+            if(target.GuardedAt!=Time||target.Hp<=0){Wound(target,source,amount,target.Hp<=0,head,melee,direct,direction,impact,hitPoint);MeleeHitReaction(target,direction,hitPoint,actual,head,direct||melee);}
             if(source!=null&&primary&&direct&&Leet(source,"yeet")){impulse*=1000;target.LaunchUntil=Time+1;}
             if(!SirenArmor(target))target.Knockback+=direction.normalized*((source!=null&&primary&&direct&&Has(source,"grappling-shot")?0:impulse)/65f)*(float)target.Stats["knockbackTaken"];
             if(source!=null&&primary&&direct)SettleRiposte(target,source,actual);

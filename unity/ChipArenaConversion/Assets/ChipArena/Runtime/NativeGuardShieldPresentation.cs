@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
                     else if(r.Detail=="hold"&&age<.9f&&hits<guardHits.Length){var uv=ShieldUv(inverse.MultiplyPoint3x4(r.Point));guardHits[hits++]=new Vector4(uv.x,uv.y,age,1);}
                 }
                 if(fade<=0&&broke<0)continue;if(broke>=0)fade=1;
-                bool own=FirstPerson&&a.Id==LocalId;var accent=AccentTint(a.AccentColor);var colour=new Color(accent.r*.6f+.18f,accent.g*.6f+.38f,accent.b*.6f+.5f)*1.8f;
+                bool own=FirstPerson&&a.Id==LocalId;var accent=AccentTint(a.AccentColor);var colour=new Color(accent.r*.5f+.15f,accent.g*.5f+.42f,accent.b*.5f+.55f)*1.05f;
                 guardShieldBlock.Clear();guardShieldBlock.SetColor(ShieldColorId,colour.linear);guardShieldBlock.SetFloat(ShieldAgeId,time-a.GuardAt);guardShieldBlock.SetFloat(ShieldFadeId,fade);
                 guardShieldBlock.SetFloat(ShieldBreakId,broke);guardShieldBlock.SetFloat(ShieldStrengthId,own?.35f:1);guardShieldBlock.SetVectorArray(ShieldHitsId,guardHits);
                 Graphics.DrawMesh(mesh,frame,mat,0,null,0,guardShieldBlock,ShadowCastingMode.Off,false);

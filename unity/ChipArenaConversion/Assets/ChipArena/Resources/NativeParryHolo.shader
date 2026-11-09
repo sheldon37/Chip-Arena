@@ -63,7 +63,7 @@ Shader "ChipArena/NativeParryHolo"
                 // A parried blow: a ring running out from where it landed, and a flash.
                 float flash=0,ring=0;if(_HoloFlash>=0){float d=distance(i.wpos,_HoloHit.xyz),r=_HoloFlash*3.2;ring=exp(-abs(d-r)*22)*exp(-_HoloFlash*4);flash=exp(-_HoloFlash*9);}
                 float flicker=.9+.1*sin(t*53+h*7)*sin(t*31);
-                float glow=.05+rim*1.35+lines*.28*(.4+rim)+cell*.42*breathe*(.35+rim)+sweep*2.2+ring*2.6+flash*(.6+rim*1.4);
+                float glow=.025+rim*.75+lines*.16*(.4+rim)+cell*.22*breathe*(.35+rim)+sweep*1.3+ring*1.6+flash*(.35+rim*.8);
                 float3 c=_HoloColor.rgb*glow*flicker*_HoloFade;
                 UNITY_APPLY_FOG_COLOR(i.fogCoord,c,fixed4(0,0,0,0));
                 return float4(c,0);
