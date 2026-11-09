@@ -328,7 +328,8 @@ namespace ChipArena.UnityConversion
                         {
                             var along=slipped.Body.linearVelocity;along.y=0;if(along.sqrMagnitude<.5f)along=Vec(V3.Forward(slipped.Yaw))*2;
                             DogHurt(p,slipped,NativeTopDog.PeelDamage,along,NativeTopDog.Peel);
-                            if(slipped.Hp>0&&!SirenArmor(slipped)&&Pve?.Boss!=slipped){StunMelee(slipped,.24f);slipped.Down=new NativeRecovery{At=Time,Until=Time+5,PickupUsed=true,Source=p.Seat.id};BombLaunch(slipped,p,along.normalized*6,5,0);DogMark(p,slipped.Seat.id,NativeTopDog.Slipped,NativeTopDog.PeelDown+.6f);}
+                            // The launch first (it clears a knockdown), then the fall onto the back.
+                            if(slipped.Hp>0&&!SirenArmor(slipped)&&Pve?.Boss!=slipped){BombLaunch(slipped,p,along.normalized*6,5,0);StunMelee(slipped,.24f);slipped.Down=new NativeRecovery{At=Time,Until=Time+5,PickupUsed=true,Source=p.Seat.id};DogMark(p,slipped.Seat.id,NativeTopDog.Slipped,NativeTopDog.PeelDown+.6f);}
                             DogHit(p,NativeTopDog.HitSlip,at,along,slipped.Seat.id);p.DogFlights.Remove(f);break;
                         }
                         var minion=DogMinions(p).FirstOrDefault(m=>Vector3.Distance(m.Body.position-Vector3.up*m.Collider.height*.5f,at)<=NativeTopDog.PeelTouch+.2f);

@@ -97,9 +97,10 @@ Its sound is its own toon cues, no music bed.
 
 ## Sound
 
-Every cue is a toon sound synthesized in C# (Core `NativeToonSynth`, 34 of them), so the class is never silent. A clip the owner adds
-under the key `topdog.<id>` (for example `topdog.boing`) plays in its place. Core `NativeTopDogSounds` maps the hits, casts and the
-entrance to them.
+Every cue is a toon sound synthesized in C# (Core `NativeToonSynth`, 34 of them: bonk, slam, boing, slide whistles, the anvil's whistle
+and clang, splats, gulp, burp, pop, the dinner bell, a fanfare...), so the class needs no clip and is never silent. Core
+`NativeTopDogSounds` maps the hits, casts and the entrance to them. The playback asks the effects bank for `topdog.<id>` first, so
+recorded versions can replace them later: those keys are not in the bank's key table or a request list yet.
 
 ## The record (`Actor.Dog`, Core `NativeTopDogKit`)
 

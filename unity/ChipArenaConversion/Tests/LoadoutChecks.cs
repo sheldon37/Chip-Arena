@@ -16,7 +16,7 @@ internal static class LoadoutChecks
             ["leet"]="32 DMG · 1.7 / SEC · 7 MANA",["pistol"]="23 DMG · 2.4 / SEC",["rifle"]="58 DMG · 0.9 / SEC",["machinegun"]="8 DMG · 11.8 / SEC",
             ["fire"]="24 DMG · 2.0 / SEC · 8 MANA",["water"]="20 DMG · 2.6 / SEC · 6 MANA",["lightning"]="15 DMG · 3.6 / SEC · 5 MANA",["darkness"]="34 DMG · 1.5 / SEC · 10 MANA",
             ["sword"]="30 DMG · 1.6 / SEC · 14 STAMINA · 2.5 M",["daggers"]="15 DMG · 2.9 / SEC · 7 STAMINA · 1.75 M",["shield"]="23 DMG · 1.3 / SEC · 16 STAMINA · 2.1 M",
-            ["greatsword"]="52 DMG · 0.8 / SEC · 20 STAMINA · 3.4 M",["bow"]="18\u201362 DMG · 0.8 S DRAW",["cyberlord"]="12 DMG · 3.6 / SEC · 2.2 M",["bombadier"]="12 DMG · 1.5 / SEC",
+            ["greatsword"]="52 DMG · 0.8 / SEC · 20 STAMINA · 3.4 M",["bow"]="18\u201362 DMG · 0.8 S DRAW",["cyberlord"]="12 DMG · 3.6 / SEC · 2.2 M",["bombadier"]="12 DMG · 1.5 / SEC",["topdog"]="14 DMG · 2.1 / SEC · 2.9 M",
         };
         if(data.weapons.Length!=expected.Count)throw new Exception("Weapon count changed: "+data.weapons.Length);
         var previous=CultureInfo.CurrentCulture;
@@ -44,8 +44,8 @@ internal static class LoadoutChecks
         Func<ContentWeapon,bool> guest=w=>!w.devOnly,dev=w=>true,granted=w=>!w.devOnly||w.id=="siren";
         Expect("guest ranged",List("ranged",false,guest),"pistol,rifle,machinegun,bow");Expect("guest magic",List("magic",false,guest),"fire,water,lightning,darkness");
         Expect("guest melee",List("melee",false,guest),"sword,daggers,shield,greatsword");Expect("guest dev",List("dev",false,guest),"");
-        Expect("developer magic",List("magic",true,dev),"leet,fire,water,lightning,darkness");Expect("developer melee",List("melee",true,dev),"siren,emperor,ansatsuken,sword,daggers,shield,greatsword,cyberlord");
-        Expect("developer dev",List("dev",true,dev),"siren,emperor,ansatsuken,leet,cyberlord,bombadier");Expect("granted melee",List("melee",false,granted),"siren,sword,daggers,shield,greatsword");Expect("granted dev",List("dev",false,granted),"");
+        Expect("developer magic",List("magic",true,dev),"leet,fire,water,lightning,darkness");Expect("developer melee",List("melee",true,dev),"siren,emperor,ansatsuken,sword,daggers,shield,greatsword,cyberlord,topdog");
+        Expect("developer dev",List("dev",true,dev),"siren,emperor,ansatsuken,leet,cyberlord,bombadier,topdog");Expect("granted melee",List("melee",false,granted),"siren,sword,daggers,shield,greatsword");Expect("granted dev",List("dev",false,granted),"");
         if(string.Join(",",NativeLoadoutText.Classes.Where(c=>NativeLoadoutText.Offered(c,false)))!="ranged,magic,melee"||!NativeLoadoutText.Offered("dev",true))throw new Exception("Offered classes");
         yield return "Class grouping follows weaponInClass for guests, developers and single-weapon grants (DEV class for developers only)";
         Expect("names",string.Join("|",NativeLoadoutText.Classes.Select(NativeLoadoutText.Name)),"Ranged|Magic|Melee|???");
