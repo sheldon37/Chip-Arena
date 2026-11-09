@@ -160,7 +160,7 @@ namespace ChipArena.UnityConversion
             if(AbilitiesDisarmed(p))p.Input.AbilityQ=p.Input.AbilityE=p.Input.AbilityEReleased=false;
             StepBombInput(p);StepDogInput(p);StepTechniqueInput(p);StepAbilities(p);StepFighter(p);StepLeetPilot(p);StepSirenPilot(p);
             if(p.ReloadEnd>0&&Time>=p.ReloadEnd){p.Ammo=Magazine(p);p.ReloadEnd=0;Heal(p,(float)p.Stats["reloadHeal"]);Emit(EventKind.ReloadEnd,p,0,p.Body.position,0);}
-            bool aim=Content.Ads(p.Seat.spec)!=null&&i.Aim&&!rolling&&p.ReloadEnd==0&&Time>=p.BlockEnd&&!Incapacitated(p);
+            bool aim=Content.Ads(p.Seat.spec)!=null&&i.Aim&&!rolling&&p.ReloadEnd==0&&Time>=p.BlockEnd&&!Incapacitated(p)&&!Overdriving(p);
             if(aim&&!p.Aiming)p.AimAt=Time;p.Aiming=aim;
             if(!BombBusy(p)&&i.Reload&&p.AbilityCast==null&&!TechniqueActionLock(p))Reload(p);
             if(p.CastAt>0&&Time>=p.CastAt){p.CastAt=0;Fire(p);}

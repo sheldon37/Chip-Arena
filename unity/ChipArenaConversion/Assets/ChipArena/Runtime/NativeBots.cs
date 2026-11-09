@@ -61,6 +61,11 @@ namespace ChipArena.UnityConversion
                 foreach(var shot in Bullets){var owner=Pilots.Find(q=>q.Seat.id==shot.Owner);if(!CanHit(owner,p))continue;Vector3 d=pos-shot.Position;float eta=Vector3.Dot(d,shot.Velocity.normalized)/Math.Max(1,shot.Velocity.magnitude);if(eta>0&&eta<(level==2?.24f:level==1?.3f:.38f)&&(d-shot.Velocity*eta).magnitude<.9f&&!SceneLinecast(shot.Position,pos,WorldMask)){threat=true;break;}}
                 input.Block=threat&&random.NextDouble()<(level==2?.85:level==1?.65:.35);
             }
+            // The held guard (NativeGuard.cs): a melee bot not parrying a blow on its way puts its guard up for it (a roll per blow, by level).
+            if(!input.Block&&NativeMeleeRules.Guards(p.Weapon?.@class)&&opponent?.Swing!=null&&visible&&distance<opponent.Weapon.range+1.5f&&opponent.Swing.HitAt-Time<.45f&&opponent.Swing.Id!=p.BotBrain.GuardSwing)
+            {p.BotBrain.GuardSwing=opponent.Swing.Id;if(random.NextDouble()<(level==2?.75:level==1?.55:.3))p.BotBrain.GuardUntil=Time+.7f;}
+            input.Guard=!input.Block&&Time<p.BotBrain.GuardUntil&&NativeMeleeRules.Guards(p.Weapon?.@class);
+            if(input.Guard){input.Attack=input.Shoot=input.Sprint=false;return input;}
             if(input.Block){input.Attack=input.Shoot=input.Roll=input.Sprint=false;if(CyberAllowed(p)&&Time>=p.Cyber.EReady&&p.Mana>=35){input.Block=false;input.AbilityE=true;}return input;}
             if(p.Seat.spec=="siren")return SirenDecision(p,input,target,distance,visible,level);
             BotAbilities(p,ref input,target,targetVelocity,distance,visible,level);

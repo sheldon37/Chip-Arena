@@ -241,6 +241,13 @@ namespace ChipArena.UnityConversion
         public const float BowHold=.6f;
         /// <summary>How long after a shot the gun stays up (the game's own rule: the interval and a little).</summary>
         public static float ShotHold(Actor a)=>GunRules.Valid(a.Weapon)&&GunRules.Get(a.Weapon)!=null?Math.Max(.38f,GunRules.Get(a.Weapon).Interval+.15f):.38f;
+        /// <summary>The held guard (Runtime NativeGuard.cs; owner 2026-11-09: right click "a held block for melee"): the set's block
+        /// clip on the upper body while it is up, from when it went up, over the legs' own walk (the guard walks).</summary>
+        public static bool GuardUpper(Set s,Actor a,float time,IClips clips,out Upper up)
+        {
+            up=default;if(a==null||!a.Guarding||s.Block==null||!clips.Has(s.Block))return false;
+            up=new Upper{A=s.Block,TimeA=Math.Max(0,time-a.GuardAt),Raised=true};return true;
+        }
         /// <summary>`ready`: the body's own motion leaves the arms free (idle, locomotion, a jump's rise or fall, a landing): a gun
         /// then follows the look unless sprinting (owner 2026-10-24: the low carry did not point where the pilot looks).</summary>
         public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up,bool ready=false)
@@ -248,6 +255,7 @@ namespace ChipArena.UnityConversion
             up=default;
             if(SpinUpper(s,a,time,clips,out up))return true;
             if(DashUpper(s,a,time,clips,out up))return true;
+            if(GuardUpper(s,a,time,clips,out up))return true;
             if(BombUpper(s,a,time,clips,out up))return true;
             if(s.CastStart!=null)return Cast(s,a,time,clips,out up);
             if(s.Aim==null)return false;

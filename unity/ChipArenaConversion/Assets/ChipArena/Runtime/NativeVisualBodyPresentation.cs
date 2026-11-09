@@ -627,6 +627,8 @@ namespace ChipArena.UnityConversion
             if(!first)VisualWounds(body,rig,a);
             var look=new VisualSpawnLook();bool on=SpawnVisualLook(spawn,rig,ref look);body.Building=on&&look.Front.x<1e4f;
             VisualGear(body,a,time,reveal,tint,flash,first);
+            // The parry's holographic barrier over the body (third person; NativeParryHoloPresentation.cs).
+            if(!first)VisualParryHolo(body,a,time);
             bool ghost=on&&look.Ghost&&VisualGhosts()!=null;
             if(ghost!=body.Ghosted)
             {

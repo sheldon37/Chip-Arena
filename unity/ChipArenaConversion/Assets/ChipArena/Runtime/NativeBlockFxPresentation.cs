@@ -26,6 +26,8 @@ namespace ChipArena.UnityConversion
         private struct BlockRecord
         {
             public int Id,Blocker,Seed;public float At;public NativeBlockHit Hit;public Vector3 Point,Toward,Reflect;
+            // The event's own word: the held guard's "hold" and "guard-break" (NativeGuardShieldPresentation.cs) beside the parry's.
+            public string Detail;
             // The world spray frame, fixed when first drawn (a strafing blocker never drags its sparks along).
             public bool Framed;public NativeClashFrame Frame;
         }
@@ -65,7 +67,7 @@ namespace ChipArena.UnityConversion
                 Vector3 facing=blocker!=null?Facing(blocker):Vector3.forward,toward=attacker!=null?Flat(ArenaPresentation.Vec(attacker.Position)-(blocker!=null?ArenaPresentation.Vec(blocker.Position):point),facing):facing;
                 float distance=attacker!=null&&blocker!=null?(ArenaPresentation.Vec(attacker.Position)-ArenaPresentation.Vec(blocker.Position)).magnitude:0;
                 var hit=NativeBlockFx.Classify(e.Detail,attacker!=null,attacker!=null&&MeleeClass(attacker),distance,attacker!=null?AttackerReach(attacker):0);
-                var record=new BlockRecord{Id=e.Id,Blocker=e.Source,Seed=NativeBlockFx.Seed(e.Id),At=e.Time,Hit=hit,Point=point,Toward=toward,Reflect=toward};
+                var record=new BlockRecord{Id=e.Id,Blocker=e.Source,Seed=NativeBlockFx.Seed(e.Id),At=e.Time,Hit=hit,Point=point,Toward=toward,Reflect=toward,Detail=e.Detail};
                 if(hit==NativeBlockHit.Deflect)record.Reflect=ReflectDirection(s,e.Source,point,attacker,toward);
                 if(blockRecords.Count>=NativeBlockFx.MaxRecords)blockRecords.RemoveAt(0);blockRecords.Add(record);
             }
@@ -133,7 +135,7 @@ namespace ChipArena.UnityConversion
         /// deflects into the match camera's mesh and the view camera's.</summary>
         private void RenderBlockFx(Snapshot s,float time)
         {
-            if(s?.Actors==null)return;ObserveBlocks(s,time);
+            if(s?.Actors==null)return;ObserveBlocks(s,time);RenderGuardShields(s,time);
             bool any=blockRecords.Count>0;if(!any)foreach(var a in s.Actors)if(a!=null&&a.Alive&&time<a.BlockUntil){any=true;break;}
             if(!any)return;
             if(blockDraw==null){if(blockDrawFailed)return;blockDraw=NativeBlockFxDraw.Create(gameObject);blockDrawFailed=blockDraw==null;if(blockDraw==null)return;}
@@ -146,6 +148,9 @@ namespace ChipArena.UnityConversion
                 if(a==null||!a.Alive)continue;bool view=FirstPerson&&a.Id==LocalId;if(view&&!viewOk)continue;
                 float openAt=NativeBlockFx.OpenAt(a.BlockAt,a.BlockUntil,BlockWindow(a));bool open=time>=openAt&&time<a.BlockUntil,hasHit=GuardHit(a.Id,time,out var hit);
                 if(!open&&!hasHit)continue;
+                // On a model the parry is the holographic barrier over the body now (NativeParryHoloPresentation.cs; owner 2026-11-09):
+                // no ward in front of the weapon in third person. The sparks and rings of a parried blow stay (below).
+                if(!view&&rigs.TryGetValue(a.Id,out var wardRig)&&VisualHolder(wardRig)!=null&&ParryHoloMaterial()!=null)continue;
                 var form=GuardForm(a);var pose=BlockPose(a,time,view,form);
                 (view?blockView:blockWorld).GuardFor(pose,form,NativeBlockFx.GuardColor(GuardHex(a)),time,openAt,a.BlockUntil,hasHit,hit.Hit,time-hit.At,N(hit.Toward),hit.Seed,view?NativeBlockFx.FirstPersonStrength:1,low);
             }

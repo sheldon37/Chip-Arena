@@ -24,7 +24,7 @@ internal static class GuardChecks
         Check(arena.Contains("(p.Input.Block||p.Input.Parry&&p.Input.Interact&&ZoneBoss?.fallen==null))TryBlock(p);")&&arena.Contains("if(p.Hp>0&&p.Seat.connected)StepGuard(p);"),"F parries unless an interaction took it; the guard each tick");
         Check(arena.Contains("if(!forced)amount=GuardDamage(target,source,amount,direction,hitPoint);"),"the guard in the damage, after the parry");
         Check(arena.Contains("a.Guarding=p.Guarding;a.GuardAt=p.GuardAt;")&&arena.Contains("bool sprint=i.Sprint&&!p.Guarding&&")&&arena.Contains("*(p.Guarding?NativeMeleeRules.GuardMove:1)"),"the guard on the actor; no sprint and a slower walk while it is up");
-        Check(guard.Contains("Emit(EventKind.Block,target,0,at,blocked,\"hold\")")&&guard.Contains("\"guard-break\"")&&guard.Contains("target.Stamina-=cost;"),"blocked hits cost stamina and are events; a break too");
+        Check(guard.Contains("at,blocked,\"hold\");")&&guard.Contains("\"guard-break\"")&&guard.Contains("target.Stamina-=cost;"),"blocked hits cost stamina and are events; a break too");
         Check(game.Contains("pending.Parry|=Input.GetKeyDown(KeyCode.F)")&&game.Contains("pending.Guard=NativeMeleeRules.Guards(p.Weapon?.@class)&&(Input.GetMouseButton(1)")
             &&game.Contains("bool aiming=ads!=null&&p.Weapon?.@class==\"ranged\"&&(Input.GetMouseButton(1)")&&!game.Contains("pending.Block|=(Input.GetMouseButtonDown(1)"),"the keys: F parry, right click aim or guard");
         Check(net.Contains("input.Parry|=taps.Parry;")&&pve.Contains("Pve.Content.machines.Any(x=>Flat(Vec(x.front.Position()))<=2.2f))p.Input.Interact=false;"),"a remote parry press is kept; a PvE revive or machine in reach takes F");
