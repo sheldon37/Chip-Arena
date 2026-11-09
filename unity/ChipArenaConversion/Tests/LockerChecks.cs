@@ -53,7 +53,7 @@ internal static class LockerChecks
         var hats=Ids(profile,"Hats");var kills=Ids(profile,"Kills");var intros=Ids(profile,"Intros");
         Check(hats.Length==12&&kills.Length==22&&intros.Length==26,"cosmetic id lists parsed ("+hats.Length+"/"+kills.Length+"/"+intros.Length+")");
         // The staged entrances, the DEV Sheldon Intro, the DEV Cyber Lord's Hardlight Boot and the DEV Bombadier's Last Warning (staged by the director, listed only with DEV access).
-        var staged=NativeIntroRules.Entrances.Concat(new[]{NativeCosmeticGate.SheldonIntro,CyberLordSpec.Entrance,NativeBombs.Entrance}).ToArray();
+        var staged=NativeIntroRules.Entrances.Concat(new[]{NativeCosmeticGate.SheldonIntro,CyberLordSpec.Entrance,NativeBombs.Entrance,NativeTopDog.Entrance}).ToArray();
         Check(intros.SequenceEqual(staged.OrderBy(i=>Array.IndexOf(intros,i)))&&intros.OrderBy(i=>i).SequenceEqual(staged.OrderBy(i=>i))&&NativeIntroRules.Pickable(NativeCosmeticGate.SheldonIntro)&&NativeEntranceDirector.Directed(NativeCosmeticGate.SheldonIntro)&&NativeIntroRules.Pickable(CyberLordSpec.Entrance)&&NativeEntranceDirector.Directed(CyberLordSpec.Entrance)&&NativeIntroRules.Pickable(NativeBombs.Entrance)&&NativeEntranceDirector.Directed(NativeBombs.Entrance)&&intros.Contains(NativeBombs.Entrance),"the Locker offers exactly the staged entrances");
         foreach(var id in NativeIntroRules.Procedural)Check(NativeLocker.IntroIcon(id)!=null&&!NativeLocker.DevItem(id),"the procedural entrance "+id+" has its icon and no DEV badge");
         foreach(var id in NativeIntroRules.Retired)Check(Array.IndexOf(intros,id)<0&&NativeLocker.IntroText(id).Length==0&&NativeLocker.IntroIcon(id)==null,"the retired "+id+" is gone from the Locker");
@@ -173,7 +173,7 @@ internal static class LockerChecks
             if(k2>=0)Check(o0.Name==CyberKit2Spec.Names[k2]&&o0.Text==NativeCyberLordText.Texts[k2]&&o0.Icon==CyberKit2Spec.Icons[k2]&&o0.Cooldown==cooldown&&o0.Cost==cost&&!o0.FromWeapon,a.spec+" "+a.slot+" option fields (Kit v2)");
             else Check(o0.Name==a.name&&o0.Text==a.text&&o0.Cooldown==a.cooldown&&o0.Cost==a.cost&&!o0.FromWeapon,a.spec+" "+a.slot+" option fields");
             Check(o0.Meta==(a.kind=="ads"&&k2<0?"Hold":cooldown>0?cooldown.ToString("0.#",inv)+" s cooldown":"No cooldown")+" · "+(cost>0?cost.ToString("0.#",inv)+(w.@class=="melee"&&w.id!="cyberlord"?" stamina":" mana"):"no cost"),a.spec+" "+a.slot+" meta "+o0.Meta);
-            Check((icons.Contains(o0.Icon)||art.Contains(o0.Icon))&&o0.Icon!="sparkles",a.spec+" "+a.slot+" icon "+o0.Icon);
+            Check((icons.Contains(o0.Icon)||art.Contains(o0.Icon)||NativeTopDog.Glyph(o0.Icon)!=null)&&o0.Icon!="sparkles",a.spec+" "+a.slot+" icon "+o0.Icon);
         }
         {
             // A second option for one slot (future content) lists both, in order.
