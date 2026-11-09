@@ -264,8 +264,10 @@ namespace ChipArena.UnityConversion
                 {
                     for(int i=0;i<=36;i++)
                     {
-                        float u=i/36f,a=u*Mathf.PI*6+w.twist,side=Mathf.Cos(a),r=(.3f+.035f*Mathf.Sin(u*Mathf.PI)*belly)*(1-.03f*w.strain)+.06f*w.strain*side*side*side*side;
-                        knots.Add(V(Vector3.Lerp(w.top,w.bottom,u)+(w.right*side+w.fwd*Mathf.Sin(a))*r));
+                        // An oval snug to the body: wide across the pinned arms, close front to back (the belly pushing the front out).
+                        float u=i/36f,a=u*Mathf.PI*6+w.twist,side=Mathf.Cos(a),front=Mathf.Sin(a),squeeze=1-.03f*w.strain;
+                        float across=.3f*squeeze+.06f*w.strain*side*side*side*side,deep=(front>0?.22f+.1f*belly*Mathf.Sin(u*Mathf.PI):.2f)*squeeze;
+                        knots.Add(V(Vector3.Lerp(w.top,w.bottom,u)+w.right*(side*across)+w.fwd*(front*deep)));
                     }
                 }
                 else
