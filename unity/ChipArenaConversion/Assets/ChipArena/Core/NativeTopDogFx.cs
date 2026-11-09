@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
         public static bool Active(NativeDogFeast f,float time,bool victim)
         {
             if(f==null||f.At<-50||time<f.At)return false;if(f.Catch<-50)return !victim&&time<f.Throw+.45f;
-            float end=f.Snap>-50?f.Snap+.3f:victim?f.Pop+.15f:f.Release+.9f;return time<end;
+            float end=f.Snap>-50?f.Snap+.3f:f.Pop+(victim?.15f:.7f);return time<end;
         }
         /// <summary>The shot at `time` for the caster at `feet` and the victim at `body` (their body's middle).</summary>
         public static KernelPanicCamera.Shot At(NativeDogFeast f,Vector3 feet,Vector3 body,float time,bool victim,bool reduced,bool shake)
@@ -116,16 +116,21 @@ namespace ChipArena.UnityConversion
             }
             else if(!victim)
             {
-                var mid=(feet+up*1.2f+body)*.5f;float tc=time-f.Catch;
-                if(time<f.FeedAt){float u=Smooth(tc/Math.Max(.1f,f.FeedAt-f.Catch));s.Position=mid+r*(3.2f-.6f*u)+up*(.3f-.15f*u)-d*.4f;s.Look=mid+up*.15f;s.Fov=48-4*u;}
+                // Side on to both: the Top Dog feeding, the victim fed; a little push in on each gulp.
+                var mid=(feet+up*1.25f+body)*.5f;float tc=time-f.Catch;
+                if(time<f.FeedAt){float u=Smooth(tc/Math.Max(.1f,f.FeedAt-f.Catch));s.Position=mid+r*(4.1f-.6f*u)+up*(.45f-.1f*u)-d*.15f;s.Look=mid+up*.2f;s.Fov=50-4*u;}
                 else if(time<f.Release)
                 {
-                    // Each hot dog: a little push in as it goes down.
                     float since=(time-f.FeedAt)%NativeTopDog.FeedPeriod,gulp=(float)Math.Sin(Math.PI*Clamp01((since-NativeTopDog.Swallow*.5f)/.25f));
-                    s.Position=mid+r*(2.55f-.2f*gulp)+up*(.12f)-d*.1f;s.Look=body+up*(.45f)-d*.15f;s.Fov=40-3*gulp;s.Shake=shake?.004f*gulp:0;
+                    s.Position=mid+r*(3.4f-.25f*gulp)+up*(.32f)-d*.1f;s.Look=mid+up*(.28f)+d*.2f;s.Fov=45-3*gulp;s.Shake=shake?.004f*gulp:0;
                 }
-                else{float u=Smooth((time-f.Release)/.9f);s.Position=feet-d*(1.6f+1.4f*u)+r*(1.4f+.6f*u)+up*(1.6f+.6f*u);s.Look=body+up*.5f;s.Fov=50+4*u;}
-                end=(f.Snap>-50?f.Snap+.3f:f.Release+.9f)-f.At;
+                else
+                {
+                    // Let go: wide on the victim staggering off and swelling, the Top Dog in the near corner, pushing in to the pop.
+                    float u=Smooth((time-f.Release)/Math.Max(.1f,f.Pop-f.Release));var both=(feet+up*1.1f+body)*.5f+d*.5f;
+                    s.Position=both+r*(4.6f-1.3f*u)+up*(.75f-.25f*u)-d*(.4f-.3f*u);s.Look=body+up*(.15f+.1f*u)-d*(.3f*(1-u));s.Fov=48-8*u;s.Shake=shake?.006f+.02f*u*u:0;
+                }
+                end=(f.Snap>-50?f.Snap+.3f:f.Pop+.7f)-f.At;
             }
             else
             {

@@ -107,15 +107,15 @@ namespace ChipArena.UnityConversion
             }
         }
         private static double Smooth(double u){u=u<0?0:u>1?1:u;return u*u*(3-2*u);}
-        // A Chamberlin state-variable filter: band (mode 1), low (0) or high (2).
+        // A Chamberlin state-variable filter, run twice a sample (stable up to high cutoffs): band (mode 1), low (0) or high (2).
         private struct Svf
         {
             private double low,band;
             public double Step(double x,double cutoff,double q,int mode)
             {
-                double f=2*Math.Sin(Math.PI*Math.Min(cutoff,Rate*.22)/Rate),damp=1/Math.Max(.5,q);
-                low+=f*band;double high=x-low-damp*band;band+=f*high;
-                return mode==0?low:mode==1?band:high;
+                double f=Math.Min(.85,2*Math.Sin(Math.PI*Math.Max(10,Math.Min(cutoff,Rate*.3))/(2*Rate))),damp=Math.Min(1.9,1/Math.Max(.5,q)),o=0;
+                for(int i=0;i<2;i++){low+=f*band;double high=x-low-damp*band;band+=f*high;o=mode==0?low:mode==1?band:high;}
+                return o;
             }
         }
         // A tone of fixed pitch with an attack and an exponential decay (per second).
