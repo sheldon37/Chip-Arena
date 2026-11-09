@@ -31,6 +31,7 @@
   - Hotdog Friends on a melee kill: the friends dash out, lift and carry the body, stuff it through, follow it in; the door shuts and sinks, nothing left behind
 - **Not seen:** the Top Dog casting on the move (in the capture tool the Top Dog does not move at all, neither the local pilot nor a bot, as noted 2026-11-09; the checks cover the poses); the friends' wave and dive close up; the strain lines up close.
 - **Not run:** no person, no two real clients.
+- **Released:** full suite at `8abdbfce`: 985 groups, exit 0; pins 0 broken (the one flag is the check that the shield call is gone); Unity compile PASS; the Editor build checks (the Top Dog's 85) passed. Merged into shared at `d3a92c9f` and published on the test channel (revision 639298398361965144).
 
 ## 2026-11-09 — Claude: the new controls (F parry, right-click aim or guard), the parry hologram and guard shield, the sprint effect, the Top Dog's dash and slam, realistic blood, Hotdog Friends, the Hot Dog's grip (owner request; rules and look)
 
