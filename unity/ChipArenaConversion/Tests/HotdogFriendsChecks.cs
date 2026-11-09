@@ -107,6 +107,7 @@ internal static class HotdogFriendsChecks
         Check(pres.Contains("NativeHotdogFriends.WaveFits(latest)")&&pres.Contains("var rest=bounds.center;")&&pres.Contains("NativeHotdogFriends.Slots(spots,halves,"),"a load's middle is its pieces' own, and its friends stand under them");
         var body=R("NativeVisualBodyPresentation.cs");
         Check(body.Contains("if(corpse.FriendsCarried)VisualCorpseFriendsScale(c,corpse);")&&body.Contains("b.localScale=Vector3.one*Mathf.Max(.001f,own/Mathf.Max(.001f,above));"),"the model's pieces shrink through the door with their parts");
+        Check(R("NativeKillEffectPresentation.cs").Contains("if(corpse.FriendsCarried)alpha*=corpse.SprayShare(index);"),"a stump's fountain goes through with its piece");
         Console.WriteLine("PASS hotdog friends: "+n+" checks (the door and its slam, the spots under the pieces, six loads' trips and each friend's dash, skid, heave, waddle and dive, the wave, inside "+NativeKillEffectRules.DeathSeconds+" s at the most, the models, the DEV gate, the wiring)");
     }
 }
