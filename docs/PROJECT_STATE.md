@@ -1,3 +1,5 @@
+2026-11-08 Claude (`claude/top-dog`): the Top Dog's ten chips (tier `topdog`, only for it), each with its own animated pick and toon cues and a significant rule (a piano out of hammerspace, Toon Logic, Knockout Glove...; docs/TOP-DOG.md "The chips"). Not played by a person.
+
 2026-11-08 Claude (`claude/top-dog`, rules and look at the owner's word): the Top Dog, a DEV toon class in the Hot Dog: a cartoon mallet, Q/E/1-5 gags, and All You Can Eat on 6 (lasso, six hot dogs, the pop); its intro Order Up! (docs/TOP-DOG.md). Not played by a person.
 
 2026-11-08 Claude (`claude/hotdog-tripo`): the owner's Tripo hot dog is a DEV skin (Locker, Tops), retargeted onto the model (`docs/HOT-DOG-SKIN.md`; the bank in the Drive zip); its sausage jiggles on starts, stops and landings. It wears Tripo's own texture (from the owner's download zip). Not played by a person.
