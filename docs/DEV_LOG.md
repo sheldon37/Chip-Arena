@@ -10,6 +10,7 @@
 - **Checks:** CoreTests `--glaive` (2517: rows, the record and its refusals, the disc's paths, every keyed move's reach, the ring's edge leading each cut, the chain, the whirl's turn, the model's tiers, the effects, the sounds, the wiring), the full suite (988 groups), the Editor build checks (Glaive simulation 32: the gate, the four-cut chain and the flick's catch, the skim, the throw's cut, ricochet and return, the burst and re-form, the halo, a bot, the frame codec), the Unity compile.
 - **Seen in the Editor:** the four cuts chaining (forehand, backhand, the whole-body whirl, the flick out and back); the throw (a crescent off the backhand, the bot cut with a ping and sparks, the ring flying back and caught); the halo circling and cutting; a burst's shockwave; the ready hold.
 - **Not seen / not done:** the brighter burst after its last change; a ricochet between two enemies on screen (checked in the Editor simulation); the skim; no intro or chips of its own; no person has played it; not tried between two real clients.
+- **Released** to the test channel (Windows builder): merged into shared at `2e230174`; full CoreTests 988 groups, the Unity compile and the Editor build checks (Glaive simulation 32) passed; published revision `639298598253021636`. DEV access only. Not played by a person.
 
 ## 2026-11-09 — Claude: the Top Dog's mallet keyed by hand (combo, dash, smash, overhead slam, Order Up!), hammerspace poofs, mustard from the bottle, a big piece jams in the friends' door (owner request; look, and the smash's rules at the owner's word)
 
