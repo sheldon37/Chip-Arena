@@ -285,7 +285,7 @@ namespace ChipArena.UnityConversion
                 if(p.Hp>0&&p.Seat.connected&&DogAllowed(p)&&k.Feast==null)k.Meter=Math.Min(1,k.Meter+NativeTopDog.MeterPerSecond/60*(DogChip(p,NativeDogChips.SecondHelpings)?NativeDogChips.HelpingMeter:1));
                 bool able=p.Hp>0&&p.Seat.connected&&!Incapacitated(p);
                 // A cast cut short (stunned, knocked down, killed) ends; a feast keeps its own clock.
-                if(k.CastKind!=null&&k.CastKind!=NativeTopDog.Feast&&Time<k.CastUntil&&!able){k.CastUntil=Time;if(k.CastKind==NativeTopDog.Mustard)foreach(var f in p.DogFlights)if(f.Record.Kind==NativeTopDog.PropSquirt)f.Record.Until=Time;}
+                if(k.CastKind!=null&&k.CastKind!=NativeTopDog.Feast&&Time<k.CastUntil&&!able){k.CastUntil=Time;if(k.CastKind==NativeTopDog.Slam)p.Ready=Math.Min(p.Ready,Time+.3f);if(k.CastKind==NativeTopDog.Mustard)foreach(var f in p.DogFlights)if(f.Record.Kind==NativeTopDog.PropSquirt)f.Record.Until=Time;}
                 if(!p.DogReleased&&k.CastKind!=null&&k.CastKind!=NativeTopDog.Feast&&Time>=k.CastRelease){p.DogReleased=true;if(able&&Time<=k.CastUntil+.001f)DogRelease(p);}
                 if(able){DogChannel(p);DogMalletMoves(p);}
                 // The boing's landing.

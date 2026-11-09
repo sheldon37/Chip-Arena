@@ -1,3 +1,52 @@
+## 2026-11-09 — Claude: the new controls (F parry, right-click aim or guard), the parry hologram and guard shield, the sprint effect, the Top Dog's dash and slam, realistic blood, Hotdog Friends, the Hot Dog's grip (owner request; rules and look)
+
+- Branch `claude/top-dog`. Design: `docs/TOP-DOG.md` (the kit's two new rows).
+- **The owner:** "fix the hotdog holding weapon. On top dog, the hands are off the handle"; "Give them a dash sprint attack and slam attack as well"; "lets make the sprint effect look better (alot better, high quality effects) and change the block effect. Lets cover the users player model in a holographic barrier effect when the parry is active"; "The shield/parry will be moved to F key, right click will now "aim" for ranged weapons (zoom in and give shots less spread) while it will be a held block for melee." "The block for melee will essentially reduce damage by a huge portion as long as user is facing where the damage is coming from. Stamina however will be used on blocked hits."; "Can we improve the blood effects? It looks like we still have "voxel" blood. I want it to look more realistic. Id also like to make a DEV kill effect called "Hotdog Friends"..."; the F key: "Parry unless prompted".
+- **Role split:** the controls, the guard and the Top Dog's two moves are game rules (Astra's side of AGENTS.md). The owner asked me directly, so I did them; Astra, please review `NativeGuard.cs`, the `StaggerMelee` and `Damage` lines and `NativeTopDogAuthority.cs` `DogMalletMove` / `DogMalletMoves` / `DogQuake`.
+- **The controls** (Runtime `ConversionGame.cs`, `NativeArena.cs`, `NativeGuard.cs`, `NativeNetworkFrame.cs`, `NativePve.cs`; Core `ArenaModel.cs`, `NativeMeleeRules.cs`, `ConversionContent.cs`):
+  - F is the parry (the old block, `TryBlock`, unchanged) unless a revive or machine is in reach.
+  - Right click aims any gun with an aim row (no longer the rifle only).
+  - Right click on a melee weapon holds a guard. A hit from within 75 degrees of the facing is 80% blocked, and the blocked part is paid at 0.9 stamina a point. A guarded hit neither wounds nor staggers. With too little stamina the guard breaks (0.9 s down, "guard-break").
+  - While guarding: no sprint, a 0.55 walk, no stamina regen, no guard during the parry's window.
+  - The replicated input is `InputFrame.Guard` / `Parry`; the actor is `Actor.Guarding` / `GuardAt`.
+  - Bots guard an incoming blow by their level.
+  - HUD hints read "F · PARRY" and "RMB aim / guard".
+- **The parry's hologram** (Resources `NativeParryHolo.shader`, Runtime `NativeParryHoloPresentation.cs`): while the window is open, each skinned piece of the visual body is drawn again in an additive hologram: rim, scanlines, a hex lattice, a sweep up from the feet, and a ripple and flash where a parried blow lands.
+- **The guard shield** (Resources `NativeGuardShield.shader`, Runtime `NativeGuardShieldPresentation.cs`): a curved hex-lattice panel in front of the guarding pilot. It grows out as the guard goes up, shows a ring and flash at each blocked blow, and cracks apart on a break. The old third-person ward is skipped on model bodies.
+- **The sprint effect** (Core `NativeSprintFx.cs`, Runtime `NativeSprintFxPresentation.cs`, the ribbons through the weapon effects' drawer):
+  - ribbons of light off the hands and feet
+  - pale wind sweeping back past the body
+  - a burst as the sprint starts (a ring of air, dust thrown round the feet, streaks shot back)
+  - heavier footfalls (more dust, grit kicked back, a flash at the foot)
+  - more and varied first-person speed lines
+  - Reduced effects and Low graphics thin it.
+- **The Top Dog's mallet** (Core `NativeTopDog.cs`; Runtime `NativeTopDogAuthority.cs`; poses in `NativeVisualMotion.cs`; effects, sounds, face and words):
+  - an attack on a sprint is the Mallet Dash: 6.5 m in 0.34 s, batting the ones in its path on ahead, 20 damage
+  - an attack in the air is the Mallet Slam: a hang, a 26 m/s drop and a 3.2 m ring, 30 damage, the middle flattened, once an airtime
+- **The Hot Dog's grip** (Runtime `NativeWeaponPresentation.cs` `PalmGrip`): on models posed by their own motion (the Top Dog, the Bombadier) the weapon is moved onto the model's palm, so the handle runs through the gloves.
+- **Realistic blood** (Runtime `NativeKillEffectPresentation.cs`, `NativeBloodPresentation.cs`, `NativeKillModels.cs`, `NativeHordeGorePresentation.cs`):
+  - The kill sprays' drops are the wounds' wet teardrops in their deeper reds.
+  - Their landings stain the floor through the arena's splats, replacing the flat disks.
+  - Stump caps are soft wet lumps, not a grid of cubes, and crush fragments are rounded torn chunks.
+  - The horde's gore pieces are glossy clots.
+  - Each fresh wound throws off a fine mist.
+- **Hotdog Friends** (Core `NativeHotdogFriends.cs`, Runtime `NativeHotdogFriendsPresentation.cs`; DEV only, grantable as `effect:dev-hotdog-friends`):
+  - The body falls as the stock impact ragdoll.
+  - At 1.2 s a little arched door rises beside the pieces and opens. Tiny hot dogs on stick legs file out to each load (joined parts carried together, two to six friends by size), lift it, carry it back and squeeze it through, then follow it in.
+  - The door shuts and sinks; it is all over inside the body's five seconds.
+- **Capture hooks** (nothing in the game sets them): `NativeArena.HeldForCapture` (a held guard) and `ConversionGame.CaptureEye` (the third-person camera's pose).
+- **Animation impact:** the guard's pose is the set's Block clip on the upper body. The dash and slam use the greatsword's running swing and jumping strike, their hits on the rules' moments. Everything else is presentation.
+- **Checks:** CoreTests `--guard` (16), `--top-dog` (5106), `--hotdog-friends` (144), `--sprint`, `--hot-dog` and `--visual-rig`; the Unity compile; the pinned lines. The Editor gates `ValidateGuard` and the Top Dog's dash and slam checks are in the build checks.
+- **Seen in the Editor:**
+  - the guard shield on a guarding bot taking blows
+  - the parry hologram on the pilot
+  - the Top Dog's mallet handle in its gloves
+  - the Top Dog's slam in a match: the jump, the mallet up, the drop, the ring and cracks, the bot flattened
+  - the sprint on open ground: trails, wind and footfall flashes
+  - a kill with Hotdog Friends; the new splats and drops in a kill
+- **Risks:** guest prediction does not know the dash's or slam's carry (as with the Zip), so a guest's own Top Dog may be corrected during them. The guard and parry keys were not tried with a gamepad.
+- **Not run:** no person, no two real clients.
+
 ## 2026-11-09 — Claude: corpses rest on the model's own shape (owner request; look)
 
 - Branch `claude/top-dog`. Every kill type: the plain hit's kneel, melee, the Gibber, the Top Dog's burst, the Hot Dog's own body.
