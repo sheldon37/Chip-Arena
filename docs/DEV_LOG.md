@@ -1,3 +1,14 @@
+## 2026-11-09 — Claude: F parries in NOCTIEL's fight (owner report; rules)
+
+- Branch `claude/top-dog`, on shared `c4574cfe`.
+- **The owner:** "Found parry isn't activating during boss battles now for some reason too".
+- **Why:** the F parry (this branch's controls) skipped NOCTIEL's fight entirely (`ZoneBoss?.fallen==null` in NativeArena's parry pass), because there F is held to give a hushed teammate a life.
+- **Now** (Runtime `NativeArena.cs`, `NativeFallenAuthority.cs` `FallenGiveInReach`): F parries there too, unless it would give a life. That means the pilot has a life to spare and a hushed teammate out of lives is within 3 m: the same test as `FallenLives`' giver.
+- **Role split:** a rules change (Astra's side), made because it was this branch's own regression; Astra, please look at the predicate.
+- **Seen in the Editor:** a real Boss Battle with the intro skipped and F pressed 3 s into the fight. THE DEEP END already parried; NOCTIEL did not, and does now (the hexagon barrier in both).
+- **Checks:** CoreTests `--guard` (1075); the Unity compile.
+- **Not run:** THE HUM, THE STATION and THE CONVERTER separately (they take the same path as THE DEEP END); a guest in a hosted Boss Battle; no person.
+
 ## 2026-11-09 — Claude: no guard shield, the parry's hexagon barrier, the feast's victim struggling, Hotdog Friends fixed and reanimated, the Top Dog's icon, its casts on the move (owner request; look)
 
 - Branch `claude/top-dog`, on shared `8adf477e`.
