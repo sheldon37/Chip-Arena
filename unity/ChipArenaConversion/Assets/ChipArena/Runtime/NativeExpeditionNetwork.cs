@@ -28,8 +28,9 @@ namespace ChipArena.UnityConversion
             progress=Mathf.Clamp01(progress);
             if(expeditionLastProgress>=0&&progress<expeditionLastProgress)progress=expeditionLastProgress;
             float now=Time.unscaledTime;
-            if(now-expeditionLastProgressAt<.25f)return;
-            if(progress<1&&expeditionLastProgress>=0&&progress-expeditionLastProgress<.02f&&now-expeditionLastProgressAt<1)return;
+            // Retry unchanged progress (including 100%) at the bounded loading cadence.
+            // A ready guest can still be waiting for a host whose Unity thread is loading.
+            if(!NativeExpeditionLoadWindow.ProgressDue(progress,expeditionLastProgress,now-expeditionLastProgressAt))return;
             SendServer(new NativeNetMessage{type="expedition-load-progress",loadProgress=progress});
             expeditionLastProgress=progress;expeditionLastProgressAt=now;
         }
@@ -96,7 +97,7 @@ namespace ChipArena.UnityConversion
             if(ExpeditionView?.areaIdentity!=null&&
                (expeditionProgressTicket?.Matches(ExpeditionView.areaIdentity)!=true||expeditionLastProgress<1))return;
             if(Time.unscaledTime<expeditionNextReady)return;
-            expeditionNextReady=Time.unscaledTime+.5f;
+            expeditionNextReady=Time.unscaledTime+(float)NativeExpeditionLoadWindow.RetrySeconds;
             SendServer(new NativeNetMessage{type="expedition-area-ready",expeditionAreaReady=expeditionLoadedTicket});
         }
         private void ResetExpeditionNetwork()

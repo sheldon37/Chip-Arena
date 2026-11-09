@@ -32,6 +32,9 @@ internal static class RelayChecks
                 string snapshot="{\"state\":\""+new string('v',130000)+"\"}";sender.Send(snapshot);await Until(()=>first.Received.Count==1);Check(first.TryReceive(out var got)&&got==snapshot,"large relay snapshot");
                 using(var http=new HttpClient()){var uri=new UriBuilder(origin){Scheme=origin.StartsWith("wss:")?"https":"http",Path="native/v3/rooms",Query="source="+source};using(var list=JsonDocument.Parse(await http.GetStringAsync(uri.Uri))){Check(list.RootElement.GetProperty("rooms").EnumerateArray().Any(r=>r.GetProperty("code").GetString()==host.Room&&r.GetProperty("players").GetInt32()==3),"room discovery tracks guests");}}
                 rejected=false;try{using(var wrong=await NativeRelayHost.Join(origin,host.Room,new string('0',40),CancellationToken.None)){}}catch(WebSocketException){rejected=true;}Check(rejected,"relay rejects different source version");
+                first.StartHeartbeat();sender.StartHeartbeat();
+                await Until(()=>first.Metrics.Report(true).samples>=2&&sender.Metrics.Report(true).samples>=2);
+                Check(first.Received.IsEmpty&&sender.Received.IsEmpty&&!first.Closed&&!sender.Closed,"real WebSocket keepalives need no game-thread receives and leave reliable queues empty");
                 first.Dispose();await Until(()=>sender.Closed);Check(!second.Closed,"relay disconnect isolation");host.Dispose();await Until(()=>second.Closed);
             }
         }

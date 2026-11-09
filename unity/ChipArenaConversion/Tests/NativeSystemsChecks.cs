@@ -90,11 +90,13 @@ internal static class NativeSystemsChecks
                     Check(listener.Accepted.TryDequeue(out var host),"accept while Unity context is paused");
                     using(host)
                     {
+                        client.StartHeartbeat();host.StartHeartbeat();
                         for(int i=0;i<100;i++){client.Send("input-"+i);Thread.Sleep(12);}
                         while(host.Received.Count<100&&DateTime.UtcNow<deadline)Thread.Sleep(5);
                         Check(!client.Closed&&!host.Closed&&host.Received.Count==100,"100 reliable inputs progress without rendering");
                         for(int i=0;i<100;i++)Check(host.TryReceive(out var text)&&text=="input-"+i,"input order under stalled renderer");
                         Check(context.Posts==0,"transport does not capture main-thread context");
+                        Check(client.Metrics.Report(true).samples>0&&host.Metrics.Report(true).samples>0,"keepalives run while Unity's synchronization context is paused");
                     }
                 }
             }

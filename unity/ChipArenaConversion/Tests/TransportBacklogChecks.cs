@@ -26,7 +26,67 @@ internal static class TransportBacklogChecks
         int gate=runtime.IndexOf("if(!peer.Loading.Send(NetworkNow))continue;",start,StringComparison.Ordinal);
         int reports=runtime.IndexOf("type=\"expedition-party-load\"",start,StringComparison.Ordinal);
         Check(gate>start&&reports>gate,"loading cadence gates reliable reports as well as snapshots");
+        string network=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeNetwork.cs"));
+        string game=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/ConversionGame.cs"));
+        string progress=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionNetwork.cs"));
+        Check(network.Contains("c.StartHeartbeat()")&&network.Contains("server.StartHeartbeat()")&&!network.Contains("nextPing"),"both welcomed endpoints enable transport keepalives");
+        Check(game.Contains("!inputSendWindow.TrySend()")&&network.Contains("arena.ApplyFrame(f,networkId);inputSendWindow.AuthorityFrame()"),"input credit requires an applied authority frame");
+        Check(progress.Contains("NativeExpeditionLoadWindow.ProgressDue(")&&progress.Contains("expeditionNextReady=Time.unscaledTime+(float)NativeExpeditionLoadWindow.RetrySeconds"),"guest load progress and ready retries use bounded cadence");
         RunAsync().GetAwaiter().GetResult();
+    }
+    private static async Task HostStall(bool bounded)
+    {
+        using(var listener=new NativeListener(0))using(var guest=await NativeConnection.Connect("127.0.0.1",listener.Port,CancellationToken.None))
+        {
+            var end=DateTime.UtcNow.AddSeconds(5);while(listener.Accepted.IsEmpty&&DateTime.UtcNow<end)await Task.Delay(5);
+            Check(listener.Accepted.TryDequeue(out var host),"host stall connected");using(host)
+            {
+                var window=new NativeInputSendWindow();Check(!window.TrySend(),"no input credit before first authority frame");window.AuthorityFrame();
+                if(bounded){guest.StartHeartbeat();host.StartHeartbeat();guest.StartHeartbeat();host.StartHeartbeat();}
+                int inputs=0,reports=0,readies=0;float previous=-1;double last=-1000,nextReady=0;
+                // Every guest frame during a 60-second host load. No application receives
+                // on either side; only the real socket reader/writer/keepalive tasks run.
+                for(int tick=0;tick<(bounded?3600:160);tick++)
+                {
+                    double now=tick/60d;
+                    if(!bounded||window.TrySend()){guest.Send("input-"+inputs++);if(!bounded)await Task.Delay(17);}
+                    if(!bounded)continue;
+                    float value=Math.Min(1,tick/1800f);
+                    if(NativeExpeditionLoadWindow.ProgressDue(value,previous,now-last))
+                    {guest.Send("progress-"+reports++);previous=value;last=now;}
+                    if(now>=nextReady){guest.Send("ready-"+readies++);nextReady=now+NativeExpeditionLoadWindow.RetrySeconds;}
+                }
+                if(!bounded)
+                {
+                    end=DateTime.UtcNow.AddSeconds(3);while(!host.Closed&&DateTime.UtcNow<end)await Task.Delay(5);
+                    Check(host.Closed&&host.Error=="Peer exceeded reliable receive budget","60 Hz inputs reproduce a disconnected host receiver in under three seconds");
+                    Console.WriteLine("PASS reproduction: 60 Hz inputs overflow an undrained host in under three seconds");return;
+                }
+                guest.Send("host-load-end");
+                end=DateTime.UtcNow.AddSeconds(13);
+                while(DateTime.UtcNow<end)
+                {
+                    // Exercise concurrent metric readers, as the DEV diagnostics do.
+                    guest.Metrics.Report(true);host.Metrics.Report(true);await Task.Delay(20);
+                }
+                Check(!guest.Closed&&!host.Closed,"host loading stays connected beyond the runtime's 12-second timeout");
+                Check((DateTime.UtcNow-host.LastReceived).TotalSeconds<3&&(DateTime.UtcNow-guest.LastReceived).TotalSeconds<3,"both stalled game loops still receive keepalives");
+                Check(guest.Metrics.Report(true).samples>=10&&host.Metrics.Report(true).samples>=10,"ping replies progress without application receive calls");
+                Check(inputs==32&&readies==12&&reports<=56&&host.Received.Count==inputs+reports+readies+1&&guest.Received.IsEmpty,"bounded host traffic, no heartbeat backlog or lost reliable commands");
+                int drained=0,ordered=0;while(host.TryReceive(out var text)){if(text.StartsWith("input-",StringComparison.Ordinal))Check(text=="input-"+ordered++,"all sent gameplay input retains order");drained++;}
+                Check(drained==inputs+reports+readies+1&&!window.TrySend(),"heartbeat alone cannot replenish input credit");
+                host.Send("{\"version\":7,\"epoch\":1,\"type\":\"frame\",\"sequence\":2}",true);
+                end=DateTime.UtcNow.AddSeconds(3);string frame=null;while(frame==null&&DateTime.UtcNow<end){guest.TryReceive(out frame);await Task.Delay(5);}
+                Check(frame?.Contains("\"sequence\":2")==true,"fresh authority frame delivered on the original connection");window.AuthorityFrame();
+                Check(window.TrySend(),"inputs resume after authority recovers");guest.Send("after-load");
+                end=DateTime.UtcNow.AddSeconds(3);while(!host.Received.Contains("after-load")&&DateTime.UtcNow<end)await Task.Delay(5);
+                Check(host.TryReceive(out var after)&&after=="after-load"&&!host.Closed,"same seat transport resumes without reconnect");
+                window.Reset();Check(!window.TrySend(),"disconnect clears unused input credit");
+                guest.Dispose();end=DateTime.UtcNow.AddSeconds(3);while(!host.Closed&&DateTime.UtcNow<end)await Task.Delay(5);
+                Check(host.Closed,"actual socket loss still closes a heartbeat connection");
+            }
+        }
+        Console.WriteLine("PASS host stall: 60-second input/load traffic, 13 real seconds without game ticks, bounded queues, background heartbeats and same-connection recovery");
     }
     private static async Task ExpeditionLoadingQueue(bool throttle)
     {
@@ -115,6 +175,9 @@ internal static class TransportBacklogChecks
         }
         await ExpeditionLoadingQueue(false);
         await ExpeditionLoadingQueue(true);
+        Check(NativeExpeditionLoadWindow.ProgressDue(1,.99f,.25)&&!NativeExpeditionLoadWindow.ProgressDue(1,1,.25)&&!NativeExpeditionLoadWindow.ProgressDue(1,1,4.99)&&NativeExpeditionLoadWindow.ProgressDue(1,1,5),"100% progress sends promptly once, then waits for retry cadence");
+        await HostStall(false);
+        await HostStall(true);
         Console.WriteLine("PASS loopback: 240-command paced recovery without rate-limit disconnect");
         Console.WriteLine("PASS blocked writer: 100 ordered commands, atomic writes, latest snapshot, packet and byte limits");
     }
