@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
                 // The burst: Q again while it is out.
                 Setup();b.Body.position=o+new Vector3(0,0,30);Physics.SyncTransforms();Press(q:true);Step(NativeGlaive.ThrowRelease+NativeGlaive.BurstAfterThrow+.1f);Check(a.Glaive.Disc==NativeGlaive.Out,"out again");
                 var at=a.GlaivePos;b.Body.position=at+new Vector3(1.5f,-.2f,0);Physics.SyncTransforms();hp=b.Hp;Press(q:true);
-                Check(a.Glaive.Disc==NativeGlaive.Gone&&b.Hp<hp&&a.Glaive.Hits.Any(h=>h.Kind==NativeGlaive.HitBurst),"Q while it is out bursts it, hurting round it (disc "+a.Glaive.Disc+", hp "+hp+" to "+b.Hp+", burst at "+at.ToString("F2")+", b at "+b.Body.position.ToString("F2")+", seen "+MeleeVisible(at,b.Body.position,a,b.Collider)+", since "+(Time-a.Glaive.DiscAt).ToString("F2")+")");
+                Check(a.Glaive.Disc==NativeGlaive.Gone&&b.Hp<hp&&a.GlaiveHits.Any(h=>h.Kind==NativeGlaive.HitBurst),"Q while it is out bursts it, hurting round it (disc "+a.Glaive.Disc+", hp "+hp+" to "+b.Hp+", burst at "+at.ToString("F2")+", b at "+b.Body.position.ToString("F2")+", seen "+MeleeVisible(at,b.Body.position,a,b.Collider)+", since "+(Time-a.Glaive.DiscAt).ToString("F2")+")");
                 Step(NativeGlaive.Reform+.03f);Check(a.Glaive.Disc==NativeGlaive.Hand&&a.Glaive.Reformed,"it re-forms in the hand");
                 // The halo: circles, cuts, comes back.
                 Setup();b.Body.position=o+new Vector3(NativeGlaive.HaloRadius,0,0);Physics.SyncTransforms();Press(e:true);Check(a.Glaive.CastKind==NativeGlaive.Halo&&a.Glaive.Ready[1]>Time+NativeGlaive.HaloTime,"E sets the halo");
