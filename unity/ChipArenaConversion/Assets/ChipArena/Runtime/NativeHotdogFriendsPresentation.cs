@@ -14,8 +14,23 @@ namespace ChipArena.UnityConversion
     // cosmetic body.
     internal sealed partial class NativeCorpse
     {
-        internal sealed class FriendsLoad{public Rigidbody[] Bodies;public Vector3[] Offsets;public Quaternion[] Turns;public Vector3[] Scales;public Bounds[] Pieces;public Vector3 Rest;public float Size;public NativeHotdogFriends.Trip Trip;public int Friends;public Vector3[] Slots;public bool Waves;}
-        internal sealed class FriendsScene{public Vector3 Door;public float Yaw,Last;public readonly List<FriendsLoad> Loads=new List<FriendsLoad>();}
+        internal sealed class FriendsLoad{public Rigidbody[] Bodies;public Vector3[] Offsets;public Quaternion[] Turns;public Vector3[] Scales;public Bounds[] Pieces;public Bounds Whole;public Vector3 Rest;public float Size;public NativeHotdogFriends.Trip Trip;public int Friends;public Vector3[] Slots;public bool Waves;
+            // Its squish in the doorway this frame (along the carry, across it, up) and that frame's turn (z along).
+            public Vector3 Squish=Vector3.one;public Quaternion Frame=Quaternion.identity;}
+        internal sealed class FriendsScene{public Vector3 Door;public float Yaw,Last;public readonly List<FriendsLoad> Loads=new List<FriendsLoad>();public readonly Dictionary<Rigidbody,FriendsLoad> Of=new Dictionary<Rigidbody,FriendsLoad>();}
+        /// <summary>The doorway squish on ragdoll part `part`'s load this frame: false when it has none.</summary>
+        internal bool FriendsSquish(int part,out Vector3 squish,out Quaternion frame)
+        {
+            squish=Vector3.one;frame=Quaternion.identity;var scene=Friends??Host?.Friends;
+            if(scene==null||!Parts.TryGetValue(part,out var b)||b==null||!scene.Of.TryGetValue(b,out var l)||(l.Squish-Vector3.one).sqrMagnitude<1e-6f)return false;
+            squish=l.Squish;frame=l.Frame;return true;
+        }
+        /// <summary>Whether ragdoll parts `a` and `b` ride the same load.</summary>
+        internal bool FriendsSameLoad(int a,int b)
+        {
+            var scene=Friends??Host?.Friends;if(scene==null||!Parts.TryGetValue(a,out var ra)||!Parts.TryGetValue(b,out var rb)||ra==null||rb==null)return false;
+            return scene.Of.TryGetValue(ra,out var la)&&scene.Of.TryGetValue(rb,out var lb)&&la==lb;
+        }
         internal FriendsScene Friends;private bool friendsFailed;
         /// <summary>The death's kill effect is Hotdog Friends (its body otherwise the stock impact ragdoll); never a kept body (a PvE
         /// teammate waiting to be revived).</summary>
@@ -56,7 +71,7 @@ namespace ChipArena.UnityConversion
                     pieces[i]=own;if(!any){bounds=own;any=true;}else bounds.Encapsulate(own);
                 }
                 var rest=bounds.center;
-                var load=new FriendsLoad{Bodies=l.ToArray(),Offsets=new Vector3[l.Count],Turns=new Quaternion[l.Count],Scales=new Vector3[l.Count],Pieces=pieces,Rest=rest,Size=Mathf.Max(bounds.size.x,bounds.size.z)};
+                var load=new FriendsLoad{Bodies=l.ToArray(),Offsets=new Vector3[l.Count],Turns=new Quaternion[l.Count],Scales=new Vector3[l.Count],Pieces=pieces,Whole=bounds,Rest=rest,Size=Mathf.Max(bounds.size.x,bounds.size.z)};
                 for(int i=0;i<l.Count;i++){load.Offsets[i]=l[i].transform.position-rest;load.Turns[i]=l[i].transform.rotation;load.Scales[i]=l[i].transform.localScale;}
                 load.Trip.Floor=Ground(physicsScene,rest+Vector3.up*.4f,3,bodies,bounds.min.y);
                 load.Friends=NativeHotdogFriends.Friends(load.Size);scene.Loads.Add(load);centre+=rest;
@@ -79,12 +94,22 @@ namespace ChipArena.UnityConversion
             int last=-1;float latest=0;
             for(int i=0;i<scene.Loads.Count;i++)
             {
-                var l=scene.Loads[i];float floorAt=l.Trip.Floor;l.Trip=NativeHotdogFriends.Plan(i,scene.Loads.Count,Mathf.Max(.1f,Flat(l.Rest-scene.Door)-l.Size*.4f),l.Friends,floorAt);
-                var spots=new NVector[l.Pieces.Length];var halves=new float[l.Pieces.Length];var toDoor=scene.Door-l.Rest;
-                var side=Vector3.Cross(Vector3.up,new Vector3(toDoor.x,0,toDoor.z).normalized);
+                var l=scene.Loads[i];float floorAt=l.Trip.Floor;var toDoor=scene.Door-l.Rest;var side=Vector3.Cross(Vector3.up,new Vector3(toDoor.x,0,toDoor.z).normalized);
+                // How many times too big for the doorway it is, across the way it comes in and up.
+                var we=l.Whole.extents;float across=2*(Mathf.Abs(side.x)*we.x+Mathf.Abs(side.z)*we.z),fit=NativeHotdogFriends.Fit(across,l.Whole.size.y);
+                l.Trip=NativeHotdogFriends.Plan(i,scene.Loads.Count,Mathf.Max(.1f,Flat(l.Rest-scene.Door)-l.Size*.4f),l.Friends,floorAt,fit);
+                var spots=new NVector[l.Pieces.Length];var halves=new float[l.Pieces.Length];
+                foreach(var body in l.Bodies)if(body!=null)scene.Of[body]=l;
                 for(int k=0;k<spots.Length;k++){var c=l.Pieces[k].center-l.Rest;spots[k]=new NVector(c.x,0,c.z);var e=l.Pieces[k].extents;halves[k]=Mathf.Abs(side.x)*e.x+Mathf.Abs(side.z)*e.z;}
                 var slots=NativeHotdogFriends.Slots(spots,halves,new NVector(toDoor.x,0,toDoor.z),l.Friends);l.Slots=new Vector3[slots.Length];for(int k=0;k<slots.Length;k++)l.Slots[k]=new Vector3(slots[k].X,0,slots[k].Z);
                 for(int j=0;j<l.Friends;j++){float inAt=NativeHotdogFriends.InAt(l.Trip,j,slots[j],false);if(inAt>=latest){latest=inAt;last=i;}}
+            }
+            // A jam takes time: given up, the latest load first, until the scene ends inside the body's five seconds.
+            while(!NativeHotdogFriends.Fits(latest))
+            {
+                FriendsLoad worst=null;float end=0;foreach(var l in scene.Loads)if(l.Trip.Jam&&l.Trip.In>=end){end=l.Trip.In;worst=l;}if(worst==null)break;
+                int i=scene.Loads.IndexOf(worst);worst.Trip=NativeHotdogFriends.Plan(i,scene.Loads.Count,Mathf.Max(.1f,Flat(worst.Rest-scene.Door)-worst.Size*.4f),worst.Friends,worst.Trip.Floor);
+                latest=0;last=-1;for(int k=0;k<scene.Loads.Count;k++){var l=scene.Loads[k];for(int j=0;j<l.Friends;j++){float inAt=NativeHotdogFriends.InAt(l.Trip,j,Num(l.Slots[j]),false);if(inAt>=latest){latest=inAt;last=k;}}}
             }
             // The very last friend of all waves on the step before it goes in, when there is time for it inside the body's five seconds.
             if(last>=0&&NativeHotdogFriends.WaveFits(latest))scene.Loads[last].Waves=true;
@@ -121,10 +146,16 @@ namespace ChipArena.UnityConversion
             if(Friends==null)return;var mouth=Friends.Door;
             foreach(var l in Friends.Loads)
             {
-                NativeHotdogFriends.Load(l.Trip,Num(l.Rest),Num(mouth),t,out var at,out float scale,out float tilt);
+                NativeHotdogFriends.Load(l.Trip,Num(l.Rest),Num(mouth),t,out var at,out float scale,out float tilt,out var sq);
                 var toDoor=mouth-l.Rest;toDoor.y=0;var side=toDoor.sqrMagnitude>1e-6f?Vector3.Cross(Vector3.up,toDoor.normalized):Vector3.right;
                 var turn=Quaternion.AngleAxis(tilt*Mathf.Rad2Deg,side);float s=Mathf.Max(.001f,scale);var centre=new Vector3(at.X,at.Y,at.Z);
-                for(int i=0;i<l.Bodies.Length;i++){var b=l.Bodies[i];if(b==null)continue;b.transform.SetPositionAndRotation(centre+turn*(l.Offsets[i]*s),turn*l.Turns[i]);b.transform.localScale=l.Scales[i]*s;}
+                // A jam's squish: the pieces' places pressed into the doorway's shape along the carry's frame (the model's bones take it).
+                l.Squish=new Vector3(sq.X,sq.Y,sq.Z);l.Frame=toDoor.sqrMagnitude>1e-6f?Quaternion.LookRotation(toDoor.normalized,Vector3.up):Quaternion.identity;var inv=Quaternion.Inverse(l.Frame);
+                for(int i=0;i<l.Bodies.Length;i++)
+                {
+                    var b=l.Bodies[i];if(b==null)continue;var o=turn*(l.Offsets[i]*s);o=l.Frame*Vector3.Scale(inv*o,l.Squish);
+                    b.transform.SetPositionAndRotation(centre+o,turn*l.Turns[i]);b.transform.localScale=l.Scales[i]*s;
+                }
             }
         }
     }
@@ -146,7 +177,9 @@ namespace ChipArena.UnityConversion
             // The frame shakes as the door slams.
             float slam=t-NativeHotdogFriends.ShutAt(scene.Last)-NativeHotdogFriends.DoorShut,shake=slam>=0&&slam<.2f?.012f*Mathf.Sin(slam*90)*(1-slam/.2f):0;
             var turn=Quaternion.Euler(0,scene.Yaw,0);var at=scene.Door-Vector3.up*(NativeHotdogFriends.DoorHeight*1.15f*(1-rise))+turn*new Vector3(shake,0,0);
-            DogDraw(friendFrame,Matrix4x4.TRS(at,turn,Vector3.one));
+            // A jammed load bulges the frame round it as they push.
+            float bulge=0;foreach(var l in scene.Loads)bulge=Mathf.Max(bulge,Mathf.Abs(NativeHotdogFriends.Bulge(l.Trip,t)));
+            DogDraw(friendFrame,Matrix4x4.TRS(at,turn,new Vector3(1+.16f*bulge,1+.07f*bulge,1-.05f*bulge)));
             DogDraw(friendLeaf,Matrix4x4.TRS(at+turn*new Vector3(-NativeHotdogFriends.DoorWidth*.5f,0,0),turn*Quaternion.Euler(0,-NativeHotdogFriends.DoorSwing*open,0),Vector3.one));
             var mouth=NativeCorpse.Num(scene.Door);
             foreach(var l in scene.Loads)
@@ -181,7 +214,16 @@ namespace ChipArena.UnityConversion
                     var slot=l.Slots[j];var stand=new Vector3(l.Rest.x+slot.x,l.Trip.Floor,l.Rest.z+slot.z);
                     friendPuffs.Add((stand,t-(l.Trip.Arrive-NativeHotdogFriends.Skid),.35f,seed+j*31+17));
                     friendPuffs.Add((s.Door+turn*Vector3.forward*.08f,t-(NativeHotdogFriends.InAt(l.Trip,j,NativeCorpse.Num(slot),NativeCorpse.Waver(l,j))-NativeHotdogFriends.Dive*.4f),.3f,seed+j*53+29));
+                    // A jam: scrabbling feet on each heave, and the flop on their faces after it.
+                    if(l.Trip.Jam)
+                    {
+                        var behind=new Vector3(s.Door.x+slot.x,l.Trip.Floor,s.Door.z+slot.z);float push=l.Trip.Back+NativeHotdogFriends.JamHit;
+                        for(int h=0;h<NativeHotdogFriends.JamPulses;h++)friendPuffs.Add((behind,t-(push+(h+.5f)*NativeHotdogFriends.JamPush/NativeHotdogFriends.JamPulses),.22f,seed+j*71+h*13));
+                        friendPuffs.Add((behind,t-(NativeHotdogFriends.PopAt(l.Trip)+NativeHotdogFriends.Tumble*.45f),.3f,seed+j*83+5));
+                    }
                 }
+                // A jammed load's bonk into the frame and its slurp through.
+                foreach(var l in s.Loads)if(l.Trip.Jam){friendPuffs.Add((s.Door+Vector3.up*.25f,t-l.Trip.Back-NativeHotdogFriends.JamHit,.5f,seed+91));friendPuffs.Add((s.Door+turn*Vector3.forward*.05f+Vector3.up*.2f,t-NativeHotdogFriends.PopAt(l.Trip)-NativeHotdogFriends.JamPop*.6f,.9f,seed+97));}
             }
             var dust=NativeVfxDraw.Linear(0xd8cdbd);
             foreach(var p in friendPuffs)

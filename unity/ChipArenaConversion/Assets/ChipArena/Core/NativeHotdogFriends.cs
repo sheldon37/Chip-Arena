@@ -33,7 +33,12 @@ namespace ChipArena.UnityConversion
             MostStagger=.08f,StaggerSpan=.35f,File=.05f,Squeeze=.22f,Dive=.12f,Wave=.32f,RunStride=.14f,CarryStride=.07f;
         /// <summary>The friend models: WalkFrames stride frames and one standing (index WalkFrames), each with its arms pumping, up under a load
         /// or waving.</summary>
-        public const int MaxLoads=12,MostFriends=6,WalkFrames=8,Frames=WalkFrames+1,ArmsSwing=0,ArmsUp=1,ArmsWave=2,ArmKinds=3;
+        public const int MaxLoads=12,MostFriends=6,WalkFrames=8,Frames=WalkFrames+1,ArmsSwing=0,ArmsUp=1,ArmsWave=2,ArmsPush=3,ArmKinds=4;
+        /// <summary>A load too big for the doorway (owner 2026-11-09: "If parts are too big for the door, make them comically (squish into
+        /// there) like cartoons"): wider or taller than the doorway by JamFit, it bonks into the frame and squashes against it (JamHit s), the
+        /// friends push in JamPulses heaves while it squishes thin enough to fit and stretches into the dark, the frame bulging (JamPush s),
+        /// then it slurps through and is gone (JamPop s) and the friends tumble on their faces (Tumble s) before they scramble in after it.</summary>
+        public const float JamFit=1.08f,JamHit=.08f,JamPush=.26f,JamPop=.1f,JamTime=JamHit+JamPush+JamPop,Tumble=.16f;public const int JamPulses=3;
         /// <summary>The door is open from here (s after the death).</summary>
         public const float Opened=Settle+DoorUp+DoorOpen;
         /// <summary>How many carry a load `size` m across.</summary>
@@ -74,17 +79,39 @@ namespace ChipArena.UnityConversion
         public static float Over(float last)=>ShutAt(last)+DoorShut+DoorBounce+DoorDown;
         /// <summary>Whether the very last friend (in at `last` without it) has time to wave inside the body's five seconds.</summary>
         public static bool WaveFits(float last)=>Over(last+Wave)<(float)NativeKillEffectRules.DeathSeconds-.1f;
+        /// <summary>Whether a scene whose last friend is in at `last` ends inside the body's five seconds (jams are given up, the latest first,
+        /// until it does).</summary>
+        public static bool Fits(float last)=>Over(last)<(float)NativeKillEffectRules.DeathSeconds-.05f;
 
         /// <summary>The stagger between the loads' files for `loads` loads: squeezed into StaggerSpan when there are many.</summary>
         public static float Stagger(int loads)=>loads<=1?0:Math.Min(MostStagger,StaggerSpan/(loads-1));
         /// <summary>One load's trip: when its file leaves the door, has gathered under it, has it up, is back at the door and has it through;
         /// `Floor` the floor under it.</summary>
-        public struct Trip{public float Leave,Arrive,Lifted,Back,In,Floor;}
-        /// <summary>The trip of the load `order`th nearest the door of `loads`, `distance` m from it, carried by `friends`.</summary>
-        public static Trip Plan(int order,int loads,float distance,int friends,float floor)
+        public struct Trip{public float Leave,Arrive,Lifted,Back,In,Floor,Fit;public bool Jam;}
+        /// <summary>The trip of the load `order`th nearest the door of `loads`, `distance` m from it, carried by `friends`; `fit` how many
+        /// times too big for the doorway it is (Fit; over JamFit it jams).</summary>
+        public static Trip Plan(int order,int loads,float distance,int friends,float floor,float fit=0)
         {
             float leave=Opened+order*Stagger(loads),run=Pop+Math.Min(MostRun,Math.Max(.05f,distance)/Run)+Math.Max(0,friends-1)*File*.5f,carry=Math.Min(MostCarry,Math.Max(.05f,distance)/CarrySpeed);
-            float arrive=leave+run;return new Trip{Leave=leave,Arrive=arrive,Lifted=arrive+LiftTime,Back=arrive+LiftTime+carry,In=arrive+LiftTime+carry+Squeeze,Floor=floor};
+            bool jam=fit>JamFit;float arrive=leave+run,back=arrive+LiftTime+carry;
+            return new Trip{Leave=leave,Arrive=arrive,Lifted=arrive+LiftTime,Back=back,In=back+(jam?JamTime:Squeeze),Floor=floor,Fit=Math.Max(1,fit),Jam=jam};
+        }
+        /// <summary>How many times too big for the doorway a load is: its width across the way it comes in (`across`, m) against the
+        /// doorway's, its height against the doorway's.</summary>
+        public static float Fit(float across,float height)=>Math.Max(across/(DoorWidth*.92f),height/(DoorHeight*.8f));
+        /// <summary>When a jammed load's push ends and it slurps through.</summary>
+        public static float PopAt(in Trip trip)=>trip.Back+JamHit+JamPush;
+        /// <summary>The push's heave at age `t` (0..1 at each of the JamPulses heaves), for the friends, the squish and the frame's bulge.</summary>
+        public static float PushAt(in Trip trip,float t)
+        {
+            if(!trip.Jam)return 0;float u=(t-trip.Back-JamHit)/JamPush;if(u<0||u>=1)return 0;float c=u*JamPulses%1;return (float)Math.Pow(Sin(c*PI),2);
+        }
+        /// <summary>The doorway's frame bulging as a jammed load is pushed through it (0..1).</summary>
+        public static float Bulge(in Trip trip,float t)
+        {
+            if(!trip.Jam)return 0;float h=t-trip.Back;if(h<0||h>JamHit+JamPush+JamPop+.12f)return 0;
+            if(h<JamHit)return .5f*Ease(h/JamHit);if(h<JamHit+JamPush)return .45f+.55f*PushAt(trip,t);
+            float after=h-JamHit-JamPush;return (float)(Math.Exp(-after*14)*Math.Cos(after*45))*.8f;
         }
 
         /// <summary>
@@ -110,16 +137,21 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>When friend `j` of a trip is through the door (the last one shuts it), its spot `slot` under the load; `waves` the very
         /// last friend of all, who turns on the step and waves first.</summary>
-        public static float InAt(in Trip trip,int j,Vector3 slot,bool waves)=>trip.Back+.04f+j*File+Math.Max(.06f,FlatLength(slot)/Run)+Dive+(waves?Wave:0);
+        public static float InAt(in Trip trip,int j,Vector3 slot,bool waves)=>Go(trip,j)+Math.Max(.06f,FlatLength(slot)/Run)+Dive+(waves?Wave:0);
+        /// <summary>When friend `j` of a trip lets go and dashes for the door: once the load is in (a jammed one after the tumble).</summary>
+        public static float Go(in Trip trip,int j)=>trip.Jam?PopAt(trip)+Tumble+j*File*.5f:trip.Back+.04f+j*File;
 
         /// <summary>
         /// The load at age `t`: from its rest middle `rest` to the door's mouth `mouth`; its middle `at`, its `scale` (1, to 0 as it is
         /// stuffed through) and its sway (`tilt`, radians about the carry's side): still while the friends crouch, heaved up overhead with an
         /// overshoot, bobbing with their steps as it is carried, then pulled wobbling into the doorway and away.
         /// </summary>
-        public static void Load(in Trip trip,Vector3 rest,Vector3 mouth,float t,out Vector3 at,out float scale,out float tilt)
+        public static void Load(in Trip trip,Vector3 rest,Vector3 mouth,float t,out Vector3 at,out float scale,out float tilt)=>Load(trip,rest,mouth,t,out at,out scale,out tilt,out _);
+        /// <summary>The load at age `t` as Load, with its `squish`: its stretch along the way it is carried into the door (z), across it (x)
+        /// and up (y); (1,1,1) unless it jams in the doorway.</summary>
+        public static void Load(in Trip trip,Vector3 rest,Vector3 mouth,float t,out Vector3 at,out float scale,out float tilt,out Vector3 squish)
         {
-            at=rest;scale=1;tilt=0;if(t<trip.Arrive)return;
+            at=rest;scale=1;tilt=0;squish=Vector3.One;if(t<trip.Arrive)return;
             if(t<trip.Lifted)
             {
                 float c=(t-trip.Arrive)/Crouch;if(c<1){tilt=.025f*Sin(c*PI*4);return;}
@@ -132,9 +164,27 @@ namespace ChipArena.UnityConversion
                 float u=(t-trip.Lifted)/Math.Max(1e-3f,trip.Back-trip.Lifted),s=Smooth(u),steps=length*s/CarryStride;
                 at=rest+flat*s+Vector3.UnitY*(LiftHeight+.016f*Math.Abs(Sin(steps*PI)));tilt=.06f*Sin(steps*PI);return;
             }
+            var inside=mouth+Flat(flat)*.14f+Vector3.UnitY*Math.Min(DoorHeight*.35f,Math.Max(.06f,rest.Y-trip.Floor));var from=rest+flat+Vector3.UnitY*LiftHeight;
+            if(trip.Jam)
+            {
+                // Too big: it bonks into the frame and squashes on it, is pushed in heave by heave, squishing thin enough to fit and stretching
+                // into the dark, then slurps through.
+                var dir=Flat(flat);var contact=mouth-dir*.04f+Vector3.UnitY*Math.Min(DoorHeight*.4f,Math.Max(.08f,rest.Y-trip.Floor+.04f));float h=t-trip.Back,fit=trip.Fit,thin=1/fit;
+                if(h<JamHit){float u=h/JamHit,e=Ease(u);at=Vector3.Lerp(from,contact,e*e);squish=new Vector3(1+.14f*e,1+.08f*e,1-.24f*e);tilt=.05f*Sin(u*PI*2);return;}
+                if(h<JamHit+JamPush)
+                {
+                    float u=(h-JamHit)/JamPush,heave=PushAt(trip,t),done=Smooth(u)*.75f+.25f*(float)Math.Floor(u*JamPulses+.5f)/JamPulses;done=Clamp(done);
+                    float x=Lerp(1.14f,thin*.92f,done)-.05f*heave,y=Lerp(1.08f,Math.Min(1,1.15f*thin+.1f),done)-.03f*heave,z=Lerp(.76f,1.25f+.6f*(fit-1),done)+.12f*heave;
+                    squish=new Vector3(x,y,z);at=contact+dir*(.03f+.1f*done+.03f*heave)+new Vector3(.006f*Sin(h*80),.004f*Sin(h*67),0);tilt=.03f*Sin(h*40)*(1-done);return;
+                }
+                {
+                    float u=Clamp((h-JamHit-JamPush)/JamPop);at=Vector3.Lerp(contact+dir*.13f,inside+dir*.1f,u*u);
+                    squish=new Vector3(thin*.92f*(1-.4f*u),Math.Min(1,1.15f*thin+.1f)*(1-.3f*u),(1.25f+.6f*(fit-1))*(1+.6f*u));scale=u>=1?0:1-(float)Math.Pow(u,2.2f);return;
+                }
+            }
             // Stuffed through the door: pulled into its mouth faster and faster, wobbling, shrinking away.
-            float q=Clamp((t-trip.Back)/Squeeze);var inside=mouth+Flat(flat)*.14f+Vector3.UnitY*Math.Min(DoorHeight*.35f,Math.Max(.06f,rest.Y-trip.Floor));
-            var from=rest+flat+Vector3.UnitY*LiftHeight;at=Vector3.Lerp(from,inside,q*q);scale=q>=1?0:1-(float)Math.Pow(q,1.4f);tilt=.12f*Sin(q*PI*3)*(1-q);
+            float q=Clamp((t-trip.Back)/Squeeze);
+            at=Vector3.Lerp(from,inside,q*q);scale=q>=1?0:1-(float)Math.Pow(q,1.4f);tilt=.12f*Sin(q*PI*3)*(1-q);
         }
 
         /// <summary>A friend's pose: its `Feet` and `Facing` (flat, unit); `Step` its stride's phase (cycles: two steps each) and `Standing`
@@ -181,10 +231,24 @@ namespace ChipArena.UnityConversion
                 float b=Bounce(steps);p.Roll=.16f*Sin(steps*PI);p.Hop=.012f*b;p.Squash=1-.06f*b;p.Lean=.1f;return true;
             }
             // The load in: it lets go and dashes for the door, diving in after it (the last of all turns on the step and waves first).
-            float go=trip.Back+.04f+j*File,run=Math.Max(.06f,FlatLength(slot)/Run);var under=door+new Vector3(slot.X,0,slot.Z);var step=door-dir*.1f;var target=waves?step:door-dir*.03f;
+            float go=Go(trip,j),run=Math.Max(.06f,FlatLength(slot)/Run);var under=door+new Vector3(slot.X,0,slot.Z);var step=door-dir*.1f;var target=waves?step:door-dir*.03f;
+            if(trip.Jam&&t<go)
+            {
+                // A load stuck in the doorway: shoulders to it, they push heave by heave, feet scrabbling, then it slurps in and they fall flat
+                // on their faces after it and scramble up.
+                float pop=PopAt(trip),heave=PushAt(trip,t);var behind=under-dir*(.08f+.04f*(j%2));
+                if(t<pop)
+                {
+                    float h=t-trip.Back;p.Feet=behind+dir*(.02f*Clamp(h/JamHit))+dir*(.025f*heave);p.Facing=dir;p.Arms=ArmsPush;p.Hold=1;p.Step=h*(5.5f+.6f*j);
+                    p.Lean=.55f+.35f*heave;p.Squash=.9f+.14f*heave;p.Hop=.006f*Bounce(h*11+j);p.Roll=.06f*Sin(h*30+j);return true;
+                }
+                float u=Clamp((t-pop)/Tumble),fall=u<.45f?Ease(u/.45f):1;p.Feet=behind+dir*(.03f+.09f*fall);p.Facing=dir;p.Standing=true;p.Arms=ArmsPush;p.Hold=1;
+                p.Lean=Lerp(.9f,1.45f,fall)-(u>.7f?1.2f*Smooth((u-.7f)/.3f):0);p.Squash=u<.45f?1:.8f+.2f*Smooth((u-.45f)/.55f);p.Hop=.04f*Sin(Clamp(u/.45f)*PI);return true;
+            }
             if(t<go){p.Feet=under;p.Facing=dir;p.Hold=1;p.Arms=ArmsUp;p.Standing=true;return true;}
             if(t<go+run)
             {
+                if(trip.Jam)under=under-dir*(.08f+.04f*(j%2))+dir*.12f;
                 float u=(t-go)/run;var path=target-under;float far=path.Length();p.Feet=under+path*u;p.Facing=far>1e-3f?Flat(path):dir;p.Step=far*u/(2*RunStride);
                 float b=Bounce(far*u/RunStride);p.Hop=.022f*b;p.Squash=.9f+.2f*b;p.Lean=.45f;p.Arms=ArmsSwing;return true;
             }
@@ -232,7 +296,8 @@ namespace ChipArena.UnityConversion
             foreach(float side in new[]{-1f,1})
             {
                 var sh=new Vector3(side*.036f,shoulder,0);Vector3 elbow,hand;
-                if(arms==ArmsUp||arms==ArmsWave&&side>0)
+                if(arms==ArmsPush){hand=new Vector3(side*.026f,shoulder+.012f,.07f);elbow=(sh+hand)*.5f+new Vector3(side*.014f,-.008f,0);}
+                else if(arms==ArmsUp||arms==ArmsWave&&side>0)
                 {
                     float wave=arms==ArmsWave?(float)Math.Sin(phase)*.028f:0;
                     hand=new Vector3(side*.03f+wave,shoulder+.1f,.012f);elbow=(sh+hand)*.5f+new Vector3(side*.012f,0,0);

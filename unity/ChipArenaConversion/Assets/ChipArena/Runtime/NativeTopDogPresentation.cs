@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
                 if(k.Marks!=null)foreach(var m in k.Marks)if(m!=null)dogMarks.Add((m.Id,m));
             }
         }
-        private void ClearDog(){dogPreview.Clear();if(ReferenceEquals(NativeDogView.Source,dogPreview)||ReferenceEquals(NativeDogView.Source,dogSnapshot))NativeDogView.Source=null;dogVictims.Clear();dogMarks.Clear();foreach(var kv in dogBodies)if(kv.Value.Warped)DogBelly(kv.Key,Vector4.zero,Vector4.zero);dogBodies.Clear();dogWarps.Clear();dogArms.Clear();dogFeedHands.Clear();dogPins.Clear();dogWraps.Clear();}
+        private void ClearDog(){dogPreview.Clear();NativeDogView.Nozzles.Clear();dogSwings.Clear();dogMalletToon.Clear();if(ReferenceEquals(NativeDogView.Source,dogPreview)||ReferenceEquals(NativeDogView.Source,dogSnapshot))NativeDogView.Source=null;dogVictims.Clear();dogMarks.Clear();foreach(var kv in dogBodies)if(kv.Value.Warped)DogBelly(kv.Key,Vector4.zero,Vector4.zero);dogBodies.Clear();dogWarps.Clear();dogArms.Clear();dogFeedHands.Clear();dogPins.Clear();dogWraps.Clear();}
         private static NativeDogMark DogMarkOn(int id,string kind,float time){foreach(var (who,m) in dogMarks)if(who==id&&m.Kind==kind&&time>=m.At&&time<m.Until)return m;return null;}
         /// <summary>The face's share of the feast for pilot `id` at `time` (VisualFacePilot): the mouth wide on each hot dog, stuffed after.</summary>
         internal static void TopDogFace(int id,float time,out float gobble,out float bloat)
@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- the intro (Core NativeTopDogIntro, staged by NativeIntros.DirectedIntro) ----
-        private int dogIntroActor=-1;private float dogMalletScale;private Func<int,Matrix4x4> dogIntroHand;
+        private int dogIntroActor=-1;private float dogMalletScale,dogIntroClock;private Func<int,Matrix4x4> dogIntroHand;
         private readonly List<NativeIntroToon> dogIntroToons=new List<NativeIntroToon>();private readonly Dictionary<int,Mesh> dogCarts=new Dictionary<int,Mesh>();
         /// <summary>The entrance's toon models in the Top Dog's shader, out of the source frame (x mirrored).</summary>
         private void DogIntroToons(NativeTopDogIntro intro,float t)
@@ -146,8 +146,10 @@ namespace ChipArena.UnityConversion
                 // The bottle in the off hand while it squirts.
                 if(k.CastKind==NativeTopDog.Mustard&&time>=k.CastAt&&time<k.CastUntil+.15f&&!(FirstPerson&&a.Id==LocalId))
                 {
-                    var hand=DogHand(a,true);var aim=Quaternion.Euler(-a.Pitch,a.Yaw,0)*Vector3.forward;
-                    DogDraw(DogFixed("bottle"),Matrix4x4.TRS(hand,Quaternion.FromToRotation(Vector3.up,aim),Vector3.one*1.6f));
+                    // Held round its middle, its nozzle along the aim; the stream leaves the nozzle (NativeDogView.Nozzles).
+                    var hand=DogHand(a,true);var aim=Quaternion.Euler(-a.Pitch,a.Yaw,0)*Vector3.forward;const float size=1.6f;var foot=hand-aim*(.1f*size);
+                    DogDraw(DogFixed("bottle"),Matrix4x4.TRS(foot,Quaternion.FromToRotation(Vector3.up,aim),Vector3.one*size));
+                    var nozzle=foot+aim*(NativeTopDogModels.BottleTip*size);NativeDogView.Nozzles[a.Id]=(time,new NVector(nozzle.x,nozzle.y,nozzle.z),new NVector(aim.x,aim.y,aim.z));
                 }
                 // A pie or a peel in the hand before it goes.
                 if((k.CastKind==NativeTopDog.Pie||k.CastKind==NativeTopDog.Peel)&&time>=k.CastAt&&time<k.CastRelease&&!(FirstPerson&&a.Id==LocalId))
@@ -360,9 +362,9 @@ namespace ChipArena.UnityConversion
                 // The skin's own bones (the body mesh's, as the Hot Dog binds to): the root also holds other skeletons by the same names.
                 Transform[] bones=null;foreach(var s in body.Root.GetComponentsInChildren<SkinnedMeshRenderer>(true))if(s.name.StartsWith("Body.",StringComparison.Ordinal)&&s.sharedMesh!=null){bones=s.bones;break;}
                 if(bones!=null)foreach(var t in bones){if(t==null)continue;switch(t.name){case "spine_01":r.S1=t;break;case "spine_02":r.S2=t;break;case "spine_03":r.S3=t;break;case "neck_01":r.Neck=t;break;case "head":r.Head=t;break;}}
-                r.RootScale=body.Root.transform.localScale;r.Read=true;
+                r.RootScale=DogRootBase(body);r.Read=true;
             }
-            bool any=belly>0||back>0||flat>0||bound>0;if(any&&!r.Moved)r.RootScale=body.Root.transform.localScale;r.Frame=Time.frameCount;
+            bool any=belly>0||back>0||flat>0||bound>0;if(any&&!r.Moved)r.RootScale=DogRootBase(body);r.Frame=Time.frameCount;
             if(!any)
             {
                 if(r.Warped){DogBelly(body,Vector4.zero,Vector4.zero);r.Warped=false;}dogWarps.Remove(a.Id);

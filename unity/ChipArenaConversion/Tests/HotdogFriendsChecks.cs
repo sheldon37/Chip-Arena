@@ -82,6 +82,22 @@ internal static class HotdogFriendsChecks
             Check(NativeHotdogFriends.Over(worst)<(float)NativeKillEffectRules.DeathSeconds,"the most loads and friends still end inside "+NativeKillEffectRules.DeathSeconds+" s ("+NativeHotdogFriends.Over(worst).ToString("0.00")+" s)");
             Check(!NativeHotdogFriends.WaveFits(worst),"no wave when it would run past the body's time ("+NativeHotdogFriends.Over(worst+NativeHotdogFriends.Wave).ToString("0.00")+" s)");
         }
+        // A load too big for the doorway jams (owner 2026-11-09: "If parts are too big for the door, make them comically (squish into there)").
+        {
+            float across=.5f,height=.3f,fit=NativeHotdogFriends.Fit(across,height);var rest=new Vector3(1.2f,.15f,0);var trip=NativeHotdogFriends.Plan(0,1,1.2f,4,0,fit);
+            Check(fit>NativeHotdogFriends.JamFit&&trip.Jam&&Math.Abs(trip.In-trip.Back-NativeHotdogFriends.JamTime)<1e-4f&&!NativeHotdogFriends.Plan(0,1,1.2f,4,0,NativeHotdogFriends.Fit(.2f,.2f)).Jam,"a torso jams ("+fit.ToString("0.00")+" times the doorway), a hand goes straight in");
+            NativeHotdogFriends.Load(trip,rest,mouth,trip.Back+NativeHotdogFriends.JamHit*.9f,out _,out float s0,out _,out var bonk);Check(bonk.Z<.85f&&bonk.X>1.05f&&s0==1,"it bonks into the frame and squashes against it");
+            NativeHotdogFriends.Load(trip,rest,mouth,NativeHotdogFriends.PopAt(trip)-.005f,out var pushed,out float s1,out _,out var thin);Check(thin.X*across<=NativeHotdogFriends.DoorWidth+1e-3f&&thin.Z>1.2f&&s1==1,"pushed, it squishes thin enough to fit the doorway ("+(thin.X*across).ToString("0.00")+" m wide) and stretches into it");
+            NativeHotdogFriends.Load(trip,rest,mouth,trip.In,out _,out float s2,out _,out _);Check(s2<1e-3f,"then it slurps through");
+            float peak=0;for(float t=trip.Back;t<NativeHotdogFriends.PopAt(trip);t+=.005f)peak=Math.Max(peak,NativeHotdogFriends.Bulge(trip,t));Check(peak>.8f,"the frame bulges as they push");
+            var slot=new Vector3(.05f,0,.03f);
+            Check(NativeHotdogFriends.Friend(trip,1,4,rest,mouth,slot,false,trip.Back+NativeHotdogFriends.JamHit+NativeHotdogFriends.JamPush*.5f,out var push)&&push.Arms==NativeHotdogFriends.ArmsPush&&push.Lean>.5f&&!push.Standing,"the friends push, shoulders to it, feet scrabbling");
+            Check(NativeHotdogFriends.Friend(trip,1,4,rest,mouth,slot,false,NativeHotdogFriends.PopAt(trip)+NativeHotdogFriends.Tumble*.6f,out var flop)&&flop.Lean>1.2f,"it gives and they fall on their faces");
+            float inAt=NativeHotdogFriends.InAt(trip,1,slot,false);Check(inAt>NativeHotdogFriends.PopAt(trip)+NativeHotdogFriends.Tumble&&NativeHotdogFriends.Friend(trip,1,4,rest,mouth,slot,false,inAt-.005f,out var dive)&&dive.Lean>1&&!NativeHotdogFriends.Friend(trip,1,4,rest,mouth,slot,false,inAt+.01f,out _),"then scramble up and dive in after it");
+            float worst=0;for(int i=0;i<NativeHotdogFriends.MaxLoads;i++){var tr=NativeHotdogFriends.Plan(i,NativeHotdogFriends.MaxLoads,3,NativeHotdogFriends.MostFriends,0,2);for(int j=0;j<NativeHotdogFriends.MostFriends;j++)worst=Math.Max(worst,NativeHotdogFriends.InAt(tr,j,new Vector3(.8f,0,0),false));}
+            Check(!NativeHotdogFriends.Fits(worst)||NativeHotdogFriends.Over(worst)<(float)NativeKillEffectRules.DeathSeconds,"every load jammed is caught by Fits (the scene gives jams up until it ends in time)");
+            var pm=NativeHotdogFriends.Friend(0,NativeHotdogFriends.ArmsPush);Check(pm.Count>100,"the pushing arms build");
+        }
         // The door's spots ring the pieces, facing them.
         for(int k=0;k<8;k++){var spot=NativeHotdogFriends.DoorSpot(new Vector3(1,0,2),.6f,77,k,out float yaw);var d=new Vector3(1,0,2)-spot;float face=(float)(Math.Atan2(d.X,d.Z)*180/Math.PI);Check(Math.Abs(Vector3.Distance(spot,new Vector3(1,0,2))-(.6f+NativeHotdogFriends.DoorAway))<1e-3f&&Math.Abs(((face-yaw)%360+540)%360-180)<.1f,"door spot "+k+" stands past the pieces, its mouth to them");}
         // The models build; the stride frames differ, the standing one has both feet down, the wave's hand moves.
@@ -106,7 +122,8 @@ internal static class HotdogFriendsChecks
         Check(pres.Contains("!c.IsCrushed(pair.Key)&&pair.Value.gameObject.activeInHierarchy")&&pres.Contains("c.LooseModel!=null"),"only what is drawn is carried (a crushed part is its fragments)");
         Check(pres.Contains("NativeHotdogFriends.WaveFits(latest)")&&pres.Contains("var rest=bounds.center;")&&pres.Contains("NativeHotdogFriends.Slots(spots,halves,"),"a load's middle is its pieces' own, and its friends stand under them");
         var body=R("NativeVisualBodyPresentation.cs");
-        Check(body.Contains("if(corpse.FriendsCarried)VisualCorpseFriendsScale(c,corpse);")&&body.Contains("b.localScale=Vector3.one*Mathf.Max(.001f,own/Mathf.Max(.001f,above));"),"the model's pieces shrink through the door with their parts");
+        Check(body.Contains("if(corpse.FriendsCarried)VisualCorpseFriendsScale(c,corpse);")&&body.Contains("var scale=Vector3.one*Mathf.Max(.001f,own/Mathf.Max(.001f,above));")&&body.Contains("if(corpse.FriendsSquish(c.Part[v],out var sq,out var frame)"),"the model's pieces shrink through the door with their parts, and squish with a jam");
+        Check(pres.Contains("while(!NativeHotdogFriends.Fits(latest))")&&pres.Contains("l.Squish=new Vector3(sq.X,sq.Y,sq.Z);")&&pres.Contains("NativeHotdogFriends.Bulge(l.Trip,t)"),"a jam squishes the load's pieces, bulges the frame, and is given up when there is no time for it");
         Check(R("NativeKillEffectPresentation.cs").Contains("if(corpse.FriendsCarried)alpha*=corpse.SprayShare(index);"),"a stump's fountain goes through with its piece");
         Console.WriteLine("PASS hotdog friends: "+n+" checks (the door and its slam, the spots under the pieces, six loads' trips and each friend's dash, skid, heave, waddle and dive, the wave, inside "+NativeKillEffectRules.DeathSeconds+" s at the most, the models, the DEV gate, the wiring)");
     }

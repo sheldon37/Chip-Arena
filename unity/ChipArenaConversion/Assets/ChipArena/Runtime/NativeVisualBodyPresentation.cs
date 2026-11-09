@@ -434,6 +434,8 @@ namespace ChipArena.UnityConversion
             if(Viewer||sourceModels==null||ClassicBodies||rig==null||a==null||pose==null||a.SourceSpec=="siren"||!VisualBodiesOn)return;
             var body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return;
             pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,armed?VisualArms.Live:VisualArms.Unarmed);
+            // Order Up!'s slam keyed by hand, both fists on the mallet (Runtime NativeDogMalletPresentation.cs).
+            if(a.Id==dogIntroActor&&dogIntroActor>=0)DogMalletIntro(body,rig,dogIntroClock);
             VisualHandFit(body,rig,held);
             body.Moved=true;
         }
@@ -1598,7 +1600,16 @@ namespace ChipArena.UnityConversion
                 var b=c.Bones[v];if(b==null||!(v==0||c.Placed[v]))continue;
                 int up=c.Parent[v];while(up>0&&!c.Placed[up])up=c.Parent[up];
                 float own=whole*corpse.FriendsShare(c.Part[v]),above=up>=0?whole*corpse.FriendsShare(c.Part[up]):1;
-                b.localScale=Vector3.one*Mathf.Max(.001f,own/Mathf.Max(.001f,above));
+                var scale=Vector3.one*Mathf.Max(.001f,own/Mathf.Max(.001f,above));
+                // A jam's squish on the topmost bone of the load (the rest of the piece hangs from it): each of its axes stretched as the
+                // doorway's frame stretches that way (owner 2026-11-09: "make them comically (squish into there) like cartoons").
+                if(corpse.FriendsSquish(c.Part[v],out var sq,out var frame)&&!(up>=0&&corpse.FriendsSameLoad(c.Part[v],c.Part[up])))
+                {
+                    var inv=Quaternion.Inverse(frame);
+                    float Axis(Vector3 a){var d=inv*a;return Mathf.Sqrt(d.x*d.x*sq.x*sq.x+d.y*d.y*sq.y*sq.y+d.z*d.z*sq.z*sq.z);}
+                    scale=Vector3.Scale(scale,new Vector3(Axis(b.rotation*Vector3.right),Axis(b.rotation*Vector3.up),Axis(b.rotation*Vector3.forward)));
+                }
+                b.localScale=scale;
             }
         }
         private float corpseFade;private Func<int,float> corpseFadeOf;
