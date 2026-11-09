@@ -86,8 +86,12 @@ Its sound is its own toon cues, no music bed.
 - **The props** are built in C# (Core `NativeTopDogModels`): the mallet's art aside, the wiggling hot dog (bun, sausage, a mustard
   zigzag), the anvil, the banana peel, the cream pie, the spring, the glove and its scissor arm, the mustard bottle, the sausage links,
   the stars and the cart. They draw in the pilots' own toon shader with its outline, so they light and line as the characters do.
-- **The body:** the feast's victim swells on its spine (spine_01 grows, spine_02 and spine_03 put back so nothing shears), its head
-  thrown back and its mouth wide (the face's Gobble mood, then Bloat once stuffed). A flattened pilot is squashed to a fifth of its height.
+- **The body:** the feast's victim's belly balloons: a warp about the belly in the body's own shader (`_Belly`, Resources
+  `NativeVisualBodyFx.cginc` `BellyVert`), so the skin, the clothes, everything worn and the links round them swell together (each piece
+  is weighted to the spine differently, so scaling a bone pushed the skin through the shirt). Each point moves out along its ray from a
+  centre inside the torso, most at the front (the way the face looks), never folding, so a layer outside another stays outside it. Its
+  head is thrown back and its mouth wide (the face's Gobble mood, then Bloat once stuffed). A flattened pilot is squashed to a fifth of its
+  height.
 - **Effects:** cartoon impact bursts and stars, comic words over each hit (BONK!, WHAM!, CLANG!, SPLAT!, POW!, GULP!, KA-POP!...), the
   anvil's shadow, the mustard stream and drips, the zip's dust silhouette, cream over a pied pilot's eyes.
 - **The burst:** a new kind of the smash gib (Core `NativeSmashGib.Burst`): the trunk goes to fragments, the head, arms and legs come
