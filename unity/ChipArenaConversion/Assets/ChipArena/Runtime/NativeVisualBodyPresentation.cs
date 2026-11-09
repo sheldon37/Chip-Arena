@@ -658,7 +658,9 @@ namespace ChipArena.UnityConversion
             var accent=AccentTint(a.AccentColor);gearBone??=GearBoneOf;
             // First person draws the device only (the chest is not shown), on the view model's layer and camera.
             int layer=first?10:gearLayer;var camera=first?ViewCamera:gearCamera;
+            // (No core on the Hot Dog: its chest anchor sits under the sausage's mouth; owner 2026-11-09: "remove the core on them".)
             if(body.GearCore!=null&&!first)
+            if(!NativeHotDog.Worn(body.Look)&&!NativeHotDog.Worn(VisualOutfitOf(a.Id)))
             {
                 var p=LoadoutPilot(a.Id);float max=p?.Stats!=null?(float)p.Stats["hp"]:100;float health=max>0?(p!=null?p.Hp:a.Hp)/max:1;
                 float g=NativePilotGear.CoreGlow(time,health,time-body.LitAt,a.Id);gearMatrix=body.GearCore.localToWorldMatrix;

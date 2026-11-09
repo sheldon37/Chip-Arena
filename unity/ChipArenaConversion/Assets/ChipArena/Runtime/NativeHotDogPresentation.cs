@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
                     var bytes=new byte[texLength];Buffer.BlockCopy(b,at,bytes,0,texLength);at+=texLength;
                     tex=new Texture2D(2,2,TextureFormat.RGBA32,true,false){name="Hot Dog",hideFlags=HideFlags.HideAndDontSave};
                     if(!tex.LoadImage(bytes,false)){Debug.LogWarning("Hot Dog: the bank's texture is unreadable.");UnityEngine.Object.Destroy(tex);tex=null;}
-                    else{tri=HotDogFaceOff(tex,pos,nor,uv,tri); // its sculpted face off, the animated one's place read (NativeHotDogFacePresentation.cs)
+                    else{tri=HotDogFaceOff(tex,pos,nor,uv,weights,tri); // its sculpted face off, the animated one's place read (NativeHotDogFacePresentation.cs)
                         tex.wrapMode=TextureWrapMode.Clamp;tex.filterMode=FilterMode.Trilinear;tex.anisoLevel=4;tex.Apply(true,false);tex.Compress(true);tex.Apply(false,true);}
                 }
                 var mesh=new Mesh{name="Hot Dog",hideFlags=HideFlags.HideAndDontSave};if(n>65535)mesh.indexFormat=UnityEngine.Rendering.IndexFormat.UInt32;

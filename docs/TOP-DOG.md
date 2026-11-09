@@ -105,11 +105,13 @@ Its sound is its own toon cues, no music bed.
   (the eyes and brows bulge out of the head; the pupils, the mouth and its five teeth are shells of their own). At load those shells
   are dropped, the bulges pressed onto a map of the skin round them (filled over them), and the paint taken off (the face's texels
   that are not the sausage's red); a toon face is laid on the head in its place, on the head's sausage twin so it jiggles with it
-  (Runtime `NativeHotDogFacePresentation.cs`), the size of the painted one: white eyes whose pupils look about, lids that blink, squint, wink and laugh, brows, and a mouth with teeth and a tongue. Its moods (Core `NativeHotDogFace`):
+  (Runtime `NativeHotDogFacePresentation.cs`), the size of the painted one and skinned as the skin under it is, so it bends and
+  jiggles with the head: white eyes whose pupils look about, lids that blink, squint, wink and laugh, brows, and a mouth with teeth and a tongue. Its moods (Core `NativeHotDogFace`):
   the smug gritted grin at rest; angry on a swing; a shout on the mallet's slam and the mustard; surprised on a Boing; a grin on the
   catch; hungry, tongue out, while it feeds; laughing at the pop and on the spring out of the cart; dizzy while dazed; a wince when
   hit; X eyes on a corpse. Order Up! has its own: surprise at the lid, a laugh on the spring, a shout on the slam, the wink with the
   thumbs up. The face is anyone's who wears the Hot Dog, not only the Top Dog's.
+- **No chest core** on the Hot Dog (its anchor sits under the mouth).
 - **The mallet's faces** land: the barrel runs across the swing, so the flat ends strike, not its side.
 
 ## The chips

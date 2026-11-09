@@ -21,6 +21,29 @@ namespace ChipArena.UnityConversion
         {
             public const float T0=-1.5f,T1=1.5f,Y0=1.36f,Y1=1.84f;public const int NT=150,NY=120;
             public float AxisX=.007f,AxisZ=.063f;public float[] Map=new float[NT*NY];
+            /// <summary>Per map cell, the bone weights of the head's skin nearest it (HotDogFlattenFace), so the face is skinned as the skin
+            /// under it is and bends, jiggles and squashes with it (owner 2026-11-09: "it goes into the body... it should be attached").</summary>
+            public BoneWeight[] Weights;
+            /// <summary>Load only: per kept triangle, whether it is over the pressed features (HotDogBlankFace repaints all of it).</summary>
+            internal bool[] Pressed;
+            private readonly int[] wb=new int[16];private readonly float[] ww=new float[16];
+            /// <summary>The skin's weights at `theta` and `y`: the four cells round it blended, the four strongest bones kept.</summary>
+            public BoneWeight WeightAt(float theta,float y)
+            {
+                if(Weights==null)return default;float fx=Mathf.Clamp((theta-T0)/(T1-T0)*(NT-1),0,NT-1.001f),fy=Mathf.Clamp((y-Y0)/(Y1-Y0)*(NY-1),0,NY-1.001f);int i=(int)fx,j=(int)fy;float u=fx-i,v=fy-j;int n=0;
+                void Add(int bone,float w){if(w<=0)return;for(int k=0;k<n;k++)if(wb[k]==bone){ww[k]+=w;return;}if(n<16){wb[n]=bone;ww[n]=w;n++;}}
+                void Cell(int c,float s){var b=Weights[c];Add(b.boneIndex0,b.weight0*s);Add(b.boneIndex1,b.weight1*s);Add(b.boneIndex2,b.weight2*s);Add(b.boneIndex3,b.weight3*s);}
+                Cell(j*NT+i,(1-u)*(1-v));Cell(j*NT+i+1,u*(1-v));Cell((j+1)*NT+i,(1-u)*v);Cell((j+1)*NT+i+1,u*v);
+                var o=new BoneWeight();float total=0;
+                for(int slot=0;slot<4;slot++)
+                {
+                    int best=-1;for(int k=0;k<n;k++)if(ww[k]>0&&(best<0||ww[k]>ww[best]))best=k;if(best<0)break;float w=ww[best];total+=w;
+                    switch(slot){case 0:o.boneIndex0=wb[best];o.weight0=w;break;case 1:o.boneIndex1=wb[best];o.weight1=w;break;case 2:o.boneIndex2=wb[best];o.weight2=w;break;default:o.boneIndex3=wb[best];o.weight3=w;break;}
+                    ww[best]=0;
+                }
+                if(total>0){o.weight0/=total;o.weight1/=total;o.weight2/=total;o.weight3/=total;}
+                return o;
+            }
             public NVector EyeL=new NVector(-.055f,1.603f,.147f),EyeR=new NVector(.066f,1.607f,.147f);public float EyeW=.04f,EyeH=.066f,MouthY=1.495f,MouthW=.088f;public uint Skin=0xD8261E;
             /// <summary>The head's radius about its axis at `theta` (radians round from the front) and height `y`.</summary>
             public float Radius(float theta,float y)
@@ -44,10 +67,10 @@ namespace ChipArena.UnityConversion
         private static bool HotDogRed(Color32 c)=>c.r>120&&c.r>c.g*1.7f&&c.r>c.b*1.7f;
         /// <summary>At load (HotDogRead, once the texture is read and before the mesh is made), the bank's sculpted face taken off and the
         /// animated one's place read: HotDogFlattenFace, then HotDogBlankFace. Returns the triangles to keep.</summary>
-        private static int[] HotDogFaceOff(Texture2D tex,Vector3[] pos,Vector3[] nor,Vector2[] uv,int[] tri)
+        private static int[] HotDogFaceOff(Texture2D tex,Vector3[] pos,Vector3[] nor,Vector2[] uv,BoneWeight[] weights,int[] tri)
         {
             Color32[] px;try{px=tex.GetPixels32();}catch{return tri;}
-            var kept=HotDogFlattenFace(px,tex.width,tex.height,pos,nor,uv,tri,out var fit);if(fit==null)return tri;
+            var kept=HotDogFlattenFace(px,tex.width,tex.height,pos,nor,uv,tri,weights,out var fit);if(fit==null)return tri;
             HotDogBlankFace(px,tex.width,tex.height,pos,uv,kept,fit);tex.SetPixels32(px);hotDogFace=fit;return kept;
         }
         /// <summary>The bank's face is sculpted: the eyes and the brows bulge out of the head, and the pupils, the mouth and its five teeth are
@@ -55,7 +78,7 @@ namespace ChipArena.UnityConversion
         /// than the red, within a centimetre of that across the face, or standing out of it as the brows' backs do) are pressed onto a map of
         /// the skin round them, filled over them, so the animated face lies on a plain sausage. Returns the triangles kept, with the fit (null,
         /// and the triangles as they were, when the bank is not the shape expected).</summary>
-        private static int[] HotDogFlattenFace(Color32[] px,int W,int H,Vector3[] pos,Vector3[] nor,Vector2[] uv,int[] tri,out HotDogFaceFit fit)
+        private static int[] HotDogFlattenFace(Color32[] px,int W,int H,Vector3[] pos,Vector3[] nor,Vector2[] uv,int[] tri,BoneWeight[] weights,out HotDogFaceFit fit)
         {
             fit=null;int n=pos.Length,nt=tri.Length/3;if(n==0||nt==0)return tri;
             Color32 Sample(Vector2 t){int x=Mathf.Clamp((int)(Mathf.Repeat(t.x,1)*W),0,W-1),y=Mathf.Clamp((int)(Mathf.Repeat(t.y,1)*H),0,H-1);return px[y*W+x];}
@@ -106,8 +129,36 @@ namespace ChipArena.UnityConversion
             var skin=HotDogRaster(pos,th,rr,tri,t=>shell[t]==head&&!press[tri[t*3]]&&!press[tri[t*3+1]]&&!press[tri[t*3+2]]);
             if(!HotDogFill(skin))return tri;f.Map=skin;
             for(int i=0;i<n;i++){if(!press[i])continue;var s=f.At(th[i],pos[i].y,0,out var sn);pos[i]=new Vector3(s.X,s.Y,s.Z);nor[i]=new Vector3(sn.X,sn.Y,sn.Z);}
-            var kept=new List<int>(tri.Length);for(int t=0;t<nt;t++)if(!drop.Contains(shell[t])){kept.Add(tri[t*3]);kept.Add(tri[t*3+1]);kept.Add(tri[t*3+2]);}
-            fit=f;return kept.ToArray();
+            // The skin's weights over the map: each cell the nearest of the head's corners on the front (across the face, its arc and height).
+            if(weights!=null&&weights.Length==n)
+            {
+                var near=new List<int>();for(int i=0;i<n;i++)if(isHead[i]&&pos[i].z>-.04f&&Mathf.Abs(th[i])<1.65f&&pos[i].y>HotDogFaceFit.Y0-.05f&&pos[i].y<HotDogFaceFit.Y1+.05f)near.Add(i);
+                if(near.Count>0)
+                {
+                    f.Weights=new BoneWeight[HotDogFaceFit.NT*HotDogFaceFit.NY];
+                    for(int j=0;j<HotDogFaceFit.NY;j++)for(int c=0;c<HotDogFaceFit.NT;c++)
+                    {
+                        float ct=HotDogFaceFit.T0+(HotDogFaceFit.T1-HotDogFaceFit.T0)*c/(HotDogFaceFit.NT-1),cy=HotDogFaceFit.Y0+(HotDogFaceFit.Y1-HotDogFaceFit.Y0)*j/(HotDogFaceFit.NY-1);
+                        int best=near[0];float bd=float.MaxValue;foreach(int i in near){float a=(th[i]-ct)*.1f,b=pos[i].y-cy,d=a*a+b*b;if(d<bd){bd=d;best=i;}}
+                        f.Weights[j*HotDogFaceFit.NT+c]=weights[best];
+                    }
+                }
+            }
+            // A pressed bulge's walls and folds lie flat now, some turned over: those (and the slivers) go, as the outline pass would ink
+            // them through the skin; the triangles facing out still cover the face.
+            var kept=new List<int>(tri.Length);var over=new List<bool>(nt);int folded=0;
+            for(int t=0;t<nt;t++)
+            {
+                if(drop.Contains(shell[t]))continue;int a=tri[t*3],b=tri[t*3+1],c=tri[t*3+2];
+                bool pressedTri=press[a]||press[b]||press[c];
+                if(pressedTri)
+                {
+                    var cr=Vector3.Cross(pos[b]-pos[a],pos[c]-pos[a]);var mid=(pos[a]+pos[b]+pos[c])/3;f.At(Mathf.Atan2(mid.x-f.AxisX,mid.z-f.AxisZ),mid.y,0,out var sn);
+                    if(cr.sqrMagnitude<1e-14f||Vector3.Dot(cr.normalized,new Vector3(sn.X,sn.Y,sn.Z))<.3f){folded++;continue;}
+                }
+                kept.Add(a);kept.Add(b);kept.Add(c);over.Add(pressedTri);
+            }
+            f.Pressed=over.ToArray();fit=f;return kept.ToArray();
         }
         // The front-most radius over the map's grid (HotDogFaceFit) of the triangles `use` takes; NaN where none lies.
         private static float[] HotDogRaster(Vector3[] pos,float[] th,float[] rr,int[] tri,Func<int,bool> use)
@@ -179,14 +230,16 @@ namespace ChipArena.UnityConversion
         private static void HotDogBlankFace(Color32[] px,int W,int H,Vector3[] pos,Vector2[] uv,int[] tri,HotDogFaceFit fit)
         {
             Color32 Sample(Vector2 t){int x=Mathf.Clamp((int)(Mathf.Repeat(t.x,1)*W),0,W-1),y=Mathf.Clamp((int)(Mathf.Repeat(t.y,1)*H),0,H-1);return px[y*W+x];}
-            long sr=0,sg=0,sb=0,sn=0;var faces=new List<int>();Vector3 eL=default,eR=default;float aL=0,aR=0;Bounds? bL=null,bR=null;
+            var reds=new List<Color32>();var faces=new List<int>();Vector3 eL=default,eR=default;float aL=0,aR=0;Bounds? bL=null,bR=null;
             for(int t=0;t<tri.Length;t+=3)
             {
                 Vector3 a=pos[tri[t]],b=pos[tri[t+1]],c=pos[tri[t+2]];var n=Vector3.Cross(b-a,c-a);float area=n.magnitude*.5f;var mid=(a+b+c)/3;
                 // (A pressed bulge's side is a sliver now, its normal anywhere: the box alone says it is on the face.)
-                bool on=area>1e-9f?HotDogFaceTri(mid,n/(area*2)):HotDogFaceBox(mid);if(!on&&!HotDogFaceBox(mid))continue;faces.Add(t);
-                var col=Sample((uv[tri[t]]+uv[tri[t+1]]+uv[tri[t+2]])/3);if(area<1e-9f)continue;
-                if(HotDogRed(col)){sr+=col.r;sg+=col.g;sb+=col.b;sn++;continue;}
+                bool box=HotDogFaceBox(mid),on=area>1e-9f?HotDogFaceTri(mid,n/(area*2)):box;
+                // The red to paint with: the head's own round the face (the face's reds run darker at the painted rims).
+                if(!box){if(mid.y>1.4f&&mid.y<1.85f&&area>1e-9f){var hc=Sample((uv[tri[t]]+uv[tri[t+1]]+uv[tri[t+2]])/3);if(HotDogRed(hc))reds.Add(hc);}continue;}
+                faces.Add(t);var col=Sample((uv[tri[t]]+uv[tri[t+1]]+uv[tri[t+2]])/3);if(area<1e-9f||!on)continue;
+                if(HotDogRed(col)){if(reds.Count<64)reds.Add(col);continue;}
                 if(col.r>200&&col.g>200&&col.b>200&&mid.y>1.53f)
                 {
                     if(mid.x<0){eL+=mid*area;aL+=area;if(bL is Bounds l){l.Encapsulate(mid);bL=l;}else bL=new Bounds(mid,Vector3.zero);}
@@ -194,7 +247,8 @@ namespace ChipArena.UnityConversion
                 }
             }
             if(faces.Count==0)return;
-            var skin=sn>0?new Color32((byte)(sr/sn),(byte)(sg/sn),(byte)(sb/sn),255):new Color32(216,38,30,255);fit.Skin=(uint)(skin.r<<16|skin.g<<8|skin.b);
+            byte Median(Func<Color32,byte> c){var v=new List<byte>(reds.Count);foreach(var r in reds)v.Add(c(r));v.Sort();return v[v.Count/2];}
+            var skin=reds.Count>0?new Color32(Median(c=>c.r),Median(c=>c.g),Median(c=>c.b),255):new Color32(230,10,1,255);fit.Skin=(uint)(skin.r<<16|skin.g<<8|skin.b);
             if(aL>0)fit.EyeL=FaceVec(eL/aL);if(aR>0)fit.EyeR=FaceVec(eR/aR);
             if(bL is Bounds el&&bR is Bounds er){fit.EyeW=Mathf.Clamp((el.extents.x+er.extents.x)*.5f*1.04f,.025f,.06f);fit.EyeH=Mathf.Clamp((el.extents.y+er.extents.y)*.5f*1.04f,.04f,.09f);}
             // Paint the features out: each face triangle's texels that are not the red become the face's red.
@@ -204,12 +258,16 @@ namespace ChipArena.UnityConversion
                 int x0=Mathf.Max(0,(int)Mathf.Floor(Mathf.Min(u0.x,Mathf.Min(u1.x,u2.x)))-1),x1=Mathf.Min(W-1,(int)Mathf.Ceil(Mathf.Max(u0.x,Mathf.Max(u1.x,u2.x)))+1);
                 int y0=Mathf.Max(0,(int)Mathf.Floor(Mathf.Min(u0.y,Mathf.Min(u1.y,u2.y)))-1),y1=Mathf.Min(H-1,(int)Mathf.Ceil(Mathf.Max(u0.y,Mathf.Max(u1.y,u2.y)))+1);
                 if((x1-x0)*(long)(y1-y0)>400000)continue;float d=(u1.y-u2.y)*(u0.x-u2.x)+(u2.x-u1.x)*(u0.y-u2.y);if(Mathf.Abs(d)<1e-6f)continue;
+                // Over the pressed features every texel goes (the texture's own shading is painted into the red there: it darkened the
+                // old crevices); elsewhere on the face only what is not the red.
+                bool all=fit.Pressed!=null&&t/3<fit.Pressed.Length&&fit.Pressed[t/3];
                 for(int y=y0;y<=y1;y++)for(int x=x0;x<=x1;x++)
                 {
                     float px_=x+.5f,py=y+.5f,w0=((u1.y-u2.y)*(px_-u2.x)+(u2.x-u1.x)*(py-u2.y))/d,w1=((u2.y-u0.y)*(px_-u2.x)+(u0.x-u2.x)*(py-u2.y))/d,w2=1-w0-w1;
-                    const float E=-.06f;if(w0<E||w1<E||w2<E)continue;int i=y*W+x;if(!HotDogRed(px[i]))px[i]=skin;
+                    const float E=-.06f;if(w0<E||w1<E||w2<E)continue;int i=y*W+x;if(all||!HotDogRed(px[i]))px[i]=skin;
                 }
             }
+            fit.Pressed=null;
         }
         private static NVector FaceVec(Vector3 v)=>new NVector(v.x,v.y,v.z);
         private static Material hotDogFaceMaterial;
@@ -225,10 +283,14 @@ namespace ChipArena.UnityConversion
             if(hotDogFace==null||headTwin==null||hotDogMesh==null)return;int k=Array.IndexOf(hotDogBones,"~head");var bind=hotDogMesh.bindposes;if(k<0||k>=bind.Length)return;var mat=HotDogFaceMaterial();if(mat==null)return;
             var m=bind[k];var go=new GameObject(HotDogFaceName){layer=hotDog.gameObject.layer};var t=go.transform;t.SetParent(headTwin,false);
             t.localPosition=m.GetColumn(3);t.localRotation=m.rotation;t.localScale=m.lossyScale;
-            go.AddComponent<MeshFilter>();var mr=go.AddComponent<MeshRenderer>();mr.sharedMaterial=mat;mr.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;mr.receiveShadows=true;
+            // Skinned on the Hot Dog's own bones, each corner weighted as the skin under it is (HotDogFaceFit.WeightAt), so it stays on the
+            // head however the sausage bends (the frame above only places it for a camera aimed at the face).
+            var sr=go.AddComponent<SkinnedMeshRenderer>();sr.sharedMaterial=mat;sr.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;sr.receiveShadows=true;
+            sr.bones=hotDog.bones;sr.rootBone=hotDog.rootBone;sr.localBounds=hotDog.localBounds;sr.updateWhenOffscreen=false;
             go.AddComponent<NativeHotDogFaceRig>().Bind(hotDog,hotDogFace);
         }
         public const string HotDogFaceName="HotDog face";
+        internal static Matrix4x4[] HotDogBindposes=>hotDogBindposes??=hotDogMesh!=null?hotDogMesh.bindposes:new Matrix4x4[0];private static Matrix4x4[] hotDogBindposes;
         // ---- whose face it is, and its mood ----
         /// <summary>The live mood of Hot Dog pilot `id` and how long it has been on (the rig's source; Idle when it is nobody's).</summary>
         internal static Func<int,(HotDogMood mood,float age)> HotDogFaceSource;
@@ -247,9 +309,9 @@ namespace ChipArena.UnityConversion
     /// and built into one mesh in the bank's bind space.</summary>
     internal sealed class NativeHotDogFaceRig:MonoBehaviour
     {
-        private SkinnedMeshRenderer hotDog;private ArenaPresentation.HotDogFaceFit fit;private MeshFilter filter;private MeshRenderer view;private Mesh mesh;
+        private SkinnedMeshRenderer hotDog;private ArenaPresentation.HotDogFaceFit fit;private SkinnedMeshRenderer view;private Mesh mesh;private BoneWeight[] weights;
         private readonly NativeFallenKit kit=new NativeFallenKit();private readonly List<Vector2> uvs=new List<Vector2>();private bool hidden;private HotDogFacePose pose;private bool posed;private int id=-1,seed;private bool dead,named;private float last=-1;
-        public void Bind(SkinnedMeshRenderer hotDog,ArenaPresentation.HotDogFaceFit fit){this.hotDog=hotDog;this.fit=fit;filter=GetComponent<MeshFilter>();view=GetComponent<MeshRenderer>();seed=GetInstanceID();}
+        public void Bind(SkinnedMeshRenderer hotDog,ArenaPresentation.HotDogFaceFit fit){this.hotDog=hotDog;this.fit=fit;view=GetComponent<SkinnedMeshRenderer>();seed=GetInstanceID();}
         private void Name()
         {
             named=true;for(var t=transform;t!=null;t=t.parent)
@@ -268,6 +330,8 @@ namespace ChipArena.UnityConversion
             bool host=hotDog.enabled&&hotDog.gameObject.activeInHierarchy;
             if(!host){if(view.enabled){view.enabled=false;hidden=true;}return;}
             if(hidden){view.enabled=true;hidden=false;}if(!view.enabled)return;
+            // (A pass that gave this renderer a mesh of its own, the first-person arms' or a sever's copy, has it: it is left as made.)
+            if(view.sharedMesh!=null&&view.sharedMesh!=mesh)return;
             float now=Time.unscaledTime,dt=last<0?1:Mathf.Clamp(now-last,0,.1f);last=now;
             HotDogMood mood=HotDogMood.Idle;float age=now;
             if(dead)mood=HotDogMood.Dead;else if(id>0&&ArenaPresentation.HotDogFaceSource!=null){var s=ArenaPresentation.HotDogFaceSource(id);mood=s.mood;age=s.age;}
@@ -284,7 +348,10 @@ namespace ChipArena.UnityConversion
             kit.Finish();if(kit.Count==0)return;mesh=ArenaPresentation.FbKitMesh(kit,Matrix4x4.identity,"Hot Dog face",out _,mesh);
             // Texture coordinates across the face, so the dead pilot's dissolve noise eats it in patches as it does the skin.
             uvs.Clear();for(int i=0;i<kit.Count;i++){var q=kit.P[i];uvs.Add(new Vector2(q.X*2.2f+.5f,(q.Y-1.4f)*2.2f));}mesh.SetUVs(0,uvs);
-            mesh.bounds=new Bounds(new Vector3(fit.AxisX,1.6f,fit.AxisZ+.1f),new Vector3(.5f,.5f,.5f));filter.sharedMesh=mesh;
+            // Each corner skinned as the head's skin under it (its place on the face's map).
+            if(weights==null||weights.Length!=kit.Count)weights=new BoneWeight[kit.Count];
+            for(int i=0;i<kit.Count;i++){var q=kit.P[i];weights[i]=fit.WeightAt(fit.Theta(q),q.Y);}
+            mesh.boneWeights=weights;mesh.bindposes=ArenaPresentation.HotDogBindposes;mesh.bounds=new Bounds(new Vector3(fit.AxisX,1.6f,fit.AxisZ+.1f),new Vector3(.5f,.5f,.5f));view.sharedMesh=mesh;
         }
         // One eye at `at` (the painted eye's middle; `side` -1 its left, 1 its right): the white, the pupil (or an X), the lids, the brow.
         private void Eye(NVector at,int side,float open,float lower,float brow,HotDogFacePose p)
