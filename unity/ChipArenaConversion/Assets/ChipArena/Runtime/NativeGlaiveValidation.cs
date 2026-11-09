@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
                 Step(NativeGlaive.HaloTime);for(int i=0;i<120&&a.Glaive.Disc!=NativeGlaive.Hand;i++)Step(1f/60);Check(a.Glaive.Disc==NativeGlaive.Hand,"and comes back");
                 // A bot throws at range; the record crosses the codec and the clone.
                 Setup();var bot=new InputFrame();BotGlaive(a,ref bot,o+new Vector3(0,0,9),9,true);Check(bot.AbilityQ,"a bot throws at range");
-                Press(q:true);Step(NativeGlaive.ThrowRelease+.1f);
+                b.Body.position=o+new Vector3(0,0,30);Physics.SyncTransforms();Press(q:true);Step(NativeGlaive.ThrowRelease+.1f);
                 {var cf=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=NetworkFrame()})).frame;Check(cf.Valid(Content),"the record crosses the codec");var ga=cf.snapshot.Actors.First(x=>x.Id==a.Seat.id).Glaive;Check(ga!=null&&(ga.Disc==NativeGlaive.Out||ga.Disc==NativeGlaive.Back)&&ga.Valid(),"the ring's flight in the frame (decoded "+ga?.Disc+", host "+a.Glaive.Disc+", frame "+NetworkFrame().snapshot.Actors.First(x=>x.Id==a.Seat.id).Glaive?.Disc+", cast "+a.Glaive.CastKind+")");}
                 var empty=NativeFrameCodec.Clone(NetworkFrame());Check(empty.snapshot.Actors.First(x=>x.Id==b.Seat.id).Glaive==null,"a null kit survives the clone");
                 Debug.Log("native Glaive simulation: "+checks+" checks");
