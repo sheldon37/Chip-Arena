@@ -151,6 +151,7 @@ namespace ChipArena.UnityConversion
                     DogDraw(DogFixed("bottle"),Matrix4x4.TRS(foot,Quaternion.FromToRotation(Vector3.up,aim),Vector3.one*size));
                     var nozzle=foot+aim*(NativeTopDogModels.BottleTip*size);NativeDogView.Nozzles[a.Id]=(time,new NVector(nozzle.x,nozzle.y,nozzle.z),new NVector(aim.x,aim.y,aim.z));
                 }
+                else NativeDogView.Nozzles.Remove(a.Id);
                 // A pie or a peel in the hand before it goes.
                 if((k.CastKind==NativeTopDog.Pie||k.CastKind==NativeTopDog.Peel)&&time>=k.CastAt&&time<k.CastRelease&&!(FirstPerson&&a.Id==LocalId))
                 {

@@ -415,7 +415,7 @@ namespace ChipArena.UnityConversion
                     if(time>=p.Until)break;var dir=N(p.Dir);if(dir.LengthSquared()<.5f)break;dir=Vector3.Normalize(dir);int n=Count(26,q,low);float reach=Math.Max(1,p.Size);
                     // Out of the drawn bottle's nozzle (owner 2026-11-09: "Fix the mustard blaster to actually come out of the bottle"), bent on
                     // to the rules' line: the stream ends where the squirt reaches.
-                    if(owner!=null&&NativeDogView.Nozzles.TryGetValue(owner.Id,out var nz)&&Math.Abs(nz.time-time)<.25f){var end=at+dir*reach;at=nz.at;var to=end-at;float far=to.Length();if(far>.5f){dir=to/far;reach=far;}
+                    if(owner!=null&&NativeDogView.Nozzles.TryGetValue(owner.Id,out var nz)){var end=at+dir*reach;at=nz.at;var to=end-at;float far=to.Length();if(far>.5f){dir=to/far;reach=far;}
                         for(int i=0;i<Count(4,q,low);i++){float u=(float)((time*6+R(seed,i+70))%1.0);s.Drop(at+nz.dir*(.04f*u)+RandomDir(seed,i+80)*(.03f*u),nz.dir*.05f,DogMustard*1.2f,.9f*(1-u),.05f*(1-u)+.02f,u,seed+80+i);}}
                     // The stream: a rope of mustard blobs on a shallow arc, flowing out, with drips off it.
                     for(int i=0;i<n;i++)

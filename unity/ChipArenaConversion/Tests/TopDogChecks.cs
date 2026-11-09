@@ -214,7 +214,21 @@ namespace ChipArena.UnityConversion
                 var quake=new NativeTopDogKit{Hits=new[]{new NativeDogHit{Id=1,Kind=NativeTopDog.HitQuake,At=100,Pos=new V3(feet.X,feet.Y,feet.Z),Dir=new V3(0,1,0)}}};src.K=quake;
                 var qr=new Recorder();fx.DrawDogs(qr,scene,100.2f,1,false);var ql=new Recorder();fx.DrawDogs(ql,scene,100.2f,.3f,true);Check(qr.Draws>60&&ql.Draws<qr.Draws&&!qr.Broken,"the landing's ring, cracks, dust and stars ("+qr.Draws+", "+ql.Draws+" thin)");
                 var dashHit=new NativeTopDogKit{Hits=new[]{new NativeDogHit{Id=2,Kind=NativeTopDog.HitDash,At=100,Pos=new V3(feet.X,feet.Y,feet.Z),Dir=new V3(0,0,1)}}};src.K=dashHit;var hr=new Recorder();fx.DrawDogs(hr,scene,100.1f,1,false);Check(hr.Draws>5,"the dash's start puffs and streaks");
+                // The mallet's smear through a swing's hit and its poofs in and out of hammerspace (owner 2026-11-09).
+                var swing=new NativeTopDogKit{CastKind=NativeTopDog.Mallet,CastAt=100,CastRelease=100.2f,CastUntil=100.48f};src.K=swing;
+                var sm=new Recorder();fx.DrawDogs(sm,scene,100.19f,1,false);var calm=new Recorder();fx.DrawDogs(calm,scene,100.02f,1,false);Check(sm.Draws>calm.Draws+20&&!sm.Broken,"a swing smears behind its head through the hit ("+sm.Draws+" against "+calm.Draws+" before it)");
+                var anvil=new NativeTopDogKit{CastKind=NativeTopDog.Anvil,CastAt=100,CastRelease=100.22f,CastUntil=100.62f};NativeDogView.MalletPoofs(anvil,out float hide,out float show);
+                NativeDogView.MalletPoofs(swing,out float nh,out float ns);Check(hide==100&&show==100.62f&&nh<-50&&ns<-50,"the mallet poofs away when an ability takes the hands and back when it ends, never for its own moves");
+                src.K=anvil;var gone=new Recorder();fx.DrawDogs(gone,scene,100.08f,1,false);var back=new Recorder();fx.DrawDogs(back,scene,100.7f,1,false);var later=new Recorder();fx.DrawDogs(later,scene,101.4f,1,false);
+                Check(gone.Draws>later.Draws+8&&back.Draws>later.Draws+8&&!gone.Broken,"both poofs are drawn ("+gone.Draws+", "+back.Draws+", "+later.Draws+" after)");
                 src.K=kit;
+            }
+            {
+                string tp=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeTopDogPresentation.cs"));
+                Check(tp.Contains("NativeDogView.Nozzles[a.Id]=")&&File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeTopDogFx.cs")).Contains("NativeDogView.Nozzles.TryGetValue(owner.Id,out var nz)"),"the mustard leaves the drawn bottle's nozzle");
+                string mp=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeVisualMotionPresentation.cs"));Check(mp.Contains("DogMalletLayer(body,a,time,m.HoldRotation,wgt);"),"the keyed mallet goes on before the weapon follows the hand");
+                Check(R2("NativeVisualBodyPresentation.cs").Contains("DogMalletIntro(body,rig,dogIntroClock);")&&R2("NativeIntros.cs").Contains("dogIntroClock=t;"),"Order Up!'s slam is keyed by hand on the intro's body");
+                string R2(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
             }
             var snd=new (string id,float gain)[8];Check(NativeTopDogSounds.Hit(NativeTopDog.HitQuake,snd)>=2&&NativeTopDogSounds.Hit(NativeTopDog.HitDash,snd)>=1&&NativeTopDogSounds.Release(NativeTopDog.Dash,0,snd)==1&&NativeTopDogSounds.Release(NativeTopDog.Slam,0,snd)==1&&NativeTopDogSounds.Cast(NativeTopDog.Dash,0,snd)==1,"their sounds");
             {
