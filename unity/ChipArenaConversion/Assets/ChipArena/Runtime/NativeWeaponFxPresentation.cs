@@ -358,6 +358,8 @@ namespace ChipArena.UnityConversion
             if(shots!=null)shots.PackHeads=PackLooks;
             if(shots!=null)shots.TracerRounds=true;
             if(shots!=null)shots.ChipFx=draw;
+            // The sprint's limb trails (NativeSprintFxPresentation.cs) ride this drawer's ribbons.
+            SprintTrails(draw,arena,now,eye);
             draw.Submit(camera,FirstPerson&&!ScopeActive?ViewCamera:null);
             // The muzzle lights: the nearest shooters the tier, Combat glow, Reduced effects and Alarm lights allow.
             NativeMuzzleLight.Budget(GlowQuality,WeaponEffectsQuality,LowGraphics,KitFlash,out int lights,out float gain);muzzleLights.Resolve(new NVector3(eye.x,eye.y,eye.z),lights,gain);NativeMuzzleLights.Upload(muzzleLights);

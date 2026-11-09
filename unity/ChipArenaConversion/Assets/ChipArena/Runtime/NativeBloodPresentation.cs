@@ -40,6 +40,18 @@ namespace ChipArena.UnityConversion
         /// <summary>Live droplets and splats (the checks and the dev overlay).</summary>
         public int BloodDrops=>blood.Flying;public int BloodSplats=>blood.Splats.Live;
 
+        // The kill effects' spray drops of this frame (queued in Render by KillSpray, drawn here as teardrops), and the fine mist each
+        // fresh wound throws off (owner 2026-11-09: realistic blood).
+        private struct KillDropDraw{public Vector3 At,Velocity;public float Width;public int Seed;}
+        private readonly List<KillDropDraw> killDrops=new List<KillDropDraw>(256);
+        private struct BloodMist{public Vector3 At,Normal;public float At0,Severity;public uint Seed;}
+        private readonly BloodMist[] bloodMists=new BloodMist[24];private int bloodMistNext;
+        public const float MistLife=.5f;
+        private void KillDropQueue(NativeKillSpray spray,int d,float alpha,int seed)
+        {
+            if(killDrops.Count>=600)return;
+            killDrops.Add(new KillDropDraw{At=new Vector3(-(float)spray.Pos[d*3],(float)spray.Pos[d*3+1],(float)spray.Pos[d*3+2]),Velocity=new Vector3(-(float)spray.Vel[d*3],(float)spray.Vel[d*3+1],(float)spray.Vel[d*3+2]),Width=(float)spray.S[d*3]*1.1f*alpha,Seed=seed});
+        }
         private static long WoundKey(int pilot,NativeWound w)=>((long)(pilot&0xffff)<<40)^((long)(w.id&0xffffff)<<12)^(long)(BitConverter.SingleToInt32Bits(w.at)&0xfff);
         private float BloodQuality=>Mathf.Clamp01(EffectsQuality);
         /// <summary>Sprays a wound's blood (Core/NativeBloodRules.Count by kind) from `origin` out of `normal` along `along`
@@ -48,6 +60,9 @@ namespace ChipArena.UnityConversion
         {
             // A death's own gush stains apart from the same wound's spray on the living rig in its last frame.
             if(w==null)return;long key=WoundKey(pilot,w)^(kill?1L<<61:0);bool stain=stainedWounds.Add(key);
+            // A fresh cut, stab, shot or crush throws a fine mist of blood off the wound.
+            string k=kind??w.kind;if(stain&&(k=="cut"||k=="sever"||k=="puncture"||k=="cavity"||k=="crush"||k=="squirt"))
+            {bloodMists[bloodMistNext]=new BloodMist{At=origin,Normal=normal,At0=time,Severity=Mathf.Clamp01(w.severity),Seed=(uint)(key*2654435761L)};bloodMistNext=(bloodMistNext+1)%bloodMists.Length;}
             uint seed=NativeWoundCarve.Seed(w.id.ToString(System.Globalization.CultureInfo.InvariantCulture))^0xb100du;
             blood.Spray(kind??w.kind,w.severity,seed,key,new NVector(origin.x,origin.y,origin.z),new NVector(normal.x,normal.y,normal.z),new NVector(along.x,along.y,along.z),time,BloodQuality,LowGraphics,stain,extra,pilot,kill);
         }
@@ -109,8 +124,28 @@ namespace ChipArena.UnityConversion
                     var c=NativeVfxDraw.Linear(d.Ink?(shade<.6f?NativeBloodRules.InkDrop:NativeBloodRules.InkDeep):shade<.6f?NativeBloodRules.DropColor:NativeBloodRules.DropDeep);c.a=.92f;
                     vfx.Blood(new Vector3(d.Position.X,d.Position.Y,d.Position.Z),new Vector3(d.Velocity.X,d.Velocity.Y,d.Velocity.Z),c,d.Size,d.Seed&0xffff);
                 }
-                BisectSparks(now);SmashMist(now);
+                // The kill sprays' drops (darker and deeper than the source's bright red, as the wounds' own).
+                for(int i=0;i<killDrops.Count;i++)
+                {
+                    var k=killDrops[i];if(!(k.Width>1e-4f))continue;var c=NativeVfxDraw.Linear(k.Seed%3==0?NativeBloodRules.DropDeep:NativeBloodRules.DropColor);c.a=.94f;
+                    vfx.Blood(k.At,k.Velocity,c,k.Width,k.Seed&0xffff);
+                }
+                // The wounds' mist: a few soft dark red puffs out of the wound, spreading and thinning.
+                var mist=NativeVfxDraw.Linear(0x4a0710);int puffs=LowGraphics?1:q<1?2:3;
+                for(int i=0;i<bloodMists.Length;i++)
+                {
+                    var m=bloodMists[i];float age=now-m.At0;if(!(age>=0&&age<MistLife))continue;float u=age/MistLife;
+                    for(int p=0;p<puffs;p++)
+                    {
+                        float h1=NativeBloodRules.Hash(m.Seed,p,11),h2=NativeBloodRules.Hash(m.Seed,p,13),h3=NativeBloodRules.Hash(m.Seed,p,17);
+                        var side=Vector3.Cross(m.Normal,Vector3.up);if(side.sqrMagnitude<1e-4f)side=Vector3.right;side.Normalize();
+                        var at=m.At+(m.Normal*(.12f+.3f*h1)+side*((h2-.5f)*.3f)+Vector3.up*(.05f+.1f*h3))*(1-(1-u)*(1-u))-Vector3.up*(.12f*u*u);
+                        vfx.Vapor(at,mist,(.28f+.2f*m.Severity)*(float)Math.Pow(1-u,1.6),.1f+(.32f+.2f*m.Severity)*u,u,(m.Seed+(uint)p*977u)%8191u,NativeVfxDraw.NoFloor,0);
+                    }
+                }
+                BisectSparks(now);SmashMist(now);HotdogFriendsFx(now);
             }
+            killDrops.Clear();
             DrawSplats(camera,now);
         }
         private Color splatUp,splatSide,splatDown;
@@ -225,7 +260,7 @@ namespace ChipArena.UnityConversion
             {
                 if(k%3!=0)continue;int p=k%spray.Pools;Vector3 at=new Vector3(-(float)spray.PoolPos[p*3],(float)spray.PoolPos[p*3+1],(float)spray.PoolPos[p*3+2]);
                 if(!BloodCast(new NVector(at.x,at.y+.3f,at.z),new NVector(at.x,at.y-.4f,at.z),out var point,out var normal,out int surface)||surface==0)continue;
-                float w=Mathf.Clamp((float)spray.PoolScale[p*2]*.42f,.05f,NativeBloodRules.MaxWidth),l=Mathf.Clamp((float)spray.PoolScale[p*2+1]*.5f+w*.3f,w,NativeBloodRules.MaxLength);
+                float w=Mathf.Clamp((float)spray.PoolScale[p*2]*.7f,.06f,.24f),l=Mathf.Clamp((float)spray.PoolScale[p*2+1]*.8f+w*.3f,w,.3f);
                 float rz=(float)spray.PoolRz[p];long key=((long)(corpse.Death.id&0xffff)<<40)^((long)(corpse.Death.seed&0xffff)<<20)^((long)index<<16)^k^(1L<<62);
                 blood.Splats.Add(key,point+normal*NativeBloodRules.Lift,normal,new NVector(Mathf.Cos(rz),0,Mathf.Sin(rz)),l,w,(uint)(corpse.Death.seed*31+k),surface,now);
             }

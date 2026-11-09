@@ -4,6 +4,8 @@ namespace ChipArena.UnityConversion
     public sealed class NativeBotBrain
     {
         public double ThinkAt;public V3 Aim;public bool Reacted;
+        /// <summary>The held guard: the blow it last decided on, and how long its guard stays up for it.</summary>
+        public int GuardSwing=-1;public double GuardUntil;
         public V3 Observe(double time,string difficulty,V3 target,Func<double> random)
         {int level=NativeBotRules.Level(difficulty);Reacted=time>=ThinkAt;if(Reacted){ThinkAt=time+NativeBotRules.Reaction(level);Aim=target+new V3((float)((random()-.5)*NativeBotRules.Error(level)),(float)(.15+(random()-.5)*.2),(float)((random()-.5)*.6));}return Aim;}
     }

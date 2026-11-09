@@ -24,6 +24,8 @@ namespace ChipArena.UnityConversion
         public byte SelectWeapon; // 0=no change, 1=Sword, 2=Pistol, 3=Rifle, 4=MachineGun
         public V3 AimTarget,AbilityTarget;
         public bool InteractHeld;public bool Interact;public bool Hadoken,HadokenHeld,Uppercut;public byte SirenAbility;public bool Attack, Block, Roll, Shoot, Jump, Sprint, Aim, Reload, AbilityQ, AbilityE, AbilityEHeld, AbilityEReleased, CancelAbilities;
+        // Guard: right click held on a melee weapon (the held block). Parry: F pressed, a parry unless an interaction in reach takes it.
+        public bool Guard, Parry;
         public bool Valid { get { return Sequence >= 0 && LockTarget>=0 && LockTarget<10000000 && MathUtil.Finite(X) && MathUtil.Finite(Z) && MathUtil.Finite(Yaw) && MathUtil.Finite(Pitch) && MathUtil.Finite(AbilityTarget.x) && MathUtil.Finite(AbilityTarget.y) && MathUtil.Finite(AbilityTarget.z) && AbilityTarget.Length<=10000 && MathUtil.Finite(AimTarget.x) && MathUtil.Finite(AimTarget.y) && MathUtil.Finite(AimTarget.z) && AimTarget.Length<=10000 && SelectWeapon<=4 && SirenAbility<=6; } }
         public InputFrame Sanitized()
         {
@@ -32,12 +34,14 @@ namespace ChipArena.UnityConversion
             V3 move = new V3(X, 0, Z); if (move.Length > 1) move = move.Normalized;
             input.X = move.x; input.Z = move.z; input.Yaw = Yaw % 360; input.Pitch=MathUtil.Clamp(Pitch,-75,75); return input;
         }
-        public InputFrame HeldOnly() { InputFrame i = this; i.Attack = i.Block = i.Roll = i.Jump = i.Reload = false; i.AbilityQ=i.AbilityE=i.AbilityEReleased=i.CancelAbilities=false; i.SelectWeapon=0;i.Hadoken=i.Uppercut=i.Interact=false;i.SirenAbility=0; return i; }
+        public InputFrame HeldOnly() { InputFrame i = this; i.Attack = i.Block = i.Roll = i.Jump = i.Reload = false; i.AbilityQ=i.AbilityE=i.AbilityEReleased=i.CancelAbilities=false; i.SelectWeapon=0;i.Hadoken=i.Uppercut=i.Interact=i.Parry=false;i.SirenAbility=0; return i; }
     }
 
     [Serializable]
     public class Actor
     {
+        /// <summary>The held guard (Runtime NativeGuard.cs), up since GuardAt.</summary>
+        public bool Guarding;public float GuardAt=-100;
         public int VisualSet,MagicVisual;
         // Derived from the deterministic Poolrooms layout and rendered feet, on authority and guests.
         public bool Swimming,Wading;public float WaterDepth,Waterline;

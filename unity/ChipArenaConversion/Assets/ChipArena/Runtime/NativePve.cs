@@ -87,6 +87,8 @@ namespace ChipArena.UnityConversion
         {
             if(ZoneBoss?.fallen!=null)return;
             float Flat(Vector3 q)=>Math.Abs(q.y-p.Body.position.y)>1.7f?float.PositiveInfinity:new Vector2(q.x-p.Body.position.x,q.z-p.Body.position.z).magnitude;
+            // F used here, by a revive or a machine in reach (used, denied or not): no parry with it (NativeArena's parry pass).
+            if(Members().Any(q=>q.Hp<=0&&q.Seat.connected&&!InShaft(q)&&Flat(q.Body.position)<=2.2f)||Pve.Content.machines.Any(x=>Flat(Vec(x.front.Position()))<=2.2f))p.Input.Interact=false;
             var dead=Members().Where(q=>q.Hp<=0&&q.Seat.connected&&!InShaft(q)&&Flat(q.Body.position)<=2.2f).OrderBy(q=>Flat(q.Body.position)).FirstOrDefault();if(dead!=null){var target=Pve.Rows[dead.Seat.id];int price=NativePveRules.RevivePrice(target.Revived);if(row.Money<price){row.Notice="Not enough money to revive";row.NoticeUntil=Time+1.4f;return;}row.Money-=price;row.Spent+=price;row.Revives++;target.Revived++;RevivePve(dead);return;}
             var m=Pve.Content.machines.Where(x=>Flat(Vec(x.front.Position()))<=2.2f).OrderBy(x=>Flat(Vec(x.front.Position()))).FirstOrDefault();if(m==null)return;void Use(string result){Pve.Machines.RemoveAll(u=>Time-u.at>4);while(Pve.Machines.Count>=32)Pve.Machines.RemoveAt(0);Pve.Machines.Add(new NativeMachineUse{machine=m.m,owner=p.Seat.id,result=result,at=Time});}int cost=m.kind=="chip"?NativePveRules.ChipPrice(row.Bought):m.kind=="recruit"?300:75;
             if(row.Money<cost){row.Notice="Not enough money";row.NoticeUntil=Time+1.4f;Use("deny");return;}

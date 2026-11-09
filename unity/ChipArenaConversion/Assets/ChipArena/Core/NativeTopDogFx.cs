@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
         {
             if(k==null)return 1;float shown=1;
             if(k.Feast!=null&&time>=k.Feast.At-.05f){float end=k.Feast.Catch>-50?(k.Feast.Snap>-50?k.Feast.Snap:k.Feast.Release):k.Feast.Until;shown=Math.Min(shown,1-Clamp01((time-k.Feast.At)/.12f)+Clamp01((time-end-.3f)/.2f));}
-            if(k.CastKind!=null&&k.CastKind!=NativeTopDog.Mallet&&k.CastKind!=NativeTopDog.Boing&&k.CastKind!=NativeTopDog.Zip&&k.CastKind!=NativeTopDog.Feast&&time>=k.CastAt-.02f&&time<k.CastUntil+.3f)
+            if(k.CastKind!=null&&!NativeTopDog.MalletMove(k.CastKind)&&k.CastKind!=NativeTopDog.Boing&&k.CastKind!=NativeTopDog.Zip&&k.CastKind!=NativeTopDog.Feast&&time>=k.CastAt-.02f&&time<k.CastUntil+.3f)
                 shown=Math.Min(shown,Math.Max(Clamp01(1-(time-k.CastAt)/.08f),Clamp01((time-k.CastUntil)/.2f)));
             return Clamp01(shown);
         }
@@ -192,6 +192,32 @@ namespace ChipArena.UnityConversion
                 if(k.Props!=null)foreach(var p in k.Props)if(p!=null)DogPropFx(s,scene,a,p,time,seed+p.Id*41L,q,low);
                 if(k.Marks!=null)foreach(var m in k.Marks)if(m!=null)DogMarkFx(s,scene,m,time,seed+m.Id*29L+m.Kind.Length,q,low);
                 if(k.Feast!=null)DogFeastFx(s,scene,a,k.Feast,time,seed+17,q,low);
+                DogMoveFx(s,scene,a,k,time,seed+23,q,low);
+            }
+        }
+        // The mallet's dash and slam while they go: white speed lines streaming back off the charging Top Dog and dust kicked up behind its
+        // feet; on the drop, lines rushing up past it.
+        private static void DogMoveFx(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTopDogKit k,float time,long seed,float q,bool low)
+        {
+            if(k.CastKind==NativeTopDog.Dash&&time>=k.CastRelease&&time<k.CastRelease+NativeTopDog.DashTime+.1f)
+            {
+                var feet=scene.Feet(a);float yaw=a.Yaw*(float)Math.PI/180;var f=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));var side=new Vector3(f.Z,0,-f.X);
+                float fade=1-Clamp01((time-k.CastRelease-NativeTopDog.DashTime)/.1f);
+                for(int i=0;i<Count(9,q,low);i++)
+                {
+                    float c=(float)((time*7+R(seed,i))%1.0),len=.7f+.8f*R(seed,i+20);var head=feet+Up*(.25f+1.5f*R(seed,i+40))+side*((R(seed,i+60)-.5f)*1.3f)-f*(.4f+1.6f*c);
+                    s.Line(false,head-f*len,head,DogWhite*(1.4f*fade*(float)Math.Sin(Math.PI*c)),.03f,false);
+                }
+                DogPuff(s,feet-f*.4f+Up*.05f,(float)((time-k.CastRelease)%.12f),.12f,Count(2,q,low),.35f,DogDust,.5f*fade,seed+(long)((time-k.CastRelease)/.12f)*13,.25f);
+            }
+            if(k.CastKind==NativeTopDog.Slam&&k.CastStep==0&&time>=k.CastRelease&&time<k.CastUntil)
+            {
+                var feet=scene.Feet(a);
+                for(int i=0;i<Count(8,q,low);i++)
+                {
+                    float c=(float)((time*6+R(seed,i))%1.0),len=.8f+.9f*R(seed,i+20),ang=R(seed,i+40)*6.283f,r=.35f+.4f*R(seed,i+60);
+                    var head=feet+new Vector3((float)Math.Cos(ang)*r,.6f+2.4f*c,(float)Math.Sin(ang)*r);s.Line(false,head,head+Up*len,DogWhite*(1.3f*(float)Math.Sin(Math.PI*c)),.03f,false);
+                }
             }
         }
         // A toon impact: a white starburst of short thick rays, a ring, little stars thrown off.
@@ -223,6 +249,13 @@ namespace ChipArena.UnityConversion
                 case NativeTopDog.HitClang:
                     if(age<.6f){Ring(s,at+Up*.03f,.4f+NativeTopDog.SlamRadius*OutCubic(age/.35f),.35f*(1-age/.6f),DogWhite*(1.2f*(1-age/.6f)),Count(28,q,low));}
                     Cracks(s,at,age,1.1f,Count(9,q,low),NativeTopDog.SlamRadius*.8f,new Vector3(.25f,.2f,.15f),seed);Dust(s,at,age,1.2f,Count(12,q,low),NativeTopDog.SlamRadius,DogDust,.7f,seed+5);DogBurst(s,at+Up*.2f,age,.6f,DogStar,seed+9,q,low,7);break;
+                case NativeTopDog.HitQuake:
+                    Flash(s,at+Up*.3f,age,.22f,DogWhite,1.5f,seed);
+                    if(age<.6f)Ring(s,at+Up*.03f,.5f+NativeTopDog.SlamRing*OutCubic(age/.32f),.45f*(1-age/.6f),DogWhite*(1.35f*(1-age/.6f)),Count(36,q,low));
+                    if(age>.06f&&age<.7f)Ring(s,at+Up*.03f,.3f+NativeTopDog.SlamRing*.7f*OutCubic((age-.06f)/.4f),.3f*(1-(age-.06f)/.64f),DogStar*(1-(age-.06f)/.64f),Count(28,q,low));
+                    Cracks(s,at,age,1.4f,Count(11,q,low),NativeTopDog.SlamRing*.85f,new Vector3(.22f,.18f,.13f),seed+3);Dust(s,at,age,1.6f,Count(16,q,low),NativeTopDog.SlamRing*1.1f,DogDust,.8f,seed+5);
+                    DogBurst(s,at+Up*.25f,age,.8f,DogStar,seed+9,q,low,12);Sparks(s,at+Up*.2f,age,.55f,Count(10,q,low),4.5f,new Vector3(1,.8f,.4f),seed+11,8,.025f,Up*.9f);break;
+                case NativeTopDog.HitDash:DogPuff(s,at+Up*.08f,age,.8f,Count(9,q,low),.7f,DogDust,.65f,seed);DogSpeed(s,at+Up*.8f,dir,age,.3f,Count(6,q,low),.5f,seed+2);break;
                 case NativeTopDog.HitThud:
                     if(age<.5f)Ring(s,at+Up*.03f,.3f+NativeTopDog.ThudRadius*OutCubic(age/.3f),.3f*(1-age/.5f),DogWhite*(1-age/.5f),Count(24,q,low));Dust(s,at,age,1,Count(10,q,low),NativeTopDog.ThudRadius*.9f,DogDust,.65f,seed);break;
                 case NativeTopDog.HitBoing:DogPuff(s,at+Up*.1f,age,.7f,Count(6,q,low),.6f,DogDust,.55f,seed);DogBurst(s,at+Up*.2f,age,.35f,DogWhite,seed+3,q,low,6);break;

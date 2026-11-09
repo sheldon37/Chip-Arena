@@ -56,7 +56,8 @@ namespace ChipArena.UnityConversion
         // Older/incomplete content must still allow rolling; shipped entries are checked by Validate.
         public double Weight(string spec) {if(weights!=null)foreach(var x in weights)if(x!=null&&x.name==spec)return x.value;return 4;}
         public ContentAbility Ability(string spec,string slot) {foreach(var x in abilities)if(x.spec==spec&&x.slot==slot)return x;return null;}
-        public ContentAds Ads(string spec) {if(NativeRangedRules.Scope(spec))foreach(var x in ads)if(x.spec==spec)return x;return null;}
+        // Right click aims with any ranged weapon that has an aim row (owner 2026-11-09: "right click will now \"aim\" for ranged weapons").
+        public ContentAds Ads(string spec) {if(ads!=null)foreach(var x in ads)if(x.spec==spec)return x;return null;}
         public void Validate()
         {
             if(schema!=1||sourceCommit==null||sourceCommit.Length!=40)throw new InvalidOperationException("Invalid conversion content receipt");

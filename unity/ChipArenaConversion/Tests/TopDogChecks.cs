@@ -184,6 +184,28 @@ namespace ChipArena.UnityConversion
                 int full=0,thin=0;for(float t=0;t<3;t+=1/20f){var rec=new Recorder();fx2.DrawDogs(rec,scene,t,1,false);full+=rec.Draws;Check(!rec.Broken,"the chips' moments are finite at "+t.ToString("0.00"));var low=new Recorder();fx2.DrawDogs(low,scene,t,.3f,true);thin+=low.Draws;}
                 Check(full>200&&thin<full,"the chips' moments are drawn ("+full+") and thinner on the low tier ("+thin+")");NativeDogView.Source=src;
             }
+            // ---- the mallet's dash and slam (owner 2026-11-09: "Give them a dash sprint attack and slam attack as well") ----
+            Check(NativeTopDog.MalletMove(NativeTopDog.Dash)&&NativeTopDog.MalletMove(NativeTopDog.Slam)&&NativeTopDog.MalletMove(NativeTopDog.Mallet)&&!NativeTopDog.MalletMove(NativeTopDog.Zip),"the dash and the slam are the mallet's moves");
+            var dashKit=new NativeTopDogKit{CastKind=NativeTopDog.Dash,CastAt=100,CastRelease=100+NativeTopDog.DashWind,CastUntil=100+NativeTopDog.DashWind+NativeTopDog.DashTime+NativeTopDog.DashRecover};
+            var slamKit=new NativeTopDogKit{CastKind=NativeTopDog.Slam,CastAt=100,CastRelease=100+NativeTopDog.SlamHang,CastUntil=100+NativeTopDog.SlamHang+NativeTopDog.SlamMaxFall};
+            Check(NativeDogView.MalletShown(dashKit,100.2f)==1&&NativeDogView.MalletShown(slamKit,100.3f)==1,"the mallet stays in hand through both");
+            Check(NativeTopDog.SlamLanded(slamKit)<-50&&NativeTopDog.SlamLanded(dashKit)<-50,"in the air the slam has not landed");
+            Check(dashKit.Valid()&&slamKit.Valid()&&NativeTopDog.Dash.Length<=24&&NativeTopDog.Slam.Length<=24,"both records are valid on the wire");
+            Check(NativeTopDog.AbilityName(NativeTopDog.Dash)=="Mallet Dash"&&NativeTopDog.AbilityName(NativeTopDog.Slam)=="Mallet Slam","their names");
+            {
+                src.K=dashKit;var dr=new Recorder();fx.DrawDogs(dr,scene,100+NativeTopDog.DashWind+.1f,1,false);Check(dr.Draws>=9&&!dr.Broken,"the dash streams speed lines and kicks dust ("+dr.Draws+")");
+                var sr=new Recorder();src.K=slamKit;fx.DrawDogs(sr,scene,100+NativeTopDog.SlamHang+.05f,1,false);Check(sr.Draws>=8&&!sr.Broken,"the drop rushes lines up past it ("+sr.Draws+")");
+                var quake=new NativeTopDogKit{Hits=new[]{new NativeDogHit{Id=1,Kind=NativeTopDog.HitQuake,At=100,Pos=new V3(feet.X,feet.Y,feet.Z),Dir=new V3(0,1,0)}}};src.K=quake;
+                var qr=new Recorder();fx.DrawDogs(qr,scene,100.1f,1,false);var ql=new Recorder();fx.DrawDogs(ql,scene,100.1f,.3f,true);Check(qr.Draws>60&&ql.Draws<qr.Draws&&!qr.Broken,"the landing's ring, cracks, dust and stars ("+qr.Draws+", "+ql.Draws+" thin)");
+                var dashHit=new NativeTopDogKit{Hits=new[]{new NativeDogHit{Id=2,Kind=NativeTopDog.HitDash,At=100,Pos=new V3(feet.X,feet.Y,feet.Z),Dir=new V3(0,0,1)}}};src.K=dashHit;var hr=new Recorder();fx.DrawDogs(hr,scene,100.1f,1,false);Check(hr.Draws>5,"the dash's start puffs and streaks");
+                src.K=kit;
+            }
+            var snd=new (string id,float gain)[8];Check(NativeTopDogSounds.Hit(NativeTopDog.HitQuake,snd)>=2&&NativeTopDogSounds.Hit(NativeTopDog.HitDash,snd)>=1&&NativeTopDogSounds.Release(NativeTopDog.Dash,0,snd)==1&&NativeTopDogSounds.Release(NativeTopDog.Slam,0,snd)==1&&NativeTopDogSounds.Cast(NativeTopDog.Dash,0,snd)==1,"their sounds");
+            {
+                string vm=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeVisualMotion.cs"));Check(vm.Contains("case NativeTopDog.Dash:return Hit(DogDashSwing,")&&vm.Contains("case NativeTopDog.Slam:")&&vm.Contains("\"2Hand-Sword-Air-Attack1\""),"their poses: the running swing and the jumping strike");
+                string au=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeTopDogAuthority.cs"));
+                Check(au.Contains("kind=DogMalletMove(p);")&&au.Contains("if(able){DogChannel(p);DogMalletMoves(p);}")&&au.Contains("NativeMeleeFeel.SprintAttack(p.Input,p.Pose.Sprinting))return NativeTopDog.Dash;")&&au.Contains("p.AirAttackUsed=true;p.DogAirborne=false;"),"the rules: an attack on a sprint dashes, one in the air slams (once an airtime)");
+            }
             // ---- the wiring (the Runtime is read as text: CoreTests compiles Core only) ----
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
             var arena=R("NativeArena.cs");Check(arena.Contains("StepBombInput(p);StepDogInput(p);")&&arena.Contains("StepBombWorld();StepDogWorld();")&&arena.Contains("if(PinDogVictim(p))return;")&&arena.Contains("BombPending()||DogPending()")&&arena.Contains("DogMotion(p,ref velocity);")&&arena.Contains("DogDamaged(target,actual);")&&arena.Contains("a.Dog=p.Seat.spec==NativeTopDog.Spec?p.Dog.ViewCopy():null;"),"the rules are stepped, held, waited for, moved, hurt and snapshotted");

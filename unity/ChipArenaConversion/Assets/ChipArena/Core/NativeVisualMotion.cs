@@ -241,6 +241,13 @@ namespace ChipArena.UnityConversion
         public const float BowHold=.6f;
         /// <summary>How long after a shot the gun stays up (the game's own rule: the interval and a little).</summary>
         public static float ShotHold(Actor a)=>GunRules.Valid(a.Weapon)&&GunRules.Get(a.Weapon)!=null?Math.Max(.38f,GunRules.Get(a.Weapon).Interval+.15f):.38f;
+        /// <summary>The held guard (Runtime NativeGuard.cs; owner 2026-11-09: right click "a held block for melee"): the set's block
+        /// clip on the upper body while it is up, from when it went up, over the legs' own walk (the guard walks).</summary>
+        public static bool GuardUpper(Set s,Actor a,float time,IClips clips,out Upper up)
+        {
+            up=default;if(a==null||!a.Guarding||s.Block==null||!clips.Has(s.Block))return false;
+            up=new Upper{A=s.Block,TimeA=Math.Max(0,time-a.GuardAt),Raised=true};return true;
+        }
         /// <summary>`ready`: the body's own motion leaves the arms free (idle, locomotion, a jump's rise or fall, a landing): a gun
         /// then follows the look unless sprinting (owner 2026-10-24: the low carry did not point where the pilot looks).</summary>
         public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up,bool ready=false)
@@ -248,6 +255,7 @@ namespace ChipArena.UnityConversion
             up=default;
             if(SpinUpper(s,a,time,clips,out up))return true;
             if(DashUpper(s,a,time,clips,out up))return true;
+            if(GuardUpper(s,a,time,clips,out up))return true;
             if(BombUpper(s,a,time,clips,out up))return true;
             if(s.CastStart!=null)return Cast(s,a,time,clips,out up);
             if(s.Aim==null)return false;
@@ -512,6 +520,8 @@ namespace ChipArena.UnityConversion
         // rules' hit, so the mallet lands when the hit does.
         private const string DogPoint="Armed-Cast-R-Attack3_start",DogPointEnd="Armed-Cast-R-Attack3_end",DogPunch="Unarmed-Attack-R2",DogPunchL="Unarmed-Attack-L1",DogKick="Unarmed-Attack-Kick-R2",DogRun="2Hand-Sword-Run-Forward";
         private static readonly string[] DogSwings={"2Hand-Sword-Attack1","2Hand-Sword-Attack2","2Hand-Sword-Attack11"};
+        // The mallet's dash (the greatsword's running swing, its hit at the middle of the charge) and slam (the jumping strike, its hit on the landing).
+        private const string DogDashSwing="2Hand-Sword-Run-Forward-Attack1",DogSlamSwing="2Hand-Sword-Air-Attack1";
         private static bool DogCast(Set set,Actor a,float time,IClips clips,out Pick pick)
         {
             pick=default;if(set.Spec!=NativeTopDog.Spec)return false;var k=NativeDogView.Of(a);if(k==null)return false;
@@ -534,6 +544,14 @@ namespace ChipArena.UnityConversion
             switch(k.CastKind)
             {
                 case NativeTopDog.Mallet:return Hit(DogSwings[Math.Max(0,Math.Min(2,k.CastStep))],at,rel,until+.15f,out pick);
+                case NativeTopDog.Dash:return Hit(DogDashSwing,at,rel+NativeTopDog.DashTime*.45f,until+.1f,out pick,1.8f);
+                case NativeTopDog.Slam:
+                {
+                    if(!clips.Has(DogSlamSwing))return false;float hit=clips.Hit(DogSlamSwing),len=clips.Length(DogSlamSwing),land=NativeTopDog.SlamLanded(k);
+                    // In the air the strike winds up and holds just before its hit while it drops; landed, it strikes and recovers.
+                    if(land<-50){float u=Clamp01((time-at)/(NativeTopDog.SlamHang+.25f));pick=new Pick{Clip=DogSlamSwing,Time=Math.Max(0,hit-.05f)*u,Fade=FadeIn};return true;}
+                    pick=new Pick{Clip=DogSlamSwing,Time=Retime(time,land-.05f,land,until+.12f,hit,len,2.4f),Fade=FadeIn};return true;
+                }
                 case NativeTopDog.Boing:return Part(set.Flip,at,until+.5f,out pick);
                 case NativeTopDog.Zip:return time<rel?Loop(DogRun,at,rel,2.6f,out pick):Loop(DogRun,rel,until,1.8f,out pick);
                 case NativeTopDog.Anvil:return Part(DogPoint,at,rel,out pick)||Part(DogPointEnd,rel,until,out pick);

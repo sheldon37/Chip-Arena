@@ -125,7 +125,7 @@ namespace ChipArena.UnityConversion
             float widest=0;string widestSpec=null;
             foreach(var w in data.weapons)
             {
-                float row=Card("RMB · "+(w.id=="ansatsuken"?"PARRY":"BLOCK"),"SHIELD OUT")+Card("SHIFT · "+(w.@class=="melee"?"ROLL":"DODGE"),"ROLLING")+12;
+                float row=Card("F · PARRY","SHIELD OUT")+Card("SHIFT · "+(w.@class=="melee"?"ROLL":"DODGE"),"ROLLING")+12;
                 foreach(var slot in new[]{"q","e"}){var d=data.Ability(w.id,slot);if(d!=null)row+=Card(slot.ToUpperInvariant()+" · "+d.name.ToUpperInvariant(),"LOW STAMINA")+6;}
                 if(row>widest){widest=row;widestSpec=w.id;}
             }

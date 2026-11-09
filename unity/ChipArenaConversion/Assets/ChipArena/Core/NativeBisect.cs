@@ -126,7 +126,7 @@ namespace ChipArena.UnityConversion
         /// Whether a death is split: gore on, a pilot's own body (not a Siren, not a revivable PvE body) and a stock ending
         /// (a killer's purchased kill effect keeps its own look). Gore off: the current death, unchanged.
         /// </summary>
-        public static bool Applies(bool gore,string style,bool kept,string model)=>gore&&!kept&&(model??"pilot")=="pilot"&&(style==null||style=="impact-ragdoll"||style=="ragdoll");
+        public static bool Applies(bool gore,string style,bool kept,string model)=>gore&&!kept&&(model??"pilot")=="pilot"&&(style==null||style=="impact-ragdoll"||style=="ragdoll"||style==NativeHotdogFriends.Style);
 
         /// <summary>A request for a cut along `normal` through `point`: the halves part along the normal (`part` m/s), lift
         /// (`lift`), ride the cutter's travel (`push` of it) and tip outward (`topple` rad/s); they hold `hitch` s first.</summary>

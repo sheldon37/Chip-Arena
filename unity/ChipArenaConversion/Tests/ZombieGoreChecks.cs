@@ -740,7 +740,7 @@ namespace ChipArena.UnityConversion
                 if(File.Exists(Path.Combine(dir,f)))Check(!Code(R(f)).Contains("HordeGore"),f+" (authority, rules or network) never reads the gore");
             // The runtime hands the gore only replicated facts and draws through the shared renderers.
             var p=R("Runtime/NativeHordeGorePresentation.cs");
-            Check(p.Contains("NativeHordeGore.Classify(e.Detail,spec,melee,e.DamageKind)")&&p.Contains("Time=e.Time,Amount=e.Amount")&&p.Contains("vfx.Block(")&&p.Contains("blood.Spray(s.Kind,s.Severity,s.Seed,s.Key,s.Origin,s.Normal,s.Along,s.Time,BloodQuality,LowGraphics,stain,s.Extra,s.Target,s.Kill)"),"the gore reads the replicated hit and draws through the shared renderers and the blood sim");
+            Check(p.Contains("NativeHordeGore.Classify(e.Detail,spec,melee,e.DamageKind)")&&p.Contains("Time=e.Time,Amount=e.Amount")&&p.Contains("vfx.Blob(GoreU(b.At)")&&p.Contains("blood.Spray(s.Kind,s.Severity,s.Seed,s.Key,s.Origin,s.Normal,s.Along,s.Time,BloodQuality,LowGraphics,stain,s.Extra,s.Target,s.Kill)"),"the gore reads the replicated hit and draws through the shared renderers and the blood sim");
             Check(p.Contains("var r=hordeGore.RemainsOf(id);if(r==null)return false;")&&p.Contains("&&!NativeHordeGoreState.Fading(r,hordeClock))return true;"),"a falling body whose remains the cap already sank never pops back; one the cap sinks mid-fall sinks from where it is");
             Check(R("Runtime/NativeHordeKindPresentation.cs").Contains("public const int HordePartMax=48;")&&R("Runtime/NativeHordeKindPresentation.cs").Contains("NativeHordeGore.Gone(age,life)"),"thrown parts are a fixed pool and go with the corpses' life");
         }

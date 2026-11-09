@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
         {
             Slice=release>=0||slice==null||!slice.Any?null:slice;Halved=halves!=null&&bisect!=null&&release<0;if(Halved){Bisection=halves;Request=bisect;Half=half;Host=host;}
             Smash=release<0&&!Halved?smash:null;
-            this.arena=arena;RetainUntilRoundEnd=NativeCorpseRules.Retain(arena.Pilots.Any(p=>p.Seat.id==death.id),arena.Match.Cooperative);Death=death;Style=Smash!=null||stock&&release<0?"impact-ragdoll":death.kept&&!new[]{"impact-ragdoll","ragdoll","dev-gibber","siren-crush","vent-fall","vent-splat"}.Contains(death.style)?"impact-ragdoll":death.style;
+            this.arena=arena;RetainUntilRoundEnd=NativeCorpseRules.Retain(arena.Pilots.Any(p=>p.Seat.id==death.id),arena.Match.Cooperative);Death=death;Style=Smash!=null||stock&&release<0?"impact-ragdoll":death.kept&&!new[]{"impact-ragdoll","ragdoll","dev-gibber","siren-crush","vent-fall","vent-splat"}.Contains(death.style)?"impact-ragdoll":death.style==NativeHotdogFriends.Style?"impact-ragdoll":death.style;
             // A bisected body's second half shares its first half's physics scene (one step, one world copy).
             if(Host!=null)scene=Host.scene;else
 #if UNITY_EDITOR
@@ -262,7 +262,9 @@ namespace ChipArena.UnityConversion
             if(style=="launch")overlay=Matrix4x4.Translate(Vector3.up*Mathf.Min(20,fx*fx*9));
             if(style=="voxel-burst"||style=="confetti"||style=="siren-dissipate"||style=="siren-crush")alpha=0;
             // ragdoll.ts update(): the stock sink and shrink, then RagdollVfx (centred on the presented pelvis) and its collapse.
-            float sink=stock&&!retain?(float)NativeKillEffectRules.Sink(shown):0,scale=stock&&!retain?(float)NativeKillEffectRules.PartScale(shown):1;corpse.Present(overlay,sink,scale);
+            // Hotdog Friends' pieces are carried off rather than sinking (NativeHotdogFriendsPresentation.cs).
+            bool friends=corpse.HotdogFriends;float sink=stock&&!retain&&!friends?(float)NativeKillEffectRules.Sink(shown):0,scale=stock&&!retain&&!friends?(float)NativeKillEffectRules.PartScale(shown):1;corpse.Present(overlay,sink,scale);
+            if(friends&&!remains)HotdogFriends(corpse,fx);
             if(remains){alpha=1;overlay=Matrix4x4.identity;corpse.Present(overlay,0,1);}
             // A pinned smash flattens the whole body (and what it carried) onto the floor under its crusher, in the crusher's timing.
             if(corpse.Smash!=null){overlay=SmashOverlay(corpse.Smash,shown)*overlay;corpse.Present(overlay,remains?0:sink,remains?1:scale);}

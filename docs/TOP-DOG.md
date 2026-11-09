@@ -25,7 +25,9 @@ arm, a cream pie. The ultimate is the punchline.
 | Key | Ability (`id`) | What it does | Damage | Cooldown |
 | --- | --- | --- | --- | --- |
 | LMB | Big Mallet (`big-mallet`) | Three swings, two-handed: a side swing, a back swing, then an overhead slam that lands 1.7 m ahead and **flattens** everyone within 2.1 m of it for 0.8 s. A swing hits 2.9 m out in a 115 degree arc and staggers. The combo carries on if you swing again within 0.45 s | 14, 14, 26 | |
-| RMB, Shift | Block, Roll | As any melee weapon | | |
+| LMB on a sprint | Mallet Dash (`mallet-dash`) | Owner 2026-11-09: "Give them a dash sprint attack and slam attack as well". A beat to tuck the mallet (0.12 s), then a charge 6.5 m along your facing in 0.34 s (a wall stops it short), the mallet swung low through everyone within 1.4 m of the path ahead: bonked and batted on ahead at 11 m/s, 5 up. The greatsword's running swing | 20 | |
+| LMB in the air | Mallet Slam (`mallet-slam`) | Once an airtime (a jump's or a Boing!'s), as any melee weapon's air attack: hung 0.2 s with the mallet raised, then straight down at 26 m/s; the landing slams 3.2 m round, flattening everyone within 2.2 m for 0.9 s and throwing the rest out. A Boing! slammed out of lands no thud | 30 | |
+| RMB, F, Shift | Guard, Parry, Roll | As any melee weapon (the held guard on right click, the parry on F) | | |
 | Q | Boing! (`boing`) | A spring pops out under the feet and throws you 9 m up and 8 m/s along your look. The landing thuds: 2.6 m round you, a small knock-up | 8 | 8 s |
 | E | Zip (`zip`) | 0.3 s running on the spot (rooted), then you zip 12 m ahead in 0.3 s (a wall stops you), leaving your dust cloud standing behind. Anyone within 1.3 m of the path is swatted aside | 10 | 7 s |
 | 1 | Anvil (`anvil`) | Point at a spot up to 22 m away. Its shadow and a red ring grow there for 0.9 s while it falls, then it lands: 2.1 m round, **flattened** for 1.1 s. It sits there 3.5 s, then goes in a puff | 28 | 10 s |

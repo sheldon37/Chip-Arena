@@ -228,6 +228,23 @@ internal static class SprintMotionChecks
             for(int k=0;k<NativeSprintFx.Lines;k++)if(NativeSprintFx.Line(k,7919,t,1,out _,out float i0,out float o0,out float a0)){lines++;inner=Math.Min(inner,i0);Check(i0>=.66f&&o0>i0&&a0>0&&a0<=NativeSprintFx.LineAlpha,"speed lines stay in the outer third");}
         }
         Check(lowStreak>.8f,"streaks shed off the body ("+lowStreak+" m over the feet at the lowest)");
+        // The high-quality pass (owner 2026-11-09): the wind round the body, the limb trails, the start burst, the footfall's grit and flash.
+        int winds=0;float windLow=10,windHigh=0,windFar=0;
+        for(float t=0;t<2;t+=1/90f)for(int k=0;k<NativeSprintFx.Winds;k++)if(NativeSprintFx.Wind(k,11,t,1,feet,fwd,out var wh,out var wt,out float wa))
+        {
+            winds++;windLow=Math.Min(windLow,wh.Y-feet.Y);windHigh=Math.Max(windHigh,wh.Y-feet.Y);var off=wh-feet;off-=fwd*Vector3.Dot(off,fwd);off.Y=0;windFar=Math.Max(windFar,off.Length());
+            Check(wt.Y==0&&Vector3.Dot(wt,fwd)<0&&wa>0&&wa<=NativeSprintFx.WindAlpha,"the wind trails level, back past the body");
+        }
+        Check(winds>200&&windLow>.15f&&windHigh<2.1f&&windFar<1&&!NativeSprintFx.Wind(0,11,1,0,feet,fwd,out _,out _,out _),"the wind hugs the body, hips to over the shoulders ("+windLow.ToString("0.00")+" to "+windHigh.ToString("0.00")+" m, at most "+windFar.ToString("0.00")+" m out), none without the sprint");
+        Check(NativeSprintFx.TrailCount(1,false)==4&&NativeSprintFx.TrailCount(.3f,false)==2&&NativeSprintFx.TrailCount(1,true)==2&&NativeSprintFx.Foot(CapturedRig.LFoot)&&!NativeSprintFx.Foot(CapturedRig.RHand),"the hands and feet trail; Reduced effects and Low keep the hands");
+        Check(NativeSprintFx.TrailFade(0,.24f)==1&&NativeSprintFx.TrailFade(.24f,.24f)==0&&NativeSprintFx.TrailFade(.12f,.24f)>0&&NativeSprintFx.TrailWidthAt(0,.07f)<NativeSprintFx.TrailWidthAt(1,.07f),"a trail fades and narrows to its tail");
+        Check(NativeSprintFx.BurstRing(.05f,out float rs,out float rk)&&rs>.5f&&rk>0&&NativeSprintFx.BurstRing(.1f,out float rs2,out _)&&rs2>rs&&!NativeSprintFx.BurstRing(NativeSprintFx.BurstRingLife,out _,out _),"the start's ring of air grows and goes");
+        int bp=0;for(int k=0;k<NativeSprintFx.BurstPuffs;k++)if(NativeSprintFx.BurstPuff(k,NativeSprintFx.BurstPuffs,5,.2f,feet,fwd,out var at,out float sz,out float op)){bp++;Check(Vector3.Dot(at-feet,fwd)<.25f&&at.Y>feet.Y&&op>0&&sz>0,"the start's dust is thrown back and round the feet");}
+        int bs=0;for(int k=0;k<NativeSprintFx.BurstStreaks;k++)if(NativeSprintFx.BurstStreak(k,5,.05f,feet,fwd,out var sh,out var sm,out float sa)){bs++;Check(Vector3.Dot(sm,fwd)<0&&sa>0&&sa<=1,"the start's streaks shoot back");}
+        Check(bp==NativeSprintFx.BurstPuffs&&bs==NativeSprintFx.BurstStreaks&&!NativeSprintFx.BurstPuff(0,8,5,NativeSprintFx.BurstLife,feet,fwd,out _,out _,out _),"the start burst draws its pieces, then is gone");
+        float gritLow=10;for(float g=0;g<NativeSprintFx.GritLife;g+=1/60f)for(int k=0;k<NativeSprintFx.Grits;k++)if(NativeSprintFx.Grit(k,9,g,feet,fwd,feet.Y,out var ga,out float gs,out _)){gritLow=Math.Min(gritLow,ga.Y-feet.Y);Check(gs>0&&gs<=NativeSprintFx.GritSize*1.4f+1e-5f,"grit is small");}
+        Check(gritLow>=.012f-1e-5f&&NativeSprintFx.Flash(0)==1&&NativeSprintFx.Flash(NativeSprintFx.FlashLife)==0,"grit falls and rests on the floor; the foot's flash is quick");
+        for(int k=0;k<NativeSprintFx.Lines;k++){float lw=NativeSprintFx.LineWidthOf(k);Check(lw>=.5f&&lw<=1.6f,"the speed lines vary in width");}
         Check(NativeSprintFx.VignetteShape(.5f,.5f)==0&&NativeSprintFx.VignetteShape(.5f,.2f)==0&&NativeSprintFx.VignetteShape(0,0)>.99f&&NativeSprintFx.Vignette(1,1)==NativeSprintFx.VignetteAlpha&&NativeSprintFx.Vignette(1,.3f)<NativeSprintFx.VignetteAlpha&&NativeSprintFx.Vignette(0,1)==0,"the vignette leaves the middle clear, darkens the corners and dims with Reduced effects");
         Check(NativeSprintFx.LineShape(0,.5f)==0&&NativeSprintFx.LineShape(.5f,.5f)>.99f&&NativeSprintFx.LineShape(.5f,0)==0,"the line texture tapers at its ends and edges");
         Check(NativeSprintFx.Count(14,6,1,false)==14&&NativeSprintFx.Count(14,6,.3f,false)==6&&NativeSprintFx.Count(14,6,1,true)==7&&NativeSprintFx.Count(3,1,.3f,true)==1,"Reduced effects and Low graphics thin the effect");
