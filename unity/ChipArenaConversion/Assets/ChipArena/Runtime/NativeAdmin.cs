@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
     {
         private string adminQuery="";private NativeAccountData[] managedPlayers=Array.Empty<NativeAccountData>();
         private readonly Dictionary<string,HashSet<string>> editedGrants=new Dictionary<string,HashSet<string>>(),editedFlags=new Dictionary<string,HashSet<string>>();
-        private static readonly string[] Grantable={"weapon:siren","weapon:emperor","weapon:leet","weapon:ansatsuken","intro:dev-siren","intro:dev-emperor","intro:dev-matrix","intro:dev-ansatsuken","hat:auditor-halo","effect:dev-singularity","effect:dev-raging-demon","effect:dev-clown","effect:dev-clown-love","effect:dev-bass-van"};
+        private static readonly string[] Grantable={"weapon:siren","weapon:emperor","weapon:leet","weapon:ansatsuken","intro:dev-siren","intro:dev-emperor","intro:dev-matrix","intro:dev-ansatsuken","hat:auditor-halo","effect:dev-singularity","effect:dev-raging-demon","effect:dev-clown","effect:dev-clown-love","effect:dev-bass-van","effect:"+NativeHotdogFriends.Style};
         // DEV Menu (main.ts dev-menu): find registered players by username prefix and edit their restricted items and flags.
         private void AdminBody()
         {

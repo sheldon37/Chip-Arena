@@ -68,6 +68,7 @@ namespace ChipArena.UnityConversion
                 case "dev-clown":return "Makes a clown-car getaway.";
                 case "dev-clown-love":return "The clown getaway, with a love song.";
                 case "dev-bass-van":return "The bass van rolls in to collect.";
+                case NativeHotdogFriends.Style:return NativeHotdogFriends.Text;
                 default:return "";
             }
         }
@@ -80,7 +81,7 @@ namespace ChipArena.UnityConversion
                 case "ragdoll-static":return 0xffe667;case "ragdoll-gravity":return 0xa47eff;case "ragdoll-pinball":return 0x70ffc9;case "ragdoll-fireworks":return 0xffa1e2;
                 case "ragdoll-soul":return 0x95dfed;case "ragdoll-petals":return 0xff98c4;case "dev-singularity":return 0xd7b4ff;case "voxel-burst":return 0xffc590;
                 case "confetti":return 0xffd27a;case "ascension":return 0xfff1bb;case "shrink":return 0x93c5fd;case "launch":return 0xffd27a;case "ghost":return 0xe6f4ff;
-                case "dev-gibber":return 0xff3b47;case "dev-raging-demon":return 0xff2d55;case "dev-clown":return 0xff6575;case "dev-clown-love":return 0xf18dcc;case "dev-bass-van":return 0x69a6ff;
+                case "dev-gibber":return 0xff3b47;case "dev-raging-demon":return 0xff2d55;case "dev-clown":return 0xff6575;case "dev-clown-love":return 0xf18dcc;case "dev-bass-van":return 0x69a6ff;case NativeHotdogFriends.Style:return NativeHotdogFriends.Swatch;
                 default:return 0xc0c1ca;
             }
         }

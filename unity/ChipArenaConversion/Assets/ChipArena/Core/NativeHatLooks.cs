@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     public static class NativeCosmeticGate
     {
         public const string SheldonIntro="sheldon-intro",SheldonIdle="sheldon-idle";
-        public static bool DevOnly(string id)=>id=="dev-gibber"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes||id==SheldonIdle;
+        public static bool DevOnly(string id)=>id=="dev-gibber"||id==NativeHotdogFriends.Style||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes||id==SheldonIdle;
         public static bool Restricted(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo"||id==NativeHatLooks.SheldonHead||id==SheldonIntro||id==NativeBodySkins.SheldonClothes||id==SheldonIdle);
         public static bool Allowed(NativeAccess a,string type,string id,double now)=>id!=null&&(!DevOnly(id)||(a??NativeAccess.Guest).Developer)&&(!Restricted(id)||(a??NativeAccess.Guest).Allows(type+":"+id,now));
         /// <summary>A lobby pose pick for this access: a known pose (NativeLobbyPoses.Normalize: an unknown id is 'weapon'), the

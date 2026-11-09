@@ -143,7 +143,7 @@ namespace ChipArena.UnityConversion
                         vfx.Vapor(at,mist,(.28f+.2f*m.Severity)*(float)Math.Pow(1-u,1.6),.1f+(.32f+.2f*m.Severity)*u,u,(m.Seed+(uint)p*977u)%8191u,NativeVfxDraw.NoFloor,0);
                     }
                 }
-                BisectSparks(now);SmashMist(now);
+                BisectSparks(now);SmashMist(now);HotdogFriendsFx(now);
             }
             killDrops.Clear();
             DrawSplats(camera,now);
