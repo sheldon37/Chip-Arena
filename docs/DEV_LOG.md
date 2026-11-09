@@ -9,6 +9,7 @@
 - **Checks:** CoreTests `--visual-rig` (the fit's wiring beside the no-stretch check) and `--hot-dog`; the Unity compile; the pinned lines. The full suite runs with the release.
 - **Seen in the Editor:** a plain hit's kneel, a melee kill, the Gibber, the Top Dog's burst and a dead Hot Dog, each measured through the fall and looked at up close: the bodies fold and lie on the floor, nothing stretched apart, the Hot Dog folding forward over its legs onto its face.
 - **Not run:** no person, no two real clients.
+- **Released:** full suite at `a68ba805` (shared merged in): 983 groups, exit 0; pins 0 broken; Unity compile PASS. Merged into shared at `3f3313c7` and the builder synced; the test channel's build succeeded and published revision `639298061724628294` (2026-11-09 07:34 UTC). No live or Site release.
 
 ## 2026-11-09 — Claude: the Hot Dog's face stays on the head; no core on the Hot Dog (owner request; look)
 
