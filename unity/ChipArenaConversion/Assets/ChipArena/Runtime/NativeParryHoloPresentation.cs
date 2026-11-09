@@ -16,7 +16,8 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<GameObject,ParryHolo> parryHolos=new Dictionary<GameObject,ParryHolo>();
         private static Material parryHoloMaterial;private static bool parryHoloFailed;
         /// <summary>The body's glow under the hexagon barrier (NativeParryBarrierPresentation.cs; owner 2026-11-09: "more of an effect rather
-        /// that just turning character a color"): a soft share of it.</summary>
+        /// that just turning character a color", then "we can't actually see the player in there"): a soft share of a rim and scan that
+        /// leaves the body's own colours face-on.</summary>
         public const float ParryHoloUnder=.5f;
         private static readonly int HoloColorId=Shader.PropertyToID("_HoloColor"),HoloFadeId=Shader.PropertyToID("_HoloFade"),HoloAgeId=Shader.PropertyToID("_HoloAge"),
             HoloFlashId=Shader.PropertyToID("_HoloFlash"),HoloHitId=Shader.PropertyToID("_HoloHit"),HoloSpanId=Shader.PropertyToID("_HoloSpan");

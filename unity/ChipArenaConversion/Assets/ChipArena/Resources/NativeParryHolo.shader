@@ -1,6 +1,6 @@
 // The parry's holographic barrier (owner 2026-11-09: "Lets cover the users player model in a holographic barrier effect when the parry
 // is active"): a copy of each of the body's skinned pieces drawn over it while the parry's window is open (Runtime
-// NativeParryHoloPresentation.cs), pushed a little out along its normals, additive: a faint fill, a bright fresnel rim, fine scanlines
+// NativeParryHoloPresentation.cs), pushed a little out along its normals, additive: no fill (the body shows through), a fresnel rim, fine scanlines
 // rising up the body, a hexagonal lattice that shimmers, a sweep of light up from the feet as it comes up, a ripple out from where a
 // parried blow lands and a flash with it, and a flicker; fading in and out with the window. Colour the pilot's accent (linear, HDR).
 // Scene fog toward black, depth tested against the body itself (no depth write), Transparent+2.
@@ -63,7 +63,10 @@ Shader "ChipArena/NativeParryHolo"
                 // A parried blow: a ring running out from where it landed, and a flash.
                 float flash=0,ring=0;if(_HoloFlash>=0){float d=distance(i.wpos,_HoloHit.xyz),r=_HoloFlash*3.2;ring=exp(-abs(d-r)*22)*exp(-_HoloFlash*4);flash=exp(-_HoloFlash*9);}
                 float flicker=.9+.1*sin(t*53+h*7)*sin(t*31);
-                float glow=.025+rim*.75+lines*.16*(.4+rim)+cell*.22*breathe*(.35+rim)+sweep*1.3+ring*1.6+flash*(.35+rim*.8);
+                // Under the hexagon dome (owner 2026-11-09: "we can't actually see the player in there"): no fill, so the body keeps its
+                // own colours face-on; a fresnel rim, faint scanlines and the lattice only toward the silhouette; the sweep, a blow's ring
+                // and its flash as moments.
+                float glow=rim*.42+lines*.07*(.2+rim)+cell*.1*breathe*rim+sweep*1.0+ring*1.1+flash*(.2+rim*.6);
                 float3 c=_HoloColor.rgb*glow*flicker*_HoloFade;
                 UNITY_APPLY_FOG_COLOR(i.fogCoord,c,fixed4(0,0,0,0));
                 return float4(c,0);
