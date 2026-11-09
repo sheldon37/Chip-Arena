@@ -17,12 +17,15 @@ namespace ChipArena.UnityConversion
         // huge portion as long as user is facing where the damage is coming from. Stamina however will be used on blocked hits." The parry
         // (TryBlock) is unchanged and now on F, unless F is used for an interaction in reach (the owner's pick); this is the held guard.
 
+        /// <summary>The local capture tools' hook: the pilot with this seat id holds its guard up as if right click were held (0: none).
+        /// Nothing in the game sets it.</summary>
+        public static int HeldForCapture;
         /// <summary>Each tick, before attacks resolve: the guard up while it is held on a melee weapon and the pilot is free to (not rolling,
         /// swinging, casting, stunned, broken or out of stamina); down otherwise. Holding it the pilot's stamina does not come back.</summary>
         private void StepGuard(NativePilot p)
         {
             bool free=Time>=p.RollEnd&&Time>=p.AttackEnd&&p.Swing==null&&Time>=p.BlockEnd&&!Incapacitated(p)&&!SpecialBusy(p)&&!TechniqueBusy(p)&&!BombBusy(p)&&!DogBusy(p)&&!DogHeld(p)&&p.AbilityCast==null&&p.CastAt<=0;
-            bool want=p.Input.Guard&&NativeMeleeRules.Guards(p.Weapon?.@class)&&free&&Time>=p.GuardBrokenUntil&&p.Stamina>0;
+            bool want=(p.Input.Guard||HeldForCapture!=0&&p.Seat.id==HeldForCapture)&&NativeMeleeRules.Guards(p.Weapon?.@class)&&free&&Time>=p.GuardBrokenUntil&&p.Stamina>0;
             if(want&&!p.Guarding)p.GuardAt=Time;p.Guarding=want;
             if(p.Guarding)p.RegenAt=Math.Max(p.RegenAt,Time+NativeMeleeRules.GuardRegenPause);
         }
