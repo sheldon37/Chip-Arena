@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeGlaiveMotion
     {
-        public enum Move{None,Cut1,Cut2,Whirl,Flick,Skim,Throw,Halo,Burst,Catch}
+        public enum Move{None,Cut1,Cut2,Whirl,Flick,Skim,Throw,Halo,Burst,Catch,Ready}
         /// <summary>The ring's middle out from the fist against the mallet's head (the solver's "head").</summary>
         public const float Scale=NativeWeaponModels.GlaiveCentre/NativeWeaponModels.MalletHead;
         public const float CatchTime=.3f;
@@ -105,6 +105,18 @@ namespace ChipArena.UnityConversion
             G(.06f,-12,10,.96f,10,-14,.36f,0,-10,Ease.Out),
             G(CatchTime,0,4,1,20,-10,.4f,40,0),
         };
+        /// <summary>The ready hold between moves: the ring up at the right side, upright, its edge forward (the clip's sword grip laid it flat
+        /// round the hip).</summary>
+        private static readonly Key[] ReadyKeys={G(0,8,4,1,35,-22,.36f,15,40),G(1,8,4,1,35,-22,.36f,15,40)};
+        public const float ReadyShare=.9f;
+        /// <summary>The pose for an actor at `time`: its move's (Sample), else the ready hold while it stands, walks or runs ready (not
+        /// guarding, rolling, stunned, reeling or dead, and with the ring in the hand).</summary>
+        public static bool Pose(Actor a,NativeGlaiveKit k,float time,out DogMalletPose pose,out Move move,out float from)
+        {
+            if(Sample(k,time,out pose,out move,out from))return true;
+            if(a==null||k==null||!a.Alive||NativeGlaive.InHand(k,time)<.5f||a.Rolling(time)||time>=a.BlockAt&&time<a.BlockUntil||time<a.StunUntil||time>=a.ReactionAt&&time<a.ReactionUntil)return false;
+            move=Move.Ready;from=-1;pose=KeyedPose(ReadyKeys,0,false,Scale);pose.Weight=ReadyShare;return true;
+        }
         private static readonly float[] Wind=NativeGlaive.SwingHit,Follow={.25f,.25f,.36f,.54f};
         private static Key[] CutKeys(int step)=>step<=0?Cut1:step==1?Cut2:step==2?Whirl:Flick;
         private static bool Level(Move m)=>m==Move.Cut1||m==Move.Cut2||m==Move.Whirl||m==Move.Skim||m==Move.Throw||m==Move.Flick;
@@ -152,13 +164,13 @@ namespace ChipArena.UnityConversion
             {
                 case Move.Cut1:return KeyedPose(Cut1,t,true,Scale);case Move.Cut2:return KeyedPose(Cut2,t,true,Scale);case Move.Whirl:return KeyedPose(Whirl,t,true,Scale);
                 case Move.Flick:return KeyedPose(Flick,t,true,Scale);case Move.Skim:return KeyedPose(SkimKeys,t,true,Scale);case Move.Throw:return KeyedPose(ThrowKeys,t,true,Scale);
-                case Move.Halo:return KeyedPose(HaloKeys,t,false,Scale);case Move.Burst:return KeyedPose(BurstKeys,t,false,Scale);case Move.Catch:return KeyedPose(CatchKeys,t,true,Scale);
+                case Move.Halo:return KeyedPose(HaloKeys,t,false,Scale);case Move.Burst:return KeyedPose(BurstKeys,t,false,Scale);case Move.Catch:return KeyedPose(CatchKeys,t,true,Scale);case Move.Ready:return KeyedPose(ReadyKeys,t,false,Scale);
             }
             return default;
         }
         public static float[] KeyTimes(Move m)
         {
-            Key[] k=m==Move.Cut1?Cut1:m==Move.Cut2?Cut2:m==Move.Whirl?Whirl:m==Move.Flick?Flick:m==Move.Skim?SkimKeys:m==Move.Throw?ThrowKeys:m==Move.Halo?HaloKeys:m==Move.Burst?BurstKeys:m==Move.Catch?CatchKeys:new Key[0];
+            Key[] k=m==Move.Cut1?Cut1:m==Move.Cut2?Cut2:m==Move.Whirl?Whirl:m==Move.Flick?Flick:m==Move.Skim?SkimKeys:m==Move.Throw?ThrowKeys:m==Move.Halo?HaloKeys:m==Move.Burst?BurstKeys:m==Move.Catch?CatchKeys:m==Move.Ready?ReadyKeys:new Key[0];
             var t=new float[k.Length];for(int i=0;i<k.Length;i++)t[i]=k[i].T;return t;
         }
         /// <summary>The ring's middle on the nominal body for a pose (for the checks and the trail).</summary>

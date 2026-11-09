@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
             bool glaive=a.SourceSpec==NativeGlaive.Spec;if(a.SourceSpec!=NativeTopDog.Spec&&!glaive){DogRootLetGo(body,l);dogSwings.Remove(a.Id);return;}
             // The Glaive's moves are keyed the same way (Core NativeGlaiveMotion), one-handed.
             bool on;DogMalletPose pose;int move;float from;
-            if(glaive){on=NativeGlaiveMotion.Sample(NativeGlaiveView.Of(a),time,out pose,out var gm,out from);move=100+(int)gm;}
+            if(glaive){on=NativeGlaiveMotion.Pose(a,NativeGlaiveView.Of(a),time,out pose,out var gm,out from);move=100+(int)gm;}
             else{on=NativeDogMallet.Sample(NativeDogView.Of(a),time,out pose,out var dm,out from);move=(int)dm;}
             if(!dogSwings.TryGetValue(a.Id,out var mem)){mem=new DogSwingMemory();dogSwings[a.Id]=mem;}
             if(time<mem.Seen-.25f){mem.Move=0;mem.HasFace=false;mem.Last=default;}
