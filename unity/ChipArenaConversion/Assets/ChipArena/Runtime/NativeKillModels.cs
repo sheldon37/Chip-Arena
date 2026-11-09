@@ -91,11 +91,30 @@ namespace ChipArena.UnityConversion
             if(part.NoShadow)return part;if(!shadowlessParts.TryGetValue(part,out var twin)){twin=new Part{Name=part.Name,Bone=part.Bone,Mesh=part.Mesh,Material=part.Material,NoShadow=true};shadowlessParts[part]=twin;}
             return twin;
         }
-        /// <summary>A stump cap cell: the wound cube (lit, wound glow .3) without a shadow.</summary>
+        /// <summary>A stump cap cell (lit, wound glow .3, no shadow): since 2026-11-09 (realistic blood) a soft wet lump a little wider
+        /// than its cell, so the cells run together into a torn surface instead of a grid of cubes.</summary>
         public void KillCap(Matrix4x4 matrix,Color color,float opacity)
         {
-            if(killCap==null)killCap=KillPart("kill-cap",Cube().Mesh("Kill cap",Color.white,new Vector4(.3f,.3f,.3f,0)),false);
+            if(killCap==null){var b=new Builder();Sphere(10,7,b.P,b.N,b.I);for(int i=0;i<b.P.Count;i++)b.P[i]*=.62f;killCap=KillPart("kill-cap",b.Mesh("Kill cap",Color.white,new Vector4(.3f,.3f,.3f,0)),false);}
             if(killCap!=null)Draw(killCap,matrix,new Vector4(1,1,1,opacity),color,Vector4.one);
+        }
+        private readonly Part[] killChunks=new Part[3];
+        /// <summary>A crushed part's fragment (CrushDebris; it casts a shadow): one of three rounded, torn lumps (a sphere pushed in and out
+        /// by its own noise), about the size of the cube it replaces. `variant` picks the lump.</summary>
+        public void KillChunk(Matrix4x4 matrix,Color color,float opacity,int variant)
+        {
+            int v=((variant%3)+3)%3;
+            if(killChunks[v]==null)
+            {
+                var b=new Builder();Sphere(9,6,b.P,b.N,b.I);uint seed=(uint)(v*7919+17);
+                for(int i=0;i<b.P.Count;i++){var p=b.P[i];float n=Mathf.Sin(p.x*5.1f+v*1.7f)*Mathf.Sin(p.y*4.3f+v)*Mathf.Sin(p.z*4.7f+v*2.3f);b.P[i]=p*(.55f+.16f*n+.06f*Mathf.Sin(p.x*11+p.z*9+v));}
+                // Its normals from its own faces (the mesh is uploaded unreadable), turned outward.
+                var acc=new Vector3[b.P.Count];for(int t=0;t+2<b.I.Count;t+=3){int i0=b.I[t],i1=b.I[t+1],i2=b.I[t+2];var fn=Vector3.Cross(b.P[i1]-b.P[i0],b.P[i2]-b.P[i0]);acc[i0]+=fn;acc[i1]+=fn;acc[i2]+=fn;}
+                for(int i=0;i<b.P.Count;i++){var n=acc[i].sqrMagnitude>1e-12f?acc[i].normalized:b.P[i].normalized;b.N[i]=Vector3.Dot(n,b.P[i])<0?-n:n;}
+                var mesh=b.Mesh("Kill chunk "+v,Color.white,new Vector4(.15f,.15f,.15f,0));
+                killChunks[v]=KillPart("kill-chunk-"+v,mesh,false);if(killChunks[v]!=null)killChunks[v].NoShadow=false;
+            }
+            if(killChunks[v]!=null)Draw(killChunks[v],matrix,new Vector4(1,1,1,opacity),color,Vector4.one);
         }
         /// <summary>A lit cube without emission (a voxel-burst chunk).</summary>
         public void KillCube(Matrix4x4 matrix,Color albedo)

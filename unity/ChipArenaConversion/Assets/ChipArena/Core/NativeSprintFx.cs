@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A streak's cycle (s), trailing distance and length range (m), HDR gain and width (m).</summary>
         public const float StreakCycle=.32f,StreakTrail=.9f,StreakLength=.7f,StreakGain=2.2f,StreakWidth=.03f;
         /// <summary>A dust kick's life (s), size range (m), drift back and up (m), opacity and colour (the slam dust's warm grey).</summary>
-        public const float DustLife=.6f,DustSize=.26f,DustGrow=.44f,DustBack=.85f,DustRise=.3f,DustOpacity=.5f;public const int DustColor=0xb2a89b;
+        public const float DustLife=.6f,DustSize=.3f,DustGrow=.5f,DustBack=.85f,DustRise=.3f,DustOpacity=.62f;public const int DustColor=0xb2a89b;
         public static int Count(int full,int reduced,float quality,bool low){int n=quality<.5f?reduced:full;return low?Math.Max(1,(n+1)/2):n;}
         /// <summary>The effect's brightness for the quality (Reduced effects dims it to .6).</summary>
         public static float Dim(float quality)=>quality<.5f?.6f:1;
@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
         /// width at the head (m; the feet's narrower) tapering to a fifth at its tail, its HDR gain and how much its head whitens.</summary>
         public static readonly int[] TrailJoints={CapturedRig.LHand,CapturedRig.RHand,CapturedRig.LFoot,CapturedRig.RFoot};
         public const int TrailSamples=16,ReducedTrailJoints=2;
-        public const float TrailLife=.24f,FootTrailLife=.15f,TrailStep=.018f,TrailWidth=.06f,FootTrailWidth=.035f,TrailGain=2.4f,TrailWhite=.3f;
+        public const float TrailLife=.24f,FootTrailLife=.15f,TrailStep=.018f,TrailWidth=.07f,FootTrailWidth=.04f,TrailGain=2.1f,TrailWhite=.3f;
         public static bool Foot(int joint)=>joint==CapturedRig.LFoot||joint==CapturedRig.RFoot;
         public static float TrailLifeOf(int joint)=>Foot(joint)?FootTrailLife:TrailLife;
         public static float TrailWidthOf(int joint)=>Foot(joint)?FootTrailWidth:TrailWidth;
@@ -73,8 +73,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Pale streaks of air sweeping back past the body, wrapped round its sides and shoulders (none across the face):
         /// Winds of them (ReducedWinds; Low graphics halves either), each born WindAhead m in front and gone WindBehind m behind
         /// within WindCycle s, bowing out where it passes the body; its length (m), width (m), peak alpha and HDR gain.</summary>
-        public const int Winds=12,ReducedWinds=5;
-        public const float WindCycle=.24f,WindAhead=.55f,WindBehind=1.6f,WindLength=.8f,WindWidth=.012f,WindAlpha=.55f,WindGain=1.6f;
+        public const int Winds=10,ReducedWinds=4;
+        public const float WindCycle=.24f,WindAhead=.5f,WindBehind=1.4f,WindLength=.65f,WindWidth=.011f,WindAlpha=.5f,WindGain=1.5f;
         /// <summary>
         /// Wind streak k at `time` for a pilot at `feet` facing `forward` (unit, horizontal), sprinting at `weight`: its leading end
         /// `head`, its trailing vector `tail` (level, back along the facing) and its `alpha`. Stateless: the same on every client.
@@ -86,8 +86,8 @@ namespace ChipArena.UnityConversion
             float a=Hash(seed^round,k+41),b=Hash(seed^round,k+43),c=Hash(seed^round,k+47);
             Vector3 right=Vector3.Normalize(new Vector3(forward.Z,0,-forward.X));
             // Round the body on its own side (alternating): from the hips up over the shoulder, on an ellipse taller than wide.
-            float side=k%2==0?1:-1,phi=(-.35f+1.25f*a)*(float)Math.PI*.5f,r=.42f+.3f*b;
-            float z=WindAhead-(WindAhead+WindBehind)*u,bow=1+.22f*(float)Math.Exp(-z*z*4);
+            float side=k%2==0?1:-1,phi=(-.35f+1.25f*a)*(float)Math.PI*.5f,r=.3f+.25f*b;
+            float z=WindAhead-(WindAhead+WindBehind)*u,bow=1+.32f*(float)Math.Exp(-z*z*4);
             float x=side*r*(float)Math.Cos(phi)*bow,y=1.05f+.88f*(float)Math.Sin(phi);
             head=feet+right*x+Vector3.UnitY*y+forward*z;tail=-forward*(WindLength*(.55f+.45f*c));
             alpha=weight*WindAlpha*(float)Math.Sin(Math.PI*u)*(.6f+.4f*c);return alpha>1e-3f;
@@ -98,7 +98,7 @@ namespace ChipArena.UnityConversion
         /// thrown out round the feet (BurstPuffs, ReducedBurstPuffs), streaks shot back off the body (BurstStreaks,
         /// ReducedBurstStreaks); all gone within BurstLife s. A sprint picked up again within BurstRest s makes none.</summary>
         public const int BurstPuffs=8,ReducedBurstPuffs=4,BurstStreaks=10,ReducedBurstStreaks=5;
-        public const float BurstLife=.55f,BurstRest=.6f,BurstRingLife=.32f,BurstRingSize=2.6f,BurstGain=1.5f,BurstStreakLife=.3f;
+        public const float BurstLife=.55f,BurstRest=.6f,BurstRingLife=.32f,BurstRingSize=2.8f,BurstGain=1.9f,BurstStreakLife=.3f;
         /// <summary>An ease out (fast, then settling).</summary>
         public static float Ease(float u){u=MeleeMath.Clamp(u,0,1);float v=1-u;return 1-v*v*v;}
         /// <summary>The ring of air `age` s into the burst: its size (m across) and strength (0..1).</summary>
@@ -113,7 +113,7 @@ namespace ChipArena.UnityConversion
         {
             at=feet;size=opacity=0;float u=age/BurstLife;if(!(u>=0&&u<1)||n<=0)return false;
             Vector3 right=Vector3.Normalize(new Vector3(forward.Z,0,-forward.X));
-            float t=n>1?k/(float)(n-1):.5f,angle=(float)Math.PI*(1+(t-.5f)*1.5f)+(Hash(seed,k+60)-.5f)*.35f;
+            float t=n>1?k/(float)(n-1):.5f,angle=(float)Math.PI*(1+(t-.5f)*1.0f)+(Hash(seed,k+60)-.5f)*.25f;
             Vector3 dir=forward*(float)Math.Cos(angle)+right*(float)Math.Sin(angle);float o=Ease(u);
             at=feet+dir*(.2f+(.9f+.5f*Hash(seed,k+61))*o)+Vector3.UnitY*(.08f+.22f*u);size=.28f+.62f*o;
             opacity=.5f*(float)Math.Pow(1-u,1.3)*Math.Min(1,age/.04f);return true;

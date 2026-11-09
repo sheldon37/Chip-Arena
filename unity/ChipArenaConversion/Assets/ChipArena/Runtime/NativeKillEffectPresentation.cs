@@ -310,12 +310,18 @@ namespace ChipArena.UnityConversion
         private void KillSpray(NativeCorpse corpse,NativeKillSpray spray,int index,float age,float alpha,float now)
         {
             if(spray==null)return;KillSplats(corpse,spray,index,now);if(alpha<=.001f)return;spray.Update(age);float glow=spray.Glow?.3f:0;
+            // Realistic blood (owner 2026-11-09: "It looks like we still have "voxel" blood. I want it to look more realistic"): each drop
+            // is the wound blood's wet teardrop along its flight (BloodFx draws them), and its landings stain the arena as the wounds'
+            // do (KillSplats); the source's faceted spheres and flat disks are only the fallback without the effects renderer.
+            bool wet=vfx!=null;
             for(int d=0;d<spray.Drops;d++)
             {
-                if(!spray.Shown[d])continue;spray.DropColor(d,out double r,out double g,out double b);
+                if(!spray.Shown[d])continue;
+                if(wet){KillDropQueue(spray,d,alpha,(corpse.Death.seed&0xffff)*157+index*151+d);continue;}
+                spray.DropColor(d,out double r,out double g,out double b);
                 sourceModels.KillDrop(NativeCorpse.Mirror(spray.Pos[d*3],spray.Pos[d*3+1],spray.Pos[d*3+2],spray.Q[d*4],spray.Q[d*4+1],spray.Q[d*4+2],spray.Q[d*4+3],spray.S[d*3]*alpha,spray.S[d*3+1]*alpha,spray.S[d*3+2]*alpha),new Color((float)r,(float)g,(float)b,1),glow);
             }
-            if(spray.PoolOpacity*alpha<=.001)return;NativeKillEffectRules.Linear(NativeKillSpray.PoolColor,out double pr,out double pg,out double pb);var pool=new Color((float)pr,(float)pg,(float)pb,1);
+            if(wet&&bloodArena!=null||spray.PoolOpacity*alpha<=.001)return;NativeKillEffectRules.Linear(NativeKillSpray.PoolColor,out double pr,out double pg,out double pb);var pool=new Color((float)pr,(float)pg,(float)pb,1);
             for(int p=0;p<spray.Pools;p++)
             {
                 if(!spray.PoolVisible[p])continue;NativeKillEffectRules.EulerXyz(-Math.PI/2,0,spray.PoolRz[p],out double qx,out double qy,out double qz,out double qw);
@@ -323,7 +329,8 @@ namespace ChipArena.UnityConversion
             }
         }
         /// <summary>woundCap cross-sections riding on their part (no shadow, as woundCap), and the crushed part's fragments (which
-        /// cast one, as CrushDebris) and loose hat.</summary>
+        /// cast one, as CrushDebris) and loose hat. Since 2026-11-09 (realistic blood) a cap's cells are soft wet lumps and the
+        /// fragments rounded torn chunks, not cubes.</summary>
         private void KillWound(NativeCorpse corpse,float age,float alpha)
         {
             if(alpha<=.001f)return;
@@ -332,7 +339,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<debris.Chunks;i++)
             {
                 debris.Chunk(i,age,out double x,out double y,out double z,out double qx,out double qy,out double qz,out double qw,out double s);if(s<=1e-5)continue;
-                sourceModels.WoundCube(NativeCorpse.Mirror(x,y,z,qx,qy,qz,qw,s,s,s),new Color((float)debris.Colors[i*3],(float)debris.Colors[i*3+1],(float)debris.Colors[i*3+2],1),alpha);
+                sourceModels.KillChunk(NativeCorpse.Mirror(x,y,z,qx,qy,qz,qw,s,s,s),new Color((float)debris.Colors[i*3],(float)debris.Colors[i*3+1],(float)debris.Colors[i*3+2],1),alpha,i);
             }
             if(corpse.LooseHat>=0&&corpse.HatModel!=null)
             {

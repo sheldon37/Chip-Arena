@@ -233,7 +233,8 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<hordeGore.BlockCount;i++)
                 {
                     var b=hordeGore.Blocks[i];var c=new Color(b.Albedo.X,b.Albedo.Y,b.Albedo.Z,0);
-                    vfx.Block(GoreU(b.At),new Quaternion(b.Turn.X,b.Turn.Y,b.Turn.Z,b.Turn.W),GoreU(b.Size),c,b.Spec,b.Gloss,c*.06f,c*.35f+new Color(.02f,.006f,.006f,0));
+                    // Glossy clots (owner 2026-11-09, realistic blood): each gore piece a lit blob about its box, not the box itself.
+                    vfx.Blob(GoreU(b.At),new Quaternion(b.Turn.X,b.Turn.Y,b.Turn.Z,b.Turn.W),GoreU(b.Size)*.58f,c,Mathf.Max(b.Spec,.55f),Mathf.Max(b.Gloss,.8f),c*.06f,c*.35f+new Color(.02f,.006f,.006f,0));
                 }
                 for(int i=0;i<hordeGore.MistCount;i++){var m=hordeGore.Mists[i];vfx.Vapor(GoreU(m.At),GoreMistTint,m.Opacity,m.Size,m.U,m.Seed%8191u,NativeVfxDraw.NoFloor,0);}
             }
