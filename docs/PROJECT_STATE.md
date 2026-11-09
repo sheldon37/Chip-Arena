@@ -1,3 +1,5 @@
+2026-11-09 Claude (`claude/top-dog`): the Top Dog's feast is fed by hand (the jaw held open, bare sausages pushed in and left wiggling in the mouth); the Hot Dog has an animated face (eyes, lids, brows, a mouth; eleven moods, its own in Order Up!); the ult's and the intro's vanish and the mallet striking with its side are fixed (docs/TOP-DOG.md). Not played by a person.
+
 2026-11-08 Claude (`claude/top-dog`): the Top Dog's ten chips (tier `topdog`, only for it), each with its own animated pick and toon cues and a significant rule (a piano out of hammerspace, Toon Logic, Knockout Glove...; docs/TOP-DOG.md "The chips"). Not played by a person.
 
 2026-11-08 Claude (`claude/top-dog`, rules and look at the owner's word): the Top Dog, a DEV toon class in the Hot Dog: a cartoon mallet, Q/E/1-5 gags, and All You Can Eat on 6 (lasso, six hot dogs, the pop); its intro Order Up! (docs/TOP-DOG.md). Not played by a person.

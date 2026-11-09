@@ -44,9 +44,12 @@ The meter fills 1% a second, 6% a mallet hit and 8% an ability hit.
 2. **The throw.** The links fly along the aim at 32 m/s, 0.8 m wide, up to 18 m. A dodge roll goes through them. A **block snaps
    them**. A boss (the Siren, a zone boss, NOCTIEL) takes 30 and the links snap. A miss gives half the meter back.
 3. **The catch.** The victim is wrapped in the links, reeled in over 0.5 s to 1.25 m in front of the Top Dog, and held: no moving,
-   no acting, their head thrown back.
-4. **The feeding.** Six wiggling hot dogs, one every 0.5 s, each brought to the mouth and pushed in. Each hot dog does 3 (it never
-   kills). The belly grows with each one.
+   no acting, their face turned up to the Top Dog's hands.
+4. **The feeding, by hand** (owner 2026-11-09: "literally animate opening the players mouth and just putting hotdogs in there"). The
+   Top Dog's left hand takes the victim's chin and holds the jaw open, tugging it down for each one; the right hand brings six bare,
+   wiggling sausages (no bun), one every 0.5 s, from its side to the lips and pushes each in. Each stays stuck in the mouth, wiggling
+   for 2.6 s, fanned out among the others, before it is slurped down. Each hot dog does 3 (it never kills). The belly grows with each
+   one.
 5. **The snap.** While it feeds, the Top Dog is rooted and can be hit. **If it takes 40 damage, or is stunned, knocked down or killed,
    the links snap**: the victim is free, takes 6 for each hot dog already down, and the belly goes down with a burp.
 6. **The let-go**, 0.2 s after the last hot dog: a kick sends the victim staggering 1.8 m back, "STUFFED!". The belly keeps ballooning
@@ -96,8 +99,18 @@ Its sound is its own toon cues, no music bed.
   anvil's shadow, the mustard stream and drips, the zip's dust silhouette, cream over a pied pilot's eyes.
 - **The burst:** a new kind of the smash gib (Core `NativeSmashGib.Burst`): the trunk goes to fragments, the head, arms and legs come
   away and fly out every way from the belly, blood gushing all round. Gore off: a normal fall, with the hot dogs and confetti still.
-- **The cameras:** the caster's twirl and throw, then side-on to both through the feeding and the swelling to the pop; the victim's
-  own feeding and swelling, face on.
+- **The cameras:** the caster's twirl and throw, then side-on to both through the feeding and the swelling to the pop, on whichever
+  side is clear of walls (a high shot over the shoulder when neither is); the victim's own feeding and swelling, face on.
+- **Its face** (owner 2026-11-09: "animate eyes and mouth with hotdog character. Give them expressions"): the bank's face is sculpted
+  (the eyes and brows bulge out of the head; the pupils, the mouth and its five teeth are shells of their own). At load those shells
+  are dropped, the bulges pressed onto a map of the skin round them (filled over them), and the paint taken off (the face's texels
+  that are not the sausage's red); a toon face is laid on the head in its place, on the head's sausage twin so it jiggles with it
+  (Runtime `NativeHotDogFacePresentation.cs`), the size of the painted one: white eyes whose pupils look about, lids that blink, squint, wink and laugh, brows, and a mouth with teeth and a tongue. Its moods (Core `NativeHotDogFace`):
+  the smug gritted grin at rest; angry on a swing; a shout on the mallet's slam and the mustard; surprised on a Boing; a grin on the
+  catch; hungry, tongue out, while it feeds; laughing at the pop and on the spring out of the cart; dizzy while dazed; a wince when
+  hit; X eyes on a corpse. Order Up! has its own: surprise at the lid, a laugh on the spring, a shout on the slam, the wink with the
+  thumbs up. The face is anyone's who wears the Hot Dog, not only the Top Dog's.
+- **The mallet's faces** land: the barrel runs across the swing, so the flat ends strike, not its side.
 
 ## The chips
 
@@ -181,7 +194,9 @@ Replicated in snapshots, late join, death records and the killcam like the Bomba
 | The burst | `Core/NativeSmashGib.cs` (`Burst`), `Runtime/NativeSmashPresentation.cs` |
 | Sandbox preview | `Core/NativeTopDogPreview.cs` |
 | The chips | `Core/NativeDogChips.cs`; the card and the pick `Runtime/NativeDogChipArt.cs`; the rules in `Runtime/NativeTopDogAuthority.cs` |
-| Checks | `Tests/TopDogChecks.cs` (`CoreTests --top-dog`) |
+| The Hot Dog's face | `Core/NativeHotDogFace.cs` (the moods), `Runtime/NativeHotDogFacePresentation.cs` (the sculpted face off at load, the toon face on) |
+| The feast's hands | `Runtime/NativeTopDogPresentation.cs` (`DogFeedArms`, `DogReach`), `Core/NativeTopDogFx.cs` (`NativeDogView.FeedState`, `FeedHand`) |
+| Checks | `Tests/TopDogChecks.cs` (`CoreTests --top-dog`), the face in `Tests/HotDogChecks.cs` (`CoreTests --hot-dog`) |
 
 ## To see it
 

@@ -59,5 +59,37 @@ internal static class HotDogChecks
         Check(body.Contains("{var head=HotDogHatOn(VisualHeadOf(body));if(head!=null)return VisualHatFit(head,hat,body.Helm);}")&&body.Contains("var dogHat=HotDogHatOn(c.Bones[c.Head]);if(dogHat!=c.Bones[c.Head])corpseHat=VisualHatFit(dogHat,hat);")&&dog.Contains("if(hotDogBones[i]==\"~head\"){var hat=new GameObject(HotDogHat).transform;hat.SetParent(twin,false);"),"a hat rides the sausage's crown, alive or dead");
         Check(body.Contains("if(NativeHotDog.Worn(look))simulate=false;")&&R("NativeVisualSkeletonPresentation.cs").Contains("if(HotDogOn(root))return null;"),"no human skeleton in the sausage (and no hair or cloth simulated), alive or dead");
         Check(body.Contains("if(NativeHotDog.Worn(VisualOutfitOf(id)))return; // (None on the Hot Dog")&&R("NativeSheldonHoodPresentation.cs").Contains("if(hoodFailed||HotDogOn(root))return null;")&&NativeRobotSuit.Shown(NativeLook.With("",NativeLook.Upper,NativeHotDog.Id),false)==0&&NativeRobotSuit.Shown("",false)!=0,"no face gear, Sheldon hood or robot plates on it");
+            // The face (Core NativeHotDogFace; owner 2026-11-09: "animate eyes and mouth with hotdog character. Give them expressions"): every
+        // mood a sane pose; a laugh and a shout open the mouth, anger knits the brows, death crosses the eyes; blinks are brief and come
+        // every few seconds; easing heads for the target and settles on it; and the moods follow the pilot and the intro's beats.
+        foreach(HotDogMood m in Enum.GetValues(typeof(HotDogMood)))for(float ft=0;ft<3;ft+=.37f)
+        {
+            var p=NativeHotDogFace.At(m,ft,ft+5,17);
+            Check(p.OpenL>=0&&p.OpenL<=1&&p.OpenR>=0&&p.OpenR<=1&&p.Open>=0&&p.Open<=1.01f&&p.Smile>=-1&&p.Smile<=1&&p.Wide>=0&&p.Wide<=1&&p.Pupil>.3f&&p.Pupil<1.5f,"a sane pose for "+m);
+            Check(Math.Abs(p.LookX)<=1.3f&&Math.Abs(p.LookY)<=1.3f&&p.BrowL>=-1&&p.BrowL<=1&&p.BrowR>=-1&&p.BrowR<=1,"the eyes and brows in range for "+m);
+        }
+        var idle=NativeHotDogFace.Target(HotDogMood.Idle,0,0);
+        Check(NativeHotDogFace.Target(HotDogMood.Laugh,.3f,0).Open>idle.Open+.3f&&NativeHotDogFace.Target(HotDogMood.Shout,.3f,0).Open>idle.Open+.3f,"a laugh and a shout open the mouth");
+        Check(NativeHotDogFace.Target(HotDogMood.Angry,0,0).BrowL<idle.BrowL&&NativeHotDogFace.Target(HotDogMood.Ouch,0,0).BrowL>0,"anger knits the brows, a hit lifts them");
+        Check(NativeHotDogFace.Target(HotDogMood.Dead,0,0).Cross&&!idle.Cross&&NativeHotDogFace.Target(HotDogMood.Wink,0,0).OpenL<.1f,"X eyes in death, one eye shut in a wink");
+        int blinks=0;float shut=0;for(float ft=0;ft<30;ft+=.01f){float b=NativeHotDogFace.Blink(ft,3);if(b>.5f&&shut<=.5f)blinks++;shut=b;}
+        Check(blinks>=6&&blinks<=14,"a blink every few seconds ("+blinks+" in 30 s)");
+        int open=0;for(float ft=0;ft<30;ft+=.01f)if(NativeHotDogFace.Blink(ft,3)<.05f)open++;Check(open>2700,"the eyes mostly open");
+        var from=NativeHotDogFace.Target(HotDogMood.Idle,0,0);var to=NativeHotDogFace.Target(HotDogMood.Laugh,0,0);var cur=from;
+        cur=NativeHotDogFace.Ease(cur,to,1f/60);Check(cur.Open>from.Open&&cur.Open<to.Open,"easing moves part way in a frame");
+        for(int i=0;i<60;i++)cur=NativeHotDogFace.Ease(cur,to,1f/60);Check(Math.Abs(cur.Open-to.Open)<.01f&&Math.Abs(cur.Smile-to.Smile)<.01f,"and settles within a second");
+        var a=new Actor{Hp=100,FlashUntil=10.14f,AttackAt=-100};
+        Check(NativeHotDogFace.Of(a,null,false,10.3f,out _)==HotDogMood.Ouch&&NativeHotDogFace.Of(a,null,false,10.14f+NativeHotDogFace.OuchHold+.01f,out _)==HotDogMood.Idle,"a hit winces past its flash, then lets go");
+        Check(NativeHotDogFace.Of(a,null,true,20,out _)==HotDogMood.Dizzy,"a daze rolls the eyes");
+        a.AttackAt=30;Check(NativeHotDogFace.Of(a,null,false,30.2f,out _)==HotDogMood.Angry&&NativeHotDogFace.Of(a,null,false,31,out _)==HotDogMood.Idle,"a swing is angry, briefly");
+        var kit=new NativeTopDogKit{Feast=new NativeDogFeast{At=40,Catch=41,FeedAt=42,Release=46,Until=48}};
+        Check(NativeHotDogFace.Of(a,kit,false,41.5f,out _)==HotDogMood.Grin&&NativeHotDogFace.Of(a,kit,false,43,out _)==HotDogMood.Hungry&&NativeHotDogFace.Of(a,kit,false,47,out _)==HotDogMood.Laugh,"the feast: a grin on the catch, hungry feeding, a laugh at the pop");
+        kit.Feast.Snap=44;Check(NativeHotDogFace.Of(a,kit,false,44.5f,out _)==HotDogMood.Angry,"angry when the feast is snapped");
+        Check(NativeHotDogFace.Intro(NativeTopDogIntro.ApexAt+.1f,out _)==HotDogMood.Laugh&&NativeHotDogFace.Intro(NativeTopDogIntro.SlamAt,out _)==HotDogMood.Shout&&NativeHotDogFace.Intro(NativeTopDogIntro.WinkAt+.2f,out _)==HotDogMood.Wink,"Order Up!: a laugh at the spring, a shout on the slam, the wink");
+        for(float ft=0;ft<NativeTopDogIntro.Total;ft+=.05f){NativeHotDogFace.Intro(ft,out float since);Check(since<=ft+1e-4f,"an intro mood begun no later than now at "+ft.ToString("0.00"));}
+        // The runtime: the painted face is blanked at load, the toon face rides the head's twin, and the mood source is set each frame.
+        var face=R("NativeHotDogFacePresentation.cs");
+        Check(dog.Contains("else{tri=HotDogFaceOff(tex,pos,nor,uv,tri);")&&dog.Contains("if(head>=0)HotDogFaceAttach(bones[head],r);")&&R("NativeTopDogPresentation.cs").Contains("HotDogFaceSource=hotDogFaceSource??=HotDogFaceMood;"),"the face is blanked, attached and driven");
+        Check(face.Contains("if(dead)mood=HotDogMood.Dead;")&&face.Contains("if(!host){if(view.enabled){view.enabled=false;hidden=true;}return;}"),"a corpse's face is dead, and it hides with the Hot Dog without overriding the body's own hiding");
     }
 }

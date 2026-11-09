@@ -526,7 +526,8 @@ namespace ChipArena.UnityConversion
                 if(f.Catch<-50)return Part(DogPointEnd,f.Throw,f.Throw+.45f,out pick);
                 if(f.Snap>-50&&time>=f.Snap)return false;
                 if(time<f.FeedAt)return Part(DogPointEnd,f.Throw,f.FeedAt,out pick);
-                if(time<f.Release-.25f){int i=Math.Max(0,Math.Min(NativeTopDog.Feeds-1,(int)Math.Floor((time-f.FeedAt)/NativeTopDog.FeedPeriod)));float o=NativeTopDog.OfferAt(f.FeedAt,i);return Hit(i%2==0?DogPunch:DogPunchL,o-.05f,o+.2f,o+NativeTopDog.FeedPeriod-.02f,out pick,1.4f);}
+                // Hand fed: the stance under it, each arm reaching by IK (Runtime NativeTopDogPresentation.cs DogFeedArms).
+                if(time<f.Release-.25f)return false;
                 return Hit(DogKick,f.Release-.25f,f.Release,f.Release+.6f,out pick);
             }
             if(k.CastKind==null||time<k.CastAt||time>=k.CastUntil+.05f)return false;float at=k.CastAt,rel=Math.Max(at+.01f,k.CastRelease),until=Math.Max(rel+.05f,k.CastUntil);

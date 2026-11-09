@@ -56,10 +56,19 @@ namespace ChipArena.UnityConversion
         // ---- All You Can Eat ----
         /// <summary>Its timeline: the twirl, the throw, the lasso's flight, the reel, the feeding (one every FeedPeriod), the let-go, the pop.</summary>
         public const float Twirl=.6f,LassoSpeed=32,LassoReach=18,LassoRadius=.8f,Reel=.5f,FeedDelay=.55f,FeedPeriod=.5f,Swallow=.4f,ReleaseAfter=.2f,Stagger=.45f,PopAfter=1.5f,After=.6f;
-        public const float HoldAhead=1.25f,PushBack=1.8f,FeedDamage=3,SnapDamage=40,SnapPerDog=6,PopDamage=22,PopRadius=3.2f,PopLift=8,PopPush=9,BossDamage=30,MissRefund=.5f;
+        public const float HoldAhead=.9f,PushBack=1.8f,FeedDamage=3,SnapDamage=40,SnapPerDog=6,PopDamage=22,PopRadius=3.2f,PopLift=8,PopPush=9,BossDamage=30,MissRefund=.5f;
         /// <summary>The meter: a second, a mallet hit, an ability hit (shares of a full meter).</summary>
         public const float MeterPerSecond=.01f,MeterMallet=.06f,MeterAbility=.08f;
         /// <summary>The feeding's moments from a catch at `catchAt`.</summary>
+        /// <summary>The hand feeding (owner 2026-11-09: "hand feed the hotdogs into the players mouth (without the bun)... wiggle outside of the
+        /// players mouth for a good few seconds"; "literally animate opening the players mouth and just putting hotdogs in there"): the left
+        /// hand takes the victim's chin and holds the jaw open from JawFrom before the feeding to the let-go, tugging it on each push; the
+        /// right hand comes in GrabLead before the first, and for each a bare sausage pops into it out of hammerspace Appear before its
+        /// offer, it is brought to the lips from CarryFrom before the offer, pushed half in from PushFrom to PushEnd after it, and the hand backs off for the next. Each stays half
+        /// out, squirming, StickFor, then is slurped down over Slurp; a snap spits them out over Spit. The fan: each one's angle out of the
+        /// mouth (degrees).</summary>
+        public const float GrabLead=.3f,Appear=.18f,CarryFrom=.1f,PushFrom=.08f,PushEnd=.3f,StickFor=2.6f,Slurp=.35f,Spit=.7f,LetGo=.22f,JawFrom=.35f;
+        public static readonly float[] FanYaw={-20,16,-6,26,-30,8},FanPitch={10,-6,18,2,-12,14};
         public static float FeedAt(float catchAt)=>catchAt+FeedDelay;
         public static float ReleaseAt(float feedAt)=>feedAt+Feeds*FeedPeriod+ReleaseAfter;
         public static float PopAt(float release)=>release+PopAfter;
