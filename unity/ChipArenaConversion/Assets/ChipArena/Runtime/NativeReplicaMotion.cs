@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
                 CanMove=frame.hp>0,CanSprint=frame.hp>0&&frame.stamina>0,Grounded=Local?.Pose.Grounded??false,Stamina=frame.stamina,
                 Speed=(Local==null?6.8f:(float)(6.8*Local.Stats["speed"]))*PoolMove(frame.position),Gravity=Local==null?23:(float)(23*Local.Stats["playerGravity"]),
                 JumpSpeed=Local==null?8.5f:(float)(Rules.JumpSpeed*Local.Stats["jumpPower"]),ExtraAirJumps=Local?.Stats.Get("extraAirJumps")??0,JumpSpec=Local?.Seat.spec,AirJumps=Local?.Pose.AirJumps??0};
-            var p=Local;bool unlocked=p!=null&&!BombRooted(p)&&!(p.Pose.Kernel?.Busy(Time)??false)&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.frozenUntil<=Time&&frame.scareUntil<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&(p.Pose.AttackUntil<=Time||p.Pose.CommitUntil>Time||p.Seat.spec=="cyberlord"||NativeWhirlwindRules.Busy(p.Pose.MeleeKit,Time));
+            var p=Local;bool unlocked=p!=null&&!BombRooted(p)&&!DogRooted(p)&&!(p.Pose.Kernel?.Busy(Time)??false)&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.frozenUntil<=Time&&frame.scareUntil<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&(p.Pose.AttackUntil<=Time||p.Pose.CommitUntil>Time||p.Seat.spec=="cyberlord"||NativeWhirlwindRules.Busy(p.Pose.MeleeKit,Time));
             var a=p?.Pose;NativeMeleeSwing swing=null;
             if(p!=null&&a.CommitUntil>Time&&NativeMeleeRules.Standard(p.Seat.spec))
             {
