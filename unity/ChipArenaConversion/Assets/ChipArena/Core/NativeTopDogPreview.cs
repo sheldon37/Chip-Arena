@@ -7,12 +7,12 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// The Dev Sandbox's "Preview Top Dog": the whole kit on a loop, written as the host writes the record (docs/TOP-DOG.md), so the pose, the
     /// effects, the sound and the HUD all show it. It reaches nothing else: not the authority, the network frame, damage or movement. The three
-    /// swings and the slam, the boing, the zip, the anvil, a peel, the mustard, the glove, a pie, then All You Can Eat on the nearest other pilot
-    /// (Victim; with none the lasso misses).
+    /// swings and the slam, the boing, the zip, the anvil, a peel, the mustard, the glove, a pie, All You Can Eat on the nearest other pilot
+    /// (Victim; with none the lasso misses), then the mallet's dash, its smash and its overhead slam (on the spot).
     /// </summary>
     public sealed class NativeTopDogPreview:ITopDogSource
     {
-        public const float Loop=24;
+        public const float Loop=27;
         private readonly Dictionary<int,NativeTopDogKit> kits=new Dictionary<int,NativeTopDogKit>();private float started=-100,last;
         public int Victim;public Vector3 VictimAt;
         public NativeTopDogKit Of(int actor)=>kits.TryGetValue(actor,out var k)?k:null;
@@ -78,6 +78,15 @@ namespace ChipArena.UnityConversion
                 }
                 if(time<feast.Until){k.Feast=feast;Cast(NativeTopDog.Feast,fa,fa+NativeTopDog.Twirl,feast.Until-t0);}
             }
+            // The mallet's dash, its smash (in the air looking ahead) and its overhead slam (looking down), each landing on the spot.
+            Cast(NativeTopDog.Dash,21.9f,22.02f,22.68f);Hit(60,NativeTopDog.HitDash,22.02f,feet,f);
+            void Landing(string id,float at,float release,float land,float recover)
+            {
+                if(t<at||t>=land+recover)return;k.CastKind=id;k.CastAt=t0+at;k.CastRelease=t0+release;
+                if(t<land){k.CastStep=0;k.CastUntil=t0+release+2.5f;}else{k.CastStep=1;k.CastUntil=t0+land+recover;}
+            }
+            Landing(NativeTopDog.Smash,23.1f,23.1f+NativeTopDog.SmashHang,23.48f,NativeTopDog.SmashRecover);Hit(61,NativeTopDog.HitClang,23.48f,feet+f*NativeTopDog.SmashAhead,up);
+            Landing(NativeTopDog.Slam,24.5f,24.5f+NativeTopDog.SlamHang,24.84f,NativeTopDog.SlamRecover);Hit(62,NativeTopDog.HitQuake,24.84f,feet,up);
             k.Props=props.ToArray();k.Hits=hits.ToArray();k.Marks=marks.ToArray();k.Meter=t<fa?Math.Min(1,t/fa):0;k.Combo=k.CastStep;k.ComboUntil=k.CastUntil+NativeTopDog.ComboWindow;
             k.Ready=new float[NativeTopDog.Slots];float R(float at,int slot)=>t>=at&&t<at+NativeTopDog.Cooldown[slot]?t0+at+NativeTopDog.Cooldown[slot]:0;
             k.Ready[0]=R(2.72f,0);k.Ready[1]=R(4.9f,1);k.Ready[2]=R(6.62f,2);k.Ready[4]=R(9.3f,4);k.Ready[5]=R(11.58f,5);k.Ready[6]=R(12.8f,6);k.Peels=t>=8.18f&&t<14.18f?1:2;

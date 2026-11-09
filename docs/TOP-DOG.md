@@ -24,9 +24,10 @@ arm, a cream pie. The ultimate is the punchline.
 
 | Key | Ability (`id`) | What it does | Damage | Cooldown |
 | --- | --- | --- | --- | --- |
-| LMB | Big Mallet (`big-mallet`) | Three swings, two-handed: a side swing, a back swing, then an overhead slam that lands 1.7 m ahead and **flattens** everyone within 2.1 m of it for 0.8 s. A swing hits 2.9 m out in a 115 degree arc and staggers. The combo carries on if you swing again within 0.45 s | 14, 14, 26 | |
+| LMB | Big Mallet (`big-mallet`) | Three swings, two-handed: a forehand from the right to the left, a backhand back from the left to the right, then a toon jump slam whose head lands flat on the floor 1.7 m ahead and **flattens** everyone within 2.1 m of it for 0.8 s. A swing hits 2.9 m out in a 115 degree arc and staggers. The combo carries on if you swing again within 0.45 s | 14, 14, 26 | |
 | LMB on a sprint | Mallet Dash (`mallet-dash`) | Owner 2026-11-09: "Give them a dash sprint attack and slam attack as well". A beat to tuck the mallet (0.12 s), then a charge 6.5 m along your facing in 0.34 s (a wall stops it short), the mallet swung low through everyone within 1.4 m of the path ahead: bonked and batted on ahead at 11 m/s, 5 up. The greatsword's running swing | 20 | |
-| LMB in the air | Mallet Slam (`mallet-slam`) | Once an airtime (a jump's or a Boing!'s), as any melee weapon's air attack: hung 0.2 s with the mallet raised, then straight down at 26 m/s; the landing slams 3.2 m round, flattening everyone within 2.2 m for 0.9 s and throwing the rest out. A Boing! slammed out of lands no thud | 30 | |
+| LMB in the air, looking ahead | Mallet Smash (`mallet-smash`) | Owner 2026-11-09: "make slam attack and overhead slam (When jumping and looking down)". Once an airtime, as any melee weapon's air attack: hung 0.14 s with the mallet cocked over the shoulder, then down at 16 m/s, carried on along your facing at 4 m/s (your run's speed when faster, up to 9), the mallet swung down in front; its head lands flat 1.6 m ahead: everyone within 2.4 m of that point, flattened within 1.4 m for 0.7 s, the rest thrown on and out | 24 | |
+| LMB in the air, looking down | Mallet Slam (`mallet-slam`) | Once an airtime (a jump's or a Boing!'s), as any melee weapon's plunge (looking 45 degrees or more down): hung 0.2 s with the mallet raised overhead, then straight down at 26 m/s; the landing slams 3.2 m round, flattening everyone within 2.2 m for 0.9 s and throwing the rest out. A Boing! slammed out of lands no thud | 30 | |
 | RMB, F, Shift | Guard, Parry, Roll | As any melee weapon (the held guard on right click, the parry on F) | | |
 | Q | Boing! (`boing`) | A spring pops out under the feet and throws you 9 m up and 8 m/s along your look. The landing thuds: 2.6 m round you, a small knock-up | 8 | 8 s |
 | E | Zip (`zip`) | 0.3 s running on the spot (rooted), then you zip 12 m ahead in 0.3 s (a wall stops you), leaving your dust cloud standing behind. Anyone within 1.3 m of the path is swatted aside | 10 | 7 s |
@@ -76,7 +77,8 @@ The meter fills 1% a second, 6% a mallet hit and 8% an ability hit.
 | 2.95 | At the top, spread like a star |
 | 3.45 | It lands in front of the cart in a deep squash and springs back up, dust round it |
 | 4.0 | It reaches behind its back and pulls out the mallet, which grows out of nothing with a twinkle (over the shoulder) |
-| 5.0 | Overhead and down: the slam, a white ring tearing over the floor, dust, stars, the hot dogs on the floor hopping |
+| 4.55 | A squat with the mallet up in both hands, then a spring up, stretched long, the mallet swung up and over until its head hangs far down behind its back (knees up, held a beat) |
+| 5.0 | The two-handed toon slam: the head over the top and flat onto the floor in front, a deep squash held, a white ring tearing over the floor, dust, stars, the hot dogs on the floor hopping |
 | 5.7 | It leans on the mallet |
 | 6.6 | A diner sign swings down on its chains, bulbs chasing round it, the name stamped on it in cream, TOP DOG on a mustard ribbon, confetti |
 | 7.35 | A thumbs up |
@@ -96,7 +98,22 @@ Its sound is its own toon cues, no music bed.
   running or in the air the legs keep the stride, jump or fall and the cast plays on the upper body over them. The dash, the slam, the
   spring, the zip and the feeding stay whole-body moves.
 - **The mallet** is a held weapon model (Core `NativeWeaponModels.Dog.cs`), held two-handed as the greatsword is. It goes into
-  hammerspace while the hands hold a prop or the feast's hot dogs.
+  hammerspace while the hands hold a prop or the feast's hot dogs, with a cartoon poof where it goes and where it comes back (a white
+  pop, a ring of puffs, twinkles; owner 2026-11-09).
+- **The mallet's moves are keyed by hand** (owner 2026-11-09: "fix combo animation to swing from right to left, left to right ... make it
+  connect with ground and face the correct direction ... a toon like jump overhead slam for the 3rd hit"; "Dash attack and air attack ...
+  hitting from the side instead of the flat parts"). The pack's sword clips rolled the head onto its side, so every mallet move (the three
+  swings, the dash, the smash, the slam and Order Up!'s slam) is a set of toon keys (Core `NativeDogMallet`) laid over the legs' own clip
+  (the stance, the stride, the fall, the landing) on the model (Runtime `NativeDogMalletPresentation.cs`): the chest twists, bends and
+  leans along the spine, the body squashes, stretches, hops and tucks its legs, both fists close on the handle by reach (the right one
+  carrying it, the left below it), and the barrel is turned along the head's own travel, so a flat end always leads into the hit. Each swing
+  coils with a held beat, whips through the hit, overshoots and settles, and ends where the next begins (the forehand ends on the left, the
+  backhand starts there and ends with the head rising over the right shoulder into the jump slam). Every slam brings its head down flat on
+  the floor ahead (a small correction on the model's own height). A pale smear sweeps behind the head through each fast part, with speed
+  lines off its outer edge, and the mallet stretches through the smear and squashes on an impact. The hits stay at the rules' moments: each
+  move's strike key is the authority's hit (the slam's ring is drawn as its head lands, 0.1 s after the feet).
+- **The mustard** leaves the drawn bottle's nozzle (owner 2026-11-09), the bottle held round its middle with the nozzle along the aim; the
+  stream bends on to where the rules' squirt reaches.
 - **The props** are built in C# (Core `NativeTopDogModels`): the mallet's art aside, the wiggling hot dog (bun, sausage, a mustard
   zigzag), the anvil, the banana peel, the cream pie, the spring, the glove and its scissor arm, the mustard bottle, the sausage links,
   the stars and the cart. They draw in the pilots' own toon shader with its outline, so they light and line as the characters do.
@@ -204,6 +221,7 @@ Replicated in snapshots, late join, death records and the killcam like the Bomba
 | Presentation | `Runtime/NativeTopDogPresentation.cs` |
 | HUD, card, words, audio | `Runtime/NativeTopDogScreen.cs` |
 | Poses | `Core/NativeVisualMotion.cs` (`TopDog`, `DogCast`, `DogArms`, `DogUpper`) |
+| The mallet's moves by hand | `Core/NativeDogMallet.cs` (the keys), `Runtime/NativeDogMalletPresentation.cs` (on the model) |
 | The burst | `Core/NativeSmashGib.cs` (`Burst`), `Runtime/NativeSmashPresentation.cs` |
 | Sandbox preview | `Core/NativeTopDogPreview.cs` |
 | The chips | `Core/NativeDogChips.cs`; the card and the pick `Runtime/NativeDogChipArt.cs`; the rules in `Runtime/NativeTopDogAuthority.cs` |

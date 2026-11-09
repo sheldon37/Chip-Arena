@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         internal readonly List<NativeDogHit> DogHits=new List<NativeDogHit>();
         internal readonly HashSet<int> DogZipHit=new HashSet<int>();
         internal bool DogReleased,DogAirborne,DogPopped,DogFed;internal float DogAirAt,DogPeelReady,DogTick,DogPuddleTick,DogTaken;
-        internal Vector3 DogAim,DogPoint,DogFacing,DogZipFrom,DogZipTo;
+        internal Vector3 DogAim,DogPoint,DogFacing,DogZipFrom,DogZipTo;internal float DogSmashCarry;
         /// <summary>The Top Dog feeding on this pilot (null: none).</summary>
         internal NativePilot DogHolder;
         internal NativeMinion DogMinion;
@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
             if(DogRooted(p)){v.x=v.z=0;p.Knockback=p.MoveVelocity=Vector3.zero;return;}
             if(k.CastKind==NativeTopDog.Zip&&Time>=k.CastRelease&&Time<k.CastRelease+NativeTopDog.ZipTime+Rules.Dt){v.x=v.z=0;p.MoveVelocity=Vector3.zero;return;}
             // The mallet dash carries itself; the slam goes straight down.
-            if(k.CastKind==NativeTopDog.Dash&&Time>=k.CastRelease&&Time<k.CastRelease+NativeTopDog.DashTime+Rules.Dt||k.CastKind==NativeTopDog.Slam&&Time<k.CastUntil){v.x=v.z=0;p.MoveVelocity=Vector3.zero;return;}
+            if(k.CastKind==NativeTopDog.Dash&&Time>=k.CastRelease&&Time<k.CastRelease+NativeTopDog.DashTime+Rules.Dt||(k.CastKind==NativeTopDog.Slam||k.CastKind==NativeTopDog.Smash)&&Time<k.CastUntil){v.x=v.z=0;p.MoveVelocity=Vector3.zero;return;}
             if(Time>=k.CastUntil||k.CastKind==null)return;
             if(k.CastKind==NativeTopDog.Mustard){v.x*=.5f;v.z*=.5f;}
             else if(k.CastKind==NativeTopDog.Mallet){float s=k.CastStep==2&&Time<k.CastRelease+.15f?0:.55f;v.x*=s;v.z*=s;}
@@ -100,6 +100,12 @@ namespace ChipArena.UnityConversion
                 }
                 case NativeTopDog.Dash:k.CastRelease=Time+NativeTopDog.DashWind;k.CastUntil=k.CastRelease+NativeTopDog.DashTime+NativeTopDog.DashRecover;k.ComboUntil=0;break;
                 case NativeTopDog.Slam:k.CastRelease=Time+NativeTopDog.SlamHang;k.CastUntil=k.CastRelease+NativeTopDog.SlamMaxFall;k.ComboUntil=0;p.AirAttackUsed=true;p.DogAirborne=false;break;
+                case NativeTopDog.Smash:
+                {
+                    k.CastRelease=Time+NativeTopDog.SmashHang;k.CastUntil=k.CastRelease+NativeTopDog.SmashMaxFall;k.ComboUntil=0;p.AirAttackUsed=true;p.DogAirborne=false;
+                    // Carried on at the run's own speed along the facing when it is faster than the smash's.
+                    var run=p.MoveVelocity+p.Knockback;float along=Vector3.Dot(new Vector3(run.x,0,run.z),p.DogFacing);p.DogSmashCarry=Mathf.Clamp(along,NativeTopDog.SmashCarry,NativeTopDog.SmashCarryMax);break;
+                }
                 case NativeTopDog.Boing:k.CastRelease=Time+NativeTopDog.BoingRelease;k.CastUntil=k.CastRelease+.18f;break;
                 case NativeTopDog.Zip:k.CastRelease=Time+NativeTopDog.ZipWind;k.CastUntil=k.CastRelease+NativeTopDog.ZipTime+.12f;break;
                 case NativeTopDog.Anvil:k.CastRelease=Time+NativeTopDog.AnvilRelease;k.CastUntil=k.CastRelease+NativeTopDog.CastRecover;p.DogPoint=GroundPoint(AimedAbilityPoint(p,NativeTopDog.AnvilReach));break;
@@ -124,11 +130,13 @@ namespace ChipArena.UnityConversion
             Emit(EventKind.AbilityCast,p,0,p.Body.position,0,kind);
         }
 
-        /// <summary>The mallet's move for an attack (owner 2026-11-09): in the air a slam (once an airtime, as any melee weapon's air attack),
+        /// <summary>The mallet's move for an attack (owner 2026-11-09): in the air a slam looking down and a smash looking ahead (once an airtime,
+        /// as any melee weapon's air attack and plunge),
         /// on a sprint a dash (as a sprint attack: not inside a combo), else the combo's next swing.</summary>
         private string DogMalletMove(NativePilot p)
         {
-            if(!p.Grounded&&p.AirborneAt>=0&&!p.AirAttackUsed&&Time-p.AirborneAt>=NativeAirAttackSimulation.MinimumAir&&!NativeHazards.InLava(MapId,Vec(p.Body.position)))return NativeTopDog.Slam;
+            if(!p.Grounded&&p.AirborneAt>=0&&!p.AirAttackUsed&&Time-p.AirborneAt>=NativeAirAttackSimulation.MinimumAir&&!NativeHazards.InLava(MapId,Vec(p.Body.position)))
+                return NativeAirAttackSimulation.DownPitch(p.Input.Pitch)?NativeTopDog.Slam:NativeTopDog.Smash;
             if(p.Grounded&&Time>p.Dog.ComboUntil&&NativeMeleeFeel.SprintAttack(p.Input,p.Pose.Sprinting))return NativeTopDog.Dash;
             return NativeTopDog.Mallet;
         }
@@ -191,7 +199,7 @@ namespace ChipArena.UnityConversion
                     p.DogZipFrom=from;p.DogZipTo=from+dir*reach;p.DogZipHit.Clear();DogHit(p,NativeTopDog.HitDash,GroundPoint(from),dir);break;
                 }
                 // The slam's drop begins (DogChannel carries it down and lands it).
-                case NativeTopDog.Slam:break;
+                case NativeTopDog.Slam:case NativeTopDog.Smash:break;
                 case NativeTopDog.Boing:
                 {
                     DogProp(p,NativeTopDog.PropSpring,p.Grounded?GroundPoint(feet):feet,Time,Time+.9f,out _);DogHit(p,NativeTopDog.HitBoing,feet,Vector3.up);
@@ -285,7 +293,7 @@ namespace ChipArena.UnityConversion
                 if(p.Hp>0&&p.Seat.connected&&DogAllowed(p)&&k.Feast==null)k.Meter=Math.Min(1,k.Meter+NativeTopDog.MeterPerSecond/60*(DogChip(p,NativeDogChips.SecondHelpings)?NativeDogChips.HelpingMeter:1));
                 bool able=p.Hp>0&&p.Seat.connected&&!Incapacitated(p);
                 // A cast cut short (stunned, knocked down, killed) ends; a feast keeps its own clock.
-                if(k.CastKind!=null&&k.CastKind!=NativeTopDog.Feast&&Time<k.CastUntil&&!able){k.CastUntil=Time;if(k.CastKind==NativeTopDog.Slam)p.Ready=Math.Min(p.Ready,Time+.3f);if(k.CastKind==NativeTopDog.Mustard)foreach(var f in p.DogFlights)if(f.Record.Kind==NativeTopDog.PropSquirt)f.Record.Until=Time;}
+                if(k.CastKind!=null&&k.CastKind!=NativeTopDog.Feast&&Time<k.CastUntil&&!able){k.CastUntil=Time;if(k.CastKind==NativeTopDog.Slam||k.CastKind==NativeTopDog.Smash)p.Ready=Math.Min(p.Ready,Time+.3f);if(k.CastKind==NativeTopDog.Mustard)foreach(var f in p.DogFlights)if(f.Record.Kind==NativeTopDog.PropSquirt)f.Record.Until=Time;}
                 if(!p.DogReleased&&k.CastKind!=null&&k.CastKind!=NativeTopDog.Feast&&Time>=k.CastRelease){p.DogReleased=true;if(able&&Time<=k.CastUntil+.001f)DogRelease(p);}
                 if(able){DogChannel(p);DogMalletMoves(p);}
                 // The boing's landing.
@@ -369,6 +377,37 @@ namespace ChipArena.UnityConversion
                 float step=NativeTopDog.SlamFall*Rules.Dt;var at=p.Body.position;var to=KernelTravel(at,at+Vector3.down*step);p.Body.position=to;
                 if(at.y-to.y<step*.9f||Time>=k.CastUntil-Rules.Dt)DogQuake(p);
             }
+            // The smash: hung with the mallet cocked, then down and on along the facing until it lands (DogSmashed).
+            if(k.CastKind==NativeTopDog.Smash&&k.CastStep==0&&Time<k.CastUntil)
+            {
+                p.MoveVelocity=p.Knockback=Vector3.zero;if(!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;if(Time<k.CastRelease)return;
+                float down=NativeTopDog.SmashFall*Rules.Dt;var at=p.Body.position;var to=KernelTravel(at,at+p.DogFacing*(p.DogSmashCarry*Rules.Dt)+Vector3.down*down);p.Body.position=to;
+                if(at.y-to.y<down*.9f||Time>=k.CastUntil-Rules.Dt)DogSmashed(p);
+            }
+        }
+        /// <summary>The smash lands: its head on the floor SmashAhead m ahead, everyone round that point hurt, the middle flattened, the rest
+        /// thrown on and out; then SmashRecover to stand.</summary>
+        private void DogSmashed(NativePilot p)
+        {
+            var k=p.Dog;k.CastStep=1;k.CastUntil=Time+NativeTopDog.SmashRecover;p.Ready=k.CastUntil;
+            var feet=GroundPoint(p.Body.position);var head=GroundPoint(p.Body.position+p.DogFacing*NativeTopDog.SmashAhead);int first=0;
+            if(Math.Abs(head.y-feet.y)>1.2f)head=feet+p.DogFacing*NativeTopDog.SmashAhead;
+            Vector3 Out(Vector3 d){var o=new Vector3(d.x,0,d.z);return (o.sqrMagnitude>1e-4f?o.normalized:p.DogFacing)*.6f+p.DogFacing*.4f;}
+            foreach(var q in DogPilots(p))
+            {
+                var d=q.Body.position-head;float flat=new Vector2(d.x,d.z).magnitude;if(flat>NativeTopDog.SmashRing||Math.Abs(q.Body.position.y-feet.y)>2.2f||!MeleeVisible(head+Vector3.up*.3f,q.Body.position,p,q.Collider))continue;
+                if(DogHurt(p,q,NativeTopDog.SmashDamage,q.Body.position-p.Body.position,NativeTopDog.Smash,0,true)<=0)continue;if(first==0)first=q.Seat.id;
+                if(flat<=NativeTopDog.SmashFlat)DogPancake(p,q,NativeTopDog.SmashFlatFor);else BombLaunch(q,p,Out(d).normalized*NativeTopDog.SmashPush,NativeTopDog.SmashLift,0);
+                DogHit(p,NativeTopDog.HitSlam,q.Body.position+Vector3.up*.55f,d,q.Seat.id);
+            }
+            foreach(var m in DogMinions(p))
+            {
+                var d=m.Body.position-head;float flat=new Vector2(d.x,d.z).magnitude;if(flat>NativeTopDog.SmashRing||Math.Abs(m.Body.position.y-feet.y)>2.2f)continue;
+                if(DogHurt(p,m,NativeTopDog.SmashDamage,m.Body.position-p.Body.position,NativeTopDog.Smash,0,true)<=0)continue;if(first==0)first=m.Id;
+                if(flat<=NativeTopDog.SmashFlat)SlowMinion(m,.4f,NativeTopDog.SmashFlatFor);else DogPush(m,Out(d).normalized*NativeTopDog.SmashPush,NativeTopDog.SmashLift);
+                DogHit(p,NativeTopDog.HitSlam,m.Body.position+Vector3.up*.55f,d,m.Id);
+            }
+            DogHit(p,NativeTopDog.HitClang,head,Vector3.up,first);
         }
         /// <summary>The slam lands: the ring round the feet hurt, the middle of it flattened, the rest thrown out; then SlamRecover to stand.</summary>
         private void DogQuake(NativePilot p)

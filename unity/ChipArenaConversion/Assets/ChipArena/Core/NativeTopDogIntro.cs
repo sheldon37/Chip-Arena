@@ -22,6 +22,8 @@ namespace ChipArena.UnityConversion
         public const float IrisOpen=.02f,BellAt=.85f,DrumAt=1.45f,LidAt=2.45f,SpringAt=2.5f,ApexAt=2.95f,LandAt=3.45f,MalletAt=4.0f,MalletOut=4.4f,SlamAt=5.0f,RestAt=5.7f,WinkAt=7.35f,IrisClose=7.7f;
         public override float Length=>Total;public override float SettleAt=>End;protected override float HeroAt=>CardAt;
         public static readonly Vector3 CartAt=new Vector3(0,0,-1.75f);
+        /// <summary>How far ahead of its feet the mallet's head lands in the slam (Core NativeDogMallet.Intro keys it by hand).</summary>
+        public static float SlamAhead=>NativeDogMallet.HeadAt(NativeDogMallet.At(NativeDogMallet.Move.Intro,SlamAt+.02f)).Z;
         private static readonly Vector3 Warm=NativeEntranceFx.Hex(0xffc46a),Mustard=NativeEntranceFx.Hex(0xffc230),Ketchup=NativeEntranceFx.Hex(0xe2362c),Steam=new Vector3(.85f,.85f,.88f),Dust=new Vector3(.42f,.36f,.3f);
         private static readonly Vector3 Land=Local(0,0,.42f);
         public NativeTopDogIntro():base(NativeTopDog.Entrance,SlamAt,0xffc230)
@@ -51,12 +53,14 @@ namespace ChipArena.UnityConversion
             k.Key(LandAt+.42f,stand).Root(at.X,at.Y,at.Z,Facing).Planted(1).Drop(-.03f).J(B,.04f).J(LA,-.3f,0,.3f).J(LE,-.3f).J(RA,-.3f,0,-.3f).J(RE,-.3f);
             // Reaching behind its back for the mallet, looking over its shoulder.
             k.Key(MalletAt,stand).Root(at.X,at.Y,at.Z,Facing).Planted(1).Drop(-.04f).J(C,0,-.38f,0).J(Hd,.05f,-.5f,0).J(RA,.85f,.2f,-.35f).J(RE,-.75f).J(LA,-.25f,0,.35f).J(LE,-.4f);
-            // Out it comes, up overhead in both hands.
-            k.Key(MalletOut,stand).Root(at.X,at.Y,at.Z,Facing).Planted(1).Drop(.02f).J(C,-.14f,0,0).J(Hd,-.22f).J(RA,-2.75f,0,-.12f).J(RE,-.35f).J(LA,-2.7f,0,.18f).J(LE,-.45f).PassKey();
-            // Wound back, then the slam: bent over the floor, knees down.
-            k.Key(SlamAt-.14f,stand).Root(at.X,at.Y,at.Z,Facing).Planted(1).Drop(-.02f).J(B,-.2f).J(C,-.22f).J(Hd,-.25f).J(RA,-3.05f,0,-.1f).J(RE,-.25f).J(LA,-3.0f,0,.15f).J(LE,-.3f);
-            k.Key(SlamAt,stand).Root(at.X,at.Y,at.Z,Facing).Planted(1).Drop(-.24f).J(B,.5f).J(Sp,.25f).J(Hd,-.1f).J(RA,-.85f,0,-.1f).J(RE,-.15f).J(LA,-.8f,0,.15f).J(LE,-.2f).J(LL,-.55f,0,.08f).J(LK,.95f).J(RL,-.5f,0,-.08f).J(RK,.9f).ImpactKey();
-            k.Key(SlamAt+.32f,stand).Root(at.X,at.Y,at.Z,Facing).Planted(1).Drop(-.2f).J(B,.45f).J(Sp,.2f).J(Hd,-.15f).J(RA,-.85f,0,-.1f).J(RE,-.15f).J(LA,-.8f,0,.15f).J(LE,-.2f).J(LL,-.5f,0,.08f).J(LK,.85f).J(RL,-.45f,0,-.08f).J(RK,.8f);
+            // Out it comes, up overhead in both hands. From here to the lean the mallet, both arms and the chest are keyed by hand on the model
+            // (Core NativeDogMallet.Intro: a squat, a spring up with the head hung far behind the back, the two-handed toon slam flat onto the
+            // floor, a deep squash and hold); the keys under it only carry the legs and the head.
+            k.Key(MalletOut,stand).Root(at.X,at.Y,at.Z,Facing).Planted(1).Drop(.02f).J(Hd,-.22f).J(RA,-2.75f,0,-.12f).J(RE,-.35f).J(LA,-2.7f,0,.18f).J(LE,-.45f).PassKey();
+            // Wound back, then the slam: knees down.
+            k.Key(SlamAt-.14f,stand).Root(at.X,at.Y,at.Z,Facing).Planted(1).Drop(-.02f).J(Hd,-.25f).J(RA,-3.05f,0,-.1f).J(RE,-.25f).J(LA,-3.0f,0,.15f).J(LE,-.3f);
+            k.Key(SlamAt,stand).Root(at.X,at.Y,at.Z,Facing).Planted(1).Drop(-.12f).J(Hd,-.1f).J(RA,-.85f,0,-.1f).J(RE,-.15f).J(LA,-.8f,0,.15f).J(LE,-.2f).J(LL,-.32f,0,.1f).J(LK,.5f).J(RL,-.3f,0,-.1f).J(RK,.48f).ImpactKey();
+            k.Key(SlamAt+.32f,stand).Root(at.X,at.Y,at.Z,Facing).Planted(1).Drop(-.1f).J(Hd,-.15f).J(RA,-.85f,0,-.1f).J(RE,-.15f).J(LA,-.8f,0,.15f).J(LE,-.2f).J(LL,-.3f,0,.1f).J(LK,.45f).J(RL,-.28f,0,-.1f).J(RK,.42f);
             // Up, leaning on it: the mallet's head on the floor, both hands on the top of its handle, a hip out.
             k.Key(RestAt,stand).Root(at.X,at.Y,at.Z,Facing+.1f).Planted(1).Drop(-.03f).J(B,.08f).J(C,0,.12f,0).J(Hd,-.05f,0,.12f).J(RA,-.75f,0,-.05f).J(RE,-.95f).J(LA,-.7f,0,.12f).J(LE,-1f);
             k.Key(CardAt,stand).Root(at.X,at.Y,at.Z,Facing+.1f).Planted(1).Drop(-.04f).J(B,.08f).J(C,0,.14f,0).J(Hd,-.06f,0,.16f).J(RA,-.75f,0,-.05f).J(RE,-.95f).J(LA,-.7f,0,.12f).J(LE,-1f);
@@ -141,7 +145,7 @@ namespace ChipArena.UnityConversion
             float up=NativeEntranceMath.Ramp(t,LidAt,LandAt+.3f);l.DriveProbe=true;NativeEntranceStage.Rig(l,.08f+.55f*up,Mustard,.4f+.6f*up,.1f+.4f*up,.12f+.5f*up);l.DriveProbe=true;
             float fl=.92f+.08f*(float)Math.Sin(t*13);l.Add(CartAt+new Vector3(0,2.6f,.9f),Warm*(5.2f*fl),6.5f);l.Add(CartAt+new Vector3(0,1.15f,.35f),Warm*(1.6f+1.2f*NativeEntranceMath.Pulse(t,LidAt,.01f,.4f)),2.6f);
             if(t>=LandAt-.1f){var chest=Anchor(NativeEntranceAnchor.Chest,t);l.Add(chest+new Vector3(.4f,1.2f,1.6f),Warm*(3.2f*up),6);l.Add(chest+new Vector3(-1.4f,.8f,-.6f),Ketchup*(2.2f*up),5);}
-            float slam=NativeEntranceMath.Pulse(t,SlamAt,.01f,.35f);if(slam>.01f)l.Add(Land+new Vector3(0,.3f,.9f),Vector3.One*(4*slam),5);
+            float slam=NativeEntranceMath.Pulse(t,SlamAt,.01f,.35f);if(slam>.01f)l.Add(Land+new Vector3(0,.3f,SlamAhead),Vector3.One*(4*slam),5);
             if(t>=CardAt-.2f){float c=NativeEntranceMath.Ramp(t,CardAt-.2f,CardAt+.3f);l.Add(new Vector3(-2,2.4f,2),NativeEntranceFx.Hex(0xff5aa0)*(2.4f*c),8);l.Add(new Vector3(2.2f,2.2f,1.8f),NativeEntranceFx.Hex(0x5ac8ff)*(2.4f*c),8);}
         }
         protected override float Pylon(int i,float t)=>t<LidAt?.04f:PowerOn(i,t-LidAt+.05f,.05f);
@@ -176,7 +180,7 @@ namespace ChipArena.UnityConversion
             // The mallet out of nowhere: a twinkle where it appears.
             if(t>=MalletAt+.05f&&t<MalletOut+.25f){var h=Anchor(NativeEntranceAnchor.RightHand,t);float u=(t-MalletAt-.05f)/(MalletOut+.2f-MalletAt);fx.Glow(h,Vector3.One*(2.2f*(1-u)),0,.25f+.5f*u,1,u,9700);for(int i=0;i<5;i++){float a=i*1.256f+u*4;fx.Glow(h+new Vector3((float)Math.Cos(a)*.4f*u,(float)Math.Sin(a)*.4f*u,.1f),Mustard*(2.4f*(1-u)),0,.08f,3,u,9710+i);}}
             // The slam: a white ring tearing out over the floor, dust, the cartoon stars.
-            float sw=t-SlamAt;var hit=new Vector3(Land.X,.04f,Land.Z+.95f);
+            float sw=t-SlamAt;var hit=new Vector3(Land.X,.04f,Land.Z+SlamAhead);
             if(sw>=0&&sw<.6f){float reach=.3f+5.5f*(1-(1-sw/.6f)*(1-sw/.6f));int m=q<.5f?20:48;for(int i=0;i<m;i++){float a=i*6.2831853f/m;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));fx.Streak(hit+d*reach,d*6,Vector3.One*(2.2f*(1-sw/.6f)),.03f,.2f,.04f,.7f,sw/.6f,9800+i);}}
             NativeEntranceFx.GroundDust(fx,t,SlamAt,hit,q<.5f?10:26,.4f,4.5f,1.2f,Dust,.65f,.7f,9900,q,floor);
             if(sw>=0&&sw<1.1f){int m=q<.5f?5:9;for(int i=0;i<m;i++){float life=.7f+.4f*NativeEntranceMath.Rand(9950+i,1);if(sw>life)continue;float u=sw/life;var d=Vector3.Normalize(new Vector3(NativeEntranceMath.Signed(9950+i,2),.9f+.6f*NativeEntranceMath.Rand(9950+i,3),NativeEntranceMath.Signed(9950+i,4)));var p=hit+d*(3*sw)+new Vector3(0,-2.4f*sw*sw,0);fx.Glow(p,Mustard*(2.6f*(1-u*u)),0,.16f,3,u,9950+i);}}

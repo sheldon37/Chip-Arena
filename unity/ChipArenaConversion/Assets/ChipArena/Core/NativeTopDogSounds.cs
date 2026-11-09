@@ -49,6 +49,7 @@ namespace ChipArena.UnityConversion
                 case NativeTopDog.Mallet:if(step==2)n=S(o,n,"stretch",.4f);break;
                 case NativeTopDog.Dash:n=S(o,n,"windup",.6f);break;
                 case NativeTopDog.Slam:if(step==0)n=S(o,n,"stretch",.5f);break;
+                case NativeTopDog.Smash:if(step==0)n=S(o,n,"stretch",.4f);break;
             }
             return n;
         }
@@ -61,6 +62,7 @@ namespace ChipArena.UnityConversion
                 case NativeTopDog.Mallet:n=S(o,n,"swing",step==2?1:.8f);break;
                 case NativeTopDog.Dash:n=S(o,n,"swing",.9f);break;
                 case NativeTopDog.Slam:if(step==0)n=S(o,n,"whistle-fall",.9f);break;
+                case NativeTopDog.Smash:if(step==0)n=S(o,n,"swing",.9f);break;
                 case NativeTopDog.Peel:n=S(o,n,"slide-up",.5f);break;
                 case NativeTopDog.Pie:n=S(o,n,"swing",.6f);break;
             }

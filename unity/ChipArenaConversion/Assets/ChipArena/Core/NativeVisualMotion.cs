@@ -523,9 +523,6 @@ namespace ChipArena.UnityConversion
         // or the fall and the cast is the upper body over them (DogUpper; owner 2026-11-09: "when they cast abilities while running, they start
         // sliding"). The dash, the slam, the spring, the zip and the feeding stay whole-body moves.
         private const string DogPoint="Armed-Cast-R-Attack3_start",DogPointEnd="Armed-Cast-R-Attack3_end",DogPunch="Unarmed-Attack-R2",DogPunchL="Unarmed-Attack-L1",DogKick="Unarmed-Attack-Kick-R2",DogRun="2Hand-Sword-Run-Forward";
-        private static readonly string[] DogSwings={"2Hand-Sword-Attack1","2Hand-Sword-Attack2","2Hand-Sword-Attack11"};
-        // The mallet's dash (the greatsword's running swing, its hit at the middle of the charge) and slam (the jumping strike, its hit on the landing).
-        private const string DogDashSwing="2Hand-Sword-Run-Forward-Attack1",DogSlamSwing="2Hand-Sword-Air-Attack1";
         /// <summary>The Top Dog's arm cast at `time` (its clip and that clip's time), or false: none, or a whole-body move.</summary>
         public static bool DogArms(Set set,Actor a,float time,IClips clips,out string clip,out float at)
         {
@@ -543,7 +540,8 @@ namespace ChipArena.UnityConversion
             if(k.CastKind==null||time<k.CastAt||time>=k.CastUntil+.05f)return false;float from0=k.CastAt,rel=Math.Max(from0+.01f,k.CastRelease),until=Math.Max(rel+.05f,k.CastUntil);
             switch(k.CastKind)
             {
-                case NativeTopDog.Mallet:{bool ok=Hit(DogSwings[Math.Max(0,Math.Min(2,k.CastStep))],from0,rel,until+.15f);if(ok){clip=c;at=t;}return ok;}
+                // The mallet's swings are keyed by hand over the stance or the stride (Core NativeDogMallet; Runtime NativeDogMalletPresentation.cs).
+                case NativeTopDog.Mallet:return false;
                 case NativeTopDog.Anvil:{bool ok=Part(DogPoint,from0,rel)||Part(DogPointEnd,rel,until);if(ok){clip=c;at=t;}return ok;}
                 case NativeTopDog.Peel:{bool ok=Part(TechFlickStart,from0,rel)||Part(TechFlickEnd,rel,until);if(ok){clip=c;at=t;}return ok;}
                 case NativeTopDog.Mustard:
@@ -584,13 +582,20 @@ namespace ChipArena.UnityConversion
             if(k.CastKind==null||time<k.CastAt||time>=k.CastUntil+.05f)return false;float at=k.CastAt,rel=Math.Max(at+.01f,k.CastRelease),until=Math.Max(rel+.05f,k.CastUntil);
             switch(k.CastKind)
             {
-                case NativeTopDog.Dash:return Hit(DogDashSwing,at,rel+NativeTopDog.DashTime*.45f,until+.1f,out pick,1.8f);
-                case NativeTopDog.Slam:
+                // The mallet's dash, smash and slam: the legs' clip here (a stride through the charge; the fall, then the landing's squat), the
+                // mallet and the upper body keyed by hand over it (Core NativeDogMallet).
+                case NativeTopDog.Dash:
                 {
-                    if(!clips.Has(DogSlamSwing))return false;float hit=clips.Hit(DogSlamSwing),len=clips.Length(DogSlamSwing),land=NativeTopDog.SlamLanded(k);
-                    // In the air the strike winds up and holds just before its hit while it drops; landed, it strikes and recovers.
-                    if(land<-50){float u=Clamp01((time-at)/(NativeTopDog.SlamHang+.25f));pick=new Pick{Clip=DogSlamSwing,Time=Math.Max(0,hit-.05f)*u,Fade=FadeIn};return true;}
-                    pick=new Pick{Clip=DogSlamSwing,Time=Retime(time,land-.05f,land,until+.12f,hit,len,2.4f),Fade=FadeIn};return true;
+                    if(time<rel)return Part(DogRun,at,rel+.6f,out pick);
+                    if(time<rel+NativeTopDog.DashTime)return Loop(DogRun,rel,rel+NativeTopDog.DashTime,2.6f,out pick);
+                    return false;
+                }
+                case NativeTopDog.Slam:
+                case NativeTopDog.Smash:
+                {
+                    float land=NativeTopDog.Landed(k);
+                    if(land<-50)return Loop(set.Fall,at,until+.1f,1,out pick);
+                    return Part(set.Land,land,until+.15f,out pick);
                 }
                 case NativeTopDog.Boing:return Part(set.Flip,at,until+.5f,out pick);
                 case NativeTopDog.Zip:return time<rel?Loop(DogRun,at,rel,2.6f,out pick):Loop(DogRun,rel,until,1.8f,out pick);

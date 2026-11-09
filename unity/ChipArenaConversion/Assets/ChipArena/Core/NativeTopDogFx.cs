@@ -101,6 +101,17 @@ namespace ChipArena.UnityConversion
             if(f.Snap>-50&&time>=f.Snap)return time<f.Snap+.8f?4:0;
             return time<f.Release?3:0;
         }
+        /// <summary>When the mallet goes into hammerspace and when it comes back (owner 2026-11-09: "since hammer disappears, make a "poof"
+        /// effect when it appears and disappears"), as MalletShown hides and shows it: -100 for none.</summary>
+        public static void MalletPoofs(NativeTopDogKit k,out float hide,out float show)
+        {
+            hide=show=-100;if(k==null)return;
+            if(k.Feast!=null){hide=k.Feast.At;show=(k.Feast.Catch>-50?(k.Feast.Snap>-50?k.Feast.Snap:k.Feast.Release):k.Feast.Until)+.3f;}
+            if(k.CastKind!=null&&!NativeTopDog.MalletMove(k.CastKind)&&k.CastKind!=NativeTopDog.Boing&&k.CastKind!=NativeTopDog.Zip&&k.CastKind!=NativeTopDog.Feast){hide=k.CastAt;show=k.CastUntil;}
+        }
+        /// <summary>Where each Top Dog's mustard bottle's nozzle is drawn this frame and which way it points (the presentation writes it; the
+        /// stream leaves the bottle there). Keyed by the actor.</summary>
+        public static readonly System.Collections.Generic.Dictionary<int,(float time,Vector3 at,Vector3 dir)> Nozzles=new System.Collections.Generic.Dictionary<int,(float,Vector3,Vector3)>();
         /// <summary>The Top Dog's mallet hidden away (hammerspace) while both hands are busy: the feast, the bottle, the glove, the pie, the peel.</summary>
         public static float MalletShown(NativeTopDogKit k,float time)
         {
@@ -199,6 +210,7 @@ namespace ChipArena.UnityConversion
         // feet; on the drop, lines rushing up past it.
         private static void DogMoveFx(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTopDogKit k,float time,long seed,float q,bool low)
         {
+            DogSmear(s,scene,a,k,time,seed+5,q,low);DogPoofs(s,scene,a,k,time,seed+9,q,low);
             if(k.CastKind==NativeTopDog.Dash&&time>=k.CastRelease&&time<k.CastRelease+NativeTopDog.DashTime+.1f)
             {
                 var feet=scene.Feet(a);float yaw=a.Yaw*(float)Math.PI/180;var f=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));var side=new Vector3(f.Z,0,-f.X);
@@ -210,7 +222,7 @@ namespace ChipArena.UnityConversion
                 }
                 DogPuff(s,feet-f*.4f+Up*.05f,(float)((time-k.CastRelease)%.12f),.12f,Count(2,q,low),.35f,DogDust,.5f*fade,seed+(long)((time-k.CastRelease)/.12f)*13,.25f);
             }
-            if(k.CastKind==NativeTopDog.Slam&&k.CastStep==0&&time>=k.CastRelease&&time<k.CastUntil)
+            if((k.CastKind==NativeTopDog.Slam||k.CastKind==NativeTopDog.Smash)&&k.CastStep==0&&time>=k.CastRelease&&time<k.CastUntil)
             {
                 var feet=scene.Feet(a);
                 for(int i=0;i<Count(8,q,low);i++)
@@ -219,6 +231,52 @@ namespace ChipArena.UnityConversion
                     var head=feet+new Vector3((float)Math.Cos(ang)*r,.6f+2.4f*c,(float)Math.Sin(ang)*r);s.Line(false,head,head+Up*len,DogWhite*(1.3f*(float)Math.Sin(Math.PI*c)),.03f,false);
                 }
             }
+        }
+        /// <summary>The mallet's toon smear (owner 2026-11-09: "Make this animation a lot better"): through each swing's fast part a pale arc
+        /// sweeps behind the head the width of its barrel, fading back along its path, with speed lines off its outer edge; from the keyed
+        /// mallet (Core NativeDogMallet) on the drawn feet and facing.</summary>
+        private static void DogSmear(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTopDogKit k,float time,long seed,float q,bool low)
+        {
+            if(k?.CastKind==null||!NativeTopDog.MalletMove(k.CastKind)||!NativeDogMallet.Sample(k,time,out var now,out var move,out float from)||now.Smear<.02f)return;
+            var feet=scene.Feet(a);float yaw=a.Yaw,size=1+NativeDogChips.MalletGrow*k.Mallet;int n=low?5:9;const float step=.011f;
+            Vector3 head0=default,in0=default,out0=default;float k0=0;bool has=false;
+            for(int i=0;i<n;i++)
+            {
+                float t=time-i*step;if(!NativeDogMallet.Sample(k,t,out var p,out var m,out float f)||m!=move||Math.Abs(f-from)>1e-3f)break;
+                var head=feet+NativeDogMallet.Turn(NativeDogMallet.HeadAt(in p,size),yaw,0,0);var d=NativeDogMallet.Turn(NativeDogMallet.HandleAt(p),yaw,0,0);
+                float r=NativeDogMallet.Head*size,fade=1-i/(float)n,kk=p.Smear*p.Weight*fade*fade;var inner=head-d*r*1.05f;var outer=head+d*r*1.05f;
+                if(has&&(k0>.01f||kk>.01f))
+                {
+                    s.Band(false,in0,inner,outer,out0,.55f*k0,.55f*kk,DogCream);
+                    s.Band(false,head0-d*r*.35f,head-d*r*.35f,head+d*r*.35f,head0+d*r*.35f,.35f*k0,.35f*kk,DogWhite);
+                    if(i%2==1&&!low)s.Line(false,out0+d*.06f,outer+d*.06f,DogWhite*(.9f*kk),.018f,false);
+                }
+                head0=head;in0=inner;out0=outer;k0=kk;has=true;
+            }
+        }
+        /// <summary>The mallet in and out of hammerspace: a cartoon poof where it goes and where it comes back, a white pop, a ring of puffs
+        /// bursting out and twinkles.</summary>
+        private static void DogPoofs(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTopDogKit k,float time,long seed,float q,bool low)
+        {
+            NativeDogView.MalletPoofs(k,out float hide,out float show);
+            if(time-hide<0&&time-show<0)return;Vector3 at;
+            if(scene.Blade(a,false,out var root,out var tip))at=Vector3.Lerp(root,tip,.55f);
+            else{float y=a.Yaw*(float)Math.PI/180;at=scene.Feet(a)+Up*1.2f+new Vector3((float)Math.Sin(y),0,(float)Math.Cos(y))*.45f;}
+            if(hide>-50)DogPoof(s,at,time-hide,seed,q,low);if(show>-50)DogPoof(s,at,time-show,seed+31,q,low);
+        }
+        private static void DogPoof(ITechniqueFxSink s,Vector3 at,float age,long seed,float q,bool low)
+        {
+            const float life=.5f;if(age<0||age>life)return;float u=age/life,pop=OutCubic(age/.12f);
+            if(age<.12f)s.Glow(at,DogWhite*(2.2f*(1-age/.12f)),0,.25f+.35f*pop,Core,u,seed);
+            s.Glow(at,DogCream*(1.1f*(1-u)),0,.3f+.5f*OutCubic(u),RingGlow,u,seed+1);
+            int n=Count(10,q,low);
+            for(int i=0;i<n;i++)
+            {
+                float a=i*6.2831853f/n+R(seed,i)*.5f;var d=new Vector3((float)Math.Cos(a),.35f*(R(seed,i+11)-.4f),(float)Math.Sin(a));
+                var p=at+d*(.12f+.38f*OutCubic(u))*(.8f+.4f*R(seed,i+21))+Up*(.12f*u);
+                s.Smoke(p,new Vector3(.97f,.95f,.92f),.85f*(1-u)*(1-u),(.14f+.2f*OutCubic(u))*(.8f+.5f*R(seed,i+31)),.1f+.5f*u,seed+i,at.Y-1.2f);
+            }
+            for(int i=0;i<Count(5,q,low);i++){var d=Vector3.Normalize(RandomDir(seed,i*7+3)+Up*.5f);s.Sprite(false,at+d*(.5f*OutCubic(age/.35f)),DogStar*(1.8f*(1-u)),.07f,Sparkle);}
         }
         // A toon impact: a white starburst of short thick rays, a ring, little stars thrown off.
         private static void DogBurst(ITechniqueFxSink s,Vector3 at,float age,float size,Vector3 tint,long seed,float q,bool low,int rays=9)
@@ -250,6 +308,8 @@ namespace ChipArena.UnityConversion
                     if(age<.6f){Ring(s,at+Up*.03f,.4f+NativeTopDog.SlamRadius*OutCubic(age/.35f),.35f*(1-age/.6f),DogWhite*(1.2f*(1-age/.6f)),Count(28,q,low));}
                     Cracks(s,at,age,1.1f,Count(9,q,low),NativeTopDog.SlamRadius*.8f,new Vector3(.25f,.2f,.15f),seed);Dust(s,at,age,1.2f,Count(12,q,low),NativeTopDog.SlamRadius,DogDust,.7f,seed+5);DogBurst(s,at+Up*.2f,age,.6f,DogStar,seed+9,q,low,7);break;
                 case NativeTopDog.HitQuake:
+                    // Drawn as the mallet's head lands, its strike's length after the feet (Core NativeDogMallet: it swings down on landing).
+                    age-=NativeDogMallet.HitKey(NativeDogMallet.Move.Slam);if(age<0)break;
                     Flash(s,at+Up*.3f,age,.22f,DogWhite,1.5f,seed);
                     if(age<.6f)Ring(s,at+Up*.03f,.5f+NativeTopDog.SlamRing*OutCubic(age/.32f),.45f*(1-age/.6f),DogWhite*(1.35f*(1-age/.6f)),Count(36,q,low));
                     if(age>.06f&&age<.7f)Ring(s,at+Up*.03f,.3f+NativeTopDog.SlamRing*.7f*OutCubic((age-.06f)/.4f),.3f*(1-(age-.06f)/.64f),DogStar*(1-(age-.06f)/.64f),Count(28,q,low));
@@ -353,6 +413,10 @@ namespace ChipArena.UnityConversion
                 case NativeTopDog.PropSquirt:
                 {
                     if(time>=p.Until)break;var dir=N(p.Dir);if(dir.LengthSquared()<.5f)break;dir=Vector3.Normalize(dir);int n=Count(26,q,low);float reach=Math.Max(1,p.Size);
+                    // Out of the drawn bottle's nozzle (owner 2026-11-09: "Fix the mustard blaster to actually come out of the bottle"), bent on
+                    // to the rules' line: the stream ends where the squirt reaches.
+                    if(owner!=null&&NativeDogView.Nozzles.TryGetValue(owner.Id,out var nz)){var end=at+dir*reach;at=nz.at;var to=end-at;float far=to.Length();if(far>.5f){dir=to/far;reach=far;}
+                        for(int i=0;i<Count(4,q,low);i++){float u=(float)((time*6+R(seed,i+70))%1.0);s.Drop(at+nz.dir*(.04f*u)+RandomDir(seed,i+80)*(.03f*u),nz.dir*.05f,DogMustard*1.2f,.9f*(1-u),.05f*(1-u)+.02f,u,seed+80+i);}}
                     // The stream: a rope of mustard blobs on a shallow arc, flowing out, with drips off it.
                     for(int i=0;i<n;i++)
                     {

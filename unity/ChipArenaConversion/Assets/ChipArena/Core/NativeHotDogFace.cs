@@ -97,7 +97,7 @@ namespace ChipArena.UnityConversion
                 {
                     case NativeTopDog.Mallet:return k.CastStep==2?HotDogMood.Shout:HotDogMood.Angry;
                     case NativeTopDog.Dash:return HotDogMood.Grin;
-                    case NativeTopDog.Slam:return HotDogMood.Shout;
+                    case NativeTopDog.Slam:case NativeTopDog.Smash:return HotDogMood.Shout;
                     case NativeTopDog.Boing:return HotDogMood.Surprise;
                     case NativeTopDog.Zip:case NativeTopDog.Peel:return HotDogMood.Grin;
                     case NativeTopDog.Mustard:return HotDogMood.Shout;

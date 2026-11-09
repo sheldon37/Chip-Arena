@@ -212,24 +212,39 @@ namespace ChipArena.UnityConversion
                 src.K=dashKit;var dr=new Recorder();fx.DrawDogs(dr,scene,100+NativeTopDog.DashWind+.1f,1,false);Check(dr.Draws>=9&&!dr.Broken,"the dash streams speed lines and kicks dust ("+dr.Draws+")");
                 var sr=new Recorder();src.K=slamKit;fx.DrawDogs(sr,scene,100+NativeTopDog.SlamHang+.05f,1,false);Check(sr.Draws>=8&&!sr.Broken,"the drop rushes lines up past it ("+sr.Draws+")");
                 var quake=new NativeTopDogKit{Hits=new[]{new NativeDogHit{Id=1,Kind=NativeTopDog.HitQuake,At=100,Pos=new V3(feet.X,feet.Y,feet.Z),Dir=new V3(0,1,0)}}};src.K=quake;
-                var qr=new Recorder();fx.DrawDogs(qr,scene,100.1f,1,false);var ql=new Recorder();fx.DrawDogs(ql,scene,100.1f,.3f,true);Check(qr.Draws>60&&ql.Draws<qr.Draws&&!qr.Broken,"the landing's ring, cracks, dust and stars ("+qr.Draws+", "+ql.Draws+" thin)");
+                var qr=new Recorder();fx.DrawDogs(qr,scene,100.2f,1,false);var ql=new Recorder();fx.DrawDogs(ql,scene,100.2f,.3f,true);Check(qr.Draws>60&&ql.Draws<qr.Draws&&!qr.Broken,"the landing's ring, cracks, dust and stars ("+qr.Draws+", "+ql.Draws+" thin)");
                 var dashHit=new NativeTopDogKit{Hits=new[]{new NativeDogHit{Id=2,Kind=NativeTopDog.HitDash,At=100,Pos=new V3(feet.X,feet.Y,feet.Z),Dir=new V3(0,0,1)}}};src.K=dashHit;var hr=new Recorder();fx.DrawDogs(hr,scene,100.1f,1,false);Check(hr.Draws>5,"the dash's start puffs and streaks");
+                // The mallet's smear through a swing's hit and its poofs in and out of hammerspace (owner 2026-11-09).
+                var swing=new NativeTopDogKit{CastKind=NativeTopDog.Mallet,CastAt=100,CastRelease=100.2f,CastUntil=100.48f};src.K=swing;
+                var sm=new Recorder();fx.DrawDogs(sm,scene,100.19f,1,false);var calm=new Recorder();fx.DrawDogs(calm,scene,100.02f,1,false);Check(sm.Draws>calm.Draws+20&&!sm.Broken,"a swing smears behind its head through the hit ("+sm.Draws+" against "+calm.Draws+" before it)");
+                var anvil=new NativeTopDogKit{CastKind=NativeTopDog.Anvil,CastAt=100,CastRelease=100.22f,CastUntil=100.62f};NativeDogView.MalletPoofs(anvil,out float hide,out float show);
+                NativeDogView.MalletPoofs(swing,out float nh,out float ns);Check(hide==100&&show==100.62f&&nh<-50&&ns<-50,"the mallet poofs away when an ability takes the hands and back when it ends, never for its own moves");
+                src.K=anvil;var gone=new Recorder();fx.DrawDogs(gone,scene,100.08f,1,false);var back=new Recorder();fx.DrawDogs(back,scene,100.7f,1,false);var later=new Recorder();fx.DrawDogs(later,scene,101.4f,1,false);
+                Check(gone.Draws>later.Draws+8&&back.Draws>later.Draws+8&&!gone.Broken,"both poofs are drawn ("+gone.Draws+", "+back.Draws+", "+later.Draws+" after)");
                 src.K=kit;
+            }
+            {
+                string tp=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeTopDogPresentation.cs"));
+                Check(tp.Contains("NativeDogView.Nozzles[a.Id]=")&&File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeTopDogFx.cs")).Contains("NativeDogView.Nozzles.TryGetValue(owner.Id,out var nz)"),"the mustard leaves the drawn bottle's nozzle");
+                string mp=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeVisualMotionPresentation.cs"));Check(mp.Contains("DogMalletLayer(body,a,time,m.HoldRotation,wgt);"),"the keyed mallet goes on before the weapon follows the hand");
+                Check(R2("NativeVisualBodyPresentation.cs").Contains("DogMalletIntro(body,rig,dogIntroClock);")&&R2("NativeIntros.cs").Contains("dogIntroClock=t;"),"Order Up!'s slam is keyed by hand on the intro's body");
+                string R2(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
             }
             var snd=new (string id,float gain)[8];Check(NativeTopDogSounds.Hit(NativeTopDog.HitQuake,snd)>=2&&NativeTopDogSounds.Hit(NativeTopDog.HitDash,snd)>=1&&NativeTopDogSounds.Release(NativeTopDog.Dash,0,snd)==1&&NativeTopDogSounds.Release(NativeTopDog.Slam,0,snd)==1&&NativeTopDogSounds.Cast(NativeTopDog.Dash,0,snd)==1,"their sounds");
             {
-                string vm=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeVisualMotion.cs"));Check(vm.Contains("case NativeTopDog.Dash:return Hit(DogDashSwing,")&&vm.Contains("case NativeTopDog.Slam:")&&vm.Contains("\"2Hand-Sword-Air-Attack1\""),"their poses: the running swing and the jumping strike");
+                string vm=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeVisualMotion.cs"));Check(vm.Contains("if(time<rel+NativeTopDog.DashTime)return Loop(DogRun,rel,rel+NativeTopDog.DashTime,2.6f,out pick);")&&vm.Contains("case NativeTopDog.Smash:")&&vm.Contains("return Part(set.Land,land,until+.15f,out pick);"),"their legs: a stride through the charge, the fall and the landing's squat (the mallet keyed by hand over them)");
                 string au=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeTopDogAuthority.cs"));
                 Check(au.Contains("kind=DogMalletMove(p);")&&au.Contains("if(able){DogChannel(p);DogMalletMoves(p);}")&&au.Contains("NativeMeleeFeel.SprintAttack(p.Input,p.Pose.Sprinting))return NativeTopDog.Dash;")&&au.Contains("p.AirAttackUsed=true;p.DogAirborne=false;"),"the rules: an attack on a sprint dashes, one in the air slams (once an airtime)");
+                Check(au.Contains("return NativeAirAttackSimulation.DownPitch(p.Input.Pitch)?NativeTopDog.Slam:NativeTopDog.Smash;")&&au.Contains("DogSmashed(p);")&&au.Contains("DogHit(p,NativeTopDog.HitClang,head,Vector3.up,first);"),"in the air: the slam looking down, the smash looking ahead, landing on its head's point");
             }
             // ---- casts on the move (owner 2026-11-09: "when they cast abilities while running, they start sliding") ----
             {
                 var dogSet=NativeVisualMotion.For(NativeTopDog.Spec);var book=new Book();var me=new Actor{Id=1,Grounded=true,SourceSpec=NativeTopDog.Spec};
                 src.K=new NativeTopDogKit{CastKind=NativeTopDog.Mallet,CastAt=200,CastRelease=200.2f,CastUntil=200.5f};
-                Check(NativeVisualMotion.Choose(dogSet,me,200.1f,new NativeVisualMotion.Memory(),book,false,out var still)&&still.Clip=="2Hand-Sword-Attack1"&&!still.Locomotion,"standing, the swing takes the whole body");
-                Check(NativeVisualMotion.Layer(dogSet,me,200.1f,book,out var stillUp)&&stillUp.Raised&&stillUp.A==still.Clip&&Math.Abs(stillUp.TimeA-still.Time)<1e-5f,"and its upper body is the same swing at the same moment (no pop on starting to run)");
-                Check(NativeVisualMotion.Choose(dogSet,me,200.1f,new NativeVisualMotion.Memory(),book,true,out var run)&&run.Locomotion&&NativeVisualMotion.Layer(dogSet,me,200.1f,book,out var runUp,true)&&runUp.Raised&&runUp.A==still.Clip&&Math.Abs(runUp.TimeA-still.Time)<1e-5f,"running, the legs keep the stride and the swing is the upper body");
-                me.Grounded=false;Check(NativeVisualMotion.Choose(dogSet,me,200.1f,new NativeVisualMotion.Memory(),book,false,out var air)&&air.Clip!=still.Clip&&NativeVisualMotion.Layer(dogSet,me,200.1f,book,out var airUp,true)&&airUp.A==still.Clip,"in the air, the jump's legs and the swing over them");me.Grounded=true;
+                // The swings are keyed by hand (NativeDogMallet) over whatever the legs do: no pack swing, no clip on the upper body.
+                Check(NativeVisualMotion.Choose(dogSet,me,200.1f,new NativeVisualMotion.Memory(),book,false,out var still)&&!still.Clip.Contains("Attack")&&!NativeVisualMotion.Layer(dogSet,me,200.1f,book,out _),"standing, a swing is the stance under the hand-keyed mallet");
+                Check(NativeVisualMotion.Choose(dogSet,me,200.1f,new NativeVisualMotion.Memory(),book,true,out var run)&&run.Locomotion&&!NativeVisualMotion.Layer(dogSet,me,200.1f,book,out _,true),"running, the legs keep the stride under it (no slide)");
+                me.Grounded=false;Check(NativeVisualMotion.Choose(dogSet,me,200.1f,new NativeVisualMotion.Memory(),book,false,out var air)&&!air.Clip.Contains("Attack"),"in the air, the jump's legs under it");me.Grounded=true;
                 foreach(var kind in new[]{NativeTopDog.Anvil,NativeTopDog.Peel,NativeTopDog.Mustard,NativeTopDog.Glove,NativeTopDog.Pie})
                 {
                     src.K=new NativeTopDogKit{CastKind=kind,CastAt=200,CastRelease=200.2f,CastUntil=200.6f};
@@ -242,7 +257,8 @@ namespace ChipArena.UnityConversion
                 var feastKit=new NativeTopDogKit{Feast=new NativeDogFeast{At=200,Throw=200.4f,Until=205}};src.K=feastKit;
                 Check(NativeVisualMotion.Choose(dogSet,me,200.2f,new NativeVisualMotion.Memory(),book,true,out var twirl)&&twirl.Locomotion&&NativeVisualMotion.Layer(dogSet,me,200.2f,book,out var twirlUp,true)&&twirlUp.A=="Armed-Cast-R-Attack3_start","the feast's twirl on the move: the stride and the arms");
                 src.K=new NativeTopDogKit{CastKind=NativeTopDog.Dash,CastAt=200,CastRelease=200+NativeTopDog.DashWind,CastUntil=200+NativeTopDog.DashWind+NativeTopDog.DashTime+NativeTopDog.DashRecover};
-                Check(NativeVisualMotion.Choose(dogSet,me,200.2f,new NativeVisualMotion.Memory(),book,true,out var dash)&&dash.Clip=="2Hand-Sword-Run-Forward-Attack1"&&!NativeVisualMotion.Layer(dogSet,me,200.2f,book,out _,true),"the dash stays the running swing on the whole body");
+                Check(NativeVisualMotion.Choose(dogSet,me,200.2f,new NativeVisualMotion.Memory(),book,true,out var dash)&&dash.Clip=="2Hand-Sword-Run-Forward"&&!NativeVisualMotion.Layer(dogSet,me,200.2f,book,out _,true),"the dash's legs run through the charge, the mallet keyed over them");
+                MalletChecks();
                 src.K=kit;
             }
             // ---- the wiring (the Runtime is read as text: CoreTests compiles Core only) ----
@@ -256,6 +272,75 @@ namespace ChipArena.UnityConversion
             Check(arena.Contains("DogSave(target,amount))return 0;")&&R("NativeStructures.cs").Contains("NativeDogChips.Apply(content);foreach(var m in NativeDogChips.Mechanics)NativeArena.SupportedMechanics.Add(m);")&&R("NativeChipCard.cs").Contains("NativeDogChipArt.Face(")&&R("NativeDraftScreen.cs").Contains("NativeDogChipArt.Reveal(card,chip.id,t,env,prefs.reducedEffects);")&&R("NativeAudio.cs").Contains("DogPick(match.Chosen,"),"the chips' rules, rows, cards, pick and sound are wired");
             foreach(var file in new[]{"NativeTopDogPresentation.cs","NativeTopDogScreen.cs","NativeDogChipArt.cs"}){var text=R(file);Check(!text.Contains("Damage(")&&!text.Contains("Knockback")&&!text.Contains("SendInput"),file+": presentation only");}
             Console.WriteLine("PASS top dog: "+count+" checks (the row and key 6, the record through the preview, the feast and the belly, the effects, "+NativeToonSynth.Ids.Length+" toon sounds, the models, the burst gib, Order Up!, the ten chips, the wiring)");
+        }
+        /// <summary>The mallet by hand (Core NativeDogMallet; owner 2026-11-09): every move's fists in reach of their shoulders on the nominal
+        /// body, the barrel across the handle, the head never in the floor and never jumping, the flat ends leading at every hit, the forehand
+        /// right to left and the backhand left to right, each swing running on from the last, every slam's head flat on the floor ahead, and
+        /// the record's moments reaching the keyed hits.</summary>
+        private static void MalletChecks()
+        {
+            var moves=new (NativeDogMallet.Move m,bool landed)[]{(NativeDogMallet.Move.Swing1,false),(NativeDogMallet.Move.Swing2,false),(NativeDogMallet.Move.Swing3,false),(NativeDogMallet.Move.Dash,false),
+                (NativeDogMallet.Move.Slam,false),(NativeDogMallet.Move.Slam,true),(NativeDogMallet.Move.Smash,false),(NativeDogMallet.Move.Smash,true),(NativeDogMallet.Move.Intro,false)};
+            foreach(var (m,landed) in moves)
+            {
+                var keys=NativeDogMallet.KeyTimes(m,landed);string name=m+(landed?" landed":"");float worstR=0,worstL=0,lowest=9,fastest=0;
+                Vector3? last=null;const float dt=1/240f;float fastAt=0;Vector3 fastFrom=default,fastTo=default;
+                for(float t=keys[0];t<=keys[keys.Length-1]+1e-4f;t+=dt)
+                {
+                    var p=NativeDogMallet.At(m,t,landed);var d=NativeDogMallet.HandleAt(p);var f=NativeDogMallet.FaceAt(p);
+                    Check(Math.Abs(d.Length()-1)<1e-3f&&Math.Abs(f.Length()-1)<1e-3f&&Math.Abs(Vector3.Dot(d,f))<2e-3f,name+": the handle and the barrel are unit and square at "+t.ToString("0.000"));
+                    var g=NativeDogMallet.GripAt(p);var support=g+d*NativeDogMallet.Support;
+                    worstR=Math.Max(worstR,(g-NativeDogMallet.ShoulderAt(p,true)).Length());worstL=Math.Max(worstL,(support-NativeDogMallet.ShoulderAt(p,false)).Length());
+                    var head=NativeDogMallet.HeadAt(p);lowest=Math.Min(lowest,head.Y);
+                    if(last.HasValue){float sp=(head-last.Value).Length()/dt;if(sp>fastest){fastest=sp;fastAt=t;fastFrom=last.Value;fastTo=head;}}last=head;
+                }
+                Console.WriteLine("  mallet "+name+": reach R "+worstR.ToString("0.00")+" L "+worstL.ToString("0.00")+", lowest head "+lowest.ToString("0.00")+", fastest "+fastest.ToString("0.0")+" at "+fastAt.ToString("0.000")+" "+fastFrom+" > "+fastTo);
+                Check(worstR<=NativeDogMallet.Reach*1.05f,name+": the right fist stays in its arm's reach (worst "+worstR.ToString("0.00")+" m)");
+                Check(worstL<=NativeDogMallet.Reach*1.08f,name+": the left fist reaches its place on the handle (worst "+worstL.ToString("0.00")+" m)");
+                Check(lowest>=NativeDogMallet.Head*.85f,name+": the head never goes into the floor (lowest "+lowest.ToString("0.00")+" m)");
+                Check(fastest<=100,name+": the head never jumps (a strike at most 100 m/s, a pop is several times that; fastest "+fastest.ToString("0.0")+" m/s)");
+            }
+            // The flat ends lead at each hit, the head going fast (a smear).
+            foreach(var m in new[]{NativeDogMallet.Move.Swing1,NativeDogMallet.Move.Swing2,NativeDogMallet.Move.Dash})
+            {
+                float hit=NativeDogMallet.HitKey(m),h=.004f;var a=NativeDogMallet.HeadAt(NativeDogMallet.At(m,hit-h));var b=NativeDogMallet.HeadAt(NativeDogMallet.At(m,hit-h*.01f));var p=NativeDogMallet.At(m,hit-h*.5f);
+                var v=(b-a);var d=NativeDogMallet.HandleAt(p);var across=v-d*Vector3.Dot(v,d);float speed=across.Length()/(h*.99f);
+                Check(speed>6&&Math.Abs(Vector3.Dot(Vector3.Normalize(across),NativeDogMallet.FaceAt(p)))>.95f,m+": at the hit a flat end leads (the head at "+speed.ToString("0.0")+" m/s, the barrel along its travel)");
+                Check(p.Smear>.3f,m+": it smears through the hit");
+            }
+            {
+                float Side(NativeDogMallet.Move m,float t)=>NativeDogMallet.HeadAt(NativeDogMallet.At(m,t)).X;
+                Check(Side(NativeDogMallet.Move.Swing1,-.06f)>.4f&&Side(NativeDogMallet.Move.Swing1,.09f)<-.4f,"the first swing goes from the right to the left ("+Side(NativeDogMallet.Move.Swing1,-.06f).ToString("0.00")+" to "+Side(NativeDogMallet.Move.Swing1,.09f).ToString("0.00")+")");
+                Check(Side(NativeDogMallet.Move.Swing2,-.06f)<-.4f&&Side(NativeDogMallet.Move.Swing2,.09f)>.4f,"the second from the left to the right");
+                bool Same(DogMalletPose x,DogMalletPose y)=>(NativeDogMallet.GripAt(x)-NativeDogMallet.GripAt(y)).Length()<.03f&&Vector3.Dot(NativeDogMallet.HandleAt(x),NativeDogMallet.HandleAt(y))>.995f&&Math.Abs(x.Twist-y.Twist)<1;
+                Check(Same(NativeDogMallet.At(NativeDogMallet.Move.Swing1,.28f),NativeDogMallet.At(NativeDogMallet.Move.Swing2,-.2f))&&Same(NativeDogMallet.At(NativeDogMallet.Move.Swing2,.28f),NativeDogMallet.At(NativeDogMallet.Move.Swing3,-.36f)),"each swing starts where the last one ended (the combo flows)");
+                var top=NativeDogMallet.At(NativeDogMallet.Move.Swing3,-.17f);Check(top.Lift>.35f&&top.Tuck>.8f&&NativeDogMallet.HeadAt(top).Z<-.3f,"the third hops, knees up, the head hung behind at the top");
+            }
+            // Every slam's head flat on the floor ahead at its impact, the body squashed.
+            foreach(var (m,t,landed,ahead,tol) in new[]{(NativeDogMallet.Move.Swing3,.02f,false,NativeTopDog.SlamAhead,.45f),(NativeDogMallet.Move.Slam,.1f,true,1.4f,.6f),(NativeDogMallet.Move.Smash,.07f,true,NativeTopDog.SmashAhead,.45f),(NativeDogMallet.Move.Intro,5.02f,false,NativeTopDogIntro.SlamAhead,.05f)})
+            {
+                var p=NativeDogMallet.At(m,t,landed);var head=NativeDogMallet.HeadAt(p);var f=NativeDogMallet.FaceAt(p);
+                Console.WriteLine("  mallet "+m+" impact: head "+head.X.ToString("0.00")+","+head.Y.ToString("0.00")+","+head.Z.ToString("0.00")+" barrel up "+Math.Abs(f.Y).ToString("0.00")+" squash "+p.Squash.ToString("0.00"));
+                Check(Math.Abs(head.Y-NativeDogMallet.Head)<.04f&&Math.Abs(f.Y)>.9f&&Math.Abs(head.Z-ahead)<tol&&Math.Abs(head.X)<.25f&&p.Squash<.85f,
+                    m+": the head lands flat on the floor ahead ("+head.Z.ToString("0.00")+" m out, "+head.Y.ToString("0.00")+" up, the barrel "+Math.Abs(f.Y).ToString("0.00")+" upright), the body squashed");
+            }
+            {
+                var lean=NativeDogMallet.At(NativeDogMallet.Move.Intro,6.6f);var head=NativeDogMallet.HeadAt(lean);var thumbs=NativeDogMallet.At(NativeDogMallet.Move.Intro,7.6f);
+                Check(Math.Abs(head.Y-NativeDogMallet.Head)<.05f&&NativeDogMallet.HandleAt(lean).Y<-.8f&&lean.Free<.01f&&thumbs.Free>.99f&&NativeDogMallet.Intro(8.5f,out var end)&&end.Weight>.99f,"Order Up! ends leaning on the mallet, its head on the floor, the left hand free for the thumbs up");
+            }
+            // The record's moments reach the keys: the hit key at the release, full weight inside, nothing after the fade.
+            {
+                var k=new NativeTopDogKit{CastKind=NativeTopDog.Mallet,CastAt=50,CastRelease=50.2f,CastUntil=50.48f,CastStep=1};
+                Check(NativeDogMallet.Sample(k,50.2f,out var p,out var mv,out float from)&&mv==NativeDogMallet.Move.Swing2&&from==50&&Math.Abs(p.Weight-1)<1e-4f&&(NativeDogMallet.GripAt(p)-NativeDogMallet.GripAt(NativeDogMallet.At(mv,0))).Length()<1e-3f,"a swing's release is its hit key, at full weight");
+                Check(NativeDogMallet.Sample(k,50.01f,out var p0,out _,out _)&&p0.Weight<.3f&&!NativeDogMallet.Sample(k,50.48f+NativeDogMallet.FadeOut+.01f,out _,out _,out _),"it fades in from the clip and is gone after its fade");
+                k.CastStep=2;k.CastRelease=50.36f;k.CastUntil=50.82f;Check(NativeDogMallet.Sample(k,50.2f,out _,out var m3,out _)&&m3==NativeDogMallet.Move.Swing3,"the third step is the jump slam");
+                var slam=new NativeTopDogKit{CastKind=NativeTopDog.Slam,CastAt=60,CastRelease=60.2f,CastUntil=62.7f};Check(NativeDogMallet.Sample(slam,60.17f,out var sa,out var sm,out _)&&sm==NativeDogMallet.Move.Slam&&sa.Bend<-20,"the slam in the air: raised overhead, arched back");
+                slam.CastStep=1;slam.CastUntil=60.5f+NativeTopDog.SlamRecover;Check(Math.Abs(NativeTopDog.Landed(slam)-60.5f)<1e-4f&&NativeDogMallet.Sample(slam,60.5f+NativeDogMallet.HitKey(NativeDogMallet.Move.Slam),out var sl,out _,out _)&&sl.Floor>.99f&&sl.Squash<.75f,"landed, the slam's head on the floor");
+                var smash=new NativeTopDogKit{CastKind=NativeTopDog.Smash,CastAt=70,CastRelease=70+NativeTopDog.SmashHang,CastUntil=72.6f};Check(smash.Valid()&&NativeTopDog.Smash.Length<=24&&NativeTopDog.AbilityName(NativeTopDog.Smash)=="Mallet Smash"&&NativeTopDog.MalletMove(NativeTopDog.Smash)&&NativeTopDog.Landed(smash)<-50,"the smash: valid on the wire, named, the mallet's own, in the air");
+                var snd=new (string id,float gain)[8];Check(NativeTopDogSounds.Cast(NativeTopDog.Smash,0,snd)==1&&NativeTopDogSounds.Release(NativeTopDog.Smash,0,snd)==1,"the smash's sounds");
+                var dash=new NativeTopDogKit{CastKind=NativeTopDog.Dash,CastAt=80,CastRelease=80+NativeTopDog.DashWind,CastUntil=80+NativeTopDog.DashWind+NativeTopDog.DashTime+NativeTopDog.DashRecover};
+                Check(NativeDogMallet.Sample(dash,80+NativeTopDog.DashWind+NativeTopDog.DashTime*.45f,out var dp,out var dm,out _)&&dm==NativeDogMallet.Move.Dash&&(NativeDogMallet.GripAt(dp)-NativeDogMallet.GripAt(NativeDogMallet.At(dm,NativeDogMallet.HitKey(dm)))).Length()<1e-3f,"the dash's hit key on the rules' mid-charge moment");
+            }
         }
         // The entrance's effects into the effects recorder.
         private sealed class FxRecorder:INativeEntranceFx
