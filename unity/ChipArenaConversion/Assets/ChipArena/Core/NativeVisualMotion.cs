@@ -257,6 +257,7 @@ namespace ChipArena.UnityConversion
             if(DashUpper(s,a,time,clips,out up))return true;
             if(GuardUpper(s,a,time,clips,out up))return true;
             if(BombUpper(s,a,time,clips,out up))return true;
+            if(DogUpper(s,a,time,clips,out up))return true;
             if(s.CastStart!=null)return Cast(s,a,time,clips,out up);
             if(s.Aim==null)return false;
             if(s.Reload!=null&&time>=a.ReloadAt&&time<a.ReloadUntil&&clips.Has(s.Reload))
@@ -398,7 +399,7 @@ namespace ChipArena.UnityConversion
                 pick=new Pick{Clip=set.Knockdown,Time=Math.Min(len,impact+Math.Max(0,time-a.DownLanded)),Fade=FadeIn};return true;
             }
             if(BombCast(set,a,time,clips,out pick))return true;
-            if(DogCast(set,a,time,clips,out pick))return true;
+            if(DogCast(set,a,time,clips,moving||!a.Grounded,out pick))return true;
             if(Technique(set,a,time,clips,out pick))return true;
             if(Kit(set,a,time,clips,out pick))return true;
             // A mapped kit move's tail (its special still running past the cast) goes on to the idle, not the game's pose.
@@ -516,24 +517,64 @@ namespace ChipArena.UnityConversion
             }
             return false;
         }
-        // The Top Dog's casts on the whole body (docs/TOP-DOG.md "Motion"): each clip fitted to the record's moments, a swing's own Hit on the
-        // rules' hit, so the mallet lands when the hit does.
+        // The Top Dog's casts (docs/TOP-DOG.md "Motion"): each clip fitted to the record's moments, a swing's own Hit on the rules' hit, so
+        // the mallet lands when the hit does. The arm casts (DogArms: the mallet's swings, the twirl and throw, the anvil, the peel, the bottle,
+        // the glove and the pie) take the whole body only standing on the ground; on the move or in the air the legs keep the stride, the jump
+        // or the fall and the cast is the upper body over them (DogUpper; owner 2026-11-09: "when they cast abilities while running, they start
+        // sliding"). The dash, the slam, the spring, the zip and the feeding stay whole-body moves.
         private const string DogPoint="Armed-Cast-R-Attack3_start",DogPointEnd="Armed-Cast-R-Attack3_end",DogPunch="Unarmed-Attack-R2",DogPunchL="Unarmed-Attack-L1",DogKick="Unarmed-Attack-Kick-R2",DogRun="2Hand-Sword-Run-Forward";
         private static readonly string[] DogSwings={"2Hand-Sword-Attack1","2Hand-Sword-Attack2","2Hand-Sword-Attack11"};
         // The mallet's dash (the greatsword's running swing, its hit at the middle of the charge) and slam (the jumping strike, its hit on the landing).
         private const string DogDashSwing="2Hand-Sword-Run-Forward-Attack1",DogSlamSwing="2Hand-Sword-Air-Attack1";
-        private static bool DogCast(Set set,Actor a,float time,IClips clips,out Pick pick)
+        /// <summary>The Top Dog's arm cast at `time` (its clip and that clip's time), or false: none, or a whole-body move.</summary>
+        public static bool DogArms(Set set,Actor a,float time,IClips clips,out string clip,out float at)
         {
-            pick=default;if(set.Spec!=NativeTopDog.Spec)return false;var k=NativeDogView.Of(a);if(k==null)return false;
-            bool Part(string clip,float from,float to,out Pick p){p=default;return time>=from&&time<to&&clip!=null&&clips.Has(clip)&&Fit(clip,time,from,to,clips,FadeIn,out p);}
-            bool Hit(string clip,float from,float hit,float to,out Pick p,float rate=2.4f){p=default;if(time<from||time>=to||clip==null||!clips.Has(clip))return false;p=new Pick{Clip=clip,Time=Retime(time,from,hit,to,clips.Hit(clip),clips.Length(clip),rate),Fade=FadeIn};return true;}
-            bool Loop(string clip,float from,float to,float rate,out Pick p){p=default;if(time<from||time>=to||!clips.Has(clip))return false;float len=Math.Max(.05f,clips.Length(clip));p=new Pick{Clip=clip,Time=((time-from)*rate)%len,Fade=FadeIn};return true;}
-            // All You Can Eat: the twirl and throw, a push for each hot dog, the kick that lets them go.
+            clip=null;at=0;if(set.Spec!=NativeTopDog.Spec)return false;var k=NativeDogView.Of(a);if(k==null)return false;string c=null;float t=0;
+            bool Part(string name,float from,float to){if(time<from||time>=to||name==null||!clips.Has(name))return false;c=name;t=clips.Length(name)*Clamp01((time-from)/Math.Max(1e-3f,to-from));return true;}
+            bool Hit(string name,float from,float hit,float to,float rate=2.4f){if(time<from||time>=to||name==null||!clips.Has(name))return false;c=name;t=Retime(time,from,hit,to,clips.Hit(name),clips.Length(name),rate);return true;}
+            // All You Can Eat's twirl and throw (the rest of the feast is the whole body's).
             var f=k.Feast;
             if(f!=null&&time>=f.At&&time<f.Until)
             {
-                if(time<f.Throw)return Part(DogPoint,f.At,f.Throw,out pick);
-                if(f.Catch<-50)return Part(DogPointEnd,f.Throw,f.Throw+.45f,out pick);
+                if(time<f.Throw){bool ok=Part(DogPoint,f.At,f.Throw);if(ok){clip=c;at=t;}return ok;}
+                if(f.Catch<-50){bool ok=Part(DogPointEnd,f.Throw,f.Throw+.45f);if(ok){clip=c;at=t;}return ok;}
+                return false;
+            }
+            if(k.CastKind==null||time<k.CastAt||time>=k.CastUntil+.05f)return false;float from0=k.CastAt,rel=Math.Max(from0+.01f,k.CastRelease),until=Math.Max(rel+.05f,k.CastUntil);
+            switch(k.CastKind)
+            {
+                case NativeTopDog.Mallet:{bool ok=Hit(DogSwings[Math.Max(0,Math.Min(2,k.CastStep))],from0,rel,until+.15f);if(ok){clip=c;at=t;}return ok;}
+                case NativeTopDog.Anvil:{bool ok=Part(DogPoint,from0,rel)||Part(DogPointEnd,rel,until);if(ok){clip=c;at=t;}return ok;}
+                case NativeTopDog.Peel:{bool ok=Part(TechFlickStart,from0,rel)||Part(TechFlickEnd,rel,until);if(ok){clip=c;at=t;}return ok;}
+                case NativeTopDog.Mustard:
+                {
+                    if(time<rel){bool ok=Part(TechFlickStart,from0,rel);if(ok){clip=c;at=t;}return ok;}if(!clips.Has(TechFlickStart))return false;
+                    // Held at the aim through the squirt, a small pump on each squeeze.
+                    clip=TechFlickStart;at=clips.Length(TechFlickStart)*(.92f+.05f*(float)Math.Sin((time-rel)*18));return true;
+                }
+                case NativeTopDog.Glove:{bool ok=Hit(DogPunch,from0,rel,until,1.6f);if(ok){clip=c;at=t;}return ok;}
+                case NativeTopDog.Pie:{bool ok=Part(TechThrowStart,from0,rel)||Part(TechThrowEnd,rel,until);if(ok){clip=c;at=t;}return ok;}
+            }
+            return false;
+        }
+        /// <summary>The Top Dog's arm cast on the upper body (over the stride on the move; the same clip as the whole body standing).</summary>
+        public static bool DogUpper(Set s,Actor a,float time,IClips clips,out Upper up)
+        {
+            up=default;if(!DogArms(s,a,time,clips,out string clip,out float t))return false;up=new Upper{A=clip,TimeA=t,Raised=true};return true;
+        }
+        private static bool DogCast(Set set,Actor a,float time,IClips clips,bool travel,out Pick pick)
+        {
+            pick=default;if(set.Spec!=NativeTopDog.Spec)return false;var k=NativeDogView.Of(a);if(k==null)return false;
+            // An arm cast: the whole body standing; on the move or in the air the legs' own motion, the cast over it (DogUpper).
+            if(DogArms(set,a,time,clips,out string arms,out float armsAt)){if(travel)return false;pick=new Pick{Clip=arms,Time=armsAt,Fade=FadeIn};return true;}
+            bool Part(string clip,float from,float to,out Pick p){p=default;return time>=from&&time<to&&clip!=null&&clips.Has(clip)&&Fit(clip,time,from,to,clips,FadeIn,out p);}
+            bool Hit(string clip,float from,float hit,float to,out Pick p,float rate=2.4f){p=default;if(time<from||time>=to||clip==null||!clips.Has(clip))return false;p=new Pick{Clip=clip,Time=Retime(time,from,hit,to,clips.Hit(clip),clips.Length(clip),rate),Fade=FadeIn};return true;}
+            bool Loop(string clip,float from,float to,float rate,out Pick p){p=default;if(time<from||time>=to||!clips.Has(clip))return false;float len=Math.Max(.05f,clips.Length(clip));p=new Pick{Clip=clip,Time=((time-from)*rate)%len,Fade=FadeIn};return true;}
+            // All You Can Eat: the wait for the first hot dog, then the kick that lets them go (the twirl and throw are DogArms').
+            var f=k.Feast;
+            if(f!=null&&time>=f.At&&time<f.Until)
+            {
+                if(time<f.Throw||f.Catch<-50)return false;
                 if(f.Snap>-50&&time>=f.Snap)return false;
                 if(time<f.FeedAt)return Part(DogPointEnd,f.Throw,f.FeedAt,out pick);
                 // Hand fed: the stance under it, each arm reaching by IK (Runtime NativeTopDogPresentation.cs DogFeedArms).
@@ -543,7 +584,6 @@ namespace ChipArena.UnityConversion
             if(k.CastKind==null||time<k.CastAt||time>=k.CastUntil+.05f)return false;float at=k.CastAt,rel=Math.Max(at+.01f,k.CastRelease),until=Math.Max(rel+.05f,k.CastUntil);
             switch(k.CastKind)
             {
-                case NativeTopDog.Mallet:return Hit(DogSwings[Math.Max(0,Math.Min(2,k.CastStep))],at,rel,until+.15f,out pick);
                 case NativeTopDog.Dash:return Hit(DogDashSwing,at,rel+NativeTopDog.DashTime*.45f,until+.1f,out pick,1.8f);
                 case NativeTopDog.Slam:
                 {
@@ -554,16 +594,6 @@ namespace ChipArena.UnityConversion
                 }
                 case NativeTopDog.Boing:return Part(set.Flip,at,until+.5f,out pick);
                 case NativeTopDog.Zip:return time<rel?Loop(DogRun,at,rel,2.6f,out pick):Loop(DogRun,rel,until,1.8f,out pick);
-                case NativeTopDog.Anvil:return Part(DogPoint,at,rel,out pick)||Part(DogPointEnd,rel,until,out pick);
-                case NativeTopDog.Peel:return Part(TechFlickStart,at,rel,out pick)||Part(TechFlickEnd,rel,until,out pick);
-                case NativeTopDog.Mustard:
-                {
-                    if(time<rel)return Part(TechFlickStart,at,rel,out pick);if(!clips.Has(TechFlickStart))return false;
-                    // Held at the aim through the squirt, a small pump on each squeeze.
-                    float len=clips.Length(TechFlickStart);pick=new Pick{Clip=TechFlickStart,Time=len*(.92f+.05f*(float)Math.Sin((time-rel)*18)),Fade=FadeIn};return true;
-                }
-                case NativeTopDog.Glove:return Hit(DogPunch,at,rel,until,out pick,1.6f);
-                case NativeTopDog.Pie:return Part(TechThrowStart,at,rel,out pick)||Part(TechThrowEnd,rel,until,out pick);
             }
             return false;
         }

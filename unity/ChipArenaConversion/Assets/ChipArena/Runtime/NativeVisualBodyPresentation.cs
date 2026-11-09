@@ -1562,6 +1562,7 @@ namespace ChipArena.UnityConversion
                 var b=c.Bones[v];if(b==null)continue;var m=undo*corpse.PartFrom(c.Part[v])*c.Bind[v];
                 if(c.Placed[v])b.SetPositionAndRotation(m.GetColumn(3),m.rotation);else{b.localPosition=c.Rest[v];b.rotation=m.rotation;}
             }
+            if(corpse.FriendsCarried)VisualCorpseFriendsScale(c,corpse);
             if(flat){var scale=new Vector3(overlay.GetColumn(0).magnitude,overlay.GetColumn(1).magnitude,overlay.GetColumn(2).magnitude);root.localScale=scale;root.position=(Vector3)overlay.GetColumn(3)+Vector3.Scale(scale,at);}
             if(c.Holes!=null)VisualHolesCut(c.All,c.Bones,c.Holes,null);
             // The face gear stays on a whole corpse's head as it fades (not on a split half, a crushed head, under a kill look or
@@ -1585,6 +1586,20 @@ namespace ChipArena.UnityConversion
                 corpseFade=alpha;VisualSuit(c.Root,corpse.Death.id,body,accent,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0,VisualCorpseSuit(corpse));
             }
             return true;
+        }
+        // Hotdog Friends (NativeHotdogFriendsPresentation.cs): a piece stuffed through the door shrinks away with its part, so each loose
+        // piece's first bone (and the root) takes its part's share left, over what the piece it hangs from already has (owner 2026-11-09:
+        // "They also dont bring things in the door, they kind of just leave them out").
+        private static void VisualCorpseFriendsScale(VisualCorpse c,NativeCorpse corpse)
+        {
+            float whole=Mathf.Max(.001f,corpse.PartScale);
+            for(int v=0;v<c.Bones.Length;v++)
+            {
+                var b=c.Bones[v];if(b==null||!(v==0||c.Placed[v]))continue;
+                int up=c.Parent[v];while(up>0&&!c.Placed[up])up=c.Parent[up];
+                float own=whole*corpse.FriendsShare(c.Part[v]),above=up>=0?whole*corpse.FriendsShare(c.Part[up]):1;
+                b.localScale=Vector3.one*Mathf.Max(.001f,own/Mathf.Max(.001f,above));
+            }
         }
         private float corpseFade;private Func<int,float> corpseFadeOf;
         // PresentDeath, once a pilot's model corpse is shown: its hat on its head (owner 2026-10-28: "hat still seems to remove

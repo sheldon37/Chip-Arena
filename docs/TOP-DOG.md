@@ -46,7 +46,10 @@ The meter fills 1% a second, 6% a mallet hit and 8% an ability hit.
 2. **The throw.** The links fly along the aim at 32 m/s, 0.8 m wide, up to 18 m. A dodge roll goes through them. A **block snaps
    them**. A boss (the Siren, a zone boss, NOCTIEL) takes 30 and the links snap. A miss gives half the meter back.
 3. **The catch.** The victim is wrapped in the links, reeled in over 0.5 s to 1.25 m in front of the Top Dog, and held: no moving,
-   no acting, their face turned up to the Top Dog's hands.
+   no acting, their face turned up to the Top Dog's hands. Their arms are pinned straight down their sides inside three turns of the
+   links, and they struggle against them in jerks: the chest twists and rocks, the elbows shove out and bulge the links, the shoulders
+   heave; strain lines flick off their sides, sweat flies off and their feet scuff up dust (owner 2026-11-09: "like their arms are
+   downwards, and they're struggling to get out"; Core `NativeTopDog.Bound`, `Strain`).
 4. **The feeding, by hand** (owner 2026-11-09: "literally animate opening the players mouth and just putting hotdogs in there"). The
    Top Dog's left hand takes the victim's chin and holds the jaw open, tugging it down for each one; the right hand brings six bare,
    wiggling sausages (no bun), one every 0.5 s, from its side to the lips and pushes each in. Each stays stuck in the mouth, wiggling
@@ -86,6 +89,12 @@ Its sound is its own toon cues, no music bed.
 - **The Hot Dog, always:** the body takes the Hot Dog (`upper:hot-dog`) whenever the seat's weapon is the Top Dog, and through its
   intro whatever the pilot carries (Runtime `NativeTopDogPresentation.cs` `TopDogSeat`). Without the local bank the default top shows,
   as for the skin itself.
+- **The class icon** is a smiling hot dog stood in its bun, googly eyes and tongue out (`spec-topdog` in `tools/export_class_icons.mjs`,
+  with a small drawing for 22 px and below; owner 2026-11-09).
+- **Casting on the move** (owner 2026-11-09: "when they cast abilities while running, they start sliding"): the arm casts (the mallet's
+  swings, the twirl and throw, the anvil, the peel, the bottle, the glove and the pie) take the whole body only standing on the ground;
+  running or in the air the legs keep the stride, jump or fall and the cast plays on the upper body over them. The dash, the slam, the
+  spring, the zip and the feeding stay whole-body moves.
 - **The mallet** is a held weapon model (Core `NativeWeaponModels.Dog.cs`), held two-handed as the greatsword is. It goes into
   hammerspace while the hands hold a prop or the feast's hot dogs.
 - **The props** are built in C# (Core `NativeTopDogModels`): the mallet's art aside, the wiggling hot dog (bun, sausage, a mustard
@@ -194,7 +203,7 @@ Replicated in snapshots, late join, death records and the killcam like the Bomba
 | The intro | `Core/NativeTopDogIntro.cs`, staged in `Runtime/NativeIntros.cs` |
 | Presentation | `Runtime/NativeTopDogPresentation.cs` |
 | HUD, card, words, audio | `Runtime/NativeTopDogScreen.cs` |
-| Poses | `Core/NativeVisualMotion.cs` (`TopDog`, `DogCast`) |
+| Poses | `Core/NativeVisualMotion.cs` (`TopDog`, `DogCast`, `DogArms`, `DogUpper`) |
 | The burst | `Core/NativeSmashGib.cs` (`Burst`), `Runtime/NativeSmashPresentation.cs` |
 | Sandbox preview | `Core/NativeTopDogPreview.cs` |
 | The chips | `Core/NativeDogChips.cs`; the card and the pick `Runtime/NativeDogChipArt.cs`; the rules in `Runtime/NativeTopDogAuthority.cs` |

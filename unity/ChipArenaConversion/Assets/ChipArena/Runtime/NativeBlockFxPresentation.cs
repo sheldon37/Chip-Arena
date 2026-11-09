@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         private struct BlockRecord
         {
             public int Id,Blocker,Seed;public float At;public NativeBlockHit Hit;public Vector3 Point,Toward,Reflect;
-            // The event's own word: the held guard's "hold" and "guard-break" (NativeGuardShieldPresentation.cs) beside the parry's.
+            // The event's own word: the held guard's "hold" and "guard-break" (Runtime NativeGuard.cs) beside the parry's.
             public string Detail;
             // The world spray frame, fixed when first drawn (a strafing blocker never drags its sparks along).
             public bool Framed;public NativeClashFrame Frame;
@@ -135,7 +135,7 @@ namespace ChipArena.UnityConversion
         /// deflects into the match camera's mesh and the view camera's.</summary>
         private void RenderBlockFx(Snapshot s,float time)
         {
-            if(s?.Actors==null)return;ObserveBlocks(s,time);RenderGuardShields(s,time);
+            if(s?.Actors==null)return;ObserveBlocks(s,time);RenderParryBarriers(s,time);
             bool any=blockRecords.Count>0;if(!any)foreach(var a in s.Actors)if(a!=null&&a.Alive&&time<a.BlockUntil){any=true;break;}
             if(!any)return;
             if(blockDraw==null){if(blockDrawFailed)return;blockDraw=NativeBlockFxDraw.Create(gameObject);blockDrawFailed=blockDraw==null;if(blockDraw==null)return;}

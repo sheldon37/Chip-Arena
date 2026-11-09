@@ -7,25 +7,33 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// Hotdog Friends, a DEV kill effect (owner 2026-11-09: "Id also like to make a DEV kill effect called "Hotdog Friends" after players are
     /// gibbed/ragdolled like normal. Tiny little hotdogs appear from a tiny door (near whereever the body parts land/stop) and take all the body
-    /// parts through the door. (Have them move accordingly so it fits the body parts seamlessly)"). The body falls as the stock impact ragdoll
-    /// (its gibs, severs and slices too). Once it has come to rest a little arched door rises out of the floor beside the pieces and swings open,
-    /// and a file of tiny hot dogs on stick legs scurries out to each piece (the pieces still joined together are one load), gathers round it
-    /// (more round a bigger one: <see cref="Friends"/>), lifts it, carries it back and squeezes it through the door, then follows it in; the door
-    /// shuts and sinks away. Every moment is a pure function of the death's seed, where the pieces came to rest and the effect clock, so every
-    /// client and the killcam draw the same scene. Runtime NativeHotdogFriendsPresentation.cs gathers the loads, moves the body's pieces and draws
-    /// the door and the friends (built here) in the Top Dog's toon props shader. Presentation only. Unity's axes.
+    /// parts through the door. (Have them move accordingly so it fits the body parts seamlessly)"; then: "some hotdogs pickup nothing, fix this
+    /// ... animate this a lot better ... We want comical hotdog runs and running away into the door. (They also dont bring things in the door,
+    /// they kind of just leave them out)"). The body falls as the stock impact ragdoll (its gibs, severs and slices too). Once it has come to
+    /// rest a little arched door rises out of the floor beside the pieces and swings open, and a file of tiny hot dogs on stick legs hops out
+    /// and dashes, leaning into it, to each piece (the pieces still joined together are one load), skids to a stop under it (each friend under
+    /// one of the load's own pieces: <see cref="Slots"/>; more round a bigger one: <see cref="Friends"/>), crouches, heaves it up overhead,
+    /// waddles it back to the door and stuffs it through, then dashes for the door and dives in head first; the very last one turns on the
+    /// step and waves before it goes. The door slams, bounces and sinks away. Every moment is a pure function of the death's seed, where the
+    /// pieces came to rest and the effect clock, so every client and the killcam draw the same scene. Runtime NativeHotdogFriendsPresentation.cs
+    /// gathers the loads, moves and shrinks the body's pieces and draws the door and the friends (built here) in the Top Dog's toon props
+    /// shader. Presentation only. Unity's axes.
     /// </summary>
     public static class NativeHotdogFriends
     {
         public const string Style="dev-hotdog-friends",Label="Hotdog Friends · DEV ONLY",Text="Tiny hot dogs carry the pieces off through a tiny door.";public const int Swatch=0xf4c430;
-        /// <summary>The body rests this long (s after the death) before the door rises; the door's rise, opening, shutting and sinking (s);
+        /// <summary>The body rests this long (s after the death) before the door rises; the door's rise, opening, slam, bounce and sinking (s);
         /// its height and width, and how far past the pieces it stands (m).</summary>
-        public const float Settle=1.2f,DoorUp=.25f,DoorOpen=.18f,DoorShut=.2f,DoorDown=.25f,DoorHeight=.46f,DoorWidth=.3f,DoorAway=.55f,DoorSwing=105;
-        /// <summary>The friends: their height (m); walking and carrying speeds (m/s) and the longest walk and carry (s: farther pieces are
-        /// hurried, so the scene ends inside the body's five seconds); the lift (s, m); the stagger between loads and within a file (s); the
-        /// squeeze through the door (s); a step (m).</summary>
-        public const float Height=.27f,Walk=2.4f,CarrySpeed=1.7f,MostWalk=.5f,MostCarry=.8f,LiftTime=.22f,LiftHeight=.14f,Stagger=.08f,File=.05f,Squeeze=.25f,Stride=.1f;
-        public const int MaxLoads=12,MostFriends=6,WalkFrames=8;
+        public const float Settle=1.2f,DoorUp=.22f,DoorOpen=.15f,DoorShut=.12f,DoorBounce=.12f,DoorDown=.22f,DoorHeight=.46f,DoorWidth=.3f,DoorAway=.55f,DoorSwing=105;
+        /// <summary>The friends: their height (m); the dash and the carry (m/s) and the longest of each (s: farther pieces are hurried, so the
+        /// scene ends inside the body's five seconds); the hop out of the door, the skid, the crouch and the heave (s) and how high the load is
+        /// held (m); the most stagger between loads and the span it is squeezed into, the file's gap, the stuffing through, the dive and the
+        /// wave (s); a running step and a carrying one (m).</summary>
+        public const float Height=.27f,Run=3f,CarrySpeed=1.8f,MostRun=.45f,MostCarry=.75f,Pop=.1f,Skid=.08f,Crouch=.12f,Heave=.18f,LiftTime=Crouch+Heave,LiftHeight=.22f,
+            MostStagger=.08f,StaggerSpan=.35f,File=.05f,Squeeze=.22f,Dive=.12f,Wave=.32f,RunStride=.14f,CarryStride=.07f;
+        /// <summary>The friend models: WalkFrames stride frames and one standing (index WalkFrames), each with its arms pumping, up under a load
+        /// or waving.</summary>
+        public const int MaxLoads=12,MostFriends=6,WalkFrames=8,Frames=WalkFrames+1,ArmsSwing=0,ArmsUp=1,ArmsWave=2,ArmKinds=3;
         /// <summary>The door is open from here (s after the death).</summary>
         public const float Opened=Settle+DoorUp+DoorOpen;
         /// <summary>How many carry a load `size` m across.</summary>
@@ -34,8 +42,12 @@ namespace ChipArena.UnityConversion
         private static float Clamp(float x)=>x<0?0:x>1?1:x;
         private static float Ease(float x){x=Clamp(x);return 1-(1-x)*(1-x);}
         private static float Smooth(float x){x=Clamp(x);return x*x*(3-2*x);}
+        private static float Lerp(float a,float b,float t)=>a+(b-a)*t;
+        private static float Sin(float x)=>(float)Math.Sin(x);
+        private const float PI=(float)Math.PI;
         public static float Hash(uint seed,int k){uint h=seed*0x9E3779B1u^(uint)k*0x85EBCA77u;h^=h>>15;h*=0x2C1B3C6Du;h^=h>>12;return (h&0xffffff)/16777216f;}
         private static Vector3 Flat(Vector3 v){v.Y=0;float l=v.Length();return l>1e-5f?v/l:Vector3.UnitZ;}
+        private static float FlatLength(Vector3 v){v.Y=0;return v.Length();}
 
         /// <summary>The door's candidate spot k (0..7) round the pieces' middle `centre` (`radius` their spread): eight directions from a seeded
         /// start; the Runtime keeps the first with floor under it and nothing in the way. `yaw` (degrees) turns the door's mouth to the middle.</summary>
@@ -44,88 +56,160 @@ namespace ChipArena.UnityConversion
             float a=Hash(seed,1)*6.2831853f+k*.7853982f;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));
             yaw=(float)(Math.Atan2(-d.X,-d.Z)*180/Math.PI);return centre+d*(radius+DoorAway);
         }
-        /// <summary>How far the door has risen out of the floor (0..1) and how open it is (0..1) at effect age `t`, the last friend in at `last`;
-        /// false once it has sunk away (or before it rises).</summary>
+        /// <summary>When the door slams behind the last friend (in at `last`).</summary>
+        public static float ShutAt(float last)=>Math.Max(Opened,last+.03f);
+        /// <summary>How far the door has risen out of the floor (0..1) and how open it is (0..1; a slam, then it bounces open a crack) at effect
+        /// age `t`, the last friend in at `last`; false once it has sunk away (or before it rises).</summary>
         public static bool Door(float t,float last,out float rise,out float open)
         {
-            rise=open=0;if(t<Settle)return false;float shutAt=Math.Max(Opened,last+.05f),downAt=shutAt+DoorShut;if(t>=downAt+DoorDown)return false;
+            rise=open=0;if(t<Settle)return false;float shutAt=ShutAt(last),downAt=shutAt+DoorShut+DoorBounce;if(t>=downAt+DoorDown)return false;
             rise=t<downAt?Ease((t-Settle)/DoorUp):1-Ease((t-downAt)/DoorDown);
-            open=t<Settle+DoorUp?0:t<shutAt?Ease((t-Settle-DoorUp)/DoorOpen):1-Smooth((t-shutAt)/DoorShut);return true;
+            if(t<Settle+DoorUp)open=0;
+            else if(t<shutAt)open=Ease((t-Settle-DoorUp)/DoorOpen);
+            else if(t<shutAt+DoorShut){float u=(t-shutAt)/DoorShut;open=1-u*u;}
+            else{float u=Clamp((t-shutAt-DoorShut)/DoorBounce);open=.12f*Sin(u*PI)*(1-u);}
+            return true;
         }
         /// <summary>When the door is gone: the effect is over.</summary>
-        public static float Over(float last)=>Math.Max(Opened,last+.05f)+DoorShut+DoorDown;
+        public static float Over(float last)=>ShutAt(last)+DoorShut+DoorBounce+DoorDown;
+        /// <summary>Whether the very last friend (in at `last` without it) has time to wave inside the body's five seconds.</summary>
+        public static bool WaveFits(float last)=>Over(last+Wave)<(float)NativeKillEffectRules.DeathSeconds-.1f;
 
-        /// <summary>One load's trip: when its file leaves the door, reaches it, has it up, is back at the door and has it through; `Floor` the
-        /// floor under it.</summary>
+        /// <summary>The stagger between the loads' files for `loads` loads: squeezed into StaggerSpan when there are many.</summary>
+        public static float Stagger(int loads)=>loads<=1?0:Math.Min(MostStagger,StaggerSpan/(loads-1));
+        /// <summary>One load's trip: when its file leaves the door, has gathered under it, has it up, is back at the door and has it through;
+        /// `Floor` the floor under it.</summary>
         public struct Trip{public float Leave,Arrive,Lifted,Back,In,Floor;}
-        /// <summary>The trip of the load `order`th nearest the door, `distance` m from it.</summary>
-        public static Trip Plan(int order,float distance,float floor)
+        /// <summary>The trip of the load `order`th nearest the door of `loads`, `distance` m from it, carried by `friends`.</summary>
+        public static Trip Plan(int order,int loads,float distance,int friends,float floor)
         {
-            float leave=Opened+order*Stagger,walk=Math.Min(MostWalk,Math.Max(.05f,distance)/Walk),carry=Math.Min(MostCarry,Math.Max(.05f,distance)/CarrySpeed);
-            return new Trip{Leave=leave,Arrive=leave+walk,Lifted=leave+walk+LiftTime,Back=leave+walk+LiftTime+carry,In=leave+walk+LiftTime+carry+Squeeze,Floor=floor};
+            float leave=Opened+order*Stagger(loads),run=Pop+Math.Min(MostRun,Math.Max(.05f,distance)/Run)+Math.Max(0,friends-1)*File*.5f,carry=Math.Min(MostCarry,Math.Max(.05f,distance)/CarrySpeed);
+            float arrive=leave+run;return new Trip{Leave=leave,Arrive=arrive,Lifted=arrive+LiftTime,Back=arrive+LiftTime+carry,In=arrive+LiftTime+carry+Squeeze,Floor=floor};
         }
-        /// <summary>When friend `j` of a trip is through the door (the last one closes it).</summary>
-        public static float InAt(in Trip trip,int j)=>trip.In+.04f+j*File;
 
         /// <summary>
-        /// The load at age `t`: from its rest middle `rest` to the door's mouth `mouth`; its middle `at`, its `scale` (1, to 0 as it squeezes
-        /// through) and the sway the friends' steps give it, `tilt` (radians about the carry's side). Held up LiftHeight while carried.
+        /// The friends' spots under a load (offsets on the floor from its middle), one for each of `n`: under the load's own pieces (`spots`,
+        /// their middles from the load's, `halves` their half-widths), spread evenly along the carry (`toDoor`) and to both sides of each piece,
+        /// so every friend has something over it. Called once a load (it allocates).
+        /// </summary>
+        public static Vector3[] Slots(Vector3[] spots,float[] halves,Vector3 toDoor,int n)
+        {
+            var dir=Flat(toDoor);var side=new Vector3(dir.Z,0,-dir.X);var slots=new Vector3[Math.Max(0,n)];int m=spots?.Length??0;
+            if(m==0){for(int j=0;j<n;j++){float a=(j+.5f)/Math.Max(1,n)*6.2831853f;slots[j]=dir*((float)Math.Cos(a)*.1f)+side*((float)Math.Sin(a)*.1f);}return slots;}
+            var order=new int[m];for(int i=0;i<m;i++)order[i]=i;Array.Sort(order,(a,b)=>Vector3.Dot(spots[a],dir).CompareTo(Vector3.Dot(spots[b],dir)));
+            var taken=new int[m];
+            for(int j=0;j<n;j++)
+            {
+                int r=Math.Min(m-1,(int)((j+.5f)*m/n)),k=order[r];int c=taken[k]++;var at=spots[k];at.Y=0;
+                float half=halves!=null&&k<halves.Length?halves[k]:.06f,off=Math.Min(.08f,Math.Max(.03f,half*.5f));
+                // Each piece's first friend to one side, its second to the other, any more along it.
+                float across=(r+c)%2==0?off:-off,along=c<2?0:((c/2)%2==1?1:-1)*.08f*((c+2)/4);
+                slots[j]=at+side*across+dir*along;
+            }
+            return slots;
+        }
+        /// <summary>When friend `j` of a trip is through the door (the last one shuts it), its spot `slot` under the load; `waves` the very
+        /// last friend of all, who turns on the step and waves first.</summary>
+        public static float InAt(in Trip trip,int j,Vector3 slot,bool waves)=>trip.Back+.04f+j*File+Math.Max(.06f,FlatLength(slot)/Run)+Dive+(waves?Wave:0);
+
+        /// <summary>
+        /// The load at age `t`: from its rest middle `rest` to the door's mouth `mouth`; its middle `at`, its `scale` (1, to 0 as it is
+        /// stuffed through) and its sway (`tilt`, radians about the carry's side): still while the friends crouch, heaved up overhead with an
+        /// overshoot, bobbing with their steps as it is carried, then pulled wobbling into the doorway and away.
         /// </summary>
         public static void Load(in Trip trip,Vector3 rest,Vector3 mouth,float t,out Vector3 at,out float scale,out float tilt)
         {
             at=rest;scale=1;tilt=0;if(t<trip.Arrive)return;
-            if(t<trip.Lifted){float u=(t-trip.Arrive)/LiftTime;at=rest+Vector3.UnitY*(LiftHeight*Ease(u));tilt=.07f*(float)Math.Sin(u*9)*(1-u);return;}
+            if(t<trip.Lifted)
+            {
+                float c=(t-trip.Arrive)/Crouch;if(c<1){tilt=.025f*Sin(c*PI*4);return;}
+                float u=(t-trip.Arrive-Crouch)/Heave,up=u<.7f?1.12f*Ease(u/.7f):1.12f-.12f*Smooth((u-.7f)/.3f);
+                at=rest+Vector3.UnitY*(LiftHeight*up);tilt=.08f*Sin(u*PI*3)*(1-u);return;
+            }
             var flat=mouth-rest;flat.Y=0;float length=flat.Length();
             if(t<trip.Back)
             {
-                float u=(t-trip.Lifted)/Math.Max(1e-3f,trip.Back-trip.Lifted),s=Smooth(u),steps=length*s/Stride;
-                at=rest+flat*s+Vector3.UnitY*(LiftHeight+.012f*(float)Math.Abs(Math.Sin(steps*Math.PI)));tilt=.05f*(float)Math.Sin(steps*Math.PI);return;
+                float u=(t-trip.Lifted)/Math.Max(1e-3f,trip.Back-trip.Lifted),s=Smooth(u),steps=length*s/CarryStride;
+                at=rest+flat*s+Vector3.UnitY*(LiftHeight+.016f*Math.Abs(Sin(steps*PI)));tilt=.06f*Sin(steps*PI);return;
             }
-            // Through the door: pushed into its mouth, squashed small as it goes.
-            float q=Clamp((t-trip.Back)/Squeeze);var inside=mouth+Flat(flat)*.12f+Vector3.UnitY*Math.Min(DoorHeight*.4f,Math.Max(.06f,rest.Y-trip.Floor));
-            var from=rest+flat+Vector3.UnitY*LiftHeight;at=Vector3.Lerp(from,inside,Smooth(q));scale=1-Smooth(q);
+            // Stuffed through the door: pulled into its mouth faster and faster, wobbling, shrinking away.
+            float q=Clamp((t-trip.Back)/Squeeze);var inside=mouth+Flat(flat)*.14f+Vector3.UnitY*Math.Min(DoorHeight*.35f,Math.Max(.06f,rest.Y-trip.Floor));
+            var from=rest+flat+Vector3.UnitY*LiftHeight;at=Vector3.Lerp(from,inside,q*q);scale=q>=1?0:1-(float)Math.Pow(q,1.4f);tilt=.12f*Sin(q*PI*3)*(1-q);
         }
-        /// <summary>Where friend `j` of `n` stands round a load `size` m across (an offset on the floor from its middle), the carry along
-        /// `toDoor`: round the edge, a little under it.</summary>
-        public static Vector3 Slot(int j,int n,float size,Vector3 toDoor)
-        {
-            float r=Math.Max(.1f,size*.4f),a=(j+.5f)/Math.Max(1,n)*6.2831853f;var f=Flat(toDoor);var side=new Vector3(f.Z,0,-f.X);
-            return f*((float)Math.Cos(a)*r)+side*((float)Math.Sin(a)*r*.85f);
-        }
+
+        /// <summary>A friend's pose: its `Feet` and `Facing` (flat, unit); `Step` its stride's phase (cycles: two steps each) and `Standing`
+        /// (feet together, no stride); `Hold` how high its arms are (0..1) and `Arms` which model (swinging, up, waving); `Scale` (popping
+        /// out of the door, shrinking into it); `Lean` forward (radians, negative back), `Hop` off the floor (m), `Squash` (its height's
+        /// share, the width taking the rest) and `Roll` (a waddle's sway, radians about its facing).</summary>
+        public struct Pose{public Vector3 Feet,Facing;public float Step,Hold,Scale,Lean,Hop,Squash,Roll;public bool Standing;public int Arms;}
+        private static float Bounce(float steps)=>Math.Abs(Sin(steps*PI));
         /// <summary>
-        /// Friend `j` of `n` on a load's trip at age `t`: its `feet`, its `facing` (flat, unit), how far it has walked (`walked`, m: its stride's
-        /// phase), how high its arms are (`hold`, 0 swinging .. 1 up under the load) and its `scale` (popping out of the door, shrinking into
-        /// it). False before it comes out and after it has gone in.
+        /// Friend `j` of `n` on a load's trip at age `t`, its spot `slot` under the load (from <see cref="Slots"/>), the load from its rest
+        /// middle `rest` to the door's mouth `mouth`; `waves` for the very last friend of all. False before it comes out and after it has
+        /// gone in.
         /// </summary>
-        public static bool Friend(in Trip trip,int j,int n,Vector3 rest,Vector3 mouth,float size,float t,out Vector3 feet,out Vector3 facing,out float walked,out float hold,out float scale)
+        public static bool Friend(in Trip trip,int j,int n,Vector3 rest,Vector3 mouth,Vector3 slot,bool waves,float t,out Pose p)
         {
-            feet=mouth;facing=Vector3.UnitZ;walked=hold=0;scale=1;float leave=trip.Leave+j*File;if(t<leave||t>=InAt(trip,j))return false;
-            var toDoor=mouth-rest;toDoor.Y=0;var slot=Slot(j,n,size,toDoor);var stand=new Vector3(rest.X,trip.Floor,rest.Z)+slot;float far=Vector3.Distance(mouth,stand);
-            float arrive=Math.Max(leave+.05f,trip.Arrive-.02f+j*.01f);
-            if(t<arrive)
+            p=new Pose{Facing=Vector3.UnitZ,Scale=1,Squash=1,Feet=mouth};
+            float leave=Math.Min(trip.Leave+j*File,trip.Arrive-.1f),inAt=InAt(trip,j,slot,waves);if(t<leave||t>=inAt)return false;
+            var toDoor=mouth-rest;toDoor.Y=0;var dir=Flat(toDoor);
+            var door=new Vector3(mouth.X,trip.Floor,mouth.Z);var stand=new Vector3(rest.X+slot.X,trip.Floor,rest.Z+slot.Z);
+            if(t<trip.Arrive)
             {
-                float u=Clamp((t-leave)/(arrive-leave));feet=Vector3.Lerp(mouth,stand,u);facing=Flat(stand-mouth);walked=far*u;scale=.55f+.45f*Ease((t-leave)/.1f);return true;
+                // Out of the door with a hop, then a dash to its spot, leaning into it, scurrying, skidding to a stop.
+                float u=(t-leave)/Math.Max(.05f,trip.Arrive-leave),s=1-(float)Math.Pow(1-u,1.6f),pop=Clamp((t-leave)/Pop);
+                var path=stand-door;float far=path.Length();var pd=far>1e-4f?path/far:-dir;var ps=new Vector3(pd.Z,0,-pd.X);
+                p.Feet=door+path*s+ps*(.035f*Sin(s*PI*3)*(1-s));p.Facing=pd;p.Step=far*s/(2*RunStride);p.Arms=ArmsSwing;
+                float b=Bounce(far*s/RunStride);p.Hop=pop<1?.07f*Sin(pop*PI):.022f*b;p.Squash=pop<1?1:.9f+.2f*b;p.Scale=.5f+.5f*Ease(pop);p.Lean=.35f;
+                float skid=(t-(trip.Arrive-Skid))/Skid;if(skid>0){p.Lean=Lerp(.35f,-.3f,Ease(skid));p.Squash=.88f;p.Hop=0;}
+                return true;
             }
-            walked=far;
-            if(t<trip.Lifted){feet=stand;facing=Flat(rest-stand);hold=Ease((t-arrive)/Math.Max(.05f,trip.Lifted-arrive));walked+=(t-arrive)*.3f;return true;}
-            Load(trip,rest,mouth,Math.Min(t,trip.Back),out var at,out _,out _);
-            var under=new Vector3(at.X,trip.Floor,at.Z)+slot;
-            if(t<trip.Back){feet=under;facing=Flat(toDoor);hold=1;walked+=Vector3.Distance(new Vector3(rest.X,0,rest.Z),new Vector3(at.X,0,at.Z));return true;}
-            // In after the load, in a file, shrinking as they pass the mouth.
-            float q=Clamp((t-trip.Back)/Math.Max(.05f,InAt(trip,j)-trip.Back));feet=Vector3.Lerp(under,mouth+Flat(toDoor)*.05f,Smooth(q));facing=Flat(toDoor);
-            hold=1-q;walked+=toDoor.Length()+q*.3f;scale=1-Smooth((q-.55f)/.45f);return true;
+            if(t<trip.Lifted)
+            {
+                // Crouched under it, arms reaching up, then the heave.
+                p.Feet=stand;var face=rest-stand;face.Y=0;p.Facing=face.LengthSquared()>1e-4f?Flat(face):dir;p.Standing=true;
+                float c=(t-trip.Arrive)/Crouch;
+                if(c<1){p.Squash=1-.2f*Ease(c);p.Hold=Ease(c);p.Lean=.15f*c;p.Arms=p.Hold>.5f?ArmsUp:ArmsSwing;}
+                else{float h=(t-trip.Arrive-Crouch)/Heave;p.Squash=h<.5f?.8f+.64f*h:1.12f-.24f*(h-.5f);p.Hop=.03f*Sin(Clamp(h)*PI);p.Hold=1;p.Arms=ArmsUp;}
+                return true;
+            }
+            if(t<trip.Back)
+            {
+                // Carrying: a quick waddle under the load to the door.
+                Load(trip,rest,mouth,t,out var at,out _,out _);float carried=FlatLength(at-rest),steps=carried/CarryStride;
+                p.Feet=new Vector3(at.X+slot.X,trip.Floor,at.Z+slot.Z);p.Facing=dir;p.Step=carried/(2*CarryStride);p.Hold=1;p.Arms=ArmsUp;
+                float b=Bounce(steps);p.Roll=.16f*Sin(steps*PI);p.Hop=.012f*b;p.Squash=1-.06f*b;p.Lean=.1f;return true;
+            }
+            // The load in: it lets go and dashes for the door, diving in after it (the last of all turns on the step and waves first).
+            float go=trip.Back+.04f+j*File,run=Math.Max(.06f,FlatLength(slot)/Run);var under=door+new Vector3(slot.X,0,slot.Z);var step=door-dir*.1f;var target=waves?step:door-dir*.03f;
+            if(t<go){p.Feet=under;p.Facing=dir;p.Hold=1;p.Arms=ArmsUp;p.Standing=true;return true;}
+            if(t<go+run)
+            {
+                float u=(t-go)/run;var path=target-under;float far=path.Length();p.Feet=under+path*u;p.Facing=far>1e-3f?Flat(path):dir;p.Step=far*u/(2*RunStride);
+                float b=Bounce(far*u/RunStride);p.Hop=.022f*b;p.Squash=.9f+.2f*b;p.Lean=.45f;p.Arms=ArmsSwing;return true;
+            }
+            if(waves&&t<go+run+Wave)
+            {
+                float w=(t-go-run)/Wave;p.Feet=step;p.Facing=-dir;p.Standing=true;p.Arms=ArmsWave;p.Step=w*2.5f;p.Hop=.012f*Bounce(w*5);return true;
+            }
+            // The dive: a hop through the doorway head first, arms out ahead, shrinking as it passes the mouth.
+            float q=Clamp((t-go-run-(waves?Wave:0))/Dive);var into=door+dir*.12f;
+            p.Feet=Vector3.Lerp(target,into,q);p.Facing=dir;p.Hop=.09f*Sin(q*PI);p.Lean=.5f+.9f*q;p.Arms=ArmsUp;p.Hold=1;p.Standing=true;p.Scale=1-Smooth((q-.35f)/.65f);
+            return true;
         }
-        /// <summary>The walk frame (0..WalkFrames-1) for a distance walked.</summary>
-        public static int Frame(float walked)=>(int)((walked/(2*Stride)*WalkFrames%WalkFrames+WalkFrames)%WalkFrames);
+        /// <summary>The model for a pose: its frame (a stride frame, or the standing one; a wave's frame is its hand's) and its arms.</summary>
+        public static int Frame(in Pose p)=>p.Arms==ArmsWave?Phase(p.Step):p.Standing?WalkFrames:Phase(p.Step);
+        private static int Phase(float cycles)=>(int)(((cycles%1)+1)%1*WalkFrames)%WalkFrames;
 
         // ---- the models (NativeFallenKit, sRGB hex colours, the Top Dog's toon palette) ----
         /// <summary>A friend: a hot dog stood on end in its bun, googly eyes on the sausage, stick legs and arms in white gloves, its feet at the
-        /// origin facing +z. `frame` is the stride (WalkFrames to a step pair), `hold` the arms (0 swinging, 1 up over its head).</summary>
-        public static NativeFallenKit Friend(int frame,float hold,int tier=0)
+        /// origin facing +z. `frame` is the stride (WalkFrames to a step pair; WalkFrames itself stands, feet together), `arms` pumping as it
+        /// runs, up over its head (palms up, a load on them) or the right one waving (its frame the wave's, the legs standing).</summary>
+        public static NativeFallenKit Friend(int frame,int arms,int tier=0)
         {
-            var k=new NativeFallenKit();float s=.78f,hip=.068f,phase=frame*2*(float)Math.PI/WalkFrames;int seg=tier>0?5:7;
+            var k=new NativeFallenKit();float s=.78f,hip=.068f;bool stand=frame>=WalkFrames||arms==ArmsWave;float phase=(frame%WalkFrames)*2*(float)Math.PI/WalkFrames;int seg=tier>0?5:7;
             var body=Matrix4x4.CreateScale(s)*Matrix4x4.CreateRotationX((float)Math.PI/2)*Matrix4x4.CreateTranslation(0,hip+NativeTopDogModels.DogLength*s*.5f,0);
-            NativeTopDogModels.HotDog(k,body,phase*.5f,.25f,0,1,tier,true);
+            NativeTopDogModels.HotDog(k,body,stand?0:phase*.5f,stand?.12f:.25f,0,1,tier,true);
             // The eyes, high on the sausage's front, and their pupils looking ahead.
             float ey=hip+NativeTopDogModels.DogLength*s*.8f,ez=NativeTopDogModels.SausageRadius*s+.004f;
             foreach(float side in new[]{-1f,1})
@@ -135,21 +219,30 @@ namespace ChipArena.UnityConversion
             }
             // A grin under them.
             var grin=new List<Vector3>();for(int i=0;i<=6;i++){float a=(i/6f-.5f)*1.6f;grin.Add(new Vector3((float)Math.Sin(a)*.012f,ey-.022f-.004f*(float)Math.Cos(a),ez+.001f));}k.Tube(grin,.0022f,4,NativeTopDogModels.Ink,line:false);
-            // The legs: hips to feet, swinging through the stride, a shoe on each.
+            // The legs: hips to feet; running, a long stride with the knee thrown up as each foot comes through; standing, side by side.
             foreach(float side in new[]{-1f,1})
             {
-                float swing=(float)Math.Sin(phase+(side>0?0:Math.PI)),lift=Math.Max(0,(float)Math.Cos(phase+(side>0?0:Math.PI)))*.014f;
-                var hipAt=new Vector3(side*.02f,hip,0);var foot=new Vector3(side*.022f,.01f+lift,swing*.032f);var knee=(hipAt+foot)*.5f+new Vector3(0,0,.006f);
+                float off=side>0?0:(float)Math.PI,swing=stand?0:(float)Math.Sin(phase+off),up=stand?0:Math.Max(0,(float)Math.Cos(phase+off));
+                var hipAt=new Vector3(side*.02f,hip,0);var foot=new Vector3(side*.022f,.01f+up*.022f,swing*.045f);var knee=(hipAt+foot)*.5f+new Vector3(0,up*.012f,.008f+up*.016f);
                 k.Tube(new[]{hipAt,knee,foot},.0062f,seg,NativeTopDogModels.Ink);
                 k.Ellipsoid(foot+new Vector3(0,-.002f,.008f),Vector3.UnitX*.011f,Vector3.UnitY*.008f,Vector3.UnitZ*.017f,tier>0?6:8,tier>0?4:5,NativeTopDogModels.Red);
             }
-            // The arms: from the bun's sides, swinging when it walks, up over its head (palms up) when it carries.
+            // The arms from the bun's sides: pumping, bent at the elbow, against the legs; up over the head; or the right waving overhead.
             float shoulder=hip+NativeTopDogModels.DogLength*s*.62f;
             foreach(float side in new[]{-1f,1})
             {
-                float swing=(float)Math.Sin(phase+(side>0?Math.PI:0));var sh=new Vector3(side*.036f,shoulder,0);
-                var down=new Vector3(side*.05f,shoulder-.075f,swing*.03f);var up=new Vector3(side*.03f,shoulder+.1f,.012f);var hand=Vector3.Lerp(down,up,hold);
-                var elbow=(sh+hand)*.5f+new Vector3(side*.016f*(1-hold*.5f),0,0);
+                var sh=new Vector3(side*.036f,shoulder,0);Vector3 elbow,hand;
+                if(arms==ArmsUp||arms==ArmsWave&&side>0)
+                {
+                    float wave=arms==ArmsWave?(float)Math.Sin(phase)*.028f:0;
+                    hand=new Vector3(side*.03f+wave,shoulder+.1f,.012f);elbow=(sh+hand)*.5f+new Vector3(side*.012f,0,0);
+                }
+                else if(arms==ArmsWave){hand=new Vector3(side*.05f,shoulder-.075f,0);elbow=(sh+hand)*.5f+new Vector3(side*.012f,0,0);}
+                else
+                {
+                    float swing=stand?0:(float)Math.Sin(phase+(side>0?Math.PI:0));
+                    elbow=new Vector3(side*.048f,shoulder-.04f,-swing*.03f);hand=new Vector3(side*.046f,shoulder-.035f+.012f*Math.Max(0,swing),.028f+swing*.035f);
+                }
                 k.Tube(new[]{sh,elbow,hand},.0052f,seg,NativeTopDogModels.Ink);
                 k.Ellipsoid(hand,Vector3.UnitX*.011f,Vector3.UnitY*.01f,Vector3.UnitZ*.011f,tier>0?6:8,tier>0?4:5,NativeTopDogModels.White);
             }

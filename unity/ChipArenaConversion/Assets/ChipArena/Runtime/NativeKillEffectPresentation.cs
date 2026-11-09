@@ -58,6 +58,8 @@ namespace ChipArena.UnityConversion
         private bool Shown(int b)=>!IsCrushed(Anchor[b]);
         internal bool Crushed=>CrushPart>=0&&Parts.ContainsKey(CrushPart);
         /// <summary>The slice's further stump fountains (a cleave's second and third cuts, a crush beside a cut), each on its part.</summary>
+        /// <summary>How much of fountain `index`'s part is left (0 the main one; 1 unless Hotdog Friends are carrying it through the door).</summary>
+        internal float SprayShare(int index){int part=index==0?sprayPart:index-1<extraPart.Length?extraPart[index-1]:-1;return part>=0?FriendsShare(part):1;}
         internal NativeKillSpray[] ExtraSprays=Array.Empty<NativeKillSpray>();private int[] extraPart=Array.Empty<int>();private Vector3[] extraPoint=Array.Empty<Vector3>(),extraNormal=Array.Empty<Vector3>();
         private int[] splatsSeen=new int[1];
         /// <summary>How many of fountain `index`'s landings (0 the main one) the persistent splats have taken (Runtime/NativeBloodPresentation).</summary>
@@ -309,7 +311,8 @@ namespace ChipArena.UnityConversion
         }
         private void KillSpray(NativeCorpse corpse,NativeKillSpray spray,int index,float age,float alpha,float now)
         {
-            if(spray==null)return;KillSplats(corpse,spray,index,now);if(alpha<=.001f)return;spray.Update(age);float glow=spray.Glow?.3f:0;
+            // A Hotdog Friends piece stuffed through the door takes its fountain's drops with it (NativeHotdogFriendsPresentation.cs).
+            if(spray==null)return;KillSplats(corpse,spray,index,now);if(corpse.FriendsCarried)alpha*=corpse.SprayShare(index);if(alpha<=.001f)return;spray.Update(age);float glow=spray.Glow?.3f:0;
             // Realistic blood (owner 2026-11-09: "It looks like we still have "voxel" blood. I want it to look more realistic"): each drop
             // is the wound blood's wet teardrop along its flight (BloodFx draws them), and its landings stain the arena as the wounds'
             // do (KillSplats); the source's faceted spheres and flat disks are only the fallback without the effects renderer.

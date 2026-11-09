@@ -1,3 +1,37 @@
+## 2026-11-09 — Claude: no guard shield, the parry's hexagon barrier, the feast's victim struggling, Hotdog Friends fixed and reanimated, the Top Dog's icon, its casts on the move (owner request; look)
+
+- Branch `claude/top-dog`, on shared `8adf477e`.
+- **The owner:** "We dont need to show a shield when blocking (Via right click) Just the block animation."; "pressing F; Lets add more of an effect rather that just turning character a color. Make it high quality, animated, and visible. Maybe like hexagon barriers?"; "For the ultimate on top dog, give more of a visual effect when the character is wrapped by sausaged, like their arms are downwards, and they're struggling to get out."; "For hot dog friends, I notice some hotdogs pickup nothing, fix this ... animate this a lot better ... We want comical hotdog runs and running away into the door. (They also dont bring things in the door, they kind of just leave them out)"; "Rework "Topdog" icon to be a Hotdog smiling"; "Fix top dogs abilities to account for running. Currently when they cast abilities while running, they start sliding".
+- **No guard shield:** `NativeGuardShieldPresentation.cs` and `NativeGuardShield.shader` are gone. The held guard is the block pose alone; a blocked blow's sparks stay.
+- **The parry's hexagon barrier** (Core `NativeParryBarrier.cs`, Resources `NativeParryBarrier.shader`, Runtime `NativeParryBarrierPresentation.cs`):
+  - A dome of separate hex cells (a geodesic sphere's dual: 362 cells, 162 on Low graphics) round the parrying pilot, in its accent.
+  - The cells snap in with an overshoot from the pilot's front round to its back, then breathe and flicker. A band of light climbs the dome.
+  - A parried blow lights the cells round it white and sends a ring of pushed-out cells across the dome.
+  - The cells burst outward and fade as the window shuts. The body's own hologram glows at half under it. A first-person pilot's own dome is at 0.3.
+  - No asset pack in the project has a hex shield (checked KriptoFX, OrdosFX, AdvancedDissolve and the rest), so it is built in code.
+- **The feast's victim** (Core `NativeTopDog.Bound`, `Strain`; Runtime `NativeTopDogPresentation.cs` `DogStruggle`; Core `NativeTopDogFx.cs`):
+  - From the catch to the let-go the arms are pinned straight down the sides by IK. The chest twists and rocks, the elbows shove out and the shoulders heave in jerks.
+  - The links wrap three times round chest, arms and belly on the spine as it twists, bulging where the elbows push.
+  - Strain lines flick off the sides on each heave, sweat flies off the head and the feet scuff dust.
+- **Hotdog Friends** (Core `NativeHotdogFriends.cs`, Runtime `NativeHotdogFriendsPresentation.cs`, `NativeVisualBodyPresentation.cs` `VisualCorpseFriendsScale`):
+  - Why some carried nothing: a crushed part (drawn as its fragments) and a weapon with no model were loads. Only shown pieces are loads now, and each friend stands under one of its load's own pieces (`Slots`), not round the joints' average.
+  - Why nothing went in: the model's bones took their parts' place and turn but not their scale, so a piece stuffed through the door stayed full size outside. Each loose piece's first bone now takes its part's share.
+  - The animation: friends hop out of the door, dash leaning forward with a bouncing squash-and-stretch stride and a scurry, skid to a stop, crouch, heave the load overhead, waddle it back and stuff it through. Then they dash for the door and dive in head first.
+  - When there is time, the very last friend turns on the step and waves. The door slams, bounces a crack and sinks. There are puffs on each skid, each dive and the slam.
+  - It all ends inside the body's five seconds, at the most loads too (the wave is dropped when it would not fit).
+  - A cut piece's stump fountain fades with it as it goes through.
+- **The Top Dog's icon** (`tools/export_class_icons.mjs` `spec-topdog`, `ClassIcons.json`): a smiling hot dog stood in its bun, googly eyes and tongue out, with a small drawing. Node is not on this machine, so the JSON was written by a Python port of the exporter's geometry, checked byte for byte against three existing icons. The Bombadier still uses the stock bomb.
+- **Casting on the move** (Core `NativeVisualMotion.cs` `DogArms`, `DogUpper`): the Top Dog's arm casts take the whole body only standing on the ground. Running or in the air, the legs keep the stride, jump or fall and the cast plays on the upper body.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The casts keep their clips and moments; only which body half plays them changed.
+- **Checks:** CoreTests `--guard` (1074, the barrier's cells and moments), `--top-dog` (5127, casts on the move and the struggle), `--hotdog-friends` (381), the class icon checks in the full suite; the Unity compile.
+- **Seen in the Editor:**
+  - a guarding bot taking blows with the block pose alone
+  - the parry's dome snapping in, holding through a parried blow and bursting (before and after thinning its fill)
+  - the feast's victim pinned and struggling in the links (front, side and the feast's own camera, with the sweat)
+  - Hotdog Friends on a melee kill: the friends dash out, lift and carry the body, stuff it through, follow it in; the door shuts and sinks, nothing left behind
+- **Not seen:** the Top Dog casting on the move (in the capture tool the Top Dog does not move at all, neither the local pilot nor a bot, as noted 2026-11-09; the checks cover the poses); the friends' wave and dive close up; the strain lines up close.
+- **Not run:** no person, no two real clients.
+
 ## 2026-11-09 — Claude: the new controls (F parry, right-click aim or guard), the parry hologram and guard shield, the sprint effect, the Top Dog's dash and slam, realistic blood, Hotdog Friends, the Hot Dog's grip (owner request; rules and look)
 
 - Branch `claude/top-dog`. Design: `docs/TOP-DOG.md` (the kit's two new rows).

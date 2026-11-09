@@ -140,7 +140,7 @@ namespace ChipArena.UnityConversion
             {
                 case "orbital-drop":return "rocket";case "grid-rez":return "boxes";case "holo-projection":return "scan";case "blackout":return "eclipse";
                 case "skyline-zip":return "spline";case "hero-landing":return "chevrons-down-up";case "overclock":return "cpu";
-                case "dev-siren":return "skull";case "dev-emperor":return "cloud-lightning";case "dev-ansatsuken":return "hand-fist";case "dev-matrix":return "terminal";case "sheldon-intro":return "scan-line";case "dev-cyberlord":return "diamond";case NativeBombs.Entrance:return "bomb";case NativeTopDog.Entrance:return "hammer";
+                case "dev-siren":return "skull";case "dev-emperor":return "cloud-lightning";case "dev-ansatsuken":return "hand-fist";case "dev-matrix":return "terminal";case "sheldon-intro":return "scan-line";case "dev-cyberlord":return "diamond";case NativeBombs.Entrance:return "bomb";case NativeTopDog.Entrance:return "spec-topdog";
             }
             return null;
         }

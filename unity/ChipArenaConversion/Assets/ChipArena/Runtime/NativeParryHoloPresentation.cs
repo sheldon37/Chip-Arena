@@ -15,6 +15,9 @@ namespace ChipArena.UnityConversion
         private sealed class ParryHolo{public SkinnedMeshRenderer[] From,Copies;public MaterialPropertyBlock Block;public bool On;}
         private readonly Dictionary<GameObject,ParryHolo> parryHolos=new Dictionary<GameObject,ParryHolo>();
         private static Material parryHoloMaterial;private static bool parryHoloFailed;
+        /// <summary>The body's glow under the hexagon barrier (NativeParryBarrierPresentation.cs; owner 2026-11-09: "more of an effect rather
+        /// that just turning character a color"): a soft share of it.</summary>
+        public const float ParryHoloUnder=.5f;
         private static readonly int HoloColorId=Shader.PropertyToID("_HoloColor"),HoloFadeId=Shader.PropertyToID("_HoloFade"),HoloAgeId=Shader.PropertyToID("_HoloAge"),
             HoloFlashId=Shader.PropertyToID("_HoloFlash"),HoloHitId=Shader.PropertyToID("_HoloHit"),HoloSpanId=Shader.PropertyToID("_HoloSpan");
         /// <summary>The barrier's strength at `time` for a window opened at `at` and closing at `until`: up over 0.06 s, out over 0.15 s
@@ -39,7 +42,7 @@ namespace ChipArena.UnityConversion
             // A parried blow: the latest Block event this pilot made, its age and where it landed.
             float flash=-1;Vector3 hit=Vector3.zero;foreach(var r in blockRecords)if(r.Blocker==a.Id&&r.At<=time&&r.At>=a.BlockAt-.05f&&(flash<0||time-r.At<flash)){flash=time-r.At;hit=r.Point;}
             var accent=AccentTint(a.AccentColor);var colour=new Color(accent.r*.45f+.1f,accent.g*.45f+.45f,accent.b*.45f+.6f)*1.1f;
-            float feet=body.Root.transform.position.y;h.Block.SetColor(HoloColorId,colour.linear);h.Block.SetFloat(HoloFadeId,fade);h.Block.SetFloat(HoloAgeId,time-a.BlockAt);
+            float feet=body.Root.transform.position.y;h.Block.SetColor(HoloColorId,colour.linear);h.Block.SetFloat(HoloFadeId,fade*ParryHoloUnder);h.Block.SetFloat(HoloAgeId,time-a.BlockAt);
             h.Block.SetFloat(HoloFlashId,flash);h.Block.SetVector(HoloHitId,hit);h.Block.SetVector(HoloSpanId,new Vector4(feet,feet+1.9f,0,0));
             for(int i=0;i<h.Copies.Length;i++)
             {

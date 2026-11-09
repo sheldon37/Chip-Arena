@@ -30,6 +30,29 @@ internal static class GuardChecks
             &&game.Contains("bool aiming=ads!=null&&p.Weapon?.@class==\"ranged\"&&(Input.GetMouseButton(1)")&&game.Contains("pending.Block|=PadDown(PadAction.Block);"),"the keys: F parry, right click aim or guard (a pad's block button parries and guards)");
         Check(net.Contains("input.Parry|=taps.Parry;")&&pve.Contains("Pve.Content.machines.Any(x=>Flat(Vec(x.front.Position()))<=2.2f))p.Input.Interact=false;"),"a remote parry press is kept; a PvE revive or machine in reach takes F");
         Check(content.Contains("public ContentAds Ads(string spec) {if(ads!=null)foreach(var x in ads)if(x.spec==spec)return x;return null;}"),"every gun with an aim row aims");
-        Console.WriteLine("PASS guard: "+n+" checks (F parries unless an interaction takes it; right click aims a gun or guards a melee weapon; the guard's arc, share, stamina, break and walk)");
+        // The look (owner 2026-11-09): no shield on the held guard, the block pose alone; the parry a dome of hexagon cells round the body.
+        var blockFx=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeBlockFxPresentation.cs"));
+        Check(!File.Exists(Path.Combine(root,"Assets/ChipArena/Runtime/NativeGuardShieldPresentation.cs"))&&!File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeGuardShield.shader"))&&!blockFx.Contains("RenderGuardShields"),"the held guard shows no shield");
+        Check(blockFx.Contains("ObserveBlocks(s,time);RenderParryBarriers(s,time);")&&File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeParryBarrier.shader")),"the parry draws its barrier with the block effects");
+        foreach(int f in new[]{NativeParryBarrier.Low,NativeParryBarrier.Full})
+        {
+            var cells=NativeParryBarrier.Cells(f);int five=0,six=0;
+            foreach(var c in cells)
+            {
+                if(c.Corners.Length==5)five++;else if(c.Corners.Length==6)six++;
+                Check(Math.Abs(c.Middle.Length()-1)<1e-4f&&c.Seed>=0&&c.Seed<1,"a cell's middle on the sphere, its seed in range");
+                float near=float.MaxValue,far=0;for(int k=0;k<c.Corners.Length;k++){var e=c.Corners[k]-c.Corners[(k+1)%c.Corners.Length];near=Math.Min(near,e.Length());far=Math.Max(far,e.Length());}
+                Check(far<near*2.2f,"a cell's corners go round it in order (frequency "+f+")");
+            }
+            Check(cells.Length==10*f*f+2&&five==12&&six==cells.Length-12,"frequency "+f+": "+cells.Length+" cells, twelve pentagons and the rest hexagons");
+            var mesh=NativeParryBarrier.Build(f);Check(mesh.Cells==cells.Length&&mesh.P.Count==mesh.Uv.Count&&mesh.P.Count==mesh.Middle.Count&&mesh.T.Count==(five*5+six*6)*3,"its mesh: a fan for every cell");
+        }
+        var front=new System.Numerics.Vector3(0,0,1);
+        Check(NativeParryBarrier.Delay(front,front,0)==0&&NativeParryBarrier.Delay(-front,front,0)>NativeParryBarrier.Sweep*.99f,"the cells snap in from the pilot's front round to its back");
+        Check(NativeParryBarrier.In(0,0)==0&&NativeParryBarrier.In(NativeParryBarrier.Snap*.8f,0)>1&&NativeParryBarrier.In(NativeParryBarrier.Snap,0)==1,"each cell snaps in with an overshoot");
+        Check(NativeParryBarrier.Gone(-1,.5f)==0&&NativeParryBarrier.Gone(NativeParryBarrier.After+.001f,1)==1&&NativeParryBarrier.Gone(.05f,0)>0,"and bursts away after the window shuts");
+        var barrier=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativeParryBarrier.shader"));
+        Check(barrier.Contains("float delay=(1-dot(c,normalize(_Facing.xyz)))*.5*.13+seed*.035;float s=snapIn((_Age-delay)/.1);")&&barrier.Contains("saturate((_Closed-seed*.06)/.2)")&&NativeParryBarrier.Sweep==.13f&&NativeParryBarrier.Scatter==.035f&&NativeParryBarrier.Snap==.1f&&NativeParryBarrier.Burst==.2f&&NativeParryBarrier.BurstScatter==.06f,"the shader's moments are the Core's");
+        Console.WriteLine("PASS guard: "+n+" checks (F parries unless an interaction takes it; right click aims a gun or guards a melee weapon; the guard's arc, share, stamina, break and walk; no guard shield; the parry's hexagon barrier)");
     }
 }
