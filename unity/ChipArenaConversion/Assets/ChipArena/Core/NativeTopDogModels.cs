@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
         public const float DogLength=.26f,SausageRadius=.03f;
         /// <summary>A hot dog along +z (its middle at the origin, up +y), wiggling by `amp` (0 still, 1 squirming) at `phase` (rad). Only the part
         /// from `from` (0, the back end) to `to` (1, the front) is built, so one going into a mouth can lose its front as it goes.</summary>
-        public static void HotDog(NativeFallenKit k,Matrix4x4 m,float phase,float amp,float from=0,float to=1,int tier=0)
+        public static void HotDog(NativeFallenKit k,Matrix4x4 m,float phase,float amp,float from=0,float to=1,int tier=0,bool bun=true)
         {
             var d=new NativeFallenKit();int n=tier>0?9:16,seg=tier>0?7:11;from=Math.Max(0,Math.Min(1,from));to=Math.Max(from+.02f,Math.Min(1,to));
             Vector3 Centre(float s,float share){float w=amp*share*(float)Math.Sin(phase+s*7.5f)*(.35f+.65f*(float)Math.Sin(Math.PI*s));float h=amp*share*.35f*(float)Math.Sin(phase*1.3f+s*5f+1);return new Vector3(w*.045f,h*.02f,(s-.5f)*DogLength);}
@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
             d.Tube(pts,rad,seg,Sausage);
             // The bun: two soft halves under and either side of it, following its squirm a little less.
             float bf=Math.Max(from,.08f),bt=Math.Min(to,.92f);
-            if(bt>bf+.02f)foreach(float side in new[]{-1f,1})
+            if(bun&&bt>bf+.02f)foreach(float side in new[]{-1f,1})
             {
                 var rings=new List<Vector3[]>();var cc=new List<Vector3>();
                 for(int i=0;i<=n;i++){float s=bf+(bt-bf)*i/n;var c=Centre(s,.45f)+new Vector3(side*.024f,-.012f,0);float end=Math.Min(s-.08f,.92f-s)/.1f;float r=(float)Math.Sqrt(Math.Max(.03f,Math.Min(1,end)));rings.Add(NativeFallenKit.Ring(c,X,Y,.026f*r,.036f*r,seg));cc.Add(c);}
@@ -67,8 +67,22 @@ namespace ChipArena.UnityConversion
             }
             // The mustard: a zigzag along the top.
             var mp=new List<Vector3>();int zigs=tier>0?6:10;float mf=Math.Max(from,.1f),mt=Math.Min(to,.9f);
-            if(mt>mf+.02f){for(int i=0;i<=zigs*2;i++){float s=mf+(mt-mf)*i/(zigs*2f);var c=Centre(s,1);mp.Add(c+new Vector3((i%2==0?-1:1)*.017f,SausageRadius*.92f,0));}d.Tube(NativeFallenKit.Curve(mp,3),.0055f,tier>0?4:6,Mustard,line:false);}
+            if(bun&&mt>mf+.02f){for(int i=0;i<=zigs*2;i++){float s=mf+(mt-mf)*i/(zigs*2f);var c=Centre(s,1);mp.Add(c+new Vector3((i%2==0?-1:1)*.017f,SausageRadius*.92f,0));}d.Tube(NativeFallenKit.Curve(mp,3),.0055f,tier>0?4:6,Mustard,line:false);}
             d.Finish();k.Add(d,m);
+        }
+
+        /// <summary>A bare sausage stuck in a mouth (the feast, hand fed): `len` of its length showing (0..1), from the lips at the origin out
+        /// along -z, pinned at the lips, its free end squirming (`amp`) and sagging a little.</summary>
+        public static void Stuck(NativeFallenKit k,Matrix4x4 m,float phase,float amp,float len,int tier=0)
+        {
+            var d=new NativeFallenKit();int n=tier>0?8:14,seg=tier>0?7:11;len=Math.Max(.05f,Math.Min(1,len));float l=DogLength*len;
+            var pts=new List<Vector3>();var rad=new List<float>();
+            for(int i=0;i<=n;i++)
+            {
+                float s=i/(float)n,e=(float)Math.Pow(s,1.3f),x=amp*.07f*e*(float)Math.Sin(phase+s*5.5f),y=-.04f*s*s+amp*.03f*e*(float)Math.Sin(phase*1.4f+s*4+1);
+                pts.Add(new Vector3(x,y,-s*l));float end=(1-s)*l/(DogLength*.12f);rad.Add(SausageRadius*(float)Math.Sqrt(Math.Max(.08f,Math.Min(1,end))));
+            }
+            d.Tube(pts,rad,seg,Sausage);d.Finish();k.Add(d,m);
         }
 
         // ---- the anvil: its feet on y=0, its horn toward +z ----

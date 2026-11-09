@@ -6,12 +6,12 @@ using static ChipArena.UnityConversion.WeaponSculpt;
 namespace ChipArena.UnityConversion
 {
     // The Top Dog's mallet (owner 2026-11-08: "a cartoon mallet"; original geometry; docs/TOP-DOG.md): a toon mallet, swung two-handed as the
-    // greatsword is, in the blades' frame: the grip about the hand at the origin, the handle up +z, the head's barrel across it along x, so its
+    // greatsword is, in the blades' frame: the grip about the hand at the origin, the handle up +z, the head's barrel across it along y (in the swing's plane), so its
     // striking faces lead where a blade's edge would. A mustard knob, a red and white wrapped grip, a tan handle with a mustard collar, and a big
     // red barrel with mustard bands and domed cream faces. Reach: the grip is Rigid; the handle and head stretch from StretchBase to the tip socket.
     public static partial class NativeWeaponModels
     {
-        /// <summary>The head's middle up the handle (weapon frame, m), its barrel radius and half length (the faces are at x = +-HeadHalf).</summary>
+        /// <summary>The head's middle up the handle (weapon frame, m), its barrel radius and half length (the faces are at y = +-HeadHalf).</summary>
         public const float MalletHead=1.12f,MalletRadius=.2f,MalletHalf=.3f;
         static partial void Dogs(Dictionary<string,Design> d)
         {
@@ -29,8 +29,9 @@ namespace ChipArena.UnityConversion
             // The handle: tan wood, a little fatter toward the head, and a mustard collar where it meets it.
             k.Lathe(wood,new[]{.027f,g1,.029f,.55f,.032f,MalletHead-MalletRadius+.02f},k.Sides(10),1,0,false);
             k.Cylinder(mustard,.047f,MalletHead-MalletRadius-.03f,MalletHead-MalletRadius+.02f,k.Sides(12),.006f);
-            // The head: its barrel along x.
-            k.Push(Ry(Pi/2)*T(0,0,MalletHead));
+            // The head: its barrel along y, in the swing's plane, so a slam or a swing lands on a face (owner 2026-11-09: it smacked down on
+            // its side across x).
+            k.Push(Rx(Pi/2)*T(0,0,MalletHead));
             k.Lathe(red,new[]{.17f,-MalletHalf,.188f,-.24f,.198f,-.12f,MalletRadius,0,.198f,.12f,.188f,.24f,.17f,MalletHalf},k.Sides(22),1,0,false);
             for(int s=-1;s<=1;s+=2)
             {

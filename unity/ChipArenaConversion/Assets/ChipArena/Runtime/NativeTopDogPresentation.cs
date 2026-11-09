@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
                 dogPreview.Victim=near?.Id??0;if(near!=null){var np=visualPositions.TryGetValue(near.Id,out var nv)?nv:Vec(near.Position);dogPreview.VictimAt=new NVector(np.x,np.y,np.z);}
                 NativeDogView.Source=dogPreview;var feet=visualPositions.TryGetValue(me.Id,out var v)?v:Vec(me.Position);dogPreview.Step(me,new NVector(feet.x,feet.y,feet.z),me.Yaw*Mathf.Deg2Rad,time);}
             else if(dogPreview.Any)dogPreview.Clear();
-            dogVictims.Clear();dogMarks.Clear();dogNow=time;DogBodiesSweep();if(s?.Actors==null)return;
+            dogVictims.Clear();dogMarks.Clear();dogNow=time;HotDogFaceSource=hotDogFaceSource??=HotDogFaceMood;DogBodiesSweep();if(s?.Actors==null)return;
             foreach(var a in s.Actors)
             {
                 var k=a==null?null:NativeDogView.Of(a);if(k==null)continue;
@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
                 if(k.Marks!=null)foreach(var m in k.Marks)if(m!=null)dogMarks.Add((m.Id,m));
             }
         }
-        private void ClearDog(){dogPreview.Clear();if(ReferenceEquals(NativeDogView.Source,dogPreview)||ReferenceEquals(NativeDogView.Source,dogSnapshot))NativeDogView.Source=null;dogVictims.Clear();dogMarks.Clear();foreach(var kv in dogBodies)if(kv.Value.Warped)DogBelly(kv.Key,Vector4.zero,Vector4.zero);dogBodies.Clear();dogWarps.Clear();}
+        private void ClearDog(){dogPreview.Clear();if(ReferenceEquals(NativeDogView.Source,dogPreview)||ReferenceEquals(NativeDogView.Source,dogSnapshot))NativeDogView.Source=null;dogVictims.Clear();dogMarks.Clear();foreach(var kv in dogBodies)if(kv.Value.Warped)DogBelly(kv.Key,Vector4.zero,Vector4.zero);dogBodies.Clear();dogWarps.Clear();dogArms.Clear();dogFeedHands.Clear();}
         private static NativeDogMark DogMarkOn(int id,string kind,float time){foreach(var (who,m) in dogMarks)if(who==id&&m.Kind==kind&&time>=m.At&&time<m.Until)return m;return null;}
         /// <summary>The face's share of the feast for pilot `id` at `time` (VisualFacePilot): the mouth wide on each hot dog, stuffed after.</summary>
         internal static void TopDogFace(int id,float time,out float gobble,out float bloat)
@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The entrance's toon models in the Top Dog's shader, out of the source frame (x mirrored).</summary>
         private void DogIntroToons(NativeTopDogIntro intro,float t)
         {
-            dogPoolUsed=0;if(DogMaterials()==null)return;intro.Toons(t,dogIntroToons);int tier=LowGraphics?1:0;
+            hotDogIntroAge=t;hotDogIntroFrame=Time.frameCount;hotDogIntroId=dogIntroActor;HotDogFaceSource=hotDogFaceSource??=HotDogFaceMood;dogPoolUsed=0;if(DogMaterials()==null)return;intro.Toons(t,dogIntroToons);int tier=LowGraphics?1:0;
             foreach(var toon in dogIntroToons)
             {
                 var at=new Vector3(-toon.At.X,toon.At.Y,toon.At.Z);var q=new Quaternion(toon.Turn.X,-toon.Turn.Y,-toon.Turn.Z,toon.Turn.W);var m=Matrix4x4.TRS(at,q,Vector3.one*toon.Scale);
@@ -269,17 +269,30 @@ namespace ChipArena.UnityConversion
                 if(fade>.05f)DogDraw(DogLive(kit=>NativeTopDogModels.Links(kit,knots,tier)),Matrix4x4.identity);
             }
             // The hot dogs: pulled from behind the back, offered, pushed in wiggling.
+            // The sausages, bare (owner 2026-11-09): in the hand from the hip to the mouth (where the hand's IK put it, TopDogBody), pushed half
+            // in, stuck there squirming for a few seconds, several at once on their fan round the mouth, then slurped down; spat out on a snap.
             if(victim!=null&&f.Catch>-50&&DogMouth(victim,out var mouth,out var face))
             {
-                var inward=-face;
+                float l=DogHeld;bool posed=dogFeedHands.TryGetValue(caster.Id,out var hands)&&hands.frame==Time.frameCount;
                 for(int i=0;i<NativeTopDog.Feeds;i++)
                 {
-                    int st=NativeDogView.FeedPhase(f,i,time,out float move,out float into);if(st==0||st==3)continue;
-                    var hand=DogHand(caster,i%2==1);float wig=time*16+i*1.7f;Matrix4x4 m;float from=0,to=1;
-                    var front=mouth-inward*(NativeTopDogModels.DogLength*.5f);
-                    if(st==1){var c=Vector3.Lerp(hand,front,move*move*(3-2*move));var d=Vector3.Slerp((front-hand).sqrMagnitude>1e-4f?(front-hand).normalized:inward,inward,move);m=Look(c,d,Vector3.up,1.15f);}
-                    else{float l=NativeTopDogModels.DogLength*1.15f;m=Look(mouth+inward*(l*into-l*.5f),inward,Vector3.up,1.15f);to=1-into;}
-                    float amp=st==1?1:.8f;DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,wig,amp,from,to,tier)),m);
+                    int st=NativeDogView.FeedState(f,i,time,out float u);if(st==0)continue;
+                    var into=DogSlotDir(face,i);var lip=DogLip(mouth,face,i);float wig=time*(st==4?21:14)+i*1.7f;
+                    if(st<=2)
+                    {
+                        Vector3 hand;if(posed)hand=hands.right;else if(!DogFeedTarget(caster,f,0,time,out hand,out _,out _))hand=DogHand(caster,false);
+                        var aim=lip-hand;var dir=aim.sqrMagnitude>1e-4f?aim.normalized:into;if(st==2)dir=Vector3.Slerp(dir,into,u*u);
+                        float pop=st==1?Mathf.Clamp01((time-(NativeTopDog.OfferAt(f.FeedAt,i)-NativeTopDog.Appear))/.08f):1;
+                        DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,wig,1,0,1,tier,false)),Look(hand+dir*(l*.42f),dir,Vector3.up,DogFed*(.4f+.6f*pop)));
+                    }
+                    else if(st==3)DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,wig,.7f,0,1-.5f*u,tier,false)),Look(lip+into*(l*.5f*u-l*.5f),into,Vector3.up,DogFed));
+                    else if(st<=5){float showing=st==4?.5f:.5f*(1-u*u),amp=st==4?1.25f+.25f*Mathf.Sin(time*3+i):.5f;DogDraw(DogLive(kit=>NativeTopDogModels.Stuck(kit,NMatrix.Identity,wig,amp,showing,tier)),Look(lip,into,Vector3.up,DogFed));}
+                    else
+                    {
+                        // Spat out: flung off the lips, tumbling, to the floor.
+                        float t=u*NativeTopDog.Spit;var at=lip+(face*(2.4f+.3f*i)+Vector3.up*(1.6f+.2f*i)+Vector3.Cross(Vector3.up,face).normalized*((i%3-1)*.8f))*t-Vector3.up*(5*t*t);
+                        DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,wig,1,0,1,tier,false)),Matrix4x4.TRS(at,Quaternion.Euler(t*900+i*40,t*400,i*30),Vector3.one*DogFed*(1-Mathf.Clamp01((u-.8f)/.2f))));
+                    }
                 }
             }
         }
@@ -294,7 +307,7 @@ namespace ChipArena.UnityConversion
                 if(t<land){p=at+d*(sp*t)+Vector3.up*(up*t-11.5f*t*t+.4f);q=Quaternion.Euler(t*720+i*60,a*Mathf.Rad2Deg,t*300);}
                 else{float b=t-land;p=at+d*(sp*land+1.2f*b*(1-b))+Vector3.up*(Mathf.Max(0,1.2f*b-3*b*b)+.03f);q=Quaternion.Euler(0,a*Mathf.Rad2Deg+i*20,0);}
                 float fade=1-Mathf.Clamp01((age-1.2f)/.3f);if(fade<=.02f)continue;
-                DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,time*12+i,t<land?1:.5f,0,1,tier)),Matrix4x4.TRS(p,q,Vector3.one*1.15f*fade));
+                DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,time*12+i,t<land?1:.5f,0,1,tier,false)),Matrix4x4.TRS(p,q,Vector3.one*1.15f*fade));
             }
         }
         private static NVector V(Vector3 v)=>new NVector(v.x,v.y,v.z);
@@ -321,6 +334,7 @@ namespace ChipArena.UnityConversion
         /// and popping back.</summary>
         private void TopDogBody(VisualBody body,Actor a,float time)
         {
+            DogFeedArms(body,a,time);
             float belly=0,tremble=0,back=0,flat=0;
             if(dogVictims.TryGetValue(a.Id,out var v)){var f=v.feast;belly=NativeTopDog.Belly(f,time);tremble=NativeTopDog.Tremble(f,time);if(time<f.Release&&(f.Snap<-50||time<f.Snap))back=Mathf.Clamp01((time-f.Catch-.3f)/.3f)*(1-Mathf.Clamp01((time-f.Release+.15f)/.15f));}
             var pan=DogMarkOn(a.Id,NativeTopDog.Pancake,time);
@@ -353,12 +367,96 @@ namespace ChipArena.UnityConversion
                 DogBelly(body,bv,av);r.Warped=true;dogWarps[a.Id]=(bv,av);
             }
             else{if(r.Warped){DogBelly(body,Vector4.zero,Vector4.zero);r.Warped=false;}dogWarps.Remove(a.Id);}
-            // The head thrown back for the hot dogs, about the body's own right.
-            if(back>0&&r.Neck!=null&&r.Head!=null){var axis=body.Root.transform.right;r.Neck.rotation=Quaternion.AngleAxis(-14*back,axis)*r.Neck.rotation;r.Head.rotation=Quaternion.AngleAxis(-22*back,axis)*r.Head.rotation;}
+            // The face turned to the Top Dog's hands for the sausages, tipped a little back, mouth up to them (owner 2026-11-09: "literally
+            // animate opening the players mouth and just putting hotdogs in there"): the neck takes a share, the head the rest.
+            if(back>0&&r.Neck!=null&&r.Head!=null&&v.caster!=0)
+            {
+                var feet=visualPositions.TryGetValue(v.caster,out var cf)?cf:r.Head.position;var hands=feet+Vector3.up*1.35f;var to=hands-r.Head.position;to.y=0;
+                if(to.sqrMagnitude>1e-4f)
+                {
+                    var want=Quaternion.AngleAxis(-14,Vector3.Cross(Vector3.up,to.normalized))*to.normalized;
+                    var cur=r.Head.TransformDirection(Vector3.forward);r.Neck.rotation=Quaternion.Slerp(Quaternion.identity,Quaternion.FromToRotation(cur,want),.4f*back)*r.Neck.rotation;
+                    cur=r.Head.TransformDirection(Vector3.forward);r.Head.rotation=Quaternion.Slerp(Quaternion.identity,Quaternion.FromToRotation(cur,want),back)*r.Head.rotation;
+                }
+            }
             // Flattened: squashed down to a fifth, wide, with a wobble as it springs back.
             if(flat>0){float sy=Mathf.Lerp(1,.22f,flat),sx=1/Mathf.Sqrt(sy);body.Root.transform.localScale=Vector3.Scale(r.RootScale,new Vector3(sx,sy,sx));}
             else body.Root.transform.localScale=r.RootScale;
             r.Moved=true;
+        }
+
+        // ---- the hand feeding (owner 2026-11-09: "Change the animation to hand feed them") ----
+        // Each arm of a feeding Top Dog reaches by IK, over the stance, for the beat it is on (NativeDogView.FeedHand): to the hip for the
+        // sausage, to the mouth, pushing it in, letting go. Its rubber-hose arm stretches (up to half again) when the mouth is beyond its
+        // reach. Its hands' places this frame are kept for the sausages in them (RenderDog draws after the bodies are posed).
+        private sealed class DogArmRig{public readonly Transform[] Upper=new Transform[2],Lower=new Transform[2],Hand=new Transform[2];public readonly Vector3[] UpperBase=new Vector3[2],HandBase=new Vector3[2];public readonly bool[] Scaled=new bool[2];}
+        private readonly Dictionary<VisualBody,DogArmRig> dogArms=new Dictionary<VisualBody,DogArmRig>();
+        private readonly Dictionary<int,(int frame,Vector3 right,Vector3 left)> dogFeedHands=new Dictionary<int,(int,Vector3,Vector3)>();
+        private const float DogStretch=1.5f;
+        private Actor DogActor(int id){var s=dogSnapshot.Snapshot;if(s?.Actors!=null)foreach(var a in s.Actors)if(a!=null&&a.Id==id)return a;return null;}
+        /// <summary>Sausage `i`'s way into the mouth (unit, into the head) and its place on the lips: the fan round the mouth.</summary>
+        private static Vector3 DogSlotDir(Vector3 face,int i){var into=-face;var right=Vector3.Cross(Vector3.up,face);if(right.sqrMagnitude<1e-4f)right=Vector3.right;right.Normalize();return Quaternion.AngleAxis(NativeTopDog.FanYaw[i],Vector3.up)*Quaternion.AngleAxis(NativeTopDog.FanPitch[i],right)*into;}
+        private static Vector3 DogLip(Vector3 mouth,Vector3 face,int i){var right=Vector3.Cross(Vector3.up,face);if(right.sqrMagnitude<1e-4f)right=Vector3.right;right.Normalize();return mouth+face*.005f+right*(NativeTopDog.FanYaw[i]/30f*.014f)-Vector3.up*(NativeTopDog.FanPitch[i]/20f*.008f);}
+        /// <summary>Where hand `hand` of the feeding `caster` should be for its sausage at `time`, and the reach's weight.</summary>
+        private bool DogFeedTarget(Actor caster,NativeDogFeast f,int hand,float time,out Vector3 target,out float w,out int i)
+        {
+            target=default;if(!NativeDogView.FeedHand(f,hand,time,out i,out w))return false;
+            var victim=DogActor(f.Victim);if(victim==null||!DogMouth(victim,out var mouth,out var face))return false;
+            var fwd=Vec(f.Dir);fwd.y=0;fwd=fwd.sqrMagnitude>1e-4f?fwd.normalized:Vector3.forward;var right=Vector3.Cross(Vector3.up,fwd).normalized;float sign=hand==0?1:-1;
+            // The left on the chin, holding the jaw open, a tug down with each push.
+            if(hand==1)
+            {
+                float tug=0;for(int k=0;k<NativeTopDog.Feeds;k++){int s=NativeDogView.FeedState(f,k,time,out float uk);if(s==3)tug=Mathf.Max(tug,Mathf.Sin(uk*Mathf.PI));}
+                target=mouth-Vector3.up*(.075f+.018f*tug)+face*.035f;return true;
+            }
+            // The right: back off the lips for the next one (it pops into the hand there), in to the lips, pushing it half in.
+            float l=DogHeld;var into=DogSlotDir(face,i);var lip=DogLip(mouth,face,i);var front=lip-into*l;var reload=front-into*.1f-Vector3.up*.04f+right*.05f;
+            int st=NativeDogView.FeedState(f,i,time,out float u);
+            if(st<=1)
+            {
+                // Backing off the last one's lips to where the next pops into the hand.
+                float offer=NativeTopDog.OfferAt(f.FeedAt,i),back=offer-NativeTopDog.FeedPeriod+NativeTopDog.PushEnd,k=Mathf.Clamp01((time-back)/Mathf.Max(.02f,offer-NativeTopDog.CarryFrom-back));var from=i>0?DogLip(mouth,face,i-1)-DogSlotDir(face,i-1)*(l*.5f):reload;
+                target=Vector3.Lerp(from,reload,k*k*(3-2*k));
+            }
+            else target=st==2?Vector3.Lerp(reload,front,u*u*(3-2*u)):st==3?lip-into*(l*(1-.5f*u)):lip-into*(l*.5f);
+            return true;
+        }
+        private const float DogFed=1.35f;private static float DogHeld=>NativeTopDogModels.DogLength*DogFed;
+        /// <summary>TopDogBody: a feeding Top Dog's arms by IK; each arm's stretch put back first.</summary>
+        private void DogFeedArms(VisualBody body,Actor a,float time)
+        {
+            var f=a.SourceSpec==NativeTopDog.Spec?NativeDogView.Of(a)?.Feast:null;
+            if(!dogArms.TryGetValue(body,out var r))
+            {
+                if(f==null||f.Catch<-50)return;r=new DogArmRig();dogArms[body]=r;Transform[] bones=null;
+                foreach(var s in body.Root.GetComponentsInChildren<SkinnedMeshRenderer>(true))if(s.name.StartsWith("Body.",StringComparison.Ordinal)&&s.sharedMesh!=null){bones=s.bones;break;}
+                if(bones!=null)foreach(var t in bones){if(t==null)continue;switch(t.name){case "upperarm_r":r.Upper[0]=t;break;case "lowerarm_r":r.Lower[0]=t;break;case "hand_r":r.Hand[0]=t;break;case "upperarm_l":r.Upper[1]=t;break;case "lowerarm_l":r.Lower[1]=t;break;case "hand_l":r.Hand[1]=t;break;}}
+                for(int h=0;h<2;h++){if(r.Upper[h]!=null)r.UpperBase[h]=r.Upper[h].localScale;if(r.Hand[h]!=null)r.HandBase[h]=r.Hand[h].localScale;}
+            }
+            var fwd=f!=null?Vec(f.Dir):Vector3.forward;fwd.y=0;fwd=fwd.sqrMagnitude>1e-4f?fwd.normalized:Vector3.forward;var side=Vector3.Cross(Vector3.up,fwd).normalized;bool any=false;
+            for(int h=0;h<2;h++)
+            {
+                if(r.Upper[h]==null||r.Lower[h]==null||r.Hand[h]==null)continue;
+                if(r.Scaled[h]){r.Upper[h].localScale=r.UpperBase[h];r.Hand[h].localScale=r.HandBase[h];r.Scaled[h]=false;}
+                if(f==null||!DogFeedTarget(a,f,h,time,out var target,out float w,out _))continue;
+                var pole=Vector3.down*.7f+side*(h==0?.8f:-.8f)-fwd*.25f;r.Scaled[h]=DogReach(r.Upper[h],r.Lower[h],r.Hand[h],target,pole,w,DogStretch,r.UpperBase[h],r.HandBase[h]);any=true;
+            }
+            if(any)dogFeedHands[a.Id]=(Time.frameCount,r.Hand[0]!=null?r.Hand[0].position:default,r.Hand[1]!=null?r.Hand[1].position:default);else dogFeedHands.Remove(a.Id);
+        }
+        /// <summary>Two-bone IK of an arm toward `target`, bending toward `pole`, by `w`; the arm stretched (uniformly, the hand counter-scaled)
+        /// up to `stretch` when it falls short. True when it stretched.</summary>
+        private static bool DogReach(Transform upper,Transform lower,Transform hand,Vector3 target,Vector3 pole,float w,float stretch,Vector3 upperBase,Vector3 handBase)
+        {
+            if(w<=0)return false;var s=upper.position;float a=(lower.position-s).magnitude,b=(hand.position-lower.position).magnitude;if(a<1e-4f||b<1e-4f)return false;
+            float k=Mathf.Lerp(1,Mathf.Clamp((target-s).magnitude/((a+b)*.97f),1,stretch),w);bool scaled=k>1.001f;
+            if(scaled){upper.localScale=upperBase*k;hand.localScale=new Vector3(handBase.x/k,handBase.y/k,handBase.z/k);a*=k;b*=k;}
+            var e=lower.position;var d=target-s;float dist=Mathf.Clamp(d.magnitude,1e-3f,(a+b)*.999f);var dir=d.sqrMagnitude>1e-8f?d.normalized:Vector3.forward;
+            float cos=Mathf.Clamp((a*a+dist*dist-b*b)/(2*a*dist),-1,1),sin=Mathf.Sqrt(Mathf.Max(0,1-cos*cos));
+            var bend=Vector3.ProjectOnPlane(pole,dir);if(bend.sqrMagnitude<1e-6f)bend=Vector3.ProjectOnPlane(Vector3.down,dir);bend.Normalize();
+            var elbow=s+dir*(a*cos)+bend*(a*sin);
+            upper.rotation=Quaternion.Slerp(Quaternion.identity,Quaternion.FromToRotation(e-s,elbow-s),w)*upper.rotation;
+            e=lower.position;var hp=hand.position;lower.rotation=Quaternion.Slerp(Quaternion.identity,Quaternion.FromToRotation(hp-e,target-e),w)*lower.rotation;
+            return scaled;
         }
 
         // ---- the effects and the camera ----
@@ -370,6 +468,24 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>All You Can Eat on the local pilot's own camera, the Top Dog's or its victim's (NativeCinematicCamera.Direct). False when it
         /// is not this pilot's.</summary>
+        // Which side of the feast's line its shots stand on, chosen once a phase (the twirl, the throw, the feeding, the victim's): the
+        // side with the clearer line to its look point, else the caster's high fallback when both are walled in. A wall in the way
+        // would pull the camera into the Top Dog's own head, which hid it (owner 2026-11-09: "We also disappear for a second when
+        // using ult ability").
+        private float dogSideAt=-100,dogSide=1;private int dogSidePhase=-1;
+        private float DogShotSide(NativeArena arena,NativeDogFeast f,Vector3 feet,Vector3 body,float time,bool victim,bool reduced,bool shake)
+        {
+            int phase=victim?3:f.Catch<-50?(time<f.Throw?0:1):2;if(f.At==dogSideAt&&phase==dogSidePhase)return dogSide;
+            float Clear(float side)
+            {
+                var s=NativeDogCamera.At(f,V(feet),V(body),time,victim,reduced,shake,side);var p=new Vector3(s.Position.X,s.Position.Y,s.Position.Z);var l=new Vector3(s.Look.X,s.Look.Y,s.Look.Z);
+                var ray=p-l;float d=ray.magnitude;if(d<.05f||arena.Root==null)return 1;ray/=d;
+                return arena.Root.scene.GetPhysicsScene().Raycast(l+ray*.12f,ray,out var hit,Mathf.Max(0,d-.12f),NativeArena.WorldMask,QueryTriggerInteraction.Ignore)?hit.distance/d:1;
+            }
+            float right=Clear(1),left=Clear(-1);dogSide=left>right+.05f?-1:1;
+            if(!victim&&Mathf.Max(right,left)<.75f&&Clear(0)>Mathf.Max(right,left))dogSide=0;
+            dogSideAt=f.At;dogSidePhase=phase;return dogSide;
+        }
         internal bool DogFeastDirect(NativeArena arena,Camera view,float time,bool shake,bool reduced)
         {
             if(view==null||arena?.Local==null||NativeDogView.Source==null)return false;NativeDogFeast f=null;int caster=0;bool victim=false;
@@ -377,13 +493,12 @@ namespace ChipArena.UnityConversion
             else if(dogVictims.TryGetValue(arena.LocalId,out var v)&&NativeDogCamera.Active(v.feast,time,true)){f=v.feast;caster=v.caster;victim=true;}
             if(f==null)return false;
             var feet=visualPositions.TryGetValue(caster,out var cf)?cf:view.transform.position;var body=f.Victim!=0&&visualPositions.TryGetValue(f.Victim,out var vf)?vf+Vector3.up*1.05f:feet+Vec(f.Dir)*NativeTopDog.HoldAhead+Vector3.up*1.05f;
-            var shot=NativeDogCamera.At(f,V(feet),V(body),time,victim,reduced,shake);if(shot.Blend<=0)return false;
+            var shot=NativeDogCamera.At(f,V(feet),V(body),time,victim,reduced,shake,DogShotSide(arena,f,feet,body,time,victim,reduced,shake));if(shot.Blend<=0)return false;
             Vector3 position=new Vector3(shot.Position.X,shot.Position.Y,shot.Position.Z),look=new Vector3(shot.Look.X,shot.Look.Y,shot.Look.Z),ray=position-look;float distance=ray.magnitude;
             if(distance>.05f&&arena.Root!=null){ray/=distance;if(arena.Root.scene.GetPhysicsScene().Raycast(look+ray*.12f,ray,out var hit,Mathf.Max(0,distance-.12f),NativeArena.WorldMask,QueryTriggerInteraction.Ignore))position=look+ray*Mathf.Max(.3f,hit.distance);}
             NativeSirenCutscene.Shake(time,shot.Shake,out float dx,out float dy,out float roll);var forward=look-position;if(forward.sqrMagnitude<1e-8f)forward=view.transform.forward;var rotation=Quaternion.LookRotation(forward,Vector3.up)*Quaternion.AngleAxis(-roll*Mathf.Rad2Deg,Vector3.forward);
             float b=shot.Blend;view.transform.SetPositionAndRotation(Vector3.Lerp(view.transform.position,position+new Vector3(-dx,dy,0),b),Quaternion.Slerp(view.transform.rotation,rotation,b));view.fieldOfView=Mathf.Lerp(view.fieldOfView,shot.Fov,b);FirstPerson=false;AimHeld=false;return true;
         }
-        /// <summary>The mallet's share shown in the hands this moment (hidden away while the hands are busy with a prop or the feast).</summary>
         /// <summary>The held mallet's scale: in or out of hammerspace, and Bigger Mallet's copies (Core NativeDogChips).</summary>
         internal static float TopDogMallet(Actor a,float time){if(a?.SourceSpec!=NativeTopDog.Spec)return 1;var k=NativeDogView.Of(a);return NativeDogView.MalletShown(k,time)*(1+NativeDogChips.MalletGrow*(k?.Mallet??0));}
     }

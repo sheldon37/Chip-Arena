@@ -65,6 +65,33 @@ namespace ChipArena.UnityConversion
             if(time<down){into=Smooth((time-offer-Reach)/Math.Max(.05f,down-offer-Reach));return 2;}
             return 3;
         }
+        /// <summary>Hand-fed sausage `i` at `time` (NativeTopDog's feeding beats): 0 none; 1 in the hand at the hip, out of hammerspace; 2
+        /// carried to the mouth (`u` 0..1); 3 pushed in (`u` 0..1: to half its length); 4 stuck half out of the mouth, squirming (`u` 0..1 of
+        /// its stay); 5 slurped down (`u` 0..1); 6 spat out by a snap (`u` 0..1 of its flight). Gone at the pop.</summary>
+        public static int FeedState(NativeDogFeast f,int i,float time,out float u)
+        {
+            u=0;if(f==null||f.Catch<-50||i<0||i>=NativeTopDog.Feeds)return 0;float offer=NativeTopDog.OfferAt(f.FeedAt,i),down=NativeTopDog.DownAt(f.FeedAt,i);
+            float appear=offer-NativeTopDog.Appear,carry=offer-NativeTopDog.CarryFrom,push=offer+NativeTopDog.PushFrom,inAt=offer+NativeTopDog.PushEnd,stuck=inAt+NativeTopDog.StickFor,gone=stuck+NativeTopDog.Slurp;
+            if(f.Snap>-50&&time>=f.Snap){if(f.Snap<appear||f.Snap>=gone)return 0;u=(time-f.Snap)/NativeTopDog.Spit;return u<1?6:0;}
+            if(time>=f.Pop||time<appear)return 0;
+            if(time<carry)return 1;
+            if(time<push){u=Clamp01((time-carry)/(push-carry));return 2;}
+            if(time<inAt){u=Clamp01((time-push)/(inAt-push));return 3;}
+            if(time<stuck){u=Clamp01((time-inAt)/NativeTopDog.StickFor);return 4;}
+            if(time<gone){u=Clamp01((time-stuck)/NativeTopDog.Slurp);return 5;}
+            return 0;
+        }
+        /// <summary>Hand `hand` of the feeding Top Dog at `time` and its reach weight `w`: the right (0) feeds them all, `i` the sausage it is
+        /// on (the one it carries or pushes, else the next); the left (1) holds the jaw open (`i` -1). False while it does neither.</summary>
+        public static bool FeedHand(NativeDogFeast f,int hand,float time,out int i,out float w)
+        {
+            i=-1;w=0;if(f==null||f.Catch<-50||f.Snap>-50&&time>=f.Snap||time>=f.Release)return false;
+            if(hand==1){float from=f.FeedAt-NativeTopDog.JawFrom;if(time<from)return false;w=Smooth((time-from)/.2f)*(1-Smooth((time-(f.Release-.12f))/.12f));return w>0;}
+            float first=NativeTopDog.OfferAt(f.FeedAt,0)-NativeTopDog.GrabLead,last=NativeTopDog.OfferAt(f.FeedAt,NativeTopDog.Feeds-1)+NativeTopDog.PushEnd;
+            if(time<first||time>=last+NativeTopDog.LetGo)return false;
+            for(int k=0;k<NativeTopDog.Feeds;k++){if(time<NativeTopDog.OfferAt(f.FeedAt,k)+NativeTopDog.PushEnd){i=k;break;}}if(i<0)i=NativeTopDog.Feeds-1;
+            w=Smooth((time-first)/(NativeTopDog.GrabLead*.6f))*(1-Smooth((time-last)/NativeTopDog.LetGo));return w>0;
+        }
         /// <summary>The links' look at `time`: 0 none, 1 twirled overhead, 2 flying (the loop at f.Lasso), 3 round the caught victim, 4 lying
         /// where they fell (a miss or a snap).</summary>
         public static int LassoPhase(NativeDogFeast f,float time)
@@ -102,10 +129,12 @@ namespace ChipArena.UnityConversion
             if(f==null||f.At<-50||time<f.At)return false;if(f.Catch<-50)return !victim&&time<f.Throw+.45f;
             float end=f.Snap>-50?f.Snap+.3f:f.Pop+(victim?.15f:.7f);return time<end;
         }
-        /// <summary>The shot at `time` for the caster at `feet` and the victim at `body` (their body's middle).</summary>
-        public static KernelPanicCamera.Shot At(NativeDogFeast f,Vector3 feet,Vector3 body,float time,bool victim,bool reduced,bool shake)
+        /// <summary>The shot at `time` for the caster at `feet` and the victim at `body` (their body's middle), on side `flip` of the feast's
+        /// line (1 its right, -1 its left; 0 the caster's fallback, high over its shoulder, for when both sides are walled in: the
+        /// Runtime picks per phase, DogShotSide, so a wall never pulls the camera into the Top Dog).</summary>
+        public static KernelPanicCamera.Shot At(NativeDogFeast f,Vector3 feet,Vector3 body,float time,bool victim,bool reduced,bool shake,float flip=1)
         {
-            var s=new KernelPanicCamera.Shot();var d=new Vector3(f.Dir.x,0,f.Dir.z);d=d.LengthSquared()>1e-5f?Vector3.Normalize(d):Vector3.UnitZ;var r=new Vector3(d.Z,0,-d.X);var up=Vector3.UnitY;
+            var s=new KernelPanicCamera.Shot();var d=new Vector3(f.Dir.x,0,f.Dir.z);d=d.LengthSquared()>1e-5f?Vector3.Normalize(d):Vector3.UnitZ;var r=new Vector3(d.Z,0,-d.X);if(flip<0)r=-r;var up=Vector3.UnitY;
             float t=time-f.At,end;
             if(f.Catch<-50)
             {
@@ -140,6 +169,7 @@ namespace ChipArena.UnityConversion
                 else{float u=Smooth((time-f.Release)/Math.Max(.1f,f.Pop-f.Release));s.Position=body+face*(2.6f-.9f*u)+side*(.6f-.4f*u)+up*(.25f+.15f*u);s.Look=body+up*(.15f+.1f*u);s.Fov=46-8*u;s.Shake=shake?.01f+.03f*u*u:0;}
                 end=(f.Snap>-50?f.Snap+.3f:f.Pop+.15f)-f.At;
             }
+            if(flip==0&&!victim){s.Position=feet-d*2.5f+r*.5f+up*2.7f;s.Look=f.Catch<-50?feet+up*1.5f+d*1.4f:(feet+up*1.2f+body)*.5f;s.Fov=Math.Max(s.Fov,52);}
             if(reduced){s.Fov=Math.Max(s.Fov,48);s.Shake=0;}
             s.Blend=Smooth(t/BlendIn)*(1-Smooth((t-(end-BlendOut))/BlendOut));return s;
         }

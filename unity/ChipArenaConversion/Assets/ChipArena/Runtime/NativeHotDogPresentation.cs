@@ -54,7 +54,8 @@ namespace ChipArena.UnityConversion
                     var bytes=new byte[texLength];Buffer.BlockCopy(b,at,bytes,0,texLength);at+=texLength;
                     tex=new Texture2D(2,2,TextureFormat.RGBA32,true,false){name="Hot Dog",hideFlags=HideFlags.HideAndDontSave};
                     if(!tex.LoadImage(bytes,false)){Debug.LogWarning("Hot Dog: the bank's texture is unreadable.");UnityEngine.Object.Destroy(tex);tex=null;}
-                    else{tex.wrapMode=TextureWrapMode.Clamp;tex.filterMode=FilterMode.Trilinear;tex.anisoLevel=4;tex.Apply(true,false);tex.Compress(true);tex.Apply(false,true);}
+                    else{tri=HotDogFaceOff(tex,pos,nor,uv,tri); // its sculpted face off, the animated one's place read (NativeHotDogFacePresentation.cs)
+                        tex.wrapMode=TextureWrapMode.Clamp;tex.filterMode=FilterMode.Trilinear;tex.anisoLevel=4;tex.Apply(true,false);tex.Compress(true);tex.Apply(false,true);}
                 }
                 var mesh=new Mesh{name="Hot Dog",hideFlags=HideFlags.HideAndDontSave};if(n>65535)mesh.indexFormat=UnityEngine.Rendering.IndexFormat.UInt32;
                 mesh.vertices=pos;mesh.normals=nor;mesh.colors32=col;mesh.uv=uv;mesh.boneWeights=weights;mesh.triangles=tri;mesh.RecalculateBounds();
@@ -108,9 +109,21 @@ namespace ChipArena.UnityConversion
             var go=new GameObject(HotDogRenderer){layer=body.gameObject.layer};var at0=go.transform;at0.SetParent(body.transform.parent,false);
             at0.localPosition=body.transform.localPosition;at0.localRotation=body.transform.localRotation;at0.localScale=body.transform.localScale;
             var r=go.AddComponent<SkinnedMeshRenderer>();r.sharedMesh=hotDogMesh;r.bones=bones;r.rootBone=body.rootBone;
-            var box=body.localBounds;box.Expand(HotDogBoundsPad*2);r.localBounds=box;r.sharedMaterial=mat;r.updateWhenOffscreen=false;
+            // Its bounds from its own vertices at the bind, in its root bone's frame, and kept up to date as it moves: the body's box sat a
+            // metre low on it, so a shot looking up at it or close on it culled it (owner 2026-11-09: "Hotdog disappears from intro for a
+            // moment"; the ult's twirl too).
+            hotDogBox??=HotDogBox(body,bodyBones);var box=hotDogBox??body.localBounds;box.Expand(HotDogBoundsPad*2);r.localBounds=box;r.sharedMaterial=mat;r.updateWhenOffscreen=true;
+            // Its animated face on the head's twin (NativeHotDogFacePresentation.cs).
+            int head=Array.IndexOf(hotDogBones,"~head");if(head>=0)HotDogFaceAttach(bones[head],r);
         }
 
+        private static Bounds? hotDogBox;
+        /// <summary>The Hot Dog mesh's box in the body's root bone frame at the bind (its vertices through that bone's bind pose).</summary>
+        private static Bounds? HotDogBox(SkinnedMeshRenderer body,Transform[] bodyBones)
+        {
+            int root=Array.IndexOf(bodyBones,body.rootBone);var bind=body.sharedMesh.bindposes;if(root<0||root>=bind.Length||hotDogMesh==null)return null;
+            var vs=hotDogMesh.vertices;if(vs.Length==0)return null;var m=bind[root];var box=new Bounds(m.MultiplyPoint3x4(vs[0]),Vector3.zero);foreach(var v in vs)box.Encapsulate(m.MultiplyPoint3x4(v));return box;
+        }
         // ---- The sausage's jiggle (Core NativeHotDog.Jiggle) ----
         // Its twins (pelvis up to head) and their spring, found on the body's first jiggle.
         private sealed class HotDogRig
