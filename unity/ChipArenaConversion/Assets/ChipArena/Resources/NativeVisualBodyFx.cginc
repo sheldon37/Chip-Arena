@@ -30,6 +30,35 @@ float3 VisualHitFlash(float3 c,float rim)
  float head=_HitFlash>2.5?1.0:0.0;float k=saturate(_HitFlash-(head>0.5?3.0:1.0));
  return lerp(c,HitFlashColor(k,head),HitFlashBlend(k,head,rim));
 }
+// The Top Dog's stuffed belly (Runtime NativeTopDogPresentation.cs TopDogBody, per renderer of the victim's body; unset, off): a
+// space warp about a centre inside the torso, so the skin, the clothes and the links round them swell together (their skin
+// weights differ, so a scaled bone pushes the skin through the shirt). Each point moves out along its ray from the centre,
+// most at the front: r' = r + push * h(q), h = (1 - q^2)^2 over an ellipsoid (radius R, three quarters of it up and down),
+// eased in over the first 15% of R. The push stays under 0.55 R, so r' grows with r on every ray: no fold, and a layer
+// outside another stays outside it. The normals lean out with it.
+//  _Belly:     xyz the centre (world), w the push at the front as a share of R (0: off)
+//  _BellyAxis: xyz the body's forward (world, level, unit), w R (m)
+float4 _Belly;float4 _BellyAxis;
+float3 BellyPush(float3 p,out float3 dir,out float k)
+{
+ dir=float3(0.0,0.0,0.0);k=0.0;if(_Belly.w<=0.0||_BellyAxis.w<=0.0)return p;
+ float R=_BellyAxis.w;float3 d=p-_Belly.xyz;float r=length(d);
+ float q2=(d.x*d.x+d.z*d.z)/(R*R)+d.y*d.y/(R*R*0.5625);
+ if(q2>=1.0||r<1e-5)return p;
+ dir=d/r;float h=(1.0-q2)*(1.0-q2);
+ float front=0.35+0.65*saturate(0.5+0.5*dot(dir,_BellyAxis.xyz));
+ float push=min(_Belly.w,0.55)*R*h*front*smoothstep(0.0,0.15*R,r);
+ k=push/R;return p+dir*push;
+}
+// The warp on an object-space vertex and its normal (the body's vertex function and the outline's).
+void BellyVert(inout float4 vertex,inout float3 normal)
+{
+ if(_Belly.w<=0.0)return;
+ float3 w=mul(unity_ObjectToWorld,vertex).xyz;float3 dir;float k;float3 p=BellyPush(w,dir,k);if(k<=0.0)return;
+ vertex=mul(unity_WorldToObject,float4(p,1.0));
+ float3 nw=normalize(mul(normal,(float3x3)unity_WorldToObject));nw=normalize(nw+dir*(k*1.6));
+ normal=normalize(mul(nw,(float3x3)unity_ObjectToWorld));
+}
 // Core NativeSpawnIn.Solid, Heat and Ghost at a pixel's world height `y` instead of a part's.
 float SpawnSolid(float y){float t=saturate((_SpawnFront.x-y)/_SpawnFront.y);return t*t*(3.0-2.0*t);}
 float SpawnHeat(float y){return 1.0-saturate((_SpawnFront.x-_SpawnFront.y-y)/_SpawnFront.z);}

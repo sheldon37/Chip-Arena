@@ -90,7 +90,7 @@ Shader "ChipArena/VisualBodyToon" {
  float _AccentGlow;
  float3 VisualAccentPart(float3 w,float3 layer){return lerp(lerp(_Color_3.rgb*w.z*layer.x,_Color_6.rgb*w.z,layer.y),_Color_9.rgb*w.z,layer.z);}
  struct appdata_cut {float4 vertex:POSITION;float4 tangent:TANGENT;float3 normal:NORMAL;float4 texcoord:TEXCOORD0;float4 texcoord1:TEXCOORD1;float4 texcoord2:TEXCOORD2;float4 texcoord3:TEXCOORD3;float4 color:COLOR;uint vid:SV_VertexID;};
- void CutVert(inout appdata_cut v,out Input o){UNITY_INITIALIZE_OUTPUT(Input,o);o.cut=CutKeep(v.vid);o.rest=v.texcoord3.xyz;}
+ void CutVert(inout appdata_cut v,out Input o){UNITY_INITIALIZE_OUTPUT(Input,o);o.cut=CutKeep(v.vid);o.rest=v.texcoord3.xyz;BellyVert(v.vertex,v.normal);}
  void surf(Input i,inout SurfaceOutput o)
  {
   clip(i.cut);DecayClip(i.rest);WoundClip(i.worldPos);SpawnClip(i.worldPos);RevealClip(i.worldPos);float4 map=tex2D(_Texture2D,i.uv_Texture2D);
@@ -160,7 +160,7 @@ Shader "ChipArena/VisualBodyToon" {
   struct v2f {float4 pos:SV_POSITION;float2 uv:TEXCOORD0;float4 color:TEXCOORD1;float3 world:TEXCOORD2;float3 normal:TEXCOORD3;float ink:TEXCOORD4;UNITY_SHADOW_COORDS(5) UNITY_FOG_COORDS(6) float cut:TEXCOORD7;float3 rest:TEXCOORD8;};
   v2f vert(appdata v)
   {
-   v2f o;float3 world=mul(unity_ObjectToWorld,v.vertex).xyz;float3 n=normalize(UnityObjectToWorldNormal(v.normal));
+   BellyVert(v.vertex,v.normal);v2f o;float3 world=mul(unity_ObjectToWorld,v.vertex).xyz;float3 n=normalize(UnityObjectToWorldNormal(v.normal));
    float depth=-mul(UNITY_MATRIX_V,float4(world,1)).z;
    float2 fade=_ArenaEdge.z>0?_ArenaEdge.yz:float2(40,110);float ink=(_ArenaEdge.x>0?_ArenaEdge.x:1)*(1-smoothstep(fade.x,fade.y,depth));
    // A screen pixel's size at this depth (m), and the map's silhouette width in pixels: a normal across the view (the
