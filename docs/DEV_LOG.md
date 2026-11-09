@@ -46,6 +46,7 @@
   - a kill with Hotdog Friends; the new splats and drops in a kill
 - **Risks:** guest prediction does not know the dash's or slam's carry (as with the Zip), so a guest's own Top Dog may be corrected during them. The guard and parry keys were not tried with a gamepad.
 - **Not run:** no person, no two real clients.
+- **Released:** full suite at `da660d96`: 985 groups, exit 0; pins 0 broken; Unity compile PASS; the Editor build checks (the guard gate, the Top Dog's 85) passed. Merged into shared at `c2072eed` and the builder synced; the test channel's build succeeded and published revision `639298173350867069` (2026-11-09 10:37 UTC). No live, production or Site release.
 
 ## 2026-11-09 — Claude: corpses rest on the model's own shape (owner request; look)
 
