@@ -158,6 +158,13 @@ namespace ChipArena.UnityConversion
             }
             int gushes=0;for(int k=0;k<NativeSmashGib.Gushes;k++)if(NativeSmashGib.Gush(burst,k,out _,out var origin,out var normal,out _,out _,out _,out _)&&Finite(origin)&&Math.Abs(normal.Length()-1)<.01f)gushes++;Check(gushes==NativeSmashGib.Gushes,"blood out of it every way");
             Check(NativeSmashGib.Applies(true,NativeTopDog.Burst,false,"pilot")&&!NativeSmashGib.Applies(false,NativeTopDog.Burst,false,"pilot"),"it gibs with gore on, not off");
+            // What the burst wears of the killer's kill effect: the ragdoll endings, the swarms and the Gibber on its pieces; Hotdog Friends carry
+            // the pieces over the stock ragdoll; an effect that takes the whole body away leaves it the stock ending.
+            foreach(var style in new[]{"ragdoll","dev-gibber","ragdoll-ember","ragdoll-frost","ragdoll-static","ragdoll-gravity","ragdoll-pinball","ragdoll-fireworks","ragdoll-soul","ragdoll-petals","dev-singularity"})
+                Check(NativeSmashGib.BurstStyle(style)==style,"a burst wears "+style);
+            foreach(var style in new[]{null,"impact-ragdoll",NativeHotdogFriends.Style,"voxel-burst","confetti","ascension","shrink","launch","ghost","dev-raging-demon","dev-clown","dev-clown-love","dev-bass-van"})
+                Check(NativeSmashGib.BurstStyle(style)=="impact-ragdoll","a burst under "+(style??"no effect")+" ends as the stock ragdoll");
+            Check(NativeTopDog.Popped(NativeTopDog.PopKind)&&!NativeTopDog.Popped(null)&&!NativeTopDog.Popped("hazard")&&!NativeSmashGib.StageDeath(NativeTopDog.PopKind)&&!NativeStageHazards.DeathKind(NativeTopDog.PopKind),"the pop is its own kind, not a stage hazard");
             // ---- the entrance ----
             Check(Math.Abs(NativeIntroRules.Duration(NativeTopDog.Entrance)-NativeTopDogIntro.Total)<.001&&Math.Abs(NativeIntroRules.NameAt(NativeTopDog.Entrance)-NativeTopDogIntro.CardAt)<.001,"the match gives the entrance its length and its card its beat");
             Check(NativeEntranceDirector.Directed(NativeTopDog.Entrance)&&NativeIntroRules.Pickable(NativeTopDog.Entrance)&&NativeIntroRules.StyleName(NativeTopDog.Entrance).Contains("Order Up")&&NativeIntroRules.IntroSting(NativeTopDog.Entrance)==null&&NativeIntroRules.IntroWeapon(NativeTopDog.Entrance)=="weapon-"+NativeTopDog.Spec,"staged, pickable, named, its own sound, the mallet in hand");
@@ -265,7 +272,13 @@ namespace ChipArena.UnityConversion
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
             var arena=R("NativeArena.cs");Check(arena.Contains("StepBombInput(p);StepDogInput(p);")&&arena.Contains("StepBombWorld();StepDogWorld();")&&arena.Contains("if(PinDogVictim(p))return;")&&arena.Contains("BombPending()||DogPending()")&&arena.Contains("DogMotion(p,ref velocity);")&&arena.Contains("DogDamaged(target,actual);")&&arena.Contains("a.Dog=p.Seat.spec==NativeTopDog.Spec?p.Dog.ViewCopy():null;"),"the rules are stepped, held, waited for, moved, hurt and snapshotted");
             Check(R("NativeFrameCodec.cs").Contains("a.HasDog=a.Dog!=null;a.Dog?.CapturePresence();")&&R("NativeNetworkFrame.cs").Contains("a.Dog!=null&&!a.Dog.Valid()"),"the record crosses the wire and is checked");
-            Check(R("NativeDeaths.cs").Contains("if(p.DogPopped)style=NativeTopDog.Burst;")&&R("NativeSmashPresentation.cs").Contains("NativeSmashGib.Burst(")&&R("NativeDeathPresentation.cs").Contains("SmashCause.Burst"),"the pop records its style and the corpse bursts");
+            // The pop keeps the killer's kill effect (owner 2026-11-09: "use the kill effect if applicable (Like hot dog friends should work)"):
+            // its record's damage kind says it burst, accepted on the wire; the corpse bursts and wears the effect where it fits.
+            Check(!R("NativeDeaths.cs").Contains("style=NativeTopDog.Burst")&&R("NativeArena.cs").Contains("||damageKind==NativeTopDog.PopKind?damageKind:null,stage,stageHazard);")
+                &&R("NativeTopDogAuthority.cs").Contains("damageKind:NativeTopDog.PopKind,causeKind:NativeTopDog.Spec);")&&R("NativeNetworkFrame.cs").Contains("NativeTopDog.Popped(p.death.damageKind)")
+                &&R("NativeSmashPresentation.cs").Contains("bool burst=death!=null&&NativeTopDog.Popped(death.damageKind);")&&R("NativeSmashPresentation.cs").Contains("NativeSmashGib.Burst(")
+                &&R("NativeDeathPresentation.cs").Contains("Style=Smash!=null&&Smash.Cause==SmashCause.Burst?NativeSmashGib.BurstStyle(death.style):")&&R("NativeAudio.cs").Contains("NativeTopDog.Popped(target.Death.damageKind)?NativeTopDog.Burst:"),
+                "the pop records the killer's kill effect and its own kind; the corpse bursts in it, and sounds its burst");
             var pres=R("ArenaPresentation.cs");Check(pres.Contains("DogBegin(s,renderTime);")&&pres.Contains("RenderDog(s,renderTime);"),"the presentation reads and draws it");
             Check(R("NativeTechniquePresentation.cs").Contains("DogFx(now);")&&R("NativeCinematicCamera.cs").Contains("presentation.DogFeastDirect(")&&R("NativeVisualBodyPresentation.cs").Contains("TopDogBody(body,a,time);")&&R("NativeFightHud.cs").Contains("DogCards(p);")&&R("ConversionGame.cs").Contains("DogScreen(width,height);")&&R("NativeAudio.cs").Contains("DogMoments(p,pos,t,mine);"),"its effects, camera, body, cards, screen and sound are hooked");
             Check(R("ConversionGame.cs").Contains("KeyCode.Alpha6"),"key 6 is read");

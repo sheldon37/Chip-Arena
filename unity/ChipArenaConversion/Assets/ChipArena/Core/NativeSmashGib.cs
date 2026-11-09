@@ -216,6 +216,12 @@ namespace ChipArena.UnityConversion
             var p=new SmashPlan{Cause=SmashCause.Burst,Seed=Mix(seed),Body=body,Yaw=yaw,Travel=Vector3.UnitY,Speed=9,Floor=body.Y-.85f,Top=body.Y+BodyTop,Contact=0,Throw=7.5f,Carry=6};
             p.Crushed=1;p.Crush[0]=CapturedRig.Spine;return p;
         }
+        /// <summary>What a burst body wears of the killer's kill effect (the record keeps it, NativeTopDog.PopKind; owner 2026-11-09: "use the kill
+        /// effect if applicable (Like hot dog friends should work)"): the ragdoll endings and the swarms (embers, frost, static, the vortex,
+        /// pinball, fireworks, the soul, petals, the black hole) play on its pieces and Maximum Gore adds its own spray, each as the corpse's
+        /// style; Hotdog Friends carries the pieces off over the stock ragdoll (NativeCorpse.HotdogFriends reads the record's style). An effect
+        /// that takes the whole body away (voxels, confetti, the beam, a ghost, the clown car, the van...) leaves the burst its stock ending.</summary>
+        public static string BurstStyle(string style)=>style=="ragdoll"||style=="dev-gibber"||NativeKillEffectRules.Swarm(style)?style:"impact-ragdoll";
         /// <summary>A burst body's parts that come away whole: the head, both arms at the shoulder, both legs at the hip.</summary>
         public static readonly int[] BurstSevered={CapturedRig.Head,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LHip,CapturedRig.RHip};
         private static Vector3 Forward(float yaw){double r=yaw*Math.PI/180;return new Vector3((float)Math.Sin(r),0,(float)Math.Cos(r));}

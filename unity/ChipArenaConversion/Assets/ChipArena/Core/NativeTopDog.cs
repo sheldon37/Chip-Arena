@@ -11,8 +11,13 @@ namespace ChipArena.UnityConversion
     public static class NativeTopDog
     {
         public const string Spec="topdog",Entrance="dev-topdog",Name="Top Dog";
-        /// <summary>The death style of a pilot All You Can Eat bursts (NativeDeath.style; Runtime NativeTopDogBurst draws it).</summary>
+        /// <summary>The burst a pilot All You Can Eat pops dies in (NativeSmashGib.Burst), named for its sound (NativeSoundCues "death.style.gib").</summary>
         public const string Burst="hot-dog-burst";
+        /// <summary>The pop's death (NativeDeath.damageKind, replicated with the record; owner 2026-11-09: "use the kill effect if applicable (Like
+        /// hot dog friends should work)"): the record keeps the killer's kill effect as its style, and this kind says the body burst, so the
+        /// burst wears that effect where it can (NativeSmashGib.BurstStyle).</summary>
+        public const string PopKind="topdog-pop";
+        public static bool Popped(string damageKind)=>damageKind==PopKind;
         public const string Mallet="big-mallet",Boing="boing",Zip="zip",Anvil="anvil",Peel="banana-peel",Mustard="mustard",Glove="spring-glove",Pie="cream-pie",Feast="all-you-can-eat";
         // Prop kinds (NativeDogProp.Kind), marks (NativeDogMark.Kind) and hit kinds (NativeDogHit.Kind).
         public const string PropAnvil="anvil",PropPeel="peel",PropPie="pie",PropGlove="glove",PropSquirt="squirt",PropPuddle="puddle",PropSpring="spring",PropZip="zip",PropPiano="piano",PropSnack="snack";

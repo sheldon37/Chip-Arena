@@ -29,12 +29,13 @@ namespace ChipArena.UnityConversion
         /// <summary>The body from posed bones: world matrices, joint positions and rotations. A Siren crush drop
         /// (<paramref name="release"/> >= 0, NativeSirenDropPresentation.cs) takes each part's handed-over velocity, starts its
         /// clock at the release, has no body for the crushed head and ignores earlier, non-fatal wounds. A hazard gib (a smash,
-        /// NativeSmashPresentation.cs; a saw's halves: `stock`) is the stock ending whatever the death's style (owner 2026-10-14).</summary>
+        /// NativeSmashPresentation.cs; a saw's halves: `stock`) is the stock ending whatever the death's style (owner 2026-10-14); the Top Dog's burst
+        /// wears the killer's effect where it fits the pieces (NativeSmashGib.BurstStyle; owner 2026-11-09).</summary>
         private NativeCorpse(NativeDeath death,NativeArena arena,Matrix4x4[] bind,Vector3[] at,Quaternion[] turn,Vector3[] linear,Vector3[] angular,float release,SlicePlan slice=null,BisectCut halves=null,BisectRequest bisect=null,int half=0,NativeCorpse host=null,SmashPlan smash=null,bool stock=false)
         {
             Slice=release>=0||slice==null||!slice.Any?null:slice;Halved=halves!=null&&bisect!=null&&release<0;if(Halved){Bisection=halves;Request=bisect;Half=half;Host=host;}
             Smash=release<0&&!Halved?smash:null;
-            this.arena=arena;RetainUntilRoundEnd=NativeCorpseRules.Retain(arena.Pilots.Any(p=>p.Seat.id==death.id),arena.Match.Cooperative);Death=death;Style=Smash!=null||stock&&release<0?"impact-ragdoll":death.kept&&!new[]{"impact-ragdoll","ragdoll","dev-gibber","siren-crush","vent-fall","vent-splat"}.Contains(death.style)?"impact-ragdoll":death.style==NativeHotdogFriends.Style?"impact-ragdoll":death.style;
+            this.arena=arena;RetainUntilRoundEnd=NativeCorpseRules.Retain(arena.Pilots.Any(p=>p.Seat.id==death.id),arena.Match.Cooperative);Death=death;Style=Smash!=null&&Smash.Cause==SmashCause.Burst?NativeSmashGib.BurstStyle(death.style):Smash!=null||stock&&release<0?"impact-ragdoll":death.kept&&!new[]{"impact-ragdoll","ragdoll","dev-gibber","siren-crush","vent-fall","vent-splat"}.Contains(death.style)?"impact-ragdoll":death.style==NativeHotdogFriends.Style?"impact-ragdoll":death.style;
             // A bisected body's second half shares its first half's physics scene (one step, one world copy).
             if(Host!=null)scene=Host.scene;else
 #if UNITY_EDITOR

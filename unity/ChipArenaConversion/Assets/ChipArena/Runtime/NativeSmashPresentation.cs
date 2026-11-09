@@ -94,8 +94,9 @@ namespace ChipArena.UnityConversion
         /// death that gibs, or the gate refuses. Planned once per death (id and seed) and kept for the round.</summary>
         private HazardGib HazardGibOf(NativeArena arena,NativeDeath death)
         {
-            // The Top Dog's pop bursts the body (NativeSmashGib.Burst) where gore is on; no stage hazard in it.
-            bool burst=death!=null&&death.style==NativeTopDog.Burst;
+            // The Top Dog's pop bursts the body (NativeSmashGib.Burst) where gore is on, whatever kill effect it carries (that effect then plays on
+            // the pieces where it can: NativeSmashGib.BurstStyle); no stage hazard in it.
+            bool burst=death!=null&&NativeTopDog.Popped(death.damageKind);
             if(arena==null||death==null||!(burst||NativeSmashGib.StageDeath(death.damageKind))||!NativeSmashGib.Applies(Gore,death.style,death.kept,death.model))return null;
             long key=((long)death.id<<32)^(uint)death.seed;
             if(!hazardGibs.TryGetValue(key,out var gib))
