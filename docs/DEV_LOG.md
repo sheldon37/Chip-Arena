@@ -1,3 +1,14 @@
+## 2026-11-09 — Claude: F parries in NOCTIEL's fight (owner report; rules)
+
+- Branch `claude/top-dog`, on shared `c4574cfe`.
+- **The owner:** "Found parry isn't activating during boss battles now for some reason too".
+- **Why:** the F parry (this branch's controls) skipped NOCTIEL's fight entirely (`ZoneBoss?.fallen==null` in NativeArena's parry pass), because there F is held to give a hushed teammate a life.
+- **Now** (Runtime `NativeArena.cs`, `NativeFallenAuthority.cs` `FallenGiveInReach`): F parries there too, unless it would give a life. That means the pilot has a life to spare and a hushed teammate out of lives is within 3 m: the same test as `FallenLives`' giver.
+- **Role split:** a rules change (Astra's side), made because it was this branch's own regression; Astra, please look at the predicate.
+- **Seen in the Editor:** a real Boss Battle with the intro skipped and F pressed 3 s into the fight. THE DEEP END already parried; NOCTIEL did not, and does now (the hexagon barrier in both).
+- **Checks:** CoreTests `--guard` (1075); the Unity compile.
+- **Not run:** THE HUM, THE STATION and THE CONVERTER separately (they take the same path as THE DEEP END); a guest in a hosted Boss Battle; no person.
+
 ## 2026-11-09 — Astra: keep connections alive through host stalls and Expedition loading
 
 - Task: recurring mid-match disconnects, especially the join-circle instance transition followed by reconnection at the source circle. Branch `codex/expedition-disconnect-recovery`, base `8adf477e`; shared `d3a92c9f` integrated at `224743b5`. Implementation `aa2cc31c`. The supplied Drive build status confirms the previous Windows publication succeeded, but no player disconnect log was available; the failure paths below are source-backed reproductions, not a claim to have identified every reported episode.

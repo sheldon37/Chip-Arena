@@ -26,6 +26,14 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<16;i++){var d=NativeFallenRules.Dir(i*22.5f+p.Seat.id*7);var q=new Vector3(d.X*55,.9f,d.Y*55);float score=(q-boss).sqrMagnitude;if(score>distance){best=q;distance=score;}}
             return best;
         }
+        /// <summary>NOCTIEL's fight: whether F would give a life (FallenLives' giver: a life to spare, a hushed teammate out of lives within
+        /// 3 m), so the press is that and not a parry. False outside the fight.</summary>
+        private bool FallenGiveInReach(NativePilot q)
+        {
+            var f=ZoneBoss?.fallen;if(f==null||q==null||!f.hush.Any(h=>h.id==q.Seat.id&&h.lives>1))return false;
+            foreach(var s in f.hush){if(s.lives>0||s.id==q.Seat.id)continue;var p=Pilots.Find(x=>x.Seat.id==s.id);if(p!=null&&p.Seat.connected&&p.Hp<=0&&Vector3.Distance(q.Body.position,p.Body.position)<=3)return true;}
+            return false;
+        }
         private void FallenLives()
         {
             var f=ZoneBoss.fallen;
