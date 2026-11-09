@@ -419,7 +419,7 @@ namespace ChipArena.UnityConversion
                 var p=arena.Local;bool fighting=match.Phase==NativePhase.Fight||match.Phase==NativePhase.Countdown;
                 if(!menu&&(fighting||match.Phase==NativePhase.Result))FightHud(p);
                 if(!menu&&fighting)KernelPanicBanner();
-                if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive&&!ChooserFramed)Crosshair();BombScreen(width,height);
+                if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive&&!ChooserFramed)Crosshair();BombScreen(width,height);DogScreen(width,height);
                 if(!menu&&match.Phase==NativePhase.Fight)
                 {
                     if(arena.Downed(p))Prompt(U.H/2+80,"RECOVERING  ·  WASD chooses roll direction",14,NativeCyberTheme.Ink());

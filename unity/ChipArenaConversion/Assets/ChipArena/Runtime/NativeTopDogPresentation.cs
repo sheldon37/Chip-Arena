@@ -53,11 +53,31 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether body `id` is a Top Dog pilot's (the view body and the local id are the local seat's).</summary>
         private bool TopDogSeat(int id)
         {
+            if(id==dogIntroActor&&id>=0)return true;
             if(id<RooftopIdTop&&id>RooftopIdTop-8||id==RooftopIdTop)return false;var seat=WeaponLoadout?.Match?.Seat(id==ViewBodyId?LocalId:id);return seat?.spec==NativeTopDog.Spec;
         }
         private string TopDogLook(string look)
         {
             look??="";if(!dogLooks.TryGetValue(look,out var dog)){if(dogLooks.Count>32)dogLooks.Clear();dogLooks[look]=dog=NativeLook.With(look,NativeLook.Upper,NativeHotDog.Id);}return dog;
+        }
+
+        // ---- the intro (Core NativeTopDogIntro, staged by NativeIntros.DirectedIntro) ----
+        private int dogIntroActor=-1;private float dogMalletScale;private Func<int,Matrix4x4> dogIntroHand;
+        private readonly List<NativeIntroToon> dogIntroToons=new List<NativeIntroToon>();private readonly Dictionary<int,Mesh> dogCarts=new Dictionary<int,Mesh>();
+        /// <summary>The entrance's toon models in the Top Dog's shader, out of the source frame (x mirrored).</summary>
+        private void DogIntroToons(NativeTopDogIntro intro,float t)
+        {
+            dogPoolUsed=0;if(DogMaterials()==null)return;intro.Toons(t,dogIntroToons);int tier=LowGraphics?1:0;
+            foreach(var toon in dogIntroToons)
+            {
+                var at=new Vector3(-toon.At.X,toon.At.Y,toon.At.Z);var q=new Quaternion(toon.Turn.X,-toon.Turn.Y,-toon.Turn.Z,toon.Turn.W);var m=Matrix4x4.TRS(at,q,Vector3.one*toon.Scale);
+                switch(toon.Id)
+                {
+                    case "cart":{int key=Mathf.RoundToInt(Mathf.Clamp(toon.Param,0,1.2f)*30)+tier*100;if(!dogCarts.TryGetValue(key,out var mesh)){var k=NativeTopDogModels.Cart(key%100/30f,tier);mesh=FbKitMesh(k,Matrix4x4.identity,"Top Dog cart",out _);dogCarts[key]=mesh;}DogDraw(mesh,m);break;}
+                    case "spring":{float h=toon.Param/Mathf.Max(.1f,toon.Scale);DogDraw(DogLive(kit=>NativeTopDogModels.Spring(kit,NMatrix.Identity,h,tier)),m);break;}
+                    case "hotdog":{float w=toon.Wiggle;float phase=toon.Param;DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,phase,w,0,1,tier)),m);break;}
+                }
+            }
         }
 
         // ---- the toon models ----
