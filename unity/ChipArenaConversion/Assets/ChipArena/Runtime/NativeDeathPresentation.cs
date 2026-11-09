@@ -44,6 +44,7 @@ namespace ChipArena.UnityConversion
             surface=new PhysicsMaterial("Body surface"){dynamicFriction=.7f,staticFriction=.7f,bounciness=Style=="ragdoll-pinball"?.82f:.15f};
             for(int i=0;i<22;i++)Bind[i]=bind[i];bool drop=release>=0;DropAt=release;if(drop)clock=release;var wound=drop?null:death.wound;if(Halved||Smash!=null)wound=null;
             if(Style=="dev-gibber"&&!drop)Severed.Add(wound?.part??5);else if(wound?.destroyed==true&&wound.kind=="sever")Severed.Add(wound.part);
+            if(Smash!=null&&Smash.Cause==SmashCause.Burst)foreach(int j in NativeSmashGib.BurstSevered)if(!Severed.Contains(j))Severed.Add(j);
             if(wound?.destroyed==true&&wound.kind=="crush")CrushPart=wound.part;
             // A thrown smash crushes its plan's parts to fragments (the first is the corpse's own crush part).
             if(Smash!=null&&!Smash.Pinned&&Smash.Crushed>0){CrushPart=Smash.Crush[0];for(int i=1;i<Smash.Crushed;i++)ExtraCrush.Add(Smash.Crush[i]);}

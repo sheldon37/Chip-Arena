@@ -94,12 +94,14 @@ namespace ChipArena.UnityConversion
         /// death that gibs, or the gate refuses. Planned once per death (id and seed) and kept for the round.</summary>
         private HazardGib HazardGibOf(NativeArena arena,NativeDeath death)
         {
-            if(arena==null||death==null||!NativeSmashGib.StageDeath(death.damageKind)||!NativeSmashGib.Applies(Gore,death.style,death.kept,death.model))return null;
+            // The Top Dog's pop bursts the body (NativeSmashGib.Burst) where gore is on; no stage hazard in it.
+            bool burst=death!=null&&death.style==NativeTopDog.Burst;
+            if(arena==null||death==null||!(burst||NativeSmashGib.StageDeath(death.damageKind))||!NativeSmashGib.Applies(Gore,death.style,death.kept,death.model))return null;
             long key=((long)death.id<<32)^(uint)death.seed;
             if(!hazardGibs.TryGetValue(key,out var gib))
             {
                 gib=NoGib;var hazards=arena.Map?.hazards;int round=NativeStructureFx.RoundIndex(arena.Match.Set,arena.Match.Round);
-                var smash=NativeSmashGib.Plan(Gore,death.style,death.kept,death.model,death.damageKind,arena.MapId,hazards,death.hazardId,round,arena.Match.FightAt,death.at,SmashN(death.position),SmashN(death.direction),death.yaw,death.seed);
+                var smash=burst?NativeSmashGib.Burst(SmashN(death.position),death.yaw,death.seed):NativeSmashGib.Plan(Gore,death.style,death.kept,death.model,death.damageKind,arena.MapId,hazards,death.hazardId,round,arena.Match.FightAt,death.at,SmashN(death.position),SmashN(death.direction),death.yaw,death.seed);
                 int saw=smash==null&&death.damageKind=="hazard"&&NativeFactoryHazards.Active(arena.MapId)&&hazards!=null&&hazards.Length>0?NativeSmashGib.Saw(hazards,death.hazardId,round,arena.Match.FightAt,death.at,NativeArena.Vec(death.position)):-1;
                 if(smash!=null||saw>=0)gib=new HazardGib{Smash=smash,Saw=saw};
                 if(hazardGibs.Count>=64)hazardGibs.Clear();hazardGibs[key]=gib;

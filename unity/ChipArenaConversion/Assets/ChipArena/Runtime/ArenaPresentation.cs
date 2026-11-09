@@ -136,7 +136,7 @@ namespace ChipArena.UnityConversion
         public Vector3 Position(Actor actor) { Vector3 p; return visualPositions.TryGetValue(actor.Id,out p)?p:Vec(actor.Position); }
         public void Render(Snapshot s, float renderTime, bool smooth)
         {
-            if(s==null) return;sourceModels?.Begin();hazardClock=renderTime;SpawnBegin();ObserveHits(s);BeginWeaponFx(s);BeginHatFx(s);BeginCyberLord(s,renderTime);TechniqueBegin(s,renderTime);BombBegin(s,renderTime);ReviveMachineBegin(s,renderTime);shotTracker.Muzzles.Clear();
+            if(s==null) return;sourceModels?.Begin();hazardClock=renderTime;SpawnBegin();ObserveHits(s);BeginWeaponFx(s);BeginHatFx(s);BeginCyberLord(s,renderTime);TechniqueBegin(s,renderTime);BombBegin(s,renderTime);DogBegin(s,renderTime);ReviveMachineBegin(s,renderTime);shotTracker.Muzzles.Clear();
             foreach(var list in batches) list.Clear(); DrawnParts=0;
             removedRigs.Clear();
             foreach(int id in rigs.Keys) { bool exists=false; foreach(var a in s.Actors) if(a.Id==id) { exists=true; break; } if(!exists) removedRigs.Add(id); }
@@ -221,7 +221,7 @@ namespace ChipArena.UnityConversion
             // The block effect: guards on open block windows, clashes and deflects (after the rigs and the view weapon are posed).
             RenderBlockFx(s,renderTime);
             // The melee Q/E kit: its events, the Shadow Step decoy and the dash ghosts (NativeMeleeKitPresentation.cs).
-            RenderMeleeKit(s,renderTime);RenderTechnique(s,renderTime);RenderBomb(s,renderTime);
+            RenderMeleeKit(s,renderTime);RenderTechnique(s,renderTime);RenderBomb(s,renderTime);RenderDog(s,renderTime);
             // The PvE chip selection's wrist holograms (NativeChipSelectPresentation.cs).
             RenderChipSelect(s);
         }

@@ -57,6 +57,7 @@ namespace ChipArena.UnityConversion
             var p=new NativeFace.Pilot{Time=time,Health=a.Hp/100f,Stamina=a.Stamina,SinceHit=time-a.ReactionAt,HitStrength=a.ReactionStrength,SinceAttack=time-a.LastAttack,
                 SinceSpecial=time-a.SpecialAt,SinceAbility=time-a.AbilityAt,SinceShot=time-a.LastShot,SinceBlock=time-a.BlockAt,SinceRoll=time-a.RollAt,
                 Arena=body.Arena,Alive=a.Alive,Hurt=time<a.FlashUntil,Aiming=a.Aiming,Sprinting=a.Sprinting,Stunned=time<a.StunUntil,Attacking=a.Attacking(time),Kills=a.Kills};
+            TopDogFace(a.Id,time,out p.Gobble,out p.Bloat);
             NativeFace.PilotFace(rig.Face,p);VisualFaceShow(rig);
         }
         /// <summary>A zombie body's face this pose (its jaw the gait's, `flash` the hit flash's code: 1 none).</summary>

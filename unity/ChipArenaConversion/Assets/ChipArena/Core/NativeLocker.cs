@@ -128,6 +128,7 @@ namespace ChipArena.UnityConversion
                 case "sheldon-intro":return "Glitches in out of the data, hooded and twitching.";
                 case "dev-cyberlord":return "Built from light, then a hardlight palm strike.";
                 case NativeBombs.Entrance:return "A fuse in the dark, a red light on every pylon, and one click.";
+                case NativeTopDog.Entrance:return "A hot dog cart, a bell for service, and out springs the Top Dog with a mallet from nowhere.";
             }
             if(id!=null&&id.StartsWith("weapon-",StringComparison.Ordinal))return Title(id.Substring(7))+" signature entrance.";
             return "";
@@ -138,7 +139,7 @@ namespace ChipArena.UnityConversion
             {
                 case "orbital-drop":return "rocket";case "grid-rez":return "boxes";case "holo-projection":return "scan";case "blackout":return "eclipse";
                 case "skyline-zip":return "spline";case "hero-landing":return "chevrons-down-up";case "overclock":return "cpu";
-                case "dev-siren":return "skull";case "dev-emperor":return "cloud-lightning";case "dev-ansatsuken":return "hand-fist";case "dev-matrix":return "terminal";case "sheldon-intro":return "scan-line";case "dev-cyberlord":return "diamond";case NativeBombs.Entrance:return "bomb";
+                case "dev-siren":return "skull";case "dev-emperor":return "cloud-lightning";case "dev-ansatsuken":return "hand-fist";case "dev-matrix":return "terminal";case "sheldon-intro":return "scan-line";case "dev-cyberlord":return "diamond";case NativeBombs.Entrance:return "bomb";case NativeTopDog.Entrance:return "hammer";
             }
             return null;
         }
@@ -222,6 +223,7 @@ namespace ChipArena.UnityConversion
         public static string AbilityIcon(string id,ContentWeapon w)
         {
             if(w?.id==NativeBombs.Spec)return NativeBombs.Icon(id);
+            if(w?.id==NativeTopDog.Spec)return NativeTopDog.Icon(id);
             switch(id)
             {
                 // The gun Q kit (Core/NativeGunKit.Icon, the HUD cards share it): hammer for Fan the Hammer, gauge for Overdrive.

@@ -115,6 +115,12 @@ namespace ChipArena.UnityConversion
         private static readonly Set Bomb=Build(new Set{Spec=NativeBombs.Spec,TechClips=new[]{BombThrowStart,BombThrowEnd,BombThrowStart+Mirror,BombThrowEnd+Mirror,TechThrowStart,TechThrowEnd,TechFlickStart,TechFlickEnd,BombHeaveStart,BombHeaveEnd,BombLay,BombClick,BombStoop,BombSlam},
             Idle="Unarmed-Idle",Jump="Unarmed-Jump",Flip="Unarmed-Jump-Flip",Fall="Unarmed-Fall",Land="Unarmed-Land",Block="Unarmed-Block",BlockHit="Unarmed-Block-GetHit1",Stunned="Unarmed-Stunned",Roll="Unarmed-Roll-Forward",
             AirAttack="Unarmed-Fall",SprintAttack="Unarmed-Sprint",Attacks=new[]{BombThrowEnd},Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Aim=new[]{"Unarmed-Idle","Unarmed-Idle","Unarmed-Idle"},Reload=BombReload,Knockdown="Unarmed-Knockdown1",RollBack="Unarmed-Roll-Backward"},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
+        // The Top Dog (owner 2026-11-08: a cartoon mallet, swung two-handed): the pack's two-handed sword set, its casts in DogCast (the whole body).
+        private static readonly Set TopDog=Build(new Set{Spec=NativeTopDog.Spec,Idle="2Hand-Sword-Idle",Jump="2Hand-Sword-Jump",Flip="2Hand-Sword-Jump-Flip",Fall="2Hand-Sword-Fall",
+            Land="2Hand-Sword-Land",Block="2Hand-Sword-Block",BlockHit="2Hand-Sword-Block-GetHit1",Stunned="2Hand-Sword-Stunned",Roll="2Hand-Sword-Roll-Forward",
+            AirAttack="2Hand-Sword-Air-Attack1",SprintAttack="2Hand-Sword-Run-Forward-Attack1",
+            Attacks=Names("2Hand-Sword-Attack","1","2","11"),Reactions=Names("2Hand-Sword-GetHit-","F1","B1","L1","R1"),
+            TechClips=new[]{DogPoint,DogPointEnd,TechFlickStart,TechFlickEnd,TechThrowStart,TechThrowEnd,DogPunch,DogPunchL,DogKick,DogRun},Knockdown="2Hand-Sword-Knockdown1",RollBack="2Hand-Sword-Roll-Backward"},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
         // The casters (the four schools and L33t H4x): the pack's staff set, mirrored (the game's staff is in the left fist, the
         // pack's in the right); a cast plays its start to the game's release and its end after it, a Q/E ability the pack's area
         // cast likewise, on the upper body. Mirrored reactions swap sides.
@@ -164,7 +170,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
         public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
-            spec=="rifle"||spec=="machinegun"?Rifle:spec==NativeBombs.Spec?Bomb:spec=="pistol"?Pistol:spec=="bow"?Bow:
+            spec=="rifle"||spec=="machinegun"?Rifle:spec==NativeBombs.Spec?Bomb:spec==NativeTopDog.Spec?TopDog:spec=="pistol"?Pistol:spec=="bow"?Bow:
             spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:spec=="emperor"||spec=="ansatsuken"?Unarmed:null;
 
         /// <summary>A gun's, bow's or caster's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and
@@ -384,6 +390,7 @@ namespace ChipArena.UnityConversion
                 pick=new Pick{Clip=set.Knockdown,Time=Math.Min(len,impact+Math.Max(0,time-a.DownLanded)),Fade=FadeIn};return true;
             }
             if(BombCast(set,a,time,clips,out pick))return true;
+            if(DogCast(set,a,time,clips,out pick))return true;
             if(Technique(set,a,time,clips,out pick))return true;
             if(Kit(set,a,time,clips,out pick))return true;
             // A mapped kit move's tail (its special still running past the cast) goes on to the idle, not the game's pose.
@@ -498,6 +505,46 @@ namespace ChipArena.UnityConversion
                     }
                     if(time<lockAt&&clips.Has(BombStoop)){pick=new Pick{Clip=BombStoop,Time=time-rel,Fade=FadeIn};return true;}return false;
                 }
+            }
+            return false;
+        }
+        // The Top Dog's casts on the whole body (docs/TOP-DOG.md "Motion"): each clip fitted to the record's moments, a swing's own Hit on the
+        // rules' hit, so the mallet lands when the hit does.
+        private const string DogPoint="Armed-Cast-R-Attack3_start",DogPointEnd="Armed-Cast-R-Attack3_end",DogPunch="Unarmed-Attack-R2",DogPunchL="Unarmed-Attack-L1",DogKick="Unarmed-Attack-Kick-R2",DogRun="2Hand-Sword-Run-Forward";
+        private static readonly string[] DogSwings={"2Hand-Sword-Attack1","2Hand-Sword-Attack2","2Hand-Sword-Attack11"};
+        private static bool DogCast(Set set,Actor a,float time,IClips clips,out Pick pick)
+        {
+            pick=default;if(set.Spec!=NativeTopDog.Spec)return false;var k=NativeDogView.Of(a);if(k==null)return false;
+            bool Part(string clip,float from,float to,out Pick p){p=default;return time>=from&&time<to&&clip!=null&&clips.Has(clip)&&Fit(clip,time,from,to,clips,FadeIn,out p);}
+            bool Hit(string clip,float from,float hit,float to,out Pick p,float rate=2.4f){p=default;if(time<from||time>=to||clip==null||!clips.Has(clip))return false;p=new Pick{Clip=clip,Time=Retime(time,from,hit,to,clips.Hit(clip),clips.Length(clip),rate),Fade=FadeIn};return true;}
+            bool Loop(string clip,float from,float to,float rate,out Pick p){p=default;if(time<from||time>=to||!clips.Has(clip))return false;float len=Math.Max(.05f,clips.Length(clip));p=new Pick{Clip=clip,Time=((time-from)*rate)%len,Fade=FadeIn};return true;}
+            // All You Can Eat: the twirl and throw, a push for each hot dog, the kick that lets them go.
+            var f=k.Feast;
+            if(f!=null&&time>=f.At&&time<f.Until)
+            {
+                if(time<f.Throw)return Part(DogPoint,f.At,f.Throw,out pick);
+                if(f.Catch<-50)return Part(DogPointEnd,f.Throw,f.Throw+.45f,out pick);
+                if(f.Snap>-50&&time>=f.Snap)return false;
+                if(time<f.FeedAt)return Part(DogPointEnd,f.Throw,f.FeedAt,out pick);
+                if(time<f.Release-.25f){int i=Math.Max(0,Math.Min(NativeTopDog.Feeds-1,(int)Math.Floor((time-f.FeedAt)/NativeTopDog.FeedPeriod)));float o=NativeTopDog.OfferAt(f.FeedAt,i);return Hit(i%2==0?DogPunch:DogPunchL,o-.05f,o+.2f,o+NativeTopDog.FeedPeriod-.02f,out pick,1.4f);}
+                return Hit(DogKick,f.Release-.25f,f.Release,f.Release+.6f,out pick);
+            }
+            if(k.CastKind==null||time<k.CastAt||time>=k.CastUntil+.05f)return false;float at=k.CastAt,rel=Math.Max(at+.01f,k.CastRelease),until=Math.Max(rel+.05f,k.CastUntil);
+            switch(k.CastKind)
+            {
+                case NativeTopDog.Mallet:return Hit(DogSwings[Math.Max(0,Math.Min(2,k.CastStep))],at,rel,until+.15f,out pick);
+                case NativeTopDog.Boing:return Part(set.Flip,at,until+.5f,out pick);
+                case NativeTopDog.Zip:return time<rel?Loop(DogRun,at,rel,2.6f,out pick):Loop(DogRun,rel,until,1.8f,out pick);
+                case NativeTopDog.Anvil:return Part(DogPoint,at,rel,out pick)||Part(DogPointEnd,rel,until,out pick);
+                case NativeTopDog.Peel:return Part(TechFlickStart,at,rel,out pick)||Part(TechFlickEnd,rel,until,out pick);
+                case NativeTopDog.Mustard:
+                {
+                    if(time<rel)return Part(TechFlickStart,at,rel,out pick);if(!clips.Has(TechFlickStart))return false;
+                    // Held at the aim through the squirt, a small pump on each squeeze.
+                    float len=clips.Length(TechFlickStart);pick=new Pick{Clip=TechFlickStart,Time=len*(.92f+.05f*(float)Math.Sin((time-rel)*18)),Fade=FadeIn};return true;
+                }
+                case NativeTopDog.Glove:return Hit(DogPunch,at,rel,until,out pick,1.6f);
+                case NativeTopDog.Pie:return Part(TechThrowStart,at,rel,out pick)||Part(TechThrowEnd,rel,until,out pick);
             }
             return false;
         }

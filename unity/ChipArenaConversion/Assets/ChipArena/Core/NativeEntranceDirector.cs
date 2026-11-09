@@ -265,6 +265,7 @@ namespace ChipArena.UnityConversion
             {CyberLordSpec.Entrance,()=>new NativeCyberLordIntroScript()},
             // The DEV Bombadier's Last Warning (Core/NativeBombadierIntro.cs; the class's own entrance).
             {NativeBombs.Entrance,()=>new NativeBombadierIntro()},
+            {NativeTopDog.Entrance,()=>new NativeTopDogIntro()},
         };
         /// <summary>True for a style the director stages (the twelve weapon signatures, the procedural entrances and the Sheldon Intro).</summary>
         public static bool Directed(string style)=>style!=null&&makers.ContainsKey(style);

@@ -57,10 +57,15 @@ class ClassIconChecks(unittest.TestCase):
         # matching ClassIconChecks.cs and NativeIconRaster.Resolve's lookup order.
         expected=weapons|{'bow','cyberlord'}
         if 'bombadier' not in specs: expected.discard('bombadier')
+        # The Top Dog likewise uses the existing Lucide hammer until bespoke art.
+        if 'topdog' not in specs: expected.discard('topdog')
         self.assertEqual(set(specs),expected)
         if 'bombadier' not in specs:
             self.assertEqual({p['id']:p['icon'] for p in self.lucide['specs']}['bombadier'],'bomb')
             self.assertIn('bomb',{p['id'] for p in self.lucide['icons']})
+        if 'topdog' not in specs:
+            self.assertEqual({p['id']:p['icon'] for p in self.lucide['specs']}['topdog'],'hammer')
+            self.assertIn('hammer',{p['id'] for p in self.lucide['icons']})
         for icon in [*classes.values(),*specs.values(),self.art['fallback']]:
             self.assertIn(icon,self.icons)
         self.assertEqual(len(set(specs.values())),len(specs))

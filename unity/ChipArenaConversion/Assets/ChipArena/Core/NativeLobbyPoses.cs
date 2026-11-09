@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Whether a spec holds its weapon in the Sheldon Idle (the hero stance's grips: the blades, the shield, the guns,
         /// the staffs and the Bow); the fighters, the Cyber Lord and any other spec keep the stance's fists.</summary>
-        public static bool Grips(string spec)=>spec=="greatsword"||spec=="sword"||spec=="daggers"||spec=="shield"||spec=="pistol"||Gun(spec)||Magic(spec)||NativeBowWire.Is(spec)||spec==NativeBombs.Spec;
+        public static bool Grips(string spec)=>spec=="greatsword"||spec=="sword"||spec=="daggers"||spec=="shield"||spec=="pistol"||Gun(spec)||Magic(spec)||NativeBowWire.Is(spec)||spec==NativeBombs.Spec||spec==NativeTopDog.Spec;
         // The Sheldon Idle from rest: the Cyber Lord's stance (its body, twitches and planted feet; the glitch for the Cyber Lord
         // only), then an armed pilot's grip. The weapon shows as standing (the fighters' gloves and the daggers' off hand too).
         private static CyberIdleGlitch Sheldon(MeleeRig r,string spec,float time,int seed,bool reduced,out LobbyHeld weapon,out LobbyHeld offhand)
@@ -161,7 +161,7 @@ namespace ChipArena.UnityConversion
             Quaternion lc=MeleeMath.AxisAngle(MeleeMath.X,GripClench*t.LClench),rc=MeleeMath.AxisAngle(MeleeMath.X,GripClench*t.RClench),k=gripTurn;
             Vector3 T(float x,float y,float z)=>Vector3.Transform(new Vector3(x,y,z),k);
             Vector3 lp=Vector3.Transform(ElbowTuck,k),rp=Vector3.Transform(new Vector3(-ElbowTuck.X,ElbowTuck.Y,ElbowTuck.Z),k);
-            if(spec=="greatsword")r.BraceWeapon(T(-.27f,-.03f,.29f)+rift,k*Aim(-.2f,.62f,-.76f,2.1f)*rc,1);
+            if(spec=="greatsword"||spec==NativeTopDog.Spec)r.BraceWeapon(T(-.27f,-.03f,.29f)+rift,k*Aim(-.2f,.62f,-.76f,2.1f)*rc,1);
             else if(spec=="sword")r.BraceWeapon(T(-.31f,-.24f,.2f)+rift,k*Aim(-.38f,-.2f,.9f,-.25f)*rc,1,null,false);
             else if(spec=="daggers"){r.Hand(false,T(-.34f,-.26f,.16f)+rift,k*Aim(-.3f,-.42f,.85f,-.4f)*rc,1,rp);r.Hand(true,T(.34f,-.26f,.16f)+lift,k*Aim(.3f,-.42f,.85f,.4f)*lc,1,lp);}
             else if(spec=="shield")r.Hand(false,T(-.3f,-.24f,.15f)+rift,k*Aim(-.3f,-.12f,.95f)*rc,1);
@@ -221,7 +221,7 @@ namespace ChipArena.UnityConversion
             r.SetE(Body,0,.12f+sway*.015f,0);r.SetE(Head,-.04f+breath*.012f,sway*.07f-.1f,.02f);r.SetE(LClav,0,0,.02f+breath*.006f);r.SetE(RClav,0,0,-.02f-breath*.006f);
             Contrapposto(r,breath);r.SetE(LHand,0,0,0);r.SetE(RHand,0,0,0);
             float lift=breath*.004f;
-            if(spec=="greatsword"){r.BraceWeapon(new Vector3(-.27f,-.04f+lift,.30f),Aim(-.2f,.62f,-.76f,2.1f),1);Relax(r,true,breath);}
+            if(spec=="greatsword"||spec==NativeTopDog.Spec){r.BraceWeapon(new Vector3(-.27f,-.04f+lift,.30f),Aim(-.2f,.62f,-.76f,2.1f),1);Relax(r,true,breath);}
             else if(spec=="sword"){r.BraceWeapon(new Vector3(-.31f,-.34f+lift,.19f),Aim(-.38f,-.38f,.84f,-.25f),1);Relax(r,true,breath);}
             else if(spec=="daggers"){r.Hand(false,new Vector3(-.27f,-.33f+lift,.13f),Aim(-.3f,-.55f,.78f,-.4f),1);r.Hand(true,new Vector3(.27f,-.33f+lift,.13f),Aim(.3f,-.55f,.78f,.4f),1);}
             else if(spec=="shield"){r.Hand(false,new Vector3(-.3f,-.33f+lift,.12f),Aim(-.3f,-.12f,.95f),1);Relax(r,true,breath);}

@@ -28,6 +28,7 @@ namespace ChipArena.UnityConversion
         private void IntroCard(NativePilot pilot,string style,float rawAge,bool boss,int index,int total,bool team)
         {
             if(!boss&&style==NativeSheldonIntro.Style){SheldonCard(pilot,rawAge,index,total,team);return;}// the corrupted card (NativeSheldonIntroPresentation)
+            if(!boss&&style==NativeTopDog.Entrance){DogCard(pilot,rawAge,index,total,team);return;}// the diner sign (NativeTopDogScreen)
             if(!boss&&style==NativeBombs.Entrance){BombCard(pilot,rawAge,index,total,team);return;}// the hazard-tape card (NativeBombScreen)
             float duration=(float)NativeIntroRules.OverlayDuration(style),nameAt=(float)NativeIntroRules.NameAt(style),age=Mathf.Min(rawAge,duration),W=U.W,H=U.H;
             var ink=U.Hex(boss?0x020103:0x040610);

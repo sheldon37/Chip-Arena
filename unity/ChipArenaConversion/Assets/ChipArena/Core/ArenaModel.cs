@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         public byte SelectWeapon; // 0=no change, 1=Sword, 2=Pistol, 3=Rifle, 4=MachineGun
         public V3 AimTarget,AbilityTarget;
         public bool InteractHeld;public bool Interact;public bool Hadoken,HadokenHeld,Uppercut;public byte SirenAbility;public bool Attack, Block, Roll, Shoot, Jump, Sprint, Aim, Reload, AbilityQ, AbilityE, AbilityEHeld, AbilityEReleased, CancelAbilities;
-        public bool Valid { get { return Sequence >= 0 && LockTarget>=0 && LockTarget<10000000 && MathUtil.Finite(X) && MathUtil.Finite(Z) && MathUtil.Finite(Yaw) && MathUtil.Finite(Pitch) && MathUtil.Finite(AbilityTarget.x) && MathUtil.Finite(AbilityTarget.y) && MathUtil.Finite(AbilityTarget.z) && AbilityTarget.Length<=10000 && MathUtil.Finite(AimTarget.x) && MathUtil.Finite(AimTarget.y) && MathUtil.Finite(AimTarget.z) && AimTarget.Length<=10000 && SelectWeapon<=4 && SirenAbility<=5; } }
+        public bool Valid { get { return Sequence >= 0 && LockTarget>=0 && LockTarget<10000000 && MathUtil.Finite(X) && MathUtil.Finite(Z) && MathUtil.Finite(Yaw) && MathUtil.Finite(Pitch) && MathUtil.Finite(AbilityTarget.x) && MathUtil.Finite(AbilityTarget.y) && MathUtil.Finite(AbilityTarget.z) && AbilityTarget.Length<=10000 && MathUtil.Finite(AimTarget.x) && MathUtil.Finite(AimTarget.y) && MathUtil.Finite(AimTarget.z) && AimTarget.Length<=10000 && SelectWeapon<=4 && SirenAbility<=6; } }
         public InputFrame Sanitized()
         {
             if (!Valid) return new InputFrame();
@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
         public bool HasKernel;public NativeKernelPanic Kernel;public NativeMeleeKit MeleeKit;public NativeTechniqueMark[] TechniqueMarks;public NativeChipGauge[] ChipGauges;public bool HasTechnique;public NativeTechnique Technique;public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
         public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;
         public float CastRate=1,AbilityAt=-100,AbilityRelease;public string AbilityId;
-        public float BowDrawAt=-1,BowDraw,BowReleaseAt=-100,BowRainAt=-100;public V3 BowRainTarget;public NativeBombKit Bomb;public bool HasBomb;public NativeCyberKit Cyber=new NativeCyberKit();public bool Grounded=true;public int AirJumps;public float AirJumpAt=-100;
+        public float BowDrawAt=-1,BowDraw,BowReleaseAt=-100,BowRainAt=-100;public V3 BowRainTarget;public NativeBombKit Bomb;public bool HasBomb;public NativeTopDogKit Dog;public bool HasDog;public NativeCyberKit Cyber=new NativeCyberKit();public bool Grounded=true;public int AirJumps;public float AirJumpAt=-100;
         // Captured-melee presentation (MeleeMotion): the swing window, authoritative step and commitment, Hurricane, and the
         // hit reaction in the struck pilot's facing frame (source frame: +x the rig's left, radians). Never read by authority.
         public float SwingAt=-100,SwingUntil=-100,CommitAt=-100,CommitUntil=-100,CommitYaw,StepAt,StepUntil,StepDistance;public bool Followup,Hurricane,SprintAttack,OpenerLunge;
@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
         public float StunUntil, StaggerImmuneUntil, RegenAt, ShootReady, RespawnAt, FlashUntil;
         internal bool QueuedAttack;
         internal readonly HashSet<int> Hit = new HashSet<int>();
-        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.Bomb=Bomb?.ViewCopy();copy.Cyber=Cyber?.ViewCopy();copy.Kernel=Kernel?.ViewCopy();copy.MeleeKit=MeleeKit?.ViewCopy();copy.Technique=Technique?.ViewCopy();copy.TechniqueMarks=TechniqueMarks==null?null:(NativeTechniqueMark[])TechniqueMarks.Clone();copy.ChipGauges=ChipGauges==null?null:(NativeChipGauge[])ChipGauges.Clone();return copy;}
+        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.Bomb=Bomb?.ViewCopy();copy.Dog=Dog?.ViewCopy();copy.Cyber=Cyber?.ViewCopy();copy.Kernel=Kernel?.ViewCopy();copy.MeleeKit=MeleeKit?.ViewCopy();copy.Technique=Technique?.ViewCopy();copy.TechniqueMarks=TechniqueMarks==null?null:(NativeTechniqueMark[])TechniqueMarks.Clone();copy.ChipGauges=ChipGauges==null?null:(NativeChipGauge[])ChipGauges.Clone();return copy;}
         public bool Alive { get { return Hp > 0; } }
         public bool Rolling(float t) { return t >= RollAt && t < RollAt + VisualRollDuration; }
         public bool Invulnerable(float t) { return t >= RollAt + Rules.IframeStart && t < RollAt + Rules.IframeEnd; }

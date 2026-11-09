@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root,ConversionContent data)
         {
             count=0;string Code(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));string Sha(string f){using var sha=SHA256.Create();return string.Concat(sha.ComputeHash(File.ReadAllBytes(Path.Combine(root,"Assets/ChipArena",f))).Select(b=>b.ToString("x2")));}
-            var designed=NativeWeaponModels.Specs.Where(s=>s!=NativeBombs.Spec).ToArray();var cm=new ChipModule[NativeChipModules.MaxModules*2];var cm64=new ChipModule[NativeChipModules.MaxModules];var pieces=new WeaponPiece[NativeWeaponDressing.MaxPieces];
+            var designed=NativeWeaponModels.Specs.Where(s=>s!=NativeBombs.Spec&&s!=NativeTopDog.Spec).ToArray();var cm=new ChipModule[NativeChipModules.MaxModules*2];var cm64=new ChipModule[NativeChipModules.MaxModules];var pieces=new WeaponPiece[NativeWeaponDressing.MaxPieces];
 
             // 1. The Prototype Series is unchanged: its piece source and primitives are the base files, its output digest is pinned,
             // and the Runtime routes a Prototype pick (and every weapon without a Standard design) through the source pieces.
@@ -83,9 +83,9 @@ namespace ChipArena.UnityConversion
             Check(Sha("Runtime/NativeSourcePrimitives.cs")==PrimitivesSha,"NativeSourcePrimitives.cs (the Prototype primitives) is byte-identical to the base");
             var digest=new StringBuilder();
             // The base weapons (the Bow, now in content, has its own pinned digest below; the DEV Cyber Lord, in content since
-            // Astra's PR #142, is unarmed: no weapon socket, so no pieces are drawn for it). Bombadier TNT has its own BombadierChecks; it was not in the pinned prototype inventory.
+            // Astra's PR #142, is unarmed: no weapon socket, so no pieces are drawn for it). Bombadier TNT has its own BombadierChecks, the Top Dog's mallet TopDogChecks; neither was in the pinned prototype inventory.
             Check(!NativeWeaponDressing.SocketShown(CyberLordSpec.Id),"the unarmed Cyber Lord shows no weapon socket (no pieces)");
-            foreach(var w in data.weapons.Where(w=>w.id!=NativeBowWire.Spec&&w.id!=CyberLordSpec.Id&&w.id!=NativeBombs.Spec))foreach(var l in Loadouts(data,w.id))
+            foreach(var w in data.weapons.Where(w=>w.id!=NativeBowWire.Spec&&w.id!=CyberLordSpec.Id&&w.id!=NativeBombs.Spec&&w.id!=NativeTopDog.Spec))foreach(var l in Loadouts(data,w.id))
             {
                 int n=NativeWeaponDressing.Modules(w.id,w.@class=="ranged",(int)w.color,l.Chips,l.Stats,pieces);digest.Append(w.id).Append(l.Name).Append(n);
                 for(int i=0;i<n;i++)foreach(float t in new[]{0f,1.37f}){var p=pieces[i];NativeWeaponDressing.Animate(ref p,t);Piece(digest,p);}

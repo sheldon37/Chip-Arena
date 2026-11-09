@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
             foreach(var (shape,weight) in set){int i=Array.IndexOf(Shapes,shape);if(i>=0){w[i]=weight;continue;}w[S(shape+"_L")]=weight;w[S(shape+"_R")]=weight;}
             return w;
         }
-        public enum Mood{Neutral,Focus,Shout,Grit,Aim,Pain,Strain,Dazed,Grin,Smile,Happy,Smirk,Sad,Surprised,Dead,Breath,Moan,Snarl,Bare,Slack,Grimace,Rage,Roar,Spit}
+        public enum Mood{Neutral,Focus,Shout,Grit,Aim,Pain,Strain,Dazed,Grin,Smile,Happy,Smirk,Sad,Surprised,Dead,Breath,Moan,Snarl,Bare,Slack,Grimace,Rage,Roar,Spit,Gobble,Bloat}
         /// <summary>Each mood's weights (the pack's clips where they fit: Happy, Sad, Surprised; Smirk its Devious; the rest composed).</summary>
         public static readonly float[][] Moods=
         {
@@ -68,6 +68,9 @@ namespace ChipArena.UnityConversion
             M(("Brows_Angry",100),("Brows_Lowered",100),("Mouth_Grimace",85),("Mouth_Wide",70),("ClentchedTeeth",80),("Eyes_UpperOpen",40),("Eyes_LowerClosed",20)),
             M(("Brows_Angry",100),("Brows_Lowered",80),("Mouth_Wide",90),("Mouth_Grimace",60),("Jaw_Open",80),("LipsA",30),("Eyes_UpperOpen",60),("Eyes_LowerOpen",50)),
             M(("Mouth_Pucker",80),("LipsO",60),("Brows_Raised",30),("Eyes_UpperOpen",40),("Jaw_Open",15)),
+            // The Top Dog's feast (docs/TOP-DOG.md): the mouth stretched wide round a hot dog, and the stuffed "uh oh" of the swelling.
+            M(("Jaw_Open",100),("LipsO",70),("Mouth_Wide",45),("Brows_Raised",70),("Eyes_UpperOpen",70),("Eyes_LowerOpen",30)),
+            M(("Mouth_Pucker",65),("LipsO",35),("Jaw_Open",8),("Brows_Raised",100),("Brows_Sad",40),("Eyes_UpperOpen",100),("Eyes_LowerOpen",70)),
         };
         /// <summary>How quickly a face eases toward its moods (seconds: coming, going; the lids at most Lids), and its blink (seconds: the
         /// gap's range, the blink).</summary>
@@ -97,6 +100,8 @@ namespace ChipArena.UnityConversion
         {
             public float Time,Health,Stamina,SinceHit,HitStrength,SinceAttack,SinceSpecial,SinceAbility,SinceShot,SinceBlock,SinceRoll;
             public bool Arena,Alive,Hurt,Aiming,Sprinting,Stunned,Attacking;public int Kills;
+            /// <summary>The Top Dog's feast on this pilot: the mouth wide round a hot dog (0..1), and stuffed after (0..1).</summary>
+            public float Gobble,Bloat;
         }
         /// <summary>A pilot's face this frame (see the class's notes).</summary>
         public static void PilotFace(Face f,in Pilot p)
@@ -110,7 +115,8 @@ namespace ChipArena.UnityConversion
             Layer(f,Mood.Aim,(p.Aiming?.7f:0)+Fade(p.SinceShot,.35f)*.3f);
             Layer(f,Mood.Grit,Math.Max(Fade(p.SinceBlock,.5f),Fade(p.SinceRoll,.45f))*.85f);
             Layer(f,Mood.Shout,Math.Max(p.Attacking?.9f:Fade(p.SinceAttack,.45f),Math.Max(Fade(p.SinceSpecial,.8f),Fade(p.SinceAbility,.6f))));
-            Layer(f,Mood.Dazed,p.Stunned?1:0);
+            Layer(f,Mood.Dazed,p.Stunned&&p.Gobble<=0&&p.Bloat<=0?1:0);
+            Layer(f,Mood.Bloat,p.Bloat);Layer(f,Mood.Gobble,p.Gobble);
             Layer(f,Mood.Pain,Math.Max(Fade(p.SinceHit,.6f)*Math.Max(.5f,Math.Min(1,p.HitStrength)),p.Hurt?.6f:0));
             Step(f,p.Time,true);
         }

@@ -1,0 +1,133 @@
+using System;
+using System.Globalization;
+
+namespace ChipArena.UnityConversion
+{
+    /// <summary>
+    /// The Top Dog's names and numbers (docs/TOP-DOG.md): the owner's DEV class for the Hot Dog (2026-11-08), "toon power" with a cartoon mallet,
+    /// abilities on Q, E and 1 to 5 and the ultimate, All You Can Eat, on 6. The rules (Runtime NativeTopDogAuthority.cs) and the presentation
+    /// both read these, so a number lives in one place. Pure.
+    /// </summary>
+    public static class NativeTopDog
+    {
+        public const string Spec="topdog",Entrance="dev-topdog",Name="Top Dog";
+        /// <summary>The death style of a pilot All You Can Eat bursts (NativeDeath.style; Runtime NativeTopDogBurst draws it).</summary>
+        public const string Burst="hot-dog-burst";
+        public const string Mallet="big-mallet",Boing="boing",Zip="zip",Anvil="anvil",Peel="banana-peel",Mustard="mustard",Glove="spring-glove",Pie="cream-pie",Feast="all-you-can-eat";
+        // Prop kinds (NativeDogProp.Kind), marks (NativeDogMark.Kind) and hit kinds (NativeDogHit.Kind).
+        public const string PropAnvil="anvil",PropPeel="peel",PropPie="pie",PropGlove="glove",PropSquirt="squirt",PropPuddle="puddle",PropSpring="spring",PropZip="zip";
+        public const string Pancake="pancake",Slipped="slip",Pied="pied",Mustarded="mustard",Dazed="dazed",Stuffed="stuffed";
+        public const string HitBonk="bonk",HitSlam="slam",HitThud="thud",HitSwat="swat",HitAnvil="anvil",HitSlip="slip",HitSplat="splat",HitPow="pow",HitPie="pie",HitGulp="gulp",HitPop="pop",HitSnap="snap",HitBoing="boing",HitClang="clang";
+        public const int MaxProps=32,MaxHits=48,MaxMarks=24,Slots=7,PeelCharges=2,MaxPeels=3,Feeds=6;
+        /// <summary>The ability cards in their HUD order with their keys (the ultimate is apart, on 6).</summary>
+        public static readonly string[] Slot={Boing,Zip,Anvil,Peel,Mustard,Glove,Pie};
+        public static readonly string[] SlotKeys={"Q","E","1","2","3","4","5"};
+        public const string UltimateKey="6";
+        /// <summary>Cooldowns (s) in Slot order; the peel's is per charge.</summary>
+        public static readonly float[] Cooldown={8,7,10,6,11,9,12};
+        public static int SlotOf(string id)=>Array.IndexOf(Slot,id);
+        public static bool IsKind(string k)=>k==PropAnvil||k==PropPeel||k==PropPie||k==PropGlove||k==PropSquirt||k==PropPuddle||k==PropSpring||k==PropZip;
+        public static bool IsMark(string k)=>k==Pancake||k==Slipped||k==Pied||k==Mustarded||k==Dazed||k==Stuffed;
+        public static string AbilityName(string id)
+        {
+            switch(id){case Mallet:return "Big Mallet";case Boing:return "Boing!";case Zip:return "Zip";case Anvil:return "Anvil";case Peel:return "Banana Peel";case Mustard:return "Mustard Blaster";case Glove:return "Spring Glove";case Pie:return "Cream Pie";case Feast:return "All You Can Eat";default:return "";}
+        }
+        /// <summary>The icon id an ability's card draws (the Top Dog's own glyphs, <see cref="Glyph"/>).</summary>
+        public static string Icon(string id)=>"dog:"+(string.IsNullOrEmpty(id)?Mallet:id);
+
+        // ---- the mallet ----
+        /// <summary>The mallet's three swings: wind-up to the hit (s), the whole swing (s), damage, reach (m) and arc (half angle, rad). The third
+        /// is the overhead slam: its hit is a ring round where the head lands (SlamAhead in front, SlamRadius round).</summary>
+        public static readonly float[] SwingHit={.2f,.2f,.36f},SwingLength={.48f,.48f,.82f},SwingDamage={14,14,26},SwingReach={2.9f,2.9f,2.6f},SwingArc={1.0f,1.0f,.6f};
+        public const float ComboWindow=.45f,SlamAhead=1.7f,SlamRadius=2.1f,PancakeSeconds=.8f,SwingPush=5;
+
+        // ---- the abilities ----
+        public const float BoingRelease=.12f,BoingHeight=9,BoingAlong=8,ThudRadius=2.6f,ThudDamage=8,ThudLift=6;
+        public const float ZipWind=.3f,ZipTime=.3f,ZipReach=12,ZipWidth=1.3f,ZipDamage=10,ZipPush=9;
+        public const float AnvilRelease=.22f,AnvilFall=.9f,AnvilReach=22,AnvilRadius=2.1f,AnvilDamage=28,AnvilPancake=1.1f,AnvilStays=3.5f,AnvilHeight=14;
+        public const float PeelRelease=.18f,PeelFlight=.45f,PeelReach=10,PeelLife=20,PeelTouch=.75f,PeelDamage=8,PeelDown=1.2f;
+        public const float MustardTime=1.6f,MustardTick=.1f,MustardReach=9,MustardArc=.38f,MustardDamage=2,MustardSlow=.55f,MustardSlowFor=1.8f,PuddleEvery=.4f,PuddleRadius=1.2f,PuddleLife=4,PuddleSlow=.6f;
+        public const float GloveRelease=.18f,GloveOut=.2f,GloveBack=.25f,GloveReach=13,GloveRadius=.45f,GloveDamage=18,GlovePush=15,GloveLift=4,GloveDaze=.7f;
+        public const float PieRelease=.2f,PieSpeed=26,PieGravity=12,PieRadius=.35f,PieDamage=8,PieFor=2.6f,PieSplash=1.2f,PieSplashDamage=4,PieMaxFlight=1.6f;
+        public const float CastRecover=.4f;
+
+        // ---- All You Can Eat ----
+        /// <summary>Its timeline: the twirl, the throw, the lasso's flight, the reel, the feeding (one every FeedPeriod), the let-go, the pop.</summary>
+        public const float Twirl=.6f,LassoSpeed=32,LassoReach=18,LassoRadius=.8f,Reel=.5f,FeedDelay=.55f,FeedPeriod=.5f,Swallow=.4f,ReleaseAfter=.2f,Stagger=.45f,PopAfter=1.5f,After=.6f;
+        public const float HoldAhead=1.25f,PushBack=1.8f,FeedDamage=3,SnapDamage=40,SnapPerDog=6,PopDamage=22,PopRadius=3.2f,PopLift=8,PopPush=9,BossDamage=30,MissRefund=.5f;
+        /// <summary>The meter: a second, a mallet hit, an ability hit (shares of a full meter).</summary>
+        public const float MeterPerSecond=.01f,MeterMallet=.06f,MeterAbility=.08f;
+        /// <summary>The feeding's moments from a catch at `catchAt`.</summary>
+        public static float FeedAt(float catchAt)=>catchAt+FeedDelay;
+        public static float ReleaseAt(float feedAt)=>feedAt+Feeds*FeedPeriod+ReleaseAfter;
+        public static float PopAt(float release)=>release+PopAfter;
+        /// <summary>When hot dog `i` (0..Feeds-1) is offered, and when it is down.</summary>
+        public static float OfferAt(float feedAt,int i)=>feedAt+i*FeedPeriod;
+        public static float DownAt(float feedAt,int i)=>OfferAt(feedAt,i)+Swallow;
+
+        /// <summary>How full the victim is (0 nothing, 1 every hot dog down) at `time`: each swallow fills a share, eased in as it goes down.</summary>
+        public static float Fill(NativeDogFeast f,float time)
+        {
+            if(f==null||f.Catch<-50)return 0;float fill=0;
+            for(int i=0;i<Feeds;i++){float u=(time-OfferAt(f.FeedAt,i)-Swallow*.55f)/(Swallow*.6f);if(u<=0)break;fill+=Smooth(u)/Feeds;}
+            if(f.Snap>-50&&time>=f.Snap){float u=(time-f.Snap)/.5f;fill*=1-Smooth(u);}
+            return Math.Max(0,Math.Min(1,fill));
+        }
+        /// <summary>The belly's size (0 none, about 1 when every hot dog is down, up to Over at the pop): the fill, then once let go it keeps
+        /// ballooning toward the pop, trembling faster as it goes.</summary>
+        public const float Over=1.7f;
+        public static float Belly(NativeDogFeast f,float time)
+        {
+            if(f==null||f.Catch<-50)return 0;float b=Fill(f,time);
+            if(f.Snap<-50&&time>=f.Release){float u=Math.Max(0,Math.Min(1,(time-f.Release)/Math.Max(.1f,f.Pop-f.Release)));b=1+(Over-1)*u*u*(3-2*u)*.85f+(Over-1)*.15f*u*u*u*u;}
+            if(f.Snap<-50&&time>=f.Pop)return 0;
+            return b;
+        }
+        /// <summary>The swelling's tremble (a share of the size, signed) at `time`: a wobble once let go that quickens to the pop.</summary>
+        public static float Tremble(NativeDogFeast f,float time)
+        {
+            if(f==null||f.Snap>-50||time<f.Release||time>=f.Pop)return 0;float u=(time-f.Release)/Math.Max(.1f,f.Pop-f.Release);
+            double phase=(time-f.Release)*(9+30*u*u)*2*Math.PI;return (float)Math.Sin(phase)*(.025f+.06f*u*u);
+        }
+        private static float Smooth(float x){x=x<0?0:x>1?1:x;return x*x*(3-2*x);}
+
+        // ---- the ability glyphs: flat white shapes in a 100 box (Runtime NativeIcons draws them where a card asks for "dog:<id>") ----
+        public const float GlyphBox=100;
+        private static string F(float v)=>v.ToString("0.##",CultureInfo.InvariantCulture);
+        private static string Box(float x0,float y0,float x1,float y1)=>"M"+F(x0)+" "+F(y0)+"L"+F(x1)+" "+F(y0)+"L"+F(x1)+" "+F(y1)+"L"+F(x0)+" "+F(y1)+"Z";
+        private static string Oval(float x,float y,float rx,float ry){return "M"+F(x-rx)+" "+F(y)+"A"+F(rx)+" "+F(ry)+" 0 1 1 "+F(x+rx)+" "+F(y)+"A"+F(rx)+" "+F(ry)+" 0 1 1 "+F(x-rx)+" "+F(y)+"Z";}
+        private static string Star(float x,float y,float r)=>"M"+F(x)+" "+F(y-r)+"L"+F(x+r*.3f)+" "+F(y-r*.3f)+"L"+F(x+r)+" "+F(y)+"L"+F(x+r*.3f)+" "+F(y+r*.3f)+"L"+F(x)+" "+F(y+r)+"L"+F(x-r*.3f)+" "+F(y+r*.3f)+"L"+F(x-r)+" "+F(y)+"L"+F(x-r*.3f)+" "+F(y-r*.3f)+"Z";
+        private static readonly string[] glyphIds={Mallet,Boing,Zip,Anvil,Peel,Mustard,Glove,Pie,Feast};
+        private static readonly string[] glyphs=new string[9];
+        /// <summary>Icon `id`'s markup ("dog:" and an ability id), or null when it is not one of the Top Dog's.</summary>
+        public static string Glyph(string id)
+        {
+            if(id==null||!id.StartsWith("dog:",StringComparison.Ordinal))return null;int i=Array.IndexOf(glyphIds,id.Substring(4));if(i<0)return null;
+            return glyphs[i]??(glyphs[i]="<path d=\""+GlyphPath(i)+"\" fill=\"#fff\"/>");
+        }
+        private static string GlyphPath(int i)
+        {
+            switch(i)
+            {
+                // The mallet: a barrel head, tilted, its handle down to the corner, a star where it lands.
+                case 0:return "M38 12L78 52L64 66L24 26Z"+"M47 49L54 56L18 92L11 85Z"+Star(84,82,12);
+                // The spring, a foot on top.
+                case 1:return Box(22,84,78,92)+"M26 76L74 70L74 62L26 68Z"+"M26 58L74 52L74 44L26 50Z"+"M26 40L74 34L74 26L26 32Z"+"M30 22Q30 8 46 8L70 8Q80 8 80 18L80 22Z";
+                // Speed lines behind a rushing blur.
+                case 2:return Oval(68,50,22,22)+Box(8,30,40,36)+Box(2,47,40,53)+Box(12,64,40,70);
+                // An anvil, its horn to the left, falling lines above it.
+                case 3:return "M8 40L34 40L34 36L84 36L84 54Q70 56 66 64L72 76L84 76L84 86L22 86L22 76L34 76L40 64Q36 56 20 52Z"+Box(46,6,52,26)+Box(60,12,66,28);
+                // A banana peel, splayed.
+                case 4:return Oval(50,58,9,16)+"M44 50Q20 54 8 82Q26 74 42 62Z"+"M56 50Q80 54 92 82Q74 74 58 62Z"+"M46 70Q36 84 32 96Q46 88 50 74Z"+"M50 46Q52 26 62 12L66 14Q58 28 56 46Z";
+                // A squeeze bottle squirting.
+                case 5:return "M30 40Q30 34 36 34L56 34Q62 34 62 40L62 92Q62 96 58 96L34 96Q30 96 30 92Z"+"M38 22L54 22L56 34L36 34Z"+"M44 8L48 8L48 22L44 22Z"+"M52 6Q70 10 92 4L92 10Q70 16 52 12Z";
+                // A boxing glove on its scissor arm.
+                case 6:return Oval(68,46,24,26)+Box(40,38,48,58)+"M6 40L20 58L26 52L12 34Z"+"M6 58L20 40L26 46L12 64Z"+"M22 40L36 58L40 52L28 36Z";
+                // A cream pie, its cherry.
+                case 7:return "M10 62L90 62L82 82L18 82Z"+"M14 60Q20 38 50 38Q80 38 86 60Z"+Oval(50,30,7,7);
+                // A hot dog in its bun, wiggling, stars round it.
+                default:return "M10 52Q30 40 50 50Q70 60 90 48L90 58Q70 70 50 60Q30 50 10 62Z"+"M14 60Q50 86 86 58L86 66Q50 96 14 68Z"+Star(20,22,10)+Star(80,18,8)+Star(52,12,6);
+            }
+        }
+    }
+}

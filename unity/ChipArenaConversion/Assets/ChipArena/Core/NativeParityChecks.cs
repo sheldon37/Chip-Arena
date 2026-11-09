@@ -16,9 +16,9 @@ namespace ChipArena.UnityConversion
         {
             data.Validate();Check(data.sourceCommit==fixtures.sourceCommit,"Source receipts differ");
             // The source's inventory, plus the Unity-only Bow (Astra, PR #141: one weapon, its Q and E) and the DEV Cyber Lord
-            // (Astra, PR #142: one DEV-only weapon, its Q, E and 1-4). Bombadier adds one DEV weapon and seven abilities. Standard techniques and Bombadier have separate contract checks.
-            Check(data.weapons.Count(w=>w.id!="bow"&&w.id!="cyberlord"&&w.id!=NativeBombs.Spec)==15&&data.weapons.Length==18&&data.weapons.Count(w=>w.id==NativeBombs.Spec&&w.devOnly)==1&&data.weapons.Count(w=>w.id=="cyberlord"&&w.devOnly)==1&&data.chips.Length==236&&data.maps.Count(m=>!m.unity)==15&&data.maps.Where(m=>!m.unity).Sum(m=>m.blocks.Length)==3451
-                &&data.abilities.Count(a=>a.kind!="technique"&&!NativeMeleeRules.Standard(a.spec)&&a.spec!="bow"&&a.spec!="cyberlord"&&a.spec!=NativeBombs.Spec)==14&&data.abilities.Count(a=>a.spec=="bow"&&a.kind!="technique")==2&&data.abilities.Count(a=>a.spec=="cyberlord")==6&&data.abilities.Count(a=>a.spec==NativeBombs.Spec)==7,"Content inventory differs from pinned source");
+            // (Astra, PR #142: one DEV-only weapon, its Q, E and 1-4). Bombadier adds one DEV weapon and seven abilities, the Top Dog one DEV weapon and eight. Standard techniques and Bombadier have separate contract checks.
+            Check(data.weapons.Count(w=>w.id!="bow"&&w.id!="cyberlord"&&w.id!=NativeBombs.Spec&&w.id!=NativeTopDog.Spec)==15&&data.weapons.Length==19&&data.weapons.Count(w=>w.id==NativeBombs.Spec&&w.devOnly)==1&&data.weapons.Count(w=>w.id==NativeTopDog.Spec&&w.devOnly)==1&&data.weapons.Count(w=>w.id=="cyberlord"&&w.devOnly)==1&&data.chips.Length==236&&data.maps.Count(m=>!m.unity)==15&&data.maps.Where(m=>!m.unity).Sum(m=>m.blocks.Length)==3451
+                &&data.abilities.Count(a=>a.kind!="technique"&&!NativeMeleeRules.Standard(a.spec)&&a.spec!="bow"&&a.spec!="cyberlord"&&a.spec!=NativeBombs.Spec&&a.spec!=NativeTopDog.Spec)==14&&data.abilities.Count(a=>a.spec=="bow"&&a.kind!="technique")==2&&data.abilities.Count(a=>a.spec=="cyberlord")==6&&data.abilities.Count(a=>a.spec==NativeBombs.Spec)==7&&data.abilities.Count(a=>a.spec==NativeTopDog.Spec)==8,"Content inventory differs from pinned source");
             int values=0;
             foreach(var c in fixtures.cases)
             {

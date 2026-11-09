@@ -175,6 +175,7 @@ namespace ChipArena.UnityConversion
             new NativeDevAction("gallery-cyber-kit2-melee",Pr,P,"Cyber Kit v2 melee"),
             new NativeDevAction("gallery-techniques",Pr,P,"Weapon techniques"),
             new NativeDevAction("gallery-bombadier",Pr,P,"Bombadier kit"),
+            new NativeDevAction("gallery-topdog",Pr,P,"Top Dog kit"),
             new NativeDevAction("gallery-revive-machine",Pr,P,"Revive machine"),
             new NativeDevAction("gallery-revive-machine-auto",Pr,P,"Revive machine, run by itself"),
             new NativeDevAction("preview-reveal",Pr,P,"Preview DEV Reveal"),

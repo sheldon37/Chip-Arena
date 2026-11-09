@@ -192,7 +192,7 @@ namespace ChipArena.UnityConversion
                 case "ghost":case "ascension":case "ragdoll-soul":return "death.style.soul";
                 case "launch":case "ragdoll":return "death.style.launch";
                 case "dev-matrix":return "death.style.matrix";
-                case "dev-gibber":case "vent-splat":case "siren-crush":return "death.style.gib";
+                case "dev-gibber":case "vent-splat":case "siren-crush":case NativeTopDog.Burst:return "death.style.gib";
                 case "ragdoll-frost":return "status.frost-shatter";
                 case "siren-dissipate":return "siren.dissipate";
                 default:return null;

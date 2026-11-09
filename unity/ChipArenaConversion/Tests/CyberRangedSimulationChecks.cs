@@ -9,7 +9,7 @@ internal static class CyberRangedSimulationChecks
     static NativeCyberKit Ranged()=>new NativeCyberKit{Ranged=new NativeCyberRangedState{Ranged=true}};
     public static void Run()
     {
-        checks=0;Check(new InputFrame{SirenAbility=5}.Valid&&!new InputFrame{SirenAbility=6}.Valid,"key 5 wire bounds");Check(new InputFrame{SirenAbility=5}.HeldOnly().SirenAbility==0,"switch is a tap, never held/queued");
+        checks=0;Check(new InputFrame{SirenAbility=5}.Valid&&new InputFrame{SirenAbility=6}.Valid&&!new InputFrame{SirenAbility=7}.Valid,"key 5 wire bounds (6 since the Top Dog's ultimate, 7 refused)");Check(new InputFrame{SirenAbility=5}.HeldOnly().SirenAbility==0,"switch is a tap, never held/queued");
         var s=new NativeCyberKit();float mana=93;
         Check(!NativeCyberRangedRules.Switch(s,10,true)&&!s.Ranged.Ranged,"external lock refuses switch");
         foreach(string locked in new[]{"cast","dash","link"})

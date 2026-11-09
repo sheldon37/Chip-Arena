@@ -4,7 +4,7 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     /// <summary>What smashed a body (<see cref="NativeSmashGib"/>): Cyber City's maglev, a Factory die press, the Factory crane's load.</summary>
-    public enum SmashCause : byte { None, Train, Press, Crane }
+    public enum SmashCause : byte { None, Train, Press, Crane, Burst }
 
     /// <summary>
     /// One smash, everything a client needs to present it (Unity world, System.Numerics), built from replicated data only: the
@@ -208,6 +208,16 @@ namespace ChipArena.UnityConversion
             p.Crushed=CrushSet(p.Seed,yaw,-p.Travel,0,H(p.Seed,0,3)<.35f?4:3,p.Crush);
             return p;
         }
+        /// <summary>The Top Dog's pop (docs/TOP-DOG.md, death style NativeTopDog.Burst): no crusher, the body bursting from its middle.
+        /// The trunk goes to fragments, the head, the arms and the legs are severed (<see cref="BurstSevered"/>) and thrown out every way
+        /// from the belly, the blood gushing out all round. The same replicated record, so every peer bursts it alike.</summary>
+        public static SmashPlan Burst(Vector3 body,float yaw,int seed)
+        {
+            var p=new SmashPlan{Cause=SmashCause.Burst,Seed=Mix(seed),Body=body,Yaw=yaw,Travel=Vector3.UnitY,Speed=9,Floor=body.Y-.85f,Top=body.Y+BodyTop,Contact=0,Throw=7.5f,Carry=6};
+            p.Crushed=1;p.Crush[0]=CapturedRig.Spine;return p;
+        }
+        /// <summary>A burst body's parts that come away whole: the head, both arms at the shoulder, both legs at the hip.</summary>
+        public static readonly int[] BurstSevered={CapturedRig.Head,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LHip,CapturedRig.RHip};
         private static Vector3 Forward(float yaw){double r=yaw*Math.PI/180;return new Vector3((float)Math.Sin(r),0,(float)Math.Cos(r));}
         private static Vector3 Right(float yaw){double r=yaw*Math.PI/180;return new Vector3((float)Math.Cos(r),0,-(float)Math.Sin(r));}
         /// <summary>How far (m, horizontal) `point` lies outside a crusher's footprint (0 inside).</summary>
@@ -309,7 +319,15 @@ namespace ChipArena.UnityConversion
         /// spin (Unity world, m/s and rad/s; the caller clamps the speed to the ragdoll's own limit).</summary>
         public static void Throw(SmashPlan p,int part,Vector3 at,Vector3 centre,out Vector3 velocity,out Vector3 spin)
         {
-            velocity=spin=Vector3.Zero;if(p==null||p.Pinned)return;Vector3 up=Vector3.UnitY,t=p.Travel,side=CapturedRig.Unit(Vector3.Cross(up,t),Vector3.UnitX);
+            velocity=spin=Vector3.Zero;if(p==null||p.Pinned)return;
+            if(p.Cause==SmashCause.Burst)
+            {
+                // Out from the belly every way, a little up, each part tumbling hard.
+                float b0=H(p.Seed,part,50),b1=H(p.Seed,part,51),b2=H(p.Seed,part,54),b3=H(p.Seed,part,55);var away=CapturedRig.Unit(at-(p.Body-Vector3.UnitY*.15f),Vector3.UnitY);
+                velocity=CapturedRig.Unit(away+Vector3.UnitY*.55f,Vector3.UnitY)*(p.Throw*(.75f+.5f*b0))+Vector3.UnitY*(1.5f+2*b1);
+                spin=new Vector3(b1-.5f,b2-.5f,b3-.5f)*28;return;
+            }
+            Vector3 up=Vector3.UnitY,t=p.Travel,side=CapturedRig.Unit(Vector3.Cross(up,t),Vector3.UnitX);
             float h0=H(p.Seed,part,50),h1=H(p.Seed,part,51),h2=H(p.Seed,0,52),h3=H(p.Seed,0,53);bool train=p.Cause==SmashCause.Train;
             velocity=t*(p.Throw*(.86f+.28f*h0))+up*((train?2.6f:1.6f)+(train?2.2f:1)*h1)+side*((h2-.5f)*(train?3:1.5f));
             // It tumbles along the travel (its top leads: the floor holds the feet back) with a seeded roll.
@@ -342,6 +360,12 @@ namespace ChipArena.UnityConversion
                 float a=(float)(k*Math.PI*2/Gushes+(h0-.5f)*.6f+p.Yaw*Math.PI/180);var dir=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));
                 at=p.Contact+.012f*k+.01f*h1;origin=Edge(p,p.Body,dir,1.6f)+dir*.04f;origin.Y=p.Floor+.025f;
                 normal=CapturedRig.Unit(dir+up*.12f,dir);along=dir;carry=dir*(2+2.5f*h2);kind="squirt";severity=.7f+.3f*h1;return true;
+            }
+            if(p.Cause==SmashCause.Burst)
+            {
+                // A ring of gushes out of the middle, the way the parts go.
+                float a=(float)(k*Math.PI*2/Gushes+(h0-.5f)*.5f);var dir=new Vector3((float)Math.Sin(a),.35f+.4f*h1,(float)Math.Cos(a));dir=CapturedRig.Unit(dir,Vector3.UnitY);
+                at=.006f*k;origin=p.Body-up*.1f+dir*.15f;normal=dir;along=CapturedRig.Unit(new Vector3(dir.X,0,dir.Z),Vector3.UnitX);carry=dir*(4+3*h2)+up*1.5f;kind="crush";severity=1;return true;
             }
             var t=p.Travel;var side=CapturedRig.Unit(Vector3.Cross(up,t),Vector3.UnitX);bool train=p.Cause==SmashCause.Train;
             if(!train&&k>=4)return false;

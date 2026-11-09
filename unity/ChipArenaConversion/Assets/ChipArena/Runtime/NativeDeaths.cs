@@ -29,6 +29,7 @@ namespace ChipArena.UnityConversion
             if(damageKind!="collapse"&&source==null)source=StageCredit(p);
             // A hold interrupted by a bystander is not a Siren crush; only the timed crush hit sets this flag.
             string style=NativeSirenRules.DeathStyle(p.Seat.spec,sirenCrush,source?.Seat.killEffect);
+            if(p.DogPopped)style=NativeTopDog.Burst;
             p.Pose.Wounds=p.Wounds.ToArray();p.Death=new NativeDeath{damageKind=damageKind,hazardId=hazardId,id=p.Seat.id,owner=source?.Seat.id??0,at=Time,seed=nextEvent++,yaw=sirenCrush&&source!=null?NativeSirenRules.CrushDeathYaw(source.Yaw):p.Yaw,force=force,style=style,model=p.Seat.spec=="siren"?"siren":"pilot",position=p.Body.position,velocity=p.Body.isKinematic?Vector3.zero:p.Body.linearVelocity+p.Knockback,direction=direction,melee=melee,kept=Pve!=null&&!p.Seat.AuthorityBoss,actor=p.Pose.ViewCopy(),wound=stage?null:p.Wounds.LastOrDefault()};
             var w=p.Death.wound;p.Death.kneel=w!=null&&w.part==5&&w.trauma=="bullet"&&w.speed>=110&&(w.kind=="cavity"||w.kind=="sever")&&p.Grounded&&p.Down==null&&p.Juggle==null&&p.Roll==null&&p.Death.velocity.magnitude<8;
         }
