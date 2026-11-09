@@ -57,11 +57,11 @@ Shader "ChipArena/NativeParryBarrier"
                 float border=smoothstep(.7,.97,edge),core=smoothstep(.92,1,edge);
                 float3 n=normalize(i.wn),view=normalize(_WorldSpaceCameraPos-i.wpos);float rim=pow(1-abs(dot(n,view)),2);
                 // A band of light climbing the dome, and a flare over the whole as it snaps up.
-                float band=exp(-abs(frac(t*.9)*2.6-.3-(i.cell.w*.5+.5)*2)*5)*.3,start=exp(-_Age*12)*.6;
+                float band=exp(-abs(frac(t*.9)*2.6-.3-(i.cell.w*.5+.5)*2)*5)*.25,start=exp(-_Age*12)*.5;
                 float ring=i.lift.x,flash=i.lift.y;
-                float glow=(.05+.05*pulse)+border*(.7+.45*pulse)+rim*.45+band*(.4+border)+start+ring*(1.2+border*1.5)+flash*(1.6+border);
+                float glow=(.022+.022*pulse)+border*(.6+.35*pulse)+rim*.28+band*(.25+border)+start+ring*(1.2+border*1.5)+flash*(1.6+border);
                 float3 c=_BarrierColor.rgb*glow*flicker;c=lerp(c,float3(1,1,1)*glow,saturate(core*.35+flash*.6+ring*.3));
-                c*=shown*_Strength*(face>0?1:.45);
+                c*=shown*_Strength*(face>0?1:.3);
                 UNITY_APPLY_FOG_COLOR(i.fogCoord,c,fixed4(0,0,0,0));
                 return float4(c,0);
             }

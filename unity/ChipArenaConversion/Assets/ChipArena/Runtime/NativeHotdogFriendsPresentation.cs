@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<l.Count;i++)
                 {
                     var b=l[i];var own=new Bounds(b.position,Vector3.zero);bool has=false;
-                    foreach(var c in b.GetComponents<Collider>()){if(c==null)continue;if(!has){own=c.bounds;has=true;}else own.Encapsulate(c.bounds);}
+                    foreach(var c in b.GetComponents<Collider>()){if(c==null||!c.enabled)continue;if(!has){own=c.bounds;has=true;}else own.Encapsulate(c.bounds);}
                     pieces[i]=own;if(!any){bounds=own;any=true;}else bounds.Encapsulate(own);
                 }
                 var rest=bounds.center;

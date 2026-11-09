@@ -9,15 +9,15 @@ namespace ChipArena.UnityConversion
     // open (Actor.BlockAt .. BlockUntil) and through its burst after, a dome of hex cells stands round it in its accent (Resources
     // NativeParryBarrier.shader): the cells snap in from its front round to its back, breathe and flicker, light up and ripple out from where
     // a parried blow lands (the Block events, NativeBlockFxPresentation.cs) and burst outward as the window shuts. The body's own hologram
-    // (NativeParryHoloPresentation.cs) glows softly under it. The local first-person pilot's own dome is faint (its eye stands inside it).
+    // (NativeParryHoloPresentation.cs) glows softly under it. The local pilot's own dome is fainter (in first person its eye stands inside it).
     // Presentation only: nothing here reaches the authority, the network frame, hit timing, damage or movement.
     public sealed partial class ArenaPresentation
     {
         private Mesh parryBarrierMesh;private int parryBarrierTier=-1;private Material parryBarrierMaterial;private bool parryBarrierFailed;private MaterialPropertyBlock parryBarrierBlock;
         private static readonly int BarrierColorId=Shader.PropertyToID("_BarrierColor"),BarrierAgeId=Shader.PropertyToID("_Age"),BarrierClosedId=Shader.PropertyToID("_Closed"),
             BarrierFacingId=Shader.PropertyToID("_Facing"),BarrierHitId=Shader.PropertyToID("_Hit"),BarrierStrengthId=Shader.PropertyToID("_Strength");
-        /// <summary>The local first-person pilot's own dome's strength (its eye is inside it).</summary>
-        public const float OwnBarrier=.3f;
+        /// <summary>The local pilot's own dome's strength: first person (its eye is inside it), and third person (the camera looks through it).</summary>
+        public const float OwnBarrier=.3f,OwnThirdBarrier=.6f;
         private Mesh ParryBarrierMesh()
         {
             int tier=LowGraphics?1:0;if(parryBarrierMesh!=null&&parryBarrierTier==tier)return parryBarrierMesh;
@@ -46,10 +46,10 @@ namespace ChipArena.UnityConversion
                 foreach(var r in blockRecords)if(r.Blocker==a.Id&&r.Detail!="hold"&&r.Detail!="guard-break"&&r.At<=time&&r.At>=a.BlockAt-.05f&&(hitAge<0||time-r.At<hitAge)){hitAge=time-r.At;hit=r.Point;}
                 var feet=visualPositions.TryGetValue(a.Id,out var drawn)?drawn:Position(a);float scale=Mathf.Max(.3f,a.RigScale>0?a.RigScale:1);
                 var middle=feet+Vector3.up*(NativeParryBarrier.Middle*scale);var way=hitAge>=0?hit-middle:Vector3.forward;way.y/=NativeParryBarrier.Tall;way=way.sqrMagnitude>1e-6f?way.normalized:Vector3.forward;
-                var facing=Quaternion.Euler(0,a.Yaw,0)*Vector3.forward;bool own=FirstPerson&&a.Id==LocalId;
+                var facing=Quaternion.Euler(0,a.Yaw,0)*Vector3.forward;bool own=a.Id==LocalId;
                 var accent=AccentTint(a.AccentColor);var colour=new Color(accent.r*.45f+.1f,accent.g*.45f+.45f,accent.b*.45f+.6f)*1.2f;
                 parryBarrierBlock.Clear();parryBarrierBlock.SetColor(BarrierColorId,colour.linear);parryBarrierBlock.SetFloat(BarrierAgeId,age);parryBarrierBlock.SetFloat(BarrierClosedId,closed>=0?closed:-1);
-                parryBarrierBlock.SetVector(BarrierFacingId,facing);parryBarrierBlock.SetVector(BarrierHitId,new Vector4(way.x,way.y,way.z,hitAge));parryBarrierBlock.SetFloat(BarrierStrengthId,own?OwnBarrier:1);
+                parryBarrierBlock.SetVector(BarrierFacingId,facing);parryBarrierBlock.SetVector(BarrierHitId,new Vector4(way.x,way.y,way.z,hitAge));parryBarrierBlock.SetFloat(BarrierStrengthId,own?(FirstPerson?OwnBarrier:OwnThirdBarrier):1);
                 float radius=NativeParryBarrier.Radius*scale;
                 Graphics.DrawMesh(mesh,Matrix4x4.TRS(middle,Quaternion.identity,new Vector3(radius,radius*NativeParryBarrier.Tall,radius)),mat,0,null,0,parryBarrierBlock,ShadowCastingMode.Off,false);
             }
