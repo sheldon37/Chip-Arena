@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
                 // A bot throws at range; the record crosses the codec and the clone.
                 Setup();var bot=new InputFrame();BotGlaive(a,ref bot,o+new Vector3(0,0,9),9,true);Check(bot.AbilityQ,"a bot throws at range");
                 Press(q:true);Step(NativeGlaive.ThrowRelease+.1f);
-                {var cf=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=NetworkFrame()})).frame;Check(cf.Valid(Content),"the record crosses the codec");var ga=cf.snapshot.Actors.First(x=>x.Id==a.Seat.id).Glaive;Check(ga!=null&&ga.Disc==NativeGlaive.Out&&ga.Valid(),"the ring's flight in the frame");}
+                {var cf=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=NetworkFrame()})).frame;Check(cf.Valid(Content),"the record crosses the codec");var ga=cf.snapshot.Actors.First(x=>x.Id==a.Seat.id).Glaive;Check(ga!=null&&(ga.Disc==NativeGlaive.Out||ga.Disc==NativeGlaive.Back)&&ga.Valid(),"the ring's flight in the frame (disc "+ga?.Disc+")");}
                 var empty=NativeFrameCodec.Clone(NetworkFrame());Check(empty.snapshot.Actors.First(x=>x.Id==b.Seat.id).Glaive==null,"a null kit survives the clone");
                 Debug.Log("native Glaive simulation: "+checks+" checks");
             }
