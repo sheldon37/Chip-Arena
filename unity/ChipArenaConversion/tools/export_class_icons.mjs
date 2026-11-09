@@ -234,6 +234,17 @@ icons['spec-cyberlord']=()=>{
   const spark=poly([[12,.6],[13.4,2.4],[12,4.2],[10.6,2.4]]);
   return [L(crest,{opacity:TONE}),L(palm,{knock:GAP}),L(wrist,{knock:.35}),L(knuckles,{knock:.5}),L(thumb,{knock:.7}),L(line([[4,10.2],[20,10.2]]),{cut:true,line:.6}),L(spark)];
 };
+// TOP DOG (owner 2026-11-09: "Rework "Topdog" icon to be a Hotdog smiling"): a hot dog stood in its bun, googly eyes and a wide grin
+// with its tongue out, the bun's two lobes up its sides.
+const dogParts=(small=false)=>{
+  const bun=new P().M(7.8,9.6).C(6.8,7.4,2.4,7.6,2.4,11.4).L(2.4,17.2).C(2.4,21.6,6.6,23.4,12,23.4).C(17.4,23.4,21.6,21.6,21.6,17.2).L(21.6,11.4).C(21.6,7.6,17.2,7.4,16.2,9.6).Z();
+  const sausage=new P().M(7.5,4.9).A(4.5,0,1,16.5,4.9).L(16.5,18.2).A(4.5,0,1,7.5,18.2).Z();
+  const er=small?1.6:1.4,eyes=[circ(10.05,6.1,er),circ(13.95,6.1,er)],pupils=[circ(10.35,6.5,.66),circ(14.25,6.5,.66)];
+  const smile=new P().M(8.8,9.3).Q(12,10.2,15.2,9.3).Q(14.7,14.2,12,14.2).Q(9.3,14.2,8.8,9.3).Z();
+  const tongue=new P().M(10.2,13.1).Q(12,11.3,13.8,13.1).Q(13.1,14.2,12,14.2).Q(10.9,14.2,10.2,13.1).Z();
+  return {bun,sausage,eyes,pupils,smile,tongue};
+};
+icons['spec-topdog']=()=>{const d=dogParts();return [L(d.bun,{opacity:TONE}),L(d.sausage,{knock:1.1}),L(d.eyes,{cut:true}),L(d.pupils),L(d.smile,{cut:true}),L(d.tongue,{opacity:TONE})];};
 // THE CYBER LORD'S RANGED SET (Core/CyberLordRanged.cs; key 5 switches): hardlight emitters, hex rings and RGB-split bolts.
 // BIT BOLT (ranged LMB): a split hardlight bolt off a hex emitter, trailing bits.
 icons['ability-bit-bolt']=()=>{
@@ -417,6 +428,7 @@ small['spec-cyberlord']=()=>{
   const palm=poly([[6.4,11.4],[17.8,11.4],[17.8,15.8],[16,17.8],[8.2,17.8],[6.4,16]]),thumb=poly([[5,12.4],[11.6,11.8],[13.6,13.2],[12,14.8],[6.8,15],[5,14]]);
   return [L(ringP,{evenodd:true,opacity:.5}),L(palm,{knock:1.2}),L(knuckles,{knock:.7}),L(thumb,{knock:.9})];
 };
+small['spec-topdog']=()=>{const d=dogParts(true);return [L(d.bun,{opacity:.5}),L(d.sausage,{knock:1.3}),L(d.eyes,{cut:true}),L(d.smile,{cut:true})];};
 small['spec-ansatsuken']=()=>{
   const aura=poly([[4.4,19],[1.8,12.6],[1.8,6.8],[5.2,9.4],[7,2.6],[10,6.4],[12,.4],[14,6.4],[17,2.6],[18.8,9.4],[22.2,6.8],[22.2,12.6],[19.6,19]]);
   const fingers=[7.6,6.3,6.5,7.8].map((y,i)=>crect(5+i*3.55,y,3.1,13-y,1));
@@ -427,7 +439,7 @@ small['spec-ansatsuken']=()=>{
 
 // ---- export ----
 const CLASSES={dev:'class-dev',magic:'class-magic',melee:'class-melee',ranged:'class-ranged'};
-const SPECS=Object.fromEntries(['ansatsuken','bow','cyberlord','daggers','darkness','emperor','fire','greatsword','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','water'].map(id=>[id,'spec-'+id]));
+const SPECS=Object.fromEntries(['ansatsuken','bow','cyberlord','daggers','darkness','emperor','fire','greatsword','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','topdog','water'].map(id=>[id,'spec-'+id]));
 const entries=Object.keys(icons).sort().map(id=>{const e={id,markup:markup(icons[id]())};if(small[id])e.small=markup(small[id]());return e;});
 const pairs=o=>Object.entries(o).sort(([a],[b])=>a<b?-1:1).map(([id,icon])=>({id,icon}));
 const data={schema:1,source:'tools/export_class_icons.mjs',note:'Original Chip Arena class and weapon artwork authored for this project as geometry; not derived from any third-party icon set.',box:24,smallPx:22,fallback:'class-dev',icons:entries,classes:pairs(CLASSES),specs:pairs(SPECS)};
