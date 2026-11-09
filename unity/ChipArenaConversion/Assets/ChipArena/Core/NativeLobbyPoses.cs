@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Whether a spec holds its weapon in the Sheldon Idle (the hero stance's grips: the blades, the shield, the guns,
         /// the staffs and the Bow); the fighters, the Cyber Lord and any other spec keep the stance's fists.</summary>
-        public static bool Grips(string spec)=>spec=="greatsword"||spec=="sword"||spec=="daggers"||spec=="shield"||spec=="pistol"||Gun(spec)||Magic(spec)||NativeBowWire.Is(spec)||spec==NativeBombs.Spec||spec==NativeTopDog.Spec;
+        public static bool Grips(string spec)=>spec=="greatsword"||spec=="sword"||spec=="daggers"||spec=="shield"||spec=="pistol"||Gun(spec)||Magic(spec)||NativeBowWire.Is(spec)||spec==NativeBombs.Spec||spec==NativeTopDog.Spec||spec==NativeGlaive.Spec;
         // The Sheldon Idle from rest: the Cyber Lord's stance (its body, twitches and planted feet; the glitch for the Cyber Lord
         // only), then an armed pilot's grip. The weapon shows as standing (the fighters' gloves and the daggers' off hand too).
         private static CyberIdleGlitch Sheldon(MeleeRig r,string spec,float time,int seed,bool reduced,out LobbyHeld weapon,out LobbyHeld offhand)

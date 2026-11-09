@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
             if(AbilitiesDisarmed(p)){p.BufferedSlot=null;p.HoldAt=-1;p.Input.AbilityQ=p.Input.AbilityE=p.Input.AbilityEReleased=false;if(p.AbilityCast!=null&&Time>=p.AbilityCast.Release)ReleaseAbility(p);return;}
             if(TechniqueBusy(p)||TechniqueAway(p)||TechniqueRunning(p))return;
             if(p.Seat.spec=="bow"){StepBowAbilities(p);return;}
-            if(p.Seat.spec==NativeBombs.Spec||p.Seat.spec==NativeTopDog.Spec)return;if(p.Seat.spec=="cyberlord"){StepCyberInput(p);return;}
+            if(p.Seat.spec==NativeBombs.Spec||p.Seat.spec==NativeTopDog.Spec||p.Seat.spec==NativeGlaive.Spec)return;if(p.Seat.spec=="cyberlord"){StepCyberInput(p);return;}
             if(NativeMeleeRules.Standard(p.Seat.spec)){StepMeleeAbilityInput(p);return;}
             int max=NativeAbilityRules.Charges(p.Stats);
             if(TechniqueId(p,"e")==""&&Content.Ability(p.Seat.spec,"e")!=null&&p.ECharges<max&&Time>=p.EReady){p.ECharges++;if(p.ECharges<max)p.EReady=Time+NativeAbilityRules.Cooldown(Content.Ability(p.Seat.spec,"e"),p.Stats);}

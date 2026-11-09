@@ -497,7 +497,7 @@ namespace ChipArena.UnityConversion
             m.Trail=Mathf.MoveTowards(m.Trail,covered&&pick.Locomotion&&m.HasHold?NativeSwordTrail.Share(m.Set.Spec,local.x,local.z):0,dt/NativeSwordTrail.Ease);
             if(m.Trail>0)VisualSwordTrail(m,body.Root.transform,m.Trail*m.LocoShare*wgt,speed,dt);else m.TrailMean=m.TrailTwist=float.NaN;
             // The Top Dog's mallet moves, keyed by hand over the clip (Runtime NativeDogMalletPresentation.cs), before the weapon follows the hand.
-            if(m.HasHold&&(a.SourceSpec==NativeTopDog.Spec||dogLimbs.TryGetValue(body,out var dl)&&dl!=null&&dl.Held))DogMalletLayer(body,a,time,m.HoldRotation,wgt);
+            if(m.HasHold&&(a.SourceSpec==NativeTopDog.Spec||a.SourceSpec==NativeGlaive.Spec||dogLimbs.TryGetValue(body,out var dl)&&dl!=null&&dl.Held))DogMalletLayer(body,a,time,m.HoldRotation,wgt);
             // The weapon on the model's right hand, the rig's weapon hand bone with it (what draws there follows the model).
             if(m.HasHold)
             {

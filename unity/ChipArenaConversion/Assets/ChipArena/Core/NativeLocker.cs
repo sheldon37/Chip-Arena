@@ -225,6 +225,7 @@ namespace ChipArena.UnityConversion
         {
             if(w?.id==NativeBombs.Spec)return NativeBombs.Icon(id);
             if(w?.id==NativeTopDog.Spec)return NativeTopDog.Icon(id);
+            if(w?.id==NativeGlaive.Spec)return NativeGlaive.Icon(id);
             switch(id)
             {
                 // The gun Q kit (Core/NativeGunKit.Icon, the HUD cards share it): hammer for Fan the Hammer, gauge for Overdrive.

@@ -135,7 +135,7 @@ namespace ChipArena.UnityConversion
                     if(NativeMeleeRules.Standard(weapon.id))continue;
                     // Bombadier commits through StepBombInput/StepBombWorld, not AbilityCast.
                     // ValidateBombadier exercises that dispatcher, costs and release clocks.
-                    if(weapon.id==NativeBombs.Spec||weapon.id==NativeTopDog.Spec)continue;
+                    if(weapon.id==NativeBombs.Spec||weapon.id==NativeTopDog.Spec||weapon.id==NativeGlaive.Spec)continue;
                     if(weapon.id=="bow"){CheckBowAbilityRelease(ability);continue;}
                     if(weapon.id==CyberLordSpec.Id){CheckCyberAbility(ability);continue;}
                     Setup(weapon.id);CheckAbilityRelease(ability,(float)a.Stats["maxMana"]);

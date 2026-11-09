@@ -221,7 +221,7 @@ namespace ChipArena.UnityConversion
             // The block effect: guards on open block windows, clashes and deflects (after the rigs and the view weapon are posed).
             RenderBlockFx(s,renderTime);
             // The melee Q/E kit: its events, the Shadow Step decoy and the dash ghosts (NativeMeleeKitPresentation.cs).
-            RenderMeleeKit(s,renderTime);RenderTechnique(s,renderTime);RenderBomb(s,renderTime);RenderDog(s,renderTime);
+            RenderMeleeKit(s,renderTime);RenderTechnique(s,renderTime);RenderBomb(s,renderTime);RenderDog(s,renderTime);RenderGlaive(s,renderTime);
             // The PvE chip selection's wrist holograms (NativeChipSelectPresentation.cs).
             RenderChipSelect(s);
         }

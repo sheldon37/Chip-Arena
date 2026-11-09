@@ -9,16 +9,17 @@ namespace ChipArena.UnityConversion
     /// legs up. Grip (the right fist) is from the shoulders' middle and Handle the handle's way, both in the body's frame turned by Twist
     /// only (x right, y up, z forward: pitch is the world's). The mallet's barrel lies across the handle along Face, so its flat ends lead
     /// the swing. Floor brings the head down onto the floor (the slams), Smear is how fast the head goes (0..1), Squish its impact squash.
-    /// Weight is the layer's share over the clip under it; Free how much the left hand is off the handle (its own pose: a thumbs up).</summary>
+    /// Weight is the layer's share over the clip under it; Free how much the left hand is off the handle (its own pose: a thumbs up); Spin
+    /// turns the whole body about its feet (degrees, + to the right: a whirl).</summary>
     public struct DogMalletPose
     {
-        public float Weight,Twist,Bend,Lean,Squash,Lift,Tuck,Floor,Smear,Squish,Free;
+        public float Weight,Twist,Bend,Lean,Squash,Lift,Tuck,Floor,Smear,Squish,Free,Spin;
         public Vector3 Grip,Handle,Face;
         public static DogMalletPose Lerp(in DogMalletPose a,in DogMalletPose b,float u)
         {
             float L(float x,float y)=>x+(y-x)*u;var face=b.Face;if(Vector3.Dot(a.Face,b.Face)<0)face=-face;
             return new DogMalletPose{Weight=L(a.Weight,b.Weight),Twist=L(a.Twist,b.Twist),Bend=L(a.Bend,b.Bend),Lean=L(a.Lean,b.Lean),Squash=L(a.Squash,b.Squash),Lift=L(a.Lift,b.Lift),Tuck=L(a.Tuck,b.Tuck),
-                Floor=L(a.Floor,b.Floor),Smear=L(a.Smear,b.Smear),Squish=L(a.Squish,b.Squish),Free=L(a.Free,b.Free),Grip=Vector3.Lerp(a.Grip,b.Grip,u),Handle=NativeDogMallet.Unit(Vector3.Lerp(a.Handle,b.Handle,u),b.Handle),
+                Floor=L(a.Floor,b.Floor),Smear=L(a.Smear,b.Smear),Squish=L(a.Squish,b.Squish),Free=L(a.Free,b.Free),Spin=L(a.Spin,b.Spin),Grip=Vector3.Lerp(a.Grip,b.Grip,u),Handle=NativeDogMallet.Unit(Vector3.Lerp(a.Handle,b.Handle,u),b.Handle),
                 Face=NativeDogMallet.Unit(Vector3.Lerp(a.Face,face,u),face)};
         }
     }
@@ -47,13 +48,13 @@ namespace ChipArena.UnityConversion
         public const float FadeIn=.06f,FadeOut=.2f;
         /// <summary>A key: its moment (s, from the move's hit, or from its start for the keys after a landing's), the channels, the grip and the
         /// handle as yaw, pitch (degrees, in the Twist frame) and the grip's distance, and how the segment into it eases.</summary>
-        private struct Key
+        internal struct Key
         {
-            public float T,Twist,Bend,Lean,Squash,Lift,Tuck,GripYaw,GripPitch,GripDist,HandleYaw,HandlePitch,Floor,Squish,Free;public Ease In;
+            public float T,Twist,Bend,Lean,Squash,Lift,Tuck,GripYaw,GripPitch,GripDist,HandleYaw,HandlePitch,Floor,Squish,Free,Spin;public Ease In;
         }
-        private enum Ease{Linear,Smooth,In,Strike,Out,Back}
-        private static Key K(float t,float twist,float bend,float squash,float gy,float gp,float gd,float hy,float hp,Ease e=Ease.Smooth,float lift=0,float tuck=0,float floor=0,float squish=0,float lean=0,float free=0)
-            =>new Key{T=t,Twist=twist,Bend=bend,Lean=lean,Squash=squash,Lift=lift,Tuck=tuck,GripYaw=gy,GripPitch=gp,GripDist=gd,HandleYaw=hy,HandlePitch=hp,Floor=floor,Squish=squish,Free=free,In=e};
+        internal enum Ease{Linear,Smooth,In,Strike,Out,Back}
+        internal static Key K(float t,float twist,float bend,float squash,float gy,float gp,float gd,float hy,float hp,Ease e=Ease.Smooth,float lift=0,float tuck=0,float floor=0,float squish=0,float lean=0,float free=0,float spin=0)
+            =>new Key{T=t,Twist=twist,Bend=bend,Lean=lean,Squash=squash,Lift=lift,Tuck=tuck,GripYaw=gy,GripPitch=gp,GripDist=gd,HandleYaw=hy,HandlePitch=hp,Floor=floor,Squish=squish,Free=free,Spin=spin,In=e};
 
         // ---- the moves (the swings' keys from the hit; nominal wind-up and follow-through, scaled to the record's) ----
         /// <summary>The combo's first: a forehand from the right to the left. Drawn back over the right shoulder, coiled with a held beat,
@@ -221,27 +222,30 @@ namespace ChipArena.UnityConversion
         }
         private static float Fade(float time,float at,float until)=>Clamp01((time-at)/FadeIn)*(1-Clamp01((time-until)/FadeOut));
         /// <summary>The move's keys at its own time `t`, with the barrel turned onto the head's travel (from the keys either side) and the smear.</summary>
-        private static DogMalletPose Keyed(Key[] keys,float t,Move move)
+        private static DogMalletPose Keyed(Key[] keys,float t,Move move)=>KeyedPose(keys,t,move==Move.Swing1||move==Move.Swing2,1);
+        /// <summary>A move's keys at its own time `t`: `level` for a swing about the up axis (else about the right), `scale` the head's share
+        /// of the mallet's length out from the fist (another weapon's keys: the Glaive's ring).</summary>
+        internal static DogMalletPose KeyedPose(Key[] keys,float t,bool level,float scale)
         {
             // The head's travel just before now (what leads it into a hit).
-            var p=Raw(keys,t,move);const float h=.008f;var before=Raw(keys,t-h,move);
-            var v=(HeadAt(in p,1)-HeadAt(in before,1))/h;
+            var p=Raw(keys,t);const float h=.008f;var before=Raw(keys,t-h);
+            var v=(HeadAt(in p,scale)-HeadAt(in before,scale))/h;
             // The barrel across the handle: along the head's travel where it moves, else across the swing's plane (level swings: about the
             // up axis; the slams and the dash: about the right), so a hold keeps the way it last swung.
-            var plane=move==Move.Swing1||move==Move.Swing2?Vector3.UnitY:Vector3.UnitX;var across=Unit(Vector3.Cross(plane,p.Handle),Vector3.UnitY);
+            var plane=level?Vector3.UnitY:Vector3.UnitX;var across=Unit(Vector3.Cross(plane,p.Handle),Vector3.UnitY);
             var travel=v-p.Handle*Vector3.Dot(v,p.Handle);float speed=travel.Length();
             if(Vector3.Dot(across,travel)<0)across=-across;
             float w=Clamp01(speed/2.5f);p.Face=Unit(Vector3.Lerp(across,speed>1e-4f?travel/speed:across,w),across);
-            p.Smear=Clamp01((speed-3)/9);return p;
+            p.Smear=Clamp01((speed-3)/(9*Math.Max(.2f,scale)));return p;
         }
-        private static DogMalletPose Raw(Key[] keys,float t,Move move)
+        private static DogMalletPose Raw(Key[] keys,float t)
         {
             int i=0;while(i<keys.Length-1&&t>=keys[i+1].T)i++;
             Key a=keys[i],b=i<keys.Length-1?keys[i+1]:keys[i];float u=b.T>a.T?Clamp01((t-a.T)/(b.T-a.T)):0;if(t<keys[0].T)u=0;u=Shape(b.In,u);
             float L(float x,float y)=>x+(y-x)*u;
             var grip=Dir(L(a.GripYaw,b.GripYaw),L(a.GripPitch,b.GripPitch))*L(a.GripDist,b.GripDist);var handle=Dir(L(a.HandleYaw,b.HandleYaw),L(a.HandlePitch,b.HandlePitch));
             return new DogMalletPose{Weight=1,Twist=L(a.Twist,b.Twist),Bend=L(a.Bend,b.Bend),Lean=L(a.Lean,b.Lean),Squash=L(a.Squash,b.Squash),Lift=L(a.Lift,b.Lift),Tuck=L(a.Tuck,b.Tuck),
-                Floor=L(a.Floor,b.Floor),Squish=L(a.Squish,b.Squish),Free=L(a.Free,b.Free),Grip=grip,Handle=handle,Face=Vector3.UnitY};
+                Floor=L(a.Floor,b.Floor),Squish=L(a.Squish,b.Squish),Free=L(a.Free,b.Free),Spin=L(a.Spin,b.Spin),Grip=grip,Handle=handle,Face=Vector3.UnitY};
         }
         private static float Shape(Ease e,float u)
         {
@@ -276,22 +280,22 @@ namespace ChipArena.UnityConversion
         /// <summary>The nominal body's shoulders' middle for a pose (from the feet, in the body's frame).</summary>
         public static Vector3 ShouldersAt(in DogMalletPose p)
         {
-            float sq=Math.Max(.3f,p.Squash);return new Vector3(0,Pivot*sq+p.Lift,0)+Turn(new Vector3(0,Shoulders*sq,0),p.Twist,p.Bend,p.Lean);
+            float sq=Math.Max(.3f,p.Squash);return new Vector3(0,Pivot*sq+p.Lift,0)+Turn(new Vector3(0,Shoulders*sq,0),p.Twist+p.Spin,p.Bend,p.Lean);
         }
         /// <summary>A shoulder of the nominal body (`right` or the left).</summary>
         public static Vector3 ShoulderAt(in DogMalletPose p,bool right)
         {
-            float sq=Math.Max(.3f,p.Squash);return new Vector3(0,Pivot*sq+p.Lift,0)+Turn(new Vector3(right?HalfWidth:-HalfWidth,Shoulders*sq,0),p.Twist,p.Bend,p.Lean);
+            float sq=Math.Max(.3f,p.Squash);return new Vector3(0,Pivot*sq+p.Lift,0)+Turn(new Vector3(right?HalfWidth:-HalfWidth,Shoulders*sq,0),p.Twist+p.Spin,p.Bend,p.Lean);
         }
         /// <summary>The right fist's place for a pose, from the feet in the body's frame.</summary>
-        public static Vector3 GripAt(in DogMalletPose p)=>ShouldersAt(p)+Turn(p.Grip,p.Twist,0,0);
+        public static Vector3 GripAt(in DogMalletPose p)=>ShouldersAt(p)+Turn(p.Grip,p.Twist+p.Spin,0,0);
         /// <summary>The handle's way in the body's frame.</summary>
-        public static Vector3 HandleAt(in DogMalletPose p)=>Turn(p.Handle,p.Twist,0,0);
-        public static Vector3 FaceAt(in DogMalletPose p)=>Turn(p.Face,p.Twist,0,0);
+        public static Vector3 HandleAt(in DogMalletPose p)=>Turn(p.Handle,p.Twist+p.Spin,0,0);
+        public static Vector3 FaceAt(in DogMalletPose p)=>Turn(p.Face,p.Twist+p.Spin,0,0);
         /// <summary>The head's middle for a pose on the nominal body (the floor brought in as the presentation brings it).</summary>
         public static Vector3 HeadAt(in DogMalletPose p,float scale=1)
         {
-            var g=GripAt(p);var d=FloorHandle(g,HandleAt(p),Turn(Vector3.UnitZ,p.Twist,0,0),p.Floor,scale);return g+d*Length*scale;
+            var g=GripAt(p);var d=FloorHandle(g,HandleAt(p),Turn(Vector3.UnitZ,p.Twist+p.Spin,0,0),p.Floor,scale);return g+d*Length*scale;
         }
         /// <summary>The handle tipped about its grip `g` so the head (Length * scale along it) rests on the floor (its radius over y = 0) by
         /// `floor`; its way across the floor kept. Only a handle out in front (along `ahead`, level) is brought down: one still swinging over

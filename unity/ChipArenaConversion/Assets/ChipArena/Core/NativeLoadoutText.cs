@@ -51,6 +51,7 @@ namespace ChipArena.UnityConversion
                 case "cyberlord":return "DEV · hardlight fists and cyber spells";
                 case NativeBombs.Spec:return "DEV · chain blasts and explosive launches";
                 case NativeTopDog.Spec:return "DEV · toon mallet, gags and a feast";
+                case NativeGlaive.Spec:return "DEV · a ring blade you cut, throw and burst";
                 case "pistol":return "Precise sidearm · 7-round magazine";
                 case "rifle":return "Long-range sniper · 3 heavy rounds";
                 case "machinegun":return "Rapid automatic fire · 48 rounds";

@@ -15,9 +15,9 @@ namespace ChipArena.UnityConversion
         private sealed class DogLimbs
         {
             public Transform Spine,Chest,Upper,Neck,RArm,RFore,RHand,LArm,LFore,LHand,LIndex,LLittle;public readonly Transform[] Thigh=new Transform[2],Shin=new Transform[2];
-            public Vector3 BaseScale,BasePos,SetScale,SetPos;public bool Held;
+            public Vector3 BaseScale,BasePos,SetScale,SetPos;public Quaternion BaseTurn=Quaternion.identity,SetTurn=Quaternion.identity;public bool Held;
         }
-        private sealed class DogSwingMemory{public NativeDogMallet.Move Move;public float From=-100,BlendAt=-100,Seen=-100;public DogMalletPose Last,Start;public Vector3 Face;public bool HasFace;}
+        private sealed class DogSwingMemory{public int Move;public float From=-100,BlendAt=-100,Seen=-100;public DogMalletPose Last,Start;public Vector3 Face;public bool HasFace;}
         private readonly Dictionary<VisualBody,DogLimbs> dogLimbs=new Dictionary<VisualBody,DogLimbs>();
         private readonly Dictionary<int,DogSwingMemory> dogSwings=new Dictionary<int,DogSwingMemory>();
         // The drawn mallet's toon scale this frame (its stretch through a smear, its squash on an impact), per pilot (NativeSourcePresentation).
@@ -48,12 +48,13 @@ namespace ChipArena.UnityConversion
             var root=body.Root.transform;
             if(!l.Held||root.localScale!=l.SetScale)l.BaseScale=root.localScale;
             if(!l.Held||root.localPosition!=l.SetPos)l.BasePos=root.localPosition;
+            if(!l.Held||root.localRotation!=l.SetTurn)l.BaseTurn=root.localRotation;
             l.Held=true;
         }
         private static void DogRootLetGo(VisualBody body,DogLimbs l)
         {
             if(l==null||!l.Held)return;var root=body.Root.transform;
-            if(root.localScale==l.SetScale)root.localScale=l.BaseScale;if(root.localPosition==l.SetPos)root.localPosition=l.BasePos;l.Held=false;
+            if(root.localScale==l.SetScale)root.localScale=l.BaseScale;if(root.localPosition==l.SetPos)root.localPosition=l.BasePos;if(root.localRotation==l.SetTurn)root.localRotation=l.BaseTurn;l.Held=false;
         }
 
         /// <summary>The arena's Top Dog: the mallet move its kit is in at `time`, blended from the last one, onto the body (the motion's
@@ -61,16 +62,19 @@ namespace ChipArena.UnityConversion
         private void DogMalletLayer(VisualBody body,Actor a,float time,Quaternion hold,float share)
         {
             var l=DogLimbsOf(body);if(l==null)return;
-            if(a.SourceSpec!=NativeTopDog.Spec){DogRootLetGo(body,l);dogSwings.Remove(a.Id);return;}
-            var k=NativeDogView.Of(a);bool on=NativeDogMallet.Sample(k,time,out var pose,out var move,out float from);
+            bool glaive=a.SourceSpec==NativeGlaive.Spec;if(a.SourceSpec!=NativeTopDog.Spec&&!glaive){DogRootLetGo(body,l);dogSwings.Remove(a.Id);return;}
+            // The Glaive's moves are keyed the same way (Core NativeGlaiveMotion), one-handed.
+            bool on;DogMalletPose pose;int move;float from;
+            if(glaive){on=NativeGlaiveMotion.Sample(NativeGlaiveView.Of(a),time,out pose,out var gm,out from);move=100+(int)gm;}
+            else{on=NativeDogMallet.Sample(NativeDogView.Of(a),time,out pose,out var dm,out from);move=(int)dm;}
             if(!dogSwings.TryGetValue(a.Id,out var mem)){mem=new DogSwingMemory();dogSwings[a.Id]=mem;}
-            if(time<mem.Seen-.25f){mem.Move=NativeDogMallet.Move.None;mem.HasFace=false;mem.Last=default;}
+            if(time<mem.Seen-.25f){mem.Move=0;mem.HasFace=false;mem.Last=default;}
             mem.Seen=time;
             if(on&&(move!=mem.Move||Mathf.Abs(from-mem.From)>1e-3f)){mem.Start=mem.Last;mem.BlendAt=time;mem.Move=move;mem.From=from;}
             if(!on)
             {
                 // Let go: the last pose fades out (a cast cut short, an ability taking the hands).
-                mem.Move=NativeDogMallet.Move.None;
+                mem.Move=0;
                 if(mem.Last.Weight<=.001f){DogRootLetGo(body,l);mem.HasFace=false;return;}
                 pose=mem.Last;pose.Weight=Mathf.MoveTowards(mem.Last.Weight,0,Time.deltaTime/DogLetGo);
             }
@@ -82,9 +86,9 @@ namespace ChipArena.UnityConversion
             var moving=new Vector2(a.Velocity.x,a.Velocity.z).magnitude>.6f;
             var p=pose;p.Weight*=Mathf.Clamp01(share);if(a.Grounded&&moving)p.Tuck=0;
             if(p.Weight<=.001f){DogRootLetGo(body,l);return;}
-            float scale=Mathf.Max(.2f,TopDogMallet(a,time));
+            float scale=glaive?1:Mathf.Max(.2f,TopDogMallet(a,time));
             DogMalletPoseBody(body,l,p,scale,hold,mem,out _,out _);
-            dogMalletToon[a.Id]=(Time.frameCount,DogToonScale(p));
+            if(!glaive)dogMalletToon[a.Id]=(Time.frameCount,DogToonScale(p));
         }
         /// <summary>Order Up!'s slam on the intro's body (Core NativeDogMallet.Intro), at intro time `t`; the rig's right hand then on the
         /// mallet's frame (the intro's mallet draws there).</summary>
@@ -112,6 +116,8 @@ namespace ChipArena.UnityConversion
             // Squashed or stretched about the feet (the width the other way), lifted for a hop.
             DogRootHold(body,l);float sq=Mathf.Lerp(1,Mathf.Max(.3f,p.Squash),w),wide=1/Mathf.Sqrt(sq);
             root.localScale=Vector3.Scale(l.BaseScale,new Vector3(wide,sq,wide));root.localPosition=l.BasePos;float floorY=root.position.y;
+            // A whirl turns the whole body about its feet (the turn's share wrapped, so a full turn hands back without unwinding).
+            root.localRotation=l.BaseTurn*Quaternion.AngleAxis(Mathf.DeltaAngle(0,p.Spin)*w,Vector3.up);l.SetTurn=root.localRotation;
             if(p.Lift*w>1e-4f)root.position+=Vector3.up*(p.Lift*w);l.SetScale=root.localScale;l.SetPos=root.localPosition;
             var up=root.up;var right=root.right;var fwd=root.forward;var facing=root.rotation;
             // The spine: the chest's turn shared down it; the neck takes some of the twist back (the face stays on the target).

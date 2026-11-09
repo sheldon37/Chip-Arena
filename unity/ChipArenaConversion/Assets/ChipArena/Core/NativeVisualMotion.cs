@@ -78,6 +78,13 @@ namespace ChipArena.UnityConversion
             AirAttack="Armed-Air-Attack-R1",SprintAttack="Armed-Run-Attack-R1",
             Attacks=Names("Sword-Attack-R","1","3","4","6","2","4"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
             TechClips=new[]{TechCounter,TechDashBack},KitKinds=new[]{"flash-step","rising-dragon"},KitClips=new[]{"Armed-Dash-Forward","Armed-Boost1"},KitHits=new[]{.2f,float.NaN},KitRecast=new[]{null,"Armed-Air-Attack-R1"},Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+        // The Glaive (owner 2026-11-09): the one-handed sword's stance, stride, jumps, guard and reactions under it; every move of the ring keyed
+        // by hand over them (Core NativeGlaiveMotion), the skim's legs a sprint (GlaiveCast).
+        private static readonly Set Glaive=Build(new Set{Spec=NativeGlaive.Spec,Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
+            Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
+            AirAttack="Armed-Air-Attack-R1",SprintAttack="Armed-Run-Attack-R1",Attacks=Names("Sword-Attack-R","1","3","4","6"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
+            Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+        private const string GlaiveRun="Armed-Run-Forward";
         // Daggers: the armed set's dual block and attacks and the pack's dagger cuts, alternating hands in the game's four
         // (a forehand right to left, then three left to right, the last the finisher): R1, L3, R2, L2 (their blade tips'
         // sweeps on the body); the dual running cut opens both blades as the game's twin sprint sweeps do.
@@ -170,7 +177,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
         public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
-            spec=="rifle"||spec=="machinegun"?Rifle:spec==NativeBombs.Spec?Bomb:spec==NativeTopDog.Spec?TopDog:spec=="pistol"?Pistol:spec=="bow"?Bow:
+            spec=="rifle"||spec=="machinegun"?Rifle:spec==NativeBombs.Spec?Bomb:spec==NativeTopDog.Spec?TopDog:spec==NativeGlaive.Spec?Glaive:spec=="pistol"?Pistol:spec=="bow"?Bow:
             spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:spec=="emperor"||spec=="ansatsuken"?Unarmed:null;
 
         /// <summary>A gun's, bow's or caster's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and
@@ -400,6 +407,7 @@ namespace ChipArena.UnityConversion
             }
             if(BombCast(set,a,time,clips,out pick))return true;
             if(DogCast(set,a,time,clips,moving||!a.Grounded,out pick))return true;
+            if(GlaiveCast(set,a,time,clips,out pick))return true;
             if(Technique(set,a,time,clips,out pick))return true;
             if(Kit(set,a,time,clips,out pick))return true;
             // A mapped kit move's tail (its special still running past the cast) goes on to the idle, not the game's pose.
@@ -523,6 +531,12 @@ namespace ChipArena.UnityConversion
         // or the fall and the cast is the upper body over them (DogUpper; owner 2026-11-09: "when they cast abilities while running, they start
         // sliding"). The dash, the slam, the spring, the zip and the feeding stay whole-body moves.
         private const string DogPoint="Armed-Cast-R-Attack3_start",DogPointEnd="Armed-Cast-R-Attack3_end",DogPunch="Unarmed-Attack-R2",DogPunchL="Unarmed-Attack-L1",DogKick="Unarmed-Attack-Kick-R2",DogRun="2Hand-Sword-Run-Forward";
+        /// <summary>The Glaive's skim: the legs sprint through its lunge (its ring keyed by hand over them).</summary>
+        private static bool GlaiveCast(Set set,Actor a,float time,IClips clips,out Pick pick)
+        {
+            pick=default;if(set.Spec!=NativeGlaive.Spec)return false;var k=NativeGlaiveView.Of(a);if(k?.CastKind!=NativeGlaive.Skim||time<k.CastAt||time>=k.CastRelease+NativeGlaive.SkimTime||!clips.Has(GlaiveRun))return false;
+            float len=Math.Max(.05f,clips.Length(GlaiveRun));pick=new Pick{Clip=GlaiveRun,Time=((time-k.CastAt)*2.4f)%len,Fade=FadeIn};return true;
+        }
         /// <summary>The Top Dog's arm cast at `time` (its clip and that clip's time), or false: none, or a whole-body move.</summary>
         public static bool DogArms(Set set,Actor a,float time,IClips clips,out string clip,out float at)
         {
