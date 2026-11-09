@@ -30,6 +30,7 @@
   - Not seen in the world: the piano itself (the capture's bot was not hit four times in a row), the snacks landing and healing (a one-on-one round ends on the pop), Toon Logic (the capture's Top Dog is in god mode). Their rules are in the Editor checks below.
 - **Checked:** CoreTests `--top-dog` (5094 checks) and `--boss-chips`; the full suite in two runs on the chips (to the cartridge checks, then from them to the end after the inlay fix), and once more in one run by the release; the Unity compile; `git diff --check`; the Editor build checks (PrototypeBuild.Validate) on the chips, the Top Dog's 77 checks (the chips' 33 among them) and the Bombadier's 80.
 - **Not run:** no person, no two real clients.
+- **Released:** merged into shared at `982247bc` and the builder synced; the test channel's build succeeded and published revision `639297924909853824` (2026-11-09 03:45 UTC). No live or Site release.
 
 ## 2026-11-08 — Claude: the Top Dog, a DEV class for the Hot Dog (owner request; rules and look)
 
