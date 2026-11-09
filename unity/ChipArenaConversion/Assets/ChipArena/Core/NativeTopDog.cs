@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         public static bool IsMark(string k)=>k==Pancake||k==Slipped||k==Pied||k==Mustarded||k==Dazed||k==Stuffed||k==Sauced||k==Walled;
         public static string AbilityName(string id)
         {
-            switch(id){case Mallet:return "Big Mallet";case Boing:return "Boing!";case Zip:return "Zip";case Anvil:return "Anvil";case Peel:return "Banana Peel";case Mustard:return "Mustard Blaster";case Glove:return "Spring Glove";case Pie:return "Cream Pie";case Feast:return "All You Can Eat";default:return "";}
+            switch(id){case Mallet:return "Big Mallet";case Boing:return "Boing!";case Zip:return "Zip";case Anvil:return "Anvil";case Peel:return "Banana Peel";case Mustard:return "Mustard Blaster";case Glove:return "Spring Glove";case Pie:return "Cream Pie";case Feast:return "All You Can Eat";case Dash:return "Mallet Dash";case Slam:return "Mallet Slam";default:return "";}
         }
         /// <summary>The icon id an ability's card draws (the Top Dog's own glyphs, <see cref="Glyph"/>).</summary>
         public static string Icon(string id)=>"dog:"+(string.IsNullOrEmpty(id)?Mallet:id);
@@ -42,6 +42,23 @@ namespace ChipArena.UnityConversion
         /// is the overhead slam: its hit is a ring round where the head lands (SlamAhead in front, SlamRadius round).</summary>
         public static readonly float[] SwingHit={.2f,.2f,.36f},SwingLength={.48f,.48f,.82f},SwingDamage={14,14,26},SwingReach={2.9f,2.9f,2.6f},SwingArc={1.0f,1.0f,.6f};
         public const float ComboWindow=.45f,SlamAhead=1.7f,SlamRadius=2.1f,PancakeSeconds=.8f,SwingPush=5;
+
+        // ---- the mallet's dash and slam (owner 2026-11-09: "Give them a dash sprint attack and slam attack as well") ----
+        /// <summary>The dash, the mallet's attack on a sprint (NativeMeleeFeel.SprintAttack, as any melee weapon's): tucked for DashWind s,
+        /// then the Top Dog charges DashReach m along its facing in DashTime s (a wall stops it short), the mallet swung low through everyone
+        /// within DashWidth m of its path ahead of it, who are bonked for DashDamage and batted on ahead at DashPush m/s and DashLift up;
+        /// DashRecover s to stand. The slam, the mallet's attack in the air (once an airtime, NativeAirAttackSimulation.MinimumAir into it,
+        /// a Boing!'s too): the Top Dog hangs SlamHang s with the mallet raised, then drops straight down at SlamFall m/s (SlamMaxFall s at
+        /// most) and slams the floor: SlamDamage to everyone within SlamRing m, those within SlamFlat m flattened for SlamFlatFor s, the
+        /// rest thrown SlamPush m/s out and SlamLift up; SlamRecover s to stand. Its CastStep is 1 once it has landed, CastUntil then
+        /// SlamRecover after the landing (SlamLanded).</summary>
+        public const string Dash="mallet-dash",Slam="mallet-slam",HitDash="dash",HitQuake="quake";
+        public const float DashWind=.12f,DashTime=.34f,DashReach=6.5f,DashWidth=1.4f,DashDamage=20,DashPush=11,DashLift=5,DashRecover=.32f;
+        public const float SlamHang=.2f,SlamFall=26,SlamMaxFall=2.5f,SlamRing=3.2f,SlamFlat=2.2f,SlamDamage=30,SlamFlatFor=.9f,SlamPush=5,SlamLift=6,SlamRecover=.42f;
+        /// <summary>The slam's landing moment from its record (-100 while it is still in the air, or another cast).</summary>
+        public static float SlamLanded(NativeTopDogKit k)=>k!=null&&k.CastKind==Slam&&k.CastStep==1?k.CastUntil-SlamRecover:-100;
+        /// <summary>One of the mallet's own moves (a swing of the combo, the dash, the slam): the mallet stays in hand.</summary>
+        public static bool MalletMove(string kind)=>kind==Mallet||kind==Dash||kind==Slam;
 
         // ---- the abilities ----
         public const float BoingRelease=.12f,BoingHeight=9,BoingAlong=8,ThudRadius=2.6f,ThudDamage=8,ThudLift=6;

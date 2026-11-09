@@ -342,7 +342,11 @@ namespace ChipArena.UnityConversion
             }
             cameraView.transform.SetPositionAndRotation(location,rotation);CameraAim(p);
             presentation.FirstPerson=first;presentation.AimHeld=aim;viewModelCamera.enabled=first;viewModelCamera.fieldOfView=cameraView.fieldOfView-sprintKick;
+            // The local capture tools' fixed eye in third person (a look at an effect from the side). Nothing in the game sets it.
+            if(CaptureEye.HasValue&&!first)cameraView.transform.SetPositionAndRotation(CaptureEye.Value.position,CaptureEye.Value.rotation);
         }
+        /// <summary>The local capture tools' hook: the third-person camera's pose this frame, after the game set it (null: the game's own).</summary>
+        public static Pose? CaptureEye;
         private string AbilityStatus(NativePilot p,string slot)
         {
             var d=content.Ability(p.Seat.spec,slot);

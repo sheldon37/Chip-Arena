@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
         // ---- the comic words ----
         private static string DogWordOf(string kind)
         {
-            switch(kind){case NativeTopDog.HitBonk:return "BONK!";case NativeTopDog.HitSlam:return "WHAM!";case NativeTopDog.HitClang:return "KA-THUNK!";case NativeTopDog.HitThud:return "THUD!";case NativeTopDog.HitSwat:return "WHAP!";
+            switch(kind){case NativeTopDog.HitBonk:return "BONK!";case NativeTopDog.HitSlam:return "WHAM!";case NativeTopDog.HitClang:return "KA-THUNK!";case NativeTopDog.HitThud:return "THUD!";case NativeTopDog.HitQuake:return "KA-BLAM!";case NativeTopDog.HitDash:return "ZOOM!";case NativeTopDog.HitSwat:return "WHAP!";
                 case NativeTopDog.HitAnvil:return "CLANG!";case NativeTopDog.HitSlip:return "WHOOPS!";case NativeTopDog.HitPow:return "POW!";case NativeTopDog.HitPie:return "SPLAT!";case NativeTopDog.HitGulp:return "GULP!";
                 case NativeTopDog.HitPop:return "KA-POP!";case NativeTopDog.HitSnap:return "SNAP!";case NativeTopDog.HitBoing:return "BOING!";case NativeTopDog.HitPiano:return "PLUNK!";case NativeTopDog.HitWall:return "SPLAT!";case NativeTopDog.HitMunch:return "MUNCH!";case NativeTopDog.HitToonFlat:return "SPLUT!";case NativeTopDog.HitToonPop:return "TA-DA!";case NativeTopDog.Zip:return "ZOOM!";default:return null;}
         }

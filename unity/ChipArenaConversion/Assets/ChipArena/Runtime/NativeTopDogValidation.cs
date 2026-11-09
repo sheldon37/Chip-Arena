@@ -44,6 +44,17 @@ namespace ChipArena.UnityConversion
                 Setup();Cast(q:true);Check(a.Dog.Ready[0]>Time,"the spring's cooldown");Step(.15f);Check(a.Body.linearVelocity.y>18&&a.DogAirborne&&a.Dog.Props.Any(p=>p.Kind==NativeTopDog.PropSpring),"the spring throws it high");
                 // Zip: rooted through the wind-up, then carried ahead, swatting on the way.
                 Setup();Cast(e:true);var vel=Vector3.one;DogMotion(a,ref vel);Check(vel.x==0&&vel.z==0,"rooted through the wind-up");var start=a.Body.position;hp=b.Hp;Step(NativeTopDog.ZipWind+NativeTopDog.ZipTime+.05f);Check(a.Body.position.z>start.z+2&&b.Hp<hp,"zipped ahead and swatted");
+                // The mallet's dash on a sprint: carried ahead, whoever is in its path batted on (owner 2026-11-09).
+                Setup();a.Ready=0;a.Pose.Sprinting=true;a.Input=new InputFrame{Shoot=true,Attack=true,Sprint=true,Z=1};StepDogInput(a);Check(a.Dog.CastKind==NativeTopDog.Dash,"an attack on a sprint is the dash");
+                start=a.Body.position;hp=b.Hp;Step(NativeTopDog.DashWind+NativeTopDog.DashTime+.05f);Check(a.Body.position.z>start.z+2&&b.Hp<hp&&a.Dog.Hits.Any(h=>h.Kind==NativeTopDog.HitPow&&h.Victim==b.Seat.id),"dashed ahead and batted the one in its path");
+                Step(NativeTopDog.DashRecover);a.Ready=0;a.Pose.Sprinting=false;a.Input=new InputFrame{Shoot=true};StepDogInput(a);Check(a.Dog.CastKind==NativeTopDog.Mallet,"off the sprint it swings");
+                // The slam in the air: hung, dropped straight down, the ring round the landing hurt and its middle flattened.
+                Setup();b.Body.position=o+new Vector3(0,0,1.5f);a.Body.position+=Vector3.up*3;a.Grounded=false;a.AirborneAt=Time-.3f;a.AirAttackUsed=false;Physics.SyncTransforms();
+                a.Ready=0;a.Input=new InputFrame{Shoot=true,Attack=true};StepDogInput(a);Check(a.Dog.CastKind==NativeTopDog.Slam&&a.AirAttackUsed,"an attack in the air is the slam");
+                float high=a.Body.position.y;Step(NativeTopDog.SlamHang*.5f);Check(Math.Abs(a.Body.position.y-high)<.05f,"it hangs a moment");
+                hp=b.Hp;b.StunEnd=0;b.StaggerImmune=0;Step(NativeTopDog.SlamHang*.5f+.3f);
+                Check(NativeTopDog.SlamLanded(a.Dog)>0&&a.Body.position.y<high-2.5f&&b.Hp<hp&&b.StunEnd>Time&&a.Dog.Hits.Any(h=>h.Kind==NativeTopDog.HitQuake),"it lands, hurts and flattens round it");
+                Check(a.Ready<=Time+NativeTopDog.SlamRecover+.01f,"and stands again soon after");
                 // The anvil: dropped on a spot, it flattens what is under it when it lands.
                 Setup();Cast(1);Check(a.Dog.Ready[2]>Time,"the anvil's cooldown");Step(NativeTopDog.AnvilRelease+.02f);Check(a.Dog.Props.Any(p=>p.Kind==NativeTopDog.PropAnvil),"an anvil in the air");
                 var anvil=a.DogFlights.First(f=>f.Record.Kind==NativeTopDog.PropAnvil);anvil.Record.Pos=Vec(b.Body.position-Vector3.up*.865f);anvil.Record.LandAt=Time+.1f;hp=b.Hp;Step(.15f);Check(b.Hp<hp-20&&b.StunEnd>Time,"the anvil lands and flattens");

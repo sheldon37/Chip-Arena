@@ -32,6 +32,8 @@ namespace ChipArena.UnityConversion
                 case NativeTopDog.HitToonFlat:n=S(o,n,"slam",1);n=S(o,n,"splat",.7f);break;
                 case NativeTopDog.HitToonPop:n=S(o,n,"pop",.8f);n=S(o,n,"boing",1);n=S(o,n,"tweet",.5f);break;
                 case NativeTopDog.Zip:n=S(o,n,"zip",1);break;
+                case NativeTopDog.HitDash:n=S(o,n,"zip",.9f);n=S(o,n,"poof",.5f);break;
+                case NativeTopDog.HitQuake:n=S(o,n,"slam",1);n=S(o,n,"crash",.6f);n=S(o,n,"tweet",.45f);break;
                 case NativeTopDog.Feast:n=S(o,n,"slide-up",.6f);break;
             }
             return n;
@@ -45,6 +47,8 @@ namespace ChipArena.UnityConversion
                 case NativeTopDog.Zip:n=S(o,n,"windup",.85f);break;
                 case NativeTopDog.Anvil:n=S(o,n,"honk",.6f);break;
                 case NativeTopDog.Mallet:if(step==2)n=S(o,n,"stretch",.4f);break;
+                case NativeTopDog.Dash:n=S(o,n,"windup",.6f);break;
+                case NativeTopDog.Slam:if(step==0)n=S(o,n,"stretch",.5f);break;
             }
             return n;
         }
@@ -55,6 +59,8 @@ namespace ChipArena.UnityConversion
             switch(kind)
             {
                 case NativeTopDog.Mallet:n=S(o,n,"swing",step==2?1:.8f);break;
+                case NativeTopDog.Dash:n=S(o,n,"swing",.9f);break;
+                case NativeTopDog.Slam:if(step==0)n=S(o,n,"whistle-fall",.9f);break;
                 case NativeTopDog.Peel:n=S(o,n,"slide-up",.5f);break;
                 case NativeTopDog.Pie:n=S(o,n,"swing",.6f);break;
             }
