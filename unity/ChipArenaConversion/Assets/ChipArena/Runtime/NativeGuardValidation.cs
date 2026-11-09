@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
-        // The build gate's held guard (NativeGuard.cs) through the arena's own Damage: a hit from in front reduced and paid in stamina, one
+        // The build gate's held guard (NativeGuard.cs) through the arena's own Damage: a hit from in front reduced, paid in stamina and never staggering, one
         // from behind whole, a guard out of stamina broken (and kept down a moment), a gun unable to guard, and the parry still taking all.
         public void ValidateGuard()
         {
@@ -33,6 +33,7 @@ namespace ChipArena.UnityConversion
                 Check(Math.Abs(through-20*(1-share))<.05f,"a hit from in front lets "+through+" through, not "+20*(1-share));
                 Check(Math.Abs(paid-20*share*NativeMeleeRules.GuardStamina)<.05f,"the blocked part paid in stamina ("+paid+")");
                 Check(Events.Exists(e=>e.Kind==EventKind.Block&&e.Detail=="hold"),"a blocked hit is an event");
+                Check(!StaggerMelee(a,.3f)&&a.Guarding&&a.StunEnd==0,"a guarded hit does not stagger");StepGuard(a);Check(a.Guarding,"the guard stays up through a blocked hit");
                 Position(b,new Vector3(1000,100,998));hp=a.Hp;Damage(a,b,20,Vector3.forward,0,false,melee:true,weaponHit:true);Check(Math.Abs(hp-a.Hp-20)<.05f,"a hit from behind is not guarded");
                 Position(b,new Vector3(1000,100,1002));a.Stamina=3;hp=a.Hp;Damage(a,b,20,Vector3.back,0,false,melee:true,weaponHit:true);
                 Check(!a.Guarding&&a.Stamina==0&&a.GuardBrokenUntil>Time&&Events.Exists(e=>e.Kind==EventKind.Block&&e.Detail=="guard-break"),"out of stamina the guard breaks");

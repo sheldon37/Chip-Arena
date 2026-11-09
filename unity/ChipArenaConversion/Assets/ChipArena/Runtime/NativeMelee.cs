@@ -114,8 +114,9 @@ namespace ChipArena.UnityConversion
         }
         private bool StaggerMelee(NativePilot p,float seconds)
         {
-            // A normal melee hit never staggers a boss, a downed/juggled target, or a pilot still in the recovery grace.
-            if(p.ArmourHitUntil>=Time&&p.ArmourHitUntil>0||p.Hp<=0||p.Seat.spec=="siren"||Pve?.Boss==p||Downed(p)||p.Juggle!=null||!NativeMeleeRules.StaggerReady(Time,p.StunEnd,p.StaggerImmune))return false;
+            // A normal melee hit never staggers a boss, a downed/juggled target, a pilot still in the recovery grace, or one that took
+            // this tick's hit on its held guard (NativeGuard.cs).
+            if(p.ArmourHitUntil>=Time&&p.ArmourHitUntil>0||p.Hp<=0||p.GuardedAt==Time||p.Seat.spec=="siren"||Pve?.Boss==p||Downed(p)||p.Juggle!=null||!NativeMeleeRules.StaggerReady(Time,p.StunEnd,p.StaggerImmune))return false;
             StunMelee(p,seconds);p.StaggerImmune=NativeMeleeRules.StaggerImmuneThrough(p.StunEnd);return true;
         }
         private void SuccessfulMeleeBlock(NativePilot blocker,NativePilot attacker,float damage,Vector3 direction,float impulse)
