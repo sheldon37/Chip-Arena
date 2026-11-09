@@ -28,8 +28,8 @@ namespace ChipArena.UnityConversion
         public const float HushRadius=3,HushSeconds=6,HushLast=4,HushDamage=40;
         /// <summary>The enrage (s into the fight).</summary>
         public const float EnrageAt=720;
-        /// <summary>The proposed health multiplier over NativePveRules.BossHp.</summary>
-        public const float HealthScale=2.5f;
+        /// <summary>Health multiplier over the shared boss baseline: 12% above The Deep End.</summary>
+        public const float HealthScale=1.4f;
 
         /// <summary>The moves (doc section 8, seconds, damage before party scaling). Kills: takes a whole life. Clip: the pack clip the body plays through
         /// the strike, from ClipFrom at ClipRate (the move's Wind lands on the clip's hit).</summary>
