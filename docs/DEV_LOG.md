@@ -21,6 +21,7 @@
 - **Checked:** the full CoreTests suite passes (exit 0, with the local expedition path patch as before); `git diff --check` clean; the Editor build checks (PrototypeBuild.Validate) pass on `e5aa0174`, the Top Dog's 44 checks and the Bombadier's 80. After merging shared `8d58aeb9`, `--fallen-boss` and `--top-dog` pass here too (so NOCTIEL's health change is compiled and checked).
 - **Not run:** no person, no two real clients; the controller cannot use the ultimate (no slot 6).
 - **Next:** the owner's follow-up (2026-11-08), ten Top Dog chips with animated picks, is on its way on this branch.
+- **Released:** merged into shared at `354cfa67` and the builder synced; the test channel's build succeeded and published revision `639297898969987645` (2026-11-09 03:02 UTC). No live or Site release.
 
 ## 2026-11-08 — Astra: reduce NOCTIEL health (owner request)
 
