@@ -430,6 +430,28 @@ namespace ChipArena.UnityConversion
         {
             int phase=NativeDogView.LassoPhase(f,time);
             if(phase==1&&scene.Chest(caster,out var chest)){float t=time-f.At;var top=chest+Up*1.05f;for(int i=0;i<Count(4,q,low);i++){float a=t*16+i*1.57f;var p=top+new Vector3((float)Math.Cos(a)*.75f,0,(float)Math.Sin(a)*.75f);var w=new Vector3(-(float)Math.Sin(a),0,(float)Math.Cos(a))*12;s.Streak(p,w,DogWhite*.8f,.03f,.12f,.03f,.8f,0,seed+i);}}
+            // Wrapped (owner 2026-11-09: "struggling to get out"): cartoon strain lines flicking off its sides with each heave, sweat flying off
+            // its head, its feet scuffing up dust as it throws its weight about (NativeTopDog.Strain, as its body's struggle).
+            if(phase==3)
+            {
+                var w=DogActor(scene,f.Victim);
+                if(w!=null&&w.Alive&&scene.Viewer!=f.Victim&&scene.Chest(w,out var wc))
+                {
+                    float strain=NativeTopDog.Strain(f,time,out float side);var face=new Vector3(-f.Dir.x,0,-f.Dir.z);face=face.LengthSquared()>.01f?Vector3.Normalize(face):Vector3.UnitZ;var right=Vector3.Cross(Up,face);
+                    if(strain>.25f)
+                    {
+                        float k=(strain-.25f)/.75f;int n=Count(3,q,low);
+                        for(int sd=-1;sd<=1;sd+=2)for(int i=0;i<n;i++)
+                        {
+                            float push=.55f+.45f*sd*side,len=(.1f+.12f*k)*push,y=-.28f+.24f*i;var at=wc+Up*y+right*(sd*(.38f+.04f*k));
+                            s.Line(false,at,at+right*(sd*len)+Up*(.04f*(i-1)),DogWhite*(1.5f*k*push),.022f,false);
+                        }
+                    }
+                    var top=wc+Up*.45f;int drops=Count(4,q,low);
+                    for(int i=0;i<drops;i++){float tt=(time*2.2f+R(seed,i+70))%1;var d=Vector3.Normalize(RandomDir(seed,i*7+3)+Up*1.2f);s.Drop(top+d*(.2f+.45f*tt)-Up*(.7f*tt*tt),d*.06f,DogSweat,.85f*(1-tt)*(.4f+.6f*strain),.03f,tt,seed+40+i);}
+                    if(!low){var feet=scene.Feet(w);float pu=(time*3)%1;s.Smoke(feet+right*(side>0?.12f:-.12f)+Up*(.04f+.15f*pu),DogDust,.4f*strain*(1-pu),.1f+.15f*pu,pu,seed+91,feet.Y);}
+                }
+            }
             // The victim swelling to the pop: a glint on the belly, then the last tremble.
             var v=DogActor(scene,f.Victim);if(v==null||!v.Alive||f.Catch<-50||f.Snap>-50||time>=f.Pop||time<f.Release)return;
             if(scene.Viewer!=f.Victim&&scene.Chest(v,out var c))

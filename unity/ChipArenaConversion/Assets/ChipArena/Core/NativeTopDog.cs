@@ -117,6 +117,24 @@ namespace ChipArena.UnityConversion
             if(f==null||f.Snap>-50||time<f.Release||time>=f.Pop)return 0;float u=(time-f.Release)/Math.Max(.1f,f.Pop-f.Release);
             double phase=(time-f.Release)*(9+30*u*u)*2*Math.PI;return (float)Math.Sin(phase)*(.025f+.06f*u*u);
         }
+        /// <summary>How much the links hold the victim at `time` (0..1): pinned from the catch over BindIn, let go over BindOut to the
+        /// release, nothing once spat out (owner 2026-11-09: "give more of a visual effect when the character is wrapped by sausaged, like
+        /// their arms are downwards, and they're struggling to get out").</summary>
+        public const float BindIn=.2f,BindOut=.12f;
+        public static float Bound(NativeDogFeast f,float time)
+        {
+            if(f==null||f.Catch<-50||time<f.Catch||time>=f.Release||f.Snap>-50&&time>=f.Snap)return 0;
+            return Smooth((time-f.Catch)/BindIn)*Smooth((f.Release-time)/BindOut);
+        }
+        /// <summary>How hard the wrapped victim strains against the links at `time` (0..1, in jerks, hardest at first), and `side` which way
+        /// it throws its weight (+1 its right arm pushing out, -1 its left, between as it swaps).</summary>
+        public static float Strain(NativeDogFeast f,float time,out float side)
+        {
+            side=0;float bound=Bound(f,time);if(bound<=0)return 0;double t=time-f.Catch;
+            double a=Math.Max(0,Math.Sin(t*7.3)),b=Math.Max(0,Math.Sin(t*11.1+1.3));side=(float)Math.Sin(t*3.65);
+            float strain=(float)Math.Min(1,a*a*a+.6*b*b*b*b)*(1+.5f*(float)Math.Exp(-t*1.5))/1.5f;
+            return bound*Math.Min(1,strain*1.25f);
+        }
         private static float Smooth(float x){x=x<0?0:x>1?1:x;return x*x*(3-2*x);}
 
         // ---- the ability glyphs: flat white shapes in a 100 box (Runtime NativeIcons draws them where a card asks for "dog:<id>") ----

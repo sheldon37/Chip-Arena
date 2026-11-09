@@ -96,6 +96,21 @@ namespace ChipArena.UnityConversion
                 Check(NativeDogView.FeedPhase(f,i,NativeTopDog.DownAt(f.FeedAt,i)+.01f,out _,out _)==3,"hot dog "+i+": down");
             }
             Check(NativeDogView.LassoPhase(f,f.At+.3f)==1&&NativeDogView.LassoPhase(new NativeDogFeast{At=10,Throw=10.6f},10.8f)==2&&NativeDogView.LassoPhase(f,f.FeedAt+1)==3&&NativeDogView.LassoPhase(f,f.Release+.1f)==0,"the links: twirled, flying, round the victim, gone");
+            // The wrapped victim's struggle (owner 2026-11-09: "their arms are downwards, and they're struggling to get out").
+            Check(NativeTopDog.Bound(f,f.Catch-.01f)==0&&NativeTopDog.Bound(f,f.Catch+NativeTopDog.BindIn)>.99f&&NativeTopDog.Bound(f,(f.FeedAt+f.Release)*.5f)==1&&NativeTopDog.Bound(f,f.Release)==0,"the links hold from the catch to the let-go");
+            Check(NativeTopDog.Bound(snapped,snapped.Snap+.01f)==0&&NativeTopDog.Strain(snapped,snapped.Snap+.01f,out _)==0,"nothing holds once spat out");
+            {
+                float most=0,least=1,lastSide=0,peak=0,slack=0;bool swapped=false,ranged=true;
+                for(float t=f.Catch+.3f;t<f.Release-.2f;t+=.01f){float st=NativeTopDog.Strain(f,t,out float sd);if(st<0||st>1||sd<-1||sd>1)ranged=false;if(st>most){most=st;peak=t;}if(st<least){least=st;slack=t;}if(lastSide!=0&&Math.Sign(sd)!=Math.Sign(lastSide))swapped=true;lastSide=sd;}
+                Check(ranged&&most>.8f&&least<.05f&&swapped,"it strains in jerks, hard then slack, throwing its weight one way then the other ("+least.ToString("0.00")+".."+most.ToString("0.00")+")");
+                var wrapped=new NativeDogFeast{At=f.At,Throw=f.Throw,Catch=f.Catch,FeedAt=f.FeedAt,Release=f.Release,Pop=f.Pop,Until=f.Until,Victim=9,Dir=new V3(0,0,1)};
+                NativeDogView.Source=src;var keep=src.K;src.K=new NativeTopDogKit{Feast=wrapped};
+                var hard=new Recorder();fx.DrawDogs(hard,scene,peak,1,false);var easy=new Recorder();fx.DrawDogs(easy,scene,slack,1,false);var thinWrap=new Recorder();fx.DrawDogs(thinWrap,scene,peak,.3f,true);
+                Check(hard.Draws>easy.Draws+3&&!hard.Broken&&thinWrap.Draws<hard.Draws,"strain lines fly off its sides on a heave, sweat off its head, dust at its feet ("+hard.Draws+" hard, "+easy.Draws+" slack, "+thinWrap.Draws+" thin)");
+                src.K=keep;NativeDogView.Source=null;
+                string tp=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeTopDogPresentation.cs"));
+                Check(tp.Contains("if(bound>0)DogStruggle(body,a,r,v.feast,bound,time);")&&tp.Contains("var target=shoulder+Vector3.down*(reach*.93f)")&&tp.Contains("if(dogWraps.TryGetValue(victim.Id,out var w)&&w.frame==Time.frameCount)"),"its body: the spine twisting, the arms pinned down its sides by IK, the links wrapped round them on its spine");
+            }
             {var p=new NativeDogProp{Kind=NativeTopDog.PropAnvil,At=0,LandAt=.9f,Until=4.4f};float h0=NativeDogView.AnvilDrop(p,0,out _),h1=NativeDogView.AnvilDrop(p,.45f,out _),h2=NativeDogView.AnvilDrop(p,.9f,out _);NativeDogView.AnvilDrop(p,.945f,out float sq);Check(h0>h1&&h1>h2&&h2==0&&sq<.8f,"the anvil falls faster as it comes and squashes landing");}
             {var p=new NativeDogProp{Kind=NativeTopDog.PropGlove,At=0,LandAt=.2f,Until=.45f,Size=13};Check(NativeDogView.GloveExtent(p,0)==0&&Math.Abs(NativeDogView.GloveExtent(p,.2f)-13)<.2f&&NativeDogView.GloveExtent(p,.45f)<.05f,"the glove shoots out and winds back");}
             // ---- names, icons, sounds ----

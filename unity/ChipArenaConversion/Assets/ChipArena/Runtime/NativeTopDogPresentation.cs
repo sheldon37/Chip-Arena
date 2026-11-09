@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
                 if(k.Marks!=null)foreach(var m in k.Marks)if(m!=null)dogMarks.Add((m.Id,m));
             }
         }
-        private void ClearDog(){dogPreview.Clear();if(ReferenceEquals(NativeDogView.Source,dogPreview)||ReferenceEquals(NativeDogView.Source,dogSnapshot))NativeDogView.Source=null;dogVictims.Clear();dogMarks.Clear();foreach(var kv in dogBodies)if(kv.Value.Warped)DogBelly(kv.Key,Vector4.zero,Vector4.zero);dogBodies.Clear();dogWarps.Clear();dogArms.Clear();dogFeedHands.Clear();}
+        private void ClearDog(){dogPreview.Clear();if(ReferenceEquals(NativeDogView.Source,dogPreview)||ReferenceEquals(NativeDogView.Source,dogSnapshot))NativeDogView.Source=null;dogVictims.Clear();dogMarks.Clear();foreach(var kv in dogBodies)if(kv.Value.Warped)DogBelly(kv.Key,Vector4.zero,Vector4.zero);dogBodies.Clear();dogWarps.Clear();dogArms.Clear();dogFeedHands.Clear();dogPins.Clear();dogWraps.Clear();}
         private static NativeDogMark DogMarkOn(int id,string kind,float time){foreach(var (who,m) in dogMarks)if(who==id&&m.Kind==kind&&time>=m.At&&time<m.Until)return m;return null;}
         /// <summary>The face's share of the feast for pilot `id` at `time` (VisualFacePilot): the mouth wide on each hot dog, stuffed after.</summary>
         internal static void TopDogFace(int id,float time,out float gobble,out float bloat)
@@ -257,9 +257,22 @@ namespace ChipArena.UnityConversion
             }
             else if(phase==3&&victim!=null)
             {
-                // Wrapped twice round the victim's chest and belly, the arms pinned in it.
-                var feet=visualPositions.TryGetValue(victim.Id,out var vf)?vf:Vec(victim.Position);float belly=NativeTopDog.Belly(f,time);var knots=new List<NVector>();
-                for(int i=0;i<=26;i++){float u=i/26f,a=u*Mathf.PI*4,h=1.32f-.42f*u,r=.33f+.03f*Mathf.Sin(u*Mathf.PI)*belly;knots.Add(V(feet+new Vector3(Mathf.Cos(a)*r,h,Mathf.Sin(a)*r)));}
+                // Wrapped three times round the victim's chest, pinned arms and belly, on its spine as it twists (DogStruggle), squeezing in
+                // and bulging out where the elbows shove on each heave.
+                float belly=NativeTopDog.Belly(f,time);var knots=new List<NVector>();
+                if(dogWraps.TryGetValue(victim.Id,out var w)&&w.frame==Time.frameCount)
+                {
+                    for(int i=0;i<=36;i++)
+                    {
+                        float u=i/36f,a=u*Mathf.PI*6+w.twist,side=Mathf.Cos(a),r=(.3f+.035f*Mathf.Sin(u*Mathf.PI)*belly)*(1-.03f*w.strain)+.06f*w.strain*side*side*side*side;
+                        knots.Add(V(Vector3.Lerp(w.top,w.bottom,u)+(w.right*side+w.fwd*Mathf.Sin(a))*r));
+                    }
+                }
+                else
+                {
+                    var feet=visualPositions.TryGetValue(victim.Id,out var vf)?vf:Vec(victim.Position);
+                    for(int i=0;i<=26;i++){float u=i/26f,a=u*Mathf.PI*4,h=1.32f-.42f*u,r=.33f+.03f*Mathf.Sin(u*Mathf.PI)*belly;knots.Add(V(feet+new Vector3(Mathf.Cos(a)*r,h,Mathf.Sin(a)*r)));}
+                }
                 dogWarps.TryGetValue(victim.Id,out var warp);DogDraw(DogLive(kit=>NativeTopDogModels.Links(kit,knots,tier)),Matrix4x4.identity,1,warp.belly,warp.axis);
             }
             else if(phase==4)
@@ -335,24 +348,25 @@ namespace ChipArena.UnityConversion
         private void TopDogBody(VisualBody body,Actor a,float time)
         {
             DogFeedArms(body,a,time);
-            float belly=0,tremble=0,back=0,flat=0;
-            if(dogVictims.TryGetValue(a.Id,out var v)){var f=v.feast;belly=NativeTopDog.Belly(f,time);tremble=NativeTopDog.Tremble(f,time);if(time<f.Release&&(f.Snap<-50||time<f.Snap))back=Mathf.Clamp01((time-f.Catch-.3f)/.3f)*(1-Mathf.Clamp01((time-f.Release+.15f)/.15f));}
+            float belly=0,tremble=0,back=0,flat=0,bound=0;
+            if(dogVictims.TryGetValue(a.Id,out var v)){var f=v.feast;belly=NativeTopDog.Belly(f,time);tremble=NativeTopDog.Tremble(f,time);bound=NativeTopDog.Bound(f,time);if(time<f.Release&&(f.Snap<-50||time<f.Snap))back=Mathf.Clamp01((time-f.Catch-.3f)/.3f)*(1-Mathf.Clamp01((time-f.Release+.15f)/.15f));}
             var pan=DogMarkOn(a.Id,NativeTopDog.Pancake,time);
             if(pan!=null){float t=time-pan.At,left=pan.Until-time;flat=Mathf.Clamp01(t/.05f)*Mathf.Clamp01(left/.12f);}
             if(!dogBodies.TryGetValue(body,out var r))
             {
-                if(belly<=0&&back<=0&&flat<=0)return;r=new DogBodyRig();dogBodies[body]=r;
+                if(belly<=0&&back<=0&&flat<=0&&bound<=0)return;r=new DogBodyRig();dogBodies[body]=r;
                 // The skin's own bones (the body mesh's, as the Hot Dog binds to): the root also holds other skeletons by the same names.
                 Transform[] bones=null;foreach(var s in body.Root.GetComponentsInChildren<SkinnedMeshRenderer>(true))if(s.name.StartsWith("Body.",StringComparison.Ordinal)&&s.sharedMesh!=null){bones=s.bones;break;}
                 if(bones!=null)foreach(var t in bones){if(t==null)continue;switch(t.name){case "spine_01":r.S1=t;break;case "spine_02":r.S2=t;break;case "spine_03":r.S3=t;break;case "neck_01":r.Neck=t;break;case "head":r.Head=t;break;}}
                 r.RootScale=body.Root.transform.localScale;r.Read=true;
             }
-            bool any=belly>0||back>0||flat>0;if(any&&!r.Moved)r.RootScale=body.Root.transform.localScale;r.Frame=Time.frameCount;
+            bool any=belly>0||back>0||flat>0||bound>0;if(any&&!r.Moved)r.RootScale=body.Root.transform.localScale;r.Frame=Time.frameCount;
             if(!any)
             {
                 if(r.Warped){DogBelly(body,Vector4.zero,Vector4.zero);r.Warped=false;}dogWarps.Remove(a.Id);
                 if(r.Moved){body.Root.transform.localScale=r.RootScale;r.Moved=false;}return;
             }
+            if(bound>0)DogStruggle(body,a,r,v.feast,bound,time);else dogWraps.Remove(a.Id);
             // The belly: pushed out round a centre between spine_01 and spine_02, a little forward of it, most at the front (the way the
             // face looks, level: the mouth's frame, DogMouth); its radius from the torso's length, its push a third of it once stuffed
             // and over half of it at the pop, trembling before it.
@@ -383,6 +397,43 @@ namespace ChipArena.UnityConversion
             if(flat>0){float sy=Mathf.Lerp(1,.22f,flat),sx=1/Mathf.Sqrt(sy);body.Root.transform.localScale=Vector3.Scale(r.RootScale,new Vector3(sx,sy,sx));}
             else body.Root.transform.localScale=r.RootScale;
             r.Moved=true;
+        }
+
+        // ---- the wrapped victim (owner 2026-11-09: "give more of a visual effect when the character is wrapped by sausaged, like their arms
+        // are downwards, and they're struggling to get out") ----
+        private sealed class DogPinRig{public readonly Transform[] Upper=new Transform[2],Lower=new Transform[2],Hand=new Transform[2];}
+        private readonly Dictionary<VisualBody,DogPinRig> dogPins=new Dictionary<VisualBody,DogPinRig>();
+        // The wrap round each victim this frame: its top and bottom on the spine, its right and front, the strain and twist (the links read them).
+        private readonly Dictionary<int,(int frame,Vector3 top,Vector3 bottom,Vector3 right,Vector3 fwd,float strain,float twist)> dogWraps=new Dictionary<int,(int,Vector3,Vector3,Vector3,Vector3,float,float)>();
+        /// <summary>TopDogBody: a wrapped victim struggling (NativeTopDog.Bound, Strain): the spine twisting and rocking against the links, both
+        /// arms pinned straight down its sides by IK, the elbows shoving out at the links and the shoulders heaving in jerks; the wrap's frame
+        /// kept for the links.</summary>
+        private void DogStruggle(VisualBody body,Actor a,DogBodyRig r,NativeDogFeast f,float bound,float time)
+        {
+            float strain=NativeTopDog.Strain(f,time,out float side),t=time-f.Catch;
+            var head=VisualHeadOf(body);var fwd=head!=null?head.TransformDirection(Vector3.forward):Quaternion.Euler(0,a.Yaw,0)*Vector3.forward;fwd.y=0;
+            fwd=fwd.sqrMagnitude>1e-6f?fwd.normalized:Quaternion.Euler(0,a.Yaw,0)*Vector3.forward;var right=Vector3.Cross(Vector3.up,fwd);
+            // The spine: twisting side to side with each heave and rocking over toward the arm that pushes, the chest most.
+            float twist=(10*Mathf.Sin(t*6.1f)+6*Mathf.Sin(t*13.7f+.7f))*(.45f+.55f*strain)*bound,rock=(5*Mathf.Sin(t*4.3f)+5*side*strain)*bound;
+            if(r.S1!=null)r.S1.rotation=Quaternion.AngleAxis(twist*.35f,Vector3.up)*Quaternion.AngleAxis(rock*.5f,fwd)*r.S1.rotation;
+            if(r.S2!=null)r.S2.rotation=Quaternion.AngleAxis(twist*.4f,Vector3.up)*Quaternion.AngleAxis(rock*.3f,fwd)*r.S2.rotation;
+            if(r.S3!=null)r.S3.rotation=Quaternion.AngleAxis(twist*.25f,Vector3.up)*Quaternion.AngleAxis(rock*.2f,fwd)*r.S3.rotation;
+            // The arms: straight down the sides inside the links, the elbows bowed out against them, the shoulders up on each heave.
+            if(!dogPins.TryGetValue(body,out var pin))
+            {
+                pin=new DogPinRig();dogPins[body]=pin;Transform[] bones=null;
+                foreach(var sk in body.Root.GetComponentsInChildren<SkinnedMeshRenderer>(true))if(sk.name.StartsWith("Body.",StringComparison.Ordinal)&&sk.sharedMesh!=null){bones=sk.bones;break;}
+                if(bones!=null)foreach(var bn in bones){if(bn==null)continue;switch(bn.name){case "upperarm_r":pin.Upper[0]=bn;break;case "lowerarm_r":pin.Lower[0]=bn;break;case "hand_r":pin.Hand[0]=bn;break;case "upperarm_l":pin.Upper[1]=bn;break;case "lowerarm_l":pin.Lower[1]=bn;break;case "hand_l":pin.Hand[1]=bn;break;}}
+            }
+            for(int h=0;h<2;h++)
+            {
+                if(pin.Upper[h]==null||pin.Lower[h]==null||pin.Hand[h]==null)continue;float sign=h==0?1:-1,push=strain*(.55f+.45f*sign*side);
+                var shoulder=pin.Upper[h].position;float reach=(pin.Lower[h].position-shoulder).magnitude+(pin.Hand[h].position-pin.Lower[h].position).magnitude;
+                var target=shoulder+Vector3.down*(reach*.93f)+Vector3.up*(.06f*push)+right*(sign*(.05f+.06f*push))+fwd*.03f;
+                DogReach(pin.Upper[h],pin.Lower[h],pin.Hand[h],target,-fwd*.6f+right*(sign*(.5f+.7f*push)),bound,1,Vector3.one,Vector3.one);
+            }
+            var top=(r.S3!=null?r.S3.position:body.Root.transform.position+Vector3.up*1.3f)+Vector3.up*.08f;var bottom=(r.S1!=null?r.S1.position:body.Root.transform.position+Vector3.up*1.05f)-Vector3.up*.2f;
+            dogWraps[a.Id]=(Time.frameCount,top,bottom,right,fwd,strain,twist*Mathf.Deg2Rad);
         }
 
         // ---- the hand feeding (owner 2026-11-09: "Change the animation to hand feed them") ----
