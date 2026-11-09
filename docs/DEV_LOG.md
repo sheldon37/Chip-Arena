@@ -9,6 +9,7 @@
 - **Checks:** CoreTests `--hot-dog` (the skinned face and the core's absence among them) and `--top-dog`; the Unity compile; pins. The full suite runs with the release.
 - **Seen in the Editor:** the face from the front, three-quarter and side through the intro's landing and slam and the feast, staying on the head; no core; the face's red even with the rest of the sausage; a dead Hot Dog's X eyes and frown.
 - **Not run:** no person, no two real clients.
+- **Released:** full suite at `161f8857`: 983 groups, exit 0; pins 0 broken; Unity compile PASS. Merged into shared at `333a6b82` and the builder synced; the test channel's build succeeded and published revision `639298020712349831` (2026-11-09 06:25 UTC). No live or Site release.
 
 ## 2026-11-09 — Claude: the Top Dog's feast fed by hand, the Hot Dog's animated face, the ult and intro fixes (owner request; look)
 
