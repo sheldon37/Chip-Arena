@@ -44,7 +44,7 @@ internal static class HotdogFriendsChecks
         float top=0;for(int i=0;i<a.P.Count;i++)top=Math.Max(top,a.P[i].Y);Check(top>.2f&&top<.36f,"a friend stands about "+NativeHotdogFriends.Height+" m ("+top.ToString("0.00")+")");
         Check(NativeHotdogFriends.Frame(0)==0&&NativeHotdogFriends.Frame(2*NativeHotdogFriends.Stride)==0&&NativeHotdogFriends.Frame(NativeHotdogFriends.Stride)==NativeHotdogFriends.WalkFrames/2,"the stride cycles every two steps");
         // The DEV gate, the lists and the wiring.
-        Check(NativeCosmeticGate.DevOnly(NativeHotdogFriends.Style)&&NativeCosmeticGate.Restricted(NativeHotdogFriends.Style)&&!NativeCosmeticGate.Allowed(NativeAccess.Guest,"effect",NativeHotdogFriends.Style,0),"DEV only: a guest cannot pick it");
+        Check(NativeCosmeticGate.Restricted(NativeHotdogFriends.Style)&&!NativeCosmeticGate.Allowed(NativeAccess.Guest,"effect",NativeHotdogFriends.Style,0),"restricted as the other DEV effects: a guest cannot pick it");
         Check(NativeLocker.KillText(NativeHotdogFriends.Style)==NativeHotdogFriends.Text&&NativeBisect.Applies(true,NativeHotdogFriends.Style,false,"pilot"),"its locker line; a blade still cuts its body as the stock ragdoll");
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
         Check(R("NativeProfileUI.cs").Contains("\"dev-bass-van\",NativeHotdogFriends.Style};")&&R("NativeAdmin.cs").Contains("\"effect:\"+NativeHotdogFriends.Style};"),"listed in the locker and grantable");

@@ -14,8 +14,9 @@ namespace ChipArena.UnityConversion
         internal sealed class FriendsLoad{public Rigidbody[] Bodies;public Vector3[] Offsets;public Quaternion[] Turns;public Vector3[] Scales;public Vector3 Rest;public float Size;public NativeHotdogFriends.Trip Trip;public int Friends;}
         internal sealed class FriendsScene{public Vector3 Door;public float Yaw,Last;public readonly List<FriendsLoad> Loads=new List<FriendsLoad>();}
         internal FriendsScene Friends;private bool friendsFailed;
-        /// <summary>The death's kill effect is Hotdog Friends (its body otherwise the stock impact ragdoll).</summary>
-        internal bool HotdogFriends=>Death?.style==NativeHotdogFriends.Style;
+        /// <summary>The death's kill effect is Hotdog Friends (its body otherwise the stock impact ragdoll); never a kept body (a PvE
+        /// teammate waiting to be revived).</summary>
+        internal bool HotdogFriends=>Death?.style==NativeHotdogFriends.Style&&!Death.kept;
         /// <summary>Once the body has rested: its pieces gathered into loads, stilled, the door placed beside them and each load's trip
         /// planned. False when there is nothing to carry.</summary>
         internal bool FriendsPlan()
@@ -35,7 +36,7 @@ namespace ChipArena.UnityConversion
                 foreach(var b in l){rest+=b.position;foreach(var c in b.GetComponents<Collider>())bounds.Encapsulate(c.bounds);}
                 rest/=l.Count;var load=new FriendsLoad{Bodies=l.ToArray(),Offsets=new Vector3[l.Count],Turns=new Quaternion[l.Count],Scales=new Vector3[l.Count],Rest=rest,Size=Mathf.Max(bounds.size.x,bounds.size.z)};
                 for(int i=0;i<l.Count;i++){load.Offsets[i]=l[i].transform.position-rest;load.Turns[i]=l[i].transform.rotation;load.Scales[i]=l[i].transform.localScale;}
-                load.Trip.Floor=physicsScene.Raycast(rest+Vector3.up*.4f,Vector3.down,out var floor,3,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)?floor.point.y:bounds.min.y;
+                load.Trip.Floor=Ground(physicsScene,rest+Vector3.up*.4f,3,bodies,bounds.min.y);
                 load.Friends=NativeHotdogFriends.Friends(load.Size);scene.Loads.Add(load);centre+=rest;
             }
             if(scene.Loads.Count==0){friendsFailed=true;return false;}
@@ -45,10 +46,10 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<8&&!placed;k++)
             {
                 var spot=NativeHotdogFriends.DoorSpot(new NVector(centre.x,floorY,centre.z),radius,seed,k,out float yaw);var at=new Vector3(spot.X,spot.Y,spot.Z);
-                if(!physicsScene.Raycast(at+Vector3.up*.6f,Vector3.down,out var under,1.5f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)||Mathf.Abs(under.point.y-floorY)>.3f)continue;
-                var from=new Vector3(centre.x,floorY+.15f,centre.z);var to=new Vector3(at.x,under.point.y+.15f,at.z);
-                if(physicsScene.Raycast(from,(to-from).normalized,out _,(to-from).magnitude,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))continue;
-                scene.Door=new Vector3(at.x,under.point.y,at.z);scene.Yaw=yaw;placed=true;
+                float underY=Ground(physicsScene,at+Vector3.up*.6f,1.5f,bodies,float.NaN);if(float.IsNaN(underY)||Mathf.Abs(underY-floorY)>.3f)continue;
+                var from=new Vector3(centre.x,floorY+.15f,centre.z);var to=new Vector3(at.x,underY+.15f,at.z);
+                if(Blocked(physicsScene,from,to,bodies))continue;
+                scene.Door=new Vector3(at.x,underY,at.z);scene.Yaw=yaw;placed=true;
             }
             if(!placed){var spot=NativeHotdogFriends.DoorSpot(new NVector(centre.x,floorY,centre.z),radius,seed,0,out float yaw);scene.Door=new Vector3(spot.X,floorY,spot.Z);scene.Yaw=yaw;}
             // The nearest load first; each friend through the door after its load.
@@ -63,6 +64,19 @@ namespace ChipArena.UnityConversion
             Friends=scene;return true;
         }
         private static float Flat(Vector3 v){v.y=0;return v.magnitude;}
+        private static readonly RaycastHit[] friendHits=new RaycastHit[16];
+        // The floor under a point, past the body's own pieces (a head lying on the torso stands on the floor, not the torso); `none` if nothing.
+        private static float Ground(PhysicsScene scene,Vector3 from,float reach,List<Rigidbody> bodies,float none)
+        {
+            int n=scene.Raycast(from,Vector3.down,friendHits,reach,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);float best=float.NegativeInfinity;
+            for(int i=0;i<n;i++){var h=friendHits[i];if(h.collider==null||h.collider.attachedRigidbody!=null&&bodies.Contains(h.collider.attachedRigidbody))continue;if(h.point.y>best)best=h.point.y;}
+            return float.IsNegativeInfinity(best)?none:best;
+        }
+        private static bool Blocked(PhysicsScene scene,Vector3 from,Vector3 to,List<Rigidbody> bodies)
+        {
+            var d=to-from;float l=d.magnitude;if(l<1e-4f)return false;int n=scene.Raycast(from,d/l,friendHits,l,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);
+            for(int i=0;i<n;i++){var h=friendHits[i];if(h.collider!=null&&!(h.collider.attachedRigidbody!=null&&bodies.Contains(h.collider.attachedRigidbody)))return true;}return false;
+        }
         /// <summary>The loads where the scene has them at age `t`.</summary>
         internal void FriendsCarry(float t)
         {

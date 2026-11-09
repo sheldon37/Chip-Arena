@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
         private void KillDropQueue(NativeKillSpray spray,int d,float alpha,int seed)
         {
             if(killDrops.Count>=600)return;
-            killDrops.Add(new KillDropDraw{At=new Vector3(-(float)spray.Pos[d*3],(float)spray.Pos[d*3+1],(float)spray.Pos[d*3+2]),Velocity=new Vector3(-(float)spray.Vel[d*3],(float)spray.Vel[d*3+1],(float)spray.Vel[d*3+2]),Width=(float)spray.S[d*3]*1.6f*alpha,Seed=seed});
+            killDrops.Add(new KillDropDraw{At=new Vector3(-(float)spray.Pos[d*3],(float)spray.Pos[d*3+1],(float)spray.Pos[d*3+2]),Velocity=new Vector3(-(float)spray.Vel[d*3],(float)spray.Vel[d*3+1],(float)spray.Vel[d*3+2]),Width=(float)spray.S[d*3]*1.1f*alpha,Seed=seed});
         }
         private static long WoundKey(int pilot,NativeWound w)=>((long)(pilot&0xffff)<<40)^((long)(w.id&0xffffff)<<12)^(long)(BitConverter.SingleToInt32Bits(w.at)&0xfff);
         private float BloodQuality=>Mathf.Clamp01(EffectsQuality);
