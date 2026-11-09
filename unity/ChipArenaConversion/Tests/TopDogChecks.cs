@@ -324,6 +324,10 @@ namespace ChipArena.UnityConversion
                 Check(Math.Abs(head.Y-NativeDogMallet.Head)<.04f&&Math.Abs(f.Y)>.9f&&Math.Abs(head.Z-ahead)<tol&&Math.Abs(head.X)<.25f&&p.Squash<.85f,
                     m+": the head lands flat on the floor ahead ("+head.Z.ToString("0.00")+" m out, "+head.Y.ToString("0.00")+" up, the barrel "+Math.Abs(f.Y).ToString("0.00")+" upright), the body squashed");
             }
+            {
+                var lean=NativeDogMallet.At(NativeDogMallet.Move.Intro,6.6f);var head=NativeDogMallet.HeadAt(lean);var thumbs=NativeDogMallet.At(NativeDogMallet.Move.Intro,7.6f);
+                Check(Math.Abs(head.Y-NativeDogMallet.Head)<.05f&&NativeDogMallet.HandleAt(lean).Y<-.8f&&lean.Free<.01f&&thumbs.Free>.99f&&NativeDogMallet.Intro(8.5f,out var end)&&end.Weight>.99f,"Order Up! ends leaning on the mallet, its head on the floor, the left hand free for the thumbs up");
+            }
             // The record's moments reach the keys: the hit key at the release, full weight inside, nothing after the fade.
             {
                 var k=new NativeTopDogKit{CastKind=NativeTopDog.Mallet,CastAt=50,CastRelease=50.2f,CastUntil=50.48f,CastStep=1};

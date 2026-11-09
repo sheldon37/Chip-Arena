@@ -133,9 +133,9 @@ namespace ChipArena.UnityConversion
             var keepR=l.RHand.rotation;ArmReachTo(l.RArm,l.RFore,l.RHand,Vector3.Lerp(l.RHand.position,wrist,w),right-up*.7f);l.RHand.rotation=Quaternion.Slerp(keepR,handTurn,w);
             // The left fist below it on the handle, its knuckles along it (the index toward the head).
             var support=grip+turn*new Vector3(0,0,NativeDogMallet.Support);
-            if(l.LIndex!=null&&l.LLittle!=null){var knuckles=l.LIndex.position-l.LLittle.position;if(knuckles.sqrMagnitude>1e-8f)l.LHand.rotation=Quaternion.Slerp(Quaternion.identity,Quaternion.FromToRotation(knuckles,handle),w)*l.LHand.rotation;}
-            var leftTurn=l.LHand.rotation;var palm=l.LHand.TransformPoint(PalmL);
-            ArmReachTo(l.LArm,l.LFore,l.LHand,l.LHand.position+(support-palm)*w,-right-up*.7f);l.LHand.rotation=leftTurn;
+            if(l.LIndex!=null&&l.LLittle!=null){var knuckles=l.LIndex.position-l.LLittle.position;if(knuckles.sqrMagnitude>1e-8f)l.LHand.rotation=Quaternion.Slerp(Quaternion.identity,Quaternion.FromToRotation(knuckles,handle),w*(1-Mathf.Clamp01(p.Free)))*l.LHand.rotation;}
+            var leftTurn=l.LHand.rotation;var palm=l.LHand.TransformPoint(PalmL);float lw=w*(1-Mathf.Clamp01(p.Free));
+            if(lw>1e-3f){ArmReachTo(l.LArm,l.LFore,l.LHand,l.LHand.position+(support-palm)*lw,-right-up*.7f);l.LHand.rotation=leftTurn;}
         }
         private static Vector3 MV(NVector v)=>new Vector3(v.X,v.Y,v.Z);
         /// <summary>The drawn mallet's toon scale for pilot `id` this frame (1: none).</summary>
