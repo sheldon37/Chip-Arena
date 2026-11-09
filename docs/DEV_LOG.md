@@ -8,6 +8,7 @@
 - **Seen in the Editor:** a real Boss Battle with the intro skipped and F pressed 3 s into the fight. THE DEEP END already parried; NOCTIEL did not, and does now (the hexagon barrier in both).
 - **Checks:** CoreTests `--guard` (1075); the Unity compile.
 - **Not run:** THE HUM, THE STATION and THE CONVERTER separately (they take the same path as THE DEEP END); a guest in a hosted Boss Battle; no person.
+- **Released:** full suite at `7d9d1c04` (with shared's #382): 987 groups, exit 0; pins 0 broken; Unity compile PASS. Merged into shared at `391d5098` and published on the test channel (revision 639298421313581173).
 
 ## 2026-11-09 — Astra: keep connections alive through host stalls and Expedition loading
 
