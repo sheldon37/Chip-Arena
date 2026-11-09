@@ -23,10 +23,10 @@ namespace ChipArena.UnityConversion
         /// <summary>A thrown thing's place at `time`: its sample carried on under its gravity (a peel 23, a pie 12), or where it stopped.</summary>
         public static Vector3 PropAt(NativeDogProp p,float time)
         {
-            if(p.Kind==NativeTopDog.PropPeel&&time>=p.LandAt)return N(p.To);
+            if((p.Kind==NativeTopDog.PropPeel||p.Kind==NativeTopDog.PropSnack)&&time>=p.LandAt)return N(p.To);
             if(p.Kind==NativeTopDog.PropPie&&p.LandAt>-50)return N(p.Pos);
-            float g=p.Kind==NativeTopDog.PropPeel?23:p.Kind==NativeTopDog.PropPie?NativeTopDog.PieGravity:0,t=Math.Max(0,time-p.SampleAt);
-            if(p.Kind==NativeTopDog.PropPeel)t=Math.Min(t,Math.Max(0,p.LandAt-p.SampleAt));
+            float g=p.Kind==NativeTopDog.PropPeel||p.Kind==NativeTopDog.PropSnack?23:p.Kind==NativeTopDog.PropPie?NativeTopDog.PieGravity:0,t=Math.Max(0,time-p.SampleAt);
+            if(p.Kind==NativeTopDog.PropPeel||p.Kind==NativeTopDog.PropSnack)t=Math.Min(t,Math.Max(0,p.LandAt-p.SampleAt));
             return N(p.Pos)+N(p.Vel)*t-Vector3.UnitY*(.5f*g*t*t);
         }
         /// <summary>The anvil's height over its spot (m) and its squash (1 none) at `time`: dropped from AnvilHeight, gathering speed to the
@@ -149,7 +149,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeTechniqueFx
     {
         private static readonly Vector3 DogMustard=new Vector3(1,.58f,.03f),DogKetchup=new Vector3(.8f,.04f,.02f),DogCream=new Vector3(1,.98f,.9f),DogStar=new Vector3(1,.82f,.2f),
-            DogDust=new Vector3(.46f,.38f,.28f),DogWhite=new Vector3(1,1,1),DogSweat=new Vector3(.55f,.8f,1),DogPink=new Vector3(1,.35f,.6f),DogBlue=new Vector3(.3f,.6f,1),DogGreen=new Vector3(.4f,1,.35f);
+            DogDust=new Vector3(.46f,.38f,.28f),DogSauce=new Vector3(1,.16f,.05f),DogFlame=new Vector3(1,.5f,.08f),DogWhite=new Vector3(1,1,1),DogSweat=new Vector3(.55f,.8f,1),DogPink=new Vector3(1,.35f,.6f),DogBlue=new Vector3(.3f,.6f,1),DogGreen=new Vector3(.4f,1,.35f);
         private static Actor DogActor(IKitFxScene scene,int id){if(id==0)return null;var l=scene.Actors;for(int i=0;i<l.Count;i++)if(l[i]!=null&&l[i].Id==id)return l[i];return null;}
         /// <summary>Draws every Top Dog's hits, props, marks and feast of the frame at `time`.</summary>
         public void DrawDogs(ITechniqueFxSink s,IKitFxScene scene,float time,float q,bool low)
@@ -219,6 +219,21 @@ namespace ChipArena.UnityConversion
                 case NativeTopDog.HitGulp:DogPuff(s,at,age,.4f,Count(4,q,low),.18f,new Vector3(.9f,.85f,.75f),.4f,seed,.1f);if(age<.25f)for(int i=0;i<Count(4,q,low);i++)s.Sprite(false,at+RandomDir(seed,i)*(.15f+.4f*age),DogStar*(1.5f*(1-age/.25f)),.05f,Sparkle);break;
                 case NativeTopDog.HitSnap:Sparks(s,at,age,.5f,Count(10,q,low),3.5f,new Vector3(.9f,.35f,.2f),seed,7,.03f);DogBurst(s,at,age,.4f,DogWhite,seed+1,q,low,6);break;
                 case NativeTopDog.HitPop:DogPop(s,at,age,seed,q,low);break;
+                case NativeTopDog.HitPiano:
+                    Flash(s,at+Up*.4f,age,.3f,DogWhite,1.6f,seed);if(age<.6f)Ring(s,at+Up*.03f,.5f+NativeDogChips.PianoRadius*1.25f*OutCubic(age/.32f),.5f*(1-age/.6f),DogWhite*(1.3f*(1-age/.6f)),Count(34,q,low));
+                    Dust(s,at,age,1.8f,Count(18,q,low),NativeDogChips.PianoRadius*1.4f,DogDust,.85f,seed+3);Cracks(s,at,age,1.5f,Count(10,q,low),NativeDogChips.PianoRadius,new Vector3(.2f,.16f,.12f),seed+5);
+                    DogBurst(s,at+Up*.6f,age,.7f,DogCream,seed+9,q,low,12);
+                    // Keys and splinters thrown out.
+                    if(age<1.1f)for(int i=0;i<Count(14,q,low);i++){var d=Vector3.Normalize(RandomDir(seed,i*3+1)+Up*.9f);float t=age;var p2=at+Up*.5f+d*(4.5f*t*(.5f+.5f*R(seed,i+11)))-Up*(8*t*t);s.Drop(p2,d*.1f,i%3==0?new Vector3(.05f,.05f,.06f):DogCream,.95f*(1-age/1.1f),.05f,age/1.1f,seed+20+i);}
+                    break;
+                case NativeTopDog.HitWall:DogBurst(s,at,age,.8f,DogStar,seed,q,low,12);DogPuff(s,at,age,.7f,Count(6,q,low),.5f,DogDust,.6f,seed+4,.2f);break;
+                case NativeTopDog.HitMunch:DogPuff(s,at,age,.5f,Count(5,q,low),.25f,new Vector3(.9f,.7f,.4f),.5f,seed,.15f);DogBurst(s,at,age,.3f,DogStar,seed+2,q,low,6);break;
+                case NativeTopDog.HitToonFlat:
+                    if(age<.5f)Ring(s,at+Up*.03f,.3f+1.6f*OutCubic(age/.3f),.3f*(1-age/.5f),DogWhite*(1-age/.5f),Count(22,q,low));Dust(s,at,age,1,Count(10,q,low),1.4f,DogDust,.6f,seed);break;
+                case NativeTopDog.HitToonPop:
+                    DogBurst(s,at,age,.8f,DogStar,seed,q,low,14);if(age<.6f)Ring(s,at+Up*.05f,.4f+NativeDogChips.ToonRadius*OutCubic(age/.35f),.35f*(1-age/.6f),DogStar*(1.4f*(1-age/.6f)),Count(28,q,low));
+                    if(age<1.2f)for(int i=0;i<Count(8,q,low);i++){float a=age*6+i*.785f;var p2=at+Up*(.6f+.8f*age)+new Vector3((float)Math.Cos(a)*(.3f+.6f*age),0,(float)Math.Sin(a)*(.3f+.6f*age));s.Sprite(false,p2,DogStar*(1.8f*(1-age/1.2f)),.12f,Sparkle);}
+                    break;
                 case NativeTopDog.Feast:DogSpeed(s,at,dir,age,.35f,Count(6,q,low),.35f,seed);break;
             }
         }
@@ -280,9 +295,10 @@ namespace ChipArena.UnityConversion
                     {
                         float u=((i+time*9)%n)/n,dist=reach*u;var pos=at+dir*dist-Up*(1.6f*u*u*u*reach/9);var seg=dir*.18f-Up*(.25f*u*u);
                         float wob=.02f*(float)Math.Sin(time*40+i*1.7f);pos+=new Vector3(wob,wob*.5f,-wob);
-                        s.Drop(pos,seg,DogMustard*(1.05f+.2f*(float)Math.Sin(i)),.95f,.07f+.05f*u,u,seed+i);
+                        s.Drop(pos,seg,(p.Hit==1?DogSauce:DogMustard)*(1.05f+.2f*(float)Math.Sin(i)),.95f,.07f+.05f*u,u,seed+i);
                     }
-                    for(int i=0;i<Count(6,q,low);i++){float u=R(seed,i+(int)(time*8)),t=(time*2.3f+R(seed,i))%1;var pos=at+dir*(reach*u)-Up*(1.4f*t);s.Drop(pos,-Up*.08f,DogMustard,.8f*(1-t),.035f,t,seed+50+i);}
+                    for(int i=0;i<Count(6,q,low);i++){float u=R(seed,i+(int)(time*8)),t=(time*2.3f+R(seed,i))%1;var pos=at+dir*(reach*u)-Up*(1.4f*t);s.Drop(pos,-Up*.08f,p.Hit==1?DogSauce:DogMustard,.8f*(1-t),.035f,t,seed+50+i);}
+                    if(p.Hit==1)for(int i=0;i<Count(5,q,low);i++){float u=R(seed,i+(int)(time*6)),t=(time*1.8f+R(seed,i+40))%1;var pos=at+dir*(reach*u)+Up*(.5f*t);s.Smoke(pos,new Vector3(.95f,.92f,.9f),.35f*(1-t),.25f+.4f*t,.1f+.5f*t,seed+60+i,pos.Y-.3f);}
                     break;
                 }
                 case NativeTopDog.PropZip:
@@ -293,6 +309,22 @@ namespace ChipArena.UnityConversion
                     var to=N(p.To);var dir=to-at;if(dir.LengthSquared()>.01f&&t<.6f){var d=Vector3.Normalize(dir);for(int i=0;i<Count(8,q,low);i++){float w=R(seed,i+20);var c=Vector3.Lerp(at,to,w)+Up*(.4f+1.1f*R(seed,i+30));s.Line(false,c-d*(.8f+.6f*R(seed,i+40)),c,DogWhite*(1.1f*(1-t/.6f)),.022f,false);}}
                     break;
                 }
+                case NativeTopDog.PropPiano:
+                    if(time<p.LandAt)
+                    {
+                        float u=Clamp01(age/Math.Max(.05f,p.LandAt-p.At));int seg=Count(26,q,low);
+                        Ring(s,at+Up*.03f,NativeDogChips.PianoRadius*(1.3f-.3f*u),.08f+.05f*u,new Vector3(1,.12f,.05f)*(.7f+.6f*(float)Math.Abs(Math.Sin(time*16))),seg);
+                        float h=NativeDogView.AnvilDrop(p,time,out _);if(h>.5f)for(int i=0;i<Count(5,q,low);i++){var o=new Vector3((R(seed,i)-.5f)*1.2f,0,(R(seed,i+5)-.5f)*1.2f);s.Line(false,at+o+Up*(h+1.1f),at+o+Up*(h+2.1f+.5f*R(seed,i+9)),DogWhite*.9f,.02f,false);}
+                        if(age<.3f)DogPuff(s,at+Up*(NativeDogView.AnvilDrop(p,time,out _)+.6f),age,.3f,Count(6,q,low),.8f,new Vector3(.92f,.92f,.95f),.55f,seed+3,.2f);
+                    }
+                    else if(time>p.Until-.4f)DogPuff(s,at+Up*.5f,time-(p.Until-.4f),.6f,Count(10,q,low),.9f,new Vector3(.9f,.9f,.9f),.6f,seed);
+                    break;
+                case NativeTopDog.PropSnack:
+                    if(time>=p.LandAt&&time<p.Until&&((int)((time-p.LandAt)*1.6f)%2==0)){float u=((time-p.LandAt)*1.6f)%1;s.Sprite(false,N(p.To)+Up*.18f,DogStar*(1.5f*(float)Math.Sin(Math.PI*u)),.08f,Sparkle);}
+                    break;
+                case NativeTopDog.PropPuddle:
+                    if(p.Hit==1&&time<p.Until){float fade=Clamp01((p.Until-time)/.6f);for(int i=0;i<Count(4,q,low);i++){float t=(time*1.3f+R(seed,i))%1;var o=new Vector3((R(seed,i+3)-.5f)*p.Size*1.2f,0,(R(seed,i+6)-.5f)*p.Size*1.2f);s.Smoke(at+o+Up*(.1f+.6f*t),DogFlame*(1.6f*(1-t)),.6f*(1-t)*fade,.18f+.2f*t,.05f+.3f*t,seed+i,at.Y);}}
+                    break;
                 case NativeTopDog.PropSpring:if(age<.25f)DogSpeed(s,at+Up*.5f,-Up,age,.25f,Count(5,q,low),.35f,seed);break;
             }
         }
@@ -303,6 +335,7 @@ namespace ChipArena.UnityConversion
             switch(m.Kind)
             {
                 case NativeTopDog.Dazed:
+                case NativeTopDog.Walled:
                 case NativeTopDog.Pancake:
                 {
                     // Stars round the head (a flattened pilot's sit low).
@@ -312,6 +345,11 @@ namespace ChipArena.UnityConversion
                 }
                 case NativeTopDog.Mustarded:
                     for(int i=0;i<Count(3,q,low);i++){float t=(time*1.6f+R(seed,i))%1;var o=new Vector3((R(seed,i+3)-.5f)*.4f,0,(R(seed,i+6)-.5f)*.4f);s.Drop(chest+o-Up*(1.1f*t),-Up*.06f,DogMustard,.9f*(1-t),.04f,t,seed+i);}
+                    break;
+                case NativeTopDog.Sauced:
+                    // Steam out of the ears, and a little fire breath.
+                    for(int i=0;i<Count(4,q,low);i++){float t=(time*1.8f+R(seed,i))%1;var side=new Vector3((i%2==0?-1:1)*.16f,0,0);s.Smoke(head+side+Up*(.1f+.7f*t),new Vector3(.95f,.95f,.95f),.6f*(1-t),.14f+.3f*t,.05f+.3f*t,seed+i,head.Y);}
+                    if(Count(2,q,low)>1){float t=(time*2.4f)%1;s.Smoke(head-Up*.12f+Up*(.2f*t),DogFlame*(1.5f*(1-t)),.5f*(1-t),.1f+.15f*t,.05f+.2f*t,seed+9,head.Y);}
                     break;
                 case NativeTopDog.Pied:
                     for(int i=0;i<Count(3,q,low);i++){float t=(time*1.1f+R(seed,i))%1;var o=new Vector3((R(seed,i+3)-.5f)*.2f,0,(R(seed,i+6)-.5f)*.2f);s.Drop(head+o-Up*(.6f*t),-Up*.05f,DogCream,.9f*(1-t),.045f,t,seed+i);}

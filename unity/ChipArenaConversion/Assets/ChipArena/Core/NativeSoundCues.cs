@@ -169,7 +169,7 @@ namespace ChipArena.UnityConversion
             return n;
         }
         /// <summary>Chips whose install already has the source's Mishima/arcade cue.</summary>
-        public static bool DevInstall(string chip)=>chip!=null&&(NativeBombChips.Is(chip)||chip.StartsWith("mishima-",StringComparison.Ordinal)||chip.StartsWith("arcade-",StringComparison.Ordinal));
+        public static bool DevInstall(string chip)=>chip!=null&&(NativeBombChips.Is(chip)||NativeDogChips.Is(chip)||chip.StartsWith("mishima-",StringComparison.Ordinal)||chip.StartsWith("arcade-",StringComparison.Ordinal));
         /// <summary>A direct hit's positional impact by the attacker's weapon spec (the fighters' hits play from their state).</summary>
         public static string BodyImpact(string spec)
         {

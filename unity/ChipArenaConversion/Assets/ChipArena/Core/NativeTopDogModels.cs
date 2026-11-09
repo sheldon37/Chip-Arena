@@ -73,6 +73,34 @@ namespace ChipArena.UnityConversion
 
         // ---- the anvil: its feet on y=0, its horn toward +z ----
         public const float AnvilHeight=.5f,AnvilLength=.82f;
+        // ---- a grand piano (Hammerspace, Core NativeDogChips): its case, the lid propped open, the keys, three legs; the keyboard to -z ----
+        public const float PianoTop=1.02f,PianoLength=1.7f,PianoWidth=1.45f;
+        public static NativeFallenKit Piano(int tier=0)
+        {
+            var k=new NativeFallenKit();int seg=tier>0?10:20;
+            // The case's outline seen from above: straight on the left and the keyboard's side, the bentside curving round to the tail.
+            var outline=new List<Vector3>();float w=PianoWidth,l=PianoLength;
+            outline.Add(new Vector3(-w/2,0,-l/2));outline.Add(new Vector3(w/2,0,-l/2));
+            for(int i=1;i<=seg;i++){float u=i/(float)seg;float x=w/2-w*.62f*(1-(float)Math.Cos(u*Math.PI*.5f))-w*.2f*u*u,z=-l/2+l*.55f*(float)Math.Sin(u*Math.PI*.5f)+l*.45f*u*u;outline.Add(new Vector3(x,0,z));}
+            outline.Add(new Vector3(-w/2,0,l/2));
+            Vector3[] At(float y,float s){var r=new Vector3[outline.Count];for(int i=0;i<r.Length;i++)r[i]=new Vector3(outline[i].X*s,y,outline[i].Z*s);return r;}
+            var c0=Y*.62f;var c1=Y*PianoTop;
+            k.Loft(new List<Vector3[]>{At(.62f,.98f),At(.65f,1),At(PianoTop-.03f,1),At(PianoTop,.99f)},new[]{c0,Y*.65f,Y*(PianoTop-.03f),c1},Ink,capFirst:true,capLast:true);
+            // The lid, hinged on the straight side, propped up.
+            var hinge=new Vector3(-w/2,PianoTop,0);var tilt=Matrix4x4.CreateFromAxisAngle(Z,.55f);
+            Vector3[] Lid(float y){var r=At(0,1);for(int i=0;i<r.Length;i++){var p=r[i]-new Vector3(-w/2,0,0)+Y*y;r[i]=Vector3.Transform(p,tilt)+hinge;}return r;}
+            k.Loft(new List<Vector3[]>{Lid(0),Lid(.03f)},new[]{Vector3.Transform(Y*0,tilt)+hinge,Vector3.Transform(Y*.03f,tilt)+hinge},Ink,capFirst:true,capLast:true);
+            k.Tube(new[]{new Vector3(w*.1f,PianoTop,0),Vector3.Transform(new Vector3(w*.62f,0,0),tilt)+hinge},.018f,6,Wood);
+            // The keyboard: a white slab with the black keys on it, and its cheeks.
+            float kz=-l/2-.16f,ky=.84f;
+            k.Loft(new List<Vector3[]>{NativeFallenKit.Ring(new Vector3(0,ky-.05f,kz),X,Z,w*.47f,.15f,seg,8),NativeFallenKit.Ring(new Vector3(0,ky,kz),X,Z,w*.47f,.15f,seg,8)},new[]{new Vector3(0,ky-.05f,kz),new Vector3(0,ky,kz)},White,capFirst:true,capLast:true);
+            int keys=tier>0?8:15;for(int i=0;i<keys;i++){if(i%7==2||i%7==6)continue;float x=-w*.44f+w*.88f*(i+.75f)/keys;var c=new Vector3(x,ky+.012f,kz+.04f);k.Loft(new List<Vector3[]>{NativeFallenKit.Ring(c,X,Z,.018f,.08f,6,6),NativeFallenKit.Ring(c+Y*.025f,X,Z,.018f,.08f,6,6)},new[]{c,c+Y*.025f},Ink,capLast:true);}
+            for(int s=-1;s<=1;s+=2){var c=new Vector3(s*w*.49f,ky,kz);k.Loft(new List<Vector3[]>{NativeFallenKit.Ring(c-Y*.08f,X,Z,.035f,.16f,6,8),NativeFallenKit.Ring(c+Y*.06f,X,Z,.035f,.16f,6,8)},new[]{c-Y*.08f,c+Y*.06f},Ink,capFirst:true,capLast:true);}
+            // Three legs, turned, with their brass castors.
+            foreach(var at in new[]{new Vector3(-w*.4f,0,-l*.42f),new Vector3(w*.4f,0,-l*.42f),new Vector3(-w*.25f,0,l*.38f)})
+            {var pts=new List<Vector3>{at+Y*.04f,at+Y*.2f,at+Y*.45f,at+Y*.62f};k.Tube(pts,new[]{.035f,.05f,.065f,.07f},tier>0?6:10,Ink);k.Ellipsoid(at+Y*.03f,X*.045f,Y*.03f,Z*.045f,8,5,Mustard);}
+            k.Finish();return k;
+        }
         public static NativeFallenKit Anvil(int tier=0)
         {
             var k=new NativeFallenKit();int seg=tier>0?16:28;

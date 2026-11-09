@@ -148,14 +148,14 @@ namespace ChipArena.UnityConversion
         // shared/teams.ts order for the native integer teams.
         public static readonly string[] TeamNames={"Red","Blue","Green","Yellow","Purple","Orange","Cyan","Pink"};
         public void FinishCooperative(bool victory){if(!Cooperative)return;CompletionSeconds=(int)Math.Min(604800,Time-CompletionStarted);Phase=NativePhase.Match;Result= victory?"The Siren has fallen — victory":"Party defeated";PhaseEnd=0;}
-        private static double RevealSeconds(string id)=>NativeBombChips.Is(id)?4.8:id.StartsWith("l44t-")?4.6:id.StartsWith("arcade-")||id.StartsWith("mishima-")?4.8:3.2;
+        private static double RevealSeconds(string id)=>NativeBombChips.Is(id)?4.8:NativeDogChips.Is(id)?NativeDogChips.RevealSeconds:id.StartsWith("l44t-")?4.6:id.StartsWith("arcade-")||id.StartsWith("mishima-")?4.8:3.2;
         private void NextDraft()
         {
             while(turn<queue.Count)
             {
                 var p=Seat(queue[turn]);if(p==null||!p.connected){turn++;continue;}
                 DraftSeat=p.id;Chosen=null;
-                ReadyAt=Time+(SkipBotDrafts&&p.bot?0:Math.Max(1.2,(p.offers.Count-1)*.22+(p.offers.Any(id=>NativeBombChips.Is(id)||id.StartsWith("l44t-")||id.StartsWith("arcade-")||id.StartsWith("mishima-"))?1.6:1)));
+                ReadyAt=Time+(SkipBotDrafts&&p.bot?0:Math.Max(1.2,(p.offers.Count-1)*.22+(p.offers.Any(id=>NativeBombChips.Is(id)||NativeDogChips.Is(id)||id.StartsWith("l44t-")||id.StartsWith("arcade-")||id.StartsWith("mishima-"))?1.6:1)));
                 PhaseEnd=ReadyAt+SelectionSeconds;
                 if(SkipBotDrafts&&p.bot&&Choose(p.id,p.offers[0])){turn++;continue;}return;
             }
