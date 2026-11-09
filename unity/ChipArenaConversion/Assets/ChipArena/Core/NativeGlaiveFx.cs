@@ -91,12 +91,14 @@ namespace ChipArena.UnityConversion
                 case NativeGlaive.HitBurst:
                 {
                     // A white flash, a shockwave over the floor, a second ring in the tint, shards flung out, sparks and smoke.
-                    Flash(s,at,age,.2f,GlaiveWhite,2.2f,seed);s.Glow(at,tint*(2.4f*(1-Clamp01(age/.4f))),0,1+2.4f*OutCubic(age/.4f),RingGlow,age,seed+1);
+                    Flash(s,at,age,.22f,GlaiveWhite,3.4f,seed);s.Glow(at,tint*(4.2f*(1-Clamp01(age/.45f))),0,1.2f+3f*OutCubic(age/.45f),RingGlow,age,seed+1);
+                    if(age<.12f)s.Glow(at,(GlaiveWhite+tint)*(3*(1-age/.12f)),0,.6f+1.6f*age/.12f,Core,age,seed+2);
                     float floor=at.Y-.8f;var ground=new Vector3(at.X,floor+.04f,at.Z);
-                    if(age<.55f)Ring(s,ground,.4f+NativeGlaive.BurstRadius*OutCubic(age/.4f),.12f*(1-age/.55f),hot*(1.6f*(1-age/.55f)),Count(40,q,low));
-                    if(age>.05f&&age<.6f)Ring(s,at,.2f+NativeGlaive.BurstRadius*.8f*OutCubic((age-.05f)/.4f),.08f*(1-(age-.05f)/.55f),tint*(2*(1-(age-.05f)/.55f)),Count(32,q,low));
-                    int shards=Count(14,q,low);for(int i=0;i<shards;i++){var d=Vector3.Normalize(RandomDir(seed,i*5)+Up*.25f);float r=NativeGlaive.BurstRadius*OutCubic(age/.35f)*(.5f+.5f*R(seed,i+9));float f=1-Clamp01(age/.6f);s.Line(false,at+d*(r*.6f),at+d*r,hot*(2.2f*f),.035f*f+.008f,true);}
-                    Sparks(s,at,age,.8f,Count(24,q,low),11,hot,seed+11,9,.025f,Up*.5f);Dust(s,ground,age,1.1f,Count(10,q,low),NativeGlaive.BurstRadius*.8f,new Vector3(.4f,.42f,.48f),.5f,seed+13);
+                    if(age<.6f)Ring(s,ground,.4f+NativeGlaive.BurstRadius*OutCubic(age/.42f),.22f*(1-age/.6f),hot*(2.8f*(1-age/.6f)),Count(48,q,low));
+                    if(age>.04f&&age<.62f)Ring(s,at,.2f+NativeGlaive.BurstRadius*.85f*OutCubic((age-.04f)/.4f),.14f*(1-(age-.04f)/.58f),tint*(3.2f*(1-(age-.04f)/.58f)),Count(40,q,low));
+                    if(age>.1f&&age<.7f)Ring(s,at+Up*.3f,.2f+NativeGlaive.BurstRadius*.55f*OutCubic((age-.1f)/.45f),.08f*(1-(age-.1f)/.6f),hot*(2*(1-(age-.1f)/.6f)),Count(28,q,low));
+                    int shards=Count(22,q,low);for(int i=0;i<shards;i++){var d=Vector3.Normalize(RandomDir(seed,i*5)+Up*.25f);float r=NativeGlaive.BurstRadius*1.1f*OutCubic(age/.35f)*(.5f+.5f*R(seed,i+9));float f=1-Clamp01(age/.65f);s.Line(false,at+d*(r*.55f),at+d*r,hot*(3.2f*f),.055f*f+.01f,true);}
+                    Sparks(s,at,age,.9f,Count(40,q,low),12,hot,seed+11,9,.03f,Up*.5f);Dust(s,ground,age,1.2f,Count(14,q,low),NativeGlaive.BurstRadius*.9f,new Vector3(.4f,.42f,.48f),.6f,seed+13);
                     break;
                 }
                 case NativeGlaive.HitCatch:
