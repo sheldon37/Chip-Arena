@@ -151,7 +151,7 @@ namespace ChipArena.UnityConversion
         {
             float t=arena.Time;cards.Clear();
             bool thrown=NativeTechniques.WeaponAway(NativeTechniques.Source?.Of(p.Seat.id),t),away=NativeMeleeKitHud.ShieldAway(p.Seat.spec,p.MeleeKit)||thrown&&p.Seat.spec=="shield";
-            cards.Add(new Card{Key="RMB · "+(p.Seat.spec=="ansatsuken"?"PARRY":"BLOCK"),State=away?"SHIELD OUT":t<p.BlockEnd?"ACTIVE":p.BlockReady>t?(p.BlockReady-t).ToString("0.0")+"s":"READY",Ready=!away&&t>=p.BlockEnd&&p.BlockReady<=t,Active=!away&&t<p.BlockEnd,Low=away,Dial=away?-1:SpanDial(blockSpan,p.BlockReady-t)});
+            cards.Add(new Card{Key="F · PARRY",State=away?"SHIELD OUT":t<p.BlockEnd?"ACTIVE":p.BlockReady>t?(p.BlockReady-t).ToString("0.0")+"s":"READY",Ready=!away&&t>=p.BlockEnd&&p.BlockReady<=t,Active=!away&&t<p.BlockEnd,Low=away,Dial=away?-1:SpanDial(blockSpan,p.BlockReady-t)});
             bool roll=p.Weapon.@class=="melee";string rollState=t<p.RollEnd?"ROLLING":p.RollReady>t?(p.RollReady-t).ToString("0.0")+"s":"READY";cards.Add(new Card{Key="SHIFT · "+(roll?"ROLL":"DODGE"),State=rollState,Ready=rollState=="READY",Active=t<p.RollEnd,Dial=SpanDial(rollSpan,p.RollReady-t)});
             // The DEV Cyber Lord's Q, E and 1-4 cards (NativeCyberLordScreen.cs) in place of the content Q / E cards.
             if(p.Seat.spec==NativeTopDog.Spec)DogCards(p);else if(p.Seat.spec==NativeBombs.Spec)BombCards(p);

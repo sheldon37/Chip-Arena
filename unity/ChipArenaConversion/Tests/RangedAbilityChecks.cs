@@ -12,7 +12,7 @@ internal static class RangedAbilityChecks
         var fan=data.Ability("pistol","q");var drive=data.Ability("machinegun","q");
         Check(fan.id=="fan-hammer"&&fan.kind=="burst"&&fan.live&&fan.cooldown==7&&fan.cost==0&&fan.tick==.075,"Fan entry");
         Check(drive.id=="overdrive"&&drive.kind=="buff"&&drive.live&&drive.cooldown==10&&drive.cost==0&&drive.duration==4&&drive.lockout==.8,"Overdrive entry");
-        Check(data.Ads("pistol")==null&&data.Ads("machinegun")==null&&data.Ads("rifle").overlay=="scope"&&data.Ability("rifle","q").kind=="ads","only rifle retains ADS");
+        Check(data.Ads("pistol")?.overlay=="sight"&&data.Ads("machinegun")?.overlay=="sight"&&data.Ads("rifle").overlay=="scope"&&data.Ability("rifle","q").kind=="ads","every gun aims on right click (owner 2026-11-09); the rifle keeps its scope and its Q");
         Check(!NativeBotRules.Ads("pistol",30)&&!NativeBotRules.Ads("machinegun",30)&&NativeBotRules.Ads("rifle",30)&&NativeBotRules.Ability("fan-hammer").max>0&&NativeBotRules.Ability("overdrive").max>0,"bot activation ranges and rifle-only scope");
         foreach(int ammo in new[]{0,1,2,3,4,7,14})foreach(float dt in new[]{1f/30,1f/60,1f/120})
         {

@@ -67,6 +67,19 @@ namespace ChipArena.UnityConversion
         }
         public static bool StaggerReady(float now,float stunUntil,float immuneUntil)=>now>=stunUntil&&now>=immuneUntil;
         public static float StaggerImmuneThrough(float stunUntil)=>stunUntil+.5f;
+        // The held guard (Runtime NativeGuard.cs; owner 2026-11-09: "reduce damage by a huge portion as long as user is facing where the
+        // damage is coming from. Stamina however will be used on blocked hits"): what a melee weapon can hold up, the arc either side of
+        // facing it covers (degrees), the share of a hit it stops, the stamina each point stopped costs, the pause on stamina coming back,
+        // how long a broken guard stays down, and the walk while it is up.
+        public const float GuardArc=75,GuardShare=.8f,GuardStamina=.9f,GuardRegenPause=.6f,GuardBreak=.9f,GuardMove=.55f;
+        public static bool Guards(string weaponClass)=>weaponClass=="melee";
+        /// <summary>Whether a hit coming from (tx, tz) (the flat direction from the guard toward where it came from) is within the arc of
+        /// facing (fx, fz).</summary>
+        public static bool GuardFaces(float fx,float fz,float tx,float tz)
+        {
+            double lf=Math.Sqrt(fx*fx+fz*fz),lt=Math.Sqrt(tx*tx+tz*tz);if(lf<1e-6||lt<1e-6)return false;
+            double c=(fx*tx+fz*tz)/(lf*lt);return c>=Math.Cos(GuardArc*Math.PI/180)-1e-9;
+        }
         public static float BlockDuration(ChipStats s)=>(float)Math.Max(.1,Math.Min(.65,.3+s["blockWindow"]));
         public static float BlockCooldown(ChipStats s)=>(float)Math.Max(1.5,4*s["blockCooldown"]);
         public static float BlockStun(float damage,float impulse)=>MathUtil.Clamp(.18f+Math.Max(0,damage)*.008f+Math.Max(0,impulse)*.00025f,.25f,.95f);

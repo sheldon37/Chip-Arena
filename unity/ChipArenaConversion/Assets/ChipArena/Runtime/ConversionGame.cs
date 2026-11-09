@@ -161,7 +161,8 @@ namespace ChipArena.UnityConversion
             SpectatorControls();var p=arena.ViewPilot;
             UpdateLock();if(play)
             {
-                var ads=content.Ads(p.Seat.spec);bool aiming=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&(Input.GetKey(KeyCode.Q)||PadHeld(PadAction.Aim));
+                // Right click: aim with a ranged weapon (zoom, less spread: its aim row), guard with a melee one (owner 2026-11-09); the rifle's Q still aims.
+                var ads=content.Ads(p.Seat.spec);bool aiming=ads!=null&&p.Weapon?.@class=="ranged"&&(Input.GetMouseButton(1)||NativeRangedRules.Scope(p.Seat.spec)&&Input.GetKey(KeyCode.Q)||PadHeld(PadAction.Aim));
                 // Choosing in an Expedition holds the camera (ExpeditionCameraHeld, PR #241) and takes the mouse as the chip cursor (no Alt);
                 // mouse look waits a couple of frames after the pointer locks again (NativeExpeditionChipScreen.cs).
                 if(!lockPoint.HasValue&&!ExpeditionLookSettling&&!cinematic.Directing&&!ExpeditionCameraHeld&&!ExpeditionPickPointer){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);ControllerLook(aiming?(float)ads.sens:1);}
@@ -175,7 +176,7 @@ namespace ChipArena.UnityConversion
                 for(int key=0;key<(arena.Local?.Seat.spec=="cyberlord"||arena.Local?.Seat.spec==NativeBombs.Spec||arena.Local?.Seat.spec==NativeTopDog.Spec?5:4);key++)if(Input.GetKeyDown(KeyCode.Alpha1+key)||PadDown(PadAction.Slot1+key))pending.SirenAbility=(byte)(key+1);
                 if(arena.Local?.Seat.spec==NativeTopDog.Spec&&Input.GetKeyDown(KeyCode.Alpha6))pending.SirenAbility=6;
                 pending.AbilityQ|=p.Seat.spec=="emperor"&&(Input.GetKeyDown(KeyCode.Q)||PadDown(PadAction.Aim))||p.Seat.spec=="siren"&&(Input.GetKeyDown(prefs.sirenMode=="F"?KeyCode.F:prefs.sirenMode=="V"?KeyCode.V:KeyCode.Q)||PadDown(PadAction.Aim));
-                pending.InteractHeld=arena.ZoneBoss?.fallen!=null&&(Input.GetKey(KeyCode.F)||PadHeld(PadAction.Interact));pending.Interact|=Input.GetKeyDown(KeyCode.F)&&!(p.Seat.spec=="siren"&&prefs.sirenMode=="F")||PadDown(PadAction.Interact);pending.Block|=(Input.GetMouseButtonDown(1)||PadDown(PadAction.Block));pending.Reload|=(Input.GetKeyDown(KeyCode.R)||PadDown(PadAction.Reload));pending.Roll|=(Input.GetKeyDown(KeyCode.LeftShift)||PadDown(PadAction.Roll));pending.Jump|=(Input.GetKeyDown(KeyCode.Space)||PadDown(PadAction.Jump));
+                pending.InteractHeld=arena.ZoneBoss?.fallen!=null&&(Input.GetKey(KeyCode.F)||PadHeld(PadAction.Interact));pending.Interact|=Input.GetKeyDown(KeyCode.F)&&!(p.Seat.spec=="siren"&&prefs.sirenMode=="F")||PadDown(PadAction.Interact);pending.Block|=PadDown(PadAction.Block);pending.Parry|=Input.GetKeyDown(KeyCode.F)&&!(p.Seat.spec=="siren"&&prefs.sirenMode=="F");pending.Guard=NativeMeleeRules.Guards(p.Weapon?.@class)&&(Input.GetMouseButton(1)||PadHeld(PadAction.Block));pending.Reload|=(Input.GetKeyDown(KeyCode.R)||PadDown(PadAction.Reload));pending.Roll|=(Input.GetKeyDown(KeyCode.LeftShift)||PadDown(PadAction.Roll));pending.Jump|=(Input.GetKeyDown(KeyCode.Space)||PadDown(PadAction.Jump));
                 // The Expedition chip tray takes the digit keys (and the mouse buttons while Alt is held): client routing, no lock.
                 ExpeditionPickRoute();
                 if(match.ResultMovement||arena.BossVictoryWalk)pending=new InputFrame{X=pending.X,Z=pending.Z,Yaw=yaw,Pitch=-pitch,Sprint=pending.Sprint,Jump=pending.Jump};

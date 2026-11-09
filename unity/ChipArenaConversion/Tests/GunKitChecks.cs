@@ -232,7 +232,7 @@ namespace ChipArena.UnityConversion
         }
         private static void Ads(string root,ConversionContent data)
         {
-            Check(data.Ads("pistol")==null&&data.Ads("machinegun")==null&&data.Ads("rifle")!=null,"only the rifle has an ADS entry");
+            Check(data.Ads("pistol")!=null&&data.Ads("machinegun")!=null&&data.Ads("rifle")!=null,"right click aims the pistol, the machine gun and the rifle (owner 2026-11-09)");
             Check(!NativeRangedRules.Scope("pistol")&&!NativeRangedRules.Scope("machinegun")&&NativeRangedRules.Scope("rifle"),"rifle-only scope rule");
             var game=Code(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/ConversionGame.cs")));
             Check(game.Contains("bool aiming=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&(Input.GetKey(KeyCode.Q)||PadHeld(PadAction.Aim));"),"Q and controller Aim scope only with the rifle (look sensitivity, Aim input)");
