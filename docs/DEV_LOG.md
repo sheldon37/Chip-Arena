@@ -1,3 +1,15 @@
+## 2026-11-09 — Claude: corpses rest on the model's own shape (owner request; look)
+
+- Branch `claude/top-dog`. Every kill type: the plain hit's kneel, melee, the Gibber, the Top Dog's burst, the Hot Dog's own body.
+- **The owner:** "We need to fix ragdolling; A lot of deaths have caused things like this too happen (stretched limbs, clipping into floor, etc.)"; "(The ragdoll is for all types of kills, not just from hot dog)".
+- **Why:** the cosmetic body (Runtime `NativeDeathPresentation.cs`) is built on the classic rig's joints and boxes, and the model corpse is posed from it with the model's own bone lengths (Runtime `NativeVisualBodyPresentation.cs` `VisualCorpseShown`). Where the model's proportions differ (most of all the Hot Dog's lifted, longer legs) each drawn limb sat 0.24 to 0.53 m from its physics part, so a foot reached a third of a metre past its shin and through the floor; and the boxes, the classic shapes, did not cover the model (the Hot Dog's crown and girth, the boots).
+- **The fix** (Runtime `NativeCorpseFitPresentation.cs`, `NativeCollapsePresentation.cs`), before the corpse's first step: its parts move onto the model's own joints (each joint's highest bone, the pelvis on its pelvis bone) and re-anchor (`NativeCorpse.Retarget`); each part's box becomes the box of the model's skin on that part's bones, a shin's foot a box of its own (`VisualCorpseFit`, `Refit`); the kneel's collapse runs on those boxes, the feet's turned to the ankle's last angle when it lets go (`FootBoxesAtRelease`).
+- **Measured** (a local capture readout: each drawn bone against its physics part, and the lowest skinned point against the floor): drift from 0.24-0.53 m (the Hot Dog) and 0.07-0.36 m (a pilot) to under 5 cm on every kill tried; the Hot Dog's lowest point from 0.55 m under the floor to a toe's depth; the burst's from 0.22 m under to above the floor. On the last run the lowest point of every corpse sat between 2 cm under and 4 cm over the floor.
+- **Animation impact:** presentation only (the cosmetic bodies never touch play).
+- **Checks:** CoreTests `--visual-rig` (the fit's wiring beside the no-stretch check) and `--hot-dog`; the Unity compile; the pinned lines. The full suite runs with the release.
+- **Seen in the Editor:** a plain hit's kneel, a melee kill, the Gibber, the Top Dog's burst and a dead Hot Dog, each measured through the fall and looked at up close: the bodies fold and lie on the floor, nothing stretched apart, the Hot Dog folding forward over its legs onto its face.
+- **Not run:** no person, no two real clients.
+
 ## 2026-11-09 — Claude: the Hot Dog's face stays on the head; no core on the Hot Dog (owner request; look)
 
 - Branch `claude/top-dog`, after the face's release. Design: `docs/TOP-DOG.md` "Its face".

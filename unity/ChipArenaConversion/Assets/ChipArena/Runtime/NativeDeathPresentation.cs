@@ -237,6 +237,8 @@ namespace ChipArena.UnityConversion
                 if(corpse==null)corpse=new NativeCorpse(death,rig,arena,slice);corpses[death.id]=corpse;
                 // A pilot's whole body falls as its visual body (NativeVisualBodyPresentation.cs), posed from the rig before it goes.
                 if(pilot)VisualCorpseMake(corpse,death,rig);
+                // Its cosmetic body's boxes fitted to the model it carries, so the model rests on the floor rather than through it.
+                if(pilot)VisualCorpseFit(corpse,arena);
                 if(temporary)rig.Dispose();
                 // A cut body's blood is its seam's (BisectBlood); the fatal wound still bleeds as it falls.
                 BleedDeath(death,corpse.Bisect!=null?null:slice,KillClock(arena));
