@@ -135,7 +135,7 @@ namespace ChipArena.UnityConversion
         /// deflects into the match camera's mesh and the view camera's.</summary>
         private void RenderBlockFx(Snapshot s,float time)
         {
-            if(s?.Actors==null)return;ObserveBlocks(s,time);
+            if(s?.Actors==null)return;ObserveBlocks(s,time);RenderParryBarriers(s,time);
             bool any=blockRecords.Count>0;if(!any)foreach(var a in s.Actors)if(a!=null&&a.Alive&&time<a.BlockUntil){any=true;break;}
             if(!any)return;
             if(blockDraw==null){if(blockDrawFailed)return;blockDraw=NativeBlockFxDraw.Create(gameObject);blockDrawFailed=blockDraw==null;if(blockDraw==null)return;}
