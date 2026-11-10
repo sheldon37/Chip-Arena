@@ -23,6 +23,7 @@
 - **Seen in the Editor:** a real feast on a bot, with the view turned 90 degrees mid-feed and without: the hot dog squares up to its victim in a wide stance, each arm from its own side, the cinematic shots reaching to the mouth.
 - **Not seen / not done:** played by a person; online as a guest (the turn applies after any rig is posed, the guest's own included); a minion caught.
 - The local capture tool's `dogdiag=1` logs each Top Dog's yaws and shoulder line at the shots.
+- **Released** to the test channel (Windows builder): merged into shared at `64144a4d`; the Unity compile and the Editor build checks (Top Dog simulation 89) passed; its own release's suite exited 0 but its log was lost (a queued release cleaned the shared test folder mid-run), and the full CoreTests (989 groups) then passed on the main-menu DEV screen's merge `bb85ff31`, which contains it; published revision `639298805122167961`. Not played by a person.
 
 ## 2026-11-09 — Claude: the DEV panel's PLAYERS tab, cleaner and with every DEV class (owner request)
 
