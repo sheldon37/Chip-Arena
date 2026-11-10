@@ -110,6 +110,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--pack-fx-blasts"){PackFxBlastsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--stage-kits"){StageKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--new-stage-looks"){NewStageLookChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--sanctum"){SanctumChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--skin-tone"){SkinToneChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-models"){ZombieModelChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--tiler"){TilerLookChecks.Run(ProjectRoot());return 0;}
@@ -305,6 +306,7 @@ internal static class Program
             PackFxBlastsChecks.Run(root);
             StageKitChecks.Run(root);
             NewStageLookChecks.Run(root);
+            SanctumChecks.Run(root);
             AdvancedLightingChecks.Run(root);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);

@@ -238,7 +238,7 @@ namespace ChipArena.UnityConversion.Editor
                             CheckNetworkSerialization(arena);CheckCombatParity(data);CheckInteractionFeedback(data);CheckPresentation(arena);CheckGlow(arena,match);CheckShots(arena);arena.ValidateMelee();arena.ValidateGuard();arena.ValidateSpecials();arena.ValidateRangedAndMagic();arena.ValidateRuntimePerformance();arena.ValidateTechniques();arena.ValidateBombadier();arena.ValidateTopDog();arena.ValidateGlaive();
                         }
                         if(map.id=="factory"||map.id=="cybercity")arena.ValidateStageHazardRuntime();
-                        if(new[]{"breakwater","harbor","skyframe","rig","polar","training"}.Contains(map.id))arena.ValidateM1Runtime();
+                        if(new[]{"breakwater","harbor","skyframe","rig","polar","training","sanctum"}.Contains(map.id))arena.ValidateM1Runtime();
                         if(map.id=="cybercity")arena.ValidateCyberCityExits();
                         if(NativeMapRules.WardInstance(map.id)&&map.look=="quarantine"){if(map.id=="siren")arena.ValidateWardSimulation();arena.ValidateWardTraversal();}
                         if(map.id=="brickfall"){arena.ValidateCorpsePhysics();CheckBrickfallRuntime(data);}
