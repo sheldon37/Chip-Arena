@@ -17,6 +17,14 @@ namespace ChipArena.UnityConversion
         public const int Capacity=1800;
         public readonly NativeFactoryKit.Writer Parts;public readonly float[] Rgb=new float[Capacity*3];
         public int Tiles,Panels,Cones,Heads,Facets,Crowd;
+        // ---- what the stage art poses its modelled rig from (Core NativeSubstationArt, docs/arenas/STAGE-ART.md), filled where the
+        //      boxes are placed: the lit screens' count (the tiles, the wall and the cube come first in Parts and draw with the art
+        //      too), each stack's cone throw and dust-cap light, the heads' pan and tilt, the laser posts, the DJ and each crowd
+        //      figure (x, y, z, yaw, tall (0: not drawn), bob, sway, the two arms' angles, hands up)
+        public int Screens;public readonly double[] ConePump=new double[2];public readonly float[] ConeGlow=new float[6];
+        public readonly double[] HeadYaw=new double[NativeClubLooks.Heads],HeadPitch=new double[NativeClubLooks.Heads];
+        public double PostX,PostRise,DjNod,DjArm,DjLift;
+        public const int CrowdStride=10,CrowdMax=64;public readonly double[] CrowdPose=new double[CrowdMax*CrowdStride];
         public NativeClubRig(NativeFactoryKit.Looks looks){Parts=new NativeFactoryKit.Writer(Capacity,false,looks);}
         private static double H(int a,int b=0,int c=0)=>NativeClubLooks.Hash(a,b,c);
         private static readonly double[] Sides={-1.0,1.0},LaserYs={.15,.35,.55},Horns={-.62,.62},Woofers={-.66,.66};
@@ -29,7 +37,7 @@ namespace ChipArena.UnityConversion
         /// effects `quality` 0..1.</summary>
         public void Build(NativeClubShow s,double render,bool low,double quality)
         {
-            Parts.Clear();Tiles=Panels=Cones=Heads=Facets=Crowd=0;if(s==null)return;var I=FactoryQ.Identity;
+            Parts.Clear();Tiles=Panels=Cones=Heads=Facets=Crowd=0;Screens=0;PostRise=0;if(s==null)return;var I=FactoryQ.Identity;
             // ---- the dance floor: each tile a hair over the glass, its colour the show's (telegraphs included: never reduced)
             for(int t=0;t<NativeClubLooks.Tiles;t++)
             {
@@ -55,7 +63,7 @@ namespace ChipArena.UnityConversion
                 }
                 Panels++;
             }
-            Speakers(s,render);MovingHeads(s);LaserPosts(s);Balls(s,render,low);Dj(s,render);Crowds(s,render,low,quality);
+            Screens=Parts.Count;Speakers(s,render);MovingHeads(s);LaserPosts(s);Balls(s,render,low);Dj(s,render);Crowds(s,render,low,quality);
         }
 
         // ---- the stacks: two woofers a cabinet (octagons: two turned boxes), surrounds and dust caps; horns in the top cabinet
@@ -68,6 +76,7 @@ namespace ChipArena.UnityConversion
                 double x0=side*NativeClubLooks.SpeakerX0,x1=side*NativeClubLooks.SpeakerX1,cx=(x0+x1)/2,front=NativeClubLooks.SpeakerZ,cab=NativeClubLooks.SpeakerTop/4;
                 // the cones pump with the kick; through the drop's warning they shake harder with each beat; the burst throws them out
                 double pump=.015+.03*kick*(1+2*build)+.11*burst;
+                int si=side<0?0:1;ConePump[si]=pump;ConeGlow[si*3]=(float)(.6+2.4*build+5*burst);ConeGlow[si*3+1]=(float)(.45+1.0*build+4*burst);ConeGlow[si*3+2]=(float)(.9+.3*build+5*burst);
                 for(int k=0;k<4;k++)
                 {
                     double y=(k+.5)*cab;
@@ -89,7 +98,7 @@ namespace ChipArena.UnityConversion
             {
                 double hx=s.HeadAt[k*3],hy=s.HeadAt[k*3+1],hz=s.HeadAt[k*3+2],dx=s.HeadAim[k*3]-hx,dy=s.HeadAim[k*3+1]-hy,dz=s.HeadAim[k*3+2]-hz,l=Math.Sqrt(dx*dx+dy*dy+dz*dz);if(l<1e-3){dy=-1;l=1;}
                 dx/=l;dy/=l;dz/=l;double yaw=Math.Atan2(dx,dz),pitch=Math.Asin(Math.Max(-1,Math.Min(1,-dy)));bool top=k>=12;double up=top?-1:1;
-                var pan=FactoryQ.Axis(0,1,0,yaw);var aim=FactoryQ.YawPitch(yaw,pitch);
+                var pan=FactoryQ.Axis(0,1,0,yaw);var aim=FactoryQ.YawPitch(yaw,pitch);HeadYaw[k]=yaw;HeadPitch[k]=pitch;
                 Part(hx,hy+up*.32,hz,.16,.05,.16,FactoryQ.Identity,NativeClubLooks.Dark,true);
                 pan.Rotate(.2,0,0,out double ax,out double ay,out double az);Part(hx+ax,hy+up*.15,hz+az,.025,.17,.06,pan,NativeClubLooks.Metal,true);Part(hx-ax,hy+up*.15,hz-az,.025,.17,.06,pan,NativeClubLooks.Metal,true);
                 Part(hx,hy,hz,.15,.15,.24,aim,NativeClubLooks.Dark,true);
@@ -106,7 +115,7 @@ namespace ChipArena.UnityConversion
             else if(st.Phase==NativeHazardPhase.Active){rise=1;x=Math.Max(h.center.x-h.size.x/2,Math.Min(h.center.x+h.size.x/2,double.IsNaN(st.Head)?near:st.Head));}
             else if(st.Phase==NativeHazardPhase.Clear){rise=st.Level;x=h.center.x+st.Direction*h.size.x/2;}
             else return;
-            if(rise<=.001)return;double top=NativeClubLooks.LaserTop*rise;
+            if(rise<=.001)return;double top=NativeClubLooks.LaserTop*rise;PostX=x;PostRise=rise;
             foreach(double side in Sides)
             {
                 double z=side*NativeClubLooks.LaserRailZ;Part(x,top/2-.01,z,.12,top/2+.01,.12,FactoryQ.Identity,NativeClubLooks.Dark,true);Part(x,top+.02,z,.15,.03,.15,FactoryQ.Identity,NativeClubLooks.Metal,true);
@@ -137,12 +146,12 @@ namespace ChipArena.UnityConversion
         private void Dj(NativeClubShow s,double render)
         {
             double beats=s.Beats,nod=Math.Exp(-NativeClubLooks.Frac(beats)*5)*.05,x=NativeClubLooks.DjX,z=NativeClubLooks.DjZ,y0=NativeClubLooks.StageY;
-            double lift=Math.Max(s.Rise,s.Blast>0?1:0);var I=FactoryQ.Identity;
+            double lift=Math.Max(s.Rise,s.Blast>0?1:0);var I=FactoryQ.Identity;DjNod=nod;DjLift=lift;
             Part(x,y0+.45,z,.17,.45,.12,I,NativeClubLooks.Crowd,true);Part(x,y0+1.25,z-.02*nod,.22,.34,.13,I,NativeClubLooks.Crowd,true);
             Part(x,y0+1.73-nod,z-.04,.11,.13,.12,I,NativeClubLooks.Crowd,true);Part(x,y0+1.78-nod,z-.04,.13,.05,.05,I,NativeClubLooks.Metal);
             // right hand at the ear, left on the mixer or raised
             Part(x+.26,y0+1.5,z-.05,.05,.2,.05,FactoryQ.Axis(0,0,1,.4),NativeClubLooks.Crowd,true);
-            double a=.3+2.2*lift+Math.Sin(beats*Math.PI)*.25*lift;var arm=FactoryQ.Axis(1,0,0,a);arm.Rotate(0,-.24,0,out double ox,out double oy,out double oz);
+            double a=.3+2.2*lift+Math.Sin(beats*Math.PI)*.25*lift;var arm=FactoryQ.Axis(1,0,0,a);arm.Rotate(0,-.24,0,out double ox,out double oy,out double oz);DjArm=a;
             Part(x-.27,y0+1.55+oy,z+oz,.05,.24,.05,arm,NativeClubLooks.Crowd,true);
         }
         // ---- the crowd: figures leaning on the galleries' rails beyond the arches (west, east) and packed in the pit beyond the
@@ -159,7 +168,7 @@ namespace ChipArena.UnityConversion
             int n=CrowdCount(low);double beats=s.Beats;double hype=Math.Max(s.Rise,s.Blast>0?1:0);
             for(int k=0;k<64;k++)
             {
-                if(low&&(k&1)==1)continue;CrowdAt(k,out double x,out double y,out double z,out double yaw);
+                int co=k*CrowdStride;CrowdPose[co+4]=0;if(low&&(k&1)==1)continue;CrowdAt(k,out double x,out double y,out double z,out double yaw);
                 double ph=H(k,7),bob=Math.Abs(Math.Sin((beats+ph*.3)*Math.PI))*.07*(1+hype),sway=Math.Sin(beats*Math.PI*.5+ph*6)*.06;
                 double tall=.92+.16*H(k,9);var q=FactoryQ.Axis(0,1,0,yaw);var lean=q*FactoryQ.Axis(0,0,1,sway);
                 q.Rotate(1,0,0,out double rx,out double ry,out double rz);
@@ -167,11 +176,12 @@ namespace ChipArena.UnityConversion
                 Part(x,y+1.1*tall+bob,z,.2,.3*tall,.11,lean,NativeClubLooks.Crowd);
                 Part(x,y+1.55*tall+bob,z,.1,.12,.11,lean,NativeClubLooks.Crowd);
                 bool up=hype>.2&&H(k,11)<.4+.6*hype||H(k,(int)Math.Floor(beats/8),13)<.12;
+                CrowdPose[co]=x;CrowdPose[co+1]=y;CrowdPose[co+2]=z;CrowdPose[co+3]=yaw;CrowdPose[co+4]=tall;CrowdPose[co+5]=bob;CrowdPose[co+6]=sway;CrowdPose[co+9]=up?1:0;
                 foreach(double sd in Sides)
                 {
                     double ax=x+rx*sd*.24,az=z+rz*sd*.24;
-                    if(up){double wave=Math.Sin(beats*Math.PI+ph*4+sd)*.25;Part(ax,y+1.62*tall+bob,az,.045,.3,.045,q*FactoryQ.Axis(0,0,1,sd*(.25+wave)),NativeClubLooks.Crowd);}
-                    else Part(ax,y+1.08*tall+bob,az,.045,.26,.045,q*FactoryQ.Axis(0,0,1,sd*.12),NativeClubLooks.Crowd);
+                    if(up){double wave=Math.Sin(beats*Math.PI+ph*4+sd)*.25;CrowdPose[co+(sd<0?7:8)]=sd*(.25+wave);Part(ax,y+1.62*tall+bob,az,.045,.3,.045,q*FactoryQ.Axis(0,0,1,sd*(.25+wave)),NativeClubLooks.Crowd);}
+                    else{CrowdPose[co+(sd<0?7:8)]=sd*.12;Part(ax,y+1.08*tall+bob,az,.045,.26,.045,q*FactoryQ.Axis(0,0,1,sd*.12),NativeClubLooks.Crowd);}
                 }
                 Crowd++;
             }
