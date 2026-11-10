@@ -152,7 +152,8 @@ namespace ChipArena.UnityConversion
             {
                 var (n,sample)=arity.TryGetValue(name,out var e)?e:(0,Array.Empty<string>());Check(NativeDevContract.ShapeOk(name,0,sample),name+" takes "+n+" arguments");
                 var m=Regex.Match(args,@"case """+Regex.Escape(name)+@""":(?:case ""[a-z-]+"":)*(?:\{[^\n]*?)?return new\[\]\{(.*?)\};");int got=m.Success?Regex.Split(Regex.Replace(m.Groups[1].Value,@"\([^()]*(\([^()]*\))*[^()]*\)",""),",").Length:0;
-                if(name=="god"||name=="infinite-ammo"||name=="no-cooldowns"){Check(panelSrc.Contains("if(DevButton(on,\"ON\",state,reason,now))DevSend(id,\"on\");if(DevButton(off,\"OFF\",state,reason,!now))DevSend(id,\"off\");"),name+" sends on / off");continue;}
+                // (Owner 2026-11-09, the PLAYERS tab: each a switch that sends the other state, NativeDevPlayers.cs.)
+                if(name=="god"||name=="infinite-ammo"||name=="no-cooldowns"){Check(R("Runtime/NativeDevPlayers.cs").Contains("if(DevSwitch(new Rect(x,y,w,38),a.Label,DevCheatIcons[i],now,state,reason))DevSend(id,now?\"off\":\"on\");"),name+" sends on / off from its switch");continue;}
                 Check(got==n,"DevArgs gives "+name+" "+n+" arguments (found "+got+")");
             }
             Check(panelSrc.Contains("DevSend(a.Id,id,NativeDevText.Int(count));")&&panelSrc.Contains("Mathf.Min(NativeDevContract.ChipCountMax,"),"chip stacks send their count, at most 100");
@@ -173,8 +174,9 @@ namespace ChipArena.UnityConversion
             var panel=R("Runtime/NativeDevPanel.cs");
             Check(panel.Contains("if(state!=NativeDevState.Live){DevSay((a?.Label??id)+\" · \"+reason,true);return;}")&&!Regex.IsMatch(panel,"DevSay\\([^;]*(\"done|NativeDevContract\\.Done|accepted)"),"a disabled action only says why; the panel never reports a command done itself");
             Check(Regex.Matches(panel,@"devLink\.Send\(").Count==2&&panel.Contains("if(devLink.Status!=devLinkSeen){devLinkSeen=devLink.Status;")&&panel.Contains("private string DevSender(string action,int target,string[] args)=>SendDevCommand(action,target,args);")&&panel.Contains("DevReplyReceived+=DevOnReply;")&&Regex.Matches(panel,"SendDevCommand\\(").Count==1,"commands go out only through SendDevCommand; the status line shows the authority's replies");
-            Check(!Regex.IsMatch(panel+R("Runtime/NativeDevOverlays.cs"),@"\b(DevGod|DevInfiniteAmmo|DevNoCooldowns|devRevealed|devScale|devCommandsRan|devDummy|DevTimeScale)\s*=[^=]")&&R("Runtime/NativeDevOverlays.cs").IndexOf("devLink",StringComparison.Ordinal)<0,"the presentation never writes the replicated DEV state (no optimistic effects)");
-            Check(panel.Contains("me.Seat.devCommandsRan")&&panel.Contains("p.Seat.devDummy?NativeDevTags.DevDummy")&&panel.Contains("arena.DevTimeScale")&&panel.Contains("me.DevGod")&&panel.Contains("DevOldHost"),"the panel shows the replicated state: progression, DEV dummies, room speed, pilot flags, an older host");
+            Check(!Regex.IsMatch(panel+R("Runtime/NativeDevOverlays.cs")+R("Runtime/NativeDevPlayers.cs"),@"\b(DevGod|DevInfiniteAmmo|DevNoCooldowns|devRevealed|devScale|devCommandsRan|devDummy|DevTimeScale)\s*=[^=]")&&R("Runtime/NativeDevOverlays.cs").IndexOf("devLink",StringComparison.Ordinal)<0,"the presentation never writes the replicated DEV state (no optimistic effects)");
+            var players=R("Runtime/NativeDevPlayers.cs");
+            Check(players.Contains("me.Seat.devCommandsRan")&&players.Contains("p.Seat.devDummy?NativeDevTags.DevDummy")&&panel.Contains("arena.DevTimeScale")&&players.Contains("me.DevGod")&&panel.Contains("DevOldHost"),"the panel shows the replicated state: progression, DEV dummies, room speed, pilot flags, an older host");
         }
         private static void Monsters(Func<string,string> R)
         {
@@ -328,6 +330,24 @@ namespace ChipArena.UnityConversion
             var art=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ClassIcons.json"))).RootElement;var artIcons=new HashSet<string>(art.GetProperty("icons").EnumerateArray().Select(e=>e.GetProperty("id").GetString()));
             foreach(var id in NativeDevLayout.TabIcons.Concat(new[]{"x","scan","bot","sparkles"}))Check(icons.Contains(id)||artIcons.Contains(id),"icon "+id+" exists");
             foreach(NativeDevTab t in Enum.GetValues(typeof(NativeDevTab)))Check(NativeDevActions.All.Any(a=>a.Tab==t),"tab "+t+" has actions");
+            // The PLAYERS tab (owner 2026-11-09: "Rework the dev menu (Where we can modify players) ... Everytime we make a dev class, add them
+            // as an option here"): Pilot and Interact in one (the rail shows PLAYERS; their actions keep their tabs, so commands go out as
+            // before); its DEV CLASSES are every devOnly class in the content the account may play (no list to keep up), each with its icon.
+            {
+                var players=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeDevPlayers.cs"));var shell=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeDevPanel.cs"));
+                Check(shell.Contains("case NativeDevTab.Pilot:case NativeDevTab.Interact:y=DevPlayersTab(x,y,w);break;")&&shell.Contains("if(i==(int)NativeDevTab.Interact)continue;")&&NativeDevLayout.TabNames[(int)NativeDevTab.Pilot]=="PLAYERS","Pilot and Interact are one PLAYERS tab");
+                Check(players.Contains("private static int DevClassGroupOf(ContentWeapon w)=>w.devOnly?DevClassDev:")&&players.Contains("foreach(var w in content.weapons)if(w!=null&&AllowedWeapon(w)&&DevClassGroupOf(w)==g)picked.Add(w);")&&shell.Contains("y=DevClassGrid(x,y,w,dummySpec,ref pick);"),"its classes, and the dummy's, come from the content: every devOnly class under DEV CLASSES");
+                using var gameContent=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")));
+                var specIcons=new HashSet<string>(art.GetProperty("specs").EnumerateArray().Select(e=>e.GetProperty("id").GetString()).Concat(doc.RootElement.GetProperty("specs").EnumerateArray().Select(e=>e.GetProperty("id").GetString())));
+                int devClasses=0;
+                foreach(var wpn in gameContent.RootElement.GetProperty("weapons").EnumerateArray())
+                {
+                    string wid=wpn.GetProperty("id").GetString();bool dev=wpn.TryGetProperty("devOnly",out var d)&&d.GetBoolean();if(dev)devClasses++;
+                    Check(specIcons.Contains(wid),(dev?"DEV class ":"class ")+wid+" has its tile's icon");
+                }
+                Check(devClasses>=7,"the DEV CLASSES group has every DEV class ("+devClasses+")");
+                foreach(var id in new[]{"users","swords","wand-sparkles","shield-check","settings","cpu","layers","hourglass","heart-plus","skull","zap","corner-up-right","x","scan-line","rocket","snowflake","magnet","move-right","shrink","expand","boxes","brick-wall","radiation","bot"})Check(icons.Contains(id),"the PLAYERS tab's icon "+id+" exists");
+            }
             Check(NativeDevActions.All.Select(a=>a.Id).Distinct().Count()==NativeDevActions.All.Length&&NativeDevActions.All.All(a=>NativeDevActions.Find(a.Id)==a)&&NativeDevActions.Find("nope")==null,"action ids are unique and found");
             Check(NativeDevActions.All.Where(a=>a.Key!=null).All(a=>NativeDevKeys.All.Contains(a.Key)),"every action key is a panel hotkey");
         }
