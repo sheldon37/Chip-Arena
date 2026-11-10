@@ -104,6 +104,18 @@ namespace ChipArena.UnityConversion
             rh.SetPositionAndRotation(Vector3.Lerp(keepAt,grip,pose.Weight),Quaternion.Slerp(keep,turn,pose.Weight));
             dogMalletToon[-1]=(Time.frameCount,DogToonScale(pose));
         }
+        /// <summary>Crescent Return's ring arm on the intro's body (Core NativeGlaiveMotion.Intro), at intro time `t`; the rig's right hand then
+        /// on the ring's frame (the intro's ring draws there while it is in the hand).</summary>
+        private void GlaiveIntro(VisualBody body,CapturedAnimation.Player rig,float t)
+        {
+            var l=DogLimbsOf(body);if(l==null)return;
+            if(!NativeGlaiveMotion.Intro(t,out var pose)){DogRootLetGo(body,l);dogSwings.Remove(-2);return;}
+            if(!dogSwings.TryGetValue(-2,out var mem)){mem=new DogSwingMemory();dogSwings[-2]=mem;}
+            var rh=rig.Bones[CapturedRig.RHand];if(!mem.HasFace){mem.Face=rh.up;mem.HasFace=true;}
+            var hold=Quaternion.Inverse(l.RHand.rotation)*rh.rotation;var keep=rh.rotation;var keepAt=rh.position;
+            DogMalletPoseBody(body,l,pose,1,hold,mem,out var grip,out var turn);
+            rh.SetPositionAndRotation(Vector3.Lerp(keepAt,grip,pose.Weight),Quaternion.Slerp(keep,turn,pose.Weight));
+        }
         private static Vector3 DogToonScale(in DogMalletPose p)
         {
             float w=p.Weight,st=.16f*p.Smear*w,sq=.16f*p.Squish*w;return new Vector3(1-.25f*st+sq,1-.25f*st+sq,1+st-.15f*sq);

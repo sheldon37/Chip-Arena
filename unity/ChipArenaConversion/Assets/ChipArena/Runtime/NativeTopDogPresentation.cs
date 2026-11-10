@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- the intro (Core NativeTopDogIntro, staged by NativeIntros.DirectedIntro) ----
-        private int dogIntroActor=-1;private float dogMalletScale,dogIntroClock;private Func<int,Matrix4x4> dogIntroHand;
+        private int dogIntroActor=-1,glaiveIntroActor=-1;private float dogMalletScale,dogIntroClock,glaiveIntroClock;private Func<int,Matrix4x4> dogIntroHand;
         private readonly List<NativeIntroToon> dogIntroToons=new List<NativeIntroToon>();private readonly Dictionary<int,Mesh> dogCarts=new Dictionary<int,Mesh>();
         /// <summary>The entrance's toon models in the Top Dog's shader, out of the source frame (x mirrored).</summary>
         private void DogIntroToons(NativeTopDogIntro intro,float t)
