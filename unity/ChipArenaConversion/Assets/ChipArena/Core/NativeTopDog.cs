@@ -11,8 +11,13 @@ namespace ChipArena.UnityConversion
     public static class NativeTopDog
     {
         public const string Spec="topdog",Entrance="dev-topdog",Name="Top Dog";
-        /// <summary>The death style of a pilot All You Can Eat bursts (NativeDeath.style; Runtime NativeTopDogBurst draws it).</summary>
+        /// <summary>The burst a pilot All You Can Eat pops dies in (NativeSmashGib.Burst), named for its sound (NativeSoundCues "death.style.gib").</summary>
         public const string Burst="hot-dog-burst";
+        /// <summary>The pop's death (NativeDeath.damageKind, replicated with the record; owner 2026-11-09: "use the kill effect if applicable (Like
+        /// hot dog friends should work)"): the record keeps the killer's kill effect as its style, and this kind says the body burst, so the
+        /// burst wears that effect where it can (NativeSmashGib.BurstStyle).</summary>
+        public const string PopKind="topdog-pop";
+        public static bool Popped(string damageKind)=>damageKind==PopKind;
         public const string Mallet="big-mallet",Boing="boing",Zip="zip",Anvil="anvil",Peel="banana-peel",Mustard="mustard",Glove="spring-glove",Pie="cream-pie",Feast="all-you-can-eat";
         // Prop kinds (NativeDogProp.Kind), marks (NativeDogMark.Kind) and hit kinds (NativeDogHit.Kind).
         public const string PropAnvil="anvil",PropPeel="peel",PropPie="pie",PropGlove="glove",PropSquirt="squirt",PropPuddle="puddle",PropSpring="spring",PropZip="zip",PropPiano="piano",PropSnack="snack";
@@ -92,11 +97,13 @@ namespace ChipArena.UnityConversion
         /// players mouth for a good few seconds"; "literally animate opening the players mouth and just putting hotdogs in there"): the left
         /// hand takes the victim's chin and holds the jaw open from JawFrom before the feeding to the let-go, tugging it on each push; the
         /// right hand comes in GrabLead before the first, and for each a bare sausage pops into it out of hammerspace Appear before its
-        /// offer, it is brought to the lips from CarryFrom before the offer, pushed half in from PushFrom to PushEnd after it, and the hand backs off for the next. Each stays half
+        /// offer, it is brought to the lips from CarryFrom before the offer, pushed half in from PushFrom to PushEnd after it, and the hand lets go
+        /// and backs off for the next (open a moment before the next is in it: Runtime NativeDogView.FeedGrip). Each stays half
         /// out, squirming, StickFor, then is slurped down over Slurp; a snap spits them out over Spit. The fan: each one's angle out of the
-        /// mouth (degrees).</summary>
-        public const float GrabLead=.3f,Appear=.18f,CarryFrom=.1f,PushFrom=.08f,PushEnd=.3f,StickFor=2.6f,Slurp=.35f,Spit=.7f,LetGo=.22f,JawFrom=.35f;
-        public static readonly float[] FanYaw={-20,16,-6,26,-30,8},FanPitch={10,-6,18,2,-12,14};
+        /// mouth (degrees), kept inside the mouth's opening so each goes in between the lips (owner 2026-11-09: "realistically putting hot dogs in
+        /// the players mouth"), crowding it as they pile in.</summary>
+        public const float GrabLead=.3f,Appear=.12f,CarryFrom=.08f,PushFrom=.08f,PushEnd=.26f,StickFor=2.6f,Slurp=.35f,Spit=.7f,LetGo=.22f,JawFrom=.35f;
+        public static readonly float[] FanYaw={-8,7,-2,11,-12,4},FanPitch={5,-3,8,1,-6,7};
         public static float FeedAt(float catchAt)=>catchAt+FeedDelay;
         public static float ReleaseAt(float feedAt)=>feedAt+Feeds*FeedPeriod+ReleaseAfter;
         public static float PopAt(float release)=>release+PopAfter;

@@ -39,6 +39,9 @@ namespace ChipArena.UnityConversion
         /// friends push in JamPulses heaves while it squishes thin enough to fit and stretches into the dark, the frame bulging (JamPush s),
         /// then it slurps through and is gone (JamPop s) and the friends tumble on their faces (Tumble s) before they scramble in after it.</summary>
         public const float JamFit=1.08f,JamHit=.08f,JamPush=.26f,JamPop=.1f,JamTime=JamHit+JamPush+JamPop,Tumble=.16f;public const int JamPulses=3;
+        /// <summary>How much a load that fits is narrowed as it squeezes through the doorway: the least (a small one) and the most (one just
+        /// fitting, Trip.Snug 1); it is drawn out along the carry by half again as much.</summary>
+        public const float SqueezeLeast=.2f,SqueezeMost=.55f;
         /// <summary>The door is open from here (s after the death).</summary>
         public const float Opened=Settle+DoorUp+DoorOpen;
         /// <summary>How many carry a load `size` m across.</summary>
@@ -87,14 +90,14 @@ namespace ChipArena.UnityConversion
         public static float Stagger(int loads)=>loads<=1?0:Math.Min(MostStagger,StaggerSpan/(loads-1));
         /// <summary>One load's trip: when its file leaves the door, has gathered under it, has it up, is back at the door and has it through;
         /// `Floor` the floor under it.</summary>
-        public struct Trip{public float Leave,Arrive,Lifted,Back,In,Floor,Fit;public bool Jam;}
+        public struct Trip{public float Leave,Arrive,Lifted,Back,In,Floor,Fit,Snug;public bool Jam;}
         /// <summary>The trip of the load `order`th nearest the door of `loads`, `distance` m from it, carried by `friends`; `fit` how many
         /// times too big for the doorway it is (Fit; over JamFit it jams).</summary>
         public static Trip Plan(int order,int loads,float distance,int friends,float floor,float fit=0)
         {
             float leave=Opened+order*Stagger(loads),run=Pop+Math.Min(MostRun,Math.Max(.05f,distance)/Run)+Math.Max(0,friends-1)*File*.5f,carry=Math.Min(MostCarry,Math.Max(.05f,distance)/CarrySpeed);
             bool jam=fit>JamFit;float arrive=leave+run,back=arrive+LiftTime+carry;
-            return new Trip{Leave=leave,Arrive=arrive,Lifted=arrive+LiftTime,Back=back,In=back+(jam?JamTime:Squeeze),Floor=floor,Fit=Math.Max(1,fit),Jam=jam};
+            return new Trip{Leave=leave,Arrive=arrive,Lifted=arrive+LiftTime,Back=back,In=back+(jam?JamTime:Squeeze),Floor=floor,Fit=Math.Max(1,fit),Snug=Clamp(fit/JamFit),Jam=jam};
         }
         /// <summary>How many times too big for the doorway a load is: its width across the way it comes in (`across`, m) against the
         /// doorway's, its height against the doorway's.</summary>
@@ -182,9 +185,11 @@ namespace ChipArena.UnityConversion
                     squish=new Vector3(thin*.92f*(1-.4f*u),Math.Min(1,1.15f*thin+.1f)*(1-.3f*u),(1.25f+.6f*(fit-1))*(1+.6f*u));scale=u>=1?0:1-(float)Math.Pow(u,2.2f);return;
                 }
             }
-            // Stuffed through the door: pulled into its mouth faster and faster, wobbling, shrinking away.
-            float q=Clamp((t-trip.Back)/Squeeze);
-            at=Vector3.Lerp(from,inside,q*q);scale=q>=1?0:1-(float)Math.Pow(q,1.4f);tilt=.12f*Sin(q*PI*3)*(1-q);
+            // Stuffed through the door (owner 2026-11-09: "If something is too big, it'll "squeeze" into the door"): pulled into its mouth faster
+            // and faster, squeezing in, narrowed to the doorway and drawn out along the way it goes (the snugger its fit the more), wobbling, and
+            // gone into the dark.
+            float q=Clamp((t-trip.Back)/Squeeze),pinch=Smooth(q/.6f)*(SqueezeLeast+(SqueezeMost-SqueezeLeast)*trip.Snug);
+            at=Vector3.Lerp(from,inside,q*q);squish=new Vector3(1-pinch,1-.6f*pinch,1+1.5f*pinch);scale=q>=1?0:1-(float)Math.Pow(q,2.4f);tilt=.12f*Sin(q*PI*3)*(1-q);
         }
 
         /// <summary>A friend's pose: its `Feet` and `Facing` (flat, unit); `Step` its stride's phase (cycles: two steps each) and `Standing`

@@ -579,6 +579,9 @@ namespace ChipArena.UnityConversion
         private static NativeVisualRig.Grasp VisualHold(Actor a,CapturedRig.Pose pose,float time)
         {
             var g=new NativeVisualRig.Grasp();
+            // The Top Dog feeding (NativeTopDogPresentation.cs DogFeedArms turns and places the hands): the right's fingers pinched on the
+            // sausage's end, the left's cupped under the victim's chin.
+            if(a.SourceSpec==NativeTopDog.Spec&&NativeDogView.FeedGrip(NativeDogView.Of(a)?.Feast,time,out float pinch,out float cup)){g.RightGrip=pinch;g.LeftGrip=cup;return g;}
             if(a.WeaponAway)return g;
             // The Bombadier's TNT: a fist round the grip of a bundle in each hand, whatever weapon row its rules use.
             if(a.SourceSpec==NativeBombs.Spec){g.RightGrip=1;g.LeftGrip=1;g.Right=NativeVisualRig.Blade(System.Numerics.Quaternion.Identity);g.Left=NativeVisualRig.Blade(System.Numerics.Quaternion.Identity);return g;}

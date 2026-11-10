@@ -55,6 +55,16 @@ internal static class GuardChecks
         Check(NativeParryBarrier.Gone(-1,.5f)==0&&NativeParryBarrier.Gone(NativeParryBarrier.After+.001f,1)==1&&NativeParryBarrier.Gone(.05f,0)>0,"and bursts away after the window shuts");
         var barrier=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativeParryBarrier.shader"));
         Check(barrier.Contains("float delay=(1-dot(c,normalize(_Facing.xyz)))*.5*.13+seed*.035;float s=snapIn((_Age-delay)/.1);")&&barrier.Contains("saturate((_Closed-seed*.06)/.2)")&&NativeParryBarrier.Sweep==.13f&&NativeParryBarrier.Scatter==.035f&&NativeParryBarrier.Snap==.1f&&NativeParryBarrier.Burst==.2f&&NativeParryBarrier.BurstScatter==.06f,"the shader's moments are the Core's");
-        Console.WriteLine("PASS guard: "+n+" checks (F parries unless an interaction takes it; right click aims a gun or guards a melee weapon; the guard's arc, share, stamina, break and walk; no guard shield; the parry's hexagon barrier)");
+        // A hologram (owner 2026-11-09: "too much glow and we can't actually see the player in there or the shape of hexagons"): thin
+        // outlines over a clear face, a fresnel toward the silhouette, a glow where it cuts into the scene; the body's own hologram unfilled.
+        var holo=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativeParryHolo.shader"));
+        Check(barrier.Contains("float aa=max(fwidth(edge),1e-4),width=max(.05,aa*1.35);")&&barrier.Contains("float rim=pow(1-abs(dot(n,view)),3);")&&barrier.Contains("float fill=.004+.045*rim")
+            &&barrier.Contains("SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture")&&File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeParryBarrierPresentation.cs")).Contains("parryBarrierBlock.SetFloat(BarrierSoftId,soft);")
+            &&holo.Contains("float glow=rim*.42+")&&!holo.Contains("float glow=.025+"),"the barrier is a hologram: thin cell outlines over a clear face, brighter to its silhouette, a glow where it meets the scene; the body shows through");
+        // A pilot that never parried (Actor.BlockAt -100, its window "ending" at 0) shows neither, even at a clock of 0 (the Locker's Preview
+        // Intro, a match's first moment).
+        Check(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeParryHoloPresentation.cs")).Contains("if(at<-50||until<=at||time<at||time>until+.15f)return 0;")
+            &&File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeParryBarrierPresentation.cs")).Contains("if(a==null||!a.Alive||a.BlockAt<-50||a.BlockUntil<=a.BlockAt)continue;"),"no hologram or barrier for a parry that never happened");
+        Console.WriteLine("PASS guard: "+n+" checks (F parries unless an interaction takes it; right click aims a gun or guards a melee weapon; the guard's arc, share, stamina, break and walk; no guard shield; the parry's holographic hexagon barrier)");
     }
 }

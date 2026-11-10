@@ -42,16 +42,19 @@ namespace ChipArena.UnityConversion
         private NativeSceneClip stageClip;private float stageAge;private string stageStyle,stageKey;private bool[] stageGlow;private readonly Dictionary<string,bool[]> stageGlows=new Dictionary<string,bool[]>();
         private Func<int,Matrix4x4> stageBone;private Func<int,bool> stageShown;private Func<int,float> stageOpacity;private Func<int,Color> stageTint;
         private bool[] stageSoft;private readonly Dictionary<string,(bool[] soft,string model)> stageSofts=new Dictionary<string,(bool[],string)>();
-        public void RenderIntro(NativeArena arena,NativePilot pilot,string style,float age,Camera camera)
+        /// <summary>The clock the entrance's pilot is drawn on (its body's glows, flashes and windows): the arena's, or the Locker's preview's
+        /// own (RenderIntro's `clock`).</summary>
+        private float introNow;
+        public void RenderIntro(NativeArena arena,NativePilot pilot,string style,float age,Camera camera,float clock=float.NaN)
         {
-            if(pilot==null)return;introSkins=pilot.Seat.weaponSkins;introAccent=AccentTint(pilot.Seat.accentColor);style=NativeIntroRules.Entrance(style,pilot.Seat.spec);sirenLookCamera=camera;if(introRig==null||introActor!=pilot.Seat.id){introRig?.Dispose();introRig=captured.Create(transform,-100);introActor=pilot.Seat.id;}
+            if(pilot==null)return;introNow=float.IsNaN(clock)?arena.Time:clock;introSkins=pilot.Seat.weaponSkins;introAccent=AccentTint(pilot.Seat.accentColor);style=NativeIntroRules.Entrance(style,pilot.Seat.spec);sirenLookCamera=camera;if(introRig==null||introActor!=pilot.Seat.id){introRig?.Dispose();introRig=captured.Create(transform,-100);introActor=pilot.Seat.id;}
             sourceModels.Begin();foreach(var b in batches)b.Clear();FirstPerson=false;combatGlow?.Clear();particles.Clear();
             Actor actor=null;foreach(var a in arena.Snapshot().Actors)if(a.Id==pilot.Seat.id){actor=a;break;}actor??=pilot.Pose;
             var script=NativeEntranceDirector.Script(style);if(script!=null){DirectedIntro(script,arena,pilot,actor,style,age,camera);return;}
             NativeSourceMotion.Intro(introRig,style,age,camera);introBeats=style=="dev-siren"?arena.BossTrack?.beats:null;
             // The pilot on its visual body (NativeVisualBodyPresentation.cs VisualIntroPose), shown for this frame below.
-            if(style!="dev-siren")VisualIntroPose(introRig,actor,arena.Time,NativeSourceMotion.IntroPose,null,NativeIntroRules.IntroWeapon(style)!=null);
-            if(style!="dev-siren"){SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age);IntroWeapon(style,age);TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));}if(!IntroStage(style,age,camera))throw new System.InvalidOperationException("Missing source entrance stage: "+style);
+            if(style!="dev-siren")VisualIntroPose(introRig,actor,introNow,NativeSourceMotion.IntroPose,null,NativeIntroRules.IntroWeapon(style)!=null);
+            if(style!="dev-siren"){SourceCharacter(introRig,actor,introNow,weapon:false,halo:age);IntroWeapon(style,age);TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));}if(!IntroStage(style,age,camera))throw new System.InvalidOperationException("Missing source entrance stage: "+style);
             VisualBodiesShown();
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
         }
@@ -90,8 +93,8 @@ namespace ChipArena.UnityConversion
             string keepAccent=actor.AccentColor,scriptAccent=script.AccentAt(t);if(scriptAccent!=null)actor.AccentColor=scriptAccent;
             // The Last Warning holds TNT whatever the pilot carries into the match, so the fists close on that (VisualHold).
             string keepSpec=actor.SourceSpec;if(script is NativeBombadierIntro)actor.SourceSpec=NativeBombs.Spec;if(script is NativeTopDogIntro){actor.SourceSpec=NativeTopDog.Spec;dogIntroActor=actor.Id;dogIntroClock=t;}
-            VisualIntroPose(introRig,actor,arena.Time,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);
-            try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
+            VisualIntroPose(introRig,actor,introNow,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);
+            try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,introNow,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
             if(script is NativeBombadierIntro last){if(solid)BombGear(introRig);var palm=introRig.Bones[CapturedRig.LHand];var at=palm.position+palm.rotation*new Vector3(0,-.06f,0);last.PalmNow=new System.Numerics.Vector3(-at.x,at.y,at.z);var fist=introRig.Bones[CapturedRig.RHand];var tip=fist.position+fist.rotation*CapturedAnimation.Vec(CapturedRig.Mirror(NativeWeaponModels.TntFuseTip));last.FuseNow=new System.Numerics.Vector3(-tip.x,tip.y,tip.z);}
             EntranceGhosts(script,style,t);

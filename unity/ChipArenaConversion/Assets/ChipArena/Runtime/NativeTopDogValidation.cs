@@ -85,11 +85,14 @@ namespace ChipArena.UnityConversion
                 Check(frame.Valid(Content)&&wire?.Feast!=null&&wire.Feast.Victim==b.Seat.id&&frame.snapshot.Actors.First(x=>x.Id==b.Seat.id).Dog==null,"the feast crosses the real frame codec");wire.Meter=float.NaN;Check(!frame.Valid(Content),"the wire refuses a broken kit");
                 Step(f0.Release-Time-.02f);Check(f0.Fed==NativeTopDog.Feeds&&b.Hp>0&&f0.Snap<-50,"six hot dogs down, still alive");Check(DogPending(),"the round waits for the pop");
                 Step(.1f);Check(a.Dog.Marks.Any(m=>m.Id==b.Seat.id&&m.Kind==NativeTopDog.Stuffed)&&b.DogHolder==a,"let go stuffed, still held to the pop");
-                Step(f0.Pop-Time+.03f);Check(b.Hp<=0&&b.Death!=null&&b.Death.style==NativeTopDog.Burst&&b.DogHolder==null,"it pops: the burst death");Check(!DogPending(),"nothing left pending");
+                // It pops in the Top Dog's own kill effect (owner 2026-11-09: "use the kill effect if applicable"): the record's kind says it burst.
+                a.Seat.killEffect=NativeHotdogFriends.Style;Step(f0.Pop-Time+.03f);Check(b.Hp<=0&&b.Death!=null&&NativeTopDog.Popped(b.Death.damageKind)&&b.Death.style==NativeHotdogFriends.Style&&b.DogHolder==null,"it pops: the burst death, in the Top Dog's kill effect");
+                var popped=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=NetworkFrame()})).frame;a.Seat.killEffect="impact-ragdoll";
+                Check(popped.Valid(Content)&&popped.pilots.First(x=>x.id==b.Seat.id).death?.damageKind==NativeTopDog.PopKind&&popped.pilots.First(x=>x.id==b.Seat.id).death.style==NativeHotdogFriends.Style,"the pop's kind and style cross the real frame codec");Check(!DogPending(),"nothing left pending");
                 // The snap: forty damage to the Top Dog while it feeds breaks the links.
                 Setup();a.Dog.Meter=1;Cast(6);Step(NativeTopDog.Twirl+.2f);var f1=a.Dog.Feast;Check(f1.Catch>-50,"caught again");Step(1);a.DogTaken=NativeTopDog.SnapDamage;Step(.05f);Check(f1.Snap>-50&&b.DogHolder==null&&b.Hp>0,"forty damage snaps the links, the victim free");
                 // A dead Top Dog's pop still comes once it has let go.
-                Setup();a.Dog.Meter=1;Cast(6);Step(NativeTopDog.Twirl+.2f);var f2=a.Dog.Feast;Step(f2.Release-Time+.05f);a.Hp=0;a.Seat.alive=false;Step(f2.Pop-Time+.05f);Check(b.Hp<=0&&b.Death?.style==NativeTopDog.Burst,"a dead Top Dog's victim still pops");
+                Setup();a.Dog.Meter=1;Cast(6);Step(NativeTopDog.Twirl+.2f);var f2=a.Dog.Feast;Step(f2.Release-Time+.05f);a.Hp=0;a.Seat.alive=false;Step(f2.Pop-Time+.05f);Check(b.Hp<=0&&NativeTopDog.Popped(b.Death?.damageKind),"a dead Top Dog's victim still pops");
                 // A miss gives half the meter back.
                 Setup();b.Body.position=o+new Vector3(0,0,60);Physics.SyncTransforms();a.Dog.Meter=1;Cast(6);Step(NativeTopDog.Twirl+NativeTopDog.LassoReach/NativeTopDog.LassoSpeed+.2f);Check(a.Dog.Feast==null||a.Dog.Feast.Miss,"the lasso misses");Check(Math.Abs(a.Dog.Meter-NativeTopDog.MissRefund)<.02f,"half the meter back");
                 // ---- the chips (Core NativeDogChips) ----

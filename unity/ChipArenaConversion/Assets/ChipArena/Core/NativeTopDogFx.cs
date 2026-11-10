@@ -92,6 +92,48 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<NativeTopDog.Feeds;k++){if(time<NativeTopDog.OfferAt(f.FeedAt,k)+NativeTopDog.PushEnd){i=k;break;}}if(i<0)i=NativeTopDog.Feeds-1;
             w=Smooth((time-first)/(NativeTopDog.GrabLead*.6f))*(1-Smooth((time-last)/NativeTopDog.LetGo));return w>0;
         }
+        // ---- the hand feeding made real (owner 2026-11-09: "actually look like they are realistically putting hot dogs in the players mouth") ----
+        /// <summary>The push of the sausage going in at `time` (0..1: a bump over each one's push and the moment after it): the victim's lips
+        /// close round it, their head gives with it and the hand on the chin tugs.</summary>
+        public static float Push(NativeDogFeast f,float time)
+        {
+            if(f==null||f.Catch<-50||f.Snap>-50&&time>=f.Snap)return 0;float bump=0;
+            for(int i=0;i<NativeTopDog.Feeds;i++)
+            {
+                float a=NativeTopDog.OfferAt(f.FeedAt,i)+NativeTopDog.PushFrom,b=NativeTopDog.OfferAt(f.FeedAt,i)+NativeTopDog.PushEnd+PushAfter;
+                if(time>a&&time<b)bump=Math.Max(bump,(float)Math.Sin((time-a)/(b-a)*Math.PI));
+            }
+            return bump;
+        }
+        /// <summary>How long a push's bump runs on past its push (s).</summary>
+        public const float PushAfter=.14f;
+        /// <summary>How wide the victim's mouth is at `time` (0..1, the Gobble face): a gasp as the links catch, pulled wide as the left hand
+        /// takes the chin, the lips closing a little round each sausage as it is pushed in, then wide again for the next; shut after the
+        /// let-go (the stuffed face) or a snap.</summary>
+        public static float Jaw(NativeDogFeast f,float time)
+        {
+            if(f==null||f.Catch<-50||time<f.Catch||time>=f.Release||f.Snap>-50&&time>=f.Snap+.3f)return 0;
+            float from=f.FeedAt-NativeTopDog.JawFrom,open=time<from?.45f:.45f+.55f*Smooth((time-from)/.25f);
+            return open*(1-.3f*Push(f,time));
+        }
+        /// <summary>The feeding Top Dog's fingers at `time` (the model's grip, 0..1): the right's pinched on a sausage's end from when it pops
+        /// into the hand to its let-go, relaxed between; the left's cupped under the victim's chin. False while neither hand feeds.</summary>
+        public static bool FeedGrip(NativeDogFeast f,float time,out float pinch,out float cup)
+        {
+            pinch=cup=0;if(f==null)return false;bool any=false;
+            if(FeedHand(f,1,time,out _,out float wl)){cup=CupGrip*wl;any=true;}
+            if(FeedHand(f,0,time,out int i,out float wr))
+            {
+                int st=FeedState(f,i,time,out _);float offer=NativeTopDog.OfferAt(f.FeedAt,i),hold;
+                if(st>=1&&st<=3)hold=Smooth((time-(offer-NativeTopDog.Appear+.03f))/.06f);
+                else if(st>=4)hold=1-Smooth((time-(offer+NativeTopDog.PushEnd))/.06f);
+                else hold=i>0?1-Smooth((time-(NativeTopDog.OfferAt(f.FeedAt,i-1)+NativeTopDog.PushEnd))/.06f):0;
+                pinch=(OpenGrip+(PinchGrip-OpenGrip)*hold)*wr;any=true;
+            }
+            return any;
+        }
+        /// <summary>The grips: an empty feeding hand, one pinched on a sausage, the left cupped round the chin.</summary>
+        public const float OpenGrip=.12f,PinchGrip=.62f,CupGrip=.5f;
         /// <summary>The links' look at `time`: 0 none, 1 twirled overhead, 2 flying (the loop at f.Lasso), 3 round the caught victim, 4 lying
         /// where they fell (a miss or a snap).</summary>
         public static int LassoPhase(NativeDogFeast f,float time)
@@ -193,13 +235,16 @@ namespace ChipArena.UnityConversion
             DogDust=new Vector3(.46f,.38f,.28f),DogSauce=new Vector3(1,.16f,.05f),DogFlame=new Vector3(1,.5f,.08f),DogWhite=new Vector3(1,1,1),DogSweat=new Vector3(.55f,.8f,1),DogPink=new Vector3(1,.35f,.6f),DogBlue=new Vector3(.3f,.6f,1),DogGreen=new Vector3(.4f,1,.35f);
         private static Actor DogActor(IKitFxScene scene,int id){if(id==0)return null;var l=scene.Actors;for(int i=0;i<l.Count;i++)if(l[i]!=null&&l[i].Id==id)return l[i];return null;}
         /// <summary>Draws every Top Dog's hits, props, marks and feast of the frame at `time`.</summary>
+        /// <summary>Whether gore is on (the presentation's setting): the pop then bursts as a gib (its blood mist, flecks and bits here),
+        /// else as the toon pop.</summary>
+        public bool DogGore=true;
         public void DrawDogs(ITechniqueFxSink s,IKitFxScene scene,float time,float q,bool low)
         {
             if(s==null||scene?.Actors==null||NativeDogView.Source==null)return;var actors=scene.Actors;
             for(int i=0;i<actors.Count;i++)
             {
                 var a=actors[i];if(a==null)continue;var k=NativeDogView.Of(a);if(k==null)continue;long seed=a.Id*7307L;
-                if(k.Hits!=null)foreach(var h in k.Hits)if(h!=null)DogHitFx(s,scene,h,time,seed+h.Id*53L,q,low);
+                if(k.Hits!=null)foreach(var h in k.Hits)if(h!=null)DogHitFx(s,scene,h,time,seed+h.Id*53L,q,low,DogGore);
                 if(k.Props!=null)foreach(var p in k.Props)if(p!=null)DogPropFx(s,scene,a,p,time,seed+p.Id*41L,q,low);
                 if(k.Marks!=null)foreach(var m in k.Marks)if(m!=null)DogMarkFx(s,scene,m,time,seed+m.Id*29L+m.Kind.Length,q,low);
                 if(k.Feast!=null)DogFeastFx(s,scene,a,k.Feast,time,seed+17,q,low);
@@ -297,7 +342,7 @@ namespace ChipArena.UnityConversion
             if(age<0||age>life)return;float u=age/life;var side=Vector3.Normalize(Vector3.Cross(dir,Up).LengthSquared()>1e-5f?Vector3.Cross(dir,Up):Vector3.UnitX);var up2=Vector3.Cross(side,dir);
             for(int i=0;i<n;i++){var o=side*((R(seed,i)-.5f)*2*spread)+up2*((R(seed,i+30)-.2f)*spread*1.4f);float len=.6f+.9f*R(seed,i+60);var head=at+o-dir*(.2f+1.5f*u*R(seed,i+90));s.Line(false,head-dir*len,head,DogWhite*(1.3f*(1-u)),.025f,false);}
         }
-        private static void DogHitFx(ITechniqueFxSink s,IKitFxScene scene,NativeDogHit h,float time,long seed,float q,bool low)
+        private static void DogHitFx(ITechniqueFxSink s,IKitFxScene scene,NativeDogHit h,float time,long seed,float q,bool low,bool gore=true)
         {
             float age=time-h.At;if(age<0||age>2.2f)return;var at=N(h.Pos);var dir=N(h.Dir);if(dir.LengthSquared()<1e-6f)dir=Up;dir=Vector3.Normalize(dir);
             switch(h.Kind)
@@ -339,9 +384,20 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i<Count(14,q,low);i++){var d=Vector3.Normalize(RandomDir(seed,i*3)+dir*.8f+Up*.5f);float t=age;var p=at+d*(2.2f*t*(.5f+.5f*R(seed,i+4)))-Up*(4.5f*t*t);if(age<.9f)s.Drop(p,d*.12f-Up*(.08f*t),DogCream*1.1f,.9f*(1-age/.9f),.05f+.04f*R(seed,i+8),age/.9f,seed+i);}
                     break;
                 }
-                case NativeTopDog.HitGulp:DogPuff(s,at,age,.4f,Count(4,q,low),.18f,new Vector3(.9f,.85f,.75f),.4f,seed,.1f);if(age<.25f)for(int i=0;i<Count(4,q,low);i++)s.Sprite(false,at+RandomDir(seed,i)*(.15f+.4f*age),DogStar*(1.5f*(1-age/.25f)),.05f,Sparkle);break;
+                case NativeTopDog.HitGulp:
+                {
+                    // A gulp (owner 2026-11-09: "realistically putting hot dogs in the players mouth"): no smoke or stars over the head, a few drips
+                    // of juice off the lips (the record's mouth is the head's middle; the lips a little down and toward the Top Dog).
+                    if(age>.6f)break;var lips=at-Up*.1f-dir*.1f;
+                    for(int i=0;i<Count(3,q,low);i++)
+                    {
+                        float t=age-.05f*i,u=t/.55f;if(t<0||u>1)continue;var off=new Vector3(R(seed,i)-.5f,0,R(seed,i+5)-.5f)*.04f;
+                        s.Drop(lips+off-Up*(2.5f*t*t),-Up*(.04f+.06f*u),DogJuice,.9f*(1-u),.012f,u,seed+i);
+                    }
+                    break;
+                }
                 case NativeTopDog.HitSnap:Sparks(s,at,age,.5f,Count(10,q,low),3.5f,new Vector3(.9f,.35f,.2f),seed,7,.03f);DogBurst(s,at,age,.4f,DogWhite,seed+1,q,low,6);break;
-                case NativeTopDog.HitPop:DogPop(s,at,age,seed,q,low);break;
+                case NativeTopDog.HitPop:DogPop(s,at,age,seed,q,low,gore);break;
                 case NativeTopDog.HitPiano:
                     Flash(s,at+Up*.4f,age,.3f,DogWhite,1.6f,seed);if(age<.6f)Ring(s,at+Up*.03f,.5f+NativeDogChips.PianoRadius*1.25f*OutCubic(age/.32f),.5f*(1-age/.6f),DogWhite*(1.3f*(1-age/.6f)),Count(34,q,low));
                     Dust(s,at,age,1.8f,Count(18,q,low),NativeDogChips.PianoRadius*1.4f,DogDust,.85f,seed+3);Cracks(s,at,age,1.5f,Count(10,q,low),NativeDogChips.PianoRadius,new Vector3(.2f,.16f,.12f),seed+5);
@@ -360,9 +416,25 @@ namespace ChipArena.UnityConversion
                 case NativeTopDog.Feast:DogSpeed(s,at,dir,age,.35f,Count(6,q,low),.35f,seed);break;
             }
         }
-        // The burst: a flash, a ring, a shower of confetti and condiment, and a puff.
-        private static void DogPop(ITechniqueFxSink s,Vector3 at,float age,long seed,float q,bool low)
+        // The burst. With gore on (owner 2026-11-09: "make the gib effects more realistic") the body bursts as a gib (Runtime: the corpse's
+        // NativeSmashGib.Burst, its severed limbs, torn chunks and blood); here only a short wet flash, a mist of blood bursting out and
+        // sinking, and flecks of blood, bits of sausage and a little mustard flung out every way. With gore off, the toon pop: a flash, a
+        // ring, a shower of confetti and condiment, and a puff.
+        private static readonly Vector3 DogBlood=new Vector3(.3f,.015f,.025f),DogMist=new Vector3(.46f,.05f,.05f),DogMeat=new Vector3(.74f,.36f,.28f),DogJuice=new Vector3(.62f,.3f,.16f);
+        private static void DogPop(ITechniqueFxSink s,Vector3 at,float age,long seed,float q,bool low,bool gore=false)
         {
+            if(gore)
+            {
+                Flash(s,at+Up*.45f,age,.1f,new Vector3(1,.62f,.52f),.8f,seed);
+                DogPuff(s,at+Up*.45f,age,1.3f,Count(18,q,low),1.2f,DogBlood,.62f,seed+9,-.15f);DogPuff(s,at+Up*.5f,age,.8f,Count(10,q,low),.75f,DogMist,.5f,seed+13,.1f);
+                int flecks=Count(36,q,low);for(int i=0;i<flecks;i++)
+                {
+                    float life=.7f+.5f*R(seed,i+40);if(age>life)continue;var d=Vector3.Normalize(RandomDir(seed,i*7+1)+Up*.35f);float t=age,sp=4+5*R(seed,i+77);
+                    var p=at+Up*.55f+d*(sp*t)-Up*(9*t*t);var c=i%6==0?DogMeat:i%9==0?DogMustard*.8f:DogBlood*(.8f+.5f*R(seed,i+5));
+                    s.Drop(p,d*(.06f+.05f*R(seed,i+9))-Up*(.1f*t),c,.95f*(1-age/life),(i%6==0?.035f:.018f)+.012f*R(seed,i+3),age/life,seed+i);
+                }
+                return;
+            }
             Flash(s,at+Up*.4f,age,.35f,new Vector3(1,.85f,.55f),2.4f,seed);DogBurst(s,at+Up*.4f,age,1.4f,DogStar,seed+1,q,low,16);
             if(age<.7f)Ring(s,at+Up*.05f,.5f+NativeTopDog.PopRadius*1.2f*OutCubic(age/.35f),.5f*(1-age/.7f),DogWhite*(1.4f*(1-age/.7f)),Count(36,q,low));
             Vector3[] confetti={DogStar,DogPink,DogBlue,DogGreen,DogWhite,DogMustard};

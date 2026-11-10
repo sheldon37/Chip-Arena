@@ -622,10 +622,10 @@ namespace ChipArena.UnityConversion
             {
                 q.DogHolder=null;q.Body.useGravity=true;q.DogPopped=true;
                 // An execution, as the Siren's crush: the victim's current health, so healing in the meantime cannot save them.
-                Damage(q,p,q.Hp+1,Vector3.up,0,false,forced:true,direct:false,primary:false,damageKind:"topdog-pop",causeKind:NativeTopDog.Spec);
+                Damage(q,p,q.Hp+1,Vector3.up,0,false,forced:true,direct:false,primary:false,damageKind:NativeTopDog.PopKind,causeKind:NativeTopDog.Spec);
                 q.DogPopped=false;
             }
-            else if(m!=null)HitMinion(m,p,m.Hp+1000,Vector3.up,0,m.Body.position,"topdog-pop");
+            else if(m!=null)HitMinion(m,p,m.Hp+1000,Vector3.up,0,m.Body.position,NativeTopDog.PopKind);
             p.DogMinion=null;
             // The burst: hot dog shrapnel for the Top Dog's other enemies near it.
             foreach(var o in DogPilots(p)){if(o==q)continue;var d=o.Body.position-at;if(d.magnitude>NativeTopDog.PopRadius)continue;if(DogHurt(p,o,NativeTopDog.PopDamage,d,NativeTopDog.Feast)>0)BombLaunch(o,p,new Vector3(d.x,0,d.z).normalized*NativeTopDog.PopPush,NativeTopDog.PopLift,0);}

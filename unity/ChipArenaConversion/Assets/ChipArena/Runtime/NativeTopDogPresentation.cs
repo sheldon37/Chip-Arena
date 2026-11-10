@@ -45,7 +45,8 @@ namespace ChipArena.UnityConversion
         internal static void TopDogFace(int id,float time,out float gobble,out float bloat)
         {
             gobble=bloat=0;if(!dogVictims.TryGetValue(id,out var v))return;var f=v.feast;if(f.Snap>-50&&time>=f.Snap+.3f)return;
-            if(time<f.Release){gobble=time<f.FeedAt-.2f?.45f:1;return;}if(time<f.Pop)bloat=1;
+            // The mouth as the hands work it (NativeDogView.Jaw): pulled wide by the chin, closing a little round each sausage as it goes in.
+            if(time<f.Release){gobble=NativeDogView.Jaw(f,time);return;}if(time<f.Pop)bloat=1;
         }
 
         // ---- the Hot Dog, always (owner 2026-11-08: "Always the Hot Dog") ----
@@ -291,19 +292,25 @@ namespace ChipArena.UnityConversion
             // in, stuck there squirming for a few seconds, several at once on their fan round the mouth, then slurped down; spat out on a snap.
             if(victim!=null&&f.Catch>-50&&DogMouth(victim,out var mouth,out var face))
             {
-                float l=DogHeld;bool posed=dogFeedHands.TryGetValue(caster.Id,out var hands)&&hands.frame==Time.frameCount;
+                float l=DogHeld;bool posed=dogFeedHands.TryGetValue(caster.Id,out var hands)&&hands.frame==Time.frameCount&&hands.dir.sqrMagnitude>.5f;
                 for(int i=0;i<NativeTopDog.Feeds;i++)
                 {
                     int st=NativeDogView.FeedState(f,i,time,out float u);if(st==0)continue;
                     var into=DogSlotDir(face,i);var lip=DogLip(mouth,face,i);float wig=time*(st==4?21:14)+i*1.7f;
+                    // In the hand (carried and pushed): held by its end between the thumb and fingers (DogFeedArms keeps the pinch and the
+                    // fingers' way), the rest of it ahead of them.
+                    bool held=posed&&st<=3&&NativeDogView.FeedHand(f,0,time,out int holding,out _)&&holding==i;
                     if(st<=2)
                     {
-                        Vector3 hand;if(posed)hand=hands.right;else if(!DogFeedTarget(caster,f,0,time,out hand,out _,out _))hand=DogHand(caster,false);
-                        var aim=lip-hand;var dir=aim.sqrMagnitude>1e-4f?aim.normalized:into;if(st==2)dir=Vector3.Slerp(dir,into,u*u);
                         float pop=st==1?Mathf.Clamp01((time-(NativeTopDog.OfferAt(f.FeedAt,i)-NativeTopDog.Appear))/.08f):1;
-                        DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,wig,1,0,1,tier,false)),Look(hand+dir*(l*.42f),dir,Vector3.up,DogFed*(.4f+.6f*pop)));
+                        if(held)DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,wig,1,0,1,tier,false)),Look(hands.grip+hands.dir*(l*(DogHold-.5f)),hands.dir,Vector3.up,DogFed*(.4f+.6f*pop)));
+                        else
+                        {
+                            Vector3 hand=DogHand(caster,false);var aim=lip-hand;var dir=aim.sqrMagnitude>1e-4f?aim.normalized:into;if(st==2)dir=Vector3.Slerp(dir,into,u*u);
+                            DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,wig,1,0,1,tier,false)),Look(hand+dir*(l*.42f),dir,Vector3.up,DogFed*(.4f+.6f*pop)));
+                        }
                     }
-                    else if(st==3)DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,wig,.7f,0,1-.5f*u,tier,false)),Look(lip+into*(l*.5f*u-l*.5f),into,Vector3.up,DogFed));
+                    else if(st==3)DogDraw(DogLive(kit=>NativeTopDogModels.HotDog(kit,NMatrix.Identity,wig,.7f,0,1-.5f*u,tier,false)),held?Look(hands.grip+hands.dir*(l*(DogHold-.5f)),hands.dir,Vector3.up,DogFed):Look(lip+into*(l*.5f*u-l*.5f),into,Vector3.up,DogFed));
                     else if(st<=5){float showing=st==4?.5f:.5f*(1-u*u),amp=st==4?1.25f+.25f*Mathf.Sin(time*3+i):.5f;DogDraw(DogLive(kit=>NativeTopDogModels.Stuck(kit,NMatrix.Identity,wig,amp,showing,tier)),Look(lip,into,Vector3.up,DogFed));}
                     else
                     {
@@ -393,7 +400,8 @@ namespace ChipArena.UnityConversion
                 var feet=visualPositions.TryGetValue(v.caster,out var cf)?cf:r.Head.position;var hands=feet+Vector3.up*1.35f;var to=hands-r.Head.position;to.y=0;
                 if(to.sqrMagnitude>1e-4f)
                 {
-                    var want=Quaternion.AngleAxis(-14,Vector3.Cross(Vector3.up,to.normalized))*to.normalized;
+                    // Each push shoves the head back a little more (NativeDogView.Push).
+                    var want=Quaternion.AngleAxis(-14-8*NativeDogView.Push(v.feast,time),Vector3.Cross(Vector3.up,to.normalized))*to.normalized;
                     var cur=r.Head.TransformDirection(Vector3.forward);r.Neck.rotation=Quaternion.Slerp(Quaternion.identity,Quaternion.FromToRotation(cur,want),.4f*back)*r.Neck.rotation;
                     cur=r.Head.TransformDirection(Vector3.forward);r.Head.rotation=Quaternion.Slerp(Quaternion.identity,Quaternion.FromToRotation(cur,want),back)*r.Head.rotation;
                 }
@@ -441,44 +449,87 @@ namespace ChipArena.UnityConversion
             dogWraps[a.Id]=(Time.frameCount,top,bottom,right,fwd,strain,twist*Mathf.Deg2Rad);
         }
 
-        // ---- the hand feeding (owner 2026-11-09: "Change the animation to hand feed them") ----
-        // Each arm of a feeding Top Dog reaches by IK, over the stance, for the beat it is on (NativeDogView.FeedHand): to the hip for the
-        // sausage, to the mouth, pushing it in, letting go. Its rubber-hose arm stretches (up to half again) when the mouth is beyond its
-        // reach. Its hands' places this frame are kept for the sausages in them (RenderDog draws after the bodies are posed).
-        private sealed class DogArmRig{public readonly Transform[] Upper=new Transform[2],Lower=new Transform[2],Hand=new Transform[2];public readonly Vector3[] UpperBase=new Vector3[2],HandBase=new Vector3[2];public readonly bool[] Scaled=new bool[2];}
+        // ---- the hand feeding (owner 2026-11-09: "Change the animation to hand feed them"; then "actually look like they are realistically
+        // putting hot dogs in the players mouth") ----
+        // Each arm of a feeding Top Dog reaches by IK, over the stance, for the beat it is on (NativeDogView.FeedHand), and its hand is turned to
+        // what it holds: the right takes each sausage by its end between the thumb and fingers (its fingers pinched on it, NativeDogView.FeedGrip
+        // through VisualHold), the sausage running on ahead along them; it brings it in from the side, eases it onto the lips and pushes it half
+        // in along its slot with a forcing judder, lets go and swings back out for the next. The left cups the chin from below, its fingers along
+        // under the jaw, holding the mouth open, tugging with each push. The wrist goes where it puts the hold point (the pinch, the palm) on its
+        // target. Its rubber-hose arm stretches (up to half again) when the mouth is beyond its reach. The pinch and the fingers' way are kept for
+        // the sausage in them (RenderDog draws after the bodies are posed).
+        private sealed class DogArmRig{public readonly Transform[] Upper=new Transform[2],Lower=new Transform[2],Hand=new Transform[2],Index1=new Transform[2],Index2=new Transform[2],Middle1=new Transform[2],Pinky1=new Transform[2],Thumb3=new Transform[2];public readonly Vector3[] UpperBase=new Vector3[2],HandBase=new Vector3[2];public readonly bool[] Scaled=new bool[2];}
         private readonly Dictionary<VisualBody,DogArmRig> dogArms=new Dictionary<VisualBody,DogArmRig>();
-        private readonly Dictionary<int,(int frame,Vector3 right,Vector3 left)> dogFeedHands=new Dictionary<int,(int,Vector3,Vector3)>();
+        private readonly Dictionary<int,(int frame,Vector3 grip,Vector3 dir)> dogFeedHands=new Dictionary<int,(int,Vector3,Vector3)>();
         private const float DogStretch=1.5f;
         private Actor DogActor(int id){var s=dogSnapshot.Snapshot;if(s?.Actors!=null)foreach(var a in s.Actors)if(a!=null&&a.Id==id)return a;return null;}
         /// <summary>Sausage `i`'s way into the mouth (unit, into the head) and its place on the lips: the fan round the mouth.</summary>
         private static Vector3 DogSlotDir(Vector3 face,int i){var into=-face;var right=Vector3.Cross(Vector3.up,face);if(right.sqrMagnitude<1e-4f)right=Vector3.right;right.Normalize();return Quaternion.AngleAxis(NativeTopDog.FanYaw[i],Vector3.up)*Quaternion.AngleAxis(NativeTopDog.FanPitch[i],right)*into;}
-        private static Vector3 DogLip(Vector3 mouth,Vector3 face,int i){var right=Vector3.Cross(Vector3.up,face);if(right.sqrMagnitude<1e-4f)right=Vector3.right;right.Normalize();return mouth+face*.005f+right*(NativeTopDog.FanYaw[i]/30f*.014f)-Vector3.up*(NativeTopDog.FanPitch[i]/20f*.008f);}
-        /// <summary>Where hand `hand` of the feeding `caster` should be for its sausage at `time`, and the reach's weight.</summary>
-        private bool DogFeedTarget(Actor caster,NativeDogFeast f,int hand,float time,out Vector3 target,out float w,out int i)
+        private static Vector3 DogLip(Vector3 mouth,Vector3 face,int i){var right=Vector3.Cross(Vector3.up,face);if(right.sqrMagnitude<1e-4f)right=Vector3.right;right.Normalize();return mouth+face*.005f+right*(NativeTopDog.FanYaw[i]/12f*.011f)-Vector3.up*(NativeTopDog.FanPitch[i]/9f*.006f);}
+        /// <summary>A feeding hand's hold this frame: where its hold point goes (the right's pinch on the sausage's end, the left's palm under
+        /// the chin), the way its fingers lie, the way its palm faces, the reach's weight and the sausage it is on.</summary>
+        private struct DogFeedPose{public Vector3 At,Along,Palm;public float W;public int I;}
+        /// <summary>The share of a sausage ahead of the fingers holding it (the rest of it behind them).</summary>
+        private const float DogHold=.85f;
+        /// <summary>Where hand `hand` of the feeding `caster` holds at `time` (see DogFeedPose).</summary>
+        private bool DogFeedTarget(Actor caster,NativeDogFeast f,int hand,float time,out DogFeedPose p)
         {
-            target=default;if(!NativeDogView.FeedHand(f,hand,time,out i,out w))return false;
+            p=default;if(!NativeDogView.FeedHand(f,hand,time,out int i,out float w))return false;p.W=w;p.I=i;
             var victim=DogActor(f.Victim);if(victim==null||!DogMouth(victim,out var mouth,out var face))return false;
-            var fwd=Vec(f.Dir);fwd.y=0;fwd=fwd.sqrMagnitude>1e-4f?fwd.normalized:Vector3.forward;var right=Vector3.Cross(Vector3.up,fwd).normalized;float sign=hand==0?1:-1;
-            // The left on the chin, holding the jaw open, a tug down with each push.
+            var fwd=Vec(f.Dir);fwd.y=0;fwd=fwd.sqrMagnitude>1e-4f?fwd.normalized:Vector3.forward;var right=Vector3.Cross(Vector3.up,fwd).normalized;
             if(hand==1)
             {
-                float tug=0;for(int k=0;k<NativeTopDog.Feeds;k++){int s=NativeDogView.FeedState(f,k,time,out float uk);if(s==3)tug=Mathf.Max(tug,Mathf.Sin(uk*Mathf.PI));}
-                target=mouth-Vector3.up*(.075f+.018f*tug)+face*.035f;return true;
+                // The left cups the chin from below, its fingers along under the jaw, holding the mouth open: a tug down with each push.
+                float tug=NativeDogView.Push(f,time);
+                p.At=mouth-Vector3.up*(.085f+.015f*tug)+face*.015f;p.Along=(fwd*.8f+right*.5f-Vector3.up*.15f).normalized;p.Palm=(Vector3.up+face*.25f).normalized;return true;
             }
-            // The right: back off the lips for the next one (it pops into the hand there), in to the lips, pushing it half in.
-            float l=DogHeld;var into=DogSlotDir(face,i);var lip=DogLip(mouth,face,i);var front=lip-into*l;var reload=front-into*.1f-Vector3.up*.04f+right*.05f;
-            int st=NativeDogView.FeedState(f,i,time,out float u);
+            // The right: each by its end, palm down and in; in from the side to the lips, pushed half in along its slot, let go, back out.
+            float l=DogHeld;var into=DogSlotDir(face,i);var lip=DogLip(mouth,face,i);var front=lip-into*(l*DogHold);var reload=front-into*.1f-Vector3.up*.04f+right*.06f;
+            int st=NativeDogView.FeedState(f,i,time,out float u);p.Palm=(-right*.55f-Vector3.up*.8f).normalized;
             if(st<=1)
             {
-                // Backing off the last one's lips to where the next pops into the hand.
-                float offer=NativeTopDog.OfferAt(f.FeedAt,i),back=offer-NativeTopDog.FeedPeriod+NativeTopDog.PushEnd,k=Mathf.Clamp01((time-back)/Mathf.Max(.02f,offer-NativeTopDog.CarryFrom-back));var from=i>0?DogLip(mouth,face,i-1)-DogSlotDir(face,i-1)*(l*.5f):reload;
-                target=Vector3.Lerp(from,reload,k*k*(3-2*k));
+                // Backing off the last one's lips to the side, where the next pops into the hand: the empty hand drops and swings out on the way.
+                float offer=NativeTopDog.OfferAt(f.FeedAt,i),back=offer-NativeTopDog.FeedPeriod+NativeTopDog.PushEnd,k=Mathf.Clamp01((time-back)/Mathf.Max(.02f,offer-NativeTopDog.CarryFrom-back));k=k*k*(3-2*k);
+                var from=i>0?DogLip(mouth,face,i-1)-DogSlotDir(face,i-1)*(l*(DogHold-.5f)):reload;
+                p.At=Vector3.Lerp(from,reload,k)+(right*.035f-Vector3.up*.02f)*Mathf.Sin(k*Mathf.PI);
+                var aim=(lip-p.At).normalized;p.Along=st==1||i==0?aim:Vector3.Slerp(DogSlotDir(face,i-1),aim,k);
             }
-            else target=st==2?Vector3.Lerp(reload,front,u*u*(3-2*u)):st==3?lip-into*(l*(1-.5f*u)):lip-into*(l*.5f);
+            else if(st==2)
+            {
+                // In fast, easing onto the lips over a little rise, turning to its slot as it gets there.
+                float e=1-(1-u)*(1-u);p.At=Vector3.Lerp(reload,front,e)+Vector3.up*(.025f*Mathf.Sin(e*Mathf.PI));
+                p.Along=Vector3.Slerp((lip-p.At).normalized,into,u*u);
+            }
+            else
+            {
+                // Pushed in with a judder (it is being forced), then held there to the let-go.
+                float push=st==3?u:1,judder=st==3?.006f*Mathf.Sin(u*Mathf.PI*4)*(1-u):0;
+                p.At=lip-into*(l*(DogHold-.5f*push))+into*judder;p.Along=into;
+            }
             return true;
         }
         private const float DogFed=1.35f;private static float DogHeld=>NativeTopDogModels.DogLength*DogFed;
-        /// <summary>TopDogBody: a feeding Top Dog's arms by IK; each arm's stretch put back first.</summary>
+        /// <summary>The world turn that lays hand `h`'s fingers along `along` with its palm toward `palm` (squared to them); false without the
+        /// hand's knuckles.</summary>
+        private static bool DogHandTurn(DogArmRig r,int h,Vector3 along,Vector3 palm,out Quaternion turn)
+        {
+            turn=Quaternion.identity;var hand=r.Hand[h];if(hand==null||r.Middle1[h]==null||r.Index1[h]==null||r.Pinky1[h]==null||along.sqrMagnitude<1e-8f)return false;
+            var aL=hand.InverseTransformDirection(r.Middle1[h].position-hand.position);var xL=hand.InverseTransformDirection(r.Index1[h].position-r.Pinky1[h].position);
+            if(aL.sqrMagnitude<1e-10f||xL.sqrMagnitude<1e-10f)return false;aL.Normalize();var pL=Vector3.Cross(xL,aL);if(pL.sqrMagnitude<1e-10f)return false;pL.Normalize();
+            // The palm is the side the thumb is on.
+            if(r.Thumb3[h]!=null&&Vector3.Dot(hand.InverseTransformDirection(r.Thumb3[h].position-hand.position),pL)<0)pL=-pL;
+            along.Normalize();palm=Vector3.ProjectOnPlane(palm,along);if(palm.sqrMagnitude<1e-6f)palm=Vector3.ProjectOnPlane(Vector3.down,along);palm.Normalize();
+            turn=Quaternion.LookRotation(along,palm)*Quaternion.Inverse(Quaternion.LookRotation(aL,pL));return true;
+        }
+        /// <summary>Hand `h`'s hold point now: the right's pinch (between the thumb's tip and the index finger's middle), the left's palm
+        /// (toward `palm` off it).</summary>
+        private static Vector3 DogHoldPoint(DogArmRig r,int h,Vector3 palm)
+        {
+            var hand=r.Hand[h];
+            if(h==0&&r.Thumb3[0]!=null&&r.Index2[0]!=null)return Vector3.Lerp(r.Thumb3[0].position,r.Index2[0].position,.5f);
+            return r.Middle1[h]!=null?Vector3.Lerp(hand.position,r.Middle1[h].position,.55f)+palm.normalized*.02f:hand.position;
+        }
+        /// <summary>TopDogBody: a feeding Top Dog's arms by IK and its hands turned to their holds; each arm's stretch put back first.</summary>
         private void DogFeedArms(VisualBody body,Actor a,float time)
         {
             var f=a.SourceSpec==NativeTopDog.Spec?NativeDogView.Of(a)?.Feast:null;
@@ -486,18 +537,32 @@ namespace ChipArena.UnityConversion
             {
                 if(f==null||f.Catch<-50)return;r=new DogArmRig();dogArms[body]=r;Transform[] bones=null;
                 foreach(var s in body.Root.GetComponentsInChildren<SkinnedMeshRenderer>(true))if(s.name.StartsWith("Body.",StringComparison.Ordinal)&&s.sharedMesh!=null){bones=s.bones;break;}
-                if(bones!=null)foreach(var t in bones){if(t==null)continue;switch(t.name){case "upperarm_r":r.Upper[0]=t;break;case "lowerarm_r":r.Lower[0]=t;break;case "hand_r":r.Hand[0]=t;break;case "upperarm_l":r.Upper[1]=t;break;case "lowerarm_l":r.Lower[1]=t;break;case "hand_l":r.Hand[1]=t;break;}}
+                if(bones!=null)foreach(var t in bones)
+                {
+                    if(t==null)continue;int hs=t.name.EndsWith("_r",StringComparison.Ordinal)?0:t.name.EndsWith("_l",StringComparison.Ordinal)?1:-1;if(hs<0)continue;
+                    switch(t.name.Substring(0,t.name.Length-2))
+                    {
+                        case "upperarm":r.Upper[hs]=t;break;case "lowerarm":r.Lower[hs]=t;break;case "hand":r.Hand[hs]=t;break;case "index_01":r.Index1[hs]=t;break;case "index_02":r.Index2[hs]=t;break;
+                        case "middle_01":r.Middle1[hs]=t;break;case "pinky_01":r.Pinky1[hs]=t;break;case "thumb_03":r.Thumb3[hs]=t;break;
+                    }
+                }
                 for(int h=0;h<2;h++){if(r.Upper[h]!=null)r.UpperBase[h]=r.Upper[h].localScale;if(r.Hand[h]!=null)r.HandBase[h]=r.Hand[h].localScale;}
             }
-            var fwd=f!=null?Vec(f.Dir):Vector3.forward;fwd.y=0;fwd=fwd.sqrMagnitude>1e-4f?fwd.normalized:Vector3.forward;var side=Vector3.Cross(Vector3.up,fwd).normalized;bool any=false;
+            var fwd=f!=null?Vec(f.Dir):Vector3.forward;fwd.y=0;fwd=fwd.sqrMagnitude>1e-4f?fwd.normalized:Vector3.forward;var side=Vector3.Cross(Vector3.up,fwd).normalized;bool fed=false;Vector3 grip=default,dir=default;
             for(int h=0;h<2;h++)
             {
                 if(r.Upper[h]==null||r.Lower[h]==null||r.Hand[h]==null)continue;
                 if(r.Scaled[h]){r.Upper[h].localScale=r.UpperBase[h];r.Hand[h].localScale=r.HandBase[h];r.Scaled[h]=false;}
-                if(f==null||!DogFeedTarget(a,f,h,time,out var target,out float w,out _))continue;
-                var pole=Vector3.down*.7f+side*(h==0?.8f:-.8f)-fwd*.25f;r.Scaled[h]=DogReach(r.Upper[h],r.Lower[h],r.Hand[h],target,pole,w,DogStretch,r.UpperBase[h],r.HandBase[h]);any=true;
+                if(f==null||!DogFeedTarget(a,f,h,time,out var p))continue;
+                var hand=r.Hand[h];var pole=Vector3.down*.7f+side*(h==0?.8f:-.8f)-fwd*.25f;
+                // The hand turned to its hold, and where its hold point then sits from the wrist: the wrist goes where that puts it on target.
+                bool turned=DogHandTurn(r,h,p.Along,p.Palm,out var turn);var off=Vector3.zero;
+                if(turned){var keep=hand.rotation;hand.rotation=turn;off=DogHoldPoint(r,h,p.Palm)-hand.position;hand.rotation=keep;}
+                r.Scaled[h]=DogReach(r.Upper[h],r.Lower[h],hand,p.At-off*p.W,pole,p.W,DogStretch,r.UpperBase[h],r.HandBase[h]);
+                if(turned)hand.rotation=Quaternion.Slerp(hand.rotation,turn,p.W);
+                if(h==0&&turned){grip=DogHoldPoint(r,0,p.Palm);dir=r.Middle1[0]!=null?(r.Middle1[0].position-hand.position).normalized:p.Along;dir=Vector3.Slerp(dir,p.Along.normalized,p.W);fed=true;}
             }
-            if(any)dogFeedHands[a.Id]=(Time.frameCount,r.Hand[0]!=null?r.Hand[0].position:default,r.Hand[1]!=null?r.Hand[1].position:default);else dogFeedHands.Remove(a.Id);
+            if(fed)dogFeedHands[a.Id]=(Time.frameCount,grip,dir);else dogFeedHands.Remove(a.Id);
         }
         /// <summary>Two-bone IK of an arm toward `target`, bending toward `pole`, by `w`; the arm stretched (uniformly, the hand counter-scaled)
         /// up to `stretch` when it falls short. True when it stretched.</summary>
@@ -520,7 +585,7 @@ namespace ChipArena.UnityConversion
         private void DogFx(float now)
         {
             if(kitScene==null||vfx==null||NativeDogView.Source==null)return;var draw=WeaponFxDraw;if(draw==null)return;techSink??=new TechSink();techSink.Bind(vfx,draw,FirstPerson&&!ScopeActive&&ViewCamera!=null);
-            techniqueFx.DrawDogs(techSink,kitScene,kitClock,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics);
+            techniqueFx.DogGore=Gore;techniqueFx.DrawDogs(techSink,kitScene,kitClock,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics);
         }
         /// <summary>All You Can Eat on the local pilot's own camera, the Top Dog's or its victim's (NativeCinematicCamera.Direct). False when it
         /// is not this pilot's.</summary>

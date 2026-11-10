@@ -230,7 +230,8 @@ namespace ChipArena.UnityConversion
                 Supernova=supernova>0};
             Vector3 pos=NativeArena.Vec(e.Position);BowEventCue(arena,e,source,pos);int n=NativeEventSounds.Route(context,routed);
             // The bank plan (NativeSoundPlan): with no LocalAssets bank, exactly the routed sounds above.
-            string style=e.Kind!=EventKind.Death?null:target?.Death?.style??(string.IsNullOrEmpty(source?.Seat.killEffect)?null:source.Seat.killEffect);
+            // The Top Dog's pop sounds its burst whatever kill effect the body wears.
+            string style=e.Kind!=EventKind.Death?null:target?.Death!=null&&NativeTopDog.Popped(target.Death.damageKind)?NativeTopDog.Burst:target?.Death?.style??(string.IsNullOrEmpty(source?.Seat.killEffect)?null:source.Seat.killEffect);
             var detail=new NativeSoundDetail{WeaponDetail=e.Kind==EventKind.Explosion&&WeaponDetail(arena,e.Detail),KillStyle=style};
             int plays=NativeSoundPlan.Event(bank,context,detail,routed,n,planned);Vector3? from=source?.Body!=null?source.Body.position:(Vector3?)null;
             for(int i=0;i<plays;i++)Perform(planned[i],pos,from,arena.Time-e.Time,context.SourceMe||context.TargetMe);
