@@ -282,7 +282,7 @@ namespace ChipArena.UnityConversion
                 for(int b=0;b<3;b++)
                 {
                     double bz=z0+.75+(z1-z0-1.5)*b/2,by=soffit-.75;
-                    if(st.Phase==NativeHazardPhase.Idle){Hex(x,by,bz,.35,0xFFB060,.5,true,1.2);Telegraph++;continue;}
+                    if(st.Phase==NativeHazardPhase.Idle){double f=.85+.15*Math.Sin(time*9+b+x);Streak(x,by-.1,bz,x,by+.25*f,bz,.22,.04,2.2,1.9,1.3,.7,true);Hex(x,by-.05,bz,.7,0xFFD890,.25,true,1.2);Telegraph+=2;continue;}
                     if(st.Phase==NativeHazardPhase.Warn)
                     {
                         double l=st.Level;Hex(x,by,bz,.6+.9*l,0xFFE2A0,.6+.3*l,true,1.6+l);Telegraph++;
@@ -315,6 +315,8 @@ namespace ChipArena.UnityConversion
                 double since=gate.Phase==NativeHazardPhase.Warn?gate.Since:gate.Since+3;double u=Frac(since/1.0);int stroke=(int)Math.Floor(since);
                 for(int k=0;k<3;k++){double f=Frac(u+k*.33);double rr=1.5+f*9,y=NativeSanctumLooks.BellY-2-f*14;Ring(0,y,0,rr,.08+.1*f,40,1.6,1.4,1.0,.35*(1-f)*(1-f));Telegraph+=40;}
                 Hex(NativeSanctumLooks.BellX,NativeSanctumLooks.BellY-1.4,NativeSanctumLooks.BellZ,3.5,0xFFE0A0,.35*(1-u),true,1.6);Telegraph++;
+                // each stroke lands on the floor under the oculus a moment later and runs out across the crossing as a ring of dust
+                double g=u-.25;if(g>0){double rr=1+g*16,fade=(1-g/.75);Ring(0,.05,0,rr,.12+.2*g,48,1.4,1.2,.9,.4*fade*fade);Telegraph+=48;int m=Count(16);for(int i=0;i<m;i++){double ang=2*Math.PI*i/m+H(611,i);Hex(Math.Cos(ang)*rr,.3+g*.6,Math.Sin(ang)*rr,.8+g*1.6,0x8A8078,.25*fade,false);Atmosphere++;}}
                 int n=Count(40);for(int i=0;i<n;i++){double f=Frac(u*1.3+H(601,i,stroke%5)),px=-26+H(601,i)*52,pz=(H(601,i,1)-.5)*22;Sprite(px,NativeSanctumLooks.Vault-.5-f*9,pz,.05+.05*H(601,i,2),.85,.82,.78,.55*(1-f),false);Atmosphere++;}
             }
             // the gates' lanterns: their halos in the crypt and the stairwells
@@ -346,7 +348,7 @@ namespace ChipArena.UnityConversion
                     Candidate(rig.Ring[o],rig.Ring[o+1]+.4,rig.Ring[o+2],13,1.0*1.8*lit*f*warm,.62*1.8*lit*f*warm,.3*1.8*lit*f*warm,ph==1||ph==2?3:1.4);}
                 double g=rig.CenserGlow,fc=.85+.15*Math.Sin(t*11);Candidate(rig.CenserX,rig.CenserY,rig.CenserZ,7,1.0*(.6+1.2*g)*fc,.38*(.6+1.2*g)*fc,.1*(.6+1.2*g)*fc,g>.5?3:1.2);
                 for(int i=0;i<rig.BasketCount;i+=3){int o=(i+1)*4;double heat=rig.Baskets[o+3];if(heat<.2)continue;Candidate(rig.Baskets[o],1.8,rig.Baskets[o+2],9,1.0*2.6*heat,.86*2.6*heat,.6*2.6*heat,4);}
-                if(rig.Gate>0||((rig.Lamp>>16)&255)>200)foreach(var h in hazards??Array.Empty<MapHazard>())if(h?.kind==NativeWardZeroHazards.Shutter){double lv=((rig.Lamp>>16)&255)/255.0;Candidate(h.center.x,h.center.y+.8,h.center.z,6,1.6*lv,.08*lv,.04*lv,3);}
+                if(rig.Gate>0||((rig.Lamp>>16)&255)>200)foreach(var h in hazards??Array.Empty<MapHazard>())if(h?.kind==NativeWardZeroHazards.Shutter){double lv=((rig.Lamp>>16)&255)/255.0;Candidate(h.center.x,h.center.y+.8,h.center.z,4.5,.95*lv,.1*lv,.05*lv,3);}
             }
             for(int i=0;i+6<statics.Length;i+=7){double f=.88+.12*Math.Sin(t*(6+i%5)+i);Candidate(statics[i],statics[i+1],statics[i+2],statics[i+3],statics[i+4]*f*warm,statics[i+5]*f*warm,statics[i+6]*f*warm,1);}
             // the best eight, and the ninth's score as the fade's floor

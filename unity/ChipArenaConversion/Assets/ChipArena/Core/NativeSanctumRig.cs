@@ -134,14 +134,13 @@ namespace ChipArena.UnityConversion
             var q=FactoryQ.Axis(1,0,0,-ang);
             void P(double ly,out double wx,out double wy,out double wz){q.Rotate(0,ly,0,out double ox,out double oy,out double oz);wx=x+ox;wy=py-L*Math.Cos(ang)+oy;wz=Math.Sin(ang)*L+oz;}
             void Part(double ly,double hx,double hy,double hz,FactoryQ r,int kind,bool shadow=true,double window=1){P(ly,out double wx,out double wy,out double wz);Add(wx,wy,wz,hx,hy,hz,q*r,kind,shadow,-1,window);}
-            // the bowl (twelve bellied staves over a footed base), the glowing coals, the pierced lid in tiers with gaps for the
-            // fire to show, the finial, the six chains to the crown ring, the rope to the yoke
-            void Tier(double ly,double rad,double hy,double t,int kind,int n,double twist){for(int i=0;i<n;i++){double a=2*Math.PI*i/n+twist;var r=FactoryQ.Axis(0,1,0,a);r.Rotate(0,0,rad,out double ox,out _,out double oz);P(ly,out double wx,out double wy,out double wz);Add(wx+ox,wy,wz+oz,rad*Math.PI/n+.01,hy,t,q*r,kind,true);}}
-            Part(-.78,.2,.06,.2,FactoryQ.Axis(0,1,0,Math.PI/8),S);Part(-.68,.12,.06,.12,FactoryQ.Identity,G);
-            Tier(-.5,.42,.1,.05,S,12,0);Tier(-.28,.58,.14,.05,S,12,0);Tier(-.02,.64,.14,.05,S,12,0);Tier(.16,.62,.05,.06,G,16,0);
-            Part(.05,.52,.08,.52,FactoryQ.Axis(0,1,0,Math.PI/8),E,false,1);
-            Tier(.3,.54,.06,.05,S,12,.13);Tier(.48,.42,.06,.05,S,12,0);Tier(.64,.3,.06,.05,S,10,.2);Tier(.78,.18,.05,.04,G,8,0);
-            Part(.95,.07,.12,.07,FactoryQ.Identity,G);Part(1.1,.06,.06,.06,FactoryQ.Axis(0,1,0,Math.PI/4),G);
+            // the bowl in eight-sided tiers (foot, belly, the gold band), the coals glowing through the gaps of the pierced lid's
+            // tiers, the finial, the six chains to the crown ring, the rope to the yoke
+            void Tier(double ly,double rad,double hy,int kind,double gap){for(int i=0;i<8;i++){double a=Math.PI/4*i+Math.PI/8;var r=FactoryQ.Axis(0,1,0,a);r.Rotate(0,0,rad,out double ox,out _,out double oz);P(ly,out double wx,out double wy,out double wz);Add(wx+ox,wy,wz+oz,rad*.4142*(1-gap)+.01,hy,.05,q*r,kind,true);}}
+            Part(-.86,.22,.05,.22,FactoryQ.Axis(0,1,0,Math.PI/8),G);Tier(-.72,.32,.1,S,0);Tier(-.42,.5,.2,S,0);Tier(-.12,.56,.1,S,0);Tier(.0,.58,.04,G,0);
+            Part(.02,.5,.06,.5,FactoryQ.Axis(0,1,0,Math.PI/8),E,false,1);
+            Tier(.2,.5,.1,S,.3);Tier(.4,.38,.09,S,.3);Tier(.57,.25,.08,S,.2);Tier(.7,.13,.06,G,0);
+            Part(.85,.06,.12,.06,FactoryQ.Axis(0,1,0,Math.PI/8),G);Part(1.02,.05,.05,.05,FactoryQ.Axis(0,1,0,Math.PI/4),G);
             P(2.4,out double rx,out double ry,out double rz);
             for(int i=0;i<6;i++){double a=Math.PI/3*i;var r=FactoryQ.Axis(0,1,0,a);r.Rotate(.6,0,0,out double ox,out _,out double oz);P(.16,out double bx,out double by,out double bz);Bar(bx+ox,by,bz+oz,rx,ry,rz,.035,NativeSanctumLooks.Chain,false);}
             Part(2.4,.2,.05,.2,FactoryQ.Identity,G);
@@ -165,9 +164,9 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<3;i++)
                 {
                     double bz=z0+.75+(z1-z0-1.5)*i/2,by=soffit-.95;double fl=.85+.15*Math.Sin(time*(7+i)+x);
-                    Box(x-.3,x+.3,by-.05,by,bz-.3,bz+.3,I);for(int k=0;k<8;k++){double a=Math.PI/4*k;Bar(x+Math.Cos(a)*.18,by,bz+Math.Sin(a)*.18,x+Math.Cos(a)*.34,by+.42,bz+Math.Sin(a)*.34,.035,I,false);}
-                    Box(x-.26,x+.26,by,by+.16,bz-.26,bz+.26,C,false,-1,1+heat*fl*1.5);
-                    foreach(int sx in Sides)Bar(x+sx*.3,by+.42,bz,x+sx*.12,soffit,bz,.03,Ch,false);
+                    for(int k=0;k<8;k++){double a=Math.PI/4*k+Math.PI/8;var r=FactoryQ.Axis(0,1,0,a);r.Rotate(0,0,.3,out double ox,out _,out double oz);Add(x+ox,by+.12,bz+oz,.13,.14,.03,r*FactoryQ.Axis(1,0,0,-.35),I,true);r.Rotate(0,0,.38,out ox,out _,out oz);Add(x+ox,by+.27,bz+oz,.17,.025,.04,r,I,false);}
+                    Box(x-.14,x+.14,by-.06,by,bz-.14,bz+.14,I);Box(x-.3,x+.3,by+.1,by+.24,bz-.3,bz+.3,C,false,-1,1+heat*fl*1.5);
+                    for(int k=0;k<3;k++){double a=2*Math.PI*k/3;Bar(x+Math.Cos(a)*.36,by+.28,bz+Math.Sin(a)*.36,x,soffit-.02,bz,.03,Ch,false);}
                     if(BasketCount<24){int o=BasketCount*4;Baskets[o]=x;Baskets[o+1]=by+.2;Baskets[o+2]=bz;Baskets[o+3]=heat*fl;BasketCount++;}
                 }
             }
