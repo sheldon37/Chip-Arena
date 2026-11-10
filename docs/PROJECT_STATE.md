@@ -1,3 +1,5 @@
+2026-11-10 Claude (`claude/stage-songs`): the owner's songs play on the four new stages (Neon Substation runs at about 132 BPM against the club's 128 BPM hazard grid).
+
 2026-11-10 Claude (`claude/dev-class-grants`): DEV classes are grantable to chosen players (Cyber Lord, Bombadier, Top Dog). **Next: Astra publishes the Site** (owner said "Go ahead"); until then the live server refuses those grants.
 
 2026-11-10 Claude (`claude/new-stages`): four new stages in Random: Starfall Causeway, Substation 128, Top Dog Emporium, the Hollow Sanctum; vents can push (pushMode, for Astra). Songs come from the owner (keys in docs/arenas/STAGE-MUSIC-PROMPTS.md).

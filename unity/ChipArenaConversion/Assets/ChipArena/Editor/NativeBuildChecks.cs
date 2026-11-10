@@ -191,7 +191,15 @@ namespace ChipArena.UnityConversion.Editor
             if(stageSong6==null||stageSong6.channels!=2||Mathf.Abs(stageSong6.length-239.952f)>.5f)throw new Exception("Stage music import incomplete: poolrooms-untitled");
             var stageSong7=Resources.Load<AudioClip>("Audio/music/training-steady-groove");
             if(stageSong7==null||stageSong7.channels!=2||Mathf.Abs(stageSong7.length-180.024f)>.5f)throw new Exception("Stage music import incomplete: training-steady-groove");
-            Debug.Log("PASS eight owner stage songs: complete imported clips at runtime resource paths");
+            var stageSong8=Resources.Load<AudioClip>("Audio/music/causeway-theme");
+            if(stageSong8==null||stageSong8.channels!=2||Mathf.Abs(stageSong8.length-219.760f)>.5f)throw new Exception("Stage music import incomplete: causeway-theme");
+            var stageSong9=Resources.Load<AudioClip>("Audio/music/club-theme");
+            if(stageSong9==null||stageSong9.channels!=2||Mathf.Abs(stageSong9.length-227.600f)>.5f)throw new Exception("Stage music import incomplete: club-theme");
+            var stageSong10=Resources.Load<AudioClip>("Audio/music/emporium-theme");
+            if(stageSong10==null||stageSong10.channels!=2||Mathf.Abs(stageSong10.length-182.800f)>.5f)throw new Exception("Stage music import incomplete: emporium-theme");
+            var stageSong11=Resources.Load<AudioClip>("Audio/music/sanctum-theme");
+            if(stageSong11==null||stageSong11.channels!=2||Mathf.Abs(stageSong11.length-194.920f)>.5f)throw new Exception("Stage music import incomplete: sanctum-theme");
+            Debug.Log("PASS twelve owner stage songs: complete imported clips at runtime resource paths");
             CheckExpeditionAreaRuntimes(data);
             CheckExpeditionCohortPlacement(data);
             CheckDeploymentShader();

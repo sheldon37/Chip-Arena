@@ -18,7 +18,7 @@ Status: **implemented on the branch, seen in the Unity Editor ("Seen in the Edit
 | Spawns | team A in the narthex under the organ loft (west), team B under the reliquary loft (east); FFA 8 |
 | Hazards | the falling chandeliers (crane), the great censer (saw-rail), holy fire (burner), the toll and the crypt gates (shutter) |
 | Look | `sanctum-midnight`: the moon through the glass, candlelight, the light volume, scattering, beams, the toon grade |
-| Music | placeholder `moonlit-wilderness`; the owner's song takes the key **`sanctum-theme`** |
+| Music | the owner's **Moonlit Ostinato** (`sanctum-theme`) |
 | Blocks | 297 (14 breakable pews), 1 pilot column (the vault), 6 hazards; nav 2043 nodes / 3244 links (442 gated) |
 
 ## The design
@@ -139,10 +139,8 @@ Reduced effects cut the atmosphere, never a telegraph (checked).
 
 ## Music
 
-No song yet. The map plays the existing `moonlit-wilderness` as a placeholder (generator list). The owner's Suno song takes the
-key `sanctum-theme`: add `Assets/ChipArena/Resources/Audio/music/sanctum-theme.mp3` (meta from `breakwater-arena-duel.mp3.meta`),
-a `case "sanctum":return "sanctum-theme";` in `NativeStageMusic.Theme`, an asset-lock entry, the length pin in
-`NativeBuildChecks` and `ZoneMusicChecks`, and a row in `STAGE-MUSIC-PROMPTS.md`.
+The owner's song **Moonlit Ostinato** (Suno, 2026-11-10; 194.9 s) plays under the key `sanctum-theme`
+(`NativeStageMusic.Theme`). The record's `music` keeps the placeholder `moonlit-wilderness` as the fallback.
 
 ## Seen in the Editor (2026-11-10)
 

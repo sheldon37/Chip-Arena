@@ -110,8 +110,8 @@ Code (presentation only; nothing here is sim data, collides, damages or is sent)
 
 ## Music
 
-No song yet. Placeholder: `cybercity-neon-riot` (the record's `music`). The owner's song takes the key **`emporium-theme`**
-(`Assets/ChipArena/Resources/Audio/music/emporium-theme.mp3`, a `Theme` case, a ZoneMusicChecks pin and a prompt row).
+The owner's song **Hot Dog Palace** (Suno, 2026-11-10; 182.8 s) plays under the key `emporium-theme`
+(`NativeStageMusic.Theme`). The record's `music` keeps the placeholder `cybercity-neon-riot` as the fallback.
 
 ## Checks
 

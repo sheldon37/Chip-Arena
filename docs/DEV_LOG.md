@@ -1,3 +1,18 @@
+## 2026-11-10 — Claude: the owner's songs for the four new stages (owner request)
+
+- Branch `claude/stage-songs` (from shared at `386cc351`).
+- **The owner:** "I have the music here: Moonlit Ostinato - Hollow Sanctum, Hot Dog Palace - Top Dog Emporium, Neon Substation - Substation 128, Celestial Bell - Starfall Causeway. Please integrate and send to update."
+- **The songs** (the original MP3 bytes, 48 kHz stereo, as the eight earlier owner songs; metas from breakwater's with fresh GUIDs):
+  - `causeway-theme` (Celestial Bell Motif, 219.76 s)
+  - `club-theme` (Neon Substation, 227.6 s)
+  - `emporium-theme` (Hot Dog Palace, 182.8 s)
+  - `sanctum-theme` (Moonlit Ostinato, 194.92 s)
+- **Wiring:** `NativeStageMusic.Theme` cases; the map records keep their placeholder `music` as the fallback, so UnityMaps.json is not regenerated. Asset-lock receipts. The Editor's import pins (twelve owner stage songs). ZoneMusicChecks.
+- **Tempo:** Neon Substation measures about 132 BPM, not 128. The club's lights follow its spectrum. The hazards' 128 BPM bar grid on the match clock is unchanged (a rules matter, for Astra and the owner), so the drops don't line up with the hazards' bars.
+- **Fixed in passing:** `tools/asset-lock.json`'s MapLooks.json receipt had been stale since the stages merge (it still held the pre-stage file), which failed `tools/package_source.py`. It now matches the file.
+- **Checks:** CoreTests `--zone-music`, `--club-stage`, `--sanctum`, `--emporium`, `--causeway`; `tools/package_source.py` (project structure passed); the full suite; the Unity compile; the Editor's build checks (the twelve songs' import).
+- **Not heard:** in a played match.
+
 ## 2026-11-10 — Claude: DEV classes grantable to chosen players; **Astra: please publish the Site** (owner authorized)
 
 - Branch `claude/dev-class-grants` (from shared at `ea8d69a8`, shared merged in at `263f3e1c`). Implementation `a0c00558`, docs `acdd9419`.
