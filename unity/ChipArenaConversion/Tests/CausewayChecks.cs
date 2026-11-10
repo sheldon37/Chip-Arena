@@ -162,6 +162,14 @@ namespace ChipArena.UnityConversion
             long before=GC.GetAllocatedBytesForCurrentThread();
             for(int f=0;f<240;f++){double t=fight+f*.25;rig.Build(map.hazards,f&3,NativePhase.Fight,fight,t,t);fx.Build(map.hazards,f&3,NativePhase.Fight,fight,t,t,f*.1,2,-6,1,0,0,0,1,0,f%2,f%3==0);}
             long after=GC.GetAllocatedBytesForCurrentThread();Check(after-before==0,"the rig and effects allocate nothing per frame ("+(after-before)+" bytes)");
+            // the numbers (printed, not pinned): parts, quads and the CPU a frame's rig and effects take on this machine
+            int rigMax=0,fxMax=0,fxLow=0;var sw=System.Diagnostics.Stopwatch.StartNew();int frames=0;
+            for(double t=fight;t<fight+60;t+=.1,frames++){rig.Build(map.hazards,1,NativePhase.Fight,fight,t,t);rigMax=Math.Max(rigMax,rig.Parts.Count);fx.Build(map.hazards,1,NativePhase.Fight,fight,t,t,-10,2,-4,1,0,0,0,1,0,1,false);fxMax=Math.Max(fxMax,fx.Quads.Count);}
+            double ms=sw.Elapsed.TotalMilliseconds/frames;
+            for(double t=fight;t<fight+60;t+=.5){fx.Build(map.hazards,1,NativePhase.Fight,fight,t,t,-10,2,-4,1,0,0,0,1,0,0,true);fxLow=Math.Max(fxLow,fx.Quads.Count);}
+            int verts=sectors.Sum(m=>m.Vertices),tris=sectors.Sum(m=>m.Indices.Length/3);
+            Check(rigMax<NativeCausewayRig.Capacity&&fxMax<NativeCausewayFx.Capacity&&fxLow<fxMax,"the frame's parts and quads fit and the low tier draws fewer");
+            Console.WriteLine("   causeway: kit "+kit.Count+" parts; rig up to "+rigMax+" parts a frame; effects up to "+fxMax+" quads (low tier "+fxLow+"); backdrop "+verts+" vertices, "+tris+" triangles in "+sectors.Length+" meshes; rig + effects "+ms.ToString("0.00")+" ms a frame (CoreTests, Release)");
             // another map draws nothing of this
             var other=new NativeCausewayFx();other.Prepare(new ContentMap{id="polar"});other.Build(map.hazards,0,NativePhase.Fight,0,30,30,0,0,0,1,0,0,0,1,0,1,false);Check(other.Quads.Count==0,"another map draws no Causeway effects");
             Check(NativeCausewayScenery.Build(new ContentMap{id="polar"})==null&&NativeCausewayKit.Build(new ContentMap{id="polar"},look)==null,"another map builds no Causeway scenery or kit");

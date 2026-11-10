@@ -100,6 +100,9 @@ namespace ChipArena.UnityConversion
             // the comet's channel: star-metal edges and a darker bed along z ±1.6, gold ticks every 2.5 m
             foreach(double z in new[]{-1.6,1.6}){Face(b,4,b.X0,b.X1,z-.08,z+.08,Edge);Face(b,4,b.X0,b.X1,z-.03,z+.03,Rune,.016,.006);}
             for(double x=b.X0+1.25;x<b.X1-.5;x+=2.5)foreach(double z in new[]{-1.25,1.25})Face(b,4,x-.06,x+.06,z-.22,z+.22,Gold,.014,.005);
+            // flagstone seams: darker joints every 2.5 m across the deck and along it, off the comet's channel
+            for(double x=b.X0+2.5;x<b.X1-.3;x+=2.5){Face(b,4,x-.025,x+.025,b.Z0+.05,-1.75,StoneDark,.008,.003);Face(b,4,x-.025,x+.025,1.75,b.Z1-.05,StoneDark,.008,.003);}
+            foreach(double z in new[]{-2.6,2.6})Face(b,4,b.X0+.05,b.X1-.05,z-.025,z+.025,StoneDark,.008,.003);
             // the compass medallion at the half's centre: eight rays and a ring
             double cx=(b.X0+b.X1)/2+(west?-1.5:1.5);
             for(int k=0;k<8;k++){double a=k*Math.PI/4,l=k%2==0?2.8:1.8;Add(cx+Math.Sin(a)*l/2,b.Y1+.005,Math.Cos(a)*l/2,.05,.006,l/2,FactoryQ.Axis(0,1,0,a),Gold,false);}
@@ -128,6 +131,7 @@ namespace ChipArena.UnityConversion
             Face(b,side,b.X0,b.X1,b.Y0+.02,b.Y0+.16,Trim,.08,.08,true);
             for(double x=b.X0+.2;x<b.X1-.1;x+=.4)Face(b,side,x-.08,x+.08,b.Y0-.0,b.Y0+.0+.12,StoneDark,.06,.14,true);
             Face(b,side,b.X0,b.X1,b.Y1-.3,b.Y1-.24,Rune,.012,.006);
+            for(double x=b.X0+2.5;x<b.X1-.3;x+=2.5)Face(b,4,x-.025,x+.025,b.Z0+.05,b.Z1-.05,StoneDark,.008,.003);
             double z=north?4.52:-4.52;Face(b,4,b.X0,b.X1,z-.03,z+.03,Gold,.014,.005);
             if(Math.Abs(b.Cx)<12)Face(b,4,b.X0,b.X1,(north?3.4:-3.46),(north?3.46:-3.4),Edge,.014,.005);
         }
@@ -166,7 +170,7 @@ namespace ChipArena.UnityConversion
         private void Pylon(Bx b)
         {
             foreach(var (x,z) in new[]{(b.X0,b.Z0),(b.X0,b.Z1),(b.X1,b.Z0),(b.X1,b.Z1)})Box(x-.06,x+.06,b.Y0,b.Y1,z-.06,z+.06,Edge);
-            foreach(int side in new[]{0,1,2,3}){Along(b,side,out double u0,out double u1);double m=(u0+u1)/2;Face(b,side,m-.035,m+.035,1.3,b.Y1-1.0,Crystal,.014,.012);Face(b,side,u0+.08,u1-.08,.9,1.06,Gold,.03,.03);Face(b,side,u0+.08,u1-.08,b.Y1-.62,b.Y1-.48,Gold,.03,.03);Face(b,side,m-.16,m+.16,b.Y1-.95,b.Y1-.75,Rune,.014,.012);}
+            foreach(int side in new[]{0,1,2,3}){Along(b,side,out double u0,out double u1);double m=(u0+u1)/2;for(double y=1.3;y<b.Y1-1.1;y+=.42)Face(b,side,m-.035,m+.035,y,y+.26,Crystal,.014,.012);Face(b,side,u0+.08,u1-.08,.9,1.06,Gold,.03,.03);Face(b,side,u0+.08,u1-.08,b.Y1-.62,b.Y1-.48,Gold,.03,.03);Face(b,side,m-.16,m+.16,b.Y1-.95,b.Y1-.75,Rune,.014,.012);}
             Box(b.X0-.1,b.X1+.1,b.Y1-.3,b.Y1,b.Z0-.1,b.Z1+.1,Metal);Box(b.X0-.06,b.X1+.06,b.Y0,b.Y0+.4,b.Z0-.06,b.Z1+.06,Metal);
             Box(b.Cx-.25,b.Cx+.25,b.Y1,b.Y1+.2,b.Cz-.25,b.Cz+.25,Edge);
         }
@@ -300,7 +304,8 @@ namespace ChipArena.UnityConversion
                 Face(b,outer,-.25,.25,b.Y1-.75,b.Y1-.2,Rune,.05,.05);return;
             }
             // the window's jambs (lit), pilasters and rune bands
-            bool south=b.Cz<0;double jamb=south?b.Z1:b.Z0;Box(b.X0-.04,b.X1+.04,b.Y0+1.0,b.Y0+3.0,jamb-.08,jamb+.08,Rune);
+            bool south=b.Cz<0;double jamb=south?b.Z1:b.Z0;Box(b.X0+.12,b.X1-.12,b.Y0+1.05,b.Y0+2.95,south?jamb-.01:jamb-.004,south?jamb+.004:jamb+.01,Rune,false);
+            Box(b.X0-.04,b.X1+.04,b.Y0+.92,b.Y0+1.0,south?jamb-.3:jamb,south?jamb:jamb+.3,Gold,false);
             for(double z=b.Z0+.6;z<b.Z1-.3;z+=1.4)Face(b,outer,z-.18,z+.18,b.Y0,b.Y1-.2,Stone,.12,.12,true);
             Face(b,outer,b.Z0,b.Z1,b.Y0+3.4,b.Y0+3.5,Rune,.014,.006);Face(b,inner,b.Z0,b.Z1,b.Y0+2.4,b.Y0+2.48,Cold,.014,.006);
         }
@@ -511,9 +516,9 @@ namespace ChipArena.UnityConversion
         private void Asteroids(double t)
         {
             // near rocks round the void, always outside the bounds (orbit radius 58 m and more), turning slowly
-            for(int i=0;i<26;i++)
+            for(int i=0;i<16;i++)
             {
-                double r=58+H(501,i)*90,w=(.006+H(501,i,1)*.01)*(i%2==0?1:-1),a=H(501,i,2)*2*Math.PI+t*w,y=-50+H(501,i,3)*80+Math.Sin(t*.05+i)*2;
+                double r=85+H(501,i)*120,w=(.006+H(501,i,1)*.01)*(i%2==0?1:-1),a=H(501,i,2)*2*Math.PI+t*w,y=-50+H(501,i,3)*80+Math.Sin(t*.05+i)*2;
                 double x=Math.Cos(a)*r*1.25,z=Math.Sin(a)*r;double sz=1.2+Math.Pow(H(501,i,4),2)*6;var q=FactoryQ.Axis(H(501,i,5)-.5,1,H(501,i,6)-.5,t*(.05+H(501,i,7)*.15)+i);
                 // a lumpy rock: three turned masses of their own proportions, one offset
                 Parts.Add(x,y,z,sz,sz*.62,sz*.78,q,Rock,sz>3);Parts.Add(x,y,z,sz*.72,sz*.8,sz*.58,q*FactoryQ.Axis(.3,1,.2,.9),Rock,false);
