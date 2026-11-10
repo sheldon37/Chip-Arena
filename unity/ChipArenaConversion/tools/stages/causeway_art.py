@@ -287,6 +287,11 @@ def rail(g, b, T, lo, hi, seed):
             if T.i == 2:
                 fc.quad(g, e0, e1, y0 + .3, y1 - .3, .02, F['deep'])
                 continue
+            if T.i == 1:
+                m = max(1, int(round((e1 - e0) / .95)))
+                for i in range(m):
+                    fc.quad(g, e0 + (e1 - e0) * i / m + .07, e0 + (e1 - e0) * (i + 1) / m - .07, y0 + .2, y1 - .24, .006, F['deep'])
+                continue
             m = max(1, int(round((e1 - e0) / .95)))
             pitch = (e1 - e0) / m
             for i in range(m):

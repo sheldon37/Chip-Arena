@@ -307,7 +307,7 @@ def far(L, T):
         x, z = math.cos(a) * r, math.sin(a) * r
         q = sk.quat_axis(H(401, i, 7) - .5, H(401, i, 8) - .5, H(401, i, 9) - .5, H(401, i, 10) * 6)
         gq = quads[(0 if x < 0 else 1) + (0 if z < 0 else 2)]
-        ck.rock(gq, (x, y, z), (sz, sz * (.55 + H(401, i, 5) * .4), sz * (.6 + H(401, i, 6) * .5)), 600 + i, F['rock'], n=2, square=.15, rough=.55, flat=sz > 6, quat=q, freq=1.6)
+        ck.rock(gq, (x, y, z), (sz, sz * (.55 + H(401, i, 5) * .4), sz * (.6 + H(401, i, 6) * .5)), 600 + i, F['rock'], n=2, square=.15, rough=.55, flat=sz > 10, quat=q, freq=1.6)
         if H(401, i, 13) < .05:
             ck.crystal(gq, (x, y + sz * .7, z), sz * .1, sz * .4, F['cold'], sides=4, low=.6)
     for i in range(12):
@@ -337,4 +337,5 @@ def bank_far(sb, L, no_ao):
         aos = sk.bake_ao(geos, distance=3.0, samples=12)
     for (name, g), ao in zip(items, aos):
         bk = sk.Bake(g, ao, floors=(), seed=5)
+        print('far %-8s %6d corners' % (name, len(g.p) // 3))
         sb.add('static/%s/2' % name, 'static', sk.to_mesh('static/%s/2' % name, g, bk))

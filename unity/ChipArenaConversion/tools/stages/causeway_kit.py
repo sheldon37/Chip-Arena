@@ -217,9 +217,15 @@ class Face:
                     g.face((self.P(a1, y1 - slope, nxt), self.P(a1, y1 - slope, out), self.P(a1, y1, nxt)), f, normal=sk._lerp((0, 0, 0), self.u, s))
 
     def runes(self, g, a0, a1, y, h, T, f, seed, d=.006):
-        """A band of rune glyphs (the Low tier: one strip)."""
+        """A band of rune glyphs (beyond the Fine tier: a broken strip of light)."""
         if T.i == 2:
             self.quad(g, a0, a1, y - h * .12, y + h * .12, d + .02, f)
+            return
+        if T.i == 1:
+            n = max(1, int((a1 - a0) / (h * 3.2)))
+            for i in range(n):
+                b0 = a0 + (a1 - a0) * i / n
+                self.quad(g, b0 + h * .15, b0 + (a1 - a0) / n - h * .15, y - h * .16, y + h * .16, d + .004, f)
             return
         pitch = h * 1.05
         n = max(1, int((a1 - a0) / pitch))
