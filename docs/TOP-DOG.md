@@ -58,7 +58,11 @@ The meter fills 1% a second, 6% a mallet hit and 8% an ability hit.
    of it along them; the hand eases it onto the lips and forces it half in along its slot with a judder, the lips closing a little round
    it and the head giving with the push, then lets go and swings back out for the next. Each stays stuck in the mouth, wiggling for 2.6 s,
    the six crowding the mouth's opening, before it is slurped down; each gulp drips a little juice off the lips. Each hot dog does 3 (it
-   never kills). The belly grows with each one.
+   never kills). The belly grows with each one. It feeds facing its victim (owner 2026-11-09: "it puts both his arms on one side of his
+   body ~ We need to allow the hot dog to rotate correctly and have an arm on each side correctly"): its stance stands side-on and its
+   yaw follows the pilot's look, so from the catch to the let-go (or the snap) its body turns until its shoulders are square to the
+   victim (in over 0.2 s, back over 0.3 s after), whatever the view does: the right arm feeds from the right, the left cups the chin
+   from the left. Presentation only; the pilot's aim and the rules' yaw are untouched.
 5. **The snap.** While it feeds, the Top Dog is rooted and can be hit. **If it takes 40 damage, or is stunned, knocked down or killed,
    the links snap**: the victim is free, takes 6 for each hot dog already down, and the belly goes down with a burp.
 6. **The let-go**, 0.2 s after the last hot dog: a kick sends the victim staggering 1.8 m back, "STUFFED!". The belly keeps ballooning
@@ -236,7 +240,7 @@ Replicated in snapshots, late join, death records and the killcam like the Bomba
 | Sandbox preview | `Core/NativeTopDogPreview.cs` |
 | The chips | `Core/NativeDogChips.cs`; the card and the pick `Runtime/NativeDogChipArt.cs`; the rules in `Runtime/NativeTopDogAuthority.cs` |
 | The Hot Dog's face | `Core/NativeHotDogFace.cs` (the moods), `Runtime/NativeHotDogFacePresentation.cs` (the sculpted face off at load, the toon face on) |
-| The feast's hands | `Runtime/NativeTopDogPresentation.cs` (`DogFeedArms`, `DogReach`), `Core/NativeTopDogFx.cs` (`NativeDogView.FeedState`, `FeedHand`) |
+| The feast's hands | `Runtime/NativeTopDogPresentation.cs` (`DogFeedArms`, `DogReach`, `DogFeastTurn`), `Core/NativeTopDogFx.cs` (`NativeDogView.FeedState`, `FeedHand`, `Facing`) |
 | Checks | `Tests/TopDogChecks.cs` (`CoreTests --top-dog`), the face in `Tests/HotDogChecks.cs` (`CoreTests --hot-dog`) |
 
 ## To see it
