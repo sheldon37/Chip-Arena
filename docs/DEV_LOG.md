@@ -24,6 +24,7 @@
 - **Checks:** CoreTests `--causeway` (7692), `--club-stage` (904968), `--emporium` (13328), `--sanctum` (23124), `--new-stages`, `--map-style`, `--advanced-lighting`, `--transitions` (4096), `--surfaces`, `--dev-tools`, `--stage-kits`, `--zone-music`; the full suite; the Unity compile; the Editor's build checks. Each stage branch also passed the full suite and its own Editor checks before the merge (the club's Editor checks ran on the merged branch).
 - **Seen in the Editor:** each stage by its agent (layouts, hazards, telegraphs, impacts, the Low tier), and reviewed by the integrator from their contact sheets.
 - **Not seen / not done:** no people have played them. No network guests or killcam on these maps. The hazard sounds reuse existing clips under each stage's bank keys. No ambience beds. The menu backdrop preview of these maps shows only their shell, as for the M1 stages.
+- **Released:** merged into shared at `a0d26967` and synced to the builder; the test channel published revision `639299040404200029`.
 
 ## 2026-11-10 — Claude: the PvP room and Create Room redesigned, weapon abilities in the room (owner request)
 
