@@ -1,3 +1,16 @@
+## 2026-11-10 — Claude: the guns fire and aim upright (owner request)
+
+- Branch `claude/gun-upright`, on `claude/pistol-ready`.
+- **The owner:** "They dont need to bend down when shooting."
+- **Why they bent:** the pack's aim, fire and reload clips pitch the torso forward: the pistol about 30 degrees, the rifle about 25 with the head down at the scope, the machine gun less.
+- **The change** (Runtime `VisualGunUpright`): while a gun is raised, by the raise's weight:
+  - The spine is turned back about the body's right axis until the lean from the spine to the head is `AimLean` (4 degrees forward).
+  - The upper arms and the head keep the world turn the clip gave them, so the gun stays on the aim and a long gun on the shoulder; only the shoulders move, a few centimetres up and back.
+  - A torso already that upright is left alone.
+- **Scope:** presentation only (third person; first person and the game pose are unchanged). No rules, aim, shot or network change. Animation impact: the raised guns' torso only.
+- **Checks:** CoreTests `--visual-rig` and `--gun-motion`; the Unity compile; the full suite and the Editor's build checks with the release.
+- **Seen in the Editor:** the pistol, rifle and machine gun firing and aiming, side and three-quarter views. All three stand upright, with their barrels level on the aim.
+
 ## 2026-11-10 — Claude: the pistol rests too, the guns stand naturally, the quiver sits on the back (owner request)
 
 - Branch `claude/gun-stance`, on `claude/gun-rest-sniper` (the sniper and the long guns' rest, entry below; both release together).

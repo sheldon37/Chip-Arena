@@ -147,6 +147,20 @@ namespace ChipArena.UnityConversion
             upper.rotation=Quaternion.FromToRotation(b-a,dir*along+side*high)*upper.rotation;
             b=lower.position;c=hand.position;lower.rotation=Quaternion.FromToRotation(c-b,a+dir*d-b)*lower.rotation;
         }
+        // A raised gun upright (owner 2026-11-10: "They dont need to bend down when shooting"), by `w`: the pack's aim, fire and reload
+        // clips pitch the torso forward; the spine is turned back about the body's right axis until the lean from the spine to the head
+        // is AimLean (degrees, forward), and the upper arms and the head keep the world turn they had, so the gun stays on the aim and a
+        // long gun on the shoulder (only the shoulders move). A torso already that upright, or leaning back, is left as it is.
+        public const float AimLean=4f;
+        private static void VisualGunUpright(VisualMotion m,Transform root,float w)
+        {
+            if(w<=1e-4f||m.Spine==null||m.Head==null)return;
+            Vector3 f=root.forward,u=root.up,r=root.right,v=m.Head.position-m.Spine.position;
+            float lean=Mathf.Atan2(Vector3.Dot(v,f),Vector3.Dot(v,u))*Mathf.Rad2Deg,back=(lean-AimLean)*Mathf.Clamp01(w);if(back<=.01f)return;
+            Quaternion ra=m.RightArm!=null?m.RightArm.rotation:default,la=m.LeftArm!=null?m.LeftArm.rotation:default,head=m.Head.rotation;
+            m.Spine.rotation=Quaternion.AngleAxis(-back,r)*m.Spine.rotation;
+            if(m.RightArm!=null)m.RightArm.rotation=ra;if(m.LeftArm!=null)m.LeftArm.rotation=la;m.Head.rotation=head;
+        }
         // The pistol's low ready (Set.RestReady; owner 2026-11-10, from their reference picture), by `w`: the grip before the right hip
         // just under the belt (ReadyGrip: right, up, forward of the hips, metres), the bore angled to the floor a little ahead and in
         // (ReadyBore), the slide's top toward the front; the arm reaches for the wrist that seats the grip there (the hold's own
@@ -529,6 +543,8 @@ namespace ChipArena.UnityConversion
             if(m.Trail>0)VisualSwordTrail(m,body.Root.transform,m.Trail*m.LocoShare*wgt,speed,dt);else m.TrailMean=m.TrailTwist=float.NaN;
             // The Top Dog's mallet moves, keyed by hand over the clip (Runtime NativeDogMalletPresentation.cs), before the weapon follows the hand.
             if(m.HasHold&&(a.SourceSpec==NativeTopDog.Spec||a.SourceSpec==NativeGlaive.Spec||dogLimbs.TryGetValue(body,out var dl)&&dl!=null&&dl.Held))DogMalletLayer(body,a,time,m.HoldRotation,wgt);
+            // A raised gun stands upright (VisualGunUpright), before the weapon follows the hand.
+            if(m.Set.Gun&&m.Upper>0&&covered)VisualGunUpright(m,body.Root.transform,m.Upper*wgt);
             // A pistol at rest: its low ready (Set.RestReady), before the weapon follows the hand.
             if(m.Set.RestReady&&m.Rest>0&&m.HasHold)VisualPistolReady(m,body.Root.transform,Ease(m.Rest)*wgt);
             // The weapon on the model's right hand, the rig's weapon hand bone with it (what draws there follows the model).
