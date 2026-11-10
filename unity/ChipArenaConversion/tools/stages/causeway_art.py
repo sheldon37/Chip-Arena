@@ -480,7 +480,8 @@ def main():
         print('tier %s: static %d faces, %.1f s' % (T.name, g.faces, time.time() - t))
         ao = None
         if not args.no_ao:
-            ao = sk.bake_ao([g], distance=(1.5, 1.5, 1.8)[ti], samples=(32, 16, 12)[ti])[0]
+            # an open-air stage: the occlusion reaches a metre and is eased (the anime style bands it hard)
+            ao = 1.0 - (1.0 - sk.bake_ao([g], distance=(1.1, 1.1, 1.3)[ti], samples=(32, 16, 12)[ti])[0]) * .7
         bk = sk.Bake(g, ao, floors=FLOORS, seed=3)
         ids = chunks.ids(g)
         for cid in np.unique(ids):

@@ -177,7 +177,7 @@ def fallen(g, b, T, seed):
         sec = fluted(flutes, r * .94) if T.i < 2 else sk.circle_section(r * .92, 8)
         sweep(h, sec, [(a + .16, r, 0), (c, r, 0)], st, smooth_u=False, up=Y)
         lathe(h, [(r * .5, 0), (r * .99, 0), (r * 1.0, .05), (r * .93, .1), (r * .97, .13), (r * .93, .16)], (a, r, 0), st, T.round, axis=(1, 0, 0), cap0=True)
-        ck.rock(h, (c + .1, r, 0), (.2, r * .9, r * .9), seed, F['broken'], n=2 if T.i < 2 else 1, square=.3, rough=.45)
+        ck.rock(h, (c + .03, r, 0), (.13, r * .86, r * .86), seed, F['broken'], n=3 if T.i < 1 else 2, square=.55, rough=.5, freq=2.4)
         if T.detail:
             ck.rock(h, (c * .3, .1, r * .8), (.3, .12, .14), seed + 1, F['rubble'], n=1, square=.6)
             ck.rock(h, (-c * .5, .09, -r * .82), (.24, .1, .12), seed + 2, F['rubble'], n=1, square=.6)
@@ -390,8 +390,11 @@ def hall_front(g, b, T, seed):
             fc.box(g, a - w / 2, a + w / 2, .2, 3.26, 0, d, F['stone'], T, bevel=.02)
             fc.box(g, a - w / 2 - .05, a + w / 2 + .05, 0, .2, 0, d + .05, F['carved'], T, bevel=.02)
             fc.box(g, a - w / 2 - .06, a + w / 2 + .06, 3.26, 3.44, 0, d + .06, F['carved'], T, bevel=.03)
-            if T.i < 2:
-                fc.quad(g, a - .03, a + .03, .7, 2.9, d + .004, F['runedim' if outer else 'rune'])
+            if T.fine:
+                for k in range(6):
+                    ck.glyph(g, lambda x, v, k=k: fc.P(a + x * .22, 2.7 - k * .36 + v * .3, d + .006), fc.n, seed * 37 + int(a * 10) + k, .03, F['rune'], 3)
+            elif T.i < 2:
+                fc.quad(g, a - .03, a + .03, .7, 2.9, d + .004, F['rune'])
         fc.mould(g, art.STRING, 3.55, 0 if outer else .6, 16 if outer else 15.4, F['carved'], T)
 
 
