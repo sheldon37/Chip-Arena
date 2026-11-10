@@ -114,7 +114,7 @@ WIENER = 1.8                                                                # th
 LANE_N = hz(id='emporium-lane-n', kind='maglev', center=v(0, WIENER / 2 + .05, LANE_Z), size=v(2 * LANE_X, WIENER + .1, LANE_W), axis=v(1, 0, 0),
             first=14, period=24, warn=6, danger=3, speed=11, length=WIENER, lethal=True)
 LANE_S = dict(LANE_N, id='emporium-lane-s', center=mv(LANE_N['center']), first=26)
-PRESS_W = hz(id='emporium-press-w', kind='press', a=v(PW, 5.9, 0), b=v(PW, .5, 0), size=v(3.0, 1.0, 3.0), start=2, period=12, offset=0,
+PRESS_W = hz(id='emporium-press-w', kind='press', a=v(PW, 4.6, 0), b=v(PW, .5, 0), size=v(3.0, 1.0, 3.0), start=2, period=12, offset=0,
              warn=1.8, rise=.32, dwell=1.0, travel=1.6, lethal=True)
 PRESS_E = dict(PRESS_W, id='emporium-press-e', a=mv(PRESS_W['a']), b=mv(PRESS_W['b']), offset=6)
 def grill(id, cells, first):

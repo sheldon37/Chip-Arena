@@ -156,7 +156,7 @@ namespace ChipArena.UnityConversion
         {
             double cx=st.Center.x,cz=st.Center.z,bottom=st.LoadY,hx=h.size.x/2,hz=h.size.z/2,sq=Squash(h,st,out double tremble),wide=1/Math.Sqrt(sq);
             if(tremble>0){cx+=tremble*Math.Sin(clock*71);cz+=tremble*Math.Cos(clock*59);}
-            BunBottom[index]=bottom;double head=h.a.y+h.size.y/2+.15;
+            BunBottom[index]=bottom;double head=h.a.y+h.size.y/2+1.5;
             role=Hanging;
             // the bun: a stepped dome of four rounded layers, sesame seeds on top; squash scales the stack
             double y=bottom;var lh=LayerH;var lw=LayerW;
