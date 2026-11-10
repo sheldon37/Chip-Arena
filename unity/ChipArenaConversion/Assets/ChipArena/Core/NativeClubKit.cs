@@ -207,7 +207,8 @@ namespace ChipArena.UnityConversion
             Face(b,2,b.X0,b.X1,b.Y1-.3,b.Y1,NativeClubLooks.Steel,-1,.06,.03,true);
             // the sign's backing and its strokes (a lightning bolt then 1, 2, 8 as segments), magenta and cyan neon
             Face(b,2,-5.2,5.2,5.0,7.0,NativeClubLooks.Dark,0x0A0810,.03,.012);
-            void S(double x0,double y0,double x1,double y1,int c){double t=.07;if(Math.Abs(x1-x0)>Math.Abs(y1-y0))Box(Math.Min(x0,x1)-t/2,Math.Max(x0,x1)+t/2,y0-t/2,y0+t/2,z+.03,z+.09,NativeClubLooks.Sign,false,c,GlowHot);else Box(x0-t/2,x0+t/2,Math.Min(y0,y1)-t/2,Math.Max(y0,y1)+t/2,z+.03,z+.09,NativeClubLooks.Sign,false,c,GlowHot);}
+            // the sign reads from the hall looking south, where +x is on the left: each stroke is laid out left to right and mirrored
+            void S(double x0,double y0,double x1,double y1,int c){x0=-x0;x1=-x1;double t=.07;if(Math.Abs(x1-x0)>Math.Abs(y1-y0))Box(Math.Min(x0,x1)-t/2,Math.Max(x0,x1)+t/2,y0-t/2,y0+t/2,z+.03,z+.09,NativeClubLooks.Sign,false,c,GlowHot);else Box(x0-t/2,x0+t/2,Math.Min(y0,y1)-t/2,Math.Max(y0,y1)+t/2,z+.03,z+.09,NativeClubLooks.Sign,false,c,GlowHot);}
             int m=NativeClubLooks.Magenta,c=NativeClubLooks.Cyan;
             // the bolt
             S(-4.4,6.7,-3.8,6.7,m);S(-3.8,6.7,-3.8,6.0,m);S(-4.4,6.0,-3.8,6.0,m);S(-4.4,6.0,-4.4,5.3,m);S(-4.4,5.3,-3.6,5.3,m);
@@ -235,6 +236,8 @@ namespace ChipArena.UnityConversion
         {
             On(b);int side=east==0?0:1;
             Face(b,side,b.Z0,b.Z1,b.Y0,b.Y0+.18,NativeClubLooks.Steel,-1,.06,.03);Face(b,side,b.Z0+.1,b.Z1-.1,b.Y1-.5,b.Y1-.3,NativeClubLooks.Brick,0x7A4A40,.05,.03);
+            // the arches' lit reveals: a violet LED line up each pier's edges facing the arch (and the gallery's light through it)
+            double x=east==0?b.X1+.012:b.X0-.012;foreach(double z in new[]{b.Z0+.05,b.Z1-.05})if(z>-19.9&&z<19.9)Box(x-.012,x+.012,b.Y0+.2,b.Y1-.6,z-.02,z+.02,NativeClubLooks.Led,false,NativeClubLooks.Violet,Glow);
         }
         private void LedWallFrame(Bx b)
         {

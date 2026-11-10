@@ -85,10 +85,10 @@ namespace ChipArena.UnityConversion
                 s.Box(sx*27.25,y+.55,0,.1,1.1,40,IronLit);s.Box(sx*27.25,y+1.12,0,.16,.06,40,0x8A8A96);
                 s.Box(back,y+3,0,.4,6,41,BrickDark,grime:.2);s.Box((inner+back)/2,y+5.4,0,Math.Abs(back-inner)+.6,.3,41,Roof);
                 // lamps on the back wall, coloured, dim: the crowd stands against them
-                for(int k=0;k<10;k++){double z=-18+k*4;int c=NativeClubLooks.Party[k%NativeClubLooks.Party.Length];s.Box(back-sx*.25,y+3.2,z,.1,.5,.9,c,glow:c,level:.9);}
+                for(int k=0;k<10;k++){double z=-18+k*4;int c=NativeClubLooks.Party[k%NativeClubLooks.Party.Length];s.Box(back-sx*.25,y+3.6,z,.1,.5,.9,c,glow:c,level:1.8);}
                 // the LED band the crowd stands against (backlit silhouettes), the downlights in the gallery's ceiling
-                for(int k=0;k<8;k++){double z=-17.5+k*5;int c=NativeClubLooks.Party[(k*3)%NativeClubLooks.Party.Length];s.Box(back-sx*.22,y+1.4,z,.06,1.6,4.6,c,glow:c,level:1.3);}
-                for(int k=0;k<10;k++){double z=-18+k*4;s.Box(sx*29.5,y+5.2,z,.5,.08,.5,0xFFE0C0,glow:0xFFE0C0,level:1.6);}
+                for(int k=0;k<8;k++){double z=-17.5+k*5;int c=NativeClubLooks.Party[(k*3)%NativeClubLooks.Party.Length];s.Box(back-sx*.22,y+1.6,z,.06,2.2,4.6,c,glow:c,level:2.4);}
+                for(int k=0;k<10;k++){double z=-18+k*4;s.Box(sx*29.5,y+5.2,z,.6,.08,.6,0xFFE0C0,glow:0xFFE0C0,level:2.6);}
                 // the stair down at each end and the bar counter at the back (silhouettes)
                 s.Box(sx*31.5,y+.55,-14,1.2,1.1,4,0x3A2018);s.Box(sx*31.5,y+.55,14,1.2,1.1,4,0x3A2018);
             }
