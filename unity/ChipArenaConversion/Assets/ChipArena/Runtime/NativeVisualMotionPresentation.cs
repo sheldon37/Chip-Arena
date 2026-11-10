@@ -514,7 +514,8 @@ namespace ChipArena.UnityConversion
                     turn.ToAngleAxis(out float angle,out var axis);if(angle>180)angle-=360;
                     aimed.rotation=Quaternion.AngleAxis(Mathf.Clamp(angle,-AimTurnLimit,AimTurnLimit)*m.Upper*wgt,axis)*aimed.rotation;
                 }
-                // A lowered gun (sprinting): the muzzle tipped down about the grip (the low ready carry; owner 2026-10-24).
+                // A lowered gun (a long gun at rest, any gun sprinting): the muzzle tipped down about the grip (the low ready carry;
+                // owner 2026-10-24, and 2026-11-10 for the rifle and machine gun at rest).
                 if(m.Set.Gun&&!reloading&&m.Upper<1)weaponHand.rotation=Quaternion.AngleAxis(CarryTilt*(1-m.Upper)*wgt,weaponHand.rotation*Vector3.right)*weaponHand.rotation;
                 // A two-handed weapon: the support fist onto its handle (the greatsword's behind the right fist, a long gun's
                 // handguard), while the clip keeps it near; not while reloading.

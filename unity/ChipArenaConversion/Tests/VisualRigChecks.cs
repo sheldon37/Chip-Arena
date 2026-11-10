@@ -412,7 +412,11 @@ namespace ChipArena.UnityConversion
             gun.Pitch=-rifle.AimPitch*2;NativeVisualMotion.Layer(rifle,gun,50,book2,out up);Check(up.B==rifle.Aim[0]&&Math.Abs(up.Mix-1)<1e-5f,"aimed down: the down pose, held at its row");
             gun.Aiming=false;gun.Pitch=0;gun.LastShot=50;NativeVisualMotion.Layer(rifle,gun,50.1f,book2,out up);Check(up.Raised&&up.A==rifle.Fire[1]&&Math.Abs(up.TimeA-.1f)<1e-5f,"just after a shot: raised, the recoil from the shot");
             NativeVisualMotion.Layer(rifle,gun,50+NativeVisualMotion.ShotHold(gun)+.01f,book2,out up);Check(!up.Raised,"lowered again once the shot is past");
-            NativeVisualMotion.Layer(rifle,gun,55,book2,out up,true);Check(up.Raised&&up.A==rifle.Aim[1],"arms free (idle or moving): the gun follows the look");
+            NativeVisualMotion.Layer(rifle,gun,55,book2,out up,true);Check(rifle.RestLow&&!up.Raised,"arms free (idle or moving): a long gun stays at rest, lowered (owner 2026-11-10)");
+            gun.Aiming=true;NativeVisualMotion.Layer(rifle,gun,55,book2,out up,true);Check(up.Raised&&up.A==rifle.Aim[1],"arms free and aiming: raised to the aim");gun.Aiming=false;
+            gun.LastShot=54.9f;NativeVisualMotion.Layer(rifle,gun,55,book2,out up,true);Check(up.Raised,"arms free and shooting: raised");gun.LastShot=50;
+            {var pistolGun=new Actor{Grounded=true,Weapon=WeaponId.Pistol,LastShot=-100};NativeVisualMotion.Layer(pistol,pistolGun,55,book2,out var pup,true);
+             Check(!pistol.RestLow&&pup.Raised&&pup.A==pistol.Aim[1],"the pistol, arms free: still follows the look");}
             gun.Sprinting=true;NativeVisualMotion.Layer(rifle,gun,55,book2,out up,true);Check(!up.Raised,"sprinting: carried low");gun.Sprinting=false;
             gun.ReloadAt=60;gun.ReloadUntil=62;NativeVisualMotion.Layer(rifle,gun,61,book2,out up);Check(up.Raised&&up.A==rifle.Reload&&Math.Abs(up.TimeA-.6f)<1e-4f,"the reload fitted to the reload");
             Check(!NativeVisualMotion.Layer(set,new Actor{Grounded=true},50,book,out _),"melee has no upper layer");

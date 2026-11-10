@@ -43,6 +43,9 @@ namespace ChipArena.UnityConversion
             /// <summary>A gun (its aim layer without a bow's draw): the hold calibrated from its level aim, its barrel onto the
             /// aim.</summary>
             public bool Gun=>Aim!=null&&Pull==null&&Spec!=NativeBombs.Spec;
+            /// <summary>A long gun at rest (owner 2026-11-10: "a resting pose (They're holding it downward) only show the aiming
+            /// animation when were shooting / aiming"): with the arms free it stays at the low carry instead of following the look.</summary>
+            public bool RestLow;
             /// <summary>The kit moves (Q/E, by MeleeKitMotion's kind) the set plays on the pack's clips, each with its clip: the clip's
             /// Hit on the release, its end on the cast's end (the Whirlwind: the body turned by the game's spin). The rest keep
             /// the game's pose. Null: none.</summary>
@@ -101,10 +104,10 @@ namespace ChipArena.UnityConversion
             AirAttack=M("Armed-Shield-Attack1"),SprintAttack=M("Armed-Shield-Attack1"),
             Attacks=Array.ConvertAll(Names("Armed-Shield-Attack","2","3","1"),M),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
             KitKinds=new[]{"bulwark-charge","aegis-ricochet"},KitClips=new[]{M("Armed-Shield-Run-Forward-Charge"),"Armed-Cast-R-Attack2_start"},KitHits=new[]{-1f,float.NaN},KitThen=new[]{null,"Armed-Cast-R-Attack2_end"},Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Shield-Run-","Armed-Shield-Strafe-",M("Armed-Shield-Run-Forward"),true);
-        // Rifle and machine gun: the pack's two-handed shooting set. A low ready carry by default; shouldered (its aim grid's
-        // middle column by the pitch, a recoil on each shot) while aiming or just after a shot (owner 2026-10-24: "Aiming and
-        // firing"), the reload fitted to the reload.
-        private static readonly Set Rifle=Build(new Set{Spec="rifle",TechClips=new[]{TechDrop,TechShootLine},Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
+        // Rifle and machine gun: the pack's two-handed shooting set. A low ready carry at rest, idle or moving (RestLow; owner
+        // 2026-11-10); shouldered (its aim grid's middle column by the pitch, a recoil on each shot) while aiming or just after
+        // a shot (owner 2026-10-24: "Aiming and firing"), the reload fitted to the reload.
+        private static readonly Set Rifle=Build(new Set{Spec="rifle",RestLow=true,TechClips=new[]{TechDrop,TechShootLine},Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
             Land="2Hand-Shooting-Land",Block="2Hand-Shooting-Block",BlockHit="2Hand-Shooting-Block-GetHit1",Stunned="2Hand-Shooting-Stunned",Roll="2Hand-Shooting-Roll-Forward",
             AirAttack="2Hand-Shooting-Fall",SprintAttack="2Hand-Shooting-Attack1",Attacks=Names("2Hand-Shooting-Attack","1","2"),Reactions=Names("2Hand-Shooting-GetHit-","F1","B1","L1","R1"),
             Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle",Knockdown="2Hand-Shooting-Knockdown1",RollBack="2Hand-Shooting-Roll-Backward",
@@ -255,8 +258,9 @@ namespace ChipArena.UnityConversion
             up=default;if(a==null||!a.Guarding||s.Block==null||!clips.Has(s.Block))return false;
             up=new Upper{A=s.Block,TimeA=Math.Max(0,time-a.GuardAt),Raised=true};return true;
         }
-        /// <summary>`ready`: the body's own motion leaves the arms free (idle, locomotion, a jump's rise or fall, a landing): a gun
-        /// then follows the look unless sprinting (owner 2026-10-24: the low carry did not point where the pilot looks).</summary>
+        /// <summary>`ready`: the body's own motion leaves the arms free (idle, locomotion, a jump's rise or fall, a landing): the
+        /// pistol then follows the look unless sprinting (owner 2026-10-24: the low carry did not point where the pilot looks);
+        /// the long guns stay at rest (RestLow).</summary>
         public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up,bool ready=false)
         {
             up=default;
@@ -286,7 +290,7 @@ namespace ChipArena.UnityConversion
                 }
                 else casting=s.AbilityRaise!=null&&Array.IndexOf(s.AbilityRaise,a.AbilityId)>=0&&time<Math.Max(rel,a.AbilityAt+.5f)+.4f;
             }
-            float age=time-a.LastShot;bool raised=a.Aiming||casting||age<ShotHold(a)||ready&&s.Gun&&!a.Sprinting;
+            float age=time-a.LastShot;bool raised=a.Aiming||casting||age<ShotHold(a)||ready&&s.Gun&&!s.RestLow&&!a.Sprinting;
             // A bow: drawn (its drawn poses by the pitch) from the draw to the loose, its release after the loose or any arrow
             // (the Volley's and the Rain's stamp only the last shot; NativeBowWire's fields: the draw start, the release time).
             if(s.Pull!=null)
