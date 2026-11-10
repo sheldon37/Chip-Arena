@@ -261,7 +261,7 @@ namespace ChipArena.UnityConversion
         private void KitchenWall(Bx b)
         {
             bool a=Has(b.Id,"-a-");int team=a?K_Red:K_Yellow;
-            foreach(int s in new[]{0,1}){Face(b,s,b.Z0,b.Z1,0,.16,K_Dark);Face(b,s,b.Z0,b.Z1,.16,1.25,team);Face(b,s,b.Z0,b.Z1,1.25,1.32,K_Chrome,-1,.03,.02);Face(b,s,b.Z0,b.Z1,3.6,4.0,team);}
+            foreach(int s in new[]{0,1}){Face(b,s,b.Z0,b.Z1,0,.16,K_Dark);Face(b,s,b.Z0,b.Z1,.16,1.25,team);Face(b,s,b.Z0,b.Z1,1.25,1.32,K_Chrome,-1,.03,.02);Face(b,s,b.Z0,b.Z1,3.5,3.58,K_Chrome,-1,.03,.02);Face(b,s,b.Z0,b.Z1,3.58,4.0,team);for(double v=1.6;v<3.4;v+=.6)Face(b,s,b.Z0,b.Z1,v,v+.06,team,-1,Decal,.006);}
             int toward=a?0:1;double door=b.Cz>0?b.Z0:b.Z1;
             Face(b,b.Cz>0?3:2,b.X0,b.X1,0,b.Y1,K_Chrome,-1,.03,.012);
             if(Math.Abs(b.Cz)<5)Neon(b,toward,b.Cz>0?door+1.8:door-1.8,2.2,.42,a?"EAT":"EAT",a?NativeEmporiumLooks.NeonPink:NativeEmporiumLooks.NeonCyan,2.4);
@@ -476,7 +476,7 @@ namespace ChipArena.UnityConversion
             foreach(double z in new[]{-17.6,17.6,-21.2,21.2})for(double x=-25;x<=25.01;x+=5)
             {
                 bool bal=Math.Abs(z)>20&&Math.Abs(x)<14;double y=bal?7.4:7.8;if(Math.Abs(z)>20&&!bal)continue;
-                Box(x-.015,x+.015,y+.5,Arch(z),z-.015,z+.015,K_Dark,false);Add(x,y+.32,z,.36,.2,.36,FactoryQ.Axis(0,1,0,Math.PI/4),K_Red,true);Box(x-.4,x+.4,y+.1,y+.14,z-.4,z+.4,K_Chrome,true);Box(x-.12,x+.12,y-.02,y+.12,z-.12,z+.12,K_Lamp,false,0xFFE6B0);
+                Box(x-.012,x+.012,y+.62,Arch(z),z-.012,z+.012,K_Dark,false);Box(x-.07,x+.07,y+.5,y+.62,z-.07,z+.07,K_Chrome,true);Add(x,y+.38,z,.14,.12,.14,FactoryQ.Axis(0,1,0,Math.PI/4),K_Red,true);Add(x,y+.2,z,.26,.08,.26,FactoryQ.Axis(0,1,0,Math.PI/4),K_Red,true);Add(x,y+.08,z,.34,.05,.34,FactoryQ.Axis(0,1,0,Math.PI/4),K_Red,true);Box(x-.35,x+.35,y+.02,y+.04,z-.35,z+.35,K_Chrome,false);Box(x-.1,x+.1,y-.12,y+.04,z-.1,z+.1,K_Tube,false,0xFFF0C8,2.6);
             }
         }
         private void ConveyorRails()
@@ -486,7 +486,7 @@ namespace ChipArena.UnityConversion
             {
                 double a=s*x0,b2=s*x1;Box(Math.Min(a,b2)-.08,Math.Max(a,b2)+.08,y-.06,y+.06,z-.08,z+.08,K_Chrome);Box(Math.Min(a,b2)-.08,Math.Max(a,b2)+.08,y-.06,y+.06,-z-.08,-z+.08,K_Chrome);
                 Box(a-.08,a+.08,y-.06,y+.06,-z,z,K_Chrome);Box(b2-.08,b2+.08,y-.06,y+.06,-z,z,K_Chrome);
-                foreach(double zz in new[]{-z,z})for(double x=Math.Min(a,b2);x<=Math.Max(a,b2)+.01;x+=4)Box(x-.03,x+.03,y+.06,Arch(zz),zz-.03,zz+.03,K_Dark,false);
+                foreach(double zz in new[]{-z,z})for(double x=Math.Min(a,b2)+1;x<=Math.Max(a,b2)+.01;x+=7)Box(x-.025,x+.025,y+.06,Arch(zz),zz-.025,zz+.025,K_Dark,false);
             }
         }
     }

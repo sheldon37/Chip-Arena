@@ -179,7 +179,7 @@ namespace ChipArena.UnityConversion
         // ================================================================ the Griddles (burner)
         /// <summary>A griddle plate's light level (NativeBlockLit's burner look heats above 1): cold at rest, heating through the
         /// warning, white-hot live, cooling after.</summary>
-        public static double Heat(in NativeHazardState s,double time)=>s.Phase==NativeHazardPhase.Warn?1+.75*s.Level*(.85+.15*Math.Sin(time*21)):s.Phase==NativeHazardPhase.Active?2.3+.15*Math.Sin(time*17):s.Phase==NativeHazardPhase.Clear?1+1.2*s.Level:1;
+        public static double Heat(in NativeHazardState s,double time)=>s.Phase==NativeHazardPhase.Warn?1+.45*s.Level*(.85+.15*Math.Sin(time*21)):s.Phase==NativeHazardPhase.Active?1.75+.1*Math.Sin(time*17):s.Phase==NativeHazardPhase.Clear?1+.7*s.Level:1;
         public static int GriddleLamp(in NativeHazardState s,double time)=>s.Phase==NativeHazardPhase.Warn?(NativeFactoryRig.Strobe(time,NativeFactoryRig.WarnHz)?NativeEmporiumLooks.Amber:NativeEmporiumLooks.Off):s.Phase==NativeHazardPhase.Active||s.Phase==NativeHazardPhase.Clear?NativeEmporiumLooks.Danger:NativeEmporiumLooks.Scale(NativeEmporiumLooks.Safe,.6);
         private void Griddle(MapHazard h,in NativeHazardState s,double time,int index)
         {
@@ -239,21 +239,21 @@ namespace ChipArena.UnityConversion
             void P(double ox,double oy,double oz,double ex,double ey,double ez,FactoryQ q,int kind,bool shadow=true,int color=-1,double win=1){yaw.Rotate(ox,oy,oz,out double rx,out double ry,out double rz);Add(X+rx,Y+ry,Z+rz,ex,ey,ez,yaw*q,kind,shadow,color,win);}
             void C(double ox,double oy,double oz,FactoryQ q,double l,double r,int kind,int sides,bool shadow=true,int color=-1){yaw.Rotate(ox,oy,oz,out double rx,out double ry,out double rz);Cyl(X+rx,Y+ry,Z+rz,yaw*q,l,r,0,kind,sides,shadow,color);}
             // the frankfurter in its bun, local x along it
-            C(0,0,0,ToX,L-.4,.62,NativeEmporiumLooks.Sausage,16);foreach(double e in Unit){C(e*(L-.25),0,0,ToX,.22,.52,NativeEmporiumLooks.Sausage,8);C(e*(L+.02),0,0,ToX,.1,.32,NativeEmporiumLooks.SausageDark,8,false);}
-            foreach(double e in Unit){C(0,-.38,e*.58,ToX,L-.9,.5,NativeEmporiumLooks.Bun,8);C(0,-.62,e*.5,ToX,L-1.2,.36,NativeEmporiumLooks.BunTop,8);}
+            C(0,0,0,ToX,L-.5,.9,NativeEmporiumLooks.Sausage,16);foreach(double e in Unit){C(e*(L-.32),0,0,ToX,.3,.76,NativeEmporiumLooks.Sausage,8);C(e*(L+.02),0,0,ToX,.12,.46,NativeEmporiumLooks.SausageDark,8,false);}
+            foreach(double e in Unit){C(0,-.55,e*.84,ToX,L-1.2,.74,NativeEmporiumLooks.Bun,8);C(0,-.9,e*.72,ToX,L-1.6,.52,NativeEmporiumLooks.BunTop,8);}
             // neon mustard zigzag along the top (HDR)
-            for(int k=0;k<12;k++){double u0=-L+.9+k*(2*L-1.8)/12,u1=u0+(2*L-1.8)/12,w0=(k&1)==0?-.28:.28;yaw.Rotate(u0,.64,w0,out double ax,out double ay,out double az);yaw.Rotate(u1,.64,-w0,out double bx,out double by,out double bz);
-                int n=Parts.Count;Parts.Bar(X+ax,Y+ay,Z+az,X+bx,Y+by,Z+bz,.09,.09,NativeEmporiumLooks.Tube,false,NativeEmporiumLooks.NeonLemon);if(Parts.Count>n){Parts.Items[n].Window=2.6f;Role[n]=role;}}
+            for(int k=0;k<14;k++){double u0=-L+1.1+k*(2*L-2.2)/14,u1=u0+(2*L-2.2)/14,w0=(k&1)==0?-.4:.4;yaw.Rotate(u0,.92,w0,out double ax,out double ay,out double az);yaw.Rotate(u1,.92,-w0,out double bx,out double by,out double bz);
+                int n=Parts.Count;Parts.Bar(X+ax,Y+ay,Z+az,X+bx,Y+by,Z+bz,.14,.14,NativeEmporiumLooks.Tube,false,NativeEmporiumLooks.NeonLemon);if(Parts.Count>n){Parts.Items[n].Window=2.6f;Role[n]=role;}}
             // the marquee: an elliptical ring of bulbs chasing round, the pink neon between them
-            const int bulbs=30;double rx0=L+1.3,ry0=2.1;
+            const int bulbs=36;double rx0=L+1.4,ry0=2.9;
             for(int k=0;k<bulbs;k++)
             {
                 double u=k*2*Math.PI/bulbs,u1=(k+1)*2*Math.PI/bulbs;bool on=((k+(int)Math.Floor(t*6))%3)==0;
-                P(Math.Cos(u)*rx0,Math.Sin(u)*ry0,0,.12,.12,.12,FactoryQ.Identity,NativeEmporiumLooks.Tube,false,on?0xFFF2C0:0xFFA040,on?3.0:1.2);
+                P(Math.Cos(u)*rx0,Math.Sin(u)*ry0,0,.17,.17,.17,FactoryQ.Identity,NativeEmporiumLooks.Tube,false,on?0xFFF2C0:0xFFA040,on?3.0:1.2);
                 yaw.Rotate(Math.Cos(u)*(rx0+.22),Math.Sin(u)*(ry0+.22),0,out double ax,out double ay,out double az);yaw.Rotate(Math.Cos(u1)*(rx0+.22),Math.Sin(u1)*(ry0+.22),0,out double bx,out double by,out double bz);
-                int n=Parts.Count;Parts.Bar(X+ax,Y+ay,Z+az,X+bx,Y+by,Z+bz,.07,.07,NativeEmporiumLooks.Tube,false,NativeEmporiumLooks.NeonPink);if(Parts.Count>n){Parts.Items[n].Window=2.4f;Role[n]=role;}
+                int n=Parts.Count;Parts.Bar(X+ax,Y+ay,Z+az,X+bx,Y+by,Z+bz,.11,.11,NativeEmporiumLooks.Tube,false,NativeEmporiumLooks.NeonPink);if(Parts.Count>n){Parts.Items[n].Window=2.8f;Role[n]=role;}
             }
-            P(0,ry0+.55,0,1.9,.42,.08,FactoryQ.Identity,NativeEmporiumLooks.Red,true);P(0,ry0+.55,.09,1.7,.3,.012,FactoryQ.Identity,NativeEmporiumLooks.Tube,false,0xFFF2C0,2.4);P(0,ry0+.55,-.09,1.7,.3,.012,FactoryQ.Identity,NativeEmporiumLooks.Tube,false,0xFFF2C0,2.4);
+            P(0,ry0+.7,0,2.6,.55,.1,FactoryQ.Identity,NativeEmporiumLooks.Red,true);P(0,ry0+.7,.11,2.4,.4,.012,FactoryQ.Identity,NativeEmporiumLooks.Tube,false,0xFFF2C0,2.6);P(0,ry0+.7,-.11,2.4,.4,.012,FactoryQ.Identity,NativeEmporiumLooks.Tube,false,0xFFF2C0,2.6);
             // its hangers to the ridge
             role=Overhead;foreach(double e in Unit){yaw.Rotate(e*(L-.6),ry0+.4,0,out double ax,out double ay,out double az);Bar(X+ax,Y+ay,Z+az,X+ax*.5,NativeEmporiumLooks.Ridge-.6,Z+az*.5,.05,NativeEmporiumLooks.Dark,false);}
             Box(X-.2,X+.2,Y+ry0+.9,NativeEmporiumLooks.Ridge-.4,Z-.2,Z+.2,NativeEmporiumLooks.Chrome,false);
@@ -274,8 +274,8 @@ namespace ChipArena.UnityConversion
             for(int side=-1;side<=1;side+=2)for(int k=0;k<n;k++)
             {
                 ConveyorAt(side,k*len/n+t*ConveyorSpeed,out double x,out double z);double sw=.06*Math.Sin(t*1.7+k);
-                role=Overhead;Box(x-.03,x+.03,ConveyorY-.7,ConveyorY-.05,z-.03,z+.03,NativeEmporiumLooks.Chrome,false);Box(x-.4,x+.4,ConveyorY-.78,ConveyorY-.7,z-.3,z+.3,NativeEmporiumLooks.Wood,true);
-                role=Ambient;foreach(double e in Unit){double bx=x+e*.2+sw,bz=z;Cyl(bx,ConveyorY-.62,bz,ToZ,.22,.12,0,NativeEmporiumLooks.Bun,8,true,-1,1,.7);}
+                role=Overhead;Box(x-.03,x+.03,ConveyorY-.72,ConveyorY-.05,z-.03,z+.03,NativeEmporiumLooks.Chrome,false);Box(x-.5,x+.5,ConveyorY-.8,ConveyorY-.72,z-.32,z+.32,NativeEmporiumLooks.Chrome,true);
+                role=Ambient;for(int e=-1;e<=1;e++){double bx=x+e*.3+sw,bz=z;Cyl(bx,ConveyorY-.62,bz,ToZ,.26,.13,0,NativeEmporiumLooks.Bun,8,true);Box(bx-.12,bx+.12,ConveyorY-.52,ConveyorY-.48,bz-.2,bz+.2,NativeEmporiumLooks.BunTop,false);}
             }
         }
         /// <summary>The roller grills on the counters and prep tables: each block whose id names a counter or a prep table carries one

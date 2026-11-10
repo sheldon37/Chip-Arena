@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
         // ---------------- the places the rig, effects and scenery share ----------------
         /// <summary>The big turning hot dog sign over the Big Dog plinth: its centre (it hangs from the roof truss), its turn (rad/s)
         /// and the length of its frankfurter.</summary>
-        public const double SignX=0,SignY=12.6,SignZ=0,SignTurn=.32,SignLength=8.4;
+        public const double SignX=0,SignY=13.9,SignZ=0,SignTurn=.32,SignLength=11.0;
         public static double SignHeading(double t)=>(t*SignTurn)%(2*Math.PI);
         /// <summary>The glazed roof: the eaves (top of the hall's walls), the ridge, the vault's half span (z) and the hall's half
         /// length (x), metres. Nothing of the roof comes below <see cref="RoofLow"/> (the tests' overhead rule).</summary>
