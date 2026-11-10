@@ -563,11 +563,8 @@ namespace ChipArena.UnityConversion
             if(a==null){if(ScreenActions(l,("users",accountAction=="register"?"Create account":accountAction=="recover"?"Reset password":"Log in",true,!account.Busy))==0)AccountSubmit();return;}
             AccountActions(l);
         }
-        private void DevScreen(float age)
-        {
-            var l=BeginScreen("CHIP ARENA","DEV · Player grants",1020,age,actions:false);if(l.Closed||!account.Developer){Go(account.Developer?MenuScreen.Home:MenuScreen.Account);return;}
-            ScreenBody(l,AdminBody);
-        }
+        // DEV is the player grants screen (NativeDevGrantsUI.cs): find a registered player, grant DEV classes and looks, set labels.
+        private void DevScreen(float age)=>DevGrantsScreen(age);
         private void CatalogueScreen(float age)
         {
             var l=BeginScreen("SOURCE REFERENCE","Catalogue",900,age,actions:false);if(l.Closed||!account.Developer){Go(MenuScreen.Home);return;}

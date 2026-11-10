@@ -178,6 +178,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--horde-roam"){HordeRoamChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hulk-charge"){HulkMotionChecks.Run(ProjectRoot());HulkChargeChecks.Run(ProjectRoot());HulkHuntChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-tools"){DevToolsChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--dev-grants"){DevGrantsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hazard-kit"){HazardKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-visuals"){IronworksVisualChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-boss"){IronworksBossModelChecks.Run(ProjectRoot());return 0;}
@@ -272,6 +273,7 @@ internal static class Program
             MoveVisualChecks.Run(root);
             RoundsVisualChecks.Run(root);
             DevToolsChecks.Run(root);
+            DevGrantsChecks.Run(root);
             SpawnInChecks.Run(root,data);
             VfxChecks.Run(root);VfxRuntimeChecks.Run(root);
             LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);HitFeelChecks.Run(root,data);JumpMotionChecks.Run(root);PackLocomotionChecks.Run(root);SprintMotionChecks.Run(root);SprintArmChecks.Run(root);GreatswordSprintChecks.Run(root,data);RangedLocomotionChecks.Run(root);AirAttackChecks.Run(root,data);DownAttackChecks.Run(data);BowRuleChecks.Run();PlungeStabChecks.Run(root,data);CyberChecks.Run();SprintAttackPoseChecks.Run(root,data);
