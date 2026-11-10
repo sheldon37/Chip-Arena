@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         public const int Stone=0,StoneDark=1,Trim=2,Metal=3,MetalEdge=4,Rune=5,RuneCold=6,Crystal=7,CrystalViolet=8,Bronze=9,Glass=10,Scorch=11,Ember=12,Rock=13,Cloth=14,Comet=15,Statue=16,Dark=17,Gold=18,ClothEdge=19;
         /// <summary>Each kind's look key and sRGB colour when the look does not list it.</summary>
         public static readonly (string look,int color)[] Defaults={("cyber-panel",0xD9D2C2),("cyber-panel",0x9C968C),("plain",0xE8E2D4),("cyber-metal",0x3A4466),("plain",0xA9B8DA),("neon",0xFFB45A),
-            ("neon",0x8FE6FF),("cyber-tube",0x7FE0FF),("cyber-tube",0xB48CFF),("steel-green",0xA07A48),("cyber-tube",0xFFD9A0),("plain",0x1A1416),("cyber-tube",0xFF8A3A),("plain",0x4A4048),
+            ("neon",0x8FE6FF),("cyber-tube",0x7FE0FF),("cyber-tube",0xB48CFF),("steel-green",0xA07A48),("cyber-tube",0xFFD9A0),("plain",0x1A1416),("cyber-tube",0xFF8A3A),("plain",0x3A3440),
             ("plain",0x2E3A78),("cyber-tube",0xCFF4FF),("plain",0xE4DED0),("plain",0x14141C),("plain",0xD8B060),("plain",0xD8B060)};
         /// <summary>The kinds' looks for one look's `kitLooks` (an entry by its "causeway-kit-*" id wins; else the default).</summary>
         public static NativeFactoryKit.Looks Resolve(MapLookBlock[] kitLooks)
@@ -88,6 +88,15 @@ namespace ChipArena.UnityConversion
         /// <summary>The comet's head along the span's lane (x; it flies on beyond the portals both ways), its direction (+1 east),
         /// the phase and the telegraph's level.</summary>
         public static NativeHazardState CometAt(MapHazard h,NativePhase phase,int round,double fightAt,double now)=>NativeCyberCityHazards.At(h,phase,round,fightAt,now);
+        /// <summary>Where the comet's head is drawn: far out along the bridge's axis and high through the warning, sweeping down to
+        /// its near portal at the lane's height for the pass (the simulation's head x throughout); `near` 0..1 how close it is; false
+        /// when it is not in the sky (idle, clear).</summary>
+        public static bool CometHead(MapHazard h,in NativeHazardState st,out double x,out double y,out double z,out double near)
+        {
+            x=y=z=near=0;if(st.Phase!=NativeHazardPhase.Warn&&st.Phase!=NativeHazardPhase.Danger&&st.Phase!=NativeHazardPhase.Active)return false;
+            int dir=st.Direction==0?1:st.Direction;double x0=h.center.x-h.size.x/2,x1=h.center.x+h.size.x/2;x=st.Head;double dist=dir>0?x0-x:x-x1;
+            y=h.center.y+Math.Max(0,dist-6)*.16;z=h.center.z+Math.Max(0,dist-6)*.06;near=st.Phase==NativeHazardPhase.Active?1:Math.Max(0,Math.Min(1,1-dist/320));return true;
+        }
 
         // ---------------- the solar wind (kind `vent` with `push`) ----------------
         /// <summary>The gust's telegraph (0..1, 0 outside it), its strength (0..1 while it blows) and the seconds since it ended.</summary>

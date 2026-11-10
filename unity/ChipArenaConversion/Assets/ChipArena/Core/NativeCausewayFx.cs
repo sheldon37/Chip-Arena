@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
             Quads.Clear();Telegraph=Atmosphere=Lights=0;if(!active)return;ex=camX;ey=camY;ez=camZ;rx=rightX;ry=rightY;rz=rightZ;ux=upX;uy=upY;uz=upZ;quality=Math.Max(0,Math.Min(1,q));low=lowTier;
             double clock=NativeFactoryHazards.Clock(phase,fightAt,now);
             // the void behind everything first (its dark dust lanes over its own glow), then the hazards, then the near glows
-            Nebulae(render);Field(render);River(render);Shooting(render);Sun();PlanetHalo();
+            Nebulae(render);Field(render);River(render);Dust(render);Shooting(render);Sun();PlanetHalo();
             for(int i=0;i<(hazards?.Length??0);i++)
             {
                 var h=hazards[i];if(h==null)continue;
@@ -166,6 +166,17 @@ namespace ChipArena.UnityConversion
                 double s=Frac(H(761,i)+t*NativeCausewayLooks.RiverDrift/len*(.7+.6*H(761,i,1)))*2-1;NativeCausewayLooks.River(s,out double x,out double z);
                 double g1=H(761,i,2)+H(761,i,3)-1,g2=H(761,i,4)+H(761,i,5)-1;double px=x+g2*40,pz=z+g1*NativeCausewayLooks.RiverWidth*1.4,py=NativeCausewayLooks.RiverY+(H(761,i,6)-.5)*60;
                 double m=.6+Math.Pow(H(761,i,7),4)*3;int hex=H(761,i,8)<.7?0xD8E6FF:0xFFE0B0;Hex(px,py,pz,m*3.4,hex,.8,true,1.4*m);Atmosphere++;
+            }
+        }
+        /// <summary>The mid layer between the far star shell and the eye's motes: stardust 70-320 m out round the bridge, drifting
+        /// slowly, so the void shifts in depth as the eye moves.</summary>
+        private void Dust(double t)
+        {
+            int n=Count(220);
+            for(int i=0;i<n;i++)
+            {
+                double a=H(841,i)*2*Math.PI,r=70+Math.Pow(H(841,i,1),.7)*250,x=Math.Cos(a)*r*1.3+Math.Sin(t*.004+i)*6,z=Math.Sin(a)*r,y=-160+H(841,i,2)*260+Math.Sin(t*.006+i*1.3)*4;
+                double tw=.6+.4*Math.Sin(t*(.8+H(841,i,3)*1.6)+i);int hex=H(841,i,4)<.7?0xCFE0FF:0xFFE2B8;Hex(x,y,z,.3+.5*H(841,i,5)+r*.0035,hex,.75*tw,true,1.5);Atmosphere++;
             }
         }
         private void Shooting(double t)
@@ -302,18 +313,19 @@ namespace ChipArena.UnityConversion
             // in the lane through the pass, gone after it
             if(st.Phase==NativeHazardPhase.Warn||st.Phase==NativeHazardPhase.Danger||st.Phase==NativeHazardPhase.Active)
             {
-                double hx=st.Head,dist=dir>0?x0-hx:hx-x1;double up=Math.Max(0,dist-6)*.16,side=Math.Max(0,dist-6)*.06;double hy=cy+up,hz=cz+side;
-                double near=st.Phase==NativeHazardPhase.Active?1:Math.Max(0,Math.Min(1,1-dist/320));double core=1.6+3.4*near,coma=7+13*near;
+                NativeCausewayLooks.CometHead(h,st,out double hx,out double hy,out double hz,out double near);
+                // its glow never fills the eye: the sprites keep within a share of their distance from it
+                double cd=Math.Sqrt((hx-ex)*(hx-ex)+(hy-ey)*(hy-ey)+(hz-ez)*(hz-ez)),cap=Math.Max(1.2,cd*.55);double core=Math.Min(1.6+3.4*near,cap*.3),coma=Math.Min(7+13*near,cap);
                 // travel direction (unit), toward the lane from up the slope
                 double vx=dir,vy=st.Phase==NativeHazardPhase.Active?0:-.16,vz=st.Phase==NativeHazardPhase.Active?0:-.06,vl=Math.Sqrt(vx*vx+vy*vy+vz*vz);vx/=vl;vy/=vl;vz/=vl;
-                Hex(hx,hy,hz,core,0xFFFFFF,.95,true,3.0);Hex(hx,hy,hz,coma,0x9FE8FF,.5,true,1.8);Hex(hx,hy,hz,coma*2.2,0x4A8CFF,.16,true,1.4);Telegraph+=3;
+                Hex(hx,hy,hz,core,0xFFFFFF,.95,true,2.4);Hex(hx,hy,hz,coma,0x9FE8FF,.32,true,1.5);Hex(hx,hy,hz,coma*2.2,0x4A8CFF,.07,true,1.2);Telegraph+=3;
                 double ion=34+60*near,dust=24+30*near;
-                HexStreak(hx,hy,hz,hx-vx*ion,hy-vy*ion+ion*.05,hz-vz*ion,core*.9,coma*.25,0xBFF0FF,.75,2.0);
-                HexStreak(hx,hy,hz,hx-vx*dust,hy-vy*dust+dust*.18,hz-vz*dust+dust*.12,core*1.4,coma*.6,0xFFD8A0,.45,1.6);
-                HexStreak(hx,hy,hz,hx-vx*ion*.5,hy-vy*ion*.5,hz-vz*ion*.5,core*.5,.2,0xFFFFFF,.8,2.6);Telegraph+=3;
-                int n=st.Phase==NativeHazardPhase.Active?60:Count(24);
-                for(int i=0;i<n;i++){double f=H(index,st.Cycle,i),d=f*ion*.9;double jit=(H(index,i,50)-.5)*(1+f*6);Hex(hx-vx*d+jit*.3,hy-vy*d+(H(index,i,51)-.5)*(1+f*4),hz-vz*d+(H(index,i,52)-.5)*(1+f*5),.18+f*.3,i%3==0?0xFFE0B0:0xCFF4FF,.9*(1-f),true,2.4);Telegraph++;}
-                if(st.Phase==NativeHazardPhase.Active){double dx=hx-ex;if(Math.Abs(dx)<10){double k=1-Math.Abs(dx)/10;Hex(hx,hy,hz,30*k,0xE8F8FF,.5*k,true,1.6);Telegraph++;}}
+                HexStreak(hx,hy,hz,hx-vx*ion,hy-vy*ion+ion*.05,hz-vz*ion,core*.9,coma*.25,0xBFF0FF,.55,1.8);
+                HexStreak(hx,hy,hz,hx-vx*dust,hy-vy*dust+dust*.18,hz-vz*dust+dust*.12,core*1.4,coma*.6,0xFFD8A0,.32,1.5);
+                HexStreak(hx,hy,hz,hx-vx*ion*.5,hy-vy*ion*.5,hz-vz*ion*.5,core*.5,.2,0xFFFFFF,.7,2.2);Telegraph+=3;
+                int n=st.Phase==NativeHazardPhase.Active?60:24;
+                for(int i=0;i<n;i++){double f=H(index,st.Cycle,i),d=f*ion*.9;double jit=(H(index,i,50)-.5)*(1+f*6);Hex(hx-vx*d+jit*.3,hy-vy*d+(H(index,i,51)-.5)*(1+f*4),hz-vz*d+(H(index,i,52)-.5)*(1+f*5),.18+f*.3,i%3==0?0xFFE0B0:0xCFF4FF,.75*(1-f),true,2.2);Telegraph++;}
+                if(st.Phase==NativeHazardPhase.Active){double dx=hx-ex;if(Math.Abs(dx)<10){double k=1-Math.Abs(dx)/10;Hex(hx,hy,hz,Math.Min(10*k,cap),0xE8F8FF,.22*k,true,1.4);Telegraph++;}}
             }
             if(st.Phase==NativeHazardPhase.Clear)
             {

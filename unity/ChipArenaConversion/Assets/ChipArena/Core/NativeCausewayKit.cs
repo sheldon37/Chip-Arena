@@ -399,10 +399,10 @@ namespace ChipArena.UnityConversion
             {
                 var h=hazards[i];if(h==null)continue;
                 if(h.kind==NativeFactoryHazards.Press)StarRig(h,round,clock,i);
-                else if(NativeCyberCityHazards.IsMaglev(h))LaneRig(h,NativeCausewayLooks.CometAt(h,phase,round,fightAt,now),render);
+                else if(NativeCyberCityHazards.IsMaglev(h)){var st=NativeCausewayLooks.CometAt(h,phase,round,fightAt,now);LaneRig(h,st,render);CometCore(h,st,render);}
                 else if(h.kind==NativeFactoryHazards.Vent){NativeCausewayLooks.WindAt(h,round,clock,out double w,out double g,out _);if(g>gust||w>gustWarn){gust=Math.Max(gust,g);gustWarn=Math.Max(gustWarn,w);gustAx=h.axis.z;gx0=h.a.x-h.size.x/2;gx1=h.a.x+h.size.x/2;}}
             }
-            Banners(render,gust,gustWarn,gustAx,gx0,gx1);Floaters(render);Arch(render);Asteroids(render);
+            Banners(render,gust,gustWarn,gustAx,gx0,gx1);Floaters(render);Arch(render);CrownRuins(render);Asteroids(render);
         }
         private void StarRig(MapHazard h,int round,double clock,int index)
         {
@@ -483,6 +483,28 @@ namespace ChipArena.UnityConversion
                 Parts.Add(x,y,z,.62,.5,1.1,q,Stone);Parts.Add(x,y,z,.64,.08,1.12,q,key?Crystal:Rune,false);if(key)Parts.Add(x,y+.62,z,.18,.3,.18,q*FactoryQ.Axis(0,1,0,t*.8),Crystal,false);
             }
         }
+        private void CometCore(MapHazard h,in NativeHazardState st,double t)
+        {
+            // the comet's nucleus: a dark, tumbling lump of ice with bright facets under its coma
+            if(!NativeCausewayLooks.CometHead(h,st,out double x,out double y,out double z,out double near))return;double s=.35+.35*near;var q=FactoryQ.Axis(.5,.8,.3,t*3.1);
+            Parts.Add(x,y,z,s,s*.8,s*.9,q,Comet,false);Parts.Add(x,y,z,s*.8,s,s*.7,q*FactoryQ.Axis(0,1,0,.8),Crystal,false);Parts.Add(x,y,z,s*.6,s*.6,s*1.1,q*FactoryQ.Axis(1,0,0,.6),Dark,false);
+        }
+        /// <summary>Above each crown its tower's lost storeys float apart: masonry fragments with their rune courses, turning slowly
+        /// (index k of <see cref="CrownStones"/>; the lowest is 7 m over the crown).</summary>
+        public const int CrownStones=7;
+        public static void CrownStone(int side,int k,double t,out double x,out double y,out double z,out double size,out double spin)
+        {
+            x=side*(33+Math.Sin(k*2.3+side)*3.2);z=side*Math.Cos(k*1.7+.4)*5.2;y=11.6+k*1.35+.35*Math.Sin(t*.29+k*1.9+side);size=1.0+.25*((k*7+3)%5);spin=t*(.03+.01*k)*(k%2==0?1:-1)+k;
+        }
+        private void CrownRuins(double t)
+        {
+            for(int side=-1;side<=1;side+=2)for(int k=0;k<CrownStones;k++)
+            {
+                CrownStone(side,k,t,out double x,out double y,out double z,out double s,out double spin);var q=FactoryQ.Axis(.2,1,.15,spin)*FactoryQ.Axis(1,0,0,.25*Math.Sin(k));
+                Parts.Add(x,y,z,s,s*.55,s*.8,q,Stone);Parts.Add(x,y-s*.5,z,s*.9,s*.12,s*.7,q,Trim,false);Parts.Add(x,y+s*.05,z,s*1.02,.06,s*.82,q,k%3==0?Cold:Rune,false);
+                if(k%3==1)Parts.Add(x,y+s*.75,z,s*.2,s*.5,s*.2,q,Stone);
+            }
+        }
         private void Asteroids(double t)
         {
             // near rocks round the void, always outside the bounds (orbit radius 58 m and more), turning slowly
@@ -490,7 +512,9 @@ namespace ChipArena.UnityConversion
             {
                 double r=58+H(501,i)*90,w=(.006+H(501,i,1)*.01)*(i%2==0?1:-1),a=H(501,i,2)*2*Math.PI+t*w,y=-50+H(501,i,3)*80+Math.Sin(t*.05+i)*2;
                 double x=Math.Cos(a)*r*1.25,z=Math.Sin(a)*r;double sz=1.2+Math.Pow(H(501,i,4),2)*6;var q=FactoryQ.Axis(H(501,i,5)-.5,1,H(501,i,6)-.5,t*(.05+H(501,i,7)*.15)+i);
-                Parts.Add(x,y,z,sz,sz*.7,sz*.8,q,Rock,sz>3);Parts.Add(x,y,z,sz*.7,sz*.85,sz*.6,q*FactoryQ.Axis(0,1,0,.9),Rock,false);
+                // a lumpy rock: three turned masses of their own proportions, one offset
+                Parts.Add(x,y,z,sz,sz*.62,sz*.78,q,Rock,sz>3);Parts.Add(x,y,z,sz*.72,sz*.8,sz*.58,q*FactoryQ.Axis(.3,1,.2,.9),Rock,false);
+                Parts.Add(x+sz*.35,y+sz*.2,z-sz*.15,sz*.5,sz*.42,sz*.55,q*FactoryQ.Axis(1,.4,0,1.3),Rock,false);
                 if(i%5==0)Parts.Add(x,y+sz*.6,z,sz*.12,sz*.35,sz*.12,q,i%10==0?Violet:Crystal,false);
             }
         }

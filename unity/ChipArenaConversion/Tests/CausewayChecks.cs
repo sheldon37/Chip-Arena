@@ -138,11 +138,16 @@ namespace ChipArena.UnityConversion
                 Check(y-.9-under>=NativeCausewayKit.Clearance,"arch stone "+k+" clears the tops under it");
                 Check(Math.Abs(x)>3.2||y>7,"arch stone "+k+" over the Breach");
             }
+            for(double t=0;t<200;t+=3.7)for(int side=-1;side<=1;side+=2)for(int k=0;k<NativeCausewayRig.CrownStones;k++)
+            {
+                NativeCausewayRig.CrownStone(side,k,t,out double x,out double y,out double z,out double sz,out _);double under=tops.Where(b=>x+sz>b.X0&&x-sz<b.X1&&z+sz>b.Z0&&z-sz<b.Z1&&b.Y1<y).Select(b=>b.Y1).DefaultIfEmpty(-99).Max();
+                Check(y-sz*1.2-under>=NativeCausewayKit.Clearance,"crown stone "+side+"/"+k+" clears the tops under it");
+            }
             // the rig and the effects: the replicated state's, deterministic, telegraphs never reduced, allocation free per frame
             var looks=NativeCausewayLooks.Resolve(look.kitLooks);var rig=new NativeCausewayRig(looks,map);var fx=new NativeCausewayFx();fx.Prepare(map);
             Check(rig.Pylons==8&&rig.Braziers==6&&rig.Spires==2,"the rig finds the pylons, braziers and spires");
             double fight=10;var star=map.hazards.First(h=>h.kind=="press");double impact=fight+NativeFactoryHazards.ArmDelay+star.start+star.offset+(star.period-star.warn-star.rise-star.dwell-star.travel)+star.warn+star.rise;
-            foreach(double t in new[]{fight+1,impact-1.5,impact-.2,impact+.1,impact+1,fight+28.5,fight+30.1,fight+35.5})
+            foreach(double t in new[]{fight+1,fight+12,fight+16,fight+18.5,fight+25,impact-1.5,impact-.2,impact+.1,impact+1,fight+28.5,fight+30.1,fight+35.5})
             {
                 FactoryPart[] Parts(){rig.Build(map.hazards,3,NativePhase.Fight,fight,t,t);return rig.Parts.Items.Take(rig.Parts.Count).ToArray();}
                 Check(Parts().SequenceEqual(Parts()),"the rig is deterministic at "+t);
