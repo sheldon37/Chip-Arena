@@ -235,6 +235,8 @@ namespace ChipArena.UnityConversion
             body.Helm=!body.Hood&&WearsHelm(a.Id);
             // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
+            // A rifle or machine gun at rest stays off the shoulder (the game pose's low carry has its butt by the shoulder).
+            if(a.Weapon==WeaponId.Rifle||a.Weapon==WeaponId.MachineGun)grasp.Unshoulder=1-Mathf.Clamp01(rig.GunAimWeight);
             VisualLeftSeat(ref grasp,a,ChipLookOf(a.Id));
             VisualArmsOf(ref grasp,a,arms,ChipLookOf(a.Id));
             // The draft's plant on the device (`support`): the left hand keeps the stage's offset from the right wrist on the

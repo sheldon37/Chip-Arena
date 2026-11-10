@@ -628,6 +628,8 @@ namespace ChipArena.UnityConversion
                 WritePose();fresh=false;lastTime=time;
             }
             private GunMotion gunMotion;
+            /// <summary>The arena gun pose's gun-up weight (GunMotion.AimWeight; 1 before any gun pose).</summary>
+            public float GunAimWeight=>gunMotion?.AimWeight??1f;
             private void GunGaitPose(Actor a,Vector3 position,float time)
             {
                 Weapon=a.Weapon;Set=0;if(gunMotion==null)gunMotion=new GunMotion();gunMotion.JumpLayer=JumpLayer;gunMotion.SprintLayer=SprintLayer;gunMotion.Locomotion=RangedLocomotion;
