@@ -163,6 +163,56 @@ The owner's song **Neon Substation** (Suno, 2026-11-10; 227.6 s) plays under the
 about 132 BPM (measured), not 128: the lights follow its spectrum as they follow any song, while the hazards keep the 128 BPM
 bar grid on the match clock, so its drops do not land on the hazards' bars.
 
+## Stage art (2026-11-10): modelled meshes, real materials, and the Greys
+
+Owner (2026-11-10): "Are the new maps voxel? They look voxel lol ... Please improve the quality of the maps- Like better material
+design; Better modeling. The DJ and people on metro map; Lets make those into Aliens (The design of Greys) ... Yes lets move
+away from box built ... Make use of unity engine." Branch `claude/art-club` (from `claude/stage-art`); the recipe and the
+club's own notes are in docs/arenas/STAGE-ART.md (9). Status: **implemented on the branch, seen in the Editor; not merged, not
+released.** Presentation only: the map record, the colliders, nav, the hazards and their timings, the spawns and every rules
+check are untouched.
+
+With the stage bank `ChipArenaStageClub` (local, git-ignored: it travels in the builder's Drive zip) the club draws as modelled
+art lit by the stage shader (ChipArena/StageLit) in place of every dressed block, the kit's ~2,300 boxes, the rig's modelled
+parts and the backdrop's near sector. Without the bank every box draws exactly as before.
+
+- **The shell.** Brick (courses and mortar in the shader, grime baked from the floors) with five arches a side onto the
+  galleries (dark voussoir rings, stone keys, sills and imposts), the old crane rail as a riveted I-beam on stone corbels,
+  copper bus bars on porcelain insulators and enamel warning plates over the mezzanines, the great south window's riveted
+  I-section mullions and glazing bars, the neon sign as round tubes on a riveted steel panel (the bolt a real zigzag), the LED
+  wall's cabinet frame. Above the play space: brick to the eaves, ten riveted Pratt trusses, purlins, the roof and its
+  night-blue ridge lantern, enamel pendant lamps, strings of suspension insulators and their cables, the parked gantry crane.
+- **The hall.** A polished concrete floor; the LED dance floor's aluminium frame between the rig's lit tiles; the lighting
+  truss and the towers as aluminium tube truss (the towers with a black scrim sock: they are cover); the video cube's frame and
+  mullions; cast-iron columns (plinth, moulded base, swelling shaft, riveted collars, capital); steel decks on joists with
+  board tops; smoked-glass rails with chrome posts; ribbed stage barricades; treads with chrome nosings.
+- **The stage end.** The stage with its panelled front and footlights; the speaker stacks (four rounded cabinets, baffles
+  with wells and bezels for the rig's cones, the horn cabinet's flared mouths, handles); the DJ console with two decks (platters,
+  tone arms), the mixer and a laptop.
+- **The bar and the lounge.** A reeded walnut bar with pilasters under a black top, the brass foot rail and taps; the back bar's
+  carcass, smoked mirror and glowing lathe-turned bottles; the brick pillar; velvet sofas (cushions, arms, brass buttons),
+  padded booth partitions, pleated velvet drapes on the rooms' hall walls; go-go podiums; planters with succulents; lightbox
+  posters in the rooms the pilots start in.
+- **Breakables** (their own models while they stand to damage stage 2, soot growing with damage; then the dressing's stub):
+  cable-drum tables with a lamp, slatted pine crates, stacks of steel kegs, road cases with aluminium edges and ball corners.
+- **The rig** (Core NativeSubstationArt poses it from NativeClubRig): the woofer cones in their wells (pumping, thrown out at
+  the drop, the ring round each dust cap in the build's and the burst's light), the sixteen moving heads (a yoke turned to the
+  pan, a ribbed head along the aim, the lens in the show's colour), the laser wall's emitter posts rising from their slots and
+  riding the pass, the two faceted mirror balls turning.
+- **The Greys.** The DJ and the 64 crowd figures (32 on Low) are Grey aliens (an original design; STAGE-ART.md 9): tall and
+  thin, a large cranium, big black almond eyes, nose and mouth slits, long arms and fingers. The crowd bobs, sways and throws its
+  arms up exactly as the box rig's did (the same numbers); four looks and the rig's heights. The DJ nods on the beat with a hand at
+  the headphones, the other on the mixer or thrown up through the build and the drop. The phone lights are unchanged.
+- **Still the rig's boxes:** the LED tiles, the LED wall's panels and the cube's (flat lit panels, a colour each per frame).
+  **Still the backdrop's:** the river, the bridge, the cooling tower and the far bank.
+- **Low tier:** the bank's Low tier (the same art, about a quarter of the triangles; the reflection probe at 64 px).
+
+Files: Core `NativeSubstationArt.cs` (new), `NativeClubRig.cs` (its outputs for the poses), `NativeClubKit.cs` (Family, Owner,
+Kind per part), `NativeStageArt.cs` (the bank's line, the pose buffer 512); Runtime `NativeClubPresentation.cs` (the art's
+Prepare and Render, the boxes behind `if(!ArtDrawn)`); Tests `ClubArtChecks.cs` (`--club-art`), `ClubArtLayout.cs`,
+`StageArtLayout.cs` and `Program.cs` (a line each); tools/stages `club_art.py`, `club_hall.py`, `club_props.py`, `club_greys.py`,
+`club_kit.py`.
+
 ## Not done / not seen
 
 - Not playtested by people; bots were only watched in captures. The vent shove's strength is a first guess.

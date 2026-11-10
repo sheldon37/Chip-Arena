@@ -40,6 +40,10 @@ namespace ChipArena.UnityConversion
         private readonly List<ChunkDraw> chunks=new List<ChunkDraw>();
         private readonly Dictionary<string,BlockDraw> blocks=new Dictionary<string,BlockDraw>(StringComparer.Ordinal);
         private Piece[][] rig=Array.Empty<Piece[]>();private bool[] rigShadow=Array.Empty<bool>();
+        // Rig parts a pose draws InstanceFrom times or more in a frame are drawn instanced (the glow per instance): made on first use
+        private const int InstanceFrom=8,BatchSize=256;
+        private sealed class Batch{public readonly Matrix4x4[] M=new Matrix4x4[BatchSize];public readonly Vector4[] Glow=new Vector4[BatchSize];public int Count;public Piece Piece;public ShadowCastingMode Shadow;}
+        private int[] slotCount=Array.Empty<int>();private Batch[] batches=Array.Empty<Batch>();private bool instanced;
         private int lastFrame=-10;private readonly HashSet<int> built=new HashSet<int>();
         private static readonly int GlowId=Shader.PropertyToID("_StageGlow"),TintId=Shader.PropertyToID("_StageTint"),GlowFlag=Shader.PropertyToID("_Glow");
         /// <summary>The art is loaded for the prepared map (its boxes give way to it).</summary>
@@ -65,6 +69,8 @@ namespace ChipArena.UnityConversion
                 foreach(var c in p.Static)
                 {
                     var cd=new ChunkDraw{Plan=c};bool any=false;
+                    // a chunk wholly above the play space's ceiling (a roof over the hall) casts no shadow: it would shade the look's key
+                    bool roof=map.bounds!=null&&map.bounds.ceiling>0&&c.Min.Y>=map.bounds.ceiling-.05f;
                     for(int t=0;t<NativeStageArt.Tiers;t++)
                     {
                         var piece=PieceOf(bank,c.Props[t]);if(piece==null)continue;
@@ -72,7 +78,7 @@ namespace ChipArena.UnityConversion
                         if(t>0&&c.Props[t]==c.Props[t-1]&&cd.Tiers[t-1]!=null){cd.Tiers[t]=cd.Tiers[t-1];continue;}
                         var go=new GameObject("chunk "+c.Id+" "+t);go.transform.SetParent(root.transform,false);
                         go.AddComponent<MeshFilter>().sharedMesh=piece.Mesh;var r=go.AddComponent<MeshRenderer>();
-                        r.sharedMaterials=piece.Subs>1?new[]{solid,glow}:new[]{solid};r.shadowCastingMode=ShadowCastingMode.TwoSided;r.receiveShadows=true;
+                        r.sharedMaterials=piece.Subs>1?new[]{solid,glow}:new[]{solid};r.shadowCastingMode=roof?ShadowCastingMode.Off:ShadowCastingMode.TwoSided;r.receiveShadows=true;
                         r.lightProbeUsage=LightProbeUsage.Off;r.reflectionProbeUsage=ReflectionProbeUsage.BlendProbes;r.enabled=false;cd.Tiers[t]=r;any=true;
                     }
                     if(!any)continue;cd.Box=new Bounds(new Vector3((c.Min.X+c.Max.X)*.5f,(c.Min.Y+c.Max.Y)*.5f,(c.Min.Z+c.Max.Z)*.5f),new Vector3(c.Max.X-c.Min.X,c.Max.Y-c.Min.Y,c.Max.Z-c.Min.Z));chunks.Add(cd);
@@ -83,7 +89,7 @@ namespace ChipArena.UnityConversion
                     if(b?.id==null||!p.Blocks.TryGetValue(b.id,out var props))continue;var bd=new BlockDraw{Tiers=new Piece[NativeStageArt.Tiers]};
                     for(int t=0;t<NativeStageArt.Tiers;t++)bd.Tiers[t]=PieceOf(bank,props[t]);bd.Max=NativeBlockLooks.StageMax(b,null,out bd.S1,out bd.S2);blocks[b.id]=bd;
                 }
-                rig=new Piece[rigSlots?.Length??0][];rigShadow=new bool[rig.Length];
+                rig=new Piece[rigSlots?.Length??0][];rigShadow=new bool[rig.Length];slotCount=new int[rig.Length];batches=new Batch[rig.Length*NativeStageArt.Tiers];instanced=SystemInfo.supportsInstancing;
                 for(int s=0;s<rig.Length;s++){var props=p.RigProps(rigSlots[s]);rig[s]=new Piece[NativeStageArt.Tiers];rigShadow[s]=casts==null||casts(s);if(props!=null)for(int t=0;t<NativeStageArt.Tiers;t++)rig[s][t]=PieceOf(bank,props[t]);}
                 probe=new GameObject("Stage art probe").AddComponent<ReflectionProbe>();probe.transform.SetParent(root.transform,false);
                 probe.mode=ReflectionProbeMode.Realtime;probe.refreshMode=ReflectionProbeRefreshMode.ViaScripting;probe.timeSlicingMode=ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
@@ -133,6 +139,7 @@ namespace ChipArena.UnityConversion
                 for(int s=0;s<piece.Subs;s++)Graphics.DrawMesh(piece.Mesh,m,s==0?solid:glow,0,null,s,block,ShadowCastingMode.TwoSided,true);Drawn++;
             }
             // the rig
+            if(pose!=null){Array.Clear(slotCount,0,slotCount.Length);for(int i=0;i<pose.Count;i++){int sl=pose.Slot[i];if(sl>=0&&sl<slotCount.Length)slotCount[sl]++;}}
             if(pose!=null)for(int i=0;i<pose.Count;i++)
             {
                 int slot=pose.Slot[i];if(slot<0||slot>=rig.Length)continue;int o=i*12;var at=new Vector3(pose.Place[o+3],pose.Place[o+7],pose.Place[o+11]);
@@ -141,7 +148,18 @@ namespace ChipArena.UnityConversion
                 m.m20=pose.Place[o+8];m.m21=pose.Place[o+9];m.m22=pose.Place[o+10];m.m23=pose.Place[o+11];m.m33=1;m*=piece.Place;
                 int k=i*4;block.Clear();block.SetVector(GlowId,new Vector4(pose.Tint[k],pose.Tint[k+1],pose.Tint[k+2],1));
                 var shadow=rigShadow[slot]?ShadowCastingMode.On:ShadowCastingMode.Off;
+                // a part drawn many times a frame (a crowd's figures) goes out instanced, in batches by slot and tier
+                if(instanced&&slotCount[slot]>=InstanceFrom)
+                {
+                    var b=batches[slot*NativeStageArt.Tiers+tier]??=new Batch();if(b.Count<BatchSize){b.M[b.Count]=m;b.Glow[b.Count]=new Vector4(pose.Tint[k],pose.Tint[k+1],pose.Tint[k+2],1);b.Count++;b.Piece=piece;b.Shadow=shadow;Drawn++;continue;}
+                }
                 for(int s=0;s<piece.Subs;s++)Graphics.DrawMesh(piece.Mesh,m,s==0?solid:glow,0,null,s,block,s==0?shadow:ShadowCastingMode.Off,true);Drawn++;
+            }
+            for(int i=0;i<batches.Length;i++)
+            {
+                var b=batches[i];if(b==null||b.Count==0)continue;block.Clear();block.SetVectorArray(GlowId,b.Glow);
+                for(int s=0;s<b.Piece.Subs;s++)Graphics.DrawMeshInstanced(b.Piece.Mesh,s,s==0?solid:glow,b.M,b.Count,block,s==0?b.Shadow:ShadowCastingMode.Off,true);
+                b.Count=0;
             }
             Probe(low);
             return true;

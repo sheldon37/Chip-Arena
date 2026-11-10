@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The distances (m, eye to a piece's bounds) inside which the Fine and the Mid tier draw.</summary>
         public const float FineReach=16f,MidReach=38f;
         /// <summary>The stages with art: map id, bank name. A new stage adds its line.</summary>
-        private static readonly (string map,string bank)[] Banks={(NativeSanctumLooks.MapId,"ChipArenaStageSanctum")};
+        private static readonly (string map,string bank)[] Banks={(NativeSanctumLooks.MapId,"ChipArenaStageSanctum"),(NativeClubLooks.MapId,NativeSubstationArt.Bank)};
         public static string BankOf(string mapId){if(mapId==null)return null;foreach(var b in Banks)if(b.map==mapId)return b.bank;return null;}
         /// <summary>The tier a piece draws at from the eye (the low graphics tier always draws the Low one).</summary>
         public static int TierAt(float distance,bool low)=>low?Low:distance<FineReach?Fine:distance<MidReach?Mid:Low;
@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeStageArtPose
     {
-        public const int Capacity=256;
+        public const int Capacity=512;
         public int Count;public readonly int[] Slot=new int[Capacity];public readonly float[] Place=new float[Capacity*12],Tint=new float[Capacity*4];
         public void Clear()=>Count=0;
         /// <summary>A draw at translation t, rotation q (Unity quaternion), scaled by s along the prop's y.</summary>

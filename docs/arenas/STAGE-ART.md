@@ -210,3 +210,78 @@ Not done / not seen:
   quantised vertex format in the bank would halve it.
 - The main menu's 3D preview draws no Sanctum dressing (as before); native Windows build, multiplayer guests and the killcam on
   the art: not run.
+
+## 9. Substation 128 (`club`): the club's art and the Greys
+
+2026-11-10 · Claude (stage art, phase 2) · branch `claude/art-club` from `claude/stage-art` (`d0c8df39`). Status: **implemented
+on the branch and seen in the shared Editor; not merged, not released.** The bank is local (git-ignored). The club's own notes:
+docs/arenas/CLUB.md "Stage art".
+
+Scripts (tools/stages/): `club_art.py` (the run, the structure and furniture on their blocks), `club_hall.py` (the shell, the
+hall above the play space, the galleries and the pit, the substation's gear, drapes, posters), `club_props.py` (the breakable
+props, the rig's machines), `club_greys.py` (the Grey DJ and crowd), `club_kit.py` (finishes and helpers they share: rounded
+boxes `rbox`, lofted skins `skin`/`limb`/`ring`, I-beams, rivets, a wall plane with arched openings `arcade`, and `kit_part`,
+which turns a kit bar into a round tube and a lit strip into a glow slab). Core: `NativeSubstationArt.cs` (slots and `Pose`),
+`NativeClubRig`'s new outputs, `NativeClubKit`'s Family/Owner/Kind. Tests: `ClubArtLayout.cs` (the layout's club part),
+`ClubArtChecks.cs` (`--club-art`, also in the full run).
+
+What differs from the Sanctum's recipe, for the next stage to borrow:
+- **Lit screens stay the rig's.** The dance floor's 270 tiles, the LED wall's 162 panels and the cube's 64 take a colour each
+  every frame, so they stay instanced NativeBlockLit boxes (flat lit panels are what they are); the art models the frames
+  round them. The rig puts them first (`NativeClubRig.Screens`) and the presentation fills only those while the art draws.
+- **The backdrop's near sector gives way too.** The hall above 12 m, the galleries and the pit were box-built scenery
+  (NativeClubScenery's Near sector); the bank models them and the presentation skips that sector while the art draws. The far
+  sectors (the river, the bridge, the city) stay.
+- **Cover reads as cover.** A rail is a smoked-glass pane between chrome posts and a truss tower has a black scrim sock in its
+  lattice, because both stop shots; the gallery's rail (outside the bounds) is open bars.
+- **A pose buffer of 512** (`NativeStageArtPose.Capacity`, was 256): the crowd is 64 figures of four draws.
+- **Each rig prop is baked apart** (`club_props.bank_props` sets the props 40 m apart for the occlusion bake), so props that
+  share the origin of their own frames do not shade one another.
+- **Budget.** `club_art.py --stats` prints where each tier's vertices go. The Mid tier is what most of the hall shows most of
+  the time (Fine reaches 16 m), so the tiers were cut by what is seen: rivets, buttons and glazing bars are Fine only, the
+  roof's gussets and lantern bars Fine only, the truss lacing four-sided (three on Mid), cushions `rbox` with one segment.
+
+The Greys (the owner: "The DJ and people on metro map; Lets make those into Aliens (The design of Greys)"): an original Grey,
+tall and thin with smooth grey skin (the shader's wax surface, so the light wraps), a bulbous cranium lofted from nine rings,
+big black almond eyes lying in the face's own curve, nose and mouth slits, a narrow torso, long arms and three long fingers
+and a thumb. Rigid parts in their own frames (club_greys.py lists them), posed by `NativeSubstationArt` from the rig's own
+numbers (`NativeClubRig.CrowdPose`, `DjNod`, `DjArm`, `DjLift`): a crowd figure is four draws (legs stretched to the bobbing
+hip, body and head leaning with the sway, two arms hanging or turned over and waving); four looks (grey with a cyan glow
+necklace, pale green-grey with magenta glow bracelets, blue-grey in a silver suit, light grey in a dark top with a violet chest
+band) and the rig's own heights. The DJ is taller and paler, in a violet jacket with a flared collar and glow piping and chrome
+headphones with glowing cups: six draws (legs, torso, head nodding and tipping on the beat, the right arm bent to the
+headphone, the left upper arm and forearm: the hand on the mixer, thrown up through the build and the drop). The crowd's phone
+lights are the effects' (unchanged: Core NativeClubFx.Phones reads the same places).
+
+Rebuild: `--stage-layout club LAYOUT.json`, then
+`blender --background --factory-startup --python tools/stages/club_art.py -- --layout LAYOUT.json --out <Assets>/LocalAssets`
+(about 15 s; `--preview DIR [--views a,b]` renders the named views, `--tiers`, `--no-ao`, `--static-only`, `--stats`).
+
+Seen in the Editor (2026-11-10; a match, one idle bot, god mode, the game's camera placed by `maincam`): ten views before (the
+box kit) and after (the art): the hall from the bar and from the stage, the floor and truss, the DJ, a speaker stack, the west
+gallery's crowd, the pit's crowd, the bar, a side lane's booth, the mezzanine; the hazards on the art (the charged floor live and
+charging, the laser wall's posts riding their slots, the bass drop with the cones thrown out white); the Low graphics tier.
+
+The bank: 15,903,565 bytes, 618 props. Static: 82 chunks; Fine 156,606 triangles (138,590 vertices), Mid 101,936 (94,847), Low
+34,790 (45,962). Rig: 25 parts; 15,190 / 9,419 / 4,995 triangles. Breakables: 6 meshes for 20 blocks; 10,224 / 4,864 / 812.
+
+Performance (Editor, High tier, the hall from the bar toward the stage, 10 s, runs taken back to back): the box kit 1,236 frames,
+mean 8.09 ms, p95 9.28 ms (an earlier run 7.76 / 8.69); the art 1,194 frames, mean 8.38 ms, p95 9.20 ms: level with the boxes
+within the runs' spread, not under them. Before the rig's repeated parts were drawn instanced (the drawer now batches a slot
+posed eight times or more a frame with `DrawMeshInstanced`, its glow per instance) the art took 10.25 / 11.66 ms.
+
+Shared foundation changes made for the club (small and general): `NativeStageArtPose.Capacity` 256 to 512; `NativeStageArtDraw`
+draws a rig slot posed eight or more times a frame instanced; a static chunk wholly above the map's ceiling casts no shadow
+(a roof over the hall would shade the look's key; the Sanctum has no such chunk); `NativeStageArt.Banks` and
+`StageArtLayout.Write` take the club's line.
+
+Not done / not seen:
+- The frame time is level with the box kit's, not below it.
+- The Mid tier's cast-iron columns read blotchy under the toon grade a few metres off (the iron surface's rust patches); the Low
+  tier's Greys have mitts for hands and the Low platters are octagons.
+- The gallery Greys stand 25 m and more from the floor against their wall of light: they read as Greys from the mezzanines,
+  as silhouettes from the floor.
+- No bank-absent run in the Editor with this branch's code (the before captures are the foundation commit, where the club has
+  no bank line; the fallback is checked by source in ClubArtChecks). Native Windows build, multiplayer guests, the killcam on
+  the art and the main menu's preview: not run.
+- The stained LED screens are still boxes by design; the far backdrop is still box-built.
