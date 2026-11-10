@@ -10,6 +10,7 @@
 - **Checks:** CoreTests `--dev-tools` (7025, with the new PLAYERS pins: one tab, the content's DEV classes, every class icon, the switch's on/off), the full suite, the Unity compile, the Editor build checks.
 - **Seen in the Editor:** the PLAYERS tab on you (roster, card, the class tiles with all seven DEV classes, actions, cheats, tuning, chips) and on a bot (their class NOW, their actions), the Dummies tab's class tiles, the Monsters tab's roster.
 - **Not seen / not done:** a DEV command actually applied from the new tiles under DEV Abuse online (the same commands as before); a swap from the new button in a match; the panel on a 1280x720 screen.
+- **Released** to the test channel (Windows builder): merged into shared at `64e4cca8`; full CoreTests 988 groups and the Unity compile passed (the first release run stopped on the Cyber Lord names check, fixed in `0ad7bec2`: the class tiles read descriptions through NativeLoadoutText); the Editor build checks passed on `38669790` (only docs and that line since); published revision `639298779581807371`. Not used by a person yet.
 
 ## 2026-11-09 — Claude: the Top Dog's feeding made real, the pop keeping the kill effect, a more real gib, Hotdog Friends squeezing into the door, Preview Intro in the pilot's own colours, the parry as a hologram (owner request; the pop's death record at the owner's word, for Astra to review)
 
