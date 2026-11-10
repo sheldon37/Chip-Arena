@@ -466,18 +466,12 @@ namespace ChipArena.UnityConversion
         // body's middle until its shoulders are square to Feast.Dir (eased in at the catch and out after), before the visual body, its hands
         // and the sausages are posed from it: it plants facing its victim, the right arm feeds from the right and the left cups the chin
         // from the left, whatever the camera does. Presentation only: the pilot's yaw (aim, view, rules) is untouched.
-        private const float DogTurnIn=.2f,DogTurnOut=.3f;
-        /// <summary>How far toward facing along its feast a Top Dog's body is turned at `time` (0 none, 1 square to it).</summary>
-        internal static float DogFacingWeight(NativeDogFeast f,float time)
-        {
-            if(f==null||f.Catch<-50)return 0;float end=f.Snap>-50?Mathf.Min(f.Snap,f.Release):f.Release;
-            float w=Mathf.Clamp01((time-f.Catch)/DogTurnIn)*(1-Mathf.Clamp01((time-end)/DogTurnOut));return w*w*(3-2*w);
-        }
-        /// <summary>PrepareCapturedPose: a feeding Top Dog's posed rig turned to face along its feast (see DogFacingWeight).</summary>
+        /// <summary>PrepareCapturedPose: a feeding Top Dog's posed rig turned until its shoulders are square to its feast (by
+        /// NativeDogView.Facing).</summary>
         private void DogFeastTurn(CapturedAnimation.Player rig,Actor a,float time)
         {
             if(rig==null||a==null||a.SourceSpec!=NativeTopDog.Spec||FirstPerson&&a.Id==LocalId)return;var f=NativeDogView.Of(a)?.Feast;
-            float w=DogFacingWeight(f,time);if(w<=0)return;var dir=Vec(f.Dir);dir.y=0;if(dir.sqrMagnitude<1e-4f)return;
+            float w=NativeDogView.Facing(f,time);if(w<=0)return;var dir=Vec(f.Dir);dir.y=0;if(dir.sqrMagnitude<1e-4f)return;
             var root=rig.Root.transform;float now=root.eulerAngles.y;var b=rig.Bones;
             // The way the shoulders face (the line from the left upper arm to the right, turned a quarter ahead), else the root's.
             if(b!=null&&b.Length>CapturedRig.RArm&&b[CapturedRig.LArm]!=null&&b[CapturedRig.RArm]!=null)
@@ -580,7 +574,7 @@ namespace ChipArena.UnityConversion
             // pelvis turned about itself by what is left (the bind writes it afresh each frame).
             if(f!=null&&r.Pelvis!=null&&r.Upper[0]!=null&&r.Upper[1]!=null)
             {
-                float w=DogFacingWeight(f,time);var across=r.Upper[0].position-r.Upper[1].position;across.y=0;
+                float w=NativeDogView.Facing(f,time);var across=r.Upper[0].position-r.Upper[1].position;across.y=0;
                 if(w>0&&across.sqrMagnitude>1e-6f){float left=Vector3.SignedAngle(Vector3.Cross(across.normalized,Vector3.up),fwd,Vector3.up)*w;if(Mathf.Abs(left)>.01f)r.Pelvis.RotateAround(r.Pelvis.position,Vector3.up,left);}
             }
             for(int h=0;h<2;h++)

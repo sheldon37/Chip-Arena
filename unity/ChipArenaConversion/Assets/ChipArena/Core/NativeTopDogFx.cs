@@ -19,6 +19,15 @@ namespace ChipArena.UnityConversion
         public static ITopDogSource Source;
         public static NativeTopDogKit Of(Actor a)=>a==null||Source==null?null:Source.Of(a.Id);
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;private static float Smooth(float x){x=Clamp01(x);return x*x*(3-2*x);}
+        /// <summary>How far a feeding Top Dog's posed body is turned to face along its feast at `time` (0 none, 1 its shoulders square to
+        /// Feast.Dir): in over TurnIn from the catch, held to the let-go (or the links' snap), out over TurnOut after (Runtime DogFeastTurn;
+        /// owner 2026-11-09: "it puts both his arms on one side of his body").</summary>
+        public const float TurnIn=.2f,TurnOut=.3f;
+        public static float Facing(NativeDogFeast f,float time)
+        {
+            if(f==null||f.Catch<-50)return 0;float end=f.Snap>-50?Math.Min(f.Snap,f.Release):f.Release;
+            return Smooth(Clamp01((time-f.Catch)/TurnIn)*(1-Clamp01((time-end)/TurnOut)));
+        }
         private static Vector3 N(V3 v)=>new Vector3(v.x,v.y,v.z);
         /// <summary>A thrown thing's place at `time`: its sample carried on under its gravity (a peel 23, a pie 12), or where it stopped.</summary>
         public static Vector3 PropAt(NativeDogProp p,float time)
