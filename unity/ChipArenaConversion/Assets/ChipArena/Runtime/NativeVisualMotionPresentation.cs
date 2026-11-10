@@ -151,7 +151,7 @@ namespace ChipArena.UnityConversion
         // just under the belt (ReadyGrip: right, up, forward of the hips, metres), the bore angled to the floor a little ahead and in
         // (ReadyBore), the slide's top toward the front; the arm reaches for the wrist that seats the grip there (the hold's own
         // offset), the elbow down and out. The off hand at the belt beside it (ReadyOff), its wrist straight on the forearm.
-        public static readonly Vector3 ReadyGrip=new Vector3(.10f,-.10f,.17f),ReadyBore=new Vector3(-.22f,-.82f,.52f),ReadyOff=new Vector3(-.03f,-.04f,.15f);
+        public static readonly Vector3 ReadyGrip=new Vector3(.16f,0f,.19f),ReadyBore=new Vector3(-.25f,-.7f,.65f),ReadyOff=new Vector3(.05f,.07f,.17f);
         private static void VisualPistolReady(VisualMotion m,Transform root,float w)
         {
             if(w<=1e-4f||m.RightArm==null||m.RightForearm==null||m.BodyHips==null)return;
