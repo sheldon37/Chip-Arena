@@ -440,14 +440,16 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>body-trauma.ts CrushDebris: a crushed part's boxes cut into ~7.5 cm fragments (a third show the flesh inside)
-    /// thrown along the blow, plus loose objects it carried; pure in age.</summary>
+    /// thrown along the blow, plus loose objects it carried; pure in age. A burst body's (`burst`, the Top Dog's pop; owner 2026-11-09:
+    /// "make the gib effects more realistic") are mostly torn flesh, fresh, darker and deep, with a few bits of bone and the clothes it
+    /// tore through, most of them small and a few large.</summary>
     public sealed class NativeKillDebris
     {
         public readonly int Count,Chunks,Loose;private readonly double[] start,vel,spin,size;public readonly double[] Colors;
         private readonly double[] looseStart,looseVel,looseSpin;private readonly double floor;
         /// <summary><paramref name="sources"/>: world matrices (16 doubles each) and linear colours (3 each) of the crushed
         /// part's meshes; <paramref name="loose"/>: the start positions (3 each) of the objects it carried.</summary>
-        public NativeKillDebris(double[] sources,double[] sourceColors,int sourceCount,double[] loose,int looseCount,double ox,double oy,double oz,double dx,double dy,double dz,double ix,double iy,double iz,double kick,double severity,uint seed,int limit,double floor)
+        public NativeKillDebris(double[] sources,double[] sourceColors,int sourceCount,double[] loose,int looseCount,double ox,double oy,double oz,double dx,double dy,double dz,double ix,double iy,double iz,double kick,double severity,uint seed,int limit,double floor,bool burst=false)
         {
             this.floor=floor;double dl=Math.Sqrt(dx*dx+dy*dy+dz*dz);if(dl*dl<1e-6){dx=0;dy=0;dz=1;dl=1;}dx/=dl;dy/=dl;dz/=dl;
             // Two passes (count, then cut), so any number of source boxes keeps the source's even pick.
@@ -469,7 +471,9 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<Chunks;i++)
             {
                 int c=(int)Math.Floor(i*(double)n/Chunks);double H(int k)=>NativeWoundCarve.Hash(seed,i,k);double h0=H(0),r,g,b;
-                if(h0<.22){NativeKillEffectRules.Linear(NativeKillCaps.Shallow,out r,out g,out b);double s=.8+.3*H(1);r*=s;g*=s;b*=s;}
+                if(burst&&h0<.76){NativeKillEffectRules.Linear(h0<.42?NativeKillCaps.Shallow:h0<.62?NativeKillCaps.Mid:h0<.72?NativeKillCaps.Deep:NativeKillCaps.Bone,out r,out g,out b);double s=h0<.72?.8+.35*H(1):1;r*=s;g*=s;b*=s;}
+                else if(burst){double s=.7+.3*H(1);r=sourceColors[cc[c]*3]*s;g=sourceColors[cc[c]*3+1]*s;b=sourceColors[cc[c]*3+2]*s;}
+                else if(h0<.22){NativeKillEffectRules.Linear(NativeKillCaps.Shallow,out r,out g,out b);double s=.8+.3*H(1);r*=s;g*=s;b*=s;}
                 else if(h0<.3)NativeKillEffectRules.Linear(NativeKillCaps.Bone,out r,out g,out b);
                 else if(h0<.36)NativeKillEffectRules.Linear(NativeKillCaps.Mid,out r,out g,out b);
                 else{double s=.75+.3*H(1);r=sourceColors[cc[c]*3]*s;g=sourceColors[cc[c]*3+1]*s;b=sourceColors[cc[c]*3+2]*s;}
@@ -477,7 +481,7 @@ namespace ChipArena.UnityConversion
                 double x=cp[c*3],y=cp[c*3+1],z=cp[c*3+2],qx=x-ox,qy=Math.Max(y-oy,0),qz=z-oz;if(qx*qx+qy*qy+qz*qz<1e-6){qx=H(2)-.5;qy=.5;qz=H(3)-.5;}
                 double ql=Math.Sqrt(qx*qx+qy*qy+qz*qz);qx/=ql;qy/=ql;qz/=ql;double push=(2+2.6*H(4))*(.6+.6*sev),along=kick*(.35+.55*H(5));
                 vel[i*3]=ix+qx*push+dx*along+(H(6)-.5)*1.4;vel[i*3+1]=iy+qy*push+dy*along+1.2+1.8*H(7);vel[i*3+2]=iz+qz*push+dz*along+(H(8)-.5)*1.4;
-                spin[i*3]=H(9)*14-7;spin[i*3+1]=H(10)*14-7;spin[i*3+2]=H(11)*14-7;size[i]=csz[c]*(.7+.4*H(12));start[i*3]=x;start[i*3+1]=y;start[i*3+2]=z;
+                spin[i*3]=H(9)*14-7;spin[i*3+1]=H(10)*14-7;spin[i*3+2]=H(11)*14-7;size[i]=csz[c]*(burst?.4+1.3*H(12)*H(12):.7+.4*H(12));start[i*3]=x;start[i*3+1]=y;start[i*3+2]=z;
             }
             looseStart=new double[Loose*3];looseVel=new double[Loose*3];looseSpin=new double[Loose*3];
             for(int i=0;i<Loose;i++)

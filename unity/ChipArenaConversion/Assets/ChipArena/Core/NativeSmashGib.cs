@@ -345,6 +345,9 @@ namespace ChipArena.UnityConversion
         public static void Fragments(SmashPlan p,out Vector3 inherit,out float kick,out float severity)
         {
             inherit=Vector3.Zero;kick=0;severity=1;if(p==null||p.Pinned)return;bool train=p.Cause==SmashCause.Train;
+            // A burst belly (owner 2026-11-09: "make the gib effects more realistic"): its torn chunks go out from the middle every way (the
+            // debris's own push), only a little lift on them, not up its travel like a fountain.
+            if(p.Cause==SmashCause.Burst){kick=1.2f;inherit=Vector3.UnitY*1.3f;severity=1;return;}
             // The debris adds up to the kick and about 6 m/s of burst on top: the whole stays under MaxCarry.
             kick=train?6:3;inherit=p.Travel*Math.Min(MaxCarry-kick-7,p.Carry*(train?.8f:.6f))+Vector3.UnitY*(train?1.5f:.8f);severity=train?1:.8f;
         }

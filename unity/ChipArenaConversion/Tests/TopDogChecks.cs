@@ -17,18 +17,18 @@ namespace ChipArena.UnityConversion
         private static int count;private static void Check(bool ok,string what){if(!ok)throw new Exception("Top Dog: "+what);count++;}
         private sealed class Recorder:ITechniqueFxSink
         {
-            public int Draws;public float Hash;public bool Broken;
+            public int Draws,Sprites,Smokes,Drops;public float Hash;public bool Broken;
             private void V(Vector3 v){if(!MathUtil.Finite(v.X)||!MathUtil.Finite(v.Y)||!MathUtil.Finite(v.Z))Broken=true;Hash+=v.X*.13f+v.Y*.17f+v.Z*.19f;Draws++;}
             private void F(float f){if(!MathUtil.Finite(f))Broken=true;}
             public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){V(at);V(color);F(size);}
             public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){V(head);V(velocity);F(width);}
-            public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){V(at);F(opacity);F(size);}
-            public void Sprite(bool view,Vector3 at,Vector3 color,float size,int profile){V(at);F(size);}
+            public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){V(at);F(opacity);F(size);Smokes++;}
+            public void Sprite(bool view,Vector3 at,Vector3 color,float size,int profile){V(at);F(size);Sprites++;}
             public void Line(bool view,Vector3 tail,Vector3 head,Vector3 color,float width,bool shard){V(tail);V(head);}
             public void Band(bool view,Vector3 a,Vector3 b,Vector3 c,Vector3 d,float ua,float ub,Vector3 color){V(a);V(b);V(c);V(d);}
             public void Fire(Vector3 at,Vector3 tint,float opacity,float size,float u,float seed,float floor){V(at);F(opacity);F(size);}
             public void Water(Vector3 at,Vector3 lit,int shade,float opacity,float size,Vector3 segment,float u,float seed,float floor){V(at);}
-            public void Drop(Vector3 head,Vector3 segment,Vector3 color,float coverage,float width,float u,float seed){V(head);V(segment);F(width);}
+            public void Drop(Vector3 head,Vector3 segment,Vector3 color,float coverage,float width,float u,float seed){V(head);V(segment);F(width);Drops++;}
             public void Tongue(bool view,Vector3 tail,Vector3 head,Vector3 color,float width){V(tail);V(head);}
         }
         private sealed class Scene:IKitFxScene
@@ -167,6 +167,22 @@ namespace ChipArena.UnityConversion
             }
             int gushes=0;for(int k=0;k<NativeSmashGib.Gushes;k++)if(NativeSmashGib.Gush(burst,k,out _,out var origin,out var normal,out _,out _,out _,out _)&&Finite(origin)&&Math.Abs(normal.Length()-1)<.01f)gushes++;Check(gushes==NativeSmashGib.Gushes,"blood out of it every way");
             Check(NativeSmashGib.Applies(true,NativeTopDog.Burst,false,"pilot")&&!NativeSmashGib.Applies(false,NativeTopDog.Burst,false,"pilot"),"it gibs with gore on, not off");
+            // More real (owner 2026-11-09: "make the gib effects more realistic"): its torn chunks thrown out from the middle, not up like a
+            // fountain; mostly flesh, few of the clothes, most small and a few large; the pop itself a blood mist and flecks with gore on.
+            NativeSmashGib.Fragments(burst,out var lift,out float burstKick,out _);Check(lift.Length()<2&&burstKick<=1.5f&&Vector3.Dot(lift,Vector3.UnitY)>0,"the burst's chunks go out from the middle, a little lift on them");
+            {
+                var box=new double[]{.3,0,0,0,0,.3,0,0,0,0,.3,0,0,1,0,1};var blue=new double[]{.05,.1,.8};int cloth=0,stock=0;double small=0,large=0;
+                var wet=new NativeKillDebris(box,blue,1,new double[0],0,0,1,0,0,1,0,0,1.3,0,1.2,1,77,64,0,true);var plain=new NativeKillDebris(box,blue,1,new double[0],0,0,1,0,0,1,0,0,1.3,0,1.2,1,77,64,0);
+                for(int i=0;i<wet.Chunks;i++){if(wet.Colors[i*3+2]>wet.Colors[i*3]&&wet.Colors[i*3+2]>.3)cloth++;wet.Chunk(i,.01,out _,out _,out _,out _,out _,out _,out _,out double sz);if(sz<.05)small++;if(sz>.09)large++;}
+                for(int i=0;i<plain.Chunks;i++)if(plain.Colors[i*3+2]>plain.Colors[i*3]&&plain.Colors[i*3+2]>.3)stock++;
+                Check(wet.Chunks>10&&cloth<wet.Chunks*.3&&stock>plain.Chunks*.5&&small>large&&large>0,"a burst's chunks are mostly flesh ("+cloth+" of "+wet.Chunks+" cloth, the stock "+stock+" of "+plain.Chunks+"), most small, a few large ("+small+", "+large+")");
+            }
+            {
+                var popKit=new NativeTopDogKit();popKit.Hits=new[]{new NativeDogHit{Id=1,Kind=NativeTopDog.HitPop,At=50,Pos=new V3(2,1.2f,-.5f),Dir=new V3(0,1,0),Victim=9}};src.K=popKit;var keepSource=NativeDogView.Source;NativeDogView.Source=src;
+                var wetFx=new NativeTechniqueFx{DogGore=true};var toonFx=new NativeTechniqueFx{DogGore=false};var wetPop=new Recorder();var toonPop=new Recorder();wetFx.DrawDogs(wetPop,scene,50.15f,1,false);toonFx.DrawDogs(toonPop,scene,50.15f,1,false);
+                Check(!wetPop.Broken&&wetPop.Smokes>10&&wetPop.Drops>10&&wetPop.Sprites==0&&toonPop.Sprites>20,"the pop: a blood mist, flecks and bits with gore on (no confetti: "+wetPop.Sprites+"), the toon pop with it off ("+toonPop.Sprites+")");
+                src.K=kit;NativeDogView.Source=keepSource;
+            }
             // What the burst wears of the killer's kill effect: the ragdoll endings, the swarms and the Gibber on its pieces; Hotdog Friends carry
             // the pieces over the stock ragdoll; an effect that takes the whole body away leaves it the stock ending.
             foreach(var style in new[]{"ragdoll","dev-gibber","ragdoll-ember","ragdoll-frost","ragdoll-static","ragdoll-gravity","ragdoll-pinball","ragdoll-fireworks","ragdoll-soul","ragdoll-petals","dev-singularity"})

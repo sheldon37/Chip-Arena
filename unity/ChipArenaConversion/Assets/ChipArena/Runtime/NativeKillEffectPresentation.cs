@@ -165,11 +165,11 @@ namespace ChipArena.UnityConversion
                     if(crushed==8&&s0>=0){if(Shown(NativeKillBoxes.Offhands[s0]))Loose(9);if(NativeKillBoxes.Magic[s0])Loose(9);}
                     if(crushed==12&&s0>=0&&!NativeKillBoxes.Magic[s0]&&Shown(NativeKillBoxes.Weapons[s0]))Loose(13);
                 }
-                int left=Math.Max(0,budget-parts-Caps.Count),most=Math.Min(low?24:64,left*55/100);
+                bool burstGib=Smash.Cause==SmashCause.Burst;int left=Math.Max(0,budget-parts-Caps.Count),most=Math.Min(low?(burstGib?30:24):(burstGib?84:64),left*55/100);
                 if(sourceCount>0||loose.Count>0)
                 {
                     NativeSmashGib.Fragments(Smash,out var inherit,out float kick,out float severity);var t=Smash.Travel;var o=Death.position;
-                    Debris=new NativeKillDebris(sources.ToArray(),sourceColors.ToArray(),sourceCount,loose.ToArray(),loose.Count/3,-o.x,o.y,o.z,-t.X,t.Y,t.Z,-inherit.X,inherit.Y,inherit.Z,kick,severity,unchecked((uint)Death.seed),most,Smash.Floor);
+                    Debris=new NativeKillDebris(sources.ToArray(),sourceColors.ToArray(),sourceCount,loose.ToArray(),loose.Count/3,-o.x,o.y,o.z,-t.X,t.Y,t.Z,-inherit.X,inherit.Y,inherit.Z,kick,severity,unchecked((uint)Death.seed),most,Smash.Floor,burstGib);
                     if(LooseHat>=Debris.Loose)LooseHat=-1;
                 }
             }

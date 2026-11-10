@@ -585,7 +585,7 @@ namespace ChipArena.UnityConversion
         private void DogFx(float now)
         {
             if(kitScene==null||vfx==null||NativeDogView.Source==null)return;var draw=WeaponFxDraw;if(draw==null)return;techSink??=new TechSink();techSink.Bind(vfx,draw,FirstPerson&&!ScopeActive&&ViewCamera!=null);
-            techniqueFx.DrawDogs(techSink,kitScene,kitClock,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics);
+            techniqueFx.DogGore=Gore;techniqueFx.DrawDogs(techSink,kitScene,kitClock,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics);
         }
         /// <summary>All You Can Eat on the local pilot's own camera, the Top Dog's or its victim's (NativeCinematicCamera.Direct). False when it
         /// is not this pilot's.</summary>
