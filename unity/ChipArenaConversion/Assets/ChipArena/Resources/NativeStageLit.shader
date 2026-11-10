@@ -79,8 +79,8 @@ Shader "ChipArena/StageLit"
             float du=min(fu,1.0-fu)*len,dv=min(fv,1.0-fv)*ch;float d=min(du,dv);
             float mortar=1.0-smoothstep(joint*0.5,joint,d);
             float hsh=SHash2(float2(cell,row));
-            s.albedo*=lerp(1.0,0.78+0.44*hsh,vary)*(1.0-0.08*SHash2(float2(cell*3.1,row+1.7)));
-            s.albedo=lerp(s.albedo,s.albedo*float3(0.5,0.47,0.44),mortar);
+            s.albedo*=lerp(1.0,0.87+0.26*hsh,vary)*(1.0-0.06*SHash2(float2(cell*3.1,row+1.7)));
+            s.albedo=lerp(s.albedo,s.albedo*float3(0.62,0.59,0.56),mortar);
             s.occ*=lerp(1.0,0.55,mortar);s.smooth*=lerp(1.0,0.4,mortar);
             // the pillow: each stone's face rounds down into its joints
             float eu=smoothstep(joint*2.5,joint*0.6,du)*(fu<0.5?-1.0:1.0),ev=smoothstep(joint*2.5,joint*0.6,dv)*(fv<0.5?-1.0:1.0);

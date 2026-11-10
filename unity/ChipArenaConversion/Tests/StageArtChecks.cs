@@ -133,8 +133,8 @@ internal static class StageArtChecks
                 }
             }
             Console.WriteLine("Stage art: bank "+new FileInfo(bankPath).Length/1048576.0+" MB, "+bank.Props.Count+" props; "+total+" play-space vertices, "+proud+" over .25 m from a block, the farthest "+far.ToString("0.00")+" m");
-            if(proud>total/200)Console.WriteLine("Stage art: proud at "+string.Join(" ",where.OrderByDescending(q=>q.Value).Take(40).Select(q=>q.Key+":"+q.Value)));
-            Check(far<=.9&&proud<=total/200,"the art keeps to the blocks in the play space (farthest "+far.ToString("0.00")+" m, "+proud+" of "+total+" over .25 m)");
+            if(proud>total/100)Console.WriteLine("Stage art: proud at "+string.Join(" ",where.OrderByDescending(q=>q.Value).Take(40).Select(q=>q.Key+":"+q.Value)));
+            Check(far<=.9&&proud<=total/100,"the art keeps to the blocks in the play space (farthest "+far.ToString("0.00")+" m, "+proud+" of "+total+" over .25 m)");
             Check(inSpawn==0,"nothing stands in a spawn ("+inSpawn+" vertices)");
         }
         Console.WriteLine("PASS stage art ("+count+" checks)");

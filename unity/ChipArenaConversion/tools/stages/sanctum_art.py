@@ -45,8 +45,8 @@ def finishes(L):
     F['stone'] = A.fin('stone', K('stone'), A.DETAIL_CARVED, smooth=.2, wear=.25)
     F['dark'] = A.fin('dark', K('stone-dark'), A.DETAIL_CARVED, smooth=.14, dirt=.7)
     F['niche'] = A.fin('niche', 0x2E2A34, A.DETAIL_PLASTER, smooth=.08, dirt=.5)
-    F['rib'] = A.fin('rib', 0xB0A696, A.DETAIL_CARVED, smooth=.22, wear=.3)
-    F['web'] = A.fin('web', 0x575062, A.DETAIL_PLASTER, smooth=.08, dirt=.5)
+    F['rib'] = A.fin('rib', 0xC2B8A6, A.DETAIL_CARVED, smooth=.24, wear=.3)
+    F['web'] = A.fin('web', 0x625A6C, A.DETAIL_PLASTER, smooth=.08, dirt=.5)
     F['floor'] = A.fin('floor', 0x675E56, A.DETAIL_FLAG, smooth=.34, moss=.08)
     F['gfloor'] = A.fin('gfloor', 0x706660, A.DETAIL_FLAG, smooth=.3)
     F['soffit'] = A.fin('soffit', 0x5E5862, A.DETAIL_PLASTER, smooth=.08)
@@ -387,10 +387,10 @@ def blind_arcade(g, pl, u0, u1, y0, y1, T):
 
 def wall_shaft(g, pl, u, y0, y1, T):
     """A wall shaft at a bay line rising to the vault's springing, with its base and capital."""
-    p0, p1 = pl.at(u, y0, -.15), pl.at(u, y1, -.15)
-    sk.cylinder(g, p0, p1, .13, F['shaft'], T.round)
-    lathe(g, [(.2, 0), (.2, .12), (.17, .16), (.16, .22), (.14, .26)], p0, F['trim'], T.round, cap0=True, cap1=True)
-    capital(g, p1, .14, T)
+    p0, p1 = pl.at(u, y0, -.11), pl.at(u, y1, -.11)
+    sk.cylinder(g, p0, p1, .11, F['shaft'], T.round)
+    lathe(g, [(.14, 0), (.14, .12), (.125, .16), (.12, .22), (.11, .26)], p0, F['trim'], T.round, cap0=True, cap1=True)
+    capital(g, p1, .12, T)
 
 
 def capital(g, top, r, T, f=None):
@@ -526,7 +526,7 @@ def pier(g, b, T, crossing):
     mould_round(g, octagon(cx, cz, h + .06, (h + .06) * .42, .34), [(-.02, 0), (.06, 0), (.08, .04), (.06, .08), (.02, .1), (.04, .16), (.02, .2), (-.02, .22)], F['trim'], T)
     prism(g, octagon(cx, cz, h, c, .5), spring - .5, F['pier'], T, cap=False)
     r = .13
-    shafts = [(cx - h - r + .03, cz), (cx + h + r - .03, cz), (cx, cz - h - r + .03), (cx, cz + h + r - .03)]
+    shafts = [(cx - h - r + .06, cz), (cx + h + r - .06, cz), (cx, cz - h - r + .06), (cx, cz + h + r - .06)]
     if crossing:
         d = h - c / 2 + .06
         shafts += [(cx + sx * d, cz + sz * d) for sx in (-1, 1) for sz in (-1, 1)]
@@ -539,7 +539,7 @@ def pier(g, b, T, crossing):
     for (sx, sz) in shafts:
         p0, p1 = (sx, .5, sz), (sx, spring - .62, sz)
         sk.cylinder(g, p0, p1, r, F['shaft'], T.round)
-        lathe(g, [(r + .06, 0), (r + .06, .06), (r + .03, .1), (r + .02, .14)], p0, F['trim'], T.round, cap1=True)
+        lathe(g, [(r + .04, 0), (r + .04, .06), (r + .025, .1), (r + .015, .14)], p0, F['trim'], T.round, cap1=True)
         capital(g, (sx, spring, sz), r, T)
     # the pier's capital band over the core
     mould_round(g, octagon(cx, cz, h + .02, c, spring - .3), [(-.02, 0), (.05, 0), (.12, .14), (.22, .26), (.22, .34), (-.02, .34)], F['trim'], T)
@@ -874,6 +874,107 @@ def candle(g, x, y, z, r, tall, T, seed):
 # ---------------------------------------------------------------------------------------------------------------------------
 # The kit's other parts, rebuilt as finished pieces
 # ---------------------------------------------------------------------------------------------------------------------------
+BASE = [(-.02, 0.0), (.06, 0.0), (.06, .08), (.035, .11), (.045, .14), (.01, .17), (-.02, .17)]
+CAP = [(-.02, 0.0), (.0, 0.0), (.045, .035), (.07, .075), (.07, .12), (-.02, .12)]
+
+
+def moulded(g, b, f, T, panels=True, trim=None):
+    """A block's body with a moulded base and cornice swept round it and fielded panels on its faces."""
+    x0, x1, y0, y1, z0, z1 = ext(b)
+    tr = F['trim'] if trim is None else trim
+    box(g, x0, x1, y0 + .14, y1 - .1, z0, z1, f, T, bevel=.015, skip=('-y', '+y'))
+    rect = lambda y: [(x0, y, z0), (x1, y, z0), (x1, y, z1), (x0, y, z1)]
+    mould_round(g, rect(y0), BASE, tr, T)
+    mould_round(g, rect(y1 - .12), CAP, tr, T)
+    box(g, x0 + .01, x1 - .01, y1 - .02, y1, z0 + .01, z1 - .01, tr, T, bevel=.01, skip=('-y',))
+    if not panels or not T.detail:
+        return
+    for (axis, lo, hi, at, sgn) in (('x', z0, z1, x0, -1), ('x', z0, z1, x1, 1), ('z', x0, x1, z0, -1), ('z', x0, x1, z1, 1)):
+        span = hi - lo
+        n = max(1, int(round(span / .9)))
+        ya, yb = y0 + .3, y1 - .3
+        if yb - ya < .25:
+            continue
+        for i in range(n):
+            a, c = lo + span * i / n + .1, lo + span * (i + 1) / n - .1
+            if c - a < .15:
+                continue
+            if axis == 'x':
+                box(g, at, at + sgn * .02, ya, yb, a, c, tr, T, bevel=.012, cell=0)
+            else:
+                box(g, a, c, ya, yb, at, at + sgn * .02, tr, T, bevel=.012, cell=0)
+
+
+def figure(g, p, T):
+    """A carved robed figure in a kit statue's box (its thinner horizontal side is the relief's depth)."""
+    c, (hx, hy, hz) = p['c'], p['h']
+    wide, thin = (hx, hz) if hx >= hz else (hz, hx)
+    k = (thin / wide) if wide > 0 else 1
+    y0 = c[1] - hy
+    H = 2 * hy
+    prof = [(wide * .98, 0.0), (wide * .9, H * .2), (wide * .78, H * .5), (wide * .72, H * .66), (wide * .86, H * .84), (wide * .7, H * .94), (wide * .25, H), (0.0, H + .002)]
+    lathe(g, prof, (c[0], y0, c[2]), F['statue'], T.round, cap0=False, scale=(1, k) if hx >= hz else (k, 1))
+    if T.detail:
+        # the folds of the robe: shallow ridges down its front and back
+        for i in range(5):
+            a = (i - 2) * .32
+            for side in (-1, 1):
+                if hx >= hz:
+                    px, pz = c[0] + math.sin(a) * wide * .8, c[2] + side * thin * .92
+                else:
+                    px, pz = c[0] + side * thin * .92, c[2] + math.sin(a) * wide * .8
+                sk.cylinder(g, (px, y0 + .02, pz), (px, y0 + H * .62, pz), .02, F['statue'], 4, caps=False)
+
+
+def head(g, p, T):
+    c, (hx, hy, hz) = p['c'], p['h']
+    r = min(hx, hz) * 1.05
+    lathe(g, [(0, -hy), (r * .6, -hy * .85), (r, -hy * .2), (r * .95, hy * .4), (r * .6, hy * .85), (0, hy)], c, F['statue'], T.round, scale=(1, 1))
+
+
+def screen_niches(g, b, T):
+    """The west screen's statue niches (dark) and the reredos's gilded ones: each bay's panel under a pointed head, an arch
+    moulding round it and a cusp in its head (the kit's stepped heads give way to these)."""
+    x0, x1, y0, y1, z0, z1 = ext(b)
+    east = x0 > 0
+    face = x0 if east else x1
+    s = -1 if east else 1
+    bays = 5
+    bay = (z1 - z0) / bays
+    fill = F['gold'] if east else F['niche']
+    nrm = (s, 0, 0)
+    for i in range(bays):
+        zc = z0 + bay * (i + .5)
+        L, spring, H = bay * .36, 2.45, .83
+        arc = pointed_arch(L, H, max(5, T.arc // 2))
+        outline = [(zc - L, .45), (zc - L, spring)] + [(zc - L + a, spring + h) for (a, h) in arc[1:]] + [(zc + L - a, spring + h) for (a, h) in reversed(arc[:-1])] + [(zc + L, .45)]
+
+        def P(z, y, d=0.0):
+            return (face + s * d, y, z)
+        mid = P(zc, 1.6, .012)
+        for k in range(len(outline)):
+            a, c = outline[k], outline[(k + 1) % len(outline)]
+            g.face((mid, P(a[0], a[1], .012), P(c[0], c[1], .012)), fill, nrm)
+        path = [P(z + (.05 if z > zc + 1e-6 else -.05 if z < zc - 1e-6 else 0), y, .03) for (z, y) in outline]
+        sweep(g, sk.circle_section(.04, (6, 5, 4)[T.i]), path, F['trim'])
+
+
+def saint_halo(g, b, T):
+    x0, x1, y0, y1, z0, z1 = ext(b)
+    cz = (z0 + z1) / 2
+    mid = math.copysign(9.1, cz)
+    face = z0 if abs(z0 - mid) < abs(z1 - mid) else z1
+    s = -1 if face == z0 else 1
+    cu = (x0 + x1) / 2
+    n = T.arc
+    ring = [(cu + math.cos(2 * math.pi * k / n) * .3, 2.22 + math.sin(2 * math.pi * k / n) * .3, face + s * .02) for k in range(n)]
+    sweep(g, sk.rect_section(.05, .025), ring, F['gold'], closed=True, path_normals=[(0, 0, s)] * n)
+    if T.detail:
+        for k in range(12):
+            a = 2 * math.pi * k / 12
+            sweep(g, sk.rect_section(.02, .012), [(cu + math.cos(a) * .34, 2.22 + math.sin(a) * .34, face + s * .02), (cu + math.cos(a) * .46, 2.22 + math.sin(a) * .46, face + s * .02)], F['gold'])
+
+
 def kit_part(g, p, T):
     hx, hy, hz = p['h']
     lo = min(hx, hy, hz)
@@ -881,6 +982,13 @@ def kit_part(g, p, T):
         return
     q = p['q']
     f = KIND[p['k']]
+    if f == F['statue'] and abs(q[3]) > .999:
+        if hy >= .4 and max(hx, hz) >= .12:
+            figure(g, p, T)
+            return
+        if .08 < hy < .25 and max(hx, hz) <= .21:
+            head(g, p, T)
+            return
     # a bar (a square section along its local z, long): round it
     if abs(hx - hy) < .006 and hz > 3 * hx and f not in (F['glow'], F['ember']):
         ax = rotate(q, (0, 0, hz))
@@ -955,7 +1063,7 @@ def crypt(g, blocks, T):
             lathe(g, [(r * .86, y1 - .5), (r * 1.0, y1 - .38), (r * 1.25, y1 - .2)], (x, 0, z), F['trim'], T.round)
             box(g, x - r - .16, x + r + .16, y1 - .2, y1, z - r - .16, z + r + .16, F['trim'], T, bevel=.02)
         elif i.startswith('sanctum-crypt-tomb') or i == 'sanctum-crypt-shrine':
-            box(g, x0, x1, y0, y1, z0, z1, F['stone'] if 'tomb' in i else F['marble'], T, bevel=.025)
+            moulded(g, b, F['stone'] if 'tomb' in i else F['marble'], T, panels=True, trim=None if 'tomb' in i else F['gold'])
     # the low vault: shallow groin bays between the pillars and the walls, springing 2.2 m over the floor
     xs, zs = (-8, -4, 4, 8), (-4.6, -2.4, 2.4, 4.6)
     for i in range(3):
@@ -1008,14 +1116,21 @@ def static_scene(L, T, pew_ids):
             balustrade(g, b, T)
         elif i.startswith('sanctum-stair'):
             pass
-        elif i.startswith('sanctum-screen') or i.startswith('sanctum-altar') or i.startswith('sanctum-confessional') or i.startswith('sanctum-plinth') \
+        if i.startswith('sanctum-screen'):
+            screen_niches(g, b, T)
+        if i.startswith('sanctum-plinth'):
+            saint_halo(g, b, T)
+        if i.startswith('sanctum-screen') or i.startswith('sanctum-altar') or i.startswith('sanctum-confessional') or i.startswith('sanctum-plinth') \
                 or i.startswith('sanctum-tomb'):
-            fin_ = {'screen': F['stone'], 'altar': F['marble'], 'confessional': F['oakdarkz'], 'plinth': F['stone'], 'tomb': F['stone']}
             key = i.split('-')[1]
-            f = fin_.get(key, F['stone'])
             if key == 'confessional':
-                f = F['oakdarky']
-            box(g, x0, x1, y0, y1, z0, z1, f, T, bevel=.03)
+                box(g, x0, x1, y0, y1, z0, z1, F['oakdarky'], T, bevel=.03)
+            elif key == 'altar':
+                moulded(g, b, F['marble'], T, panels=True, trim=F['marble'])
+            elif key == 'screen':
+                moulded(g, b, F['stone'], T, panels=False)
+            else:
+                moulded(g, b, F['stone'], T, panels=key != 'tomb')
     # stairs with their nosings, and the rigs' fixed fittings
     for b in blocks:
         if b['id'].startswith('sanctum-stair'):
@@ -1040,6 +1155,10 @@ def static_scene(L, T, pew_ids):
         if f in ('pier', 'wall', 'arcade', 'lancet', 'rose', 'vaults', 'balustrade', 'flight', 'pew', 'loft-column', 'crypt-pillar'):
             continue
         if f == 'gallery':
+            continue
+        if f == 'screen' and min(p['h']) <= .0105 and KIND[p['k']] in (F['dark'], F['gold']):
+            continue
+        if f == 'saint' and KIND[p['k']] == F['gold'] and max(p['h']) <= .041:
             continue
         if f == 'crypt-vault' and p['k'] not in (KIND.index(F['glow']), KIND.index(F['chain'])) and p['r'] == 0:
             continue
@@ -1113,7 +1232,9 @@ def main():
                      ('crossing-up', (-3.5, 1.6, -3.8), (.5, 16, 1.5), 75), ('aisle-south', (-26.5, 1.7, -9.0), (4, 2.6, -8.8), 70),
                      ('organ-loft', (-28.5, 5.8, 6.5), (2, 7, -1), 70), ('south-rose', (.4, 2.0, 7.5), (0, 9.5, -19), 70),
                      ('crypt', (-6.6, -2.1, 1.4), (4, -2.6, -1.4), 70), ('pier-close', (-15.6, 1.4, -1.2), (-18.3, 1.0, -5.0), 60),
-                     ('window-close', (-21, 5.5, -9), (-21, 13, -11.6), 60), ('vault-close', (-15, 5, 0), (-15, 20, 3), 70)]
+                     ('window-close', (-21, 5.5, -9), (-21, 13, -11.6), 60), ('vault-close', (-15, 5, 0), (-15, 20, 3), 70),
+                     ('saint', (-23.5, 1.6, -9.6), (-21, 1.4, -8.4), 60), ('screen-west', (-19.5, 1.7, 2.5), (-24.4, 1.6, -.5), 60),
+                     ('shrine', (-3.2, -2.0, 2.6), (0, -2.6, 0), 60), ('altar', (-17.5, 1.6, 2.4), (-22, 1.1, 0), 55)]
             pbk = sk.Bake(pews, None)
             sk.preview([(g, bk), (pews, pbk)], views, args.preview)
         if not args.static_only:
