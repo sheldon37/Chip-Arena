@@ -177,7 +177,7 @@ def fallen(g, b, T, seed):
         sec = fluted(flutes, r * .94) if T.i < 2 else sk.circle_section(r * .92, 8)
         sweep(h, sec, [(a + .16, r, 0), (c, r, 0)], st, smooth_u=False, up=Y)
         lathe(h, [(r * .5, 0), (r * .99, 0), (r * 1.0, .05), (r * .93, .1), (r * .97, .13), (r * .93, .16)], (a, r, 0), st, T.round, axis=(1, 0, 0), cap0=True)
-        ck.rock(h, (c + .03, r, 0), (.13, r * .86, r * .86), seed, F['broken'], n=3 if T.i < 1 else 2, square=.55, rough=.5, freq=2.4)
+        ck.rock(h, (c + .03, r, 0), (.13, r * .86, r * .86), seed, F['deep'], n=3 if T.i < 1 else 2, square=.35, rough=.85, freq=2.8)
         if T.detail:
             ck.rock(h, (c * .3, .1, r * .8), (.3, .12, .14), seed + 1, F['rubble'], n=1, square=.6)
             ck.rock(h, (-c * .5, .09, -r * .82), (.24, .1, .12), seed + 2, F['rubble'], n=1, square=.6)

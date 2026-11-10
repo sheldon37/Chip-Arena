@@ -111,7 +111,7 @@ internal static class CausewayArtChecks
             var near=sp.Static.Where(c=>int.TryParse(c.Id,out _)).ToList();var far=sp.Static.Where(c=>!int.TryParse(c.Id,out _)).ToList();
             Check(near.Count>=20&&near.All(c=>c.Props.Distinct().Count()==3),"the map's chunks, each in three tiers ("+near.Count+")");
             Check(far.Count>=8&&far.All(c=>c.Props.Distinct().Count()==1),"the void's far chunks, one tier each ("+far.Count+")");
-            Check(bytes<=21*1048576,"the bank stays within its budget ("+(bytes/1048576.0).ToString("0.0")+" MB)");
+            Check(bytes<=20500000,"the bank stays within its budget of about 20 MB ("+(bytes/1e6).ToString("0.0")+" MB)");
             // the reflection probe stands at the centre of the art's bounds (Runtime NativeStageArtDraw): on the centre line, clear of every block
             var lo=new System.Numerics.Vector3(float.MaxValue);var hi=new System.Numerics.Vector3(float.MinValue);foreach(var c in sp.Static){lo=System.Numerics.Vector3.Min(lo,c.Min);hi=System.Numerics.Vector3.Max(hi,c.Max);}
             double px=(lo.X+hi.X)/2,pz=(lo.Z+hi.Z)/2,py=Math.Max(1,Math.Min(8,(lo.Y+hi.Y)/2));
@@ -133,7 +133,7 @@ internal static class CausewayArtChecks
                     foreach(var s in spawns){double dx=v.X-s.x,dz=v.Z-s.z,dy=v.Y-(s.y-1.1);if(dx*dx+dz*dz<.35*.35&&dy>.05&&dy<1.8)inSpawn++;}
                 }
             }
-            Console.WriteLine("Causeway art: bank "+(bytes/1048576.0).ToString("0.00")+" MB, "+bank.Props.Count+" props, "+near.Count+" map chunks ("+verts+" Fine vertices) and "+far.Count+" far; "+total+" play-space vertices, "+proud+" over .25 m from a block, the farthest "+farthest.ToString("0.00")+" m");
+            Console.WriteLine("Causeway art: bank "+(bytes/1e6).ToString("0.00")+" MB, "+bank.Props.Count+" props, "+near.Count+" map chunks ("+verts+" Fine vertices) and "+far.Count+" far; "+total+" play-space vertices, "+proud+" over .25 m from a block, the farthest "+farthest.ToString("0.00")+" m");
             if(proud>0)Console.WriteLine("Causeway art: proud at "+string.Join(" ",where.OrderByDescending(q=>q.Value).Take(40).Select(q=>q.Key+":"+q.Value)));
             Check(farthest<=.9&&proud<=total/100,"the art keeps to the blocks in the play space (farthest "+farthest.ToString("0.00")+" m, "+proud+" of "+total+" over .25 m)");
             Check(inSpawn==0,"nothing stands in a spawn ("+inSpawn+" vertices)");
