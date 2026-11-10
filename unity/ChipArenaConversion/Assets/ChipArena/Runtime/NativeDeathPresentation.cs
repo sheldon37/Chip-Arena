@@ -11,6 +11,7 @@ namespace ChipArena.UnityConversion
         public readonly NativeDeath Death;public readonly string Style;private Rigidbody weapon;public readonly Dictionary<int,Rigidbody> Parts=new Dictionary<int,Rigidbody>();
         public readonly Matrix4x4[] Bind=new Matrix4x4[22];public readonly int[] Anchor=new int[22];
         private readonly Matrix4x4[] inverse=new Matrix4x4[22];private readonly Scene scene;private readonly PhysicsScene physics;private readonly GameObject root;private readonly PhysicsMaterial surface;
+        private static int sceneSerial;
         private float clock;private bool frozen,stepped;private int weaponPart;private static readonly int[] Bones={1,2,5,7,8,11,12,14,15,18,19};
         public NativeCorpse(NativeDeath death,CapturedAnimation.Player rig,NativeArena arena,SlicePlan slice=null,SmashPlan smash=null):this(death,arena,RigBind(death,rig),RigAt(death,rig),RigTurn(rig),null,null,-1,slice,smash:smash){}
         /// <summary>The melee slice this body was cut by (Core/NativeMeleeSlice), or null.</summary>
@@ -41,7 +42,11 @@ namespace ChipArena.UnityConversion
 #if UNITY_EDITOR
             if(!Application.isPlaying)scene=UnityEditor.SceneManagement.EditorSceneManager.NewPreviewScene();else
 #endif
-            scene=SceneManager.CreateScene("Cosmetic body "+death.id+" "+death.seed,new CreateSceneParameters(LocalPhysicsMode.Physics3D));physics=scene.GetPhysicsScene();root=new GameObject("Cosmetic body");SceneManager.MoveGameObjectToScene(root,scene);
+            // Each body's scene has a name of its own (owner 2026-11-10: "Sometimes, killcam doesn't play. Mostly noticeable when more than 1
+            // player in game"): a body's scene unloads asynchronously, and the killcam's reset rebuilds the bodies lying on the floor at once
+            // (the live view's again as it ends), so a name made of the death alone met its own still-loaded scene, CreateScene threw and the
+            // replay stopped ("Death replay stopped: Scene with name ... already exists").
+            scene=SceneManager.CreateScene("Cosmetic body "+death.id+" "+death.seed+" #"+(++sceneSerial),new CreateSceneParameters(LocalPhysicsMode.Physics3D));physics=scene.GetPhysicsScene();root=new GameObject("Cosmetic body");SceneManager.MoveGameObjectToScene(root,scene);
             surface=new PhysicsMaterial("Body surface"){dynamicFriction=.7f,staticFriction=.7f,bounciness=Style=="ragdoll-pinball"?.82f:.15f};
             for(int i=0;i<22;i++)Bind[i]=bind[i];bool drop=release>=0;DropAt=release;if(drop)clock=release;var wound=drop?null:death.wound;if(Halved||Smash!=null)wound=null;
             if(Style=="dev-gibber"&&!drop)Severed.Add(wound?.part??5);else if(wound?.destroyed==true&&wound.kind=="sever")Severed.Add(wound.part);
