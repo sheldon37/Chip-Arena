@@ -54,6 +54,10 @@ Owner supplied all eight recordings on 2026-11-02. The original MP3 bytes are pa
 | backrooms-level-0 | fluorescent loop.mp3 | `backrooms-fluorescent-loop` | 179.784 s |
 | Poolrooms (reserved) | Untitled.mp3 | `poolrooms-untitled` | 239.952 s |
 | training | Steady Groove.mp3 | `training-steady-groove` | 180.024 s |
+| causeway | Celestial Bell Motif.mp3 | `causeway-theme` | 219.760 s |
+| club | Neon Substation.mp3 | `club-theme` | 227.600 s |
+| emporium | Hot Dog Palace.mp3 | `emporium-theme` | 182.800 s |
+| sanctum | Moonlit Ostinato.mp3 | `sanctum-theme` | 194.920 s |
 
 ## The 2026-11-10 stages
 
@@ -202,3 +206,7 @@ Aaah, aaah, aaah
 | Substation 128 | `club` | `cybercity-neon-riot` | `club-theme` |
 | Top Dog Emporium | `emporium` | `cybercity-neon-riot` | `emporium-theme` |
 | The Hollow Sanctum | `sanctum` | `moonlit-wilderness` | `sanctum-theme` |
+
+The owner's songs are in (2026-11-10): Celestial Bell Motif, Neon Substation, Hot Dog Palace and Moonlit Ostinato, packaged like
+the eight above (the original MP3 bytes, streaming import, full-track looping; durations are ffprobe's). Each placeholder remains
+only as its record's fallback. Neon Substation runs at about 132 BPM rather than 128 (see docs/arenas/CLUB.md "Music").
