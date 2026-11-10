@@ -1,3 +1,5 @@
+2026-11-09 Claude (`claude/main-dev-menu`): the main menu's DEV screen reworked: players as cards, every DEV class from the content with its entrance, DEV looks with the Locker's emblems, labels as switches, unsaved changes with Revert and Save. The Cyber Lord, the Bombadier and the Top Dog show as DEV accounts only until the account server (and NativeAccess.Allows) can grant them: the owner's call, Astra's area.
+
 2026-11-09 Claude (`claude/top-dog-arms`): the Top Dog feeds facing its victim: from the catch to the let-go its body turns until its shoulders are square to the victim (its stance stood side-on and its yaw followed the view, so both arms reached out of one side), an arm on each side. Presentation only.
 
 2026-11-09 Claude (`claude/dev-menu`): the DEV panel's Pilot and Interact tabs are one PLAYERS tab: a roster, the picked player's card, their class as icon tiles with a DEV CLASSES group drawn from the content (every new DEV class shows there), actions as icon tiles, cheats as switches.

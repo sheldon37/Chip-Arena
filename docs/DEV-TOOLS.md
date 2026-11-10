@@ -27,6 +27,31 @@ one wins.
 - A non-developer never sees the toggle or the panel, even with a stale saved preference.
 - Being the host gives no extra rights. A verified developer guest can use every action, room-wide ones included.
 
+## The main menu's DEV screen (player grants)
+
+Owner, 2026-11-09: "Rework the dev menu (Where we can modify players); Make it cleaner and easier to use. Make it look a lot better
+too. Everytime we make a dev class, add them as an option here." Home · **DEV** (a verified developer, logged in) opens it
+(Runtime `NativeDevGrantsUI.cs`; the requests are `NativeAccount.Manage` in `NativeAdmin.cs`, as before).
+
+- **Left:** the username search (Enter or Find; 2-20 of a-z, 0-9 and _, lowered as typed) and the players found as cards: their
+  pilot's class icon in their colours, username, pilot and class, DEV / PT / VIP tags, and a dot while they have unsaved changes.
+- **Right:** the picked player's card (tags, how many grants they hold; a DEV account says it has everything already), then:
+  - **DEV CLASSES:** every `devOnly` class in the content, so a new DEV class appears with nothing to add, each with a CLASS and an
+    ENTRANCE toggle (its own entrance, the Locker's signature);
+  - **LOOKS:** every DEV kill effect and headwear a grant unlocks, drawn as the Locker draws them in the player's colours;
+  - **ENTRANCES:** any DEV entrance of no class (none now);
+  - **ACCOUNT LABELS:** Playtester and VIP as switches.
+  - ALL and NONE on a section set every grantable key in it.
+- **The bar:** the picked player's unsaved changes, Revert and Save (one grant request). Changes are kept per player as changes
+  against what the server holds; a new search waits until they are saved or reverted. The server's answers (a refused key, "This
+  player changed. Search again before saving.") show there.
+- **What a grant can carry:** only the account server's own keys (`src/shared/access.ts` `GRANTABLE_CONTENT` and `ACCOUNT_FLAGS`,
+  mirrored in Core `NativeDevGrants`; CoreTests `--dev-grants` holds them equal): the server refuses a whole save with any other key.
+  Everything else is listed but marked **DEV accounts only**: now the Cyber Lord, the Bombadier and the Top Dog (the client's
+  `NativeAccess.Allows` also keeps them to DEV accounts), their entrances, and Hotdog Friends.
+- **Making a new DEV class grantable:** its `weapon:` (and entrance) keys in `GRANTABLE_CONTENT` (a Site publish) and in
+  `NativeDevGrants.Server`, and, if `NativeAccess.Allows` keeps it to DEV accounts, that rule changed (Astra's accounts area).
+
 ## The panel
 
 - **F3** opens or closes the panel. The pause menu's **DEV Tools** item opens it too.
