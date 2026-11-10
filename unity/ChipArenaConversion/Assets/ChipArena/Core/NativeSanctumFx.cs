@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
                 {
                     double vy=w.Rose?w.Y:w.Y-w.HalfY+w.HalfY*2*(k+.5)/sections,half=w.Rose?w.Half-.3:w.Half-.2,hv=w.Rose?w.Half-.3:w.HalfY/sections;
                     double ox=w.X+w.Nx*.45,oz=w.Z+w.Nz*.45;double t=Hit(boxes,ox,vy,oz,dx,dy,dz,90);if(t<=1)continue;
-                    s.Add(ox);s.Add(vy);s.Add(oz);s.Add(ox+dx*t);s.Add(vy+dy*t);s.Add(oz+dz*t);s.Add(Math.Min(half,hv)*.95);s.Add(L(col,16)*share);s.Add(L(col,8)*share);s.Add(L(col,0)*share);shaftCount++;
+                    int beam=NativeSanctumLooks.Mix(0xC4D2FF,col,.3);s.Add(ox);s.Add(vy);s.Add(oz);s.Add(ox+dx*t);s.Add(vy+dy*t);s.Add(oz+dz*t);s.Add(Math.Min(half,hv)*.95);s.Add(L(beam,16)*share);s.Add(L(beam,8)*share);s.Add(L(beam,0)*share);shaftCount++;
                     // the pools: the section's glass in a grid of cells, each cell's four corners carried down the ray to the surface its centre meets
                     int nu=w.Rose?4:2,nv=w.Rose?4:3;
                     for(int i=0;i<nu;i++)for(int j=0;j<nv;j++)
@@ -153,7 +153,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<shaftCount;i++)
             {
                 int o=i*10;double r=shafts[o+6],shimmer=.9+.1*Math.Sin(t*.37+i*1.3);
-                Beam(shafts[o],shafts[o+1],shafts[o+2],shafts[o+3],shafts[o+4],shafts[o+5],r,r*1.15,shafts[o+7],shafts[o+8],shafts[o+9],.055*shimmer,i);
+                Beam(shafts[o],shafts[o+1],shafts[o+2],shafts[o+3],shafts[o+4],shafts[o+5],r,r*1.15,shafts[o+7],shafts[o+8],shafts[o+9],.042*shimmer,i);
                 // motes turning in the shaft
                 int n=Count(10);double ax=shafts[o],ay=shafts[o+1],az=shafts[o+2],dx=shafts[o+3]-ax,dy=shafts[o+4]-ay,dz=shafts[o+5]-az;
                 for(int k=0;k<n;k++)

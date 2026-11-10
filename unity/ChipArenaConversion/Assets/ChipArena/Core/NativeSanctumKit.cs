@@ -113,11 +113,25 @@ namespace ChipArena.UnityConversion
                 if(b.Y0<.1){Box(b.X0,b.X1,0,.45,inner,inner+s*.12,T);Box(b.X0,b.X1,.45,.55,inner,inner+s*.06,T);}
                 if(b.Y0<8&&b.Y1>=7.99){Box(b.X0,b.X1,7.7,8.0,inner,inner+s*.18,T);}
                 if(b.Y0<.1&&aisle)foreach(double x in new[]{-24.0,-18,-12,12,18,24})if(x>b.X0+.3&&x<b.X1-.3){Bar(x,.55,inner+s*.14,x,15.5,inner+s*.14,.26,.26,S);Box(x-.22,x+.22,15.5,15.8,inner,inner+s*.3,T);}
+                if(b.Y0<.1&&aisle){Arcade(b.X0,b.X1,inner,s,.6,2.9,true);Arcade(b.X0,b.X1,inner,s,4.4,7.3,true);}
             }
             else{inner=b.X0>0?b.X0:b.X1;double s=b.X0>0?-1:1;
-                if(b.Y0<.1){Box(inner,inner+s*.12,0,.45,b.Z0,b.Z1,T);Box(inner,inner+s*.06,.45,.55,b.Z0,b.Z1,T);}
+                if(b.Y0<.1){Box(inner,inner+s*.12,0,.45,b.Z0,b.Z1,T);Box(inner,inner+s*.06,.45,.55,b.Z0,b.Z1,T);if(b.Id.Contains("-arm-"))Arcade(b.Z0,b.Z1,inner,s,.6,3.6,false);}
                 if(b.Y0<8&&b.Y1>=7.99&&!end){Box(inner,inner+s*.18,7.7,8.0,b.Z0,b.Z1,T);}
             }
+        }
+        // Blind arcading along a wall face (u along x when `alongX`): dark pointed niches 1.1 m wide between colonnettes, every 1.5 m.
+        private void Arcade(double u0,double u1,double face,double s,double y0,double y1,bool alongX)
+        {
+            int D=NativeSanctumLooks.StoneDark,T=NativeSanctumLooks.Trim;int n=(int)Math.Floor((u1-u0-.3)/1.5);if(n<1)return;double pitch=(u1-u0)/n,head=y1-.55;
+            void P(double a0,double a1,double b0,double b1,double d,int kind,bool shadow){if(alongX)Box(a0,a1,b0,b1,face,face+s*d,kind,shadow);else Box(face,face+s*d,b0,b1,a0,a1,kind,shadow);}
+            for(int i=0;i<n;i++)
+            {
+                double c=u0+pitch*(i+.5),w=pitch*.36;P(c-w,c+w,y0,head,.015,D,false);
+                for(int r=0;r<4;r++){double va=head+.55*r/4,vb=head+.55*(r+1)/4,hw=w*Math.Sqrt(Math.Max(0,1-((r+.5)/4.2)*((r+.5)/4.2)));P(c-hw,c+hw,va,vb,.015,D,false);}
+                double cu=u0+pitch*i;if(i>0)P(cu-.06,cu+.06,y0,y1,.09,T,false);
+            }
+            P(u0,u1,y1,y1+.12,.1,T,false);P(u0,u1,y0-.1,y0,.08,T,false);
         }
         /// <summary>Each window's tracery, once (called from the overhead pass: the openings are the windows' own boxes).</summary>
         private void Tracery()
@@ -201,7 +215,7 @@ namespace ChipArena.UnityConversion
                 double hc=NativeSanctumLooks.Hash((int)Math.Round(u*13),(int)Math.Round(b.Y1*7),alongX?1:2);
                 if(hc<.42){double cx=alongX?u:(b.X0+b.X1)/2,cz=alongX?(b.Z0+b.Z1)/2:u;int m=1+(int)(hc*7)%3;for(int j=0;j<m;j++){double o=(j-(m-1)/2.0)*.11;Candle(alongX?cx+o:cx,b.Y1+.04,alongX?cz:cz+o,.07+.06*NativeSanctumLooks.Hash(i,j,9),.028);}}
             }
-            if(b.Y0<.5&&t<.4)Light((b.X0+b.X1)/2,1.4,(b.Z0+b.Z1)/2,5,Warm,.35);
+            Light((b.X0+b.X1)/2,b.Y1+.5,(b.Z0+b.Z1)/2,b.Y0<.5?5:7,Warm,b.Y0<.5?.35:.55);
         }
         private void Flight(List<B> steps)
         {
@@ -447,7 +461,8 @@ namespace ChipArena.UnityConversion
             {
                 double x=s*7.95,y=11.5;int G=NativeSanctumLooks.Gold,Ch=NativeSanctumLooks.Chain;
                 for(int i=0;i<20;i++){double a=2*Math.PI*i/20,r1=i%2==0?2.0:1.4;Bar(x,y+Math.Sin(a)*.45,Math.Cos(a)*.45,x,y+Math.Sin(a)*r1,Math.Cos(a)*r1,.1,.08,G);}
-                Add(x,y,0,.08,.55,.55,FactoryQ.Axis(1,0,0,Math.PI/4),G);
+                for(int i=0;i<24;i++){double a0=2*Math.PI*i/24,a1=2*Math.PI*(i+1)/24;Bar(x,y+Math.Sin(a0)*.5,Math.Cos(a0)*.5,x,y+Math.Sin(a1)*.5,Math.Cos(a1)*.5,.14,.12,G);}
+                Add(x,y,0,.06,.2,.2,FactoryQ.Axis(1,0,0,Math.PI/4),G);
                 foreach(int sz in new[]{-1,1})Bar(x,y+1.6,sz*1.2,x,NativeSanctumLooks.Vault-.4,sz*2.4,.04,.04,Ch,false);
             }
         }
