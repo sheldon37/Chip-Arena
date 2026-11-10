@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
         public const int Rate=48000;public const float Peak=.82f;
         public const string Prefix="topdog.";
         /// <summary>Every sound, by id.</summary>
-        public static readonly string[] Ids={"bonk","slam","swing","boing","zip","windup","slide-up","slide-down","whistle-fall","clang","slip","splat","squirt","sproing","punch","pie","gulp","burp","inflate","pop","bell","honk","tweet","sizzle","fanfare","drumroll","crash","poof","squeak","wobble","hiccup","whirl","stretch","chomp","piano","ring-cut","ring-slice","ring-throw","ring-ping","ring-hum","ring-burst","ring-catch","ring-flick"};
+        public static readonly string[] Ids={"bonk","slam","swing","boing","zip","windup","slide-up","slide-down","whistle-fall","clang","slip","splat","squirt","sproing","punch","pie","gulp","burp","inflate","pop","bell","honk","tweet","sizzle","fanfare","drumroll","crash","poof","squeak","wobble","hiccup","whirl","stretch","chomp","piano","ring-cut","ring-slice","ring-throw","ring-ping","ring-hum","ring-burst","ring-catch","ring-flick","ring-chime","ring-skip"};
         public static bool Known(string id)=>Array.IndexOf(Ids,id)>=0;
         /// <summary>The sound's samples (a new array each call; the runtime keeps one clip per id).</summary>
         public static float[] Samples(string id){lock(Gate)return Make(id);}
@@ -67,6 +67,9 @@ namespace ChipArena.UnityConversion
                 case "ring-burst":Thump(b,0,70,6,1);Crash(b,0,.8f,3.5f);Noise(b,0,.1f,800,9000,18,.8f);Clang(b,0,1900,.4f);Rumble(b,0,260,4,.5f);break;
                 case "ring-catch":Clang(b,0,900,.45f);Thump(b,0,180,30,.5f);Tone(b,0,.2f,1800,20,.12f,Wave.Sine);break;
                 case "ring-flick":Whoosh(b,0,.3f,1100,5200,2000,.75f);Tone(b,.04f,.3f,2600,8,.1f,Wave.Sine);break;
+                // The Glaive's chips' picks (Core NativeGlaiveChips.Picks): a glassy chime, and a flat stone's skip off water.
+                case "ring-chime":Bell(b,0,1320,.6f);Bell(b,.05f,1980,.38f);Tone(b,0,1,2640,4,.12f,Wave.Sine);Tone(b,.02f,.9f,3960,6,.05f,Wave.Sine);break;
+                case "ring-skip":Gulp(b,0,700,1500,.06f,.55f);Noise(b,0,.06f,1800,9000,55,.5f);Tone(b,.004f,.16f,1450,22,.14f,Wave.Sine);break;
                 case "chomp":Noise(b,0,.02f,600,5000,1,.5f);Thump(b,.005f,150,30,.6f);Gulp(b,.06f,260,150,.07f,.4f);break;
                 default:return Array.Empty<float>();
             }
@@ -82,7 +85,7 @@ namespace ChipArena.UnityConversion
                 case "squirt":return 1.6f;case "sproing":return .65f;case "punch":return .42f;case "pie":return .7f;case "gulp":return .46f;case "burp":return .72f;
                 case "inflate":return 1.35f;case "pop":return .7f;case "bell":return 1.6f;case "honk":return .66f;case "tweet":return .62f;case "sizzle":return 2.2f;
                 case "fanfare":return 1.15f;case "drumroll":return 1.3f;case "crash":return 2.2f;case "poof":return .6f;case "squeak":return .14f;case "wobble":return .85f;
-                case "hiccup":return .26f;case "whirl":return .7f;case "stretch":return .55f;case "chomp":return .2f;case "piano":return 2.4f;case "ring-cut":return .28f;case "ring-slice":return .4f;case "ring-throw":return .42f;case "ring-ping":return .55f;case "ring-hum":return .85f;case "ring-burst":return 1.6f;case "ring-catch":return .32f;case "ring-flick":return .36f;default:return .1f;
+                case "hiccup":return .26f;case "whirl":return .7f;case "stretch":return .55f;case "chomp":return .2f;case "piano":return 2.4f;case "ring-cut":return .28f;case "ring-slice":return .4f;case "ring-throw":return .42f;case "ring-ping":return .55f;case "ring-hum":return .85f;case "ring-burst":return 1.6f;case "ring-catch":return .32f;case "ring-flick":return .36f;case "ring-chime":return 1.1f;case "ring-skip":return .24f;default:return .1f;
             }
         }
 

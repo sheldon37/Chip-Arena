@@ -11,6 +11,32 @@
 - **Seen in the Editor:** the crosshair at rest, moving, through bursts and recovering, and aimed, for each gun; the pistol and the machine gun zoomed into first person; the rifle's scope; the three-bot killcam before (stopped) and after the fix.
 - **Not seen / not done:** played by a person; a guest's crosshair (its bloom follows the host's shots as they arrive, a snapshot behind); tuning the numbers by feel.
 
+## 2026-11-10 — Claude: the Glaive's chips, ten of its own (owner request, part 3 of 3)
+
+- Branch `claude/glaive-chips` (from part 1's docs, shared merged in after part 2).
+- **The owner:** "create uniquely designed chips to benefit the glaive with effects on selection".
+- **The set** (Core `NativeGlaiveChips.cs`, new; docs/GLAIVE.md "The chips"): its own tier (`glaive`, "GLAIVE SPECIAL", cyan, a tri-crescent crest), offered only to the Glaive and likely in its drafts (two guaranteed at 85%: the content's glaive rarity and odds rows). Fourth Bounce, Keen Edge (stacks twice), Twin Orbit, Shatterpoint, Magnet Return, Quick Catch, Whirlwind, Long Arc, Skimming Stone, Crescent Guard.
+- **Rules (at the owner's word; for Astra):** host-side in Runtime `NativeGlaiveAuthority.cs`, every number a const in `NativeGlaiveChips`. Shared paths touched: `Damage` gains `if(!forced)amount*=GlaiveGuardTaken(target);` (Crescent Guard's 25% while the ring is out), movement gains `speed*=GlaiveSpeed(p);` (Quick Catch's +25% for 1.5 s, and Skimming Stone's slick slowing enemies 40%). Keen Edge's bleed is the arena's damage over time (`bleed`), so its ticks show as poison ticks. Magnet Return spares bosses and the Siren's armour.
+- **The chip catalog's cap is 1024** (Core `NativeMods.MaxCatalog`, was 512): the whole catalog as the game loads it with every Rounds pack on went from 509 to 519, which the Editor's build checks refused ("Chip catalog exceeds capacity") and a host turning on every pack would have hit. Nothing on the wire depends on it; a new check counts the whole catalog (GlaiveChipChecks).
+- **The picks** (Runtime `NativeGlaiveChipArt.cs`, new): each chip its own animation over the INSTALLED card, with its own sounds (two new synthesized ones, `ring-chime` and `ring-skip`); the draft holds 5.2 s; Reduced effects keeps one soft glow. In the world (Core `NativeGlaiveFx.cs`): Twin Orbit's ring of light, Shatterpoint's shards, the slick, Quick Catch's speed lines, Crescent Guard's crescents and its cut-down shots, the dragged enemy's light, Keen Edge's drips.
+- **Animation impact:** none on the class's own moves' timing; the chips change ranges, distances and damage as listed (Long Arc's loop is longer in the same time, Whirlwind reaches 3.5 m).
+- **Checks:** CoreTests `--glaive-chips` (333), `--glaive` (5344), the full suite, the Unity compile, the Editor's build checks (the Glaive simulation's chip rules among them, 58).
+- **Seen in the Editor:** all ten picks in a real draft (the ricochets with their count, the cut and seal, the twin rings, the shatter, the field lines, the boomerang, the vortex, the long loop, the skips, the dome and the cut-down shot).
+- **Not seen / not done:** the chips' effects in a match (checked by the rules' numbers and the simulation, not on screen); Quick Catch's speed is not in a guest's movement prediction (small corrections for 1.5 s, as with the class's other host-side movement); played by a person.
+
+## 2026-11-10 — Claude: the Glaive's intro, Crescent Return (owner request, part 2 of 3)
+
+- Branch `claude/glaive-polish` (part 1 merged at `ea8d69a8`).
+- **The owner:** "create a very well animated intro" (with the design, the moves and the chips).
+- **The intro** (Core `NativeGlaiveIntro.cs`, new; `NativeGlaiveMotion.Intro`; docs/GLAIVE.md "The intro"): `glaive-crescent`, the class's own entrance (a Glaive pilot plays it unless they pick another; open to everyone, pickable in the Locker). 7 s, the name at 5.2 s: the thrown ring streaks through the dark stage and ricochets off two pylons; the pilot drops in and catches it high in the air (slow motion), whirls as it falls and lands in a crouch; flings it up to orbit twice, carving a circle of light into the floor while the stage powers up; catches it and cuts one big forehand that leaves a crescent of light hanging; the hero hold with the ring upright beside the face. Its bed is the 150 bpm signal-spin sting.
+- **Staging** (Runtime): `NativeIntros` (the pilot as a Glaive, the ring drawn in the hand only between catches), `NativeDogMalletPresentation.GlaiveIntro` (the ring arm keyed on the model), `NativeGlaivePresentation.GlaiveIntroRing` (the ring in flight), `NativeVisualBodyPresentation`; registered in `NativeIntroRules`, `NativeEntranceDirector`, `NativeLocker`, `NativeProfileUI`, `NativeLockerUI` (the Glaive's signature card).
+- **Shipped early, then fixed:** the intro's first commit (`a6a9cf3f`) went out with part 1's merge and build (revision `639298852578867296`): it was committed on the branch while that release ran its suite, and the release script merged the branch's tip. It compiled and had been seen working in the Editor, but the full suite then failed on shared on the entrance counts (EntranceDirectorChecks, IntroHoldChecks, LockerChecks), fixed here. The release script now refuses to push when the branch gains commits during its suite.
+- **Rules:** none changed. **Animation impact:** presentation only.
+- **Checks:** CoreTests `--glaive` (5344, with the intro: its rules and staging pins, the ring's path meeting the pylons and both catches, its orbit, no jump over 45 m/s, the arm's keys within reach, above the floor and under 75 m/s), the full suite, the Unity compile, the Editor build checks.
+- **Seen in the Editor:** the whole intro in a match (the ricochets, the drop and catch, the landing, the orbit and its floor circle, the cut's crescent, the hero under the name card).
+- **Not seen / not done:** an account saving the pick (the account server may not know `glaive-crescent` yet: a saved pick could fall back to the default, which is this entrance for a Glaive anyway); played by a person; the chips (part 3).
+- **Released:** merged into shared at `09a6a151` and synced to the builder; the test channel published revision `639298885210833258`.
+
 ## 2026-11-10 — Claude: the Glaive redesigned (the tri-crescent) and its moves reworked (owner request, part 1 of 3)
 
 - Branch `claude/glaive-polish`, on shared `bb85ff31`.
@@ -22,6 +48,7 @@
 - **Checks:** CoreTests `--glaive` (2545: every move's ring within reach, above the floor and under 75 m/s, the cuts' sides and joins, the whirl's turn, the edge leading at every hit, the tier budgets), the full suite, the Unity compile, the Editor build checks. The model was also rendered offline from four angles (face, edge, three-quarter).
 - **Seen in the Editor:** the four-cut combo on a bot (the coils, the leaping whirl, the flick's throw and catch), the throw's ricochet and catch, the halo flung up and circling.
 - **Not seen / not done:** played by a person; the skim and the burst captured; the intro and the chips (next).
+- **Released:** merged into shared at `ea8d69a8` and synced to the builder; the test channel published revision `639298852578867296` (which also carried the intro's first commit: see part 2).
 
 ## 2026-11-09 — Claude: the main menu's DEV screen reworked, every DEV class on it (owner request)
 
