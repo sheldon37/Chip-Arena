@@ -181,7 +181,7 @@ def crown_stone(T, k, s):
     n = 2 if T.i < 2 else 1
     for sx in (-1, 1):
         for j in range(2 if T.i < 2 else 1):
-            ck.rock(g, (sx * (wx + s * .08), -hy * .35 + j * hy * .8, (j - .5) * hz * .7 * sx), (s * .26, hy * (.62 - .2 * j), hz * (.72 - .15 * j)), 90 + k * 7 + j + sx, F['broken'], n=n, square=.45, rough=.45)
+            ck.rock(g, (sx * (wx + s * .08), -hy * .35 + j * hy * .8, (j - .5) * hz * .7 * sx), (s * .26, hy * (.62 - .2 * j), hz * (.72 - .15 * j)), 90 + k * 7 + j + sx, F['broken'], n=n if j == 0 else 1, square=.45, rough=.45)
     for j in range(3 if T.i < 2 else 2):
         ck.rock(g, (wx * (-.6 + .6 * j), hy * .9, hz * (.25 - .25 * j)), (wx * .36, hy * (.22 + .1 * ((j + k) % 2)), hz * .7), 130 + k * 5 + j, F['broken' if j % 2 else 'rigstone'], n=1, square=.4, rough=.45)
     if k % 3 == 1:

@@ -163,13 +163,16 @@ def near(L, T):
 # ---------------------------------------------------------------------------------------------------------------------------
 # far
 # ---------------------------------------------------------------------------------------------------------------------------
-def lost_span(x, y, z, length, yaw, roll, seed, T):
+def lost_span(x, y, z, length, yaw, roll, seed, T, far=False):
     art = A()
     h = Geo()
-    art.span(h, -length / 2, length / 2, T, True, True, seed, inlays=False)
+    art.span(h, -length / 2, length / 2, T, True, True, seed, inlays=False, corbels=not far)
     for f in (-1, 1):
         rb = blk(-length * .46 + 1.4, length * .46 - 1.4, 0, 1.1, f * 4.85 - .15, f * 4.85 + .15, 'r')
-        art.rail(h, rb, T, True, True, seed + f)
+        if not far:
+            art.rail(h, rb, T, True, True, seed + f)
+        else:
+            box(h, -length * .4, length * .4, 0, 1.1, f * 4.85 - .15, f * 4.85 + .15, F['stone'], None, bevel=0, cell=0, skip=('-y',))
         for u in (-length * .3, length * .3):
             art.pylon(h, blk(u - .6, u + .6, 0, 4.8, f * 4.4 - .6, f * 4.4 + .6), T, seed, lite=True)
             ck.crystal(h, (u, 5.6, f * 4.4), .2, .34, F['crystal'], sides=4, low=1.0)
@@ -279,8 +282,8 @@ def far(L, T):
              (66, -9, -4, 20, -6, 6, 205), (108, 2, 10, 18, 9, -11, 206), (158, -22, -24, 22, -18, 15, 207), (224, -8, 36, 18, 28, -22, 208)]
     for name, group in (('lost-w', spans[:4]), ('lost-e', spans[4:])):
         g = Geo()
-        for (x, y, z, length, yaw, roll, seed) in group:
-            g.extend(lost_span(x, y, z, length, yaw, roll, seed, TL))
+        for i, (x, y, z, length, yaw, roll, seed) in enumerate(group):
+            g.extend(lost_span(x, y, z, length, yaw, roll, seed, TL, far=i >= 2))
         out.append((name, g))
     g = Geo()
     island(g, 40, -26 + 14.2, 150, 15, 301, T, top=F['rockpale'])

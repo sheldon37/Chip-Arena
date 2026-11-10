@@ -163,7 +163,7 @@ def flank(g, fc, a_lo, a_hi, T, seed, top=-.6, string=TAPER_Y, foot=-7.0, hull=T
         fc.runes(g, a0 + .3, a1 - .3, fr, .27, T, F['rune'], seed * 17 + i, d=.047)
 
 
-def span(g, x0, x1, T, brk_lo, brk_hi, seed, inlays=True, compass=None):
+def span(g, x0, x1, T, brk_lo, brk_hi, seed, inlays=True, compass=None, corbels=True):
     """A length of the causeway from x0 to x1 (the deck at y 0, 10 m wide over a 6.8 m keel 7 m deep), either end broken."""
     xa = fracture(g, x0, 1, T, seed * 2 + 1) if brk_lo else x0
     xb = fracture(g, x1, -1, T, seed * 2 + 2) if brk_hi else x1
@@ -173,7 +173,7 @@ def span(g, x0, x1, T, brk_lo, brk_hi, seed, inlays=True, compass=None):
     b = blk(xa, xb, -7, 0, -KEEL, KEEL)
     for key, fc in sides(b).items():
         if key in ('+z', '-z'):
-            flank(g, fc, 0, xb - xa, T, seed + (3 if key == '+z' else 9))
+            flank(g, fc, 0, xb - xa, T, seed + (3 if key == '+z' else 9), corbels=corbels)
     for sz in (-1, 1):
         wb = blk(xa, xb, -.6, 0, min(sz * KEEL, sz * WING), max(sz * KEEL, sz * WING))
         fc = sides(wb)['+z' if sz > 0 else '-z']
@@ -242,8 +242,8 @@ def rail(g, b, T, lo, hi, seed):
     # plinth and coping, swept along the rail (section: across, up)
     h = t / 2
     p0, p1 = a0 + jl * .35, a1 - jh * .35
-    sweep(g, ck.simp([(-h - .05, 0), (h + .05, 0), (h + .05, .07), (h + .01, .12), (-h - .01, .12), (-h - .05, .07)], T) if T.i < 2 else [(-h - .04, 0), (h + .04, 0), (h + .04, .12), (-h - .04, .12)],
-          [at(p0, y0, 0), at(p1, y0, 0)], F['carved'], path_normals=[Y, Y], smooth_u=False)
+    if T.i < 2:
+        sweep(g, [(-h - .05, 0), (h + .05, 0), (h + .05, .07), (h + .01, .12), (-h - .01, .12), (-h - .05, .07)], [at(p0, y0, 0), at(p1, y0, 0)], F['carved'], path_normals=[Y, Y], smooth_u=False)
     q0, q1 = a0 + jl * .9, a1 - jh * .9
     cope = [(-h - .06, 0), (h + .06, 0), (h + .07, .04), (h + .03, .09), (h - .04, .115), (-h + .04, .115), (-h - .03, .09), (-h - .07, .04)]
     if T.i == 2:
@@ -259,6 +259,9 @@ def rail(g, b, T, lo, hi, seed):
         us.append(u)
     for u in us:
         pw, pt = .17, h + .055
+        if T.i == 2:
+            ck.crystal(g, (u, y1 + .12, c) if along_x else (c, y1 + .12, u), .058, .085, F['crystal'], sides=4, low=.8)
+            continue
         if along_x:
             box(g, u - pw, u + pw, y0, y1 + .05, c - pt, c + pt, F['carved'], None, bevel=0, cell=0, skip=('-y', '+y'))
             base = [(u - pw, y1 + .05, c - pt), (u + pw, y1 + .05, c - pt), (u + pw, y1 + .05, c + pt), (u - pw, y1 + .05, c + pt)]
@@ -300,7 +303,7 @@ def rail(g, b, T, lo, hi, seed):
                 ys = y1 - .2 - half * 1.25
                 fc.arch_fill(g, ac, half, y0 + .2, ys, half * 1.25, F['deep'], T, d=.005, n=3 if T.fine else 2)
                 if T.fine:
-                    fc.arch(g, ac, half, ys, half * 1.25, ARCHLITE, F['carved'], T, legs=ys - y0 - .2, n=3)
+                    fc.arch(g, ac, half, ys, half * 1.25, ARCHLITE, F['carved'], T, legs=ys - y0 - .2, n=2)
     for end, broken, u in ((0, lo, a0), (1, hi, a1)):
         if broken and T.detail:
             p = at(u + (.25 if end == 0 else -.25), y0, 0)
@@ -344,7 +347,7 @@ def pylon(g, b, T, seed, lite=False):
             g.face((P(t0, -.035, .006), P(t0, .035, .006), P(t1, .035, .006), P(t1, -.035, .006)), F['crystal'], normal=nrm)
         if T.detail:
             ck.glyph(g, lambda u, v, P=P: P(.885 + v * .07, u * .2, .008), nrm, seed * 11 + nx * 3 + nz, .03, F['rune'], 3)
-    for t, hh in (((.115, .06), (.985, .07)) if not lite else ()):
+    for t, hh in (((.115, .06), (.985, .07)) if not (lite or T.i == 2) else ()):
         y = ya + (yb - ya) * t
         hw = ha + (hb - ha) * t
         ck.mould_round(g, ck.octagon(cx, cz, hw, ca + (cb - ca) * t, y - hh / 2), [(-.01, 0), (.03, 0), (.045, hh / 2), (.03, hh), (-.01, hh)], gd, T)
@@ -357,7 +360,7 @@ def pylon(g, b, T, seed, lite=False):
     # the head: a flared block with a silver cornice and four claws
     hp = [(hb + .02, 0), (hb + .1, .1), (h - .02, .3), (h + .04, .38), (h + .04, .5), (h - .08, .62)]
     lathe(g, [(r * 1.38, y) for r, y in hp], (cx, yb, cz), m, 4, phase=math.pi / 4, smooth=False, cap1=True)
-    if not lite:
+    if not (lite or T.i == 2):
         ck.mould_round(g, ck.rect_plan(cx - h - .03, cx + h + .03, cz - h - .03, cz + h + .03, y1 - .22), [(-.02, 0), (.03, 0), (.05, .04), (.03, .09), (-.02, .09)], sv, T)
     for sx in (-1, 1):
         for sz in (-1, 1):

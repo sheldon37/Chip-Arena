@@ -208,6 +208,9 @@ class Face:
         """A stepped buttress across a +- w/2: steps [(y0, y1, out)] bottom to top, each set-off weathered (sloped) into the
         next; `cap` the finish of the weatherings."""
         cf = f if cap is None else cap
+        if T is not None and T.i == 2 and len(steps) > 1:
+            # far off: one pier of the middle set-off
+            steps = [(steps[0][0], steps[-1][1], steps[len(steps) // 2][2])]
         for i, (y0, y1, out) in enumerate(steps):
             nxt = steps[i + 1][2] if i + 1 < len(steps) else 0.0
             slope = min(.35, (out - nxt) * 1.2) if out > nxt else 0.0
@@ -240,7 +243,8 @@ class Face:
     def roundel(self, g, a, y, r, T, f_ring, f_star=None, d=0.0, points=8):
         n = max(8, T.arc * 2 // 3)
         path = [self.P(a + math.cos(2 * math.pi * k / n) * r, y + math.sin(2 * math.pi * k / n) * r, d) for k in range(n)]
-        ribbon(g, [(-.035, 0), (0, .05), (.035, 0)] if T.i else [(-.04, 0), (-.02, .045), (.02, .045), (.04, 0)], path, self.n, f_ring, closed=True)
+        if T.i == 0:
+            ribbon(g, [(-.04, 0), (-.02, .045), (.02, .045), (.04, 0)], path, self.n, f_ring, closed=True)
         if f_star is not None:
             star(g, lambda x, v: self.P(a + x, y + v, d + .008), self.n, r * .82, r * .3, points, f_star)
 
