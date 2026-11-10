@@ -1,3 +1,15 @@
+## 2026-11-10 — Claude: the Glaive redesigned (the tri-crescent) and its moves reworked (owner request, part 1 of 3)
+
+- Branch `claude/glaive-polish`, on shared `bb85ff31`.
+- **The owner:** "For the glaive, can we make the glaive a better design, improve the animations significantly, create a very well animated intro, and create uniquely designed chips to benefit the glaive with effects on selection?" This entry is the design and the moves; the intro and the chips follow on the same branch.
+- **The design** (Core `NativeWeaponModels.Glaive.cs`): the plain thin ring read as a line whenever it was edge on (most of the time from behind). Now the tri-crescent: a heavier stepped ring with its edge lit all round in the pilot's accent, three broad crescent fangs sweeping off the rim (lit cutting edges), all pitched the same way out of the plane like a turbine's blades so even edge on it reads as a slanted fan, notched teeth, a lit inner rim, inlaid arcs, a wrapped grip with lit studs. Inside the tier budgets (tier 0 under 4800 triangles). The cut's trail now reaches the fangs' tips (`NativeGlaiveFx`).
+- **The moves** (Core `NativeGlaiveMotion`, keys only; the same solver): the cuts sat at the hip with the arm barely leaving the side. Now every move uses the whole body: the cuts coil deep (the chest wound about 70 degrees, the knees sunk, a held beat) at chest and shoulder height, whip through at full reach and follow round; the backhand rises onto the toes; the whirl is a leap with the legs tucked under a full turn in the air; the flick and the throw wind right across the body; the catch yanks the arm back; the skim is a low dive; the halo is flung up from overhead.
+- **Rules:** none changed (every hit stays at the authority's moment; keys are presentation).
+- **Animation impact:** presentation only; hit timing, hitboxes, damage, cooldowns, movement and networking untouched.
+- **Checks:** CoreTests `--glaive` (2545: every move's ring within reach, above the floor and under 75 m/s, the cuts' sides and joins, the whirl's turn, the edge leading at every hit, the tier budgets), the full suite, the Unity compile, the Editor build checks. The model was also rendered offline from four angles (face, edge, three-quarter).
+- **Seen in the Editor:** the four-cut combo on a bot (the coils, the leaping whirl, the flick's throw and catch), the throw's ricochet and catch, the halo flung up and circling.
+- **Not seen / not done:** played by a person; the skim and the burst captured; the intro and the chips (next).
+
 ## 2026-11-09 — Claude: the main menu's DEV screen reworked, every DEV class on it (owner request)
 
 - Branch `claude/main-dev-menu`, on shared `34ce14f0`.

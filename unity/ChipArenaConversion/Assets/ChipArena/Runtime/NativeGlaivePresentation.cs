@@ -29,6 +29,17 @@ namespace ChipArena.UnityConversion
                 sourceModels.Queue("weapon-"+NativeGlaive.Spec,Matrix4x4.identity,_=>frame,null,0,null,accent:AccentTint(a.AccentColor),glow:HeldGlow);
             }
         }
+        /// <summary>Crescent Return's ring while it is out of the hand (Core NativeGlaiveIntro.Ring): its held model flat, tipped into its
+        /// flight and spinning, in the pilot's accent.</summary>
+        private void GlaiveIntroRing(NativeGlaiveIntro intro,float t)
+        {
+            if(sourceModels==null||!NativeGlaiveIntro.Ring(t,out var at,out var dir))return;
+            var pos=CapturedAnimation.Vec(CapturedRig.Mirror(at));var travel=CapturedAnimation.Vec(CapturedRig.Mirror(dir));travel.y=0;if(travel.sqrMagnitude<1e-6f)travel=Vector3.forward;travel.Normalize();
+            var normal=Quaternion.AngleAxis(14,Vector3.Cross(Vector3.up,travel))*Vector3.up;var spin=Quaternion.AngleAxis(NativeGlaiveIntro.Spin(t)*Mathf.Rad2Deg%360,normal)*travel;spin-=normal*Vector3.Dot(spin,normal);spin.Normalize();
+            var turn=Quaternion.LookRotation(spin,Vector3.Cross(spin,normal));glaiveIntroFrame=Matrix4x4.TRS(pos-turn*(Vector3.forward*NativeWeaponModels.GlaiveCentre),turn,Vector3.one);
+            glaiveIntroAt??=_=>glaiveIntroFrame;sourceModels.Queue("weapon-"+NativeGlaive.Spec,Matrix4x4.identity,glaiveIntroAt,null,0,null,accent:introAccent,glow:HeldGlow);
+        }
+        private Matrix4x4 glaiveIntroFrame;private Func<int,Matrix4x4> glaiveIntroAt;
         private void GlaiveFx(float now)
         {
             if(kitScene==null||vfx==null)return;var draw=WeaponFxDraw;if(draw==null)return;techSink??=new TechSink();techSink.Bind(vfx,draw,FirstPerson&&!ScopeActive&&ViewCamera!=null);

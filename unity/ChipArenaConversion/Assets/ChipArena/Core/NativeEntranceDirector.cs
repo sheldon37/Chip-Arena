@@ -266,6 +266,8 @@ namespace ChipArena.UnityConversion
             // The DEV Bombadier's Last Warning (Core/NativeBombadierIntro.cs; the class's own entrance).
             {NativeBombs.Entrance,()=>new NativeBombadierIntro()},
             {NativeTopDog.Entrance,()=>new NativeTopDogIntro()},
+            // The Glaive's Crescent Return (Core/NativeGlaiveIntro.cs; the class's own entrance, open to everyone).
+            {NativeGlaiveIntro.Id,()=>new NativeGlaiveIntro()},
         };
         /// <summary>True for a style the director stages (the twelve weapon signatures, the procedural entrances and the Sheldon Intro).</summary>
         public static bool Directed(string style)=>style!=null&&makers.ContainsKey(style);

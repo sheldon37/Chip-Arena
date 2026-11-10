@@ -1,3 +1,5 @@
+2026-11-10 Claude (`claude/glaive-polish`): the Glaive redesigned as the tri-crescent (three pitched crescent fangs, a lit edge; it reads even edge on) and every move reworked to use the whole body (deep coils, a leaping whirl, wound throws). Its intro and chips are next on the same branch.
+
 2026-11-09 Claude (`claude/main-dev-menu`): the main menu's DEV screen reworked: players as cards, every DEV class from the content with its entrance, DEV looks with the Locker's emblems, labels as switches, unsaved changes with Revert and Save. The Cyber Lord, the Bombadier and the Top Dog show as DEV accounts only until the account server (and NativeAccess.Allows) can grant them: the owner's call, Astra's area.
 
 2026-11-09 Claude (`claude/top-dog-arms`): the Top Dog feeds facing its victim: from the catch to the let-go its body turns until its shoulders are square to the victim (its stance stood side-on and its yaw followed the view, so both arms reached out of one side), an arm on each side. Presentation only.

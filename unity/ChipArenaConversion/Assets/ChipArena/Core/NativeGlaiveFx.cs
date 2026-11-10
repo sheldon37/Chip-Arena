@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
                 if(k.Hits!=null)foreach(var h in k.Hits)if(h!=null)GlaiveHitFx(s,h,time,tint,seed+h.Id*37L,q,low);
             }
         }
-        /// <summary>The cut's crescent: the ring's outer edge traced back along its keyed path, widest and brightest where it moves fastest.</summary>
+        /// <summary>The cut's crescent: the fangs' sweep traced back along the keyed path, widest and brightest where it moves fastest.</summary>
         private static void GlaiveTrail(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeGlaiveKit k,float time,Vector3 tint,long seed,float q,bool low)
         {
             if(NativeGlaive.InHand(k,time)<.5f||!NativeGlaiveMotion.Sample(k,time,out var now,out var move,out float from)||now.Smear<.05f)return;
@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
             {
                 float t=time-j*step;if(!NativeGlaiveMotion.Sample(k,t,out var p,out var m,out float f)||m!=move||Math.Abs(f-from)>1e-3f)break;
                 var ring=feet+NativeDogMallet.Turn(NativeGlaiveMotion.RingAt(p),yaw,0,0);var d=NativeDogMallet.Turn(NativeDogMallet.HandleAt(p),yaw,0,0);
-                float fade=1-j/(float)n,kk=p.Smear*p.Weight*fade*fade;var inner=ring+d*(NativeWeaponModels.GlaiveOuter*.25f);var outer=ring+d*(NativeWeaponModels.GlaiveOuter*1.05f);
+                float fade=1-j/(float)n,kk=p.Smear*p.Weight*fade*fade;var inner=ring+d*(NativeWeaponModels.GlaiveOuter*.35f);var outer=ring+d*(NativeWeaponModels.GlaiveFang*1.02f);
                 if(has&&(k0>.01f||kk>.01f))
                 {
                     s.Band(false,i0,inner,outer,o0,.35f*k0,.35f*kk,tint*1.1f);
@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
                 i0=inner;o0=outer;k0=kk;has=true;
             }
             // The edge's spark where it is now.
-            if(now.Smear>.4f){var ring=feet+NativeDogMallet.Turn(NativeGlaiveMotion.RingAt(now),yaw,0,0);var d=NativeDogMallet.Turn(NativeDogMallet.HandleAt(now),yaw,0,0);s.Sprite(false,ring+d*NativeWeaponModels.GlaiveOuter,Vector3.Lerp(tint,GlaiveWhite,.6f)*(2.2f*now.Smear),.09f,Sparkle);}
+            if(now.Smear>.4f){var ring=feet+NativeDogMallet.Turn(NativeGlaiveMotion.RingAt(now),yaw,0,0);var d=NativeDogMallet.Turn(NativeDogMallet.HandleAt(now),yaw,0,0);s.Sprite(false,ring+d*NativeWeaponModels.GlaiveFang,Vector3.Lerp(tint,GlaiveWhite,.6f)*(2.2f*now.Smear),.09f,Sparkle);}
         }
         /// <summary>The ring out of the hand: its spinning glow, its wake back along its flight, the motes it sheds; the halo's circle; the
         /// re-forming after a burst.</summary>

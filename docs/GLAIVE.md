@@ -27,17 +27,23 @@ While the ring is out the hand is empty: the left click bursts it instead of cut
 
 ## The look
 
-- **The ring** (Core `NativeWeaponModels.Glaive.cs`): a steel ring of blade round the fist, held by a wrapped grip bar across its near
-  side; its bevelled cutting edge, the inlay round its faces and two emitter studs beside the grip lit in the pilot's accent; three swept
-  hooks round its rim. Thrown, it is drawn as the same model, flat, tipped into its flight and spinning fast (Runtime
-  `NativeGlaivePresentation.cs`).
+- **The ring** (Core `NativeWeaponModels.Glaive.cs`), redesigned at the owner's word (2026-11-09: "make the glaive a better design"): the
+  tri-crescent. A heavy stepped ring of blade round the fist (a dark hub, a raised steel band, a bevelled edge lit all round in the
+  pilot's accent, a lit inner rim, inlaid arcs on both faces), three broad crescent fangs sweeping off its rim with the spin, each with a
+  lit cutting edge and all pitched the same way out of the plane like a turbine's blades (so even edge on it reads as a slanted fan,
+  not a line), small notched teeth between them, and a wrapped grip across its near side with lit studs. Thrown, it is drawn as the
+  same model, flat, tipped into its flight and spinning fast (Runtime `NativeGlaivePresentation.cs`).
 - **The moves are keyed by hand** (Core `NativeGlaiveMotion`), the way the Top Dog's mallet is (Core `NativeDogMallet`, the same solver on
-  the model): one-handed, the left arm the stance's own. The chest twists, bends and leans, the body coils and stretches, and the ring's
-  edge is turned along its own travel, so the edge leads every cut. Each cut coils with a held beat, whips through the hit and ends where
-  the next begins (the forehand ends on the left where the backhand starts; the backhand ends high on the right where the whirl coils; the
-  whirl settles where the flick draws back). The whirl turns the whole body about its feet; the skim's legs sprint under it; the throw is a
-  frisbee backhand from across the chest; the halo is spun up overhead off the fingertips; the burst is a fist thrust at the ring; a catch
-  takes the arm back with the ring's pull. Under it all: the one-handed sword's stance, stride, jumps, guard and reactions.
+  the model): one-handed, the left arm the stance's own, the ring's edge turned along its own travel so it leads every cut. Reworked at
+  the owner's word (2026-11-09: "improve the animations significantly") to use the whole body:
+  - the cuts run at chest and shoulder height: each coils deep (the chest wound about 70 degrees round, the knees sunk, a held beat),
+    whips through at full reach and follows round until the ring wraps the other side, ending where the next begins;
+  - the backhand rises from low on the left onto the toes, the ring ending above the right shoulder;
+  - the whirl is a leap: a deep crouch with the ring swung out wide, the legs tucked under a full turn in the air, landed in a crouch;
+  - the flick winds across to the left hip and whips out, the open hand held for the catch, which yanks the arm back;
+  - the skim is a low dive with the ring swept across low; the throw a frisbee backhand wound right across the chest; the halo flung
+    up from overhead on a stretch; the burst a punch at the ring.
+  Under it all: the one-handed sword's stance, stride, jumps, guard and reactions. The cut's crescent trail reaches the fangs' tips.
 - **Effects** (Core `NativeGlaiveFx.cs`, in the pilot's weapon colour): a crescent of light along the ring's outer edge through every fast
   part of a cut, with a spark at the edge; the thrown ring's spinning glow, its wake back along its path and the motes it sheds; a slash
   line, a flash and sparks at every cut; a ping ring and sparks at a throw's cut and each ricochet; the burst (a white flash, a shockwave
