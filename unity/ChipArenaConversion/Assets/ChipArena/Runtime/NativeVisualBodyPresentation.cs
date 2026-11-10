@@ -436,6 +436,8 @@ namespace ChipArena.UnityConversion
             pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,armed?VisualArms.Live:VisualArms.Unarmed);
             // Order Up!'s slam keyed by hand, both fists on the mallet (Runtime NativeDogMalletPresentation.cs).
             if(a.Id==dogIntroActor&&dogIntroActor>=0)DogMalletIntro(body,rig,dogIntroClock);
+            // Crescent Return's ring arm keyed by hand (Core NativeGlaiveMotion.Intro).
+            if(a.Id==glaiveIntroActor&&glaiveIntroActor>=0)GlaiveIntro(body,rig,glaiveIntroClock);
             VisualHandFit(body,rig,held);
             body.Moved=true;
         }

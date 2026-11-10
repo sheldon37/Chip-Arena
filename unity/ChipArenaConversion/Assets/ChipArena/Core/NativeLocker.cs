@@ -130,6 +130,7 @@ namespace ChipArena.UnityConversion
                 case "dev-cyberlord":return "Built from light, then a hardlight palm strike.";
                 case NativeBombs.Entrance:return "A fuse in the dark, a red light on every pylon, and one click.";
                 case NativeTopDog.Entrance:return "A hot dog cart, a bell for service, and out springs the Top Dog with a mallet from nowhere.";
+                case NativeGlaiveIntro.Id:return "The ring ricochets in out of the dark, caught in the air, sent orbiting, then one great cut.";
             }
             if(id!=null&&id.StartsWith("weapon-",StringComparison.Ordinal))return Title(id.Substring(7))+" signature entrance.";
             return "";
@@ -140,7 +141,7 @@ namespace ChipArena.UnityConversion
             {
                 case "orbital-drop":return "rocket";case "grid-rez":return "boxes";case "holo-projection":return "scan";case "blackout":return "eclipse";
                 case "skyline-zip":return "spline";case "hero-landing":return "chevrons-down-up";case "overclock":return "cpu";
-                case "dev-siren":return "skull";case "dev-emperor":return "cloud-lightning";case "dev-ansatsuken":return "hand-fist";case "dev-matrix":return "terminal";case "sheldon-intro":return "scan-line";case "dev-cyberlord":return "diamond";case NativeBombs.Entrance:return "bomb";case NativeTopDog.Entrance:return "spec-topdog";
+                case "dev-siren":return "skull";case "dev-emperor":return "cloud-lightning";case "dev-ansatsuken":return "hand-fist";case "dev-matrix":return "terminal";case "sheldon-intro":return "scan-line";case "dev-cyberlord":return "diamond";case NativeBombs.Entrance:return "bomb";case NativeTopDog.Entrance:return "spec-topdog";case NativeGlaiveIntro.Id:return "spec-glaive";
             }
             return null;
         }

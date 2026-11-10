@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeGlaiveMotion
     {
-        public enum Move{None,Cut1,Cut2,Whirl,Flick,Skim,Throw,Halo,Burst,Catch,Ready}
+        public enum Move{None,Cut1,Cut2,Whirl,Flick,Skim,Throw,Halo,Burst,Catch,Ready,Intro}
         /// <summary>The ring's middle out from the fist against the mallet's head (the solver's "head").</summary>
         public const float Scale=NativeWeaponModels.GlaiveCentre/NativeWeaponModels.MalletHead;
         public const float CatchTime=.3f;
@@ -129,6 +129,39 @@ namespace ChipArena.UnityConversion
         /// round the hip).</summary>
         private static readonly Key[] ReadyKeys={G(0,8,4,1,35,-20,.37f,15,40),G(1,8,4,1,35,-20,.37f,15,40)};
         public const float ReadyShare=.9f;
+        // ---- the intro (Core NativeGlaiveIntro, "Crescent Return", on its own clock) ----
+        /// <summary>The ring's arm through the intro: reaching up for it as the pilot drops in, the catch high in the air, the whirl as it
+        /// falls (all spin from here on: a full turn hands back without unwinding), the landing crouch, the fling overhead, the free hand
+        /// conducting the orbit, the catch's recoil, one big forehand, and the hero hold: the ring upright beside the face.</summary>
+        private static readonly Key[] IntroKeys=
+        {
+            G(NativeGlaiveIntro.DropAt-.05f,10,-10,1.1f,25,70,.52f,0,85),
+            G(NativeGlaiveIntro.CatchAt,8,-8,1.08f,25,72,.52f,0,88),
+            G(NativeGlaiveIntro.CatchAt+.06f,10,0,.96f,30,60,.46f,20,70,Ease.Out),
+            G(NativeGlaiveIntro.CatchAt+.12f,20,6,1,70,10,.52f,85,10,Ease.Smooth),
+            G(2.0f,10,8,1,86,-2,.55f,92,0,Ease.Linear,spin:300),
+            G(NativeGlaiveIntro.LandAt,10,22,.84f,70,-15,.48f,80,-5,Ease.Out,spin:360),
+            G(NativeGlaiveIntro.LandAt+.3f,8,6,1,35,-10,.42f,40,0,spin:360),
+            G(NativeGlaiveIntro.FlingAt-.07f,15,12,.88f,20,15,.36f,30,50,Ease.Out,spin:360),
+            G(NativeGlaiveIntro.FlingAt,0,-12,1.12f,4,80,.52f,0,96,Ease.In,spin:360),
+            G(NativeGlaiveIntro.OrbitFrom,20,0,1,35,40,.45f,10,20,Ease.Out,spin:360),
+            G(NativeGlaiveIntro.OrbitTo,-20,2,1,20,25,.45f,-20,10,spin:360),
+            G(NativeGlaiveIntro.ReturnAt-.08f,10,4,1,30,0,.5f,30,0,spin:360),
+            G(NativeGlaiveIntro.ReturnAt,10,4,1,25,-5,.5f,30,0,spin:360),
+            G(NativeGlaiveIntro.ReturnAt+.06f,-25,14,.9f,5,-14,.34f,-25,-10,Ease.Out,spin:360,lean:5),
+            G(NativeGlaiveIntro.CoilAt,62,12,.9f,50,4,.38f,106,10,Ease.Out,spin:360,lean:-7),
+            G(NativeGlaiveIntro.SlashAt-.06f,68,14,.88f,50,5,.4f,110,12,Ease.Smooth,spin:360,lean:-8),
+            G(NativeGlaiveIntro.SlashAt,-5,14,1.05f,10,-2,.52f,10,-2,Ease.In,spin:360,lean:5),
+            G(NativeGlaiveIntro.SlashAt+.1f,-55,12,1.02f,-30,-4,.46f,-55,-6,Ease.Out,spin:360,lean:8),
+            G(NativeGlaiveIntro.SlashAt+.25f,-62,9,1,-40,-6,.42f,-80,-4,Ease.Out,spin:360,lean:5),
+            G(NativeGlaiveIntro.StandAt,15,2,1,42,12,.36f,10,76,Ease.Smooth,spin:360),
+            G(NativeGlaiveIntro.Total,15,2,1,42,12,.36f,10,76,spin:360),
+        };
+        /// <summary>The intro's arm and chest at intro time `t` (its share of the body: none before the drop).</summary>
+        public static bool Intro(float t,out DogMalletPose pose)
+        {
+            pose=default;float from=NativeGlaiveIntro.DropAt-.05f;if(t<from)return false;pose=KeyedPose(IntroKeys,t,true,Scale);pose.Weight=Math.Min(1,(t-from)/.1f);return true;
+        }
         /// <summary>The pose for an actor at `time`: its move's (Sample), else the ready hold while it stands, walks or runs ready (not
         /// guarding, rolling, stunned, reeling or dead, and with the ring in the hand).</summary>
         public static bool Pose(Actor a,NativeGlaiveKit k,float time,out DogMalletPose pose,out Move move,out float from)
@@ -184,13 +217,13 @@ namespace ChipArena.UnityConversion
             {
                 case Move.Cut1:return KeyedPose(Cut1,t,true,Scale);case Move.Cut2:return KeyedPose(Cut2,t,true,Scale);case Move.Whirl:return KeyedPose(Whirl,t,true,Scale);
                 case Move.Flick:return KeyedPose(Flick,t,true,Scale);case Move.Skim:return KeyedPose(SkimKeys,t,true,Scale);case Move.Throw:return KeyedPose(ThrowKeys,t,true,Scale);
-                case Move.Halo:return KeyedPose(HaloKeys,t,false,Scale);case Move.Burst:return KeyedPose(BurstKeys,t,false,Scale);case Move.Catch:return KeyedPose(CatchKeys,t,true,Scale);case Move.Ready:return KeyedPose(ReadyKeys,t,false,Scale);
+                case Move.Halo:return KeyedPose(HaloKeys,t,false,Scale);case Move.Burst:return KeyedPose(BurstKeys,t,false,Scale);case Move.Catch:return KeyedPose(CatchKeys,t,true,Scale);case Move.Ready:return KeyedPose(ReadyKeys,t,false,Scale);case Move.Intro:return KeyedPose(IntroKeys,t,true,Scale);
             }
             return default;
         }
         public static float[] KeyTimes(Move m)
         {
-            Key[] k=m==Move.Cut1?Cut1:m==Move.Cut2?Cut2:m==Move.Whirl?Whirl:m==Move.Flick?Flick:m==Move.Skim?SkimKeys:m==Move.Throw?ThrowKeys:m==Move.Halo?HaloKeys:m==Move.Burst?BurstKeys:m==Move.Catch?CatchKeys:m==Move.Ready?ReadyKeys:new Key[0];
+            Key[] k=m==Move.Cut1?Cut1:m==Move.Cut2?Cut2:m==Move.Whirl?Whirl:m==Move.Flick?Flick:m==Move.Skim?SkimKeys:m==Move.Throw?ThrowKeys:m==Move.Halo?HaloKeys:m==Move.Burst?BurstKeys:m==Move.Catch?CatchKeys:m==Move.Ready?ReadyKeys:m==Move.Intro?IntroKeys:new Key[0];
             var t=new float[k.Length];for(int i=0;i<k.Length;i++)t[i]=k[i].T;return t;
         }
         /// <summary>The ring's middle on the nominal body for a pose (for the checks and the trail).</summary>

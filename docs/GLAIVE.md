@@ -52,6 +52,26 @@ While the ring is out the hand is empty: the left click bursts it instead of cut
 - **The class icon** is a ring blade with its three hooks and the grip across its middle, two motion arcs trailing it (`spec-glaive` in
   `tools/export_class_icons.mjs`, with a small drawing). The ability cards use the shared icons (swords, rotate, orbit, sparkles).
 
+## The intro: Crescent Return (`glaive-crescent`)
+
+Owner, 2026-11-09: "create a very well animated intro". The Glaive's own entrance (Core `NativeGlaiveIntro`, open to every player:
+the class entrance a Glaive pilot plays unless they pick another, and pickable in the Locker). 7 s, the name at 5.2 s:
+
+- **The ricochets (0.35 s):** the stage is dark. The thrown ring streaks in from the left, a spinning light with a wake, and ricochets off
+  two pylons (0.8 s, 1.25 s) in a ping and a shower of sparks, each pylon lighting as it is struck.
+- **The catch (1.7 s, slow motion):** on its way back the pilot drops in from above, reaching up, and catches it high in the air in a
+  flash and a ring of light; turns a whirl as it falls (legs tucked) and lands in a deep crouch (2.15 s) in dust and a floor ring.
+- **The orbit (2.65 s):** rising onto the toes it flings the ring up; it comes down to circle the pilot twice, 1.7 m out, carving a
+  circle of light into the floor while the stage powers up; the free hand follows it round.
+- **The cut (4.05 s):** caught back with a recoil, one big forehand: a crescent of light hangs where it went across, the floor circle
+  flashes up into a wall of motes, and the crescent breaks into motes drifting up.
+- **The hero (4.65 s):** standing tall, the ring held upright beside the face, its edge lit, motes rising round it; the name at 5.2 s.
+
+The body is keyed in the script; while the ring is in the hand its arm and the chest are the Glaive's own keyed solver (Core
+`NativeGlaiveMotion.Intro`, put on the model by Runtime `NativeDogMalletPresentation.GlaiveIntro`), and while it is out the runtime
+draws the held model where `NativeGlaiveIntro.Ring` says, spinning (Runtime `NativeGlaivePresentation.GlaiveIntroRing`). Its music is
+the 150 bpm signal-spin bed. Presentation only.
+
 ## The chips
 
 The owner's request, 2026-11-09: "create uniquely designed chips to benefit the glaive with effects on selection".
@@ -144,7 +164,7 @@ and the sound. Guests mirror it onto their own pilot (`p.Glaive`) for the cards.
 
 ## Not yet
 
-- No intro, no controller-specific mapping beyond Q and E.
+- No controller-specific mapping beyond Q and E.
 - The chips' rules are checked in the Editor's build checks (`NativeGlaiveValidation.cs`); their picks and world effects have not been
   seen in the Editor or a build yet. Keen Edge's bleed ticks show as the arena's poison ticks.
 - Not played by a person; not tried between two real clients.
