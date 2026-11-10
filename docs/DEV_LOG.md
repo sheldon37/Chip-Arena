@@ -21,6 +21,9 @@
   - the Causeway 17.5 to about 9.6.
 - **Still boxes:** the hazards' telegraph lamps, the LED floor and wall panels (flat lit panels by design), destroyed stubs and fragments, effect quads. Glass is opaque. No shadows from the practical lights.
 - **Rules:** none changed; hazards, colliders, nav, spawns and the network are untouched (presentation only; nothing for Astra).
+- **Tooling:** `tools/install_local_assets.py` (the builder's installer) holds the banks: 24 MiB a member (was 16), 320 MiB a zip (was 224), a 240 MB visual body (was 160).
+  - The Drive zip was repacked with the four banks, every other member as it was: 116 MB, 219 MB of visual body.
+  - The previous zip is kept as `LocalAssets-2026-11-10-before-stages.zip`.
 - **Checks** (on the merged tree):
   - the Unity compile;
   - CoreTests `--stage-art`, `--sanctum`, `--club-art`, `--club-stage`, `--emporium-art`, `--emporium`, `--causeway-art`, `--causeway`, `--transitions`, `--map-style` and `--gun-motion`, with all four banks;
