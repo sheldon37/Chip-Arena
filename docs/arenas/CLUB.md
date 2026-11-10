@@ -69,7 +69,9 @@ bars (30 s):
   feet over 0.65 m for 0.57 s and the wall passes a pilot in 0.14 s (a 0.42 s window), or leave the floor. **Telegraph:**
   the chime, then the alarm; a red line and the start column's tiles glow where it will enter, chevrons point its way;
   the emitter posts rise from their slots; the moving heads all swing red onto its line and chase it; the LED wall shows
-  arrows and a red meter. It never passes while a section is live.
+  arrows and a red meter. It never passes while a section is live. **Kill:** a level cut through the shins where its beams
+  run (NativeBisect's shared split, gore on and stock endings only, as the saws'), the body lifting off its legs and
+  thrown along the sweep; the train's smash gib never plays on the club (`NativeSmashGib.Plan`).
 - **The bass drop** (`club-drop-w`, `club-drop-e`, kind `vent`, push 7 m/s): the air column in front of each stack (2.8 x
   4 m, 2.6 m tall; hatched on the floor); warned 2 bars (3.75 s; the shipped vent warns 0.8), the burst 0.75 s on the
   phrase's downbeat: 3 ticks of 6 HP, each shoving 7 m/s south (toward the floor). **Telegraph:** the riser; the cones
@@ -123,8 +125,10 @@ playtest.
   crowd silhouettes (32 on Low) bobbing and throwing their hands up at the drop.
 - **Show** (`Core/NativeClubShow.cs`): six floor patterns (checker pulse, ripples, sweeping bands, the equaliser, sparkle
   rain, the spiral; every 8 bars, crossfaded), the heads' four figures, the wall's spectrum and countdown, the fans, the
-  three lent lights (NativeLighting.KitLights: 3 on High, 2 on Balanced, 1 on Low). Amber and red are the telegraphs' only:
-  the party never plays them (checked per tile).
+  three lent lights (NativeLighting.KitLights: 3 on High, 2 on Balanced, 1 on Low). Actor lighting is on each frame, so the
+  pilots take the slots (the show's colours on the bodies; ZombieLightChecks lists the look). Amber and red are the
+  telegraphs' only: the party never plays them (checked per tile). Telegraph reds stay at 1 to 1.6 (the display shoulder
+  whitens a brighter red), the bloom carries them.
 - **Effects** (`Core/NativeClubFx.cs`, up to ~620 quads): the heads' volumetric beams, gobo spots and flares, green and
   cyan laser fans off the stacks, the mirror balls' pin spots and specks round the hall, the stage lamps' beams up the LED
   wall, the telegraphs above, CO2 jets and confetti at the drop, uplight washes on the brick, haze, phone lights in the
@@ -143,12 +147,14 @@ playtest.
   also writes `rotation: true` into the five M1 records, which the runtime already forces); `MapLooks.json` (one entry).
 - Core: `NativeClubLooks`, `NativeClubPulse`, `NativeClubShow`, `NativeClubKit`, `NativeClubRig`, `NativeClubFx`,
   `NativeClubScenery`; `NativeStageHazards.VentShove`; `NativeUnityMaps` (the catalogue and rotation pins).
-- Runtime: `NativeClubPresentation` (the draw, `ClubScenery`/`PrewarmClub`), `NativeClubAudio` (the spectrum and the
+- Runtime: `NativeClubPresentation` (the draw, `ClubScenery`/`PrewarmClub`, `ClubLaserBisect`), `NativeClubAudio` (the spectrum and the
   hazard cues, `club.*` bank keys), `NativeClubValidation` (the Editor gate); one line each in `NativeSourcePresentation`,
-  `NativeStagePrewarm`, `NativeAudio`; the shove in `NativeStageHazardsRuntime`.
+  `NativeStagePrewarm`, `NativeAudio`, `NativeBisectPresentation` (the laser's cut first); the shove in
+  `NativeStageHazardsRuntime`; the club's maglev skipped in `Core/NativeSmashGib.Plan`.
 - Editor: `NativeBuildChecks` (one line: `ValidateClubRuntime`).
 - Tests: `Tests/ClubStageChecks.cs` (`--club-stage`, also in the full run); the count and list pins in
-  `BrickfallChecks`, `TransitionLoadingChecks`, `SurfaceChecks`, `MapStyleChecks`, `AdvancedLightingChecks`.
+  `BrickfallChecks`, `TransitionLoadingChecks`, `SurfaceChecks`, `MapStyleChecks`, `AdvancedLightingChecks`,
+  `ZombieLightChecks` (the look lights its bodies).
 
 ## Music
 
@@ -162,8 +168,6 @@ is known could also be seeked to the bar grid (Track's clock) so the drop's burs
 ## Not done / not seen
 
 - Not playtested by people; bots were only watched in captures. The vent shove's strength is a first guess.
-- The laser wall's death uses the train's smash gib (the maglev death); a laser-cut look (the saw bisect) would suit it
-  better and is presentation work for later.
 - Audio cues reuse existing clips (countdown, spike-rise, dash, electric-hook, lightning, explosion) under `club.*` bank
   keys the owner's bank can fill; no crowd or club ambience bed exists yet (`club-crowd` is a stub).
 - No kit bank (PackDressing) entry: the stage is complete without it.
