@@ -37,6 +37,7 @@ namespace ChipArena.UnityConversion
             // THE HUM's or THE DEEP END's meshes, once the rules give this map its boss.
             if(BackroomsBossPrewarm(arena))built++;
             if(PrewarmNewStage(arena))built++;
+            if(PrewarmEmporium(arena))built++;
             // The kit bank's plan and the map's harbour yards (NativePackStage.cs; nothing without the bank or an entry).
             var pack=NativePackStage.Entry(id);if(map!=null&&pack!=null){NativePackStage.Plan(map);if(pack.yards!=null&&pack.yards.Length>0)(packYards??=new NativePackYards()).Prepare(map,id);built++;}
             EnsureHazardKit();

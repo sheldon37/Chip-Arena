@@ -95,7 +95,7 @@ def open_tops(m):
     print(m['id'],'pilot columns',len(m['pilotBlocks']),'->',len(kept));m['pilotBlocks']=kept
 path=ROOT/'unity/ChipArenaConversion/Assets/Conversion/Resources/UnityMaps.json'
 content=json.loads(path.read_text())
-for name,fn,song in [('factory','unity_json','factory-anvil-loop'),('cybercity','draft','cybercity-neon-riot')]+[(name,'unity_json','factory-anvil-loop' if name in ('harbor','rig','training') else 'cybercity-neon-riot') for name in ('breakwater','harbor','skyframe','rig','polar','training')]:
+for name,fn,song in [('factory','unity_json','factory-anvil-loop'),('cybercity','draft','cybercity-neon-riot')]+[(name,'unity_json','factory-anvil-loop' if name in ('harbor','rig','training') else 'cybercity-neon-riot') for name in ('breakwater','harbor','skyframe','rig','polar','training')]+[('emporium','unity_json','cybercity-neon-riot')]:
     m=draft(name,fn);m.pop('killVolumes',None);m['music']=song;m['rotation']=name!='training'
     if name not in ('factory','cybercity'):open_tops(m)
     navigation(m)

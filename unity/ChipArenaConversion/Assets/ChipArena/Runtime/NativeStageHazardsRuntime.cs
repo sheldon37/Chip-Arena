@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
                 else if(h.kind=="grid"||NativeWardZeroHazards.IsBurst(h))
                 {ticks=NativeStageHazards.DamageTicks(h,StageRound,Match.FightAt,Match.Time-1d/60,Match.Time);active=ticks>0;center=h.center;size=h.size;}
                 else
-                {var s=NativeFactoryHazards.State(h,StageRound,NativeFactoryHazards.Clock(Match.Phase,Match.FightAt,Match.Time));active=NativeStageHazards.FactoryBox(h,s,out center,out size);if(h.kind=="vent"){ticks=NativeStageHazards.DamageTicks(h,StageRound,Match.FightAt,Match.Time-1d/60,Match.Time);active=h.damage>0&&ticks>0;}}
+                {var s=NativeFactoryHazards.State(h,StageRound,NativeFactoryHazards.Clock(Match.Phase,Match.FightAt,Match.Time));active=NativeStageHazards.FactoryBox(h,s,out center,out size);if(h.kind=="vent"){ticks=NativeStageHazards.DamageTicks(h,StageRound,Match.FightAt,Match.Time-1d/60,Match.Time);active=h.damage>0&&ticks>0;if(h.push>0)foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&!KernelLocked(p)&&NativeStageHazards.VentLaunch(h,s,Vec(p.Body.position),p.Body.linearVelocity.y))p.Knockback.y=Math.Max(p.Knockback.y,h.push);}}
                 if(!active)continue;
                 foreach(var p in Pilots)
                 {

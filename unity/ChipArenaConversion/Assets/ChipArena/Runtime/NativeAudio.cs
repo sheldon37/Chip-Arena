@@ -157,6 +157,7 @@ namespace ChipArena.UnityConversion
                 Track("music/"+theme,Music*.55f,!NativeStageMusic.Plays(match.Phase,false,false));
             }
             FactoryCues(arena,menu);ExpeditionCityCues(arena,menu);
+            EmporiumCues(arena,menu);
             StationCues(arena,menu);
             // audio.ts AudioCursor: each event once, played only while .4 s fresh (never ahead of the clock), routed by
             // NativeEventSounds (ArenaAudio.update's event branch).
