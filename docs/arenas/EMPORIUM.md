@@ -127,6 +127,16 @@ No song yet. Placeholder: `cybercity-neon-riot` (the record's `music`). The owne
   (17 maps, the SourceWorld prewarm entry), SurfaceChecks (fifteen maps), MapStyleChecks (styled list, fourteen toon looks),
   AdvancedLightingChecks (the advanced set).
 
+## Seen (Unity Editor, 2026-11-10)
+
+Played in the shared Editor (3 bots) on the branch, main camera with full post (bloom, toon outline): the hall and vault, the
+turning sign, the diners, the kitchens, the wiener rolling in both lanes, the bun press's warning, slam and squash, both griddle
+pairs going hot in turns, both sauce geysers bursting (a pilot carried up to the balcony), the Low tier (graphics: performance).
+Frame time in the Editor (12 s windows without screenshots, 3 bots): this stage mean 10.1 ms, p95 11.5 ms; Deepwell in the same
+window mean 10.6 ms, p95 15.4 ms; this stage on Low mean 11.9 ms, p95 19.3 ms (a window nearer the match start). The static kit
+is about 7,300 instanced parts (about 15 NativeBlockLit draws), the rig about 1,350 parts a frame, the effects up to about 600
+quads.
+
 ## Not done / open
 
 - Music (above). Owner clips for the cues may replace the synthesized samples (keys `emporium.*`).
