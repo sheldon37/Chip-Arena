@@ -216,12 +216,35 @@ namespace ChipArena.UnityConversion
         }
         // style.css .crosshair (a 5 px dot with 12 px arms 10 px either side) at the pixel-rounded centre where
         // ViewportPointToRay(.5,.5) aims. Crisp: identity matrix. Hitmarker draws the hit marker.
+        // A gun's crosshair reacts (owner 2026-11-10: "we need a reactive crosshair and spread"): for the pistol, the machine gun and the rifle
+        // four arms sit on the edge of the cone the next shot lands in (Core NativeSpread: the hip cone, moving, the air, each shot's bloom, the
+        // aim), kicking out with each shot and settling back. The bloom is followed from the pilot's shots as they arrive.
+        private int crossShots=-1;private float crossBloom,crossBloomAt=-100,crossGap=-1,crossSeen;
+        private float CrossCone(NativePilot p)
+        {
+            if(p?.Pose==null||!NativeSpread.Has(p.Seat.spec)||p.Weapon?.@class!="ranged"){crossShots=-1;crossGap=-1;return -1;}
+            var a=p.Pose;var sp=NativeSpread.Of(p.Seat.spec);float now=arena.Time;
+            if(crossShots<0||a.ShotsFired<crossShots){crossShots=a.ShotsFired;crossBloom=0;crossBloomAt=a.LastShot;}
+            else if(a.ShotsFired>crossShots){float b=NativeSpread.Decay(crossBloom,a.LastShot-crossBloomAt,sp);for(int i=0,n=Math.Min(20,a.ShotsFired-crossShots);i<n;i++)b=NativeSpread.Kick(b,sp);crossBloom=b;crossBloomAt=a.LastShot;crossShots=a.ShotsFired;}
+            var ads=content.Ads(p.Seat.spec);float aim=ads==null||!a.Aiming?1:NativeSpread.Aim(true,ads.spread,ads.settle,now-a.AimAt);
+            return NativeSpread.Cone(sp,new Vector2(a.Velocity.x,a.Velocity.z).magnitude/NativeSpread.RunSpeed,!a.Grounded,NativeSpread.Decay(crossBloom,now-crossBloomAt,sp),aim);
+        }
         private void Crosshair()
         {
             if(Event.current.type!=EventType.Repaint)return;var old=GUI.matrix;GUI.matrix=Matrix4x4.identity;float k=Mathf.Max(1,Mathf.Round(Screen.height/1080f)),cx=Mathf.Round(Screen.width/2f),cy=Mathf.Round(Screen.height/2f);
             void Px(float x,float y,float w,float h,Color c){var o=GUI.color;GUI.color=c;GUI.DrawTexture(new Rect(x,y,w,h),Texture2D.whiteTexture);GUI.color=o;}
             var shadow=NativeCyberTheme.Void(.8f);var ink=NativeCyberTheme.Ink();float d=Mathf.Round(5*k),arm=12*k,gap=10*k,line=Mathf.Max(1,Mathf.Round(k));
-            Px(cx-d/2-1,cy-d/2-1,d+2,d+2,shadow);Px(cx-d/2,cy-d/2,d,d,ink);Px(cx-d/2-gap-arm,cy-line/2,arm,line,ink);Px(cx+d/2+gap,cy-line/2,arm,line,ink);
+            float cone=CrossCone(arena?.Local);
+            if(cone>=0&&cameraView!=null)
+            {
+                // The arms ride the cone's edge (eased: out fast with a kick, back gently), never closer than just off the dot.
+                float want=Mathf.Max(d/2+3*k,NativeSpread.Pixels(cone,cameraView.fieldOfView,Screen.height)),dt=Mathf.Clamp(Time.unscaledTime-crossSeen,0,.1f);crossSeen=Time.unscaledTime;
+                crossGap=crossGap<0?want:Mathf.Lerp(crossGap,want,1-Mathf.Exp(-(want>crossGap?40:12)*dt));float g=Mathf.Round(crossGap),ga=Mathf.Round(10*k);
+                Px(cx-d/2-1,cy-d/2-1,d+2,d+2,shadow);Px(cx-d/2,cy-d/2,d,d,ink);
+                Px(cx-g-ga-1,cy-line/2-1,ga+2,line+2,shadow);Px(cx+g-1,cy-line/2-1,ga+2,line+2,shadow);Px(cx-line/2-1,cy-g-ga-1,line+2,ga+2,shadow);Px(cx-line/2-1,cy+g-1,line+2,ga+2,shadow);
+                Px(cx-g-ga,cy-line/2,ga,line,ink);Px(cx+g,cy-line/2,ga,line,ink);Px(cx-line/2,cy-g-ga,line,ga,ink);Px(cx-line/2,cy+g,line,ga,ink);
+            }
+            else{Px(cx-d/2-1,cy-d/2-1,d+2,d+2,shadow);Px(cx-d/2,cy-d/2,d,d,ink);Px(cx-d/2-gap-arm,cy-line/2,arm,line,ink);Px(cx+d/2+gap,cy-line/2,arm,line,ink);}
             GUI.matrix=old;TechniqueUnderVeil();TechniqueDeniedLine();TechniqueWhiteout();
         }
         // ---- Hit marker (client/hitmarker.ts, rules in NativeHitmarker) ----------------------------------------------------

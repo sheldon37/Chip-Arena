@@ -153,6 +153,10 @@ internal static class FinalKillcamChecks
     {
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/"+f));
         string replay=R("Runtime/NativeReplay.cs"),final=R("Runtime/NativeFinalKillcamPresentation.cs"),match=R("Core/NativeMatch.cs"),overlays=R("Runtime/NativeMatchOverlays.cs");
+        // The killcam that stopped with more players (owner 2026-11-10): a body's scene is named once, so the replay's reset rebuilding the bodies on
+        // the floor while their old scenes still unload cannot meet a scene of the same name.
+        var bodyScenes=R("Runtime/NativeDeathPresentation.cs");
+        Check(bodyScenes.Contains("scene=SceneManager.CreateScene(\"Cosmetic body \"+death.id+\" \"+death.seed+\" #\"+(++sceneSerial),")&&bodyScenes.Contains("private static int sceneSerial;")&&Regex.Matches(bodyScenes,@"SceneManager\.CreateScene\(").Count==1,"every body's scene has a name of its own");
         Check(replay.Contains("private bool ExpeditionReplay=>match?.Cooperative==true&&(arena?.Expedition!=null||ExpeditionView!=null);")&&!replay.Contains("prefs.expedition"),"PvP replay cannot inherit the saved Expedition menu preference; host and guest use active session bindings");
         Check(Body(replay,"private void ObserveReplay()").Contains("if(ExpeditionReplay)")&&Regex.Matches(replay,@"!ExpeditionReplay\|\|").Count==2,"recording and both spectator candidate paths agree on the active mode");
         Check(!NativeFinalKillcam.FlightCamera(17.99f,10)&&!NativeFinalKillcam.FlightCamera(30,1)&&NativeFinalKillcam.FlightCamera(18,2),"flight camera requires distant recorded projectile");

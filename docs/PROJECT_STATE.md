@@ -1,3 +1,5 @@
+2026-11-10 Claude (`claude/ads-killcam`): every gun zooms when aimed; a spread cone with a reactive crosshair (rules for Astra); the killcam no longer stops when other bodies are on the floor.
+
 2026-11-10 Claude (`claude/glaive-chips`): the Glaive's ten chips with their own picks; the chip catalog's cap is now 1024. The Glaive request (design, moves, intro, chips) is complete.
 
 2026-11-10 Claude (`claude/glaive-polish`): the Glaive's own intro, Crescent Return (ricochets in the dark, a mid-air catch, an orbit carving the floor, one great cut, the hero hold). Its chips are next.
