@@ -181,13 +181,13 @@ namespace ChipArena.UnityConversion
         }
         private static void Schematics(List<ContentMap> maps)
         {
-            Check(maps.Count==18&&maps.Any(m=>m.id==NativePoolroomsGenerator.ArenaId)&&maps.Any(m=>m.id==NativeBackroomsGenerator.ArenaId)&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
+            Check(maps.Count==20&&maps.Any(m=>m.id==NativePoolroomsGenerator.ArenaId)&&maps.Any(m=>m.id==NativeBackroomsGenerator.ArenaId)&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
             foreach(var m in maps)
             {
                 var s=NativeStageSchematic.Build(m);Check(s!=null&&s.Count>0&&s.Count<=NativeStageSchematic.Max,m.id+" scans ("+(s?.Count??0)+")");
                 Check(s.Total==s.Count||s.Total>NativeStageSchematic.Max,m.id+": keeps every block under the cap");
                 Check(s.Label==s.Total+" BLOCKS",m.id+": its label");
-                Check(s.Aspect>.3f&&s.Aspect<3,m.id+": a sane plan aspect ("+s.Aspect+")");
+                Check(s.Aspect>.3f&&s.Aspect<4,m.id+": a sane plan aspect ("+s.Aspect+"; the HUD fits any, the Causeway's bridge runs 3.9)");
                 for(int i=0;i<s.Count;i++)
                 {
                     float u=s.Box[i*4],v=s.Box[i*4+1],w=s.Box[i*4+2],h=s.Box[i*4+3];
@@ -282,7 +282,7 @@ namespace ChipArena.UnityConversion
             // The preload covers every lazily built stage kit SourceWorld draws.
             var world=Body(R("Assets/ChipArena/Runtime/NativeSourcePresentation.cs"),"private void SourceWorld(NativeArena arena)");var pre=R("Assets/ChipArena/Runtime/NativeStagePrewarm.cs");var warm=Body(pre,"public int PrewarmStage(NativeArena arena)");
             var needs=new Dictionary<string,string[]>{["FactoryScenery"]=new[]{"factoryStage.Prepare(arena)"},["BrickfallScenery"]=new[]{"EnsureBrickfall()"},["CyberCityScenery"]=new[]{"EnsureCyberCity()","MetroRebind(arena)"},
-                ["ExpeditionCityScenery"]=new[]{"EnsureExpeditionCity()","ExpeditionCityBuild(map)"},["WardZeroScenery"]=new[]{"EnsureWardZero()","WardZeroBuild(map)"},["IronworksScenery"]=new[]{"EnsureIronworks()","IronworksBuild(map)"},["StationScenery"]=new[]{"EnsureStation()","StationBuild(map)"},["StationBossScenery"]=new[]{"EnsureStationBoss()"},["IronworksBossScenery"]=new[]{"EnsureIronworksBoss()"},["BackroomsBossScenery"]=new[]{"BackroomsBossPrewarm(arena)"},["TrainingScenery"]=new[]{"TrainingPrepare(arena)"},["NewStageScenery"]=new[]{"PrewarmNewStage(arena)"},["ClubScenery"]=new[]{"PrewarmClub(arena)"},["EmporiumScenery"]=new[]{"PrewarmEmporium(arena)"},["HazardKitWorld"]=new[]{"EnsureHazardKit()"}};
+                ["ExpeditionCityScenery"]=new[]{"EnsureExpeditionCity()","ExpeditionCityBuild(map)"},["WardZeroScenery"]=new[]{"EnsureWardZero()","WardZeroBuild(map)"},["IronworksScenery"]=new[]{"EnsureIronworks()","IronworksBuild(map)"},["StationScenery"]=new[]{"EnsureStation()","StationBuild(map)"},["StationBossScenery"]=new[]{"EnsureStationBoss()"},["IronworksBossScenery"]=new[]{"EnsureIronworksBoss()"},["BackroomsBossScenery"]=new[]{"BackroomsBossPrewarm(arena)"},["TrainingScenery"]=new[]{"TrainingPrepare(arena)"},["NewStageScenery"]=new[]{"PrewarmNewStage(arena)"},["ClubScenery"]=new[]{"PrewarmClub(arena)"},["EmporiumScenery"]=new[]{"PrewarmEmporium(arena)"},["CausewayScenery"]=new[]{"PrewarmCauseway(arena)"},["HazardKitWorld"]=new[]{"EnsureHazardKit()"}};
             foreach(Match call in Regex.Matches(world,@"\b([A-Z][A-Za-z]+(Scenery|KitWorld))\(arena\)"))
             {string n=call.Groups[1].Value;Check(needs.ContainsKey(n),"SourceWorld's "+n+" has a prewarm entry");foreach(var tok in needs[n])Check(warm.Contains(tok),n+" prewarms through "+tok);}
             var fac=Body(R("Assets/ChipArena/Runtime/NativeFactoryPresentation.cs"),"public void Render(NativeArena arena,float now,Camera camera,float quality,bool low,bool instancing,NativeDustCoat coat)");var prep=Body(pre,"public bool Prepare(NativeArena arena)");
