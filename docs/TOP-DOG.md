@@ -52,17 +52,23 @@ The meter fills 1% a second, 6% a mallet hit and 8% an ability hit.
    heave; strain lines flick off their sides, sweat flies off and their feet scuff up dust (owner 2026-11-09: "like their arms are
    downwards, and they're struggling to get out"; Core `NativeTopDog.Bound`, `Strain`).
 4. **The feeding, by hand** (owner 2026-11-09: "literally animate opening the players mouth and just putting hotdogs in there"). The
-   Top Dog's left hand takes the victim's chin and holds the jaw open, tugging it down for each one; the right hand brings six bare,
-   wiggling sausages (no bun), one every 0.5 s, from its side to the lips and pushes each in. Each stays stuck in the mouth, wiggling
-   for 2.6 s, fanned out among the others, before it is slurped down. Each hot dog does 3 (it never kills). The belly grows with each
-   one.
+   Top Dog's left hand cups the victim's chin from below and holds the jaw open, tugging it down for each one; the right hand brings six
+   bare, wiggling sausages (no bun), one every 0.5 s. Made real (owner 2026-11-09: "actually look like they are realistically putting hot
+   dogs in the players mouth"): each pops into the right hand at its side, pinched by its end between the thumb and fingers with the rest
+   of it along them; the hand eases it onto the lips and forces it half in along its slot with a judder, the lips closing a little round
+   it and the head giving with the push, then lets go and swings back out for the next. Each stays stuck in the mouth, wiggling for 2.6 s,
+   the six crowding the mouth's opening, before it is slurped down; each gulp drips a little juice off the lips. Each hot dog does 3 (it
+   never kills). The belly grows with each one.
 5. **The snap.** While it feeds, the Top Dog is rooted and can be hit. **If it takes 40 damage, or is stunned, knocked down or killed,
    the links snap**: the victim is free, takes 6 for each hot dog already down, and the belly goes down with a burp.
 6. **The let-go**, 0.2 s after the last hot dog: a kick sends the victim staggering 1.8 m back, "STUFFED!". The belly keeps ballooning
    and trembling faster.
 7. **The pop**, 1.5 s later: the victim bursts. It is an execution of their current health, as the Siren's crush is. The other enemies
-   of the Top Dog within 3.2 m take 22 and are thrown. With gore on the body bursts (below); hot dogs, confetti, mustard and ketchup fly
-   out either way. Once it has let go, the pop comes even if the Top Dog dies, and the round waits for it.
+   of the Top Dog within 3.2 m take 22 and are thrown. The death keeps the Top Dog's own kill effect (owner 2026-11-09: "use the kill
+   effect if applicable (Like hot dog friends should work)"): its record's damage kind `topdog-pop` (Core `NativeTopDog.PopKind`) says it
+   burst. With gore on the body bursts (below) and the hot dogs fly out of it in a mist of blood; with gore off the killer's kill effect
+   plays as on any death, with the toon pop (confetti, mustard, ketchup). Once it has let go, the pop comes even if the Top Dog dies, and
+   the round waits for it.
 
 ## The intro: "DEV · Order Up!" (`dev-topdog`)
 
@@ -125,8 +131,12 @@ Its sound is its own toon cues, no music bed.
   height.
 - **Effects:** cartoon impact bursts and stars, comic words over each hit (BONK!, WHAM!, CLANG!, SPLAT!, POW!, GULP!, KA-POP!...), the
   anvil's shadow, the mustard stream and drips, the zip's dust silhouette, cream over a pied pilot's eyes.
-- **The burst:** a new kind of the smash gib (Core `NativeSmashGib.Burst`): the trunk goes to fragments, the head, arms and legs come
-  away and fly out every way from the belly, blood gushing all round. Gore off: a normal fall, with the hot dogs and confetti still.
+- **The burst:** a new kind of the smash gib (Core `NativeSmashGib.Burst`): the trunk goes to torn chunks (mostly flesh, a few bits of
+  bone and the clothes, most small and a few large) thrown out from the belly, the head, arms and legs come away and land a metre or
+  three off, blood gushing all round. It wears the killer's kill effect where it fits its pieces (`NativeSmashGib.BurstStyle`): the
+  ragdoll endings, the swarms (embers, frost, static, the vortex, pinball, fireworks, the soul, petals, the black hole) and Maximum
+  Gore's spray play on them, and Hotdog Friends carry them off through their door; an effect that takes the whole body away (voxels,
+  confetti, the beam, a ghost, the clown car, the van) leaves it the stock ending. Gore off: no burst, the killer's kill effect.
 - **The cameras:** the caster's twirl and throw, then side-on to both through the feeding and the swelling to the pop, on whichever
   side is clear of walls (a high shot over the shoulder when neither is); the victim's own feeding and swelling, face on.
 - **Its face** (owner 2026-11-09: "animate eyes and mouth with hotdog character. Give them expressions"): the bank's face is sculpted
