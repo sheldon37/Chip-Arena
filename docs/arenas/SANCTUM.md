@@ -108,6 +108,14 @@ yoke, the belfry with its louvres, the organ (west) and the retable (east), the 
 Rules (checked): attached parts below 3 m lie within 0.25 m of a block (thin props, candles and sticks, within 0.9 m);
 overhead parts stand 2 m or more over every standable top under them.
 
+### The stage art (docs/arenas/STAGE-ART.md, 2026-11-10)
+With the stage bank `ChipArenaStageSanctum` (local, from the builder's Drive zip) the hall is drawn as modelled meshes made in
+Blender (`tools/stages/sanctum_art.py`, `sanctum_props.py`) on these very blocks and kit parts, lit by `ChipArena/StageLit`: the
+walls with their lancets, roses and tracery, the clustered piers, the ribbed vaults, the floors, galleries, balustrades, stairs,
+furniture, the crypt and 500 wax candles; the carved pews as block models while they stand; the chandeliers, censer, bell,
+gates, fire baskets and banners as rig parts posed by Core `NativeSanctumArt` from the rig's state. The kit's and the rig's boxes
+and the dressed blocks then stay undrawn; without the bank everything below draws as before.
+
 ### The glass (Core `NativeSanctumScenery`, SourceLit sectors)
 Every window's panes (16912) in eight designs of a jewel palette (ruby, sapphire, emerald, amber, violet, pale): each lancet's
 two lights with a pearled border, a ground of diamond quarries, three ringed medallions (four petals round a jewel), lozenges

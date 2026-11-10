@@ -368,6 +368,12 @@ namespace ChipArena.UnityConversion
     {
         public const int Capacity=2400;
         public readonly NativeFactoryKit.Writer Parts;
+        /// <summary>The stage art's view of the frame's parts (docs/arenas/STAGE-ART.md; Core NativeCausewayArt reads them): for
+        /// part i its rig slot (-1: the modelled art has no piece of its own for it), a level (a lane glyph's light; a floating
+        /// crystal's turn about y, NaN to keep the part's own) and its kit kind. Nothing draws by them without the stage bank.</summary>
+        public readonly int[] Slot=new int[Capacity],Kind=new int[Capacity];public readonly double[] Level=new double[Capacity];
+        private void Put(int slot,double level,double x,double y,double z,double hx,double hy,double hz,FactoryQ q,int kind,bool shadow=true)
+        {int n=Parts.Count;Parts.Add(x,y,z,hx,hy,hz,q,kind,shadow);if(Parts.Count>n){Slot[n]=slot;Level[n]=level;Kind[n]=kind;}}
         private readonly double[] pylons,braziers,spires;private readonly int pylonCount,brazierCount,spireCount;
         public NativeCausewayRig(NativeFactoryKit.Looks looks,ContentMap map)
         {
@@ -419,15 +425,15 @@ namespace ChipArena.UnityConversion
             {
                 // the burning stone: a dark core of turned blocks with molten seams, tumbling along its path
                 double spin=s.Fall*9+index;var q=FactoryQ.Axis(.6,.7,.38,spin);
-                Parts.Add(s.Px,s.Py,s.Pz,.62,.55,.58,q,Rock);Parts.Add(s.Px,s.Py,s.Pz,.5,.66,.44,q*FactoryQ.Axis(0,1,0,.8),Rock);Parts.Add(s.Px,s.Py,s.Pz,.66,.08,.66,q*FactoryQ.Axis(1,0,0,.5),Ember,false);
-                Parts.Add(s.Px,s.Py,s.Pz,.07,.7,.07,q,Ember,false);
+                Put(NativeCausewayArt.Star,0,s.Px,s.Py,s.Pz,.62,.55,.58,q,Rock);Put(-1,0,s.Px,s.Py,s.Pz,.5,.66,.44,q*FactoryQ.Axis(0,1,0,.8),Rock);Put(-1,0,s.Px,s.Py,s.Pz,.66,.08,.66,q*FactoryQ.Axis(1,0,0,.5),Ember,false);
+                Put(-1,0,s.Px,s.Py,s.Pz,.07,.7,.07,q,Ember,false);
             }
             if(s.Since<1.6)
             {
                 // shards thrown from the crater on ballistic arcs
                 double t=s.Since;for(int k=0;k<10;k++){double a=k*2*Math.PI/10+H(index,s.Cycle,k),v=3.5+H(index,k,s.Cycle)*4.5,up=4+H(index,k+20,s.Cycle)*5;
                     double x=s.X+Math.Cos(a)*v*t,z=s.Z+Math.Sin(a)*v*t,y=s.Y+.2+up*t-11*t*t;if(y<s.Y+.05)continue;double sz=.08+H(index,k+40)*.12;
-                    Parts.Add(x,y,z,sz,sz*.8,sz,FactoryQ.Axis(.3,.8,.5,t*12+k),k%3==0?Ember:Rock,false);}
+                    Put(k%3==0?NativeCausewayArt.ShardEmber:NativeCausewayArt.Shard,0,x,y,z,sz,sz*.8,sz,FactoryQ.Axis(.3,.8,.5,t*12+k),k%3==0?Ember:Rock,false);}
             }
         }
         private void LaneRig(MapHazard h,NativeHazardState st,double t)
@@ -446,7 +452,7 @@ namespace ChipArena.UnityConversion
                     case NativeHazardPhase.Clear:lit=.15+.6*st.Level;kind=Cold;break;
                 }
                 if(lit<.2&&st.Phase==NativeHazardPhase.Idle){if(((int)Math.Floor(x)&1)==0)continue;}
-                double hy=.004+.006*lit;for(int e=-1;e<=1;e+=2)Parts.Add(x,hy,e*1.25,.16,hy,.07,FactoryQ.Identity,lit>.5?kind:Rune,false);
+                double hy=.004+.006*lit;for(int e=-1;e<=1;e+=2)Put(lit>.2?NativeCausewayArt.Glyph:-1,lit,x,hy,e*1.25,.16,hy,.07,FactoryQ.Identity,lit>.5?kind:Rune,false);
             }
         }
         private void Banners(double t,double gust,double warn,double ax,double gx0,double gx1)
@@ -464,38 +470,38 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<seg;k++)
                 {
                     double a=angle*(1+.35*k)+(g>0?.1*Math.Sin(t*21+k+i):0),l=len/seg;double ny=py-Math.Cos(a)*l,nz=pz+Math.Sin(a)*l;
-                    Parts.Add(x,(py+ny)/2,(pz+nz)/2,wid,l/2+.01,.012,FactoryQ.Axis(1,0,0,-a),Cloth,false);
-                    if(k==seg-1)Parts.Add(x,ny+.03,nz,wid+.02,.04,.016,FactoryQ.Axis(1,0,0,-a),ClothEdge,false);
+                    Put(NativeCausewayArt.Banner,0,x,(py+ny)/2,(pz+nz)/2,wid,l/2+.01,.012,FactoryQ.Axis(1,0,0,-a),Cloth,false);
+                    if(k==seg-1)Put(NativeCausewayArt.BannerHem,0,x,ny+.03,nz,wid+.02,.04,.016,FactoryQ.Axis(1,0,0,-a),ClothEdge,false);
                     py=ny;pz=nz;
                 }
-                Parts.Add(x,top+.02,zf,wid+.08,.03,.03,FactoryQ.Identity,Metal,false);
-                Parts.Add(x,top-len*.42,zf+(z>0?-.01:.01)+Math.Sin(angle)*len*.42,.09,.09,.014,FactoryQ.Axis(1,0,0,-angle)*FactoryQ.Axis(0,0,1,Math.PI/4),Rune,false);
+                Put(-1,0,x,top+.02,zf,wid+.08,.03,.03,FactoryQ.Identity,Metal,false);
+                Put(NativeCausewayArt.BannerStar,0,x,top-len*.42,zf+(z>0?-.01:.01)+Math.Sin(angle)*len*.42,.09,.09,.014,FactoryQ.Axis(1,0,0,-angle)*FactoryQ.Axis(0,0,1,Math.PI/4),Rune,false);
             }
         }
         private void Floaters(double t)
         {
             // crystals over the pylons, the braziers and the spires: turning and bobbing
-            for(int i=0;i<pylonCount;i++){double y=PylonTop(i)+.75+.12*Math.Sin(t*1.1+i);var q=FactoryQ.Axis(0,1,0,t*.6+i)*FactoryQ.Axis(1,0,0,Math.PI/4)*FactoryQ.Axis(0,0,1,Math.PI/4);Parts.Add(PylonX(i),y,PylonZ(i),.13,.2,.13,q,Crystal,false);}
+            for(int i=0;i<pylonCount;i++){double y=PylonTop(i)+.75+.12*Math.Sin(t*1.1+i);var q=FactoryQ.Axis(0,1,0,t*.6+i)*FactoryQ.Axis(1,0,0,Math.PI/4)*FactoryQ.Axis(0,0,1,Math.PI/4);Put(NativeCausewayArt.Crystal,t*.6+i,PylonX(i),y,PylonZ(i),.13,.2,.13,q,Crystal,false);}
             for(int i=0;i<brazierCount;i++)
             {
                 double x=BrazierX(i),z=BrazierZ(i),y=BrazierTop(i)+.45+.08*Math.Sin(t*1.4+i*2);
-                for(int k=0;k<4;k++){double a=t*.5+k*Math.PI/2+i,r=k==0?0:.16;var q=FactoryQ.Axis(0,1,0,a)*FactoryQ.Axis(1,0,0,.25*k);Parts.Add(x+Math.Cos(a)*r,y-.06*k,z+Math.Sin(a)*r,.07,k==0?.26:.15,.07,q,k%2==0?Crystal:Violet,false);}
+                for(int k=0;k<4;k++){double a=t*.5+k*Math.PI/2+i,r=k==0?0:.16;var q=FactoryQ.Axis(0,1,0,a)*FactoryQ.Axis(1,0,0,.25*k);Put(k%2==0?NativeCausewayArt.Crystal:NativeCausewayArt.CrystalViolet,a,x+Math.Cos(a)*r,y-.06*k,z+Math.Sin(a)*r,.07,k==0?.26:.15,.07,q,k%2==0?Crystal:Violet,false);}
             }
-            for(int i=0;i<spireCount;i++){double y=SpireTop(i)+1.6+.25*Math.Sin(t*.7+i);var q=FactoryQ.Axis(0,1,0,t*.3+i)*FactoryQ.Axis(0,0,1,.12);Parts.Add(SpireX(i),y,SpireZ(i),.22,.9,.22,q,Violet,false);Parts.Add(SpireX(i),y-1.05,SpireZ(i),.1,.24,.1,q,Crystal,false);}
+            for(int i=0;i<spireCount;i++){double y=SpireTop(i)+1.6+.25*Math.Sin(t*.7+i);var q=FactoryQ.Axis(0,1,0,t*.3+i)*FactoryQ.Axis(0,0,1,.12);Put(NativeCausewayArt.CrystalViolet,t*.3+i,SpireX(i),y,SpireZ(i),.22,.9,.22,q,Violet,false);Put(NativeCausewayArt.Crystal,t*.3+i,SpireX(i),y-1.05,SpireZ(i),.1,.24,.1,q,Crystal,false);}
         }
         private void Arch(double t)
         {
             for(int k=0;k<ArchStones;k++)
             {
                 ArchStone(k,t,out double x,out double y,out double z,out double tilt);var q=FactoryQ.Axis(0,0,1,tilt);bool key=k==ArchStones/2;
-                Parts.Add(x,y,z,.62,.5,1.1,q,Stone);Parts.Add(x,y,z,.64,.08,1.12,q,key?Crystal:Rune,false);if(key)Parts.Add(x,y+.62,z,.18,.3,.18,q*FactoryQ.Axis(0,1,0,t*.8),Crystal,false);
+                Put(key?NativeCausewayArt.VoussoirKey:NativeCausewayArt.Voussoir,0,x,y,z,.62,.5,1.1,q,Stone);Put(-1,0,x,y,z,.64,.08,1.12,q,key?Crystal:Rune,false);if(key)Put(NativeCausewayArt.Crystal,t*.8,x,y+.62,z,.18,.3,.18,q*FactoryQ.Axis(0,1,0,t*.8),Crystal,false);
             }
         }
         private void CometCore(MapHazard h,in NativeHazardState st,double t)
         {
             // the comet's nucleus: a dark, tumbling lump of ice with bright facets under its coma
             if(!NativeCausewayLooks.CometHead(h,st,out double x,out double y,out double z,out double near))return;double s=.18+.2*near;var q=FactoryQ.Axis(.5,.8,.3,t*3.1);
-            Parts.Add(x,y,z,s,s*.8,s*.9,q,Comet,false);Parts.Add(x,y,z,s*.8,s,s*.7,q*FactoryQ.Axis(0,1,0,.8),Comet,false);
+            Put(NativeCausewayArt.Comet,0,x,y,z,s,s*.8,s*.9,q,Comet,false);Put(-1,0,x,y,z,s*.8,s,s*.7,q*FactoryQ.Axis(0,1,0,.8),Comet,false);
         }
         /// <summary>Above each crown its tower's lost storeys float apart: masonry fragments with their rune courses, turning slowly
         /// (index k of <see cref="CrownStones"/>; the lowest is 7 m over the crown).</summary>
@@ -509,8 +515,8 @@ namespace ChipArena.UnityConversion
             for(int side=-1;side<=1;side+=2)for(int k=0;k<CrownStones;k++)
             {
                 CrownStone(side,k,t,out double x,out double y,out double z,out double s,out double spin);var q=FactoryQ.Axis(.2,1,.15,spin)*FactoryQ.Axis(1,0,0,.25*Math.Sin(k));
-                Parts.Add(x,y,z,s,s*.55,s*.8,q,Stone);Parts.Add(x,y-s*.5,z,s*.9,s*.12,s*.7,q,Trim,false);Parts.Add(x,y+s*.05,z,s*1.02,.06,s*.82,q,k%3==0?Cold:Rune,false);
-                if(k%3==1)Parts.Add(x,y+s*.75,z,s*.2,s*.5,s*.2,q,Stone);
+                Put(NativeCausewayArt.Crown+k,0,x,y,z,s,s*.55,s*.8,q,Stone);Put(-1,0,x,y-s*.5,z,s*.9,s*.12,s*.7,q,Trim,false);Put(-1,0,x,y+s*.05,z,s*1.02,.06,s*.82,q,k%3==0?Cold:Rune,false);
+                if(k%3==1)Put(-1,0,x,y+s*.75,z,s*.2,s*.5,s*.2,q,Stone);
             }
         }
         private void Asteroids(double t)
@@ -521,9 +527,9 @@ namespace ChipArena.UnityConversion
                 double r=85+H(501,i)*120,w=(.006+H(501,i,1)*.01)*(i%2==0?1:-1),a=H(501,i,2)*2*Math.PI+t*w,y=-50+H(501,i,3)*80+Math.Sin(t*.05+i)*2;
                 double x=Math.Cos(a)*r*1.25,z=Math.Sin(a)*r;double sz=1.2+Math.Pow(H(501,i,4),2)*6;var q=FactoryQ.Axis(H(501,i,5)-.5,1,H(501,i,6)-.5,t*(.05+H(501,i,7)*.15)+i);
                 // a lumpy rock: three turned masses of their own proportions, one offset
-                Parts.Add(x,y,z,sz,sz*.62,sz*.78,q,Rock,sz>3);Parts.Add(x,y,z,sz*.72,sz*.8,sz*.58,q*FactoryQ.Axis(.3,1,.2,.9),Rock,false);
-                Parts.Add(x+sz*.35,y+sz*.2,z-sz*.15,sz*.5,sz*.42,sz*.55,q*FactoryQ.Axis(1,.4,0,1.3),Rock,false);
-                if(i%5==0)Parts.Add(x,y+sz*.6,z,sz*.12,sz*.35,sz*.12,q,i%10==0?Violet:Crystal,false);
+                Put(NativeCausewayArt.Asteroid+(i&3),0,x,y,z,sz,sz*.62,sz*.78,q,Rock,sz>3);Put(-1,0,x,y,z,sz*.72,sz*.8,sz*.58,q*FactoryQ.Axis(.3,1,.2,.9),Rock,false);
+                Put(-1,0,x+sz*.35,y+sz*.2,z-sz*.15,sz*.5,sz*.42,sz*.55,q*FactoryQ.Axis(1,.4,0,1.3),Rock,false);
+                if(i%5==0)Put(i%10==0?NativeCausewayArt.CrystalViolet:NativeCausewayArt.Crystal,double.NaN,x,y+sz*.6,z,sz*.12,sz*.35,sz*.12,q,i%10==0?Violet:Crystal,false);
             }
         }
     }

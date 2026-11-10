@@ -19,6 +19,10 @@ namespace ChipArena.UnityConversion
     ///    laser wall and the pin spots while the look's beams are on above the low tier (ArenaPresentation.AdvancedBeams).
     ///  - The show's three lights go to the arena's practical slots (NativeLighting.KitLights): 3 on High, 2 on Balanced, 1 on Low;
     ///    actor lighting is on each frame, so the pilots take the slots too (the dark club's bodies read by its lamps).
+    ///  - The stage art (docs/arenas/STAGE-ART.md): with the stage bank ChipArenaStageClub, NativeStageArtDraw draws the modelled
+    ///    hall, furniture and rig (Core NativeSubstationArt poses it from the rig: the cones, the moving heads, the laser posts,
+    ///    the mirror balls, the Grey DJ and the crowd of Greys) instead of the kit's and the rig's boxes and the backdrop's near
+    ///    sector; the lit screens (the floor's tiles, the LED wall, the cube) stay the rig's. Without the bank every box draws.
     ///  - The music's pulse (Core NativeClubPulse) from the music voice's spectrum (NativeClubMusic, NativeClubAudio.cs), or the
     ///    steady 128 bpm clock. Presentation only.
     /// </summary>
@@ -31,6 +35,9 @@ namespace ChipArena.UnityConversion
         private ContentMap built;private NativeClubRig rigBuilder;private Mesh[] sectors=Array.Empty<Mesh>();
         private NativeFxDraw fxDraw;private readonly NativeClubFx fx=new NativeClubFx();private readonly NativeClubShow show=new NativeClubShow();private readonly NativeClubPulse pulse=new NativeClubPulse();
         private readonly float[] lightPos=new float[12],lightRgb=new float[9];private float lastRender=float.NaN;
+        private NativeStageArtDraw art;private readonly NativeStageArtPose artPose=new NativeStageArtPose();
+        /// <summary>The stage art drew last frame (the kit's boxes, the rig's modelled parts and the near backdrop did not).</summary>
+        public bool ArtDrawn{get;private set;}
         private static readonly int SizeId=Shader.PropertyToID("_BlockSize"),RestId=Shader.PropertyToID("_BlockRest"),ColorId=Shader.PropertyToID("_BlockColor"),LookId=Shader.PropertyToID("_BlockLook");
         /// <summary>The frame's volumetric beam list (null: the effects' billboards) and the light-flash setting.</summary>
         public NativeBeamList Beams;public NativeKitFlash Flash=NativeKitFlash.Full;
@@ -52,7 +59,8 @@ namespace ChipArena.UnityConversion
         /// loading screen). Nothing is drawn.</summary>
         public bool Prepare(NativeArena arena)
         {
-            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null||!NativeClubLooks.Active(map.id))return false;if(ReferenceEquals(map,built))return true;
+            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null||!NativeClubLooks.Active(map.id))return false;
+            if(art==null)art=gameObject.AddComponent<NativeStageArtDraw>();art.Prepare(map,NativeSubstationArt.Slots,NativeSubstationArt.Casts);if(ReferenceEquals(map,built))return true;
             built=map;
             try
             {
@@ -68,14 +76,18 @@ namespace ChipArena.UnityConversion
         {
             Draws=Instances=0;LightsSent=false;if(!Prepare(arena))return;var map=arena.Map;var match=arena.Match;int round=NativeStructureFx.RoundIndex(match.Set,match.Round);
             const int layer=NativeSceneryBuilder.BackdropLayer;
-            foreach(var m in sectors)Graphics.DrawMesh(m,Matrix4x4.identity,sceneryLit,layer,null,0,null,ShadowCastingMode.Off,true);
-            foreach(var b in kit)Draw(b,instancing);
             // the pulse: the song's spectrum when it was heard this frame, else the bar grid's clock (eased between them)
             double dt=float.IsNaN(lastRender)?0:Math.Max(0,Math.Min(.1,now-lastRender));lastRender=now;
             var flash=quality<.5f&&Flash==NativeKitFlash.Full?NativeKitFlash.Reduced:Flash;double beats=NativeClubLooks.Beats(match.Phase,match.FightAt,now,now);
             if(NativeClubMusic.Fresh)pulse.Feed(NativeClubMusic.Spectrum,NativeClubPulse.Bins,NativeClubMusic.Rate,dt,beats,flash);else pulse.Feed(null,0,0,dt,beats,flash);
             show.Build(round,match.Phase,match.FightAt,now,now,pulse,flash);
-            if(rigBuilder!=null){rigBuilder.Build(show,now,low,quality);Fill(rigBuilder);foreach(var b in rig)Draw(b,instancing);}
+            // the art (the modelled hall and rig) in place of the kit's boxes, the rig's modelled parts and the near backdrop;
+            // the lit screens stay the rig's either way
+            ArtDrawn=false;if(rigBuilder!=null)rigBuilder.Build(show,now,low,quality);
+            if(art!=null&&art.Ready&&rigBuilder!=null){NativeSubstationArt.Pose(rigBuilder,show,now,artPose);ArtDrawn=art.Render(arena,camera,low,artPose);}
+            for(int i=0;i<sectors.Length;i++)if(!(ArtDrawn&&i==NativeClubScenery.Near))Graphics.DrawMesh(sectors[i],Matrix4x4.identity,sceneryLit,layer,null,0,null,ShadowCastingMode.Off,true);
+            if(!ArtDrawn)foreach(var b in kit)Draw(b,instancing);
+            if(rigBuilder!=null){Fill(rigBuilder,ArtDrawn?rigBuilder.Screens:rigBuilder.Parts.Count);foreach(var b in rig)Draw(b,instancing);}
             Effects(arena,now,camera,quality,low);
             if(camera!=null)
             {
@@ -106,10 +118,10 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<parts.Count;i++){ref var p=ref parts.Items[i];var b=p.Shadow?kit[ci/NativeBlockLooks.Chunk]:kit[nc+fi/NativeBlockLooks.Chunk];if(p.Shadow)ci++;else fi++;Put(b,b.Count++,ref p,float.NaN,0,0);}
         }
         // The frame's rig: casters into the first batch, shadowless parts into the other four (Capacity 1800 fits 2500).
-        private void Fill(NativeClubRig r)
+        private void Fill(NativeClubRig r,int count)
         {
             foreach(var b in rig)b.Count=0;var parts=r.Parts;
-            for(int i=0;i<parts.Count;i++)
+            for(int i=0;i<count;i++)
             {
                 ref var p=ref parts.Items[i];Batch b=null;
                 if(p.Shadow&&rig[0].Count<NativeBlockLooks.Chunk)b=rig[0];else for(int k=1;k<rig.Length;k++)if(rig[k].Count<NativeBlockLooks.Chunk){b=rig[k];break;}

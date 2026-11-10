@@ -28,6 +28,13 @@ namespace ChipArena.UnityConversion
         private Batch[] kit=Array.Empty<Batch>();private readonly Batch[] rig=new Batch[RigCasters+RigFlat];
         private ContentMap built;private NativeEmporiumRig rigBuilder;private Mesh[] sectors=Array.Empty<Mesh>();
         private NativeFxDraw fxDraw;private readonly NativeEmporiumFx fx=new NativeEmporiumFx();
+        // The stage art (docs/arenas/STAGE-ART.md): with the stage bank ChipArenaStageEmporium, NativeStageArtDraw draws the modelled
+        // hall, its furniture and its rigs (posed by Core NativeEmporiumArt from the same replicated state) in place of the kit's
+        // boxes and the rig's (all but the telegraph lamps and the presses' drop shadows: NativeEmporiumRig.Kept); without the bank
+        // every box draws as before.
+        private NativeStageArtDraw art;private readonly NativeStageArtPose artPose=new NativeStageArtPose();
+        /// <summary>The stage art drew last frame (the kit's boxes and the rig's replaced boxes did not).</summary>
+        public bool ArtDrawn{get;private set;}
         private static readonly int SizeId=Shader.PropertyToID("_BlockSize"),RestId=Shader.PropertyToID("_BlockRest"),ColorId=Shader.PropertyToID("_BlockColor"),LookId=Shader.PropertyToID("_BlockLook");
         /// <summary>The frame's volumetric beam list (null: the effects' billboards).</summary>
         public NativeBeamList Beams;
@@ -49,7 +56,8 @@ namespace ChipArena.UnityConversion
         /// the loading screen). Nothing is drawn.</summary>
         public bool Prepare(NativeArena arena)
         {
-            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null||!NativeEmporiumLooks.Active(map.id))return false;if(ReferenceEquals(map,built))return true;
+            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null||!NativeEmporiumLooks.Active(map.id))return false;
+            if(art==null)art=gameObject.AddComponent<NativeStageArtDraw>();art.Prepare(map,NativeEmporiumArt.Slots,NativeEmporiumArt.Casts);if(ReferenceEquals(map,built))return true;
             built=map;
             try
             {
@@ -66,8 +74,9 @@ namespace ChipArena.UnityConversion
             Draws=Instances=0;if(!Prepare(arena))return;var map=arena.Map;var match=arena.Match;int round=NativeStructureFx.RoundIndex(match.Set,match.Round);
             const int layer=NativeSceneryBuilder.BackdropLayer;
             foreach(var m in sectors)Graphics.DrawMesh(m,Matrix4x4.identity,sceneryLit,layer,null,0,null,ShadowCastingMode.Off,true);
-            foreach(var b in kit)Draw(b,instancing);
-            if(rigBuilder!=null){rigBuilder.Build(map.id,map.hazards,map.blocks,round,match.Phase,match.FightAt,now,now);RigParts=rigBuilder.Parts.Count;Fill(rigBuilder.Parts);foreach(var b in rig)Draw(b,instancing);}
+            ArtDrawn=false;if(art!=null&&art.Ready){NativeEmporiumArt.Pose(map.id,map.hazards,map.blocks,round,match.Phase,match.FightAt,now,now,artPose);ArtDrawn=art.Render(arena,camera,low,artPose);}
+            if(!ArtDrawn)foreach(var b in kit)Draw(b,instancing);
+            if(rigBuilder!=null){rigBuilder.Build(map.id,map.hazards,map.blocks,round,match.Phase,match.FightAt,now,now);RigParts=rigBuilder.Parts.Count;Fill(rigBuilder.Parts,ArtDrawn?rigBuilder.Kept:null);foreach(var b in rig)Draw(b,instancing);}
             Effects(arena,round,now,camera,quality,low);
         }
         private void Effects(NativeArena arena,int round,float now,Camera camera,float quality,bool low)
@@ -91,10 +100,11 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<kit.Length;i++)kit[i]=new Batch{Shadow=i<nc};int ci=0,fi=0;
             for(int i=0;i<parts.Count;i++){ref var p=ref parts.Items[i];var b=p.Shadow?kit[ci/NativeBlockLooks.Chunk]:kit[nc+fi/NativeBlockLooks.Chunk];if(p.Shadow)ci++;else fi++;Put(b,b.Count++,ref p);}
         }
-        private void Fill(NativeFactoryKit.Writer parts)
+        // kept: under the stage art, only the rig's kept boxes (the telegraph lamps, the drop shadows) draw.
+        private void Fill(NativeFactoryKit.Writer parts,bool[] kept)
         {
             foreach(var b in rig)b.Count=0;
-            for(int i=0;i<parts.Count;i++){ref var p=ref parts.Items[i];Batch b=null;int k0=p.Shadow?0:RigCasters,k1=p.Shadow?RigCasters:rig.Length;for(int k=k0;k<k1;k++)if(rig[k].Count<NativeBlockLooks.Chunk){b=rig[k];break;}if(b==null)continue;Put(b,b.Count++,ref p);}
+            for(int i=0;i<parts.Count;i++){if(kept!=null&&!kept[i])continue;ref var p=ref parts.Items[i];Batch b=null;int k0=p.Shadow?0:RigCasters,k1=p.Shadow?RigCasters:rig.Length;for(int k=k0;k<k1;k++)if(rig[k].Count<NativeBlockLooks.Chunk){b=rig[k];break;}if(b==null)continue;Put(b,b.Count++,ref p);}
         }
         private static void Put(Batch b,int i,ref FactoryPart p)
         {

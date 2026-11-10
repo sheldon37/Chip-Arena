@@ -24,17 +24,20 @@ namespace ChipArena.UnityConversion
         public const float Proud=.25f;public const double Clearance=2.0,Decal=.012;
         public readonly NativeFactoryKit.Writer Parts;public int[] Parent=Array.Empty<int>();public bool[] Overhead=Array.Empty<bool>();
         private readonly List<int> parents=new List<int>();private readonly List<bool> overhead=new List<bool>();
-        private int current=-1;private bool over;
+        private int current=-1;private bool over;private string family="",ownerId;
+        /// <summary>The stage art's layout (Tests/StageArtLayout.cs, docs/arenas/STAGE-ART.md): each part's family (the builder that made it),
+        /// the block it dresses (null: overhead) and its kind. Nothing draws by them.</summary>
+        public readonly List<string> Family=new List<string>(),Owner=new List<string>();public readonly List<int> Kind=new List<int>();
         public int Count=>Parts.Count;
         private NativeClubKit(NativeFactoryKit.Looks looks){Parts=new NativeFactoryKit.Writer(2048,true,looks);}
-        private void Track(int before){for(int i=before;i<Parts.Count;i++){parents.Add(current);overhead.Add(over);}}
-        private void Add(double x,double y,double z,double hx,double hy,double hz,FactoryQ q,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Add(x,y,z,hx,hy,hz,q,kind,shadow,color,window);Track(n);}
-        private void Box(double x0,double x1,double y0,double y1,double z0,double z1,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Box(Math.Min(x0,x1),Math.Max(x0,x1),Math.Min(y0,y1),Math.Max(y0,y1),Math.Min(z0,z1),Math.Max(z0,z1),kind,shadow,color,window);Track(n);}
-        private void Bar(double x0,double y0,double z0,double x1,double y1,double z1,double t,int kind,bool shadow=true,int color=-1){int n=Parts.Count;Parts.Bar(x0,y0,z0,x1,y1,z1,t,t,kind,shadow,color);Track(n);}
+        private void Track(int before,int kind){for(int i=before;i<Parts.Count;i++){parents.Add(current);overhead.Add(over);Family.Add(family);Owner.Add(over?null:ownerId);Kind.Add(kind);}}
+        private void Add(double x,double y,double z,double hx,double hy,double hz,FactoryQ q,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Add(x,y,z,hx,hy,hz,q,kind,shadow,color,window);Track(n,kind);}
+        private void Box(double x0,double x1,double y0,double y1,double z0,double z1,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Box(Math.Min(x0,x1),Math.Max(x0,x1),Math.Min(y0,y1),Math.Max(y0,y1),Math.Min(z0,z1),Math.Max(z0,z1),kind,shadow,color,window);Track(n,kind);}
+        private void Bar(double x0,double y0,double z0,double x1,double y1,double z1,double t,int kind,bool shadow=true,int color=-1){int n=Parts.Count;Parts.Bar(x0,y0,z0,x1,y1,z1,t,t,kind,shadow,color);Track(n,kind);}
         private struct Bx {public double X0,X1,Y0,Y1,Z0,Z1;public string Id;public int Index;public double Cx=>(X0+X1)/2;public double Cz=>(Z0+Z1)/2;}
         private readonly Dictionary<string,Bx> blocks=new Dictionary<string,Bx>(StringComparer.Ordinal);private readonly List<Bx> all=new List<Bx>();
-        private void On(Bx b){current=b.Index;over=false;}
-        private void Above(){current=-1;over=true;}
+        private void On(Bx b){current=b.Index;over=false;ownerId=b.Id;}
+        private void Above(){current=-1;over=true;ownerId=null;}
         private static bool Starts(string id,string p)=>id!=null&&id.StartsWith(p,StringComparison.Ordinal);
         private static double H(int a,int b=0,int c=0)=>NativeClubLooks.Hash(a,b,c);
         /// <summary>An emissive part's HDR gain (the window value; see the summary).</summary>
@@ -99,7 +102,7 @@ namespace ChipArena.UnityConversion
         // A truss tower (solid in the sim): four chrome chords at its corners and X bracing on each face, a base plate and a sleeve.
         private void Tower(Bx b)
         {
-            On(b);double t=.07,step=.8;int K=NativeClubLooks.Truss,C=NativeClubLooks.Chrome;
+            family="tower";On(b);double t=.07,step=.8;int K=NativeClubLooks.Truss,C=NativeClubLooks.Chrome;
             foreach(var (sx,sz) in new[]{(0,0),(1,0),(0,1),(1,1)}){double x=sx==0?b.X0+t/2-.01:b.X1-t/2+.01,z=sz==0?b.Z0+t/2-.01:b.Z1-t/2+.01;Box(x-t/2,x+t/2,b.Y0,b.Y1,z-t/2,z+t/2,C,true);}
             for(int side=0;side<4;side++)
             {
@@ -122,7 +125,7 @@ namespace ChipArena.UnityConversion
         // A speaker stack: four cabinets (seams), corner protectors, the grille the rig's cones sit on, the brand lamp.
         private void Speaker(Bx b)
         {
-            On(b);double front=b.Z0;int D=NativeClubLooks.Dark,G=NativeClubLooks.Grille,M=NativeClubLooks.Metal;
+            family="speaker";On(b);double front=b.Z0;int D=NativeClubLooks.Dark,G=NativeClubLooks.Grille,M=NativeClubLooks.Metal;
             double cab=(b.Y1-b.Y0)/4;
             for(int k=0;k<4;k++)
             {
@@ -135,7 +138,7 @@ namespace ChipArena.UnityConversion
         }
         private void Stage(Bx b)
         {
-            On(b);
+            family="stage";On(b);
             Face(b,4,b.X0+.06,b.X1-.06,b.Z0+.06,b.Z1-.06,NativeClubLooks.Rubber,-1,Decal,.004);
             Face(b,3,b.X0,b.X1,b.Y1-.09,b.Y1-.03,NativeClubLooks.Led,NativeClubLooks.Cyan,.02,.01,false,Glow);
             Face(b,3,b.X0,b.X1,b.Y0,b.Y0+.12,NativeClubLooks.Dark,-1,.02,.006);
@@ -144,7 +147,7 @@ namespace ChipArena.UnityConversion
         }
         private void Nosing(Bx b,string id)
         {
-            On(b);
+            family="nosing";On(b);
             // the nosing on the riser's top edge facing down the flight: grand stairs climb north (riser faces south), the bar
             // stairs climb west (their risers face east), the stage's front steps climb north, its back steps climb east
             int side=Starts(id,"club-stair-bar-w")?0:Starts(id,"club-stair-bar-e")?1:Starts(id,"club-stage-back-w")?1:Starts(id,"club-stage-back-e")?0:3;
@@ -152,7 +155,7 @@ namespace ChipArena.UnityConversion
         }
         private void Booth(Bx b)
         {
-            On(b);
+            family="dj-booth";On(b);
             Face(b,3,b.X0+.1,b.X1-.1,b.Y0+.12,b.Y1-.12,NativeClubLooks.Screen,NativeClubLooks.Violet,.02,.006,false,1.05);
             Face(b,3,b.X0,b.X1,b.Y1-.06,b.Y1-.02,NativeClubLooks.Led,NativeClubLooks.Cyan,.012,.01,false,Glow);
             double y=b.Y1;int D=NativeClubLooks.Dark,C=NativeClubLooks.Chrome;
@@ -162,7 +165,7 @@ namespace ChipArena.UnityConversion
         }
         private void Counter(Bx b)
         {
-            On(b);
+            family="bar-counter";On(b);
             Face(b,4,b.X0-.02,b.X1+.02,b.Z0-.06,b.Z1+.02,NativeClubLooks.Dark,0x0E0C14,.04,.04);
             Face(b,2,b.X0,b.X1,b.Y1-.1,b.Y1-.05,NativeClubLooks.Led,NativeClubLooks.Magenta,.015,.02,false,Glow);
             Box(b.X0+.1,b.X1-.1,.22,.27,b.Z1+.12,b.Z1+.17,NativeClubLooks.Brass,true);
@@ -171,7 +174,7 @@ namespace ChipArena.UnityConversion
         }
         private void BackBar(Bx b)
         {
-            On(b);double face=b.Z1;
+            family="backbar";On(b);double face=b.Z1;
             Face(b,2,b.X0+.1,b.X1-.1,.9,3.5,NativeClubLooks.Mirror,-1,.01,.004);
             int[] bottle={0x5AFF8A,0xFFB45E,0x6AC8FF,0xFF6FA0,0xE8E0C8};
             for(int s=0;s<3;s++)
@@ -182,7 +185,7 @@ namespace ChipArena.UnityConversion
         }
         private void Fascia(Bx b,string id)
         {
-            On(b);int L=NativeClubLooks.Led;int col=id=="club-catwalk"?NativeClubLooks.Magenta:NativeClubLooks.Cyan;
+            family="fascia";On(b);int L=NativeClubLooks.Led;int col=id=="club-catwalk"?NativeClubLooks.Magenta:NativeClubLooks.Cyan;
             // the deck's edges that face the hall: the mezzanines' inner side, the VIP's north edge and stairwells, both catwalk sides
             if(Starts(id,"club-mezz-w"))Face(b,0,b.Z0,b.Z1,b.Y0+.08,b.Y0+.14,L,col,.012,.006,false,Glow);
             else if(Starts(id,"club-mezz-e"))Face(b,1,b.Z0,b.Z1,b.Y0+.08,b.Y0+.14,L,col,.012,.006,false,Glow);
@@ -193,7 +196,7 @@ namespace ChipArena.UnityConversion
         }
         private void Rail(Bx b,string id)
         {
-            On(b);bool alongX=b.X1-b.X0>=b.Z1-b.Z0;double t=.035;
+            family="rail";On(b);bool alongX=b.X1-b.X0>=b.Z1-b.Z0;double t=.035;
             if(alongX){Box(b.X0,b.X1,b.Y1,b.Y1+.05,b.Cz-t,b.Cz+t,NativeClubLooks.Chrome,false);}else{Box(b.Cx-t,b.Cx+t,b.Y1,b.Y1+.05,b.Z0,b.Z1,NativeClubLooks.Chrome,false);}
             if(Starts(id,"club-barrier-"))return;
             // an LED line under the cap on both faces (the rails glow with the club)
@@ -203,7 +206,7 @@ namespace ChipArena.UnityConversion
         // The south wall above the VIP: the club's neon (a bolt and "128") and the window's sill; the window frame is overhead.
         private void SouthWall(Bx b)
         {
-            On(b);double z=b.Z1;
+            family="south-wall";On(b);double z=b.Z1;
             Face(b,2,b.X0,b.X1,b.Y1-.3,b.Y1,NativeClubLooks.Steel,-1,.06,.03,true);
             // the sign's backing and its strokes (a lightning bolt then 1, 2, 8 as segments), magenta and cyan neon
             Face(b,2,-5.2,5.2,5.0,7.0,NativeClubLooks.Dark,0x0A0810,.03,.012);
@@ -226,7 +229,7 @@ namespace ChipArena.UnityConversion
         // The west and east walls: the old crane rail on corbels under the arches, a skirting, and the uplights at the foot.
         private void SideWall(Bx b,int east)
         {
-            On(b);int side=east==0?0:1;double f=east==0?b.X1:b.X0;
+            family="side-wall";On(b);int side=east==0?0:1;double f=east==0?b.X1:b.X0;
             Face(b,side,b.Z0+.4,b.Z1-.4,b.Y1-.55,b.Y1-.05,NativeClubLooks.Steel,-1,.18,.16,true);
             for(double z=-18;z<=18.1;z+=4)Face(b,side,z-.15,z+.15,b.Y1-1.0,b.Y1-.55,NativeClubLooks.Steel,-1,.14,.12,true);
             Face(b,side,b.Z0+.4,b.Z1-.4,0,.18,NativeClubLooks.Dark,-1,.03,.012);
@@ -234,39 +237,39 @@ namespace ChipArena.UnityConversion
         }
         private void Pier(Bx b,int east)
         {
-            On(b);int side=east==0?0:1;
+            family="pier";On(b);int side=east==0?0:1;
             Face(b,side,b.Z0,b.Z1,b.Y0,b.Y0+.18,NativeClubLooks.Steel,-1,.06,.03);Face(b,side,b.Z0+.1,b.Z1-.1,b.Y1-.5,b.Y1-.3,NativeClubLooks.Brick,0x7A4A40,.05,.03);
             // the arches' lit reveals: a violet LED line up each pier's edges facing the arch (and the gallery's light through it)
             double x=east==0?b.X1+.012:b.X0-.012;foreach(double z in new[]{b.Z0+.05,b.Z1-.05})if(z>-19.9&&z<19.9)Box(x-.012,x+.012,b.Y0+.2,b.Y1-.6,z-.02,z+.02,NativeClubLooks.Led,false,NativeClubLooks.Violet,Glow);
         }
         private void LedWallFrame(Bx b)
         {
-            On(b);int D=NativeClubLooks.Dark;
+            family="led-wall";On(b);int D=NativeClubLooks.Dark;
             Face(b,3,b.X0,b.X1,NativeClubLooks.WallY0-.1,NativeClubLooks.WallY0,D,-1,.06,.03);Face(b,3,b.X0,b.X1,b.Y1-.12,b.Y1,D,-1,.06,.03);
             Face(b,3,b.X0,b.X0+.12,NativeClubLooks.WallY0,b.Y1,D,-1,.06,.03);Face(b,3,b.X1-.12,b.X1,NativeClubLooks.WallY0,b.Y1,D,-1,.06,.03);
         }
         private void Column(Bx b)
         {
-            On(b);
+            family="column";On(b);
             Box(b.X0-.08,b.X1+.08,b.Y0,b.Y0+.35,b.Z0-.08,b.Z1+.08,NativeClubLooks.Steel);Box(b.X0-.05,b.X1+.05,b.Y0+.35,b.Y0+.42,b.Z0-.05,b.Z1+.05,NativeClubLooks.Brass,false);
             if(b.Y1>8){Box(b.X0-.1,b.X1+.1,b.Y1-.6,b.Y1-.4,b.Z0-.1,b.Z1+.1,NativeClubLooks.Steel);Box(b.X0-.12,b.X1+.12,b.Y1-.25,b.Y1,b.Z0-.12,b.Z1+.12,NativeClubLooks.Steel);}
             else Box(b.X0-.06,b.X1+.06,b.Y1-.25,b.Y1,b.Z0-.06,b.Z1+.06,NativeClubLooks.Steel);
         }
         private void Podium(Bx b)
         {
-            On(b);int L=NativeClubLooks.Led;double t=.05;
+            family="podium";On(b);int L=NativeClubLooks.Led;double t=.05;
             Face(b,4,b.X0+.08,b.X1-.08,b.Z0+.08,b.Z1-.08,NativeClubLooks.Screen,NativeClubLooks.Violet,Decal,.004,false,1.3);
             foreach(int side in new[]{0,1,2,3}){Span(b,side,out double u0,out double u1);Face(b,side,u0,u1,b.Y1-t-.03,b.Y1-.03,L,NativeClubLooks.Magenta,.012,.006,false,Glow);Face(b,side,u0,u1,b.Y0+.03,b.Y0+.06,L,NativeClubLooks.Cyan,.012,.006,false,GlowSoft);}
         }
         private void CubeFrame(Bx b)
         {
-            On(b);double t=.06;int C=NativeClubLooks.Chrome;
+            family="cube";On(b);double t=.06;int C=NativeClubLooks.Chrome;
             foreach(var (sx,sz) in new[]{(0,0),(1,0),(0,1),(1,1)}){double x=sx==0?b.X0:b.X1,z=sz==0?b.Z0:b.Z1;Box(x-t,x+t,b.Y0-.02,b.Y1+.02,z-t,z+t,C,false);}
             foreach(double y in new[]{b.Y0,b.Y1}){Box(b.X0,b.X1,y-t,y+t,b.Z0-t,b.Z0+t,C,false);Box(b.X0,b.X1,y-t,y+t,b.Z1-t,b.Z1+t,C,false);Box(b.X0-t,b.X0+t,y-t,y+t,b.Z0,b.Z1,C,false);Box(b.X1-t,b.X1+t,y-t,y+t,b.Z0,b.Z1,C,false);}
         }
         private void Upholstery(Bx b)
         {
-            On(b);bool alongX=b.X1-b.X0>=b.Z1-b.Z0;double h=b.Y1-b.Y0;int V=NativeClubLooks.Velvet;
+            family="upholstery";On(b);bool alongX=b.X1-b.X0>=b.Z1-b.Z0;double h=b.Y1-b.Y0;int V=NativeClubLooks.Velvet;
             // the seat's cushion line and buttoned tufting on its long faces
             for(int side=0;side<4;side++)
             {
@@ -278,13 +281,13 @@ namespace ChipArena.UnityConversion
         }
         private void Pillar(Bx b)
         {
-            On(b);
+            family="pillar";On(b);
             foreach(int side in new[]{0,1,2,3}){Span(b,side,out double u0,out double u1);Face(b,side,u0+.1,u1-.1,1.0,3.4,NativeClubLooks.Led,NativeClubLooks.Violet,.012,.004,false,.9);}
         }
         // The green room: the dressing mirror with its bulbs on the inside of the south wall.
         private void Mirror(Bx b)
         {
-            On(b);double z=b.Z1;double x0=b.X0+1.0,x1=b.X0+3.4;
+            family="mirror";On(b);double z=b.Z1;double x0=b.X0+1.0,x1=b.X0+3.4;
             Face(b,2,x0,x1,1.1,1.9,NativeClubLooks.Mirror,-1,.01,.004);
             for(double x=x0+.1;x<x1;x+=.3){Box(x-.03,x+.03,1.94,2.0,z,z+.05,NativeClubLooks.Lens,false,0xFFF0D8,GlowSoft);}
             for(double y=1.15;y<1.9;y+=.25){Box(x0-.06,x0,y-.03,y+.03,z,z+.05,NativeClubLooks.Lens,false,0xFFF0D8,GlowSoft);Box(x1,x1+.06,y-.03,y+.03,z,z+.05,NativeClubLooks.Lens,false,0xFFF0D8,GlowSoft);}
@@ -292,7 +295,7 @@ namespace ChipArena.UnityConversion
         // The floor: the dance floor's LED border, the laser wall's slots, the drop zones' hatching in front of the stacks.
         private void Floor()
         {
-            if(!Get("club-floor-w",out var fw)||!Get("club-floor-n",out var fn)||!Get("club-floor-s",out var fs)||!Get("club-floor-e",out var fe))return;
+            family="floor";if(!Get("club-floor-w",out var fw)||!Get("club-floor-n",out var fn)||!Get("club-floor-s",out var fs)||!Get("club-floor-e",out var fe))return;
             double x0=NativeClubLooks.FloorX0,x1=NativeClubLooks.FloorX1,z0=NativeClubLooks.FloorZ0,z1=NativeClubLooks.FloorZ1,w=.12;int L=NativeClubLooks.Led;
             On(fn);Face(fn,4,x0,x1,z1+.02,z1+.02+w,L,NativeClubLooks.Cyan,Decal,.003,false,Glow);
             Face(fn,4,x0,x1,NativeClubLooks.LaserRailZ-.1,NativeClubLooks.LaserRailZ+.1,NativeClubLooks.Dark,0x08080A,Decal,.002);
@@ -318,10 +321,10 @@ namespace ChipArena.UnityConversion
         // ---------------- overhead: the lighting truss, the hangers, the window frame ----------------
         private void Truss()
         {
-            Above();double X=NativeClubLooks.TrussX,Z=NativeClubLooks.TrussZ,y=NativeClubLooks.TrussY,d=NativeClubLooks.TrussDepth;
+            family="truss";Above();double X=NativeClubLooks.TrussX,Z=NativeClubLooks.TrussZ,y=NativeClubLooks.TrussY,d=NativeClubLooks.TrussDepth;
             BoxTruss(-X,y,-Z,X,y,-Z,d);BoxTruss(-X,y,Z,X,y,Z,d);BoxTruss(-X,y,-Z,-X,y,Z,d);BoxTruss(X,y,-Z,X,y,Z,d);BoxTruss(-X,y,0,X,y,0,d);BoxTruss(0,y,-Z,0,y,Z,d);
             // the cube on four chains from the truss, a motor at each; the mirror balls on their motors and drop cables
-            double cy=NativeClubLooks.CubeY+NativeClubLooks.CubeHalfY,ch=NativeClubLooks.CubeHalf-.2;
+            family="hanger";double cy=NativeClubLooks.CubeY+NativeClubLooks.CubeHalfY,ch=NativeClubLooks.CubeHalf-.2;
             foreach(var (sx,sz) in new[]{(-1,-1),(1,-1),(-1,1),(1,1)}){Bar(sx*ch,cy,sz*ch,sx*.25,y-d/2,sz*.25,.03,NativeClubLooks.Cable,false);}
             Box(-.35,.35,y-d/2-.3,y-d/2,-.35,.35,NativeClubLooks.Dark);
             foreach(double sx in new[]{-1.0,1.0})
@@ -330,9 +333,9 @@ namespace ChipArena.UnityConversion
                 Bar(bx,y-d/2-.28,0,bx,NativeClubLooks.BallY+NativeClubLooks.BallRadius,0,.02,NativeClubLooks.Cable,false);
             }
             // the moving heads' clamps on the truss (the heads themselves are the rig's)
-            foreach(double z in new[]{-Z,Z})foreach(double x in NativeClubLooks.HeadX)Box(x-.12,x+.12,y-d/2-.12,y-d/2,z-.12,z+.12,NativeClubLooks.Dark);
+            family="clamp";foreach(double z in new[]{-Z,Z})foreach(double x in NativeClubLooks.HeadX)Box(x-.12,x+.12,y-d/2-.12,y-d/2,z-.12,z+.12,NativeClubLooks.Dark);
             // the great south window's frame over the south wall (its top is out of reach: nothing standable under it)
-            if(Get("club-wall-s",out var ws))
+            family="window";if(Get("club-wall-s",out var ws))
             {
                 double z0=ws.Z0,z1=ws.Z1,top=12.0,sill=ws.Y1;
                 for(double x=ws.X0;x<=ws.X1+.01;x+=(ws.X1-ws.X0)/12)Box(x-.09,x+.09,sill,top,z0+.08,z1-.08,NativeClubLooks.Steel);

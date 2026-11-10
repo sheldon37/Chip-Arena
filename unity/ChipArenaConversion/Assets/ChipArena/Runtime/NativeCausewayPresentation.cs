@@ -14,6 +14,9 @@ namespace ChipArena.UnityConversion
     ///  - The static kit (Core NativeCausewayKit) and the rig (Core NativeCausewayRig) as NativeBlockLit instances: the kit packed
     ///    once per map into casting and shadowless batches of 500, the rig refilled each frame into its own five batches (allocation
     ///    free). While the kit draws, the dressing leaves the sculpted blocks' own boxes undrawn (<see cref="ArenaPresentation.CausewayKitReady"/>).
+    ///  - The stage art (docs/arenas/STAGE-ART.md): with the stage bank ChipArenaStageCauseway, NativeStageArtDraw draws the modelled
+    ///    bridge, its rig (posed by Core NativeCausewayArt from the same rig parts) and the modelled void in place of the kit's and
+    ///    the rig's boxes and the backdrop's box-built sectors; without the bank everything below draws exactly as before.
     ///  - The backdrop (Core NativeCausewayScenery) and the planet: ChipArena/SourceLit meshes on NativeSceneryBuilder.BackdropLayer
     ///    without shadows.
     ///  - The effects (Core NativeCausewayFx): one NativeFxDraw batch; the volumetric beams take the shafts while the look's beams
@@ -27,6 +30,10 @@ namespace ChipArena.UnityConversion
         private Batch[] kit=Array.Empty<Batch>();private readonly Batch[] rig={new Batch{Shadow=true},new Batch{Shadow=true},new Batch(),new Batch(),new Batch()};
         private ContentMap built;private NativeCausewayRig rigBuilder;private Mesh[] sectors=Array.Empty<Mesh>();
         private NativeFxDraw fxDraw;private readonly NativeCausewayFx fx=new NativeCausewayFx();
+        private NativeStageArtDraw art;private readonly NativeStageArtPose artPose=new NativeStageArtPose();
+        /// <summary>The stage art drew last frame (docs/arenas/STAGE-ART.md): the kit's and the rig's boxes and the box-built
+        /// backdrop sectors did not.</summary>
+        public bool ArtDrawn{get;private set;}
         private static readonly int SizeId=Shader.PropertyToID("_BlockSize"),RestId=Shader.PropertyToID("_BlockRest"),ColorId=Shader.PropertyToID("_BlockColor"),LookId=Shader.PropertyToID("_BlockLook");
         /// <summary>The frame's volumetric beam list (null: the effects' billboards).</summary>
         public NativeBeamList Beams;
@@ -49,7 +56,8 @@ namespace ChipArena.UnityConversion
         /// behind the loading screen). Nothing is drawn.</summary>
         public bool Prepare(NativeArena arena)
         {
-            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null||!NativeCausewayLooks.Active(map.id))return false;if(ReferenceEquals(map,built))return true;
+            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null||!NativeCausewayLooks.Active(map.id))return false;
+            if(art==null)art=gameObject.AddComponent<NativeStageArtDraw>();art.Prepare(map,NativeCausewayArt.Slots,NativeCausewayArt.Casts);if(ReferenceEquals(map,built))return true;
             built=map;KitReady=false;
             try
             {
@@ -66,9 +74,12 @@ namespace ChipArena.UnityConversion
         {
             Draws=Instances=0;if(!Prepare(arena))return;var map=arena.Map;var match=arena.Match;int round=NativeStructureFx.RoundIndex(match.Set,match.Round);
             const int layer=NativeSceneryBuilder.BackdropLayer;
-            foreach(var m in sectors)Graphics.DrawMesh(m,Matrix4x4.identity,sceneryLit,layer,null,0,null,ShadowCastingMode.Off,true);
-            foreach(var b in kit)Draw(b,instancing);
-            if(rigBuilder!=null){rigBuilder.Build(map.hazards,round,match.Phase,match.FightAt,now,now);Fill(rigBuilder.Parts);foreach(var b in rig)Draw(b,instancing);}
+            if(rigBuilder!=null)rigBuilder.Build(map.hazards,round,match.Phase,match.FightAt,now,now);
+            // The stage art (the bank ChipArenaStageCauseway): the modelled bridge, its rig and what hangs in the void, in place of
+            // the kit's and the rig's boxes and the box-built backdrop sectors; the planet and its rings stay their own meshes.
+            ArtDrawn=false;if(art!=null&&art.Ready&&rigBuilder!=null){NativeCausewayArt.Pose(rigBuilder,artPose);ArtDrawn=art.Render(arena,camera,low,artPose);}
+            for(int i=0;i<sectors.Length;i++){if(ArtDrawn&&i<NativeCausewayScenery.Sectors)continue;Graphics.DrawMesh(sectors[i],Matrix4x4.identity,sceneryLit,layer,null,0,null,ShadowCastingMode.Off,true);}
+            if(!ArtDrawn){foreach(var b in kit)Draw(b,instancing);if(rigBuilder!=null){Fill(rigBuilder.Parts);foreach(var b in rig)Draw(b,instancing);}}
             Effects(arena,round,now,camera,quality,low);
         }
         private void Effects(NativeArena arena,int round,float now,Camera camera,float quality,bool low)

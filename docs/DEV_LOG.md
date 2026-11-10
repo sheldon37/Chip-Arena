@@ -1,3 +1,37 @@
+## 2026-11-10 — Claude: the four new stages modelled (stage art banks, a lit stage shader), the club's DJ and crowd are Grey aliens (owner request)
+
+- Branch `claude/stage-art-release` (from shared at `f741ec76`), merging the art branches:
+  - `claude/stage-art`: the foundation and the Hollow Sanctum (Opus 5.5 agent), slimmed by a Fable 5.2 agent;
+  - `claude/art-club`, `claude/art-emporium`, `claude/art-causeway` (Fable 5.2 agents), the Emporium's stairs fixed by a further Fable 5.2 agent.
+- **The owner:** "Are the new maps voxel? They look voxel lol" ... "Lets move away from that please. Please improve the quality of the maps- Like better material design; Better modeling. The DJ and people on metro map; Lets make those into Aliens (The design of Greys)" ... "Yes lets move away from box built, I want us to move into more high quality designs and models. Make use of unity engine."
+- **What it is:** the four stages' art is no longer instanced boxes:
+  - Each stage's scenery, rigs and breakables are modelled in Blender by committed scripts (`tools/stages/stagekit.py` and each stage's scripts) into its own git-ignored bank, `Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaStage<Name>.bytes`. The banks reach the builder in the Drive zip.
+  - The runtime (`Runtime/NativeStageArt.cs`, `Core/NativeStageArt.cs`) draws them with `ChipArena/StageLit`: a Standard-lit surface shader on Unity's built-in pipeline, with vertex colour, per-vertex smoothness and metallic, emission for the bloom, and a fine procedural detail. It adds a reflection probe per stage and LOD tiers.
+  - Every posed rig model is checked against the box rig's own part. Without a bank the box kit draws exactly as before.
+  - The recipe is in `docs/arenas/STAGE-ART.md`; each stage's doc has a "Stage art" section.
+- **The stages:**
+  - **The Hollow Sanctum** (18.9 MB): ashlar piers, ribbed vaults, tracery, carved pews, chandeliers, the censer, the crypt.
+  - **Substation 128** (15.9 MB): brick, trusses, bus bars, the bar and lounge, the DJ console. **The DJ and the 64-figure crowd are Grey aliens**, an original design posed from the club rig's existing DJ and crowd transforms, so their dancing and the music reactivity are unchanged.
+  - **The Top Dog Emporium** (17.4 MB): tiles, booths, the counter, the squeeze bottles, the rolling googly-eyed wiener, real stairs with stringers and rails.
+  - **Starfall Causeway** (19.8 MB): the carved span, warden statues, pylons, the towers, and a modelled void.
+- **Frame times** (Editor, High tier, 10 s windows; noisy because other agents shared the machine):
+  - the Sanctum 10.2 to about 8.8 ms mean;
+  - the club level (8.1 vs 8.4 ms);
+  - the Emporium level (9.3 vs 9.1);
+  - the Causeway 17.5 to about 9.6.
+- **Still boxes:** the hazards' telegraph lamps, the LED floor and wall panels (flat lit panels by design), destroyed stubs and fragments, effect quads. Glass is opaque. No shadows from the practical lights.
+- **Rules:** none changed; hazards, colliders, nav, spawns and the network are untouched (presentation only; nothing for Astra).
+- **Tooling:** `tools/install_local_assets.py` (the builder's installer) holds the banks: 24 MiB a member (was 16), 320 MiB a zip (was 224), a 240 MB visual body (was 160).
+  - The Drive zip was repacked with the four banks, every other member as it was: 116 MB, 219 MB of visual body.
+  - The previous zip is kept as `LocalAssets-2026-11-10-before-stages.zip`.
+- **Checks** (on the merged tree):
+  - the Unity compile;
+  - CoreTests `--stage-art`, `--sanctum`, `--club-art`, `--club-stage`, `--emporium-art`, `--emporium`, `--causeway-art`, `--causeway`, `--transitions`, `--map-style` and `--gun-motion`, with all four banks;
+  - the full suite and the Editor's build checks, with the release.
+  - Each branch also passed its own full suite and Editor checks.
+- **Seen in the Editor:** each stage by its agent (before/after sheets, hazards, the Low tier), and the Greys and the Emporium's stairs reviewed by the integrator.
+- **Not seen:** a played match by a person, network guests, the killcam on the art.
+
 ## 2026-11-10 — Claude: the guns fire and aim upright (owner request)
 
 - Branch `claude/gun-upright`, on `claude/pistol-ready`.
