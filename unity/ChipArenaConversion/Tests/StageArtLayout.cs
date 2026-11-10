@@ -37,6 +37,7 @@ internal static class StageArtLayout
         }
         w.WriteEndArray();
         if(NativeSanctumLooks.Active(map.id))Sanctum(w,map,look,V,Q);
+        else if(NativeEmporiumLooks.Active(map.id))Emporium(w,map,look,V,Q);
         w.WriteEndObject();w.Flush();
         Console.WriteLine("stage layout "+map.id+": "+map.blocks.Length+" blocks -> "+path);
     }
@@ -76,6 +77,31 @@ internal static class StageArtLayout
             for(int i=0;i<NativeSanctumRig.ChandelierCandles;i++){NativeSanctumRig.Candle(k,i,out double a,out double tall,out bool stands,out double sa,out double sr,out bool glows);w.WriteStartObject();w.WriteNumber("a",a);w.WriteNumber("tall",tall);w.WriteBoolean("stands",stands);w.WriteNumber("sa",sa);w.WriteNumber("sr",sr);w.WriteEndObject();}
             w.WriteEndArray();w.WriteEndObject();
         }
+        w.WriteEndArray();w.WriteEndObject();
+    }
+
+    // The Emporium's kit (Core NativeEmporiumKit: every part with its family, the block it dresses, whether it is overhead, its
+    // kind, colour and light level or HDR gain) and the places its rig, effects and models agree on (Core NativeEmporiumLooks,
+    // NativeEmporiumRig).
+    private static void Emporium(Utf8JsonWriter w,ContentMap map,MapLook look,Vec V,Quat Q)
+    {
+        var looks=NativeEmporiumLooks.Resolve(look?.kitLooks);var kit=NativeEmporiumKit.Build(map,look);
+        w.WriteStartArray("kinds");foreach(var k in NativeEmporiumLooks.Kinds)w.WriteStringValue(k);w.WriteEndArray();
+        w.WriteStartArray("kindColors");for(int k=0;k<NativeEmporiumLooks.Kinds.Length;k++)w.WriteNumberValue(looks.Color[k]);w.WriteEndArray();
+        w.WriteStartArray("parts");
+        for(int i=0;i<kit.Parts.Count;i++)
+        {
+            ref var p=ref kit.Parts.Items[i];w.WriteStartObject();w.WriteString("f",kit.Family[i]);if(kit.Owner[i]!=null)w.WriteString("o",kit.Owner[i]);w.WriteNumber("r",kit.Overhead[i]?1:0);w.WriteNumber("k",kit.Kind[i]);
+            V("c",p.X,p.Y,p.Z);V("h",p.Hx,p.Hy,p.Hz);Q("q",p.Qx,p.Qy,p.Qz,p.Qw);w.WriteBoolean("s",p.Shadow);w.WriteNumber("col",p.Color);w.WriteNumber("w",Math.Round(p.Window,3));w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        w.WriteStartObject("rig");
+        V("sign",NativeEmporiumLooks.SignX,NativeEmporiumLooks.SignY,NativeEmporiumLooks.SignZ);w.WriteNumber("signLength",NativeEmporiumLooks.SignLength);
+        w.WriteNumber("eaves",NativeEmporiumLooks.Eaves);w.WriteNumber("ridge",NativeEmporiumLooks.Ridge);w.WriteNumber("roofHalfZ",NativeEmporiumLooks.RoofHalfZ);w.WriteNumber("roofHalfX",NativeEmporiumLooks.RoofHalfX);
+        w.WriteNumber("conveyorY",NativeEmporiumRig.ConveyorY);w.WriteNumber("conveyorX0",NativeEmporiumRig.ConveyorX0);w.WriteNumber("conveyorX1",NativeEmporiumRig.ConveyorX1);w.WriteNumber("conveyorZ",NativeEmporiumRig.ConveyorZ);
+        w.WriteNumber("mascotBase",NativeEmporiumRig.MascotBase);w.WriteNumber("bunHeight",NativeEmporiumArt.BunHeight);
+        w.WriteStartArray("lanes");
+        foreach(var h in map.hazards??Array.Empty<MapHazard>())if(h.kind=="maglev"){w.WriteStartObject();w.WriteString("id",h.id);w.WriteNumber("radius",NativeEmporiumRig.Radius(h));w.WriteNumber("long",NativeEmporiumRig.Long(h));w.WriteEndObject();}
         w.WriteEndArray();w.WriteEndObject();
     }
 }

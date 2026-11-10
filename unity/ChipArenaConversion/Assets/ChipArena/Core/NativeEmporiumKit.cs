@@ -26,12 +26,15 @@ namespace ChipArena.UnityConversion
         public readonly NativeFactoryKit.Writer Parts;public int[] Parent=Array.Empty<int>();public bool[] Overhead=Array.Empty<bool>();
         private readonly List<int> parents=new List<int>();private readonly List<bool> overhead=new List<bool>();
         private int current=-1;private bool over;
+        /// <summary>For the stage art's layout export (docs/arenas/STAGE-ART.md; nothing draws by them): each part's family (the builder
+        /// that made it, with a ":tag" for its neon lettering, icons and posters), the block it dresses (null: overhead) and its kind.</summary>
+        public readonly List<string> Family=new List<string>(),Owner=new List<string>();public readonly List<int> Kind=new List<int>();private string family="",owner,tag;
         public int Count=>Parts.Count;
         private NativeEmporiumKit(NativeFactoryKit.Looks looks){Parts=new NativeFactoryKit.Writer(2048,true,looks);}
-        private void Track(int before){for(int i=before;i<Parts.Count;i++){parents.Add(current);overhead.Add(over);}}
-        private void Add(double x,double y,double z,double hx,double hy,double hz,FactoryQ q,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Add(x,y,z,hx,hy,hz,q,kind,shadow,color,window);Track(n);}
-        private void Box(double x0,double x1,double y0,double y1,double z0,double z1,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Box(Math.Min(x0,x1),Math.Max(x0,x1),Math.Min(y0,y1),Math.Max(y0,y1),Math.Min(z0,z1),Math.Max(z0,z1),kind,shadow,color,window);Track(n);}
-        private void Bar(double x0,double y0,double z0,double x1,double y1,double z1,double t,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Bar(x0,y0,z0,x1,y1,z1,t,t,kind,shadow,color);if(Parts.Count>n)Parts.Items[n].Window=(float)window;Track(n);}
+        private void Track(int before,int kind){for(int i=before;i<Parts.Count;i++){parents.Add(current);overhead.Add(over);Family.Add(tag==null?family:family+":"+tag);Owner.Add(owner);Kind.Add(kind);}}
+        private void Add(double x,double y,double z,double hx,double hy,double hz,FactoryQ q,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Add(x,y,z,hx,hy,hz,q,kind,shadow,color,window);Track(n,kind);}
+        private void Box(double x0,double x1,double y0,double y1,double z0,double z1,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Box(Math.Min(x0,x1),Math.Max(x0,x1),Math.Min(y0,y1),Math.Max(y0,y1),Math.Min(z0,z1),Math.Max(z0,z1),kind,shadow,color,window);Track(n,kind);}
+        private void Bar(double x0,double y0,double z0,double x1,double y1,double z1,double t,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Bar(x0,y0,z0,x1,y1,z1,t,t,kind,shadow,color);if(Parts.Count>n)Parts.Items[n].Window=(float)window;Track(n,kind);}
         private static double H(int a,int b=0,int c=0)=>NativeEmporiumLooks.Hash(a,b,c);
         private static bool Starts(string id,string p)=>id!=null&&id.StartsWith(p,StringComparison.Ordinal);
         private static bool Has(string id,string p)=>id!=null&&id.IndexOf(p,StringComparison.Ordinal)>=0;
@@ -59,39 +62,39 @@ namespace ChipArena.UnityConversion
             foreach(var b in all)
             {
                 k.On(b);string id=b.Id;
-                if(id=="emporium-floor")k.FloorPaint(b,map);
-                else if(Starts(id,"emporium-wall-"))k.Wall(b);
-                else if(Starts(id,"emporium-oven-"))k.Oven(b);
-                else if(Has(id,"-kwall-"))k.KitchenWall(b);
-                else if(Has(id,"-fryer-"))k.Fryer(b);
-                else if(Has(id,"-shelf-")||Has(id,"-baffle-"))k.Shelf(b);
-                else if(Has(id,"-icebox-"))k.Icebox(b);
-                else if(id=="emporium-plinth")k.Plinth(b);
-                else if(Has(id,"-press-")&&Has(id,"-post-"))k.PressPost(b);
-                else if(Has(id,"-press-"))k.PressHead(b);
-                else if(Has(id,"-tower-"))k.Tower(b);
-                else if(Has(id,"-prep-"))k.Prep(b);
-                else if(Has(id,"-crate-"))k.Crate(b);
-                else if(Starts(id,"emporium-bridge-")&&Has(id,"-flight-"))k.Step(b,K_BunTop);
-                else if(Starts(id,"emporium-bridge-"))k.BridgeDeck(b);
-                else if(Starts(id,"emporium-balcony-")&&Has(id,"-post-"))k.Post(b);
-                else if(Starts(id,"emporium-rail-"))k.Rail(b);
-                else if(Starts(id,"emporium-balcony-"))k.Balcony(b);
-                else if(Starts(id,"emporium-stair-"))k.Step(b,K_Teal);
-                else if(Has(id,"-booth-"))k.Booth(b);
-                else if(Has(id,"-counter-"))k.Counter(b);
-                else if(Has(id,"-soda-"))k.Soda(b);
-                else if(Has(id,"-jukebox-"))k.JukeboxBody(b);
-                else if(Has(id,"-pump-"))k.Pump(b);
-                else if(Has(id,"-kiosk-"))k.Kiosk(b);
-                else if(Has(id,"-freezer-")||Has(id,"-fridge-"))k.Fridge(b);
-                else if(Has(id,"-barrel-"))k.Barrel(b);
+                if(id=="emporium-floor"){k.family="floor";k.FloorPaint(b,map);}
+                else if(Starts(id,"emporium-wall-")){k.family="wall";k.Wall(b);}
+                else if(Starts(id,"emporium-oven-")){k.family="oven";k.Oven(b);}
+                else if(Has(id,"-kwall-")){k.family="kwall";k.KitchenWall(b);}
+                else if(Has(id,"-fryer-")){k.family="fryer";k.Fryer(b);}
+                else if(Has(id,"-shelf-")||Has(id,"-baffle-")){k.family="shelf";k.Shelf(b);}
+                else if(Has(id,"-icebox-")){k.family="icebox";k.Icebox(b);}
+                else if(id=="emporium-plinth"){k.family="plinth";k.Plinth(b);}
+                else if(Has(id,"-press-")&&Has(id,"-post-")){k.family="press-post";k.PressPost(b);}
+                else if(Has(id,"-press-")){k.family="press-head";k.PressHead(b);}
+                else if(Has(id,"-tower-")){k.family="tower";k.Tower(b);}
+                else if(Has(id,"-prep-")){k.family="prep";k.Prep(b);}
+                else if(Has(id,"-crate-")){k.family="crate";k.Crate(b);}
+                else if(Starts(id,"emporium-bridge-")&&Has(id,"-flight-")){k.family="bridge-step";k.Step(b,K_BunTop);}
+                else if(Starts(id,"emporium-bridge-")){k.family="bridge";k.BridgeDeck(b);}
+                else if(Starts(id,"emporium-balcony-")&&Has(id,"-post-")){k.family="post";k.Post(b);}
+                else if(Starts(id,"emporium-rail-")){k.family="rail";k.Rail(b);}
+                else if(Starts(id,"emporium-balcony-")){k.family="balcony";k.Balcony(b);}
+                else if(Starts(id,"emporium-stair-")){k.family="stair";k.Step(b,K_Teal);}
+                else if(Has(id,"-booth-")){k.family="booth";k.Booth(b);}
+                else if(Has(id,"-counter-")){k.family="counter";k.Counter(b);}
+                else if(Has(id,"-soda-")){k.family="soda";k.Soda(b);}
+                else if(Has(id,"-jukebox-")){k.family="jukebox";k.JukeboxBody(b);}
+                else if(Has(id,"-pump-")){k.family="pump";k.Pump(b);}
+                else if(Has(id,"-kiosk-")){k.family="kiosk";k.Kiosk(b);}
+                else if(Has(id,"-freezer-")||Has(id,"-fridge-")){k.family="fridge";k.Fridge(b);}
+                else if(Has(id,"-barrel-")){k.family="barrel";k.Barrel(b);}
             }
-            k.Above();k.Roof();k.Pendants();k.ConveyorRails();k.DoorSigns();
+            k.Above();k.family="roof";k.Roof();k.family="pendant";k.Pendants();k.family="conveyor";k.ConveyorRails();k.family="door-sign";k.DoorSigns();
             k.Parent=k.parents.ToArray();k.Overhead=k.overhead.ToArray();return k;
         }
-        private void On(Bx b){current=b.Index;over=false;}
-        private void Above(){current=-1;over=true;}
+        private void On(Bx b){current=b.Index;over=false;owner=b.Id;}
+        private void Above(){current=-1;over=true;owner=null;}
 
         // ---------------- face helpers (u along the face, v up; a hair proud) ----------------
         /// <summary>A plate on one face: side 0 +x, 1 -x, 2 +z, 3 -z, 4 the top, 5 the underside; (u0..u1) along it (z for ±x faces, x for
@@ -127,6 +130,10 @@ namespace ChipArena.UnityConversion
         private void Neon(Bx b,int side,double uc,double v,double h,string text,int color,double gain=2.4,double w=0)
         {
             if(side<=3){Span(b,side,out double f0,out double f1);double room=f1-f0-.16;if(TextWidth(text,h)>room){if(room<.3)return;h*=room/TextWidth(text,h);}}
+            string was=tag;tag="neon";try{NeonStrokes(b,side,uc,v,h,text,color,gain,w);}finally{tag=was;}
+        }
+        private void NeonStrokes(Bx b,int side,double uc,double v,double h,string text,int color,double gain,double w)
+        {
             if(w<=0)w=Math.Max(.035,h*.07);w=Math.Min(w,h*.12);double width=TextWidth(text,h),s=h/6,adv=h*(4.0/6+.28);
             // u runs left to right as seen from the front: the face's u axis is +z/+x on sides 1 and 2... flip for 0 and 3
             int dir=side==0||side==3?1:-1;double u=uc-dir*width/2;
@@ -146,12 +153,13 @@ namespace ChipArena.UnityConversion
         /// <summary>A neon hot dog icon on a face, centred (uc, vc), `l` long: the bun's two arcs, the frankfurter, the mustard squiggle.</summary>
         private void HotDogIcon(Bx b,int side,double uc,double vc,double l,double gain=2.4)
         {
-            double r=l*.22,w=Math.Max(.04,l*.035);
+            double r=l*.22,w=Math.Max(.04,l*.035);string was=tag;tag="icon";
             void Seg(double u0,double v0,double u1,double v1,int col){At(b,side,u0,v0,w/2+.01,out double x0,out double y0,out double z0,out _,out _);At(b,side,u1,v1,w/2+.01,out double x1,out double y1,out double z1,out _,out _);Bar(x0,y0,z0,x1,y1,z1,w,K_Tube,false,col,gain);}
             for(int k=0;k<8;k++){double a0=Math.PI+k*Math.PI/8,a1=a0+Math.PI/8;Seg(uc+Math.Cos(a0)*l*.5,vc-r*.2+Math.Sin(a0)*r,uc+Math.Cos(a1)*l*.5,vc-r*.2+Math.Sin(a1)*r,NativeEmporiumLooks.NeonOrange);}
             Seg(uc-l*.56,vc+r*.15,uc+l*.56,vc+r*.15,NativeEmporiumLooks.NeonPink);Seg(uc-l*.56,vc+r*.55,uc+l*.56,vc+r*.55,NativeEmporiumLooks.NeonPink);Seg(uc-l*.56,vc+r*.15,uc-l*.6,vc+r*.35,NativeEmporiumLooks.NeonPink);Seg(uc-l*.6,vc+r*.35,uc-l*.56,vc+r*.55,NativeEmporiumLooks.NeonPink);
             Seg(uc+l*.56,vc+r*.15,uc+l*.6,vc+r*.35,NativeEmporiumLooks.NeonPink);Seg(uc+l*.6,vc+r*.35,uc+l*.56,vc+r*.55,NativeEmporiumLooks.NeonPink);
             for(int k=0;k<7;k++){double u0=uc-l*.42+k*l*.12,u1=u0+l*.12;Seg(u0,vc+r*((k&1)==0?.42:.28),u1,vc+r*((k&1)==0?.28:.42),NativeEmporiumLooks.NeonLemon);}
+            tag=was;
         }
 
         // ---------------- the floor ----------------
@@ -231,10 +239,10 @@ namespace ChipArena.UnityConversion
         }
         private void Poster(Bx b,int side,double uc,double v0,double v1,int seed)
         {
-            double w=(v1-v0)*.72;int[] backs={NativeEmporiumLooks.NeonLemon,0xFF6FAE,0x5CD6C8,0xFFF2D6};int back=backs[(int)(H(seed,1)*backs.Length)%backs.Length];
+            string was=tag;tag="poster";double w=(v1-v0)*.72;int[] backs={NativeEmporiumLooks.NeonLemon,0xFF6FAE,0x5CD6C8,0xFFF2D6};int back=backs[(int)(H(seed,1)*backs.Length)%backs.Length];
             Face(b,side,uc-w/2-.06,uc+w/2+.06,v0-.06,v1+.06,K_Chrome,-1,.03,.012);Face(b,side,uc-w/2,uc+w/2,v0,v1,K_Cream,back,.02,.02);
             double vc=(v0+v1)/2;Face(b,side,uc-w*.38,uc+w*.38,vc-.16,vc-.02,K_Bun,-1,.02,.035);Face(b,side,uc-w*.42,uc+w*.42,vc-.06,vc+.06,K_Sausage,-1,.02,.045);Face(b,side,uc-w*.34,uc+w*.34,vc+.02,vc+.04,K_Mustard,-1,.02,.05);
-            Face(b,side,uc-w*.4,uc+w*.4,v1-.28,v1-.14,K_Red,-1,.02,.035);
+            Face(b,side,uc-w*.4,uc+w*.4,v1-.28,v1-.14,K_Red,-1,.02,.035);tag=was;
         }
         private void Oven(Bx b)
         {

@@ -46,6 +46,7 @@ TIER_NAMES = ('fine', 'mid', 'low')
 # The shader's fine surfaces (Resources/NativeStageLit.shader DETAIL_*): uv1.x.
 DETAIL_NONE, DETAIL_ASHLAR, DETAIL_FLAG, DETAIL_CARVED, DETAIL_MARBLE, DETAIL_WOOD, DETAIL_IRON, DETAIL_BRASS, DETAIL_CLOTH, \
     DETAIL_WAX, DETAIL_PLASTER, DETAIL_GLOW = range(12)
+DETAIL_TILE = 16  # glazed tiles on the world's grid; the parameter is the tile's size (m)
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
