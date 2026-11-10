@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
             int tier=std?NativeWeaponSkins.Tier(LowGraphics,WeaponEffectsQuality,distance,first):0;
             NativeBow.View v;NativeBowPose.Frame f;
             if(Mathf.Abs(rig.BowAt-time)<1e-4f){v=rig.BowView;f=rig.BowFrame;}else{v=NativeBow.At(NativeBowWire.Of(a),time);f=default;f.Pull=v.Pull;}
-            int n=BowDraw(rig,std,tier,v,f,AccentTint(a.AccentColor),std?flash:1,layer,camera,tint,first,time,HeldGlow);if(n<0)return false;
+            int n=BowDraw(rig,std,tier,v,f,AccentTint(a.AccentColor),std?flash:1,layer,camera,tint,first,time,HeldGlow,WearsArmour(a.Id));if(n<0)return false;
             BowDressing(a,f,v,time,first,layer,camera);BowPiecesDrawn=n;return true;
         }
         /// <summary>
@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
         /// two string halves bent to the nock, the nocked arrow or the Volley's fan, the arrow in the string hand while nocking
         /// and (third person) the quiver on the back. Returns the pieces queued, or -1 when the models are not banked.
         /// </summary>
-        private int BowDraw(CapturedAnimation.Player rig,bool std,int tier,in NativeBow.View v,in NativeBowPose.Frame f,Color accent,float hf,int layer,Camera camera,Func<int,Color> tint,bool first,float time,Vector4? glow)
+        private int BowDraw(CapturedAnimation.Player rig,bool std,int tier,in NativeBow.View v,in NativeBowPose.Frame f,Color accent,float hf,int layer,Camera camera,Func<int,Color> tint,bool first,float time,Vector4? glow,bool armour=false)
         {
             string riser=NativeBowModels.PartId(std,0,tier);if(!sourceModels.Has(riser))return -1;
             bowHand=rig.Bones[CapturedRig.LHand].localToWorldMatrix;var root=rig.Root.transform.localToWorldMatrix;int n=0;
@@ -85,8 +85,18 @@ namespace ChipArena.UnityConversion
                 var piece=new NativeBowPiece{Position=f.HandArrowAt,Rotation=CapturedRig.FromTo(NVector.UnitZ,f.HandArrowDir),Scale=NVector.One};
                 sourceModels.Queue(arrow,rig.Bones[CapturedRig.RHand].localToWorldMatrix*BowPiece(piece),null,null,layer,camera,accent:accent,partTint:tint);n++;
             }
-            if(!first){sourceModels.Queue(NativeBowModels.QuiverId(std,tier),rig.Bones[CapturedRig.Chest].localToWorldMatrix,null,null,layer,camera,accent:accent,partTint:tint,hitFlash:hf);n++;}
+            if(!first){sourceModels.Queue(NativeBowModels.QuiverId(std,tier),QuiverFrame(rig,armour),null,null,layer,camera,accent:accent,partTint:tint,hitFlash:hf);n++;}
             return n;
+        }
+        // The quiver's frame (owner 2026-11-10: "It needs to be on the back anchored to them"): on a visual body the game chest's axes
+        // on the model's chest bone (VisualJointFrame, so it follows the model through the pack's clips), moved in from the voxel
+        // chest's depth onto the model's back (QuiverIn, along the chest's +z) and up by QuiverLift, stood off by the robot armour's
+        // back plate when worn (QuiverArmour); without one the game chest's, where the model was made.
+        public const float QuiverIn=0.1f,QuiverLift=0f,QuiverArmour=0.03f;
+        private Matrix4x4 QuiverFrame(CapturedAnimation.Player rig,bool armour)
+        {
+            if(rig==null||!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.PosedFrame!=Time.frameCount)return rig.Bones[CapturedRig.Chest].localToWorldMatrix;
+            return VisualJointFrame(rig,CapturedRig.Chest)*Matrix4x4.Translate(new Vector3(0,QuiverLift,QuiverIn-(armour?QuiverArmour:0)));
         }
         private readonly NativeBowPiece[] bowIntroArrows=new NativeBowPiece[NativeBowEntrance.MaxArrows];
         /// <summary>
