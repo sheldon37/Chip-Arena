@@ -298,7 +298,7 @@ def tracery(g, pl, h, T):
         outline = pts + right
         sweep(g, sk.circle_section(.055, (6, 4, 3)[T.i]), path_u(outline), st, path_normals=[pl.N] * len(outline), caps=False)
         # the mullion
-        sweep(g, bar, path_u([(0, h.sill), (0, h.spring + .55)]), st, path_normals=[pl.N] * 2, caps=False)
+        sweep(g, bar, path_u([(0, h.sill), (0, h.spring + .55)]), st, path_normals=[pl.N] * 2)
         # the lights' heads: a pointed trefoil head each side
         for s in (-1, 1):
             cu, l2 = s * (h.L / 2 + .02), h.L / 2 - .05
@@ -307,7 +307,7 @@ def tracery(g, pl, h, T):
             for (a, b) in pointed_arch(l2, .62, hn):
                 head.append((cu - l2 + a, h.spring + b))
             head += [(cu + l2 - a, h.spring + b) for (a, b) in reversed(pointed_arch(l2, .62, hn)[:-1])]
-            sweep(g, bar, path_u(head), st, path_normals=[pl.N] * len(head), caps=False)
+            sweep(g, bar, path_u(head), st, path_normals=[pl.N] * len(head))
             if T.tiny:
                 # two cusps in each head
                 for c in (-1, 1):
@@ -987,7 +987,8 @@ def moulded(g, b, f, T, panels=True, trim=None):
     if T.i == 2:
         box(g, x0, x1, y0, y1, z0, z1, f, T, bevel=0, skip=('-y',))
         return
-    box(g, x0, x1, y0 + .14, y1 - .1, z0, z1, f, T, bevel=.015, skip=('-y', '+y'))
+    # (the body keeps the finer cells: the bake's shade between its panels is its dark stiles)
+    box(g, x0, x1, y0 + .14, y1 - .1, z0, z1, f, T, bevel=.015, cell=.75 if T.fine else None, skip=('-y', '+y'))
     rect = lambda y: [(x0, y, z0), (x1, y, z0), (x1, y, z1), (x0, y, z1)]
     # (the mouldings without their feet and backs; two and three faces on the Mid tier)
     if T.fine:
