@@ -11,6 +11,33 @@
 - **Seen in the Editor** (the local tool's `devgrants=`: a stub account, sample players, no requests): the screen at 1470x719, a player with grants (Emperor class and entrance ticked), two unsaved changes (the dots, the bar, Save lit), the looks with their emblems, a DEV account, the empty and no-results states.
 - **Not seen / not done:** a real search and save against the account server; a controller.
 
+## 2026-11-09 — Claude: the Top Dog feeds facing its victim, an arm on each side (owner request)
+
+- Branch `claude/top-dog-arms`, on shared `34ce14f0`.
+- **The owner:** "still need to fix top dog ultimate animation, it puts both his arms on one side of his body~ We need to allow the hot dog to rotate correctly and have an arm on each side correctly. Review this animation and fix it; Also, my friend fixed the model, unsure if this helps."
+- **The cause** (measured in the Editor on a real feast): the Top Dog's stance stands side-on (its shoulders about 90 degrees round from the body's yaw), and its yaw follows the pilot's look even while rooted (the mouse still turns it under the feast's cinematic camera), while the victim hangs where the catch put it, `Feast.Dir` ahead. Both hands reached out of one side of the shoulders for the mouth (0.80 and 0.53 m to the left of their middle).
+- **The change** (Runtime `NativeTopDogPresentation.cs` `DogFeastTurn`, run from `ArenaPresentation.PrepareCapturedPose` right after the rig is posed, and `DogFeedArms`; Core `NativeDogView.Facing`): from the catch to the let-go (or the snap) the posed rig turns about the body's middle until its shoulders are square to `Feast.Dir`, in over 0.2 s and out over 0.3 s, then the visual body's own shoulders (its pelvis turned by the few degrees its bind leaves) before the arms reach. Measured after, with the view turned 90 degrees mid-feed: both shoulder lines on the feast's direction throughout, the left hand left of the middle and the right hand right of it. Presentation only: the pilot's yaw, aim and the rules are untouched; not in first person.
+- **The friend's model** (`hotdog_fixed.fbx`, kept out of git): the same mesh and skin weights as the Tripo export, with the skeleton made exactly symmetric (the hips centred, the arms mirrored, a few millimetres) and the stored animations removed. Both weight each arm to its own side, and `tools/gear/hotdog_tripo.py` maps Tripo's `Left_` bones to the pilot's left on the game's own skeleton, so it would not change this; the bank stays as it is.
+- **Animation impact:** presentation only (no hit timing, hitboxes, damage, cooldowns, movement or networking).
+- **Checks:** CoreTests `--top-dog` (7927, with the facing's timing and pins), the full suite, the Unity compile, the Editor build checks.
+- **Seen in the Editor:** a real feast on a bot, with the view turned 90 degrees mid-feed and without: the hot dog squares up to its victim in a wide stance, each arm from its own side, the cinematic shots reaching to the mouth.
+- **Not seen / not done:** played by a person; online as a guest (the turn applies after any rig is posed, the guest's own included); a minion caught.
+- The local capture tool's `dogdiag=1` logs each Top Dog's yaws and shoulder line at the shots.
+
+## 2026-11-09 — Claude: the DEV panel's PLAYERS tab, cleaner and with every DEV class (owner request)
+
+- Branch `claude/dev-menu`, on shared `146b7fe2`.
+- **The owner:** "Rework the dev menu (Where we can modify players); Make it cleaner and easier to use. Make it look a lot better too. Everytime we make a dev class, add them as an option here."
+- **The owner, later:** the request meant the main menu's DEV screen (player grants), reworked on its own branch; they kept this in-game rework too: "We can move forward with the in-game one as well."
+- **The change** (Runtime `NativeDevPlayers.cs`, new; `NativeDevPanel.cs`; Core `NativeDevLayout` names): the Pilot and Interact tabs are one PLAYERS tab (the rail shows nine tabs). A roster of every connected pilot and bot as cards (you first) picks whom it works on; their card shows class, health and the replicated DEV flags; their class is a grid of icon tiles grouped GUNS, MELEE, MAGIC and DEV CLASSES with NOW on the current one and one button to swap to the pick; actions are icon tiles (yours, or theirs); your cheats are switches (was ON/OFF pairs); tuning sits together; a link to their chips. The Dummies tab picks the dummy's class from the same tiles; the Monsters tab's target is the same roster.
+- **DEV classes:** the groups come from the content through the Locker's own filter (`AllowedWeapon`), every `devOnly` class under DEV CLASSES (now Siren, Emperor, Ansatsuken, L33T, Cyber Lord, Bombadier, Top Dog), so a new DEV class appears with nothing to add; the checks require each class to have its tile's icon.
+- **Rules:** none changed. Every action keeps its `NativeDevTab` (the Pilot ones act on you, the Interact ones on the picked player through `devTarget`), so the sandbox routes and Astra's DEV authority get exactly the commands they did; the switches send the same on/off commands.
+- **Animation impact:** none (no hit timing, hitboxes, damage, cooldowns, movement or networking).
+- **Checks:** CoreTests `--dev-tools` (7025, with the new PLAYERS pins: one tab, the content's DEV classes, every class icon, the switch's on/off), the full suite, the Unity compile, the Editor build checks.
+- **Seen in the Editor:** the PLAYERS tab on you (roster, card, the class tiles with all seven DEV classes, actions, cheats, tuning, chips) and on a bot (their class NOW, their actions), the Dummies tab's class tiles, the Monsters tab's roster.
+- **Not seen / not done:** a DEV command actually applied from the new tiles under DEV Abuse online (the same commands as before); a swap from the new button in a match; the panel on a 1280x720 screen.
+- **Released** to the test channel (Windows builder): merged into shared at `64e4cca8`; full CoreTests 988 groups and the Unity compile passed (the first release run stopped on the Cyber Lord names check, fixed in `0ad7bec2`: the class tiles read descriptions through NativeLoadoutText); the Editor build checks passed on `38669790` (only docs and that line since); published revision `639298779581807371`. Not used by a person yet.
+
 ## 2026-11-09 — Claude: the Top Dog's feeding made real, the pop keeping the kill effect, a more real gib, Hotdog Friends squeezing into the door, Preview Intro in the pilot's own colours, the parry as a hologram (owner request; the pop's death record at the owner's word, for Astra to review)
 
 - Branch `claude/top-dog`, on shared `22b852bb`.

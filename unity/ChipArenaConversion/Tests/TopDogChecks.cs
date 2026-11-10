@@ -305,6 +305,25 @@ namespace ChipArena.UnityConversion
                 &&R("NativeDeathPresentation.cs").Contains("Style=Smash!=null&&Smash.Cause==SmashCause.Burst?NativeSmashGib.BurstStyle(death.style):")&&R("NativeAudio.cs").Contains("NativeTopDog.Popped(target.Death.damageKind)?NativeTopDog.Burst:"),
                 "the pop records the killer's kill effect and its own kind; the corpse bursts in it, and sounds its burst");
             var pres=R("ArenaPresentation.cs");Check(pres.Contains("DogBegin(s,renderTime);")&&pres.Contains("RenderDog(s,renderTime);"),"the presentation reads and draws it");
+            // Facing the victim while feeding (owner 2026-11-09: "it puts both his arms on one side of his body ~ We need to allow the hot dog to
+            // rotate correctly and have an arm on each side correctly"): its stance stood side-on and its yaw followed the view, so both arms
+            // reached out of one side for the mouth. From the catch to the let-go its rig turns until the shoulders are square to Feast.Dir
+            // (and the body's own shoulders after its bind), eased in and out, whatever the view does; the pilot's yaw is untouched.
+            {
+                var turn=new NativeDogFeast{Catch=2,Release=5};
+                Check(NativeDogView.Facing(null,3)==0&&NativeDogView.Facing(new NativeDogFeast(),3)==0&&NativeDogView.Facing(turn,1.9f)==0,"no turn before a catch");
+                Check(NativeDogView.Facing(turn,2+NativeDogView.TurnIn*.5f)>0&&NativeDogView.Facing(turn,2+NativeDogView.TurnIn*.5f)<1&&NativeDogView.Facing(turn,2+NativeDogView.TurnIn+.001f)==1&&NativeDogView.Facing(turn,4.9f)==1,"it turns in over TurnIn from the catch and holds square through the feeding");
+                Check(NativeDogView.Facing(turn,5+NativeDogView.TurnOut*.5f)>0&&NativeDogView.Facing(turn,5+NativeDogView.TurnOut*.5f)<1&&NativeDogView.Facing(turn,5+NativeDogView.TurnOut+.001f)==0,"it turns back over TurnOut after the let-go");
+                turn.Snap=3;Check(NativeDogView.Facing(turn,3+NativeDogView.TurnOut+.001f)==0&&NativeDogView.Facing(turn,2.9f)==1,"a snap ends it early");
+                float prior=-1;bool smooth=true;for(float t=1.9f;t<5.4f;t+=1/120f){float face=NativeDogView.Facing(new NativeDogFeast{Catch=2,Release=5},t);if(prior>=0&&Math.Abs(face-prior)>.08f)smooth=false;prior=face;}
+                Check(smooth,"it never jumps between frames");
+                var dog=R("NativeTopDogPresentation.cs");
+                Check(pres.Contains("CyberVictimPose(rig,a,time); DogFeastTurn(rig,a,time); ChipSelectPose(rig,a,time);")&&dog.Contains("var across=b[CapturedRig.RArm].position-b[CapturedRig.LArm].position;")&&dog.Contains("float turn=Mathf.DeltaAngle(now,Mathf.Atan2(dir.x,dir.z)*Mathf.Rad2Deg)*w;")&&dog.Contains("root.RotateAround(root.position,Vector3.up,turn);"),
+                    "each frame after the rig is posed, a feeding Top Dog's rig turns until its shoulders are square to its feast");
+                Check(dog.Contains("float w=NativeDogView.Facing(f,time);var across=r.Upper[0].position-r.Upper[1].position;across.y=0;")&&dog.Contains("r.Pelvis.RotateAround(r.Pelvis.position,Vector3.up,left);")&&dog.IndexOf("r.Pelvis.RotateAround(",StringComparison.Ordinal)<dog.IndexOf("r.Scaled[h]=DogReach(",StringComparison.Ordinal),
+                    "the visual body's own shoulders squared too, before the arms reach");
+                Check(dog.Contains("if(rig==null||a==null||a.SourceSpec!=NativeTopDog.Spec||FirstPerson&&a.Id==LocalId)return;")&&!System.Text.RegularExpressions.Regex.IsMatch(dog,@"(a|actor)\.Yaw\s*=[^=]"),"presentation only: the pilot's yaw is never written; never in first person");
+            }
             Check(R("NativeTechniquePresentation.cs").Contains("DogFx(now);")&&R("NativeCinematicCamera.cs").Contains("presentation.DogFeastDirect(")&&R("NativeVisualBodyPresentation.cs").Contains("TopDogBody(body,a,time);")&&R("NativeFightHud.cs").Contains("DogCards(p);")&&R("ConversionGame.cs").Contains("DogScreen(width,height);")&&R("NativeAudio.cs").Contains("DogMoments(p,pos,t,mine);"),"its effects, camera, body, cards, screen and sound are hooked");
             Check(R("ConversionGame.cs").Contains("KeyCode.Alpha6"),"key 6 is read");
             Check(arena.Contains("DogSave(target,amount))return 0;")&&R("NativeStructures.cs").Contains("NativeDogChips.Apply(content);foreach(var m in NativeDogChips.Mechanics)NativeArena.SupportedMechanics.Add(m);")&&R("NativeChipCard.cs").Contains("NativeDogChipArt.Face(")&&R("NativeDraftScreen.cs").Contains("NativeDogChipArt.Reveal(card,chip.id,t,env,prefs.reducedEffects);")&&R("NativeAudio.cs").Contains("DogPick(match.Chosen,"),"the chips' rules, rows, cards, pick and sound are wired");
