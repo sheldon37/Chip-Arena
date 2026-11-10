@@ -420,7 +420,7 @@ namespace ChipArena.UnityConversion
              Check(pistol.RestLow&&!pup.Raised,"the pistol, arms free: at rest too (owner 2026-11-10)");
              pistolGun.Aiming=true;NativeVisualMotion.Layer(pistol,pistolGun,55,book2,out pup,true);Check(pup.Raised&&pup.A==pistol.Aim[1],"the pistol aimed: raised to its stance");}
             Check(rifle.Idle==NativeVisualMotion.StandIdle&&pistol.Idle==NativeVisualMotion.StandIdle,"the guns stand on the natural stance, not the fighting crouch");
-            Check(pistol.RestMirror&&!rifle.RestMirror&&pistol.Locomotion[0].StartsWith("2Hand-Bow-",StringComparison.Ordinal),"the pistol's arm hangs at rest and it walks on the relaxed bow locomotion");
+            Check(pistol.RestReady&&!rifle.RestReady&&pistol.Locomotion[0].StartsWith("2Hand-Bow-",StringComparison.Ordinal),"the pistol rests at its low ready and walks on the relaxed bow locomotion");
             gun.Sprinting=true;NativeVisualMotion.Layer(rifle,gun,55,book2,out up,true);Check(!up.Raised,"sprinting: carried low");gun.Sprinting=false;
             gun.ReloadAt=60;gun.ReloadUntil=62;NativeVisualMotion.Layer(rifle,gun,61,book2,out up);Check(up.Raised&&up.A==rifle.Reload&&Math.Abs(up.TimeA-.6f)<1e-4f,"the reload fitted to the reload");
             Check(!NativeVisualMotion.Layer(set,new Actor{Grounded=true},50,book,out _),"melee has no upper layer");

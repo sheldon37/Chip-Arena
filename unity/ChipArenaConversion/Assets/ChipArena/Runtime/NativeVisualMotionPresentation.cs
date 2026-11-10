@@ -63,9 +63,6 @@ namespace ChipArena.UnityConversion
         private static bool[] armMuscles;
         private static bool[] ArmMuscles{get{if(armMuscles==null){var n=HumanTrait.MuscleName;armMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)armMuscles[i]=n[i].Contains("Shoulder")||n[i].Contains("Arm")||n[i].Contains("Forearm")||n[i].Contains("Hand")||n[i].Contains("Thumb")||n[i].Contains("Index")||n[i].Contains("Middle")||n[i].Contains("Ring")||n[i].Contains("Little");}return armMuscles;}}
         private const float RestEase=.18f;
-        // Each right arm muscle's left counterpart (shoulder, arm, forearm and hand; the fingers keep their grip), -1 elsewhere.
-        private static int[] armMirror;
-        private static int[] ArmMirror{get{if(armMirror==null){var n=HumanTrait.MuscleName;armMirror=new int[n.Length];for(int i=0;i<n.Length;i++){armMirror[i]=-1;string s=n[i];if(!s.StartsWith("Right ",System.StringComparison.Ordinal)||!(s.Contains("Shoulder")||s.Contains("Arm")||s.Contains("Forearm")||s.Contains("Hand")))continue;armMirror[i]=System.Array.IndexOf(n,"Left "+s.Substring(6));}}return armMirror;}}
         private static bool[] UpperMuscles{get{if(upperMuscles==null){var n=HumanTrait.MuscleName;upperMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)upperMuscles[i]=!(n[i].Contains("Leg")||n[i].Contains("Foot")||n[i].Contains("Toes"));}return upperMuscles;}}
         // The Whirlwind's legs (NativeVisualMotion.SpinLegs), as muscle offsets: the sit's thigh raise and knee bend, and a
         // step's (each leg's Upper Leg Front-Back, Lower Leg Stretch; muscles left, then right).
@@ -149,6 +146,24 @@ namespace ChipArena.UnityConversion
             float along=(l1*l1-l2*l2+d*d)/(2*d),high=Mathf.Sqrt(Mathf.Max(0,l1*l1-along*along));
             upper.rotation=Quaternion.FromToRotation(b-a,dir*along+side*high)*upper.rotation;
             b=lower.position;c=hand.position;lower.rotation=Quaternion.FromToRotation(c-b,a+dir*d-b)*lower.rotation;
+        }
+        // The pistol's low ready (Set.RestReady; owner 2026-11-10, from their reference picture), by `w`: the grip before the right hip
+        // just under the belt (ReadyGrip: right, up, forward of the hips, metres), the bore angled to the floor a little ahead and in
+        // (ReadyBore), the slide's top toward the front; the arm reaches for the wrist that seats the grip there (the hold's own
+        // offset), the elbow down and out. The off hand at the belt beside it (ReadyOff), its wrist straight on the forearm.
+        public static readonly Vector3 ReadyGrip=new Vector3(.10f,-.10f,.17f),ReadyBore=new Vector3(-.22f,-.82f,.52f),ReadyOff=new Vector3(-.03f,-.04f,.15f);
+        private static void VisualPistolReady(VisualMotion m,Transform root,float w)
+        {
+            if(w<=1e-4f||m.RightArm==null||m.RightForearm==null||m.BodyHips==null)return;
+            Vector3 hips=m.BodyHips.position,f=root.forward,r=root.right,u=root.up;
+            Vector3 grip=hips+r*ReadyGrip.x+u*ReadyGrip.y+f*ReadyGrip.z,bore=(r*ReadyBore.x+u*ReadyBore.y+f*ReadyBore.z).normalized;
+            var top=Vector3.ProjectOnPlane(f+u*.3f,bore);if(top.sqrMagnitude<1e-8f)return;
+            var turn=Quaternion.LookRotation(bore,top.normalized)*Quaternion.Inverse(m.HoldRotation);var wrist=grip-turn*m.HoldPosition;
+            var was=m.RightHand.rotation;
+            ArmReachTo(m.RightArm,m.RightForearm,m.RightHand,Vector3.Lerp(m.RightHand.position,wrist,w),-u+r*.6f-f*.2f);
+            m.RightHand.rotation=Quaternion.Slerp(was,turn,w);
+            if(m.LeftArm!=null&&m.LeftForearm!=null&&m.LeftHand!=null)
+            {Vector3 at=hips+r*ReadyOff.x+u*ReadyOff.y+f*ReadyOff.z;ArmReachTo(m.LeftArm,m.LeftForearm,m.LeftHand,Vector3.Lerp(m.LeftHand.position,at,w),-u-r*.6f-f*.2f);}
         }
         // A free arm lowered about the chest's forward axis by `w` (0..1) of NativeRunArm's drop: the chest's up from the spine to
         // the head, its outward side along the shoulder line, the turn's sense taken from where it carries the outward side (out
@@ -427,9 +442,7 @@ namespace ChipArena.UnityConversion
             var up=default(NativeVisualMotion.Upper);bool layered=covered&&NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready);
             // A long gun at rest, standing (Set.RestArms; owner 2026-11-10 "a resting pose (They're holding it downward)"): the arms
             // take the walk's low two-hand carry over the idle, eased; walking already carries it so, and a raise lays over it.
-            m.Rest=Mathf.MoveTowards(m.Rest,covered&&(m.Set.RestArms!=null||m.Set.RestMirror)&&!pick.Locomotion&&pick.Clip==m.Set.Idle&&!(layered&&up.Raised)?1:0,dt/RestEase);
-            // A pistol's arm hangs at the side as the free arm does (Set.RestMirror).
-            if(m.Rest>0&&m.Set.RestMirror){var mirror=ArmMirror;float rw=Ease(m.Rest);for(int i=0;i<mirror.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mirror[i]>=0){int k=NativeVisualMotionClips.Head+i,j=NativeVisualMotionClips.Head+mirror[i];m.Mix[k]+=(m.Mix[j]-m.Mix[k])*rw;}}
+            m.Rest=Mathf.MoveTowards(m.Rest,covered&&(m.Set.RestArms!=null||m.Set.RestReady)&&!pick.Locomotion&&pick.Clip==m.Set.Idle&&!(layered&&up.Raised)?1:0,dt/RestEase);
             if(m.Rest>0&&m.Set.RestArms!=null&&VisualMotionBank.Clips.TryGetValue(m.Set.RestArms,out var restClip))
             {
                 System.Array.Clear(m.RestMix,0,m.RestMix.Length);NativeVisualMotionClips.Add(restClip,m.Set.RestArmsAt,1,m.RestMix);NativeVisualMotionClips.Finish(m.RestMix,1);
@@ -516,6 +529,8 @@ namespace ChipArena.UnityConversion
             if(m.Trail>0)VisualSwordTrail(m,body.Root.transform,m.Trail*m.LocoShare*wgt,speed,dt);else m.TrailMean=m.TrailTwist=float.NaN;
             // The Top Dog's mallet moves, keyed by hand over the clip (Runtime NativeDogMalletPresentation.cs), before the weapon follows the hand.
             if(m.HasHold&&(a.SourceSpec==NativeTopDog.Spec||a.SourceSpec==NativeGlaive.Spec||dogLimbs.TryGetValue(body,out var dl)&&dl!=null&&dl.Held))DogMalletLayer(body,a,time,m.HoldRotation,wgt);
+            // A pistol at rest: its low ready (Set.RestReady), before the weapon follows the hand.
+            if(m.Set.RestReady&&m.Rest>0&&m.HasHold)VisualPistolReady(m,body.Root.transform,Ease(m.Rest)*wgt);
             // The weapon on the model's right hand, the rig's weapon hand bone with it (what draws there follows the model).
             if(m.HasHold)
             {
@@ -534,7 +549,7 @@ namespace ChipArena.UnityConversion
                 }
                 // A lowered gun (a long gun at rest, any gun sprinting): the muzzle tipped down about the grip (the low ready carry;
                 // owner 2026-10-24, and 2026-11-10 for the rifle and machine gun at rest).
-                if(m.Set.Gun&&!reloading&&m.Upper<1)weaponHand.rotation=Quaternion.AngleAxis(CarryTilt*(1-m.Upper)*wgt,weaponHand.rotation*Vector3.right)*weaponHand.rotation;
+                if(m.Set.Gun&&!reloading&&m.Upper<1)weaponHand.rotation=Quaternion.AngleAxis(CarryTilt*(1-m.Upper)*wgt*(m.Set.RestReady?1-Ease(m.Rest):1),weaponHand.rotation*Vector3.right)*weaponHand.rotation;
                 // A two-handed weapon: the support fist onto its handle (the greatsword's behind the right fist, a long gun's
                 // handguard), while the clip keeps it near; not while reloading.
                 bool longGun=body.Held!=null&&body.Held.Supported&&(m.Set.Spec=="rifle"||m.Set.Spec=="machinegun");
