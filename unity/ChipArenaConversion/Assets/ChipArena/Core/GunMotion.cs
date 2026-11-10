@@ -85,6 +85,9 @@ namespace ChipArena.UnityConversion
         /// pilot, after a rewind or a gap (the killcam and joining guests never ease in from a stale weight).
         /// </summary>
         public const float ReloadSettle=.3f;
+        /// <summary>The chip pick's look weight on this pilot (0..1; Runtime NativeChipSelectPresentation, the checks): while it is up
+        /// the gun keeps the source's hold (StanceTarget), the one the pick's gestures were made over.</summary>
+        public float Hold;
         public static float AimTarget(Actor a,float time,float motion)
         {
             const float D=(float)Math.PI/180;float speed=(float)Math.Sqrt(a.Velocity.x*a.Velocity.x+a.Velocity.z*a.Velocity.z),yaw=a.Yaw*D;
@@ -104,7 +107,7 @@ namespace ChipArena.UnityConversion
         }
         private void UpdateAim(Actor a,float time,bool restart)
         {
-            float target=AimTarget(a,time,Rig.Motion),hold=StanceTarget(a,time,Rig.Motion);
+            float target=AimTarget(a,time,Rig.Motion),hold=StanceTarget(a,time,Rig.Motion);target+=(1-target)*MeleeMath.Clamp(Hold,0,1)*hold;
             if(!aimHas||restart){aimHas=true;aim=target;aimVelocity=0;stance=hold;stanceVelocity=0;return;}
             {float y=stance;SpringStep(ref y,ref stanceVelocity,hold,hold>stance&&time-a.LastShot<.1f&&stance<.6f?32:24,1,MeleeMath.Clamp(dt,0,.05f));stance=MeleeMath.Clamp(y,0,1);if(stance!=y)stanceVelocity=0;}
             float omega=target>aim&&time-a.LastShot<.1f&&aim<.6f?32:24,x=aim;SpringStep(ref x,ref aimVelocity,target,omega,1,MeleeMath.Clamp(dt,0,.05f));

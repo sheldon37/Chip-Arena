@@ -630,9 +630,11 @@ namespace ChipArena.UnityConversion
             private GunMotion gunMotion;
             /// <summary>The arena gun pose's gun-up weight (GunMotion.AimWeight; 1 before any gun pose).</summary>
             public float GunAimWeight=>gunMotion?.AimWeight??1f;
+            /// <summary>The chip pick's look on this pilot (Runtime NativeChipSelectPresentation, a frame behind): GunMotion.Hold.</summary>
+            public float ChipHold;
             private void GunGaitPose(Actor a,Vector3 position,float time)
             {
-                Weapon=a.Weapon;Set=0;if(gunMotion==null)gunMotion=new GunMotion();gunMotion.JumpLayer=JumpLayer;gunMotion.SprintLayer=SprintLayer;gunMotion.Locomotion=RangedLocomotion;
+                Weapon=a.Weapon;Set=0;if(gunMotion==null)gunMotion=new GunMotion();gunMotion.JumpLayer=JumpLayer;gunMotion.SprintLayer=SprintLayer;gunMotion.Locomotion=RangedLocomotion;gunMotion.Hold=ChipHold;
                 bool juggle=Juggled(a,time),roll=!juggle&&a.Rolling(time);
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;gunMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);gunMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;

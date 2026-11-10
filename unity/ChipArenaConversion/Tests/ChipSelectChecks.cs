@@ -109,6 +109,8 @@ internal static class ChipSelectChecks
     internal sealed class Pilot
     {
         public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();public readonly Actor A;public readonly string Route;
+        /// <summary>The pick's look as the presentation passes it to a gun pose (GunMotion.Hold).</summary>
+        public float Hold;
         private MeleeMotion melee;private readonly MeleeView view=new MeleeView();private GunMotion gun;private MagicMotion magic;private NativeBowMotion bow;private CyberLordMotion cyber;
         private readonly NativeWaveDash wave=new NativeWaveDash();private readonly float[] channels=new float[13];private readonly NativeJuggleTrack jt=new NativeJuggleTrack();private float last=-100;
         public Pilot(string spec)
@@ -135,7 +137,7 @@ internal static class ChipSelectChecks
                 }
                 melee.Rig.WritePose(Pose);
             }
-            else if(Route=="gun"){gun??=new GunMotion{JumpLayer=new NativeJumpMotion(),SprintLayer=new NativeSprintMotion(),Locomotion=new NativeRangedLocomotion()};gun.Rig.GroupPosition=group;gun.Rig.GroupYaw=0;gun.Pose(A,t,Pose,false,jt,out _);gun.Finish(Pose,t);}
+            else if(Route=="gun"){gun??=new GunMotion{JumpLayer=new NativeJumpMotion(),SprintLayer=new NativeSprintMotion(),Locomotion=new NativeRangedLocomotion()};gun.Rig.GroupPosition=group;gun.Rig.GroupYaw=0;gun.Hold=Hold;gun.Pose(A,t,Pose,false,jt,out _);gun.Finish(Pose,t);}
             else if(Route=="bow"){bow??=new NativeBowMotion{JumpLayer=new NativeJumpMotion(),SprintLayer=new NativeSprintMotion(),Locomotion=new NativeRangedLocomotion()};bow.Rig.GroupPosition=group;bow.Rig.GroupYaw=0;bow.Pose(A,t,Pose,false,jt,out _);bow.Finish(Pose,t);}
             else{magic??=new MagicMotion{JumpLayer=new NativeJumpMotion(),SprintLayer=new NativeSprintMotion(),Locomotion=new NativeRangedLocomotion()};magic.Rig.GroupPosition=group;magic.Rig.GroupYaw=0;magic.Pose(A,t,Pose,channels,0,false,jt,out _);magic.Finish(Pose,t);}
             Pose.World();
@@ -177,7 +179,7 @@ internal static class ChipSelectChecks
             var prev=new Vector3[CapturedRig.Bones.Length];var turned=new Quaternion[2];bool first=true;
             for(int f=0;f<=(int)(8.6f*hz);f++)
             {
-                float t=f*dt;bool sel=t>=1&&t<8;float w=track.Step(sel,sel?7:0,t);pilot.Base(t);Copy(pilot.Pose,shown);
+                float t=f*dt;bool sel=t>=1&&t<8;float w=track.Step(sel,sel?7:0,t);pilot.Hold=w;pilot.Base(t);Copy(pilot.Pose,shown);
                 long before=GC.GetAllocatedBytesForCurrentThread();
                 var input=new ChipSelectInput{Weight=w,Clock=t-.3f,Time=t,Reach=1,Spec=spec,Seed=seed,Cards=3};layer.Apply(shown,input);layer.Measure(shown,false);
                 if(frames>200)allocated+=GC.GetAllocatedBytesForCurrentThread()-before;frames++;
@@ -365,7 +367,7 @@ internal static class ChipSelectChecks
                 // As the presentation runs it: the look held up through the plant, dropped where a plant that did not stay ends.
                 if(!planting&&age>=NativeChipPlant.Span&&!stay&&!dropped){track.Reset();dropped=true;}
                 float w=track.Step(selecting||planting,7,t),look=planting?NativeChipPlant.Weight(w,age,stay):w;
-                pilot.Base(t);Copy(pilot.Pose,shown);var b=pilot.Pose;
+                pilot.Hold=look;pilot.Base(t);Copy(pilot.Pose,shown);var b=pilot.Pose;
                 long before=GC.GetAllocatedBytesForCurrentThread();
                 var input=new ChipSelectInput{Weight=look,Clock=t-.3f,Time=t,Reach=1,Spec=spec,Seed=seed,Cards=3,Hush=planting?NativeChipPlant.Hush(age):0};sel.Apply(shown,input);
                 if(planting&&!began){plant.Reset();began=true;}
