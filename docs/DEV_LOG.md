@@ -10,6 +10,7 @@
 - **Checks:** CoreTests `--dev-grants` (41: the server's keys and labels mirrored, the client's DEV-account weapons kept out, changes and what a save sends, every DEV class and look offered, never the owner's own), `--hotdog-friends` (404), `--dev-tools` (6978), the full suite, the Unity compile, the Editor build checks.
 - **Seen in the Editor** (the local tool's `devgrants=`: a stub account, sample players, no requests): the screen at 1470x719, a player with grants (Emperor class and entrance ticked), two unsaved changes (the dots, the bar, Save lit), the looks with their emblems, a DEV account, the empty and no-results states.
 - **Not seen / not done:** a real search and save against the account server; a controller.
+- **Released** to the test channel (Windows builder): merged into shared at `bb85ff31`; full CoreTests 989 groups, the Unity compile and the Editor build checks passed; published revision `639298821333238613`. Not tried against the account server by a person.
 
 ## 2026-11-09 — Claude: the Top Dog feeds facing its victim, an arm on each side (owner request)
 
