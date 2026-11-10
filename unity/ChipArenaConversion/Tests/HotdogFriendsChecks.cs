@@ -98,6 +98,17 @@ internal static class HotdogFriendsChecks
             Check(!NativeHotdogFriends.Fits(worst)||NativeHotdogFriends.Over(worst)<(float)NativeKillEffectRules.DeathSeconds,"every load jammed is caught by Fits (the scene gives jams up until it ends in time)");
             var pm=NativeHotdogFriends.Friend(0,NativeHotdogFriends.ArmsPush);Check(pm.Count>100,"the pushing arms build");
         }
+        // One that fits squeezes in too (owner 2026-11-09: "If something is too big, it'll "squeeze" into the door"): narrowed to the doorway and
+        // drawn out along the way it goes as it is pulled in, the snugger the more, then gone.
+        {
+            var rest=new Vector3(1.2f,.15f,0);var snug=NativeHotdogFriends.Plan(0,1,1.2f,3,0,NativeHotdogFriends.Fit(.26f,.2f));var small=NativeHotdogFriends.Plan(0,1,1.2f,2,0,NativeHotdogFriends.Fit(.08f,.06f));
+            Check(!snug.Jam&&!small.Jam&&snug.Snug>small.Snug,"neither jams; one is a snug fit, one small");
+            float mid=snug.Back+NativeHotdogFriends.Squeeze*.65f;
+            NativeHotdogFriends.Load(snug,rest,mouth,mid,out _,out float ss,out _,out var tight);NativeHotdogFriends.Load(small,rest,mouth,small.Back+NativeHotdogFriends.Squeeze*.65f,out _,out _,out _,out var loose);
+            Check(tight.X<.6f&&tight.Z>1.6f&&ss>.3f&&loose.X>tight.X&&loose.X<.9f,"each squeezes into the doorway as it goes (snug "+tight.X.ToString("0.00")+" wide, "+tight.Z.ToString("0.00")+" long; small "+loose.X.ToString("0.00")+")");
+            NativeHotdogFriends.Load(snug,rest,mouth,snug.Back-.01f,out _,out _,out _,out var before);NativeHotdogFriends.Load(snug,rest,mouth,snug.In,out _,out float gone,out _,out _);
+            Check(before==Vector3.One&&gone<1e-3f,"whole until the doorway, gone after it");
+        }
         // The door's spots ring the pieces, facing them.
         for(int k=0;k<8;k++){var spot=NativeHotdogFriends.DoorSpot(new Vector3(1,0,2),.6f,77,k,out float yaw);var d=new Vector3(1,0,2)-spot;float face=(float)(Math.Atan2(d.X,d.Z)*180/Math.PI);Check(Math.Abs(Vector3.Distance(spot,new Vector3(1,0,2))-(.6f+NativeHotdogFriends.DoorAway))<1e-3f&&Math.Abs(((face-yaw)%360+540)%360-180)<.1f,"door spot "+k+" stands past the pieces, its mouth to them");}
         // The models build; the stride frames differ, the standing one has both feet down, the wave's hand moves.
