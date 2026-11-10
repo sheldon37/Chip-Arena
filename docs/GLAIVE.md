@@ -52,6 +52,67 @@ While the ring is out the hand is empty: the left click bursts it instead of cut
 - **The class icon** is a ring blade with its three hooks and the grip across its middle, two motion arcs trailing it (`spec-glaive` in
   `tools/export_class_icons.mjs`, with a small drawing). The ability cards use the shared icons (swords, rotate, orbit, sparkles).
 
+## The chips
+
+The owner's request, 2026-11-09: "create uniquely designed chips to benefit the glaive with effects on selection".
+
+Ten chips of its own, a signature set like the Top Dog's: their own tier (`glaive`, "GLAIVE SPECIAL", cyan `#4fe8ff`, a tri-crescent
+crest on the 3D chip), offered only to the Glaive and likely in its drafts (two guaranteed, 85%: the content's `exclusiveOdds`); the
+ordinary projectiles' chips are not offered to it (its ring is its own). Rules, numbers and copy: Core `NativeGlaiveChips`; the rules
+Runtime `NativeGlaiveAuthority.cs`, host-side (Claude builds this class's rules at the owner's word; logged for Astra).
+
+| Chip (`id`) | Copies | What it does |
+| --- | --- | --- |
+| Fourth Bounce (`glaive-fourth-bounce`) | 1 | Ricochet Throw ricochets 2 more times (5 in all) and looks 4 m farther (13 m) for the next target; each ricochet keeps 90% of the hit instead of 85% |
+| Keen Edge (`glaive-keen-edge`) | 2 | +10% Glaive damage a copy (cuts, skim, flick, throw, return, burst, halo, shards); every hit but the burst makes them bleed 3 a second for 2 s, refreshed by the next (the arena's damage over time, `bleed`) |
+| Twin Orbit (`glaive-twin-orbit`) | 1 | Halo sends a second ring of light circling the other way, starting opposite, 1.2 m farther out (2.9 m), cutting on its own clock (10 a pass, each at most every 0.35 s) |
+| Shatterpoint (`glaive-shatterpoint`) | 1 | The Burst is 40% wider (4.76 m) and throws out 6 shards, evenly spread, that fly 5 m at 25 m/s (a wall stops one), each cutting whoever it passes once for 8 |
+| Magnet Return (`glaive-magnet-return`) | 1 | Each enemy the returning ring cuts is dragged 3 m toward you (never closer than 1.2 m; not the Siren's armour or a boss) |
+| Quick Catch (`glaive-quick-catch`) | 1 | Catching the thrown ring, or the halo's when it comes back, takes 2.5 s off Q's cooldown and gives +25% move speed for 1.5 s (the combo's flick does not count) |
+| Whirlwind (`glaive-whirlwind`) | 1 | The combo's whirl drags everyone within 3.5 m 1.5 m in as it winds up, then reaches 3.5 m (from 2.7) for +20% damage and holds them in instead of pushing them out |
+| Long Arc (`glaive-long-arc`) | 1 | The flick's boomerang loop goes 60% farther (8.8 m) and 40% wider, in the same time; its cuts deal +25% |
+| Skimming Stone (`glaive-skimming-stone`) | 1 | The skim lunges 50% farther (6.75 m) and lays a slick of light along its path that lasts 2 s after it: enemies on it (1.1 m either side) are 40% slower while they stay |
+| Crescent Guard (`glaive-crescent-guard`) | 1 | While the ring is out of your hand (thrown, coming back, circling or flicked) you take 25% less damage; the halo's ring (and Twin Orbit's) cuts down the enemy shots it passes: bullets, ability shots, acid |
+
+Every number is in `NativeGlaiveChips`. The record carries what the look needs (`Keen`, `Twin`, `Shatter`, `LongArc`, `Guard`,
+`QuickUntil`, the slick's `SlickAt`, `SlickFrom`, `SlickTo`; `Bounces` up to 5) and four new hits (`shard`, `pull`, `guard`, `bleed`).
+In the world (Core `NativeGlaiveFx.cs`, in the pilot's weapon colour): Twin Orbit's ring of light with its own glow and wake, the
+shards spinning out of the burst on the same ways the rules fly them, the slick shimmering and rippling on the floor, Quick Catch's
+rush of speed lines, Crescent Guard's three faint crescents turning round you while the ring is out and a flash and crescent where a
+shot is cut down, light streaming toward you from whoever is dragged, Keen Edge's dark red drips, a brighter crescent trail with each
+copy of Keen Edge. Two new synthesized sounds: a glassy chime (`ring-chime`) and a stone's skip off water (`ring-skip`).
+
+**The card** (Runtime `NativeGlaiveChipArt.Face`): faint orbits round the emblem, tipped like the halo seen from the side, a crescent
+sweeping along the top, a glint circling the card's edge like the halo with its trail, each chip's emblem large behind the text and its
+own small loop.
+
+**The pick** (`NativeGlaiveChipArt.Reveal` and `Pose`, over the INSTALLED card; its cues in `NativeGlaiveChips.Picks`): each its own,
+the card knocked, turned and pulsed in time:
+
+- Fourth Bounce: the ring flies in and ricochets round the card's four corners, a ping, a ring of light, sparks and the count (×1 to ×4)
+  at each, then comes home into the emblem in a flash.
+- Keen Edge: the edge's glint sweeps along the diagonal, a hair-thin cut splits the face, light spills out of it, and it seals end to end
+  in a run of shimmer.
+- Twin Orbit: two rings come round the card from its foot in opposite directions, each laying a circle of light; they meet at the top in
+  a flash.
+- Shatterpoint: the emblem glows in the middle, cracks spread out of it, it bursts in a flash and a shockwave and its shards spin away.
+- Magnet Return: field lines curl in from the edges and motes are drawn faster and faster to the spinning ring; a ring of light closes on
+  it and it snaps them in.
+- Quick Catch: the ring spins up on the emblem, flies off on a boomerang loop past the card's edge and back into the emblem with a flash;
+  speed lines whip off the card.
+- Whirlwind: a vortex of light, arms and motes spiralling in tighter and faster, collapses into the ring's whirl, which cuts all round.
+- Long Arc: the ring takes the long way round, tracing a long boomerang loop across and beyond the card with a trail of light that fades
+  from its start once the loop closes.
+- Skimming Stone: water across the card's foot; the ring skims in flat and skips three times, ripples and splashes at each touch, a slick
+  of light glowing behind it.
+- Crescent Guard: a great crescent sweeps once round the card, a dome of hexes lights up cell by cell from the foot, and a red shot
+  strikes it and is cut down in sparks.
+
+Reduced effects keeps one soft glow. The draft holds 5.2 s on one of these (`NativeGlaiveChips.RevealSeconds`).
+
+Checks: `Tests/GlaiveChipChecks.cs` (`CoreTests --glaive-chips`); each rule against the real arena in `NativeGlaiveValidation.cs` (the
+Editor's build checks).
+
 ## Sound
 
 Eight cues synthesized in C# (Core `NativeToonSynth`, ids `ring-*`): a thin blade's swish for each cut, a slice on each hit, a spun throw, a
@@ -77,9 +138,13 @@ and the sound. Guests mirror it onto their own pilot (`p.Glaive`) for the cards.
 | Effects | `Core/NativeGlaiveFx.cs` |
 | The thrown ring, cards, sound | `Runtime/NativeGlaivePresentation.cs` |
 | Sound | `Core/NativeToonSynth.cs` (`ring-*`) |
-| Checks | `Tests/GlaiveChecks.cs` (`CoreTests --glaive`) |
+| The chips: names, numbers, emblems, shared paths, pick cues | `Core/NativeGlaiveChips.cs` (their rules in `Runtime/NativeGlaiveAuthority.cs`) |
+| The chips' cards and picks | `Runtime/NativeGlaiveChipArt.cs` |
+| Checks | `Tests/GlaiveChecks.cs` (`CoreTests --glaive`), `Tests/GlaiveChipChecks.cs` (`CoreTests --glaive-chips`) |
 
 ## Not yet
 
-- No intro, no chips of its own, no controller-specific mapping beyond Q and E.
+- No intro, no controller-specific mapping beyond Q and E.
+- The chips' rules are checked in the Editor's build checks (`NativeGlaiveValidation.cs`); their picks and world effects have not been
+  seen in the Editor or a build yet. Keen Edge's bleed ticks show as the arena's poison ticks.
 - Not played by a person; not tried between two real clients.

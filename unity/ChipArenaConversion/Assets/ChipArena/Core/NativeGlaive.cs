@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
         public const int Hand=0,Out=1,Back=2,Orbit=3,Gone=4,Flick=5;
         // Hit kinds (NativeGlaiveHit.Kind): a cut, the whirl's, the flick's, the throw's, a ricochet's, the return's, the halo's, the burst.
         public const string HitCut="cut",HitWhirl="whirl",HitFlick="flick",HitThrow="throw",HitRicochet="ricochet",HitReturn="return",HitHalo="halo",HitBurst="burst",HitCatch="catch",HitSkim="skim";
+        // The chips' (Core NativeGlaiveChips): a shard's cut, a drag toward the wielder, a shot cut down by the halo, a bleed's drip.
+        public const string HitShard="shard",HitPull="pull",HitGuard="guard",HitBleed="bleed";
         public const int MaxHits=40,Slots=2;
         public static readonly string[] SlotKeys={"Q","E"};
         /// <summary>Cooldowns (s) in slot order: Q from the catch (or the re-forming), E from the halo's end.</summary>
@@ -62,14 +64,14 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The icon an ability's card draws (the shared set's).</summary>
         public static string Icon(string id)=>id==Throw?"rotate-cw":id==Halo?"orbit":id==Burst?"sparkles":id==Skim?"wind":"swords";
-        public static bool IsHit(string k)=>k==HitCut||k==HitWhirl||k==HitFlick||k==HitThrow||k==HitRicochet||k==HitReturn||k==HitHalo||k==HitBurst||k==HitCatch||k==HitSkim;
+        public static bool IsHit(string k)=>k==HitCut||k==HitWhirl||k==HitFlick||k==HitThrow||k==HitRicochet||k==HitReturn||k==HitHalo||k==HitBurst||k==HitCatch||k==HitSkim||k==HitShard||k==HitPull||k==HitGuard||k==HitBleed;
 
         /// <summary>The flick's ring at age `u` (0..1) of its loop from the hand at `from`, thrown along `dir` (flat): out on the right, back
-        /// on the left.</summary>
-        public static Vector3 FlickAt(Vector3 from,Vector3 dir,float u)
+        /// on the left; `reach` ahead and `wide` to the side (Long Arc's are longer, Core NativeGlaiveChips).</summary>
+        public static Vector3 FlickAt(Vector3 from,Vector3 dir,float u,float reach=FlickReach,float wide=FlickWide)
         {
             u=u<0?0:u>1?1:u;var d=Flat(dir);var side=new Vector3(d.Z,0,-d.X);float a=(float)Math.PI*u;
-            return from+d*(FlickReach*(float)Math.Sin(a))+side*(FlickWide*(float)Math.Sin(2*a))+Vector3.UnitY*(.15f*(float)Math.Sin(a));
+            return from+d*(reach*(float)Math.Sin(a))+side*(wide*(float)Math.Sin(2*a))+Vector3.UnitY*(.15f*(float)Math.Sin(a));
         }
         /// <summary>The halo's ring at `time` round the wielder's middle `centre`, begun at `at` (its first turn from the facing `dir`).</summary>
         public static Vector3 OrbitAt(Vector3 centre,Vector3 dir,float at,float time)
@@ -84,7 +86,7 @@ namespace ChipArena.UnityConversion
             at=centre;if(k==null||k.Disc==Hand||k.Disc==Gone)return false;
             switch(k.Disc)
             {
-                case Flick:at=FlickAt(N(k.DiscFrom),N(k.DiscDir),(time-k.DiscAt)/FlickTime);return true;
+                case Flick:at=k.LongArc?FlickAt(N(k.DiscFrom),N(k.DiscDir),(time-k.DiscAt)/FlickTime,FlickReach*NativeGlaiveChips.ArcReach,FlickWide*NativeGlaiveChips.ArcWide):FlickAt(N(k.DiscFrom),N(k.DiscDir),(time-k.DiscAt)/FlickTime);return true;
                 case Orbit:at=OrbitAt(centre,N(k.DiscDir),k.DiscAt,time);return true;
                 default:
                 {
@@ -125,6 +127,10 @@ namespace ChipArena.UnityConversion
         /// and which way it or the halo set off (`DiscFrom`, `DiscDir`), its ricochets so far; `Reformed`: back in the hand from a burst.</summary>
         public int Disc,Bounces;public float DiscAt=-100,DiscSampleAt;public V3 DiscPos,DiscVel,DiscFrom,DiscDir;public bool Reformed;
         public NativeGlaiveHit[] Hits;
+        /// <summary>The chips' share of what is seen (Core NativeGlaiveChips): Keen Edge's copies; Twin Orbit's second ring, Shatterpoint's wide
+        /// burst and shards, Long Arc's longer loop, Crescent Guard's shimmer while the ring is out; Quick Catch's burst of speed (until);
+        /// Skimming Stone's slick (from the skim's release, along the skim's path on the floor).</summary>
+        public int Keen;public bool Twin,Shatter,LongArc,Guard;public float QuickUntil=-100,SlickAt=-100;public V3 SlickFrom,SlickTo;
         public void CapturePresence(){}
         public void RestorePresence(){if(string.IsNullOrEmpty(CastKind))CastKind=null;}
         public NativeGlaiveKit ViewCopy()
@@ -137,7 +143,8 @@ namespace ChipArena.UnityConversion
         {
             bool F(float v)=>MathUtil.Finite(v)&&Math.Abs(v)<10000000;bool V(V3 v)=>F(v.x)&&F(v.y)&&F(v.z)&&v.Length<100000;bool K(string s)=>s==null||s.Length<=24;
             if(!K(CastKind)||!F(CastAt)||!F(CastRelease)||!F(CastUntil)||!F(ComboUntil)||CastStep<0||CastStep>=NativeGlaive.Steps||Combo<0||Combo>=NativeGlaive.Steps)return false;
-            if(Disc<NativeGlaive.Hand||Disc>NativeGlaive.Flick||Bounces<0||Bounces>NativeGlaive.Ricochets||!F(DiscAt)||!F(DiscSampleAt)||!V(DiscPos)||!V(DiscVel)||!V(DiscFrom)||!V(DiscDir))return false;
+            if(Disc<NativeGlaive.Hand||Disc>NativeGlaive.Flick||Bounces<0||Bounces>NativeGlaive.Ricochets+NativeGlaiveChips.BounceMore||!F(DiscAt)||!F(DiscSampleAt)||!V(DiscPos)||!V(DiscVel)||!V(DiscFrom)||!V(DiscDir))return false;
+            if(Keen<0||Keen>NativeGlaiveChips.KeenMax||!F(QuickUntil)||!F(SlickAt)||!V(SlickFrom)||!V(SlickTo))return false;
             if(Ready!=null){if(Ready.Length>NativeGlaive.Slots)return false;foreach(var r in Ready)if(!F(r))return false;}
             if(Hits!=null){if(Hits.Length>NativeGlaive.MaxHits)return false;foreach(var h in Hits)if(h==null||!NativeGlaive.IsHit(h.Kind)||!F(h.At)||!V(h.Pos)||!V(h.Dir))return false;}
             return true;

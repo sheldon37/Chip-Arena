@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         public void SandboxTestBlock(){if(!SandboxAllowed)return;SandboxRestore(Local);var other=Pilots.FirstOrDefault(p=>p.Seat.bot);if(other==null)return;SandboxCast("sword","ai");other.Body.position=Local.Body.position+Vector3.forward*2;Local.Input=new InputFrame{Yaw=0};TryBlock(Local);}
         public void SandboxPreview(string kind,string rarity="common")
         {
-            if(!SandboxAllowed)return;if(kind=="my-death")SandboxAction("down",true);else if(kind=="knockout")SandboxAction("down");else if(kind=="draft"||kind=="rarity"){if(rarity==NativeBombChips.Tier){NativeBombChips.Apply(Content);foreach(var m in NativeBombChips.Mechanics)if(m!=null)SupportedMechanics.Add(m);}if(rarity==NativeDogChips.Tier)NativeDogChips.Apply(Content);
+            if(!SandboxAllowed)return;if(kind=="my-death")SandboxAction("down",true);else if(kind=="knockout")SandboxAction("down");else if(kind=="draft"||kind=="rarity"){if(rarity==NativeBombChips.Tier){NativeBombChips.Apply(Content);foreach(var m in NativeBombChips.Mechanics)if(m!=null)SupportedMechanics.Add(m);}if(rarity==NativeDogChips.Tier)NativeDogChips.Apply(Content);if(rarity==NativeGlaiveChips.Tier)NativeGlaiveChips.Apply(Content);
             if(NativeBossChips.IsTier(rarity)){NativeBossChips.Apply(Content);foreach(var m in NativeBossChips.Mechanics)SupportedMechanics.Add(m);}SandboxPreviewRarity=rarity;Match.PreviewDraft(Local.Seat.id,kind=="rarity"?rarity:null);}
         }
         public bool SandboxLaunchDebris(float mass,float speed,string material,string impact="face")
