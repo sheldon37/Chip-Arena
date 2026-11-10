@@ -155,12 +155,14 @@ namespace ChipArena.UnityConversion
         public static SmashPlan Plan(bool gore,string style,bool kept,string model,string damageKind,string mapId,MapHazard[] hazards,string hazardId,int round,double fightAt,double deathAt,Vector3 body,Vector3 direction,float yaw,int seed)
         {
             if(!Applies(gore,style,kept,model)||hazards==null)return null;
-            if(damageKind=="maglev")
+            // Substation 128's maglev is the laser wall: it cuts (NativeClubPresentation.cs ClubLaserBisect), it does not smash.
+            if(damageKind=="maglev"&&!NativeClubLooks.Active(mapId))
             {
                 MapHazard train=null;foreach(var h in hazards)if(NativeCyberCityHazards.IsMaglev(h)&&(train==null||!string.IsNullOrEmpty(hazardId)&&h.id==hazardId))train=h;
                 return Train(train,round,fightAt,deathAt,body,direction,yaw,seed);
             }
-            return damageKind=="hazard"&&NativeFactoryHazards.Active(mapId)?Factory(hazards,hazardId,round,fightAt,deathAt,body,yaw,seed):null;
+            // Top Dog Emporium's bun presses pancake as the Factory's presses do (its other hazards have no smash cause).
+            return damageKind=="hazard"&&(NativeFactoryHazards.Active(mapId)||NativeEmporiumLooks.Active(mapId))?Factory(hazards,hazardId,round,fightAt,deathAt,body,yaw,seed):null;
         }
         /// <summary>A crusher's underside at its hazard clock (the press ram's, the crane load's).</summary>
         public static float Underside(FactoryHazard h,int round,double clock)=>(float)NativeFactoryHazards.State(h,round,clock).LoadY;

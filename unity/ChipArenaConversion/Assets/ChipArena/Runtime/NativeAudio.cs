@@ -156,8 +156,11 @@ namespace ChipArena.UnityConversion
                 if(string.IsNullOrEmpty(theme)){if(!track.StartsWith("music/")||track=="music/menu-afterglow"||music.clip!=null&&musicPlayed&&!musicStarting&&!music.isPlaying&&!musicHeld){if(bag.Count==0){foreach(var name in rotationTracks.OrderBy(_=>UnityEngine.Random.value))bag.Enqueue(name);if(bag.Peek()==rotationTracks[Math.Max(0,rotation)])bag.Enqueue(bag.Dequeue());}theme=bag.Dequeue();rotation=Array.IndexOf(rotationTracks,theme);}else theme=track.Substring(6);}
                 Track("music/"+theme,Music*.55f,!NativeStageMusic.Plays(match.Phase,false,false));
             }
-            FactoryCues(arena,menu);ExpeditionCityCues(arena,menu);
+            FactoryCues(arena,menu);ExpeditionCityCues(arena,menu);CausewayCues(arena,menu);
+            EmporiumCues(arena,menu);
+            SanctumCues(arena,menu);
             StationCues(arena,menu);
+            ClubFrame(arena,menu);
             // audio.ts AudioCursor: each event once, played only while .4 s fresh (never ahead of the clock), routed by
             // NativeEventSounds (ArenaAudio.update's event branch).
             // The Siren pick's follow-through holds my own Install cue for its plant (NativeInstallCue).

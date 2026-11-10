@@ -1,3 +1,30 @@
+## 2026-11-10 — Claude: four new stages (Starfall Causeway, Substation 128, Top Dog Emporium, the Hollow Sanctum), in Random (owner request)
+
+- Branch `claude/new-stages` (from shared at `7208db59`), merging the four stage branches `claude/stage-causeway`, `claude/stage-club`, `claude/stage-emporium` and `claude/stage-sanctum`. Four agents built them in parallel at the integrator's brief, one stage each.
+- **The owner:** "Begin development of 4 newer levels. Lets make these levels set a new bar for quality going forward ... One map is based off the star bridge from mortal kombat. Another is a dance club that reacts to music (light tiles, light beams) Another is a hotdog emporium level. Another is a church/old castle interior. Give them all unique hazards (make hotdog one funny, gimmicky hazards) ... make sure they are in the random selection for stage selections."
+- **The stages** (each with its own doc: docs/arenas/CAUSEWAY.md, CLUB.md, EMPORIUM.md, SANCTUM.md):
+  - **Starfall Causeway** (`causeway`): an ancient stone causeway hung in deep space between two broken towers. It is an original design; only the general idea of a bridge in space comes from the owner's reference, nothing from that game. Its hazards: falling stars (press), a comet pass (maglev) and the solar wind (pushing vent).
+  - **Substation 128** (`club`): a nightclub in an old power substation. The LED floor, moving heads, lasers and mirror balls follow the music's spectrum, with a 128 bpm clock when no song plays. Its hazards keep a 128 bpm bar grid on the match clock: the charged floor (grid), the laser wall (maglev, its kill a cut through the shins) and the bass drop (pushing vent).
+  - **Top Dog Emporium** (`emporium`): a glass-roofed hot dog palace. Its funny hazards: the Wiener Run (maglev, a googly-eyed frankfurter), the bun presses (press, the kill pancakes), the griddles (burner) and the ketchup and mustard geysers (vent launch onto the balcony).
+  - **The Hollow Sanctum** (`sanctum`): a castle chapel at midnight, with stained glass, candles and a crypt. Its hazards: the falling chandeliers (crane), the great censer (saw-rail), holy fire (burner) and the bell's toll sealing the crypt (shutter).
+- **Random:** all four are in the rotation (`rotation` true; NativeMapRules' catalogue and Random pins).
+- **Rules (at the owner's word; for Astra):**
+  - Hazards are existing kinds, except that **a vent can push**. `MapHazard.pushMode` names how, and validation requires a mode exactly when push > 0. There are three modes:
+    - `shove`: the horizontal axis times push is the knockback on each damage tick (`NativeStageHazards.VentShove`, the club).
+    - `launch`: straight up, setting Knockback.y while bursting for a pilot who is not already rising (`VentLaunch`, the Emporium).
+    - `wind`: a steady force along the axis while bursting (`NativeArena.VentPush`, the Causeway).
+  - The three branches had each written their own rule reading `push > 0`; merged, every pushing vent would have run all three. This is what made the field explicit.
+  - All three rules are host-side knockback. A guest's prediction is corrected by host frames.
+  - Every older vent has push 0. Shutters keep their own push.
+  - Strengths are first guesses that need a playtest.
+  - There is no new hazard kind, death kind or network field.
+- **Look and music:** each stage has its own Core kit, scenery, rig and FX, a Runtime presentation, a MapLooks entry with the toon grade and advanced lighting, and a Low-tier pass. Each plays a placeholder song for now. The owner's Suno briefs and the keys for the songs are in docs/arenas/STAGE-MUSIC-PROMPTS.md.
+- **Catalogue:** UnityMaps.json was regenerated once with all four (`tools/generate_stage_hazards.py`). Expedition City's record is byte-identical. The five M1 records' `rotation` now reads true, as Merge already forced.
+- **Animation impact:** none on the pilots. The club's laser kill uses the existing bisect, and the Emporium's press kill the existing pancake.
+- **Checks:** CoreTests `--causeway` (7692), `--club-stage` (904968), `--emporium` (13328), `--sanctum` (23124), `--new-stages`, `--map-style`, `--advanced-lighting`, `--transitions` (4096), `--surfaces`, `--dev-tools`, `--stage-kits`, `--zone-music`; the full suite; the Unity compile; the Editor's build checks. Each stage branch also passed the full suite and its own Editor checks before the merge (the club's Editor checks ran on the merged branch).
+- **Seen in the Editor:** each stage by its agent (layouts, hazards, telegraphs, impacts, the Low tier), and reviewed by the integrator from their contact sheets.
+- **Not seen / not done:** no people have played them. No network guests or killcam on these maps. The hazard sounds reuse existing clips under each stage's bank keys. No ambience beds. The menu backdrop preview of these maps shows only their shell, as for the M1 stages.
+
 ## 2026-11-10 — Claude: the PvP room and Create Room redesigned, weapon abilities in the room (owner request)
 
 - Branch `claude/pvp-lobby-ui` (from shared at `5155011f`).

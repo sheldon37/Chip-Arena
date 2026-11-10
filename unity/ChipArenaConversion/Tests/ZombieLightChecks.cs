@@ -95,6 +95,10 @@ namespace ChipArena.UnityConversion
             var iw=R("Assets/ChipArena/Runtime/NativeIronworksPresentation.cs");var send=Between(iw,"private void IronworksFieldSend(double now)","private void ReleaseIronField()");
             Check(Between(iw,"private void IronworksScenery(NativeArena arena)","private bool EnsureIronworks()")?.Contains("IronworksFieldSend(now);")==true&&send!=null&&send.Contains("NativeLighting.ActorLights(true);return;")&&send.Contains("new Color(r,g,b),true);"),
                 "the Ironworks light their bodies every frame (the field's actor share, or the slots alone)");
+            var club=Between(R("Assets/ChipArena/Runtime/NativeClubPresentation.cs"),"private void ClubScenery(NativeArena arena)","private bool PrewarmClub(NativeArena arena)");
+            Check(club!=null&&club.IndexOf("NativeLighting.ActorLights(true);",StringComparison.Ordinal)>club.IndexOf("if(!NativeClubLooks.Active(arena.MapId))",StringComparison.Ordinal),"Substation 128 lights its bodies each frame after its map gate (the arena and the killcam)");
+            var sanctum=Between(R("Assets/ChipArena/Runtime/NativeSanctumPresentation.cs"),"private void Effects(","private void Pack(");
+            Check(sanctum?.Contains("NativeLighting.PickedLights(fx.LightPos,fx.LightRgb);NativeLighting.ActorLights(true);")==true,"the Hollow Sanctum lights its bodies every frame beside its slots (the arena and the killcam)");
             var wz=R("Assets/ChipArena/Runtime/NativeWardZeroPresentation.cs");
             Check(Between(wz,"private void WardZeroScenery(NativeArena arena)","public void SetWardBreach")?.Contains("WardZeroFieldSend(now,true);")==true&&wz.Contains("if(wzFieldTex==null||wzField==null){if(actors)NativeLighting.ActorLights(true);"),"Ward Zero lights its bodies in the live arena and the killcam");
         }
@@ -109,7 +113,7 @@ namespace ChipArena.UnityConversion
         {
             var o=new JsonSerializerOptions{IncludeFields=true};var set=JsonSerializer.Deserialize<MapLookSet>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/MapLooks.json")),o);NativeMapLooks.Validate(set);
             // The looks whose zone presentation turns actor lighting on (Contract holds each call).
-            var actors=new Dictionary<string,string>{[NativeExpeditionStation.Look]="Central Station",["ironworks"]="the Ironworks",[NativeWardZeroLooks.Look]="Ward Zero"};
+            var actors=new Dictionary<string,string>{[NativeExpeditionStation.Look]="Central Station",["ironworks"]="the Ironworks",[NativeWardZeroLooks.Look]="Ward Zero",[NativeClubLooks.LookId]="Substation 128",[NativeSanctumLooks.Look]="the Hollow Sanctum"};
             var dark=new List<string>();
             foreach(var m in set.maps)
             {
