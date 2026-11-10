@@ -155,7 +155,8 @@ namespace ChipArena.UnityConversion
         public static SmashPlan Plan(bool gore,string style,bool kept,string model,string damageKind,string mapId,MapHazard[] hazards,string hazardId,int round,double fightAt,double deathAt,Vector3 body,Vector3 direction,float yaw,int seed)
         {
             if(!Applies(gore,style,kept,model)||hazards==null)return null;
-            if(damageKind=="maglev")
+            // Substation 128's maglev is the laser wall: it cuts (NativeClubPresentation.cs ClubLaserBisect), it does not smash.
+            if(damageKind=="maglev"&&!NativeClubLooks.Active(mapId))
             {
                 MapHazard train=null;foreach(var h in hazards)if(NativeCyberCityHazards.IsMaglev(h)&&(train==null||!string.IsNullOrEmpty(hazardId)&&h.id==hazardId))train=h;
                 return Train(train,round,fightAt,deathAt,body,direction,yaw,seed);

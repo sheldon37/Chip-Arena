@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         public int Telegraph,Show,Atmosphere,BeamCount;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz,quality;private bool low;
         private static double H(int a,int b=0,int c=0)=>NativeClubLooks.Hash(a,b,c);
-        private static readonly double[] Sides={-1.0,1.0},LaserYs={.15,.35,.55},Rails={-NativeClubLooks.LaserRailZ,NativeClubLooks.LaserRailZ},JetXs={-6.0,-2.5,2.5,6.0},WashXs={-25.5,25.5};
+        private static readonly double[] Sides={-1.0,1.0},LaserYs={.15,.35,.55},Rails={-NativeClubLooks.LaserRailZ,NativeClubLooks.LaserRailZ},JetXs={-6.0,-2.5,2.5,6.0},WashXs={-25.5,25.5},Woofers={-.66,.66};
         private static double Frac(double v)=>v-Math.Floor(v);
         private static double L(int hex,int shift)=>NativeSceneryBuilder.Channel(hex,shift);
         private int Count(int full)=>low?Math.Max(1,full/3):Math.Max(1,(int)Math.Round(full*(.35+.65*quality)));
@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
         {
             Quads.Clear();Telegraph=Show=Atmosphere=BeamCount=0;if(s==null)return;ex=camX;ey=camY;ez=camZ;rx=rightX;ry=rightY;rz=rightZ;ux=upX;uy=upY;uz=upZ;quality=Math.Max(0,Math.Min(1,q));low=lowTier;
             // telegraphs claim the buffer first
-            GridFx(s,render);LaserFx(s,render);DropFx(s,render);
+            GridFx(s,render);LaserFx(s,render);DropFx(s,render);Cones(s);
             HeadBeams(s);Fans(s,render);Balls(s,render);StageLamps(s);Jets(s);Confetti(s);Washes(s,render);Haze(s,render);Phones(s,render);
         }
 
@@ -141,13 +141,13 @@ namespace ChipArena.UnityConversion
                 double x=Math.Max(h.center.x-h.size.x/2,Math.Min(h.center.x+h.size.x/2,st.Head));
                 foreach(double y in LaserYs)
                 {
-                    if(Beams!=null){Beams.Add(x,y,z0,x,y,z1,.035,.035,lr*10,lg*10,lb*10,.15,y*7);BeamCount++;}
-                    Streak(x,y,z0,x,y,z1,.06,.06,lr*7,lg*2.6,lb*2.6,1,true,0);Streak(x,y,z0,x,y,z1,.6,.6,lr*1.8,lg*1.8,lb*1.8,.45,true,1);Telegraph+=2;
+                    if(Beams!=null){Beams.Add(x,y,z0,x,y,z1,.035,.035,lr*5,lg*5,lb*5,.15,y*7);BeamCount++;}
+                    Streak(x,y,z0,x,y,z1,.06,.06,lr*2.4,lg*1.4,lb*1.4,1,true,0);Streak(x,y,z0,x,y,z1,.6,.6,lr*1.2,lg*1.2,lb*1.2,.45,true,1);Telegraph+=2;
                 }
                 // the light curtain over the beams (it reads from across the hall), its trail, the scorch line on the tiles, flares at
                 // the posts and sparks thrown back where the beams leave their slots
-                Upright(x,0,0,1.8,7.5,true,lr*1.6,lg*1.6,lb*1.6,.3,1);Upright(x-st.Direction*.5,0,0,1.1,7.5,true,lr*1.1,lg*1.1,lb*1.1,.18,1);Telegraph+=2;
-                Flat(x-st.Direction*.3,.04,0,.45,7.5,0,lr*3,lg*1.2,lb*1.2,.7,true,1);Telegraph++;
+                Upright(x,0,0,1.8,7.5,true,lr*1.2,lg*1.2,lb*1.2,.3,1);Upright(x-st.Direction*.5,0,0,1.1,7.5,true,lr*1.1,lg*1.1,lb*1.1,.18,1);Telegraph+=2;
+                Flat(x-st.Direction*.3,.04,0,.45,7.5,0,lr*1.5,lg*.8,lb*.8,.7,true,1);Telegraph++;
                 foreach(double z in Rails)
                 {
                     Sprite(x,.4,z,1.7,lr*4,lg*2,lb*2,.85,true);Telegraph++;
@@ -181,6 +181,22 @@ namespace ChipArena.UnityConversion
                 if(age<.8){double k=1-age/.8;for(int i=0;i<3;i++)Ring(cx,1.2+i*1.2,front-age*9,.8+age*7,2*k,1.9*k,2.2*k,.7*k,18);
                     for(int i=0;i<16;i++){double a=i*Math.PI/8,r0=1.2+age*10,px=cx+Math.Cos(a)*r0,pz=cz+Math.Sin(a)*r0*.7-age*3;Sprite(px,.25,pz,1+age*2,1.8*k,1.7*k,2*k,.35*k,true);}Telegraph+=19;}
                 if(age<2){double k=1-age/2;int n=Count(14);for(int i=0;i<n;i++){double a=H(i,4)*Math.PI-Math.PI,r0=.8+age*(3+H(i,5)*3);Sprite(cx+Math.Cos(a)*r0,.3+age*.8,cz+Math.Sin(a)*r0*.8,1.2+age*2,.5,.45,.55,.22*k,false);Atmosphere++;}}
+            }
+        }
+        // The woofers' glow: a soft ring on each cone, the party's cyan breathing with the kick; amber through the drop's build
+        // (the telegraph: counted, never reduced) and white at the burst.
+        private void Cones(NativeClubShow s)
+        {
+            double kick=Math.Exp(-Frac(s.Beats)*6),cab=NativeClubLooks.SpeakerTop/4,front=NativeClubLooks.SpeakerZ-.09;
+            foreach(double side in Sides)
+            {
+                var st=side<0?s.DropW:s.DropE;bool warn=st.Phase==NativeFactoryHazards.Warning,burst=st.Phase==NativeFactoryHazards.Bursting;int c=warn?NativeClubLooks.Amber:burst?0xF4F0FF:NativeClubLooks.Cyan;
+                double k=burst?2.2:warn?.7+1.1*st.Warn*(.5+.5*kick):.25+.45*kick,cx=side*(NativeClubLooks.SpeakerX0+NativeClubLooks.SpeakerX1)/2;
+                for(int i=0;i<3;i++)foreach(double dx in Woofers)
+                {
+                    Sprite(cx+dx,(i+.5)*cab,front,1.15,L(c,16)*k,L(c,8)*k,L(c,0)*k,.6,true);
+                    if(warn||burst)Telegraph++;else Show++;
+                }
             }
         }
         // A ring of short streaks round (x, y, z) in the plane facing ±z.
@@ -271,13 +287,13 @@ namespace ChipArena.UnityConversion
             {
                 double h1=H(i,1),h2=H(i,2),h3=H(i,3);double vx=(h1-.5)*7,vz=(h2-.5)*6,t=age,x=(h3<.5?-4:4)+vx*Math.Min(t,1.2)+Math.Sin(t*3+i)*.4,z=(h3<.25||h3>.75?-3:3)+vz*Math.Min(t,1.2),y=10.2+3.5*Math.Min(t,.6)-Math.Max(0,t-.6)*1.45-Math.Max(0,t-.6)*Math.Max(0,t-.6)*.05;
                 if(y<.02)y=.02;double spin=t*(4+h2*6)+i,a=Math.Abs(Math.Cos(spin))*.06+.02;int c=pal[i%pal.Length];double fade=t>5.5?1-(t-5.5)/1.5:1;
-                Quads.Add(x-a,y,z-.05,x+a,y+.03,z-.05,x+a,y+.03,z+.05,x-a,y,z+.05,L(c,16)*1.6,L(c,8)*1.6,L(c,0)*1.6,.9*fade,0,false,1);Show++;
+                a*=1.8;Quads.Add(x-a,y,z-.08,x+a,y+.05,z-.08,x+a,y+.05,z+.08,x-a,y,z+.08,L(c,16)*1.3,L(c,8)*1.3,L(c,0)*1.3,.95*fade,0,true,1);Show++;
             }
         }
         private void Washes(NativeClubShow s,double render)
         {
             int[] pal=NativeClubLooks.Party;int bar=(int)(((long)Math.Floor(s.Beats/4))%7+7)%7;double k=.5+.3*Math.Sin(s.Beats*Math.PI/4);
-            for(int i=0;i<10;i++){double z=-17+i*3.4;int c=pal[(bar+i/3)%pal.Length];foreach(double x in WashXs)Upright(x,z,0,4.2,1.3,true,L(c,16)*k,L(c,8)*k,L(c,0)*k,.18,1);Atmosphere+=2;}
+            for(int i=0;i<10;i++){double z=-17+i*3.4;int c=pal[(bar+i/3)%pal.Length];foreach(double x in WashXs)Upright(x,z,0,4.6,1.4,true,L(c,16)*k*1.4,L(c,8)*k*1.4,L(c,0)*k*1.4,.3,1);Atmosphere+=2;}
             Sprite(0,6.0,-19.45,9,L(NativeClubLooks.Magenta,16)*.5,L(NativeClubLooks.Magenta,8)*.5,L(NativeClubLooks.Magenta,0)*.5,.35,true);Atmosphere++;
         }
         private void Haze(NativeClubShow s,double render)

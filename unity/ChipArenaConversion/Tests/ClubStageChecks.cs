@@ -159,7 +159,7 @@ internal static class ClubStageChecks
                 float r=show.Floor[i*3],g=show.Floor[i*3+1],b=show.Floor[i*3+2];Check(!float.IsNaN(r+g+b)&&r>=0&&g>=0&&b>=0,"tile colours finite");
                 int s=NativeClubShow.SectionAt(NativeClubShow.TileX(i),NativeClubShow.TileZ(i));var st=show.Grid[s];
                 if(st.Phase==NativeHazardPhase.Warn)Check(show.Owner[i]==NativeClubShow.Charging,"a charging section owns its tiles at "+t.ToString("0.0"));
-                if(st.Phase==NativeHazardPhase.Active)Check(show.Owner[i]==NativeClubShow.Live&&r>2,"a live section owns its tiles, red-hot, at "+t.ToString("0.0"));
+                if(st.Phase==NativeHazardPhase.Active)Check(show.Owner[i]==NativeClubShow.Live&&r>1.1&&r>2.5*g,"a live section owns its tiles, red-hot (saturated: the display shoulder whitens past 1.6), at "+t.ToString("0.0"));
                 if(show.Owner[i]==NativeClubShow.Party&&r>.05)Check(b>=.25*r,"the party never plays a telegraph colour (tile "+i+" at "+t.ToString("0.0")+")");
                 if(show.Owner[i]==NativeClubShow.Charging)Check(b<.25*r&&r>.3,"a charging tile is amber to red");
             }
@@ -216,6 +216,12 @@ internal static class ClubStageChecks
         Check(R("Assets/ChipArena/Runtime/NativeAudio.cs").Contains("ClubFrame(arena,menu);")&&R("Assets/ChipArena/Runtime/NativeClubAudio.cs").Contains("music.GetSpectrumData(NativeClubMusic.Spectrum,0,FFTWindow.BlackmanHarris)"),"the music voice's spectrum is sampled");
         var pres=R("Assets/ChipArena/Runtime/NativeClubPresentation.cs");Check(pres.Contains("NativeLighting.KitLights(")&&pres.Contains("NativeClubMusic.Fresh")&&pres.Contains("club.Flash=KitFlash"),"the show lends its lights, hears the music, honours the light-flash setting");
         Check(R("Assets/ChipArena/Editor/NativeBuildChecks.cs").Contains("if(map.id==\"club\")arena.ValidateClubRuntime();"),"the Editor gate runs the club's native checks");
+        // the laser wall cuts (a level cut through the shins), it does not smash like the train; the train still smashes on Cyber City
+        var laser=new MapHazard{id="club-laser",kind="maglev",center=new V3(0,.35f,0),size=new V3(18,.6f,15),axis=new V3(1,0,0),first=19,period=30,warn=7.5f,danger=3.75f,speed=8,length=.3f,lethal=true};
+        Check(NativeSmashGib.Plan(true,null,false,"pilot","maglev","club",new[]{laser},laser.id,1,0,20,new System.Numerics.Vector3(0,.85f,0),System.Numerics.Vector3.UnitX,0,7)==null,"the club's laser wall never smashes");
+        var train=NativeCyberCityHazards.Draft()[0];Check(NativeSmashGib.Plan(true,null,false,"pilot","maglev","cybercity",new[]{train},train.id,1,0,train.first+.5,new System.Numerics.Vector3(0,-1.5f,0),System.Numerics.Vector3.UnitX,0,7)!=null,"the train still smashes on Cyber City");
+        var cutAt=R("Assets/ChipArena/Runtime/NativeBisectPresentation.cs");Check(cutAt.Contains("var laserCut=ClubLaserBisect(arena,death,rig);if(laserCut!=null)return laserCut;"),"the death presentation asks the laser first");
+        Check(pres.Contains("NativeBisect.Request(\"laser\",new System.Numerics.Vector3(pelvis.x,cut,pelvis.z),System.Numerics.Vector3.UnitY,travel,seed"),"a level cut where the beams run, thrown along the sweep");
         foreach(var f in new[]{"Runtime/NativeStageHazardsRuntime.cs","Core/NativeStageHazards.cs","Core/NativeCyberCityHazards.cs","Core/NativeFactoryHazards.cs"})Check(!Regex.IsMatch(R("Assets/ChipArena/"+f),"NativeClub(Pulse|Music|Show)"),f+": the rules never read the music or the show");
         var guids=new HashSet<string>();
         foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"NativeClub*.cs",SearchOption.AllDirectories))

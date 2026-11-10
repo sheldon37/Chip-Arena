@@ -169,6 +169,17 @@ namespace ChipArena.UnityConversion
             NativeLighting.ActorLights(true);
             club.Beams=AdvancedBeams;club.Flash=KitFlash;club.Render(arena,FieldClock(arena),WorldEye,EffectsQuality,LowGraphics,UsesInstancing);clubLights|=club.LightsSent;
         }
+        // The laser wall's kill (a `maglev` death on the club): a level cut through the shins where its beams run, the body
+        // lifting off its legs and thrown along the sweep (NativeBisect's shared split; gore on and a stock ending only, as the
+        // saws'). Presentation only, from the replicated death record and the pure clock.
+        private NativeCorpse ClubLaserBisect(NativeArena arena,NativeDeath death,CapturedAnimation.Player rig)
+        {
+            if(sourceModels==null||death==null||death.damageKind!="maglev"||!NativeClubLooks.Active(arena.MapId)||!NativeSmashGib.Applies(Gore,death.style,death.kept,death.model))return null;
+            MapHazard laser=null;foreach(var h in arena.Map?.hazards??Array.Empty<MapHazard>())if(h!=null&&h.kind=="maglev")laser=h;if(laser==null)return null;
+            int round=NativeStructureFx.RoundIndex(arena.Match.Set,arena.Match.Round);var st=NativeCyberCityHazards.Evaluate(laser,round,arena.Match.FightAt,death.at);float d=st.Direction!=0?st.Direction:death.direction.x>=0?1:-1;
+            float floor=death.position.y-.865f,cut=floor+laser.center.y+.07f;var travel=new System.Numerics.Vector3(d*laser.speed,0,0);uint seed=unchecked((uint)death.seed*2654435761u^0x9e3779b9u);
+            return SplitCorpse(arena,death,rig,-1,pelvis=>NativeBisect.Request("laser",new System.Numerics.Vector3(pelvis.x,cut,pelvis.z),System.Numerics.Vector3.UnitY,travel,seed,part:.45f,lift:.55f,push:.28f,topple:2.2f,hitch:.05f,blood:.9f,sparks:true),true);
+        }
         // PrewarmStage: build it behind the loading screen.
         private bool PrewarmClub(NativeArena arena)
         {

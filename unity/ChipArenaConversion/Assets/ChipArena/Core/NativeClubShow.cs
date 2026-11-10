@@ -125,9 +125,9 @@ namespace ChipArena.UnityConversion
                     {
                         // charging: amber filling toward red under hazard stripes that scroll inward (Reduced: slower; Calm: still)
                         double u=st.Level;var h=GridHazard[s0];double lx=(x-h.center.x)/(h.size.x/2),lz=(z-h.center.z)/(h.size.z/2),ring=Math.Max(Math.Abs(lx),Math.Abs(lz));
-                        double scroll=flash==NativeKitFlash.Calm?0:flash==NativeKitFlash.Reduced?.6:1.4,stripe=Frac((x+z)*.5+beats*scroll*.5)<.5?1:.5;
+                        double scroll=flash==NativeKitFlash.Calm?0:flash==NativeKitFlash.Reduced?.6:1.4,stripe=Frac((x+z)*.5+beats*scroll*.5)<.5?1:.6;
                         double fill=C01((u*1.25-(1-ring))*3);double last=st.Until<NativeClubLooks.Beat?1:0;
-                        double k=(.9+1.1*u)*(.65+.35*fill)*(last>0?1.25:stripe);
+                        double k=(.75+.55*u)*(.72+.28*fill)*(last>0?1.2:stripe);
                         r=NativeClubLooks.R(NativeClubLooks.Amber)+(NativeClubLooks.R(NativeClubLooks.Danger)-NativeClubLooks.R(NativeClubLooks.Amber))*u;g=NativeClubLooks.G(NativeClubLooks.Amber)+(NativeClubLooks.G(NativeClubLooks.Danger)-NativeClubLooks.G(NativeClubLooks.Amber))*u;b=NativeClubLooks.B(NativeClubLooks.Amber)+(NativeClubLooks.B(NativeClubLooks.Danger)-NativeClubLooks.B(NativeClubLooks.Amber))*u;
                         r*=k;g*=k;b*=k;own=Charging;heat=u;
                     }
@@ -135,7 +135,7 @@ namespace ChipArena.UnityConversion
                     {
                         // live: red-hot, white veins crawling across it (steady, never a strobe)
                         double vein=Math.Max(0,1-Math.Abs(Math.Sin(x*1.7+z*.9+beats*1.3)+Math.Sin(z*2.3-x*.6-beats*.9))*2.8);
-                        double k=3.0+.3*Math.Sin(beats*Math.PI*2+i*.7+j*1.3);r=NativeClubLooks.R(NativeClubLooks.Danger)*k+2.2*vein;g=NativeClubLooks.G(NativeClubLooks.Danger)*k+1.1*vein;b=NativeClubLooks.B(NativeClubLooks.Danger)*k+.9*vein;own=Live;heat=1;
+                        double k=1.45+.15*Math.Sin(beats*Math.PI*2+i*.7+j*1.3);r=NativeClubLooks.R(NativeClubLooks.Danger)*k+.6*vein;g=NativeClubLooks.G(NativeClubLooks.Danger)*k+.32*vein;b=NativeClubLooks.B(NativeClubLooks.Danger)*k+.28*vein;own=Live;heat=1;
                     }
                     else if(st.Phase==NativeHazardPhase.Clear)
                     {
@@ -149,14 +149,14 @@ namespace ChipArena.UnityConversion
                     if(Laser.Phase==NativeHazardPhase.Warn||Laser.Phase==NativeHazardPhase.Danger)
                     {
                         double d=Math.Abs(x-(near+Laser.Direction*.5));
-                        if(d<.6){double k=Laser.Phase==NativeHazardPhase.Danger?3.2:1.2+1.4*Laser.Level*(.6+.4*Math.Sin(beats*Math.PI));r=NativeClubLooks.R(NativeClubLooks.LaserRed)*k;g=NativeClubLooks.G(NativeClubLooks.LaserRed)*k;b=NativeClubLooks.B(NativeClubLooks.LaserRed)*k;own=LaserLine;heat=Laser.Level;}
+                        if(d<.6){double k=Laser.Phase==NativeHazardPhase.Danger?1.6:.8+.7*Laser.Level*(.6+.4*Math.Sin(beats*Math.PI));r=NativeClubLooks.R(NativeClubLooks.LaserRed)*k;g=NativeClubLooks.G(NativeClubLooks.LaserRed)*k;b=NativeClubLooks.B(NativeClubLooks.LaserRed)*k;own=LaserLine;heat=Laser.Level;}
                         // chevrons along the outer rows point the way it will run
                         else if((j==0||j==nz-1)&&Laser.Phase==NativeHazardPhase.Danger){double c=Frac((x*Laser.Direction)*.5-beats*.5);if(c<.3){r=NativeClubLooks.R(NativeClubLooks.LaserRed)*1.6;g=NativeClubLooks.G(NativeClubLooks.LaserRed)*1.6;b=NativeClubLooks.B(NativeClubLooks.LaserRed)*1.6;own=LaserLine;heat=.5;}}
                     }
                     else if(Laser.Phase==NativeHazardPhase.Active&&!double.IsNaN(Laser.Head))
                     {
                         double behind=(Laser.Head-x)*Laser.Direction;
-                        if(behind>-.55&&behind<3.5){double k=behind<.55?4.0:2.2*Math.Exp(-(behind-.55)*1.1);r=Math.Max(r,NativeClubLooks.R(NativeClubLooks.LaserRed)*k);g=Math.Max(g,NativeClubLooks.G(NativeClubLooks.LaserRed)*k*.6);b=Math.Max(b,NativeClubLooks.B(NativeClubLooks.LaserRed)*k*.6);own=LaserLine;heat=1;}
+                        if(behind>-.55&&behind<3.5){double k=behind<.55?1.8:1.2*Math.Exp(-(behind-.55)*1.1);r=Math.Max(r,NativeClubLooks.R(NativeClubLooks.LaserRed)*k);g=Math.Max(g,NativeClubLooks.G(NativeClubLooks.LaserRed)*k*.6);b=Math.Max(b,NativeClubLooks.B(NativeClubLooks.LaserRed)*k*.6);own=LaserLine;heat=1;}
                     }
                 }
                 Floor[t*3]=(float)r;Floor[t*3+1]=(float)g;Floor[t*3+2]=(float)b;Owner[t]=own;Heat[t]=(float)heat;

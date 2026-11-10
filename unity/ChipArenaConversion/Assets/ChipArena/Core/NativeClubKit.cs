@@ -153,7 +153,7 @@ namespace ChipArena.UnityConversion
         private void Booth(Bx b)
         {
             On(b);
-            Face(b,3,b.X0+.1,b.X1-.1,b.Y0+.12,b.Y1-.12,NativeClubLooks.Screen,NativeClubLooks.Magenta,.02,.006,false,1.6);
+            Face(b,3,b.X0+.1,b.X1-.1,b.Y0+.12,b.Y1-.12,NativeClubLooks.Screen,NativeClubLooks.Violet,.02,.006,false,1.05);
             Face(b,3,b.X0,b.X1,b.Y1-.06,b.Y1-.02,NativeClubLooks.Led,NativeClubLooks.Cyan,.012,.01,false,Glow);
             double y=b.Y1;int D=NativeClubLooks.Dark,C=NativeClubLooks.Chrome;
             foreach(double x in new[]{-1.55,1.55}){Box(x-.3,x+.3,y,y+.06,b.Z0+.25,b.Z1-.25,D);Box(x-.21,x+.21,y+.06,y+.075,b.Cz-.21,b.Cz+.21,C,false);}
