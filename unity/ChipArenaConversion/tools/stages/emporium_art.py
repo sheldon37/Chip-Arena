@@ -125,8 +125,6 @@ def floor(g, L, T, parts):
         if name in ('checker', 'quarry', 'teal') or (name == 'dark' and thin(p)):
             continue
         if name == 'roller':
-            if T.i == 2:
-                continue
             part_round(g, (c[0], 0, c[2] - h[2]), (c[0], 0, c[2] + h[2]), .05, pfin(p), (1, 0, 0), Y, 0, 180, 3 if T.i == 0 else 2)
         elif name in ('ketchup', 'mustard') and thin(p):
             r = max(h[0], h[2])
@@ -525,7 +523,7 @@ def plinth(g, b, parts, T):
 
 def press_post(g, b, parts, T):
     x0, x1, y0, y1, z0, z1 = ext(b)
-    steel = mat('press-steel', 0xE2E8EE, smooth=.8, metal=.95, dirt=.2)
+    steel = mat('press-steel', 0xE2E8EE, smooth=.66, metal=.35, dirt=.2)
     box(g, x0, x1, y0, y1, z0, z1, steel, T, .05, cell=0, skip=('-y',))
     box(g, x0 - .1, x1 + .1, 0, .07, z0 - .1, z1 + .1, kmat('dark'), T, .02, cell=0, skip=('-y',))
     if T.i == 0:
@@ -568,7 +566,7 @@ def tower(g, b, parts, T):
     ketchup = c[0] < 0
     col = 0xE3241C if ketchup else 0xFFC81E
     sauce = mat('bottle-%06x' % col, col, smooth=.78, dirt=.15)
-    n = (4, 2, 1)[T.i]
+    n = (4, 2, 2)[T.i]
     r = .3
     loft(g, c, [(0, w - .06, w - .06, r), (.05, w, w, r), (4.7, w, w, r), (5.2, w - .12, w - .12, r + .1), (5.7, w - .6, w - .6, .5), (6.0, 1.56, 1.56, .6)], sauce, n, cap1=True)
     loft(g, c, [(0, w + .03, w + .03, r), (.35, w + .03, w + .03, r)], kmat('dark'), n, cap1=False)
