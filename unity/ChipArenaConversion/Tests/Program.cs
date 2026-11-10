@@ -114,6 +114,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--new-stage-looks"){NewStageLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--causeway"){CausewayChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--sanctum"){SanctumChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==3&&args[0]=="--stage-layout"){StageArtLayout.Write(ProjectRoot(),args[1],args[2]);return 0;}
             if(args.Length==1&&args[0]=="--skin-tone"){SkinToneChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-models"){ZombieModelChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--tiler"){TilerLookChecks.Run(ProjectRoot());return 0;}
