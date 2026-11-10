@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
             {
                 var w=picked[i];string name=(string.IsNullOrEmpty(w.name)?w.id:w.name).ToUpperInvariant();
                 devClassIds[i]=w.id;devClassFull[i]=name;DevSplit(name,out devClassName1[i],out devClassName2[i]);devClassIcon[i]=NativeIcons.Spec(w.id);
-                devClassDesc[i]=string.IsNullOrEmpty(w.description)?name:w.description;devClassGroup[i]=DevClassGroupOf(w);counts[devClassGroup[i]]++;
+                string desc=NativeLoadoutText.Text(w);devClassDesc[i]=desc.Length==0?name:desc;devClassGroup[i]=DevClassGroupOf(w);counts[devClassGroup[i]]++;
                 var tint=U.Hex((int)w.color);devClassTint[i]=tint.maxColorComponent<.3f?C.CyanSoft():tint;
                 devSwapYou[i]="Become "+name;devSwapYouReset[i]="Become "+name+" · resets the arena";devSwapThem[i]="Make them "+name;
             }
