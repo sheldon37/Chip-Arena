@@ -290,9 +290,9 @@ namespace ChipArena.UnityConversion
             if(Event.current.type==EventType.Repaint)
             {
                 float a=alpha,t=enabled?1:.55f,c=enabled?1:.35f;
-                U.Round(r,U.Hex(NativeCyberTheme.IndigoHex,a),4,U.A(U.Mix(U.Hex(NativeCyberTheme.EdgeHex),U.Hex(NativeCyberTheme.CyanHex),hf),a*(enabled?1:.7f)));if(hf>0)U.Round(r,U.A(U.Hex(0x26272d),hf*a),4);
+                U.Round(r,U.Hex(NativeCyberTheme.IndigoHex,a),4,U.A(U.Mix(U.Hex(NativeCyberTheme.EdgeHex),U.Hex(NativeCyberTheme.CyanHex),hf),a*(enabled?1:.7f)));if(hf>0)U.Round(r,C.Indigo(.6f*hf*a),4);
                 string text=labels[index];float size=U.Measure(text,15).x<=name.width-18?15:14;U.Text(new Rect(r.x+14,r.y,name.width-16,r.height),size>14?text:Fit(text,14,name.width-18,false,0),size,U.Hex(0xf5f5f7,a*t),TextAnchor.MiddleLeft);
-                U.Fill(new Rect(name.xMax-1,r.y+10,1,r.height-20),U.Hex(0x484952,a));
+                U.Fill(new Rect(name.xMax-1,r.y+10,1,r.height-20),C.Edge(a));
                 if(hp>0)U.Round(prev,new Color(1,1,1,.07f*hp*a),4);if(hn>0)U.Round(next,new Color(1,1,1,.07f*hn*a),4);
                 NativeIcons.DrawMarkup(new Rect(prev.center.x-9,prev.y+7,18,18),"chevron-left",ChevronLeft,24,U.A(U.Mix(U.Hex(0xb9bac2),Color.white,hp),a*c));
                 NativeIcons.DrawMarkup(new Rect(next.center.x-9,next.y+7,18,18),"chevron-right",ChevronRight,24,U.A(U.Mix(U.Hex(0xb9bac2),Color.white,hn),a*c));
@@ -361,7 +361,7 @@ namespace ChipArena.UnityConversion
             float e=GUI.color.a;var lines=U.Wrap(text,13,Mathf.Max(80,lobbyRoomInner),false,6);var r=GUILayoutUtility.GetRect(0,lines.Count*20+16,GUILayout.ExpandWidth(true));
             U.Defer(()=>{if(Event.current.type!=EventType.Repaint)return;float y=r.y+8;foreach(var l in lines){U.Text(new Rect(r.x+4,y,r.width-8,20),l,13,C.Muted(e),TextAnchor.MiddleLeft);y+=20;}});
         }
-        private string RoomCodeLabel()=>!Hosting?"ROOM CODE":listener!=null?"ROOM CODE · LOCAL NETWORK":"ROOM CODE · INTERNET RELAY";
+        private string RoomCodeLabel()=>!Hosting?"ROOM CODE":listener!=null?"ROOM CODE · LAN":"ROOM CODE · ONLINE";
         // The LAN address lines and the invite link, refreshed on a layout pass when the room changes and every 5 s
         // (LanAddresses walks the network interfaces): one line when it fits the card, else an address per line and the port.
         private float lanCheckedAt=-99;private int lanPort=-1;private string lanCode,inviteLink;private readonly List<string> lanLines=new List<string>(4);

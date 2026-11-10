@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         // ---- Layout ----------------------------------------------------------------------------------------------------
-        private const float LbLoadoutH=236,LbCodeW=300,LbCardGap=14;
+        private const float LbLoadoutH=262,LbCodeW=300,LbCardGap=14;
         private Rect lbPanel;
         // A section's heading: the mono label in soft cyan, a muted note after it, then the hairline with its short cyan lead.
         private static void LbHeading(Rect r,string label,string note,float e)
@@ -32,8 +32,8 @@ namespace ChipArena.UnityConversion
             H.Cut(r,C.Navy(.92f*e),9);H.Outline(r,C.Edge(.9f*e),9);U.Fill(new Rect(r.x+9,r.y,r.width-18,1),C.Cyan(.5f*e));
             U.Text(new Rect(r.x+16,r.y+8,r.width-110,14),Fit(RoomCodeLabel(),9.5f,r.width-110,false,.14f),9.5f,C.Muted(e),TextAnchor.MiddleLeft,mono:true,tracking:.14f);
             U.Text(new Rect(r.x+16,r.y+22,r.width-110,26),has?code:"—",22,C.CyanSoft(e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f,glow:C.Cyan(.25f*e));
-            var copy=new Rect(r.xMax-12-38,r.y+7,38,38);if(LbIconButton(copy,"copy",62001,has,e)){GUIUtility.systemCopyBuffer=code;Notice("Room code copied.");}
-            var link=new Rect(copy.x-8-38,copy.y,38,38);if(inviteLink!=null&&LbIconButton(link,"link",62002,true,e)){GUIUtility.systemCopyBuffer=inviteLink;Notice("Invite link copied.");}
+            var copy=new Rect(r.xMax-12-38,r.y+7,38,38);if(LbIconButton(copy,"copy-code",62001,has,e)){GUIUtility.systemCopyBuffer=code;Notice("Room code copied.");}
+            var link=new Rect(copy.x-8-38,copy.y,38,38);if(inviteLink!=null&&LbIconButton(link,"copy-invite",62002,true,e)){GUIUtility.systemCopyBuffer=inviteLink;Notice("Invite link copied.");}
         }
         // A square icon button: navy glass, its edge and icon lighting cyan on hover.
         private bool LbIconButton(Rect r,string icon,int id,bool enabled,float e)
@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
                 U.Text(new Rect(r.x+12,r.y+10,30,18),(index+1).ToString("00"),12,U.A(band,a),TextAnchor.MiddleLeft,mono:true,bold:true);
                 string tag=p.you?"YOU":p.bot?"BOT":p.id==1?"HOST":"PILOT";Color tone=p.you?C.Cyan():p.bot?C.Violet():p.id==1?C.Warn():C.Muted();
                 float tw=U.Measure(tag,9.5f,true,true,.14f).x+(p.id==1?30:16);var chip=new Rect(r.x+40,r.y+10,tw,18);H.Cut(chip,U.A(U.Mix(C.Navy(),tone,.18f),a),4);H.Outline(chip,U.A(tone,.7f*a),4);
-                float cx=chip.x+8;if(p.id==1){NativeIcons.Draw(new Rect(cx,chip.y+3,12,12),"crown",U.A(C.Warn(),a));cx+=14;}U.Text(new Rect(cx,chip.y,tw,18),tag,9.5f,U.A(U.Mix(tone,Color.white,.3f),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
+                float cx=chip.x+8;if(p.id==1){NativeIcons.Draw(new Rect(cx,chip.y+3,12,12),"gem",U.A(C.Warn(),a));cx+=14;}U.Text(new Rect(cx,chip.y,tw,18),tag,9.5f,U.A(U.Mix(tone,Color.white,.3f),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
             }
             // The team chip (a teams room): the viewer's own card and, for the host, every seat open the team list.
             if(teams){var tr=new Rect(r.xMax-12-86,r.y+8,86,22);LbTeamChip(tr,p,team,a,p.you||Hosting);}
@@ -157,11 +157,11 @@ namespace ChipArena.UnityConversion
             if(Event.current.type==EventType.Repaint)
             {
                 U.Round(r,C.Navy(.35f*e),10);DashedRound(r,C.Edge(.9f*e),10);
-                var ring=new Rect(r.center.x-22,r.center.y-44,44,44);U.Round(ring,C.Navy(.6f*e),22,C.Edge(.8f*e));NativeIcons.Draw(new Rect(ring.center.x-10,ring.center.y-10,20,20),"plus",C.Muted(e));
+                var ring=new Rect(r.center.x-22,r.center.y-(add?64:44),44,44);U.Round(ring,C.Navy(.6f*e),22,C.Edge(.8f*e));NativeIcons.Draw(new Rect(ring.center.x-10,ring.center.y-10,20,20),"join",C.Muted(e));
                 U.Text(new Rect(r.x+10,ring.yMax+10,r.width-20,16),"OPEN SLOT",10.5f,C.Muted(e),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.18f);
                 if(!add)U.Text(new Rect(r.x+14,ring.yMax+30,r.width-28,18),host?"Share your room code":"Waiting for a pilot",12,C.Dim(e),TextAnchor.MiddleCenter);
             }
-            if(add){float w=Mathf.Min(r.width-28,150);if(MenuButton(new Rect(r.center.x-w/2,r.center.y+16,w,38),"bot","Add a bot",null,false,!MenuBlocked(),e,13,true)){var o=RoomOptions;if(o!=null)ApplyRule(RoomOpt.Bots,Mathf.Min(7,o.bots+1),0);}}
+            if(add){float w=Mathf.Min(r.width-28,150);if(MenuButton(new Rect(r.center.x-w/2,r.center.y+14,w,38),"bot","Add a bot",null,false,!MenuBlocked(),e,13,true)){var o=RoomOptions;if(o!=null)ApplyRule(RoomOpt.Bots,Mathf.Min(7,o.bots+1),0);}}
         }
 
         // ---- The pilot's loadout ------------------------------------------------------------------------------------------
