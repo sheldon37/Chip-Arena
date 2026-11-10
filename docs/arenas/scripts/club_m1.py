@@ -160,7 +160,7 @@ LASER = hz(id='club-laser', kind='maglev', center=v(0, .35, 0), size=v(DANCE[1] 
            first=ARM + 8 * BAR, period=16 * BAR, warn=4 * BAR, danger=2 * BAR, speed=8.0, length=.3, lethal=True)
 HAZ.append(LASER)
 DROP_W = hz(id='club-drop-w', kind='vent', a=v(-9.4, 0, 11.5), size=v(2.8, 2.6, 4.0), axis=v(0, 0, -1), start=.75, period=16 * BAR, offset=0,
-            warn=2 * BAR, dwell=.75, damage=6, tick=.25, push=7.0)
+            warn=2 * BAR, dwell=.75, damage=6, tick=.25, push=7.0, pushMode='shove')
 DROP_E = dict(DROP_W, id='club-drop-e', a=v(9.4, 0, 11.5))
 HAZ += [DROP_W, DROP_E]
 

@@ -8,7 +8,9 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class UnityMapContent { public int schema; public ContentMaterial[] materials; public ContentMap[] maps; }
     // Common factory fields retain their original serialized names and pure-clock API.
     [Serializable] public sealed class MapHazard : FactoryHazard
-    { public V3 center; public float first,danger,speed,length,charge,live; }
+    { public V3 center; public float first,danger,speed,length,charge,live;
+      // A pushing vent's mode (NativeStageHazards: "shove", "launch" or "wind"); empty for every other hazard.
+      public string pushMode; }
     [Serializable] public sealed class MapBounds { public float minX,maxX,minZ,maxZ,ceiling,killY; }
     [Serializable] public sealed class MapSpawn { public V3 pos; public float yaw; }
     [Serializable] public sealed class MapTeamSpawns { public int side; public MapSpawn[] points; }
@@ -32,11 +34,11 @@ namespace ChipArena.UnityConversion
         // includes the five M1 arenas and Training Room; generated run maps are added later.
         public static void ValidateShippedCatalog(ConversionContent content)
         {
-            var expected=new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","causeway","club","cybercity","emporium","expedition-city","expedition-foundry","expedition-transit","expedition-ward-zero","factory","harbor","polar","rig","siren","skyframe","training"};
+            var expected=new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","causeway","club","cybercity","emporium","expedition-city","expedition-foundry","expedition-transit","expedition-ward-zero","factory","harbor","polar","rig","sanctum","siren","skyframe","training"};
             var maps=content?.maps;
             if(maps==null||maps.Any(m=>m==null||!m.unity)||!maps.Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(expected))
                 throw new InvalidOperationException("Shipped Unity catalogue must contain the authored maps plus fixed-seed Level 0 (including M1 arenas and Training Room).");
-            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","club","causeway","cybercity","emporium","factory","harbor","polar","rig","skyframe"}))
+            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","causeway","club","cybercity","emporium","factory","harbor","polar","rig","sanctum","skyframe"}))
                 throw new InvalidOperationException("Shipped Unity random rotation differs.");
         }
         public static string Selection(ConversionContent c,string id)=>id=="random"||c.maps.Any(m=>m.id==id&&ArenaSelectable(m))?id:DefaultArena;

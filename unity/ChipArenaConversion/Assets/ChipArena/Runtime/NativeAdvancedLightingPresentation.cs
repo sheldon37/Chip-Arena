@@ -61,6 +61,7 @@ namespace ChipArena.UnityConversion
             if(townLights!=null)foreach(var c in townLights.Candidates)volumeCandidates.Add(new NativeVolumeLight(c.X,c.Y,c.Z,c.Range,c.R,c.G,c.B));
             else if(stationLights!=null)foreach(var c in stationLights.Candidates)volumeCandidates.Add(new NativeVolumeLight(c.X,c.Y,c.Z,c.Range,c.R,c.G,c.B));
             else if(iwLights!=null)foreach(var c in iwLights.Candidates)volumeCandidates.Add(new NativeVolumeLight(c.X,c.Y,c.Z,c.Range,c.R,c.G,c.B));
+            else SanctumCandidates(arena,volumeCandidates);
             NativeAdvancedLighting.Candidates(arena.MapId,volumeCandidates);
         }
         private void WeatherWorld(NativeArena arena,Camera camera,float now)

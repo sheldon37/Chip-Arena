@@ -20,6 +20,10 @@ namespace ChipArena.UnityConversion
                 Need(NativeMapRules.Box(h.center,h.size)&&NativeMapRules.Finite(h.a)&&NativeMapRules.Finite(h.b)&&NativeMapRules.Finite(h.axis),"geometry "+h.id);
                 Need(new[]{h.first,h.period,h.offset,h.warn,h.danger,h.speed,h.length,h.charge,h.live,h.tick,h.damage,h.radius,h.start,h.rise,h.travel,h.dwell,h.hoist,h.carry,h.push}.All(MathUtil.Finite),"finite clock "+h.id);
                 Need(h.period>0&&h.damage>=0,"period/damage "+h.id);
+                // A vent pushes exactly when it names how; a launch goes straight up, a shove and a wind along a sideways axis. Other kinds name none.
+                bool sideways=h.axis.x*h.axis.x+h.axis.z*h.axis.z>1e-8f;string mode=h.pushMode??"";
+                if(h.kind=="vent")Need(h.push>0?(mode==PushShove||mode==PushWind)&&sideways||mode==PushLaunch&&!sideways:mode.Length==0,"vent push mode "+h.id);
+                else Need(mode.Length==0,"push mode only on a vent "+h.id);
                 if(NativeMapRules.WardInstance(map.id))Need(City(h)&&h.kind=="grid"||Ward(h),"Ward kind "+h.id);
                 if(Ward(h))
                 {
@@ -90,7 +94,7 @@ namespace ChipArena.UnityConversion
         // each damage tick; 0 without a push or a horizontal axis (every vent before Substation 128 has push 0: unchanged).
         public static float VentShove(MapHazard h,out V3 direction)
         {
-            direction=default;if(h==null||h.kind!="vent"||!(h.push>0)||!MathUtil.Finite(h.push))return 0;
+            direction=default;if(h==null||h.kind!="vent"||h.pushMode!=PushShove||!(h.push>0)||!MathUtil.Finite(h.push))return 0;
             float l=(float)Math.Sqrt(h.axis.x*h.axis.x+h.axis.z*h.axis.z);if(!(l>1e-4f))return 0;direction=new V3(h.axis.x/l,0,h.axis.z/l);return h.push;
         }
         public static bool BurstTouch(MapHazard h,V3 p,float radius=.42f,float halfHeight=.85f)
@@ -100,11 +104,12 @@ namespace ChipArena.UnityConversion
         // A vent with `push` (Top Dog Emporium's geysers): its burst launches a pilot standing in the column straight up at `push`
         // m/s. Only a pilot not already rising is launched (vertical speed under 1 m/s), so a launch is one kick, not a rocket.
         // Every vent shipped before it has push 0 and is unchanged.
-        // A vent that pushes (push > 0) does one of two things (both 2026-11-10, at the owner's word for the new stages): with a sideways axis it
-        // shoves along it on each damage tick (VentShove: Substation 128's bass drop); with none it launches straight up while bursting
-        // (VentLaunch: the Emporium's geysers).
+        // A vent that pushes (push > 0) names how (pushMode; 2026-11-10, at the owner's word for the new stages): "shove" along its sideways
+        // axis on each damage tick (VentShove: Substation 128's bass drop), "launch" straight up while bursting (VentLaunch: the Emporium's
+        // geysers), or "wind", a steady force along its axis while bursting (Runtime NativeArena.VentPush: Starfall Causeway's solar wind).
+        public const string PushShove="shove",PushLaunch="launch",PushWind="wind";
         public static bool VentLaunch(MapHazard h,in FactoryHazardState s,V3 body,float verticalSpeed,float radius=.42f,float halfHeight=.85f)
-        =>h!=null&&h.kind=="vent"&&h.push>0&&h.axis.x*h.axis.x+h.axis.z*h.axis.z<1e-8f&&s.Phase==NativeFactoryHazards.Bursting&&verticalSpeed<1f&&Touch(body,s.BoxCenter,s.BoxSize,radius,halfHeight);
+        =>h!=null&&h.kind=="vent"&&h.pushMode==PushLaunch&&h.push>0&&s.Phase==NativeFactoryHazards.Bursting&&verticalSpeed<1f&&Touch(body,s.BoxCenter,s.BoxSize,radius,halfHeight);
         public static bool FactoryBox(MapHazard h,in FactoryHazardState s,out V3 center,out V3 size)
         {
             center=s.BoxCenter;size=s.BoxSize;if(!s.Lethal)return false;

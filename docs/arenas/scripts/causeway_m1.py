@@ -145,7 +145,7 @@ HAZ.append(COMET)
 WIND = (-16.5, -8.5)
 for side, (x0, x1, ax, off) in enumerate(((WIND[0], WIND[1], 1, 2.0), (-WIND[1], -WIND[0], -1, 12.0))):
     HAZ.append(hz(id='causeway-wind-%s' % 'we'[side], kind='vent', a=v((x0 + x1) / 2, LW, 0), size=v(x1 - x0, 6.6, 20.0), axis=v(0, 0, ax),
-                  start=0, offset=off, period=20, warn=2.6, dwell=2.0, tick=.25, damage=2, push=12))
+                  start=0, offset=off, period=20, warn=2.6, dwell=2.0, tick=.25, damage=2, push=12, pushMode='wind'))
 
 # ---- spawns (x, z, floor); yaw from +z toward +x, facing the origin
 teamA = [(-34.6, 3.4, L0), (-34.6, -3.4, L0), (-36.6, 1.4, L0), (-36.6, -1.4, L0)]

@@ -197,7 +197,7 @@ namespace ChipArena.UnityConversion
     {
         private void VentPush(MapHazard h,in FactoryHazardState s)
         {
-            if(s.Phase!=NativeFactoryHazards.Bursting||!(h.push>0))return;var dir=Vec(h.axis);if(dir.sqrMagnitude<1e-6f)return;dir.Normalize();
+            if(h.pushMode!=NativeStageHazards.PushWind||s.Phase!=NativeFactoryHazards.Bursting||!(h.push>0))return;var dir=Vec(h.axis);if(dir.sqrMagnitude<1e-6f)return;dir.Normalize();
             float k=(float)(h.push*s.U/60);
             foreach(var p in Pilots)
             {

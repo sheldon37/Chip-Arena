@@ -158,6 +158,7 @@ namespace ChipArena.UnityConversion
             }
             FactoryCues(arena,menu);ExpeditionCityCues(arena,menu);CausewayCues(arena,menu);
             EmporiumCues(arena,menu);
+            SanctumCues(arena,menu);
             StationCues(arena,menu);
             ClubFrame(arena,menu);
             // audio.ts AudioCursor: each event once, played only while .4 s fresh (never ahead of the clock), routed by
