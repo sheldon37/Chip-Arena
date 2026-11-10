@@ -285,7 +285,7 @@ namespace ChipArena.UnityConversion
             double age=s.BlastAge;if(age>7)return;int n=Count(220);int[] pal=NativeClubLooks.Party;
             for(int i=0;i<n;i++)
             {
-                double h1=H(i,1),h2=H(i,2),h3=H(i,3);double vx=(h1-.5)*7,vz=(h2-.5)*6,t=age,x=(h3<.5?-4:4)+vx*Math.Min(t,1.2)+Math.Sin(t*3+i)*.4,z=(h3<.25||h3>.75?-3:3)+vz*Math.Min(t,1.2),y=10.2+3.5*Math.Min(t,.6)-Math.Max(0,t-.6)*1.45-Math.Max(0,t-.6)*Math.Max(0,t-.6)*.05;
+                double h1=H(i,1),h2=H(i,2),h3=H(i,3);double vx=(h1-.5)*9,vz=(h2-.5)*8,t=age,x=(h3<.5?-4:4)+vx*Math.Min(t,1.0)+Math.Sin(t*3+i)*.45,z=(h3<.25||h3>.75?-3:3)+vz*Math.Min(t,1.0),y=9.4+1.6*Math.Min(t,.4)-Math.Max(0,t-.4)*(1.7+.5*H(i,4));
                 if(y<.02)y=.02;double spin=t*(4+h2*6)+i,a=Math.Abs(Math.Cos(spin))*.06+.02;int c=pal[i%pal.Length];double fade=t>5.5?1-(t-5.5)/1.5:1;
                 a*=1.8;Quads.Add(x-a,y,z-.08,x+a,y+.05,z-.08,x+a,y+.05,z+.08,x-a,y,z+.08,L(c,16)*1.3,L(c,8)*1.3,L(c,0)*1.3,.95*fade,0,true,1);Show++;
             }
