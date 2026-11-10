@@ -304,7 +304,7 @@ namespace ChipArena.UnityConversion
                 Face(b,outer,-.25,.25,b.Y1-.75,b.Y1-.2,Rune,.05,.05);return;
             }
             // the window's jambs (lit), pilasters and rune bands
-            bool south=b.Cz<0;double jamb=south?b.Z1:b.Z0;Box(b.X0+.12,b.X1-.12,b.Y0+1.05,b.Y0+2.95,south?jamb-.01:jamb-.004,south?jamb+.004:jamb+.01,Rune,false);
+            bool south=b.Cz<0;double jamb=south?b.Z1:b.Z0;Box(b.Cx-.04,b.Cx+.04,b.Y0+1.05,b.Y0+2.95,south?jamb-.01:jamb-.004,south?jamb+.004:jamb+.01,Rune,false);
             Box(b.X0-.04,b.X1+.04,b.Y0+.92,b.Y0+1.0,south?jamb-.3:jamb,south?jamb:jamb+.3,Gold,false);
             for(double z=b.Z0+.6;z<b.Z1-.3;z+=1.4)Face(b,outer,z-.18,z+.18,b.Y0,b.Y1-.2,Stone,.12,.12,true);
             Face(b,outer,b.Z0,b.Z1,b.Y0+3.4,b.Y0+3.5,Rune,.014,.006);Face(b,inner,b.Z0,b.Z1,b.Y0+2.4,b.Y0+2.48,Cold,.014,.006);

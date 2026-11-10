@@ -113,8 +113,16 @@ add `Resources/Audio/music/causeway-theme.mp3` (+ meta, asset-lock entry, length
   `NativeArenaDressing.Render` (the sculpted blocks), `NativeStageHazardsRuntime.StepAuthoredHazards` (the push).
 - Data: `MapLooks.json` (`causeway-starfall`). Pins: `NativeUnityMaps.ValidateShippedCatalog` (ids, Random set), `BrickfallChecks`
   (17 maps, Random list, 12 selectable), `TransitionLoadingChecks` (17 maps, the prewarm entry), `SurfaceChecks` (15 Unity maps),
-  `MapStyleChecks` (styled list, 14 looks), `AdvancedLightingChecks` (advanced looks).
+  `MapStyleChecks` (styled list, 14 looks), `AdvancedLightingChecks` (advanced looks). `TransitionLoadingChecks`' loading-plan
+  sanity bound on a map's aspect is now under 4 (was 3): the bridge's blocks run 76 x 19.6 m (3.9), and the loading HUD already
+  fits any aspect into its frame.
 - Checks: `Tests/CausewayChecks.cs` (`dotnet run --project Tests/CoreTests.csproj -c Release -- --causeway`; also in the full run).
+
+## Numbers (CoreTests, Release, this PC)
+
+Kit 4175 parts (packed once into instanced batches of 500); rig up to 269 parts a frame; effects up to 3507 quads a frame (low tier
+1428); backdrop 50 119 vertices / 40 658 triangles in five meshes (three sectors, the planet, its rings); the rig and effects build
+in about 0.3 ms a frame, allocation free. Map record: 295 blocks (0 replicated: all static), 74 pilot columns, nav 1203 nodes.
 
 ## Not done / not seen
 

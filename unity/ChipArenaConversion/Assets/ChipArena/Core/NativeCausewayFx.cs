@@ -357,11 +357,11 @@ namespace ChipArena.UnityConversion
             {
                 // the gust: streaks driven across the section, the bright front sweeping through it, dust lifted off the stone
                 double age=(clock-(Math.Floor((clock-h.start-h.offset)/h.period)*h.period+h.start+h.offset))-(h.period-h.dwell);double front=Math.Max(0,Math.Min(1,age/(h.dwell*.6)));
-                double zf=zu+ax*front*h.size.z;Sheet(x0,zf,x1,zf,y0,y1,L(0xFFE6B8,16)*1.4,L(0xFFE6B8,8)*1.4,L(0xFFE6B8,0)*1.4,.14*gust,true,1);Telegraph++;
+                double zf=zu+ax*front*h.size.z;Sheet(x0,zf,x1,zf,y0,y1,L(0xFFE6B8,16)*1.5,L(0xFFE6B8,8)*1.5,L(0xFFE6B8,0)*1.5,.22*gust,true,1);Telegraph++;
                 int n=150;for(int i=0;i<n;i++)
                 {
                     double speed=18+H(index,i,70)*10,f=Frac(now*speed/h.size.z+H(index,i,71));double x=x0+H(index,i,72)*(x1-x0),y=y0+.2+H(index,i,73)*(y1-y0-.4),z=zu+ax*f*h.size.z;
-                    if(ax>0?z>zf+1:z<zf-1)continue;double len=1.4+H(index,i,74)*2.4;HexStreak(x,y,z,x+Math.Sin(now*5+i)*.1,y+Math.Sin(now*3+i)*.08,z-ax*len,.07,.02,i%4==0?0xFFFFFF:0xFFD890,.6*gust,1.8);Telegraph++;
+                    if(ax>0?z>zf+1:z<zf-1)continue;double len=1.4+H(index,i,74)*2.4;HexStreak(x,y,z,x+Math.Sin(now*5+i)*.1,y+Math.Sin(now*3+i)*.08,z-ax*len,.11,.03,i%4==0?0xFFFFFF:0xFFD890,.8*gust,2.0);Telegraph++;
                 }
                 int m=Count(16);for(int i=0;i<m;i++){double f=Frac(now*.9+H(index,i,80));double x=x0+H(index,i,81)*(x1-x0),fy=H(index,i,82)<.5?0:-3.2,z=zu+ax*f*h.size.z;Hex(x,fy+.3+f*.8,z,.9+f*1.6,0xC8B8A8,.18*gust*(1-f),false);Atmosphere++;}
             }
