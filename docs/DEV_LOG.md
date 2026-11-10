@@ -59,6 +59,7 @@
   - The full suite, the Unity compile and the Editor's build checks.
 - **Seen in the Editor** (a match, one idle bot, both guns): standing, walking, firing, standing again and right-click aiming. Both rest low with the muzzle down, and both raise level to fire and aim.
 - **Not seen:** played by a person; the bots' rest in a busy match; the killcam of a resting gun; the 3x scope view (unchanged).
+- **Released** (with `claude/gun-stance`): full suite at `771b4230`: 994 groups, exit 0; pins 0 broken; Unity compile PASS; the Editor build checks passed. Merged into shared at `6b193968` and synced to the builder; the test channel published revision `639299271974401605`. The Drive zip carries the sniper bake.
 
 ## 2026-11-10 — Claude: the owner's songs for the four new stages (owner request)
 
