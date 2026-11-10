@@ -485,7 +485,7 @@ namespace ChipArena.UnityConversion
             float turn=Mathf.DeltaAngle(now,Mathf.Atan2(dir.x,dir.z)*Mathf.Rad2Deg)*w;
             if(Mathf.Abs(turn)>.01f)root.RotateAround(root.position,Vector3.up,turn);
         }
-        private sealed class DogArmRig{public readonly Transform[] Upper=new Transform[2],Lower=new Transform[2],Hand=new Transform[2],Index1=new Transform[2],Index2=new Transform[2],Middle1=new Transform[2],Pinky1=new Transform[2],Thumb3=new Transform[2];public readonly Vector3[] UpperBase=new Vector3[2],HandBase=new Vector3[2];public readonly bool[] Scaled=new bool[2];}
+        private sealed class DogArmRig{public Transform Pelvis;public readonly Transform[] Upper=new Transform[2],Lower=new Transform[2],Hand=new Transform[2],Index1=new Transform[2],Index2=new Transform[2],Middle1=new Transform[2],Pinky1=new Transform[2],Thumb3=new Transform[2];public readonly Vector3[] UpperBase=new Vector3[2],HandBase=new Vector3[2];public readonly bool[] Scaled=new bool[2];}
         private readonly Dictionary<VisualBody,DogArmRig> dogArms=new Dictionary<VisualBody,DogArmRig>();
         private readonly Dictionary<int,(int frame,Vector3 grip,Vector3 dir)> dogFeedHands=new Dictionary<int,(int,Vector3,Vector3)>();
         private const float DogStretch=1.5f;
@@ -566,7 +566,7 @@ namespace ChipArena.UnityConversion
                 foreach(var s in body.Root.GetComponentsInChildren<SkinnedMeshRenderer>(true))if(s.name.StartsWith("Body.",StringComparison.Ordinal)&&s.sharedMesh!=null){bones=s.bones;break;}
                 if(bones!=null)foreach(var t in bones)
                 {
-                    if(t==null)continue;int hs=t.name.EndsWith("_r",StringComparison.Ordinal)?0:t.name.EndsWith("_l",StringComparison.Ordinal)?1:-1;if(hs<0)continue;
+                    if(t==null)continue;if(t.name=="pelvis"){r.Pelvis=t;continue;}int hs=t.name.EndsWith("_r",StringComparison.Ordinal)?0:t.name.EndsWith("_l",StringComparison.Ordinal)?1:-1;if(hs<0)continue;
                     switch(t.name.Substring(0,t.name.Length-2))
                     {
                         case "upperarm":r.Upper[hs]=t;break;case "lowerarm":r.Lower[hs]=t;break;case "hand":r.Hand[hs]=t;break;case "index_01":r.Index1[hs]=t;break;case "index_02":r.Index2[hs]=t;break;
@@ -576,6 +576,13 @@ namespace ChipArena.UnityConversion
                 for(int h=0;h<2;h++){if(r.Upper[h]!=null)r.UpperBase[h]=r.Upper[h].localScale;if(r.Hand[h]!=null)r.HandBase[h]=r.Hand[h].localScale;}
             }
             var fwd=f!=null?Vec(f.Dir):Vector3.forward;fwd.y=0;fwd=fwd.sqrMagnitude>1e-4f?fwd.normalized:Vector3.forward;var side=Vector3.Cross(Vector3.up,fwd).normalized;bool fed=false;Vector3 grip=default,dir=default;
+            // The body's own shoulders squared as well (its bind sits them a little round from the rig's, which DogFeastTurn squared): the
+            // pelvis turned about itself by what is left (the bind writes it afresh each frame).
+            if(f!=null&&r.Pelvis!=null&&r.Upper[0]!=null&&r.Upper[1]!=null)
+            {
+                float w=DogFacingWeight(f,time);var across=r.Upper[0].position-r.Upper[1].position;across.y=0;
+                if(w>0&&across.sqrMagnitude>1e-6f){float left=Vector3.SignedAngle(Vector3.Cross(across.normalized,Vector3.up),fwd,Vector3.up)*w;if(Mathf.Abs(left)>.01f)r.Pelvis.RotateAround(r.Pelvis.position,Vector3.up,left);}
+            }
             for(int h=0;h<2;h++)
             {
                 if(r.Upper[h]==null||r.Lower[h]==null||r.Hand[h]==null)continue;
