@@ -1,3 +1,15 @@
+## 2026-11-10 — Claude: the PvP room and Create Room redesigned, weapon abilities in the room (owner request)
+
+- Branch `claude/pvp-lobby-ui` (from shared at `5155011f`).
+- **The owner:** "Improve UI for create room screen and pvp lobby. Lets give players the options to change their weapon abilities in lobby as well ... Make them much better quality and a very clean / beautiful design."
+- **The room** (Runtime `NativeLobbyUI.cs`, `NativeLobbyRoomUI.cs` new; docs/PVP-LOBBY.md): fills the canvas in the cyber theme. The room code chip sits in the header. The roster is a grid of pilot cards (portrait, weapon, both abilities, ready band, team chips, Add a bot in an open slot). Your loadout shows the weapon and the Q and E slots, each opening a picker sheet over the room (the ability picker lists every option with its cost and text). The match setup column follows, then the bar with Leave, the status and Start or Ready.
+- **Abilities in the room:** a change of weapon or ability reaches the room by itself a third of a second after the last change (`LbSync`). The host's seat goes in its next broadcast. A guest sends the existing `"profile"` message, or `"ready"` while ready, which keeps it ready. An ability pick is saved like the Locker's Save (`SavePilot`). The Send Loadout button is gone. **No new message and no rules change** (for Astra: the host's validation is unchanged, `SanitizedSeat` normalizes the techniques).
+- **Create Room** (Runtime `NativeCreateRoomUI.cs` new, `NativeHomeMenu.CreateScreen`): two columns. On the left, the mode as cards, the arena grid (Random first), the free-for-all or teams switch and the match rows, the draft and intros, and the connection switch. On the right, the pilot as the room shows it, a live summary, and Create Room. The shared rule rows (`NativeRoomOptionsUI.cs`) moved to the cyber theme.
+- **Animation impact:** none (menus only).
+- **Checks:** CoreTests `--transitions` (4023), `--expeditions-menu` (1010), `--techniques` (857), the full suite, the Unity compile, the Editor's build checks.
+- **Seen in the Editor** (a LAN room with 3 and 6 bots, free-for-all and teams): the room, the Q ability picker, the weapon picker, Create Room. A new local-tool option `lobby=` drives these captures (git-ignored tool).
+- **Not seen / not done:** a guest's view and its automatic sync with a second client; a pad-only pass through the sheet; played by a person.
+
 ## 2026-11-10 — Claude: guns zoom when aimed, a spread cone with a reactive crosshair, and the killcam that stopped with more players (owner requests)
 
 - Branch `claude/ads-killcam` (from shared at `ea8d69a8`).
