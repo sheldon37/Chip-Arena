@@ -57,12 +57,42 @@ Owner supplied all eight recordings on 2026-11-02. The original MP3 bytes are pa
 
 ## The 2026-11-10 stages
 
-Four briefs for the owner's Suno songs, one per new stage, in the same spirit as the ones above. Select Instrumental. Each stage plays a
+Four briefs for the owner's Suno songs, one per new stage, in the same spirit as the ones above. Each stage plays a
 placeholder track until its song is in; the resource key it takes is in the table below (the steps are in each stage's doc).
+
+Each brief has a style prompt and a lyric field. In the lyric field, everything in square brackets is a direction, not sung. The only
+sung lines are wordless ("aah", "oh", "hey"); delete them for a purely instrumental take. Suno takes a lyric field only with Instrumental
+off; the style prompt still says no vocals.
 
 ### Starfall Causeway — Across the Firmament
 
 Instrumental space-arena combat soundtrack, 140 BPM, an ancient stone bridge suspended in deep space among nebulae and a ringed planet. Cosmic synthwave meets orchestral: driving taiko-style toms with tight electronic drums, deep pulsing sub-bass, shimmering arpeggiated glass synths, a soaring wordless choir pad, heroic brass swells and a memorable five-note celestial bell motif. Vast, majestic, dangerous; builds and releases in 16-bar waves. No vocals. Clean loopable ending.
+
+Lyric field:
+
+```
+[Intro: lone celestial bells play a five-note motif over a deep space pad, distant wordless choir]
+
+[Build-Up: taiko-style toms enter, pulsing sub-bass, glass arpeggios rising]
+
+[Main Theme: full drums, heroic brass carries the five-note motif, soaring choir]
+Aaah, aaah
+Aaah, aaah
+
+[Instrumental Break: shimmering arpeggiated glass synths, driving toms, brass stabs]
+
+[Breakdown: drums fall away, only bells, choir and starlight shimmer, held tension]
+
+[Build-Up: snare roll, rising toms, brass swell]
+
+[Climax: full orchestra and synths, choir at full height, the motif in brass and bells together]
+Aaah, aaah
+Aaah, aaah
+
+[Outro: drums thin back to the intro pulse, bells repeat the motif, seamless loop]
+
+[End]
+```
 
 ### Substation 128 — Floor Is Lava
 
@@ -70,13 +100,101 @@ Instrumental nightclub combat track, exactly 128 BPM, four-on-the-floor. Punchy 
 
 The club's lights follow the song's kick and bass, and its hazards keep a 128 BPM bar grid on the match clock, so a song at exactly 128 BPM lines the drops up with the stage.
 
+Lyric field:
+
+```
+[Intro: filtered four-on-the-floor kick, offbeat hats, electric hum and crackling sparks]
+
+[Build-Up: snare roll, filter sweep opening, laser zaps]
+
+[Drop: huge sidechained kick, rolling offbeat bass, bright supersaw stabs, chopped vocal-chop lead]
+(Oh, oh-oh)
+(Oh, oh-oh)
+
+[Breakdown: kick drops out, warm pads, the lead melody alone, sub-bass swell]
+
+[Build-Up: rising riser, snare roll doubling, white-noise sweep]
+
+[Drop: bigger and harder, extra supersaw layer, laser zaps on the offbeats]
+(Oh, oh-oh)
+
+[Bridge: steady kick with an acid bassline, strobing stabs]
+
+[Build-Up: long riser into the last drop]
+
+[Final Drop: everything at once, euphoric]
+
+[Outro: back to the filtered intro groove, kick steady on every beat for a clean loop]
+
+[End]
+```
+
 ### Top Dog Emporium — Relish the Moment
 
 Instrumental comedic arena combat track, 150 BPM, a giant over-the-top hot dog palace. Zany surf rock meets big-band swing: twangy reverb surf guitar, slap bass, swinging horn-section stabs, honky-tonk piano, kazoo and slide-whistle accents, cowbell and woodblock, playful call-and-response hooks; cartoon energy over punchy fight-ready drums. Bright, silly, catchy, bouncy. No vocals. Clean loopable ending.
 
+Lyric field:
+
+```
+[Intro: twangy reverb surf guitar riff, snare fill, kazoo flourish]
+
+[Main Theme: surf guitar melody, slap bass, swinging horn stabs, honky-tonk piano]
+
+[Call and Response: horns call, kazoo answers, cowbell hits]
+
+[Gang Shout]
+Hey!
+
+[Instrumental Break: honky-tonk piano solo, slide whistle swoops up and down, woodblock]
+
+[Breakdown: just slap bass and finger snaps, sneaky cartoon tiptoe]
+
+[Build-Up: drum roll, horns climbing, slide whistle up]
+
+[Big Band Chorus: full horn section swings the theme, tremolo surf guitar, crash cymbals]
+
+[Gang Shout]
+Hey! Hey!
+
+[Guitar Solo: reverb-drenched surf guitar, tremolo picking]
+
+[Outro: the theme once more, kazoo flourish, back to the intro riff for a clean loop]
+
+[End]
+```
+
 ### The Hollow Sanctum — Vigil of Ash
 
 Instrumental gothic arena combat soundtrack, 120 BPM, a moonlit castle chapel lit by candles and stained glass. A dark cathedral pipe-organ ostinato, a wordless choir singing only "aah", pounding orchestral percussion and taiko, tolling bells, harpsichord runs, low staccato strings and a hint of industrial drums. Solemn, ominous and dramatic, with a haunting descending minor motif. No lyrics. Clean loopable ending.
+
+Lyric field:
+
+```
+[Intro: a single tolling bell, low pipe-organ drone, candlelit silence]
+
+[Organ Ostinato: the dark pipe-organ pattern begins, low staccato strings]
+
+[Choir: wordless, solemn]
+Aaah, aaah, aaah
+Aaah, aaah, aaah
+
+[Main Theme: pounding orchestral percussion and taiko, the descending minor motif on organ and choir, industrial drums beneath]
+
+[Harpsichord Interlude: fast harpsichord runs over staccato strings]
+
+[Breakdown: organ alone, distant bells, a hushed choir]
+Aaah
+
+[Build-Up: taiko and timpani rising, bells tolling faster]
+
+[Climax: full organ and choir, the descending motif in unison, every bell ringing]
+Aaah, aaah, aaah
+Aaah, aaah, aaah
+
+[Outro: back to the opening organ ostinato, one last bell toll, clean loop]
+
+[End]
+```
 
 | Stage | Map id | Placeholder now | Resource key for the owner's song |
 |---|---|---|---|
