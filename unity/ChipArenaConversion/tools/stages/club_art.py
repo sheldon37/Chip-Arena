@@ -672,7 +672,8 @@ def main():
     ck.finishes(L)
     import club_props as props
     sb = sk.StageBank()
-    chunks = sk.Chunks(12.0, (-36.0, -24.0), (-1.0, 9.0))
+    # three bands: the hall above its 12 m ceiling is its own (the drawer lets such chunks cast no shadow: the roof would shade the key)
+    chunks = sk.Chunks(12.0, (-36.0, -24.0), (-1.0, 9.0, 12.05))
     floors = (0.0, 4.2)
     t0 = time.time()
     for ti in [int(x) for x in args.tiers.split(',')]:

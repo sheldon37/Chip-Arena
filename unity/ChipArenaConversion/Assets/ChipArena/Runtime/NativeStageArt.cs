@@ -69,6 +69,8 @@ namespace ChipArena.UnityConversion
                 foreach(var c in p.Static)
                 {
                     var cd=new ChunkDraw{Plan=c};bool any=false;
+                    // a chunk wholly above the play space's ceiling (a roof over the hall) casts no shadow: it would shade the look's key
+                    bool roof=map.bounds!=null&&map.bounds.ceiling>0&&c.Min.Y>=map.bounds.ceiling-.05f;
                     for(int t=0;t<NativeStageArt.Tiers;t++)
                     {
                         var piece=PieceOf(bank,c.Props[t]);if(piece==null)continue;
@@ -76,7 +78,7 @@ namespace ChipArena.UnityConversion
                         if(t>0&&c.Props[t]==c.Props[t-1]&&cd.Tiers[t-1]!=null){cd.Tiers[t]=cd.Tiers[t-1];continue;}
                         var go=new GameObject("chunk "+c.Id+" "+t);go.transform.SetParent(root.transform,false);
                         go.AddComponent<MeshFilter>().sharedMesh=piece.Mesh;var r=go.AddComponent<MeshRenderer>();
-                        r.sharedMaterials=piece.Subs>1?new[]{solid,glow}:new[]{solid};r.shadowCastingMode=ShadowCastingMode.TwoSided;r.receiveShadows=true;
+                        r.sharedMaterials=piece.Subs>1?new[]{solid,glow}:new[]{solid};r.shadowCastingMode=roof?ShadowCastingMode.Off:ShadowCastingMode.TwoSided;r.receiveShadows=true;
                         r.lightProbeUsage=LightProbeUsage.Off;r.reflectionProbeUsage=ReflectionProbeUsage.BlendProbes;r.enabled=false;cd.Tiers[t]=r;any=true;
                     }
                     if(!any)continue;cd.Box=new Bounds(new Vector3((c.Min.X+c.Max.X)*.5f,(c.Min.Y+c.Max.Y)*.5f,(c.Min.Z+c.Max.Z)*.5f),new Vector3(c.Max.X-c.Min.X,c.Max.Y-c.Min.Y,c.Max.Z-c.Min.Z));chunks.Add(cd);
