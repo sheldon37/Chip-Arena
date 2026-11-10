@@ -326,7 +326,9 @@ namespace ChipArena.UnityConversion
             var p=Spectator??arena.ViewPilot;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
             // Camera intent survives stagger/knockdown. The simulation independently gates ADS benefits and shots.
             bool alive=arena.Local.Hp>0&&p.Hp>0;
-            bool aim=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&pending.Aim&&alive&&!menu;
+            // Every gun with an aim row zooms to its own field of view in first person (owner 2026-11-10: "Right click on ranged isn't
+            // zooming into crosshair, it just makes a noise"); the rifle's is its scope.
+            bool aim=ads!=null&&p.Weapon?.@class=="ranged"&&pending.Aim&&alive&&!menu;
             // ArenaPresentation.Render already hides the viewed pilot's world body in first person.
             bool first=NativeViewRules.FirstPerson(prefs.firstPerson||aim,alive,menu);
             // Settings · Camera (NativeShoulderCamera.cs): Classic, once settled, is the original camera below, unchanged.
