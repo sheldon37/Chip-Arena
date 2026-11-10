@@ -135,7 +135,7 @@ internal static class RangedLocomotionChecks
         foreach(var spec in new[]{"pistol","rifle","machinegun"})
             foreach(var c in Cases)
             {
-                if(c.Sprint)continue;bool aiming=c.Dir==0||Math.Abs(c.Dir)<1;// ahead and the forward diagonals raise the gun by aiming; the rest raise it themselves
+                if(c.Sprint)continue;bool aiming=spec!="pistol"||c.Dir==0||Math.Abs(c.Dir)<1;// ahead and the forward diagonals raise the gun by aiming; the rest raise the pistol themselves (the long guns rest low unless aimed, owner 2026-11-10)
                 var p=new Pilot(spec,true);var b=new Pilot(spec,false,43);foreach(var x in new[]{p,b}){x.A.Velocity=Velocity(c.Speed,c.Dir);x.A.Aiming=aiming;x.A.Pitch=-12;}
                 var pm=new Range();var bm=new Range();var py=new Range();var by=new Range();
                 for(int f=0;f<240;f++)
