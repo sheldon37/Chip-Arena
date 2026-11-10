@@ -5,7 +5,11 @@ NativeStageArt draws it in place of the boxes; without the bank the box kit draw
 usage (from unity/ChipArenaConversion):
   dotnet run --project Tests/CoreTests.csproj -c Release -- --stage-layout sanctum LAYOUT.json
   blender --background --factory-startup --python tools/stages/sanctum_art.py -- --layout LAYOUT.json --out ASSETS/LocalAssets
-          [--preview DIR] [--tiers 0,1,2] [--no-ao]
+          [--preview DIR] [--tiers 0,1,2] [--no-ao] [--static-only] [--own-mid]
+
+The bank's budget is 20 MB (docs/arenas/STAGE-ART.md): the static scenery is built on the Sanctum's own tiers (`Cut`), its Fine
+tier cut to what reads at play distance; its Mid props share the Fine meshes (nothing stored twice; `--own-mid` builds a Mid
+tier of its own, about 5 MB more); the Low tier is the Low graphics tier's. The rigs and the pews keep stagekit's tiers.
 
 The architecture (this file): the walls as one face per wall plane with the lancets and roses cut through it, splayed reveals and
 real tracery at the kit's own tracery plane (so the stained glass, Core NativeSanctumScenery, sits behind it as before); the
@@ -86,6 +90,21 @@ def finishes(L):
     KIND.extend(F[k] for k in order)
 
 
+class Cut(sk.Tier):
+    """The Sanctum's measure of each tier: stagekit's, leaner where the detail does not read at play distance (the bank's budget
+    is 20 MB: docs/arenas/STAGE-ART.md, "The bank's budget"). A curve takes the segments its turn needs: a pointed arch's half
+    turns sixty degrees or so, so it takes `arch`, not the half circle's `arc`; flat faces are cut no finer than the bake's
+    mottling; what is only ever seen from the floor (the vault, the capitals) is built for that distance."""
+
+    def __init__(self, i):
+        super().__init__(i)
+        self.arc = (16, 10, 6)[i]          # segments of a half circle
+        self.arch = (8, 5, 3)[i]           # segments of a pointed arch's half
+        self.round = (10, 7, 5)[i]         # sides of a round section
+        self.small = (6, 4, 3)[i]          # sides of a small round
+        self.cell = (1.0, 3.0, 8.0)[i]     # the subdivision of a flat face
+
+
 def kind_fin(k, axis=None):
     f = KIND[k]
     if axis is not None and sk.FINS[f].detail == sk.DETAIL_WOOD:
@@ -145,9 +164,8 @@ class Lancet:
         return arch_width(self.L, self.y1 - self.spring, y - self.spring)
 
     def rows(self, T):
-        ys = [self.y0, self.in_spring]
-        ys += [self.in_spring + (self.y1 - self.in_spring) * (i / T.arc) for i in range(1, T.arc + 1)]
-        return ys
+        # the head's rows at even turns of its arch (not even heights: the apex would be cut blunt)
+        return [self.y0, self.in_spring] + [self.in_spring + b for (a, b) in pointed_arch(self.hw, self.y1 - self.in_spring, T.arch)[1:]]
 
 
 class Rose:
@@ -213,8 +231,8 @@ def reveal(g, pl, h, T, f):
     """The opening through the wall: the inner outline to the jambs' at the tracery plane, then straight through."""
     dt, dw = .62, pl.thick
     if isinstance(h, Lancet):
-        n = T.arc
-        ss = [0.0] + [(h.in_spring - h.y0) / (h.y1 - h.y0)] + [(h.in_spring - h.y0) / (h.y1 - h.y0) + (1 - (h.in_spring - h.y0) / (h.y1 - h.y0)) * i / n for i in range(1, n + 1)]
+        rows = h.rows(T)
+        ss = [(y - h.y0) / (h.y1 - h.y0) for y in rows]
 
         def pin(s, side):
             y = h.y0 + (h.y1 - h.y0) * s
@@ -224,16 +242,23 @@ def reveal(g, pl, h, T, f):
             y = h.sill + (h.y1 - h.sill) * s
             return pl.at(h.u + side * h.half_out(y), y, d)
         for side in (-1, 1):
+            # the outline's normal into the opening at each row (from its neighbours; the two sides meet in a crease at the apex)
+            q = [(side * h.half_in(y), y) for y in rows]
+            nin = []
+            for k in range(len(q)):
+                p, n = q[max(0, k - 1)], q[min(len(q) - 1, k + 1)]
+                nu, ny = n[1] - p[1], -(n[0] - p[0])
+                if nu * side > 0:
+                    nu, ny = -nu, -ny
+                nin.append(sk._norm((pl.U[0] * nu, ny, pl.U[2] * nu)))
             for k in range(len(ss) - 1):
                 a0, a1 = pin(ss[k], side), pin(ss[k + 1], side)
                 b0, b1 = pout(ss[k], side, dt), pout(ss[k + 1], side, dt)
                 c0, c1 = pout(ss[k], side, dw), pout(ss[k + 1], side, dw)
                 # the splay's normal points into the opening and toward the room
-                mid = sk._lerp(sk._lerp(a0, a1, .5), sk._lerp(b0, b1, .5), .5)
-                axis = pl.at(h.u, mid[1], .3)
-                nn = sk._norm(sk._add(sk._sub(axis, mid), pl.N, .6))
-                g.face((a0, a1, b1, b0), f, nn)
-                g.face((b0, b1, c1, c0), f, sk._norm(sk._sub(axis, mid)))
+                s0, s1 = sk._norm(sk._add(nin[k], pl.N, .6)), sk._norm(sk._add(nin[k + 1], pl.N, .6))
+                g.face((a0, a1, b1, b0), f, normals=(s0, s1, s1, s0))
+                g.face((b0, b1, c1, c0), f, normals=(nin[k], nin[k + 1], nin[k + 1], nin[k]))
         # the sill slopes down into the hall
         cells = max(1, int(2 * h.hw / T.cell))
         for i in range(cells):
@@ -250,10 +275,11 @@ def reveal(g, pl, h, T, f):
             po1 = pl.at(h.u + h.r * math.cos(a1), h.yc + h.r * math.sin(a1), dt)
             pw0 = pl.at(h.u + h.r * math.cos(a0), h.yc + h.r * math.sin(a0), dw)
             pw1 = pl.at(h.u + h.r * math.cos(a1), h.yc + h.r * math.sin(a1), dw)
-            am = (a0 + a1) / 2
-            inward = (-pl.U[0] * math.cos(am), -math.sin(am), -pl.U[2] * math.cos(am))
-            g.face((pi0, pi1, po1, po0), f, sk._norm(sk._add(inward, pl.N, .5)))
-            g.face((po0, po1, pw1, pw0), f, inward)
+            in0 = (-pl.U[0] * math.cos(a0), -math.sin(a0), -pl.U[2] * math.cos(a0))
+            in1 = (-pl.U[0] * math.cos(a1), -math.sin(a1), -pl.U[2] * math.cos(a1))
+            s0, s1 = sk._norm(sk._add(in0, pl.N, .5)), sk._norm(sk._add(in1, pl.N, .5))
+            g.face((pi0, pi1, po1, po0), f, normals=(s0, s1, s1, s0))
+            g.face((po0, po1, pw1, pw0), f, normals=(in0, in1, in1, in0))
 
 
 def tracery(g, pl, h, T):
@@ -267,32 +293,33 @@ def tracery(g, pl, h, T):
     nrm = [pl.N]
     if isinstance(h, Lancet):
         # a roll moulding round the jambs and the arch
-        pts = [(-h.L, h.sill), (-h.L, h.spring)] + [(-h.L + a, h.spring + b) for (a, b) in pointed_arch(h.L, h.y1 - h.spring, T.arc)[1:]]
+        pts = [(-h.L, h.sill), (-h.L, h.spring)] + [(-h.L + a, h.spring + b) for (a, b) in pointed_arch(h.L, h.y1 - h.spring, T.arch)[1:]]
         right = [(-u, y) for (u, y) in reversed(pts[:-1])]
         outline = pts + right
-        sweep(g, sk.circle_section(.055, (6, 5, 4)[T.i]), path_u(outline), st, path_normals=[pl.N] * len(outline), caps=True)
+        sweep(g, sk.circle_section(.055, (6, 4, 3)[T.i]), path_u(outline), st, path_normals=[pl.N] * len(outline), caps=False)
         # the mullion
-        sweep(g, bar, path_u([(0, h.sill), (0, h.spring + .55)]), st, path_normals=[pl.N] * 2)
+        sweep(g, bar, path_u([(0, h.sill), (0, h.spring + .55)]), st, path_normals=[pl.N] * 2, caps=False)
         # the lights' heads: a pointed trefoil head each side
         for s in (-1, 1):
             cu, l2 = s * (h.L / 2 + .02), h.L / 2 - .05
             head = []
-            for (a, b) in pointed_arch(l2, .62, T.arc // 2 + 2):
+            hn = (6, 4, 2)[T.i]
+            for (a, b) in pointed_arch(l2, .62, hn):
                 head.append((cu - l2 + a, h.spring + b))
-            head += [(cu + l2 - a, h.spring + b) for (a, b) in reversed(pointed_arch(l2, .62, T.arc // 2 + 2)[:-1])]
-            sweep(g, bar, path_u(head), st, path_normals=[pl.N] * len(head))
+            head += [(cu + l2 - a, h.spring + b) for (a, b) in reversed(pointed_arch(l2, .62, hn)[:-1])]
+            sweep(g, bar, path_u(head), st, path_normals=[pl.N] * len(head), caps=False)
             if T.tiny:
                 # two cusps in each head
                 for c in (-1, 1):
                     cx, cy = cu + c * l2 * .55, h.spring + .3
                     cusp = [(cx + c * .0, cy - .12), (cx - c * .1, cy), (cx, cy + .12)]
-                    sweep(g, sk.rect_section(.05, .1), path_u(cusp), st, path_normals=[pl.N] * 3)
+                    sweep(g, sk.rect_section(.05, .1), path_u(cusp), st, path_normals=[pl.N] * 3, caps=False)
         # the eye: a ring and a quatrefoil
         ey, er = h.spring + 1.0, .3
         ring = [(er * math.cos(2 * math.pi * i / T.arc), ey + er * math.sin(2 * math.pi * i / T.arc)) for i in range(T.arc)]
         sweep(g, bar, path_u(ring), st, closed=True, path_normals=[pl.N] * len(ring))
         if T.detail:
-            n = T.arc * 2
+            n = 24 if T.fine else 12
             q = []
             for i in range(n):
                 a = 2 * math.pi * i / n
@@ -314,18 +341,18 @@ def tracery(g, pl, h, T):
             a = 2 * math.pi * (i + .5) / spokes
             p0 = (r * .26 * math.cos(a), h.yc + r * .26 * math.sin(a))
             p1 = ((r - .1) * math.cos(a), h.yc + (r - .1) * math.sin(a))
-            sweep(g, sk.rect_section(.1, .18), path_u([p0, p1]), st, path_normals=[pl.N] * 2)
+            sweep(g, sk.rect_section(.1, .18), path_u([p0, p1]), st, path_normals=[pl.N] * 2, caps=False)
         if T.detail:
             for i in range(spokes):
                 a = 2 * math.pi * i / spokes
                 rr, rp = r * .81, r * .14
-                n = max(10, T.arc * 2 // 3)
+                n = 10 if T.fine else 6
                 pts = [(rr * math.cos(a) + rp * math.cos(2 * math.pi * j / n), h.yc + rr * math.sin(a) + rp * math.sin(2 * math.pi * j / n)) for j in range(n)]
                 sweep(g, sk.rect_section(.06, .12), path_u(pts), st, closed=True, path_normals=[pl.N] * n)
             for i in range(spokes if T.tiny else 0):
                 a = 2 * math.pi * (i + .5) / spokes
                 rr, rp = r * .44, r * .09
-                n = max(8, T.arc // 2)
+                n = 8
                 pts = [(rr * math.cos(a) + rp * math.cos(2 * math.pi * j / n), h.yc + rr * math.sin(a) + rp * math.sin(2 * math.pi * j / n)) for j in range(n)]
                 sweep(g, sk.rect_section(.05, .1), path_u(pts), st, closed=True, path_normals=[pl.N] * n)
         # the gilded boss in the eye
@@ -359,7 +386,7 @@ def blind_arcade(g, pl, u0, u1, y0, y1, T):
         w = pitch * .36
         # the niche's back, a hair proud of the face
         outline = [(c - w, y0), (c + w, y0)]
-        arc = pointed_arch(w, .5, max(4, T.arc // 2))
+        arc = pointed_arch(w, .5, (5, 3, 2)[T.i])
         outline += [(c + w - a, head + b) for (a, b) in arc[1:]]
         outline += [(c - w + a, head + b) for (a, b) in reversed(arc[:-1])]
         pts = [pl.at(u, y, -.006) for (u, y) in outline]
@@ -370,17 +397,18 @@ def blind_arcade(g, pl, u0, u1, y0, y1, T):
         # the arch moulding over it
         ap = [(c - w - .04, head)] + [(c - w - .04 + a * (w + .04) / w, head + b * 1.06) for (a, b) in arc[1:]]
         ap += [(c + w + .04 - a * (w + .04) / w, head + b * 1.06) for (a, b) in reversed(arc[:-1])]
-        sweep(g, [(-.01, -.04), (.05, -.04), (.07, 0), (.05, .04), (-.01, .04)], [pl.at(u, y, 0) for (u, y) in ap], st,
-              path_normals=[pl.N] * len(ap), up=None)
+        if T.detail:
+            sweep(g, [(-.01, -.04), (.05, -.04), (.07, 0), (.05, .04), (-.01, .04)] if T.fine else [(-.01, -.04), (.07, 0), (-.01, .04)],
+                  [pl.at(u, y, 0) for (u, y) in ap], st, path_normals=[pl.N] * len(ap), up=None, caps=T.fine)
         # the shafts between the niches
-        if i > 0:
+        if i > 0 and T.detail:
             cu = u0 + pitch * i
             base = pl.at(cu, y0, -.07)
             top = pl.at(cu, head + .05, -.07)
-            sk.cylinder(g, base, top, .05, F['shaft'], T.small)
+            sk.cylinder(g, base, top, .05, F['shaft'], T.small if T.fine else 3, caps=False)
             if T.tiny:
-                lathe(g, [(.07, 0), (.075, .05), (.055, .1)], base, st, T.small, cap0=True, cap1=True)
-                lathe(g, [(.055, -.1), (.08, -.02), (.09, .02), (.09, .06)], top, st, T.small, cap1=True)
+                lathe(g, [(.07, 0), (.075, .05), (.055, .1)], base, st, T.small)
+                lathe(g, [(.055, -.1), (.085, -.01), (.09, .06)], top, st, T.small, cap1=True)
     moulding(g, pl, [(-.01, 0), (.1, 0), (.1, .1), (.06, .14), (-.01, .14)], y1, st, u0, u1)
     moulding(g, pl, [(-.01, -.1), (.08, -.1), (.08, 0), (-.01, 0)], y0, st, u0, u1)
 
@@ -388,16 +416,21 @@ def blind_arcade(g, pl, u0, u1, y0, y1, T):
 def wall_shaft(g, pl, u, y0, y1, T):
     """A wall shaft at a bay line rising to the vault's springing, with its base and capital."""
     p0, p1 = pl.at(u, y0, -.11), pl.at(u, y1, -.11)
-    sk.cylinder(g, p0, p1, .11, F['shaft'], T.round)
-    lathe(g, [(.14, 0), (.14, .12), (.125, .16), (.12, .22), (.11, .26)], p0, F['trim'], T.round, cap0=True, cap1=True)
+    sk.cylinder(g, p0, p1, .11, F['shaft'], T.round, caps=False)
+    lathe(g, [(.14, 0), (.14, .12), (.125, .16), (.12, .22), (.11, .26)] if T.fine else [(.14, 0), (.14, .12), (.11, .26)], p0, F['trim'], T.round)
     capital(g, p1, .12, T)
 
 
 def capital(g, top, r, T, f=None):
     """A bell capital under an abacus at `top` (the springing)."""
     f = F['trim'] if f is None else f
-    lathe(g, [(r, -.62), (r + .02, -.58), (r, -.54), (r * 1.08, -.4), (r * 1.4, -.18), (r * 1.62, -.06), (r * 1.62, 0.0)], top, f, T.round, cap1=False)
-    lathe(g, [(r * 1.75, 0.0), (r * 1.75, .1), (r * 1.6, .16)], top, f, max(6, T.round // 2 * 2), cap1=True, phase=math.pi / 8)
+    # (the springing is ten metres over the floor and six over the galleries: the necking's fillet and the leaves' roundness
+    # do not read from there)
+    bell = [(r, -.62), (r + .02, -.58), (r * 1.08, -.4), (r * 1.4, -.18), (r * 1.62, -.06), (r * 1.62, 0.0)]
+    if not T.fine:
+        bell = [bell[0], bell[3], bell[5]]
+    lathe(g, bell, top, f, (10, 6, 4)[T.i], cap1=False)
+    lathe(g, [(r * 1.75, 0.0), (r * 1.75, .1), (r * 1.6, .16)] if T.fine else [(r * 1.75, 0.0), (r * 1.7, .15)], top, f, (8, 6, 4)[T.i], cap1=True, phase=math.pi / 8)
     if T.tiny:
         # crockets: leaves curling out under the abacus
         for i in range(6):
@@ -408,7 +441,7 @@ def capital(g, top, r, T, f=None):
             tip = sk._add(top, c, r * 1.7)
             tip = (tip[0], top[1] - .06, tip[2])
             mid = sk._add(sk._lerp(base, tip, .55), c, .06)
-            sk.tube(g, [base, mid, tip], .035, f, max(4, T.small - 2))
+            sk.tube(g, [base, mid, tip], .035, f, 3, caps=False)
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -471,7 +504,7 @@ def walls(g, L, T):
         # a shaft in each of the plane's corners where it meets its neighbour, rising to the springing
         for u in (pl.u0, pl.u1):
             p0 = pl.at(u, .5, -.1)
-            sk.cylinder(g, p0, pl.at(u, 13.0, -.1), .11, F['shaft'], T.round)
+            sk.cylinder(g, p0, pl.at(u, 13.0, -.1), .11, F['shaft'], T.round, caps=False)
     return planes
 
 
@@ -491,7 +524,7 @@ def prism(g, poly_bottom, height, f, T, cap=True):
     for i in range(n):
         a, b = poly_bottom[i], poly_bottom[(i + 1) % n]
         out = sk._norm((((a[0] + b[0]) / 2) - cx, 0, ((a[2] + b[2]) / 2) - cz))
-        rows = max(1, int(height / max(T.cell, .3)))
+        rows = max(1, int(height / max(T.cell, 1.5)))
         for r in range(rows):
             y0, y1 = a[1] + height * r / rows, a[1] + height * (r + 1) / rows
             g.face(((a[0], y0, a[2]), (b[0], y0, b[2]), (b[0], y1, b[2]), (a[0], y1, a[2])), f, out)
@@ -499,8 +532,25 @@ def prism(g, poly_bottom, height, f, T, cap=True):
         g.face([(p[0], p[1] + height, p[2]) for p in poly_bottom], f, Y)
 
 
-def mould_round(g, poly, profile, f, T):
-    """A moulding swept round a closed plan polygon: profile [(out, up)]."""
+def sweep_sides(g, section, path, f, keep, **kw):
+    """sweep() with flat sides, only the section's sides in `keep` (side j runs from section[j] to section[j + 1]): a moulding
+    without its back against the wall and its foot on the floor, which nothing ever sees."""
+    t = Geo()
+    sweep(t, section, path, f, caps=False, smooth_u=False, **kw)
+    k = len(section)
+    if t.faces % k or any(c != 4 for c in t.size):
+        g.extend(t)
+        return
+    for i in range(t.faces):
+        if i % k in keep:
+            g.p.extend(t.p[i * 12:i * 12 + 12])
+            g.n.extend(t.n[i * 12:i * 12 + 12])
+            g.size.append(4)
+            g.fin.append(f)
+
+
+def mould_round(g, poly, profile, f, T, keep=None):
+    """A moulding swept round a closed plan polygon: profile [(out, up)]; keep: the profile's sides drawn (None: all)."""
     path = [(p[0], p[1], p[2]) for p in poly]
     n = len(path)
     cx = sum(p[0] for p in path) / n
@@ -512,7 +562,10 @@ def mould_round(g, poly, profile, f, T):
         area += a[0] * b[2] - b[0] * a[2]
     if area < 0:
         path = path[::-1]
-    sweep(g, profile, path, f, closed=True, path_normals=[Y] * n, smooth_u=False)
+    if keep is None:
+        sweep(g, profile, path, f, closed=True, path_normals=[Y] * n, smooth_u=False)
+    else:
+        sweep_sides(g, profile, path, f, keep, closed=True, path_normals=[Y] * n)
 
 
 def pier(g, b, T, crossing):
@@ -523,27 +576,40 @@ def pier(g, b, T, crossing):
     c = h * .42
     # the plinth (an octagon), its mouldings, the core, the shafts, the capital band
     prism(g, octagon(cx, cz, h + .14, (h + .14) * .42, 0.0), .34, F['trim'], T)
-    mould_round(g, octagon(cx, cz, h + .06, (h + .06) * .42, .34), [(-.02, 0), (.06, 0), (.08, .04), (.06, .08), (.02, .1), (.04, .16), (.02, .2), (-.02, .22)], F['trim'], T)
-    prism(g, octagon(cx, cz, h, c, .5), spring - .5, F['pier'], T, cap=False)
+    # (the mouldings without their feet and backs; simpler on the Mid tier, sixteen metres off; none on the Low one)
+    if T.fine:
+        mould_round(g, octagon(cx, cz, h + .06, (h + .06) * .42, .34), [(-.02, 0), (.06, 0), (.08, .04), (.06, .08), (.02, .1), (.04, .16), (.02, .2), (-.02, .22)], F['trim'], T, keep=(1, 2, 3, 4, 5, 6))
+    elif T.i == 1:
+        mould_round(g, octagon(cx, cz, h + .06, (h + .06) * .42, .34), [(.07, 0), (.06, .09), (-.02, .22)], F['trim'], T, keep=(0, 1))
+    prism(g, octagon(cx, cz, h, c, .34 if T.i == 2 else .5), spring - (.34 if T.i == 2 else .5), F['pier'], T, cap=False)
     r = .13
     shafts = [(cx - h - r + .06, cz), (cx + h + r - .06, cz), (cx, cz - h - r + .06), (cx, cz + h + r - .06)]
     if crossing:
         d = h - c / 2 + .06
         shafts += [(cx + sx * d, cz + sz * d) for sx in (-1, 1) for sz in (-1, 1)]
-    else:
+    elif T.i < 2:
         d = h - c / 2 + .02
         for sx in (-1, 1):
             for sz in (-1, 1):
-                p0, p1 = (cx + sx * d, .56, cz + sz * d), (cx + sx * d, spring - .6, cz + sz * d)
-                sk.cylinder(g, p0, p1, .07, F['shaft'], T.small)
+                p0, p1 = (cx + sx * d, .56, cz + sz * d), (cx + sx * d, spring - .28, cz + sz * d)
+                sk.cylinder(g, p0, p1, .07, F['shaft'], T.small, caps=False)
     for (sx, sz) in shafts:
-        p0, p1 = (sx, .5, sz), (sx, spring - .62, sz)
-        sk.cylinder(g, p0, p1, r, F['shaft'], T.round)
-        lathe(g, [(r + .04, 0), (r + .04, .06), (r + .025, .1), (r + .015, .14)], p0, F['trim'], T.round, cap1=True)
+        p0, p1 = (sx, .5 if T.i < 2 else .34, sz), (sx, spring - .62, sz)
+        sk.cylinder(g, p0, p1, r, F['shaft'], T.round, caps=False)
+        if T.fine:
+            lathe(g, [(r + .04, 0), (r + .04, .06), (r + .025, .1), (r + .015, .14)], p0, F['trim'], T.round, cap1=True)
+        elif T.i == 1:
+            lathe(g, [(r + .04, 0), (r + .04, .06), (r + .01, .14)], p0, F['trim'], T.round)
         capital(g, (sx, spring, sz), r, T)
     # the pier's capital band over the core
-    mould_round(g, octagon(cx, cz, h + .02, c, spring - .3), [(-.02, 0), (.05, 0), (.12, .14), (.22, .26), (.22, .34), (-.02, .34)], F['trim'], T)
-    prism(g, octagon(cx, cz, h + .2, (h + .2) * .42, spring + .04), .12, F['trim'], T)
+    if T.fine:
+        mould_round(g, octagon(cx, cz, h + .02, c, spring - .3), [(-.02, 0), (.05, 0), (.12, .14), (.22, .26), (.22, .34), (-.02, .34)], F['trim'], T, keep=(0, 1, 2, 3))
+    elif T.i == 1:
+        mould_round(g, octagon(cx, cz, h + .02, c, spring - .3), [(.03, 0), (.22, .26), (.22, .34)], F['trim'], T, keep=(0, 1))
+    if T.i < 2:
+        prism(g, octagon(cx, cz, h + .2, (h + .2) * .42, spring + .04), .12, F['trim'], T)
+    else:
+        prism(g, octagon(cx, cz, h + .2, (h + .2) * .42, spring - .26), .42, F['trim'], T)
 
 
 def loft_column(g, b, T):
@@ -594,10 +660,10 @@ class Bay:
         return sk._norm((dx, -1.0, dz))
 
 
-def vault_bay(g, bay, T):
+def vault_bay(g, bay, T, n=None):
     """The bay's web, cut along its groins (corner to centre) into four cells so the crease lies on the cells' edges, each
     cell a grid from its wall edge toward the crown; the crossing's web in rings round its oculus, its spokes on the groins."""
-    n = max(4, (T.arc * 3) // 4)
+    n = n or max(4, (T.arc * 5) // 8)
     W = F['web']
 
     def P(x, z, which=None):
@@ -605,7 +671,7 @@ def vault_bay(g, bay, T):
     if bay.oculus <= 0:
         C = (bay.cx, bay.cz)
         corners = [(bay.x0, bay.z0), (bay.x1, bay.z0), (bay.x1, bay.z1), (bay.x0, bay.z1)]
-        rows = max(3, (n * 2) // 5)
+        rows = max(2, (n * 2) // 5)
         for k in range(4):
             A, B = corners[k], corners[(k + 1) % 4]
             which = 'u' if k % 2 == 0 else 'v'
@@ -644,13 +710,15 @@ def vault_bay(g, bay, T):
                 g.face((a[0], b[0], c[0], d[0]), W, normals=(a[1], b[1], c[1], d[1]))
 
 
-RIB = [(-.15, -.06), (.15, -.06), (.15, .12), (.07, .3), (0, .38), (-.07, .3), (-.15, .12)]
-RIB_E = [(-.13, -.06), (.13, -.06), (.13, .1), (.06, .26), (0, .33), (-.06, .26), (-.13, .1)]
+# (the ribs hang eleven metres and more over the floor: a keeled section of five corners reads as the moulded one did)
+RIB = [(-.15, -.06), (.15, -.06), (.14, .14), (0, .38), (-.14, .14)]
+RIB_E = [(-.13, -.06), (.13, -.06), (.12, .12), (0, .33), (-.12, .12)]
+RIB_LOW = [(-.15, -.06), (.15, -.06), (0, .38)]
 
 
 def rib(g, bay, p0, p1, T, section, f=None, steps=None):
     """A rib on the web from (x, z) p0 to p1 (plan), its section hanging under the surface."""
-    n = steps or max(6, T.arc // 2)
+    n = steps or T.arch
     path, norms = [], []
     for i in range(n + 1):
         t = i / n
@@ -662,16 +730,17 @@ def rib(g, bay, p0, p1, T, section, f=None, steps=None):
         path.append((x, y, z))
         n_ = bay.normal(xi, zi)
         norms.append(n_)
-    sweep(g, section, path, F['rib'] if f is None else f, path_normals=norms, smooth_u=True)
+    sweep(g, section, path, F['rib'] if f is None else f, path_normals=norms, smooth_u=True, caps=False)
 
 
-def boss(g, p, T, r=.34):
-    lathe(g, [(0, 0), (r * .9, .02), (r, -.06), (r * .8, -.16), (r * .4, -.24), (0, -.26)], p, F['gold'], T.round, cap0=False)
-    if T.detail:
+def boss(g, p, T, r=.34, near=False):
+    """A gilded boss under a vault's crown (near: the crypt's, a pilot's height away)."""
+    lathe(g, [(0, 0), (r * .9, .02), (r, -.06), (r * .8, -.16), (r * .4, -.24), (0, -.26)], p, F['gold'], T.round if near else (8, 6, 5)[T.i], cap0=False)
+    if T.fine or (near and T.detail):
         for i in range(8):
             a = 2 * math.pi * i / 8
             tip = (p[0] + math.cos(a) * r * 1.3, p[1] - .04, p[2] + math.sin(a) * r * 1.3)
-            sk.tube(g, [(p[0] + math.cos(a) * r * .6, p[1] - .1, p[2] + math.sin(a) * r * .6), tip], .05, F['gold'], 5)
+            sk.tube(g, [(p[0] + math.cos(a) * r * .6, p[1] - .1, p[2] + math.sin(a) * r * .6), tip], .05, F['gold'], 4 if near and T.fine else 3, caps=False)
 
 
 def vaults(g, L, T):
@@ -695,16 +764,17 @@ def vaults(g, L, T):
             if bay.oculus > 0:
                 dx, dz = bay.cx - ax, bay.cz - az
                 l = math.hypot(dx, dz)
-                rib(g, bay, (ax, az), (bay.cx - dx / l * bay.oculus * 1.05, bay.cz - dz / l * bay.oculus * 1.05), T, RIB)
+                rib(g, bay, (ax, az), (bay.cx - dx / l * bay.oculus * 1.05, bay.cz - dz / l * bay.oculus * 1.05), T, RIB if T.fine else RIB_LOW)
             else:
-                rib(g, bay, (ax, az), (bay.cx, bay.cz), T, RIB)
+                rib(g, bay, (ax, az), (bay.cx, bay.cz), T, RIB if T.fine else RIB_LOW)
         for k in range(4):
             a, b = corners[k], corners[(k + 1) % 4]
             key = (round(min(a[0], b[0]), 2), round(min(a[1], b[1]), 2), round(max(a[0], b[0]), 2), round(max(a[1], b[1]), 2))
             if key in edges:
                 continue
             edges.add(key)
-            rib(g, bay, a, b, T, RIB_E)
+            # (an even count: the arch's apex is a point of the path)
+            rib(g, bay, a, b, T, RIB_E if T.fine else RIB_LOW, steps=(8, 6, 4)[T.i])
         if bay.oculus <= 0:
             boss(g, (bay.cx, bay.y(bay.cx, bay.cz) - .2, bay.cz), T)
     # the oculus: a moulded ring and its gilded inner roll, the shaft up to the belfry's floor
@@ -732,7 +802,7 @@ def floors(g, blocks, T):
         i = b['id']
         if i.startswith('sanctum-floor'):
             x0, x1, y0, y1, z0, z1 = ext(b)
-            box(g, x0, x1, y0, y1, z0, z1, F['floor'], T, bevel=.0, skip=('-y',))
+            box(g, x0, x1, y0, y1, z0, z1, F['floor'], T, bevel=.0, cell=.75 if T.fine else None, skip=('-y',))
         elif i == 'sanctum-crypt-floor':
             x0, x1, y0, y1, z0, z1 = ext(b)
             box(g, x0, x1, y0, y1, z0, z1, F['cryptfloor'], T, bevel=.0, skip=('-y',))
@@ -763,14 +833,48 @@ def gallery(g, b, parts, T):
             sweep(g, prof, path, F['trim'], path_normals=[Y, Y], smooth_u=False)
         else:
             # an oak beam under the soffit, chamfered, its ends carved
-            box(g, c[0] - hx, c[0] + hx, c[1] - hy, c[1] + hy, c[2] - hz, c[2] + hz, kind_fin(p['k'], 0 if hx > hz else 2), T, bevel=.03)
+            # (its top is under the soffit; on the Low tier its ends are left out too)
+            ends = ('-x', '+x') if hx > hz else ('-z', '+z')
+            box(g, c[0] - hx, c[0] + hx, c[1] - hy, c[1] + hy, c[2] - hz, c[2] + hz, kind_fin(p['k'], 0 if hx > hz else 2), T, bevel=.03,
+                cell=max(T.cell, 2.5), skip=('+y',) + (ends if T.i == 2 else ()))
+
+
+OCC = Geo()       # what only shades (the bake's occluders): never in the bank
 
 
 def balustrade(g, b, T):
     x0, x1, y0, y1, z0, z1 = ext(b)
     along_x = (x1 - x0) >= (z1 - z0)
     st, dk = F['trim'], F['dark']
-    box(g, x0, x1, y0 + .12, y1 - .08, z0, z1, F['stone'], T, bevel=.01, skip=('-y', '+y'))
+    length = (x1 - x0) if along_x else (z1 - z0)
+    n = max(1, int(round(length / .75)))
+    step = length / n
+    lo = x0 if along_x else z0
+    ya, yb = y0 + .12, y1 - .08
+    if not T.detail:
+        box(g, x0, x1, ya, yb, z0, z1, F['stone'], T, bevel=.01, skip=('-y', '+y'))
+    else:
+        # the body: its long faces cut on the panels' lines, a column of corners behind each strip, where the bake's occlusion
+        # is deepest (a solid strip, a little shallower, stands in the bake under the drawn one's front), so the panels read
+        # dark and sunk between their strips; its ends plain
+        for side in (-1, 1):
+            face = (z0 if side < 0 else z1) if along_x else (x0 if side < 0 else x1)
+            for i in range(n):
+                for j in range(2):
+                    u0, u1 = lo + step * i, lo + step * (i + 1)
+                    v0, v1 = ya + (yb - ya) * j / 2, ya + (yb - ya) * (j + 1) / 2
+                    q = [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]
+                    g.face([(u, v, face) if along_x else (face, v, u) for (u, v) in q], F['stone'], (0, 0, side) if along_x else (side, 0, 0))
+            for i in range(1, n):
+                u, (d0, d1) = lo + step * i, sorted((face - side * .01, face + side * .014))
+                if along_x:
+                    box(OCC, u - .025, u + .025, ya - .02, yb + .02, d0, d1, st, None, bevel=0, cell=0)
+                else:
+                    box(OCC, d0, d1, ya - .02, yb + .02, u - .025, u + .025, st, None, bevel=0, cell=0)
+        for e in (-1, 1):
+            u = lo if e < 0 else lo + length
+            a, c = (z0, z1) if along_x else (x0, x1)
+            g.face([(u, ya, a), (u, ya, c), (u, yb, c), (u, yb, a)] if along_x else [(a, ya, u), (c, ya, u), (c, yb, u), (a, yb, u)], F['stone'], (e, 0, 0) if along_x else (0, 0, e))
     # the base and the coping, moulded
     cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
     if along_x:
@@ -784,12 +888,9 @@ def balustrade(g, b, T):
     sweep(g, [(-hb - .05, 0), (hb + .05, 0), (hb + .06, .04), (hb + .03, .1), (hb - .02, .12), (-hb + .02, .12), (-hb - .03, .1), (-hb - .06, .04)], top, st, path_normals=[Y, Y], smooth_u=True)
     if not T.detail:
         return
-    length = (x1 - x0) if along_x else (z1 - z0)
-    n = max(1, int(round(length / .75)))
-    step = length / n
     cy = (y0 + y1) / 2 + .02
     for i in range(n):
-        u = (x0 if along_x else z0) + step * (i + .5)
+        u = lo + step * (i + .5)
         for side in (-1, 1):
             face = (z0 if side < 0 else z1) if along_x else (x0 if side < 0 else x1)
 
@@ -797,10 +898,11 @@ def balustrade(g, b, T):
                 return (u + a, v, face + side * d) if along_x else (face + side * d, v, u + a)
             nrm = (0, 0, side) if along_x else (side, 0, 0)
             # a quatrefoil: four lobes, its field sunk dark, a raised fillet round it
-            m = 24 if T.fine else 16
+            # (twenty corners, set evenly about each lobe's tip and on each notch, keep the lobes round)
+            m = 20 if T.fine else 8
             pts = []
             for k in range(m):
-                a = 2 * math.pi * k / m
+                a = 2 * math.pi * (k + .5 if T.fine else k) / m
                 r = .1 + .08 * abs(math.cos(2 * a)) ** .6
                 pts.append((r * math.cos(a + math.pi / 4), r * math.sin(a + math.pi / 4)))
             mid = P(0, cy, .003)
@@ -810,14 +912,15 @@ def balustrade(g, b, T):
                 if T.tiny:
                     g.face((P(a0[0], cy + a0[1], .012), P(a1[0], cy + a1[1], .012), P(a1[0] * 1.22, cy + a1[1] * 1.22, .012), P(a0[0] * 1.22, cy + a0[1] * 1.22, .012)), st, nrm)
             # the panel's frame between the lobes
-            if i > 0:
+            if i > 0 and T.fine:
+                # (a strip proud of the face: its front; its ends die into the base and coping)
                 a = -step / 2
-                box(g, *(sorted((P(a - .025, 0)[0], P(a + .025, 0, .02)[0])) + sorted((y0 + .12, y1 - .08)) + sorted((P(a - .025, 0)[2], P(a + .025, 0, .02)[2]))), st, T, bevel=.006, cell=0)
+                g.face((P(a - .025, ya, .02), P(a + .025, ya, .02), P(a + .025, yb, .02), P(a - .025, yb, .02)), st, nrm)
 
 
 def flight(g, b, nose, T):
     x0, x1, y0, y1, z0, z1 = ext(b)
-    box(g, x0, x1, y0, y1, z0, z1, F['stone'], T, bevel=.012, skip=('-y',))
+    box(g, x0, x1, y0, y1, z0, z1, F['stone'], T, bevel=.012, cell=max(T.cell, 2.0), skip=('-y',))
     if nose is not None:
         c, h = nose['c'], nose['h']
         along_x = h[0] > h[2]
@@ -837,13 +940,13 @@ def floor_marks(g, L, T, parts):
                 r = max(z['size'][0], z['size'][2]) / 2
                 n = T.arc * 3
                 ring = [(z['center'][0] + math.cos(2 * math.pi * k / n) * r, .012, z['center'][2] + math.sin(2 * math.pi * k / n) * r) for k in range(n)]
-                sweep(g, sk.rect_section(.09, .03, .008), ring, F['brass'], closed=True, path_normals=[Y] * n)
+                sweep(g, sk.rect_section(.09, .03), ring, F['brass'], closed=True, path_normals=[Y] * n)
                 ring = [(z['center'][0] + math.cos(2 * math.pi * k / n) * (r - .5), .008, z['center'][2] + math.sin(2 * math.pi * k / n) * (r - .5)) for k in range(n)]
-                sweep(g, sk.rect_section(.05, .02, .005), ring, F['brass'], closed=True, path_normals=[Y] * n)
+                sweep(g, sk.rect_section(.05, .02), ring, F['brass'], closed=True, path_normals=[Y] * n)
     for rr, w in ((1.3, .08), (4.6, .1)):
         n = T.arc * 4
         ring = [(math.cos(2 * math.pi * k / n) * rr, .012, math.sin(2 * math.pi * k / n) * rr) for k in range(n)]
-        sweep(g, sk.rect_section(w, .026, .006), ring, F['brass'], closed=True, path_normals=[Y] * n)
+        sweep(g, sk.rect_section(w, .026), ring, F['brass'], closed=True, path_normals=[Y] * n)
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -853,22 +956,21 @@ def candle(g, x, y, z, r, tall, T, seed):
     """A wax candle standing at (x, y, z): its body a little uneven, its top melted into a cup with a raised rim, drips
     run down its side, the wick black above."""
     rnd = np.random.default_rng(seed)
-    sides = (7, 5, 4)[T.i]
-    prof = [(r * 1.02, 0.0), (r * .98, tall * .6), (r * 1.0, tall - .012), (r * .9, tall), (r * .35, tall - .012)]
-    if T.i == 2:
-        prof = [(r, 0.0), (r, tall), (r * .2, tall - .01)]
-    lathe(g, prof, (x, y, z), F['wax'], sides, cap0=False, phase=float(rnd.uniform(0, 6.28)))
+    # (a candle is five centimetres across and there are five hundred: six sides, its melted rim and cup, one drip, the wick)
+    if not T.fine:
+        lathe(g, [(r, 0.0), (r * .9, tall)], (x, y, z), F['wax'], 3, cap0=False, cap1=True, phase=float(rnd.uniform(0, 6.28)))
+        return
+    lathe(g, [(r * 1.02, 0.0), (r, tall - .012), (r * .9, tall), (r * .35, tall - .012)], (x, y, z), F['wax'], 6, cap0=False, phase=float(rnd.uniform(0, 6.28)))
     if T.tiny:
-        for d in range(int(rnd.integers(1, 3))):
-            a = float(rnd.uniform(0, 2 * math.pi))
-            length = float(rnd.uniform(.25, .7)) * tall
-            top = tall - .004
-            p0 = (x + math.cos(a) * r * .95, y + top, z + math.sin(a) * r * .95)
-            p1 = (x + math.cos(a) * r * 1.02, y + top - length * .5, z + math.sin(a) * r * 1.02)
-            p2 = (x + math.cos(a) * r * 1.0, y + top - length, z + math.sin(a) * r * 1.0)
-            sk.sweep(g, sk.circle_section(.009, 4), [p0, p1, p2], F['wax'], scale=[1.0, 1.15, 1.5], caps=False)
+        a = float(rnd.uniform(0, 2 * math.pi))
+        length = float(rnd.uniform(.25, .7)) * tall
+        top = tall - .004
+        p0 = (x + math.cos(a) * r * .95, y + top, z + math.sin(a) * r * .95)
+        p1 = (x + math.cos(a) * r * 1.02, y + top - length * .5, z + math.sin(a) * r * 1.02)
+        p2 = (x + math.cos(a) * r * 1.0, y + top - length, z + math.sin(a) * r * 1.0)
+        sk.sweep(g, sk.circle_section(.009, 3), [p0, p1, p2], F['wax'], scale=[1.0, 1.15, 1.5], caps=False)
         # the wick
-        sk.cylinder(g, (x, y + tall - .014, z), (x + .002, y + tall + .012, z), .0035, F['wick'], 4)
+        lathe(g, [(.0035, 0.0), (.0025, .026)], (x, y + tall - .014, z), F['wick'], 3)
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -882,10 +984,18 @@ def moulded(g, b, f, T, panels=True, trim=None):
     """A block's body with a moulded base and cornice swept round it and fielded panels on its faces."""
     x0, x1, y0, y1, z0, z1 = ext(b)
     tr = F['trim'] if trim is None else trim
+    if T.i == 2:
+        box(g, x0, x1, y0, y1, z0, z1, f, T, bevel=0, skip=('-y',))
+        return
     box(g, x0, x1, y0 + .14, y1 - .1, z0, z1, f, T, bevel=.015, skip=('-y', '+y'))
     rect = lambda y: [(x0, y, z0), (x1, y, z0), (x1, y, z1), (x0, y, z1)]
-    mould_round(g, rect(y0), BASE, tr, T)
-    mould_round(g, rect(y1 - .12), CAP, tr, T)
+    # (the mouldings without their feet and backs; two and three faces on the Mid tier)
+    if T.fine:
+        mould_round(g, rect(y0), BASE, tr, T, keep=(1, 2, 3, 4, 5))
+        mould_round(g, rect(y1 - .12), CAP, tr, T, keep=(0, 1, 2, 3, 4))
+    else:
+        mould_round(g, rect(y0), [(.06, 0.0), (.06, .08), (.01, .17)], tr, T, keep=(0, 1))
+        mould_round(g, rect(y1 - .12), [(0.0, 0.0), (.07, .075), (.07, .12), (-.02, .12)], tr, T, keep=(0, 1, 2))
     box(g, x0 + .01, x1 - .01, y1 - .02, y1, z0 + .01, z1 - .01, tr, T, bevel=.01, skip=('-y',))
     if not panels or not T.detail:
         return
@@ -899,10 +1009,17 @@ def moulded(g, b, f, T, panels=True, trim=None):
             a, c = lo + span * i / n + .1, lo + span * (i + 1) / n - .1
             if c - a < .15:
                 continue
+            # a fielded panel: proud of the face, chamfered (its back left out); its front alone on the Mid tier
             if axis == 'x':
-                box(g, at, at + sgn * .02, ya, yb, a, c, tr, T, bevel=.012, cell=0)
+                if T.fine:
+                    box(g, at, at + sgn * .02, ya, yb, a, c, tr, T, bevel=.012, cell=0, skip=('-x' if sgn > 0 else '+x',))
+                else:
+                    g.face(((at + sgn * .02, ya, a), (at + sgn * .02, ya, c), (at + sgn * .02, yb, c), (at + sgn * .02, yb, a)), tr, (sgn, 0, 0))
             else:
-                box(g, a, c, ya, yb, at, at + sgn * .02, tr, T, bevel=.012, cell=0)
+                if T.fine:
+                    box(g, a, c, ya, yb, at, at + sgn * .02, tr, T, bevel=.012, cell=0, skip=('-z' if sgn > 0 else '+z',))
+                else:
+                    g.face(((a, ya, at + sgn * .02), (c, ya, at + sgn * .02), (c, yb, at + sgn * .02), (a, yb, at + sgn * .02)), tr, (0, 0, sgn))
 
 
 def figure(g, p, T):
@@ -946,7 +1063,7 @@ def screen_niches(g, b, T):
     for i in range(bays):
         zc = z0 + bay * (i + .5)
         L, spring, H = bay * .36, 2.45, .83
-        arc = pointed_arch(L, H, max(5, T.arc // 2))
+        arc = pointed_arch(L, H, (6, 4, 3)[T.i])
         outline = [(zc - L, .45), (zc - L, spring)] + [(zc - L + a, spring + h) for (a, h) in arc[1:]] + [(zc + L - a, spring + h) for (a, h) in reversed(arc[:-1])] + [(zc + L, .45)]
 
         def P(z, y, d=0.0):
@@ -956,7 +1073,7 @@ def screen_niches(g, b, T):
             a, c = outline[k], outline[(k + 1) % len(outline)]
             g.face((mid, P(a[0], a[1], .012), P(c[0], c[1], .012)), fill, nrm)
         path = [P(z + (.05 if z > zc + 1e-6 else -.05 if z < zc - 1e-6 else 0), y, .03) for (z, y) in outline]
-        sweep(g, sk.circle_section(.04, (6, 5, 4)[T.i]), path, F['trim'])
+        sweep(g, sk.circle_section(.04, (5, 4, 3)[T.i]), path, F['trim'])
 
 
 def saint_halo(g, b, T):
@@ -972,7 +1089,7 @@ def saint_halo(g, b, T):
     if T.detail:
         for k in range(12):
             a = 2 * math.pi * k / 12
-            sweep(g, sk.rect_section(.02, .012), [(cu + math.cos(a) * .34, 2.22 + math.sin(a) * .34, face + s * .02), (cu + math.cos(a) * .46, 2.22 + math.sin(a) * .46, face + s * .02)], F['gold'])
+            sweep(g, sk.rect_section(.02, .012), [(cu + math.cos(a) * .34, 2.22 + math.sin(a) * .34, face + s * .02), (cu + math.cos(a) * .46, 2.22 + math.sin(a) * .46, face + s * .02)], F['gold'], caps=T.fine)
 
 
 BLOCKS = {}
@@ -996,16 +1113,22 @@ def skull(g, p, T):
     base = (c[0], c[1] - hy, c[2])
     w = min(hx, hz) * 1.0 if abs(fr[2]) > .5 else min(hx, hz)
     sc = (1.0, .9) if abs(fr[2]) > .5 else (.9, 1.0)
-    lathe(g, [(0.0, .02), (w * .55, .025), (w * .9, .07), (w * 1.0, .12), (w * .85, .17), (w * .45, .2), (0.0, .205)], base, F['bone'], (12, 8, 5)[T.i], scale=sc)
+    cranium = [(0.0, .02), (w * .55, .025), (w * .9, .07), (w * 1.0, .12), (w * .85, .17), (w * .45, .2), (0.0, .205)]
+    if T.i == 2:
+        lathe(g, [cranium[0], cranium[3], cranium[6]], base, F['bone'], 5, scale=sc)
+        return
+    lathe(g, cranium if T.fine else [cranium[0], cranium[2], cranium[3], cranium[4], cranium[6]], base, F['bone'], (8, 6, 4)[T.i], scale=sc)
     jaw = sk._add(base, fr, w * .45)
-    lathe(g, [(0.0, 0.0), (w * .5, .005), (w * .55, .04), (w * .35, .065), (0.0, .07)], jaw, F['bone'], (8, 6, 4)[T.i])
+    lathe(g, [(0.0, 0.0), (w * .5, .005), (w * .55, .04), (w * .35, .065), (0.0, .07)] if T.fine else [(0.0, 0.0), (w * .55, .02), (0.0, .07)], jaw, F['bone'], (6, 4, 3)[T.i])
     if T.detail:
+        # the sockets and the nose: dark flat marks on the face
+        def mark(c, rad, k):
+            u = (fr[2], 0.0, -fr[0])
+            g.face([sk._add(sk._add(c, u, rad * math.cos(2 * math.pi * j / k)), (0, 1, 0), rad * math.sin(2 * math.pi * j / k)) for j in range(k)], F['niche'], fr)
         for side in (-1, 1):
             u = (fr[2] * side, 0.0, -fr[0] * side)
-            e = sk._add(sk._add(sk._add(base, fr, w * .93), u, w * .4), (0, 1, 0), .095)
-            lathe(g, [(0.0, 0.0), (.024, .002), (0.0, .004)], e, F['niche'], 7, axis=fr, cap0=False)
-        n = sk._add(sk._add(base, fr, w * .98), (0, 1, 0), .06)
-        lathe(g, [(0.0, 0.0), (.012, .002), (0.0, .004)], n, F['niche'], 5, axis=fr, cap0=False)
+            mark(sk._add(sk._add(sk._add(base, fr, w * .93 + .003), u, w * .4), (0, 1, 0), .095), .024, 6 if T.fine else 4)
+        mark(sk._add(sk._add(base, fr, w * .98 + .003), (0, 1, 0), .06), .012, 3)
 
 
 def crypt_niche(g, p, T):
@@ -1020,20 +1143,18 @@ def crypt_niche(g, p, T):
     def P(u, y, d=0.0):
         q = sk._add(face, along, u)
         return (q[0] + fr[0] * d, y, q[2] + fr[2] * d)
-    n = max(5, T.arc // 2)
+    n = (6, 4, 3)[T.i]
     outline = [(-w, y0), (-w, spring)] + [(-w * math.cos(math.pi * k / n), spring + w * math.sin(math.pi * k / n)) for k in range(1, n)] + [(w, spring), (w, y0)]
     mid = P(0, (y0 + y1) / 2)
     for k in range(len(outline)):
         a, b = outline[k], outline[(k + 1) % len(outline)]
         g.face((mid, P(a[0], a[1]), P(b[0], b[1])), F['niche'], fr)
-    sweep(g, sk.circle_section(.03, (6, 5, 4)[T.i]), [P(u * 1.06, y, .015) for (u, y) in outline], F['trim'])
+    sweep(g, sk.circle_section(.03, (5, 4, 3)[T.i]), [P(u * 1.06, y, .015) for (u, y) in outline], F['trim'])
 
 
 def kit_part(g, p, T):
     hx, hy, hz = p['h']
     lo = min(hx, hy, hz)
-    if T.i == 2 and max(hx, hy, hz) < .05:
-        return
     q = p['q']
     f = KIND[p['k']]
     if p['f'] == 'crypt-wall' and f == F['bone']:
@@ -1041,6 +1162,27 @@ def kit_part(g, p, T):
         return
     if p['f'] == 'crypt-wall' and f == F['dark'] and min(hx, hy, hz) <= .0105:
         crypt_niche(g, p, T)
+        return
+    if T.i == 2 and max(hx, hy, hz) < .08:
+        return
+    if T.i > 0 and lo <= .012 and f != F['velvet']:
+        # a thin plate (an inlay, a leaf of gilding, a slab's face) from sixteen metres: its two faces, no edges
+        k = (hx, hy, hz).index(lo)
+        a, b = [(1, 2), (2, 0), (0, 1)][k]
+        hh = (hx, hy, hz)
+        for sgn in (-1, 1):
+            pts = []
+            for (sa_, sb_) in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                v = [0.0, 0.0, 0.0]
+                v[k], v[a], v[b] = sgn * lo, sa_ * hh[a], sb_ * hh[b]
+                pts.append(sk._add(p['c'], rotate(q, tuple(v))))
+            nrm = [0.0, 0.0, 0.0]
+            nrm[k] = float(sgn)
+            nrm = rotate(q, tuple(nrm))
+            # (a plate lying on a floor shows its upper face only)
+            if nrm[1] < -.9 and any(-.01 <= p['c'][1] - lo - fy < .06 for fy in (-3.6, 0.0, 4.0)):
+                continue
+            g.face(pts, f, nrm)
         return
     if f == F['statue'] and abs(q[3]) > .999:
         if hy >= .4 and max(hx, hz) >= .12:
@@ -1131,10 +1273,10 @@ def crypt(g, blocks, T):
     for i in range(3):
         for j in range(3):
             bay = Bay(xs[i], xs[i + 1], zs[j], zs[j + 1], -0.45, spring=-1.4, dome=.15)
-            vault_bay(g, bay, T)
+            vault_bay(g, bay, T, n=(8, 5, 4)[T.i])
             for (a, bb) in (((bay.x0, bay.z0), (bay.x1, bay.z1)), ((bay.x1, bay.z0), (bay.x0, bay.z1))):
-                rib(g, bay, a, bb, T, [(-.09, -.04), (.09, -.04), (.09, .08), (0, .16), (-.09, .08)], F['trim'], steps=max(6, T.arc))
-            boss(g, (bay.cx, bay.y(bay.cx, bay.cz) - .08, bay.cz), T, r=.16)
+                rib(g, bay, a, bb, T, [(-.09, -.04), (.09, -.04), (.09, .08), (0, .16), (-.09, .08)], F['trim'], steps=(12, 8, 4)[T.i])
+            boss(g, (bay.cx, bay.y(bay.cx, bay.cz) - .08, bay.cz), T, r=.16, near=True)
     return
 
 
@@ -1151,7 +1293,7 @@ def shrine(g, b, T):
     mould_round(g, [(cx0, y0 + .5, cz0), (cx1, y0 + .5, cz0), (cx1, y0 + .5, cz1), (cx0, y0 + .5, cz1)], [(-.02, 0), (.05, 0), (.05, .06), (.02, .09), (-.02, .09)], G, T)
     mould_round(g, [(cx0, eave - .1, cz0), (cx1, eave - .1, cz0), (cx1, eave - .1, cz1), (cx0, eave - .1, cz1)], CAP, G, T)
     # the arcade round the casket: gilded shafts and round heads over velvet
-    for (along, a0, a1, at, sgn) in (('x', cx0, cx1, cz0, -1), ('x', cx0, cx1, cz1, 1), ('z', cz0, cz1, cx0, -1), ('z', cz0, cz1, cx1, 1)):
+    for (along, a0, a1, at, sgn) in ((('x', cx0, cx1, cz0, -1), ('x', cx0, cx1, cz1, 1), ('z', cz0, cz1, cx0, -1), ('z', cz0, cz1, cx1, 1)) if T.detail else ()):
         n = max(2, int(round((a1 - a0) / .55)))
         for k in range(n + 1):
             u = a0 + (a1 - a0) * k / n
@@ -1203,6 +1345,8 @@ SCULPTED = {'pier', 'wall', 'arcade', 'lancet', 'rose', 'vaults', 'balustrade', 
 
 def static_scene(L, T, pew_ids):
     g = Geo()
+    global OCC
+    OCC = Geo()
     blocks = L['blocks']
     BLOCKS.clear()
     BLOCKS.update({b['id']: b for b in blocks})
@@ -1256,7 +1400,7 @@ def static_scene(L, T, pew_ids):
             c, h = p['c'], p['h']
             along_x = h[0] > h[2]
             path = [(c[0] - h[0], c[1] + .005, c[2]), (c[0] + h[0], c[1] + .005, c[2])] if along_x else [(c[0], c[1] + .005, c[2] - h[2]), (c[0], c[1] + .005, c[2] + h[2])]
-            sweep(g, sk.circle_section(.03, T.small), path, F['trim'])
+            sweep(g, sk.circle_section(.03, T.small), path, F['trim'], caps=T.fine)
     # candles: every kit candle as a sculpted one
     seed = 0
     for p in L['parts']:
@@ -1319,6 +1463,7 @@ def main():
     ap.add_argument('--tiers', default='0,1,2')
     ap.add_argument('--no-ao', action='store_true')
     ap.add_argument('--static-only', action='store_true')
+    ap.add_argument('--own-mid', action='store_true', help="build the static scenery's Mid tier (about 5 MB more) instead of sharing the Fine one")
     args = ap.parse_args(argv)
     L = sk.load_layout(args.layout)
     finishes(L)
@@ -1329,20 +1474,32 @@ def main():
     pew_ids = [b['id'] for b in L['blocks'] if b['id'].startswith('sanctum-pew')]
     chunks = sk.Chunks(12.0, (-36.0, -24.0), (-1.0, 9.0))
     t0 = time.time()
+    fine = {}
     for ti in [int(x) for x in args.tiers.split(',')]:
-        T = sk.Tier(ti)
+        T = Cut(ti)
         t = time.time()
+        if ti == 1 and not args.own_mid:
+            # the bank's budget: the static scenery has no Mid meshes of its own; each chunk's Mid prop is its Fine mesh again
+            # (the Fine tier is cut to what reads at play distance and draws to the Mid reach)
+            for cid in sorted(fine):
+                sb.share('static/%d/1' % cid, 'static', fine[cid])
+            print('tier mid: static shares the Fine meshes (%d chunks)' % len(fine))
+            if not args.static_only:
+                props.bank_props(sb, L, sk.Tier(ti), soot, floors_of(L), args.no_ao)
+            continue
         g = static_scene(L, T, pew_ids)
         pews = props.pew_scene(L, T)
         print('tier %s: static %d faces, %.1f s' % (T.name, g.faces, time.time() - t))
         ao = None
         if not args.no_ao:
-            ao = sk.bake_ao([g], distance=(1.4, 1.4, 1.6)[ti], samples=(32, 16, 12)[ti], occluders=[pews])[0]
+            ao = sk.bake_ao([g], distance=(1.4, 1.4, 1.6)[ti], samples=(32, 16, 12)[ti], occluders=[o for o in (pews, OCC) if o.faces])[0]
         bk = sk.Bake(g, ao, soot=soot, floors=floors_of(L), moss_zone=moss_zone)
         ids = chunks.ids(g)
         for cid in np.unique(ids):
             om = sk.to_mesh('static/%d/%d' % (cid, ti), g, bk, ids == cid)
             sb.add('static/%d/%d' % (cid, ti), 'static', om)
+            if ti == 0 and om is not None:
+                fine[int(cid)] = sb.mesh(om)
         if args.preview and ti == 0:
             views = [('nave-east', (-23.4, 1.9, -1.2), (10, 5, .5), 70), ('nave-west', (23.4, 2.0, 1.2), (-20, 6.5, 0), 70),
                      ('crossing-up', (-3.5, 1.6, -3.8), (.5, 16, 1.5), 75), ('aisle-south', (-26.5, 1.7, -9.0), (4, 2.6, -8.8), 70),
@@ -1354,7 +1511,7 @@ def main():
             pbk = sk.Bake(pews, None)
             sk.preview([(g, bk), (pews, pbk)], views, args.preview)
         if not args.static_only:
-            props.bank_props(sb, L, T, soot, floors_of(L), args.no_ao)
+            props.bank_props(sb, L, sk.Tier(ti), soot, floors_of(L), args.no_ao)
         del g
     if args.out:
         for b in L['blocks']:
