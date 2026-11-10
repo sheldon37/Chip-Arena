@@ -152,7 +152,24 @@ belfry, the confessionals, the effigies).
 
 Rebuild: `--stage-layout sanctum LAYOUT.json`, then
 `blender --background --factory-startup --python tools/stages/sanctum_art.py -- --layout LAYOUT.json --out <Assets>/LocalAssets`
-(about 30 s; `--preview DIR` renders the views, `--tiers`, `--no-ao`, `--static-only` for quick looks).
+(about 15 s; `--preview DIR` renders the views, `--tiers`, `--no-ao`, `--static-only` for quick looks).
+
+**The bank's budget** (2026-11-10): a stage's bank keeps to about 20 MB. The Sanctum's first bank was 42 MB; it is 18.9 MB with
+its look kept (the same twelve views before and after, below). How:
+- The static scenery is built on the Sanctum's own tiers (`Cut` in sanctum_art.py: stagekit's `Tier` with leaner counts). A
+  curve takes the segments its turn needs (a pointed arch's half 8, not the half circle's 24); the vault's webs and ribs, the
+  bosses and the capitals are built for the ten metres and more they are seen from; mouldings are swept without their backs and
+  feet (`sweep_sides`); shafts lose the ends buried in their bases and capitals; the reveals' normals turn with the outline, so
+  their corners merge (and the splays shade round); the 500 candles, the skulls, the arcades, the tracery's heads and the
+  balustrades' quatrefoils are leaner; flat faces are cut at 1 m (the floors and the moulded bodies keep .75 m: their baked
+  shade is the pews' contact shadows and the stiles between the panels).
+- **The Mid props share the Fine meshes** (`StageBank.share`): every chunk still has its three props, nothing is stored twice,
+  and the leaner Fine tier draws out to the Mid reach (38 m): 312,364 triangles at most, where the first bank's Fine tier alone
+  was 565,482 (frame times below). `--own-mid` builds a Mid tier of its own instead (about 5 MB more: over the budget).
+- The Low tier (the Low graphics tier's, and past 38 m) is about a sixth of the Fine triangles.
+- Where the bake's occlusion made the look, the script keeps it on purpose: the balustrades' dark panels came from corners that
+  lay under their strips, so the body's corners stay on the panels' lines and solid strips take part in the bake only (`OCC`).
+- The rigs and the pews keep stagekit's tiers.
 
 Numbers, seen, and what still falls short: see "Seen in the Editor" below.
 
@@ -214,11 +231,20 @@ Performance (Editor, High tier, the nave toward the crossing from the narthex, 1
 p95 11.25 ms; the art 1107 frames, mean 9.04 ms, p95 10.69 ms (the art replaces about 9000 instanced kit boxes, the rig's boxes
 and the dressed blocks with 54 chunk renderers drawn at their tier and about 110 rig and pew draws).
 
-The bank (2026-11-10): 42,057,192 bytes, 588 props. Static: 54 chunks; Fine 565,482 triangles (426,113 vertices), Mid 259,862
-(199,869), Low 121,248 (118,881). Rig: 29 parts; 47,642 / 33,437 / 13,790 triangles by tier. The pew: 2,122 / 1,438 / 324
-triangles, one mesh for the 14 pews. About 30 s to build.
+The bank (2026-11-10, slimmed to the budget): 18,854,526 bytes, 588 props. Static: 54 chunks; Fine 312,364 triangles (245,494
+vertices), Mid the Fine meshes again (none of its own), Low 50,243 (57,011). Rig: 29 parts; 44,332 / 30,500 / 12,989 triangles
+by tier. The pew: 2,122 / 1,438 / 324 triangles, one mesh for the 14 pews. About 15 s to build. (The first bank: 42,057,192
+bytes; static Fine 565,482 triangles (426,113 vertices), Mid 259,862 (199,869), Low 121,248 (118,881); rig 47,642 / 33,437 /
+13,790.)
 
-The Low graphics tier draws the bank's Low tier, not the box kit: the same art, about a fifth of the Fine triangles, the probe at
+The slimmed bank against the first, in the shared Editor (the eight views above and four close ones: up a lancet from the
+gallery, the west altar and screen, the reliquary, a confessional and its saint; High and the Low graphics tier): the look
+holds; close to, the balustrades' quatrefoils have twenty corners where they had twenty-four and their strips are flat, a candle
+has one drip, and on the Low graphics tier the capitals, skulls and candles are plainer and the arcades are niches without
+shafts. Frame times, the same view and tier as above, 10 s, two runs each: the first bank mean 9.70 and 9.39 ms, p95 11.19 and 11.15 ms; the slimmed one 8.68, 8.77 and 8.89 ms, p95 10.15, 9.83 and 9.78 ms (every
+chunk within 38 m now draws the Fine meshes, which are fewer triangles than the first bank's Fine and Mid mix).
+
+The Low graphics tier draws the bank's Low tier, not the box kit: the same art, about a sixth of the Fine triangles, the probe at
 64 px (the box kit would look like another stage, and costs more draws).
 
 What still draws as boxes: a destroyed pew's stub (stage 3) and every fragment (the dressing's, as on every map); the kit's
@@ -233,8 +259,7 @@ Not done / not seen:
 - After 13:06 the shared Editor sat behind a "Low disk space" dialog (drive F: had 4.96 GB free), so the last bank (the moulded
   bodies, figures, screen niches, the crypt's niches, skulls and reliquary) was seen only in Blender's previews, and the Low tier,
   a chandelier's wreck on the art, the bank-absent run in the Editor and the Editor's build checks were not run.
-- The bank is about 40 MB (the other local banks are up to 11 MB): the Fine tier carries most of it. A leaner Mid tier or a
-  quantised vertex format in the bank would halve it.
+- The bank's vertices are 44 bytes each; a quantised vertex format would halve every stage's bank (a format change: not done).
 - The main menu's 3D preview draws no Sanctum dressing (as before); native Windows build, multiplayer guests and the killcam on
   the art: not run.
 
