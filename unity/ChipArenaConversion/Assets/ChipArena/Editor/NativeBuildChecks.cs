@@ -240,6 +240,7 @@ namespace ChipArena.UnityConversion.Editor
                         if(map.id=="factory"||map.id=="cybercity")arena.ValidateStageHazardRuntime();
                         if(new[]{"breakwater","harbor","skyframe","rig","polar","training"}.Contains(map.id))arena.ValidateM1Runtime();
                         if(map.id=="club")arena.ValidateClubRuntime();
+                        if(map.id=="emporium")arena.ValidateEmporiumRuntime();
                         if(map.id=="cybercity")arena.ValidateCyberCityExits();
                         if(NativeMapRules.WardInstance(map.id)&&map.look=="quarantine"){if(map.id=="siren")arena.ValidateWardSimulation();arena.ValidateWardTraversal();}
                         if(map.id=="brickfall"){arena.ValidateCorpsePhysics();CheckBrickfallRuntime(data);}

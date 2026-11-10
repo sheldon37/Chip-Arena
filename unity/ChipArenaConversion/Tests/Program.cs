@@ -60,6 +60,7 @@ internal static class Program
             CrowdPoseChecks.Run();
             if(args.Length==1&&args[0]=="--new-stages"){NewStagesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--club-stage"){ClubStageChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--emporium"){EmporiumChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--training-look"){TrainingLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--crowd-pose")return 0;
             SnapshotChecks.Run();
@@ -306,6 +307,7 @@ internal static class Program
             PackFxBlastsChecks.Run(root);
             StageKitChecks.Run(root);
             NewStageLookChecks.Run(root);
+            EmporiumChecks.Run(root);
             AdvancedLightingChecks.Run(root);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);

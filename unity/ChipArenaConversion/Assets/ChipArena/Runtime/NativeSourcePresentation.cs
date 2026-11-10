@@ -102,6 +102,7 @@ namespace ChipArena.UnityConversion
             IronworksBossScenery(arena);
             NewStageScenery(arena);
             ClubScenery(arena);
+            EmporiumScenery(arena);
             TrainingScenery(arena);
             // The harbour yards round the map (NativePackStage.cs; nothing without the kit bank).
             PackYards(arena);

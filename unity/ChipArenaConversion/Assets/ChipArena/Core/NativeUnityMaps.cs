@@ -32,11 +32,11 @@ namespace ChipArena.UnityConversion
         // includes the five M1 arenas and Training Room; generated run maps are added later.
         public static void ValidateShippedCatalog(ConversionContent content)
         {
-            var expected=new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","club","cybercity","expedition-city","expedition-foundry","expedition-transit","expedition-ward-zero","factory","harbor","polar","rig","siren","skyframe","training"};
+            var expected=new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","club","cybercity","emporium","expedition-city","expedition-foundry","expedition-transit","expedition-ward-zero","factory","harbor","polar","rig","siren","skyframe","training"};
             var maps=content?.maps;
             if(maps==null||maps.Any(m=>m==null||!m.unity)||!maps.Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(expected))
                 throw new InvalidOperationException("Shipped Unity catalogue must contain the authored maps plus fixed-seed Level 0 (including M1 arenas and Training Room).");
-            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","club","cybercity","factory","harbor","polar","rig","skyframe"}))
+            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","club","cybercity","emporium","factory","harbor","polar","rig","skyframe"}))
                 throw new InvalidOperationException("Shipped Unity random rotation differs.");
         }
         public static string Selection(ConversionContent c,string id)=>id=="random"||c.maps.Any(m=>m.id==id&&ArenaSelectable(m))?id:DefaultArena;

@@ -97,6 +97,14 @@ namespace ChipArena.UnityConversion
         =>h.kind=="burner"?(h.zones??Array.Empty<MapVolume>()).Any(z=>Touch(p,z.center,z.size,radius,halfHeight)):Touch(p,h.center,h.size,radius,halfHeight);
         public static bool GridTouch(MapHazard h,V3 p,float halfHeight=.85f)
         {float feet=p.y-halfHeight;return feet>=h.center.y-h.size.y/2-.1f&&feet<=h.center.y+h.size.y/2&&Math.Abs(p.x-h.center.x)<h.size.x/2+.42f&&Math.Abs(p.z-h.center.z)<h.size.z/2+.42f;}
+        // A vent with `push` (Top Dog Emporium's geysers): its burst launches a pilot standing in the column straight up at `push`
+        // m/s. Only a pilot not already rising is launched (vertical speed under 1 m/s), so a launch is one kick, not a rocket.
+        // Every vent shipped before it has push 0 and is unchanged.
+        // A vent that pushes (push > 0) does one of two things (both 2026-11-10, at the owner's word for the new stages): with a sideways axis it
+        // shoves along it on each damage tick (VentShove: Substation 128's bass drop); with none it launches straight up while bursting
+        // (VentLaunch: the Emporium's geysers).
+        public static bool VentLaunch(MapHazard h,in FactoryHazardState s,V3 body,float verticalSpeed,float radius=.42f,float halfHeight=.85f)
+        =>h!=null&&h.kind=="vent"&&h.push>0&&h.axis.x*h.axis.x+h.axis.z*h.axis.z<1e-8f&&s.Phase==NativeFactoryHazards.Bursting&&verticalSpeed<1f&&Touch(body,s.BoxCenter,s.BoxSize,radius,halfHeight);
         public static bool FactoryBox(MapHazard h,in FactoryHazardState s,out V3 center,out V3 size)
         {
             center=s.BoxCenter;size=s.BoxSize;if(!s.Lethal)return false;
