@@ -103,7 +103,7 @@ namespace ChipArena.UnityConversion
                 else if(h.kind==NativeWardZeroHazards.Shutter&&!hasGate){hasGate=true;gate=NativeWardZeroHazards.At(h,phase,round,fightAt,now);}
             }
             TollFx(gate,now,rig,hazards);
-            double dip=TollDip(gate);
+            double dip=TollDip(gate)*(.4+.6*quality);
             Moonlight(render);
             CandleFlames(render,rig,dip);
             Incense(render);

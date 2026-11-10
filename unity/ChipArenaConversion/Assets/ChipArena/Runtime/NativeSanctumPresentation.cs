@@ -65,7 +65,16 @@ namespace ChipArena.UnityConversion
             foreach(var m in sectors)Graphics.DrawMesh(m,Matrix4x4.identity,glassLit,NativeSceneryBuilder.BackdropLayer,null,0,null,ShadowCastingMode.Off,true);
             foreach(var b in kit)Draw(b,instancing);
             if(rigBuilder!=null){rigBuilder.Build(map.hazards,round,match.Phase,match.FightAt,now,render);Fill(rigBuilder.Parts);foreach(var b in rig)Draw(b,instancing);}
-            Effects(arena,round,now,render,camera,quality,low);
+            Effects(arena,round,now,render,camera,quality,low);LowKey(low);
+        }
+        // The low tier draws no shadows, so the moon key would reach every face inside the shut hall: there it stands at a share
+        // of the look's (the windows' light then comes from the effects' pools), and the look's own returns with the tier.
+        public const float LowKeyShare=.2f;private float keyBase=-1;private Light keyLight;
+        private void LowKey(bool low)
+        {
+            var sun=RenderSettings.sun;
+            if(low&&sun!=null){if(!ReferenceEquals(sun,keyLight)||sun.intensity>keyBase*LowKeyShare+1e-4f){keyLight=sun;keyBase=sun.intensity;}sun.intensity=keyBase*LowKeyShare;}
+            else if(keyLight!=null){if(ReferenceEquals(sun,keyLight)&&keyBase>=0&&Mathf.Abs(sun.intensity-keyBase*LowKeyShare)<1e-4f)sun.intensity=keyBase;keyLight=null;keyBase=-1;}
         }
         private void Effects(NativeArena arena,int round,float now,float render,Camera camera,float quality,bool low)
         {
