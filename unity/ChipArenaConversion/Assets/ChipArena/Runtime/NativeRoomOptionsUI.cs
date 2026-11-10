@@ -171,8 +171,8 @@ namespace ChipArena.UnityConversion
         private static void CheckBox(Rect b,bool on,bool enabled,float hover,float e)
         {
             float a=e*(enabled?1:.5f);
-            if(on){U.Round(b,U.A(U.Mix(U.Hex(NativeCyberTheme.CyanHex),U.Hex(NativeCyberTheme.CyanSoftHex),hover),a),4);NativeIcons.DrawMarkup(new Rect(b.x+2,b.y+2,14,14),"room-check",CheckTick,24,U.Hex(0x3b3b3b,a));}
-            else U.Round(b,U.Hex(0x3b3b3b,a),4,U.A(U.Mix(U.Hex(0x858585),U.Hex(NativeCyberTheme.CyanHex),hover),a));
+            if(on){U.Round(b,U.A(U.Mix(U.Hex(NativeCyberTheme.CyanHex),U.Hex(NativeCyberTheme.CyanSoftHex),hover),a),4);NativeIcons.DrawMarkup(new Rect(b.x+2,b.y+2,14,14),"room-check",CheckTick,24,NativeCyberTheme.Navy(a));}
+            else U.Round(b,NativeCyberTheme.Navy(a),4,U.A(U.Mix(NativeCyberTheme.Edge(),U.Hex(NativeCyberTheme.CyanHex),hover),a));
         }
         // label.field: 12 px caps #c0c1ca, 10 px above it and 8 px to the control below.
         private void RuleField(int id,string text)
@@ -193,9 +193,9 @@ namespace ChipArena.UnityConversion
             bool narrow=rulesNarrow;float e=GUI.color.a;var r=RuleRow(id,narrow?top+1+16+30+8+20+10:top+1+54);
             U.Defer(()=>
             {
-                if(Event.current.type!=EventType.Repaint)return;U.Fill(new Rect(r.x,r.y+top,r.width,1),U.Hex(0x4b414c,e));float y=r.y+top+1;
-                if(narrow){U.Text(new Rect(r.x,y+16,r.width,30),title,23,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.025f);U.Text(new Rect(r.x,y+16+38,r.width,20),note,14,U.Hex(0xb8aabb,e),TextAnchor.MiddleLeft);return;}
-                U.Text(new Rect(r.x,y,r.width,54),title,18,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.02f);U.Text(new Rect(r.x,y,r.width,54),note,14,U.Hex(0xb8aabb,e),TextAnchor.MiddleRight);
+                if(Event.current.type!=EventType.Repaint)return;U.Fill(new Rect(r.x,r.y+top,r.width,1),NativeCyberTheme.Edge(e));float y=r.y+top+1;
+                if(narrow){U.Text(new Rect(r.x,y+16,r.width,30),title,23,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.025f);U.Text(new Rect(r.x,y+16+38,r.width,20),note,14,NativeCyberTheme.Muted(e),TextAnchor.MiddleLeft);return;}
+                U.Text(new Rect(r.x,y,r.width,54),title,18,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.02f);U.Text(new Rect(r.x,y,r.width,54),note,14,NativeCyberTheme.Muted(e),TextAnchor.MiddleRight);
             });
         }
 
@@ -206,7 +206,7 @@ namespace ChipArena.UnityConversion
         private void RulesBoxBegin(int k,float padTop,float pad)
         {
             float e=GUI.color.a;var t=RuleRow(7500+k,padTop);if(Event.current.type==EventType.Repaint){ruleBoxTop[k]=t.y;ruleBoxes[k].x=t.x;ruleBoxes[k].width=t.width;}
-            U.Defer(()=>{var b=ruleBoxes[k];if(Event.current.type==EventType.Repaint&&b.height>0)U.RoundGradient(b,U.Hex(0x23242a,.9f*e),U.Hex(0x1a1b20,.9f*e),10,U.Hex(0x45464e,e),1,true);});
+            U.Defer(()=>{var b=ruleBoxes[k];if(Event.current.type==EventType.Repaint&&b.height>0)U.RoundGradient(b,NativeCyberTheme.Indigo(.72f*e),NativeCyberTheme.Navy(.82f*e),10,NativeCyberTheme.Edge(.9f*e),1,true);});
             rulesL+=pad;rulesR+=pad;
         }
         private void RulesBoxEnd(int k,float padBottom,float pad)
@@ -217,14 +217,14 @@ namespace ChipArena.UnityConversion
         private bool RulesFoldBegin(int k,string title)
         {
             float e=GUI.color.a;GUILayout.Space(14);var r=RuleRow(7520+k,50);bool open=ruleFolds[k];if(open&&Event.current.type==EventType.Repaint)ruleFoldTop[k]=r.yMax;
-            var frame=open?new Rect(r.x,r.y,r.width,r.height+ruleFoldHeight[k]):r;if(open)U.UnderRound(frame,U.Hex(0x13141a,.4f*e),9);
+            var frame=open?new Rect(r.x,r.y,r.width,r.height+ruleFoldHeight[k]):r;if(open)U.UnderRound(frame,NativeCyberTheme.Navy(.55f*e),9);
             U.Defer(()=>
             {
                 if(Event.current.type==EventType.Repaint)
                 {
-                    float h=U.HoverAmount(7525+k,r,!MenuBlocked());U.Round(frame,open?Color.clear:U.Hex(0x13141a,.4f*e),9,U.Hex(0x4c434e,e));if(h>0)U.Round(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new Color(1,1,1,.03f*h*e),9);if(open)U.Fill(new Rect(r.x+1,r.yMax-1,r.width-2,1),U.Hex(0x4c434e,e));
+                    float h=U.HoverAmount(7525+k,r,!MenuBlocked());U.Round(frame,open?Color.clear:NativeCyberTheme.Navy(.55f*e),9,U.A(U.Mix(NativeCyberTheme.Edge(),NativeCyberTheme.Cyan(),.5f*h),e));if(h>0)U.Round(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new Color(1,1,1,.03f*h*e),9);if(open)U.Fill(new Rect(r.x+1,r.yMax-1,r.width-2,1),U.Hex(0x4c434e,e));
                     FoldChevron(new Vector2(r.x+19,r.center.y),open,e);
-                    U.Text(new Rect(r.x+33,r.y,r.width-45,r.height),title,15,U.Hex(0xded5e0,e),TextAnchor.MiddleLeft,bold:true);
+                    U.Text(new Rect(r.x+33,r.y,r.width-45,r.height),title,15,NativeCyberTheme.Ink(e),TextAnchor.MiddleLeft,bold:true);
                 }
                 if(U.Button(r)){ruleFolds[k]=!ruleFolds[k];Click();}
             });

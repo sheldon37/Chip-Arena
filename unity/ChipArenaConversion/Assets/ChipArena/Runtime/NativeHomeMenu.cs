@@ -526,10 +526,8 @@ namespace ChipArena.UnityConversion
         private void BossScreen(float age)=>ExpeditionsScreen(age);
         private void CreateScreen(float age)
         {
-            var l=BeginScreen("CHIP ARENA","Host a private room",650,age,true);if(l.Closed){CloseNetwork();Go(MenuScreen.Home);return;}
-            ScreenBody(l,CreateBody);if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Guests see your pilot in the room lobby.");
-            bool busy=relayConnecting!=null;ScreenStatus(l,networkStatus,NetworkError);
-            if(ScreenActions(l,("play",busy?"Starting server…":"Create Room",true,!busy&&connecting==null))==0){if(internetRooms)HostRelay();else HostRoom();}
+            // The two-column setup with the pilot and the room's summary (NativeCreateRoomUI.cs, 2026-11-10).
+            CreateRoomScreen(age);
         }
         private void JoinScreen(float age)
         {

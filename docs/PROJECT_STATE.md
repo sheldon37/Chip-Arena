@@ -1,3 +1,5 @@
+2026-11-10 Claude (`claude/pvp-lobby-ui`): the PvP room and Create Room redesigned; weapon abilities are picked in the room and reach the host by themselves. Four new stages are being built on their own branches.
+
 2026-11-10 Claude (`claude/ads-killcam`): every gun zooms when aimed; a spread cone with a reactive crosshair (rules for Astra); the killcam no longer stops when other bodies are on the floor.
 
 2026-11-10 Claude (`claude/glaive-chips`): the Glaive's ten chips with their own picks; the chip catalog's cap is now 1024. The Glaive request (design, moves, intro, chips) is complete.
