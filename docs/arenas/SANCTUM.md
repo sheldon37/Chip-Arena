@@ -6,7 +6,7 @@ Owner request (2026-11-10): "Begin development of 4 newer levels ... set a new b
 with exceptional quality effects ... in the random selection." This stage's concept: "a church/old castle interior": a castle's
 great chapel at night, moonlight through stained glass, hundreds of candles, iron chandeliers, galleries and a crypt.
 
-Status: **implemented on the branch, seen in the Unity Editor (captures below), not merged, not released.** In Random.
+Status: **implemented on the branch, seen in the Unity Editor ("Seen in the Editor" below), not merged, not released.** In Random.
 
 ## At a glance
 
@@ -109,9 +109,9 @@ Rules (checked): attached parts below 3 m lie within 0.25 m of a block (thin pro
 overhead parts stand 2 m or more over every standable top under them.
 
 ### The glass (Core `NativeSanctumScenery`, SourceLit sectors)
-Every window's panes (7112) in eight designs of a jewel palette (ruby, sapphire, emerald, amber, violet, pale): each lancet's
-two lights with a border, a ground and three medallions; each rose its eye, rings and petals; a dark backing behind panes cut
-3 cm short (the leading). HDR emission: a window the moon faces glows brightest toward its head (past the bloom's threshold).
+Every window's panes (16912) in eight designs of a jewel palette (ruby, sapphire, emerald, amber, violet, pale): each lancet's
+two lights with a pearled border, a ground of diamond quarries, three ringed medallions (four petals round a jewel), lozenges
+between them and a rosette in the head; each rose its eye, rings and petals; a dark backing behind panes cut short (the leading). HDR emission: a window the moon faces glows brightest toward its head (past the bloom's threshold).
 
 ### The rigs (Core `NativeSanctumRig`) and effects (Core `NativeSanctumFx`)
 Posed only from the replicated state (the very functions the simulation decides hits with): the chandeliers (the served one is
@@ -144,9 +144,26 @@ key `sanctum-theme`: add `Assets/ChipArena/Resources/Audio/music/sanctum-theme.m
 a `case "sanctum":return "sanctum-theme";` in `NativeStageMusic.Theme`, an asset-lock entry, the length pin in
 `NativeBuildChecks` and `ZoneMusicChecks`, and a row in `STAGE-MUSIC-PROMPTS.md`.
 
+## Seen in the Editor (2026-11-10)
+
+Captures in the shared Editor (a match with one bot, god mode, the game's own camera placed by `maincam`, shots on the arena
+clock): the nave from both lofts, the aisles and galleries, the crossing and the south rose, the crypt; each hazard through its
+telegraph and its moment (the chandelier's sway, cone, fall and landing; the censer drawn back, its smouldering path and its
+swing; the holy fire kindling and pouring under the north bridge; the bell's rings down the oculus; the crypt gate falling and
+sealing); the Low tier (`graphics:performance`). On the Low tier the moon key stands at a fifth (`NativeSanctumDraw.LowKey`): no
+shadows there, so the shut hall would otherwise take it on every face; the shafts are the billboards and the glass, flames and
+pools carry the light.
+
+Performance (Editor, High tier, the nave toward the crossing, 983 frames over 10 s): mean 10.5 ms, p95 11.1 ms; the worst frame
+(473 ms) is the screenshot the tool took inside the window. Kit 8948 parts (18 instanced batches of 500), the rig up to about
+1500 parts a frame (6 batches), the glass 16912 panes in 3 SourceLit sectors, the effects about 2000 quads (capacity 7000).
+
 ## Not done / not seen
 
 - Audio: the cues are wired and checked for timing, but not heard (the captures are pictures); the clip and pitch choices
   (a deep "metal" for the bell, "dash" whooshes for the censer) want an ear and, ideally, the owner's bank.
 - Native Windows build, multiplayer guests and the killcam on this map: not run (the Editor match only).
 - Bots: the nav is generated and checked for reachability; their play (the crypt gates, the censer's timing) is not reviewed.
+- The main menu's 3D preview of the stage (RenderBackdrop) draws no sanctum dressing (as for the five M1 stages) and its orbit
+  camera stands outside the hall, so it shows the shell; a cut-away preview would be a follow-up.
+- No sky is seen except through the belfry's louvres over the oculus; the far layer of this interior is its glass.
