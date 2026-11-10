@@ -343,6 +343,12 @@ def pylon(g, b, T, seed, lite=False):
         y = ya + (yb - ya) * t
         hw = ha + (hb - ha) * t
         ck.mould_round(g, ck.octagon(cx, cz, hw, ca + (cb - ca) * t, y - hh / 2), [(-.01, 0), (.03, 0), (.045, hh / 2), (.03, hh), (-.01, hh)], gd, T)
+    if not lite and T.i < 2:
+        # the banner's rod on the face toward the span (the rig hangs the cloth from it)
+        zf = cz - math.copysign(h + .02, cz)
+        sk.cylinder(g, (cx - .5, y1 - .48, zf), (cx + .5, y1 - .48, zf), .028, sv, T.small)
+        for sx in (-1, 1):
+            ck.crystal(g, (cx + sx * .52, y1 - .48, zf), .045, .07, gd, sides=4, low=1.0, quat=sk.quat_axis(0, 0, 1, math.pi / 2))
     # the head: a flared block with a silver cornice and four claws
     hp = [(hb + .02, 0), (hb + .1, .1), (h - .02, .3), (h + .04, .38), (h + .04, .5), (h - .08, .62)]
     lathe(g, [(r * 1.38, y) for r, y in hp], (cx, yb, cz), m, 4, phase=math.pi / 4, smooth=False, cap1=True)
@@ -480,6 +486,14 @@ def main():
             if not args.no_void:
                 for name, fg in void.far(L, sk.Tier(1)):
                     extra.append((fg, sk.Bake(fg, None, floors=(), seed=5)))
+            if not args.views or 'rig' in args.views:
+                # the rig's props in a grid, well clear of the stage (the unit props at a size to be seen)
+                row = Geo()
+                for k, (name, pg, rest) in enumerate(props.items(L, T)):
+                    s = .3 if name in ('shard', 'shard-ember', 'crystal', 'crystal-violet', 'comet') else (2.0 if name in ('glyph', 'banner-star', 'banner-hem') else (.8 if name.startswith('asteroid') else (.6 if name.startswith('crown') else 1.0)))
+                    row.extend(pg.transformed([s, 0, 0, -7.5 + (k % 6) * 3.0, 0, s, 0, 300.0 - (k // 6) * 2.6, 0, 0, s, 0]))
+                extra.append((row, sk.Bake(row, None, floors=(), seed=7)))
+                views = views + [('rig', (-2, 297.5, 10.5), (0, 296.2, 0), 62), ('rig-b', (3, 301, 4.5), (4.5, 297.6, 0), 60)]
             sk.preview([(g, bk)] + extra, views, args.preview)
         if not args.static_only:
             props.bank_props(sb, L, T, args.no_ao)

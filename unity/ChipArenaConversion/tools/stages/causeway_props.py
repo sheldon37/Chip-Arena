@@ -20,7 +20,7 @@ import math
 import numpy as np
 
 import stagekit as sk
-from stagekit import Geo, lathe, sweep
+from stagekit import Geo, box, lathe, sweep
 import causeway_kit as ck
 from causeway_kit import F, Y, Face
 
@@ -38,8 +38,8 @@ def rigfin():
 def star(T):
     g = Geo()
     n = (3, 2, 1)[T.i]
-    ck.rock(g, (0, 0, 0), (.6, .52, .56), 11, F['ember'], n=n, square=.1, rough=.25)
-    ck.rock(g, (0, 0, 0), (.68, .6, .64), 23, F['scorch'], n=n, square=.2, rough=.6, freq=2.2)
+    ck.rock(g, (0, 0, 0), (.62, .55, .58), 11, F['ember'], n=n, square=.1, rough=.2)
+    ck.rock(g, (0, 0, 0), (.66, .58, .62), 23, F['scorch'], n=max(n, 2), square=.2, rough=.75, freq=2.6)
     return g
 
 
@@ -158,26 +158,35 @@ def voussoir(T, key):
 
 
 def crown_stone(T, k, s):
-    """A fragment of the tower's lost storeys: a block of masonry on a moulded course, a rune band round it, blind lancets
-    on its long faces, a broken corner; one in three still carries a stub of pier."""
+    """A fragment of the tower's lost storeys: a length of finished wall torn out of it (a moulded course under it, a string
+    over it, a lit rune band, blind lancets under their archivolts on both faces), its ends and its top ragged with broken
+    stone; one in three still carries the stub of a pier."""
     g = Geo()
     hx, hy, hz = s, s * .55, s * .8
-    ck.rock(g, (0, 0, 0), (hx / .86, hy / .86, hz / .86), 40 + k, F['rigstone'], n=2 if T.i < 2 else 1, square=1.05, rough=.05 if T.i < 2 else 0.0)
-    ck.rock(g, (0, -s * .5, 0), (hx * 1.08, s * .14, hz * 1.08), 60 + k, F['rigcarved'], n=1, square=1.05, rough=.03)
+    st, cv = F['rigstone'], F['rigcarved']
+    wx = hx * .8
+    box(g, -wx, wx, -hy, hy * .86, -hz, hz, st, T if T.i == 0 else None, bevel=.03 * s if T.i == 0 else 0, cell=0)
+    box(g, -wx - .02 * s, wx + .02 * s, -hy - .16 * s, -hy, -hz - .05 * s, hz + .05 * s, cv, T if T.i == 0 else None, bevel=.03 * s if T.i == 0 else 0, cell=0)
     band = F['cold'] if k % 3 == 0 else F['rune']
     y = s * .05
-    e = .04 * s + .03
-    for sx in (-1, 1):
-        g.face(((sx * (hx + e), y - .07, -hz - e), (sx * (hx + e), y + .07, -hz - e), (sx * (hx + e), y + .07, hz + e), (sx * (hx + e), y - .07, hz + e)), band, normal=(sx, 0, 0))
     for sz in (-1, 1):
-        g.face(((-hx - e, y - .07, sz * (hz + e)), (hx + e, y - .07, sz * (hz + e)), (hx + e, y + .07, sz * (hz + e)), (-hx - e, y + .07, sz * (hz + e))), band, normal=(0, 0, sz))
-        if T.i < 2:
-            fc = Face((-hx if sz > 0 else hx, 0, sz * (hz + e)), (0, 0, sz), 2 * hx)
-            for ac in (hx * .55, hx * 1.45):
-                fc.arch_fill(g, ac, s * .16, -hy * .7, y - .14 - s * .22, s * .2, F['rigdeep'], T, d=.0, n=3)
+        fc = Face((-wx if sz > 0 else wx, 0, sz * hz), (0, 0, sz), 2 * wx)
+        fc.mould(g, [(.07 * s, -.01), (.07 * s, .05 * s), (0, .08 * s), (-.06 * s, .03 * s), (-.07 * s, -.01)], hy * .7, 0, 2 * wx, cv, T)
+        fc.quad(g, .04 * s, 2 * wx - .04 * s, y + .19 * s, y + .27 * s, .006, band)
+        for ac in (wx * .55, wx * 1.45):
+            fc.arch_fill(g, ac, s * .17, -hy * .82, -hy * .25, s * .22, F['rigdeep'], T, d=.006 if T.i < 2 else .02, n=3)
+            if T.i < 2:
+                fc.arch(g, ac, s * .17, -hy * .25, s * .22, [(.05 * s, 0), (.025 * s, .03 * s), (0, 0)], cv, T, legs=hy * .55, n=3)
+    # the ragged ends and top
+    n = 2 if T.i < 2 else 1
+    for sx in (-1, 1):
+        for j in range(2 if T.i < 2 else 1):
+            ck.rock(g, (sx * (wx + s * .08), -hy * .35 + j * hy * .8, (j - .5) * hz * .7 * sx), (s * .26, hy * (.62 - .2 * j), hz * (.72 - .15 * j)), 90 + k * 7 + j + sx, F['broken'], n=n, square=.45, rough=.45)
+    for j in range(3 if T.i < 2 else 2):
+        ck.rock(g, (wx * (-.6 + .6 * j), hy * .9, hz * (.25 - .25 * j)), (wx * .36, hy * (.22 + .1 * ((j + k) % 2)), hz * .7), 130 + k * 5 + j, F['broken' if j % 2 else 'rigstone'], n=1, square=.4, rough=.45)
     if k % 3 == 1:
-        ck.rock(g, (hx * .3, s * .75, 0), (s * .24, s * .55, s * .24), 80 + k, F['rigstone'], n=1, square=.9, rough=.12)
-    ck.rock(g, (-hx * .8, hy * .6, hz * .7), (s * .32, s * .3, s * .3), 90 + k, F['broken'], n=1, square=.4, rough=.4)
+        box(g, hx * .1, hx * .5, hy * .8, s * 1.2, -s * .2, s * .2, st, None, bevel=0, cell=0)
+        ck.rock(g, (hx * .3, s * 1.22, 0), (s * .24, s * .14, s * .24), 80 + k, F['broken'], n=1, square=.5, rough=.4)
     return g
 
 
