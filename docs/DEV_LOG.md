@@ -1,3 +1,15 @@
+## 2026-11-10 — Claude: the Glaive's intro, Crescent Return (owner request, part 2 of 3)
+
+- Branch `claude/glaive-polish` (part 1 merged at `ea8d69a8`).
+- **The owner:** "create a very well animated intro" (with the design, the moves and the chips).
+- **The intro** (Core `NativeGlaiveIntro.cs`, new; `NativeGlaiveMotion.Intro`; docs/GLAIVE.md "The intro"): `glaive-crescent`, the class's own entrance (a Glaive pilot plays it unless they pick another; open to everyone, pickable in the Locker). 7 s, the name at 5.2 s: the thrown ring streaks through the dark stage and ricochets off two pylons; the pilot drops in and catches it high in the air (slow motion), whirls as it falls and lands in a crouch; flings it up to orbit twice, carving a circle of light into the floor while the stage powers up; catches it and cuts one big forehand that leaves a crescent of light hanging; the hero hold with the ring upright beside the face. Its bed is the 150 bpm signal-spin sting.
+- **Staging** (Runtime): `NativeIntros` (the pilot as a Glaive, the ring drawn in the hand only between catches), `NativeDogMalletPresentation.GlaiveIntro` (the ring arm keyed on the model), `NativeGlaivePresentation.GlaiveIntroRing` (the ring in flight), `NativeVisualBodyPresentation`; registered in `NativeIntroRules`, `NativeEntranceDirector`, `NativeLocker`, `NativeProfileUI`, `NativeLockerUI` (the Glaive's signature card).
+- **Shipped early, then fixed:** the intro's first commit (`a6a9cf3f`) went out with part 1's merge and build (revision `639298852578867296`): it was committed on the branch while that release ran its suite, and the release script merged the branch's tip. It compiled and had been seen working in the Editor, but the full suite then failed on shared on the entrance counts (EntranceDirectorChecks, IntroHoldChecks, LockerChecks), fixed here. The release script now refuses to push when the branch gains commits during its suite.
+- **Rules:** none changed. **Animation impact:** presentation only.
+- **Checks:** CoreTests `--glaive` (5344, with the intro: its rules and staging pins, the ring's path meeting the pylons and both catches, its orbit, no jump over 45 m/s, the arm's keys within reach, above the floor and under 75 m/s), the full suite, the Unity compile, the Editor build checks.
+- **Seen in the Editor:** the whole intro in a match (the ricochets, the drop and catch, the landing, the orbit and its floor circle, the cut's crescent, the hero under the name card).
+- **Not seen / not done:** an account saving the pick (the account server may not know `glaive-crescent` yet: a saved pick could fall back to the default, which is this entrance for a Glaive anyway); played by a person; the chips (part 3).
+
 ## 2026-11-10 — Claude: the Glaive redesigned (the tri-crescent) and its moves reworked (owner request, part 1 of 3)
 
 - Branch `claude/glaive-polish`, on shared `bb85ff31`.
