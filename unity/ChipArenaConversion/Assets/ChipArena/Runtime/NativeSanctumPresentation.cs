@@ -18,6 +18,9 @@ namespace ChipArena.UnityConversion
     ///    beams are on above the low tier (ArenaPresentation.AdvancedBeams).
     ///  - The eight practical slots each frame (NativeLighting.PickedLights): the chandeliers, the censer, the holy fire, the
     ///    gates' lanterns and the candles nearest the eye, lighting the stone and the pilots (NativeLighting.ActorLights).
+    ///  - The stage art (docs/arenas/STAGE-ART.md): with the stage bank ChipArenaStageSanctum, NativeStageArtDraw draws the modelled
+    ///    hall, its furniture and its rigs (posed by Core NativeSanctumArt from the same rig state) in place of the kit's and the
+    ///    rig's boxes and the dressed blocks; without it everything above draws as before. The glass and the effects stay.
     /// </summary>
     public sealed class NativeSanctumDraw : MonoBehaviour
     {
@@ -27,6 +30,12 @@ namespace ChipArena.UnityConversion
         private Batch[] kit=Array.Empty<Batch>();private readonly Batch[] rig={new Batch{Shadow=true},new Batch{Shadow=true},new Batch{Shadow=true},new Batch(),new Batch(),new Batch()};
         private ContentMap built;private NativeSanctumRig rigBuilder;private NativeSanctumKit kitParts;private Mesh[] sectors=Array.Empty<Mesh>();
         private NativeFxDraw fxDraw;private readonly NativeSanctumFx fx=new NativeSanctumFx();
+        private NativeStageArtDraw art;private readonly NativeStageArtPose artPose=new NativeStageArtPose();
+        /// <summary>The stage art drew last frame (the kit's and the rig's boxes did not).</summary>
+        public bool ArtDrawn{get;private set;}
+        // The art's rig slots that cast shadows: the chandeliers, the censer, the bell, the gates, the baskets, the banners (not the
+        // chains, candles, ropes or the lanterns' glass).
+        private static bool ArtCasts(int slot)=>slot!=NativeSanctumArt.Chain&&slot!=NativeSanctumArt.PullRope&&!(slot>=NativeSanctumArt.Candles&&slot<NativeSanctumArt.Gate)&&!(slot>=NativeSanctumArt.Lanterns&&slot<NativeSanctumArt.Fire);
         private static readonly int SizeId=Shader.PropertyToID("_BlockSize"),RestId=Shader.PropertyToID("_BlockRest"),ColorId=Shader.PropertyToID("_BlockColor"),LookId=Shader.PropertyToID("_BlockLook");
         /// <summary>The frame's volumetric beam list (null: the effects' billboards).</summary>
         public NativeBeamList Beams;
@@ -47,7 +56,8 @@ namespace ChipArena.UnityConversion
         /// behind the loading screen). Nothing is drawn.</summary>
         public bool Prepare(NativeArena arena)
         {
-            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null||!NativeSanctumLooks.Active(map.id))return false;if(ReferenceEquals(map,built))return true;
+            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null||!NativeSanctumLooks.Active(map.id))return false;
+            if(art==null)art=gameObject.AddComponent<NativeStageArtDraw>();art.Prepare(map,NativeSanctumArt.Slots,ArtCasts);if(ReferenceEquals(map,built))return true;
             built=map;
             try
             {
@@ -63,8 +73,9 @@ namespace ChipArena.UnityConversion
         {
             Draws=Instances=0;if(!Prepare(arena))return;var map=arena.Map;var match=arena.Match;int round=NativeStructureFx.RoundIndex(match.Set,match.Round);
             foreach(var m in sectors)Graphics.DrawMesh(m,Matrix4x4.identity,glassLit,NativeSceneryBuilder.BackdropLayer,null,0,null,ShadowCastingMode.Off,true);
-            foreach(var b in kit)Draw(b,instancing);
-            if(rigBuilder!=null){rigBuilder.Build(map.hazards,round,match.Phase,match.FightAt,now,render);Fill(rigBuilder.Parts);foreach(var b in rig)Draw(b,instancing);}
+            if(rigBuilder!=null)rigBuilder.Build(map.hazards,round,match.Phase,match.FightAt,now,render);
+            ArtDrawn=false;if(art!=null&&art.Ready){NativeSanctumArt.Pose(rigBuilder,map.hazards,render,artPose);ArtDrawn=art.Render(arena,camera,low,artPose);}
+            if(!ArtDrawn){foreach(var b in kit)Draw(b,instancing);if(rigBuilder!=null){Fill(rigBuilder.Parts);foreach(var b in rig)Draw(b,instancing);}}
             Effects(arena,round,now,render,camera,quality,low);LowKey(low);
         }
         // The low tier draws no shadows, so the moon key would reach every face inside the shut hall: there it stands at a share

@@ -35,7 +35,12 @@ namespace ChipArena.UnityConversion
         public double CenserX,CenserY,CenserZ,CenserSpeed,CenserGlow,Bell,Gate;public int Lamp;
         /// <summary>The fire baskets' coals: x, y, z, heat (0 banked .. 1 white), per basket (three a curtain).</summary>
         public readonly double[] Baskets=new double[24*4];public int BasketCount;
-        private static readonly int[] Sides={-1,1};private static readonly double[] BannerX={12.0,18.0,24.0};
+        /// <summary>For the stage art's poses (Core NativeSanctumArt): each chandelier's time since its fall (or its hoist's share),
+        /// the censer's drawn angle (rad, with its tremble), its rope's length and whether its pull rope holds it; each shutter's
+        /// closure and lantern colour and each burner's heat, in the hazards' order.</summary>
+        public readonly double[] Age=new double[Chandeliers];public double CenserAngle,CenserRope;public bool CenserHeld;
+        public const int MaxGates=4,MaxFires=4;public readonly double[] GateClosure=new double[MaxGates],FireHeat=new double[MaxFires];public readonly int[] GateLamp=new int[MaxGates];public int GateCount,FireCount;
+        private static readonly int[] Sides={-1,1};
         public NativeSanctumRig(NativeFactoryKit.Looks looks){Parts=new NativeFactoryKit.Writer(Capacity,false,looks);}
         private void Add(double x,double y,double z,double hx,double hy,double hz,FactoryQ q,int kind,bool shadow=true,int color=-1,double window=1)=>Parts.Add(x,y,z,hx,hy,hz,q,kind,shadow,color,window);
         private void Box(double x0,double x1,double y0,double y1,double z0,double z1,int kind,bool shadow=true,int color=-1,double window=1)=>Parts.Box(Math.Min(x0,x1),Math.Max(x0,x1),Math.Min(y0,y1),Math.Max(y0,y1),Math.Min(z0,z1),Math.Max(z0,z1),kind,shadow,color,window);
@@ -45,7 +50,7 @@ namespace ChipArena.UnityConversion
 
         public void Build(MapHazard[] hazards,int round,NativePhase phase,double fightAt,double now,double render)
         {
-            Parts.Clear();BasketCount=0;CenserGlow=Bell=Gate=0;double clock=NativeFactoryHazards.Clock(phase,fightAt,now);bool gate=false;
+            Parts.Clear();BasketCount=0;CenserGlow=Bell=Gate=0;GateCount=FireCount=0;double clock=NativeFactoryHazards.Clock(phase,fightAt,now);bool gate=false;
             for(int i=0;i<(hazards?.Length??0);i++)
             {
                 var h=hazards[i];if(h==null)continue;
@@ -77,16 +82,27 @@ namespace ChipArena.UnityConversion
                         case NativeFactoryHazards.Hoisting:phase=4;y=st.LoadY;sway=.01*Math.Sin(clock*2.1);since=(st.LoadY-floor)/Math.Max(.1,rest-floor);break;
                     }
                 }
-                Chandelier(k,x,y-slip,zz,sway,phase,floor,since,render);
+                Age[k]=since;Chandelier(k,x,y-slip,zz,sway,phase,floor,since,render);
             }
         }
+        /// <summary>Chandelier k's candle i (shared with the stage art's models, docs/arenas/STAGE-ART.md): its angle round the hoop,
+        /// its height, whether it still stands once the chandelier lies fallen, and where it lies if not (the angle and radius about
+        /// the zone's centre; it lies along the turn sa x 1.7) and whether it gutters there.</summary>
+        public static void Candle(int k,int i,out double a,out double tall,out bool stands,out double sa,out double sr,out bool glows)
+        {
+            a=2*Math.PI*(i+.5)/ChandelierCandles;double h=NativeSanctumLooks.Hash(k,i,17);tall=.16+.1*NativeSanctumLooks.Hash(k,i,3);stands=h<.35;
+            sa=a+(h-.5)*2.2;sr=Hoop+.4+1.3*h;glows=h<.55;
+        }
+        /// <summary>The hoop's radius, and how a fallen chandelier lies: turned .11 rad about a level axis at its own angle.</summary>
+        public const double Hoop=1.4;
+        public static FactoryQ DownTilt(int k){double ta=(NativeSanctumLooks.Hash(k,9,2)-.5)*2.4;return FactoryQ.Axis(Math.Cos(ta),0,Math.Sin(ta),.11);}
         private void Chandelier(int k,double x,double y,double z,double sway,int phase,double floor,double age,double render)
         {
-            int I=NativeSanctumLooks.Iron,G=NativeSanctumLooks.Gold,W=NativeSanctumLooks.Wax,C=NativeSanctumLooks.Chain;double R=1.4;bool down=phase==3,falling=phase==2;
+            int I=NativeSanctumLooks.Iron,G=NativeSanctumLooks.Gold,W=NativeSanctumLooks.Wax,C=NativeSanctumLooks.Chain;double R=Hoop;bool down=phase==3,falling=phase==2;
             // the pendulum: every part turns about the chain's anchor by the sway (about z: it swings across the nave's axis)
             // fallen, the ring lies askew on its crushed crown (about the ring's own centre, inside the landed load's box)
             var q=FactoryQ.Axis(0,0,1,sway);double px=x,py=Anchor;
-            if(down){double ta=(NativeSanctumLooks.Hash(k,9,2)-.5)*2.4;q=FactoryQ.Axis(Math.Cos(ta),0,Math.Sin(ta),.11);py=y+.3;}
+            if(down){q=DownTilt(k);py=y+.3;}
             void P(double lx,double ly,double lz,out double wx,out double wy,out double wz){q.Rotate(lx-px,ly-py,lz-z,out double ox,out double oy,out double oz);wx=px+ox;wy=py+oy;wz=z+oz;}
             void Part(double lx,double ly,double lz,double hx,double hy,double hz,FactoryQ r,int kind,bool shadow=true,int color=-1,double window=1){P(lx,ly,lz,out double wx,out double wy,out double wz);Add(wx,wy,wz,hx,hy,hz,q*r,kind,shadow,color,window);}
             void Seg(double ax,double ay,double az,double bx,double by,double bz,double t,int kind,bool shadow=true){P(ax,ay,az,out double x0,out double y0,out double z0);P(bx,by,bz,out double x1,out double y1,out double z1);Bar(x0,y0,z0,x1,y1,z1,t,kind,shadow);}
@@ -97,12 +113,12 @@ namespace ChipArena.UnityConversion
             int n=NativeSanctumRig.ChandelierCandles;
             for(int i=0;i<n;i++)
             {
-                double a=2*Math.PI*(i+.5)/n,cx=x+Math.Cos(a)*R,cz=z+Math.Sin(a)*R;Part(cx,y+.2,cz,.09,.02,.09,FactoryQ.Axis(0,1,0,a),I,false);
+                Candle(k,i,out double a,out double tall,out bool stands,out double sa,out double sr,out bool glows);double cx=x+Math.Cos(a)*R,cz=z+Math.Sin(a)*R;Part(cx,y+.2,cz,.09,.02,.09,FactoryQ.Axis(0,1,0,a),I,false);
                 // after the fall a few candles stand, most lie scattered round the ring
-                double h=NativeSanctumLooks.Hash(k,i,17);bool standing=!down||h<.35;double tall=.16+.1*NativeSanctumLooks.Hash(k,i,3);
+                bool standing=!down||stands;
                 int o=(k*n+i)*4;
                 if(standing){Part(cx,y+.22+tall/2,cz,.035,tall/2,.035,FactoryQ.Identity,W,false);P(cx,y+.24+tall,cz,out Wicks[o],out Wicks[o+1],out Wicks[o+2]);Wicks[o+3]=down?Math.Max(0,1-age/3.0):falling?.55:phase==4?Math.Min(1,age*1.4):1;}
-                else{double sa=a+(h-.5)*2.2,sr=R+.4+1.3*h;double lx=x+Math.Cos(sa)*sr,lz=z+Math.Sin(sa)*sr;Add(lx,floor+.04,lz,.035,.035,tall/2,FactoryQ.Axis(0,1,0,sa*1.7),W,false);Wicks[o]=lx;Wicks[o+1]=floor+.06;Wicks[o+2]=lz;Wicks[o+3]=h<.55?Math.Max(0,.8-age/4.0):0;}
+                else{double lx=x+Math.Cos(sa)*sr,lz=z+Math.Sin(sa)*sr;Add(lx,floor+.04,lz,.035,.035,tall/2,FactoryQ.Axis(0,1,0,sa*1.7),W,false);Wicks[o]=lx;Wicks[o+1]=floor+.06;Wicks[o+2]=lz;Wicks[o+3]=glows?Math.Max(0,.8-age/4.0):0;}
             }
             for(int i=0;i<4;i++)
             {
@@ -132,7 +148,7 @@ namespace ChipArena.UnityConversion
             // drawn back: it trembles at its pull rope through the warning
             double tremble=warn?.01*Math.Sin(clock*31)*(.4+st.Warn):0;ang+=tremble;
             double glow=parked?.35:warn?.35+.65*st.Warn:1;CenserGlow=glow;CenserX=x;CenserY=y;CenserZ=z;
-            double py=NativeSanctumLooks.CenserPivotY,L=py-h.a.y;
+            double py=NativeSanctumLooks.CenserPivotY,L=py-h.a.y;CenserAngle=ang;CenserRope=L;CenserHeld=parked||warn;
             var q=FactoryQ.Axis(1,0,0,-ang);
             void P(double ly,out double wx,out double wy,out double wz){q.Rotate(0,ly,0,out double ox,out double oy,out double oz);wx=x+ox;wy=py-L*Math.Cos(ang)+oy;wz=Math.Sin(ang)*L+oz;}
             void Part(double ly,double hx,double hy,double hz,FactoryQ r,int kind,bool shadow=true,double window=1){P(ly,out double wx,out double wy,out double wz);Add(wx,wy,wz,hx,hy,hz,q*r,kind,shadow,-1,window);}
@@ -157,7 +173,7 @@ namespace ChipArena.UnityConversion
         public static double Heat(in NativeHazardState s)=>s.Phase==NativeHazardPhase.Warn?.25+.55*s.Level:s.Phase==NativeHazardPhase.Active?1:s.Phase==NativeHazardPhase.Clear?.2+.6*s.Level:.12;
         private void FireBaskets(MapHazard h,in NativeHazardState s,double time)
         {
-            int I=NativeSanctumLooks.Iron,C=NativeSanctumLooks.Coal,Ch=NativeSanctumLooks.Chain;double heat=Heat(s);double soffit=NativeSanctumLooks.Gallery-.4;
+            int I=NativeSanctumLooks.Iron,C=NativeSanctumLooks.Coal,Ch=NativeSanctumLooks.Chain;double heat=Heat(s);double soffit=NativeSanctumLooks.Gallery-.4;if(FireCount<MaxFires)FireHeat[FireCount++]=heat;
             foreach(var z in h.zones??Array.Empty<MapVolume>())
             {
                 double x=z.center.x,z0=z.center.z-z.size.z/2,z1=z.center.z+z.size.z/2;
@@ -204,17 +220,21 @@ namespace ChipArena.UnityConversion
             for(int e=0;e<2;e++){double z=e==0?z0-.12:z1+.12;Box(x-.09,x+.09,bottom,top+tall+.2,z-.06,z+.06,I);}Box(x-.12,x+.12,top+tall+.2,top+tall+.45,z0-.2,z1+.2,I);
             int lamp=s.Phase==NativeHazardPhase.Warn?(NativeFactoryRig.Strobe(time,2.5)?0xFF2A18:0x2A0806):s.Phase==NativeHazardPhase.Danger||s.Phase==NativeHazardPhase.Active?0xFF2A18:s.Phase==NativeHazardPhase.Clear?0xC04018:0x3A1208;
             foreach(int side in Sides)for(int e=0;e<2;e++){double z=e==0?z0-.12:z1+.12;Box(x+side*.1,x+side*.3,top-.6,top-.3,z-.1,z+.1,G,false,lamp);}
-            Lamp=lamp;
+            Lamp=lamp;if(GateCount<MaxGates){GateClosure[GateCount]=c;GateLamp[GateCount]=lamp;GateCount++;}
         }
 
         // ---------------- ambient ----------------
+        /// <summary>A banner's stir (rad about z) by the render clock, the arcade pier it hangs from (x magnitude) and the side.</summary>
+        public static double BannerSway(double t,double px,int sz)=>.035*Math.Sin(t*.6+px*.7+sz)+.015*Math.Sin(t*1.7+px);
+        /// <summary>Where the banners hang: the arcade piers (x magnitude), their pivots' height and their reach from the pier.</summary>
+        public static readonly double[] BannerPiers={12.0,18.0,24.0};public const double BannerTop=15.4,BannerZ=5.3,BannerReach=.85;
         /// <summary>The nave's banners: crimson on the west half, blue on the east, one on each arcade pier's nave face, stirring.</summary>
         private void Banners(double t)
         {
-            foreach(int s in Sides)foreach(double px in BannerX)foreach(int sz in Sides)
+            foreach(int s in Sides)foreach(double px in BannerPiers)foreach(int sz in Sides)
             {
-                double x=s*px,z0=sz*5.3,face=-sz;int cloth=s<0?NativeSanctumLooks.ClothRed:NativeSanctumLooks.ClothBlue,G=NativeSanctumLooks.ClothGold,I=NativeSanctumLooks.Iron;
-                double ang=.035*Math.Sin(t*.6+px*.7+sz)+.015*Math.Sin(t*1.7+px);var q=FactoryQ.Axis(0,0,1,ang);double top=15.4,len=5.6,zc=z0+face*.85;
+                double x=s*px,z0=sz*BannerZ,face=-sz;int cloth=s<0?NativeSanctumLooks.ClothRed:NativeSanctumLooks.ClothBlue,G=NativeSanctumLooks.ClothGold,I=NativeSanctumLooks.Iron;
+                double ang=BannerSway(t,px,sz);var q=FactoryQ.Axis(0,0,1,ang);double top=BannerTop,len=5.6,zc=z0+face*BannerReach;
                 Box(x-.05,x+.05,top+.05,top+.15,z0,z0+face*1.7,I);
                 void Part(double ly,double hy,double dz,double hz,int kind){q.Rotate(0,ly,0,out double ox,out double oy,out double oz);Add(x+ox,top+oy,zc+dz+oz,.012,hy,hz,q,kind,true);}
                 Part(-len/2,len/2,0,.7,cloth);Part(-len/2,len/2-.1,0,.6,cloth);Part(-.12,.06,0,.74,G);Part(-len+.08,.08,0,.72,G);

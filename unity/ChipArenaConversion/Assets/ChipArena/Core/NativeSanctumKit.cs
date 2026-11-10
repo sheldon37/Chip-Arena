@@ -25,19 +25,24 @@ namespace ChipArena.UnityConversion
     {
         public const byte Attached=0,Overhead=1;
         public readonly NativeFactoryKit.Writer Parts;public readonly List<byte> Role=new List<byte>();
+        /// <summary>Per part: the family that made it (the builder: "pier", "lancet", "pew", "candle", ...) and the block it dresses
+        /// (null for the overhead structure and the floor's marks). The stage art's layout export reads them (docs/arenas/STAGE-ART.md);
+        /// nothing draws by them.</summary>
+        public readonly List<string> Family=new List<string>(),Owner=new List<string>();public readonly List<int> Kind=new List<int>();private string family="",owner;
         /// <summary>Candle flames: x, y, z (the wick), size (m), seed (0..1), per candle.</summary>
         public readonly List<double> Candles=new List<double>();
         /// <summary>Warm light sources: x, y, z, range (m), linear r, g, b times intensity, per source.</summary>
         public readonly List<double> Lights=new List<double>();
         private byte role;
         private NativeSanctumKit(NativeFactoryKit.Looks looks){Parts=new NativeFactoryKit.Writer(4096,true,looks);}
-        private void Add(double x,double y,double z,double hx,double hy,double hz,FactoryQ q,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Add(x,y,z,hx,hy,hz,q,kind,shadow,color,window);if(Parts.Count>n)Role.Add(role);}
+        private void Add(double x,double y,double z,double hx,double hy,double hz,FactoryQ q,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Add(x,y,z,hx,hy,hz,q,kind,shadow,color,window);if(Parts.Count>n)Mark(kind);}
+        private void Mark(int kind){Role.Add(role);Family.Add(family);Owner.Add(owner);Kind.Add(kind);}
         private void Box(double x0,double x1,double y0,double y1,double z0,double z1,int kind,bool shadow=true,int color=-1,double window=1)
         {if(x1<x0){var t=x0;x0=x1;x1=t;}if(y1<y0){var t=y0;y0=y1;y1=t;}if(z1<z0){var t=z0;z0=z1;z1=t;}Add((x0+x1)/2,(y0+y1)/2,(z0+z1)/2,(x1-x0)/2,(y1-y0)/2,(z1-z0)/2,FactoryQ.Identity,kind,shadow,color,window);}
-        private void Bar(double x0,double y0,double z0,double x1,double y1,double z1,double tx,double ty,int kind,bool shadow=true,int color=-1){int n=Parts.Count;Parts.Bar(x0,y0,z0,x1,y1,z1,tx,ty,kind,shadow,color);if(Parts.Count>n)Role.Add(role);}
+        private void Bar(double x0,double y0,double z0,double x1,double y1,double z1,double tx,double ty,int kind,bool shadow=true,int color=-1){int n=Parts.Count;Parts.Bar(x0,y0,z0,x1,y1,z1,tx,ty,kind,shadow,color);if(Parts.Count>n)Mark(kind);}
         private void Candle(double x,double y,double z,double tall,double r=.035,bool lit=true)
         {
-            Box(x-r,x+r,y,y+tall,z-r,z+r,NativeSanctumLooks.Wax,false);if(!lit)return;
+            var was=family;family="candle";Box(x-r,x+r,y,y+tall,z-r,z+r,NativeSanctumLooks.Wax,false);family=was;if(!lit)return;
             double s=NativeSanctumLooks.Hash((int)Math.Round(x*97),(int)Math.Round(y*89),(int)Math.Round(z*83));Candles.Add(x);Candles.Add(y+tall+.01);Candles.Add(z);Candles.Add(.11+.05*s);Candles.Add(s);
         }
         private void Light(double x,double y,double z,double range,int hex,double intensity){Lights.Add(x);Lights.Add(y);Lights.Add(z);Lights.Add(range);Lights.Add(NativeSceneryBuilder.Channel(hex,16)*intensity);Lights.Add(NativeSceneryBuilder.Channel(hex,8)*intensity);Lights.Add(NativeSceneryBuilder.Channel(hex,0)*intensity);}
@@ -55,7 +60,7 @@ namespace ChipArena.UnityConversion
             var flights=new Dictionary<string,List<B>>();
             foreach(var b in all)
             {
-                string id=b.Id;
+                string id=b.Id;k.owner=id;k.family=Starts(id,"sanctum-")?id.Substring(8):id;
                 if(Starts(id,"sanctum-pier-cross-"))k.Pier(b,true);
                 else if(Starts(id,"sanctum-pier-"))k.Pier(b,false);
                 else if(Starts(id,"sanctum-column-"))k.LoftColumn(b);
@@ -74,9 +79,9 @@ namespace ChipArena.UnityConversion
                 else if(id=="sanctum-crypt-shrine")k.Shrine(b);
                 else if(Starts(id,"sanctum-crypt-wall-"))k.CryptWall(b);
             }
-            foreach(var f in flights)k.Flight(f.Value);
-            k.FloorMarks(map);k.Tracery();k.CryptVault();
-            k.role=Overhead;k.Vaults();k.Belfry();k.Organ();k.Retable();k.Sigils();
+            foreach(var f in flights){k.owner=null;k.family="flight";k.Flight(f.Value);}
+            k.owner=null;k.family="floor-marks";k.FloorMarks(map);k.family="tracery";k.Tracery();k.family="crypt-vault";k.CryptVault();
+            k.role=Overhead;k.family="vaults";k.Vaults();k.family="belfry";k.Belfry();k.family="organ";k.Organ();k.family="retable";k.Retable();k.family="sigils";k.Sigils();
             return k;
         }
 
@@ -85,6 +90,7 @@ namespace ChipArena.UnityConversion
         // the springing; a crossing pier (1.8 m) eight shafts. Candles stand on some plinths.
         private void Pier(B b,bool crossing)
         {
+            family="pier";
             double cx=b.Cx,cz=b.Cz,hx=b.Sx/2,hz=b.Sz/2,spring=crossing?12.0:13.0,r=.13;int S=NativeSanctumLooks.Stone,T=NativeSanctumLooks.Trim;
             Box(cx-hx-.12,cx+hx+.12,0,.34,cz-hz-.12,cz+hz+.12,T);Box(cx-hx-.06,cx+hx+.06,.34,.5,cz-hz-.06,cz+hz+.06,T);
             void Shaft(double sx,double sz){Bar(sx,.5,sz,sx,spring,sz,2*r,2*r,S);Box(sx-r-.05,sx+r+.05,spring,spring+.28,sz-r-.05,sz+r+.05,T);Box(sx-r-.04,sx+r+.04,.5,.62,sz-r-.04,sz+r+.04,T);}
@@ -98,6 +104,7 @@ namespace ChipArena.UnityConversion
         }
         private void LoftColumn(B b)
         {
+            family="loft-column";
             double cx=b.Cx,cz=b.Cz,hx=b.Sx/2,hz=b.Sz/2;int T=NativeSanctumLooks.Trim;
             Box(cx-hx-.1,cx+hx+.1,0,.3,cz-hz-.1,cz+hz+.1,T);Box(cx-hx-.14,cx+hx+.14,b.Y1-.42,b.Y1,cz-hz-.14,cz+hz+.14,T);
         }
@@ -108,6 +115,7 @@ namespace ChipArena.UnityConversion
         // spandrels, rings and spokes inside the opening (the glass itself is the scenery's).
         private void Wall(B b)
         {
+            family="wall";
             int S=NativeSanctumLooks.Stone,T=NativeSanctumLooks.Trim;bool alongX=b.Sx>=b.Sz;double inner;bool aisle=b.Id.Contains("-aisle-"),armEnd=b.Id.Contains("-armend-"),end=b.Id.Contains("-end-");
             if(alongX){inner=b.Z0>0?b.Z0:b.Z1;double s=b.Z0>0?-1:1;
                 if(b.Y0<.1){Box(b.X0,b.X1,0,.45,inner,inner+s*.12,T);Box(b.X0,b.X1,.45,.55,inner,inner+s*.06,T);}
@@ -123,6 +131,10 @@ namespace ChipArena.UnityConversion
         // Blind arcading along a wall face (u along x when `alongX`): dark pointed niches 1.1 m wide between colonnettes, every 1.5 m.
         private void Arcade(double u0,double u1,double face,double s,double y0,double y1,bool alongX)
         {
+            var was=family;family="arcade";try{ArcadeParts(u0,u1,face,s,y0,y1,alongX);}finally{family=was;}
+        }
+        private void ArcadeParts(double u0,double u1,double face,double s,double y0,double y1,bool alongX)
+        {
             int D=NativeSanctumLooks.StoneDark,T=NativeSanctumLooks.Trim;int n=(int)Math.Floor((u1-u0-.3)/1.5);if(n<1)return;double pitch=(u1-u0)/n,head=y1-.55;
             void P(double a0,double a1,double b0,double b1,double d,int kind,bool shadow){if(alongX)Box(a0,a1,b0,b1,face,face+s*d,kind,shadow);else Box(face,face+s*d,b0,b1,a0,a1,kind,shadow);}
             for(int i=0;i<n;i++)
@@ -136,7 +148,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Each window's tracery, once (called from the overhead pass: the openings are the windows' own boxes).</summary>
         private void Tracery()
         {
-            foreach(var w in NativeSanctumLooks.Windows){if(w.Rose)Rose(w);else Lancet(w);}
+            foreach(var w in NativeSanctumLooks.Windows){family=w.Rose?"rose":"lancet";if(w.Rose)Rose(w);else Lancet(w);}
         }
         // Local frame: u along the wall (unit (ux, uz)), the inward normal (nx, nz); the tracery plane sits .18 m outward of the
         // wall's middle, the glass's plane .3 m (scenery).
@@ -185,6 +197,7 @@ namespace ChipArena.UnityConversion
         // ---------------- galleries, balustrades, stairs ----------------
         private void Gallery(B b,List<B> all)
         {
+            family="gallery";
             int T=NativeSanctumLooks.Trim,O=NativeSanctumLooks.OakDark;
             // the soffit's oak beams across the narrow way, every 1.5 m, and the fascia over every open edge
             bool alongX=b.Sx>=b.Sz;
@@ -199,6 +212,7 @@ namespace ChipArena.UnityConversion
         // candles along the coping in twos and threes.
         private void Balustrade(B b,List<B> all)
         {
+            family="balustrade";
             int T=NativeSanctumLooks.Trim,D=NativeSanctumLooks.StoneDark;bool alongX=b.Sx>=b.Sz;double len=alongX?b.Sx:b.Sz,t=alongX?b.Sz:b.Sx;
             Box(b.X0-.05,b.X1+.05,b.Y1-.08,b.Y1+.04,b.Z0-.05,b.Z1+.05,T);Box(b.X0-.04,b.X1+.04,b.Y0,b.Y0+.12,b.Z0-.04,b.Z1+.04,T);
             int n=Math.Max(1,(int)Math.Round(len/.75));double step=len/n;
@@ -232,6 +246,7 @@ namespace ChipArena.UnityConversion
         // A pew faces east (+x, the high altar): its back on the west, seat and kneeler, carved ends with a poppy-head finial.
         private void Pew(B b)
         {
+            family="pew";
             int O=NativeSanctumLooks.Oak,D=NativeSanctumLooks.OakDark;double x0=b.X0,x1=b.X1,z0=b.Z0,z1=b.Z1;
             Box(x0,x0+.07,.4,b.Y1+.02,z0+.06,z1-.06,D);Box(x0-.02,x0+.09,b.Y1-.05,b.Y1+.05,z0+.06,z1-.06,O);
             Box(x0+.07,x0+.52,.42,.48,z0+.06,z1-.06,O);Box(x1-.25,x1-.02,.08,.2,z0+.1,z1-.1,D);
@@ -240,6 +255,7 @@ namespace ChipArena.UnityConversion
         // The west screen (A, blind arcading, a statue niche each bay) and the reredos (B, gilded panels round a sunburst).
         private void Screen(B b)
         {
+            family="screen";
             bool east=b.X0>0;double face=east?b.X0:b.X1,s=east?-1:1;int S=NativeSanctumLooks.Stone,T=NativeSanctumLooks.Trim,G=NativeSanctumLooks.Gold,D=NativeSanctumLooks.StoneDark;
             int bays=5;double bay=b.Sz/bays;
             for(int i=0;i<bays;i++)
@@ -255,6 +271,7 @@ namespace ChipArena.UnityConversion
         }
         private void Altar(B b)
         {
+            family="altar";
             bool east=b.X0>0;int M=NativeSanctumLooks.Marble,G=NativeSanctumLooks.Gold,V=NativeSanctumLooks.Velvet,Br=NativeSanctumLooks.Brass;double front=east?b.X0:b.X1,s=east?-1:1,back=east?b.X1:b.X0;
             Box(b.X0-.06,b.X1+.06,b.Y1-.06,b.Y1+.02,b.Z0-.06,b.Z1+.06,M);
             Box(front,front+s*.025,.08,b.Y1-.12,b.Z0+.1,b.Z1-.1,east?G:V,false);Box(front,front+s*.03,.08,.16,b.Z0+.1,b.Z1-.1,G,false);
@@ -265,6 +282,7 @@ namespace ChipArena.UnityConversion
         }
         private void Confessional(B b)
         {
+            family="confessional";
             int O=NativeSanctumLooks.Oak,D=NativeSanctumLooks.OakDark,V=NativeSanctumLooks.Velvet,G=NativeSanctumLooks.Gold;
             bool nfacing=b.Z0>0;double face=nfacing?b.Z0:b.Z1,s=nfacing?-1:1;double w=b.Sx/3;
             for(int i=0;i<3;i++){double x0=b.X0+w*i+.06,x1=x0+w-.12;Box(x0,x1,.1,2.15,face,face+s*.04,i==1?D:V,false);Box(x0-.04,x1+.04,2.15,2.3,face,face+s*.08,O);}
@@ -274,6 +292,7 @@ namespace ChipArena.UnityConversion
         // A saint in relief on its plinth's aisle face: robe, hands at a candle, hooded head, the gilded halo behind.
         private void Saint(B b)
         {
+            family="saint";
             // the face toward the aisle's middle (|z| about 9)
             double mid=Math.Sign(b.Cz)*9.1,face=Math.Abs(b.Z0-mid)<Math.Abs(b.Z1-mid)?b.Z0:b.Z1,s=face==b.Z0?-1:1,cu=b.Cx;
             int St=NativeSanctumLooks.Statue,G=NativeSanctumLooks.Gold,T=NativeSanctumLooks.Trim;
@@ -287,6 +306,7 @@ namespace ChipArena.UnityConversion
         // colonnettes, pinnacles over the canopy's corners; candles on the chest's ledge.
         private void FounderTomb(B b)
         {
+            family="founder-tomb";
             int St=NativeSanctumLooks.Statue,T=NativeSanctumLooks.Trim,D=NativeSanctumLooks.StoneDark,G=NativeSanctumLooks.Gold,R=NativeSanctumLooks.ClothRed;
             double y1=b.Y1;Box(b.X0-.08,b.X1+.08,0,.25,b.Z0-.08,b.Z1+.08,T);Box(b.X0-.05,b.X1+.05,1.05,1.18,b.Z0-.05,b.Z1+.05,T);
             foreach(int sz in new[]{-1,1}){double f=sz<0?b.Z0:b.Z1;for(int i=0;i<3;i++){double x=b.X0+b.Sx*(i+.5)/3;Add(x,.62,f+sz*.012,.22,.26,.012,FactoryQ.Identity,i==1?G:R,false);}
@@ -299,6 +319,7 @@ namespace ChipArena.UnityConversion
         }
         private void LowTomb(B b)
         {
+            family="low-tomb";
             int St=NativeSanctumLooks.Statue,T=NativeSanctumLooks.Trim,G=NativeSanctumLooks.Gold;bool alongX=b.Sx>=b.Sz;
             Box(b.X0-.05,b.X1+.05,b.Y0,b.Y0+.14,b.Z0-.05,b.Z1+.05,T);Box(b.X0-.04,b.X1+.04,b.Y1-.08,b.Y1+.02,b.Z0-.04,b.Z1+.04,T);
             // the effigy lying along the chest: head on a cushion, hands folded, a sword at its side
@@ -309,6 +330,7 @@ namespace ChipArena.UnityConversion
         }
         private void CryptPillar(B b)
         {
+            family="crypt-pillar";
             int T=NativeSanctumLooks.Trim;double cx=b.Cx,cz=b.Cz,h=b.Sx/2;
             Box(cx-h-.12,cx+h+.12,b.Y0,b.Y0+.3,cz-h-.12,cz+h+.12,T);Box(cx-h-.2,cx+h+.2,b.Y1-.45,b.Y1,cz-h-.2,cz+h+.2,T);
         }
@@ -328,6 +350,7 @@ namespace ChipArena.UnityConversion
         }
         private void Shrine(B b)
         {
+            family="shrine";
             int G=NativeSanctumLooks.Gold,Gl=NativeSanctumLooks.Glow,M=NativeSanctumLooks.Marble,V=NativeSanctumLooks.Velvet;double y=b.Y1;
             Box(b.X0-.06,b.X1+.06,b.Y0,b.Y0+.2,b.Z0-.06,b.Z1+.06,M);Box(b.X0-.04,b.X1+.04,y-.12,y+.02,b.Z0-.04,b.Z1+.04,G);
             foreach(int sz in new[]{-1,1}){double f=sz<0?b.Z0:b.Z1;Box(b.X0+.25,b.X1-.25,.35+b.Y0,y-.4,f,f+sz*.02,V,false);for(int i=0;i<5;i++){double x=b.X0+.3+(b.Sx-.6)*i/4;Bar(x,b.Y0+.3,f+sz*.05,x,y-.2,f+sz*.05,.08,.08,G);}
@@ -338,6 +361,7 @@ namespace ChipArena.UnityConversion
         // The crypt's walls: niches with skulls and candles, a plinth.
         private void CryptWall(B b)
         {
+            family="crypt-wall";
             int D=NativeSanctumLooks.StoneDark,Bo=NativeSanctumLooks.Bone,T=NativeSanctumLooks.Trim;bool alongX=b.Sx>=b.Sz;if((alongX?b.Sx:b.Sz)<1.2)return;
             double inner,s;if(alongX){inner=Math.Abs(b.Z0)<Math.Abs(b.Z1)?b.Z0:b.Z1;s=inner==b.Z0?-1:1;}else{inner=Math.Abs(b.X0)<Math.Abs(b.X1)?b.X0:b.X1;s=inner==b.X0?-1:1;}
             double from=alongX?b.X0:b.Z0,to=alongX?b.X1:b.Z1;int n=(int)((to-from)/1.6);
