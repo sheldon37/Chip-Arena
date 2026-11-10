@@ -181,7 +181,7 @@ namespace ChipArena.UnityConversion
         }
         private static void Schematics(List<ContentMap> maps)
         {
-            Check(maps.Count==16&&maps.Any(m=>m.id==NativePoolroomsGenerator.ArenaId)&&maps.Any(m=>m.id==NativeBackroomsGenerator.ArenaId)&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
+            Check(maps.Count==17&&maps.Any(m=>m.id==NativePoolroomsGenerator.ArenaId)&&maps.Any(m=>m.id==NativeBackroomsGenerator.ArenaId)&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
             foreach(var m in maps)
             {
                 var s=NativeStageSchematic.Build(m);Check(s!=null&&s.Count>0&&s.Count<=NativeStageSchematic.Max,m.id+" scans ("+(s?.Count??0)+")");
@@ -282,7 +282,7 @@ namespace ChipArena.UnityConversion
             // The preload covers every lazily built stage kit SourceWorld draws.
             var world=Body(R("Assets/ChipArena/Runtime/NativeSourcePresentation.cs"),"private void SourceWorld(NativeArena arena)");var pre=R("Assets/ChipArena/Runtime/NativeStagePrewarm.cs");var warm=Body(pre,"public int PrewarmStage(NativeArena arena)");
             var needs=new Dictionary<string,string[]>{["FactoryScenery"]=new[]{"factoryStage.Prepare(arena)"},["BrickfallScenery"]=new[]{"EnsureBrickfall()"},["CyberCityScenery"]=new[]{"EnsureCyberCity()","MetroRebind(arena)"},
-                ["ExpeditionCityScenery"]=new[]{"EnsureExpeditionCity()","ExpeditionCityBuild(map)"},["WardZeroScenery"]=new[]{"EnsureWardZero()","WardZeroBuild(map)"},["IronworksScenery"]=new[]{"EnsureIronworks()","IronworksBuild(map)"},["StationScenery"]=new[]{"EnsureStation()","StationBuild(map)"},["StationBossScenery"]=new[]{"EnsureStationBoss()"},["IronworksBossScenery"]=new[]{"EnsureIronworksBoss()"},["BackroomsBossScenery"]=new[]{"BackroomsBossPrewarm(arena)"},["TrainingScenery"]=new[]{"TrainingPrepare(arena)"},["NewStageScenery"]=new[]{"PrewarmNewStage(arena)"},["HazardKitWorld"]=new[]{"EnsureHazardKit()"}};
+                ["ExpeditionCityScenery"]=new[]{"EnsureExpeditionCity()","ExpeditionCityBuild(map)"},["WardZeroScenery"]=new[]{"EnsureWardZero()","WardZeroBuild(map)"},["IronworksScenery"]=new[]{"EnsureIronworks()","IronworksBuild(map)"},["StationScenery"]=new[]{"EnsureStation()","StationBuild(map)"},["StationBossScenery"]=new[]{"EnsureStationBoss()"},["IronworksBossScenery"]=new[]{"EnsureIronworksBoss()"},["BackroomsBossScenery"]=new[]{"BackroomsBossPrewarm(arena)"},["TrainingScenery"]=new[]{"TrainingPrepare(arena)"},["NewStageScenery"]=new[]{"PrewarmNewStage(arena)"},["CausewayScenery"]=new[]{"PrewarmCauseway(arena)"},["HazardKitWorld"]=new[]{"EnsureHazardKit()"}};
             foreach(Match call in Regex.Matches(world,@"\b([A-Z][A-Za-z]+(Scenery|KitWorld))\(arena\)"))
             {string n=call.Groups[1].Value;Check(needs.ContainsKey(n),"SourceWorld's "+n+" has a prewarm entry");foreach(var tok in needs[n])Check(warm.Contains(tok),n+" prewarms through "+tok);}
             var fac=Body(R("Assets/ChipArena/Runtime/NativeFactoryPresentation.cs"),"public void Render(NativeArena arena,float now,Camera camera,float quality,bool low,bool instancing,NativeDustCoat coat)");var prep=Body(pre,"public bool Prepare(NativeArena arena)");
