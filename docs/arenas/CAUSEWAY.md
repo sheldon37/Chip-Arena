@@ -95,6 +95,119 @@ and whether prediction should apply it.
   and gust.
 - **Low tier:** the beams fall back to billboards; atmosphere counts drop to a third; telegraphs are unchanged.
 
+## Stage art (2026-11-10)
+
+2026-11-10 · Claude (stage art, phase 2) · branch `claude/art-causeway` from `claude/stage-art` (`d0c8df39`). Owner: "Are the new
+maps voxel? ... move away from box built ... more high quality designs and models. Make use of unity engine." The recipe is
+`docs/arenas/STAGE-ART.md`. **Implemented on the branch and seen in the shared Editor; not merged, not released.**
+
+With the stage bank `ChipArenaStageCauseway` (git-ignored, from the builder's Drive zip) the Causeway is no longer drawn from
+boxes: `NativeStageArtDraw` draws the bridge modelled in Blender in place of every map block's box, the kit's 4175 boxes, the
+rig's boxes and the box-built backdrop sectors. The gameplay geometry (blocks, colliders, nav, hazards and their timings, spawns)
+is untouched and every rules check is unchanged; without the bank everything draws exactly as before. The effects
+(`NativeCausewayFx`: the star field, nebulae, the telegraphs, the comet's coma and tails, the wind) and the planet with its rings
+are as they were.
+
+**Modelled** (an original design; `tools/stages/causeway_*.py`, the west half sculpted block by block and turned half round for
+the east, as the map is point symmetric):
+- *The span*: flagstone decks with the comet's star-silver channel, the lane's glyph tiles, gold and silver compass roses ringed
+  with runes; corbelled wings with a moulded fascia; the keel's flanks as an arcade of stepped buttress piers carrying the wings
+  on curved corbels, a blind pointed arch with a moulded archivolt and a starred roundel in each bay, rune friezes, a string
+  course, the hull turning in under it with carved drops; **the Breach** as chiselled fracture faces eaten back under the deck's
+  lip with cold light in the cracks; the floating **keystone** broken to a point that holds a crystal in gold claws.
+- *Balustrades*: moulded plinths and rounded copings, blind pointed arcading on both faces, posts with pyramid caps and crystal
+  finials; an end that meets nothing stands broken in toothed courses with rubble at its foot (never taller than a hand).
+- *Star-metal pylons*: stepped feet, tapering eight-sided shafts with silver arrises and a lit crystal seam down each face, gold
+  bands, a rune, a flared head with four claws under the floating crystal, the banner's rod.
+- *Guardians* (wardens and watchers): moulded plinths with a rune band, robed figures with folds, a gold belt, a deep hood dark
+  within, a halo, wings folded down the back, arms raised to the star they hold. *Braziers*: bronze bowls on three curved legs
+  over a bed of crystal. *Fallen columns*: fluted drums with an astragal and a broken end; a column's stump on its base.
+- *The towers*: buttresses stepping the whole height from the foot to the crown, blind arches below the floor line and rune-lit
+  lancets above it, corbel tables under the crown's overhang; the front's great arch and doors (arches sprung above head height
+  inside the square openings, moulded jambs, lit keystones, rune pilasters); the star altar as a stele with a niche, a gold
+  star round a crystal and engaged columns; the crown's moulded edge, ceiling ribs and rune ring; the gable with buttress
+  pilasters and pinnacles, the window's arch and sill, a rose of lit petals, blind lancets; the broken spire as an eight-sided
+  turret with three storeys of lit lancets and a ragged top; the lantern gates with their lintels on corbelled half arches and
+  bronze lanterns of warm glass.
+- *Walkways, balconies, stairs*: arcaded beams; balcony slabs on flying brackets from the keel; solid flights with rounded
+  nosings; the floating treads with a keel and a cold line under each.
+- *The void* (in place of `NativeCausewayScenery`'s Near, Landmark and Far sectors, at the same places): the towers' stumps in
+  battered tiers down to a broken underside, masonry breaking away below and a violet crystal heart in a star-metal cradle; twin
+  hanging arches under each half span with hangers and turned pendants tipped with crystal; lantern chains under the walkways;
+  the rubble under the Breach; the eight lost spans as lengths of the same bridge, both ends broken; the shrine (a colonnade under
+  a broken dome on a stepped platform) and the colossus (a great guardian sunk to its waist beside its planted sword) on floating
+  rocks; columns on small islands; the asteroid belt, far islands and obelisks.
+- *The rig* (`Core/NativeCausewayArt.cs`): the falling stars as burning stones (molten within a scorched crust) and their shards;
+  the comet's nucleus of dark ice with bright facets; the lane's glyph tiles lit in amber then cold blue by the rig's own level;
+  the pylons' banners (three lengths of cloth, a gold hem, a rune) standing out in the solar wind; the floating crystals; the
+  Shattered Arch's nine carved voussoirs; the crowns' drifting ruins as torn lengths of wall with lancets and a rune band; the
+  near asteroids.
+
+**How it moves.** `NativeCausewayRig` now tags each box part it builds with the art's slot (`Slot`, `Level`, `Kind`, set beside the
+very `Parts.Add`; the parts themselves are unchanged). `NativeCausewayArt.Pose` places each tagged part's model at that part's own
+centre and turn (a unit crystal, rock or shard scaled by its half extents), so the hazards' models stand exactly where the
+simulation's states put the boxes. No rules, timing, collider or network change.
+
+**Materials** (`ChipArena/StageLit`, unchanged): flagstone joints on the decks and walls, plain carved trim, star-metal, silver,
+gold and bronze kept at half metal or less (a full metal shows only the black sky), baked dirt and occlusion (eased: an open-air
+stage), emission above 1 on runes, crystals and lanterns for the bloom. The rougher fine surfaces (ashlar, carved grain) were
+tried and dropped: under the anime style's stepped light a practical lamp breaks them into blotches.
+
+**Low graphics tier**: the bank's Low tier (the same art, about a fifth of the triangles), not the box kit.
+
+Rebuild (from `unity/ChipArenaConversion`; about 12 s):
+```
+dotnet run --project Tests/CoreTests.csproj -c Release -- --stage-layout causeway LAYOUT.json
+blender --background --factory-startup --python tools/stages/causeway_art.py -- --layout LAYOUT.json --out Assets/LocalAssets
+```
+(`--preview DIR [--views a,b] [--preview-tier N]` renders the baked stage and the rig's props in Blender; `--tiers`, `--no-ao`,
+`--no-void`, `--static-only` for quick looks.)
+
+Files: `tools/stages/causeway_art.py` (the span, balustrades, pylons, the scene, the bank), `causeway_parts.py` (the sculpted
+blocks), `causeway_props.py` (the rig), `causeway_void.py` (the void), `causeway_kit.py` (finishes and helpers);
+`Core/NativeCausewayArt.cs`; the rig's tags in `Core/NativeCausewayKit.cs`; the hooks in `Runtime/NativeCausewayPresentation.cs`;
+`Tests/CausewayArtChecks.cs` (`--causeway-art`, also in the full run). Shared foundation, small and general: the bank's line in
+`NativeStageArt.Banks`, `NativeStageArtPose.AddScaled` (a draw scaled along the prop's own axes), one line each in
+`StageArtLayout.Write` and `Tests/Program.cs`.
+
+Checks (`--causeway-art`): the slots; at every 0.05 s of two rounds every draw is its tagged part's (place, turn, size), a stone
+for every falling star, the arch's nine, both crowns' ruins, sixteen asteroids, every banner and crystal; deterministic,
+allocation free; the layout; the map's point symmetry; the wiring and the bank-absent fallback; and, where the bank is on the
+machine: every block covered, every rig slot in three tiers, the chunks' tiers, the budget, the probe clear of blocks, the
+play-space rule (within 2 m over a floor the art keeps within .25 m of a block) and the spawns.
+
+**The bank** (2026-11-10): 19,752,651 bytes (budget: about 20 MB), 486 props, deterministic (the same layout builds the same
+bytes). Static: 38 map chunks in three tiers and 8 far chunks in one; Fine 161,628 triangles (196,231 vertices), Mid 68,548
+(104,204), Low with the far void 53,652 (88,158). Rig: 23 props; 4,214 / 3,606 / 1,338 triangles by tier; up to 187 rig draws a
+frame (the pose buffer holds 256).
+
+**Performance** (shared Editor, the span from plaza A toward the Breach, 10 s, one idle bot): High tier, the box kit 574 frames,
+mean 17.45 ms, p95 20.87 ms; the art 1041 frames, mean 9.61 ms, p95 11.13 ms (a second run 889 frames, 11.27 / 12.74 ms). Low
+graphics tier: the box kit 655 frames, mean 15.30 ms, p95 17.95 ms; the art 1259 frames, mean 7.94 ms, p95 9.09 ms. (Other agents
+shared the machine during the runs; the direction is clear, the exact figures are not.)
+
+**Seen in the shared Editor** (a match, one idle bot, god mode, the game's camera placed by `maincam`): before (the box kit,
+`d0c8df39`) and after, the same ten views: wide from the south-west, the span from plaza A, the Breach and the keystone, the north
+walkway and the keel's flank, tower A's front, crown A with the gable and spire, a warden and a pylon, under the span, the lost
+spans, the planet over the span. The hazards on the art: a falling star's telegraph, impact flash, shockwave and thrown shards
+(dark and burning); the solar wind lifting the pylons' banners; the comet lane's glyphs waking amber then cold with the comet
+far down the bridge's axis. The Low graphics tier: the overview and the altar close. Editor build checks
+(`PrototypeBuild.Validate`) pass on `a17c0cf4`, including "native map causeway: 8 spawn floors, capsule settling".
+
+**What still draws as boxes with the bank**: nothing of the stage's own (every block, kit part, rig part and backdrop sector has
+its model). Without the bank: everything, as before.
+
+**Falls short / not seen**:
+- The burning stone itself in its 0.55 s fall and the comet's pass across the camera were not caught in a frame (their models are
+  checked against the rig's parts at every 0.05 s, and their shards, flash and lane were seen).
+- Near a practical lamp the walls' flagstone grain still mottles a little under the anime style's stepped light (the tower's
+  front by the plaza braziers); the fix belongs in the shared shader (less micro-normal under the style), not in this stage.
+- The towers' stumps and the hanging arches under the span are plainer than the deck (seen only from the walkways and in falls);
+  a fallen drum's broken end reads as a rounded boss from straight on; the colossus stands sunk rather than kneels.
+- The Low tier's scripted views drifted (only the overview and the hall were framed); the bank-absent run in the Editor is the
+  "before" capture; no native Windows build, multiplayer guest or killcam run on the art.
+- No shadows from the practical lights (as STAGE-ART.md says for every stage).
+
 ## Music
 
 The owner's song **Celestial Bell Motif** (Suno, 2026-11-10; 219.8 s) plays under the key `causeway-theme`

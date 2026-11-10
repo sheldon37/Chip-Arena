@@ -156,6 +156,16 @@ Rebuild: `--stage-layout sanctum LAYOUT.json`, then
 
 Numbers, seen, and what still falls short: see "Seen in the Editor" below.
 
+### Starfall Causeway (2026-11-10)
+
+Done on `claude/art-causeway`: `docs/arenas/CAUSEWAY.md` "Stage art" (what is modelled, the bank, the numbers, what was seen).
+What it adds to the recipe: a stage whose rig is all transforms can tag its rig's box parts with the art's slots and pose every
+model from the tagged part itself (`NativeCausewayRig.Slot`, `NativeCausewayArt.Pose`), with `NativeStageArtPose.AddScaled` for
+unit props; a point-symmetric map is sculpted once and turned half round; a backdrop too far for a finer tier goes in named
+chunks with one tier (`static/<name>/2`); an open-air stage eases its baked occlusion and keeps its metals at half metal or
+less; under the anime style the calm fine surfaces (flagstones, none) hold up near practical lights where ashlar and carved
+grain break into blotches.
+
 ## 8. Recipe for the next stage (Substation 128, the Emporium, the Causeway)
 
 1. Kit lists: in the stage's Core kit add Family/Owner/Kind as `NativeSanctumKit` does; move any value the models must share with
