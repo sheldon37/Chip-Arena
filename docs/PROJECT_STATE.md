@@ -1,3 +1,5 @@
+2026-11-10 Claude (`claude/new-stages`): four new stages in Random: Starfall Causeway, Substation 128, Top Dog Emporium, the Hollow Sanctum; vents can push (pushMode, for Astra). Songs come from the owner (keys in docs/arenas/STAGE-MUSIC-PROMPTS.md).
+
 2026-11-10 Claude (`claude/pvp-lobby-ui`): the PvP room and Create Room redesigned; weapon abilities are picked in the room and reach the host by themselves. Four new stages are being built on their own branches.
 
 2026-11-10 Claude (`claude/ads-killcam`): every gun zooms when aimed; a spread cone with a reactive crosshair (rules for Astra); the killcam no longer stops when other bodies are on the floor.
