@@ -23,6 +23,7 @@
 - **Checks:** CoreTests `--glaive-chips` (333), `--glaive` (5344), the full suite, the Unity compile, the Editor's build checks (the Glaive simulation's chip rules among them, 58).
 - **Seen in the Editor:** all ten picks in a real draft (the ricochets with their count, the cut and seal, the twin rings, the shatter, the field lines, the boomerang, the vortex, the long loop, the skips, the dome and the cut-down shot).
 - **Not seen / not done:** the chips' effects in a match (checked by the rules' numbers and the simulation, not on screen); Quick Catch's speed is not in a guest's movement prediction (small corrections for 1.5 s, as with the class's other host-side movement); played by a person.
+- **Released:** merged into shared at `5155011f` and synced to the builder; the test channel published revision `639298914339548112`.
 
 ## 2026-11-10 — Claude: the Glaive's intro, Crescent Return (owner request, part 2 of 3)
 
