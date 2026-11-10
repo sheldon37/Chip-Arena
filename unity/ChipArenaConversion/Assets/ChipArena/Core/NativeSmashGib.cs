@@ -213,7 +213,9 @@ namespace ChipArena.UnityConversion
         /// from the belly, the blood gushing out all round. The same replicated record, so every peer bursts it alike.</summary>
         public static SmashPlan Burst(Vector3 body,float yaw,int seed)
         {
-            var p=new SmashPlan{Cause=SmashCause.Burst,Seed=Mix(seed),Body=body,Yaw=yaw,Travel=Vector3.UnitY,Speed=9,Floor=body.Y-.85f,Top=body.Y+BodyTop,Contact=0,Throw=7.5f,Carry=6};
+            // Thrown out at a burst belly's pace (owner 2026-11-09: "make the gib effects more realistic"): the limbs land a metre or three off,
+            // not up on the walls.
+            var p=new SmashPlan{Cause=SmashCause.Burst,Seed=Mix(seed),Body=body,Yaw=yaw,Travel=Vector3.UnitY,Speed=9,Floor=body.Y-.85f,Top=body.Y+BodyTop,Contact=0,Throw=4.4f,Carry=4};
             p.Crushed=1;p.Crush[0]=CapturedRig.Spine;return p;
         }
         /// <summary>What a burst body wears of the killer's kill effect (the record keeps it, NativeTopDog.PopKind; owner 2026-11-09: "use the kill
@@ -330,8 +332,8 @@ namespace ChipArena.UnityConversion
             {
                 // Out from the belly every way, a little up, each part tumbling hard.
                 float b0=H(p.Seed,part,50),b1=H(p.Seed,part,51),b2=H(p.Seed,part,54),b3=H(p.Seed,part,55);var away=CapturedRig.Unit(at-(p.Body-Vector3.UnitY*.15f),Vector3.UnitY);
-                velocity=CapturedRig.Unit(away+Vector3.UnitY*.55f,Vector3.UnitY)*(p.Throw*(.75f+.5f*b0))+Vector3.UnitY*(1.5f+2*b1);
-                spin=new Vector3(b1-.5f,b2-.5f,b3-.5f)*28;return;
+                velocity=CapturedRig.Unit(away+Vector3.UnitY*.35f,Vector3.UnitY)*(p.Throw*(.75f+.5f*b0))+Vector3.UnitY*(1+1.4f*b1);
+                spin=new Vector3(b1-.5f,b2-.5f,b3-.5f)*20;return;
             }
             Vector3 up=Vector3.UnitY,t=p.Travel,side=CapturedRig.Unit(Vector3.Cross(up,t),Vector3.UnitX);
             float h0=H(p.Seed,part,50),h1=H(p.Seed,part,51),h2=H(p.Seed,0,52),h3=H(p.Seed,0,53);bool train=p.Cause==SmashCause.Train;
@@ -374,7 +376,7 @@ namespace ChipArena.UnityConversion
             {
                 // A ring of gushes out of the middle, the way the parts go.
                 float a=(float)(k*Math.PI*2/Gushes+(h0-.5f)*.5f);var dir=new Vector3((float)Math.Sin(a),.35f+.4f*h1,(float)Math.Cos(a));dir=CapturedRig.Unit(dir,Vector3.UnitY);
-                at=.006f*k;origin=p.Body-up*.1f+dir*.15f;normal=dir;along=CapturedRig.Unit(new Vector3(dir.X,0,dir.Z),Vector3.UnitX);carry=dir*(4+3*h2)+up*1.5f;kind="crush";severity=1;return true;
+                at=.006f*k;origin=p.Body-up*.1f+dir*.15f;normal=dir;along=CapturedRig.Unit(new Vector3(dir.X,0,dir.Z),Vector3.UnitX);carry=dir*(2.6f+2*h2)+up*1.1f;kind="crush";severity=1;return true;
             }
             var t=p.Travel;var side=CapturedRig.Unit(Vector3.Cross(up,t),Vector3.UnitX);bool train=p.Cause==SmashCause.Train;
             if(!train&&k>=4)return false;

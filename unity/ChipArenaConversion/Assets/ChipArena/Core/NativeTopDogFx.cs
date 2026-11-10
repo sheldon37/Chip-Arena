@@ -384,7 +384,18 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i<Count(14,q,low);i++){var d=Vector3.Normalize(RandomDir(seed,i*3)+dir*.8f+Up*.5f);float t=age;var p=at+d*(2.2f*t*(.5f+.5f*R(seed,i+4)))-Up*(4.5f*t*t);if(age<.9f)s.Drop(p,d*.12f-Up*(.08f*t),DogCream*1.1f,.9f*(1-age/.9f),.05f+.04f*R(seed,i+8),age/.9f,seed+i);}
                     break;
                 }
-                case NativeTopDog.HitGulp:DogPuff(s,at,age,.4f,Count(4,q,low),.18f,new Vector3(.9f,.85f,.75f),.4f,seed,.1f);if(age<.25f)for(int i=0;i<Count(4,q,low);i++)s.Sprite(false,at+RandomDir(seed,i)*(.15f+.4f*age),DogStar*(1.5f*(1-age/.25f)),.05f,Sparkle);break;
+                case NativeTopDog.HitGulp:
+                {
+                    // A gulp (owner 2026-11-09: "realistically putting hot dogs in the players mouth"): no smoke or stars over the head, a few drips
+                    // of juice off the lips (the record's mouth is the head's middle; the lips a little down and toward the Top Dog).
+                    if(age>.6f)break;var lips=at-Up*.1f-dir*.1f;
+                    for(int i=0;i<Count(3,q,low);i++)
+                    {
+                        float t=age-.05f*i,u=t/.55f;if(t<0||u>1)continue;var off=new Vector3(R(seed,i)-.5f,0,R(seed,i+5)-.5f)*.04f;
+                        s.Drop(lips+off-Up*(2.5f*t*t),-Up*(.04f+.06f*u),DogJuice,.9f*(1-u),.012f,u,seed+i);
+                    }
+                    break;
+                }
                 case NativeTopDog.HitSnap:Sparks(s,at,age,.5f,Count(10,q,low),3.5f,new Vector3(.9f,.35f,.2f),seed,7,.03f);DogBurst(s,at,age,.4f,DogWhite,seed+1,q,low,6);break;
                 case NativeTopDog.HitPop:DogPop(s,at,age,seed,q,low,gore);break;
                 case NativeTopDog.HitPiano:
@@ -409,7 +420,7 @@ namespace ChipArena.UnityConversion
         // NativeSmashGib.Burst, its severed limbs, torn chunks and blood); here only a short wet flash, a mist of blood bursting out and
         // sinking, and flecks of blood, bits of sausage and a little mustard flung out every way. With gore off, the toon pop: a flash, a
         // ring, a shower of confetti and condiment, and a puff.
-        private static readonly Vector3 DogBlood=new Vector3(.3f,.015f,.025f),DogMist=new Vector3(.46f,.05f,.05f),DogMeat=new Vector3(.74f,.36f,.28f);
+        private static readonly Vector3 DogBlood=new Vector3(.3f,.015f,.025f),DogMist=new Vector3(.46f,.05f,.05f),DogMeat=new Vector3(.74f,.36f,.28f),DogJuice=new Vector3(.62f,.3f,.16f);
         private static void DogPop(ITechniqueFxSink s,Vector3 at,float age,long seed,float q,bool low,bool gore=false)
         {
             if(gore)
