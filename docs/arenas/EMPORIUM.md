@@ -157,8 +157,18 @@ Modelled (tools/stages/emporium_art.py, emporium_fit.py, emporium_props.py on em
   glazed mint counters with chrome beads, a pink top with a chrome edge, lathed stools with foot rings, roller grills with real
   rollers, a sneeze guard on posts, a cake dome; soda fountains with taps and levers; arched jukeboxes; the pump dispensers as
   giant pump bottles; kiosks, fridges with tube handles, prep tables; the bun bridges (a frankfurter deck with a round belly,
-  rounded bun kerbs with sesame, one ribbon of mustard) and their flights; the balconies (plank floor, soffit downlights, a
-  glazed fascia with a neon tube on standoffs, lathed fluted columns, chrome rails with panels); stairs with chrome nosings.
+  rounded bun kerbs with sesame, one ribbon of mustard); the balconies (plank floor, soffit downlights, a glazed fascia with a
+  neon tube on standoffs, lathed fluted columns, chrome rails with panels).
+- **The stairs** (the four bridge flights and the four balcony stairs, `emporium_fit.flight`, each on its step blocks): tread
+  slabs that overhang their risers and the open sides, with a chrome bullnose, a chrome edge and a dark grip strip; risers in
+  their own colour (mustard on the bridges, teal on the balcony stairs); a cut stringer on each open side whose stepped top
+  follows the treads (frankfurter red on the bridges, pink on the balcony stairs) over a chrome bead, and under it a panel
+  (the bun with its sesame; glazed teal tile); a tubular chrome handrail on each open side (up from the first tread, along the
+  flight .78 m over the nosings, down to the last, on slender posts with floor roses) and a wall rail on brackets where a
+  balcony stair runs along the hall's wall; the flight's back under its landing framed in chrome over a rubber kick strip.
+  The handrails are thin props without colliders (as the stools are): a pilot and a shot pass them.
+- The jukeboxes' cabinets also have a speaker grille on each side (cloth behind chrome louvres in a chrome surround) and a
+  service panel on the back.
 - **The breakable blocks** (block models, drawn where the block stands, sooted with damage): slatted bun crates (one mesh for
   the ten), staved pickle barrels with hoops, labels and a pickle (one mesh for the two).
 - **The rigs** (37 slots, Core `NativeEmporiumArt.Pose`, from the same replicated state and the same functions as
@@ -190,9 +200,9 @@ dotnet run --project Tests/CoreTests.csproj -c Release -- --stage-layout emporiu
 blender --background --factory-startup --python tools/stages/emporium_art.py -- --layout LAYOUT.json --out Assets/LocalAssets
 ```
 (`--preview DIR [--views a,b]` renders the Fine tier and the rig at a telling moment in Blender; `--tiers`, `--no-ao`,
-`--static-only` for quick looks.) The bank: `Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaStageEmporium.bytes`, 17511861 bytes
-(the budget is about 20 MB), 541 props. Static: 48 chunks; Fine 237,826 triangles (167,734 vertices), Mid 111,288 (87,052), Low
-61,328 (61,849). Rig: 37 parts; 14,166 / 7,893 / 3,928 triangles. Blocks: 1,794 / 1,540 / 626. The Low graphics tier draws the
+`--static-only` for quick looks.) The bank: `Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaStageEmporium.bytes`, 18238817 bytes
+(the budget is about 20 MB), 541 props. Static: 48 chunks; Fine 246,188 triangles (175,320 vertices), Mid 115,602 (91,330), Low
+63,698 (64,455). Rig: 37 parts; 14,166 / 7,893 / 3,928 triangles. Blocks: 1,794 / 1,540 / 626. The Low graphics tier draws the
 bank's Low tier (the same art without the smallest details), not the box kit.
 
 Checks: `dotnet run --project Tests/CoreTests.csproj -c Release -- --emporium-art` (`Tests/EmporiumArtChecks.cs`, also in the full
@@ -201,7 +211,8 @@ ways, the buns' squash, stretch and slam, the geysers, the hot griddles, the fla
 are lamps and drop shadows only; the draws fit the buffer, are deterministic and allocation free; the layout export; the wiring
 and the bank-absent fallback; the tile surface; and, where the bank is on the machine, the bank: every block covered, the crates
 and barrels and every rig slot in three tiers, the chunks' tiers, the budget, the play-space rule (below 2 m over the floor or a
-balcony the art keeps within .25 m of a block: 728 of 76,977 vertices over, the farthest .33 m) and the spawns. `--emporium`
+balcony the art keeps within .25 m of a block: 796 of 82,597 vertices over, the farthest .81 m, a handrail's bend over the
+first tread; the check allows 1 in 100, so 825 here: little room is left for more thin props) and the spawns. `--emporium`
 (13,328 checks) and `--stage-art` pass unchanged.
 
 Seen in the shared Editor (a match, one idle bot, the game's camera placed by `maincam`): before (the box kit, `d0c8df39`) and

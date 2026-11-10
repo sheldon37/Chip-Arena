@@ -125,60 +125,136 @@ def bridge(g, b, parts, T):
 
 
 def flight(g, blocks, T, bun):
-    """A flight of steps (each a map block from the floor to its tread): cream treads with chrome nosings, risers, the sides."""
+    """A flight of stairs on its step blocks (each a map block from the floor to its tread): tread slabs that overhang their
+    risers and the open sides, with a chrome bullnose and a dark grip strip; a cut stringer whose stepped top follows the treads
+    over a chrome bead, the side below it panelled (glazed tile on the balcony stairs, the bun with its sesame on the bridges');
+    a tubular chrome handrail on each open side (thin, over the treads' ends: a pilot passes it as he passes a stool) and a
+    wall rail on brackets where the flight runs along a wall."""
     blocks = sorted(blocks, key=lambda b: b['size'][1])
     along_x = blocks[0]['size'][0] < blocks[0]['size'][2]
-    a = 0 if along_x else 2
+    a, c = (0, 2) if along_x else (2, 0)
     up = 1 if blocks[-1]['pos'][a] > blocks[0]['pos'][a] else -1
-    side_col = 0xE9A85A if bun else 0x23A59B
-    riser = kmat('bun-top') if bun else kmat('teal')
-    sidef = mat('flight-%06x' % side_col, side_col, sk.DETAIL_NONE if bun else sk.DETAIL_TILE, smooth=.4 if bun else .75, dirt=.3, param=.2)
-    cream, chrome = kmat('cream'), kmat('chrome')
-    prev = 0.0
-    for b in blocks:
-        x0, x1, y0, y1, z0, z1 = ext(b)
-        g.face(((x0, y1, z0), (x1, y1, z0), (x1, y1, z1), (x0, y1, z1)), cream, Y)
-        if along_x:
-            xf = x0 if up > 0 else x1
-            g.face(((xf, prev, z0), (xf, prev, z1), (xf, y1, z1), (xf, y1, z0)), riser, (-up, 0, 0))
-            part_round(g, (xf, y1 - .025, z0), (xf, y1 - .025, z1), .025, chrome, (-up, 0, 0), Y, -90, 90, 3 if T.i == 0 else 2)
-            for z, n in ((z0, (0, 0, -1)), (z1, (0, 0, 1))):
-                g.face(((x0, 0, z), (x1, 0, z), (x1, y1, z), (x0, y1, z)), sidef, n)
-        else:
-            zf = z0 if up > 0 else z1
-            g.face(((x0, prev, zf), (x1, prev, zf), (x1, y1, zf), (x0, y1, zf)), riser, (0, 0, -up))
-            part_round(g, (x0, y1 - .025, zf), (x1, y1 - .025, zf), .025, chrome, (0, 0, -up), Y, -90, 90, 3 if T.i == 0 else 2)
-            for x, n in ((x0, (-1, 0, 0)), (x1, (1, 0, 0))):
-                g.face(((x, 0, z0), (x, 0, z1), (x, y1, z1), (x, y1, z0)), sidef, n)
-        prev = y1
-    # the far end's back (under the landing)
-    b = blocks[-1]
-    x0, x1, y0, y1, z0, z1 = ext(b)
-    if along_x:
-        xb = x1 if up > 0 else x0
-        g.face(((xb, 0, z0), (xb, 0, z1), (xb, y1, z1), (xb, y1, z0)), sidef, (up, 0, 0))
+    n = len(blocks)
+    d, r = blocks[0]['size'][a], blocks[0]['size'][1]
+    W = blocks[0]['size'][c]
+    uo, wc = blocks[0]['pos'][a] - up * d / 2, blocks[0]['pos'][c]
+    tops = [b['size'][1] for b in blocks]
+    H = tops[-1]
+
+    def P(u, y, w):
+        return (uo + up * u, y, wc + w) if along_x else (wc + w, y, uo + up * u)
+
+    def V(u, w, y=0.0):
+        return (up * u, y, w) if along_x else (w, y, up * u)
+    NU, NB = V(-1, 0), V(1, 0)
+    # a side is open unless a wall stands along it
+    opened = {}
+    for s in (-1, 1):
+        q = P(n * d / 2, 1.0, s * (W / 2 + .1))
+        opened[s] = not any(i.startswith('emporium-wall-') and abs(q[0] - b['pos'][0]) <= b['size'][0] / 2 and abs(q[2] - b['pos'][2]) <= b['size'][2] / 2 for i, b in BL.items())
+    cream, chrome, dark = kmat('cream'), kmat('chrome'), kmat('rubber')
+    if bun:
+        riser, string = kmat('mustard'), mat('flight-string-bun', 0xC4502C, smooth=.62, dirt=.25)
+        panel = mat('flight-e9a85a', 0xE9A85A, sk.DETAIL_NONE, smooth=.4, dirt=.3, param=.2)
     else:
-        zb = z1 if up > 0 else z0
-        g.face(((x0, 0, zb), (x1, 0, zb), (x1, y1, zb), (x0, y1, zb)), sidef, (0, 0, up))
-    # a chrome stringer bead along each side, from the foot to the landing
-    if T.i < 2:
-        lo, hi = blocks[0], blocks[-1]
+        riser, string = kmat('teal'), mat('flight-string', 0xFF6FAE, smooth=.7, dirt=.25)
+        panel = mat('flight-23a59b', 0x23A59B, sk.DETAIL_TILE, smooth=.75, dirt=.3, param=.2)
+    t, nose, ov, proud = .05, .035, .03, .018
+    rb = t / 2
+    S = 2 * r                                               # the stringer's depth under the line of the nosings
+
+    def yb(u):
+        return max(0.0, u / d * r + r - S)
+    k = (4, 3, 2)[T.i]
+    for i in range(n):
+        y, yp = tops[i], (tops[i - 1] if i else 0.0)
+        u0, u1 = i * d, (i + 1) * d
+        ua = u0 - nose + rb
+        w0 = -W / 2 - (ov if opened[-1] else 0)
+        w1 = W / 2 + (ov if opened[1] else 0)
+        # the tread: its top (a grip strip behind the nosing), the bullnose, the lip under it
+        if T.i == 0:
+            for (ca, cb, f) in ((ua, ua + .035, cream), (ua + .035, ua + .08, dark), (ua + .08, u1, cream)):
+                g.face((P(ca, y, w0), P(cb, y, w0), P(cb, y, w1), P(ca, y, w1)), f, Y)
+        else:
+            g.face((P(ua, y, w0), P(u1, y, w0), P(u1, y, w1), P(ua, y, w1)), cream, Y)
+        part_round(g, P(ua, y - rb, w0), P(ua, y - rb, w1), rb, chrome, NU, Y, -90, 90, k)
+        if T.i < 2:
+            g.face((P(ua, y - t, w0), P(u0, y - t, w0), P(u0, y - t, w1), P(ua, y - t, w1)), chrome, (0, -1, 0))
+        g.face((P(u0, yp, -W / 2), P(u0, yp, W / 2), P(u0, y - t, W / 2), P(u0, y - t, -W / 2)), riser, NU)
         for s in (-1, 1):
-            if along_x:
-                z = (lo['pos'][2] + s * lo['size'][2] / 2)
-                p0 = (lo['pos'][0] - up * lo['size'][0] / 2, lo['size'][1] - .2 + .06, z + s * .012)
-                p1 = (hi['pos'][0] + up * hi['size'][0] / 2, hi['size'][1] + .06, z + s * .012)
-            else:
-                x = (lo['pos'][0] + s * lo['size'][0] / 2)
-                p0 = (x + s * .012, lo['size'][1] - .2 + .06, lo['pos'][2] - up * lo['size'][2] / 2)
-                p1 = (x + s * .012, hi['size'][1] + .06, hi['pos'][2] + up * hi['size'][2] / 2)
-            sk.cylinder(g, p0, p1, .03, chrome, T.small)
-            # a band of colour under it, along the slope
-            band = kmat('mustard') if bun else kmat('pink')
-            n = (0, 0, s) if along_x else (s, 0, 0)
-            off = (0, 0, s * .004) if along_x else (s * .004, 0, 0)
-            q0, q1 = sk._add(p0, off, 1.0), sk._add(p1, off, 1.0)
-            g.face(((q0[0], q0[1] - .1, q0[2]), (q1[0], q1[1] - .1, q1[2]), (q1[0], q1[1] - .32, q1[2]), (q0[0], max(0.0, q0[1] - .32), q0[2])), band, n)
+            if not opened[s]:
+                continue
+            NS = V(0, s)
+            we, wp, ws = s * (W / 2 + ov), s * W / 2, s * (W / 2 + proud)
+            # the tread's end: a chrome edge, the bullnose's end, the overhang's underside
+            g.face((P(ua, y - t, we), P(u1, y - t, we), P(u1, y, we), P(ua, y, we)), chrome, NS)
+            arc = [P(ua - rb * math.cos(math.radians(-90 + 180 * j / k)), y - rb + rb * math.sin(math.radians(-90 + 180 * j / k)), we) for j in range(k + 1)]
+            g.face(arc, chrome, NS)
+            if T.i < 2:
+                g.face((P(u0, y - t, wp), P(u1, y - t, wp), P(u1, y - t, we), P(u0, y - t, we)), chrome, (0, -1, 0))
+            # the cut stringer under it (its top the tread, its foot the line of the bead), the step's edge, the panel below
+            g.face((P(u0, yb(u0), ws), P(u1, yb(u1), ws), P(u1, y - t, ws), P(u0, y - t, ws)), string, NS)
+            g.face((P(u0, max(yb(u0), yp - t), wp), P(u0, max(yb(u0), yp - t), ws), P(u0, y - t, ws), P(u0, y - t, wp)), string, NU)
+            if yb(u1) > 0:
+                pts = [P(u0, 0, wp), P(u1, 0, wp), P(u1, yb(u1), wp)] + ([P(u0, yb(u0), wp)] if yb(u0) > 0 else [])
+                g.face(pts, panel, NS)
+    # the back, under the landing
+    for (ya, yc) in ((0.0, H / 2), (H / 2, H)):
+        g.face((P(n * d, ya, -W / 2), P(n * d, ya, W / 2), P(n * d, yc, W / 2), P(n * d, yc, -W / 2)), panel, NB)
+    # ... framed: a chrome surround, the stringer's colour within it, a rubber kick strip at the floor
+    fy0, fy1 = .2, H - (.42 if bun else .5)
+    fr = [P(n * d + .004, (fy0 + fy1) / 2 + q, w) for w, q in rrect(W - .36, fy1 - fy0, .16, (3, 2, 1)[T.i])]
+    g.face(fr, string, NB)
+    sk.tube(g, fr, .026, chrome, (5, 4, 3)[T.i], closed=True)
+    if T.i < 2:
+        g.face((P(n * d + .012, 0, -W / 2), P(n * d + .012, 0, W / 2), P(n * d + .012, .1, W / 2), P(n * d + .012, .1, -W / 2)), dark, NB)
+        g.face((P(n * d, .1, -W / 2), P(n * d, .1, W / 2), P(n * d + .012, .1, W / 2), P(n * d + .012, .1, -W / 2)), dark, Y)
+    slope = sk._norm(V(d, 0, r))
+    hr = .78                                                # the handrail over the line of the nosings
+
+    def line(u):
+        return u / d * r + r + hr
+    for s in (-1, 1):
+        NS = V(0, s)
+        wp, ws = s * W / 2, s * (W / 2 + proud)
+        if opened[s]:
+            # the stringer's back edge, the bead along its foot
+            g.face((P(n * d, yb(n * d), wp), P(n * d, yb(n * d), ws), P(n * d, H - t, ws), P(n * d, H - t, wp)), string, NB)
+            perp = sk._cross(NS, slope)
+            if perp[1] > 0:
+                perp = (-perp[0], -perp[1], -perp[2])
+            part_round(g, P(d, 0, wp), P(n * d, yb(n * d), wp), .03, chrome, perp, NS, -90 if T.i < 2 else 0, 90 if T.i < 2 else 180, k + 1 if T.i < 2 else 2)
+            if bun and T.i == 0:
+                # the bun's sesame on the panel
+                for j in range(3, n):
+                    for q in range(1 + (j * 7 + (s > 0)) % 2):
+                        hu, hy = ((j * 37 + q * 53 + (11 if s > 0 else 0)) % 100) / 100, ((j * 61 + q * 29 + (7 if s > 0 else 0)) % 100) / 100
+                        u = (j + .15 + .7 * hu) * d
+                        e = [.026, .026, .026]
+                        e[c] = .01
+                        e[a] = .05
+                        ellipsoid(g, P(u, .12 + (yb(u) - .28) * hy, wp), e[0], e[1], e[2], kmat('sesame'), 5, 2)
+            # the handrail: one chrome tube up from the first tread, along the flight and down to the last, on slender posts
+            wr = s * (W / 2 - .05)
+            ua, ub = .1, (n - 1) * d + .1
+            sk.tube(g, [P(ua, tops[0] - .01, wr), P(ua, line(ua), wr), P(ub, line(ub), wr), P(ub, H - .01, wr)], .028, chrome, (5, 5, 4)[T.i], caps=False)
+            m = max(1, int(round((n - 1) / 5.5)))
+            posts = [int(round(j * (n - 1) / m)) for j in range(1, m)]
+            for j in posts:
+                u = j * d + .1
+                sk.cylinder(g, P(u, tops[j] - .01, wr), P(u, line(u), wr), .016, chrome, 4, caps=False)
+            if T.i == 0:
+                for j in [0] + posts + [n - 1]:
+                    lathe(g, [(.05, 0), (.05, .01), (.032, .022)], P(j * d + .1, tops[j], wr), chrome, 6)
+        elif T.i < 2:
+            # a wall rail on its brackets
+            wr = s * (W / 2 - .075)
+            ua, ub = .12, n * d - .12
+            sk.tube(g, [P(ua, line(ua) - .05, wp), P(ua, line(ua), wr), P(ub, line(ub), wr), P(ub, line(ub) - .05, wp)], .024, chrome, (6, 4)[T.i], caps=False)
+            for j in range(3, n - 1, 3):
+                u = (j + .5) * d
+                sk.cylinder(g, P(u, line(u) - .07, wp), P(u, line(u) - .01, wr), .012, chrome, 4, caps=False)
 
 
 def balcony(g, b, parts, T):
@@ -411,6 +487,25 @@ def jukebox(g, b, parts, T):
             u = fc.uc + s * (hw - .12)
             for v in (.38, 2.32):
                 lathe(g, [(.075, -.03), (.08, 0), (.075, .03)], fc.P(u, v, .03), chrome, 8, cap0=True, cap1=True)
+    # the cabinet's sides: a speaker grille (cloth behind chrome louvres in a chrome surround); its back: a service panel
+    cloth, steel_dark = mat('juke-cloth', 0xE9C27A, smooth=.25, dirt=.4), kmat('dark')
+    for fs in (Face(b, 0), Face(b, 1)):
+        ua, ub, va, vb = fs.u0 + .2, fs.u1 - .2, .36, spring - .2
+        fs.quad(g, ua, ub, va, vb, .004, cloth)
+        fs.frame(g, ua, ub, va, vb, .004, .03, chrome, T.small, .14, (3, 2, 1)[T.i])
+        if T.i < 2:
+            m = 7 if T.i == 0 else 4
+            for j in range(1, m):
+                fs.bead(g, ua + .03, ub - .03, va + (vb - va) * j / m, .02, chrome, .004, 3 if T.i == 0 else 2, .03)
+        fs.bead(g, fs.u0 + .06, fs.u1 - .06, spring + .02, .03, chrome, 0, 3 if T.i == 0 else 2, .035)
+        fs.bead(g, fs.u0 + .06, fs.u1 - .06, .14, .03, chrome, 0, 3 if T.i == 0 else 2, .035)
+    fk = Face(b, 2 if front == 3 else 3)
+    g.face([fk.P(u, v, 0) for u, v in outline], body, fk.N)
+    fk.quad(g, fk.u0 + .22, fk.u1 - .22, .3, spring - .3, .004, steel_dark)
+    fk.frame(g, fk.u0 + .22, fk.u1 - .22, .3, spring - .3, .004, .022, chrome, T.small, .08, (3, 2, 1)[T.i])
+    if T.i < 2:
+        for j in range(1, 5):
+            fk.bead(g, fk.u0 + .36, fk.u1 - .36, spring - .42 - .1 * j, .016, chrome, .004, 2, .025)
     for p in parts:
         name = kn(p)
         u, v, hu, hv, dd = span(fc, p)
