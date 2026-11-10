@@ -63,6 +63,9 @@ namespace ChipArena.UnityConversion
         private static bool[] armMuscles;
         private static bool[] ArmMuscles{get{if(armMuscles==null){var n=HumanTrait.MuscleName;armMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)armMuscles[i]=n[i].Contains("Shoulder")||n[i].Contains("Arm")||n[i].Contains("Forearm")||n[i].Contains("Hand")||n[i].Contains("Thumb")||n[i].Contains("Index")||n[i].Contains("Middle")||n[i].Contains("Ring")||n[i].Contains("Little");}return armMuscles;}}
         private const float RestEase=.18f;
+        // Each right arm muscle's left counterpart (shoulder, arm, forearm and hand; the fingers keep their grip), -1 elsewhere.
+        private static int[] armMirror;
+        private static int[] ArmMirror{get{if(armMirror==null){var n=HumanTrait.MuscleName;armMirror=new int[n.Length];for(int i=0;i<n.Length;i++){armMirror[i]=-1;string s=n[i];if(!s.StartsWith("Right ",System.StringComparison.Ordinal)||!(s.Contains("Shoulder")||s.Contains("Arm")||s.Contains("Hand")))continue;armMirror[i]=System.Array.IndexOf(n,"Left "+s.Substring(6));}}return armMirror;}}
         private static bool[] UpperMuscles{get{if(upperMuscles==null){var n=HumanTrait.MuscleName;upperMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)upperMuscles[i]=!(n[i].Contains("Leg")||n[i].Contains("Foot")||n[i].Contains("Toes"));}return upperMuscles;}}
         // The Whirlwind's legs (NativeVisualMotion.SpinLegs), as muscle offsets: the sit's thigh raise and knee bend, and a
         // step's (each leg's Upper Leg Front-Back, Lower Leg Stretch; muscles left, then right).
@@ -424,8 +427,10 @@ namespace ChipArena.UnityConversion
             var up=default(NativeVisualMotion.Upper);bool layered=covered&&NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready);
             // A long gun at rest, standing (Set.RestArms; owner 2026-11-10 "a resting pose (They're holding it downward)"): the arms
             // take the walk's low two-hand carry over the idle, eased; walking already carries it so, and a raise lays over it.
-            m.Rest=Mathf.MoveTowards(m.Rest,covered&&m.Set.RestArms!=null&&!pick.Locomotion&&pick.Clip==m.Set.Idle&&!(layered&&up.Raised)?1:0,dt/RestEase);
-            if(m.Rest>0&&VisualMotionBank.Clips.TryGetValue(m.Set.RestArms,out var restClip))
+            m.Rest=Mathf.MoveTowards(m.Rest,covered&&(m.Set.RestArms!=null||m.Set.RestMirror)&&!pick.Locomotion&&pick.Clip==m.Set.Idle&&!(layered&&up.Raised)?1:0,dt/RestEase);
+            // A pistol's arm hangs at the side as the free arm does (Set.RestMirror).
+            if(m.Rest>0&&m.Set.RestMirror){var mirror=ArmMirror;float rw=Ease(m.Rest);for(int i=0;i<mirror.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mirror[i]>=0){int k=NativeVisualMotionClips.Head+i,j=NativeVisualMotionClips.Head+mirror[i];m.Mix[k]+=(m.Mix[j]-m.Mix[k])*rw;}}
+            if(m.Rest>0&&m.Set.RestArms!=null&&VisualMotionBank.Clips.TryGetValue(m.Set.RestArms,out var restClip))
             {
                 System.Array.Clear(m.RestMix,0,m.RestMix.Length);NativeVisualMotionClips.Add(restClip,m.Set.RestArmsAt,1,m.RestMix);NativeVisualMotionClips.Finish(m.RestMix,1);
                 var arms=ArmMuscles;float rw=Ease(m.Rest);
