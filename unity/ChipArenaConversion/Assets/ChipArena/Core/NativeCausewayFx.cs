@@ -254,10 +254,14 @@ namespace ChipArena.UnityConversion
             {
                 // the ground: the impact ring (beats faster toward the strike), the inner glyph ring turning, the fill growing
                 double w=s.Warn,beat=.6+.4*Math.Sin(now*(6+w*20));double gain=1.4+1.6*w;
-                Ring(x,y,z,R,.14,32,now*.2,0xFF8A3A,.6+.4*beat,gain);Ring(x,y,z,R-.32,.06,32,-now*.4,0xFFD08A,.5,gain,.3);
-                Ring(x,y,z,R*.62,.1,12,now*1.6,0xFFB45A,.7,gain,.55);
-                FlatHex(x,y,z,R*w,R*w,0,0xFF6A2A,.22+.12*beat,true,1.2,1);Telegraph++;
-                FlatHex(x,y-.005,z,R+.8,R+.8,0,0xFF5A20,.1*w,true,1.0,1);Telegraph++;
+                Ring(x,y,z,R,.32,32,now*.2,0xFF8A3A,.75+.25*beat,gain*1.3);Ring(x,y,z,R-.42,.08,32,-now*.4,0xFFD08A,.6,gain,.3);
+                Ring(x,y,z,R*.62,.12,12,now*1.6,0xFFB45A,.8,gain,.55);
+                // the countdown: a ring closing from the rim to the heart as the star nears
+                Ring(x,y+.01,z,Math.Max(.15,R*(1-w)),.16,24,0,0xFFF0D0,.9,gain*1.2);
+                FlatHex(x,y,z,R*w,R*w,0,0xFF6A2A,.3+.15*beat,true,1.4,1);Telegraph++;
+                FlatHex(x,y-.005,z,R+1.2,R+1.2,0,0xFF5A20,.14*w+.05,true,1.0,1);Telegraph++;
+                // light pillars round the rim, so the ring reads over cover and from the walkways
+                for(int k=0;k<12;k++){double a=k*Math.PI/6+now*.3,px=x+Math.Sin(a)*R,pz=z+Math.Cos(a)*R,ht=1.4+2.2*w+.3*beat;HexStreak(px,y,pz,px,y+ht,pz,.22,.04,0xFF9A4A,.45*(.4+.6*w),1.8);Telegraph++;}
                 // overhead: the star kindling on its path and the shaft it falls down, a column of light over the ring
                 double grow=2+6*w*w;Hex(s.Px,s.Py,s.Pz,grow,0xFFF0D0,.9,true,2.2);Hex(s.Px,s.Py,s.Pz,grow*3.2,0xFF9A4A,.3,true,1.4);Telegraph+=2;
                 Beam(s.Px,s.Py,s.Pz,x,y,z,.25,.9,0xFF8A3A,1.2,.05+.08*w,index);Beam(x,y,z,x,y+16,z,R*.4,R*.9,0xFF7A30,1.0,.04+.08*w,index+20);Telegraph+=2;

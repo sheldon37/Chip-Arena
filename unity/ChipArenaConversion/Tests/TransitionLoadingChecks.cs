@@ -187,7 +187,7 @@ namespace ChipArena.UnityConversion
                 var s=NativeStageSchematic.Build(m);Check(s!=null&&s.Count>0&&s.Count<=NativeStageSchematic.Max,m.id+" scans ("+(s?.Count??0)+")");
                 Check(s.Total==s.Count||s.Total>NativeStageSchematic.Max,m.id+": keeps every block under the cap");
                 Check(s.Label==s.Total+" BLOCKS",m.id+": its label");
-                Check(s.Aspect>.3f&&s.Aspect<3,m.id+": a sane plan aspect ("+s.Aspect+")");
+                Check(s.Aspect>.3f&&s.Aspect<4,m.id+": a sane plan aspect ("+s.Aspect+"; the HUD fits any, the Causeway's bridge runs 3.9)");
                 for(int i=0;i<s.Count;i++)
                 {
                     float u=s.Box[i*4],v=s.Box[i*4+1],w=s.Box[i*4+2],h=s.Box[i*4+3];

@@ -276,11 +276,14 @@ namespace ChipArena.UnityConversion
         }
         private void Altar(Bx b)
         {
+            // a carved stone stele: plinth and cornice, two rune columns, a gold star round a small cold crystal, star-metal edges
             foreach(int side in new[]{0,1})
             {
                 Along(b,side,out double u0,out double u1);
-                for(int k=0;k<4;k++){double u=u0+.7+k*(u1-u0-1.4)/3;Face(b,side,u-.05,u+.05,.4,3.6,Rune,.014,.008);}
-                Face(b,side,b.Cz-.4,b.Cz+.4,1.4,2.6,Crystal,.06,.06);Face(b,side,u0,u1,b.Y0,b.Y0+.3,Metal,.08,.08,true);Face(b,side,u0,u1,b.Y1-.3,b.Y1,Metal,.08,.08,true);
+                Face(b,side,u0,u1,b.Y0,b.Y0+.45,StoneDark,.12,.12,true);Face(b,side,u0,u1,b.Y1-.4,b.Y1,Trim,.12,.12,true);Face(b,side,u0,u1,b.Y1-.52,b.Y1-.44,Gold,.03,.03);
+                foreach(double u in new[]{u0+.75,u1-.75}){Face(b,side,u-.22,u+.22,.6,b.Y1-.6,Stone,.08,.08,true);Face(b,side,u-.04,u+.04,.8,b.Y1-.8,Rune,.014,.09);}
+                double cy=2.1;for(int k=0;k<8;k++){double a=k*Math.PI/4,l=k%2==0?.9:.55;double xf=side==0?b.X1+.03:b.X0-.03;Add(xf,cy+Math.Cos(a)*l/2,b.Cz+Math.Sin(a)*l/2,.02,.035,l/2,FactoryQ.Axis(1,0,0,-a),Gold,false);}
+                Face(b,side,b.Cz-.16,b.Cz+.16,cy-.16,cy+.16,Crystal,.05,.05);
             }
             foreach(var z in new[]{b.Z0,b.Z1})Box(b.X0-.05,b.X1+.05,b.Y0,b.Y1,z-.06,z+.06,Edge);
         }
@@ -486,8 +489,8 @@ namespace ChipArena.UnityConversion
         private void CometCore(MapHazard h,in NativeHazardState st,double t)
         {
             // the comet's nucleus: a dark, tumbling lump of ice with bright facets under its coma
-            if(!NativeCausewayLooks.CometHead(h,st,out double x,out double y,out double z,out double near))return;double s=.35+.35*near;var q=FactoryQ.Axis(.5,.8,.3,t*3.1);
-            Parts.Add(x,y,z,s,s*.8,s*.9,q,Comet,false);Parts.Add(x,y,z,s*.8,s,s*.7,q*FactoryQ.Axis(0,1,0,.8),Crystal,false);Parts.Add(x,y,z,s*.6,s*.6,s*1.1,q*FactoryQ.Axis(1,0,0,.6),Dark,false);
+            if(!NativeCausewayLooks.CometHead(h,st,out double x,out double y,out double z,out double near))return;double s=.18+.2*near;var q=FactoryQ.Axis(.5,.8,.3,t*3.1);
+            Parts.Add(x,y,z,s,s*.8,s*.9,q,Comet,false);Parts.Add(x,y,z,s*.8,s,s*.7,q*FactoryQ.Axis(0,1,0,.8),Comet,false);
         }
         /// <summary>Above each crown its tower's lost storeys float apart: masonry fragments with their rune courses, turning slowly
         /// (index k of <see cref="CrownStones"/>; the lowest is 7 m over the crown).</summary>
