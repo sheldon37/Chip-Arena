@@ -49,9 +49,9 @@ namespace ChipArena.UnityConversion
             /// <summary>A resting long gun's standing arms: a still frame (RestArmsAt, s) of a clip in the set whose arms carry it low (the
             /// pack walk's two-hand carry; the idle's own ready hold keeps the stock at the shoulder). Null: the idle's arms.</summary>
             public string RestArms; public float RestArmsAt;
-            /// <summary>Standing at rest, the weapon arm (the right) takes the free arm's own muscles, mirrored: a pistol hangs at the side
-            /// as the free hand does.</summary>
-            public bool RestMirror;
+            /// <summary>Standing at rest, a one-handed low ready (owner 2026-11-10, from a reference picture): the gun hand before the right
+            /// hip with the muzzle to the floor ahead, the off hand at the belt beside it (Runtime VisualPistolReady).</summary>
+            public bool RestReady;
             /// <summary>The kit moves (Q/E, by MeleeKitMotion's kind) the set plays on the pack's clips, each with its clip: the clip's
             /// Hit on the release, its end on the cast's end (the Whirlwind: the body turned by the game's spin). The rest keep
             /// the game's pose. Null: none.</summary>
@@ -125,7 +125,7 @@ namespace ChipArena.UnityConversion
         // Pistol: the armed set, held low at rest (RestLow; owner 2026-11-10: "apply a resting position to pistols as well"); raised
         // to the pack's pistol stance (arm out) while aiming or just after a shot (its
         // own firing cut throws the arm overhead: the stance holds, the game's muzzle kick is the recoil), its reload fitted.
-        private static readonly Set Pistol=Build(new Set{Spec="pistol",RestLow=true,RestMirror=true,TechClips=new[]{TechCoin},Idle=StandIdle,Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
+        private static readonly Set Pistol=Build(new Set{Spec="pistol",RestLow=true,RestReady=true,TechClips=new[]{TechCoin},Idle=StandIdle,Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
             Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Fall",SprintAttack="Pistol-Attack-R1",Attacks=Names("Pistol-Attack-R","1"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
             Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1",Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward",

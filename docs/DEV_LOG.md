@@ -9,7 +9,11 @@
   - The clip was already in the motion bank, so no rebake was needed.
 - **The pistol at rest:**
   - It no longer follows the look (`RestLow`). Both pose layers raise it only for a shot, a reload and .3 s after it, a guard, a stun or ADS (`GunMotion.AimTarget` now rests every gun).
-  - Standing, its arm hangs at the side as the free arm does (`Set.RestMirror`: the stance's left arm muscles mirrored onto the right, fingers kept), so the pistol is held down by the thigh, muzzle to the floor.
+  - Standing, a one-handed low ready from the owner's reference picture ("Change idle pistol pose again; Something like this"; `Set.RestReady`, Runtime `VisualPistolReady`). No pack clip carries it, so arm reaches in the body's frame place it, eased in with the rest:
+    - the grip at the right front hip (`ReadyGrip` .16 right, level with the hips, .19 ahead);
+    - the bore angled to the floor a little ahead and in (`ReadyBore`);
+    - the off hand at the belt beside it (`ReadyOff`).
+    - A first try with the arm hanging (the free arm mirrored) read as a dropped arm and was replaced.
   - It walks and runs on the bow's relaxed locomotion instead of the armed set's, whose walk flared both arms out (a melee ready walk).
 - **The chip pick:** while a pick's look is up, the gun pose keeps the source's hold (`GunMotion.Hold`, from the look's weight; the presentation passes it a frame behind). The pick's gestures were made over that hold, and a resting gun's chest put the panel past the swiping hand (CoreTests `--chip-select`).
 - **The quiver:**
