@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEngine;
 namespace ChipArena.UnityConversion
 {
-    // The Glaive's rules against the real arena (docs/GLAIVE.md): the DEV gate, the four cuts and their chain, the skim, the throw's cut,
+    // The Glaive's rules against the real arena (docs/GLAIVE.md): public access, the four cuts and their chain, the skim, the throw's cut,
     // ricochet and return to the hand, the burst, the halo, a bot's use, and the record over the real frame codec. Run by the Editor build
     // checks beside the Top Dog's.
     public sealed partial class NativeArena
@@ -14,7 +14,6 @@ namespace ChipArena.UnityConversion
         public void ValidateGlaive()
         {
             var a=Pilots[0];var b=Pilots[1];var c=Pilots.Count>2?Pilots[2]:null;int checks=0;
-            var grant=new NativeAccess();typeof(NativeAccess).GetProperty("Developer").GetSetMethod(true).Invoke(grant,new object[]{true});typeof(NativeAccess).GetProperty("Expires").GetSetMethod(true).Invoke(grant,new object[]{double.MaxValue});
             var bounds=Map?.bounds;var o=new Vector3(bounds==null?0:(bounds.minX+bounds.maxX)*.5f,100,bounds==null?0:(bounds.minZ+bounds.maxZ)*.5f);
             var floor=GameObject.CreatePrimitive(PrimitiveType.Cube);floor.transform.SetParent(root.transform);floor.layer=PropLayer;floor.transform.position=new Vector3(o.x,98.635f,o.z);floor.transform.localScale=new Vector3(80,1,80);
             void Check(bool ok,string label){if(!ok)throw new Exception("Native Glaive: "+label);checks++;}
@@ -25,7 +24,7 @@ namespace ChipArena.UnityConversion
                 Advance(10);ChipFields.Clear();Match.Teams=false;Match.Cooperative=false;
                 foreach(var p in Pilots)
                 {
-                    p.Seat.chips.Clear();GlaiveClear(p);p.Death=null;p.Seat.connected=p.Seat.alive=true;p.Seat.bot=false;p.Seat.spec=p==a?NativeGlaive.Spec:"pistol";p.Seat.access=p==a?grant:NativeAccess.Guest;p.Weapon=Content.Weapon(p.Seat.spec);
+                    p.Seat.chips.Clear();GlaiveClear(p);p.Death=null;p.Seat.connected=p.Seat.alive=true;p.Seat.bot=false;p.Seat.spec=p==a?NativeGlaive.Spec:"pistol";p.Seat.access=NativeAccess.Guest;p.Weapon=Content.Weapon(p.Seat.spec);
                     p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,new Dictionary<string,int>());p.Hp=(float)p.Stats["hp"];p.Mana=p.Stamina=100;p.Ammo=6;p.Ready=p.BlockEnd=p.RollEnd=p.ReloadEnd=p.AttackEnd=p.StunEnd=p.ShieldUntil=p.SlowEnd=0;p.SlowFactor=1;p.Down=null;
                     p.Kernel=null;p.Technique=null;p.Swing=null;p.Special=null;p.AbilityCast=null;p.DevGod=false;p.Body.isKinematic=false;p.Body.useGravity=true;p.Collider.enabled=true;
                     p.Body.position=o+new Vector3(p==a?0:p==b?0:4,0,p==a?0:p==b?2.2f:9);p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;p.Input=new InputFrame();p.Grounded=true;p.StaggerImmune=0;
@@ -35,12 +34,12 @@ namespace ChipArena.UnityConversion
             void Press(bool shoot=false,bool q=false,bool e=false){a.Ready=0;a.Input=new InputFrame{Shoot=shoot,Attack=shoot,AbilityQ=q,AbilityE=e};StepGlaiveInput(a);}
             try
             {
-                var row=Content.Weapon(NativeGlaive.Spec);double now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                Check(row!=null&&row.devOnly&&row.@class=="melee","DEV melee row");
-                Check(NativeLoadoutText.InClass(row,"dev",true,grant.Allows("weapon:"+row.id,now)),"a DEV account can pick the Glaive");
-                Check(!NativeLoadoutText.InClass(row,"dev",false,NativeAccess.Guest.Allows("weapon:"+row.id,now)),"a guest cannot");
-                // The cuts: a guest cannot; four that chain, the fourth a flick that comes back to the hand.
-                Setup();a.Seat.access=NativeAccess.Guest;Press(shoot:true);Check(a.Glaive.CastKind==null,"a guest cannot cut");a.Seat.access=grant;
+                var row=Content.Weapon(NativeGlaive.Spec);
+                Check(row!=null&&!row.devOnly&&row.@class=="melee","public melee row");
+                Check(NativeLoadoutText.InClass(row,"melee",false,!row.devOnly),"a guest can pick the Glaive");
+                Check(!NativeLoadoutText.InClass(row,"dev",true,true),"the Glaive is no longer a DEV weapon");
+                // All combat checks below run as a guest, without developer access.
+                Setup();
                 Press(shoot:true);Check(a.Glaive.CastKind==NativeGlaive.Swing&&a.Glaive.CastStep==0&&a.Glaive.CastRelease>a.Glaive.CastAt,"the first cut winds up");Check(!TryBlock(a)&&!TryRoll(a),"a committed cut cannot block or roll");
                 float hp=b.Hp;Step(NativeGlaive.SwingLength[0]);Check(b.Hp<hp,"the first cut lands");
                 a.GlaiveAttackHeld=false;Press(shoot:true);Check(a.Glaive.CastStep==1,"the second follows on");b.StaggerImmune=0;hp=b.Hp;Step(NativeGlaive.SwingLength[1]);Check(b.Hp<hp,"the backhand lands");
