@@ -47,10 +47,12 @@ too. Everytime we make a dev class, add them as an option here." Home · **DEV**
   player changed. Search again before saving.") show there.
 - **What a grant can carry:** only the account server's own keys (`src/shared/access.ts` `GRANTABLE_CONTENT` and `ACCOUNT_FLAGS`,
   mirrored in Core `NativeDevGrants`; CoreTests `--dev-grants` holds them equal): the server refuses a whole save with any other key.
-  Everything else is listed but marked **DEV accounts only**: now the Cyber Lord, the Bombadier and the Top Dog (the client's
-  `NativeAccess.Allows` also keeps them to DEV accounts), their entrances, and Hotdog Friends.
+  Every DEV class is grantable (owner 2026-11-10: "override the Dev accounts only thing ... The point of this is to grant specific
+  users special classes"): the Cyber Lord, the Bombadier and the Top Dog, their entrances and Hotdog Friends joined the server's list,
+  and a grant unlocks a restricted weapon in the client too (`NativeAccess.Allows`; the kits' own gates ask `Allows`, not
+  `DeveloperWeapon`). Anything else still shows **DEV accounts only** (for now the DEV-only effects and the Sheldon Head).
 - **Making a new DEV class grantable:** its `weapon:` (and entrance) keys in `GRANTABLE_CONTENT` (a Site publish) and in
-  `NativeDevGrants.Server`, and, if `NativeAccess.Allows` keeps it to DEV accounts, that rule changed (Astra's accounts area).
+  `NativeDevGrants.Server`; its kit's gates use `Allows("weapon:"+spec)` (Astra's accounts area).
 
 ## The panel
 
