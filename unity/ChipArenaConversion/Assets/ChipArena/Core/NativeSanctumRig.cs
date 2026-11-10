@@ -134,14 +134,17 @@ namespace ChipArena.UnityConversion
             var q=FactoryQ.Axis(1,0,0,-ang);
             void P(double ly,out double wx,out double wy,out double wz){q.Rotate(0,ly,0,out double ox,out double oy,out double oz);wx=x+ox;wy=py-L*Math.Cos(ang)+oy;wz=Math.Sin(ang)*L+oz;}
             void Part(double ly,double hx,double hy,double hz,FactoryQ r,int kind,bool shadow=true,double window=1){P(ly,out double wx,out double wy,out double wz);Add(wx,wy,wz,hx,hy,hz,q*r,kind,shadow,-1,window);}
-            // the bowl (eight staves), its pierced lid in rings, the finial, the four chains to the ring, the rope to the yoke
-            for(int i=0;i<8;i++){double a=Math.PI/4*i;var r=FactoryQ.Axis(0,1,0,a);r.Rotate(0,0,.42,out double ox,out _,out double oz);P(-.1,out double wx,out double wy,out double wz);Add(wx+ox,wy,wz+oz,.19,.32,.04,q*r,S);}
-            Part(-.45,.38,.06,.38,FactoryQ.Axis(0,1,0,Math.PI/8),S);Part(-.1,.36,.25,.36,FactoryQ.Axis(0,1,0,Math.PI/8),E,false,1);
-            for(int k=0;k<3;k++){double r0=.4-.12*k;Part(.28+.16*k,r0,.07,r0,FactoryQ.Axis(0,1,0,Math.PI/8+k*.2),S);}
-            Part(.8,.08,.14,.08,FactoryQ.Identity,G);Part(.95,.05,.05,.05,FactoryQ.Axis(0,1,0,Math.PI/4),G);
-            P(1.9,out double rx,out double ry,out double rz);
-            for(int i=0;i<4;i++){double a=Math.PI/2*i+Math.PI/4;var r=FactoryQ.Axis(0,1,0,a);r.Rotate(.36,0,0,out double ox,out _,out double oz);P(.25,out double bx,out double by,out double bz);Bar(bx+ox,by,bz+oz,rx,ry,rz,.03,NativeSanctumLooks.Chain,false);}
-            Part(1.9,.14,.05,.14,FactoryQ.Identity,G);
+            // the bowl (twelve bellied staves over a footed base), the glowing coals, the pierced lid in tiers with gaps for the
+            // fire to show, the finial, the six chains to the crown ring, the rope to the yoke
+            void Tier(double ly,double rad,double hy,double t,int kind,int n,double twist){for(int i=0;i<n;i++){double a=2*Math.PI*i/n+twist;var r=FactoryQ.Axis(0,1,0,a);r.Rotate(0,0,rad,out double ox,out _,out double oz);P(ly,out double wx,out double wy,out double wz);Add(wx+ox,wy,wz+oz,rad*Math.PI/n+.01,hy,t,q*r,kind,true);}}
+            Part(-.78,.2,.06,.2,FactoryQ.Axis(0,1,0,Math.PI/8),S);Part(-.68,.12,.06,.12,FactoryQ.Identity,G);
+            Tier(-.5,.42,.1,.05,S,12,0);Tier(-.28,.58,.14,.05,S,12,0);Tier(-.02,.64,.14,.05,S,12,0);Tier(.16,.62,.05,.06,G,16,0);
+            Part(.05,.52,.08,.52,FactoryQ.Axis(0,1,0,Math.PI/8),E,false,1);
+            Tier(.3,.54,.06,.05,S,12,.13);Tier(.48,.42,.06,.05,S,12,0);Tier(.64,.3,.06,.05,S,10,.2);Tier(.78,.18,.05,.04,G,8,0);
+            Part(.95,.07,.12,.07,FactoryQ.Identity,G);Part(1.1,.06,.06,.06,FactoryQ.Axis(0,1,0,Math.PI/4),G);
+            P(2.4,out double rx,out double ry,out double rz);
+            for(int i=0;i<6;i++){double a=Math.PI/3*i;var r=FactoryQ.Axis(0,1,0,a);r.Rotate(.6,0,0,out double ox,out _,out double oz);P(.16,out double bx,out double by,out double bz);Bar(bx+ox,by,bz+oz,rx,ry,rz,.035,NativeSanctumLooks.Chain,false);}
+            Part(2.4,.2,.05,.2,FactoryQ.Identity,G);
             Bar(rx,ry,rz,0,py-.1,0,.07,R,false);
             // the pull rope to the south arch while it is held back
             if(parked||warn){Bar(x,y+.6,z,0,5.05,-7.02,.04,R,false);Box(-.12,.12,4.95,5.15,-7.1,-6.95,I);}

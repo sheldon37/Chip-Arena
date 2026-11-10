@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
                 else if(Starts(id,"sanctum-crypt-wall-"))k.CryptWall(b);
             }
             foreach(var f in flights)k.Flight(f.Value);
-            k.FloorMarks(map);k.Tracery();
+            k.FloorMarks(map);k.Tracery();k.CryptVault();
             k.role=Overhead;k.Vaults();k.Belfry();k.Organ();k.Retable();k.Sigils();
             return k;
         }
@@ -311,6 +311,20 @@ namespace ChipArena.UnityConversion
         {
             int T=NativeSanctumLooks.Trim;double cx=b.Cx,cz=b.Cz,h=b.Sx/2;
             Box(cx-h-.12,cx+h+.12,b.Y0,b.Y0+.3,cz-h-.12,cz+h+.12,T);Box(cx-h-.2,cx+h+.2,b.Y1-.45,b.Y1,cz-h-.2,cz+h+.2,T);
+        }
+        // The crypt's low vault: groin ribs under the crossing's slab between the pillars and the walls (within 0.25 m of the
+        // slab), bosses, and a red oil lamp hanging in each of the middle bays.
+        private void CryptVault()
+        {
+            int T=NativeSanctumLooks.Trim,G=NativeSanctumLooks.Gold,Gl=NativeSanctumLooks.Glow,Ch=NativeSanctumLooks.Chain;double y=-.52;
+            double[] xs={-8,-4,4,8},zs={-4.6,-2.4,2.4,4.6};
+            for(int i=0;i+1<xs.Length;i++)for(int j=0;j+1<zs.Length;j++)
+            {
+                double x0=xs[i],x1=xs[i+1],z0=zs[j],z1=zs[j+1],cx=(x0+x1)/2,cz=(z0+z1)/2;
+                Bar(x0,y,z0,x1,y,z1,.18,.2,T,false);Bar(x0,y,z1,x1,y,z0,.18,.2,T,false);Add(cx,y-.02,cz,.16,.1,.16,FactoryQ.Axis(0,1,0,Math.PI/4),G,false);
+                if(j==1&&i!=1){role=Overhead;Box(cx-.12,cx+.12,-1.55,-1.3,cz-.12,cz+.12,Gl,false,0xFF5A20);Bar(cx,-1.3,cz,cx,-.4,cz,.03,.03,Ch,false);role=Attached;Light(cx,-1.6,cz,6,0xFF6A30,.7);}
+            }
+            foreach(double x in xs)Box(x-.12,x+.12,y-.1,-.4,-4.6,4.6,T,false);foreach(double z in zs)Box(-8,8,y-.1,-.4,z-.12,z+.12,T,false);
         }
         private void Shrine(B b)
         {
