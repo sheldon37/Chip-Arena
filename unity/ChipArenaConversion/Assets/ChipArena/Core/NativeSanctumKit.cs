@@ -322,7 +322,7 @@ namespace ChipArena.UnityConversion
             {
                 double x0=xs[i],x1=xs[i+1],z0=zs[j],z1=zs[j+1],cx=(x0+x1)/2,cz=(z0+z1)/2;
                 Bar(x0,y,z0,x1,y,z1,.18,.2,T,false);Bar(x0,y,z1,x1,y,z0,.18,.2,T,false);Add(cx,y-.02,cz,.16,.1,.16,FactoryQ.Axis(0,1,0,Math.PI/4),G,false);
-                if(j==1&&i!=1){role=Overhead;Box(cx-.12,cx+.12,-1.55,-1.3,cz-.12,cz+.12,Gl,false,0xFF5A20);Bar(cx,-1.3,cz,cx,-.4,cz,.03,.03,Ch,false);role=Attached;Light(cx,-1.6,cz,6,0xFF6A30,.7);}
+                if(j==1&&i!=1){role=Overhead;Box(cx-.12,cx+.12,-1.55,-1.3,cz-.12,cz+.12,Gl,false,0xFFA040);Bar(cx,-1.3,cz,cx,-.4,cz,.03,.03,Ch,false);role=Attached;Light(cx,-1.6,cz,6,0xFFA050,.8);}
             }
             foreach(double x in xs)Box(x-.12,x+.12,y-.1,-.4,-4.6,4.6,T,false);foreach(double z in zs)Box(-8,8,y-.1,-.4,z-.12,z+.12,T,false);
         }
@@ -437,6 +437,7 @@ namespace ChipArena.UnityConversion
             Box(-h-.4,h+.4,y1,y1+.5,-h-.4,h+.4,S);
             foreach(int s in new[]{-1,1}){Box(-h,h,y0+3.0,y0+3.4,s*2.4,s*2.8,O);Box(-.25,.25,y0,y0+5.8,s*2.4-.2,s*2.4+.2,O);}
             Box(-.3,.3,y0+5.6,y0+6.0,-2.6,2.6,O);
+            Box(-.16,.16,y0+5.0,y0+5.4,2.2,2.5,NativeSanctumLooks.Glow,false,0xFFB060);Candle(0,y0+5.05,2.35,.12,.03);
         }
         // The organ over the west loft (A): two pipe towers flanking the rose, a low flat under it, the case's impost and its
         // gilded shades; flat to the wall below the impost (7 m), standing out above it.

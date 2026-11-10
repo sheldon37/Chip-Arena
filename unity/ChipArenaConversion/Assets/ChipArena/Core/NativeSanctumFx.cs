@@ -109,6 +109,7 @@ namespace ChipArena.UnityConversion
             Incense(render);
             Pick(rig,render,dip,hazards,round,phase,fightAt,now);
         }
+        private bool lowAtmosphere()=>low&&quality<.5;
         private int Count(int full)=>low?Math.Max(1,full/3):Math.Max(1,(int)Math.Round(full*(.35+.65*quality)));
 
         // ---------------- quad helpers (as the M1 stages draw them) ----------------
@@ -215,6 +216,9 @@ namespace ChipArena.UnityConversion
                 double fx=Frac(H(503,i)+t*.011),fy=Frac(H(503,i,1)+t*.017),fz=Frac(H(503,i,2)-t*.008);double x=ex+(fx-.5)*2*box,y=ey-2+fy*7,z=ez+(fz-.5)*2*box;
                 double d=Math.Sqrt((x-ex)*(x-ex)+(y-ey)*(y-ey)+(z-ez)*(z-ez));if(d<1.5)continue;Hex(x,y,z,.04+.03*H(503,i,3),0xFFE6C0,.35*Math.Min(1,(box-d)/4),true);Atmosphere++;
             }
+            // the belfry over the oculus: the moon through its south louvres onto the bell, a cool glow seen up through the oculus
+            if(!lowAtmosphere()){Hex(0,25.4,0,7,0x3A4A7A,.16,true);Hex(0,24.6,0,3.2,0x9AB0FF,.12,true);Atmosphere+=2;}
+            NativeSanctumLooks.MoonRay(out double mx,out double my,out double mz);for(int i=-1;i<=1;i+=2){double sx=i*1.8,sy=26.5,sz=-3.7;Beam(sx,sy,sz,sx+mx*6,sy+my*6,sz+mz*6,.9,1.1,.75,.82,1,.06,700+i);}
             // the roses' halos in the haze
             foreach(var w in NativeSanctumLooks.Windows)if(w.Rose){double share=NativeSanctumLooks.MoonShare(w);Hex(w.X+w.Nx*1.5,w.Y,w.Z+w.Nz*1.5,w.Half*3.2,GlassColor(w.Design),.05+.08*share,true);Atmosphere++;}
         }
