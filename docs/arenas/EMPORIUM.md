@@ -49,7 +49,7 @@ sauce balconies (3.6).
 | Hazard | Kind | Timing | Effect |
 |---|---|---|---|
 | **The Wiener Run** (`emporium-lane-n`, `-s`) | `maglev` | N: first pass 14 s (warning from 8 s), S: 26 s; each every 24 s, so a wiener rolls every 12 s, alternating lanes; warn 6 s, danger 3 s, pass 3.4 s at 11 m/s (direction alternates per pass) | lethal; flings the body along the lane (the maglev smash) |
-| **The Bun Presses** (`emporium-press-w`, `-e`) | `press` | every 12 s, the two 6 s apart; warn 1.8 s, slam 0.32 s, held 1.0 s, lift 1.6 s; first warning 13.3 s / 19.3 s into the fight | lethal under the 3 x 3 m ram |
+| **The Bun Presses** (`emporium-press-w`, `-e`) | `press` | every 12 s, the two 6 s apart; warn 1.8 s, slam 0.32 s, held 1.0 s, lift 1.6 s; first warning 13.3 s / 19.3 s into the fight | lethal under the 3 x 3 m ram (the sesame bun hangs in view at 4.1 m between four posts; a death pancakes like the Factory's) |
 | **The Griddles** (`emporium-griddle-w-a`, `-w-b`, `-e-a`, `-e-b`) | `burner` | two checkerboard pairs per griddle that go hot in turns: every 8 s each, a and b 4 s apart; warn 1.5 s, live 2.0 s, cool 1.0 s | 8 per 0.25 s tick (64 for a whole live window), never lethal |
 | **The Geysers** (`emporium-geyser-n-w`, `-n-e`, `-s-e`, `-s-w`) | `vent` with `push` | every 10 s, the two of a diner 5 s apart; three pumps over 1.4 s, burst 1.1 s | launches whoever stands on it at 15 m/s (apex 4.9 m: onto the balcony through the gap in its rail), 3 per 0.5 s tick |
 
@@ -58,7 +58,8 @@ settings:
 - **Wiener**: the lane-edge lamps run an amber chase the way it will come through the warning (oven door steaming and
   glowing at the portal it will burst from, an "ah-ooga" horn), a fast red chase through the danger (sparks from the door, a
   rising slide whistle, the flap rattling), then red ahead of it while it runs. It bursts through a pet-door flap, rolls without
-  slipping (its grill stripes turn), bobs over the rollers, googly eyes looking where it goes, and boings into the far oven.
+  slipping (its grill stripes turn under a squiggle of mustard), bobs over the rollers, googly eyes looking where it goes, and
+  boings into the far oven.
 - **Bun press**: a double bell ding, the bun winds up with a tremble and a stretch, the zone strobes red, a cartoon drop shadow
   darkens and spreads under it; it slams (SPLORT) and squashes flat, springing back, flour and condiment splats flying out.
 - **Griddle**: igniter clicks, the plates heat through orange (the burner look by light level) with shimmer and corner lamps,
@@ -102,6 +103,7 @@ Code (presentation only; nothing here is sim data, collides, damages or is sent)
   skyline. Its keep-out refuses any box in the play space below the roof line.
 - `Core/NativeEmporiumSound.cs`, `Runtime/NativeEmporiumAudio.cs`: the cue plan on the match clock and synthesized comic
   samples (horn, slide whistle, rumble, boing, bell, splort, pop, clicks, sizzle, pumps, sploosh) on NativeAudio's voices.
+- `Core/NativeSmashGib.cs` (one line): a bun press death on this map pancakes as the Factory's presses do.
 - `Runtime/NativeEmporiumPresentation.cs`: the draw (NativeBlockLit instancing, SourceLit sectors, one FX batch, HDR gain for
   neon). Hooks: `EmporiumScenery(arena)` in SourceWorld, `PrewarmEmporium(arena)` in PrewarmStage, `EmporiumCues(arena,menu)`
   in NativeAudio.
@@ -114,7 +116,13 @@ No song yet. Placeholder: `cybercity-neon-riot` (the record's `music`). The owne
 ## Checks
 
 - `python3 docs/arenas/scripts/emporium_m1.py`: plans and layout checks (PASS).
-- `dotnet run --project Tests/CoreTests.csproj -c Release -- --emporium` (`Tests/EmporiumChecks.cs`, also in the full run).
+- `dotnet run --project Tests/CoreTests.csproj -c Release -- --emporium` (`Tests/EmporiumChecks.cs`, also in the full run): the record,
+  nav to every spawn, arm delay and telegraph minimums, the vent push rule (and every shipped vent unchanged), the look, the
+  kit's collider rule and the roof's clearance, the backdrop keep-out, the rigs following the replicated state, determinism, no
+  allocation per frame (rig, effects), telegraphs never reduced, the sound plan, the press pancake, wiring and metas.
+- Editor gate: `NativeBuildChecks` calls `ValidateEmporiumRuntime()` (`Runtime/NativeEmporiumValidation.cs`) on the real arena:
+  the wiener kills in its lane (maglev death record), the bun press kills under its ram, a live griddle plate burns while its
+  partner pair is cold, a geyser launches a standing pilot once per burst, not while pumping, not outside the fight.
 - Pins updated: NativeUnityMaps (ids, Random set), BrickfallChecks (17 maps, rotation, 12 selectable), TransitionLoadingChecks
   (17 maps, the SourceWorld prewarm entry), SurfaceChecks (fifteen maps), MapStyleChecks (styled list, fourteen toon looks),
   AdvancedLightingChecks (the advanced set).
@@ -122,6 +130,5 @@ No song yet. Placeholder: `cybercity-neon-riot` (the record's `music`). The owne
 ## Not done / open
 
 - Music (above). Owner clips for the cues may replace the synthesized samples (keys `emporium.*`).
-- The press death keeps the generic death (the Factory pancake smash is keyed to the Factory map).
 - Regenerating the catalogue also writes `rotation: true` into the five M1 records (the generator's current rule; the merge
   already forced it), so their bytes change with no behaviour change.
