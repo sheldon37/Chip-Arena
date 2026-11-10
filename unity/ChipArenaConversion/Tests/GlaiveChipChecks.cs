@@ -70,6 +70,14 @@ namespace ChipArena.UnityConversion
             Check(NativeChipCartridge.Tiers.Count(t=>NativeChipCartridge.Of(t).Crest==NativeChipCartridge.Crest.Crescent)==1,"the crescent crest is its alone");
             Check(data.rarities.Any(r=>r.id==NativeGlaiveChips.Tier&&r.weight==0&&r.leetWeight==0&&r.color==NativeGlaiveChips.Color)&&data.exclusiveOdds.Any(o=>o.spec==NativeGlaive.Spec&&o.guaranteed==2&&Math.Abs(o.chance-.85)<1e-9),"its rarity (never rolled) and its signature odds in the content");
             Check(data.chips.All(c=>!NativeGlaiveChips.Is(c.id)),"the rows come from the overlay");
+            {
+                // The whole catalog as the game loads it (Runtime NativeStructures) with the Rounds cards and every Rounds pack on still fits the cap,
+                // with room for a mod pack (the Editor's build checks apply them all: NativeRoundsValidation).
+                var all=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});
+                NativeMovementContent.Apply(all);NativeBombChips.Apply(all);NativeDogChips.Apply(all);NativeGlaiveChips.Apply(all);NativeWildChips.Apply(all);NativeAbilityChips.Apply(all);NativeBossChips.Apply(all);NativeThirdTechniqueContent.Apply(all);
+                NativeRoundsCards.Apply(all);NativeRoundsPacks.Apply(all,NativeRoundsPacks.Ids);
+                Check(all.chips.Select(c=>c.id).Distinct().Count()==all.chips.Length&&all.chips.Length+NativeMods.MaxChips<=NativeMods.MaxCatalog,"the whole catalog with every Rounds pack fits the cap with room for a mod pack ("+all.chips.Length+" of "+NativeMods.MaxCatalog+")");
+            }
             string before=data.contentRevision;NativeGlaiveChips.Apply(data);int n0=data.chips.Length;NativeGlaiveChips.Apply(data);Check(data.chips.Length==n0&&data.contentRevision!=before,"the overlay goes in once and marks the revision");data.Validate();
             // ---- who is offered them ----
             var held=new Dictionary<string,int>();var mine=NativeContentRules.Eligible(data,NativeGlaive.Spec,held);

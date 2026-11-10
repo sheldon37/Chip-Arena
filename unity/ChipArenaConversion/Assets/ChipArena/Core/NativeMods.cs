@@ -11,7 +11,9 @@ namespace ChipArena.UnityConversion
     public sealed class NativeLoadedPack {public NativeChipPack Pack;public string Digest;}
     public static class NativeMods
     {
-        public const int MaxPacks=16,MaxChips=64,MaxCatalog=512,MaxFileBytes=131072;
+        // The catalog's cap: the content's chips, the generated sets (the classes', the wild, the abilities, the bosses'), the Rounds cards and every
+        // Rounds pack, with room for a mod pack (1024 from 2026-11-10: the Glaive's ten took the whole catalog with every pack to 519 of 512).
+        public const int MaxPacks=16,MaxChips=64,MaxCatalog=1024,MaxFileBytes=131072;
         public const int Airborne=1,Overclocked=2,Pinball=4;
         private static readonly Regex Id=new Regex("^[a-z][a-z0-9-]{1,23}$",RegexOptions.CultureInvariant);
         private static readonly Regex Version=new Regex("^[0-9]{1,4}\\.[0-9]{1,4}\\.[0-9]{1,4}$",RegexOptions.CultureInvariant);
@@ -61,7 +63,7 @@ namespace ChipArena.UnityConversion
             if(packs.Sum(p=>p.Pack.chips.Length)>MaxChips)throw new ArgumentException("At most 64 external chips may be enabled");
             var additions=packs.SelectMany(p=>p.Pack.chips.Select(c=>new ContentChip{id=p.Pack.id+":"+c.id,name=c.name,description=c.description,rarity=c.rarity,max=c.max,
                 author=string.IsNullOrWhiteSpace(c.author)?p.Pack.author:c.author,sourcePack=p.Pack.name,sourceCard=c.sourceCard,icon="sparkles",tags=c.tags.ToArray(),excludes=Array.Empty<string>(),effects=c.effects.Select(e=>new ChipEffect{stat=e.stat,op=e.op,value=e.value}).ToArray()})).ToArray();
-            if(content.chips.Length+additions.Length>MaxCatalog)throw new ArgumentException("Chip catalog exceeds 512 entries");
+            if(content.chips.Length+additions.Length>MaxCatalog)throw new ArgumentException("Chip catalog exceeds "+MaxCatalog+" entries");
             if(additions.Any(c=>content.chips.Any(old=>old.id==c.id)))throw new ArgumentException("External chip ID collision");
             if(rules==0&&packs.Length==0)return "Vanilla";
             var stats=content.baseStats.Select(s=>new NumberValue{name=s.name,value=s.value}).ToArray();
