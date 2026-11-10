@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
         private const float RestEase=.18f;
         // Each right arm muscle's left counterpart (shoulder, arm, forearm and hand; the fingers keep their grip), -1 elsewhere.
         private static int[] armMirror;
-        private static int[] ArmMirror{get{if(armMirror==null){var n=HumanTrait.MuscleName;armMirror=new int[n.Length];for(int i=0;i<n.Length;i++){armMirror[i]=-1;string s=n[i];if(!s.StartsWith("Right ",System.StringComparison.Ordinal)||!(s.Contains("Shoulder")||s.Contains("Arm")||s.Contains("Hand")))continue;armMirror[i]=System.Array.IndexOf(n,"Left "+s.Substring(6));}}return armMirror;}}
+        private static int[] ArmMirror{get{if(armMirror==null){var n=HumanTrait.MuscleName;armMirror=new int[n.Length];for(int i=0;i<n.Length;i++){armMirror[i]=-1;string s=n[i];if(!s.StartsWith("Right ",System.StringComparison.Ordinal)||!(s.Contains("Shoulder")||s.Contains("Arm")||s.Contains("Forearm")||s.Contains("Hand")))continue;armMirror[i]=System.Array.IndexOf(n,"Left "+s.Substring(6));}}return armMirror;}}
         private static bool[] UpperMuscles{get{if(upperMuscles==null){var n=HumanTrait.MuscleName;upperMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)upperMuscles[i]=!(n[i].Contains("Leg")||n[i].Contains("Foot")||n[i].Contains("Toes"));}return upperMuscles;}}
         // The Whirlwind's legs (NativeVisualMotion.SpinLegs), as muscle offsets: the sit's thigh raise and knee bend, and a
         // step's (each leg's Upper Leg Front-Back, Lower Leg Stretch; muscles left, then right).
