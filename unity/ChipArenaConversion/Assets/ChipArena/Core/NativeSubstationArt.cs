@@ -62,7 +62,9 @@ namespace ChipArena.UnityConversion
             {
                 int o=k*NativeClubRig.CrowdStride;double tall=rig.CrowdPose[o+4];if(tall<=0)continue;
                 double x=rig.CrowdPose[o],y=rig.CrowdPose[o+1],z=rig.CrowdPose[o+2],yaw=rig.CrowdPose[o+3],bob=rig.CrowdPose[o+5],sway=rig.CrowdPose[o+6];bool up=rig.CrowdPose[o+9]>.5;
-                Grey(into,Variant(k),x,y,z,Facing(k,yaw),tall,bob,sway,rig.CrowdPose[o+7],rig.CrowdPose[o+8],up);
+                // (a pit figure is turned half round from the rig's yaw: its left arm is the rig's right one, mirrored)
+                double armL=rig.CrowdPose[o+7],armR=rig.CrowdPose[o+8];if(k>=48){double swap=armL;armL=-armR;armR=-swap;sway=-sway;}
+                Grey(into,Variant(k),x,y,z,Facing(k,yaw),tall,bob,sway,armL,armR,up);
             }
         }
         /// <summary>The way a crowd figure faces (its model looks along its own +z): the galleries' along the rig's yaw, into the

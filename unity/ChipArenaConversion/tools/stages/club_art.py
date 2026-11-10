@@ -270,7 +270,7 @@ def dj_booth(g, b, L, T):
         box(g, x0 + .06, x1 - .06, y0 + .06, y0 + .1, z0 - .014, z0, F['gunmetal'], None, 0, cell=0)
     for dx in (-1.55, 1.55):
         rbox(g, dx - .3, dx + .3, y1, y1 + .06, z0 + .25, z1 - .25, .02, F['gunmetal'], 1)
-        n = T.round if T.i < 2 else 8
+        n = (24, 12, 8)[T.i]
         lathe(g, [(.215, .06), (.215, .078), (.2, .084)], (dx, y1, cz - .04), F['chrome'], n)
         lathe(g, [(.2, .084), (.07, .086), (.065, .09), (1e-4, .09)], (dx, y1, cz - .04), F['cone'], n)
         lathe(g, [(.12, .0875), (.1, .0875)], (dx, y1, cz - .04), glow(ck.CYAN, 2.0), n)
@@ -543,7 +543,8 @@ def static_scene(L, T):
     blocks = {b['id']: b for b in L['blocks']}
     m = 0
     for (name, fn) in (('floors', lambda: hall.floors(g, L, T, blocks)), ('side-walls', lambda: hall.side_walls(g, L, T)), ('south-wall', lambda: hall.south_wall(g, L, T, blocks)),
-                       ('led-wall', lambda: hall.led_wall(g, L, T, blocks)), ('upper-hall', lambda: hall.upper_hall(g, L, T)), ('galleries', lambda: hall.galleries(g, L, T)), ('pit', lambda: hall.pit(g, L, T))):
+                       ('led-wall', lambda: hall.led_wall(g, L, T, blocks)), ('upper-hall', lambda: hall.upper_hall(g, L, T)), ('galleries', lambda: hall.galleries(g, L, T)), ('pit', lambda: hall.pit(g, L, T)),
+                       ('substation', lambda: hall.substation(g, L, T)), ('drapes', lambda: hall.drapes(g, L, T, blocks))):
         fn()
         m = tally(g, name, m)
     for b in L['blocks']:

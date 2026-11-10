@@ -104,10 +104,14 @@ def south_wall(g, L, T, blocks):
     if T.tiny:
         pts = [pl.at(W / 2 + sx * 5.2, 5.0 + k * .25, .035) for k in range(9) for sx in (-1, 1)] + [pl.at(W / 2 - 5.2 + k * .4, yy, .035) for k in range(27) for yy in (5.0, 7.0)]
         rivets(g, pts, pl.n, .02, F['steel'])
+    bolt = None
     for p in L['parts']:
         if p['f'] == 'south-wall' and ck.KIND[p['k']] is None:
             hx, hy, hz = p['h']
             c = p['c']
+            if c[0] > 3.0:
+                bolt = c[2]
+                continue
             f = ck.kit_fin(p, L)
             if hx > hy:
                 a, b = (c[0] - hx, c[1], c[2] + .02), (c[0] + hx, c[1], c[2] + .02)
@@ -117,6 +121,15 @@ def south_wall(g, L, T, blocks):
             if T.tiny:
                 for q in (a, b):
                     rod(g, (q[0], q[1], c[2] - .03), (q[0], q[1], c[2] + .0), .012, F['chrome'], 4, caps=False)
+    if bolt is not None:
+        zz = bolt + .02
+        pts = [(4.5, 6.78, zz), (3.75, 6.02, zz), (4.22, 6.02, zz), (3.5, 5.22, zz)]
+        f = glow(MAGENTA_, 3.4)
+        for a, b in zip(pts[:-1], pts[1:]):
+            rod(g, a, b, .034, f, T.small if T.i < 2 else 4, caps=False)
+        if T.i < 2:
+            for q in pts:
+                ck.ball(g, q, .034, f, 6, 4)
 
 
 def led_wall(g, L, T, blocks):
@@ -346,3 +359,102 @@ def pit(g, L, T):
 
 
 MAGENTA_ = 0xFF3DCF
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# What is left of the substation: bus bars on porcelain insulators along the side walls (over the mezzanines' heads), strings
+# of suspension insulators and their cables under the roof trusses; velvet drapes on the rooms' walls that face the hall
+# ---------------------------------------------------------------------------------------------------------------------------
+def insulator(g, base, axis, T, sheds=4, r=.075, tall=.3):
+    """A porcelain stand-off: ribbed sheds on a stem from `base` along `axis`, a brass cap."""
+    n = (8, 5, 4)[T.i]
+    prof = [(r * .5, 0.0)]
+    for k in range(sheds):
+        y = tall * (k + .15) / sheds
+        if T.i == 0:
+            prof += [(r * .5, y), (r, y + tall * .3 / sheds), (r * .5, y + tall * .62 / sheds)]
+        else:
+            prof += [(r, y + tall * .3 / sheds), (r * .5, y + tall * .62 / sheds)]
+    prof.append((r * .5, tall))
+    lathe(g, prof, base, F['porcelain'], n, axis=axis)
+    lathe(g, [(r * .56, tall), (r * .56, tall + .04), (r * .3, tall + .05)], base, F['brass'], n, axis=axis, cap1=True)
+
+
+def substation(g, L, T):
+    for sx in (-1, 1):
+        pl = Plane((sx * 25.6, 0, -20.0), (0, 0, 1), (-sx, 0, 0))
+        y = 6.95
+        for dy in (-.22, 0.0, .22):
+            pl.box(g, .6, 39.4, y + dy - .035, y + dy + .035, .425, .437, F['copper'], None, 0, cell=4 if T.i == 0 else 0)
+        if T.i == 2:
+            continue
+        for i in range(10):
+            u = 1.5 + i * (37.0 / 9)
+            pl.box(g, u - .03, u + .03, y - .36, y + .36, 0, .06, F['steeldark'], None, 0, cell=0)
+            for dy in (-.22, 0.0, .22):
+                insulator(g, pl.at(u, y + dy, .06), pl.n, T, sheds=3, r=.06, tall=.3)
+        # an enamel warning plate on the wall over each stair head (an original design: a bolt in a triangle)
+        for u in (11.5, 28.5):
+            pl.box(g, u - .3, u + .3, 6.25, 6.65, 0, .02, F['hazard'], T, bevel=.008, cell=0)
+            g.face([pl.at(u - .15, 6.3, .022), pl.at(u + .15, 6.3, .022), pl.at(u, 6.58, .022)], F['black'], pl.n)
+            g.face([pl.at(u + .01, 6.52, .024), pl.at(u - .045, 6.42, .024), pl.at(u + .005, 6.43, .024)], F['hazard'], pl.n)
+            g.face([pl.at(u - .005, 6.43, .024), pl.at(u + .045, 6.44, .024), pl.at(u - .01, 6.33, .024)], F['hazard'], pl.n)
+    # under the trusses: two lines of suspension strings and the cables between them
+    n = (8, 6, 4)[T.i]
+    for x in (-12.5, 12.5):
+        tops = []
+        for z in TRUSS_Z:
+            rod(g, (x, CHORD - .15, z), (x, CHORD - .32, z), .02, F['steeldark'], 4, caps=False)
+            for k in range(5):
+                c = (x, CHORD - .4 - k * .15, z)
+                prof = [(.02, .06), (.1, .03), (.11, 0.0), (.03, -.03)] if T.i < 2 else [(.02, .05), (.11, 0.0), (.03, -.03)]
+                lathe(g, prof[::-1], c, F['porcelain' if k % 2 == 0 else 'porcelaindark'], n)
+            tops.append((x, CHORD - 1.1, z))
+        if T.i < 2:
+            for a, b in zip(tops[:-1], tops[1:]):
+                mid = (x, a[1] - .32, (a[2] + b[2]) / 2)
+                sk.tube(g, sk.catmull([a, mid, b], 3 if T.i == 0 else 1), .018, F['black'], 4 if T.i == 0 else 3, caps=False)
+
+
+def drape(g, pl, u0, u1, y0, y1, T, f, rail=True):
+    """A pleated velvet drape hanging on a wall's face from a brass rail."""
+    if T.i == 2:
+        wall(g, Plane(pl.at(0, 0, .06), pl.ud, pl.n), u0, u1, y0, y1, f, T, 6.0)
+        return
+    pitch = .26
+    n = max(2, int(round((u1 - u0) / pitch)))
+    per = 4 if T.i == 0 else 2
+    rows = 3 if T.i == 0 else 1
+    cols = n * per
+    pts = []
+    for r in range(rows + 1):
+        y = y0 + (y1 - y0) * r / rows
+        row = []
+        for i in range(cols + 1):
+            ph = 2 * math.pi * i / per
+            flare = 1.0 + .5 * (1 - r / rows)                       # the folds open a little toward the hem
+            row.append(pl.at(u0 + (u1 - u0) * i / cols, y, .07 + .045 * flare * math.sin(ph) + .012 * math.sin(i * 1.7)))
+        pts.append(row)
+
+    def nr(i):
+        s = -math.cos(2 * math.pi * i / per) * .8
+        return sk._norm((pl.n[0] + pl.ud[0] * s, 0.0, pl.n[2] + pl.ud[2] * s))
+    for r in range(rows):
+        for i in range(cols):
+            g.face((pts[r][i], pts[r][i + 1], pts[r + 1][i + 1], pts[r + 1][i]), f, normals=(nr(i), nr(i + 1), nr(i + 1), nr(i)))
+    if rail:
+        rod(g, pl.at(u0 - .08, y1 + .03, .08), pl.at(u1 + .08, y1 + .03, .08), .022, F['brass'], 5 if T.i == 0 else 3)
+        for u in (u0 - .08, u1 + .08):
+            ck.ball(g, pl.at(u, y1 + .03, .08), .04, F['brass'], 6, 4)
+
+
+def drapes(g, L, T, blocks):
+    for sx, tag, opp in ((-1, 'w', 'e'), (1, 'e', 'w')):
+        for (i, za, zb) in (('club-cloak-%s-wall-%s' % (tag, opp), None, None), ('club-backstage-%s-wall-%s' % (tag, opp), None, None), ('club-green-%s-wall-%s' % (tag, opp), None, -2.2)):
+            b = blocks.get(i)
+            if b is None:
+                continue
+            x0, x1, y0, y1, z0, z1 = ext(b)
+            face = x1 if sx < 0 else x0
+            pl = Plane((face, 0, 0), (0, 0, 1), (-sx, 0, 0))
+            drape(g, pl, (za if za is not None else z0) + .15, (zb if zb is not None else z1) - .15, y0 + .16, y1 - .2, T, F['velvet'])
