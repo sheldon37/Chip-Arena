@@ -12,6 +12,7 @@
 - **Checks:** CoreTests `--top-dog` (7919), `--hotdog-friends` (404), `--guard` (1077), `--gib` (1892), the full suite, the Unity compile, the Editor build checks; the parry shaders compiled offline with fxc (D3D11, with and without fog).
 - **Seen in the Editor:** the holographic dome with the pilot inside and the hexes clear; the feeding with the victim held where the feast holds it (the pinch, the sausage going in at the mouth); the pop's mist and the burst landing close, the friends carrying its pieces; Preview Intro in blue armour with red trims (was white-hot red) against the same pilot's match intro.
 - **Not seen / not done:** a real match's feast end to end (the preview loop's victim is not really held, so its arms are free); the jaw on a model whose mask hides the mouth (the robot helmet shows no mouth); every kill effect on a burst (embers, frost and the rest checked by code only); no person has played it.
+- **Released** to the test channel (Windows builder): merged into shared at `146b7fe2` (with Astra's #383, the Glaive public); full CoreTests 988 groups, the Unity compile and the Editor build checks (Top Dog simulation 89) passed; published revision `639298732029578711`. Not played by a person.
 
 ## 2026-11-09 — Astra: remove the Glaive's DEV restriction (owner request)
 
