@@ -18,13 +18,13 @@
     - a hit stun (as before; the carry's torso popped under the flinch);
     - ADS.
 
-    Standing, strafing and backpedalling now carry them low.
+    Standing, strafing and backpedalling now carry them low. The rifle's hips still turn behind the gun by the source's own weight (`StanceTarget`), so the legs move as before: turning the hips as the gun lowered slid a planted foot (the hit-feel check).
   - **The visual rig:** it shouldered any long gun whose game butt sat by the shoulder, which the low carry's does. The grasp's new `Unshoulder` keeps a resting gun off the shoulder, by the game pose's gun-up weight.
   - **First person is unchanged:** the view rig holds the gun up.
 - **For Astra:** no rules change. A shot from rest raises the gun over about .12 s, so the first shot's flash leaves a rising muzzle (the round itself leaves the game's origin, as always).
 - **Animation impact:** the long guns' rest and transition poses only. No hit timing, hitbox, damage, cooldown, movement or network change.
 - **Checks:**
-  - CoreTests `--visual-rig` and the new `--gun-motion` (GunMotionChecks and RangedLocomotionChecks).
+  - CoreTests `--visual-rig` and the new `--gun-motion` (GunMotionChecks, RangedLocomotionChecks and HitFeelChecks).
   - The tests' aimed cases now aim the long guns: a strafe, backpedal and stand are aimed, and each is also checked lowered unaimed.
   - The full suite, the Unity compile and the Editor's build checks.
 - **Seen in the Editor** (a match, one idle bot, both guns): standing, walking, firing, standing again and right-click aiming. Both rest low with the muzzle down, and both raise level to fire and aim.
