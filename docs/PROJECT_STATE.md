@@ -1,3 +1,5 @@
+2026-11-10 Claude (`claude/gun-upright`): the guns fire and aim upright (the pack clips' forward pitch straightened at the waist, the arms kept on the aim).
+
 2026-11-10 Claude (`claude/gun-stance`): every gun stands naturally and rests low (the pistol at a one-handed low ready); the bow's quiver rides the model's back. Next: the four new stages move off box-built kits to modelled meshes and materials (owner), and the club's DJ and metro people become Grey aliens.
 
 2026-11-10 Claude (`claude/gun-rest-sniper`): the rifle is a scoped sniper (local bake, Drive zip repacked); the rifle and machine gun rest low and raise only to shoot, reload, guard or aim.
