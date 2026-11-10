@@ -65,6 +65,11 @@ internal static class EmporiumChecks
         foreach(var m in maps.maps.Where(m=>m.id!="emporium"))foreach(var h in (m.hazards??Array.Empty<MapHazard>()).Where(h=>h.kind=="vent"))
         {Check(h.push==0,"shipped vent unchanged (push 0): "+h.id);var st=NativeFactoryHazards.State(h,0,h.start+h.offset+h.period-h.dwell+.2);Check(!NativeStageHazards.VentLaunch(h,st,new V3(h.a.x,h.a.y+.9f,h.a.z),0),"no launch on "+h.id);}
 
+        // ---- the bun press pancakes (the Factory's smash), nothing else here does
+        var pw=hz.First(h=>h.kind=="press");double open=pw.period-pw.warn-pw.rise-pw.dwell-pw.travel,slamClock=pw.start+pw.offset+open+pw.warn+pw.rise*.8;
+        var smash=NativeSmashGib.Plan(true,"impact-ragdoll",false,"pilot","hazard","emporium",hz,pw.id,0,0,4+slamClock,new System.Numerics.Vector3(pw.a.x,.9f,pw.a.z),System.Numerics.Vector3.Zero,0,7);
+        Check(smash!=null&&smash.Cause==SmashCause.Press,"a bun press death pancakes");
+        Check(NativeSmashGib.Plan(true,"impact-ragdoll",false,"pilot","hazard","emporium",hz,gey.id,0,0,4+burst,new System.Numerics.Vector3(gey.a.x,.9f,gey.a.z),System.Numerics.Vector3.Zero,0,7)==null,"a geyser death is no smash");
         // ---- the look
         var set=MapLookChecks.Load(root);NativeMapLooks.Validate(set);var look=set.maps.Single(l=>l.id=="emporium");
         Check(look.look==NativeEmporiumLooks.Look&&look.toon!=null&&look.toon.on&&look.advanced!=null&&look.advanced.beams.on&&look.blocks.dressed&&(look.lights?.Length??0)<=8,"the golden-hour look: styled, dressed, advanced");

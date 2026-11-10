@@ -208,7 +208,7 @@ namespace ChipArena.UnityConversion
             {
                 double px=-20+i*40.0/Math.Max(1,n-1)+Math.Sin(t*.05+i)*.6,pz=-6+H(501,i)*12,py=17.0,len=(py-.2)/-dy;double bx=px+dx*len,bz=pz+dz*len;
                 double w=1.4+H(501,i,1)*1.6,flick=.85+.15*Math.Sin(t*.4+i*1.7);
-                Beam(px,py,pz,bx,.2,bz,w*.8,w*1.3,0xFFC27A,1.0,.05*flick,i);Lights++;
+                Beam(px,py,pz,bx,.2,bz,w*.8,w*1.3,0xFFC27A,1.0,.032*flick,i);Lights++;
             }
         }
         private void Motes(double t)
