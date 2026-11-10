@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
             if(p.Bomb.MineCharges>=capacity)p.BombMineReady=0;
             p.Bomb.Ready[2]=p.Bomb.MineCharges>0?0:p.BombMineReady;
         }
-        private bool BombAllowed(NativePilot p)=>p.Seat.spec==NativeBombs.Spec&&(p.Seat.access.DeveloperWeapon(NativeBombs.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())||p.Seat.devWeaponAccess?.DeveloperWeapon(NativeBombs.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())==true);
+        private bool BombAllowed(NativePilot p)=>p.Seat.spec==NativeBombs.Spec&&(p.Seat.access.Allows("weapon:"+NativeBombs.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())||p.Seat.devWeaponAccess?.DeveloperWeapon(NativeBombs.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())==true);
         private bool BombPending()=>Pilots.Any(p=>(p.Bomb.Finale!=null&&!p.BombStruck)||p.BombFlights.Any(b=>b.Encore));
         private bool BombRooted(NativePilot p)=>p.Seat.spec==NativeBombs.Spec&&p.Bomb.Finale!=null&&Time<p.Bomb.Finale.Until;
         private bool BombBusy(NativePilot p)=>p.Seat.spec==NativeBombs.Spec&&(Time<p.Bomb.CastUntil||BombRooted(p));

@@ -38,7 +38,7 @@ internal static class CyberChecks
             NativeCyberRules.Interrupt(ranged,cut+.01f);Check(ranged.CutAt==cut,"ranged first cut stable");
             float next=100;NativeCyberRangedRules.Begin(ranged,slot,next,ref mana,1,1,1);Check(ranged.CutAt==-1,"ranged recast clears old cut");
         }
-        var user=new NativeAccess();typeof(NativeAccess).GetProperty("Expires").SetValue(user,1000d);((HashSet<string>)typeof(NativeAccess).GetField("grants",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(user)).Add("weapon:cyberlord");Check(!user.Allows("weapon:cyberlord",1),"grant never unlocks Cyber Lord");
+        var user=new NativeAccess();typeof(NativeAccess).GetProperty("Expires").SetValue(user,1000d);((HashSet<string>)typeof(NativeAccess).GetField("grants",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(user)).Add("weapon:cyberlord");Check(user.Allows("weapon:cyberlord",1)&&!user.Allows("weapon:cyberlord",1001)&&!user.DeveloperWeapon("cyberlord",1),"a grant unlocks the Cyber Lord while the claim lasts (owner 2026-11-10), without DEV powers");
         typeof(NativeAccess).GetProperty("Developer").SetValue(user,true);Check(user.Allows("weapon:cyberlord",1),"live DEV allows");var scoped=NativeAccess.ScopedWeapon(user,"cyberlord",1);Check(scoped.DeveloperWeapon("cyberlord",1)&&!scoped.DeveloperWeapon("siren",1)&&!scoped.DeveloperWeapon("cyberlord",1001),"sandbox scope exact and expires");
         Console.WriteLine("PASS Cyber Lord: exact cone/wall bounds, dash prediction/spend, deep snapshot, wire validity and DEV-only scope");
     }

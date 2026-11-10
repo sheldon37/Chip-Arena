@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         private static readonly string[] DogKinds=NativeTopDog.Slot;
-        private bool DogAllowed(NativePilot p)=>p.Seat.spec==NativeTopDog.Spec&&(p.Seat.access.DeveloperWeapon(NativeTopDog.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())||p.Seat.devWeaponAccess?.DeveloperWeapon(NativeTopDog.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())==true);
+        private bool DogAllowed(NativePilot p)=>p.Seat.spec==NativeTopDog.Spec&&(p.Seat.access.Allows("weapon:"+NativeTopDog.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())||p.Seat.devWeaponAccess?.DeveloperWeapon(NativeTopDog.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())==true);
         /// <summary>Rooted: the feast's twirl, throw and feeding (to the let-go, or the lasso's miss), and the dash's wind-up.</summary>
         private bool DogRooted(NativePilot p)
         {

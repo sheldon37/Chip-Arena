@@ -13,7 +13,9 @@ namespace ChipArena.UnityConversion
         private readonly HashSet<string> grants=new HashSet<string>();
         private string devScope;private NativeAccess scopeOwner;
         public bool DeveloperWeapon(string spec,double now)=>Expires>now&&(Developer||devScope==spec&&scopeOwner!=null&&scopeOwner.DeveloperWeapon(spec,now));
-        public bool Allows(string key,double now)=>(key=="weapon:cyberlord"||key=="weapon:bombadier"||key=="weapon:"+NativeTopDog.Spec)?DeveloperWeapon(key.Substring(7),now):Expires>now&&(Developer||grants.Contains(key));
+        // A grant unlocks every restricted weapon, the Cyber Lord, the Bombadier and the Top Dog included (owner 2026-11-10: "override the
+        // Dev accounts only thing ... The point of this is to grant specific users special classes"); a scoped sandbox weapon still allows.
+        public bool Allows(string key,double now)=>Expires>now&&(Developer||grants.Contains(key))||key!=null&&key.StartsWith("weapon:",StringComparison.Ordinal)&&DeveloperWeapon(key.Substring(7),now);
         public static NativeAccess ScopedWeapon(NativeAccess owner,string weapon,double now)
         {if(owner==null||!owner.Allows("weapon:"+weapon,now))return Guest;var access=new NativeAccess{Expires=owner.Expires};access.grants.Add("weapon:"+weapon);if(owner.DeveloperWeapon(weapon,now)){access.devScope=weapon;access.scopeOwner=owner;}return access;}
         public static NativeAccess Verify(string token,Func<string,NativePlayerClaim> decode,double now)

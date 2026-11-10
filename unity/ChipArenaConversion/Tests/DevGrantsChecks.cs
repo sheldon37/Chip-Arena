@@ -27,12 +27,11 @@ internal static class DevGrantsChecks
             var flagKeys=Regex.Matches(flags.Groups[1].Value,@"([A-Za-z_]+)\s*:").Select(m=>m.Groups[1].Value).ToArray();
             Check(flagKeys.SequenceEqual(NativeDevGrants.Flags),"NativeDevGrants.Flags is the server's ACCOUNT_FLAGS ("+string.Join(",",flagKeys)+")");
         }
-        // A weapon the client keeps to DEV accounts whatever the grants (NativeAccess.Allows: DeveloperWeapon) is not one the server
-        // grants: a grant of it would be saved and never honoured.
-        var accessCs=R("Core/NativeAccess.cs");var devWeapons=Regex.Matches(accessCs,"key==\"weapon:([a-z]+)\"").Select(m=>m.Groups[1].Value).ToList();
-        if(accessCs.Contains("key==\"weapon:\"+NativeTopDog.Spec"))devWeapons.Add(NativeTopDog.Spec);
-        Check(devWeapons.Count>=3,"the client's DEV-account-only weapons are found ("+string.Join(",",devWeapons)+")");
-        foreach(var w in devWeapons)Check(!NativeDevGrants.Grantable("weapon:"+w),"weapon:"+w+" is for DEV accounts only, so not offered as a grant");
+        // Every DEV class is grantable (owner 2026-11-10: "override the Dev accounts only thing ... The point of this is to grant specific
+        // users special classes"): the client keeps no weapon to DEV accounts whatever the grants, and the server takes each one's key.
+        var accessCs=R("Core/NativeAccess.cs");Check(!System.Text.RegularExpressions.Regex.IsMatch(accessCs,"key==\"weapon:"),"no weapon is kept to DEV accounts whatever the grants");
+        foreach(var w in new[]{"siren","emperor","leet","ansatsuken","cyberlord",NativeBombs.Spec,NativeTopDog.Spec})Check(NativeDevGrants.Grantable("weapon:"+w),"weapon:"+w+" is grantable");
+        foreach(var f in new[]{"Runtime/NativeBombAuthority.cs","Runtime/NativeCyberLord.cs","Runtime/NativeKernelPanicRuntime.cs","Runtime/NativeTopDogAuthority.cs"})Check(!R(f).Contains("p.Seat.access.DeveloperWeapon("),f+": a granted pilot's kit works (Allows, not DeveloperWeapon)");
 
         // Changes against what the player holds.
         var have=new[]{"weapon:siren","x:unknown"};var changes=new Dictionary<string,bool>();
@@ -40,15 +39,15 @@ internal static class DevGrantsChecks
         Check(NativeDevGrants.On(have,changes,"weapon:emperor")&&NativeDevGrants.Changes(have,changes)==1,"turning a grantable key on is one change");
         NativeDevGrants.Toggle(have,changes,"weapon:emperor",NativeDevGrants.Server);
         Check(!NativeDevGrants.On(have,changes,"weapon:emperor")&&changes.Count==0,"turning it back off is no change at all");
-        NativeDevGrants.Toggle(have,changes,"weapon:"+NativeTopDog.Spec,NativeDevGrants.Server);Check(changes.Count==0,"a key the server would refuse cannot be turned on");
+        NativeDevGrants.Toggle(have,changes,"effect:dev-gibber",NativeDevGrants.Server);Check(changes.Count==0,"a key the server would refuse cannot be turned on");
         NativeDevGrants.Toggle(have,changes,"weapon:siren",NativeDevGrants.Server);
         Check(!NativeDevGrants.On(have,changes,"weapon:siren")&&NativeDevGrants.Changes(have,changes)==1,"a held key turns off");
         NativeDevGrants.Toggle(have,changes,"intro:dev-siren",NativeDevGrants.Server);
         var sent=NativeDevGrants.Merge(have,changes,NativeDevGrants.Server);
         Check(sent.Length==2&&sent.Contains("x:unknown")&&sent.Contains("intro:dev-siren")&&!sent.Contains("weapon:siren"),"a save sends the held keys less those turned off, plus those turned on, keeping keys the client does not know ("+string.Join(",",sent)+")");
-        var forced=new Dictionary<string,bool>{{"weapon:"+NativeTopDog.Spec,true},{"effect:"+NativeHotdogFriends.Style,true}};
+        var forced=new Dictionary<string,bool>{{"effect:dev-gibber",true},{"hat:"+NativeHatLooks.SheldonHead,true}};
         Check(NativeDevGrants.Merge(null,forced,NativeDevGrants.Server).Length==0,"a save never adds a key the server would refuse");
-        var all=new Dictionary<string,bool>();NativeDevGrants.SetAll(Array.Empty<string>(),all,new[]{"weapon:siren","weapon:"+NativeTopDog.Spec,"intro:dev-siren"},true,NativeDevGrants.Server);
+        var all=new Dictionary<string,bool>();NativeDevGrants.SetAll(Array.Empty<string>(),all,new[]{"weapon:siren","effect:dev-gibber","intro:dev-siren"},true,NativeDevGrants.Server);
         Check(all.Count==2&&all["weapon:siren"]&&all["intro:dev-siren"],"ALL turns on only the grantable keys");
         NativeDevGrants.SetAll(new[]{"weapon:siren"},all,new[]{"weapon:siren","intro:dev-siren"},false,NativeDevGrants.Server);
         Check(all.Count==1&&!all["weapon:siren"]&&NativeDevGrants.Changes(new[]{"weapon:siren"},all)==1,"NONE turns them off (a key the player never had needs no change)");
@@ -58,7 +57,7 @@ internal static class DevGrantsChecks
         // What the screen offers: every DEV look a grant unlocks, never the owner's own.
         Check(NativeDevGrants.Offered(NativeHotdogFriends.Style)&&NativeDevGrants.Offered("dev-clown")&&NativeDevGrants.Offered("auditor-halo")&&NativeDevGrants.Offered("dev-topdog"),"the DEV kill effects, the Auditor Halo and the DEV entrances are offered");
         foreach(var own in new[]{"dev-gibber",NativeHatLooks.SheldonHead,NativeCosmeticGate.SheldonIntro,NativeCosmeticGate.SheldonIdle,"ragdoll","crown","weapon-sword"})Check(!NativeDevGrants.Offered(own),own+" is not offered");
-        Check(NativeDevGrants.Grantable("hat:auditor-halo")&&!NativeDevGrants.Grantable("effect:"+NativeHotdogFriends.Style),"the Auditor Halo is granted; Hotdog Friends waits for the account server");
+        Check(NativeDevGrants.Grantable("hat:auditor-halo")&&NativeDevGrants.Grantable("effect:"+NativeHotdogFriends.Style)&&NativeDevGrants.Grantable("intro:dev-topdog"),"the Auditor Halo, Hotdog Friends and the DEV entrances are granted");
 
         // Every DEV class in the content is a class card with its icon (a new DEV class needs nothing added here).
         using var gameContent=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")));
@@ -80,6 +79,6 @@ internal static class DevGrantsChecks
         Check(Regex.Matches(ui,@"\bp\.(unlocks|flags|grantVersion|developer)\s*=[^=]").Count==4&&ui.Contains("p.grantVersion=a.grantVersion;p.unlocks=a.unlocks;p.flags=a.flags;p.developer=a.developer;"),"a player's record changes only from the server's answer to a save");
         Check(Regex.Matches(ui,@"NativeDevGrants\.(Toggle|SetAll)\(").Count==5,"every toggle goes through NativeDevGrants (classes and entrances, looks, ALL, NONE, labels)");
         Check(R("Runtime/NativeHomeMenu.cs").Contains("private void DevScreen(float age)=>DevGrantsScreen(age);")&&!R("Runtime/NativeAdmin.cs").Contains("AdminBody"),"home · DEV opens the new screen; the old form is gone");
-        Console.WriteLine("PASS DEV grants: "+n+" checks (the server's grant keys and labels mirrored"+(server?"":" [server source not present]")+", DEV-account weapons kept out, changes and what a save sends, every DEV class and look offered, never the owner's own)");
+        Console.WriteLine("PASS DEV grants: "+n+" checks (the server's grant keys and labels mirrored"+(server?"":" [server source not present]")+", every DEV class grantable, changes and what a save sends, every DEV class and look offered, never the owner's own)");
     }
 }

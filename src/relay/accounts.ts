@@ -3,7 +3,7 @@ import {confirmXp,readXp} from './account-xp.js';
 import {scryptAsync} from '@noble/hashes/scrypt.js';
 import {base64url} from '../shared/dev-auth.js';
 import {GAME_CLAIM_MS} from '../shared/account-auth.js';
-import {cleanGrants,cleanFlags,Access} from '../shared/access.js';
+import {cleanGrants,cleanFlags,canUse,Access} from '../shared/access.js';
 import {cosmetics} from '../shared/cosmetics.js';
 import type {AuthEnv} from './auth.js';
 const encoder=new TextEncoder(),SESSION_MS=12*3600000,REMEMBER_MS=30*24*3600000;
@@ -70,7 +70,7 @@ function weaponTechniqueMap(raw:unknown){
 function accountCosmetics(raw:any,a:Access){
  const clean=cosmetics(raw,a);
  const tint=(value:unknown)=>typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)?value:'';
- return {...clean,lobbyPose:raw?.lobbyPose==='sheldon-idle'&&a.developer?'sheldon-idle':clean.lobbyPose,preferredSpec:raw?.preferredSpec==='bow'?'bow':raw?.preferredSpec==='cyberlord'&&a.developer?'cyberlord':clean.preferredSpec,hatColor:tint(raw?.hatColor),backColor:tint(raw?.backColor),hat:raw?.hat==='sheldon-head'&&a.developer?'sheldon-head':clean.hat,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',weaponTechniques:weaponTechniqueMap(raw?.weaponTechniques),weaponSkins:weaponSkinMap(raw?.weaponSkins,a.developer),look:lookMap(raw?.look,a.developer),pod:podLook(raw?.pod),intro:(raw?.intro==='sheldon-intro'||raw?.intro==='dev-cyberlord')&&a.developer?raw.intro:NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
+ return {...clean,lobbyPose:raw?.lobbyPose==='sheldon-idle'&&a.developer?'sheldon-idle':clean.lobbyPose,preferredSpec:raw?.preferredSpec==='bow'?'bow':raw?.preferredSpec==='cyberlord'&&canUse(a,'weapon:cyberlord')?'cyberlord':clean.preferredSpec,hatColor:tint(raw?.hatColor),backColor:tint(raw?.backColor),hat:raw?.hat==='sheldon-head'&&a.developer?'sheldon-head':clean.hat,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',weaponTechniques:weaponTechniqueMap(raw?.weaponTechniques),weaponSkins:weaponSkinMap(raw?.weaponSkins,a.developer),look:lookMap(raw?.look,a.developer),pod:podLook(raw?.pod),intro:(raw?.intro==='sheldon-intro'||raw?.intro==='dev-cyberlord')&&a.developer?raw.intro:NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
 }
 function savedProfile(raw:any,a:Access){return {name:typeof raw?.name==='string'?raw.name.replace(/[<>\u0000-\u001f]/g,'').slice(0,20)||'Pilot':'Pilot',class:(['ranged','melee','magic'].includes(raw?.class)||raw?.class==='dev'&&a.developer)?raw.class:'ranged',color:/^#[0-9a-f]{6}$/i.test(raw?.color||'')?raw.color:'#ff6b35',cosmetics:accountCosmetics(raw?.cosmetics,a)};}
 function view(row:any){return {id:row.id,username:row.username,profileSchema:2,...access(row),profile:savedProfile(JSON.parse(row.profile),access(row)),hasProfile:row.profile!=='{}',revision:row.revision,grantVersion:row.grant_version};}
