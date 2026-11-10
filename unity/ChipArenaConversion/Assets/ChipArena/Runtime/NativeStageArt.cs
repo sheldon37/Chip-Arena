@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
         private readonly List<ChunkDraw> chunks=new List<ChunkDraw>();
         private readonly Dictionary<string,BlockDraw> blocks=new Dictionary<string,BlockDraw>(StringComparer.Ordinal);
         private Piece[][] rig=Array.Empty<Piece[]>();private bool[] rigShadow=Array.Empty<bool>();
-        private int lastFrame=-10;
+        private int lastFrame=-10;private readonly HashSet<int> built=new HashSet<int>();
         private static readonly int GlowId=Shader.PropertyToID("_StageGlow"),TintId=Shader.PropertyToID("_StageTint"),GlowFlag=Shader.PropertyToID("_Glow");
         /// <summary>The art is loaded for the prepared map (its boxes give way to it).</summary>
         public bool Ready=>plan!=null&&root!=null;
@@ -90,7 +90,9 @@ namespace ChipArena.UnityConversion
                 probe.boxProjection=true;probe.hdr=true;probe.nearClipPlane=.3f;probe.farClipPlane=90;probe.clearFlags=ReflectionProbeClearFlags.SolidColor;probe.backgroundColor=new Color(.02f,.02f,.035f);
                 var all=new Bounds(cd0(chunks),Vector3.zero);foreach(var c in chunks)all.Encapsulate(c.Box);probe.transform.position=new Vector3(all.center.x,Mathf.Clamp(all.center.y,1,8),all.center.z);
                 probe.size=all.size;probe.center=all.center-probe.transform.position;probeFrame=-1;probeRendered=-1;
-                root.SetActive(false);return true;
+                // the meshes are on the GPU now (Runtime NativePackBanks keeps them): the bank's copies of their vertices go
+                foreach(int m in built){var src=bank.Meshes[m];src.Positions=src.Normals=null;src.Uv0=src.Uv1=null;src.Colors=null;foreach(var sm in src.Submeshes)sm.Indices=Array.Empty<int>();}
+                built.Clear();root.SetActive(false);return true;
             }
             catch(Exception e){Debug.LogWarning("Stage art disabled: "+e.Message);Release();failed=true;return false;}
         }
@@ -98,7 +100,8 @@ namespace ChipArena.UnityConversion
         private Piece PieceOf(NativePackBank.Bank bank,int prop)
         {
             if(prop<0||prop>=bank.Props.Count)return null;var p=bank.Props[prop];if(p.Parts.Length==0)return null;var part=p.Parts[0];
-            var mesh=NativePackBanks.Mesh(bankName??NativeStageArt.BankOf(mapId),part.Mesh);if(mesh==null)return null;
+            // (a mesh Unity let go after the bank's copies were freed cannot be made again: that piece is left out)
+            Mesh mesh;try{mesh=NativePackBanks.Mesh(bankName??NativeStageArt.BankOf(mapId),part.Mesh);}catch(NullReferenceException){return null;}if(mesh==null)return null;built.Add(part.Mesh);
             return new Piece{Mesh=mesh,Place=NativePackBanks.Place(part.Place),Subs=mesh.subMeshCount};
         }
 

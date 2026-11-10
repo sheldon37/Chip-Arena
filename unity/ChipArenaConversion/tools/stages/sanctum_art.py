@@ -38,8 +38,8 @@ def finishes(L):
     def K(k):
         return kc['sanctum-kit-' + k]
     A = sk
-    F['wall'] = A.fin('wall', 0x7C746A, A.DETAIL_ASHLAR, smooth=.16, moss=.25)
-    F['pier'] = A.fin('pier', 0x9E9588, A.DETAIL_ASHLAR, smooth=.2, moss=.12)
+    F['wall'] = A.fin('wall', 0x7C746A, A.DETAIL_ASHLAR, smooth=.16, moss=.25, param=.9)
+    F['pier'] = A.fin('pier', 0x9E9588, A.DETAIL_ASHLAR, smooth=.2, moss=.12, param=.72)
     F['shaft'] = A.fin('shaft', 0xA89F92, A.DETAIL_CARVED, smooth=.26, wear=.25)
     F['trim'] = A.fin('trim', K('stone-trim'), A.DETAIL_CARVED, smooth=.22, wear=.3)
     F['stone'] = A.fin('stone', K('stone'), A.DETAIL_CARVED, smooth=.2, wear=.25)
@@ -50,8 +50,8 @@ def finishes(L):
     F['floor'] = A.fin('floor', 0x675E56, A.DETAIL_FLAG, smooth=.34, moss=.08)
     F['gfloor'] = A.fin('gfloor', 0x706660, A.DETAIL_FLAG, smooth=.3)
     F['soffit'] = A.fin('soffit', 0x5E5862, A.DETAIL_PLASTER, smooth=.08)
-    F['cryptfloor'] = A.fin('cryptfloor', 0x46424C, A.DETAIL_FLAG, smooth=.32, moss=.55)
-    F['cryptwall'] = A.fin('cryptwall', 0x55505C, A.DETAIL_ASHLAR, smooth=.2, moss=.7)
+    F['cryptfloor'] = A.fin('cryptfloor', 0x46424C, A.DETAIL_FLAG, smooth=.32, moss=.55, param=.55)
+    F['cryptwall'] = A.fin('cryptwall', 0x55505C, A.DETAIL_ASHLAR, smooth=.2, moss=.7, param=.62)
     F['marble'] = A.fin('marble', K('marble'), A.DETAIL_MARBLE, smooth=.72, dirt=.4)
     F['blackmarble'] = A.fin('blackmarble', 0x2A262E, A.DETAIL_MARBLE, smooth=.78, dirt=.3)
     F['gold'] = A.fin('gold', K('gold'), A.DETAIL_BRASS, smooth=.8, metal=1.0, dirt=.25, wear=.2)
@@ -975,6 +975,60 @@ def saint_halo(g, b, T):
             sweep(g, sk.rect_section(.02, .012), [(cu + math.cos(a) * .34, 2.22 + math.sin(a) * .34, face + s * .02), (cu + math.cos(a) * .46, 2.22 + math.sin(a) * .46, face + s * .02)], F['gold'])
 
 
+BLOCKS = {}
+
+
+def front_of(p):
+    """The direction a part on a wall faces: from its owner block's middle toward it, along the block's thin side."""
+    b = BLOCKS.get(p.get('o'))
+    if b is None:
+        return None
+    sx, sz = b['size'][0], b['size'][2]
+    if sx >= sz:
+        return (0.0, 0.0, 1.0 if p['c'][2] > b['pos'][2] else -1.0)
+    return (1.0 if p['c'][0] > b['pos'][0] else -1.0, 0.0, 0.0)
+
+
+def skull(g, p, T):
+    """A skull on a crypt shelf: the cranium, the face under it, the dark sockets and nose."""
+    c, (hx, hy, hz) = p['c'], p['h']
+    fr = front_of(p) or (0.0, 0.0, 1.0)
+    base = (c[0], c[1] - hy, c[2])
+    w = min(hx, hz) * 1.0 if abs(fr[2]) > .5 else min(hx, hz)
+    sc = (1.0, .9) if abs(fr[2]) > .5 else (.9, 1.0)
+    lathe(g, [(0.0, .02), (w * .55, .025), (w * .9, .07), (w * 1.0, .12), (w * .85, .17), (w * .45, .2), (0.0, .205)], base, F['bone'], (12, 8, 5)[T.i], scale=sc)
+    jaw = sk._add(base, fr, w * .45)
+    lathe(g, [(0.0, 0.0), (w * .5, .005), (w * .55, .04), (w * .35, .065), (0.0, .07)], jaw, F['bone'], (8, 6, 4)[T.i])
+    if T.detail:
+        for side in (-1, 1):
+            u = (fr[2] * side, 0.0, -fr[0] * side)
+            e = sk._add(sk._add(sk._add(base, fr, w * .93), u, w * .4), (0, 1, 0), .095)
+            lathe(g, [(0.0, 0.0), (.024, .002), (0.0, .004)], e, F['niche'], 7, axis=fr, cap0=False)
+        n = sk._add(sk._add(base, fr, w * .98), (0, 1, 0), .06)
+        lathe(g, [(0.0, 0.0), (.012, .002), (0.0, .004)], n, F['niche'], 5, axis=fr, cap0=False)
+
+
+def crypt_niche(g, p, T):
+    """A crypt wall's burial niche: a round-headed dark recess with a roll round it (the kit's flat panel)."""
+    c, (hx, hy, hz) = p['c'], p['h']
+    fr = front_of(p) or (0.0, 0.0, 1.0)
+    along = (1.0, 0.0, 0.0) if abs(fr[2]) > .5 else (0.0, 0.0, 1.0)
+    w = hx if abs(fr[2]) > .5 else hz
+    y0, y1 = c[1] - hy, c[1] + hy
+    spring = y1 - w
+    face = sk._add(c, fr, -min(hx, hz) + .004)
+    def P(u, y, d=0.0):
+        q = sk._add(face, along, u)
+        return (q[0] + fr[0] * d, y, q[2] + fr[2] * d)
+    n = max(5, T.arc // 2)
+    outline = [(-w, y0), (-w, spring)] + [(-w * math.cos(math.pi * k / n), spring + w * math.sin(math.pi * k / n)) for k in range(1, n)] + [(w, spring), (w, y0)]
+    mid = P(0, (y0 + y1) / 2)
+    for k in range(len(outline)):
+        a, b = outline[k], outline[(k + 1) % len(outline)]
+        g.face((mid, P(a[0], a[1]), P(b[0], b[1])), F['niche'], fr)
+    sweep(g, sk.circle_section(.03, (6, 5, 4)[T.i]), [P(u * 1.06, y, .015) for (u, y) in outline], F['trim'])
+
+
 def kit_part(g, p, T):
     hx, hy, hz = p['h']
     lo = min(hx, hy, hz)
@@ -982,6 +1036,12 @@ def kit_part(g, p, T):
         return
     q = p['q']
     f = KIND[p['k']]
+    if p['f'] == 'crypt-wall' and f == F['bone']:
+        skull(g, p, T)
+        return
+    if p['f'] == 'crypt-wall' and f == F['dark'] and min(hx, hy, hz) <= .0105:
+        crypt_niche(g, p, T)
+        return
     if f == F['statue'] and abs(q[3]) > .999:
         if hy >= .4 and max(hx, hz) >= .12:
             figure(g, p, T)
@@ -1062,8 +1122,10 @@ def crypt(g, blocks, T):
             # a cushion capital under a square abacus
             lathe(g, [(r * .86, y1 - .5), (r * 1.0, y1 - .38), (r * 1.25, y1 - .2)], (x, 0, z), F['trim'], T.round)
             box(g, x - r - .16, x + r + .16, y1 - .2, y1, z - r - .16, z + r + .16, F['trim'], T, bevel=.02)
-        elif i.startswith('sanctum-crypt-tomb') or i == 'sanctum-crypt-shrine':
-            moulded(g, b, F['stone'] if 'tomb' in i else F['marble'], T, panels=True, trim=None if 'tomb' in i else F['gold'])
+        elif i.startswith('sanctum-crypt-tomb'):
+            moulded(g, b, F['stone'], T, panels=True)
+        elif i == 'sanctum-crypt-shrine':
+            shrine(g, b, T)
     # the low vault: shallow groin bays between the pillars and the walls, springing 2.2 m over the floor
     xs, zs = (-8, -4, 4, 8), (-4.6, -2.4, 2.4, 4.6)
     for i in range(3):
@@ -1074,6 +1136,56 @@ def crypt(g, blocks, T):
                 rib(g, bay, a, bb, T, [(-.09, -.04), (.09, -.04), (.09, .08), (0, .16), (-.09, .08)], F['trim'], steps=max(6, T.arc))
             boss(g, (bay.cx, bay.y(bay.cx, bay.cz) - .08, bay.cz), T, r=.16)
     return
+
+
+def shrine(g, b, T):
+    """The crypt's reliquary: a gilded casket like a little church on a moulded marble plinth, its shallow roof crested, finials
+    at its corners (the roof keeps to the block's top, so a pilot on it stands at most .3 m over the ridge's fall)."""
+    x0, x1, y0, y1, z0, z1 = ext(b)
+    G, M = F['gold'], F['marble']
+    box(g, x0, x1, y0 + .14, y0 + .5, z0, z1, M, T, bevel=.02, skip=('-y',))
+    mould_round(g, [(x0, y0, z0), (x1, y0, z0), (x1, y0, z1), (x0, y0, z1)], BASE, M, T)
+    cx0, cx1, cz0, cz1 = x0 + .12, x1 - .12, z0 + .12, z1 - .12
+    eave = y1 - .3
+    box(g, cx0, cx1, y0 + .5, eave, cz0, cz1, F['velvet'], T, bevel=.01)
+    mould_round(g, [(cx0, y0 + .5, cz0), (cx1, y0 + .5, cz0), (cx1, y0 + .5, cz1), (cx0, y0 + .5, cz1)], [(-.02, 0), (.05, 0), (.05, .06), (.02, .09), (-.02, .09)], G, T)
+    mould_round(g, [(cx0, eave - .1, cz0), (cx1, eave - .1, cz0), (cx1, eave - .1, cz1), (cx0, eave - .1, cz1)], CAP, G, T)
+    # the arcade round the casket: gilded shafts and round heads over velvet
+    for (along, a0, a1, at, sgn) in (('x', cx0, cx1, cz0, -1), ('x', cx0, cx1, cz1, 1), ('z', cz0, cz1, cx0, -1), ('z', cz0, cz1, cx1, 1)):
+        n = max(2, int(round((a1 - a0) / .55)))
+        for k in range(n + 1):
+            u = a0 + (a1 - a0) * k / n
+            p0 = (u, y0 + .58, at + sgn * .03) if along == 'x' else (at + sgn * .03, y0 + .58, u)
+            p1 = (p0[0], eave - .32, p0[2])
+            sk.cylinder(g, p0, p1, .035, G, T.small)
+        for k in range(n):
+            u0, u1 = a0 + (a1 - a0) * k / n, a0 + (a1 - a0) * (k + 1) / n
+            m = max(5, T.arc // 2)
+            r = (u1 - u0) / 2
+            pts = [((u0 + u1) / 2 - r * math.cos(math.pi * j / m), eave - .32 + r * .8 * math.sin(math.pi * j / m)) for j in range(m + 1)]
+            path = [((uu, yy, at + sgn * .035) if along == 'x' else (at + sgn * .035, yy, uu)) for (uu, yy) in pts]
+            sweep(g, sk.circle_section(.022, 5), path, G)
+    # the relics glowing through a window on each long side
+    for zz, sz in ((cz0, -1), (cz1, 1)):
+        box(g, -.3, .3, y0 + .9, y0 + 1.5, zz, zz + sz * .012, F['glow'], None, bevel=0, cell=0)
+        sweep(g, sk.circle_section(.025, 5), [(-.32, y0 + .88, zz + sz * .015), (.32, y0 + .88, zz + sz * .015), (.32, y0 + 1.52, zz + sz * .015), (-.32, y0 + 1.52, zz + sz * .015)], F['gold'], closed=True)
+    # the roof: two shallow slopes from the eaves to the ridge along x, gold, a cresting of fleurons on the ridge
+    rx0, rx1 = x0 + .04, x1 - .04
+    for sz, zz in ((-1, z0 + .02), (1, z1 - .02)):
+        nrm = sk._norm((0, 1, sz * .3 / max(.01, abs(zz))))
+        g.face(((rx0, eave, zz), (rx1, eave, zz), (rx1, y1 - .02, 0.0), (rx0, y1 - .02, 0.0)), G, nrm)
+    for sx, xx in ((-1, rx0), (1, rx1)):
+        g.face(((xx, eave, z0 + .02), (xx, eave, z1 - .02), (xx, y1 - .02, 0.0)), G, (sx, 0, 0))
+    g.face(((rx0, eave, z0 + .02), (rx1, eave, z0 + .02), (rx1, eave, z1 - .02), (rx0, eave, z1 - .02)), G, (0, -1, 0))
+    sweep(g, sk.circle_section(.03, T.small), [(rx0, y1 - .02, 0.0), (rx1, y1 - .02, 0.0)], G)
+    if T.detail:
+        n = int((rx1 - rx0) / .25)
+        for k in range(n + 1):
+            x = rx0 + (rx1 - rx0) * k / n
+            lathe(g, [(0, 0), (.035, .02), (.02, .06), (0, .1)], (x, y1 - .02, 0.0), G, 4)
+    for sx in (x0 + .06, x1 - .06):
+        for sz in (z0 + .06, z1 - .06):
+            lathe(g, [(.05, 0), (.05, .08), (.03, .12), (.04, .16), (0, .3)], (sx, eave, sz), G, max(5, T.small))
 
 
 def roof(g, blocks, T):
@@ -1092,6 +1204,8 @@ SCULPTED = {'pier', 'wall', 'arcade', 'lancet', 'rose', 'vaults', 'balustrade', 
 def static_scene(L, T, pew_ids):
     g = Geo()
     blocks = L['blocks']
+    BLOCKS.clear()
+    BLOCKS.update({b['id']: b for b in blocks})
     walls(g, L, T)
     vaults(g, L, T)
     floors(g, blocks, T)
@@ -1159,6 +1273,8 @@ def static_scene(L, T, pew_ids):
         if f == 'screen' and min(p['h']) <= .0105 and KIND[p['k']] in (F['dark'], F['gold']):
             continue
         if f == 'saint' and KIND[p['k']] == F['gold'] and max(p['h']) <= .041:
+            continue
+        if f == 'shrine':
             continue
         if f == 'crypt-vault' and p['k'] not in (KIND.index(F['glow']), KIND.index(F['chain'])) and p['r'] == 0:
             continue

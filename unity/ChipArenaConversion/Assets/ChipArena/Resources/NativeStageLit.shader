@@ -91,14 +91,15 @@ Shader "ChipArena/StageLit"
             float3 n=s.n;float3 tu,tv;STangents(n,tu,tv);float k=lerp(1.0,0.45,toon);
             if(detail==DETAIL_ASHLAR)
             {
-                bool top=abs(n.y)>0.7;float2 hv=top?world.xz:float2(abs(n.x)>abs(n.z)?world.z:world.x,world.y);
-                SAshlar(s,hv,top?0.9:0.95,top?0.6:0.42,0.022,tu,tv,0.55*k,1.0);
+                // the parameter scales the courses (0: as drawn): the crypt's rougher, smaller stones, the piers' shorter ones
+                float sc=param>0.01?param:1.0;bool top=abs(n.y)>0.7;float2 hv=top?world.xz:float2(abs(n.x)>abs(n.z)?world.z:world.x,world.y);
+                SAshlar(s,hv,(top?0.9:0.95)*sc,(top?0.6:0.42)*sc,0.022*lerp(1.0,sc,0.5),tu,tv,0.55*k,1.0);
                 s.n=SBump(s.n,world,9.0,0.18*k);s.albedo*=0.92+0.16*SNoise(world*3.3);
             }
             else if(detail==DETAIL_FLAG)
             {
-                bool top=n.y>0.7;float2 hv=top?world.xz:float2(abs(n.x)>abs(n.z)?world.z:world.x,world.y);
-                SAshlar(s,hv,top?1.25:0.95,top?0.82:0.42,0.016,tu,tv,0.3*k,1.0);
+                float sc=param>0.01?param:1.0;bool top=n.y>0.7;float2 hv=top?world.xz:float2(abs(n.x)>abs(n.z)?world.z:world.x,world.y);
+                SAshlar(s,hv,(top?1.25:0.95)*sc,(top?0.82:0.42)*sc,0.016,tu,tv,0.3*k,1.0);
                 // polish where feet wear it, cracks here and there
                 float wear=smoothstep(0.45,0.75,SFbm(world*0.45));s.smooth=lerp(s.smooth,min(1.0,s.smooth+0.32),wear);
                 float c=abs(SNoise(world*1.7+3.0)-0.5);s.albedo*=lerp(1.0,0.55,(1.0-smoothstep(0.0,0.012,c))*step(0.6,SNoise(world*0.6)));
