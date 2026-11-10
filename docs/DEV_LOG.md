@@ -19,6 +19,7 @@
 - **Rules impact (for Astra):** a granted non-DEV account may now play the three DEV classes in a room. The host's checks come from the signed account token as before, and nothing else changes. No animation, hit timing, hitbox, damage, cooldown, movement or network field changes.
 - **Checks:** CoreTests `--dev-grants`, `--hotdog-friends`, `--cyber-ranged`, `--dev-tools`, `--bombadier`, `--top-dog` and `--bomb-rules`; the full suite; the Unity compile; the Editor's build checks.
 - **Not run:** `tests/accounts.test.ts` (no Node here); a live grant end to end, which waits for the Site publish; a granted non-DEV player in a real room.
+- **Released:** full suite at `8d2cb6b0`: 994 groups, exit 0; the 4 pins reported are the removed `DeveloperWeapon` gates that `--dev-grants` requires gone; Unity compile PASS; the Editor build checks passed. Merged into shared at `6bdb94b8` and synced to the builder; the test channel published revision `639299135983899564`. **The Site is not published yet** (Astra, above).
 
 ## 2026-11-10 — Claude: four new stages (Starfall Causeway, Substation 128, Top Dog Emporium, the Hollow Sanctum), in Random (owner request)
 
