@@ -202,18 +202,19 @@ namespace ChipArena.UnityConversion
         }
         private void Fans(NativeClubShow s,double render)
         {
-            if(s.FanOn<.02)return;int n=low?6:10;double on=s.FanOn;double r=s.FanColor[0],g=s.FanColor[1],b=s.FanColor[2];
+            // thin beams fanned off each stack's top, high over the hall (8 to 11.5 m on the far wall): over every head, never across a sight line
+            if(s.FanOn<.02)return;int n=low?5:8;double on=s.FanOn;double r=s.FanColor[0],g=s.FanColor[1],b=s.FanColor[2];
             foreach(double side in Sides)
             {
                 double ox=side*9.4,oy=NativeClubLooks.SpeakerTop+.18,oz=15.6;
                 for(int i=0;i<n;i++)
                 {
-                    double u=(i/(n-1.0)-.5)*2,tx=side*-4+u*16*s.FanSpread,ty=6.6+u*s.FanSweep*3+Math.Sin(render*1.7+i*.6+side)*.4+s.FanSweep*4,tz=-19.4;
-                    if(Beams!=null){Beams.Add(ox,oy,oz,tx,ty,tz,.015,.05,r*2.4*on,g*2.4*on,b*2.4*on,.25,i+side*31);BeamCount++;}
-                    else{Streak(ox,oy,oz,tx,ty,tz,.03,.06,r*2.2*on,g*2.2*on,b*2.2*on,.55,true,0);}
-                    Sprite(tx,ty,tz+.05,.35,r*3*on,g*3*on,b*3*on,.8,true);Show+=2;
+                    double u=(i/(n-1.0)-.5)*2,tx=side*-3+u*18*s.FanSpread,ty=9.6+u*s.FanSweep*1.6+Math.Sin(render*1.3+i*.6+side)*.35+s.FanSweep*2,tz=-19.4;
+                    if(Beams!=null){Beams.Add(ox,oy,oz,tx,ty,tz,.008,.022,r*1.1*on,g*1.1*on,b*1.1*on,.2,i+side*31);BeamCount++;}
+                    else{Streak(ox,oy,oz,tx,ty,tz,.018,.03,r*1.6*on,g*1.6*on,b*1.6*on,.45,true,0);}
+                    Sprite(tx,ty,tz+.05,.25,r*2.4*on,g*2.4*on,b*2.4*on,.7,true);Show+=2;
                 }
-                Sprite(ox,oy,oz,.8,r*3*on,g*3*on,b*3*on,.8,true);Show++;
+                Sprite(ox,oy,oz,.6,r*2.4*on,g*2.4*on,b*2.4*on,.7,true);Show++;
             }
         }
         private void Balls(NativeClubShow s,double render)
