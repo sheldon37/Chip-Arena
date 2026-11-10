@@ -9,6 +9,7 @@
 - **Checks:** CoreTests `--transitions` (4023), `--expeditions-menu` (1010), `--techniques` (857), the full suite, the Unity compile, the Editor's build checks.
 - **Seen in the Editor** (a LAN room with 3 and 6 bots, free-for-all and teams): the room, the Q ability picker, the weapon picker, Create Room. A new local-tool option `lobby=` drives these captures (git-ignored tool).
 - **Not seen / not done:** a guest's view and its automatic sync with a second client; a pad-only pass through the sheet; played by a person.
+- **Released:** merged into shared at `d8eddcae` and synced to the builder; the test channel published revision `639298957627318355`.
 
 ## 2026-11-10 — Claude: guns zoom when aimed, a spread cone with a reactive crosshair, and the killcam that stopped with more players (owner requests)
 
