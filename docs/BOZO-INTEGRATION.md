@@ -1049,7 +1049,10 @@ new asset bundles im adding to my drive, can we utilize these?" The visual body 
 owner's new packs (POLY Mega Weapons Kit, SciFantasy Sword Pack; `docs/ASSET-CREDITS.md`) in place of the Standard skin's:
 - **Which:**
   - pistol: `SM_Army_Pistol`, 19 cm long (the game's runs 60 cm from its back to its muzzle);
-  - rifle: `SM_Assault_Rifle_5,56`, .92 m (the game's 1.5 m);
+  - rifle: a sniper since 2026-11-10 (owner: "change the weapon model to a sniper"): `SM_Hunting_Sniper_Rifle` at .92 times with
+    `SM_Sniper_Scope` on its receiver, 1.15 m (the game's 1.5 m); the scope's eyepiece is the entry's `Sight` (first person lines it up).
+    The local tool's weapons table took two fields for it: `Extras` (kit parts mounted in kit space) and `Sight` (kit space).
+    It was `SM_Assault_Rifle_5,56`, .92 m;
   - machine gun: `SM_Light_Machine_Gun`, .93 m (the game's 1.2 m), its deployed bipod cut off in the bake;
   - sword: `RB_Falchion`, its tip 1.27 m from the fist (the game's 1.275 m);
   - greatsword: `RB_Greatsword` at 1.15 times, its tip 1.64 m from the fist (the game's 1.685 m).

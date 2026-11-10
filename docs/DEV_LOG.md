@@ -1,3 +1,35 @@
+## 2026-11-10 — Claude: the rifle is a sniper; the rifle and machine gun rest low (owner request)
+
+- Branch `claude/gun-rest-sniper` (from shared at `386cc351`).
+- **The owner:** "For the Rifle, we need to change the weapon model to a sniper. Machine gun / Rifle, we need a resting pose (They're holding it downward) only show the aiming animation when were shooting / aiming."
+- **The sniper** (the visual body's rifle; local bake, docs/BOZO-INTEGRATION.md life-size weapons):
+  - The kit's bolt-action `SM_Hunting_Sniper_Rifle` at .92 times, with `SM_Sniper_Scope` on its receiver (it replaces `SM_Assault_Rifle_5,56`).
+  - The fit's fist, fore-end, butt and bore were measured from the kit model. The scope's eyepiece is the entry's `Sight`.
+  - The local tool (git-ignored) gained two weapon-table fields: `Extras` and `Sight`.
+  - The Drive zip was repacked: two kit models added, plus the bake prefab and two toon materials (default shader values). The old zip is `LocalAssets-2026-11-10-before-sniper.zip`.
+  - The Prototype Series, the Classic body and the Standard skin's sculpted rifle are unchanged. So are the muzzle, flash and modules, which ride the fit as before; the sniper is longer, so they sit 25% larger.
+- **The rest pose (presentation only; rules, aim, the shot's origin and the wire are untouched):**
+  - **The pack layer:** the rifle set no longer follows the look while the arms are free (`Set.RestLow`). The pistol still does.
+  - **Standing:** the arms take a still frame of the pack walk's low two-hand carry over the idle (`Set.RestArms`), because the idle's own ready hold keeps the stock at the shoulder. Walking already carried it low.
+  - **The game pose** (`GunMotion.AimTarget`): the long guns are up only for:
+    - a shot;
+    - a reload, and .3 s after it (`ReloadSettle`; lowering as the reload ended snapped the muzzle);
+    - a guard;
+    - a hit stun (as before; the carry's torso popped under the flinch);
+    - ADS.
+
+    Standing, strafing and backpedalling now carry them low.
+  - **The visual rig:** it shouldered any long gun whose game butt sat by the shoulder, which the low carry's does. The grasp's new `Unshoulder` keeps a resting gun off the shoulder, by the game pose's gun-up weight.
+  - **First person is unchanged:** the view rig holds the gun up.
+- **For Astra:** no rules change. A shot from rest raises the gun over about .12 s, so the first shot's flash leaves a rising muzzle (the round itself leaves the game's origin, as always).
+- **Animation impact:** the long guns' rest and transition poses only. No hit timing, hitbox, damage, cooldown, movement or network change.
+- **Checks:**
+  - CoreTests `--visual-rig` and the new `--gun-motion` (GunMotionChecks and RangedLocomotionChecks).
+  - The tests' aimed cases now aim the long guns: a strafe, backpedal and stand are aimed, and each is also checked lowered unaimed.
+  - The full suite, the Unity compile and the Editor's build checks.
+- **Seen in the Editor** (a match, one idle bot, both guns): standing, walking, firing, standing again and right-click aiming. Both rest low with the muzzle down, and both raise level to fire and aim.
+- **Not seen:** played by a person; the bots' rest in a busy match; the killcam of a resting gun; the 3x scope view (unchanged).
+
 ## 2026-11-10 — Claude: the owner's songs for the four new stages (owner request)
 
 - Branch `claude/stage-songs` (from shared at `386cc351`).

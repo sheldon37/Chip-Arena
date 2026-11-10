@@ -77,7 +77,7 @@ CI, cloud builds, other checkouts and the public source zips.
 ### Visual body weapons (2026-10-24, owner licence)
 
 The visual body's life-size weapons (`docs/BOZO-INTEGRATION.md`, life-size weapons) come from two packs the owner
-licensed and added to the shared asset drive. The pieces used are the pistol, assault rifle and light machine gun of the
+licensed and added to the shared asset drive. The pieces used are the pistol, hunting sniper rifle with its sniper scope (the rifle since 2026-11-10; the assault rifle before) and light machine gun of the
 POLY Mega Weapons Kit (with the machine gun's bipod cut off) and the falchion and greatsword of the SciFantasy Sword Pack
 (RB), on the game's own toon material.
 
