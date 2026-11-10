@@ -97,9 +97,8 @@ and whether prediction should apply it.
 
 ## Music
 
-No song yet. Placeholder: `skyframe-rising-motif` (the map record's `music`). The owner's song takes the key **`causeway-theme`**:
-add `Resources/Audio/music/causeway-theme.mp3` (+ meta, asset-lock entry, length pin) and `case "causeway":return
-"causeway-theme";` in `NativeStageMusic.Theme`.
+The owner's song **Celestial Bell Motif** (Suno, 2026-11-10; 219.8 s) plays under the key `causeway-theme`
+(`NativeStageMusic.Theme`). The map record's `music` keeps the placeholder `skyframe-rising-motif` as the fallback.
 
 ## Files
 

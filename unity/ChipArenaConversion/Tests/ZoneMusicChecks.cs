@@ -20,6 +20,10 @@ internal static class ZoneMusicChecks
         Check(NativeStageMusic.Theme("polar","old")=="polar-pulse-de-la-mort","owner stage song: polar");
         Check(NativeStageMusic.Theme("backrooms-level-0","old")=="backrooms-fluorescent-loop","owner stage song: backrooms-level-0");
         Check(NativeStageMusic.Theme("training","old")=="training-steady-groove","owner stage song: training");
+        Check(NativeStageMusic.Theme("causeway","placeholder")=="causeway-theme","owner stage song: causeway");
+        Check(NativeStageMusic.Theme("club","placeholder")=="club-theme","owner stage song: club");
+        Check(NativeStageMusic.Theme("emporium","placeholder")=="emporium-theme","owner stage song: emporium");
+        Check(NativeStageMusic.Theme("sanctum","placeholder")=="sanctum-theme","owner stage song: sanctum");
         Check(NativeStageMusic.Theme("expedition-backrooms-level-0","old")=="backrooms-fluorescent-loop","Expedition Level 0 uses its own track");
         Check(NativeStageMusic.PoolroomsTrack=="poolrooms-untitled","Poolrooms resource reserved without inventing a playable map");
         foreach(string map in new[]{"brickfall","siren","factory","cybercity","expedition-city","expedition-transit","expedition-foundry","unknown",null})Check(NativeStageMusic.Theme(map,"existing")=="existing","existing theme retained: "+map);
@@ -31,6 +35,10 @@ internal static class ZoneMusicChecks
         Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/backrooms-fluorescent-loop.mp3")),"packaged owner song: backrooms-fluorescent-loop");
         Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/poolrooms-untitled.mp3")),"packaged owner song: poolrooms-untitled");
         Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/training-steady-groove.mp3")),"packaged owner song: training-steady-groove");
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/causeway-theme.mp3")),"packaged owner song: causeway-theme");
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/club-theme.mp3")),"packaged owner song: club-theme");
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/emporium-theme.mp3")),"packaged owner song: emporium-theme");
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/sanctum-theme.mp3")),"packaged owner song: sanctum-theme");
         Func<string,bool> all=id=>true,none=id=>false;
         Check(NativeZoneMusic.ZoneBoss("expedition-transit")=="music/central-station-boss","Central Station names its boss track");
         Check(NativeZoneMusic.ZoneBoss("expedition-foundry")=="music/city-ironworks-boss"&&NativeZoneMusic.ZoneBoss("expedition-ironworks")=="music/city-ironworks-boss","City Ironworks names its boss track under the live id and the draft name");

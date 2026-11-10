@@ -17,7 +17,7 @@ river, running at 128 bpm. Status: **implemented on the branch, seen in the Edit
 | Built for | 4v4 and FFA 8 (Random rotation: yes) |
 | Blocks | 237 (20 breakable props at round start), 33 pilot columns, 2,543 nav nodes / 4,321 links (724 gated) |
 | Hazards | the charged floor (9 `grid` sections), the laser wall (`maglev`), the bass drop (2 `vent`s with push) |
-| Music | placeholder `cybercity-neon-riot`; the owner's song takes the key **`club-theme`** (see "Music") |
+| Music | the owner's **Neon Substation** (`club-theme`; see "Music") |
 
 ## Layout (`docs/arenas/scripts/club_m1.py`)
 
@@ -158,12 +158,10 @@ playtest.
 
 ## Music
 
-No song yet. The map plays `cybercity-neon-riot` as a placeholder (its `music` field). The owner's song takes the key
-**`club-theme`**: add `Assets/ChipArena/Resources/Audio/music/club-theme.mp3` with a streaming `.meta` (copy
-`breakwater-arena-duel.mp3.meta`'s importer settings, a new guid), `case "club":return "club-theme";` in
-`NativeStageMusic.Theme`, its asset-lock entry, the length/stereo pin in `NativeBuildChecks` and `ZoneMusicChecks`, and a row
-in `STAGE-MUSIC-PROMPTS.md`. A 128 bpm song makes the lights' kicks land on the hazards' bars; a song whose first downbeat
-is known could also be seeked to the bar grid (Track's clock) so the drop's burst lands on the song's drop (not done).
+The owner's song **Neon Substation** (Suno, 2026-11-10; 227.6 s) plays under the key `club-theme`
+(`NativeStageMusic.Theme`). The record's `music` keeps the placeholder `cybercity-neon-riot` as the fallback. The song runs at
+about 132 BPM (measured), not 128: the lights follow its spectrum as they follow any song, while the hazards keep the 128 BPM
+bar grid on the match clock, so its drops do not land on the hazards' bars.
 
 ## Not done / not seen
 

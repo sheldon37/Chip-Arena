@@ -8,7 +8,8 @@ namespace ChipArena.UnityConversion
     // under a player intro sting. The Siren's boss song (bossSong) silences both.
     public static class NativeStageMusic
     {
-        // Owner uploads, in prompt order. Poolrooms is packaged but has no playable map yet.
+        // Owner uploads, in prompt order. Poolrooms is packaged but has no playable map yet. The four 2026-11-10 stages take the owner's
+        // songs of the same day (docs/arenas/STAGE-MUSIC-PROMPTS.md); their map records keep the placeholder as the fallback.
         public const string PoolroomsTrack="poolrooms-untitled";
         public static string Theme(string map,string fallback)
         {
@@ -22,6 +23,10 @@ namespace ChipArena.UnityConversion
                 case NativePoolroomsGenerator.ArenaId:case NativePoolroomsGenerator.InstanceMap:return PoolroomsTrack;
                 case "backrooms-level-0":case "expedition-backrooms-level-0":return "backrooms-fluorescent-loop";
                 case "training":return "training-steady-groove";
+                case "causeway":return "causeway-theme";
+                case "club":return "club-theme";
+                case "emporium":return "emporium-theme";
+                case "sanctum":return "sanctum-theme";
                 default:return fallback;
             }
         }
