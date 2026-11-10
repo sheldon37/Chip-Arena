@@ -1,3 +1,16 @@
+## 2026-11-09 — Claude: the Top Dog feeds facing its victim, an arm on each side (owner request)
+
+- Branch `claude/top-dog-arms`, on shared `34ce14f0`.
+- **The owner:** "still need to fix top dog ultimate animation, it puts both his arms on one side of his body~ We need to allow the hot dog to rotate correctly and have an arm on each side correctly. Review this animation and fix it; Also, my friend fixed the model, unsure if this helps."
+- **The cause** (measured in the Editor on a real feast): the Top Dog's stance stands side-on (its shoulders about 90 degrees round from the body's yaw), and its yaw follows the pilot's look even while rooted (the mouse still turns it under the feast's cinematic camera), while the victim hangs where the catch put it, `Feast.Dir` ahead. Both hands reached out of one side of the shoulders for the mouth (0.80 and 0.53 m to the left of their middle).
+- **The change** (Runtime `NativeTopDogPresentation.cs` `DogFeastTurn`, run from `ArenaPresentation.PrepareCapturedPose` right after the rig is posed, and `DogFeedArms`; Core `NativeDogView.Facing`): from the catch to the let-go (or the snap) the posed rig turns about the body's middle until its shoulders are square to `Feast.Dir`, in over 0.2 s and out over 0.3 s, then the visual body's own shoulders (its pelvis turned by the few degrees its bind leaves) before the arms reach. Measured after, with the view turned 90 degrees mid-feed: both shoulder lines on the feast's direction throughout, the left hand left of the middle and the right hand right of it. Presentation only: the pilot's yaw, aim and the rules are untouched; not in first person.
+- **The friend's model** (`hotdog_fixed.fbx`, kept out of git): the same mesh and skin weights as the Tripo export, with the skeleton made exactly symmetric (the hips centred, the arms mirrored, a few millimetres) and the stored animations removed. Both weight each arm to its own side, and `tools/gear/hotdog_tripo.py` maps Tripo's `Left_` bones to the pilot's left on the game's own skeleton, so it would not change this; the bank stays as it is.
+- **Animation impact:** presentation only (no hit timing, hitboxes, damage, cooldowns, movement or networking).
+- **Checks:** CoreTests `--top-dog` (7927, with the facing's timing and pins), the full suite, the Unity compile, the Editor build checks.
+- **Seen in the Editor:** a real feast on a bot, with the view turned 90 degrees mid-feed and without: the hot dog squares up to its victim in a wide stance, each arm from its own side, the cinematic shots reaching to the mouth.
+- **Not seen / not done:** played by a person; online as a guest (the turn applies after any rig is posed, the guest's own included); a minion caught.
+- The local capture tool's `dogdiag=1` logs each Top Dog's yaws and shoulder line at the shots.
+
 ## 2026-11-09 — Claude: the DEV panel's PLAYERS tab, cleaner and with every DEV class (owner request)
 
 - Branch `claude/dev-menu`, on shared `146b7fe2`.

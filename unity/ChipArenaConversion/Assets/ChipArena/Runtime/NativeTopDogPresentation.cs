@@ -458,7 +458,28 @@ namespace ChipArena.UnityConversion
         // under the jaw, holding the mouth open, tugging with each push. The wrist goes where it puts the hold point (the pinch, the palm) on its
         // target. Its rubber-hose arm stretches (up to half again) when the mouth is beyond its reach. The pinch and the fingers' way are kept for
         // the sausage in them (RenderDog draws after the bodies are posed).
-        private sealed class DogArmRig{public readonly Transform[] Upper=new Transform[2],Lower=new Transform[2],Hand=new Transform[2],Index1=new Transform[2],Index2=new Transform[2],Middle1=new Transform[2],Pinky1=new Transform[2],Thumb3=new Transform[2];public readonly Vector3[] UpperBase=new Vector3[2],HandBase=new Vector3[2];public readonly bool[] Scaled=new bool[2];}
+        // Facing the victim (owner 2026-11-09: "still need to fix top dog ultimate animation, it puts both his arms on one side of his body ~
+        // We need to allow the hot dog to rotate correctly and have an arm on each side correctly"). A feeding Top Dog kept its stance, which
+        // stands side-on to where it faces (the shoulders about 90 degrees round from the body's yaw), and its yaw followed its pilot's look
+        // (the mouse still turns it under the feast's cinematic camera), while the victim hangs where the catch put it, Feast.Dir ahead: both
+        // arms reached out of one side of it for the mouth. From the catch to the let-go (or the links' snap) its posed rig turns about the
+        // body's middle until its shoulders are square to Feast.Dir (eased in at the catch and out after), before the visual body, its hands
+        // and the sausages are posed from it: it plants facing its victim, the right arm feeds from the right and the left cups the chin
+        // from the left, whatever the camera does. Presentation only: the pilot's yaw (aim, view, rules) is untouched.
+        /// <summary>PrepareCapturedPose: a feeding Top Dog's posed rig turned until its shoulders are square to its feast (by
+        /// NativeDogView.Facing).</summary>
+        private void DogFeastTurn(CapturedAnimation.Player rig,Actor a,float time)
+        {
+            if(rig==null||a==null||a.SourceSpec!=NativeTopDog.Spec||FirstPerson&&a.Id==LocalId)return;var f=NativeDogView.Of(a)?.Feast;
+            float w=NativeDogView.Facing(f,time);if(w<=0)return;var dir=Vec(f.Dir);dir.y=0;if(dir.sqrMagnitude<1e-4f)return;
+            var root=rig.Root.transform;float now=root.eulerAngles.y;var b=rig.Bones;
+            // The way the shoulders face (the line from the left upper arm to the right, turned a quarter ahead), else the root's.
+            if(b!=null&&b.Length>CapturedRig.RArm&&b[CapturedRig.LArm]!=null&&b[CapturedRig.RArm]!=null)
+            {var across=b[CapturedRig.RArm].position-b[CapturedRig.LArm].position;across.y=0;if(across.sqrMagnitude>1e-6f){var front=Vector3.Cross(across.normalized,Vector3.up);now=Mathf.Atan2(front.x,front.z)*Mathf.Rad2Deg;}}
+            float turn=Mathf.DeltaAngle(now,Mathf.Atan2(dir.x,dir.z)*Mathf.Rad2Deg)*w;
+            if(Mathf.Abs(turn)>.01f)root.RotateAround(root.position,Vector3.up,turn);
+        }
+        private sealed class DogArmRig{public Transform Pelvis;public readonly Transform[] Upper=new Transform[2],Lower=new Transform[2],Hand=new Transform[2],Index1=new Transform[2],Index2=new Transform[2],Middle1=new Transform[2],Pinky1=new Transform[2],Thumb3=new Transform[2];public readonly Vector3[] UpperBase=new Vector3[2],HandBase=new Vector3[2];public readonly bool[] Scaled=new bool[2];}
         private readonly Dictionary<VisualBody,DogArmRig> dogArms=new Dictionary<VisualBody,DogArmRig>();
         private readonly Dictionary<int,(int frame,Vector3 grip,Vector3 dir)> dogFeedHands=new Dictionary<int,(int,Vector3,Vector3)>();
         private const float DogStretch=1.5f;
@@ -539,7 +560,7 @@ namespace ChipArena.UnityConversion
                 foreach(var s in body.Root.GetComponentsInChildren<SkinnedMeshRenderer>(true))if(s.name.StartsWith("Body.",StringComparison.Ordinal)&&s.sharedMesh!=null){bones=s.bones;break;}
                 if(bones!=null)foreach(var t in bones)
                 {
-                    if(t==null)continue;int hs=t.name.EndsWith("_r",StringComparison.Ordinal)?0:t.name.EndsWith("_l",StringComparison.Ordinal)?1:-1;if(hs<0)continue;
+                    if(t==null)continue;if(t.name=="pelvis"){r.Pelvis=t;continue;}int hs=t.name.EndsWith("_r",StringComparison.Ordinal)?0:t.name.EndsWith("_l",StringComparison.Ordinal)?1:-1;if(hs<0)continue;
                     switch(t.name.Substring(0,t.name.Length-2))
                     {
                         case "upperarm":r.Upper[hs]=t;break;case "lowerarm":r.Lower[hs]=t;break;case "hand":r.Hand[hs]=t;break;case "index_01":r.Index1[hs]=t;break;case "index_02":r.Index2[hs]=t;break;
@@ -549,6 +570,13 @@ namespace ChipArena.UnityConversion
                 for(int h=0;h<2;h++){if(r.Upper[h]!=null)r.UpperBase[h]=r.Upper[h].localScale;if(r.Hand[h]!=null)r.HandBase[h]=r.Hand[h].localScale;}
             }
             var fwd=f!=null?Vec(f.Dir):Vector3.forward;fwd.y=0;fwd=fwd.sqrMagnitude>1e-4f?fwd.normalized:Vector3.forward;var side=Vector3.Cross(Vector3.up,fwd).normalized;bool fed=false;Vector3 grip=default,dir=default;
+            // The body's own shoulders squared as well (its bind sits them a little round from the rig's, which DogFeastTurn squared): the
+            // pelvis turned about itself by what is left (the bind writes it afresh each frame).
+            if(f!=null&&r.Pelvis!=null&&r.Upper[0]!=null&&r.Upper[1]!=null)
+            {
+                float w=NativeDogView.Facing(f,time);var across=r.Upper[0].position-r.Upper[1].position;across.y=0;
+                if(w>0&&across.sqrMagnitude>1e-6f){float left=Vector3.SignedAngle(Vector3.Cross(across.normalized,Vector3.up),fwd,Vector3.up)*w;if(Mathf.Abs(left)>.01f)r.Pelvis.RotateAround(r.Pelvis.position,Vector3.up,left);}
+            }
             for(int h=0;h<2;h++)
             {
                 if(r.Upper[h]==null||r.Lower[h]==null||r.Hand[h]==null)continue;

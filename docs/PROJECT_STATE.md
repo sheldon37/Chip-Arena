@@ -1,3 +1,5 @@
+2026-11-09 Claude (`claude/top-dog-arms`): the Top Dog feeds facing its victim: from the catch to the let-go its body turns until its shoulders are square to the victim (its stance stood side-on and its yaw followed the view, so both arms reached out of one side), an arm on each side. Presentation only.
+
 2026-11-09 Claude (`claude/dev-menu`): the DEV panel's Pilot and Interact tabs are one PLAYERS tab: a roster, the picked player's card, their class as icon tiles with a DEV CLASSES group drawn from the content (every new DEV class shows there), actions as icon tiles, cheats as switches.
 
 2026-11-09 Claude (`claude/top-dog`; the pop's death record at the owner's word, logged for Astra): the Top Dog's feeding looks real (the sausage pinched in the fingers, eased onto the lips and forced in, the chin cupped); the pop keeps the killer's kill effect (its record's kind `topdog-pop`; Hotdog Friends carry the burst off) and its gib is more real; the friends squeeze every load into their door; Preview Intro shows the pilot in its own colours (it glowed in the accent); the parry dome is a hologram (thin hex outlines, the pilot visible).
