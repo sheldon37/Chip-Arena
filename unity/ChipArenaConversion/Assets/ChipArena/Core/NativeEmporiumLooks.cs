@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
             Tile=17,Checker=18,Quarry=19,Roller=20,Grate=21,Griddle=22,Rubber=23,Pickle=24,Mustard=25,Ketchup=26,Screen=27,White=28,Iron=29,Stripe=30,Mint=31,Vinyl=32,Soda=33,Relish=34,Onion=35;
         /// <summary>Each kind's look key and sRGB colour when the look does not list it (0: the look's palette colour).</summary>
         public static readonly (string look,int color)[] Defaults={("plain",0x1E1A22),("plain",0xDDE3EA),("plain",0xD8322A),("plain",0xF6B821),("plain",0xF7EEDC),("plain",0x1FA89C),
-            ("plain",0xFF6FAE),("timber",0),("plain",0xC4502C),("plain",0x6E2414),("plain",0xF0B266),("plain",0xD98636),("plain",0xFFF4DA),("neon",0xFFB040),
+            ("plain",0xFF6FAE),("timber",0),("plain",0xA8442A),("plain",0x521A0E),("plain",0xF0B266),("plain",0xD98636),("plain",0xFFF4DA),("neon",0xFFB040),
             ("cyber-tube",0xFF4FA0),("window-lit",0xFFC88A),("window-lit",0x40546A),("ward-tile",0xF4F1EA),("plain",0x231F28),("ward-tile",0xC8432E),("plain",0xB4BCC6),("cyber-grate",0x5A6070),
             ("ward-burner",0x4A3A30),("plain",0x18181A),("plain",0x4E9A34),("plain",0xFFC81E),("plain",0xE3241C),("cyber-holo",0x22E6FF),("plain",0xFFFFFF),("plain",0x2C4A48),
             ("demolition",0),("plain",0x9FE6D6),("plain",0xC8202E),("plain",0x7FDFF2),("plain",0x6CC63A),("plain",0xF4E7C2)};
