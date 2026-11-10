@@ -10,6 +10,7 @@
 - **Scope:** presentation only (third person; first person and the game pose are unchanged). No rules, aim, shot or network change. Animation impact: the raised guns' torso only.
 - **Checks:** CoreTests `--visual-rig` and `--gun-motion`; the Unity compile; the full suite and the Editor's build checks with the release.
 - **Seen in the Editor:** the pistol, rifle and machine gun firing and aiming, side and three-quarter views. All three stand upright, with their barrels level on the aim.
+- **Released:** full suite at `9093fe88`: 994 groups, exit 0; pins 0 broken; Unity compile PASS; the Editor build checks passed. Merged into shared at `d01b4c71` and synced to the builder; the test channel published revision `639299307310441506`.
 
 ## 2026-11-10 — Claude: the pistol rests too, the guns stand naturally, the quiver sits on the back (owner request)
 
