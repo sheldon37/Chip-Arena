@@ -179,6 +179,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--hulk-charge"){HulkMotionChecks.Run(ProjectRoot());HulkChargeChecks.Run(ProjectRoot());HulkHuntChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-tools"){DevToolsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-grants"){DevGrantsChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--spread"){var spRoot=ProjectRoot();SpreadChecks.Run(spRoot,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(spRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--hazard-kit"){HazardKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-visuals"){IronworksVisualChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-boss"){IronworksBossModelChecks.Run(ProjectRoot());return 0;}
@@ -282,6 +283,7 @@ internal static class Program
             MeleeKitPresentationChecks.Run(root,data);
             MagicFxChecks.Run(root);
             GunKitChecks.Run(root,data);
+            SpreadChecks.Run(root,data);
             BloomChecks.Run(root);
             MapStyleChecks.Run(root);
             MenuStyleChecks.Run(root);
