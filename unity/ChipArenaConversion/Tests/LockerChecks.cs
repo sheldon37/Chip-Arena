@@ -193,6 +193,10 @@ internal static class LockerChecks
         Check(NativeLocker.SlotOptions(data,data.Weapon("emperor"),"q",options)==1&&NativeLocker.SlotOptions(data,data.Weapon("ansatsuken"),"q",options)==0&&NativeLocker.EmptySlot(data.Weapon("ansatsuken"),"q").Contains("DEV"),"DEV kits show their own keys");
         Check(ui.Contains("private int LockerEquippedAbility(")&&ui.Contains("prefs.weaponTechniques=NativeTechniques.Equip(prefs.weaponTechniques,w.id,slot,pick.Technique?.Id);"),"an ability pick is the technique swap: the slot, or back to the slot's own ability");
 
+        // Preview Intro (owner 2026-11-09: "players appear their accent color in intro previews"): the preview's own arena dresses its pilot (its
+        // seat's outfit) and drives its glows, as the match intro's arena does, and is let go when the preview ends.
+        var previewCode=R("NativePreview.cs");int loadoutAt=previewCode.IndexOf("presentation.WeaponLoadout=previewArena;",StringComparison.Ordinal);
+        Check(loadoutAt>=0&&loadoutAt<previewCode.IndexOf("presentation.RenderIntro(previewArena",StringComparison.Ordinal)&&previewCode.Contains("if(ReferenceEquals(presentation?.WeaponLoadout,previewArena))presentation.WeaponLoadout=arena;"),"Preview Intro dresses its pilot from its own arena's seat (not bare clothes glowing in the accent)");
         Console.WriteLine("PASS Locker: "+count+" checks (five categories, gated cosmetic lists, the Save Pilot path and unsaved-changes prompt, the weapon skin selector, the Appearance BODY SKIN row sharing the Skins card's setter and DEV gate, content ability slots)");
     }
     private static int Count(string s,string what){int n=0;for(int i=s.IndexOf(what,StringComparison.Ordinal);i>=0;i=s.IndexOf(what,i+what.Length,StringComparison.Ordinal))n++;return n;}
