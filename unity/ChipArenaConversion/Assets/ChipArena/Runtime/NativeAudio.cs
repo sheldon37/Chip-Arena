@@ -198,6 +198,7 @@ namespace ChipArena.UnityConversion
             // It lands on the stage's wrist plant (NativeDraftPlant.SoundAt after the pick), as the pilot presses the chip in.
             if(match.Phase==NativePhase.Draft&&match.Chosen!=null&&NativeInstallCue.DraftDue(match.ChosenAt,match.Time)&&Once("draft-install",(float)match.ChosenAt))InstallCue(match.Chosen);
             if(match.Phase==NativePhase.Draft&&match.Chosen!=null&&NativeDogChips.Is(match.Chosen))DogPick(match.Chosen,(float)(match.Time-match.ChosenAt));
+            if(match.Phase==NativePhase.Draft&&match.Chosen!=null&&NativeGlaiveChips.Is(match.Chosen))GlaivePick(match.Chosen,(float)(match.Time-match.ChosenAt));
             int n=match.Phase==NativePhase.Countdown?(int)Math.Ceiling(match.PhaseEnd-match.Time):0;if(n>0&&n!=countdown)Cue("ui.countdown","countdown",null,.7f);countdown=n;
             string current=match.Phase.ToString();if(current!=phase){if(match.Phase==NativePhase.Fight)Cue("ui.go","go",null,.7f);if((match.Phase==NativePhase.Result||match.Phase==NativePhase.Match&&phase!="Result")&&(match.Winner!=0||arena.Pve?.Outcome!=null)){string result=arena.Pve!=null?arena.Pve.Outcome=="victory"?"win":"lose":match.SameSide(me?.Seat,match.Seat(match.Winner))?"win":"lose";Cue(result=="win"?"ui.round-won":"ui.round-lost",result,null,.65f);}phase=current;}
             // audio.ts PvE stage cues: a wave start counts in, a clear or the possession sounds "go" (my revive is its event).

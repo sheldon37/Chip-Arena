@@ -485,6 +485,11 @@ namespace ChipArena.UnityConversion
                         s.Slab(_=>WeaponPaint.Glow(0xa99fe0,1.2f,.4f),WeaponPaint.Solid(0x030205),WeaponPaint.Solid(0x030205),o,-.014f,.014f,0);
                     }
                     break;
+                case NativeChipCartridge.Crest.Crescent:
+                    // The Glaive's tri-crescent: a steel seat, a lit ring standing in the chip's plane, three crescent fangs round it.
+                    s.Box(MetalPaint(l,0),V(0,top+.012f,0),V(.15f,.026f,.045f),.006f);s.Into(Lights);
+                    {var lit=Light(0x9ff4ff,2f,.5f);var at=new Vector3(0,top+.085f,0);s.Torus(lit,at,.05f,.011f,24,6);for(int i=0;i<3;i++){float a=(float)(Math.PI/2+i*2*Math.PI/3);s.Torus(lit,at,.074f,.008f,10,5,a,a+1f,.8f);}}
+                    break;
                 case NativeChipCartridge.Crest.Prism:
                     s.Into(Lights);Spike(s,Light(0xffffff,2.2f,.6f),0,top+.01f,0,.05f,.16f,3,(float)Math.PI/2);
                     break;
