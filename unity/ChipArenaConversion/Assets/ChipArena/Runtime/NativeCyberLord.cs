@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
             if(input.SirenAbility>0||input.AbilityQ||input.AbilityE)input.Attack=input.Shoot=input.Roll=false;
         }
 
-        private bool CyberAllowed(NativePilot p)=>p.Seat.spec=="cyberlord"&&(p.Seat.access.DeveloperWeapon("cyberlord",DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())||p.Seat.devWeaponAccess?.DeveloperWeapon("cyberlord",DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())==true);
+        private bool CyberAllowed(NativePilot p)=>p.Seat.spec=="cyberlord"&&(p.Seat.access.Allows("weapon:cyberlord",DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())||p.Seat.devWeaponAccess?.DeveloperWeapon("cyberlord",DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())==true);
         private bool CyberBusy(NativePilot p)=>Cyber2MotionPending(p)||KernelBusy(p)||Incapacitated(p)||Time<p.RollEnd||Time<p.BlockEnd||Time<p.AttackEnd||Time<p.Ready;
         private bool CyberPay(NativePilot p,float cost)
         {cost*=(float)(p.Stats["resourceCost"]*p.Stats["abilityCost"]);if(p.Mana<cost)return false;p.Mana-=cost;return true;}

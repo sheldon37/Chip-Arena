@@ -1,3 +1,25 @@
+## 2026-11-10 — Claude: DEV classes grantable to chosen players; **Astra: please publish the Site** (owner authorized)
+
+- Branch `claude/dev-class-grants` (from shared at `ea8d69a8`, shared merged in at `263f3e1c`). Implementation `a0c00558`, docs `acdd9419`.
+- **The owner:** "We need to override the "Dev accounts only" thing here on dev menu. The point of this is to grant specific users special classes. Even if they are dev accounts only."
+- **Owner authorization for the Site publish (2026-11-10, in Claude's session):** asked "Should I go ahead with that Site publish, yes or not now?", the owner answered **"Go ahead"**. Claude has no Sites deploy tool, so this is a handoff.
+- **For Astra, the Site publish:**
+  - Deploy the accounts Worker from shared once this merge is in, the usual way (whole Worker artifact, hosted client/update assets and migrations preserved).
+  - No schema migration, no secret change and no data change.
+  - The change is `src/shared/access.ts` `GRANTABLE_CONTENT`, which gains seven keys: `weapon:cyberlord`, `intro:dev-cyberlord`, `weapon:bombadier`, `intro:dev-bombadier`, `weapon:topdog`, `intro:dev-topdog`, `effect:dev-hotdog-friends`.
+  - In `src/relay/accounts.ts`, a saved `preferredSpec:'cyberlord'` now needs `canUse(a,'weapon:cyberlord')`, a DEV account or that grant, where it needed a DEV account before.
+  - Run `tests/accounts.test.ts` before and after. Node is not installed on Claude's machine, so it was not run here.
+  - Please record the Site version, the source and the deployment id here.
+- **The client** (released to the test channel with this entry):
+  - `NativeAccess.Allows` honours a grant for every restricted weapon, the Cyber Lord, the Bombadier and the Top Dog included. A scoped sandbox weapon still allows.
+  - The kits' gates (`CyberAllowed`, `StartKernelPanic`, `BombAllowed`, `DogAllowed`) ask `Allows("weapon:"+spec)`, not `DeveloperWeapon`.
+  - `NativeDevGrants.Server` mirrors the server's list; CoreTests `--dev-grants` holds the two equal.
+  - The main menu's DEV screen offers the three classes, their entrances and Hotdog Friends.
+- **Until the Site is published:** a grant save that ticks one of the seven new keys is refused whole by the live server ("Choose only the available items and flags"). Other grants save as before. After the publish it works with no further game update.
+- **Rules impact (for Astra):** a granted non-DEV account may now play the three DEV classes in a room. The host's checks come from the signed account token as before, and nothing else changes. No animation, hit timing, hitbox, damage, cooldown, movement or network field changes.
+- **Checks:** CoreTests `--dev-grants`, `--hotdog-friends`, `--cyber-ranged`, `--dev-tools`, `--bombadier`, `--top-dog` and `--bomb-rules`; the full suite; the Unity compile; the Editor's build checks.
+- **Not run:** `tests/accounts.test.ts` (no Node here); a live grant end to end, which waits for the Site publish; a granted non-DEV player in a real room.
+
 ## 2026-11-10 — Claude: four new stages (Starfall Causeway, Substation 128, Top Dog Emporium, the Hollow Sanctum), in Random (owner request)
 
 - Branch `claude/new-stages` (from shared at `7208db59`), merging the four stage branches `claude/stage-causeway`, `claude/stage-club`, `claude/stage-emporium` and `claude/stage-sanctum`. Four agents built them in parallel at the integrator's brief, one stage each.

@@ -1,3 +1,5 @@
+2026-11-10 Claude (`claude/dev-class-grants`): DEV classes are grantable to chosen players (Cyber Lord, Bombadier, Top Dog). **Next: Astra publishes the Site** (owner said "Go ahead"); until then the live server refuses those grants.
+
 2026-11-10 Claude (`claude/new-stages`): four new stages in Random: Starfall Causeway, Substation 128, Top Dog Emporium, the Hollow Sanctum; vents can push (pushMode, for Astra). Songs come from the owner (keys in docs/arenas/STAGE-MUSIC-PROMPTS.md).
 
 2026-11-10 Claude (`claude/pvp-lobby-ui`): the PvP room and Create Room redesigned; weapon abilities are picked in the room and reach the host by themselves. Four new stages are being built on their own branches.

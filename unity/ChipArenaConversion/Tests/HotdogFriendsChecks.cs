@@ -125,9 +125,8 @@ internal static class HotdogFriendsChecks
         Check(NativeCosmeticGate.Restricted(NativeHotdogFriends.Style)&&!NativeCosmeticGate.Allowed(NativeAccess.Guest,"effect",NativeHotdogFriends.Style,0),"restricted as the other DEV effects: a guest cannot pick it");
         Check(NativeLocker.KillText(NativeHotdogFriends.Style)==NativeHotdogFriends.Text&&NativeBisect.Applies(true,NativeHotdogFriends.Style,false,"pilot"),"its locker line; a blade still cuts its body as the stock ragdoll");
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
-        // The main menu's DEV screen offers it (NativeDevGrants.Offered) but the account server does not grant it yet (src/shared/access.ts):
-        // it shows there for DEV accounts only (DevGrantsChecks).
-        Check(R("NativeProfileUI.cs").Contains("\"dev-bass-van\",NativeHotdogFriends.Style};")&&NativeDevGrants.Offered(NativeHotdogFriends.Style)&&!NativeDevGrants.Grantable("effect:"+NativeHotdogFriends.Style),"listed in the locker; on the DEV screen for DEV accounts only until the account server grants it");
+        // The main menu's DEV screen grants it (src/shared/access.ts takes its key since 2026-11-10; DevGrantsChecks).
+        Check(R("NativeProfileUI.cs").Contains("\"dev-bass-van\",NativeHotdogFriends.Style};")&&NativeDevGrants.Offered(NativeHotdogFriends.Style)&&NativeDevGrants.Grantable("effect:"+NativeHotdogFriends.Style),"listed in the locker and grantable on the DEV screen");
         var death=R("NativeDeathPresentation.cs");
         Check(death.Contains("death.style==NativeHotdogFriends.Style?\"impact-ragdoll\":death.style;")&&death.Contains("if(friends&&!remains)HotdogFriends(corpse,fx);")&&death.Contains("stock&&!retain&&!friends?"),"its body is the stock ragdoll, carried off instead of sinking");
         Check(R("NativeBloodPresentation.cs").Contains("HotdogFriendsFx(now);"),"the scene's puffs are drawn");
