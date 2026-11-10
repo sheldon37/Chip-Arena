@@ -79,7 +79,8 @@ namespace ChipArena.UnityConversion
         /// ranged-motion.ts updateAimWeight for a gun: the gun stays up unless the pilot runs forward (stride blend at least .18,
         /// heading within ~53 degrees of the travel) with no shot for max(.38, interval + .15) s, no reload, guard or ADS. The rifle
         /// and machine gun rest lower (owner 2026-11-10: "a resting pose ... only show the aiming animation when were shooting /
-        /// aiming"): up only for a shot, a reload, a guard or ADS, carried low standing, strafing or backpedalling too. A
+        /// aiming"), the pistol too ("apply a resting position to pistols as well"): up only for a shot, a reload, a guard or ADS,
+        /// carried low standing, strafing or backpedalling too. A
         /// critically damped spring (stiffer, 32/s, when a shot raises it from a low carry); it starts on its target for a new
         /// pilot, after a rewind or a gap (the killcam and joining guests never ease in from a stale weight).
         /// </summary>
@@ -90,7 +91,7 @@ namespace ChipArena.UnityConversion
             float ahead=speed>1?(a.Velocity.x*(float)Math.Sin(yaw)+a.Velocity.z*(float)Math.Cos(yaw))/speed:1,shotAge=time-a.LastShot;
             // A resting long gun stays up a beat after its reload (ReloadSettle), so the reload's hands finish into the hold before it lowers,
             // and through a hit stun as before (the stun stops the stride, which raised it: the carry's torso would pop under the flinch).
-            bool rests=a.Weapon==WeaponId.Rifle||a.Weapon==WeaponId.MachineGun;
+            bool rests=a.Weapon==WeaponId.Rifle||a.Weapon==WeaponId.MachineGun||a.Weapon==WeaponId.Pistol;
             return shotAge<Math.Max(.38f,GunRules.Get(a.Weapon).Interval+.15f)||a.ReloadUntil+(rests?ReloadSettle:0)>time||(rests?time<a.StunUntil:motion<.18f||ahead<.6f)||time<a.BlockUntil||a.Aiming?1:0;
         }
         /// <summary>The source's gun-up target (the pistol's still): the rifle's hips turn behind the gun by it (PelvisYawScale), so a

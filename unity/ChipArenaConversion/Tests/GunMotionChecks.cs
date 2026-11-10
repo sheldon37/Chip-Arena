@@ -192,7 +192,7 @@ internal static class GunMotionChecks
         foreach(var (name,vel,aiming,pitch,aimYaw) in new[]{("strafe",new V3(-6.8f,0,0),false,0f,0f),("backpedal",new V3(0,0,-6.8f),false,25f,0f),("stand",new V3(0,0,0),false,-20f,8f),("ADS run",new V3(0,0,6.8f),true,10f,0f),("diagonal",new V3(-4.8f,0,-4.8f),false,0f,0f)})
         {
             // The long guns rest low unless aimed (owner 2026-11-10), so their hold is tested aimed; the pistol raises itself.
-            bool rests=w==WeaponId.Rifle||w==WeaponId.MachineGun;
+            bool rests=true;// every gun rests low unless aimed (owner 2026-11-10)
             if(rests&&!aiming){var low=new Driver();var la=Gun(w);la.Velocity=vel;la.Pitch=pitch;la.AimYaw=aimYaw;la.Yaw=0;float lt=30;for(int f=0;f<90;f++,lt+=1/60f)low.Step(la,lt,1/60f);
                 Check(low.Motion.AimWeight<.02f,w+" "+name+" at rest carries the gun low ("+low.Motion.AimWeight+")");}
             var d=new Driver();var a=Gun(w);a.Velocity=vel;a.Aiming=aiming||rests;a.Pitch=pitch;a.AimYaw=aimYaw;a.Yaw=0;float t=30,dt=1/60f;var pel=new List<float>();
@@ -261,8 +261,8 @@ internal static class GunMotionChecks
             V3 goal=u<.5f?new V3(0,0,0):u<1.2f?new V3(0,0,2.8f):u<2f?new V3(0,0,6.8f):u<2.6f?new V3(0,0,9.18f):u<3f?new V3(0,0,0):u<3.8f?new V3(0,0,6.8f):u<4.6f?new V3(-6.8f,0,0):new V3(0,0,0);
             V3 change=goal-a.Velocity;float size=change.Length,most=Rules.Acceleration*dt;a.Velocity=size<=most?goal:a.Velocity+change*(most/size);
             a.Sprinting=u>=2f&&u<2.6f;
-            // The strafe is aimed for the long guns, which rest low otherwise (owner 2026-11-10); the pistol raises itself.
-            a.Aiming=(a.Weapon==WeaponId.Rifle||a.Weapon==WeaponId.MachineGun)&&u>=3.8f&&u<4.6f;
+            // The strafe is aimed: every gun rests low otherwise (owner 2026-11-10).
+            a.Aiming=u>=3.8f&&u<4.6f;
             if(Math.Abs(u-3.3f)<dt*.5f)a.LastShot=t;
             if(Math.Abs(u-4.8f)<dt*.5f){a.ReloadAt=t;a.ReloadUntil=t+GunRules.Get(a.Weapon).Reload;}
             if(Math.Abs(u-5.6f)<dt*.5f){a.BlockAt=t;a.BlockUntil=t+Rules.BlockDuration;}

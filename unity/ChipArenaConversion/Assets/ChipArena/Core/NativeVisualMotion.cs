@@ -110,14 +110,19 @@ namespace ChipArena.UnityConversion
         // Rifle and machine gun: the pack's two-handed shooting set. A low ready carry at rest, idle or moving (RestLow; owner
         // 2026-11-10); shouldered (its aim grid's middle column by the pitch, a recoil on each shot) while aiming or just after
         // a shot (owner 2026-10-24: "Aiming and firing"), the reload fitted to the reload.
-        private static readonly Set Rifle=Build(new Set{Spec="rifle",RestLow=true,RestArms="2Hand-Shooting-Strafe-Forward",TechClips=new[]{TechDrop,TechShootLine},Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
+        private static readonly Set Rifle=Build(new Set{Spec="rifle",RestLow=true,RestArms="2Hand-Shooting-Strafe-Forward",TechClips=new[]{TechDrop,TechShootLine},Idle=StandIdle,Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
             Land="2Hand-Shooting-Land",Block="2Hand-Shooting-Block",BlockHit="2Hand-Shooting-Block-GetHit1",Stunned="2Hand-Shooting-Stunned",Roll="2Hand-Shooting-Roll-Forward",
             AirAttack="2Hand-Shooting-Fall",SprintAttack="2Hand-Shooting-Attack1",Attacks=Names("2Hand-Shooting-Attack","1","2"),Reactions=Names("2Hand-Shooting-GetHit-","F1","B1","L1","R1"),
             Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle",Knockdown="2Hand-Shooting-Knockdown1",RollBack="2Hand-Shooting-Roll-Backward",
             AbilityIds=new[]{"overdrive"},AbilityStarts=new[]{"2Hand-Shooting-Boost1"},AbilityEnds=new string[1],AbilityRaise=new[]{"orbital-mark","rocket"}},"2Hand-Shooting-Run-","2Hand-Shooting-Strafe-","2Hand-Shooting-Run-Forward");
-        // Pistol: the armed set, held low; raised to the pack's pistol stance (arm out) while aiming or just after a shot (its
+        // The guns stand on the pack bow idle's natural stance, upright with the feet about shoulder width (owner 2026-11-10: "maybe
+        // not have their legs spread out like they currently are ... more realistic"): the armed set's idle is a melee fighting crouch,
+        // the rifle's a wide combat stance. A raise lays the upper body over it; the legs keep the stance, so it never shifts on a shot.
+        public const string StandIdle="2Hand-Bow-Idle";
+        // Pistol: the armed set, held low at rest (RestLow; owner 2026-11-10: "apply a resting position to pistols as well"); raised
+        // to the pack's pistol stance (arm out) while aiming or just after a shot (its
         // own firing cut throws the arm overhead: the stance holds, the game's muzzle kick is the recoil), its reload fitted.
-        private static readonly Set Pistol=Build(new Set{Spec="pistol",TechClips=new[]{TechCoin},Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
+        private static readonly Set Pistol=Build(new Set{Spec="pistol",RestLow=true,TechClips=new[]{TechCoin},Idle=StandIdle,Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
             Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Fall",SprintAttack="Pistol-Attack-R1",Attacks=Names("Pistol-Attack-R","1"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
             Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1",Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward",
