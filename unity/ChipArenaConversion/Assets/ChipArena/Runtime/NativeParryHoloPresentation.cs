@@ -25,7 +25,8 @@ namespace ChipArena.UnityConversion
         /// after it closes, 0 outside.</summary>
         public static float ParryHoloFade(float at,float until,float time)
         {
-            if(until<=at||time<at||time>until+.15f)return 0;return Mathf.Clamp01((time-at)/.06f)*Mathf.Clamp01((until+.15f-time)/.15f);
+            // (A pilot that has never parried keeps Actor.BlockAt's -100 and a window "ending" at 0: no window at all, not one shut at 0.)
+            if(at<-50||until<=at||time<at||time>until+.15f)return 0;return Mathf.Clamp01((time-at)/.06f)*Mathf.Clamp01((until+.15f-time)/.15f);
         }
         private static Material ParryHoloMaterial()
         {

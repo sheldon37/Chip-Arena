@@ -44,7 +44,7 @@ namespace ChipArena.UnityConversion
             float soft=!LowGraphics&&VisualEye!=null&&(VisualEye.depthTextureMode&DepthTextureMode.Depth)!=0?1:0;
             foreach(var a in s.Actors)
             {
-                if(a==null||!a.Alive||a.BlockUntil<=a.BlockAt)continue;float age=time-a.BlockAt,closed=time-a.BlockUntil;if(age<0||closed>NativeParryBarrier.After)continue;
+                if(a==null||!a.Alive||a.BlockAt<-50||a.BlockUntil<=a.BlockAt)continue;float age=time-a.BlockAt,closed=time-a.BlockUntil;if(age<0||closed>NativeParryBarrier.After)continue;
                 mat??=ParryBarrierMaterial();if(mat==null)return;mesh??=ParryBarrierMesh();parryBarrierBlock??=new MaterialPropertyBlock();
                 // The newest parried blow of this window, and its way from the dome's middle (its height's stretch undone).
                 float hitAge=-1;var hit=Vector3.zero;
