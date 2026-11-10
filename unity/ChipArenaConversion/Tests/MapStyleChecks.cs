@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
         private static void Switch(MapLookSet set)
         {
             var on=set.maps.Where(m=>NativeMapStyle.On(m,false)).Select(m=>m.id).OrderBy(x=>x).ToArray();
-            Check(on.SequenceEqual(new[]{"breakwater","brickfall","causeway","club","cybercity","emporium","expedition-city","expedition-foundry","expedition-transit","factory","harbor","polar","rig","siren-quarantine","skyframe","training"}),"only the styled maps (stage 1's pilots; stage 2's Factory, Cyber City, Ward Zero's quarantine look, Central Station and the Ironworks; the five M1 stages; the Training Room) turn the style on: "+string.Join(",",on));
+            Check(on.SequenceEqual(new[]{"breakwater","brickfall","causeway","club","cybercity","emporium","expedition-city","expedition-foundry","expedition-transit","factory","harbor","polar","rig","sanctum","siren-quarantine","skyframe","training"}),"only the styled maps (stage 1's pilots; stage 2's Factory, Cyber City, Ward Zero's quarantine look, Central Station and the Ironworks; the five M1 stages; the Training Room) turn the style on: "+string.Join(",",on));
             var state=new MapStyleState();
             foreach(var m in set.maps)
             {

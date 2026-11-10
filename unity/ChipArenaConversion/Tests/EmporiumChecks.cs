@@ -63,7 +63,7 @@ internal static class EmporiumChecks
         Check(!NativeStageHazards.VentLaunch(gey,NativeFactoryHazards.State(gey,0,burst-gey.dwell-.1),body,0),"no launch while it pumps");
         Check(Math.Pow(gey.push,2)/46>=3.6+.4,"the launch clears the balcony (apex "+(Math.Pow(gey.push,2)/46).ToString("0.0")+" m)");
         foreach(var m in maps.maps.Where(m=>m.id!="emporium"))foreach(var h in (m.hazards??Array.Empty<MapHazard>()).Where(h=>h.kind=="vent"))
-        {Check(h.push==0||NativeStageHazards.VentShove(h,out _)>0,"another map's vent is unchanged (push 0) or shoves sideways (Substation 128): "+h.id);var st=NativeFactoryHazards.State(h,0,h.start+h.offset+h.period-h.dwell+.2);Check(!NativeStageHazards.VentLaunch(h,st,new V3(h.a.x,h.a.y+.9f,h.a.z),0),"no launch on "+h.id);}
+        {Check(h.pushMode!=NativeStageHazards.PushLaunch,"no other map's vent launches: "+h.id);var st=NativeFactoryHazards.State(h,0,h.start+h.offset+h.period-h.dwell+.2);Check(!NativeStageHazards.VentLaunch(h,st,new V3(h.a.x,h.a.y+.9f,h.a.z),0),"no launch on "+h.id);}
 
         // ---- the bun press pancakes (the Factory's smash), nothing else here does
         var pw=hz.First(h=>h.kind=="press");double open=pw.period-pw.warn-pw.rise-pw.dwell-pw.travel,slamClock=pw.start+pw.offset+open+pw.warn+pw.rise*.8;
