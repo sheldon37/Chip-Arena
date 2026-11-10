@@ -154,8 +154,8 @@ namespace ChipArena.UnityConversion
             G(NativeGlaiveIntro.SlashAt,-5,14,1.05f,10,-2,.52f,10,-2,Ease.In,spin:360,lean:5),
             G(NativeGlaiveIntro.SlashAt+.1f,-55,12,1.02f,-30,-4,.46f,-55,-6,Ease.Out,spin:360,lean:8),
             G(NativeGlaiveIntro.SlashAt+.25f,-62,9,1,-40,-6,.42f,-80,-4,Ease.Out,spin:360,lean:5),
-            G(NativeGlaiveIntro.StandAt,15,2,1,30,10,.3f,5,80,Ease.Smooth,spin:360),
-            G(NativeGlaiveIntro.Total,15,2,1,30,10,.3f,5,80,spin:360),
+            G(NativeGlaiveIntro.StandAt,15,2,1,42,12,.36f,10,76,Ease.Smooth,spin:360),
+            G(NativeGlaiveIntro.Total,15,2,1,42,12,.36f,10,76,spin:360),
         };
         /// <summary>The intro's arm and chest at intro time `t` (its share of the body: none before the drop).</summary>
         public static bool Intro(float t,out DogMalletPose pose)
