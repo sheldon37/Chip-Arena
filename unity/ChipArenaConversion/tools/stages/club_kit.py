@@ -39,7 +39,8 @@ def finishes(L):
     add('chrome', 0xC8CCD8, smooth=.93, metal=1.0, dirt=.15)
     add('brass', 0xC8A040, A.DETAIL_BRASS, smooth=.8, metal=1.0, dirt=.3, wear=.2)
     add('copper', 0xB8683C, A.DETAIL_BRASS, smooth=.72, metal=1.0, dirt=.4, wear=.2)
-    add('mirror', 0xE0E4F0, smooth=.86, metal=1.0, dirt=.1)
+    add('mirror', 0xA4ACBC, smooth=.7, metal=.55, dirt=.1)          # an old smoked mirror: a lamp's image in it stays a soft glow
+    add('mirrorball', 0xE0E4F0, smooth=.9, metal=1.0, dirt=.05)
     add('porcelain', 0xD8D2C4, A.DETAIL_WAX, smooth=.72, dirt=.5)
     add('porcelaindark', 0x6A4A3A, A.DETAIL_WAX, smooth=.72, dirt=.5)
     add('crane', 0xA8862C, A.DETAIL_IRON, smooth=.38, metal=.5, wear=.4, dirt=1.0)

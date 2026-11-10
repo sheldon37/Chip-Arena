@@ -392,7 +392,7 @@ def substation(g, L, T):
             u = 1.5 + i * (37.0 / 9)
             pl.box(g, u - .03, u + .03, y - .36, y + .36, 0, .06, F['steeldark'], None, 0, cell=0)
             for dy in (-.22, 0.0, .22):
-                insulator(g, pl.at(u, y + dy, .06), pl.n, T, sheds=3, r=.06, tall=.3)
+                insulator(g, pl.at(u, y + dy, .06), pl.n, T, sheds=3, r=.08, tall=.32)
         # an enamel warning plate on the wall over each stair head (an original design: a bolt in a triangle)
         for u in (11.5, 28.5):
             pl.box(g, u - .3, u + .3, 6.25, 6.65, 0, .02, F['hazard'], T, bevel=.008, cell=0)
@@ -458,3 +458,56 @@ def drapes(g, L, T, blocks):
             face = x1 if sx < 0 else x0
             pl = Plane((face, 0, 0), (0, 0, 1), (-sx, 0, 0))
             drape(g, pl, (za if za is not None else z0) + .15, (zb if zb is not None else z1) - .15, y0 + .16, y1 - .2, T, F['velvet'])
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# The rooms the pilots start in: lightbox posters on their walls (an original set: bars, rings and a bolt in the club's colours)
+# ---------------------------------------------------------------------------------------------------------------------------
+def poster(g, pl, u, y, T, k):
+    """A framed lightbox on a wall's face, its middle at (u, y): a dark frame, a dim panel, a few glowing shapes."""
+    w, h = .36, .52
+    pl.box(g, u - w - .03, u + w + .03, y - h - .03, y + h + .03, 0, .035, F['steeldark'], T, bevel=.01, cell=0)
+    c = [PARTY3[(k + j) % len(PARTY3)] for j in range(3)]
+    pl.box(g, u - w, u + w, y - h, y + h, .035, .04, glow(c[0], .22), None, 0, cell=0)
+    if T.i == 2:
+        return
+    d = .042
+    kind = k % 3
+    if kind == 0:                                             # three bars stepping up
+        for j in range(3):
+            pl.box(g, u - w * .7 + j * w * .5, u - w * .7 + j * w * .5 + w * .32, y - h * .7, y - h * .7 + h * (.5 + .4 * j), d, d + .004, glow(c[1 + j % 2], 1.3), None, 0, cell=0)
+    elif kind == 1:                                           # a ring over a line
+        n = 10 if T.i == 0 else 6
+        pts = [pl.at(u + math.cos(2 * math.pi * i / n) * w * .5, y + h * .15 + math.sin(2 * math.pi * i / n) * w * .5, d) for i in range(n)]
+        sk.sweep(g, sk.rect_section(.05, .006), pts, glow(c[1], 1.4), closed=True, path_normals=[pl.n] * n, smooth_u=False, caps=False)
+        pl.box(g, u - w * .7, u + w * .7, y - h * .62, y - h * .52, d, d + .004, glow(c[2], 1.3), None, 0, cell=0)
+    else:                                                     # a bolt
+        zig = [(.12, .7), (-.3, .0), (.02, .0), (-.14, -.7), (.3, .12), (-.0, .12)]
+        P = [pl.at(u + a * w, y + b * h, d) for (a, b) in zig]
+        g.face((P[0], P[1], P[2]), glow(c[1], 1.5), pl.n)
+        g.face((P[0], P[2], P[5]), glow(c[1], 1.5), pl.n)
+        g.face((P[2], P[3], P[4]), glow(c[1], 1.5), pl.n)
+        g.face((P[2], P[4], P[5]), glow(c[1], 1.5), pl.n)
+
+
+def posters(g, L, T, blocks):
+    k = 0
+    for sx, tag, opp in ((-1, 'w', 'e'), (1, 'e', 'w')):
+        for name, yb in (('club-green-%s-wall-%s' % (tag, opp), 0.0), ('club-cloak-%s-wall-%s' % (tag, opp), 0.0), ('club-backstage-%s-wall-%s' % (tag, opp), 0.0), ('club-lounge-%s-wall-%s' % (tag, opp), 4.2)):
+            b = blocks.get(name)
+            if b is None:
+                continue
+            x0, x1, y0, y1, z0, z1 = ext(b)
+            face = x0 if sx < 0 else x1                       # the room's side of the wall
+            pl = Plane((face, 0, 0), (0, 0, 1), (sx, 0, 0))
+            n = max(1, int((z1 - z0 - 1.2) / 1.5))
+            for i in range(n):
+                k += 1
+                poster(g, pl, (z0 + z1) / 2 + (i - (n - 1) / 2) * 1.5, yb + 1.75, T, k)
+        b = blocks.get('club-green-%s-wall-n' % tag)
+        if b is not None:
+            x0, x1, y0, y1, z0, z1 = ext(b)
+            pl = Plane((0, 0, z0), (1, 0, 0), (0, 0, -1))
+            for i in range(3):
+                k += 1
+                poster(g, pl, (x0 + x1) / 2 + (i - 1) * 1.6, 1.75, T, k)

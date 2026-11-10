@@ -283,7 +283,7 @@ def mirror_ball(T, R):
             pts = [(R * math.cos(la) * math.cos(lo), R * math.sin(la), R * math.cos(la) * math.sin(lo)) for (la, lo) in ((la0, lo0), (la0, lo1), (la1, lo1), (la1, lo0))]
             lm, om = (la0 + la1) / 2, (lo0 + lo1) / 2
             nrm = (math.cos(lm) * math.cos(om), math.sin(lm), math.cos(lm) * math.sin(om))
-            g.face(pts, F['mirror'], nrm)
+            g.face(pts, F['mirrorball'], nrm)
     lathe(g, [(.1, R * .985), (.09, R + .05), (.02, R + .07)], (0, 0, 0), F['steeldark'], 8, cap1=True)
     return g
 

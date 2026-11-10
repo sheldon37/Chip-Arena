@@ -544,7 +544,8 @@ def static_scene(L, T):
     m = 0
     for (name, fn) in (('floors', lambda: hall.floors(g, L, T, blocks)), ('side-walls', lambda: hall.side_walls(g, L, T)), ('south-wall', lambda: hall.south_wall(g, L, T, blocks)),
                        ('led-wall', lambda: hall.led_wall(g, L, T, blocks)), ('upper-hall', lambda: hall.upper_hall(g, L, T)), ('galleries', lambda: hall.galleries(g, L, T)), ('pit', lambda: hall.pit(g, L, T)),
-                       ('substation', lambda: hall.substation(g, L, T)), ('drapes', lambda: hall.drapes(g, L, T, blocks))):
+                       ('substation', lambda: hall.substation(g, L, T)), ('drapes', lambda: hall.drapes(g, L, T, blocks)),
+                       ('posters', lambda: hall.posters(g, L, T, blocks))):
         fn()
         m = tally(g, name, m)
     for b in L['blocks']:
@@ -649,7 +650,8 @@ def views():
             ('pit', (-13, 1.7, 18.4), (-13.6, 1.2, 22), 70), ('bar', (-3, 1.7, -10.3), (2, 1.5, -16), 65), ('booth', (-18.6, 1.7, -8.6), (-12, 1.0, -10.6), 65),
             ('mezz', (-18.2, 5.8, -13.5), (-23.5, 4.9, -4), 70), ('roof', (-12, 1.7, -4), (6, 16, 10), 75), ('arch', (-14, 5.8, 0), (-26, 10, 6), 55),
             ('column', (-12.5, 1.6, -5.5), (-15.2, 1.0, -7.6), 55), ('sofa', (-22.5, 5.8, 1.2), (-25.2, 4.7, -.6), 60), ('window', (0, 5.6, -8), (0, 8.5, -19.6), 70),
-            ('greys', (-25.0, 9.9, 2.5), (-27.9, 9.6, -1.5), 50), ('dj-close', (1.1, 2.9, 15.9), (0, 2.75, 17), 50)]
+            ('greys', (-25.0, 9.9, 2.5), (-27.9, 9.6, -1.5), 50), ('dj-close', (1.1, 2.9, 15.9), (0, 2.75, 17), 50),
+            ('green', (-24.5, 1.7, -3.5), (-18, 1.6, 4.5), 75), ('heads', (-5.5, 8.6, 6.2), (-4.5, 9.7, 8.2), 50), ('insulators', (-20, 5.9, 8), (-25.6, 7.1, 11), 55)]
 
 
 def main():
