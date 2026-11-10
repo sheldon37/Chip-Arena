@@ -49,6 +49,7 @@ Shader "ChipArena/StageLit"
         #define DETAIL_WAX 9
         #define DETAIL_PLASTER 10
         #define DETAIL_GLOW 11
+        #define DETAIL_TILE 16
         // ---- noise (cheap: one hash per lattice corner, the fine fields two octaves) ----
         float SHash(float3 p){p=frac(p*0.1031);p+=dot(p,p.yzx+33.33);return frac((p.x+p.y)*p.z);}
         float SHash2(float2 p){float3 q=frac(float3(p.x,p.y,p.x)*0.1031);q+=dot(q,q.yzx+33.33);return frac((q.x+q.y)*q.z);}
@@ -141,6 +142,18 @@ Shader "ChipArena/StageLit"
             }
             else if(detail==DETAIL_WAX){s.wrap=0.45;s.albedo*=0.95+0.08*SNoise(world*14.0);}
             else if(detail==DETAIL_PLASTER){s.albedo*=0.88+0.2*SFbm(world*0.8);s.n=SBump(s.n,world,4.0,0.08*k);}
+            else if(detail==DETAIL_TILE)
+            {
+                // glazed tiles `param` m square (0: 15 cm) on the world's grid: sunk grout, each tile's glaze pillowed and a touch
+                // its own shade
+                float sz=param>0.01?param:0.15;bool top=abs(n.y)>0.7;float3 au=top?float3(1,0,0):(abs(n.x)>abs(n.z)?float3(0,0,1):float3(1,0,0));float3 av=top?float3(0,0,1):float3(0,1,0);
+                float2 hv=float2(dot(world,au),dot(world,av))/sz;float2 cell=floor(hv);float2 f=frac(hv);float2 d2=min(f,1.0-f)*sz;float d=min(d2.x,d2.y);float joint=min(0.004+sz*0.02,0.012);
+                float grout=1.0-smoothstep(joint*0.5,joint,d);
+                s.albedo*=0.95+0.1*SHash2(cell);s.albedo=lerp(s.albedo,s.albedo*0.35+float3(0.2,0.19,0.18),grout);
+                s.smooth*=lerp(1.0,0.3,grout);s.occ*=lerp(1.0,0.7,grout);
+                float eu=smoothstep(joint*3.0,joint*0.8,d2.x)*(f.x<0.5?-1.0:1.0),ev=smoothstep(joint*3.0,joint*0.8,d2.y)*(f.y<0.5?-1.0:1.0);
+                s.n=normalize(s.n+(au*eu+av*ev)*0.4*k);
+            }
         }
         // ---- light ----
         // The rim, the practical slots ((1 - (d/r)^2)^2), the flashes, the Ward field and the muzzle lights: their diffuse (N.L,

@@ -185,6 +185,23 @@ grain break into blotches.
 The Greys (Substation 128's DJ and crowd as Grey aliens) are rig props posed from the club rig's crowd and DJ transforms, exactly
 as the chandeliers are posed from the Sanctum's.
 
+## 9. The Top Dog Emporium (2026-11-10)
+
+`docs/arenas/EMPORIUM.md` "Stage art" has the whole account (what is modelled, the 37 rig slots, the bank's numbers, the checks,
+what is seen and what falls short). What it adds to the recipe:
+- **`DETAIL_TILE`** (16) in the stage shader and stagekit.py: glazed tiles on the world's grid (sunk grout, a pillowed glaze, each
+  tile a touch its own shade); the parameter is the tile's size in metres. A checkerboard whose squares do not sit on the world's
+  grid is a mosaic of faces instead (every tile its own face a hair apart over a grout face).
+- **Kept boxes**: a rig whose telegraph lamps change colour per lamp per frame keeps those boxes under the art
+  (`NativeEmporiumRig.Kept`; the presentation's `Fill(parts, ArtDrawn ? Kept : null)`), so the pose buffer carries only the
+  modelled parts and the telegraphs stay exactly the box rig's.
+- **Scaled poses**: a squashing prop (the press's bun, the sauce column) scales all three axes by multiplying the pose's columns
+  after `NativeStageArtPose.Add` (the art's own `Scaled`); a prop tinted per frame (a griddle's bed by its heat, a marquee group,
+  a bubble tube) is a white glow sub-mesh times the pose's tint.
+- **The art's own check file and flag** (`Tests/EmporiumArtChecks.cs`, `--emporium-art`), so stages do not edit one shared file.
+- tools/stages/emporium_kit.py has shapes the kit lacks (skinned rings with their own normals, capsules, ellipsoids, lofts of
+  rounded rectangles, part rounds for beads and bullnoses, a block's faces in the kit's terms, slanted warning stripes).
+
 ## Seen in the Editor
 
 Captures in the shared Editor (a match, one idle bot, god mode, the game's own camera placed by `maincam`, shots on the arena

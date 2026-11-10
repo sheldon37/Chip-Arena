@@ -35,14 +35,18 @@ namespace ChipArena.UnityConversion
         public const int Capacity=3400;
         public const byte Overhead=0,Hanging=1,Floor=2,Ambient=3,Attached=4,Hazard=5;
         public readonly NativeFactoryKit.Writer Parts;public readonly byte[] Role=new byte[Capacity];
+        /// <summary>The parts that still draw as boxes under the stage art (docs/arenas/STAGE-ART.md, Core NativeEmporiumArt): the
+        /// telegraph lamps (lane edges, press posts, griddle corners, geyser rims) and the presses' drop shadows. Every other part
+        /// is replaced by a modelled prop while the art draws.</summary>
+        public readonly bool[] Kept=new bool[Capacity];private bool keep;
         /// <summary>Per hazard (index into the map's hazards; NaN for other kinds): the drawn wiener's centre x, the drawn bun's underside,
         /// the drawn sauce column's top (0 while quiet).</summary>
         public readonly double[] WienerX=new double[32],BunBottom=new double[32],ColumnTop=new double[32];
         private byte role;
         public NativeEmporiumRig(NativeFactoryKit.Looks looks){Parts=new NativeFactoryKit.Writer(Capacity,false,looks);}
-        private void Add(double x,double y,double z,double hx,double hy,double hz,FactoryQ q,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Add(x,y,z,hx,hy,hz,q,kind,shadow,color,window);if(Parts.Count>n)Role[n]=role;}
-        private void Box(double x0,double x1,double y0,double y1,double z0,double z1,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Box(x0,x1,y0,y1,z0,z1,kind,shadow,color,window);if(Parts.Count>n)Role[n]=role;}
-        private void Bar(double x0,double y0,double z0,double x1,double y1,double z1,double t,int kind,bool shadow=true,int color=-1){int n=Parts.Count;Parts.Bar(x0,y0,z0,x1,y1,z1,t,t,kind,shadow,color);if(Parts.Count>n)Role[n]=role;}
+        private void Add(double x,double y,double z,double hx,double hy,double hz,FactoryQ q,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Add(x,y,z,hx,hy,hz,q,kind,shadow,color,window);if(Parts.Count>n){Role[n]=role;Kept[n]=keep;}}
+        private void Box(double x0,double x1,double y0,double y1,double z0,double z1,int kind,bool shadow=true,int color=-1,double window=1){int n=Parts.Count;Parts.Box(x0,x1,y0,y1,z0,z1,kind,shadow,color,window);if(Parts.Count>n){Role[n]=role;Kept[n]=keep;}}
+        private void Bar(double x0,double y0,double z0,double x1,double y1,double z1,double t,int kind,bool shadow=true,int color=-1){int n=Parts.Count;Parts.Bar(x0,y0,z0,x1,y1,z1,t,t,kind,shadow,color);if(Parts.Count>n){Role[n]=role;Kept[n]=keep;}}
         private static readonly double[] Unit={-1,1};
         private static double H(int a,int b=0,int c=0)=>NativeEmporiumLooks.Hash(a,b,c);
         private static double Frac(double v)=>v-Math.Floor(v);
@@ -113,7 +117,7 @@ namespace ChipArena.UnityConversion
             double cz=h.center.z,hw=h.size.z/2,x0=h.center.x-h.size.x/2,x1=h.center.x+h.size.x/2,r=Radius(h),L=Long(h);
             role=Hazard;
             // the lane-edge lamps, both edges, every 1.5 m
-            for(double x=x0+.75;x<x1;x+=1.5){int col=LaneLamp(h,s,x,time);foreach(double side in Unit){double z=cz+side*(hw+.16);Box(x-.16,x+.16,0,.05,z-.07,z+.07,NativeEmporiumLooks.Tube,false,col,2.2);}}
+            keep=true;for(double x=x0+.75;x<x1;x+=1.5){int col=LaneLamp(h,s,x,time);foreach(double side in Unit){double z=cz+side*(hw+.16);Box(x-.16,x+.16,0,.05,z-.07,z+.07,NativeEmporiumLooks.Tube,false,col,2.2);}}keep=false;
             // the ovens' flaps at both portals (hinged at the top, 2.2 m)
             foreach(double side in Unit)
             {
@@ -153,11 +157,19 @@ namespace ChipArena.UnityConversion
             }
         }
         private static readonly double[] LayerH={.1,.2,.18,.16,.13,.1,.07},LayerW={1.0,.99,.96,.88,.74,.55,.32};
+        /// <summary>The drawn bun this moment: its centre (trembling through the wind-up), its squash (y) and its spread (x, z).</summary>
+        public static void BunPlace(MapHazard h,in FactoryHazardState st,double clock,out double cx,out double cz,out double sq,out double wide)
+        {
+            cx=st.Center.x;cz=st.Center.z;sq=Squash(h,st,out double tremble);wide=1/Math.Sqrt(sq);
+            if(tremble>0){cx+=tremble*Math.Sin(clock*71);cz+=tremble*Math.Cos(clock*59);}
+        }
+        /// <summary>The press head's underside (the ram's sleeve hangs from it) and the bell's wobble (rad) through the warning.</summary>
+        public static double Head(MapHazard h)=>h.a.y+h.size.y/2+1.5;
+        public static double Bell(in FactoryHazardState st,double clock)=>st.Phase==NativeFactoryHazards.Warning?.35*Math.Sin(clock*22):0;
         private void Press(MapHazard h,in FactoryHazardState st,int round,double clock,int index)
         {
-            double cx=st.Center.x,cz=st.Center.z,bottom=st.LoadY,hx=h.size.x/2,hz=h.size.z/2,sq=Squash(h,st,out double tremble),wide=1/Math.Sqrt(sq);
-            if(tremble>0){cx+=tremble*Math.Sin(clock*71);cz+=tremble*Math.Cos(clock*59);}
-            BunBottom[index]=bottom;double head=h.a.y+h.size.y/2+1.5;
+            double bottom=st.LoadY,hx=h.size.x/2,hz=h.size.z/2;BunPlace(h,st,clock,out double cx,out double cz,out double sq,out double wide);
+            BunBottom[index]=bottom;double head=Head(h);
             role=Hanging;
             // the bun: a stepped dome of four rounded layers, sesame seeds on top; squash scales the stack
             double y=bottom;var lh=LayerH;var lw=LayerW;
@@ -167,14 +179,14 @@ namespace ChipArena.UnityConversion
             // the ram: chrome rod from the head to the bun, its sleeve
             Box(cx-.22,cx+.22,y,head,cz-.22,cz+.22,NativeEmporiumLooks.Chrome,true);Box(cx-.34,cx+.34,head-1.2,head,cz-.34,cz+.34,NativeEmporiumLooks.Red,true);
             // the bell on the head: wobbles through the warning
-            role=Overhead;double bell=st.Phase==NativeFactoryHazards.Warning?.35*Math.Sin(clock*22):0;var bq=FactoryQ.Axis(1,0,0,bell);
+            role=Overhead;double bell=Bell(st,clock);var bq=FactoryQ.Axis(1,0,0,bell);
             Add(cx,head+1.3,cz+1.2,.32,.28,.32,bq,NativeEmporiumLooks.Yellow,true);Add(cx,head+1.0,cz+1.2,.36,.04,.36,bq,NativeEmporiumLooks.Yellow,false);
             // the post lamps (the press logic) at 2.4 m on the four posts' inner faces
-            role=Hazard;int lamp=NativeFactoryRig.HazardLamp(st,clock);
+            role=Hazard;int lamp=NativeFactoryRig.HazardLamp(st,clock);keep=true;
             foreach(double sx in Unit)foreach(double sz in Unit){double px=h.a.x+sx*1.6,pz=h.a.z+sz*1.6;Box(px-.07,px+.07,2.2,2.7,pz-.07,pz+.07,NativeEmporiumLooks.Tube,false,lamp,2.0);}
             // the cartoon drop shadow on the zone: darkens and spreads as the bun comes down
             double k2=Clamp01(1-(bottom-.05)/(h.a.y-h.size.y/2));int shade=NativeEmporiumLooks.Mix(0x6E2A1C,0x120808,k2);double sh=.55+.45*k2;
-            role=Floor;Box(h.a.x-hx*sh,h.a.x+hx*sh,.006,.014,h.a.z-hz*sh,h.a.z+hz*sh,NativeEmporiumLooks.Dark,false,shade);
+            role=Floor;Box(h.a.x-hx*sh,h.a.x+hx*sh,.006,.014,h.a.z-hz*sh,h.a.z+hz*sh,NativeEmporiumLooks.Dark,false,shade);keep=false;
         }
 
         // ================================================================ the Griddles (burner)
@@ -182,6 +194,15 @@ namespace ChipArena.UnityConversion
         /// warning, white-hot live, cooling after.</summary>
         public static double Heat(in NativeHazardState s,double time)=>s.Phase==NativeHazardPhase.Warn?1+.45*s.Level*(.85+.15*Math.Sin(time*21)):s.Phase==NativeHazardPhase.Active?1.75+.1*Math.Sin(time*17):s.Phase==NativeHazardPhase.Clear?1+.7*s.Level:1;
         public static int GriddleLamp(in NativeHazardState s,double time)=>s.Phase==NativeHazardPhase.Warn?(NativeFactoryRig.Strobe(time,NativeFactoryRig.WarnHz)?NativeEmporiumLooks.Amber:NativeEmporiumLooks.Off):s.Phase==NativeHazardPhase.Active||s.Phase==NativeHazardPhase.Clear?NativeEmporiumLooks.Danger:NativeEmporiumLooks.Scale(NativeEmporiumLooks.Safe,.6);
+        public const int PopcornPerZone=3;
+        /// <summary>A popcorn sausage (j of zone k of the griddle at hazard `index`): its centre and turn; lying still when cold,
+        /// jittering as it heats, hopping while it is live.</summary>
+        public static void Popcorn(MapVolume z,in NativeHazardState s,double time,int index,int k,int j,out double px,out double py,out double pz,out FactoryQ q)
+        {
+            px=z.center.x+(H(index*7+k,j)-.5)*z.size.x*.6;pz=z.center.z+(H(index*7+k,j,1)-.5)*z.size.z*.6;double yaw=H(index*7+k,j,2)*Math.PI*2,hop=0;
+            if(s.Phase==NativeHazardPhase.Active)hop=Math.Max(0,Math.Sin(time*8.5+j*2.1+k))*.42;else if(s.Phase==NativeHazardPhase.Warn)hop=.03*Math.Abs(Math.Sin(time*30+j))*s.Level;
+            q=FactoryQ.Axis(0,1,0,yaw+(s.Phase==NativeHazardPhase.Active?time*3:0))*FactoryQ.Axis(1,0,0,hop*3);py=z.center.y-z.size.y/2+.08+hop;
+        }
         private void Griddle(MapHazard h,in NativeHazardState s,double time,int index)
         {
             double heat=Heat(s,time);int lamp=GriddleLamp(s,time);
@@ -189,16 +210,10 @@ namespace ChipArena.UnityConversion
             {
                 var z=h.zones[k];double x0=z.center.x-z.size.x/2,x1=z.center.x+z.size.x/2,z0=z.center.z-z.size.z/2,z1=z.center.z+z.size.z/2,y=z.center.y-z.size.y/2;
                 role=Floor;Box(x0+.08,x1-.08,y,y+.02,z0+.08,z1-.08,NativeEmporiumLooks.Griddle,false,-1,heat);
-                role=Hazard;foreach(double sx in Unit)foreach(double sz in Unit){double px=sx<0?x0+.18:x1-.18,pz=sz<0?z0+.18:z1-.18;Box(px-.1,px+.1,y+.02,y+.05,pz-.1,pz+.1,NativeEmporiumLooks.Tube,false,lamp,2.0);}
+                role=Hazard;keep=true;foreach(double sx in Unit)foreach(double sz in Unit){double px=sx<0?x0+.18:x1-.18,pz=sz<0?z0+.18:z1-.18;Box(px-.1,px+.1,y+.02,y+.05,pz-.1,pz+.1,NativeEmporiumLooks.Tube,false,lamp,2.0);}keep=false;
                 // popcorn sausages: lying still when cold, jittering as it heats, hopping while it is live
                 role=Hazard;
-                for(int j=0;j<3;j++)
-                {
-                    double px=z.center.x+(H(index*7+k,j)-.5)*z.size.x*.6,pz=z.center.z+(H(index*7+k,j,1)-.5)*z.size.z*.6,yaw=H(index*7+k,j,2)*Math.PI*2,hop=0;
-                    if(s.Phase==NativeHazardPhase.Active)hop=Math.Max(0,Math.Sin(time*8.5+j*2.1+k))*.42;else if(s.Phase==NativeHazardPhase.Warn)hop=.03*Math.Abs(Math.Sin(time*30+j))*s.Level;
-                    var q=FactoryQ.Axis(0,1,0,yaw+(s.Phase==NativeHazardPhase.Active?time*3:0))*FactoryQ.Axis(1,0,0,hop*3);
-                    Add(px,y+.08+hop,pz,.075,.075,.24,q,NativeEmporiumLooks.Sausage,false);
-                }
+                for(int j=0;j<PopcornPerZone;j++){Popcorn(z,s,time,index,k,j,out double px,out double py,out double pz,out FactoryQ q);Add(px,py,pz,.075,.075,.24,q,NativeEmporiumLooks.Sausage,false);}
             }
         }
 
@@ -207,17 +222,26 @@ namespace ChipArena.UnityConversion
         public static double Stroke(FactoryHazard h,in FactoryHazardState st)=>st.Phase==NativeFactoryHazards.Warning?Math.Pow(Math.Abs(Math.Sin(st.Warn*3*Math.PI)),.6):st.Phase==NativeFactoryHazards.Bursting?1:0;
         /// <summary>The sauce column's top over the grate (m): up to 5.2 m with the burst's level.</summary>
         public static double Column(in FactoryHazardState st)=>st.Phase==NativeFactoryHazards.Bursting?5.2*st.U:0;
+        /// <summary>The cap's bulge over the grate (m): pulsing with the pump's strokes, full through the burst.</summary>
+        public static double Bulge(in FactoryHazardState st)=>st.Phase==NativeFactoryHazards.Warning?.06*Math.Abs(Math.Sin(st.Warn*3*Math.PI)):st.Phase==NativeFactoryHazards.Bursting?.1:0;
+        /// <summary>The pump-dispenser block beside the geyser at (x, z) (null: none within reach).</summary>
+        public static ContentBlock PumpOf(ContentBlock[] blocks,double x,double z)
+        {
+            ContentBlock pump=null;double best=6;
+            foreach(var b in blocks??Array.Empty<ContentBlock>()){if(b?.id==null||b.id.IndexOf("-pump-",StringComparison.Ordinal)<0)continue;double dd=Math.Abs(b.pos.x-x)+Math.Abs(b.pos.z-z);if(dd<best){best=dd;pump=b;}}
+            return pump;
+        }
         private void Geyser(MapHazard h,in FactoryHazardState st,int round,double clock,ContentBlock[] blocks,int index)
         {
             double x=h.a.x,y=h.a.y,z=h.a.z,hx=h.size.x/2,hz=h.size.z/2;bool ketchup=NativeEmporiumLooks.KetchupSide(x);int sauce=ketchup?NativeEmporiumLooks.Ketchup:NativeEmporiumLooks.Mustard;
-            role=Hazard;int lamp=NativeFactoryRig.HazardLamp(st,clock);
+            role=Hazard;int lamp=NativeFactoryRig.HazardLamp(st,clock);keep=true;
             foreach(double sx in Unit)foreach(double sz in Unit)Box(x+sx*(hx+.12)-.09,x+sx*(hx+.12)+.09,y,y+.05,z+sz*(hz+.12)-.09,z+sz*(hz+.12)+.09,NativeEmporiumLooks.Tube,false,lamp,2.0);
+            keep=false;
             // the cap bulging through the warning (squash and stretch)
-            double bulge=st.Phase==NativeFactoryHazards.Warning?.06*Math.Abs(Math.Sin(st.Warn*3*Math.PI)):st.Phase==NativeFactoryHazards.Bursting?.1:0;
+            double bulge=Bulge(st);
             role=Floor;Box(x-hx*.55,x+hx*.55,y+.02,y+.05+bulge,z-hz*.55,z+hz*.55,sauce,false);
             // the pump-dispenser beside it: plunger head and nozzle on its block's top
-            ContentBlock pump=null;double best=6;
-            foreach(var b in blocks??Array.Empty<ContentBlock>()){if(b?.id==null||b.id.IndexOf("-pump-",StringComparison.Ordinal)<0)continue;double dd=Math.Abs(b.pos.x-x)+Math.Abs(b.pos.z-z);if(dd<best){best=dd;pump=b;}}
+            ContentBlock pump=PumpOf(blocks,x,z);
             if(pump!=null)
             {
                 role=Attached;double top=pump.pos.y+pump.size.y/2,px=pump.pos.x,pz=pump.pos.z,stroke=Stroke(h,st),rise=.55*(1-stroke);int dir=Math.Sign(x-px);
@@ -245,7 +269,7 @@ namespace ChipArena.UnityConversion
             foreach(double e in Unit){C(0,-.55,e*.84,ToX,L-1.2,.74,NativeEmporiumLooks.Bun,8);C(0,-.9,e*.72,ToX,L-1.6,.52,NativeEmporiumLooks.BunTop,8);}
             // neon mustard zigzag along the top (HDR)
             for(int k=0;k<14;k++){double u0=-L+1.1+k*(2*L-2.2)/14,u1=u0+(2*L-2.2)/14,w0=(k&1)==0?-.4:.4;yaw.Rotate(u0,.92,w0,out double ax,out double ay,out double az);yaw.Rotate(u1,.92,-w0,out double bx,out double by,out double bz);
-                int n=Parts.Count;Parts.Bar(X+ax,Y+ay,Z+az,X+bx,Y+by,Z+bz,.14,.14,NativeEmporiumLooks.Tube,false,NativeEmporiumLooks.NeonLemon);if(Parts.Count>n){Parts.Items[n].Window=2.6f;Role[n]=role;}}
+                int n=Parts.Count;Parts.Bar(X+ax,Y+ay,Z+az,X+bx,Y+by,Z+bz,.14,.14,NativeEmporiumLooks.Tube,false,NativeEmporiumLooks.NeonLemon);if(Parts.Count>n){Parts.Items[n].Window=2.6f;Role[n]=role;Kept[n]=false;}}
             // the marquee: an elliptical ring of bulbs chasing round, the pink neon between them
             const int bulbs=36;double rx0=L+1.4,ry0=2.9;
             for(int k=0;k<bulbs;k++)
@@ -253,7 +277,7 @@ namespace ChipArena.UnityConversion
                 double u=k*2*Math.PI/bulbs,u1=(k+1)*2*Math.PI/bulbs;bool on=((k+(int)Math.Floor(t*6))%3)==0;
                 P(Math.Cos(u)*rx0,Math.Sin(u)*ry0,0,.17,.17,.17,FactoryQ.Identity,NativeEmporiumLooks.Tube,false,on?0xFFF2C0:0xFFA040,on?3.0:1.2);
                 yaw.Rotate(Math.Cos(u)*(rx0+.22),Math.Sin(u)*(ry0+.22),0,out double ax,out double ay,out double az);yaw.Rotate(Math.Cos(u1)*(rx0+.22),Math.Sin(u1)*(ry0+.22),0,out double bx,out double by,out double bz);
-                int n=Parts.Count;Parts.Bar(X+ax,Y+ay,Z+az,X+bx,Y+by,Z+bz,.11,.11,NativeEmporiumLooks.Tube,false,NativeEmporiumLooks.NeonPink);if(Parts.Count>n){Parts.Items[n].Window=2.8f;Role[n]=role;}
+                int n=Parts.Count;Parts.Bar(X+ax,Y+ay,Z+az,X+bx,Y+by,Z+bz,.11,.11,NativeEmporiumLooks.Tube,false,NativeEmporiumLooks.NeonPink);if(Parts.Count>n){Parts.Items[n].Window=2.8f;Role[n]=role;Kept[n]=false;}
             }
             P(0,ry0+.7,0,2.6,.55,.1,FactoryQ.Identity,NativeEmporiumLooks.Red,true);P(0,ry0+.7,.11,2.4,.4,.012,FactoryQ.Identity,NativeEmporiumLooks.Tube,false,0xFFF2C0,2.6);P(0,ry0+.7,-.11,2.4,.4,.012,FactoryQ.Identity,NativeEmporiumLooks.Tube,false,0xFFF2C0,2.6);
             // its hangers to the ridge
@@ -270,26 +294,33 @@ namespace ChipArena.UnityConversion
             if(s<e0){x=ConveyorX0+s;z=ConveyorZ;}else if(s<e1){x=ConveyorX1;z=ConveyorZ-(s-e0);}else if(s<e2){x=ConveyorX1-(s-e1);z=-ConveyorZ;}else{x=ConveyorX0;z=-ConveyorZ+(s-e2);}
             x*=side;z*=side;
         }
+        /// <summary>The hangers on each conveyor loop, and hanger k's rail point and its buns' sway this moment.</summary>
+        public static int Hangers=>(int)Math.Floor(ConveyorLength/2.3);
+        public static void Hanger(int side,int k,double t,out double x,out double z,out double sw){double len=ConveyorLength;ConveyorAt(side,k*len/Hangers+t*ConveyorSpeed,out x,out z);sw=.06*Math.Sin(t*1.7+k);}
         private void Conveyors(double t)
         {
-            double len=ConveyorLength;int n=(int)Math.Floor(len/2.3);
+            int n=Hangers;
             for(int side=-1;side<=1;side+=2)for(int k=0;k<n;k++)
             {
-                ConveyorAt(side,k*len/n+t*ConveyorSpeed,out double x,out double z);double sw=.06*Math.Sin(t*1.7+k);
+                Hanger(side,k,t,out double x,out double z,out double sw);
                 role=Overhead;Box(x-.03,x+.03,ConveyorY-.72,ConveyorY-.05,z-.03,z+.03,NativeEmporiumLooks.Chrome,false);Box(x-.5,x+.5,ConveyorY-.8,ConveyorY-.72,z-.32,z+.32,NativeEmporiumLooks.Chrome,true);
                 role=Ambient;for(int e=-1;e<=1;e++){double bx=x+e*.3+sw,bz=z;Cyl(bx,ConveyorY-.62,bz,ToZ,.26,.13,0,NativeEmporiumLooks.Bun,8,true);Box(bx-.12,bx+.12,ConveyorY-.52,ConveyorY-.48,bz-.2,bz+.2,NativeEmporiumLooks.BunTop,false);}
             }
         }
         /// <summary>The roller grills on the counters and prep tables: each block whose id names a counter or a prep table carries one
         /// machine along its top (the kit draws the housing); its sausages turn (grill stripes) and jiggle.</summary>
+        public static bool Grill(ContentBlock b,out double y,out bool alongX,out double len,out double cross,out int n)
+        {
+            y=len=cross=0;alongX=false;n=0;if(b?.id==null)return false;bool counter=b.id.IndexOf("-counter-",StringComparison.Ordinal)>=0,prep=b.id.IndexOf("-prep-",StringComparison.Ordinal)>=0;if(!counter&&!prep)return false;
+            double top=b.pos.y+b.size.y/2;y=top+.16;alongX=b.size.x>=b.size.z;len=Math.Min(3.0,(alongX?b.size.x:b.size.z)-.6);cross=Math.Min(.7,(alongX?b.size.z:b.size.x)-.25);
+            n=(int)Math.Floor(len/.26);return true;
+        }
         private void Grills(ContentBlock[] blocks,double t)
         {
             int seed=0;
             foreach(var b in blocks??Array.Empty<ContentBlock>())
             {
-                if(b?.id==null)continue;bool counter=b.id.IndexOf("-counter-",StringComparison.Ordinal)>=0,prep=b.id.IndexOf("-prep-",StringComparison.Ordinal)>=0;if(!counter&&!prep)continue;seed++;
-                double top=b.pos.y+b.size.y/2,y=top+.16;bool alongX=b.size.x>=b.size.z;double len=Math.Min(3.0,(alongX?b.size.x:b.size.z)-.6),cross=Math.Min(.7,(alongX?b.size.z:b.size.x)-.25);
-                int n=(int)Math.Floor(len/.26);
+                if(!Grill(b,out double y,out bool alongX,out double len,out double cross,out int n))continue;seed++;
                 for(int k=0;k<n;k++)
                 {
                     double u=-len/2+(k+.5)*len/n,roll=t*2.2+k*.7,jig=.006*Math.Sin(t*9+k*1.9+seed);
@@ -300,20 +331,24 @@ namespace ChipArena.UnityConversion
             }
         }
         /// <summary>The Big Dog on the plinth: a standing hot dog in its bun, a chef's hat, googly eyes that blink, one arm waving.</summary>
+        /// <summary>The Big Dog: its plinth's top, its blink and its waving forearm's lean (rad from upright, toward +x).</summary>
+        public const double MascotBase=6.0;
+        public static bool Blink(double t)=>Frac(t/3.7)<.05;
+        public static double Wave(double t)=>.5+.45*Math.Sin(t*5.2);
         private void Mascot(double t)
         {
-            const double x=0,z=0,base0=6.0;
+            const double x=0,z=0,base0=MascotBase;
             role=Ambient;
             Cyl(x,base0+1.6,z,ToY,1.5,.6,0,NativeEmporiumLooks.Sausage,16);Cyl(x,base0+3.2,z,ToY,.2,.46,0,NativeEmporiumLooks.Sausage,8);
             foreach(double e in Unit)Cyl(x+e*.6,base0+1.3,z,ToY,1.25,.44,0,NativeEmporiumLooks.Bun,8);
-            for(int k=0;k<5;k++){double y0=base0+.5+k*.5,w=(k&1)==0?-.3:.3;int n=Parts.Count;Parts.Bar(x+w,y0,z-.6,x-w,y0+.5,z-.6,.08,.08,NativeEmporiumLooks.Tube,false,NativeEmporiumLooks.NeonLemon);if(Parts.Count>n){Parts.Items[n].Window=2.2f;Role[n]=role;}}
+            for(int k=0;k<5;k++){double y0=base0+.5+k*.5,w=(k&1)==0?-.3:.3;int n=Parts.Count;Parts.Bar(x+w,y0,z-.6,x-w,y0+.5,z-.6,.08,.08,NativeEmporiumLooks.Tube,false,NativeEmporiumLooks.NeonLemon);if(Parts.Count>n){Parts.Items[n].Window=2.2f;Role[n]=role;Kept[n]=false;}}
             Cyl(x,base0+3.5,z,ToY,.1,.6,0,NativeEmporiumLooks.White,8);Cyl(x,base0+3.85,z,ToY,.3,.5,0,NativeEmporiumLooks.White,8);Cyl(x,base0+4.2,z,ToY,.16,.64,0,NativeEmporiumLooks.White,8);
-            bool blink=Frac(t/3.7)<.05;
+            bool blink=Blink(t);
             foreach(double e in Unit){Cyl(x+e*.24,base0+2.6,z-.58,ToZ,.04,.18,0,NativeEmporiumLooks.White,8,false,-1,1);if(!blink)Box(x+e*.24-.06,x+e*.24+.06,base0+2.44,base0+2.58,z-.65,z-.62,NativeEmporiumLooks.Dark,false);else Box(x+e*.24-.17,x+e*.24+.17,base0+2.57,base0+2.63,z-.65,z-.62,NativeEmporiumLooks.Dark,false);}
             Box(x-.25,x+.25,base0+2.1,base0+2.18,z-.63,z-.59,NativeEmporiumLooks.Dark,false);Box(x-.32,x-.24,base0+2.18,base0+2.28,z-.63,z-.59,NativeEmporiumLooks.Dark,false);Box(x+.24,x+.32,base0+2.18,base0+2.28,z-.63,z-.59,NativeEmporiumLooks.Dark,false);
             // arms: the left on its hip, the right waving
             Bar(x-.6,base0+1.9,z,x-1.15,base0+1.2,z-.2,.14,NativeEmporiumLooks.White);
-            double wave=.5+.45*Math.Sin(t*5.2);double ax=x+.6,ay=base0+1.9,ex=ax+.55,ey=ay+.35,hx=ex+Math.Sin(wave)*.6,hy=ey+Math.Cos(wave)*.6;
+            double wave=Wave(t);double ax=x+.6,ay=base0+1.9,ex=ax+.55,ey=ay+.35,hx=ex+Math.Sin(wave)*.6,hy=ey+Math.Cos(wave)*.6;
             Bar(ax,ay,z,ex,ey,z-.1,.14,NativeEmporiumLooks.White);Bar(ex,ey,z-.1,hx,hy,z-.15,.13,NativeEmporiumLooks.White);Cyl(hx,hy,z-.15,ToZ,.1,.17,0,NativeEmporiumLooks.White,8);
         }
         private void Jukebox(ContentBlock[] blocks,double t)
