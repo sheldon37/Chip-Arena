@@ -19,9 +19,9 @@ internal static class BrickfallChecks
             if(i%2==1){old.spawns.ffa=Array.Empty<MapSpawn>();old.spawns.teams=Array.Empty<MapTeamSpawns>();old.nav.nodes=Array.Empty<MapNavNode>();old.nav.links=Array.Empty<MapNavLink>();}
         }
         NativeMapRules.Merge(data,JsonSerializer.Deserialize<UnityMapContent>(text,opts),text);var map=data.Map("brickfall");
-        Check(data.maps.All(m=>m.unity)&&data.maps.Length==16,"authored Unity maps and generated Level 0 survive the export merge");
-        Check(data.maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(x=>x).SequenceEqual(new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","cybercity","factory","harbor","polar","rig","skyframe"}),"modern random rotation");
-        Check(data.maps.Where(NativeMapRules.ArenaSelectable).Count()==11&&!data.Map("siren").rotation,"Ward Zero selectable outside Random");
+        Check(data.maps.All(m=>m.unity)&&data.maps.Length==17,"authored Unity maps and generated Level 0 survive the export merge");
+        Check(data.maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(x=>x).SequenceEqual(new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","club","cybercity","factory","harbor","polar","rig","skyframe"}),"modern random rotation");
+        Check(data.maps.Where(NativeMapRules.ArenaSelectable).Count()==12&&!data.Map("siren").rotation,"Ward Zero selectable outside Random");
         foreach(string id in legacy.maps.Select(m=>m.id).Where(id=>id!="siren").Concat(new string[]{null,"unknown","expedition-transit"}))
         {var room=new NativeRoomOptions{map=id};room.Normalize(data);Check(room.map==NativeMapRules.DefaultArena,"saved map migration "+id);}
         foreach(string id in new[]{"brickfall","factory","cybercity","siren","random"})Check(NativeMapRules.Selection(data,id)==id,"valid choice retained "+id);

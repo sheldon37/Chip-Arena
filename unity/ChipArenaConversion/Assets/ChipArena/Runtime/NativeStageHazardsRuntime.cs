@@ -58,21 +58,21 @@ namespace ChipArena.UnityConversion
             PoseWardBreaches();PoseStageLoads(Match.Time,true);if(Replica||Match.Phase!=NativePhase.Fight)return;
             foreach(var h in Map.hazards??Array.Empty<MapHazard>())
             {
-                V3 center=default,size=default;bool lethal=h.lethal,active=false;int ticks=0;string kind=NativeStageHazards.City(h)||NativeStageHazards.Ward(h)?h.kind:"hazard";Vector3 velocity=Vector3.zero;
+                V3 center=default,size=default;bool lethal=h.lethal,active=false;int ticks=0;float impulse=0;string kind=NativeStageHazards.City(h)||NativeStageHazards.Ward(h)?h.kind:"hazard";Vector3 velocity=Vector3.zero;
                 if(h.kind=="maglev")
                 {active=NativeStageHazards.TrainSweep(h,StageRound,Match.FightAt,Match.Time-1d/60,Match.Time,out center,out size);velocity=new Vector3(NativeCyberCityHazards.Evaluate(h,StageRound,Match.FightAt,Match.Time).Direction*30,6,0);}
                 else if(h.kind=="shutter")continue;
                 else if(h.kind=="grid"||NativeWardZeroHazards.IsBurst(h))
                 {ticks=NativeStageHazards.DamageTicks(h,StageRound,Match.FightAt,Match.Time-1d/60,Match.Time);active=ticks>0;center=h.center;size=h.size;}
                 else
-                {var s=NativeFactoryHazards.State(h,StageRound,NativeFactoryHazards.Clock(Match.Phase,Match.FightAt,Match.Time));active=NativeStageHazards.FactoryBox(h,s,out center,out size);if(h.kind=="vent"){ticks=NativeStageHazards.DamageTicks(h,StageRound,Match.FightAt,Match.Time-1d/60,Match.Time);active=h.damage>0&&ticks>0;}}
+                {var s=NativeFactoryHazards.State(h,StageRound,NativeFactoryHazards.Clock(Match.Phase,Match.FightAt,Match.Time));active=NativeStageHazards.FactoryBox(h,s,out center,out size);if(h.kind=="vent"){ticks=NativeStageHazards.DamageTicks(h,StageRound,Match.FightAt,Match.Time-1d/60,Match.Time);active=h.damage>0&&ticks>0;float shove=NativeStageHazards.VentShove(h,out var away);if(shove>0){velocity=Vec(away)*shove;impulse=shove*ticks*65;}}}
                 if(!active)continue;
                 foreach(var p in Pilots)
                 {
                     if(p.Hp<=0||!p.Seat.connected||KernelLocked(p))continue;bool touch=h.kind=="grid"?NativeStageHazards.GridTouch(h,Vec(p.Body.position)):NativeWardZeroHazards.IsBurst(h)?NativeStageHazards.BurstTouch(h,Vec(p.Body.position)):NativeStageHazards.Touch(Vec(p.Body.position),center,size);
                     if(!touch)continue;
                     if(lethal)p.Knockback+=velocity;
-                    Damage(p,null,lethal?p.Hp:h.damage*ticks,velocity.normalized,0,false,forced:lethal,direct:false,primary:false,stage:true,rollAvoidable:false,damageKind:kind,stageHazard:h.id,stageLethal:lethal);
+                    Damage(p,null,lethal?p.Hp:h.damage*ticks,velocity.normalized,impulse,false,forced:lethal,direct:false,primary:false,stage:true,rollAvoidable:false,damageKind:kind,stageHazard:h.id,stageLethal:lethal);
                 }
                 foreach(var m in Minions.ToArray())
                 {

@@ -86,6 +86,13 @@ namespace ChipArena.UnityConversion
             int cycle=(int)Math.Floor((to-origin)/h.period);if(cycle<0)return 0;
             return Ticks(from,to,origin+cycle*h.period,duration,h.tick);
         }
+        // A vent's shove (docs/arenas/CLUB.md, the bass drop): `push` m/s added along its `axis` (made horizontal and unit) on
+        // each damage tick; 0 without a push or a horizontal axis (every vent before Substation 128 has push 0: unchanged).
+        public static float VentShove(MapHazard h,out V3 direction)
+        {
+            direction=default;if(h==null||h.kind!="vent"||!(h.push>0)||!MathUtil.Finite(h.push))return 0;
+            float l=(float)Math.Sqrt(h.axis.x*h.axis.x+h.axis.z*h.axis.z);if(!(l>1e-4f))return 0;direction=new V3(h.axis.x/l,0,h.axis.z/l);return h.push;
+        }
         public static bool BurstTouch(MapHazard h,V3 p,float radius=.42f,float halfHeight=.85f)
         =>h.kind=="burner"?(h.zones??Array.Empty<MapVolume>()).Any(z=>Touch(p,z.center,z.size,radius,halfHeight)):Touch(p,h.center,h.size,radius,halfHeight);
         public static bool GridTouch(MapHazard h,V3 p,float halfHeight=.85f)
