@@ -31,6 +31,7 @@
   - Each branch also passed its own full suite and Editor checks.
 - **Seen in the Editor:** each stage by its agent (before/after sheets, hazards, the Low tier), and the Greys and the Emporium's stairs reviewed by the integrator.
 - **Not seen:** a played match by a person, network guests, the killcam on the art.
+- **Released** to the test channel: shared `91ab27f1`, the builder at `91ab27f1`, build `a18a2e14`, revision 639299489871945204 (280.3 MiB), published. The builder installed the Drive zip's four stage banks (hashes match). Full suite 998 groups passed, the Unity compile and the Editor's build checks passed; each stage captured on the merged build with no errors.
 
 ## 2026-11-10 — Claude: the guns fire and aim upright (owner request)
 
