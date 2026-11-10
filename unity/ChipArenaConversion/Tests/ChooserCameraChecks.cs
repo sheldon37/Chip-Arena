@@ -107,7 +107,7 @@ internal static class ChooserCameraChecks
             var pilot=new ChipSelectChecks.Pilot(spec);var track=new NativeChipSelectTrack();float x=0;bool poseLeft=false;
             for(int f=0;f<=180;f++)
             {
-                float t=f/60f;float w=track.Step(t>=.5f,7,t);pilot.Base(t);for(int b=0;b<CapturedRig.Bones.Length;b++){shown.Position[b]=pilot.Pose.Position[b];shown.Rotation[b]=pilot.Pose.Rotation[b];}shown.World();
+                float t=f/60f;float w=track.Step(t>=.5f,7,t);pilot.Hold=w;pilot.Base(t);for(int b=0;b<CapturedRig.Bones.Length;b++){shown.Position[b]=pilot.Pose.Position[b];shown.Rotation[b]=pilot.Pose.Rotation[b];}shown.World();
                 layer.Apply(shown,new ChipSelectInput{Weight=w,Clock=t-.3f,Time=t,Reach=1,Spec=spec,Seed=NativeChipSelect.Seed(4,9),Cards=3});layer.Measure(shown,false);
                 if(f==180){Check(w>=.999f,spec+": the look is up");x=-layer.Emitter.X;poseLeft=layer.Left;}
             }

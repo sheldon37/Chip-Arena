@@ -1,3 +1,7 @@
+2026-11-10 Claude (`claude/gun-stance`): every gun stands naturally and rests low (the pistol's arm hangs at the side); the bow's quiver rides the model's back. Next: the four new stages move off box-built kits to modelled meshes and materials (owner), and the club's DJ and metro people become Grey aliens.
+
+2026-11-10 Claude (`claude/gun-rest-sniper`): the rifle is a scoped sniper (local bake, Drive zip repacked); the rifle and machine gun rest low and raise only to shoot, reload, guard or aim.
+
 2026-11-10 Claude (`claude/stage-songs`): the owner's songs play on the four new stages (Neon Substation runs at about 132 BPM against the club's 128 BPM hazard grid).
 
 2026-11-10 Claude (`claude/dev-class-grants`): DEV classes are grantable to chosen players (Cyber Lord, Bombadier, Top Dog). **Next: Astra publishes the Site** (owner said "Go ahead"); until then the live server refuses those grants.

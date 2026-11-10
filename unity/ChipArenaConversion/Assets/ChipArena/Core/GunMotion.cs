@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         private readonly MeleeGait gait=new MeleeGait();
         private readonly MeleeView view=new MeleeView();
         private readonly NativePoseTransition transition=new NativePoseTransition();
-        private float last=-100,dt=1/60f,sprintBlend,aim=1,aimVelocity;private bool aimHas;private int viewId=int.MinValue;
+        private float last=-100,dt=1/60f,sprintBlend,aim=1,aimVelocity,stance=1,stanceVelocity;private bool aimHas;private int viewId=int.MinValue;
         // The frame's state (the native debug label): the gun hold's state, else the overlay that owns the frame.
         public const string Ready="ready",Carry="carry",Aim="aim",Fire="fire",Reload="reload",Block="block",Jump="jump",Roll="roll (adapted)",Juggle="juggle",Recovery="recovery";
         /// <summary>The gun-up weight (0 running forward with the gun lowered, 1 aimed), as the last Sample left it.</summary>
@@ -77,11 +77,29 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>
         /// ranged-motion.ts updateAimWeight for a gun: the gun stays up unless the pilot runs forward (stride blend at least .18,
-        /// heading within ~53 degrees of the travel) with no shot for max(.38, interval + .15) s, no reload, guard or ADS. A
+        /// heading within ~53 degrees of the travel) with no shot for max(.38, interval + .15) s, no reload, guard or ADS. The rifle
+        /// and machine gun rest lower (owner 2026-11-10: "a resting pose ... only show the aiming animation when were shooting /
+        /// aiming"), the pistol too ("apply a resting position to pistols as well"): up only for a shot, a reload, a guard or ADS,
+        /// carried low standing, strafing or backpedalling too. A
         /// critically damped spring (stiffer, 32/s, when a shot raises it from a low carry); it starts on its target for a new
         /// pilot, after a rewind or a gap (the killcam and joining guests never ease in from a stale weight).
         /// </summary>
+        public const float ReloadSettle=.3f;
+        /// <summary>The chip pick's look weight on this pilot (0..1; Runtime NativeChipSelectPresentation, the checks): while it is up
+        /// the gun keeps the source's hold (StanceTarget), the one the pick's gestures were made over.</summary>
+        public float Hold;
         public static float AimTarget(Actor a,float time,float motion)
+        {
+            const float D=(float)Math.PI/180;float speed=(float)Math.Sqrt(a.Velocity.x*a.Velocity.x+a.Velocity.z*a.Velocity.z),yaw=a.Yaw*D;
+            float ahead=speed>1?(a.Velocity.x*(float)Math.Sin(yaw)+a.Velocity.z*(float)Math.Cos(yaw))/speed:1,shotAge=time-a.LastShot;
+            // A resting long gun stays up a beat after its reload (ReloadSettle), so the reload's hands finish into the hold before it lowers,
+            // and through a hit stun as before (the stun stops the stride, which raised it: the carry's torso would pop under the flinch).
+            bool rests=a.Weapon==WeaponId.Rifle||a.Weapon==WeaponId.MachineGun||a.Weapon==WeaponId.Pistol;
+            return shotAge<Math.Max(.38f,GunRules.Get(a.Weapon).Interval+.15f)||a.ReloadUntil+(rests?ReloadSettle:0)>time||(rests?time<a.StunUntil:motion<.18f||ahead<.6f)||time<a.BlockUntil||a.Aiming?1:0;
+        }
+        /// <summary>The source's gun-up target (the pistol's still): the rifle's hips turn behind the gun by it (PelvisYawScale), so a
+        /// resting long gun's legs and hips move as they did when it stayed up (turning the hips as the gun lowered slid a planted foot).</summary>
+        public static float StanceTarget(Actor a,float time,float motion)
         {
             const float D=(float)Math.PI/180;float speed=(float)Math.Sqrt(a.Velocity.x*a.Velocity.x+a.Velocity.z*a.Velocity.z),yaw=a.Yaw*D;
             float ahead=speed>1?(a.Velocity.x*(float)Math.Sin(yaw)+a.Velocity.z*(float)Math.Cos(yaw))/speed:1,shotAge=time-a.LastShot;
@@ -89,8 +107,9 @@ namespace ChipArena.UnityConversion
         }
         private void UpdateAim(Actor a,float time,bool restart)
         {
-            float target=AimTarget(a,time,Rig.Motion);
-            if(!aimHas||restart){aimHas=true;aim=target;aimVelocity=0;return;}
+            float target=AimTarget(a,time,Rig.Motion),hold=StanceTarget(a,time,Rig.Motion);target+=(1-target)*MeleeMath.Clamp(Hold,0,1)*hold;
+            if(!aimHas||restart){aimHas=true;aim=target;aimVelocity=0;stance=hold;stanceVelocity=0;return;}
+            {float y=stance;SpringStep(ref y,ref stanceVelocity,hold,hold>stance&&time-a.LastShot<.1f&&stance<.6f?32:24,1,MeleeMath.Clamp(dt,0,.05f));stance=MeleeMath.Clamp(y,0,1);if(stance!=y)stanceVelocity=0;}
             float omega=target>aim&&time-a.LastShot<.1f&&aim<.6f?32:24,x=aim;SpringStep(ref x,ref aimVelocity,target,omega,1,MeleeMath.Clamp(dt,0,.05f));
             aim=MeleeMath.Clamp(x,0,1);if(aim!=x)aimVelocity=0;
         }
@@ -111,7 +130,7 @@ namespace ChipArena.UnityConversion
             v.Vel=planted?new Vector3(0,a.Velocity.y,0):new Vector3(-a.Velocity.x,a.Velocity.y,a.Velocity.z);
             // stances.ts: the rifle's hips turn behind the gun as far as it is raised (the previous frame's weight, as the source
             // reads r.aimWeight before updateAimWeight).
-            gait.PelvisYawScale=a.Weapon==WeaponId.Rifle?aim:1;
+            gait.PelvisYawScale=a.Weapon==WeaponId.Rifle?stance:1;
             gait.Locomotion(r,v,time,dt,planted);
             v.Vel=new Vector3(-a.Velocity.x,a.Velocity.y,a.Velocity.z);
             // melee-guard sprintLean: the guns have no stance lean, only the sprint lean.

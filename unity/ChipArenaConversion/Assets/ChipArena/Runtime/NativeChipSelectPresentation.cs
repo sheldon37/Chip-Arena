@@ -98,7 +98,7 @@ namespace ChipArena.UnityConversion
         // PrepareCapturedPose, after the route's pose (and the other overlays): the selecting pose over the arena rig.
         private void ChipSelectPose(CapturedAnimation.Player rig,Actor a,float time)
         {
-            if(Viewer||rig==null||a==null)return;bool selecting=ChipSelecting(a.Id,time,out var pick);
+            if(Viewer||rig==null||a==null)return;rig.ChipHold=0;bool selecting=ChipSelecting(a.Id,time,out var pick);
             var cue=ExpeditionChoosing!=null&&ExpeditionPlant!=null?ExpeditionPlant(a.Id,time):ChipPlantCue.None;bool planting=cue.Active&&a.Alive;
             if(!chipSelect.TryGetValue(a.Id,out var slot)){if(!selecting&&!planting)return;slot=new ChipSelectSlot();chipSelect[a.Id]=slot;}
             // A plant that ended with nothing to follow it has already lowered the look over its return: drop it there, and let it rise
@@ -118,6 +118,7 @@ namespace ChipArena.UnityConversion
             float look=planting?NativeChipPlant.Weight(w,cue.Age,slot.PlantStay):w,flinch=NativeChipSelect.Flinch(ChipHitAge(a.Id,time));
             chipLayerSlot=slot;chipLayerInput=new ChipSelectInput{Weight=look,Clock=time-slot.Beat,Time=time,Reach=rig.WeaponReach,Spec=a.SourceSpec,Seed=slot.Seed,Cards=slot.Count,Reduced=WeaponEffectsQuality<.5f,
                 Flinch=flinch,Hush=planting?NativeChipPlant.Hush(cue.Age):0};
+            rig.ChipHold=look;
             chipLayerPlanting=planting;chipLayerPlant=new ChipPlantInput{Age=cue.Age,Weight=look,Flinch=flinch,Chosen=slot.PlantChosen,Cards=slot.Count,Stay=slot.PlantStay};
             chipSelectLayer??=ChipLayer;rig.Overlay(chipSelectLayer);
             slot.Frame=Time.frameCount;slot.Root=rig.Root.transform.localToWorldMatrix;slot.Weight=look;slot.Time=time;slot.Age=slot.Track.Age(time);slot.Redeal=slot.Track.SinceChange(time);slot.Gesture=slot.Pose.Gesture;slot.Scale=slot.RootScale=1;slot.ScreenLeft=NativeChipScreen.OnLeft(a.SourceSpec);

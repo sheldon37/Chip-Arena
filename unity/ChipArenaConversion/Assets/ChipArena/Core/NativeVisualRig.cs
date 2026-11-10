@@ -301,7 +301,9 @@ namespace ChipArena.UnityConversion
         // (a caster's staff, the bow, on the left): it counts as held, not free. Bound: the support holds whatever the hands' distance
         // (the draft's wrist plant, whose left hand works on the right forearm).
         // Clench: 0..1, closed hands drawn on past a handle's grip into a tight fist with nothing in it (a Hulk's punch).
-        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock, Relax, Still, Clench; public bool LeftCarries, RightCarries, Bound; public Hold Right, Left, SupportHold; }
+        // Unshoulder: 0..1, a long gun kept off the shoulder whatever the game pose's butt (a rifle or machine gun at rest: the low
+        // carry's butt sits near the game shoulder; owner 2026-11-10).
+        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock, Relax, Still, Clench, Unshoulder; public bool LeftCarries, RightCarries, Bound; public Hold Right, Left, SupportHold; }
 
         // The Standard weapons' handles (NativeWeaponModels). The sword family draws at the hand turned by
         // NativeSpecialPose.HeldRotation (`held`) with its grip along +z through the wrist; the shield's grip bar stands up behind
@@ -432,7 +434,7 @@ namespace ChipArena.UnityConversion
             s.RefElbow[0]=le<0?Vector3.Zero:s.Position[le]; s.RefElbow[1]=re<0?Vector3.Zero:s.Position[re];
             s.Shouldered=s.SupportSlide=0;
             s.RightSeated=grasp.Right.Seated&&r.HasFist[1]&&rh>=0; s.LeftSeated=grasp.Left.Seated&&r.HasFist[0]&&lh>=0&&support<1;
-            if(s.RightSeated) HoldWeapon(s,pose,false,grasp.Right,grasp.Stock);
+            if(s.RightSeated) HoldWeapon(s,pose,false,grasp.Right,grasp.Stock,grasp.Unshoulder);
             if(s.LeftSeated) HoldWeapon(s,pose,true,grasp.Left,0);
             if(support>0)
             {
@@ -482,7 +484,7 @@ namespace ChipArena.UnityConversion
         // place on the wrist: its frame at the fist the animation gives, as the game's is at its own; the fist then reaches for
         // the handle, the arm moving toward it (the game's arm runs along the shield's back 15 cm behind its grip bar, so a
         // shield moved onto the fist instead ran the forearm through it).
-        private static void HoldWeapon(State s,CapturedRig.Pose pose,bool left,in Hold hold,float stock)
+        private static void HoldWeapon(State s,CapturedRig.Pose pose,bool left,in Hold hold,float stock,float unshoulder=0)
         {
             var r=s.Rig; int side=left?0:1,ga=left?CapturedRig.LArm:CapturedRig.RArm,vh=r.Of[ga+2]; if(vh<0) return;
             Quaternion wrist=pose.WorldRotation[ga+2],game=Eff(s,vh);
@@ -500,7 +502,7 @@ namespace ChipArena.UnityConversion
             if(left) { s.LeftAnchor=ride; return; }
             s.RightAnchor=ride;
             if(stock<=0) return;
-            float shouldered=Shouldered(s,pose,stock,out var butted);
+            float shouldered=Shouldered(s,pose,stock,out var butted)*(1-CapturedClip.Clamp(unshoulder,0,1));
             if(s.HasLast) shouldered=s.LastShouldered+CapturedClip.Clamp(shouldered-s.LastShouldered,-WeightStep,WeightStep);
             s.LastShouldered=shouldered;
             if(shouldered<=0) return;

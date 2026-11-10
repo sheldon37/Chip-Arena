@@ -121,6 +121,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--zombie-knock"){ZombieKnockChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-gait"){ZombieGaitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--run-arm"){RunArmChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--gun-motion"){GunMotionChecks.Run();RangedLocomotionChecks.Run(ProjectRoot());{var gunRoot=ProjectRoot();var gunData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(gunRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});HitFeelChecks.Run(gunRoot,gunData);}return 0;}
             if(args.Length==1&&args[0]=="--faces"){FaceChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hats"){ModelHatChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--suit"){RobotSuitChecks.Run(ProjectRoot());return 0;}
