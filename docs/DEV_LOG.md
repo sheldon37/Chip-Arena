@@ -27,6 +27,7 @@
   - The pistol and rifle standing, walking, firing and aiming.
   - The bow standing, walking and drawing: the quiver on the back throughout, its mouth over the right shoulder.
 - **Not seen:** the quiver on the non-armour outfits, played by a person, and a guest's view.
+- **Released:** full suite at `771b4230`: 994 groups, exit 0; pins 0 broken; Unity compile PASS; the Editor build checks passed. Merged into shared at `6b193968` and synced to the builder; the test channel published revision `639299271974401605`.
 
 ## 2026-11-10 — Claude: the rifle is a sniper; the rifle and machine gun rest low (owner request)
 
