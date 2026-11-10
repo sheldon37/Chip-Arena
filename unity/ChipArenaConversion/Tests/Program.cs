@@ -59,6 +59,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--menu-focus")return 0;
             CrowdPoseChecks.Run();
             if(args.Length==1&&args[0]=="--new-stages"){NewStagesChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--club-stage"){ClubStageChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--emporium"){EmporiumChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--training-look"){TrainingLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--crowd-pose")return 0;
             SnapshotChecks.Run();
@@ -110,6 +112,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--pack-fx-blasts"){PackFxBlastsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--stage-kits"){StageKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--new-stage-looks"){NewStageLookChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--causeway"){CausewayChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--sanctum"){SanctumChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--skin-tone"){SkinToneChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-models"){ZombieModelChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--tiler"){TilerLookChecks.Run(ProjectRoot());return 0;}
@@ -179,6 +183,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--hulk-charge"){HulkMotionChecks.Run(ProjectRoot());HulkChargeChecks.Run(ProjectRoot());HulkHuntChecks.Run(ProjectRoot());HordeKindChecks.Run(ProjectRoot());ZombieMotionChecks.Run(ProjectRoot());HulkSpitterChecks.Run(ProjectRoot());ZombieFxChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-tools"){DevToolsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-grants"){DevGrantsChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--spread"){var spRoot=ProjectRoot();SpreadChecks.Run(spRoot,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(spRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--hazard-kit"){HazardKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-visuals"){IronworksVisualChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--ironworks-boss"){IronworksBossModelChecks.Run(ProjectRoot());return 0;}
@@ -197,6 +202,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--bombadier"){BombadierChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--top-dog"){TopDogChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--glaive"){GlaiveChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--glaive-chips"){GlaiveChipChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--techniques"){TechniqueChecks.Run(ProjectRoot());TechniqueRulesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--weapon-sockets"){var socketRoot=ProjectRoot();var socketData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(socketRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});WeaponSocketChecks.Run(socketRoot,socketData);HitFeelChecks.Run(socketRoot,socketData);return 0;}
             if(args.Length==1&&args[0]=="--muzzle-flash"){var mfRoot=ProjectRoot();var mfData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(mfRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});MuzzleFlashChecks.Run(mfRoot);WeaponFxChecks.Run(mfRoot,mfData);GunKitChecks.Run(mfRoot,mfData);ChipModuleChecks.Run(mfRoot,mfData);return 0;}
@@ -219,7 +225,7 @@ internal static class Program
             PveSpitterChecks.Run(root);NavSearchChecks.Run(root);WardSimulationChecks.Run(root);HulkBreachChecks.Run(root);InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
             ExpeditionStationVisualChecks.Run(root);ZombieLightChecks.Run(root);
-            NewStagesChecks.Run(root);TrainingLookChecks.Run(root);FactoryChecks.Run(root);StageHazardChecks.Run(root);SurfaceChecks.Run(root);
+            NewStagesChecks.Run(root);ClubStageChecks.Run(root);TrainingLookChecks.Run(root);FactoryChecks.Run(root);StageHazardChecks.Run(root);SurfaceChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};
             var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
             FinalKillMatchChecks.Run(data);BowInputChecks.Run(root,data);
@@ -267,7 +273,7 @@ internal static class Program
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
             StructureFxChecks.Run(root);
             IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);IronworksBossPresentationChecks.Run(root);BossVfxRealismChecks.Run(root);
-            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);TechniqueChecks.Run(root);TechniqueRulesChecks.Run(root);BombadierChecks.Run(root);TopDogChecks.Run(root);GlaiveChecks.Run(root);ReviveMachineChecks.Run(root);InstanceMachineChecks.Run();ExpeditionDressingChecks.Run(root);GeneratedDistrictChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionCityChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
+            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);TechniqueChecks.Run(root);TechniqueRulesChecks.Run(root);BombadierChecks.Run(root);TopDogChecks.Run(root);GlaiveChecks.Run(root);GlaiveChipChecks.Run(root);ReviveMachineChecks.Run(root);InstanceMachineChecks.Run();ExpeditionDressingChecks.Run(root);GeneratedDistrictChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionCityChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
             PartyLoadingChecks.Run(root);
             AccountXpChecks.Run(root);AccountXpProgressionChecks.RunChecks(root);
             MoveVisualChecks.Run(root);
@@ -282,6 +288,7 @@ internal static class Program
             MeleeKitPresentationChecks.Run(root,data);
             MagicFxChecks.Run(root);
             GunKitChecks.Run(root,data);
+            SpreadChecks.Run(root,data);
             BloomChecks.Run(root);
             MapStyleChecks.Run(root);
             MenuStyleChecks.Run(root);
@@ -302,6 +309,9 @@ internal static class Program
             PackFxBlastsChecks.Run(root);
             StageKitChecks.Run(root);
             NewStageLookChecks.Run(root);
+            EmporiumChecks.Run(root);
+            CausewayChecks.Run(root);
+            SanctumChecks.Run(root);
             AdvancedLightingChecks.Run(root);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);

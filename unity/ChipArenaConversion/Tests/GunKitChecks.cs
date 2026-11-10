@@ -236,7 +236,7 @@ namespace ChipArena.UnityConversion
             Check(!NativeRangedRules.Scope("pistol")&&!NativeRangedRules.Scope("machinegun")&&NativeRangedRules.Scope("rifle"),"rifle-only scope rule");
             var game=Code(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/ConversionGame.cs")));
             Check(game.Contains("bool aiming=ads!=null&&p.Weapon?.@class==\"ranged\"&&(Input.GetMouseButton(1)||NativeRangedRules.Scope(p.Seat.spec)&&Input.GetKey(KeyCode.Q)||PadHeld(PadAction.Aim));"),"right click aims any gun with an aim row (owner 2026-11-09); Q still scopes the rifle; controller Aim");
-            Check(game.Contains("bool aim=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&pending.Aim&&alive&&!menu;"),"the camera zooms (and forces first person) only for the rifle");
+            Check(game.Contains("bool aim=ads!=null&&p.Weapon?.@class==\"ranged\"&&pending.Aim&&alive&&!menu;"),"the camera zooms to the aim row's field of view in first person for every gun that aims (owner 2026-11-10), the rifle through its scope");
             Check(game.Contains("if(slot==\"q\"&&NativeGunKit.Covers(d.id))return NativeGunKitHud.Status(")&&game.IndexOf("NativeGunKitHud.Status(",StringComparison.Ordinal)<game.IndexOf("return \"Q  Aim (hold)\"",StringComparison.Ordinal),"AbilityStatus routes the kit before the ADS line");
             Check(game.Contains("presentation.GunKitKick(")&&Regex.IsMatch(game,@"prefs\.cameraShake\)presentation\.GunKitKick\("),"the first-person kick is under the camera shake setting");
             var hud=Code(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeFightHud.cs")));

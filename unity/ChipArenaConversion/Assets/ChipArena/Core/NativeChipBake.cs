@@ -397,6 +397,7 @@ namespace ChipArena.UnityConversion
                 case NativeChipCartridge.Crest.Terminal:Terminal(cv,l,cx,edge,k);break;
                 case NativeChipCartridge.Crest.Flames:Flames(cv,l,cx,edge,k);break;
                 case NativeChipCartridge.Crest.Fuse:Fuse(cv,l,cx,edge,k);break;
+                case NativeChipCartridge.Crest.Crescent:Crescent(cv,l,cx,edge,k);break;
             }
             return Done(cv);
         }
@@ -497,6 +498,22 @@ namespace ChipArena.UnityConversion
                 // The fuse: a thin arc off the middle stick's top.
                 float u=Clamp01((p.X-cx)/(8*k));var on=new Vector2(cx+8*k*u,edge+2.5f*k-12.5f*k-(float)Math.Sin(u*Math.PI)*3.4f*k);float fd=(p-on).Length();if(p.X>=cx-.5f&&p.X<=cx+8.5f*k)cv.Over(x,y,cord,Clamp01(1.1f*k-fd+.5f));
                 var tip=new Vector2(cx+8*k,edge+2.5f*k-12.5f*k);cv.Over(x,y,hot,Clamp01(1.7f*k-(p-tip).Length()+.5f));
+            }
+        }
+        static void Crescent(Canvas cv,in NativeChipCartridge.Look l,float cx,float edge,float k)
+        {
+            // The Glaive's tri-crescent standing on the edge: a steel seat, the ring, three crescent fangs swept off its rim with the spin, the
+            // ring's inner rim and the fangs' tips lit in the tier's light.
+            var band=new[]{new Vector2(cx-14*k,edge+1.5f*k),new Vector2(cx+14*k,edge+1.5f*k),new Vector2(cx+11*k,edge+5*k),new Vector2(cx-11*k,edge+5*k)};
+            var c=new Vector2(cx,edge-3.2f*k);float R=5.6f*k,r=3.1f*k;var fangs=new Vector2[3][];
+            Vector2 P(double a,float rad)=>c+new Vector2((float)Math.Cos(a)*rad,(float)Math.Sin(a)*rad);
+            for(int i=0;i<3;i++){double a=-Math.PI/2+i*2*Math.PI/3;fangs[i]=new[]{P(a-.42,R*.92f),P(a+.1,R*1.25f),P(a+.62,R*1.7f),P(a+.35,R*1.12f),P(a+.24,R*.9f)};}
+            float F(Vector2 p){float d=Math.Abs((p-c).Length()-(R+r)/2)-(R-r)/2;d=Math.Min(d,Poly(p,band));foreach(var f in fangs)d=Math.Min(d,Poly(p,f));return d;}
+            Solid(cv,F,MetalOf(l),1*k,.7f*k);var lit=C(l.Accent);var hot=C(l.CoreHi);
+            for(int y=0;y<cv.H;y++)for(int x=0;x<cv.W;x++)
+            {
+                var p=new Vector2(x+.5f,y+.5f);float rim=Math.Abs((p-c).Length()-r);cv.Over(x,y,lit,Clamp01(.55f*k+.5f-rim)*.9f);
+                foreach(var f in fangs){float tip=(p-f[2]).Length();cv.Over(x,y,hot,Clamp01(1.3f*k-tip+.5f)*.85f);}
             }
         }
         static void Flames(Canvas cv,in NativeChipCartridge.Look l,float cx,float edge,float k)

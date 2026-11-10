@@ -80,10 +80,23 @@ namespace ChipArena.UnityConversion
                     case NativeGlaive.HitBurst:Toon("ring-burst",at,1,mine);break;
                     case NativeGlaive.HitThrow:case NativeGlaive.HitRicochet:Toon("ring-ping",at,.85f,mine,1+.06f*k.Bounces);Toon("ring-slice",at,.7f,mine);break;
                     case NativeGlaive.HitCatch:Toon("ring-catch",at,.7f,mine);break;
+                    // The chips' (Core NativeGlaiveChips): a shard's nick, a shot cut down, a drag; a bleed's drip is silent.
+                    case NativeGlaive.HitShard:Toon("ring-slice",at,.55f,mine,1.25f+.1f*((h.Id%4)/3f));break;
+                    case NativeGlaive.HitGuard:Toon("ring-ping",at,.8f,mine,1.3f);Toon("ring-chime",at,.35f,mine,1.2f);break;
+                    case NativeGlaive.HitPull:Toon("ring-hum",at,.45f,mine,1.4f);break;
+                    case NativeGlaive.HitBleed:break;
                     default:Toon("ring-slice",at,.75f,mine,.95f+.1f*((h.Id%5)/4f));break;
                 }
             }
             if(k.Disc==NativeGlaive.Orbit&&t>=k.DiscAt){float step=Mathf.Floor((t-k.DiscAt)/.8f);if(step*.8f<NativeGlaive.HaloTime&&Once(p.Seat.id+"glhum",k.DiscAt+step*1000))Toon("ring-hum",pos,.55f,mine);}
+        }
+        private int glaivePickCue;private string glaivePickId;private float glaivePickLast=-1;
+        /// <summary>A Glaive chip's pick: its animation's cues (Core NativeGlaiveChips.Picks) on the spotlight's clock, `age` s after the pick.</summary>
+        public void GlaivePick(string chip,float age)
+        {
+            int i=NativeGlaiveChips.Index(chip);if(i<0)return;float s=age-NativeDraftPlant.DetailsAt-NativeGlaiveChipArt.Start;
+            if(chip!=glaivePickId||age<glaivePickLast-.2f){glaivePickId=chip;glaivePickCue=0;}glaivePickLast=age;var list=NativeGlaiveChips.Picks[i];
+            while(glaivePickCue<list.Length&&s>=list[glaivePickCue].At){var c=list[glaivePickCue++];if(s-c.At<.25f)Toon(c.Id,null,c.Gain,true,c.Rate);}
         }
     }
 }

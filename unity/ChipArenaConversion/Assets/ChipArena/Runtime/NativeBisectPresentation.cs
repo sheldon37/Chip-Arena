@@ -44,6 +44,7 @@ namespace ChipArena.UnityConversion
         /// its halves the stock ending; a purchased kill effect's body does not play.</summary>
         private NativeCorpse SawBisect(NativeArena arena,NativeDeath death,CapturedAnimation.Player rig)
         {
+            var laserCut=ClubLaserBisect(arena,death,rig);if(laserCut!=null)return laserCut;
             if(sourceModels==null||death==null||death.damageKind!="hazard"||!NativeFactoryHazards.Active(arena.MapId)||!NativeSmashGib.Applies(Gore,death.style,death.kept,death.model))return null;
             var hazards=arena.Map?.hazards;if(hazards==null||hazards.Length==0)return null;int round=NativeStructureFx.RoundIndex(arena.Match.Set,arena.Match.Round);
             int index=HazardGibOf(arena,death)?.Saw??-1;if(index<0||index>=hazards.Length)return null;

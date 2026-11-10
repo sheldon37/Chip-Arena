@@ -54,3 +54,33 @@ Owner supplied all eight recordings on 2026-11-02. The original MP3 bytes are pa
 | backrooms-level-0 | fluorescent loop.mp3 | `backrooms-fluorescent-loop` | 179.784 s |
 | Poolrooms (reserved) | Untitled.mp3 | `poolrooms-untitled` | 239.952 s |
 | training | Steady Groove.mp3 | `training-steady-groove` | 180.024 s |
+
+## The 2026-11-10 stages
+
+Four briefs for the owner's Suno songs, one per new stage, in the same spirit as the ones above. Select Instrumental. Each stage plays a
+placeholder track until its song is in; the resource key it takes is in the table below (the steps are in each stage's doc).
+
+### Starfall Causeway — Across the Firmament
+
+Instrumental space-arena combat soundtrack, 140 BPM, an ancient stone bridge suspended in deep space among nebulae and a ringed planet. Cosmic synthwave meets orchestral: driving taiko-style toms with tight electronic drums, deep pulsing sub-bass, shimmering arpeggiated glass synths, a soaring wordless choir pad, heroic brass swells and a memorable five-note celestial bell motif. Vast, majestic, dangerous; builds and releases in 16-bar waves. No vocals. Clean loopable ending.
+
+### Substation 128 — Floor Is Lava
+
+Instrumental nightclub combat track, exactly 128 BPM, four-on-the-floor. Punchy festival house and electro in an old power substation: a huge sidechained kick on every beat, rolling offbeat bass, bright supersaw stabs, a catchy chopped vocal-chop style synth lead with no words, crisp claps, rising snare builds into big drops every 16 bars, filter sweeps and laser zaps. Euphoric, neon, relentless, with a clear strong kick for the light show. No vocals. Clean loopable ending.
+
+The club's lights follow the song's kick and bass, and its hazards keep a 128 BPM bar grid on the match clock, so a song at exactly 128 BPM lines the drops up with the stage.
+
+### Top Dog Emporium — Relish the Moment
+
+Instrumental comedic arena combat track, 150 BPM, a giant over-the-top hot dog palace. Zany surf rock meets big-band swing: twangy reverb surf guitar, slap bass, swinging horn-section stabs, honky-tonk piano, kazoo and slide-whistle accents, cowbell and woodblock, playful call-and-response hooks; cartoon energy over punchy fight-ready drums. Bright, silly, catchy, bouncy. No vocals. Clean loopable ending.
+
+### The Hollow Sanctum — Vigil of Ash
+
+Instrumental gothic arena combat soundtrack, 120 BPM, a moonlit castle chapel lit by candles and stained glass. A dark cathedral pipe-organ ostinato, a wordless choir singing only "aah", pounding orchestral percussion and taiko, tolling bells, harpsichord runs, low staccato strings and a hint of industrial drums. Solemn, ominous and dramatic, with a haunting descending minor motif. No lyrics. Clean loopable ending.
+
+| Stage | Map id | Placeholder now | Resource key for the owner's song |
+|---|---|---|---|
+| Starfall Causeway | `causeway` | `skyframe-rising-motif` | `causeway-theme` |
+| Substation 128 | `club` | `cybercity-neon-riot` | `club-theme` |
+| Top Dog Emporium | `emporium` | `cybercity-neon-riot` | `emporium-theme` |
+| The Hollow Sanctum | `sanctum` | `moonlit-wilderness` | `sanctum-theme` |

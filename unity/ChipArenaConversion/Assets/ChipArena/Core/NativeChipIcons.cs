@@ -23,6 +23,7 @@ namespace ChipArena.UnityConversion
             // The Bombadier's set draws its own emblem (Core/NativeBombChips.Glyph, Runtime/NativeIcons.Draw).
             if(NativeBombChips.Is(id))return id;
             if(NativeDogChips.Is(id))return id;
+            if(NativeGlaiveChips.Is(id))return id;
             // The wild and ability chips name theirs in their rows.
             {string own=NativeWildChips.Icon(id)??NativeAbilityChips.Icon(id);if(own!=null)return own;}
             // The ROUNDS adaptation packs' 138 chips (Core/NativeRoundsLooks): one pinned icon each by its main effect.

@@ -156,8 +156,11 @@ namespace ChipArena.UnityConversion
                 if(string.IsNullOrEmpty(theme)){if(!track.StartsWith("music/")||track=="music/menu-afterglow"||music.clip!=null&&musicPlayed&&!musicStarting&&!music.isPlaying&&!musicHeld){if(bag.Count==0){foreach(var name in rotationTracks.OrderBy(_=>UnityEngine.Random.value))bag.Enqueue(name);if(bag.Peek()==rotationTracks[Math.Max(0,rotation)])bag.Enqueue(bag.Dequeue());}theme=bag.Dequeue();rotation=Array.IndexOf(rotationTracks,theme);}else theme=track.Substring(6);}
                 Track("music/"+theme,Music*.55f,!NativeStageMusic.Plays(match.Phase,false,false));
             }
-            FactoryCues(arena,menu);ExpeditionCityCues(arena,menu);
+            FactoryCues(arena,menu);ExpeditionCityCues(arena,menu);CausewayCues(arena,menu);
+            EmporiumCues(arena,menu);
+            SanctumCues(arena,menu);
             StationCues(arena,menu);
+            ClubFrame(arena,menu);
             // audio.ts AudioCursor: each event once, played only while .4 s fresh (never ahead of the clock), routed by
             // NativeEventSounds (ArenaAudio.update's event branch).
             // The Siren pick's follow-through holds my own Install cue for its plant (NativeInstallCue).
@@ -198,6 +201,7 @@ namespace ChipArena.UnityConversion
             // It lands on the stage's wrist plant (NativeDraftPlant.SoundAt after the pick), as the pilot presses the chip in.
             if(match.Phase==NativePhase.Draft&&match.Chosen!=null&&NativeInstallCue.DraftDue(match.ChosenAt,match.Time)&&Once("draft-install",(float)match.ChosenAt))InstallCue(match.Chosen);
             if(match.Phase==NativePhase.Draft&&match.Chosen!=null&&NativeDogChips.Is(match.Chosen))DogPick(match.Chosen,(float)(match.Time-match.ChosenAt));
+            if(match.Phase==NativePhase.Draft&&match.Chosen!=null&&NativeGlaiveChips.Is(match.Chosen))GlaivePick(match.Chosen,(float)(match.Time-match.ChosenAt));
             int n=match.Phase==NativePhase.Countdown?(int)Math.Ceiling(match.PhaseEnd-match.Time):0;if(n>0&&n!=countdown)Cue("ui.countdown","countdown",null,.7f);countdown=n;
             string current=match.Phase.ToString();if(current!=phase){if(match.Phase==NativePhase.Fight)Cue("ui.go","go",null,.7f);if((match.Phase==NativePhase.Result||match.Phase==NativePhase.Match&&phase!="Result")&&(match.Winner!=0||arena.Pve?.Outcome!=null)){string result=arena.Pve!=null?arena.Pve.Outcome=="victory"?"win":"lose":match.SameSide(me?.Seat,match.Seat(match.Winner))?"win":"lose";Cue(result=="win"?"ui.round-won":"ui.round-lost",result,null,.65f);}phase=current;}
             // audio.ts PvE stage cues: a wave start counts in, a clear or the possession sounds "go" (my revive is its event).

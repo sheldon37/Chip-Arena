@@ -97,6 +97,28 @@ namespace ChipArena.UnityConversion
                 kit.CastStep=3;kit.CastRelease=30.16f;kit.CastUntil=30.7f;Check(NativeGlaiveMotion.Sample(kit,30.6f,out _,out var fl,out _)&&fl==NativeGlaiveMotion.Move.Flick,"the flick runs on to its catch");
                 var caught=new NativeGlaiveKit{Ready=new float[2],Disc=NativeGlaive.Hand,DiscAt=40};Check(NativeGlaiveMotion.Sample(caught,40.1f,out _,out var cm,out _)&&cm==NativeGlaiveMotion.Move.Catch&&!NativeGlaiveMotion.Sample(caught,41,out _,out _,out _),"a catch recoils, then lets the clip be");
             }
+            // ---- the intro: Crescent Return (owner 2026-11-09: "create a very well animated intro") ----
+            {
+                var seat=new NativeSeat{spec=NativeGlaive.Spec};const string id=NativeGlaiveIntro.Id;
+                Check(NativeIntroRules.Style(seat)==id&&NativeIntroRules.Pickable(id)&&!NativeCosmeticGate.Restricted(id)&&NativeEntranceDirector.Directed(id)&&NativeEntranceDirector.Script(id) is NativeGlaiveIntro,"a Glaive pilot's own entrance, open to everyone, staged by the director");
+                Check(Math.Abs(NativeIntroRules.Duration(id)-NativeGlaiveIntro.Total)<1e-4&&Math.Abs(NativeIntroRules.NameAt(id)-NativeGlaiveIntro.CardAt)<1e-4&&NativeIntroRules.IntroWeapon(id)=="weapon-"+NativeGlaive.Spec&&NativeIntroRules.StyleName(id)==NativeGlaiveIntro.Name&&NativeIntroRules.IntroSting(id)=="audio/intros/signal-spin","its length, its name card, its weapon, its name and its bed");
+                Check(NativeLocker.IntroText(id).Length>0&&NativeLocker.IntroIcon(id)=="spec-glaive"&&!NativeLocker.DevItem(id),"its Locker card");
+                // The ring: out and flying from its entrance to the catch, in the hand, out again for the orbit, in the hand from the return.
+                Check(!NativeGlaiveIntro.Ring(.2f,out _,out _)&&NativeGlaiveIntro.Ring(1f,out _,out _)&&!NativeGlaiveIntro.Ring(2f,out _,out _)&&NativeGlaiveIntro.Ring(3.2f,out _,out _)&&!NativeGlaiveIntro.Ring(4.5f,out _,out _),"out, in the hand, out for the orbit, back in the hand");
+                Check(NativeGlaiveIntro.InHand(NativeGlaiveIntro.CatchAt)&&!NativeGlaiveIntro.InHand(NativeGlaiveIntro.CatchAt-.01f)&&NativeGlaiveIntro.InHand(NativeGlaiveIntro.ReturnAt)&&!NativeGlaiveIntro.InHand(NativeGlaiveIntro.FlingAt),"the catches and the fling on their beats");
+                NativeGlaiveIntro.Ring(NativeGlaiveIntro.CatchAt-.002f,out var atCatch,out _);NativeGlaiveIntro.Ring(NativeGlaiveIntro.ReturnAt-.002f,out var atReturn,out _);
+                Check(Vector3.Distance(atCatch,NativeGlaiveIntro.CatchPoint)<.05f&&Vector3.Distance(atReturn,NativeGlaiveIntro.ReturnPoint)<.05f,"it meets the hand at both catches");
+                NativeGlaiveIntro.Ring(NativeGlaiveIntro.Hit1,out var p1,out _);NativeGlaiveIntro.Ring(NativeGlaiveIntro.Hit2,out var p2,out _);
+                Check(Vector3.Distance(p1,NativeGlaiveIntro.Pylon1)<.05f&&Vector3.Distance(p2,NativeGlaiveIntro.Pylon2)<.05f,"it strikes each pylon on its beat");
+                NativeGlaiveIntro.Ring((NativeGlaiveIntro.OrbitFrom+NativeGlaiveIntro.OrbitTo)*.5f,out var orbitMid,out _);Check(Math.Abs(new Vector2(orbitMid.X,orbitMid.Z).Length()-NativeGlaiveIntro.OrbitRadius)<.01f&&Math.Abs(orbitMid.Y-NativeGlaiveIntro.OrbitHeight)<.01f,"the orbit 1.7 m out round the pilot");
+                float flightFastest=0;Vector3? was=null;for(float ft=NativeGlaiveIntro.EnterAt;ft<NativeGlaiveIntro.ReturnAt;ft+=1/240f){if(!NativeGlaiveIntro.Ring(ft,out var fat,out _)){was=null;continue;}if(was.HasValue)flightFastest=Math.Max(flightFastest,Vector3.Distance(fat,was.Value)*240);was=fat;}
+                Check(flightFastest<45,"the ring's flight never jumps (fastest "+flightFastest.ToString("0.0")+" m/s)");
+                Check(NativeGlaiveMotion.Intro(NativeGlaiveIntro.DropAt+.2f,out var arm)&&arm.Weight>.99f&&!NativeGlaiveMotion.Intro(NativeGlaiveIntro.DropAt-.1f,out _),"the ring arm is keyed from the drop on");
+                var intros=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeIntros.cs"));
+                Check(intros.Contains("if(script is NativeGlaiveIntro){actor.SourceSpec=NativeGlaive.Spec;glaiveIntroActor=actor.Id;glaiveIntroClock=t;}")&&intros.Contains("if(script is NativeGlaiveIntro ring)GlaiveIntroRing(ring,t);")&&intros.Contains("if(style==NativeGlaiveIntro.Id&&!NativeGlaiveIntro.InHand(entranceTime))return;")
+                    &&File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeVisualBodyPresentation.cs")).Contains("if(a.Id==glaiveIntroActor&&glaiveIntroActor>=0)GlaiveIntro(body,rig,glaiveIntroClock);")
+                    &&File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeLockerUI.cs")).Contains("spec==NativeGlaive.Spec?NativeGlaiveIntro.Id:"),"staged: the pilot as a Glaive, its arm keyed, the ring drawn in and out of the hand; the Locker's signature card");
+            }
             // ---- the model ----
             Check(NativeWeaponModels.Designed(NativeGlaive.Spec),"the ring is a designed model");
             for(int tier=0;tier<3;tier++){var mesh=NativeWeaponModels.Build(NativeGlaive.Spec,tier);Check(mesh!=null&&mesh.Triangles>100&&mesh.Triangles<=NativeWeaponModels.Budget[tier],"tier "+tier+" builds inside its budget ("+(mesh?.Triangles??0)+")");}

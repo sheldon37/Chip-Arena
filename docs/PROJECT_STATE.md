@@ -1,3 +1,13 @@
+2026-11-10 Claude (`claude/new-stages`): four new stages in Random: Starfall Causeway, Substation 128, Top Dog Emporium, the Hollow Sanctum; vents can push (pushMode, for Astra). Songs come from the owner (keys in docs/arenas/STAGE-MUSIC-PROMPTS.md).
+
+2026-11-10 Claude (`claude/pvp-lobby-ui`): the PvP room and Create Room redesigned; weapon abilities are picked in the room and reach the host by themselves. Four new stages are being built on their own branches.
+
+2026-11-10 Claude (`claude/ads-killcam`): every gun zooms when aimed; a spread cone with a reactive crosshair (rules for Astra); the killcam no longer stops when other bodies are on the floor.
+
+2026-11-10 Claude (`claude/glaive-chips`): the Glaive's ten chips with their own picks; the chip catalog's cap is now 1024. The Glaive request (design, moves, intro, chips) is complete.
+
+2026-11-10 Claude (`claude/glaive-polish`): the Glaive's own intro, Crescent Return (ricochets in the dark, a mid-air catch, an orbit carving the floor, one great cut, the hero hold). Its chips are next.
+
 2026-11-10 Claude (`claude/glaive-polish`): the Glaive redesigned as the tri-crescent (three pitched crescent fangs, a lit edge; it reads even edge on) and every move reworked to use the whole body (deep coils, a leaping whirl, wound throws). Its intro and chips are next on the same branch.
 
 2026-11-09 Claude (`claude/main-dev-menu`): the main menu's DEV screen reworked: players as cards, every DEV class from the content with its entrance, DEV looks with the Locker's emblems, labels as switches, unsaved changes with Revert and Save. The Cyber Lord, the Bombadier and the Top Dog show as DEV accounts only until the account server (and NativeAccess.Allows) can grant them: the owner's call, Astra's area.
