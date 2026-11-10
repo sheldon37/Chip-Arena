@@ -132,14 +132,16 @@ namespace ChipArena.UnityConversion
         // ---- The side: the pilot, the room in a few lines, Create Room ------------------------------------------------------
         private void CreateSide(Rect r,float e)
         {
-            var o=rules??RulesNow();float btnH=56,sumH=o!=null&&!o.cooperative?230:150;
-            var btn=new Rect(r.x,r.yMax-btnH,r.width,btnH);var sum=new Rect(r.x,btn.y-18-sumH,r.width,sumH);var card=new Rect(r.x,r.y,r.width,Mathf.Max(200,sum.y-16-r.y));
-            if(card.height>=240)PilotCard(card,"YOUR PILOT",e,"Guests see your pilot in the room. Change your loadout there.");else{sum.y=r.y;sum.height=btn.y-18-r.y;}
+            var o=rules??RulesNow();float btnH=56,sumH=o!=null&&!o.cooperative?40+5*30:40+2*30;
+            var btn=new Rect(r.x,r.yMax-btnH,r.width,btnH);var sum=new Rect(r.x,btn.y-22-sumH,r.width,sumH);var card=new Rect(r.x,r.y+4,r.width,sum.y-18-r.y-4);
+            // The pilot as the room will show it (the lobby's card, without the ready band).
+            if(card.height>=200){var me=new LobbyPilot{id=1,you=true,name=NativeCosmeticRules.Name(prefs.name),weapon=prefs.weapon,techniques=prefs.weaponTechniques,tag="YOU",ready=true,connected=true,team=prefs.team,accent=HexColor(prefs.accentColor,0x70e1d0),body=HexColor(prefs.bodyColor,0xe5e7eb)};LbPilotCard(card,me,0,e,false,Time.unscaledTime,false,false);}
+            else{sum.y=r.y;sum.height=btn.y-22-r.y;}
             // The room in a few lines.
             LbHeading(new Rect(sum.x,sum.y,sum.width,28),"YOUR ROOM",null,e);
             if(o!=null)
             {
-                int i=0;void Line(string k,string v,Color tone){float y=sum.y+40+i*32;U.Text(new Rect(sum.x,y,96,24),k,10,C.Muted(e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);U.Text(new Rect(sum.x+100,y,sum.width-100,24),Fit(v,14,sum.width-100,true,0),14,U.A(tone,e),TextAnchor.MiddleLeft,bold:true);U.Fill(new Rect(sum.x,y+28,sum.width,1),C.Edge(.35f*e));i++;}
+                int i=0;void Line(string k,string v,Color tone){float y=sum.y+38+i*30;U.Text(new Rect(sum.x,y,96,24),k,10,C.Muted(e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);U.Text(new Rect(sum.x+100,y,sum.width-100,24),Fit(v,14,sum.width-100,true,0),14,U.A(tone,e),TextAnchor.MiddleLeft,bold:true);U.Fill(new Rect(sum.x,y+26,sum.width,1),C.Edge(.35f*e));i++;}
                 Line("MODE",VersusLabels[o.expedition?2:o.cooperative?1:0]+(o.cooperative?"":o.teams?" · Teams":" · Free-for-all"),C.Ink());
                 if(!o.cooperative)
                 {

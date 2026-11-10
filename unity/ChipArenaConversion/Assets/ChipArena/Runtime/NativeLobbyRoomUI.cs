@@ -15,6 +15,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         // ---- Layout ----------------------------------------------------------------------------------------------------
+        private int lobbySeenFrame=-100;
         private const float LbLoadoutH=262,LbCodeW=300,LbCardGap=14;
         private Rect lbPanel;
         // A section's heading: the mono label in soft cyan, a muted note after it, then the hairline with its short cyan lead.
@@ -54,10 +55,11 @@ namespace ChipArena.UnityConversion
             LbHeading(new Rect(r.x,r.y,r.width-170,28),"PILOTS",count+" / "+max+(teams?" · TEAMS":" · FREE-FOR-ALL"),e);
             LbReadyMeter(new Rect(r.xMax-160,r.y-6,160,30),ready,count,e);
             var grid=new Rect(r.x,r.y+42,r.width,r.height-42);
-            int cols=grid.width<560?2:grid.width<800?3:4;int slots=count<cols?cols:Mathf.Min(max,Mathf.CeilToInt(Mathf.Min(max,count+1)/(float)cols)*cols);if(slots<count)slots=count;
+            int cols=grid.width<560?2:grid.width<800?3:4;int slots=count<=cols?cols:Mathf.Min(max,Mathf.CeilToInt(count/(float)cols)*cols);if(slots<count)slots=count;
             int rows=Mathf.Max(1,Mathf.CeilToInt(slots/(float)cols));float g=LbCardGap,cw=(grid.width-g*(cols-1))/cols,ch=Mathf.Min((grid.height-g*(rows-1))/rows,cw*1.62f);
             bool host=Hosting&&server==null;int lastBot=-1;foreach(var p in roster)if(p.bot)lastBot=Mathf.Max(lastBot,p.id);
             int seats=0;foreach(var p in roster)if(!p.bot)seats++;bool canAdd=host&&count<max&&!prefs.pve;float t=Time.unscaledTime;
+            if(canAdd&&count>=slots){float bw=U.Measure("Add a bot",12,true).x+19+18+26;if(MenuButton(new Rect(r.xMax-170-10-bw,r.y-8,bw,34),"bot","Add a bot",null,false,!MenuBlocked(),e,12,true)){var o=RoomOptions;if(o!=null)ApplyRule(RoomOpt.Bots,Mathf.Min(7,o.bots+1),0);}}
             for(int i=0;i<slots;i++)
             {
                 var cr=new Rect(grid.x+(i%cols)*(cw+g),grid.y+(i/cols)*(ch+g),cw,ch);float k=Mathf.Clamp01((LbAge-.05f*i)/.3f);k=k*k*(3-2*k);cr.y+=(1-k)*10;float a=e*k;
@@ -76,7 +78,7 @@ namespace ChipArena.UnityConversion
         }
         // A pilot's card: the accent (its team's colour in a teams room) along the top, the seat and what it is, the portrait, the name, the weapon,
         // both abilities, and the ready band at the foot. The host may promote a guest, and take away the room's last bot.
-        private void LbPilotCard(Rect r,LobbyPilot p,int index,float e,bool teams,float t,bool removable)
+        private void LbPilotCard(Rect r,LobbyPilot p,int index,float e,bool teams,float t,bool removable,bool readyBand=true)
         {
             var weapon=LobbyWeapon(p.weapon);Color style=weapon!=null?U.Hex((int)weapon.color):C.Muted();bool ready=p.ready&&p.connected;float a=e*(p.connected?1:.55f);
             int team=TeamIndex(p.team);Color band=teams?TeamColor(team):p.accent;bool paint=Event.current.type==EventType.Repaint;
@@ -96,7 +98,7 @@ namespace ChipArena.UnityConversion
             if(teams){var tr=new Rect(r.xMax-12-86,r.y+8,86,22);LbTeamChip(tr,p,team,a,p.you||Hosting);}
             else if(removable&&LbIconButton(new Rect(r.xMax-12-24,r.y+7,24,24),"x",62100+p.id,!MenuBlocked(),a)){var o=RoomOptions;if(o!=null)ApplyRule(RoomOpt.Bots,Mathf.Max(0,o.bots-1),0);}
             // The portrait, as tall as the card allows over its text.
-            float foot=26,text=r.height>250?92:r.height>200?70:48,top=r.y+36,stageH=r.height-36-text-foot-6;
+            float foot=readyBand?26:0,text=r.height>250?92:r.height>200?70:48,top=r.y+36,stageH=r.height-36-text-foot-6;
             var stage=new Rect(r.x+4,top,r.width-8,Mathf.Max(0,stageH));
             if(stage.height>=60){float ring=Mathf.Min(stage.height*.32f,r.width*.27f);LobbyPortrait(stage,new Vector2(stage.center.x,stage.center.y+2),ring,p,index,a,t,weapon,style,false);}
             if(paint)
@@ -113,7 +115,7 @@ namespace ChipArena.UnityConversion
                 }
                 if(text>=92&&weapon!=null&&!p.bot){var names=LbAbilityNames(weapon,p.you?prefs.weaponTechniques:p.techniques);float half=(w-6)/2;LbAbilityChip(new Rect(r.x+pad,ty+56,half,22),"Q",names[0],names[2],a);LbAbilityChip(new Rect(r.x+pad+half+6,ty+56,half,22),"E",names[1],names[3],a);}
                 // The ready band.
-                var b=new Rect(r.x+1,r.yMax-foot-1,r.width-2,foot);string state=!p.connected?"OFFLINE":ready?"READY":"NOT READY";Color st=!p.connected?C.Dim():ready?C.Good():C.Muted();
+                if(!readyBand)return;var b=new Rect(r.x+1,r.yMax-foot-1,r.width-2,foot);string state=!p.connected?"OFFLINE":ready?"READY":"NOT READY";Color st=!p.connected?C.Dim():ready?C.Good():C.Muted();
                 U.Fill(new Rect(b.x+8,b.y,b.width-16,1),C.Edge(.55f*a));if(ready)U.HGradient(new Rect(b.x+8,b.y+1,b.width-16,b.height-2),C.Good(.0f),C.Good(.16f*a));
                 NativeIcons.Draw(new Rect(b.x+14,b.center.y-6.5f,13,13),!p.connected?"circle-dashed":ready?"check":"clock-3",U.A(st,a));U.Text(new Rect(b.x+33,b.y,b.width-40,b.height),state,10.5f,U.A(st,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
             }
