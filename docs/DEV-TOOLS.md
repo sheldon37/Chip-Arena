@@ -51,26 +51,30 @@ one wins.
   - HOST: NO DEV PROTOCOL, for a guest of an older host;
   - NO PROGRESSION THIS MATCH, once a command has run for your account.
 - **Left tab rail:**
-  - **Pilot**:
-    - your pilot card;
-    - the state pills: GOD, INF AMMO, NO CD, REVEALED, SHRUNK/GROWN;
-    - restore, down, hit, clear enemy summons, teleport to aim and the reveal;
-    - god, infinite ammo and no cooldowns, as on/off pairs showing the replicated state;
-    - your weapon;
-    - a link to your chips.
-  - **Interact**:
-    - a target picker covering every pilot and bot, with DEV DUMMY labels;
-    - parameters: launch speed, freeze seconds, dummies around, debris-rain material, swap weapon;
-    - launch, freeze, bring, send to aim, swap weapon, debris rain, shrink, grow, hazard at target, dummies around,
-      debris at target, restore target and down target.
+  - **Players** (the old Pilot and Interact tabs in one, `Runtime/NativeDevPlayers.cs`; owner 2026-11-09: "Rework the dev menu
+    (Where we can modify players); Make it cleaner and easier to use ... Everytime we make a dev class, add them as an option here"):
+    - a roster of every connected pilot and bot as cards (class icon, name, class, health, YOU / BOT / DEV DUMMY), you first;
+      clicking one picks whom the tab works on (shared with Monsters);
+    - that player's card: their class badge in its colour, name, class, health, and the state pills GOD, INF AMMO, NO CD,
+      REVEALED, SHRUNK/GROWN, DEV DUMMY;
+    - their class as icon tiles grouped GUNS, MELEE, MAGIC and DEV CLASSES (NOW on the one they have); one button swaps to the
+      pick (yours: Become X, which resets the arena in the sandbox; theirs: Make them X). The groups come from the content
+      (`AllowedWeapon`; every `devOnly` class under DEV CLASSES), so a new DEV class needs nothing here;
+    - actions as icon tiles. Yours: restore, down, hit, teleport to aim, clear enemy summons, the reveal, launch, freeze,
+      shrink, grow, debris rain, a hazard. Theirs: restore, down, launch, freeze, bring, send to aim, shrink, grow, debris
+      rain, debris at them, a hazard, dummies around;
+    - your cheats (god, infinite ammo, no cooldowns) as switches showing the replicated state;
+    - tuning: launch speed, freeze seconds, dummies around, debris-rain material;
+    - a link to their chips.
+    The actions keep their tabs (`NativeDevTab.Pilot` yours, `Interact` theirs), so the commands go out as before.
   - **Monsters** (see "Monsters" below; proposed commands):
     - a kind card per content add, with HP, speed and the hulk and spitter caps;
     - a count stepper (1–8), place (near, aim, drop, entries) and behaviour (hunt, frenzy, idle);
-    - the Interact target picker (who they hunt, where near and drop place them);
+    - the Players roster as the target (who they hunt, where near and drop place them);
     - Spawn monsters, Clear DEV monsters and the live DEV MONSTERS n/24 count;
     - in the sandbox, the Ward Zero entry picker (moved from Arena).
   - **Dummies**:
-    - the sandbox dummy's weapon, input and cast;
+    - the sandbox dummy's class (the Players tab's tiles, DEV classes among them), input and cast;
     - restore, down, hit and clear summons for the dummy;
     - respawn and repeat-cast seconds;
     - bot difficulty;
@@ -257,7 +261,7 @@ them in `docs/DEV-ABUSE-AUTHORITY.md`, this section is a proposal, and that docu
   - Offline and in the sandbox: the local `NativeDevRules.Actions` lists `spawn-monster`.
 - Argument shapes come from Core `NativeDevMonsters.ArgsOk` until `NativeDevRules.Validate` knows the actions; after
   that, Validate decides.
-- The target is the Interact picker's (your own seat sends 0). `DevArgs` sends the selected kind, the clamped count, and
+- The target is the Players roster's pick (your own seat sends 0). `DevArgs` sends the selected kind, the clamped count, and
   the place and behaviour ids.
 - The Ward Zero entry picker (`arena.SandboxWardEntry`, sandbox route `ward-spawn`) shows only in the sandbox:
   - a filter (ALL, VENT, DOOR, DROP, BREACH, CELL), previous and next, and "Nearest to me";
