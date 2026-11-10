@@ -4,7 +4,7 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// The Glaive's names and numbers (docs/GLAIVE.md): the owner's DEV melee class (2026-11-09: "Glaive ... It's throwable, slices like a
+    /// The Glaive's names and numbers (docs/GLAIVE.md): the owner's melee class (2026-11-09: "Glaive ... It's throwable, slices like a
     /// sword, etc. Lets make the combos flow nicely and the animation very nice; with great quality effects"). An original ring blade, held by
     /// its inner grip in the right hand: four cuts that flow into each other (a flat forehand, a rising backhand, a whirl all round and a
     /// boomerang flick that is caught again), a skimming lunge on a sprint, Q throws it to ricochet between enemies and come back (Q or the

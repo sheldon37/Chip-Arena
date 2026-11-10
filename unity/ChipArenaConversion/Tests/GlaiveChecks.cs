@@ -43,9 +43,9 @@ namespace ChipArena.UnityConversion
         {
             count=0;var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});data.Validate();
             // ---- the rows and access ----
-            var row=data.Weapon(NativeGlaive.Spec);Check(row!=null&&row.devOnly&&row.@class=="melee"&&row.name=="Glaive","a DEV melee row");
+            var row=data.Weapon(NativeGlaive.Spec);Check(row!=null&&!row.devOnly&&row.@class=="melee"&&row.name=="Glaive","a public melee row");
             Check(data.abilities.Count(a=>a.spec==NativeGlaive.Spec)==2&&data.Ability(NativeGlaive.Spec,"q")?.id==NativeGlaive.Throw&&data.Ability(NativeGlaive.Spec,"e")?.id==NativeGlaive.Halo,"its Q (the throw) and E (the halo)");
-            Check(NativeLoadoutText.Role(row).StartsWith("DEV")&&NativeRangedRules.KeyboardQ(data,NativeGlaive.Spec,true)&&!NativeAccess.Guest.Allows("weapon:"+NativeGlaive.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),"its loadout line, Q on the keyboard reaches it, a guest cannot take it");
+            Check(!NativeLoadoutText.Role(row).StartsWith("DEV")&&NativeRangedRules.KeyboardQ(data,NativeGlaive.Spec,true)&&NativeLoadoutText.InClass(row,"melee",false,!row.devOnly)&&!NativeLoadoutText.InClass(row,"dev",true,true),"its loadout line, Q on the keyboard reaches it, a guest can select it in melee, outside the DEV category");
             // ---- the record ----
             var k=new NativeGlaiveKit{Ready=new float[NativeGlaive.Slots],CastKind=NativeGlaive.Throw,CastAt=10,CastRelease=10.14f,CastUntil=10.4f,Disc=NativeGlaive.Out,DiscAt=10.14f,DiscPos=new V3(0,1.2f,1),DiscVel=new V3(0,0,30),DiscSampleAt=10.2f,Hits=new[]{new NativeGlaiveHit{Id=1,Kind=NativeGlaive.HitThrow,At=10.3f,Pos=new V3(0,1,6),Dir=new V3(0,0,1)}}};
             Check(k.Valid(),"a record in flight is valid");var copy=k.ViewCopy();copy.Hits[0].At=99;copy.Ready[0]=5;Check(k.Hits[0].At==10.3f&&k.Ready[0]==0,"its copy is deep");

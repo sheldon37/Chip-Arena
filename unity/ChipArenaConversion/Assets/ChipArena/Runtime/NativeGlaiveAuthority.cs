@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class NativeArena
     {
-        private bool GlaiveAllowed(NativePilot p)=>p.Seat.spec==NativeGlaive.Spec&&(p.Seat.access.DeveloperWeapon(NativeGlaive.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())||p.Seat.devWeaponAccess?.DeveloperWeapon(NativeGlaive.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())==true);
+        private bool GlaiveAllowed(NativePilot p)=>p.Seat.spec==NativeGlaive.Spec;
         private bool GlaiveBusy(NativePilot p)=>p.Seat.spec==NativeGlaive.Spec&&Time<p.Glaive.CastUntil;
         /// <summary>Where the ring is held and caught (the body's middle is its centre, .865 m over the feet).</summary>
         private static Vector3 GlaiveHand(NativePilot p)=>p.Body.position+Vector3.up*NativeGlaive.HandHeight;

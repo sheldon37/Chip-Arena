@@ -1,11 +1,11 @@
-# Glaive: a DEV melee class
+# Glaive: a melee class
 
 The owner's request, 2026-11-09: "Begin creating a new melee class; Glaive (Reference warframe glaives) It's throwable, slices like a sword,
 etc. Lets make the combos flow nicely and the animation very nice; with great quality effects."
 
 Defaults chosen for this first version (say if any should change):
 
-- DEV access only, like the Top Dog and the Bombadier, so it can be tried on the test channel before it is anyone's.
+- Available to all players, including guests, in the melee category (owner request, 2026-11-09).
 - Claude built the rules as well as the look, as for the Top Dog; the rules are logged for Astra.
 - An original design built on the mechanic (a ring blade you cut with, throw to ricochet and come back, and burst). No other game's names,
   weapons or art.

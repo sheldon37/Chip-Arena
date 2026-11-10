@@ -13,6 +13,13 @@
 - **Seen in the Editor:** the holographic dome with the pilot inside and the hexes clear; the feeding with the victim held where the feast holds it (the pinch, the sausage going in at the mouth); the pop's mist and the burst landing close, the friends carrying its pieces; Preview Intro in blue armour with red trims (was white-hot red) against the same pilot's match intro.
 - **Not seen / not done:** a real match's feast end to end (the preview loop's victim is not really held, so its arms are free); the jaw on a model whose mask hides the mouth (the robot helmet shows no mouth); every kill effect on a burst (embers, frost and the rest checked by code only); no person has played it.
 
+## 2026-11-09 — Astra: remove the Glaive's DEV restriction (owner request)
+
+- Branch `codex/glaive-public`, base shared `22b852bb`.
+- Glaive is a regular melee choice for all players, including guests. Removed its content DEV flag, DEV wording and host-side developer combat gate; other restricted weapons remain unchanged. Removed its special developer-only access-key handling.
+- Updated loadout/inventory checks and changed the existing Unity Glaive combat validation to run every cut, throw, burst, halo and bot check as a guest. No damage, timing, animation, effects or networking changes.
+- Verification: .NET 8.0.427 CoreTests `--glaive` passed (2,517 Glaive assertions plus prerequisite suites); `git diff --check` passed. Full managed suite running at handoff preparation. Unity Editor/Windows gameplay and actual test-channel publication are not yet verified here. Shared merge and builder sync follow passing checks; no Site/live release.
+
 ## 2026-11-09 — Claude: the Glaive, a new DEV melee class (owner request; rules and look at the owner's word, the rules for Astra to review)
 
 - Branch `claude/glaive`, on shared `d5520e5b`.

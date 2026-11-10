@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
         private readonly HashSet<string> grants=new HashSet<string>();
         private string devScope;private NativeAccess scopeOwner;
         public bool DeveloperWeapon(string spec,double now)=>Expires>now&&(Developer||devScope==spec&&scopeOwner!=null&&scopeOwner.DeveloperWeapon(spec,now));
-        public bool Allows(string key,double now)=>(key=="weapon:cyberlord"||key=="weapon:bombadier"||key=="weapon:"+NativeTopDog.Spec||key=="weapon:"+NativeGlaive.Spec)?DeveloperWeapon(key.Substring(7),now):Expires>now&&(Developer||grants.Contains(key));
+        public bool Allows(string key,double now)=>(key=="weapon:cyberlord"||key=="weapon:bombadier"||key=="weapon:"+NativeTopDog.Spec)?DeveloperWeapon(key.Substring(7),now):Expires>now&&(Developer||grants.Contains(key));
         public static NativeAccess ScopedWeapon(NativeAccess owner,string weapon,double now)
         {if(owner==null||!owner.Allows("weapon:"+weapon,now))return Guest;var access=new NativeAccess{Expires=owner.Expires};access.grants.Add("weapon:"+weapon);if(owner.DeveloperWeapon(weapon,now)){access.devScope=weapon;access.scopeOwner=owner;}return access;}
         public static NativeAccess Verify(string token,Func<string,NativePlayerClaim> decode,double now)
