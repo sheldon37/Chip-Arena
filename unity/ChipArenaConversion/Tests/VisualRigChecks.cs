@@ -413,6 +413,7 @@ namespace ChipArena.UnityConversion
             gun.Aiming=false;gun.Pitch=0;gun.LastShot=50;NativeVisualMotion.Layer(rifle,gun,50.1f,book2,out up);Check(up.Raised&&up.A==rifle.Fire[1]&&Math.Abs(up.TimeA-.1f)<1e-5f,"just after a shot: raised, the recoil from the shot");
             NativeVisualMotion.Layer(rifle,gun,50+NativeVisualMotion.ShotHold(gun)+.01f,book2,out up);Check(!up.Raised,"lowered again once the shot is past");
             NativeVisualMotion.Layer(rifle,gun,55,book2,out up,true);Check(rifle.RestLow&&!up.Raised,"arms free (idle or moving): a long gun stays at rest, lowered (owner 2026-11-10)");
+            Check(rifle.RestArms!=null&&Array.IndexOf(rifle.All,rifle.RestArms)>=0&&pistol.RestArms==null,"a resting long gun's standing arms come from a clip the bank carries (the walk's two-hand carry); the pistol keeps its idle");
             gun.Aiming=true;NativeVisualMotion.Layer(rifle,gun,55,book2,out up,true);Check(up.Raised&&up.A==rifle.Aim[1],"arms free and aiming: raised to the aim");gun.Aiming=false;
             gun.LastShot=54.9f;NativeVisualMotion.Layer(rifle,gun,55,book2,out up,true);Check(up.Raised,"arms free and shooting: raised");gun.LastShot=50;
             {var pistolGun=new Actor{Grounded=true,Weapon=WeaponId.Pistol,LastShot=-100};NativeVisualMotion.Layer(pistol,pistolGun,55,book2,out var pup,true);

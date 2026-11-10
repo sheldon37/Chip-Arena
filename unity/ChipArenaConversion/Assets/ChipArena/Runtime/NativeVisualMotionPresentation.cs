@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
     {
         private sealed class VisualMotion
         {
-            public NativeVisualMotion.Set Set; public GameObject Proxy; public Animator Animator; public HumanPoseHandler Handler; public HumanPose Pose; public float[] Mix, UpperMix; public float Upper;
+            public NativeVisualMotion.Set Set; public GameObject Proxy; public Animator Animator; public HumanPoseHandler Handler; public HumanPose Pose; public float[] Mix, UpperMix, RestMix; public float Upper, Rest;
             public string[] Names; public NativeVisualMotionClips.Clip[] Clips; public float[] Weights, Times; public readonly Dictionary<string,int> Index=new Dictionary<string,int>();
             public int[] Loco; public readonly float[] LocoWeights=new float[NativeVisualStride.Clips],SpeedX=new float[NativeVisualStride.Clips],SpeedZ=new float[NativeVisualStride.Clips],LocoLength=new float[NativeVisualStride.Clips];
             public float Phase, Weight, LocoShare, Time=float.NaN, GaitSpeed; public Vector3 LastAt, Velocity;
@@ -59,6 +59,10 @@ namespace ChipArena.UnityConversion
         private const float SupportAlong=-.10f, SupportReach=.22f, SupportLetGo=.40f, SupportEase=.12f, MotionEase=.15f, PlungeEase=.06f, UpperEase=.12f, AimTurnLimit=35f, CarryTilt=20f;
         // The upper body's muscles (a gun's aim, recoil and reload layer): every muscle but the legs'.
         private static bool[] upperMuscles;
+        // The arms' muscles (shoulders, arms, forearms, hands and fingers): a resting long gun's carry (Set.RestArms).
+        private static bool[] armMuscles;
+        private static bool[] ArmMuscles{get{if(armMuscles==null){var n=HumanTrait.MuscleName;armMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)armMuscles[i]=n[i].Contains("Shoulder")||n[i].Contains("Arm")||n[i].Contains("Forearm")||n[i].Contains("Hand")||n[i].Contains("Thumb")||n[i].Contains("Index")||n[i].Contains("Middle")||n[i].Contains("Ring")||n[i].Contains("Little");}return armMuscles;}}
+        private const float RestEase=.18f;
         private static bool[] UpperMuscles{get{if(upperMuscles==null){var n=HumanTrait.MuscleName;upperMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)upperMuscles[i]=!(n[i].Contains("Leg")||n[i].Contains("Foot")||n[i].Contains("Toes"));}return upperMuscles;}}
         // The Whirlwind's legs (NativeVisualMotion.SpinLegs), as muscle offsets: the sit's thigh raise and knee bend, and a
         // step's (each leg's Upper Leg Front-Back, Lower Leg Stretch; muscles left, then right).
@@ -94,7 +98,7 @@ namespace ChipArena.UnityConversion
             var proxy=Instantiate(skeleton.gameObject,body.Root.transform,false);proxy.name="Visual motion";
             foreach(var r in proxy.GetComponentsInChildren<Renderer>(true))Destroy(r);
             var animator=proxy.GetComponent<Animator>();animator.runtimeAnimatorController=null;animator.applyRootMotion=false;animator.enabled=true;
-            var m=new VisualMotion{Set=set,Proxy=proxy,Animator=animator,Names=names.ToArray(),Handler=new HumanPoseHandler(source.avatar,proxy.transform),Mix=new float[NativeVisualMotionClips.Head+bank.Muscles],UpperMix=new float[NativeVisualMotionClips.Head+bank.Muscles]};
+            var m=new VisualMotion{Set=set,Proxy=proxy,Animator=animator,Names=names.ToArray(),Handler=new HumanPoseHandler(source.avatar,proxy.transform),Mix=new float[NativeVisualMotionClips.Head+bank.Muscles],UpperMix=new float[NativeVisualMotionClips.Head+bank.Muscles],RestMix=new float[NativeVisualMotionClips.Head+bank.Muscles]};
             m.Pose.muscles=new float[bank.Muscles];
             m.Clips=new NativeVisualMotionClips.Clip[names.Count];m.Weights=new float[names.Count];m.Times=new float[names.Count];
             for(int i=0;i<names.Count;i++){m.Index[names[i]]=i;m.Clips[i]=bank.Clips[names[i]];}
@@ -418,6 +422,15 @@ namespace ChipArena.UnityConversion
             // The arms are free while the body idles, moves, rises, falls or lands (not in a roll, strike, reaction or block).
             bool ready=covered&&(pick.Locomotion||pick.Clip==m.Set.Idle||pick.Clip==m.Set.Jump||pick.Clip==m.Set.Fall||pick.Clip==m.Set.Land);
             var up=default(NativeVisualMotion.Upper);bool layered=covered&&NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready);
+            // A long gun at rest, standing (Set.RestArms; owner 2026-11-10 "a resting pose (They're holding it downward)"): the arms
+            // take the walk's low two-hand carry over the idle, eased; walking already carries it so, and a raise lays over it.
+            m.Rest=Mathf.MoveTowards(m.Rest,covered&&m.Set.RestArms!=null&&!pick.Locomotion&&pick.Clip==m.Set.Idle&&!(layered&&up.Raised)?1:0,dt/RestEase);
+            if(m.Rest>0&&VisualMotionBank.Clips.TryGetValue(m.Set.RestArms,out var restClip))
+            {
+                System.Array.Clear(m.RestMix,0,m.RestMix.Length);NativeVisualMotionClips.Add(restClip,m.Set.RestArmsAt,1,m.RestMix);NativeVisualMotionClips.Finish(m.RestMix,1);
+                var arms=ArmMuscles;float rw=Ease(m.Rest);
+                for(int i=0;i<arms.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(arms[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.RestMix[k]-m.Mix[k])*rw;}
+            }
             m.Upper=layered&&up.Raised&&up.Snap?1:Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/UpperEase);
             NativeVisualMotionClips.Clip ua=default;bool upper=layered&&m.Upper>0&&VisualMotionBank.Clips.TryGetValue(up.A,out ua);
             // An upper layer that switches clips or jumps in time (a throw into the aim, a cast's start into its end, a shot's

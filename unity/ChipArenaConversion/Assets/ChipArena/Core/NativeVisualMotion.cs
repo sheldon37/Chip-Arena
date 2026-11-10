@@ -46,6 +46,9 @@ namespace ChipArena.UnityConversion
             /// <summary>A long gun at rest (owner 2026-11-10: "a resting pose (They're holding it downward) only show the aiming
             /// animation when were shooting / aiming"): with the arms free it stays at the low carry instead of following the look.</summary>
             public bool RestLow;
+            /// <summary>A resting long gun's standing arms: a still frame (RestArmsAt, s) of a clip in the set whose arms carry it low (the
+            /// pack walk's two-hand carry; the idle's own ready hold keeps the stock at the shoulder). Null: the idle's arms.</summary>
+            public string RestArms; public float RestArmsAt;
             /// <summary>The kit moves (Q/E, by MeleeKitMotion's kind) the set plays on the pack's clips, each with its clip: the clip's
             /// Hit on the release, its end on the cast's end (the Whirlwind: the body turned by the game's spin). The rest keep
             /// the game's pose. Null: none.</summary>
@@ -107,7 +110,7 @@ namespace ChipArena.UnityConversion
         // Rifle and machine gun: the pack's two-handed shooting set. A low ready carry at rest, idle or moving (RestLow; owner
         // 2026-11-10); shouldered (its aim grid's middle column by the pitch, a recoil on each shot) while aiming or just after
         // a shot (owner 2026-10-24: "Aiming and firing"), the reload fitted to the reload.
-        private static readonly Set Rifle=Build(new Set{Spec="rifle",RestLow=true,TechClips=new[]{TechDrop,TechShootLine},Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
+        private static readonly Set Rifle=Build(new Set{Spec="rifle",RestLow=true,RestArms="2Hand-Shooting-Strafe-Forward",TechClips=new[]{TechDrop,TechShootLine},Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
             Land="2Hand-Shooting-Land",Block="2Hand-Shooting-Block",BlockHit="2Hand-Shooting-Block-GetHit1",Stunned="2Hand-Shooting-Stunned",Roll="2Hand-Shooting-Roll-Forward",
             AirAttack="2Hand-Shooting-Fall",SprintAttack="2Hand-Shooting-Attack1",Attacks=Names("2Hand-Shooting-Attack","1","2"),Reactions=Names("2Hand-Shooting-GetHit-","F1","B1","L1","R1"),
             Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle",Knockdown="2Hand-Shooting-Knockdown1",RollBack="2Hand-Shooting-Roll-Backward",
