@@ -246,8 +246,8 @@ namespace ChipArena.UnityConversion
             U.BeginBand(body);float x=body.x+16,w=body.width-32,y=body.y+12-devScroll[tab],y0=y;
             switch(devTab)
             {
-                case NativeDevTab.Pilot:y=DevPilotTab(x,y,w);break;
-                case NativeDevTab.Interact:y=DevInteractTab(x,y,w);break;
+                // PLAYERS (NativeDevPlayers.cs): the Pilot and Interact tabs in one.
+                case NativeDevTab.Pilot:case NativeDevTab.Interact:y=DevPlayersTab(x,y,w);break;
                 case NativeDevTab.Monsters:y=DevMonstersTab(x,y,w);break;
                 case NativeDevTab.Dummies:y=DevDummiesTab(x,y,w);break;
                 case NativeDevTab.Chips:y=DevChipsGrid(x,y,w);break;
@@ -286,10 +286,12 @@ namespace ChipArena.UnityConversion
         }
         private void DevRail(Rect rail)
         {
-            int n=NativeDevLayout.TabNames.Length;float th=Mathf.Min(58,(rail.height-12)/n),y=rail.y+6;
+            // (Interact is folded into PLAYERS, NativeDevPlayers.cs: its actions keep their tab, the rail shows one.)
+            int n=NativeDevLayout.TabNames.Length;float th=Mathf.Min(58,(rail.height-12)/(n-1)),y=rail.y+6;
             for(int i=0;i<n;i++)
             {
-                var r=new Rect(rail.x+8,y,rail.width-14,th-4);bool on=(int)devTab==i;float h=devCursorFree?U.HoverAmount(8900+i,r):0;
+                if(i==(int)NativeDevTab.Interact)continue;
+                var r=new Rect(rail.x+8,y,rail.width-14,th-4);bool on=(int)devTab==i||i==(int)NativeDevTab.Pilot&&devTab==NativeDevTab.Interact;float h=devCursorFree?U.HoverAmount(8900+i,r):0;
                 if(on||h>0)H.Cut(r,on?C.Cyan(.16f):C.Indigo(.6f*h),6,H.Corners.Diagonal);if(on){U.Fill(new Rect(r.x,r.y+4,2,r.height-8),C.Cyan());H.Outline(r,C.Cyan(.5f),6);}
                 float icon=Mathf.Min(18,th*.36f);NativeIcons.Draw(new Rect(r.center.x-icon/2,r.y+r.height*.5f-icon*.5f-6,icon,icon),NativeDevLayout.TabIcons[i],on?C.Cyan():U.Mix(C.Muted(),C.Ink(),h));
                 U.Text(new Rect(r.x,r.yMax-15,r.width,12),NativeDevLayout.TabNames[i],8,on?C.Ink():C.Muted(),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);
@@ -433,81 +435,22 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Tabs -------------------------------------------------------------------------------------------------------
-        private float DevPilotTab(float x,float y,float w)
-        {
-            DevLists();var me=DevLocal();
-            y=DevHead(x,y,w,"MY PILOT");
-            if(me!=null&&Event.current.type==EventType.Repaint&&DevVisible(new Rect(x,y,w,44)))
-            {
-                var card=new Rect(x,y,w,44);H.Cut(card,C.Indigo(.7f),6,H.Corners.Diagonal);NativeIcons.Draw(new Rect(card.x+12,card.y+12,20,20),NativeIcons.Spec(me.Seat.spec),C.CyanSoft());
-                U.Text(new Rect(card.x+42,card.y+4,w-160,20),me.Seat.name,13,C.Ink(),TextAnchor.MiddleLeft,bold:true);U.Text(new Rect(card.x+42,card.y+22,w-160,16),me.Weapon.name,11,C.Muted(),TextAnchor.MiddleLeft);
-                float max=Mathf.Max(1,(float)me.Stats["hp"]);U.Text(new Rect(card.xMax-120,card.y+4,108,20),NativeDevText.Count(Mathf.CeilToInt(Mathf.Max(0,me.Hp)),Mathf.RoundToInt(max)),13,me.Hp>0?C.Good():C.Danger(),TextAnchor.MiddleRight,bold:true,mono:true);
-                H.Bar(new Rect(card.xMax-120,card.y+28,108,5),Mathf.Max(0,me.Hp),max,10,C.Cyan(),C.Edge(.6f));
-            }
-            y+=52;
-            // What the authority says about me (replicated: devGod / devInfiniteAmmo / devNoCooldowns, devRevealed, devScale, devCommandsRan).
-            if(me!=null){float px=x;px=DevPill(px,y,"GOD",me.DevGod,C.Good());px=DevPill(px,y,"INF AMMO",me.DevInfiniteAmmo,C.Good());px=DevPill(px,y,"NO CD",me.DevNoCooldowns,C.Good());px=DevPill(px,y,"REVEALED",me.Seat.devRevealed,C.Magenta());px=DevPill(px,y,me.Seat.devScale<1?"SHRUNK":me.Seat.devScale>1?"GROWN":"SCALED",me.Seat.devScale!=1,C.Violet());y+=26;
-                if(me.Seat.devCommandsRan)y=DevNote(x,y,w,"No progression this match: DEV commands ran for your account (NativeMatch.CanEarnProgression).",C.Magenta());}
-            y=DevActs(x,y,w,2,DevPilotActs);
-            if(me!=null&&me.Seat.devRevealed)y=DevNote(x,y,w,"Revealed for this match: everyone sees your DEV tag.",C.Magenta());
-            y=DevHead(x,y,w,"DEV COMMANDS");
-            foreach(var id in DevPersonalToggles)
-            {
-                var a=NativeDevActions.Find(id);var state=NativeDevActions.Resolve(a,devCtx,out string reason);float half=(w-8)/2;var me2=me;
-                U.Text(new Rect(x,y,w-half*.9f,32),a.Label,12,state==NativeDevState.Live?C.Ink():C.Ink(.55f),TextAnchor.MiddleLeft);
-                var on=new Rect(x+w-half*.9f,y,half*.45f-4,32);var off=new Rect(on.xMax+8,y,half*.45f-4,32);
-                bool now=me2!=null&&(id=="me-god"?me2.DevGod:id=="me-ammo"?me2.DevInfiniteAmmo:me2.DevNoCooldowns);
-                if(DevButton(on,"ON",state,reason,now))DevSend(id,"on");if(DevButton(off,"OFF",state,reason,!now))DevSend(id,"off");y+=40;
-            }
-            y=DevHead(x,y,w,"WEAPON");
-            {var a=NativeDevActions.Find("me-weapon");var state=NativeDevActions.Resolve(a,devCtx,out string reason);int k=DevChoice(x,ref y,w,devWeaponNames,DevIndex(devWeaponIds,devWeapon),NativeDevState.Live,reason,4);devWeapon=devWeaponIds.Length>0?devWeaponIds[k]:devWeapon;}
-            DevAct(new Rect(x,y,w,32),"me-weapon",devMode==NativeDevMode.Sandbox?"Swap my weapon (resets the arena)":null);y+=40;
-            y=DevHead(x,y,w,"CHIPS");
-            if(DevButton(new Rect(x,y,w,32),"Open my chips",NativeDevState.Live,"The Chips tab, targeting you")){devChipSeat=arena.LocalId;devTab=NativeDevTab.Chips;}y+=40;
-            return y;
-        }
         private static readonly string[] DevPersonalToggles={"me-god","me-ammo","me-cooldowns"};
         private static readonly string[] DevPilotActs={"me-restore","me-down","me-hit","me-summons","me-teleport","me-reveal"},DevInteractActs={"launch","freeze","bring","send","swap-weapon","debris-rain","shrink","grow","hazard-at","spawn-dummies-around","target-debris","target-restore","target-down"};
         private static readonly string[] DevDummyActs={"dummy-restore","dummy-down","dummy-hit","dummy-summons"},DevDummyCommands={"spawn-dummy","clear-dummies"},DevArenaActs={"restore-all","arena-reset","test-block","round-end"};
         private static readonly string[] DevFxActs={"fx-collapse","fx-bursts","fx-clear"},DevVentActs={"me-vent","dummy-vent"},DevPreviewActs={"preview-draft","preview-knockout","preview-death","preview-rarity"};
-        private float DevInteractTab(float x,float y,float w)
-        {
-            DevLists();
-            y=DevNote(x,y,w,"Match-only fun with the room: every action ends with the match and never reduces anyone's progression, purchases or rewards. Shrink and grow are looks only; hit volumes keep their size.",C.Muted());
-            y=DevHead(x,y,w,"TARGET");y=DevTargetPicker(x,y,w);
-            y=DevHead(x,y,w,"PARAMETERS");NativeDevActions.Resolve(NativeDevActions.Find("launch"),devCtx,out string why);
-            devLaunchForce=DevSlider(new Rect(x,y,w,34),"Launch speed (up)",devLaunchForce,NativeDevContract.LaunchMin,NativeDevContract.LaunchMax,0," m/s",NativeDevState.Live,why,out _);y+=42;
-            devFreezeSeconds=DevSlider(new Rect(x,y,w,34),"Freeze seconds",devFreezeSeconds,0,NativeDevContract.FreezeMax,1," s",NativeDevState.Live,why,out _);y+=42;
-            devAroundCount=Mathf.RoundToInt(DevSlider(new Rect(x,y,w,34),"Dummies around",devAroundCount,NativeDevContract.AroundMin,NativeDevContract.AroundMax,0,"",NativeDevState.Live,why,out _));y+=42;
-            devRainMaterial=DebrisMaterials[DevChoice(x,ref y,w,DebrisMaterials,DevIndex(DebrisMaterials,devRainMaterial),NativeDevState.Live,why,3,"Debris rain material")];
-            devTargetWeapon=devWeaponIds.Length>0?devWeaponIds[DevChoice(x,ref y,w,devWeaponNames,DevIndex(devWeaponIds,devTargetWeapon),NativeDevState.Live,why,4,"Swap weapon to")]:devTargetWeapon;
-            y=DevHead(x,y,w,"PLAY WITH THEM");
-            y=DevActs(x,y,w,2,DevInteractActs);
-            return y;
-        }
-        // Every connected pilot and bot (DEV DUMMY labelled); the Interact and Monsters tabs share the pick.
+        // Every connected pilot and bot (DEV DUMMY labelled) as the PLAYERS tab's roster cards; PLAYERS and Monsters share the pick
+        // (Monsters starts on someone else).
         private float DevTargetPicker(float x,float y,float w)
         {
             if(DevPilot(devTarget)==null){foreach(var p in arena.Pilots)if(p.Seat.connected&&p.Seat.id!=arena.LocalId&&!p.Seat.AuthorityBoss){devTarget=p.Seat.id;break;}}
-            foreach(var p in arena.Pilots)
-            {
-                if(!p.Seat.connected||p.Seat.AuthorityBoss)continue;var r=new Rect(x,y,w,30);bool on=p.Seat.id==devTarget;int id=9000+devWid++;float h=devBodyHot&&DevVisible(r)?U.HoverAmount(id,r):0;
-                if(Event.current.type==EventType.Repaint&&DevVisible(r))
-                {
-                    H.Cut(r,on?C.Cyan(.18f):U.Mix(C.Indigo(.55f),C.Indigo(.95f),h),5,H.Corners.Diagonal);if(on)H.Outline(r,C.Cyan(.7f),5);
-                    U.Fill(new Rect(r.x+4,r.y+6,2,r.height-12),match.Teams?TeamColor(p.Seat.team):SeatColor(p.Seat));NativeIcons.Draw(new Rect(r.x+14,r.y+7,16,16),p.Seat.bot?"bot":NativeIcons.Spec(p.Seat.spec),on?C.Cyan():C.Muted());
-                    U.Text(new Rect(r.x+38,r.y,w-170,r.height),p.Seat.name,12,C.Ink(),TextAnchor.MiddleLeft,bold:on);
-                    U.Text(new Rect(r.xMax-130,r.y,120,r.height),p.Seat.id==arena.LocalId?"YOU":p.Seat.devDummy?NativeDevTags.DevDummy:p.Seat.bot?"BOT":"PILOT",9,p.Seat.id==arena.LocalId?C.CyanSoft():p.Seat.devDummy?C.Magenta():C.Muted(),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.1f);
-                    U.Text(new Rect(r.xMax-210,r.y,70,r.height),p.Hp>0?NativeDevText.Int(Mathf.CeilToInt(p.Hp)):"OUT",10,p.Hp>0?C.Good():C.Danger(),TextAnchor.MiddleRight,mono:true);
-                }
-                if(DevClick(r))devTarget=p.Seat.id;y+=34;
-            }
-            return y;
+            DevClassLists();return DevRoster(x,y,w);
         }
         private float DevDummiesTab(float x,float y,float w)
         {
             DevLists();var cast=NativeDevActions.Resolve(NativeDevActions.Find("dummy-cast"),devCtx,out string why);
-            y=DevHead(x,y,w,"DUMMY WEAPON");{int k=DevChoice(x,ref y,w,devWeaponNames,DevIndex(devWeaponIds,dummySpec),NativeDevState.Live,"The sandbox dummy's cast and the spawned dummy's weapon",4,"Dummy weapon");if(devWeaponIds.Length>0)dummySpec=devWeaponIds[k];}
+            // The dummy's class as the PLAYERS tab's tiles (NativeDevPlayers.cs), DEV classes among them; a click sets it.
+            y=DevHead(x,y,w,"DUMMY CLASS");{string pick=null;y=DevClassGrid(x,y,w,dummySpec,ref pick);if(pick!=null)dummySpec=pick;}
             y=DevHead(x,y,w,"DUMMY INPUT");dummyKey=DummyInputs[DevChoice(x,ref y,w,DummyInputs,DevIndex(DummyInputs,dummyKey),cast,why,6,"Dummy input")];
             DevAct(new Rect(x,y,w,34),"dummy-cast");y+=42;
             y=DevHead(x,y,w,"DUMMY ACTIONS");y=DevActs(x,y,w,2,DevDummyActs);

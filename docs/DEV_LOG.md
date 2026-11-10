@@ -11,6 +11,20 @@
 - **Not seen / not done:** played by a person; online as a guest (the turn applies after any rig is posed, the guest's own included); a minion caught.
 - The local capture tool's `dogdiag=1` logs each Top Dog's yaws and shoulder line at the shots.
 
+## 2026-11-09 — Claude: the DEV panel's PLAYERS tab, cleaner and with every DEV class (owner request)
+
+- Branch `claude/dev-menu`, on shared `146b7fe2`.
+- **The owner:** "Rework the dev menu (Where we can modify players); Make it cleaner and easier to use. Make it look a lot better too. Everytime we make a dev class, add them as an option here."
+- **The owner, later:** the request meant the main menu's DEV screen (player grants), reworked on its own branch; they kept this in-game rework too: "We can move forward with the in-game one as well."
+- **The change** (Runtime `NativeDevPlayers.cs`, new; `NativeDevPanel.cs`; Core `NativeDevLayout` names): the Pilot and Interact tabs are one PLAYERS tab (the rail shows nine tabs). A roster of every connected pilot and bot as cards (you first) picks whom it works on; their card shows class, health and the replicated DEV flags; their class is a grid of icon tiles grouped GUNS, MELEE, MAGIC and DEV CLASSES with NOW on the current one and one button to swap to the pick; actions are icon tiles (yours, or theirs); your cheats are switches (was ON/OFF pairs); tuning sits together; a link to their chips. The Dummies tab picks the dummy's class from the same tiles; the Monsters tab's target is the same roster.
+- **DEV classes:** the groups come from the content through the Locker's own filter (`AllowedWeapon`), every `devOnly` class under DEV CLASSES (now Siren, Emperor, Ansatsuken, L33T, Cyber Lord, Bombadier, Top Dog), so a new DEV class appears with nothing to add; the checks require each class to have its tile's icon.
+- **Rules:** none changed. Every action keeps its `NativeDevTab` (the Pilot ones act on you, the Interact ones on the picked player through `devTarget`), so the sandbox routes and Astra's DEV authority get exactly the commands they did; the switches send the same on/off commands.
+- **Animation impact:** none (no hit timing, hitboxes, damage, cooldowns, movement or networking).
+- **Checks:** CoreTests `--dev-tools` (7025, with the new PLAYERS pins: one tab, the content's DEV classes, every class icon, the switch's on/off), the full suite, the Unity compile, the Editor build checks.
+- **Seen in the Editor:** the PLAYERS tab on you (roster, card, the class tiles with all seven DEV classes, actions, cheats, tuning, chips) and on a bot (their class NOW, their actions), the Dummies tab's class tiles, the Monsters tab's roster.
+- **Not seen / not done:** a DEV command actually applied from the new tiles under DEV Abuse online (the same commands as before); a swap from the new button in a match; the panel on a 1280x720 screen.
+- **Released** to the test channel (Windows builder): merged into shared at `64e4cca8`; full CoreTests 988 groups and the Unity compile passed (the first release run stopped on the Cyber Lord names check, fixed in `0ad7bec2`: the class tiles read descriptions through NativeLoadoutText); the Editor build checks passed on `38669790` (only docs and that line since); published revision `639298779581807371`. Not used by a person yet.
+
 ## 2026-11-09 — Claude: the Top Dog's feeding made real, the pop keeping the kill effect, a more real gib, Hotdog Friends squeezing into the door, Preview Intro in the pilot's own colours, the parry as a hologram (owner request; the pop's death record at the owner's word, for Astra to review)
 
 - Branch `claude/top-dog`, on shared `22b852bb`.

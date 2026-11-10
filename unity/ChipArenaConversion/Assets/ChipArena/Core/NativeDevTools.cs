@@ -627,9 +627,9 @@ namespace ChipArena.UnityConversion
             return new NativeDevRects{X=canvasW-Margin-w,Y=top,W=w,H=h,Rail=Rail,Header=Header,Footer=Footer};
         }
         public const int Tabs=10;
-        public static readonly string[] TabNames={"PILOT","INTERACT","MONSTERS","DUMMIES","CHIPS","ARENA","HAZARDS","PREVIEW","CAMERA","SIM"};
-        public static readonly string[] TabTitles={"Pilot","Interact","Monsters","Dummies","Chips","Arena","Hazards","Previews & galleries","Camera & overlays","Simulation"};
-        public static readonly string[] TabIcons={"person-standing","hand","biohazard","bot","cpu","brick-wall","radiation","sparkles","scan","gauge"};
+        public static readonly string[] TabNames={"PLAYERS","INTERACT","MONSTERS","DUMMIES","CHIPS","ARENA","HAZARDS","PREVIEW","CAMERA","SIM"};
+        public static readonly string[] TabTitles={"Players","Interact","Monsters","Dummies","Chips","Arena","Hazards","Previews & galleries","Camera & overlays","Simulation"};
+        public static readonly string[] TabIcons={"users","hand","biohazard","bot","cpu","brick-wall","radiation","sparkles","scan","gauge"};
     }
 
     /// <summary>Cached number labels for the panel (a steady frame builds no strings).</summary>
