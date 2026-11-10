@@ -10,6 +10,7 @@
 - **Checks:** CoreTests `--spread` (36, new), `--killcam` (114), `--muzzle-flash` (the gun kit's zoom pin), the full suite, the Unity compile, the Editor's build checks.
 - **Seen in the Editor:** the crosshair at rest, moving, through bursts and recovering, and aimed, for each gun; the pistol and the machine gun zoomed into first person; the rifle's scope; the three-bot killcam before (stopped) and after the fix.
 - **Not seen / not done:** played by a person; a guest's crosshair (its bloom follows the host's shots as they arrive, a snapshot behind); tuning the numbers by feel.
+- **Released:** merged into shared at `e6d564dc` and synced to the builder; the test channel published revision `639298931208668736`.
 
 ## 2026-11-10 — Claude: the Glaive's chips, ten of its own (owner request, part 3 of 3)
 
