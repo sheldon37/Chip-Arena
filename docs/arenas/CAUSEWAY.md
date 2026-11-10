@@ -126,7 +126,12 @@ in about 0.3 ms a frame, allocation free. Map record: 295 blocks (0 replicated: 
 
 ## Not done / not seen
 
-- Played only by bots in the Editor; no human playtest, no network (guest) test, no Windows build.
+- Seen in the shared Editor (bot matches, god mode, scripted cameras; normal and Low tier): the overview and wide shots, the
+  walkways, the crown's gable window, the underside, the planet, a falling star's telegraph, fall and impact, the comet's danger
+  and pass (once, from a distance), the solar wind's gust. Editor build checks (PrototypeBuild.Validate) pass, including
+  "native map causeway: 8 spawn floors, capsule settling".
+- Played only by bots; no human playtest, no network (guest) test, no Windows build.
+- The pylons' banners in the wind were not clearly seen in a capture (they hang on the pylons' deck faces).
 - The push strength and its feel against real input are unverified; bots do not brace against the wind.
 - The sky dome's own stars stop at the horizon (the effects fill below); the planet is a smooth self-lit mesh (no specular).
 - No ambience loop (`causeway-void` is a key only); hazard sounds are the existing clips.
