@@ -12,6 +12,7 @@
 - **Fixed in passing:** `tools/asset-lock.json`'s MapLooks.json receipt had been stale since the stages merge (it still held the pre-stage file), which failed `tools/package_source.py`. It now matches the file.
 - **Checks:** CoreTests `--zone-music`, `--club-stage`, `--sanctum`, `--emporium`, `--causeway`; `tools/package_source.py` (project structure passed); the full suite; the Unity compile; the Editor's build checks (the twelve songs' import).
 - **Not heard:** in a played match.
+- **Released:** full suite at `485f2995`: 994 groups, exit 0; pins 0 broken; Unity compile PASS; the Editor build checks passed (the twelve songs imported). Merged into shared at `b301bdff` and synced to the builder; the test channel published revision `639299203121067586`.
 
 ## 2026-11-10 — Claude: DEV classes grantable to chosen players; **Astra: please publish the Site** (owner authorized)
 
