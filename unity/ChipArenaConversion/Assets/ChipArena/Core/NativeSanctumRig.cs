@@ -84,7 +84,9 @@ namespace ChipArena.UnityConversion
         {
             int I=NativeSanctumLooks.Iron,G=NativeSanctumLooks.Gold,W=NativeSanctumLooks.Wax,C=NativeSanctumLooks.Chain;double R=1.4;bool down=phase==3,falling=phase==2;
             // the pendulum: every part turns about the chain's anchor by the sway (about z: it swings across the nave's axis)
+            // fallen, the ring lies askew on its crushed crown (about the ring's own centre, inside the landed load's box)
             var q=FactoryQ.Axis(0,0,1,sway);double px=x,py=Anchor;
+            if(down){double ta=(NativeSanctumLooks.Hash(k,9,2)-.5)*2.4;q=FactoryQ.Axis(Math.Cos(ta),0,Math.Sin(ta),.11);py=y+.3;}
             void P(double lx,double ly,double lz,out double wx,out double wy,out double wz){q.Rotate(lx-px,ly-py,lz-z,out double ox,out double oy,out double oz);wx=px+ox;wy=py+oy;wz=z+oz;}
             void Part(double lx,double ly,double lz,double hx,double hy,double hz,FactoryQ r,int kind,bool shadow=true,int color=-1,double window=1){P(lx,ly,lz,out double wx,out double wy,out double wz);Add(wx,wy,wz,hx,hy,hz,q*r,kind,shadow,color,window);}
             void Seg(double ax,double ay,double az,double bx,double by,double bz,double t,int kind,bool shadow=true){P(ax,ay,az,out double x0,out double y0,out double z0);P(bx,by,bz,out double x1,out double y1,out double z1);Bar(x0,y0,z0,x1,y1,z1,t,kind,shadow);}
