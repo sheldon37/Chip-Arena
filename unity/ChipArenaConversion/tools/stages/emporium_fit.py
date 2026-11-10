@@ -173,6 +173,12 @@ def flight(g, blocks, T, bun):
                 p0 = (x + s * .012, lo['size'][1] - .2 + .06, lo['pos'][2] - up * lo['size'][2] / 2)
                 p1 = (x + s * .012, hi['size'][1] + .06, hi['pos'][2] + up * hi['size'][2] / 2)
             sk.cylinder(g, p0, p1, .03, chrome, T.small)
+            # a band of colour under it, along the slope
+            band = kmat('mustard') if bun else kmat('pink')
+            n = (0, 0, s) if along_x else (s, 0, 0)
+            off = (0, 0, s * .004) if along_x else (s * .004, 0, 0)
+            q0, q1 = sk._add(p0, off, 1.0), sk._add(p1, off, 1.0)
+            g.face(((q0[0], q0[1] - .1, q0[2]), (q1[0], q1[1] - .1, q1[2]), (q1[0], q1[1] - .32, q1[2]), (q0[0], max(0.0, q0[1] - .32), q0[2])), band, n)
 
 
 def balcony(g, b, parts, T):
@@ -314,7 +320,8 @@ def counter(g, b, parts, T):
         if pc[1] < y1 - .001:
             if name == 'red' and abs(h[1] - .05) < .01:
                 # a stool: a chrome pedestal, a foot ring, a round red cushion
-                base = (pc[0], 0, pc[2])
+                base = (pc[0] + fc.N[0] * .07, 0, pc[2] + fc.N[2] * .07)
+                pc = [base[0], pc[1], base[2]]
                 lathe(g, [(.17, 0), (.17, .02), (.05, .05), (.04, .3), (.04, .68), (.12, .71)], base, chrome, T.round)
                 lathe(g, [(.13, .71), (.19, .72), (.2, .76), (.19, .8), (.1, .825), (0, .83)], base, pfin(p), T.round)
                 if T.i == 0:

@@ -115,7 +115,8 @@ def floor(g, L, T, parts):
     for h in L['hazards']:
         if h['kind'] == 'vent':
             a = h['a']
-            lathe(g, [(.5, 0), (.5, .03), (.56, .055), (.62, .03), (.62, 0)], (a[0], a[1], a[2]), kmat('chrome'), T.round)
+            lathe(g, [(.5, 0), (.5, .03), (.56, .055), (.62, .03), (.62, 0)], (a[0], a[1], a[2]), kmat('chrome'), T.round + 4)
+            lathe(g, [(.92, 0), (.92, .02), (.97, .04), (1.02, .02), (1.02, 0)], (a[0], a[1], a[2]), kmat('chrome'), T.round + 6)
     seed = 0
     for p in parts:
         name = kn(p)
@@ -646,6 +647,12 @@ def static_scene(L, T):
             steps.setdefault(i[:-3], []).append(b)
         else:
             fit.block(g, b, parts, T, L)
+    # a striped awning over each kitchen's door
+    for b in L['blocks']:
+        if '-kwall-' in b['id'] and b['pos'][2] > 0:
+            x0, x1, y0, y1, z0, z1 = ext(b)
+            fa = Face((x0, x1, 0, 4, -1.75, 1.75), 0 if b['pos'][0] < 0 else 1)
+            awning(g, fa, -1.75, 1.75, 3.02, .34, .7, T, stripe=.35)
     for stem, blocks in steps.items():
         fit.flight(g, blocks, T, bun=stem.startswith('emporium-bridge-'))
     props.fittings(g, L, T)
