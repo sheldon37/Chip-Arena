@@ -1,3 +1,33 @@
+## 2026-11-10 — Claude: the pistol rests too, the guns stand naturally, the quiver sits on the back (owner request)
+
+- Branch `claude/gun-stance`, on `claude/gun-rest-sniper` (the sniper and the long guns' rest, entry below; both release together).
+- **The owner:** "Id like to apply a resting position to pistols as well; And maybe not have their legs spread out like they currently are (Analyze this) Please make it more realistic looking, and apply animation changes." Then: "fix quiver positioning with bow as well; It currently is off the character. It needs to be on the back anchored to them."
+- **The legs (analysis):** the pistol stood on the armed set's idle, which is the pack's melee fighting crouch (feet wide, knees deep), and its pistol stance is as wide. The rifle's idle is a combat stance. The pack's bow idle is the natural one: upright, feet about shoulder width.
+- **The stance:**
+  - Every gun now stands on the bow idle (`NativeVisualMotion.StandIdle`).
+  - A raise (aim, shot, reload, cast) lays the upper body over it; the legs keep the stance, so it does not shift on a shot.
+  - The clip was already in the motion bank, so no rebake was needed.
+- **The pistol at rest:**
+  - It no longer follows the look (`RestLow`). Both pose layers raise it only for a shot, a reload and .3 s after it, a guard, a stun or ADS (`GunMotion.AimTarget` now rests every gun).
+  - Standing, its arm hangs at the side as the free arm does (`Set.RestMirror`: the stance's left arm muscles mirrored onto the right, fingers kept), so the pistol is held down by the thigh, muzzle to the floor.
+  - It walks and runs on the bow's relaxed locomotion instead of the armed set's, whose walk flared both arms out (a melee ready walk).
+- **The chip pick:** while a pick's look is up, the gun pose keeps the source's hold (`GunMotion.Hold`, from the look's weight; the presentation passes it a frame behind). The pick's gestures were made over that hold, and a resting gun's chest put the panel past the swiping hand (CoreTests `--chip-select`).
+- **The quiver:**
+  - It was drawn on the game rig's chest, the hidden voxel skeleton, whose back stands well behind the model's and moves its own way. It floated behind the back, and low behind the hips while drawing.
+  - It now rides the model's chest (`VisualJointFrame`: the game chest's axes on the model's chest bone, so it follows the pack's clips).
+  - It is moved in onto the back (`QuiverIn` .10 m, along the chest's +z), and stood off by the robot armour's back plate when worn (`QuiverArmour` .03 m).
+  - Without a visual body, the game chest as before.
+- **For Astra:** no rules change; presentation only (aim, shots, rounds and the wire are the game's).
+- **Animation impact:** the guns' standing, rest and walk poses only. No hit timing, hitbox, damage, cooldown, movement or network change.
+- **Checks:**
+  - CoreTests `--visual-rig`, `--gun-motion` (gun motion, ranged locomotion, hit feel) and `--chip-select`.
+  - The tests' aimed gun cases now aim every gun.
+  - The full suite, the Unity compile and the Editor's build checks.
+- **Seen in the Editor** (a match, one idle bot):
+  - The pistol and rifle standing, walking, firing and aiming.
+  - The bow standing, walking and drawing: the quiver on the back throughout, its mouth over the right shoulder.
+- **Not seen:** the quiver on the non-armour outfits, played by a person, and a guest's view.
+
 ## 2026-11-10 — Claude: the rifle is a sniper; the rifle and machine gun rest low (owner request)
 
 - Branch `claude/gun-rest-sniper` (from shared at `386cc351`).
