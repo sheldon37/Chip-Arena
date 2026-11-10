@@ -59,6 +59,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--menu-focus")return 0;
             CrowdPoseChecks.Run();
             if(args.Length==1&&args[0]=="--new-stages"){NewStagesChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--club-stage"){ClubStageChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--training-look"){TrainingLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--crowd-pose")return 0;
             SnapshotChecks.Run();
@@ -221,7 +222,7 @@ internal static class Program
             PveSpitterChecks.Run(root);NavSearchChecks.Run(root);WardSimulationChecks.Run(root);HulkBreachChecks.Run(root);InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
             ExpeditionStationVisualChecks.Run(root);ZombieLightChecks.Run(root);
-            NewStagesChecks.Run(root);TrainingLookChecks.Run(root);FactoryChecks.Run(root);StageHazardChecks.Run(root);SurfaceChecks.Run(root);
+            NewStagesChecks.Run(root);ClubStageChecks.Run(root);TrainingLookChecks.Run(root);FactoryChecks.Run(root);StageHazardChecks.Run(root);SurfaceChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};
             var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
             FinalKillMatchChecks.Run(data);BowInputChecks.Run(root,data);
