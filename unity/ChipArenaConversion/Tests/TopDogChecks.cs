@@ -94,7 +94,16 @@ namespace ChipArena.UnityConversion
                 Check(NativeDogView.FeedPhase(f,i,NativeTopDog.OfferAt(f.FeedAt,i)+.05f,out float mv,out _)==1&&mv>0,"hot dog "+i+": brought to the mouth");
                 Check(NativeDogView.FeedPhase(f,i,NativeTopDog.DownAt(f.FeedAt,i)-.05f,out _,out float into)==2&&into>.5f,"hot dog "+i+": going in");
                 Check(NativeDogView.FeedPhase(f,i,NativeTopDog.DownAt(f.FeedAt,i)+.01f,out _,out _)==3,"hot dog "+i+": down");
+                // Fed by hand (owner 2026-11-09: "realistically putting hot dogs in the players mouth"): the lips close a little round each one
+                // as it is pushed in, the pinch holds it from when it pops into the hand to its let-go, relaxed between.
+                float offer=NativeTopDog.OfferAt(f.FeedAt,i),mid=offer+(NativeTopDog.PushFrom+NativeTopDog.PushEnd)*.5f;
+                Check(NativeDogView.Push(f,offer)==0&&NativeDogView.Push(f,mid)>.5f&&NativeDogView.Push(f,offer+NativeTopDog.PushEnd+NativeDogView.PushAfter+.01f)==0,"hot dog "+i+": a push as it goes in");
+                Check(NativeDogView.Jaw(f,mid)<NativeDogView.Jaw(f,offer)-.05f&&NativeDogView.Jaw(f,offer)>.9f,"hot dog "+i+": the lips close round it, then open wide again");
+                Check(NativeDogView.FeedGrip(f,offer+.02f,out float pinch,out float cup)&&Math.Abs(pinch-NativeDogView.PinchGrip)<.02f&&Math.Abs(cup-NativeDogView.CupGrip)<.02f,"hot dog "+i+": pinched in the right hand, the left cupping the chin");
+                if(i>0)Check(NativeDogView.FeedGrip(f,NativeTopDog.OfferAt(f.FeedAt,i-1)+NativeTopDog.PushEnd+.1f,out float between,out _)&&between<NativeDogView.OpenGrip+.02f&&offer-NativeTopDog.Appear>NativeTopDog.OfferAt(f.FeedAt,i-1)+NativeTopDog.PushEnd+.1f,"hot dog "+i+": the hand lets the last go and is open before it is in it");
             }
+            Check(NativeDogView.Jaw(f,f.Catch-.01f)==0&&Math.Abs(NativeDogView.Jaw(f,f.Catch+.1f)-.45f)<.01f&&NativeDogView.Jaw(f,f.Release)==0&&!NativeDogView.FeedGrip(f,f.Release+.5f,out _,out _),"a gasp at the catch, wide through the feeding, shut after the let-go; the hands free after it");
+            Check(NativeTopDog.FanYaw.All(y=>Math.Abs(y)<=12)&&NativeTopDog.FanPitch.All(x=>Math.Abs(x)<=8),"each goes in between the lips (the fan inside the mouth)");
             Check(NativeDogView.LassoPhase(f,f.At+.3f)==1&&NativeDogView.LassoPhase(new NativeDogFeast{At=10,Throw=10.6f},10.8f)==2&&NativeDogView.LassoPhase(f,f.FeedAt+1)==3&&NativeDogView.LassoPhase(f,f.Release+.1f)==0,"the links: twirled, flying, round the victim, gone");
             // The wrapped victim's struggle (owner 2026-11-09: "their arms are downwards, and they're struggling to get out").
             Check(NativeTopDog.Bound(f,f.Catch-.01f)==0&&NativeTopDog.Bound(f,f.Catch+NativeTopDog.BindIn)>.99f&&NativeTopDog.Bound(f,(f.FeedAt+f.Release)*.5f)==1&&NativeTopDog.Bound(f,f.Release)==0,"the links hold from the catch to the let-go");

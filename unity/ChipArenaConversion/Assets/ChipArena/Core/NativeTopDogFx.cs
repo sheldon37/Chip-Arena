@@ -92,6 +92,48 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<NativeTopDog.Feeds;k++){if(time<NativeTopDog.OfferAt(f.FeedAt,k)+NativeTopDog.PushEnd){i=k;break;}}if(i<0)i=NativeTopDog.Feeds-1;
             w=Smooth((time-first)/(NativeTopDog.GrabLead*.6f))*(1-Smooth((time-last)/NativeTopDog.LetGo));return w>0;
         }
+        // ---- the hand feeding made real (owner 2026-11-09: "actually look like they are realistically putting hot dogs in the players mouth") ----
+        /// <summary>The push of the sausage going in at `time` (0..1: a bump over each one's push and the moment after it): the victim's lips
+        /// close round it, their head gives with it and the hand on the chin tugs.</summary>
+        public static float Push(NativeDogFeast f,float time)
+        {
+            if(f==null||f.Catch<-50||f.Snap>-50&&time>=f.Snap)return 0;float bump=0;
+            for(int i=0;i<NativeTopDog.Feeds;i++)
+            {
+                float a=NativeTopDog.OfferAt(f.FeedAt,i)+NativeTopDog.PushFrom,b=NativeTopDog.OfferAt(f.FeedAt,i)+NativeTopDog.PushEnd+PushAfter;
+                if(time>a&&time<b)bump=Math.Max(bump,(float)Math.Sin((time-a)/(b-a)*Math.PI));
+            }
+            return bump;
+        }
+        /// <summary>How long a push's bump runs on past its push (s).</summary>
+        public const float PushAfter=.14f;
+        /// <summary>How wide the victim's mouth is at `time` (0..1, the Gobble face): a gasp as the links catch, pulled wide as the left hand
+        /// takes the chin, the lips closing a little round each sausage as it is pushed in, then wide again for the next; shut after the
+        /// let-go (the stuffed face) or a snap.</summary>
+        public static float Jaw(NativeDogFeast f,float time)
+        {
+            if(f==null||f.Catch<-50||time<f.Catch||time>=f.Release||f.Snap>-50&&time>=f.Snap+.3f)return 0;
+            float from=f.FeedAt-NativeTopDog.JawFrom,open=time<from?.45f:.45f+.55f*Smooth((time-from)/.25f);
+            return open*(1-.3f*Push(f,time));
+        }
+        /// <summary>The feeding Top Dog's fingers at `time` (the model's grip, 0..1): the right's pinched on a sausage's end from when it pops
+        /// into the hand to its let-go, relaxed between; the left's cupped under the victim's chin. False while neither hand feeds.</summary>
+        public static bool FeedGrip(NativeDogFeast f,float time,out float pinch,out float cup)
+        {
+            pinch=cup=0;if(f==null)return false;bool any=false;
+            if(FeedHand(f,1,time,out _,out float wl)){cup=CupGrip*wl;any=true;}
+            if(FeedHand(f,0,time,out int i,out float wr))
+            {
+                int st=FeedState(f,i,time,out _);float offer=NativeTopDog.OfferAt(f.FeedAt,i),hold;
+                if(st>=1&&st<=3)hold=Smooth((time-(offer-NativeTopDog.Appear+.03f))/.06f);
+                else if(st>=4)hold=1-Smooth((time-(offer+NativeTopDog.PushEnd))/.06f);
+                else hold=i>0?1-Smooth((time-(NativeTopDog.OfferAt(f.FeedAt,i-1)+NativeTopDog.PushEnd))/.06f):0;
+                pinch=(OpenGrip+(PinchGrip-OpenGrip)*hold)*wr;any=true;
+            }
+            return any;
+        }
+        /// <summary>The grips: an empty feeding hand, one pinched on a sausage, the left cupped round the chin.</summary>
+        public const float OpenGrip=.12f,PinchGrip=.62f,CupGrip=.5f;
         /// <summary>The links' look at `time`: 0 none, 1 twirled overhead, 2 flying (the loop at f.Lasso), 3 round the caught victim, 4 lying
         /// where they fell (a miss or a snap).</summary>
         public static int LassoPhase(NativeDogFeast f,float time)
