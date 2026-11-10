@@ -129,6 +129,7 @@ namespace ChipArena.UnityConversion
             Cyl(c,y,cz,ToZ,L-r*.35,r,roll,NativeEmporiumLooks.Sausage,16,true);
             foreach(double e in Unit){Cyl(c,y,cz+e*(L-r*.2),ToZ,r*.32,r*.86,roll,NativeEmporiumLooks.Sausage,8,true);Cyl(c,y,cz+e*(L+r*.2),ToZ,r*.16,r*.55,roll,NativeEmporiumLooks.SausageDark,8,false);}
             for(int k=0;k<3;k++){double a=roll+k*2*Math.PI/3;var q=FactoryQ.Axis(0,0,1,a);Add(c+Math.Cos(a+Math.PI/2)*(r+.004),y+Math.Sin(a+Math.PI/2)*(r+.004),cz,.09,.006,L-r*.4,q,NativeEmporiumLooks.SausageDark,false);}
+            for(int k=0;k<7;k++){double z0=cz-L*.8+k*L*1.6/7,z1=z0+L*1.6/7,xs=(k&1)==0?-.22:.22;Bar(c+xs,y+r+.03,z0,c-xs,y+r+.03,z1,.13,NativeEmporiumLooks.Mustard,false);}
             // googly eyes on the leading side, looking where it goes (they do not roll); the pupils hang low and wobble
             foreach(double e in Unit)
             {
@@ -151,7 +152,7 @@ namespace ChipArena.UnityConversion
                 default:return 1;
             }
         }
-        private static readonly double[] LayerH={.24,.3,.26,.18},LayerW={1.0,.94,.8,.55};
+        private static readonly double[] LayerH={.1,.2,.18,.16,.13,.1,.07},LayerW={1.0,.99,.96,.88,.74,.55,.32};
         private void Press(MapHazard h,in FactoryHazardState st,int round,double clock,int index)
         {
             double cx=st.Center.x,cz=st.Center.z,bottom=st.LoadY,hx=h.size.x/2,hz=h.size.z/2,sq=Squash(h,st,out double tremble),wide=1/Math.Sqrt(sq);
@@ -160,9 +161,9 @@ namespace ChipArena.UnityConversion
             role=Hanging;
             // the bun: a stepped dome of four rounded layers, sesame seeds on top; squash scales the stack
             double y=bottom;var lh=LayerH;var lw=LayerW;
-            for(int k=0;k<4;k++){double t=lh[k]*sq;Add(cx,y+t/2,cz,Math.Min(1.55,hx*lw[k]*wide),t/2,Math.Min(1.55,hz*lw[k]*wide),FactoryQ.Identity,k==0?NativeEmporiumLooks.Bun:NativeEmporiumLooks.BunTop,true);y+=t;}
-            for(int s=0;s<18;s++){double a=H(index,s)*2*Math.PI,rr=Math.Sqrt(H(index,s,1))*.85,px=cx+Math.Cos(a)*rr*hx*.8*wide,pz=cz+Math.Sin(a)*rr*hz*.8*wide;double py=bottom+(lh[0]+lh[1]+lh[2]*(rr<.6?1:.5)+(rr<.4?lh[3]:0))*sq;
-                Add(px,py+.015,pz,.07,.025,.035,FactoryQ.Axis(0,1,0,a*3),NativeEmporiumLooks.Sesame,false);}
+            for(int k=0;k<lh.Length;k++){double t=lh[k]*sq;int col=k==0?0xF6DDB0:NativeEmporiumLooks.Mix(0xF0B266,0xB8621E,(k-1)/(double)(lh.Length-2));Add(cx,y+t/2,cz,Math.Min(1.55,hx*lw[k]*wide),t/2,Math.Min(1.55,hz*lw[k]*wide),FactoryQ.Identity,k==0?NativeEmporiumLooks.Cream:NativeEmporiumLooks.Bun,true,col);y+=t;}
+            for(int s=0;s<26;s++){double a=H(index,s)*2*Math.PI,rr=Math.Sqrt(H(index,s,1))*.9,px=cx+Math.Cos(a)*rr*hx*.92*wide,pz=cz+Math.Sin(a)*rr*hz*.92*wide;double py=bottom;for(int k=0;k<lh.Length;k++){if(lw[k]<rr)break;py+=lh[k]*sq;}
+                Add(px,py+.012,pz,.11,.03,.055,FactoryQ.Axis(0,1,0,a*3),NativeEmporiumLooks.Sesame,false);}
             // the ram: chrome rod from the head to the bun, its sleeve
             Box(cx-.22,cx+.22,y,head,cz-.22,cz+.22,NativeEmporiumLooks.Chrome,true);Box(cx-.34,cx+.34,head-1.2,head,cz-.34,cz+.34,NativeEmporiumLooks.Red,true);
             // the bell on the head: wobbles through the warning
@@ -227,8 +228,9 @@ namespace ChipArena.UnityConversion
             // the sauce column
             double top2=Column(st);ColumnTop[index]=top2;if(top2<.1)return;
             role=Hanging;int seg=6;
-            for(int k=0;k<seg;k++){double y0=y+top2*k/seg,y1=y+top2*(k+1)/seg,rr=.55+.13*Math.Sin(clock*15+k*1.3)+.08*k/seg;Cyl(x+.04*Math.Sin(clock*9+k),(y0+y1)/2,z,ToY,(y1-y0)/2+.05,rr,clock*2+k,sauce,8,false);}
-            Cyl(x,y+top2+.1,z,ToY,.22,.85+.1*Math.Sin(clock*11),clock,sauce,8,false);
+            for(int k=0;k<seg;k++){double y0=y+top2*k/seg,y1=y+top2*(k+1)/seg,rr=.55+.13*Math.Sin(clock*15+k*1.3)+.08*k/seg,ox=.04*Math.Sin(clock*9+k);Cyl(x+ox,(y0+y1)/2,z,ToY,(y1-y0)/2+.05,rr,clock*2+k,sauce,16,false);
+                Box(x+ox-rr*.12,x+ox+rr*.12,y0,y1,z-rr-.02,z-rr+.02,NativeEmporiumLooks.White,false,ketchup?0xFFB0A0:0xFFF2B0);}
+            Cyl(x,y+top2+.1,z,ToY,.24,.95+.12*Math.Sin(clock*11),clock,sauce,16,false);Cyl(x,y+top2+.36,z,ToY,.16,.6+.08*Math.Sin(clock*13),clock,sauce,8,false);
         }
 
         // ================================================================ ambient

@@ -185,8 +185,8 @@ namespace ChipArena.UnityConversion
             {
                 double top=NativeEmporiumRig.Column(st);
                 for(int i=0;i<18;i++){double f=Frac(clock*2.2+H(index,i,2));Hex(x+(H(index,i,3)-.5)*.9,y+f*top,z+(H(index,i,4)-.5)*.9,.5+.4*H(index,i,5),sauce,.9*(1-f*.5),false);Telegraph++;}
-                for(int i=0;i<16;i++){double f=Frac(clock*1.1+H(index,i,6)),a=H(index,i,7)*2*Math.PI,v=1.6+H(index,i,8)*2.4,tt=f*1.1,py=top+3*tt-11*tt*tt;if(py<.02)continue;
-                    Hex(x+Math.Cos(a)*v*tt,py,z+Math.Sin(a)*v*tt,.2+.1*H(index,i,9),sauce,.95,false);Telegraph++;}
+                for(int i=0;i<26;i++){double f=Frac(clock*1.1+H(index,i,6)),a=H(index,i,7)*2*Math.PI,v=1.6+H(index,i,8)*2.8,tt=f*1.2,py=top+3.5*tt-11*tt*tt;if(py<.02)continue;
+                    Hex(x+Math.Cos(a)*v*tt,py,z+Math.Sin(a)*v*tt,.28+.18*H(index,i,9),sauce,.95,false);Telegraph++;}
                 Hex(x,y+top+.2,z,2.2,sauce,.6*st.U,false);Hex(x,y+top*.5,z,3.2,0xFFFFFF,.12*st.U,true);Telegraph++;
             }
             // the splat left on the floor after a burst: spreads in the burst's first second, fades over four
