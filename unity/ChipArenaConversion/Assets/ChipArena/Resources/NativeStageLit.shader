@@ -49,8 +49,8 @@ Shader "ChipArena/StageLit"
         #define DETAIL_WAX 9
         #define DETAIL_PLASTER 10
         #define DETAIL_GLOW 11
-        // ---- noise ----
-        float SHash(float3 p){p=frac(p*0.3183099+float3(0.1,0.17,0.13));p*=17.0;return frac(p.x*p.y*p.z*(p.x+p.y+p.z));}
+        // ---- noise (cheap: one hash per lattice corner, the fine fields two octaves) ----
+        float SHash(float3 p){p=frac(p*0.1031);p+=dot(p,p.yzx+33.33);return frac((p.x+p.y)*p.z);}
         float SHash2(float2 p){float3 q=frac(float3(p.x,p.y,p.x)*0.1031);q+=dot(q,q.yzx+33.33);return frac((q.x+q.y)*q.z);}
         float SNoise(float3 x)
         {
@@ -58,13 +58,13 @@ Shader "ChipArena/StageLit"
             return lerp(lerp(lerp(SHash(i),SHash(i+float3(1,0,0)),f.x),lerp(SHash(i+float3(0,1,0)),SHash(i+float3(1,1,0)),f.x),f.y),
                         lerp(lerp(SHash(i+float3(0,0,1)),SHash(i+float3(1,0,1)),f.x),lerp(SHash(i+float3(0,1,1)),SHash(i+float3(1,1,1)),f.x),f.y),f.z);
         }
-        float SFbm(float3 x){return 0.5*SNoise(x)+0.25*SNoise(x*2.03+7.1)+0.125*SNoise(x*4.01+3.3)+0.0625*SNoise(x*8.05+1.7);}
-        // A micro-normal from a scalar field's gradient (finite differences in world space), `k` its strength.
+        float SFbm(float3 x){return 0.65*SNoise(x)+0.35*SNoise(x*2.07+7.1);}
+        // A micro-normal from a scalar field's gradient (finite differences in world space), `k` its strength: one octave.
         float3 SBump(float3 n,float3 p,float freq,float k)
         {
-            float e=0.35/freq;float h0=SFbm(p*freq);
-            float3 g=float3(SFbm((p+float3(e,0,0))*freq)-h0,SFbm((p+float3(0,e,0))*freq)-h0,SFbm((p+float3(0,0,e))*freq)-h0)/e;
-            g-=n*dot(g,n);return normalize(n-g*(k/freq));
+            float3 q=p*freq;float e=0.4;float h0=SNoise(q);
+            float3 g=float3(SNoise(q+float3(e,0,0))-h0,SNoise(q+float3(0,e,0))-h0,SNoise(q+float3(0,0,e))-h0)/e;
+            g-=n*dot(g,n);return normalize(n-g*k);
         }
         // The surface's tangents: u along the face (horizontal where it can be), v up the face.
         void STangents(float3 n,out float3 tu,out float3 tv){float3 up=abs(n.y)<0.95?float3(0,1,0):float3(1,0,0);tu=normalize(cross(up,n));tv=cross(n,tu);}
@@ -93,7 +93,7 @@ Shader "ChipArena/StageLit"
             {
                 bool top=abs(n.y)>0.7;float2 hv=top?world.xz:float2(abs(n.x)>abs(n.z)?world.z:world.x,world.y);
                 SAshlar(s,hv,top?0.9:0.95,top?0.6:0.42,0.022,tu,tv,0.55*k,1.0);
-                s.n=SBump(s.n,world,9.0,0.28*k);s.albedo*=0.92+0.16*SNoise(world*3.3);
+                s.n=SBump(s.n,world,9.0,0.18*k);s.albedo*=0.92+0.16*SNoise(world*3.3);
             }
             else if(detail==DETAIL_FLAG)
             {
@@ -102,18 +102,18 @@ Shader "ChipArena/StageLit"
                 // polish where feet wear it, cracks here and there
                 float wear=smoothstep(0.45,0.75,SFbm(world*0.45));s.smooth=lerp(s.smooth,min(1.0,s.smooth+0.32),wear);
                 float c=abs(SNoise(world*1.7+3.0)-0.5);s.albedo*=lerp(1.0,0.55,(1.0-smoothstep(0.0,0.012,c))*step(0.6,SNoise(world*0.6)));
-                s.n=SBump(s.n,world,7.0,0.2*k);
+                s.n=SBump(s.n,world,7.0,0.12*k);
             }
             else if(detail==DETAIL_CARVED)
             {
-                s.n=SBump(s.n,world,11.0,0.22*k);s.albedo*=0.9+0.2*SFbm(world*2.2);
+                s.n=SBump(s.n,world,11.0,0.15*k);s.albedo*=0.9+0.2*SFbm(world*2.2);
                 s.albedo*=1.0-0.18*smoothstep(0.72,0.85,SNoise(world*6.0));
             }
             else if(detail==DETAIL_MARBLE)
             {
                 float v=sin(world.x*1.4+world.y*0.8+world.z*1.1+SFbm(world*1.6)*7.0);float vein=1.0-smoothstep(0.0,0.09,abs(v));
                 float v2=sin(world.z*2.3-world.y*1.7+SFbm(world*3.1+2.0)*5.0);vein=max(vein,0.5*(1.0-smoothstep(0.0,0.05,abs(v2))));
-                s.albedo=lerp(s.albedo,s.albedo*float3(0.55,0.53,0.58),vein);s.n=SBump(s.n,world,6.0,0.05);
+                s.albedo=lerp(s.albedo,s.albedo*float3(0.55,0.53,0.58),vein);s.n=SBump(s.n,world,6.0,0.03);
             }
             else if(detail==DETAIL_WOOD)
             {
@@ -125,12 +125,12 @@ Shader "ChipArena/StageLit"
             }
             else if(detail==DETAIL_IRON)
             {
-                s.n=SBump(s.n,world,13.0,0.45*k);float rust=smoothstep(0.62,0.82,SFbm(world*2.6));s.albedo=lerp(s.albedo,float3(0.12,0.05,0.025),rust*0.6);
+                s.n=SBump(s.n,world,13.0,0.25*k);float rust=smoothstep(0.62,0.82,SFbm(world*2.6));s.albedo=lerp(s.albedo,float3(0.12,0.05,0.025),rust*0.6);
                 s.metal*=1.0-0.7*rust;s.smooth*=1.0-0.5*rust;
             }
             else if(detail==DETAIL_BRASS)
             {
-                s.n=SBump(s.n,world,22.0,0.06);float pat=(1.0-s.occ)*smoothstep(0.35,0.7,SFbm(world*3.0));
+                s.n=SBump(s.n,world,22.0,0.03);float pat=(1.0-s.occ)*smoothstep(0.35,0.7,SFbm(world*3.0));
                 s.albedo=lerp(s.albedo,float3(0.05,0.08,0.06),pat*0.7);s.smooth*=1.0-0.45*pat;
             }
             else if(detail==DETAIL_CLOTH)
@@ -139,7 +139,7 @@ Shader "ChipArena/StageLit"
                 s.albedo*=0.92+0.1*SFbm(world*5.0);s.sheen=0.45;
             }
             else if(detail==DETAIL_WAX){s.wrap=0.45;s.albedo*=0.95+0.08*SNoise(world*14.0);}
-            else if(detail==DETAIL_PLASTER){s.albedo*=0.88+0.2*SFbm(world*0.8);s.n=SBump(s.n,world,4.0,0.1*k);}
+            else if(detail==DETAIL_PLASTER){s.albedo*=0.88+0.2*SFbm(world*0.8);s.n=SBump(s.n,world,4.0,0.08*k);}
         }
         // ---- light ----
         // The rim, the practical slots ((1 - (d/r)^2)^2), the flashes, the Ward field and the muzzle lights: their diffuse (N.L,
