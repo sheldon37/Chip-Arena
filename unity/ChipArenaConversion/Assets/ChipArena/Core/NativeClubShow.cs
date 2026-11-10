@@ -127,15 +127,15 @@ namespace ChipArena.UnityConversion
                         double u=st.Level;var h=GridHazard[s0];double lx=(x-h.center.x)/(h.size.x/2),lz=(z-h.center.z)/(h.size.z/2),ring=Math.Max(Math.Abs(lx),Math.Abs(lz));
                         double scroll=flash==NativeKitFlash.Calm?0:flash==NativeKitFlash.Reduced?.6:1.4,stripe=Frac((x+z)*.5+beats*scroll*.5)<.5?1:.5;
                         double fill=C01((u*1.25-(1-ring))*3);double last=st.Until<NativeClubLooks.Beat?1:0;
-                        double k=(1.0+1.5*u)*(.65+.35*fill)*(last>0?1.25:stripe);
+                        double k=(.9+1.1*u)*(.65+.35*fill)*(last>0?1.25:stripe);
                         r=NativeClubLooks.R(NativeClubLooks.Amber)+(NativeClubLooks.R(NativeClubLooks.Danger)-NativeClubLooks.R(NativeClubLooks.Amber))*u;g=NativeClubLooks.G(NativeClubLooks.Amber)+(NativeClubLooks.G(NativeClubLooks.Danger)-NativeClubLooks.G(NativeClubLooks.Amber))*u;b=NativeClubLooks.B(NativeClubLooks.Amber)+(NativeClubLooks.B(NativeClubLooks.Danger)-NativeClubLooks.B(NativeClubLooks.Amber))*u;
                         r*=k;g*=k;b*=k;own=Charging;heat=u;
                     }
                     else if(st.Phase==NativeHazardPhase.Active)
                     {
                         // live: red-hot, white veins crawling across it (steady, never a strobe)
-                        double vein=Math.Max(0,1-Math.Abs(Math.Sin(x*1.7+z*.9+beats*1.3)+Math.Sin(z*2.3-x*.6-beats*.9))*1.6);
-                        double k=2.6+.35*Math.Sin(beats*Math.PI*2+i*.7+j*1.3);r=NativeClubLooks.R(NativeClubLooks.Danger)*k+3.2*vein;g=NativeClubLooks.G(NativeClubLooks.Danger)*k+2.6*vein;b=NativeClubLooks.B(NativeClubLooks.Danger)*k+2.4*vein;own=Live;heat=1;
+                        double vein=Math.Max(0,1-Math.Abs(Math.Sin(x*1.7+z*.9+beats*1.3)+Math.Sin(z*2.3-x*.6-beats*.9))*2.8);
+                        double k=3.0+.3*Math.Sin(beats*Math.PI*2+i*.7+j*1.3);r=NativeClubLooks.R(NativeClubLooks.Danger)*k+2.2*vein;g=NativeClubLooks.G(NativeClubLooks.Danger)*k+1.1*vein;b=NativeClubLooks.B(NativeClubLooks.Danger)*k+.9*vein;own=Live;heat=1;
                     }
                     else if(st.Phase==NativeHazardPhase.Clear)
                     {

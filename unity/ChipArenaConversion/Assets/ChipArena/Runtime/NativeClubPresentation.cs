@@ -17,7 +17,8 @@ namespace ChipArena.UnityConversion
     ///  - The backdrop (Core NativeClubScenery): SourceLit sector meshes on NativeSceneryBuilder.BackdropLayer without shadows.
     ///  - The effects (Core NativeClubFx): one NativeFxDraw batch; the volumetric beams take the moving heads, the fans, the
     ///    laser wall and the pin spots while the look's beams are on above the low tier (ArenaPresentation.AdvancedBeams).
-    ///  - The show's three lights go to the arena's practical slots (NativeLighting.KitLights): 3 on High, 2 on Balanced, 1 on Low.
+    ///  - The show's three lights go to the arena's practical slots (NativeLighting.KitLights): 3 on High, 2 on Balanced, 1 on Low;
+    ///    actor lighting is on each frame, so the pilots take the slots too (the dark club's bodies read by its lamps).
     ///  - The music's pulse (Core NativeClubPulse) from the music voice's spectrum (NativeClubMusic, NativeClubAudio.cs), or the
     ///    steady 128 bpm clock. Presentation only.
     /// </summary>
@@ -164,6 +165,8 @@ namespace ChipArena.UnityConversion
         {
             if(!NativeClubLooks.Active(arena.MapId)){if(clubLights){NativeLighting.KitLights(null,null,0,Vector3.zero);clubLights=false;}return;}
             if(club==null)club=gameObject.AddComponent<NativeClubDraw>();
+            // the bodies take the practical slots too (the show's coloured lights on the pilots; Tests/ZombieLightChecks)
+            NativeLighting.ActorLights(true);
             club.Beams=AdvancedBeams;club.Flash=KitFlash;club.Render(arena,FieldClock(arena),WorldEye,EffectsQuality,LowGraphics,UsesInstancing);clubLights|=club.LightsSent;
         }
         // PrewarmStage: build it behind the loading screen.

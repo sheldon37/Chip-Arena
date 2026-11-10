@@ -141,12 +141,18 @@ namespace ChipArena.UnityConversion
                 double x=Math.Max(h.center.x-h.size.x/2,Math.Min(h.center.x+h.size.x/2,st.Head));
                 foreach(double y in LaserYs)
                 {
-                    if(Beams!=null){Beams.Add(x,y,z0,x,y,z1,.025,.025,lr*9,lg*9,lb*9,.15,y*7);BeamCount++;}
-                    Streak(x,y,z0,x,y,z1,.045,.045,lr*6,lg*3,lb*3,1,true,0);Streak(x,y,z0,x,y,z1,.35,.35,lr*1.6,lg*1.6,lb*1.6,.35,true,1);Telegraph+=2;
+                    if(Beams!=null){Beams.Add(x,y,z0,x,y,z1,.035,.035,lr*10,lg*10,lb*10,.15,y*7);BeamCount++;}
+                    Streak(x,y,z0,x,y,z1,.06,.06,lr*7,lg*2.6,lb*2.6,1,true,0);Streak(x,y,z0,x,y,z1,.6,.6,lr*1.8,lg*1.8,lb*1.8,.45,true,1);Telegraph+=2;
                 }
-                // the glowing sheet behind it (its last metre), the sparks where it leaves the slots, a scorch on the tiles (the floor)
-                Upright(x-st.Direction*.4,0,0,.75,7.5,true,lr*1.2,lg*1.2,lb*1.2,.22,1);Telegraph++;
-                foreach(double z in Rails)for(int i=0;i<5;i++){double t=Frac(render*3+i*.2);Sprite(x-st.Direction*t*.8,.1+t*.5*(1-t)*2,z+(H(i,1)-.5)*.3,.15,3,1.4,.6,.9*(1-t),true);Telegraph++;}
+                // the light curtain over the beams (it reads from across the hall), its trail, the scorch line on the tiles, flares at
+                // the posts and sparks thrown back where the beams leave their slots
+                Upright(x,0,0,1.8,7.5,true,lr*1.6,lg*1.6,lb*1.6,.3,1);Upright(x-st.Direction*.5,0,0,1.1,7.5,true,lr*1.1,lg*1.1,lb*1.1,.18,1);Telegraph+=2;
+                Flat(x-st.Direction*.3,.04,0,.45,7.5,0,lr*3,lg*1.2,lb*1.2,.7,true,1);Telegraph++;
+                foreach(double z in Rails)
+                {
+                    Sprite(x,.4,z,1.7,lr*4,lg*2,lb*2,.85,true);Telegraph++;
+                    for(int i=0;i<6;i++){double t=Frac(render*3+i/6.0);Sprite(x-st.Direction*t*1.2,.15+t*.7*(1-t)*2,z+(H(i,1)-.5)*.4,.16,3,1.5,.7,.9*(1-t),true);Telegraph++;}
+                }
                 return;
             }
             if(st.Phase==NativeHazardPhase.Clear){double x=h.center.x+st.Direction*h.size.x/2;Upright(x,0,0,.6,7.5,true,lr,lg,lb,.15*st.Level,1);Telegraph++;}
