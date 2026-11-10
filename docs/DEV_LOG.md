@@ -45,6 +45,7 @@
   - The bow standing, walking and drawing: the quiver on the back throughout, its mouth over the right shoulder.
 - **Not seen:** the quiver on the non-armour outfits, played by a person, and a guest's view.
 - **Released:** full suite at `771b4230`: 994 groups, exit 0; pins 0 broken; Unity compile PASS; the Editor build checks passed. Merged into shared at `6b193968` and synced to the builder; the test channel published revision `639299271974401605`.
+- **Released (the pistol's low ready, `claude/pistol-ready`):** full suite at `e7a6adde`: 994 groups, exit 0; the one pin reported is the removed hanging-arm code; Unity compile PASS; the Editor build checks passed. Merged into shared at `90ee2374` and synced to the builder; the test channel published revision `639299290481825228`.
 
 ## 2026-11-10 — Claude: the rifle is a sniper; the rifle and machine gun rest low (owner request)
 
