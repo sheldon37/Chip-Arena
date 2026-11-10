@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         private readonly MeleeGait gait=new MeleeGait();
         private readonly MeleeView view=new MeleeView();
         private readonly NativePoseTransition transition=new NativePoseTransition();
-        private float last=-100,dt=1/60f,sprintBlend,aim=1,aimVelocity;private bool aimHas;private int viewId=int.MinValue;
+        private float last=-100,dt=1/60f,sprintBlend,aim=1,aimVelocity,stance=1,stanceVelocity;private bool aimHas;private int viewId=int.MinValue;
         // The frame's state (the native debug label): the gun hold's state, else the overlay that owns the frame.
         public const string Ready="ready",Carry="carry",Aim="aim",Fire="fire",Reload="reload",Block="block",Jump="jump",Roll="roll (adapted)",Juggle="juggle",Recovery="recovery";
         /// <summary>The gun-up weight (0 running forward with the gun lowered, 1 aimed), as the last Sample left it.</summary>
@@ -93,10 +93,19 @@ namespace ChipArena.UnityConversion
             bool rests=a.Weapon==WeaponId.Rifle||a.Weapon==WeaponId.MachineGun;
             return shotAge<Math.Max(.38f,GunRules.Get(a.Weapon).Interval+.15f)||a.ReloadUntil+(rests?ReloadSettle:0)>time||(rests?time<a.StunUntil:motion<.18f||ahead<.6f)||time<a.BlockUntil||a.Aiming?1:0;
         }
+        /// <summary>The source's gun-up target (the pistol's still): the rifle's hips turn behind the gun by it (PelvisYawScale), so a
+        /// resting long gun's legs and hips move as they did when it stayed up (turning the hips as the gun lowered slid a planted foot).</summary>
+        public static float StanceTarget(Actor a,float time,float motion)
+        {
+            const float D=(float)Math.PI/180;float speed=(float)Math.Sqrt(a.Velocity.x*a.Velocity.x+a.Velocity.z*a.Velocity.z),yaw=a.Yaw*D;
+            float ahead=speed>1?(a.Velocity.x*(float)Math.Sin(yaw)+a.Velocity.z*(float)Math.Cos(yaw))/speed:1,shotAge=time-a.LastShot;
+            return shotAge<Math.Max(.38f,GunRules.Get(a.Weapon).Interval+.15f)||a.ReloadUntil>time||motion<.18f||ahead<.6f||time<a.BlockUntil||a.Aiming?1:0;
+        }
         private void UpdateAim(Actor a,float time,bool restart)
         {
-            float target=AimTarget(a,time,Rig.Motion);
-            if(!aimHas||restart){aimHas=true;aim=target;aimVelocity=0;return;}
+            float target=AimTarget(a,time,Rig.Motion),hold=StanceTarget(a,time,Rig.Motion);
+            if(!aimHas||restart){aimHas=true;aim=target;aimVelocity=0;stance=hold;stanceVelocity=0;return;}
+            {float y=stance;SpringStep(ref y,ref stanceVelocity,hold,hold>stance&&time-a.LastShot<.1f&&stance<.6f?32:24,1,MeleeMath.Clamp(dt,0,.05f));stance=MeleeMath.Clamp(y,0,1);if(stance!=y)stanceVelocity=0;}
             float omega=target>aim&&time-a.LastShot<.1f&&aim<.6f?32:24,x=aim;SpringStep(ref x,ref aimVelocity,target,omega,1,MeleeMath.Clamp(dt,0,.05f));
             aim=MeleeMath.Clamp(x,0,1);if(aim!=x)aimVelocity=0;
         }
@@ -117,7 +126,7 @@ namespace ChipArena.UnityConversion
             v.Vel=planted?new Vector3(0,a.Velocity.y,0):new Vector3(-a.Velocity.x,a.Velocity.y,a.Velocity.z);
             // stances.ts: the rifle's hips turn behind the gun as far as it is raised (the previous frame's weight, as the source
             // reads r.aimWeight before updateAimWeight).
-            gait.PelvisYawScale=a.Weapon==WeaponId.Rifle?aim:1;
+            gait.PelvisYawScale=a.Weapon==WeaponId.Rifle?stance:1;
             gait.Locomotion(r,v,time,dt,planted);
             v.Vel=new Vector3(-a.Velocity.x,a.Velocity.y,a.Velocity.z);
             // melee-guard sprintLean: the guns have no stance lean, only the sprint lean.
