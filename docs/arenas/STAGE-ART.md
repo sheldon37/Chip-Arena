@@ -173,7 +173,7 @@ its look kept (the same twelve views before and after, below). How:
 
 Numbers, seen, and what still falls short: see "Seen in the Editor" below.
 
-### Starfall Causeway (2026-11-10)
+### Starfall Causeway (2026-11-10): the third stage on the foundation
 
 Done on `claude/art-causeway`: `docs/arenas/CAUSEWAY.md` "Stage art" (what is modelled, the bank, the numbers, what was seen).
 What it adds to the recipe: a stage whose rig is all transforms can tag its rig's box parts with the art's slots and pose every
@@ -263,7 +263,7 @@ Not done / not seen:
 - The main menu's 3D preview draws no Sanctum dressing (as before); native Windows build, multiplayer guests and the killcam on
   the art: not run.
 
-## 9. Substation 128 (`club`): the club's art and the Greys
+## 10. Substation 128 (`club`): the club's art and the Greys
 
 2026-11-10 · Claude (stage art, phase 2) · branch `claude/art-club` from `claude/stage-art` (`d0c8df39`). Status: **implemented
 on the branch and seen in the shared Editor; not merged, not released.** The bank is local (git-ignored). The club's own notes:
@@ -336,4 +336,4 @@ Not done / not seen:
 - No bank-absent run in the Editor with this branch's code (the before captures are the foundation commit, where the club has
   no bank line; the fallback is checked by source in ClubArtChecks). Native Windows build, multiplayer guests, the killcam on
   the art and the main menu's preview: not run.
-- The stained LED screens are still boxes by design; the far backdrop is still box-built.
+- The lit LED screens are still boxes by design; the far backdrop is still box-built.

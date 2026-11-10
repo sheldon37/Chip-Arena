@@ -1,3 +1,5 @@
+2026-11-10 Claude (`claude/stage-art-release`): the four new stages are modelled (Blender banks in the Drive zip, the `ChipArena/StageLit` shader), the club's DJ and crowd are Grey aliens. Next: the Katana (public), the DEV Daggers and the three new packs, in their own session.
+
 2026-11-10 Claude (`claude/gun-upright`): the guns fire and aim upright (the pack clips' forward pitch straightened at the waist, the arms kept on the aim).
 
 2026-11-10 Claude (`claude/gun-stance`): every gun stands naturally and rests low (the pistol at a one-handed low ready); the bow's quiver rides the model's back. Next: the four new stages move off box-built kits to modelled meshes and materials (owner), and the club's DJ and metro people become Grey aliens.
