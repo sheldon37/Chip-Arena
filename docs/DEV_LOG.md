@@ -9,6 +9,7 @@
 - **Checks:** CoreTests `--glaive` (5344, with the intro: its rules and staging pins, the ring's path meeting the pylons and both catches, its orbit, no jump over 45 m/s, the arm's keys within reach, above the floor and under 75 m/s), the full suite, the Unity compile, the Editor build checks.
 - **Seen in the Editor:** the whole intro in a match (the ricochets, the drop and catch, the landing, the orbit and its floor circle, the cut's crescent, the hero under the name card).
 - **Not seen / not done:** an account saving the pick (the account server may not know `glaive-crescent` yet: a saved pick could fall back to the default, which is this entrance for a Glaive anyway); played by a person; the chips (part 3).
+- **Released:** merged into shared at `09a6a151` and synced to the builder; the test channel published revision `639298885210833258`.
 
 ## 2026-11-10 — Claude: the Glaive redesigned (the tri-crescent) and its moves reworked (owner request, part 1 of 3)
 
