@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
     public static class NativeCausewayScenery
     {
         public const int Near=0,Landmark=1,Far=2,Sectors=3;
-        public const int Stone=0xD6CFBF,StoneMid=0xB4AC9C,StoneDeep=0x847C74,StoneDark=0x5A5458,Metal=0x3A4466,MetalLight=0x8EA0C8,Rune=0xFFB45A,Cold=0x7FE0FF,Violet=0xB48CFF,Rock=0x4A4250,RockDark=0x2E2A36;
+        public const int Stone=0xCDBFA8,StoneMid=0xAA9C86,StoneDeep=0x7A6E64,StoneDark=0x5A5458,Metal=0x3A4466,MetalLight=0x8EA0C8,Rune=0xFFB45A,Cold=0x7FE0FF,Violet=0xB48CFF,Rock=0x4A4250,RockDark=0x2E2A36;
         private static double H(int a,int b=0,int c=0)=>NativeCausewayLooks.Hash(a,b,c);
 
         /// <summary>The backdrop's sectors and the planet's two meshes (null for another map): [near, landmark, far, planet, rings].</summary>
@@ -183,14 +183,15 @@ namespace ChipArena.UnityConversion
         {
             s.B.Current=Far;
             // a broad, uneven ring of tumbling rock round the void, tilted: dense in a band, sparse above and below
-            for(int i=0;i<360;i++)
+            for(int i=0;i<170;i++)
             {
                 double a=H(401,i)*2*Math.PI,r=340+Math.Pow(H(401,i,1),.8)*520,tilt=Math.Sin(a*2+.6)*.12,y=-60+Math.Sin(a)*r*tilt+(H(401,i,2)-.5)*70;
-                double sz=3+Math.Pow(H(401,i,3),3)*34;double x=Math.Cos(a)*r,z=Math.Sin(a)*r;
-                int hex=NativeNewStageScenery.Mix(Rock,0x6A5E66,H(401,i,4));
-                s.Box(x,y,z,sz,sz*(.55+H(401,i,5)*.5),sz*(.6+H(401,i,6)*.6),hex,pitch:H(401,i,7)*360,yaw:H(401,i,8)*360,roll:H(401,i,9)*360,shade:.9+.2*H(401,i,10));
-                if(sz>14)s.Box(x,y,z,sz*.7,sz*.8,sz*.5,NativeNewStageScenery.Mix(hex,RockDark,.4),pitch:H(401,i,11)*360,yaw:H(401,i,12)*360);
-                if(H(401,i,13)<.07)s.Box(x,y+sz*.3,z,sz*.12,sz*.4,sz*.12,Cold,yaw:a*57,glow:Cold,level:2.0);
+                double sz=2.5+Math.Pow(H(401,i,3),3)*30;double x=Math.Cos(a)*r,z=Math.Sin(a)*r;
+                int hex=NativeNewStageScenery.Mix(0x2E2A36,0x564A54,H(401,i,4));
+                s.Box(x,y,z,sz,sz*(.55+H(401,i,5)*.5),sz*(.6+H(401,i,6)*.6),hex,pitch:H(401,i,7)*360,yaw:H(401,i,8)*360,roll:H(401,i,9)*360,shade:.75+.2*H(401,i,10));
+                s.Box(x+sz*.12,y-sz*.08,z,sz*.74,sz*.62,sz*.86,NativeNewStageScenery.Mix(hex,RockDark,.35),pitch:H(401,i,11)*360,yaw:H(401,i,12)*360,roll:H(401,i,14)*360,shade:.8);
+                if(sz>9)s.Box(x-sz*.2,y+sz*.12,z+sz*.1,sz*.5,sz*.45,sz*.55,hex,pitch:H(401,i,15)*360,yaw:H(401,i,16)*360,shade:.7);
+                if(H(401,i,13)<.05)s.Box(x,y+sz*.3,z,sz*.12,sz*.4,sz*.12,Cold,yaw:a*57,glow:Cold,level:2.0);
             }
             // distant obelisks and drifting islands
             for(int i=0;i<12;i++)

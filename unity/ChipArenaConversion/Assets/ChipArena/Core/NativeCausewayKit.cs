@@ -166,7 +166,7 @@ namespace ChipArena.UnityConversion
         private void Pylon(Bx b)
         {
             foreach(var (x,z) in new[]{(b.X0,b.Z0),(b.X0,b.Z1),(b.X1,b.Z0),(b.X1,b.Z1)})Box(x-.06,x+.06,b.Y0,b.Y1,z-.06,z+.06,Edge);
-            foreach(int side in new[]{0,1,2,3}){Along(b,side,out double u0,out double u1);double m=(u0+u1)/2;Face(b,side,m-.07,m+.07,1.2,b.Y1-.9,Crystal,.014,.012);Face(b,side,u0+.1,u1-.1,.95,1.05,Rune,.014,.008);Face(b,side,u0+.1,u1-.1,b.Y1-.55,b.Y1-.47,Rune,.014,.008);}
+            foreach(int side in new[]{0,1,2,3}){Along(b,side,out double u0,out double u1);double m=(u0+u1)/2;Face(b,side,m-.035,m+.035,1.3,b.Y1-1.0,Crystal,.014,.012);Face(b,side,u0+.08,u1-.08,.9,1.06,Gold,.03,.03);Face(b,side,u0+.08,u1-.08,b.Y1-.62,b.Y1-.48,Gold,.03,.03);Face(b,side,m-.16,m+.16,b.Y1-.95,b.Y1-.75,Rune,.014,.012);}
             Box(b.X0-.1,b.X1+.1,b.Y1-.3,b.Y1,b.Z0-.1,b.Z1+.1,Metal);Box(b.X0-.06,b.X1+.06,b.Y0,b.Y0+.4,b.Z0-.06,b.Z1+.06,Metal);
             Box(b.Cx-.25,b.Cx+.25,b.Y1,b.Y1+.2,b.Cz-.25,b.Cz+.25,Edge);
         }

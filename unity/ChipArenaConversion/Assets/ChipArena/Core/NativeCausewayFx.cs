@@ -129,7 +129,7 @@ namespace ChipArena.UnityConversion
 
         // ---------------- the void ----------------
         private static readonly double[] NebX={-900,700,-300,1100,0},NebY={-650,240,520,-160,-1250},NebZ={900,1000,-1350,300,-200},NebR={520,420,380,340,760};
-        private static readonly int[] NebA={0xFF4FC8,0x6A8CFF,0x8A5CFF,0x3FE0C8,0x7A4CFF},NebB={0x8A5CFF,0x3FD0FF,0xFF6FA8,0x4A7CFF,0x3FA8FF};
+        private static readonly int[] NebA={0xFF4FB0,0x3F7CFF,0x9A5CFF,0x2FE0B8,0x4A5CFF},NebB={0x7A4CFF,0x2FD8FF,0xFF8A6A,0x3F9CFF,0x9A4CFF};
         private void Nebulae(double t)
         {
             // each a veil of soft additive clouds in two hues round a brighter core, dark dust lanes laid over it
@@ -139,11 +139,11 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<n;i++)
                 {
                     double a=H(701+k,i)*2*Math.PI,b=(H(701+k,i,1)-.5)*Math.PI*.7,r=R*Math.Pow(H(701+k,i,2),.7);double px=cx+Math.Cos(a)*Math.Cos(b)*r,py=cy+Math.Sin(b)*r*.55,pz=cz+Math.Sin(a)*Math.Cos(b)*r;
-                    double size=R*(.45+H(701+k,i,3)*.9)*(1-.4*r/R),breathe=.85+.15*Math.Sin(t*.07+i);int hex=NativeNewStageScenery.Mix(NebA[k],NebB[k],H(701+k,i,4));
-                    Hex(px,py,pz,size,hex,(.05+.07*(1-r/R))*breathe,true,1.2);Atmosphere++;
+                    double size=R*(.3+H(701+k,i,3)*.6)*(1-.4*r/R),breathe=.85+.15*Math.Sin(t*.07+i);int hex=NativeNewStageScenery.Mix(NebA[k],NebB[k],H(701+k,i,4));
+                    Hex(px,py,pz,size,hex,(.022+.05*(1-r/R))*breathe,true,1.3);Atmosphere++;
                 }
-                Hex(cx,cy,cz,R*.55,NativeNewStageScenery.Mix(NebA[k],0xFFFFFF,.35),.12,true,1.4);
-                int m=Count(7);for(int i=0;i<m;i++){double a=H(721+k,i)*2*Math.PI,r=R*.6*H(721+k,i,1);Hex(cx+Math.Cos(a)*r,cy+(H(721+k,i,2)-.5)*R*.4,cz+Math.Sin(a)*r,R*(.25+H(721+k,i,3)*.35),0x06040E,.35,false);Atmosphere++;}
+                Hex(cx,cy,cz,R*.35,NativeNewStageScenery.Mix(NebA[k],0xFFFFFF,.4),.09,true,1.5);
+                int m=Count(7);for(int i=0;i<m;i++){double a=H(721+k,i)*2*Math.PI,r=R*.6*H(721+k,i,1);Hex(cx+Math.Cos(a)*r,cy+(H(721+k,i,2)-.5)*R*.4,cz+Math.Sin(a)*r,R*(.18+H(721+k,i,3)*.25),0x04030A,.5,false);Atmosphere++;}
             }
         }
         private void Field(double t)
