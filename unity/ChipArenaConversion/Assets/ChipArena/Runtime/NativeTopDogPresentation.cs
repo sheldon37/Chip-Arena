@@ -458,6 +458,28 @@ namespace ChipArena.UnityConversion
         // under the jaw, holding the mouth open, tugging with each push. The wrist goes where it puts the hold point (the pinch, the palm) on its
         // target. Its rubber-hose arm stretches (up to half again) when the mouth is beyond its reach. The pinch and the fingers' way are kept for
         // the sausage in them (RenderDog draws after the bodies are posed).
+        // Facing the victim (owner 2026-11-09: "still need to fix top dog ultimate animation, it puts both his arms on one side of his body ~
+        // We need to allow the hot dog to rotate correctly and have an arm on each side correctly"). A feeding Top Dog stands rooted, but its
+        // yaw follows its pilot's look (and the mouse still turns it under the feast's cinematic camera), while the victim hangs where the
+        // catch put it, Feast.Dir ahead: turned away, the hot dog reached across one side of itself with both arms for the mouth. From the
+        // catch to the let-go (or the links' snap) its posed rig turns about the body's middle to face along Feast.Dir (eased in at the
+        // catch and out after), before the visual body, its hands and the sausages are posed from it: the right arm feeds from the right,
+        // the left cups the chin from the left, whatever the camera does. Presentation only: the pilot's yaw (aim, view, rules) is untouched.
+        private const float DogTurnIn=.2f,DogTurnOut=.3f;
+        /// <summary>How far toward facing along its feast a Top Dog's body is turned at `time` (0 none, 1 square to it).</summary>
+        internal static float DogFacingWeight(NativeDogFeast f,float time)
+        {
+            if(f==null||f.Catch<-50)return 0;float end=f.Snap>-50?Mathf.Min(f.Snap,f.Release):f.Release;
+            float w=Mathf.Clamp01((time-f.Catch)/DogTurnIn)*(1-Mathf.Clamp01((time-end)/DogTurnOut));return w*w*(3-2*w);
+        }
+        /// <summary>PrepareCapturedPose: a feeding Top Dog's posed rig turned to face along its feast (see DogFacingWeight).</summary>
+        private void DogFeastTurn(CapturedAnimation.Player rig,Actor a,float time)
+        {
+            if(rig==null||a==null||a.SourceSpec!=NativeTopDog.Spec||FirstPerson&&a.Id==LocalId)return;var f=NativeDogView.Of(a)?.Feast;
+            float w=DogFacingWeight(f,time);if(w<=0)return;var dir=Vec(f.Dir);dir.y=0;if(dir.sqrMagnitude<1e-4f)return;
+            var root=rig.Root.transform;float turn=Mathf.DeltaAngle(root.eulerAngles.y,Mathf.Atan2(dir.x,dir.z)*Mathf.Rad2Deg)*w;
+            if(Mathf.Abs(turn)>.01f)root.rotation=Quaternion.AngleAxis(turn,Vector3.up)*root.rotation;
+        }
         private sealed class DogArmRig{public readonly Transform[] Upper=new Transform[2],Lower=new Transform[2],Hand=new Transform[2],Index1=new Transform[2],Index2=new Transform[2],Middle1=new Transform[2],Pinky1=new Transform[2],Thumb3=new Transform[2];public readonly Vector3[] UpperBase=new Vector3[2],HandBase=new Vector3[2];public readonly bool[] Scaled=new bool[2];}
         private readonly Dictionary<VisualBody,DogArmRig> dogArms=new Dictionary<VisualBody,DogArmRig>();
         private readonly Dictionary<int,(int frame,Vector3 grip,Vector3 dir)> dogFeedHands=new Dictionary<int,(int,Vector3,Vector3)>();
