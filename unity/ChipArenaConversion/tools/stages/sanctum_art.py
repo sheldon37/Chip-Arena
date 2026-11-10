@@ -1294,7 +1294,7 @@ def shrine(g, b, T):
     mould_round(g, [(cx0, y0 + .5, cz0), (cx1, y0 + .5, cz0), (cx1, y0 + .5, cz1), (cx0, y0 + .5, cz1)], [(-.02, 0), (.05, 0), (.05, .06), (.02, .09), (-.02, .09)], G, T)
     mould_round(g, [(cx0, eave - .1, cz0), (cx1, eave - .1, cz0), (cx1, eave - .1, cz1), (cx0, eave - .1, cz1)], CAP, G, T)
     # the arcade round the casket: gilded shafts and round heads over velvet
-    for (along, a0, a1, at, sgn) in ((('x', cx0, cx1, cz0, -1), ('x', cx0, cx1, cz1, 1), ('z', cz0, cz1, cx0, -1), ('z', cz0, cz1, cx1, 1)) if T.detail else ()):
+    for (along, a0, a1, at, sgn) in (('x', cx0, cx1, cz0, -1), ('x', cx0, cx1, cz1, 1), ('z', cz0, cz1, cx0, -1), ('z', cz0, cz1, cx1, 1)):
         n = max(2, int(round((a1 - a0) / .55)))
         for k in range(n + 1):
             u = a0 + (a1 - a0) * k / n
