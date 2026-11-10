@@ -1,3 +1,16 @@
+## 2026-11-10 — Claude: the Glaive's chips, ten of its own (owner request, part 3 of 3)
+
+- Branch `claude/glaive-chips` (from part 1's docs, shared merged in after part 2).
+- **The owner:** "create uniquely designed chips to benefit the glaive with effects on selection".
+- **The set** (Core `NativeGlaiveChips.cs`, new; docs/GLAIVE.md "The chips"): its own tier (`glaive`, "GLAIVE SPECIAL", cyan, a tri-crescent crest), offered only to the Glaive and likely in its drafts (two guaranteed at 85%: the content's glaive rarity and odds rows). Fourth Bounce, Keen Edge (stacks twice), Twin Orbit, Shatterpoint, Magnet Return, Quick Catch, Whirlwind, Long Arc, Skimming Stone, Crescent Guard.
+- **Rules (at the owner's word; for Astra):** host-side in Runtime `NativeGlaiveAuthority.cs`, every number a const in `NativeGlaiveChips`. Shared paths touched: `Damage` gains `if(!forced)amount*=GlaiveGuardTaken(target);` (Crescent Guard's 25% while the ring is out), movement gains `speed*=GlaiveSpeed(p);` (Quick Catch's +25% for 1.5 s, and Skimming Stone's slick slowing enemies 40%). Keen Edge's bleed is the arena's damage over time (`bleed`), so its ticks show as poison ticks. Magnet Return spares bosses and the Siren's armour.
+- **The chip catalog's cap is 1024** (Core `NativeMods.MaxCatalog`, was 512): the whole catalog as the game loads it with every Rounds pack on went from 509 to 519, which the Editor's build checks refused ("Chip catalog exceeds capacity") and a host turning on every pack would have hit. Nothing on the wire depends on it; a new check counts the whole catalog (GlaiveChipChecks).
+- **The picks** (Runtime `NativeGlaiveChipArt.cs`, new): each chip its own animation over the INSTALLED card, with its own sounds (two new synthesized ones, `ring-chime` and `ring-skip`); the draft holds 5.2 s; Reduced effects keeps one soft glow. In the world (Core `NativeGlaiveFx.cs`): Twin Orbit's ring of light, Shatterpoint's shards, the slick, Quick Catch's speed lines, Crescent Guard's crescents and its cut-down shots, the dragged enemy's light, Keen Edge's drips.
+- **Animation impact:** none on the class's own moves' timing; the chips change ranges, distances and damage as listed (Long Arc's loop is longer in the same time, Whirlwind reaches 3.5 m).
+- **Checks:** CoreTests `--glaive-chips` (333), `--glaive` (5344), the full suite, the Unity compile, the Editor's build checks (the Glaive simulation's chip rules among them, 58).
+- **Seen in the Editor:** all ten picks in a real draft (the ricochets with their count, the cut and seal, the twin rings, the shatter, the field lines, the boomerang, the vortex, the long loop, the skips, the dome and the cut-down shot).
+- **Not seen / not done:** the chips' effects in a match (checked by the rules' numbers and the simulation, not on screen); Quick Catch's speed is not in a guest's movement prediction (small corrections for 1.5 s, as with the class's other host-side movement); played by a person.
+
 ## 2026-11-10 — Claude: the Glaive's intro, Crescent Return (owner request, part 2 of 3)
 
 - Branch `claude/glaive-polish` (part 1 merged at `ea8d69a8`).

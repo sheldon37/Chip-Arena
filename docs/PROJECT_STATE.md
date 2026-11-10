@@ -1,3 +1,5 @@
+2026-11-10 Claude (`claude/glaive-chips`): the Glaive's ten chips with their own picks; the chip catalog's cap is now 1024. The Glaive request (design, moves, intro, chips) is complete.
+
 2026-11-10 Claude (`claude/glaive-polish`): the Glaive's own intro, Crescent Return (ricochets in the dark, a mid-air catch, an orbit carving the floor, one great cut, the hero hold). Its chips are next.
 
 2026-11-10 Claude (`claude/glaive-polish`): the Glaive redesigned as the tri-crescent (three pitched crescent fangs, a lit edge; it reads even edge on) and every move reworked to use the whole body (deep coils, a leaping whirl, wound throws). Its intro and chips are next on the same branch.
