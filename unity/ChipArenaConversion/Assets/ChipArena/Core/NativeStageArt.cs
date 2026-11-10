@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The distances (m, eye to a piece's bounds) inside which the Fine and the Mid tier draw.</summary>
         public const float FineReach=16f,MidReach=38f;
         /// <summary>The stages with art: map id, bank name. A new stage adds its line.</summary>
-        private static readonly (string map,string bank)[] Banks={(NativeSanctumLooks.MapId,"ChipArenaStageSanctum"),(NativeClubLooks.MapId,NativeSubstationArt.Bank)};
+        private static readonly (string map,string bank)[] Banks={(NativeSanctumLooks.MapId,"ChipArenaStageSanctum"),(NativeClubLooks.MapId,NativeSubstationArt.Bank),(NativeCausewayLooks.MapId,"ChipArenaStageCauseway")};
         public static string BankOf(string mapId){if(mapId==null)return null;foreach(var b in Banks)if(b.map==mapId)return b.bank;return null;}
         /// <summary>The tier a piece draws at from the eye (the low graphics tier always draws the Low one).</summary>
         public static int TierAt(float distance,bool low)=>low?Low:distance<FineReach?Fine:distance<MidReach?Mid:Low;
@@ -99,6 +99,13 @@ namespace ChipArena.UnityConversion
             Place[o+4]=(float)(2*(x*y+z*w));Place[o+5]=(float)((1-2*(x*x+z*z))*sy);Place[o+6]=(float)(2*(y*z-x*w));Place[o+7]=(float)ty;
             Place[o+8]=(float)(2*(x*z-y*w));Place[o+9]=(float)(2*(y*z+x*w)*sy);Place[o+10]=(float)(1-2*(x*x+y*y));Place[o+11]=(float)tz;
             int t=Count*4;Tint[t]=(float)r;Tint[t+1]=(float)g;Tint[t+2]=(float)b;Tint[t+3]=0;Slot[Count]=slot;Count++;
+        }
+        /// <summary>A draw at translation t, rotation q, scaled along the prop's own axes (a unit crystal, rock or shard at its
+        /// size).</summary>
+        public void AddScaled(int slot,double tx,double ty,double tz,in FactoryQ q,double sx,double sy,double sz,double r=1,double g=1,double b=1)
+        {
+            if(Count>=Capacity)return;int o=Count*12;Add(slot,tx,ty,tz,q,sy,r,g,b);
+            Place[o]*=(float)sx;Place[o+4]*=(float)sx;Place[o+8]*=(float)sx;Place[o+2]*=(float)sz;Place[o+6]*=(float)sz;Place[o+10]*=(float)sz;
         }
         /// <summary>A prop of unit length along its y (a chain, a rope) laid from one point to another.</summary>
         public void Span(int slot,double x0,double y0,double z0,double x1,double y1,double z1)
