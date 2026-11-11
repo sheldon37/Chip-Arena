@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         public static readonly Vector3 HatPivot=new Vector3(0,NativeModelHatMeshes.BandY,NativeModelHatMeshes.BandZ);
         private static readonly string[] FitHats={"cap","beanie","top","wizard","cowboy","cone","crown","antenna","halo",NativeAuditorHalo.Hat,NativeHatLooks.SheldonHead};
         private static readonly float[] FitScale={1,1,1,1,1,1,1,1,1,1,1},
-            FitLift={.03f,.03f,.03f,.03f,.03f,.03f,.03f,.03f,.03f,.03f,.03f},
+            FitLift={.03f,.03f,.03f,.045f,.03f,.03f,.03f,.03f,.03f,.03f,.03f}, // (the wizard's floppy brim higher, clear of the eyes)
             FitAhead={.022f,.022f,.022f,.022f,.022f,.022f,.022f,.022f,.022f,.022f,.022f};
         /// <summary>Hat `hat`'s fit on the Hot Dog's crown: a point p of it (the head bone's frame) goes to p * scale + move (a hat
         /// not listed takes the cap's).</summary>
