@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
                 {
                     float big=kind=="cavity"?1.3f:1;
                     if(i==0){sheet=pick?PuffA:PuffB;dir=along+up*.15f+side*R(4)*.3f;size=(.5f+.26f*s)*big;}
-                    else if(i==1){sheet=pick?JetA:JetB;dir=-along*.8f+normal*.4f+up*.2f+side*R(4)*.3f;size=(.32f+.12f*s)*big;life*=.8f;}
+                    else if(i==1){sheet=pick?JetA:JetB;dir=-along*.8f+normal*.4f+up*.2f+side*R(4)*.3f;size=(.42f+.14f*s)*big;life*=.8f;}
                     else if(i==2){sheet=Spray;dir=along*.7f+up*.5f+side*R(4)*.5f;size=(.5f+.22f*s)*big;}
                     else{sheet=Burst;dir=normal*.4f+along*.4f+up*.8f;size=.8f+.3f*s;life=.62f+.14f*H(2);}
                     break;
@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
                     // Cuts and severs: the jet is cast off along the blade's travel, the puff comes out of the wound.
                     float big=kind=="sever"?1.25f:1;
                     if(i==0){sheet=pick?JetA:JetB;dir=along*.8f+normal*.45f+up*.2f+side*R(4)*.2f;size=(.68f+.34f*s)*big;}
-                    else if(i==1){sheet=pick?PuffA:PuffB;dir=normal*.9f+up*.35f+along*R(4)*.5f;size=(.5f+.24f*s)*big;}
+                    else if(i==1){sheet=pick?PuffA:PuffB;dir=normal*.9f+up*.35f+along*R(4)*.5f;size=(.58f+.26f*s)*big;}
                     else if(i==2){sheet=Spray;dir=along*.5f+normal*.3f+up*.75f+side*R(4)*.4f;size=(.58f+.26f*s)*big;}
                     else{sheet=Burst;dir=normal*.5f+up*.9f+along*.3f;size=.8f+.3f*s;life=.62f+.14f*H(2);}
                     break;
