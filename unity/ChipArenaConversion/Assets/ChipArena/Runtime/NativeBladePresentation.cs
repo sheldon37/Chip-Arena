@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Where the saya hangs in the hips' upright frame (+x the body's right, +y up, +z ahead; at the pelvis joint, turned with
         /// the line between the hip joints): its mouth at the left front of the belt (where the pack's own scabbard sits, 13 cm above the
         /// hip joint), pointing back, out past the hip and a little down. Its own x points down, so the curve (the edge side) is up.</summary>
-        private static readonly Vector3 SayaAt=new Vector3(-.13f,.1f,.12f),SayaAxis=new Vector3(-.35f,-.25f,-.9f);
+        private static readonly Vector3 SayaAt=new Vector3(-.13f,.1f,.12f),SayaAxis=new Vector3(-.33f,-.13f,-.93f);
         /// <summary>Whether a Katana's blade is in its saya now: its record's iai, or its entrance's script.</summary>
         internal bool KatanaSheathed(Actor a,float time)=>a!=null&&a.Id==bladeIntroActor&&bladeIntro!=null?bladeIntro.Sheathed(bladeIntroClock):NativeKatana.Sheathed(NativeBladeView.Katana(a),time);
         private NativeBladeIntro bladeIntro;private int bladeIntroActor=-1;private float bladeIntroClock;
