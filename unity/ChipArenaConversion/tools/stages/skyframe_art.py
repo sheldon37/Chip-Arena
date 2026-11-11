@@ -529,6 +529,12 @@ def frame(g, L, T):
             y = fy + s * st
             if c['ring'][s]:
                 ibeam(g, (c['x'], y, c['z']), (d['x'], y, d['z']), .24, .46, P, T)
+            if c['ring'][s] and s < 2 and T.i < 2:
+                for hh in (.75, 1.3):
+                    rod(g, (c['x'], y + hh, c['z']), (d['x'], y + hh, d['z']), .022, F['paint-yellow'], 4)
+                for k in range(1, 4):
+                    px, pz = c['x'] + (d['x'] - c['x']) * k / 4, c['z'] + (d['z'] - c['z']) * k / 4
+                    rod(g, (px, y + .23, pz), (px, y + 1.3, pz), .022, F['paint-yellow'], 4)
             if c['radial'][s]:
                 kx, kz = corept(c)
                 ibeam(g, (c['x'], y, c['z']), (kx, y, kz), .2, .4, P, T)
@@ -592,6 +598,69 @@ def frame(g, L, T):
     lathe(g, [(1.5, 0), (1.6, .25), (1.6, .9), (1.75, 1.06)], (0, my, 0), F['crane-dark'], (16, 10, 8)[T.i], cap1=True)
 
 
+def overhead(g, L, T):
+    """What hangs over the garden, above head height: strings of lights under the gallery from column to column, hanging
+    troughs along the gallery's edge with vines down to just over 2 m, a glass canopy over each pavilion door."""
+    cols = L['skyframe']['frame']['columns']
+    n = len(cols)
+    for ci, c in enumerate(cols):
+        d = cols[(ci + 1) % n]
+        # the string hangs between the columns' inner faces, sagging to 2.5 m
+        seg = (14, 8, 4)[T.i]
+        pts = []
+        for k in range(seg + 1):
+            t = k / seg
+            pts.append((c['x'] + (d['x'] - c['x']) * t, 3.05 - .5 * math.sin(math.pi * t), c['z'] + (d['z'] - c['z']) * t))
+        for a, b in zip(pts, pts[1:]):
+            rod(g, a, b, .012, F['cable'], 3)
+        if T.i < 2:
+            for k in range(1, seg):
+                p = pts[k]
+                blob(g, (p[0], p[1] - .07, p[2]), .055, T, k, (F['lamp'], F['lamp'], F['lamp']), lumps=0, sides=5)
+    if T.i < 2:
+        for side in range(4):
+            for k in range(-2, 3):
+                a = k * 2.6 + (.6 if side % 2 else -.6)
+                x, z, nx, nz = ((-9.0, a, -1, 0), (9.0, a, 1, 0), (a, -9.0, 0, -1), (a, 9.0, 0, 1))[side]
+                if hashf(side, k, 77) < .25:
+                    continue
+                ux, uz = abs(nz), abs(nx)
+                # a trough hung under the edge beam, leaves spilling over it, vines down to 2.15 m
+                box(g, x + nx * .04 - ux * .55 - (.12 if nx else 0), x + nx * .04 + ux * .55 + (.12 if nx else 0), 2.86, 3.14, z + nz * .04 - uz * .55 - (.12 if nz else 0), z + nz * .04 + uz * .55 + (.12 if nz else 0), F['stone'], T, .03, cell=0, skip=('+y',))
+                for j in range(5 if T.fine else 3):
+                    o = (j - (2 if T.fine else 1)) * (.24 if T.fine else .4)
+                    ln2 = .25 + .5 * hashf(side, k, j)
+                    w = .09 + .05 * hashf(side, k, j, 1)
+                    f = F[('leaf', 'leaf-light', 'leaf-dark')[j % 3]]
+                    px, pz = x + nx * .18 + ux * o, z + nz * .18 + uz * o
+                    g.face(((px - ux * w, 2.86 - ln2, pz - uz * w), (px + ux * w, 2.86 - ln2, pz + uz * w), (px + ux * w * 1.3, 3.1, pz + uz * w * 1.3), (px - ux * w * 1.3, 3.1, pz - uz * w * 1.3)), f, (nx, 0, nz))
+                    g.face(((px - ux * w, 2.86 - ln2, pz - uz * w), (px + ux * w, 2.86 - ln2, pz + uz * w), (px + ux * w * 1.3, 3.1, pz + uz * w * 1.3), (px - ux * w * 1.3, 3.1, pz - uz * w * 1.3)), f, (-nx, 0, -nz))
+                blob(g, (x + nx * .04, 3.13, z + nz * .04), .34, T, side * 10 + k + 20, fins(('leaf-light', 'leaf', 'leaf-dark')), squash=(1.5 if ux else 1, .45, 1.5 if uz else 1), sides=(8, 6, 5)[T.i])
+    for i in kit.ids(L, 'skyframe-pavilion-'):
+        if '-head-' not in i or T.i == 2:
+            continue
+        x0, x1, y0, y1, z0, z1 = blk(L, i)
+        lx = (x1 - x0) >= (z1 - z0)
+        # outward: away from the pavilion's middle
+        pc = (-20.0, -11.3) if x0 < 0 else (20.0, 11.3)
+        if lx:
+            s = 1 if (z0 + z1) / 2 > pc[1] else -1
+            zf = z1 if s > 0 else z0
+            box(g, x0 - .2, x1 + .2, y0 + .28, y0 + .32, min(zf, zf + s * 1.3), max(zf, zf + s * 1.3), F['glass'], None, 0, cell=0)
+            for x in (x0 - .2, x1 + .2):
+                beam(g, (x, y0 + .25, zf), (x, y0 + .25, zf + s * 1.3), .05, .1, F['steel'])
+                rod(g, (x, y1 + .5, zf), (x, y0 + .3, zf + s * 1.2), .012, F['stainless'], 3)
+            beam(g, (x0 - .2, y0 + .25, zf + s * 1.3), (x1 + .2, y0 + .25, zf + s * 1.3), .05, .1, F['steel'])
+        else:
+            s = 1 if (x0 + x1) / 2 > pc[0] else -1
+            xf = x1 if s > 0 else x0
+            box(g, min(xf, xf + s * 1.3), max(xf, xf + s * 1.3), y0 + .28, y0 + .32, z0 - .2, z1 + .2, F['glass'], None, 0, cell=0)
+            for z in (z0 - .2, z1 + .2):
+                beam(g, (xf, y0 + .25, z), (xf + s * 1.3, y0 + .25, z), .05, .1, F['steel'])
+                rod(g, (xf, y1 + .5, z), (xf + s * 1.2, y0 + .3, z), .012, F['stainless'], 3)
+            beam(g, (xf + s * 1.3, y0 + .25, z0 - .2), (xf + s * 1.3, y0 + .25, z1 + .2), .05, .1, F['steel'])
+
+
 def static_scene(L, T):
     g = Geo()
     garden(g, L, T)
@@ -603,6 +672,7 @@ def static_scene(L, T):
     pavilions(g, L, T)
     planting(g, L, T)
     frame(g, L, T)
+    overhead(g, L, T)
     import skyframe_props as props
     props.fixed(g, L, T)
     return g

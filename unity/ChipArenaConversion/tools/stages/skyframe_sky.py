@@ -120,7 +120,7 @@ def skyline(L):
                 for sz in (-1, 0, 1):
                     box(t, -w * .42, w * .42, yy - .4, yy + .4, sz * d * .42 - .3, sz * d * .42 + .3, F['primer'], None, 0, cell=0)
                 for sx in (-1, 1):
-                    box(t, sx * w * .42 - .3, sx * w * .42 + .3, yy - .4, yy + .4, -d * .42, d * .42, F['primer'], None, 0, cell=0)
+                    box(t, sx * w * .42 - .3, sx * w * .42 + .3, yy - .5, yy + .3, -d * .42, d * .42, F['primer'], None, 0, cell=0)
             box(t, -.9, .9, top, top + 30, -.9, .9, F['crane'], None, 0, cell=0)
             box(t, -1.2, 34, top + 30, top + 31.2, -.7, .7, F['crane'], None, 0, cell=0)
             box(t, -12, -1.2, top + 30, top + 31.2, -.7, .7, F['crane'], None, 0, cell=0)
@@ -145,7 +145,8 @@ def skyline(L):
 def sea_height(x, z):
     p = np.array([[x * .004, 0.0, z * .004]])
     q = np.array([[x * .013 + 7, 3.0, z * .013 - 5]])
-    return (sk.fbm(p, 1.0, 3, 5)[0] - .5) * 30 + (sk.fbm(q, 1.0, 2, 9)[0] - .5) * 9
+    w = np.array([[x * .045 - 3, 1.0, z * .045 + 11]])
+    return (sk.fbm(p, 1.0, 3, 5)[0] - .5) * 30 + (sk.fbm(q, 1.0, 2, 9)[0] - .5) * 12 + (sk.fbm(w, 1.0, 2, 13)[0] - .5) * 5
 
 
 def sea(L):
@@ -153,8 +154,8 @@ def sea(L):
     g = Geo()
     cy = L['skyframe']['cloudY'] - 6
     sx, sy, sz = L['skyframe']['sun']
-    radii = [0, 30, 60, 95, 135, 180, 235, 300, 380, 480, 600, 750, 930, 1150, 1400, 1700]
-    seg = 56
+    radii = [0, 14, 28, 42, 56, 70, 85, 100, 116, 133, 151, 170, 190, 212, 236, 262, 292, 326, 365, 410, 462, 522, 592, 675, 772, 885, 1020, 1180, 1370, 1700]
+    seg = 72
     H = {}
     def pt(i, k):
         k %= seg
@@ -181,17 +182,17 @@ def sea(L):
                 pts, ns = pts[1:], ns[1:]
             my = sum(p[1] for p in pts) / len(pts) - cy
             lit = sum(n[0] * sx + n[1] * sy + n[2] * sz for n in ns) / len(ns)
-            f = F['cloud-top'] if (lit > .36 or my > 7) else (F['cloud-low'] if (lit < .22 and my < -2) else F['cloud-mid'])
+            f = F['cloud-mid']
             g.face(pts, f, normals=ns)
     shapes = [props.cloud(v) for v in range(4)]
-    for i in range(64):
+    for i in range(120):
         a = hashf(431, i) * 2 * math.pi
-        r = 75 + (hashf(431, i, 1) ** .8) * 1100
+        r = 48 + (hashf(431, i, 1) ** 1.5) * 1150
         x, z = math.sin(a) * r, math.cos(a) * r
         if abs(z) > 70 and abs(z) < 190 and r < 520:
             continue                                   # the drifting islands' lanes stay clear
-        hx = (30 + hashf(431, i, 2) * 60) * (1 + r / 700)
-        hy = hx * (.2 + .16 * hashf(431, i, 3))
+        hx = (13 + hashf(431, i, 2) * 30) * (1 + r / 260)
+        hy = hx * (.24 + .2 * hashf(431, i, 3))
         hz = hx * (.6 + .3 * hashf(431, i, 4))
         yaw = hashf(431, i, 5) * 6.28
         c, s = math.cos(yaw), math.sin(yaw)
