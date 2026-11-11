@@ -571,9 +571,9 @@ namespace ChipArena.UnityConversion
             if(m.HasHold)
             {
                 // On the hand as drawn, at any weight (a part-blended hand carries its weapon too).
-                // (The Katana's blade turned over for the sheathing as the pack turns it, Core NativeKatanaSaya.Turn.)
-                var held=m.HoldRotation;if(body.SayaFrame==Time.frameCount&&body.SayaTurn>0){var q=NativeKatanaSaya.SheatheTurn;held=Quaternion.Slerp(Quaternion.identity,new Quaternion(q.X,q.Y,q.Z,q.W),body.SayaTurn)*held;}
-                weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*held);
+                weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);
+                // The Katana's blade turned over for the sheathing as the pack turns it, in the hand's frame (Core NativeKatanaSaya.Turn).
+                if(body.SayaFrame==Time.frameCount&&body.SayaTurn>0){var q=NativeKatanaSaya.SheatheTurn;weaponHand.rotation=m.RightHand.rotation*Quaternion.Slerp(Quaternion.identity,new Quaternion(q.X,q.Y,q.Z,q.W),body.SayaTurn)*m.HoldRotation;}
                 if(m.LeftHand!=null&&m.Set.Spec!="greatsword")offHand.SetPositionAndRotation(m.LeftHand.position+m.LeftHand.rotation*m.LeftHoldPosition,m.LeftHand.rotation*m.LeftHoldRotation);
                 // A raised gun's barrel turned onto the aim (about its grip, a little): its rounds leave its muzzle. A raised bow's
                 // likewise, about its riser: its arrow line on the aim.
