@@ -146,7 +146,7 @@ internal static class FactoryArtChecks
             var breakable=map.blocks.Where(b=>b.role!="static").ToArray();
             Check(breakable.Length==10&&breakable.All(b=>sp.Blocks.ContainsKey(b.id)&&sp.Blocks[b.id].All(p=>p>=0)&&sp.Blocks[b.id].Distinct().Count()==3),"every breakable crate, pallet stack and drum pallet has its model in three tiers");
             Check(slots.All(s=>sp.Rig.ContainsKey(s)&&sp.Rig[s].All(p=>p>=0)),"every rig slot has its model in every tier ("+string.Join(",",slots.Where(s=>!sp.Rig.ContainsKey(s)))+")");
-            Check(sp.Static.Count>=40&&sp.Static.All(c=>c.Props.Distinct().Count()==3),"the static chunks, each in three tiers");
+            Check(sp.Static.Count>=30&&sp.Static.All(c=>c.Props.Distinct().Count()==3),"the static chunks, each in three tiers");
             // the play space: below 2 m over its floor (the slab, the galleries, catwalks, landings and pulpit decks) the Fine art stands on
             // a block or keeps within .25 m of one, so nothing stands where no collider is; nothing stands in a spawn's capsule
             var boxes=map.blocks.Select(b=>(x0:b.pos.x-b.size.x/2,x1:b.pos.x+b.size.x/2,y0:b.pos.y-b.size.y/2,y1:b.pos.y+b.size.y/2,z0:b.pos.z-b.size.z/2,z1:b.pos.z+b.size.z/2)).ToArray();

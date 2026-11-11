@@ -344,3 +344,19 @@ Not done / not seen:
   no bank line; the fallback is checked by source in ClubArtChecks). Native Windows build, multiplayer guests, the killcam on
   the art and the main menu's preview: not run.
 - The lit LED screens are still boxes by design; the far backdrop is still box-built.
+
+## 11. The Factory (`factory`): the art pass on an older stage
+
+2026-11-11 · branch `claude/artpass-factory`. Its own page: docs/arenas/FACTORY-ART.md (what is modelled, what stays boxes, the pilot
+columns, the numbers). What it adds to the recipe:
+- **A kit without family lists**: `NativeFactoryKit.Writer` logs each part's kind and owner (the block, flight or hazard it dresses)
+  only for the layout export (`Build(..., log: true)`); the script derives the family from the owner's id.
+- **A point-symmetric map modelled once**: every south / B block is built as its north / A twin and turned half round
+  (`factory_kit.turned`, `factory_art.canonical`), its kit parts with it, so doors, operator sides and forks face as the kit's do.
+- **Kept static panes**: the skylights' glazing stays the kit's lit boxes (no sun shadow), packed apart (`kitKept`).
+- **The lift's reach is the tier's whole lift** (`lift_coplanar(eps=LIFT_TIER - .2 mm, passes=12)`): a kit that paints its floor in
+  3 to 12 mm layers is closer than the Mid and Low tiers' depth step even where nothing is exactly coplanar.
+- **Fewer, larger chunks for one open room** (20 m cells, two bands: 36 chunks): each chunk renderer is a draw in every shadow
+  cascade.
+- **Pilot columns of an older stage** go through `open_stage` with the nav computed before the columns open, so the nav (and the
+  catalogue's size) does not change.
