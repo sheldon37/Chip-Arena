@@ -226,5 +226,8 @@ def far(L):
 
 def bank_far(sb, L):
     for name, g in far(L):
+        if name in ('tower', 'turbines', 'skyline'):
+            # seen from tens to hundreds of metres: faces 2 cm apart or closer still fight there, and stand 5 cm apart instead
+            print('far %-8s coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % ((name,) + sk.lift_coplanar(g, eps=.02, lift=.05)))
         bk = sk.Bake(g, None, floors=(), seed=5)
         sb.add('static/%s/2' % name, 'static', sk.to_mesh('static/%s/2' % name, g, bk))
