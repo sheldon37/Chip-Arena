@@ -83,7 +83,7 @@ internal static class EmporiumChecks
         var stems=Enumerable.Range(0,kit.Count).GroupBy(i=>kit.Parent[i]<0?"(overhead)":Regex.Replace(map.blocks[kit.Parent[i]].id,@"-(n|s|e|w|a|b|\d+)(?=-|$)","")).Select(g=>(g.Key,g.Count())).OrderByDescending(x=>x.Item2).Take(10);
         Console.WriteLine("   kit parts by stem: "+string.Join(", ",stems.Select(x=>x.Item1.Replace("emporium-","")+" "+x.Item2)));
         var unstandable=map.pilotBlocks;
-        bool Standable(ContentBlock b)=>!unstandable.Any(p=>Math.Abs(p.center.x-b.pos.x)<.01&&Math.Abs(p.center.z-b.pos.z)<.01&&Math.Abs(p.bottom-(b.pos.y+b.size.y/2-.1f))<.02);
+        bool Standable(ContentBlock b)=>!unstandable.Any(p=>!p.bots&&Math.Abs(p.center.x-b.pos.x)<.01&&Math.Abs(p.center.z-b.pos.z)<.01&&Math.Abs(p.bottom-(b.pos.y+b.size.y/2-.1f))<.02);
         int over=0;
         for(int i=0;i<kit.Count;i++)
         {

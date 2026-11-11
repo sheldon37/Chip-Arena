@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Integrate Claude's frozen stage layouts, adding capsule-clear, supported navigation.
-No changes to authored geometry, identifiers, materials or hazard timing; the new stages' pilot columns are filtered (open_tops).
+No changes to authored geometry, identifiers, materials or hazard timing; the M1 maps' pilot columns are filtered (open_tops), the four new
+stages' kept only at the map's edges and, for bots, at lethal drops (open_stage).
 """
 import importlib.util,json,math
 from pathlib import Path
@@ -78,8 +79,10 @@ def navigation(m):
 # it: standing body .9 + jump apex 8.5^2/(2*23) + the .85 head test in NativeMapRules.ExcludeTops. No fall damage exists.
 # Sides past the bounds count: only bots, abilities and teleports are clamped to them (NativeMapRules.Clamp), not walking pilots.
 REACH=3.4
-def open_tops(m):
-    boxes=[bounds(b) for b in m['blocks']];kept=[]
+def column_sides(m):
+    """Each pilot column's id -> (lethal: a side opens onto a drop with no floor under it, rise: how far above each floor beside it
+    its bottom stands)."""
+    boxes=[bounds(b) for b in m['blocks']];out={}
     def floor(x,z,below):
         tops=[b[1][1] for b in boxes if b[0][0]-.001<=x<=b[0][1]+.001 and b[2][0]-.001<=z<=b[2][1]+.001 and b[1][1]<=below+.05]
         return max(tops) if tops else None
@@ -91,13 +94,36 @@ def open_tops(m):
                 f=floor(x,z,bottom)
                 if f is None:lethal=True
                 else:rise.append(bottom-f)
+        out[p['id']]=(lethal,rise)
+    return out
+def open_tops(m):
+    sides=column_sides(m);kept=[]
+    for p in m['pilotBlocks']:
+        lethal,rise=sides[p['id']]
         if lethal or not rise or min(rise)>REACH:kept.append(p)
     print(m['id'],'pilot columns',len(m['pilotBlocks']),'->',len(kept));m['pilotBlocks']=kept
+# Owner (2026-11-10), on the four new stages: "remove the barriers that allow us to jump over things ... On the bridge, we can let
+# people get knocked off the map. Its a instant death when falling off". There a column stays for everyone only where it keeps
+# pilots inside the map (EDGES: the outer walls' caps, the club's crowd barrier and its mezzanines' rails over the crowd pit, the
+# Sanctum's vault) or where the art hangs too close over a top to stand on it (OVERHANG: the club's lighting towers under their truss and
+# its DJ cube under its rig, the Causeway's spires and gables under their floating crown stones). A column at a lethal drop (the Causeway's rails, parapets and crown edges) stops only bots (`bots`: they vault
+# whatever their obstacle ray hits; NativeMapRules.ExcludeTops), so a player can jump over or be knocked over it and fall. Every
+# other column over a top goes: a double jump (daggers, bow, chips) reaches the 3.9 m ovens, altars and gates, and a pilot may
+# stand on anything they can reach.
+EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':()}
+OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-')}
+def open_stage(m):
+    sides=column_sides(m);keep=EDGES[m['id']]+OVERHANG.get(m['id'],());kept=[];bots=0
+    for p in m['pilotBlocks']:
+        if keep and p['id'].startswith(keep):kept.append(p)
+        elif sides[p['id']][0]:kept.append(dict(p,bots=True));bots+=1
+    print(m['id'],'pilot columns',len(m['pilotBlocks']),'->',len(kept),'(bots only:',str(bots)+')');m['pilotBlocks']=kept
 path=ROOT/'unity/ChipArenaConversion/Assets/Conversion/Resources/UnityMaps.json'
 content=json.loads(path.read_text())
 for name,fn,song in [('factory','unity_json','factory-anvil-loop'),('cybercity','draft','cybercity-neon-riot')]+[(name,'unity_json','factory-anvil-loop' if name in ('harbor','rig','training') else 'cybercity-neon-riot') for name in ('breakwater','harbor','skyframe','rig','polar','training')]+[('club','unity_json','cybercity-neon-riot')]+[('emporium','unity_json','cybercity-neon-riot')]+[('causeway','unity_json','skyframe-rising-motif')]+[('sanctum','unity_json','moonlit-wilderness')]:
     m=draft(name,fn);m.pop('killVolumes',None);m['music']=song;m['rotation']=name!='training'
-    if name not in ('factory','cybercity'):open_tops(m)
+    if name in EDGES:open_stage(m)
+    elif name not in ('factory','cybercity'):open_tops(m)
     navigation(m)
     content['maps']=[old for old in content['maps'] if old['id']!=name]+[m]
 # LF on every platform: the lock pins the exact bytes.

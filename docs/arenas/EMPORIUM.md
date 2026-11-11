@@ -22,8 +22,9 @@ on its plinth. Two team kitchens face each other across the hall: the Ketchup Ki
 ## Layout (58 x 46 m, point symmetric)
 
 `docs/arenas/scripts/emporium_m1.py` is the draft and its checks (run it: plans, LOS, raster reachability, timings). Bounds
-x ±29, z ±23, ceiling 16, killY -6; 250 blocks (+ floor), 12 breakable, 29 pilot columns (all kept by `open_tops`: walls, ovens,
-kitchen walls, the plinth, towers and press heads are unstandable). Levels: the floor (0), the two bun bridges (2.4) and the two
+x ±29, z ±23, ceiling 16, killY -6; 250 blocks (+ floor), 12 breakable, 8 pilot columns (owner 2026-11-10: "remove the barriers that
+allow us to jump over things": only the outer walls' caps for everyone, and the four shelves' by the walls for bots; the ovens,
+fryers, kitchen walls, the plinth, towers and press heads can be stood on by anyone who reaches them). Levels: the floor (0), the two bun bridges (2.4) and the two
 sauce balconies (3.6).
 
 - **The kitchen line** (mid band, z -8..8): the Big Dog plinth at the centre (full cover), a bun press either side (x ±6.5),

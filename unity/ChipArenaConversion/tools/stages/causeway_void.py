@@ -334,6 +334,9 @@ def far(L, T):
 def bank_far(sb, L, no_ao):
     T = sk.Tier(1)
     items = far(L, T)
+    # the ruins far out in the void draw 60-150 m off (the depth buffer's step about 2 cm there): their coplanar faces parted wider
+    for name, g in items:
+        print('far %-8s coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % ((name,) + sk.lift_coplanar(g, eps=.02, lift=.05)))
     geos = [g for _, g in items]
     aos = [None] * len(geos)
     if not no_ao:

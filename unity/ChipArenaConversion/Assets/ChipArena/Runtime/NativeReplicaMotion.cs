@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         }
         private V3 ConstrainPrediction(V3 old,V3 desired)
         {
-            desired=NativeMapRules.ExcludeTops(Map,desired);
+            desired=NativeMapRules.ExcludeTops(Map,desired,false);
             return Vec(NativeGroundMotor.Constrain(root.scene.GetPhysicsScene(),Vec(old),Vec(desired),PoolStep));
         }
         private bool PredictionGrounded(V3 position)=>NativeGroundMotor.Probe(root.scene.GetPhysicsScene(),Vec(position)).Found;

@@ -825,6 +825,177 @@ class StageBank:
         return path
 
 
+# ---------------------------------------------------------------------------------------------------------------------------
+# Coplanar faces (owner 2026-11-10: "We need to fix the Z-Fighting on the new maps")
+# ---------------------------------------------------------------------------------------------------------------------------
+# m a stacked face stands proud of the face under it, per layer, by tier: clear of the depth buffer's step where the tier draws
+# (24 bits and the camera's .06 m near plane: about z^2 x 1e-6 m, under a millimetre at the Fine tier's 30 m, 3 mm at the Mid's
+# 55 m, 14 mm at 120 m) and under a pixel there
+LIFT_TIER = (.006, .012, .02)
+# m apart (or closer) two same-facing overlapping faces still fight at the tier's range, by tier
+NEAR_TIER = (.003, .005, .008)
+LIFT = LIFT_TIER[0]
+LIFT_MIN = 4e-3  # m2 of overlap (or a share LIFT_SHARE of the smaller face) below which two faces are left as they are
+LIFT_SHARE = .02
+
+
+def _poly2(pts, ax):
+    keep = [i for i in range(3) if i != ax]
+    return [(float(p[keep[0]]), float(p[keep[1]])) for p in pts]
+
+
+def _area2(poly):
+    s = 0.0
+    for i in range(len(poly)):
+        a, b = poly[i], poly[(i + 1) % len(poly)]
+        s += a[0] * b[1] - b[0] * a[1]
+    return s / 2
+
+
+def _clip(subject, clipper):
+    """Sutherland-Hodgman: the part of convex `subject` inside convex `clipper` (any winding)."""
+    if _area2(clipper) < 0:
+        clipper = clipper[::-1]
+    out = subject
+    for i in range(len(clipper)):
+        a, b = clipper[i], clipper[(i + 1) % len(clipper)]
+        inp, out = out, []
+        if not inp:
+            break
+        ex, ey = b[0] - a[0], b[1] - a[1]
+
+        def side(p):
+            return ex * (p[1] - a[1]) - ey * (p[0] - a[0])
+        for j in range(len(inp)):
+            p, q = inp[j], inp[(j + 1) % len(inp)]
+            sp, sq = side(p), side(q)
+            if sq >= -1e-12:
+                if sp < -1e-12:
+                    t = sp / (sp - sq)
+                    out.append((p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])))
+                out.append(q)
+            elif sp >= -1e-12:
+                t = sp / (sp - sq)
+                out.append((p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])))
+    return out
+
+
+def lift_coplanar(g, eps=None, report=None, lift=None, passes=3):
+    """Settles the z-fighting of a static scene: wherever two faces turned the same way lie in one plane (within `eps`) and
+    overlap (the dance floor's top on the hall floor's, a panel flush on its wall, a walkway's trim on its deck: `eps` apart or
+    less, NEAR_TIER by tier, too close for the depth buffer to part at the tier's range), the smaller is set `lift` (LIFT_TIER by
+    tier) over the larger along its normal (moved only by what it lacks), a third over both again, and so on (by area, largest at
+    the bottom). Only the
+    overlapping faces move, along their own plane's normal, so nothing opens: the larger face is right under the gap. In place;
+    returns the first pass's (pairs, m2 overlapped, faces lifted, the largest lift in mm). A lift can land a face on another's
+    plane: up to `passes` passes run, until none overlap. Faces turned the other way (a panel's back on the wall) never fight."""
+    step = LIFT if lift is None else lift
+    eps = NEAR_TIER[0] if eps is None else eps
+    P, N, S, F = g.arrays()
+    nf = len(S)
+    if nf == 0:
+        return 0, 0.0, 0
+    starts = np.zeros(nf, dtype=np.int64)
+    if nf > 1:
+        starts[1:] = np.cumsum(S[:-1])
+    P64 = P.astype(np.float64)
+    # Newell normals and areas, per face
+    face_of = np.repeat(np.arange(nf), S)
+    nxt = np.arange(len(P64)) + 1
+    nxt[starts + S - 1] = starts
+    a, b = P64, P64[nxt]
+    cr = np.stack([(a[:, 1] - b[:, 1]) * (a[:, 2] + b[:, 2]), (a[:, 2] - b[:, 2]) * (a[:, 0] + b[:, 0]),
+                   (a[:, 0] - b[:, 0]) * (a[:, 1] + b[:, 1])], axis=1)
+    nrm = np.zeros((nf, 3))
+    np.add.at(nrm, face_of, cr)
+    area = np.linalg.norm(nrm, axis=1) / 2
+    ok = area > 1e-6
+    unit = np.zeros_like(nrm)
+    unit[ok] = nrm[ok] / (2 * area[ok][:, None])
+    d = np.einsum('ij,ij->i', unit, P64[starts])
+    cen = np.add.reduceat(P64, starts, axis=0) / S[:, None]
+    lo = np.minimum.reduceat(P64, starts, axis=0)
+    hi = np.maximum.reduceat(P64, starts, axis=0)
+    ax = np.argmax(np.abs(unit), axis=1)
+    # planes: the normal to 1/400 and the offset to eps; in each, a grid of 3 m cells holding every face its bounds reach (a big
+    # floor meets the small faces on it however far they are from its middle)
+    kn = np.round(unit * 400).astype(np.int64)
+    kd = np.floor(d / eps).astype(np.int64)
+    clo = np.floor(lo / 3.0).astype(np.int64)
+    chi = np.floor(hi / 3.0).astype(np.int64)
+    planes = {}
+    for f in np.nonzero(ok)[0].tolist():
+        grid = planes.setdefault((int(kn[f, 0]), int(kn[f, 1]), int(kn[f, 2]), int(kd[f])), {})
+        for cx in range(int(clo[f, 0]), int(chi[f, 0]) + 1):
+            for cy in range(int(clo[f, 1]), int(chi[f, 1]) + 1):
+                for cz in range(int(clo[f, 2]), int(chi[f, 2]) + 1):
+                    grid.setdefault((cx, cy, cz), []).append(f)
+    U, D, AR, LO, HI, AX = unit.tolist(), d.tolist(), area.tolist(), lo.tolist(), hi.tolist(), ax.tolist()
+    over = {}  # face -> the larger faces it overlaps
+    pairs, total = 0, 0.0
+    seen = set()
+    for pk, grid in planes.items():
+        for dd in (0, 1):
+            other = planes.get((pk[0], pk[1], pk[2], pk[3] + dd))
+            if other is None:
+                continue
+            for c, fs in grid.items():
+                near = other.get(c)
+                if not near:
+                    continue
+                for i in fs:
+                    ui, di, li, hi_ = U[i], D[i], LO[i], HI[i]
+                    for j in near:
+                        if j == i:
+                            continue
+                        pair = (i, j) if i < j else (j, i)
+                        if pair in seen:
+                            continue
+                        seen.add(pair)
+                        uj = U[j]
+                        if abs(di - D[j]) > eps or ui[0] * uj[0] + ui[1] * uj[1] + ui[2] * uj[2] < .9995:
+                            continue
+                        lj, hj = LO[j], HI[j]
+                        if li[0] > hj[0] + eps or li[1] > hj[1] + eps or li[2] > hj[2] + eps or lj[0] > hi_[0] + eps or lj[1] > hi_[1] + eps or lj[2] > hi_[2] + eps:
+                            continue
+                        axis = AX[i]
+                        ov = _clip(_poly2(P64[starts[i]:starts[i] + S[i]], axis), _poly2(P64[starts[j]:starts[j] + S[j]], axis))
+                        if len(ov) < 3:
+                            continue
+                        o = abs(_area2(ov))
+                        small, big = (i, j) if AR[i] < AR[j] or AR[i] == AR[j] and i > j else (j, i)
+                        if o < LIFT_MIN and o < LIFT_SHARE * AR[small]:
+                            continue
+                        over.setdefault(small, []).append(big)
+                        pairs += 1
+                        total += o
+    # Stacked by area, the largest at the bottom: each face moved out along its normal just far enough to stand `step` over every
+    # larger face it overlaps (where that one ended up), never back. layer: how many faces it stands over, at most.
+    off, layer = {}, {}
+    for f in sorted(set(over) | {x for v in over.values() for x in v}, key=lambda f: -AR[f]):
+        need, lv = 0.0, 0
+        for bf in over.get(f, ()):
+            need = max(need, D[bf] + off.get(bf, 0.0) + step - D[f])
+            lv = max(lv, layer.get(bf, 0) + 1)
+        off[f], layer[f] = need, lv
+    moved = 0
+    if over:
+        Pn = P64.copy()
+        for f, o in off.items():
+            if o <= 0:
+                continue
+            Pn[starts[f]:starts[f] + S[f]] += unit[f] * o
+            moved += 1
+        g.p = array.array('f')
+        g.p.frombytes(Pn.astype(np.float32).tobytes())
+    deepest = max(off.values(), default=0.0) * 1000
+    if pairs and passes > 1:
+        lift_coplanar(g, eps, None, lift, passes - 1)
+    if report is not None:
+        report.append((pairs, total, moved, deepest))
+    return pairs, total, moved, deepest
+
+
 class Chunks:
     """World-space cells (size x size in plan, split at the heights `bands`) a static face falls into by its centre."""
 

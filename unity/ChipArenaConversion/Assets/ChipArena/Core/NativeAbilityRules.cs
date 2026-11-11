@@ -26,6 +26,11 @@ namespace ChipArena.UnityConversion
     {
         public const float EyeHeight=.52f,ThirdDistance=4.4f,ThirdLift=.55f,CollisionPadding=.2f,FirstFov=75,ThirdFov=60;
         public static bool FirstPerson(bool selected,bool alive,bool menu)=>selected&&alive&&!menu;
+        /// <summary>A gun's aim in third person (owner 2026-11-10: "For the guns, we don't have to go into first person when aiming, just
+        /// zoom in a little bit, focus crosshairs, and go into aiming pose"): the share of the camera's field of view it narrows to (the
+        /// sniper rifle a little more than the pistol and the machine gun); the look turns slower by the same share. First person keeps
+        /// the aim row's own sight or scope.</summary>
+        public static float AimZoom(string spec)=>spec=="rifle"?.68f:spec=="machinegun"?.84f:.86f;
         public static bool ViewModelBone(int bone)=>bone==CapturedRig.LElbow||bone==CapturedRig.LHand||bone==CapturedRig.RElbow||bone==CapturedRig.RHand;
     }
 }

@@ -19,7 +19,7 @@ Status: **implemented on the branch, seen in the Unity Editor ("Seen in the Edit
 | Hazards | the falling chandeliers (crane), the great censer (saw-rail), holy fire (burner), the toll and the crypt gates (shutter) |
 | Look | `sanctum-midnight`: the moon through the glass, candlelight, the light volume, scattering, beams, the toon grade |
 | Music | the owner's **Moonlit Ostinato** (`sanctum-theme`) |
-| Blocks | 297 (14 breakable pews), 1 pilot column (the vault), 6 hazards; nav 2043 nodes / 3244 links (442 gated) |
+| Blocks | 297 (14 breakable pews), 1 pilot column (the vault, kept: owner 2026-11-10 removed the new stages' other invisible walls), 6 hazards; nav 2043 nodes / 3244 links (442 gated) |
 
 ## The design
 

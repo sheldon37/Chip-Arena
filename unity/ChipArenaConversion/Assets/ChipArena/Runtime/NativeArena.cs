@@ -152,10 +152,13 @@ namespace ChipArena.UnityConversion
                 p.Body.linearVelocity=velocity;p.Pose.Sprinting=sprint;
             }
         }
+        /// <summary>Whether the map's bots-only columns stop this pilot (MapPilotBlock.bots): a bot's own moves, not a blow that knocks it
+        /// over a rail (owner 2026-11-10: "On the bridge, we can let people get knocked off the map").</summary>
+        private bool BotEdges(NativePilot p)=>p.Seat.bot&&p.Knockback.sqrMagnitude<1&&!(Time-p.LastAttackerAt<.75f&&p.LastAttacker!=null);
         private void StepPilot(NativePilot p)
         {
             StepExpansionPilot(p);
-            p.Body.position=Vec(NativeMapRules.ExcludeTops(Map,Vec(p.Body.position)));
+            p.Body.position=Vec(NativeMapRules.ExcludeTops(Map,Vec(p.Body.position),BotEdges(p)));
             if(KernelBusy(p))return;if(p.Input.SirenAbility==4&&StartKernelPanic(p))return;
             if(PinSirenVictim(p))return;if(PinDogVictim(p))return;if(PinBladeVictim(p))return;StepRecovery(p);
             if(Time>=p.SlowEnd&&p.SlowFactor<1){if(p.SlowFactor<=.6f)p.SlowImmune=Time+1;p.SlowFactor=1;}

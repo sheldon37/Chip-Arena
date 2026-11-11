@@ -1,3 +1,5 @@
+2026-11-10 Claude (`claude/stage-fixes`): the new stages' z-fighting settled (rebuilt banks in the Drive zip) and their invisible walls removed (bots keep the edges), the Causeway kills falls at -6, guns aim in third person. The Katana, the DEV Fangs and the three packs continue in their own session.
+
 2026-11-10 Claude (`claude/stage-art-release`): the four new stages are modelled (Blender banks in the Drive zip, the `ChipArena/StageLit` shader), the club's DJ and crowd are Grey aliens. Next: the Katana (public), the DEV Daggers and the three new packs, in their own session.
 
 2026-11-10 Claude (`claude/gun-upright`): the guns fire and aim upright (the pack clips' forward pitch straightened at the waist, the arms kept on the aim).
