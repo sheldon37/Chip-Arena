@@ -64,9 +64,10 @@ Shader "ChipArena/NativeBloodSplash"
                 float3 v=normalize(_WorldSpaceCameraPos-i.world.xyz);float3 l=_WorldSpaceLightPos0.xyz;
                 float s=c.r*_Shade;float3 albedo=i.color.rgb*min(s*sqrt(s),1.7);
                 float3 key=_LightColor0.rgb*(dot(n,l)*0.5+0.5);
-                float3 lit=albedo*(i.soft+key+i.domColor*(0.3*saturate(dot(n,i.domDir))));
+                // Never darker than a dim room's light: blood reads red in the dark stages too.
+                float3 lit=albedo*max(i.soft+key+i.domColor*(0.3*saturate(dot(n,i.domDir))),float3(0.3,0.3,0.3));
                 float fres=pow(1.0-saturate(dot(n,v)),4.0);
-                float3 shine=_LightColor0.rgb*BloodGlint(n,v,l,_Gloss,0.14)+i.domColor*BloodGlint(n,v,i.domDir,_Gloss,0.14)+i.soft*(fres*0.2);
+                float3 shine=_LightColor0.rgb*BloodGlint(n,v,l,_Gloss,0.14)+i.domColor*(BloodGlint(n,v,i.domDir,_Gloss,0.05)*0.6)+i.soft*(fres*0.2);
                 float3 col=lit+shine*_Gloss;
                 #ifdef UNITY_COLORSPACE_GAMMA
                 col=LinearToGammaSpace(max(col,0.0));

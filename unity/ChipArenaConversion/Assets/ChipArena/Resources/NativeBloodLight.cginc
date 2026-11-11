@@ -23,6 +23,8 @@ float3 BloodArenaLights(float3 world,float3 n,float wrap,out float3 domDir,out f
         sum+=_ArenaFlashColor[m].rgb*(saturate(5.0*(1.0-q))/(1.0+25.0*q)*saturate((dot(n,d/len)+wrap)/(1.0+wrap)));
     }
     sum+=MuzzleLights(world,n,wrap);
+    // The highlight's light is bounded: a bright (HDR) lamp must not wash the blood out.
+    domColor/=max(1.0,max(domColor.r,max(domColor.g,domColor.b)));
     return sum;
 }
 // A wet highlight: a tight lobe for the glint and a broad one (`sheen`) for the sheen, for a light from `l` seen along `v`.
