@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
             var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null)throw new System.InvalidOperationException("Source material shader is missing");
             Material Make(string name){var m=new Material(shader){name=name,enableInstancing=true};m.SetInt("_Cull",2);m.SetFloat("_Ink",0);materials.Add(m);return m;}
             var plain=Make("Native Standard weapon");Material heldLeft=null,heldRight=null;
-            foreach(var spec in System.Linq.Enumerable.Append(System.Linq.Enumerable.Append(System.Linq.Enumerable.Append(NativeWeaponSkins.Weapons,NativeBombs.Spec),NativeTopDog.Spec),NativeGlaive.Spec))
+            foreach(var spec in System.Linq.Enumerable.Concat(System.Linq.Enumerable.Append(System.Linq.Enumerable.Append(System.Linq.Enumerable.Append(NativeWeaponSkins.Weapons,NativeBombs.Spec),NativeTopDog.Spec),NativeGlaive.Spec),new[]{NativeKatana.Spec,NativeFangs.Spec}))
             {
                 if(!NativeWeaponModels.Designed(spec))continue;bool handHeld=armorPilot!=null&&NativeArmorLight.HandHeld(NativeWeaponSkins.PrototypeHeld(spec));
                 for(int tier=0;tier<NativeWeaponModels.Tiers;tier++)
@@ -47,8 +47,11 @@ namespace ChipArena.UnityConversion
                 foreach(var s in loose.Sections){var mesh=WeaponMeshOf(s,spec+" / loose");if(mesh!=null)looseParts.Add(new Part{Name="std-loose-"+spec,Bone=-1,Mesh=mesh,Material=plain});}
                 models[NativeWeaponSkins.StandardLoose(spec)]=looseParts.ToArray();StandardWeaponModels++;
                 // The Bombadier and the Top Dog have one finish and no Prototype Series, so its plain ids are the Standard model.
-                if(spec==NativeBombs.Spec||spec==NativeTopDog.Spec||spec==NativeGlaive.Spec){models["weapon-"+spec]=models[NativeWeaponSkins.StandardModel(spec,0)];models["loose-"+spec]=models[NativeWeaponSkins.StandardLoose(spec)];}
+                if(spec==NativeBombs.Spec||spec==NativeTopDog.Spec||spec==NativeGlaive.Spec||NativeBlades.Is(spec)){models["weapon-"+spec]=models[NativeWeaponSkins.StandardModel(spec,0)];models["loose-"+spec]=models[NativeWeaponSkins.StandardLoose(spec)];}
             }
+            // The Katana's saya (Core NativeWeaponModels.BuildSaya), worn at the hip (NativeBladePresentation.cs).
+            {var mesh=new WeaponMesh{Spec=ArenaPresentation.SayaModel,Tier=0};var k=new WeaponSculpt(mesh,0);k.Into(-1);NativeWeaponModels.BuildSaya(k);var parts=new List<Part>();
+                foreach(var s in mesh.Sections){var m=WeaponMeshOf(s,"katana saya");if(m!=null)parts.Add(new Part{Name="std-katana-saya",Bone=-1,Mesh=m,Material=plain});}models[ArenaPresentation.SayaModel]=parts.ToArray();}
             // The Standard skins' Chip modules (NativeChipModuleModels.cs), built with the models they mount on, and the body chips'
             // parts for the player's model (NativeBodyChipModels.cs).
             ChipModules();BodyChipParts();

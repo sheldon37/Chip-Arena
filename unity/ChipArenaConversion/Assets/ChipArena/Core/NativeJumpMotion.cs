@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         {
             switch(spec)
             {
-                case "sword":case NativeGlaive.Spec:return Sword;case "daggers":case NativeBombs.Spec:return Daggers;case "greatsword":case NativeTopDog.Spec:return Greatsword;case "shield":return Shield;
+                case "sword":case NativeGlaive.Spec:case NativeKatana.Spec:return Sword;case "daggers":case NativeBombs.Spec:case NativeFangs.Spec:return Daggers;case "greatsword":case NativeTopDog.Spec:return Greatsword;case "shield":return Shield;
                 case "rifle":case "machinegun":return Shooting;case "bow":case "pistol":case "emperor":case "ansatsuken":case CyberLordSpec.Id:return Unarmed;
                 case "fire":case "water":case "lightning":case "darkness":case "leet":return Staff;
                 default:return None;

@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
         // handle runs through the palm, where the fist closes (owner 2026-11-09: "On top dog, the hands are off the handle").
         private Matrix4x4 PalmGrip(CapturedAnimation.Player rig,Actor a,Matrix4x4 m,bool left)
         {
-            if(a==null||a.SourceSpec!=NativeTopDog.Spec&&a.SourceSpec!=NativeBombs.Spec&&a.SourceSpec!=NativeGlaive.Spec)return m;
+            if(a==null||a.SourceSpec!=NativeTopDog.Spec&&a.SourceSpec!=NativeBombs.Spec&&a.SourceSpec!=NativeGlaive.Spec&&!NativeBlades.Is(a.SourceSpec))return m;
             var body=VisualHolder(rig);if(body?.Binding?.Rig==null||body.Binding.Bones==null)return m;var of=body.Binding.Rig.Of;int j=left?CapturedRig.LHand:CapturedRig.RHand;
             int v=j<of.Length?of[j]:-1;if(v<0||v>=body.Binding.Bones.Length||body.Binding.Bones[v]==null)return m;var hand=body.Binding.Bones[v];
             Vector3 palm=hand.TransformPoint(left?PalmL:PalmR),o=m.GetColumn(3),z=m.GetColumn(2);if(z.sqrMagnitude<1e-10f)return m;z.Normalize();
@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
             if(StandardChips(a)){StandardDressing(rig,a,time,first,layer,camera,reach,pilot);return;}
             // (The TNT carries no Prototype pieces: they were laid out along a gun's barrel, and on the bundle a chip like Kinetic stood two glowing orange blocks out of its top: owner 2026-11-04.)
             if(spec==NativeBombs.Spec)return;
-            if(spec==NativeTopDog.Spec||spec==NativeGlaive.Spec)return;
+            if(spec==NativeTopDog.Spec||spec==NativeGlaive.Spec||NativeBlades.Is(spec))return;
             if(!first||aimMotion.Weight<=.5f)
             {
                 int count=NativeWeaponDressing.Modules(spec,pilot.Weapon.@class=="ranged",(int)pilot.Weapon.color,chips,stats,weaponPieces);

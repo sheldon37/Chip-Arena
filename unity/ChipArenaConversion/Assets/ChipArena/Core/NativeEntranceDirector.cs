@@ -268,6 +268,8 @@ namespace ChipArena.UnityConversion
             {NativeTopDog.Entrance,()=>new NativeTopDogIntro()},
             // The Glaive's Crescent Return (Core/NativeGlaiveIntro.cs; the class's own entrance, open to everyone).
             {NativeGlaiveIntro.Id,()=>new NativeGlaiveIntro()},
+            // The Katana's Crimson Moon and the Fangs' Silent Kill (Core/NativeBladeIntros.cs; each class's own entrance, on the pack's clips).
+            {NativeKatana.Entrance,()=>new NativeKatanaIntro()},{NativeFangs.Entrance,()=>new NativeFangsIntro()},
         };
         /// <summary>True for a style the director stages (the twelve weapon signatures, the procedural entrances and the Sheldon Intro).</summary>
         public static bool Directed(string style)=>style!=null&&makers.ContainsKey(style);

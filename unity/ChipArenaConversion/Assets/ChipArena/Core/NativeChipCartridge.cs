@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
     public static class NativeChipCartridge
     {
         /// <summary>The chip tiers in rank order (NativeChipRanks.RarityRank), then the dispensed-only rainbow tier.</summary>
-        public static readonly string[] Tiers={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren","bombadier",NativeDogChips.Tier,NativeGlaiveChips.Tier,"boss-siren","boss-647","boss-converter","boss-hum","boss-deepend","boss-noctiel"};
+        public static readonly string[] Tiers={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren","bombadier",NativeDogChips.Tier,NativeGlaiveChips.Tier,NativeKatanaChips.Tier,NativeFangsChips.Tier,"boss-siren","boss-647","boss-converter","boss-hum","boss-deepend","boss-noctiel"};
         public const string Rainbow="rainbow";
         public enum Metal{Steel,Titanium,Gold,BlackChrome,Gunmetal,Lacquer,Phosphor,Void,Prism}
         public enum Crest{None,Crown,Shards,Bolts,Knot,Terminal,Flames,Prism,Fuse,Crescent}
@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
             public int Ornaments=>(Seams?1:0)+(SecondInlay?1:0)+(Holo?1:0)+(Fins?1:0)+(Ring?1:0)+(Crest!=Crest.None?1:0)+(Gems?1:0)+(Fractured?1:0)+(Foil?1:0)+(Embers?1:0);
         }
         /// <summary>The scheme's rarity colour (sRGB hex): GameContent's rarities, as NativeChipCard.Rarity and NativeMachineModels.RarityColors.</summary>
-        public static int Rarity(string tier)=>NativeBossChips.IsTier(tier)?NativeBossChips.Sets[NativeBossChips.SetOf(tier)].Rarity:tier=="bombadier"?0xff7a1f:tier==NativeDogChips.Tier?0xe8322b:tier==NativeGlaiveChips.Tier?0x4fe8ff:tier=="mishima"?0xb3b5c2:tier=="ansatsuken"?0xff354e:tier=="l44t"?0x4dff83:tier=="siren"?0xb7a8ff:tier=="uncommon"?0x79e59a:tier=="rare"?0x70b5ff:tier=="epic"?0xce8aff:tier=="legendary"?0xffae55:tier=="mythic"?0xff6475:0xf1f5f9;
+        public static int Rarity(string tier)=>NativeBossChips.IsTier(tier)?NativeBossChips.Sets[NativeBossChips.SetOf(tier)].Rarity:tier=="bombadier"?0xff7a1f:tier==NativeDogChips.Tier?0xe8322b:tier==NativeGlaiveChips.Tier?0x4fe8ff:tier==NativeKatanaChips.Tier?0xff3d6e:tier==NativeFangsChips.Tier?0x7dff3a:tier=="mishima"?0xb3b5c2:tier=="ansatsuken"?0xff354e:tier=="l44t"?0x4dff83:tier=="siren"?0xb7a8ff:tier=="uncommon"?0x79e59a:tier=="rare"?0x70b5ff:tier=="epic"?0xce8aff:tier=="legendary"?0xffae55:tier=="mythic"?0xff6475:0xf1f5f9;
         public static bool Known(string tier)=>Array.IndexOf(Tiers,tier)>=0||tier==Rainbow;
         public static Look Of(string tier)
         {
@@ -54,6 +54,9 @@ namespace ChipArena.UnityConversion
                 // The Top Dog's (Core NativeDogChips): ketchup lacquer and inlay, the mustard on its crown, the crown of the top dog.
                 case NativeDogChips.Tier:return new Look(tier,0xe8322b,0xff8a6e,0xff4a3a,0xffe0b0,0x5a0a06,0xffcc22,0x140a08,0xf2e2c8,0x8a4a3a,0x1c0c08,0,Metal.Lacquer,Crest.Crown,false,false,false,false,true,false,false,false,false,false,1.9f,.55f);
                 // The Glaive's (Core NativeGlaiveChips): cold cyan glass in brushed titanium, a holographic sheen and the ring, its tri-crescent crest.
+                // The Katana's (Core NativeKatanaChips): crimson glass in black lacquer, its crescent crest; the Fangs': venom glass in black chrome, fangs (shards).
+                case NativeKatanaChips.Tier:return new Look(tier,0xff3d6e,0xffb3c6,0xff2a5a,0xffe0ea,0x4a0a1c,0xffd0dc,0x0e0608,0xfff1e6,0x8a6b72,0x22121a,0,Metal.Lacquer,Crest.Crescent,false,false,true,false,false,false,false,false,false,true,2.4f,.55f);
+                case NativeFangsChips.Tier:return new Look(tier,0x7dff3a,0xd4ff9e,0x5cff1f,0xeaffd6,0x123a06,0xc8ff9a,0x060805,0xe9f0dc,0x5f6b5a,0x101810,0,Metal.BlackChrome,Crest.Shards,false,false,true,false,false,false,false,false,false,true,2.4f,.55f);
                 case NativeGlaiveChips.Tier:return new Look(tier,0x4fe8ff,0x9ff4ff,0x3fdcf5,0xe0fcff,0x053a48,0xb8f6ff,0x060f14,0xdff6fb,0x6f8f99,0x0f2026,0,Metal.Titanium,Crest.Crescent,false,false,true,false,true,false,false,false,false,true,2.4f,.55f);
                 case "bombadier":return new Look(tier,0xff7a1f,0xffc24d,0xff6a14,0xffe6b0,0x5a1404,0xf2b90f,0x100b08,0xd8cdb4,0x57504a,0x14100c,0,Metal.Gunmetal,Crest.Fuse,false,false,false,false,false,false,false,false,true,true,1.7f,.6f);
                 // The boss relics (Core NativeBossChips): each boss's own colours, metal and crest.

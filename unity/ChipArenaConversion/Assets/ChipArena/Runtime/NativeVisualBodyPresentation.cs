@@ -440,6 +440,8 @@ namespace ChipArena.UnityConversion
             if(a.Id==dogIntroActor&&dogIntroActor>=0)DogMalletIntro(body,rig,dogIntroClock);
             // Crescent Return's ring arm keyed by hand (Core NativeGlaiveMotion.Intro).
             if(a.Id==glaiveIntroActor&&glaiveIntroActor>=0)GlaiveIntro(body,rig,glaiveIntroClock);
+            // The blade classes' entrances play the pack's clips on the model (Core NativeBladeIntros.Clip), through the arena's motion.
+            if(a.Id==bladeIntroActor&&bladeIntroActor>=0&&bladeIntro!=null&&bladeIntro.Clip(bladeIntroClock,out var introClip,out var introTime)){NativeBladeMotion.IntroActor=a.Id;NativeBladeMotion.IntroClip=introClip;NativeBladeMotion.IntroTime=introTime;VisualMotionPose(body,rig,a,bladeIntroClock);NativeBladeMotion.IntroActor=-1;}
             VisualHandFit(body,rig,held);
             body.Moved=true;
         }

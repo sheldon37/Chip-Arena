@@ -1,0 +1,280 @@
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace ChipArena.UnityConversion
+{
+    // ---- the blade classes' effects (docs/KATANA.md, docs/FANGS.md "The look"; owner 2026-11-10: "use really cool effects") ----
+    // In the pilot's weapon colour. The Katana: a crescent trail swept from the drawn blade through every cut (wider and brighter on the
+    // finisher), a hairline slash, a flash and sparks at each cut; the iai's draw flash, the line of light it leaves hanging in the air, the
+    // hairline on each one it marked, the split (the line flaring and breaking into motes and petals, a great slash across each marked one)
+    // and the click's ring at the hip; the storm's whirl of petals and wind arcs, its launch streaks; the counter's moon behind the pair. The
+    // Fangs: twin trails from both drawn blades, venom splashing from each cut and dripping from the poisoned, the shadow step's smoke at both
+    // ends, the veil's billow (and a thin smoke at the feet while it lasts, for the wielder and allies), the knives' flight reconstructed from
+    // the throw, the bloom's green burst on each poisoned one, the takedown's dark flash. Each chip's moment too. Presentation state: only the
+    // trails remember past frames; the rest is a pure function of the record and the clock.
+    public sealed partial class NativeTechniqueFx
+    {
+        private static readonly Vector3 BladeWhite=new Vector3(1,1,1),BladeVenomDark=new Vector3(.05f,.12f,.03f),SmokeGrey=new Vector3(.16f,.17f,.19f),Petal=new Vector3(1,.55f,.68f);
+        private static Vector3 BladeTint(IKitFxScene scene,Actor a,Vector3 fallback){var c=WeaponPaint.Linear(scene.WeaponColor(a));float m=Math.Max(c.X,Math.Max(c.Y,c.Z));return m>1e-3f?c/m:fallback;}
+        private sealed class BladeTrail{public readonly Vector3[] Root=new Vector3[16],Tip=new Vector3[16];public readonly float[] At=new float[16];public int Count,Head;public float Last=-100;}
+        private readonly Dictionary<long,BladeTrail> bladeTrails=new Dictionary<long,BladeTrail>();
+        private float bladeTrailClock=-1;
+        /// <summary>Draws every blade class's moves, hits and lingering effects of the frame at `time`.</summary>
+        public void DrawBlades(ITechniqueFxSink s,IKitFxScene scene,float time,float q,bool low)
+        {
+            if(s==null||scene?.Actors==null)return;var actors=scene.Actors;
+            if(time<bladeTrailClock-.5f)bladeTrails.Clear();bladeTrailClock=time;
+            for(int i=0;i<actors.Count;i++)
+            {
+                var a=actors[i];var k=NativeBladeView.Of(a);if(k==null)continue;long seed=a.Id*7919L;bool katana=a.SourceSpec==NativeKatana.Spec;
+                var tint=BladeTint(scene,a,katana?new Vector3(1,.24f,.43f):new Vector3(.49f,1,.23f));
+                BladeTrails(s,scene,a,k,time,tint,katana,q,low);
+                if(katana){KatanaLine(s,a,k,time,tint,seed,q,low);KatanaStorm(s,scene,a,k,time,tint,seed+3,q,low);}
+                else{FangsVeil(s,scene,a,k,time,tint,seed+5,q,low);FangsCloud(s,k,time,tint,seed+9,q,low);}
+                if(k.Hits!=null)foreach(var h in k.Hits)if(h!=null){if(katana)KatanaHitFx(s,k,h,time,tint,seed+h.Id*37L,q,low);else FangsHitFx(s,scene,a,k,h,time,tint,seed+h.Id*41L,q,low);}
+            }
+        }
+        // A cut's live moment: the move's wind-up end to a little after its hit.
+        private static bool BladeSwinging(NativeBladeKit k,float time,bool katana)
+        {
+            if(k.CastKind==null||time<k.CastAt)return false;float rel=k.CastRelease;
+            if(katana)switch(k.CastKind)
+            {
+                case NativeKatana.Cut:return time>=rel-.12f&&time<rel+.14f;
+                case NativeKatana.Rush:return time>=rel-.06f&&time<rel+NativeKatana.RushTime+.1f;
+                case NativeKatana.Iai:return time>=rel-.04f&&time<rel+NativeKatana.IaiDash+.08f;
+                case NativeKatana.Storm:return time>=rel-.05f&&time<k.CastUntil-NativeKatana.StormRecover*.6f;
+                case NativeKatana.Counter:return k.PairHit>-50&&time>=k.PairHit-.18f&&time<k.PairHit+.16f;
+            }
+            else switch(k.CastKind)
+            {
+                case NativeFangs.Cut:return time>=rel-.08f&&time<rel+.1f;
+                case NativeFangs.Pounce:return time>=rel&&time<rel+NativeFangs.PounceTime+.08f;
+                case NativeFangs.Step:return time>=rel&&time<rel+.16f;
+                case NativeFangs.Assassinate:return k.PairHit>-50&&time>=k.PairHit-.15f&&time<k.PairHit+.12f;
+            }
+            return false;
+        }
+        /// <summary>The crescent trail: the drawn blade sampled each frame while it swings, its sweep laid as bands that fade from the back.</summary>
+        private void BladeTrails(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeBladeKit k,float time,Vector3 tint,bool katana,float q,bool low)
+        {
+            bool view=scene.Viewer==a.Id;
+            for(int hand=0;hand<(katana?1:2);hand++)
+            {
+                long key=a.Id*4L+hand;bladeTrails.TryGetValue(key,out var t);
+                if(BladeSwinging(k,time,katana)&&(view?scene.ViewBlade(hand==1,out var root,out var tip):scene.Blade(a,hand==1,out root,out tip)))
+                {
+                    if(t==null){t=new BladeTrail();bladeTrails[key]=t;}
+                    if(time-t.Last>.2f)t.Count=0;
+                    if(time-t.Last>=1/90f){t.Head=(t.Head+1)%t.Root.Length;t.Root[t.Head]=root;t.Tip[t.Head]=tip;t.At[t.Head]=time;t.Count=Math.Min(t.Root.Length,t.Count+1);t.Last=time;}
+                }
+                if(t==null||t.Count<2)continue;float life=katana?.16f:.11f;if(time-t.At[t.Head]>life){t.Count=0;continue;}
+                bool finisher=katana&&(k.CastKind==NativeKatana.Counter||k.CastKind==NativeKatana.Iai||k.CastKind==NativeKatana.Cut&&k.CastStep==NativeKatana.Steps-1);
+                var hot=Vector3.Lerp(tint,BladeWhite,.55f);float bright=finisher?1.5f:1;int n=Math.Min(t.Count,low?6:t.Root.Length);
+                for(int j=0;j<n-1;j++)
+                {
+                    int i0=(t.Head-j+t.Root.Length)%t.Root.Length,i1=(t.Head-j-1+t.Root.Length)%t.Root.Length;
+                    float f0=1-Clamp01((time-t.At[i0])/life),f1=1-Clamp01((time-t.At[i1])/life);if(f0<=0&&f1<=0)continue;
+                    // From a third of the way up the blade to past its tip: the sweep of the edge.
+                    var a0=Vector3.Lerp(t.Root[i0],t.Tip[i0],.3f);var b0=t.Tip[i0]+(t.Tip[i0]-t.Root[i0])*.06f;var a1=Vector3.Lerp(t.Root[i1],t.Tip[i1],.3f);var b1=t.Tip[i1]+(t.Tip[i1]-t.Root[i1])*.06f;
+                    s.Band(view,a0,a1,b1,b0,.45f*f0*bright,.45f*f1*bright,tint*1.25f);
+                    s.Band(view,b0-(b0-a0)*.16f,b1-(b1-a1)*.16f,b1,b0,.95f*f0*bright,.95f*f1*bright,hot*1.7f);
+                }
+                if(t.Count>=2&&time-t.At[t.Head]<.03f)s.Sprite(view,t.Tip[t.Head],hot*(2.2f*bright),katana?.1f:.07f,Sparkle);
+            }
+        }
+        /// <summary>The iai's line of light hanging where the dash went, from the dash's end to the split; then it flares and breaks.</summary>
+        private static void KatanaLine(ITechniqueFxSink s,Actor a,NativeBladeKit k,float time,Vector3 tint,long seed,float q,bool low)
+        {
+            if(k.LineAt<-50||time<k.LineAt-NativeKatana.IaiDash)return;var from=NativeBlades.N(k.LineFrom)+Up*.95f;var to=NativeBlades.N(k.LineTo)+Up*.95f;float split=k.SplitAt;
+            var hot=Vector3.Lerp(tint,BladeWhite,.7f);
+            if(time<split)
+            {
+                // Drawn along the dash as it goes, then held, trembling a little brighter as the split nears.
+                float laid=Clamp01((time-(k.LineAt-NativeKatana.IaiDash))/NativeKatana.IaiDash);var end=Vector3.Lerp(from,to,laid);float near=Clamp01(1-(split-time)/NativeKatana.IaiSplit);
+                s.Line(false,from,end,hot*(1.6f+1.4f*near),.012f+.01f*near,false);s.Line(false,from,end,tint*(.7f+.6f*near),.045f+.03f*near,false);
+                // Motes leaking off it.
+                int n=Count(10,q,low);for(int i=0;i<n;i++){float u=R(seed,i);var p=Vector3.Lerp(from,end,u);float c=(float)((time*1.7f+R(seed,i+30))%1.0);s.Sprite(false,p+Up*(.25f*c)+RandomDir(seed,i)*.05f,tint*(1.4f*(1-c)*near),.03f,Sparkle);}
+                return;
+            }
+            float age=time-split;if(age>.9f)return;float g=1-Clamp01(age/.9f);
+            // The flare, the line breaking into motes that drift up, petals scattering.
+            if(age<.12f){s.Line(false,from,to,BladeWhite*(5*(1-age/.12f)),.05f*(1-age/.12f)+.01f,false);s.Line(false,from,to,tint*(3*(1-age/.12f)),.16f,false);}
+            int m=Count(36,q,low);for(int i=0;i<m;i++){float u=R(seed,i+60);var p=Vector3.Lerp(from,to,u);var d=RandomDir(seed,i+90);d.Y=Math.Abs(d.Y)+.3f;s.Sprite(false,p+d*(age*1.1f)+Up*(age*age*.6f),hot*(2.2f*g),.04f*(.6f+.4f*g),Sparkle);}
+            int pn=Count(18,q,low);for(int i=0;i<pn;i++){float u=R(seed,i+130);var p=Vector3.Lerp(from,to,u);var d=RandomDir(seed,i+170);var at=p+d*(age*1.6f)-Up*(age*age*.9f);float spin=(time*6+i)%6.283f;s.Band(false,at,at+new Vector3((float)Math.Cos(spin)*.06f,.02f,(float)Math.Sin(spin)*.06f),at+new Vector3(.03f,.07f,.0f),at+Up*.05f,.9f*g,.9f*g,Vector3.Lerp(Petal,tint,.35f)*1.3f);}
+        }
+        /// <summary>The storm: a whirl of petals round the wielder and wind arcs through the cuts.</summary>
+        private static void KatanaStorm(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeBladeKit k,float time,Vector3 tint,long seed,float q,bool low)
+        {
+            if(k.CastKind!=NativeKatana.Storm||time<k.CastAt||time>k.CastUntil+.4f)return;var c=scene.Feet(a)+Up*.95f;float grow=Clamp01((time-k.CastAt)/Math.Max(.05f,k.CastRelease-k.CastAt));float fade=time<k.CastUntil?1:1-Clamp01((time-k.CastUntil)/.4f);
+            bool petals=NativeKatanaChips.Holds(k,NativeKatanaChips.ThousandPetals);int n=Count(petals?44:30,q,low);float r0=NativeKatana.StormRadius*(.3f+.7f*grow);
+            for(int i=0;i<n;i++)
+            {
+                float ang=R(seed,i)*6.283f+time*(5+2*R(seed,i+7)),rad=r0*(.45f+.55f*R(seed,i+11)),h=(R(seed,i+19)-.5f)*1.4f;var p=c+new Vector3((float)Math.Sin(ang)*rad,h,(float)Math.Cos(ang)*rad);
+                var t=new Vector3((float)Math.Cos(ang),0,-(float)Math.Sin(ang))*.07f;s.Band(false,p-t,p+t,p+t+Up*.035f,p-t+Up*.04f,fade,fade,Vector3.Lerp(Petal,tint,.45f)*1.4f);
+            }
+            // Wind arcs: bands round the wielder at the cuts' heights.
+            if(time>=k.CastRelease&&time<k.CastUntil-NativeKatana.StormRecover*.5f)
+            {
+                int arcs=low?2:4;for(int j=0;j<arcs;j++)
+                {
+                    float a0=time*14+j*1.57f,h=-.2f+.25f*j,rad=NativeKatana.StormRadius*(.8f+.1f*j);Vector3 prev=default;
+                    for(int st=0;st<=8;st++){float aa=a0+st*.16f;var p=c+new Vector3((float)Math.Sin(aa)*rad,h,(float)Math.Cos(aa)*rad);if(st>0){float f=st/8f;s.Band(false,prev,p,p+Up*.12f*f,prev+Up*.12f*f,.5f*f*fade,.5f*f*fade,tint*1.3f);}prev=p;}
+                }
+            }
+        }
+        private static void KatanaHitFx(ITechniqueFxSink s,NativeBladeKit k,NativeBladeHit h,float time,Vector3 tint,long seed,float q,bool low)
+        {
+            float age=time-h.At;if(age<0||age>1.4f)return;var at=NativeBlades.N(h.Pos);var dir=NativeBlades.N(h.Dir);if(dir.LengthSquared()<1e-6f)dir=Up;dir=Vector3.Normalize(dir);
+            var hot=Vector3.Lerp(tint,BladeWhite,.6f);var side=Vector3.Normalize(Vector3.Cross(dir,Up).LengthSquared()>1e-6f?Vector3.Cross(dir,Up):Vector3.UnitX);
+            switch(h.Kind)
+            {
+                case NativeKatana.HitCut:case NativeKatana.HitRush:case NativeKatana.HitStorm:case NativeKatana.HitPetal:case NativeKatana.HitWave:
+                {
+                    if(h.Victim==0&&h.Kind==NativeKatana.HitStorm){if(age<.2f)Ring(s,at-Up*.85f,.5f+NativeKatana.StormRadius*OutCubic(age/.2f),.05f*(1-age/.2f),tint*(1.6f*(1-age/.2f)),Count(28,q,low));break;}
+                    if(age>.32f)break;float u=age/.32f;var slash=Vector3.Normalize(side+Up*(.3f+.5f*R(seed,2)));float len=(.6f+.3f*R(seed,1))*(1-.25f*u);
+                    s.Line(false,at-slash*len,at+slash*len,hot*(2.6f*(1-u)),.04f*(1-u)+.008f,true);Flash(s,at,age,.1f,hot,.45f,seed);
+                    Sparks(s,at,age,.3f,Count(h.Kind==NativeKatana.HitStorm||h.Kind==NativeKatana.HitPetal?5:9,q,low),5.5f,hot,seed+3,7,.02f,dir*.6f);
+                    if(h.Kind==NativeKatana.HitPetal&&age<.5f)for(int i=0;i<Count(6,q,low);i++){var d=RandomDir(seed,i+40);var p=at+d*(.4f*age/.5f)-Up*(.3f*age);s.Sprite(false,p,Vector3.Lerp(Petal,tint,.4f)*(1.4f*(1-age/.5f)),.045f,Soft);}
+                    break;
+                }
+                case NativeKatana.HitFinisher:case NativeKatana.HitCounter:
+                {
+                    if(age>.55f)break;float u=age/.55f;var slash=Vector3.Normalize(side*.8f+Up*.6f);float len=1.1f*(1-.2f*u);
+                    s.Line(false,at-slash*len,at+slash*len,BladeWhite*(4*(1-u)),.06f*(1-u)+.01f,true);s.Line(false,at-slash*len*1.1f,at+slash*len*1.1f,tint*(2.4f*(1-u)),.2f*(1-u),false);
+                    Flash(s,at,age,.16f,BladeWhite,1.1f,seed);Sparks(s,at,age,.5f,Count(18,q,low),8,hot,seed+5,8,.025f,dir*.5f);
+                    // The counter: a moon rising behind the pair.
+                    if(h.Kind==NativeKatana.HitCounter){float m=Clamp01(age/.12f)*(1-Clamp01((age-.25f)/.3f));s.Glow(at+Up*.6f-dir*.4f,Vector3.Lerp(tint,BladeWhite,.75f)*(2.6f*m),0,1.6f*m+.2f,RingGlow,.5f,seed+7);s.Glow(at+Up*.6f-dir*.4f,BladeWhite*(1.6f*m),0,.9f*m,Core,.2f,seed+8);}
+                    break;
+                }
+                case NativeKatana.HitDraw:
+                    // The draw: a flash at the hip and a streak of light along the dash.
+                    if(age<.25f){Flash(s,at,age,.14f,hot,.8f,seed);s.Streak(at,dir*28,hot*(2.5f*(1-age/.25f)),.05f,1.2f,.4f,.7f,age/.25f,seed);Sparks(s,at,age,.25f,Count(10,q,low),6,hot,seed+2,5,.02f,dir*.8f);}
+                    break;
+                case NativeKatana.HitMark:
+                {
+                    // A hairline of light across the marked one, held until the split.
+                    if(k.SplitAt>-50&&time>=k.SplitAt+.05f||age>NativeKatana.IaiSplit+.3f)break;var slash=Vector3.Normalize(side+Up*.4f);float pulse=.6f+.4f*(float)Math.Sin(time*40);
+                    s.Line(false,at-slash*.45f,at+slash*.45f,hot*(1.6f*pulse),.008f,true);break;
+                }
+                case NativeKatana.HitSplit:
+                {
+                    if(age>.7f)break;float u=age/.7f;var slash=Vector3.Normalize(side*.85f+Up*.55f);float len=1.3f;
+                    s.Line(false,at-slash*len,at+slash*len,BladeWhite*(5*(1-u)),.07f*(1-u)+.01f,true);s.Line(false,at-slash*len,at+slash*len,tint*(3*(1-u)),.28f*(1-u),false);
+                    Flash(s,at,age,.18f,BladeWhite,1.4f,seed);Sparks(s,at,age,.6f,Count(24,q,low),9,hot,seed+5,9,.026f,side*.8f);
+                    if(h.Amount==0&&age<.4f)Ring(s,at,.2f+1.2f*OutCubic(age/.4f),.06f*(1-age/.4f),hot*(2*(1-age/.4f)),Count(24,q,low));
+                    break;
+                }
+                case NativeKatana.HitSheathe:
+                    // The click: a ring of light at the hip and a soft shockwave over the floor.
+                    if(age<.4f){float u=age/.4f;Ring(s,at,.08f+.4f*OutCubic(u),.03f*(1-u),hot*(2.4f*(1-u)),Count(20,q,low));s.Glow(at,hot*(1.8f*(1-u)),0,.3f+.2f*u,RingGlow,u,seed);if(age<.3f)Ring(s,at-Up*.9f,.3f+2.4f*OutCubic(age/.3f),.05f*(1-age/.3f),tint*(1.4f*(1-age/.3f)),Count(32,q,low));}
+                    break;
+                case NativeKatana.HitLaunch:
+                    if(age<.35f){s.Streak(at,Up*14,hot*(2.4f*(1-age/.35f)),.06f,1,.3f,.7f,age/.35f,seed);Sparks(s,at,age,.35f,Count(10,q,low),6,hot,seed+3,4,.02f,Up);}
+                    break;
+                // ---- the chips' ----
+                case NativeKatana.HitBleed:
+                    if(age<.5f){for(int i=0;i<Count(3,q,low);i++){var p=at+RandomDir(seed,i)*.12f-Up*(age*age*3);s.Sprite(false,p,new Vector3(.45f,.02f,.04f),.025f,Soft);}}
+                    break;
+                case NativeKatana.HitFocus:
+                    // Still Water: a ripple at the feet and a glint up the blade.
+                    if(age<.8f){float u=age/.8f;Ring(s,at-Up*1.08f,.2f+1.1f*OutCubic(u),.02f*(1-u),hot*(1.4f*(1-u)),Count(24,q,low));if(age<.25f)s.Sprite(false,at+Up*.2f,BladeWhite*(2*(1-age/.25f)),.12f,Sparkle);}
+                    break;
+            }
+            // Crescent Wave: the wave of light flying out from the finisher (its own hits mark where it cuts).
+            if(h.Kind==NativeKatana.HitWave&&h.Victim==0)
+            {
+                float travel=NativeKatanaChips.WaveTravel(age);if(travel>=NativeKatanaChips.WaveReach-.01f&&age>NativeKatanaChips.WaveReach/NativeKatanaChips.WaveSpeed+.15f)return;
+                float fade=1-Clamp01((age-NativeKatanaChips.WaveReach/NativeKatanaChips.WaveSpeed)/.15f);var c=at+dir*travel;var w=side*(NativeKatanaChips.WaveWidth*1.4f);Vector3 prev=default;
+                for(int st=0;st<=10;st++){float u=st/10f,bend=(float)Math.Sin(Math.PI*u);var p=c+w*(u*2-1)-dir*(.35f*bend)+Up*(.25f*bend);if(st>0){s.Band(false,prev,p,p-dir*.5f,prev-dir*.5f,1.4f*fade,1.4f*fade,tint*1.6f);s.Line(false,prev,p,hot*(2.4f*fade),.02f,false);}prev=p;}
+            }
+        }
+        /// <summary>The veil: a thin smoke at the feet while it lasts (an enemy sees nothing of the body; Runtime hides it).</summary>
+        private static void FangsVeil(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeBladeKit k,float time,Vector3 tint,long seed,float q,bool low)
+        {
+            if(time<k.VeilAt||time>=k.VeilUntil)return;var feet=scene.Feet(a);int n=Count(5,q,low);
+            for(int i=0;i<n;i++){float c=(float)((time*1.3f+R(seed,i))%1.0);var p=feet+RandomDir(seed,i+(int)(time*1.3f))*(.25f+.2f*c)+Up*(.15f+.9f*c);s.Smoke(p,SmokeGrey,.22f*(1-c),.35f+.3f*c,c,seed+i,feet.Y);}
+            s.Glow(feet+Up*.9f,BladeVenomDark*.6f,0,.8f,Mote,.5f,seed+3);
+        }
+        /// <summary>Smokescreen's cloud where the veil fell (ChipAt its start).</summary>
+        private static void FangsCloud(ITechniqueFxSink s,NativeBladeKit k,float time,Vector3 tint,long seed,float q,bool low)
+        {
+            if(k.ChipAt<-50||time<k.ChipAt||time>k.ChipAt+NativeFangsChips.CloudFor||k.Hits==null)return;NativeBladeHit cloud=null;foreach(var h in k.Hits)if(h?.Kind==NativeFangs.HitCloud)cloud=h;
+            Vector3 at;if(cloud!=null)at=NativeBlades.N(cloud.Pos);else return;float age=time-k.ChipAt,fade=Clamp01(age/.4f)*(1-Clamp01((age-NativeFangsChips.CloudFor+.8f)/.8f));
+            int n=Count(14,q,low);for(int i=0;i<n;i++){float c=(float)((time*.35f+R(seed,i))%1.0);var d=RandomDir(seed,i);d.Y=Math.Abs(d.Y)*.4f;var p=at+d*(NativeFangsChips.CloudRadius*(.3f+.7f*R(seed,i+5)))+Up*(.3f+1.2f*c);s.Smoke(p,SmokeGrey,.5f*fade*(1-c*.6f),.9f+.6f*c,c,seed+i,at.Y);}
+            s.Glow(at+Up*.4f,tint*(.25f*fade),0,NativeFangsChips.CloudRadius,Mote,.5f,seed+21);
+        }
+        private static void FangsHitFx(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeBladeKit k,NativeBladeHit h,float time,Vector3 tint,long seed,float q,bool low)
+        {
+            float age=time-h.At;if(age<0||age>1.5f)return;var at=NativeBlades.N(h.Pos);var dir=NativeBlades.N(h.Dir);if(dir.LengthSquared()<1e-6f)dir=Up;dir=Vector3.Normalize(dir);
+            var hot=Vector3.Lerp(tint,BladeWhite,.5f);var side=Vector3.Normalize(Vector3.Cross(dir,Up).LengthSquared()>1e-6f?Vector3.Cross(dir,Up):Vector3.UnitX);
+            switch(h.Kind)
+            {
+                case NativeFangs.HitCut:case NativeFangs.HitFinisher:case NativeFangs.HitStab:case NativeFangs.HitKnife:
+                {
+                    if(age>.6f)break;
+                    if(age<.25f){float u=age/.25f;var slash=Vector3.Normalize(side+Up*(R(seed,2)-.5f));float len=h.Kind==NativeFangs.HitFinisher?.7f:.4f;s.Line(false,at-slash*len,at+slash*len,hot*(2.4f*(1-u)),.03f*(1-u)+.006f,true);Flash(s,at,age,.08f,hot,.3f,seed);}
+                    // Venom splashing out of the cut, falling.
+                    int n=Count(h.Kind==NativeFangs.HitFinisher?12:7,q,low);for(int i=0;i<n;i++){var d=Vector3.Normalize(RandomDir(seed,i)+dir*.6f+Up*.4f);float sp=1.6f+1.2f*R(seed,i+9);var p=at+d*(sp*age)-Up*(4.5f*age*age);float f=1-Clamp01(age/.6f);s.Sprite(false,p,tint*(1.5f*f),.03f+.02f*f,Soft);}
+                    break;
+                }
+                case NativeFangs.HitPounce:
+                    if(h.Amount==1&&age<.4f){float u=age/.4f;Ring(s,at+Up*.03f,.3f+NativeFangs.PounceRadius*OutCubic(u),.06f*(1-u),hot*(1.8f*(1-u)),Count(26,q,low));Dust(s,at,age,.6f,Count(10,q,low),NativeFangs.PounceRadius,new Vector3(.35f,.36f,.33f),.5f,seed+3);}
+                    else if(h.Amount==0&&age<.2f)Flash(s,at,age,.1f,hot,.4f,seed);
+                    break;
+                case NativeFangs.HitVanish:
+                {
+                    // A puff of black smoke and green wisps, at the vanish and at the arrival.
+                    if(age>.7f)break;float u=age/.7f;int n=Count(10,q,low);
+                    for(int i=0;i<n;i++){var d=RandomDir(seed,i);var p=at+d*(.2f+.5f*OutCubic(u))+Up*(.3f*u);s.Smoke(p,BladeVenomDark*1.5f,.55f*(1-u),.35f+.4f*u,u,seed+i,at.Y-.9f);}
+                    if(age<.2f)s.Glow(at,tint*(2*(1-age/.2f)),0,.5f+.3f*age/.2f,RingGlow,age,seed+2);
+                    for(int i=0;i<Count(6,q,low);i++){var d=RandomDir(seed,i+30);s.Sprite(false,at+d*(.6f*OutCubic(u))+Up*(.4f*u),tint*(1.6f*(1-u)),.03f,Sparkle);}
+                    break;
+                }
+                case NativeFangs.HitSmoke:
+                {
+                    // The veil's billow: a wide burst of smoke rising.
+                    if(age>1.2f)break;float u=age/1.2f;int n=Count(18,q,low);
+                    for(int i=0;i<n;i++){var d=RandomDir(seed,i);d.Y=Math.Abs(d.Y)*.6f;var p=at+d*(.3f+1.4f*OutCubic(u))+Up*(.2f+.9f*u);s.Smoke(p,SmokeGrey,.7f*(1-u),.6f+.8f*u,u,seed+i,at.Y);}
+                    if(age<.25f)Flash(s,at+Up*.5f,age,.15f,tint,.6f,seed+5);
+                    break;
+                }
+                case NativeFangs.HitThrow:
+                {
+                    // The fan's knives in flight, from the throw: each along its way at the throw's speed, out to its range.
+                    int n=Math.Max(1,h.Amount);bool hydra=NativeFangsChips.Holds(k,NativeFangsChips.Hydra);float spread=NativeFangs.FanSpread*(hydra?1.6f:1);float travel=NativeFangs.FanSpeed*age;if(travel>NativeFangs.FanRange)break;
+                    for(int i=0;i<n;i++){var d=NativeFangs.KnifeDir(dir,i,n,spread);var p=at+d*travel;s.Streak(p,d*NativeFangs.FanSpeed,hot*1.8f,.025f,.35f,.3f,.8f,travel/NativeFangs.FanRange,seed+i);s.Sprite(false,p,tint*1.6f,.05f,Sparkle);}
+                    break;
+                }
+                case NativeFangs.HitBloom:
+                {
+                    // At the wielder (no victim): a green pulse out over the bloom's reach; on each poisoned one: a burst sized by its stacks.
+                    if(h.Victim==0){if(age<.5f){float u=age/.5f;Ring(s,at-Up*.85f,.5f+NativeFangs.BloomRange*.6f*OutCubic(u),.08f*(1-u),tint*(1.6f*(1-u)),Count(40,q,low));s.Glow(at,tint*(1.8f*(1-u)),0,.6f+.8f*u,RingGlow,u,seed);}break;}
+                    if(age>.8f)break;float g=1-Clamp01(age/.8f),size=.5f+.12f*Math.Min(10,h.Amount);
+                    Flash(s,at,age,.15f,hot,.6f+.1f*h.Amount,seed);s.Glow(at,tint*(2.4f*g),0,size*(.6f+.6f*OutCubic(age/.3f)),RingGlow,age,seed+1);
+                    int n=Count(10+2*Math.Min(10,h.Amount),q,low);for(int i=0;i<n;i++){var d=RandomDir(seed,i+50);var p=at+d*(size*1.4f*OutCubic(age/.5f))-Up*(1.5f*age*age);s.Sprite(false,p,tint*(1.8f*g),.04f,Soft);}
+                    break;
+                }
+                case NativeFangs.HitTakedown:case NativeFangs.HitKill:
+                {
+                    if(age>.9f)break;float u=age/.9f;Flash(s,at,age,.2f,hot,1.2f,seed);s.Glow(at,BladeVenomDark*(2*(1-u)),0,1.2f+.8f*u,Mote,u,seed+1);
+                    Sparks(s,at,age,.6f,Count(20,q,low),7,hot,seed+3,8,.024f,dir*.5f);
+                    if(h.Kind==NativeFangs.HitKill)for(int i=0;i<Count(12,q,low);i++){var d=RandomDir(seed,i+70);var p=at+d*(.2f+.9f*OutCubic(u))+Up*(.6f*u);s.Smoke(p,BladeVenomDark*1.2f,.6f*(1-u),.4f+.5f*u,u,seed+i,at.Y-.9f);}
+                    break;
+                }
+                case NativeFangs.HitDrip:
+                    // A venom drip off the poisoned: more stacks, more drips and a stronger glow round them.
+                    if(age<.6f){int n=Math.Min(4,1+h.Amount/2);for(int i=0;i<n;i++){var p=at+RandomDir(seed,i)*.15f-Up*(age*age*3.5f);s.Sprite(false,p,tint*(1.3f*(1-age/.6f)),.022f,Soft);}if(age<.4f)s.Glow(at,tint*(.15f*Math.Min(10,h.Amount)*(1-age/.4f)),0,.5f,Mote,.5f,seed+2);}
+                    break;
+                case NativeFangs.HitSpread:case NativeFangs.HitDrain:
+                {
+                    // Venom leaping to the next (Chain Bloom), or drawn back to the wielder (Bloodletting).
+                    if(age>.4f)break;float u=age/.4f;var to=h.Kind==NativeFangs.HitDrain?scene.Feet(a)+Up*.9f:at;var from=h.Kind==NativeFangs.HitDrain?at:at-dir*2;
+                    for(int i=0;i<Count(6,q,low);i++){float t=Clamp01(u*1.3f-i*.05f);var p=Vector3.Lerp(from,to,t)+Up*(float)Math.Sin(Math.PI*t)*.3f;s.Sprite(false,p,(h.Kind==NativeFangs.HitDrain?new Vector3(.9f,.1f,.15f):tint)*(1.6f*(1-u)),.035f,Sparkle);}
+                    break;
+                }
+            }
+        }
+    }
+}

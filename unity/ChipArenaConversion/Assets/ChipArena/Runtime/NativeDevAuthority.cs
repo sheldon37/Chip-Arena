@@ -135,6 +135,7 @@ namespace ChipArena.UnityConversion
                 p.Cyber.QReady=p.Cyber.EReady=p.Cyber.PacketReady=p.Cyber.LinkReady=p.Cyber.CrashReady=Time;
                 // The Top Dog: every slot ready, the peels back, the meter full (not while a feast is on).
                 if(p.Seat.spec==NativeGlaive.Spec&&p.Glaive.Ready!=null)for(int i=0;i<p.Glaive.Ready.Length;i++)p.Glaive.Ready[i]=0;
+                if(NativeBlades.Is(p.Seat.spec)&&p.Blade.Ready!=null){for(int i=0;i<p.Blade.Ready.Length;i++)p.Blade.Ready[i]=0;p.BladeRefillAt=-100;p.BladeCharges=2;}
                 if(p.Seat.spec==NativeTopDog.Spec){if(p.Dog.Ready!=null)for(int i=0;i<p.Dog.Ready.Length;i++)p.Dog.Ready[i]=0;p.Dog.Peels=Math.Max(p.Dog.PeelCap,NativeTopDog.PeelCharges);p.DogPeelReady=0;if(p.Dog.Feast==null)p.Dog.Meter=1;}
                 if(p.Cyber.Ranged!=null){p.Cyber.Ranged.ModeReady=Time;for(int i=0;i<p.Cyber.Ranged.Ready.Length;i++)p.Cyber.Ranged.Ready[i]=Time;}
                 foreach(var key in chipCooldowns.Keys.Where(k=>k.StartsWith(p.Seat.id+":")).ToArray())chipCooldowns.Remove(key);

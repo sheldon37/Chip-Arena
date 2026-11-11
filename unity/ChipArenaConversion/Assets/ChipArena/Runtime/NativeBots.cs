@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
             // consumes the reaction window on Siren, then PvE reuses that aim for an add.
             if(!StationaryBots&&p.Seat.difficulty!="dummy"&&BotSentry(p,out var sentryInput))return sentryInput;
             if(Pve!=null)return PveBot(p,new InputFrame{Yaw=p.Yaw});
-            var target=Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Enemy(p,q)&&!TechniqueSmokeHidden(p.Body.position,q.Body.position)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
+            var target=Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Enemy(p,q)&&!TechniqueSmokeHidden(p.Body.position,q.Body.position)&&!BladeUnseen(q)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
             if(target==null||(StationaryBots||p.Seat.difficulty=="dummy")&&!force)return new InputFrame{Yaw=p.Yaw};
             var summon=Minions.Where(m=>m.Pve==null&&m.Hp>0&&Enemy(p,m)&&Vector3.Distance(m.Body.position,p.Body.position)<Math.Min(6,Vector3.Distance(target.Body.position,p.Body.position)-1.5f)).OrderBy(m=>(m.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
             var decoy=Pilots.Where(q=>q.Hp>0&&Enemy(p,q)&&Time<q.MeleeKit.AfterimageUntil&&Vector3.Distance(q.MeleeKit.Afterimage.Length>0?Vec(q.MeleeKit.Afterimage):q.Body.position,p.Body.position)<30).OrderBy(q=>(Vec(q.MeleeKit.Afterimage)-p.Body.position).sqrMagnitude).FirstOrDefault();
@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
         private void BotAbilities(NativePilot p,ref InputFrame input,Vector3 target,Vector3 velocity,float distance,bool visible,int level)
         {
             if(p.Seat.spec=="bow"){BotBow(p,ref input,target,velocity,distance,visible);return;}
-            if(p.Seat.spec==NativeBombs.Spec){BotBomb(p,ref input,target,distance,visible);return;}if(p.Seat.spec==NativeTopDog.Spec){BotDog(p,ref input,target,distance,visible);return;}if(p.Seat.spec==NativeGlaive.Spec){BotGlaive(p,ref input,target,distance,visible);return;}
+            if(p.Seat.spec==NativeBombs.Spec){BotBomb(p,ref input,target,distance,visible);return;}if(p.Seat.spec==NativeTopDog.Spec){BotDog(p,ref input,target,distance,visible);return;}if(p.Seat.spec==NativeGlaive.Spec){BotGlaive(p,ref input,target,distance,visible);return;}if(NativeBlades.Is(p.Seat.spec)){BotBlade(p,ref input,target,distance,visible);return;}
             if(p.Seat.spec=="cyberlord"){BotCyber(p,ref input,target,distance,visible);return;}
             if(NativeMeleeRules.Standard(p.Seat.spec)){BotMeleeAbilities(p,ref input,target,distance,visible,level);return;}
             if(!FighterReady(p)||p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||Time<p.AttackEnd&&!(Dev(p,"emperor")&&p.Fighter?.Kind=="wave"))return;

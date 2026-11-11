@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
         public const int Rate=48000;public const float Peak=.82f;
         public const string Prefix="topdog.";
         /// <summary>Every sound, by id.</summary>
-        public static readonly string[] Ids={"bonk","slam","swing","boing","zip","windup","slide-up","slide-down","whistle-fall","clang","slip","splat","squirt","sproing","punch","pie","gulp","burp","inflate","pop","bell","honk","tweet","sizzle","fanfare","drumroll","crash","poof","squeak","wobble","hiccup","whirl","stretch","chomp","piano","ring-cut","ring-slice","ring-throw","ring-ping","ring-hum","ring-burst","ring-catch","ring-flick","ring-chime","ring-skip"};
+        public static readonly string[] Ids={"bonk","slam","swing","boing","zip","windup","slide-up","slide-down","whistle-fall","clang","slip","splat","squirt","sproing","punch","pie","gulp","burp","inflate","pop","bell","honk","tweet","sizzle","fanfare","drumroll","crash","poof","squeak","wobble","hiccup","whirl","stretch","chomp","piano","ring-cut","ring-slice","ring-throw","ring-ping","ring-hum","ring-burst","ring-catch","ring-flick","ring-chime","ring-skip","blade-cut","blade-slice","blade-draw","blade-sheathe","blade-click","blade-split","blade-dash","blade-wind","blade-ring","blade-chime","blade-hone","blade-wave","blade-drop","blade-clash","fang-cut","fang-stab","fang-drip","fang-hiss","fang-throw","fang-vanish","fang-smoke","fang-bloom","fang-beat","fang-toll"};
         public static bool Known(string id)=>Array.IndexOf(Ids,id)>=0;
         /// <summary>The sound's samples (a new array each call; the runtime keeps one clip per id).</summary>
         public static float[] Samples(string id){lock(Gate)return Make(id);}
@@ -71,6 +71,34 @@ namespace ChipArena.UnityConversion
                 case "ring-chime":Bell(b,0,1320,.6f);Bell(b,.05f,1980,.38f);Tone(b,0,1,2640,4,.12f,Wave.Sine);Tone(b,.02f,.9f,3960,6,.05f,Wave.Sine);break;
                 case "ring-skip":Gulp(b,0,700,1500,.06f,.55f);Noise(b,0,.06f,1800,9000,55,.5f);Tone(b,.004f,.16f,1450,22,.14f,Wave.Sine);break;
                 case "chomp":Noise(b,0,.02f,600,5000,1,.5f);Thump(b,.005f,150,30,.6f);Gulp(b,.06f,260,150,.07f,.4f);break;
+                // The Katana's and the Fangs' (docs/KATANA.md, docs/FANGS.md "Sound"): a katana's crisp swish, the slice, the draw's ring out of
+                // the saya, the sheathe and its click, the split, the dash, a gust, the ringing edge, a chime, the whetstone, the crescent wave, a
+                // drop, a clash; the fangs' quick swish, the stab, a venom drip, the hiss, a thrown knife, the vanish, the smoke, the bloom, a
+                // heartbeat, a low toll.
+                case "blade-cut":Whoosh(b,0,.22f,1300,6200,2600,.9f);Tone(b,.03f,.18f,3100,16,.07f,Wave.Sine);break;
+                case "blade-slice":Noise(b,0,.045f,2800,12000,60,.85f);Thump(b,0,120,24,.5f);Tone(b,0,.25f,2450,14,.12f,Wave.Sine);break;
+                case "blade-draw":Noise(b,0,.3f,3500,13000,6,.45f);Chirp(b,0,.3f,1800,3400,.16f,Wave.Saw,1,cutoff:7000);Clang(b,.3f,2600,.35f);Tone(b,.3f,1,3900,5,.12f,Wave.Sine);break;
+                case "blade-sheathe":Noise(b,0,.34f,2500,9000,5,.4f);Chirp(b,0,.32f,3000,1500,.12f,Wave.Saw,1,cutoff:6000);break;
+                case "blade-click":Clang(b,0,3300,.55f);Thump(b,0,240,40,.5f);Noise(b,0,.012f,4000,14000,90,.6f);break;
+                case "blade-split":Noise(b,0,.06f,1500,13000,40,.9f);Thump(b,0,62,8,.9f);Crash(b,.01f,.35f,6);Tone(b,0,.6f,2200,7,.18f,Wave.Sine);Whoosh(b,.02f,.5f,300,1600,500,.5f);break;
+                case "blade-dash":Whoosh(b,0,.26f,500,5200,1800,.95f);Noise(b,0,.04f,2000,10000,50,.4f);break;
+                case "blade-wind":Whoosh(b,0,.9f,220,900,320,.55f);Whoosh(b,.3f,.6f,300,1300,420,.35f);break;
+                case "blade-ring":Bell(b,0,2640,.5f);Tone(b,0,1.2f,3960,3,.14f,Wave.Sine);break;
+                case "blade-chime":Bell(b,0,1760,.55f);Bell(b,.06f,2640,.34f);break;
+                case "blade-hone":Noise(b,0,.3f,1800,7000,4,.45f);Chirp(b,0,.3f,1200,2400,.08f,Wave.Saw,1,cutoff:5000);break;
+                case "blade-wave":Whoosh(b,0,.55f,600,4800,900,.8f);Chirp(b,0,.5f,900,1700,.16f,Wave.Sine,1,vibrato:.05f,vibratoHz:18);break;
+                case "blade-drop":Gulp(b,0,900,2200,.05f,.6f);Tone(b,.03f,.5f,1500,9,.16f,Wave.Sine);break;
+                case "blade-clash":Clang(b,0,1450,.8f);Clang(b,.01f,2350,.5f);Noise(b,0,.05f,2000,12000,40,.8f);Thump(b,0,95,18,.6f);break;
+                case "fang-cut":Whoosh(b,0,.14f,1800,7000,3200,.8f);break;
+                case "fang-stab":Thump(b,0,140,26,.8f);Noise(b,0,.05f,900,6000,40,.6f);Splat(b,.01f,.35f,2400);break;
+                case "fang-drip":Gulp(b,0,1300,2600,.04f,.5f);Tone(b,.02f,.25f,1900,14,.12f,Wave.Sine);break;
+                case "fang-hiss":Noise(b,0,.55f,3500,11000,4,.42f);Chirp(b,0,.5f,2800,2200,.05f,Wave.Saw,1,cutoff:9000);break;
+                case "fang-throw":Whoosh(b,0,.18f,1500,7600,2600,.75f);Tone(b,.01f,.12f,4200,22,.06f,Wave.Sine);break;
+                case "fang-vanish":Whoosh(b,0,.3f,3600,900,240,.7f);Noise(b,0,.18f,500,4000,12,.3f);break;
+                case "fang-smoke":Noise(b,0,.5f,200,3500,5,.75f);Thump(b,0,80,10,.6f);Whoosh(b,.02f,.6f,250,900,300,.4f);break;
+                case "fang-bloom":Thump(b,0,72,8,.85f);Splat(b,0,.9f,2600);Noise(b,0,.45f,3000,11000,6,.4f);Gulp(b,.02f,300,900,.12f,.4f);break;
+                case "fang-beat":Thump(b,0,58,14,1);Thump(b,.2f,52,16,.7f);break;
+                case "fang-toll":Bell(b,0,330,.7f);Tone(b,0,1.6f,165,2.5f,.3f,Wave.Sine);Tone(b,0,1.4f,495,3,.12f,Wave.Sine);break;
                 default:return Array.Empty<float>();
             }
             return b.Finish();
@@ -85,7 +113,7 @@ namespace ChipArena.UnityConversion
                 case "squirt":return 1.6f;case "sproing":return .65f;case "punch":return .42f;case "pie":return .7f;case "gulp":return .46f;case "burp":return .72f;
                 case "inflate":return 1.35f;case "pop":return .7f;case "bell":return 1.6f;case "honk":return .66f;case "tweet":return .62f;case "sizzle":return 2.2f;
                 case "fanfare":return 1.15f;case "drumroll":return 1.3f;case "crash":return 2.2f;case "poof":return .6f;case "squeak":return .14f;case "wobble":return .85f;
-                case "hiccup":return .26f;case "whirl":return .7f;case "stretch":return .55f;case "chomp":return .2f;case "piano":return 2.4f;case "ring-cut":return .28f;case "ring-slice":return .4f;case "ring-throw":return .42f;case "ring-ping":return .55f;case "ring-hum":return .85f;case "ring-burst":return 1.6f;case "ring-catch":return .32f;case "ring-flick":return .36f;case "ring-chime":return 1.1f;case "ring-skip":return .24f;default:return .1f;
+                case "hiccup":return .26f;case "whirl":return .7f;case "stretch":return .55f;case "chomp":return .2f;case "piano":return 2.4f;case "ring-cut":return .28f;case "ring-slice":return .4f;case "ring-throw":return .42f;case "ring-ping":return .55f;case "ring-hum":return .85f;case "ring-burst":return 1.6f;case "ring-catch":return .32f;case "ring-flick":return .36f;case "ring-chime":return 1.1f;case "ring-skip":return .24f;case "blade-cut":return 0.26f;case "blade-slice":return 0.36f;case "blade-draw":return 1.3f;case "blade-sheathe":return 0.4f;case "blade-click":return 0.3f;case "blade-split":return 0.75f;case "blade-dash":return 0.32f;case "blade-wind":return 1f;case "blade-ring":return 1.3f;case "blade-chime":return 1.1f;case "blade-hone":return 0.36f;case "blade-wave":return 0.6f;case "blade-drop":return 0.55f;case "blade-clash":return 0.9f;case "fang-cut":return 0.18f;case "fang-stab":return 0.4f;case "fang-drip":return 0.3f;case "fang-hiss":return 0.6f;case "fang-throw":return 0.22f;case "fang-vanish":return 0.36f;case "fang-smoke":return 0.7f;case "fang-bloom":return 0.6f;case "fang-beat":return 0.5f;case "fang-toll":return 1.8f;default:return .1f;
             }
         }
 

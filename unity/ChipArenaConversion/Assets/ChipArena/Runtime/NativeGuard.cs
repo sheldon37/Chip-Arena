@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         /// swinging, casting, stunned, broken or out of stamina); down otherwise. Holding it the pilot's stamina does not come back.</summary>
         private void StepGuard(NativePilot p)
         {
-            bool free=Time>=p.RollEnd&&Time>=p.AttackEnd&&p.Swing==null&&Time>=p.BlockEnd&&!Incapacitated(p)&&!SpecialBusy(p)&&!TechniqueBusy(p)&&!BombBusy(p)&&!DogBusy(p)&&!GlaiveBusy(p)&&!DogHeld(p)&&p.AbilityCast==null&&p.CastAt<=0;
+            bool free=Time>=p.RollEnd&&Time>=p.AttackEnd&&p.Swing==null&&Time>=p.BlockEnd&&!Incapacitated(p)&&!SpecialBusy(p)&&!TechniqueBusy(p)&&!BombBusy(p)&&!DogBusy(p)&&!GlaiveBusy(p)&&!DogHeld(p)&&!BladeBusy(p)&&!BladeHeld(p)&&p.AbilityCast==null&&p.CastAt<=0;
             bool want=(p.Input.Guard||HeldForCapture!=0&&p.Seat.id==HeldForCapture)&&NativeMeleeRules.Guards(p.Weapon?.@class)&&free&&Time>=p.GuardBrokenUntil&&p.Stamina>0;
             if(want&&!p.Guarding)p.GuardAt=Time;p.Guarding=want;
             if(p.Guarding)p.RegenAt=Math.Max(p.RegenAt,Time+NativeMeleeRules.GuardRegenPause);

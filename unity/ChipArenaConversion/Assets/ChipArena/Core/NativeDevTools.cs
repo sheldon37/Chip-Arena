@@ -575,7 +575,7 @@ namespace ChipArena.UnityConversion
     {
         public const int SortRarity=0,SortName=1,SortInstalled=2,FilterAll=0,FilterFavourites=1,FilterInstalled=2,FilterRecent=3,RecentMax=8;
         public static readonly string[] SortNames={"RARITY","NAME","INSTALLED"},FilterNames={"ALL","FAVOURITES","INSTALLED","RECENT"};
-        private static readonly string[] Ranks={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren","bombadier",NativeDogChips.Tier,NativeGlaiveChips.Tier,"boss-siren","boss-647","boss-converter","boss-hum","boss-deepend","boss-noctiel"};
+        private static readonly string[] Ranks={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren","bombadier",NativeDogChips.Tier,NativeGlaiveChips.Tier,NativeKatanaChips.Tier,NativeFangsChips.Tier,"boss-siren","boss-647","boss-converter","boss-hum","boss-deepend","boss-noctiel"};
         public readonly List<int> Shown=new List<int>(256);public readonly HashSet<string> Favourites=new HashSet<string>(StringComparer.Ordinal);public readonly List<string> Recent=new List<string>(RecentMax);
         public string Search="";public int Sort,Filter;private int revision;
         private string keySearch;private int keySort=-1,keyFilter=-1,keyRevision=-1,keyInstalled=int.MinValue,keyLength=-1;private ContentChip[] keyChips;

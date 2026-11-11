@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         {
             hasPve=pve!=null;if(pve!=null){pve.hasZone=pve.zone!=null;pve.hasZoneBoss=pve.zoneBoss!=null;}
             if(minions!=null)foreach(var m in minions)if(m!=null)m.hasZone=m.zone!=null;
-            if(snapshot?.Actors!=null)foreach(var a in snapshot.Actors)if(a!=null){a.HasBomb=a.Bomb!=null;a.Bomb?.CapturePresence();a.HasDog=a.Dog!=null;a.Dog?.CapturePresence();a.HasGlaive=a.Glaive!=null;a.Glaive?.CapturePresence();a.HasKernel=a.Kernel!=null;a.HasTechnique=a.Technique!=null;a.Cyber?.CapturePresence();}
+            if(snapshot?.Actors!=null)foreach(var a in snapshot.Actors)if(a!=null){a.HasBomb=a.Bomb!=null;a.Bomb?.CapturePresence();a.HasDog=a.Dog!=null;a.Dog?.CapturePresence();a.HasGlaive=a.Glaive!=null;a.Glaive?.CapturePresence();a.HasBlade=a.Blade!=null;a.Blade?.CapturePresence();a.HasKernel=a.Kernel!=null;a.HasTechnique=a.Technique!=null;a.Cyber?.CapturePresence();}
             if(props!=null)foreach(var p in props)if(p!=null)p.hasDefinition=p.definition!=null;
             if(pilots!=null)foreach(var p in pilots)if(p!=null)
             {p.hasDeath=p.death!=null;p.hasFighter=p.fighter!=null;p.hasDown=p.down!=null;CaptureDeath(p.death);}
@@ -19,9 +19,9 @@ namespace ChipArena.UnityConversion
             if(pve?.rows!=null)foreach(var row in pve.rows)if(row?.picks!=null)foreach(var pick in row.picks)if(pick!=null)pick.hasOffers=pick.offers!=null;
         }
         private static void CaptureDeath(NativeDeath d)
-        {if(d!=null){d.hasZone=d.zone!=null;d.hasActor=d.actor!=null;d.hasWound=d.wound!=null;if(d.actor!=null){d.actor.HasBomb=d.actor.Bomb!=null;d.actor.Bomb?.CapturePresence();d.actor.HasDog=d.actor.Dog!=null;d.actor.Dog?.CapturePresence();d.actor.HasGlaive=d.actor.Glaive!=null;d.actor.Glaive?.CapturePresence();d.actor.HasKernel=d.actor.Kernel!=null;d.actor.HasTechnique=d.actor.Technique!=null;d.actor.Cyber?.CapturePresence();}}}
+        {if(d!=null){d.hasZone=d.zone!=null;d.hasActor=d.actor!=null;d.hasWound=d.wound!=null;if(d.actor!=null){d.actor.HasBomb=d.actor.Bomb!=null;d.actor.Bomb?.CapturePresence();d.actor.HasDog=d.actor.Dog!=null;d.actor.Dog?.CapturePresence();d.actor.HasGlaive=d.actor.Glaive!=null;d.actor.Glaive?.CapturePresence();d.actor.HasBlade=d.actor.Blade!=null;d.actor.Blade?.CapturePresence();d.actor.HasKernel=d.actor.Kernel!=null;d.actor.HasTechnique=d.actor.Technique!=null;d.actor.Cyber?.CapturePresence();}}}
         private static void RestoreDeath(NativeDeath d)
-        {if(d!=null){if(!d.hasZone)d.zone=null;else if(d.zone!=null)d.zone.attack=string.IsNullOrEmpty(d.zone.attack)?null:d.zone.attack;if(!d.hasActor)d.actor=null;if(d.actor!=null){if(!d.actor.HasBomb)d.actor.Bomb=null;d.actor.Bomb?.RestorePresence();if(!d.actor.HasDog)d.actor.Dog=null;d.actor.Dog?.RestorePresence();if(!d.actor.HasGlaive)d.actor.Glaive=null;d.actor.Glaive?.RestorePresence();if(!d.actor.HasKernel)d.actor.Kernel=null;if(!d.actor.HasTechnique)d.actor.Technique=null;d.actor.Cyber?.RestorePresence();}if(!d.hasWound)d.wound=null;}}
+        {if(d!=null){if(!d.hasZone)d.zone=null;else if(d.zone!=null)d.zone.attack=string.IsNullOrEmpty(d.zone.attack)?null:d.zone.attack;if(!d.hasActor)d.actor=null;if(d.actor!=null){if(!d.actor.HasBomb)d.actor.Bomb=null;d.actor.Bomb?.RestorePresence();if(!d.actor.HasDog)d.actor.Dog=null;d.actor.Dog?.RestorePresence();if(!d.actor.HasGlaive)d.actor.Glaive=null;d.actor.Glaive?.RestorePresence();if(!d.actor.HasBlade)d.actor.Blade=null;d.actor.Blade?.RestorePresence();if(string.IsNullOrEmpty(d.actor.PairClip))d.actor.PairClip=null;if(!d.actor.HasKernel)d.actor.Kernel=null;if(!d.actor.HasTechnique)d.actor.Technique=null;d.actor.Cyber?.RestorePresence();}if(!d.hasWound)d.wound=null;}}
         public void RestorePresence()
         {
             if(string.IsNullOrEmpty(areaIdentity?.run))areaIdentity=null;
@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
             if(pve?.zoneBoss!=null&&!NativeBackroomsBossRules.Is(pve.zoneBoss.archetype))pve.zoneBoss.backrooms=null;
             if(pve?.zone!=null&&pve.zoneBoss==null){pve.zone.converterAt=pve.zone.overflowAt=-100;pve.zone.converterMask=0;}
             if(minions!=null)foreach(var m in minions)if(m!=null){m.addKind=string.IsNullOrEmpty(m.addKind)?null:m.addKind;if(!m.hasZone)m.zone=null;else if(m.zone!=null)m.zone.attack=string.IsNullOrEmpty(m.zone.attack)?null:m.zone.attack;}
-            if(snapshot?.Actors!=null)foreach(var a in snapshot.Actors)if(a!=null){if(!a.HasBomb)a.Bomb=null;a.Bomb?.RestorePresence();if(!a.HasDog)a.Dog=null;a.Dog?.RestorePresence();if(!a.HasGlaive)a.Glaive=null;a.Glaive?.RestorePresence();if(!a.HasKernel)a.Kernel=null;if(!a.HasTechnique)a.Technique=null;a.Cyber?.RestorePresence();}
+            if(snapshot?.Actors!=null)foreach(var a in snapshot.Actors)if(a!=null){if(!a.HasBomb)a.Bomb=null;a.Bomb?.RestorePresence();if(!a.HasDog)a.Dog=null;a.Dog?.RestorePresence();if(!a.HasGlaive)a.Glaive=null;a.Glaive?.RestorePresence();if(!a.HasBlade)a.Blade=null;a.Blade?.RestorePresence();if(string.IsNullOrEmpty(a.PairClip))a.PairClip=null;if(!a.HasKernel)a.Kernel=null;if(!a.HasTechnique)a.Technique=null;a.Cyber?.RestorePresence();}
             if(pve!=null){pve.cinematic=string.IsNullOrEmpty(pve.cinematic)?null:pve.cinematic;pve.outcome=string.IsNullOrEmpty(pve.outcome)?null:pve.outcome;pve.notice=string.IsNullOrEmpty(pve.notice)?null:pve.notice;}
             if(props!=null)foreach(var p in props)if(p!=null&&!p.hasDefinition)p.definition=null;
             if(pilots!=null)foreach(var p in pilots)if(p!=null)
