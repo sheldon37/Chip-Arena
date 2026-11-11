@@ -16,7 +16,7 @@ Shader "ChipArena/NativeBloodSplash"
     {
         _MainTex("Sheet (grey shading, alpha shape)",2D)="black"{}
         _NormalMap("Sheet normals",2D)="bump"{}
-        _Gloss("Wet highlight",Range(0,1))=0.55
+        _Gloss("Wet highlight",Range(0,1))=0.75
         _Shade("Shading gain",Float)=2.1
     }
     SubShader
@@ -62,11 +62,11 @@ Shader "ChipArena/NativeBloodSplash"
                 clip(a-0.004);
                 float3 n=normalize(i.t*nt.x+i.b*nt.y+i.n*max(nt.z,0.2));
                 float3 v=normalize(_WorldSpaceCameraPos-i.world.xyz);float3 l=_WorldSpaceLightPos0.xyz;
-                float3 albedo=i.color.rgb*min(c.r*_Shade,1.5);
+                float s=c.r*_Shade;float3 albedo=i.color.rgb*min(s*sqrt(s),1.7);
                 float3 key=_LightColor0.rgb*(dot(n,l)*0.5+0.5);
                 float3 lit=albedo*(i.soft+key+i.domColor*(0.3*saturate(dot(n,i.domDir))));
                 float fres=pow(1.0-saturate(dot(n,v)),4.0);
-                float3 shine=_LightColor0.rgb*BloodGlint(n,v,l,_Gloss)+i.domColor*BloodGlint(n,v,i.domDir,_Gloss)+i.soft*(fres*0.25);
+                float3 shine=_LightColor0.rgb*BloodGlint(n,v,l,_Gloss,0.14)+i.domColor*BloodGlint(n,v,i.domDir,_Gloss,0.14)+i.soft*(fres*0.2);
                 float3 col=lit+shine*_Gloss;
                 #ifdef UNITY_COLORSPACE_GAMMA
                 col=LinearToGammaSpace(max(col,0.0));

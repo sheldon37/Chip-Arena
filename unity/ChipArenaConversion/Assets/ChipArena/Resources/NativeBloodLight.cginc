@@ -25,10 +25,10 @@ float3 BloodArenaLights(float3 world,float3 n,float wrap,out float3 domDir,out f
     sum+=MuzzleLights(world,n,wrap);
     return sum;
 }
-// A wet highlight: a tight lobe for the glint and a broad one for the sheen, for a light from `l` seen along `v`.
-float BloodGlint(float3 n,float3 v,float3 l,float gloss)
+// A wet highlight: a tight lobe for the glint and a broad one (`sheen`) for the sheen, for a light from `l` seen along `v`.
+float BloodGlint(float3 n,float3 v,float3 l,float gloss,float sheen)
 {
     float ndh=saturate(dot(n,normalize(l+v)));float tight=pow(ndh,40.0+140.0*gloss);float broad=pow(ndh,10.0);
-    return (tight*(0.6+1.6*gloss)+broad*0.12)*saturate(dot(n,l)*4.0+0.4);
+    return (tight*(0.6+1.6*gloss)+broad*sheen)*saturate(dot(n,l)*4.0+0.4);
 }
 #endif

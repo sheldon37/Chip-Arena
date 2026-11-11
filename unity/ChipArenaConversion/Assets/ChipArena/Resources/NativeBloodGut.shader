@@ -47,7 +47,7 @@ Shader "ChipArena/NativeBloodGut"
                 UNITY_LIGHT_ATTENUATION(atten,i,i.world);
                 float3 key=_LightColor0.rgb*(saturate(dot(n,l))*atten);
                 float3 col=albedo*(i.soft+key);
-                col+=(_LightColor0.rgb*(BloodGlint(n,v,l,_Gloss)*atten)+i.domColor*BloodGlint(n,v,i.domDir,_Gloss))*_Gloss;
+                col+=(_LightColor0.rgb*(BloodGlint(n,v,l,_Gloss,0.1)*atten)+i.domColor*BloodGlint(n,v,i.domDir,_Gloss,0.1))*_Gloss;
                 #ifdef UNITY_COLORSPACE_GAMMA
                 col=LinearToGammaSpace(max(col,0.0));
                 #endif

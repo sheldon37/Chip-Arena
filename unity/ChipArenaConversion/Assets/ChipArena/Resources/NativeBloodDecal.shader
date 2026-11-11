@@ -91,9 +91,9 @@ Shader "ChipArena/NativeBloodDecal"
                 // The CPU lit the flat surface: the normal map turns the key's share.
                 col*=saturate(1.0+0.5*(dot(n,l)-dot(i.n,l)));
                 float gloss=_Gloss*(0.25+0.75*wet);
-                float3 shine=_LightColor0.rgb*BloodGlint(n,v,l,gloss)+i.domColor.rgb*BloodGlint(n,v,i.domDir,gloss);
+                float3 shine=_LightColor0.rgb*BloodGlint(n,v,l,gloss,0.03)+i.domColor.rgb*BloodGlint(n,v,i.domDir,gloss,0.03);
                 float fres=pow(1.0-saturate(dot(n,v)),5.0);
-                col+=shine*gloss+max(ShadeSH9(float4(reflect(-v,n),1.0)),0.0)*(fres*0.35*gloss);
+                col+=shine*gloss+max(ShadeSH9(float4(reflect(-v,n),1.0)),0.0)*(fres*0.07*gloss);
                 #ifdef UNITY_COLORSPACE_GAMMA
                 float3 fog=GammaToLinearSpace(unity_FogColor.rgb);
                 #else

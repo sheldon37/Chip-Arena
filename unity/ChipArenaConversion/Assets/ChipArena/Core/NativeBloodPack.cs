@@ -51,15 +51,15 @@ namespace ChipArena.UnityConversion
         {
             float H(int k)=>NativeBloodRules.Hash(seed,i,90+k);float R(int k)=>H(k)-.5f;float s=MeleeMath.Clamp(NativeBloodRules.Finite(severity,.5f),0,1);
             normal=Unit(normal,Vector3.UnitY);along=Unit(along,normal);Vector3 side=Unit(Vector3.Cross(along,Vector3.UnitY),Vector3.UnitX),up=Vector3.UnitY;
-            bool pick=H(0)<.5f;flip=H(1)<.5f;life=.44f+.14f*H(2);delay=i==0?0:.025f*i+.03f*H(3);
+            bool pick=H(0)<.5f;flip=H(1)<.5f;life=.5f+.16f*H(2);delay=i==0?0:.025f*i+.03f*H(3);
             switch(kind)
             {
                 case "puncture":case "cavity":
                 {
                     float big=kind=="cavity"?1.3f:1;
-                    if(i==0){sheet=pick?PuffA:PuffB;dir=along+up*.15f+side*R(4)*.3f;size=(.42f+.24f*s)*big;}
-                    else if(i==1){sheet=pick?JetA:JetB;dir=-along*.8f+normal*.4f+up*.2f+side*R(4)*.3f;size=(.26f+.1f*s)*big;life*=.8f;}
-                    else if(i==2){sheet=Spray;dir=along*.7f+up*.5f+side*R(4)*.5f;size=(.44f+.2f*s)*big;}
+                    if(i==0){sheet=pick?PuffA:PuffB;dir=along+up*.15f+side*R(4)*.3f;size=(.5f+.26f*s)*big;}
+                    else if(i==1){sheet=pick?JetA:JetB;dir=-along*.8f+normal*.4f+up*.2f+side*R(4)*.3f;size=(.32f+.12f*s)*big;life*=.8f;}
+                    else if(i==2){sheet=Spray;dir=along*.7f+up*.5f+side*R(4)*.5f;size=(.5f+.22f*s)*big;}
                     else{sheet=Burst;dir=normal*.4f+along*.4f+up*.8f;size=.8f+.3f*s;life=.62f+.14f*H(2);}
                     break;
                 }
@@ -79,19 +79,20 @@ namespace ChipArena.UnityConversion
                 {
                     // Cuts and severs: the jet is cast off along the blade's travel, the puff comes out of the wound.
                     float big=kind=="sever"?1.25f:1;
-                    if(i==0){sheet=pick?JetA:JetB;dir=along*.8f+normal*.45f+up*.2f+side*R(4)*.2f;size=(.56f+.3f*s)*big;}
-                    else if(i==1){sheet=pick?PuffA:PuffB;dir=normal*.9f+up*.35f+along*R(4)*.5f;size=(.42f+.2f*s)*big;}
-                    else if(i==2){sheet=Spray;dir=along*.5f+normal*.3f+up*.75f+side*R(4)*.4f;size=(.5f+.24f*s)*big;}
+                    if(i==0){sheet=pick?JetA:JetB;dir=along*.8f+normal*.45f+up*.2f+side*R(4)*.2f;size=(.68f+.34f*s)*big;}
+                    else if(i==1){sheet=pick?PuffA:PuffB;dir=normal*.9f+up*.35f+along*R(4)*.5f;size=(.5f+.24f*s)*big;}
+                    else if(i==2){sheet=Spray;dir=along*.5f+normal*.3f+up*.75f+side*R(4)*.4f;size=(.58f+.26f*s)*big;}
                     else{sheet=Burst;dir=normal*.5f+up*.9f+along*.3f;size=.8f+.3f*s;life=.62f+.14f*H(2);}
                     break;
                 }
             }
             if(kill)size*=1.2f;size=Math.Min(size,SizeMax);dir=Unit(dir,normal);
         }
-        /// <summary>The two frames a splash shows at `u` of its life (0..1) and the blend from the first to the second.</summary>
+        /// <summary>The two frames a splash shows at `u` of its life (0..1) and the blend from the first to the second: it bursts
+        /// out fast and hangs (half its frames in the first third of its life).</summary>
         public static void Frame(int sheet,float u,out int a,out int b,out float blend)
         {
-            int last=Frames[sheet]-1;float f=MeleeMath.Clamp(NativeBloodRules.Finite(u,1),0,1)*last;a=Math.Min(last,(int)f);b=Math.Min(last,a+1);blend=f-a;
+            int last=Frames[sheet]-1;float t=1-MeleeMath.Clamp(NativeBloodRules.Finite(u,1),0,1);float f=(1-(float)Math.Pow(t,1.7))*last;a=Math.Min(last,(int)f);b=Math.Min(last,a+1);blend=f-a;
         }
         /// <summary>A frame's cell on its sheet: its lower left corner (uv, v up) and its side.</summary>
         public static void Cell(int columns,int frame,out float u0,out float v0,out float side)
