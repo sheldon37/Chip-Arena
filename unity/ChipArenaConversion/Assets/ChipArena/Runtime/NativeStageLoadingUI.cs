@@ -94,14 +94,16 @@ namespace ChipArena.UnityConversion
         private void StageLoadingFrame()
         {
             if(dedicated||content==null||cameraView==null||presentation==null||prefs==null)return;
-            if(stageLoad.TakeAction())
+            if(stageLoad.CanBuild&&stageLoad.TakeAction())
             {
                 stageFrom=arena;stageActed=true;var act=stageAction;stageAction=null;
                 try{act?.Invoke();}catch(Exception e){Debug.LogException(e);stageFailed=true;}
             }
             StageObserve();
+            if(stageLoad.ActionPending&&expeditionLoadInbox.Latest is NativeNetMessage loading)
+                stageView.Stage(content.Map(loading.frame.map),Time.unscaledTime,NativeExpeditionStates.AreaName(loading.expeditionPublic.area));
             if(!stageLoad.Visible){stagePhaseWas=StageLoadPhase.Idle;return;}
-            if(stageLoad.Covered&&!stageLoad.ActionPending)StagePreload();
+            if(stageLoad.CanBuild&&!stageLoad.ActionPending)StagePreload();
             var s=StageSignals();stageLoad.Step(Time.unscaledDeltaTime,s,stagePlan.Work);
             if(stagePlan.Done&&s.Stage&&!stageReadiness.Preloaded)StageReady(true);
             if(stageLoad.Phase==StageLoadPhase.Reveal&&stagePhaseWas!=StageLoadPhase.Reveal)
@@ -125,7 +127,8 @@ namespace ChipArena.UnityConversion
             var s=new StageLoadSignals{Stage=StageInPlace,Ready=stagePlan.Done};
             s.Failed=stageFailed||error.Length>0||expeditionError!=null&&(k==StageLoadKind.Expedition||k==StageLoadKind.Area);
             if(stageActed)s.Failed|=back?arena!=null:arena==null||ReferenceEquals(arena,stageFrom);
-            s.Waiting=!back&&(StageGate.Waiting||LiveExpedition?.areaBarrier?.active==true);
+            s.Waiting=!back&&(StageGate.Waiting||LiveExpedition?.areaBarrier?.active==true||ExpeditionSplit&&!deploymentInitialReady);
+            if(k==StageLoadKind.Expedition||k==StageLoadKind.Area)s.WaitBudget=NativeStageLoading.ExpeditionWaitTimeout;
             // A boss's intro hold (a zone boss's or NOCTIEL's cinematic, which IntroActive leaves to the boss's own presenter) is an
             // intro too: the screen keeps the entrance intro's budget for it rather than the fight's none.
             bool intro=arena!=null&&(IntroActive||arena.Pve?.Holding==true&&arena.Pve.Cinematic=="intro");
@@ -195,6 +198,7 @@ namespace ChipArena.UnityConversion
             int ready=gate?StageGate.Ready:barrier?expeditionTransfer.ReadyCount:0,required=gate?StageGate.Required:barrier?expeditionTransfer.Required:0;
             float shown=stageLoad.Shown;
             NativeStageLoadingHud.Draw(stageLoad,stageView,step,NativeStageLabels.Percent(shown),shown,U.W,U.H,Time.unscaledTime,party,count,ready,required,waiting,PartyLoadingRoster());
+            stageLoad.ContentPresented();
             NoticeToast();BuildCorner();
         }
         private void StageLoadingRelease(){shaderWarm?.Dispose();shaderWarm=null;}
