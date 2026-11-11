@@ -29,7 +29,7 @@ from skyframe_kit import F, blk, hashf, beam, ibeam, rod, slab, rect, blob, leaf
 
 BANK = 'ChipArenaStageSkyframe'
 FLOORS = (-3.2, 0.0, 3.6)
-GREENS = ('leaf-dark', 'leaf', 'leaf', 'leaf-light')
+GREENS = ('leaf-dark', 'leaf', 'leaf')
 
 
 def fins(names):
