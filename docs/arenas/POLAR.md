@@ -140,7 +140,7 @@ do. The thin ice's plates and seams are block props: the drawer follows their pr
 metal or less (an open-air stage), timber grain along the boards, emission above 1 on the windows, lamps, beacons, screens and
 the crystals' seams for the bloom, baked occlusion (eased to three quarters) and wear.
 
-**Low graphics tier**: the bank's Low tier (the same art, about a quarter of the triangles), not the box kit.
+**Low graphics tier**: the bank's Low tier (the same art, about a quarter of the triangles), not the box kit. The Mid tier's props share the Fine meshes.
 
 Rebuild (from `unity/ChipArenaConversion`; about 15 s):
 ```
@@ -183,4 +183,51 @@ streaming `.meta`, its asset-lock entry and length pin, and `case "polar":return
   (its map list), `NewStageLookChecks` (a column example, the weather line, the dressed counts, the overhead threshold 150 to
   100), `StageKitChecks` (the expected count), `TransitionLoadingChecks` (the prewarm entry).
 
-NUMBERS
+## Numbers and what was seen (2026-11-11)
+
+**The bank**: 9,257,908 bytes (budget: about 20 MB), 643 props, deterministic. Static: 94 map chunks; Fine 125,278 triangles
+(108,406 vertices); Mid shares the Fine meshes (none of its own: `--own-mid` builds one, about 3 MB more); Low with the far
+backdrop's five chunks 33,342 (47,155). Rig: 8 props; 6,522 / 3,440 / 1,652 triangles. Breakable and sinking blocks: 26 props;
+11,728 / 10,528 / 3,224. Up to 33 rig draws a frame.
+
+**Z-fighting** (`zfight.py`, coplanar same-facing overlap between art parts): Fine 0.07 m2, Mid 0.07 m2 (the Fine meshes), Low
+0.00 m2; no uncovered block's face coincides with the art. The static scene goes through `stagekit.lift_coplanar` at every
+tier (1,300 pairs and 83 m2 settled at the Fine tier). The box kit and the dressed blocks: no two same-facing faces in one plane
+(PolarChecks, SurfaceChecks' own rule).
+
+**CoreTests** (Release, this PC): box kit 727 parts; rig up to 93 box parts a frame; effects up to 1,341 quads a frame (low tier
+522); box backdrop 14,320 vertices; the rig and effects build in about 0.1 ms a frame, allocation free. Map record: 258 blocks,
+6 pilot columns, nav 2,942 nodes, 4 segments, 4 hazards.
+
+**Frame time** (shared Editor, High tier, from cabin A's door east across the field, 10 s, one idle bot; other agents shared the
+machine): the M1 stage before (from its west garage toward the hall) 1,261 frames, mean 7.94 ms, p95 9.03 ms and 1,165 frames,
+8.59 / 10.47 ms; the rebuilt stage with its art 1,136 frames, mean 8.82 ms, p95 10.22 ms and 1,142 frames, 8.76 / 10.07 ms:
+level with the M1 stage's second run, about 0.9 ms over its first (not under it). Low graphics tier: 1,053 frames, 9.50 /
+10.65 ms in the one run taken (no faster than High in that run: the runs' spread on a shared machine is as large as the gap).
+
+**Seen in the shared Editor** (a match, one idle bot, god mode, the game's camera placed by `maincam`): ten views of the M1
+stage before and of the rebuilt stage with its art after (overviews from the south-west and north-east, cabin A's door across
+the field, the channel north to the bow under the aurora, the foredeck, the terrace north to the icebreaker, the road and the
+terrace with a vent bursting, the shelf path and the sea, the north-west pocket and the lab, inside cabin A); the same ten on
+the Low graphics tier; the box kit without the bank (an earlier commit; several of its windows drifted); the thin ice whole
+with its seams' flags and the ice's glints. The aurora, the searchlight's shaft, the balloon, the strings of lamps, the dish
+at different turns and a vent's burst are in those frames.
+
+**Not done / not seen**:
+- **The thin ice cracking and sinking was not seen in the Editor.** The scripted attempt (the Bombadier's attack on a seam) fired
+  nothing. Its rules are the existing segments' (PolarChecks runs the state machine: a broken seam cracks its sheet, it sinks,
+  it is gone, its nav links leave with it), and its effects, floes and block props are checked against that state, but nobody
+  has watched it, ridden it down or judged its 1.4 s telegraph. A seam takes blast damage only (the existing `structural` rule):
+  36 HP may want tuning once it is played.
+- The frame time is level with the M1 stage's, not under it.
+- Played only by an idle bot: no human playtest, no network (guest) test, no killcam on the art, no native Windows build, the
+  main menu's 3D preview not looked at.
+- The dish and the balloon were seen in still frames at different moments, not as a recording; the anemometers and the vents'
+  lamps were not looked at close.
+- From the high overview cameras the far shelf reads pale and bare; in play it is hidden behind the ridges.
+- A pilot can stand on the hull's bow steps where the modelled bow is smooth (the colliders step in half metres); the deck's
+  outline follows the blocks within a hand.
+- No shadows from the practical lights (as STAGE-ART.md says for every stage). No ambience loop (`polar-wind` is a key only);
+  the vents use existing clips.
+- The other M1 stages' shared code still carries Polaris's dead branches (Core NativeNewStageKit / Scenery / Fx `case 4`):
+  left for the integrator, since four agents edit those files.
