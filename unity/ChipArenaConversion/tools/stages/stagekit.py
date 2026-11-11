@@ -1240,7 +1240,8 @@ class Chunks:
         floor at every tier. Call it on a tier's static scene before its bake. A face spanning more than `reach` cells along
         an axis is left whole (a far sheet), and so is a floor or ceiling face under `least` m2 and any other face under
         `upright` m2 (a moulding's segment, a post, a rail: its piece over the cell's wall is small, and cutting every one
-        would cost a tenth of the bank; floors come first). Returns how many faces were cut."""
+        would cost a tenth of the bank; floors come first), and so is a face that lies on another (layer_faces: paint, boards,
+        marks: the tiers lift those by different amounts, so two tiers' never share a plane). Returns how many faces were cut."""
         P, N, S, F = g.arrays()
         nf = len(S)
         if nf == 0:
@@ -1305,7 +1306,10 @@ class Chunks:
         np.add.at(nrm, face_of, cr)
         ar = np.linalg.norm(nrm, axis=1) / 2
         big = ar >= np.where(np.abs(nrm[:, 1]) > .7 * 2 * np.maximum(ar, 1e-12), least, upright)
-        for f in np.nonzero(((cx1 > cx0) | (cz1 > cz0) | (by1 > by0)) & big)[0].tolist():
+        cross = ((cx1 > cx0) | (cz1 > cz0) | (by1 > by0)) & big
+        if cross.any():
+            cross &= layer_faces(g) == 0
+        for f in np.nonzero(cross)[0].tolist():
             a, k = int(starts[f]), int(S[f])
             polys = [[(P64[a + i].copy(), N64[a + i].copy()) for i in range(k)]]
             whole = False
