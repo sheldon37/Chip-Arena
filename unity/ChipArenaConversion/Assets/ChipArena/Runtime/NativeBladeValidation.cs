@@ -34,6 +34,8 @@ namespace ChipArena.UnityConversion
                     p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,new Dictionary<string,int>());p.Hp=(float)p.Stats["hp"];p.Mana=p.Stamina=100;p.Ammo=6;p.Ready=p.BlockEnd=p.RollEnd=p.ReloadEnd=p.AttackEnd=p.StunEnd=p.ShieldUntil=p.SlowEnd=0;p.SlowFactor=1;p.Down=null;p.Dots.Clear();
                     p.Kernel=null;p.Technique=null;p.Swing=null;p.Special=null;p.AbilityCast=null;p.DevGod=false;p.Body.isKinematic=false;p.Body.useGravity=true;p.Collider.enabled=true;p.Yaw=0;
                     p.Body.position=o+new Vector3(p==a?0:p==b?0:6,0,p==a?0:p==b?2.2f:12);p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;p.Input=new InputFrame();p.Grounded=true;p.StaggerImmune=0;
+                    // (The Glaive's validation, run before this one in the same arena, leaves its pilot sprinting: a cut would be the rush.)
+                    p.Pose.Sprinting=false;
                 }
                 Physics.SyncTransforms();
             }
@@ -91,7 +93,7 @@ namespace ChipArena.UnityConversion
                 foreach(var id in NativeFangsChips.Ids)Check(Content.chips.Any(x=>x.id==id&&ImplementedChip(x)),"live supported chip "+id);
                 Debug.Log("Native blades: "+checks+" checks");
             }
-            finally{UnityEngine.Object.DestroyImmediate(floor);foreach(var p in Pilots){BladeClear(p);p.Seat.chips.Clear();p.Body.useGravity=true;}}
+            finally{UnityEngine.Object.DestroyImmediate(floor);foreach(var p in Pilots){BladeClear(p);p.Seat.chips.Clear();p.Body.useGravity=true;p.Pose.Sprinting=false;}}
         }
     }
 }
