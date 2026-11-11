@@ -27,9 +27,16 @@ Every number is in Core `NativeKatana`.
 ## The look
 
 - **The blade** (Core `NativeWeaponModels.Katana.cs`, sculpted with WeaponSculpt): a curved single-edged blade with a lit hamon in the pilot's
-  accent, a habaki, a pierced tsuba, a wrapped tsuka and a kashira. Its saya lies along the left hip as if through the obi, its mouth at the
-  front of the belt (Runtime `NativeBladePresentation.cs`; owner 2026-11-11: the sheath was off the body); the
-  blade rests in it through the iai's draw and from the click to the cast's end.
+  accent, a habaki, a pierced tsuba, a wrapped tsuka and a kashira. The blade rests in its saya from the sheathing's click to the iai's end.
+- **The saya** (Core `NativeKatanaSaya`, drawn by Runtime `NativeBladePresentation.cs`; owner 2026-11-11: "sheathe is still not on body"):
+  where the Frank Slash Pack's katana set wears it, on the model's pelvis bone (the pack's `Sword_Case` bone rides its pelvis): the hilt at the
+  front of the belly on the left, the saya down and out along the left thigh, keeping about 5 cm off it through the idles and runs (it swings
+  back along the hip in the runs as the pelvis turns). The pack's clips move it with the left hand and the model's left hand carries it as
+  they do: the stance-three moves (the iai, the rush, the storm until its flurry) hold it pulled forward for the draw, the sheathing takes it
+  up for the blade. The sheathing also turns the blade over in the right hand (about 165 degrees, early in the clip) so it goes in edge
+  up; the blade sits in the saya at the iai's draw (the clip's 0.6 s) and the sheathing's click (1.867 s), so it leaves and enters without a
+  jump. Measured on the pack's bones (Blender, on its FBX) and fitted on the model's own hands at those moments. The voxel body (no model)
+  keeps its upright hip frame.
 - **The motion** (Core `NativeBladeMotion`): the pack's first stance, its root-motion runs, its guard walk as the walk and its run as the sprint;
   its guard, block, tumble and hit reactions. The cuts are its first combo (Combo01 parts 1-3) and Combo03's last part. The rush is stance
   three's lunging cut, the iai stance three's dash skill and the sheathe (its click lands on the split), the storm stance three's flurry and the
@@ -52,18 +59,23 @@ Every number is in Core `NativeKatana`.
 7.2 s, the name at 5.4 s. The pack's clips play on the model (Core `NativeBladeIntros`, the arena's motion on the intro body).
 
 1. Night, a crimson moon over the pilot's shoulder (a crisp disc with its halo, dark cloud drifting across it), petals tumbling down, a dark
-   mist low over the floor. The pilot stands with the blade sheathed (the unarmed idle).
-2. At 2.55 s, one great iai cut (stance two's skill, slowed at its height), its sweep a crimson trail, a glint along the edge, leaves a
-   line of light hanging across the stage; the petals it crossed hang cut in two on it.
-3. The blade is slid home. At the click (4.35 s) a flash at the saya's mouth and a shockwave over the floor: the line flares and
-   shatters into falling shards, the cut petals fall apart, the moon flares.
+   mist low over the floor. The pilot stands with the blade sheathed, the left hand resting on the saya (the pack's sheathed idle).
+2. At 1.25 s the pilot sinks into the iai stance, the left hand pulling the saya forward (the pack's stance-three draw, the class's own
+   Moonlit Draw); the blade leaves the saya at 1.85 s. At 2.55 s its one great cut (slowed at its height), its sweep a crimson trail, a
+   glint along the edge, leaves a line of light hanging across the stage; the petals it crossed hang cut in two on it.
+3. From 3.3 s the whole sheathing: the blade turned over in the hand, the saya taken up by the left hand, the blade slid home. At the click
+   (4.35 s) a flash at the saya's mouth and a shockwave over the floor: the line flares and shatters into falling shards, the cut petals
+   fall apart, the moon flares.
 4. The hero: standing calm, the blade back in its saya at the hip, the moon to one side.
 
 Its music is the arc-salute bed. Presentation only.
 
 Its look (owner 2026-11-11: "Floating parts, needs much improved vfx"): set pieces where a shape must read crisp (the moon, the petals, the
 line and its shards), lit smoke for the mist, no glow rings or balls; the trail and the glint from the blade where the model holds it
-(Runtime `NativeBladePresentation.BladeIntroHeld`).
+(Runtime `NativeBladePresentation.BladeIntroHeld`). The model holds the blade as the match does (owner 2026-11-11: "Katana intro is broken,
+they dont hold it"): the entrance's keyed stance holds no sword the way the game's pose does, so the hold the intro body took on its first frame
+hung the blade from the bare wrist along the forearm; the blade classes' entrances take the match's hold (Core `NativeBladeGrip`, measured on
+the arena's body) and the palm grip the match draws with.
 
 ## The chips
 
@@ -109,7 +121,7 @@ records and the killcam, and checked with `Valid()`.
 | The moves on the pack's clips | `Core/NativeBladeMotion.cs`, the set in `Core/NativeVisualMotion.cs` |
 | The model | `Core/NativeWeaponModels.Katana.cs` (registered in `.Blades.cs`) |
 | Effects | `Core/NativeBladeFx.cs` |
-| Saya, cards, sound | `Runtime/NativeBladePresentation.cs` |
+| Saya, cards, sound | `Runtime/NativeBladePresentation.cs`; where the pack wears and moves the saya `Core/NativeKatanaSaya.cs` |
 | The chips | `Core/NativeKatanaChips.cs`; cards and picks `Runtime/NativeBladeChipArt.cs` |
 | The intro | `Core/NativeBladeIntros.cs` |
 | Checks | `Tests/BladeChecks.cs` (`CoreTests --blades`) |

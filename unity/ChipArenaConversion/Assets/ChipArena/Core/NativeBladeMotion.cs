@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
         {
             pick=default;
             // The class's entrance: the intro body plays the clip the script names (Core NativeBladeIntros.Clip).
-            if(IntroActor>=0&&a!=null&&a.Id==IntroActor&&IntroClip!=null&&clips.Has(IntroClip)){pick=new NativeVisualMotion.Pick{Clip=IntroClip,Time=IntroTime,Fade=.12f};return true;}
+            if(IntroActor>=0&&a!=null&&a.Id==IntroActor&&IntroClip!=null&&clips.Has(IntroClip)){pick=new NativeVisualMotion.Pick{Clip=IntroClip,Time=IntroTime,Fade=IntroFade};return true;}
             if(Slam(set,a,time,clips,out pick))return true;
             var k=NativeBladeView.Of(a);if(k?.CastKind==null||time<k.CastAt)return false;
             if(!Clip(a,k,time,clips,out string clip,out float t,out bool whole,out bool flight))return false;
@@ -99,9 +99,9 @@ namespace ChipArena.UnityConversion
             float impact=a.ImpactAt>a.AttackAt?a.ImpactAt:Math.Max(a.AttackAt+hit,time+.08f);
             pick=new NativeVisualMotion.Pick{Clip=set.AirAttack,Time=NativeVisualMotion.Retime(time,a.AttackAt,impact,impact+(len-hit),hit,len),Fade=NativeVisualMotion.FadeIn};return true;
         }
-        /// <summary>The entrance's intro body (its actor id, -1: none) and the clip and time its script names this frame (set around the
-        /// intro body's motion only).</summary>
-        public static int IntroActor=-1;public static string IntroClip;public static float IntroTime;
+        /// <summary>The entrance's intro body (its actor id, -1: none) and the clip, time and fade its script names this frame (set around
+        /// the intro body's motion only; Core NativeBladeIntro.Fade).</summary>
+        public static int IntroActor=-1;public static string IntroClip;public static float IntroTime,IntroFade=.12f;
         /// <summary>A cut on the move: the cut's clip on the upper body over the stride.</summary>
         public static bool Upper(NativeVisualMotion.Set set,Actor a,float time,NativeVisualMotion.IClips clips,out NativeVisualMotion.Upper up)
         {

@@ -13,10 +13,10 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The saya's model id (built with the weapon models, NativeWeaponSkinModels.cs).</summary>
         public const string SayaModel="katana-saya";
-        /// <summary>Where the saya hangs in the hips' upright frame (+x the body's right, +y up, +z ahead; at the pelvis joint, turned with
-        /// the line between the hip joints): its mouth at the left front of the belt, angled back and down along the hip as if through the obi,
-        /// only a little out (the owner, 2026-11-11: the sheath was off the body; it stood out from the hip, then hung at the crotch like a
-        /// tail). Its own x points down, so the curve (the edge side) is up.</summary>
+        /// <summary>The voxel body's saya (no model to wear it): in the hips' upright frame (+x the body's right, +y up, +z ahead; at the
+        /// pelvis joint, turned with the line between the hip joints), its mouth at the left front of the belt, angled back and down along the
+        /// hip. Its own x points down, so the curve (the edge side) is up. The model wears it where the pack's katana set does
+        /// (Core NativeKatanaSaya).</summary>
         private static readonly Vector3 SayaAt=new Vector3(-.15f,.24f,.1f),SayaAxis=new Vector3(-.12f,-.36f,-.92f);
         /// <summary>Whether a Katana's blade is in its saya now: its record's iai, or its entrance's script.</summary>
         internal bool KatanaSheathed(Actor a,float time)=>a!=null&&a.Id==bladeIntroActor&&bladeIntro!=null?bladeIntro.Sheathed(bladeIntroClock):NativeKatana.Sheathed(NativeBladeView.Katana(a),time);
@@ -35,25 +35,59 @@ namespace ChipArena.UnityConversion
         {
             if(first||a?.SourceSpec!=NativeKatana.Spec||sourceModels==null||rig==null)return;
             bool posed=visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.PosedFrame==Time.frameCount;
-            Vector3 J(int j)=>(posed?VisualJointFrame(rig,j):rig.Bones[j].localToWorldMatrix).GetColumn(3);
-            // The hips' frame: upright (the pelvis bone's own tilt would swing the saya into the floor), turned with the hips.
-            var left=J(CapturedRig.LHip)-J(CapturedRig.RHip);left.y=0;if(left.sqrMagnitude<1e-6f)left=-rig.Root.transform.right;left.Normalize();
-            var hips=Matrix4x4.TRS(J(CapturedRig.Pelvis),Quaternion.LookRotation(Vector3.Cross(Vector3.up,left),Vector3.up),Vector3.one);
-            var frame=hips*Matrix4x4.TRS(SayaAt,Quaternion.LookRotation(SayaAxis.normalized,Vector3.left),Vector3.one);
+            var pelvis=posed?VisualBoneOf(body,CapturedRig.Pelvis):null;Matrix4x4 frame;
+            if(pelvis!=null)
+            {
+                // On the model: on its pelvis bone where the pack's katana set wears it (owner 2026-11-11: "sheathe is still not on body"), and
+                // in the left hand as far as the pack's clips carry it there (the stance-three draws, the sheathing; Core NativeKatanaSaya).
+                frame=SayaRigid(pelvis)*Matrix4x4.TRS(SayaVec(NativeKatanaSaya.RestAt),SayaRot(NativeKatanaSaya.RestTurn),Vector3.one);
+                var hand=body.Motion?.LeftHand;
+                if(hand!=null&&body.SayaFrame==Time.frameCount&&body.SayaCarry>0)
+                {
+                    int h=Mathf.Clamp(body.SayaHold,0,NativeKatanaSaya.CarryAt.Length-1);
+                    var held=SayaRigid(hand)*Matrix4x4.TRS(SayaVec(NativeKatanaSaya.CarryAt[h]),SayaRot(NativeKatanaSaya.CarryTurn[h]),Vector3.one);float w=body.SayaCarry;
+                    frame=Matrix4x4.TRS(Vector3.Lerp(frame.GetColumn(3),held.GetColumn(3),w),Quaternion.Slerp(frame.rotation,held.rotation,w),Vector3.one);
+                }
+            }
+            else
+            {
+                // The voxel body: the hips' frame upright (the pelvis bone's own tilt would swing the saya into the floor), turned with the hips.
+                Vector3 J(int j)=>rig.Bones[j].localToWorldMatrix.GetColumn(3);
+                var left=J(CapturedRig.LHip)-J(CapturedRig.RHip);left.y=0;if(left.sqrMagnitude<1e-6f)left=-rig.Root.transform.right;left.Normalize();
+                var hips=Matrix4x4.TRS(J(CapturedRig.Pelvis),Quaternion.LookRotation(Vector3.Cross(Vector3.up,left),Vector3.up),Vector3.one);
+                frame=hips*Matrix4x4.TRS(SayaAt,Quaternion.LookRotation(SayaAxis.normalized,Vector3.left),Vector3.one);
+            }
             sourceModels.Queue(SayaModel,frame,null,null,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:flash,partTint:tint);
             // Sheathed: the katana in the saya on the saya's own axes, its habaki seated in the mouth (NativeWeaponModels.KatanaSayaSeat) and
             // the hilt out of it.
             if(KatanaSheathed(a,time)){var sheath=frame*Matrix4x4.Translate(new Vector3(0,0,-NativeWeaponModels.KatanaSayaSeat));sourceModels.Queue("weapon-"+NativeKatana.Spec,sheath,_=>sheath,null,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:flash,partTint:tint,glow:HeldGlow);}
         }
-        /// <summary>A blade class's entrance: each blade where the model holds it this frame (the right on the rig's hand, fitted to the model;
-        /// the left on the model's own: IntroWeapon), handed to the script in its stage frame (x mirrored, as the entrance draws).</summary>
+        /// <summary>A blade class's entrance: the blade in hand `b`'s frame where the model holds it this frame: the rig's hand bone, which
+        /// the model's own motion puts on the model's hand with the match's hold (VisualMotionPose, Core NativeBladeGrip), its handle through
+        /// the palm as the match draws it (PalmGrip).</summary>
+        private Matrix4x4 BladeIntroFrame(int b,Matrix4x4 grip)
+        {
+            var m=introRig.Bones[b].localToWorldMatrix*grip;
+            return bladeIntro!=null&&(b==CapturedRig.RHand||b==CapturedRig.LHand)?PalmGrip(introRig,bladeIntro.Spec,m,b==CapturedRig.LHand):m;
+        }
+        /// <summary>The model's bone for game joint `j` (or its nearest mapped ancestor's), or null.</summary>
+        private static Transform VisualBoneOf(VisualBody body,int j)
+        {
+            if(body?.JointBone==null||body.Binding?.Bones==null||j<0||j>=body.JointBone.Length)return null;int v=body.JointBone[j];
+            return v>=0&&v<body.Binding.Bones.Length?body.Binding.Bones[v]:null;
+        }
+        private static Matrix4x4 SayaRigid(Transform t)=>Matrix4x4.TRS(t.position,t.rotation,Vector3.one);
+        private static Vector3 SayaVec(System.Numerics.Vector3 v)=>new Vector3(v.X,v.Y,v.Z);
+        private static Quaternion SayaRot(System.Numerics.Quaternion q)=>new Quaternion(q.X,q.Y,q.Z,q.W);
+        /// <summary>A blade class's entrance: each blade where the model holds it this frame (BladeIntroFrame), handed to the script in its
+        /// stage frame (x mirrored, as the entrance draws).</summary>
         private void BladeIntroHeld(NativeBladeIntro intro,float t,string style,bool shown)
         {
             var grip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             for(int hand=0;hand<2;hand++)
             {
                 if(introRig==null||!shown||intro.Sheathed(t)||!NativeBladeView.Line(intro.Spec,hand==1,out var root,out var tip)){intro.Blade(t,hand,default,default,false);continue;}
-                var m=(hand==1?VisualJointFrame(introRig,CapturedRig.LHand):introRig.Bones[CapturedRig.RHand].localToWorldMatrix)*grip;
+                var m=BladeIntroFrame(hand==1?CapturedRig.LHand:CapturedRig.RHand,grip);
                 var r=m.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(root)));var p=m.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(tip)));
                 intro.Blade(t,hand,new NVector(-r.x,r.y,r.z),new NVector(-p.x,p.y,p.z),true);
             }
