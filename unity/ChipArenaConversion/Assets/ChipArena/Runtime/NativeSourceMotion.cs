@@ -13,9 +13,22 @@ namespace ChipArena.UnityConversion
         private static Dictionary<string,SourceMotionClip> clips;
         // Decode the shared bank during startup, before any combat or replay can request a clip.
         public static void Prewarm()=>Ensure();
-        private static void Ensure(){if(clips!=null)return;var data=JsonUtility.FromJson<SourceMotionSet>(NativeSourceModels.Decode("SourceMotion"));clips=new Dictionary<string,SourceMotionClip>();foreach(var c in data.clips){if(c.frames<2||c.duration<=0||c.values==null||c.values.Length!=c.frames*22*7||c.values.Any(v=>!MathUtil.Finite(v))||c.key.StartsWith("intro-")&&(c.roots==null||c.roots.Length!=c.frames*10||c.cameras==null||c.cameras.Length!=c.frames*10||c.roots.Any(v=>!MathUtil.Finite(v))||c.cameras.Any(v=>!MathUtil.Finite(v))))throw new InvalidOperationException("Invalid motion clip "+c.key);clips.Add(c.key,c);}
+        // Under the logo intro it decodes on a worker while the intro plays (NativeBankLoad.cs, docs/BOOT-INTRO.md); the first
+        // read, the loading step's or an early caller's, waits for it.
+        private static NativeBankLoad<Dictionary<string,SourceMotionClip>> loading;
+        public static void PrewarmAsync(){if(clips==null&&loading==null)loading=new NativeBankLoad<Dictionary<string,SourceMotionClip>>("SourceMotion",Build);}
+        /// <summary>The bank reads without waiting (it is in, or its worker has finished). Steps a background load.</summary>
+        public static bool Ready{get{if(clips!=null)return true;if(loading==null)return false;loading.Step();return loading.Done;}}
+        private static void Ensure()
+        {
+            if(clips!=null)return;
+            if(loading!=null){var load=loading;loading=null;try{clips=load.Join();}catch(Exception){clips=load.Partial;throw;}return;}
+            Build(NativeSourceModels.Decode("SourceMotion"),d=>clips=d);
+        }
+        private static Dictionary<string,SourceMotionClip> Build(string json,Action<Dictionary<string,SourceMotionClip>> begin){var data=JsonUtility.FromJson<SourceMotionSet>(json);var clips=new Dictionary<string,SourceMotionClip>();begin(clips);foreach(var c in data.clips){if(c.frames<2||c.duration<=0||c.values==null||c.values.Length!=c.frames*22*7||c.values.Any(v=>!MathUtil.Finite(v))||c.key.StartsWith("intro-")&&(c.roots==null||c.roots.Length!=c.frames*10||c.cameras==null||c.cameras.Length!=c.frames*10||c.roots.Any(v=>!MathUtil.Finite(v))||c.cameras.Any(v=>!MathUtil.Finite(v))))throw new InvalidOperationException("Invalid motion clip "+c.key);clips.Add(c.key,c);}
             // The weapon intros' clearance plans are built with the clips (NativeIntroMotion.Prepare), not on an entrance's first frame.
-            foreach(var c in data.clips)if(c.key.StartsWith("intro-weapon-",StringComparison.Ordinal))NativeIntroMotion.Prepare(c.key.Substring(6),c.values,c.frames,c.duration);}
+            foreach(var c in data.clips)if(c.key.StartsWith("intro-weapon-",StringComparison.Ordinal))NativeIntroMotion.Prepare(c.key.Substring(6),c.values,c.frames,c.duration);
+            return clips;}
         public static int ClipCount{get{Ensure();return clips.Count;}}
         private static readonly Dictionary<string,NativeEntranceClip> entranceClips=new Dictionary<string,NativeEntranceClip>();
         /// <summary>A weapon signature's baked clip for the entrance director (made once per clip), or null.</summary>

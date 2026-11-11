@@ -21,6 +21,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--hotdog-friends"){HotdogFriendsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--hot-dog"){LookContractChecks.Run(ProjectRoot());HotDogChecks.Run(ProjectRoot());Console.WriteLine("PASS hot dog");return 0;}
             if(args.Length==1&&args[0]=="--cutscene-skip"){CutsceneSkipChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--boot-intro"){BootIntroChecks.Run(ProjectRoot());return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--runtime-performance")RuntimePerformanceChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--runtime-performance")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--expansion-foundation")ExpansionFoundationChecks.Run(ProjectRoot());
@@ -282,6 +283,7 @@ internal static class Program
             RooftopChecks.Run(root);
             PortraitBackChecks.Run(root);
             BuildLabelChecks.Run(root);SocialPanelChecks.Run(root);CutsceneSkipChecks.Run(root);
+            BootIntroChecks.Run(root);
             FinalKillcamChecks.Run(root);ReplayShotChecks.Run(data);
             HatLookChecks.Run(root);ModelHatChecks.Run(root);RobotSuitChecks.Run(root);RobotHelmChecks.Run(root);
             LookContractChecks.Run(root);HotDogChecks.Run(root);GuardChecks.Run(root);HotdogFriendsChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);TilerLookChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);ZombieStageChecks.Source();ZombieKnockChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);

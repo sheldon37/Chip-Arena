@@ -24,7 +24,10 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,Part[]> models=new Dictionary<string,Part[]>();private readonly Dictionary<(Part,int),Draws> draws=new Dictionary<(Part,int),Draws>();private readonly Dictionary<(Part,int,Camera),Draws> cameraDraws=new Dictionary<(Part,int,Camera),Draws>();
         private readonly List<Texture2D> textures=new List<Texture2D>();private readonly List<Material> materials=new List<Material>();private readonly Matrix4x4[] buffer=new Matrix4x4[512];private readonly Vector4[] bodies=new Vector4[512],accents=new Vector4[512],tints=new Vector4[512],glows=new Vector4[512];private readonly MaterialPropertyBlock properties=new MaterialPropertyBlock();
         public static string Decode(string resource)
-        {var asset=Resources.Load<TextAsset>(resource);if(asset==null)throw new InvalidOperationException(resource+" is missing");var envelope=JsonUtility.FromJson<SourceEnvelope>(asset.text);if(envelope.schema!=1||envelope.commit!="05950eaef80ff2483a9c44d898cad98be1a76bbc")throw new InvalidDataException("Unverified "+resource);using(var bytes=new MemoryStream(Convert.FromBase64String(envelope.data)))using(var zip=new GZipStream(bytes,CompressionMode.Decompress))using(var reader=new StreamReader(zip))return reader.ReadToEnd();}
+        {var asset=Resources.Load<TextAsset>(resource);if(asset==null)throw new InvalidOperationException(resource+" is missing");return Unwrap(resource,asset.text);}
+        // The envelope's check, base64 and gzip: no Unity object, so the startup banks run it on a worker (NativeBankLoad.cs).
+        public static string Unwrap(string resource,string text)
+        {var envelope=JsonUtility.FromJson<SourceEnvelope>(text);if(envelope.schema!=1||envelope.commit!="05950eaef80ff2483a9c44d898cad98be1a76bbc")throw new InvalidDataException("Unverified "+resource);using(var bytes=new MemoryStream(Convert.FromBase64String(envelope.data)))using(var zip=new GZipStream(bytes,CompressionMode.Decompress))using(var reader=new StreamReader(zip))return reader.ReadToEnd();}
         private static Texture2D CreateTexture(SourceTexture source,bool readable=false)
         {
             if(source==null||source.channels!=4||source.width<=0||source.height<=0)
