@@ -108,7 +108,12 @@ namespace ChipArena.UnityConversion
             ClubScenery(arena);
             EmporiumScenery(arena);
             CausewayScenery(arena);
+            PierScenery(arena);
+            DeepwellScenery(arena);
+            SkyframeScenery(arena);
+            BreakwaterScenery(arena);
             SanctumScenery(arena);
+            PolarScenery(arena);
             TrainingScenery(arena);
             // The harbour yards round the map (NativePackStage.cs; nothing without the kit bank).
             PackYards(arena);

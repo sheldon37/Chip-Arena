@@ -17,6 +17,15 @@ namespace ChipArena.UnityConversion
     public sealed class NativeFactoryRig
     {
         public const int Capacity=1400;
+        /// <summary>The numbers the stage art's poses share with these boxes (Core NativeFactoryArt, docs/arenas/FACTORY_PROPOSAL.md
+        /// "Stage art"): the crane rail over the runway line and the trolley's deck over the rail, the ropes' foot over the hook
+        /// block's underside, the heights over which the hook and the load cast no sun shadow, a rail saw's blade beside its
+        /// carriage, a ram's guide rods (shares of its half size) and how far they stand into the head.</summary>
+        public const double RailUp=.14,TrolleyUp=1.76,RopeFoot=1.15,HookHigh=4,LoadHigh=2.5,BladeAside=.12,RodX=.7,RodZ=.5,RodInto=.25;
+        /// <summary>The boxes that stay boxes under the stage art (by part index, this frame): every telegraph lamp (each takes its
+        /// own colour each frame) and a bloodied blade's smears (they dry by the clock). Everything else is modelled.</summary>
+        public readonly bool[] Kept=new bool[Capacity];
+        private void Keep(int from){for(int i=from;i<Parts.Count;i++)Kept[i]=true;}
         public readonly NativeFactoryKit.Writer Parts;
         private readonly NativeFactoryKit.Looks looks;
         /// <summary>Lamp colours (sRGB): off, safe green, amber, red, and the bright chase.</summary>
@@ -68,7 +77,7 @@ namespace ChipArena.UnityConversion
         /// blade carries blood from then on (null: none).</summary>
         public void Build(FactoryHazard[] hazards,int round,double clock,double[] blood=null)
         {
-            Parts.Clear();clockNow=clock;if(hazards==null)return;
+            Parts.Clear();Array.Clear(Kept,0,Kept.Length);clockNow=clock;if(hazards==null)return;
             for(int i=0;i<hazards.Length;i++)
             {
                 var h=hazards[i];if(h==null)continue;var st=NativeFactoryHazards.State(h,round,clock);kill=blood!=null&&i<blood.Length?blood[i]:double.NaN;
@@ -97,24 +106,26 @@ namespace ChipArena.UnityConversion
         /// </summary>
         private void Smears(FactoryHazard h,double cx,double cy,double cz,double spin,double t,bool alongX,FactoryQ basis)
         {
-            if(double.IsNaN(kill)||!(clockNow>=kill))return;double dry=Math.Min(1,(clockNow-kill)/BloodDries);int col=Mix(BloodWet,BloodDry,dry);
+            if(double.IsNaN(kill)||!(clockNow>=kill))return;double dry=Math.Min(1,(clockNow-kill)/BloodDries);int col=Mix(BloodWet,BloodDry,dry);int first=Parts.Count;
             for(int k=0;k<7;k++)
             {
                 double f=((k*0x9e3779b1u)>>8&0xffff)/65536.0,r=h.radius*(.32+.56*f),a=spin+k*2.39996,len=.05+.09*(((k*0x85ebca77u)>>8&0xffff)/65536.0);
                 double u=r*Math.Cos(a),v=r*Math.Sin(a),x=alongX?0:u,z=alongX?-u:0;
                 Parts.Add(cx+x,cy+v,cz+z,len,.014+.01*f,t+.004,basis*FactoryQ.Axis(0,0,1,a),NativeFactoryKit.Red,false,col);
             }
+            Keep(first);
         }
         private static int Mix(int a,int b,double t){int C(int s)=>(int)Math.Round(((a>>s)&255)+(((b>>s)&255)-((a>>s)&255))*t);return C(16)<<16|C(8)<<8|C(0);}
         private void Slot(FactoryHazard h,in FactoryHazardState st,double clock)
         {
             var w=Parts;if(st.Lift>0)Blade(h,st.Center.x,st.Center.y,st.Center.z,st.Spin,true);
-            bool alongX=Math.Abs(h.b.x-h.a.x)>Math.Abs(h.b.z-h.a.z);double s0=alongX?h.a.x:h.a.z,s1=alongX?h.b.x:h.b.z,c=alongX?h.a.z:h.a.x,len=Math.Abs(s1-s0);int n=(int)Math.Floor(len/2)+1;
+            bool alongX=Math.Abs(h.b.x-h.a.x)>Math.Abs(h.b.z-h.a.z);double s0=alongX?h.a.x:h.a.z,s1=alongX?h.b.x:h.b.z,c=alongX?h.a.z:h.a.x,len=Math.Abs(s1-s0);int n=(int)Math.Floor(len/2)+1,lamps=w.Count;
             for(int i=0;i<n;i++)
             {
                 double f=n>1?(double)i/(n-1):0,s=s0+(s1-s0)*f;int col=SlotLamp(st,f,len,clock);
                 foreach(double side in P28){if(alongX)w.Box(s-.07,s+.07,0,.03,c+side-.04,c+side+.04,NativeFactoryKit.Lamp,false,col);else w.Box(c+side-.04,c+side+.04,0,.03,s-.07,s+.07,NativeFactoryKit.Lamp,false,col);}
             }
+            Keep(lamps);
         }
         private void Rail(FactoryHazard h,in FactoryHazardState st,double clock)
         {
@@ -122,21 +133,21 @@ namespace ChipArena.UnityConversion
             w.Box(x-.16,x+.16,track-.4,track-.15,z-.28,z+.28,NativeFactoryKit.CraneDark);w.Box(x-.05,x+.05,y+.1,track-.4,z-.05,z+.05,NativeFactoryKit.CraneDark);
             w.Box(x-.07,x+.07,y+h.radius*.15,y+h.radius+.12,z-h.radius-.05,z+h.radius+.05,NativeFactoryKit.Stripe);
             w.Box(x+.08,x+.32,y-.12,y+.12,z-.16,z+.16,NativeFactoryKit.Motor);
-            Blade(h,x-.12,y,z,st.Spin,true);
-            double dir=Math.Sign(h.b.z-h.a.z),face=h.a.z+dir*.6;w.Box(x-.15,x+.15,h.a.y+h.radius+.26,h.a.y+h.radius+.46,Math.Min(face,face+dir*.08),Math.Max(face,face+dir*.08),NativeFactoryKit.Lamp,false,HazardLamp(st,clock));
+            Blade(h,x-BladeAside,y,z,st.Spin,true);
+            double dir=Math.Sign(h.b.z-h.a.z),face=h.a.z+dir*.6;int lamp=w.Count;w.Box(x-.15,x+.15,h.a.y+h.radius+.26,h.a.y+h.radius+.46,Math.Min(face,face+dir*.08),Math.Max(face,face+dir*.08),NativeFactoryKit.Lamp,false,HazardLamp(st,clock));Keep(lamp);
         }
         private void PressRig(FactoryHazard h,in FactoryHazardState st,double clock)
         {
             var w=Parts;double x=st.Center.x,y=st.Center.y,z=st.Center.z,hx=h.size.x/2,hy=h.size.y/2,hz=h.size.z/2,head=h.a.y+hy;
             w.Add(x,y,z,hx,hy,hz,FactoryQ.Identity,NativeFactoryKit.Ram,true,-1,1,h.a.x,h.a.y,h.a.z);
             foreach(double s in Unit){w.Box(x-hx,x+hx,y-hy,y-hy+.28,z+s*hz-(s<0?.03:0),z+s*hz+(s>0?.03:0),NativeFactoryKit.Stripe,false);
-                foreach(double ux in Unit)w.Box(x+ux*hx*.7-.05,x+ux*hx*.7+.05,y+hy,Math.Max(y+hy+.01,head+.25),z+s*hz*.5-.05,z+s*hz*.5+.05,NativeFactoryKit.Chrome);}
-            int lamp=HazardLamp(st,clock);foreach(double s in Unit)w.Box(x-.18,x+.18,head+.2,head+.34,z+s*(hz+.06)-.025,z+s*(hz+.06)+.025,NativeFactoryKit.Lamp,false,lamp);
-            double post=z-1.7*Math.Sign(z);w.Box(x-.09,x+.09,4.75,4.93,post-.09,post+.09,NativeFactoryKit.Lamp,false,lamp);
+                foreach(double ux in Unit)w.Box(x+ux*hx*RodX-.05,x+ux*hx*RodX+.05,y+hy,Math.Max(y+hy+.01,head+RodInto),z+s*hz*RodZ-.05,z+s*hz*RodZ+.05,NativeFactoryKit.Chrome);}
+            int lamp=HazardLamp(st,clock),lamps=w.Count;foreach(double s in Unit)w.Box(x-.18,x+.18,head+.2,head+.34,z+s*(hz+.06)-.025,z+s*(hz+.06)+.025,NativeFactoryKit.Lamp,false,lamp);
+            double post=z-1.7*Math.Sign(z);w.Box(x-.09,x+.09,4.75,4.93,post-.09,post+.09,NativeFactoryKit.Lamp,false,lamp);Keep(lamps);
         }
         private void CraneRig(FactoryHazard h,in FactoryHazardState st,double clock)
         {
-            var w=Parts;double X=st.X,Z=st.Z,rail=h.a.y+.14,span=10.9,hookY=st.HookY;
+            var w=Parts;double X=st.X,Z=st.Z,rail=h.a.y+RailUp,span=10.9,hookY=st.HookY;
             // bridge: end trucks on the runway rails, two box girders, a walkway, the hanging cab at the -z end
             foreach(double s in Unit)
             {
@@ -151,14 +162,14 @@ namespace ChipArena.UnityConversion
             w.Box(X-.82,X-.78,cy0+.55,cy1-.15,cabZ-.6,cabZ+.6,NativeFactoryKit.CabGlass,false,-1,.3);w.Box(X+.78,X+.82,cy0+.55,cy1-.15,cabZ-.6,cabZ+.6,NativeFactoryKit.CabGlass,false,-1,.3);
             foreach(double dx in P60)w.Box(X+dx-.05,X+dx+.05,cy1,rail+.56,cabZ-.05,cabZ+.05,NativeFactoryKit.CraneDark);
             // trolley with hoist, motor and beacon
-            double ty=rail+1.76;w.Box(X-1.3,X+1.3,ty,ty+.42,Z-1.1,Z+1.1,NativeFactoryKit.CraneDark);w.Box(X-.8,X+.8,ty+.42,ty+1.1,Z-.35,Z+.35,NativeFactoryKit.CraneBody);
+            double ty=rail+TrolleyUp;w.Box(X-1.3,X+1.3,ty,ty+.42,Z-1.1,Z+1.1,NativeFactoryKit.CraneDark);w.Box(X-.8,X+.8,ty+.42,ty+1.1,Z-.35,Z+.35,NativeFactoryKit.CraneBody);
             w.Box(X+.85,X+1.3,ty+.42,ty+.95,Z-.3,Z+.3,NativeFactoryKit.Motor);w.Box(X-1.3,X-.85,ty+.42,ty+.85,Z-.4,Z+.4,NativeFactoryKit.Panel);
-            w.Box(X-.1,X+.1,ty+1.1,ty+1.32,Z-.1,Z+.1,NativeFactoryKit.Lamp,false,HazardLamp(st,clock));
+            w.Box(X-.1,X+.1,ty+1.1,ty+1.32,Z-.1,Z+.1,NativeFactoryKit.Lamp,false,HazardLamp(st,clock));Kept[w.Count-1]=true;
             // cables to the hook block, the block and hook (shadowless while high: the drop's contact shadow is the telegraph)
-            bool high=hookY>4;foreach(double dx in P18)foreach(double dz in P12)w.Box(X+dx-.018,X+dx+.018,hookY+1.15,ty,Z+dz-.018,Z+dz+.018,NativeFactoryKit.Cable,false);
+            bool high=hookY>HookHigh;foreach(double dx in P18)foreach(double dz in P12)w.Box(X+dx-.018,X+dx+.018,hookY+RopeFoot,ty,Z+dz-.018,Z+dz+.018,NativeFactoryKit.Cable,false);
             w.Box(X-.28,X+.28,hookY+.35,hookY+1.15,Z-.18,Z+.18,NativeFactoryKit.Hook,!high);w.Box(X-.29,X+.29,hookY+.35,hookY+.55,Z-.19,Z+.19,NativeFactoryKit.Stripe,false);w.Box(X-.05,X+.05,hookY,hookY+.35,Z-.06,Z+.06,NativeFactoryKit.CraneDark,false);
             // the load: three I-beams strapped, hanging (with sway about the hook) or falling or landed at its zone
-            double lx=X,lz=Z,ly=st.LoadY,top=h.size.y;bool loadHigh=ly>2.5;
+            double lx=X,lz=Z,ly=st.LoadY,top=h.size.y;bool loadHigh=ly>LoadHigh;
             FactoryQ sway=FactoryQ.Axis(1,0,0,st.Sway);double pivotY=hookY;
             void Piece(double px,double py,double pz,double hx,double hy,double hz,int kind,bool shadow)
             {
@@ -172,11 +183,13 @@ namespace ChipArena.UnityConversion
             {double dx=ux*h.size.x*.4,dz=uz*h.size.z*.4,ax=lx+dx,az=lz+dz,ay=ly+top;double ddx=ax-lx,ddy=ay-pivotY,ddz=az-lz;sway.Rotate(ddx,ddy,ddz,out double ox,out double oy,out double oz);w.Bar(X,hookY,Z,lx+ox,pivotY+oy,lz+oz,.04,.04,NativeFactoryKit.Strap,false);}
             else foreach(double dx in P12)w.Box(X+dx-.02,X+dx+.02,hookY-1.0,hookY,Z-.02,Z+.02,NativeFactoryKit.Strap,false);
             // zone corner lamps
+            int corners=w.Count;
             for(int k=0;k<(h.zones?.Length??0);k++)
             {
                 var zn=h.zones[k];double hx=h.size.x/2+.5,hz=h.size.z/2+.5;int col=ZoneLamp(st,k,clock);
                 foreach(double sx in Unit)foreach(double sz in Unit){double px=zn.center.x+sx*(hx+.08),pz=zn.center.z+sz*(hz+.08);w.Box(px-.1,px+.1,0,.05,pz-.1,pz+.1,NativeFactoryKit.Lamp,false,col);}
             }
+            Keep(corners);
         }
     }
 }

@@ -58,12 +58,16 @@ namespace ChipArena.UnityConversion
         public sealed class Writer
         {
             public FactoryPart[] Items;public int Count;private readonly bool grow;private readonly Looks looks;
+            /// <summary>The stage art's layout export only (Tests/FactoryArtLayout, docs/arenas/STAGE-ART.md): each part's kind and the
+            /// block, flight or hazard it dresses (<see cref="Owner"/> as it was added); null in play, where nothing reads them.</summary>
+            public List<int> KindLog;public List<string> OwnerLog;public string Owner;
             public Writer(int capacity,bool grow,Looks looks){Items=new FactoryPart[capacity];this.grow=grow;this.looks=looks;}
             public void Clear()=>Count=0;
             /// <summary>Adds a part: centre, half extents, rotation, kind, shadow; colour -1 the kind's; rest the pattern's origin (NaN: the centre).</summary>
             public void Add(double x,double y,double z,double hx,double hy,double hz,FactoryQ q,int kind,bool shadow=true,int color=-1,double window=1,double rx=double.NaN,double ry=0,double rz=0)
             {
                 if(!(hx>0&&hy>0&&hz>0))return;if(Count>=Items.Length){if(!grow)return;Array.Resize(ref Items,Items.Length*2);}
+                if(KindLog!=null){KindLog.Add(kind);OwnerLog.Add(Owner);}
                 bool rest=!double.IsNaN(rx);uint h=unchecked((uint)(Math.Floor(x*7.3)*73856093)^(uint)(Math.Floor(y*5.1)*19349663)^(uint)(Math.Floor(z*6.7)*83492791)^(uint)kind*2654435761u);
                 Items[Count++]=new FactoryPart{X=(float)x,Y=(float)y,Z=(float)z,Hx=(float)hx,Hy=(float)hy,Hz=(float)hz,Qx=(float)q.X,Qy=(float)q.Y,Qz=(float)q.Z,Qw=(float)q.W,Rx=(float)(rest?rx:x),Ry=(float)(rest?ry:y),Rz=(float)(rest?rz:z),
                     Seed=(h&0xFFFFFF)/16777216f,Window=(float)window,Look=looks.Look[kind],Color=color>=0?color:looks.Color[kind],Flags=looks.Flags[kind],Shadow=shadow};
@@ -84,9 +88,9 @@ namespace ChipArena.UnityConversion
         /// <summary>Builds the static kit for these blocks and hazards (FACTORY_PROPOSAL.md 5.3 lists what each prefix gets).
         /// `layers`: parts that share a plane with a block or an earlier part stand clear of it (NativeSurfaceLayers.Over; off
         /// only for the surface audit's before count).</summary>
-        public static Writer Build(ContentBlock[] blocks,FactoryHazard[] hazards,Looks looks,bool layers=true)
+        public static Writer Build(ContentBlock[] blocks,FactoryHazard[] hazards,Looks looks,bool layers=true,bool log=false)
         {
-            var w=new Writer(2048,true,looks);var all=new List<Bx>();
+            var w=new Writer(2048,true,looks);var all=new List<Bx>();if(log){w.KindLog=new List<int>();w.OwnerLog=new List<string>();}
             foreach(var b in blocks??Array.Empty<ContentBlock>())
             {
                 if(b==null||b.id==null)continue;var r=b.rotation;if(r!=null&&(Math.Abs(r.x)>1e-4||Math.Abs(r.y)>1e-4||Math.Abs(r.z)>1e-4))continue;
@@ -96,7 +100,7 @@ namespace ChipArena.UnityConversion
             var flights=new Dictionary<string,List<Bx>>();
             foreach(var b in all)
             {
-                if(!b.Static)continue;string id=b.Id;
+                if(!b.Static)continue;string id=b.Id;w.Owner=id;
                 if(Starts(id,"factory-gallery-")||Starts(id,"factory-catwalk-")||id.EndsWith("-landing",StringComparison.Ordinal)||Starts(id,"factory-pulpit-")&&id.EndsWith("-deck",StringComparison.Ordinal))Deck(w,b,all,rails);
                 else if(Starts(id,"factory-stair-")){int dash=id.LastIndexOf('-');string key=id.Substring(0,dash);if(!flights.TryGetValue(key,out var list))flights[key]=list=new List<Bx>();list.Add(b);}
                 else if(Starts(id,"factory-column-"))Column(w,b);
@@ -126,9 +130,9 @@ namespace ChipArena.UnityConversion
                 else if(Starts(id,"factory-bay-hammer-"))Hammer(w,b);
                 else if(id=="factory-floor")Floor(w,b);
             }
-            foreach(var f in flights)Flight(w,f.Value,all);
-            Roofs(w,all);
-            foreach(var h in hazards??Array.Empty<FactoryHazard>())Fittings(w,h,all);
+            foreach(var f in flights){w.Owner="flight:"+f.Key;Flight(w,f.Value,all);}
+            w.Owner="roofs";Roofs(w,all);
+            foreach(var h in hazards??Array.Empty<FactoryHazard>()){w.Owner="hazard:"+h?.id;Fittings(w,h,all);}
             Unique(w);if(layers)Layers(w,blocks);
             return w;
         }
@@ -141,9 +145,9 @@ namespace ChipArena.UnityConversion
             {
                 var p=w.Items[i];string R(float v)=>Math.Round(v*1e4).ToString(System.Globalization.CultureInfo.InvariantCulture);
                 string key=string.Join(",",R(p.X),R(p.Y),R(p.Z),R(p.Hx),R(p.Hy),R(p.Hz),R(p.Qx),R(p.Qy),R(p.Qz),R(p.Qw),R(p.Rx),R(p.Ry),R(p.Rz),R(p.Window),p.Look,p.Color,p.Flags,p.Shadow?1:0);
-                if(seen.Add(key))w.Items[keep++]=p;
+                if(seen.Add(key)){if(w.KindLog!=null){w.KindLog[keep]=w.KindLog[i];w.OwnerLog[keep]=w.OwnerLog[i];}w.Items[keep++]=p;}
             }
-            w.Count=keep;
+            w.Count=keep;if(w.KindLog!=null){w.KindLog.RemoveRange(keep,w.KindLog.Count-keep);w.OwnerLog.RemoveRange(keep,w.OwnerLog.Count-keep);}
         }
         // Parts flush with a block or with an earlier part are drawn over it by the least whole steps (NativeSurfaceLayers):
         // the centre moves half the lift along the part's own axes and the half extent grows by half, so only the lifted face

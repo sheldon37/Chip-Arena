@@ -344,3 +344,49 @@ Not done / not seen:
   no bank line; the fallback is checked by source in ClubArtChecks). Native Windows build, multiplayer guests, the killcam on
   the art and the main menu's preview: not run.
 - The lit LED screens are still boxes by design; the far backdrop is still box-built.
+
+## 11. Skyframe (`skyframe`): a stage built with its art (2026-11-11)
+
+Skyframe was rebuilt from scratch on 2026-11-11 (docs/arenas/SKYFRAME.md has the whole account: the layout, the hazards, the
+look, what is modelled, the bank's numbers, what was seen). It is the first stage whose layout, box kit and art were made
+together. What it adds to the recipe:
+- **The probe's place and sky** (`NativeStageArtDraw.ProbeAt`, `ProbeSky`, set before `Prepare`; small and general): an
+  open-air stage whose glass must catch the sky gives the probe the sky's colour instead of near black, and a stage whose
+  bounds' centre lies inside a block (Skyframe's lift core) stands the probe elsewhere.
+- **One model for every tier** for rig parts only ever seen from tens of metres (the crane's top at 38 m, the rotors, the
+  airships, the birds, the cloud islands): `skyframe_props.bank_props` banks the mesh once and names it under all three tiers,
+  since the drawer picks a rig part's tier by its distance.
+- **The sky as far chunks and drifting rig props together**: the cloud sea is a static far chunk (a rolling sheet with heaped
+  islands on it); the islands that drift are rig props posed from the match clock, in lanes the static islands leave clear.
+- **No layout-kit export**: the Blender scripts work from the map's blocks by id stem and from a small `skyframe` object of
+  shared numbers (`SkyframeArtChecks.Layout`: the crane, the frame's columns and which beams stand, the sun, the cloud level,
+  the turbines, the windsocks), so the frame overhead and the rig agree with Core without a parts list.
+- **Unreachable tops are not floors** in the play-space rule (`--skyframe-art`): the core's and the columns' tops at 12 m carry
+  the frame on up.
+- **Overhead garden pieces** (strings of lights, hanging troughs with vines, door canopies) hang at 2.15 m and more over the
+  floors: the rule's "higher is overhead" used on purpose, so the garden can be lush without art to stand beside.
+
+## 12. The Factory (`factory`): the art pass on an older stage
+
+2026-11-11 · branch `claude/artpass-factory`. Its own page: docs/arenas/FACTORY-ART.md (what is modelled, what stays boxes, the pilot
+columns, the numbers). What it adds to the recipe:
+- **A kit without family lists**: `NativeFactoryKit.Writer` logs each part's kind and owner (the block, flight or hazard it dresses)
+  only for the layout export (`Build(..., log: true)`); the script derives the family from the owner's id.
+- **A point-symmetric map modelled once**: every south / B block is built as its north / A twin and turned half round
+  (`factory_kit.turned`, `factory_art.canonical`), its kit parts with it, so doors, operator sides and forks face as the kit's do.
+- **Kept static panes**: the skylights' glazing stays the kit's lit boxes (no sun shadow), packed apart (`kitKept`).
+- **The lift's reach is the tier's whole lift** (`lift_coplanar(eps=LIFT_TIER - .2 mm, passes=12)`): a kit that paints its floor in
+  3 to 12 mm layers is closer than the Mid and Low tiers' depth step even where nothing is exactly coplanar.
+- **Fewer, larger chunks for one open room** (20 m cells, two bands: 36 chunks): each chunk renderer is a draw in every shadow
+  cascade.
+- **Pilot columns of an older stage** go through `open_stage` with the nav computed before the columns open, so the nav (and the
+  catalogue's size) does not change.
+
+## 13. The 2026-11-11 stage revamp: every stage's page
+
+The owner's revamp of the older stages (each built by its own agent on its own branch, merged on `claude/stage-revamp`):
+- Rebuilt from scratch, layout and art together: Breakwater (docs/arenas/BREAKWATER.md), Pier 9 (HARBOR.md), Deepwell (DEEPWELL.md), Polaris Station
+  (POLAR.md), Skyframe (SKYFRAME.md, section 11 above).
+- Art passes on a kept layout: Brickfall (BRICKFALL-ART.md: breakable blocks as models posed by their blocks, landed rubble as
+  heaps, `DETAIL_BRICK`), Ward Zero (WARDZERO-ART.md: both records on one bank, movers and Hulk walls posed), the Factory
+  (FACTORY-ART.md, section 12 above), Cyber City (CYBERCITY-ART.md).

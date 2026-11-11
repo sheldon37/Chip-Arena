@@ -37,6 +37,10 @@ namespace ChipArena.UnityConversion
     {
         public int Parent,Look,Flags,Color;public float X,Y,Z,Hx,Hy,Hz,Gain,Param,Mx,My,Mz,Clip;public byte Drive;public short Hazard,Entry;public bool Fade,Detail;
     }
+    /// <summary>A group of moving kit parts drawn as one rig prop of the stage art: its block, its origin in the block's frame at
+    /// rest (the middle of its parts), its travel (times <see cref="NativeWardZeroKit.Move"/>), the entry or the hazard it
+    /// follows, a slat's clip height and bottom, and the model it draws (its slot among the movers' models).</summary>
+    public struct NativeWardMover {public int Parent,Slot;public short Entry,Hazard;public byte Drive;public float X,Y,Z,Mx,My,Mz,Clip,Bottom;}
     /// <summary>A light source the effects and the practical-light picker read: world place, linear colour, size (m), its kind
     /// (<see cref="NativeWardZeroKit"/> Glow* constants), the floor height under it, a seed, and the hazard or entry it follows.</summary>
     public struct NativeWardGlow {public float X,Y,Z,R,G,B,Size,Floor,Param;public byte Kind;public short Hazard,Entry;}
@@ -73,6 +77,44 @@ namespace ChipArena.UnityConversion
             DriveShutterLamp=11,DriveLeaf=12,DriveEntryLamp=13,DriveBreach=14,DriveSlat=15,DriveScreen=16,DriveSign=17,DriveFurnace=18,DriveRouteDown=19;
         public const byte GlowFluor=0,GlowHighBay=1,GlowTank=2,GlowFurnace=3,GlowStrobe=4,GlowSign=5,GlowInk=6,GlowScreen=7,GlowSpine=8;
         public NativeWardZeroPart[] Parts;public NativeWardGlow[] Glows;
+        /// <summary>By part: the builder that made it ("troffer", "cell-door", "rail", "wall", ...), for the stage art's layout
+        /// export (Tests/WardZeroArtLayout.cs) and its checks. Nothing draws by it.</summary>
+        public string[] Family=Array.Empty<string>();
+        /// <summary>The moving parts in groups (the stage art's rig props, Core NativeWardZeroArt): an entry's leaf with what rides
+        /// on it, a vent's louvres, a cell gate's bars, each shutter slat on its own. <see cref="MoverOf"/> by part: its group, or
+        /// -1; <see cref="MoverSlots"/>: how many different models they need (movers of one shape share a slot).</summary>
+        public NativeWardMover[] Movers=Array.Empty<NativeWardMover>();public int[] MoverOf=Array.Empty<int>();public int MoverSlots;
+        /// <summary>Whether the part still draws as its box under the stage art: the lit and animated ones (a troffer's diffuser, a
+        /// lamp, a strip, a letter, a screen, the tanks' fluid, the ink). The steady parts are modelled in the stage bank's scenery
+        /// and the moving ones are its rig props.</summary>
+        public static bool Kept(in NativeWardZeroPart p)=>p.Drive!=DriveSteady&&p.Drive!=DriveLeaf&&p.Drive!=DriveSlat;
+        /// <summary>By part: <see cref="Kept"/>, less the vessel shards' glowing teeth (the art models them as lit splinters).</summary>
+        public bool[] Keeps=Array.Empty<bool>();
+        // Groups the moving parts (after the layers settle their places): leaves by block, entry and travel; slats one by one. A
+        // group's origin is the middle of its parts' box at rest, in the block's frame; groups whose parts agree to the millimetre
+        // (shape, colour, look) share a slot.
+        private void FindMovers()
+        {
+            MoverOf=new int[Parts.Length];var groups=new List<NativeWardMover>();var members=new List<List<int>>();var keys=new Dictionary<(int,int,int,int,int),int>();
+            for(int i=0;i<Parts.Length;i++)
+            {
+                var p=Parts[i];MoverOf[i]=-1;if(p.Drive!=DriveLeaf&&p.Drive!=DriveSlat)continue;int g;
+                var key=(p.Parent,(int)p.Entry,(int)Math.Round(p.Mx*1000),(int)Math.Round(p.My*1000),(int)Math.Round(p.Mz*1000));
+                if(p.Drive==DriveSlat||!keys.TryGetValue(key,out g)){g=groups.Count;groups.Add(new NativeWardMover{Parent=p.Parent,Entry=p.Entry,Hazard=p.Hazard,Drive=p.Drive,Mx=p.Mx,My=p.My,Mz=p.Mz,Clip=p.Clip});members.Add(new List<int>());if(p.Drive!=DriveSlat)keys[key]=g;}
+                members[g].Add(i);MoverOf[i]=g;
+            }
+            var slots=new Dictionary<string,int>(StringComparer.Ordinal);var text=new System.Text.StringBuilder();
+            for(int g=0;g<groups.Count;g++)
+            {
+                var m=groups[g];float x0=float.MaxValue,y0=x0,z0=x0,x1=float.MinValue,y1=x1,z1=x1;
+                foreach(int i in members[g]){var p=Parts[i];x0=Math.Min(x0,p.X-p.Hx);x1=Math.Max(x1,p.X+p.Hx);y0=Math.Min(y0,p.Y-p.Hy);y1=Math.Max(y1,p.Y+p.Hy);z0=Math.Min(z0,p.Z-p.Hz);z1=Math.Max(z1,p.Z+p.Hz);}
+                m.X=(x0+x1)/2;m.Y=(y0+y1)/2;m.Z=(z0+z1)/2;m.Bottom=y0;text.Clear();text.Append(Family[members[g][0]]);
+                foreach(int i in members[g]){var p=Parts[i];text.Append('|').Append((int)Math.Round((p.X-m.X)*1000)).Append(',').Append((int)Math.Round((p.Y-m.Y)*1000)).Append(',').Append((int)Math.Round((p.Z-m.Z)*1000)).Append(',')
+                    .Append((int)Math.Round(p.Hx*1000)).Append(',').Append((int)Math.Round(p.Hy*1000)).Append(',').Append((int)Math.Round(p.Hz*1000)).Append(',').Append(p.Color).Append(',').Append(p.Look);}
+                var k=text.ToString();if(!slots.TryGetValue(k,out int slot)){slot=slots.Count;slots[k]=slot;}m.Slot=slot;groups[g]=m;
+            }
+            Movers=groups.ToArray();MoverSlots=slots.Count;
+        }
         /// <summary>Hazard indices by role (into the array Build took; -1 when absent): the two grids by the sign of their x.</summary>
         public readonly int[] Grids={-1,-1};public int[] Burners=Array.Empty<int>(),Gases=Array.Empty<int>(),Shutters=Array.Empty<int>();
         /// <summary>Entry indices of the drops and breaches (into the entries Build took).</summary>
@@ -80,7 +122,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The routes between the floors the kit found (stairs from their treads, ramps from their pitched decks): foot
         /// and top in world space, the run's unit direction and the width.</summary>
         public NativeWardRoute[] Routes=Array.Empty<NativeWardRoute>();
-        private readonly List<NativeWardZeroPart> parts=new List<NativeWardZeroPart>();private readonly List<NativeWardGlow> glows=new List<NativeWardGlow>();private readonly List<NativeWardRoute> routes=new List<NativeWardRoute>();
+        private readonly List<NativeWardZeroPart> parts=new List<NativeWardZeroPart>();private readonly List<string> families=new List<string>();private string fam="";private readonly List<NativeWardGlow> glows=new List<NativeWardGlow>();private readonly List<NativeWardRoute> routes=new List<NativeWardRoute>();
         private ContentBlock[] blocks;private MapHazard[] hazards;private NativeWardEntry[] entries;private int parent;private ContentBlock b;private float hx,hy,hz;private short entryTag=-1;private bool detail;
         // The rail posts placed so far, by world spot (millimetres).
         private readonly HashSet<long> railPosts=new HashSet<long>();
@@ -122,7 +164,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<k.entries.Length;i++)if(k.entries[i]!=null)k.DressEntry(i);
             foreach(int h in k.Shutters)k.ShutterRig(h);foreach(int h in k.Gases)k.GasRig(h);
             k.RouteMarks();
-            k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Routes=k.routes.ToArray();k.parts.Clear();k.glows.Clear();k.routes.Clear();if(layers)Layers(k.Parts,k.blocks);return k;
+            k.Parts=k.parts.ToArray();k.Family=k.families.ToArray();k.Glows=k.glows.ToArray();k.Routes=k.routes.ToArray();k.parts.Clear();k.families.Clear();k.glows.Clear();k.routes.Clear();if(layers)Layers(k.Parts,k.blocks);k.FindMovers();
+            k.Keeps=new bool[k.Parts.Length];for(int i=0;i<k.Keeps.Length;i++)k.Keeps[i]=Kept(k.Parts[i])&&!(k.Family[i]=="shard"&&k.Parts[i].Drive==DriveTank);return k;
         }
         // Parts flush with a block or with an earlier part are drawn over it by the least whole steps (NativeSurfaceLayers), at
         // rest (a moving part's travel adds to the lifted place): the offset moves half the lift along the block's axes and the
@@ -147,7 +190,7 @@ namespace ChipArena.UnityConversion
         private void P(float x,float y,float z,float sx,float sy,float sz,int look,int flags,int color,float gain=1,byte drive=0,int hazard=-1,float param=0,float mx=0,float my=0,float mz=0,float clip=0,bool fade=true)
         {
             if(!(sx>0&&sy>0&&sz>0))return;
-            parts.Add(new NativeWardZeroPart{Parent=parent,X=x,Y=y,Z=z,Hx=sx/2,Hy=sy/2,Hz=sz/2,Look=look,Flags=flags,Color=color,Gain=gain,Drive=drive,Hazard=(short)hazard,Entry=entryTag,Param=param,Mx=mx,My=my,Mz=mz,Clip=clip,Fade=fade&&b.pos.y+y>2.5f,Detail=detail||drive==DriveInk});
+            parts.Add(new NativeWardZeroPart{Parent=parent,X=x,Y=y,Z=z,Hx=sx/2,Hy=sy/2,Hz=sz/2,Look=look,Flags=flags,Color=color,Gain=gain,Drive=drive,Hazard=(short)hazard,Entry=entryTag,Param=param,Mx=mx,My=my,Mz=mz,Clip=clip,Fade=fade&&b.pos.y+y>2.5f,Detail=detail||drive==DriveInk});families.Add(fam);
         }
         private void Lamp(float x,float y,float z,float sx,float sy,float sz,int color,float gain=2f,byte drive=0,int hazard=-1,float param=0){P(x,y,z,sx,sy,sz,LTube,Bk,color,gain,drive,hazard,param);}
         private void Glow(float x,float y,float z,int color,float size,byte kind,float floor,int hazard=-1,float param=0)
@@ -208,19 +251,19 @@ namespace ChipArena.UnityConversion
         private void Word(int axis,int sign,string text,float u,float v,float cell,int color,float gain=1.8f,int look=LTube,int flags=Bk,byte drive=DriveSign,float depth=.03f)
         {
             // Lettering is detail (the low tier leaves it out), except a hazard's warning word (DECON), which stays.
-            bool was=detail;detail=drive==DriveSign;
+            bool was=detail;detail=drive==DriveSign;var family=fam;fam="word";
             float width=(text.Length*6-1)*cell,start=u-width/2;bool flip=axis==0?sign<0:sign>0;
             for(int i=0;i<text.Length;i++)foreach(var r in NativeCyberCityKit.Glyph(text[i]))
             {
                 float a=start+(i*6+r[0]+r[2]*.5f)*cell,uu=flip?2*u-a:a,vv=v+(7-r[1]-r[3]*.5f)*cell;
                 FaceP(axis,sign,uu,vv-r[3]*cell*.5f+cell*.1f,0,r[2]*cell-cell*.2f,r[3]*cell-cell*.2f,depth,look,flags,color,gain,drive);
             }
-            detail=was;
+            detail=was;fam=family;
         }
         // A sign plate with a word: a dark backing and the lit letters (a room sign, a warning).
         private void Sign(int axis,int sign,float u,float v,string text,int color,float cell=.045f,float w=0)
         {
-            float width=(text.Length*6-1)*cell;FaceP(axis,sign,u,v-cell*2,0,Math.Max(w,width+cell*5),cell*11,.025f,LMetal,Bk,SteelDark);
+            float width=(text.Length*6-1)*cell;var was=fam;fam="sign";FaceP(axis,sign,u,v-cell*2,0,Math.Max(w,width+cell*5),cell*11,.025f,LMetal,Bk,SteelDark);fam=was;
             Word(axis,sign,text,u,v+cell*.5f,cell,color,1.7f,LTube,Bk,DriveSign,.05f);
         }
         // A floor arrow (paint) at (x, z) pointing along (dx, dz) (axis-aligned only), length L: a shaft and three head bars.
@@ -261,7 +304,7 @@ namespace ChipArena.UnityConversion
         }
         // Floor arrows at every foot (UP) and top (DOWN), on the slab or the deck under them; a sign on the nearest wall.
         private void RouteMarks()
-        {
+        {fam="route-mark";
             int slab=-1;for(int i=0;i<blocks.Length;i++)if(Stem(blocks[i]?.id)=="slab"){slab=i;break;}
             foreach(var r in routes)
             {
@@ -307,7 +350,7 @@ namespace ChipArena.UnityConversion
 
         // ---------------- floors and ceilings ----------------
         private void Slab()
-        {
+        {fam="slab";
             float y=hy+.006f;
             // The Cradle: the broken vessel's base ring (5.6 m), the Hulk's landing ring (4.5 m, red) and the brute's (2.4 m, amber).
             for(int i=0;i<96;i++){double a=i*Math.PI*2/96;float r=5.6f;P(r*(float)Math.Sin(a),y+.004f,r*(float)Math.Cos(a),.42f,.02f,.42f,LMetal,Bk,0x3A4448,fade:false);}
@@ -334,8 +377,8 @@ namespace ChipArena.UnityConversion
                 P(px+sx*.3f,y+.003f,pz-sz*.25f,sx*.55f,.012f,sz*1.35f,LInk,Bk,InkDeep,1,DriveInk,-1,.03f,0,-.05f,0,fade:false);
                 P(px-sx*.25f,y+.003f,pz+sz*.3f,sx*1.3f,.012f,sz*.5f,LInk,Bk,InkDeep,1,DriveInk,-1,.04f,0,-.05f,0,fade:false);}
             // The halls' centre lines, the portals' hazard thresholds, the burner grates.
-            HallLines(y);
-            foreach(int k in Burners)BurnerGrates(k,y);
+            fam="lane-line";HallLines(y);fam="burner";
+            foreach(int k in Burners)BurnerGrates(k,y);fam="slab";
             foreach(int k in Shutters){var h=hazards[k];bool alongX=h.size.x>h.size.z;float w=alongX?h.size.x:h.size.z;float c=alongX?h.center.z:h.center.x;
                 for(int side=-1;side<=1;side+=2){float o=c+side*.75f;if(alongX)P(h.center.x-b.pos.x,y,o-b.pos.z,w,.012f,1.0f,LStripe,0,0,fade:false);else P(o-b.pos.x,y,h.center.z-b.pos.z,1.0f,.012f,w,LStripe,0,0,fade:false);}}
         }
@@ -357,7 +400,7 @@ namespace ChipArena.UnityConversion
             }
         }
         private void Vault()
-        {
+        {fam="vault";
             float under=-hy-.03f;
             // Lights under the roof: troffers over the upper floor's walkable decks, high-bays over open double-height space.
             for(float x=-36f;x<=36.01f;x+=4.8f)for(float z=-28f;z<=28.01f;z+=4.8f)
@@ -383,12 +426,12 @@ namespace ChipArena.UnityConversion
         // A fluorescent troffer flush under a ceiling: housing, diffuser (flickers and dims with the mood), its glow.
         private void Troffer(float x,float y,float z,float sx,float sz,double seed,float floor)
         {
-            bool alongX=H((int)(x*7),(int)(z*7))<.5;if(!alongX){float t=sx;sx=sz;sz=t;}
+            bool alongX=H((int)(x*7),(int)(z*7))<.5;if(!alongX){float t=sx;sx=sz;sz=t;}var was=fam;fam="troffer";
             P(x,y+.02f,z,sx+.1f,.05f,sz+.1f,LMetal,Bk,0x8A9298);P(x,y-.02f,z,sx,.035f,sz,LLight,Bk,seed<.06?0xB8E8C8:Fluor,1.9f,DriveFluor,-1,(float)seed);
-            Glow(x,y-.04f,z,Fluor,Math.Max(sx,sz)*1.4f,GlowFluor,floor,-1,(float)seed);
+            Glow(x,y-.04f,z,Fluor,Math.Max(sx,sz)*1.4f,GlowFluor,floor,-1,(float)seed);fam=was;
         }
         private void Deck(string s)
-        {
+        {fam="deck";
             // Under the deck: the ground floor's ceiling lights (where the ground below is open floor), every 4 m on a grid.
             float under=-hy-.025f;
             for(float x=b.pos.x-hx+2f;x<=b.pos.x+hx-1.5f;x+=4f)for(float z=b.pos.z-hz+2f;z<=b.pos.z+hz-1.5f;z+=4f)
@@ -411,7 +454,7 @@ namespace ChipArena.UnityConversion
 
         // ---------------- walls ----------------
         private void Shell()
-        {
+        {fam="shell";
             // The inner face (toward the middle): wainscot, cove and chair rail on both floors, the deck line, pipes high up.
             int axis,sign;if(hx<hz){axis=0;sign=b.pos.x>0?-1:1;}else{axis=2;sign=b.pos.z>0?-1:1;}float half=HalfU(axis)-2;
             float baseY=-Bottom;   // the block's base is below the slab; v is measured from the base
@@ -433,7 +476,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<(int)(half*2/9);i++){float u=-half+4.5f+i*9;var room=RoomAt(axis==0?b.pos.x+sign*(hx+1):b.pos.x+u,0,axis==0?b.pos.z+u:b.pos.z+sign*(hz+1));if(room==null||room=="MORGUE")continue;Sign(axis,sign,u,baseY+2.4f,room,NativeWardZeroLooks.SirenHex,.05f);}
         }
         private void Wall(string s)
-        {
+        {fam="wall";
             int axis=hx<hz?0:2;float half=HalfU(axis);float floor=BaseLevel(Bottom),v0=floor-Bottom;bool lintel=Bottom>floor+1.6f,sill=!lintel&&Top-floor<1.25f&&Top-floor>.6f,window=lintel&&Solid(b.pos.x,b.pos.z,floor+.3f,floor+.8f);
             for(int sign=-1;sign<=1;sign+=2)
             {
@@ -462,7 +505,7 @@ namespace ChipArena.UnityConversion
             }
         }
         private void Rail(string s)
-        {
+        {fam="rail";
             // A see-through rail: the top bar gets a handrail cap, posts down to the kick plate every 1.25 m and a thin mid rail;
             // the kick plate a cold LED strip on both sides (edges read from both floors). Live bridges' rails carry the
             // energised bars and the lamps.
@@ -480,7 +523,7 @@ namespace ChipArena.UnityConversion
                 for(int e=-1;e<=1;e+=2)Lamp(alongX?e*(len/2-.1f):0,hy+.12f,alongX?0:e*(len/2-.1f),.14f,.14f,.14f,Safe,1.6f,DriveGridLamp,grid);}
         }
         private void Tread(string s)
-        {
+        {fam="tread";
             // An LED nosing on the tread's down-slope edge, chasing up the flight (Param: the tread's share of the climb); the
             // stepped balustrade on both open sides.
             int d=s.LastIndexOf('-');int.TryParse(s.Substring(d+1),out int k);NativeWardRoute r=default;bool found=false;
@@ -495,9 +538,9 @@ namespace ChipArena.UnityConversion
             }
         }
         private const float STEPRUN=.5f;
-        private void Landing(){for(int i=0;i<3;i++){float t=-.6f+i*.6f;P(t,hy+.006f,0,.18f,.01f,b.size.z*.6f,LTube,Bk,Down,1.2f,DriveRouteDown,-1,i*.25f,fade:false);}}
+        private void Landing(){fam="landing";for(int i=0;i<3;i++){float t=-.6f+i*.6f;P(t,hy+.006f,0,.18f,.01f,b.size.z*.6f,LTube,Bk,Down,1.2f,DriveRouteDown,-1,i*.25f,fade:false);}}
         private void RampDeck()
-        {
+        {fam="ramp";
             // In the pitched deck's own frame: anti-slip bands across, LED strips along both sides chasing up, curbs.
             bool aboutX=Math.Abs(b.rotation.x)>Math.Abs(b.rotation.z);float L=aboutX?hz*2:hx*2,W=aboutX?hx*2:hz*2;
             float ang=2*(float)Math.Atan2(aboutX?b.rotation.x:b.rotation.z,b.rotation.w);bool upPositive=aboutX?ang<0:ang>0;
@@ -510,15 +553,15 @@ namespace ChipArena.UnityConversion
                 else{P(t,hy+.05f,side*(hz-.08f),L/10-.05f,.1f,.12f,LMetal,Bk,Steel,fade:false);P(t,hy+.11f,side*(hz-.08f),L/10-.1f,.02f,.05f,LTube,Bk,Up,1.5f,DriveRoute,-1,param,fade:false);}
             }
         }
-        private void Skirt(){int axis=hx<hz?0:2;for(int sign=-1;sign<=1;sign+=2){FaceP(axis,sign,0,0,0,HalfU(axis)*2,.15f,.03f,LMetal,Bk,SteelDark);if(b.size.y>1.4f)FaceP(axis,sign,0,1.2f,0,HalfU(axis)*2,.04f,.02f,LStripe,0,0);}}
+        private void Skirt(){fam="skirt";int axis=hx<hz?0:2;for(int sign=-1;sign<=1;sign+=2){FaceP(axis,sign,0,0,0,HalfU(axis)*2,.15f,.03f,LMetal,Bk,SteelDark);if(b.size.y>1.4f)FaceP(axis,sign,0,1.2f,0,HalfU(axis)*2,.04f,.02f,LStripe,0,0);}}
         private void WalkEdge()
-        {
+        {fam="walk-edge";
             // Platforms, the specimen bridge and the link: a yellow nosing round the top edges, cold lights under them.
             for(int sign=-1;sign<=1;sign+=2){FaceP(2,sign,0,b.size.y-.02f,0,hx*2,.04f,.1f,LStripe,0,0);FaceP(0,sign,0,b.size.y-.02f,0,hz*2,.04f,.1f,LStripe,0,0);}
             for(float t=-hx+1.5f;t<=hx-1;t+=3f){P(t,-hy-.03f,0,1.0f,.04f,.4f,LLight,Bk,Fluor,1.6f,DriveFluor,-1,(float)H((int)(t*10)));Glow(t,-hy-.05f,0,Fluor,1.6f,GlowFluor,0,-1,(float)H((int)(t*10)));}
         }
         private void GridBridge()
-        {
+        {fam="grid-bridge";
             // The live grating (cyber-grate over the deck, its void glowing with the charge), stringers, insulators, DANGER plates.
             int g=Grids[b.pos.x<0?0:1];P(0,hy+.01f,0,hx*2-.1f,.02f,hz*2-.1f,LGrate,Bk,0x5A6070,1,DriveGridDeck,g,fade:false);
             for(int side=-1;side<=1;side+=2){P(side*(hx-.06f),-hy-.15f,0,.12f,.3f,hz*2,LMetal,Bk,SteelDark);
@@ -527,7 +570,7 @@ namespace ChipArena.UnityConversion
             glows.Add(new NativeWardGlow{X=b.pos.x,Y=Top+.1f,Z=b.pos.z,R=.5f,G=.85f,B=1f,Size=hz*2,Floor=Upper,Kind=GlowScreen,Hazard=(short)g,Entry=-1});
         }
         private void Gantry()
-        {
+        {fam="gantry";
             P(0,hy+.01f,0,hx*2-.06f,.02f,hz*2-.06f,LGrate,Bk,0x4E5560,1,DriveSteady,fade:false);
             for(float z=-hz+2;z<=hz-1.5f;z+=4){P(0,-hy-.05f,z,1.0f,.05f,.4f,LLight,Bk,0xFFE6C8,1.4f,DriveFluor,-1,(float)H((int)(z*10)));Glow(0,-hy-.07f,z,0xFFE6C8,1.5f,GlowFluor,0,-1,(float)H((int)(z*10)));}
             P(-hx+.06f,-hy-.2f,0,.12f,.4f,hz*2,LMetal,Bk,SteelDark);
@@ -535,7 +578,7 @@ namespace ChipArena.UnityConversion
 
         // ---------------- rooms and props ----------------
         private void CellRow(bool upper)
-        {
+        {fam="cell-row";
             // The row's face toward the aisle: a cell door every 4 m (entries' doors move; the rest stay shut), numbers, lamps;
             // the row's name in the band above. Breach bays (a breach panel in front) are left bare.
             int sign=b.pos.z>0?-1:1;float half=hx;
@@ -552,12 +595,12 @@ namespace ChipArena.UnityConversion
         // A shut cell door (dressing): frame, door slab with a lit slit, a number, a red lamp.
         private void CellDoor(int axis,int sign,float u,bool upper,int n)
         {
-            FaceP(axis,sign,u,0,0,1.8f,2.9f,.05f,LMetal,Bk,Steel);FaceP(axis,sign,u,.05f,.05f,1.5f,2.7f,.04f,LMetal,Bk,upper?0x8C9AA0:0x6F7C72);
+            var was=fam;fam="cell-door";FaceP(axis,sign,u,0,0,1.8f,2.9f,.05f,LMetal,Bk,Steel);FaceP(axis,sign,u,.05f,.05f,1.5f,2.7f,.04f,LMetal,Bk,upper?0x8C9AA0:0x6F7C72);
             FaceP(axis,sign,u,1.6f,.09f,.5f,.12f,.02f,LTube,Bk,H(n,40)<.3?Red:0x9FD8C8,H(n,41)<.25?.3f:1.0f,DriveScreen,-1,(float)H(n,42));
-            FaceP(axis,sign,u,2.35f,.05f,.4f,.18f,.01f,LPlain,0,0xD8D8C4);
+            FaceP(axis,sign,u,2.35f,.05f,.4f,.18f,.01f,LPlain,0,0xD8D8C4);fam=was;
         }
         private void Tank()
-        {
+        {fam="tank";
             // A specimen tank: plinth and cap (steel), four frame posts, pipes up to the ceiling, a status screen; its fluid glows.
             double h=H(1);P(0,-hy+.15f,0,hx*2+.2f,.3f,hz*2+.2f,LMetal,Bk,SteelDark);P(0,hy-.15f,0,hx*2+.16f,.3f,hz*2+.16f,LMetal,Bk,Steel);
             for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2)P(sx*(hx+.02f),0,sz*(hz+.02f),.1f,b.size.y-.4f,.1f,LMetal,Bk,Steel);
@@ -567,14 +610,14 @@ namespace ChipArena.UnityConversion
             Glow(0,.2f,0,Fluid,2.4f,GlowTank,FloorUnder,-1,(float)h);
         }
         private void Bench(bool lab)
-        {
+        {fam="bench";
             P(0,hy+.02f,0,hx*2+.06f,.04f,hz*2+.06f,LMetal,Bk,0xB8C0C2);
             if(lab){int n=(int)(Math.Max(hx,hz)*2/1.1f);for(int i=0;i<n;i++){float t=-(Math.Max(hx,hz))+.55f+i*1.1f;double h=H(i);float x=hx>hz?t:0,z=hx>hz?0:t;
                 if(h<.4)P(x,hy+.2f,z,.3f,.35f,.3f,LMetal,Bk,0xD8DCDC);else if(h<.7){P(x,hy+.25f,z,.34f,.4f,.08f,LHolo,Bk,Teal,.9f,DriveScreen,-1,(float)h);}else P(x,hy+.12f,z,.5f,.2f,.35f,LMetal,Bk,0x5A6A70);}}
             else P(0,-hy+.15f,0,hx*2-.1f,.05f,hz*2-.1f,LMetal,Bk,SteelDark);
         }
         private void Furnace()
-        {
+        {fam="furnace";
             // The incinerator mouth: a hazard frame, a dark throat, a slot of fire (follows its lane's burners), grill bars.
             int sign=b.pos.x>0?-1:1;FaceP(0,sign,0,0,0,hz*2+.3f,b.size.y+.2f,.04f,LStripe,0,0);FaceP(0,sign,0,.3f,.04f,hz*2-.4f,b.size.y-.7f,.02f,LPlain,0,0x0B0807);
             int lane=-1;foreach(int k in Burners)if(Math.Sign(hazards[k].center.x)==Math.Sign(b.pos.x)){lane=k;break;}
@@ -582,38 +625,38 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<7;i++)FaceP(0,sign,-hz+.5f+i*(hz*2-1)/6,.3f,.09f,.08f,b.size.y-.7f,.04f,LMetal,Bk,SteelDark);
             Glow(sign*(hx+.3f),-hy+.8f,0,Burn,3.4f,GlowFurnace,0,lane);
         }
-        private void Autopsy(){P(0,hy+.03f,0,hx*2,.05f,hz*2,LMetal,Bk,0xB8C0C2);P(0,hy+.06f,0,hx*2-.3f,.01f,.08f,LPlain,0,0x101214);P(0,-hy+.4f,0,.3f,.8f,.3f,LMetal,Bk,Steel);}
+        private void Autopsy(){fam="autopsy";P(0,hy+.03f,0,hx*2,.05f,hz*2,LMetal,Bk,0xB8C0C2);P(0,hy+.06f,0,hx*2-.3f,.01f,.08f,LPlain,0,0x101214);P(0,-hy+.4f,0,.3f,.8f,.3f,LMetal,Bk,Steel);}
         private void Chamber(bool freezer)
-        {
+        {fam="chamber";
             int axis=hx<hz?0:2,sign=axis==0?(b.pos.x>0?-1:1):(b.pos.z>0?-1:1);float half=HalfU(axis);int cols=Math.Max(1,(int)(half*2/.95f));
             for(int r=0;r<3;r++)for(int c=0;c<cols;c++){float u=-half+half*2*(c+.5f)/cols;FaceP(axis,sign,u,.2f+r*.78f,0,half*2/cols-.08f,.7f,.03f,LMetal,Bk,freezer?0xC8D4DA:0xA8B2B6);FaceP(axis,sign,u,.48f+r*.78f,.03f,.22f,.05f,.03f,LMetal,Bk,SteelDark);}
             if(freezer)FaceP(axis,sign,0,b.size.y-.2f,0,half*2,.06f,.03f,LTube,Bk,0xBFEFFF,1.2f,DriveSign);
         }
-        private void Lockers(){int sign=b.pos.z>0?-1:1;int n=(int)(hx*2/.6f);for(int i=0;i<n;i++){float u=-hx+.3f+i*.6f;FaceP(2,sign,u,.1f,0,.55f,b.size.y-.2f,.03f,LMetal,Bk,0x3F7F78);FaceP(2,sign,u,b.size.y-.55f,.03f,.3f,.12f,.01f,LPlain,0,0x1A1D1E);}}
-        private void Shower(){P(0,hy+.02f,0,hx*2,.04f,hz*2,LMetal,Bk,Steel);int sign=b.pos.z>0?-1:1;FaceP(2,sign,0,0,0,hx*2-.1f,b.size.y-.1f,.01f,LTile,Bk,0xD8E4E2);FaceP(2,sign,0,1.9f,.02f,.18f,.08f,.25f,LMetal,Bk,Steel);}
+        private void Lockers(){fam="lockers";int sign=b.pos.z>0?-1:1;int n=(int)(hx*2/.6f);for(int i=0;i<n;i++){float u=-hx+.3f+i*.6f;FaceP(2,sign,u,.1f,0,.55f,b.size.y-.2f,.03f,LMetal,Bk,0x3F7F78);FaceP(2,sign,u,b.size.y-.55f,.03f,.3f,.12f,.01f,LPlain,0,0x1A1D1E);}}
+        private void Shower(){fam="shower";P(0,hy+.02f,0,hx*2,.04f,hz*2,LMetal,Bk,Steel);int sign=b.pos.z>0?-1:1;FaceP(2,sign,0,0,0,hx*2-.1f,b.size.y-.1f,.01f,LTile,Bk,0xD8E4E2);FaceP(2,sign,0,1.9f,.02f,.18f,.08f,.25f,LMetal,Bk,Steel);}
         private void Console(bool desk)
-        {
+        {fam="console";
             P(0,hy+.02f,0,hx*2+.04f,.04f,hz*2+.04f,LMetal,Bk,SteelDark);int n=Math.Max(1,(int)(hx*2/.9f));int sign=b.pos.z>0?1:-1;
             for(int i=0;i<n;i++){float u=-hx+hx*2*(i+.5f)/n;P(u,hy+.32f,-sign*(hz-.15f),hx*2/n-.1f,.5f,.06f,LHolo,Bk,i%3==0?Teal:0x6FB8FF,1.1f,DriveScreen,-1,(float)H(i));Glow(u,hy+.35f,-sign*(hz-.3f),Teal,.9f,GlowScreen,FloorUnder,-1,(float)H(i));}
         }
-        private void Rack(){int sign=b.pos.x>0?-1:1;for(int r=0;r<8;r++)for(int c=0;c<3;c++)FaceP(0,sign,-hz+.6f+c*(hz*2-1.2f)/2,.2f+r*.26f,0,.05f,.04f,.02f,LTube,Bk,H(r,c)<.2?Red:0x5CFF9A,1.6f,DriveScreen,-1,(float)H(r,c+3));}
+        private void Rack(){fam="rack";int sign=b.pos.x>0?-1:1;for(int r=0;r<8;r++)for(int c=0;c<3;c++)FaceP(0,sign,-hz+.6f+c*(hz*2-1.2f)/2,.2f+r*.26f,0,.05f,.04f,.02f,LTube,Bk,H(r,c)<.2?Red:0x5CFF9A,1.6f,DriveScreen,-1,(float)H(r,c+3));}
         private void Booth()
-        {
+        {fam="booth";
             // The nurse booth: a desk band, glazing above it (dim lit), a roof plate, a monitor, the ward's name.
             for(int axis=0;axis<=2;axis+=2)for(int sign=-1;sign<=1;sign+=2){FaceP(axis,sign,0,0,0,HalfU(axis)*2,1.1f,.02f,LMetal,Bk,0x6F8A84);FaceP(axis,sign,0,1.15f,0,HalfU(axis)*2-.2f,1.05f,.02f,LWindow,0,0x7FA8A0);}
             P(0,hy+.05f,0,hx*2+.1f,.1f,hz*2+.1f,LMetal,Bk,SteelDark);Glow(0,.6f,0,0x9FE0D0,2.2f,GlowScreen,FloorUnder,-1,.5f);
             Word(2,b.pos.z>0?-1:1,"WARD 0",0,2.25f,.035f,NativeWardZeroLooks.SirenHex,1.3f);
         }
         private void Gurney(bool cart)
-        {
+        {fam="gurney";
             if(cart){P(0,hy-.1f,0,hx*2,.08f,hz*2,LMetal,Bk,0xB8C0C2);P(0,-hy+.4f,0,hx*2-.1f,.06f,hz*2-.1f,LMetal,Bk,Steel);for(int i=0;i<3;i++)P(-hx*.5f+i*hx*.5f,hy+.06f,0,.2f,.12f,.2f,LMetal,Bk,i==1?Red:0xD8DCDC);return;}
             P(0,hy-.15f,0,hx*2-.1f,.12f,hz*2-.1f,LPlain,0,0xD7DDE0);P(0,hy-.28f,0,hx*2,.06f,hz*2,LMetal,Bk,Steel);
             for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2)P(sx*(hx-.12f),-hy+.08f,sz*(hz-.12f),.12f,.16f,.12f,LPlain,0,0x1A1D1E);
             if(H(1)<.5)P(hx>hz?hx*.6f:0,hy-.05f,hx>hz?0:hz*.6f,.5f,.1f,.4f,LInk,Bk,InkDeep,1,DriveInk,-1,.3f);
         }
-        private void TriageScreen(){int axis=hx<hz?0:2;for(int sign=-1;sign<=1;sign+=2)FaceP(axis,sign,0,.2f,0,HalfU(axis)*2-.1f,b.size.y-.3f,.01f,LPlain,0,0x8FB8B0);P(0,hy+.02f,0,hx*2,.04f,hz*2,LMetal,Bk,Steel);}
+        private void TriageScreen(){fam="screen";int axis=hx<hz?0:2;for(int sign=-1;sign<=1;sign+=2)FaceP(axis,sign,0,.2f,0,HalfU(axis)*2-.1f,b.size.y-.3f,.01f,LPlain,0,0x8FB8B0);P(0,hy+.02f,0,hx*2,.04f,hz*2,LMetal,Bk,Steel);}
         private void Shard()
-        {
+        {fam="shard";
             // A shard of the Siren's vessel (its own frame: yaw-turned): jagged teeth on top, ink running down from them.
             int n=3;for(int i=0;i<n;i++){float t=-hx+hx*2*(i+.5f)/n;P(t,hy+.15f+(float)H(i)*.3f,0,.25f+(float)H(i,1)*.3f,.3f+(float)H(i,2)*.6f,hz*2*.8f,LGlass,Bk,0x2A8C78,.5f,DriveTank,-1,.5f);}
             for(int side=-1;side<=1;side+=2){P((float)(H(5,side)-.5f)*hx,0,side*(hz+.005f),.3f,b.size.y*.8f,.01f,LInk,Bk,InkDeep,1,DriveInk,-1,.05f);}
@@ -623,7 +666,7 @@ namespace ChipArena.UnityConversion
 
         // ---------------- the breach panels (the Hulk's way in; their intact look) ----------------
         private void Breach()
-        {
+        {fam="breach";
             int e=-1;for(int i=0;i<entries.Length;i++)if(entries[i]?.kind=="breach"&&entries[i].block==b.id){e=i;break;}
             entryTag=(short)e;int axis,sign;
             if(e>=0){var n=entries[e].normal;if(Math.Abs(n.x)>Math.Abs(n.z)){axis=0;sign=n.x>0?1:-1;}else{axis=2;sign=n.z>0?1:-1;}}else{if(hx<hz){axis=0;sign=b.pos.x>0?-1:1;}else{axis=2;sign=b.pos.z>0?-1:1;}}
@@ -641,7 +684,7 @@ namespace ChipArena.UnityConversion
             // recess plate, so the broken panel opens onto darkness and the Hulk comes out of it, not out of a painted wall.
             int me=parent;float t=axis==0?b.size.x:b.size.z,cx=b.pos.x,cz=b.pos.z,bottom=Bottom;
             int w=BlockAt(cx-(axis==0?sign*(t/2+.15f):0),b.pos.y,cz-(axis==2?sign*(t/2+.15f):0),o=>o.id!=b.id&&Stem(o.id)?.StartsWith("breach-",StringComparison.Ordinal)!=true);
-            if(w>=0){Use(w);FaceP(axis,sign,axis==0?cz-b.pos.z:cx-b.pos.x,bottom-Bottom+.08f,.07f,W-.16f,Hh-.16f,.01f,LPlain,0,Void);Use(me);}
+            if(w>=0){Use(w);fam="breach-recess";FaceP(axis,sign,axis==0?cz-b.pos.z:cx-b.pos.x,bottom-Bottom+.08f,.07f,W-.16f,Hh-.16f,.01f,LPlain,0,Void);Use(me);}
         }
 
         // ---------------- entrances (from the PvE entries) ----------------
@@ -670,7 +713,7 @@ namespace ChipArena.UnityConversion
         }
         // A floor vent: a frame, the dark shaft, the grate lid sliding aside as it opens, hazard marks on song vents.
         private void FloorVent(V3 f,NativeWardEntry en)
-        {
+        {fam="floor-vent";
             float x=f.x-b.pos.x,z=f.z-b.pos.z,y=hy+.005f,s=1.9f;
             P(x,y-.002f,z,s,.012f,s,LPlain,0,Void,fade:false);
             for(int k=-1;k<=1;k+=2){P(x+k*(s/2+.06f),y+.01f,z,.12f,.03f,s+.24f,LMetal,Bk,Steel,fade:false);P(x,y+.01f,z+k*(s/2+.06f),s,.03f,.12f,LMetal,Bk,Steel,fade:false);}
@@ -679,14 +722,14 @@ namespace ChipArena.UnityConversion
             Lamp(x+s/2+.06f,y+.04f,z+s/2+.06f,.1f,.04f,.1f,Amber,1.4f,DriveEntryLamp);
         }
         private void WallVent(V3 f,float dx,float dz)
-        {
+        {fam="wall-vent";
             int axis=Math.Abs(dx)>Math.Abs(dz)?0:2,sign=axis==0?(dx>0?1:-1):(dz>0?1:-1);float u=axis==0?f.z-b.pos.z:f.x-b.pos.x,v=f.y-Bottom-.15f;
             FaceP(axis,sign,u,v,0,1.3f,.9f,.01f,LPlain,0,Void);FaceP(axis,sign,u,v-.08f,0,1.5f,.08f,.06f,LMetal,Bk,Steel);FaceP(axis,sign,u,v+.9f,0,1.5f,.08f,.06f,LMetal,Bk,Steel);
             for(int i=0;i<6;i++)FaceP(axis,sign,u,v+.08f+i*.13f,.02f,1.25f,.06f,.03f,LMetal,Bk,0x7A848A,1,DriveLeaf,-1,0,0,.95f);
             FaceP(axis,sign,u+.85f,v+.95f,0,.1f,.1f,.04f,LTube,Bk,Amber,1.4f,DriveEntryLamp);
         }
         private void CeilingVent(V3 f,int index)
-        {
+        {fam="ceiling-vent";
             float x=f.x-b.pos.x,z=f.z-b.pos.z,y=-hy-.006f;
             P(x,y,z,1.3f,.012f,1.3f,LPlain,0,Void);for(int k=-1;k<=1;k+=2){P(x+k*.72f,y-.02f,z,.12f,.04f,1.56f,LMetal,Bk,Steel);P(x,y-.02f,z+k*.72f,1.44f,.04f,.12f,LMetal,Bk,Steel);}
             P(x,y-.03f,z,1.25f,.03f,1.25f,LGrate,Bk,0x6A7078,1,DriveLeaf,-1,0,1.4f,0,0);
@@ -694,7 +737,7 @@ namespace ChipArena.UnityConversion
         }
         // A cell gate (bars that rise) or a door (two leaves that slide apart) on the face the entry walks out of.
         private void EntryDoor(V3 f,float dx,float dz,bool cell,int index)
-        {
+        {fam="entry-door";
             int axis=Math.Abs(dx)>Math.Abs(dz)?0:2,sign=axis==0?(dx>0?1:-1):(dz>0?1:-1);float u=axis==0?f.z-b.pos.z:f.x-b.pos.x,floor=f.y-Bottom;
             float w=cell?1.5f:1.8f,h=cell?2.7f:3.0f;
             FaceP(axis,sign,u,floor,0,w,h,.01f,LPlain,0,Void);FaceP(axis,sign,u,floor+h,0,w+.4f,.18f,.08f,LMetal,Bk,Steel);for(int e=-1;e<=1;e+=2)FaceP(axis,sign,u+e*(w/2+.1f),floor,0,.2f,h,.08f,LMetal,Bk,Steel);
@@ -713,7 +756,7 @@ namespace ChipArena.UnityConversion
         }
         // A drop hatch under a ceiling: the hazard ring, the dark opening, four leaves that slide out as it opens, beacons.
         private void Hatch(float wx,float wz,float size,int index)
-        {
+        {fam="hatch";
             float x=wx-b.pos.x,z=wz-b.pos.z,y=-hy-.01f,h=size/2;
             P(x,y,z,size,.012f,size,LPlain,0,Void);
             for(int k=-1;k<=1;k+=2){P(x+k*(h+.18f),y-.03f,z,.36f,.05f,size+.72f,LStripe,0,0);P(x,y-.03f,z+k*(h+.18f),size,.05f,.36f,LStripe,0,0);}
@@ -723,7 +766,7 @@ namespace ChipArena.UnityConversion
         // The blast shutters: twelve slats in each portal (they drop from the lintel as it closes and hide back inside),
         // a housing with lamps on both faces, guide rails.
         private void ShutterRig(int k)
-        {
+        {fam="shutter";
             var h=hazards[k];float top=h.center.y+h.size.y/2;int p=BlockAt(h.center.x,top+.1f,h.center.z,o=>Math.Abs(o.pos.y-o.size.y/2-top)<.1f);if(p<0)return;Use(p);
             bool alongX=h.size.x>h.size.z;float w=alongX?h.size.x:h.size.z,tall=h.size.y;int n=12;float slat=tall/n;float cx=h.center.x-b.pos.x,cz=h.center.z-b.pos.z,lintelBottom=-hy;
             for(int i=0;i<n;i++)
@@ -743,7 +786,7 @@ namespace ChipArena.UnityConversion
         }
         // A decon lock: nozzle heads on its ceiling, a beacon and a DECON sign over each of its doors (the walls round it).
         private void GasRig(int k)
-        {
+        {fam="gas";
             var h=hazards[k];float top=h.center.y+h.size.y/2;int p=BlockAt(h.center.x,top+.1f,h.center.z,o=>Math.Abs(o.pos.y-o.size.y/2-top)<.15f);if(p<0)return;Use(p);
             float cx=h.center.x-b.pos.x,cz=h.center.z-b.pos.z,under=-hy-.03f;
             for(int i=0;i<3;i++)for(int j=0;j<2;j++){float x=cx+(i-1)*h.size.x/3,z=cz+(j-.5f)*h.size.z/2;P(x,under-.1f,z,.3f,.2f,.3f,LMetal,Bk,Steel);Lamp(x,under-.23f,z,.16f,.06f,.16f,Gas,1.4f,DriveGas,k);}

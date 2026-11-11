@@ -53,6 +53,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The volumetric beams (Core NativeBeamList; docs/LIGHTING-ADVANCED.md): while set (the medium and high tiers with
         /// the look's beams on), the shafts go here instead of their billboards; null (every other case) draws the billboards.</summary>
         public NativeBeamList Beams;
+        /// <summary>The tarps hung on the frontage draw (off while the stage art draws its modelled facades: docs/arenas/BRICKFALL-ART.md).</summary>
+        public bool Tarps=true;
         // Camera.
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz;private NativeFxLight light;
 
@@ -71,7 +73,7 @@ namespace ChipArena.UnityConversion
             if(!atmosphere)return;
             ShaftsPass(time,quality,low);MotesPass(time,quality,low);ScrapsPass(time,quality,low);
             if(memory!=null)PigeonsPass(time,quality,low,memory);
-            TarpsPass(time);
+            if(Tarps)TarpsPass(time);
         }
 
         // ---------------- helpers ----------------

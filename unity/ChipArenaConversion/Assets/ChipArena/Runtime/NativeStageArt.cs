@@ -36,10 +36,13 @@ namespace ChipArena.UnityConversion
         private sealed class BlockDraw{public Piece[] Tiers;public float S1,S2,Max;}
         private string bankName,mapId;private NativeStageArt.Plan plan;private bool failed;
         private Material solid,glow;private MaterialPropertyBlock block;private Shader shader;
+        /// <summary>Set before <see cref="Prepare"/>: where the reflection probe stands (default: the centre of the art's bounds) and the
+        /// colour it sees where nothing is drawn (default: near black; an open-air stage gives its sky's).</summary>
+        public Vector3? ProbeAt;public Color? ProbeSky;
         private GameObject root;private ReflectionProbe probe;private int probeFrame=-1,probeRendered=-1,probeSize;
         private readonly List<ChunkDraw> chunks=new List<ChunkDraw>();
         private readonly Dictionary<string,BlockDraw> blocks=new Dictionary<string,BlockDraw>(StringComparer.Ordinal);
-        private Piece[][] rig=Array.Empty<Piece[]>();private bool[] rigShadow=Array.Empty<bool>();
+        private Piece[][] rig=Array.Empty<Piece[]>();private bool[] rigShadow=Array.Empty<bool>();private bool rubble;
         // Rig parts a pose draws InstanceFrom times or more in a frame are drawn instanced (the glow per instance): made on first use
         private const int InstanceFrom=8,BatchSize=256;
         private sealed class Batch{public readonly Matrix4x4[] M=new Matrix4x4[BatchSize];public readonly Vector4[] Glow=new Vector4[BatchSize];public int Count;public Piece Piece;public ShadowCastingMode Shadow;}
@@ -50,6 +53,10 @@ namespace ChipArena.UnityConversion
         public bool Ready=>plan!=null&&root!=null;
         /// <summary>Last frame: the static chunks shown at each tier, the block models and rig parts drawn.</summary>
         public int ChunksFine{get;private set;}public int ChunksMid{get;private set;}public int ChunksLow{get;private set;}public int Drawn{get;private set;}
+        /// <summary>A stage's own say over a block model this frame (Brickfall's collapse telegraph): it may move the model (the
+        /// sag and lean of a stressed segment) and sets its glow (rgb: a lamp's colour, the windows' light).</summary>
+        public delegate void BlockTell(NativePropBody body,ref Vector3 at,ref Quaternion rotation,ref Vector4 glow);
+        public BlockTell Tell;
 
         /// <summary>Loads the map's art (once per map; false without a bank). rigSlots: the stage's rig prop names (its Core art's
         /// slots); shadowless: the slots that cast no shadow.</summary>
@@ -89,12 +96,18 @@ namespace ChipArena.UnityConversion
                     if(b?.id==null||!p.Blocks.TryGetValue(b.id,out var props))continue;var bd=new BlockDraw{Tiers=new Piece[NativeStageArt.Tiers]};
                     for(int t=0;t<NativeStageArt.Tiers;t++)bd.Tiers[t]=PieceOf(bank,props[t]);bd.Max=NativeBlockLooks.StageMax(b,null,out bd.S1,out bd.S2);blocks[b.id]=bd;
                 }
+                // a collapsed segment's rubble (static blocks that exist only after it lands) may have models too
+                rubble=false;foreach(var sd in map.segments??Array.Empty<StructureDefinition>())foreach(var b in sd.rubble??Array.Empty<ContentBlock>())
+                {
+                    if(b?.id==null||blocks.ContainsKey(b.id)||!p.Blocks.TryGetValue(b.id,out var props))continue;var bd=new BlockDraw{Tiers=new Piece[NativeStageArt.Tiers],Max=1,S1=.66f,S2=.33f};
+                    for(int t=0;t<NativeStageArt.Tiers;t++)bd.Tiers[t]=PieceOf(bank,props[t]);blocks[b.id]=bd;rubble=true;
+                }
                 rig=new Piece[rigSlots?.Length??0][];rigShadow=new bool[rig.Length];slotCount=new int[rig.Length];batches=new Batch[rig.Length*NativeStageArt.Tiers];instanced=SystemInfo.supportsInstancing;
                 for(int s=0;s<rig.Length;s++){var props=p.RigProps(rigSlots[s]);rig[s]=new Piece[NativeStageArt.Tiers];rigShadow[s]=casts==null||casts(s);if(props!=null)for(int t=0;t<NativeStageArt.Tiers;t++)rig[s][t]=PieceOf(bank,props[t]);}
                 probe=new GameObject("Stage art probe").AddComponent<ReflectionProbe>();probe.transform.SetParent(root.transform,false);
                 probe.mode=ReflectionProbeMode.Realtime;probe.refreshMode=ReflectionProbeRefreshMode.ViaScripting;probe.timeSlicingMode=ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
-                probe.boxProjection=true;probe.hdr=true;probe.nearClipPlane=.3f;probe.farClipPlane=90;probe.clearFlags=ReflectionProbeClearFlags.SolidColor;probe.backgroundColor=new Color(.02f,.02f,.035f);
-                var all=new Bounds(cd0(chunks),Vector3.zero);foreach(var c in chunks)all.Encapsulate(c.Box);probe.transform.position=new Vector3(all.center.x,Mathf.Clamp(all.center.y,1,8),all.center.z);
+                probe.boxProjection=true;probe.hdr=true;probe.nearClipPlane=.3f;probe.farClipPlane=90;probe.clearFlags=ReflectionProbeClearFlags.SolidColor;probe.backgroundColor=ProbeSky??new Color(.02f,.02f,.035f);
+                var all=new Bounds(cd0(chunks),Vector3.zero);foreach(var c in chunks)all.Encapsulate(c.Box);probe.transform.position=ProbeAt??new Vector3(all.center.x,Mathf.Clamp(all.center.y,1,8),all.center.z);
                 probe.size=all.size;probe.center=all.center-probe.transform.position;probeFrame=-1;probeRendered=-1;
                 // the meshes are on the GPU now (Runtime NativePackBanks keeps them): the bank's copies of their vertices go
                 foreach(int m in built){var src=bank.Meshes[m];src.Positions=src.Normals=null;src.Uv0=src.Uv1=null;src.Colors=null;foreach(var sm in src.Submeshes)sm.Indices=Array.Empty<int>();}
@@ -135,9 +148,18 @@ namespace ChipArena.UnityConversion
                 int stage=NativeStageArt.Stage(b.Health,bd.Max,b.Indestructible,bd.S1,bd.S2);if(stage>NativeStageArt.Keep)continue;
                 var t=b.transform;var at=t.position;int tier=NativeStageArt.TierAt(Vector3.Distance(at,e),low);var piece=bd.Tiers[tier];if(piece==null)continue;
                 float dmg=stage==0?0:stage==1?.45f:.85f;block.Clear();block.SetVector(TintId,new Vector4(0,0,0,dmg));
-                var m=Matrix4x4.TRS(at,t.rotation,Vector3.one)*piece.Place;
+                var rot=t.rotation;if(Tell!=null){var lit=Vector4.one;Tell(b,ref at,ref rot,ref lit);block.SetVector(GlowId,lit);}
+                var m=Matrix4x4.TRS(at,rot,Vector3.one)*piece.Place;
                 for(int s=0;s<piece.Subs;s++)Graphics.DrawMesh(piece.Mesh,m,s==0?solid:glow,0,null,s,block,ShadowCastingMode.TwoSided,true);Drawn++;
             }
+            // a landed segment's rubble models (static blocks)
+            if(rubble){var fixedBlocks=arena.StaticBlocks;for(int i=0;i<fixedBlocks.Count;i++)
+            {
+                var b=fixedBlocks[i];if(b==null||b.Definition?.id==null||b.Definition.role!="rubble"||!blocks.TryGetValue(b.Definition.id,out var bd))continue;
+                var t=b.transform;var at=t.position;var piece=bd.Tiers[NativeStageArt.TierAt(Vector3.Distance(at,e),low)];if(piece==null)continue;block.Clear();
+                var m=Matrix4x4.TRS(at,t.rotation,Vector3.one)*piece.Place;
+                for(int s=0;s<piece.Subs;s++)Graphics.DrawMesh(piece.Mesh,m,s==0?solid:glow,0,null,s,block,ShadowCastingMode.TwoSided,true);Drawn++;
+            }}
             // the rig
             if(pose!=null){Array.Clear(slotCount,0,slotCount.Length);for(int i=0;i<pose.Count;i++){int sl=pose.Slot[i];if(sl>=0&&sl<slotCount.Length)slotCount[sl]++;}}
             if(pose!=null)for(int i=0;i<pose.Count;i++)

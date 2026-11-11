@@ -39,7 +39,15 @@ internal static class StageArtLayout
         if(NativeSanctumLooks.Active(map.id))Sanctum(w,map,look,V,Q);
         if(NativeClubLooks.Active(map.id))ClubArtLayout.Write(w,map,look,V,Q);
         if(NativeCausewayLooks.Active(map.id))CausewayArtChecks.Layout(w);
+        if(NativePierLooks.Active(map.id))PierArtChecks.Layout(w,map);
+        if(NativeSkyframeLooks.Active(map.id))SkyframeArtChecks.Layout(w,map);
+        if(NativeBreakwaterLooks.Active(map.id))BreakwaterArtChecks.Layout(w,map);
         if(NativeEmporiumLooks.Active(map.id))Emporium(w,map,look,V,Q);
+        if(NativeCyberCityLooks.Active(map.id))CyberCityArtLayout.Write(w,map,V);
+        if(NativePolarLooks.Active(map.id))PolarArtChecks.Layout(w,map,look);
+        if(NativeBrickfallScenery.Active(map.id))BrickfallArtLayout.Write(w,map,look,V);
+        if(NativeWardZeroLooks.Active(map))WardZeroArtLayout.Write(w,root,map,V,Q);
+        if(NativeFactoryHazards.Active(map.id))FactoryArtLayout.Write(w,map,look,V,Q);
         w.WriteEndObject();w.Flush();
         Console.WriteLine("stage layout "+map.id+": "+map.blocks.Length+" blocks -> "+path);
     }
