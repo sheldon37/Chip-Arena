@@ -87,7 +87,6 @@ namespace ChipArena.UnityConversion
                 foreach(var e in look.kitLooks??Array.Empty<MapLookBlock>())Check(NativeNewStageLooks.Kinds.Contains(e.block),id+": the kit look "+e.block+" is a kit kind");
                 foreach(var b in map.blocks)Check(NativeBlockLooks.Resolve(look.blockLooks,null,b.id,b.material,0).Listed,id+": "+b.id+" has a look of its own (listed or by its material)");
             }
-            string weatherOf(string id)=>NativeAdvancedLooks.WeatherOf(NativeMapLooks.Find(set,id));
             // (The M1 stages' weather left with them: each rebuilt stage checks its own look.)
 
             // 2. The kit: attached parts inside their blocks (2.1 rule 1, the stage rule's 0.25 m), overhead parts clear of the play.
