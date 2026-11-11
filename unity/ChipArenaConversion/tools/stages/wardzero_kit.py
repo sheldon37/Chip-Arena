@@ -35,12 +35,12 @@ def finishes():
     add('soffit', 0x2C3742, A.DETAIL_PLASTER, smooth=.16, dirt=.3)
     add('beam', 0x43525E, smooth=.4, metal=.4, dirt=.4, wear=.25)
     # metals
-    add('steel', 0x5D6B6E, smooth=.56, metal=.6, dirt=.7, wear=.35)
-    add('steeldark', 0x2F383B, smooth=.5, metal=.6, dirt=.6, wear=.3)
-    add('stainless', 0xB8C0C2, smooth=.78, metal=.85, dirt=.5, wear=.15)
-    add('duct', 0x6A747C, smooth=.6, metal=.8, dirt=.6, wear=.2)
-    add('grate', 0x4E5560, smooth=.45, metal=.7, dirt=.7, wear=.3)
-    add('plate', 0x4A5560, smooth=.48, metal=.7, dirt=.9, wear=.4)
+    add('steel', 0x5D6B6E, smooth=.56, metal=.25, dirt=.6, wear=.35)
+    add('steeldark', 0x2F383B, smooth=.5, metal=.25, dirt=.6, wear=.3)
+    add('stainless', 0xB8C0C2, smooth=.74, metal=.35, dirt=.4, wear=.15)
+    add('duct', 0x6A747C, smooth=.6, metal=.35, dirt=.6, wear=.2)
+    add('grate', 0x4E5560, smooth=.45, metal=.3, dirt=.7, wear=.3)
+    add('plate', 0x4A5560, smooth=.48, metal=.3, dirt=.8, wear=.4)
     add('rubber', 0x1A1D1E, smooth=.22, dirt=.5)
     add('void', VOID, smooth=.05, dirt=0.0)
     add('paint', 0xC8CC9A, smooth=.3, dirt=.5)
@@ -51,12 +51,12 @@ def finishes():
     add('cloth', 0x8FB8B0, A.DETAIL_CLOTH, smooth=.16, dirt=.5)
     add('fairing', 0x7C8C90, smooth=.5, dirt=.6)
     add('booth', 0x6F8A84, smooth=.5, dirt=.6, wear=.15)
-    add('locker', 0x3F7F78, smooth=.55, metal=.3, dirt=.7, wear=.3)
+    add('locker', 0x3F7F78, smooth=.55, metal=.15, dirt=.6, wear=.3)
     add('white', 0xD8DCDC, smooth=.6, dirt=.4)
     add('red', 0xC02830, smooth=.6, dirt=.3)
     add('glass', 0x1F4F48, smooth=.93, metal=.2, dirt=.15)
     add('vessel', 0x17403A, smooth=.9, metal=.3, dirt=.3)
-    add('window', 0x7FA8A0, glow=.42)
+    add('window', 0xFFB45C, glow=.85)
     add('shardglow', 0x2FA890, glow=.4)
     add('throat', 0x0B0807, smooth=.1, dirt=0.0)
 
@@ -69,10 +69,19 @@ def cfin(hexcol, kind='paint', gain=0.0):
             F[name] = A.fin(name, hexcol, glow=max(.05, gain))
         elif kind == 'metal':
             lum = ((hexcol >> 16 & 255) + (hexcol >> 8 & 255) + (hexcol & 255)) / 765.0
-            F[name] = A.fin(name, hexcol, smooth=.55 + .2 * lum, metal=.55 + .25 * lum, dirt=.7, wear=.3)
+            F[name] = A.fin(name, hexcol, smooth=.5 + .2 * lum, metal=.2, dirt=.5, wear=.3)
         else:
             F[name] = A.fin(name, hexcol, smooth=.34, dirt=.6)
     return F[name]
+
+
+def bfin(L, b, k=1.0):
+    """The finish of a fitting's own body: the colour its dressed box had (the look's block colour), as painted steel; k
+    lightens (above 1) or darkens it for a second tone (door plates, a plinth)."""
+    col = L.get('blockLooks', {}).get(b['id'], {}).get('col', 0x8A9496)
+    if k != 1.0:
+        col = (min(255, int((col >> 16 & 255) * k)) << 16) | (min(255, int((col >> 8 & 255) * k)) << 8) | min(255, int((col & 255) * k))
+    return cfin(col, 'metal')
 
 
 def pfin(p):

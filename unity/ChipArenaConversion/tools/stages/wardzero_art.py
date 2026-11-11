@@ -425,7 +425,7 @@ def gurney(g, b, T):
     """A transport stretcher (breakable cover): a solid fairing under a tube frame, a mattress and pillow, side rails, castors."""
     x0, x1, y0, y1, z0, z1 = ext(b)
     lx = b['size'][0] > b['size'][2]
-    box(g, x0 + .1, x1 - .1, y0 + .1, y1 - .34, z0 + .08, z1 - .08, F['fairing'], T, .04, cell=0, skip=())
+    box(g, x0 + .1, x1 - .1, y0 + .1, y1 - .34, z0 + .08, z1 - .08, wk.cfin(0x8C979A, 'metal'), T, .04, cell=0, skip=())
     box(g, x0 + .02, x1 - .02, y1 - .36, y1 - .28, z0 + .02, z1 - .02, F['steel'], T, .02, cell=0)
     ck.rbox(g, x0 + .06, x1 - .06, y1 - .28, y1 - .1, z0 + .06, z1 - .06, .06, F['mattress'], 2 if T.i == 0 else 1)
     px = (x0 + .12, x0 + .62) if lx else (x0 + .12, x1 - .12)
@@ -481,10 +481,10 @@ def cart(g, b, T):
             sk.tube(g, [(x0 + .1, y1 - .2, z1 - .02), (x0 + .1, y1 + .02, z1), (x1 - .1, y1 + .02, z1), (x1 - .1, y1 - .2, z1 - .02)], .016, F['stainless'], T.small)
 
 
-def booth(g, b, T):
+def booth(g, b, T, body):
     """The nurse booth: its desk-high base, mullioned glazing (the kit's lit panes), corner posts."""
     x0, x1, y0, y1, z0, z1 = ext(b)
-    box(g, x0, x1, y0, y1, z0, z1, F['steeldark'], T, 0, cell=0, skip=('-y',))
+    box(g, x0, x1, y0, y1, z0, z1, body, T, 0, cell=0, skip=('-y',))
     if T.i < 2:
         for x in (x0, x1):
             for z in (z0, z1):
@@ -559,7 +559,7 @@ def block_body(S, b):
         tank(g, b, T)
         key = 'tank'
     elif '-furnace' in s:
-        furnace(g, b, T)
+        bbox(g, b, wk.bfin(L, b), T, .03)
         key = 'furnace'
     elif '-gurney-' in s:
         gurney(g, b, T)
@@ -568,22 +568,22 @@ def block_body(S, b):
         cart(g, b, T)
         key = 'gurney'
     elif '-station' in s:
-        booth(g, b, T)
+        booth(g, b, T, wk.bfin(L, b))
         key = 'booth'
     elif s.startswith('lab-') and '-bench' in s:
-        cabinet(g, b, T, wk.cfin(0x2E4E4C, 'metal'), wk.cfin(0x3D6662, 'metal'), module=.75)
+        cabinet(g, b, T, wk.bfin(L, b), wk.bfin(L, b, 1.12), module=.75)
         key = 'fitting'
     elif '-bench' in s:
         x0, x1, y0, y1, z0, z1 = ext(b)
-        ck.rbox(g, x0, x1, y0 + .06, y1, z0, z1, .05, F['white'], 2 if T.i == 0 else 1)
+        ck.rbox(g, x0, x1, y0 + .06, y1, z0, z1, .05, wk.bfin(L, b), 2 if T.i == 0 else 1)
         box(g, x0 + .08, x1 - .08, y0, y0 + .08, z0 + .08, z1 - .08, F['steeldark'], T, 0, cell=0, skip=('-y', '+y'))
         key = 'fitting'
     elif '-slab-' in s:
-        cabinet(g, b, T, F['steel'], F['stainless'], module=1.1)
+        cabinet(g, b, T, wk.bfin(L, b), wk.bfin(L, b, 1.12), module=1.1)
         key = 'fitting'
     elif '-chamber-' in s or '-freezer-' in s or '-lockers' in s or '-rack' in s:
         x0, x1, y0, y1, z0, z1 = ext(b)
-        bbox(g, b, F['steeldark'] if '-rack' in s else F['steel'], T)
+        bbox(g, b, wk.bfin(L, b), T)
         if '-rack' in s and T.i < 2:
             fc, u0, u1 = inner_face(b)
             n = 4
@@ -593,14 +593,14 @@ def block_body(S, b):
         key = 'fitting'
     elif '-shower-' in s:
         x0, x1, y0, y1, z0, z1 = ext(b)
-        bbox(g, b, F['showertile'], T, .015)
+        bbox(g, b, wk.bfin(L, b), T, .015)
         key = 'fitting'
     elif '-console' in s or '-desk' in s:
-        cabinet(g, b, T, F['steeldark'] if '-console' in s else F['panel'], wk.cfin(0x3A464C, 'metal') if '-console' in s else F['white'], module=.8)
+        cabinet(g, b, T, wk.bfin(L, b), wk.bfin(L, b, 1.18), module=.8)
         key = 'fitting'
     elif '-screen-' in s:
         x0, x1, y0, y1, z0, z1 = ext(b)
-        bbox(g, b, F['steeldark'], T)
+        bbox(g, b, wk.bfin(L, b), T)
         key = 'fitting'
     elif min(b['size'][0], b['size'][2]) <= .65 and b['size'][1] >= .9:
         free_top = b['pos'][1] + b['size'][1] / 2 < 5.5

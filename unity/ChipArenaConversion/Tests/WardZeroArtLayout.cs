@@ -21,6 +21,9 @@ internal static class WardZeroArtLayout
         var entries=Entries(root);var blocks=map.blocks;var kit=NativeWardZeroKit.Build(blocks,map.hazards,entries);var art=NativeWardZeroArt.Build(kit,blocks,entries);
         void N(string n,double v)=>w.WriteNumber(n,Math.Round(v,5));
         w.WriteStartObject("ward");N("upper",NativeWardZeroKit.Upper);N("deckUnder",NativeWardZeroKit.DeckUnder);N("roof",NativeWardZeroKit.Roof);w.WriteNumber("moverSlots",kit.MoverSlots);w.WriteEndObject();
+        // the dressed blocks' own colours and looks (MapLooks.json), so a fitting's model keeps the colour its box had
+        var set=JsonSerializer.Deserialize<MapLookSet>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/MapLooks.json")),new JsonSerializerOptions{IncludeFields=true});var look=NativeMapLooks.ByLook(set,map.look)??NativeMapLooks.Find(set,map.id);
+        w.WriteStartObject("blockLooks");foreach(var b in blocks){var c=NativeBlockLooks.Resolve(look?.blockLooks,null,b.id,b.material,0x8A9496);w.WriteStartObject(b.id);w.WriteNumber("col",c.Color);w.WriteString("look",NativeWardZeroLooks.KeyOf(c.Look,c.Flags)??"");w.WriteEndObject();}w.WriteEndObject();
         w.WriteStartArray("parts");
         for(int i=0;i<kit.Parts.Length;i++)
         {
