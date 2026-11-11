@@ -46,15 +46,16 @@ TOP_FIELDS = {'schema', 'events', 'generated', 'note'}
 SPACES = {'P': '3d', 'F': '2d', 'O': 'loop'}
 CLIP_NAME = re.compile(r'^[a-z0-9_-]{1,40}$')
 GUID = re.compile(r'^guid: ([0-9a-f]{32})$', re.M)
-MAX_ZIP_FILES, MAX_ZIP_BYTES, MAX_FILE_BYTES = 5000, 320 * 1024 * 1024, 24 * 1024 * 1024
+MAX_ZIP_FILES, MAX_ZIP_BYTES, MAX_FILE_BYTES = 5000, 512 * 1024 * 1024, 24 * 1024 * 1024
 # The visual body's budget (raised from 40 MB on 2026-10-25: the animation pack's motion bank grew it to 38.7 MB; to 72 MB on
 # 2026-10-26: the wardrobe's pieces and the prefab that carries them grew it to 58.2 MB; to 160 MB on 2026-10-28: the pack
 # banks beside it, docs/PACK-BANK.md, the stage kit alone 12.7 MB; to 240 MB on 2026-11-10: the four new stages' art banks,
-# docs/arenas/STAGE-ART.md, about 16-19 MB each); the zip's own MAX_ZIP_BYTES (its members' total, raised from 64 MiB on
-# 2026-10-26 to hold the wardrobe beside the effects audio, to 224 MiB on 2026-10-28 for the pack banks, to 320 MiB on
-# 2026-11-10 for the stage art banks) still bounds the download, and MAX_FILE_BYTES (16 MiB until 2026-11-10, now 24 MiB:
-# a stage bank's budget is about 20 MB) one member.
-VISUAL_BODY_MANIFEST, VISUAL_BODY_PREFAB, VISUAL_BODY_BUDGET = 'visual-body.json', 'ChipArenaVisualBody.prefab', 240 * 1000 * 1000
+# docs/arenas/STAGE-ART.md, about 16-19 MB each; to 480 MB on 2026-11-11: the stage revamp's nine banks, five rebuilt stages
+# and four art passes, about 6-22 MB each, beside the 232 MB already there); the zip's own MAX_ZIP_BYTES (its members' total,
+# raised from 64 MiB on 2026-10-26 to hold the wardrobe beside the effects audio, to 224 MiB on 2026-10-28 for the pack banks,
+# to 320 MiB on 2026-11-10 and to 512 MiB on 2026-11-11 for the stage art banks) still bounds the download, and MAX_FILE_BYTES
+# (16 MiB until 2026-11-10, now 24 MiB: a stage bank's budget is about 20 MB) one member.
+VISUAL_BODY_MANIFEST, VISUAL_BODY_PREFAB, VISUAL_BODY_BUDGET = 'visual-body.json', 'ChipArenaVisualBody.prefab', 480 * 1000 * 1000
 VISUAL_BODY_KINDS = {'.prefab', '.mat', '.fbx', '.png', '.tga', '.jpg', '.jpeg', '.asset', '.controller', '.bytes', '.meta'}
 SHA256 = re.compile(r'^[0-9a-f]{64}$')
 
