@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import stagekit as sk  # noqa: E402
 from stagekit import Geo, box, grid_face, lathe  # noqa: E402
 import skyframe_kit as kit  # noqa: E402
-from skyframe_kit import F, blk, hashf, beam, ibeam, rod, slab, rect, blob, leafy, hsection, ly  # noqa: E402
+from skyframe_kit import F, blk, hashf, beam, ibeam, rod, slab, rect, blob, leafy, hsection, ly, bed  # noqa: E402
 
 BANK = 'ChipArenaStageSkyframe'
 FLOORS = (-3.2, 0.0, 3.6)
@@ -117,6 +117,13 @@ def garden(g, L, T):
             a = -9.6 + k * 19.2 / 9
             for (x, z) in ((a, -9.65), (a, 9.65), (-9.65, a), (9.65, a)):
                 rect(g, x - .07, x + .07, 0, z - .07, z + .07, F['lamp-soft'])
+    # planting beds set in the paving (ankle high): along the balustrades, round the core's foot, by the pavilions' walls
+    BEDS = ((-8.6, -1.4, 14.75, 15.35), (-25.35, -24.85, 9.4, 15.3), (-25.35, -24.75, -5.9, -2.2), (-25.35, -24.75, 2.2, 5.6), (-5.75, -5.1, -4.4, 4.4),
+            (-13.9, -13.3, -11.2, -7.2), (-13.9, -13.3, -15.4, -14.0), (-0.9, 4.4, 5.1, 5.7), (-21.0, -17.6, 6.9, 7.5))
+    GF, FL = fins(('leaf-dark', 'leaf', 'leaf-light')), fins(('flower-pink', 'flower-white', 'flower-orange', 'leaf-gold'))
+    for k, (a0, a1, c0, c1) in enumerate(BEDS):
+        bed(g, a0, a1, 0, c0, c1, T, 300 + k * 37, GF, FL)
+        bed(g, -a1, -a0, 0, -c1, -c0, T, 900 + k * 41, GF, FL)
     zones(g, L, 0.0, b, T, 4)
     fascia(g, b, T, L)
 

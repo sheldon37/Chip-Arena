@@ -26,7 +26,7 @@ def finishes():
     f('stainless', 0xC9CED2, smooth=.86, metal=.5, dirt=.15)
     f('primer', 0xB5553A, smooth=.32, metal=.2, dirt=.5, wear=.25)
     f('deck', 0xAEB4B8, smooth=.55, metal=.45, dirt=.4)
-    f('glass', 0x9FD6DC, smooth=.96, metal=.35, dirt=.08)
+    f('glass', 0xA8E2E8, smooth=.96, metal=.35, dirt=.08)
     f('glass-dark', 0x4F8A9A, smooth=.96, metal=.4, dirt=.1)
     f('glass-floor', 0xB9E3E7, smooth=.92, metal=.3, dirt=.12)
     f('water', 0x2F6F7C, smooth=.98, metal=.35, dirt=0)
@@ -230,7 +230,7 @@ def leafy(g, b, T, seed, fins, depth=.12, cell=None, faces=('+x', '-x', '+z', '-
         d = np.clip(d, -depth * .6, depth).reshape(cu + 1, cv + 1)
         d[0, :] = d[-1, :] = 0
         d[:, 0] = d[:, -1] = 0
-        tone = sk.fbm(base * 1.0 + seed * .11, .9, 2, (seed + 7) % 89).reshape(cu + 1, cv + 1)
+        tone = sk.fbm(base * 1.0 + seed * .11, .45, 2, (seed + 7) % 89).reshape(cu + 1, cv + 1)
         base = base.reshape(cu + 1, cv + 1, 3)
         pts, nrm = {}, {}
         for i in range(cu + 1):
@@ -244,8 +244,8 @@ def leafy(g, b, T, seed, fins, depth=.12, cell=None, faces=('+x', '-x', '+z', '-
                 nrm[(i, j)] = (q[0] / l, q[1] / l, q[2] / l)
         for i in range(cu):
             for j in range(cv):
-                t = (tone[i, j] + tone[i + 1, j + 1]) / 2 + (d[i, j] + d[i + 1, j + 1]) / depth * .12
-                f = fins[min(len(fins) - 1, max(0, int((t - .25) * 2.0 * len(fins))))]
+                t = (tone[i, j] + tone[i + 1, j] + tone[i, j + 1] + tone[i + 1, j + 1]) / 4 + (d[i, j] + d[i + 1, j + 1]) / depth * .04
+                f = fins[0] if t < .43 else (fins[-1] if t > .6 else fins[1])
                 if flowers and hashf(seed + 9, i * 3, j * 5, n[0] + 2 * n[2]) > .955:
                     f = flowers[int(hashf(seed, i, j) * 97) % len(flowers)]
                 ks = ((i, j), (i + 1, j), (i + 1, j + 1), (i, j + 1))
@@ -260,6 +260,24 @@ def leafy(g, b, T, seed, fins, depth=.12, cell=None, faces=('+x', '-x', '+z', '-
         face((x1, y0, z0), (0, 0, z1 - z0), (0, y1 - y0, 0), (1, 0, 0))
     if '+y' in faces:
         face((x0, y1, z0), (x1 - x0, 0, 0), (0, 0, z1 - z0), (0, 1, 0))
+
+
+def bed(g, x0, x1, y, z0, z1, T, seed, fins, flowers):
+    """A planting bed set in a floor: a stone edging, soil, low tufts and flowers (never a hand over the floor: nothing to
+    stand beside, ankle high)."""
+    rect(g, x0 - .06, x1 + .06, y, z0 - .06, z1 + .06, F['coping'], 0, 1)
+    if T.i == 2:
+        rect(g, x0, x1, y, z0, z1, fins[1], 0, 2)
+        return
+    rect(g, x0, x1, y, z0, z1, F['soil'], 0, 2)
+    n = int((x1 - x0) * (z1 - z0) * (7 if T.fine else 3)) + 1
+    for k in range(n):
+        px = x0 + .1 + hashf(seed, k) * (x1 - x0 - .2)
+        pz = z0 + .1 + hashf(seed, k, 1) * (z1 - z0 - .2)
+        r = .1 + .09 * hashf(seed, k, 2)
+        fl = hashf(seed, k, 3)
+        cols = (flowers[k % len(flowers)], fins[1], fins[0]) if fl > .72 else (fins[2], fins[1], fins[0])
+        blob(g, (px, y + ly(2) + r * .25, pz), r, T, seed + k, cols, squash=(1, .8, 1), cut=.35, lumps=.3, sides=(6, 5, 4)[T.i])
 
 
 def hsection(g, cx, cz, y0, y1, T, f, d=.5, w=.5, turn=False):
