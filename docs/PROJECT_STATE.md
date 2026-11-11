@@ -1,3 +1,5 @@
+2026-11-11 Claude (`claude/boot-intro`, owner request): the owner's new logo plays at launch (after Unity's splash, skippable after 0.5 s) while the motion banks and source models decode on workers and the menu builds under its settled logo, then crossfades into the menu (docs/BOOT-INTRO.md). Adds `com.unity.modules.video` to Packages/manifest.json. On the branch, not merged.
+
 2026-11-11 Astra (`codex/expedition-party-load-fix`, base `9b827fe`): guests stage instance construction behind a painted loading screen; host deployment waits for the existing drop sequence; pre-commit guest snapshots include their PvE row. Managed handoff/transition checks and Unity semantic compilation pass. Native pre-ACK party-entry/return checks added for the builder; Windows multiplayer/visual acceptance and publication remain unverified. See newest DEV_LOG entry and task PR for delivery receipts.
 
 2026-11-11 Claude (`claude/hotdog-hats`): hats fit the Hot Dog: each rides the crown's own skinning with its own fit (no more tilting off or sitting over the face), and the crown's sprigs hide under closed hats (docs/HOT-DOG-SKIN.md "Hats").

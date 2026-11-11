@@ -1,3 +1,49 @@
+## 2026-11-11 — Claude: the logo intro at launch, with the game loading under it (owner request)
+
+- Branch `claude/boot-intro`, base shared `7e4d6378`. Owner: "Lets add this as an intro when starting the game (Use this time to load assets in). (This is also the new logo for the game)". Full description: `docs/BOOT-INTRO.md`.
+- **The clip:** `Assets/StreamingAssets/BootIntro.mp4`, played by URL.
+  - The owner's 11.3 MB, 8.9 Mbps upload re-encoded to 4 Mbps H.264 High without B-frames: 5,266,834 bytes. It keeps the same 241 frames, 24 fps and 1280x720, with the AAC copied unchanged.
+  - Unity's Windows decoder warned about and skewed the B-frame timestamps, so the re-encode has none.
+  - SSIM 0.995 and PSNR 49 dB against the upload.
+  - Credited in `docs/ASSET-CREDITS.md` "Logo intro", with a receipt in `tools/asset-lock.json`.
+  - Its last frame is `Resources/BootIntroLogo.jpg`, held after a skip.
+- **The intro** (`Runtime/NativeBootIntro.cs`; the timeline is Core `NativeBootIntroFlow`):
+  - It plays full screen after Unity's splash, letterboxed 16:9 on black.
+  - Its sound plays at the Menu Music level, levelled to the menu song (x0.72); Mute audio silences it.
+  - A click, Esc, Enter or Space (pad A, B, Start) skips it after 0.5 s.
+  - If the game is not ready when it ends or is skipped, the final logo holds and an orange dot ring with "LOADING" fades in after 0.3 s.
+  - Then a 0.6 s crossfade into the menu. The menu song starts from its top, and a notice raised under the intro shows after it for its full time.
+  - A start-up error ends the hold and shows after the intro, never under it.
+- **It does not play** on a dedicated server, in batch mode, with `-nointro`, or in the Editor unless asked (Chip Arena > Boot intro > Play once / Play in Play mode). It never plays under the BoZo tool's play runs unless the run asks for it (`bootintro=1`).
+- **The loading under it** (`Runtime/NativeBootLoad.cs`, `NativeBankLoad.cs`):
+  - From a BeforeSplashScreen hook, the two motion banks and the SourceModels JSON decode on workers. The main thread only reads their bytes (25 ms), and all three finish during Unity's splash. Every bank read waits for its pending load.
+  - The source models still build in presentation.Initialize, from that JSON (11 ms instead of 0.9 s).
+  - Awake otherwise runs as before, in the same order; without the intro it is unchanged.
+  - Then, one step a frame: the banks are joined; the model's bake, outfit table and icon sets come in by LoadAsync; and once the clip settles on its logo (8.1 s), the menu's scene and then its GUI draw twice each under it.
+  - LateFrame and OnGUI wait until their step, and Update takes no input under the intro. A one-token hook in NativeAudio holds the menu song (`MenuHeld`).
+- **Measured** (Windows Development builds with a scratch probe that was never committed, RTX 4090, 1600x900, fresh preferences):
+  - **Frames while the clip moves (0-8.1 s):** 1166 frames, mean 6.9 ms, p99 7.1 ms, max 7.6-9.4 ms, none over 20 ms (144 fps cap).
+  - **Under the settled logo:** the menu's build lands there: 0.35, 0.03, 0.23, 0.08 s.
+  - **Launch to an interactive menu:** before 11.0-11.2 s, with a 0.8-0.9 s frozen first menu frame. After: 17.2-17.5 s when the clip plays out; 8.3-8.4 s when it is skipped at 0.5 s.
+  - **The clip's first frame** comes 7.1-7.5 s after launch. Before, the menu's first frame came at 10.2-10.3 s.
+  - **The first 3 s of menu:** p99 22-24 ms, max 38-41 ms before; p99 10-11 ms, max 15-16 ms after.
+- **Still on the main thread before the first frame**, a grey window after Unity's splash for about 4.1 s:
+  - the maps, 0.75 s (content: Astra's side);
+  - presentation.Initialize, 2.6 s, mostly NativeSourceModels' procedural builds: `HordeKindModels` 1.1 s, `HelmModels` 0.47 s, `WeaponSkins` 0.23 s.
+  - These are the next to move, by their owners: built lazily, or under the settled logo.
+- **Unity's splash** shows in builds (Player Settings, not tracked) and plays before the intro. Turning it off, or making its background black, is a Player Settings call for the owner or Astra; nothing here changes it.
+- **Package:** `Packages/manifest.json` gains `com.unity.modules.video` in its own commit. The project had no Video module, so this one line is needed for the VideoPlayer. It is the only manifest change; it is in the 6000.3.24f1 catalog and passes `package_source.py`.
+- **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement, network or save change; presentation and load order only.
+- **Checks:**
+  - CoreTests `--boot-intro`: 82 checks (rules, timeline, letterbox, the clip's size, hash, metas, receipt and credits, and the wiring and order).
+  - The full CoreTests and `git diff --check`: see the release notes below.
+  - Unity compile PASS.
+  - `PrototypeBuild.Validate` in batch mode on a copy of the project at the branch: passed, 396 PASS lines.
+  - Python suite: the same 12 failures as the base on this PC, none new; `package_source.py --check` passed.
+  - Windows builds (batch, on a scratch copy of the project): the build check logged `BOOT_INTRO_CLIP_IN_BUILD`; the player played the clip, held the logo with the indicator (`--ca-boot-hold`), crossfaded into the menu, and letterboxed at 4:3.
+  - In the player, `-nointro` and `-batchmode` logged `BOOT_INTRO off (Argument)` and `(BatchMode)`, with the old synchronous path.
+- **Not verified:** a person watching and hearing it; the builder's own build and the installed updater; other GPUs and slower CPUs; a two-monitor or fullscreen launch.
+
 ## 2026-11-11 — Astra: Expedition party loading and host deployment sequence
 
 - Branch `codex/expedition-party-load-fix`, based on shared `9b827fe12e37d89cd27519197e8284878c725726`. Owner reports that only the host loads on a shared instance entry, and host deployment skips the station drop/loading screen.
