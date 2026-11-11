@@ -1,12 +1,13 @@
 ## 2026-11-11 — Claude: DEV Greatsword and DEV Katana, the Grruzam sword pack on two DEV classes
 
 - Branch `claude/greatsword-grruzam`, base shared `034d35a6` (shared `b1674f0d` merged, with the Katana's released saya and intro fixes).
-  Commits: `a1ae7c30` the DEV Greatsword, `aeddba08` the DEV Katana, `8e1201f1` docs, `6b066799` shared merged, then this log. Implemented on the branch; not merged, not released.
+  Commits: `a1ae7c30` the DEV Greatsword, `aeddba08` the DEV Katana, `8e1201f1` docs, `6b066799` and `022b2bed` shared merged (the latter
+  with the stage z-fight fix), then this log. Implemented on the branch; not merged, not released.
 - **The owner:** "Great Sword and Katana" (Grruzam's Powerful Sword Animation pack, v2.1.3, bought), then "For those new animations;
   Maybe lets put them on DEV classes. Call them like ... DEV Katana and DEV Greatsword", then "Yes, grantable". The Greatsword and the
   Katana keep their own animation; nothing of theirs changed.
 - **What they are** (docs/BOZO-INTEGRATION.md, "The DEV animation classes"): `dev-greatsword` and `dev-katana`, devOnly content rows with
-  their base's numbers (GameContent weights 12 and 4), a DEV screen card, spec icons (`ClassIcons.json`), Locker and loadout text. In a
+  their base's numbers (GameContent weights 12 and 1, as their bases), a DEV screen card, spec icons (`ClassIcons.json`), Locker and loadout text. In a
   match each plays its base class exactly; only the model's animation set differs (Core `NativeDevMotions`, `NativeDevGreatswordMotion`,
   `NativeDevKatanaMotion`). The DEV Katana's iai, sheathing and counter critical keep the Frank Slash Pack's clips (the pack has no saya
   or partner clip).
@@ -18,7 +19,7 @@
   the field and its wire path. Other hooks: `NativeVisualMotionPresentation` picks the set by `NativeDevMotions.Set(a)`;
   `NativeBladeMotion.Clip` picks the DEV Katana's clips for an actor whose `Motion` is it; `NativeVisualMotionClips.Read` takes the
   measured strikes of the pack's clips (they carry no Hit event); `NativeWeaponSkinModels` aliases the base's weapon models;
-  `NativeLockerUI.LockerSignature` gives the base's entrance; `NativeParityChecks` counts 24 public weapon rows plus the two.
+  `NativeLockerUI.LockerSignature` gives the base's entrance; `NativeParityChecks` counts 24 weapon rows (22 before the two).
 - **Animation against the rules:** each clip is fitted to the base's timing. The DEV Greatsword's strikes (measured on the body at 30 fps)
   land on the middle of each hit window, the combo an even cycle so each cut keeps the rules' sweep (1 right to left, 2 left to right...);
   the DEV Katana's moves are clip windows whose strike lands on the rules' hit, at most 1.6 times the clip's pace. Hitboxes and reach
@@ -32,15 +33,16 @@
   other clip byte-identical (409 clips, 4,877,308 bytes, became 475 in 5,663,961). The pack is installed under the git-ignored
   `Assets/LocalAssets/Grruzam Powerful Sword Animation(Great Sword, Katana)/`; the local tool's `MotionClipFolders` and `MotionSpecs`
   have both. Nothing licensed, baked or captured is committed. The Drive zip is not repacked, so a builder build has none of the two
-  classes' clips. Licence: the owner bought the pack; its terms are not confirmed here.
-- **Checks:** the full CoreTests on `a1ae7c30` and `aeddba08` (1014 PASS) and on the merge with shared `6b066799` (1015 PASS; the Windows
-  path patch applied locally and reverted); `--visual-rig`, `--blades`, `--dev-grants`; `git diff --check` against shared; the Editor
-  compiled `aeddba08` (Tundra success). Captures in play (cybercity, DEV access, one bot) of the DEV Katana: idle, the combo, the roll,
-  the jump and air attack; the guard, a blocked hit and the parry; the hit reactions, the knockdown and get-up, Q (iai) and E (storm).
-  **Not done yet** (the Editor was paused for other sessions): the DEV Katana's parry landing into its counter (the local tool's hurt
-  option ran on the wall clock; a fix is ready locally), the DEV Greatsword's captures in play, the DEV screen's cards, the builder's
-  Editor checks (`PrototypeBuild.Validate`). Not run: play by a person, a guest over the network (the seat's motion on the wire is
-  covered by CoreTests only), a Windows build, the builder.
+  classes' clips. Licence: the owner bought the pack ("Yes, I bought it").
+- **Checks:** the full CoreTests on `a1ae7c30` and `aeddba08` (1014 PASS), on `6b066799` (1015) and on `022b2bed` with shared's z-fight
+  fix and the rebuilt stage banks (1015 PASS; the Windows path patch applied locally and reverted); `--visual-rig`, `--blades`,
+  `--dev-grants`; `git diff --check` against shared; the Editor compiled `972f490d` and the builder's Editor checks passed on it
+  (`PrototypeBuild.Validate`: ok; every weapon model found, the DEV classes drawing their bases'). Captures in play (cybercity, DEV
+  access, one idle bot), both classes: idle, the combo, the roll, the jump and air attack, the held guard and a blocked hit in it, the
+  parry, the hit reactions from each side, the knockdown and get-up, Q and E; the DEV Katana's parry into its counter (the paired
+  critical); the DEV screen with both class cards (grantable, "No entrance of its own"). Not run: play by a person, a guest over the
+  network (the seat's motion on the wire is covered by CoreTests only), a Windows build, the builder. (The local tool's `mehurt=` and
+  `knock=` now follow `zclock=arena` like `apress=`; on the wall clock they fired seconds early.)
 - **Known risks:** the ClassIcons generator (`tools/export_class_icons.mjs`) does not draw the two new icons (they were added to
   `ClassIcons.json` directly). The greatsword's strafes slide about 30% (the pack's jog is slower than the game's run). The DEV Katana's
   Dodge_Front is the pack's flip, not the Katana's tumble.
