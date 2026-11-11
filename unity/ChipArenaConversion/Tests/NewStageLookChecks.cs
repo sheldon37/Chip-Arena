@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
             // Owner playtest (2026-11-01): low tops stand and rails over a lower floor vault (no invisible wall over them), while
             // rails, parapets and walls at a lethal edge keep their pilot column (tools/generate_stage_hazards.py open_tops).
             foreach(var (mapId,id,open) in new[]{("breakwater","breakwater-container-a",true),("breakwater","breakwater-booth-n-roof",true),
-                ("polar","polar-hall-porch-w-n",true),("skyframe","skyframe-rail-atrium-w-0",true),
+                ("skyframe","skyframe-rail-atrium-w-0",true),
                 ("breakwater","breakwater-parapet-n",false),("skyframe","skyframe-rail-edge-w-0",false)})
             {
                 var m=content.maps.Single(x=>x.id==mapId);var b=m.blocks.Single(x=>x.id==id);var on=new V3(b.pos.x,b.pos.y+b.size.y/2+.9f,b.pos.z);
@@ -89,7 +89,7 @@ namespace ChipArena.UnityConversion
                 foreach(var b in map.blocks)Check(NativeBlockLooks.Resolve(look.blockLooks,null,b.id,b.material,0).Listed,id+": "+b.id+" has a look of its own (listed or by its material)");
             }
             string weatherOf(string id)=>NativeAdvancedLooks.WeatherOf(NativeMapLooks.Find(set,id));
-            Check(weatherOf("polar")=="snow"&&weatherOf("skyframe")==""&&weatherOf("breakwater")=="drizzle","the weather: Polaris's snow, a clear noon, Breakwater's wet air");
+            Check(weatherOf("skyframe")==""&&weatherOf("breakwater")=="drizzle","the weather: a clear noon, Breakwater's wet air");
 
             // 2. The kit: attached parts inside their blocks (2.1 rule 1, the stage rule's 0.25 m), overhead parts clear of the play.
             int attached=0,overhead=0;
@@ -106,14 +106,14 @@ namespace ChipArena.UnityConversion
                 }
                 Check(NativeNewStageKit.Build(new ContentMap{id="factory",blocks=map.blocks},look,mats)==null,"another map gets no kit");
             }
-            Check(attached>3000&&overhead>60,"attached and overhead parts on the three (Pier 9 and Deepwell left, Deepwell with its derrick) ("+attached+", "+overhead+")");
+            Check(NativeNewStageLooks.Maps.Length==0||attached>2000&&overhead>3,"attached and overhead parts on the M1 stages still here ("+attached+", "+overhead+")");
 
             // 3. The pack rules: real blocks, solid props, inside their colliders, the same every time (a synthetic bank of real bounds).
             var table=JsonSerializer.Deserialize<PackDressingSet>(R("Assets/Conversion/Resources/PackDressing.json"),o);NativePackDressing.Validate(table);
             using var sel=JsonDocument.Parse(R("tools/pack_bank/selections/kit-harbor.json"));var groups=new Dictionary<string,string>();
             foreach(var p in sel.RootElement.GetProperty("props").EnumerateArray())groups[p.GetProperty("id").GetString()]=p.GetProperty("group").GetString();
             var bank=StageKitChecks.Synthetic(groups);
-            var dressed=new Dictionary<string,int>{["breakwater"]=56,["skyframe"]=34,["polar"]=24};
+            var dressed=new Dictionary<string,int>{["breakwater"]=56,["skyframe"]=34};
             foreach(var id in NativeNewStageLooks.Maps)
             {
                 var entry=NativePackDressing.Entry(table,id);var map=content.maps.Single(m=>m.id==id);Check(entry!=null,id+": a pack entry");

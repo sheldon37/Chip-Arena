@@ -220,6 +220,7 @@ plays its current track (`harbor-container-terminal`, written for the old contai
 |---|---|---|---|
 | Pier 9 | `harbor` | `harbor-container-terminal` | `harbor-theme` |
 | Deepwell | `rig` | `rig-offshore` | `rig-theme` |
+| Polaris Station | `polar` | `polar-pulse-de-la-mort` | `polar-theme` |
 
 ### Pier 9 — Last Night of the Season
 
@@ -290,3 +291,41 @@ Ooh, ooh
 | Stage | Map id | Placeholder now | Resource key for the owner's song |
 |---|---|---|---|
 | Deepwell | `rig` | `rig-offshore` (the owner's earlier Deepwell song; the record's fallback stays `factory-anvil-loop`) | `rig-theme` |
+
+### Polaris Station — Northern Lights Array
+
+Polaris Station was rebuilt on 2026-11-11 (docs/arenas/POLAR.md): an arctic observatory under a moving aurora, a great dish
+turning over it, an icebreaker frozen into the shelf, thin ice over her channel. Its current song (`polar-pulse-de-la-mort`) stays as
+the placeholder; the owner's new song takes the key `polar-theme`.
+
+Instrumental arctic observatory combat soundtrack, 132 BPM, a research station on the polar ice under green and violet northern lights while a giant radio telescope slowly turns. Glacial electronic: a crystalline bell-and-glass arpeggio like ice singing, wide shimmering aurora pads that swell and fold, a deep sub-bass pulse like ice groaning, tight punchy kick and brushed metallic hi-hats, a lonely radio-signal motif of four sine beeps answered by warm analog brass, distant ship's horn swells, wind-like risers. Cold, vast, beautiful and tense; warm chords glow in the chorus like lit cabin windows. Builds and releases in 16-bar waves. No vocals. Clean loopable ending.
+
+Lyric field:
+
+```
+[Intro: arctic wind, a four-beep radio signal motif on sine tones, glassy ice arpeggio fading in over a deep pad]
+
+[Build-Up: sub-bass pulse like groaning ice, brushed metallic hats, the arpeggio doubling]
+
+[Main Theme: full drums, the four-beep motif answered by warm analog brass, aurora pads swelling]
+Aaah, aaah
+Aaah, aaah
+
+[Instrumental Break: crystalline bell arpeggios, tight kick, a ship's horn swell far off]
+
+[Breakdown: drums fall away, only wind, the radio signal and a slow shimmering pad, a crack of ice]
+
+[Build-Up: snare roll like hail, rising wind riser, the motif climbing an octave]
+
+[Climax: full drums and bass, brass and bells carry the motif together, pads at full height]
+Aaah, aaah
+Aaah, aaah
+
+[Outro: drums thin to the intro pulse, the four beeps repeat alone, seamless loop]
+
+[End]
+```
+
+| Stage | Map id | Placeholder now | Resource key for the owner's song |
+|---|---|---|---|
+| Polaris Station (rebuilt) | `polar` | `polar-pulse-de-la-mort` | `polar-theme` |

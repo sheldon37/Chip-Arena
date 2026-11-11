@@ -13,8 +13,9 @@ internal static class NewStagesChecks
         var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),o);
         var maps=JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),o);
         NativeMapRules.Merge(content,maps,File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")));
-        // (Deepwell, `rig`, left this list on 2026-11-11: rebuilt as its own stage, it has its own checks, DeepwellChecks.)
-        var required=new[]{"breakwater","harbor","skyframe","polar","training"};
+        // (Deepwell, `rig`, and Polaris Station, `polar`, left this list on 2026-11-11: each rebuilt as its own stage, it has its own
+        // checks, DeepwellChecks and PolarChecks.)
+        var required=new[]{"breakwater","harbor","skyframe","training"};
         Check(required.All(id=>maps.maps.Count(m=>m.id==id)==1),"all five integrated maps exist exactly once");
         foreach(var map in maps.maps.Where(m=>required.Contains(m.id)))
         {

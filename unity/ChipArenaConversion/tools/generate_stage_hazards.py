@@ -7,7 +7,7 @@ import importlib.util,json,math
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[3]
 # A stage rebuilt from scratch takes its new draft (the M1 script stays as history).
-DRAFTS={'harbor':'harbor_m2','rig':'rig_m2'}
+DRAFTS={'harbor':'harbor_m2','rig':'rig_m2','polar':'polar_m2'}
 def draft(name,fn):
     spec=importlib.util.spec_from_file_location(name,ROOT/f'docs/arenas/scripts/{DRAFTS.get(name,name+"_m1")}.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return getattr(m,fn)()['maps'][0]
 def v(x,y,z):return dict(x=round(x,4),y=round(y,4),z=round(z,4))
@@ -113,8 +113,8 @@ def open_tops(m):
 # whatever their obstacle ray hits; NativeMapRules.ExcludeTops), so a player can jump over or be knocked over it and fall. Every
 # other column over a top goes: a double jump (daggers, bow, chips) reaches the 3.9 m ovens, altars and gates, and a pilot may
 # stand on anything they can reach.
-EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':(),'harbor':(),'rig':('rig-top-wall','rig-top-glass','rig-top-bulkhead')}
-OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-'),'harbor':('harbor-ride-','harbor-turret-','harbor-tower-'),'rig':('rig-top-pylon',)}
+EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':(),'harbor':(),'rig':('rig-top-wall','rig-top-glass','rig-top-bulkhead'),'polar':('polar-top-ridge','polar-top-ship-bridge')}
+OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-'),'harbor':('harbor-ride-','harbor-turret-','harbor-tower-'),'rig':('rig-top-pylon',),'polar':('polar-top-obs-pedestal',)}
 # Cyber City (2026-11-11, the art pass): its columns are the frontage's tops and the tunnel mouths (the map's edge; the art shows the
 # mouths' light gates) and the spires' tops at the ceiling (their crowns and masts stand on them). None opens onto a lethal drop.
 EDGES['cybercity']=('cybercity-frontage-top','cybercity-tunnel-');OVERHANG['cybercity']=('cybercity-spire-top',)
@@ -124,6 +124,15 @@ def open_stage(m):
         if keep and p['id'].startswith(keep):kept.append(p)
         elif sides[p['id']][0]:kept.append(dict(p,bots=True));bots+=1
     print(m['id'],'pilot columns',len(m['pilotBlocks']),'->',len(kept),'(bots only:',str(bots)+')');m['pilotBlocks']=kept
+def segment_nav(m):
+    """A sinking segment (Polaris's thin ice: `carried` plates that ride pilots down and are gone) takes with it every link with an end
+    standing on one of its plates."""
+    ids={b['id']:b for b in m['blocks']};nodes={n['id']:n['pos'] for n in m['nav']['nodes']}
+    for s in m.get('segments',[]):
+        plates=[bounds(ids[i]) for i in s['blocks'] if ids[i]['role']=='carried']
+        def on(p):return any(b[0][0]-.001<=p['x']<=b[0][1]+.001 and b[2][0]-.001<=p['z']<=b[2][1]+.001 and abs(p['y']-.9-b[1][1])<.05 for b in plates)
+        s['nav']=dict(remove=[l['id'] for l in m['nav']['links'] if on(nodes[l['a']]) or on(nodes[l['b']])],add=[])
+        print(m['id'],s['id'],len(s['nav']['remove']),'links go with it')
 path=ROOT/'unity/ChipArenaConversion/Assets/Conversion/Resources/UnityMaps.json'
 content=json.loads(path.read_text())
 for name,fn,song in [('factory','unity_json','factory-anvil-loop'),('cybercity','draft','cybercity-neon-riot')]+[(name,'unity_json','factory-anvil-loop' if name in ('harbor','rig','training') else 'cybercity-neon-riot') for name in ('breakwater','harbor','skyframe','rig','polar','training')]+[('club','unity_json','cybercity-neon-riot')]+[('emporium','unity_json','cybercity-neon-riot')]+[('causeway','unity_json','skyframe-rising-motif')]+[('sanctum','unity_json','moonlit-wilderness')]:
@@ -131,6 +140,7 @@ for name,fn,song in [('factory','unity_json','factory-anvil-loop'),('cybercity',
     if name in EDGES:open_stage(m)
     elif name not in ('factory','cybercity'):open_tops(m)
     navigation(m)
+    if name=='polar':segment_nav(m)
     content['maps']=[old for old in content['maps'] if old['id']!=name]+[m]
 # LF on every platform: the lock pins the exact bytes.
 path.write_bytes((json.dumps(content,separators=(',',':'))+'\n').encode())
