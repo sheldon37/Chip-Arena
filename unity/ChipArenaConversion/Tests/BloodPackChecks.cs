@@ -153,7 +153,7 @@ namespace ChipArena.UnityConversion
             Check(Regex.IsMatch(R("Resources/NativeBloodLight.cginc.meta"),@"^guid: [0-9a-f]{32}$",RegexOptions.Multiline)&&R("Resources/NativeBloodLight.cginc").Contains("float4 _ArenaLightPos[8];float4 _ArenaLightColor[8];"),"the light block reads the arena's slots");
             string splash=R("Resources/NativeBloodSplash.shader"),decal=R("Resources/NativeBloodDecal.shader"),gut=R("Resources/NativeBloodGut.shader");
             foreach(string text in new[]{splash,decal})Check(text.Contains("Blend One OneMinusSrcAlpha")&&text.Contains("ZWrite Off")&&text.Contains("multi_compile_fog")&&text.Contains("UnpackNormal("),"premultiplied, no depth write, fogged, normal mapped");
-            Check(decal.Contains("\"Queue\"=\"Transparent-60\"")&&decal.Contains("GammaToLinearSpace(i.color.rgb)")&&pack.Contains("\"ChipArena/NativeBloodDecal\",(int)RenderQueue.Transparent-60"),"the decals where today's splats draw, in today's colours");
+            Check(decal.Contains("\"Queue\"=\"Transparent-60\"")&&decal.Contains("GammaToLinearSpace(i.color.rgb)")&&pack.Contains("\"ChipArena/NativeBloodDecal\",(int)RenderQueue.Transparent-60,"),"the decals where today's splats draw, in today's colours");
             Check(gut.Contains("\"LightMode\"=\"ShadowCaster\"")&&gut.Contains("UNITY_LIGHT_ATTENUATION("),"the lumps cast and take the key's shadow");
             var block=Code(Between(decal,"BLOOD DECAL SHARED BEGIN","BLOOD DECAL SHARED END"));
             Check(block.Length>100&&!block.Contains("tex2D")&&!block.Contains("mul(")&&Regex.Matches(block,@"(?<![\w.])\d+(?![\w.])").Count==0,"the decal block: float literals only, no texture reads");

@@ -47,9 +47,10 @@ namespace ChipArena.UnityConversion
         {
             if(bloodPackRead)return;bloodPackRead=true;
             var prefab=Resources.Load<GameObject>(VisualBodyResource);var holder=prefab!=null?prefab.transform.Find("VisualBlood"):null;if(holder==null)return;
-            splashMaterials=PackMaterials(holder.Find("Splash"),NativeBloodSplash.Names,"ChipArena/NativeBloodSplash",(int)RenderQueue.Transparent+1);
-            decalMaterials=PackMaterials(holder.Find("Decal"),NativeBloodDecalLook.Names,"ChipArena/NativeBloodDecal",(int)RenderQueue.Transparent-60);
-            gutMaterials=PackMaterials(holder.Find("Gut"),NativeBloodGut.Names,"ChipArena/NativeBloodGut",-1);
+            // The look's numbers are set here (a baked material keeps the values it was made with).
+            splashMaterials=PackMaterials(holder.Find("Splash"),NativeBloodSplash.Names,"ChipArena/NativeBloodSplash",(int)RenderQueue.Transparent+1,SplashGloss,SplashShade);
+            decalMaterials=PackMaterials(holder.Find("Decal"),NativeBloodDecalLook.Names,"ChipArena/NativeBloodDecal",(int)RenderQueue.Transparent-60,DecalGloss,0);
+            gutMaterials=PackMaterials(holder.Find("Gut"),NativeBloodGut.Names,"ChipArena/NativeBloodGut",-1,GutGloss,0);
             if(gutMaterials!=null)
             {
                 var gut=holder.Find("Gut");gutMeshes=new Mesh[NativeBloodGut.Meshes];gutCentre=new Vector3[NativeBloodGut.Meshes];gutUnit=new float[NativeBloodGut.Meshes];
@@ -62,14 +63,16 @@ namespace ChipArena.UnityConversion
             if(splashMaterials!=null){splashMesh=new Mesh{name="Blood splashes (pack)",subMeshCount=NativeBloodSplash.Sheets};splashMesh.MarkDynamic();}
             if(decalMaterials!=null){decalMesh=new Mesh{name="Blood decals (pack)",indexFormat=IndexFormat.UInt32,subMeshCount=NativeBloodDecalLook.Sheets};decalMesh.MarkDynamic();}
         }
-        private static Material[] PackMaterials(Transform group,string[] names,string shader,int queue)
+        private const float SplashGloss=.75f,SplashShade=2.1f,DecalGloss=.6f,GutGloss=.5f;
+        private static readonly int BloodGlossId=Shader.PropertyToID("_Gloss"),BloodShadeId=Shader.PropertyToID("_Shade");
+        private static Material[] PackMaterials(Transform group,string[] names,string shader,int queue,float gloss,float shade)
         {
             if(group==null)return null;var list=new Material[names.Length];
             for(int k=0;k<names.Length;k++)
             {
                 var entry=group.Find(names[k]);var r=entry!=null?entry.GetComponent<Renderer>():null;var m=r!=null?r.sharedMaterial:null;
                 if(m==null||m.shader==null||m.shader.name!=shader||!m.shader.isSupported)return null;
-                list[k]=new Material(m){name="Blood pack "+names[k]};if(queue>=0)list[k].renderQueue=queue;
+                list[k]=new Material(m){name="Blood pack "+names[k]};if(queue>=0)list[k].renderQueue=queue;list[k].SetFloat(BloodGlossId,gloss);if(shade>0)list[k].SetFloat(BloodShadeId,shade);
             }
             return list;
         }
