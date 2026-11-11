@@ -708,12 +708,20 @@ def pile(g, b, T):
         for s in (0, 1, 2, 3):
             c, sg, ax, a0, a1 = side(e, s)
             slab(g, e, s, a0, a1, sea - .4, sea + .5, .02, F['weed'], T, 0, 0)
+            # a bulkhead lamp on each face, over the catwalk
+            for u in ((a0 + a1) / 2 - 1.0, (a0 + a1) / 2 + 1.0):
+                slab(g, e, s, u - .12, u + .12, -1.02, -.78, .05, F['iron'], T)
+                ball(g, pt(e, s, u, -.9, .08), .085, F['globe'], 6, 3)
         return
     r = (x1 - x0) / 2
     lathe(g, [(r, y0), (r, sea - .3), (r * .96, sea + .6), (r * .92, y1)], (cx, 0, cz), F['pile'], (12, 8, 6)[T.i])
     lathe(g, [(r + .012, sea - .5), (r + .02, sea + .1), (r + .005, sea + .7)], (cx, 0, cz), F['weed'], (12, 8, 6)[T.i])
     for y in (-1.0, -2.9):
         lathe(g, [(r * .93 + .012, y), (r * .93 + .03, y + .03), (r * .93 + .03, y + .13), (r * .93 + .012, y + .16)], (cx, 0, cz), F['iron'], (12, 8, 6)[T.i])
+    # a lamp hung on the pile, toward the landing's middle
+    sx = -1 if cx > 0 else 1
+    ball(g, (cx + sx * (r + .07), -.82, cz), .08, F['globe'], 6, 3)
+    box(g, cx + sx * r * .9, cx + sx * (r + .1), -.76, -.72, cz - .05, cz + .05, F['iron'], None, 0, 0)
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
