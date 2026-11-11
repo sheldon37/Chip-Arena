@@ -451,7 +451,7 @@ namespace ChipArena.UnityConversion
             var mine=new[]{"Core/NativeExpeditionQuotaModel.cs","Core/NativeExpeditionEnding.cs","Core/NativeExpeditionEndingFixtures.cs","Runtime/NativeExpeditionQuotaHud.cs","Runtime/NativeExpeditionEndingHud.cs","Runtime/NativeExpeditionEndingUI.cs"}.Select(f=>Path.Combine(A,f+".meta")).ToArray();
             foreach(var f in mine)Check(File.Exists(f)&&Guid(f).Length==32,"Unity meta for "+Path.GetFileName(f));
             var own=new HashSet<string>(mine.Select(Guid));Check(own.Count==mine.Length,"the new metas' GUIDs are distinct");
-            foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets"),"*.meta",SearchOption.AllDirectories))if(!mine.Select(Path.GetFullPath).Contains(Path.GetFullPath(f)))Check(!own.Contains(Guid(f)),"no other asset shares a new GUID ("+Path.GetFileName(f)+")");
+            foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets"),"*.meta",SearchOption.AllDirectories))if(!mine.Contains(f))Check(!own.Contains(Guid(f)),"no other asset shares a new GUID ("+Path.GetFileName(f)+")");
             // No authority, network or account file knows the new presentation.
             var names=new Regex(@"\b(ExpeditionQuotaModel|NativeExpeditionQuota|ExpeditionEndingModel|NativeExpeditionEnding|ExpeditionEndingLayout|NativeExpeditionQuotaHud|NativeExpeditionEndingHud|NativeExpeditionEndingFixtures|ExpeditionEndKind)\b");
             var allowed=new HashSet<string>{"Core/NativeExpeditionQuotaModel.cs","Core/NativeExpeditionEnding.cs","Core/NativeExpeditionEndingFixtures.cs","Runtime/NativeExpeditionQuotaHud.cs","Runtime/NativeExpeditionEndingHud.cs","Runtime/NativeExpeditionEndingUI.cs","Runtime/NativeExpeditionLiveUI.cs","Runtime/NativeExpeditionHud.cs"};
