@@ -31,6 +31,7 @@ import cybercity_kit as ck  # noqa: E402
 from cybercity_kit import F, Blk  # noqa: E402
 
 BANK = 'ChipArenaStageCyberCity'
+EPS = (.0055, .0065, .0125)   # m: nearer than this two same-facing faces are one plane (stagekit.NEAR_TIER, over the scripts' own offsets)
 STATS = {}
 COUNT = False
 
@@ -132,7 +133,10 @@ def main():
             continue
         t = time.time()
         g, S = static_scene(L, T)
-        print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=sk.NEAR_TIER[ti], lift=sk.LIFT_TIER[ti]))
+        # the Fine meshes also draw as the Mid tier (out to 38 m): settled for that range. Faces closer than EPS count as one
+        # plane (the scripts' own small offsets among them) and are stacked the tier's lift apart
+        lt = 1 if (ti == 0 and not args.own_mid) else ti
+        print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=EPS[lt], lift=sk.LIFT_TIER[lt], passes=4))
         far = city.far_scene(S, T)
         print('  far coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(far, eps=.02, lift=.05))
         scene = props.rest_scene(L, T, train=False)

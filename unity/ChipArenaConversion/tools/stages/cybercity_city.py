@@ -700,7 +700,7 @@ def spire(g, S, b, T, accent):
         elif p['look'] == 'cyber-tube' and h[1] < .1 and h[0] > 2:
             # the crown's light line
             e = .16
-            for (x0, x1, z0, z1) in ((b.x0 - e, b.x1 + e, b.z0 - e, b.z0 - e + .06), (b.x0 - e, b.x1 + e, b.z1 + e - .06, b.z1 + e), (b.x0 - e, b.x0 - e + .06, b.z0 - e, b.z1 + e), (b.x1 + e - .06, b.x1 + e, b.z0 - e, b.z1 + e)):
+            for (x0, x1, z0, z1) in ((b.x0 - e, b.x1 + e, b.z0 - e, b.z0 - e + .06), (b.x0 - e, b.x1 + e, b.z1 + e - .06, b.z1 + e), (b.x0 - e, b.x0 - e + .06, b.z0 - e + .06, b.z1 + e - .06), (b.x1 + e - .06, b.x1 + e, b.z0 - e + .06, b.z1 + e - .06)):
                 box(g, x0, x1, b.y1 + .12, b.y1 + .2, z0, z1, glow(p['col'], p['gain']), None, 0, cell=0)
         elif p['look'] == 'cyber-metal':
             # the mast: a tapered pole with rings and a beacon

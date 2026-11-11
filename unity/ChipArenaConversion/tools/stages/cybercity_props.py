@@ -202,11 +202,9 @@ def strut(g, S, b, T):
     # the collar and the plate
     for (ax, sg) in ((0, 1), (0, -1), (2, 1), (2, -1)):
         fr = b.face(ax, sg)
-        fr.quad(g, -r, r, 1.1, 1.7, .004, F['hazardk'], 0)
-        ck.stripes(g, fr.at(-r, 1.15, .008), (fr.ud[0] * 2 * r, 0, fr.ud[2] * 2 * r), (0, .5, 0), fr.n, .2, F['hazardy'], F['hazardk'])
+        ck.stripes(g, fr.at(-r, 1.14, .012), (fr.ud[0] * 2 * r, 0, fr.ud[2] * 2 * r), (0, .52, 0), fr.n, .2, F['hazardy'], F['hazardk'])
         fr.box(g, -.2, .2, 1.85, 2.1, 0, .02, glow(ck.RED, 1.6), None, 0)
-    for (ya, yb) in ((1.1, 1.14), (1.66, 1.7)):
-        box(g, b.x0 - .012, b.x1 + .012, b.y0 + ya, b.y0 + yb, b.z0 - .012, b.z1 + .012, F['steel'], None, 0, cell=0)
+    box(g, b.x0 - .012, b.x1 + .012, b.y0 + 1.1, b.y0 + 1.7, b.z0 - .012, b.z1 + .012, F['hazardk'], None, 0, cell=0)
     city.pieces(g, S, b, T)
 
 
@@ -384,9 +382,13 @@ def bank_props(sb, L, T, floors, no_ao):
     if not no_ao:
         apart = [it[2].transformed([1, 0, 0, 60.0 * (i % 8), 0, 1, 0, 0, 0, 0, 1, 60.0 * (i // 8)]) for i, it in enumerate(items)]
         aos = sk.bake_ao(apart, distance=.5, samples=(24, 12, 8)[ti])
+    lt = 1 if ti == 0 else ti
     for (name, group, g, rest), ao in zip(items, aos):
         if g.faces == 0:
             continue
+        # a prop's layered faces (a stripe on its band, a screen's picture on its bezel) stand the tier's lift apart, as the
+        # static scene's do (the Fine models also draw at the Mid range)
+        sk.lift_coplanar(g, eps=(.0055, .0065, .0125)[lt], lift=sk.LIFT_TIER[lt], passes=4)
         P = g.arrays()[0].astype(np.float64)
         if ao is not None:
             ao = 1 - (1 - ao) * .8

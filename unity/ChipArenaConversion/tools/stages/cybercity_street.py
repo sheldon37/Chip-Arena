@@ -86,22 +86,35 @@ def ground(g, S, b, T):
     if T.detail:
         z = n * 9.0
         top(g, b.x0 + 2, b.x1 - 2, z - .07, z + .07, b.y1, F['grate'], 0)
-    # the kit's plates: markings, the fell zone's border, manholes
+    # the kit's plates: markings, the fell zone's border (its side strips stop short of the end ones: no corner lies twice),
+    # manholes. Each mark is one layer on the ground: a mark that would lie on another is cut back to it
+    marks = []
     for p in S.parts(b):
         c, h = p['c'], p['h']
         look = p['look']
         if look == 'cyber-tile':
             continue
         x0, x1, z0, z1 = c[0] - h[0], c[0] + h[0], c[2] - h[2], c[2] + h[2]
-        if look == 'plain':
-            top(g, x0, x1, z0, z1, b.y1, F['paint'], 0)
-        elif look == 'demolition':
+        if look == 'demolition':
             if h[0] >= h[2]:
                 ck.stripes(g, (x0, b.y1, z0), (x1 - x0, 0, 0), (0, 0, z1 - z0), (0, 1, 0), .3, F['hazardy'], F['hazardk'])
             else:
+                z0, z1 = z0 + 2 * h[0], z1 - 2 * h[0]
                 ck.stripes(g, (x0, b.y1, z0), (0, 0, z1 - z0), (x1 - x0, 0, 0), (0, 1, 0), .3, F['hazardy'], F['hazardk'])
+            marks.append((x0, x1, z0, z1))
+    for p in S.parts(b):
+        c, h = p['c'], p['h']
+        look = p['look']
+        x0, x1, z0, z1 = c[0] - h[0], c[0] + h[0], c[2] - h[2], c[2] + h[2]
+        if look == 'plain':
+            # a painted mark: left out where it would cross the fell zone's border
+            if any(x0 < m[1] and x1 > m[0] and z0 < m[3] and z1 > m[2] for m in marks):
+                continue
+            top(g, x0, x1, z0, z1, b.y1, F['paint'], 0)
+            marks.append((x0, x1, z0, z1))
         elif look == 'cyber-grate':
             manhole(g, c[0], b.y1, c[2], min(h[0], h[2]) * .95, T)
+            marks.append((x0, x1, z0, z1))
     # puddles: on the avenue and the plaza
     k = 0
     for i in range(26):
@@ -112,6 +125,9 @@ def ground(g, S, b, T):
         r = .5 + 1.1 * h01('puddle-r', i, n)
         if S.tops_below(x, n * zz, 30) != b.y1 or any(S.tops_below(x + dx * r, n * zz + dz * r, 30) != b.y1 for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1))):
             continue
+        if any(x - r * 1.6 < m[1] and x + r * 1.6 > m[0] and n * zz - r * 1.1 < m[3] and n * zz + r * 1.1 > m[2] for m in marks):
+            continue
+        marks.append((x - r * 1.6, x + r * 1.6, n * zz - r * 1.1, n * zz + r * 1.1))
         sides = (10, 8, 6)[T.i]
         pts = []
         for j in range(sides):
@@ -364,12 +380,11 @@ def grid_pylon(g, S, b, T):
     sides = (10, 8, 6)[T.i]
     r = b.s[0] / 2
     # the base collar, striped
-    box(g, b.x0 - .01, b.x1 + .01, b.y0, b.y0 + .8, b.z0 - .01, b.z1 + .01, F['gunmetal'], T, .02, cell=0, skip=('-y',))
+    box(g, b.x0 - .01, b.x1 + .01, b.y0, b.y0 + 1.2, b.z0 - .01, b.z1 + .01, F['gunmetal'], T, .02, cell=0, skip=('-y',))
     for (ax, sgn) in ((0, 1), (0, -1), (2, 1), (2, -1)):
         fr = b.face(ax, sgn)
-        o = fr.at(-r + .03, .82, .011)
-        ck.stripes(g, o, (fr.ud[0] * (2 * r - .06), 0, fr.ud[2] * (2 * r - .06)), (0, .36, 0), fr.n, .16, F['hazardy'], F['hazardk'])
-        fr.quad(g, -r, r, .8, 1.2, .01, F['hazardk'], 0)
+        o = fr.at(-r + .02, .8, .01)
+        ck.stripes(g, o, (fr.ud[0] * (2 * r - .04), 0, fr.ud[2] * (2 * r - .04)), (0, .38, 0), fr.n, .16, F['hazardy'], F['hazardk'])
     sk.cylinder(g, (cx, b.y0 + 1.2, cz), (cx, b.y1 - .43, cz), r * .72, F['steel'], sides, caps=False)
     for i in range(3):
         y = b.y0 + 1.7 + i * .28

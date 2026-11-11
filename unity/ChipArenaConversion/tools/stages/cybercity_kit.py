@@ -27,9 +27,9 @@ def finishes():
         F[name] = A.fin(name, hexcol, detail, **kw)
     # the street
     add('asphalt', 0x24252D, A.DETAIL_PLASTER, smooth=.72, dirt=.5)
-    add('puddle', 0x15161C, A.DETAIL_NONE, smooth=.95, dirt=.1)
-    add('paver', 0x40424D, A.DETAIL_TILE, smooth=.55, param=.6, dirt=.6)
-    add('paverdark', 0x33353F, A.DETAIL_TILE, smooth=.5, param=.6, dirt=.6)
+    add('puddle', 0x1C1E28, A.DETAIL_NONE, smooth=.95, dirt=.1)
+    add('paver', 0x40424D, A.DETAIL_FLAG, smooth=.6, param=1.0, dirt=.6)
+    add('paverdark', 0x33353F, A.DETAIL_FLAG, smooth=.62, param=1.8, dirt=.6)
     add('kerb', 0x5A5E6C, A.DETAIL_PLASTER, smooth=.4, dirt=.7, wear=.3)
     add('paint', 0xD0D5DE, A.DETAIL_NONE, smooth=.45, dirt=.5)
     add('hazardy', 0xF4B321, A.DETAIL_NONE, smooth=.4, dirt=.5)
