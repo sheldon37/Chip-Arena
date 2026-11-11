@@ -1085,6 +1085,7 @@ def main():
     ap.add_argument('--out')
     ap.add_argument('--preview')
     ap.add_argument('--views')
+    ap.add_argument('--preview-tier', type=int, default=0, help='the tier the preview shows (0 Fine, 2 Low)')
     ap.add_argument('--tiers', default='0,2')
     ap.add_argument('--own-mid', action='store_true', help='build a Mid tier of its own (default: the Mid props share the Fine meshes)')
     ap.add_argument('--no-ao', action='store_true')
@@ -1162,7 +1163,7 @@ def main():
             if g.faces:
                 put('rig/%s/%d' % (slot, ti), 'rig', sk.to_mesh('rig/%s/%d' % (slot, ti), g.transformed([1, 0, 0, -at[0], 0, 1, 0, -at[1], 0, 0, 1, -at[2]]), bakes[k]))
             k += 1
-        if args.preview and ti == 0:
+        if args.preview and ti == args.preview_tier:
             vs = views()
             if args.views:
                 vs = [v for v in vs if v[0] in args.views.split(',')]

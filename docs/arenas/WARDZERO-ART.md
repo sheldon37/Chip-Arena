@@ -104,7 +104,7 @@ wires there, so it reads as it plays. Nothing was removed from the map records; 
 
 Rebuild: `--stage-layout siren SIREN.json`, `--stage-layout expedition-ward-zero EXP.json`, then
 `blender --background --factory-startup --python tools/stages/wardzero_art.py -- --layout SIREN.json --also EXP.json --out
-<Assets>/LocalAssets` (about 35 s; `--preview DIR [--views a,b]`, `--tiers`, `--no-ao`, `--stats`, `--own-mid`). Deterministic:
+<Assets>/LocalAssets` (about 35 s; `--preview DIR [--views a,b] [--preview-tier 2]`, `--tiers`, `--no-ao`, `--stats`, `--own-mid`). Deterministic:
 two builds give the same bytes.
 
 ## The bank
