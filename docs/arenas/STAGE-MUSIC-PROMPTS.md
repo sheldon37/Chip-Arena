@@ -557,37 +557,29 @@ Oh-oh, oh-oh
 
 ## The main menu (2026-11-11)
 
-The owner asked for a new menu song ("Lets bring our menu music up to date"), with the lyrics box first. The home screen's backdrop is
-the Pilot's Rooftop (Runtime NativeRooftopPresentation): a rain-wet neon city at night, holo screens, flying cars and a distant duel.
-The menu plays `music/menu-afterglow`, currently the owner's "Chip Arena Main". A new song replaces that asset and keeps its importer
-GUID, as the 2026-10-12 replacement did. The vocoded "Chip... Arena" tag is optional; delete it, or both wordless lines, for a
-purely instrumental take.
+The owner asked for a new menu song ("Lets bring our menu music up to date"), then preferred "a more relaxed, non-lyrical version".
+This is that version; the first draft (a 100 BPM city-pop take with a vocoded "Chip... Arena" tag) was set aside. The home
+screen's backdrop is the Pilot's Rooftop (Runtime NativeRooftopPresentation): a rain-wet neon city at night. The menu plays
+`music/menu-afterglow`, currently the owner's "Chip Arena Main". A new song replaces that asset and keeps its importer GUID, as the
+2026-10-12 replacement did.
 
-Lyric field:
+How to use it in Suno: with Instrumental on, paste only the style field. To steer the sections, turn Instrumental off and add the
+lyric field, which holds only bracketed directions.
+
+Lyric field (directions only):
 
 ```
-[Intro: rain on a rooftop, distant traffic hum, a holo screen buzzing on, a warm electric piano plays a short hopeful five-note motif]
+[Intro: soft rain on a rooftop, a distant city hum, a warm Rhodes chord fading in]
 
-[Verse: laid-back groove at low volume, soft four-on-the-floor kick, swung hats, round sub bass, clean funky guitar licks between the piano chords]
-Ooh, ooh
+[Theme: an unhurried brushed beat, round upright-style bass, the Rhodes plays a gentle five-note motif, a soft bell answers]
 
-[Pre-Chorus: a filtered bell arpeggio rising, a flying car whooshing past overhead, the motif on a bright synth bell]
+[Drift: mellow clean guitar takes the motif, light vinyl crackle, a flying car passing far away]
 
-[Chorus: full groove, glossy pads opening like the city's screens lighting up, the five-note motif on a bright lead, vocoder chops answering]
-Chip... Arena
-Oh-oh, oh-oh
+[Interlude: drums thin out, only rain, Rhodes and a slow warm pad, the motif on a music-box bell]
 
-[Ricochet Interlude: a playful ping-pong delay bleep riff bouncing left and right, like a chip card ricocheting across the screens]
+[Theme: the beat returns softly, the bass walks, the guitar and Rhodes trade the motif]
 
-[Breakdown: drums drop to a soft kick, only rain, piano and the motif played slowly, the calm before a match]
-
-[Build-Up: snare roll, risers, the bass climbing, a sense of a match about to start]
-
-[Chorus: full groove, the motif an octave up, guitar and vocoder trading phrases]
-Chip... Arena
-Oh-oh, oh-oh
-
-[Outro: back to the rain and the piano motif, seamless loop]
+[Outro: the beat fades back into rain and the opening Rhodes chord, seamless loop]
 
 [End]
 ```
@@ -595,5 +587,5 @@ Oh-oh, oh-oh
 Style field:
 
 ```
-Main menu theme for a cyber arena game, 100 BPM, a pilot's rooftop above a rain-wet neon city at night: holo screens flickering with ads, flying cars streaming between towers, steam and mist, a duel flashing on a distant roof. Anime city-pop meets future funk and lo-fi house: warm Rhodes electric piano chords, round sub bass, crisp laid-back drums with a soft four-on-the-floor kick and swung hats, clean funky guitar licks, glossy synth pads, sparkling bell arpeggios, ping-pong delay bleeps bouncing like a ricochet, a short hopeful five-note signature motif that returns in every section. Cool, inviting, hopeful and a little restless, the calm before a match, easy to hear on repeat. Vocoder chops only, no lead singer. Seamless loop, no hard ending.
+Instrumental, relaxed main menu music, 82 BPM, a quiet rooftop above a rain-wet neon city late at night: holo screens glowing softly, flying cars drifting far away, mist between the towers. Mellow lo-fi chillhop with a city-pop touch: warm Rhodes electric piano chords, soft brushed drums with a lazy swung groove, round warm bass, mellow clean jazz guitar, gentle bell and music-box accents, a slow airy pad, light vinyl crackle and soft rain. A simple, gentle five-note motif that returns now and then. Calm, cozy, a little wistful, steady from start to finish with no build-ups or drops, easy to leave playing. No vocals, no humming, no vocal chops. Seamless loop, no hard ending.
 ```
