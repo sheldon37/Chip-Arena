@@ -168,6 +168,20 @@ def deck_fittings(g, L, T, B):
     pk.festoon(g, (cx, y0 + 10.4, cz - .2), (0, DECK + 2.5, 9.6), .3, T, F['lamp'], step=.9)
     for s in (-1, 1):
         pk.festoon(g, (cx, y0 + 10.4, cz + .2), (s * 5.2, 12.5, 24.3), 1.2, T, F['lamp'], step=1.0)
+    # signal pennants down a halyard from the yard to each bulwark's after end (over the deck: none within 2 m of it)
+    if T.detail:
+        cols = (F['red'], F['yellow'], F['white'], F['blue-paint'], F['orange'])
+        for s in (-1, 1):
+            a, b = (cx + s * 2.3, y0 + 8.55, cz), (s * 5.86, DECK + 3.4, 21.5)
+            pk.pipe(g, a, b, .012, F['black'], T, caps=False)
+            n = 9
+            for k in range(1, n):
+                u = k / n
+                p = (a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u)
+                q = (a[0] + (b[0] - a[0]) * (u + .045), a[1] + (b[1] - a[1]) * (u + .045), a[2] + (b[2] - a[2]) * (u + .045))
+                tip = ((p[0] + q[0]) / 2 + s * .08, (p[1] + q[1]) / 2 - .5, (p[2] + q[2]) / 2)
+                g.face((p, q, tip), cols[k % 5], normal=(s, 0, 0))
+                g.face((p, q, tip), cols[k % 5], normal=(-s, 0, 0))
     # gangways: timber flights and their landings
     for b in L['blocks']:
         i = b['id']

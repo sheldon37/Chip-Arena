@@ -289,7 +289,7 @@ def berg(g, x, z, w, h, seed, sea):
                        y + (H(seed, k, j, 5) - .5) * h * .12 * (1 if j else 0),
                        z + math.sin(2 * math.pi * k / n) * w * .34 * s * (.7 + .5 * H(seed, j, k))) for k in range(n)])
     pk.loft(g, rings, F['ice'], cap0=False, cap1=True, flat=True, f_cap=F['snow'],
-            pick=lambda nn, cc: F['snow'] if nn[1] > .45 else (F['ice-dark'] if cc[1] < sea + 1.5 else (F['ice-deep'] if H(seed, int(cc[0] * .3), int(cc[1] * .5)) > .5 else F['ice'])))
+            pick=lambda nn, cc: F['snow'] if nn[1] > .45 else (F['ice-dark'] if cc[1] < sea + 1.5 else (F['ice-deep'] if (nn[1] < -.05 or H(seed, int(cc[0] * .12), int(cc[1] * .2)) > .7) else F['ice'])))
 
 
 def far(L):
@@ -309,7 +309,7 @@ def far(L):
         X, Z = np.meshgrid(np.linspace(x0, x1, nx), np.linspace(z0, z1, nz), indexing='ij')
         d = np.maximum(np.maximum(np.abs(X) - 60, 0), np.maximum(np.abs(Z) - 60, 0))
         Y = pk.noise(np.stack([X, np.zeros_like(X), Z], axis=-1), .012, 5, 3).reshape(X.shape) * np.minimum(d / 120, 1) * 9 + np.minimum(d / 500, 1) ** 2 * 14
-        pk.surf(g, np.stack([X, Y, Z], axis=2), F['snow'], facing=(0, 1, 0), pick=lambda nn, cc: F['snow'] if H(int(cc[0] / 14), int(cc[2] / 14), 2) > .35 else F['snow-shade'])
+        pk.surf(g, np.stack([X, Y, Z], axis=2), F['snow'], facing=(0, 1, 0), pick=lambda nn, cc: F['snow'] if nn[1] > .985 else F['snow-shade'])
     plain(-1100, -sx - 3.4, edge, 1000, 46)
     plain(sx + 3.4, 1100, edge, 1000, 46)
     plain(-sx - 3.4, sx + 3.4, 31.4, 1000, 46)
