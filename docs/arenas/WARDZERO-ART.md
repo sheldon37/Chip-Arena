@@ -44,7 +44,7 @@ The shards' glowing teeth are the one lit family the art takes over (as lit glas
 ## What is modelled
 
 - **Floors**: tiled floors on the slab and the decks (the shader's glazed tile), the ten floor vents as real openings with dark
-  pits under their sliding grates, the Cradle's bolted steel seat with a dark tile band and a steel trim round it, hazard-striped
+  pits under their sliding grates, the Cradle's bolted steel seat (low, so the kit's ink creeps over it) with a dark tile band and a steel trim round it, hazard-striped
   thresholds and burner surrounds, painted lane dashes.
 - **Walls**: every wall, the cell and observation rows and the shell's inner faces clad: a dark steel skirting, a tiled dado to
   1.15 m under a half-round steel cap rail, and panels about 1.2 m by 2.4 m with open joints (chamfered plates standing off a dark
@@ -109,8 +109,8 @@ two builds give the same bytes.
 
 ## The bank
 
-`ChipArenaStageWardZero.bytes`: 18,186,401 bytes, 660 props besides the 619 covers. Static: 60 chunks (16 m cells, three height
-bands); Fine 199,730 triangles (209,500 vertices), Mid the Fine meshes again (shared, as the Sanctum's), Low 30,252 (45,325).
+`ChipArenaStageWardZero.bytes`: 18,188,161 bytes, 660 props besides the 619 covers. Static: 60 chunks (16 m cells, three height
+bands); Fine 199,730 triangles (209,524 vertices), Mid the Fine meshes again (shared, as the Sanctum's), Low 30,252 (45,341).
 Rig (17 mover models and 131 posed blocks): 72,572 / shared / 11,076 triangles. Breakables: 13,976 / shared / 4,704.
 The Low graphics tier draws the bank's Low tier (the same art, about a seventh of the triangles), not the box kit.
 

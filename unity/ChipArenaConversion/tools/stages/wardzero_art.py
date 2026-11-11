@@ -907,7 +907,7 @@ def cradle_ring(g, b, T):
     """The broken vessel's seat round the Cradle: a low steel ring (5.6 m), bolted down."""
     y = b['pos'][1] + b['size'][1] / 2
     n = (64, 32, 16)[T.i]
-    sec = [(-.24, 0), (-.2, .035), (.2, .035), (.24, 0)]
+    sec = [(-.24, 0), (-.225, .008), (.225, .008), (.24, 0)]     # low: the kit's ink creeps over it
     path = [(5.6 * math.sin(2 * math.pi * i / n), y, 5.6 * math.cos(2 * math.pi * i / n)) for i in range(n)]
     sweep(g, sec, path, wk.cfin(0x3A4448, 'metal'), closed=True, up=(0, 1, 0), smooth_u=False)
     # a band of dark tile round the seat and a paler disc inside it (laid on the floor: the coplanar pass stands them clear)
@@ -917,7 +917,7 @@ def cradle_ring(g, b, T):
             a0, a1 = 2 * math.pi * i / m, 2 * math.pi * (i + 1) / m
             g.face(((r0 * math.sin(a0), y, r0 * math.cos(a0)), (r1 * math.sin(a0), y, r1 * math.cos(a0)), (r1 * math.sin(a1), y, r1 * math.cos(a1)), (r0 * math.sin(a1), y, r0 * math.cos(a1))), f, (0, 1, 0))
     if T.tiny:
-        ck.rivets(g, [((5.6 + s * .12) * math.sin(2 * math.pi * i / 48), y + .035, (5.6 + s * .12) * math.cos(2 * math.pi * i / 48)) for i in range(48) for s in (-1, 1)], (0, 1, 0), .025, F['stainless'])
+        ck.rivets(g, [((5.6 + s * .12) * math.sin(2 * math.pi * i / 48), y + .008, (5.6 + s * .12) * math.cos(2 * math.pi * i / 48)) for i in range(48) for s in (-1, 1)], (0, 1, 0), .018, F['stainless'])
 
 
 def tooth(g, p, T, seed):
