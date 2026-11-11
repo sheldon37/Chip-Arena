@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
     public static class NativeStageLoadingHud
     {
         /// <summary>The share of the reveal the content takes to fade before the shutters move, and the bands' stagger share.</summary>
-        public const float ContentOut=.2f,Lag=.05f,ContentIn=.22f,Flash=.32f;
+        public const float ContentOut=.2f,Lag=.05f,ContentIn=NativeStageLoading.ContentInSeconds,Flash=.32f;
         public const string Brand="CHIP ARENA",Link="STAGE LINK";
         private static readonly float[] PoolAt={0f,.4f,1f},PoolAlpha={1f,.5f,0f},WashAt={0f,.5f,1f},WashAlpha={1f,.4f,0f};
 

@@ -44,6 +44,22 @@ namespace ChipArena.UnityConversion
             received=frame.sequence;return true;
         }
     }
+    // A scene change is staged before doing synchronous Unity work. Retain only the
+    // newest snapshot while the loading cover draws; stale tickets cannot replace it.
+    public sealed class ExpeditionLoadInbox<T> where T:class
+    {
+        private ExpeditionAreaChannel<T> channel=new ExpeditionAreaChannel<T>();
+        private T pending;
+        public bool Pending=>pending!=null;
+        public T Latest=>pending;
+        public bool Offer(ExpeditionCohortTicket ticket,long sequence,T payload)
+        {
+            if(payload==null||sequence<1||!channel.Bind(ticket)||!channel.Accept(new ExpeditionAreaEnvelope<T>{identity=ticket,sequence=sequence,payload=payload}))return false;
+            pending=payload;return true;
+        }
+        public T Take(){var value=pending;pending=null;return value;}
+        public void Reset(){pending=null;channel=new ExpeditionAreaChannel<T>();}
+    }
     // Host command/input readiness is checked against the sender's current ticket,
     // never a client-supplied account or the host's displayed scene.
     public sealed class ExpeditionAreaCommandGate

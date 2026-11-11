@@ -11,6 +11,16 @@
 - **Seen in the Editor** (captures on local probe builds, never pushed): the draw from the pilot's left; a parried sword bot and Katana bot (recoil, daze, stance; never the walk; the Katana's on its block); the counter on a sword bot (held at 1.6 m, then thrown back to 2.82 m with its clip); the Hot Dog through the counter (the fold, above).
 - **Not seen / not done:** the Hot Dog's fold (with its session); the counter between two people; a parried Fangs attacker on screen.
 
+## 2026-11-11 — Astra: Expedition party loading and host deployment sequence
+
+- Branch `codex/expedition-party-load-fix`, based on shared `9b827fe12e37d89cd27519197e8284878c725726`. Owner reports that only the host loads on a shared instance entry, and host deployment skips the station drop/loading screen.
+- Guest destination bundles previously constructed the Unity replica directly in the network receive loop; the loading observer only ran afterward. A validated recipient view now starts the guest's loading screen and queues its destination frame. Construction waits for the loading details to paint; newer pending frames replace older ones, stale tickets/sequences are rejected, and leaving/reconnecting clears pending work. The existing collision/presentation readiness acknowledgement still gates the cohort commit.
+- The pre-commit destination preview now includes the recipient's PvE row and uses feet coordinates for its presentation pose. Extracted the production frame builder so native checks can exercise the actual snapshot sent before the guest acknowledges, rather than only checking frames after transfer commit.
+- Host Deploy waits for the existing four-second hatch/drop/fade timeline before requesting stage loading. The loading screen waits for an actual full-detail repaint before synchronous construction/prewarm; initial party readiness holds it open. This incorporates the still-unmerged PR #318 loading paint/hold work against current code. Transfer timeout now matches the transport's existing 60-second loading allowance; the screen's Expedition wait budget is 65 seconds.
+- Regression coverage: 220 managed handoff assertions across two/three/four players, normal/reduced effects, pending-frame replacement, stale tickets, all-ready commit, a 45-second transfer and cancellation. Added native host-plus-guest entry/return and each instance's pre-ACK codec/replica/collision/PvE-row checks to the builder gate. Existing transition/loading suite passes (4,187 assertions); source-package validation passes (3,849 files). Full managed run and final pinned Unity semantic compilation receipts follow in the PR.
+- Animation impact: triggers the existing deployment timeline; no new art, motion, combat hit timing, hitboxes, damage or cooldowns. Input remains held until existing authoritative transfer/readiness gates release it.
+- Limits: no licensed Unity Editor or Windows two-PC playtest in this workspace. Native checks are added but not executed here; semantic compilation does not establish visual or multiplayer acceptance. Shared merge, builder synchronization and actual test-channel publication must be recorded separately. No live or Site release.
+
 ## 2026-11-11 — Claude: the Hot Dog's hats fit its crown (owner report)
 
 - Branch `claude/hotdog-hats`, base shared `b1674f0d`. Forwarded by the NOCTIEL and THE DEEP END session.

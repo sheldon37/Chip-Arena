@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
                 var entry=to.doors.SingleOrDefault(d=>to.anchors.Any(a=>a.id==d.anchor&&a.building==source));
                 if(entry==null){LastFailure="Outdoor return door missing.";return false;}slots=entry.returns;
             }
-            bool begun=Cohorts.Begin(id,source,destination,accounts,30,(s,d,cohort)=>Prepare(s,d,cohort,slots));
+            bool begun=Cohorts.Begin(id,source,destination,accounts,NativeExpeditionLoadWindow.Seconds,(s,d,cohort)=>Prepare(s,d,cohort,slots));
             if(!begun&&LastFailure==null)LastFailure="Cohort refused: check connection, readiness, pending transfer and source membership.";
             return begun;
         }
