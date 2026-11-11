@@ -172,7 +172,7 @@ namespace ChipArena.UnityConversion
             // the rig: the lamp posts, each lantern hung from its bracket over the floor, the bell in the belfry, everything that
             // moves outside the play space or over it
             var looks=NativeBreakwaterLooks.Resolve(look.kitLooks);var rig=new NativeBreakwaterRig(looks,map);var fx=new NativeBreakwaterFx();fx.Prepare(map);
-            Check(rig.Posts==8&&rig.Lantern.Length==24,"eight lamp posts");
+            Check(rig.Posts==8&&rig.Lantern.Length==24&&fx.FixedCount==5,"eight lamp posts; four room lamps and the Stone's");
             double fight=10;var h0=map.hazards[0];double quiet=h0.period-h0.warn-h0.dwell,warnAt=fight+NativeFactoryHazards.ArmDelay+h0.start+h0.offset+quiet,burstAt=warnAt+h0.warn;
             var seen=new int[NativeBreakwaterArt.Slots.Length];
             foreach(double t in new[]{fight+1,fight+7.3,warnAt+.5,warnAt+2.9,burstAt+.1,burstAt+1.1,burstAt+2.1,burstAt+h0.dwell+.5,burstAt+11.2,burstAt+12.5,fight+60.3})
@@ -200,7 +200,7 @@ namespace ChipArena.UnityConversion
                 // the lights: slot 0 the lamp as two beams at the optic's heading, the others lanterns where they hang
                 Check(Math.Abs(fx.LightBeam[0]-(8+NativeBreakwaterLooks.BeamHeading(t)))<1e-4&&fx.LightBeam[0]>=8&&fx.LightBeam[0]<14.3&&Math.Abs(fx.LightPos[1]-NativeBreakwaterLooks.LanternY)<1e-4&&fx.LightRgb[0]>1,"slot 0 is the lamp, its beams turning with the optic at "+t);
                 Check(Math.Abs(rig.Heading-NativeBreakwaterLooks.BeamHeading(t))<1e-12,"the optic turns with the lamp");
-                int lit=0;for(int s=1;s<NativeMapLooks.MaxLights;s++){if(fx.LightRgb[s*3]<=0)continue;lit++;Check(fx.LightBeam[s]==0&&Enumerable.Range(0,rig.Posts).Any(i=>Math.Abs(rig.Lantern[i*3]-fx.LightPos[s*4])<1e-4&&Math.Abs(rig.Lantern[i*3+1]-fx.LightPos[s*4+1])<1e-4&&Math.Abs(rig.Lantern[i*3+2]-fx.LightPos[s*4+2])<1e-4),"slot "+s+" is a lantern at "+t);}
+                int lit=0;for(int s=1;s<NativeMapLooks.MaxLights;s++){if(fx.LightRgb[s*3]<=0)continue;lit++;Check(fx.LightBeam[s]==0&&(Enumerable.Range(0,rig.Posts).Any(i=>Math.Abs(rig.Lantern[i*3]-fx.LightPos[s*4])<1e-4&&Math.Abs(rig.Lantern[i*3+1]-fx.LightPos[s*4+1])<1e-4&&Math.Abs(rig.Lantern[i*3+2]-fx.LightPos[s*4+2])<1e-4)||Enumerable.Range(0,fx.FixedCount).Any(i=>Math.Abs(fx.Fixed[i*5]-fx.LightPos[s*4])<1e-4&&Math.Abs(fx.Fixed[i*5+1]-fx.LightPos[s*4+1])<1e-4&&Math.Abs(fx.Fixed[i*5+2]-fx.LightPos[s*4+2])<1e-4)),"slot "+s+" is a lantern or a fixed lamp at "+t);}
                 Check(lit>=5,"the lanterns near the eye are lit ("+lit+")");
             }
             Check(seen.All(n=>n>0),"the moments show every rig slot ("+string.Join(",",NativeBreakwaterArt.Slots.Where((s,i)=>seen[i]==0))+")");

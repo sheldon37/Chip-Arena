@@ -32,7 +32,10 @@ namespace ChipArena.UnityConversion
         private bool active;private string prepared;
         private double[] lamp=Array.Empty<double>();private int lampCount;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz,quality;private bool low;
-        private readonly double[] rank=new double[32];
+        private readonly double[] rank=new double[32],cand=new double[32*5];
+        /// <summary>The fixed practical lights beside the lanterns (x, y, z, range, gain each): the lamp on the back wall of each
+        /// hall's two rooms and the Mariners' Stone's lamp.</summary>
+        public double[] Fixed=Array.Empty<double>();public int FixedCount;
         private static double H(int a,int b=0,int c=0)=>NativeBreakwaterLooks.Hash(a,b,c);
         private static double Frac(double v)=>v-Math.Floor(v);
         private static double L(int hex,int shift)=>NativeSceneryBuilder.Channel(hex,shift);
@@ -41,7 +44,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The map's fixed lamps, once per map (allocates; nothing for another map).</summary>
         public void Prepare(ContentMap map)
         {
-            if(map?.id==prepared)return;prepared=map?.id;active=NativeBreakwaterLooks.Active(map?.id);var lamps=new List<double>();if(!active){lamp=Array.Empty<double>();lampCount=0;return;}
+            if(map?.id==prepared)return;prepared=map?.id;active=NativeBreakwaterLooks.Active(map?.id);var lamps=new List<double>();if(!active){lamp=Array.Empty<double>();lampCount=0;Fixed=Array.Empty<double>();FixedCount=0;return;}
             void Lamp(double x,double y,double z,int hex,double size,double blink=0){lamps.Add(x);lamps.Add(y);lamps.Add(z);lamps.Add(hex);lamps.Add(size);lamps.Add(blink);}
             foreach(var b in map.blocks??Array.Empty<ContentBlock>())
             {
@@ -56,6 +59,15 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<64;i++){double a=H(81,i),x=-190-H(81,i,1)*190,z=-230+a*420,y=1.5+Math.Pow(H(81,i,2),1.6)*46;int hex=H(81,i,3)<.72?0xFFC27A:H(81,i,3)<.9?0xFFE6C0:0xA8D0FF;Lamp(x,y,z,hex,2.4+H(81,i,4)*3.2,H(81,i,5)<.2?-1:0);}
             Lamp(-120,7,520,0xFFFFFF,7);Lamp(-150,5,522,0xFF4030,6);Lamp(260,8,470,0xFFFFFF,7);Lamp(245,5,471,0x40FF70,6);Lamp(520,6,-380,0xFFFFFF,7);
             lamp=lamps.ToArray();lampCount=lamp.Length/6;
+            var fixedLights=new List<double>();
+            foreach(var b in map.blocks??Array.Empty<ContentBlock>())
+            {
+                if(b?.id==null)continue;
+                if(b.id=="breakwater-stone"){fixedLights.Add(b.pos.x);fixedLights.Add(b.pos.y+b.size.y/2+3.17);fixedLights.Add(b.pos.z);fixedLights.Add(9);fixedLights.Add(1.5);}
+                else if(b.id.StartsWith("breakwater-end-",StringComparison.Ordinal)&&b.id.EndsWith("-back",StringComparison.Ordinal))
+                    foreach(double z in new[]{-2.35,2.35}){fixedLights.Add(b.pos.x+(b.pos.x<0?1:-1)*(b.size.x/2+.45));fixedLights.Add(2.85);fixedLights.Add(z);fixedLights.Add(7.5);fixedLights.Add(1.45);}
+            }
+            Fixed=fixedLights.ToArray();FixedCount=Fixed.Length/5;
         }
 
         /// <summary>Fills <see cref="Quads"/> and the light slots: `rig` after its Build for the same moment, `hazards` and the
@@ -198,19 +210,22 @@ namespace ChipArena.UnityConversion
             // slot 0: the lighthouse's lamp, two opposite beams turning with the optic (NativeWardLight.cginc WardBeam: 8 + yaw)
             LightPos[0]=(float)NativeBreakwaterLooks.LightX;LightPos[1]=(float)NativeBreakwaterLooks.LanternY;LightPos[2]=(float)NativeBreakwaterLooks.LightZ;LightPos[3]=(float)LampRange;
             LightRgb[0]=(float)(L(0xFFE9B8,16)*LampGain);LightRgb[1]=(float)(L(0xFFE9B8,8)*LampGain);LightRgb[2]=(float)(L(0xFFE9B8,0)*LampGain);LightBeam[0]=(float)(8+NativeBreakwaterLooks.BeamHeading(t));
-            // the others: the lanterns nearest the eye, each easing out as the next one out comes to take its slot
-            int n=rig?.Posts??0,slots=NativeMapLooks.MaxLights-1;if(n>rank.Length)n=rank.Length;
-            for(int i=0;i<n;i++){double dx=rig.Lantern[i*3]-ex,dy=rig.Lantern[i*3+1]-ey,dz=rig.Lantern[i*3+2]-ez;rank[i]=Math.Sqrt(dx*dx+dy*dy+dz*dz);}
+            // the others: the lights nearest the eye (the lanterns where they hang this frame, the halls' room lamps, the Stone's
+            // lamp), each easing out as the next one out comes to take its slot
+            int posts=Math.Min(rig?.Posts??0,24),n=0,slots=NativeMapLooks.MaxLights-1;
+            for(int i=0;i<posts;i++,n++){cand[n*5]=rig.Lantern[i*3];cand[n*5+1]=rig.Lantern[i*3+1];cand[n*5+2]=rig.Lantern[i*3+2];cand[n*5+3]=LanternRange;cand[n*5+4]=LanternGain*(.92+.08*Math.Sin(t*11+i*3));}
+            for(int i=0;i<FixedCount&&n<32;i++,n++){cand[n*5]=Fixed[i*5];cand[n*5+1]=Fixed[i*5+1];cand[n*5+2]=Fixed[i*5+2];cand[n*5+3]=Fixed[i*5+3];cand[n*5+4]=Fixed[i*5+4];}
+            for(int i=0;i<n;i++){double dx=cand[i*5]-ex,dy=cand[i*5+1]-ey,dz=cand[i*5+2]-ez;rank[i]=Math.Sqrt(dx*dx+dy*dy+dz*dz);}
             double edge=double.PositiveInfinity;
             if(n>slots){
-                // the distance of the nearest lantern left out: the (slots + 1)th smallest
+                // the distance of the nearest light left out: the (slots + 1)th smallest
                 for(int i=0;i<n;i++){int nearer=0;for(int k=0;k<n;k++)if(rank[k]<rank[i]||rank[k]==rank[i]&&k<i)nearer++;if(nearer==slots)edge=rank[i];}}
             int s=1;
             for(int i=0;i<n&&s<NativeMapLooks.MaxLights;i++)
             {
                 int nearer=0;for(int k=0;k<n;k++)if(rank[k]<rank[i]||rank[k]==rank[i]&&k<i)nearer++;if(nearer>=slots)continue;
-                double fade=double.IsInfinity(edge)?1:Math.Max(0,Math.Min(1,(edge-rank[i])/3)),g=LanternGain*fade*(.92+.08*Math.Sin(t*11+i*3));
-                LightPos[s*4]=(float)rig.Lantern[i*3];LightPos[s*4+1]=(float)rig.Lantern[i*3+1];LightPos[s*4+2]=(float)rig.Lantern[i*3+2];LightPos[s*4+3]=(float)LanternRange;
+                double fade=double.IsInfinity(edge)?1:Math.Max(0,Math.Min(1,(edge-rank[i])/3)),g=cand[i*5+4]*fade;
+                LightPos[s*4]=(float)cand[i*5];LightPos[s*4+1]=(float)cand[i*5+1];LightPos[s*4+2]=(float)cand[i*5+2];LightPos[s*4+3]=(float)cand[i*5+3];
                 LightRgb[s*3]=(float)(L(Warm,16)*g);LightRgb[s*3+1]=(float)(L(Warm,8)*g);LightRgb[s*3+2]=(float)(L(Warm,0)*g);LightBeam[s]=0;s++;
             }
             for(;s<NativeMapLooks.MaxLights;s++){LightPos[s*4]=0;LightPos[s*4+1]=-10000;LightPos[s*4+2]=0;LightPos[s*4+3]=1;LightRgb[s*3]=LightRgb[s*3+1]=LightRgb[s*3+2]=0;LightBeam[s]=0;}
