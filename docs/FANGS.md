@@ -20,7 +20,7 @@ Status: on `claude/blades`. Not played by a person or between two real clients.
 | LMB | Fang Flurry (`fangs-cut`) | Five quick cuts that chain (0.4 s window). Each leaves a venom stack; the last leaves two | 10, 10, 11, 12, 18 |
 | LMB on a sprint | Pounce (`fangs-pounce`) | A 5 m leap; landing cuts everyone within 1.6 m and leaves two stacks | 20 |
 | Q | Shadow Step (`fangs-step`) | Gone for 0.14 s, then behind the foe nearest the aim (12 m, 35 degrees of the look, in sight), facing it, and a stab with two stacks. With no foe, a 6 m blink along the look | 24 |
-| E | Smoke Veil (`fangs-veil`) | Smoke, and unseen by enemies for 4 s or until you attack: the body is not drawn for them, bots and the lock-on pass you over. That attack deals twice as much and leaves three more stacks | |
+| E | Smoke Veil (`fangs-veil`) | Smoke, and unseen by enemies for 4 s or until you attack: the body, the name and the health bar are not drawn for them, bots and the lock-on pass you over. That attack deals twice as much and leaves three more stacks | |
 | 1 | Fang Fan (`fangs-fan`) | Five venom knives across 30 degrees, 34 m/s out to 18 m, each 9 and a stack | 9 each |
 | 2 | Venom Bloom (`fangs-bloom`) | Every poisoned foe within 14 m takes 6 per stack at once; the stacks are spent | 6 a stack |
 | 3 | Assassinate (`fangs-assassinate`) | The foe in front within 2.4 m. From behind (its back to you within 75 degrees) or below 40% health: the takedown, both held in the pack's paired stealth kill, lethal at its blow (a boss takes 60 and is not held). Otherwise the paired frontal critical for 45 | 45 / lethal |

@@ -16,7 +16,7 @@ Status: on `claude/blades`. Not played by a person or between two real clients.
 | --- | --- | --- | --- |
 | LMB | Flowing Cuts (`katana-cut`) | Four cuts that chain if you keep attacking (0.45 s window). The third steps 1.2 m in. The fourth cleaves: it pushes and stuns longer | 18, 18, 22, 30 |
 | LMB on a sprint | Rushing Draw (`katana-rush`) | A 5 m dash in 0.16 s, cutting everyone within 1.25 m of the path and throwing them aside | 22 |
-| LMB after a block or parry | Moon Reflection (`katana-counter`) | Within 1 s of a block or parry, the next cut is the counter: a paired critical. The foe is held in the matching clip through it (1.25 s); the blow lands 0.55 s in | 38 |
+| LMB after a block or parry | Moon Reflection (`katana-counter`) | Within 1 s of a block or parry (a hit held on the guard, a timed block or an F parry), the next cut is the counter: a paired critical. The foe is held in the matching clip through it (1.25 s); the blow lands 0.55 s in | 38 |
 | Q | Moonlit Draw (`katana-iai`) | The blade is sheathed and gathered (0.32 s), then a 7.5 m dash along the aim (a wall stops it). Everyone within 1.3 m of the line is marked. 0.45 s after the dash the line splits: each marked one takes the cut and staggers. Cooldown 8 s, from the split | 46 |
 | E | Petal Storm (`katana-storm`) | Six cuts all round (2.9 m), one every 0.13 s; the last throws them up. You move at 45% while it lasts. Cooldown 10 s | 8 a cut |
 | RMB, F, Shift | Guard, parry, roll | As any melee weapon | |

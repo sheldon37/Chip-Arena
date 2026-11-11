@@ -26,6 +26,9 @@ namespace ChipArena.UnityConversion
         /// <summary>SourceCharacter: a veiled Fangs pilot's body hidden from its enemies.</summary>
         private Func<int,float> BladeReveal(Actor a,float time,Func<int,float> reveal){if(!BladeHidden(a,time))return reveal;return bladeHiddenReveal??=_=>0;}
         private Func<int,float> bladeHiddenReveal;
+        private readonly HashSet<int> bladeHiddenIds=new HashSet<int>();
+        /// <summary>The combat HUD: a veiled Fangs pilot's bar and name are hidden from its enemies too (this frame's snapshot).</summary>
+        public bool BladeHidesHud(int id)=>bladeHiddenIds.Contains(id);
         /// <summary>SourceCharacter: the saya at the hip, and the blade in it while sheathed (the hand empty).</summary>
         private void KatanaSaya(CapturedAnimation.Player rig,Actor a,float time,bool first,int layer,Camera camera,Func<int,Color> tint,float flash)
         {
@@ -44,9 +47,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The Fangs' thrown knives in flight (reconstructed from the throw, as the effects draw their streaks), each its own blade.</summary>
         private void RenderBlades(Snapshot s,float time)
         {
-            if(s?.Actors==null)return;
-            // The viewer's team for the veil (the local pilot's).
+            bladeHiddenIds.Clear();if(s?.Actors==null)return;
+            // The viewer's team for the veil (the local pilot's), and who is veiled from it.
             bladeViewerTeam=-1;foreach(var a in s.Actors)if(a!=null&&a.Id==LocalId){bladeViewerTeam=a.Team;break;}
+            foreach(var a in s.Actors)if(BladeHidden(a,time))bladeHiddenIds.Add(a.Id);
             if(sourceModels==null)return;
             foreach(var a in s.Actors)
             {

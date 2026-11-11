@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
             Check(ki.Sheathed(.5f)&&!ki.Sheathed(3f)&&ki.Sheathed(5f)&&!fi.Sheathed(1),"the katana sheathed, drawn, sheathed again");
             // ---- the Runtime wiring (as text) ----
             Check(R(root,"NativeArena.cs").Contains("StepBladeWorld();")&&R(root,"NativeArena.cs").Contains("StepBladeInput(p);")&&R(root,"NativeArena.cs").Contains("if(PinBladeVictim(p))return;")&&R(root,"NativeArena.cs").Contains("BladeSnapshot(p,a);"),"the arena steps them, pins their victims and snapshots them");
-            Check(R(root,"NativeChips.cs").Contains("BladeBlocked(p,attacker);")&&R(root,"NativeBots.cs").Contains("!BladeUnseen(q)")&&R(root,"NativeSourcePresentation.cs").Contains("reveal=BladeReveal(a,time,reveal);"),"blocks open the counter, the veil hides from bots and enemies");
+            Check(R(root,"NativeChips.cs").Contains("BladeBlocked(p,attacker);")&&R(root,"NativeGuard.cs").Contains("\"hold\");BladeBlocked(target,source!=target?source:null);")&&R(root,"NativeCombatHud.cs").Contains("||presentation.BladeHidesHud(p.Seat.id)")&&R(root,"NativeBots.cs").Contains("!BladeUnseen(q)")&&R(root,"NativeSourcePresentation.cs").Contains("reveal=BladeReveal(a,time,reveal);"),"blocks open the counter, the veil hides from bots and enemies");
             Check(R(root,"NativeStructures.cs").Contains("NativeKatanaChips.Apply(content);")&&R(root,"NativeStructures.cs").Contains("NativeFangsChips.Apply(content);"),"their chips go live");
             Check(R(root,"NativeBladeAuthority.cs").Contains("Allows(\"weapon:\"+NativeFangs.Spec"),"the DEV Fangs answer only a pilot allowed them");
             Console.WriteLine("PASS blades: "+count+" checks");
