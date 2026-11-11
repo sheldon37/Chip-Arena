@@ -56,6 +56,7 @@ namespace ChipArena.UnityConversion
                 else if(b.id=="rig-glass-bay-n"||b.id=="rig-glass-bay-s"){}
             }
             foreach(double zs in new[]{-1.0,1.0}){Lamp(-6,5.6,zs*16.2,2.2);Lamp(6,5.6,zs*16.2,2.2);}
+            for(int k=0;k<NativeDeepwellLooks.GalleryLamps.Length;k+=2)Lamp(NativeDeepwellLooks.GalleryLamps[k],2.7,NativeDeepwellLooks.GalleryLamps[k+1],1.5);
             pane=panes.ToArray();paneCount=pane.Length/6;lamp=lamps.ToArray();lampCount=lamp.Length/4;pylon=pyl.ToArray();pylonCount=pylon.Length/3;
         }
 

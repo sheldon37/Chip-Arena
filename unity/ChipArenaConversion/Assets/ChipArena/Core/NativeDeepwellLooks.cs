@@ -49,6 +49,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The seabed under and round the station (the station stands on legs over it), the moon pools' water (just
         /// under the bays' floor), the Well's dome (its glass springs from the wall top to the apex) and the wellhead's core.</summary>
         public const double Seabed=-9.0,Water=-1.95,DomeSpring=7.2,DomeApex=12.6,WellRadius=10.4,CoreY=-1.2,CoreRadius=1.5;
+        /// <summary>The lamps under the Well's gallery (x, z pairs; flush under the gallery's deck, clear of both stair wells).</summary>
+        public static readonly double[] GalleryLamps={8,5,-8,-5,5,8,-5,8,5,-8,-5,-8,8.6,0,-8.6,0};
         /// <summary>The north moon pool (x0, x1, z0, z1); the south one is it turned half round.</summary>
         public const double PoolX0=-4,PoolX1=4,PoolZ0=13.6,PoolZ1=18.8;
         /// <summary>Whether a point in plan lies inside the station's hull (grown by `pad`): the sea's creatures, snow and

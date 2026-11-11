@@ -417,6 +417,9 @@ def well_dome(g, T):
 
 def overhead(g, L, T):
     well_dome(g, T)
+    # the lamps under the Well's gallery (Core NativeDeepwellLooks.GalleryLamps)
+    for (x, z) in ((8, 5), (-8, -5), (5, 8), (-5, 8), (5, -8), (-5, -8), (8.6, 0), (-8.6, 0)):
+        rk.flush_lamp(g, x, 2.8, z, .42, .42, T)
     for b in L['blocks']:
         i = b['id']
         x0, x1, y0, y1, z0, z1 = ext(b)

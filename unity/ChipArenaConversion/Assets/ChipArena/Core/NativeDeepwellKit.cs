@@ -178,6 +178,7 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<12;k++){double a=k*Math.PI/6+Math.PI/12,c=a+Math.PI/6;Bar(Math.Sin(a)*rr,yy,Math.Cos(a)*rr,Math.Sin(c)*rr,yy,Math.Cos(c)*rr,.12,Frame,false);}
             }
             Box(-4.9,4.9,7.24,7.7,3.6,4.8,Dark);Box(-4.9,4.9,7.24,7.7,-4.8,-3.6,Dark);Box(-4.8,-3.6,7.24,7.7,-3.6,3.6,Dark);Box(3.6,4.8,7.24,7.7,-3.6,3.6,Dark);
+            for(int k=0;k<NativeDeepwellLooks.GalleryLamps.Length;k+=2){double lx=NativeDeepwellLooks.GalleryLamps[k],lz=NativeDeepwellLooks.GalleryLamps[k+1];Box(lx-.4,lx+.4,2.64,2.72,lz-.4,lz+.4,Lamp,false);}
             Box(-1.5,1.5,11.4,y1+.3,-1.5,1.5,Steel);Box(-1.7,1.7,11.2,11.4,-1.7,1.7,Brass);
             foreach(var b in map.blocks??Array.Empty<ContentBlock>())
             {
