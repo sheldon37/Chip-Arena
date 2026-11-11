@@ -93,8 +93,8 @@ Rebuild: `dotnet run --project Tests/CoreTests.csproj -c Release -- --stage-layo
 
 ## Numbers, checks and what was seen
 
-**The bank** (2026-11-11): 21,221,467 bytes, 530 props. Static: 36 chunks (20 m cells, two bands); Fine 165,734 triangles
-(241,279 vertices), Mid 80,944 (124,275), Low 33,207 (52,342). Rig: 11 meshes for the 13 slots (the high hook and load share the
+**The bank** (2026-11-11): 21,303,505 bytes, 530 props. Static: 36 chunks (20 m cells, two bands); Fine 165,734 triangles
+(241,279 vertices), Mid 80,944 (124,275), Low 34,010 (54,097). Rig: 11 meshes for the 13 slots (the high hook and load share the
 low ones'); 7,939 / 4,813 / 1,700 triangles. Breakables: 4 meshes for 10 blocks; 5,844 / 2,682 / 160. About 20 s to build.
 
 **Z-fighting** (`zfight.py BANK UnityMaps.json factory`): no block left drawn as a box beside the art; faces of different parts in
@@ -112,10 +112,10 @@ p95 of 15 and 22 ms and 230 ms worst frames are the load's, and the back-to-back
 rounds, worst under 2 mm; the kept boxes; the layout; the six pilot columns; the wiring; the bank's covers, tiers, play-space
 rule and spawns); `--stage-art`, `--surfaces`, `--transitions`, `--stage-kits`, `--map-style`, `--emporium-art`, `--club-art`
 PASS; the full CoreTests suite PASS (exit 0, twice); the Unity compile check PASS (Assembly-CSharp, Assembly-CSharp-Editor); the
-Editor's build checks: @@VALIDATE@@.
+Editor's build checks: ok (`wtvalidate.sh`, PrototypeBuild.Validate on `66a0e0b3`).
 
 **Seen in the shared Editor** (a match, one idle bot, god mode, the game's camera placed by `maincam`): thirteen views before
-(the box kit) and after (the art) at High and on the Low graphics tier (which draws the bank's Low tier: coarse stripes, six-sided
+(the box kit) and after (the art) at High and on the Low graphics tier (which draws the bank's Low tier: coarse stripes on the big guards, six-sided
 bar stock, no small parts); the hazards on the art: a rail saw swinging out along its track under its guard, a press slammed
 with its lamps red and lifted again, the crane travelling with its bundle and beacon; the slitters' lamps along their trenches.
 
@@ -127,6 +127,6 @@ with its lamps red and lifted again, the crane travelling with its bundle and be
   branch's code (the fallback is checked by source), multiplayer guests, a native Windows build and the main menu: not run.
 - Fine tier z-fight measure 0.17 m2, over the 0.1 m2 bar by the slivers above.
 - On the hall roofs the lanterns' glazing and the vents have no collider (reached only by stacked jump chips through a skylight).
-- Under the toon grade the plastered blockwork screens shade in soft patches; the forklifts' cabs are open (their blocks are solid
+- The forklifts' cabs are open (their blocks are solid
   cover).
-- The bank is 21.2 MB, a little over the 20 MB the budget names.
+- The bank is 21.3 MB, a little over the 20 MB the budget names.

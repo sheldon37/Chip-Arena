@@ -22,7 +22,7 @@ Y = (0.0, 1.0, 0.0)
 # name -> (hex, detail, smooth, metal, dirt, wear, param, glow)
 MATS = {
     'floor': (0x6E6A63, A.DETAIL_PLASTER, .42, 0, .8, 0, 0, 0), 'plinth': (0x8C877D, A.DETAIL_PLASTER, .25, 0, .8, .1, 0, 0),
-    'baywall': (0x9A9488, A.DETAIL_PLASTER, .25, 0, .8, .12, 0, 0), 'block': (0xA49D90, A.DETAIL_PLASTER, .2, 0, .8, .1, 0, 0),
+    'baywall': (0x9A9488, A.DETAIL_PLASTER, .25, 0, .8, .12, 0, 0), 'block': (0xA49D90, A.DETAIL_NONE, .2, 0, .35, .1, 0, 0),
     'concrete': (0x7E7A72, A.DETAIL_PLASTER, .25, 0, .8, .1, 0, 0), 'pit': (0x141414, A.DETAIL_NONE, .2, 0, .2, 0, 0, 0),
     'clad': (0x5E6E78, A.DETAIL_NONE, .45, .4, .7, .12, 0, 0), 'roof': (0x5A646C, A.DETAIL_NONE, .4, .4, .7, .1, 0, 0),
     'truss': (0x46525C, A.DETAIL_NONE, .4, .35, .6, .25, 0, 0), 'steel': (0x3C4E5C, A.DETAIL_NONE, .42, .35, .6, .3, 0, 0),
@@ -366,7 +366,7 @@ def kit_part(g, p, T, f=None):
                      or (name == 'rail' and (abs(h[1] - .0175) < .002 or (h[1] > .3 and h[0] < .03 and h[2] < .03)))):
         return                  # the Mid tier leaves out the trusses' diagonals, the lanterns' short bars, the knee rails
     if name == 'stripe':
-        if abs(q[3]) > .999 and T.i < 2:
+        if abs(q[3]) > .999:
             striped_box(g, c[0] - h[0], c[0] + h[0], c[1] - h[1], c[1] + h[1], c[2] - h[2], c[2] + h[2], T, skip=('-y',) if c[1] - h[1] < .02 else ())
         else:
             obox(g, c, h, q, mat('hazard-y'), T, 0)
