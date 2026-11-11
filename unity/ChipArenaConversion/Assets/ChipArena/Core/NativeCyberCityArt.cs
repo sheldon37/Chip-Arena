@@ -37,6 +37,19 @@ namespace ChipArena.UnityConversion
         /// <summary>A kit part that stays the kit's box while the art draws: every driven part. The steady parts are modelled
         /// (in the chunks, or in their block's model: see <see cref="Modelled"/>).</summary>
         public static bool Kept(in NativeCyberCityPart p)=>p.Drive!=NativeCyberCityKit.DriveSteady;
+        /// <summary>How many kept boxes each kit part lies on (NativeStageArt.BoxLayers; 0 for a part the art replaces or one on a
+        /// turned block): the presentation draws a kept box that many layers nearer the eye, over NativeStageArt.KitLayers.</summary>
+        public static int[] KeptLayers(NativeCyberCityKit kit,ContentBlock[] blocks)
+        {
+            var parts=kit.Parts;int n=parts.Length;var boxes=new float[n*6];var skip=new bool[n];var layers=new int[n];
+            for(int i=0;i<n;i++)
+            {
+                var p=parts[i];var b=p.Parent>=0&&p.Parent<blocks.Length?blocks[p.Parent]:null;
+                if(b==null||!Kept(p)||b.rotation!=null&&Math.Abs(b.rotation.w)<.9999f){skip[i]=true;continue;}
+                int o=i*6;boxes[o]=b.pos.x+p.X;boxes[o+1]=b.pos.y+p.Y;boxes[o+2]=b.pos.z+p.Z;boxes[o+3]=p.Hx;boxes[o+4]=p.Hy;boxes[o+5]=p.Hz;
+            }
+            NativeStageArt.BoxLayers(boxes,n,skip,layers);return layers;
+        }
         /// <summary>Whether a block's role puts it in the static chunks (its steady kit parts never draw as boxes over the art);
         /// any other block has a block model, which draws only while the block stands at NativeStageArt.Keep or better.</summary>
         public static bool Modelled(ContentBlock b)=>b!=null&&b.role=="static";

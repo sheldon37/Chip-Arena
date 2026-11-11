@@ -1127,6 +1127,8 @@ def main():
         names = ['static'] + ['b/' + i for i in S.posed] + ['p/' + i for i in S.props] + list(S.movers)
         geos = [S.static] + list(S.posed.values()) + list(S.props.values()) + [g for g, _ in S.movers.values()]
         print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % lift_all(geos[:1 + len(S.posed) + len(S.props)], ti))
+        # no face reaches out of its chunk's cell: a floor is never drawn twice where neighbouring chunks draw at different tiers
+        print('  chunks: %d faces cut along the cells' % chunks.split(S.static))
         print('tier %s: static %d faces, posed %d, props %d, movers %d, %.1f s' % (T.name, S.static.faces, sum(g.faces for g in S.posed.values()),
               sum(g.faces for g in S.props.values()), sum(g.faces for g, _ in S.movers.values()), time.time() - t))
         if args.stats:

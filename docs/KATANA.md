@@ -16,7 +16,7 @@ Status: on `claude/blades` (merged into shared and the test channel with this re
 | --- | --- | --- | --- |
 | LMB | Flowing Cuts (`katana-cut`) | Four cuts that chain if you keep attacking (0.45 s window). The third steps 1.2 m in. The fourth cleaves: it pushes and stuns longer | 18, 18, 22, 30 |
 | LMB on a sprint | Rushing Draw (`katana-rush`) | A 5 m dash in 0.16 s, cutting everyone within 1.25 m of the path and throwing them aside | 22 |
-| LMB after a block or parry | Moon Reflection (`katana-counter`) | Within 1 s of a block or parry (a hit held on the guard, a timed block or an F parry), the next cut is the counter: a paired critical. The foe is held in the matching clip through it (1.25 s); the blow lands 0.55 s in | 38 |
+| LMB after a block or parry | Moon Reflection (`katana-counter`) | Within 1 s of a block or parry (a hit held on the guard, a timed block or an F parry), the next cut is the counter: a paired critical. The foe is held in the matching clip through it (1.25 s); the blow lands 0.55 s in and throws the foe 1.23 m back as its clip stumbles (walls stop it) | 38 |
 | Q | Moonlit Draw (`katana-iai`) | The blade is sheathed and gathered (0.32 s), then a 7.5 m dash along the aim (a wall stops it). Everyone within 1.3 m of the line is marked. 0.45 s after the dash the line splits: each marked one takes the cut and staggers. Cooldown 8 s, from the split | 46 |
 | E | Petal Storm (`katana-storm`) | Six cuts all round (2.9 m), one every 0.13 s; the last throws them up. You move at 45% while it lasts. Cooldown 10 s | 8 a cut |
 | LMB in the air, looking down | Plunging slam | The plunge every melee weapon has (owner 2026-11-11: slam attacks from the air for the Glaive, the Fangs and the Katana): looking 45 degrees or more down after a moment airborne, a click drops you at 24 m/s and the landing cuts everyone within 1 m, then a 0.45 s recovery. Not while a move of the kit runs. Core `NativeAirAttackSimulation` by kin (the sword's) | 1.5 times the weapon's 18, up to 60% more from higher |
@@ -42,6 +42,12 @@ Every number is in Core `NativeKatana`.
   three's lunging cut, the iai stance three's dash skill and the sheathe (its click lands on the split), the storm stance three's flurry and the
   counter the pack's paired katana critical. Each move plays a clip window. The window's strike (the pack blade's fastest moment, measured
   in Blender) lands on the rules' hit, at most 1.6 times the clip's pace. A cut on the move plays on the upper body over the stride.
+- **A parried attacker** (any weapon's, Core `NativeVisualMotion.Choose`; owner 2026-11-11: "Parry with katana make enemy walk backwards in
+  place"): it recoils at its own pace (a Katana or Fangs attacker on its set's block, a jolt back with the blade up: their face-on hit
+  threw the head back past the shoulders; any other on its hit from that side), then stays dazed on its feet (its set's stun) until the
+  parry's shove has slid it out, 0.35 s past the stun. Before, the recoil was stretched over the stun, and as the shove slid it on past the stun, the stride's backward
+  walk played while the body hardly moved. The counter's foe is held where the hold puts it and now travels back with its clip after the
+  blow (Core `NativeBladeMotion.VictimTravel`, the victim clip's own 1.23 m): held still, it stepped back on the spot.
 - **Effects** (Core `NativeBladeFx.cs`, in the pilot's weapon colour):
   - the weapon trail (owner 2026-11-11: "Give both weapon weapon trail vfx"): the blade sampled through every move, its sweep a smooth
     crescent narrowing to its tail (a sheet in the weapon colour, a white-hot edge, a faint halo, sparks shed off the fastest of it),
@@ -61,8 +67,12 @@ Every number is in Core `NativeKatana`.
 1. Night, a crimson moon over the pilot's shoulder (a crisp disc with its halo, dark cloud drifting across it), petals tumbling down, a dark
    mist low over the floor. The pilot stands with the blade sheathed, the left hand resting on the saya (the pack's sheathed idle).
 2. At 1.25 s the pilot sinks into the iai stance, the left hand pulling the saya forward (the pack's stance-three draw, the class's own
-   Moonlit Draw); the blade leaves the saya at 1.85 s. At 2.55 s its one great cut (slowed at its height), its sweep a crimson trail, a
-   glint along the edge, leaves a line of light hanging across the stage; the petals it crossed hang cut in two on it.
+   Moonlit Draw); the blade leaves the saya at 1.75 s, and from 2.2 s it is drawn out slowly, filmed low on the pilot's left, the saya's
+   side (owner 2026-11-11: "They don't pull sword out until animation is done essentially": the clip's draw-out takes a tenth of a second
+   before the cut, and the wide shot stood ahead and to the left, where the iai stance turns the body's back, so the blade seemed to come
+   out only as the cut ended; it now plays 3.5 times slower, in view). At 2.55 s its one great cut
+   (slowed at its height), its sweep a crimson trail, a glint along the edge, leaves a line of light hanging across the stage; the petals it
+   crossed hang cut in two on it.
 3. From 3.3 s the whole sheathing: the blade turned over in the hand, the saya taken up by the left hand, the blade slid home. At the click
    (4.35 s) a flash at the saya's mouth and a shockwave over the floor: the line flares and shatters into falling shards, the cut petals
    fall apart, the moon flares.
@@ -126,6 +136,17 @@ records and the killcam, and checked with `Valid()`.
 | The intro | `Core/NativeBladeIntros.cs` |
 | Checks | `Tests/BladeChecks.cs` (`CoreTests --blades`) |
 
+## Seen in the Editor (2026-11-11, the owner's third notes)
+
+- Crimson Moon's draw from the pilot's left: the hilt brought forward, the blade drawn slowly out of the saya with its crimson trail and a
+  glint at the mouth, then the cut uncoiling toward the camera.
+- A parried sword bot and a parried Katana bot: the recoil (the Katana's on its block, the head upright), the daze while the shove slides
+  it, then its stance; never the walk.
+- The counter on a sword bot's blow on the F parry, then the click: the foe held 1.6 m away until the blow, then thrown back with its clip
+  to 2.82 m.
+- The counter on the Hot Dog skin (the owner's pilot): its sausage folds at mid-height through the counter (its top kinks over), the
+  spine curled about 50 degrees past the stance; the skin's own fix is with its session (DEV_LOG).
+
 ## Seen in the Editor (2026-11-10)
 
 - The four cuts, the finisher's glow, the storm's ring and petals, the iai (the gather, the dash, the line hanging, the split's slash across
@@ -135,5 +156,4 @@ records and the killcam, and checked with `Valid()`.
 ## Not yet
 
 - Not played by a person; not tried between two real clients.
-- The counter's paired critical on screen: its rules pass in the Editor build validation (a block opens it, the foe held, the blow, the
-  release), but no capture caught a bot's swing landing on the guard inside the window.
+- The counter in a real exchange between people (captures stage the blow on the parry: the tool's `parryhit`, a local option).

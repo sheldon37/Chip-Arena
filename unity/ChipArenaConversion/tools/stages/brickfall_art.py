@@ -499,6 +499,9 @@ def main():
     S = Stage(L)
     import brickfall_props as props
     sb = sk.StageBank()
+    # the block models are the stage's own building: layered where they stand, with the chunks and with one another
+    for b in L['blocks']:
+        sb.at(b['id'], b['pos'], b['rot'])
     chunks = sk.Chunks(16.0, (-32.0, -32.0), (-1.0, 14.05))
     floors = (0.0,)
     t0 = time.time()
@@ -508,6 +511,8 @@ def main():
         STATS.clear()
         g = static_scene(S, T)
         print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=sk.NEAR_TIER[ti], lift=sk.LIFT_TIER[ti]))
+        # no face reaches out of its chunk's cell: a floor is never drawn twice where neighbouring chunks draw at different tiers
+        print('  chunks: %d faces cut along the cells' % chunks.split(g))
         scene = props.rest_scene(S, T, args.landed)
         print('tier %s: static %d faces, props at rest %d faces, %.1f s' % (T.name, g.faces, scene.faces, time.time() - t))
         if args.stats:

@@ -813,6 +813,8 @@ def main():
         g = static_scene(L, T)
         before = g.arrays()[0].astype(np.float64).copy() if args.stats else None
         print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=sk.NEAR_TIER[ti], lift=sk.LIFT_TIER[ti]))
+        # no face reaches out of its chunk's cell: a floor is never drawn twice where neighbouring chunks draw at different tiers
+        print('  chunks: %d faces cut along the cells' % chunks.split(g))
         if args.stats:
             # where the stacks stand deepest (a face lifted by more than two layers is worth a look)
             P = g.arrays()[0].astype(np.float64)

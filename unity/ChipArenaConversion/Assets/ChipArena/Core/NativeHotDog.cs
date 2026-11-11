@@ -50,6 +50,15 @@ namespace ChipArena.UnityConversion
         // part leans the sausage (more toward the top: a bend), its upright part squashes or stretches it (a landing squashes
         // it). The runtime turns it into the sausage bones' frames (NativeHotDogPresentation.cs HotDogJiggle); the arms and legs
         // never move with it.
+        // ---- The sausage's bend kept even (owner 2026-11-11, through the Katana session: "their hot dog skin deforms during the
+        // Katana's counter") ----
+        // The sausage is weighted along the spine's bones (a bell round each), so a pose that curls the spine hard at one or two
+        // joints (the counter curls it about 50 degrees past the stance) folded the sausage at that height. Each frame the runtime
+        // takes each sausage twin's turn (its bone's against its rest, the body's own turn off), eases it toward its neighbours'
+        // SpinePasses times (a quarter each side), and keeps that share (SpineEven) of the eased turn: the same bend, spread down
+        // the sausage as an arc. The bottom and the top keep their own (the pelvis's and the head's).
+        /// <summary>How much of the evened turn the sausage's twins take (1: all of it) and how many easing passes.</summary>
+        public const float SpineEven=1;public const int SpinePasses=3;
         /// <summary>The sausage's height over the pelvis (m; the lean's lever and the squash's measure).</summary>
         public const float Height=.85f;
         /// <summary>The spring's natural frequency (rad/s) and damping ratio: a soft wobble, about two and a half a second, dying
