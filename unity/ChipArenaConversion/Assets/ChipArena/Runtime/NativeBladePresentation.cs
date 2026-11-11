@@ -14,10 +14,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The saya's model id (built with the weapon models, NativeWeaponSkinModels.cs).</summary>
         public const string SayaModel="katana-saya";
         /// <summary>Where the saya hangs in the hips' upright frame (+x the body's right, +y up, +z ahead; at the pelvis joint, turned with
-        /// the line between the hip joints): its mouth at the left front of the belt (where the pack's own scabbard sits), pointing back
-        /// along the hip, only a little out and down, so it lies against the body as if through the obi (the owner, 2026-11-11: the sheath
-        /// was off the body). Its own x points down, so the curve (the edge side) is up.</summary>
-        private static readonly Vector3 SayaAt=new Vector3(-.14f,.07f,.08f),SayaAxis=new Vector3(-.1f,-.16f,-.98f);
+        /// the line between the hip joints): its mouth at the left front of the belt, angled back and down along the hip as if through the obi,
+        /// only a little out (the owner, 2026-11-11: the sheath was off the body; it stood out from the hip, then hung at the crotch like a
+        /// tail). Its own x points down, so the curve (the edge side) is up.</summary>
+        private static readonly Vector3 SayaAt=new Vector3(-.15f,.24f,.1f),SayaAxis=new Vector3(-.12f,-.36f,-.92f);
         /// <summary>Whether a Katana's blade is in its saya now: its record's iai, or its entrance's script.</summary>
         internal bool KatanaSheathed(Actor a,float time)=>a!=null&&a.Id==bladeIntroActor&&bladeIntro!=null?bladeIntro.Sheathed(bladeIntroClock):NativeKatana.Sheathed(NativeBladeView.Katana(a),time);
         private NativeBladeIntro bladeIntro;private int bladeIntroActor=-1;private float bladeIntroClock;private Func<int,Matrix4x4> bladeIntroHand;
