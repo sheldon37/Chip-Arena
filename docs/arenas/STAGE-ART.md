@@ -344,3 +344,24 @@ Not done / not seen:
   no bank line; the fallback is checked by source in ClubArtChecks). Native Windows build, multiplayer guests, the killcam on
   the art and the main menu's preview: not run.
 - The lit LED screens are still boxes by design; the far backdrop is still box-built.
+
+## 11. Skyframe (`skyframe`): a stage built with its art (2026-11-11)
+
+Skyframe was rebuilt from scratch on 2026-11-11 (docs/arenas/SKYFRAME.md has the whole account: the layout, the hazards, the
+look, what is modelled, the bank's numbers, what was seen). It is the first stage whose layout, box kit and art were made
+together. What it adds to the recipe:
+- **The probe's place and sky** (`NativeStageArtDraw.ProbeAt`, `ProbeSky`, set before `Prepare`; small and general): an
+  open-air stage whose glass must catch the sky gives the probe the sky's colour instead of near black, and a stage whose
+  bounds' centre lies inside a block (Skyframe's lift core) stands the probe elsewhere.
+- **One model for every tier** for rig parts only ever seen from tens of metres (the crane's top at 38 m, the rotors, the
+  airships, the birds, the cloud islands): `skyframe_props.bank_props` banks the mesh once and names it under all three tiers,
+  since the drawer picks a rig part's tier by its distance.
+- **The sky as far chunks and drifting rig props together**: the cloud sea is a static far chunk (a rolling sheet with heaped
+  islands on it); the islands that drift are rig props posed from the match clock, in lanes the static islands leave clear.
+- **No layout-kit export**: the Blender scripts work from the map's blocks by id stem and from a small `skyframe` object of
+  shared numbers (`SkyframeArtChecks.Layout`: the crane, the frame's columns and which beams stand, the sun, the cloud level,
+  the turbines, the windsocks), so the frame overhead and the rig agree with Core without a parts list.
+- **Unreachable tops are not floors** in the play-space rule (`--skyframe-art`): the core's and the columns' tops at 12 m carry
+  the frame on up.
+- **Overhead garden pieces** (strings of lights, hanging troughs with vines, door canopies) hang at 2.15 m and more over the
+  floors: the rule's "higher is overhead" used on purpose, so the garden can be lush without art to stand beside.

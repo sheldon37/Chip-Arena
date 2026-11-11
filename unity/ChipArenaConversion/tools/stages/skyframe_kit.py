@@ -60,6 +60,7 @@ def finishes():
     f('cloud-low', 0xDDA8B4, smooth=.02, dirt=0)
     f('bird', 0x2B2B33, smooth=.2, dirt=0)
     f('bird-light', 0xE9E4DA, smooth=.2, dirt=0)
+    f('bronze', 0xB98A4A, smooth=.7, metal=.5, dirt=.25, wear=.2)
     f('lamp', 0xFFC680, glow=2.6)
     f('lamp-white', 0xFFF0D8, glow=2.0)
     f('lamp-soft', 0xFFD8A0, glow=1.2)
@@ -159,8 +160,19 @@ def slab(g, b, T, top, side, bottom=None, cell=None, bevel=0.0):
     grid_face(g, (x0, y0, z0), (x1 - x0, 0, 0), (0, 0, z1 - z0), 0, 0, bottom if bottom is not None else side, (0, -1, 0), max(c, 3.0))
 
 
-def rect(g, x0, x1, y, z0, z1, f, cell=0):
-    """A flat rectangle on a floor at height y, facing up (an inlay: stagekit.lift_coplanar stands it over the floor)."""
+# An inlay's layer: how far each layer of flat detail stands over the one under it, by tier (stagekit.LIFT_TIER: clear of the
+# depth buffer at the tier's range). The scripts stack their inlays themselves (a lawn over its kerb over the paving), so the
+# order is theirs, not the faces' areas'; stagekit.lift_coplanar then finds nothing left to settle among them.
+LAYER = [sk.LIFT_TIER[0]]
+
+
+def ly(k):
+    return k * LAYER[0]
+
+
+def rect(g, x0, x1, y, z0, z1, f, cell=0, layer=1):
+    """A flat rectangle on a floor at height y, facing up, `layer` layers over it."""
+    y = y + ly(layer)
     if cell:
         grid_face(g, (x0, y, z0), (x1 - x0, 0, 0), (0, 0, z1 - z0), 0, 0, f, (0, 1, 0), cell)
     else:

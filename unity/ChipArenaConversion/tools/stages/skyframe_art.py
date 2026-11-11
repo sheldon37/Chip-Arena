@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import stagekit as sk  # noqa: E402
 from stagekit import Geo, box, grid_face, lathe  # noqa: E402
 import skyframe_kit as kit  # noqa: E402
-from skyframe_kit import F, blk, hashf, beam, ibeam, rod, slab, rect, blob, leafy, hsection  # noqa: E402
+from skyframe_kit import F, blk, hashf, beam, ibeam, rod, slab, rect, blob, leafy, hsection, ly  # noqa: E402
 
 BANK = 'ChipArenaStageSkyframe'
 FLOORS = (-3.2, 0.0, 3.6)
@@ -39,7 +39,7 @@ def fins(names):
 # ---------------------------------------------------------------------------------------------------------------------------
 # The garden terrace
 # ---------------------------------------------------------------------------------------------------------------------------
-def zones(g, L, y, b, T):
+def zones(g, L, y, b, T, layer=1):
     """The painted drop zones lying on this floor (y): a frame, a hatch across it, corner marks."""
     for h in L['hazards']:
         if h['kind'] != 'crane':
@@ -50,6 +50,7 @@ def zones(g, L, y, b, T):
             if abs(cy - y) > .05 or not (b[0] <= cx <= b[1] and b[4] <= cz <= b[5]):
                 continue
             Y = F['paint-yellow']
+            y = y + ly(layer - 1)
             rect(g, cx - hx, cx + hx, y, cz - hz, cz - hz + .14, Y)
             rect(g, cx - hx, cx + hx, y, cz + hz - .14, cz + hz, Y)
             rect(g, cx - hx, cx - hx + .14, y, cz - hz + .14, cz + hz - .14, Y)
@@ -58,7 +59,7 @@ def zones(g, L, y, b, T):
                 n = 9
                 for k in range(n):
                     x = cx - hx + .5 + (2 * hx - 1.0) * k / (n - 1)
-                    g.face(((x - .32, y, cz - hz + .22), (x - .2, y, cz - hz + .22), (x + .32, y, cz + hz - .22), (x + .2, y, cz + hz - .22)), Y, (0, 1, 0))
+                    g.face(((x - .32, y + ly(1), cz - hz + .22), (x - .2, y + ly(1), cz - hz + .22), (x + .32, y + ly(1), cz + hz - .22), (x + .2, y + ly(1), cz + hz - .22)), Y, (0, 1, 0))
 
 
 def garden(g, L, T):
@@ -67,18 +68,35 @@ def garden(g, L, T):
     c = (1.0, 3.0, 6.5)[T.i]
     grid_face(g, (x0, 0, z0), (x1 - x0, 0, 0), (0, 0, z1 - z0), 0, 0, F['paving'], (0, 1, 0), c)
     for s in (1, -1):
-        def R(a0, a1, c0, c1, f, cell=0):
+        def R(a0, a1, c0, c1, f, cell=0, layer=1):
             if s < 0:
                 a0, a1, c0, c1 = -a1, -a0, -c1, -c0
-            rect(g, a0, a1, 0, c0, c1, f, cell)
+            rect(g, a0, a1, 0, c0, c1, f, cell, layer)
         # the lawn of the drop-zone quarter in its stone kerb, the reflecting pool before the base, the border course
         R(-24.7, -10.1, 9.3, 15.5, F['coping'])
-        R(-24.6, -10.2, 9.4, 15.4, F['lawn'], (1.2, 3, 0)[T.i])
+        R(-24.6, -10.2, 9.4, 15.4, F['lawn'], (1.2, 3, 0)[T.i], 2)
         if T.detail:
             for k in range(7):
-                R(-24.6 + k * 2.1, -24.6 + k * 2.1 + 1.0, 9.4, 15.4, F['lawn-dark'])
+                R(-24.6 + k * 2.1, -24.6 + k * 2.1 + 1.0, 9.4, 15.4, F['lawn-dark'], 0, 3)
         R(-16.1, -13.1, -2.1, 2.1, F['coping'])
-        R(-15.95, -13.25, -1.95, 1.95, F['water'])
+        R(-15.95, -13.25, -1.95, 1.95, F['water'], 0, 2)
+        if T.detail:
+            # bronze inlays: a line round the pool, rays out from it across the forecourt, a dashed line down each lane
+            for (a0, a1, c0, c1) in ((-16.45, -12.75, -2.45, -2.37), (-16.45, -12.75, 2.37, 2.45), (-16.45, -16.37, -2.37, 2.37), (-12.83, -12.75, -2.37, 2.37)):
+                R(a0, a1, c0, c1, F['bronze'])
+            for k in range(9):
+                ang = -1.2 + k * .3
+                x0, z0 = -14.6 + math.cos(ang) * 3.1, math.sin(ang) * 3.1
+                x1, z1 = -14.6 + math.cos(ang) * 5.6, math.sin(ang) * 5.6
+                if x0 < -12.2 or abs(z0) > 3.4:
+                    continue
+                px, pz = -math.sin(ang) * .03, math.cos(ang) * .03
+                pts = [(x0 - px, ly(1), z0 - pz), (x1 - px, ly(1), z1 - pz), (x1 + px, ly(1), z1 + pz), (x0 + px, ly(1), z0 + pz)]
+                if s < 0:
+                    pts = [(-q[0], q[1], -q[2]) for q in pts]
+                g.face(pts, F['bronze'], (0, 1, 0))
+            for k in range(11):
+                R(-8.0 + k * 1.9, -8.0 + k * 1.9 + 1.0, 12.47, 12.53, F['bronze'])
         R(-25.78, -25.4, -15.78, 15.78, F['paving-dark'])
         R(-25.4, 25.4, 15.4, 15.78, F['paving-dark'])
         if T.detail:
@@ -99,7 +117,7 @@ def garden(g, L, T):
             a = -9.6 + k * 19.2 / 9
             for (x, z) in ((a, -9.65), (a, 9.65), (-9.65, a), (9.65, a)):
                 rect(g, x - .07, x + .07, 0, z - .07, z + .07, F['lamp-soft'])
-    zones(g, L, 0.0, b, T)
+    zones(g, L, 0.0, b, T, 4)
     fascia(g, b, T, L)
 
 
@@ -166,7 +184,12 @@ def core(g, L, T):
         x0, x1, y0, y1, z0, z1 = b
         box(g, x0, x1, y0, y1, z0, z1, C, T, 0, cell=(1.5, 4, 0)[T.i], skip=('+y',) + (() if y0 > .1 else ('-y',)))
         if T.detail:
-            # formwork joints: a sunk line every 3 m up the outer faces
+            # formwork joints: a line every 2.5 m along the outer faces and every 3 m up them
+            for a in (-2.5, 0.0, 2.5):
+                for (cond, pa, pb, nn) in ((z0 <= -4.99 and x0 < a < x1, (a - .02, z0), (a + .02, z0), (0, 0, -1)), (z1 >= 4.99 and x0 < a < x1, (a - .02, z1), (a + .02, z1), (0, 0, 1)),
+                                           (x0 <= -4.99 and z0 < a < z1, (x0, a - .02), (x0, a + .02), (-1, 0, 0)), (x1 >= 4.99 and z0 < a < z1, (x1, a - .02), (x1, a + .02), (1, 0, 0))):
+                    if cond:
+                        g.face(((pa[0], y0, pa[1]), (pb[0], y0, pb[1]), (pb[0], y1, pb[1]), (pa[0], y1, pa[1])), CD, nn)
             for y in (3.0, 6.0, 9.0):
                 if y <= y0 + .1 or y >= y1:
                     continue
@@ -182,9 +205,9 @@ def core(g, L, T):
             # the lobby's ceiling light and the lit head over its mouth
             s = 1 if (z0 + z1) > 0 else -1
             cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
-            g.face(((cx - 1.1, y0, cz - .6), (cx + 1.1, y0, cz - .6), (cx + 1.1, y0, cz + .6), (cx - 1.1, y0, cz + .6)), F['lamp-soft'], (0, -1, 0))
+            g.face(((cx - 1.1, y0 - ly(1), cz - .6), (cx + 1.1, y0 - ly(1), cz - .6), (cx + 1.1, y0 - ly(1), cz + .6), (cx - 1.1, y0 - ly(1), cz + .6)), F['lamp-soft'], (0, -1, 0))
             zf = z1 if s > 0 else z0
-            g.face(((x0 + .15, y0 + .06, zf), (x1 - .15, y0 + .06, zf), (x1 - .15, y0 + .2, zf), (x0 + .15, y0 + .2, zf)), F['lamp'], (0, 0, s))
+            g.face(((x0 + .15, y0 + .06, zf + s * ly(1)), (x1 - .15, y0 + .06, zf + s * ly(1)), (x1 - .15, y0 + .2, zf + s * ly(1)), (x0 + .15, y0 + .2, zf + s * ly(1))), F['lamp'], (0, 0, s))
         if '-body-' in i:
             # the lift doors on the lobby's back wall: a steel frame, two stainless leaves, the call panel
             s = 1 if (z0 + z1) < 0 else -1          # the back wall faces the lobby's mouth
@@ -264,14 +287,14 @@ def decks(g, L, T):
             if h['kind'] != 'vent' or (h['a'][2] > 0) != (s > 0):
                 continue
             ax, hw = h['a'][0], h['size'][0] / 2
-            rect(g, ax - hw, ax + hw, y1, min(zo - s * .1, zo - s * .5), max(zo - s * .1, zo - s * .5), F['paint-yellow'])
+            rect(g, ax - hw, ax + hw, y1, min(zo - s * .1, zo - s * .5), max(zo - s * .1, zo - s * .5), F['paint-yellow'], 0, 2)
             if T.detail:
                 for k in range(4):
                     cx = ax - hw + (k + .5) * hw / 2
                     for row in range(3):
                         zc = zo - s * (1.6 + row * 1.4)
-                        g.face(((cx - .55, y1, zc - s * .35), (cx - .4, y1, zc - s * .45), (cx, y1, zc - s * .05), (cx, y1, zc + s * .15)), F['paint-yellow'], (0, 1, 0))
-                        g.face(((cx + .55, y1, zc - s * .35), (cx + .4, y1, zc - s * .45), (cx, y1, zc - s * .05), (cx, y1, zc + s * .15)), F['paint-yellow'], (0, 1, 0))
+                        g.face(((cx - .55, y1 + ly(1), zc - s * .35), (cx - .4, y1 + ly(1), zc - s * .45), (cx, y1 + ly(1), zc - s * .05), (cx, y1 + ly(1), zc + s * .15)), F['paint-yellow'], (0, 1, 0))
+                        g.face(((cx + .55, y1 + ly(1), zc - s * .35), (cx + .4, y1 + ly(1), zc - s * .45), (cx, y1 + ly(1), zc - s * .05), (cx, y1 + ly(1), zc + s * .15)), F['paint-yellow'], (0, 1, 0))
         # knee braces back to the tower's wall under it
         if T.i < 2:
             zi = z0 if s > 0 else z1
@@ -405,7 +428,7 @@ def pavilions(g, L, T):
                         g.face(((x, ya, z0 + a0), (x, ya, z0 + a1), (x, yb, z0 + a1), (x, yb, z0 + a0)), f, (sgn, 0, 0))
             Q(0, ln, 0, .42, .05, F['paving-dark'], .05)
             Q(0, ln, 2.95, 3.2, .09, F['coping'], .09)
-            Q(0, ln, 2.42, 2.9, .0, F['glass'])
+            Q(0, ln, 2.42, 2.9, ly(1), F['glass'])
             if T.i == 0:
                 n = max(1, int(ln / .26))
                 for k in range(n):
@@ -419,7 +442,7 @@ def pavilions(g, L, T):
                     a = ln * (k + .5) / n
                     Q(a - .16, a + .16, .47, 2.36, .04, F['timber'], .04)
             else:
-                Q(0, ln, .47, 2.36, .0, F['timber'])
+                Q(0, ln, .47, 2.36, ly(1), F['timber'])
     for i in kit.ids(L, 'skyframe-counter-'):
         x0, x1, y0, y1, z0, z1 = blk(L, i)
         box(g, x0, x1, y0, y1 - .06, z0, z1, F['timber'], T, .015, cell=0, skip=('-y',))
@@ -663,6 +686,7 @@ def overhead(g, L, T):
 
 def static_scene(L, T):
     g = Geo()
+    kit.LAYER[0] = sk.LIFT_TIER[T.i]
     garden(g, L, T)
     core(g, L, T)
     columns(g, L, T)

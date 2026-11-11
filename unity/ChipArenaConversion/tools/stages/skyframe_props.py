@@ -251,7 +251,7 @@ def load(L, T):
 def crown(T, v):
     """A tree's crown from the trunk's top: boughs and masses of leaves, lit gold where they face the low sun."""
     g = Geo()
-    n = (11, 8, 5)[T.i]
+    n = (15, 10, 6)[T.i]
     seed = 40 + v * 17
     for k in range(4 if T.i < 2 else 0):
         a = k * math.pi / 2 + v
@@ -259,7 +259,7 @@ def crown(T, v):
     rod(g, (0, -.4, 0), (0, 1.3, 0), .11, F['bark'], (6, 5, 4)[T.i])
     for k in range(n):
         a = k * 2.399 + v
-        rr = (.35 + .95 * math.sqrt((k + .5) / n)) * (1.0 + .15 * v)
+        rr = (.4 + 1.25 * math.sqrt((k + .5) / n)) * (1.0 + .12 * v)
         y = .9 + 2.0 * hashf(seed, k, 3) * (1 - rr / 2.6) + (.9 if k == 0 else 0)
         r = (1.05 - .25 * hashf(seed, k, 4)) * (1.25 if k == 0 else 1.0)
         cols = ('leaf-gold', 'leaf-light', 'leaf-dark') if hashf(seed, k, 5) > .7 else ('leaf-light', 'leaf', 'leaf-dark')
