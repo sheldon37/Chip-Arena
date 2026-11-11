@@ -10,6 +10,7 @@ namespace ChipArena.UnityConversion
         private ExpeditionViewReceiver expeditionReceiver;private ExpeditionGuestCommands expeditionGuest;
         private string expeditionStamp;private float expeditionNextSend;private IExpeditionCommands expeditionLocal;
         private ExpeditionAreaReadyRequest expeditionLoadedTicket;private float expeditionNextReady;
+        private readonly ExpeditionLoadInbox<NativeNetMessage> expeditionLoadInbox=new ExpeditionLoadInbox<NativeNetMessage>();
         private ExpeditionView expeditionView;
         private readonly ExpeditionLoadReportStore expeditionLoadReports=new ExpeditionLoadReportStore();
         private ExpeditionCohortTicket expeditionProgressTicket;
@@ -100,8 +101,16 @@ namespace ChipArena.UnityConversion
             expeditionNextReady=Time.unscaledTime+(float)NativeExpeditionLoadWindow.RetrySeconds;
             SendServer(new NativeNetMessage{type="expedition-area-ready",expeditionAreaReady=expeditionLoadedTicket});
         }
+        private void ApplyPendingExpeditionFrame()
+        {
+            var message=expeditionLoadInbox.Take();
+            if(message==null||server==null||server.Closed||ExpeditionView?.areaIdentity?.Matches(message.frame.areaIdentity)!=true)return;
+            try{ClientMessage(new NativeNetMessage{type="frame",epoch=message.epoch,frame=message.frame});stageFrom=null;}
+            catch(Exception e)
+            {Debug.LogWarning("Expedition destination load failed: "+e);joinError="Expedition destination load failed: "+e.Message;server.Dispose();throw;}
+        }
         private void ResetExpeditionNetwork()
-        {ResetBossBattleContent();expeditionLoading.Reset();expeditionLoadReports.Clear();expeditionProgressTicket=null;expeditionLastProgress=-1;expeditionLastProgressAt=-1000;expeditionNextLoadBroadcast=0;DisposeSplitAreas();expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
+        {expeditionLoadInbox.Reset();ResetBossBattleContent();expeditionLoading.Reset();expeditionLoadReports.Clear();expeditionProgressTicket=null;expeditionLastProgress=-1;expeditionLastProgressAt=-1000;expeditionNextLoadBroadcast=0;DisposeSplitAreas();expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
         private void ExpeditionNetworkTick()
         {
             try{ExpeditionNetworkStep();}

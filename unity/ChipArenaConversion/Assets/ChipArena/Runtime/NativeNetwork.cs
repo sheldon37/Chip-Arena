@@ -194,8 +194,23 @@ namespace ChipArena.UnityConversion
                 if(view?.areaIdentity==null||personal?.areaIdentity==null||frame?.areaIdentity==null||
                     !view.areaIdentity.Matches(personal.areaIdentity)||!view.areaIdentity.Matches(frame.areaIdentity)||
                     personal.viewer!=account?.Access.AccountId||!frame.Valid(content))throw new ArgumentException("Invalid Expedition state bundle: area, viewer or frame validation failed");
+                bool changed=ExpeditionView?.areaIdentity?.Matches(view.areaIdentity)!=true;
                 ClientMessage(new NativeNetMessage{type="expedition-public",epoch=message.epoch,generation=frame.generation,expeditionPublic=view});
                 ClientMessage(new NativeNetMessage{type="expedition-private",expeditionPrivate=personal});
+                if(ExpeditionView?.areaIdentity?.Matches(frame.areaIdentity)!=true)return;
+                if(expeditionLoadInbox.Pending||changed||arena==null||arena.MapId!=frame.map)
+                {
+                    bool waiting=expeditionLoadInbox.Pending;
+                    if(!expeditionLoadInbox.Offer(frame.areaIdentity,frame.sequence,message))return;
+                    if(!waiting||changed)
+                    {
+                        // Publish the party/ticket now, but build collision and the replica only
+                        // after the loading screen has actually painted on this guest.
+                        RequestStage(arena==null?StageLoadKind.Expedition:StageLoadKind.Area,ApplyPendingExpeditionFrame);
+                        StageRestart();stageView.Stage(content.Map(frame.map),Time.unscaledTime,NativeExpeditionStates.AreaName(view.area));
+                    }
+                    return;
+                }
                 ClientMessage(new NativeNetMessage{type="frame",epoch=message.epoch,frame=frame});return;
             }
             if(message.type=="ping"){server.Send(NativeNetCodec.Encode(new NativeNetMessage{type="pong",id=message.id}));return;}if(message.type=="pong"){server.Metrics.Pong(message.id,NativeConnectionMetrics.Now);return;}
