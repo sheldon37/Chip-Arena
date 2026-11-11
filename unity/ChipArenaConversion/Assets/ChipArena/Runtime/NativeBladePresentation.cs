@@ -31,10 +31,10 @@ namespace ChipArena.UnityConversion
             if(first||a?.SourceSpec!=NativeKatana.Spec||sourceModels==null||rig==null)return;
             var pelvis=visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.PosedFrame==Time.frameCount?VisualJointFrame(rig,CapturedRig.Pelvis):rig.Bones[CapturedRig.Pelvis].localToWorldMatrix;
             var frame=pelvis*Matrix4x4.TRS(SayaAt,Quaternion.LookRotation(SayaAxis.normalized,SayaUp),Vector3.one);
-            sourceModels.Queue(SayaModel,Matrix4x4.identity,_=>frame,null,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:flash,partTint:tint);
+            sourceModels.Queue(SayaModel,frame,null,null,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:flash,partTint:tint);
             // Sheathed: the katana in the saya on the saya's own axes, its habaki seated in the mouth (NativeWeaponModels.KatanaSayaSeat) and
             // the hilt out of it.
-            if(KatanaSheathed(a,time)){var sheath=frame*Matrix4x4.Translate(new Vector3(0,0,-NativeWeaponModels.KatanaSayaSeat));sourceModels.Queue("weapon-"+NativeKatana.Spec,Matrix4x4.identity,_=>sheath,null,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:flash,partTint:tint,glow:HeldGlow);}
+            if(KatanaSheathed(a,time)){var sheath=frame*Matrix4x4.Translate(new Vector3(0,0,-NativeWeaponModels.KatanaSayaSeat));sourceModels.Queue("weapon-"+NativeKatana.Spec,sheath,_=>sheath,null,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:flash,partTint:tint,glow:HeldGlow);}
         }
         /// <summary>The Fangs' thrown knives in flight (reconstructed from the throw, as the effects draw their streaks), each its own blade.</summary>
         private void RenderBlades(Snapshot s,float time)
@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
                         // Tip first, spinning about its own length a little as it flies.
                         var m=Matrix4x4.TRS(new Vector3(p.X,p.Y,p.Z),Quaternion.LookRotation(fwd,Vector3.up)*Quaternion.AngleAxis(time*900%360,Vector3.forward),Vector3.one*.8f);
                         knifeFrames.Add(m);
-                        sourceModels.Queue("loose-"+NativeFangs.Spec,Matrix4x4.identity,_=>m,null,0,null,accent:AccentTint(a.AccentColor),glow:HeldGlow);
+                        sourceModels.Queue("loose-"+NativeFangs.Spec,m,null,null,0,null,accent:AccentTint(a.AccentColor),glow:HeldGlow);
                     }
                 }
             }
