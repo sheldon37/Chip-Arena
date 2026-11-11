@@ -537,6 +537,24 @@ def furniture(g, L, T, side):
         elif i.endswith('-screen'):
             planks(g, x0, x1, y0, y1, z0, z1, T, F['timber'], F['timber-z'])
             sk.box(g, x0 - .02, x1 + .02, y0, y0 + .2, z0 - .02, z1 + .02, F['timber-dark'], T, bevel=.02, cell=0, skip=('-y',))
+            if T.detail:
+                # on the screen wall: a lamp each face, a notice board and a shelf toward the bunks, a chart toward the stove
+                for (px, sgn) in ((x0, -1), (x1, 1)):
+                    for zc in (z0 + 1.6, z1 - 1.6):
+                        sk.box(g, px + (-.1 if sgn < 0 else 0), px + (0 if sgn < 0 else .1), y0 + 2.3, y0 + 2.46, zc - .1, zc + .1, F['lamp'], T, bevel=.02, cell=0)
+                cz = (z0 + z1) / 2
+                sk.box(g, x0 - .035, x0, y0 + 1.15, y0 + 2.05, cz - 1.9, cz - .5, F['timber-dark'], T, bevel=.01, cell=0)
+                g.face(((x0 - .037, y0 + 1.2, cz - 1.85), (x0 - .037, y0 + 1.2, cz - .55), (x0 - .037, y0 + 2.0, cz - .55), (x0 - .037, y0 + 2.0, cz - 1.85)), F['white'], normal=(-1, 0, 0))
+                for k in range(6):
+                    u, v = cz - 1.7 + (k % 3) * .42, y0 + 1.36 + (k // 3) * .34
+                    g.face(((x0 - .039, v, u), (x0 - .039, v, u + .26), (x0 - .039, v + .22, u + .26), (x0 - .039, v + .22, u)), (F['yellow'], F['orange'], F['screen'])[k % 3] if k % 2 else F['concrete'], normal=(-1, 0, 0))
+                sk.box(g, x0 - .2, x0, y0 + 1.5, y0 + 1.54, cz + .5, cz + 2.3, F['timber'], T, bevel=.01, cell=0)
+                for k in range(5):
+                    u = cz + .6 + k * .34
+                    sk.box(g, x0 - .17, x0 - .03, y0 + 1.54, y0 + 1.7 + .1 * H(k, 3), u, u + .22, (F['red'], F['steel'], F['blue-paint'], F['yellow'], F['white'])[k], T, bevel=.02, cell=0)
+                sk.box(g, x1, x1 + .03, y0 + 1.1, y0 + 2.1, cz - 1.2, cz + 1.2, F['timber-dark'], T, bevel=.01, cell=0)
+                g.face(((x1 + .032, y0 + 1.16, cz - 1.14), (x1 + .032, y0 + 1.16, cz + 1.14), (x1 + .032, y0 + 2.04, cz + 1.14), (x1 + .032, y0 + 2.04, cz - 1.14)), F['ice'], normal=(1, 0, 0))
+                g.face(((x1 + .034, y0 + 1.4, cz - .7), (x1 + .034, y0 + 1.3, cz + .2), (x1 + .034, y0 + 1.7, cz + .6), (x1 + .034, y0 + 1.9, cz - .3)), F['snow'], normal=(1, 0, 0))
         elif i.endswith('-stove'):
             # a cast-iron stove: a drum on legs, its door glowing, its pipe up through the roof
             cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
