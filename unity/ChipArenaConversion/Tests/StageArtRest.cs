@@ -45,9 +45,9 @@ internal static class StageArtRest
             case "factory":
             {
                 var looks=NativeFactoryKit.Resolve(look.kitLooks);var rig=new NativeFactoryRig(looks);FactoryHazard[] hz=map.hazards;rig.Build(hz,0,t);NativeFactoryArt.Pose(hz,map.blocks,0,t,t,pose);slots=NativeFactoryArt.Slots;
-                for(int i=0;i<rig.Parts.Count;i++){if(!rig.Kept[i])continue;var p=rig.Parts.Items[i];Box("lamp",p.X,p.Y,p.Z,p.Hx,p.Hy,p.Hz,p.Qx,p.Qy,p.Qz,p.Qw);}
+                for(int i=0;i<rig.Parts.Count;i++){if(!rig.Kept[i])continue;var p=rig.Parts.Items[i];Box("lamp",p.X,p.Y,p.Z,p.Hx,p.Hy,p.Hz,p.Qx,p.Qy,p.Qz,p.Qw,NativeStageArt.KitLayers);}
                 var kit=NativeFactoryKit.Build(map.blocks,hz,looks);int g=NativeFactoryKit.Glass;
-                for(int i=0;i<kit.Count;i++){var p=kit.Items[i];if(p.Shadow||p.Look!=looks.Look[g]||p.Color!=looks.Color[g]||p.Flags!=looks.Flags[g])continue;Box("pane",p.X,p.Y,p.Z,p.Hx,p.Hy,p.Hz,p.Qx,p.Qy,p.Qz,p.Qw);}
+                for(int i=0;i<kit.Count;i++){var p=kit.Items[i];if(p.Shadow||p.Look!=looks.Look[g]||p.Color!=looks.Color[g]||p.Flags!=looks.Flags[g])continue;Box("pane",p.X,p.Y,p.Z,p.Hx,p.Hy,p.Hz,p.Qx,p.Qy,p.Qz,p.Qw,NativeStageArt.KitLayers);}
                 break;
             }
             case "cybercity":

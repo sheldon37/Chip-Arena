@@ -66,8 +66,9 @@ namespace ChipArena.UnityConversion
                 for(int oj=oi+1;oj<count;oj++)
                 {
                     int j=order[oj];int b=j*6;if(boxes[b]-boxes[b+3]>aMax)break;if(skip!=null&&skip[j])continue;
-                    // one order per pair: where two faces disagree (each box proud of the other on one side), the smaller box is on top
-                    bool aUp=false,bUp=false;
+                    // one order per pair: where two faces disagree (each box proud of the other on one side) the tops decide (floors are
+                    // seen from above), else the smaller box is on top
+                    bool aUp=false,bUp=false,aTop=false,bTop=false;
                     for(int ax=0;ax<3;ax++)
                     {
                         int u=(ax+1)%3,v=(ax+2)%3;
@@ -78,11 +79,13 @@ namespace ChipArena.UnityConversion
                         for(int sign=-1;sign<=1;sign+=2)
                         {
                             float gap=sign*((boxes[a+ax]+sign*boxes[a+3+ax])-(boxes[b+ax]+sign*boxes[b+3+ax]));if(Math.Abs(gap)>reach)continue;
-                            if(gap>tie||gap>=-tie&&(areaA<areaB||areaA==areaB&&i>j))aUp=true;else bUp=true;
+                            bool over=gap>tie||gap>=-tie&&(areaA<areaB||areaA==areaB&&i>j);if(over)aUp=true;else bUp=true;
+                            if(ax==1&&sign>0){if(over)aTop=true;else bTop=true;}
                         }
                     }
                     if(!aUp&&!bUp)continue;
-                    if(aUp&&bUp){float va=boxes[a+3]*boxes[a+4]*boxes[a+5],vb=boxes[b+3]*boxes[b+4]*boxes[b+5];aUp=va<vb||va==vb&&i>j;}
+                    if(aUp&&bUp&&aTop!=bTop)aUp=aTop;
+                    else if(aUp&&bUp){float va=boxes[a+3]*boxes[a+4]*boxes[a+5],vb=boxes[b+3]*boxes[b+4]*boxes[b+5];aUp=va<vb||va==vb&&i>j;}
                     int top=aUp?i:j,bottom=aUp?j:i;(under[top]??=new List<int>()).Add(bottom);
                 }
             }

@@ -784,6 +784,16 @@ class StageBank:
         self.solid = self.bank.material('stage')
         self.glowm = self.bank.material('stage-glow', emission_color=(1, 1, 1))
         self.stats = {}
+        self.rests = {}
+
+    def at(self, block_id, pos, quat=(0.0, 0.0, 0.0, 1.0)):
+        """Where a block's model stands at the round's start (its map block's centre and rotation), for a stage whose blocks
+        are its building (Brickfall's modules, Cyber City's billboards): `layer` then settles those models with the static
+        chunks and with one another, in the world, instead of each by itself."""
+        x, y, z, w = (float(v) for v in quat)
+        self.rests[block_id] = np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w), float(pos[0])],
+                                         [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w), float(pos[1])],
+                                         [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y), float(pos[2])]])
 
     def mesh(self, om):
         mats = [self.solid, self.glowm][:len(om.submeshes)]
@@ -810,7 +820,8 @@ class StageBank:
     def layer(self):
         """Writes every triangle's layer (layer_polys) into the meshes, as layer / 32 on top of the fine surface's kind (uv1.x: a
         runtime without layers rounds it away), for ChipArena/StageLit to part stacked faces by: the static chunks of each tier together, in the world (a chunk's paint
-        on its neighbour's slab; the parts a chunk was baked in); each block's and each rig part's model by itself. A corner
+        on its neighbour's slab; the parts a chunk was baked in) with the block models that were given their place (`at`); each
+        other block's and each rig part's model by itself. A corner
         that triangles of different layers share is split. Returns (triangles layered, triangles)."""
         meshes = self.bank.meshes
         scenes, seen = [], set()
@@ -818,8 +829,14 @@ class StageBank:
         for name, group, lo, hi, parts in self.bank.props:
             if not parts:
                 continue
+            rest = self.rests.get(name[6:].rsplit('/', 1)[0]) if group == 'block' else None
             if group == 'static':
                 tiers.setdefault(name.rsplit('/', 1)[-1], []).extend(parts)
+            elif rest is not None:
+                for mi, m in parts:
+                    A = np.array(m, dtype=np.float64).reshape(3, 4)
+                    W = np.concatenate([rest[:, :3] @ A[:, :3], (rest[:, :3] @ A[:, 3] + rest[:, 3])[:, None]], axis=1)
+                    tiers.setdefault(name.rsplit('/', 1)[-1], []).append((mi, W.reshape(-1).tolist()))
             else:
                 scenes.append(list(parts))
         scenes = list(tiers.values()) + scenes

@@ -117,6 +117,9 @@ def main():
     import cybercity_props as props
     import cybercity_city as city
     sb = sk.StageBank()
+    # the block models are the stage's own building: layered where they stand, with the chunks and with one another
+    for b in L['blocks']:
+        sb.at(b['id'], b['pos'], b['rot'])
     chunks = sk.Chunks(16.0, (-40.0, -32.0), (-.6, 6.0, 16.5))
     floors = (-4.0, 0.0, 3.6, 7.2, 10.8)
     tiers = [int(x) for x in args.tiers.split(',')]

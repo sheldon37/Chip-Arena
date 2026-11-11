@@ -31,6 +31,16 @@ namespace ChipArena.UnityConversion
             return activeCovers.Contains(blockId)&&stage<=NativeStageArt.Keep;
         }
 
+        /// <summary>Kit boxes kept over the art, `layers` nearer the eye along their rays (Core NativeStageArt.Nearer): each place
+        /// scaled about the eye, so a box covers the same pixels at a nearer depth. from and to may not be the same array.</summary>
+        public static void Nearer(Matrix4x4[] from,Matrix4x4[] to,int count,Vector3 eye,float layers)
+        {
+            for(int i=0;i<count;i++)
+            {
+                var m=from[i];float s=1-NativeStageArt.Nearer(Mathf.Sqrt((m.m03-eye.x)*(m.m03-eye.x)+(m.m13-eye.y)*(m.m13-eye.y)+(m.m23-eye.z)*(m.m23-eye.z)),layers);
+                m.m00*=s;m.m01*=s;m.m02*=s;m.m10*=s;m.m11*=s;m.m12*=s;m.m20*=s;m.m21*=s;m.m22*=s;m.m03=eye.x+(m.m03-eye.x)*s;m.m13=eye.y+(m.m13-eye.y)*s;m.m23=eye.z+(m.m23-eye.z)*s;to[i]=m;
+            }
+        }
         private sealed class ChunkDraw{public NativeStageArt.Chunk Plan;public Renderer[] Tiers=new Renderer[NativeStageArt.Tiers];public Bounds Box;public int Shown=-1;}
         private sealed class Piece{public Mesh Mesh;public Matrix4x4 Place;public int Subs;}
         private sealed class BlockDraw{public Piece[] Tiers;public float S1,S2,Max;}

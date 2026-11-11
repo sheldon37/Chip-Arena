@@ -139,6 +139,14 @@ internal static class StageArtChecks
             var ring=new float[12*6];for(int i=0;i<12;i++){double a=i*Math.PI/6;ring[i*6]=(float)Math.Cos(a)*2;ring[i*6+1]=0;ring[i*6+2]=(float)Math.Sin(a)*2;ring[i*6+3]=.8f;ring[i*6+4]=.01f;ring[i*6+5]=.8f;}
             var rl=new int[12];NativeStageArt.BoxLayers(ring,12,null,rl);Check(rl.All(v=>v>=0&&v<=NativeStageArt.MostLayers-NativeStageArt.KitLayers)&&rl.Max()>0,"a ring of boxes in one plane stays within the layers");
         }
+        foreach(var stage in new[]{"Factory","Emporium","Club"})
+        {
+            var pres=R("Assets/ChipArena/Runtime/Native"+stage+"Presentation.cs");
+            Check(pres.Contains("ArtDrawn=art.Render(arena,camera,low,artPose);}nearEye=ArtDrawn?camera:null;")&&pres.Contains("var M=b.M;if(nearEye!=null){NativeStageArtDraw.Nearer(b.M,nearM,b.Count,nearEye.transform.position,NativeStageArt.KitLayers);M=nearM;}")
+                &&pres.Contains("Graphics.DrawMeshInstanced(Block,0,lit,M,b.Count,props,shadow,true,0,null);return;")&&pres.Contains("            nearEye=null;"),
+                stage+": the boxes kept over the art draw the kit's layers nearer the eye, only while the art draws");
+        }
+        Check(draw.Contains("public static void Nearer(Matrix4x4[] from,Matrix4x4[] to,int count,Vector3 eye,float layers)")&&draw.Contains("m.m03=eye.x+(m.m03-eye.x)*s;m.m13=eye.y+(m.m13-eye.y)*s;m.m23=eye.z+(m.m23-eye.z)*s;to[i]=m;"),"kept boxes are scaled about the eye (the same pixels, a nearer depth)");
         var wardDraw=R("Assets/ChipArena/Runtime/NativeWardZeroPresentation.cs");var metroDraw=R("Assets/ChipArena/Runtime/NativeCyberCityPresentation.cs");
         Check(wardDraw.Contains("if(art&&eye!=null){float near=1-NativeStageArt.Nearer(Vector3.Distance(from,at),NativeStageArt.KitLayers+(i<wzKitLayer.Length?wzKitLayer[i]:0));place=Matrix4x4.TRS(from+(at-from)*near,q,new Vector3(near,near,near));}")
             &&wardDraw.Contains("wzKitLayer=NativeWardZeroArt.KeptLayers(wzKit,blocks);"),"Ward Zero's kept boxes draw nearer the eye over the art, scaled about the eye; without the art as before");

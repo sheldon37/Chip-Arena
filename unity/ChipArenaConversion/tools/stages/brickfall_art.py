@@ -499,6 +499,9 @@ def main():
     S = Stage(L)
     import brickfall_props as props
     sb = sk.StageBank()
+    # the block models are the stage's own building: layered where they stand, with the chunks and with one another
+    for b in L['blocks']:
+        sb.at(b['id'], b['pos'], b['rot'])
     chunks = sk.Chunks(16.0, (-32.0, -32.0), (-1.0, 14.05))
     floors = (0.0,)
     t0 = time.time()
