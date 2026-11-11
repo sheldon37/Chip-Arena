@@ -20,6 +20,7 @@
   - all eleven hats (cap, beanie, top hat, wizard, crown, cone, antenna, halo, cowboy, auditor's halo, Sheldon Head), against shared's code first.
   - Before: tilted off the crown, over the face, sprigs through the cowboy hat. After: each on the crown and following its lean, the sprigs hidden under the closed hats.
 - **Not run:** no person or two-client run; corpses with hats and the Locker's portrait not looked at; only the sword's idle stance.
+- **Released:** full suite at `b2b1624c` (shared merged in): 1014 groups, exit 0; `git diff --check` clean; Unity compile PASS. Merged `86f774a8`; builder succeeded and published to the test channel: revision 639300200572615902, 314.8 MiB (the builder's status read the feed before it refreshed; its agent log has "Published native Unity build 7b7c850b..."). No live release; the bank and the Drive zip unchanged.
 
 ## 2026-11-11 — Claude: the Katana's saya on the body where the pack wears it, carried by the left hand as the pack's clips carry it, and the blade classes' intros holding their blades as the match does (owner request)
 
