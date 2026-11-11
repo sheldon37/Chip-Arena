@@ -87,6 +87,8 @@ namespace ChipArena.UnityConversion
             public readonly List<RooftopSprite> Glows=new List<RooftopSprite>(),Mist=new List<RooftopSprite>(),Steam=new List<RooftopSprite>(),Motes=new List<RooftopSprite>(),Rain=new List<RooftopSprite>();
             public readonly List<RooftopLight> Lights=new List<RooftopLight>();
             public Vector3 SparkAt,SignLight,CyanLight,Beacon;public int LotCount;
+            /// <summary>The old TV set's quads (first, count): the one piece added to the city on 2026-11-11.</summary>
+            public int EggFirst,EggCount;
             /// <summary>The layout export's notes (null unless Build was asked for them) and the lot being built.</summary>
             public List<RooftopNote> Notes;public int NoteLot=-1;
             internal void Stamp(int from,int part){for(int i=from;i<Quads.Count;i++){var q=Quads[i];q.Part=part;Quads[i]=q;}}
@@ -121,10 +123,10 @@ namespace ChipArena.UnityConversion
             {
                 var c=At(sx,sy,dist);float half=size*.5f,ry=(float)Math.Atan2(eye0.X-c.X,eye0.Z-c.Z),back=half*Math.Abs((float)Math.Sin(ry))+2;
                 keepOut.Add(new Rect2(c.X-size*.75f,c.X+size*.75f,c.Z-back-size*1.2f,c.Z+size*.6f));
-                Bld(c.X-size*.6f,c.X+size*.6f,c.Z-size*1.1f-back,c.Z-back,c.Y+half*aspect+(kind=="chip"?2.5f:10+size*.25f),kind=="siren"?.6f:.2f,kind!="siren");
+                Bld(c.X-size*.6f,c.X+size*.6f,c.Z-size*1.1f-back,c.Z-back,c.Y+half*aspect+(kind=="stages"?2.5f:10+size*.25f),kind=="classes"?.6f:.2f,kind!="classes");
                 w.Screens.Add(new RooftopScreen{Kind=kind,Center=c,Width=size,Height=size*aspect,Yaw=ry,Gain=gain});int from=w.Quads.Count;ScreenFrame(w,c,ry,size,size*aspect,back);w.Stamp(from,CityPart);
             }
-            Tower("siren",.82f,.21f,320,48,1,1.8f);Tower("arena",.57f,.13f,470,34,1,1.6f);Tower("chip",.665f,.43f,160,30,.75f,1.5f);Tower("banner",.955f,.33f,210,9,3,1.6f);
+            Tower("classes",.82f,.21f,320,48,1,1.8f);Tower("brand",.57f,.13f,470,34,1,1.6f);Tower("stages",.665f,.43f,160,30,.75f,1.5f);Tower("banner",.955f,.33f,210,9,3,1.6f);
             var lots=Lots(custom,keepOut);w.LotCount=lots.Count;
             Towers(w,lots);Perch(w);
             int set=w.Quads.Count;
@@ -135,7 +137,7 @@ namespace ChipArena.UnityConversion
             // street glow strips along the avenue floor
             for(float z=60;z>-1500;z-=6){float k=.6f+.4f*Hash2((int)z,3);Quad(w,new Vector3(30,Street+.2f,z),new Vector3(62,Street+.2f,z),new Vector3(62,Street+.2f,z-5),new Vector3(30,Street+.2f,z-5),Vector3.UnitY,Vector4.Zero,Neon,new Vector4(.25f*k,.08f*k,.25f*k,1));}
             Traffic(w);Sprites(w,quality,low);
-            var chip=w.Screens.Find(s=>s.Kind=="chip");w.SparkAt=new Vector3(chip.Center.X-chip.Width*.5f,chip.Center.Y+chip.Height*.5f,chip.Center.Z);
+            var chip=w.Screens.Find(s=>s.Kind=="stages");w.SparkAt=new Vector3(chip.Center.X-chip.Width*.5f,chip.Center.Y+chip.Height*.5f,chip.Center.Z);
             Lights(w);
             return w;
         }
@@ -212,7 +214,7 @@ namespace ChipArena.UnityConversion
         {
             var r=new Random(2026);
             foreach(var s in w.Screens){if(s.Kind=="sign")continue;Camera(0,out var eye,out _);var p=s.Center+Vector3.Normalize(eye-s.Center)*(Math.Max(s.Width,s.Height)*.9f);
-                w.Glows.Add(new RooftopSprite{Position=p,Color=s.Kind=="siren"?new Vector4(.8f,.25f,1.2f,.35f):s.Kind=="chip"?new Vector4(.2f,.8f,1f,.35f):new Vector4(.2f,.9f,1.1f,.35f),Size=Math.Max(s.Width,s.Height)*2.4f,Kind=Glow});}
+                w.Glows.Add(new RooftopSprite{Position=p,Color=s.Kind=="classes"?new Vector4(.8f,.25f,1.2f,.35f):s.Kind=="stages"?new Vector4(.2f,.8f,1f,.35f):s.Kind=="retro"?new Vector4(.35f,.5f,.8f,.22f):new Vector4(.2f,.9f,1.1f,.35f),Size=Math.Max(s.Width,s.Height)*2.4f,Kind=Glow});}
             w.Glows.Add(new RooftopSprite{Position=w.Beacon,Color=new Vector4(2.6f,.25f,1.4f,1),Size=.9f,Kind=Glow,Seed=.1f});
             w.Glows.Add(new RooftopSprite{Position=new Vector3(RoofX1+.7f,-3.5f,-1.3f),Color=new Vector4(2,.2f,1.6f,.5f),Size=9,Kind=Glow});
             w.Glows.Add(new RooftopSprite{Position=new Vector3(RoofX1+.7f,-4,-1.3f),Color=new Vector4(2.4f,.3f,2,.8f),Size=3,Kind=Glow});

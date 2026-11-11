@@ -19,10 +19,12 @@ namespace ChipArena.UnityConversion
     ///    street's glow and the screens' spill), the built detail (NativeRooftopProp.shader: our roof, parapets, plant, masts,
     ///    tanks, signs) and the neon, puddles and the rest (NativeRooftop.shader picks the look per vertex); the eight lights
     ///    (Core NativeRooftopCity.Lights) as globals each frame;
-    ///  - the holo screens: a quad each, their ads rasterised from NativeRooftopArt markup on worker threads (NativeIconRaster
-    ///    is engine-free) and uploaded as they finish, so the first frames are not held up (a screen glows dark until then);
-    ///    animated by Core NativeRooftopCity.ScreenState each frame (_Anim: brightness, the cut to its own loop, the sweep, the
-    ///    letters' chase), their lights breathing with them; their frames are in the prop mesh;
+    ///  - the holo screens: a quad each, their ads rasterised from Core markup on worker threads (NativeIconRaster is
+    ///    engine-free; NativeRooftopAds' rotating slides of the public classes, the remodelled stages, the Expedition and the
+    ///    game's logo, NativeRooftopArt's two signs and the old TV set's Ricochet card) and uploaded as they finish, two a
+    ///    frame, so the first frames are not held up (a screen glows dark until then); animated by Core
+    ///    NativeRooftopCity.ScreenAnim each frame (the brightness, a cut's glitch, the sweep, the letters' chase, the slide and
+    ///    its age, the TV set's bouncing card), their lights breathing with them; their frames are in the prop mesh or the art;
     ///  - the flying cars: one dynamic mesh rebuilt each frame from the lanes (periods dividing the 48 s loop);
     ///  - the sprinkle: static sprite meshes the shader animates (mist, glows, steam, motes, rain) and one small dynamic
     ///    layer for car lights and trails, the faulty sign's sparks, the duel's tracers and deflection sparks, the beacon blink.
@@ -45,6 +47,8 @@ namespace ChipArena.UnityConversion
         private readonly Vector4[] lightPos=new Vector4[NativeRooftopCity.LightCount],lightCol=new Vector4[NativeRooftopCity.LightCount];
         private readonly RooftopScreen[] screens;private readonly Matrix4x4[] screenMatrix;private readonly MaterialPropertyBlock[] screenBlock;
         private readonly Dictionary<string,Texture2D> ads=new Dictionary<string,Texture2D>();private readonly Dictionary<string,Task<float[]>> adJobs=new Dictionary<string,Task<float[]>>();
+        // The rotating screens' slides (Core NativeRooftopAds; null for a fixed screen), each slide's texture key and accent.
+        private readonly RooftopSlide[][] slides;private readonly string[][] slideKeys;private readonly Vector4[][] slideAccent;private int uploads;
         // the dynamic layers' buffers, reused every frame (no per-frame allocation)
         private readonly Vector3[] dynPos=new Vector3[DynamicCapacity*4];private readonly Vector4[] dynUv0=new Vector4[DynamicCapacity*4],dynUv2=new Vector4[DynamicCapacity*4],dynUv3=new Vector4[DynamicCapacity*4];private int dynCount;
         private readonly Vector3[] carPos,carNormal;private readonly Vector4[] carUv;
@@ -52,6 +56,15 @@ namespace ChipArena.UnityConversion
         private static readonly Bounds Everywhere=new Bounds(Vector3.zero,Vector3.one*8000);
         private static readonly int TimeId=Shader.PropertyToID("_RoofTime"),SignPosId=Shader.PropertyToID("_RoofSignPos"),SignColorId=Shader.PropertyToID("_RoofSignColor"),CyanPosId=Shader.PropertyToID("_RoofCyanPos");
         private static readonly int MainTexId=Shader.PropertyToID("_MainTex"),GainId=Shader.PropertyToID("_Gain"),UvRectId=Shader.PropertyToID("_UvRect"),CalmId=Shader.PropertyToID("_Calm"),KindId=Shader.PropertyToID("_Kind"),AnimId=Shader.PropertyToID("_Anim");
+        private static readonly int SlideId=Shader.PropertyToID("_Slide"),BandsId=Shader.PropertyToID("_Bands"),AccentId=Shader.PropertyToID("_Accent"),EggId=Shader.PropertyToID("_Egg"),Egg2Id=Shader.PropertyToID("_Egg2");
+        // The game's logo (owner 2026-11-11: "This is also the new logo for the game"; Resources/ChipArenaLogo, docs/ASSET-CREDITS.md):
+        // the home screen's title and the brand screen's slide. Null without it (the vector wordmark draws).
+        private static Texture2D logo;private static bool logoAsked;
+        public static Texture2D Logo(){if(!logoAsked){logoAsked=true;logo=Resources.Load<Texture2D>("ChipArenaLogo");}return logo;}
+        // The content's weapons, read once for the class screen's rotation (the public ones: NativeRooftopAds.Classes).
+        [Serializable] private sealed class Roster {public ContentWeapon[] weapons;}
+        private static ContentWeapon[] roster;
+        private static ContentWeapon[] Weapons(){if(roster==null){var asset=Resources.Load<TextAsset>("GameContent");try{roster=asset!=null?JsonUtility.FromJson<Roster>(asset.text)?.weapons:null;}catch(Exception){roster=null;}roster??=new ContentWeapon[0];}return roster;}
         private static readonly int LightPosId=Shader.PropertyToID("_RoofLightPos"),LightColId=Shader.PropertyToID("_RoofLightCol");
         private static readonly int RoofToonFogId=Shader.PropertyToID("_RoofToonFog"),RoofSkyToonId=Shader.PropertyToID("_RoofSkyToon"),RoofSkyLitId=Shader.PropertyToID("_RoofSkyLit"),RoofSkyShadeId=Shader.PropertyToID("_RoofSkyShade");
         private static readonly Vector4 roofToonFog=V4(NativeMenuStyle.RoofFog);
@@ -89,12 +102,50 @@ namespace ChipArena.UnityConversion
             var tris=new int[carCount*CarIndices];for(int c=0;c<carCount;c++)for(int f=0;f<CarVertices/4;f++){int v=c*CarVertices+f*4,t=c*CarIndices+f*6;tris[t]=v;tris[t+1]=v+2;tris[t+2]=v+1;tris[t+3]=v;tris[t+4]=v+3;tris[t+5]=v+2;}
             cars=new Mesh{name="Rooftop traffic",hideFlags=HideFlags.HideAndDontSave};cars.MarkDynamic();cars.vertices=carPos;cars.normals=carNormal;cars.SetUVs(0,carUv);cars.triangles=tris;cars.bounds=Everywhere;
             screens=World.Screens.ToArray();screenMatrix=new Matrix4x4[screens.Length];screenBlock=new MaterialPropertyBlock[screens.Length];
+            slides=new RooftopSlide[screens.Length][];slideKeys=new string[screens.Length][];slideAccent=new Vector4[screens.Length][];
             for(int i=0;i<screens.Length;i++)
             {
                 var s=screens[i];screenMatrix[i]=Matrix4x4.TRS(U(s.Center),Quaternion.Euler(0,-s.Yaw*Mathf.Rad2Deg,0),new Vector3(s.Width,s.Height,1));
                 var uv=NativeRooftopArt.AdUv(s.Kind);var b=new MaterialPropertyBlock();b.SetFloat(GainId,s.Gain);b.SetVector(UvRectId,new Vector4(uv.u0,uv.v0,uv.du,uv.dv));b.SetFloat(KindId,NativeRooftopCity.ScreenKind(s.Kind));screenBlock[i]=b;
-                if(!adJobs.ContainsKey(s.Kind)){string kind=s.Kind;adJobs[kind]=Task.Run(()=>NativeIconRaster.Raster(NativeIconRaster.Parse(NativeRooftopArt.Ad(kind),1,NativeIconRaster.Mode.Markup),NativeRooftopArt.AdPixels,100));}
+                var set=s.Kind=="classes"?NativeRooftopAds.Classes(Weapons()):s.Kind=="stages"?NativeRooftopAds.Stages:s.Kind=="brand"?NativeRooftopAds.Brand:null;
+                if(set==null)
+                {
+                    // a fixed ad: the vertical signs, and the old TV set's Ricochet card
+                    string kind=s.Kind=="retro"?"ricochet":s.Kind;
+                    if(!adJobs.ContainsKey(kind))adJobs[kind]=Task.Run(()=>NativeIconRaster.Raster(NativeIconRaster.Parse(NativeRooftopArt.Ad(kind),1,NativeIconRaster.Mode.Markup),NativeRooftopArt.AdPixels,100));
+                    continue;
+                }
+                // a rotation: every slide rasterised on a worker thread (its picture, and its mask with the class's own icon)
+                slides[i]=set;slideKeys[i]=new string[set.Length];slideAccent[i]=new Vector4[set.Length];float y0=uv.v0*100,y1=(uv.v0+uv.dv)*100;
+                for(int k=0;k<set.Length;k++)
+                {
+                    var slide=set[k];string key=slide.Kind+"/"+slide.Id+"/"+slide.Title+"/"+slide.Accent+"/"+y0.ToString("0");slideKeys[i][k]=key;
+                    var ac=NativeRooftopAds.Accent(slide);var lin=new Color(ac.r,ac.g,ac.b).linear;slideAccent[i][k]=new Vector4(lin.r,lin.g,lin.b,0);
+                    if(adJobs.ContainsKey(key)||ads.ContainsKey(key))continue;
+                    if(slide.Kind==RooftopSlide.Logo){var mark=LogoSlide();if(mark!=null){ads[key]=mark;continue;}}
+                    float box=0;string icon=slide.Kind==RooftopSlide.Class?NativeIcons.ArtMarkup(NativeIcons.Spec(slide.Id),out box):null;
+                    adJobs[key]=Task.Run(()=>NativeRooftopAds.Compose(slide,icon,box,y0,y1));
+                }
             }
+        }
+        // The brand screen's logo slide: the owner's logo on the screen's dark field (its glint and glow are the shader's). Null
+        // without a readable logo (the slide's own markup rasterises instead).
+        private static Texture2D LogoSlide()
+        {
+            var mark=Logo();if(mark==null||!mark.isReadable)return null;
+            int px=NativeRooftopAds.Pixels;var src=mark.GetPixels32();int sw=mark.width,sh=mark.height;float scale=px*.9f/sw,ox=(px-sw*scale)*.5f,oy=(px-sh*scale)*.5f;
+            var c=new Color32[px*px];var field=new Color32(10,6,20,0);
+            for(int y=0;y<px;y++)for(int x=0;x<px;x++)
+            {
+                float fx=(x+.5f-ox)/scale-.5f,fy=(y+.5f-oy)/scale-.5f;var o=field;
+                if(fx>=0&&fy>=0&&fx<sw-1&&fy<sh-1)
+                {
+                    int x0=(int)fx,y0=(int)fy;float tx=fx-x0,ty=fy-y0;Color p=Color.Lerp(Color.Lerp(src[y0*sw+x0],src[y0*sw+x0+1],tx),Color.Lerp(src[(y0+1)*sw+x0],src[(y0+1)*sw+x0+1],tx),ty);
+                    o=new Color32((byte)(field.r+(p.r*255-field.r)*p.a),(byte)(field.g+(p.g*255-field.g)*p.a),(byte)(field.b+(p.b*255-field.b)*p.a),0);
+                }
+                c[y*px+x]=o;
+            }
+            var t=new Texture2D(px,px,TextureFormat.RGBA32,true,false){name="Rooftop logo slide",wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Trilinear,anisoLevel=4,hideFlags=HideFlags.HideAndDontSave};t.SetPixels32(c);t.Apply(true,true);return t;
         }
         private static Material Make(string shader)=>new Material(Resources.Load<Shader>(shader)){hideFlags=HideFlags.HideAndDontSave};
         // A linear colour vector for the active colour space (the style's values are linear; a gamma project's shaders read gamma), w kept.
@@ -140,7 +191,7 @@ namespace ChipArena.UnityConversion
         // texture with mipmaps, so far screens do not shimmer.
         private static Texture2D Ad(string kind,float[] rgba)
         {
-            int px=NativeRooftopArt.AdPixels;
+            int px=Mathf.RoundToInt(Mathf.Sqrt(rgba.Length/4));
             var c=new Color32[px*px];for(int i=0;i<c.Length;i++){float a=rgba[i*4+3];c[i]=new Color32((byte)Mathf.RoundToInt(Mathf.Clamp01(rgba[i*4])*255),(byte)Mathf.RoundToInt(Mathf.Clamp01(rgba[i*4+1])*255),(byte)Mathf.RoundToInt(Mathf.Clamp01(rgba[i*4+2])*255),(byte)Mathf.RoundToInt(Mathf.Clamp01(a)*255));}
             var t=new Texture2D(px,px,TextureFormat.RGBA32,true,false){name="Rooftop ad "+kind,wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Trilinear,anisoLevel=4,hideFlags=HideFlags.HideAndDontSave};t.SetPixels32(c);t.Apply(true,true);return t;
         }
@@ -162,16 +213,27 @@ namespace ChipArena.UnityConversion
             Graphics.DrawMesh(towerMesh,Matrix4x4.identity,towerMaterial,0,camera,0,null,ShadowCastingMode.Off,false);
             Graphics.DrawMesh(propMesh,Matrix4x4.identity,propMaterial,0,camera,0,null,ShadowCastingMode.Off,false);
             models?.Draw(camera,towerMaterial);
+            uploads=0;
             for(int i=0;i<screens.Length;i++)
             {
-                string kind=screens[i].Kind;var b=screenBlock[i];
-                if(!ads.TryGetValue(kind,out var tex)&&adJobs.TryGetValue(kind,out var job)&&job.IsCompleted)
+                string kind=screens[i].Kind;var b=screenBlock[i];var set=slides[i];
+                var a=NativeRooftopCity.ScreenAnim(kind,time,set?.Length??0);
+                string key=set!=null?slideKeys[i][a.Slide]:kind=="retro"?"ricochet":kind;
+                // a finished raster becomes its texture (two a frame at most: the first frames are not held up)
+                if(!ads.TryGetValue(key,out var tex)&&uploads<2&&adJobs.TryGetValue(key,out var job)&&job.IsCompleted)
                 {
-                    if(job.Status==TaskStatus.RanToCompletion)tex=Ad(kind,job.Result);else Debug.LogWarning("The rooftop's "+kind+" ad did not rasterise: "+job.Exception?.GetBaseException().Message);
-                    ads[kind]=tex;
+                    if(job.Status==TaskStatus.RanToCompletion)tex=Ad(key,job.Result);else Debug.LogWarning("The rooftop's "+key+" ad did not rasterise: "+job.Exception?.GetBaseException().Message);
+                    ads[key]=tex;adJobs.Remove(key);uploads++;
                 }
-                NativeRooftopCity.ScreenState(kind,time,out float pulse,out float cut,out float sweep,out float chase);b.SetVector(AnimId,new Vector4(pulse,cut,sweep,chase));
-                if(tex!=null)b.SetTexture(MainTexId,tex);b.SetFloat(CalmId,reduced?1:0);Graphics.DrawMesh(quad,screenMatrix[i],screenMaterial,0,camera,0,b,ShadowCastingMode.Off,false);
+                b.SetVector(AnimId,new Vector4(a.Pulse,a.Cut,a.Sweep,a.Chase));
+                if(set!=null)
+                {
+                    var slide=set[a.Slide];var bands=NativeRooftopAds.Bands(slide);
+                    b.SetVector(SlideId,new Vector4(reduced?Mathf.Max(a.Age,2):a.Age,a.Seconds,slide.Kind==RooftopSlide.Logo?1:0,reduced?0:Mathf.Repeat(time*.05f,1)));
+                    b.SetVector(BandsId,new Vector4(bands.picture,bands.title,bands.ticker,0));b.SetVector(AccentId,slideAccent[i][a.Slide]);
+                }
+                b.SetVector(EggId,new Vector4(a.EggX,a.EggY,a.EggOn,a.EggTone));b.SetVector(Egg2Id,new Vector4(a.EggHit,0,0,0));
+                b.SetTexture(MainTexId,tex!=null?tex:Texture2D.blackTexture);b.SetFloat(CalmId,reduced?1:0);Graphics.DrawMesh(quad,screenMatrix[i],screenMaterial,0,camera,0,b,ShadowCastingMode.Off,false);
             }
             if(models!=null&&models.HasCars)models.Cars(camera,World.Lanes,time);
             else{Traffic(time);Graphics.DrawMesh(cars,Matrix4x4.identity,worldMaterial,0,camera,0,null,ShadowCastingMode.Off,false);}

@@ -128,7 +128,8 @@ class Layout:
                           beacon=U(p['beacon']), sign=U(p['signLight']), cyan=U(p['cyanLight']), spark=U(p['spark']))
         self.screens = [dict(kind=s['kind'], c=U(s['center']), w=s['width'], h=s['height'], n=(-math.sin(s['yaw']), 0.0, math.cos(s['yaw']))) for s in L['screens']]
         self.sites = {k: U(v['at']) for k, v in L['sites'].items()}
-        self.targets = [(t['what'], U(t['at'])) for t in L['targets']]
+        self.targets = [(t['what'], U(t['at'])) for t in L['targets'] if t.get('clear', True)]
+        self.hidden_targets = sum(1 for t in L['targets'] if not t.get('clear', True))
         self.glows = [(U(g['at']), g['size'], g['kind']) for g in L['glows']]
         self.steam = [U(p) for p in L['steam']]
         self.lanes = [dict(count=l['count'], near=l['near'], pts=[U(p) for p in l['points']]) for l in L['lanes']]

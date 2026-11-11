@@ -13,6 +13,25 @@ using ChipArena.UnityConversion;
 // it into Unity's frame as it reads.
 internal static class RooftopLayout
 {
+    // `--rooftop-slides <dir>`: every holo-screen slide rasterised as the Runtime does (NativeRooftopAds.Compose), raw RGBA bytes
+    // (top row first) as <dir>/<screen>_<nn>_<id>.rgba plus the fixed ads, for a look outside the engine.
+    public static void Slides(string root,string dir)
+    {
+        var o=new JsonSerializerOptions{IncludeFields=true};Directory.CreateDirectory(dir);
+        var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),o);
+        using var icons=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ClassIcons.json")));float box=icons.RootElement.GetProperty("box").GetSingle();
+        var art=icons.RootElement.GetProperty("icons").EnumerateArray().ToDictionary(e=>e.GetProperty("id").GetString(),e=>e.GetProperty("markup").GetString());
+        var specs=icons.RootElement.GetProperty("specs").EnumerateArray().ToDictionary(e=>e.GetProperty("id").GetString(),e=>e.GetProperty("icon").GetString());
+        void Save(string name,float[] rgba){int px=(int)Math.Round(Math.Sqrt(rgba.Length/4));var bytes=new byte[px*px*4];for(int y=0;y<px;y++)for(int x=0;x<px;x++)for(int c=0;c<4;c++)bytes[((px-1-y)*px+x)*4+c]=(byte)Math.Round(Math.Clamp(rgba[(y*px+x)*4+c],0,1)*255);File.WriteAllBytes(Path.Combine(dir,name+".rgba"),bytes);}
+        int n=0;
+        foreach(var (screen,set) in new[]{("classes",NativeRooftopAds.Classes(content.weapons)),("stages",NativeRooftopAds.Stages),("brand",NativeRooftopAds.Brand)})
+        {
+            var uv=NativeRooftopArt.AdUv(screen);float y0=uv.v0*100,y1=(uv.v0+uv.dv)*100;
+            for(int k=0;k<set.Length;k++){var s=set[k];string icon=s.Kind==RooftopSlide.Class&&specs.TryGetValue(s.Id,out var id)&&art.TryGetValue(id,out var m)?m:null;Save(screen+"_"+k.ToString("00")+"_"+s.Id+"_"+s.Accent.Substring(1),NativeRooftopAds.Compose(s,icon,box,y0,y1));n++;}
+        }
+        foreach(var kind in new[]{"ricochet","banner","sign"})Save("fixed_"+kind,NativeIconRaster.Raster(NativeIconRaster.Parse(NativeRooftopArt.Ad(kind),1,NativeIconRaster.Mode.Markup),NativeRooftopArt.AdPixels,100));
+        Console.WriteLine("rooftop slides: "+n+" slides and 3 fixed ads -> "+dir);
+    }
     public static void Write(string path)
     {
         var world=NativeRooftopCity.Build(1,true);
@@ -40,7 +59,15 @@ internal static class RooftopLayout
         w.WriteEndObject();
         // what the loop's camera must keep in clear view (RooftopChecks' composition targets)
         w.WriteStartArray("targets");
-        void T(string what,Vector3 p){w.WriteStartObject();w.WriteString("what",what);V("at",p);w.WriteEndObject();}
+        // `clear`: nothing Core builds stands nearer than 2.5 m short of it from the t=0 eye (RooftopChecks' rule); the art must
+        // keep every clear target clear.
+        NativeRooftopCity.Camera(0,out var eye0,out _);
+        float Tri(Vector3 o,Vector3 d,Vector3 a,Vector3 b,Vector3 c){var e1=b-a;var e2=c-a;var p=Vector3.Cross(d,e2);float det=Vector3.Dot(e1,p);if(Math.Abs(det)<1e-9f)return float.PositiveInfinity;float inv=1/det;var t=o-a;float u=Vector3.Dot(t,p)*inv;if(u<0||u>1)return float.PositiveInfinity;var q=Vector3.Cross(t,e1);float v=Vector3.Dot(d,q)*inv;if(v<0||u+v>1)return float.PositiveInfinity;float dist=Vector3.Dot(e2,q)*inv;return dist>0?dist:float.PositiveInfinity;}
+        void T(string what,Vector3 p)
+        {
+            var d=p-eye0;float dist=d.Length();d/=dist;float first=float.PositiveInfinity;foreach(var q in world.Quads)first=Math.Min(first,Math.Min(Tri(eye0,d,q.A,q.B,q.C),Tri(eye0,d,q.A,q.C,q.D)));
+            w.WriteStartObject();w.WriteString("what",what);V("at",p);w.WriteBoolean("clear",first>=dist-2.5f);w.WriteEndObject();
+        }
         foreach(var s in world.Screens)
         {
             if(s.Kind=="sign")continue;var n=new Vector3((float)Math.Sin(s.Yaw),0,(float)Math.Cos(s.Yaw));var t=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,n));

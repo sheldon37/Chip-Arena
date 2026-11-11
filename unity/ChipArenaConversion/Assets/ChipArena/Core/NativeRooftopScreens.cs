@@ -3,39 +3,69 @@ using System.Numerics;
 
 namespace ChipArena.UnityConversion
 {
+    /// <summary>A holo screen's animation at a moment (NativeRooftopCity.ScreenAnim): its brightness, the glitch of a cut (0..1), the
+    /// holo sweep's height (-1 between sweeps), the vertical signs' chase; on the rotating screens the slide showing, its age and
+    /// length (s); on the old TV set the Ricochet card's place (0..1 across and up its free travel), how far it is on (0..1), the
+    /// colour it took at its last bounce (0..5) and the seconds since that bounce.</summary>
+    public struct RooftopScreenAnim {public float Pulse,Cut,Sweep,Chase,Age,Seconds;public int Slide;public float EggX,EggY,EggOn,EggTone,EggHit;}
     // The rooftop's holo screens as mounted signs, animated (owner 2026-10-29: "Can make the screens better designed on
-    // buildings + animated"). Presentation only, deterministic. Each landmark screen hangs in a frame: a bezel, a dark casing
-    // behind the panel, brackets back to its tower's face and a row of flood lamps along its top (ScreenFrame). The panel
-    // animates on the scene clock (ScreenState, every period dividing the 48 s loop): its brightness breathes, a holo sweep
-    // runs down it every 6 s, the Siren and Chip Arena screens cut through a glitch to their own loop (a heartbeat, an
-    // equalizer) for 4 s of every 24, and the vertical CHIP and ARENA signs light letter by letter. The screen shader
-    // (NativeRooftopScreen) draws it from these values; the screens' light (Lights) breathes with them, so the spill on the
-    // towers and our roof follows what the panel shows.
+    // buildings + animated"; 2026-11-11: "Changing animations happening on the TV screens as well, since things on there are
+    // out dated"). Presentation only, deterministic. Each landmark screen hangs in a frame: a bezel, a dark casing behind the
+    // panel, brackets back to its tower's face and a row of flood lamps along its top (ScreenFrame). The panels animate on the
+    // scene clock (ScreenAnim): their brightness breathes, a holo sweep runs down them every 6 s, the vertical CHIP and ARENA
+    // signs light letter by letter, and the three big screens rotate NativeRooftopAds' slides, cutting through a glitch: the
+    // public classes on the largest (`classes`), the remodelled stages and the Expedition on the 4:3 one (`stages`), the game's
+    // logo between two teasers on the far one (`brand`). The screen shader (NativeRooftopScreen) draws them from these values;
+    // the screens' lights (Lights) breathe with them.
+    // The easter egg (owner 2026-11-11: "Maybe reference the "Ricochet" thats on there currently as an easter egg lol"): the old
+    // RICOCHET "RARE" chip card left the rotation; an old TV set on our roof (`retro`) shows static, and for EggSeconds of every
+    // EggCycle the card bounces round it like a screensaver's logo, changing colour at every edge. Its travel is timed so that
+    // half way through each showing it hits a corner dead on.
     public static partial class NativeRooftopCity
     {
-        /// <summary>A screen kind's index for the screen shader (0 siren, 1 arena, 2 chip, 3 banner, 4 sign; -1 unknown).</summary>
-        public static int ScreenKind(string kind)=>kind=="siren"?0:kind=="arena"?1:kind=="chip"?2:kind=="banner"?3:kind=="sign"?4:-1;
+        /// <summary>A screen kind's index for the screen shader (0 classes, 1 brand, 2 stages, 3 banner, 4 sign, 5 retro; -1 unknown).</summary>
+        public static int ScreenKind(string kind)=>kind=="classes"?0:kind=="brand"?1:kind=="stages"?2:kind=="banner"?3:kind=="sign"?4:kind=="retro"?5:-1;
         /// <summary>The letters a vertical sign chases (CHIP on the banner, ARENA on our corner sign; 0 for the others).</summary>
         public static int ScreenLetters(string kind)=>kind=="banner"?4:kind=="sign"?5:0;
-        public const float ScreenCycle=24,ScreenCut=4,ScreenSweep=6,ScreenBreath=4,ScreenChase=4;
-        private static float ScreenPhase(int k)=>k==0?0:k==1?9:k==2?3:k==3?6:15;
+        public const float ScreenSweep=6,ScreenBreath=4,ScreenChase=4,SlideCut=.3f;
+        /// <summary>The easter egg's timing (s): its cycle, when in it the card shows and for how long, and the time the card
+        /// takes across and up the screen (their common multiple is the showing, so its middle is a corner hit).</summary>
+        public const float EggCycle=96,EggFrom=70,EggSeconds=16,EggAcross=3.2f,EggUp=2,EggCard=.42f;
+        /// <summary>The old TV set's screen on our roof (source frame): its centre, size and heading (toward the camera).</summary>
+        public static readonly Vector3 RetroCenter=new Vector3(-1.2f,.78f,-.45f);public const float RetroWidth=.8f,RetroHeight=.6f,RetroYaw=1.02f;
+        private static float ScreenPhase(int k)=>k==0?0:k==1?9:k==2?3:k==3?6:k==4?15:11;
         private static float Smooth(float a,float b,float x){float t=Clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);}
         private static float Wrap(float x,float p)=>x-p*(float)Math.Floor(x/p);
-        /// <summary>
-        /// The screen's animation at `time`: `pulse` its brightness (about .9-1.1), `mix` how far it has cut to its own loop (0
-        /// the ad, 1 the loop; the Siren and Chip Arena only), `sweep` the holo sweep's height down the panel (0 top .. 1 bottom,
-        /// -1 between sweeps), `chase` the vertical signs' lit letter (0 .. letters; beyond it every letter lit).
-        /// </summary>
-        public static void ScreenState(string kind,float time,out float pulse,out float mix,out float sweep,out float chase)
+        // 0 at even whole numbers, 1 at odd ones (a bounce between two walls).
+        private static float Tri(float x){float m=Wrap(x,2);return m>1?2-m:m;}
+        /// <summary>A rotating screen's seconds a slide (0 for the others) and its start offset, so the three never cut together.</summary>
+        public static float SlideSeconds(string kind)=>kind=="classes"?NativeRooftopAds.ClassSeconds:kind=="stages"?NativeRooftopAds.StageSeconds:kind=="brand"?NativeRooftopAds.BrandSeconds:0;
+        private static float SlideOffset(int k)=>k==1?3:k==2?1.5f:0;
+        /// <summary>The screen's animation at `time` (the scene clock, wrapped to NativeRooftopAds.Wrap by the caller); `slides`
+        /// the count of its rotation (0: none).</summary>
+        public static RooftopScreenAnim ScreenAnim(string kind,float time,int slides=0)
         {
-            int k=ScreenKind(kind);float t=time+ScreenPhase(k);
-            pulse=.92f+.08f*(float)Math.Sin(2*Math.PI*t/ScreenBreath);
-            float u=Wrap(t,ScreenCycle),cut=ScreenCycle-ScreenCut-2;
-            mix=k<=1?Smooth(cut,cut+.4f,u)*(1-Smooth(cut+ScreenCut-.4f,cut+ScreenCut,u)):0;
-            float s=Wrap(t,ScreenSweep);sweep=s<1.6f?s/1.6f:-1;
-            int letters=ScreenLetters(kind);chase=letters>0?Wrap(t,ScreenChase)/ScreenChase*letters*1.8f:0;
-            // the loop's beat: the heartbeat's thump and the equalizer's kick lift the screen as it plays
-            if(mix>0)pulse+=mix*.12f*(float)Math.Pow(Math.Max(0,Math.Sin(2*Math.PI*t/(k==0?1.2f:.75f))),8);
+            int k=ScreenKind(kind);float t=time+ScreenPhase(k);var a=new RooftopScreenAnim();
+            a.Pulse=.92f+.08f*(float)Math.Sin(2*Math.PI*t/ScreenBreath);
+            float s=Wrap(t,ScreenSweep);a.Sweep=s<1.6f?s/1.6f:-1;
+            int letters=ScreenLetters(kind);a.Chase=letters>0?Wrap(t,ScreenChase)/ScreenChase*letters*1.8f:0;
+            float sec=SlideSeconds(kind);
+            if(sec>0&&slides>0)
+            {
+                float x=(time+SlideOffset(k))/sec;float whole=(float)Math.Floor(x);a.Slide=(int)Wrap(whole,slides);a.Age=(x-whole)*sec;a.Seconds=sec;
+                a.Cut=Clamp(Math.Max(1-a.Age/SlideCut,(a.Age-(sec-SlideCut))/SlideCut),0,1);
+            }
+            if(k==5)
+            {
+                float u=Wrap(time,EggCycle)-EggFrom,tau=u-EggSeconds*.5f;
+                a.EggOn=Smooth(0,.3f,u)*(1-Smooth(EggSeconds-.3f,EggSeconds,u));
+                a.EggX=Tri(tau/EggAcross);a.EggY=Tri(tau/EggUp);
+                float bx=tau/EggAcross,by=tau/EggUp;a.EggTone=Wrap((float)Math.Floor(bx)+(float)Math.Floor(by),6);
+                a.EggHit=Math.Min((bx-(float)Math.Floor(bx))*EggAcross,(by-(float)Math.Floor(by))*EggUp);
+                // the set cuts through a burst of static as the card comes and goes; it glows brighter while it shows
+                a.Cut=Clamp(Math.Max(1-Math.Abs(u)/.35f,1-Math.Abs(u-EggSeconds)/.35f),0,1);a.Pulse*=.72f+.36f*a.EggOn;
+            }
+            return a;
         }
 
         // An oriented box about `c` with half extents along three orthogonal vectors (any order: made right-handed here), six

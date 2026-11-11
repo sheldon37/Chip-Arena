@@ -147,6 +147,8 @@ def main():
         gp, fp = perch.build(L, T) if args.only != 'city' else (sk.Geo(), rk.Facade())
         gc, fcity = city.build(L, T) if args.only != 'perch' else (sk.Geo(), rk.Facade())
         print('tier %s: perch %d faces, city %d faces, facades %d + %d, %.1f s' % (T.name, gp.faces, gc.faces, fp.g.faces, fcity.g.faces, time.time() - t))
+        if args.stats:
+            print('  city faces: ' + ', '.join('%s %d' % kv for kv in sorted(city.STATS.items(), key=lambda kv: -kv[1])))
         print('  perch coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(gp, eps=PERCH_EPS[ti], lift=PERCH_LIFT[ti], passes=4))
         gcs = split(gc, L.eye)
         fcs = split(fcity.g, L.eye)
@@ -158,8 +160,20 @@ def main():
         for (name, a, b, eps, lift) in (('perch', gp, fp.g, PERCH_EPS[ti], PERCH_LIFT[ti]), ('city near', gcs[0], fcs[0], CITY_EPS[0], CITY_LIFT[0]), ('city far', gcs[1], fcs[1], CITY_EPS[1], CITY_LIFT[1])):
             c = copy(a)
             c.extend(b)
+            before = np.frombuffer(c.p, dtype=np.float32).reshape(-1, 3).copy()
             r = sk.lift_coplanar(c, eps=eps, lift=lift, passes=1)
             print('  %s left: %d pairs, %.3f m2 of same-facing faces within %.0f mm' % (name, r[0], r[1], eps * 1000))
+            if args.stats and r[0]:
+                P, N, S, Fi = c.arrays()
+                moved = np.nonzero(np.abs(P - before).max(axis=1) > 1e-5)[0]
+                starts = np.cumsum(S) - S
+                seen = set()
+                for ci in moved:
+                    fi = int(np.searchsorted(starts, ci, side='right') - 1)
+                    if fi in seen or len(seen) >= 10:
+                        continue
+                    seen.add(fi)
+                    print('    still stacked: %-14s at (%.1f, %.1f, %.1f) normal (%.1f, %.1f, %.1f)' % ((sk.FINS[int(Fi[fi])].name,) + tuple(P[ci]) + tuple(N[ci])))
         if args.check:
             bad = sight(L, [gp, gc, fp.g, fcity.g])
             print('  sight lines: %d targets x %d camera places, %d blocked' % (len(L.targets), len(L.camera), len(bad)))

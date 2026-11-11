@@ -28,6 +28,8 @@ class Ctx:
         self.full = self.fine and near                 # everything
         self.rs = (6, 5, 4)[T.i] if near else 4        # sides of a round member
         self.ts = 4 if (self.fine and near) else 3     # sides of a thin tube
+        self.o = .03 if near else .12                  # a layer laid on a face (clear of the depth buffer's step at the lot's range)
+        self.close = False                             # within 170 m: the smallest pieces (slats, treads, rail posts)
 
 
 def inside(fp, x, z, margin=0.0):
@@ -80,6 +82,7 @@ def shape(lot, tier, C):
 
 def build_lot(L, lot, T, g, fc):
     C = Ctx(T, lot.detail >= 2 or lot.bare)
+    C.close = C.full and L.dist(lot.c[0], lot.c[1]) < 170
     sid = int(lot.seed) * 31 + lot.i
     fps = []
     nt = len(lot.tiers)
@@ -138,7 +141,7 @@ def build_lot(L, lot, T, g, fc):
         cornice(g, top_fp, v[0], C)
     for v in lot.all('balcony'):
         balcony(g, v, C, sid)
-    for v in lot.all('aircon'):
+    for v in (lot.all('aircon') if C.fine else ()):
         aircon(g, v, C)
     for v in lot.all('fireescape'):
         fireescape(g, v, C)
@@ -321,7 +324,7 @@ def tank(g, v, C):
     """A water tank on its stand: braced legs and a ring beam, the staves under their hoops, a conical lid, a ladder."""
     x, y, z, rad, leg, h, staves = v
     dark = F['metaldark']
-    sides = (12 if C.near else 10) if C.fine else 8
+    sides = (12 if C.near else 10) if C.fine else 6
     for k in range(4):
         a = k * math.pi / 2 + .785
         p = (x + rad * .8 * math.cos(a), y, z + rad * .8 * math.sin(a))
@@ -365,8 +368,8 @@ def plant(g, p, C, sid):
     for (zz, nz) in ((z0, -1), (z1, 1)):
         fr = Fr((cx, y + .16, zz), (0, 0, nz), bw / 2, bh)
         u0, u1, v0, v1 = -bw * .38, bw * .38, bh * .22, bh * .78
-        fr.quad(g, u0, u1, v0, v1, .03, F['void'])
-        if C.near:
+        fr.quad(g, u0, u1, v0, v1, C.o, F['void'])
+        if C.close:
             ck.slats(g, fr, u0, u1, v0, v1, .035, .09, .22, F['galvdark'], sk.Tier(1))
     # fans on top: one or two cowls
     nf = 2 if bw > 3.6 else 1
@@ -375,7 +378,7 @@ def plant(g, p, C, sid):
         fx = cx + (k - (nf - 1) / 2) * bw / nf
         lathe(g, [(fr_ * 1.06, 0), (fr_ * 1.06, .22), (fr_ * .94, .26)], (fx, y + bh, cz), F['metaldark'], 10 if C.near else 6)
         ck.disc(g, (fx, y + bh + .2, cz), fr_ * .96, F['void'], 10 if C.near else 6, (0, 1, 0))
-        if C.near:
+        if C.close:
             for a in (0, math.pi / 2):
                 rod(g, (fx - fr_ * math.cos(a), y + bh + .25, cz - fr_ * math.sin(a)), (fx + fr_ * math.cos(a), y + bh + .25, cz + fr_ * math.sin(a)), .03, F['galv'], 3, caps=False)
             ck.disc(g, (fx, y + bh + .27, cz), fr_ * .25, F['galv'], 6, (0, 1, 0))
@@ -396,9 +399,9 @@ def stairhut(g, x0, x1, z0, z1, y, C, sid, h=3.0):
     if not C.fine:
         return
     fr = Fr(((x0 + x1) / 2, y, z0), (0, 0, -1), (x1 - x0) / 2, h)
-    fr.quad(g, -.55, .55, 0, 2.1, .03, F['metaldark'])
+    fr.quad(g, -.55, .55, 0, 2.1, C.o, F['metaldark'])
     fr.box(g, -.62, .62, 2.12, 2.2, 0, .08, glow(rk.WARM, 1.2), None, bevel=0, cell=0)
-    if C.near:
+    if C.close:
         fr.quad(g, .8, 1.5, 2.2, 2.7, .03, F['void'])
         ck.slats(g, fr, .8, 1.5, 2.2, 2.7, .035, .08, .12, F['galvdark'], sk.Tier(1))
 
@@ -477,7 +480,7 @@ def balcony(g, v, C, sid):
     fr = Fr(((c0x + c1x) / 2, y, (c0z + c1z) / 2), (nx, 0.0, nz), L / 2, 0)
     fr.box(g, -L / 2, L / 2, -.18, 0, 0, 1.2, F['concretedark'], None, bevel=0, cell=0)
     if not C.fine:
-        fr.box(g, -L / 2, L / 2, 0, 1.05, 1.12, 1.2, F['metaldark'], None, bevel=0, cell=0, skip=('-y',))
+        fr.quad(g, -L / 2, L / 2, 0, 1.05, 1.2, F['metaldark'])
         return
     k = int(h01(sid, int(y * 10), int(c0x * 7 + c0z * 3)) * 4)
     if k == 0:
@@ -488,15 +491,15 @@ def balcony(g, v, C, sid):
     else:
         fr.box(g, -L / 2, L / 2, 0, .55, 1.12, 1.2, F['resi'] if k < 3 else F['metaldark'], None, bevel=0, cell=0, skip=('-y',))
         rod(g, fr.at(-L / 2, 1.05, 1.16), fr.at(L / 2, 1.05, 1.16), .035, F['steel'], 3, caps=False)
-        if C.near:
+        if C.close:
             n = max(2, int(L / 1.3))
             for j in range(n + 1):
                 u = -L / 2 + L * j / n
                 rod(g, fr.at(u, .55, 1.16), fr.at(u, 1.05, 1.16), .025, F['steel'], 3, caps=False)
     # the side returns
-    for u in (-L / 2, L / 2 - .08):
+    for u in ((-L / 2, L / 2 - .08) if C.close else ()):
         fr.box(g, u, u + .08, 0, .9, 0, 1.12, F['metaldark'], None, bevel=0, cell=0, skip=('-y',))
-    if C.near and k == 2:
+    if C.close and k == 2:
         fr.box(g, -L / 2 + .3, -L / 2 + 1.5, 0, .35, .7, 1.08, F['timberdarkx'], None, bevel=0, cell=0, skip=('-y',))
         fr.box(g, -L / 2 + .35, -L / 2 + 1.45, .35, .62, .74, 1.04, F['leaf'], None, bevel=0, cell=0, skip=('-y',))
 
@@ -508,12 +511,13 @@ def aircon(g, v, C):
     ud = (-nz, 0.0, nx)
     s = 1 if (tx * ud[0] + tz * ud[2]) > 0 else -1
     fr = Fr((px + tx * .45, y, pz + tz * .45), (nx, 0.0, nz), .45, .6)
-    fr.box(g, -.45, .45, 0, .6, .04, .55, F['creme'] if h01(int(px * 9), int(y * 5)) < .5 else F['galv'], None, bevel=0, cell=0)
+    back = ('-x' if nx > .5 else '+x' if nx < -.5 else '-z' if nz > .5 else '+z',)
+    fr.box(g, -.45, .45, 0, .6, .04, .55, F['creme'] if h01(int(px * 9), int(y * 5)) < .5 else F['galv'], None, bevel=0, cell=0, skip=back)
     if not C.fine:
         return
-    fr.poly(g, [(-.12 + .2 * math.cos(2 * math.pi * i / 8), .3 + .2 * math.sin(2 * math.pi * i / 8)) for i in range(8)], .56, F['void'])
-    fr.box(g, -.5, .5, -.06, 0, 0, .58, F['metaldark'], None, bevel=0, cell=0)
-    if C.near:
+    fr.poly(g, [(-.12 + .2 * math.cos(2 * math.pi * i / 6), .3 + .2 * math.sin(2 * math.pi * i / 6)) for i in range(6)], .56 + C.o, F['void'])
+    if C.close:
+        fr.box(g, -.5, .5, -.06, 0, 0, .58, F['metaldark'], None, bevel=0, cell=0, skip=back)
         rod(g, fr.at(.4 * s, -.06, .5), fr.at(.4 * s, -.5, 0), .02, F['metaldark'], 3, caps=False)
 
 
@@ -527,20 +531,19 @@ def fireescape(g, v, C):
     y = y0
     while y < y1:
         fr.box(g, -L / 2, L / 2, y - .08, y, 0, 1.3, rust, None, bevel=0, cell=0)
-        rod(g, fr.at(-L / 2, y + 1, 1.28), fr.at(L / 2, y + 1, 1.28), .035, rust, 3, caps=False)
         if C.fine:
-            rod(g, fr.at(-L / 2, y + .5, 1.28), fr.at(L / 2, y + .5, 1.28), .025, rust, 3, caps=False)
-            for u in (-L / 2, -L / 6, L / 6, L / 2):
+            rod(g, fr.at(-L / 2, y + 1, 1.28), fr.at(L / 2, y + 1, 1.28), .035, rust, 3, caps=False)
+            for u in ((-L / 2, -L / 6, L / 6, L / 2) if C.close else (-L / 2, L / 2)):
                 rod(g, fr.at(u, y, 1.28), fr.at(u, y + 1, 1.28), .025, rust, 3, caps=False)
             for u in (-L / 2, L / 2):
                 rod(g, fr.at(u, y + 1, 0), fr.at(u, y + 1, 1.28), .03, rust, 3, caps=False)
-        if y + storey < y1:
+        if y + storey < y1 and C.fine:
             ua, ub = (L / 2 - .4, -L / 2 + .9) if flip else (-L / 2 + .4, L / 2 - .9)
             for d in (.3, .95):
                 rod(g, fr.at(ua, y, d), fr.at(ub, y + storey, d), .045, rust, 3, caps=False)
-            if C.full:
-                for k in range(1, 8):
-                    t = k / 8
+            if C.close:
+                for k in range(1, 6):
+                    t = k / 6
                     u = ua + (ub - ua) * t
                     fr.box(g, min(u, u + .26), max(u, u + .26), y + storey * t - .03, y + storey * t, .3, .95, rust, None, bevel=0, cell=0)
         flip = not flip
@@ -557,10 +560,15 @@ def hangsign(g, v, C, sid):
     for s in (1, -1):
         fr = Fr((mid[0] + tx * s * sw / 2 * 0, y, mid[2] + tz * s * 0), (tx * s, 0.0, tz * s), dep / 2, h)
         lbox(g, fr, -dep / 2, dep / 2, 0, h, 0, sw / 2, F['metaldark'])
-        fr.quad(g, -dep / 2 + .15, dep / 2 - .15, .25, h - .25, sw / 2 + .03, glow(ck.mix(col, 0x06060C, .7), max(.5, gain * .3)))
+        fr.quad(g, -dep / 2 + .15, dep / 2 - .15, .25, h - .25, sw / 2 + C.o, glow(ck.mix(col, 0x06060C, .7), max(.5, gain * .3)))
         n = len(word)
         cell = min((dep - .5) / 5, (h - 1.0) / (n * 8))
         Tt = sk.Tier(0 if C.full else 2)
+        if not C.fine:
+            # far off, the letters as lit blocks
+            for i in range(n):
+                fr.quad(g, -2.2 * cell, 2.2 * cell, h - .6 - (i + 1) * 8 * cell + cell * 1.2, h - .6 - (i + 1) * 8 * cell + cell * 7, sw / 2 + .2, glow(ck.mix(col, 0xFFFFFF, .3), gain))
+            continue
         for i, ch in enumerate(word):
             ck.neon_text(g, fr, ch, 0, h - .6 - (i + 1) * 8 * cell + cell, cell, ck.mix(col, 0xFFFFFF, .3), gain, Tt, d=sw / 2 + .18, weight=.45)
     fr0 = rk.frame_n((ax, y, az), (nx, 0, nz))
@@ -621,10 +629,56 @@ def bare_roof(L, lot, g, fp, y, C):
             a0, a1 = 2 * math.pi * s / 32, 2 * math.pi * (s + 1) / 32
             g.face(((cx + ro * math.cos(a0), y + .09, cz + ro * math.sin(a0)), (cx + ro * math.cos(a1), y + .09, cz + ro * math.sin(a1)),
                     (cx + ri * math.cos(a1), y + .09, cz + ri * math.sin(a1)), (cx + ri * math.cos(a0), y + .09, cz + ri * math.sin(a0))), glow(rk.CYAN, .55), (0, 1, 0))
-    # hatches at two corners
-    for (hx, hz) in ((x0 + 1.6, z0 + 1.6), (x1 - 2.6, z1 - 2.6)):
-        if w > 12:
-            box(g, hx, hx + 1.0, y, y + .3, hz, hz + 1.0, F['galvdark'], None, 0, cell=0, skip=('-y',))
+    # low plant along the edges, kept 5 m clear of where the actors stand, run and leap: skylights, condensers, vent
+    # cowls, hatches, a cable tray
+    near = [t for (_, t) in L.targets if abs(t[1] - y) < 5] + [p for p in L.sites.values() if abs(p[1] - y) < 5]
+
+    def free(px, pz, r=5.0):
+        return all((px - t[0]) ** 2 + (pz - t[2]) ** 2 > r * r for t in near)
+    spots = []
+    step = 6.5
+    n = max(1, int((x1 - x0 - 6) / step))
+    for k in range(n + 1):
+        px = x0 + 3 + k * (x1 - x0 - 6) / n
+        spots += [(px, z0 + 2.4, 0), (px, z1 - 2.4, 0)]
+    m = max(1, int((z1 - z0 - 12) / step))
+    for k in range(m + 1):
+        pz = z0 + 6 + k * (z1 - z0 - 12) / max(1, m)
+        spots += [(x0 + 2.4, pz, 1), (x1 - 2.4, pz, 1)]
+    for i, (px, pz, turn) in enumerate(spots):
+        if not free(px, pz):
+            continue
+        kind = int(h01(lot.i, i, 'roof') * 6)
+        a, b = (1.6, .7) if turn == 0 else (.7, 1.6)
+        if kind == 0:
+            # a skylight: a kerb under a lit glass lid
+            box(g, px - a, px + a, y, y + .3, pz - b, pz + b, F['coping'], None, 0, cell=0, skip=('-y', '+y'))
+            g.face(((px - a, y + .3, pz - b), (px + a, y + .3, pz - b), (px + a * .7, y + .46, pz), (px - a * .7, y + .46, pz)), F['roofglass'])
+            g.face(((px - a, y + .3, pz + b), (px + a, y + .3, pz + b), (px + a * .7, y + .46, pz), (px - a * .7, y + .46, pz)), F['roofglass'])
+            g.face(((px - a + .15, y + .34, pz - b * .5), (px + a - .15, y + .34, pz - b * .5), (px + a - .15, y + .34, pz + b * .5), (px - a + .15, y + .34, pz + b * .5)), glow(0xBFD8FF, .5), (0, 1, 0))
+        elif kind == 1:
+            # two condensers on a frame
+            for s_ in (-.8, .8):
+                cx, cz = (px + s_, pz) if turn == 0 else (px, pz + s_)
+                box(g, cx - .55, cx + .55, y + .16, y + .46, cz - .4, cz + .4, F['creme'], None, 0, cell=0)
+                ck.disc(g, (cx, y + .47, cz), .3, F['void'], 8, (0, 1, 0))
+            box(g, px - a, px + a, y + .08, y + .16, pz - b * .8, pz + b * .8, F['galvdark'], None, 0, cell=0)
+        elif kind == 2:
+            for s_ in (-.7, .7):
+                cx, cz = (px + s_, pz) if turn == 0 else (px, pz + s_)
+                lathe(g, [(.2, y), (.16, y + .08), (.14, y + .26)], (cx, 0, cz), F['galv'], 8)
+                lathe(g, [(.3, y + .26), (.32, y + .32), (.14, y + .44), (.01, y + .46)], (cx, 0, cz), F['galvdark'], 8)
+        elif kind == 3:
+            box(g, px - .6, px + .6, y, y + .32, pz - .6, pz + .6, F['galvdark'], None, 0, cell=0, skip=('-y',))
+            rod(g, (px - .35, y + .34, pz - .5), (px + .35, y + .34, pz - .5), .025, F['hazard'], 3, caps=False)
+        elif kind == 4:
+            # a run of cable tray with its cables
+            box(g, px - a * 1.6, px + a * 1.6, y + .12, y + .2, pz - b * .25, pz + b * .25, F['galvdark'], None, 0, cell=0) if turn == 0 else                 box(g, px - a * .25, px + a * .25, y + .12, y + .2, pz - b * 1.6, pz + b * 1.6, F['galvdark'], None, 0, cell=0)
+        else:
+            # a puddle of light: a low bollard lamp
+            lathe(g, [(.1, y), (.08, y + .28)], (px, 0, pz), F['metaldark'], 6)
+            lathe(g, [(.09, y + .28), (.09, y + .4)], (px, 0, pz), glow(pick((rk.CYAN, rk.MAGENTA, rk.WARM), lot.i, i), 1.6), 6)
+            lathe(g, [(.11, y + .4), (.02, y + .45)], (px, 0, pz), F['metaldark'], 6)
 
 
 def bridge(g, b, C):
@@ -730,12 +784,32 @@ def frame(g, fm, C):
             lbox(g, fr, u - b * .55, u + b * .55, h + b + b * .7, h + b + b * .95, dl - b * .6, dl + b * .55, dark)
 
 
+STATS = {}
+
+
+def _tally(fn):
+    def run(g, *a, **k):
+        n = g.faces
+        r = fn(g, *a, **k)
+        STATS[fn.__name__] = STATS.get(fn.__name__, 0) + g.faces - n
+        return r
+    return run
+
+
+for _n in ('ledge', 'parapet', 'crownband', 'fins', 'mast', 'crown', 'helipad', 'tank', 'plant', 'stairhut', 'billboard', 'cornice', 'balcony', 'aircon', 'fireescape', 'hangsign',
+           'bridge', 'runhut', 'frame'):
+    globals()[_n] = _tally(globals()[_n])
+
+
 def build(L, T):
     """The city's solid geometry and its facade faces for a tier."""
     g = sk.Geo()
     fc = rk.Facade()
+    STATS.clear()
     for lot in L.city:
+        n = g.faces
         build_lot(L, lot, T, g, fc)
+        STATS['lots'] = STATS.get('lots', 0) + g.faces - n
     C = Ctx(T, True)
     for b in L.bridges:
         bridge(g, b, C)

@@ -434,28 +434,37 @@ namespace ChipArena.UnityConversion
             Box(w,RoofX1,-1.15f,-1.6f,RoofX1+.12f,-.95f,-.8f,Prop,DarkSteel);Box(w,RoofX1,-6.9f,-1.6f,RoofX1+.12f,-6.7f,-.8f,Prop,DarkSteel);
             w.Stamp(first,PerchPart);
             w.Screens.Add(new RooftopScreen{Kind="sign",Center=new Vector3(RoofX1+.62f,-4,-1.2f),Width=2.2f,Height=6,Yaw=(float)Math.PI/2,Gain=2.2f});
+            // the old TV set by the pilot (the Ricochet easter egg: NativeRooftopScreens): a tube set on a crate, its screen toward the camera
+            first=w.Quads.Count;w.EggFirst=first;
+            {
+                var n=new Vector3((float)Math.Sin(RetroYaw),0,(float)Math.Cos(RetroYaw));var tt=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,n));var c=RetroCenter;
+                Block(w,c-n*.33f+tt*.1f,tt*(RetroWidth*.5f+.17f),Vector3.UnitY*(RetroHeight*.5f+.08f),n*.3f,Mat(.26f,.24f,.19f,Metal));
+                Block(w,new Vector3(c.X,(c.Y-RetroHeight*.5f-.08f)*.5f,c.Z)-n*.3f+tt*.1f,tt*.36f,Vector3.UnitY*((c.Y-RetroHeight*.5f-.08f)*.5f),n*.26f,Mat(.03f,.06f,.11f,Metal));
+            }
+            w.EggCount=w.Quads.Count-first;w.Stamp(first,PerchPart);
+            w.Screens.Add(new RooftopScreen{Kind="retro",Center=RetroCenter,Width=RetroWidth,Height=RetroHeight,Yaw=RetroYaw,Gain=1.15f});
             w.SignLight=new Vector3(RoofX1+.4f,-1.2f,-1);w.CyanLight=new Vector3(-1.2f,.9f,-1.2f);w.Beacon=new Vector3(-6.95f,9.2f,-1.15f);
         }
 
-        // A light's colour at `time`: a screen's breathes with its panel (ScreenState: brighter while its own loop plays).
+        // A light's colour at `time`: a screen's breathes with its panel (ScreenAnim: the old TV set's rises while its card shows).
         public static Vector3 ScreenLight(RooftopLight l,float time)
         {
-            if(l.Screen==null)return l.Color;ScreenState(l.Screen,time,out float pulse,out float mix,out _,out _);return l.Color*(pulse+.25f*mix);
+            if(l.Screen==null)return l.Color;var a=ScreenAnim(l.Screen,time);return l.Color*(a.Pulse+.2f*a.Cut);
         }
-        // The scene's eight lights: the four holo screens (a little in front of each, reaching about its size), the corner
-        // sign, the lip strip, the stair house's lamp and the string of lamps.
+        // The scene's eight lights: the four holo screens (a little in front of each, reaching about its size), the old TV
+        // set's glow on the roof by the pilot, the corner sign, the lip strip and the string of lamps. (The stair house's lamp,
+        // out of every frame, gave its slot to the TV set on 2026-11-11; its glow sprite stays.)
         private static void Lights(World w)
         {
             Camera(0,out var eye,out _);
             foreach(var s in w.Screens)
             {
                 if(s.Kind=="sign")continue;var toward=Vector3.Normalize(new Vector3(eye.X-s.Center.X,0,eye.Z-s.Center.Z));float size=Math.Max(s.Width,s.Height);
-                var col=s.Kind=="siren"?new Vector3(.9f,.3f,1.4f):s.Kind=="chip"?new Vector3(.3f,1.2f,1.5f):s.Kind=="banner"?new Vector3(1.4f,.3f,1.1f):new Vector3(.3f,1.1f,1.5f);
+                var col=s.Kind=="classes"?new Vector3(.9f,.3f,1.4f):s.Kind=="stages"?new Vector3(.3f,1.2f,1.5f):s.Kind=="banner"?new Vector3(1.4f,.3f,1.1f):s.Kind=="retro"?new Vector3(.3f,.42f,.7f):new Vector3(.3f,1.1f,1.5f);
                 w.Lights.Add(new RooftopLight{Position=s.Center+toward*size*.35f,Reach=size*1.4f,Wrap=.6f,Color=col*1.8f,Screen=s.Kind});
             }
             w.Lights.Add(new RooftopLight{Position=w.SignLight,Reach=2.6f,Wrap=.3f,Color=new Vector3(2.4f,.25f,1.9f)*.9f,Screen="sign"});
             w.Lights.Add(new RooftopLight{Position=w.CyanLight,Reach=1.6f,Wrap=.2f,Color=new Vector3(.2f,1.2f,1.5f)*.8f});
-            w.Lights.Add(new RooftopLight{Position=new Vector3(-14.4f,2.4f,7.7f),Reach=2.8f,Wrap=.2f,Color=new Vector3(1.6f,1.0f,.55f)});
             w.Lights.Add(new RooftopLight{Position=new Vector3(-10.9f,2.6f,-1.0f),Reach=3.8f,Wrap=.4f,Color=new Vector3(1.0f,.62f,.3f)*.7f});
             while(w.Lights.Count>LightCount)w.Lights.RemoveAt(w.Lights.Count-1);
             while(w.Lights.Count<LightCount)w.Lights.Add(new RooftopLight{Position=new Vector3(0,-9999,0),Reach=.01f,Color=Vector3.Zero});
