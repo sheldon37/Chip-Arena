@@ -40,6 +40,7 @@ namespace ChipArena.UnityConversion
             if(PrewarmClub(arena))built++;
             if(PrewarmEmporium(arena))built++;
             if(PrewarmCauseway(arena))built++;
+            if(PrewarmBreakwater(arena))built++;
             if(PrewarmSanctum(arena))built++;
             // The kit bank's plan and the map's harbour yards (NativePackStage.cs; nothing without the bank or an entry).
             var pack=NativePackStage.Entry(id);if(map!=null&&pack!=null){NativePackStage.Plan(map);if(pack.yards!=null&&pack.yards.Length>0)(packYards??=new NativePackYards()).Prepare(map,id);built++;}

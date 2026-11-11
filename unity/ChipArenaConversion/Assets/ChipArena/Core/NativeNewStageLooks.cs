@@ -13,11 +13,17 @@ namespace ChipArena.UnityConversion
     public static class NativeNewStageLooks
     {
         public const string Breakwater="breakwater",Harbor="harbor",Skyframe="skyframe",Rig="rig",Polar="polar";
-        public static readonly string[] Maps={Breakwater,Harbor,Skyframe,Rig,Polar};
+        /// <summary>The M1 stages this presentation still draws. Breakwater left it on 2026-11-11 (rebuilt: Core NativeBreakwater*,
+        /// docs/arenas/BREAKWATER.md); its code here is unused.</summary>
+        public static readonly string[] Maps={Harbor,Skyframe,Rig,Polar};
+        /// <summary>The stage numbers the kit, rig, scenery and effects switch on (fixed: a stage that leaves <see cref="Maps"/>
+        /// keeps its number).</summary>
+        private static readonly string[] Stages={Breakwater,Harbor,Skyframe,Rig,Polar};
         /// <summary>The look each stage names (UnityMaps.json `look`; MapLooks.json carries one entry for each).</summary>
-        public static readonly string[] Looks={"breakwater-blue-hour","harbor-night","skyframe-high-noon","rig-storm","polar-aurora"};
-        /// <summary>The stage's index in <see cref="Maps"/>, or -1 for every other map (whose presentation never changes here).</summary>
-        public static int Index(string mapId){for(int i=0;i<Maps.Length;i++)if(Maps[i]==mapId)return i;return -1;}
+        public static readonly string[] Looks={"harbor-night","skyframe-high-noon","rig-storm","polar-aurora"};
+        /// <summary>The stage's number (0 Breakwater's, 1 Pier 9, 2 Skyframe, 3 Deepwell, 4 Polaris), or -1 for every map not in
+        /// <see cref="Maps"/> (whose presentation never changes here).</summary>
+        public static int Index(string mapId){if(Array.IndexOf(Maps,mapId)<0)return -1;return Array.IndexOf(Stages,mapId);}
         public static bool Active(string mapId)=>Index(mapId)>=0;
 
         /// <summary>Kit kinds (index = kind), resolved once per look through `kitLooks`; at most NativeFactoryKit.Kinds.Length,

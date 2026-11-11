@@ -7,7 +7,10 @@ import importlib.util,json,math
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[3]
 def draft(name,fn):
-    spec=importlib.util.spec_from_file_location(name,ROOT/f'docs/arenas/scripts/{name}_m1.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return getattr(m,fn)()['maps'][0]
+    # a rebuilt stage's draft is <name>_m2.py (2026-11-11, the M1 stages' rework); its M1 script stays beside it as history
+    path=ROOT/f'docs/arenas/scripts/{name}_m2.py'
+    if not path.exists():path=ROOT/f'docs/arenas/scripts/{name}_m1.py'
+    spec=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return getattr(m,fn)()['maps'][0]
 def v(x,y,z):return dict(x=round(x,4),y=round(y,4),z=round(z,4))
 def bounds(b):return tuple((b['pos'][k]-b['size'][k]/2,b['pos'][k]+b['size'][k]/2) for k in 'xyz')
 def navigation(m):
@@ -111,7 +114,11 @@ def open_tops(m):
 # other column over a top goes: a double jump (daggers, bow, chips) reaches the 3.9 m ovens, altars and gates, and a pilot may
 # stand on anything they can reach.
 EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':()}
+# Breakwater (rebuilt 2026-11-11): the end buildings' walls and roofs keep pilots inside the map (the mole runs on past both as scenery).
+EDGES['breakwater']=('breakwater-end-',)
 OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-')}
+# Breakwater: the watch turret's roof and the Mariners' Stone's obelisk stand on their blocks.
+OVERHANG['breakwater']=('breakwater-turret','breakwater-stone')
 def open_stage(m):
     sides=column_sides(m);keep=EDGES[m['id']]+OVERHANG.get(m['id'],());kept=[];bots=0
     for p in m['pilotBlocks']:

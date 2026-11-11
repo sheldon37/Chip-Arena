@@ -147,7 +147,7 @@ namespace ChipArena.UnityConversion
                 &&Throws(()=>NativePackDressing.Validate(new PackDressingSet{schema=1,kits=Array.Empty<PackKit>(),maps=new[]{new PackMapDressing{map="m",rules=new[]{new PackRule{block="b",kit="none"}}}}})),"a malformed table is refused");
 
             // 2. The plans against the synthetic bank: the expected blocks, inside their colliders, deterministic and varied.
-            var bank=Synthetic(groups);var expected=new Dictionary<string,int>{["factory"]=16,["expedition-foundry"]=5,["expedition-city"]=20,["expedition-transit"]=0,["breakwater"]=56,["harbor"]=35,["skyframe"]=34,["rig"]=8,["polar"]=24};
+            var bank=Synthetic(groups);var expected=new Dictionary<string,int>{["factory"]=16,["expedition-foundry"]=5,["expedition-city"]=20,["expedition-transit"]=0,["harbor"]=35,["skyframe"]=34,["rig"]=8,["polar"]=24};
             foreach(var e in set.maps)
             {
                 var map=maps.Single(m=>m.id==e.map);var plan=NativePackDressing.Plan(set,map,bank);Check(plan!=null&&plan.Map==map.id&&plan.Glow==e.glow,e.map+": a plan");
