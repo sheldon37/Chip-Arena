@@ -25,6 +25,7 @@
 - **Animation impact:** presentation only. No hit timing, hitbox, damage, cooldown, movement or wire value changes; the arms, hands, legs and weapons stay on the real bones.
 - **Checks:** `--hot-dog` gains the evened bend's hooks; Unity compile PASS.
 - **Not run:** no person or two-client run; corpses not looked at with the evened bend (they keep their twins at rest).
+- **Released:** full suite at `e29d8abf` (shared merged in): 1015 groups, exit 0; `git diff --check` clean; Unity compile PASS. Merged `6d63564f`; builder succeeded and published to the test channel: revision 639300318719261930, 314.8 MiB. No live release; the bank and the Drive zip unchanged.
 
 ## 2026-11-11 — Astra: Expedition party loading and host deployment sequence
 
