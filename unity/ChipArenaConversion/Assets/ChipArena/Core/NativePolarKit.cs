@@ -298,7 +298,7 @@ namespace ChipArena.UnityConversion
             Begin(Overhead);Put(x,y,z,r*.82,r*.82,r*.82,FactoryQ.Axis(0,1,0,t*.2+.785),NativePolarLooks.Balloon,false);
             double sx=x+Math.Sin(sway)*NativePolarLooks.SondeDrop,sy=y-r-Math.Cos(sway)*NativePolarLooks.SondeDrop,sz=z;
             Begin(Overhead);int n=Parts.Count;Parts.Bar(x,y-r,z,sx,sy,sz,.03,.03,NativePolarLooks.SteelDark,false);if(Parts.Count>n){Role[n]=Overhead;Slot[n]=-1;Level[n]=0;}
-            Begin(Overhead,NativePolarArt.Sonde,sway);Put(sx,sy-.18,sz,.16,.2,.16,FactoryQ.Axis(0,0,1,-sway),NativePolarLooks.Orange,false);
+            Begin(Overhead,NativePolarArt.Sonde,sway);Put(sx,sy-.18,sz,.16,.2,.16,FactoryQ.Axis(0,0,1,sway),NativePolarLooks.Orange,false);
             Begin(Overhead);Put(sx,sy-.44,sz,.06,.06,.06,FactoryQ.Identity,NativePolarLooks.Beacon,false);
         }
         /// <summary>The anemometers' spin (rad) at `t`: gusty.</summary>

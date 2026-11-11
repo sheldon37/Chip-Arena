@@ -140,14 +140,16 @@ internal static class PolarArtChecks
             Check(!map.blocks.Any(b=>Math.Abs(b.pos.x-px)<b.size.x/2+.4&&Math.Abs(b.pos.z-pz)<b.size.z/2+.4&&Math.Abs(b.pos.y-py)<b.size.y/2+.4),"the reflection probe stands clear of every block");
             // the play space: within 2 m over the floor under it, the Fine art keeps to the blocks (within .25 m, the stage rule: what
             // looks like cover is cover); higher is overhead; under the shelf (the sea, the channel's walls) nothing can be stood on.
-            // Nothing stands in a spawn's capsule.
+            // Nothing stands in a spawn's capsule. A capped block (the ridges, the wheelhouse, the pedestal: nobody can be over it) is not a floor.
+            var capped=new HashSet<string>(map.blocks.Where(b=>map.pilotBlocks.Any(p=>!p.bots&&Math.Abs(b.pos.x-p.center.x)<=p.size.x/2+.01&&Math.Abs(b.pos.z-p.center.z)<=p.size.z/2+.01&&p.bottom<=b.pos.y+b.size.y/2)).Select(b=>b.id));
+            var floors=map.blocks.Where(b=>!capped.Contains(b.id)).Select(b=>(x0:b.pos.x-b.size.x/2,x1:b.pos.x+b.size.x/2,y0:b.pos.y-b.size.y/2,y1:b.pos.y+b.size.y/2,z0:b.pos.z-b.size.z/2,z1:b.pos.z+b.size.z/2)).ToArray();
             var boxes=map.blocks.Select(b=>(x0:b.pos.x-b.size.x/2,x1:b.pos.x+b.size.x/2,y0:b.pos.y-b.size.y/2,y1:b.pos.y+b.size.y/2,z0:b.pos.z-b.size.z/2,z1:b.pos.z+b.size.z/2)).ToArray();
             int proud=0,total=0;double farthest=0;var where=new Dictionary<string,int>();var spawns=map.spawns.ffa.Concat(map.spawns.teams.SelectMany(t=>t.points)).Select(s=>s.pos).ToArray();int inSpawn=0;long verts=0;
             foreach(var c in near)
             {
                 var prop=bank.Props[c.Props[0]];foreach(var part in prop.Parts)foreach(var v in bank.Meshes[part.Mesh].Positions)
                 {
-                    verts++;if(v.Y<NativePolarKit.BelowY)continue;double floor=double.NegativeInfinity;foreach(var b in boxes)if(v.X>=b.x0&&v.X<=b.x1&&v.Z>=b.z0&&v.Z<=b.z1&&b.y1<=v.Y+.05&&b.y1>floor)floor=b.y1;
+                    verts++;if(v.Y<NativePolarKit.BelowY)continue;double floor=double.NegativeInfinity;foreach(var b in floors)if(v.X>=b.x0&&v.X<=b.x1&&v.Z>=b.z0&&v.Z<=b.z1&&b.y1<=v.Y+.05&&b.y1>floor)floor=b.y1;
                     if(double.IsNegativeInfinity(floor)||v.Y-floor>2)continue;total++;
                     double best=double.MaxValue;foreach(var b in boxes){double dx=Math.Max(0,Math.Max(b.x0-v.X,v.X-b.x1)),dy=Math.Max(0,Math.Max(b.y0-v.Y,v.Y-b.y1)),dz=Math.Max(0,Math.Max(b.z0-v.Z,v.Z-b.z1));best=Math.Min(best,Math.Sqrt(dx*dx+dy*dy+dz*dz));if(best==0)break;}
                     if(best>.25+1e-3){proud++;var key=((int)Math.Floor(v.X))+","+(Math.Floor(v.Y*2)/2.0)+","+((int)Math.Floor(v.Z));where[key]=where.TryGetValue(key,out var w0)?w0+1:1;}farthest=Math.Max(farthest,best);
