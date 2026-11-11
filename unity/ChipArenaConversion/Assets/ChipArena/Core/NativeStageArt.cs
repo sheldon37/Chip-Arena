@@ -41,6 +41,58 @@ namespace ChipArena.UnityConversion
             (NativeFactoryHazards.MapId,NativeFactoryArt.Bank),
             (NativeBreakwaterLooks.MapId,NativeBreakwaterArt.Bank)};
         public static string BankOf(string mapId){if(mapId==null)return null;foreach(var b in Banks)if(b.map==mapId)return b.bank;return null;}
+        /// <summary>Layers (docs/arenas/STAGE-ART.md "Depth fighting"; owner 2026-11-11: "There is Z-Fighting on the stage
+        /// remodelings ... Floors mainly"). A face that lies on another draws nearer the eye along its own ray, by its layer, so the
+        /// two never fight however flat the view (ChipArena/StageLit; the bank carries each triangle's layer). A block's or a rig's
+        /// model draws <see cref="ModelLayers"/> up; a kit box a stage keeps drawing over its art <see cref="KitLayers"/> up and
+        /// one more for each kept box it lies on (<see cref="BoxLayers"/>).</summary>
+        public const int ModelLayers=2,KitLayers=8,MostLayers=16;
+        /// <summary>How far towards the eye a point `layers` up draws: the share of its distance (m) it comes nearer. The same as
+        /// the shader's StageLayer (4e-6 z + 5e-5 per layer, at most a thirtieth).</summary>
+        public static float Nearer(float distance,float layers)=>layers<=0?0:Math.Min(Math.Min(layers,MostLayers)*(4e-6f*distance+5e-5f),.033f);
+        /// <summary>The kept kit boxes' own stacking: for each box (centre x, y, z and half extents, world axes: six floats), how
+        /// many kept boxes it lies on (a box lies on another when a face of it stands 0 to 30 mm out from the other's same face and
+        /// overlaps it; in one plane the smaller lies on the larger), at most <see cref="MostLayers"/> - <see cref="KitLayers"/>.
+        /// A box with <paramref name="skip"/> set takes no part (a turned box). Once per map.</summary>
+        public static void BoxLayers(float[] boxes,int count,bool[] skip,int[] layers)
+        {
+            const float reach=.03f,tie=2e-5f,least=2e-4f;int most=MostLayers-KitLayers;Array.Clear(layers,0,count);
+            var under=new List<int>[count];
+            // sorted by x so only neighbours in x are met
+            var order=new int[count];for(int i=0;i<count;i++)order[i]=i;Array.Sort(order,(p,q)=>(boxes[p*6]-boxes[p*6+3]).CompareTo(boxes[q*6]-boxes[q*6+3]));
+            for(int oi=0;oi<count;oi++)
+            {
+                int i=order[oi];if(skip!=null&&skip[i])continue;int a=i*6;float aMax=boxes[a]+boxes[a+3]+reach;
+                for(int oj=oi+1;oj<count;oj++)
+                {
+                    int j=order[oj];int b=j*6;if(boxes[b]-boxes[b+3]>aMax)break;if(skip!=null&&skip[j])continue;
+                    // one order per pair: where two faces disagree (each box proud of the other on one side), the smaller box is on top
+                    bool aUp=false,bUp=false;
+                    for(int ax=0;ax<3;ax++)
+                    {
+                        int u=(ax+1)%3,v=(ax+2)%3;
+                        float ou=Math.Min(boxes[a+u]+boxes[a+3+u],boxes[b+u]+boxes[b+3+u])-Math.Max(boxes[a+u]-boxes[a+3+u],boxes[b+u]-boxes[b+3+u]);
+                        float ov=Math.Min(boxes[a+v]+boxes[a+3+v],boxes[b+v]+boxes[b+3+v])-Math.Max(boxes[a+v]-boxes[a+3+v],boxes[b+v]-boxes[b+3+v]);
+                        if(ou<=0||ov<=0||ou*ov<least)continue;
+                        float areaA=boxes[a+3+u]*boxes[a+3+v],areaB=boxes[b+3+u]*boxes[b+3+v];
+                        for(int sign=-1;sign<=1;sign+=2)
+                        {
+                            float gap=sign*((boxes[a+ax]+sign*boxes[a+3+ax])-(boxes[b+ax]+sign*boxes[b+3+ax]));if(Math.Abs(gap)>reach)continue;
+                            if(gap>tie||gap>=-tie&&(areaA<areaB||areaA==areaB&&i>j))aUp=true;else bUp=true;
+                        }
+                    }
+                    if(!aUp&&!bUp)continue;
+                    if(aUp&&bUp){float va=boxes[a+3]*boxes[a+4]*boxes[a+5],vb=boxes[b+3]*boxes[b+4]*boxes[b+5];aUp=va<vb||va==vb&&i>j;}
+                    int top=aUp?i:j,bottom=aUp?j:i;(under[top]??=new List<int>()).Add(bottom);
+                }
+            }
+            for(int sweep=0;sweep<most;sweep++)
+            {
+                bool changed=false;
+                for(int i=0;i<count;i++){var us=under[i];if(us==null)continue;int v=0;foreach(int k in us)v=Math.Max(v,layers[k]);v=Math.Min(most,v+1);if(v>layers[i]){layers[i]=v;changed=true;}}
+                if(!changed)break;
+            }
+        }
         /// <summary>The tier a piece draws at from the eye (the low graphics tier always draws the Low one).</summary>
         public static int TierAt(float distance,bool low)=>low?Low:distance<FineReach?Fine:distance<MidReach?Mid:Low;
 

@@ -224,7 +224,9 @@ def block_model(b, T):
             for k in range(7):
                 x, z = (H(seed, k, 1) - .5) * 2 * (hx - .5), (H(seed, k, 2) - .5) * 2 * (hz - .5)
                 w, l = .25 + H(seed, k, 3) * .5, .5 + H(seed, k, 4) * .9
-                g.face(((x - w, hy + .005, z - l), (x + w, hy + .005, z - l * .7), (x + w * .8, hy + .005, z + l), (x - w * .9, hy + .005, z + l * .8)), F['snow'], normal=(0, 1, 0))
+                # each drift at its own height (they overlap one another: in one plane they fought), over the cracks
+                y = hy + .009 + .0012 * k
+                g.face(((x - w, y, z - l), (x + w, y, z - l * .7), (x + w * .8, y, z + l), (x - w * .9, y, z + l * .8)), F['snow'], normal=(0, 1, 0))
             for k in range(5):
                 x0, z0 = (H(seed, k, 5) - .5) * 2 * (hx - .2), (H(seed, k, 6) - .5) * 2 * (hz - .2)
                 a = H(seed, k, 7) * math.pi
@@ -232,7 +234,8 @@ def block_model(b, T):
                 dx, dz = math.cos(a) * l, math.sin(a) * l
                 nx, nz = -dz / l * .012, dx / l * .012
                 x1, z1 = max(-hx + .05, min(hx - .05, x0 + dx)), max(-hz + .05, min(hz - .05, z0 + dz))
-                g.face(((x0 - nx, hy + .008, z0 - nz), (x0 + nx, hy + .008, z0 + nz), (x1 + nx, hy + .008, z1 + nz), (x1 - nx, hy + .008, z1 - nz)), F['seam'], normal=(0, 1, 0))
+                y = hy + .003 + .001 * k   # each crack at its own height too (they cross)
+                g.face(((x0 - nx, y, z0 - nz), (x0 + nx, y, z0 + nz), (x1 + nx, y, z1 + nz), (x1 - nx, y, z1 - nz)), F['seam'], normal=(0, 1, 0))
     elif i.startswith('polar-seam-'):
         # the fracture seam: a dark refrozen strip, a little sunk, a flagged stake at each end
         sk.box(g, -hx, hx, -hy, hy - .012, -hz, hz, F['seam'], T, bevel=0, cell=0, skip=('-y',))

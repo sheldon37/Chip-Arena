@@ -807,7 +807,90 @@ class StageBank:
     def cover(self, block_id):
         self.bank.prop('cover/' + block_id, 'cover', [])
 
+    def layer(self):
+        """Writes every triangle's layer (layer_polys) into the meshes, as layer / 32 on top of the fine surface's kind (uv1.x: a
+        runtime without layers rounds it away), for ChipArena/StageLit to part stacked faces by: the static chunks of each tier together, in the world (a chunk's paint
+        on its neighbour's slab; the parts a chunk was baked in); each block's and each rig part's model by itself. A corner
+        that triangles of different layers share is split. Returns (triangles layered, triangles)."""
+        meshes = self.bank.meshes
+        scenes, seen = [], set()
+        tiers = {}
+        for name, group, lo, hi, parts in self.bank.props:
+            if not parts:
+                continue
+            if group == 'static':
+                tiers.setdefault(name.rsplit('/', 1)[-1], []).extend(parts)
+            else:
+                scenes.append(list(parts))
+        scenes = list(tiers.values()) + scenes
+        layers = {}  # mesh index -> the layer of each of its triangles (the most any scene gives it)
+        for parts in scenes:
+            key = tuple(sorted((mi, tuple(round(float(x), 6) for x in m)) for mi, m in parts))
+            if key in seen:
+                continue
+            seen.add(key)
+            tris, counts = [], []
+            for mi, m in parts:
+                om = meshes[mi][1]
+                idx = np.array([i for sub in om.submeshes for i in sub], dtype=np.int64).reshape(-1, 3)
+                A = np.array(m, dtype=np.float64).reshape(3, 4)
+                Pw = np.array(om.positions, dtype=np.float64).reshape(-1, 3) @ A[:, :3].T + A[:, 3]
+                tris.append(Pw[idx].reshape(-1, 3))
+                counts.append(len(idx))
+            if not sum(counts):
+                continue
+            lay = layer_polys(np.concatenate(tris), np.full(sum(counts), 3, dtype=np.int64))
+            at = 0
+            for (mi, m), c in zip(parts, counts):
+                got = lay[at:at + c]
+                at += c
+                layers[mi] = np.maximum(layers[mi], got) if mi in layers else got.copy()
+        done = total = 0
+        for mi, lay in layers.items():
+            om = meshes[mi][1]
+            total += len(lay)
+            if not lay.any():
+                continue
+            if not om.uv1:
+                continue
+            done += int((lay > 0).sum())
+            om.positions, om.normals, om.uv0, om.uv1, om.colors = list(om.positions), list(om.normals), list(om.uv0), list(om.uv1), list(om.colors)
+            om.submeshes = [list(sub) for sub in om.submeshes]
+            variant, t = {}, 0
+            for sub in om.submeshes:
+                for k in range(0, len(sub), 3):
+                    L = int(lay[t])
+                    t += 1
+                    if L == 0:
+                        continue
+                    for c in range(3):
+                        v = sub[k + c]
+                        nv = variant.get((v, L))
+                        if nv is None:
+                            nv = len(om.positions)
+                            variant[(v, L)] = nv
+                            om.positions.append(om.positions[v])
+                            om.normals.append(om.normals[v])
+                            om.uv0.append(om.uv0[v])
+                            u = om.uv1[v]
+                            om.uv1.append([u[0] + L / 32.0, u[1]])
+                            if om.colors:
+                                om.colors.append(om.colors[v])
+                        sub[k + c] = nv
+            # the corners no triangle uses any more go
+            used = sorted({i for sub in om.submeshes for i in sub})
+            if len(used) < len(om.positions):
+                remap = {v: i for i, v in enumerate(used)}
+                for attr in ('positions', 'normals', 'uv0', 'uv1', 'colors'):
+                    src = getattr(om, attr)
+                    if src:
+                        setattr(om, attr, [src[v] for v in used])
+                om.submeshes = [[remap[i] for i in sub] for sub in om.submeshes]
+        print('layers: %d of %d triangles lie on another' % (done, total))
+        return done, total
+
     def write(self, assets, name):
+        self.layer()
         sys.path.insert(0, os.path.join(HERE, '..', 'pack_bank'))
         from build_pack_bank import bytes_meta
         folder = os.path.join(assets, RESOURCES)
@@ -995,6 +1078,134 @@ def lift_coplanar(g, eps=None, report=None, lift=None, passes=3):
     if report is not None:
         report.append((pairs, total, moved, deepest))
     return pairs, total, moved, deepest
+
+
+LAYER_REACH = .03   # m: a face this close over another (turned the same way, overlapping) lies on it
+LAYER_MOST = 10
+
+
+def layer_faces(g, reach=LAYER_REACH, least=2e-4, share=.02):
+    """layer_polys on a Geo's faces."""
+    P, N, S, F = g.arrays()
+    return layer_polys(P.astype(np.float64), S, reach, least, share)
+
+
+def layer_polys(P64, S, reach=LAYER_REACH, least=2e-4, share=.02):
+    """How many faces each face lies on (0: none; at most LAYER_MOST): a face is on another when both are turned the same way,
+    it overlaps it (over `least` m2 or `share` of the smaller) and stands 0 to `reach` over it along their normal (in one plane:
+    the smaller is on the larger, as lift_coplanar stacks them). Across a floor from a pilot's eye height the depth between two
+    such layers is their gap times the sine of the view's angle to the floor (a twentieth 30 m off), far under the depth
+    buffer's step there however they were lifted, so they fight (owner 2026-11-11: "There is Z-Fighting on the stage
+    remodelings ... Floors mainly"). The shader parts them by layer instead (StageBank.layer writes it into the meshes;
+    ChipArena/StageLit's vertex stage). P64: the faces' corners (n, 3), one face after another; S: each face's corner count.
+    Returns an int array per face."""
+    S = np.asarray(S, dtype=np.int64)
+    nf = len(S)
+    out = np.zeros(nf, dtype=np.int64)
+    if nf == 0:
+        return out
+    starts = np.zeros(nf, dtype=np.int64)
+    if nf > 1:
+        starts[1:] = np.cumsum(S[:-1])
+    face_of = np.repeat(np.arange(nf), S)
+    nxt = np.arange(len(P64)) + 1
+    nxt[starts + S - 1] = starts
+    a, b = P64, P64[nxt]
+    cr = np.stack([(a[:, 1] - b[:, 1]) * (a[:, 2] + b[:, 2]), (a[:, 2] - b[:, 2]) * (a[:, 0] + b[:, 0]),
+                   (a[:, 0] - b[:, 0]) * (a[:, 1] + b[:, 1])], axis=1)
+    nrm = np.zeros((nf, 3))
+    np.add.at(nrm, face_of, cr)
+    area = np.linalg.norm(nrm, axis=1) / 2
+    ok = area > 1e-6
+    unit = np.zeros_like(nrm)
+    unit[ok] = nrm[ok] / (2 * area[ok][:, None])
+    d = np.einsum('ij,ij->i', unit, P64[starts])
+    lo = np.minimum.reduceat(P64, starts, axis=0)
+    hi = np.maximum.reduceat(P64, starts, axis=0)
+    ax = np.argmax(np.abs(unit), axis=1)
+    kn = np.round(unit * 400).astype(np.int64)
+    kd = np.floor(d / reach).astype(np.int64)
+    cell = 3.0
+    clo = np.floor(lo / cell).astype(np.int64)
+    chi = np.floor(hi / cell).astype(np.int64)
+    span = (chi - clo + 1).prod(axis=1)
+    planes = {}
+    for f in np.nonzero(ok)[0].tolist():
+        grid = planes.setdefault((int(kn[f, 0]), int(kn[f, 1]), int(kn[f, 2]), int(kd[f])), {})
+        if span[f] > 600:      # a far sheet: met with every face of its plane
+            grid.setdefault('big', []).append(f)
+            continue
+        for cx in range(int(clo[f, 0]), int(chi[f, 0]) + 1):
+            for cy in range(int(clo[f, 1]), int(chi[f, 1]) + 1):
+                for cz in range(int(clo[f, 2]), int(chi[f, 2]) + 1):
+                    grid.setdefault((cx, cy, cz), []).append(f)
+    U, D, AR, LO, HI, AX = unit.tolist(), d.tolist(), area.tolist(), lo.tolist(), hi.tolist(), ax.tolist()
+    under = {}
+    seen = set()
+    for pk, grid in planes.items():
+        for dd in (0, 1):
+            other = planes.get((pk[0], pk[1], pk[2], pk[3] + dd))
+            if other is None:
+                continue
+            everything = None
+            for c, fs in grid.items():
+                if c == 'big':
+                    if everything is None:
+                        everything = sorted({j for v in other.values() for j in v})
+                    near = everything
+                else:
+                    near = other.get(c)
+                    if other.get('big'):
+                        near = (near or []) + other['big']
+                if not near:
+                    continue
+                for i in fs:
+                    ui, di, li, hi_ = U[i], D[i], LO[i], HI[i]
+                    for j in near:
+                        if j == i:
+                            continue
+                        pair = (i, j) if i < j else (j, i)
+                        if pair in seen:
+                            continue
+                        seen.add(pair)
+                        uj = U[j]
+                        gap = di - D[j]
+                        if abs(gap) > reach or ui[0] * uj[0] + ui[1] * uj[1] + ui[2] * uj[2] < .9995:
+                            continue
+                        lj, hj = LO[j], HI[j]
+                        if li[0] > hj[0] + reach or li[1] > hj[1] + reach or li[2] > hj[2] + reach or lj[0] > hi_[0] + reach or lj[1] > hi_[1] + reach or lj[2] > hi_[2] + reach:
+                            continue
+                        axis = AX[i]
+                        ov = _clip(_poly2(P64[starts[i]:starts[i] + S[i]], axis), _poly2(P64[starts[j]:starts[j] + S[j]], axis))
+                        if len(ov) < 3:
+                            continue
+                        o = abs(_area2(ov))
+                        if o < least and o < share * min(AR[i], AR[j]):
+                            continue
+                        if gap > 2e-5:
+                            top, bot = i, j
+                        elif gap < -2e-5:
+                            top, bot = j, i
+                        else:
+                            top, bot = (i, j) if AR[i] < AR[j] or AR[i] == AR[j] and i > j else (j, i)
+                        under.setdefault(top, []).append(bot)
+    # from the bottom up (by height along the normal, then the larger first): a face is one over the highest it lies on
+    layer = {}
+    for f in sorted(under, key=lambda f: (D[f], -AR[f], f)):
+        layer[f] = min(LAYER_MOST, 1 + max(layer.get(u, 0) for u in under[f]))
+    # the order above is by each face's own offset, so one more sweep settles a face sorted before what it lies on
+    for _ in range(LAYER_MOST):
+        changed = False
+        for f, us in under.items():
+            v = min(LAYER_MOST, 1 + max(layer.get(u, 0) for u in us))
+            if v > layer.get(f, 0):
+                layer[f] = v
+                changed = True
+        if not changed:
+            break
+    for f, v in layer.items():
+        out[f] = v
+    return out
 
 
 class Chunks:

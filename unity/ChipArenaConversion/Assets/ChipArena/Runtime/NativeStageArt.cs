@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
         private sealed class Piece{public Mesh Mesh;public Matrix4x4 Place;public int Subs;}
         private sealed class BlockDraw{public Piece[] Tiers;public float S1,S2,Max;}
         private string bankName,mapId;private NativeStageArt.Plan plan;private bool failed;
-        private Material solid,glow;private MaterialPropertyBlock block;private Shader shader;
+        private Material solid,glow,solidUp,glowUp;private MaterialPropertyBlock block;private Shader shader;
         /// <summary>Set before <see cref="Prepare"/>: where the reflection probe stands (default: the centre of the art's bounds) and the
         /// colour it sees where nothing is drawn (default: near black; an open-air stage gives its sky's).</summary>
         public Vector3? ProbeAt;public Color? ProbeSky;
@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
         private sealed class Batch{public readonly Matrix4x4[] M=new Matrix4x4[BatchSize];public readonly Vector4[] Glow=new Vector4[BatchSize];public int Count;public Piece Piece;public ShadowCastingMode Shadow;}
         private int[] slotCount=Array.Empty<int>();private Batch[] batches=Array.Empty<Batch>();private bool instanced;
         private int lastFrame=-10;private readonly HashSet<int> built=new HashSet<int>();
-        private static readonly int GlowId=Shader.PropertyToID("_StageGlow"),TintId=Shader.PropertyToID("_StageTint"),GlowFlag=Shader.PropertyToID("_Glow");
+        private static readonly int GlowId=Shader.PropertyToID("_StageGlow"),TintId=Shader.PropertyToID("_StageTint"),GlowFlag=Shader.PropertyToID("_Glow"),LiftId=Shader.PropertyToID("_StageLift");
         /// <summary>The art is loaded for the prepared map (its boxes give way to it).</summary>
         public bool Ready=>plan!=null&&root!=null;
         /// <summary>Last frame: the static chunks shown at each tier, the block models and rig parts drawn.</summary>
@@ -71,6 +71,9 @@ namespace ChipArena.UnityConversion
                 shader=Resources.Load<Shader>("NativeStageLit");if(shader==null||!shader.isSupported)throw new InvalidOperationException("ChipArena/StageLit is missing or unsupported");
                 solid=new Material(shader){name="Stage art",enableInstancing=true};solid.SetFloat(GlowFlag,0);
                 glow=new Material(shader){name="Stage art glow",enableInstancing=true};glow.SetFloat(GlowFlag,1);block=new MaterialPropertyBlock();
+                // the blocks' and the rig's models draw two layers over the static art (ChipArena/StageLit's layers): a model's face in
+                // the plane of a chunk's (a crate on its floor, a machine's foot on its plinth) never fights it
+                solidUp=new Material(solid){name="Stage art model"};solidUp.SetFloat(LiftId,NativeStageArt.ModelLayers);glowUp=new Material(glow){name="Stage art model glow"};glowUp.SetFloat(LiftId,NativeStageArt.ModelLayers);
                 bankName=name;mapId=map.id;plan=p;
                 root=new GameObject("Stage art "+map.id);
                 foreach(var c in p.Static)
@@ -150,7 +153,7 @@ namespace ChipArena.UnityConversion
                 float dmg=stage==0?0:stage==1?.45f:.85f;block.Clear();block.SetVector(TintId,new Vector4(0,0,0,dmg));
                 var rot=t.rotation;if(Tell!=null){var lit=Vector4.one;Tell(b,ref at,ref rot,ref lit);block.SetVector(GlowId,lit);}
                 var m=Matrix4x4.TRS(at,rot,Vector3.one)*piece.Place;
-                for(int s=0;s<piece.Subs;s++)Graphics.DrawMesh(piece.Mesh,m,s==0?solid:glow,0,null,s,block,ShadowCastingMode.TwoSided,true);Drawn++;
+                for(int s=0;s<piece.Subs;s++)Graphics.DrawMesh(piece.Mesh,m,s==0?solidUp:glowUp,0,null,s,block,ShadowCastingMode.TwoSided,true);Drawn++;
             }
             // a landed segment's rubble models (static blocks)
             if(rubble){var fixedBlocks=arena.StaticBlocks;for(int i=0;i<fixedBlocks.Count;i++)
@@ -158,7 +161,7 @@ namespace ChipArena.UnityConversion
                 var b=fixedBlocks[i];if(b==null||b.Definition?.id==null||b.Definition.role!="rubble"||!blocks.TryGetValue(b.Definition.id,out var bd))continue;
                 var t=b.transform;var at=t.position;var piece=bd.Tiers[NativeStageArt.TierAt(Vector3.Distance(at,e),low)];if(piece==null)continue;block.Clear();
                 var m=Matrix4x4.TRS(at,t.rotation,Vector3.one)*piece.Place;
-                for(int s=0;s<piece.Subs;s++)Graphics.DrawMesh(piece.Mesh,m,s==0?solid:glow,0,null,s,block,ShadowCastingMode.TwoSided,true);Drawn++;
+                for(int s=0;s<piece.Subs;s++)Graphics.DrawMesh(piece.Mesh,m,s==0?solidUp:glowUp,0,null,s,block,ShadowCastingMode.TwoSided,true);Drawn++;
             }}
             // the rig
             if(pose!=null){Array.Clear(slotCount,0,slotCount.Length);for(int i=0;i<pose.Count;i++){int sl=pose.Slot[i];if(sl>=0&&sl<slotCount.Length)slotCount[sl]++;}}
@@ -175,12 +178,12 @@ namespace ChipArena.UnityConversion
                 {
                     var b=batches[slot*NativeStageArt.Tiers+tier]??=new Batch();if(b.Count<BatchSize){b.M[b.Count]=m;b.Glow[b.Count]=new Vector4(pose.Tint[k],pose.Tint[k+1],pose.Tint[k+2],1);b.Count++;b.Piece=piece;b.Shadow=shadow;Drawn++;continue;}
                 }
-                for(int s=0;s<piece.Subs;s++)Graphics.DrawMesh(piece.Mesh,m,s==0?solid:glow,0,null,s,block,s==0?shadow:ShadowCastingMode.Off,true);Drawn++;
+                for(int s=0;s<piece.Subs;s++)Graphics.DrawMesh(piece.Mesh,m,s==0?solidUp:glowUp,0,null,s,block,s==0?shadow:ShadowCastingMode.Off,true);Drawn++;
             }
             for(int i=0;i<batches.Length;i++)
             {
                 var b=batches[i];if(b==null||b.Count==0)continue;block.Clear();block.SetVectorArray(GlowId,b.Glow);
-                for(int s=0;s<b.Piece.Subs;s++)Graphics.DrawMeshInstanced(b.Piece.Mesh,s,s==0?solid:glow,b.M,b.Count,block,s==0?b.Shadow:ShadowCastingMode.Off,true);
+                for(int s=0;s<b.Piece.Subs;s++)Graphics.DrawMeshInstanced(b.Piece.Mesh,s,s==0?solidUp:glowUp,b.M,b.Count,block,s==0?b.Shadow:ShadowCastingMode.Off,true);
                 b.Count=0;
             }
             Probe(low);
@@ -203,7 +206,7 @@ namespace ChipArena.UnityConversion
         private void Release()
         {
             if(root!=null)Destroy(root);root=null;probe=null;chunks.Clear();blocks.Clear();rig=Array.Empty<Piece[]>();plan=null;bankName=mapId=null;
-            if(solid!=null)Destroy(solid);if(glow!=null)Destroy(glow);solid=glow=null;
+            if(solid!=null)Destroy(solid);if(glow!=null)Destroy(glow);if(solidUp!=null)Destroy(solidUp);if(glowUp!=null)Destroy(glowUp);solid=glow=solidUp=glowUp=null;
         }
         private void OnDestroy()=>Release();
     }
