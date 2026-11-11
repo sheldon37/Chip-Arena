@@ -141,7 +141,7 @@ internal static class FactoryArtChecks
         else
         {
             var bank=NativePackBank.Read(File.ReadAllBytes(bankPath));var sp=NativeStageArt.Read(bank);double mb=new FileInfo(bankPath).Length/1048576.0;
-            Check(mb<=21,"the bank keeps to its budget ("+mb.ToString("0.0")+" MB)");
+            Check(mb<=22.5,"the bank keeps to its budget, with the floors cut along the chunks' cells ("+mb.ToString("0.0")+" MB)");
             foreach(var b in map.blocks)Check(sp.Covers.Contains(b.id),"the art replaces block "+b.id);
             var breakable=map.blocks.Where(b=>b.role!="static").ToArray();
             Check(breakable.Length==10&&breakable.All(b=>sp.Blocks.ContainsKey(b.id)&&sp.Blocks[b.id].All(p=>p>=0)&&sp.Blocks[b.id].Distinct().Count()==3),"every breakable crate, pallet stack and drum pallet has its model in three tiers");

@@ -18,9 +18,15 @@ Shader "ChipArena/StageLit"
     //  - the anime style (NativeToon.cginc) when the look turns it on: the key through the ramp, the flattened ambient, the points
     //    in stairs, a crisp highlight band; the occlusion band from the baked occlusion;
     //  - the ground haze, the advanced lighting's scattering, then Unity's fog.
+    // Layers (owner 2026-11-11: "There is Z-Fighting on the stage remodelings ... Floors mainly"): a face that lies on another
+    // (paint on a slab, boards on a deck, a sign on a wall: stagekit.layer_polys) carries its layer as layer / 32 on top of its
+    // fine surface's kind (uv1.x), and a block's or a rig's model draws one layer up (_StageLift 1 on its materials). The vertex stage draws
+    // a layered face nearer the eye along its own ray (StageLayer: the same pixel, a nearer depth, by more than the depth
+    // buffer's step at that distance), because across a floor from a pilot's eye height the depth between two layers is only
+    // their gap times the sine of the view's angle (a twentieth 30 m off): no lift of millimetres parts them there.
     // _Glow (material): the glow sub-mesh, unlit, albedo x gain x _StageGlow.rgb where a draw sets it (w 1: a lantern's colour,
     // the coals' heat; unset, as baked). _StageTint (per draw): rgb a tint (unset 0: none), w the damage (a struck pew's soot).
-    Properties { _Glow("Glow sub-mesh",Float)=0 }
+    Properties { _Glow("Glow sub-mesh",Float)=0 _StageLift("Layers up (a block's or a rig's model)",Float)=0 }
     SubShader
     {
         Tags { "RenderType"="Opaque" "Queue"="Geometry" }
@@ -36,7 +42,20 @@ Shader "ChipArena/StageLit"
         #include "NativeMuzzleLight.cginc"
         #include "NativeAdvancedLight.cginc"
         #include "NativeToon.cginc"
-        float _Glow;
+        float _Glow;float _StageLift;
+        // The fine surface's kind and the layer (0: none) a vertex's uv1.x carries: kind + layer / 32.
+        float StageKindOf(float2 uv1){return floor(uv1.x+0.015625);}
+        float StageLayerOf(float2 uv1){return floor((uv1.x-StageKindOf(uv1))*32.0+0.5);}
+        // A clip position `layer` layers nearer the eye along its ray: 4e-6 z + 5e-5 of the way per layer (z the eye depth in m:
+        // four steps of a 24 bit depth buffer behind a 0.06 m near plane, z^2 x 1e-6 m, and a little for the near field; Core
+        // NativeStageArt.Nearer is the same for the kit boxes a stage keeps), at most 16 layers and a thirtieth. The pixel stays
+        // where it was. An orthographic view is left alone.
+        float4 StageLayer(float4 clip,float layer)
+        {
+            if(layer<0.5||unity_OrthoParams.w>0.5)return clip;
+            float f=min(min(layer,16.0)*(4e-6*clip.w+5e-5),0.033);float b=UNITY_MATRIX_P[2][3];
+            clip.xyw*=1.0-f;clip.z=(clip.z-b)*(1.0-f)+b;return clip;
+        }
         #define DETAIL_NONE 0
         #define DETAIL_ASHLAR 1
         #define DETAIL_FLAG 2
@@ -219,8 +238,8 @@ Shader "ChipArena/StageLit"
                 #ifndef UNITY_COLORSPACE_GAMMA
                 c=GammaToLinearSpace(c);
                 #endif
-                o.col=float4(c,v.color.a);o.mat=float4(v.texcoord.xy,v.texcoord1.xy);
-                UNITY_TRANSFER_SHADOW(o,float2(0.0,0.0));UNITY_TRANSFER_FOG(o,o.pos);return o;
+                float layer=StageLayerOf(v.texcoord1);o.col=float4(c,v.color.a);o.mat=float4(v.texcoord.xy,StageKindOf(v.texcoord1),v.texcoord1.y);
+                UNITY_TRANSFER_SHADOW(o,float2(0.0,0.0));UNITY_TRANSFER_FOG(o,o.pos);o.pos=StageLayer(o.pos,layer+_StageLift);return o;
             }
             fixed4 frag(v2f i):SV_Target
             {

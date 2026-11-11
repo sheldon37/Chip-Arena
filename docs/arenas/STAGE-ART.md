@@ -390,3 +390,117 @@ The owner's revamp of the older stages (each built by its own agent on its own b
 - Art passes on a kept layout: Brickfall (BRICKFALL-ART.md: breakable blocks as models posed by their blocks, landed rubble as
   heaps, `DETAIL_BRICK`), Ward Zero (WARDZERO-ART.md: both records on one bank, movers and Hulk walls posed), the Factory
   (FACTORY-ART.md, section 12 above), Cyber City (CYBERCITY-ART.md).
+
+## 14. Depth fighting: what fought, layers, cells (2026-11-11)
+
+Owner, after playing the nine stages of the revamp: "There is Z-Fighting on the stage remodelings" ... "Floors mainly" ...
+"Polaris station has BAD z fighting in the middle area". Branch `claude/stage-zfight`.
+
+**What fought** (the first analyser measured only the static chunks of one tier, pairs over 2e-3 m², within 4 mm, and every
+stage came out under 0.1 m²; it did not see any of these):
+1. **Models nobody lifted.** `lift_coplanar` ran on the static scene only. Block and rig models kept faces in one plane:
+   Polaris's eight thin-ice plates carried seven snow drifts each at one height, overlapping one another (72 m² in all: the
+   jagged pale patches in the middle of the map, seen from the match camera); Brickfall's chimney drums and bases 14 m²;
+   Pier 9's rings and cars, Deepwell's cases, the Factory's crates.
+2. **A floor drawn twice where two chunks draw at different tiers.** A face went to the chunk its centre was in, whole. A
+   floor slab one face wide (the Low tier's, and the Mid's) lay across its neighbours' cells too; where a chunk drew Low and
+   its neighbour Mid or Fine (38 m and 16 m from the eye, wherever the pilot stands) both tiers' floors drew in one plane with
+   their own bakes. 120 to 3,600 m² of floor per stage (the table's last columns).
+3. **Kit boxes kept over the art.** Ward Zero's 3,081 lit boxes include floor slabs, deck plates and route marks lying 0 to
+   30 mm over the art's floors (450 m², 6 m² of it within half a millimetre) and on one another (50 m²); the Factory's panes
+   and lamps 34 m²; Cyber City's edge strips 2 m².
+4. **Small overlaps the lift skips** (under 40 cm² and 2 % of the smaller face): 0.1 to 0.9 m² per stage in thousands of
+   patches.
+5. **Margin, computed, not seen:** across a floor from a pilot's eye height the depth between two faces is their gap times the
+   sine of the view's angle (1.7 m up and 30 m off: a twentieth). If the camera's depth buffer has 24 bits behind its 0.06 m
+   near plane its step is distance² x 1e-6 m, and a 6 mm lift is lost past about 21 m, 12 mm past 27 m, 20 mm past 32 m. The
+   floors hold 80 to 1,200 m² of such stacked faces per stage. In the Editor (Direct3D 11) the captures from 17 to 29 m did not
+   show them fighting, so this build's buffer parts them; the layers below make it independent of the buffer.
+
+**Layers** (1, 3, 4, 5). A face that lies on another draws nearer the eye along its own ray, by its layer: the same pixel, a
+nearer depth, four 24-bit depth steps per layer at any distance and angle (`4e-6 z + 5e-5` of the way to the eye per layer:
+1 cm per layer 40 m off, under a millimetre 10 m off). Nothing moves on screen; a layered face only wins the depth test
+against what it lies on.
+- `stagekit.layer_polys` finds what lies on what: two faces turned the same way, overlapping (2 cm² or 2 % of the smaller),
+  0 to 30 mm apart along their normal (in one plane the smaller is on the larger, as the lift stacks them); a face is one layer
+  over the highest face it lies on, at most 10.
+- `StageBank.layer` runs it as **every bank is written** (no stage script changes): the static chunks of each tier together,
+  in the world; each block's and each rig part's model by itself; a stage whose block models are its building gives them their
+  places (`StageBank.at`: Brickfall, Cyber City's billboards) and they are layered with the chunks and one another. The layer
+  rides the vertex's fine-surface kind (`uv1.x + layer / 32`; a corner shared by two layers is split): a runtime without layers
+  rounds it away, and a bank without layers draws as before, so banks and builds may ship in either order.
+- `ChipArena/StageLit` (`StageLayer` in its vertex stage) scales the clip position towards the eye; `_StageLift` adds a
+  model's layers: `NativeStageArtDraw` draws the blocks' and the rig's models `NativeStageArt.ModelLayers` (2) up, so a model's
+  face in a chunk's plane never fights it.
+- Kit boxes a stage keeps drawing over its art (NativeBlockLit instances) draw `NativeStageArt.KitLayers` (8) up, scaled about
+  the eye on the CPU (`NativeStageArt.Nearer`, `NativeStageArtDraw.Nearer`): Ward Zero's and Cyber City's also by their own
+  stacking (`NativeStageArt.BoxLayers`: a route mark on a lit slab; where two boxes disagree the tops decide), the Factory's
+  panes and lamps, the Emporium's lamps and the club's lit screens (the dance floor's tiles on the hall's floor) flat. Only
+  while the art draws; without the bank every box draws exactly as before.
+- `lift_coplanar` stays (near the eye a real gap is still the cleanest), and the shadow caster is untouched (the shadows fall
+  where the faces are).
+
+**Cells** (2). `Chunks.split(g)`, called by every stage script on each tier's static scene after the lift and before the bake,
+cuts every floor or ceiling face of 8 dm² and more, and every other face of 2 m² and more, along the cells' walls and bands, so
+no floor reaches out of its own chunk's cell: each cell holds its own piece of the floor at every tier (and a chunk's bounds
+are its cell's, so its tier is chosen by its own distance). It costs 3 to 8 % of a bank (the Causeway's budget check went from
+20.5 to 21.5 MB and the Factory's from 21 to 22.5 MiB).
+
+**The analyser** (`tools/stages/zfight.py`, plain Python and numpy): everything a stage draws together at one tier: the static
+chunks, the block models where their blocks stand, the rig's models at rest and the kept kit boxes with their layers (`CoreTests
+--stage-art-rest <map> <out.json> [seconds]`), the dressed boxes of blocks the art does not cover. Same-facing overlapping faces
+count when their planes are within `--eps` (4 mm; `--floors`: up-facing faces within 30 mm, with the gaps' histogram) and they
+are on the same layer; `--with-tier N` adds a second tier's chunks (neighbours at different tiers; a chunk never meets itself).
+It lists the worst pieces and places with world positions.
+
+```
+dotnet run --project Tests/CoreTests.csproj -c Release -- --stage-art-rest polar REST.json
+python -I tools/stages/zfight.py <Resources>/ChipArenaStagePolar.bytes Assets/Conversion/Resources/UnityMaps.json polar --rest REST.json --tier 0 [--floors] [--with-tier 1]
+```
+
+**Measured** (m² of same-facing overlap on one layer; before: the released banks, where nothing has a layer; the worst tier of
+the three; "across tiers" is the floors of one tier's chunks against the next tier's, within 30 mm: the worse of Fine against
+Mid and Mid against Low; the four 2026-11-10 stages were rebuilt too and measured without their rigs and kept boxes):
+
+| Stage | All faces within 4 mm: before | after | Floors within 30 mm: before | after | Floors across tiers: before | after |
+|---|---|---|---|---|---|---|
+| Breakwater | 0.76 | 0.00 | 35.5 | 0.00 | 124 | 0.00 |
+| Pier 9 | 6.1 | 0.05 | 382 | 0.03 | 1993 | 0.14 |
+| Deepwell | 7.0 | 0.00 | 110 | 0.00 | 892 | 0.43 |
+| Polaris Station | 73.4 | 0.00 | 272 | 0.35 | 2258 | 0.33 |
+| Skyframe | 0.86 | 0.00 | 1226 | 0.00 | 3621 | 0.15 |
+| Brickfall | 19.4 | 0.03 | 84.0 | 0.00 | 222 | 0.03 |
+| Ward Zero (both records) | 59.7 | 0.04 | 673 | 0.57 | 1260 | 0.64 |
+| The Factory | 69.0 | 0.01 | 457 | 0.01 | 3124 | 0.07 |
+| Cyber City | 5.2 | 0.05 | 434 | 0.94 | 1619 | 1.6 |
+| The Hollow Sanctum (static and blocks only) | 13.9 | 1.3 | 248 | 0.00 | not measured | not measured |
+| Substation 128 (static and blocks only) | 159 | 0.03 | 197 | 0.04 | not measured | not measured |
+| Top Dog Emporium (static and blocks only) | 89.6 | 0.00 | 81.6 | 0.01 | not measured | not measured |
+| Starfall Causeway (static and blocks only) | 265 | 0.04 | 144 | 0.00 | not measured | not measured |
+
+**Seen in the Editor** (the shared Editor, High and the Low graphics tier; each eye twice, 3 mm or 3 cm apart: depth fighting
+changes wholly between the two, a stable surface does not): - **Polaris's middle from the owner's camera** (the match camera's height, 45 degrees down, 12 to 16 m, and a pilot's eye
+  height 8 m off): before, the thin-ice plates show jagged pale and dark patches that change wholly between two frames 3 cm
+  apart (the drifts and cracks trading pixels); after, the drifts lie clean on the ice with the cracks over them and nothing
+  changes between the frames but the lights, the steam and the hazards' own motion. The Low graphics tier's plates carry no
+  drifts and did not fight before or after. The final bank (the cracks over the drifts, the floors cut along the cells) was
+  seen the same way at High; the Low tier with the first rebuilt bank.
+- **The other stages' floors before** (eyes 1.7 to 2.3 m over the floor, 13 to 46 m off, each twice 3 mm apart: Pier 9's
+  boards, Deepwell's hall and tunnels, Skyframe's paving, Breakwater's deck, Brickfall's streets, Ward Zero's atrium and
+  galleries, the Factory's bay, Cyber City's cut): the floors did not change between the two frames at those views; what
+  changed was animation (wheels, lights, lamps, screens, fish). So outside Polaris the doubled and stacked floors are
+  measured, not filmed: they show only where two tiers meet with different bakes, as the eye moves.
+- **The same floors after** (the same eyes, the final banks, High): every view looks as it did before (the kept boxes of Ward
+  Zero, the Factory and Cyber City where they were, nothing poking through or missing) and the floors are as steady.
+- **Not seen:** the other eight stages on the Low graphics tier after the change, the four 2026-11-10 stages' rebuilt banks,
+  the stages in motion (a moving camera across a tier border), a human playtest, guests, a Windows build, the
+  killcam.
+
+**Not depth fighting** (seen while looking): Skyframe's sunlit paving shows soft violet blotches a few decimetres wide. They do
+not change between two frames a few millimetres apart and stand still in the world: they are the flagstones' fine surface
+under the anime style's ramp at the stage's low sun (section 7's note on fine surfaces breaking into blotches), not two faces
+trading pixels. Left as it is; a calmer fine surface for that floor is an art change for the owner to ask for.
+
+**Rules for the next stage.** Model paint, boards and marks as faces on their surface (a few millimetres proud, or in its plane):
+the bank writer layers them. Call `chunks.split(g)` after the lift. A kit box kept over the art goes through `Nearer`. Run the
+analyser on the new bank at every tier: all faces, `--floors`, and `--with-tier`: each should come out at a few dm² at most.

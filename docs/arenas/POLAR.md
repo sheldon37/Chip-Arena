@@ -235,3 +235,15 @@ the full CoreTests suite (1,002 PASS lines, exit 0, the bank present); the Unity
   the vents use existing clips.
 - The other M1 stages' shared code still carries Polaris's dead branches (Core NativeNewStageKit / Scenery / Fx `case 4`):
   left for the integrator, since four agents edit those files.
+
+## Depth fighting in the middle (2026-11-11)
+
+Owner: "Polaris station has BAD z fighting in the middle area". Each of the eight thin-ice plates (block models,
+`tools/stages/polar_props.py`) carried its seven snow drifts at one height (5 mm over the plate) and its five cracks at another
+(8 mm): the drifts overlap one another, so 9 to 11 m2 of faces lay in one plane on every plate (72 m2 in all) and traded
+pixels from the match camera: jagged pale patches over the ice. The static scene's lift never ran on block models. Now each
+drift and each crack has its own height (the drifts 4 mm up in 1.2 mm steps, the cracks over them from 14 mm in 1 mm steps) and
+the bank writer gives every face that lies on another a layer the stage shader parts at any distance (docs/arenas/STAGE-ART.md
+section 14). The plates, their drifts, cracks, seams and flags look as before; the hazard (the sheets' cracking, the red border,
+the collapse) is untouched. The Low tier's plates carry no drifts and never fought. Measured: 72 m2 before, 0 after, at every
+tier; seen from the owner's camera (45 degrees down, 12 to 16 m) at High and on the Low graphics tier, two frames 3 cm apart.

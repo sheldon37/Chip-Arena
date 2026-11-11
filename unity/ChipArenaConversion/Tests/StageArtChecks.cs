@@ -106,6 +106,58 @@ internal static class StageArtChecks
         Check(shader.Contains("Shader \"ChipArena/StageLit\"")&&shader.Contains("\"LightMode\"=\"ShadowCaster\"")&&shader.Contains("Stencil { Ref 16 WriteMask 16")&&shader.Contains("BRDF1_Unity_PBS")&&shader.Contains("UnityGI_IndirectSpecular")&&shader.Contains("ToonDiffuse(")&&shader.Contains("ArenaScatter(")&&shader.Contains("UNITY_APPLY_FOG"),"the stage shader: shadows, the outline mark, the PBR key and probe, the toon, the scattering and fog");
         Check(StagePreloadPlan.Instanced("ChipArena/StageLit"),"the warm-up knows the stage shader is instanced");
 
+        // ---- layers: stacked faces part by layer, not by millimetres (owner 2026-11-11: "Z-Fighting ... Floors mainly") ----
+        // across a floor from a pilot's eye height (1.7 m) the depth between two faces `gap` apart is gap x 1.7 / distance; the
+        // depth buffer's step there is distance^2 x 1e-6 m (24 bits, the .06 m near plane): a 20 mm lift is lost past 32 m
+        Check(.02*1.7/40<40*40*1e-6&&.006*1.7/25<25*25*1e-6,"a lift of millimetres does not part a floor's layers across the arena (the reason for layers)");
+        for(float d=1;d<=200;d*=1.5f)for(int l=1;l<=NativeStageArt.MostLayers;l++)
+        {
+            float step=NativeStageArt.Nearer(d,l)*d-NativeStageArt.Nearer(d,l-1)*d;
+            Check(step>=3*d*d*1e-6f||NativeStageArt.Nearer(d,l)>=.033f-1e-6f,"a layer comes three depth steps nearer than the one under it at "+d+" m (layer "+l+")");
+        }
+        Check(NativeStageArt.Nearer(30,0)==0&&NativeStageArt.Nearer(30,-1)==0&&NativeStageArt.Nearer(1e6f,4)<=.033f&&NativeStageArt.Nearer(10,40)==NativeStageArt.Nearer(10,NativeStageArt.MostLayers),"no layer, no move; never more than a thirtieth nor sixteen layers");
+        Check(NativeStageArt.Nearer(40,NativeStageArt.KitLayers)*40<.1f&&NativeStageArt.Nearer(10,NativeStageArt.ModelLayers)*10<.002f,"a kept kit box 40 m off comes under 10 cm nearer, a model 10 m off under 2 mm");
+        Check(NativeStageArt.ModelLayers==2&&NativeStageArt.KitLayers==8&&NativeStageArt.KitLayers>NativeStageArt.ModelLayers+4&&NativeStageArt.MostLayers==16,"static layers, then the models', then the kept kit's");
+        Check(shader.Contains("float f=min(min(layer,16.0)*(4e-6*clip.w+5e-5),0.033);")&&shader.Contains("clip.xyw*=1.0-f;clip.z=(clip.z-b)*(1.0-f)+b;")&&shader.Contains("if(layer<0.5||unity_OrthoParams.w>0.5)return clip;")
+            &&shader.Contains("o.pos=StageLayer(o.pos,layer+_StageLift);")&&shader.Contains("float StageKindOf(float2 uv1){return floor(uv1.x+0.015625);}")&&shader.Contains("o.mat=float4(v.texcoord.xy,StageKindOf(v.texcoord1),v.texcoord1.y);"),
+            "the shader draws a layered face nearer the eye along its ray (the same pixel), by Nearer's own numbers, and reads the kind without the layer");
+        Check(draw.Contains("solidUp.SetFloat(LiftId,NativeStageArt.ModelLayers);")&&draw.Contains("glowUp.SetFloat(LiftId,NativeStageArt.ModelLayers);")&&draw.Contains("Graphics.DrawMesh(piece.Mesh,m,s==0?solidUp:glowUp,0,null,s,block,ShadowCastingMode.TwoSided,true)")
+            &&draw.Contains("Graphics.DrawMeshInstanced(b.Piece.Mesh,s,s==0?solidUp:glowUp,b.M,b.Count,block")&&draw.Contains("r.sharedMaterials=piece.Subs>1?new[]{solid,glow}:new[]{solid};"),"the blocks' and the rig's models draw their layers up; the chunks do not");
+        var kitPy=R("tools/stages/stagekit.py");
+        Check(kitPy.Contains("def layer_polys(P64, S, reach=LAYER_REACH, least=2e-4, share=.02):")&&kitPy.Contains("LAYER_REACH = .03")&&kitPy.Contains("om.uv1.append([u[0] + L / 32.0, u[1]])")&&kitPy.Contains("        self.layer()")&&kitPy.Contains("def layer(self):"),
+            "every bank is layered as it is written");
+        // cells: no floor reaches out of its chunk's cell (a floor is never drawn twice where neighbours draw at different tiers)
+        Check(kitPy.Contains("def split(self, g, reach=24, least=.08, upright=2.0):")&&kitPy.Contains("def at(self, block_id, pos, quat=(0.0, 0.0, 0.0, 1.0)):"),"the chunks cut their faces along their cells; a stage may place its block models");
+        foreach(var script in new[]{"sanctum","club","emporium","causeway","breakwater","harbor","rig","polar","skyframe","brickfall","factory","cybercity"})
+            Check(R("tools/stages/"+script+"_art.py").Contains("% chunks.split(g))"),script+": the static scene is cut along the chunks' cells before its bake");
+        Check(R("tools/stages/wardzero_art.py").Contains("% chunks.split(S.static))"),"Ward Zero: the static scene is cut along the chunks' cells before its bake");
+        // the kept kit boxes' own stacking
+        {
+            // a slab; a strip on it (6 mm proud); a mark on the strip (in the strip's plane: the smaller lies on the larger); a box apart; a turned box
+            float[] bx={0,0,0, 2,.1f,2,   0,.006f,0, 1,.1f,.2f,   0,.006f,0, .2f,.1f,.1f,   9,0,0, 1,.1f,1,   0,.01f,0, .5f,.1f,.5f};var lay=new int[5];
+            NativeStageArt.BoxLayers(bx,5,new[]{false,false,false,false,true},lay);
+            Check(lay[0]==0&&lay[1]==1&&lay[2]==2&&lay[3]==0&&lay[4]==0,"a strip on a slab is one up, a mark on the strip two; a box apart and a turned box none ("+string.Join(",",lay)+")");
+            // two bars crossed in one plane, each proud of the other at its ends: one order, the smaller on top
+            float[] cross={0,0,0, 1,.05f,.1f,   0,0,0, .1f,.05f,.9f};var cl=new int[2];NativeStageArt.BoxLayers(cross,2,null,cl);
+            Check(cl[0]+cl[1]==1&&cl[1]==1,"crossed bars take one order ("+cl[0]+","+cl[1]+")");
+            // a ring of overlapping boxes never runs past the kit's share of the layers
+            var ring=new float[12*6];for(int i=0;i<12;i++){double a=i*Math.PI/6;ring[i*6]=(float)Math.Cos(a)*2;ring[i*6+1]=0;ring[i*6+2]=(float)Math.Sin(a)*2;ring[i*6+3]=.8f;ring[i*6+4]=.01f;ring[i*6+5]=.8f;}
+            var rl=new int[12];NativeStageArt.BoxLayers(ring,12,null,rl);Check(rl.All(v=>v>=0&&v<=NativeStageArt.MostLayers-NativeStageArt.KitLayers)&&rl.Max()>0,"a ring of boxes in one plane stays within the layers");
+        }
+        foreach(var stage in new[]{"Factory","Emporium","Club"})
+        {
+            var pres=R("Assets/ChipArena/Runtime/Native"+stage+"Presentation.cs");
+            Check(pres.Contains("ArtDrawn=art.Render(arena,camera,low,artPose);}nearEye=ArtDrawn?camera:null;")&&pres.Contains("var M=b.M;if(nearEye!=null){NativeStageArtDraw.Nearer(b.M,nearM,b.Count,nearEye.transform.position,NativeStageArt.KitLayers);M=nearM;}")
+                &&pres.Contains("Graphics.DrawMeshInstanced(Block,0,lit,M,b.Count,props,shadow,true,0,null);return;")&&pres.Contains("            nearEye=null;"),
+                stage+": the boxes kept over the art draw the kit's layers nearer the eye, only while the art draws");
+        }
+        Check(draw.Contains("public static void Nearer(Matrix4x4[] from,Matrix4x4[] to,int count,Vector3 eye,float layers)")&&draw.Contains("m.m03=eye.x+(m.m03-eye.x)*s;m.m13=eye.y+(m.m13-eye.y)*s;m.m23=eye.z+(m.m23-eye.z)*s;to[i]=m;"),"kept boxes are scaled about the eye (the same pixels, a nearer depth)");
+        var wardDraw=R("Assets/ChipArena/Runtime/NativeWardZeroPresentation.cs");var metroDraw=R("Assets/ChipArena/Runtime/NativeCyberCityPresentation.cs");
+        Check(wardDraw.Contains("if(art&&eye!=null){float near=1-NativeStageArt.Nearer(Vector3.Distance(from,at),NativeStageArt.KitLayers+(i<wzKitLayer.Length?wzKitLayer[i]:0));place=Matrix4x4.TRS(from+(at-from)*near,q,new Vector3(near,near,near));}")
+            &&wardDraw.Contains("wzKitLayer=NativeWardZeroArt.KeptLayers(wzKit,blocks);"),"Ward Zero's kept boxes draw nearer the eye over the art, scaled about the eye; without the art as before");
+        Check(metroDraw.Contains("if(metroArtDrawn&&eye!=null){float near=1-NativeStageArt.Nearer(Vector3.Distance(from,at),NativeStageArt.KitLayers+(i<metroKitLayer.Length?metroKitLayer[i]:0));place=Matrix4x4.TRS(from+(at-from)*near,q,new Vector3(near,near,near));}")
+            &&metroDraw.Contains("metroKitLayer=NativeCyberCityArt.KeptLayers(metroKit,map.blocks);"),"Cyber City's kept boxes draw nearer the eye over the art, scaled about the eye; without the art as before");
+
         // ---- the bank, where it is on this machine ----
         string bankPath=Bank(root);
         if(bankPath==null)Console.WriteLine("Stage art: the Sanctum bank is not on this machine (git-ignored); its own checks are skipped");

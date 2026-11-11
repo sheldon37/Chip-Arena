@@ -111,7 +111,7 @@ internal static class CausewayArtChecks
             var near=sp.Static.Where(c=>int.TryParse(c.Id,out _)).ToList();var far=sp.Static.Where(c=>!int.TryParse(c.Id,out _)).ToList();
             Check(near.Count>=20&&near.All(c=>c.Props.Distinct().Count()==3),"the map's chunks, each in three tiers ("+near.Count+")");
             Check(far.Count>=8&&far.All(c=>c.Props.Distinct().Count()==1),"the void's far chunks, one tier each ("+far.Count+")");
-            Check(bytes<=20500000,"the bank stays within its budget of about 20 MB ("+(bytes/1e6).ToString("0.0")+" MB)");
+            Check(bytes<=21500000,"the bank stays within its budget of about 20 MB, and a megabyte for the floors cut along the chunks' cells ("+(bytes/1e6).ToString("0.0")+" MB)");
             // the reflection probe stands at the centre of the art's bounds (Runtime NativeStageArtDraw): on the centre line, clear of every block
             var lo=new System.Numerics.Vector3(float.MaxValue);var hi=new System.Numerics.Vector3(float.MinValue);foreach(var c in sp.Static){lo=System.Numerics.Vector3.Min(lo,c.Min);hi=System.Numerics.Vector3.Max(hi,c.Max);}
             double px=(lo.X+hi.X)/2,pz=(lo.Z+hi.Z)/2,py=Math.Max(1,Math.Min(8,(lo.Y+hi.Y)/2));

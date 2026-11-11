@@ -784,6 +784,16 @@ class StageBank:
         self.solid = self.bank.material('stage')
         self.glowm = self.bank.material('stage-glow', emission_color=(1, 1, 1))
         self.stats = {}
+        self.rests = {}
+
+    def at(self, block_id, pos, quat=(0.0, 0.0, 0.0, 1.0)):
+        """Where a block's model stands at the round's start (its map block's centre and rotation), for a stage whose blocks
+        are its building (Brickfall's modules, Cyber City's billboards): `layer` then settles those models with the static
+        chunks and with one another, in the world, instead of each by itself."""
+        x, y, z, w = (float(v) for v in quat)
+        self.rests[block_id] = np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w), float(pos[0])],
+                                         [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w), float(pos[1])],
+                                         [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y), float(pos[2])]])
 
     def mesh(self, om):
         mats = [self.solid, self.glowm][:len(om.submeshes)]
@@ -807,7 +817,97 @@ class StageBank:
     def cover(self, block_id):
         self.bank.prop('cover/' + block_id, 'cover', [])
 
+    def layer(self):
+        """Writes every triangle's layer (layer_polys) into the meshes, as layer / 32 on top of the fine surface's kind (uv1.x: a
+        runtime without layers rounds it away), for ChipArena/StageLit to part stacked faces by: the static chunks of each tier together, in the world (a chunk's paint
+        on its neighbour's slab; the parts a chunk was baked in) with the block models that were given their place (`at`); each
+        other block's and each rig part's model by itself. A corner
+        that triangles of different layers share is split. Returns (triangles layered, triangles)."""
+        meshes = self.bank.meshes
+        scenes, seen = [], set()
+        tiers = {}
+        for name, group, lo, hi, parts in self.bank.props:
+            if not parts:
+                continue
+            rest = self.rests.get(name[6:].rsplit('/', 1)[0]) if group == 'block' else None
+            if group == 'static':
+                tiers.setdefault(name.rsplit('/', 1)[-1], []).extend(parts)
+            elif rest is not None:
+                for mi, m in parts:
+                    A = np.array(m, dtype=np.float64).reshape(3, 4)
+                    W = np.concatenate([rest[:, :3] @ A[:, :3], (rest[:, :3] @ A[:, 3] + rest[:, 3])[:, None]], axis=1)
+                    tiers.setdefault(name.rsplit('/', 1)[-1], []).append((mi, W.reshape(-1).tolist()))
+            else:
+                scenes.append(list(parts))
+        scenes = list(tiers.values()) + scenes
+        layers = {}  # mesh index -> the layer of each of its triangles (the most any scene gives it)
+        for parts in scenes:
+            key = tuple(sorted((mi, tuple(round(float(x), 6) for x in m)) for mi, m in parts))
+            if key in seen:
+                continue
+            seen.add(key)
+            tris, counts = [], []
+            for mi, m in parts:
+                om = meshes[mi][1]
+                idx = np.array([i for sub in om.submeshes for i in sub], dtype=np.int64).reshape(-1, 3)
+                A = np.array(m, dtype=np.float64).reshape(3, 4)
+                Pw = np.array(om.positions, dtype=np.float64).reshape(-1, 3) @ A[:, :3].T + A[:, 3]
+                tris.append(Pw[idx].reshape(-1, 3))
+                counts.append(len(idx))
+            if not sum(counts):
+                continue
+            lay = layer_polys(np.concatenate(tris), np.full(sum(counts), 3, dtype=np.int64))
+            at = 0
+            for (mi, m), c in zip(parts, counts):
+                got = lay[at:at + c]
+                at += c
+                layers[mi] = np.maximum(layers[mi], got) if mi in layers else got.copy()
+        done = total = 0
+        for mi, lay in layers.items():
+            om = meshes[mi][1]
+            total += len(lay)
+            if not lay.any():
+                continue
+            if not om.uv1:
+                continue
+            done += int((lay > 0).sum())
+            om.positions, om.normals, om.uv0, om.uv1, om.colors = list(om.positions), list(om.normals), list(om.uv0), list(om.uv1), list(om.colors)
+            om.submeshes = [list(sub) for sub in om.submeshes]
+            variant, t = {}, 0
+            for sub in om.submeshes:
+                for k in range(0, len(sub), 3):
+                    L = int(lay[t])
+                    t += 1
+                    if L == 0:
+                        continue
+                    for c in range(3):
+                        v = sub[k + c]
+                        nv = variant.get((v, L))
+                        if nv is None:
+                            nv = len(om.positions)
+                            variant[(v, L)] = nv
+                            om.positions.append(om.positions[v])
+                            om.normals.append(om.normals[v])
+                            om.uv0.append(om.uv0[v])
+                            u = om.uv1[v]
+                            om.uv1.append([u[0] + L / 32.0, u[1]])
+                            if om.colors:
+                                om.colors.append(om.colors[v])
+                        sub[k + c] = nv
+            # the corners no triangle uses any more go
+            used = sorted({i for sub in om.submeshes for i in sub})
+            if len(used) < len(om.positions):
+                remap = {v: i for i, v in enumerate(used)}
+                for attr in ('positions', 'normals', 'uv0', 'uv1', 'colors'):
+                    src = getattr(om, attr)
+                    if src:
+                        setattr(om, attr, [src[v] for v in used])
+                om.submeshes = [[remap[i] for i in sub] for sub in om.submeshes]
+        print('layers: %d of %d triangles lie on another' % (done, total))
+        return done, total
+
     def write(self, assets, name):
+        self.layer()
         sys.path.insert(0, os.path.join(HERE, '..', 'pack_bank'))
         from build_pack_bank import bytes_meta
         folder = os.path.join(assets, RESOURCES)
@@ -997,11 +1097,269 @@ def lift_coplanar(g, eps=None, report=None, lift=None, passes=3):
     return pairs, total, moved, deepest
 
 
+LAYER_REACH = .03   # m: a face this close over another (turned the same way, overlapping) lies on it
+LAYER_MOST = 10
+
+
+def layer_faces(g, reach=LAYER_REACH, least=2e-4, share=.02):
+    """layer_polys on a Geo's faces."""
+    P, N, S, F = g.arrays()
+    return layer_polys(P.astype(np.float64), S, reach, least, share)
+
+
+def layer_polys(P64, S, reach=LAYER_REACH, least=2e-4, share=.02):
+    """How many faces each face lies on (0: none; at most LAYER_MOST): a face is on another when both are turned the same way,
+    it overlaps it (over `least` m2 or `share` of the smaller) and stands 0 to `reach` over it along their normal (in one plane:
+    the smaller is on the larger, as lift_coplanar stacks them). Across a floor from a pilot's eye height the depth between two
+    such layers is their gap times the sine of the view's angle to the floor (a twentieth 30 m off), far under the depth
+    buffer's step there however they were lifted, so they fight (owner 2026-11-11: "There is Z-Fighting on the stage
+    remodelings ... Floors mainly"). The shader parts them by layer instead (StageBank.layer writes it into the meshes;
+    ChipArena/StageLit's vertex stage). P64: the faces' corners (n, 3), one face after another; S: each face's corner count.
+    Returns an int array per face."""
+    S = np.asarray(S, dtype=np.int64)
+    nf = len(S)
+    out = np.zeros(nf, dtype=np.int64)
+    if nf == 0:
+        return out
+    starts = np.zeros(nf, dtype=np.int64)
+    if nf > 1:
+        starts[1:] = np.cumsum(S[:-1])
+    face_of = np.repeat(np.arange(nf), S)
+    nxt = np.arange(len(P64)) + 1
+    nxt[starts + S - 1] = starts
+    a, b = P64, P64[nxt]
+    cr = np.stack([(a[:, 1] - b[:, 1]) * (a[:, 2] + b[:, 2]), (a[:, 2] - b[:, 2]) * (a[:, 0] + b[:, 0]),
+                   (a[:, 0] - b[:, 0]) * (a[:, 1] + b[:, 1])], axis=1)
+    nrm = np.zeros((nf, 3))
+    np.add.at(nrm, face_of, cr)
+    area = np.linalg.norm(nrm, axis=1) / 2
+    ok = area > 1e-6
+    unit = np.zeros_like(nrm)
+    unit[ok] = nrm[ok] / (2 * area[ok][:, None])
+    d = np.einsum('ij,ij->i', unit, P64[starts])
+    lo = np.minimum.reduceat(P64, starts, axis=0)
+    hi = np.maximum.reduceat(P64, starts, axis=0)
+    ax = np.argmax(np.abs(unit), axis=1)
+    kn = np.round(unit * 400).astype(np.int64)
+    kd = np.floor(d / reach).astype(np.int64)
+    cell = 3.0
+    clo = np.floor(lo / cell).astype(np.int64)
+    chi = np.floor(hi / cell).astype(np.int64)
+    span = (chi - clo + 1).prod(axis=1)
+    planes = {}
+    for f in np.nonzero(ok)[0].tolist():
+        grid = planes.setdefault((int(kn[f, 0]), int(kn[f, 1]), int(kn[f, 2]), int(kd[f])), {})
+        if span[f] > 600:      # a far sheet: met with every face of its plane
+            grid.setdefault('big', []).append(f)
+            continue
+        for cx in range(int(clo[f, 0]), int(chi[f, 0]) + 1):
+            for cy in range(int(clo[f, 1]), int(chi[f, 1]) + 1):
+                for cz in range(int(clo[f, 2]), int(chi[f, 2]) + 1):
+                    grid.setdefault((cx, cy, cz), []).append(f)
+    U, D, AR, LO, HI, AX = unit.tolist(), d.tolist(), area.tolist(), lo.tolist(), hi.tolist(), ax.tolist()
+    under = {}
+    seen = set()
+    for pk, grid in planes.items():
+        for dd in (0, 1):
+            other = planes.get((pk[0], pk[1], pk[2], pk[3] + dd))
+            if other is None:
+                continue
+            everything = None
+            for c, fs in grid.items():
+                if c == 'big':
+                    if everything is None:
+                        everything = sorted({j for v in other.values() for j in v})
+                    near = everything
+                else:
+                    near = other.get(c)
+                    if other.get('big'):
+                        near = (near or []) + other['big']
+                if not near:
+                    continue
+                for i in fs:
+                    ui, di, li, hi_ = U[i], D[i], LO[i], HI[i]
+                    for j in near:
+                        if j == i:
+                            continue
+                        pair = (i, j) if i < j else (j, i)
+                        if pair in seen:
+                            continue
+                        seen.add(pair)
+                        uj = U[j]
+                        gap = di - D[j]
+                        if abs(gap) > reach or ui[0] * uj[0] + ui[1] * uj[1] + ui[2] * uj[2] < .9995:
+                            continue
+                        lj, hj = LO[j], HI[j]
+                        if li[0] > hj[0] + reach or li[1] > hj[1] + reach or li[2] > hj[2] + reach or lj[0] > hi_[0] + reach or lj[1] > hi_[1] + reach or lj[2] > hi_[2] + reach:
+                            continue
+                        axis = AX[i]
+                        ov = _clip(_poly2(P64[starts[i]:starts[i] + S[i]], axis), _poly2(P64[starts[j]:starts[j] + S[j]], axis))
+                        if len(ov) < 3:
+                            continue
+                        o = abs(_area2(ov))
+                        if o < least and o < share * min(AR[i], AR[j]):
+                            continue
+                        if gap > 2e-5:
+                            top, bot = i, j
+                        elif gap < -2e-5:
+                            top, bot = j, i
+                        else:
+                            top, bot = (i, j) if AR[i] < AR[j] or AR[i] == AR[j] and i > j else (j, i)
+                        under.setdefault(top, []).append(bot)
+    # from the bottom up (by height along the normal, then the larger first): a face is one over the highest it lies on
+    layer = {}
+    for f in sorted(under, key=lambda f: (D[f], -AR[f], f)):
+        layer[f] = min(LAYER_MOST, 1 + max(layer.get(u, 0) for u in under[f]))
+    # the order above is by each face's own offset, so one more sweep settles a face sorted before what it lies on
+    for _ in range(LAYER_MOST):
+        changed = False
+        for f, us in under.items():
+            v = min(LAYER_MOST, 1 + max(layer.get(u, 0) for u in us))
+            if v > layer.get(f, 0):
+                layer[f] = v
+                changed = True
+        if not changed:
+            break
+    for f, v in layer.items():
+        out[f] = v
+    return out
+
+
 class Chunks:
     """World-space cells (size x size in plan, split at the heights `bands`) a static face falls into by its centre."""
 
     def __init__(self, size=12.0, origin=(-36.0, -24.0), bands=(-1.0, 9.0)):
         self.size, self.origin, self.bands = size, origin, bands
+
+    def split(self, g, reach=24, least=.08, upright=2.0):
+        """Cuts every face of `g` along the cells' walls and bands, in place, so no face reaches out of its own cell (owner
+        2026-11-11: "There is Z-Fighting on the stage remodelings ... Floors mainly"). A face goes to the chunk its centre is
+        in, whole: a floor slab one face wide lay across its neighbours' cells too, and where two neighbouring chunks drew at
+        different tiers (16 m and 38 m from the eye, wherever the pilot stands) the same floor was drawn twice, a tier's slab
+        over the other's cells, in one plane and with another bake: it fought. Cut, each cell holds its own piece of the
+        floor at every tier. Call it on a tier's static scene before its bake. A face spanning more than `reach` cells along
+        an axis is left whole (a far sheet), and so is a floor or ceiling face under `least` m2 and any other face under
+        `upright` m2 (a moulding's segment, a post, a rail: its piece over the cell's wall is small, and cutting every one
+        would cost a tenth of the bank; floors come first). Returns how many faces were cut."""
+        P, N, S, F = g.arrays()
+        nf = len(S)
+        if nf == 0:
+            return 0
+        starts = np.zeros(nf, dtype=np.int64)
+        if nf > 1:
+            starts[1:] = np.cumsum(S[:-1])
+        P64, N64 = P.astype(np.float64), N.astype(np.float64)
+        lo = np.minimum.reduceat(P64, starts, axis=0)
+        hi = np.maximum.reduceat(P64, starts, axis=0)
+        tol = .002
+        bands = np.array(self.bands, dtype=np.float64)
+
+        def cuts(axis, a, b):
+            """The planes of `axis` strictly inside (a, b)."""
+            if axis == 1:
+                return [float(y) for y in bands if a + tol < y < b - tol]
+            o = self.origin[0] if axis == 0 else self.origin[1]
+            k0, k1 = math.floor((a + tol - o) / self.size) + 1, math.ceil((b - tol - o) / self.size) - 1
+            if k1 - k0 + 1 > reach:
+                return None
+            return [o + k * self.size for k in range(k0, k1 + 1)]
+
+        def cut(poly, axis, c):
+            """A convex polygon [(p, n)] cut by the plane axis = c: (the part below, the part above)."""
+            below, above = [], []
+            k = len(poly)
+            for i in range(k):
+                (p, n), (q, m) = poly[i], poly[(i + 1) % k]
+                dp, dq = p[axis] - c, q[axis] - c
+                if dp <= 1e-9:
+                    below.append((p, n))
+                if dp >= -1e-9:
+                    above.append((p, n))
+                if dp < -1e-9 and dq > 1e-9 or dp > 1e-9 and dq < -1e-9:
+                    t = dp / (dp - dq)
+                    x = p + (q - p) * t
+                    x[axis] = c
+                    nn = n + (m - n) * t
+                    ln = math.sqrt(float(nn @ nn))
+                    nn = nn / ln if ln > 1e-9 else n
+                    below.append((x, nn))
+                    above.append((x, nn))
+            return below, above
+
+        keep = np.ones(nf, dtype=bool)
+        newP, newN, newS, newF = [], [], [], []
+        done = 0
+        cx0 = np.floor((lo[:, 0] + tol - self.origin[0]) / self.size)
+        cx1 = np.floor((hi[:, 0] - tol - self.origin[0]) / self.size)
+        cz0 = np.floor((lo[:, 2] + tol - self.origin[1]) / self.size)
+        cz1 = np.floor((hi[:, 2] - tol - self.origin[1]) / self.size)
+        by0 = np.searchsorted(bands, lo[:, 1] + tol)
+        by1 = np.searchsorted(bands, hi[:, 1] - tol)
+        face_of = np.repeat(np.arange(nf), S)
+        nxt = np.arange(len(P64)) + 1
+        nxt[starts + S - 1] = starts
+        pa, pb = P64, P64[nxt]
+        cr = np.stack([(pa[:, 1] - pb[:, 1]) * (pa[:, 2] + pb[:, 2]), (pa[:, 2] - pb[:, 2]) * (pa[:, 0] + pb[:, 0]),
+                       (pa[:, 0] - pb[:, 0]) * (pa[:, 1] + pb[:, 1])], axis=1)
+        nrm = np.zeros((nf, 3))
+        np.add.at(nrm, face_of, cr)
+        ar = np.linalg.norm(nrm, axis=1) / 2
+        big = ar >= np.where(np.abs(nrm[:, 1]) > .7 * 2 * np.maximum(ar, 1e-12), least, upright)
+        for f in np.nonzero(((cx1 > cx0) | (cz1 > cz0) | (by1 > by0)) & big)[0].tolist():
+            a, k = int(starts[f]), int(S[f])
+            polys = [[(P64[a + i].copy(), N64[a + i].copy()) for i in range(k)]]
+            whole = False
+            for axis in (0, 2, 1):
+                cs = cuts(axis, float(lo[f, axis]), float(hi[f, axis]))
+                if cs is None:
+                    whole = True
+                    break
+                for c in cs:
+                    nxt = []
+                    for poly in polys:
+                        vals = [p[axis] for p, _ in poly]
+                        if min(vals) >= c - tol or max(vals) <= c + tol:
+                            nxt.append(poly)
+                            continue
+                        lo_, hi_ = cut(poly, axis, c)
+                        if len(lo_) >= 3:
+                            nxt.append(lo_)
+                        if len(hi_) >= 3:
+                            nxt.append(hi_)
+                    polys = nxt
+            if whole or len(polys) < 2:
+                continue
+            keep[f] = False
+            done += 1
+            for poly in polys:
+                if len(poly) > 255:
+                    raise ValueError('face too large')
+                # (a sliver of no area is dropped)
+                p0 = poly[0][0]
+                area = np.zeros(3)
+                for i in range(1, len(poly) - 1):
+                    area += np.cross(poly[i][0] - p0, poly[i + 1][0] - p0)
+                if float(area @ area) < 1e-16:
+                    continue
+                for p, n in poly:
+                    newP.append(p)
+                    newN.append(n)
+                newS.append(len(poly))
+                newF.append(int(F[f]))
+        if not done:
+            return 0
+        cm = np.repeat(keep, S)
+        P2 = np.concatenate([P[cm], np.array(newP, dtype=np.float32).reshape(-1, 3)])
+        N2 = np.concatenate([N[cm], np.array(newN, dtype=np.float32).reshape(-1, 3)])
+        g.p = array.array('f')
+        g.p.frombytes(P2.astype(np.float32).tobytes())
+        g.n = array.array('f')
+        g.n.frombytes(N2.astype(np.float32).tobytes())
+        g.size = array.array('B')
+        g.size.frombytes(np.concatenate([S[keep], np.array(newS, dtype=np.int64)]).astype(np.uint8).tobytes())
+        g.fin = array.array('H')
+        g.fin.frombytes(np.concatenate([F[keep], np.array(newF, dtype=np.int64)]).astype(np.uint16).tobytes())
+        return done
 
     def ids(self, g):
         P, N, S, F = g.arrays()
