@@ -163,9 +163,11 @@ namespace ChipArena.UnityConversion
             {
                 // Right click: aim with a ranged weapon (zoom, less spread: its aim row), guard with a melee one (owner 2026-11-09); the rifle's Q still aims.
                 var ads=content.Ads(p.Seat.spec);bool aiming=ads!=null&&p.Weapon?.@class=="ranged"&&(Input.GetMouseButton(1)||NativeRangedRules.Scope(p.Seat.spec)&&Input.GetKey(KeyCode.Q)||PadHeld(PadAction.Aim));
+                // The look while a gun aims turns at the zoom's pace (AimLook).
+                float aimLook=aiming?AimLook(ads,p.Seat.spec):1;
                 // Choosing in an Expedition holds the camera (ExpeditionCameraHeld, PR #241) and takes the mouse as the chip cursor (no Alt);
                 // mouse look waits a couple of frames after the pointer locks again (NativeExpeditionChipScreen.cs).
-                if(!lockPoint.HasValue&&!ExpeditionLookSettling&&!cinematic.Directing&&!ExpeditionCameraHeld&&!ExpeditionPickPointer){float aimLook=aiming?AimLook(ads,p.Seat.spec):1;yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*aimLook;pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*aimLook,-70,70);ControllerLook(aimLook);}
+                if(!lockPoint.HasValue&&!ExpeditionLookSettling&&!cinematic.Directing&&!ExpeditionCameraHeld&&!ExpeditionPickPointer){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*aimLook;pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*aimLook,-70,70);ControllerLook(aimLook);}
                 if(Input.GetKeyDown(KeyCode.W)){if(Time.unscaledTime-lastW<.3f)sprint=true;lastW=Time.unscaledTime;}if(!Input.GetKey(KeyCode.W))sprint=false;
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
                 var padMove=Quaternion.Euler(0,yaw,0)*new Vector3(padMoveAxis.x,0,padMoveAxis.y);if(move.sqrMagnitude<.001f)move=padMove;
@@ -339,7 +341,7 @@ namespace ChipArena.UnityConversion
             bool first=NativeViewRules.FirstPerson(prefs.firstPerson,alive,menu);
             // Settings · Camera (NativeShoulderCamera.cs): Classic, once settled, is the original camera below, unchanged.
             bool classic=CameraClassic(first);
-            float settled=first?(aim?(float)ads.fov:NativeViewRules.FirstFov):(classic?NativeViewRules.ThirdFov:cameraRig.Fov(Time.unscaledTime))*(aim?NativeViewRules.AimZoom(p.Seat.spec):1);
+            float settled=first?NativeViewRules.FirstFov:classic?NativeViewRules.ThirdFov:cameraRig.Fov(Time.unscaledTime);if(aim)settled=first?(float)ads.fov:settled*NativeViewRules.AimZoom(p.Seat.spec);
             cameraView.fieldOfView=SprintFov(first,aim,Mathf.Lerp(cameraView.fieldOfView-sprintKick,settled,1-Mathf.Exp(-16*Time.unscaledDeltaTime)));
             Quaternion rotation=Quaternion.Euler(pitch,yaw,0);Vector3 location=focus;
             if(!first&&!classic)location=ShoulderCamera(p,focus);
