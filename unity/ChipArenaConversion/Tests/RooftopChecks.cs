@@ -51,6 +51,13 @@ internal static class RooftopChecks
         Check(low.Steam.Count<w.Steam.Count&&low.Motes.Count<reduced.Motes.Count&&reduced.Motes.Count<w.Motes.Count,"steam and motes thin with the tier");
         Check(w.Screens.Select(s=>s.Kind).OrderBy(k=>k).SequenceEqual(new[]{"arena","banner","chip","sign","siren"}),"five holo screens: Chip Arena, the CHIP banner, the chip card, the ARENA sign and the Siren");
         Check(new[]{"runA","runB","blade","gunner","watch"}.All(w.Sites.ContainsKey),"every distant pilot has its place");
+        // The quads the fallback draws (no bank: every part) are today's city to the bit: a hash of every quad's corners, normal, face
+        // coordinates, attributes, mode and top, in order (the part and the notes are not in it).
+        ulong hash=14695981039346656037UL;void H(float f){unchecked{hash=(hash^(uint)BitConverter.SingleToInt32Bits(f))*1099511628211UL;}}void H3(Vector3 v){H(v.X);H(v.Y);H(v.Z);}
+        foreach(var q in w.Quads){H3(q.A);H3(q.B);H3(q.C);H3(q.D);H3(q.Normal);H(q.Uv.X);H(q.Uv.Y);H(q.Uv.Z);H(q.Uv.W);H(q.Attr.X);H(q.Attr.Y);H(q.Attr.Z);H(q.Attr.W);H(q.Mode);H(q.W);}
+        foreach(var list in new[]{w.Glows,w.Mist,w.Steam,w.Motes,w.Rain})foreach(var sp in list){H3(sp.Position);H(sp.Size);H(sp.Kind);H(sp.Color.X);H(sp.Color.W);}
+        foreach(var l in w.Lights){H3(l.Position);H(l.Reach);H3(l.Color);}
+        Console.WriteLine("Rooftop city hash "+hash.ToString("x16"));
         Console.WriteLine("PASS Rooftop city: "+w.LotCount+" lots, "+w.Quads.Count+" quads, "+cars+" cars, "+triangles+" triangles; sprites "+sprites(w)+"/"+sprites(reduced)+"/"+sprites(low));
 
         // 2. A seamless 48 s loop: the camera (and its halved drift), every lane's cars, every actor.

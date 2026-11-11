@@ -39,6 +39,8 @@ namespace ChipArena.UnityConversion
         public static float CaptureTime=float.NaN;public static bool CaptureBare;public static string CaptureInfo;
         public readonly float Quality;public readonly NativeRooftopCity.World World;
         private readonly Material worldMaterial,skyMaterial,screenMaterial,towerMaterial,propMaterial;private readonly Material[] layers=new Material[6];
+        // The modelled art (NativeRooftopModels; null without its bank: every quad draws) in place of the parts it covers.
+        private readonly NativeRooftopModels models;
         private readonly Mesh worldMesh,towerMesh,propMesh,quad,cars,dynamicMesh;private readonly Mesh[] sprites=new Mesh[5];
         private readonly Vector4[] lightPos=new Vector4[NativeRooftopCity.LightCount],lightCol=new Vector4[NativeRooftopCity.LightCount];
         private readonly RooftopScreen[] screens;private readonly Matrix4x4[] screenMatrix;private readonly MaterialPropertyBlock[] screenBlock;
@@ -70,12 +72,15 @@ namespace ChipArena.UnityConversion
         public NativeRooftopScene(float quality)
         {
             Quality=quality;World=NativeRooftopCity.Build(quality);
+            try{models=NativeRooftopModels.Load(quality<.5f);}catch(Exception e){Debug.LogWarning("The rooftop art is off: "+e.Message);models=null;}
+            var plan=models?.Plan;
             worldMaterial=Make(ShaderNames[0]);skyMaterial=Make(ShaderNames[1]);screenMaterial=Make(ShaderNames[2]);towerMaterial=Make(ShaderNames[4]);propMaterial=Make(ShaderNames[5]);
             // The anime sky's cumulus (NativeMenuStyle.Rooftop's sky values, linear; the shader reads them only while the style is on).
             var style=new MapStyleState();NativeMapStyle.State(NativeMenuStyle.Rooftop,false,true,style);NativeMenuStyle.RooftopSky(style,out var skyToon,out var skyLit,out var skyShade);
             skyMaterial.SetVector(RoofSkyToonId,V4(skyToon));skyMaterial.SetVector(RoofSkyLitId,Lin(V4(skyLit)));skyMaterial.SetVector(RoofSkyShadeId,Lin(V4(skyShade)));
             for(int i=0;i<layers.Length;i++){var m=Make(ShaderNames[3]);bool additive=i!=0&&i!=2;m.SetFloat("_SrcBlend",(float)(additive?BlendMode.One:BlendMode.SrcAlpha));m.SetFloat("_DstBlend",(float)(additive?BlendMode.One:BlendMode.OneMinusSrcAlpha));m.SetFloat("_Additive",additive?1:0);m.renderQueue=3000+i;layers[i]=m;}
-            worldMesh=WorldMesh("Rooftop city",World.Quads,0,NativeRooftopCity.Tower);towerMesh=WorldMesh("Rooftop towers",World.Quads,NativeRooftopCity.Tower,NativeRooftopCity.Prop);propMesh=WorldMesh("Rooftop props",World.Quads,NativeRooftopCity.Prop,int.MaxValue);quad=Quad();
+            worldMesh=WorldMesh("Rooftop city",World.Quads,0,NativeRooftopCity.Tower,plan);towerMesh=WorldMesh("Rooftop towers",World.Quads,NativeRooftopCity.Tower,NativeRooftopCity.Prop,plan);propMesh=WorldMesh("Rooftop props",World.Quads,NativeRooftopCity.Prop,int.MaxValue,plan);quad=Quad();
+            CaptureInfo=models==null?"rooftop art: none ("+World.Quads.Count+" quads)":"rooftop art: "+models.Triangles+" triangles, "+models.Vertices+" vertices, "+plan.Cars.Count+" car kinds, read in "+models.LoadMs.ToString("0")+" ms; quads kept "+(worldMesh.vertexCount+towerMesh.vertexCount+propMesh.vertexCount)/4+" of "+World.Quads.Count;
             for(int i=0;i<lightPos.Length;i++){var l=World.Lights[i];var p=U(l.Position);lightPos[i]=new Vector4(p.x,p.y,p.z,l.Reach);lightCol[i]=new Vector4(l.Color.X,l.Color.Y,l.Color.Z,l.Wrap);}
             // Back to front: mist, glows, steam, motes, rain (the dynamic layer draws last).
             var lists=new[]{World.Mist,World.Glows,World.Steam,World.Motes,World.Rain};for(int i=0;i<lists.Length;i++)sprites[i]=lists[i].Count>0?SpriteMesh("Rooftop sprites "+i,lists[i],lists[i].Count):null;
@@ -97,9 +102,10 @@ namespace ChipArena.UnityConversion
         // Static quads with modes in [from, to): corners A B C D (counter-clockwise about the normal in the source frame) take the
         // face coordinates (u0,v0) (u1,v0) (u1,v1) (u0,v1), uv0.z the mode and uv0.w the quad's W (a tower's top); mirrored,
         // each is wound A C B, A D C.
-        private static Mesh WorldMesh(string name,List<RooftopQuad> all,int from,int to)
+        // (`plan`: the modelled art's; the quads of the parts it covers are left out.)
+        private static Mesh WorldMesh(string name,List<RooftopQuad> all,int from,int to,NativeRooftopBank.Plan plan)
         {
-            var quads=all.FindAll(q=>q.Mode>=from&&q.Mode<to);
+            var quads=all.FindAll(q=>q.Mode>=from&&q.Mode<to&&(plan==null||!plan.Covers(q.Part)));
             int n=quads.Count;var pos=new Vector3[n*4];var nrm=new Vector3[n*4];var uv0=new Vector4[n*4];var uv1=new Vector4[n*4];var tri=new int[n*6];
             for(int i=0;i<n;i++)
             {
@@ -155,6 +161,7 @@ namespace ChipArena.UnityConversion
             Graphics.DrawMesh(worldMesh,Matrix4x4.identity,worldMaterial,0,camera,0,null,ShadowCastingMode.Off,false);
             Graphics.DrawMesh(towerMesh,Matrix4x4.identity,towerMaterial,0,camera,0,null,ShadowCastingMode.Off,false);
             Graphics.DrawMesh(propMesh,Matrix4x4.identity,propMaterial,0,camera,0,null,ShadowCastingMode.Off,false);
+            models?.Draw(camera,towerMaterial);
             for(int i=0;i<screens.Length;i++)
             {
                 string kind=screens[i].Kind;var b=screenBlock[i];
@@ -166,7 +173,8 @@ namespace ChipArena.UnityConversion
                 NativeRooftopCity.ScreenState(kind,time,out float pulse,out float cut,out float sweep,out float chase);b.SetVector(AnimId,new Vector4(pulse,cut,sweep,chase));
                 if(tex!=null)b.SetTexture(MainTexId,tex);b.SetFloat(CalmId,reduced?1:0);Graphics.DrawMesh(quad,screenMatrix[i],screenMaterial,0,camera,0,b,ShadowCastingMode.Off,false);
             }
-            Traffic(time);Graphics.DrawMesh(cars,Matrix4x4.identity,worldMaterial,0,camera,0,null,ShadowCastingMode.Off,false);
+            if(models!=null&&models.HasCars)models.Cars(camera,World.Lanes,time);
+            else{Traffic(time);Graphics.DrawMesh(cars,Matrix4x4.identity,worldMaterial,0,camera,0,null,ShadowCastingMode.Off,false);}
             for(int i=0;i<sprites.Length;i++)if(sprites[i]!=null)Graphics.DrawMesh(sprites[i],Matrix4x4.identity,layers[i],0,camera,0,null,ShadowCastingMode.Off,false);
             Dynamic(time);Graphics.DrawMesh(dynamicMesh,Matrix4x4.identity,layers[5],0,camera,0,null,ShadowCastingMode.Off,false);
         }
@@ -249,6 +257,7 @@ namespace ChipArena.UnityConversion
         }
         public void Dispose()
         {
+            models?.Dispose();
             foreach(var m in new[]{worldMesh,towerMesh,propMesh,quad,cars,dynamicMesh})if(m!=null)CapturedAnimation.Release(m);foreach(var m in sprites)if(m!=null)CapturedAnimation.Release(m);
             foreach(var m in new[]{worldMaterial,skyMaterial,screenMaterial,towerMaterial,propMaterial})if(m!=null)CapturedAnimation.Release(m);foreach(var m in layers)if(m!=null)CapturedAnimation.Release(m);
             foreach(var t in ads.Values)if(t!=null)CapturedAnimation.Release(t);ads.Clear();

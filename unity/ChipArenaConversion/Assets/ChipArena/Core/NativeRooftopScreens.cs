@@ -56,6 +56,7 @@ namespace ChipArena.UnityConversion
         private static void ScreenFrame(World w,Vector3 c,float ry,float width,float height,float back)
         {
             var n=new Vector3((float)Math.Sin(ry),0,(float)Math.Cos(ry));var t=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,n));var y=Vector3.UnitY;
+            if(w.Notes!=null)Note(w,"frame",c.X,c.Y,c.Z,ry,width,height,back);
             float size=Math.Max(width,height),b=Clamp(size*.022f,.28f,1.1f),depth=Math.Max(.5f,size*.02f);
             float hw=width*.5f,hh=height*.5f;var rail=n*(depth*.5f-depth*.35f);
             // the bezel: top and bottom rails over the full width, the stiles between them
