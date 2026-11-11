@@ -135,7 +135,9 @@ namespace ChipArena.UnityConversion
         // Its twins (pelvis up to head) and their spring, found on the body's first jiggle.
         private sealed class HotDogRig
         {
-            public Transform Pelvis;public Transform[] Twins;public NativeHotDog.Jiggle Spring;public bool Moved;
+            // Its twins bottom to top, each one's bone's turn at the bind (the mesh's frame), and its renderer.
+            public Transform Pelvis;public Transform[] Twins;public Quaternion[] Rest;public SkinnedMeshRenderer Skin;public NativeHotDog.Jiggle Spring;
+            public Quaternion[] Turn,Eased;
         }
         // VisualBodyPose, once the live pilot's body is posed: the spring stepped on the body's floor point (its root: the pilot's
         // motion without the clips' bob) and its twins set so the sausage leans about the pelvis (bending: more toward its top)
@@ -148,14 +150,26 @@ namespace ChipArena.UnityConversion
             {
                 rig=body.Dog=new HotDogRig();var twins=new List<Transform>();
                 foreach(var t in body.Root.GetComponentsInChildren<Transform>(true))if(t.name.StartsWith(HotDogTwin,StringComparison.Ordinal)){twins.Add(t);if(t.name==HotDogTwin+"pelvis")rig.Pelvis=t.parent;}
-                rig.Twins=twins.ToArray();
+                // Bottom to top by where their bones rest, each with that rest turn (the bank's bind poses).
+                var bind=hotDogMesh!=null?hotDogMesh.bindposes:new Matrix4x4[0];var rest=new List<(Transform t,float y,Quaternion q)>();
+                foreach(var t in twins){int i=Array.IndexOf(hotDogBones,"~"+t.name.Substring(HotDogTwin.Length));if(i>=0&&i<bind.Length){var m=bind[i].inverse;rest.Add((t,m.m13,m.rotation));}}
+                rest.Sort((a,b)=>a.y.CompareTo(b.y));rig.Twins=rest.ConvertAll(r=>r.t).ToArray();rig.Rest=rest.ConvertAll(r=>r.q).ToArray();
+                rig.Turn=new Quaternion[rig.Twins.Length];rig.Eased=new Quaternion[rig.Twins.Length];hotDogByRoot.TryGetValue(body.Root,out rig.Skin);
             }
-            if(rig.Pelvis==null||rig.Twins.Length==0)return;
+            if(rig.Pelvis==null||rig.Twins.Length==0||rig.Skin==null)return;
             var pelvis=rig.Pelvis.position;var floor=body.Root.transform.position;
             NativeHotDog.Step(ref rig.Spring,new System.Numerics.Vector3(floor.x,floor.y,floor.z),Time.deltaTime);
             NativeHotDog.Pose(rig.Spring,out var ax,out float angle,out float squash);
-            if(angle<1e-4f&&Mathf.Abs(squash)<1e-4f){if(rig.Moved){foreach(var t in rig.Twins){t.localPosition=Vector3.zero;t.localRotation=Quaternion.identity;t.localScale=Vector3.one;}rig.Moved=false;}return;}
             var axis=new Vector3(ax.X,ax.Y,ax.Z);var up=Vector3.up;
+            // The bend kept even (NativeHotDog.SpineEven): each twin's turn against its rest (the body's own turn off), eased toward
+            // its neighbours' with the ends as posed.
+            int n=rig.Twins.Length;var body0=rig.Skin.transform.rotation;var turn=rig.Turn;var eased=rig.Eased;
+            for(int k=0;k<n;k++)turn[k]=eased[k]=rig.Twins[k].parent.rotation*Quaternion.Inverse(body0*rig.Rest[k]);
+            for(int pass=0;pass<NativeHotDog.SpinePasses;pass++)
+            {
+                var prev=eased[0];
+                for(int k=1;k<n-1;k++){var mid=Quaternion.Slerp(prev,eased[k+1],.5f);prev=eased[k];eased[k]=Quaternion.Slerp(eased[k],mid,.5f);}
+            }
             float sy=1-squash,sxz=1/Mathf.Sqrt(Mathf.Max(.5f,sy));
             // The squash along world up about the pelvis (the same for every twin), then each twin's share of the lean.
             var squashAbout=Matrix4x4.Translate(pelvis)*Matrix4x4.Scale(new Vector3(sxz,sy,sxz))*Matrix4x4.Translate(-pelvis);
@@ -163,10 +177,10 @@ namespace ChipArena.UnityConversion
             {
                 var bone=t.parent;float h=Vector3.Dot(bone.position-pelvis,up);
                 var lean=Matrix4x4.Translate(pelvis)*Matrix4x4.Rotate(Quaternion.AngleAxis(angle*NativeHotDog.Bend(h)*Mathf.Rad2Deg,axis))*Matrix4x4.Translate(-pelvis);
-                var local=bone.worldToLocalMatrix*lean*squashAbout*bone.localToWorldMatrix;
+                int k=Array.IndexOf(rig.Twins,t);var even=Quaternion.Slerp(turn[k],eased[k],NativeHotDog.SpineEven)*body0*rig.Rest[k];
+                var local=bone.worldToLocalMatrix*lean*squashAbout*Matrix4x4.TRS(bone.position,even,bone.lossyScale);
                 t.localPosition=local.GetColumn(3);t.localRotation=local.rotation;t.localScale=local.lossyScale;
             }
-            rig.Moved=true;
         }
         // ---- Hats on the crown (Core NativeHotDog.HatFit) ----
         // Once bound: the crown's skinning (the bones and weights of a vertex over the head that isn't a sprig) and the head bone's

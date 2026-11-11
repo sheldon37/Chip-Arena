@@ -103,6 +103,15 @@ Now (`Runtime/NativeHotDogPresentation.cs`, `HotDogHatOn` and `HotDogUnderHat`):
   draws a copy of the mesh without them. They are the small parts wholly within 8 cm of its top, found by welding the bank's
   seams at load. The crown, antenna and halos leave them standing.
 
+## The bend kept even
+
+The owner, through the Katana session (2026-11-11): "their hot dog skin deforms during the Katana's counter". The counter curls
+the spine about 50 degrees past the stance at one or two joints, and the sausage, weighted along the spine's bones, folded into a
+spike at that height; its jiggle was idle. Now each frame (`HotDogJiggle`, before the jiggle) each sausage twin's turn, its
+bone's against its rest with the body's own turn taken off, is eased toward its neighbours' (`NativeHotDog.SpinePasses` passes, a
+quarter each side; the pelvis's and the head's kept as posed) and the twins take the eased turn (`SpineEven`, all of it). The
+bend is the same but spread down the sausage as an arc. Hats and the animated face ride the same twins, so they follow it.
+
 ## Wounds and cuts
 
 The Hot Dog has no human skeleton inside, alive or dead (the body's and the corpse's `VisualSkeletonMake` are skipped for it).
