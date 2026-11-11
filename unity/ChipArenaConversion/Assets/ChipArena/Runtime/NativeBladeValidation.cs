@@ -24,6 +24,8 @@ namespace ChipArena.UnityConversion
             var floor=GameObject.CreatePrimitive(PrimitiveType.Cube);floor.transform.SetParent(root.transform);floor.layer=PropLayer;floor.transform.position=new Vector3(o.x,98.635f,o.z);floor.transform.localScale=new Vector3(80,1,80);
             void Check(bool ok,string label){if(!ok)throw new Exception("Native blades: "+label);checks++;}
             void Advance(float t){Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=Match.Time+t,fightAt=0});}
+            // (Steps are whole 1/60 s frames: a move's length rounds down short of its end, so the next press would find it still busy.)
+            const float Frame=.03f;
             void Step(float seconds){int n=Mathf.Max(1,Mathf.RoundToInt(seconds*60));for(int i=0;i<n;i++){Advance(1f/60);StepBladeWorld();foreach(var q in Pilots)PinBladeVictim(q);}}
             void Setup(string spec)
             {
@@ -47,8 +49,8 @@ namespace ChipArena.UnityConversion
                 Check(NativeLoadoutText.InClass(row,"melee",false,!row.devOnly),"a guest can pick the Katana");
                 Setup(NativeKatana.Spec);
                 Press(shoot:true);Check(a.Blade.CastKind==NativeKatana.Cut&&a.Blade.CastStep==0&&a.Blade.CastRelease>a.Blade.CastAt,"the first cut winds up");Check(!TryBlock(a)&&!TryRoll(a),"a committed cut cannot block or roll");
-                float hp=b.Hp;Step(NativeKatana.CutLength[0]);Check(b.Hp<hp,"the first cut lands");
-                for(int step=1;step<NativeKatana.Steps;step++){a.BladeAttackHeld=false;Press(shoot:true);Check(a.Blade.CastStep==step,"cut "+step+" follows on");b.StaggerImmune=0;b.Body.position=a.Body.position+Vector3.forward*2.2f;Physics.SyncTransforms();hp=b.Hp;Step(NativeKatana.CutLength[step]);Check(b.Hp<hp,"cut "+step+" lands");}
+                float hp=b.Hp;Step(NativeKatana.CutLength[0]+Frame);Check(b.Hp<hp,"the first cut lands");
+                for(int step=1;step<NativeKatana.Steps;step++){a.BladeAttackHeld=false;Press(shoot:true);Check(a.Blade.CastStep==step,"cut "+step+" follows on");b.StaggerImmune=0;b.Body.position=a.Body.position+Vector3.forward*2.2f;Physics.SyncTransforms();hp=b.Hp;Step(NativeKatana.CutLength[step]+Frame);Check(b.Hp<hp,"cut "+step+" lands");}
                 Advance(2);a.BladeAttackHeld=false;Press(shoot:true);Check(a.Blade.CastStep==0,"the combo lapses");
                 // The rush on a sprint.
                 Setup(NativeKatana.Spec);a.Pose.Sprinting=true;a.Input=new InputFrame{Shoot=true,Attack=true,Sprint=true,Z=1};StepBladeInput(a);Check(a.Blade.CastKind==NativeKatana.Rush,"a cut on a sprint is the rush");
@@ -68,13 +70,13 @@ namespace ChipArena.UnityConversion
                 {var cf=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=NetworkFrame()})).frame;Check(cf.Valid(Content),"the record crosses the codec");var ka=cf.snapshot.Actors.First(x=>x.Id==a.Seat.id).Blade;Check(ka!=null&&ka.CastKind==NativeKatana.Iai&&ka.Valid(),"the iai in the frame");}
                 foreach(var id in NativeKatanaChips.Ids)Check(Content.chips.Any(x=>x.id==id&&ImplementedChip(x)),"live supported chip "+id);
                 // Honed Edge: deeper cuts.
-                Setup(NativeKatana.Spec);hp=b.Hp;Press(shoot:true);Step(NativeKatana.CutLength[0]);float plain=hp-b.Hp;
-                Setup(NativeKatana.Spec);a.Seat.chips[NativeKatanaChips.HonedEdge]=2;hp=b.Hp;Press(shoot:true);Step(NativeKatana.CutLength[0]);Check(hp-b.Hp>plain*1.15f,"Honed Edge cuts deeper");
+                Setup(NativeKatana.Spec);hp=b.Hp;Press(shoot:true);Step(NativeKatana.CutLength[0]+Frame);float plain=hp-b.Hp;
+                Setup(NativeKatana.Spec);a.Seat.chips[NativeKatanaChips.HonedEdge]=2;hp=b.Hp;Press(shoot:true);Step(NativeKatana.CutLength[0]+Frame);Check(hp-b.Hp>plain*1.15f,"Honed Edge cuts deeper");
                 // ---- the Fangs ----
                 var frow=Content.Weapon(NativeFangs.Spec);Check(frow!=null&&frow.devOnly&&frow.@class=="melee","the Fangs are a DEV melee row");
                 Setup(NativeFangs.Spec);a.Seat.access=NativeAccess.Guest;Press(shoot:true);Check(a.Blade.CastKind==null,"a guest's Fangs do nothing");
-                Setup(NativeFangs.Spec);Press(shoot:true);Step(NativeFangs.CutLength[0]);Check(a.BladeVenom.TryGetValue(b.Seat.id,out int n1)&&n1==1&&b.Dots.ContainsKey(a.Seat.id+":venom"),"a cut leaves a venom stack");
-                for(int step=1;step<NativeFangs.Steps;step++){a.BladeAttackHeld=false;b.StaggerImmune=0;b.Body.position=a.Body.position+Vector3.forward*1.8f;Physics.SyncTransforms();Press(shoot:true);Step(NativeFangs.CutLength[step]);}
+                Setup(NativeFangs.Spec);Press(shoot:true);Step(NativeFangs.CutLength[0]+Frame);Check(a.BladeVenom.TryGetValue(b.Seat.id,out int n1)&&n1==1&&b.Dots.ContainsKey(a.Seat.id+":venom"),"a cut leaves a venom stack");
+                for(int step=1;step<NativeFangs.Steps;step++){a.BladeAttackHeld=false;b.StaggerImmune=0;b.Body.position=a.Body.position+Vector3.forward*1.8f;Physics.SyncTransforms();Press(shoot:true);Step(NativeFangs.CutLength[step]+Frame);}
                 Check(a.BladeVenom.TryGetValue(b.Seat.id,out int n5)&&n5>=5,"the flurry stacks the venom ("+n5+")");
                 // The bloom spends the stacks at once.
                 hp=b.Hp;Press(key:2);Step(NativeFangs.BloomRelease+.05f);Check(b.Hp<hp-NativeFangs.BloomPerStack*3&&!a.BladeVenom.ContainsKey(b.Seat.id),"2 blooms the venom");
@@ -84,7 +86,7 @@ namespace ChipArena.UnityConversion
                 // The veil: unseen, the next cut twice as hard, then seen again.
                 Setup(NativeFangs.Spec);Press(e:true);Step(NativeFangs.VeilCast+.05f);Check(BladeUnseen(a),"E veils");
                 {var bot=Pilots.Where(q=>q!=a&&q.Hp>0&&Enemy(b,q)&&!BladeUnseen(q)).ToList();Check(!bot.Contains(a),"bots pass over the veiled");}
-                hp=b.Hp;a.BladeAttackHeld=false;Press(shoot:true);Step(NativeFangs.CutLength[0]);float veiled=hp-b.Hp;Check(!BladeUnseen(a)&&veiled>NativeFangs.CutDamage[0]*1.5f,"the veil's strike is twice as hard and ends it");
+                hp=b.Hp;a.BladeAttackHeld=false;Press(shoot:true);Step(NativeFangs.CutLength[0]+Frame);float veiled=hp-b.Hp;Check(!BladeUnseen(a)&&veiled>NativeFangs.CutDamage[0]*1.5f,"the veil's strike is twice as hard and ends it");
                 // The fan: knives into the foe.
                 Setup(NativeFangs.Spec);b.Body.position=o+new Vector3(0,0,8);Physics.SyncTransforms();hp=b.Hp;Press(key:1);Step(NativeFangs.FanRelease+.5f);Check(b.Hp<hp&&a.BladeVenom.ContainsKey(b.Seat.id),"1 fans knives into the foe");
                 // The takedown from behind: both held, lethal at its blow.
