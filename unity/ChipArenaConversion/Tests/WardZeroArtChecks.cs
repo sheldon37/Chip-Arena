@@ -162,13 +162,20 @@ internal static class WardZeroArtChecks
             // the play space: below 2 m over its floor (the ground's, the upper floor's) the Fine art keeps to the blocks (within
             // .25 m; a thin prop within .9 m); higher is overhead; nothing stands in a spawn's capsule. The posed blocks and the
             // movers count at rest.
-            var boxes=exp.blocks.Select(b=>(x0:b.pos.x-b.size.x/2,x1:b.pos.x+b.size.x/2,y0:b.pos.y-b.size.y/2,y1:b.pos.y+b.size.y/2,z0:b.pos.z-b.size.z/2,z1:b.pos.z+b.size.z/2)).ToArray();
+            // (a pitched block, a ramp's deck or a shard, is measured in its own frame)
+            var boxes=exp.blocks.Select(b=>(b:b,q:b.rotation==null||Math.Abs(b.rotation.w)>.99999?(FactoryQ?)null:new FactoryQ{X=-b.rotation.x,Y=-b.rotation.y,Z=-b.rotation.z,W=b.rotation.w})).ToArray();
+            var rails=exp.blocks.Where(b=>b.id.Contains("-rail")&&!b.id.EndsWith("-kick")).Select(b=>(x0:b.pos.x-b.size.x/2-.1,x1:b.pos.x+b.size.x/2+.1,y0:b.pos.y-b.size.y/2-.85,y1:b.pos.y+b.size.y/2+.1,z0:b.pos.z-b.size.z/2-.1,z1:b.pos.z+b.size.z/2+.1))
+                .Concat(exp.blocks.Where(b=>b.id.Contains("-stair-")&&!b.id.Contains("-rail")&&!b.id.Contains("-landing")).Select(b=>(x0:b.pos.x-b.size.x/2-.45,x1:b.pos.x+b.size.x/2+.45,y0:(double)b.pos.y+b.size.y/2,y1:b.pos.y+b.size.y/2+1.35,z0:b.pos.z-b.size.z/2-.45,z1:b.pos.z+b.size.z/2+.45))).ToArray();
             int proud=0,total=0;double far=0;var where=new Dictionary<string,int>();var spawns=siren.spawns.ffa.Concat(siren.spawns.teams.SelectMany(t=>t.points)).Select(s=>s.pos).ToArray();int inSpawn=0;
             void Vertex(double x,double y,double z)
             {
                 if(x<siren.bounds.minX||x>siren.bounds.maxX||z<siren.bounds.minZ||z>siren.bounds.maxZ)return;
                 double floor=y<5.5?0:6;if(y-floor>2||y<floor-.05)return;total++;
-                double best=double.MaxValue;foreach(var b in boxes){double dx=Math.Max(0,Math.Max(b.x0-x,x-b.x1)),dy=Math.Max(0,Math.Max(b.y0-y,y-b.y1)),dz=Math.Max(0,Math.Max(b.z0-z,z-b.z1));best=Math.Min(best,Math.Sqrt(dx*dx+dy*dy+dz*dz));if(best==0)break;}
+                double best=double.MaxValue;foreach(var e in boxes){double lx=x-e.b.pos.x,ly=y-e.b.pos.y,lz=z-e.b.pos.z;if(e.q!=null)e.q.Value.Rotate(lx,ly,lz,out lx,out ly,out lz);
+                    double dx=Math.Max(0,Math.Abs(lx)-e.b.size.x/2),dy=Math.Max(0,Math.Abs(ly)-e.b.size.y/2),dz=Math.Max(0,Math.Abs(lz)-e.b.size.z/2);best=Math.Min(best,Math.Sqrt(dx*dx+dy*dy+dz*dz));if(best==0)break;}
+                // a rail's posts and wires between its top bar and its kick plate, and a flight's posts and handrail over its
+                // treads, are the barrier itself (the kit's own posts stand there too)
+                if(best>.25)foreach(var r in rails)if(x>=r.x0&&x<=r.x1&&z>=r.z0&&z<=r.z1&&y>=r.y0&&y<=r.y1){best=0;break;}
                 if(best>.25){proud++;var key=((int)Math.Floor(x))+","+((int)Math.Floor(y*2)/2.0)+","+((int)Math.Floor(z));where[key]=where.TryGetValue(key,out var w0)?w0+1:1;}far=Math.Max(far,best);
                 foreach(var s in spawns){double dx=x-s.x,dz=z-s.z,dy=y-(s.y-1.1);if(dx*dx+dz*dz<.35*.35&&dy>.05&&dy<1.8)inSpawn++;}
             }

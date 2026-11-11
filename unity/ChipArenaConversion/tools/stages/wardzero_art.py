@@ -67,6 +67,7 @@ class Scene:
 KEYS = ('-x', '+x', '-y', '+y', '-z', '+z')
 COVER = []          # the static upright blocks' boxes (what can hide a face for good)
 BOUNDS = None
+ALLBOX = []         # every upright block's box
 
 
 def set_cover(L):
@@ -74,6 +75,8 @@ def set_cover(L):
     BOUNDS = L['bounds']
     posed = set(L['posed'])
     del COVER[:]
+    del ALLBOX[:]
+    ALLBOX.extend((ext(b), b['id']) for b in L['blocks'] if upright(b))
     for b in L['blocks']:
         if b['role'] == 'static' and upright(b) and b['id'] not in posed:
             COVER.append((ext(b), b['id']))
@@ -769,6 +772,19 @@ def nozzle(g, p, T):
     lathe(g, [(.03, -.2), (.1, -.16), (.1, -.1), (.05, -.06), (.05, 0)], (x, top, z), F['steel'], T.round if T.i == 0 else 6, cap0=True)
 
 
+def adrift(L, p):
+    """Whether a steady part in the play space (below 2.2 m over its floor) stands more than .45 m from every upright block:
+    nothing there to carry it, and no collider behind it."""
+    c = p['c']
+    if c[1] - (0 if c[1] < 5.5 else UPPER) > 2.2:
+        return False
+    for e, _ in ALLBOX:
+        dx, dy, dz = max(0, e[0] - c[0], c[0] - e[1]), max(0, e[2] - c[1], c[1] - e[3]), max(0, e[4] - c[2], c[2] - e[5])
+        if dx * dx + dy * dy + dz * dz < .45 * .45:
+            return False
+    return True
+
+
 def kit_parts(S):
     L, T = S.L, S.T
     cradle_done = False
@@ -782,6 +798,8 @@ def kit_parts(S):
         look, col, h = p['look'], p['col'], p['h']
         if p['o'] in S.props:
             continue                                            # a gurney's or a cart's own model has its parts
+        if upright(b) and f not in ('tread', 'rail') and adrift(L, p):
+            continue                                            # a trim the kit left standing in the air (a jamb in an open doorway)
         if f in ('wall', 'shell', 'skirt') and (look == 'ward-panel' or (look == 'cyber-metal' and col == 0x2F383B and near(h[1], .075)) or
                                                 (look == 'cyber-metal' and col == 0x5D6B6E and near(h[1], .03) and near(min(h[0], h[2]), .015))):
             continue                                            # the wainscot, the base and the chair rail: the cladding's own
