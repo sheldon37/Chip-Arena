@@ -183,7 +183,7 @@ def far(L, T):
         if any(math.hypot(x - hx, z - hz) < 24 for hx, hz, _ in HABITATS):
             continue
         s = 3 + hashf(i, 43) * 7
-        hh = s * (.8 + 1.8 * hashf(i, 44))
+        hh = s * (.6 + .9 * hashf(i, 44))
         rock(g, (x, height(x, z) + hh * .4, z), (s, hh, s * (.6 + .5 * hashf(i, 45))), 400 + i, F['rock'], n=1, square=.25, rough=.5, quat=sk.quat_axis(.15, 1, .1, hashf(i, 46) * 3))
     out.append(('far-rocks', g))
     g = Geo()

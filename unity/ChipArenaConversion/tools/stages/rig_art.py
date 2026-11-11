@@ -97,6 +97,12 @@ def wellhead(g, T):
     rk.flat_ring(g, 0, 0, 3.75, 3.8, 0, F['brass'], n)
     if T.tiny:
         rivets(g, [(math.sin(a) * 3.42, .006, math.cos(a) * 3.42) for a in [k * math.pi / 16 for k in range(32)]], Y, .03, F['brass'])
+    for k in range(16):
+        a0 = k * math.pi / 8 + math.pi / 16
+        c, s = math.cos(a0), math.sin(a0)
+        w = .03
+        g.face(((s * 3.8 - c * w, 0, c * 3.8 + s * w), (s * 3.8 + c * w, 0, c * 3.8 - s * w), (s * 5.3 + c * w, 0, c * 5.3 - s * w), (s * 5.3 - c * w, 0, c * 5.3 + s * w)), F['brass'], Y)
+    rk.flat_ring(g, 0, 0, 5.3, 5.36, 0, F['brass'], n)
     # the grate: a dark pit plate, a brass rim, bars across (the rig's core glows between them)
     g.face(((-1.5, 0, -1.5), (1.5, 0, -1.5), (1.5, 0, 1.5), (-1.5, 0, 1.5)), F['black'], Y)
     for (a, c, e, h) in ((-1.62, 1.62, -1.62, -1.5), (-1.62, 1.62, 1.5, 1.62), (-1.62, -1.5, -1.5, 1.5), (1.5, 1.62, -1.5, 1.5)):
@@ -303,7 +309,11 @@ def sub(g, b, T):
         rings.append(ringp)
     skin(g, rings, F['yellow'])
     # the deck, its hatch, the sail's stub
-    R.box(g, L * .16, L * .84, y1 - .09, y1, -h * .62, h * .62, F['dark'], T, .02)
+    # the deck: an oval plate on the hull's back with a brass rim, the hatch in its middle
+    c = R.at(L * .5, y1 - .1, 0)
+    sc = (h * .64, L * .36) if rk.long_x(b) else (L * .36, h * .64)
+    lathe(g, [(.94, -.02), (1.0, 0.03), (1.0, .1), (.001, .1)], c, F['dark'], (16, 10, 8)[T.i], scale=sc)
+    lathe(g, [(1.0, .03), (1.03, .05), (1.03, .09), (1.0, .1)], c, F['brass'], (16, 10, 8)[T.i], scale=sc)
     lathe(g, [(.34, 0), (.36, .012), (.3, .02), (.001, .02)], R.at(L * .5, y1, 0), F['brass'], (12, 8, 6)[T.i])
     R.box(g, .1, L - .1, cy - .06, cy + .06, -h, h, F['black'], T, .02)
     if T.i < 2:
