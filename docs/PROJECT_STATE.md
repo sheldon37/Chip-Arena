@@ -4,7 +4,7 @@
 
 2026-11-11 Claude (`claude/hotdog-hats`): hats fit the Hot Dog: each rides the crown's own skinning with its own fit (no more tilting off or sitting over the face), and the crown's sprigs hide under closed hats (docs/HOT-DOG-SKIN.md "Hats").
 
-2026-11-11 Claude (`claude/blades`, the owner's second notes): the Katana's saya rides the model's pelvis where the Frank Slash Pack wears it (the hilt at the belly, the saya down the left thigh) and the left hand carries it as the pack's clips do; the sheathing turns the blade over in the hand; Crimson Moon draws on the pack's iai; the blade classes' intros hold their blades as the match does (they hung from the bare wrist). Presentation only, no rules.
+2026-11-11 Claude (`claude/blades`, the owner's third notes; a rules change for Astra to review): Crimson Moon's draw is slowed and filmed from the saya's side; a parried attacker recoils, stays dazed while the parry's shove slides it, then stands (it walked backwards in place), a Katana or Fangs attacker on its block; the counter's foe is thrown back 1.23 m with its clip (rules). The Hot Dog's fold in the counter is with the Hot Dog's session.
 
 2026-11-11 Claude (`claude/stage-revamp`, owner request): the stage revamp: Breakwater (a lighthouse duel on a storm-battered mole), Pier 9 (a night amusement pier), Deepwell (a station on the ocean floor), Polaris Station (an arctic observatory under the aurora) and Skyframe (a sky garden above the clouds) rebuilt on their own code; Brickfall, Ward Zero, the Factory and Cyber City modelled. No invisible walls (columns only at edges and under low art; bots only at drops). The nine banks are in the Drive zip (the installer holds a 480 MB visual body). The M1 stages' shared code is now unused.
 

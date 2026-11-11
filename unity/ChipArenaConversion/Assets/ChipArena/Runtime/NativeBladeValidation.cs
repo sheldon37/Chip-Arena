@@ -66,6 +66,7 @@ namespace ChipArena.UnityConversion
                 // The counter: after a block, the next cut holds the foe in the paired critical and strikes.
                 Setup(NativeKatana.Spec);BladeBlocked(a,b);Check(a.Blade.CounterUntil>Time,"a block opens the counter");hp=b.Hp;Press(shoot:true);
                 Check(a.Blade.CastKind==NativeKatana.Counter&&b.BladeHeldBy==a&&PinBladeVictim(b),"the cut is the counter, the foe held");Step(NativeKatana.CounterHold+.05f);Check(b.Hp<hp&&b.BladeHeldBy==null,"it strikes and lets go");
+                {var gap=b.Body.position-a.Body.position;gap.y=0;Check(gap.magnitude>NativeKatana.CounterStand+.8f,"the foe thrown back as its clip carries it ("+gap.magnitude.ToString("0.00")+" m)");}
                 // The record crosses the codec.
                 Setup(NativeKatana.Spec);Press(q:true);Step(NativeKatana.IaiDraw+.05f);
                 {var cf=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=NetworkFrame()})).frame;Check(cf.Valid(Content),"the record crosses the codec");var ka=cf.snapshot.Actors.First(x=>x.Id==a.Seat.id).Blade;Check(ka!=null&&ka.CastKind==NativeKatana.Iai&&ka.Valid(),"the iai in the frame");}
