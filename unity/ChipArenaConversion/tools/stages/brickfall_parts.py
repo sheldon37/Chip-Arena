@@ -518,6 +518,26 @@ def sculpt(g, T, S, H, v, done):
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
+def roof_sign(g, T, b):
+    """The hotel's roof sign over the stair house (overhead: its foot is 2.2 m over the roof a pilot may stand on): MERCER in
+    neon on both faces of a steel board on four posts."""
+    x0, x1, y0, y1, z0, z1 = bb(b)
+    zc = z1 - .12
+    lo, hi = y1 + 2.2, y1 + 3.45
+    for x in (x0 + .1, x1 - .1):
+        sk.cylinder(g, (x, y1, zc), (x, hi, zc), .05, F['iron'], T.small, caps=False)
+        if T.detail:
+            sk.cylinder(g, (x, y1, zc - 1.2), (x, lo + .3, zc), .03, F['iron'], 4, caps=False)
+    sk.box(g, x0, x1, lo, hi, zc - .05, zc + .05, F['iron'], T, .02, cell=0)
+    for (ox, oz, ux) in ((x0, zc + .05, 1.0), (x1, zc - .05, -1.0)):
+        fr = Frame((ox, lo, oz), (ux, 0, 0))
+        w = x1 - x0
+        bk.text(g, fr, w / 2, .2, .12, 'MERCER', F['neon'], .012)
+        for y in (.06, 1.14):
+            g.face((fr.P(.15, y, .012), fr.P(w - .15, y, .012), fr.P(w - .15, y + .05, .012), fr.P(.15, y + .05, .012)), F['coral'], fr.n)
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
 def hotel_core(g, T, S):
     """The Hotel Mercer's core, which never falls: the concrete stair tower with a painted dado, its flights and landings, the
     ground floor's seam walls in buff brick, the stair house on the roof."""
@@ -569,4 +589,5 @@ def hotel_core(g, T, S):
                 g.face(((x0, y0, z0), (x1, y0, z0), (x1, y0, z1), (x0, y0, z1)), conc, (0, -1, 0))
     for k in range(8):
         steps(g, T, [b for i, b in S.hotel.items() if i.startswith('hotel-stair-%d-' % k)])
+    roof_sign(g, T, S.hotel['hotel-stairhouse-roof'])
     art.tally(g, 'hotel core', m)

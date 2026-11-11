@@ -140,7 +140,7 @@ def building(g, T, fr, B, r):
     gh, fh, floors = B['gh'], B['fh'], B['floors']
     trim = F[B.get('trim', 'stone')]
     style = {'trim': trim, 'ring': F[B.get('ring', B['fin'])], 'frame': F[B.get('frame', 'white-paint')], 'blind': F[B.get('blind', 'brick-dark')]}
-    holes, dress = [], []
+    holes, shops = [], []
     # the ground floor: the entrance recess and the shopfronts between
     alc = B.get('alc')
     spans = [(u0 + .55, u1 - .55)] if alc is None else [(u0 + .55, alc[0] - .5), (alc[1] + .5, u1 - .55)]
@@ -157,6 +157,7 @@ def building(g, T, fr, B, r):
             fill = fills[r.randrange(len(fills))]
             h = Hole(x, x + w, .55 if fill in ('glass', 'board', 'brick') else 0.0, sh, 0.0, fill=fill, depth=.16, sill=fill in ('glass', 'board', 'brick'), head='steel', bars=(max(2, int(w / .7)), 2))
             holes.append(h)
+            shops.append(h)
     if alc is not None:
         holes.append(Hole(alc[0], alc[1], 0.0, 2.5, 0.0, fill='none', depth=0.0, sill=False, head='lintel'))
     # the upper floors
@@ -208,6 +209,45 @@ def building(g, T, fr, B, r):
                 y += .48
                 j += 1
     bk.pipe(g, T, fr, B.get('pipe_u', u1 - .7), 0.2, cy, f=F[B.get('pipe', 'iron')])
+    # over the yard's heads (nothing below 2.3 m): striped canvas awnings on some of the shopfronts, a hanging sign on a bracket
+    cv = F[B.get('awning', ('canvas-red', 'canvas-green', 'canvas-cream')[r.randrange(3)])]
+    for h in shops:
+        if r.random() < .55:
+            awning(g, T, fr, h.u0 - .1, h.u1 + .1, sh + .2, cv)
+    hanging_sign(g, T, fr, u0 + (u1 - u0) * (.18 if alc is None or alc[0] - u0 > 4 else .8), gh + .75, F[B.get('fascia', 'green-paint')], F[B.get('letters', 'stone')])
+
+
+def awning(g, T, fr, u0, u1, y, cv):
+    """A canvas awning let down over a shopfront: stripes sloping out from the wall on iron arms, a hanging valance."""
+    out, drop, val = .95, .62, .2
+    n = max(1, int((u1 - u0) / (.32, .64, 99)[T.i]))
+    nn = fr.D(0, out, drop)
+    for i in range(n):
+        a, b = u0 + (u1 - u0) * i / n, u0 + (u1 - u0) * (i + 1) / n
+        f = cv if i % 2 == 0 else F['canvas-cream'] if cv != F['canvas-cream'] else F['canvas-green']
+        g.face((fr.P(a, y, .06), fr.P(b, y, .06), fr.P(b, y - drop, out), fr.P(a, y - drop, out)), f, nn)
+        g.face((fr.P(a, y - drop, out), fr.P(b, y - drop, out), fr.P(b, y - drop - val, out), fr.P(a, y - drop - val, out)), f, fr.n)
+        if T.i == 0:
+            g.face((fr.P(a, y, .06), fr.P(b, y, .06), fr.P(b, y - drop, out), fr.P(a, y - drop, out)), F['canvas-cream'], (-nn[0], -nn[1], -nn[2]))
+    for (u, s) in ((u0, -1), (u1, 1)):
+        g.face((fr.P(u, y, .06), fr.P(u, y - drop, out), fr.P(u, y - drop - val, out), fr.P(u, y - val * .4, .06)), cv, fr.D(s, 0, 0))
+        if T.detail:
+            sk.cylinder(g, fr.P(u, y - drop - val * .5, out - .02), fr.P(u, y - drop - .25, .03), .014, F['iron'], 4, caps=False)
+
+
+def hanging_sign(g, T, fr, u, y, board, mark):
+    """A trade sign hung from a wrought bracket, square to the wall."""
+    if not T.detail:
+        return
+    side = Frame(fr.P(u, y, .04), fr.n)             # runs out from the wall; its faces look along the wall
+    fbox(g, T, side, 0, .95, .86, .9, -.015, .015, F['iron'], 0)
+    arm = sk.catmull([side.P(.05, .5, 0), side.P(.3, .62, 0), side.P(.62, .86, 0)], per=(3, 2, 2)[T.i])
+    sk.tube(g, arm, .012, F['iron'], 4, caps=False)
+    for a in (.3, .85):
+        sk.cylinder(g, side.P(a, .86, 0), side.P(a, .74, 0), .008, F['iron'], 4, caps=False)
+    fbox(g, T, side, .2, .95, .12, .74, -.02, .02, board, .01)
+    for s in (-1, 1):
+        sk.lathe(g, [(0.0, 0.0), (.2, 0.0), (.22, -.006)], side.P(.575, .43, s * .022), mark, T.round, axis=(side.n[0] * s, 0, side.n[2] * s), cap1=False)
 
 
 def alcove(g, T, fr, a, b, f, door, trim):
@@ -433,7 +473,7 @@ def views():
         ('over-sw', (-27, 13, -23), (0, 5, 0), 60), ('over-ne', (27, 14, 23), (0, 5, 0), 60),
         ('north', (0, 7, 2), (0, 6, 26), 75), ('north-close', (-12, 1.7, 22), (-19, 3, 26), 60), ('alcove', (-14, 1.6, 23.5), (-15.2, 1.4, 27), 55),
         ('west', (-6, 6, 0), (-30, 6, 0), 75), ('west-close', (-24, 1.7, 8), (-30, 4, 14), 60),
-        ('hotel', (-18, 1.7, 4), (-4, 6, 1), 60), ('hotel-in', (-7, 1.7, 1.5), (-3, 3, 5), 65), ('roof', (-6, 13.9, -4), (3, 12.5, 4), 60),
+        ('hotel', (-18, 1.7, 4), (-4, 6, 1), 60), ('hotel-in', (-7, 1.7, 1.5), (-3, 3, 5), 65), ('roof', (-6, 13.9, -4), (3, 12.5, 4), 60), ('sign', (-9, 13, 14), (0, 15, 5.6), 50),
         ('ashby', (-27.5, 1.7, 24), (-10, 4, 21), 60), ('ashby-south', (-15, 1.7, 4), (-15, 4, 13), 60), ('bridge', (-13, 2, 9), (-7, 7.5, 9), 60),
         ('shop', (11, 1.7, 11), (2, 2.5, 17), 60), ('stack', (14, 1.7, 21.5), (10, 6, 26.8), 70), ('stack-top', (4, 12.5, 20), (10, 14.5, 26.8), 50), ('market', (-14, 1.7, -6), (-24, 1.5, -2), 60),
         ('yard', (-11, 1.7, -14), (-22, 1.5, -21), 60), ('props', (-22, 1.6, 8), (-26.5, .8, 9.5), 50), ('kiosk', (3, 1.7, 21), (6.5, 1.4, 24), 55),

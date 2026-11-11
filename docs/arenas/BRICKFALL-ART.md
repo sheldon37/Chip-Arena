@@ -51,7 +51,8 @@ names, tones and seeds the second time) and the second sculpt is turned half rou
   entrance in the map's own recess (cheeks, soffit, a panelled door), two or three storeys of windows (segmental and round arches
   in brick rings with keystones, paired lights under stone lintels; glazed, lit, boarded or bricked up), strings, quoins, a
   corbelled cornice, a coping, a downpipe, and behind the parapet a slate roof with party walls, chimney stacks and pots; the
-  swan-neck lamps where the look's sodium lights are. To east and west a brick warehouse of nine arched bays between piers (a
+  swan-neck lamps where the look's sodium lights are; over head height, striped canvas awnings on some shopfronts and a trade
+  sign hung from a bracket on each building. To east and west a brick warehouse of nine arched bays between piers (a
   loading shutter or a big window low, a lunette in the arch), its name painted along the frieze. The chimneys stand in their
   notches between two buildings' flank walls.
 - **The yard's floor**: asphalt with patches, cobbled lanes along the frontages, paving round the buildings, lane paint, manholes
@@ -60,7 +61,8 @@ names, tones and seeds the second time) and the second sculpt is turned half rou
   bands at the floor lines, quoined narrow panels, papered rooms inside with skirtings, parapets under copings; board floors on
   joists, a felted roof with a skylight curb; the corner piers on stone bases under stone caps, banded; the concrete stair tower
   with a painted dado, its flights and landings, the ground floor's seam walls with blind arches, the stair house; a neon blade
-  sign (MERCER) on the north-east wing where the look's blue sign light is.
+  sign (MERCER) on the north-east wing where the look's blue sign light is, and the roof sign over the stair house (its foot
+  2.2 m over the roof, so a pilot stands under it).
 - **Ashby House and Bray House**: brick shells with blind windows by storey, papered rooms, board floors, a felted roof behind the
   parapet, the name over the south wall; the lane facade's panels and banded piers are the breakable models.
 - **The skybridges**: chequer plate on riveted girders, plate-girder parapets (they are cover), banded steel bearings.
