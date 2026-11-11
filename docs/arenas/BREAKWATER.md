@@ -178,3 +178,37 @@ town). The block looks in `MapLooks.json` give the blocks their stone.
 The owner's **Last Light Duel** (`breakwater-arena-duel`) stays the stage's track (NativeStageMusic.Theme; the map record's
 `music` keeps the generator's placeholder as the fallback). If the owner wants a new song for the rebuilt stage it takes that
 place under the key `breakwater-theme`; a Suno prompt is in docs/arenas/STAGE-MUSIC-PROMPTS.md ("Breakwater — Storm Light").
+
+## The bank (2026-11-11)
+
+`ChipArenaStageBreakwater.bytes`: 6,047,793 bytes (budget: about 20 MB), 322 props. Static: 26 map chunks in three tiers and 3
+far chunks (the sea, the lighthouse, the shore) in one; Fine 61,681 triangles (51,894 vertices), Mid 28,668 (28,170), Low with
+the far chunks 23,905 (27,783). Rig: 15 props; 6,902 / 3,950 / 1,618 triangles by tier; up to 58 rig draws a frame. Breakables:
+3 meshes for 16 blocks; 1,628 / 1,118 / 238.
+
+Z-fighting (`zfight.py BANK UnityMaps.json breakwater --tier N`): 0.03 m² in 6 pairs at Fine, 0.02 m² in 4 at Mid, 0 at Low
+(the bar is 0.1 m²). `stagekit.lift_coplanar` runs on every tier's static scene and on the far chunks; the deepest stack is two
+layers (the box kit lays none: BreakwaterChecks).
+
+## Checks
+
+- `--breakwater` (Tests/BreakwaterChecks.cs, 4304 checks): the record validates, in the catalogue, in Random for a duel and 2v2
+  only; mirror symmetry; the open edges, the bounds 4 m past them and the kill plane under the sea; every pilot column has its
+  reason (8 for everyone, 4 for bots); no cover in the 1.3–2.2 m band; the nav graph reaches every spawn and all three levels;
+  the wash (an existing vent with the wind push, parked through the arm delay, a 3 s telegraph, the whole mole's width, mirrored
+  and alternating, 3 m from every spawn); the comber and the front; each cue once however the frames cut the time, a swell's
+  break cue on the moment its spray starts; the look (styled, advanced, rain, beams); the box backdrop outside the play space;
+  the box kit's collider rule, its overhead parts and no coplanar faces; the rig (deterministic, inside its buffer, every part
+  in the bounds under the quay's floor or 2 m overhead, the lanterns hung from their brackets); telegraphs never reduced; the
+  light slots (slot 0 the lamp as two beams at the optic's heading, the rest lanterns and fixed lamps where they are); both
+  beams cross the deck each turn; gulls over the ceiling; allocation free per frame; the wiring; the map out of the M1
+  presentation and the other four keeping their stage numbers.
+- `--breakwater-art` (Tests/BreakwaterArtChecks.cs): the slots; at every 0.05 s of two rounds every draw is its tagged part's
+  (place, turn, size, light); the counts (a lantern a post, nine gulls and their wings, two flags, a comber for every wash
+  gathering or running, water on the mole only while one runs); deterministic, allocation free; the layout export; the wiring
+  and the bank-absent fallback; and, where the bank is on the machine: every block covered, every breakable and rig slot in
+  three tiers, the chunks, the budget, the probe over the deck clear of every block, the play-space rule (within 2 m over a
+  floor the art keeps within 0.25 m of a block: 0 of 26,194 vertices over, the farthest 0.24 m; what stands on a columned
+  block is no cover) and the spawns.
+- The full CoreTests suite: 1002 PASS lines, exit 0 (twice; the second on `055be42c`, after which only the art scripts and
+  this doc changed). Unity compile (`check_unity_compile.py`): Assembly-CSharp and Assembly-CSharp-Editor pass.
