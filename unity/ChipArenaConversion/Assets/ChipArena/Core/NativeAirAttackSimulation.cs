@@ -4,15 +4,19 @@ namespace ChipArena.UnityConversion
     public static class NativeAirAttackSimulation
     {
         public const float MinimumAir=.15f,Hang=.15f,PlungeSpeed=-14;
-        public static float Recovery(string spec)=>spec=="daggers"?.25f:spec=="sword"?.35f:spec=="shield"?.4f:.55f;
-        public static float Radius(string spec)=>spec=="daggers"?1.4f:spec=="sword"?1.6f:spec=="shield"?1.8f:2.4f;
+        /// <summary>The custom melee kits that take the plunging slam (the Glaive, the Katana, the Fangs; owner 2026-11-11), and the
+        /// standard blade each one's numbers follow (the Katana and the Glaive the sword, the Fangs the daggers).</summary>
+        public static bool KitSlam(string spec)=>spec==NativeGlaive.Spec||spec==NativeKatana.Spec||spec==NativeFangs.Spec;
+        public static string Kin(string spec)=>spec==NativeFangs.Spec?"daggers":spec==NativeKatana.Spec||spec==NativeGlaive.Spec?"sword":spec;
+        public static float Recovery(string spec)=>(spec=Kin(spec))=="daggers"?.25f:spec=="sword"?.35f:spec=="shield"?.4f:.55f;
+        public static float Radius(string spec)=>(spec=Kin(spec))=="daggers"?1.4f:spec=="sword"?1.6f:spec=="shield"?1.8f:2.4f;
         // Owner 2026-10-12: the attack keeps .6 of the horizontal speed it was committed with until the impact.
         public const float CarryScale=.6f;
         public static bool Down(NativeMeleeSwing s)=>s?.AirKind=="down";
         public static bool DownPitch(float pitch)=>pitch<=-45;
         public static float HeightScale(float height)=>1+Math.Min(.6f,Math.Max(0,height-2)*.1f);
-        public static float DownRadius(string spec)=>spec=="daggers"?.9f:spec=="sword"?1:spec=="shield"?1.2f:1.4f;
-        public static float DownRecovery(string spec)=>spec=="daggers"?.3f:spec=="sword"?.45f:spec=="shield"?.5f:.7f;
+        public static float DownRadius(string spec)=>(spec=Kin(spec))=="daggers"?.9f:spec=="sword"?1:spec=="shield"?1.2f:1.4f;
+        public static float DownRecovery(string spec)=>(spec=Kin(spec))=="daggers"?.3f:spec=="sword"?.45f:spec=="shield"?.5f:.7f;
         public static float ImpactRadius(NativeMeleeSwing s)=>Down(s)?DownRadius(s.Spec):Radius(s.Spec);
         public static void Begin(NativeMeleeSwing s,float pitch,V3 position){Apply(s);s.AirKind=DownPitch(pitch)?"down":"";s.AirStartY=position.y;s.AirPrevious=position;if(Down(s)){s.PlungeAt=s.HitAt=s.At+.08f;s.DamageScale=s.Spec=="greatsword"?1.7f:1.5f;}}
         // Lava swimming is not an airtime: it keeps its ordinary swings (NativeHazards.InLava / NativePredictionState.Swimming).

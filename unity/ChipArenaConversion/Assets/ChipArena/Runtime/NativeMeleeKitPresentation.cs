@@ -112,13 +112,13 @@ namespace ChipArena.UnityConversion
             public bool Chest(Actor a,out NVector chest){chest=default;if(!p.rigs.TryGetValue(a.Id,out var rig))return false;var c=rig.Bones[CapturedRig.Chest].position+Vector3.up*.12f;chest=new NVector(c.x,c.y,c.z);return true;}
             public bool Blade(Actor a,bool left,out NVector root,out NVector tip)
             {
-                root=tip=default;if(left&&a.SourceSpec!="daggers"||!p.rigs.TryGetValue(a.Id,out var rig))return false;
+                root=tip=default;if(left&&a.SourceSpec!="daggers"&&a.SourceSpec!=NativeFangs.Spec||!p.rigs.TryGetValue(a.Id,out var rig))return false;
                 if(!p.BladeLine(rig,a,time,false,left,out var r,out var t))return false;root=new NVector(r.x,r.y,r.z);tip=new NVector(t.x,t.y,t.z);return true;
             }
             public int Viewer=>p.FirstPerson&&!p.ScopeActive&&p.ViewCamera!=null&&p.viewRig!=null?p.LocalId:0;
             public bool ViewBlade(bool left,out NVector root,out NVector tip)
             {
-                root=tip=default;if(Viewer==0)return false;Actor a=null;foreach(var x in actors)if(x!=null&&x.Id==p.LocalId){a=x;break;}if(a==null||left&&a.SourceSpec!="daggers")return false;
+                root=tip=default;if(Viewer==0)return false;Actor a=null;foreach(var x in actors)if(x!=null&&x.Id==p.LocalId){a=x;break;}if(a==null||left&&a.SourceSpec!="daggers"&&a.SourceSpec!=NativeFangs.Spec)return false;
                 if(!p.BladeLine(p.viewRig,a,time,true,left,out var r,out var t))return false;root=new NVector(r.x,r.y,r.z);tip=new NVector(t.x,t.y,t.z);return true;
             }
             public int WeaponColor(Actor a){var w=p.LoadoutPilot(a.Id)?.Weapon;return w!=null?(int)w.color:NativeBlockFx.DefaultColor(a.SourceSpec,a.VisualSet);}

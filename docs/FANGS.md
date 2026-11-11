@@ -17,8 +17,9 @@ Status: on `claude/blades` (merged into shared and the test channel with this re
 
 | Key | Move (`id`) | What it does | Damage |
 | --- | --- | --- | --- |
-| LMB | Fang Flurry (`fangs-cut`) | Five quick cuts that chain (0.4 s window). Each leaves a venom stack; the last leaves two | 10, 10, 11, 12, 18 |
-| LMB on a sprint | Pounce (`fangs-pounce`) | A 5 m leap; landing cuts everyone within 1.6 m and leaves two stacks | 20 |
+| LMB | Fang Flurry (`fangs-cut`) | Five quick cuts that chain (0.4 s window): a leaping strike, a double, a backhand, a cross and a spinning finisher. Each leaves a venom stack; the last leaves two | 11, 11, 12, 14, 20 |
+| LMB on a sprint | Pounce (`fangs-pounce`) | A 5 m dash in 0.32 s, cutting everyone it passes within 1.4 m of its line (once each) and leaving two stacks; a ring of dust where it ends | 20 |
+| LMB in the air, looking down | Plunging slam | The plunge every melee weapon has (owner 2026-11-11: slam attacks from the air for the Glaive, the Fangs and the Katana): looking 45 degrees or more down after a moment airborne, a click drops you at 24 m/s and the landing cuts everyone within 0.9 m, then a 0.3 s recovery. Not while a move of the kit runs. Core `NativeAirAttackSimulation` by kin (the daggers') | 1.5 times the weapon's 11, up to 60% more from higher |
 | Q | Shadow Step (`fangs-step`) | Gone for 0.14 s, then behind the foe nearest the aim (12 m, 35 degrees of the look, in sight), facing it (the view turns with you), and a stab with two stacks. With no foe, a 6 m blink along the look | 24 |
 | E | Smoke Veil (`fangs-veil`) | Smoke, and unseen by enemies for 4 s or until you attack: the body, the name and the health bar are not drawn for them, bots and the lock-on pass you over. That attack deals twice as much and leaves three more stacks | |
 | 1 | Fang Fan (`fangs-fan`) | Five venom knives across 30 degrees, 34 m/s out to 18 m, each 9 and a stack | 9 each |
@@ -36,13 +37,19 @@ Every number is in Core `NativeFangs`. Cooldowns: Q 7, E 12 (from its end), 1 6,
   blackened steel with a bright edge, a serpent's guard, a wrapped grip. Thrown knives fly as their own blades (Runtime
   `NativeBladePresentation.cs`).
 - **The motion** (Core `NativeBladeMotion`): the pack's assassin stance (its equipped idle), root-motion runs and walks, guard, block, tumble
-  and hit reactions. The cuts are its first combo and its second's last two parts; the pounce its leaping attack; the step its dashing stab
+  and hit reactions. The cuts and the dash are the pack's Rogue (dual blade) set (owner 2026-11-11: "The Fangs need a MUCH better basic
+  combo, utilize the "Rogue" from the frank slash animation set"): its third combination's four parts with its fourth's second as the
+  fourth cut, and the fifth's deep lunge as the dash, at twice the clips' pace. The slam is the set's air attack, held to the landing. The
+  step its dashing stab
   skill; the veil its backward evade; the fan its two-handed outward sweep (Attack06: the knives flung from both hands; its spinning
   Attack04 lay the body flat on the floor) and the bloom its two-handed strike skill (both on the upper body while moving, the legs free);
   the takedown the pack's stealth kill from behind (the victim plays the matching hit clip) and the frontal critical the assassin's
   paired critical.
 - **Effects** (Core `NativeBladeFx.cs`, in the pilot's weapon colour):
-  - twin trails from both drawn blades;
+  - weapon trails from both blades (owner 2026-11-11: "Give both weapon weapon trail vfx"): each blade sampled through every move, its
+    sweep a smooth crescent (a spline through the samples) narrowing to its tail: a sheet in the weapon colour, a white-hot edge, a faint
+    halo, venom shed off the fastest of it. Their strength follows the blade's speed in the hand, so a wind-up leaves little; a dash and a
+    slam trail at a set strength. Hidden from enemies while veiled;
   - venom splashing from each cut and dripping from the poisoned (more stacks, more drips);
   - the shadow step's smoke at both ends;
   - the veil's billow, and a thin smoke at the feet while it lasts (for the wielder and allies);
@@ -54,11 +61,17 @@ Every number is in Core `NativeFangs`. Cooldowns: Q 7, E 12 (from its end), 1 6,
 
 7 s, the name at 5.2 s, on the pack's clips (Core `NativeBladeIntros`).
 
-1. Darkness and a low green mist. Two points of venom-green light, then the pilot forms out of smoke, crouched (the stealth sneak idle).
-2. A shadow step: gone in a puff, back a stride ahead.
-3. The twin daggers in a flurry (the assassin's fifth combo), venom flung at each cut.
-4. The two-handed strike into the floor (4.25 s): the venom blooms in a great green burst.
-5. The hero: the daggers held low, venom dripping, smoke curling round the legs.
+1. Darkness and a low dark mist (lit smoke, the venom light under it). Two points of venom-green light, then the pilot forms out of
+   gathering smoke, green sparks drawn in with it, crouched (the stealth sneak idle).
+2. A shadow step: gone in a burst of smoke, a streak of green along its way, back a stride ahead in another burst.
+3. The twin daggers in a flurry (the assassin's fifth combo): green trails from both blades, venom flung off the fastest of them.
+4. The two-handed strike into the floor (4.25 s): a hot flash at the blades, a shockwave of green spikes over the floor, venom splashing
+   out, a billow of smoke.
+5. The hero: the daggers held low, venom beads swelling and dripping from both tips, smoke curling round the legs.
+
+Its look (owner 2026-11-11: "Floating parts, needs much improved vfx"): the off-hand fang held in the model's own left hand (it hung where
+the hidden rig's hand was); the trails, drips and flung venom taken from the blades where the model holds them (the runtime hands them to
+the script each frame, Runtime `NativeBladePresentation.BladeIntroHeld`); smoke where soft glow balls hung before; no glow rings.
 
 Its music is the pulse-wave bed.
 

@@ -14,12 +14,13 @@ namespace ChipArena.UnityConversion
         /// <summary>The saya's model id (built with the weapon models, NativeWeaponSkinModels.cs).</summary>
         public const string SayaModel="katana-saya";
         /// <summary>Where the saya hangs in the hips' upright frame (+x the body's right, +y up, +z ahead; at the pelvis joint, turned with
-        /// the line between the hip joints): its mouth at the left front of the belt (where the pack's own scabbard sits, 13 cm above the
-        /// hip joint), pointing back, out past the hip and a little down. Its own x points down, so the curve (the edge side) is up.</summary>
-        private static readonly Vector3 SayaAt=new Vector3(-.13f,.1f,.12f),SayaAxis=new Vector3(-.33f,-.13f,-.93f);
+        /// the line between the hip joints): its mouth at the left front of the belt, angled back and down along the hip as if through the obi,
+        /// only a little out (the owner, 2026-11-11: the sheath was off the body; it stood out from the hip, then hung at the crotch like a
+        /// tail). Its own x points down, so the curve (the edge side) is up.</summary>
+        private static readonly Vector3 SayaAt=new Vector3(-.15f,.24f,.1f),SayaAxis=new Vector3(-.12f,-.36f,-.92f);
         /// <summary>Whether a Katana's blade is in its saya now: its record's iai, or its entrance's script.</summary>
         internal bool KatanaSheathed(Actor a,float time)=>a!=null&&a.Id==bladeIntroActor&&bladeIntro!=null?bladeIntro.Sheathed(bladeIntroClock):NativeKatana.Sheathed(NativeBladeView.Katana(a),time);
-        private NativeBladeIntro bladeIntro;private int bladeIntroActor=-1;private float bladeIntroClock;
+        private NativeBladeIntro bladeIntro;private int bladeIntroActor=-1;private float bladeIntroClock;private Func<int,Matrix4x4> bladeIntroHand;
         private int bladeViewerTeam=-1;
         /// <summary>Whether `a` is veiled and the viewer is its enemy (then its body is not drawn).</summary>
         private bool BladeHidden(Actor a,float time)=>a!=null&&a.Id!=LocalId&&NativeBladeView.Veiled(a,time)&&(bladeViewerTeam<=0||a.Team!=bladeViewerTeam);
@@ -43,6 +44,19 @@ namespace ChipArena.UnityConversion
             // Sheathed: the katana in the saya on the saya's own axes, its habaki seated in the mouth (NativeWeaponModels.KatanaSayaSeat) and
             // the hilt out of it.
             if(KatanaSheathed(a,time)){var sheath=frame*Matrix4x4.Translate(new Vector3(0,0,-NativeWeaponModels.KatanaSayaSeat));sourceModels.Queue("weapon-"+NativeKatana.Spec,sheath,_=>sheath,null,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:flash,partTint:tint,glow:HeldGlow);}
+        }
+        /// <summary>A blade class's entrance: each blade where the model holds it this frame (the right on the rig's hand, fitted to the model;
+        /// the left on the model's own: IntroWeapon), handed to the script in its stage frame (x mirrored, as the entrance draws).</summary>
+        private void BladeIntroHeld(NativeBladeIntro intro,float t,string style,bool shown)
+        {
+            var grip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
+            for(int hand=0;hand<2;hand++)
+            {
+                if(introRig==null||!shown||intro.Sheathed(t)||!NativeBladeView.Line(intro.Spec,hand==1,out var root,out var tip)){intro.Blade(t,hand,default,default,false);continue;}
+                var m=(hand==1?VisualJointFrame(introRig,CapturedRig.LHand):introRig.Bones[CapturedRig.RHand].localToWorldMatrix)*grip;
+                var r=m.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(root)));var p=m.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(tip)));
+                intro.Blade(t,hand,new NVector(-r.x,r.y,r.z),new NVector(-p.x,p.y,p.z),true);
+            }
         }
         /// <summary>The Fangs' thrown knives in flight (reconstructed from the throw, as the effects draw their streaks), each its own blade.</summary>
         private void RenderBlades(Snapshot s,float time)
