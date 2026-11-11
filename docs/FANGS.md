@@ -92,8 +92,14 @@ bloom, a heartbeat and a low toll.
 Shared with the Katana (see docs/KATANA.md "Files"): `Core/NativeFangs.cs`, `Core/NativeFangsChips.cs`, `Runtime/NativeFangsAuthority.cs`, and
 the shared record, motion, effects, presentation, chip art, intros, validation and checks.
 
+## Seen in the Editor (2026-11-10)
+
+- The five cuts, the shadow step (its smoke, the landing behind the foe, the stab), the fan (five knives flung from both hands), the bloom
+  (its pulse and a burst on the poisoned), the veil (the backward roll into its smoke), the takedown from behind (the pack's paired stealth
+  kill, the victim held in the pilot's arms and down at the blow); Silent Kill from start to card; the ten chips' picks.
+
 ## Not yet
 
 - Grantable from the main menu's DEV screen only once its key is in the account server's grant list (a Site publish, Astra's).
-- Not played by a person; not tried between two real clients. The paired clips' alignment (where the victim is held) needs judging in the
-  Editor.
+- Not played by a person; not tried between two real clients. The frontal critical (Assassinate from the front) not captured; it is the
+  same paired move on the assassin's critical clips.
