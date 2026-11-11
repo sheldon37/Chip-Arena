@@ -94,6 +94,7 @@ namespace ChipArena.UnityConversion
             // the three kits, its rules by kin, its look the set's air attack held to the landing.
             Check(new[]{NativeKatana.Spec,NativeFangs.Spec,NativeGlaive.Spec}.All(x=>NativeAirAttackSimulation.KitSlam(x)&&NativePlungeRules.Handles(x))&&!NativeAirAttackSimulation.KitSlam("sword")&&!NativeAirAttackSimulation.KitSlam("pistol"),"the three kits slam from the air");
             Check(NativeAirAttackSimulation.Kin(NativeFangs.Spec)=="daggers"&&NativeAirAttackSimulation.Kin(NativeKatana.Spec)=="sword"&&NativeAirAttackSimulation.Kin(NativeGlaive.Spec)=="sword"&&NativeAirAttackSimulation.DownRadius(NativeFangs.Spec)==NativeAirAttackSimulation.DownRadius("daggers")&&NativeAirAttackSimulation.DownRadius(NativeKatana.Spec)==NativeAirAttackSimulation.DownRadius("sword"),"their slams by kin");
+            Check(new[]{NativeKatana.Spec,NativeFangs.Spec,NativeGlaive.Spec,"sword","daggers"}.All(x=>NativePlungeRules.Kit(x)==NativeAirAttackSimulation.KitSlam(x)&&NativePlungeRules.Kin(x)==NativeAirAttackSimulation.Kin(x)&&NativePlungeRules.Radius(x)==NativeAirAttackSimulation.DownRadius(x)),"the look's copy of the kits and their kin is the rule's");
             foreach(var spec in new[]{NativeKatana.Spec,NativeFangs.Spec,NativeGlaive.Spec})
             {
                 var set=NativeVisualMotion.For(spec);var air=new Actor{Id=11,SourceSpec=spec,AirAttack=true,AirKind=NativePlungeFields.DownKind,AttackAt=2,ImpactAt=2.6f};
