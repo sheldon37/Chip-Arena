@@ -351,7 +351,7 @@ def quarried(g, e, T, seed, f=None):
                 box(g, cx - hx, cx + hx, yb, yt, cz - hz, cz + hz, ff, None, bevel=0)
                 continue
             k = .80
-            rock(g, (cx, (yb + yt) / 2, cz), (hx / k, (yt - yb) / 2 / k, hz / k), seed * 13 + r * 5 + c, ff, n=(4, 2)[T.i], square=.88, rough=.07, freq=3.1)
+            rock(g, (cx, (yb + yt) / 2, cz), (hx / k, (yt - yb) / 2 / k, hz / k), seed * 13 + r * 5 + c, ff, n=(4, 2)[T.i], square=.9, rough=.05, freq=3.1, flat=False)
             if T.i == 0:
                 # drill marks down a split face
                 for q in range(4):

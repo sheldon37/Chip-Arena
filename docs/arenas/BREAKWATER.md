@@ -65,8 +65,9 @@ the nav gate applies).
   beams) with **rain** (the M1 stage had drizzle); far plane 1500 m.
 - **The practical lights are picked each frame** (`NativeLighting.PickedLights`, as the Sanctum does): slot 0 is the lighthouse's
   lamp as a **two-beam light** turning with the optic (NativeWardLight.cginc's WardBeam), so its beams really sweep the stone,
-  the sea, the art and the pilots, each crossing the deck about every six seconds; the other seven are the lanterns nearest the
-  eye, each where it hangs this frame on its swinging bracket (a lantern eases out as the next one out takes its slot).
+  the sea, the art and the pilots, each crossing the deck about every six seconds; the other seven are the lights nearest the
+  eye: the eight lanterns, each where it hangs this frame on its swinging bracket, the lamp on the back wall of each hall's two
+  rooms and the Mariners' Stone's lamp (a light eases out as the next one out takes its slot).
 - **Animated set pieces (all match long, from the field clock, so every client and the killcam show the same sea):** the optic
   turning in the open lantern and its two volumetric beams; five swells running in from 56 m out, steepening as they shoal and
   breaking on the wave wall one every 2.6 s, each break throwing spray up the wall and over the walk (lit as the beam passes);
@@ -99,7 +100,7 @@ backdrop. Without the bank everything draws from the box kit, rig and backdrop b
   quay with timber fender piles, iron straps, ladders and rings; the bastion with a brass compass rose let into its setts.
 - *The pulpit and the watch turret:* three blind arches and the harbour board's bronze; the turret's quoins, string courses, lit
   slits and boarded door, the corbel table, the open belfry (four piers, round heads, the bell's beam), the bell-cast slate cap,
-  its finial and vane.
+  its finial and vane; gulls sitting out the weather on the roofs (only where nobody can stand).
 - *The Mariners' Stone:* a stepped plinth, a quoined die with bronze plaques (a ship's wheel in relief), an anchor gone to rust
   leaning on it, a cornice; over it the obelisk and its lamp.
 - *The halls:* the harbour gate in granite ashlar under a slate roof with a lit round window in its gable, a chimney and the
@@ -107,7 +108,8 @@ backdrop. Without the bank everything draws from the box kit, rig and backdrop b
   surrounds and keystones, storm lamps over the doors, boarded ceilings on beams, benches and lamps inside; the gates in their
   back walls; the wings' barred sally ports and store doors.
 - *Furniture:* quarried granite in rough-hewn courses with drill marks, skids and a chain; the upturned boats on trestles;
-  lathed cast-iron bollards and lamp posts with swan-neck brackets; stairs with bullnosed treads.
+  lathed cast-iron bollards with mooring ropes over the edge and coils beside them, lamp posts with swan-neck brackets; stairs
+  with bullnosed treads; lifebuoys on the wall and the halls, a net hung to dry on the gate.
 - *Breakables* (block models): lobster pots (wicker hoops and netting), barrels (staves and hoops), fish crates (slats, the
   catch on ice).
 - *The rig* (15 slots, `Core/NativeBreakwaterArt.cs`): the optic (bull's-eye lenses in a brass cage), a lantern, the bell, a
