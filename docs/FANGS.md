@@ -11,7 +11,7 @@ great designs for the weapons, and give them both a very awesome intro with effe
 - An original design: twin curved venom daggers, a shadow assassin. The moves are the Frank Slash Pack's assassin set, its stealth kills and
   its paired criticals.
 
-Status: on `claude/blades`. Not played by a person or between two real clients.
+Status: on `claude/blades` (merged into shared and the test channel with this release). Not played by a person or between two real clients.
 
 ## The kit
 

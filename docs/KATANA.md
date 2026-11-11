@@ -8,7 +8,7 @@ weapons, and give them both a very awesome intro with effects". Earlier the same
 - Claude built the rules as well as the look, as for the Glaive and the Top Dog; the rules are logged for Astra.
 - An original design. The moves are the Frank Slash Pack's katana set (the owner's Asset Store pack), retimed to the rules.
 
-Status: on `claude/blades`. Not played by a person or between two real clients.
+Status: on `claude/blades` (merged into shared and the test channel with this release). Not played by a person or between two real clients.
 
 ## The kit
 
