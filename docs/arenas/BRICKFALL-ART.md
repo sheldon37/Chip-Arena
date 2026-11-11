@@ -19,7 +19,7 @@ adds to it.
 The four new stages model their Core kits. Brickfall has none: its look was its blocks' looks (`MapLooks.json` blockLooks, Runtime
 `NativeArenaDressing`). So the art is modelled on the blocks themselves, and every block is covered (`cover/<id>`):
 
-- **Static blocks (363) are world-space chunks** (32 chunks of 16 m, split at 14 m: the roofs over the frontage are their own).
+- **Static blocks (363) are world-space chunks** (34 chunks of 16 m, split at 14 m: the roofs over the frontage and the hotel's roof sign are their own).
 - **Every block the simulation moves or breaks (144) is a `block/<id>` model** in the block's own frame, drawn where the block is:
   the hotel's 74 masonry panels and 12 floor slabs, its 4 corner piers, the tenements' lane facades (18 panels, 6 piers), the two
   skybridges (deck, two rails, bearing), the two kiln chimneys (base and four drums each) and the 30 cover props. They sag with
@@ -120,4 +120,36 @@ Rebuild: `dotnet run --project Tests/CoreTests.csproj -c Release -- --stage-layo
 (about 30 s; `--preview DIR [--views a,b]` renders the named views of the Fine tier, `--landed` shows every segment landed,
 `--tiers`, `--no-ao`, `--static-only`, `--stats`).
 
-NUMBERS
+## Numbers (2026-11-11)
+
+The bank: 18,900,419 bytes, 1,173 props. Static: 34 chunks; Fine 172,132 triangles (168,941 vertices), Mid 71,592 (82,063),
+Low 26,530 (42,593). Block models: 42 meshes for the 144 moving blocks; 25,804 / 16,072 / 5,902 triangles. Heaps: 10;
+21,026 / 5,178 / 746 triangles. About 30 s to build. The Low graphics tier draws the bank's Low tier.
+
+Z-fighting (`zfight.py`, the static chunks, 4 mm): 0.07 m2 at Fine, 0.06 at Mid, 0.02 at Low (before `lift_coplanar`: 47.7, 64.8
+and 72.1 m2). The block models at rest against the chunks and one another (the scratch `zblocks.py`, the same measure): 1.2 to
+1.4 m2 by tier in some 60 places of 0.03 m2 or less, all the same brick (the ends of two wall panels that meet at a corner,
+under the slabs); the piers, bearings and decks, which lay in their neighbours' planes (12.6 m2), stand a hair inside their blocks.
+
+Frame times (shared Editor, High tier, the whole yard from over its south-west corner, one idle bot, 10 s; runs taken back to
+back, the machine otherwise quiet): the dressed blocks 8.83 ms mean / 10.19 ms p95 and 10.05 / 11.43; the art 8.88 / 10.12 and
+8.96 / 10.15. Level with the boxes on the mean, at or under on the p95. (Earlier pairs under load from eight other sessions:
+10.60 / 16.20 and 11.41 / 21.35 before, 10.80 / 13.25 and 11.58 / 14.27 after.)
+
+Checks: `--brickfall-art` (694 checks: the rules, the columns, the layout, the wiring, the bank), `--stage-art`, the full
+CoreTests suite, the Unity compile, the Editor's build checks (`wtvalidate.sh`: ok).
+
+## Seen, and what is not done
+
+Seen in the shared Editor (a match, one idle bot, god mode, the game's camera at fixed eyes): fourteen views before and after
+(the yard from two corners, the hotel, the lanes, Ashby House, a skybridge, a shop, a chimney, the market, the truck and dock,
+inside the hotel, its roof, the frontage from the roof), the same on the Low graphics tier, a masonry panel shot out (its
+fragments are the dressing's, the room shows behind).
+
+Not done / not seen:
+- **The backdrop is still the box-built city** (Core NativeBrickfallScenery: five baked meshes, the train, the crane jibs). It
+  stands 35 m and more off behind the modelled frontage and its roofs; modelling it did not fit this pass's budget (the bank
+  has about 1 MB left of its 20) or time. The menu's backdrop is that scenery too.
+- A damaged panel shows its damage as soot only (the drawer's one model a block); the dressed boxes chipped their corners.
+- The frontage's tarps and the look's two barrel fires' places have no model (a barrel would stand where there is no collider).
+- Native Windows build, multiplayer guests and the killcam on the art: not run.
