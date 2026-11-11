@@ -15,8 +15,8 @@ SEA = -3.4
 
 
 def sea(L, T):
-    """The sea: a fine grid in standing swell round the mole (the rig's swells run over it), flat rings beyond; its facets
-    in two tones along the swell's lines. Its extent is square to the map and a little south, so the art's bounds centre on
+    """The sea: a fine grid in standing swell round the mole (the rig's swells run over it), flat rings beyond, smooth
+    shaded in one tone (the bake mottles it). Its extent is square to the map and a little south, so the art's bounds centre on
     the deck beside the Stone (Runtime NativeStageArtDraw stands its reflection probe there)."""
     g = Geo()
     lim, cell = 64.0, 3.2
@@ -34,7 +34,7 @@ def sea(L, T):
     def tone(i, j):
         x, z = -lim + (i + .5) * cell, -lim - 3 + (j + .5) * cell
         return F['sealight'] if math.sin(z * .21 + x * .03 + .6) + (hashf(3, i, j) - .5) * .9 > .55 else F['sea']
-    bk.grid_surface(g, P, F['sea'], inside=(0, -500, 0), fin_fn=tone)
+    bk.grid_surface(g, P, F['sea'], inside=(0, -500, 0))
     for (lim0, lim1, c) in ((64.0, 208.0, 16.0), (208.0, 900.0, 69.2)):
         e = list(np.arange(-lim1, -lim0 + 1e-6, c)) + list(np.arange(lim0, lim1 + 1e-6, c))
         for i in range(len(e) - 1):

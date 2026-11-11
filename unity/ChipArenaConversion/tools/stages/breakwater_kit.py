@@ -56,7 +56,7 @@ def finishes():
     F['clothwhite'] = A.fin('bw-clothwhite', 0xE8E4DA, A.DETAIL_NONE, smooth=.2, dirt=.3)
     F['fish'] = A.fin('bw-fish', 0x9AB0BE, A.DETAIL_NONE, smooth=.8, dirt=.1)
     # the sea
-    F['sea'] = A.fin('bw-sea', 0x15324A, A.DETAIL_NONE, smooth=.78, dirt=0)
+    F['sea'] = A.fin('bw-sea', 0x17364E, A.DETAIL_NONE, smooth=.78, dirt=.8)      # (the bake's broad mottling is its only pattern: no facets)
     F['sealight'] = A.fin('bw-sealight', 0x1E4560, A.DETAIL_NONE, smooth=.72, dirt=0)
     F['foam'] = A.fin('bw-foam', 0xDCE8EE, A.DETAIL_NONE, smooth=.3, dirt=0)
     F['foamlit'] = A.fin('bw-foamlit', 0xCFE2EC, glow=.42)
