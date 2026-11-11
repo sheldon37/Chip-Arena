@@ -393,7 +393,9 @@ namespace ChipArena.UnityConversion
         // The model's own animation (owner 2026-10-24: "Pack animations whole, and adjust hit timing as needed", "Retime clips to
         // rules", greatsword first): Core NativeVisualMotion's choices and timing, and its wiring (Runtime
         // NativeVisualMotionPresentation.cs).
-        private sealed class MotionBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null&&c.StartsWith("2Hand-Sword-",StringComparison.Ordinal);public float Length(string c)=>1.2f;public float Hit(string c)=>.42f; }
+        private sealed class MotionBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null&&(c.StartsWith("2Hand-Sword-",StringComparison.Ordinal)||NativeGreatswordMotion.Is(c));public float Length(string c)=>1.2f;public float Hit(string c)=>.42f; }
+        // Every clip, its Hit the great sword pack's measured strike (as the bank reads it) or the middle-ish .42.
+        private sealed class StrikeBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null;public float Length(string c)=>1.6f;public float Hit(string c)=>NativeGreatswordMotion.Strike(c,out float s)?s:.42f; }
         private sealed class GunBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null;public float Length(string c)=>1.2f;public float Hit(string c)=>.42f; }
         private static void Motion(string root)
         {
@@ -458,7 +460,7 @@ namespace ChipArena.UnityConversion
             // time once per turn each.
             Check(NativeVisualMotion.Choose(set,spin,111,new NativeVisualMotion.Memory(),book2,false,out kitPick)&&kitPick.Clip==set.Idle&&kitPick.Spin&&kitPick.Align==1&&kitPick.Sit==1
                 &&kitPick.Turn!=0&&Math.Abs(kitPick.Tip-kitPick.Turn-MeleeKitMotion.WhirlTip)<1e-4f,"the Whirlwind: the stance's legs, the body turned so its blade rides the game's tip");
-            Check(set.KitClips[1]=="2Hand-Sword-Attack2"&&NativeVisualMotion.Layer(set,spin,111,book2,out up,true)&&up.Raised&&up.A==set.KitClips[1]&&Math.Abs(up.TimeA-NativeVisualMotion.WhirlHold*1.2f)<1e-4f,
+            Check(set.KitClips[1]==NativeGreatswordMotion.Spin&&NativeVisualMotion.Layer(set,spin,111,book2,out up,true)&&up.Raised&&up.A==set.KitClips[1]&&Math.Abs(up.TimeA-NativeVisualMotion.WhirlHold*1.2f)<1e-4f,
                 "the Whirlwind's upper body: the level sweep, held through the spin");
             {
                 float maxL=0,maxR=0;bool both=false,still=true;
@@ -471,6 +473,33 @@ namespace ChipArena.UnityConversion
                 var stop=new Actor{Grounded=true,SourceSpec="greatsword",MeleeKit=new NativeMeleeKit{Kind="whirlwind",Phase="recovery",At=110,Release=110.3f,Until=113.3f,RecoverAt=113.3f,RecoverUntil=113.8f}};
                 NativeVisualMotion.Choose(set,stop,113.799f,new NativeVisualMotion.Memory(),book2,false,out var settled);NativeVisualMotion.Layer(set,stop,113.799f,book2,out var risen,true);
                 Check(settled.Align<.01f&&settled.LiftL==0&&settled.LiftR==0&&risen.TimeA>1.19f,"the stop: back off the blade and still, the sweep risen to its end");
+            }
+            // The greatsword on Grruzam's great sword set (owner 2026-11-11: "Great Sword and Katana"): every clip the pack's but the stun (the
+            // pack has no dazed loop) and the shared throw; each strike measured, the bank taking it as it is read; each cut's strike on the
+            // middle of the rules' hit window; the shoulder carry's stride in the stride's order; the fast run looped by the bake.
+            {
+                Check(set.Idle==NativeGreatswordMotion.Idle&&set.Attacks==NativeGreatswordMotion.Cuts&&set.Attacks.Length%2==0&&set.SprintAttack==NativeGreatswordMotion.Cleave&&set.AirAttack==NativeGreatswordMotion.JumpCut
+                    &&set.KitClips[0]==NativeGreatswordMotion.Slam&&set.Knockdown==NativeGreatswordMotion.Knockdown&&set.RollBack==NativeGreatswordMotion.RollBack&&set.Reactions==NativeGreatswordMotion.Reactions,
+                    "the greatsword plays the great sword pack's set (an even combo, so each cut keeps the rules' sweep as it cycles)");
+                Check(Array.TrueForAll(set.All,c=>NativeGreatswordMotion.Is(c)||c=="2Hand-Sword-Stunned"||c.StartsWith("Armed-Cast-R-Attack2_",StringComparison.Ordinal)),"its every clip the pack's but the stun and the shared throw");
+                Check(set.Locomotion[0]==NativeGreatswordMotion.Runs[0]&&set.Locomotion[NativeVisualStride.Walks]==NativeGreatswordMotion.Walks[0]&&set.Locomotion[NativeVisualStride.Sprint]==NativeGreatswordMotion.Sprint
+                    &&Array.TrueForAll(set.Locomotion,c=>c.EndsWith("_Root",StringComparison.Ordinal)&&c.Contains("ver")&&(c.Contains("verB")||c.Contains("ver_B"))),"the shoulder carry's root-motion stride (their travel sets its rate), in the stride's order");
+                Check(NativeVisualMotion.Loops("greatsword").Contains(NativeGreatswordMotion.Sprint)&&NativeVisualMotion.Loops("greatsword").Contains(set.Idle),"the fast run the pack marks single loops in the bake");
+                foreach(var c in new[]{NativeGreatswordMotion.Cuts[0],NativeGreatswordMotion.Cuts[1],NativeGreatswordMotion.Cuts[2],NativeGreatswordMotion.Cuts[3],NativeGreatswordMotion.Cleave,NativeGreatswordMotion.JumpCut,NativeGreatswordMotion.Slam,NativeGreatswordMotion.Overhead})
+                    Check(NativeGreatswordMotion.Strike(c,out float st)&&st>.2f&&st<1.2f,"a measured strike: "+c);
+                Check(!NativeGreatswordMotion.Strike("2Hand-Sword-Attack1",out _)&&!NativeGreatswordMotion.Strike(null,out _),"no strike for another pack's clip");
+                int gm=2,gw=NativeVisualMotionClips.Head+gm;NativeGreatswordMotion.Strike(NativeGreatswordMotion.Cuts[0],out float first);
+                var gclip=new NativeVisualMotionClips.Clip{Name=NativeGreatswordMotion.Cuts[0],Length=1.4f,Hit=.7f,Rate=30,Frames=2,Stride=gw,Data=new float[2*gw]};
+                var other=new NativeVisualMotionClips.Clip{Name="2Hand-Sword-Attack1",Length=1.2f,Hit=.51f,Rate=30,Frames=2,Stride=gw,Data=new float[2*gw]};
+                var gbank=NativeVisualMotionClips.Read(NativeVisualMotionClips.Write(gm,new[]{gclip,other}));
+                Check(Math.Abs(gbank.Hit(NativeGreatswordMotion.Cuts[0])-first)<1e-6f&&Math.Abs(gbank.Hit("2Hand-Sword-Attack1")-.51f)<1e-6f,"the bank takes a pack clip's measured strike as it is read (the bake's is its middle); others keep their Hit events");
+                var gbank2=new StrikeBook();
+                var swing=new Actor{Grounded=true,SourceSpec="greatsword",AttackAt=30,AttackUntil=31.18f,SwingAt=30.42f,SwingUntil=30.58f,VisualWindup=.42f,VisualActive=.16f};
+                for(int k=0;k<set.Attacks.Length;k++)
+                {
+                    swing.Combo=k;NativeVisualMotion.Choose(set,swing,30.5f,new NativeVisualMotion.Memory(),gbank2,false,out var at);NativeGreatswordMotion.Strike(set.Attacks[k],out float s);
+                    Check(at.Clip==set.Attacks[k]&&Math.Abs(at.Time-s)<1e-3f,"cut "+(k+1)+": its strike on the hit window's middle");
+                }
             }
             // A sprint (dash) attack keeps its leaping run's flight (owner 2026-10-26: "it looks like they need to be in the air
             // when dash attacking?"); the greatsword's rides the game's hop; a plain swing stays on the floor.

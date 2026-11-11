@@ -73,12 +73,15 @@ namespace ChipArena.UnityConversion
         /// <summary>A clip's length and the time of its Hit event (seconds; a clip without one: its middle).</summary>
         public interface IClips { bool Has(string clip); float Length(string clip); float Hit(string clip); }
 
-        // Greatsword: the pack's two-handed sword set.
-        private static readonly Set Greatsword=Build(new Set{Spec="greatsword",Idle="2Hand-Sword-Idle",Jump="2Hand-Sword-Jump",Flip="2Hand-Sword-Jump-Flip",Fall="2Hand-Sword-Fall",
-            Land="2Hand-Sword-Land",Block="2Hand-Sword-Block",BlockHit="2Hand-Sword-Block-GetHit1",Stunned="2Hand-Sword-Stunned",Roll="2Hand-Sword-Roll-Forward",
-            AirAttack="2Hand-Sword-Air-Attack1",SprintAttack="2Hand-Sword-Run-Forward-Attack1",
-            Attacks=Names("2Hand-Sword-Attack","1","2","4","3","5","6"),Reactions=Names("2Hand-Sword-GetHit-","F1","B1","L1","R1"),
-            TechClips=new[]{TechThrowStart,TechThrowEnd,TechVowStart,TechVowHold},KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{"2Hand-Sword-Attack11","2Hand-Sword-Attack2"},KitHits=new[]{float.NaN,WhirlHold},Knockdown="2Hand-Sword-Knockdown1",RollBack="2Hand-Sword-Roll-Backward"},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
+        // Greatsword (owner 2026-11-11: "Great Sword and Katana"): Grruzam's great sword set (Core NativeGreatswordMotion: its stance, shoulder
+        // carry stride, jumps, guard, dodge roll, reactions, knockdown and rolling get-up, its combo's cuts alternating as the rules sweep, its
+        // leaping slam on the sprint, its jump attack, its ground slam and spinning sweep for the kit, its guard for the vow); the pack has no
+        // dazed loop, so the stun keeps the old two-handed set's.
+        private static readonly Set Greatsword=Strides(new Set{Spec="greatsword",Idle=NativeGreatswordMotion.Idle,Jump=NativeGreatswordMotion.Jump,Flip=NativeGreatswordMotion.Flip,Fall=NativeGreatswordMotion.Fall,
+            Land=NativeGreatswordMotion.Land,Block=NativeGreatswordMotion.Guard,BlockHit=NativeGreatswordMotion.GuardHit,Stunned="2Hand-Sword-Stunned",Roll=NativeGreatswordMotion.Roll,
+            AirAttack=NativeGreatswordMotion.JumpCut,SprintAttack=NativeGreatswordMotion.Cleave,Attacks=NativeGreatswordMotion.Cuts,Reactions=NativeGreatswordMotion.Reactions,
+            TechClips=new[]{TechThrowStart,TechThrowEnd,TechVowStart,TechVowHold,MeleeOverhead,MeleeSweep},KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{NativeGreatswordMotion.Slam,NativeGreatswordMotion.Spin},KitHits=new[]{float.NaN,WhirlHold},
+            Knockdown=NativeGreatswordMotion.Knockdown,RollBack=NativeGreatswordMotion.RollBack},NativeGreatswordMotion.Runs,NativeGreatswordMotion.Walks,NativeGreatswordMotion.Sprint);
         // Sword: the pack's armed (one weapon in the right hand) set and its one-handed sword's cuts, in the game's combo of
         // three (a forehand cut right to left, a backhand left to right, the thrust): R1, R3, R4, then R6, R2, R4 (their blade
         // tips' sweeps, measured on the body at the bake).
@@ -118,9 +121,9 @@ namespace ChipArena.UnityConversion
             foreach(var l in new[]{s.Attacks,s.Reactions,s.Locomotion,s.TechClips})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
-        /// <summary>The clips a set plays as loops though the pack marks them single (the Frank Slash Pack's stances and strides): its idle, its
-        /// stride and its guard (the bake loops them).</summary>
-        public static string[] Loops(string spec){var s=For(spec);if(s==null||!NativeBlades.Is(spec))return Array.Empty<string>();var l=new System.Collections.Generic.List<string>{s.Idle,s.Block};l.AddRange(s.Locomotion);return l.ToArray();}
+        /// <summary>The clips a set plays as loops though the pack marks them single (the Frank Slash Pack's stances and strides, the Grruzam
+        /// pack's fast run): its idle, its stride and its guard (the bake loops them).</summary>
+        public static string[] Loops(string spec){var s=For(spec);if(s==null||!NativeBlades.Is(spec)&&spec!="greatsword")return Array.Empty<string>();var l=new System.Collections.Generic.List<string>{s.Idle,s.Block};l.AddRange(s.Locomotion);return l.ToArray();}
         // Daggers: the armed set's dual block and attacks and the pack's dagger cuts, alternating hands in the game's four
         // (a forehand right to left, then three left to right, the last the finisher): R1, L3, R2, L2 (their blade tips'
         // sweeps on the body); the dual running cut opens both blades as the game's twin sprint sweeps do.
@@ -207,6 +210,18 @@ namespace ChipArena.UnityConversion
             s.Locomotion=new string[NativeVisualStride.Clips];
             for(int i=0;i<dirs.Length;i++){s.Locomotion[i]=run+Dir(i)+(mirrored?Mirror:"");s.Locomotion[NativeVisualStride.Walks+i]=walk+Dir(i)+(mirrored?Mirror:"");}
             s.Locomotion[NativeVisualStride.Sprint]=sprint;
+            return Every(s);
+        }
+        /// <summary>A set whose stride is named clip by clip (NativeVisualStride's order: 8 runs, 8 walks, the sprint).</summary>
+        private static Set Strides(Set s,string[] runs,string[] walks,string sprint)
+        {
+            s.Locomotion=new string[NativeVisualStride.Clips];
+            for(int i=0;i<NativeVisualStride.Directions;i++){s.Locomotion[i]=runs[i];s.Locomotion[NativeVisualStride.Walks+i]=walks[i];}
+            s.Locomotion[NativeVisualStride.Sprint]=sprint;return Every(s);
+        }
+        /// <summary>Every clip the set plays (All), from its fields.</summary>
+        private static Set Every(Set s)
+        {
             var all=new System.Collections.Generic.List<string>{s.Idle,s.Jump,s.Flip,s.Fall,s.Land,s.Block,s.BlockHit,s.Stunned,s.Roll,s.AirAttack,s.SprintAttack};
             foreach(var c in new[]{s.Knockdown,s.RollBack,s.Electric,s.Wave,s.Hadoken,s.ChargeStart,s.ChargeLoop,s.Shoryuken,s.Step})if(c!=null&&!all.Contains(c))all.Add(c);
             if(s.Kicks!=null)foreach(var c in s.Kicks)if(!all.Contains(c))all.Add(c);
@@ -232,8 +247,9 @@ namespace ChipArena.UnityConversion
         // Now the upper body is the set's level sweep held at WhirlHold of its clip (the arms long and low before the belly, the
         // blade level out past the knees) over the stance's legs, sat into a crouch by the spin's Low; while the blade spins each
         // foot marks time once per turn; the body turns so the drawn blade rides the game's own tip (MeleeKitMotion.Spin).
-        /// <summary>Where the Whirlwind's sweep is held through the spin (a share of its clip: the level, low blade).</summary>
-        public const float WhirlHold=.6f;
+        /// <summary>Where the Whirlwind's sweep is held through the spin (a share of its clip: the level, low blade). The great sword pack's
+        /// spinning sweep (2026-11-11) at 0.66 s of its 1.83: the arms out, the blade level at the waist, 1.8 m out.</summary>
+        public const float WhirlHold=.36f;
         /// <summary>A step's share of a turn (each foot is down the rest; the other foot steps half a turn later) and the speed
         /// share (of the full spin) the steps start at and are full by.</summary>
         public const float StepShare=.45f, StepFrom=.25f, StepFull=.75f;
@@ -542,7 +558,7 @@ namespace ChipArena.UnityConversion
         }
 
         // The techniques' clips (docs/WEAPON-TECHNIQUES.md): throws and gestures out of the pack's casts, pickups and activations.
-        private const string TechDashBack="Armed-Dash-Backward",TechSurf="Armed-Crouch-Idle",TechVowStart="2Hand-Sword-Activate",TechVowHold="2Hand-Sword-Crouch-Idle",TechSink="2Hand-Staff-Crouch-Idle";
+        private const string TechDashBack="Armed-Dash-Backward",TechSurf="Armed-Crouch-Idle",TechVowStart=NativeGreatswordMotion.Crouch,TechVowHold=NativeGreatswordMotion.Crouched,TechSink="2Hand-Staff-Crouch-Idle";
         private const string TechCounter="Sword-Attack-R4",TechFlickStart="Armed-Cast-L-Attack2_start",TechFlickEnd="Armed-Cast-L-Attack2_end",TechThrowStart="Armed-Cast-R-Attack2_start",TechThrowEnd="Armed-Cast-R-Attack2_end",TechPlant="Armed-Shield-Activate",TechCoin="Armed-Activate-Left",
             TechDrop="2Hand-Shooting-Pickup",TechShootLine="2Hand-Shooting-Activate",TechBuffStart="2Hand-Staff-Cast-L-Buff1_start"+Mirror,TechBuffEnd="2Hand-Staff-Cast-L-Buff1_end"+Mirror,TechTouch="2Hand-Staff-Activate"+Mirror;
         /// <summary>The pilot's technique on the pack's clips, from its record: each clip fitted to its moment. False: none, or the clip is not in
