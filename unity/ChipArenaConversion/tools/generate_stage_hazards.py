@@ -6,8 +6,10 @@ stages' kept only at the map's edges and, for bots, at lethal drops (open_stage)
 import importlib.util,json,math
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[3]
+# A stage rebuilt from scratch takes its new draft (the M1 script stays as history).
+DRAFTS={'harbor':'harbor_m2'}
 def draft(name,fn):
-    spec=importlib.util.spec_from_file_location(name,ROOT/f'docs/arenas/scripts/{name}_m1.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return getattr(m,fn)()['maps'][0]
+    spec=importlib.util.spec_from_file_location(name,ROOT/f'docs/arenas/scripts/{DRAFTS.get(name,name+"_m1")}.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return getattr(m,fn)()['maps'][0]
 def v(x,y,z):return dict(x=round(x,4),y=round(y,4),z=round(z,4))
 def bounds(b):return tuple((b['pos'][k]-b['size'][k]/2,b['pos'][k]+b['size'][k]/2) for k in 'xyz')
 def navigation(m):
@@ -106,12 +108,13 @@ def open_tops(m):
 # people get knocked off the map. Its a instant death when falling off". There a column stays for everyone only where it keeps
 # pilots inside the map (EDGES: the outer walls' caps, the club's crowd barrier and its mezzanines' rails over the crowd pit, the
 # Sanctum's vault) or where the art hangs too close over a top to stand on it (OVERHANG: the club's lighting towers under their truss and
-# its DJ cube under its rig, the Causeway's spires and gables under their floating crown stones). A column at a lethal drop (the Causeway's rails, parapets and crown edges) stops only bots (`bots`: they vault
+# its DJ cube under its rig, the Causeway's spires and gables under their floating crown stones, Pier 9's rides' upper decks under the
+# turning mounts and the band stand's dome, its turrets under their domes and its drop towers' masts). A column at a lethal drop (the Causeway's rails, parapets and crown edges) stops only bots (`bots`: they vault
 # whatever their obstacle ray hits; NativeMapRules.ExcludeTops), so a player can jump over or be knocked over it and fall. Every
 # other column over a top goes: a double jump (daggers, bow, chips) reaches the 3.9 m ovens, altars and gates, and a pilot may
 # stand on anything they can reach.
-EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':()}
-OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-')}
+EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':(),'harbor':()}
+OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-'),'harbor':('harbor-ride-','harbor-turret-','harbor-tower-')}
 def open_stage(m):
     sides=column_sides(m);keep=EDGES[m['id']]+OVERHANG.get(m['id'],());kept=[];bots=0
     for p in m['pilotBlocks']:

@@ -39,6 +39,7 @@ internal static class StageArtLayout
         if(NativeSanctumLooks.Active(map.id))Sanctum(w,map,look,V,Q);
         if(NativeClubLooks.Active(map.id))ClubArtLayout.Write(w,map,look,V,Q);
         if(NativeCausewayLooks.Active(map.id))CausewayArtChecks.Layout(w);
+        if(NativePierLooks.Active(map.id))PierArtChecks.Layout(w,map);
         if(NativeEmporiumLooks.Active(map.id))Emporium(w,map,look,V,Q);
         w.WriteEndObject();w.Flush();
         Console.WriteLine("stage layout "+map.id+": "+map.blocks.Length+" blocks -> "+path);
