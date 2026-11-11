@@ -59,12 +59,14 @@ namespace ChipArena.UnityConversion
         public static bool IsHit(string k)=>k==HitCut||k==HitFinisher||k==HitRush||k==HitMark||k==HitSplit||k==HitStorm||k==HitLaunch||k==HitCounter||k==HitDraw||k==HitSheathe||k==HitBleed||k==HitWave||k==HitPetal||k==HitFocus;
         /// <summary>The iai's dash direction from the aim (`x`, `z`): flat, along the look.</summary>
         public static Vector3 DashDir(float x,float z){var d=new Vector3(x,0,z);float l=d.Length();return l>1e-4f?d/l:Vector3.UnitZ;}
-        /// <summary>Whether the blade is sheathed in the record at `time` (the iai's draw, and from its dash's end to the split's click), for
-        /// the model: the blade then rests in the saya at the hip.</summary>
+        /// <summary>Whether the blade is sheathed in the record at `time`, for the model: from the split's click (the sheathing seats it there,
+        /// Core NativeKatanaSaya.SheatheClick) to the iai's end, the blade resting in the saya. Through the draw it is in the hand: the pack's
+        /// iai takes it out of the saya the left hand carries before the clip's draw stance (NativeKatanaSaya.IaiDraw), so it slides out of the
+        /// saya there; seated earlier it jumped up to 60 cm into it before the click.</summary>
         public static bool Sheathed(NativeBladeKit k,float time)
         {
             if(k==null||k.CastKind!=Iai||time<k.CastAt)return false;
-            return time<k.CastRelease-.04f||k.SplitAt>-50&&time>=k.SplitAt-.12f&&time<Math.Max(k.CastUntil,k.SplitAt+.05f);
+            return k.SplitAt>-50&&time>=k.SplitAt-.01f&&time<Math.Max(k.CastUntil,k.SplitAt+.05f);
         }
     }
 }

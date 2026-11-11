@@ -43,9 +43,11 @@ namespace ChipArena.UnityConversion
         // A weapon the game draws on a model posed by its own motion (the Top Dog's mallet, the Bombadier's TNT: Core NativeVisualMotion)
         // hangs from the model's hand bone, the wrist; the pack weapons are mounted in the palm. Moved (across its handle only) so the
         // handle runs through the palm, where the fist closes (owner 2026-11-09: "On top dog, the hands are off the handle").
-        private Matrix4x4 PalmGrip(CapturedAnimation.Player rig,Actor a,Matrix4x4 m,bool left)
+        private Matrix4x4 PalmGrip(CapturedAnimation.Player rig,Actor a,Matrix4x4 m,bool left)=>a==null?m:PalmGrip(rig,a.SourceSpec,m,left);
+        // (By spec: the blade classes' entrances hold their blades so too, NativeBladePresentation.cs BladeIntroFrame.)
+        private Matrix4x4 PalmGrip(CapturedAnimation.Player rig,string spec,Matrix4x4 m,bool left)
         {
-            if(a==null||a.SourceSpec!=NativeTopDog.Spec&&a.SourceSpec!=NativeBombs.Spec&&a.SourceSpec!=NativeGlaive.Spec&&!NativeBlades.Is(a.SourceSpec))return m;
+            if(spec!=NativeTopDog.Spec&&spec!=NativeBombs.Spec&&spec!=NativeGlaive.Spec&&!NativeBlades.Is(spec))return m;
             var body=VisualHolder(rig);if(body?.Binding?.Rig==null||body.Binding.Bones==null)return m;var of=body.Binding.Rig.Of;int j=left?CapturedRig.LHand:CapturedRig.RHand;
             int v=j<of.Length?of[j]:-1;if(v<0||v>=body.Binding.Bones.Length||body.Binding.Bones[v]==null)return m;var hand=body.Binding.Bones[v];
             Vector3 palm=hand.TransformPoint(left?PalmL:PalmR),o=m.GetColumn(3),z=m.GetColumn(2);if(z.sqrMagnitude<1e-10f)return m;z.Normalize();

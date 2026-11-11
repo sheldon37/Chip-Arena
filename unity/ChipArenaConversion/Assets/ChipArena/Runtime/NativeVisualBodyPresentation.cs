@@ -26,6 +26,9 @@ namespace ChipArena.UnityConversion
             // A broadcast bust's neck bone and its place in the body (VisualBust).
             public int BustNeck=-1; public Vector3 BustPivot=new Vector3(float.NaN,0,0);
             public string Spec, Accent; public int PosedFrame=-10; public bool Seen, Moved, SpawnOn, Ghosted, RevealOn; public Vector3 At; public float Flash=1, Glow=-1;
+            // The Katana's saya this frame (SayaFrame), from the pack's clips on the body (Core NativeKatanaSaya; VisualMotionPose): how much
+            // the left hand carries it, with which carry, and how far the blade is turned over in the right hand.
+            public float SayaCarry, SayaTurn; public int SayaHold, SayaFrame=-1;
             public Material[][] Plain, Spawning;
             // The gear's anchors (the bake's VisualGearCore and VisualGearDevice, the band's radius from VisualGearDeviceRim), when
             // the body last appeared or finished forming (the core's flare), the last seated chip (its plant's key, when, colour)
@@ -441,7 +444,7 @@ namespace ChipArena.UnityConversion
             // Crescent Return's ring arm keyed by hand (Core NativeGlaiveMotion.Intro).
             if(a.Id==glaiveIntroActor&&glaiveIntroActor>=0)GlaiveIntro(body,rig,glaiveIntroClock);
             // The blade classes' entrances play the pack's clips on the model (Core NativeBladeIntros.Clip), through the arena's motion.
-            if(a.Id==bladeIntroActor&&bladeIntroActor>=0&&bladeIntro!=null&&bladeIntro.Clip(bladeIntroClock,out var introClip,out var introTime)){NativeBladeMotion.IntroActor=a.Id;NativeBladeMotion.IntroClip=introClip;NativeBladeMotion.IntroTime=introTime;VisualMotionPose(body,rig,a,bladeIntroClock);NativeBladeMotion.IntroActor=-1;}
+            if(a.Id==bladeIntroActor&&bladeIntroActor>=0&&bladeIntro!=null&&bladeIntro.Clip(bladeIntroClock,out var introClip,out var introTime)){NativeBladeMotion.IntroActor=a.Id;NativeBladeMotion.IntroClip=introClip;NativeBladeMotion.IntroTime=introTime;NativeBladeMotion.IntroFade=bladeIntro.Fade(bladeIntroClock);VisualMotionPose(body,rig,a,bladeIntroClock);NativeBladeMotion.IntroActor=-1;NativeBladeMotion.IntroFade=.12f;}
             VisualHandFit(body,rig,held);
             body.Moved=true;
         }

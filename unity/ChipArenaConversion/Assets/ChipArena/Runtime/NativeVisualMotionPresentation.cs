@@ -384,6 +384,13 @@ namespace ChipArena.UnityConversion
                 var inv=Quaternion.Inverse(m.RightHand.rotation);m.HoldPosition=inv*(weaponHand.position-m.RightHand.position);m.HoldRotation=inv*weaponHand.rotation;
                 if(m.LeftHand!=null){inv=Quaternion.Inverse(m.LeftHand.rotation);m.LeftHoldPosition=inv*(offHand.position-m.LeftHand.position);m.LeftHoldRotation=inv*offHand.rotation;}
                 m.HasHold=true;
+                // A blade class's entrance holds its blades as the match does (Core NativeBladeGrip): its keyed stance never holds a sword the
+                // way the game's pose does, so its own first frame hung the blade from the bare wrist along the forearm (owner 2026-11-11).
+                if(a.Id==NativeBladeMotion.IntroActor)
+                {
+                    if(NativeBladeGrip.Of(a.SourceSpec,false,out var grip)){m.HoldPosition=Vector3.zero;m.HoldRotation=new Quaternion(grip.X,grip.Y,grip.Z,grip.W);}
+                    if(NativeBladeGrip.Of(a.SourceSpec,true,out var off)){m.LeftHoldPosition=Vector3.zero;m.LeftHoldRotation=new Quaternion(off.X,off.Y,off.Z,off.W);}
+                }
                 // A shaft in the left fist (the staff): its axis (the off-hand frame's most upright, as the game carries it) along
                 // the fist's grip, the knuckles' line toward the thumb.
                 if(m.Set.LeftShaft&&m.LeftHand!=null&&m.LeftIndex!=null&&m.LeftLittle!=null)
@@ -448,6 +455,19 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<m.Clips.Length;i++)NativeVisualMotionClips.Add(m.Clips[i],m.Times[i],Ease(m.Weights[i]),m.Mix);
             for(int k=0;k<m.Loco.Length;k++){int i=m.Loco[k];if(i>=0)NativeVisualMotionClips.Add(m.Clips[i],Mathf.Repeat(m.Phase+m.LocoOffset[k],1)*m.LocoLength[k],m.LocoWeights[k]*loco,m.Mix);}
             NativeVisualMotionClips.Finish(m.Mix,sum);
+            // The Katana's saya and blade by the pack's clips' shares (Core NativeKatanaSaya): how much the left hand carries the saya, with
+            // which carry, and how far the blade is turned over in the right hand (NativeBladePresentation.cs KatanaSaya; the hold below).
+            if(m.Set.Spec==NativeKatana.Spec)
+            {
+                float carry=0,turn=0,most=0;int hold=NativeKatanaSaya.Draw;
+                for(int i=0;i<m.Clips.Length;i++)
+                {
+                    float e=Ease(m.Weights[i]);if(e<=0)continue;
+                    float c=NativeKatanaSaya.Carry(m.Names[i],m.Times[i],out int h)*e;if(c>most){most=c;hold=h;}carry+=c;
+                    turn+=NativeKatanaSaya.Turn(m.Names[i],m.Times[i])*e;
+                }
+                body.SayaCarry=Mathf.Clamp01(carry/sum)*m.Weight;body.SayaTurn=Mathf.Clamp01(turn/sum)*m.Weight;body.SayaHold=hold;body.SayaFrame=Time.frameCount;
+            }
             if(covered&&pick.Spin)VisualSpinLegs(m,pick);
             // A gun's upper body (aimed by the pitch, its recoil, or its reload), a bow's (drawn, loosed) or a caster's (its cast),
             // over the legs' motion by its eased weight.
@@ -551,7 +571,9 @@ namespace ChipArena.UnityConversion
             if(m.HasHold)
             {
                 // On the hand as drawn, at any weight (a part-blended hand carries its weapon too).
-                weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);
+                // (The Katana's blade turned over for the sheathing as the pack turns it, Core NativeKatanaSaya.Turn.)
+                var held=m.HoldRotation;if(body.SayaFrame==Time.frameCount&&body.SayaTurn>0){var q=NativeKatanaSaya.SheatheTurn;held=Quaternion.Slerp(Quaternion.identity,new Quaternion(q.X,q.Y,q.Z,q.W),body.SayaTurn)*held;}
+                weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*held);
                 if(m.LeftHand!=null&&m.Set.Spec!="greatsword")offHand.SetPositionAndRotation(m.LeftHand.position+m.LeftHand.rotation*m.LeftHoldPosition,m.LeftHand.rotation*m.LeftHoldRotation);
                 // A raised gun's barrel turned onto the aim (about its grip, a little): its rounds leave its muzzle. A raised bow's
                 // likewise, about its riser: its arrow line on the aim.
