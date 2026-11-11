@@ -80,7 +80,7 @@ PIT = (-1.5, 1.5, -17.4, -13.5)
 GAP = (-7.2, -4.8, -20.2, -17.8)                # the missing boards: a hole straight down to the sea, no rail (a lantern marks it)
 plates('harbor-deck-s', -20, 20, -34, -5, [(-10, 10, -34, -25), PIT, GAP], -.4, 0, ch='.', mat='wood')
 # ---- the midway: the ticket booth on the centre line, the stalls (a back wall, two cheeks, a counter with a way in, a roof you
-#      can stand on), planters with lamp posts (half cover), prize crates, a cart
+#      can stand on), planters with lamp posts (half cover, .7 m wide: a lamp post stands in each), prize crates, a cart
 add('harbor-booth-s', -1.6, 1.6, 0, 2.8, -22.6, -20.4, 'B')
 def stall(i, x0, x1, z0, z1, face):
     # the open front faces `face` ('+x', '-x', '-z'); 3 m deep: the back .6, the nook 1.9 behind a .5 counter (1.1 high, a 1.6 m way in at one end)
@@ -97,7 +97,7 @@ def stall(i, x0, x1, z0, z1, face):
 stall('harbor-stall-s-0', -17, -13, -28, -25, '-z')
 stall('harbor-stall-s-1', 17, 20, -25, -21, '-x')
 stall('harbor-stall-s-2', 13, 17, -8, -5, '-z')
-for k, (a, b, c, d) in enumerate(((-6.4, -4.0, -23.6, -22.7), (4.0, 6.4, -19.2, -18.3), (-16.4, -15.5, -8.8, -6.4), (4.6, 5.5, -10.4, -8.0), (13.4, 15.8, -20.2, -19.3))):
+for k, (a, b, c, d) in enumerate(((-6.4, -4.0, -23.6, -22.9), (4.0, 6.4, -19.2, -18.5), (-16.4, -15.7, -8.8, -6.4), (4.6, 5.3, -10.4, -8.0), (13.4, 15.8, -20.2, -19.5))):
     add('harbor-planter-s-%d' % k, a, b, 0, 1.1, c, d, 'f', mat='wood')
 add('harbor-crate-s-0', -4.6, -3.0, 0, 1.1, -11.6, -10.0, 'f'); add('harbor-crate-s-1', -4.6, -3.0, 0, 2.4, -10.0, -8.4, 'F')
 add('harbor-crate-s-2', 14.2, 15.8, 0, 2.4, -12.6, -11.0, 'F'); add('harbor-crate-s-3', -13.0, -11.4, 0, 1.1, -23.4, -21.8, 'f')
@@ -105,7 +105,9 @@ add('harbor-cart-s', -18.6, -16.4, 0, 1.1, -13.2, -11.8, 'f', mat='wood')
 # ---- the carousel (south pier, west): a low stepped round base (a .2 m step up), the mirrored drum at its heart (full cover), the
 #      upper deck where the mounts ride (overhead: the play space is the ring under it); its twin by the mirror is the band stand
 def ride(i, cx, cz):
-    for k, (a, b, c, d) in enumerate(((-1.9, 1.9, -4.6, 4.6), (1.9, 3.25, -3.25, 3.25), (3.25, 4.6, -1.9, 1.9), (-3.25, -1.9, -3.25, 3.25), (-4.6, -3.25, -1.9, 1.9))):
+    # the base is an octagon (apothem 4.6) in strips .45 m wide, so its modelled rim lies within a hand of its collider
+    strips = [(-1.9, 1.9, 4.6)] + [(sg * (1.9 + .45 * k) if sg > 0 else -(1.9 + .45 * (k + 1)), sg * (1.9 + .45 * (k + 1)) if sg > 0 else -(1.9 + .45 * k), round(4.6 - .45 * k - .225, 3)) for sg in (1, -1) for k in range(6)]
+    for k, (a, b, c, d) in enumerate((x0, x1, -h, h) for x0, x1, h in strips):
         add('%s-base-%d' % (i, k), cx + a, cx + b, 0, .2, cz + c, cz + d, '.', mat='wood', plate=True)
     add(i + '-drum', cx - 1.3, cx + 1.3, .2, 2.8, cz - 1.3, cz + 1.3, 'D')
     for k, (a, b, c, d) in enumerate(((-1.9, 1.9, -4.4, 4.4), (1.9, 4.0, -3.2, 3.2), (-4.0, -1.9, -3.2, 3.2))):

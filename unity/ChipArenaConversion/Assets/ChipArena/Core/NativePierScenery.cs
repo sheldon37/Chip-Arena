@@ -21,10 +21,10 @@ namespace ChipArena.UnityConversion
     public static class NativePierScenery
     {
         public const int Near=0,Landmark=1,Far=2,Sectors=3;
-        public const int SeaDeep=0x0A1630,SeaCrest=0x2A4A7A,Timber=0x6E4E36,TimberDark=0x3A2A20,White=0xE8E4DA,Cream=0xE6D8B8,Red=0xB8302A,Teal=0x1F8E96,Gold=0xD8A840,Iron=0x2A2E36,Navy=0x1C2A4A,
+        public const int SeaDeep=0x0A1630,SeaCrest=0x16284C,Timber=0x6E4E36,TimberDark=0x3A2A20,White=0xE8E4DA,Cream=0xE6D8B8,Red=0xB8302A,Teal=0x1F8E96,Gold=0xD8A840,Iron=0x2A2E36,Navy=0x1C2A4A,
             Warm=0xFFC870,Pink=0xFF5FA8,Cyan=0x5FE8FF,Sand=0x8A7A62,Rock=0x23262E,Hill=0x10141E,Hotel=0x4A4658,HotelLight=0x6A6272,Window=0xFFD890;
         /// <summary>The fireworks barge (its deck's middle) and the lighthouse's lantern: the effects launch and sweep from them.</summary>
-        public const double BargeX=118,BargeZ=34,BargeY=NativePierLooks.Sea+1.6,LightX=190,LightY=44,LightZ=250,ShoreZ=-96;
+        public const double BargeX=92,BargeZ=30,BargeY=NativePierLooks.Sea+1.6,LightX=190,LightY=44,LightZ=250,ShoreZ=-96;
         private static double H(int a,int b=0,int c=0)=>NativePierLooks.Hash(a,b,c);
 
         /// <summary>The backdrop's sectors (null for another map): [near, landmark, far].</summary>
@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion
         // ---------------- far: the sea, the shore, the headland, the ships ----------------
         private static void Sea(NativeNewStageScenery.Sink s)
         {
-            s.B.Current=Far;NativeNewStageScenery.Sea(s,41,NativePierLooks.Sea,-900,900,ShoreZ-6,900,4,5,SeaDeep,SeaCrest,11);
+            s.B.Current=Far;NativeNewStageScenery.Sea(s,41,NativePierLooks.Sea,-900,900,ShoreZ-6,900,3,2.5,SeaDeep,SeaCrest,11);
         }
         private static void Shore(NativeNewStageScenery.Sink s)
         {

@@ -117,7 +117,7 @@ namespace ChipArena.UnityConversion
         /// 1 a willow, 2 a ring).</summary>
         public static void Shell(int k,out double x,out double y,out double z,out int hex,out int kind)
         {
-            x=NativePierScenery.BargeX+(H(71,k)-.5)*150;z=NativePierScenery.BargeZ+(H(71,k,1)-.5)*190;y=62+H(71,k,2)*52;hex=ShellHex[(int)(H(71,k,3)*ShellHex.Length)%ShellHex.Length];double u=H(71,k,4);kind=u<.55?0:u<.8?1:2;
+            x=NativePierScenery.BargeX+(H(71,k)-.5)*110;z=NativePierScenery.BargeZ+(H(71,k,1)-.5)*170;y=30+H(71,k,2)*30;hex=ShellHex[(int)(H(71,k,3)*ShellHex.Length)%ShellHex.Length];double u=H(71,k,4);kind=u<.55?0:u<.8?1:2;
         }
         private void Shells(double t)
         {
