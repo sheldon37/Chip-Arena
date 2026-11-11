@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
             return -1;
         }
         /// <summary>The blade's speed in the hand (m/s: its tip's, the body's own travel taken out) to the trail's power 0..1.</summary>
-        private static float TrailPower(float speed,bool katana)=>katana?Clamp01((speed-4.5f)/9):Clamp01((speed-3)/6);
+        private static float TrailPower(float speed,bool katana)=>katana?Clamp01((speed-3.5f)/7):Clamp01((speed-2.5f)/5);
         private static Vector3 Spline(Vector3 p0,Vector3 p1,Vector3 p2,Vector3 p3,float u){float u2=u*u,u3=u2*u;return .5f*(2*p1+(p2-p0)*u+(2*p0-5*p1+4*p2-p3)*u2+(3*p1-p0-3*p2+p3)*u3);}
         /// <summary>The weapon trails (owner 2026-11-11: "Give both weapon weapon trail vfx"): each drawn blade (both of the Fangs') sampled
         /// up to 120 times a second through its moves, its sweep laid as a smooth crescent (a spline through the samples) that narrows toward
@@ -94,10 +94,10 @@ namespace ChipArena.UnityConversion
                         t.Count=Math.Min(BladeTrail.Size,t.Count+1);t.Last=time;
                     }
                 }
-                if(t==null||t.Count<2)continue;float life=katana?.3f:.24f;if(time-t.At[t.Head]>life){t.Count=0;continue;}
+                if(t==null||t.Count<2)continue;float life=katana?.34f:.28f;if(time-t.At[t.Head]>life){t.Count=0;continue;}
                 bool finisher=katana?k.CastKind==NativeKatana.Counter||k.CastKind==NativeKatana.Iai||k.CastKind==NativeKatana.Cut&&k.CastStep==NativeKatana.Steps-1
                     :k.CastKind==NativeFangs.Assassinate||k.CastKind==NativeFangs.Pounce||k.CastKind==NativeFangs.Cut&&k.CastStep==NativeFangs.Steps-1;
-                var hot=Vector3.Lerp(tint,BladeWhite,.6f);float bright=finisher?1.45f:1,inner=katana?.28f:.12f;int n=Math.Min(t.Count,BladeTrail.Size),sub=low?1:3;
+                var hot=Vector3.Lerp(tint,BladeWhite,.6f);float bright=finisher?1.4f:1,inner=katana?.26f:.1f;int n=Math.Min(t.Count,BladeTrail.Size),sub=low?1:3;
                 for(int j=0;j<n-1;j++)
                 {
                     int i0=t.Index(j),i1=t.Index(j+1);float age0=time-t.At[i0],age1=time-t.At[i1];if(age0>=life)break;if(t.Start[i0])continue;
@@ -109,12 +109,12 @@ namespace ChipArena.UnityConversion
                         float u=st/(float)sub,age=age0+(age1-age0)*u,f=1-Clamp01(age/life),power=t.Power[i0]+(t.Power[i1]-t.Power[i0])*u;
                         var r=Spline(t.Root[ip],t.Root[i0],t.Root[i1],t.Root[iq],u);var p=Spline(t.Tip[ip],t.Tip[i0],t.Tip[i1],t.Tip[iq],u);
                         // Narrowing toward the tail: its inner edge climbs the blade as it fades.
-                        var e=Vector3.Lerp(r,p,inner+(1-inner)*.55f*(1-f));var o=p+(p-r)*.04f;float al=power*(float)Math.Pow(f,1.5)*bright;
+                        var e=Vector3.Lerp(r,p,inner+(1-inner)*.5f*(1-f));var o=p+(p-r)*.05f;float al=power*(float)Math.Pow(f,1.2)*bright;
                         if(st>0&&(a0>.004f||al>.004f))
                         {
-                            s.Band(view,in0,e,o,out0,.62f*a0,.62f*al,tint*1.4f);
-                            s.Band(view,out0-(out0-in0)*.22f,o-(o-e)*.22f,o,out0,a0,al,hot*2.2f);
-                            if(!low)s.Band(view,in0-(out0-in0)*.08f,e-(o-e)*.08f,o+(o-e)*.14f,out0+(out0-in0)*.14f,.3f*a0,.3f*al,tint*.8f);
+                            s.Band(view,in0,e,o,out0,.85f*a0,.85f*al,tint*2.2f);
+                            s.Band(view,out0-(out0-in0)*.24f,o-(o-e)*.24f,o,out0,Math.Min(1,1.2f*a0),Math.Min(1,1.2f*al),hot*3.4f);
+                            if(!low)s.Band(view,in0-(out0-in0)*.1f,e-(o-e)*.1f,o+(o-e)*.22f,out0+(out0-in0)*.22f,.45f*a0,.45f*al,tint*1.3f);
                         }
                         in0=e;out0=o;a0=al;
                     }
