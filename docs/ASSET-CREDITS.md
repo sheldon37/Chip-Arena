@@ -354,3 +354,21 @@ Both replacements preserve embedded musical effects (including the alarms), with
 no loudness remaster or seamless-loop edit. The video stream is not packaged.
 Legacy Electron music is unchanged. These are owner-supplied recordings; no
 additional artist identity or license terms were supplied with the uploads.
+
+## Logo intro
+
+The owner supplied the new Chip Arena logo animation on 2026-11-11 as
+`f44c70eb-openart-cgt-20261112042107-rml2i_1794428871690_d14feb50.mp4` (H.264 High 1280x720, 24 fps,
+yuv420p, 10.08 s, AAC-LC stereo 32 kHz; 11,268,570 bytes, about 8.9 Mbps,
+SHA-256 `5b6721aed29f0c9f0d9fd819e552b4f1394413cc82fdeb65df369d300df70886`), with the words
+"This is also the new logo for the game". It plays at launch (docs/BOOT-INTRO.md).
+`unity/ChipArenaConversion/Assets/StreamingAssets/BootIntro.mp4` re-encodes the picture to fit the
+repository: libx264 two-pass, 4 Mbps (6 Mbps peak), High profile level 3.1 without B-frames (Unity's
+Windows decoder warns about and skews B-frame timestamps), the same 241 frames at 24 fps and 1280x720,
+tagged BT.709, fast start; the AAC stream is copied unchanged (its packets are byte-identical).
+Against the upload it measures SSIM 0.995 (lowest frame 0.989, in the spark burst) and PSNR 49.0 dB
+(lowest 44.4 dB). 5,266,834 bytes,
+SHA-256 `0f0e60a0b5b2a0a9649c0873596ba098e3adb1270a9e3153352c27ad1320b63b`.
+`unity/ChipArenaConversion/Assets/ChipArena/Resources/BootIntroLogo.jpg` is that clip's last frame
+(JPEG quality 95, 4:4:4), the logo that holds after a skip. No other edit, grade or audio change was made;
+no artist identity or license terms beyond the owner's supply were given with the upload.
