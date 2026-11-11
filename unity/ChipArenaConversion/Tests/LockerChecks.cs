@@ -81,7 +81,7 @@ internal static class LockerChecks
         // prefs.weaponSkins through the normalizing setter (saved by Save Pilot), hovering only tries one on the stage.
         string skins=Body(R("NativeLockerSkinsUI.cs"),"private void LkSkins(");
         Check(skins.Length>200&&!ui.Contains("private void LkSkins("),"the weapon skins drawing lives in its own file");
-        Check(Regex.Matches(skins,@"prefs\.\w+=").Count==1&&skins.Contains("prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,entry,keys[k]);")&&skins.Contains("string entry=body?NativeBodySkins.Entry:w.id;var keys=body?NativeBodySkins.Keys:NativeWeaponSkins.Keys;"),"the skin selector writes only the skin map");
+        Check(Regex.Matches(skins,@"prefs\.\w+=").Count==1&&skins.Contains("prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,entry,keys[k]);")&&skins.Contains("string entry=body?NativeBodySkins.Entry:w.id;var keys=body?NativeBodySkins.Keys:NativeWeaponSkins.KeysFor(w.id);"),"the skin selector writes only the skin map");
         foreach(var bad in new[]{"SetWeapon(","menuClass=","SavePilot(","Save("})Check(!skins.Contains(bad),"the weapon skins tab has no "+bad);
 
         // 4b. The body is also picked in Appearance (owner: "add Body skin selection in customization"): a BODY SKIN row in the
@@ -95,7 +95,7 @@ internal static class LockerChecks
         const string equippedRule="private int BodySkinEquipped(){int k=NativeBodySkins.Of(prefs.weaponSkins);return k<BodySkinChoices?k:NativeBodySkins.StandardIndex;}";
         Check(Count(skinsFile,setter)==1&&Count(skinsFile,choices)==1&&Count(skinsFile,equippedRule)==1,"one setter, one choice list and one equipped rule for the body");
         Check(Count(skinsFile+ui,"SetBodySkin(")==3&&!skinsFile.Contains("SetBodySkin(NativeBodySkins.Prototype)")&&skins.Contains("if(body)SetBodySkin(keys[k]);else prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,entry,keys[k]);")&&row.Contains("if(click&&!on)SetBodySkin(NativeBodySkins.Keys[i]);"),"the Skins card and the BODY SKIN row equip through SetBodySkin (its only callers; the face gear no longer puts on the Prototype body)");
-        Check(skins.Contains("int count=body?BodySkinChoices:NativeWeaponSkins.Count;")&&skins.Contains("int equipped=body?BodySkinEquipped():")&&row.Contains("int equipped=BodySkinEquipped(),count=BodySkinChoices;"),"both pickers offer the same bodies and mark the same equipped one");
+        Check(skinsFile.Contains("string id=lockerSkins[i];if(id==NativeBodySkins.Entry){int bodies=Mathf.Min(BodySkinChoices,lkSkinOffer.Length);")&&skins.Contains("int count=LkSkinOffers(i),per=Mathf.Max(1,LkSkinPerRow(count));")&&skins.Contains("int equipped=body?BodySkinEquipped():")&&row.Contains("int equipped=BodySkinEquipped(),count=BodySkinChoices;"),"both pickers offer the same bodies and mark the same equipped one");
         Check(Count(skinsFile+ui,"NativeBodySkins.Entry,key")==1&&!Regex.IsMatch(row,@"prefs\.\w+=")&&!Regex.IsMatch(ui,@"prefs\.weaponSkins=(?!b\.Skins;)"),"nothing else in the Locker writes the body entry (Revert restores the whole map)");
         foreach(var bad in new[]{"SavePilot(","Save(","account.","SendServer(","LobbyBroadcast("})Check(!row.Contains(bad)&&!setter.Contains(bad),"the BODY SKIN row saves only through Save Pilot (no "+bad+")");
         Check(row.Contains("if(hot&&repaint)lockerBodyTry=NativeBodySkins.Keys[i];")&&skinsFile.Contains("if(lockerBodyTry!=null&&menuScreen==MenuScreen.Customize&&(lockerTab==NativeLocker.WeaponSkins||lockerTab==NativeLocker.Appearance))return lockerBodyTry;")

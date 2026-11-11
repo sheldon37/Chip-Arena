@@ -1,3 +1,24 @@
+## 2026-11-10 — Claude: the guns' Arsenal Series, six pack guns as skin picks (owner request)
+
+- Branch `claude/gun-skins`, from shared `claude/sleepy-ritchie-g8ruhv` at `4172c27c`. Implemented on the branch; not merged, not released.
+- **The owner:** "I also have a new gun pack ... id like to implement" (Low Poly Weapon Bundle Pack V by CASTLE BRAVO, Asset Store 423530; licensed, in `Assets/LocalAssets/LowPolyWeaponBundlePackV`, never committed). Agreed in the session: a new skin series for the guns, the current models stay the default.
+- **What it is:** each gun's card in the Locker's Skins tab gets a second row of two models:
+  - pistol: Arsenal Service (`CW_Pistol_C`), Arsenal Heavy (`Pistol_R`);
+  - rifle: Arsenal Recon (`Recon_R_PreSet`), Arsenal Ranger (`WWII_Recon_B_PreSet`, suppressor left out), both scoped;
+  - machine gun: Arsenal Carbine (`AR_AA_PreSet`), Arsenal Gunner (`WWII_LMG_B`).
+- **How:** two more keys on the three guns' skin entries, `arsenal` and `arsenal2` (`Core/NativeWeaponSkins.cs`).
+  - A series pick is the Standard finish with another held model: `Index` still reads Standard, `Series` names the model, so nothing that asks "Standard or Prototype" changed.
+  - The local bake carries each model as a `VisualWeapons` entry `spec@key` beside the Standard one; the visual body holds it wherever the Standard model would draw (`Runtime/NativeVisualWeaponPresentation.cs`).
+  - The Locker offers a series model only on the model and only where the bake has it (`Runtime/NativeLockerSkinsUI.cs`); a gun's card is taller for its second row.
+  - Without the entry (no local bake, the Classic body, an older client) the Standard gun draws. The keys are no longer than `prototype`: the longest map is still 309 of 320.
+- **Rules, timing, hitboxes, networking:** none changed. Presentation only; the muzzle, the rounds' origin, reach and the wire format are the Standard gun's. Animations are untouched.
+- **Local tool** (git-ignored, shared): the weapons table has six series rows and `Skin`, `Forward`, `Drop`; `bozo-weapons` takes `dry=1`. The bake prefab was rebaked twice; the five existing entries were compared with a backup after each and are identical (only the machine gun's cut-mesh asset id changes, as on every rebake).
+- **For Astra:** `src/relay/accounts.ts` `WEAPON_SKINS` allows only `standard` and `prototype`. Until `arsenal` and `arsenal2` are allowed for `pistol`, `rifle` and `machinegun`, a signed-in pilot's series pick is dropped when the profile is saved and read back (guests and the local prefs keep it).
+- **Builder:** the Drive zip was not repacked. `tools/pack_visual_body.py` follows the bake's references, so a repack picks up the new files by itself: the rebuilt `ChipArenaVisualBody.prefab`, `ChipArenaLocal/VisualBody/Weapons/Low Poly Weapon_toon.mat`, the machine gun's re-made `machinegun_Model_held.asset`, and 62 files (1.6 MiB) under `LowPolyWeaponBundlePackV` (19 model `.fbx`, `Texture/Low Poly Weapon.png`, their and their folders' `.meta`).
+- **Checks:** the full CoreTests suite, the Unity compile, `git diff --check`, the Editor's build checks (see the PR notes for the results).
+- **Seen in the Editor** (Moonlit, the local pilot): each of the six held at rest in third person, the pistols' sights in first person, the rifles' scope, the machine guns at the hip, and the Locker's Skins tab.
+- **Not seen:** a played match by a person, network guests, the killcam, the entrances and the lobby portraits with a series pick, a builder build.
+
 ## 2026-11-10 — Claude: the new stages' z-fighting settled and their invisible walls removed, the Causeway's falls kill fast, guns aim in third person (owner request)
 
 - Branch `claude/stage-fixes` (from shared at `4172c27c`).

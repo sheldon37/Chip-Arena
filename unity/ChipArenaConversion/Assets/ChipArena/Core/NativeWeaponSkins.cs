@@ -27,6 +27,13 @@ namespace ChipArena.UnityConversion
     // (The robot suit's "suit" entry, 2026-10-30, is gone: its plates are four clothing pieces of the outfit since owner
     // 2026-11-01, "Can we make the armor portion into clothing?" (Core/NativeLook, Core/NativeRobotSuit). A saved "suit:none"
     // is dropped as any unknown entry is.)
+    // The Arsenal Series (owner 2026-11-10: "I also have a new gun pack ... id like to implement"): the guns (pistol, rifle,
+    // machine gun) take two more picks each, "arsenal" and "arsenal2", licensed pack models the local bake carries beside the
+    // Standard ones (VisualWeapons "pistol@arsenal"; Runtime/NativeVisualWeaponPresentation.cs). They are the Standard finish
+    // in everything but the model the visual body holds: Index reads them as Standard, so the muzzle flash, the chip modules,
+    // the kit pieces and every rule of the Standard gun stay as they are, and Series names which model draws. Where the bake
+    // has no such model (the voxel body, an install without the local bake, a client that does not know the key) the Standard
+    // gun draws. Neither key is longer than "prototype", so MaxLength holds.
     public static class NativeWeaponSkins
     {
         public const string Standard="standard",Prototype="prototype";
@@ -34,6 +41,23 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Labels={"Standard","Prototype Series"};
         public static readonly string[] Texts={"The current production model, with accent lights in your colour.","The original blocky build the arena started with."};
         public const int StandardIndex=0,PrototypeIndex=1,Count=2;
+        /// <summary>The Arsenal Series: the guns that carry it, its keys (after a weapon's two finishes) and each gun's labels
+        /// and texts in key order.</summary>
+        public const string Arsenal="arsenal",Arsenal2="arsenal2";public const int SeriesCount=2;
+        public static readonly string[] SeriesWeapons={"pistol","rifle","machinegun"};
+        public static readonly string[] SeriesKeys={Arsenal,Arsenal2};
+        private static readonly string[] GunKeys={Standard,Prototype,Arsenal,Arsenal2};
+        private static readonly string[][] SeriesLabels={new[]{"Arsenal Service","Arsenal Heavy"},new[]{"Arsenal Recon","Arsenal Ranger"},new[]{"Arsenal Carbine","Arsenal Gunner"}};
+        private static readonly string[][] GunLabels=System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(SeriesLabels,l=>new[]{Labels[0],Labels[1],l[0],l[1]}));
+        private static readonly string[][] SeriesEntries=System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(SeriesWeapons,w=>new[]{w+"@"+Arsenal,w+"@"+Arsenal2}));
+        public static bool HasSeries(string spec)=>spec!=null&&Array.IndexOf(SeriesWeapons,spec)>=0;
+        /// <summary>The keys and labels a weapon's card offers: its two finishes, then a gun's Arsenal Series models.</summary>
+        public static string[] KeysFor(string spec)=>HasSeries(spec)?GunKeys:Keys;
+        public static string[] LabelsFor(string spec){int g=spec==null?-1:Array.IndexOf(SeriesWeapons,spec);return g<0?Labels:GunLabels[g];}
+        /// <summary>The Arsenal Series model picked for `spec` in a map: 0 none (Standard or the Prototype Series), else 1..SeriesCount.</summary>
+        public static int Series(string map,string spec){int k=Pick(map,spec);return k>=Count&&HasSeries(spec)?k-Count+1:0;}
+        /// <summary>The bake's entry name of a gun's series model ("pistol@arsenal"; a cached string), null when there is none.</summary>
+        public static string SeriesEntry(string spec,int series){int g=spec==null?-1:Array.IndexOf(SeriesWeapons,spec);return g<0||series<1||series>SeriesCount?null:SeriesEntries[g][series-1];}
         /// <summary>The weapons that carry skins (every weapon with a model; the Siren has none), in content order, then the
         /// Cyber Lord, whose skin is its look.</summary>
         public static readonly string[] Weapons={"pistol","rifle","machinegun","fire","water","lightning","darkness","sword","daggers","shield","greatsword","emperor","ansatsuken","leet","bow",CyberLordSpec.Id};
@@ -53,12 +77,15 @@ namespace ChipArena.UnityConversion
         /// <summary>Every entry the map carries, in its canonical order: the weapons, then the pilot's body and the face gear.</summary>
         public static readonly string[] Entries=Join(Join(Weapons,NativeBodySkins.Entry),FaceEntry);
         private static string[] Join(string[] a,string b){var o=new string[a.Length+1];Array.Copy(a,o,a.Length);o[a.Length]=b;return o;}
-        /// <summary>The skin keys an entry accepts: a weapon's two finishes, the body's three skins or the face gear's six.</summary>
-        private static string[] KeysOf(string entry)=>entry==NativeBodySkins.Entry?NativeBodySkins.Keys:entry==FaceEntry?FaceKeys:Keys;
+        /// <summary>The skin keys an entry accepts: a weapon's two finishes (and a gun's series models), the body's three skins or the face gear's six.</summary>
+        private static string[] KeysOf(string entry)=>entry==NativeBodySkins.Entry?NativeBodySkins.Keys:entry==FaceEntry?FaceKeys:KeysFor(entry);
         private static int SkinIndex(string entry,string skin){var keys=KeysOf(entry);for(int k=0;k<keys.Length;k++)if(keys[k]==skin)return k;return -1;}
 
-        /// <summary>The skin picked for `spec` (a weapon, or the body entry) in a map (StandardIndex when absent or malformed). Allocation free.</summary>
-        public static int Index(string map,string spec)
+        /// <summary>The skin picked for `spec` (a weapon, or the body entry) in a map (StandardIndex when absent or malformed). Allocation free.
+        /// A gun on an Arsenal Series model reads as Standard: the series is the Standard finish with another model (Series).</summary>
+        public static int Index(string map,string spec){int k=Pick(map,spec);return k>=Count&&HasSeries(spec)?StandardIndex:k;}
+        /// <summary>The key picked for `spec`, as an index into its keys (KeysFor; the body's and the face gear's own).</summary>
+        public static int Pick(string map,string spec)
         {
             if(string.IsNullOrEmpty(map)||string.IsNullOrEmpty(spec))return StandardIndex;
             int i=0,n=map.Length,result=StandardIndex;var keys=KeysOf(spec);
@@ -74,7 +101,7 @@ namespace ChipArena.UnityConversion
             }
             return result;
         }
-        public static string Of(string map,string spec)=>KeysOf(spec)[Index(map,spec)];
+        public static string Of(string map,string spec)=>KeysOf(spec)[Pick(map,spec)];
         /// <summary>
         /// The canonical form: entries "spec:skin" for known entries (the weapons, then the body) on a non-default skin that entry
         /// accepts, in Entries order, each once (the last entry wins), joined by commas; "" when everything is Standard. Never
@@ -102,7 +129,7 @@ namespace ChipArena.UnityConversion
         public static string With(string map,string spec,string skin)
         {
             int w=Array.IndexOf(Entries,spec),k=w<0?-1:SkinIndex(spec,skin);if(w<0||k<0)return Normalize(map);
-            var picks=new int[Entries.Length];for(int i=0;i<Entries.Length;i++)picks[i]=Index(map,Entries[i]);picks[w]=k;return Join(picks);
+            var picks=new int[Entries.Length];for(int i=0;i<Entries.Length;i++)picks[i]=Pick(map,Entries[i]);picks[w]=k;return Join(picks);
         }
 
         // ---- model ids (cached strings: drawing allocates nothing) ----
