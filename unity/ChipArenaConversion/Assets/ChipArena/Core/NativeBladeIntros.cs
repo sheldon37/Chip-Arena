@@ -124,8 +124,9 @@ namespace ChipArena.UnityConversion
                 Shot(0,NativeEntranceCut.Cut,46,40,V(-1.4f,1.3f,4.8f),V(-1.1f,1.35f,4.2f),V(.6f,1.9f,-3f),V(.2f,1.6f,-1f),1,0),
                 // Close on the hand at the hilt as it settles.
                 Shot(Poise,NativeEntranceCut.Cut,30,28,V(1.1f,1.05f,1.5f),V(1.0f,1.05f,1.35f),V(-.1f,.95f,0),V(-.1f,.95f,0),1,0),
-                // Low and side-on for the draw, near enough to see the blade leave the saya (it was wide: the pilot small, the draw unseen).
-                Shot(DrawAt+.35f,NativeEntranceCut.Cut,42,38,V(-2.1f,.85f,1.65f),V(-1.85f,.9f,1.45f),V(0,1.0f,.1f),V(.25f,1.05f,.1f),1,0),
+                // Low on the pilot's left, the saya's side, for the draw: the pack's iai stance winds the body away from the front, so from
+                // ahead and to the left (and wide: the pilot small) the body hid the blade leaving the saya at the hip.
+                Shot(DrawAt+.35f,NativeEntranceCut.Cut,40,36,V(-2.25f,.8f,.15f),V(-2f,.85f,.12f),V(.05f,.92f,.2f),V(.25f,.95f,.2f),1,0),
                 // Behind the line as it hangs.
                 Shot(CutAt+.35f,NativeEntranceCut.Whip,44,40,V(2.9f,1.6f,2.9f),V(2.6f,1.5f,2.6f),V(-.4f,1.15f,.2f),V(0,1.1f,0),1,0,.1f),
                 // The click and the split, close and in front.

@@ -551,6 +551,13 @@ namespace ChipArena.UnityConversion
             Check(P(reel,63.5f).Clip==set.Stunned&&Math.Abs(P(reel,63.5f).Time-.3f)<1e-4f,"parried: then dazed through the stun");
             Check(P(reel,64.2f,true).Clip==set.Stunned&&!P(reel,64.2f,true).Locomotion,"parried: still dazed while the shove slides it out, not walking");
             Check(P(reel,64+NativeVisualMotion.ParrySettle+.05f,true).Locomotion,"parried: past the settle, the walk again");
+            // A parried blade recoils on its block instead of its face-on hit (owner 2026-11-11: the Katana's threw the head back past the
+            // shoulders); the other sets keep their hit.
+            {
+                var kat=NativeVisualMotion.For(NativeKatana.Spec);var kreel=Ground();kreel.ReactionAt=62;kreel.ReactionUntil=kreel.StunUntil=64;kreel.ReactionYaw=0;kreel.ReactionParry=true;
+                Check(kat!=null&&NativeVisualMotion.Choose(kat,kreel,62.3f,new NativeVisualMotion.Memory(),book2,false,out var kp)&&kp.Clip==kat.BlockHit&&Math.Abs(kp.Time-.3f)<1e-4f
+                    &&NativeVisualMotion.ParriedRecoil(sword)==null&&NativeVisualMotion.ParriedRecoil(set)==null,"a parried blade recoils on its block; the other sets on their hit");
+            }
             Check(NativeVisualMotion.Side(1.2f)==2&&NativeVisualMotion.Side(-1.2f)==3&&NativeVisualMotion.Side(.3f)==0&&NativeVisualMotion.Side(3f)==1,"reaction sides by the yaw");
             var block=Ground();block.BlockAt=70;block.BlockUntil=71;Check(P(block,70.5f).Clip==set.Block,"blocking: the block");
             var special=Ground();special.SpecialKind="wolf-spin";special.SpecialAt=80;special.SpecialUntil=83;
