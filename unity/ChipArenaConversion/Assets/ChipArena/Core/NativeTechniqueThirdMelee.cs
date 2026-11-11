@@ -680,8 +680,7 @@ namespace ChipArena.UnityConversion
     }
     public static partial class NativeVisualMotion
     {
-        // The greatsword's: the pack's leaping overhead slam and its spinning low sweep (Core NativeGreatswordMotion: their strikes measured).
-        private const string MeleeOverhead=NativeGreatswordMotion.Overhead,MeleeSweep=NativeGreatswordMotion.Reap;
+        private const string MeleeOverhead="2Hand-Sword-Attack11",MeleeSweep="2Hand-Sword-Attack2";
         private static bool PoseMelee(Set set,NativeTechnique k,float time,float back,IClips clips,out Pick pick)
         {
             pick=default;Pick got=default;
@@ -704,8 +703,9 @@ namespace ChipArena.UnityConversion
                     else if(time<k.Until&&set.Block!=null&&clips.Has(set.Block)){got=new Pick{Clip=set.Block,Time=Math.Min(time-k.At,clips.Length(set.Block)*.4f),Fade=FadeIn};hit=true;}
                     break;
                 // The big overhead, its own Hit on the landing.
-                case NativeTechniques.Sunder:hit=Struck(MeleeOverhead,k.At,k.Release,Math.Max(back,k.Release+.3f));break;
-                case NativeTechniques.ReapingSweep:hit=Part(TechVowHold,k.At,k.Release)||Struck(MeleeSweep,k.Release-.02f,k.Release+.1f,Math.Max(back,k.Release+.3f));break;
+                // A set with its own (the DEV Greatsword's) plays them on their measured strikes (NativeVisualMotionClips.Read).
+                case NativeTechniques.Sunder:hit=set.Overhead!=null?Struck(set.Overhead,k.At,k.Release,Math.Max(back,k.Release+.3f)):Struck(MeleeOverhead,k.At,k.Release,Math.Max(back,k.Release+.3f),BombSlamHit);break;
+                case NativeTechniques.ReapingSweep:hit=Part(set.VowHold??TechVowHold,k.At,k.Release)||Struck(set.Sweep??MeleeSweep,k.Release-.02f,k.Release+.1f,Math.Max(back,k.Release+.3f));break;
                 // The drag is the run itself; the rise tears up out of it.
                 case NativeTechniques.BladeDrag:if(k.Recast(time))hit=Struck(set.SprintAttack,k.RecastAt-.02f,k.RecastAt+.1f,Math.Max(back,k.RecastAt+.3f));break;
                 default:return false;

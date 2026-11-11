@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
                     if(c.Frames<1||c.Frames>100000||!(c.Rate>0))throw new InvalidDataException("motion bank clip "+c.Name);
                     c.Data=new float[c.Frames*c.Stride];for(int i=0;i<c.Data.Length;i++)c.Data[i]=r.ReadSingle();
                     // A pack whose clips carry no Hit event (the bake's middle): its strike as measured on the body (NativeGreatswordMotion).
-                    if(NativeGreatswordMotion.Strike(c.Name,out float strike))c.Hit=Math.Min(strike,c.Length);
+                    if(NativeDevGreatswordMotion.Strike(c.Name,out float strike))c.Hit=Math.Min(strike,c.Length);
                     lib.Clips[c.Name]=c;
                 }
                 return lib;

@@ -366,7 +366,8 @@ namespace ChipArena.UnityConversion
         // VisualBodyPose, after the game pose, the weapon frames and the stride are on the body: the set's clips over them.
         private void VisualMotionPose(VisualBody body,CapturedAnimation.Player rig,Actor a,float time)
         {
-            var m=NativeVisualMotion.For(a.SourceSpec)!=null&&!StrideOff?VisualMotionFor(body,a.SourceSpec):null;
+            // A DEV animation class plays its own set over its base class (Core NativeDevMotions).
+            string motionSet=NativeDevMotions.Set(a);var m=NativeVisualMotion.For(motionSet)!=null&&!StrideOff?VisualMotionFor(body,motionSet):null;
             if(m==null){if(body.Motion!=null)body.Motion.Weight=0;return;}
             float dt=float.IsNaN(m.Time)?0:Mathf.Clamp(time-m.Time,0,.1f);m.Time=time;
             // The body's travel (smoothed, as the stride's).

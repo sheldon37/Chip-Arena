@@ -1556,6 +1556,45 @@ already? Cant we utilize that?"
         arena's), the feet on the floor, the hips bobbing 0.70-0.77 m with the steps.
     - A mapped move's tail (its special still running past the cast) goes on to the idle instead of the game's pose.
     - The bank holds 266 clips in 2.78 MB.
+  - **The DEV animation classes: DEV Greatsword and DEV Katana (2026-11-11, `claude/greatsword-grruzam`; owner: "Great Sword
+    and Katana", Grruzam's Powerful Sword Animation pack, v2.1.3; then "For those new animations; Maybe lets put them on DEV
+    classes. Call them like ... DEV Katana and DEV Greatsword"; "Yes, grantable"):** two DEV classes that are the Greatsword and the
+    Katana in everything but the model's animation (Core `NativeDevMotions`). The Greatsword and the Katana themselves are unchanged.
+    - **How they play their base:** each has its own content row (`dev-greatsword`, `dev-katana`, devOnly, the base's numbers), a
+      DEV screen card, a spec icon and a grant key. When the arena spawns a seat that picked one, the seat plays the base class
+      (`NativeSeat.spec`) and keeps the DEV class as its `motion`, which the seat frame carries to guests; every actor of the seat
+      has it as `Actor.Motion` (host and guests fill it from the seat). Rules, numbers, kit, models, effects and sounds are the
+      base's; only the model's set comes from the motion (`NativeDevMotions.Set`, `NativeVisualMotion.For`). Picking another class
+      clears it. The menus outside the arena (the Locker, the DEV screen) show the DEV row; in a match the HUD names the base.
+    - **The pack** is a Unity package of Humanoid clips, installed under the git-ignored
+      `Assets/LocalAssets/Grruzam Powerful Sword Animation(Great Sword, Katana)/`; its great sword and katana folders are in the
+      local tool's `MotionClipFolders`, and `dev-greatsword`/`dev-katana` in its `MotionSpecs`. The bank names its clips by their
+      files (`M_Big_Sword@...`, `M_katana_Blade@...`). The clips carry no `Hit` event (the bake's Hit is a clip's middle), so each
+      strike was measured on the body frame by frame (the local tool's clip frames with the game's blade in `hand_r`): a cut's where
+      its tip crosses the facing, sweeping as the rules' arc does; a slam's where the blade stops on the floor. The tables hold them
+      and the bank takes them as it is read (`NativeVisualMotionClips.Read`).
+    - **DEV Greatsword** (Core `NativeDevGreatswordMotion`): the stance (`Idle`, the sword on the right shoulder); the stride on the
+      shoulder carry (the pack's B versions: the jog's eight directions for the walks and the runs off the forward line,
+      `Run_ver_B` ahead, `Run_Fast_ver_B` the sprint, looped by the bake though the pack marks it single); `Jump_Start`, the air
+      jump's somersault (`Double_Jump_Start`), `Jump_Loop`, `Jump_End`; the guard (`Revenge_Guard_Loop`, its hit
+      `Revenge_Guard_Accept`); the dodge roll (`Dodge_Front`); the small reactions from each side; the blown-back knockdown
+      (`KnockDown_Front_ver_A`) and its backward rolling get-up. The combo cycles four cuts whose blades cross the facing the way
+      the rules sweep (index 1 right to left, 2 left to right, and so on): a diagonal cleave from high on the right
+      (`Attack_7Combo_1_Inplace`), a level backhand (`Attack_4Combo_2_Inplace`), a wide forehand (`Skill_B`), a spinning low sweep
+      (`Attack_4Combo_1B_Inplace`); each starts from the stance and settles back to it (the RPG set's six all crossed right to left
+      at their Hits). The leaping cleave (the sprint's hop) is the pack's leaping slam (`Attack_4Combo_4_Inplace`), the jump attack
+      its aerial combo's downward finish, Earthsplitter its lunging slam (`Skill_H`), the Whirlwind its level spinning sweep
+      (`Skill_E`, held at 0.36: 0.66 s, the arms out, the blade level at the waist), Sunder its leaping overhead
+      (`Skill_J_Inplace`), Reaping Sweep and Iron Vow its crouch and spinning sweep (the set's own technique clips:
+      `Set.VowStart`, `VowHold`, `Overhead`, `Sweep`). The pack has no dazed loop: the stun keeps `2Hand-Sword-Stunned`; Anchor
+      Throw keeps the shared one-handed throw.
+    - **The hold:** the game's blade stays where the game holds it. Measured against the pack's own sword (the clip played on the
+      pack's character beside the body, its blade read in the body's hand frame, the local tool's clip frames `source=`): 4-22°
+      apart on average over the attacks and the shoulder-carry stride, 35° at most; the pack's A versions of the runs drag the sword
+      40-50° off, so they are not used.
+    - **The bank** gains the DEV Greatsword's 35 clips (433,786 bytes), merged into the live bank with every other clip kept
+      byte-identical (409 clips in 4,877,308 bytes became 444 in 5,311,078). Rebake by merging (the extra bake, then a merge), not
+      from scratch: NOCTIEL's and other bosses' clips are named by no player set.
   - **Sword, daggers and shield kit moves (2026-10-24, `claude/motion-kits`):** every melee weapon's Q and E now play
     pack clips.
     - **Sword:** Flash Step plays the armed dash's lunge on the release. Rising Dragon plays the pack's rising thrust

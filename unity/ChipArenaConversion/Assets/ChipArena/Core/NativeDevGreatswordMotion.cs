@@ -3,14 +3,15 @@ using System;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// The greatsword on the model (owner 2026-11-11: "Great Sword and Katana"): Grruzam's Powerful Sword Animation pack's great sword set
-    /// (its clips are named by their files, `M_Big_Sword@...`), baked into the local motion bank like the other packs' and played by the
-    /// generic set (Core NativeVisualMotion): the stance, the shoulder carry's stride, the jumps, the guard, the dodge roll, the reactions,
-    /// the knockdown and its rolling get-up, the combo, the leaping cleave, the jump attack, both kit moves and the techniques. The pack's
-    /// clips carry no Hit event (the bake's Hit is a clip's middle), so each strike is measured on the body here (Strike) and the bank takes
-    /// it as it is read. Presentation only: the rules' timing, reach, steps and arcs are unchanged; the clips are fitted to them.
+    /// The DEV Greatsword's animation (Core NativeDevMotions; owner 2026-11-11: "Great Sword and Katana", then "lets put them on DEV classes"):
+    /// Grruzam's Powerful Sword Animation pack's great sword set (its clips are named by their files, `M_Big_Sword@...`), baked into the local
+    /// motion bank like the other packs' and played by the generic set (Core NativeVisualMotion): the stance, the shoulder carry's stride, the
+    /// jumps, the guard, the dodge roll, the reactions, the knockdown and its rolling get-up, the combo, the leaping cleave, the jump attack,
+    /// both kit moves and the techniques. The pack's clips carry no Hit event (the bake's Hit is a clip's middle), so each strike is measured on
+    /// the body here (Strike) and the bank takes it as it is read. The class plays the Greatsword's rules, so the clips are fitted to the
+    /// Greatsword's timing, reach, steps and arcs. Presentation only.
     /// </summary>
-    public static class NativeGreatswordMotion
+    public static class NativeDevGreatswordMotion
     {
         private const string G="M_Big_Sword@";
         public const string Idle=G+"Idle",Jump=G+"Jump_Start",Flip=G+"Double_Jump_Start",Fall=G+"Jump_Loop",Land=G+"Jump_End",
@@ -25,6 +26,9 @@ namespace ChipArena.UnityConversion
         /// Reaping Sweep's spin, and the vow's crouch (into it, then held).</summary>
         public const string Cleave=G+"Attack_4Combo_4_Inplace",JumpCut=G+"Jump_Attack_Combo_3_ZeroHeight",Slam=G+"Skill_H",Spin=G+"Skill_E",
             Overhead=G+"Skill_J_Inplace",Reap=G+"Attack_4Combo_1B_Inplace",Crouch=G+"Idle_To_Crouch",Crouched=G+"Crouch_Idle";
+        /// <summary>Where the Whirlwind holds the spinning sweep through the spin (a share of it, as NativeVisualMotion.WhirlHold for the old
+        /// set): 0.66 s of its 1.83, the arms out and the blade level at the waist, 1.8 m out.</summary>
+        public const float SpinHold=.36f;
         /// <summary>Hit reactions from the front, back, left and right.</summary>
         public static readonly string[] Reactions={G+"Damage_Front_Small_ver_A",G+"Damage_Back_Small_ver_A",G+"Damage_Left_Small_ver_A",G+"Damage_Right_Small_ver_A"};
         /// <summary>The stride: the shoulder carry (the pack's B versions, whose blade lies within about 15 degrees of where the game holds it; the

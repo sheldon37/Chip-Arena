@@ -67,21 +67,33 @@ namespace ChipArena.UnityConversion
             public string Knockdown, RollBack;
             /// <summary>The clips the set's technique plays beyond its own (NativeTechniques; the bake's controller carries them).</summary>
             public string[] TechClips;
+            /// <summary>A set's own clips for the greatsword techniques' crouch (into it, then held), Sunder's overhead and Reaping Sweep's sweep
+            /// (null: the old two-handed set's).</summary>
+            public string VowStart, VowHold, Overhead, Sweep;
             /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
             public string[] All;
         }
         /// <summary>A clip's length and the time of its Hit event (seconds; a clip without one: its middle).</summary>
         public interface IClips { bool Has(string clip); float Length(string clip); float Hit(string clip); }
 
-        // Greatsword (owner 2026-11-11: "Great Sword and Katana"): Grruzam's great sword set (Core NativeGreatswordMotion: its stance, shoulder
-        // carry stride, jumps, guard, dodge roll, reactions, knockdown and rolling get-up, its combo's cuts alternating as the rules sweep, its
-        // leaping slam on the sprint, its jump attack, its ground slam and spinning sweep for the kit, its guard for the vow); the pack has no
-        // dazed loop, so the stun keeps the old two-handed set's.
-        private static readonly Set Greatsword=Strides(new Set{Spec="greatsword",Idle=NativeGreatswordMotion.Idle,Jump=NativeGreatswordMotion.Jump,Flip=NativeGreatswordMotion.Flip,Fall=NativeGreatswordMotion.Fall,
-            Land=NativeGreatswordMotion.Land,Block=NativeGreatswordMotion.Guard,BlockHit=NativeGreatswordMotion.GuardHit,Stunned="2Hand-Sword-Stunned",Roll=NativeGreatswordMotion.Roll,
-            AirAttack=NativeGreatswordMotion.JumpCut,SprintAttack=NativeGreatswordMotion.Cleave,Attacks=NativeGreatswordMotion.Cuts,Reactions=NativeGreatswordMotion.Reactions,
-            TechClips=new[]{TechThrowStart,TechThrowEnd,TechVowStart,TechVowHold,MeleeOverhead,MeleeSweep},KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{NativeGreatswordMotion.Slam,NativeGreatswordMotion.Spin},KitHits=new[]{float.NaN,WhirlHold},
-            Knockdown=NativeGreatswordMotion.Knockdown,RollBack=NativeGreatswordMotion.RollBack},NativeGreatswordMotion.Runs,NativeGreatswordMotion.Walks,NativeGreatswordMotion.Sprint);
+        // Greatsword: the pack's two-handed sword set.
+        private static readonly Set Greatsword=Build(new Set{Spec="greatsword",Idle="2Hand-Sword-Idle",Jump="2Hand-Sword-Jump",Flip="2Hand-Sword-Jump-Flip",Fall="2Hand-Sword-Fall",
+            Land="2Hand-Sword-Land",Block="2Hand-Sword-Block",BlockHit="2Hand-Sword-Block-GetHit1",Stunned="2Hand-Sword-Stunned",Roll="2Hand-Sword-Roll-Forward",
+            AirAttack="2Hand-Sword-Air-Attack1",SprintAttack="2Hand-Sword-Run-Forward-Attack1",
+            Attacks=Names("2Hand-Sword-Attack","1","2","4","3","5","6"),Reactions=Names("2Hand-Sword-GetHit-","F1","B1","L1","R1"),
+            TechClips=new[]{TechThrowStart,TechThrowEnd,TechVowStart,TechVowHold},KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{"2Hand-Sword-Attack11","2Hand-Sword-Attack2"},KitHits=new[]{float.NaN,WhirlHold},Knockdown="2Hand-Sword-Knockdown1",RollBack="2Hand-Sword-Roll-Backward"},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
+        // The DEV Greatsword (Core NativeDevMotions; owner 2026-11-11): the Greatsword's rules on Grruzam's great sword set (Core
+        // NativeDevGreatswordMotion: its stance, shoulder carry stride, jumps, guard, dodge roll, reactions, knockdown and rolling get-up, its
+        // combo's cuts alternating as the rules sweep, its leaping slam on the sprint, its jump attack, its ground slam and spinning sweep for the
+        // kit, its crouch, overhead and spin for the techniques). The pack has no dazed loop, so the stun keeps the two-handed set's. Its Spec is
+        // the Greatsword's, the class it plays as.
+        private static readonly Set DevGreatsword=Strides(new Set{Spec="greatsword",Idle=NativeDevGreatswordMotion.Idle,Jump=NativeDevGreatswordMotion.Jump,Flip=NativeDevGreatswordMotion.Flip,Fall=NativeDevGreatswordMotion.Fall,
+            Land=NativeDevGreatswordMotion.Land,Block=NativeDevGreatswordMotion.Guard,BlockHit=NativeDevGreatswordMotion.GuardHit,Stunned="2Hand-Sword-Stunned",Roll=NativeDevGreatswordMotion.Roll,
+            AirAttack=NativeDevGreatswordMotion.JumpCut,SprintAttack=NativeDevGreatswordMotion.Cleave,Attacks=NativeDevGreatswordMotion.Cuts,Reactions=NativeDevGreatswordMotion.Reactions,
+            TechClips=new[]{TechThrowStart,TechThrowEnd,NativeDevGreatswordMotion.Crouch,NativeDevGreatswordMotion.Crouched,NativeDevGreatswordMotion.Overhead,NativeDevGreatswordMotion.Reap},
+            VowStart=NativeDevGreatswordMotion.Crouch,VowHold=NativeDevGreatswordMotion.Crouched,Overhead=NativeDevGreatswordMotion.Overhead,Sweep=NativeDevGreatswordMotion.Reap,
+            KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{NativeDevGreatswordMotion.Slam,NativeDevGreatswordMotion.Spin},KitHits=new[]{float.NaN,NativeDevGreatswordMotion.SpinHold},
+            Knockdown=NativeDevGreatswordMotion.Knockdown,RollBack=NativeDevGreatswordMotion.RollBack},NativeDevGreatswordMotion.Runs,NativeDevGreatswordMotion.Walks,NativeDevGreatswordMotion.Sprint);
         // Sword: the pack's armed (one weapon in the right hand) set and its one-handed sword's cuts, in the game's combo of
         // three (a forehand cut right to left, a backhand left to right, the thrust): R1, R3, R4, then R6, R2, R4 (their blade
         // tips' sweeps, measured on the body at the bake).
@@ -121,9 +133,9 @@ namespace ChipArena.UnityConversion
             foreach(var l in new[]{s.Attacks,s.Reactions,s.Locomotion,s.TechClips})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
-        /// <summary>The clips a set plays as loops though the pack marks them single (the Frank Slash Pack's stances and strides, the Grruzam
-        /// pack's fast run): its idle, its stride and its guard (the bake loops them).</summary>
-        public static string[] Loops(string spec){var s=For(spec);if(s==null||!NativeBlades.Is(spec)&&spec!="greatsword")return Array.Empty<string>();var l=new System.Collections.Generic.List<string>{s.Idle,s.Block};l.AddRange(s.Locomotion);return l.ToArray();}
+        /// <summary>The clips a set plays as loops though the pack marks them single (the Frank Slash Pack's stances and strides, the DEV classes'
+        /// Grruzam fast run): its idle, its stride and its guard (the bake loops them).</summary>
+        public static string[] Loops(string spec){var s=For(spec);if(s==null||!NativeBlades.Is(spec)&&!NativeDevMotions.Is(spec))return Array.Empty<string>();var l=new System.Collections.Generic.List<string>{s.Idle,s.Block};l.AddRange(s.Locomotion);return l.ToArray();}
         // Daggers: the armed set's dual block and attacks and the pack's dagger cuts, alternating hands in the game's four
         // (a forehand right to left, then three left to right, the last the finisher): R1, L3, R2, L2 (their blade tips'
         // sweeps on the body); the dual running cut opens both blades as the game's twin sprint sweeps do.
@@ -231,8 +243,9 @@ namespace ChipArena.UnityConversion
             foreach(var l in new[]{s.KitClips,s.KitRecast,s.KitThen,s.AbilityStarts,s.AbilityEnds,s.TechClips})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
-        /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
-        public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
+        /// <summary>The set a weapon spec (or a DEV animation class, NativeDevMotions) plays on the model, or null (the game's own pose: not moved
+        /// over yet).</summary>
+        public static Set For(string spec)=>spec==NativeDevMotions.Greatsword?DevGreatsword:spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
             spec=="rifle"||spec=="machinegun"?Rifle:spec==NativeBombs.Spec?Bomb:spec==NativeTopDog.Spec?TopDog:spec==NativeGlaive.Spec?Glaive:spec==NativeKatana.Spec?Katana:spec==NativeFangs.Spec?Fangs:spec=="pistol"?Pistol:spec=="bow"?Bow:
             spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:spec=="emperor"||spec=="ansatsuken"?Unarmed:null;
 
@@ -247,9 +260,8 @@ namespace ChipArena.UnityConversion
         // Now the upper body is the set's level sweep held at WhirlHold of its clip (the arms long and low before the belly, the
         // blade level out past the knees) over the stance's legs, sat into a crouch by the spin's Low; while the blade spins each
         // foot marks time once per turn; the body turns so the drawn blade rides the game's own tip (MeleeKitMotion.Spin).
-        /// <summary>Where the Whirlwind's sweep is held through the spin (a share of its clip: the level, low blade). The great sword pack's
-        /// spinning sweep (2026-11-11) at 0.66 s of its 1.83: the arms out, the blade level at the waist, 1.8 m out.</summary>
-        public const float WhirlHold=.36f;
+        /// <summary>Where the Whirlwind's sweep is held through the spin (a share of its clip: the level, low blade).</summary>
+        public const float WhirlHold=.6f;
         /// <summary>A step's share of a turn (each foot is down the rest; the other foot steps half a turn later) and the speed
         /// share (of the full spin) the steps start at and are full by.</summary>
         public const float StepShare=.45f, StepFrom=.25f, StepFull=.75f;
@@ -558,7 +570,7 @@ namespace ChipArena.UnityConversion
         }
 
         // The techniques' clips (docs/WEAPON-TECHNIQUES.md): throws and gestures out of the pack's casts, pickups and activations.
-        private const string TechDashBack="Armed-Dash-Backward",TechSurf="Armed-Crouch-Idle",TechVowStart=NativeGreatswordMotion.Crouch,TechVowHold=NativeGreatswordMotion.Crouched,TechSink="2Hand-Staff-Crouch-Idle";
+        private const string TechDashBack="Armed-Dash-Backward",TechSurf="Armed-Crouch-Idle",TechVowStart="2Hand-Sword-Activate",TechVowHold="2Hand-Sword-Crouch-Idle",TechSink="2Hand-Staff-Crouch-Idle";
         private const string TechCounter="Sword-Attack-R4",TechFlickStart="Armed-Cast-L-Attack2_start",TechFlickEnd="Armed-Cast-L-Attack2_end",TechThrowStart="Armed-Cast-R-Attack2_start",TechThrowEnd="Armed-Cast-R-Attack2_end",TechPlant="Armed-Shield-Activate",TechCoin="Armed-Activate-Left",
             TechDrop="2Hand-Shooting-Pickup",TechShootLine="2Hand-Shooting-Activate",TechBuffStart="2Hand-Staff-Cast-L-Buff1_start"+Mirror,TechBuffEnd="2Hand-Staff-Cast-L-Buff1_end"+Mirror,TechTouch="2Hand-Staff-Activate"+Mirror;
         /// <summary>The pilot's technique on the pack's clips, from its record: each clip fitted to its moment. False: none, or the clip is not in
@@ -725,8 +737,11 @@ namespace ChipArena.UnityConversion
                     if(k.Recast(time))return Part(set.Flip,k.RecastAt,Math.Max(k.RecastAt+.1f,k.Until),out pick);
                     if(time>=k.At&&time<k.Until&&clips.Has(TechSurf)){pick=new Pick{Clip=TechSurf,Time=time-k.At,Fade=FadeIn};return true;}return false;
                 case NativeTechniques.IronVow:
-                    if(time<k.Release)return Part(TechVowStart,k.At,k.Release,out pick);
-                    if(time<k.End&&clips.Has(TechVowHold)){pick=new Pick{Clip=TechVowHold,Time=time-k.Release,Fade=FadeIn};return true;}return false;
+                {
+                    string vowHold=set.VowHold??TechVowHold;
+                    if(time<k.Release)return Part(set.VowStart??TechVowStart,k.At,k.Release,out pick);
+                    if(time<k.End&&clips.Has(vowHold)){pick=new Pick{Clip=vowHold,Time=time-k.Release,Fade=FadeIn};return true;}return false;
+                }
                 case NativeTechniques.BountyRound:return Part(set.Fire!=null?set.Fire[0]:null,k.At,back,out pick);
                 case NativeTechniques.RecoilBurst:
                     if(time>=k.Release&&time<k.Until&&set.Fall!=null&&clips.Has(set.Fall)){pick=new Pick{Clip=set.Fall,Time=time-k.Release,Fade=FadeIn};return true;}
