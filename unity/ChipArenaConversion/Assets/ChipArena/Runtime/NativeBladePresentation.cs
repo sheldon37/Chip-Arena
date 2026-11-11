@@ -80,6 +80,19 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ConversionGame
     {
+        private float bladeStepTurned=-100;private int bladeStepGeneration=-1;
+        /// <summary>The Fangs' shadow step lands behind its victim, facing it (Runtime NativeFangsAuthority.FangsStep): the view turns with
+        /// the pilot once, at the landing (the record's arrival), or the victim would be behind the camera. The look only: no rule reads it.</summary>
+        private void BladeStepView(NativePilot p)
+        {
+            var k=p?.Blade;if(k?.Hits==null||p.Seat.spec!=NativeFangs.Spec)return;
+            if(bladeStepGeneration!=arena.Generation){bladeStepGeneration=arena.Generation;bladeStepTurned=-100;}
+            foreach(var h in k.Hits)
+            {
+                if(h==null||h.Kind!=NativeFangs.HitVanish||h.Amount!=1||h.Victim!=0||h.At<=bladeStepTurned||h.At<k.CastAt-.01f||arena.Time-h.At>.5f)continue;
+                bladeStepTurned=h.At;if(h.Dir.x*h.Dir.x+h.Dir.z*h.Dir.z>1e-4f)yaw=Mathf.Atan2(h.Dir.x,h.Dir.z)*Mathf.Rad2Deg;
+            }
+        }
         /// <summary>The blade classes' cards: the Katana's Q (the iai) and E (the storm); the Fangs' Q, E and 1-3.</summary>
         private void BladeCards(NativePilot p)
         {
