@@ -46,6 +46,7 @@ internal static class StageArtLayout
         if(NativePolarLooks.Active(map.id))PolarArtChecks.Layout(w,map,look);
         if(NativeBrickfallScenery.Active(map.id))BrickfallArtLayout.Write(w,map,look,V);
         if(NativeWardZeroLooks.Active(map))WardZeroArtLayout.Write(w,root,map,V,Q);
+        if(NativeFactoryHazards.Active(map.id))FactoryArtLayout.Write(w,map,look,V,Q);
         w.WriteEndObject();w.Flush();
         Console.WriteLine("stage layout "+map.id+": "+map.blocks.Length+" blocks -> "+path);
     }

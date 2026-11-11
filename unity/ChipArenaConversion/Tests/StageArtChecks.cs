@@ -14,7 +14,7 @@ internal static class StageArtChecks
     {
         int count=0;void Check(bool ok,string why){count++;if(!ok)throw new Exception("Stage art: "+why);}
         // ---- the registry and the plan ----
-        Check(NativeStageArt.BankOf("sanctum")=="ChipArenaStageSanctum"&&NativeStageArt.BankOf("factory")==null&&NativeStageArt.BankOf(null)==null,"the Sanctum's bank is named, no other map has art yet");
+        Check(NativeStageArt.BankOf("sanctum")=="ChipArenaStageSanctum"&&NativeStageArt.BankOf("training")==null&&NativeStageArt.BankOf(null)==null,"the Sanctum's bank is named, a map without art has none");
         Check(NativeStageArt.TierAt(3,false)==0&&NativeStageArt.TierAt(20,false)==1&&NativeStageArt.TierAt(60,false)==2&&NativeStageArt.TierAt(3,true)==2,"the tiers by distance, and the Low tier on the low graphics tier");
         Check(NativeStageArt.Split("static/30002/1",out var k1,out var i1,out var t1)&&k1=="static"&&i1=="30002"&&t1==1,"a static chunk's name");
         Check(NativeStageArt.Split("block/sanctum-pew-n-w-0/2",out var k2,out var i2,out var t2)&&k2=="block"&&i2=="sanctum-pew-n-w-0"&&t2==2,"a block model's name");
