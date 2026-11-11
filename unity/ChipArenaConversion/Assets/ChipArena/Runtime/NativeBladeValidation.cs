@@ -83,10 +83,10 @@ namespace ChipArena.UnityConversion
                 // The step: behind the foe nearest the aim, and the stab.
                 Setup(NativeFangs.Spec);b.Body.position=o+new Vector3(0,0,6);b.Yaw=180;Physics.SyncTransforms();hp=b.Hp;Press(q:true);Step(NativeFangs.StepVanish+.05f);
                 Check(a.Body.position.z>b.Body.position.z+.6f&&b.Hp<hp,"Q steps behind the foe and stabs (at "+a.Body.position.ToString("F2")+", foe at "+b.Body.position.ToString("F2")+")");
-                // The veil: unseen, the next cut twice as hard, then seen again.
+                // The veil: unseen, the next cut twice as hard (once its 0.4 s cast is over), then seen again.
                 Setup(NativeFangs.Spec);Press(e:true);Step(NativeFangs.VeilCast+.05f);Check(BladeUnseen(a),"E veils");
                 {var bot=Pilots.Where(q=>q!=a&&q.Hp>0&&Enemy(b,q)&&!BladeUnseen(q)).ToList();Check(!bot.Contains(a),"bots pass over the veiled");}
-                hp=b.Hp;a.BladeAttackHeld=false;Press(shoot:true);Step(NativeFangs.CutLength[0]+Frame);float veiled=hp-b.Hp;Check(!BladeUnseen(a)&&veiled>NativeFangs.CutDamage[0]*1.5f,"the veil's strike is twice as hard and ends it");
+                Step(.2f);hp=b.Hp;a.BladeAttackHeld=false;Press(shoot:true);Step(NativeFangs.CutLength[0]+Frame);float veiled=hp-b.Hp;Check(!BladeUnseen(a)&&veiled>NativeFangs.CutDamage[0]*1.5f,"the veil's strike is twice as hard and ends it");
                 // The fan: knives into the foe.
                 Setup(NativeFangs.Spec);b.Body.position=o+new Vector3(0,0,8);Physics.SyncTransforms();hp=b.Hp;Press(key:1);Step(NativeFangs.FanRelease+.5f);Check(b.Hp<hp&&a.BladeVenom.ContainsKey(b.Seat.id),"1 fans knives into the foe");
                 // The takedown from behind: both held, lethal at its blow.
