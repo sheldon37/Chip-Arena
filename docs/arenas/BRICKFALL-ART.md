@@ -144,12 +144,18 @@ CoreTests suite, the Unity compile, the Editor's build checks (`wtvalidate.sh`: 
 Seen in the shared Editor (a match, one idle bot, god mode, the game's camera at fixed eyes): fourteen views before and after
 (the yard from two corners, the hotel, the lanes, Ashby House, a skybridge, a shop, a chimney, the market, the truck and dock,
 inside the hotel, its roof, the frontage from the roof), the same on the Low graphics tier, a masonry panel shot out (its
-fragments are the dressing's, the room shows behind).
+fragments are the dressing's, the room shows behind), and a collapse on the art: the hotel's north-west pier blasted with the
+fire class until the wing pancaked (the telegraph's footprint, the slabs and panels falling as their models, the hotel's heap
+and, by the cascade, the skybridge's heap in their places, the core and its seam wall standing).
 
 Not done / not seen:
 - **The backdrop is still the box-built city** (Core NativeBrickfallScenery: five baked meshes, the train, the crane jibs). It
   stands 35 m and more off behind the modelled frontage and its roofs; modelling it did not fit this pass's budget (the bank
   has about 1 MB left of its 20) or time. The menu's backdrop is that scenery too.
+- A skybridge's heap reads as a mound of green plate more than as wreckage; the heaps' brick is the wall's bond stretched over
+  the mound (the strewn bricks, shards and bars carry the detail).
+- The peel, the tear-hinge and the topple were not triggered in a capture (the pancake and its cascade were); they pose the
+  same models by the same transforms.
 - A damaged panel shows its damage as soot only (the drawer's one model a block); the dressed boxes chipped their corners.
 - The frontage's tarps and the look's two barrel fires' places have no model (a barrel would stand where there is no collider).
 - Native Windows build, multiplayer guests and the killcam on the art: not run.
