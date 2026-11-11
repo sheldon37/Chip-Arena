@@ -201,7 +201,8 @@ def mound(g, x0, x1, z0, z1, y0, h, f, T, seed=0, steep=.22, bulge=.1, f_side=No
     n = noise(P, .9, seed + 11, 2).reshape(nx, nz)
     swell = (1 - U * U) * (1 - V * V)
     # (its hem a little under its floor: never in the floor's own plane)
-    Y = y0 - .03 + prof * (h + .03 + bulge * swell + rough * 2 * n * (h > .25))
+    hem = .03 + .004 * (seed % 17)          # (each heap's hem at its own depth: two heaps' hems never share a plane)
+    Y = y0 - hem + prof * (h + hem + bulge * swell + rough * 2 * n * (h > .25))
     P[:, :, 1] = Y
     fs = f if f_side is None else f_side
     surf(g, P, f, facing=(0, 1, 0), pick=(lambda nn, cc: f if nn[1] > .55 else fs) if f_side is not None else None)
@@ -423,3 +424,19 @@ def heaved(g, x0, x1, y0, y1, z0, z1, T, seed, f_ice, f_deep, f_snow):
             g.face(row, f_ice, normal=(0, 0, nz))
     plate(-1, (x1 - x0) * .46, h, 1)
     plate(1, (x1 - x0) * .42, h * (.72 + .12 * H(seed, 9)), 2)
+
+
+def skirt(g, x0, x1, z0, z1, T, seed, h=.17, w=.34, sides='nsew', y=0.0):
+    """Snow the wind has banked against a footprint: a low heap along each named side (n +z, s -z, e +x, w -x), on the floor."""
+    if not T.detail:
+        return
+    for k, sd in enumerate(sides):
+        hh = h * (.6 + .6 * H(seed, k, 9))
+        if sd == 'n':
+            mound(g, x0 - w * .5, x1 + w * .5, z1 - .06, z1 + w, y, hh, F['snow'], T, seed=seed + k, steep=.16, bulge=.02, cell=.45, rough=.03)
+        elif sd == 's':
+            mound(g, x0 - w * .5, x1 + w * .5, z0 - w, z0 + .06, y, hh, F['snow'], T, seed=seed + k, steep=.16, bulge=.02, cell=.45, rough=.03)
+        elif sd == 'e':
+            mound(g, x1 - .06, x1 + w, z0 - w * .5, z1 + w * .5, y, hh, F['snow'], T, seed=seed + k, steep=.16, bulge=.02, cell=.45, rough=.03)
+        else:
+            mound(g, x0 - w, x0 + .06, z0 - w * .5, z1 + w * .5, y, hh, F['snow'], T, seed=seed + k, steep=.16, bulge=.02, cell=.45, rough=.03)

@@ -506,6 +506,8 @@ def building(g, L, T, prefix, kind):
     x0, x1, y0, y1, z0, z1 = bx(rb)
     px = mid[0] + (1 if mid[0] < 0 else -1) * ((x1 - x0) / 2 - 1.2)
     roof(g, x0 - .1, x1 + .1, z0 - .1, z1 + .1, y0 + .0, .2, T, seed, pipe_at=(px, mid[1] + (z1 - z0) / 2 - 1.4))
+    # snow banked against its windward walls (west and north; never across a door)
+    pk.skirt(g, min(bx(b)[0] for b in walls), max(bx(b)[1] for b in walls), min(bx(b)[4] for b in walls), max(bx(b)[5] for b in walls), T, seed, sides='nw' if kind != 'lab' else 'new', h=.22, w=.4)
     # the floor inside: boards (a cabin) or a slab, a hand over the ice
     wx0, wx1 = min(bx(b)[0] for b in walls), max(bx(b)[1] for b in walls)
     wz0, wz1 = min(bx(b)[4] for b in walls), max(bx(b)[5] for b in walls)
@@ -585,12 +587,16 @@ def west(L, T):
             drift(g, B[i[:-6] + '-apron'], b, T, seed)
         elif i.startswith('polar-tank-'):
             tank(g, b, T, seed)
+            pk.skirt(g, *[bx(b)[k] for k in (0, 1, 4, 5)], T, seed, sides='nw')
         elif i.startswith('polar-snowcat-') and not i.endswith('-blade'):
             snowcat(g, b, B[i + '-blade'], T)
+            pk.skirt(g, *[bx(b)[k] for k in (0, 1, 4, 5)], T, seed, sides='sw', h=.2)
         elif i.startswith('polar-hut-'):
             hut(g, b, T, seed)
+            pk.skirt(g, *[bx(b)[k] for k in (0, 1, 4, 5)], T, seed, sides='sw')
         elif i.startswith('polar-stack-'):
             stack(g, b, T, seed)
+            pk.skirt(g, *[bx(b)[k] for k in (0, 1, 4, 5)], T, seed, sides='nsew')
         elif i.startswith('polar-mast-'):
             mast(g, b, T, seed)
         elif i.startswith('polar-sled-'):
@@ -646,6 +652,7 @@ def main():
     ap.add_argument('--no-ao', action='store_true')
     ap.add_argument('--static-only', action='store_true')
     ap.add_argument('--stats', action='store_true')
+    ap.add_argument('--own-mid', action='store_true', help='build a Mid tier of its own for the static scene (else the Mid props share the Fine meshes)')
     args = ap.parse_args(argv)
     L = sk.load_layout(args.layout)
     for pre in ('polar-cabin-a-', 'polar-lab-w-', 'polar-shed-w-'):
@@ -656,9 +663,18 @@ def main():
     sb = sk.StageBank()
     chunks = sk.Chunks(12.0, (-36.0, -36.0), (-.9, 9.0))
     t0 = time.time()
+    fine = {}
+    ident = [1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 1.0, 0]
     for ti in [int(x) for x in args.tiers.split(',')]:
         T = sk.Tier(ti)
         t = time.time()
+        if ti == 1 and fine and not args.own_mid and not (args.preview and args.preview_tier == 1):
+            # the Mid props share the Fine meshes (nothing is stored twice; the Fine tier draws out to the Mid reach)
+            for cid, mi in fine.items():
+                sb.share('static/%d/1' % cid, 'static', mi)
+            if not args.static_only:
+                props.bank_props(sb, L, T, args.no_ao)
+            continue
         g = static_scene(L, T)
         print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=sk.NEAR_TIER[ti], lift=sk.LIFT_TIER[ti]))
         print('tier %s: static %d faces, %.1f s' % (T.name, g.faces, time.time() - t))
@@ -669,7 +685,17 @@ def main():
         bk = sk.Bake(g, ao, floors=FLOORS, seed=3)
         ids = chunks.ids(g)
         for cid in np.unique(ids):
-            sb.add('static/%d/%d' % (cid, ti), 'static', sk.to_mesh('static/%d/%d' % (cid, ti), g, bk, ids == cid))
+            om = sk.to_mesh('static/%d/%d' % (cid, ti), g, bk, ids == cid)
+            if om is None:
+                continue
+            mi = sb.mesh(om)
+            sb.bank.prop('static/%d/%d' % (cid, ti), 'static', [(mi, ident)])
+            st = sb.stats.setdefault(('static', str(ti)), [0, 0, 0])
+            st[0] += 1
+            st[1] += sum(len(x) for x in om.submeshes) // 3
+            st[2] += len(om.positions)
+            if ti == 0:
+                fine[int(cid)] = mi
         if args.stats:
             P, N, S, Fi = g.arrays()
             names = {v: k for k, v in F.items()}
