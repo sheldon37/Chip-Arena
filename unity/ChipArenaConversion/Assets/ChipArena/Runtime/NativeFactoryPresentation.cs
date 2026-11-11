@@ -30,6 +30,14 @@ namespace ChipArena.UnityConversion
         private Mesh block;private Material lit;private MaterialPropertyBlock props;private bool failed;
         private Batch[] kit=Array.Empty<Batch>();private readonly Batch[] rig={new Batch{Shadow=true},new Batch{Shadow=true},new Batch{Shadow=true},new Batch(),new Batch()};
         private ContentMap kitMap;private static FactoryHazard[] hazards;private static bool hazardsRead;private static string hazardsMap;private NativeFactoryKit.Looks looks;private NativeFactoryRig rigBuilder;
+        // The stage art (docs/arenas/STAGE-ART.md): with the stage bank ChipArenaStageFactory, NativeStageArtDraw draws the modelled
+        // halls, machines and rigs (posed by Core NativeFactoryArt from the same hazard states) in place of the kit's boxes and the
+        // rig's (all but the skylights' glazing, the telegraph lamps and a blade's blood: kitKept, NativeFactoryRig.Kept); without
+        // the bank every box draws as before.
+        private NativeStageArtDraw art;private readonly NativeStageArtPose artPose=new NativeStageArtPose();private Batch[] kitKept=Array.Empty<Batch>();
+        /// <summary>The stage art drew last frame (the kit's boxes and the rig's replaced boxes did not).</summary>
+        public bool ArtDrawn{get;private set;}
+        private void PrepareArt(ContentMap map){if(ReferenceEquals(map,artMap))return;artMap=map;if(art==null)art=gameObject.AddComponent<NativeStageArtDraw>();art.Prepare(map,NativeFactoryArt.Slots,NativeFactoryArt.Casts);}private ContentMap artMap;
         private Mesh[] sectors;private Mesh trolley,plate;private Material sceneryLit;private NativeFxDraw fxDraw;private readonly NativeFactoryFx fx=new NativeFactoryFx();private readonly NativeFxLight fxLight=new NativeFxLight();
         private static readonly int SizeId=Shader.PropertyToID("_BlockSize"),RestId=Shader.PropertyToID("_BlockRest"),ColorId=Shader.PropertyToID("_BlockColor"),LookId=Shader.PropertyToID("_BlockLook");
         /// <summary>The last frame's NativeBlockLit draws (kit and rig, main pass) and instances, the effect quads.</summary>
@@ -63,17 +71,19 @@ namespace ChipArena.UnityConversion
         /// <summary>One arena frame. now: the drawn arena's field clock; quality: effects quality; low: graphics=performance.</summary>
         public void Render(NativeArena arena,float now,Camera camera,float quality,bool low,bool instancing,NativeDustCoat coat)
         {
-            Draws=Instances=0;if(!Ensure())return;var map=arena.Map;var match=arena.Match;var hz=Hazards(arena.MapId);
+            Draws=Instances=0;if(!Ensure())return;var map=arena.Map;var match=arena.Match;var hz=Hazards(arena.MapId);PrepareArt(map);
             if(!ReferenceEquals(map,kitMap))
             {
                 kitMap=map;try{looks=NativeFactoryKit.Resolve(NativeLighting.Look(map).kitLooks);rigBuilder=new NativeFactoryRig(looks);Pack(NativeFactoryKit.Build(map.blocks,hz,looks));}
-                catch(Exception e){Debug.LogWarning("Factory dressing disabled: "+e.Message);kit=Array.Empty<Batch>();rigBuilder=null;}
+                catch(Exception e){Debug.LogWarning("Factory dressing disabled: "+e.Message);kit=kitKept=Array.Empty<Batch>();rigBuilder=null;}
             }
             int round=NativeStructureFx.RoundIndex(match.Set,match.Round);double clock=NativeFactoryHazards.Clock(match.Phase,match.FightAt,now);
-            DrawScenery(now,true);foreach(var b in kit)Draw(b,instancing);
+            DrawScenery(now,true);
+            ArtDrawn=false;if(art!=null&&art.Ready){NativeFactoryArt.Pose(hz,map.blocks,round,clock,now,artPose);ArtDrawn=art.Render(arena,camera,low,artPose);}
+            foreach(var b in ArtDrawn?kitKept:kit)Draw(b,instancing);
             if(hz!=null&&rigBuilder!=null)
             {
-                rigBuilder.Build(hz,round,clock,Blood);Fill(rigBuilder.Parts);foreach(var b in rig)Draw(b,instancing);
+                rigBuilder.Build(hz,round,clock,Blood);Fill(rigBuilder.Parts,ArtDrawn?rigBuilder.Kept:null);foreach(var b in rig)Draw(b,instancing);
                 // a crane impact this cycle dusts the round's coat once (match time = hazard clock + FightAt + the arm delay)
                 foreach(var h in hz)if(h.kind==NativeFactoryHazards.Crane){var st=NativeFactoryHazards.State(h,round,clock);if(!double.IsNaN(st.ImpactAt)&&clock>=st.ImpactAt&&st.Zone>=0){var z=h.zones[st.Zone];coat?.Land(st.ImpactAt+match.FightAt+NativeFactoryHazards.ArmDelay,z.center.x,z.center.z,3,.6f);}}
             }
@@ -123,12 +133,18 @@ namespace ChipArena.UnityConversion
             int nc=(casters+NativeBlockLooks.Chunk-1)/NativeBlockLooks.Chunk,nf=(flat+NativeBlockLooks.Chunk-1)/NativeBlockLooks.Chunk;kit=new Batch[nc+nf];
             for(int i=0;i<kit.Length;i++)kit[i]=new Batch{Shadow=i<nc};int ci=0,fi=0;
             for(int i=0;i<parts.Count;i++){ref var p=ref parts.Items[i];var b=p.Shadow?kit[ci/NativeBlockLooks.Chunk]:kit[nc+fi/NativeBlockLooks.Chunk];if(p.Shadow)ci++;else fi++;Put(b,b.Count++,ref p);}
+            // under the stage art only the skylight lanterns' glazing stays (lit panes that cast no sun shadow: the bank models their frames)
+            int g=NativeFactoryKit.Glass,panes=0;for(int i=0;i<parts.Count;i++)if(Pane(ref parts.Items[i],g))panes++;
+            kitKept=new Batch[(panes+NativeBlockLooks.Chunk-1)/NativeBlockLooks.Chunk];for(int i=0;i<kitKept.Length;i++)kitKept[i]=new Batch();panes=0;
+            for(int i=0;i<parts.Count;i++){ref var p=ref parts.Items[i];if(!Pane(ref p,g))continue;var b=kitKept[panes/NativeBlockLooks.Chunk];panes++;Put(b,b.Count++,ref p);}
         }
+        private bool Pane(ref FactoryPart p,int kind)=>looks!=null&&!p.Shadow&&p.Look==looks.Look[kind]&&p.Color==looks.Color[kind]&&p.Flags==looks.Flags[kind];
         // The frame's rig: casters into the first three batches, shadowless parts into the last two (Capacity 1400 fits).
-        private void Fill(NativeFactoryKit.Writer parts)
+        // kept: under the stage art, only the rig's kept boxes (the telegraph lamps, a blade's blood) draw.
+        private void Fill(NativeFactoryKit.Writer parts,bool[] kept)
         {
             foreach(var b in rig)b.Count=0;
-            for(int i=0;i<parts.Count;i++){ref var p=ref parts.Items[i];Batch b=null;if(p.Shadow){for(int k=0;k<3;k++)if(rig[k].Count<NativeBlockLooks.Chunk){b=rig[k];break;}}else{for(int k=3;k<5;k++)if(rig[k].Count<NativeBlockLooks.Chunk){b=rig[k];break;}}if(b==null)continue;Put(b,b.Count++,ref p);}
+            for(int i=0;i<parts.Count;i++){if(kept!=null&&!kept[i])continue;ref var p=ref parts.Items[i];Batch b=null;if(p.Shadow){for(int k=0;k<3;k++)if(rig[k].Count<NativeBlockLooks.Chunk){b=rig[k];break;}}else{for(int k=3;k<5;k++)if(rig[k].Count<NativeBlockLooks.Chunk){b=rig[k];break;}}if(b==null)continue;Put(b,b.Count++,ref p);}
         }
         private static void Put(Batch b,int i,ref FactoryPart p)
         {

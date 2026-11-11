@@ -112,6 +112,9 @@ def open_tops(m):
 # stand on anything they can reach.
 EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':()}
 OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-')}
+# The Factory (art pass 2026-11-11, the same rule): the shell's caps keep pilots inside the map; the crane's end trucks ride the runway girders' tops.
+# The hall roofs, the pulpit roofs and the ladle are open: a pilot may stand on whatever they reach.
+EDGES['factory']=('factory-top-wall',);OVERHANG['factory']=('factory-top-runway',)
 def open_stage(m):
     sides=column_sides(m);keep=EDGES[m['id']]+OVERHANG.get(m['id'],());kept=[];bots=0
     for p in m['pilotBlocks']:
@@ -122,9 +125,11 @@ path=ROOT/'unity/ChipArenaConversion/Assets/Conversion/Resources/UnityMaps.json'
 content=json.loads(path.read_text())
 for name,fn,song in [('factory','unity_json','factory-anvil-loop'),('cybercity','draft','cybercity-neon-riot')]+[(name,'unity_json','factory-anvil-loop' if name in ('harbor','rig','training') else 'cybercity-neon-riot') for name in ('breakwater','harbor','skyframe','rig','polar','training')]+[('club','unity_json','cybercity-neon-riot')]+[('emporium','unity_json','cybercity-neon-riot')]+[('causeway','unity_json','skyframe-rising-motif')]+[('sanctum','unity_json','moonlit-wilderness')]:
     m=draft(name,fn);m.pop('killVolumes',None);m['music']=song;m['rotation']=name!='training'
+    if name=='factory':navigation(m);kept_nav=m['nav']   # the Factory's nav stays as it was (no nodes on the opened tops: bots have no way up to them)
     if name in EDGES:open_stage(m)
     elif name not in ('factory','cybercity'):open_tops(m)
     navigation(m)
+    if name=='factory':m['nav']=kept_nav
     content['maps']=[old for old in content['maps'] if old['id']!=name]+[m]
 # LF on every platform: the lock pins the exact bytes.
 path.write_bytes((json.dumps(content,separators=(',',':'))+'\n').encode())

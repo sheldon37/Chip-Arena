@@ -54,12 +54,12 @@ namespace ChipArena.UnityConversion
         /// first frame (ArenaPresentation.PrewarmStage); nothing is drawn.</summary>
         public bool Prepare(NativeArena arena)
         {
-            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null)return false;
+            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null)return false;PrepareArt(map);
             if(!ReferenceEquals(map,kitMap))
             {
                 var hz=Hazards(arena.MapId);kitMap=map;
                 try{looks=NativeFactoryKit.Resolve(NativeLighting.Look(map).kitLooks);rigBuilder=new NativeFactoryRig(looks);Pack(NativeFactoryKit.Build(map.blocks,hz,looks));}
-                catch(Exception e){Debug.LogWarning("Factory dressing disabled: "+e.Message);kit=Array.Empty<Batch>();rigBuilder=null;}
+                catch(Exception e){Debug.LogWarning("Factory dressing disabled: "+e.Message);kit=kitKept=Array.Empty<Batch>();rigBuilder=null;}
             }
             return true;
         }
