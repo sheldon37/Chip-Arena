@@ -113,9 +113,28 @@ def floor_slab(g, T, b, top, soffit=True, edge=None):
 def steps(g, T, blocks, f=None):
     """Stair treads (each its own block): concrete with a worn nosing."""
     f = F['concrete'] if f is None else f
-    for b in blocks:
+    if not blocks:
+        return
+    # the treads of one flight overlap a little along their run: each is cut back to meet its neighbours, so no two faces of the
+    # flight lie in one plane over each other
+    ax = 0 if blocks[0]['size'][0] < blocks[0]['size'][2] else 2
+    order = sorted(blocks, key=lambda b: b['pos'][ax])
+    lo = [b['pos'][ax] - b['size'][ax] / 2 for b in order]
+    hi = [b['pos'][ax] + b['size'][ax] / 2 for b in order]
+    for k in range(len(order) - 1):
+        if hi[k] > lo[k + 1]:
+            hi[k] = lo[k + 1] = (hi[k] + lo[k + 1]) / 2
+    for k, b in enumerate(order):
         x0, x1, y0, y1, z0, z1 = bb(b)
-        sk.box(g, x0, x1, y0, y1, z0, z1, f, T if T.i == 0 else None, .014 if T.i == 0 else 0, cell=0, skip=('-y',) if y0 < .05 else ())
+        if ax == 0:
+            x0, x1 = lo[k], hi[k]
+        else:
+            z0, z1 = lo[k], hi[k]
+        # the faces a neighbour's body hides are left out
+        up = order[k + 1]['pos'][1] > b['pos'][1] if k + 1 < len(order) else (order[k - 1]['pos'][1] < b['pos'][1] if k else True)
+        t = Geo()
+        sk.box(t, x0, x1, y0, y1, z0, z1, f, T if T.i == 0 else None, .012 if T.i == 0 else 0, cell=0, skip=('-y',) if y0 < .05 else ())
+        g.extend(t)
 
 
 def ramp(g, T, slices, f, kerb=None):
@@ -170,7 +189,7 @@ def tenement(g, T, H, v, done):
         elif i.startswith('ashby-stair-landing'):
             floor_slab(g, T, b, F['concrete'], soffit=False)
         elif i.startswith('ashby-stair'):
-            steps(g, T, [b])
+            pass
         elif i.startswith('ashby-rear-pier'):
             t = Geo()
             props.pier(t, T, b['size'][0] / 2, b['size'][1] / 2, b['size'][2] / 2, fw, False)
@@ -178,6 +197,10 @@ def tenement(g, T, H, v, done):
         else:
             continue
         done.add(i)
+    for k in range(4):
+        fl = [b for i, b in H.items() if i.startswith('ashby-stair-%d-' % k)]
+        steps(g, T, fl)
+        done.update(b['id'] for b in fl)
     if T.detail:
         # the house's name over the south wall's long run
         b = H.get('ashby-ashby-south2')
@@ -191,7 +214,7 @@ def shop(g, T, H, v, done):
     parapet with a coping; the long ramp up its lane side."""
     b = H['shop-kessels']
     x0, x1, y0, y1, z0, z1 = bb(b)
-    fw = F['stone']
+    fw = F['faience']
     name = ("KESSEL'S", "DUNMORE'S")[v]
     r = bk.rng(41 + v)
     for (ax, az, bx, bz, kind) in ((x1, z0, x0, z0, 'front'), (x0, z0, x0, z1, 'side'), (x1, z1, x1, z0, 'side'), (x0, z1, x1, z1, 'back')):
@@ -513,7 +536,7 @@ def hotel_core(g, T, S):
         elif i.startswith('hotel-stairhouse'):
             wall(g, T, b, 0.0, 4.0, F['brick-buff'], coping=None)
         elif i.startswith('hotel-stair-'):
-            steps(g, T, [b])
+            pass
         elif i.startswith('hotel-core-hotel-seam'):
             # a thick ground-floor wall between the wings: buff brick, a blind arch each side, a stone cap
             for (ax, az, bx, bz) in ((x1, z0, x0, z0), (x0, z1, x1, z1)):
@@ -544,4 +567,6 @@ def hotel_core(g, T, S):
             g.face(((x0, y1, z0), (x1, y1, z0), (x1, y1, z1), (x0, y1, z1)), conc, (0, 1, 0))
             if y0 > .1:
                 g.face(((x0, y0, z0), (x1, y0, z0), (x1, y0, z1), (x0, y0, z1)), conc, (0, -1, 0))
+    for k in range(8):
+        steps(g, T, [b for i, b in S.hotel.items() if i.startswith('hotel-stair-%d-' % k)])
     art.tally(g, 'hotel core', m)

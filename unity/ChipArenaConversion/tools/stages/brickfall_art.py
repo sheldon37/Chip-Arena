@@ -199,7 +199,7 @@ def building(g, T, fr, B, r):
     bk.cornice(g, T, fr, u0 + .02, u1 - .02, cy, trim, B.get('cscale', 1.0))
     bk.mould(g, T, fr, u0, u1, top - .16, bk.COPING, trim)
     # quoins at its ends and a downpipe
-    if T.detail:
+    if T.i == 0:
         for (a, b) in ((u0, u0 + .42), (u1 - .42, u1)):
             y = .52
             j = 0
@@ -207,7 +207,7 @@ def building(g, T, fr, B, r):
                 fbox(g, T, fr, a + (0 if (j % 2 == 0) == (a == u0) else .1 if a == u0 else 0), b - (0 if (j % 2 == 0) == (a == u0) else 0 if a == u0 else .1), y, y + .42, 0, .04, trim, .012, skip=('-z',))
                 y += .48
                 j += 1
-    bk.pipe(g, T, fr, u1 - .7, 0.2, cy, f=F[B.get('pipe', 'iron')])
+    bk.pipe(g, T, fr, B.get('pipe_u', u1 - .7), 0.2, cy, f=F[B.get('pipe', 'iron')])
 
 
 def alcove(g, T, fr, a, b, f, door, trim):
@@ -231,14 +231,14 @@ def alcove(g, T, fr, a, b, f, door, trim):
 
 NORTH = [
     dict(u0=0.0, u1=18.5, fin='brick', gh=3.8, fh=3.2, floors=3, bay=2.3, win=(1.05, 1.7, .2, 'arch'), alc=(10.0, 12.0), name='COAL & COKE', fascia='green-paint', trim='stone', roof='slate', door='timber-dark'),
-    dict(u0=21.5, u1=37.0, fin='brick-plum', gh=3.8, fh=4.75, floors=2, bay=2.55, win=(1.2, 2.7, .6, 'arch'), alc=(27.0, 29.0), name='ASHBY DAIRY', fascia='white-paint', letters='green-paint', trim='stone', ring='brick', cornice=12.95, door='green-paint'),
-    dict(u0=37.0, u1=50.0, fin='brick-tan', gh=3.6, fh=3.25, floors=3, bay=2.15, win=(.6, 1.75, .0, 'pair'), alc=(44.0, 46.0), name='PAWNBROKER', fascia='black', letters='yellow', trim='stone-dark', cornice=13.0, door='timber-dark'),
+    dict(u0=21.5, u1=37.0, fin='brick-plum', gh=3.8, fh=4.75, floors=2, bay=2.55, win=(1.2, 2.7, .6, 'arch'), alc=(27.0, 29.0), pipe_u=22.2, name='ASHBY DAIRY', fascia='white-paint', letters='green-paint', trim='stone', ring='brick', cornice=12.95, door='green-paint'),
+    dict(u0=37.0, u1=50.0, fin='brick-tan', gh=3.6, fh=3.25, floors=3, bay=2.15, win=(.6, 1.75, .0, 'pair'), alc=(44.0, 46.0), pipe_u=49.3, name='PAWNBROKER', fascia='black', letters='yellow', trim='stone-dark', cornice=13.0, door='timber-dark'),
     dict(u0=50.0, u1=60.0, fin='brick-rose', gh=3.8, fh=3.2, floors=3, bay=2.4, win=(1.1, 1.75, .28, 'arch'), alc=(55.0, 57.0), name='TOBACCO', fascia='cab-red', letters='stone', trim='stone', cscale=1.15, door='timber-dark'),
 ]
 NORTH_B = [
     dict(u0=0.0, u1=18.5, fin='brick-rose', gh=3.7, fh=3.25, floors=3, bay=2.6, win=(.62, 1.8, .0, 'pair'), alc=(10.0, 12.0), name='IRONMONGER', fascia='black', letters='stone', trim='stone-dark', door='green-paint'),
-    dict(u0=21.5, u1=37.0, fin='brick', gh=3.8, fh=3.2, floors=3, bay=2.2, win=(1.05, 1.75, .26, 'arch'), alc=(27.0, 29.0), name='BRAY & SONS', fascia='green-paint', letters='stone', trim='stone', door='timber-dark'),
-    dict(u0=37.0, u1=50.0, fin='brick-dark', gh=3.9, fh=4.7, floors=2, bay=2.6, win=(1.25, 2.6, .62, 'arch'), alc=(44.0, 46.0), name='THE ANVIL', fascia='cab-red', letters='stone', trim='stone', ring='brick-rose', cornice=12.9, door='timber-dark'),
+    dict(u0=21.5, u1=37.0, fin='brick', gh=3.8, fh=3.2, floors=3, bay=2.2, win=(1.05, 1.75, .26, 'arch'), alc=(27.0, 29.0), pipe_u=22.2, name='BRAY & SONS', fascia='green-paint', letters='stone', trim='stone', door='timber-dark'),
+    dict(u0=37.0, u1=50.0, fin='brick-dark', gh=3.9, fh=4.7, floors=2, bay=2.6, win=(1.25, 2.6, .62, 'arch'), alc=(44.0, 46.0), pipe_u=49.3, name='THE ANVIL', fascia='cab-red', letters='stone', trim='stone', ring='brick-rose', cornice=12.9, door='timber-dark'),
     dict(u0=50.0, u1=60.0, fin='brick-tan', gh=3.7, fh=3.3, floors=3, bay=2.4, win=(1.1, 1.8, .0, 'arch'), alc=(55.0, 57.0), name='PRINTERS', fascia='white-paint', letters='black', trim='stone', door='green-paint'),
 ]
 
@@ -312,14 +312,14 @@ def frontage_west(g, T, v):
     r = bk.rng(23 + v * 5)
     fw, fp, trim = F[W['fin']], F[W['pier']], F[W['trim']]
     width, top = 52.0, 14.0
-    n = 10
-    bay = width / n
+    n = 9
+    bay, b0 = 5.2, 3.4          # the bays' pitch and the first one's start: the look's tarp (u 30 to 34) hangs inside the sixth
     pw = .95
     holes = []
     ins = []
     lit = (F['lit'], F['lit-dim'], F['lit-cool'])
     for i in range(n):
-        a, b = i * bay + pw / 2 + .25, (i + 1) * bay - pw / 2 - .25
+        a, b = b0 + i * bay + pw / 2 + .25, b0 + (i + 1) * bay - pw / 2 - .25
         # the bay's arched recess
         ins.append((a, b))
         holes.append(Hole(a, b, .9, 9.2, (b - a) / 2, fill='none', depth=.22, sill=False, head='arch'))
@@ -346,20 +346,22 @@ def frontage_west(g, T, v):
             bk.opening(g, T, back, hh, fw, style=style)
     # piers with stone bases and caps, plinth, frieze with the name, corbel table, cornice, parapet
     for i in range(n + 1):
-        c = min(max(i * bay, pw / 2), width - pw / 2)
-        fbox(g, T, fr, c - pw / 2, c + pw / 2, .0, 11.0, 0, .12, fp, .02, cell=(1.5, 4, 0)[T.i], skip=('-z', '-y'))
+        c = b0 + i * bay
+        fbox(g, T, fr, c - pw / 2, c + pw / 2, .0, 11.0, 0, .12, fp, .02, cell=(2.0, 0, 0)[T.i], skip=('-z', '-y'))
         fbox(g, T, fr, c - pw / 2 - .05, c + pw / 2 + .05, 0, .9, 0, .2, trim, .025, skip=('-z', '-y'))
         fbox(g, T, fr, c - pw / 2 - .06, c + pw / 2 + .06, 11.0, 11.3, 0, .2, trim, .025, skip=('-z',))
     for i in range(n):
-        a, b = i * bay + pw / 2, (i + 1) * bay - pw / 2
+        a, b = b0 + i * bay + pw / 2, b0 + (i + 1) * bay - pw / 2
         bk.mould(g, T, fr, a, b, 0.0, bk.PLINTH, trim, ends=False)
     bk.mould(g, T, fr, 0, width, 11.3, bk.STRING, trim)
     if T.detail:
         bk.text(g, fr, width / 2, 11.75, .1, W['name'], F['white-paint'], .012)
     bk.cornice(g, T, fr, 0, width, 12.75, trim, 1.2)
     bk.mould(g, T, fr, 0, width, top - .16, bk.COPING, trim)
-    for u in (9.6, 30.4, 46.2):
-        bk.pipe(g, T, fr, u, .2, 12.7, c=.2)
+    for u in (1.2, 24.75, 51.2):
+        bk.pipe(g, T, fr, u, .2, 12.7, c=.2 if 3 < u < 50 else .09)
+    for (a, b) in ((0.0, b0 - pw / 2), (b0 + n * bay + pw / 2, width)):
+        bk.mould(g, T, fr, a, b, 0.0, bk.PLINTH, trim, ends=False)
     # its roof: a shallow slate pitch and a row of ridge vents
     B = dict(u0=0.0, u1=width, fin=W['fin'], trim=W['trim'])
     roof(g, T, fr, B, r)

@@ -37,8 +37,13 @@ def finishes():
     add('brick-tan', 0x9A6248, B, smooth=.12, dirt=1.0, moss=.2, wear=.25)
     add('brick-fresh', 0xC2734E, B, smooth=.1, dirt=.3, wear=.1)             # a broken face: the brick's unweathered heart
     add('brick-soot', 0x4A3A34, B, smooth=.1, dirt=.6)
-    add('stone', TERRACOTTA, sk.DETAIL_CARVED, smooth=.22, dirt=.8, moss=.2, wear=.3)
-    add('stone-dark', 0xB79E7C, sk.DETAIL_CARVED, smooth=.2, dirt=.9, moss=.3, wear=.25)
+    # (the dressed stone is calm: under the anime style a grained surface breaks into blotches near the lamps)
+    add('stone', TERRACOTTA, sk.DETAIL_NONE, smooth=.22, dirt=.8, moss=.2, wear=.3)
+    add('stone-dark', 0xB79E7C, sk.DETAIL_NONE, smooth=.2, dirt=.9, moss=.3, wear=.25)
+    add('faience', TERRACOTTA, sk.DETAIL_TILE, smooth=.5, dirt=.7, moss=.1, param=.4)
+    add('goods-a', 0xA8663A, sk.DETAIL_NONE, smooth=.3, dirt=.8)
+    add('goods-b', 0x9A8F4E, sk.DETAIL_NONE, smooth=.3, dirt=.8)
+    add('goods-c', 0x7E4A3A, sk.DETAIL_NONE, smooth=.3, dirt=.8)
     add('mortar', MORTAR, sk.DETAIL_PLASTER, smooth=.1, dirt=.8)
     add('concrete', CONCRETE, sk.DETAIL_PLASTER, smooth=.16, dirt=1.0, moss=.15, wear=.2)
     add('concrete-dark', CONCRETE_DARK, sk.DETAIL_PLASTER, smooth=.14, dirt=1.0, moss=.15, wear=.2)
@@ -150,7 +155,9 @@ def facing(nx, nz, x, z, y=0.0):
 def fbox(g, T, fr, u0, u1, v0, v1, c0, c1, f, bevel=.012, cell=0, skip=()):
     """A box in a frame's coordinates (skip: '-x' u0, '+x' u1, '-y' v0, '+y' v1, '-z' c0, '+z' c1)."""
     t = Geo()
-    sk.box(t, u0, u1, v0, v1, c0, c1, f, T, bevel, cell=cell, skip=skip)
+    if T is not None and T.i > 0 and max(abs(u1 - u0), abs(v1 - v0), abs(c1 - c0)) < 1.2:
+        bevel = 0
+    sk.box(t, u0, u1, v0, v1, c0, c1, f, T if bevel else None, bevel, cell=cell, skip=skip)
     g.extend(t.transformed(fr.rows()))
 
 
@@ -177,13 +184,13 @@ class Hole:
     def cuts(self, T):
         if self.rise <= 0:
             return [self.u0, self.u1]
-        n = (10, 6, 4)[T.i]
+        n = (8, 4, 2)[T.i]
         return [self.u0 + (self.u1 - self.u0) * i / n for i in range(n + 1)]
 
 
 def wallface(g, T, fr, w, h, f, holes=(), c=0.0, cell=None, u0=0.0, v0=0.0):
     """The wall's face from (u0, v0) to (w, h) at depth c, its openings left out."""
-    cs = T.cell if cell is None else cell
+    cs = (1.0, 3.0, 6.0)[T.i] if cell is None else cell
     us = sorted(set([u0, w] + [x for hl in holes for x in (hl.u0, hl.u1) if u0 < x < w]))
     vs = sorted(set([v0, h] + [x for hl in holes for x in (hl.v0, hl.v1 + hl.rise) if v0 < x < h]))
     n = fr.n
@@ -243,7 +250,13 @@ def opening(g, T, fr, hl, f_wall, c=0.0, style=None):
             a, b = cu[k], cu[k + 1]
             g.face((fr.P(a, v0, back), fr.P(b, v0, back), fr.P(b, hl.top(b), back), fr.P(a, hl.top(a), back)), fg, n)
         # the sash: a frame round the pane and its glazing bars
-        if T.detail:
+        if T.i == 1 and u1 - u0 > .9:
+            fb = style.get('frame', F['white-paint'])
+            x = (u0 + u1) / 2
+            g.face((fr.P(x - .03, v0, back + .02), fr.P(x + .03, v0, back + .02), fr.P(x + .03, hl.top(x), back + .02), fr.P(x - .03, hl.top(x), back + .02)), fb, n)
+            y = (v0 + v1) / 2
+            g.face((fr.P(u0, y - .03, back + .02), fr.P(u1, y - .03, back + .02), fr.P(u1, y + .03, back + .02), fr.P(u0, y + .03, back + .02)), fb, n)
+        if T.i == 0:
             fb = style.get('frame', F['white-paint'])
             t = .045
             fbox(g, T, fr, u0, u0 + t, v0, v1, back, back + .035, fb, 0)
@@ -261,7 +274,7 @@ def opening(g, T, fr, hl, f_wall, c=0.0, style=None):
         for k in range(len(cu) - 1):
             a, b = cu[k], cu[k + 1]
             g.face((fr.P(a, v0, back + .05), fr.P(b, v0, back + .05), fr.P(b, hl.top(b), back + .05), fr.P(a, hl.top(a), back + .05)), fb, n)
-        if T.detail:
+        if T.i == 0:
             for y in (v0 + (v1 - v0) * .28, v0 + (v1 - v0) * .72):
                 fbox(g, T, fr, u0 + .02, u1 - .02, y - .06, y + .06, back + .05, back + .085, F['timber-dark-x'], .008)
     elif fill == 'brick':
@@ -279,14 +292,14 @@ def opening(g, T, fr, hl, f_wall, c=0.0, style=None):
             ym = (ya + yb) / 2
             g.face((fr.P(u0, ya, back), fr.P(u1, ya, back), fr.P(u1, ym, back + .022), fr.P(u0, ym, back + .022)), fs)
             g.face((fr.P(u0, ym, back + .022), fr.P(u1, ym, back + .022), fr.P(u1, yb, back), fr.P(u0, yb, back)), fs)
-        if T.detail:
+        if T.i == 0:
             fbox(g, T, fr, u0, u1, v0, v0 + .08, back, back + .06, F['iron'], .008)
     elif fill == 'door':
         fd = style.get('door', F['timber-dark'])
         for k in range(len(cu) - 1):
             a, b = cu[k], cu[k + 1]
             g.face((fr.P(a, v0, back), fr.P(b, v0, back), fr.P(b, hl.top(b), back), fr.P(a, hl.top(a), back)), fd, n)
-        if T.detail:
+        if T.i == 0:
             w = u1 - u0
             for (a, b) in ((.12, .46), (.54, .88)):
                 for (p, q) in ((.08, .42), (.5, .9)):
@@ -295,11 +308,11 @@ def opening(g, T, fr, hl, f_wall, c=0.0, style=None):
             sk.cylinder(g, fr.P(u0 + w * .56, v0 + 1.0, back), fr.P(u0 + w * .56, v0 + 1.0, back + .07), .028, F['bronze'], T.small)
     trim = style.get('trim', F['stone'])
     if hl.sill and trim is not None:
-        fbox(g, T, fr, u0 - .08, u1 + .08, v0 - .1, v0, c - d * .6, c + .06, trim, .015)
+        fbox(g, T, fr, u0 - .08, u1 + .08, v0 - .1, v0, c - d * .6, c + .05, trim, .015)
     if hl.head == 'arch' and hl.rise > 0:
         ring = style.get('ring', f_wall)
         arch_ring(g, T, fr, hl, ring, c, .24, .035)
-        if T.detail and style.get('key', True) and (trim is not None or style.get('ring') is not None):
+        if T.i == 0 and style.get('key', True) and (trim is not None or style.get('ring') is not None):
             um_ = (u0 + u1) / 2
             fbox(g, T, fr, um_ - .11, um_ + .11, v1 + hl.rise - .02, v1 + hl.rise + .3, c, c + .06, trim if trim is not None else style['ring'], .012)
     elif hl.head == 'lintel' and trim is not None:
@@ -364,13 +377,13 @@ COPING = [(0.0, 0.0), (.06, 0.0), (.06, .1), (0.0, .16)]
 def cornice(g, T, fr, u0, u1, v, f, scale=1.0, dentils=True):
     pr = CORNICE if T.i == 0 else CORNICE_LOW
     mould(g, T, fr, u0, u1, v, [(a * scale, b * scale) for a, b in pr], f)
-    if dentils and T.detail:
+    if dentils and T.i == 0:
         # corbel blocks under it
-        step = .55 * scale if T.i == 0 else 1.1 * scale
+        step = .6 * scale
         k = max(1, int((u1 - u0) / step))
         for i in range(k):
             x = u0 + (u1 - u0) * (i + .5) / k
-            fbox(g, T, fr, x - .09 * scale, x + .09 * scale, v - .2 * scale, v + .02, 0, .1 * scale, f, .01)
+            fbox(g, T, fr, x - .09 * scale, x + .09 * scale, v - .2 * scale, v + .02, 0, .1 * scale, f, 0, skip=('-z', '+y'))
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -458,7 +471,7 @@ def band(g, T, hx, hz, y0, f_strap=None, lamp=True):
         w = 2 * half
         fbox(g, T, fr, -.012, w + .012, lo, hi, 0, .022, F['black'], .006)
         chevrons(g, fr, .0, w, lo + .07, hi - .07, .026, F['yellow'])
-        if T.detail:
+        if T.i == 0:
             for x in (.07, w - .07):
                 for y in (lo + .035, hi - .035):
                     sk.cylinder(g, fr.P(x, y, .02), fr.P(x, y, .04), .018, F['steel'], 6)
@@ -475,7 +488,7 @@ def band(g, T, hx, hz, y0, f_strap=None, lamp=True):
 
 
 def rivets(g, T, fr, pts, c, r=.016, f=None):
-    if not T.detail:
+    if T.i != 0:
         return
     f = F['steel'] if f is None else f
     for (a, b) in pts:
@@ -486,7 +499,7 @@ def pipe(g, T, fr, u, v0, v1, c=.09, r=.05, f=None):
     """A downpipe on a wall with its brackets and a hopper head."""
     f = F['iron'] if f is None else f
     sk.cylinder(g, fr.P(u, v0, c), fr.P(u, v1, c), r, f, T.small, caps=False)
-    if T.detail:
+    if T.i == 0:
         y = v0 + .6
         while y < v1 - .2:
             fbox(g, T, fr, u - r - .03, u + r + .03, y - .025, y + .025, 0, c + r * .4, f, .005)

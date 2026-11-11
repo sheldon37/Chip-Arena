@@ -120,6 +120,8 @@ def open_stage(m):
     print(m['id'],'pilot columns',len(m['pilotBlocks']),'->',len(kept),'(bots only:',str(bots)+')');m['pilotBlocks']=kept
 path=ROOT/'unity/ChipArenaConversion/Assets/Conversion/Resources/UnityMaps.json'
 content=json.loads(path.read_text())
+for old in content['maps']:  # the kept Brickfall record: only the frontage's caps keep pilots inside the map (tools/generate_brickfall.py)
+    if old['id']=='brickfall':old['pilotBlocks']=[p for p in old['pilotBlocks'] if p['id'].startswith('frontage-')]
 for name,fn,song in [('factory','unity_json','factory-anvil-loop'),('cybercity','draft','cybercity-neon-riot')]+[(name,'unity_json','factory-anvil-loop' if name in ('harbor','rig','training') else 'cybercity-neon-riot') for name in ('breakwater','harbor','skyframe','rig','polar','training')]+[('club','unity_json','cybercity-neon-riot')]+[('emporium','unity_json','cybercity-neon-riot')]+[('causeway','unity_json','skyframe-rising-motif')]+[('sanctum','unity_json','moonlit-wilderness')]:
     m=draft(name,fn);m.pop('killVolumes',None);m['music']=song;m['rotation']=name!='training'
     if name in EDGES:open_stage(m)

@@ -413,13 +413,13 @@ def stall(g, T, hx, hy, hz, v):
         g.face(((xx, y0, -hz), (xx, y0, hz), (xx, hy - .5, hz), (xx, hy - .5, -hz)), F['ply'], (nx, 0, 0))
     # crates on top, to the block's top
     r = bk.rng(31 + v)
-    goods = (F['poster-c'], F['poster-a'], F['canvas-green'], F['stone'], F['rust'])
+    goods = (F['goods-a'], F['goods-b'], F['canvas-green'], F['goods-c'], F['rust'])
     n = 4
     for i in range(n):
         a, b = -hx + 2 * hx * i / n + .03, -hx + 2 * hx * (i + 1) / n - .03
         for (c, d) in ((-hz + .03, -.02), (.02, hz - .03)):
             sk.box(g, a, b, hy - .44, hy - .02, c, d, F['timber-z'], T, .012, cell=0, skip=('-y', '+y'))
-            sk.box(g, a + .03, b - .03, hy - .1, hy - .0, c + .03, d - .03, goods[r.randrange(len(goods))], T, .03, cell=0, skip=('-y',))
+            sk.box(g, a + .03, b - .03, hy - .1, hy - .0, c + .03, d - .03, goods[r.randrange(len(goods))], T, .012, cell=0, skip=('-y',))
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -430,7 +430,7 @@ def heap(g, T, boxes, origin, seed, fins, extras='brick'):
     surface that follows the blocks' tops (so feet stand on it where they stand on them), skirted out to the ground, strewn
     with loose bricks, slab shards, joists and bent bars."""
     r = bk.rng(seed)
-    cell = (.25, .5, 1.0)[T.i]
+    cell = (.3, .6, 1.2)[T.i]
     x0 = min(b[0] for b in boxes) - .5
     x1 = max(b[1] for b in boxes) + .5
     z0 = min(b[3] for b in boxes) - .5
@@ -474,12 +474,8 @@ def heap(g, T, boxes, origin, seed, fins, extras='brick'):
                 pts.append((X[a] - ox, Hh[a, b] - oy, Z[b] - oz))
                 nrm.append(sk._norm((-gx[a, b], 1.0, -gz[a, b])))
             f = fins[min(len(fins) - 1, int(pick[i, j] * len(fins)))]
-            if T.i == 0:
-                # two triangles on the shorter diagonal keep the broken look
-                g.face((pts[0], pts[1], pts[2]), f, normals=(nrm[0], nrm[1], nrm[2]))
-                g.face((pts[0], pts[2], pts[3]), f, normals=(nrm[0], nrm[2], nrm[3]))
-            else:
-                g.face(pts, f, normals=nrm)
+            g.face((pts[0], pts[1], pts[2]), f, normals=(nrm[0], nrm[1], nrm[2]))
+            g.face((pts[0], pts[2], pts[3]), f, normals=(nrm[0], nrm[2], nrm[3]))
 
     def height(x, z):
         i = min(max(int((x - x0) / cell), 0), nx - 1)
@@ -487,7 +483,7 @@ def heap(g, T, boxes, origin, seed, fins, extras='brick'):
         return float(Hh[i, j])
     # the strew
     area = (x1 - x0) * (z1 - z0)
-    count = int(area * (5.0, 1.6, .0)[T.i])
+    count = int(area * (1.6, .5, .0)[T.i])
     loose = fins + [F['brick-fresh'], F['mortar']]
     for _ in range(count):
         x, z = r.uniform(x0 + .2, x1 - .2), r.uniform(z0 + .2, z1 - .2)
@@ -505,7 +501,7 @@ def heap(g, T, boxes, origin, seed, fins, extras='brick'):
         else:
             s = r.uniform(.7, 1.6)
             bk.brickbat(g, T, (x - ox, h + .06 - oy, z - oz), (s, .08, .12), sk.quat_axis(r.uniform(-.3, .3), 1, r.uniform(-.3, .3), r.uniform(0, 6.28)), F['timber-dark-x'] if extras != 'steel' else F['green'])
-    if T.detail:
+    if T.i == 0:
         for _ in range(max(2, int(area * .12))):
             x, z = r.uniform(x0 + .5, x1 - .5), r.uniform(z0 + .5, z1 - .5)
             h = height(x, z)
