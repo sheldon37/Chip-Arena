@@ -84,10 +84,11 @@ namespace ChipArena.UnityConversion
             // the art (the modelled hall and rig) in place of the kit's boxes, the rig's modelled parts and the near backdrop;
             // the lit screens stay the rig's either way
             ArtDrawn=false;if(rigBuilder!=null)rigBuilder.Build(show,now,low,quality);
-            if(art!=null&&art.Ready&&rigBuilder!=null){NativeSubstationArt.Pose(rigBuilder,show,now,artPose);ArtDrawn=art.Render(arena,camera,low,artPose);}
+            if(art!=null&&art.Ready&&rigBuilder!=null){NativeSubstationArt.Pose(rigBuilder,show,now,artPose);ArtDrawn=art.Render(arena,camera,low,artPose);}nearEye=ArtDrawn?camera:null;
             for(int i=0;i<sectors.Length;i++)if(!(ArtDrawn&&i==NativeClubScenery.Near))Graphics.DrawMesh(sectors[i],Matrix4x4.identity,sceneryLit,layer,null,0,null,ShadowCastingMode.Off,true);
             if(!ArtDrawn)foreach(var b in kit)Draw(b,instancing);
             if(rigBuilder!=null){Fill(rigBuilder,ArtDrawn?rigBuilder.Screens:rigBuilder.Parts.Count);foreach(var b in rig)Draw(b,instancing);}
+            nearEye=null;
             Effects(arena,now,camera,quality,low);
             if(camera!=null)
             {
@@ -138,15 +139,19 @@ namespace ChipArena.UnityConversion
             else{col=NativeArena.ColorOf(p.Color);if(linear)col=col.linear;col*=gain;}
             b.Color[i]=new Vector4(col.r,col.g,col.b,Math.Min(1,p.Window));b.Look[i]=new Vector4(p.Look,1,p.Seed,p.Flags);
         }
+        // While the stage art draws, the boxes kept over it draw nearer the eye along their rays (NativeStageArt.Nearer, the kit's
+        // layers): the art's floor or wall under a lit box never fights it.
+        private Camera nearEye;private readonly Matrix4x4[] nearM=new Matrix4x4[NativeBlockLooks.Chunk];
         private void Draw(Batch b,bool instancing)
         {
             if(b.Count==0)return;var shadow=b.Shadow?ShadowCastingMode.On:ShadowCastingMode.Off;Draws++;Instances+=b.Count;
+            var M=b.M;if(nearEye!=null){NativeStageArtDraw.Nearer(b.M,nearM,b.Count,nearEye.transform.position,NativeStageArt.KitLayers);M=nearM;}
             if(instancing)
             {
                 props.Clear();props.SetVectorArray(SizeId,b.Size);props.SetVectorArray(RestId,b.Rest);props.SetVectorArray(ColorId,b.Color);props.SetVectorArray(LookId,b.Look);
-                try{Graphics.DrawMeshInstanced(Block,0,lit,b.M,b.Count,props,shadow,true,0,null);return;}catch(InvalidOperationException){}catch(ArgumentException){}
+                try{Graphics.DrawMeshInstanced(Block,0,lit,M,b.Count,props,shadow,true,0,null);return;}catch(InvalidOperationException){}catch(ArgumentException){}
             }
-            for(int i=0;i<b.Count;i++){props.Clear();props.SetVector(SizeId,b.Size[i]);props.SetVector(RestId,b.Rest[i]);props.SetVector(ColorId,b.Color[i]);props.SetVector(LookId,b.Look[i]);Graphics.DrawMesh(Block,b.M[i],lit,0,null,0,props,shadow,true);}
+            for(int i=0;i<b.Count;i++){props.Clear();props.SetVector(SizeId,b.Size[i]);props.SetVector(RestId,b.Rest[i]);props.SetVector(ColorId,b.Color[i]);props.SetVector(LookId,b.Look[i]);Graphics.DrawMesh(Block,M[i],lit,0,null,0,props,shadow,true);}
         }
         private static Mesh MeshOf(NativeBlockLooks.StageMesh s)
         {

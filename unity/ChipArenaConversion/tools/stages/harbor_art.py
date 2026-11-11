@@ -1017,6 +1017,8 @@ def main():
         for k in range(3):
             marquee[k].extend(hk.MARQUEE[k])
         print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=max(sk.NEAR_TIER[ti], .0055), lift=sk.LIFT_TIER[ti], passes=8))
+        # no face reaches out of its chunk's cell: a floor is never drawn twice where neighbouring chunks draw at different tiers
+        print('  chunks: %d faces cut along the cells' % chunks.split(g))
         print('tier %s: static %d faces, bulbs %d, %.1f s' % (T.name, g.faces, sum(m.faces for m in marquee) // 8, time.time() - t))
         ao = None
         if not args.no_ao:

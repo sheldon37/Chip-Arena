@@ -222,7 +222,10 @@ namespace ChipArena.UnityConversion
         {
             var p=q.BladeHeldBy;if(p==null)return false;
             if(p.BladePairVictim!=q||p.Hp<=0||Time>=p.Blade.PairUntil||q.Hp<=0){q.BladeHeldBy=null;q.Body.useGravity=true;return false;}
-            q.Body.position=KernelTravel(q.Body.position,new Vector3(p.BladePairAt.x,q.Body.position.y,p.BladePairAt.z));q.Body.linearVelocity=q.Knockback=q.MoveVelocity=Vector3.zero;
+            // Thrown back as its clip carries it after the blow (Core NativeBladeMotion.VictimTravel; walls stop it), from where the hold put it.
+            var at=p.BladePairAt;float back=NativeBladeMotion.VictimTravel(p.Blade.PairClip,Time,p.Blade.PairAt,p.Blade.PairUntil);
+            if(back>0){var away=at-p.Body.position;away.y=0;if(away.sqrMagnitude>1e-6f)at+=away.normalized*back;}
+            q.Body.position=KernelTravel(q.Body.position,new Vector3(at.x,q.Body.position.y,at.z));q.Body.linearVelocity=q.Knockback=q.MoveVelocity=Vector3.zero;
             q.Yaw=p.BladePairYaw;q.StunEnd=Math.Max(q.StunEnd,Time+.05f);return true;
         }
 

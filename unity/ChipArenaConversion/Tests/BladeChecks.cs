@@ -150,6 +150,17 @@ namespace ChipArena.UnityConversion
                 &&ki.Clip(NativeKatanaIntro.ClickAt,out _,out float clickT)&&Math.Abs(clickT-NativeKatanaSaya.SheatheClick)<1e-3f&&ki.Clip(NativeKatanaIntro.GrabAt,out _,out float grabT)&&Math.Abs(grabT-NativeKatanaSaya.IaiDraw)<1e-3f,
                 "Crimson Moon draws on the pack's iai and sheathes on its whole sheathing, the draw and the click on the pack's moments");
             Check(ki.Sheathed(NativeKatanaIntro.GrabAt-.01f)&&!ki.Sheathed(NativeKatanaIntro.GrabAt+.01f)&&!ki.Sheathed(NativeKatanaIntro.ClickAt-.05f)&&ki.Sheathed(NativeKatanaIntro.ClickAt),"its blade leaves the saya on the draw and enters on the click");
+            // The draw seen (owner 2026-11-11: "They don't pull sword out until animation is done essentially"): the clip's draw-out before the cut
+            // plays at under a third of its pace, the blade out of the saya before the cut, and the shot near enough to see it.
+            Check(ki.Clip(NativeKatanaIntro.WhipAt,out _,out float whip0)&&ki.Clip(NativeKatanaIntro.WhipAt+.1f,out _,out float whip1)&&(whip1-whip0)/.1f<.35f&&ki.Clip(NativeKatanaIntro.WhipAt-.1f,out _,out float pull)&&pull<whip0
+                &&NativeKatanaIntro.GrabAt<NativeKatanaIntro.WhipAt&&NativeKatanaIntro.WhipAt<NativeKatanaIntro.CutAt&&!ki.Sheathed(NativeKatanaIntro.WhipAt),"its draw-out is slowed before the cut, the blade already out of the saya");
+            // The counter's victim thrown back as its clip carries it (owner 2026-11-11: "Parry with katana make enemy walk backwards in place").
+            {
+                const float at=20,until=20+NativeKatana.CounterHold;float Back(float t)=>NativeBladeMotion.VictimTravel(NativeBladeMotion.KatanaCritical,t,at,until);
+                Check(Back(at)==0&&Back(at+.4f)==0&&Back(at+.8f)>.2f&&Back(at+1.0f)>Back(at+.8f)&&Math.Abs(Back(until)-1.23f)<1e-3f&&Back(until+1)==Back(until)
+                    &&NativeBladeMotion.VictimTravel(NativeBladeMotion.FangsCritical,at+1,at,until)==0&&NativeBladeMotion.VictimTravel(NativeBladeMotion.FangsTakedown,at+1,at,until)==0,"the counter's victim thrown back after the blow, as its clip carries it; the Fangs' held");
+                Check(R(root,"NativeBladeAuthority.cs").Contains("float back=NativeBladeMotion.VictimTravel(p.Blade.PairClip,Time,p.Blade.PairAt,p.Blade.PairUntil);"),"the hold follows it");
+            }
             Check(ki.Fade(NativeKatanaIntro.DrawAt+.1f)>ki.Fade(.5f)&&ki.Fade(NativeKatanaIntro.SheatheAt+.1f)>ki.Fade(.5f)&&fi.Fade(1)==.12f,"it eases into the draw and the sheathing");
             Check(NativeKatanaSaya.Carry(NativeBladeMotion.KatanaIai,1,out int ih)==1&&ih==NativeKatanaSaya.Draw&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaRush,.4f,out _)==1&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaStorm,1,out _)==1&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaStorm,1.6f,out _)==0
                 &&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaSheathe,0,out int shh)==0&&shh==NativeKatanaSaya.Sheathe&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaSheathe,NativeKatanaSaya.SheatheClick,out _)==1&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaSheathe,2.5f,out _)==0

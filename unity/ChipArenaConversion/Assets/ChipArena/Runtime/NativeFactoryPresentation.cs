@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
             }
             int round=NativeStructureFx.RoundIndex(match.Set,match.Round);double clock=NativeFactoryHazards.Clock(match.Phase,match.FightAt,now);
             DrawScenery(now,true);
-            ArtDrawn=false;if(art!=null&&art.Ready){NativeFactoryArt.Pose(hz,map.blocks,round,clock,now,artPose);ArtDrawn=art.Render(arena,camera,low,artPose);}
+            ArtDrawn=false;if(art!=null&&art.Ready){NativeFactoryArt.Pose(hz,map.blocks,round,clock,now,artPose);ArtDrawn=art.Render(arena,camera,low,artPose);}nearEye=ArtDrawn?camera:null;
             foreach(var b in ArtDrawn?kitKept:kit)Draw(b,instancing);
             if(hz!=null&&rigBuilder!=null)
             {
@@ -87,6 +87,7 @@ namespace ChipArena.UnityConversion
                 // a crane impact this cycle dusts the round's coat once (match time = hazard clock + FightAt + the arm delay)
                 foreach(var h in hz)if(h.kind==NativeFactoryHazards.Crane){var st=NativeFactoryHazards.State(h,round,clock);if(!double.IsNaN(st.ImpactAt)&&clock>=st.ImpactAt&&st.Zone>=0){var z=h.zones[st.Zone];coat?.Land(st.ImpactAt+match.FightAt+NativeFactoryHazards.ArmDelay,z.center.x,z.center.z,3,.6f);}}
             }
+            nearEye=null;
             Effects(hz,round,clock,now,camera,quality,low,true);
         }
         /// <summary>Behind the main menu: the backdrop, the slab plate and the backdrop's life (no arena blocks exist there).</summary>
@@ -152,15 +153,19 @@ namespace ChipArena.UnityConversion
             float c=NativeFactoryKit.Bevel(p.Hx,p.Hy,p.Hz);b.Size[i]=new Vector4(p.Hx,p.Hy,p.Hz,c);b.Rest[i]=new Vector4(p.Rx,p.Ry,p.Rz,0);
             var col=NativeArena.ColorOf(p.Color);if(QualitySettings.activeColorSpace==ColorSpace.Linear)col=col.linear;b.Color[i]=new Vector4(col.r,col.g,col.b,p.Window);b.Look[i]=new Vector4(p.Look,1,p.Seed,p.Flags);
         }
+        // While the stage art draws, the boxes kept over it draw nearer the eye along their rays (NativeStageArt.Nearer, the kit's
+        // layers): the art's floor or wall under a lit box never fights it.
+        private Camera nearEye;private readonly Matrix4x4[] nearM=new Matrix4x4[NativeBlockLooks.Chunk];
         private void Draw(Batch b,bool instancing)
         {
             if(b.Count==0)return;var shadow=b.Shadow?ShadowCastingMode.On:ShadowCastingMode.Off;Draws++;Instances+=b.Count;
+            var M=b.M;if(nearEye!=null){NativeStageArtDraw.Nearer(b.M,nearM,b.Count,nearEye.transform.position,NativeStageArt.KitLayers);M=nearM;}
             if(instancing)
             {
                 props.Clear();props.SetVectorArray(SizeId,b.Size);props.SetVectorArray(RestId,b.Rest);props.SetVectorArray(ColorId,b.Color);props.SetVectorArray(LookId,b.Look);
-                try{Graphics.DrawMeshInstanced(Block,0,lit,b.M,b.Count,props,shadow,true,0,null);return;}catch(InvalidOperationException){}catch(ArgumentException){}
+                try{Graphics.DrawMeshInstanced(Block,0,lit,M,b.Count,props,shadow,true,0,null);return;}catch(InvalidOperationException){}catch(ArgumentException){}
             }
-            for(int i=0;i<b.Count;i++){props.Clear();props.SetVector(SizeId,b.Size[i]);props.SetVector(RestId,b.Rest[i]);props.SetVector(ColorId,b.Color[i]);props.SetVector(LookId,b.Look[i]);Graphics.DrawMesh(Block,b.M[i],lit,0,null,0,props,shadow,true);}
+            for(int i=0;i<b.Count;i++){props.Clear();props.SetVector(SizeId,b.Size[i]);props.SetVector(RestId,b.Rest[i]);props.SetVector(ColorId,b.Color[i]);props.SetVector(LookId,b.Look[i]);Graphics.DrawMesh(Block,M[i],lit,0,null,0,props,shadow,true);}
         }
         private static Mesh MeshOf(NativeBlockLooks.StageMesh s)
         {

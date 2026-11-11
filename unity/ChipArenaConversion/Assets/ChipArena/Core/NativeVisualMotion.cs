@@ -369,6 +369,13 @@ namespace ChipArena.UnityConversion
             public bool Flight; }
 
         public const float FadeIn=.1f, FadeOut=.2f, ReactionMin=.25f;
+        /// <summary>A parried attacker's reel (Choose): held this long past its stun while the parry's shove slides it out, and the fade from
+        /// its recoil into its daze.</summary>
+        public const float ParrySettle=.35f, ParryDazeFade=.2f;
+        /// <summary>A parried attacker's recoil when its set has one of its own: the blade sets' block, a jolt back with the blade up
+        /// (owner 2026-11-11: the Katana's face-on hit threw the head back past the shoulders, a blow to the face rather than a strike
+        /// turned aside). Null: the set's hit reaction from that side.</summary>
+        public static string ParriedRecoil(Set set)=>set!=null&&NativeBlades.Is(set.Spec)&&set.BlockHit!=null?set.BlockHit:null;
         // ---- Motion polish (owner 2026-10-27: "Make the movements look realistic and not glitchy. For everything, movements,
         // attacks, for all weapons"). Measured frame by frame in play, every weapon:
         /// <summary>A strike's clip plays at most this much faster than its own pace. The pack's wind-ups are slow beside the
@@ -509,6 +516,20 @@ namespace ChipArena.UnityConversion
                 // The greatsword's leaping cleave, landed: the landing's legs (its follow-through is the upper body, DashUpper).
                 if(DashLanded(set,a,time,clips)){pick=new Pick{Clip=set.Land,Time=time-Touchdown(a),Fade=FadeIn};return true;}
                 pick=new Pick{Clip=clip,Time=AttackTime(a,time,clip,clips),Fade=FadeIn,Flight=a.SprintAttack&&Flies(a.SourceSpec)};return true;
+            }
+            // A parried attacker's reel (owner 2026-11-11: "Parry with katana make enemy walk backwards in place"): thrown back by the parry,
+            // the blow's recoil at its own pace, then dazed on its feet (the set's stun) through the stun, and held so while the parry's shove
+            // slides it out (ParrySettle). Fitted to the stun, the recoil crept, and the shove's slide past the stun picked the backward
+            // walk: the legs stepped while the body hardly moved.
+            if(a.ReactionParry&&a.ReactionAt>-90&&time>=a.ReactionAt&&time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin)+ParrySettle)
+            {
+                string hit=ParriedRecoil(set);if(hit==null||!clips.Has(hit))hit=set.Reactions[Side(a.ReactionYaw)];
+                if(clips.Has(hit))
+                {
+                    float len=clips.Length(hit),into=time-a.ReactionAt;bool daze=set.Stunned!=null&&clips.Has(set.Stunned);
+                    if(into<len||!daze){pick=new Pick{Clip=hit,Time=Math.Min(len,into),Fade=FadeIn};return true;}
+                    pick=new Pick{Clip=set.Stunned,Time=into-len,Fade=ParryDazeFade};return true;
+                }
             }
             if(a.ReactionAt>-90&&time>=a.ReactionAt&&time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin))
             {

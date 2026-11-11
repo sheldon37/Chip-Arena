@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         private readonly List<MetroBatch> wzBatches=new List<MetroBatch>();private int wzUsed;private MaterialPropertyBlock wzOne,wzPit;private Material wzPitMaterial;
         private ContentMap wzMap;private NativeWardZeroKit wzKit;private NativeWardFxScene wzScene;private NativeWardZeroLights wzLights;private MapHazard[] wzHazards=Array.Empty<MapHazard>();private NativeHazardState[] wzStates=Array.Empty<NativeHazardState>();
         private NativeWardEntry[] wzEntries;private float[] wzOpen=Array.Empty<float>();private bool[] wzBreached=Array.Empty<bool>();private readonly bool[] wzSongOn=new bool[2];private readonly float[] wzSongWarn=new float[2];
-        private NativePropBody[] wzParents=Array.Empty<NativePropBody>();private float[] wzSeeds=Array.Empty<float>(),wzBlockLifts=Array.Empty<float>();private readonly Dictionary<string,int> wzIndex=new Dictionary<string,int>();
+        private NativePropBody[] wzParents=Array.Empty<NativePropBody>();private float[] wzSeeds=Array.Empty<float>(),wzBlockLifts=Array.Empty<float>();private int[] wzKitLayer=Array.Empty<int>();private readonly Dictionary<string,int> wzIndex=new Dictionary<string,int>();
         // By block index: the blocks a Hulk's breach has open (their parts hidden) and their knock's shudder (world m).
         private bool[] wzBlockOut=Array.Empty<bool>();private Vector3[] wzNudge=Array.Empty<Vector3>();
         // The stage art: its drawer, this map's slots and posed blocks, this frame's poses, the shudders as Core reads them.
@@ -162,6 +162,7 @@ namespace ChipArena.UnityConversion
             // nothing casts (the look's key has no shadows).
             wzArt=NativeWardZeroArt.Build(wzKit,blocks,wzEntries);wzArtNudge=new float[blocks.Length*3];if(wzArtDraw==null)wzArtDraw=gameObject.AddComponent<NativeStageArtDraw>();wzArtDraw.Prepare(map,wzArt.Slots,WardArtCasts);
             wzSeeds=new float[wzKit.Parts.Length];for(int i=0;i<wzSeeds.Length;i++)wzSeeds[i]=NativeBlockLooks.Seed(blocks[wzKit.Parts[i].Parent].id+"#"+i);
+            wzKitLayer=NativeWardZeroArt.KeptLayers(wzKit,blocks);
             // The menu backdrop draws the blocks itself: with the faces the dressing lifts (NativeSurfaceLayers.Blocks), as in play.
             wzBlockLifts=NativeSurfaceLayers.Blocks(blocks);
             if(wzWard==null){wzWard=new NativeEntryView[8];for(int i=0;i<8;i++)wzWard[i]=new NativeEntryView{entry=i,kind="vent",mode="dive"};}
@@ -209,7 +210,11 @@ namespace ChipArena.UnityConversion
                 var tr=prop.transform;Quaternion q=tr.rotation;Vector3 at=tr.position+wzNudge[part.Parent]+q*new Vector3(part.X+part.Mx*f,part.Y+part.My*f,part.Z+part.Mz*f);
                 if(fade&&part.Fade&&MetroBetween(from,to,at,new Vector3(part.Hx+.2f,part.Hy+.2f,part.Hz+.2f)))continue;
                 NativeWardZeroKit.Drive(part,wzStates,wzOpen,wzMood,now,out float r,out float g,out float bl,out float level);var rest=blocks[part.Parent].pos;
-                WzAdd(Matrix4x4.TRS(at,q,Vector3.one),new Vector4(part.Hx,part.Hy,part.Hz,NativeBlockLooks.Chamfer),new Vector4(rest.x+part.X,rest.y+part.Y,rest.z+part.Z,0),MetroColor(r,g,bl,level),new Vector4(part.Look,1,wzSeeds[i],part.Flags));
+                // over the art a kept box draws nearer the eye along its ray, by its layer (NativeStageArt.Nearer): scaled about
+                // the eye it covers the same pixels, and the art's floor or wall under it never fights it
+                var place=Matrix4x4.TRS(at,q,Vector3.one);
+                if(art&&eye!=null){float near=1-NativeStageArt.Nearer(Vector3.Distance(from,at),NativeStageArt.KitLayers+(i<wzKitLayer.Length?wzKitLayer[i]:0));place=Matrix4x4.TRS(from+(at-from)*near,q,new Vector3(near,near,near));}
+                WzAdd(place,new Vector4(part.Hx,part.Hy,part.Hz,NativeBlockLooks.Chamfer),new Vector4(rest.x+part.X,rest.y+part.Y,rest.z+part.Z,0),MetroColor(r,g,bl,level),new Vector4(part.Look,1,wzSeeds[i],part.Flags));
             }
             for(int i=0;i<wzUsed;i++)WzDraw(wzBatches[i]);
         }
