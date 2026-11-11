@@ -168,7 +168,8 @@ def drum(g, T, hx, hy, hz, k):
 def bearing(g, T, hx, hy, hz):
     """A skybridge's bearing: a riveted steel bracket with gussets on the building's side, banded (local +z: the bridge)."""
     f = F['green']
-    sk.box(g, -hx, hx, -hy, hy, -hz, hz, f, T, .02, cell=0)
+    # (its top a hair under the deck's and the floor's, which lie over it at the same height)
+    sk.box(g, -hx, hx, -hy, hy - .015, -hz, hz, f, T, .02, cell=0)
     fr = Frame((-hx, -hy, hz), (1, 0, 0))
     if T.detail:
         for x in (.12, 2 * hx - .12):
