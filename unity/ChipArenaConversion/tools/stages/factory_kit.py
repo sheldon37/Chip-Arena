@@ -374,7 +374,7 @@ def kit_part(g, p, T, f=None):
     if name in ROUND and hi > 3 * mid and mid < .2 and mid <= lo * 1.6:
         ax = axes[order[2]]
         r = (lo + mid) / 2
-        cyl(g, sk._add(c, ax, -hi), sk._add(c, ax, hi), r, f, (6, 4, 4)[T.i] if r < .04 else T.small if r < .09 else T.round, caps=True)
+        cyl(g, sk._add(c, ax, -hi), sk._add(c, ax, hi), r, f, (6, 4, 4)[T.i] if r < .04 else T.small if r < .09 else T.round, caps=name != 'rail')
         return
     if name == 'flange' or (name == 'valve' and lo < .08 and mid > 1.5 * lo):
         ax = axes[order[0]]

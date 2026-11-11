@@ -231,10 +231,10 @@ def column(g, b, parts, T):
     if T.i == 2:
         bx(g, x0, x1, y0, y1, z0, z1, f, T, 0, 0, ('-y',))
     else:
-        bx(g, x0, x0 + .05, y0, y1, z0, z1, f, T, .008, 0, ('-y',))
-        bx(g, x1 - .05, x1, y0, y1, z0, z1, f, T, .008, 0, ('-y',))
+        bx(g, x0, x0 + .05, y0, y1, z0, z1, f, T, .008 if T.i == 0 else 0, 0, ('-y',))
+        bx(g, x1 - .05, x1, y0, y1, z0, z1, f, T, .008 if T.i == 0 else 0, 0, ('-y',))
         bx(g, x0 + .05, x1 - .05, y0, y1, cz - .025, cz + .025, f, T, 0, 0, ('-y', '-x', '+x'))
-        if T.detail:
+        if T.tiny:
             for y in (2.4, 4.8, 7.2, 9.6, 11.4):
                 for (za, zb) in ((z0 + .03, cz - .025), (cz + .025, z1 - .03)):
                     bx(g, x0 + .05, x1 - .05, y - .012, y + .012, za, zb, f, T, 0, 0, ('-x', '+x'))
@@ -380,7 +380,7 @@ def deck(g, b, parts, T):
 
 def step(g, b, T):
     x0, x1, y0, y1, z0, z1 = ext(b)
-    box(g, x0, x1, y0, y1, z0, z1, mat('grating'), T, .006, 0, skip=('-y',) if y0 < .01 else ())
+    box(g, x0, x1, y0, y1, z0, z1, mat('grating'), T, 0, 0, skip=('-y',) if y0 < .01 else ())
 
 
 def leg(g, b, T):
@@ -629,7 +629,7 @@ def main():
         if args.stats:
             P, N, S, F = g.arrays()
             fc = np.bincount(F, minlength=len(sk.FINS))
-            print('  faces by finish:', ', '.join('%s %d' % (sk.FINS[i].name[2:], fc[i]) for i in np.argsort(-fc)[:14]))
+            print('  faces by finish:', ', '.join('%s %d' % (sk.FINS[i].name[2:], fc[i]) for i in np.argsort(-fc)[:26]))
         if args.preview and ti == 0:
             views = VIEWS
             if args.views:
