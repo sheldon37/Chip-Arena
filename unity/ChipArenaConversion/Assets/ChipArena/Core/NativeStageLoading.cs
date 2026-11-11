@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
         public bool Ready;
         /// <summary>The game itself holds the stage (an Expedition area barrier; Astra's load gate, StageLoadGate.Waiting).</summary>
         public bool Waiting;
+        /// <summary>Authority wait budget; zero uses the ordinary stage gate timeout.</summary>
+        public float WaitBudget;
         /// <summary>Gameplay runs and nothing holds it (the fight phase): never cover it.</summary>
         public bool Live;
         /// <summary>The longest the screen may still hold for the preload while the game's clock runs (Budget below).</summary>
@@ -40,7 +42,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Preload hold without a running game clock (a return to the menu, a stage the authority has not started).</summary>
         public const float ReadyTimeout=6;
         /// <summary>The longest a game hold (Waiting) keeps the screen up; the existing Expedition transfer screen stays after it.</summary>
-        public const float WaitTimeout=20;
+        public const float WaitTimeout=20,ExpeditionWaitTimeout=65;
+        public const float ContentInSeconds=.22f;
         /// <summary>The longest the screen waits for the stage itself to appear.</summary>
         public const float StageTimeout=4;
         public const string Ready="ready",Live="live",Failed="failed",Timeout="timeout",Waited="wait-timeout",Missing="no-stage";
@@ -61,7 +64,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The progress shown: eased toward the preload's work, never backwards within a load, full on the reveal.</summary>
         public float Shown{get;private set;}
         public bool FastReveal{get;private set;}
-        private bool actionPending;
+        private bool actionPending,contentPresented;
+        /// <summary>Heavy synchronous work waits until the loading details have actually drawn.</summary>
+        public bool CanBuild=>Covered&&contentPresented;
+        public void ContentPresented(){if(Covered&&Age>=ContentInSeconds)contentPresented=true;}
 
         public bool Visible=>Phase!=StageLoadPhase.Idle;
         /// <summary>Clicks and keys are held while the screen closes and while it is closed.</summary>
@@ -87,13 +93,13 @@ namespace ChipArena.UnityConversion
                 Kind=kind;if(request){Requested=true;actionPending=true;}return;
             }
             float from=Phase==StageLoadPhase.Reveal?Coverage:0;
-            Serial++;Kind=kind;Reduced=reduced;Requested=request;actionPending=request;Held=0;Shown=0;Reason=null;FastReveal=false;
+            contentPresented=false;Serial++;Kind=kind;Reduced=reduced;Requested=request;actionPending=request;Held=0;Shown=0;Reason=null;FastReveal=false;
             if(instant){Phase=StageLoadPhase.Hold;Age=0;}else{Phase=StageLoadPhase.Cover;Age=from*CoverTime;}
         }
         /// <summary>True once per request, when the screen is covered: run the deferred action now.</summary>
         public bool TakeAction(){if(Phase!=StageLoadPhase.Hold||!actionPending)return false;actionPending=false;return true;}
         /// <summary>Drops the load at once (the game shut down, a dedicated host).</summary>
-        public void Cancel(){Phase=StageLoadPhase.Idle;Age=Held=0;actionPending=false;Requested=false;}
+        public void Cancel(){Phase=StageLoadPhase.Idle;Age=Held=0;contentPresented=false;actionPending=false;Requested=false;}
 
         public void Step(float dt,in StageLoadSignals s,float work)
         {
@@ -118,7 +124,7 @@ namespace ChipArena.UnityConversion
         {
             if(s.Failed)return Failed;
             if(!s.Stage)return Held>=StageTimeout?Missing:null;
-            if(s.Waiting)return Held>=WaitTimeout?Waited:null;
+            if(s.Waiting)return Held>=Math.Max(WaitTimeout,s.WaitBudget)?Waited:null;
             if(s.Live)return Live;
             if(!s.Ready)return Held>=Math.Max(MinHold,s.Budget)?Timeout:null;
             return Held>=MinHold?Ready:null;

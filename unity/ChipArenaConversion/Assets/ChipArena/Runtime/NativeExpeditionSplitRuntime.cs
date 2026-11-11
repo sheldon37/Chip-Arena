@@ -194,20 +194,10 @@ namespace ChipArena.UnityConversion
         private NativeGameFrame SplitFrame(string who)
         {
             var member=splitCohorts.Member(who);var target=splitAreas.Find(member.Ticket.area).Arena;
-            var frame=target.NetworkFrame();frame.areaIdentity=member.Ticket;frame.expeditionSpectatorSeat=splitWatching.TryGetValue(who,out var watched)?watched:0;
-            if(member.Area!=member.Ticket.area)
-            {
-                // A non-simulated local preview lets this recipient load destination collision
-                // while the authoritative pilot remains reserved at the source.
-                var source=SplitPilotArena(who).NetworkFrame();int id=SplitSeat(who);
-                var p=source.pilots.Single(p=>p.id==id);var pose=source.snapshot.Actors.Single(p=>p.Id==id);
-                var point=expeditionM1Layout.Area(member.Ticket.area).role=="world"?expeditionM1Layout.Area(member.Ticket.area).slots[0]:expeditionM1Layout.Area(member.Ticket.area).doors.Single().entries[0];
-                if(member.Pending==null){p.hasDeath=p.hasDown=false;p.death=null;p.down=null;}
-                p.position=NativeArena.Vec(point.Position)+Vector3.up*NativeLocomotionRules.HalfHeight;p.velocity=Vector3.zero;pose.Position=NativeArena.Vec(p.position);pose.Velocity=new V3();
-                frame.seats=frame.seats.Concat(source.seats.Where(s=>s.id==id)).ToArray();frame.pilots=frame.pilots.Concat(new[]{p}).ToArray();frame.snapshot.Actors=frame.snapshot.Actors.Concat(new[]{pose}).ToArray();
-            }
-            return frame;
+            return NativeExpeditionFrames.ForRecipient(target,SplitPilotArena(who),member,SplitSeat(who),expeditionM1Layout,
+                splitWatching.TryGetValue(who,out var watched)?watched:0);
         }
+
         private void SplitNetworkStep()
         {
             if(Time.unscaledTime<expeditionNextSend)return;expeditionNextSend=Time.unscaledTime+.05f;
@@ -286,4 +276,27 @@ namespace ChipArena.UnityConversion
             public ExpeditionCommandResult Send(ExpeditionCommand command)=>Blocked(command) is string why?ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,why):Session.Execute(Viewer,command);
         }
     }
+    public static class NativeExpeditionFrames
+    {
+        // Before commit the real pilot stays at source. Give each recipient a complete,
+        // non-simulated destination pilot so it can construct and acknowledge that area.
+        public static NativeGameFrame ForRecipient(NativeArena target,NativeArena origin,ExpeditionCohortMember member,int id,ExpeditionLayout layout,int watched=0)
+        {
+            var frame=target.NetworkFrame();frame.areaIdentity=member.Ticket;frame.expeditionSpectatorSeat=watched;
+            if(member.Area!=member.Ticket.area)
+            {
+                var source=origin.NetworkFrame();
+                var p=source.pilots.Single(p=>p.id==id);var pose=source.snapshot.Actors.Single(p=>p.Id==id);
+                var area=layout.Area(member.Ticket.area);var point=area.role=="world"?area.slots[0]:area.doors.Single().entries[0];
+                if(member.Pending==null){p.hasDeath=p.hasDown=false;p.death=null;p.down=null;}
+                p.position=NativeArena.Vec(point.Position)+Vector3.up*NativeLocomotionRules.HalfHeight;p.velocity=Vector3.zero;
+                pose.Position=point.Position;pose.Velocity=new V3();
+                frame.seats=frame.seats.Concat(source.seats.Where(s=>s.id==id)).ToArray();
+                frame.pilots=frame.pilots.Concat(new[]{p}).ToArray();frame.snapshot.Actors=frame.snapshot.Actors.Concat(new[]{pose}).ToArray();
+                if(frame.pve!=null&&source.pve!=null)frame.pve.rows=frame.pve.rows.Concat(source.pve.rows.Where(r=>r.id==id)).ToArray();
+            }
+            return frame;
+        }
+    }
+
 }

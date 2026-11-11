@@ -12,6 +12,7 @@ namespace ChipArena.UnityConversion
         private ExpeditionRunBundle deploymentBundle;
         private ConversionContent deploymentBaseContent;
         private bool deploymentLaunch,deploymentLocked;
+        private float deploymentTravelAt=-1;
         private string DeploymentAuthoredJson=>Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;
         private readonly NativeLatestWork<ExpeditionRunBundle> deploymentWork=new NativeLatestWork<ExpeditionRunBundle>();
         private ExpeditionDeploymentTicket deploymentRequested;
@@ -39,6 +40,16 @@ namespace ChipArena.UnityConversion
         }
         private void DeploymentBundleTick()
         {
+            // Let the authored station hatch/drop finish before covering it and constructing the run.
+            if(deploymentTravelAt>=0&&Time.unscaledTime>=deploymentTravelAt)
+            {
+                deploymentTravelAt=-1;
+                if(deploymentLaunch&&deploymentRoom?.Deployed==true&&arena==null)
+                {
+                    RequestStage(StageLoadKind.Expedition,StartExpeditionM1);
+                    if(deploymentBundle!=null)stageView.Stage(content.Map(deploymentBundle.Layout.Area(deploymentBundle.Layout.world).map),Time.unscaledTime);
+                }
+            }
             if(deploymentWork.Poll(out var bundle,out var error))
             {
                 if(error!=null){deploymentBuildError=error.Message;networkStatus="Destination generation failed: "+error.Message;deploymentPendingDeploy=-1;deploymentPendingState=null;}
@@ -59,7 +70,8 @@ namespace ChipArena.UnityConversion
                 if(!PrepareDeploymentBundle(deploymentRoom.Ticket)){deploymentPendingDeploy=revision;networkStatus="Preparing destinations…";return true;}
                 if(!deploymentRoom.Execute(account?.Access?.AccountId,revision,ExpeditionDeploymentIntent.Deploy,true,deploymentBundle.Identity))return false;
                 PrepareDeploymentBundle(deploymentRoom.Ticket);BroadcastDeployment();deploymentLaunch=true;
-                RequestStage(StageLoadKind.Expedition,StartExpeditionM1);return true;
+                liveDeployClock.Observe(deploymentRoom.Snapshot(),Time.unscaledTime);
+                deploymentTravelAt=Time.unscaledTime+NativeDeployPresentation.TravelAt;return true;
             }
             catch(Exception e)when(e is ArgumentException||e is InvalidOperationException||e is FormatException)
             {networkStatus="Deployment refused: "+e.Message;return false;}
@@ -135,7 +147,7 @@ namespace ChipArena.UnityConversion
         }
         private void ResetDeploymentRoom()
         {
-            deploymentWork.Reset();deploymentRequested=null;deploymentPendingState=null;deploymentPendingDeploy=-1;deploymentBuildError=null;
+            deploymentWork.Reset();deploymentRequested=null;deploymentPendingState=null;deploymentPendingDeploy=-1;deploymentBuildError=null;deploymentTravelAt=-1;
             LeaveLiveDeployment();deploymentRoom=null;deploymentReceiver=null;deploymentLayout=null;deploymentBundle=null;deploymentLaunch=deploymentLocked=false;expeditionLayoutRead=false;expeditionLayout=null;
             if(deploymentBaseContent!=null){content=deploymentBaseContent;deploymentBaseContent=null;if(prefs.map==NativeExpeditionGeneratedWorld.MapId)prefs.map=content.maps.First(NativeMapRules.ArenaSelectable).id;}
         }

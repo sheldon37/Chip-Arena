@@ -74,6 +74,37 @@ namespace ChipArena.UnityConversion.Editor
                     Check(cohorts.Acknowledge(who,receiver.View.areaIdentity),"initial ready");
                 }
                 var transfers=new NativeExpeditionAreaTransfers(registry,layout,cohorts,Seat);
+                void LoadBeforeReady(string who)
+                {
+                    var member=cohorts.Member(who);var area=layout.Area(member.Ticket.area);
+                    var source=registry.Find(member.Area).Arena;var target=registry.Find(area.id).Arena;
+                    var preview=NativeExpeditionFrames.ForRecipient(target,source,member,Seat(who),layout);
+                    var frame=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=preview})).frame;
+                    Check(frame.Valid(content)&&frame.areaIdentity.Matches(member.Ticket),"pre-ACK destination snapshot validates for "+who);
+                    Check(source.Pilots.Any(p=>p.Seat.id==Seat(who))&&!target.Pilots.Any(p=>p.Seat.id==Seat(who)),"preview preserves source ownership for "+who);
+                    var scene=EditorSceneManager.NewPreviewScene();NativeArena guest=null;
+                    try
+                    {
+                        guest=new NativeArena(content,new NativeMatch(content),area.map){Replica=true,LocalId=Seat(who),ReplicaScene=scene,GeneratedRun=generated};
+                        guest.ApplyFrame(frame,Seat(who));
+                        var view=NativeExpeditionView.Build(sessions[area.id].Run,who,sessions[area.id].Sources);
+                        view.areaIdentity=member.Ticket;guest.ApplyExpeditionCollision(view,area,json);
+                        Check(guest.Local!=null&&guest.ExpeditionCollisionReady&&guest.Pve.Rows.ContainsKey(Seat(who)),"guest constructs complete destination before ready for "+who);
+                        Check((frame.snapshot.Actors.Single(a=>a.Id==Seat(who)).Position-NativeArena.Vec(frame.pilots.Single(p=>p.id==Seat(who)).position-Vector3.up*NativeLocomotionRules.HalfHeight)).Length<.001,"preview pose uses feet coordinates");
+                    }
+                    finally{guest?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}
+                    Check(cohorts.Acknowledge(who,member.Ticket),"ack follows successful destination construction");
+                }
+                // The real failure path: host and guest enter together, while both
+                // authoritative pilots remain at the entrance until the guest loads.
+                var joint=layout.areas.First(a=>a.role=="instance");
+                var jointDoor=layout.Area(layout.world).anchors.Single(a=>a.building==joint.id).id;
+                Check(transfers.Begin("fixture-party",layout.world,joint.id,jointDoor,new[]{"p1","p2"}),"reserve host and guest together");
+                LoadBeforeReady("p1");Check(!cohorts.Commit("fixture-party"),"host alone cannot complete party transfer");
+                LoadBeforeReady("p2");Check(cohorts.Commit("fixture-party")&&run.MoveMembers(layout.world,joint.id,new[]{"p1","p2"}),"both loaded pilots commit together");
+                Check(transfers.Begin("fixture-party-return",joint.id,layout.world,null,new[]{"p1","p2"}),"reserve party return");
+                LoadBeforeReady("p1");LoadBeforeReady("p2");
+                Check(cohorts.Commit("fixture-party-return")&&run.MoveMembers(joint.id,layout.world,new[]{"p1","p2"}),"party returns after both destination loads");
                 int seat=2;
                 foreach(var area in layout.areas.Where(a=>a.role=="instance"))
                 {
@@ -84,6 +115,7 @@ namespace ChipArena.UnityConversion.Editor
                     var old=cohorts.Member(who).Ticket;
                     Check(transfers.Begin("fixture-"+who,layout.world,area.id,door,new[]{who}),"reserve "+area.id);
                     var ticket=cohorts.Member(who).Ticket;
+                    LoadBeforeReady(who);
                     var ready=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-area-ready",epoch=7,areaIdentity=ticket,expeditionAreaReady=new ExpeditionAreaReadyRequest{run=ticket.run,epoch=ticket.epoch,target=ticket.area,layout=ticket.layout,generation=ticket.serial}}));
                     Check(ready.epoch==7&&ticket.Matches(ready.areaIdentity)&&cohorts.Acknowledge(who,ready.areaIdentity),"ready wire identity");
                     Check(cohorts.Commit("fixture-"+who)&&run.MoveMembers(layout.world,area.id,new[]{who}),"commit "+area.id);
