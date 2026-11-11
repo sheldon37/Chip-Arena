@@ -33,6 +33,16 @@ namespace ChipArena.UnityConversion
         private static readonly (string path,Type type)[] BootAssets={(ArenaPresentation.VisualBodyResource,typeof(GameObject)),(ArenaPresentation.VisualLookResource,typeof(TextAsset)),("Icons",typeof(TextAsset)),("ClassIcons",typeof(TextAsset))};
         private double BootMs=>(Stopwatch.GetTimestamp()-bootAt)*1000d/Stopwatch.Frequency;
         private bool bootWanted;
+        /// <summary>
+        /// ConversionGame.Boot: with the intro to play, its black curtain now and the game one frame later (NativeBootDefer), so
+        /// a black frame is on screen before Awake's work (without Unity's splash the window showed white until the first frame).
+        /// Awake itself is unchanged. False: the game is made at once, as always.
+        /// </summary>
+        private static bool BootCurtain()
+        {
+            NativeBootPrefetch.Decide();if(!NativeBootPrefetch.Wanted||NativeBootIntro.Current!=null)return false;
+            NativeBootIntro.Curtain();new GameObject("Boot defer").AddComponent<NativeBootDefer>();return true;
+        }
         /// <summary>The top of Awake: whether the intro will play (decided before the splash; here if that hook did not run).</summary>
         private void BootPrefetch()
         {
@@ -44,7 +54,8 @@ namespace ChipArena.UnityConversion
         {
             if(!bootWanted||dedicated)return false;
             bootNoticeFrom=Time.unscaledTime;
-            bootIntro=NativeBootIntro.Begin(prefs.sound?Mathf.Clamp01(prefs.menuMusic)*NativeBootIntroRules.Gain:0,()=>bootStage==BootStage.Ready&&BootMs>=bootDevHold*1000||error.Length>0);
+            float level=prefs.sound?Mathf.Clamp01(prefs.menuMusic)*NativeBootIntroRules.Gain:0;Func<bool> ready=()=>bootStage==BootStage.Ready&&BootMs>=bootDevHold*1000||error.Length>0;
+            bootIntro=NativeBootIntro.Current!=null&&!NativeBootIntro.Current.Armed?NativeBootIntro.Current.Arm(level,ready):NativeBootIntro.Begin(level,ready);
             bool voxel=Array.IndexOf(Environment.GetCommandLineArgs(),ArenaPresentation.VoxelBodiesArgument)>=0;
             foreach(var (path,type) in BootAssets)if(!(voxel&&type==typeof(GameObject)))bootAssets.Add(Resources.LoadAsync(path,type));
             Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_INTRO playing at {0:F2} s since start ({1:F0} ms after its workers started, before the splash)",Time.realtimeSinceStartupAsDouble,BootMs);
@@ -115,6 +126,19 @@ namespace ChipArena.UnityConversion
             if(bootHanded)return;bootHanded=true;nativeAudio.MenuHeld=false;
             if(noticeText.Length>0&&noticeLast>=bootNoticeFrom){noticeShown=noticeLast=Time.unscaledTime;}
             Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_HANDOFF interactive at {0:F2} s since start ({1:F0} ms after the workers started); steps since then {2}; sculpts made {3} in {4:F0} ms, taken {5}, sculpted here {6}, unused {7}",Time.realtimeSinceStartupAsDouble,BootMs,string.Join(" ",bootSteps),NativeBootSculpts.Made,NativeBootSculpts.WorkerMs,NativeBootSculpts.Taken,NativeBootSculpts.Fallbacks,NativeBootSculpts.Left);
+        }
+    }
+    /// <summary>The game one frame after the intro's curtain (ConversionGame.BootCurtain): once a black frame has been shown.</summary>
+    internal sealed class NativeBootDefer:MonoBehaviour
+    {
+        private int updates;
+        private void Awake()=>DontDestroyOnLoad(gameObject);
+        private void Update()
+        {
+            if(++updates<2)return;
+            if(FindFirstObjectByType<ConversionGame>()==null)new GameObject("Chip Arena Native Conversion").AddComponent<ConversionGame>();
+            var curtain=NativeBootIntro.Current;if(curtain!=null&&!curtain.Armed)curtain.Dismiss();
+            Destroy(gameObject);
         }
     }
     /// <summary>

@@ -40,13 +40,27 @@ namespace ChipArena.UnityConversion
         /// Starts the intro (ConversionGame.Awake, once the preferences are in): the clip prepares at once and plays once Unity's
         /// own splash screen is over. `level` 0-1 is the sound's volume; `ready` says when the game below may be shown.
         /// </summary>
-        public static NativeBootIntro Begin(float level,Func<bool> ready)
+        public static NativeBootIntro Begin(float level,Func<bool> ready)=>Curtain().Arm(level,ready);
+        /// <summary>
+        /// The intro before the game exists (ConversionGame.Boot, one frame ahead of the game's Awake): black over everything, so
+        /// the window shows black, not an unpainted white, through Awake's work; the clip prepares meanwhile. Nothing plays and
+        /// its clock does not run until Arm.
+        /// </summary>
+        public static NativeBootIntro Curtain()
         {
-            var go=new GameObject("Boot intro");DontDestroyOnLoad(go);var intro=go.AddComponent<NativeBootIntro>();intro.Setup(level,ready);return intro;
+            var go=new GameObject("Boot intro");DontDestroyOnLoad(go);var intro=go.AddComponent<NativeBootIntro>();intro.Setup();return intro;
         }
-        private void Setup(float level,Func<bool> ready)
+        /// <summary>The game's Awake hands over its sound level and its readiness: the intro starts.</summary>
+        public NativeBootIntro Arm(float level,Func<bool> ready)
         {
-            Current=this;this.ready=ready;this.level=Mathf.Clamp01(level);
+            this.ready=ready;this.level=Mathf.Clamp01(level);if(voice!=null)voice.volume=this.level;armed=true;return this;
+        }
+        public bool Armed=>armed;private bool armed;
+        /// <summary>A curtain the game never armed (its Awake failed before the intro, or chose none): gone at once.</summary>
+        public void Dismiss(){if(finished)return;finished=true;Debug.Log("BOOT_INTRO curtain lifted without the intro");Release();Current=null;Destroy(gameObject);}
+        private void Setup()
+        {
+            Current=this;
             // The intro's loads (and the game's) integrate in small slices while the clip plays; restored when it ends.
             loadingPriority=Application.backgroundLoadingPriority;Application.backgroundLoadingPriority=ThreadPriority.Low;
             logoLoad=Resources.LoadAsync<Texture2D>(NativeBootIntroRules.Logo);
@@ -77,7 +91,7 @@ namespace ChipArena.UnityConversion
         private double Ms=>clock.Elapsed.TotalMilliseconds;
         private void Update()
         {
-            if(finished)return;
+            if(finished||!armed)return;
             // Unity's splash screen (Player Settings) draws over everything: the clip waits for it, the loading does not.
             if(!splashDone){splashDone=SplashDone();if(!splashDone)return;}
             float dt=Mathf.Min(Time.unscaledDeltaTime,.1f);if(!shown){shown=true;dt=0;shownAt=Ms;}

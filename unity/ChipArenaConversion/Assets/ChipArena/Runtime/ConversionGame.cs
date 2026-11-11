@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
             }
         }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Boot(){if(FindFirstObjectByType<ConversionGame>()==null)new GameObject("Chip Arena Native Conversion").AddComponent<ConversionGame>();}
+        private static void Boot(){if(FindFirstObjectByType<ConversionGame>()==null&&!BootCurtain())new GameObject("Chip Arena Native Conversion").AddComponent<ConversionGame>();}
         private void Awake()
         {
             try
