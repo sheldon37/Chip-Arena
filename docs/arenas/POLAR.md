@@ -213,6 +213,10 @@ the Low graphics tier; the box kit without the bank (an earlier commit; several 
 with its seams' flags and the ice's glints. The aurora, the searchlight's shaft, the balloon, the strings of lamps, the dish
 at different turns and a vent's burst are in those frames.
 
+**Checks run**: `--polar` (7,256 checks) and `--polar-art` (with the bank: every block covered, the play-space rule, the spawns);
+the full CoreTests suite (1,002 PASS lines, exit 0, the bank present); the Unity compile check; the Editor's build checks
+(`PrototypeBuild.Validate`: ok on `5410178b`).
+
 **Not done / not seen**:
 - **The thin ice cracking and sinking was not seen in the Editor.** The scripted attempt (the Bombadier's attack on a seam) fired
   nothing. Its rules are the existing segments' (PolarChecks runs the state machine: a broken seam cracks its sheet, it sinks,
