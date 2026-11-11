@@ -131,6 +131,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--emporium-art"){EmporiumArtChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--cybercity-art"){CyberCityArtChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--brickfall-art"){BrickfallArtChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--wardzero-art"){WardZeroArtChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--skin-tone"){SkinToneChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-models"){ZombieModelChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--tiler"){TilerLookChecks.Run(ProjectRoot());return 0;}
@@ -343,6 +344,7 @@ internal static class Program
             SanctumChecks.Run(root);
             StageArtChecks.Run(root);
             ClubArtChecks.Run(root);
+            WardZeroArtChecks.Run(root);
             EmporiumArtChecks.Run(root);
             CyberCityArtChecks.Run(root);
             BrickfallArtChecks.Run(root);
