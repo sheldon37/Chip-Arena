@@ -91,13 +91,14 @@ def swell(T, comber=False):
 def wash(T, fall=False):
     """A sheet of water of unit half extents: streaked with foam along its run (z; down its height for the fall)."""
     g = Geo()
-    n = (10, 6, 3)[T.i]
-    m = (8, 5, 3)[T.i]
+    n = (22, 12, 6)[T.i]
+    m = (4, 3, 2)[T.i]
     for i in range(n):
         for j in range(m):
             u0, u1 = -1 + 2 * i / n, -1 + 2 * (i + 1) / n
             v0, v1 = -1 + 2 * j / m, -1 + 2 * (j + 1) / m
-            f = F['foamlit'] if (bk.hashf(5, i, j // 2) < .5 or j == 0) else F['sealight']
+            # streaks along the run: most of it foam, the water showing between
+            f = F['foamlit'] if (bk.hashf(5, i) < .64 or (j == 0 and not fall)) else F['sealight']
             if fall:
                 g.face(((u0, v0, -1), (u1, v0, -1), (u1, v1, -1), (u0, v1, -1)), f, (0, 0, -1))
             else:
