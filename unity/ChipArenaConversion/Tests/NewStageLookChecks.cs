@@ -138,7 +138,9 @@ namespace ChipArena.UnityConversion
                 foreach(var m in a)for(int i=0;i+2<m.Positions.Length;i+=3){double px=m.Positions[i],py=m.Positions[i+1],pz=m.Positions[i+2];Check(py<=under+1e-3||px<=x0+1e-3||px>=x1-1e-3||pz<=z0+1e-3||pz>=z1-1e-3,id+": a backdrop vertex at "+px.ToString("0.#")+", "+py.ToString("0.#")+", "+pz.ToString("0.#")+" stays out of the play space");}
             }
             {
-                var bw=content.maps.Single(m=>m.id=="harbor");var s=new NativeNewStageScenery.Sink{Map="probe"};NativeNewStageScenery.PlaySpace(bw,out s.MinX,out s.MaxX,out s.MinZ,out s.MaxZ,out s.Under);bool threw=false;
+                // (The probe needs a flat map with nothing under its floor: the rebuilt stages all have floors below 0, so Brickfall,
+                // whose layout the art pass kept.)
+                var bw=content.maps.Single(m=>m.id=="brickfall");var s=new NativeNewStageScenery.Sink{Map="probe"};NativeNewStageScenery.PlaySpace(bw,out s.MinX,out s.MaxX,out s.MinZ,out s.MaxZ,out s.Under);bool threw=false;
                 try{s.Box(0,1,0,2,2,2,0xffffff);}catch(InvalidOperationException){threw=true;}Check(threw,"a backdrop box in the play space is refused");s.Box(0,-3,0,10,1,10,0xffffff);s.Box(60,4,0,2,8,2,0xffffff);Check(s.Boxes==2,"under the floor and outside the bounds are allowed");
             }
 
