@@ -370,7 +370,7 @@ namespace ChipArena.UnityConversion
             {
                 float s=t-StrikeAt;if(s>=0&&s<1.6f)
                 {
-                    float u=s/1.6f;var at=Local(0,.25f,.35f);if(s<.3f)fx.Glow(at,(Venom*2+White)*(4*(1-s/.3f)),0,.5f+1.1f*s/.3f,1,s/.3f,22600);
+                    float u=s/1.6f;var at=Local(0,.25f,.35f);if(s<.22f)fx.Glow(at,(Venom*2+White)*(3.5f*(1-s/.22f)),0,.3f+.6f*s/.22f,1,s/.22f,22600);
                     int petals=low?10:22;for(int i=0;i<petals;i++){float a=i*6.2831853f/petals;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));float r=.3f+2.6f*(1-(1-u)*(1-u));for(int j=0;j<3;j++){var p=new Vector3(0,floor+.05f+.25f*j,0)+d*(r*(1-.15f*j));fx.Streak(p,d*4+new Vector3(0,2,0),Venom*(2.4f*(1-u)),.04f,.25f,.03f,.6f,u,22620+i*3+j);}}
                     int ring=low?20:48;for(int i=0;i<ring;i++){float a=i*6.2831853f/ring;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));fx.Streak(new Vector3(0,floor+.03f,0)+d*(.4f+4.2f*(1-(1-u)*(1-u))),d*6,Venom*(1.8f*(1-u)),.03f,.2f,.03f,.7f,u,22700+i);}
                     if(s<.9f){int m=low?10:26;for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(22760,i,true);var p=at+new Vector3(d.X*2.6f,d.Y*3.2f,d.Z*2.6f)*s+new Vector3(0,-4.9f*s*s,0);if(p.Y<floor)continue;fx.Glow(p,Venom*(2*(1-s/.9f)),0,.04f,0,s/.9f,22800+i);}}
