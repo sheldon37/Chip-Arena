@@ -117,6 +117,14 @@ files, and no pack shader or script ships (`docs/PACK-EFFECTS.md`).
 - Kronnect's Trails FX - Stylized Motion Effects: `SamplePresets/StylizedRamp1` (the afterimages' colour ramp); the
   afterimage shader is our own.
 
+### Blood (2026-11-10, owner licence)
+
+The blood's splashes, the decals it leaves and the flesh lumps among a gib's fragments (`docs/BLOOD-PACK.md`) come from
+RVFX's Blood Effects Pack: resized copies of its six splash sheets and four decal sprite sheets (the desaturated sheets and
+their normal maps), and its five gut meshes with their albedo and normal maps. They ship in the licensed-assets zip under
+the visual body's rules: never committed or published as files. No pack shader or script ships; the three blood shaders
+are our own.
+
 ### Dissolve noise (2026-10-24, owner licence)
 
 A dead pilot's dissolve (`docs/PACK-EFFECTS.md`) reads `Cutout Map 15` of Advanced Dissolve (Amazing Assets). It ships in

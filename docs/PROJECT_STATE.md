@@ -1,5 +1,7 @@
 2026-11-10 Claude (`claude/blades`): the Katana (public) and the DEV Fangs, two melee classes on the Frank Slash Pack's katana and assassin sets: sculpted blades and a saya, their moves, effects, ten chips each with their own pick animations, and their intros (Crimson Moon, Silent Kill); the guns' Arsenal Series skins merged in. Rules logged for Astra; the Fangs need `fangs` in the Site's grant list.
 
+2026-11-10 Claude (`claude/blood-pack`): the owner's blood pack is in: lit fluid splashes at wounds, spreading decals and kill pools, flesh lumps among a gib's fragments (`docs/BLOOD-PACK.md`). On the branch, not merged; the bake waits for the Drive zip's repack.
+
 2026-11-10 Claude (`claude/stage-fixes`): the new stages' z-fighting settled (rebuilt banks in the Drive zip) and their invisible walls removed (bots keep the edges), the Causeway kills falls at -6, guns aim in third person. The Katana, the DEV Fangs and the three packs continue in their own session.
 
 2026-11-10 Claude (`claude/stage-art-release`): the four new stages are modelled (Blender banks in the Drive zip, the `ChipArena/StageLit` shader), the club's DJ and crowd are Grey aliens. Next: the Katana (public), the DEV Daggers and the three new packs, in their own session.

@@ -147,7 +147,8 @@ namespace ChipArena.UnityConversion
     public sealed class NativeBloodSplats
     {
         public const int Kept=384,Spare=48,Capacity=Kept+Spare;public const float FadeSeconds=.6f,SurfaceFade=.25f;
-        public struct Splat{public bool Live,Ink;public Vector3 Center,Normal,Along;public float Length,Width,Born,FadeAt,FadeFor;public uint Seed;public int Surface;public long Key;}
+        /// <remarks>Pool: a pool under a kill (the blood pack's decals spread it slowly: Core NativeBloodDecalLook).</remarks>
+        public struct Splat{public bool Live,Ink,Pool;public Vector3 Center,Normal,Along;public float Length,Width,Born,FadeAt,FadeFor;public uint Seed;public int Surface;public long Key;}
         public readonly Splat[] Items=new Splat[Capacity];
         /// <summary>How many stay (Kept; the runtime lowers it with reduced effects and on the low graphics tier).</summary>
         public int Limit=Kept;
@@ -158,7 +159,7 @@ namespace ChipArena.UnityConversion
         public int Version{get;private set;}
         public void Clear(){Array.Clear(Items,0,Items.Length);Steady=Live=0;Version++;}
         public bool Has(long key){for(int i=0;i<Capacity;i++)if(Items[i].Live&&Items[i].Key==key)return true;return false;}
-        public int Add(long key,Vector3 center,Vector3 normal,Vector3 along,float length,float width,uint seed,int surface,float time,bool ink=false)
+        public int Add(long key,Vector3 center,Vector3 normal,Vector3 along,float length,float width,uint seed,int surface,float time,bool ink=false,bool pool=false)
         {
             if(Has(key))return -1;
             while(Steady>=Math.Max(1,Math.Min(Kept,Limit)))
@@ -170,7 +171,7 @@ namespace ChipArena.UnityConversion
             int slot=-1;for(int i=0;i<Capacity&&slot<0;i++)if(!Items[i].Live)slot=i;
             // No free slot: the fading splat furthest along goes now.
             if(slot<0){float most=-1;for(int i=0;i<Capacity;i++){var s=Items[i];if(s.FadeAt>=0){float u=(time-s.FadeAt)/Math.Max(1e-3f,s.FadeFor);if(u>most){most=u;slot=i;}}}if(slot<0)return -1;Live--;}
-            Items[slot]=new Splat{Live=true,Ink=ink,Center=center,Normal=normal,Along=along,Length=length,Width=width,Born=time,FadeAt=-1,FadeFor=FadeSeconds,Seed=seed,Surface=surface,Key=key};
+            Items[slot]=new Splat{Live=true,Ink=ink,Pool=pool,Center=center,Normal=normal,Along=along,Length=length,Width=width,Born=time,FadeAt=-1,FadeFor=FadeSeconds,Seed=seed,Surface=surface,Key=key};
             Steady++;Live++;Version++;return slot;
         }
         /// <summary>Every splat on `surface` fades (its block broke, fell or moved).</summary>
@@ -217,6 +218,8 @@ namespace ChipArena.UnityConversion
         public struct Drop{public bool Live;public Vector3 Position,Velocity;public float Size,Born,Delay;public uint Seed;public long Key;public bool Stain,Ink;}
         public readonly Drop[] Drops=new Drop[Max];public readonly NativeBloodSplats Splats=new NativeBloodSplats();
         private int cursor;private float clock=float.NaN;
+        /// <summary>Where every spray also throws the blood pack's splashes (Core/NativeBloodPack; null: none).</summary>
+        public NativeBloodSplashes Splashes;
         public int Flying{get{int n=0;for(int i=0;i<Max;i++)if(Drops[i].Live)n++;return n;}}
         public void Clear(bool splats){Array.Clear(Drops,0,Max);cursor=0;clock=float.NaN;Array.Clear(budgetId,0,Budgets);if(splats)Splats.Clear();}
         /// <summary>
@@ -242,6 +245,7 @@ namespace ChipArena.UnityConversion
         public int Spray(string kind,float severity,uint seed,long key,Vector3 origin,Vector3 normal,Vector3 along,float time,float quality,bool low,bool stain,int extra=0,int target=-1,bool kill=false,bool ink=false,Vector3 carry=default)
         {
             int count=NativeBloodRules.Count(kind,severity,quality,low)+Math.Max(0,extra);if(target>=0)count=Allow(target,count,time,quality,low,kill);
+            if(count>0)Splashes?.Add(kind,severity,seed,origin,normal,along,time,quality,low,kill,ink);
             bool carried=carry.LengthSquared()>1e-6f&&carry.LengthSquared()<1e6f;
             for(int i=0;i<count;i++)
             {
