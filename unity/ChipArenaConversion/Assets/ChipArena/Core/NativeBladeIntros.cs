@@ -56,19 +56,21 @@ namespace ChipArena.UnityConversion
         protected int HeldCount(int hand)=>heldCount[hand];
         /// <summary>The blade in `hand` `back` samples before the newest.</summary>
         protected void HeldSample(int hand,int back,out Vector3 root,out Vector3 tip,out float at){int i=hand*Samples+((heldHead[hand]-back)%Samples+Samples)%Samples;root=heldRoot[i];tip=heldTip[i];at=heldAt[i];}
-        /// <summary>The blade's trail over the last `life` s: chains of streaks along its tip's path, hot at the head, and fainter, wider ones
-        /// part way up the blade, so the sweep reads as a sheet of light.</summary>
+        /// <summary>The blade's trail over the last `life` s: a chain of streaks along its tip's path, hot at the head (the edge), and the
+        /// blade's afterimages (from a third of the way up to the tip) at each sample and between them, faint, soft and close together, so
+        /// the sweep fills as a sheet of light (separate chains part way up read as stripes in the slowed cut).</summary>
         protected void Trail(INativeEntranceFx fx,float t,int hand,float life,Vector3 tint,Vector3 hot,float width,float gain,int seed,bool low)
         {
-            int c=heldCount[hand];if(c<2)return;int bands=low?1:4;
+            int c=heldCount[hand];if(c<2)return;int fill=low?0:3;
             for(int j=0;j<c-1;j++)
             {
                 HeldSample(hand,j,out var r0,out var p0,out float t0);HeldSample(hand,j+1,out var r1,out var p1,out float t1);
                 float age=t-t0;if(age>=life)break;float dt=Math.Max(1e-4f,t0-t1),f=1-age/life,k=f*f*gain;
-                for(int b=0;b<bands;b++)
+                var d=p0-p1;if(d.LengthSquared()>1e-8f)fx.Streak(p0,d/dt,Vector3.Lerp(tint,hot,f)*(2.4f*k),width*(.4f+.6f*f),0,dt,0,1-f,seed+j*4);
+                for(int i=0;i<fill;i++)
                 {
-                    float up=b==bands-1?1:.4f+.2f*b,edge=up*up;var e=Vector3.Lerp(r0,p0,up);var d=e-Vector3.Lerp(r1,p1,up);if(d.LengthSquared()<1e-8f)continue;
-                    fx.Streak(e,d/dt,Vector3.Lerp(tint,hot,f*edge)*(2.4f*k*edge),width*(.4f+.6f*f)*(up<1?1.8f:1),0,dt,0,1-f,seed+j*5+b);
+                    float u=i/(float)fill;var r=Vector3.Lerp(r0,r1,u);var p=Vector3.Lerp(p0,p1,u);var a=Vector3.Lerp(r,p,.33f);var ax=p-a;if(ax.LengthSquared()<1e-6f)continue;
+                    fx.Streak(p,ax*10,tint*(.75f*k),width*2.4f,0,.1f,0,1-f,seed+j*4+1+i);
                 }
             }
         }
