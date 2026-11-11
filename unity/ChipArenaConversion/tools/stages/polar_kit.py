@@ -375,3 +375,51 @@ def mirror_x(g):
         nn[:, 0] *= -1
         o.face([tuple(p) for p in pts[::-1]], int(ff), normals=[tuple(n) for n in nn[::-1]])
     return o
+
+
+def festoon(g, a, b, sag, T, f_bulb, step=1.1, f_wire=None):
+    """A string of lamps from a to b, sagging by `sag`: the wire and a warm bulb every `step` metres."""
+    L = math.dist(a, b)
+    n = max(3, int(L / step))
+    pts = []
+    for k in range(n + 1):
+        u = k / n
+        pts.append((a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u - sag * 4 * u * (1 - u), a[2] + (b[2] - a[2]) * u))
+    if T.detail:
+        sk.tube(g, pts, .012, F['black'] if f_wire is None else f_wire, 4, caps=False)
+    r = (.07, .08, .1)[T.i]
+    for p in pts[1:-1]:
+        sk.lathe(g, [(.002, -r - .1), (r * .8, -r * .6 - .1), (r, -.1), (r * .5, -.1 + r * .5), (.02, -.1 + r * .7)], p, f_bulb, (6, 4, 4)[T.i])
+
+
+def heaved(g, x0, x1, y0, y1, z0, z1, T, seed, f_ice, f_deep, f_snow):
+    """Two floes the ice has rafted against each other (thin along x, long along z): each a thick plate standing on edge and
+    leaning on the other, its top edge broken; blue where it is sheer, deeper at its foot, snow along its head. Their feet keep
+    within the block; they lean only as far as the block is wide."""
+    h = y1 - y0
+    n = (max(3, int((z1 - z0) / .7)), max(2, int((z1 - z0) / 1.3)), 2)[T.i]
+    def plate(side, t, hh, k):
+        # side -1: its foot along the west face, leaning east; +1 the mirror
+        foot = (x0 + .04) if side < 0 else (x1 - .04 - t)
+        lean = side * -1 * min(.26, ((x1 - x0) - t - .1) / max(hh, 1e-3) * .9)
+        rows = []
+        for i in range(n + 1):
+            u = i / n
+            z = z0 + .04 + (z1 - z0 - .08) * u + (0 if i in (0, n) else (H(seed, k, i) - .5) * .25)
+            top = hh * (.78 + .22 * H(seed, k, i, 3)) * (.86 if i in (0, n) else 1.0)
+            zt = z + (.22 if i == 0 else (-.22 if i == n else 0))
+            bl, br = (foot, y0, z), (foot + t, y0, z)
+            tl, tr = (foot + lean * top + t * .12, y0 + top, zt), (foot + lean * top + t * .8, y0 + top - .1 * H(seed, k, i, 5), zt)
+            ml, mr = (foot + lean * top * .5 - .04 * side, y0 + top * .5, z), (foot + t + lean * top * .5 + .04 * side, y0 + top * .5, z)
+            rows.append([bl, ml, tl, tr, mr, br])
+        P = np.asarray(rows, dtype=np.float64)
+        inside = P.reshape(-1, 3).mean(axis=0)
+        def pick(nn, cc):
+            if nn[1] > .55:
+                return f_snow
+            return f_deep if cc[1] < y0 + hh * (.34 + .12 * H(seed, k, int(cc[2] * 2))) else f_ice
+        surf(g, P, f_ice, inside=inside, flat=True, pick=pick)
+        for row, nz in ((rows[0], -1), (rows[-1], 1)):
+            g.face(row, f_ice, normal=(0, 0, nz))
+    plate(-1, (x1 - x0) * .46, h, 1)
+    plate(1, (x1 - x0) * .42, h * (.72 + .12 * H(seed, 9)), 2)

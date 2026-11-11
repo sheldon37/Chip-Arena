@@ -30,13 +30,19 @@ from polar_kit import F, H, bx  # noqa: E402
 
 BANK = 'ChipArenaStagePolar'
 FLOORS = (0.0, 2.4, 3.2)
+ROOMS = []      # the buildings' footprints (|x|0, |x|1, z0, z1), set from the layout
 
 
 def ground_y(x, z):
     """The shelf's top: wind-packed snow, a few centimetres of sastrugi (the same either side of x = 0)."""
     P = np.stack([np.abs(np.asarray(x, dtype=np.float64)) * .35, np.zeros_like(np.asarray(x, dtype=np.float64)), np.asarray(z, dtype=np.float64) * 1.1], axis=-1)
     n = pk.noise(P, .5, 41, 2).reshape(np.shape(x))
-    return .012 + .05 * n
+    y = .012 + .05 * n
+    # under a building's floor the snow lies a little lower (its boards never share the snow's plane)
+    ax, zz = np.abs(np.asarray(x, dtype=np.float64)), np.asarray(z, dtype=np.float64)
+    for (x0, x1, z0, z1) in ROOMS:
+        y = np.where((ax > x0) & (ax < x1) & (zz > z0) & (zz < z1), -.03, y)
+    return y
 
 
 def ground(g, x0, x1, z0, z1, T):
@@ -459,6 +465,15 @@ def building(g, L, T, prefix, kind):
                     else:
                         sk.box(g, u - .025, u + .025, y0 + .3, y1, z0 - .012, z1 + .012, fa, T, bevel=.01, cell=0)
         if lintel:
+            # the door's frame: a jamb each side, down to the floor, and a head trim
+            if along_z:
+                for zz in (z0, z1):
+                    sk.box(g, x0 - .04, x1 + .04, 0, y1, zz - .07, zz + .07, frame, T, bevel=.02, cell=0, skip=('-y',))
+                sk.box(g, x0 - .04, x1 + .04, y0 - .02, y0 + .1, z0, z1, frame, T, bevel=.02, cell=0)
+            else:
+                for xx in (x0, x1):
+                    sk.box(g, xx - .07, xx + .07, 0, y1, z0 - .04, z1 + .04, frame, T, bevel=.02, cell=0, skip=('-y',))
+                sk.box(g, x0, x1, y0 - .02, y0 + .1, z0 - .04, z1 + .04, frame, T, bevel=.02, cell=0)
             # the lamp over the door, outside
             out = (1 if (x0 + x1) / 2 > mid[0] else -1) if along_z else (1 if (z0 + z1) / 2 > mid[1] else -1)
             if along_z:
@@ -491,6 +506,10 @@ def building(g, L, T, prefix, kind):
     x0, x1, y0, y1, z0, z1 = bx(rb)
     px = mid[0] + (1 if mid[0] < 0 else -1) * ((x1 - x0) / 2 - 1.2)
     roof(g, x0 - .1, x1 + .1, z0 - .1, z1 + .1, y0 + .0, .2, T, seed, pipe_at=(px, mid[1] + (z1 - z0) / 2 - 1.4))
+    # the floor inside: boards (a cabin) or a slab, a hand over the ice
+    wx0, wx1 = min(bx(b)[0] for b in walls), max(bx(b)[1] for b in walls)
+    wz0, wz1 = min(bx(b)[4] for b in walls), max(bx(b)[5] for b in walls)
+    sk.box(g, wx0 + .2, wx1 - .2, .0, .048 if T.i == 0 else .09, wz0 + .2, wz1 - .2, F['timber-z'] if kind == 'cabin' else F['concrete-dark'], T, bevel=0, cell=(1.5, 0, 0)[T.i], skip=('-y',))
     # ceiling boards under it (seen from inside)
     sk.box(g, x0 + .1, x1 - .1, y0 - .02, y0 + .0, z0 + .1, z1 - .1, F['timber-dark'], T, bevel=0, cell=0, skip=('+y',))
 
@@ -560,7 +579,7 @@ def west(L, T):
             spire(g, b, T, seed)
         elif i.startswith('polar-floe-'):
             x0, x1, y0, y1, z0, z1 = bx(b)
-            pk.slab(g, x0, x1, y0, y1, z0, z1, F['ice'], F['snow'], T, seed, jag=.16, f_edge=F['ice-deep'])
+            pk.heaved(g, x0, x1, y0, y1, z0, z1, T, seed, F['ice'], F['ice-deep'], F['snow'])
             pk.mound(g, x0 - .2, x1 + .2, z0 - .2, z1 + .2, y0, .22, F['snow'], T, seed=seed, steep=.3, bulge=.03, cell=.5)
         elif i.startswith('polar-drift-') and i.endswith('-crest'):
             drift(g, B[i[:-6] + '-apron'], b, T, seed)
@@ -583,6 +602,13 @@ def west(L, T):
     for h in L['hazards']:
         if h['kind'] == 'vent' and h['a'][0] < 0:
             vent(g, h, T)
+    # strings of lamps over the yard (every lamp more than 2 m over what is under it): from the cabin's eaves to the weather
+    # mast and to the shed's, from the mast to the lab's
+    cab, lab, shed, m = bx(B['polar-cabin-a-roof']), bx(B['polar-lab-w-roof']), bx(B['polar-shed-w-roof']), bx(B['polar-mast-w'])
+    mast_at = ((m[0] + m[1]) / 2 - .45, 6.2, (m[4] + m[5]) / 2)
+    pk.festoon(g, (cab[1] + .16, cab[3] + .2, cab[5] - .5), mast_at, 1.0, T, F['lamp'])
+    pk.festoon(g, mast_at, (lab[1] + .16, lab[3] + .2, lab[5] - .4), .9, T, F['lamp'])
+    pk.festoon(g, (cab[1] + .16, cab[3] + .2, cab[4] + .5), (shed[1] + .16, shed[3] + .2, shed[5] - .4), .5, T, F['lamp'])
     return g
 
 
@@ -621,6 +647,9 @@ def main():
     ap.add_argument('--stats', action='store_true')
     args = ap.parse_args(argv)
     L = sk.load_layout(args.layout)
+    for pre in ('polar-cabin-a-', 'polar-lab-w-', 'polar-shed-w-'):
+        ws = [bx(b) for b in L['blocks'] if b['id'].startswith(pre) and '-wall' in b['id']]
+        ROOMS.append((min(-w[1] for w in ws) - .5, max(-w[0] for w in ws) + .5, min(w[4] for w in ws) - .5, max(w[5] for w in ws) + .5))
     pk.finishes()
     import polar_props as props
     sb = sk.StageBank()

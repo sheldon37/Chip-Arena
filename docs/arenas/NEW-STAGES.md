@@ -240,6 +240,9 @@ before damage modifiers (Ward Zero is 100 HP per burst). Sea notches retain kill
 
 ## 5. Polaris Station (`polar`): the research station at polar night
 
+> Rebuilt from scratch on 2026-11-11 (docs/arenas/POLAR.md, `docs/arenas/scripts/polar_m2.py`): what follows describes the M1
+> stage of the same id, kept as history. The map is no longer one of Core NativeNewStage*'s.
+
 **Astra M1 integration:** no geometry or hazard changes. Temporary music: `cybercity-neon-riot`.
 
 - **Setting:**

@@ -48,6 +48,12 @@ def hull(g, L, T):
             for j, (y, dw) in enumerate(rows):
                 P[i, j] = (side * max(.02, W[i] + dw * min(1.0, W[i] / 2.0)), y, Z[i])
         pk.surf(g, P, F['hull'], facing=(side, 0, -.2), pick=band)
+    # plate seams down her sides (the Fine tier)
+    if T.tiny:
+        for side in (-1, 1):
+            for z in np.arange(10.4, 58, 2.4):
+                w = float(np.interp(z, Z, W))
+                sk.box(g, side * w - .012, side * w + .012, .92, 2.48, z - .02, z + .02, F['hull'], T, bevel=.008, cell=0)
     # the stem bar and the rubbing strake
     sk.box(g, -.1, .1, 0, DECK + .25, zs[0] - .1, zs[0] + .1, F['hull-dark'], T, bevel=.03, cell=0)
     for side in (-1, 1):
@@ -157,6 +163,11 @@ def deck_fittings(g, L, T, B):
             pk.pipe(g, (cx, y0 + 8.4, cz), (x, DECK + 1.12, z), .022, F['black'], T, caps=False)
         pk.pipe(g, (cx, y0 + 10.6, cz), (0, DECK + .3, 8.5), .022, F['black'], T, caps=False)
         sk.box(g, cx - .5, cx + .5, y0 + .9, y0 + 1.3, z0 - .012, z0 - .004, F['red'], T, bevel=0, cell=0)
+    # dressing lights: lamps down the forestay to the stem and along the stays to the wheelhouse's roof
+    # (down the forestay only as far as 2.4 m over the bow's deck)
+    pk.festoon(g, (cx, y0 + 10.4, cz - .2), (0, DECK + 2.5, 9.6), .3, T, F['lamp'], step=.9)
+    for s in (-1, 1):
+        pk.festoon(g, (cx, y0 + 10.4, cz + .2), (s * 5.2, 12.5, 24.3), 1.2, T, F['lamp'], step=1.0)
     # gangways: timber flights and their landings
     for b in L['blocks']:
         i = b['id']
