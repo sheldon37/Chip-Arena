@@ -554,3 +554,38 @@ Oh-oh, oh-oh
 
 [End]
 ```
+
+## The main menu (2026-11-11)
+
+The owner asked for a new menu song ("Lets bring our menu music up to date"), then preferred "a more relaxed, non-lyrical version".
+This is that version; the first draft (a 100 BPM city-pop take with a vocoded "Chip... Arena" tag) was set aside. The home
+screen's backdrop is the Pilot's Rooftop (Runtime NativeRooftopPresentation): a rain-wet neon city at night. The menu plays
+`music/menu-afterglow`, currently the owner's "Chip Arena Main". A new song replaces that asset and keeps its importer GUID, as the
+2026-10-12 replacement did.
+
+How to use it in Suno: with Instrumental on, paste only the style field. To steer the sections, turn Instrumental off and add the
+lyric field, which holds only bracketed directions.
+
+Lyric field (directions only):
+
+```
+[Intro: soft rain on a rooftop, a distant city hum, a warm Rhodes chord fading in]
+
+[Theme: an unhurried brushed beat, round upright-style bass, the Rhodes plays a gentle five-note motif, a soft bell answers]
+
+[Drift: mellow clean guitar takes the motif, light vinyl crackle, a flying car passing far away]
+
+[Interlude: drums thin out, only rain, Rhodes and a slow warm pad, the motif on a music-box bell]
+
+[Theme: the beat returns softly, the bass walks, the guitar and Rhodes trade the motif]
+
+[Outro: the beat fades back into rain and the opening Rhodes chord, seamless loop]
+
+[End]
+```
+
+Style field:
+
+```
+Instrumental, relaxed main menu music, 82 BPM, a quiet rooftop above a rain-wet neon city late at night: holo screens glowing softly, flying cars drifting far away, mist between the towers. Mellow lo-fi chillhop with a city-pop touch: warm Rhodes electric piano chords, soft brushed drums with a lazy swung groove, round warm bass, mellow clean jazz guitar, gentle bell and music-box accents, a slow airy pad, light vinyl crackle and soft rain. A simple, gentle five-note motif that returns now and then. Calm, cozy, a little wistful, steady from start to finish with no build-ups or drops, easy to leave playing. No vocals, no humming, no vocal chops. Seamless loop, no hard ending.
+```
