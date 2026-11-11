@@ -132,6 +132,11 @@ class Face:
         else:
             box(g, u0, u1, y0, y1, a, b, f, T, bevel, cell=cell, skip=sk_)
 
+    def grid(self, g, u0, u1, y0, y1, d, f, cell=1.2):
+        """A flat face cut into cells (its baked shade needs corners away from the creases)."""
+        o = self.pt(u0, y0, d)
+        sk.grid_face(g, o, sk._sub(self.pt(u1, y0, d), o), (0, y1 - y0, 0), 0, 0, f, self.n, cell)
+
     def quad(self, g, u0, u1, y0, y1, d, f):
         g.face((self.pt(u0, y0, d), self.pt(u1, y0, d), self.pt(u1, y1, d), self.pt(u0, y1, d)), f, self.n)
 
@@ -176,12 +181,12 @@ def clad(g, fc, u0, u1, y0, y1, T, floor=None, panel=None, gap=.012):
             else:
                 top = y0 + h
         else:
-            fc.quad(g, u0, u1, y0, y0 + h, .007, F['dado'])
+            fc.grid(g, u0, u1, y0, y0 + h, .007, F['dado'], 4.0)
             top = y0 + h
     if y1 - top < .1:
         return
     if T.i == 2:
-        fc.quad(g, u0, u1, top, y1, .005, panel)
+        fc.grid(g, u0, u1, top, y1, .005, panel, 3.0)
         return
     nu = max(1, int(round(L / 1.2)))
     nv = max(1, int(math.ceil((y1 - top) / 2.5)))

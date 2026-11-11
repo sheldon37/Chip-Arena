@@ -258,7 +258,8 @@ namespace ChipArena.UnityConversion
             var p=R("NativeWardZeroPresentation.cs");
             Check(p.Contains("var map=arena.Map;if(!NativeWardZeroLooks.Active(map)||!EnsureWardZero())return;")&&p.Contains("!NativeWardZeroLooks.Active(map)||!EnsureWardZero())return false;"),"dormant unless the map is the revamp");
             Check(!p.Contains("mapId!=NativeWardZeroLooks.MapId"),"backdrop accepts the Expedition Ward alias");
-            Check(!p.Contains("Collider")&&!p.Contains("new GameObject")&&!p.Contains("AddComponent")&&!p.Contains("Rigidbody"),"no colliders, objects or bodies");
+            // (the one component it adds is the stage art's drawer, Runtime NativeStageArtDraw: renderers only, nothing without the bank)
+            Check(!p.Contains("Collider")&&!p.Contains("new GameObject")&&!p.Replace("gameObject.AddComponent<NativeStageArtDraw>()","").Contains("AddComponent")&&!p.Contains("Rigidbody"),"no colliders, objects or bodies");
             Check(p.Contains("NativeWardZeroHazards.At(wzHazards[i],match.Phase,round,match.FightAt,now)")&&p.Contains("NativeStructureFx.RoundIndex(match.Set,match.Round)")&&p.Contains("PresentationClock(arena)"),"hazard rigs read the pure Core state on the presentation clock");
             Check(p.Contains("NativeLighting.PickedLights(wzLights.Pos,wzLights.Rgb,wzLights.Beam)")&&R("NativeLighting.cs").Contains("currentMap=map;arenaPicked=false;"),"the picked lights take the practical slots only while the revamp draws; a new look resets them");
             Check(R("NativeLighting.cs").Contains("public static MapLook Look(ContentMap map)=>(string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??NativeMapLooks.Resolve("),"a map's look field picks its preset (today's maps carry none or their own)");

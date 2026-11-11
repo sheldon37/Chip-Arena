@@ -154,7 +154,7 @@ def solid_block(g, b, T, body=None, top=None, panel=None, cladding=True, bevel=.
         if fkey(fc) in hid:
             continue
         if u1 - u0 < .7:
-            fc.quad(g, u0, u1, y0, y1, .006, F['panel'] if panel is None else panel)
+            fc.grid(g, u0, u1, y0, y1, .006, F['panel'] if panel is None else panel, 1.2 if T.i < 2 else 3.0)
         else:
             wk.clad(g, fc, u0, u1, y0, y1, T, floor=fl, panel=panel)
 
@@ -279,6 +279,39 @@ def deck(g, b, T, L, metal=False):
                 box(g, x - .04, x + .04, y0 - .12, y0, z0 + .1, z1 - .1, F['beam'], T, .008, cell=0, skip=('+y',))
 
 
+def ribs(g, b, T, L):
+    """Downstand ribs under a deck, across its short way every 4 m between the troffers' rows, cut round whatever the kit
+    hangs under it (vents, hatches, lights)."""
+    if T.i > 0:
+        return
+    x0, x1, y0, y1, z0, z1 = ext(b)
+    long_x = (x1 - x0) >= (z1 - z0)
+    keep = []
+    for p in L['parts']:
+        if p['o'] == b['id'] and p['c'][1] < y0 + .05:
+            keep.append((p['c'][0] - p['h'][0] - .1, p['c'][0] + p['h'][0] + .1, p['c'][2] - p['h'][2] - .1, p['c'][2] + p['h'][2] + .1))
+    a0, a1, c0, c1 = (x0, x1, z0, z1) if long_x else (z0, z1, x0, x1)
+    t = a0 + 4.0
+    while t < a1 - .5:
+        cuts = sorted(((k[2], k[3]) if long_x else (k[0], k[1])) for k in keep if ((k[0] if long_x else k[2]) - .08 < t < (k[1] if long_x else k[3]) + .08))
+        at = c0
+        spans = []
+        for lo, hi in cuts:
+            if lo > at:
+                spans.append((at, lo))
+            at = max(at, hi)
+        if at < c1:
+            spans.append((at, c1))
+        for lo, hi in spans:
+            if hi - lo < .3:
+                continue
+            if long_x:
+                box(g, t - .07, t + .07, y0 - .16, y0, lo, hi, F['beam'], None, 0, cell=0, skip=('+y', '-z', '+z'))
+            else:
+                box(g, lo, hi, y0 - .16, y0, t - .07, t + .07, F['beam'], None, 0, cell=0, skip=('+y', '-x', '+x'))
+        t += 4.0
+
+
 def rail_block(g, b, T, kick):
     x0, x1, y0, y1, z0, z1 = ext(b)
     if kick:
@@ -302,12 +335,12 @@ def tread(g, b, T, route):
         for fc, u0, u1 in wk.faces_of(b):
             side = (fc.axis == 0) == (ux == 0)
             if side:
-                fc.quad(g, u0, u1, y0, y1 - rise, 0, F['panel'])
+                fc.grid(g, u0, u1, y0, y1 - rise, 0, F['panel'], 1.0 if T.i < 2 else 3.0)
     # the last tread's back (under the landing) closes the flight
     if abs(y1 - UPPER) < .01:
         fc = Face(0, 1 if ux > 0 else -1, x1 if ux > 0 else x0) if ux != 0 else Face(2, 1 if uz > 0 else -1, z1 if uz > 0 else z0)
         u0, u1 = (z0, z1) if ux != 0 else (x0, x1)
-        fc.quad(g, u0, u1, y0, y1, 0, F['panel'])
+        fc.grid(g, u0, u1, y0, y1, 0, F['panel'], 1.0 if T.i < 2 else 3.0)
 
 
 def ramp_deck(g, b, T):
@@ -363,14 +396,19 @@ def shard(g, b, T, seed):
     hx, hy, hz = [v / 2 for v in b['size']]
     t, done = wk.local(g, b['rot'], b['pos'])
     rnd = np.random.RandomState(seed)
-    n = 7 if T.i < 2 else 3
-    tops = [hy - .02 - .22 * rnd.rand() for _ in range(n + 1)]
+    n = 8 if T.i < 2 else 3
+    tops = [hy - .02 - .3 * rnd.rand() for _ in range(n + 1)]
     xs = [-hx + 2 * hx * i / n for i in range(n + 1)]
     f = F['vessel']
+    bow = [.1 * (1 - (x / hx) ** 2) for x in xs]            # the vessel's round: the wall bows a little along its length
     for i in range(n):
         for s in (-1, 1):
-            t.face(((xs[i], -hy + .16, s * hz), (xs[i + 1], -hy + .16, s * hz), (xs[i + 1], tops[i + 1], s * hz * .7), (xs[i], tops[i], s * hz * .7)), f, (0, .08, s))
-        t.face(((xs[i], tops[i], -hz * .7), (xs[i + 1], tops[i + 1], -hz * .7), (xs[i + 1], tops[i + 1], hz * .7), (xs[i], tops[i], hz * .7)), F['glass'], (0, 1, 0))
+            na, nb = (-.25 * xs[i] / hx, .08, s), (-.25 * xs[i + 1] / hx, .08, s)
+            pts = ((xs[i], -hy + .16, s * hz * .85 + bow[i] - .05), (xs[i + 1], -hy + .16, s * hz * .85 + bow[i + 1] - .05),
+                   (xs[i + 1], tops[i + 1], s * hz * .55 + bow[i + 1] - .05), (xs[i], tops[i], s * hz * .55 + bow[i] - .05))
+            t.face(pts, f, normals=(na, nb, nb, na))
+        t.face(((xs[i], tops[i], -hz * .55 + bow[i] - .05), (xs[i + 1], tops[i + 1], -hz * .55 + bow[i + 1] - .05),
+                (xs[i + 1], tops[i + 1], hz * .55 + bow[i + 1] - .05), (xs[i], tops[i], hz * .55 + bow[i] - .05)), F['glass'], (0, 1, 0))
     for s, x, top in ((-1, -hx, tops[0]), (1, hx, tops[-1])):
         t.face(((x, -hy + .16, -hz), (x, -hy + .16, hz), (x, top, hz * .7), (x, top, -hz * .7)), f, (s, 0, 0))
     box(t, -hx - .03, hx + .03, -hy, -hy + .18, -hz - .03, hz + .03, F['steeldark'], T, .03, cell=0, skip=('-y',))
@@ -501,12 +539,18 @@ def block_body(S, b):
         key = 'deck'
     elif s.startswith('deck-') or s.startswith('gallery-') or s.endswith('-platform') or s.endswith('-specimen') or s.endswith('-landing'):
         deck(g, b, T, L)
+        ribs(g, b, T, L)
         key = 'deck'
     elif '-skirt' in s:
         solid_block(g, b, T, body=F['concrete'], cladding=False)
         key = 'ramp'
     elif '-row' in s:
         solid_block(g, b, T)
+        if T.i < 2:
+            # a steel canopy line over the doors, under the kit's lit band
+            fc, u0, u1 = inner_face(b)
+            y0 = b['pos'][1] - b['size'][1] / 2
+            sweep(g, [(-.06, 0), (-.06, .05), (-.02, .09), (.05, .09), (.05, 0)], [fc.pt(u0, y0 + 3.24, 0), fc.pt(u1, y0 + 3.24, 0)], F['steel'], up=fc.n, caps=False, smooth_u=False)
         key = 'row'
     elif '-tank-' in s:
         tank(g, b, T)
@@ -864,9 +908,11 @@ def tooth(g, p, T, seed):
     t, done = wk.local(g, p['q'], p['c'])
     rnd = np.random.RandomState(seed)
     k = .3 + .4 * rnd.rand()
-    tip = ((k - .5) * 2 * hx * .8, hy, (rnd.rand() - .5) * hz)
-    base = [(-hx, -hy, -hz * .8), (hx, -hy, -hz * .8), (hx, -hy, hz * .8), (-hx, -hy, hz * .8)]
-    mid = [(-hx * .8, hy * (.1 + .5 * rnd.rand()), -hz * .5), (hx * .7, hy * (-.3 + .5 * rnd.rand()), -hz * .5), (hx * .7, hy * (-.3 + .4 * rnd.rand()), hz * .5), (-hx * .8, hy * (.1 + .4 * rnd.rand()), hz * .5)]
+    lo = -hy - .45                                              # sunk into the shard's broken top
+    wx = hx * .7
+    tip = ((k - .5) * 2 * wx * .8, hy, (rnd.rand() - .5) * hz * .6)
+    base = [(-wx, lo, -hz * .45), (wx, lo, -hz * .45), (wx, lo, hz * .45), (-wx, lo, hz * .45)]
+    mid = [(-wx * .8, hy * (.1 + .5 * rnd.rand()), -hz * .35), (wx * .7, hy * (-.3 + .5 * rnd.rand()), -hz * .35), (wx * .7, hy * (-.3 + .4 * rnd.rand()), hz * .35), (-wx * .8, hy * (.1 + .4 * rnd.rand()), hz * .35)]
     f = F['shardglow']
     for i in range(4):
         j = (i + 1) % 4
