@@ -700,6 +700,9 @@ def static_scene(L, T):
     sea_wall(g, T)
     hall(g, -1, T, R)
     hall(g, 1, T, R)
+    # gulls sitting out the weather: on the gate's ridge, the hall's merlons, the turret's cornice
+    for x, y, z, yaw in ((-20.2, 7.98, .0, 1.2), (-18.1, 7.98, .0, 2.0), (-17.6, 7.98, .0, 1.5), (16.42, 6.38, -3.35, -1.3), (16.42, 6.38, 1.85, -1.9), (19.6, 6.38, 5.2, .3), (-1.5, 8.76, 4.8, 2.9), (1.2, 8.76, 8.55, .4)):
+        perched(g, x, y, z, yaw, T)
     seed = 0
     for b in blocks:
         i = b['id']
@@ -743,6 +746,26 @@ def static_scene(L, T):
             p = posts[(round(b['pos'][0], 2), round(b['pos'][2], 2))]
             bk.lamp_post(g, p[0], e[2], e[3], p[2], (p[3], p[4], p[5]), T)
     return g
+
+
+def perched(g, x, y, z, yaw, T):
+    """A gull sitting out the weather on a roof (only where nobody can stand)."""
+    if T.i == 2:
+        return
+    import breakwater_props as props
+    t = props.gull_body(T)
+    # folded wings along its back, legs tucked: the body tipped up a little
+    for sx in (-1, 1):
+        t.face(((sx * .05, .05, .12), (sx * .085, .02, -.1), (sx * .03, .06, -.34), (sx * .02, .075, -.05)), F['gullgrey'], (sx, .6, 0))
+    q = bk_quat(yaw, -.25)
+    g.extend(t.transformed(sk.affine(q, (x, y + .075, z), (1.25, 1.25, 1.25))))
+
+
+def bk_quat(yaw, pitch):
+    a, b = sk.quat_axis(0, 1, 0, yaw), sk.quat_axis(1, 0, 0, pitch)
+    ax, ay, az, aw = a
+    bx, by, bz, bw = b
+    return (aw * bx + ax * bw + ay * bz - az * by, aw * by - ax * bz + ay * bw + az * bx, aw * bz + ax * by - ay * bx + az * bw, aw * bw - ax * bx - ay * by - az * bz)
 
 
 def moss_zone(W):

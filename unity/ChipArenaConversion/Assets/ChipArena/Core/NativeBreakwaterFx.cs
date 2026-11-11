@@ -204,7 +204,7 @@ namespace ChipArena.UnityConversion
 
         // ---------------- the practical lights ----------------
         /// <summary>The lamp's light as a practical slot: its range (m) and gain; a lantern's range and gain.</summary>
-        public const double LampRange=120,LampGain=2.6,LanternRange=9.5,LanternGain=1.75;
+        public const double LampRange=120,LampGain=1.35,LanternRange=9.5,LanternGain=1.45;
         private void PickLights(NativeBreakwaterRig rig,double t)
         {
             // slot 0: the lighthouse's lamp, two opposite beams turning with the optic (NativeWardLight.cginc WardBeam: 8 + yaw)
