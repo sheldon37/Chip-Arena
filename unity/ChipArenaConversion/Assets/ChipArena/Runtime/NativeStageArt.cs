@@ -36,6 +36,9 @@ namespace ChipArena.UnityConversion
         private sealed class BlockDraw{public Piece[] Tiers;public float S1,S2,Max;}
         private string bankName,mapId;private NativeStageArt.Plan plan;private bool failed;
         private Material solid,glow;private MaterialPropertyBlock block;private Shader shader;
+        /// <summary>Set before <see cref="Prepare"/>: where the reflection probe stands (default: the centre of the art's bounds) and the
+        /// colour it sees where nothing is drawn (default: near black; an open-air stage gives its sky's).</summary>
+        public Vector3? ProbeAt;public Color? ProbeSky;
         private GameObject root;private ReflectionProbe probe;private int probeFrame=-1,probeRendered=-1,probeSize;
         private readonly List<ChunkDraw> chunks=new List<ChunkDraw>();
         private readonly Dictionary<string,BlockDraw> blocks=new Dictionary<string,BlockDraw>(StringComparer.Ordinal);
@@ -93,8 +96,8 @@ namespace ChipArena.UnityConversion
                 for(int s=0;s<rig.Length;s++){var props=p.RigProps(rigSlots[s]);rig[s]=new Piece[NativeStageArt.Tiers];rigShadow[s]=casts==null||casts(s);if(props!=null)for(int t=0;t<NativeStageArt.Tiers;t++)rig[s][t]=PieceOf(bank,props[t]);}
                 probe=new GameObject("Stage art probe").AddComponent<ReflectionProbe>();probe.transform.SetParent(root.transform,false);
                 probe.mode=ReflectionProbeMode.Realtime;probe.refreshMode=ReflectionProbeRefreshMode.ViaScripting;probe.timeSlicingMode=ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
-                probe.boxProjection=true;probe.hdr=true;probe.nearClipPlane=.3f;probe.farClipPlane=90;probe.clearFlags=ReflectionProbeClearFlags.SolidColor;probe.backgroundColor=new Color(.02f,.02f,.035f);
-                var all=new Bounds(cd0(chunks),Vector3.zero);foreach(var c in chunks)all.Encapsulate(c.Box);probe.transform.position=new Vector3(all.center.x,Mathf.Clamp(all.center.y,1,8),all.center.z);
+                probe.boxProjection=true;probe.hdr=true;probe.nearClipPlane=.3f;probe.farClipPlane=90;probe.clearFlags=ReflectionProbeClearFlags.SolidColor;probe.backgroundColor=ProbeSky??new Color(.02f,.02f,.035f);
+                var all=new Bounds(cd0(chunks),Vector3.zero);foreach(var c in chunks)all.Encapsulate(c.Box);probe.transform.position=ProbeAt??new Vector3(all.center.x,Mathf.Clamp(all.center.y,1,8),all.center.z);
                 probe.size=all.size;probe.center=all.center-probe.transform.position;probeFrame=-1;probeRendered=-1;
                 // the meshes are on the GPU now (Runtime NativePackBanks keeps them): the bank's copies of their vertices go
                 foreach(int m in built){var src=bank.Meshes[m];src.Positions=src.Normals=null;src.Uv0=src.Uv1=null;src.Colors=null;foreach(var sm in src.Submeshes)sm.Indices=Array.Empty<int>();}

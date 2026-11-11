@@ -13,11 +13,14 @@ namespace ChipArena.UnityConversion
     public static class NativeNewStageLooks
     {
         public const string Breakwater="breakwater",Harbor="harbor",Skyframe="skyframe",Rig="rig",Polar="polar";
-        public static readonly string[] Maps={Breakwater,Harbor,Skyframe,Rig,Polar};
+        public static readonly string[] Maps={Breakwater,Harbor,Rig,Polar};
+        /// <summary>The stage numbers the kit, rig, scenery and effects switch on (the 2026-10-31 batch in its order). A stage rebuilt
+        /// since (Skyframe, 2026-11-11: Core NativeSkyframe*) leaves <see cref="Maps"/> and keeps its number here.</summary>
+        private static readonly string[] Stages={Breakwater,Harbor,Skyframe,Rig,Polar};
         /// <summary>The look each stage names (UnityMaps.json `look`; MapLooks.json carries one entry for each).</summary>
-        public static readonly string[] Looks={"breakwater-blue-hour","harbor-night","skyframe-high-noon","rig-storm","polar-aurora"};
+        public static readonly string[] Looks={"breakwater-blue-hour","harbor-night","rig-storm","polar-aurora"};
         /// <summary>The stage's index in <see cref="Maps"/>, or -1 for every other map (whose presentation never changes here).</summary>
-        public static int Index(string mapId){for(int i=0;i<Maps.Length;i++)if(Maps[i]==mapId)return i;return -1;}
+        public static int Index(string mapId)=>Array.IndexOf(Maps,mapId)<0?-1:Array.IndexOf(Stages,mapId);
         public static bool Active(string mapId)=>Index(mapId)>=0;
 
         /// <summary>Kit kinds (index = kind), resolved once per look through `kitLooks`; at most NativeFactoryKit.Kinds.Length,

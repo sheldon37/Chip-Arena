@@ -184,20 +184,6 @@
    "stretch": 0.0,
    "along": 0,
    "across": 0
-  },
-  {
-   "id": "brick-piles-2x1",
-   "layout": "grid",
-   "note": "Two strapped piles of blocks side by side (Skyframe's pallets of blocks).",
-   "props": [
-    "harbor-brick-pile-01a",
-    "harbor-brick-pile-01b",
-    "harbor-brick-pile-02a",
-    "harbor-brick-pile-02b"
-   ],
-   "stretch": 0.2,
-   "along": 2,
-   "across": 1
   }
  ],
  "maps": [
@@ -1248,30 +1234,6 @@
     }
    ],
    "flood": 0.5
-  },
-  {
-   "map": "skyframe",
-   "glow": 0.0,
-   "note": "Skyframe: the site cabins and deck containers, the pallets of blocks. No yards: the ground round floor 31 is 112 m down (a yard stands at y 0).",
-   "rules": [
-    {
-     "block": "skyframe-cabin-*",
-     "kit": "container-20",
-     "note": "site cabins"
-    },
-    {
-     "block": "skyframe-container-*",
-     "kit": "container-20",
-     "note": "containers on the decks"
-    },
-    {
-     "block": "skyframe-pallet-*",
-     "kit": "brick-piles-2x1",
-     "note": "pallets of blocks"
-    }
-   ],
-   "yards": [],
-   "flood": 0.0
   },
   {
    "map": "rig",
