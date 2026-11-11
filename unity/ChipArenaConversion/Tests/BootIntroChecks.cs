@@ -138,7 +138,62 @@ internal static class BootIntroChecks
             Check(text.Contains("public static void Prewarm()=>Ensure();"),name+": Prewarm still loads at once");
         }
         Check(source.Contains("NativeIntroMotion.Prepare(c.key.Substring(6),c.values,c.frames,c.duration);\n            return clips;}"),"the weapon intros' plans are built with the clips, before the bank is published");
+        Sculpts(root);
         Console.WriteLine("PASS boot intro: "+count+" checks");
+    }
+    // ---- the sculpts made on a worker (Core NativeBootSculpts) ----
+    private static void Add(IncrementalHash h,System.Collections.Generic.List<System.Numerics.Vector3> v){foreach(var p in v){h.AppendData(BitConverter.GetBytes(p.X));h.AppendData(BitConverter.GetBytes(p.Y));h.AppendData(BitConverter.GetBytes(p.Z));}}
+    private static void Add(IncrementalHash h,System.Collections.Generic.List<System.Numerics.Vector4> v){foreach(var p in v){h.AppendData(BitConverter.GetBytes(p.X));h.AppendData(BitConverter.GetBytes(p.Y));h.AppendData(BitConverter.GetBytes(p.Z));h.AppendData(BitConverter.GetBytes(p.W));}}
+    private static void Add(IncrementalHash h,System.Collections.Generic.List<int> v){foreach(var p in v)h.AppendData(BitConverter.GetBytes(p));}
+    private static void Add(IncrementalHash h,WeaponMesh m)
+    {
+        if(m==null){h.AppendData(new byte[]{0});return;}
+        foreach(var s in m.Sections){h.AppendData(BitConverter.GetBytes(s.Bone));h.AppendData(BitConverter.GetBytes((int)s.Stretch));Add(h,s.Positions);Add(h,s.Normals);Add(h,s.Colors);Add(h,s.Emission);Add(h,s.Indices);foreach(var d in s.Data){h.AppendData(BitConverter.GetBytes(d.X));h.AppendData(BitConverter.GetBytes(d.Y));}}
+    }
+    private static string Hash(object o)
+    {
+        using var h=IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        switch(o)
+        {
+            case null:h.AppendData(new byte[]{0});break;
+            case HordeModel m:Add(h,m.Mesh);Add(h,m.Jaw);break;
+            case WeaponMesh m:Add(h,m);break;
+            case SheldonSection[] ss:foreach(var s in ss){h.AppendData(System.Text.Encoding.UTF8.GetBytes(s.Part??""));h.AppendData(BitConverter.GetBytes(s.Bone));Add(h,s.Positions);Add(h,s.Normals);Add(h,s.Colors);Add(h,s.Emission);Add(h,s.Indices);}break;
+            default:throw new Exception("Boot intro: an unknown sculpt type "+o.GetType().Name);
+        }
+        return Convert.ToHexString(h.GetHashAndReset());
+    }
+    private static void Sculpts(string root)
+    {
+        var jobs=NativeBootSculpts.Jobs().ToList();var keys=jobs.Select(j=>j.key).ToList();
+        Check(jobs.Count>100&&keys.Distinct().Count()==keys.Count,"the boot sculpts: "+jobs.Count+" jobs, every key once");
+        var want=jobs.ToDictionary(j=>j.key,j=>Hash(j.make()));
+        // The worker beside a main thread running the same sculpts (the runtime's other builders share the kit): identical results.
+        NativeBootSculpts.Reset();NativeBootSculpts.Start();var beside=jobs.ToDictionary(j=>j.key,j=>Hash(j.make()));
+        int same=0;foreach(var (key,make) in jobs){var got=NativeBootSculpts.Take<object>(key,()=>throw new Exception("Boot intro: no sculpt for "+key));if(Hash(got)==want[key]&&beside[key]==want[key])same++;}
+        Check(same==jobs.Count,"the worker's sculpts are the single-threaded ones ("+same+"/"+jobs.Count+")");
+        Check(NativeBootSculpts.Taken==jobs.Count&&NativeBootSculpts.Left==0&&NativeBootSculpts.Made==jobs.Count,"each made once and handed over once");
+        bool rebuilt=false;var again=NativeBootSculpts.Take(keys[0],()=>{rebuilt=true;return (object)"x";});
+        Check(rebuilt&&(string)again=="x"&&NativeBootSculpts.Fallbacks==1,"a key asked twice (a second bank) is sculpted by its caller");
+        NativeBootSculpts.Reset();bool direct=false;NativeBootSculpts.Take(keys[0],()=>{direct=true;return (object)"y";});Check(direct&&!NativeBootSculpts.Started,"without the worker every caller sculpts as before");
+        NativeBootSculpts.Reset();
+        // Every builder asks for its sculpt by the list's key, with the very call it used to make.
+        string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
+        foreach(var (file,text) in new[]{
+            ("NativeHordeKindModels.cs","var built=NativeBootSculpts.Take(NativeBootSculpts.Horde(kind,look,tier),()=>NativeHordeModels.Build(kind,look,tier));"),
+            ("NativeIronworksKindsPresentation.cs","NativeBootSculpts.Take(NativeBootSculpts.Prop(p,t),()=>NativeHordeModels.IronworksProp(p,t))"),
+            ("NativeIronworksKindsPresentation.cs","NativeBootSculpts.Take(NativeBootSculpts.Crust(l,t),()=>NativeHordeModels.IronworksCrust(l,t))"),
+            ("NativeIronworksKindsPresentation.cs","NativeBootSculpts.Take(NativeBootSculpts.Cream(l,t),()=>NativeHordeModels.Build(NativeHordeKinds.Brute,l,t,NativeIronworksKinds.BruteSeam)).Mesh"),
+            ("NativeStationKindsPresentation.cs","var built=NativeBootSculpts.Take(NativeBootSculpts.StationProp(prop,tier),()=>NativeHordeModels.BuildStationProp(prop,tier));"),
+            ("NativeRobotHelmPresentation.cs","HelmParts(NativeBootSculpts.Take(NativeBootSculpts.Helm,NativeRobotHelm.Helm),material,\"Robot helmet\")"),
+            ("NativeRobotHelmPresentation.cs","HelmParts(NativeBootSculpts.Take(NativeBootSculpts.HalfMask,NativeRobotHelm.Half),material,\"Robot half mask\")"),
+            ("NativeRobotHelmPresentation.cs","HelmParts(NativeBootSculpts.Take(NativeBootSculpts.BrokenHelm(b),()=>NativeRobotHelm.Broken(b)),material,"),
+            ("NativeWeaponSkinModels.cs","var built=NativeBootSculpts.Take(NativeBootSculpts.Weapon(spec,tier),()=>NativeWeaponModels.Build(spec,tier));"),
+            ("NativeWeaponSkinModels.cs","var loose=NativeBootSculpts.Take(NativeBootSculpts.Loose(spec),()=>NativeWeaponModels.Loose(spec));")})
+            Check(R(file).Contains(text),file+" takes its sculpt from the worker");
+        var skins=R("NativeWeaponSkinModels.cs");Check(skins.Contains("System.Linq.Enumerable.Append(System.Linq.Enumerable.Append(System.Linq.Enumerable.Append(NativeWeaponSkins.Weapons,NativeBombs.Spec),NativeTopDog.Spec),NativeGlaive.Spec),new[]{NativeKatana.Spec,NativeFangs.Spec})")&&NativeBootSculpts.WeaponSpecs().SequenceEqual(NativeWeaponSkins.Weapons.Concat(new[]{NativeBombs.Spec,NativeTopDog.Spec,NativeGlaive.Spec,NativeKatana.Spec,NativeFangs.Spec})),
+            "the worker sculpts the weapons WeaponSkins builds");
+        var load=R("NativeBootLoad.cs");Check(load.Contains("NativeBootSculpts.Start();")&&load.Contains("private static void Reset(){Decided=Wanted=false;NativeBootSculpts.Reset();}"),"the worker starts with the banks', before the splash, and only then");
     }
     private static int IndexOf(byte[] data,string tag){var t=System.Text.Encoding.ASCII.GetBytes(tag);for(int i=0;i+t.Length<=data.Length&&i<data.Length;i++){int k=0;while(k<t.Length&&data[i+k]==t[k])k++;if(k==t.Length)return i;}return -1;}
 }

@@ -114,7 +114,7 @@ namespace ChipArena.UnityConversion
         {
             if(bootHanded)return;bootHanded=true;nativeAudio.MenuHeld=false;
             if(noticeText.Length>0&&noticeLast>=bootNoticeFrom){noticeShown=noticeLast=Time.unscaledTime;}
-            Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_HANDOFF interactive at {0:F2} s since start ({1:F0} ms after the workers started); steps since then {2}",Time.realtimeSinceStartupAsDouble,BootMs,string.Join(" ",bootSteps));
+            Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_HANDOFF interactive at {0:F2} s since start ({1:F0} ms after the workers started); steps since then {2}; sculpts made {3} in {4:F0} ms, taken {5}, sculpted here {6}, unused {7}",Time.realtimeSinceStartupAsDouble,BootMs,string.Join(" ",bootSteps),NativeBootSculpts.Made,NativeBootSculpts.WorkerMs,NativeBootSculpts.Taken,NativeBootSculpts.Fallbacks,NativeBootSculpts.Left);
         }
     }
     /// <summary>
@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
         public static bool Decided{get;private set;}public static bool Wanted{get;private set;}
         public static long StartedAt{get;private set;}public static double StartMs{get;private set;}
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void Reset(){Decided=Wanted=false;}
+        private static void Reset(){Decided=Wanted=false;NativeBootSculpts.Reset();}
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
         private static void Early()=>Decide();
         public static void Decide()
@@ -144,6 +144,8 @@ namespace ChipArena.UnityConversion
             if(why!=NativeBootIntroRules.Skip.Plays){Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_INTRO off ({0})",why);return;}
             Wanted=true;StartedAt=Stopwatch.GetTimestamp();
             NativeSourceMotion.PrewarmAsync();NativeSceneMotion.PrewarmAsync();NativeSourceModels.PrefetchAsync();
+            // The sculpts behind the source models' slowest builds (Core NativeBootSculpts), on their own worker.
+            NativeBootSculpts.Start();
             StartMs=(Stopwatch.GetTimestamp()-StartedAt)*1000d/Stopwatch.Frequency;
         }
     }
