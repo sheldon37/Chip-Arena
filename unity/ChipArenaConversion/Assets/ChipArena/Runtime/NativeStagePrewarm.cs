@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         {
             if(arena==null||sourceModels==null)return 0;var map=arena.Map;string id=arena.MapId;int built=0;
             if(NativeFactoryScenery.Active(id)){if(factoryStage==null)factoryStage=gameObject.AddComponent<NativeFactoryStage>();if(factoryStage.Prepare(arena))built++;}
-            if(NativeBrickfallScenery.Active(id)&&EnsureBrickfall())built++;
+            if(NativeBrickfallScenery.Active(id)&&EnsureBrickfall()){BrickfallArtPrepare(map);built++;}
             if(TrainingPrepare(arena))built++;
             if(NativeCyberCityLooks.Active(id)&&EnsureCyberCity()){if(!ReferenceEquals(arena,metroArena)||arena.Generation!=metroGeneration)MetroRebind(arena);built++;}
             if(map!=null&&NativeExpeditionCityKit.Active(id)&&EnsureExpeditionCity()){if(!ReferenceEquals(map,townMap))ExpeditionCityBuild(map);built++;}

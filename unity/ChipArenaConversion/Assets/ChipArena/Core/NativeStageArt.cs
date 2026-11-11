@@ -34,7 +34,8 @@ namespace ChipArena.UnityConversion
             (NativeCyberCityLooks.MapId,NativeCyberCityArt.Bank),
             (NativePierLooks.MapId,NativePierArt.Bank),
             (NativeDeepwellLooks.MapId,NativeDeepwellArt.Bank),
-            (NativePolarLooks.MapId,NativePolarArt.Bank)};
+            (NativePolarLooks.MapId,NativePolarArt.Bank),
+            (NativeBrickfallScenery.MapId,NativeBrickfallArt.Bank)};
         public static string BankOf(string mapId){if(mapId==null)return null;foreach(var b in Banks)if(b.map==mapId)return b.bank;return null;}
         /// <summary>The tier a piece draws at from the eye (the low graphics tier always draws the Low one).</summary>
         public static int TierAt(float distance,bool low)=>low?Low:distance<FineReach?Fine:distance<MidReach?Mid:Low;

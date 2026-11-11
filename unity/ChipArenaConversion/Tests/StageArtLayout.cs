@@ -43,6 +43,7 @@ internal static class StageArtLayout
         if(NativeEmporiumLooks.Active(map.id))Emporium(w,map,look,V,Q);
         if(NativeCyberCityLooks.Active(map.id))CyberCityArtLayout.Write(w,map,V);
         if(NativePolarLooks.Active(map.id))PolarArtChecks.Layout(w,map,look);
+        if(NativeBrickfallScenery.Active(map.id))BrickfallArtLayout.Write(w,map,look,V);
         w.WriteEndObject();w.Flush();
         Console.WriteLine("stage layout "+map.id+": "+map.blocks.Length+" blocks -> "+path);
     }
