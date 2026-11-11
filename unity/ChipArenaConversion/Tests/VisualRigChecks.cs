@@ -544,6 +544,13 @@ namespace ChipArena.UnityConversion
             Check(P(land,40.05f,false,mem).Clip==set.Land&&P(land,40.05f+NativeVisualMotion.LandFor+.01f,false,mem).Clip==set.Idle,"a landing, then the idle");
             var hit=Ground();hit.ReactionAt=60;hit.ReactionUntil=60.5f;hit.ReactionYaw=0;Check(P(hit,60.2f).Clip==set.Reactions[0],"struck from the front");
             hit.ReactionYaw=(float)Math.PI;Check(P(hit,60.2f).Clip==set.Reactions[1],"struck from behind");
+            // A parried attacker's reel (owner 2026-11-11: "Parry with katana make enemy walk backwards in place"): its recoil at its own pace, then
+            // the daze through the stun, held while the shove slides it out (moving), never the walk; then the walk again.
+            var reel=Ground();reel.ReactionAt=62;reel.ReactionUntil=reel.StunUntil=64;reel.ReactionYaw=0;reel.ReactionParry=true;
+            Check(P(reel,62.5f).Clip==set.Reactions[0]&&Math.Abs(P(reel,62.5f).Time-.5f)<1e-4f,"parried: the recoil at its own pace");
+            Check(P(reel,63.5f).Clip==set.Stunned&&Math.Abs(P(reel,63.5f).Time-.3f)<1e-4f,"parried: then dazed through the stun");
+            Check(P(reel,64.2f,true).Clip==set.Stunned&&!P(reel,64.2f,true).Locomotion,"parried: still dazed while the shove slides it out, not walking");
+            Check(P(reel,64+NativeVisualMotion.ParrySettle+.05f,true).Locomotion,"parried: past the settle, the walk again");
             Check(NativeVisualMotion.Side(1.2f)==2&&NativeVisualMotion.Side(-1.2f)==3&&NativeVisualMotion.Side(.3f)==0&&NativeVisualMotion.Side(3f)==1,"reaction sides by the yaw");
             var block=Ground();block.BlockAt=70;block.BlockUntil=71;Check(P(block,70.5f).Clip==set.Block,"blocking: the block");
             var special=Ground();special.SpecialKind="wolf-spin";special.SpecialAt=80;special.SpecialUntil=83;
