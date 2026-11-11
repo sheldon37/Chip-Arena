@@ -680,6 +680,7 @@ def main():
         T = sk.Tier(ti)
         t = time.time()
         g = static_scene(L, T)
+        print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=sk.NEAR_TIER[ti], lift=sk.LIFT_TIER[ti]))
         scene = props.rest_scene(L, T)
         print('tier %s: static %d faces, %.1f s' % (T.name, g.faces, time.time() - t))
         if args.stats:
