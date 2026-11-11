@@ -110,6 +110,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--body-reveal"){BodyRevealChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--pack-weapons"){PackWeaponChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--pack-fx-hits"){PackFxHitsChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--blood-pack"){BloodPackChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--pack-fx-blasts"){PackFxBlastsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--stage-kits"){StageKitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--new-stage-looks"){NewStageLookChecks.Run(ProjectRoot());return 0;}
@@ -312,6 +313,7 @@ internal static class Program
             BodyRevealChecks.Run(root);
             PackWeaponChecks.Run(root);
             PackFxHitsChecks.Run(root);
+            BloodPackChecks.Run(root);
             PackFxBlastsChecks.Run(root);
             StageKitChecks.Run(root);
             NewStageLookChecks.Run(root);

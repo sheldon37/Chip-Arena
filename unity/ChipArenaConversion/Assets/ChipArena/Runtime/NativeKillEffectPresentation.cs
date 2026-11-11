@@ -342,7 +342,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<debris.Chunks;i++)
             {
                 debris.Chunk(i,age,out double x,out double y,out double z,out double qx,out double qy,out double qz,out double qw,out double s);if(s<=1e-5)continue;
-                sourceModels.KillChunk(NativeCorpse.Mirror(x,y,z,qx,qy,qz,qw,s,s,s),new Color((float)debris.Colors[i*3],(float)debris.Colors[i*3+1],(float)debris.Colors[i*3+2],1),alpha,i);
+                var chunk=NativeCorpse.Mirror(x,y,z,qx,qy,qz,qw,s,s,s);if(GutChunk(corpse,i,debris.Chunks,chunk,alpha))continue;
+                sourceModels.KillChunk(chunk,new Color((float)debris.Colors[i*3],(float)debris.Colors[i*3+1],(float)debris.Colors[i*3+2],1),alpha,i);
             }
             if(corpse.LooseHat>=0&&corpse.HatModel!=null)
             {
