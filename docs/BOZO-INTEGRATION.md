@@ -1592,9 +1592,28 @@ already? Cant we utilize that?"
       pack's character beside the body, its blade read in the body's hand frame, the local tool's clip frames `source=`): 4-22°
       apart on average over the attacks and the shoulder-carry stride, 35° at most; the pack's A versions of the runs drag the sword
       40-50° off, so they are not used.
-    - **The bank** gains the DEV Greatsword's 35 clips (433,786 bytes), merged into the live bank with every other clip kept
-      byte-identical (409 clips in 4,877,308 bytes became 444 in 5,311,078). Rebake by merging (the extra bake, then a merge), not
-      from scratch: NOCTIEL's and other bosses' clips are named by no player set.
+    - **DEV Katana** (Core `NativeDevKatanaMotion`; its moves through the Katana's, Core `NativeBladeMotion.Clip`, which picks the DEV
+      Katana's clips for an actor whose `Motion` is it): the stance (`Idle_ver_B`, the blade low in the right hand), the stride on the
+      pack's B versions (the jog's eight directions for the walks and the runs off the forward line, `Run_Root_ver_B` ahead,
+      `Run_Fast_Root_ver_B` the sprint; the A versions carry the katana in the left hand, 40-60 cm off the game's grip, so they are not
+      used), the jumps (`Jump_Start`, `Double_Jump_Start`, `Jump_Loop`, `Jump_End`), the guard (`Revenge_Guard_Loop`, its hit
+      `Revenge_Guard_Accept`), the dodge roll (`Dodge_Front`), the small reactions, the knockdown and its backward rolling get-up. The
+      four cuts are the pack's four-hit chain (`Attack_4Combo_1..4_Inplace`, each part taking up where the last left off: a diagonal cut
+      down across the front, a rising backhand, a low spinning cut for the step in, the finisher's high cut), the rush its lunging dash
+      cut (`Dash_Attack_ver_B`), the storm `Skill_D` (cuts swept low all round, then a rising cut: the launch) and the plunging slam
+      its downward jump chop (`Jump_Attack_Combo_1_ZeroHeight`, the blade low in front on the landing). Each is a clip window
+      (`NativeDevKatanaMotion.WindowOf`, through `NativeBladeMotion.WindowOf`) measured at 30 frames a second: the strike where the
+      blade turns fastest with its tip crossing the front, the end where the pose is back in its stance. The iai and its sheathing
+      and the counter's paired critical keep the Frank Slash Pack's clips: the pack has no saya (the iai draws from and sheathes into
+      the saya the left hand carries, Core `NativeKatanaSaya`) and no partner clip for the critical's victim. The pack has no dazed
+      loop: the stun keeps `Armed-Stunned`. The blade, the saya at the hip, the trail and every effect are the Katana's.
+    - **The katana's hold:** the game holds the blade 20-30 degrees from where the pack's own katana lies (26 on average over the
+      attacks, the guard and the B stride; 49 at most), a steady offset through every clip: the arms and the swing are the pack's,
+      the blade sits that much differently in the hand.
+    - **The bank** gains the DEV Greatsword's 35 clips (433,786 bytes) and the DEV Katana's 31 (352,883 bytes), each merged into the
+      live bank with every other clip kept byte-identical (409 clips in 4,877,308 bytes became 444 in 5,311,078, then 475 in
+      5,663,961). Rebake by merging (the extra bake, then a merge), not from scratch: NOCTIEL's and other bosses' clips are named by
+      no player set.
   - **Sword, daggers and shield kit moves (2026-10-24, `claude/motion-kits`):** every melee weapon's Q and E now play
     pack clips.
     - **Sword:** Flash Step plays the armed dash's lunge on the release. Rising Dragon plays the pack's rising thrust
