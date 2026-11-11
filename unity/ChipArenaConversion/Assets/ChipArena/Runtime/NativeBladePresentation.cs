@@ -13,9 +13,10 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The saya's model id (built with the weapon models, NativeWeaponSkinModels.cs).</summary>
         public const string SayaModel="katana-saya";
-        /// <summary>Where the saya hangs in the pelvis's drawn frame (+x the body's left, +y up, +z ahead), and which way it points (from its
-        /// mouth at the front of the left hip, back and down).</summary>
-        private static readonly Vector3 SayaAt=new Vector3(.17f,-.03f,.1f),SayaAxis=new Vector3(.08f,-.42f,-.9f),SayaUp=new Vector3(.95f,.25f,0);
+        /// <summary>Where the saya hangs in the hips' upright frame (+x the body's right, +y up, +z ahead; at the pelvis joint, turned with
+        /// the line between the hip joints): its mouth at the left front of the belt (where the pack's own scabbard sits, 13 cm above the
+        /// hip joint), pointing back, out past the hip and a little down. Its own x points down, so the curve (the edge side) is up.</summary>
+        private static readonly Vector3 SayaAt=new Vector3(-.13f,.1f,.12f),SayaAxis=new Vector3(-.35f,-.25f,-.9f);
         /// <summary>Whether a Katana's blade is in its saya now: its record's iai, or its entrance's script.</summary>
         internal bool KatanaSheathed(Actor a,float time)=>a!=null&&a.Id==bladeIntroActor&&bladeIntro!=null?bladeIntro.Sheathed(bladeIntroClock):NativeKatana.Sheathed(NativeBladeView.Katana(a),time);
         private NativeBladeIntro bladeIntro;private int bladeIntroActor=-1;private float bladeIntroClock;
@@ -29,8 +30,12 @@ namespace ChipArena.UnityConversion
         private void KatanaSaya(CapturedAnimation.Player rig,Actor a,float time,bool first,int layer,Camera camera,Func<int,Color> tint,float flash)
         {
             if(first||a?.SourceSpec!=NativeKatana.Spec||sourceModels==null||rig==null)return;
-            var pelvis=visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.PosedFrame==Time.frameCount?VisualJointFrame(rig,CapturedRig.Pelvis):rig.Bones[CapturedRig.Pelvis].localToWorldMatrix;
-            var frame=pelvis*Matrix4x4.TRS(SayaAt,Quaternion.LookRotation(SayaAxis.normalized,SayaUp),Vector3.one);
+            bool posed=visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.PosedFrame==Time.frameCount;
+            Vector3 J(int j)=>(posed?VisualJointFrame(rig,j):rig.Bones[j].localToWorldMatrix).GetColumn(3);
+            // The hips' frame: upright (the pelvis bone's own tilt would swing the saya into the floor), turned with the hips.
+            var left=J(CapturedRig.LHip)-J(CapturedRig.RHip);left.y=0;if(left.sqrMagnitude<1e-6f)left=-rig.Root.transform.right;left.Normalize();
+            var hips=Matrix4x4.TRS(J(CapturedRig.Pelvis),Quaternion.LookRotation(Vector3.Cross(Vector3.up,left),Vector3.up),Vector3.one);
+            var frame=hips*Matrix4x4.TRS(SayaAt,Quaternion.LookRotation(SayaAxis.normalized,Vector3.left),Vector3.one);
             sourceModels.Queue(SayaModel,frame,null,null,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:flash,partTint:tint);
             // Sheathed: the katana in the saya on the saya's own axes, its habaki seated in the mouth (NativeWeaponModels.KatanaSayaSeat) and
             // the hilt out of it.

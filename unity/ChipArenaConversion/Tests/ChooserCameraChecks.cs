@@ -99,7 +99,8 @@ internal static class ChooserCameraChecks
     private static void Sides(ConversionContent data,List<string> log)
     {
         // This fixture samples the legacy Core motion routes. Bombadier and the Top Dog use NativeVisualMotion (BombadierChecks, TopDogChecks); their live chooser needs native visual acceptance.
-        var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren"&&id!=NativeBombs.Spec&&id!=NativeTopDog.Spec&&id!=NativeGlaive.Spec).ToArray();Check(specs.Length>=16&&specs.Contains("cyberlord"),"the class list");
+        // So do the Glaive and the blade classes (the Katana and the Fangs: the Frank Slash Pack's clips, BladeChecks).
+        var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren"&&id!=NativeBombs.Spec&&id!=NativeTopDog.Spec&&id!=NativeGlaive.Spec&&!NativeBlades.Is(id)).ToArray();Check(specs.Length>=16&&specs.Contains("cyberlord"),"the class list");
         var layer=new NativeChipSelectPose();var shown=new CapturedRig.Pose();var notes=new List<string>();
         foreach(var spec in specs)
         {

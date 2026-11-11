@@ -37,8 +37,9 @@ Every number is in Core `NativeFangs`. Cooldowns: Q 7, E 12 (from its end), 1 6,
   `NativeBladePresentation.cs`).
 - **The motion** (Core `NativeBladeMotion`): the pack's assassin stance (its equipped idle), root-motion runs and walks, guard, block, tumble
   and hit reactions. The cuts are its first combo and its second's last two parts; the pounce its leaping attack; the step its dashing stab
-  skill; the veil its backward evade; the fan and the bloom its throwing attack and its two-handed strike skill (on the upper body, the legs
-  free); the takedown the pack's stealth kill from behind (the victim plays the matching hit clip) and the frontal critical the assassin's
+  skill; the veil its backward evade; the fan its two-handed outward sweep (Attack06: the knives flung from both hands; its spinning
+  Attack04 lay the body flat on the floor) and the bloom its two-handed strike skill (both on the upper body while moving, the legs free);
+  the takedown the pack's stealth kill from behind (the victim plays the matching hit clip) and the frontal critical the assassin's
   paired critical.
 - **Effects** (Core `NativeBladeFx.cs`, in the pilot's weapon colour):
   - twin trails from both drawn blades;

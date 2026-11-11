@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
         public const string KatanaCritical="Frank_Damage@Damage_Critical_Katana",KatanaCriticalHit="Frank_Damage@Damage_Critical_Katana_Hit";
         // ---- the Fangs' clips ----
         public static readonly string[] FangsCuts={A+"Combo01_1_IP",A+"Combo01_2_IP",A+"Combo01_3_IP",A+"Combo02_2_IP",A+"Combo02_3_IP"};
-        public const string FangsPounce=A+"Attack07_IP",FangsStep=A+"Skill01_IP",FangsVeil=A+"Evade_B_IP",FangsFan=A+"Attack04_IP",FangsBloom=A+"Skill02_IP",FangsIdle=A+"Equip_Idle",
+        public const string FangsPounce=A+"Attack07_IP",FangsStep=A+"Skill01_IP",FangsVeil=A+"Evade_B_IP",FangsFan=A+"Attack06_IP",FangsBloom=A+"Skill02_IP",FangsIdle=A+"Equip_Idle",
             FangsGuard=A+"Guard",FangsBlock=A+"Block",FangsTumble=A+"Tumbling_F";
         /// <summary>The takedown from behind and the frontal critical: the wielder's clips and their victims'.</summary>
         public const string FangsTakedown="Frank_Stealth_Kill_Behind_05",FangsTakedownHit="Frank_Stealth_Kill_Hit_Behind_05",FangsCritical="Frank_Damage@Damage_Critical_Assassin",FangsCriticalHit="Frank_Damage@Damage_Critical_Assassin_Hit";

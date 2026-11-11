@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
     // trails remember past frames; the rest is a pure function of the record and the clock.
     public sealed partial class NativeTechniqueFx
     {
-        private static readonly Vector3 BladeWhite=new Vector3(1,1,1),BladeVenomDark=new Vector3(.05f,.12f,.03f),SmokeGrey=new Vector3(.16f,.17f,.19f),Petal=new Vector3(1,.55f,.68f);
+        private static readonly Vector3 BladeWhite=new Vector3(1,1,1),BladeVenomDark=new Vector3(.05f,.12f,.03f),SmokeGrey=new Vector3(.16f,.17f,.19f),ShadowSmoke=new Vector3(.03f,.035f,.033f),Petal=new Vector3(1,.55f,.68f);
         private static Vector3 BladeTint(IKitFxScene scene,Actor a,Vector3 fallback){var c=WeaponPaint.Linear(scene.WeaponColor(a));float m=Math.Max(c.X,Math.Max(c.Y,c.Z));return m>1e-3f?c/m:fallback;}
         private sealed class BladeTrail{public readonly Vector3[] Root=new Vector3[16],Tip=new Vector3[16];public readonly float[] At=new float[16];public int Count,Head;public float Last=-100;}
         private readonly Dictionary<long,BladeTrail> bladeTrails=new Dictionary<long,BladeTrail>();
@@ -149,9 +149,14 @@ namespace ChipArena.UnityConversion
                     break;
                 }
                 case NativeKatana.HitDraw:
-                    // The draw: a flash at the hip and a streak of light along the dash.
-                    if(age<.25f){Flash(s,at,age,.14f,hot,.8f,seed);s.Streak(at,dir*28,hot*(2.5f*(1-age/.25f)),.05f,1.2f,.4f,.7f,age/.25f,seed);Sparks(s,at,age,.25f,Count(10,q,low),6,hot,seed+2,5,.02f,dir*.8f);}
-                    break;
+                {
+                    // The draw: a flash where it set off and a streak of light along the dash, growing with it (a streak's length is its
+                    // speed times its blur).
+                    if(age>=.25f)break;bool iai=k.CastKind==NativeKatana.Iai;float reach=iai?NativeKatana.IaiReach:NativeKatana.RushReach,dash=iai?NativeKatana.IaiDash:NativeKatana.RushTime;
+                    float speed=reach/dash,run=reach*Clamp01(age/dash);Flash(s,at,age,.14f,hot,.8f,seed);
+                    if(run>.05f)s.Streak(at+dir*run,dir*speed,hot*(2.5f*(1-age/.25f)),.05f,run,run/speed,.7f,age/.25f,seed);
+                    Sparks(s,at,age,.25f,Count(10,q,low),6,hot,seed+2,5,.02f,dir*.8f);break;
+                }
                 case NativeKatana.HitMark:
                 {
                     // A hairline of light across the marked one, held until the split.
@@ -171,7 +176,7 @@ namespace ChipArena.UnityConversion
                     if(age<.4f){float u=age/.4f;Ring(s,at,.08f+.4f*OutCubic(u),.03f*(1-u),hot*(2.4f*(1-u)),Count(20,q,low));s.Glow(at,hot*(1.8f*(1-u)),0,.3f+.2f*u,RingGlow,u,seed);if(age<.3f)Ring(s,at-Up*.9f,.3f+2.4f*OutCubic(age/.3f),.05f*(1-age/.3f),tint*(1.4f*(1-age/.3f)),Count(32,q,low));}
                     break;
                 case NativeKatana.HitLaunch:
-                    if(age<.35f){s.Streak(at,Up*14,hot*(2.4f*(1-age/.35f)),.06f,1,.3f,.7f,age/.35f,seed);Sparks(s,at,age,.35f,Count(10,q,low),6,hot,seed+3,4,.02f,Up);}
+                    if(age<.35f){s.Streak(at,Up*14,hot*(2.4f*(1-age/.35f)),.06f,.6f,.08f,.7f,age/.35f,seed);Sparks(s,at,age,.35f,Count(10,q,low),6,hot,seed+3,4,.02f,Up);}
                     break;
                 // ---- the chips' ----
                 case NativeKatana.HitBleed:
@@ -225,9 +230,9 @@ namespace ChipArena.UnityConversion
                     break;
                 case NativeFangs.HitVanish:
                 {
-                    // A puff of black smoke and green wisps, at the vanish and at the arrival.
-                    if(age>.7f)break;float u=age/.7f;int n=Count(10,q,low);
-                    for(int i=0;i<n;i++){var d=RandomDir(seed,i);var p=at+d*(.2f+.5f*OutCubic(u))+Up*(.3f*u);s.Smoke(p,BladeVenomDark*1.5f,.55f*(1-u),.35f+.4f*u,u,seed+i,at.Y-.9f);}
+                    // A puff of black smoke (the venom green only in its wisps and sparkle), at the vanish and at the arrival.
+                    if(age>.6f)break;float u=age/.6f;int n=Count(7,q,low);
+                    for(int i=0;i<n;i++){var d=RandomDir(seed,i);d.Y=Math.Abs(d.Y)*.5f;var p=at+d*(.15f+.35f*OutCubic(u))+Up*(.1f+.3f*u);s.Smoke(p,ShadowSmoke,.4f*(1-u)*(1-u),.2f+.28f*u,u,seed+i,at.Y-.9f);}
                     if(age<.2f)s.Glow(at,tint*(2*(1-age/.2f)),0,.5f+.3f*age/.2f,RingGlow,age,seed+2);
                     for(int i=0;i<Count(6,q,low);i++){var d=RandomDir(seed,i+30);s.Sprite(false,at+d*(.6f*OutCubic(u))+Up*(.4f*u),tint*(1.6f*(1-u)),.03f,Sparkle);}
                     break;
@@ -244,7 +249,7 @@ namespace ChipArena.UnityConversion
                 {
                     // The fan's knives in flight, from the throw: each along its way at the throw's speed, out to its range.
                     int n=Math.Max(1,h.Amount);bool hydra=NativeFangsChips.Holds(k,NativeFangsChips.Hydra);float spread=NativeFangs.FanSpread*(hydra?1.6f:1);float travel=NativeFangs.FanSpeed*age;if(travel>NativeFangs.FanRange)break;
-                    for(int i=0;i<n;i++){var d=NativeFangs.KnifeDir(dir,i,n,spread);var p=at+d*travel;s.Streak(p,d*NativeFangs.FanSpeed,hot*1.8f,.025f,.35f,.3f,.8f,travel/NativeFangs.FanRange,seed+i);s.Sprite(false,p,tint*1.6f,.05f,Sparkle);}
+                    for(int i=0;i<n;i++){var d=NativeFangs.KnifeDir(dir,i,n,spread);var p=at+d*travel;s.Streak(p,d*NativeFangs.FanSpeed,hot*1.8f,.025f,.35f,.012f,.8f,travel/NativeFangs.FanRange,seed+i);s.Sprite(false,p,tint*1.6f,.05f,Sparkle);}
                     break;
                 }
                 case NativeFangs.HitBloom:
