@@ -201,10 +201,9 @@ namespace ChipArena.UnityConversion
             if(style==NativeGlaiveIntro.Id&&!NativeGlaiveIntro.InHand(entranceTime))return;
             // The Katana's blade in its saya while the intro has it sheathed (Core NativeBladeIntros; the saya draws it there).
             if(bladeIntro!=null&&bladeIntro.Sheathed(entranceTime))return;
-            // The blade classes' entrances pose the model with a clip after the rig is bound (Core NativeBladeIntros), and only the right
-            // hand is fitted back onto the model (VisualHandFit): the Fangs' off-hand blade takes the model's own left hand (its joint
-            // frame), or it hung where the hidden rig's hand was.
-            if(bladeIntro!=null){bladeIntroHand??=b=>(b==CapturedRig.LHand?VisualJointFrame(introRig,b):introRig.Bones[b].localToWorldMatrix)*introGrip;sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,bladeIntroHand,accent:introAccent);return;}
+            // The blade classes' entrances pose the model with a clip after the rig is bound (Core NativeBladeIntros): each blade where the
+            // model holds it, in the palm as the match draws it (NativeBladePresentation.cs BladeIntroFrame).
+            if(bladeIntro!=null){bladeIntroHand??=b=>BladeIntroFrame(b,introGrip);sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,bladeIntroHand,accent:introAccent);return;}
             if(!VisualWeaponDrawn(introRig,introHand(CapturedRig.RHand)))sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
             if(NativeIntroRules.IntroMuzzleFlash(style,age,out var flash))QueuePiece(flash,introHand(CapturedRig.RHand),0,null);
         }
