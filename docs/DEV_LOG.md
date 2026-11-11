@@ -1,3 +1,22 @@
+## 2026-11-10 — Claude: the blood pack (owner request)
+
+- Branch `claude/blood-pack` (from shared at `4172c27c`). On the branch, not merged, not released.
+- **The owner:** "I also have a new gun pack and a new blood pack id like to implement". The pack is RVFX's Blood Effects Pack.
+- **What it is** (`docs/BLOOD-PACK.md`):
+  - **Splashes:** every spray of blood (a wound on a living pilot, a death's gush, a bisect's, a smash's, the horde's, an arrow's exit) also throws lit, fluid splashes from the pack's six simulated sheets: camera-facing flipbook quads in one dynamic mesh. They replace the wounds' vapour mist.
+  - **Decals:** every splat of the splat pool is a quad of one of the pack's four spreading sprite sheets, with its normal map; a kill lays a pool under its wound. The pool's size, colours, drying and fading are unchanged.
+  - **Flesh lumps:** some of a gib's fragments (at most seven a body) are the pack's five meshes.
+  - Three shaders of our own (`ChipArena/NativeBloodSplash`, `NativeBloodDecal`, `NativeBloodGut`, with `NativeBloodLight.cginc`): the ambient, the key light, the arena's practical lights, flashes and muzzle lights, a wet highlight. No pack shader or script ships.
+  - `Core/NativeBloodPack.cs` holds the rules (pure functions of the replicated wound, its seed, the settings and the clock), `Runtime/NativeBloodPackPresentation.cs` the drawing. `NativeBloodSim.Spray` feeds the splashes; `NativeBloodSplats.Splat` gained a `Pool` flag.
+- **Settings:** gore off draws none of it, and `Bleed` now draws no blood at all with gore off (nothing sets `Gore` off today). Reduced effects halve the splashes and the lumps. The low tier keeps one splash a wound, today's fan splats, no pools, no lumps.
+- **Fallback:** without the bake's `VisualBlood` the blood is exactly as before (the mist, the bank's splats or the fans, the game's lumps).
+- **The bake** (local, git-ignored): the tool's new `bozo-blood.request` (`AddVisualBlood`, also in the full body bake) writes `Assets/LocalAssets/ChipArenaLocal/VisualBody/Blood/` (45 files and their metas, 8.7 MB) and `VisualBlood` in the visual body's prefab; it references the pack's five gut FBX files (0.1 MB). **The Drive zip is not repacked yet**: until it is, the builder draws the old blood.
+- **Rules:** none changed. Presentation only: hit timing, hitboxes, damage, cooldowns, movement and networking are untouched (nothing for Astra).
+- **Checks:** see the handoff for the results on the final commit: the full CoreTests suite (new group `--blood-pack`), the Unity compile, `git diff --check`, the Editor's build checks.
+- **Seen in the Editor** (match captures, screen shots): sword cuts, pistol and heavy rounds, melee and gun kills, the killcam, a burst gib, on Moonlit, Cyber City and the Factory.
+- **Not seen:** a played match by a person, network guests, the horde's blood with the pack, gore off, reduced effects and the low tier on screen (covered by the checks only). Frame cost was not measured cleanly (the Editor was shared).
+- **Next:** repack the Drive zip with the bake, then merge and release with the other packs.
+
 ## 2026-11-10 — Claude: the four new stages modelled (stage art banks, a lit stage shader), the club's DJ and crowd are Grey aliens (owner request)
 
 - Branch `claude/stage-art-release` (from shared at `f741ec76`), merging the art branches:

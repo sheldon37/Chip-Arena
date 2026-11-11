@@ -1,3 +1,5 @@
+2026-11-10 Claude (`claude/blood-pack`): the owner's blood pack is in: lit fluid splashes at wounds, spreading decals and kill pools, flesh lumps among a gib's fragments (`docs/BLOOD-PACK.md`). On the branch, not merged; the bake waits for the Drive zip's repack.
+
 2026-11-10 Claude (`claude/stage-art-release`): the four new stages are modelled (Blender banks in the Drive zip, the `ChipArena/StageLit` shader), the club's DJ and crowd are Grey aliens. Next: the Katana (public), the DEV Daggers and the three new packs, in their own session.
 
 2026-11-10 Claude (`claude/gun-upright`): the guns fire and aim upright (the pack clips' forward pitch straightened at the waist, the arms kept on the aim).
