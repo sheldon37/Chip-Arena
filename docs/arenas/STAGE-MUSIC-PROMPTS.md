@@ -219,6 +219,7 @@ plays its current track (`harbor-container-terminal`, written for the old contai
 | Stage | Map id | Placeholder now | Resource key for the owner's song |
 |---|---|---|---|
 | Pier 9 | `harbor` | `harbor-container-terminal` | `harbor-theme` |
+| Deepwell | `rig` | `rig-offshore` | `rig-theme` |
 
 ### Pier 9 — Last Night of the Season
 
@@ -253,3 +254,39 @@ Lyric field:
 
 [End]
 ```
+
+### Deepwell — The Station Below (`rig-theme`)
+
+Deepwell was rebuilt on 2026-11-11 as a research station on the ocean floor (docs/arenas/DEEPWELL.md). It keeps playing the
+owner's `rig-offshore` (Offshore Rig) until a song for the new place is in; that song takes the resource key `rig-theme`.
+
+Instrumental deep-sea arena combat soundtrack, 122 BPM, a glass research station on the ocean floor: whales passing the windows, jellyfish glowing, a great drill pounding at its heart. Aquatic electronica meets orchestral: a heavy four-on-the-floor kick like a piston with a metallic clang on every fourth bar, deep rolling sub-bass, sonar pings, bubbling arpeggiated plucks through a low-pass filter that opens in the builds, warm analog brass pads, bowed vibraphone and glass harmonica, a slow rising whale-song lead on fretless synth. Vast, calm and pressurised, then driving; warm lamps against cold teal. No vocals. Clean loopable ending.
+
+Lyric field:
+
+```
+[Intro: a lone sonar ping, deep water pad, distant whale-song on fretless synth, bubbles]
+
+[Build-Up: filtered arpeggio plucks rise, the piston kick fades in, sub-bass swells]
+
+[Main Theme: full four-on-the-floor piston kick, metallic clang every fourth bar, warm brass pad carries a four-note rising motif, glass harmonica above]
+Ooh, ooh
+
+[Instrumental Break: bubbling arpeggios wide open, rolling sub-bass, sonar pings on the off-beat]
+
+[Breakdown: the drums drop out, only the whale-song, bowed vibraphone and a slow heartbeat kick, held pressure]
+
+[Build-Up: snare rolls like rising bubbles, the filter opens, klaxon-like brass stabs]
+
+[Climax: full drums and brass, the four-note motif in brass and glass together, the whale-song soaring over it]
+Ooh, ooh
+Ooh, ooh
+
+[Outro: the drums thin to the piston kick and the sonar ping, the pad sinks back to the intro, seamless loop]
+
+[End]
+```
+
+| Stage | Map id | Placeholder now | Resource key for the owner's song |
+|---|---|---|---|
+| Deepwell | `rig` | `rig-offshore` (the owner's earlier Deepwell song; the record's fallback stays `factory-anvil-loop`) | `rig-theme` |

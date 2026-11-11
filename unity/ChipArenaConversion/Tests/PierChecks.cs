@@ -250,7 +250,7 @@ namespace ChipArena.UnityConversion
             // off the five M1 stages' shared code: their presentation is inert here, and the other four keep their numbers
             var map=maps.maps.Single(m=>m.id=="harbor");
             Check(!NativeNewStageLooks.Active("harbor")&&NativeNewStageLooks.Index("harbor")<0&&NativeNewStageScenery.Build(map)==null&&NativeNewStageKit.Build(map,null,null)==null,"the M1 stages' presentation leaves Pier 9 alone");
-            Check(NativeNewStageLooks.Index("breakwater")==0&&NativeNewStageLooks.Index("skyframe")==2&&NativeNewStageLooks.Index("rig")==3&&NativeNewStageLooks.Index("polar")==4,"the other M1 stages keep their numbers");
+            Check(NativeNewStageLooks.Maps.All(id=>NativeNewStageLooks.Index(id)==Array.IndexOf(new[]{"breakwater","harbor","skyframe","rig","polar"},id)),"the other M1 stages keep their numbers");
             Check(NativeStageMusic.Theme("harbor","x")=="harbor-container-terminal","the placeholder track stays until the owner's song (harbor-theme)");
             var guids=new HashSet<string>();
             foreach(var f in new[]{"Core/NativePierLooks.cs","Core/NativePierScenery.cs","Core/NativePierKit.cs","Core/NativePierFx.cs","Core/NativePierArt.cs","Runtime/NativePierPresentation.cs"})

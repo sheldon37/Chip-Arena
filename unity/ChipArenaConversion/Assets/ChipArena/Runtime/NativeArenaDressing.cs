@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
             coat.At(now);Publish(coat.Wide);
             bool poolroomsKit=NativePoolroomsGenerator.IsMap(arena.MapId)&&ArenaPresentation.PoolroomsKitReady;
             bool backroomsKit=NativeBackroomsGenerator.IsMap(arena.MapId)&&ArenaPresentation.BackroomsKitReady;
-            bool causewayKit=NativeCausewayLooks.Active(arena.MapId)&&ArenaPresentation.CausewayKitReady;
+            bool causewayKit=NativeCausewayLooks.Active(arena.MapId)&&ArenaPresentation.CausewayKitReady;bool deepwellKit=NativeDeepwellLooks.Active(arena.MapId)&&ArenaPresentation.DeepwellKitReady;
             // The stage art (Runtime NativeStageArtDraw): the blocks it drew this frame leave their boxes out.
             bool stageArt=NativeStageArt.BankOf(arena.MapId)!=null;
             var match=arena.Match;bool tell=structures!=null&&structures.StressHolding(now),locked=match!=null&&NativeBlockLooks.Locked(match.Phase,match.FightAt,now),redOn=NativeStructureFx.LampStrobe(now)>0;
@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
             removed.Clear();for(int s=0;s<counts.Length;s++)counts[s]=0;pack.Begin();if(packPlan!=null)NativePackStage.Glow(packPlan.Glow);
             foreach(var p in arena.AllBlocks)
             {
-                if(p==null||p.Definition==null||!entries.TryGetValue(p,out var e)||e.Machine)continue;if(poolroomsKit&&ArenaPresentation.PoolroomsKitBlock(arena.MapId,p.Definition.id))continue;if(backroomsKit&&ArenaPresentation.BackroomsKitBlock(arena.MapId,p.Definition.id))continue;if(causewayKit&&NativeCausewayLooks.KitBlock(p.Definition.id))continue;if(Hidden.Count>0&&p.Definition.id!=null&&Hidden.Contains(p.Definition.id))continue;var t=p.transform;Vector3 pos=t.position;Quaternion rot=t.rotation;
+                if(p==null||p.Definition==null||!entries.TryGetValue(p,out var e)||e.Machine)continue;if(poolroomsKit&&ArenaPresentation.PoolroomsKitBlock(arena.MapId,p.Definition.id))continue;if(backroomsKit&&ArenaPresentation.BackroomsKitBlock(arena.MapId,p.Definition.id))continue;if(causewayKit&&NativeCausewayLooks.KitBlock(p.Definition.id))continue;if(deepwellKit&&NativeDeepwellLooks.KitBlock(p.Definition.id))continue;if(Hidden.Count>0&&p.Definition.id!=null&&Hidden.Contains(p.Definition.id))continue;var t=p.transform;Vector3 pos=t.position;Quaternion rot=t.rotation;
                 if(e.Pending){e.Pending=false;Inherit(e,p.Definition.id,pos,frame);}e.Last=pos;if(Nudged.Count>0&&p.Definition.id!=null&&Nudged.TryGetValue(p.Definition.id,out var nudge))pos+=nudge;
                 if(Posed.Count>0&&p.Definition.id!=null&&Posed.TryGetValue(p.Definition.id,out var pose)){pos=pose.MultiplyPoint3x4(pos);rot=pose.rotation*rot;}
                 float f=NativeBlockLooks.Fraction(p.Health,e.Max,p.Indestructible);int stage=NativeBlockLooks.Stage(f,e.S1,e.S2);if(stageArt&&NativeStageArtDraw.Hides(arena.MapId,p.Definition.id,stage))continue;Vector4 size=e.Size,rest=e.Rest;

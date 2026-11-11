@@ -7,7 +7,7 @@ import importlib.util,json,math
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[3]
 # A stage rebuilt from scratch takes its new draft (the M1 script stays as history).
-DRAFTS={'harbor':'harbor_m2'}
+DRAFTS={'harbor':'harbor_m2','rig':'rig_m2'}
 def draft(name,fn):
     spec=importlib.util.spec_from_file_location(name,ROOT/f'docs/arenas/scripts/{DRAFTS.get(name,name+"_m1")}.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return getattr(m,fn)()['maps'][0]
 def v(x,y,z):return dict(x=round(x,4),y=round(y,4),z=round(z,4))
@@ -28,7 +28,7 @@ def navigation(m):
             if b[0][0]-.43<x<b[0][1]+.43 and b[2][0]-.43<z<b[2][1]+.43:
                 if b[1][1]>y+.65:return False
         return True
-    nodes=[];grid={};B=m['bounds'];step=.5 if m['id']=='rig' else 1
+    nodes=[];grid={};B=m['bounds'];step=1
     def samples(lo,hi):return [i*step for i in range(math.ceil((lo+1)/step),math.floor(hi/step))]
     for x in samples(B['minX'],B['maxX']):
         for z in samples(B['minZ'],B['maxZ']):
@@ -113,8 +113,8 @@ def open_tops(m):
 # whatever their obstacle ray hits; NativeMapRules.ExcludeTops), so a player can jump over or be knocked over it and fall. Every
 # other column over a top goes: a double jump (daggers, bow, chips) reaches the 3.9 m ovens, altars and gates, and a pilot may
 # stand on anything they can reach.
-EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':(),'harbor':()}
-OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-'),'harbor':('harbor-ride-','harbor-turret-','harbor-tower-')}
+EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':(),'harbor':(),'rig':('rig-top-wall','rig-top-glass','rig-top-bulkhead')}
+OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-'),'harbor':('harbor-ride-','harbor-turret-','harbor-tower-'),'rig':('rig-top-pylon',)}
 # Cyber City (2026-11-11, the art pass): its columns are the frontage's tops and the tunnel mouths (the map's edge; the art shows the
 # mouths' light gates) and the spires' tops at the ceiling (their crowns and masts stand on them). None opens onto a lethal drop.
 EDGES['cybercity']=('cybercity-frontage-top','cybercity-tunnel-');OVERHANG['cybercity']=('cybercity-spire-top',)
