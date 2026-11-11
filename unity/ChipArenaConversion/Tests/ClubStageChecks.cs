@@ -114,14 +114,14 @@ internal static class ClubStageChecks
         foreach(var k in map.blocks)
         {
             double top=k.pos.y+k.size.y/2,x0=k.pos.x-k.size.x/2,x1=k.pos.x+k.size.x/2,z0=k.pos.z-k.size.z/2,z1=k.pos.z+k.size.z/2;
-            bool capped=map.pilotBlocks.Any(p=>p.bottom<=top+.01f&&Math.Abs(p.center.x-k.pos.x)<.01&&Math.Abs(p.center.z-k.pos.z)<.01);
+            bool capped=map.pilotBlocks.Any(p=>!p.bots&&p.bottom<=top+.01f&&Math.Abs(p.center.x-k.pos.x)<.01&&Math.Abs(p.center.z-k.pos.z)<.01);
             if(!capped)tops.Add((x0,x1,z0,z1,top));
         }
         int attached=0,overhead=0;
         for(int i=0;i<a.Count;i++)
         {
             var p=a.Parts.Items[i];Extent(p,out double x0,out double x1,out double y0,out double y1,out double z0,out double z1);
-            if(a.Overhead[i]){overhead++;foreach(var t in tops)if(x1>t.x0&&x0<t.x1&&z1>t.z0&&z0<t.z1&&t.y<y0+.01)Check(y0-t.y>=NativeClubKit.Clearance-1e-3,"overhead part "+i+" stands "+(y0-t.y).ToString("0.00")+" m over a top");continue;}
+            if(a.Overhead[i]){overhead++;foreach(var t in tops)if(x1>t.x0&&x0<t.x1&&z1>t.z0&&z0<t.z1&&t.y<y0+.01)Check(y0-t.y>=NativeClubKit.Clearance-1e-3,"overhead part "+i+" stands "+(y0-t.y).ToString("0.00")+" m over the top at ("+((t.x0+t.x1)/2).ToString("0.0")+", "+t.y.ToString("0.0")+", "+((t.z0+t.z1)/2).ToString("0.0")+")");continue;}
             attached++;var k=map.blocks[a.Parent[i]];float g=NativeClubKit.Proud+.001f;
             Check(x0>=k.pos.x-k.size.x/2-g&&x1<=k.pos.x+k.size.x/2+g&&y0>=k.pos.y-k.size.y/2-g&&y1<=k.pos.y+k.size.y/2+g&&z0>=k.pos.z-k.size.z/2-g&&z1<=k.pos.z+k.size.z/2+g,"part "+i+" stays inside "+k.id+" grown by 0.25 m");
         }
