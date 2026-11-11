@@ -50,6 +50,7 @@ Shader "ChipArena/StageLit"
         #define DETAIL_PLASTER 10
         #define DETAIL_GLOW 11
         #define DETAIL_TILE 16
+        #define DETAIL_BRICK 21
         // ---- noise (cheap: one hash per lattice corner, the fine fields two octaves) ----
         float SHash(float3 p){p=frac(p*0.1031);p+=dot(p,p.yzx+33.33);return frac((p.x+p.y)*p.z);}
         float SHash2(float2 p){float3 q=frac(float3(p.x,p.y,p.x)*0.1031);q+=dot(q,q.yzx+33.33);return frac((q.x+q.y)*q.z);}
@@ -142,6 +143,18 @@ Shader "ChipArena/StageLit"
             }
             else if(detail==DETAIL_WAX){s.wrap=0.45;s.albedo*=0.95+0.08*SNoise(world*14.0);}
             else if(detail==DETAIL_PLASTER){s.albedo*=0.88+0.2*SFbm(world*0.8);s.n=SBump(s.n,world,4.0,0.08*k);}
+            else if(detail==DETAIL_BRICK)
+            {
+                // brickwork in running bond on the world's courses (Brickfall): bricks 225 x 75 mm with their joint (the parameter
+                // scales them, 0: as drawn), the mortar light and sunk, every brick a touch its own shade and a few burnt dark
+                float sc=param>0.01?param:1.0;bool top=abs(n.y)>0.7;float2 hv=top?world.xz:float2(abs(n.x)>abs(n.z)?world.z:world.x,world.y);
+                float bl=0.225*sc,ch=0.075*sc,joint=0.011*sc;float row=floor(hv.y/ch);float u=hv.x/bl+0.5*fmod(abs(row),2.0);float cell=floor(u);float fu=frac(u),fv=frac(hv.y/ch);
+                float du=min(fu,1.0-fu)*bl,dv=min(fv,1.0-fv)*ch;float d=min(du,dv);float mortar=1.0-smoothstep(joint*0.45,joint,d);float h=SHash2(float2(cell,row));
+                float burnt=step(0.9,SHash2(float2(cell+3.7,row*1.3)));s.albedo*=lerp(1.0,(0.86+0.3*h)*lerp(1.0,0.62,burnt),k);
+                s.albedo=lerp(s.albedo,lerp(s.albedo,float3(0.56,0.5,0.41),0.75),mortar);s.occ*=lerp(1.0,0.72,mortar);s.smooth*=lerp(1.0,0.5,mortar);
+                float eu=smoothstep(joint*2.2,joint*0.6,du)*(fu<0.5?-1.0:1.0),ev=smoothstep(joint*2.2,joint*0.6,dv)*(fv<0.5?-1.0:1.0);
+                s.n=normalize(s.n+(tu*eu+tv*ev)*0.5*k);s.n=SBump(s.n,world,17.0,0.1*k);
+            }
             else if(detail==DETAIL_TILE)
             {
                 // glazed tiles `param` m square (0: 15 cm) on the world's grid: sunk grout, each tile's glaze pillowed and a touch
