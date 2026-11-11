@@ -102,8 +102,14 @@ records and the killcam, and checked with `Valid()`.
 | The intro | `Core/NativeBladeIntros.cs` |
 | Checks | `Tests/BladeChecks.cs` (`CoreTests --blades`) |
 
+## Seen in the Editor (2026-11-10)
+
+- The four cuts, the finisher's glow, the storm's ring and petals, the iai (the gather, the dash, the line hanging, the split's slash across
+  the marked one for 46) and the rush on the model; the saya at the left hip from the side and behind; Crimson Moon from start to card;
+  the ten chips' picks.
+
 ## Not yet
 
 - Not played by a person; not tried between two real clients.
-- The clip windows were measured on the pack's own skeleton. Each move still needs judging on the model in the Editor, and some windows may
-  need retiming.
+- The counter's paired critical on screen: its rules pass in the Editor build validation (a block opens it, the foe held, the blow, the
+  release), but no capture caught a bot's swing landing on the guard inside the window.
