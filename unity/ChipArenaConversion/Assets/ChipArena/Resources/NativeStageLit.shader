@@ -149,9 +149,11 @@ Shader "ChipArena/StageLit"
                 // scales them, 0: as drawn), the mortar light and sunk, every brick a touch its own shade and a few burnt dark
                 float sc=param>0.01?param:1.0;bool top=abs(n.y)>0.7;float2 hv=top?world.xz:float2(abs(n.x)>abs(n.z)?world.z:world.x,world.y);
                 float bl=0.225*sc,ch=0.075*sc,joint=0.011*sc;float row=floor(hv.y/ch);float u=hv.x/bl+0.5*fmod(abs(row),2.0);float cell=floor(u);float fu=frac(u),fv=frac(hv.y/ch);
-                float du=min(fu,1.0-fu)*bl,dv=min(fv,1.0-fv)*ch;float d=min(du,dv);float mortar=1.0-smoothstep(joint*0.45,joint,d);float h=SHash2(float2(cell,row));
+                float du=min(fu,1.0-fu)*bl,dv=min(fv,1.0-fv)*ch;float d=min(du,dv);float h=SHash2(float2(cell,row));
+                // far off, where a course nears a pixel, the bond eases into its mean tone (no shimmer)
+                float aa=saturate(1.3-1.6*max(fwidth(hv.x)/bl,fwidth(hv.y)/ch));float mortar=lerp(0.17,1.0-smoothstep(joint*0.45,joint,d),aa);k*=aa;
                 float burnt=step(0.9,SHash2(float2(cell+3.7,row*1.3)));s.albedo*=lerp(1.0,(0.86+0.3*h)*lerp(1.0,0.62,burnt),k);
-                s.albedo=lerp(s.albedo,lerp(s.albedo,float3(0.56,0.5,0.41),0.75),mortar);s.occ*=lerp(1.0,0.72,mortar);s.smooth*=lerp(1.0,0.5,mortar);
+                s.albedo=lerp(s.albedo,lerp(s.albedo,float3(0.56,0.5,0.41),0.75),mortar);s.occ*=lerp(1.0,0.72,mortar*aa);s.smooth*=lerp(1.0,0.5,mortar);
                 float eu=smoothstep(joint*2.2,joint*0.6,du)*(fu<0.5?-1.0:1.0),ev=smoothstep(joint*2.2,joint*0.6,dv)*(fv<0.5?-1.0:1.0);
                 s.n=normalize(s.n+(tu*eu+tv*ev)*0.5*k);s.n=SBump(s.n,world,17.0,0.1*k);
             }

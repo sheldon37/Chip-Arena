@@ -71,6 +71,7 @@ internal static class BrickfallArtChecks
         Check(pres.Contains("stressed=fx.TelegraphFor(NativeStructureFx.Seed(arena.MapId,k.segment,NativeStructureFx.RoundIndex(match.Set,match.Round)),new V3(at.x,at.y,at.z),brickfallArtNow,out window,out var sag,out float qx,out float qy,out float qz,out float qw);")
             &&pres.Contains("if(stressed){at+=new Vector3(sag.x,sag.y,sag.z);rotation=new Quaternion(qx,qy,qz,qw)*rotation;}")&&pres.Contains("if(!k.band){glow=new Vector4(window,window,window,1);return;}")
             &&pres.Contains("NativeBrickfallArt.Lamp(NativeBlockLooks.Lamp(stage,stressed,brickfallArtLocked,brickfallArtRed),out float r,out float g,out float b);"),"the models take the dressing's telegraph: the sag and lean, the window light, the band lamp");
+        Check(scenery.Contains("brickfallFx.Tarps=!BrickfallArtDrawn;")&&R("Assets/ChipArena/Core/NativeBrickfallFx.cs").Contains("if(Tarps)TarpsPass(time);"),"the frontage's tarps give way to the modelled facades (and hang as before without the bank)");
         var dress=R("Assets/ChipArena/Runtime/NativeArenaDressing.cs");
         Check(dress.Contains("if(arena.Map.unity){if(e.Segment!=null)stressed=structures.TelegraphFor(NativeStructureFx.Seed(arena.MapId,e.Segment,NativeStructureFx.RoundIndex(match.Set,match.Round)),point,now,out window,out sag,out qx,out qy,out qz,out qw);}")
             &&dress.Contains("if(stageArt&&NativeStageArtDraw.Hides(arena.MapId,p.Definition.id,stage))continue;"),"the dressing's own telegraph and its give-way to the art are as the models copy them");
