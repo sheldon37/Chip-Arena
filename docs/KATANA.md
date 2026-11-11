@@ -55,7 +55,7 @@ Its music is the arc-salute bed. Presentation only.
 
 ## The chips
 
-Ten chips of its own (tier `katana`, "KATANA SPECIAL", crimson `#ff3d6e`, a lacquer cartridge with the crescent crest). They are offered only
+Ten chips of its own (tier `katana`, "KATANA SPECIAL", crimson `#ff3d6e`, a lacquer cartridge with the knot crest, the tsuka's wrap; the crescent is the Glaive's alone). They are offered only
 to the Katana and are likely in its drafts (two guaranteed, 85%). Rules: Runtime `NativeKatanaAuthority.cs`; numbers and copy: Core
 `NativeKatanaChips`.
 
