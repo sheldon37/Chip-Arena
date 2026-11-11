@@ -39,6 +39,12 @@ namespace ChipArena.UnityConversion
         private bool BladeBusy(NativePilot p)=>BladeSpec(p)&&Time<p.Blade.CastUntil;
         /// <summary>A pilot held in a blade class's paired move (the victim side).</summary>
         private bool BladeHeld(NativePilot q)=>q.BladeHeldBy!=null;
+        /// <summary>The custom melee kits (the Glaive, the Katana, the Fangs) take the standard plunging slam (owner 2026-11-11: "Glaive,
+        /// fangs, and katana need Slam attacks from the air"): in the air looking down an attack is the standard swing's plunge (Core
+        /// NativeAirAttackSimulation: the drop, the landing ring, the stuck recovery), not the kit's own move. Not while a kit move runs, nor
+        /// with the Glaive's ring out of the hand (its click is the burst then).</summary>
+        private bool KitSlam(NativePilot p)=>p!=null&&NativeAirAttackSimulation.KitSlam(p.Seat.spec)&&!p.Grounded&&NativeAirAttackSimulation.DownPitch(p.Input.Pitch)&&!NativeHazards.InLava(MapId,Vec(p.Body.position))
+            &&!BladeBusy(p)&&!GlaiveBusy(p)&&(p.Seat.spec!=NativeGlaive.Spec||p.Glaive?.Disc==NativeGlaive.Hand);
         private float BladeScale(NativePilot p)=>NativeAbilityRules.Scale(p.Stats,false);
         private IEnumerable<NativePilot> BladePilots(NativePilot p){foreach(var q in Pilots.ToArray())if(q!=p&&q.Hp>0&&q.Seat.connected&&CanHit(p,q)&&!HubInside(q.Body.position))yield return q;}
         private IEnumerable<NativeMinion> BladeMinions(NativePilot p){foreach(var m in Minions.ToArray())if(m.Hp>0&&CanHit(p,m)&&!HubInside(m.Body.position))yield return m;}
@@ -95,6 +101,8 @@ namespace ChipArena.UnityConversion
             if(!BladeSpec(p))return;var k=p.Blade;int slots=NativeBlades.Slots(p.Seat.spec);if(k.Ready==null||k.Ready.Length!=slots)k.Ready=new float[slots];
             bool attack=p.Input.Shoot||p.Input.Attack,press=attack&&!p.BladeAttackHeld;p.BladeAttackHeld=attack;
             if(p.Hp<=0||Incapacitated(p)||HubInside(p.Body.position)||BladeHeld(p))return;
+            // The plunging slam (the standard swing, KitSlam): none of the kit's moves while it lasts; its attack is the slam's.
+            if(p.Swing!=null&&Time<p.AttackEnd)return;if(KitSlam(p)){attack=press=false;}
             // The Fangs are a DEV class: their kit answers only a pilot allowed it (a grant or developer access).
             if(p.Seat.spec==NativeFangs.Spec&&!FangsAllowed(p))return;
             if(p.Seat.spec==NativeKatana.Spec)KatanaInput(p,attack,press);else FangsInput(p,attack,press);

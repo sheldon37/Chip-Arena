@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
 
         private void StepMeleeInput(NativePilot p)
         {
-            if(!NativeMeleeRules.Standard(p.Seat.spec))return;
+            if(!NativeMeleeRules.Standard(p.Seat.spec)){if(p.Input.Attack&&p.Swing==null&&KitSlam(p))TryMelee(p);return;}
             if(p.Input.Attack&&(NativeMeleeKitRules.BufferOpen(p.Swing,Time)||Time<p.RollEnd&&Time>=p.RollEnd-.2f))p.MeleeBufferedUntil=Time+NativeMeleeFeel.BufferSeconds;
             bool queued=p.MeleeBufferedUntil>=Time,chain=queued&&NativeMeleeKitRules.ChainReady(p.Swing,Time);
             // Holding retains the original full-recovery cadence; only a fresh edge can queue an early chain.

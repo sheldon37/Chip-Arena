@@ -7,7 +7,12 @@ namespace ChipArena.UnityConversion
     /// The blade classes' entrances (owner 2026-11-10: "give them both a very awesome intro with effects"; docs/KATANA.md, docs/FANGS.md "The
     /// intro"). Each plays the Frank Slash Pack's own clips on the model (Clip: which clip and where in it at intro time `t`; the runtime lays
     /// it on the intro body through the arena's motion, Runtime NativeVisualMotionPresentation), with a keyed stance under it for the Classic
-    /// body, its camera, lights and effects. Presentation only: pure functions of the entrance clock, thinned by `quality`.
+    /// body, its camera, lights and effects. Presentation only: functions of the entrance clock, thinned by `quality`.
+    /// Their look (owner 2026-11-11: "Intro also needs to be fixed on both fangs and Katana. (Floating parts, needs much improved vfx)"): set
+    /// pieces where a shape must read crisp (the Katana's moon, its petals, the line of light and its shards; the Fangs' venom drops), lit smoke
+    /// where soft glow balls hung in the air before, no glow rings, and the blades' trails, drips and flung venom taken from the blades as the
+    /// model really holds them (Blade: the runtime hands them in each frame; the keyed stance's hands are not where the clip puts them). A
+    /// checker that never hands them in sees the effects without those.
     /// </summary>
     public abstract class NativeBladeIntro:NativeProceduralEntrance
     {
@@ -23,13 +28,63 @@ namespace ChipArena.UnityConversion
             if(t<=hit)return from+(at-from)*NativeEntranceMath.Clamp01((t-t0)/Math.Max(1e-3f,hit-t0));
             return at+(to-at)*NativeEntranceMath.Clamp01((t-hit)/Math.Max(1e-3f,t1-hit));
         }
+
+        // ---- the blades as the model holds them (Runtime NativeBladePresentation.BladeIntroHeld) ----
+        private const int Samples=48;
+        private readonly Vector3[] heldRoot=new Vector3[2*Samples],heldTip=new Vector3[2*Samples],lastRoot=new Vector3[2],lastTip=new Vector3[2];
+        private readonly float[] heldAt=new float[2*Samples],lastAt={-100,-100};private readonly int[] heldCount=new int[2],heldHead=new int[2];
+        private float heldClock=-1;
+        /// <summary>The blade in `hand` (0 the right, 1 the left) as the model holds it at intro `t` (stage frame): its root where it leaves
+        /// the hilt and its tip; `shown` false while it is put away or the pilot unseen. Called each frame before Props and Effects; a clock
+        /// that runs back (a replay) starts the trails over.</summary>
+        public void Blade(float t,int hand,Vector3 root,Vector3 tip,bool shown)
+        {
+            if(hand<0||hand>1)return;
+            if(t<heldClock-1e-4f){heldCount[0]=heldCount[1]=0;lastAt[0]=lastAt[1]=-100;}
+            heldClock=t;
+            if(!shown||!Finite(root)||!Finite(tip)){heldCount[hand]=0;return;}
+            lastRoot[hand]=root;lastTip[hand]=tip;lastAt[hand]=t;
+            int c=heldCount[hand],h=heldHead[hand],o=hand*Samples;
+            if(c>0&&t-heldAt[o+h]<1/240f){heldRoot[o+h]=root;heldTip[o+h]=tip;return;}
+            h=(h+1)%Samples;heldRoot[o+h]=root;heldTip[o+h]=tip;heldAt[o+h]=t;heldHead[hand]=h;heldCount[hand]=Math.Min(Samples,c+1);
+        }
+        private static bool Finite(Vector3 v)=>float.IsFinite(v.X)&&float.IsFinite(v.Y)&&float.IsFinite(v.Z);
+        /// <summary>The blade in `hand` this frame (false: none handed in for `t`).</summary>
+        protected bool Held(float t,int hand,out Vector3 root,out Vector3 tip){root=lastRoot[hand];tip=lastTip[hand];return Math.Abs(lastAt[hand]-t)<1e-4f;}
+        /// <summary>When the blade in `hand` was last seen, and where.</summary>
+        protected float LastSeen(int hand,out Vector3 root,out Vector3 tip){root=lastRoot[hand];tip=lastTip[hand];return lastAt[hand];}
+        protected int HeldCount(int hand)=>heldCount[hand];
+        /// <summary>The blade in `hand` `back` samples before the newest.</summary>
+        protected void HeldSample(int hand,int back,out Vector3 root,out Vector3 tip,out float at){int i=hand*Samples+((heldHead[hand]-back)%Samples+Samples)%Samples;root=heldRoot[i];tip=heldTip[i];at=heldAt[i];}
+        /// <summary>The blade's trail over the last `life` s: a chain of streaks along its tip's path, hot at the head (the edge), and the
+        /// blade's afterimages (from a third of the way up to the tip) at each sample and between them, faint, soft and close together, so
+        /// the sweep fills as a sheet of light (separate chains part way up read as stripes in the slowed cut).</summary>
+        protected void Trail(INativeEntranceFx fx,float t,int hand,float life,Vector3 tint,Vector3 hot,float width,float gain,int seed,bool low)
+        {
+            int c=heldCount[hand];if(c<2)return;int fill=low?0:3;
+            for(int j=0;j<c-1;j++)
+            {
+                HeldSample(hand,j,out var r0,out var p0,out float t0);HeldSample(hand,j+1,out var r1,out var p1,out float t1);
+                float age=t-t0;if(age>=life)break;float dt=Math.Max(1e-4f,t0-t1),f=1-age/life,k=f*f*gain;
+                var d=p0-p1;if(d.LengthSquared()>1e-8f)fx.Streak(p0,d/dt,Vector3.Lerp(tint,hot,f)*(2.4f*k),width*(.4f+.6f*f),0,dt,0,1-f,seed+j*4);
+                for(int i=0;i<fill;i++)
+                {
+                    float u=i/(float)fill;var r=Vector3.Lerp(r0,r1,u);var p=Vector3.Lerp(p0,p1,u);var a=Vector3.Lerp(r,p,.33f);var ax=p-a;if(ax.LengthSquared()<1e-6f)continue;
+                    fx.Streak(p,ax*10,tint*(.75f*k),width*2.4f,0,.1f,0,1-f,seed+j*4+1+i);
+                }
+            }
+        }
+        /// <summary>The turn that lays the stage's sphere (its poles on y) face-on to `d`.</summary>
+        protected static Quaternion FaceOn(Vector3 d){var axis=new Vector3(d.Z,0,-d.X);float s=axis.Length();return s<1e-5f?(d.Y<0?Quaternion.CreateFromAxisAngle(Vector3.UnitX,(float)Math.PI):Quaternion.Identity):Quaternion.CreateFromAxisAngle(axis/s,(float)Math.Acos(Math.Clamp(d.Y,-1f,1f)));}
+        /// <summary>The turn that lays a piece's z along `d`.</summary>
+        protected static Quaternion Along(Vector3 d){var axis=new Vector3(-d.Y,d.X,0);float s=axis.Length();return s<1e-5f?(d.Z<0?Quaternion.CreateFromAxisAngle(Vector3.UnitY,(float)Math.PI):Quaternion.Identity):Quaternion.CreateFromAxisAngle(axis/s,(float)Math.Acos(Math.Clamp(d.Z,-1f,1f)));}
     }
 
     /// <summary>
-    /// "Crimson Moon", the Katana's entrance. 7.2 s, the name at 5.4 s. Night; a crimson moon low behind the pilot, petals drifting. The pilot
-    /// stands with the blade sheathed at the hip, settles, and draws: one great iai cut (slowed at its height) leaves a line of light hanging
-    /// across the stage, the petals it crossed sliced and still. The blade is slid home; at the click the line splits, the moon flares and the
-    /// petals burst. The hero: standing calm, the hand on the hilt.
+    /// "Crimson Moon", the Katana's entrance. 7.2 s, the name at 5.4 s. Night; a crimson moon low behind the pilot, petals drifting, a dark mist
+    /// over the floor. The pilot stands with the blade sheathed at the hip, settles, and draws: one great iai cut (slowed at its height, its
+    /// sweep a crimson trail) leaves a line of light hanging across the stage, the petals it crossed cut in two and still. The blade is slid
+    /// home; at the click the line flares and shatters, the cut petals fall apart, the moon flares. The hero: standing calm, the hand on the hilt.
     /// </summary>
     public sealed class NativeKatanaIntro:NativeBladeIntro
     {
@@ -38,9 +93,15 @@ namespace ChipArena.UnityConversion
         public const float Poise=.9f,DrawAt=1.25f,CutAt=2.55f,HoldTo=3.4f,SheatheAt=3.5f,ClickAt=4.35f,Hero=4.7f;
         public override string Spec=>NativeKatana.Spec;
         public override float Length=>Total;public override float SettleAt=>End;protected override float HeroAt=>CardAt;
-        private static readonly Vector3 Moon=new Vector3(8f,4.8f,-10f),White=new Vector3(1,1,1),Crimson=NativeEntranceFx.Hex(0xff3d6e),Blossom=NativeEntranceFx.Hex(0xffb3c6),Night=NativeEntranceFx.Hex(0x14101e);
+        private static readonly Vector3 Moon=new Vector3(8f,4.8f,-10f),White=new Vector3(1,1,1),Crimson=NativeEntranceFx.Hex(0xff3d6e),Blossom=NativeEntranceFx.Hex(0xffb3c6),Night=NativeEntranceFx.Hex(0x14101e),Mist=NativeEntranceFx.Hex(0x5a4f66);
         /// <summary>The line the cut leaves, across the stage at its height (stage frame).</summary>
         public static readonly Vector3 LineFrom=Local(-2.6f,1.25f,.9f),LineTo=Local(2.8f,1.05f,.35f);
+        /// <summary>The moon's disc (its radius, m) turned face-on to the stage; three turns of the sphere about its own axis keep its edge round.</summary>
+        private const float MoonRadius=1.05f;private static readonly Quaternion MoonFace=FaceOn(Vector3.Normalize(new Vector3(0,1.5f,4)-Moon));
+        private static readonly Quaternion[] MoonTurns={MoonFace,MoonFace*Quaternion.CreateFromAxisAngle(Vector3.UnitY,.2618f),MoonFace*Quaternion.CreateFromAxisAngle(Vector3.UnitY,.5236f)};
+        private static readonly Vector3 LineDir=Vector3.Normalize(LineTo-LineFrom),CutNormal=Vector3.Normalize(Vector3.UnitY-LineDir*Vector3.Dot(Vector3.UnitY,LineDir));
+        private static readonly Quaternion LineTurn=Along(LineDir);
+        private const int Petals=40,PetalsLow=16,CutPetals=9;private const float PetalLife=5.5f;
         public NativeKatanaIntro():base(NativeKatana.Entrance,CutAt,0xff3d6e)
         {
             SlowRate=.25f;SlowHold=.18f;SlowRecover=.3f;SlowCatchUp=.5f;
@@ -90,49 +151,99 @@ namespace ChipArena.UnityConversion
             if(t>=CardAt-.2f){float k=NativeEntranceMath.Ramp(t,CardAt-.2f,CardAt+.3f);l.Add(new Vector3(-2.2f,2.4f,2),Blossom*(1.6f*k),8);}
         }
         protected override float Pylon(int i,float t)=>t<ClickAt?.05f:PowerOn(i,t-ClickAt+.05f,.1f);
-        public override void Props(float t,INativeEntranceProps props,float q)=>Stage(props,t,t<ClickAt?.03f:.1f+.25f*NativeEntranceMath.Ramp(t,ClickAt,CardAt),ClickAt,Accent);
+        public override void Props(float t,INativeEntranceProps props,float q)
+        {
+            Stage(props,t,t<ClickAt?.03f:.1f+.25f*NativeEntranceMath.Ramp(t,ClickAt,CardAt),ClickAt,Accent);bool low=q<.5f;
+            // The moon: a crisp crimson disc, flaring at the split (its halo is the effects').
+            float flare=NativeEntranceMath.Pulse(t,ClickAt,.02f,.9f);var moon=(Crimson*1.9f+White*.6f)*(1.1f+1.3f*flare);
+            foreach(var turn in MoonTurns)props.Piece(WeaponShape.Sphere,true,Moon,turn,new Vector3(MoonRadius,MoonRadius*.3f,MoonRadius),moon);
+            // Petals drifting across the night, tumbling.
+            int n=low?PetalsLow:Petals;for(int i=0;i<n;i++)
+            {
+                float born=NativeEntranceMath.Rand(21100,i)*PetalLife,a=((t-born)%PetalLife+PetalLife)%PetalLife/PetalLife;
+                var p=new Vector3(-4.5f+9*a+NativeEntranceMath.Signed(21100,i+50)*.8f,3.2f-2.8f*a+.3f*(float)Math.Sin(t*2+i),-2.5f+5*NativeEntranceMath.Rand(21100,i+90));
+                float fade=NativeEntranceMath.Clamp01(a*8)*NativeEntranceMath.Clamp01((1-a)*8);if(fade<=.01f)continue;
+                props.Piece(WeaponShape.Sphere,true,p,Tumble(i,t),new Vector3(.034f,.008f,.025f)*fade,Blossom*1.15f);
+            }
+            // The petals the cut crosses: drifting in to the line, cut in two and held still on it, falling apart at the click.
+            float click=t-ClickAt;
+            if(click<=1.4f)for(int i=0;i<CutPetals;i++)
+            {
+                float u=(i+.5f)/CutPetals+NativeEntranceMath.Signed(21200,i)*.03f;var on=Vector3.Lerp(LineFrom,LineTo,u)+new Vector3(0,NativeEntranceMath.Signed(21210,i)*.04f,0);
+                var drift=new Vector3(.5f+.2f*NativeEntranceMath.Rand(21220,i),-.3f-.15f*NativeEntranceMath.Rand(21230,i),NativeEntranceMath.Signed(21240,i)*.1f);var size=new Vector3(.034f,.008f,.025f);
+                if(t<CutAt){float before=t-CutAt;if(before<-3)continue;props.Piece(WeaponShape.Sphere,true,on+drift*before+new Vector3(0,.04f*(float)Math.Sin(t*2+i),0),Tumble(i+50,t),size*NativeEntranceMath.Clamp01((before+3)*2),Blossom*1.2f);continue;}
+                var turn=Tumble(i+50,CutAt);var half=size*new Vector3(1,1,.55f);
+                if(click<0){float apart=.006f+.012f*NativeEntranceMath.Ramp(t,CutAt,ClickAt);for(int side=-1;side<=1;side+=2)props.Piece(WeaponShape.Sphere,true,on+CutNormal*(apart*side),turn,half,Blossom*1.3f);continue;}
+                float g=1-click/1.4f;
+                for(int side=-1;side<=1;side+=2)props.Piece(WeaponShape.Sphere,true,on+CutNormal*(side*(.02f+.5f*click))+drift*click+new Vector3(0,-1.6f*click*click,0),Quaternion.CreateFromAxisAngle(CutNormal,side*click*9)*turn,half*g,Blossom*1.3f);
+            }
+            // The line of light: drawn by the cut, held trembling and brightening toward the click, flaring and gone at the split; then its shards.
+            float s=t-CutAt;
+            if(s>=-.05f&&click<.1f)
+            {
+                float grow=NativeEntranceMath.Clamp01((s+.05f)/.12f),near=NativeEntranceMath.Ramp(t,SheatheAt,ClickAt),len=Vector3.Distance(LineFrom,LineTo)*grow,burst=click>=0?1-click/.1f:0;
+                float w=.007f+.007f*near+.03f*burst;var at=LineFrom+LineDir*(len*.5f)+new Vector3(0,.004f*near*(float)Math.Sin(t*97),0);
+                props.Piece(WeaponShape.Cube,true,at,LineTurn,new Vector3(w,w,len),(White*(2.2f+2.4f*near)+Crimson*(1.4f+1.4f*near))*(1+3*burst));
+            }
+            if(click>=0&&click<1.1f)
+            {
+                float u=click/1.1f;int m=low?12:28;
+                for(int i=0;i<m;i++)
+                {
+                    var at=Vector3.Lerp(LineFrom,LineTo,(i+.5f)/m);var d=new Vector3(NativeEntranceMath.Signed(21450,i)*.8f,.4f+.8f*NativeEntranceMath.Rand(21460,i),NativeEntranceMath.Signed(21470,i)*.8f);
+                    float size=(1-u)*(.05f+.04f*NativeEntranceMath.Rand(21480,i));var spin=Quaternion.CreateFromAxisAngle(NativeEntranceMath.Direction(21490,i),click*(7+6*NativeEntranceMath.Rand(21495,i)));
+                    props.Piece(WeaponShape.Cube,true,at+d*(1.3f*click)+new Vector3(0,-2.2f*click*click,0),spin*LineTurn,new Vector3(size*.22f,size*.22f,size*2),(White*1.4f+Crimson*2.4f)*(1.5f*(1-u)));
+                }
+            }
+        }
+        // A petal's slow tumble.
+        private static Quaternion Tumble(int i,float t)=>Quaternion.CreateFromAxisAngle(NativeEntranceMath.Direction(21300,i),t*(1.2f+1.6f*NativeEntranceMath.Rand(21310,i))+i);
         public override void Effects(float t,INativeEntranceFx fx,float q)
         {
             float floor=NativeEntranceStage.FloorY;bool low=q<.5f;
-            // The moon: a great crimson disc low behind the stage, its halo breathing, flaring at the split.
-            float flare=NativeEntranceMath.Pulse(t,ClickAt,.02f,.9f);fx.Glow(Moon,Crimson*(1.2f+2.4f*flare),0,4.4f+.8f*flare,2,0,21000);fx.Glow(Moon,(Crimson*.6f+White*.4f)*(1.6f+1.5f*flare),0,3f,1,0,21001);fx.Glow(Moon,(Crimson*.3f+White*.7f)*(1.1f+flare),0,1.7f,1,0,21002);
-            // Petals drifting across the night (fewer on Reduced), falling faster once the line splits.
-            int n=low?18:46;for(int i=0;i<n;i++)
+            // The moon's halo and corona round its disc (Props), swelling at the split; dark cloud drifting across its face.
+            float flare=NativeEntranceMath.Pulse(t,ClickAt,.02f,.9f);
+            fx.Glow(Moon,Crimson*(.5f+1.1f*flare),0,6.5f+1.5f*flare,0,0,21000);fx.Glow(Moon,(Crimson*.8f+White*.2f)*(.9f+1.6f*flare),0,3.1f,1,0,21001);
+            int clouds=low?1:3;for(int i=0;i<clouds;i++){float a=((t*.05f+NativeEntranceMath.Rand(21020,i))%1+1)%1;var p=Moon+new Vector3(-3.4f+6.8f*a,-.6f+.9f*NativeEntranceMath.Rand(21030,i),1.6f);fx.Smoke(p,Night*1.3f,.55f*(float)Math.Sin(Math.PI*a),1.9f+.6f*NativeEntranceMath.Rand(21040,i),a,21050+i,-100);}
+            // The draw: the blade's crimson trail through the cut, a glint racing along its edge, a flash where it cuts.
+            Trail(fx,t,0,.42f,Crimson,White,.03f,1,21700,low);
+            if(Held(t,0,out _,out var tip))
             {
-                float life=5.5f,born=NativeEntranceMath.Rand(21100,i)*life,a=((t-born)%life+life)%life/life;
-                var p=new Vector3(-4.5f+9*a+NativeEntranceMath.Signed(21100,i+50)*.8f,3.2f-2.8f*a+.3f*(float)Math.Sin(t*2+i),-2.5f+5*NativeEntranceMath.Rand(21100,i+90));
-                // Sliced petals: the ones the line crosses freeze a moment after the cut.
-                fx.Glow(p,Blossom*(1.1f*(1-a)),0,.05f,3,a,21110+i);
+                float glint=NativeEntranceMath.Ramp(t,CutAt-.25f,CutAt-.05f)*(1-NativeEntranceMath.Ramp(t,CutAt+.3f,CutAt+.6f));if(glint>.01f)fx.Glow(tip,White*(2.6f*glint),0,.14f,1,0,21360);
+                float s=t-CutAt;if(s>=0&&s<.25f){float u=s/.25f;fx.Glow(tip,(White*2+Crimson)*(3*(1-u)),0,.35f+.5f*u,1,u,21361);}
             }
-            // The draw: the edge's streak across, then the line hanging, trembling brighter toward the click; the split breaks it into motes and petals.
+            // The line's glow round its crisp core (Props): long overlapping streaks, so it reads as one line, not a dashed one.
             {
                 float s=t-CutAt;
-                if(s>=-.05f&&s<ClickAt-CutAt)
+                if(s>=-.05f&&t<ClickAt)
                 {
-                    float grow=NativeEntranceMath.Clamp01((s+.05f)/.12f),near=NativeEntranceMath.Ramp(t,SheatheAt,ClickAt);int m=low?16:40;
-                    for(int i=0;i<m;i++){float u=i/(float)(m-1);if(u>grow)break;var p=Vector3.Lerp(LineFrom,LineTo,u);float edge=1-Math.Abs(u-.5f)*1.4f;fx.Streak(p,Vector3.Normalize(LineTo-LineFrom)*2,(White*.8f+Crimson)*((1.6f+1.6f*near)*edge),.02f+.02f*near,.15f,.02f,.4f,0,21300+i);}
-                    if(s<.25f){float u=s/.25f;fx.Glow(Vector3.Lerp(LineFrom,LineTo,.5f),White*(4*(1-u)),0,.6f+1.2f*u,2,u,21360);}
+                    float grow=NativeEntranceMath.Clamp01((s+.05f)/.12f),near=NativeEntranceMath.Ramp(t,SheatheAt,ClickAt);int segs=low?3:6;
+                    for(int i=0;i<segs;i++){float u0=i/(float)segs,u1=Math.Min(grow,(i+1.35f)/segs);if(u0>=grow)break;var a=Vector3.Lerp(LineFrom,LineTo,u0);var b=Vector3.Lerp(LineFrom,LineTo,u1);float edge=1-Math.Abs((u0+u1)*.5f-.5f)*.9f;fx.Streak(b,(b-a)*10,Crimson*((.7f+1.1f*near)*edge),.08f+.06f*near,0,.1f,0,0,21300+i);}
                 }
+                // The split: motes off the shattered line, rising and drifting.
                 float c=t-ClickAt;
                 if(c>=0&&c<1.5f)
                 {
-                    float u=c/1.5f;int m=low?24:64;
-                    for(int i=0;i<m;i++){float w=NativeEntranceMath.Rand(21400,i);var p=Vector3.Lerp(LineFrom,LineTo,w);var d=new Vector3(NativeEntranceMath.Signed(21400,i+40),.4f+NativeEntranceMath.Rand(21400,i+80),NativeEntranceMath.Signed(21400,i+120));fx.Glow(p+d*(1.3f*c)+new Vector3(0,-.6f*c*c,0),(i%3==0?Blossom:Crimson)*(2.2f*(1-u)),0,.06f,3,u,21410+i);}
-                    if(c<.35f){float v=c/.35f;fx.Glow(Vector3.Lerp(LineFrom,LineTo,.5f),(White+Crimson)*(5*(1-v)),0,.8f+2.6f*v,2,v,21500);}
-                    // The click's ring at the hip and its shockwave over the floor.
-                    if(c<.5f){float v=c/.5f;int r=low?18:40;var hip=new Vector3(.15f,.95f,.05f);for(int i=0;i<r;i++){float a=i*6.2831853f/r;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));fx.Streak(new Vector3(0,floor+.03f,0)+d*(.3f+3.4f*(1-(1-v)*(1-v))),d*5,Crimson*(2*(1-v)),.025f,.15f,.03f,.7f,v,21520+i);}fx.Glow(hip,(White+Crimson)*(3*(1-v)),0,.3f+.5f*v,2,v,21580);}
+                    float u=c/1.5f;int m=low?16:40;
+                    for(int i=0;i<m;i++){float w=NativeEntranceMath.Rand(21400,i);var p=Vector3.Lerp(LineFrom,LineTo,w);var d=new Vector3(NativeEntranceMath.Signed(21400,i+40),.4f+NativeEntranceMath.Rand(21400,i+80),NativeEntranceMath.Signed(21400,i+120));fx.Glow(p+d*(1.1f*c)+new Vector3(0,-.5f*c*c,0),(i%3==0?Blossom:Crimson)*(2*(1-u)),0,.035f,3,u,21410+i);}
+                    // The click: a short hot flash at the saya's mouth (where the hilt went home) and a shockwave of light running out over the floor.
+                    if(c<.5f)
+                    {
+                        float v=c/.5f;var hip=LastSeen(0,out var hilt,out _)>ClickAt-1.2f?hilt:Local(.15f,.95f,.05f);if(c<.25f)fx.Glow(hip,(White*2+Crimson)*(2.6f*(1-c/.25f)),0,.16f+.2f*c/.25f,1,c/.25f,21580);
+                        int r=low?18:40;for(int i=0;i<r;i++){float a=i*6.2831853f/r;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));fx.Streak(new Vector3(0,floor+.03f,0)+d*(.3f+3.4f*(1-(1-v)*(1-v))),d*5,Crimson*(2*(1-v)),.025f,.15f,.03f,.7f,v,21520+i);}
+                    }
                 }
             }
-            // Mist low over the floor all through, parting at the cut.
-            int mist=low?6:14;for(int i=0;i<mist;i++){float a=((t*.12f+NativeEntranceMath.Rand(21600,i))%1+1)%1;var p=new Vector3(-4+8*NativeEntranceMath.Rand(21600,i+20),floor+.12f,-3+6*a);fx.Glow(p,Night*1.1f+Crimson*.05f,0,2.2f,0,a,21610+i);}
+            // A dark mist low over the floor all through (lit smoke: the moon's crimson on it).
+            int mist=low?5:12;for(int i=0;i<mist;i++){float a=((t*.06f+NativeEntranceMath.Rand(21600,i))%1+1)%1;var p=new Vector3(-4.5f+9*NativeEntranceMath.Rand(21600,i+20)+1.2f*(a-.5f),floor+.14f+.08f*a,-3+6*NativeEntranceMath.Rand(21600,i+40));fx.Smoke(p,Mist,.36f*(float)Math.Sin(Math.PI*a),1.5f+.7f*a,a,21610+i,floor);}
         }
     }
 
     /// <summary>
-    /// "Silent Kill", the Fangs' entrance. 7 s, the name at 5.2 s. Darkness and a low green mist; two points of venom-green light, then the
-    /// pilot forms out of smoke, crouched. A shadow step: gone in a puff, back a stride ahead. The twin daggers in a flurry (green trails,
-    /// venom flung), a leap and a two-handed strike into the floor: the venom blooms in a great green burst. The hero: the daggers held low,
-    /// venom dripping, smoke curling up round the legs.
+    /// "Silent Kill", the Fangs' entrance. 7 s, the name at 5.2 s. Darkness and a low dark mist; two points of venom-green light, then the
+    /// pilot forms out of gathering smoke, crouched. A shadow step: gone in a burst of smoke, back a stride ahead. The twin daggers in a flurry
+    /// (green trails, venom flung off them), a leap and a two-handed strike into the floor: the venom blooms, a shockwave of green, a splash
+    /// and a billow of smoke. The hero: the daggers held low, venom dripping from both, smoke curling round the legs.
     /// </summary>
     public sealed class NativeFangsIntro:NativeBladeIntro
     {
@@ -141,8 +252,10 @@ namespace ChipArena.UnityConversion
         public const float FormAt=.55f,StepAt=1.6f,ArriveAt=1.85f,FlurryAt=1.95f,StrikeAt=4.25f,Hero=4.65f;
         public override string Spec=>NativeFangs.Spec;
         public override float Length=>Total;public override float SettleAt=>End;protected override float HeroAt=>CardAt;
-        private static readonly Vector3 Venom=NativeEntranceFx.Hex(0x7dff3a),White=new Vector3(1,1,1),Deep=NativeEntranceFx.Hex(0x0c2408),Smoke=NativeEntranceFx.Hex(0x22262a);
+        private static readonly Vector3 Venom=NativeEntranceFx.Hex(0x7dff3a),White=new Vector3(1,1,1),Smoke=NativeEntranceFx.Hex(0x5c6660),Haze=NativeEntranceFx.Hex(0x46524a);
         public static readonly Vector3 Before=Local(0,0,-1.4f),After=Local(0,0,0);
+        /// <summary>The flurry's cuts (when venom flies off the blades, if the runtime has not handed them in).</summary>
+        private static readonly float[] Cuts={FlurryAt+.45f,FlurryAt+.85f,FlurryAt+1.45f};
         public NativeFangsIntro():base(NativeFangs.Entrance,StrikeAt,0x7dff3a)
         {
             SlowRate=.3f;SlowHold=.14f;SlowRecover=.25f;SlowCatchUp=.6f;
@@ -191,43 +304,92 @@ namespace ChipArena.UnityConversion
             if(t>=CardAt-.2f){float k=NativeEntranceMath.Ramp(t,CardAt-.2f,CardAt+.3f);l.Add(new Vector3(2.2f,2.2f,1.8f),Venom*(1.8f*k),8);}
         }
         protected override float Pylon(int i,float t)=>t<StrikeAt?.04f:PowerOn(i,t-StrikeAt+.05f,.12f);
-        public override void Props(float t,INativeEntranceProps props,float q)=>Stage(props,t,t<StrikeAt?.02f:.08f+.3f*NativeEntranceMath.Ramp(t,StrikeAt,CardAt),StrikeAt,Accent);
+        // The blade tip in `hand` now: the model's (handed in), else the keyed stance's hand.
+        private Vector3 Tip(float t,int hand){if(Held(t,hand,out _,out var tip))return tip;return Anchor(hand==0?NativeEntranceAnchor.RightTip:NativeEntranceAnchor.LeftTip,t);}
+        public override void Props(float t,INativeEntranceProps props,float q)
+        {
+            Stage(props,t,t<StrikeAt?.02f:.08f+.3f*NativeEntranceMath.Ramp(t,StrikeAt,CardAt),StrikeAt,Accent);bool low=q<.5f;
+            // Venom dripping from both blades from the strike on: beads that swell at the tip and fall.
+            if(t<StrikeAt)return;int m=low?2:4;const float Period=.8f;
+            for(int hand=0;hand<2;hand++)
+            {
+                var tip=Tip(t,hand);
+                for(int i=0;i<m;i++)
+                {
+                    float born=StrikeAt+.1f+(i+hand*.5f)*Period/m,a=((t-born)%Period+Period)%Period/Period;if(t<born)continue;
+                    float swell=NativeEntranceMath.Clamp01(a*3),fall=Math.Max(0,a-.33f)*Period,y=-.015f-4.9f*fall*fall;if(tip.Y+y<NativeEntranceStage.FloorY+.02f)continue;
+                    props.Piece(WeaponShape.Sphere,true,tip+new Vector3(0,y,0),Quaternion.Identity,new Vector3(.009f,.012f+.008f*NativeEntranceMath.Clamp01(fall*8),.009f)*(.5f+.5f*swell),Venom*1.7f);
+                }
+            }
+        }
         public override void Effects(float t,INativeEntranceFx fx,float q)
         {
             float floor=NativeEntranceStage.FloorY;bool low=q<.5f;
-            // The low venom mist, always.
-            int mist=low?8:20;for(int i=0;i<mist;i++){float a=((t*.18f+NativeEntranceMath.Rand(22000,i))%1+1)%1;var p=new Vector3(-4+8*NativeEntranceMath.Rand(22000,i+20),floor+.1f+.15f*a,-3+6*NativeEntranceMath.Rand(22000,i+40));fx.Glow(p,Deep*1.4f+Venom*(.14f*(1-a)),0,1.8f,0,a,22010+i);}
+            // The low mist: dark smoke over the floor (the venom light under it), and a faint green breath at the floor.
+            int mist=low?6:14;for(int i=0;i<mist;i++){float a=((t*.08f+NativeEntranceMath.Rand(22000,i))%1+1)%1;var p=new Vector3(-4+8*NativeEntranceMath.Rand(22000,i+20)+.8f*(a-.5f),floor+.12f+.12f*a,-3+6*NativeEntranceMath.Rand(22000,i+40));fx.Smoke(p,Haze,.4f*(float)Math.Sin(Math.PI*a),1.3f+.6f*a,a,22010+i,floor);}
+            for(int i=0;i<(low?2:4);i++){var p=new Vector3(-2.4f+1.6f*i,floor+.05f,-1+NativeEntranceMath.Signed(22050,i));fx.Glow(p,Venom*(.05f+.02f*(float)Math.Sin(t*1.7f+i)),0,2.4f,0,0,22060+i);}
             // Two eyes in the dark before it forms.
             if(t<FormAt+.2f){float k=NativeEntranceMath.Ramp(t,.1f,.35f)*(1-NativeEntranceMath.Ramp(t,FormAt,FormAt+.2f));var head=Before+new Vector3(0,1.25f,0);fx.Glow(head+Local(-.05f,0,.12f),Venom*(3*k),0,.05f,1,0,22100);fx.Glow(head+Local(.05f,0,.12f),Venom*(3*k),0,.05f,1,0,22101);}
-            // The smoke it forms out of, and the step's two puffs.
-            Puff(fx,t,FormAt,Before+new Vector3(0,.8f,0),low,22200);Puff(fx,t,StepAt,Before+new Vector3(0,.8f,0),low,22300);Puff(fx,t,ArriveAt-.03f,After+new Vector3(0,.8f,0),low,22400);
-            // The flurry: venom flung off the blades at each cut.
-            foreach(var cut in new[]{FlurryAt+.45f,FlurryAt+.85f,FlurryAt+1.45f})
+            // It forms out of smoke gathering in, green sparks drawn in with it.
+            {
+                float s=t-(FormAt-.4f);
+                if(s>=0&&s<1.1f)
+                {
+                    float k=NativeEntranceMath.EaseOut(s/.7f),fade=1-NativeEntranceMath.Ramp(s,.5f,1.1f);var c=Before+new Vector3(0,.85f,0);int n=low?7:16;
+                    for(int i=0;i<n;i++){float a=i*6.2831853f/n+s*2.4f;var d=new Vector3((float)Math.Sin(a),.35f*NativeEntranceMath.Signed(22150,i),(float)Math.Cos(a));fx.Smoke(c+d*(1.1f*(1-k)+.15f),Smoke,.6f*fade,.45f+.25f*k,NativeEntranceMath.Clamp01(s/1.1f),22160+i,floor);}
+                    if(s<.6f){int m=low?5:12;for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(22180,i);d.Y*=.5f;var p=c+d*(1.2f*(1-s/.6f));fx.Streak(p,-d*6,Venom*(2.2f*(1-s/.6f)),.02f,.12f,.03f,.6f,s/.6f,22190+i);}}
+                }
+            }
+            // The step: a burst of smoke where it went, a streak of green along its way, a burst where it came out.
+            Burst(fx,t,StepAt,Before+new Vector3(0,.85f,0),floor,low,22200);Burst(fx,t,ArriveAt-.03f,After+new Vector3(0,.85f,0),floor,low,22300);
+            {
+                float s=t-StepAt,span=ArriveAt-StepAt;
+                if(s>=0&&s<span+.25f){float u=NativeEntranceMath.Clamp01(s/span),fade=1-NativeEntranceMath.Clamp01((s-span)/.25f);for(int i=0;i<3;i++){var from=Before+new Vector3(0,.45f+.4f*i,0);var to=Vector3.Lerp(from,After+new Vector3(0,.45f+.4f*i,0),u);var d=to-from;if(d.LengthSquared()>1e-4f)fx.Streak(to,d*4,Venom*(1.6f*fade*(i==1?1:.6f)),.03f,0,.25f,.5f,1-fade,22250+i);}}
+            }
+            // The flurry and the strike: both blades' green trails, venom flung off the fastest of them.
+            Trail(fx,t,0,.32f,Venom,White,.022f,1,22320,low);Trail(fx,t,1,.32f,Venom,White,.022f,1,22520,low);
+            if(HeldCount(0)>1||HeldCount(1)>1)
+            {
+                for(int hand=0;hand<2;hand++)
+                {
+                    int c=HeldCount(hand),flung=0,cap=low?5:12;
+                    for(int j=0;j+1<c&&flung<cap;j+=2)
+                    {
+                        HeldSample(hand,j,out _,out var p0,out float t0);HeldSample(hand,j+1,out _,out var p1,out float t1);float age=t-t0;if(age>.5f)break;
+                        var v=(p0-p1)/Math.Max(1e-4f,t0-t1);if(v.LengthSquared()<36)continue;flung++;
+                        var p=p0+v*(.22f*age)+new Vector3(0,.8f*age-4.9f*age*age,0);if(p.Y<floor)continue;fx.Glow(p,Venom*(1.8f*(1-age/.5f)),0,.032f,0,age/.5f,22700+hand*64+j);
+                    }
+                }
+            }
+            else foreach(float cut in Cuts)
             {
                 float s=t-cut;if(s<0||s>.7f)continue;int m=low?10:24;
-                for(int i=0;i<m;i++){var d=new Vector3(NativeEntranceMath.Signed(22500+(int)(cut*100),i),.3f+.5f*NativeEntranceMath.Rand(22500,i),NativeEntranceMath.Signed(22540,i));var p=new Vector3(0,1.1f,0)+d*(2.2f*s)+new Vector3(0,-4.5f*s*s,0);fx.Glow(p,Venom*(2*(1-s/.7f)),0,.04f,3,s/.7f,22510+i+(int)(cut*1000)%400);}
+                for(int i=0;i<m;i++){var d=new Vector3(NativeEntranceMath.Signed(22500+(int)(cut*100),i),.3f+.5f*NativeEntranceMath.Rand(22500,i),NativeEntranceMath.Signed(22540,i));var p=new Vector3(0,1.1f,0)+d*(2.2f*s)+new Vector3(0,-4.5f*s*s,0);fx.Glow(p,Venom*(2*(1-s/.7f)),0,.035f,0,s/.7f,22510+i+(int)(cut*1000)%400);}
             }
-            // The strike: the bloom: a great green burst, petals of venom, a shockwave over the floor, the mist blown out.
+            // The strike: a hot green flash at the blades, a shockwave of green spikes over the floor, venom splashing out, a billow of smoke.
             {
                 float s=t-StrikeAt;if(s>=0&&s<1.6f)
                 {
-                    float u=s/1.6f;fx.Glow(new Vector3(0,.4f,0),(Venom*2+White*.5f)*(5*(1-NativeEntranceMath.Clamp01(s/.4f))),0,.8f+3.5f*NativeEntranceMath.Clamp01(s/.4f),2,u,22600);
+                    float u=s/1.6f;var at=Local(0,.25f,.35f);if(s<.22f)fx.Glow(at,(Venom*2+White)*(3.5f*(1-s/.22f)),0,.3f+.6f*s/.22f,1,s/.22f,22600);
                     int petals=low?10:22;for(int i=0;i<petals;i++){float a=i*6.2831853f/petals;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));float r=.3f+2.6f*(1-(1-u)*(1-u));for(int j=0;j<3;j++){var p=new Vector3(0,floor+.05f+.25f*j,0)+d*(r*(1-.15f*j));fx.Streak(p,d*4+new Vector3(0,2,0),Venom*(2.4f*(1-u)),.04f,.25f,.03f,.6f,u,22620+i*3+j);}}
                     int ring=low?20:48;for(int i=0;i<ring;i++){float a=i*6.2831853f/ring;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));fx.Streak(new Vector3(0,floor+.03f,0)+d*(.4f+4.2f*(1-(1-u)*(1-u))),d*6,Venom*(1.8f*(1-u)),.03f,.2f,.03f,.7f,u,22700+i);}
+                    if(s<.9f){int m=low?10:26;for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(22760,i,true);var p=at+new Vector3(d.X*2.6f,d.Y*3.2f,d.Z*2.6f)*s+new Vector3(0,-4.9f*s*s,0);if(p.Y<floor)continue;fx.Glow(p,Venom*(2*(1-s/.9f)),0,.04f,0,s/.9f,22800+i);}}
+                    int bil=low?5:12;for(int i=0;i<bil;i++){var d=NativeEntranceMath.Direction(22840,i,true);d.Y*=.35f;fx.Smoke(After+new Vector3(0,.2f,0)+d*(.3f+1.7f*NativeEntranceMath.EaseOut(u))+new Vector3(0,.9f*u,0),Haze,.55f*(1-u),.6f+1.1f*u,u,22850+i,floor);}
                 }
             }
-            // The hero: venom dripping from both blades, smoke curling round the legs.
+            // The hero: smoke curling round the legs.
             if(t>=Hero)
             {
-                int m=low?6:14;for(int i=0;i<m;i++){float born=Hero+(i/(float)m)*1.4f,a=((t-born)%1.4f+1.4f)%1.4f/1.4f;var hand=Anchor(i%2==0?NativeEntranceAnchor.RightHand:NativeEntranceAnchor.LeftHand,t);fx.Glow(hand+new Vector3(0,-.25f-.6f*a*a,0),Venom*(1.6f*(1-a)),0,.03f,3,a,22800+i);}
-                int sm=low?5:12;for(int i=0;i<sm;i++){float a=((t*.5f+NativeEntranceMath.Rand(22900,i))%1+1)%1;var p=After+new Vector3(NativeEntranceMath.Signed(22900,i)*.5f,.1f+1.2f*a,NativeEntranceMath.Signed(22920,i)*.5f);fx.Glow(p,Smoke*1.5f,0,.4f+.3f*a,0,a,22910+i);}
+                int sm=low?4:10;for(int i=0;i<sm;i++){float a=((t*.45f+NativeEntranceMath.Rand(22900,i))%1+1)%1,ang=i*.63f+t*.9f+a*2.2f,r=.32f+.12f*(float)Math.Sin(t+i);var p=After+new Vector3((float)Math.Sin(ang)*r,.08f+1.1f*a,(float)Math.Cos(ang)*r);fx.Smoke(p,Smoke,.32f*(float)Math.Sin(Math.PI*a),.3f+.35f*a,a,22910+i,floor);}
             }
         }
-        private static void Puff(INativeEntranceFx fx,float t,float at,Vector3 c,bool low,int seed)
+        // A burst of smoke (the step's): dark puffs thrown out and rising, green sparks out of it, a short green flash at its heart.
+        private static void Burst(INativeEntranceFx fx,float t,float at,Vector3 c,float floor,bool low,int seed)
         {
-            float s=t-at;if(s<0||s>.9f)return;float u=s/.9f;int n=low?8:18;
-            for(int i=0;i<n;i++){var d=new Vector3(NativeEntranceMath.Signed(seed,i),NativeEntranceMath.Signed(seed,i+30)*.6f,NativeEntranceMath.Signed(seed,i+60));var p=c+d*(.2f+.8f*(1-(1-u)*(1-u)))+new Vector3(0,.4f*u,0);fx.Glow(p,Smoke*1.8f+Venom*(.25f*(1-u)),0,.35f+.5f*u,0,u,seed+i);}
-            if(s<.2f)fx.Glow(c,Venom*(3*(1-s/.2f)),0,.4f+.4f*s/.2f,2,s/.2f,seed+90);
+            float s=t-at;if(s<0||s>.9f)return;float u=s/.9f;int n=low?7:16;
+            for(int i=0;i<n;i++){var d=NativeEntranceMath.Direction(seed,i);d.Y*=.6f;var p=c+d*(.2f+.8f*NativeEntranceMath.EaseOut(u))+new Vector3(0,.4f*u,0);fx.Smoke(p,Smoke,.7f*(1-u)*(1-u),.35f+.5f*u,u,seed+i,floor);}
+            if(s<.35f){int m=low?5:10;for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(seed+40,i);fx.Streak(c+d*(.15f+1.3f*s),d*7,Venom*(2*(1-s/.35f)),.02f,.1f,.03f,.6f,s/.35f,seed+50+i);}}
+            if(s<.15f)fx.Glow(c,Venom*(2.6f*(1-s/.15f)),0,.3f+.3f*s/.15f,1,s/.15f,seed+90);
         }
     }
 }

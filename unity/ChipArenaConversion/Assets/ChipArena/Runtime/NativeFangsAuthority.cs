@@ -185,6 +185,7 @@ namespace ChipArena.UnityConversion
                 if(q!=null&&q.Hp>0&&BladeHurt(p,q,NativeFangs.KillBoss,p.BladeFacing,"critical",0,true)>0)BladeHit(p,NativeFangs.HitTakedown,q.Body.position+Vector3.up*.8f,p.BladeFacing,q.Seat.id);
                 else if(m!=null&&m.Hp>0&&BladeHurt(p,m,NativeFangs.KillBoss,p.BladeFacing,"critical",0,true)>0)BladeHit(p,NativeFangs.HitTakedown,m.Body.position+Vector3.up*.6f,p.BladeFacing,BladeKey(m));
             }
+            if(able&&k.CastKind==NativeFangs.Pounce&&Time>=k.CastRelease&&Time<=k.CastRelease+NativeFangs.PounceTime+.04f)FangsPounceStep(p);
             if(p.BladeLandAt>-50&&Time>=p.BladeLandAt){p.BladeLandAt=-100;if(able)FangsPounceLand(p);}
             if(p.BladeKnives.Count>0)FangsKnifeStep(p);
             for(int i=p.BladeClouds.Count-1;i>=0;i--)if(Time>=p.BladeClouds[i].Until)p.BladeClouds.RemoveAt(i);
@@ -193,12 +194,23 @@ namespace ChipArena.UnityConversion
             k.Chips=0;foreach(var id in NativeFangsChips.Ids)if(BladeChip(p,id))k.Chips|=NativeFangsChips.Bit(id);
             k.ChipAt=p.BladeClouds.Count>0?p.BladeClouds[p.BladeClouds.Count-1].Until-NativeFangsChips.CloudFor:-100;
         }
-        private void FangsPounceLand(NativePilot p)
+        /// <summary>The dash: everyone it passes within PounceWidth of its line is cut once (two stacks of venom) and staggered.</summary>
+        private void FangsPounceStep(NativePilot p)
         {
-            var at=p.Body.position;int venom=FangsVenom(p,NativeFangs.PounceVenom);BladeHit(p,NativeFangs.HitPounce,at,Vector3.up,0,1);
-            foreach(var q in BladePilots(p)){var d=q.Body.position-at;if(new Vector2(d.x,d.z).magnitude>NativeFangs.PounceRadius+.35f||Math.Abs(d.y)>1.8f||!MeleeVisible(at+Vector3.up*.3f,q.Body.position,p,q.Collider))continue;if(BladeHurt(p,q,NativeFangs.PounceDamage,d,"pounce",0,true)>0){StaggerMelee(q,.35f);int n=AddVenom(p,q,venom);BladeHit(p,NativeFangs.HitCut,q.Body.position+Vector3.up*.45f,d,q.Seat.id,n);}}
-            foreach(var m in BladeMinions(p)){var d=m.Body.position-at;if(new Vector2(d.x,d.z).magnitude>NativeFangs.PounceRadius+.4f||Math.Abs(d.y)>1.8f)continue;if(BladeHurt(p,m,NativeFangs.PounceDamage,d,"pounce",0,true)>0){int n=AddVenom(p,m,venom);BladeHit(p,NativeFangs.HitCut,m.Body.position+Vector3.up*.45f,d,BladeKey(m),n);}}
+            int venom=FangsVenom(p,NativeFangs.PounceVenom);bool Beside(Vector3 d)=>new Vector2(d.x,d.z).magnitude<=NativeFangs.PounceWidth&&Math.Abs(d.y)<=1.8f;
+            foreach(var q in BladePilots(p))
+            {
+                if(p.BladeStruck.Contains(q.Seat.id))continue;var d=q.Body.position-p.Body.position;if(!Beside(d)||!MeleeVisible(p.Body.position+Vector3.up*.3f,q.Body.position,p,q.Collider))continue;p.BladeStruck.Add(q.Seat.id);
+                if(BladeHurt(p,q,NativeFangs.PounceDamage,d,"pounce",0,true)>0){StaggerMelee(q,.35f);int n=AddVenom(p,q,venom);BladeHit(p,NativeFangs.HitCut,q.Body.position+Vector3.up*.45f,p.BladeFacing,q.Seat.id,n);}
+            }
+            foreach(var m in BladeMinions(p))
+            {
+                int id=BladeKey(m);if(p.BladeStruck.Contains(id))continue;var d=m.Body.position-p.Body.position;if(!Beside(d))continue;p.BladeStruck.Add(id);
+                if(BladeHurt(p,m,NativeFangs.PounceDamage,d,"pounce",0,true)>0){int n=AddVenom(p,m,venom);BladeHit(p,NativeFangs.HitCut,m.Body.position+Vector3.up*.45f,p.BladeFacing,id,n);}
+            }
         }
+        /// <summary>The dash's end: its dust ring (the cuts were along the way).</summary>
+        private void FangsPounceLand(NativePilot p)=>BladeHit(p,NativeFangs.HitPounce,p.Body.position,Vector3.up,0,1);
         /// <summary>The fan's knives: each flies on, the first foe it meets cut (Hydra: it passes one), a wall stops it.</summary>
         private void FangsKnifeStep(NativePilot p)
         {

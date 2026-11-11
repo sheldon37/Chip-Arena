@@ -189,6 +189,8 @@ namespace ChipArena.UnityConversion
             if(!GlaiveAllowed(p))return;var k=p.Glaive;if(k.Ready==null||k.Ready.Length!=NativeGlaive.Slots)k.Ready=new float[NativeGlaive.Slots];
             bool attack=p.Input.Shoot||p.Input.Attack,press=attack&&!p.GlaiveAttackHeld;p.GlaiveAttackHeld=attack;
             if(p.Hp<=0||Incapacitated(p)||HubInside(p.Body.position))return;
+            // The plunging slam (the standard swing, KitSlam): none of the kit's moves while it lasts; its attack is the slam's.
+            if(p.Swing!=null&&Time<p.AttackEnd)return;if(KitSlam(p)){attack=press=false;}
             // The burst: Q, or a press of the left click, while the ring is out (not straight after it leaves the hand).
             if((k.Disc==NativeGlaive.Out||k.Disc==NativeGlaive.Back||k.Disc==NativeGlaive.Orbit)&&(p.Input.AbilityQ||press)&&Time-k.DiscAt>=NativeGlaive.BurstAfterThrow){GlaiveBurst(p);return;}
             if(GlaiveBusy(p)||Time<p.RollEnd||Time<p.BlockEnd||Time<p.Ready||k.Disc!=NativeGlaive.Hand)return;

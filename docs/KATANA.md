@@ -19,6 +19,7 @@ Status: on `claude/blades` (merged into shared and the test channel with this re
 | LMB after a block or parry | Moon Reflection (`katana-counter`) | Within 1 s of a block or parry (a hit held on the guard, a timed block or an F parry), the next cut is the counter: a paired critical. The foe is held in the matching clip through it (1.25 s); the blow lands 0.55 s in | 38 |
 | Q | Moonlit Draw (`katana-iai`) | The blade is sheathed and gathered (0.32 s), then a 7.5 m dash along the aim (a wall stops it). Everyone within 1.3 m of the line is marked. 0.45 s after the dash the line splits: each marked one takes the cut and staggers. Cooldown 8 s, from the split | 46 |
 | E | Petal Storm (`katana-storm`) | Six cuts all round (2.9 m), one every 0.13 s; the last throws them up. You move at 45% while it lasts. Cooldown 10 s | 8 a cut |
+| LMB in the air, looking down | Plunging slam | The plunge every melee weapon has (owner 2026-11-11: slam attacks from the air for the Glaive, the Fangs and the Katana): looking 45 degrees or more down after a moment airborne, a click drops you at 24 m/s and the landing cuts everyone within 1 m, then a 0.45 s recovery. Not while a move of the kit runs. Core `NativeAirAttackSimulation` by kin (the sword's) | 1.5 times the weapon's 18, up to 60% more from higher |
 | RMB, F, Shift | Guard, parry, roll | As any melee weapon | |
 
 Every number is in Core `NativeKatana`.
@@ -26,7 +27,8 @@ Every number is in Core `NativeKatana`.
 ## The look
 
 - **The blade** (Core `NativeWeaponModels.Katana.cs`, sculpted with WeaponSculpt): a curved single-edged blade with a lit hamon in the pilot's
-  accent, a habaki, a pierced tsuba, a wrapped tsuka and a kashira. Its saya hangs at the left hip (Runtime `NativeBladePresentation.cs`); the
+  accent, a habaki, a pierced tsuba, a wrapped tsuka and a kashira. Its saya lies along the left hip as if through the obi, its mouth at the
+  front of the belt (Runtime `NativeBladePresentation.cs`; owner 2026-11-11: the sheath was off the body); the
   blade rests in it through the iai's draw and from the click to the cast's end.
 - **The motion** (Core `NativeBladeMotion`): the pack's first stance, its root-motion runs, its guard walk as the walk and its run as the sprint;
   its guard, block, tumble and hit reactions. The cuts are its first combo (Combo01 parts 1-3) and Combo03's last part. The rush is stance
@@ -34,7 +36,10 @@ Every number is in Core `NativeKatana`.
   counter the pack's paired katana critical. Each move plays a clip window. The window's strike (the pack blade's fastest moment, measured
   in Blender) lands on the rules' hit, at most 1.6 times the clip's pace. A cut on the move plays on the upper body over the stride.
 - **Effects** (Core `NativeBladeFx.cs`, in the pilot's weapon colour):
-  - a crescent trail swept from the drawn blade through every cut, brighter on the finisher;
+  - the weapon trail (owner 2026-11-11: "Give both weapon weapon trail vfx"): the blade sampled through every move, its sweep a smooth
+    crescent narrowing to its tail (a sheet in the weapon colour, a white-hot edge, a faint halo, sparks shed off the fastest of it),
+    brighter on the finisher; its strength follows the blade's speed in the hand; the rush, the iai's dash and the slam trail at a set
+    strength. (Until then the trail scene found no blade for the kits: no trail drew.)
   - at each cut: a hairline slash, a flash and sparks;
   - the iai: its draw flash; the line of light hanging where it went, trembling brighter toward the split; a hairline on each one it marked;
     the split (the line flaring and breaking into motes and petals, a great slash across each one); the click's ring at the hip;
@@ -46,12 +51,19 @@ Every number is in Core `NativeKatana`.
 
 7.2 s, the name at 5.4 s. The pack's clips play on the model (Core `NativeBladeIntros`, the arena's motion on the intro body).
 
-1. Night, a crimson moon over the pilot's shoulder, petals drifting, a low haze. The pilot stands with the blade sheathed (the unarmed idle).
-2. At 2.55 s, one great iai cut (stance two's skill, slowed at its height) leaves a line of light hanging across the stage.
-3. The blade is slid home. At the click (4.35 s) the line splits, the moon flares and the petals burst.
+1. Night, a crimson moon over the pilot's shoulder (a crisp disc with its halo, dark cloud drifting across it), petals tumbling down, a dark
+   mist low over the floor. The pilot stands with the blade sheathed (the unarmed idle).
+2. At 2.55 s, one great iai cut (stance two's skill, slowed at its height), its sweep a crimson trail, a glint along the edge, leaves a
+   line of light hanging across the stage; the petals it crossed hang cut in two on it.
+3. The blade is slid home. At the click (4.35 s) a flash at the saya's mouth and a shockwave over the floor: the line flares and
+   shatters into falling shards, the cut petals fall apart, the moon flares.
 4. The hero: standing calm, the blade back in its saya at the hip, the moon to one side.
 
 Its music is the arc-salute bed. Presentation only.
+
+Its look (owner 2026-11-11: "Floating parts, needs much improved vfx"): set pieces where a shape must read crisp (the moon, the petals, the
+line and its shards), lit smoke for the mist, no glow rings or balls; the trail and the glint from the blade where the model holds it
+(Runtime `NativeBladePresentation.BladeIntroHeld`).
 
 ## The chips
 

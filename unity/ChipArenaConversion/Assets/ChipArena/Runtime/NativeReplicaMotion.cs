@@ -23,7 +23,8 @@ namespace ChipArena.UnityConversion
                 JumpSpeed=Local==null?8.5f:(float)(Rules.JumpSpeed*Local.Stats["jumpPower"]),ExtraAirJumps=Local?.Stats.Get("extraAirJumps")??0,JumpSpec=Local?.Seat.spec,AirJumps=Local?.Pose.AirJumps??0};
             var p=Local;bool unlocked=p!=null&&!BombRooted(p)&&!DogRooted(p)&&!(p.Pose.Kernel?.Busy(Time)??false)&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.frozenUntil<=Time&&frame.scareUntil<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&(p.Pose.AttackUntil<=Time||p.Pose.CommitUntil>Time||p.Seat.spec=="cyberlord"||NativeWhirlwindRules.Busy(p.Pose.MeleeKit,Time));
             var a=p?.Pose;NativeMeleeSwing swing=null;
-            if(p!=null&&a.CommitUntil>Time&&NativeMeleeRules.Standard(p.Seat.spec))
+            // (The custom melee kits' plunging slam too: its drop and landing predicted from the snapshot's swing.)
+            if(p!=null&&a.CommitUntil>Time&&(NativeMeleeRules.Standard(p.Seat.spec)||NativeAirAttackSimulation.KitSlam(p.Seat.spec)&&a.AirAttack&&a.AirKind==NativePlungeFields.DownKind))
             {
                 swing=NativeMeleeFeel.Begin(p.Weapon,p.Stats,a.CommitAt,a.Combo+1,a.CommitYaw*Mathf.Deg2Rad);
                 if(a.SprintAttack)NativeSprintAttack.Apply(swing,a.CastRate);
