@@ -613,6 +613,8 @@ def main():
         # every pair of overlapping faces turned the same way ends a whole lift apart: the kit's paint lies 3 to 12 mm over the slab
         # (joints, washes, lines, numbers), closer than the depth buffer parts at the Mid and Low tiers' range
         print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=sk.LIFT_TIER[ti] - .0002, lift=sk.LIFT_TIER[ti], passes=12))
+        # no face reaches out of its chunk's cell: a floor is never drawn twice where neighbouring chunks draw at different tiers
+        print('  chunks: %d faces cut along the cells' % chunks.split(g))
         blocks = rig.block_scene(L, T)
         print('tier %s: static %d faces, %.1f s' % (T.name, g.faces, time.time() - t))
         if ti == 0:

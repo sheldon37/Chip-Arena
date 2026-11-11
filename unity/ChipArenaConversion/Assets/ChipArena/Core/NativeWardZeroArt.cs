@@ -25,6 +25,19 @@ namespace ChipArena.UnityConversion
     {
         public const string Bank="ChipArenaStageWardZero";
         /// <summary>The bank's rig props by slot (its "rig/&lt;name&gt;/&lt;tier&gt;"): the movers' models, then the posed blocks.</summary>
+        /// <summary>How many kept boxes each kit part lies on (NativeStageArt.BoxLayers; 0 for a part the art replaces or one on a
+        /// turned block): the presentation draws a kept box that many layers nearer the eye, over NativeStageArt.KitLayers.</summary>
+        public static int[] KeptLayers(NativeWardZeroKit kit,ContentBlock[] blocks)
+        {
+            var parts=kit.Parts;int n=parts.Length;var boxes=new float[n*6];var skip=new bool[n];var layers=new int[n];
+            for(int i=0;i<n;i++)
+            {
+                var p=parts[i];var b=p.Parent>=0&&p.Parent<blocks.Length?blocks[p.Parent]:null;
+                if(b==null||i>=kit.Keeps.Length||!kit.Keeps[i]||b.rotation!=null&&Math.Abs(b.rotation.w)<.9999f){skip[i]=true;continue;}
+                int o=i*6;boxes[o]=b.pos.x+p.X;boxes[o+1]=b.pos.y+p.Y;boxes[o+2]=b.pos.z+p.Z;boxes[o+3]=p.Hx;boxes[o+4]=p.Hy;boxes[o+5]=p.Hz;
+            }
+            NativeStageArt.BoxLayers(boxes,n,skip,layers);return layers;
+        }
         public string[] Slots=Array.Empty<string>();
         /// <summary>How many slots are movers' models; the posed block i draws slot MoverSlots + i.</summary>
         public int MoverSlots;
