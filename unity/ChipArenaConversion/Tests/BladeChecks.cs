@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
                 Hits=new[]{new NativeBladeHit{Id=1,Kind=NativeKatana.HitMark,At=10.4f,Pos=new V3(0,1,3),Dir=new V3(0,0,1),Victim=2}}};
             Check(k.Valid(),"a live iai is valid");var c=k.ViewCopy();Check(c.Hits!=k.Hits&&c.Hits[0]!=k.Hits[0]&&c.Ready!=k.Ready&&c.Hits[0].Kind==k.Hits[0].Kind,"its copy shares nothing");
             Check(!new NativeBladeKit{CastKind="sword-launch"}.Valid()&&!new NativeBladeKit{CastStep=99}.Valid()&&!new NativeBladeKit{Ready=new float[9]}.Valid()&&!new NativeBladeKit{Hits=new[]{new NativeBladeHit{Kind="nope"}}}.Valid()&&!new NativeBladeKit{PathAt=float.NaN}.Valid(),"a broken one is refused");
-            Check(NativeKatana.Sheathed(k,10.1f)&&!NativeKatana.Sheathed(k,10.5f)&&NativeKatana.Sheathed(k,10.85f)&&!NativeKatana.Sheathed(null,0),"the blade is in its saya for the draw and the click");
+            Check(!NativeKatana.Sheathed(k,10.1f)&&!NativeKatana.Sheathed(k,10.5f)&&!NativeKatana.Sheathed(k,10.85f)&&NativeKatana.Sheathed(k,10.885f)&&NativeKatana.Sheathed(k,10.92f)&&!NativeKatana.Sheathed(null,0),"the blade in the hand through the draw and the sheathing, in its saya from the click");
             // ---- the moves on the pack's clips ----
             var bank=new Bank();
             foreach(var spec in new[]{NativeKatana.Spec,NativeFangs.Spec})
@@ -144,6 +144,32 @@ namespace ChipArena.UnityConversion
             for(float t=0;t<NativeKatanaIntro.Total;t+=.1f)Check(ki.Clip(t,out var kc,out float kt)&&kc.StartsWith("Frank_RPG_Katana_",StringComparison.Ordinal)&&kt>=0&&kt<6,"the Katana's entrance plays the pack's clips at "+t.ToString("F1"));
             for(float t=0;t<NativeFangsIntro.Total;t+=.1f)Check(fi.Clip(t,out var fc,out float ft)&&fc.StartsWith("Frank_",StringComparison.Ordinal)&&ft>=0&&ft<5,"the Fangs' entrance plays the pack's clips at "+t.ToString("F1"));
             Check(ki.Sheathed(.5f)&&!ki.Sheathed(3f)&&ki.Sheathed(5f)&&!fi.Sheathed(1),"the katana sheathed, drawn, sheathed again");
+            // The saya where the pack wears it and moves it, the blade held as the match holds it (owner 2026-11-11: "Katana intro is broken, they
+            // dont hold it. Also, sheathe is still not on body."; Core NativeKatanaSaya).
+            Check(ki.Clip(NativeKatanaIntro.DrawAt+.2f,out var dc,out _)&&dc==NativeBladeMotion.KatanaIai&&ki.Clip(NativeKatanaIntro.SheatheAt+.2f,out var sc,out _)&&sc==NativeBladeMotion.KatanaSheathe
+                &&ki.Clip(NativeKatanaIntro.ClickAt,out _,out float clickT)&&Math.Abs(clickT-NativeKatanaSaya.SheatheClick)<1e-3f&&ki.Clip(NativeKatanaIntro.GrabAt,out _,out float grabT)&&Math.Abs(grabT-NativeKatanaSaya.IaiDraw)<1e-3f,
+                "Crimson Moon draws on the pack's iai and sheathes on its whole sheathing, the draw and the click on the pack's moments");
+            Check(ki.Sheathed(NativeKatanaIntro.GrabAt-.01f)&&!ki.Sheathed(NativeKatanaIntro.GrabAt+.01f)&&!ki.Sheathed(NativeKatanaIntro.ClickAt-.05f)&&ki.Sheathed(NativeKatanaIntro.ClickAt),"its blade leaves the saya on the draw and enters on the click");
+            // The draw seen (owner 2026-11-11: "They don't pull sword out until animation is done essentially"): the clip's draw-out before the cut
+            // plays at under a third of its pace, the blade out of the saya before the cut, and the shot near enough to see it.
+            Check(ki.Clip(NativeKatanaIntro.WhipAt,out _,out float whip0)&&ki.Clip(NativeKatanaIntro.WhipAt+.1f,out _,out float whip1)&&(whip1-whip0)/.1f<.35f&&ki.Clip(NativeKatanaIntro.WhipAt-.1f,out _,out float pull)&&pull<whip0
+                &&NativeKatanaIntro.GrabAt<NativeKatanaIntro.WhipAt&&NativeKatanaIntro.WhipAt<NativeKatanaIntro.CutAt&&!ki.Sheathed(NativeKatanaIntro.WhipAt),"its draw-out is slowed before the cut, the blade already out of the saya");
+            // The counter's victim thrown back as its clip carries it (owner 2026-11-11: "Parry with katana make enemy walk backwards in place").
+            {
+                const float at=20,until=20+NativeKatana.CounterHold;float Back(float t)=>NativeBladeMotion.VictimTravel(NativeBladeMotion.KatanaCritical,t,at,until);
+                Check(Back(at)==0&&Back(at+.4f)==0&&Back(at+.8f)>.2f&&Back(at+1.0f)>Back(at+.8f)&&Math.Abs(Back(until)-1.23f)<1e-3f&&Back(until+1)==Back(until)
+                    &&NativeBladeMotion.VictimTravel(NativeBladeMotion.FangsCritical,at+1,at,until)==0&&NativeBladeMotion.VictimTravel(NativeBladeMotion.FangsTakedown,at+1,at,until)==0,"the counter's victim thrown back after the blow, as its clip carries it; the Fangs' held");
+                Check(R(root,"NativeBladeAuthority.cs").Contains("float back=NativeBladeMotion.VictimTravel(p.Blade.PairClip,Time,p.Blade.PairAt,p.Blade.PairUntil);"),"the hold follows it");
+            }
+            Check(ki.Fade(NativeKatanaIntro.DrawAt+.1f)>ki.Fade(.5f)&&ki.Fade(NativeKatanaIntro.SheatheAt+.1f)>ki.Fade(.5f)&&fi.Fade(1)==.12f,"it eases into the draw and the sheathing");
+            Check(NativeKatanaSaya.Carry(NativeBladeMotion.KatanaIai,1,out int ih)==1&&ih==NativeKatanaSaya.Draw&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaRush,.4f,out _)==1&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaStorm,1,out _)==1&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaStorm,1.6f,out _)==0
+                &&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaSheathe,0,out int shh)==0&&shh==NativeKatanaSaya.Sheathe&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaSheathe,NativeKatanaSaya.SheatheClick,out _)==1&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaSheathe,2.5f,out _)==0
+                &&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaIdle,1,out _)==0&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaCuts[0],.3f,out _)==0,"the left hand carries the saya in the stance-three moves and the sheathing, and nowhere else");
+            Check(NativeKatanaSaya.Turn(NativeBladeMotion.KatanaSheathe,0)==0&&NativeKatanaSaya.Turn(NativeBladeMotion.KatanaSheathe,.3f)==1&&NativeKatanaSaya.Turn(NativeBladeMotion.KatanaSheathe,NativeKatanaSaya.SheatheClick)==1&&NativeKatanaSaya.Turn(NativeBladeMotion.KatanaIai,1)==0
+                &&Math.Abs(NativeKatanaSaya.SheatheTurn.Length()-1)<1e-3f&&Math.Abs(NativeKatanaSaya.RestTurn.Length()-1)<1e-3f&&NativeKatanaSaya.CarryTurn.All(q=>Math.Abs(q.Length()-1)<1e-3f)&&NativeKatanaSaya.CarryAt.Length==NativeKatanaSaya.CarryTurn.Length,
+                "the blade turns over in the hand for the sheathing only, and the saya's frames are whole turns");
+            Check(NativeBladeGrip.Of(NativeKatana.Spec,false,out var kg)&&!NativeBladeGrip.Of(NativeKatana.Spec,true,out _)&&NativeBladeGrip.Of(NativeFangs.Spec,false,out var fg)&&NativeBladeGrip.Of(NativeFangs.Spec,true,out var fl)&&!NativeBladeGrip.Of("sword",false,out _)
+                &&Math.Abs(kg.Length()-1)<1e-3f&&Math.Abs(fg.Length()-1)<1e-3f&&Math.Abs(fl.Length()-1)<1e-3f,"their entrances hold the blades as the match does");
             // Their effects follow the blades as the model holds them (owner 2026-11-11: floating parts, much improved effects): handed in, the
             // draw trails; a replay starts it over; never handed in, nothing trails; a broken blade is refused.
             int IntroStreaks(NativeBladeIntro intro,float at,bool feed)
@@ -162,6 +188,9 @@ namespace ChipArena.UnityConversion
             Check(R(root,"NativeBladeAuthority.cs").Contains("Allows(\"weapon:\"+NativeFangs.Spec"),"the DEV Fangs answer only a pilot allowed them");
             Check(R(root,"NativeMelee.cs").Contains("!NativeMeleeRules.Standard(p.Seat.spec)&&!KitSlam(p)")&&R(root,"NativeMeleeAbilities.cs").Contains("if(p.Input.Attack&&p.Swing==null&&KitSlam(p))TryMelee(p);")&&R(root,"NativeBladeAuthority.cs").Contains("if(KitSlam(p)){attack=press=false;}")&&R(root,"NativeGlaiveAuthority.cs").Contains("if(KitSlam(p)){")&&R(root,"NativeReplicaMotion.cs").Contains("NativeAirAttackSimulation.KitSlam(p.Seat.spec)&&a.AirAttack"),"the slam: the standard plunge for the kits, their own cuts held back, guests predicting it");
             Check(R(root,"NativeFangsAuthority.cs").Contains("FangsPounceStep(p);")&&R(root,"NativeBlockFxPresentation.cs").Contains("NativeBladeView.Line(spec,left,out var kitRoot,out var kitTip)")&&R(root,"NativeMeleeKitPresentation.cs").Contains("a.SourceSpec!=NativeFangs.Spec")&&R(root,"NativeIntros.cs").Contains("BladeIntroHeld(held,t,style,"),"the dash cuts its path; the trails find both blades; the intros get the blades as held");
+            Check(R(root,"NativeVisualMotionPresentation.cs").Contains("NativeKatanaSaya.Carry(m.Names[i],m.Times[i],out int h)")&&R(root,"NativeVisualMotionPresentation.cs").Contains("NativeBladeGrip.Of(a.SourceSpec,false,out var grip)")&&R(root,"NativeVisualMotionPresentation.cs").Contains("weaponHand.rotation=m.RightHand.rotation*Quaternion.Slerp(Quaternion.identity,new Quaternion(q.X,q.Y,q.Z,q.W),body.SayaTurn)*m.HoldRotation;")
+                &&R(root,"NativeBladePresentation.cs").Contains("frame=SayaRigid(pelvis)*Matrix4x4.TRS(SayaVec(NativeKatanaSaya.RestAt)")&&R(root,"NativeBladePresentation.cs").Contains("PalmGrip(introRig,bladeIntro.Spec,m,b==CapturedRig.LHand)")&&R(root,"NativeIntros.cs").Contains("bladeIntroHand??=b=>BladeIntroFrame(b,introGrip);")
+                &&R(root,"NativeVisualBodyPresentation.cs").Contains("NativeBladeMotion.IntroFade=bladeIntro.Fade(bladeIntroClock);"),"the saya rides the pelvis and the left hand, the blade turns over in the hand, the entrances hold as the match does");
             Console.WriteLine("PASS blades: "+count+" checks");
         }
     }

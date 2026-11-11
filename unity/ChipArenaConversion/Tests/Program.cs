@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--expedition-loading")ExpeditionLoadingHandoffChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--expedition-loading")return 0;
             if(args.Length==3&&args[0]=="--stage-layout"){StageArtLayout.Write(ProjectRoot(),args[1],args[2]);return 0;}
             if((args.Length==3||args.Length==4)&&args[0]=="--stage-art-rest"){StageArtRest.Write(ProjectRoot(),args[1],args[2],args.Length==4?double.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture):2);return 0;}
             if(args.Length==2&&args[0]=="--blade-models")return BladeModelExport.Run(args[1]);

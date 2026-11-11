@@ -24,6 +24,12 @@ namespace ChipArena.UnityConversion
         private static Mesh hotDogMesh;private static string[] hotDogBones;private static Texture2D hotDogTexture;private static Material hotDogMaterial;
         private static int hotDogState; // 0 unread, 1 read, -1 none
         private static bool hotDogBound;
+        // Its hats (Core NativeHotDog.HatFit): the crown's four bones and weights (any vertex over the head: they share them) and
+        // the head bone's place at the bind, read once bound; the mesh without its sprigs (worn under a closed hat); each body's
+        // renderer by its root and by its hat anchor.
+        private static int[] crownBone;private static float[] crownWeight;private static Vector3 crownHead;private static Mesh hotDogSprigless;
+        private static readonly Dictionary<GameObject,SkinnedMeshRenderer> hotDogByRoot=new Dictionary<GameObject,SkinnedMeshRenderer>();
+        private static readonly Dictionary<Transform,SkinnedMeshRenderer> hotDogByHat=new Dictionary<Transform,SkinnedMeshRenderer>();
         private static bool HotDogRead()
         {
             if(hotDogState!=0)return hotDogState>0;hotDogState=-1;
@@ -95,20 +101,21 @@ namespace ChipArena.UnityConversion
             {
                 var bind=body.sharedMesh.bindposes;var pose=new Matrix4x4[bones.Length];
                 for(int i=0;i<bones.Length;i++){int at=Array.IndexOf(bodyBones,parents[i]);if(at<0||at>=bind.Length)return;pose[i]=bind[at];}
-                hotDogMesh.bindposes=pose;hotDogBound=true;
+                hotDogMesh.bindposes=pose;hotDogBound=true;HotDogCrownRead();
             }
             for(int i=0;i<bones.Length;i++)
             {
                 if(!hotDogBones[i].StartsWith("~",StringComparison.Ordinal)){bones[i]=parents[i];continue;}
                 var twin=new GameObject(HotDogTwin+hotDogBones[i].Substring(1)).transform;twin.SetParent(parents[i],false);bones[i]=twin;
-                // Hats ride an anchor on the head's twin, on the sausage's crown (HotDogHatOn), so they wobble with it.
-                if(hotDogBones[i]=="~head"){var hat=new GameObject(HotDogHat).transform;hat.SetParent(twin,false);hat.localPosition=new Vector3(NativeHotDog.HatOffset.X,NativeHotDog.HatOffset.Y,NativeHotDog.HatOffset.Z);}
+                // Hats ride an anchor on the head's twin, placed on the sausage's crown as each is drawn (HotDogHatOn).
+                if(hotDogBones[i]=="~head"){var hat=new GameObject(HotDogHat).transform;hat.SetParent(twin,false);}
             }
             var weaponHolder=root.transform.Find("VisualWeapons");
             foreach(var s in skins)if(weaponHolder==null||!s.transform.IsChildOf(weaponHolder))s.gameObject.SetActive(false);
             var go=new GameObject(HotDogRenderer){layer=body.gameObject.layer};var at0=go.transform;at0.SetParent(body.transform.parent,false);
             at0.localPosition=body.transform.localPosition;at0.localRotation=body.transform.localRotation;at0.localScale=body.transform.localScale;
             var r=go.AddComponent<SkinnedMeshRenderer>();r.sharedMesh=hotDogMesh;r.bones=bones;r.rootBone=body.rootBone;
+            HotDogKeep(root,r,bones);
             // Its bounds from its own vertices at the bind, in its root bone's frame, and kept up to date as it moves: the body's box sat a
             // metre low on it, so a shot looking up at it or close on it culled it (owner 2026-11-09: "Hotdog disappears from intro for a
             // moment"; the ult's twirl too).
@@ -128,7 +135,9 @@ namespace ChipArena.UnityConversion
         // Its twins (pelvis up to head) and their spring, found on the body's first jiggle.
         private sealed class HotDogRig
         {
-            public Transform Pelvis;public Transform[] Twins;public NativeHotDog.Jiggle Spring;public bool Moved;
+            // Its twins bottom to top, each one's bone's turn at the bind (the mesh's frame), and its renderer.
+            public Transform Pelvis;public Transform[] Twins;public Quaternion[] Rest;public SkinnedMeshRenderer Skin;public NativeHotDog.Jiggle Spring;
+            public Quaternion[] Turn,Eased;
         }
         // VisualBodyPose, once the live pilot's body is posed: the spring stepped on the body's floor point (its root: the pilot's
         // motion without the clips' bob) and its twins set so the sausage leans about the pelvis (bending: more toward its top)
@@ -141,14 +150,26 @@ namespace ChipArena.UnityConversion
             {
                 rig=body.Dog=new HotDogRig();var twins=new List<Transform>();
                 foreach(var t in body.Root.GetComponentsInChildren<Transform>(true))if(t.name.StartsWith(HotDogTwin,StringComparison.Ordinal)){twins.Add(t);if(t.name==HotDogTwin+"pelvis")rig.Pelvis=t.parent;}
-                rig.Twins=twins.ToArray();
+                // Bottom to top by where their bones rest, each with that rest turn (the bank's bind poses).
+                var bind=hotDogMesh!=null?hotDogMesh.bindposes:new Matrix4x4[0];var rest=new List<(Transform t,float y,Quaternion q)>();
+                foreach(var t in twins){int i=Array.IndexOf(hotDogBones,"~"+t.name.Substring(HotDogTwin.Length));if(i>=0&&i<bind.Length){var m=bind[i].inverse;rest.Add((t,m.m13,m.rotation));}}
+                rest.Sort((a,b)=>a.y.CompareTo(b.y));rig.Twins=rest.ConvertAll(r=>r.t).ToArray();rig.Rest=rest.ConvertAll(r=>r.q).ToArray();
+                rig.Turn=new Quaternion[rig.Twins.Length];rig.Eased=new Quaternion[rig.Twins.Length];hotDogByRoot.TryGetValue(body.Root,out rig.Skin);
             }
-            if(rig.Pelvis==null||rig.Twins.Length==0)return;
+            if(rig.Pelvis==null||rig.Twins.Length==0||rig.Skin==null)return;
             var pelvis=rig.Pelvis.position;var floor=body.Root.transform.position;
             NativeHotDog.Step(ref rig.Spring,new System.Numerics.Vector3(floor.x,floor.y,floor.z),Time.deltaTime);
             NativeHotDog.Pose(rig.Spring,out var ax,out float angle,out float squash);
-            if(angle<1e-4f&&Mathf.Abs(squash)<1e-4f){if(rig.Moved){foreach(var t in rig.Twins){t.localPosition=Vector3.zero;t.localRotation=Quaternion.identity;t.localScale=Vector3.one;}rig.Moved=false;}return;}
             var axis=new Vector3(ax.X,ax.Y,ax.Z);var up=Vector3.up;
+            // The bend kept even (NativeHotDog.SpineEven): each twin's turn against its rest (the body's own turn off), eased toward
+            // its neighbours' with the ends as posed.
+            int n=rig.Twins.Length;var body0=rig.Skin.transform.rotation;var turn=rig.Turn;var eased=rig.Eased;
+            for(int k=0;k<n;k++)turn[k]=eased[k]=rig.Twins[k].parent.rotation*Quaternion.Inverse(body0*rig.Rest[k]);
+            for(int pass=0;pass<NativeHotDog.SpinePasses;pass++)
+            {
+                var prev=eased[0];
+                for(int k=1;k<n-1;k++){var mid=Quaternion.Slerp(prev,eased[k+1],.5f);prev=eased[k];eased[k]=Quaternion.Slerp(eased[k],mid,.5f);}
+            }
             float sy=1-squash,sxz=1/Mathf.Sqrt(Mathf.Max(.5f,sy));
             // The squash along world up about the pelvis (the same for every twin), then each twin's share of the lean.
             var squashAbout=Matrix4x4.Translate(pelvis)*Matrix4x4.Scale(new Vector3(sxz,sy,sxz))*Matrix4x4.Translate(-pelvis);
@@ -156,16 +177,77 @@ namespace ChipArena.UnityConversion
             {
                 var bone=t.parent;float h=Vector3.Dot(bone.position-pelvis,up);
                 var lean=Matrix4x4.Translate(pelvis)*Matrix4x4.Rotate(Quaternion.AngleAxis(angle*NativeHotDog.Bend(h)*Mathf.Rad2Deg,axis))*Matrix4x4.Translate(-pelvis);
-                var local=bone.worldToLocalMatrix*lean*squashAbout*bone.localToWorldMatrix;
+                int k=Array.IndexOf(rig.Twins,t);var even=Quaternion.Slerp(turn[k],eased[k],NativeHotDog.SpineEven)*body0*rig.Rest[k];
+                var local=bone.worldToLocalMatrix*lean*squashAbout*Matrix4x4.TRS(bone.position,even,bone.lossyScale);
                 t.localPosition=local.GetColumn(3);t.localRotation=local.rotation;t.localScale=local.lossyScale;
             }
-            rig.Moved=true;
         }
-        /// <summary>The frame hats ride on head bone `head`: in the Hot Dog, the anchor on its head's twin (on the sausage's crown,
-        /// wobbling with it); otherwise the head itself (null for null).</summary>
-        private static Transform HotDogHatOn(Transform head)
+        // ---- Hats on the crown (Core NativeHotDog.HatFit) ----
+        // Once bound: the crown's skinning (the bones and weights of a vertex over the head that isn't a sprig) and the head bone's
+        // place at the bind, and the mesh without its sprigs (the small parts wholly within SprigDepth of its top).
+        private static void HotDogCrownRead()
         {
-            if(head==null)return null;var anchor=head.Find(HotDogTwin+"head/"+HotDogHat);return anchor!=null?anchor:head;
+            var bind=hotDogMesh.bindposes;int head=Array.IndexOf(hotDogBones,"~head");if(head<0||head>=bind.Length)return;
+            crownHead=bind[head].inverse.GetColumn(3);
+            var pos=hotDogMesh.vertices;var weights=hotDogMesh.boneWeights;var tri=hotDogMesh.triangles;float top=float.MinValue;foreach(var p in pos)top=Mathf.Max(top,p.y);
+            // The parts, welded where the bank split them at texture seams.
+            var key=new Dictionary<Vector3Int,int>();var of=new int[pos.Length];
+            for(int i=0;i<pos.Length;i++){var k=Vector3Int.RoundToInt(pos[i]*1e4f);if(!key.TryGetValue(k,out of[i]))key[k]=of[i]=key.Count;}
+            var parent=new int[key.Count];for(int i=0;i<parent.Length;i++)parent[i]=i;
+            int Find(int a){while(parent[a]!=a){parent[a]=parent[parent[a]];a=parent[a];}return a;}
+            for(int t=0;t+2<tri.Length;t+=3){int a=Find(of[tri[t]]);for(int c=1;c<3;c++){int b=Find(of[tri[t+c]]);if(b!=a)parent[b]=a;}}
+            var count=new Dictionary<int,int>();var low=new Dictionary<int,float>();
+            for(int i=0;i<pos.Length;i++){int r=Find(of[i]);count[r]=count.TryGetValue(r,out int c0)?c0+1:1;low[r]=low.TryGetValue(r,out float l)?Mathf.Min(l,pos[i].y):pos[i].y;}
+            bool Sprig(int i){int r=Find(of[i]);return low[r]>top-NativeHotDog.SprigDepth&&count[r]<NativeHotDog.SprigMost;}
+            var kept=new List<int>(tri.Length);for(int t=0;t+2<tri.Length;t+=3)if(!Sprig(tri[t])){kept.Add(tri[t]);kept.Add(tri[t+1]);kept.Add(tri[t+2]);}
+            if(kept.Count<tri.Length){hotDogSprigless=UnityEngine.Object.Instantiate(hotDogMesh);hotDogSprigless.name="Hot Dog (under a hat)";hotDogSprigless.hideFlags=HideFlags.HideAndDontSave;hotDogSprigless.triangles=kept.ToArray();}
+            // The crown's skinning: the highest vertex over the head that isn't a sprig and rides only the sausage's twins.
+            int best=-1;
+            for(int i=0;i<pos.Length;i++)
+            {
+                if(pos[i].y<crownHead.y+.1f||Sprig(i)||best>=0&&pos[i].y<=pos[best].y)continue;var w=weights[i];
+                bool Twin(int b,float x)=>x<=0||b<hotDogBones.Length&&hotDogBones[b].StartsWith("~",StringComparison.Ordinal);
+                if(Twin(w.boneIndex0,w.weight0)&&Twin(w.boneIndex1,w.weight1)&&Twin(w.boneIndex2,w.weight2)&&Twin(w.boneIndex3,w.weight3))best=i;
+            }
+            if(best<0)return;var bw=weights[best];var bones=new List<int>();var ws=new List<float>();
+            void Add(int b,float x){if(x>0){bones.Add(b);ws.Add(x);}}
+            Add(bw.boneIndex0,bw.weight0);Add(bw.boneIndex1,bw.weight1);Add(bw.boneIndex2,bw.weight2);Add(bw.boneIndex3,bw.weight3);
+            float total=0;foreach(var x in ws)total+=x;for(int k=0;k<ws.Count;k++)ws[k]/=total;crownBone=bones.ToArray();crownWeight=ws.ToArray();
+        }
+        // A dressed body's Hot Dog renderer, kept by its root and its hat anchor (stale entries dropped now and then).
+        private static void HotDogKeep(GameObject root,SkinnedMeshRenderer r,Transform[] bones)
+        {
+            if(hotDogByRoot.Count>256){var gone=new List<GameObject>();foreach(var k in hotDogByRoot.Keys)if(k==null)gone.Add(k);foreach(var k in gone)hotDogByRoot.Remove(k);}
+            if(hotDogByHat.Count>256){var gone=new List<Transform>();foreach(var k in hotDogByHat.Keys)if(k==null)gone.Add(k);foreach(var k in gone)hotDogByHat.Remove(k);}
+            hotDogByRoot[root]=r;int head=Array.IndexOf(hotDogBones,"~head");var hat=head>=0?bones[head].Find(HotDogHat):null;if(hat!=null)hotDogByHat[hat]=r;
+        }
+        /// <summary>The frame hat `hat` rides on head bone `head`: in the Hot Dog, the anchor on its head's twin, placed in the
+        /// crown's own skinning frame (its bones' blend: the hat stays on the crown however the head turns and as the sausage
+        /// jiggles) with the hat's fit (Core NativeHotDog.HatFit); otherwise the head itself (null for null).</summary>
+        private static Transform HotDogHatOn(string hat,Transform head)
+        {
+            if(head==null)return null;var anchor=head.Find(HotDogTwin+"head/"+HotDogHat);if(anchor==null)return head;
+            if(crownBone==null||!hotDogByHat.TryGetValue(anchor,out var r)||r==null)return anchor;
+            var bones=r.bones;var bind=hotDogMesh.bindposes;var m=new Matrix4x4();
+            for(int k=0;k<crownBone.Length;k++)
+            {
+                int b=crownBone[k];if(b>=bones.Length||bones[b]==null||b>=bind.Length)return anchor;
+                var s=bones[b].localToWorldMatrix*bind[b];float w=crownWeight[k];for(int e=0;e<16;e++)m[e]+=s[e]*w;
+            }
+            NativeHotDog.HatFit(hat,out float scale,out var move);
+            var at=m.MultiplyPoint3x4(crownHead+new Vector3(move.X,move.Y,move.Z));var fwd=m.MultiplyVector(Vector3.forward);var up=m.MultiplyVector(Vector3.up);
+            if(fwd.sqrMagnitude<1e-8f||up.sqrMagnitude<1e-8f)return anchor;float size=(fwd.magnitude+up.magnitude)*.5f*scale;
+            anchor.SetPositionAndRotation(at,Quaternion.LookRotation(fwd,up));var ps=anchor.parent.lossyScale;
+            anchor.localScale=new Vector3(size/Mathf.Max(1e-4f,ps.x),size/Mathf.Max(1e-4f,ps.y),size/Mathf.Max(1e-4f,ps.z));
+            return anchor;
+        }
+        /// <summary>A body (`root`) in the Hot Dog drawn without its sprigs under a closed hat `hat` (NativeHotDog.HidesSprigs),
+        /// with them otherwise; a mesh put in its place since (first person's forearms, a cut) is left alone.</summary>
+        private static void HotDogUnderHat(GameObject root,string hat)
+        {
+            if(root==null||hotDogSprigless==null||!hotDogByRoot.TryGetValue(root,out var r)||r==null)return;
+            var want=NativeHotDog.HidesSprigs(hat)?hotDogSprigless:hotDogMesh;
+            if(r.sharedMesh!=want&&(r.sharedMesh==hotDogMesh||r.sharedMesh==hotDogSprigless))r.sharedMesh=want;
         }
         /// <summary>Whether a body being made (`root`) wears the Hot Dog (its renderer is there): no Sheldon hood on it.</summary>
         private static bool HotDogOn(GameObject root)

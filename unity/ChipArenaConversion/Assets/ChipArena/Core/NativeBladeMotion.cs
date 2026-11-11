@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
         {
             pick=default;
             // The class's entrance: the intro body plays the clip the script names (Core NativeBladeIntros.Clip).
-            if(IntroActor>=0&&a!=null&&a.Id==IntroActor&&IntroClip!=null&&clips.Has(IntroClip)){pick=new NativeVisualMotion.Pick{Clip=IntroClip,Time=IntroTime,Fade=.12f};return true;}
+            if(IntroActor>=0&&a!=null&&a.Id==IntroActor&&IntroClip!=null&&clips.Has(IntroClip)){pick=new NativeVisualMotion.Pick{Clip=IntroClip,Time=IntroTime,Fade=IntroFade};return true;}
             if(Slam(set,a,time,clips,out pick))return true;
             var k=NativeBladeView.Of(a);if(k?.CastKind==null||time<k.CastAt)return false;
             if(!Clip(a,k,time,clips,out string clip,out float t,out bool whole,out bool flight))return false;
@@ -99,9 +99,9 @@ namespace ChipArena.UnityConversion
             float impact=a.ImpactAt>a.AttackAt?a.ImpactAt:Math.Max(a.AttackAt+hit,time+.08f);
             pick=new NativeVisualMotion.Pick{Clip=set.AirAttack,Time=NativeVisualMotion.Retime(time,a.AttackAt,impact,impact+(len-hit),hit,len),Fade=NativeVisualMotion.FadeIn};return true;
         }
-        /// <summary>The entrance's intro body (its actor id, -1: none) and the clip and time its script names this frame (set around the
-        /// intro body's motion only).</summary>
-        public static int IntroActor=-1;public static string IntroClip;public static float IntroTime;
+        /// <summary>The entrance's intro body (its actor id, -1: none) and the clip, time and fade its script names this frame (set around
+        /// the intro body's motion only; Core NativeBladeIntro.Fade).</summary>
+        public static int IntroActor=-1;public static string IntroClip;public static float IntroTime,IntroFade=.12f;
         /// <summary>A cut on the move: the cut's clip on the upper body over the stride.</summary>
         public static bool Upper(NativeVisualMotion.Set set,Actor a,float time,NativeVisualMotion.IClips clips,out NativeVisualMotion.Upper up)
         {
@@ -167,6 +167,21 @@ namespace ChipArena.UnityConversion
             pick=new NativeVisualMotion.Pick{Clip=a.PairClip,Time=from+(to-from)*u,Fade=NativeVisualMotion.FadeIn};return true;
         }
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
+        /// <summary>How far a paired move's victim is thrown back at `time` (m, on along its way from the wielder), as its clip carries it: the
+        /// Katana's critical (`attackerClip`, the record's) throws its victim's body 1.23 m back after the blow (the victim clip's root travel,
+        /// read from the pack's FBX in Blender), and the hold follows it (owner 2026-11-11: "Parry with katana make enemy walk backwards in
+        /// place": held where it stood, the victim stepped back on the spot). The victim's clip time as Victim plays it; 0 for the other
+        /// paired moves.</summary>
+        public static float VictimTravel(string attackerClip,float time,float at,float until)
+        {
+            if(attackerClip!=KatanaCritical||!(until>at))return 0;
+            var w=WindowOf(KatanaCriticalHit);float c=w.From+(w.To-w.From)*Clamp01((time-at)/(until-at));
+            if(c<=KatanaKnock[0])return 0;
+            for(int i=2;i<KatanaKnock.Length;i+=2)if(c<=KatanaKnock[i]){float u=(c-KatanaKnock[i-2])/(KatanaKnock[i]-KatanaKnock[i-2]);return KatanaKnock[i-1]+(KatanaKnock[i+1]-KatanaKnock[i-1])*u;}
+            return KatanaKnock[KatanaKnock.Length-1];
+        }
+        /// <summary>The Katana's critical's victim clip's travel back (clip s, m), from its root in the pack's FBX.</summary>
+        private static readonly float[] KatanaKnock={1.45f,0,1.5f,.1f,1.75f,.67f,2f,1.08f,2.25f,1.23f};
         /// <summary>Every clip the two classes play beyond their sets' own (the bake's controller carries them).</summary>
         public static readonly string[] KatanaExtra={KatanaRush,KatanaIai,KatanaSheathe,KatanaStorm,KatanaCritical,KatanaCriticalHit,KatanaDraw,FangsTakedownHit,FangsCriticalHit,K+"Unequip_Idle",K+"S2_Skill02"};
         public static readonly string[] FangsExtra={FangsPounce,FangsStep,FangsVeil,FangsFan,FangsBloom,FangsTakedown,FangsTakedownHit,FangsCritical,FangsCriticalHit,KatanaCriticalHit,"Frank_Stealth_Kill_Sneak_Idle",A+"Evade_F_IP",A+"Combo05_All_IP"};

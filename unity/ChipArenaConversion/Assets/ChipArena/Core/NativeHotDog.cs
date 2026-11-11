@@ -14,9 +14,32 @@ namespace ChipArena.UnityConversion
     public static class NativeHotDog
     {
         public const string Id="hot-dog",Label="Hot Dog";
-        /// <summary>Where hats ride against where they sit on the model's head (m, the head bone's frame): on the sausage's crown,
-        /// a little higher and ahead of the pilot's head top.</summary>
-        public static readonly Vector3 HatOffset=new Vector3(0,.035f,.05f);
+
+        // ---- Hats on the crown (owner 2026-11-11: "Hats don't fit on hotdog model correctly") ----
+        // Every hat is made for the pilot's skull (NativeModelHatMeshes: its band BandY over the head bone, BandX to each side and
+        // BandDepth ahead and behind BandZ; a closed hat's crown at CrownTop). The sausage's crown, in the head bone's frame at the
+        // bind, is that skull's size at the band (a half width of 0.12, as deep) but sits 2.2 cm further ahead, and its dome rises
+        // to 0.24, 2.5 cm over a closed hat's crown; its three sprigs stand 3 to 5 cm over that. So on the Hot Dog each hat is
+        // moved, as the helmet moves hats (NativeRobotHelm.HatFit): scaled about the band's middle (HatPivot) and lifted and moved
+        // ahead by its own measure, so its band sits round the sausage and its crown clears the dome; a closed hat (HidesSprigs)
+        // also hides the sprigs under it (the runtime draws the mesh without them). The runtime places the hat in the frame of the
+        // crown's own skinning (its bones' blend), so it stays on the crown however the head turns and as the sausage jiggles.
+        public static readonly Vector3 HatPivot=new Vector3(0,NativeModelHatMeshes.BandY,NativeModelHatMeshes.BandZ);
+        private static readonly string[] FitHats={"cap","beanie","top","wizard","cowboy","cone","crown","antenna","halo",NativeAuditorHalo.Hat,NativeHatLooks.SheldonHead};
+        private static readonly float[] FitScale={1,1,1,1,1,1,1,1,1,1,1},
+            FitLift={.03f,.03f,.03f,.045f,.03f,.03f,.03f,.03f,.03f,.03f,.03f}, // (the wizard's floppy brim higher, clear of the eyes)
+            FitAhead={.022f,.022f,.022f,.022f,.022f,.022f,.022f,.022f,.022f,.022f,.022f};
+        /// <summary>Hat `hat`'s fit on the Hot Dog's crown: a point p of it (the head bone's frame) goes to p * scale + move (a hat
+        /// not listed takes the cap's).</summary>
+        public static void HatFit(string hat,out float scale,out Vector3 move)
+        {
+            int i=Math.Max(0,Array.IndexOf(FitHats,hat));scale=FitScale[i];move=HatPivot*(1-scale)+new Vector3(0,FitLift[i],FitAhead[i]);
+        }
+        /// <summary>Whether a hat covers the crown, so the sprigs are hidden under it: the closed hats (those that press the
+        /// pilot's hair) and the Sheldon Head's hood.</summary>
+        public static bool HidesSprigs(string hat)=>NativeModelHats.Presses(hat);
+        /// <summary>The sprigs: the parts of the mesh wholly within this far of its top (m), each smaller than SprigMost vertices.</summary>
+        public const float SprigDepth=.08f;public const int SprigMost=200;
         /// <summary>Whether a look wears it. Allocation free.</summary>
         public static bool Worn(string look)=>NativeLook.Of(look,NativeLook.Upper)==Id;
 
@@ -27,6 +50,15 @@ namespace ChipArena.UnityConversion
         // part leans the sausage (more toward the top: a bend), its upright part squashes or stretches it (a landing squashes
         // it). The runtime turns it into the sausage bones' frames (NativeHotDogPresentation.cs HotDogJiggle); the arms and legs
         // never move with it.
+        // ---- The sausage's bend kept even (owner 2026-11-11, through the Katana session: "their hot dog skin deforms during the
+        // Katana's counter") ----
+        // The sausage is weighted along the spine's bones (a bell round each), so a pose that curls the spine hard at one or two
+        // joints (the counter curls it about 50 degrees past the stance) folded the sausage at that height. Each frame the runtime
+        // takes each sausage twin's turn (its bone's against its rest, the body's own turn off), eases it toward its neighbours'
+        // SpinePasses times (a quarter each side), and keeps that share (SpineEven) of the eased turn: the same bend, spread down
+        // the sausage as an arc. The bottom and the top keep their own (the pelvis's and the head's).
+        /// <summary>How much of the evened turn the sausage's twins take (1: all of it) and how many easing passes.</summary>
+        public const float SpineEven=1;public const int SpinePasses=3;
         /// <summary>The sausage's height over the pelvis (m; the lean's lever and the squash's measure).</summary>
         public const float Height=.85f;
         /// <summary>The spring's natural frequency (rad/s) and damping ratio: a soft wobble, about two and a half a second, dying

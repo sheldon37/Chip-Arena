@@ -22,6 +22,8 @@ namespace ChipArena.UnityConversion
         public abstract bool Clip(float t,out string clip,out float time);
         /// <summary>Whether the blade is put away at `t` (the katana in its saya).</summary>
         public virtual bool Sheathed(float t)=>false;
+        /// <summary>How long the model takes to go over into the clip it plays at `t` (s; NativeBladeMotion.IntroFade).</summary>
+        public virtual float Fade(float t)=>.12f;
         /// <summary>A clip window `from`..`to` (clip s) laid across intro `t0`..`t1`, with `at` (clip s) landing on intro `hit`.</summary>
         protected static float Fit(float t,float t0,float hit,float t1,float from,float at,float to)
         {
@@ -90,7 +92,14 @@ namespace ChipArena.UnityConversion
     {
         public const string Name="Crimson Moon",Music="audio/intros/arc-salute",Blurb="Under a crimson moon: one draw, a line of light, and the click that splits it.";
         public const float Total=7.2f,CardAt=5.4f,End=6.9f;
-        public const float Poise=.9f,DrawAt=1.25f,CutAt=2.55f,HoldTo=3.4f,SheatheAt=3.5f,ClickAt=4.35f,Hero=4.7f;
+        public const float Poise=.9f,DrawAt=1.25f,CutAt=2.55f,HoldTo=3.4f,SheatheAt=3.3f,ClickAt=4.35f,Hero=4.7f;
+        /// <summary>When the iai's hand takes the blade out of the saya (the pack's draw, NativeKatanaSaya.IaiDraw, on the clip's own pace).</summary>
+        /// <summary>The iai on the pack's clip (owner 2026-11-11: "They don't pull sword out until animation is done essentially"): its stance
+        /// from DrawAt (the left hand pulling the saya forward), the blade taken out of the saya on GrabAt (the clip's 0.6 s) and eased out of it
+        /// as the hand gathers, and its draw-out, the clip's last tenth of a second before the cut, played 3.5 times slower from WhipAt, so the
+        /// blade is seen leaving the saya before it cuts on CutAt (it flashed out in 0.1 s at the clip's pace).</summary>
+        public const float GrabAt=1.75f,WhipAt=CutAt-.35f;
+        private const float IaiCut=1.3f,IaiWhip=1.2f,IaiEnd=2.05f,SheatheEnd=2.3f;
         public override string Spec=>NativeKatana.Spec;
         public override float Length=>Total;public override float SettleAt=>End;protected override float HeroAt=>CardAt;
         private static readonly Vector3 Moon=new Vector3(8f,4.8f,-10f),White=new Vector3(1,1,1),Crimson=NativeEntranceFx.Hex(0xff3d6e),Blossom=NativeEntranceFx.Hex(0xffb3c6),Night=NativeEntranceFx.Hex(0x14101e),Mist=NativeEntranceFx.Hex(0x5a4f66);
@@ -115,8 +124,9 @@ namespace ChipArena.UnityConversion
                 Shot(0,NativeEntranceCut.Cut,46,40,V(-1.4f,1.3f,4.8f),V(-1.1f,1.35f,4.2f),V(.6f,1.9f,-3f),V(.2f,1.6f,-1f),1,0),
                 // Close on the hand at the hilt as it settles.
                 Shot(Poise,NativeEntranceCut.Cut,30,28,V(1.1f,1.05f,1.5f),V(1.0f,1.05f,1.35f),V(-.1f,.95f,0),V(-.1f,.95f,0),1,0),
-                // Wide, low and side-on for the draw.
-                Shot(DrawAt+.6f,NativeEntranceCut.Cut,52,48,V(-3.6f,.7f,2.4f),V(-3.3f,.75f,2.2f),V(0,1.1f,0),V(.4f,1.1f,0),1,0),
+                // Low on the pilot's left, the saya's side, for the draw: the pack's iai stance winds the body away from the front, so from
+                // ahead and to the left (and wide: the pilot small) the body hid the blade leaving the saya at the hip.
+                Shot(DrawAt+.35f,NativeEntranceCut.Cut,40,36,V(-2.25f,.8f,.15f),V(-2f,.85f,.12f),V(.05f,.92f,.2f),V(.25f,.95f,.2f),1,0),
                 // Behind the line as it hangs.
                 Shot(CutAt+.35f,NativeEntranceCut.Whip,44,40,V(2.9f,1.6f,2.9f),V(2.6f,1.5f,2.6f),V(-.4f,1.15f,.2f),V(0,1.1f,0),1,0,.1f),
                 // The click and the split, close and in front.
@@ -129,13 +139,17 @@ namespace ChipArena.UnityConversion
         public override bool Clip(float t,out string clip,out float time)
         {
             const string K="Frank_RPG_Katana_";
-            // Sheathed and still, then the iai: the pack's slow stance-two draw (its cut on CutAt), the blade slid home (its click on ClickAt), calm.
+            // Sheathed and still (the left hand on the saya), then the iai: the pack's stance-three draw, the left hand pulling the saya
+            // forward, the blade drawn out of it on GrabAt and its cut on CutAt; then the whole sheathing: the blade turned over in the hand,
+            // the saya taken up by the left hand, the blade slid home on the click (ClickAt; Core NativeKatanaSaya), calm.
             if(t<DrawAt){clip=K+"Unequip_Idle";time=t+.5f;return true;}
-            if(t<SheatheAt){clip=K+"S2_Skill02";time=Fit(t,DrawAt,CutAt,SheatheAt,.85f,1.717f,2.5f);return true;}
-            if(t<Hero){clip=K+"Unequip";time=Fit(t,SheatheAt,ClickAt,Hero,1.2f,1.85f,2.3f);return true;}
+            if(t<SheatheAt){clip=NativeBladeMotion.KatanaIai;time=t<GrabAt?Fit(t,DrawAt,GrabAt,WhipAt,0,NativeKatanaSaya.IaiDraw,IaiWhip):t<WhipAt?Fit(t,GrabAt,WhipAt,CutAt,NativeKatanaSaya.IaiDraw,IaiWhip,IaiCut):Fit(t,WhipAt,CutAt,SheatheAt,IaiWhip,IaiCut,IaiEnd);return true;}
+            if(t<Hero){clip=NativeBladeMotion.KatanaSheathe;time=Fit(t,SheatheAt,ClickAt,Hero,0,NativeKatanaSaya.SheatheClick,SheatheEnd);return true;}
             clip=K+"Unequip_Idle";time=1.2f+(t-Hero);return true;
         }
-        public override bool Sheathed(float t)=>t<CutAt-.18f||t>=ClickAt-.05f;
+        public override bool Sheathed(float t)=>t<GrabAt||t>=ClickAt-.02f;
+        // Slower into the draw (the left hand takes the saya, the body sinks into the stance) and into the sheathing.
+        public override float Fade(float t)=>t>=DrawAt-.02f&&t<DrawAt+.45f?.3f:t>=SheatheAt-.02f&&t<SheatheAt+.35f?.22f:.12f;
         public override Vector3 CameraJolt(float t)
         {
             float s=NativeEntranceMath.Pulse(t,CutAt,.01f,.35f)*.03f+NativeEntranceMath.Pulse(t,ClickAt,.01f,.3f)*.02f;
