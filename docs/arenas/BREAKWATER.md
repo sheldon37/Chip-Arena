@@ -179,6 +179,9 @@ The owner's **Last Light Duel** (`breakwater-arena-duel`) stays the stage's trac
 `music` keeps the generator's placeholder as the fallback). If the owner wants a new song for the rebuilt stage it takes that
 place under the key `breakwater-theme`; a Suno prompt is in docs/arenas/STAGE-MUSIC-PROMPTS.md ("Breakwater — Storm Light").
 
+**In (2026-11-11):** the owner made it: **Storm Light** (228.800 s) plays as `breakwater-theme`; Last Light Duel stays
+packaged.
+
 ## The bank (2026-11-11)
 
 `ChipArenaStageBreakwater.bytes`: 6,178,491 bytes (budget: about 20 MB), 302 props. Static: 18 map chunks of 22 m in three tiers

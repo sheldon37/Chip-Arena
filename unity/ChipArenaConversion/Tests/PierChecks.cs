@@ -251,7 +251,7 @@ namespace ChipArena.UnityConversion
             var map=maps.maps.Single(m=>m.id=="harbor");
             Check(!NativeNewStageLooks.Active("harbor")&&NativeNewStageLooks.Index("harbor")<0&&NativeNewStageScenery.Build(map)==null&&NativeNewStageKit.Build(map,null,null)==null,"the M1 stages' presentation leaves Pier 9 alone");
             Check(NativeNewStageLooks.Maps.All(id=>NativeNewStageLooks.Index(id)==Array.IndexOf(new[]{"breakwater","harbor","skyframe","rig","polar"},id)),"the other M1 stages keep their numbers");
-            Check(NativeStageMusic.Theme("harbor","x")=="harbor-container-terminal","the placeholder track stays until the owner's song (harbor-theme)");
+            Check(NativeStageMusic.Theme("harbor","x")=="harbor-theme","the owner's song for the pier plays (Last Night of the Season, 2026-11-11)");
             var guids=new HashSet<string>();
             foreach(var f in new[]{"Core/NativePierLooks.cs","Core/NativePierScenery.cs","Core/NativePierKit.cs","Core/NativePierFx.cs","Core/NativePierArt.cs","Runtime/NativePierPresentation.cs"})
             {

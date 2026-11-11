@@ -213,6 +213,9 @@ The stage keeps its current track, the owner's **`skyframe-rising-motif`** (`Nat
 song written for the rebuilt stage takes the key **`skyframe-theme`**; its Suno prompt (style and lyric fields) is in
 `docs/arenas/STAGE-MUSIC-PROMPTS.md` "The 2026-11-11 rebuilds". The map record's `music` stays the generator's fallback.
 
+**In (2026-11-11):** the owner's **Garden Above the Clouds** (237.200 s) plays as `skyframe-theme`; Rising Motif stays
+packaged.
+
 ## Files
 
 - Draft: `docs/arenas/scripts/skyframe_m2.py` (layout, hazards, checks, plan PNG; `skyframe_m1.py` stays as history).

@@ -166,6 +166,9 @@ takes the key **`polar-theme`**: its Suno prompt (style and lyric fields) is in 
 Station — Northern Lights Array". To drop it in: the MP3 at `Assets/ChipArena/Resources/Audio/music/polar-theme.mp3` with a
 streaming `.meta`, its asset-lock entry and length pin, and `case "polar":return "polar-theme";` in `NativeStageMusic.Theme`.
 
+**In (2026-11-11):** the owner's **Northern Lights Array** (262.800 s) plays as `polar-theme`; Pulse de la Mort stays
+packaged.
+
 ## Files
 
 - Draft: `docs/arenas/scripts/polar_m2.py` (layout, hazards, segments, checks, plan PNG; `polar_m1.py` stays as history).

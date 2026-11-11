@@ -1,3 +1,5 @@
+2026-11-11 Claude (`claude/owner-songs-2026-11-11`, owner request): the owner's ten new songs are in: one for each of the nine remodelled stages (Ward Zero's on both records) and the menu's Pilot's Rooftop; earlier tracks stay packaged as fallbacks.
+
 2026-11-11 Claude (`claude/stage-zfight`, owner report; local, not merged): depth fighting on the stage art: Polaris's thin ice (overlapping drifts in one plane) fixed first; every stage bank now carries layers the stage shader parts at any distance, floors are cut along the chunks' cells (no floor drawn twice at two tiers), kept kit boxes draw nearer the eye over the art. Next: the integrator merges, repacks the Drive zip with the thirteen rebuilt banks and releases; the owner looks at the floors again.
 
 2026-11-11 Claude (`claude/hotdog-hats`, second round): the Hot Dog's sausage keeps its bend even, so the Katana's counter no longer folds it; hats checked on the Top Dog in a real match (they sit on the bent tip).

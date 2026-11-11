@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             Check(map.blocks.Length<=350&&map.blocks.Count(b=>b.role!="static")<=200,"block budgets ("+map.blocks.Length+")");
             Check(map.look==NativePolarLooks.Look&&map.name=="Polaris Station"&&map.id=="polar","id, name and look");
             Check(map.nav.nodes.Length<3600&&map.nav.links.Length<6200,"a lean nav graph ("+map.nav.nodes.Length+" nodes)");
-            Check(NativeStageMusic.Theme(map.id,"x")=="polar-pulse-de-la-mort","the stage keeps its current song until the owner's `polar-theme`");
+            Check(NativeStageMusic.Theme(map.id,"x")=="polar-theme","the owner's song for the observatory plays (Northern Lights Array, 2026-11-11)");
             Layout(map);Nav(map);Hazards(map);Ice(map);
             var set=MapLookChecks.Load(root);NativeMapLooks.Validate(set);var look=NativeMapLooks.ByLook(set,map.look);
             Check(look!=null&&look.id==map.id&&NativeMapStyle.On(look,false)&&look.advanced!=null&&look.blocks.dressed&&look.lights.Length==8&&look.farClip>=1200,"the look: styled, dressed, advanced, eight lights, a far plane past the aurora");
