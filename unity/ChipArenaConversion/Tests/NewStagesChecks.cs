@@ -13,10 +13,10 @@ internal static class NewStagesChecks
         var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),o);
         var maps=JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),o);
         NativeMapRules.Merge(content,maps,File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")));
-        // (Deepwell, `rig`, and Polaris Station, `polar`, left this list on 2026-11-11: each rebuilt as its own stage, it has its own
-        // checks, DeepwellChecks and PolarChecks.)
-        var required=new[]{"breakwater","harbor","skyframe","training"};
-        Check(required.All(id=>maps.maps.Count(m=>m.id==id)==1),"all five integrated maps exist exactly once");
+        // (Deepwell, `rig`, Polaris Station, `polar`, and Breakwater left this list on 2026-11-11: each rebuilt as its own stage, it has
+        // its own checks, DeepwellChecks, PolarChecks and BreakwaterChecks; Pier 9 and Skyframe keep these too.)
+        var required=new[]{"harbor","skyframe","training"};
+        Check(required.All(id=>maps.maps.Count(m=>m.id==id)==1),"the integrated maps checked here exist exactly once");
         foreach(var map in maps.maps.Where(m=>required.Contains(m.id)))
         {
             NativeMapRules.Validate(map);Check(map.rotation==(map.id!="training"),"rotation "+map.id);

@@ -61,8 +61,8 @@ namespace ChipArena.UnityConversion
             foreach(var (look,_) in NativeNewStageLooks.Defaults)Check(NativeBlockLooks.Id(look)>=0,"a default kit look is a known key: "+look);
             // Owner playtest (2026-11-01): low tops stand and rails over a lower floor vault (no invisible wall over them), while
             // rails, parapets and walls at a lethal edge keep their pilot column (tools/generate_stage_hazards.py open_tops).
-            foreach(var (mapId,id,open) in new[]{("breakwater","breakwater-container-a",true),("breakwater","breakwater-booth-n-roof",true),
-                ("breakwater","breakwater-parapet-n",false)})
+            // (No M1 stage is left on this presentation: all five were rebuilt on their own code, 2026-11-11.)
+            foreach(var (mapId,id,open) in new (string,string,bool)[0])
             {
                 var m=content.maps.Single(x=>x.id==mapId);var b=m.blocks.Single(x=>x.id==id);var on=new V3(b.pos.x,b.pos.y+b.size.y/2+.9f,b.pos.z);
                 Check((NativeMapRules.ExcludeTops(m,on)-on).Length>.001f!=open,id+(open?": a pilot stands on it":": its pilot column holds the edge"));
@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
                 foreach(var b in map.blocks)Check(NativeBlockLooks.Resolve(look.blockLooks,null,b.id,b.material,0).Listed,id+": "+b.id+" has a look of its own (listed or by its material)");
             }
             string weatherOf(string id)=>NativeAdvancedLooks.WeatherOf(NativeMapLooks.Find(set,id));
-            Check(weatherOf("breakwater")=="drizzle","the weather: Breakwater's wet air");
+            // (The M1 stages' weather left with them: each rebuilt stage checks its own look.)
 
             // 2. The kit: attached parts inside their blocks (2.1 rule 1, the stage rule's 0.25 m), overhead parts clear of the play.
             int attached=0,overhead=0;
@@ -112,7 +112,7 @@ namespace ChipArena.UnityConversion
             using var sel=JsonDocument.Parse(R("tools/pack_bank/selections/kit-harbor.json"));var groups=new Dictionary<string,string>();
             foreach(var p in sel.RootElement.GetProperty("props").EnumerateArray())groups[p.GetProperty("id").GetString()]=p.GetProperty("group").GetString();
             var bank=StageKitChecks.Synthetic(groups);
-            var dressed=new Dictionary<string,int>{["breakwater"]=56};
+            var dressed=new Dictionary<string,int>();
             foreach(var id in NativeNewStageLooks.Maps)
             {
                 var entry=NativePackDressing.Entry(table,id);var map=content.maps.Single(m=>m.id==id);Check(entry!=null,id+": a pack entry");
@@ -139,8 +139,8 @@ namespace ChipArena.UnityConversion
                 foreach(var m in a)for(int i=0;i+2<m.Positions.Length;i+=3){double px=m.Positions[i],py=m.Positions[i+1],pz=m.Positions[i+2];Check(py<=under+1e-3||px<=x0+1e-3||px>=x1-1e-3||pz<=z0+1e-3||pz>=z1-1e-3,id+": a backdrop vertex at "+px.ToString("0.#")+", "+py.ToString("0.#")+", "+pz.ToString("0.#")+" stays out of the play space");}
             }
             {
-                var bw=content.maps.Single(m=>m.id=="breakwater");var s=new NativeNewStageScenery.Sink{Map="probe"};NativeNewStageScenery.PlaySpace(bw,out s.MinX,out s.MaxX,out s.MinZ,out s.MaxZ,out s.Under);bool threw=false;
-                try{s.Box(0,1,0,2,2,2,0xffffff);}catch(InvalidOperationException){threw=true;}Check(threw,"a backdrop box in the play space is refused");s.Box(0,-3,0,10,1,10,0xffffff);s.Box(40,4,0,2,8,2,0xffffff);Check(s.Boxes==2,"under the floor and outside the bounds are allowed");
+                var bw=content.maps.Single(m=>m.id=="harbor");var s=new NativeNewStageScenery.Sink{Map="probe"};NativeNewStageScenery.PlaySpace(bw,out s.MinX,out s.MaxX,out s.MinZ,out s.MaxZ,out s.Under);bool threw=false;
+                try{s.Box(0,1,0,2,2,2,0xffffff);}catch(InvalidOperationException){threw=true;}Check(threw,"a backdrop box in the play space is refused");s.Box(0,-3,0,10,1,10,0xffffff);s.Box(60,4,0,2,8,2,0xffffff);Check(s.Boxes==2,"under the floor and outside the bounds are allowed");
             }
 
             // 6. The rigs: the replicated hazard state's, parked before the arm delay, the same whatever FightAt and on every client.

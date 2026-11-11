@@ -7,7 +7,7 @@ import importlib.util,json,math
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[3]
 # A stage rebuilt from scratch takes its new draft (the M1 script stays as history).
-DRAFTS={'harbor':'harbor_m2','rig':'rig_m2','polar':'polar_m2','skyframe':'skyframe_m2'}
+DRAFTS={'harbor':'harbor_m2','rig':'rig_m2','polar':'polar_m2','skyframe':'skyframe_m2','breakwater':'breakwater_m2'}
 def draft(name,fn):
     spec=importlib.util.spec_from_file_location(name,ROOT/f'docs/arenas/scripts/{DRAFTS.get(name,name+"_m1")}.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return getattr(m,fn)()['maps'][0]
 def v(x,y,z):return dict(x=round(x,4),y=round(y,4),z=round(z,4))
@@ -121,6 +121,10 @@ EDGES['cybercity']=('cybercity-frontage-top','cybercity-tunnel-');OVERHANG['cybe
 # The Factory (art pass 2026-11-11, the same rule): the shell's caps keep pilots inside the map; the crane's end trucks ride the runway girders' tops.
 # The hall roofs, the pulpit roofs and the ladle are open: a pilot may stand on whatever they reach.
 EDGES['factory']=('factory-top-wall',);OVERHANG['factory']=('factory-top-runway',)
+# Breakwater (rebuilt 2026-11-11): the end buildings' walls and roofs keep pilots inside the map (the mole runs on past both as scenery).
+EDGES['breakwater']=('breakwater-end-',)
+# Breakwater: the watch turret's roof and the Mariners' Stone's obelisk stand on their blocks.
+OVERHANG['breakwater']=('breakwater-turret','breakwater-stone')
 def open_stage(m):
     sides=column_sides(m);keep=EDGES[m['id']]+OVERHANG.get(m['id'],());kept=[];bots=0
     for p in m['pilotBlocks']:
