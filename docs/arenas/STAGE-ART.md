@@ -57,6 +57,13 @@ Everything is authored straight in the game's space from the layout, so the mode
   (`SootField`), worn edges. Corners that meet share one occlusion, so the export merges them.
 - **Tiers** (`Tier(0)` Fine, `Tier(1)` Mid, `Tier(2)` Low): arc and round segment counts, the flat faces' cell size, chamfers,
   and which details exist (`detail`: Fine and Mid; `tiny`: Fine only). The script builds the stage once per tier.
+- **Coplanar faces** (`lift_coplanar`; owner 2026-11-10: "We need to fix the Z-Fighting on the new maps"): each tier's static
+  scene is settled before the bake and the chunks. Wherever a face lies in the plane of a larger one turned the same way (within
+  `NEAR_TIER`: 3, 5, 8 mm by tier, closer than the depth buffer parts at the tier's range) and overlaps it, the smaller is moved
+  out along its normal just far enough to stand `LIFT_TIER` (6, 12, 20 mm) over it, largest at the bottom, until none overlap.
+  Only those faces move, along their own plane, so nothing opens (the larger face is right under the gap). The Causeway's far
+  ruins use 2 cm and 5 cm (they draw 60-150 m off). Before it the four banks held 116-268 m2 of such overlap each (the dance
+  floor on the hall floor, panels flush on walls, the walkways' trims); after it 0.1 m2 or less at any tier.
 - **Chunks** (`Chunks`): static faces go into world-space cells (12 m in plan, split at two heights) by their centres.
 - **The bank** (`StageBank`, tools/pack_bank/bank.py's format): `static/<chunk>/<tier>` (group "static", world space),
   `block/<block id>/<tier>` (group "block", the block's own frame: its centre; props may share one mesh), `rig/<name>/<tier>`

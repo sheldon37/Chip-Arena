@@ -1,3 +1,30 @@
+## 2026-11-10 — Claude: the new stages' z-fighting settled and their invisible walls removed, the Causeway's falls kill fast, guns aim in third person (owner request)
+
+- Branch `claude/stage-fixes` (from shared at `4172c27c`).
+- **The owner:** "We need to fix the Z-Fighting on the new maps, also remove the barriers that allow us to jump over things. On the bridge, we can let people get knocked off the map. Its a instant death when falling off; For the guns, we don't have to go into first person when aiming, just zoom in a little bit, focus crosshairs, and go into aiming pose."
+- **Z-fighting** (presentation): the four stage banks' static scenery held same-facing surfaces in one plane or 1-3 mm apart, closer than the depth buffer parts at range: the dance floor's top on the hall floor's, panels flush on walls, the walkways' trims on their decks, the Sanctum's floors and vaults. Measured on the banks: 116-268 m2 of such overlap per stage.
+  - `tools/stages/stagekit.py` `lift_coplanar` now runs on every tier's static scene before the bake and the chunks. A smaller face is moved out along its normal just far enough to stand 6, 12 or 20 mm (by tier) over the larger face it overlaps, until none overlap; the Causeway's far ruins use 5 cm.
+  - The rebuilt banks show 0.1 m2 or less at any tier: Sanctum 19,048,962 bytes, club 16,223,753, Emporium 18,442,977, Causeway 19,911,667.
+  - The Drive zip is repacked with them; the previous zip is kept as `LocalAssets-2026-11-10-before-zfix.zip`.
+- **Invisible walls** (rules, map data): the pilot columns (pilot-only walls from a top upward) on the four new stages now stay for everyone only at the map's edges and where art hangs too low over a top. That is the outer walls, the club's crowd barrier and its mezzanines' rails over the crowd pit, the Sanctum's vault, the club's truss towers and DJ cube, and the Causeway's spires and gables.
+  - A column at a lethal drop stops bots only (`MapPilotBlock.bots`; `NativeMapRules.ExcludeTops` takes the pilot's kind), so bots don't vault rails into the void while players jump over or are knocked over them.
+  - A bot under knockback or hit in the last 0.75 s passes those columns too (`NativeArena.BotEdges`).
+  - Every other column goes, so the 3.9 m ovens, altars, gates and the rest stand for anyone who reaches them.
+  - Counts: club 33 to 27 (2 bots only), Emporium 29 to 8 (4), Causeway 86 to 68 (58), Sanctum 1. Made by `tools/generate_stage_hazards.py` `open_stage`; `UnityMaps.json` and `asset-lock.json` regenerated.
+- **Starfall Causeway's falls** (rules): killY -10 to -6, so a fall kills about half a second after it leaves the span or the walkways (the walkways' top, -3.2, is 3.7 m clear). The kill goes to whoever hit them last (`StageCredit`), as before.
+- **Guns aim in third person** (presentation and the client's look): aiming keeps the camera the pilot chose. In third person:
+  - a little zoom (`NativeViewRules.AimZoom`: pistol .86, machine gun .84, rifle .68 of the field of view), with the look slowed by the same share (`ConversionGame.AimLook`);
+  - the crosshair tight on the aim's cone;
+  - the model's aim pose.
+  - First person, chosen in Settings, keeps the sight and the rifle's scope. The sim's aim rules (spread, move, the rifle's Q) are unchanged.
+- **For Astra:** the rules changes are the pilot columns and their `bots` field, the Causeway's killY, `ExcludeTops`' bot flag and `BotEdges` (host), and the guests' prediction passing a player.
+- **Checks:**
+  - the full CoreTests suite (998 groups) on the rules and aim commits;
+  - after the art fix: `--stage-art`, `--club-art`, `--emporium-art`, `--causeway-art`, `--club-stage`, `--emporium`, `--causeway`, `--sanctum`, `--new-stages`, `--new-stage-looks`, `--map-style`;
+  - the Unity compile; the full suite and the Editor's build checks again with the release.
+- **Seen in the Editor:** the four stages from play views with the rebuilt banks; the rifle and the pistol aiming in third person (zoomed, the gun raised, the crosshair tight).
+- **Not seen:** a person playing; a knock-off kill on the bridge in a live match; guests' prediction beside bots-only columns. A stone wall beside the Causeway's walkways still shows a blocky light-and-shade pattern: the stone's finish and the shadow map at a grazing angle, not overlapping faces.
+
 ## 2026-11-10 — Claude: the four new stages modelled (stage art banks, a lit stage shader), the club's DJ and crowd are Grey aliens (owner request)
 
 - Branch `claude/stage-art-release` (from shared at `f741ec76`), merging the art branches:

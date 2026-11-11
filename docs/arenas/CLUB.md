@@ -15,7 +15,7 @@ river, running at 128 bpm. Status: **implemented on the branch, seen in the Edit
 | Play area | 52 x 40 m (bounds x ±26, z ±20, ceiling 12, killY −6), mirrored across x = 0 |
 | Levels | hall 0 m, DJ stage 1.0 m, mezzanines + VIP balcony + lighting catwalk 4.2 m |
 | Built for | 4v4 and FFA 8 (Random rotation: yes) |
-| Blocks | 237 (20 breakable props at round start), 33 pilot columns, 2,543 nav nodes / 4,321 links (724 gated) |
+| Blocks | 237 (20 breakable props at round start), 27 pilot columns (owner 2026-11-10, no invisible walls over things: the outer walls, the crowd barrier and the mezzanines' rails over the crowd pit, the truss towers and the DJ cube; the lounge roofs' 2 stop bots only), 2,600 nav nodes / 4,395 links (724 gated) |
 | Hazards | the charged floor (9 `grid` sections), the laser wall (`maglev`), the bass drop (2 `vent`s with push) |
 | Music | the owner's **Neon Substation** (`club-theme`; see "Music") |
 
