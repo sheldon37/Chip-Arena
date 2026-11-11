@@ -34,6 +34,9 @@ namespace ChipArena.UnityConversion
     public sealed class NativeRooftopScene:IDisposable
     {
         public const int DynamicCapacity=1024;
+        /// <summary>DEV capture hooks, set by the local capture tool through reflection and never by the game: the scene's clock held at
+        /// this time (NaN: the game's own), the home screen's menu left off, and a line about what drew (the bank, the meshes).</summary>
+        public static float CaptureTime=float.NaN;public static bool CaptureBare;public static string CaptureInfo;
         public readonly float Quality;public readonly NativeRooftopCity.World World;
         private readonly Material worldMaterial,skyMaterial,screenMaterial,towerMaterial,propMaterial;private readonly Material[] layers=new Material[6];
         private readonly Mesh worldMesh,towerMesh,propMesh,quad,cars,dynamicMesh;private readonly Mesh[] sprites=new Mesh[5];
@@ -300,6 +303,7 @@ namespace ChipArena.UnityConversion
             if(!RooftopSupported||camera==null)return false;
             try
             {
+                if(!float.IsNaN(NativeRooftopScene.CaptureTime))time=NativeRooftopScene.CaptureTime;
                 if(rooftop==null||Mathf.Abs(rooftop.Quality-quality)>.01f){rooftop?.Dispose();rooftop=null;rooftop=new NativeRooftopScene(quality);}
                 rooftop.Draw(camera,time,reduced);RooftopCastFrame(camera,time,pilot,reduced);return true;
             }

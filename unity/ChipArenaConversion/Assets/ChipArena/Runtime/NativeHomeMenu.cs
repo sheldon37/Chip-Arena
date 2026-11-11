@@ -62,6 +62,7 @@ namespace ChipArena.UnityConversion
         // ---- Routing -------------------------------------------------------------------------------------------------
         private void HomeMenu()
         {
+            if(NativeRooftopScene.CaptureBare)return; // a DEV capture of the rooftop alone (the local capture tool)
             MenuStyles();float now=Time.unscaledTime;if(now-menuSeen>.25f)menuScreenAt=now;menuSeen=now;
             // The transition's swap and its input hold (NativeMenuTransitionUI.cs); `seen`: this menu was drawn a moment ago.
             bool seen=now-homeSeen<=.25f;MenuTransitionFrame(now,seen);
