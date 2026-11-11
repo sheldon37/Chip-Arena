@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
     {
         private sealed class MetroBatch{public readonly Matrix4x4[] M=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];public int Count;public readonly MaterialPropertyBlock Block=new MaterialPropertyBlock();}
         private Material metroMaterial;private Mesh metroMesh,metroToon;private bool metroFailed;private NativeFxDraw metroDraw;private NativeCyberCityFx metroFx;private readonly NativeFxLight metroLight=new NativeFxLight();
-        private NativeCyberBox[] metroBackdrop;private readonly List<MetroBatch> metroBack=new List<MetroBatch>(),metroCast=new List<MetroBatch>(),metroTrim=new List<MetroBatch>();private int metroCastUsed,metroTrimUsed;
+        private NativeCyberBox[] metroBackdrop;private readonly List<MetroBatch> metroBack=new List<MetroBatch>(),metroNear=new List<MetroBatch>(),metroCast=new List<MetroBatch>(),metroTrim=new List<MetroBatch>();private int metroCastUsed,metroTrimUsed;
         private NativeCyberCityKit metroKit;private NativeCyberFxScene metroScene;private MapHazard[] metroHazards;private NativeHazardState[] metroStates=Array.Empty<NativeHazardState>();
         private NativePropBody[] metroParents=Array.Empty<NativePropBody>();private float[] metroSeeds=Array.Empty<float>();private MaterialPropertyBlock metroOne;private readonly Dictionary<string,int> metroIndex=new Dictionary<string,int>();
         private NativeCyberScreen[] metroScreens=new NativeCyberScreen[4];private int[] metroScreenBlock=Array.Empty<int>();private string[] metroScreenSegment=Array.Empty<string>();private Vector3[] metroRestCenter=Array.Empty<Vector3>();private Vector2[] metroRestHalf=Array.Empty<Vector2>();
@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
             if(!ReferenceEquals(arena,metroArena)||arena.Generation!=metroGeneration)MetroRebind(arena);
             float now=PresentationClock(arena);var match=arena.Match;int round=NativeStructureFx.RoundIndex(match.Set,match.Round);
             for(int i=0;i<metroStates.Length;i++)metroStates[i]=NativeCyberCityHazards.At(metroHazards[i],match.Phase,round,match.FightAt,now);
-            MetroParents(arena);DrawMetroKit(arena,now);DrawCyberBackdrop(false);
+            MetroParents(arena);MetroArtRender(arena);DrawMetroKit(arena,now);DrawCyberBackdrop(false);
             int screens=MetroBillboards(arena);DrawCyberFx(now,WorldEye,true,screens);
         }
         // RenderBackdrop: behind the main menu, on the render clock; the skyline, its life and a plate over the slab only.
@@ -63,9 +63,10 @@ namespace ChipArena.UnityConversion
                 var shader=Resources.Load<Shader>("NativeBlockLit");if(shader==null)throw new InvalidOperationException("NativeBlockLit shader is missing");
                 metroMaterial=new Material(shader){name="Cyber City dressing",enableInstancing=true};metroMesh=MetroMeshOf(NativeBlockLooks.Build(0));
                 metroBackdrop=NativeCyberCityScenery.Build();metroDraw=new NativeFxDraw();metroFx=new NativeCyberCityFx();
-                for(int i=0;i<metroBackdrop.Length;i++){var b=metroBackdrop[i];if(i%NativeBlockLooks.Chunk==0)metroBack.Add(new MetroBatch());var bt=metroBack[metroBack.Count-1];
+                // The near ring and the tunnels in batches of their own: the stage art models them (NativeCyberCityArt.Near).
+                for(int i=0;i<metroBackdrop.Length;i++){var b=metroBackdrop[i];var into=NativeCyberCityArt.Near(b)?metroNear:metroBack;if(into.Count==0||into[into.Count-1].Count==NativeBlockLooks.Chunk)into.Add(new MetroBatch());var bt=into[into.Count-1];
                     var lin=MetroLinear(b.Color)*b.Gain;Put(bt,Matrix4x4.TRS(new Vector3(b.X,b.Y,b.Z),Quaternion.Euler(0,b.Yaw,0),Vector3.one),new Vector4(b.Hx,b.Hy,b.Hz,NativeBlockLooks.Chamfer),new Vector4(b.X,b.Y,b.Z,0),new Vector4(lin.r,lin.g,lin.b,1),new Vector4(b.Look,1,NativeBlockLooks.Seed("cyber-backdrop-"+i),b.Flags));}
-                foreach(var bt in metroBack)MetroUpload(bt);
+                foreach(var bt in metroBack)MetroUpload(bt);foreach(var bt in metroNear)MetroUpload(bt);
                 metroPlate=metroMesh;metroPlateMatrix=Matrix4x4.TRS(new Vector3(0,-.25f,0),Quaternion.identity,Vector3.one);return true;
             }
             catch(Exception e){Debug.LogWarning("Cyber City presentation disabled: "+e.Message);DisposeCyberCity();metroFailed=true;return false;}
@@ -75,7 +76,7 @@ namespace ChipArena.UnityConversion
             metroArena=arena;metroGeneration=arena.Generation;var map=arena.Map;if(metroHazards==null)metroHazards=arena.Map.hazards??Array.Empty<MapHazard>();
             // The exits, once per map content (the killcam's replay arena shares it, so switching to it rebuilds only the kit).
             if(!ReferenceEquals(metroExitsMap,map)||metroExits==null){metroExitsMap=map;metroExits=NativeCyberCityExits.Build(map.blocks,map.nav,metroHazards);}
-            metroKit=NativeCyberCityKit.Build(map.blocks,metroHazards,metroExits);metroScene=NativeCyberFxScene.Build(map.blocks,metroHazards,metroKit,metroBackdrop);
+            metroKit=NativeCyberCityKit.Build(map.blocks,metroHazards,metroExits);MetroArtPrepare(map);metroScene=NativeCyberFxScene.Build(map.blocks,metroHazards,metroKit,metroBackdrop);
             metroStates=new NativeHazardState[metroHazards.Length];metroSeeds=new float[metroKit.Parts.Length];for(int i=0;i<metroSeeds.Length;i++)metroSeeds[i]=NativeBlockLooks.Seed(map.blocks[metroKit.Parts[i].Parent].id+"#"+i);metroParents=new NativePropBody[map.blocks.Length];metroIndex.Clear();for(int i=0;i<map.blocks.Length;i++)if(map.blocks[i]?.id!=null)metroIndex[map.blocks[i].id]=i;
             // The billboards: each segment's screen block (the presentation's holo content follows it down).
             // Once it lands, the content lies on the segment's fallen-screen rubble plate (its `-0` rubble box, else the first).
@@ -115,12 +116,12 @@ namespace ChipArena.UnityConversion
             var parts=metroKit.Parts;
             for(int i=0;i<parts.Length;i++)
             {
-                var part=parts[i];var prop=metroParents[part.Parent];if(prop==null)continue;var t=prop.transform;Quaternion q=t.rotation;Vector3 at=t.position+q*new Vector3(part.X,part.Y,part.Z);
+                var part=parts[i];var prop=metroParents[part.Parent];if(prop==null||MetroArtHas(part,prop))continue;var t=prop.transform;Quaternion q=t.rotation;Vector3 at=t.position+q*new Vector3(part.X,part.Y,part.Z);
                 if(fade&&part.Fade&&MetroBetween(from,to,at,new Vector3(part.Hx+.2f,part.Hy+.2f,part.Hz+.2f)))continue;
                 NativeCyberCityKit.Drive(part,metroStates,now,out float r,out float g,out float bl,out float level);var rest=arena.Map.blocks[part.Parent].pos;
                 MetroAdd(part.Shadow,Matrix4x4.TRS(at,q,Vector3.one),new Vector4(part.Hx,part.Hy,part.Hz,NativeBlockLooks.Chamfer),new Vector4(rest.x+part.X,rest.y+part.Y,rest.z+part.Z,0),MetroColor(r,g,bl,level),new Vector4(part.Look,1,metroSeeds[i],part.Flags));
             }
-            if(metroKit.Maglev>=0&&metroKit.Maglev<metroStates.Length)
+            if(!metroArtDrawn&&metroKit.Maglev>=0&&metroKit.Maglev<metroStates.Length)
             {
                 var s=metroStates[metroKit.Maglev];
                 if(s.Phase!=NativeHazardPhase.Idle&&!double.IsNaN(s.Head))
@@ -145,6 +146,7 @@ namespace ChipArena.UnityConversion
         private void DrawCyberBackdrop(bool menu)
         {
             const int layer=NativeSceneryBuilder.BackdropLayer;foreach(var bt in metroBack)MetroDraw(bt,layer,ShadowCastingMode.Off);
+            if(menu||!metroArtDrawn)foreach(var bt in metroNear)MetroDraw(bt,layer,ShadowCastingMode.Off);
             if(!menu)return;
             // Behind the menu (no arena blocks there yet): a wet plate over the slab, and the look's ground haze (in a match the
             // arena dressing publishes it every frame).
@@ -215,7 +217,7 @@ namespace ChipArena.UnityConversion
         private void DisposeCyberCity()
         {
             CapturedAnimation.Release(metroMesh);if(metroToon!=null)CapturedAnimation.Release(metroToon);metroToon=null;CapturedAnimation.Release(metroMaterial);metroMesh=null;metroMaterial=null;metroPlate=null;metroDraw?.Dispose();metroDraw=null;
-            metroBack.Clear();metroCast.Clear();metroTrim.Clear();metroKit=null;metroScene=null;metroArena=null;metroGeneration=-1;metroHazards=null;metroPlateBlock=null;metroExits=null;metroExitsMap=null;
+            metroBack.Clear();metroNear.Clear();metroArtDrawn=false;metroCast.Clear();metroTrim.Clear();metroKit=null;metroScene=null;metroArena=null;metroGeneration=-1;metroHazards=null;metroPlateBlock=null;metroExits=null;metroExitsMap=null;
         }
     }
 }

@@ -61,9 +61,8 @@ namespace ChipArena.UnityConversion
             foreach(var (look,_) in NativeNewStageLooks.Defaults)Check(NativeBlockLooks.Id(look)>=0,"a default kit look is a known key: "+look);
             // Owner playtest (2026-11-01): low tops stand and rails over a lower floor vault (no invisible wall over them), while
             // rails, parapets and walls at a lethal edge keep their pilot column (tools/generate_stage_hazards.py open_tops).
-            foreach(var (mapId,id,open) in new[]{("breakwater","breakwater-container-a",true),("breakwater","breakwater-booth-n-roof",true),("harbor","harbor-gatehouse-a",true),
-                ("polar","polar-hall-porch-w-n",true),("skyframe","skyframe-rail-atrium-w-0",true),("rig","rig-rail-main-n-0",true),
-                ("breakwater","breakwater-parapet-n",false),("harbor","harbor-wall-e",false),("skyframe","skyframe-rail-edge-w-0",false),("rig","rig-rail-lifeboat-n-w",false)})
+            // (No M1 stage is left on this presentation: all five were rebuilt on their own code, 2026-11-11.)
+            foreach(var (mapId,id,open) in new (string,string,bool)[0])
             {
                 var m=content.maps.Single(x=>x.id==mapId);var b=m.blocks.Single(x=>x.id==id);var on=new V3(b.pos.x,b.pos.y+b.size.y/2+.9f,b.pos.z);
                 Check((NativeMapRules.ExcludeTops(m,on)-on).Length>.001f!=open,id+(open?": a pilot stands on it":": its pilot column holds the edge"));
@@ -88,9 +87,7 @@ namespace ChipArena.UnityConversion
                 foreach(var e in look.kitLooks??Array.Empty<MapLookBlock>())Check(NativeNewStageLooks.Kinds.Contains(e.block),id+": the kit look "+e.block+" is a kit kind");
                 foreach(var b in map.blocks)Check(NativeBlockLooks.Resolve(look.blockLooks,null,b.id,b.material,0).Listed,id+": "+b.id+" has a look of its own (listed or by its material)");
             }
-            string weatherOf(string id)=>NativeAdvancedLooks.WeatherOf(NativeMapLooks.Find(set,id));
-            Check(weatherOf("rig")=="rain"&&NativeMapLooks.Find(set,"rig").advanced.weather.lightning>0&&weatherOf("polar")=="snow"&&weatherOf("skyframe")==""&&weatherOf("harbor")=="drizzle"&&weatherOf("breakwater")=="drizzle","the weather: Deepwell's storm, Polaris's snow, a clear noon, Pier 9's and Breakwater's wet air");
-            Check(NativeMapLooks.Find(set,"rig").lights.Any(l=>l.id=="flare"&&l.flicker=="fire"&&l.range>=60),"Deepwell's flare lights the north faces and flickers");
+            // (The M1 stages' weather left with them: each rebuilt stage checks its own look.)
 
             // 2. The kit: attached parts inside their blocks (2.1 rule 1, the stage rule's 0.25 m), overhead parts clear of the play.
             int attached=0,overhead=0;
@@ -107,14 +104,14 @@ namespace ChipArena.UnityConversion
                 }
                 Check(NativeNewStageKit.Build(new ContentMap{id="factory",blocks=map.blocks},look,mats)==null,"another map gets no kit");
             }
-            Check(attached>3000&&overhead>150,"attached and overhead parts on the five ("+attached+", "+overhead+")");
+            Check(NativeNewStageLooks.Maps.Length==0||attached>200&&overhead>=0,"attached and overhead parts on the M1 stages still here ("+attached+", "+overhead+")");
 
             // 3. The pack rules: real blocks, solid props, inside their colliders, the same every time (a synthetic bank of real bounds).
             var table=JsonSerializer.Deserialize<PackDressingSet>(R("Assets/Conversion/Resources/PackDressing.json"),o);NativePackDressing.Validate(table);
             using var sel=JsonDocument.Parse(R("tools/pack_bank/selections/kit-harbor.json"));var groups=new Dictionary<string,string>();
             foreach(var p in sel.RootElement.GetProperty("props").EnumerateArray())groups[p.GetProperty("id").GetString()]=p.GetProperty("group").GetString();
             var bank=StageKitChecks.Synthetic(groups);
-            var dressed=new Dictionary<string,int>{["breakwater"]=56,["harbor"]=35,["skyframe"]=34,["rig"]=8,["polar"]=24};
+            var dressed=new Dictionary<string,int>();
             foreach(var id in NativeNewStageLooks.Maps)
             {
                 var entry=NativePackDressing.Entry(table,id);var map=content.maps.Single(m=>m.id==id);Check(entry!=null,id+": a pack entry");
@@ -126,7 +123,7 @@ namespace ChipArena.UnityConversion
                 // 4. The yards: outside the blocks' keep-out and the bounds (the play space), the same every time.
                 var scene=NativePackScenery.Build(entry,map,bank);var twice=NativePackScenery.Build(entry,map,bank);
                 Check(scene.Props.Length==twice.Props.Length&&scene.Props.Select((p,i)=>p.Prop==twice.Props[i].Prop&&p.World==twice.Props[i].World).All(x=>x),id+": the yards are the same every time");
-                Check((entry.yards.Length==0)==(id=="skyframe"||id=="rig")&&(entry.yards.Length==0||scene.Props.Length>20),id+": yards where the ground is at y 0 ("+scene.Props.Length+" props)");
+                Check((entry.yards.Length==0)==(id=="skyframe")&&(entry.yards.Length==0||scene.Props.Length>20),id+": yards where the ground is at y 0 ("+scene.Props.Length+" props)");
                 foreach(var p in scene.Props){NativePackDressing.Bounds(bank.Props[p.Prop],p.World,out var lo,out var hi);var a=new Box3{X0=lo.X,X1=hi.X,Y0=lo.Y,Y1=hi.Y,Z0=lo.Z,Z1=hi.Z};Check(!NativePackScenery.Enters(scene,lo.X,hi.X,lo.Z,hi.Z)&&!InBounds(map,a,NativeNewStageScenery.Margin),id+": the yard's "+bank.Props[p.Prop].Name+" stays outside the play space");}
             }
 
@@ -141,12 +138,15 @@ namespace ChipArena.UnityConversion
                 foreach(var m in a)for(int i=0;i+2<m.Positions.Length;i+=3){double px=m.Positions[i],py=m.Positions[i+1],pz=m.Positions[i+2];Check(py<=under+1e-3||px<=x0+1e-3||px>=x1-1e-3||pz<=z0+1e-3||pz>=z1-1e-3,id+": a backdrop vertex at "+px.ToString("0.#")+", "+py.ToString("0.#")+", "+pz.ToString("0.#")+" stays out of the play space");}
             }
             {
-                var bw=content.maps.Single(m=>m.id=="breakwater");var s=new NativeNewStageScenery.Sink{Map="probe"};NativeNewStageScenery.PlaySpace(bw,out s.MinX,out s.MaxX,out s.MinZ,out s.MaxZ,out s.Under);bool threw=false;
-                try{s.Box(0,1,0,2,2,2,0xffffff);}catch(InvalidOperationException){threw=true;}Check(threw,"a backdrop box in the play space is refused");s.Box(0,-3,0,10,1,10,0xffffff);s.Box(40,4,0,2,8,2,0xffffff);Check(s.Boxes==2,"under the floor and outside the bounds are allowed");
+                // (The probe needs a flat map with nothing under its floor: the rebuilt stages all have floors below 0, so Brickfall,
+                // whose layout the art pass kept.)
+                var bw=content.maps.Single(m=>m.id=="brickfall");var s=new NativeNewStageScenery.Sink{Map="probe"};NativeNewStageScenery.PlaySpace(bw,out s.MinX,out s.MaxX,out s.MinZ,out s.MaxZ,out s.Under);bool threw=false;
+                try{s.Box(0,1,0,2,2,2,0xffffff);}catch(InvalidOperationException){threw=true;}Check(threw,"a backdrop box in the play space is refused");s.Box(0,-3,0,10,1,10,0xffffff);s.Box(60,4,0,2,8,2,0xffffff);Check(s.Boxes==2,"under the floor and outside the bounds are allowed");
             }
 
             // 6. The rigs: the replicated hazard state's, parked before the arm delay, the same whatever FightAt and on every client.
-            foreach(var id in new[]{"harbor","skyframe","rig"})
+            // (No M1 stage has a rig now: Pier 9, Deepwell, Polaris and Skyframe were rebuilt on their own code, 2026-11-11.)
+            foreach(var id in new string[0])
             {
                 var map=content.maps.Single(m=>m.id==id);var look=NativeMapLooks.Find(set,id);var rig=new NativeNewStageRig(NativeNewStageLooks.Resolve(look.kitLooks));var other=new NativeNewStageRig(NativeNewStageLooks.Resolve(look.kitLooks));var stand=Standable(map);
                 for(int round=0;round<2;round++)for(double t=0;t<70;t+=.25)
@@ -178,12 +178,6 @@ namespace ChipArena.UnityConversion
                         Check(Math.Abs(Math.Sin(a0)*r0-f.x)<.02&&Math.Abs(Math.Cos(a0)*r0-f.z)<.02&&Math.Abs(Math.Sin(a1)*r1-z.x)<.02&&Math.Abs(Math.Cos(a1)*r1-z.z)<.02,"the tower crane slews from the zone it left to the one it serves (cycle "+n+")");
                         for(double u=0;u<h.travel;u+=.1){var s=NativeFactoryHazards.State(h,0,c0+u);NativeNewStageRig.Reach(h,s,0,c0+u,out _,out double r);Check(r>=NativeNewStageRig.MinReach-1e-9,"the hook never passes through the mast");}}
                 }
-                if(id=="rig")
-                {
-                    var burn=map.hazards.First(h=>h.kind=="burner");var idle=NativeWardZeroHazards.At(burn,NativePhase.Fight,0,0,1);var warn=NativeWardZeroHazards.At(burn,NativePhase.Fight,0,0,burn.first+burn.offset+.5);var live=NativeWardZeroHazards.At(burn,NativePhase.Fight,0,0,burn.first+burn.offset+burn.warn+.5);
-                    Check(idle.Phase==NativeHazardPhase.Idle&&warn.Phase==NativeHazardPhase.Warn&&live.Phase==NativeHazardPhase.Active,"Deepwell's burner phases sampled");
-                    Check(NativeNewStageRig.BeaconColor(idle,1)==NativeFactoryRig.LampSafe&&NativeNewStageRig.BeaconColor(live,1)==NativeFactoryRig.LampRed&&NativeNewStageRig.NozzleColor(idle,1,0)!=NativeNewStageRig.NozzleColor(live,1,0),"the burner beacon and nozzles follow the burst");
-                }
             }
 
             // 7. The effects: telegraphs never reduced; deterministic; nothing for another map.
@@ -199,12 +193,9 @@ namespace ChipArena.UnityConversion
                 Check(a.Quads.Count<=NativeNewStageFx.Capacity,id+": within capacity");
             }
             {
-                var rigMap=content.maps.Single(m=>m.id=="rig");var fx=new NativeNewStageFx();fx.Prepare(rigMap);var burn=rigMap.hazards.First(h=>h.kind=="burner");
-                double active=burn.first+burn.offset+burn.warn+.5;fx.Build(rigMap.hazards,0,NativePhase.Fight,0,active,active,0,6,15,1,0,0,0,1,0,0,true);int on=fx.Telegraph;fx.Build(rigMap.hazards,0,NativePhase.Fight,0,1,1,0,6,15,1,0,0,0,1,0,0,true);
-                Check(on>fx.Telegraph,"a burning lane draws its fire columns ("+on+" telegraph quads)");
-                var harbor=content.maps.Single(m=>m.id=="harbor");var gh=harbor.hazards.Single();var hfx=new NativeNewStageFx();hfx.Prepare(harbor);double warn=NativeFactoryHazards.ArmDelay+gh.start+gh.offset+gh.travel+1;
-                hfx.Build(harbor.hazards,0,NativePhase.Fight,0,warn,warn,0,6,0,1,0,0,0,1,0,0,true);Check(hfx.Telegraph>=3,"Pier 9's gantry telegraphs its slot through the warning");
-                var beams=new NativeBeamList();hfx.Beams=beams;beams.Clear();hfx.Build(harbor.hazards,0,NativePhase.Fight,0,warn,warn,0,6,0,1,0,0,0,1,0,1,false);Check(beams.Count>0,"with the volumetric beams on, the cones go to the beam list");
+                // (Every M1 stage with a crane or gantry has left these stages, rebuilt on its own code on 2026-11-11: Pier 9, Deepwell,
+                // Polaris and Skyframe. The M1 effects and rig still draw nothing on another map, whatever hazards it is handed.)
+                var harbor=content.maps.Single(m=>m.id=="skyframe");var gh=harbor.hazards.Single(h=>h.kind=="crane");double warn=NativeFactoryHazards.ArmDelay+gh.start+gh.offset+gh.travel+1;
                 var other=new NativeNewStageFx();other.Prepare(content.maps.Single(m=>m.id=="factory"));other.Build(harbor.hazards,0,NativePhase.Fight,0,warn,warn,0,6,0,1,0,0,0,1,0,1,false);Check(other.Quads.Count==0,"another map draws no effects");
                 var none=new NativeNewStageRig(NativeNewStageLooks.Resolve(null));none.Build("factory",harbor.hazards,harbor.blocks,0,NativePhase.Fight,0,warn,warn);Check(none.Parts.Count==0,"another map draws no rig");
             }

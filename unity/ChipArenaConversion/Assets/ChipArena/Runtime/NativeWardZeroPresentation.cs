@@ -28,6 +28,11 @@ namespace ChipArena.UnityConversion
     ///    their beacon beams.
     ///  - Effects (Core NativeWardZeroFx) through one NativeFxDraw: a solid and an effects batch.
     ///  - The floor vents' shafts (today's NativeWardPit shader) at the floor vents the data marks as pits.
+    ///  - The stage art (docs/arenas/STAGE-ART.md, docs/arenas/WARDZERO-ART.md): with the stage bank ChipArenaStageWardZero,
+    ///    NativeStageArtDraw draws the modelled ward in place of the dressed blocks and the kit's steady boxes; the kit's moving
+    ///    parts and the blocks that can leave (a Hulk's wall, a breach panel) are its rig props, posed by Core NativeWardZeroArt
+    ///    from the same hazard states, open amounts, breaches and shudders; the kit's lit and animated boxes (NativeWardZeroKit.
+    ///    Keeps) still draw over it. Without the bank every box draws exactly as before. The menu backdrop keeps the boxes.
     /// Hazards: the map's `hazards` (ContentMap.hazards); their state is the pure Core function of (round index, FightAt,
     /// presentation clock), so host, guests and the killcam agree. Entries: PveContent.json's `entries` read with the draft's
     /// fields (NativeWardEntry); the index is the entry's position, as arena.Entry(e) uses it. Nothing here writes sim data,
@@ -45,6 +50,10 @@ namespace ChipArena.UnityConversion
         private NativePropBody[] wzParents=Array.Empty<NativePropBody>();private float[] wzSeeds=Array.Empty<float>(),wzBlockLifts=Array.Empty<float>();private readonly Dictionary<string,int> wzIndex=new Dictionary<string,int>();
         // By block index: the blocks a Hulk's breach has open (their parts hidden) and their knock's shudder (world m).
         private bool[] wzBlockOut=Array.Empty<bool>();private Vector3[] wzNudge=Array.Empty<Vector3>();
+        // The stage art: its drawer, this map's slots and posed blocks, this frame's poses, the shudders as Core reads them.
+        private NativeStageArtDraw wzArtDraw;private NativeWardZeroArt wzArt;private readonly NativeStageArtPose wzArtPose=new NativeStageArtPose();private float[] wzArtNudge=Array.Empty<float>();
+        /// <summary>The stage art drew Ward Zero last frame (the kit's steady and moving boxes did not).</summary>
+        public bool WardArtDrawn{get;private set;}
         private NativeEntryView[] wzWard;private NativeWardMood wzMood;private float wzLast=-1;private bool wzMoodSet;private NativeArena wzArena;private int wzGeneration=-1;
         // The light field: the bake in flight (for the map content it started on), its volume once in, each circuit's level.
         private System.Threading.Tasks.Task<NativeWardZeroField> wzBake;private ContentMap wzBakeMap;private NativeWardZeroField wzField;private Texture3D wzFieldTex;private readonly float[] wzLevels=new float[NativeWardZeroField.Circuits];
@@ -54,12 +63,14 @@ namespace ChipArena.UnityConversion
         {
             var map=arena.Map;if(!NativeWardZeroLooks.Active(map)||!EnsureWardZero())return;
             if(!ReferenceEquals(map,wzMap))WardZeroBuild(map);
-            if(!ReferenceEquals(arena,wzArena)||arena.Generation!=wzGeneration){wzArena=arena;wzGeneration=arena.Generation;wzMoodSet=false;wzLast=-1;if(!arena.ReplicaScene.IsValid()){Array.Clear(wzBreached,0,wzBreached.Length);Array.Clear(wzBlockOut,0,wzBlockOut.Length);Array.Clear(wzNudge,0,wzNudge.Length);}}
+            if(!ReferenceEquals(arena,wzArena)||arena.Generation!=wzGeneration){wzArena=arena;wzGeneration=arena.Generation;wzMoodSet=false;wzLast=-1;if(!arena.ReplicaScene.IsValid()){Array.Clear(wzBreached,0,wzBreached.Length);Array.Clear(wzBlockOut,0,wzBlockOut.Length);Array.Clear(wzNudge,0,wzNudge.Length);Array.Clear(wzArtNudge,0,wzArtNudge.Length);}}
             float now=PresentationClock(arena);var match=arena.Match;int round=NativeStructureFx.RoundIndex(match.Set,match.Round);
             for(int i=0;i<wzStates.Length;i++)wzStates[i]=NativeWardZeroHazards.At(wzHazards[i],match.Phase,round,match.FightAt,now);
             WardZeroOpen(arena);WardZeroSong(arena);WardZeroMood(arena,now);
             Array.Clear(wzParents,0,wzParents.Length);foreach(var p in arena.AllBlocks){if(p==null||p.Definition?.id==null)continue;if(wzIndex.TryGetValue(p.Definition.id,out int i))wzParents[i]=p;}
-            var eye=WorldEye;DrawWardKit(arena,now,eye);WardZeroPits();
+            var eye=WorldEye;WardArtDrawn=false;
+            if(wzArtDraw!=null&&wzArt!=null&&wzArtDraw.Ready){wzArt.Pose(wzKit,map.blocks,wzStates,wzOpen,wzMood,wzBreached,wzBlockOut,wzArtNudge,wzArtPose);WardArtDrawn=wzArtDraw.Render(arena,eye,LowGraphics,wzArtPose);}
+            DrawWardKit(arena,now,eye,WardArtDrawn);WardZeroPits();
             WardZeroField();
             if(eye!=null){var c=eye.transform.position;float dt=wzLast<0?0:Mathf.Clamp(now-wzLast,0,.1f);wzLights.Update(c.x,c.y,c.z,wzMood,wzStates,now,dt);NativeLighting.PickedLights(wzLights.Pos,wzLights.Rgb,wzLights.Beam);}
             WardZeroFieldSend(now,true);DrawWardFx(now,eye);wzLast=now;
@@ -89,7 +100,7 @@ namespace ChipArena.UnityConversion
         public void NudgeWardBlock(string block,Vector3 by)
         {
             if(string.IsNullOrEmpty(block))return;if(by==Vector3.zero)NativeArenaDressing.Nudged.Remove(block);else NativeArenaDressing.Nudged[block]=by;
-            if(wzIndex.TryGetValue(block,out int i)&&i<wzNudge.Length)wzNudge[i]=by;
+            if(wzIndex.TryGetValue(block,out int i)&&i<wzNudge.Length){wzNudge[i]=by;if(i*3+2<wzArtNudge.Length){wzArtNudge[i*3]=by.x;wzArtNudge[i*3+1]=by.y;wzArtNudge[i*3+2]=by.z;}}
         }
         // RenderBackdrop: behind the main menu, on the render clock: a cut-away of the map's blocks and kit (the vault and the
         // outer walls toward the camera left out), at rest in the calm mood, no effects. False when the map is not the revamp.
@@ -147,6 +158,9 @@ namespace ChipArena.UnityConversion
             ReleaseWardField();var kit=wzKit;var bd=map.bounds;float x0=bd?.minX??-40,x1=bd?.maxX??40,z0=bd?.minZ??-32,z1=bd?.maxZ??32;wzBakeMap=map;
             wzBake=System.Threading.Tasks.Task.Run(()=>NativeWardZeroField.Build(kit,blocks,x0,x1,z0,z1));
             wzOpen=new float[wzEntries.Length];wzBreached=new bool[wzEntries.Length];wzParents=new NativePropBody[blocks.Length];wzBlockOut=new bool[blocks.Length];wzNudge=new Vector3[blocks.Length];wzIndex.Clear();for(int i=0;i<blocks.Length;i++)if(blocks[i]?.id!=null)wzIndex[blocks[i].id]=i;
+            // The stage art (nothing without the bank): the kit's movers and the blocks that can leave are its rig props; indoors
+            // nothing casts (the look's key has no shadows).
+            wzArt=NativeWardZeroArt.Build(wzKit,blocks,wzEntries);wzArtNudge=new float[blocks.Length*3];if(wzArtDraw==null)wzArtDraw=gameObject.AddComponent<NativeStageArtDraw>();wzArtDraw.Prepare(map,wzArt.Slots,WardArtCasts);
             wzSeeds=new float[wzKit.Parts.Length];for(int i=0;i<wzSeeds.Length;i++)wzSeeds[i]=NativeBlockLooks.Seed(blocks[wzKit.Parts[i].Parent].id+"#"+i);
             // The menu backdrop draws the blocks itself: with the faces the dressing lifts (NativeSurfaceLayers.Blocks), as in play.
             wzBlockLifts=NativeSurfaceLayers.Blocks(blocks);
@@ -182,13 +196,15 @@ namespace ChipArena.UnityConversion
             i.Alarm=alarm;var target=NativeWardZeroMood.Target(i);float dt=wzLast<0?0:Mathf.Clamp(now-wzLast,0,.1f);
             if(!wzMoodSet){wzMood=target;wzMoodSet=true;}else NativeWardZeroMood.Ease(ref wzMood,target,dt);
         }
-        private void DrawWardKit(NativeArena arena,float now,Camera eye)
+        private static bool WardArtCasts(int slot)=>false;
+        // art: the stage art drew this frame, so only the kit's lit and animated boxes draw (NativeWardZeroKit.Keeps).
+        private void DrawWardKit(NativeArena arena,float now,Camera eye,bool art=false)
         {
             wzUsed=0;Vector3 from=eye!=null?eye.transform.position:Vector3.zero,to=from;bool fade=eye!=null&&!FirstPerson&&arena.ViewPilot?.Body!=null;if(fade)to=arena.ViewPilot.Body.position+Vector3.up*.9f;
             var parts=wzKit.Parts;var blocks=arena.Map.blocks;bool low=LowGraphics;
             for(int i=0;i<parts.Length;i++)
             {
-                var part=parts[i];if(part.Detail&&low)continue;var prop=wzParents[part.Parent];if(prop==null)continue;if(part.Entry>=0&&part.Entry<wzBreached.Length&&wzBreached[part.Entry])continue;if(wzBlockOut[part.Parent])continue;
+                var part=parts[i];if(part.Detail&&low)continue;if(art&&!wzKit.Keeps[i])continue;var prop=wzParents[part.Parent];if(prop==null)continue;if(part.Entry>=0&&part.Entry<wzBreached.Length&&wzBreached[part.Entry])continue;if(wzBlockOut[part.Parent])continue;
                 float f=NativeWardZeroKit.Move(part,wzStates,wzOpen,wzMood,out bool hidden);if(hidden)continue;
                 var tr=prop.transform;Quaternion q=tr.rotation;Vector3 at=tr.position+wzNudge[part.Parent]+q*new Vector3(part.X+part.Mx*f,part.Y+part.My*f,part.Z+part.Mz*f);
                 if(fade&&part.Fade&&MetroBetween(from,to,at,new Vector3(part.Hx+.2f,part.Hy+.2f,part.Hz+.2f)))continue;
@@ -264,7 +280,7 @@ namespace ChipArena.UnityConversion
         {
             ReleaseWardField();NativeLighting.WardFieldOff();
             CapturedAnimation.Release(wzMesh);if(wzToon!=null)CapturedAnimation.Release(wzToon);wzToon=null;CapturedAnimation.Release(wzMaterial);if(wzPitMaterial!=null)CapturedAnimation.Release(wzPitMaterial);wzMesh=null;wzMaterial=null;wzPitMaterial=null;wzDraw?.Dispose();wzDraw=null;
-            wzBatches.Clear();wzMap=null;wzKit=null;wzScene=null;wzLights=null;wzArena=null;wzGeneration=-1;wzMoodSet=false;wzLast=-1;
+            wzBatches.Clear();wzMap=null;wzKit=null;wzArt=null;WardArtDrawn=false;wzScene=null;wzLights=null;wzArena=null;wzGeneration=-1;wzMoodSet=false;wzLast=-1;
         }
     }
 }

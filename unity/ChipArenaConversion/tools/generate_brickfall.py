@@ -101,7 +101,8 @@ for floor in range(3):
 box('hotel-stairhouse-west',-2.4,-2.2,2.8,4.2,10.8,13.4)
 box('hotel-stairhouse-east',2.2,2.4,2.8,4.2,10.8,13.4)
 box('hotel-stairhouse-roof',-2.4,2.4,2.8,5.8,13.2,13.4)
-pilot.append(dict(id='hotel-stairhouse-top',center=v(0,0,4.3),size=v(4.8,0,3),bottom=13.3))
+# Owner (2026-11-10/11): no invisible walls. Only the frontage's caps keep a column (they keep pilots inside the map); the stair
+# house's roof and the chimneys' crowns are open: a pilot may stand on anything they can reach.
 for town,sign in [('ashby',1),('bray',-1)]:
     def B(id,a,b,c,d,lo,hi,*args,**kwargs):return box(id,*sorted((sign*a,sign*b)),*sorted((sign*c,sign*d)),lo,hi,*args,**kwargs)
     for i,x in enumerate([-24.5,-15.5,-6.5]):B(town+'-pier-'+str(i+1),x-.5,x+.5,20,21,0,3.6,'structural','brick',hp=100)
@@ -126,7 +127,6 @@ for town,sign in [('ashby',1),('bray',-1)]:
     sid='stack-'+('n' if sign==1 else 's')
     B(sid+'-base',8.8,11.2,25.6,28,0,2,'structural','brick',hp=180)
     for i in range(4):B(sid+'-drum-'+str(i),8.8,11.2,25.6,28,2+i*3.5,5.5+i*3.5,'carried','brick',sid)
-    pilot.append(dict(id=sid+'-top',center=v(sign*10,0,sign*26.8),size=v(2.4,0,2.4),bottom=15.9))
     # Shop ramps: 8 m run, 3.6 rise (24.2 degrees). Collision stairs, each .15 riser.
     for i in range(24):B('shop-ramp-'+town+'-'+str(i),-2+i/3,-2+(i+1)/3,19.5,21,0,(i+1)*.15)
     for i in range(8):B('yard-dock-ramp-'+town+'-'+str(i),-25+i*.325,-25+(i+1)*.325,-25.5,-23,0,1.2-i*.15)

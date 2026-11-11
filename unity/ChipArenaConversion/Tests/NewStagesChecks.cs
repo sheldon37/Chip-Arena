@@ -13,8 +13,10 @@ internal static class NewStagesChecks
         var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),o);
         var maps=JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),o);
         NativeMapRules.Merge(content,maps,File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")));
-        var required=new[]{"breakwater","harbor","skyframe","rig","polar","training"};
-        Check(required.All(id=>maps.maps.Count(m=>m.id==id)==1),"all six integrated maps exist exactly once");
+        // (Deepwell, `rig`, Polaris Station, `polar`, and Breakwater left this list on 2026-11-11: each rebuilt as its own stage, it has
+        // its own checks, DeepwellChecks, PolarChecks and BreakwaterChecks; Pier 9 and Skyframe keep these too.)
+        var required=new[]{"harbor","skyframe","training"};
+        Check(required.All(id=>maps.maps.Count(m=>m.id==id)==1),"the integrated maps checked here exist exactly once");
         foreach(var map in maps.maps.Where(m=>required.Contains(m.id)))
         {
             NativeMapRules.Validate(map);Check(map.rotation==(map.id!="training"),"rotation "+map.id);
@@ -57,7 +59,7 @@ internal static class NewStagesChecks
                 rows[0].dps=float.NaN;Check(!NativeTrainingRules.ValidFrame(map,seats,rows),"bad readout rejected");
             }
         }
-        var crane=maps.maps.Single(m=>m.id=="skyframe").hazards.Single();
+        var crane=maps.maps.Single(m=>m.id=="skyframe").hazards.Single(h=>h.kind=="crane");
         for(int z=0;z<crane.zones.Length;z++)
         {
             double impact=crane.start+crane.offset+z*crane.period+crane.travel+crane.warn+crane.rise;
@@ -65,8 +67,6 @@ internal static class NewStagesChecks
             s=NativeFactoryHazards.State(crane,0,impact+.1);Check(!s.Lethal&&s.Landed,"impact grace "+z);
             s=NativeFactoryHazards.State(crane,0,impact+crane.dwell+NativeFactoryHazards.RegripSeconds+crane.hoist/2);Check(s.LoadY>crane.zones[z].center.y&&s.LoadY<crane.carry,"hoist elevation "+z);
         }
-        var burn=maps.maps.Single(m=>m.id=="rig").hazards.First(h=>h.kind=="burner");
-        Check(NativeStageHazards.DamageTicks(burn,1,0,burn.first+burn.warn-.01,burn.first+burn.warn+burn.live-.01)*burn.damage==80,"Deepwell full burst 80 HP");
         Check(NativeTrainingRules.RoomFits("breakwater",Enumerable.Range(1,4).Select(i=>new NativeSeat{id=i,team=i%2}),true),"2v2");
         Check(!NativeTrainingRules.RoomFits("breakwater",Enumerable.Range(1,5).Select(i=>new NativeSeat{id=i}),false),"FFA cap");
         Console.WriteLine("PASS M1 stages and training: "+count+" checks");

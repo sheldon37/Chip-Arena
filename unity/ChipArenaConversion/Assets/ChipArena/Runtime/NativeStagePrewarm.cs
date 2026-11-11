@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         {
             if(arena==null||sourceModels==null)return 0;var map=arena.Map;string id=arena.MapId;int built=0;
             if(NativeFactoryScenery.Active(id)){if(factoryStage==null)factoryStage=gameObject.AddComponent<NativeFactoryStage>();if(factoryStage.Prepare(arena))built++;}
-            if(NativeBrickfallScenery.Active(id)&&EnsureBrickfall())built++;
+            if(NativeBrickfallScenery.Active(id)&&EnsureBrickfall()){BrickfallArtPrepare(map);built++;}
             if(TrainingPrepare(arena))built++;
             if(NativeCyberCityLooks.Active(id)&&EnsureCyberCity()){if(!ReferenceEquals(arena,metroArena)||arena.Generation!=metroGeneration)MetroRebind(arena);built++;}
             if(map!=null&&NativeExpeditionCityKit.Active(id)&&EnsureExpeditionCity()){if(!ReferenceEquals(map,townMap))ExpeditionCityBuild(map);built++;}
@@ -40,7 +40,12 @@ namespace ChipArena.UnityConversion
             if(PrewarmClub(arena))built++;
             if(PrewarmEmporium(arena))built++;
             if(PrewarmCauseway(arena))built++;
+            if(PrewarmPier(arena))built++;
+            if(PrewarmDeepwell(arena))built++;
+            if(PrewarmSkyframe(arena))built++;
+            if(PrewarmBreakwater(arena))built++;
             if(PrewarmSanctum(arena))built++;
+            if(PrewarmPolar(arena))built++;
             // The kit bank's plan and the map's harbour yards (NativePackStage.cs; nothing without the bank or an entry).
             var pack=NativePackStage.Entry(id);if(map!=null&&pack!=null){NativePackStage.Plan(map);if(pack.yards!=null&&pack.yards.Length>0)(packYards??=new NativePackYards()).Prepare(map,id);built++;}
             EnsureHazardKit();
@@ -54,12 +59,12 @@ namespace ChipArena.UnityConversion
         /// first frame (ArenaPresentation.PrewarmStage); nothing is drawn.</summary>
         public bool Prepare(NativeArena arena)
         {
-            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null)return false;
+            if(arena==null||!Ensure())return false;var map=arena.Map;if(map==null)return false;PrepareArt(map);
             if(!ReferenceEquals(map,kitMap))
             {
                 var hz=Hazards(arena.MapId);kitMap=map;
                 try{looks=NativeFactoryKit.Resolve(NativeLighting.Look(map).kitLooks);rigBuilder=new NativeFactoryRig(looks);Pack(NativeFactoryKit.Build(map.blocks,hz,looks));}
-                catch(Exception e){Debug.LogWarning("Factory dressing disabled: "+e.Message);kit=Array.Empty<Batch>();rigBuilder=null;}
+                catch(Exception e){Debug.LogWarning("Factory dressing disabled: "+e.Message);kit=kitKept=Array.Empty<Batch>();rigBuilder=null;}
             }
             return true;
         }

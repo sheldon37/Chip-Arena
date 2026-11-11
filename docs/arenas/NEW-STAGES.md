@@ -169,6 +169,9 @@ In the proposal only team B had the water at its back. Now both teams share it, 
 
 ## 3. Skyframe (`skyframe`): the half-built tower
 
+> **Rebuilt 2026-11-11** (docs/arenas/SKYFRAME.md, `skyframe_m2.py`): a sky garden at the top of the tower at sunset, with its own
+> Core, Runtime, look and stage art. What follows is the 2026-10-31 stage, kept as history.
+
 **Astra M1 integration:** crane fall, regrip, hoist, impact cue, lethal height and landed collider now use each
 zone's floor y. Timings and geometry unchanged. Current movement has no general landing-damage rule: the 3.6 m
 internal drops remain free of fall damage; external drops still reach killY. Keep the 7.2 m FFA perches for playtest.
@@ -239,6 +242,9 @@ before damage modifiers (Ward Zero is 100 HP per burst). Sea notches retain kill
   - The flare's warm flicker on everything facing north; wet steel sheen; rain streaks; spray over the edges.
 
 ## 5. Polaris Station (`polar`): the research station at polar night
+
+> Rebuilt from scratch on 2026-11-11 (docs/arenas/POLAR.md, `docs/arenas/scripts/polar_m2.py`): what follows describes the M1
+> stage of the same id, kept as history. The map is no longer one of Core NativeNewStage*'s.
 
 **Astra M1 integration:** no geometry or hazard changes. Temporary music: `cybercity-neon-riot`.
 

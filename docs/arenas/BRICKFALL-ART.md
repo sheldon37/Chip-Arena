@@ -1,0 +1,161 @@
+# Brickfall: the stage art
+
+2026-11-11 · Claude (stage art pass on the older stages) · branch `claude/artpass-brickfall` from `claude/sleepy-ritchie-g8ruhv`
+(`db641c9c`). Status: **implemented on the branch and seen in the shared Editor; not merged, not released.** The bank is local
+(git-ignored); the integrator packs it into the builder's Drive zip.
+
+Owner (2026-11-11): "I want to revamp ALL the current stages out of the blocky style. Making them a LOT more detailed and styled ...
+Ensure theres no Z-Fighting, remove invisible barriers etc."
+
+Brickfall (`brickfall`, the default arena; docs/arenas/BRICKFALL-SIMULATION-CONTRACT.md) keeps its layout, its ten collapse segments,
+their timings, crush shapes, nav and spawns exactly. What changed is what is drawn: with the stage bank
+`ChipArenaStageBrickfall` every one of the map's 507 blocks, and the 106 rubble blocks its segments land as, is drawn as a model
+(`ChipArena/StageLit`, Runtime `NativeStageArtDraw`) in place of its dressed box. Without the bank (CI, a build without the Drive
+zip) nothing is made and the dressed blocks draw exactly as before. The recipe is docs/arenas/STAGE-ART.md; this is what Brickfall
+adds to it.
+
+## A stage without a kit: the blocks are the art
+
+The four new stages model their Core kits. Brickfall has none: its look was its blocks' looks (`MapLooks.json` blockLooks, Runtime
+`NativeArenaDressing`). So the art is modelled on the blocks themselves, and every block is covered (`cover/<id>`):
+
+- **Static blocks (363) are world-space chunks** (34 chunks of 16 m, split at 14 m: the roofs over the frontage and the hotel's roof sign are their own).
+- **Every block the simulation moves or breaks (144) is a `block/<id>` model** in the block's own frame, drawn where the block is:
+  the hotel's 74 masonry panels and 12 floor slabs, its 4 corner piers, the tenements' lane facades (18 panels, 6 piers), the two
+  skybridges (deck, two rails, bearing), the two kiln chimneys (base and four drums each) and the 30 cover props. They sag with
+  the telegraph, pancake, peel, tear and topple exactly as their boxes did, because they are posed by the same transforms. A
+  broken panel's fragments and stub are the dressing's boxes in the panel's brick look, as on every stage. Blocks alike share one
+  mesh (each prop carries its own quarter turn; local +z is the side that looks out of its building): 154 block props, 42 meshes.
+- **Each landed segment's rubble is one heap** (`NativeBrickfallArt.Heap`: the segment's first rubble block carries the model, the
+  others are covered and draw nothing): a broken surface that follows the rubble blocks' tops, so feet stand on the heap where they
+  stand on the blocks, skirted to the ground and strewn with loose bricks, slab shards, joists and bent bars. The drawer learned
+  to draw models for a segment's rubble (static blocks that exist only once it has landed).
+- **The collapse telegraph is the dressing's own**, on the models (`ArenaPresentation.BrickfallTell`, the drawer's new `Tell`
+  hook): a stressed segment's blocks sag and lean by Core `NativeStructureFx.TelegraphFor` (the same record, clock and seed the
+  dressing uses), their lit windows strobe with the telegraph's window light and go dark until it lands (a block model's glow
+  sub-mesh times the hook's glow), and the fourteen structural members wear the load-bearing band as a bolted black strap with
+  yellow chevrons, a DANGER plate and a lamp on each face whose lens is the model's glow: amber while the members are locked,
+  strobing red under stress and at the last damage stage, dark otherwise (`NativeBlockLooks.Lamp`, `NativeBrickfallArt.Lamp`:
+  the dressing's states and colours). "Unmarked brick never falls" still reads at a glance.
+
+## What is modelled (tools/stages/brickfall_*.py)
+
+`brickfall_kit.py` (finishes; walls as faces with their openings cut out, each opening with its reveal, sill, head and what fills
+it: glass in a sash, boards, brick, a roller shutter, a door; mouldings run along a wall; a 5 x 7 face of raised letters; hazard
+chevrons; the band), `brickfall_art.py` (the floor, the frontage, the main), `brickfall_parts.py` (the other static pieces),
+`brickfall_props.py` (the block models and the heaps). The map is point symmetric: the north-west half is sculpted twice (other
+names, tones and seeds the second time) and the second sculpt is turned half round; the hotel is sculpted whole.
+
+- **The frontage** (the 14 m walls round the yard, which were blank brick): to north and south, four buildings a side in four
+  bricks (red, plum, tan, rose), each with its shopfronts (shutters, boarded and glazed fronts under a lettered fascia), its
+  entrance in the map's own recess (cheeks, soffit, a panelled door), two or three storeys of windows (segmental and round arches
+  in brick rings with keystones, paired lights under stone lintels; glazed, lit, boarded or bricked up), strings, quoins, a
+  corbelled cornice, a coping, a downpipe, and behind the parapet a slate roof with party walls, chimney stacks and pots; the
+  swan-neck lamps where the look's sodium lights are; over head height, striped canvas awnings on some shopfronts and a trade
+  sign hung from a bracket on each building. To east and west a brick warehouse of nine arched bays between piers (a
+  loading shutter or a big window low, a lunette in the arch), its name painted along the frieze. The chimneys stand in their
+  notches between two buildings' flank walls.
+- **The yard's floor**: asphalt with patches, cobbled lanes along the frontages, paving round the buildings, lane paint, manholes
+  and gratings; one cell is one face, so nothing lies on anything.
+- **The Hotel Mercer**: buff brick panels with arched windows (lit, dark or boarded; the lit ones are the telegraph's), stone
+  bands at the floor lines, quoined narrow panels, papered rooms inside with skirtings, parapets under copings; board floors on
+  joists, a felted roof with a skylight curb; the corner piers on stone bases under stone caps, banded; the concrete stair tower
+  with a painted dado, its flights and landings, the ground floor's seam walls with blind arches, the stair house; a neon blade
+  sign (MERCER) on the north-east wing where the look's blue sign light is, and the roof sign over the stair house (its foot
+  2.2 m over the roof, so a pilot stands under it).
+- **Ashby House and Bray House**: brick shells with blind windows by storey, papered rooms, board floors, a felted roof behind the
+  parapet, the name over the south wall; the lane facade's panels and banded piers are the breakable models.
+- **The skybridges**: chequer plate on riveted girders, plate-girder parapets (they are cover), banded steel bearings.
+- **The kiln chimneys**: a stone-and-brick pedestal with the band, four eight-sided brick lengths in alternating tones with iron
+  straps and rungs, the crown's oversailing courses round the flue's mouth.
+- **The corner shops** (Kessel's, Dunmore's): cream faience on a dark plinth, shuttered and boarded fronts, lettered fascias, a
+  cornice, the parapet, the long ramp as one slope.
+- **The market and the yard**: panelled green kiosks with shuttered hatches and poster boards, rendered storerooms with roller
+  doors, the market walls with blind arches under stone copings, the loading docks with steel nosings, buffers and hazard paint,
+  the box trucks (a Luton body over the cab, so the top is one deck like the block's).
+- **Street furniture that is cover**: the monuments' pedestals with bronze tablets, news kiosks, phone boxes glazed in small
+  panes, the tram shelters (closed all round: they stop shots).
+- **Cover props**: cribs of sleepers with a striped rail, pallets of new brick under bands, sandbag walls in bond, market stalls
+  with canvas skirts and crates.
+
+Cover reads as cover: what stops a shot is solid to the eye (a window in a breakable panel is glazed or boarded, never a hole).
+`ChipArena/StageLit` gained **`DETAIL_BRICK`** (21): brickwork in running bond on the world's courses (225 x 75 mm, the parameter
+scales it), light sunk mortar, each brick its own shade and a few burnt dark; where a course nears a pixel the bond eases into
+its mean tone (screen derivatives), so far walls do not shimmer.
+
+## No invisible walls
+
+Brickfall had seven pilot columns. Four stay: the frontage's caps (`frontage-top-±1`, `frontage-side-top-±1`), which keep pilots
+inside the map (beyond the wall's top is the backdrop's street, outside the bounds). Three went: the hotel's stair house
+(`hotel-stairhouse-top`) and the two chimneys' crowns (`stack-n-top`, `stack-s-top`): a pilot may stand on anything they can
+reach. (A chimney stands in the frontage, so the frontage's cap still covers its crown.) No column is at a lethal drop, so none
+is `bots`. Where the data is: `tools/generate_brickfall.py` authors the columns; the catalogue keeps Brickfall's record as it
+is, so `tools/generate_stage_hazards.py` applies the same rule to the kept record when the catalogue is regenerated, and
+`Assets/Conversion/Resources/UnityMaps.json` and `tools/asset-lock.json` were edited in place to it (only Brickfall's
+`pilotBlocks` changed; the content revision changes with it).
+
+## No z-fighting
+
+Every tier's static scene goes through `stagekit.lift_coplanar` before the bake. The stair flights' treads (which overlap along
+their run in the map) are cut back to meet their neighbours, the ramps are one slope instead of their slices, and the floor is one
+face a cell. Measured with `zfight.py` on the bank: see the numbers below. The look's six tarps (Core NativeBrickfallAtmosphere:
+effect quads 6 cm off the blank frontage) do not draw while the art does (`NativeBrickfallFx.Tarps`): they lay over the modelled
+windows, strings and piers. Without the bank they hang as before.
+
+## Files
+
+Core `NativeBrickfallArt.cs` (the bank's name, `Segment`, `Banded`, `Heap`, `Lamp`); Runtime `NativeBrickfallPresentation.cs`
+(`BrickfallArtPrepare`, `BrickfallArt`, `BrickfallTell`), `NativeStagePrewarm.cs` (the art is prepared behind the loading screen);
+Tests `BrickfallArtLayout.cs` (the layout's Brickfall part: looks, segments, rubble, lights, spawns, columns),
+`BrickfallArtChecks.cs` (`--brickfall-art`, also in the full run); tools/stages `brickfall_art.py`, `brickfall_kit.py`,
+`brickfall_parts.py`, `brickfall_props.py`.
+
+Shared files touched (small, general): Runtime `NativeStageArt.cs` (the `Tell` hook on a block's model; models for a landed
+segment's rubble), Core `NativeStageArt.cs` (`Banks`: one line), Resources `NativeStageLit.shader` and tools/stages `stagekit.py`
+(`DETAIL_BRICK`), Tests `StageArtLayout.cs` (one line), `Program.cs` (the flag and the full run's line),
+`tools/generate_stage_hazards.py` (one rule), `tools/generate_brickfall.py`, `UnityMaps.json`, `tools/asset-lock.json`.
+
+Rebuild: `dotnet run --project Tests/CoreTests.csproj -c Release -- --stage-layout brickfall LAYOUT.json`, then
+`blender --background --factory-startup --python tools/stages/brickfall_art.py -- --layout LAYOUT.json --out <Assets>/LocalAssets`
+(about 30 s; `--preview DIR [--views a,b]` renders the named views of the Fine tier, `--landed` shows every segment landed,
+`--tiers`, `--no-ao`, `--static-only`, `--stats`).
+
+## Numbers (2026-11-11)
+
+The bank: 18,900,419 bytes, 1,173 props. Static: 34 chunks; Fine 172,132 triangles (168,941 vertices), Mid 71,592 (82,063),
+Low 26,530 (42,593). Block models: 42 meshes for the 144 moving blocks; 25,804 / 16,072 / 5,902 triangles. Heaps: 10;
+21,026 / 5,178 / 746 triangles. About 30 s to build. The Low graphics tier draws the bank's Low tier.
+
+Z-fighting (`zfight.py`, the static chunks, 4 mm): 0.07 m2 at Fine, 0.06 at Mid, 0.02 at Low (before `lift_coplanar`: 47.7, 64.8
+and 72.1 m2). The block models at rest against the chunks and one another (the scratch `zblocks.py`, the same measure): 1.2 to
+1.4 m2 by tier in some 60 places of 0.03 m2 or less, all the same brick (the ends of two wall panels that meet at a corner,
+under the slabs); the piers, bearings and decks, which lay in their neighbours' planes (12.6 m2), stand a hair inside their blocks.
+
+Frame times (shared Editor, High tier, the whole yard from over its south-west corner, one idle bot, 10 s; runs taken back to
+back, the machine otherwise quiet): the dressed blocks 8.83 ms mean / 10.19 ms p95 and 10.05 / 11.43; the art 8.88 / 10.12 and
+8.96 / 10.15. Level with the boxes on the mean, at or under on the p95. (Earlier pairs under load from eight other sessions:
+10.60 / 16.20 and 11.41 / 21.35 before, 10.80 / 13.25 and 11.58 / 14.27 after.)
+
+Checks: `--brickfall-art` (694 checks: the rules, the columns, the layout, the wiring, the bank), `--stage-art`, the full
+CoreTests suite, the Unity compile, the Editor's build checks (`wtvalidate.sh`: ok).
+
+## Seen, and what is not done
+
+Seen in the shared Editor (a match, one idle bot, god mode, the game's camera at fixed eyes): fourteen views before and after
+(the yard from two corners, the hotel, the lanes, Ashby House, a skybridge, a shop, a chimney, the market, the truck and dock,
+inside the hotel, its roof, the frontage from the roof), the same on the Low graphics tier, a masonry panel shot out (its
+fragments are the dressing's, the room shows behind), and a collapse on the art: the hotel's north-west pier blasted with the
+fire class until the wing pancaked (the telegraph's footprint, the slabs and panels falling as their models, the hotel's heap
+and, by the cascade, the skybridge's heap in their places, the core and its seam wall standing).
+
+Not done / not seen:
+- **The backdrop is still the box-built city** (Core NativeBrickfallScenery: five baked meshes, the train, the crane jibs). It
+  stands 35 m and more off behind the modelled frontage and its roofs; modelling it did not fit this pass's budget (the bank
+  has about 1 MB left of its 20) or time. The menu's backdrop is that scenery too.
+- A skybridge's heap reads as a mound of green plate more than as wreckage; the heaps' brick is the wall's bond stretched over
+  the mound (the strewn bricks, shards and bars carry the detail).
+- The peel, the tear-hinge and the topple were not triggered in a capture (the pancake and its cascade were); they pose the
+  same models by the same transforms.
+- A damaged panel shows its damage as soot only (the drawer's one model a block); the dressed boxes chipped their corners.
+- The frontage's tarps and the look's two barrel fires' places have no model (a barrel would stand where there is no collider).
+- Native Windows build, multiplayer guests and the killcam on the art: not run.

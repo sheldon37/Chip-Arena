@@ -6,8 +6,10 @@ stages' kept only at the map's edges and, for bots, at lethal drops (open_stage)
 import importlib.util,json,math
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[3]
+# A stage rebuilt from scratch takes its new draft (the M1 script stays as history).
+DRAFTS={'harbor':'harbor_m2','rig':'rig_m2','polar':'polar_m2','skyframe':'skyframe_m2','breakwater':'breakwater_m2'}
 def draft(name,fn):
-    spec=importlib.util.spec_from_file_location(name,ROOT/f'docs/arenas/scripts/{name}_m1.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return getattr(m,fn)()['maps'][0]
+    spec=importlib.util.spec_from_file_location(name,ROOT/f'docs/arenas/scripts/{DRAFTS.get(name,name+"_m1")}.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return getattr(m,fn)()['maps'][0]
 def v(x,y,z):return dict(x=round(x,4),y=round(y,4),z=round(z,4))
 def bounds(b):return tuple((b['pos'][k]-b['size'][k]/2,b['pos'][k]+b['size'][k]/2) for k in 'xyz')
 def navigation(m):
@@ -26,7 +28,7 @@ def navigation(m):
             if b[0][0]-.43<x<b[0][1]+.43 and b[2][0]-.43<z<b[2][1]+.43:
                 if b[1][1]>y+.65:return False
         return True
-    nodes=[];grid={};B=m['bounds'];step=.5 if m['id']=='rig' else 1
+    nodes=[];grid={};B=m['bounds'];step=1
     def samples(lo,hi):return [i*step for i in range(math.ceil((lo+1)/step),math.floor(hi/step))]
     for x in samples(B['minX'],B['maxX']):
         for z in samples(B['minZ'],B['maxZ']):
@@ -106,25 +108,50 @@ def open_tops(m):
 # people get knocked off the map. Its a instant death when falling off". There a column stays for everyone only where it keeps
 # pilots inside the map (EDGES: the outer walls' caps, the club's crowd barrier and its mezzanines' rails over the crowd pit, the
 # Sanctum's vault) or where the art hangs too close over a top to stand on it (OVERHANG: the club's lighting towers under their truss and
-# its DJ cube under its rig, the Causeway's spires and gables under their floating crown stones). A column at a lethal drop (the Causeway's rails, parapets and crown edges) stops only bots (`bots`: they vault
+# its DJ cube under its rig, the Causeway's spires and gables under their floating crown stones, Pier 9's rides' upper decks under the
+# turning mounts and the band stand's dome, its turrets under their domes and its drop towers' masts). A column at a lethal drop (the Causeway's rails, parapets and crown edges) stops only bots (`bots`: they vault
 # whatever their obstacle ray hits; NativeMapRules.ExcludeTops), so a player can jump over or be knocked over it and fall. Every
 # other column over a top goes: a double jump (daggers, bow, chips) reaches the 3.9 m ovens, altars and gates, and a pilot may
 # stand on anything they can reach.
-EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':()}
-OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-')}
+EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':(),'harbor':(),'rig':('rig-top-wall','rig-top-glass','rig-top-bulkhead'),'polar':('polar-top-ridge','polar-top-ship-bridge'),'skyframe':()}
+OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-'),'harbor':('harbor-ride-','harbor-turret-','harbor-tower-'),'rig':('rig-top-pylon',),'polar':('polar-top-obs-pedestal',),'skyframe':('skyframe-tree-',)}
+# Cyber City (2026-11-11, the art pass): its columns are the frontage's tops and the tunnel mouths (the map's edge; the art shows the
+# mouths' light gates) and the spires' tops at the ceiling (their crowns and masts stand on them). None opens onto a lethal drop.
+EDGES['cybercity']=('cybercity-frontage-top','cybercity-tunnel-');OVERHANG['cybercity']=('cybercity-spire-top',)
+# The Factory (art pass 2026-11-11, the same rule): the shell's caps keep pilots inside the map; the crane's end trucks ride the runway girders' tops.
+# The hall roofs, the pulpit roofs and the ladle are open: a pilot may stand on whatever they reach.
+EDGES['factory']=('factory-top-wall',);OVERHANG['factory']=('factory-top-runway',)
+# Breakwater (rebuilt 2026-11-11): the end buildings' walls and roofs keep pilots inside the map (the mole runs on past both as scenery).
+EDGES['breakwater']=('breakwater-end-',)
+# Breakwater: the watch turret's roof and the Mariners' Stone's obelisk stand on their blocks.
+OVERHANG['breakwater']=('breakwater-turret','breakwater-stone')
 def open_stage(m):
     sides=column_sides(m);keep=EDGES[m['id']]+OVERHANG.get(m['id'],());kept=[];bots=0
     for p in m['pilotBlocks']:
         if keep and p['id'].startswith(keep):kept.append(p)
         elif sides[p['id']][0]:kept.append(dict(p,bots=True));bots+=1
     print(m['id'],'pilot columns',len(m['pilotBlocks']),'->',len(kept),'(bots only:',str(bots)+')');m['pilotBlocks']=kept
+def segment_nav(m):
+    """A sinking segment (Polaris's thin ice: `carried` plates that ride pilots down and are gone) takes with it every link with an end
+    standing on one of its plates."""
+    ids={b['id']:b for b in m['blocks']};nodes={n['id']:n['pos'] for n in m['nav']['nodes']}
+    for s in m.get('segments',[]):
+        plates=[bounds(ids[i]) for i in s['blocks'] if ids[i]['role']=='carried']
+        def on(p):return any(b[0][0]-.001<=p['x']<=b[0][1]+.001 and b[2][0]-.001<=p['z']<=b[2][1]+.001 and abs(p['y']-.9-b[1][1])<.05 for b in plates)
+        s['nav']=dict(remove=[l['id'] for l in m['nav']['links'] if on(nodes[l['a']]) or on(nodes[l['b']])],add=[])
+        print(m['id'],s['id'],len(s['nav']['remove']),'links go with it')
 path=ROOT/'unity/ChipArenaConversion/Assets/Conversion/Resources/UnityMaps.json'
 content=json.loads(path.read_text())
+for old in content['maps']:  # the kept Brickfall record: only the frontage's caps keep pilots inside the map (tools/generate_brickfall.py)
+    if old['id']=='brickfall':old['pilotBlocks']=[p for p in old['pilotBlocks'] if p['id'].startswith('frontage-')]
 for name,fn,song in [('factory','unity_json','factory-anvil-loop'),('cybercity','draft','cybercity-neon-riot')]+[(name,'unity_json','factory-anvil-loop' if name in ('harbor','rig','training') else 'cybercity-neon-riot') for name in ('breakwater','harbor','skyframe','rig','polar','training')]+[('club','unity_json','cybercity-neon-riot')]+[('emporium','unity_json','cybercity-neon-riot')]+[('causeway','unity_json','skyframe-rising-motif')]+[('sanctum','unity_json','moonlit-wilderness')]:
     m=draft(name,fn);m.pop('killVolumes',None);m['music']=song;m['rotation']=name!='training'
+    if name=='factory':navigation(m);kept_nav=m['nav']   # the Factory's nav stays as it was (no nodes on the opened tops: bots have no way up to them)
     if name in EDGES:open_stage(m)
     elif name not in ('factory','cybercity'):open_tops(m)
     navigation(m)
+    if name=='polar':segment_nav(m)
+    if name=='factory':m['nav']=kept_nav
     content['maps']=[old for old in content['maps'] if old['id']!=name]+[m]
 # LF on every platform: the lock pins the exact bytes.
 path.write_bytes((json.dumps(content,separators=(',',':'))+'\n').encode())

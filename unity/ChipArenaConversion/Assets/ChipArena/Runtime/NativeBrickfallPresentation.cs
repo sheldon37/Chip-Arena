@@ -27,6 +27,12 @@ namespace ChipArena.UnityConversion
     ///  (graphics=performance).
     ///  - Not the dust coat: the round's one coat is Core NativeDustCoat (landings and breaks), which NativeArenaDressing
     ///    publishes and NativeBlockLit reads; the same landings reach it next to <see cref="BrickfallStructure"/>.
+    ///  - The stage art (docs/arenas/BRICKFALL-ART.md, docs/arenas/STAGE-ART.md): with the stage bank ChipArenaStageBrickfall,
+    ///    NativeStageArtDraw draws the modelled yard in place of the dressed blocks (the static blocks as chunks, every block
+    ///    the simulation moves or breaks as its model where the block is, each landed segment's rubble as one heap), in the
+    ///    arena and the killcam. The collapse telegraph on the models is <see cref="BrickfallTell"/>: the dressing's own sag,
+    ///    window light and band lamp (Runtime NativeBrickfallArtPresentation.cs). Without the bank nothing is made and the
+    ///    dressed blocks draw exactly as before.
     /// Structure events do not exist yet (Astra emits them later); the destruction kit's intake, and its dev Sandbox preview,
     /// call <see cref="BrickfallStructure"/> through ArenaPresentation.StructureHeard. Allocation free after the one-time bake.
     /// </summary>
@@ -42,7 +48,6 @@ namespace ChipArena.UnityConversion
         private Mesh[] brickfallSectors;private Mesh brickfallTrain,brickfallJib,brickfallPlate;private Material brickfallLit;private NativeFxDraw brickfallDraw;private bool brickfallFailed;
         private NativeBrickfallFx brickfallFx;private NativeFxLight brickfallLight;private NativeBrickfallMemory brickfallMemory;
         private readonly Matrix4x4[] brickfallJibs=new Matrix4x4[2];
-
         /// <summary>
         /// The structure events' hook for the atmosphere (ARENA_PROPOSAL.md §5.4), called by ArenaPresentation.StructureHeard for
         /// every StructureStress, StructureFall and StructureLand the destruction kit takes in (and its dev Sandbox preview), as
@@ -64,7 +69,7 @@ namespace ChipArena.UnityConversion
             if(!arena.ReplicaScene.IsValid()&&now+5<brickfallMemory.Newest)brickfallMemory.Clear();
             foreach(var e in arena.Events)if(e.Kind==EventKind.Explosion)brickfallMemory.Spook(e.Time,e.Position.x,e.Position.y,e.Position.z);
             var match=arena.Match;double roundStart=NativeBrickfallAtmosphere.RoundStart(match.Phase,match.FightAt,match.PhaseEnd);
-            BrickfallCover(arena);DrawBrickfall(now,WorldEye,true,roundStart);
+            BrickfallCover(arena);DrawBrickfall(now,WorldEye,true,roundStart);BrickfallArt(arena);
         }
         /// <summary>
         /// The paper scraps' cover: every prop's world bounding box (props are unit cubes scaled to their block size), refilled
@@ -126,7 +131,7 @@ namespace ChipArena.UnityConversion
             else for(int c=0;c<2;c++)Graphics.DrawMesh(brickfallJib,brickfallJibs[c],brickfallLit,backdrop,null,0,null,ShadowCastingMode.Off,true);
             if(camera==null)return;
             ReadBrickfallLight();BrickfallDustInUse=structureFx!=null?structureFx.Fx.PuffCount:0;var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
-            brickfallFx.Beams=AdvancedBeams;brickfallFx.Build(time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,brickfallLight,Mathf.Clamp01(EffectsQuality),LowGraphics,atmosphere,brickfallMemory,roundStart,BrickfallDustInUse);
+            brickfallFx.Tarps=!BrickfallArtDrawn;brickfallFx.Beams=AdvancedBeams;brickfallFx.Build(time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,brickfallLight,Mathf.Clamp01(EffectsQuality),LowGraphics,atmosphere,brickfallMemory,roundStart,BrickfallDustInUse);
             var q=brickfallFx.Quads;brickfallDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {
