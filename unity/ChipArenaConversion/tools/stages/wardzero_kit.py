@@ -31,9 +31,9 @@ def finishes():
     add('dado', 0x9FAAAC, A.DETAIL_TILE, smooth=.74, param=.3, dirt=.5)
     add('showertile', 0xD8E4E2, A.DETAIL_TILE, smooth=.8, param=.15, dirt=.8)
     add('concrete', 0x6E7472, A.DETAIL_PLASTER, smooth=.22, dirt=.9)
-    add('ceiling', 0x1E2832, A.DETAIL_PLASTER, smooth=.12, dirt=.3)
+    add('ceiling', 0x2B3745, A.DETAIL_PLASTER, smooth=.12, dirt=.3)
     add('soffit', 0x2C3742, A.DETAIL_PLASTER, smooth=.16, dirt=.3)
-    add('beam', 0x2A353F, smooth=.36, metal=.35, dirt=.4, wear=.2)
+    add('beam', 0x43525E, smooth=.4, metal=.4, dirt=.4, wear=.25)
     # metals
     add('steel', 0x5D6B6E, smooth=.56, metal=.6, dirt=.7, wear=.35)
     add('steeldark', 0x2F383B, smooth=.5, metal=.6, dirt=.6, wear=.3)
@@ -57,7 +57,7 @@ def finishes():
     add('glass', 0x1F4F48, smooth=.93, metal=.2, dirt=.15)
     add('vessel', 0x17403A, smooth=.9, metal=.3, dirt=.3)
     add('window', 0x7FA8A0, glow=.42)
-    add('shardglow', 0x39C8A6, glow=.62)
+    add('shardglow', 0x2FA890, glow=.4)
     add('throat', 0x0B0807, smooth=.1, dirt=0.0)
 
 
@@ -250,14 +250,32 @@ def local(g, q, c):
     return t, (lambda: g.extend(t.transformed(sk.affine(q, c))))
 
 
-def striped(g, p, T, band=.16):
+def buried(p, owner):
+    """The faces of an upright kit part that lie on or in its upright block ('-x', '+x', ...): never seen, left out."""
+    if owner is None or p['q'][3] < .9999 or not upright(owner):
+        return ()
+    e = ext(owner)
+    out = []
+    for ax in range(3):
+        for s, k in ((-1, '-'), (1, '+')):
+            q = list(p['c'])
+            q[ax] += s * (p['h'][ax] + .002)
+            if e[0] <= q[0] <= e[1] and e[2] <= q[1] <= e[3] and e[4] <= q[2] <= e[5]:
+                out.append(k + 'xyz'[ax])
+    return tuple(out)
+
+
+def striped(g, p, T, band=.16, owner=None):
     """A hazard-striped kit part: a dark body with slanted yellow and black stripes on its two largest faces."""
     hx, hy, hz = p['h']
     t, done = local(g, p['q'], p['c'])
     thin = min(range(3), key=lambda i: p['h'][i])
     keys = (('-x', '+x'), ('-y', '+y'), ('-z', '+z'))[thin]
     box(t, -hx, hx, -hy, hy, -hz, hz, F['stripe-black'], None, 0, cell=0, skip=keys)
+    gone = buried(p, owner)
     for s in (-1, 1):
+        if ('-' if s < 0 else '+') + 'xyz'[thin] in gone:
+            continue
         if thin == 0:
             o, U, V, lu, lv, n = (s * hx, -hy, -hz), (0, 0, 1), (0, 1, 0), 2 * hz, 2 * hy, (s, 0, 0)
         elif thin == 1:
@@ -275,17 +293,22 @@ def long_axis(p):
     return max(range(3), key=lambda i: p['h'][i])
 
 
-def kbox(g, p, T, f=None, bevel=.01):
-    """A kit part as a chamfered piece in its own finish."""
-    obox(g, p['c'], p['h'], p['q'], pfin(p) if f is None else f, T, bevel)
+def kbox(g, p, T, f=None, bevel=.01, owner=None):
+    """A kit part as a chamfered piece in its own finish (less the faces that lie on its block)."""
+    gone = buried(p, owner)
+    if gone:
+        c, h = p['c'], p['h']
+        box(g, c[0] - h[0], c[0] + h[0], c[1] - h[1], c[1] + h[1], c[2] - h[2], c[2] + h[2], pfin(p) if f is None else f, T, bevel, cell=0, skip=gone)
+    else:
+        obox(g, p['c'], p['h'], p['q'], pfin(p) if f is None else f, T, bevel)
 
 
-def kit_part(g, p, T):
+def kit_part(g, p, T, owner=None):
     """The fallback: a kit part rebuilt as a finished piece: a striped plate, a round pipe on clamps, a rivet's dome, or a
     chamfered box."""
     h = p['h']
     if p['look'] == 'demolition':
-        striped(g, p, T)
+        striped(g, p, T, owner=owner)
         return
     if p['look'] == 'cyber-metal' and p['col'] in PIPES and p['q'][3] > .9999:
         ax = long_axis(p)
@@ -300,4 +323,4 @@ def kit_part(g, p, T):
         if T.tiny:
             ck.dome(g, p['c'], max(h) * 1.1, pfin(p), 6, 2, axis=(0, 1, 0))
         return
-    kbox(g, p, T, bevel=min(.012, min(h) * .5))
+    kbox(g, p, T, bevel=min(.012, min(h) * .5), owner=owner)

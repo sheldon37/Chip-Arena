@@ -64,6 +64,60 @@ class Scene:
         return self.static
 
 
+KEYS = ('-x', '+x', '-y', '+y', '-z', '+z')
+COVER = []          # the static upright blocks' boxes (what can hide a face for good)
+BOUNDS = None
+
+
+def set_cover(L):
+    global BOUNDS
+    BOUNDS = L['bounds']
+    posed = set(L['posed'])
+    del COVER[:]
+    for b in L['blocks']:
+        if b['role'] == 'static' and upright(b) and b['id'] not in posed:
+            COVER.append((ext(b), b['id']))
+
+
+def hidden(b):
+    """The faces of an upright block that a static block (or the world outside the bounds) covers whole: never seen, and left
+    out so that no two faces lie in one plane. A face against a block that can leave (a posed wall) stays."""
+    x0, x1, y0, y1, z0, z1 = ext(b)
+    out = []
+    for key in KEYS:
+        ax = 'xyz'.index(key[1])
+        lo, hi = [x0, y0, z0], [x1, y1, z1]
+        at = (lo[ax] - .012) if key[0] == '-' else (hi[ax] + .012)
+        o = [i for i in range(3) if i != ax]
+        ok = True
+        for (s, t) in ((.5, .5), (.04, .04), (.96, .04), (.04, .96), (.96, .96), (.5, .04), (.5, .96), (.04, .5), (.96, .5)):
+            p = [0, 0, 0]
+            p[ax] = at
+            p[o[0]] = lo[o[0]] + (hi[o[0]] - lo[o[0]]) * s
+            p[o[1]] = lo[o[1]] + (hi[o[1]] - lo[o[1]]) * t
+            if p[0] < BOUNDS['minX'] or p[0] > BOUNDS['maxX'] or p[2] < BOUNDS['minZ'] or p[2] > BOUNDS['maxZ']:
+                continue
+            if not any(e[0] <= p[0] <= e[1] and e[2] <= p[1] <= e[3] and e[4] <= p[2] <= e[5] for e, i in COVER if i != b['id']):
+                ok = False
+                break
+        if ok:
+            out.append(key)
+    return tuple(out)
+
+
+def fkey(fc):
+    return ('-' if fc.sign < 0 else '+') + ('x' if fc.axis == 0 else 'z')
+
+
+def bbox(g, b, f, T, bevel=.02, extra=()):
+    """A block's own box in a finish, less its hidden faces (and its underside on a floor)."""
+    x0, x1, y0, y1, z0, z1 = ext(b)
+    skip = set(hidden(b)) | set(extra)
+    if level(y0) is not None:
+        skip.add('-y')
+    box(g, x0, x1, y0, y1, z0, z1, f, T, bevel if not (skip - {'-y'}) else 0, cell=0, skip=tuple(skip))
+
+
 def tally(g, key, n0):
     if COUNT:
         STATS[key] += g.faces - n0
@@ -85,19 +139,22 @@ def solid_block(g, b, T, body=None, top=None, panel=None, cladding=True, bevel=.
     x0, x1, y0, y1, z0, z1 = ext(b)
     body = F['reveal'] if body is None else body
     fl = level(y0)
-    skip = ['-y'] if fl is not None else []
+    hid = hidden(b)
+    skip = list(hid) + (['-y'] if fl is not None else [])
     if y1 > ROOF - .05:
         skip.append('+y')
     if T.i == 2 and cladding:
         skip += ['-x', '+x', '-z', '+z']
-    box(g, x0, x1, y0, y1, z0, z1, body, T, 0, cell=0, skip=tuple(skip))
+    box(g, x0, x1, y0, y1, z0, z1, body, T, 0, cell=0, skip=tuple(set(skip)))
     if top is not None:
         box(g, x0 - .025, x1 + .025, y1, y1 + .05, z0 - .025, z1 + .025, top, T, .015, cell=0, skip=('-y',))
     if not cladding:
         return
     for fc, u0, u1 in wk.faces_of(b):
+        if fkey(fc) in hid:
+            continue
         if u1 - u0 < .7:
-            fc.quad(g, u0, u1, y0, y1, .004, F['panel'] if panel is None else panel)
+            fc.quad(g, u0, u1, y0, y1, .006, F['panel'] if panel is None else panel)
         else:
             wk.clad(g, fc, u0, u1, y0, y1, T, floor=fl, panel=panel)
 
@@ -133,8 +190,10 @@ def slab_block(g, b, T, top, bottom, side, holes=(), cell=None, pit=.32):
     if bottom is not None:
         wk.floor(g, x0, x1, z0, z1, y0, bottom, c * 2, up=False)
     if side is not None:
+        hid = hidden(b)
         for fc, u0, u1 in wk.faces_of(b):
-            fc.quad(g, u0, u1, y0, y1, 0, side)
+            if fkey(fc) not in hid:
+                fc.quad(g, u0, u1, y0, y1, 0, side)
 
 
 def box_in(g, x0, x1, y0, y1, z0, z1, f):
@@ -188,13 +247,18 @@ def ceiling(g, b, T, L):
         z = -28 + 2.4
         while z < bd['maxZ']:
             for a, c in spans(bd['minX'], bd['maxX'], z, True):
-                ck.ibeam(g, [(a, y - .21, z), (c, y - .21, z)], .42, .22, F['beam'], up=(0, 1, 0), caps=True)
+                ck.ibeam(g, [(a, y - .21, z), (c, y - .21, z)], .42, .22, F['beam'], up=(0, 1, 0), caps=False)
             z += 4.8
     if T.i == 0:
         x = -36 + 2.4
         while x < bd['maxX']:
             for a, c in spans(bd['minZ'], bd['maxZ'], x, False):
-                box(g, x - .06, x + .06, y - .2, y, a, c, F['beam'], T, .01, cell=0, skip=('+y',))
+                # in bays, from one beam's flange to the next
+                zs = [a] + [zz for zz in [-28 + 2.4 + 4.8 * k for k in range(13)] if a < zz < c] + [c]
+                for k in range(len(zs) - 1):
+                    lo_, hi_ = zs[k] + (.115 if k > 0 else 0), zs[k + 1] - (.115 if k < len(zs) - 2 else 0)
+                    if hi_ - lo_ > .2:
+                        box(g, x - .06, x + .06, y - .2, y, lo_, hi_, F['beam'], None, 0, cell=0, skip=('+y', '-z', '+z'))
             x += 4.8
 
 
@@ -238,12 +302,12 @@ def tread(g, b, T, route):
         for fc, u0, u1 in wk.faces_of(b):
             side = (fc.axis == 0) == (ux == 0)
             if side:
-                fc.quad(g, u0, u1, y0, y1 - rise, 0, F['concrete'])
+                fc.quad(g, u0, u1, y0, y1 - rise, 0, F['panel'])
     # the last tread's back (under the landing) closes the flight
     if abs(y1 - UPPER) < .01:
         fc = Face(0, 1 if ux > 0 else -1, x1 if ux > 0 else x0) if ux != 0 else Face(2, 1 if uz > 0 else -1, z1 if uz > 0 else z0)
         u0, u1 = (z0, z1) if ux != 0 else (x0, x1)
-        fc.quad(g, u0, u1, y0, y1, 0, F['concrete'])
+        fc.quad(g, u0, u1, y0, y1, 0, F['panel'])
 
 
 def ramp_deck(g, b, T):
@@ -269,11 +333,12 @@ def inner_face(b):
 def cabinet(g, b, T, body, front=None, module=.6, top=None, toe=True):
     """A cabinet body: a chamfered case, door plates on its long faces and (toe) a dark recessed plinth line."""
     x0, x1, y0, y1, z0, z1 = ext(b)
-    box(g, x0, x1, y0, y1, z0, z1, body, T, .02, cell=0, skip=('-y',))
+    bbox(g, b, body, T)
     if T.i == 2 or front is None:
         return
+    hid = hidden(b)
     for fc, u0, u1 in wk.faces_of(b):
-        if u1 - u0 < .9:
+        if u1 - u0 < .9 or fkey(fc) in hid:
             continue
         n = max(1, int(round((u1 - u0) / module)))
         for i in range(n):
@@ -290,8 +355,7 @@ def tank(g, b, T):
 
 
 def furnace(g, b, T):
-    x0, x1, y0, y1, z0, z1 = ext(b)
-    box(g, x0, x1, y0, y1, z0, z1, F['steeldark'], T, .03, cell=0, skip=('-y',))
+    bbox(g, b, F['steeldark'], T, .03)
 
 
 def shard(g, b, T, seed):
@@ -472,7 +536,7 @@ def block_body(S, b):
         key = 'fitting'
     elif '-chamber-' in s or '-freezer-' in s or '-lockers' in s or '-rack' in s:
         x0, x1, y0, y1, z0, z1 = ext(b)
-        box(g, x0, x1, y0, y1, z0, z1, F['steeldark'] if '-rack' in s else F['steel'], T, .02, cell=0, skip=('-y',))
+        bbox(g, b, F['steeldark'] if '-rack' in s else F['steel'], T)
         if '-rack' in s and T.i < 2:
             fc, u0, u1 = inner_face(b)
             n = 4
@@ -482,14 +546,14 @@ def block_body(S, b):
         key = 'fitting'
     elif '-shower-' in s:
         x0, x1, y0, y1, z0, z1 = ext(b)
-        box(g, x0, x1, y0, y1, z0, z1, F['showertile'], T, .015, cell=0, skip=('-y',))
+        bbox(g, b, F['showertile'], T, .015)
         key = 'fitting'
     elif '-console' in s or '-desk' in s:
         cabinet(g, b, T, F['steeldark'] if '-console' in s else F['panel'], wk.cfin(0x3A464C, 'metal') if '-console' in s else F['white'], module=.8)
         key = 'fitting'
     elif '-screen-' in s:
         x0, x1, y0, y1, z0, z1 = ext(b)
-        box(g, x0, x1, y0, y1, z0, z1, F['steeldark'], T, .02, cell=0, skip=('-y',))
+        bbox(g, b, F['steeldark'], T)
         key = 'fitting'
     elif min(b['size'][0], b['size'][2]) <= .65 and b['size'][1] >= .9:
         free_top = b['pos'][1] + b['size'][1] / 2 < 5.5
@@ -497,7 +561,7 @@ def block_body(S, b):
         key = 'wall'
     else:
         x0, x1, y0, y1, z0, z1 = ext(b)
-        box(g, x0, x1, y0, y1, z0, z1, F['steel'] if b['material'] == 'metal' else F['panel'], T, .02, cell=0, skip=('-y',))
+        bbox(g, b, F['steel'] if b['material'] == 'metal' else F['panel'], T)
         key = 'other'
     tally(g, key, n0)
 
@@ -525,9 +589,15 @@ def troffer(g, p, T):
     f = F['stainless']
     if T.i == 2:
         return
-    for (a, c, d, e) in ((x - hx - .03, x - ix, z - hz - .03, z + hz + .03), (x + ix, x + hx + .03, z - hz - .03, z + hz + .03),
-                         (x - ix, x + ix, z - hz - .03, z - iz), (x - ix, x + ix, z + iz, z + hz + .03)):
-        box(g, a, c, lo, top, d, e, f, T, .012, cell=0, skip=('+y',))
+    # a shallow tray: four sloped sides from the ceiling down to a flat rim round the diffuser
+    O = [(x - hx - .07, top, z - hz - .07), (x + hx + .07, top, z - hz - .07), (x + hx + .07, top, z + hz + .07), (x - hx - .07, top, z + hz + .07)]
+    M = [(x - hx - .02, lo, z - hz - .02), (x + hx + .02, lo, z - hz - .02), (x + hx + .02, lo, z + hz + .02), (x - hx - .02, lo, z + hz + .02)]
+    I = [(x - ix, lo, z - iz), (x + ix, lo, z - iz), (x + ix, lo, z + iz), (x - ix, lo, z + iz)]
+    for k in range(4):
+        j = (k + 1) % 4
+        mid = sk._lerp(M[k], M[j], .5)
+        g.face((O[k], O[j], M[j], M[k]), f, normal=(mid[0] - x, -.6, mid[2] - z))
+        g.face((M[k], M[j], I[j], I[k]), f, normal=(0, -1, 0))
 
 
 def highbay(g, p, T):
@@ -714,7 +784,7 @@ def kit_parts(S):
             fc, u, hu, y0, y1, d = drawer(g, p, b, T)
             if f == 'lockers' and T.tiny:
                 for k in range(4):
-                    fc.box(g, u - hu + .08, u + hu - .08, y1 - .5 + k * .05, y1 - .48 + k * .05, d - .004, d + .004, F['steeldark'], None, 0, skip=('back',))
+                    fc.box(g, u - hu + .08, u + hu - .08, y1 - .5 + k * .05, y1 - .48 + k * .05, d - .004, d + .008, F['steeldark'], None, 0, skip=('back',))
         elif f == 'tank' and near(h[0], .05) and near(h[2], .05):
             x, y, z = p['c']
             rod(g, (x, y - h[1], z), (x, y + h[1], z), .055, F['steel'], T.round if T.i == 0 else 6)
@@ -751,8 +821,15 @@ def kit_parts(S):
                 ck.rivets(g, [tuple(p['c'][k] - n[k] * h[k] for k in range(3))], tuple(n), .03, F['stainless'])
         elif look == 'cyber-grate':
             grating(g, p, T)
+        elif col == wk.VOID and min(h) < .01 and upright(b):
+            # a dark opening's plate: stood clear of the cladding under it
+            ax, s = facing(p, b)
+            q = dict(p)
+            q['c'] = tuple(p['c'][k] + (s * .004 if k == ax else 0) for k in range(3))
+            q['h'] = tuple(p['h'][k] + (.004 if k == ax else 0) for k in range(3))
+            wk.kit_part(g, q, T, owner=b)
         else:
-            wk.kit_part(g, p, T)
+            wk.kit_part(g, p, T, owner=b)
         tally(g, 'kit ' + f, n0)
     # the stairs' handrails: a sloped tube through the posts' tops on each open side of a flight
     for key, tops in rails.items():
@@ -771,6 +848,12 @@ def cradle_ring(g, b, T):
     sec = [(-.24, 0), (-.2, .035), (.2, .035), (.24, 0)]
     path = [(5.6 * math.sin(2 * math.pi * i / n), y, 5.6 * math.cos(2 * math.pi * i / n)) for i in range(n)]
     sweep(g, sec, path, wk.cfin(0x3A4448, 'metal'), closed=True, up=(0, 1, 0), smooth_u=False)
+    # a band of dark tile round the seat and a paler disc inside it (laid on the floor: the coplanar pass stands them clear)
+    m = n if T.i < 2 else 16
+    for (r0, r1, f) in ((5.9, 6.5, wk.cfin(0x56626A, 'paint')), (6.5, 6.62, F['stainless'])):
+        for i in range(m):
+            a0, a1 = 2 * math.pi * i / m, 2 * math.pi * (i + 1) / m
+            g.face(((r0 * math.sin(a0), y, r0 * math.cos(a0)), (r1 * math.sin(a0), y, r1 * math.cos(a0)), (r1 * math.sin(a1), y, r1 * math.cos(a1)), (r0 * math.sin(a1), y, r0 * math.cos(a1))), f, (0, 1, 0))
     if T.tiny:
         ck.rivets(g, [((5.6 + s * .12) * math.sin(2 * math.pi * i / 48), y + .035, (5.6 + s * .12) * math.cos(2 * math.pi * i / 48)) for i in range(48) for s in (-1, 1)], (0, 1, 0), .025, F['stainless'])
 
@@ -803,7 +886,7 @@ def grating(g, p, T):
         zz = z - hz + .05 + (2 * hz - .1) * i / n
         box(g, x - hx, x + hx, y - hy, y + hy + .004, zz - .02, zz + .02, F['steel'], None, 0, cell=0, skip=('-y',))
     for s in (-1, 0, 1):
-        box(g, x + s * (hx - .04) - .03, x + s * (hx - .04) + .03, y - hy, y + hy + .008, z - hz, z + hz, F['steel'], None, 0, cell=0, skip=('-y',))
+        box(g, x + s * (hx - .04) - .03, x + s * (hx - .04) + .03, y - hy, y + hy + .014, z - hz, z + hz, F['steel'], None, 0, cell=0, skip=('-y',))
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -892,6 +975,7 @@ def leaf(g, p, T):
 # A tier's scene
 # ---------------------------------------------------------------------------------------------------------------------------
 def build(L, T):
+    set_cover(L)
     S = Scene(L, T)
     for b in L['blocks']:
         block_body(S, b)
@@ -909,7 +993,8 @@ def lift_all(geos, ti):
     for g in geos:
         counts.append((len(g.p), len(g.size)))
         allg.extend(g)
-    rep = sk.lift_coplanar(allg, eps=sk.NEAR_TIER[ti], lift=sk.LIFT_TIER[ti])
+    # (a little over the kit's nearness at the Fine tier: faces 4 mm apart still fight at its range)
+    rep = sk.lift_coplanar(allg, eps=max(sk.NEAR_TIER[ti], .0045), lift=sk.LIFT_TIER[ti], passes=5)
     at = 0
     for g, (n, _) in zip(geos, counts):
         g.p = allg.p[at:at + n]
@@ -936,7 +1021,8 @@ def main():
     ap.add_argument('--out')
     ap.add_argument('--preview')
     ap.add_argument('--views')
-    ap.add_argument('--tiers', default='0,1,2')
+    ap.add_argument('--tiers', default='0,2')
+    ap.add_argument('--own-mid', action='store_true', help='build a Mid tier of its own (default: the Mid props share the Fine meshes)')
     ap.add_argument('--no-ao', action='store_true')
     ap.add_argument('--stats', action='store_true')
     args = ap.parse_args(argv)
@@ -953,7 +1039,23 @@ def main():
     chunks = sk.Chunks(16.0, (-40.0, -32.0), (5.55, 11.4))
     floors = (0.0, UPPER)
     t0 = time.time()
-    for ti in [int(x) for x in args.tiers.split(',')]:
+    shared = []
+
+    def put(name, group, om):
+        if om is None:
+            return
+        mi = sb.mesh(om)
+        sb.bank.prop(name, group, [(mi, [1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 1.0, 0])])
+        st = sb.stats.setdefault((group, name.rsplit('/', 1)[-1]), [0, 0, 0])
+        st[0] += 1
+        st[1] += sum(len(s) for s in om.submeshes) // 3
+        st[2] += len(om.positions)
+        if name.endswith('/0') and not args.own_mid:
+            shared.append((name[:-1] + '1', group, mi))
+    tiers = [int(x) for x in args.tiers.split(',')]
+    if args.own_mid and 1 not in tiers:
+        tiers = sorted(tiers + [1])
+    for ti in tiers:
         T = sk.Tier(ti)
         t = time.time()
         S = build(L, T)
@@ -980,21 +1082,21 @@ def main():
         bakes = [sk.Bake(g, ao, floors=floors, seed=11) if g.faces else None for g, ao in zip(geos, aos)]
         ids = chunks.ids(S.static)
         for cid in np.unique(ids):
-            sb.add('static/%d/%d' % (cid, ti), 'static', sk.to_mesh('static/%d/%d' % (cid, ti), S.static, bakes[0], ids == cid))
+            put('static/%d/%d' % (cid, ti), 'static', sk.to_mesh('static/%d/%d' % (cid, ti), S.static, bakes[0], ids == cid))
         k = 1
         for bid, g in S.posed.items():
             if g.faces:
                 p = S.B[bid]['pos']
-                sb.add('rig/b/%s/%d' % (bid, ti), 'rig', sk.to_mesh('rig/b/%s/%d' % (bid, ti), g.transformed([1, 0, 0, -p[0], 0, 1, 0, -p[1], 0, 0, 1, -p[2]]), bakes[k]))
+                put('rig/b/%s/%d' % (bid, ti), 'rig', sk.to_mesh('rig/b/%s/%d' % (bid, ti), g.transformed([1, 0, 0, -p[0], 0, 1, 0, -p[1], 0, 0, 1, -p[2]]), bakes[k]))
             k += 1
         for bid, g in S.props.items():
             if g.faces:
                 p = S.B[bid]['pos']
-                sb.add('block/%s/%d' % (bid, ti), 'block', sk.to_mesh('block/%s/%d' % (bid, ti), g.transformed([1, 0, 0, -p[0], 0, 1, 0, -p[1], 0, 0, 1, -p[2]]), bakes[k]))
+                put('block/%s/%d' % (bid, ti), 'block', sk.to_mesh('block/%s/%d' % (bid, ti), g.transformed([1, 0, 0, -p[0], 0, 1, 0, -p[1], 0, 0, 1, -p[2]]), bakes[k]))
             k += 1
         for slot, (g, at) in S.movers.items():
             if g.faces:
-                sb.add('rig/%s/%d' % (slot, ti), 'rig', sk.to_mesh('rig/%s/%d' % (slot, ti), g.transformed([1, 0, 0, -at[0], 0, 1, 0, -at[1], 0, 0, 1, -at[2]]), bakes[k]))
+                put('rig/%s/%d' % (slot, ti), 'rig', sk.to_mesh('rig/%s/%d' % (slot, ti), g.transformed([1, 0, 0, -at[0], 0, 1, 0, -at[1], 0, 0, 1, -at[2]]), bakes[k]))
             k += 1
         if args.preview and ti == 0:
             vs = views()
@@ -1002,6 +1104,8 @@ def main():
                 vs = [v for v in vs if v[0] in args.views.split(',')]
             sk.preview([(g, bk) for g, bk in zip(geos, bakes) if bk is not None], vs, args.preview)
     if args.out:
+        for name, group, mi in shared:
+            sb.share(name, group, mi)
         for b in L['blocks']:
             sb.cover(b['id'])
         sb.write(args.out, BANK)
