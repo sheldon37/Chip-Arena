@@ -13,8 +13,9 @@ internal static class NewStagesChecks
         var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),o);
         var maps=JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),o);
         NativeMapRules.Merge(content,maps,File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")));
-        var required=new[]{"breakwater","harbor","skyframe","rig","polar","training"};
-        Check(required.All(id=>maps.maps.Count(m=>m.id==id)==1),"all six integrated maps exist exactly once");
+        // (Deepwell, `rig`, left this list on 2026-11-11: rebuilt as its own stage, it has its own checks, DeepwellChecks.)
+        var required=new[]{"breakwater","harbor","skyframe","polar","training"};
+        Check(required.All(id=>maps.maps.Count(m=>m.id==id)==1),"all five integrated maps exist exactly once");
         foreach(var map in maps.maps.Where(m=>required.Contains(m.id)))
         {
             NativeMapRules.Validate(map);Check(map.rotation==(map.id!="training"),"rotation "+map.id);
@@ -65,8 +66,6 @@ internal static class NewStagesChecks
             s=NativeFactoryHazards.State(crane,0,impact+.1);Check(!s.Lethal&&s.Landed,"impact grace "+z);
             s=NativeFactoryHazards.State(crane,0,impact+crane.dwell+NativeFactoryHazards.RegripSeconds+crane.hoist/2);Check(s.LoadY>crane.zones[z].center.y&&s.LoadY<crane.carry,"hoist elevation "+z);
         }
-        var burn=maps.maps.Single(m=>m.id=="rig").hazards.First(h=>h.kind=="burner");
-        Check(NativeStageHazards.DamageTicks(burn,1,0,burn.first+burn.warn-.01,burn.first+burn.warn+burn.live-.01)*burn.damage==80,"Deepwell full burst 80 HP");
         Check(NativeTrainingRules.RoomFits("breakwater",Enumerable.Range(1,4).Select(i=>new NativeSeat{id=i,team=i%2}),true),"2v2");
         Check(!NativeTrainingRules.RoomFits("breakwater",Enumerable.Range(1,5).Select(i=>new NativeSeat{id=i}),false),"FFA cap");
         Console.WriteLine("PASS M1 stages and training: "+count+" checks");

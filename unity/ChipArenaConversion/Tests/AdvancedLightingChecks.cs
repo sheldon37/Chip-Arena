@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
         private static void Looks(string root,JsonSerializerOptions o)
         {
             var set=MapLookChecks.Load(root);NativeMapLooks.Validate(set);
-            string[] advanced={"factory-first-shift","golden-demolition","neon-rain","quarantine","expedition-city","central-station","ironworks","breakwater-blue-hour","harbor-night","skyframe-high-noon","rig-storm","polar-aurora","club-substation","emporium-golden-hour","causeway-starfall","sanctum-midnight"};
+            string[] advanced={"factory-first-shift","golden-demolition","neon-rain","quarantine","expedition-city","central-station","ironworks","breakwater-blue-hour","harbor-night","skyframe-high-noon","rig-abyss","polar-aurora","club-substation","emporium-golden-hour","causeway-starfall","sanctum-midnight"};
             foreach(var m in set.maps)
             {
                 bool want=advanced.Contains(m.look);Check((m.advanced!=null)==want,m.look+(want?" has":" has no")+" an advanced block");

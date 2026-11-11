@@ -6,8 +6,10 @@ stages' kept only at the map's edges and, for bots, at lethal drops (open_stage)
 import importlib.util,json,math
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[3]
+# A stage rebuilt from scratch keeps its M1 draft as history and names its new one here.
+DRAFTS={'rig':'rig_m2'}
 def draft(name,fn):
-    spec=importlib.util.spec_from_file_location(name,ROOT/f'docs/arenas/scripts/{name}_m1.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return getattr(m,fn)()['maps'][0]
+    spec=importlib.util.spec_from_file_location(name,ROOT/f'docs/arenas/scripts/{DRAFTS.get(name,name+"_m1")}.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return getattr(m,fn)()['maps'][0]
 def v(x,y,z):return dict(x=round(x,4),y=round(y,4),z=round(z,4))
 def bounds(b):return tuple((b['pos'][k]-b['size'][k]/2,b['pos'][k]+b['size'][k]/2) for k in 'xyz')
 def navigation(m):
@@ -26,7 +28,7 @@ def navigation(m):
             if b[0][0]-.43<x<b[0][1]+.43 and b[2][0]-.43<z<b[2][1]+.43:
                 if b[1][1]>y+.65:return False
         return True
-    nodes=[];grid={};B=m['bounds'];step=.5 if m['id']=='rig' else 1
+    nodes=[];grid={};B=m['bounds'];step=1
     def samples(lo,hi):return [i*step for i in range(math.ceil((lo+1)/step),math.floor(hi/step))]
     for x in samples(B['minX'],B['maxX']):
         for z in samples(B['minZ'],B['maxZ']):
@@ -110,8 +112,8 @@ def open_tops(m):
 # whatever their obstacle ray hits; NativeMapRules.ExcludeTops), so a player can jump over or be knocked over it and fall. Every
 # other column over a top goes: a double jump (daggers, bow, chips) reaches the 3.9 m ovens, altars and gates, and a pilot may
 # stand on anything they can reach.
-EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':()}
-OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-')}
+EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':(),'rig':('rig-top-wall','rig-top-glass','rig-top-bulkhead')}
+OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-'),'rig':('rig-top-pylon',)}
 def open_stage(m):
     sides=column_sides(m);keep=EDGES[m['id']]+OVERHANG.get(m['id'],());kept=[];bots=0
     for p in m['pilotBlocks']:

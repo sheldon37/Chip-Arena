@@ -1274,28 +1274,6 @@
    "flood": 0.0
   },
   {
-   "map": "rig",
-   "glow": 0.0,
-   "note": "Deepwell: the crates, drums and cellar tanks. No yards: the platform stands over the sea (a yard stands at y 0).",
-   "rules": [
-    {
-     "block": "rig-crate-*",
-     "kit": "crate"
-    },
-    {
-     "block": "rig-barrels-*",
-     "kit": "drum-cage"
-    },
-    {
-     "block": "rig-tank-cellar-*",
-     "kit": "tank-fit",
-     "note": "the cellar's tanks"
-    }
-   ],
-   "yards": [],
-   "flood": 0.0
-  },
-  {
    "map": "polar",
    "glow": 1.0,
    "note": "Polaris Station: the station modules (containers on skids), the fuel tanks, crates and drums (the two-high crate columns and the shallow tanks keep their boxes: no prop fills them); out on the ice, the fuel depot, a storage row, the vehicle line, a hangar, wind fences and the skiway's lamps.",

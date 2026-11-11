@@ -12,12 +12,17 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeNewStageLooks
     {
-        public const string Breakwater="breakwater",Harbor="harbor",Skyframe="skyframe",Rig="rig",Polar="polar";
-        public static readonly string[] Maps={Breakwater,Harbor,Skyframe,Rig,Polar};
+        public const string Breakwater="breakwater",Harbor="harbor",Skyframe="skyframe",Polar="polar";
+        /// <summary>The stages this presentation still draws. Deepwell (`rig`) left it on 2026-11-11 for its own (Core NativeDeepwell*,
+        /// docs/arenas/DEEPWELL.md); the stage numbers the kit, scenery, rig and effects switch on are unchanged (<see cref="Stages"/>: 3 was
+        /// Deepwell's and no map has it now).</summary>
+        public static readonly string[] Maps={Breakwater,Harbor,Skyframe,Polar};
+        private static readonly int[] Stages={0,1,2,4};
         /// <summary>The look each stage names (UnityMaps.json `look`; MapLooks.json carries one entry for each).</summary>
-        public static readonly string[] Looks={"breakwater-blue-hour","harbor-night","skyframe-high-noon","rig-storm","polar-aurora"};
-        /// <summary>The stage's index in <see cref="Maps"/>, or -1 for every other map (whose presentation never changes here).</summary>
-        public static int Index(string mapId){for(int i=0;i<Maps.Length;i++)if(Maps[i]==mapId)return i;return -1;}
+        public static readonly string[] Looks={"breakwater-blue-hour","harbor-night","skyframe-high-noon","polar-aurora"};
+        /// <summary>The stage's number (0 Breakwater, 1 Pier 9, 2 Skyframe, 4 Polaris), or -1 for every other map (whose presentation never
+        /// changes here).</summary>
+        public static int Index(string mapId){for(int i=0;i<Maps.Length;i++)if(Maps[i]==mapId)return Stages[i];return -1;}
         public static bool Active(string mapId)=>Index(mapId)>=0;
 
         /// <summary>Kit kinds (index = kind), resolved once per look through `kitLooks`; at most NativeFactoryKit.Kinds.Length,

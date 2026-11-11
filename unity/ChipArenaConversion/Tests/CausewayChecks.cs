@@ -77,7 +77,7 @@ namespace ChipArena.UnityConversion
                 if(h.kind=="maglev")Check(h.warn>=6&&h.danger>=3&&h.first-h.warn>=4,"the comet's warning");
             }
             // the push is the only rules change: no vent anywhere else pushes
-            Check(maps.maps.Where(m=>m.id!=map.id).SelectMany(m=>m.hazards??Array.Empty<MapHazard>()).All(h=>h.kind!="vent"||h.pushMode!=NativeStageHazards.PushWind),"no other map's vent is a wind (the Club shoves, the Emporium launches: their own modes)");
+            Check(maps.maps.Where(m=>m.id!=map.id&&!NativeDeepwellLooks.Active(m.id)).SelectMany(m=>m.hazards??Array.Empty<MapHazard>()).All(h=>h.kind!="vent"||h.pushMode!=NativeStageHazards.PushWind),"no other map's vent is a wind but Deepwell's (2026-11-11: its bubbling vents use this push; the Club shoves, the Emporium launches: their own modes)");
             // a star's lethal window: from the last instant of its fall through its blast, never during its telegraph
             foreach(var h in hz.Where(h=>h.kind=="press"))
             {
