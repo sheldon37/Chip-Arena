@@ -1231,6 +1231,136 @@ class Chunks:
     def __init__(self, size=12.0, origin=(-36.0, -24.0), bands=(-1.0, 9.0)):
         self.size, self.origin, self.bands = size, origin, bands
 
+    def split(self, g, reach=24, least=.08, upright=2.0):
+        """Cuts every face of `g` along the cells' walls and bands, in place, so no face reaches out of its own cell (owner
+        2026-11-11: "There is Z-Fighting on the stage remodelings ... Floors mainly"). A face goes to the chunk its centre is
+        in, whole: a floor slab one face wide lay across its neighbours' cells too, and where two neighbouring chunks drew at
+        different tiers (16 m and 38 m from the eye, wherever the pilot stands) the same floor was drawn twice, a tier's slab
+        over the other's cells, in one plane and with another bake: it fought. Cut, each cell holds its own piece of the
+        floor at every tier. Call it on a tier's static scene before its bake. A face spanning more than `reach` cells along
+        an axis is left whole (a far sheet), and so is a floor or ceiling face under `least` m2 and any other face under
+        `upright` m2 (a moulding's segment, a post, a rail: its piece over the cell's wall is small, and cutting every one
+        would cost a tenth of the bank; floors come first). Returns how many faces were cut."""
+        P, N, S, F = g.arrays()
+        nf = len(S)
+        if nf == 0:
+            return 0
+        starts = np.zeros(nf, dtype=np.int64)
+        if nf > 1:
+            starts[1:] = np.cumsum(S[:-1])
+        P64, N64 = P.astype(np.float64), N.astype(np.float64)
+        lo = np.minimum.reduceat(P64, starts, axis=0)
+        hi = np.maximum.reduceat(P64, starts, axis=0)
+        tol = .002
+        bands = np.array(self.bands, dtype=np.float64)
+
+        def cuts(axis, a, b):
+            """The planes of `axis` strictly inside (a, b)."""
+            if axis == 1:
+                return [float(y) for y in bands if a + tol < y < b - tol]
+            o = self.origin[0] if axis == 0 else self.origin[1]
+            k0, k1 = math.floor((a + tol - o) / self.size) + 1, math.ceil((b - tol - o) / self.size) - 1
+            if k1 - k0 + 1 > reach:
+                return None
+            return [o + k * self.size for k in range(k0, k1 + 1)]
+
+        def cut(poly, axis, c):
+            """A convex polygon [(p, n)] cut by the plane axis = c: (the part below, the part above)."""
+            below, above = [], []
+            k = len(poly)
+            for i in range(k):
+                (p, n), (q, m) = poly[i], poly[(i + 1) % k]
+                dp, dq = p[axis] - c, q[axis] - c
+                if dp <= 1e-9:
+                    below.append((p, n))
+                if dp >= -1e-9:
+                    above.append((p, n))
+                if dp < -1e-9 and dq > 1e-9 or dp > 1e-9 and dq < -1e-9:
+                    t = dp / (dp - dq)
+                    x = p + (q - p) * t
+                    x[axis] = c
+                    nn = n + (m - n) * t
+                    ln = math.sqrt(float(nn @ nn))
+                    nn = nn / ln if ln > 1e-9 else n
+                    below.append((x, nn))
+                    above.append((x, nn))
+            return below, above
+
+        keep = np.ones(nf, dtype=bool)
+        newP, newN, newS, newF = [], [], [], []
+        done = 0
+        cx0 = np.floor((lo[:, 0] + tol - self.origin[0]) / self.size)
+        cx1 = np.floor((hi[:, 0] - tol - self.origin[0]) / self.size)
+        cz0 = np.floor((lo[:, 2] + tol - self.origin[1]) / self.size)
+        cz1 = np.floor((hi[:, 2] - tol - self.origin[1]) / self.size)
+        by0 = np.searchsorted(bands, lo[:, 1] + tol)
+        by1 = np.searchsorted(bands, hi[:, 1] - tol)
+        face_of = np.repeat(np.arange(nf), S)
+        nxt = np.arange(len(P64)) + 1
+        nxt[starts + S - 1] = starts
+        pa, pb = P64, P64[nxt]
+        cr = np.stack([(pa[:, 1] - pb[:, 1]) * (pa[:, 2] + pb[:, 2]), (pa[:, 2] - pb[:, 2]) * (pa[:, 0] + pb[:, 0]),
+                       (pa[:, 0] - pb[:, 0]) * (pa[:, 1] + pb[:, 1])], axis=1)
+        nrm = np.zeros((nf, 3))
+        np.add.at(nrm, face_of, cr)
+        ar = np.linalg.norm(nrm, axis=1) / 2
+        big = ar >= np.where(np.abs(nrm[:, 1]) > .7 * 2 * np.maximum(ar, 1e-12), least, upright)
+        for f in np.nonzero(((cx1 > cx0) | (cz1 > cz0) | (by1 > by0)) & big)[0].tolist():
+            a, k = int(starts[f]), int(S[f])
+            polys = [[(P64[a + i].copy(), N64[a + i].copy()) for i in range(k)]]
+            whole = False
+            for axis in (0, 2, 1):
+                cs = cuts(axis, float(lo[f, axis]), float(hi[f, axis]))
+                if cs is None:
+                    whole = True
+                    break
+                for c in cs:
+                    nxt = []
+                    for poly in polys:
+                        vals = [p[axis] for p, _ in poly]
+                        if min(vals) >= c - tol or max(vals) <= c + tol:
+                            nxt.append(poly)
+                            continue
+                        lo_, hi_ = cut(poly, axis, c)
+                        if len(lo_) >= 3:
+                            nxt.append(lo_)
+                        if len(hi_) >= 3:
+                            nxt.append(hi_)
+                    polys = nxt
+            if whole or len(polys) < 2:
+                continue
+            keep[f] = False
+            done += 1
+            for poly in polys:
+                if len(poly) > 255:
+                    raise ValueError('face too large')
+                # (a sliver of no area is dropped)
+                p0 = poly[0][0]
+                area = np.zeros(3)
+                for i in range(1, len(poly) - 1):
+                    area += np.cross(poly[i][0] - p0, poly[i + 1][0] - p0)
+                if float(area @ area) < 1e-16:
+                    continue
+                for p, n in poly:
+                    newP.append(p)
+                    newN.append(n)
+                newS.append(len(poly))
+                newF.append(int(F[f]))
+        if not done:
+            return 0
+        cm = np.repeat(keep, S)
+        P2 = np.concatenate([P[cm], np.array(newP, dtype=np.float32).reshape(-1, 3)])
+        N2 = np.concatenate([N[cm], np.array(newN, dtype=np.float32).reshape(-1, 3)])
+        g.p = array.array('f')
+        g.p.frombytes(P2.astype(np.float32).tobytes())
+        g.n = array.array('f')
+        g.n.frombytes(N2.astype(np.float32).tobytes())
+        g.size = array.array('B')
+        g.size.frombytes(np.concatenate([S[keep], np.array(newS, dtype=np.int64)]).astype(np.uint8).tobytes())
+        g.fin = array.array('H')
+        g.fin.frombytes(np.concatenate([F[keep], np.array(newF, dtype=np.int64)]).astype(np.uint16).tobytes())
+        return done
+
     def ids(self, g):
         P, N, S, F = g.arrays()
         starts = np.zeros(len(S), dtype=np.int64)

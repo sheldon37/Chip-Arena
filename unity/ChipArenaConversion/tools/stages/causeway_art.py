@@ -481,6 +481,8 @@ def main():
         near = Geo() if args.no_void else void.near(L, T)
         g.extend(near)
         print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=sk.NEAR_TIER[ti], lift=sk.LIFT_TIER[ti]))
+        # no face reaches out of its chunk's cell: a floor is never drawn twice where neighbouring chunks draw at different tiers
+        print('  chunks: %d faces cut along the cells' % chunks.split(g))
         print('tier %s: static %d faces, %.1f s' % (T.name, g.faces, time.time() - t))
         ao = None
         if not args.no_ao:

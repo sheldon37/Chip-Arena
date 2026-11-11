@@ -126,6 +126,11 @@ internal static class StageArtChecks
         var kitPy=R("tools/stages/stagekit.py");
         Check(kitPy.Contains("def layer_polys(P64, S, reach=LAYER_REACH, least=2e-4, share=.02):")&&kitPy.Contains("LAYER_REACH = .03")&&kitPy.Contains("om.uv1.append([u[0] + L / 32.0, u[1]])")&&kitPy.Contains("        self.layer()")&&kitPy.Contains("def layer(self):"),
             "every bank is layered as it is written");
+        // cells: no floor reaches out of its chunk's cell (a floor is never drawn twice where neighbours draw at different tiers)
+        Check(kitPy.Contains("def split(self, g, reach=24, least=.08, upright=2.0):")&&kitPy.Contains("def at(self, block_id, pos, quat=(0.0, 0.0, 0.0, 1.0)):"),"the chunks cut their faces along their cells; a stage may place its block models");
+        foreach(var script in new[]{"sanctum","club","emporium","causeway","breakwater","harbor","rig","polar","skyframe","brickfall","factory","cybercity"})
+            Check(R("tools/stages/"+script+"_art.py").Contains("% chunks.split(g))"),script+": the static scene is cut along the chunks' cells before its bake");
+        Check(R("tools/stages/wardzero_art.py").Contains("% chunks.split(S.static))"),"Ward Zero: the static scene is cut along the chunks' cells before its bake");
         // the kept kit boxes' own stacking
         {
             // a slab; a strip on it (6 mm proud); a mark on the strip (in the strip's plane: the smaller lies on the larger); a box apart; a turned box

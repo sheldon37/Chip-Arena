@@ -140,6 +140,8 @@ def main():
         # plane (the scripts' own small offsets among them) and are stacked the tier's lift apart
         lt = 1 if (ti == 0 and not args.own_mid) else ti
         print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=EPS[lt], lift=sk.LIFT_TIER[lt], passes=4))
+        # no face reaches out of its chunk's cell: a floor is never drawn twice where neighbouring chunks draw at different tiers
+        print('  chunks: %d faces cut along the cells' % chunks.split(g))
         far = city.far_scene(S, T)
         print('  far coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(far, eps=.02, lift=.05))
         scene = props.rest_scene(L, T, train=False)
