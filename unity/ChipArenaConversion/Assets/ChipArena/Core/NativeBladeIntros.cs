@@ -196,7 +196,7 @@ namespace ChipArena.UnityConversion
         {
             float floor=NativeEntranceStage.FloorY;bool low=q<.5f;
             // The low venom mist, always.
-            int mist=low?8:20;for(int i=0;i<mist;i++){float a=((t*.18f+NativeEntranceMath.Rand(22000,i))%1+1)%1;var p=new Vector3(-4+8*NativeEntranceMath.Rand(22000,i+20),floor+.1f+.15f*a,-3+6*NativeEntranceMath.Rand(22000,i+40));fx.Glow(p,Deep*2+Venom*(.25f*(1-a)),0,1.3f,0,a,22010+i);}
+            int mist=low?8:20;for(int i=0;i<mist;i++){float a=((t*.18f+NativeEntranceMath.Rand(22000,i))%1+1)%1;var p=new Vector3(-4+8*NativeEntranceMath.Rand(22000,i+20),floor+.1f+.15f*a,-3+6*NativeEntranceMath.Rand(22000,i+40));fx.Glow(p,Deep*1.4f+Venom*(.14f*(1-a)),0,1.8f,0,a,22010+i);}
             // Two eyes in the dark before it forms.
             if(t<FormAt+.2f){float k=NativeEntranceMath.Ramp(t,.1f,.35f)*(1-NativeEntranceMath.Ramp(t,FormAt,FormAt+.2f));var head=Before+new Vector3(0,1.25f,0);fx.Glow(head+Local(-.05f,0,.12f),Venom*(3*k),0,.05f,1,0,22100);fx.Glow(head+Local(.05f,0,.12f),Venom*(3*k),0,.05f,1,0,22101);}
             // The smoke it forms out of, and the step's two puffs.
