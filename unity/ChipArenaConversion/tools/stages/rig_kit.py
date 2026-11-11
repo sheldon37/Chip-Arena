@@ -175,7 +175,7 @@ def sconce(g, c, n, T, f=None):
     box(g, min(lo[0], hi[0]), max(lo[0], hi[0]), min(lo[1], hi[1]), max(lo[1], hi[1]), min(lo[2], hi[2]), max(lo[2], hi[2]), F['brass'], T, .008, cell=0)
     lo, hi = q(-.25, -.045, .035), q(.25, .045, .085)
     box(g, min(lo[0], hi[0]), max(lo[0], hi[0]), min(lo[1], hi[1]), max(lo[1], hi[1]), min(lo[2], hi[2]), max(lo[2], hi[2]), f if f is not None else F['lamp'], None, 0, cell=0)
-    if T.detail:
+    if T.tiny:
         for a in (-.25, -.085, .085, .25):
             rod(g, q(a, -.06, .03), q(a, .06, .03 + .07), .008, F['brass'], 4, caps=False)
 
@@ -204,7 +204,7 @@ def plate_wall(g, b, T, seed, lamps=True, ports=True, paint=None):
     L, H = R.len, y1 - y0
     for side in (-1, 1):
         d0 = side * h
-        R.box(g, 0.02, L - .02, y0, y0 + .24, d0, d0 + side * .035, F['dark'], T, .01)
+        R.box(g, 0.02, L - .02, y0 + .004, y0 + .24, d0, d0 + side * .035, F['dark'], T, .01, skip=('-y',))
         ribs = []
         u = .5
         while u < L - .2:
@@ -224,7 +224,7 @@ def plate_wall(g, b, T, seed, lamps=True, ports=True, paint=None):
                     if c - a > .5:
                         for (ya, yb) in ((y0 + 1.2, min(y1, y0 + 2.7) - .06),) + (((3.2 + .16, y1 - .26),) if H > 6.0 else ()):
                             R.box(g, a + .13, c - .13, ya, yb, d0, d0 + side * .018, paint, T, .008)
-        if H > 3.0 and T.detail:
+        if H > 3.0 and T.tiny:
             R.box(g, 0.02, L - .02, y1 - .2, y1 - .02, d0, d0 + side * .04, F['steel'], T, .01)
         if H > 3.0:
             k = 0
@@ -233,7 +233,7 @@ def plate_wall(g, b, T, seed, lamps=True, ports=True, paint=None):
                 if lamps:
                     sconce(g, R.at(u, y0 + 2.48, d0), R.N(side), T)
                 if ports and T.i < 2 and u + 1.0 < L - .6 and (k + seed) % 2 == 0 and H > 3.0:
-                    porthole(g, R.at(u + .87, y0 + 1.72, d0), R.N(side), .27, T)
+                    porthole(g, R.at(u + .87, y0 + 1.72, d0 + side * (.024 if paint is not None else 0)), R.N(side), .27, T)
                 k += 1
                 u += 4.0
             if H > 6.0:
@@ -260,10 +260,10 @@ def glass_wall(g, b, T, decks=(0.0, 3.2), every=2.4, mid=True):
         u = L * k / n
         a, c = max(0.0, u - .07), min(L, u + .07)
         R.box(g, a, c, y0 + .24, y1 - .22, -h * .55, h * .55, F['frame'], T, .015)
-        if T.i < 2:
+        if T.i == 0:
             R.box(g, max(0.0, u - .11), min(L, u + .11), y0 + .24, y1 - .22, -h, -h + .05, F['frame'], T, .01)
             R.box(g, max(0.0, u - .11), min(L, u + .11), y0 + .24, y1 - .22, h - .05, h, F['frame'], T, .01)
-        if T.detail:
+        if T.i == 0:
             R.box(g, max(0.0, u - .13), min(L, u + .13), y0 + .3, y0 + .5, -h - .02, h + .02, F['brass'], T, .012)
     for y in decks:
         if y0 + .5 < y < y1 - .5:
@@ -296,9 +296,9 @@ def door_frame(g, R, u0, u1, y0, y1, h, T, stripe=False):
     jambs and a head, proud of both faces, a light bar under the head."""
     t, p = .16, h + .06
     for (a, c) in ((u0 - t * .2, u0 + t * .8), (u1 - t * .8, u1 + t * .2)):
-        R.box(g, a, c, y0, y1, -p, p, F['steel'], T, .03)
+        R.box(g, a, c, y0 + .003, y1, -p, p, F['steel'], T, .03, skip=('-y',))
         if T.detail:
-            R.box(g, a - .02, c + .02, y0, y0 + .12, -p - .02, p + .02, F['brass'], T, .012)
+            R.box(g, a - .02, c + .02, y0 + .006, y0 + .12, -p - .02, p + .02, F['brass'], T, .012, skip=('-y',))
     R.box(g, u0 - t * .2, u1 + t * .2, y1 - t * .8, y1 + t * .2, -p, p, F['steel'], T, .03)
     R.box(g, u0 + t, u1 - t, y1 - t * .8 - .035, y1 - t * .8, -h * .6, h * .6, F['cyan'], None, 0)
     if T.tiny:

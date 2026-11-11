@@ -391,8 +391,9 @@ def well_dome(g, T):
     # the gantry: beams between the pylons' heads, struts up to the housing, the hydraulic lines beside them
     p = 4.2
     y = rk.DOME_SPRING + .26
-    for (a, c) in (((-p, y, p), (p, y, p)), ((-p, y, -p), (p, y, -p)), ((-p, y, -p), (-p, y, p)), ((p, y, -p), (p, y, p))):
-        ibeam(g, [a, c], .5, .32, F['dark'], up=Y, caps=True)
+    q = p - .45
+    for (a, c) in (((-q, y, p), (q, y, p)), ((-q, y, -p), (q, y, -p)), ((-p, y, -q), (-p, y, q)), ((p, y, -q), (p, y, q))):
+        ibeam(g, [a, c], .5, .32, F['dark'], up=Y)
     for sx in (-1, 1):
         for sz in (-1, 1):
             foot, head = (sx * p, y + .25, sz * p), (sx * 1.25, top - 1.2, sz * 1.25)
@@ -435,13 +436,13 @@ def overhead(g, L, T):
                 rk.pendant(g, (x, 6.4 + 2.2 * math.sin(math.pi * t) ** .8, zs * 16.2), 6.4 + 2.2 * math.sin(math.pi * t) ** .8 - 5.65, T, r=.34)
             # the gantry crane over the pool: a beam wall to wall, a trolley, the hook hanging well over the sub
             zc = zs * 17.9
-            ibeam(g, [(-8.0, 5.3, zc), (8.0, 5.3, zc)], .5, .3, F['yellow'], up=Y, caps=True)
+            ibeam(g, [(-7.97, 5.3, zc), (7.97, 5.3, zc)], .5, .3, F['yellow'], up=Y)
             box(g, -.5, .5, 4.86, 5.06, zc - .32, zc + .32, F['dark'], T, .03, cell=0)
             rod(g, (0, 4.86, zc), (0, 2.5, zc), .025, F['steel'], 4, caps=False)
             lathe(g, [(.02, 2.2), (.12, 2.28), (.14, 2.42), (.06, 2.52)], (0, 0, zc), F['brass'], (8, 6, 4)[T.i])
             if T.i < 2:
                 for k in range(8):
-                    box(g, -8.0 + k * 2.0, -8.0 + k * 2.0 + 1.0, 5.1, 5.5, zc - .156, zc - .15, F['black'], None, 0, cell=0)
+                    box(g, -7.9 + k * 2.0, -7.9 + k * 2.0 + 1.0, 5.1, 5.5, zc - .156, zc - .15, F['black'], None, 0, cell=0)
         elif i.startswith('rig-glass-tunnel-') or i.startswith('rig-glass-spine-'):
             # a pipe run under the eaves on both faces
             R, h = run_of(b)
@@ -552,7 +553,7 @@ def main():
     import rig_props as props
     import rig_sea as sea
     sb = sk.StageBank()
-    chunks = sk.Chunks(12.0, (-180.0, -180.0), (-2.6, 3.1))
+    chunks = sk.Chunks(16.0, (-184.0, -184.0), (-2.6, 3.1))
     t0 = time.time()
     for ti in [int(x) for x in args.tiers.split(',')]:
         T = sk.Tier(ti)
