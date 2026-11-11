@@ -483,13 +483,16 @@ changes wholly between the two, a stable surface does not): - **Polaris's middle
   height 8 m off): before, the thin-ice plates show jagged pale and dark patches that change wholly between two frames 3 cm
   apart (the drifts and cracks trading pixels); after, the drifts lie clean on the ice with the cracks over them and nothing
   changes between the frames but the lights, the steam and the hazards' own motion. The Low graphics tier's plates carry no
-  drifts and did not fight before or after.
+  drifts and did not fight before or after. (That after-capture is of the first rebuilt bank, whose cracks lay under the
+  drifts; the final bank puts the cracks back over the drifts and cuts the floors along the cells: seen in Blender's preview
+  only, not yet in the Editor.)
 - **The other stages' floors before** (eyes 1.7 to 2.3 m over the floor, 13 to 46 m off, each twice 3 mm apart: Pier 9's
   boards, Deepwell's hall and tunnels, Skyframe's paving, Breakwater's deck, Brickfall's streets, Ward Zero's atrium and
   galleries, the Factory's bay, Cyber City's cut): the floors did not change between the two frames at those views; what
   changed was animation (wheels, lights, lamps, screens, fish). So outside Polaris the doubled and stacked floors are
   measured, not filmed: they show only where two tiers meet with different bakes, as the eye moves.
-- **Not seen:** the stages in motion (a moving camera across a tier border), a human playtest, guests, a Windows build, the
+- **Not seen:** the other eight stages after the change in the Editor (the shared Editor's queue; the analyser's numbers
+  and the suites stand for them), the Editor's build checks (`wtvalidate.sh`) on this branch, the stages in motion (a moving camera across a tier border), a human playtest, guests, a Windows build, the
   killcam.
 
 **Not depth fighting** (seen while looking): Skyframe's sunlit paving shows soft violet blotches a few decimetres wide. They do
