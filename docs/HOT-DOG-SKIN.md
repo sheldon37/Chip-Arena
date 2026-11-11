@@ -10,7 +10,7 @@ or network authority reads it.
 | Part | Where |
 |---|---|
 | The pick | `upper:hot-dog` in the outfit map (`Core/NativeLook.cs`). It is DEV only (`NativeLook.DevOnly`), so the Locker shows it only with live DEV access, last in Tops before the Sheldon robe. `Gate` drops it otherwise. |
-| The rules of the look | `Core/NativeHotDog.cs`: the id, where hats ride (`HatOffset`), and the sausage's jiggle (`Jiggle`, `Step`, `Pose`, `Bend`). |
+| The rules of the look | `Core/NativeHotDog.cs`: the id, each hat's fit on the crown (`HatFit`, `HidesSprigs`), and the sausage's jiggle (`Jiggle`, `Step`, `Pose`, `Bend`). |
 | The drawing | `Runtime/NativeHotDogPresentation.cs`: it reads the bank and puts its one skinned mesh on the body's bones in place of everything the body wears. The jiggle (`HotDogJiggle`) runs after the live pilot's body is posed. |
 | The bank | `Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaHotDog.bytes` (HDOG v2). It is git-ignored and ships in the Drive zip (`tools/pack_visual_body.py` takes every bank beside the body's prefab). Without it, a pilot in the Hot Dog wears the default top. |
 | The build | `tools/gear/hotdog_tripo.py` (Blender 5.x, headless). It reads the FBX it is given. Never commit the FBX or the bank. |
@@ -75,8 +75,33 @@ It lags behind a start, a stop, a turn or a jump and wobbles back:
 - **Squash:** the upright part squashes or stretches it along world up, up to 16%. A landing squashes it.
 
 The arms, hands, legs and whatever the hands hold stay on the real bones, so weapons, IK, hit timing and hit volumes never move
-with it. Hats ride the head's twin, so they wobble with the crown. Only the live arena pilot's body jiggles. Corpses, portraits,
+with it. Only the live arena pilot's body jiggles. Corpses, portraits,
 the draft and first person keep the twins at rest.
+
+## Hats
+
+Owner 2026-11-11: "Hats don't fit on hotdog model correctly." Every hat is made for the pilot's skull (`NativeModelHatMeshes`:
+its band 0.118 m over the head bone, 0.121 to each side and 0.127 ahead and behind a point 0.025 ahead; a closed hat's crown at
+0.215). Measured from the bank in the head bone's frame, the sausage's crown is that skull's size at the band but sits 2.2 cm
+further ahead. Its dome rises to 0.24, 2.5 cm over a closed hat's crown, and its three sprigs stand 3 to 5 cm over that.
+Before the fix, a hat rode an anchor on the head's twin 3.5 cm up and 5 cm ahead. That had three faults:
+
+- the sausage's crown follows the head bone only about 30% of the way (the rest is the neck and upper spine, so its top doesn't
+  fold), so a hat tilted and slid off whenever the head turned or pitched;
+- 5 cm ahead put hats over the face;
+- the sprigs poked through the closed hats.
+
+Now (`Runtime/NativeHotDogPresentation.cs`, `HotDogHatOn` and `HotDogUnderHat`):
+
+- **The frame:** each time a hat is drawn, its anchor is placed in the crown's own skinning frame: the blend of the bones and
+  weights of a vertex over the head, read once from the bank. The hat stays on the crown however the head turns and as the
+  sausage jiggles, on live bodies, portraits and corpses alike.
+- **The fit:** `NativeHotDog.HatFit` moves each hat as `NativeRobotHelm.HatFit` does for the helmet. It scales the hat about the
+  band's middle (`HatPivot`), lifts it and moves it ahead by that hat's own measure, so its band sits round the sausage and its
+  crown clears the dome. A hat that isn't listed takes the cap's fit.
+- **The sprigs:** under a closed hat (`HidesSprigs`: the cap, beanie, top hat, wizard, cowboy, cone and the Sheldon Head) the body
+  draws a copy of the mesh without them. They are the small parts wholly within 8 cm of its top, found by welding the bank's
+  seams at load. The crown, antenna and halos leave them standing.
 
 ## Wounds and cuts
 

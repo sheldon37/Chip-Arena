@@ -211,28 +211,43 @@ The owner's songs are in (2026-11-10): Celestial Bell Motif, Neon Substation, Ho
 the eight above (the original MP3 bytes, streaming import, full-track looping; durations are ffprobe's). Each placeholder remains
 only as its record's fallback. Neon Substation runs at about 132 BPM rather than 128 (see docs/arenas/CLUB.md "Music").
 
-## The rebuilt stages (2026-11-11)
+## The remodelled stages (2026-11-11)
 
-Pier 9 was rebuilt as a seaside amusement pier at night (docs/arenas/HARBOR.md). Until the owner's new song is in, the stage
-plays its current track (`harbor-container-terminal`, written for the old container yard) as the placeholder.
+The 2026-11-11 revamp rebuilt five stages and gave four an art pass on their kept layouts (docs/arenas/STAGE-ART.md section 13).
+The owner asked for one brief per remodel ("Give me new prompts for the stage remodels to match them"), so this is the set,
+revised together on 2026-11-11. The five rebuilt stages' briefs, first drafted by their builders, were tightened. Pier 9's siren
+and Deepwell's klaxon are gone because they could be mistaken for hazard cues. Skyframe's tempo is now one drum and bass takes,
+and Breakwater moved off Polaris's tempo. The four art-pass stages have new briefs.
 
-| Stage | Map id | Placeholder now | Resource key for the owner's song |
+The conventions are the 2026-11-10 ones:
+- In the lyric field, everything in square brackets is a direction, not sung.
+- The only sung lines are wordless ("ooh", "aah", "hey"); delete them for a purely instrumental take.
+- Suno takes a lyric field only with Instrumental off, so the style prompt still says no vocals.
+
+Each stage plays its current song until the owner's new one is in. The new song takes the key below: a new
+`NativeStageMusic.Theme` entry, with the current song left as the record's fallback.
+
+| Stage | Map id | Plays now | Resource key for the new song |
 |---|---|---|---|
 | Pier 9 | `harbor` | `harbor-container-terminal` | `harbor-theme` |
 | Deepwell | `rig` | `rig-offshore` | `rig-theme` |
 | Polaris Station | `polar` | `polar-pulse-de-la-mort` | `polar-theme` |
 | Skyframe | `skyframe` | `skyframe-rising-motif` | `skyframe-theme` |
 | Breakwater | `breakwater` | `breakwater-arena-duel` | `breakwater-theme` |
+| Brickfall | `brickfall` | `brickfall-demolition-row` | `brickfall-theme` |
+| Ward Zero | `siren` (and `expedition-ward-zero`) | `restricted-zone-pulse` | `wardzero-theme` |
+| The Factory | `factory` | `factory-anvil-loop` | `factory-theme` |
+| Cyber City | `cybercity` | `cybercity-neon-riot` | `cybercity-theme` |
 
-### Pier 9 — Last Night of the Season
+### Pier 9 — Last Night of the Season (`harbor-theme`)
+
+A seaside amusement pier at night (docs/arenas/HARBOR.md).
 
 Style field:
 
-Instrumental arena combat soundtrack, 138 BPM, a seaside amusement pier at night. A wheezing fairground band organ and calliope
-carry a bright, slightly menacing waltz-time hook over a driving four-on-the-floor electro-swing beat; punchy brass stabs,
-upright slap bass, glockenspiel and sleigh bells for the bulbs, a snare-drum roll and a rising siren for the drop tower, a
-rattling clack-clack percussion loop and a rushing whoosh for the rollercoaster. Fireworks booms as accents. Playful, fast and
-dangerous, like a carnival ride with the brakes off. No lyrics, no vocals. Clean loopable ending.
+```
+Instrumental arena combat soundtrack, 138 BPM, a seaside amusement pier on the last night of the season: strings of bulbs, a carousel, a rollercoaster and a drop tower over black water. A wheezing fairground band organ and calliope carry a bright, slightly menacing hook over a driving four-on-the-floor electro-swing beat; punchy brass stabs, upright slap bass, glockenspiel and jingling bell trees for the bulbs, a snare roll and a rising synth whistle for the drop tower, a rattling clack-clack percussion loop and a rushing whoosh for the rollercoaster, fireworks booms as accents. Playful, fast and dangerous, like a carnival ride with the brakes off. No vocals, no sirens. Clean loopable ending.
+```
 
 Lyric field:
 
@@ -241,7 +256,8 @@ Lyric field:
 
 [Beat Drop: four-on-the-floor kick, slap bass, the band organ takes the hook at full speed]
 
-[Main Theme: band organ and brass stabs trade the hook, glockenspiel doubling, sleigh bells on the off-beats]
+[Main Theme: band organ and brass stabs trade the hook, glockenspiel doubling, bell trees on the off-beats]
+Hey! Hey!
 
 [Coaster Section: clack-clack-clack percussion climbing, bells ringing, a rising whoosh, the hook in a minor key]
 
@@ -249,9 +265,10 @@ Lyric field:
 
 [Carousel Interlude: music-box and glockenspiel waltz over a half-time beat, soft organ pads]
 
-[Build-Up: snare roll, a siren climbing, brass rising in steps]
+[Build-Up: snare roll, a synth whistle climbing, brass rising in steps]
 
 [Finale: full band organ, brass and calliope in unison, fireworks booms on the downbeats]
+Hey! Hey!
 
 [Outro: the calliope alone with the opening hook, back to the intro for a clean loop]
 
@@ -260,10 +277,13 @@ Lyric field:
 
 ### Deepwell — The Station Below (`rig-theme`)
 
-Deepwell was rebuilt on 2026-11-11 as a research station on the ocean floor (docs/arenas/DEEPWELL.md). It keeps playing the
-owner's `rig-offshore` (Offshore Rig) until a song for the new place is in; that song takes the resource key `rig-theme`.
+A glass research station on the ocean floor (docs/arenas/DEEPWELL.md).
 
-Instrumental deep-sea arena combat soundtrack, 122 BPM, a glass research station on the ocean floor: whales passing the windows, jellyfish glowing, a great drill pounding at its heart. Aquatic electronica meets orchestral: a heavy four-on-the-floor kick like a piston with a metallic clang on every fourth bar, deep rolling sub-bass, sonar pings, bubbling arpeggiated plucks through a low-pass filter that opens in the builds, warm analog brass pads, bowed vibraphone and glass harmonica, a slow rising whale-song lead on fretless synth. Vast, calm and pressurised, then driving; warm lamps against cold teal. No vocals. Clean loopable ending.
+Style field:
+
+```
+Instrumental deep-sea arena combat soundtrack, 122 BPM, a glass research station on the ocean floor: whales passing the windows, jellyfish glowing, a great drill pounding at its heart. Aquatic electronica meets orchestral: a heavy four-on-the-floor kick like a piston with a metallic clang on every fourth bar, deep rolling sub-bass, sonar pings, bubbling arpeggiated plucks through a low-pass filter that opens in the builds, warm analog brass pads, bowed vibraphone and glass harmonica, a slow rising whale-song lead on fretless synth. Vast, calm and pressurised, then driving; warm lamps against cold teal. No vocals, no alarms. Clean loopable ending.
+```
 
 Lyric field:
 
@@ -279,7 +299,7 @@ Ooh, ooh
 
 [Breakdown: the drums drop out, only the whale-song, bowed vibraphone and a slow heartbeat kick, held pressure]
 
-[Build-Up: snare rolls like rising bubbles, the filter opens, klaxon-like brass stabs]
+[Build-Up: snare rolls like rising bubbles, the filter opens, deep brass stabs]
 
 [Climax: full drums and brass, the four-note motif in brass and glass together, the whale-song soaring over it]
 Ooh, ooh
@@ -290,17 +310,15 @@ Ooh, ooh
 [End]
 ```
 
-| Stage | Map id | Placeholder now | Resource key for the owner's song |
-|---|---|---|---|
-| Deepwell | `rig` | `rig-offshore` (the owner's earlier Deepwell song; the record's fallback stays `factory-anvil-loop`) | `rig-theme` |
+### Polaris Station — Northern Lights Array (`polar-theme`)
 
-### Polaris Station — Northern Lights Array
+An arctic observatory under a moving aurora (docs/arenas/POLAR.md).
 
-Polaris Station was rebuilt on 2026-11-11 (docs/arenas/POLAR.md): an arctic observatory under a moving aurora, a great dish
-turning over it, an icebreaker frozen into the shelf, thin ice over her channel. Its current song (`polar-pulse-de-la-mort`) stays as
-the placeholder; the owner's new song takes the key `polar-theme`.
+Style field:
 
-Instrumental arctic observatory combat soundtrack, 132 BPM, a research station on the polar ice under green and violet northern lights while a giant radio telescope slowly turns. Glacial electronic: a crystalline bell-and-glass arpeggio like ice singing, wide shimmering aurora pads that swell and fold, a deep sub-bass pulse like ice groaning, tight punchy kick and brushed metallic hi-hats, a lonely radio-signal motif of four sine beeps answered by warm analog brass, distant ship's horn swells, wind-like risers. Cold, vast, beautiful and tense; warm chords glow in the chorus like lit cabin windows. Builds and releases in 16-bar waves. No vocals. Clean loopable ending.
+```
+Instrumental arctic observatory combat soundtrack, 132 BPM, a research station on the polar ice under green and violet northern lights, a giant radio telescope slowly turning and an icebreaker frozen into the shelf. Glacial electronic: a crystalline bell-and-glass arpeggio like ice singing, wide shimmering aurora pads that swell and fold, a deep sub-bass pulse like ice groaning, tight punchy kick and brushed metallic hi-hats, a lonely radio-signal motif of four sine beeps answered by warm analog brass, distant ship's horn swells, wind-like risers. Cold, vast, beautiful and tense; warm chords glow in the chorus like lit cabin windows. Builds and releases in 16-bar waves. No vocals, no sleigh bells. Clean loopable ending.
+```
 
 Lyric field:
 
@@ -328,20 +346,15 @@ Aaah, aaah
 [End]
 ```
 
-| Stage | Map id | Placeholder now | Resource key for the owner's song |
-|---|---|---|---|
-| Polaris Station (rebuilt) | `polar` | `polar-pulse-de-la-mort` | `polar-theme` |
+### Skyframe — Garden Above the Clouds (`skyframe-theme`)
 
-### Skyframe — Garden Above the Clouds
-
-The stage was rebuilt on 2026-11-11 (docs/arenas/SKYFRAME.md): a sky garden at the top of a tower still under construction,
-above a sea of clouds at sunset. It keeps its current track (the owner's `skyframe-rising-motif`, written for the noon
-construction site) as the placeholder; a song written for the new stage goes in under the resource key `skyframe-theme`
-(`NativeStageMusic.Theme`), the old one then staying as the record's fallback.
+A sky garden on a tower still under construction, above a sea of clouds at sunset (docs/arenas/SKYFRAME.md).
 
 Style field:
 
-Instrumental high-altitude arena combat soundtrack, 150 BPM, a garden terrace on top of a half-built skyscraper above a sea of clouds at golden hour. Uplifting liquid drum and bass with orchestral colour: crisp rolling breakbeats, warm round sub-bass, bright plucked koto-like synth arpeggios, soaring string melody, airy flute and glass bell accents, wide warm pads like sunlight on glass, distant steel percussion hits like a crane at work. Radiant, weightless, fast and exhilarating, with a memorable rising six-note motif that climbs and resolves high. Builds and releases in 16-bar waves. No vocals. Clean loopable ending.
+```
+Instrumental high-altitude arena combat soundtrack, 174 BPM, a garden terrace on top of a half-built skyscraper above a sea of clouds at golden hour. Uplifting liquid drum and bass with orchestral colour: crisp rolling breakbeats, warm round sub-bass, bright plucked koto-like synth arpeggios, soaring string melody, airy flute and glass bell accents, wide warm pads like sunlight on glass, distant steel percussion hits like a crane at work. Radiant, weightless, fast and exhilarating, with a memorable rising six-note motif that climbs and resolves high. Long weightless breakdowns between the runs. No vocals. Clean loopable ending.
+```
 
 Lyric field:
 
@@ -351,6 +364,7 @@ Lyric field:
 [Build-Up: rolling hi-hats enter, plucked arpeggios climbing, sub-bass swelling]
 
 [Main Theme: full liquid drum and bass groove, strings carry the six-note motif, flute answers]
+Aaah, aaah
 
 [Instrumental Break: arpeggios and steel percussion trade phrases over the breakbeat, bass slides]
 
@@ -359,24 +373,22 @@ Lyric field:
 [Build-Up: snare roll, rising strings, a held breath]
 
 [Climax: full groove, strings and brass lift the motif an octave, bells ringing over the top]
+Aaah, aaah
 
 [Outro: drums thin to the intro's pulse, bells repeat the motif, seamless loop]
 
 [End]
 ```
 
-| Stage | Map id | Placeholder now | Resource key for the owner's song |
-|---|---|---|---|
-| Skyframe (rebuilt) | `skyframe` | `skyframe-rising-motif` (the owner's 2026-11-02 song) | `skyframe-theme` |
+### Breakwater — Storm Light (`breakwater-theme`)
 
-### Breakwater — Storm Light
+A storm-battered granite mole at blue hour, the lighthouse turning at its head (docs/arenas/BREAKWATER.md).
 
-Breakwater was rebuilt on 2026-11-11 (docs/arenas/BREAKWATER.md): a storm-battered granite mole at blue hour, the lighthouse turning
-at its head, seas breaking over the wave wall. It keeps the owner's **Last Light Duel** (`breakwater-arena-duel`) as its track; this
-brief is for a new song if the owner wants one for the rebuilt stage (it would take the same place: NativeStageMusic.Theme's
-`breakwater` entry, under the key `breakwater-theme`).
+Style field:
 
-Instrumental duel soundtrack, 132 BPM, a storm-battered stone breakwater at blue hour, a lighthouse sweeping its beam through rain and sea spray. Tense nautical breakbeat: tight dry drums with rolling floor toms like breaking waves, a deep swelling analog bass that rises and falls in four-bar swells, a lonely descending four-note motif on muted bell and brass-band cornet, tremolo strings like wind in rigging, a distant ship's bell on the off-beat, bowed cymbal washes. Cold, wide, brave, salt-bitten; one-on-one focus. Every eight bars a swell builds and breaks. No vocals. Clean loopable ending.
+```
+Instrumental duel soundtrack, 128 BPM, a storm-battered stone breakwater at blue hour, a lighthouse sweeping its beam through rain and sea spray. Tense nautical breakbeat: tight dry drums with rolling floor toms like breaking waves, a deep swelling analog bass that rises and falls in four-bar swells, a lonely descending four-note motif on muted bell and brass-band cornet, tremolo strings like wind in rigging, a distant ship's bell on the off-beat, bowed cymbal washes. Cold, wide, brave, salt-bitten; one-on-one focus. Every eight bars a swell builds and breaks. No vocals, no foghorns. Clean loopable ending.
+```
 
 Lyric field:
 
@@ -400,6 +412,145 @@ Ooh, ooh
 Ooh, ooh
 
 [Outro: drums thin to the bell and the bass swell, the cornet repeats the motif, seamless loop]
+
+[End]
+```
+
+### Brickfall — Demolition Day (`brickfall-theme`)
+
+An old red-brick district coming down mid-fight: the grand hotel with its roof sign, tenement lanes, skybridges, two kiln
+chimneys and whole facades that collapse on a timer (docs/arenas/BRICKFALL-ART.md).
+
+Style field:
+
+```
+Instrumental arena combat soundtrack, 120 BPM, an old red-brick city district on demolition day: a grand hotel with a rusting rooftop sign, tenement lanes, skybridges and two brick-kiln chimneys, whole facades crumbling into dust as the fight goes on. Gritty big-beat breaks: a heavy swung drum break with a dusty snare, a fat fuzzy bass riff, stabbing baritone sax and trombone section, honky-tonk piano chords from the hotel bar, hand-claps and tambourine, a wrecking-ball sub hit on the downbeat of every eighth bar, sifting gravel textures in the breaks. Brash, swaggering, warm brick and late-afternoon dust, with a cocky five-note horn riff that keeps coming back. No vocals, no alarm bells or warning beeps. Clean loopable ending.
+```
+
+Lyric field:
+
+```
+[Intro: a dusty drum break alone, a honky-tonk piano vamp from the hotel bar, a distant rumble]
+
+[Main Theme: full big-beat groove, fuzzy bass riff, baritone sax and trombone stab the five-note riff]
+Hey! Hey!
+
+[Instrumental Break: drums and bass alone, hand-claps and tambourine, gravel sifting between the hits]
+
+[Breakdown: the beat drops out, piano and a lone muted trumpet play the riff slowly, dust settling]
+
+[Build-Up: snare roll, horns climbing in half steps, a slow crane creak]
+
+[Drop: one beat of silence, then a wrecking-ball sub hit and the full band]
+
+[Climax: horns in unison on the riff, piano hammering, the break at full weight]
+Hey! Hey!
+
+[Outro: back to the bare drum break and the piano vamp, seamless loop]
+
+[End]
+```
+
+### Ward Zero — Containment (`wardzero-theme`)
+
+A sealed quarantine ward: flickering ceiling lights that dim with the ward's mood, beacons, guide strips chasing up the routes,
+specimen tanks, and walls that something breaks through (docs/arenas/WARDZERO-ART.md). Its hazards have their own warning sounds,
+so the brief keeps alarms and monitor beeps out of the music.
+
+Style field:
+
+```
+Instrumental arena combat soundtrack, 126 BPM, a sealed quarantine ward deep in a research hospital: white corridors under flickering ceiling lights, specimen tanks glowing green, guide strips chasing up the stairs, and something heavy knocking through the walls. Cold clinical dark techno: a dry rigid kick, clicking hi-hats like relays, a pulsing sidechained bass, a detuned arpeggio that stutters like a failing light, sterile glass and steel taps, a slow low pad, muffled heavy impacts behind the beat that grow closer. Sterile, paranoid and relentless, precise rather than gory. A thin four-note motif on a cold sine lead, answered by a distorted low brass growl. No vocals, no alarms, sirens or heart-monitor beeps. Clean loopable ending.
+```
+
+Lyric field:
+
+```
+[Intro: fluorescent hum, a detuned arpeggio flickers on and off, a muffled knock far down the hall]
+
+[Build-Up: relay-click hi-hats, the sidechained bass pulse rises, glass taps]
+
+[Main Theme: full dry kick, the four-note sine motif answered by a low distorted brass growl]
+Aaah
+
+[Instrumental Break: the arpeggio stutters across the stereo field, knocks land behind the beat, closer each time]
+
+[Breakdown: the lights die, only the hum, a slow pad and three heavy knocks]
+
+[Build-Up: snare roll like a failing relay, the arpeggio speeding up, the knocks quickening]
+
+[Climax: everything at once, the motif doubled an octave up, the brass growling under it]
+Aaah, aaah
+
+[Outro: back to the hum and the flickering arpeggio, a single knock, seamless loop]
+
+[End]
+```
+
+### The Factory — Heavy Shift (`factory-theme`)
+
+A steel works hall: hydraulic presses, slitter blades in floor trenches, overhead cranes on their runways, sodium lamps and sun
+shafts through the skylights, a blast furnace outside (docs/arenas/FACTORY-ART.md).
+
+Style field:
+
+```
+Instrumental arena combat soundtrack, 110 BPM, a steel works hall at the end of the day shift: hydraulic presses slamming, slitter blades spinning in floor trenches, overhead cranes rolling on their runways, sodium lamps and sun shafts through the skylights, a blast furnace glowing outside. Heavy industrial groove: a stomping half-swing beat built from metal percussion (anvil strikes, chain rattles, struck pipes, a press slam on the backbeat), a growling overdriven bass riff, chugging baritone guitar, tight funk clavinet, a proud low brass motif of three rising notes, steam hiss in the breaks. Sweaty, mechanical, muscular, warm amber light. No vocals, no factory sirens, alarms or warning horns. Clean loopable ending.
+```
+
+Lyric field:
+
+```
+[Intro: a lone anvil rhythm, chains rattling, steam hiss, a slow crane rumble]
+
+[Main Theme: the stomping beat with a press slam on every backbeat, growling bass riff, baritone guitar chug, brass carry the three-note motif]
+Hey! Ho!
+
+[Instrumental Break: metal percussion solo, struck pipes trading phrases with the clavinet]
+
+[Breakdown: drums out, only the furnace drone, a slow bass note and the motif on a lone trombone]
+
+[Build-Up: anvil hits doubling, the guitar climbing, a crane groaning upward]
+
+[Climax: full band, brass and guitar in unison on the motif, presses slamming on every beat]
+Hey! Ho! Hey! Ho!
+
+[Outro: back to the lone anvil rhythm and the steam, seamless loop]
+
+[End]
+```
+
+### Cyber City — Helix Line (`cybercity-theme`)
+
+A rain-wet neon avenue at night: puddles mirroring the signs, hover cabs at the kerb, the noodle bar, towers with their names in
+neon, and the Helix Line maglev through the station overhead (docs/arenas/CYBERCITY-ART.md).
+
+Style field:
+
+```
+Instrumental arena combat soundtrack, 144 BPM, a rain-soaked neon avenue at midnight: puddles mirroring the signs, hover cabs at the kerb, a noodle bar's red glow, towers with their names in neon, and the Helix Line maglev train rushing through the station overhead. Glossy cyberpunk electro-funk: punchy shuffled two-step drums, a slapping synth-bass hook, shimmering city-pop electric piano chords, a sharp saw-lead melody of six notes that bends up at the end, vocoded wordless chops, rain-on-glass textures, a doppler synth sweep for the passing train. Slick, fast, nocturnal and confident; neon pink and cyan on wet stone. No lead vocals, no police sirens or car horns. Clean loopable ending.
+```
+
+Lyric field:
+
+```
+[Intro: rain on glass, a warm electric piano chord, the distant hum of the maglev]
+
+[Build-Up: shuffled hats ticking in, the synth-bass hook filtered, a vocoder chop]
+
+[Main Theme: full two-step groove, slapping synth-bass, the six-note saw lead bending up at the end]
+Oh-oh, oh-oh
+
+[Train Pass: a doppler sweep from left to right, the drums double-time for four bars]
+
+[Breakdown: drums out, electric piano and rain, the lead slow and soft through a filter]
+
+[Build-Up: snare roll, risers, the bass hook climbing]
+
+[Climax: full groove, the lead an octave up, vocoder chops answering it]
+Oh-oh, oh-oh
+
+[Outro: back to the rain and the piano chord, seamless loop]
 
 [End]
 ```

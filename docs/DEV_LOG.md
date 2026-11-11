@@ -1,3 +1,27 @@
+## 2026-11-11 — Claude: the Hot Dog's hats fit its crown (owner report)
+
+- Branch `claude/hotdog-hats`, base shared `b1674f0d`. Forwarded by the NOCTIEL and THE DEEP END session.
+- **The owner:** "Hats don't fit on hotdog model correctly."
+- **Why they didn't:** a hat rode an anchor on the head's twin, 3.5 cm up and 5 cm ahead of where it sits on the pilot.
+  - The sausage's crown follows the head bone only about 30% (its weights are 40% neck, 28% upper spine, so its top doesn't fold), so in any stance that pitches or turns the head the hat tilted and slid off.
+  - 5 cm ahead was twice the measured offset (2.2 cm), putting hats over the face.
+  - The three crown sprigs (3 to 5 cm over the dome) poked through every closed hat.
+  - Measured from the bank in the head bone's frame: at the hat band (0.118) the crown is the pilot skull's size (half width 0.12, as deep); its dome tops out at 0.24, 2.5 cm over a closed hat's crown (0.215).
+- **The fix** (`docs/HOT-DOG-SKIN.md`, "Hats"):
+  - Runtime `HotDogHatOn` places the anchor each time a hat is drawn in the crown's own skinning frame: the blend of a crown vertex's four bones, read once from the bank. Live bodies, portraits and corpses alike.
+  - Core `NativeHotDog.HatFit` is each hat's fit on the crown, like the helmet's (`NativeRobotHelm.HatFit`): about the band's middle, 3 cm up (the wizard 4.5, its floppy brim clear of the eyes), 2.2 cm ahead.
+  - `HotDogUnderHat` draws a copy of the mesh without the sprigs under a closed hat (cap, beanie, top hat, wizard, cowboy, cone, Sheldon Head), from `VisualHatHair` and the corpse's dressing. The sprigs are found at load: the small parts wholly within 8 cm of the top, welded across the bank's seams.
+  - The crown, antenna and halos leave them standing.
+- **Animation impact:** presentation only. No hit timing, hitbox, damage, cooldown, movement or wire value changes.
+- **Checks:**
+  - `--hot-dog` gains every model hat's fit (band lifted and ahead, scale sane), which hats hide the sprigs, an unlisted hat taking the cap's fit, and the runtime's hooks.
+  - Unity compile PASS.
+- **Seen in the Editor** (BoZo on Brickfall, a DEV pilot in the Hot Dog with the sword, orbit shots framed on the head with a new local tool option `headframe=UP,DIST`):
+  - all eleven hats (cap, beanie, top hat, wizard, crown, cone, antenna, halo, cowboy, auditor's halo, Sheldon Head), against shared's code first.
+  - Before: tilted off the crown, over the face, sprigs through the cowboy hat. After: each on the crown and following its lean, the sprigs hidden under the closed hats.
+- **Not run:** no person or two-client run; corpses with hats and the Locker's portrait not looked at; only the sword's idle stance.
+- **Released:** full suite at `b2b1624c` (shared merged in): 1014 groups, exit 0; `git diff --check` clean; Unity compile PASS. Merged `86f774a8`; builder succeeded and published to the test channel: revision 639300200572615902, 314.8 MiB (the builder's status read the feed before it refreshed; its agent log has "Published native Unity build 7b7c850b..."). No live release; the bank and the Drive zip unchanged.
+
 ## 2026-11-11 — Claude: the Katana's saya on the body where the pack wears it, carried by the left hand as the pack's clips carry it, and the blade classes' intros holding their blades as the match does (owner request)
 
 - Branch `claude/blades` (from shared `9851a8ce`, merged with shared `518aaf83`): `22d46a06`, `b1e4e943` and this entry. Relayed by the NOCTIEL session.
@@ -10,6 +34,7 @@
 - **Checks:** CoreTests `--blades` (221: the intro on the pack's iai and whole sheathing with the draw and the click on the pack's moments, its blade leaving and entering the saya there, its eases; the carries in the stance-three moves and the sheathing only, the turn in the sheathing only, whole turns; the entrances' holds; the arena's iai in the hand through the draw and seated from the click; the new Runtime hooks as text); the full suite (it first stopped at `HotDogChecks`, which pins `PalmGrip`'s spec rule as text, now in the by-spec overload; the weapon hand's placement line stays as `VisualRigChecks` pins it, the sheathing's turn laid over it after), the Unity compile and the Editor build checks (`PrototypeBuild.Validate` ok, Native blades 62) before the release.
 - **Seen in the Editor** (captures on probe builds): Crimson Moon from the sheathed idle (the left hand on the saya at the belly) through the iai stance (the saya pulled level, the blade drawn out of it, held in the fist for the cut), the turn in the hand, the blade laid along the saya and slid home, the click, and the hero with the blade home; the saya at rest from the front, the side and behind in the arena's idle and on the run; the arena's iai (the pulled saya, the draw, the dash, the sheathing into the carried saya, the click, the blade back in hand); Silent Kill with both fangs closed in the fists.
 - **Not seen / not done:** the rush's and the storm's carries on screen; the saya's end in the lowest poses (a landing's crouch may bring it to the floor); not played by a person.
+- **Released** to the test channel (Windows builder): merged into shared at `592b844d` and synced to the builder; the release suite at `a2d89e75` (1014 groups, exit 0), the Unity compile and the Editor build checks (Native blades 62) passed; built and published as revision `639300152040300339` (2026-11-11 17:36 UTC). No repack: the Drive zip's motion bank already holds the clips. Not played by a person.
 
 ## 2026-11-11 — Claude: the stage revamp: Breakwater, Pier 9, Deepwell, Polaris Station and Skyframe rebuilt; Brickfall, Ward Zero, the Factory and Cyber City modelled (owner request)
 
