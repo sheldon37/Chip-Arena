@@ -472,7 +472,7 @@ small['spec-ansatsuken']=()=>{
 
 // ---- export ----
 const CLASSES={dev:'class-dev',magic:'class-magic',melee:'class-melee',ranged:'class-ranged'};
-const SPECS=Object.fromEntries(['ansatsuken','bow','cyberlord','daggers','darkness','emperor','fire','glaive','greatsword','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','topdog','water'].map(id=>[id,'spec-'+id]));
+const SPECS=Object.fromEntries(['ansatsuken','bow','cyberlord','daggers','darkness','emperor','fangs','fire','glaive','greatsword','katana','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','topdog','water'].map(id=>[id,'spec-'+id]));
 const entries=Object.keys(icons).sort().map(id=>{const e={id,markup:markup(icons[id]())};if(small[id])e.small=markup(small[id]());return e;});
 const pairs=o=>Object.entries(o).sort(([a],[b])=>a<b?-1:1).map(([id,icon])=>({id,icon}));
 const data={schema:1,source:'tools/export_class_icons.mjs',note:'Original Chip Arena class and weapon artwork authored for this project as geometry; not derived from any third-party icon set.',box:24,smallPx:22,fallback:'class-dev',icons:entries,classes:pairs(CLASSES),specs:pairs(SPECS)};
