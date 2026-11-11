@@ -123,6 +123,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--pier-art"){PierArtChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--deepwell"){DeepwellChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--deepwell-art"){DeepwellArtChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--skyframe"){SkyframeChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--skyframe-art"){SkyframeArtChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--sanctum"){SanctumChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--stage-art"){StageArtChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--club-art"){ClubArtChecks.Run(ProjectRoot());return 0;}
@@ -336,6 +338,8 @@ internal static class Program
             PierArtChecks.Run(root);
             DeepwellChecks.Run(root);
             DeepwellArtChecks.Run(root);
+            SkyframeChecks.Run(root);
+            SkyframeArtChecks.Run(root);
             SanctumChecks.Run(root);
             StageArtChecks.Run(root);
             ClubArtChecks.Run(root);

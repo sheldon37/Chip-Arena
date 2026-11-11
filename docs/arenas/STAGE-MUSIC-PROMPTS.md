@@ -221,6 +221,7 @@ plays its current track (`harbor-container-terminal`, written for the old contai
 | Pier 9 | `harbor` | `harbor-container-terminal` | `harbor-theme` |
 | Deepwell | `rig` | `rig-offshore` | `rig-theme` |
 | Polaris Station | `polar` | `polar-pulse-de-la-mort` | `polar-theme` |
+| Skyframe | `skyframe` | `skyframe-rising-motif` | `skyframe-theme` |
 
 ### Pier 9 — Last Night of the Season
 
@@ -329,3 +330,40 @@ Aaah, aaah
 | Stage | Map id | Placeholder now | Resource key for the owner's song |
 |---|---|---|---|
 | Polaris Station (rebuilt) | `polar` | `polar-pulse-de-la-mort` | `polar-theme` |
+
+### Skyframe — Garden Above the Clouds
+
+The stage was rebuilt on 2026-11-11 (docs/arenas/SKYFRAME.md): a sky garden at the top of a tower still under construction,
+above a sea of clouds at sunset. It keeps its current track (the owner's `skyframe-rising-motif`, written for the noon
+construction site) as the placeholder; a song written for the new stage goes in under the resource key `skyframe-theme`
+(`NativeStageMusic.Theme`), the old one then staying as the record's fallback.
+
+Style field:
+
+Instrumental high-altitude arena combat soundtrack, 150 BPM, a garden terrace on top of a half-built skyscraper above a sea of clouds at golden hour. Uplifting liquid drum and bass with orchestral colour: crisp rolling breakbeats, warm round sub-bass, bright plucked koto-like synth arpeggios, soaring string melody, airy flute and glass bell accents, wide warm pads like sunlight on glass, distant steel percussion hits like a crane at work. Radiant, weightless, fast and exhilarating, with a memorable rising six-note motif that climbs and resolves high. Builds and releases in 16-bar waves. No vocals. Clean loopable ending.
+
+Lyric field:
+
+```
+[Intro: wind, soft glass bells play a rising six-note motif over a warm pad, a distant metallic clang]
+
+[Build-Up: rolling hi-hats enter, plucked arpeggios climbing, sub-bass swelling]
+
+[Main Theme: full liquid drum and bass groove, strings carry the six-note motif, flute answers]
+
+[Instrumental Break: arpeggios and steel percussion trade phrases over the breakbeat, bass slides]
+
+[Breakdown: drums fall away, only pads, bells and wind, the motif slow and wide like the sun on the clouds]
+
+[Build-Up: snare roll, rising strings, a held breath]
+
+[Climax: full groove, strings and brass lift the motif an octave, bells ringing over the top]
+
+[Outro: drums thin to the intro's pulse, bells repeat the motif, seamless loop]
+
+[End]
+```
+
+| Stage | Map id | Placeholder now | Resource key for the owner's song |
+|---|---|---|---|
+| Skyframe (rebuilt) | `skyframe` | `skyframe-rising-motif` (the owner's 2026-11-02 song) | `skyframe-theme` |

@@ -15,14 +15,14 @@ namespace ChipArena.UnityConversion
         public const string Breakwater="breakwater",Harbor="harbor",Skyframe="skyframe",Rig="rig",Polar="polar";
         /// <summary>The stages this presentation still draws. A stage rebuilt on its own code leaves it and keeps its number unused
         /// (2026-11-11: Pier 9, Core NativePier*, docs/arenas/HARBOR.md; Deepwell, Core NativeDeepwell*, docs/arenas/DEEPWELL.md;
-        /// Polaris Station, Core NativePolar*, docs/arenas/POLAR.md).</summary>
-        public static readonly string[] Maps={Breakwater,Skyframe};
+        /// Polaris Station, Core NativePolar*, docs/arenas/POLAR.md; Skyframe, Core NativeSkyframe*, docs/arenas/SKYFRAME.md).</summary>
+        public static readonly string[] Maps={Breakwater};
         /// <summary>The stages' fixed numbers (the kit, scenery, rig and effects switch on them).</summary>
         private static readonly string[] Order={Breakwater,Harbor,Skyframe,Rig,Polar};
         /// <summary>The look each stage names (UnityMaps.json `look`; MapLooks.json carries one entry for each), in step with <see cref="Maps"/>.</summary>
-        public static readonly string[] Looks={"breakwater-blue-hour","skyframe-high-noon"};
-        /// <summary>The stage's number (its place in the first five: 0 Breakwater, 2 Skyframe), or -1 for every other map
-        /// (whose presentation never changes here).</summary>
+        public static readonly string[] Looks={"breakwater-blue-hour"};
+        /// <summary>The stage's number (its place in the first five: 0 Breakwater), or -1 for every other map (whose presentation
+        /// never changes here).</summary>
         public static int Index(string mapId){if(Array.IndexOf(Maps,mapId)<0)return -1;return Array.IndexOf(Order,mapId);}
         public static bool Active(string mapId)=>Index(mapId)>=0;
 

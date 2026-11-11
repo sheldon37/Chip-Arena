@@ -59,7 +59,7 @@ internal static class NewStagesChecks
                 rows[0].dps=float.NaN;Check(!NativeTrainingRules.ValidFrame(map,seats,rows),"bad readout rejected");
             }
         }
-        var crane=maps.maps.Single(m=>m.id=="skyframe").hazards.Single();
+        var crane=maps.maps.Single(m=>m.id=="skyframe").hazards.Single(h=>h.kind=="crane");
         for(int z=0;z<crane.zones.Length;z++)
         {
             double impact=crane.start+crane.offset+z*crane.period+crane.travel+crane.warn+crane.rise;

@@ -40,6 +40,7 @@ internal static class StageArtLayout
         if(NativeClubLooks.Active(map.id))ClubArtLayout.Write(w,map,look,V,Q);
         if(NativeCausewayLooks.Active(map.id))CausewayArtChecks.Layout(w);
         if(NativePierLooks.Active(map.id))PierArtChecks.Layout(w,map);
+        if(NativeSkyframeLooks.Active(map.id))SkyframeArtChecks.Layout(w,map);
         if(NativeEmporiumLooks.Active(map.id))Emporium(w,map,look,V,Q);
         if(NativeCyberCityLooks.Active(map.id))CyberCityArtLayout.Write(w,map,V);
         if(NativePolarLooks.Active(map.id))PolarArtChecks.Layout(w,map,look);
