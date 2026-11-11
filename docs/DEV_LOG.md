@@ -36,12 +36,14 @@
 - **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement, network or save change; presentation and load order only.
 - **Checks:**
   - CoreTests `--boot-intro`: 82 checks (rules, timeline, letterbox, the clip's size, hash, metas, receipt and credits, and the wiring and order).
-  - The full CoreTests and `git diff --check`: see the release notes below.
+  - The full CoreTests at the merge with shared (`890d77bf`; Windows path patch applied in a throwaway worktree, as always on this PC): 1016 PASS lines, exit 0. `git diff --check` against shared: clean.
   - Unity compile PASS.
   - `PrototypeBuild.Validate` in batch mode on a copy of the project at the branch: passed, 396 PASS lines.
   - Python suite: the same 12 failures as the base on this PC, none new; `package_source.py --check` passed.
   - Windows builds (batch, on a scratch copy of the project): the build check logged `BOOT_INTRO_CLIP_IN_BUILD`; the player played the clip, held the logo with the indicator (`--ca-boot-hold`), crossfaded into the menu, and letterboxed at 4:3.
   - In the player, `-nointro` and `-batchmode` logged `BOOT_INTRO off (Argument)` and `(BatchMode)`, with the old synchronous path.
+  - The exact branch head (`4adbbe19`, no probe) was built and launched once. It played the clip with no decoder warning: 1319 frames, mean 7.6 ms, p99 10.4 ms, the largest the 0.34 s menu build under the settled logo. It went interactive 16.4 s after start.
+  - **Not run yet:** the shared Editor. The Play-mode run with the intro, and a capture run showing the tool's runs skip it, were held for the Editor queue. The local tool's patch for its `bootintro=1`, `bootshots=`, `bootskip=` and `boothold=` options is ready but not installed.
 - **Not verified:** a person watching and hearing it; the builder's own build and the installed updater; other GPUs and slower CPUs; a two-monitor or fullscreen launch.
 
 ## 2026-11-11 — Claude: hats checked on the Top Dog; the Hot Dog's sausage keeps its bend even (owner reports)
