@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using ChipArena.UnityConversion;
 
-// The Factory's stage art (docs/arenas/FACTORY_PROPOSAL.md "Stage art", docs/arenas/STAGE-ART.md): its art poses against its box rig
+// The Factory's stage art (docs/arenas/FACTORY-ART.md, docs/arenas/STAGE-ART.md): its art poses against its box rig
 // at every moment of two rounds, the boxes the rig keeps under the art (the telegraph lamps, a blade's blood), the layout export,
 // the pilot columns the art pass leaves (the shell's caps and the runways), the runtime's wiring and its bank-absent fallback; and,
 // where the bank is on this machine (it is git-ignored), the bank itself against the map.

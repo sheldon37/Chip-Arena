@@ -1,4 +1,4 @@
-"""The Factory's art (docs/arenas/FACTORY_PROPOSAL.md "Stage art", docs/arenas/STAGE-ART.md): Corvane Works' Line 3 modelled in
+"""The Factory's art (docs/arenas/FACTORY-ART.md, docs/arenas/STAGE-ART.md): Corvane Works' Line 3 modelled in
 Blender on the map's own blocks and its Core kit's parts, into the stage bank Resources/ChipArenaStageFactory (stagekit.py's
 format and bake). Runtime NativeStageArt draws it in place of the boxes; without the bank the box kit draws as before.
 
@@ -217,6 +217,9 @@ def roller_door(g, p, T, n3):
 def baywall(g, b, parts, T):
     body(g, b, mat('baywall'), T, .04, cell=(1.8, 0, 0)[T.i])
     for p in parts:
+        if kname(p) == 'stripe' and p['h'][0] < .02 and p['h'][1] > 1:
+            # the guard on a jamb's end: a hair short of the wall's faces, so its edges do not lie in them
+            p = dict(p, h=[p['h'][0], p['h'][1], p['h'][2] - .012])
         kit_part(g, p, T)
 
 
@@ -367,7 +370,11 @@ def deck(g, b, parts, T):
     x0, x1, y0, y1, z0, z1 = ext(b)
     cell = (3.0, 0, 0)[T.i]
     box(g, x0, x1, y0, y1, z0, z1, mat('grating'), T, .008, cell)
+    walls = [ext(o) for o in BL.values() if '-parapet-' in o['id']] if '-pulpit-' in b['id'] else []
     for p in parts:
+        c = p['c']
+        if any(e[0] - .06 <= c[0] <= e[1] + .06 and e[2] - .06 <= c[1] <= e[3] + .06 and e[4] - .06 <= c[2] <= e[5] + .06 for e in walls):
+            continue            # a rail the kit runs inside a parapet's wall
         kit_part(g, p, T)
 
 
@@ -594,7 +601,9 @@ def main():
     import factory_rig as rig
     plant.BL = rig.BL = BL
     sb = sk.StageBank()
-    chunks = sk.Chunks(12.0, (-36.0, -24.0), (-1.0, 9.0))
+    # 20 m cells in two bands (the floor's storey, the roofs'): 32 chunks; the hall is one open room, and a chunk's renderer is a
+    # draw in every shadow cascade, so fewer, larger chunks cost less than the triangles they save
+    chunks = sk.Chunks(20.0, (-40.0, -40.0), (-1.0, 9.0))
     floors = (0.0, 3.6, 6.0)
     t0 = time.time()
     for ti in [int(x) for x in args.tiers.split(',')]:
@@ -603,7 +612,7 @@ def main():
         g = static_scene(L, T)
         # every pair of overlapping faces turned the same way ends a whole lift apart: the kit's paint lies 3 to 12 mm over the slab
         # (joints, washes, lines, numbers), closer than the depth buffer parts at the Mid and Low tiers' range
-        print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=sk.LIFT_TIER[ti] - .0002, lift=sk.LIFT_TIER[ti], passes=5))
+        print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=sk.LIFT_TIER[ti] - .0002, lift=sk.LIFT_TIER[ti], passes=12))
         blocks = rig.block_scene(L, T)
         print('tier %s: static %d faces, %.1f s' % (T.name, g.faces, time.time() - t))
         if ti == 0:

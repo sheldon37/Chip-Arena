@@ -1,4 +1,4 @@
-"""The Factory's rigs and breakable blocks (docs/arenas/FACTORY_PROPOSAL.md "Stage art"): each a prop in its own frame, posed by
+"""The Factory's rigs and breakable blocks (docs/arenas/FACTORY-ART.md): each a prop in its own frame, posed by
 Core NativeFactoryArt from the hazards' states (the rig props) or drawn where its block stands (the block props).
 
 Rig frames (Unity axes, metres; the names are NativeFactoryArt.Slots):

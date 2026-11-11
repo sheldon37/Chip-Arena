@@ -1,4 +1,4 @@
-"""The Factory's modelling helpers (docs/arenas/STAGE-ART.md, docs/arenas/FACTORY_PROPOSAL.md "Stage art"), on stagekit: the
+"""The Factory's modelling helpers (docs/arenas/STAGE-ART.md, docs/arenas/FACTORY-ART.md), on stagekit: the
 finishes (the proposal's palette 3.10 and the kit kinds' colours), steel sections (I-beams, tubes, plates with bolts), corrugated
 sheet, hazard stripes clipped to a rectangle, a block's canonical half turn (the map is point-symmetric: every south / B piece is
 its north / A twin turned half round), and the fallback that rebuilds any kit part as a finished piece (bars round, pipes and
@@ -22,7 +22,7 @@ Y = (0.0, 1.0, 0.0)
 # name -> (hex, detail, smooth, metal, dirt, wear, param, glow)
 MATS = {
     'floor': (0x6E6A63, A.DETAIL_PLASTER, .42, 0, .8, 0, 0, 0), 'plinth': (0x8C877D, A.DETAIL_PLASTER, .25, 0, .8, .1, 0, 0),
-    'baywall': (0x9A9488, A.DETAIL_PLASTER, .25, 0, .8, .12, 0, 0), 'block': (0xA49D90, A.DETAIL_ASHLAR, .2, 0, .8, 0, .55, 0),
+    'baywall': (0x9A9488, A.DETAIL_PLASTER, .25, 0, .8, .12, 0, 0), 'block': (0xA49D90, A.DETAIL_PLASTER, .2, 0, .8, .1, 0, 0),
     'concrete': (0x7E7A72, A.DETAIL_PLASTER, .25, 0, .8, .1, 0, 0), 'pit': (0x141414, A.DETAIL_NONE, .2, 0, .2, 0, 0, 0),
     'clad': (0x5E6E78, A.DETAIL_NONE, .45, .4, .7, .12, 0, 0), 'roof': (0x5A646C, A.DETAIL_NONE, .4, .4, .7, .1, 0, 0),
     'truss': (0x46525C, A.DETAIL_NONE, .4, .35, .6, .25, 0, 0), 'steel': (0x3C4E5C, A.DETAIL_NONE, .42, .35, .6, .3, 0, 0),
@@ -32,9 +32,9 @@ MATS = {
     'hazard-k': (0x1C1A18, A.DETAIL_NONE, .4, 0, .3, .2, 0, 0), 'danger': (0xB8322A, A.DETAIL_NONE, .5, 0, .4, .2, 0, 0),
     'green': (0x4F7A6A, A.DETAIL_NONE, .5, .15, .55, .3, 0, 0), 'green2': (0x557F70, A.DETAIL_NONE, .5, .15, .55, .3, 0, 0),
     'cabinet': (0x8E9AA0, A.DETAIL_NONE, .5, .2, .5, .2, 0, 0), 'rack': (0x2E5584, A.DETAIL_NONE, .48, .15, .5, .3, 0, 0),
-    'bright': (0x9A9692, A.DETAIL_NONE, .62, .5, .4, .15, 0, 0), 'billet': (0x7A6E64, A.DETAIL_IRON, .35, .5, .5, .15, 0, 0),
+    'bright': (0x9A9692, A.DETAIL_NONE, .62, .5, .4, .15, 0, 0), 'billet': (0x7A6E64, A.DETAIL_NONE, .4, .45, .5, .15, 0, 0),
     'oxide': (0x8A4E32, A.DETAIL_NONE, .3, .2, .6, .2, 0, 0), 'ladle': (0x2E2B29, A.DETAIL_IRON, .35, .5, .5, .2, 0, 0),
-    'iron': (0x3E3A38, A.DETAIL_IRON, .38, .5, .5, .2, 0, 0), 'chrome': (0xB8BEC4, A.DETAIL_NONE, .82, .5, .15, 0, 0, 0),
+    'iron': (0x3E3A38, A.DETAIL_NONE, .4, .45, .5, .2, 0, 0), 'chrome': (0xB8BEC4, A.DETAIL_NONE, .82, .5, .15, 0, 0, 0),
     'black': (0x1A1B1D, A.DETAIL_NONE, .35, .1, .3, .15, 0, 0), 'rubber': (0x1E1E20, A.DETAIL_NONE, .2, 0, .4, 0, 0, 0),
     'timber': (0x8A6A44, A.DETAIL_WOOD, .25, 0, .7, .2, 0, 0), 'timber-z': (0x8A6A44, A.DETAIL_WOOD, .25, 0, .7, .2, 2, 0),
     'timber-y': (0x86663F, A.DETAIL_WOOD, .25, 0, .7, .2, 1, 0), 'carton': (0xB49066, A.DETAIL_NONE, .2, 0, .5, 0, 0, 0),
@@ -231,15 +231,15 @@ def stripes(g, o, U, V, lu, lv, normal, band=.2, fa=None, fb=None, slant=1.0, ph
 def striped_box(g, x0, x1, y0, y1, z0, z1, T, band=.2, skip=()):
     """A box painted in hazard stripes on its four sides and its top (the Low tier: plain yellow; a face too narrow for a
     stripe: plain yellow; paint on a floor: its top only)."""
-    if T.i == 2:
+    if T.i == 2 and (y1 - y0 <= .03 or max(x1 - x0, y1 - y0, z1 - z0) < .9):
         bx(g, x0, x1, y0, y1, z0, z1, mat('hazard-y'), T, 0, 0, skip)
         return
 
     def side(o, U, V, lu, lv, n):
-        if min(lu, lv) < .05:
+        if min(lu, lv) < (.05 if T.i < 2 else .25):
             g.face((o, sk._add(o, U, lu), sk._add(sk._add(o, U, lu), V, lv), sk._add(o, V, lv)), mat('hazard-y'), normal=n)
         else:
-            stripes(g, o, U, V, lu, lv, n, min(.3, max(.1, min(lu, lv) * .5)) * (1 if T.i == 0 else 2))
+            stripes(g, o, U, V, lu, lv, n, min(.3, max(.1, min(lu, lv) * .5)) * (1, 2, 3)[T.i])
     flat = y1 - y0 <= .03
     if not flat:
         if '-z' not in skip:
@@ -397,7 +397,9 @@ def kbox(g, c, h, q, f, T, bevel):
     """A kit part's turned box: its faces cut into cells only where they are broad (a long bar is one face a side)."""
     t = Geo()
     broad = sorted(h)[1] > .6
-    box(t, -h[0], h[0], -h[1], h[1], -h[2], h[2], f, T, bevel, cell=(2.0 if broad and T.i == 0 else 0))
+    # a part standing on the slab has no underside
+    skip = ('-y',) if (abs(q[3]) > .9999 and c[1] - h[1] < .02) else ()
+    box(t, -h[0], h[0], -h[1], h[1], -h[2], h[2], f, T, bevel, cell=(2.0 if broad and T.i == 0 else 0), skip=skip)
     g.extend(t if (abs(q[3]) > .999999 and c == (0, 0, 0)) else t.transformed(sk.affine(q, c)))
 
 

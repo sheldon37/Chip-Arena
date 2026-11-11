@@ -1,4 +1,4 @@
-"""The Factory's plant (docs/arenas/FACTORY_PROPOSAL.md "Stage art"): the machines (lathes, machining centres, switch cabinets,
+"""The Factory's plant (docs/arenas/FACTORY-ART.md): the machines (lathes, machining centres, switch cabinets,
 the steam hammers), the stock (bar racks, coils, billets, beams, ingots, plates, ingot moulds), the rooms (tool cribs, shelving,
 blockwork screens, parts bins) and the docks (site offices, containers, forklifts), and the ladle on its transfer car. Each is
 modelled on its map block as the north / A piece (factory_art.canonical turns the south / B ones half round), so the operator's
@@ -121,14 +121,28 @@ def cabinet(g, b, parts, T, L):
     x0, x1, y0, y1, z0, z1 = ext(b)
     bx(g, x0, x1, .1, y1, z0, z1, mat('cabinet'), T, .025, 0, ('-y',))
     bx(g, x0 + .03, x1 - .03, 0, .1, z0 + .03, z1 - .03, mat('black'), T, 0, 0, ('-y', '+y'))
-    if T.tiny:
-        # door louvres low on each bay
-        x = x0 + .12
+    if T.i < 2:
+        # the back: panel seams, a louvred vent and a cable gland plate on each bay
+        x = x0
         while x < x1 - .5:
-            for k in range(4):
-                bx(g, x + .1, x + .5, .3 + k * .06, .33 + k * .06, z0 - .012, z0, tint('cabinet', 0x77838A), T, 0, 0, ('+z',))
+            bx(g, x + .06, x + .69, .2, y1 - .1, z1, z1 + .012, tint('cabinet', 0x848F95), T, 0, 0, ('-z',))
+            if T.tiny:
+                for k in range(5):
+                    bx(g, x + .16, x + .59, 1.5 + k * .07, 1.535 + k * .07, z1 + .012, z1 + .026, mat('black'), T, 0, 0, ('-z',))
+                    bx(g, x + .16, x + .56, .3 + k * .06, .33 + k * .06, z0 - .012, z0, tint('cabinet', 0x77838A), T, 0, 0, ('+z',))
             x += .75
     rest(g, parts, T)
+
+
+def frustum(g, lo, y0, hi, y1, f):
+    """A tapered block: the rectangle lo (x0, x1, z0, z1) at y0 up to the rectangle hi at y1."""
+    a = [(lo[0], y0, lo[2]), (lo[1], y0, lo[2]), (lo[1], y0, lo[3]), (lo[0], y0, lo[3])]
+    c = [(hi[0], y1, hi[2]), (hi[1], y1, hi[2]), (hi[1], y1, hi[3]), (hi[0], y1, hi[3])]
+    mid = ((lo[0] + lo[1]) / 2, (lo[2] + lo[3]) / 2)
+    for i in range(4):
+        j = (i + 1) % 4
+        g.face((a[i], a[j], c[j], c[i]), f, normal=((a[i][0] + a[j][0]) / 2 - mid[0], .1, (a[i][2] + a[j][2]) / 2 - mid[1]))
+    g.face(c, f, normal=Y)
 
 
 def hammer(g, b, parts, T, L):
@@ -137,9 +151,25 @@ def hammer(g, b, parts, T, L):
     gr, ir = mat('green'), mat('iron')
     cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
     cell = 1.6 if T.i == 0 else 0
-    for (xa, xb) in ((x0, x0 + .8), (x1 - .8, x1)):
-        bx(g, xa, xb, 0, 2.7, z0 + .12, z1 - .12, gr, T, .09, cell, ('-y',))
+    for s in (-1, 1):
+        # a cast frame: a leg that leans in to the crosshead, a raised rim round its faces
+        xo = x0 if s < 0 else x1
+        frustum(g, (min(xo, xo - s * .95), max(xo, xo - s * .95), z0 + .12, z1 - .12), 0.0, (min(xo - s * .12, xo - s * .8), max(xo - s * .12, xo - s * .8), z0 + .3, z1 - .3), 2.62, gr)
+        if T.i < 2:
+            for zz, sz in ((z0 + .12, -1), (z1 - .12, 1)):
+                for k in range(4):
+                    ya, yb = .15 + k * .62, .15 + (k + 1) * .62
+                    ta, tb = ya / 2.62, yb / 2.62
+                    za, zb = zz - sz * .18 * ta - sz * .0, zz - sz * .18 * tb
+                    xa0, xa1 = xo - s * (.12 * ta) - s * .1, xo - s * (.95 - .15 * ta) + s * .1
+                    xb0, xb1 = xo - s * (.12 * tb) - s * .1, xo - s * (.95 - .15 * tb) + s * .1
+                    if k % 2 == 0:
+                        g.face(((xa0, ya, za + sz * .03), (xa1, ya, za + sz * .03), (xb1, yb - .08, zb + sz * .03), (xb0, yb - .08, zb + sz * .03)), tint('green', 0x466E5F), normal=(0, .07, sz))
     bx(g, x0, x1, 2.6, y1, z0, z1, gr, T, .1, cell)
+    if T.i < 2:
+        for zz, sz in ((z0, -1), (z1, 1)):
+            bx(g, cx - .55, cx + .55, 2.78, 3.22, min(zz, zz + sz * .03), max(zz, zz + sz * .03), tint('green', 0x466E5F), T, .012, 0)
+            fk.bolts(g, [(cx + dx, yy, zz + sz * .03) for dx in (-.48, .48) for yy in (2.85, 3.15)], mat('black'), T, .03, .025, (0, 0, sz))
     # the anvil and its die, the tup and its rod
     bx(g, x0 + .8, x1 - .8, 0, 1.0, z0 + .25, z1 - .25, ir, T, .06, 0, ('-y', '-x', '+x'))
     bx(g, cx - .45, cx + .45, 1.0, 1.16, cz - .7, cz + .7, mat('bright'), T, .03, 0, ('-y',))
@@ -158,8 +188,8 @@ def hammer(g, b, parts, T, L):
     fk.bolts(g, [(cx + .65 * math.cos(a), y1 + 1.56, cz + .65 * math.sin(a)) for a in [k * math.pi / 6 for k in range(12)]], mat('black'), T, .03, .03)
     for p in parts:
         name = kname(p)
-        if name == 'machine' or (name == 'black' and p['c'][1] > y1):
-            continue
+        if name in ('machine', 'black'):
+            continue            # the kit's frames, bands and cylinder: modelled
         kit_part(g, p, T)
 
 
@@ -176,7 +206,7 @@ def rack(g, b, parts, T, L):
     n = 6
     r = (z1 - z0 - .1) / n / 2
     seed = int(abs(x0) * 10 + abs(z0) * 7)
-    sides = (T.small + 2, 5, 4)[T.i]
+    sides = (T.small + 2, 6, 6)[T.i]
     for li, y in enumerate((.1, .75, 1.5, 2.25)):
         if y + r > y1:
             break
@@ -375,6 +405,20 @@ def shelf(g, b, parts, T, L):
 
 def screen(g, b, parts, T, L):
     body(g, b, mat('block'), T, .02, cell=(1.6, 0, 0)[T.i])
+    x0, x1, y0, y1, z0, z1 = ext(b)
+    if T.i == 0:
+        # the blockwork's courses and perpends: mortar lines (the calm plaster surface holds up under the toon grade)
+        mo = tint('block', 0x7C766C)
+        for xx, s in ((x0, -1), (x1, 1)):
+            for k in range(1, int(y1 / .2)):
+                y = k * .2
+                g.face(((xx + s * .006, y - .006, z0 + .02), (xx + s * .006, y - .006, z1 - .02), (xx + s * .006, y + .006, z1 - .02), (xx + s * .006, y + .006, z0 + .02)), mo, normal=(s, 0, 0))
+                if k % 2 == 0:
+                    continue
+                z = z0 + (.2 if (k // 2) % 2 else .0) + .2
+                while z < z1 - .05:
+                    g.face(((xx + s * .006, y, z - .006), (xx + s * .006, y, z + .006), (xx + s * .006, y + .4, z + .006), (xx + s * .006, y + .4, z - .006)), mo, normal=(s, 0, 0))
+                    z += .8
     for p in parts:
         if kname(p) == 'red' and T.i < 2:
             # a fire extinguisher on its bracket

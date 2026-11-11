@@ -3,7 +3,7 @@ using System;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// The Factory's art poses (docs/arenas/STAGE-ART.md, docs/arenas/FACTORY_PROPOSAL.md "Stage art"): where each modelled rig part
+    /// The Factory's art poses (docs/arenas/STAGE-ART.md, docs/arenas/FACTORY-ART.md): where each modelled rig part
     /// of the stage bank ChipArenaStageFactory (tools/stages/factory_art.py; factory_rig.py lists the frames) stands this frame.
     /// Read only from the simulation's own hazard states (NativeFactoryHazards.State at the hazard clock) with the numbers Core
     /// NativeFactoryRig poses its boxes by, so the models move exactly as the box rig did on every client and in the killcam: the
