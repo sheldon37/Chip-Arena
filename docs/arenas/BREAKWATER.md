@@ -181,12 +181,12 @@ place under the key `breakwater-theme`; a Suno prompt is in docs/arenas/STAGE-MU
 
 ## The bank (2026-11-11)
 
-`ChipArenaStageBreakwater.bytes`: 6,047,793 bytes (budget: about 20 MB), 322 props. Static: 26 map chunks in three tiers and 3
-far chunks (the sea, the lighthouse, the shore) in one; Fine 61,681 triangles (51,894 vertices), Mid 28,668 (28,170), Low with
-the far chunks 23,905 (27,783). Rig: 15 props; 6,902 / 3,950 / 1,618 triangles by tier; up to 58 rig draws a frame. Breakables:
-3 meshes for 16 blocks; 1,628 / 1,118 / 238.
+`ChipArenaStageBreakwater.bytes`: 6,178,491 bytes (budget: about 20 MB), 302 props. Static: 18 map chunks of 22 m in three tiers
+(the mole is seen end to end, so fewer, larger draws) and 3 far chunks (the sea, the lighthouse, the shore) in one; Fine 57,937
+triangles (52,676 vertices), Mid 28,668 (30,951), Low with the far chunks 23,905 (27,735). Rig: 15 props; 6,902 / 3,950 /
+1,618 triangles by tier; up to 58 rig draws a frame. Breakables: 3 meshes for 16 blocks; 1,628 / 1,118 / 238.
 
-Z-fighting (`zfight.py BANK UnityMaps.json breakwater --tier N`): 0.03 m² in 6 pairs at Fine, 0.02 m² in 4 at Mid, 0 at Low
+Z-fighting (`zfight.py BANK UnityMaps.json breakwater --tier N`): 0.03 m² in 8 pairs at Fine, 0.02 m² in 8 at Mid, 0 at Low
 (the bar is 0.1 m²). `stagekit.lift_coplanar` runs on every tier's static scene and on the far chunks; the deepest stack is two
 layers (the box kit lays none: BreakwaterChecks).
 
@@ -208,7 +208,39 @@ layers (the box kit lays none: BreakwaterChecks).
   gathering or running, water on the mole only while one runs); deterministic, allocation free; the layout export; the wiring
   and the bank-absent fallback; and, where the bank is on the machine: every block covered, every breakable and rig slot in
   three tiers, the chunks, the budget, the probe over the deck clear of every block, the play-space rule (within 2 m over a
-  floor the art keeps within 0.25 m of a block: 0 of 26,194 vertices over, the farthest 0.24 m; what stands on a columned
+  floor the art keeps within 0.25 m of a block: 0 of 26,780 vertices over, the farthest 0.24 m; what stands on a columned
   block is no cover) and the spawns.
-- The full CoreTests suite: 1002 PASS lines, exit 0 (twice; the second on `055be42c`, after which only the art scripts and
-  this doc changed). Unity compile (`check_unity_compile.py`): Assembly-CSharp and Assembly-CSharp-Editor pass.
+- The full CoreTests suite: 1002 PASS lines, exit 0 (twice; the second on `055be42c`, after which only the art scripts, the
+  look's rain amount, one threshold in BreakwaterArtChecks and this doc changed; `--breakwater` and `--breakwater-art` rerun
+  after them). Unity compile (`check_unity_compile.py`): Assembly-CSharp and Assembly-CSharp-Editor pass.
+- The Editor's build checks (`PrototypeBuild.Validate`, wtvalidate.sh): ok on `3e343600`, including "native map breakwater:
+  isolated Edit-mode physics, 8 spawn floors, capsule settling".
+
+## Seen in the Editor (2026-11-11)
+
+Captures in the shared Editor (a match, one bot, the game's own camera placed by `maincam`): the M1 stage before (`db641c9c`)
+and the rebuilt one, the same four views (wide, the deck from each end, the lighthouse); eight views of the rebuilt stage (wide,
+the Stone with the pulpit and the turret, the walk with the bell in its belfry, the quay and the fishing boat, the sea side with
+a swell and spray on the wall, the lamp and its beams, the deck from each end); the wash at every half second from arena time
+26 to 32 (the telegraph's edges, chevrons and pillars, the edges going white as it breaks, the water across the deck and down
+the wall); the Low graphics tier (wide and deck).
+
+Frame time (High tier, the deck from the west gate, 10 s, one bot, runs taken back to back, other agents sharing the machine):
+the M1 stage 7.59 ms mean / 9.07 p95 and 9.23 / 11.58; the rebuilt stage 7.60 / 8.92 and 7.68 / 8.85. Level with the M1
+stage's better run, under its worse. (An earlier run, with 26 chunks of 12 m and heavier rain, took 9.14 / 11.74 against the
+M1's 7.59 / 9.23: the chunks went to 22 m and the rain from 0.3 to 0.22.) Low graphics tier: 7.08 / 9.64.
+
+## Not done / not seen
+
+- The wash's water was seen with its first model (a chequer of foam and water); the model was then changed to streaks of foam
+  along its run and seen only in Blender. The quarried blocks' last form (broad hewn planes) was seen in the wash captures;
+  the eight-view sheet shows an earlier, rounder one, and a sea still in two tones (now one smooth tone, seen in the wide and
+  wash captures).
+- The comber running in on the breach was not caught in a frame (the wash camera looks along the deck); the east wash, the
+  lanterns' wild swing and the bell's toll in motion likewise (checked by state in BreakwaterChecks).
+- The box kit, box rig and box backdrop (the bank-absent fallback) were not run in the Editor: checked in CoreTests only.
+- Played only by a bot: no human playtest of the wash's push (13 m/s²), no network (guest) test, no killcam on the art, no
+  native Windows build.
+- No shadows from the practical lights (as STAGE-ART.md says for every stage); the halls' rooms are lit by their one lamp each.
+- Breakwater's unused code in the M1 files (Core NativeNewStageKit/Rig/Scenery/Fx) is left in place.
+- Hazard sounds are the existing clips; no ambience loop (`breakwater-storm` is a key only).
