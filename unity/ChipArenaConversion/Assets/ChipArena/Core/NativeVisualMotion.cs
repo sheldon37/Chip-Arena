@@ -116,6 +116,14 @@ namespace ChipArena.UnityConversion
             Block=NativeBladeMotion.KatanaGuard,BlockHit=NativeBladeMotion.KatanaBlock,Stunned="Armed-Stunned",Roll=NativeBladeMotion.KatanaTumble,AirAttack="Armed-Air-Attack-R1",SprintAttack=NativeBladeMotion.KatanaRush,
             Attacks=NativeBladeMotion.KatanaCuts,Reactions=new[]{"Frank_RPG_Katana_Hit01","Frank_RPG_Katana_Hit02","Frank_RPG_Katana_Hit03","Frank_RPG_Katana_Hit02"},
             TechClips=NativeBladeMotion.KatanaExtra,Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Frank_RPG_Katana@Velocity_8Way_Run_","Frank_RPG_Katana@Velocity_8Way_GuardWalk_","Frank_RPG_Katana_Run01_Velocity");
+        // The DEV Katana (owner 2026-11-11: "lets put them on DEV classes"): Grruzam's katana set (Core NativeDevKatanaMotion: its stance,
+        // stride, jumps, guard, dodge roll, reactions, knockdown and rolling get-up, its plunging slam; the Katana's moves on its clips through
+        // Core NativeBladeMotion, the iai, the sheathing and the paired critical kept the Frank Slash Pack's). The pack has no dazed loop, so the
+        // stun keeps the armed set's. Its Spec is the Katana's, the class it plays as.
+        private static readonly Set DevKatana=Strides(new Set{Spec=NativeKatana.Spec,Idle=NativeDevKatanaMotion.Idle,Jump=NativeDevKatanaMotion.Jump,Flip=NativeDevKatanaMotion.Flip,Fall=NativeDevKatanaMotion.Fall,
+            Land=NativeDevKatanaMotion.Land,Block=NativeDevKatanaMotion.Guard,BlockHit=NativeDevKatanaMotion.GuardHit,Stunned="Armed-Stunned",Roll=NativeDevKatanaMotion.Roll,
+            AirAttack=NativeDevKatanaMotion.Plunge,SprintAttack=NativeDevKatanaMotion.Rush,Attacks=NativeDevKatanaMotion.Cuts,Reactions=NativeDevKatanaMotion.Reactions,
+            TechClips=NativeDevKatanaMotion.Extra,Knockdown=NativeDevKatanaMotion.Knockdown,RollBack=NativeDevKatanaMotion.RollBack},NativeDevKatanaMotion.Runs,NativeDevKatanaMotion.Walks,NativeDevKatanaMotion.Sprint);
         // The Fangs (owner 2026-11-10: "Testing different abilities and animation sets"): the pack's assassin set, low and quick: its stance,
         // root-motion stride, guard, block, tumble and reactions; its moves (and its stealth kills and criticals) in Core NativeBladeMotion.
         private static readonly Set Fangs=Frank(new Set{Spec=NativeFangs.Spec,Idle=NativeBladeMotion.FangsIdle,Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",Land="Armed-Land",
@@ -245,7 +253,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The set a weapon spec (or a DEV animation class, NativeDevMotions) plays on the model, or null (the game's own pose: not moved
         /// over yet).</summary>
-        public static Set For(string spec)=>spec==NativeDevMotions.Greatsword?DevGreatsword:spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
+        public static Set For(string spec)=>spec==NativeDevMotions.Greatsword?DevGreatsword:spec==NativeDevMotions.Katana?DevKatana:spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
             spec=="rifle"||spec=="machinegun"?Rifle:spec==NativeBombs.Spec?Bomb:spec==NativeTopDog.Spec?TopDog:spec==NativeGlaive.Spec?Glaive:spec==NativeKatana.Spec?Katana:spec==NativeFangs.Spec?Fangs:spec=="pistol"?Pistol:spec=="bow"?Bow:
             spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:spec=="emperor"||spec=="ansatsuken"?Unarmed:null;
 

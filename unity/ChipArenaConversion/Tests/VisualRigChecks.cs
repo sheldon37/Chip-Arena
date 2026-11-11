@@ -396,6 +396,8 @@ namespace ChipArena.UnityConversion
         private sealed class MotionBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null&&c.StartsWith("2Hand-Sword-",StringComparison.Ordinal);public float Length(string c)=>1.2f;public float Hit(string c)=>.42f; }
         // Every clip, its Hit a DEV animation class's measured strike (as the bank reads it) or .42.
         private sealed class StrikeBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null;public float Length(string c)=>1.6f;public float Hit(string c)=>NativeDevGreatswordMotion.Strike(c,out float s)?s:.42f; }
+        // Every clip, 3.5 s long (a blade move's window is never clipped short).
+        private sealed class LongBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null;public float Length(string c)=>3.5f;public float Hit(string c)=>1.75f; }
         private sealed class GunBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null;public float Length(string c)=>1.2f;public float Hit(string c)=>.42f; }
         private static void Motion(string root)
         {
@@ -513,6 +515,39 @@ namespace ChipArena.UnityConversion
                 string arenaSrc=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeArena.cs")).Replace("\r\n","\n"),frameSrc=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeNetworkFrame.cs")).Replace("\r\n","\n");
                 Check(arenaSrc.Contains("NativeDevMotions.Normalize(seat);")&&arenaSrc.Contains("a.SourceSpec=p.Seat.spec;a.Motion=p.Seat.motion;")&&frameSrc.Contains("motion=s.motion,")&&frameSrc.Contains("seat.motion=NativeDevMotions.Clean(sf.motion,sf.spec);")&&frameSrc.Contains("v.HatColor=p.Seat.hatColor;v.Motion=p.Seat.motion;"),
                     "the arena spawns the base and keeps the motion; the seat frame carries it and guests fill their actors from it");
+            }
+            // The DEV Katana: Grruzam's katana set on the model, the Katana's moves on its clips (the iai, the sheathing and the paired critical
+            // kept the Frank Slash Pack's, which the pack has no saya or partner for); the Katana's own set and moves are untouched.
+            {
+                var kat=NativeVisualMotion.For(NativeKatana.Spec);var dev=NativeVisualMotion.For(NativeDevMotions.Katana);
+                Check(dev!=null&&dev!=kat&&dev.Spec==NativeKatana.Spec&&kat.Idle==NativeBladeMotion.KatanaIdle&&kat.Attacks==NativeBladeMotion.KatanaCuts,"the Katana keeps its set; the DEV Katana has its own, playing as the Katana");
+                Check(dev.Idle==NativeDevKatanaMotion.Idle&&dev.Attacks==NativeDevKatanaMotion.Cuts&&dev.Attacks.Length==NativeKatana.Steps&&dev.AirAttack==NativeDevKatanaMotion.Plunge&&dev.SprintAttack==NativeDevKatanaMotion.Rush
+                    &&dev.Block==NativeDevKatanaMotion.Guard&&dev.BlockHit==NativeDevKatanaMotion.GuardHit&&dev.Roll==NativeDevKatanaMotion.Roll&&dev.Knockdown==NativeDevKatanaMotion.Knockdown&&dev.RollBack==NativeDevKatanaMotion.RollBack,
+                    "the DEV Katana's stance, guard, roll, knockdown, cuts, rush and plunge on the pack's clips");
+                var kept=new[]{"Armed-Stunned",NativeBladeMotion.KatanaIai,NativeBladeMotion.KatanaSheathe,NativeBladeMotion.KatanaCritical,NativeBladeMotion.KatanaCriticalHit};
+                Check(Array.TrueForAll(dev.All,c=>NativeDevKatanaMotion.Is(c)||Array.IndexOf(kept,c)>=0)&&Array.TrueForAll(kept,c=>Array.IndexOf(dev.All,c)>=0),"its every clip the pack's but the stun, the iai, the sheathing and the paired critical");
+                Check(Array.TrueForAll(dev.Locomotion,c=>NativeDevKatanaMotion.Is(c)&&c.Contains("_Root"))&&dev.Locomotion[NativeVisualStride.Sprint]==NativeDevKatanaMotion.Sprint&&NativeVisualMotion.Loops(NativeDevMotions.Katana).Contains(dev.Idle),"the root-motion stride (their travel sets its rate), the stance a loop");
+                foreach(var c in new[]{dev.Attacks[0],dev.Attacks[1],dev.Attacks[2],dev.Attacks[3],NativeDevKatanaMotion.Rush,NativeDevKatanaMotion.Storm,NativeDevKatanaMotion.Plunge})
+                {
+                    var w=NativeBladeMotion.WindowOf(c);Check(!float.IsNaN(w.From)&&!float.IsNaN(w.Hit)&&!float.IsNaN(w.To)&&w.From<=w.Hit&&w.Hit<w.To&&w.To<3.5f,"a measured window: "+c);
+                }
+                Check(NativeDevKatanaMotion.Strike(NativeDevKatanaMotion.Plunge,out float dkPlunge)&&dkPlunge==NativeBladeMotion.WindowOf(NativeDevKatanaMotion.Plunge).Hit&&!NativeDevKatanaMotion.Strike(NativeBladeMotion.KatanaIai,out _)&&!NativeDevKatanaMotion.Strike(NativeDevMotions.Katana,out _),
+                    "the bank takes the pack clips' strikes (the plunge's on the landing); the Frank clips keep their own");
+                var dkBook=new LongBook();var devActor=new Actor{Id=9,SourceSpec=NativeKatana.Spec,Motion=NativeDevMotions.Katana,Grounded=true};var katActor=new Actor{Id=10,SourceSpec=NativeKatana.Spec,Grounded=true};
+                for(int ks=0;ks<NativeKatana.Steps;ks++)
+                {
+                    var dkKit=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Cut,CastStep=ks,CastAt=1,CastRelease=1+NativeKatana.CutHit[ks],CastUntil=1+NativeKatana.CutLength[ks]};devActor.Blade=dkKit;katActor.Blade=dkKit;
+                    Check(NativeBladeMotion.Clip(devActor,dkKit,dkKit.CastRelease,dkBook,out string clip,out float t,out _,out _)&&clip==NativeDevKatanaMotion.Cuts[ks]&&Math.Abs(t-NativeBladeMotion.WindowOf(clip).Hit)<1e-3f
+                        &&NativeBladeMotion.Clip(katActor,dkKit,dkKit.CastRelease,dkBook,out string own,out _,out _,out _)&&own==NativeBladeMotion.KatanaCuts[ks],"cut "+ks+": the DEV Katana's clip, its strike on the hit; the Katana's its own");
+                }
+                devActor.Blade=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Rush,CastAt=1,CastRelease=1+NativeKatana.RushWind,CastUntil=1+NativeKatana.RushWind+NativeKatana.RushTime+NativeKatana.RushRecover};
+                bool rush=NativeBladeMotion.Clip(devActor,devActor.Blade,1.1f,dkBook,out string rc,out _,out _,out _)&&rc==NativeDevKatanaMotion.Rush;
+                devActor.Blade=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Storm,CastAt=1,CastRelease=1+NativeKatana.StormWind,CastUntil=1+NativeKatana.StormWind+NativeKatana.StormCuts*NativeKatana.StormEvery+NativeKatana.StormRecover};
+                bool storm=NativeBladeMotion.Clip(devActor,devActor.Blade,1.5f,dkBook,out string sc,out _,out _,out _)&&sc==NativeDevKatanaMotion.Storm;
+                devActor.Blade=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Iai,CastAt=1,CastRelease=1.32f,CastUntil=1.94f,SplitAt=1.89f};
+                bool iai=NativeBladeMotion.Clip(devActor,devActor.Blade,1.38f,dkBook,out string ic,out _,out _,out _)&&ic==NativeBladeMotion.KatanaIai&&NativeBladeMotion.Clip(devActor,devActor.Blade,1.89f,dkBook,out string hc,out _,out _,out _)&&hc==NativeBladeMotion.KatanaSheathe;
+                Check(rush&&storm&&iai,"the rush and the storm on the pack's clips; the iai and its sheathing the Katana's (the saya)");
+                Check(NativeDevMotions.Set(devActor)==NativeDevMotions.Katana&&NativeVisualMotion.For(NativeDevMotions.Set(devActor))==dev&&NativeVisualMotion.For(NativeDevMotions.Set(katActor))==kat,"the model plays the DEV Katana's set; the Katana its own");
             }
             // A sprint (dash) attack keeps its leaping run's flight (owner 2026-10-26: "it looks like they need to be in the air
             // when dash attacking?"); the greatsword's rides the game's hop; a plain swing stays on the floor.

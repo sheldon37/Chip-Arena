@@ -40,8 +40,9 @@ namespace ChipArena.UnityConversion
                     var c=new Clip{Name=Encoding.UTF8.GetString(r.ReadBytes(r.ReadInt32())),Length=r.ReadSingle(),Hit=r.ReadSingle(),Rate=r.ReadSingle(),SpeedX=r.ReadSingle(),SpeedZ=r.ReadSingle(),Loop=r.ReadByte()!=0,Frames=r.ReadInt32(),Stride=Head+lib.Muscles};
                     if(c.Frames<1||c.Frames>100000||!(c.Rate>0))throw new InvalidDataException("motion bank clip "+c.Name);
                     c.Data=new float[c.Frames*c.Stride];for(int i=0;i<c.Data.Length;i++)c.Data[i]=r.ReadSingle();
-                    // A pack whose clips carry no Hit event (the bake's middle): its strike as measured on the body (NativeGreatswordMotion).
-                    if(NativeDevGreatswordMotion.Strike(c.Name,out float strike))c.Hit=Math.Min(strike,c.Length);
+                    // A pack whose clips carry no Hit event (the bake's middle): its strike as measured on the body (the DEV animation classes'
+                    // Grruzam clips: NativeDevGreatswordMotion, NativeDevKatanaMotion).
+                    if(NativeDevGreatswordMotion.Strike(c.Name,out float strike)||NativeDevKatanaMotion.Strike(c.Name,out strike))c.Hit=Math.Min(strike,c.Length);
                     lib.Clips[c.Name]=c;
                 }
                 return lib;
