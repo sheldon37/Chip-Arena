@@ -93,7 +93,8 @@ Shader "ChipArena/NativeBloodDecal"
                 float gloss=_Gloss*(0.25+0.75*wet);
                 float3 shine=_LightColor0.rgb*BloodGlint(n,v,l,gloss,0.03)+i.domColor.rgb*(BloodGlint(n,v,i.domDir,gloss,0.0)*0.6);
                 float fres=pow(1.0-saturate(dot(n,v)),5.0);
-                col+=shine*gloss+max(ShadeSH9(float4(reflect(-v,n),1.0)),0.0)*(fres*0.07*gloss);
+                // A restrained highlight: the blood stays red under a warm key or a lamp.
+                col+=min(shine*(gloss*0.4),float3(0.35,0.35,0.35))+max(ShadeSH9(float4(reflect(-v,n),1.0)),0.0)*(fres*0.05*gloss);
                 #ifdef UNITY_COLORSPACE_GAMMA
                 float3 fog=GammaToLinearSpace(unity_FogColor.rgb);
                 #else

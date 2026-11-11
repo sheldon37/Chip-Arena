@@ -50,7 +50,7 @@ Shader "ChipArena/NativeBloodSplash"
                 // The ambient from above and from the camera's side alike, and the practical lights with no facing: a splash is
                 // a thin, tumbling sheet of fluid.
                 float3 amb=0.5*(ShadeSH9(float4(0.0,1.0,0.0,1.0))+ShadeSH9(float4(o.n,1.0)));
-                o.soft=max(amb,0.0)+BloodArenaLights(v.vertex.xyz,o.n,1.0,o.domDir,o.domColor)*0.7;
+                o.soft=max(amb,0.0)+min(BloodArenaLights(v.vertex.xyz,o.n,1.0,o.domDir,o.domColor)*0.7,float3(1.2,1.2,1.2));
                 UNITY_TRANSFER_FOG(o,o.pos);return o;
             }
             float4 frag(v2f i):SV_Target
