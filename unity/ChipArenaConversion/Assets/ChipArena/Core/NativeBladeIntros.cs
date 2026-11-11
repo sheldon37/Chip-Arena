@@ -91,7 +91,7 @@ namespace ChipArena.UnityConversion
         public const float Poise=.9f,DrawAt=1.25f,CutAt=2.55f,HoldTo=3.4f,SheatheAt=3.5f,ClickAt=4.35f,Hero=4.7f;
         public override string Spec=>NativeKatana.Spec;
         public override float Length=>Total;public override float SettleAt=>End;protected override float HeroAt=>CardAt;
-        private static readonly Vector3 Moon=new Vector3(8f,4.8f,-10f),White=new Vector3(1,1,1),Crimson=NativeEntranceFx.Hex(0xff3d6e),Blossom=NativeEntranceFx.Hex(0xffb3c6),Night=NativeEntranceFx.Hex(0x14101e);
+        private static readonly Vector3 Moon=new Vector3(8f,4.8f,-10f),White=new Vector3(1,1,1),Crimson=NativeEntranceFx.Hex(0xff3d6e),Blossom=NativeEntranceFx.Hex(0xffb3c6),Night=NativeEntranceFx.Hex(0x14101e),Mist=NativeEntranceFx.Hex(0x5a4f66);
         /// <summary>The line the cut leaves, across the stage at its height (stage frame).</summary>
         public static readonly Vector3 LineFrom=Local(-2.6f,1.25f,.9f),LineTo=Local(2.8f,1.05f,.35f);
         /// <summary>The moon's disc (its radius, m) turned face-on to the stage; three turns of the sphere about its own axis keep its edge round.</summary>
@@ -233,7 +233,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             // A dark mist low over the floor all through (lit smoke: the moon's crimson on it).
-            int mist=low?5:12;for(int i=0;i<mist;i++){float a=((t*.06f+NativeEntranceMath.Rand(21600,i))%1+1)%1;var p=new Vector3(-4.5f+9*NativeEntranceMath.Rand(21600,i+20)+1.2f*(a-.5f),floor+.14f+.08f*a,-3+6*NativeEntranceMath.Rand(21600,i+40));fx.Smoke(p,Night*1.8f,.42f*(float)Math.Sin(Math.PI*a),1.5f+.7f*a,a,21610+i,floor);}
+            int mist=low?5:12;for(int i=0;i<mist;i++){float a=((t*.06f+NativeEntranceMath.Rand(21600,i))%1+1)%1;var p=new Vector3(-4.5f+9*NativeEntranceMath.Rand(21600,i+20)+1.2f*(a-.5f),floor+.14f+.08f*a,-3+6*NativeEntranceMath.Rand(21600,i+40));fx.Smoke(p,Mist,.36f*(float)Math.Sin(Math.PI*a),1.5f+.7f*a,a,21610+i,floor);}
         }
     }
 
@@ -250,7 +250,7 @@ namespace ChipArena.UnityConversion
         public const float FormAt=.55f,StepAt=1.6f,ArriveAt=1.85f,FlurryAt=1.95f,StrikeAt=4.25f,Hero=4.65f;
         public override string Spec=>NativeFangs.Spec;
         public override float Length=>Total;public override float SettleAt=>End;protected override float HeroAt=>CardAt;
-        private static readonly Vector3 Venom=NativeEntranceFx.Hex(0x7dff3a),White=new Vector3(1,1,1),Deep=NativeEntranceFx.Hex(0x0c2408),Smoke=NativeEntranceFx.Hex(0x22262a),Shadow=NativeEntranceFx.Hex(0x0b0d0c);
+        private static readonly Vector3 Venom=NativeEntranceFx.Hex(0x7dff3a),White=new Vector3(1,1,1),Smoke=NativeEntranceFx.Hex(0x5c6660),Haze=NativeEntranceFx.Hex(0x46524a);
         public static readonly Vector3 Before=Local(0,0,-1.4f),After=Local(0,0,0);
         /// <summary>The flurry's cuts (when venom flies off the blades, if the runtime has not handed them in).</summary>
         private static readonly float[] Cuts={FlurryAt+.45f,FlurryAt+.85f,FlurryAt+1.45f};
@@ -324,7 +324,7 @@ namespace ChipArena.UnityConversion
         {
             float floor=NativeEntranceStage.FloorY;bool low=q<.5f;
             // The low mist: dark smoke over the floor (the venom light under it), and a faint green breath at the floor.
-            int mist=low?6:14;for(int i=0;i<mist;i++){float a=((t*.08f+NativeEntranceMath.Rand(22000,i))%1+1)%1;var p=new Vector3(-4+8*NativeEntranceMath.Rand(22000,i+20)+.8f*(a-.5f),floor+.12f+.12f*a,-3+6*NativeEntranceMath.Rand(22000,i+40));fx.Smoke(p,Deep*1.6f,.45f*(float)Math.Sin(Math.PI*a),1.3f+.6f*a,a,22010+i,floor);}
+            int mist=low?6:14;for(int i=0;i<mist;i++){float a=((t*.08f+NativeEntranceMath.Rand(22000,i))%1+1)%1;var p=new Vector3(-4+8*NativeEntranceMath.Rand(22000,i+20)+.8f*(a-.5f),floor+.12f+.12f*a,-3+6*NativeEntranceMath.Rand(22000,i+40));fx.Smoke(p,Haze,.4f*(float)Math.Sin(Math.PI*a),1.3f+.6f*a,a,22010+i,floor);}
             for(int i=0;i<(low?2:4);i++){var p=new Vector3(-2.4f+1.6f*i,floor+.05f,-1+NativeEntranceMath.Signed(22050,i));fx.Glow(p,Venom*(.05f+.02f*(float)Math.Sin(t*1.7f+i)),0,2.4f,0,0,22060+i);}
             // Two eyes in the dark before it forms.
             if(t<FormAt+.2f){float k=NativeEntranceMath.Ramp(t,.1f,.35f)*(1-NativeEntranceMath.Ramp(t,FormAt,FormAt+.2f));var head=Before+new Vector3(0,1.25f,0);fx.Glow(head+Local(-.05f,0,.12f),Venom*(3*k),0,.05f,1,0,22100);fx.Glow(head+Local(.05f,0,.12f),Venom*(3*k),0,.05f,1,0,22101);}
@@ -334,7 +334,7 @@ namespace ChipArena.UnityConversion
                 if(s>=0&&s<1.1f)
                 {
                     float k=NativeEntranceMath.EaseOut(s/.7f),fade=1-NativeEntranceMath.Ramp(s,.5f,1.1f);var c=Before+new Vector3(0,.85f,0);int n=low?7:16;
-                    for(int i=0;i<n;i++){float a=i*6.2831853f/n+s*2.4f;var d=new Vector3((float)Math.Sin(a),.35f*NativeEntranceMath.Signed(22150,i),(float)Math.Cos(a));fx.Smoke(c+d*(1.1f*(1-k)+.15f),Shadow*1.5f,.6f*fade,.45f+.25f*k,NativeEntranceMath.Clamp01(s/1.1f),22160+i,floor);}
+                    for(int i=0;i<n;i++){float a=i*6.2831853f/n+s*2.4f;var d=new Vector3((float)Math.Sin(a),.35f*NativeEntranceMath.Signed(22150,i),(float)Math.Cos(a));fx.Smoke(c+d*(1.1f*(1-k)+.15f),Smoke,.6f*fade,.45f+.25f*k,NativeEntranceMath.Clamp01(s/1.1f),22160+i,floor);}
                     if(s<.6f){int m=low?5:12;for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(22180,i);d.Y*=.5f;var p=c+d*(1.2f*(1-s/.6f));fx.Streak(p,-d*6,Venom*(2.2f*(1-s/.6f)),.02f,.12f,.03f,.6f,s/.6f,22190+i);}}
                 }
             }
@@ -372,20 +372,20 @@ namespace ChipArena.UnityConversion
                     int petals=low?10:22;for(int i=0;i<petals;i++){float a=i*6.2831853f/petals;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));float r=.3f+2.6f*(1-(1-u)*(1-u));for(int j=0;j<3;j++){var p=new Vector3(0,floor+.05f+.25f*j,0)+d*(r*(1-.15f*j));fx.Streak(p,d*4+new Vector3(0,2,0),Venom*(2.4f*(1-u)),.04f,.25f,.03f,.6f,u,22620+i*3+j);}}
                     int ring=low?20:48;for(int i=0;i<ring;i++){float a=i*6.2831853f/ring;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));fx.Streak(new Vector3(0,floor+.03f,0)+d*(.4f+4.2f*(1-(1-u)*(1-u))),d*6,Venom*(1.8f*(1-u)),.03f,.2f,.03f,.7f,u,22700+i);}
                     if(s<.9f){int m=low?10:26;for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(22760,i,true);var p=at+new Vector3(d.X*2.6f,d.Y*3.2f,d.Z*2.6f)*s+new Vector3(0,-4.9f*s*s,0);if(p.Y<floor)continue;fx.Glow(p,Venom*(2*(1-s/.9f)),0,.04f,0,s/.9f,22800+i);}}
-                    int bil=low?5:12;for(int i=0;i<bil;i++){var d=NativeEntranceMath.Direction(22840,i,true);d.Y*=.35f;fx.Smoke(After+new Vector3(0,.2f,0)+d*(.3f+1.7f*NativeEntranceMath.EaseOut(u))+new Vector3(0,.9f*u,0),Deep*2.2f,.55f*(1-u),.6f+1.1f*u,u,22850+i,floor);}
+                    int bil=low?5:12;for(int i=0;i<bil;i++){var d=NativeEntranceMath.Direction(22840,i,true);d.Y*=.35f;fx.Smoke(After+new Vector3(0,.2f,0)+d*(.3f+1.7f*NativeEntranceMath.EaseOut(u))+new Vector3(0,.9f*u,0),Haze,.55f*(1-u),.6f+1.1f*u,u,22850+i,floor);}
                 }
             }
             // The hero: smoke curling round the legs.
             if(t>=Hero)
             {
-                int sm=low?4:10;for(int i=0;i<sm;i++){float a=((t*.45f+NativeEntranceMath.Rand(22900,i))%1+1)%1,ang=i*.63f+t*.9f+a*2.2f,r=.32f+.12f*(float)Math.Sin(t+i);var p=After+new Vector3((float)Math.Sin(ang)*r,.08f+1.1f*a,(float)Math.Cos(ang)*r);fx.Smoke(p,Smoke*1.2f,.32f*(float)Math.Sin(Math.PI*a),.3f+.35f*a,a,22910+i,floor);}
+                int sm=low?4:10;for(int i=0;i<sm;i++){float a=((t*.45f+NativeEntranceMath.Rand(22900,i))%1+1)%1,ang=i*.63f+t*.9f+a*2.2f,r=.32f+.12f*(float)Math.Sin(t+i);var p=After+new Vector3((float)Math.Sin(ang)*r,.08f+1.1f*a,(float)Math.Cos(ang)*r);fx.Smoke(p,Smoke,.32f*(float)Math.Sin(Math.PI*a),.3f+.35f*a,a,22910+i,floor);}
             }
         }
         // A burst of smoke (the step's): dark puffs thrown out and rising, green sparks out of it, a short green flash at its heart.
         private static void Burst(INativeEntranceFx fx,float t,float at,Vector3 c,float floor,bool low,int seed)
         {
             float s=t-at;if(s<0||s>.9f)return;float u=s/.9f;int n=low?7:16;
-            for(int i=0;i<n;i++){var d=NativeEntranceMath.Direction(seed,i);d.Y*=.6f;var p=c+d*(.2f+.8f*NativeEntranceMath.EaseOut(u))+new Vector3(0,.4f*u,0);fx.Smoke(p,Shadow*1.6f,.7f*(1-u)*(1-u),.35f+.5f*u,u,seed+i,floor);}
+            for(int i=0;i<n;i++){var d=NativeEntranceMath.Direction(seed,i);d.Y*=.6f;var p=c+d*(.2f+.8f*NativeEntranceMath.EaseOut(u))+new Vector3(0,.4f*u,0);fx.Smoke(p,Smoke,.7f*(1-u)*(1-u),.35f+.5f*u,u,seed+i,floor);}
             if(s<.35f){int m=low?5:10;for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(seed+40,i);fx.Streak(c+d*(.15f+1.3f*s),d*7,Venom*(2*(1-s/.35f)),.02f,.1f,.03f,.6f,s/.35f,seed+50+i);}}
             if(s<.15f)fx.Glow(c,Venom*(2.6f*(1-s/.15f)),0,.3f+.3f*s/.15f,1,s/.15f,seed+90);
         }
