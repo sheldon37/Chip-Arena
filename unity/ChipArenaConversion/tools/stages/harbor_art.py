@@ -144,6 +144,8 @@ def window(g, e, s, u, w, v0, v1, T, glass='glass', lit=True):
     c, sg, ax, _, _ = side(e, s)
     nrm = (sg, 0, 0) if ax == 'z' else (0, 0, sg)
     g.face([pt(e, s, a, v, .022) for a, v in out], F[glass if lit else 'glassdark'], normal=nrm)
+    if T.i == 2:
+        return
     path = [pt(e, s, a, v, .0) for a, v in out]
     sweep(g, [(-.05, 0), (.05, 0), (.05, .05), (-.05, .05)], path, F['gold'], closed=True, up=nrm, caps=False, smooth_u=False,
           path_normals=[nrm] * len(path))
@@ -555,7 +557,7 @@ def planter(g, b, T):
             if abs(u - ln / 2) > .25:
                 r = .1 + .06 * hashf(k, int(x0 * 10), int(z0 * 10))
                 px, pz = (x0 + u, cz) if lx else (cx, z0 + u)
-                ball(g, (px, y1 + r * .7, pz), r, F['leaf'], 6, 3, .9)
+                ball(g, (px, y1 + r * .7, pz), r, F['leaf'], (8, 6, 5)[T.i], (4, 3, 2)[T.i], .9)
                 if k % 2 == 0 and T.i == 0:
                     ball(g, (px + .05, y1 + r * 1.5, pz + .03), .04, F[('red', 'lilac', 'gold', 'white')[k % 4]], 5, 2)
             u += .3
@@ -669,7 +671,7 @@ def fence(g, b, T, L):
         px, pz = (u, m) if along_x else (m, u)
         if T.i == 0:
             lathe(g, [(.11, y1 - .02), (.12, y1 + .03), (.05, y1 + .08), (.085, y1 + .14), (.005, y1 + .215)], (px, 0, pz), F['gold'], 6)
-        else:
+        elif T.i == 1:
             lathe(g, [(.11, y1 - .02), (.11, y1 + .04), (.005, y1 + .2)], (px, 0, pz), F['gold'], 4, phase=math.pi / 4, smooth=False)
     if T.i == 0:
         # the panel's boards: grooves between them
@@ -915,6 +917,7 @@ def static_scene(L, T):
     P = L['pier']
     g = Geo()
     hk._count[0] = 0
+    hk.TIER[0] = T.i
     for m in hk.MARQUEE:
         m.__init__()
     done = set()
@@ -1056,6 +1059,7 @@ def main():
         del g
     if not args.static_only:
         for name, fg in (('wheelframe', wheel_frame(L, sk.Tier(1), P)), ('spikes', spikes(L, sk.Tier(1), P)), ('neck', neck(L, sk.Tier(1), P))):
+            sk.lift_coplanar(fg, eps=.02, lift=.03, passes=6)
             ao = None if args.no_ao else 1.0 - (1.0 - sk.bake_ao([fg], distance=1.5, samples=12)[0]) * .6
             sb.add('static/%s/1' % name, 'static', sk.to_mesh('static/%s/1' % name, fg, sk.Bake(fg, ao, floors=(), seed=5)))
     if args.out:

@@ -210,3 +210,46 @@ Aaah, aaah, aaah
 The owner's songs are in (2026-11-10): Celestial Bell Motif, Neon Substation, Hot Dog Palace and Moonlit Ostinato, packaged like
 the eight above (the original MP3 bytes, streaming import, full-track looping; durations are ffprobe's). Each placeholder remains
 only as its record's fallback. Neon Substation runs at about 132 BPM rather than 128 (see docs/arenas/CLUB.md "Music").
+
+## The rebuilt stages (2026-11-11)
+
+Pier 9 was rebuilt as a seaside amusement pier at night (docs/arenas/HARBOR.md). Until the owner's new song is in, the stage
+plays its current track (`harbor-container-terminal`, written for the old container yard) as the placeholder.
+
+| Stage | Map id | Placeholder now | Resource key for the owner's song |
+|---|---|---|---|
+| Pier 9 | `harbor` | `harbor-container-terminal` | `harbor-theme` |
+
+### Pier 9 — Last Night of the Season
+
+Style field:
+
+Instrumental arena combat soundtrack, 138 BPM, a seaside amusement pier at night. A wheezing fairground band organ and calliope
+carry a bright, slightly menacing waltz-time hook over a driving four-on-the-floor electro-swing beat; punchy brass stabs,
+upright slap bass, glockenspiel and sleigh bells for the bulbs, a snare-drum roll and a rising siren for the drop tower, a
+rattling clack-clack percussion loop and a rushing whoosh for the rollercoaster. Fireworks booms as accents. Playful, fast and
+dangerous, like a carnival ride with the brakes off. No lyrics, no vocals. Clean loopable ending.
+
+Lyric field:
+
+```
+[Intro: a lone calliope plays the hook slowly, distant waves, a string of bulbs flickering on]
+
+[Beat Drop: four-on-the-floor kick, slap bass, the band organ takes the hook at full speed]
+
+[Main Theme: band organ and brass stabs trade the hook, glockenspiel doubling, sleigh bells on the off-beats]
+
+[Coaster Section: clack-clack-clack percussion climbing, bells ringing, a rising whoosh, the hook in a minor key]
+
+[Drop: everything stops for one beat, then the full band crashes back in]
+
+[Carousel Interlude: music-box and glockenspiel waltz over a half-time beat, soft organ pads]
+
+[Build-Up: snare roll, a siren climbing, brass rising in steps]
+
+[Finale: full band organ, brass and calliope in unison, fireworks booms on the downbeats]
+
+[Outro: the calliope alone with the opening hook, back to the intro for a clean loop]
+
+[End]
+```

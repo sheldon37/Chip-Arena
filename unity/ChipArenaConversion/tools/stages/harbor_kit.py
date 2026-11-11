@@ -12,6 +12,7 @@ F = {}
 # the bulbs that chase: three groups of faces, lit by the rig's tint (rig/marquee-<g>), filled while a static scene is built
 MARQUEE = [Geo(), Geo(), Geo()]
 _count = [0]
+TIER = [0]   # the tier being built (the static scene sets it): the Low tier's slabs are single faces, its mouldings wedges
 
 
 def finishes():
@@ -154,6 +155,10 @@ def slab(g, b, s, u0, u1, v0, v1, t, f, T, o=0.0, bevel=.012, cell=None):
     c, sg, ax, _, _ = side(b, s)
     if T is None or T.i > 0 or t < .04:
         bevel = 0
+    if TIER[0] == 2 and t < .07:
+        # the Low tier: the slab's face alone
+        g.quad(pt(b, s, u0, v0, o + t), pt(b, s, u1, v0, o + t), pt(b, s, u1, v1, o + t), pt(b, s, u0, v1, o + t), f, (sg, 0, 0) if ax == 'z' else (0, 0, sg))
+        return
     a0, a1 = sorted((c + sg * o, c + sg * (o + t)))
     if ax == 'z':
         box(g, a0, a1, v0, v1, u0, u1, f, T, bevel, cell)
@@ -169,6 +174,9 @@ def pt(b, s, u, v, o=0.0):
 
 def mould(g, b, s, u0, u1, y, prof, f, o=0.0):
     """A moulding along face s of box b at height y: prof [(up, out)] (a closed outline against the face), its ends closed."""
+    if TIER[0] == 2 and len(prof) > 3:
+        k = max(range(len(prof)), key=lambda i: prof[i][1])
+        prof = [prof[0], prof[k], prof[-1]] if 0 < k < len(prof) - 1 else [prof[0], prof[1], prof[-1]]
     pts = [[pt(b, s, u, y + up, o + out) for up, out in prof] for u in (u0, u1)]
     n = len(prof)
     c, sg, ax, _, _ = side(b, s)
