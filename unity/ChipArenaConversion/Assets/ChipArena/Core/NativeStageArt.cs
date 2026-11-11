@@ -30,7 +30,8 @@ namespace ChipArena.UnityConversion
         public const float FineReach=16f,MidReach=38f;
         /// <summary>The stages with art: map id, bank name. A new stage adds its line.</summary>
         private static readonly (string map,string bank)[] Banks={(NativeSanctumLooks.MapId,"ChipArenaStageSanctum"),(NativeClubLooks.MapId,NativeSubstationArt.Bank),(NativeCausewayLooks.MapId,"ChipArenaStageCauseway"),
-            (NativeEmporiumLooks.MapId,"ChipArenaStageEmporium")};
+            (NativeEmporiumLooks.MapId,"ChipArenaStageEmporium"),
+            (NativeCyberCityLooks.MapId,NativeCyberCityArt.Bank)};
         public static string BankOf(string mapId){if(mapId==null)return null;foreach(var b in Banks)if(b.map==mapId)return b.bank;return null;}
         /// <summary>The tier a piece draws at from the eye (the low graphics tier always draws the Low one).</summary>
         public static int TierAt(float distance,bool low)=>low?Low:distance<FineReach?Fine:distance<MidReach?Mid:Low;

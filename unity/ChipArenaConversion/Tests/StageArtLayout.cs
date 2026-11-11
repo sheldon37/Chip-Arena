@@ -40,6 +40,7 @@ internal static class StageArtLayout
         if(NativeClubLooks.Active(map.id))ClubArtLayout.Write(w,map,look,V,Q);
         if(NativeCausewayLooks.Active(map.id))CausewayArtChecks.Layout(w);
         if(NativeEmporiumLooks.Active(map.id))Emporium(w,map,look,V,Q);
+        if(NativeCyberCityLooks.Active(map.id))CyberCityArtLayout.Write(w,map,V);
         w.WriteEndObject();w.Flush();
         Console.WriteLine("stage layout "+map.id+": "+map.blocks.Length+" blocks -> "+path);
     }
