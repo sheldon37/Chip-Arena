@@ -5,10 +5,10 @@ using UnityEngine;
 using Stopwatch=System.Diagnostics.Stopwatch;
 namespace ChipArena.UnityConversion
 {
-    // The loading the logo intro covers (NativeBootIntro.cs, docs/BOOT-INTRO.md). From the top of Awake, when the intro will
-    // play, the two motion banks and the source models' JSON decode on workers (NativeBankLoad.cs) while Awake goes on; the
-    // source models are still built in presentation.Initialize (which waits for its JSON) and the banks are joined here. Then,
-    // in order, one step a frame:
+    // The loading the logo intro covers (NativeBootIntro.cs, docs/BOOT-INTRO.md). Before Unity's splash screen, when the intro
+    // will play, the two motion banks and the source models' JSON start decoding on workers (NativeBankLoad.cs, NativeBootPrefetch
+    // below), through the splash and Awake; the source models are still built in presentation.Initialize (which waits for its
+    // JSON) and the banks are joined here. Then, in order, one step a frame:
     //   1. Banks: joined once both workers are done.
     //   2. Assets: what the menu's first frames load synchronously comes in by Resources.LoadAsync, at Low priority meanwhile.
     //   3. Scene: once the clip has settled on its logo (or is over), the menu's scene builds and draws for two frames under it.
@@ -33,21 +33,11 @@ namespace ChipArena.UnityConversion
         private static readonly (string path,Type type)[] BootAssets={(ArenaPresentation.VisualBodyResource,typeof(GameObject)),(ArenaPresentation.VisualLookResource,typeof(TextAsset)),("Icons",typeof(TextAsset)),("ClassIcons",typeof(TextAsset))};
         private double BootMs=>(Stopwatch.GetTimestamp()-bootAt)*1000d/Stopwatch.Frequency;
         private bool bootWanted;
-        /// <summary>The top of Awake: whether the intro will play (decided once), and if so the banks' workers start.</summary>
+        /// <summary>The top of Awake: whether the intro will play (decided before the splash; here if that hook did not run).</summary>
         private void BootPrefetch()
         {
-            bool always=false,once=false,automated=false;var args=Environment.GetCommandLineArgs();
-#if UNITY_EDITOR
-            always=UnityEditor.EditorPrefs.GetBool(NativeBootIntro.EditorAlwaysKey,false);
-            once=UnityEditor.SessionState.GetBool(NativeBootIntro.EditorOnceKey,false);if(once)UnityEditor.SessionState.EraseBool(NativeBootIntro.EditorOnceKey);
-            automated=UnityEditor.SessionState.GetString(NativeBootIntro.EditorAutomationKey,"").Length>0;
-#endif
-            // The dedicated server's own flag (NativeDedicated.cs): Awake returns before the intro would start.
-            var why=NativeBootIntroRules.Decide(Array.IndexOf(args,"--ca-server")>=0,Application.isBatchMode,args,Application.isEditor,always,once,automated);
-            if(why!=NativeBootIntroRules.Skip.Plays){Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_INTRO off ({0})",why);return;}
-            bootWanted=true;bootAt=Stopwatch.GetTimestamp();
-            NativeSourceMotion.PrewarmAsync();NativeSceneMotion.PrewarmAsync();NativeSourceModels.PrefetchAsync();
-            BootStep("workers");
+            NativeBootPrefetch.Decide();bootWanted=NativeBootPrefetch.Wanted;if(!bootWanted)return;bootAt=NativeBootPrefetch.StartedAt;
+            bootSteps.Add("workers="+NativeBootPrefetch.StartMs.ToString("F0",CultureInfo.InvariantCulture)+"ms");BootStep("awake");
         }
         /// <summary>Awake, where the banks used to load: true when the intro plays; false keeps the synchronous load.</summary>
         private bool BootIntroStart()
@@ -57,7 +47,7 @@ namespace ChipArena.UnityConversion
             bootIntro=NativeBootIntro.Begin(prefs.sound?Mathf.Clamp01(prefs.menuMusic)*NativeBootIntroRules.Gain:0,()=>bootStage==BootStage.Ready&&BootMs>=bootDevHold*1000||error.Length>0);
             bool voxel=Array.IndexOf(Environment.GetCommandLineArgs(),ArenaPresentation.VoxelBodiesArgument)>=0;
             foreach(var (path,type) in BootAssets)if(!(voxel&&type==typeof(GameObject)))bootAssets.Add(Resources.LoadAsync(path,type));
-            Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_INTRO playing at {0:F2} s since start ({1:F0} ms after its workers started)",Time.realtimeSinceStartupAsDouble,BootMs);
+            Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_INTRO playing at {0:F2} s since start ({1:F0} ms after its workers started, before the splash)",Time.realtimeSinceStartupAsDouble,BootMs);
             return true;
         }
         private void BootStep(string what){bootSteps.Add(what+"="+BootMs.ToString("F0",CultureInfo.InvariantCulture));}
@@ -85,7 +75,7 @@ namespace ChipArena.UnityConversion
                         // Both stepped every frame (each starts its worker as soon as its resource is in), then joined together.
                         bool sourceIn=NativeSourceMotion.Ready,sceneIn=NativeSceneMotion.Ready;if(!sourceIn||!sceneIn)return;
                         long joinAt=Stopwatch.GetTimestamp();NativeSourceMotion.Prewarm();NativeSceneMotion.Prewarm();
-                        UnityEngine.Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"MOTION_BANKS_READY source={0} scene={1} ms={2:F1} (since Awake, on workers under the boot intro; joined in {3:F1} ms)",NativeSourceMotion.ClipCount,NativeSceneMotion.Count,BootMs,HitchMs(joinAt));
+                        UnityEngine.Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"MOTION_BANKS_READY source={0} scene={1} ms={2:F1} (on workers from before the splash; joined in {3:F1} ms)",NativeSourceMotion.ClipCount,NativeSceneMotion.Count,BootMs,HitchMs(joinAt));
                         BootStep("banks");bootStage=BootStage.Assets;return;
                     case BootStage.Assets:
                         foreach(var r in bootAssets)if(!r.isDone)return;
@@ -124,7 +114,37 @@ namespace ChipArena.UnityConversion
         {
             if(bootHanded)return;bootHanded=true;nativeAudio.MenuHeld=false;
             if(noticeText.Length>0&&noticeLast>=bootNoticeFrom){noticeShown=noticeLast=Time.unscaledTime;}
-            Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_HANDOFF interactive at {0:F2} s since start ({1:F0} ms after Awake began); steps since Awake {2}",Time.realtimeSinceStartupAsDouble,BootMs,string.Join(" ",bootSteps));
+            Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_HANDOFF interactive at {0:F2} s since start ({1:F0} ms after the workers started); steps since then {2}",Time.realtimeSinceStartupAsDouble,BootMs,string.Join(" ",bootSteps));
+        }
+    }
+    /// <summary>
+    /// The logo intro's workers start before Unity's splash screen (RuntimeInitializeLoadType.BeforeSplashScreen): nothing of the
+    /// game runs while the splash plays (2.2 s in a Windows build, 2026-11-11), so the banks decode through it. Decided once per
+    /// run, from the command line and the Editor's asks only (the dedicated server's own flag, --ca-server, says no): a decision
+    /// to play changes nothing but when the banks decode; ConversionGame.Awake starts the intro itself.
+    /// </summary>
+    internal static class NativeBootPrefetch
+    {
+        public static bool Decided{get;private set;}public static bool Wanted{get;private set;}
+        public static long StartedAt{get;private set;}public static double StartMs{get;private set;}
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Reset(){Decided=Wanted=false;}
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
+        private static void Early()=>Decide();
+        public static void Decide()
+        {
+            if(Decided)return;Decided=true;
+            bool always=false,once=false,automated=false;var args=Environment.GetCommandLineArgs();
+#if UNITY_EDITOR
+            always=UnityEditor.EditorPrefs.GetBool(NativeBootIntro.EditorAlwaysKey,false);
+            once=UnityEditor.SessionState.GetBool(NativeBootIntro.EditorOnceKey,false);if(once)UnityEditor.SessionState.EraseBool(NativeBootIntro.EditorOnceKey);
+            automated=UnityEditor.SessionState.GetString(NativeBootIntro.EditorAutomationKey,"").Length>0;
+#endif
+            var why=NativeBootIntroRules.Decide(Array.IndexOf(args,"--ca-server")>=0,Application.isBatchMode,args,Application.isEditor,always,once,automated);
+            if(why!=NativeBootIntroRules.Skip.Plays){Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_INTRO off ({0})",why);return;}
+            Wanted=true;StartedAt=Stopwatch.GetTimestamp();
+            NativeSourceMotion.PrewarmAsync();NativeSceneMotion.PrewarmAsync();NativeSourceModels.PrefetchAsync();
+            StartMs=(Stopwatch.GetTimestamp()-StartedAt)*1000d/Stopwatch.Frequency;
         }
     }
 }
