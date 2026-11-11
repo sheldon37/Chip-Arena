@@ -32,7 +32,8 @@
   - presentation.Initialize, 2.6 s, mostly NativeSourceModels' procedural builds: `HordeKindModels` 1.1 s, `HelmModels` 0.47 s, `WeaponSkins` 0.23 s.
   - These are the next to move, by their owners: built lazily, or under the settled logo.
 - **Unity's splash** shows in builds (Player Settings, not tracked) and plays before the intro. Turning it off, or making its background black, is a Player Settings call for the owner or Astra; nothing here changes it.
-- **Package:** `Packages/manifest.json` gains `com.unity.modules.video` in its own commit. The project had no Video module, so this one line is needed for the VideoPlayer. It is the only manifest change; it is in the 6000.3.24f1 catalog and passes `package_source.py`.
+- **Package:** `Packages/manifest.json` gains `com.unity.modules.video` in its own commit. The project had no Video module, so this one line is needed for the VideoPlayer. It is the only manifest change; it is in the 6000.3.24f1 catalog and passes `package_source.py`. Accepted by the integrating session (a built-in module the feature needs).
+  - **For capture scripts:** once this lands on shared, a script that runs `git checkout --detach` in the Editor checkout must cross this file with `git checkout -m`. That checkout carries a local `com.unity.shadergraph` edit to `Packages/manifest.json`, and a plain checkout between commits that differ there is refused.
 - **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement, network or save change; presentation and load order only.
 - **Checks:**
   - CoreTests `--boot-intro`: 82 checks (rules, timeline, letterbox, the clip's size, hash, metas, receipt and credits, and the wiring and order).
