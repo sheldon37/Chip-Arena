@@ -17,6 +17,7 @@
 - **Seen in the Editor:** the Katana's four cuts and finisher glow, the storm, the iai (the gather, the dash, the line, the split's slash across the marked bot for 46), the rush, the saya at the hip from the side and behind; the Fangs' five cuts, the shadow step (smoke, the landing, the stab), the fan's five knives, the bloom, the veil's roll into smoke, the takedown from behind (the pilot holds the bot in the paired stealth kill, the bot drops at the blow); Crimson Moon and Silent Kill from start to name card; all twenty chip picks, each its own animation on the INSTALLED card.
 - **Not seen / not done:** the counter's paired critical on screen (no capture caught a bot's swing on the guard inside the window; its rules pass in the build checks), the Fangs' frontal critical and pounce, a move while running (the upper-body layer), the killcam with these classes; not played by a person or between two real clients.
 - **For Astra:** the rules above (docs/KATANA.md, docs/FANGS.md) and the three shared-code hooks; the Fangs are grantable from the DEV screen only once `fangs` is in the account server's grant list (a Site publish).
+- **Released** to the test channel (Windows builder): merged into shared at `db641c9c` (with `claude/gun-skins` and `claude/blood-pack`); the release suite (1000 groups, exit 0), the Unity compile and the Editor build checks (Native blades simulation 58) passed; the Drive zip repacked from the stage-fix zip (visual body 231.97 MB of 240: the 400-clip motion bank, the Arsenal models, the blood sheets; the previous zip kept as `LocalAssets-2026-11-10-before-blades.zip`); published revision `639299697054776271` (build `eab33a13`, 287.1 MiB). The Fangs stay DEV only. Not played by a person.
 
 ## 2026-11-10 — Claude: the blood pack (owner request)
 
@@ -36,6 +37,7 @@
 - **Seen in the Editor** (match captures, screen shots): sword cuts, pistol and heavy rounds, melee and gun kills, the killcam, a burst gib, on Moonlit, Cyber City and the Factory.
 - **Not seen:** a played match by a person, network guests, the horde's blood with the pack, gore off, reduced effects and the low tier on screen (covered by the checks only). Frame cost was not measured cleanly (the Editor was shared).
 - **Next:** repack the Drive zip with the bake, then merge and release with the other packs.
+- **Released** to the test channel with the Katana and the Fangs: merged into shared at `db641c9c`, its bake in the Drive zip; published revision `639299697054776271`. Not played by a person.
 
 ## 2026-11-10 — Claude: the guns' Arsenal Series, six pack guns as skin picks (owner request)
 
@@ -57,6 +59,7 @@
 - **Checks:** the full CoreTests suite, the Unity compile, `git diff --check`, the Editor's build checks (see the PR notes for the results).
 - **Seen in the Editor** (Moonlit, the local pilot): each of the six held at rest in third person, the pistols' sights in first person, the rifles' scope, the machine guns at the hip, and the Locker's Skins tab.
 - **Not seen:** a played match by a person, network guests, the killcam, the entrances and the lobby portraits with a series pick, a builder build.
+- **Released** to the test channel with the Katana and the Fangs: merged into shared at `db641c9c`, the models in the Drive zip; published revision `639299697054776271`. Signed-in pilots' picks still need the account service's `WEAPON_SKINS` keys (Astra). Not played by a person.
 
 ## 2026-11-10 — Claude: the new stages' z-fighting settled and their invisible walls removed, the Causeway's falls kill fast, guns aim in third person (owner request)
 
