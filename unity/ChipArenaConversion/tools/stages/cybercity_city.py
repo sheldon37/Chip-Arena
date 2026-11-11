@@ -615,8 +615,6 @@ def wall_piece(g, S, b, T, clad, accent):
                 fr.box(g, -L / 2 + .22, L / 2 - .22, .3, tall - .3, 0, .012, F['trim'], None, 0)
                 if T.i == 0 and L > 2.4:
                     fr.box(g, -.04, .04, .3, tall - .3, .012, .05, F['trimlight'], None, 0)
-            elif not pier and tall <= 1.0 and b.y0 - math.floor(b.y0 / 3.6 + 1e-3) * 3.6 < .3:
-                pass
         if not pier and (b.y0 % 3.6) < .2:
             # a sill: its rail cap
             e = .03
@@ -644,7 +642,6 @@ def roof_unit(g, S, b, T):
             ck.slats(g, fr, -fr.half + .2, fr.half - .2, .38, b.s[1] - .38, .012, .05, .13, F['gunmetal'], T)
     if T.detail:
         for s in (-1, 1):
-            ck.fan_grille(g, Fr((b.c[0] + s * b.s[0] * .22, b.y1, b.c[2]), (0, 1, 0)), 0, 0, min(b.s[0] * .18, b.s[2] * .36), .004, T) if False else None
             c = (b.c[0] + s * b.s[0] * .22, b.y1 + .004, b.c[2])
             r = min(b.s[0] * .18, b.s[2] * .36)
             ck.disc(g, c, r, F['void'], (12, 8, 6)[T.i], (0, 1, 0))
@@ -1046,7 +1043,6 @@ def vehicle(g, S, b, T, kind):
         ck.rbox(t, x0 + .02, x1 - cabl, skirt, H - .0, z0 + .0, z1 - .0, .14, body, seg)
         ck.rbox(t, x1 - cabl - .2, x1 - .02, skirt, H - .42, z0 + .04, z1 - .04, .22, body, seg)
         # the windscreen and the side glass
-        t.face(((x1 - .9, H - .5, z0 + .16), (x1 - .9, H - .5, z1 - .16), (x1 - .03, H - 1.25, z1 - .16), (x1 - .03, H - 1.25, z0 + .16)), F['glass'], (1, .9, 0)) if False else None
         box(t, x1 - .06, x1 + .0, H - 1.42, H - .62, z0 + .2, z1 - .2, F['glass'], None, 0, cell=0)
         for sz in (-1, 1):
             zz = sz * (W / 2 - .04)
@@ -1057,6 +1053,12 @@ def vehicle(g, S, b, T, kind):
                 box(t, x0 + 2.6, x0 + 2.62, skirt + .1, H - .2, min(zz + sz * .04, zz + sz * .046), max(zz + sz * .04, zz + sz * .046), F['void'], None, 0, cell=0)
                 box(t, x0 + .2, x1 - cabl - .1, skirt + .55, skirt + .75, min(zz + sz * .04, zz + sz * .047), max(zz + sz * .04, zz + sz * .047), glow(pick(ck.NEONS, b.id, 'stripe'), .9), None, 0, cell=0)
         if T.i < 2:
+            # the rear doors: a seam, hinges' bar handles, a plate
+            box(t, x0 - .004, x0 + .02, skirt + .12, H - .18, -.012, .012, F['void'], None, 0, cell=0)
+            for sz in (-1, 1):
+                box(t, x0 - .03, x0 + .02, skirt + .5, skirt + 1.3, sz * .18 - .02, sz * .18 + .02, F['chrome'], None, 0, cell=0)
+                box(t, x0 - .012, x0 + .02, skirt + .14, H - .2, sz * (W / 2 - .2) - .01, sz * (W / 2 - .2) + .01, F['void'], None, 0, cell=0)
+            box(t, x0 - .012, x0 + .02, skirt + .16, skirt + .32, -.35, .35, F['plastic'], None, 0, cell=0)
             # roof: a vent and rails
             box(t, x0 + 1.0, x0 + 2.0, H, H + .0 + .001, -.4, .4, F['cabdark'], None, 0, cell=0)
             for sz in (-1, 1):

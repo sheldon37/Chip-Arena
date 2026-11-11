@@ -121,8 +121,6 @@ def dumpster(g, S, b, T):
         xa, xb = (s * .01, s * (L / 2 - .01))
         t.face(((min(xa, xb), yt + .05, -W / 2 + .01), (max(xa, xb), yt + .05, -W / 2 + .01), (max(xa, xb), H, W / 2 - .2), (min(xa, xb), H, W / 2 - .2)), F['metaldark'], (0, 1, -.1))
         t.face(((min(xa, xb), H, W / 2 - .2), (max(xa, xb), H, W / 2 - .2), (max(xa, xb), yt + .05, W / 2 - .01), (min(xa, xb), yt + .05, W / 2 - .01)), F['metaldark'], (0, 1, .6))
-        for (z, nz) in ((-W / 2 + .01, -1),):
-            pass
     for xe in (-L / 2 + .01, L / 2 - .01, 0.0):
         t.face(((xe, yt + .05, -W / 2 + .01), (xe, H, W / 2 - .2), (xe, yt + .05, W / 2 - .01)), F['metaldark'], (1 if xe > 0 else -1, 0, 0))
         if xe == 0.0:
@@ -332,7 +330,7 @@ def car(T, length, nose=False, tail=False):
         xa, xb = xt - sg * 2.3, xt - sg * 1.0
         ra, rb = sect(xa, .78), sect(xb, .36)
         m = len(ra)
-        for j in range(m // 2 - 1 if False else m):
+        for j in range(m):
             j1 = (j + 1) % m
             if ra[j][1] < 1.55 or ra[j1][1] < 1.55:
                 continue
