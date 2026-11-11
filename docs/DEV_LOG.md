@@ -84,6 +84,7 @@
   - the Unity compile; the full suite and the Editor's build checks again with the release.
 - **Seen in the Editor:** the four stages from play views with the rebuilt banks; the rifle and the pistol aiming in third person (zoomed, the gun raised, the crosshair tight).
 - **Not seen:** a person playing; a knock-off kill on the bridge in a live match; guests' prediction beside bots-only columns. A stone wall beside the Causeway's walkways still shows a blocky light-and-shade pattern: the stone's finish and the shadow map at a grazing angle, not overlapping faces.
+- **Released** to the test channel: shared `8426af43`, the builder at `8426af43`, build `d671acf6`, revision 639299648232092201 (280.5 MiB), published. The builder's first attempt stopped in Unity's package manager before compiling (its helper process dropped the connection); it was retried with `builder.py build-publish --rebuild`. The builder installed the four rebuilt stage banks (hashes match). Full suite 998 groups (a first run failed the Bisect timing check while other sessions' suites ran; it passed on the rerun), the Unity compile and the Editor's build checks passed.
 
 ## 2026-11-10 — Claude: the four new stages modelled (stage art banks, a lit stage shader), the club's DJ and crowd are Grey aliens (owner request)
 
