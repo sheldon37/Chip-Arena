@@ -168,6 +168,8 @@ namespace ChipArena.UnityConversion
                 // Choosing in an Expedition holds the camera (ExpeditionCameraHeld, PR #241) and takes the mouse as the chip cursor (no Alt);
                 // mouse look waits a couple of frames after the pointer locks again (NativeExpeditionChipScreen.cs).
                 if(!lockPoint.HasValue&&!ExpeditionLookSettling&&!cinematic.Directing&&!ExpeditionCameraHeld&&!ExpeditionPickPointer){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*aimLook;pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*aimLook,-70,70);ControllerLook(aimLook);}
+                // The Fangs' shadow step turns the view onto its victim (NativeBladePresentation.cs).
+                BladeStepView(p);
                 if(Input.GetKeyDown(KeyCode.W)){if(Time.unscaledTime-lastW<.3f)sprint=true;lastW=Time.unscaledTime;}if(!Input.GetKey(KeyCode.W))sprint=false;
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
                 var padMove=Quaternion.Euler(0,yaw,0)*new Vector3(padMoveAxis.x,0,padMoveAxis.y);if(move.sqrMagnitude<.001f)move=padMove;

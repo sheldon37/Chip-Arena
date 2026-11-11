@@ -18,6 +18,9 @@ namespace ChipArena.UnityConversion
     // Standard gun's rear sight is taken through the fit.
     // A spec the bake carries none of (the daggers, shield, bow and caster staffs) draws the weapons pack bank's model on an
     // arena pilot's body instead (NativePackWeaponPresentation.cs): the daggers on both hands, the staffs on the left.
+    // The Arsenal Series (owner 2026-11-10; Core/NativeWeaponSkins.cs Series): a gun's other models are entries of their own
+    // beside its Standard one ("pistol@arsenal", "rifle@arsenal2"), fitted, supported, stocked and sighted the same way. A
+    // pilot who picked one holds it wherever the Standard model would draw; a bake without that entry draws the Standard one.
     // Presentation only: aim, rules, reach, hit volumes and the wire are the game's.
     public sealed partial class ArenaPresentation
     {
@@ -56,9 +59,21 @@ namespace ChipArena.UnityConversion
         {
             body.MainAway=a.MainWeaponAway;
             if(a.WeaponAway||string.IsNullOrEmpty(a.SourceSpec)||WeaponSkin(a)!=NativeWeaponSkins.StandardIndex)return null;
+            // A gun's Arsenal Series model, where the bake carries it (else its Standard model below).
+            int series=NativeWeaponSkins.Series(SeatWeaponSkins(a.Id),a.SourceSpec);
+            if(series>0&&body.Weapons!=null&&body.Weapons.TryGetValue(NativeWeaponSkins.SeriesEntry(a.SourceSpec,series),out var picked))return picked;
             if(body.Weapons!=null&&body.Weapons.TryGetValue(a.SourceSpec,out var w))return w;
             return body.Arena?PackWeaponOf(body,a.SourceSpec):null;
         }
+
+        /// <summary>Whether this install's bake carries a gun's Arsenal Series model (the Locker offers it only then).</summary>
+        public static bool VisualSeriesInstalled(string spec,int series)
+        {
+            string entry=NativeWeaponSkins.SeriesEntry(spec,series);if(entry==null||!VisualBodiesOn||visualBodyPrefab==null)return false;
+            if(!visualSeries.TryGetValue(entry,out bool found)){var holder=visualBodyPrefab.transform.Find("VisualWeapons");found=holder!=null&&holder.Find(entry)?.Find("Model")!=null;visualSeries[entry]=found;}
+            return found;
+        }
+        private static readonly Dictionary<string,bool> visualSeries=new Dictionary<string,bool>(System.StringComparer.Ordinal);
 
         // The visual hands' grasp on it: the support fist cups its handguard and its butt shoulders (weapon frame; the source
         // frame mirrors x).

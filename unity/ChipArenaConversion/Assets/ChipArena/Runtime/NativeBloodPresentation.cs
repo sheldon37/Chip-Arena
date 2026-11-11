@@ -59,16 +59,17 @@ namespace ChipArena.UnityConversion
         private void Bleed(int pilot,NativeWound w,Vector3 origin,Vector3 normal,Vector3 along,float time,int extra=0,bool kill=false,string kind=null)
         {
             // A death's own gush stains apart from the same wound's spray on the living rig in its last frame.
-            if(w==null)return;long key=WoundKey(pilot,w)^(kill?1L<<61:0);bool stain=stainedWounds.Add(key);
+            if(w==null||!Gore)return;long key=WoundKey(pilot,w)^(kill?1L<<61:0);bool stain=stainedWounds.Add(key);
             // A fresh cut, stab, shot or crush throws a fine mist of blood off the wound.
-            string k=kind??w.kind;if(stain&&(k=="cut"||k=="sever"||k=="puncture"||k=="cavity"||k=="crush"||k=="squirt"))
+            string k=kind??w.kind;if(stain&&BloodMistShown&&(k=="cut"||k=="sever"||k=="puncture"||k=="cavity"||k=="crush"||k=="squirt"))
             {bloodMists[bloodMistNext]=new BloodMist{At=origin,Normal=normal,At0=time,Severity=Mathf.Clamp01(w.severity),Seed=(uint)(key*2654435761L)};bloodMistNext=(bloodMistNext+1)%bloodMists.Length;}
             uint seed=NativeWoundCarve.Seed(w.id.ToString(System.Globalization.CultureInfo.InvariantCulture))^0xb100du;
             blood.Spray(kind??w.kind,w.severity,seed,key,new NVector(origin.x,origin.y,origin.z),new NVector(normal.x,normal.y,normal.z),new NVector(along.x,along.y,along.z),time,BloodQuality,LowGraphics,stain,extra,pilot,kill);
+            if(kill)BloodPool(key,k,w.severity,seed,origin,along,time);
         }
         private void ClearBlood(bool splats)
         {
-            blood.Clear(splats);if(splats){stainedWounds.Clear();bloodSurfaces.Clear();bloodVersion=-1;}
+            blood.Clear(splats);ClearBloodPack();if(splats){stainedWounds.Clear();bloodSurfaces.Clear();bloodVersion=-1;}
         }
         // The arena sweep: the first world collider between two points; a dynamic crate or fragment (NativeStructureFxPresentation
         // Movable) takes no stain.
@@ -103,7 +104,7 @@ namespace ChipArena.UnityConversion
             if(arena==null)return;
             // A new round reaches here through ResetPresentation (ClearBlood); the killcam's replay arena sweeps its own copy of
             // the map while the live round's splats stay.
-            bloodArena=arena;bloodCast??=BloodCast;float q=BloodQuality;
+            bloodArena=arena;bloodCast??=BloodCast;float q=BloodQuality;BloodPackBegin(now);
             blood.Splats.Limit=LowGraphics?160:q<1?240:NativeBloodSplats.Kept;
             blood.Step(now,bloodCast,-60);blood.Splats.Update(now);
             // Surfaces that broke, were switched off or moved take their splats with them.
@@ -146,7 +147,7 @@ namespace ChipArena.UnityConversion
                 BisectSparks(now);SmashMist(now);HotdogFriendsFx(now);
             }
             killDrops.Clear();
-            DrawSplats(camera,now);
+            DrawSplats(camera,now);DrawSplashes(camera,now);DrawGuts(camera);
         }
         private Color splatUp,splatSide,splatDown;
         private void SplatLight()
@@ -166,19 +167,21 @@ namespace ChipArena.UnityConversion
         }
         private void DrawSplats(Camera camera,float now)
         {
-            var pool=blood.Splats;if(pool.Live==0){if(splatMesh!=null&&splatMesh.vertexCount>0)splatMesh.Clear();return;}if(!EnsureSplatMaterial())return;
+            var pool=blood.Splats;if(pool.Live==0){if(splatMesh!=null&&splatMesh.vertexCount>0)splatMesh.Clear();DecalClear();return;}if(!EnsureSplatMaterial())return;
             // Rebuild while any splat spreads in or fades, when the set changed, and every half second as they dry.
             bool animating=false;for(int i=0;i<NativeBloodSplats.Capacity&&!animating;i++){var s=pool.Items[i];animating=s.Live&&(now-s.Born<.08f||s.FadeAt>=0);}
             if(animating||pool.Version!=bloodVersion||now-bloodBuilt>.5f||now<bloodBuilt)
             {
                 bloodVersion=pool.Version;bloodBuilt=now;SplatLight();splatPoints.Clear();splatNormals.Clear();splatColors.Clear();splatUv.Clear();splatIndices.Clear();bool low=LowGraphics;
-                bool sheets=!low&&SplatSheets();sheetPoints.Clear();sheetColors.Clear();sheetUv.Clear();sheetCore.Clear();sheetIndices.Clear();
-                for(int i=0;i<NativeBloodSplats.Capacity;i++){var s=pool.Items[i];if(!s.Live)continue;float a=pool.Opacity(i,now);if(a>.002f){if(sheets)SheetSplat(s,a,now);else Splat(s,a,now,low);}}
+                bool decals=!low&&DecalBegin();bool sheets=!low&&SplatSheets();sheetPoints.Clear();sheetColors.Clear();sheetUv.Clear();sheetCore.Clear();sheetIndices.Clear();
+                for(int i=0;i<NativeBloodSplats.Capacity;i++){var s=pool.Items[i];if(!s.Live)continue;float a=pool.Opacity(i,now);if(a>.002f){if(decals)DecalSplat(s,a,now);else if(sheets)SheetSplat(s,a,now);else Splat(s,a,now,low);}}
+                if(decals)DecalEnd();else DecalClear();
                 splatMesh.Clear();if(splatPoints.Count>0){splatMesh.SetVertices(splatPoints);splatMesh.SetNormals(splatNormals);splatMesh.SetColors(splatColors);splatMesh.SetUVs(0,splatUv);splatMesh.SetTriangles(splatIndices,0,false);splatMesh.bounds=new Bounds(Vector3.zero,Vector3.one*4000);}
                 if(splatSheetMesh!=null){splatSheetMesh.Clear();if(sheetPoints.Count>0){splatSheetMesh.SetVertices(sheetPoints);splatSheetMesh.SetColors(sheetColors);splatSheetMesh.SetUVs(0,sheetUv);splatSheetMesh.SetUVs(1,sheetCore);splatSheetMesh.SetTriangles(sheetIndices,0,false);splatSheetMesh.bounds=new Bounds(Vector3.zero,Vector3.one*4000);}}
             }
             if(splatMesh.vertexCount>0)Graphics.DrawMesh(splatMesh,Matrix4x4.identity,splatMaterial,0,camera,0,null,ShadowCastingMode.Off,false);
             if(splatSheetMesh!=null&&splatSheetMesh.vertexCount>0)Graphics.DrawMesh(splatSheetMesh,Matrix4x4.identity,splatSheetMaterial,0,camera,0,null,ShadowCastingMode.Off,false);
+            DecalDraw(camera,now);
         }
         private static readonly Vector4 SplatUv=new Vector4(0,0,NativeFxDraw.Flat,NativeFxDraw.Authored);
         // One splat: an irregular toon blob stretched along its travel (a dark rim, a wetter core pushed toward where it slid),

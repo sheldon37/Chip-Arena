@@ -249,6 +249,32 @@ icons['spec-topdog']=()=>{const d=dogParts();return [L(d.bun,{opacity:TONE}),L(d
 const arcLine=(r,a0,a1,n=6)=>line(Array.from({length:n+1},(_,i)=>at(12,12,r,a0+(a1-a0)*i/n)));
 const glaiveParts=()=>({blade:ring(12,12,5.2,8.6),hooks:[-60,60,180].map(a=>poly([at(12,12,8.1,a-10),at(12,12,11.4,a+16),at(12,12,8.1,a+26)])),grip:crect(6.9,11,10.2,2,.6),inlay:arcLine(6.9,0,359.9,24),trail:[arcLine(10.6,200,245),arcLine(10.6,320,365)]});
 icons['spec-glaive']=()=>{const g=glaiveParts();return [L(g.trail,{line:1,opacity:TONE}),L(g.blade,{evenodd:true}),L(g.hooks,{knock:.6}),L(g.inlay,{cut:true,line:.55}),L(g.grip,{knock:.7})];};
+// THE KATANA (owner 2026-11-10): on the diagonal, the blade curving back to its point, a tsuba, a wrapped grip; a crescent moon behind it.
+const katanaCurve=t=>12+3.3*t*t;
+// A crescent: the disc (cx,cy,R) less the disc (dx,dy,r), from one horn round the outside to the other and back along the bite.
+const crescent=(cx,cy,R,dx,dy,r)=>{const d=Math.hypot(dx-cx,dy-cy),a=(R*R-r*r+d*d)/(2*d),h=Math.sqrt(R*R-a*a),ux=(dx-cx)/d,uy=(dy-cy)/d;return new P().M(cx+a*ux-h*uy,cy+a*uy+h*ux).A(R,1,1,cx+a*ux+h*uy,cy+a*uy-h*ux).A(r,0,0,cx+a*ux-h*uy,cy+a*uy+h*ux).Z();};
+const katanaParts=(tiny=false)=>{
+  const y0=15.2,y1=-2.6,n=10,wb=tiny?3.2:2.8,wt=tiny?2.5:2.1,Y=t=>y0+(y1-y0)*t,left=[],right=[];
+  // The kissaki: over the last stretch the edge (left) rounds across to the back (right).
+  for(let i=0;i<=n;i++){const t=i/n,w=wb+(wt-wb)*t,cx=katanaCurve(t),k=Math.max(0,(t-.84)/.16);left.push([cx-w/2+w*k**1.6,Y(t)]);right.push([cx+w/2,Y(t)]);}
+  const hw=tiny?2.5:2.2,place=p=>p.rot(45,12,11.6).shift(-2.2,1.5);
+  return {blade:place(poly([...left,...right.reverse().slice(1)])),tsuba:place(poly([[7.6,15.9],[8.4,15.1],[15.6,15.1],[16.4,15.9],[15.6,16.7],[8.4,16.7]])),
+    grip:place(poly([[12-hw/2,16.7],[12+hw/2,16.7],[12+hw/2-.15,23.6],[12+hw/2-.6,24.4],[12-hw/2+.6,24.4],[12-hw/2+.15,23.6]])),
+    ridge:place(line(Array.from({length:9},(_,i)=>i/8*.8+.04).map(t=>[katanaCurve(t)+.35,Y(t)]))),
+    wraps:[18.4,20.4,22.4].map(y=>place(poly([[12,y-.75],[12.7,y],[12,y+.75],[11.3,y]]))),moon:crescent(5.6,5.6,4.5,7.9,4.3,3.9)};
+};
+icons['spec-katana']=()=>{const k=katanaParts();return [L(k.moon,{opacity:TONE}),L(k.blade,{knock:.7}),L(k.ridge,{cut:true,line:.42}),L(k.grip),L(k.wraps,{cut:true}),L(k.tsuba,{knock:.55})];};
+// THE FANGS (owner 2026-11-10): two serpent's fangs crossed, hooking in toward each other, a venom channel down each, a drop between their points.
+const fangLine=t=>12-1.5*Math.sin(Math.PI*t**.9)+3.4*t**2.4;
+const fangParts=(tiny=false)=>{
+  const y0=16.4,y1=.4,n=12,wb=tiny?4.2:3.8,Y=t=>y0+(y1-y0)*t,left=[],right=[];
+  for(let i=0;i<=n;i++){const t=i/n,w=wb*(1-t)**.8*(1+.26*Math.sin(Math.PI*t)),cx=fangLine(t);left.push([cx-w/2,Y(t)]);right.push([cx+w/2,Y(t)]);}
+  const gw=tiny?2.5:2.2,parts=[poly([...left,...right.reverse().slice(1)]),poly([[7.6,15],[9.4,16.4],[14.6,16.4],[16.4,15],[14.9,18.4],[9.1,18.4]]),poly([[12-gw/2,18.4],[12+gw/2,18.4],[12+gw/2,22.2],[12,23.6],[12-gw/2,22.2]])];
+  const vein=line(Array.from({length:9},(_,i)=>.36+.4*i/8).map(t=>[fangLine(t)-.25*(1-t),Y(t)]));
+  const a=p=>p.rot(-46,12,13.2).shift(1.4,1.2),b=p=>p.flipX().rot(46,12,13.2).shift(-1.4,1.2);
+  return {a:parts.map(a),va:a(vein),b:parts.map(b),vb:b(vein),drop:new P().M(12,1.6).Q(14,5,12,6).Q(10,5,12,1.6).Z()};
+};
+icons['spec-fangs']=()=>{const f=fangParts();return [L(f.a),L(f.va,{cut:true,line:.5}),L(f.b,{knock:1}),L(f.vb,{cut:true,line:.5}),L(f.drop,{opacity:TONE})];};
 // THE CYBER LORD'S RANGED SET (Core/CyberLordRanged.cs; key 5 switches): hardlight emitters, hex rings and RGB-split bolts.
 // BIT BOLT (ranged LMB): a split hardlight bolt off a hex emitter, trailing bits.
 icons['ability-bit-bolt']=()=>{
@@ -434,6 +460,8 @@ small['spec-cyberlord']=()=>{
 };
 small['spec-topdog']=()=>{const d=dogParts(true);return [L(d.bun,{opacity:.5}),L(d.sausage,{knock:1.3}),L(d.eyes,{cut:true}),L(d.smile,{cut:true})];};
 small['spec-glaive']=()=>{const g=glaiveParts();return [L(g.blade,{evenodd:true}),L(g.hooks,{knock:.7}),L(g.grip,{knock:.8})];};
+small['spec-katana']=()=>{const k=katanaParts(true);return [L(k.moon,{opacity:.5}),L(k.blade,{knock:.8}),L(k.grip),L(k.tsuba,{knock:.7})];};
+small['spec-fangs']=()=>{const f=fangParts(true);return [L(f.a),L(f.b,{knock:1.1})];};
 small['spec-ansatsuken']=()=>{
   const aura=poly([[4.4,19],[1.8,12.6],[1.8,6.8],[5.2,9.4],[7,2.6],[10,6.4],[12,.4],[14,6.4],[17,2.6],[18.8,9.4],[22.2,6.8],[22.2,12.6],[19.6,19]]);
   const fingers=[7.6,6.3,6.5,7.8].map((y,i)=>crect(5+i*3.55,y,3.1,13-y,1));
@@ -444,7 +472,7 @@ small['spec-ansatsuken']=()=>{
 
 // ---- export ----
 const CLASSES={dev:'class-dev',magic:'class-magic',melee:'class-melee',ranged:'class-ranged'};
-const SPECS=Object.fromEntries(['ansatsuken','bow','cyberlord','daggers','darkness','emperor','fire','glaive','greatsword','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','topdog','water'].map(id=>[id,'spec-'+id]));
+const SPECS=Object.fromEntries(['ansatsuken','bow','cyberlord','daggers','darkness','emperor','fangs','fire','glaive','greatsword','katana','leet','lightning','machinegun','pistol','rifle','shield','siren','sword','topdog','water'].map(id=>[id,'spec-'+id]));
 const entries=Object.keys(icons).sort().map(id=>{const e={id,markup:markup(icons[id]())};if(small[id])e.small=markup(small[id]());return e;});
 const pairs=o=>Object.entries(o).sort(([a],[b])=>a<b?-1:1).map(([id,icon])=>({id,icon}));
 const data={schema:1,source:'tools/export_class_icons.mjs',note:'Original Chip Arena class and weapon artwork authored for this project as geometry; not derived from any third-party icon set.',box:24,smallPx:22,fallback:'class-dev',icons:entries,classes:pairs(CLASSES),specs:pairs(SPECS)};

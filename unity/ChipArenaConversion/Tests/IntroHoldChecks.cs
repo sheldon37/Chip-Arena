@@ -115,7 +115,7 @@ internal static class IntroHoldChecks
             if(NativeIntroMotion.WeaponIntro(style)>=0)Check(NativeIntroMotion.Hit(style)==hit,style+" keeps its sting's accent");
             Check(NativeIntroRules.Duration(style)==4.8&&NativeIntroRules.NameAt(style)==3.2&&NativeIntroRules.OverlayDuration(style)==4.8,style+" keeps 4.8 s and the 3.2 s card");marks++;
         }
-        Check(Marks.Select(m=>m.style).Concat(new[]{CyberLordSpec.Entrance,NativeBombs.Entrance,NativeTopDog.Entrance,NativeGlaiveIntro.Id}).OrderBy(s=>s,StringComparer.Ordinal).SequenceEqual(NativeEntranceDirector.Styles.OrderBy(s=>s,StringComparer.Ordinal)),"every directed entrance is pinned (the Cyber Lord's to its phase)");
+        Check(Marks.Select(m=>m.style).Concat(new[]{CyberLordSpec.Entrance,NativeBombs.Entrance,NativeTopDog.Entrance,NativeGlaiveIntro.Id,NativeKatana.Entrance,NativeFangs.Entrance}).OrderBy(s=>s,StringComparer.Ordinal).SequenceEqual(NativeEntranceDirector.Styles.OrderBy(s=>s,StringComparer.Ordinal)),"every directed entrance is pinned (the Cyber Lord's to its phase)");
         Check(NativeIntroRules.Duration(CyberLordSpec.Entrance)==4.8&&NativeIntroRules.NameAt(CyberLordSpec.Entrance)==3.2,"the Hardlight Boot keeps 4.8 s and the 3.2 s card");
         foreach(var (style,duration,nameAt) in Dev)Check(NativeIntroRules.Duration(style)==duration&&NativeIntroRules.NameAt(style)==nameAt,style+" keeps its phase and card");
         Check(NativeEntranceScript.Duration==4.8f&&NativeEntranceScript.NameAt==3.2f&&NativeEntranceScript.Settle==4.45f,"the directed phase, card and settle");

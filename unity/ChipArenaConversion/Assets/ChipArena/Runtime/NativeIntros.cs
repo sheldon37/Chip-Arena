@@ -92,15 +92,17 @@ namespace ChipArena.UnityConversion
             // On its visual body once built in (the Sheldon intro's hood and face over the model's head).
             string keepAccent=actor.AccentColor,scriptAccent=script.AccentAt(t);if(scriptAccent!=null)actor.AccentColor=scriptAccent;
             // The Last Warning holds TNT whatever the pilot carries into the match, so the fists close on that (VisualHold).
-            string keepSpec=actor.SourceSpec;if(script is NativeBombadierIntro)actor.SourceSpec=NativeBombs.Spec;if(script is NativeGlaiveIntro){actor.SourceSpec=NativeGlaive.Spec;glaiveIntroActor=actor.Id;glaiveIntroClock=t;}if(script is NativeTopDogIntro){actor.SourceSpec=NativeTopDog.Spec;dogIntroActor=actor.Id;dogIntroClock=t;}
+            string keepSpec=actor.SourceSpec;if(script is NativeBombadierIntro)actor.SourceSpec=NativeBombs.Spec;if(script is NativeGlaiveIntro){actor.SourceSpec=NativeGlaive.Spec;glaiveIntroActor=actor.Id;glaiveIntroClock=t;}if(script is NativeBladeIntro blade){actor.SourceSpec=blade.Spec;bladeIntro=blade;bladeIntroActor=actor.Id;bladeIntroClock=t;}if(script is NativeTopDogIntro){actor.SourceSpec=NativeTopDog.Spec;dogIntroActor=actor.Id;dogIntroClock=t;}
             VisualIntroPose(introRig,actor,introNow,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);
             try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,introNow,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
+            // Crimson Moon: the saya at the hip, and the blade in it while the script has it sheathed (NativeBladePresentation.cs).
+            if(script is NativeKatanaIntro)KatanaSaya(introRig,actor,introNow,false,0,null,null,1);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
             if(script is NativeBombadierIntro last){if(solid)BombGear(introRig);var palm=introRig.Bones[CapturedRig.LHand];var at=palm.position+palm.rotation*new Vector3(0,-.06f,0);last.PalmNow=new System.Numerics.Vector3(-at.x,at.y,at.z);var fist=introRig.Bones[CapturedRig.RHand];var tip=fist.position+fist.rotation*CapturedAnimation.Vec(CapturedRig.Mirror(NativeWeaponModels.TntFuseTip));last.FuseNow=new System.Numerics.Vector3(-tip.x,tip.y,tip.z);}
             EntranceGhosts(script,style,t);
             entranceProps??=new EntranceProps(sourceModels);script.Props(t,entranceProps,quality);if(script is NativeTopDogIntro dogIntro)DogIntroToons(dogIntro,t);if(script is NativeGlaiveIntro ring)GlaiveIntroRing(ring,t);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
-            VisualBodiesShown();actor.AccentColor=keepAccent;actor.SourceSpec=keepSpec;dogIntroActor=-1;glaiveIntroActor=-1;
+            VisualBodiesShown();actor.AccentColor=keepAccent;actor.SourceSpec=keepSpec;dogIntroActor=-1;glaiveIntroActor=-1;bladeIntroActor=-1;bladeIntro=null;
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
             vfx?.Submit(camera);
         }
@@ -195,6 +197,8 @@ namespace ChipArena.UnityConversion
             if(style==NativeTopDog.Entrance){dogMalletScale=NativeTopDogIntro.MalletScale(entranceTime);if(dogMalletScale>.01f){dogIntroHand??=b=>introRig.Bones[b].localToWorldMatrix*introGrip*Matrix4x4.Scale(Vector3.Scale(Vector3.one*dogMalletScale,DogToon(-1)));sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,dogIntroHand,accent:introAccent);}return;}
             // The Glaive's ring is in the hand only between its catches (Core NativeGlaiveIntro.InHand); out of it GlaiveIntroRing draws it.
             if(style==NativeGlaiveIntro.Id&&!NativeGlaiveIntro.InHand(entranceTime))return;
+            // The Katana's blade in its saya while the intro has it sheathed (Core NativeBladeIntros; the saya draws it there).
+            if(bladeIntro!=null&&bladeIntro.Sheathed(entranceTime))return;
             if(!VisualWeaponDrawn(introRig,introHand(CapturedRig.RHand)))sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
             if(NativeIntroRules.IntroMuzzleFlash(style,age,out var flash))QueuePiece(flash,introHand(CapturedRig.RHand),0,null);
         }

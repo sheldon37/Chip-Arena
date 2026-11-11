@@ -329,6 +329,7 @@ namespace ChipArena.UnityConversion
                     else if(NativeBombChips.Is(e.Detail)){n=Add(o,n,"explosion",.7f,false);n=Add(o,n,"parry",.35f,false);}
                     else if(NativeDogChips.Is(e.Detail)){n=Add(o,n,"parry",.5f,false);}
                     else if(NativeGlaiveChips.Is(e.Detail)){n=Add(o,n,"parry",.45f,false);}
+                    else if(NativeKatanaChips.Is(e.Detail)||NativeFangsChips.Is(e.Detail)){n=Add(o,n,"parry",.45f,false);}
                     break;
                 // pveCue: buy (my own), gib, the reveal cinematic's phase, and my revive.
                 case EventKind.PveBuy:if(e.SourceMe)n=Add(o,n,"ui",.6f,false);break;

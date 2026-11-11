@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
         public bool HasKernel;public NativeKernelPanic Kernel;public NativeMeleeKit MeleeKit;public NativeTechniqueMark[] TechniqueMarks;public NativeChipGauge[] ChipGauges;public bool HasTechnique;public NativeTechnique Technique;public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
         public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;
         public float CastRate=1,AbilityAt=-100,AbilityRelease;public string AbilityId;
-        public float BowDrawAt=-1,BowDraw,BowReleaseAt=-100,BowRainAt=-100;public V3 BowRainTarget;public NativeBombKit Bomb;public bool HasBomb;public NativeTopDogKit Dog;public bool HasDog;public NativeGlaiveKit Glaive;public bool HasGlaive;public NativeCyberKit Cyber=new NativeCyberKit();public bool Grounded=true;public int AirJumps;public float AirJumpAt=-100;
+        public float BowDrawAt=-1,BowDraw,BowReleaseAt=-100,BowRainAt=-100;public V3 BowRainTarget;public NativeBombKit Bomb;public bool HasBomb;public NativeTopDogKit Dog;public bool HasDog;public NativeGlaiveKit Glaive;public bool HasGlaive;public NativeBladeKit Blade;public bool HasBlade;public int PairBy;public string PairClip;public float PairAt=-100,PairUntil=-100;public NativeCyberKit Cyber=new NativeCyberKit();public bool Grounded=true;public int AirJumps;public float AirJumpAt=-100;
         // Captured-melee presentation (MeleeMotion): the swing window, authoritative step and commitment, Hurricane, and the
         // hit reaction in the struck pilot's facing frame (source frame: +x the rig's left, radians). Never read by authority.
         public float SwingAt=-100,SwingUntil=-100,CommitAt=-100,CommitUntil=-100,CommitYaw,StepAt,StepUntil,StepDistance;public bool Followup,Hurricane,SprintAttack,OpenerLunge;
@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
         public float StunUntil, StaggerImmuneUntil, RegenAt, ShootReady, RespawnAt, FlashUntil;
         internal bool QueuedAttack;
         internal readonly HashSet<int> Hit = new HashSet<int>();
-        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.Bomb=Bomb?.ViewCopy();copy.Dog=Dog?.ViewCopy();copy.Glaive=Glaive?.ViewCopy();copy.Cyber=Cyber?.ViewCopy();copy.Kernel=Kernel?.ViewCopy();copy.MeleeKit=MeleeKit?.ViewCopy();copy.Technique=Technique?.ViewCopy();copy.TechniqueMarks=TechniqueMarks==null?null:(NativeTechniqueMark[])TechniqueMarks.Clone();copy.ChipGauges=ChipGauges==null?null:(NativeChipGauge[])ChipGauges.Clone();return copy;}
+        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.Bomb=Bomb?.ViewCopy();copy.Dog=Dog?.ViewCopy();copy.Glaive=Glaive?.ViewCopy();copy.Blade=Blade?.ViewCopy();copy.Cyber=Cyber?.ViewCopy();copy.Kernel=Kernel?.ViewCopy();copy.MeleeKit=MeleeKit?.ViewCopy();copy.Technique=Technique?.ViewCopy();copy.TechniqueMarks=TechniqueMarks==null?null:(NativeTechniqueMark[])TechniqueMarks.Clone();copy.ChipGauges=ChipGauges==null?null:(NativeChipGauge[])ChipGauges.Clone();return copy;}
         public bool Alive { get { return Hp > 0; } }
         public bool Rolling(float t) { return t >= RollAt && t < RollAt + VisualRollDuration; }
         public bool Invulnerable(float t) { return t >= RollAt + Rules.IframeStart && t < RollAt + Rules.IframeEnd; }

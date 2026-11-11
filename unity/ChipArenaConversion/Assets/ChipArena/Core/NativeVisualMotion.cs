@@ -94,6 +94,33 @@ namespace ChipArena.UnityConversion
             AirAttack="Armed-Air-Attack-R1",SprintAttack="Armed-Run-Attack-R1",Attacks=Names("Sword-Attack-R","1","3","4","6"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
             Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         private const string GlaiveRun="Armed-Run-Forward";
+        // The Katana (owner 2026-11-10: "Use the new animation pack"): the Frank Slash Pack's katana set: its first stance, its stride (the
+        // root-motion runs, the guard walk its walk, its run its sprint), its guard, block, tumble and reactions; the armed set's jumps and
+        // falls under it. Its moves are clip windows fitted to the rules (Core NativeBladeMotion: the whole body; a cut on the move the upper body).
+        private static readonly Set Katana=Frank(new Set{Spec=NativeKatana.Spec,Idle=NativeBladeMotion.KatanaIdle,Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",Land="Armed-Land",
+            Block=NativeBladeMotion.KatanaGuard,BlockHit=NativeBladeMotion.KatanaBlock,Stunned="Armed-Stunned",Roll=NativeBladeMotion.KatanaTumble,AirAttack="Armed-Air-Attack-R1",SprintAttack=NativeBladeMotion.KatanaRush,
+            Attacks=NativeBladeMotion.KatanaCuts,Reactions=new[]{"Frank_RPG_Katana_Hit01","Frank_RPG_Katana_Hit02","Frank_RPG_Katana_Hit03","Frank_RPG_Katana_Hit02"},
+            TechClips=NativeBladeMotion.KatanaExtra,Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Frank_RPG_Katana@Velocity_8Way_Run_","Frank_RPG_Katana@Velocity_8Way_GuardWalk_","Frank_RPG_Katana_Run01_Velocity");
+        // The Fangs (owner 2026-11-10: "Testing different abilities and animation sets"): the pack's assassin set, low and quick: its stance,
+        // root-motion stride, guard, block, tumble and reactions; its moves (and its stealth kills and criticals) in Core NativeBladeMotion.
+        private static readonly Set Fangs=Frank(new Set{Spec=NativeFangs.Spec,Idle=NativeBladeMotion.FangsIdle,Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",Land="Armed-Land",
+            Block=NativeBladeMotion.FangsGuard,BlockHit=NativeBladeMotion.FangsBlock,Stunned="Armed-Stunned",Roll=NativeBladeMotion.FangsTumble,AirAttack="Armed-Air-Attack-L1",SprintAttack=NativeBladeMotion.FangsPounce,
+            Attacks=NativeBladeMotion.FangsCuts,Reactions=new[]{"Frank_RPG_Assassin_Hit01","Frank_RPG_Assassin_Hit02","Frank_RPG_Assassin_Hit03","Frank_RPG_Assassin_Hit02"},
+            TechClips=NativeBladeMotion.FangsExtra,Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Frank_RPG_Assassin@Velocity_8Way_Run_","Frank_RPG_Assassin@Velocity_8Way_Walk_","Frank_RPG_Assassin_Run01_Velocity");
+        /// <summary>A Frank Slash Pack set's stride (its 8-way clips end in F, FR, R, BR, B, BL, L, FL) and every clip it plays.</summary>
+        private static Set Frank(Set s,string run,string walk,string sprint)
+        {
+            string[] dirs={"F","FR","R","BR","B","BL","L","FL"};s.Locomotion=new string[NativeVisualStride.Clips];
+            for(int i=0;i<dirs.Length;i++){s.Locomotion[i]=run+dirs[i];s.Locomotion[NativeVisualStride.Walks+i]=walk+dirs[i];}
+            s.Locomotion[NativeVisualStride.Sprint]=sprint;
+            var all=new System.Collections.Generic.List<string>{s.Idle,s.Jump,s.Flip,s.Fall,s.Land,s.Block,s.BlockHit,s.Stunned,s.Roll,s.AirAttack,s.SprintAttack};
+            foreach(var c in new[]{s.Knockdown,s.RollBack})if(c!=null&&!all.Contains(c))all.Add(c);
+            foreach(var l in new[]{s.Attacks,s.Reactions,s.Locomotion,s.TechClips})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
+            s.All=all.ToArray();return s;
+        }
+        /// <summary>The clips a set plays as loops though the pack marks them single (the Frank Slash Pack's stances and strides): its idle, its
+        /// stride and its guard (the bake loops them).</summary>
+        public static string[] Loops(string spec){var s=For(spec);if(s==null||!NativeBlades.Is(spec))return Array.Empty<string>();var l=new System.Collections.Generic.List<string>{s.Idle,s.Block};l.AddRange(s.Locomotion);return l.ToArray();}
         // Daggers: the armed set's dual block and attacks and the pack's dagger cuts, alternating hands in the game's four
         // (a forehand right to left, then three left to right, the last the finisher): R1, L3, R2, L2 (their blade tips'
         // sweeps on the body); the dual running cut opens both blades as the game's twin sprint sweeps do.
@@ -191,7 +218,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
         public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
-            spec=="rifle"||spec=="machinegun"?Rifle:spec==NativeBombs.Spec?Bomb:spec==NativeTopDog.Spec?TopDog:spec==NativeGlaive.Spec?Glaive:spec=="pistol"?Pistol:spec=="bow"?Bow:
+            spec=="rifle"||spec=="machinegun"?Rifle:spec==NativeBombs.Spec?Bomb:spec==NativeTopDog.Spec?TopDog:spec==NativeGlaive.Spec?Glaive:spec==NativeKatana.Spec?Katana:spec==NativeFangs.Spec?Fangs:spec=="pistol"?Pistol:spec=="bow"?Bow:
             spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:spec=="emperor"||spec=="ansatsuken"?Unarmed:null;
 
         /// <summary>A gun's, bow's or caster's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and
@@ -280,6 +307,7 @@ namespace ChipArena.UnityConversion
             if(GuardUpper(s,a,time,clips,out up))return true;
             if(BombUpper(s,a,time,clips,out up))return true;
             if(DogUpper(s,a,time,clips,out up))return true;
+            if(NativeBlades.Is(s.Spec)&&NativeBladeMotion.Upper(s,a,time,clips,out up))return true;
             if(s.CastStart!=null)return Cast(s,a,time,clips,out up);
             if(s.Aim==null)return false;
             if(s.Reload!=null&&time>=a.ReloadAt&&time<a.ReloadUntil&&clips.Has(s.Reload))
@@ -405,6 +433,8 @@ namespace ChipArena.UnityConversion
             pick=default;
             if(a.Grounded!=m.WasGrounded){if(a.Grounded)m.LandedAt=time;else m.AirSince=time;m.WasGrounded=a.Grounded;}
             Declined=null;
+            // Held in a blade class's paired move: the victim's clip (Core NativeBladeMotion).
+            if(NativeBladeMotion.Victim(a,time,clips,out pick))return true;
             // Knocked down: the pack's fall (its flight while airborne, held short of the impact; its landing and lying once the
             // pilot lands), then the backward roll from on its back fitted to the get-up (the roll and the rise).
             if(NativeSpecialPose.Down(a,time))
@@ -423,6 +453,7 @@ namespace ChipArena.UnityConversion
             if(BombCast(set,a,time,clips,out pick))return true;
             if(DogCast(set,a,time,clips,moving||!a.Grounded,out pick))return true;
             if(GlaiveCast(set,a,time,clips,out pick))return true;
+            if(NativeBlades.Is(set.Spec)&&NativeBladeMotion.Cast(set,a,time,clips,moving||!a.Grounded,out pick))return true;
             if(Technique(set,a,time,clips,out pick))return true;
             if(Kit(set,a,time,clips,out pick))return true;
             // A mapped kit move's tail (its special still running past the cast) goes on to the idle, not the game's pose.

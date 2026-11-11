@@ -18,11 +18,31 @@ namespace ChipArena.UnityConversion
     // SetFaceGear): the robot's helmet (the default, owner 2026-10-30) or half mask, the concept's mask and visor both, the visor,
     // the mask, or no mask (the pilot's own face). The Skins tab then lists only the weapons. Classic keeps the BODY SKIN row and
     // the body card, the voxel bodies being different builds.
+    // The guns' Arsenal Series (owner 2026-11-10; Core/NativeWeaponSkins.cs Series): on the model, where this install's bake
+    // carries them (ArenaPresentation.VisualSeriesInstalled), a gun's card also offers its series models as a second row of
+    // finishes (LkSkinOffers). They are keys of the same entry, written by the same setter; a card with a second row is
+    // taller, and each row of cards takes its tallest card's height (LkSkinsH, LkSkinCell).
     public sealed partial class ConversionGame
     {
         private string lockerSkinTry,lockerBodyTry,lockerFaceTry;private bool lockerBodySheldon;
         private const float LkSkinCardMin=300,LkSkinCardH=112;
-        private void LkSkinsLayout(){LkReserve(76);LkHead();LkReserve(LkGrid(lockerW,lockerSkins.Count,LkSkinCardMin,LkSkinCardH));}
+        private void LkSkinsLayout(){LkReserve(76);LkHead();LkReserve(LkSkinsH());}
+        // The finishes card `i` offers, as indices into its keys: the body's choices, a weapon's two finishes and a gun's
+        // installed series models. Two a row once there are more than three.
+        private readonly int[] lkSkinOffer=new int[NativeWeaponSkins.Count+NativeWeaponSkins.SeriesCount];
+        private const float LkSkinChipH=38,LkSkinChipGap=6;
+        private int LkSkinOffers(int i)
+        {
+            string id=lockerSkins[i];if(id==NativeBodySkins.Entry){int bodies=Mathf.Min(BodySkinChoices,lkSkinOffer.Length);for(int k=0;k<bodies;k++)lkSkinOffer[k]=k;return bodies;}
+            int n=0;for(int k=0;k<NativeWeaponSkins.Count;k++)lkSkinOffer[n++]=k;
+            if(LkOnModel)for(int s=1;s<=NativeWeaponSkins.SeriesCount;s++)if(ArenaPresentation.VisualSeriesInstalled(id,s))lkSkinOffer[n++]=NativeWeaponSkins.Count+s-1;
+            return n;
+        }
+        private static int LkSkinPerRow(int offers)=>offers>3?2:offers;
+        private float LkSkinCardHeight(int i){int n=LkSkinOffers(i),per=Mathf.Max(1,LkSkinPerRow(n)),rows=Mathf.Max(1,(n+per-1)/per);return LkSkinCardH+(rows-1)*(LkSkinChipH+LkSkinChipGap);}
+        private float LkSkinRowH(int row,int cols){float h=0;for(int i=row*cols;i<Mathf.Min(lockerSkins.Count,(row+1)*cols);i++)h=Mathf.Max(h,LkSkinCardHeight(i));return h;}
+        private float LkSkinsH(){int cols=LkCols(lockerW,LkSkinCardMin),rows=(lockerSkins.Count+cols-1)/cols;float h=0;for(int r=0;r<rows;r++)h+=LkSkinRowH(r,cols)+(r>0?LkGap:0);return h;}
+        private Rect LkSkinCell(Rect grid,int i){int cols=LkCols(lockerW,LkSkinCardMin);float w=(lockerW-(cols-1)*LkGap)/cols,y=grid.y;for(int r=0;r<i/cols;r++)y+=LkSkinRowH(r,cols)+LkGap;return new Rect(grid.x+(i%cols)*(w+LkGap),y,w,LkSkinCardHeight(i));}
         /// <summary>The skin the stage shows for `spec`: the hovered finish on this tab, else the equipped one.</summary>
         private string LockerSkinShown(string spec)=>lockerTab==NativeLocker.WeaponSkins&&lockerSkinTry!=null&&lockerWeapon==spec?lockerSkinTry:NativeWeaponSkins.Of(prefs.weaponSkins,spec);
         /// <summary>The body the stage and this pilot's own cards show: the hovered body on this tab, else the equipped one
@@ -56,31 +76,33 @@ namespace ChipArena.UnityConversion
             U.RoundGradient(banner,U.Hex(0x2a2333,e),U.Hex(0x1d1e24,e),10,U.Hex(0x4c4653,e),1,true);var well=new Rect(banner.x+18,banner.center.y-22,44,44);U.Round(well,U.Hex(0x15161b,e),10,U.Hex(0x6b5b8a,e));
             NativeIcons.Draw(new Rect(well.x+11,well.y+11,22,22),"gem",U.Hex(0xc9bfff,e));
             U.Text(new Rect(well.xMax+16,banner.y+16,banner.width-100,22),LkOnModel?"Pick a finish for every weapon":"Pick a body and a finish for every weapon",16,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true);
-            var lines=U.Wrap(LkOnModel?"Standard is the production model, Prototype the original build. Masks and skin tone are in Appearance.":"Standard is the current production model, lit in your accent colour. Prototype is the original build.",13,banner.width-well.xMax+banner.x-32,false,2);
+            var lines=U.Wrap(LkOnModel?"Standard is the production model, Prototype the original build; the guns also carry Arsenal Series models. Masks and skin tone are in Appearance.":"Standard is the current production model, lit in your accent colour. Prototype is the original build.",13,banner.width-well.xMax+banner.x-32,false,2);
             for(int i=0;i<lines.Count;i++)U.Text(new Rect(well.xMax+16,banner.y+40+i*17,banner.width-100,17),lines[i],13,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);
             LkHeading(head,lockerSkinsLabel,"Hover a finish to try it on");
             for(int i=0;i<lockerSkins.Count;i++)
             {
                 // The body card (its "body" entry; Classic only) or a weapon's.
                 bool body=lockerSkins[i]==NativeBodySkins.Entry;var w=body?null:LockerWeaponById(lockerSkins[i]);if(!body&&w==null)continue;
-                string entry=body?NativeBodySkins.Entry:w.id;var keys=body?NativeBodySkins.Keys:NativeWeaponSkins.Keys;var labels=body?NativeBodySkins.Labels:NativeWeaponSkins.Labels;
-                int count=body?BodySkinChoices:NativeWeaponSkins.Count;
-                var r=LkCell(grid,i,LkSkinCardMin,LkSkinCardH);int equipped=body?BodySkinEquipped():NativeWeaponSkins.Index(prefs.weaponSkins,entry);if(equipped>=count)equipped=NativeWeaponSkins.StandardIndex;
+                string entry=body?NativeBodySkins.Entry:w.id;var keys=body?NativeBodySkins.Keys:NativeWeaponSkins.KeysFor(w.id);var labels=body?NativeBodySkins.Labels:NativeWeaponSkins.LabelsFor(w.id);
+                int count=LkSkinOffers(i),per=Mathf.Max(1,LkSkinPerRow(count));
+                var r=LkSkinCell(grid,i);int equipped=body?BodySkinEquipped():NativeWeaponSkins.Pick(prefs.weaponSkins,entry);if(System.Array.IndexOf(lkSkinOffer,equipped,0,count)<0)equipped=NativeWeaponSkins.StandardIndex;
                 U.Round(r,U.Hex(0x1d1e24,e),10,U.Hex(0x3b3c45,e));
                 // Its icon in a well, name and the equipped finish.
                 var icon=new Rect(r.x+12,r.y+12,40,40);U.Round(icon,U.Hex(0x121318,e),8,U.Hex(0x2f3038,e));NativeIcons.Draw(new Rect(icon.x+8,icon.y+8,24,24),body?"person-standing":NativeIcons.Spec(w.id),body?LkColor(prefs.accentColor,0x70e1d0)*new Color(1,1,1,e):U.Hex((int)w.color,e));
                 string title=body?"Pilot body":w.name;var name=U.Wrap(title,14,r.width-80,true,1);U.Text(new Rect(icon.xMax+12,r.y+12,r.width-icon.width-36,20),name.Count>0?name[0]:title,14,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true);
                 U.Text(new Rect(icon.xMax+12,r.y+33,r.width-icon.width-36,16),labels[equipped].ToUpperInvariant(),9,U.Hex(0xffc590,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
                 // The finishes.
-                float gap=8,cw=(r.width-24-gap*(count-1))/count,cy=r.y+62;
-                for(int k=0;k<count;k++)
+                float gap=8,cw=(r.width-24-gap*(per-1))/per,cy=r.y+62;
+                for(int c=0;c<count;c++)
                 {
-                    var chip=new Rect(r.x+12+k*(cw+gap),cy,cw,r.height-62-12);bool on=k==equipped;bool hot=lockerViewHot&&U.Hover(chip);float h=on?0:U.HoverAmount(8800+i*3+k,chip,hot);
+                    int k=lkSkinOffer[c];
+                    var chip=new Rect(r.x+12+(c%per)*(cw+gap),cy+(c/per)*(LkSkinChipH+LkSkinChipGap),cw,LkSkinChipH);bool on=k==equipped;bool hot=lockerViewHot&&U.Hover(chip);float h=on?0:U.HoverAmount(8800+i*4+k,chip,hot);
                     U.Round(chip,on?U.Hex(0x3a2a26,e):U.A(U.Mix(U.Hex(0x23242b),U.Hex(0x2d2e36),h),e),8,on?U.Hex(0xff6b35,e):U.A(U.Mix(U.Hex(0x3b3c45),U.Hex(0x9a8a9e),h),e),on?2:1);
                     // A swatch for the finish: the accent-lit Standard strip, the Prototype's plain blocks, the Sheldon Clothes' dark
                     // cloth with a cyan seam.
                     var sw=new Rect(chip.x+10,chip.center.y-7,14,14);
                     if(k==NativeWeaponSkins.StandardIndex){U.Round(sw,U.Hex(0x2b3a42,e),3);U.Fill(new Rect(sw.x+2,sw.center.y-1,sw.width-4,2),LkColor(prefs.accentColor,0x70e1d0)*new Color(1,1,1,e));}
+                    else if(!body&&k>=NativeWeaponSkins.Count){U.Round(sw,U.Hex(0x3a3226,e),3);U.Fill(new Rect(sw.x+2,sw.y+4,sw.width-4,2),U.Hex(0xd9b26f,e));U.Fill(new Rect(sw.x+2,sw.y+8,sw.width-7,2),U.Hex(0x8a8f96,e));}
                     else if(k==NativeBodySkins.SheldonIndex){U.Round(sw,U.Hex(0x1c2132,e),3);U.Fill(new Rect(sw.center.x-1,sw.y+2,2,sw.height-4),U.Hex(NativeBodySkins.CyberCyan,e));}
                     else{U.Fill(new Rect(sw.x,sw.y+3,8,8),U.Hex(0x81999f,e));U.Fill(new Rect(sw.x+6,sw.y,8,8),U.Hex(0x263a43,e));}
                     string label=body&&k==NativeBodySkins.SheldonIndex?"Sheldon · DEV":labels[k];

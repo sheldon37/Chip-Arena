@@ -30,10 +30,10 @@ namespace ChipArena.UnityConversion
             // The Bow's models ship ahead of its content entry (docs/NEW-KITS.md section 2; the rules are Astra's).
             // The DEV Cyber Lord (Astra, PR #142) is unarmed: its skin is its look (owner 2026-10-13), Standard the glitch aura round
             // the hands (NativeCyberLordAura), the Prototype Series the hardlight gauntlets (NativeCyberLordLook); it has no model.
-            var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren"&&id!=NativeBombs.Spec&&id!=NativeTopDog.Spec&&id!=NativeGlaive.Spec).Concat(data.weapons.Any(w=>w.id==NativeBowWire.Spec)?new string[0]:new[]{NativeBowWire.Spec}).ToArray();
+            var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren"&&id!=NativeBombs.Spec&&id!=NativeTopDog.Spec&&id!=NativeGlaive.Spec&&!NativeBlades.Is(id)).Concat(data.weapons.Any(w=>w.id==NativeBowWire.Spec)?new string[0]:new[]{NativeBowWire.Spec}).ToArray();
             Check(specs.OrderBy(s=>s).SequenceEqual(NativeWeaponSkins.Weapons.OrderBy(s=>s)),"the skinned weapons are every weapon but the Siren and the one-finish DEV kits (the Cyber Lord's skin is its look)");
             var modelled=NativeWeaponSkins.Weapons.Where(NativeWeaponSkins.Modelled).ToArray();var designed=NativeWeaponSkins.Weapons.Where(NativeWeaponModels.Designed).ToArray();
-            Check(NativeWeaponModels.Specs.Where(s=>s!=NativeBombs.Spec&&s!=NativeTopDog.Spec&&s!=NativeGlaive.Spec).All(NativeWeaponSkins.Modelled)&&NativeWeaponModels.Specs.Count(s=>s!=NativeBombs.Spec&&s!=NativeTopDog.Spec&&s!=NativeGlaive.Spec)==designed.Length,"every Standard design is a skinned, modelled weapon (but the Bombadier and the Top Dog, which have one finish and no Prototype Series)");
+            Check(NativeWeaponModels.Specs.Where(s=>s!=NativeBombs.Spec&&s!=NativeTopDog.Spec&&s!=NativeGlaive.Spec&&!NativeBlades.Is(s)).All(NativeWeaponSkins.Modelled)&&NativeWeaponModels.Specs.Count(s=>s!=NativeBombs.Spec&&s!=NativeTopDog.Spec&&s!=NativeGlaive.Spec&&!NativeBlades.Is(s))==designed.Length,"every Standard design is a skinned, modelled weapon (but the Bombadier and the Top Dog, which have one finish and no Prototype Series)");
             Check(designed.Length==modelled.Length&&modelled.Length==NativeWeaponSkins.Weapons.Length-1,"every modelled weapon has a Standard design");
             Check(!NativeWeaponSkins.Skinned("siren")&&!NativeWeaponModels.Designed("siren"),"the Siren has no weapon skin");
             Check(NativeWeaponSkins.Skinned(CyberLordSpec.Id)&&!NativeWeaponSkins.Modelled(CyberLordSpec.Id)&&!NativeWeaponModels.Designed(CyberLordSpec.Id),"the unarmed Cyber Lord's skin is its look, with no weapon model");
@@ -216,6 +216,34 @@ namespace ChipArena.UnityConversion
             Check(NativeWeaponSkins.Index("swordx:prototype,sword:prototypes",  "sword")==NativeWeaponSkins.StandardIndex&&NativeWeaponSkins.Index("xsword:prototype","sword")==NativeWeaponSkins.StandardIndex,"prefix lookalikes read as Standard");
             Check(NativeWeaponSkins.With(full,"rifle",NativeWeaponSkins.Standard)==string.Join(",",NativeWeaponSkins.Weapons.Where(s=>s!="rifle").Select(s=>s+":prototype")),"clearing one pick keeps the rest");
             Check(NativeWeaponSkins.Labels.SequenceEqual(new[]{"Standard","Prototype Series"})&&NativeWeaponSkins.Keys[NativeWeaponSkins.StandardIndex]==NativeWeaponSkins.Standard,"skin labels");
+            // 6b. The guns' Arsenal Series (owner 2026-11-10): two more keys on the pistol, rifle and machine gun only. They are
+            // the Standard finish with another held model: Index reads Standard (so every Standard rule of drawing holds),
+            // Series names the model, the keys round-trip, no other weapon accepts them, and an older reader that does not know
+            // the key reads Standard. Neither key is longer than "prototype", so the longest map is unchanged.
+            Check(NativeWeaponSkins.SeriesWeapons.SequenceEqual(new[]{"pistol","rifle","machinegun"})&&NativeWeaponSkins.SeriesKeys.SequenceEqual(new[]{"arsenal","arsenal2"})&&NativeWeaponSkins.SeriesCount==2&&NativeWeaponSkins.SeriesKeys.All(k=>k.Length<=NativeWeaponSkins.Prototype.Length),"the series: three guns, two keys, none longer than \"prototype\"");
+            foreach(var spec in NativeWeaponSkins.Weapons)
+            {
+                bool gun=NativeWeaponSkins.HasSeries(spec);Check(gun==NativeWeaponSkins.SeriesWeapons.Contains(spec)&&NativeWeaponSkins.KeysFor(spec).Length==(gun?4:2)&&NativeWeaponSkins.LabelsFor(spec).Length==NativeWeaponSkins.KeysFor(spec).Length&&NativeWeaponSkins.KeysFor(spec).Take(2).SequenceEqual(NativeWeaponSkins.Keys)&&NativeWeaponSkins.LabelsFor(spec).Take(2).SequenceEqual(NativeWeaponSkins.Labels),spec+" keys and labels");
+                for(int s=1;s<=NativeWeaponSkins.SeriesCount;s++)
+                {
+                    string key=NativeWeaponSkins.SeriesKeys[s-1],one=NativeWeaponSkins.With("",spec,key);
+                    if(!gun){Check(one==""&&NativeWeaponSkins.Normalize(spec+":"+key)==""&&NativeWeaponSkins.Series(spec+":"+key,spec)==0&&NativeWeaponSkins.SeriesEntry(spec,s)==null,spec+" takes no series key");continue;}
+                    Check(one==spec+":"+key&&NativeWeaponSkins.Normalize(" "+spec+" : "+key+" ")==one&&NativeWeaponSkins.Of(one,spec)==key&&NativeWeaponSkins.Pick(one,spec)==NativeWeaponSkins.Count+s-1,spec+" "+key+" round-trips");
+                    Check(NativeWeaponSkins.Index(one,spec)==NativeWeaponSkins.StandardIndex&&NativeWeaponSkins.Series(one,spec)==s&&NativeWeaponSkins.SeriesEntry(spec,s)==spec+"@"+key&&ReferenceEquals(NativeWeaponSkins.SeriesEntry(spec,s),NativeWeaponSkins.SeriesEntry(spec,s)),spec+" "+key+" is the Standard finish holding the bake's \""+spec+"@"+key+"\"");
+                    Check(NativeWeaponSkins.Held(spec,one,0)==NativeWeaponSkins.Held(spec,"",0)&&NativeWeaponSkins.ModelIn("loose-"+spec,one)==NativeWeaponSkins.ModelIn("loose-"+spec,""),spec+" "+key+" draws the Standard model wherever the bake's is not held");
+                    Check(NativeWeaponSkins.With(one,spec,NativeWeaponSkins.Standard)==""&&NativeWeaponSkins.With(one,spec,NativeWeaponSkins.Prototype)==spec+":prototype"&&NativeWeaponSkins.With(spec+":prototype",spec,key)==one,spec+" "+key+" replaces and is replaced by the other finishes");
+                    foreach(var other in NativeWeaponSkins.Weapons)if(other!=spec)Check(NativeWeaponSkins.Series(one,other)==0&&NativeWeaponSkins.Index(one,other)==NativeWeaponSkins.StandardIndex,spec+" "+key+" leaves "+other+" alone");
+                    Check(NativeWeaponSkins.With(full,spec,key).Length<=full.Length&&NativeWeaponSkins.Normalize(NativeWeaponSkins.With(full,spec,key))==NativeWeaponSkins.With(full,spec,key),spec+" "+key+" never lengthens the longest map");
+                }
+                Check(NativeWeaponSkins.Series("",spec)==0&&NativeWeaponSkins.Series(spec+":prototype",spec)==0&&NativeWeaponSkins.Series(spec+":arsenal3",spec)==0&&NativeWeaponSkins.Series(spec+":arsenal",null)==0&&NativeWeaponSkins.SeriesEntry(spec,0)==null&&NativeWeaponSkins.SeriesEntry(spec,3)==null,spec+" without a series pick");
+            }
+            Check(NativeWeaponSkins.Series("body:arsenal,face:arsenal","pistol")==0&&NativeWeaponSkins.Normalize("body:arsenal,face:arsenal2,cyberlord:arsenal")=="","the body, the face gear and the Cyber Lord take no series key");
+            Check(NativeWeaponSkins.Normalize("rifle:arsenal2,pistol:arsenal,machinegun:arsenal,sword:prototype")=="pistol:arsenal,rifle:arsenal2,machinegun:arsenal,sword:prototype","series picks keep the canonical order");
+            {
+                string R2(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));var held=R2("NativeVisualWeaponPresentation.cs");var card=R2("NativeLockerSkinsUI.cs");
+                Check(held.Contains("int series=NativeWeaponSkins.Series(SeatWeaponSkins(a.Id),a.SourceSpec);")&&held.Contains("body.Weapons.TryGetValue(NativeWeaponSkins.SeriesEntry(a.SourceSpec,series),out var picked))return picked;")&&held.Contains("public static bool VisualSeriesInstalled(string spec,int series)"),"the visual body holds the picked series model where its bake carries one");
+                Check(card.Contains("if(LkOnModel)for(int s=1;s<=NativeWeaponSkins.SeriesCount;s++)if(ArenaPresentation.VisualSeriesInstalled(id,s))lkSkinOffer[n++]=NativeWeaponSkins.Count+s-1;")&&card.Contains("if(System.Array.IndexOf(lkSkinOffer,equipped,0,count)<0)equipped=NativeWeaponSkins.StandardIndex;"),"the Locker offers a series model only on the model and only where the bake carries it; a pick it cannot show reads as Standard");
+            }
             Check(NativeWeaponSkins.Tier(false,1,5,false)==0&&NativeWeaponSkins.Tier(false,.3f,5,false)==1&&NativeWeaponSkins.Tier(true,1,5,false)==2&&NativeWeaponSkins.Tier(false,1,20,false)==1&&NativeWeaponSkins.Tier(false,1,40,false)==2
                 &&NativeWeaponSkins.Tier(true,.3f,40,true)==1&&NativeWeaponSkins.Tier(false,.3f,40,true)==0,"detail tiers: graphics, Reduced effects, distance, first person");
 
