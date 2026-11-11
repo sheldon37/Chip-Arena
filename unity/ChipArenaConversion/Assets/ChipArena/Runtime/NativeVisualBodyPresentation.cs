@@ -26,6 +26,9 @@ namespace ChipArena.UnityConversion
             // A broadcast bust's neck bone and its place in the body (VisualBust).
             public int BustNeck=-1; public Vector3 BustPivot=new Vector3(float.NaN,0,0);
             public string Spec, Accent; public int PosedFrame=-10; public bool Seen, Moved, SpawnOn, Ghosted, RevealOn; public Vector3 At; public float Flash=1, Glow=-1;
+            // The Katana's saya this frame (SayaFrame), from the pack's clips on the body (Core NativeKatanaSaya; VisualMotionPose): how much
+            // the left hand carries it, with which carry, and how far the blade is turned over in the right hand.
+            public float SayaCarry, SayaTurn; public int SayaHold, SayaFrame=-1;
             public Material[][] Plain, Spawning;
             // The gear's anchors (the bake's VisualGearCore and VisualGearDevice, the band's radius from VisualGearDeviceRim), when
             // the body last appeared or finished forming (the core's flare), the last seated chip (its plant's key, when, colour)
@@ -302,7 +305,7 @@ namespace ChipArena.UnityConversion
         private Matrix4x4 VisualHatFrame(CapturedAnimation.Player rig,string hat,int b)
         {
             if(b==CapturedRig.Head&&rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.PosedFrame==Time.frameCount)
-            {var head=HotDogHatOn(VisualHeadOf(body));if(head!=null)return VisualHatFit(head,hat,body.Helm);}
+            {var head=HotDogHatOn(hat,VisualHeadOf(body));if(head!=null)return VisualHatFit(head,hat,body.Helm);}
             return VisualJointFrame(rig,b);
         }
         // Hat `hat` fitted to the model's head bone `head` (the Sheldon Head's face on its own fit), on the robot's helmet when
@@ -325,6 +328,7 @@ namespace ChipArena.UnityConversion
         private void VisualHatHair(CapturedAnimation.Player rig,string hat){if(rig!=null&&visualBodies.TryGetValue(rig,out var body))VisualHatHair(body,hat);}
         private static void VisualHatHair(VisualBody body,string hat)
         {
+            HotDogUnderHat(body?.Root,hat); // (The Hot Dog's sprigs under a closed hat: NativeHotDogPresentation.cs.)
             string worn=body!=null&&body.Helm?NativeRobotHelm.Hair:hat==NativeHatLooks.SheldonHead||NativeModelHatMeshes.PressesHair(hat)?hat:null;if(body?.Root==null||body.HatHair!=null&&worn==body.HatHairWorn)return;
             if(body.HatHair==null)
             {
@@ -441,7 +445,7 @@ namespace ChipArena.UnityConversion
             // Crescent Return's ring arm keyed by hand (Core NativeGlaiveMotion.Intro).
             if(a.Id==glaiveIntroActor&&glaiveIntroActor>=0)GlaiveIntro(body,rig,glaiveIntroClock);
             // The blade classes' entrances play the pack's clips on the model (Core NativeBladeIntros.Clip), through the arena's motion.
-            if(a.Id==bladeIntroActor&&bladeIntroActor>=0&&bladeIntro!=null&&bladeIntro.Clip(bladeIntroClock,out var introClip,out var introTime)){NativeBladeMotion.IntroActor=a.Id;NativeBladeMotion.IntroClip=introClip;NativeBladeMotion.IntroTime=introTime;VisualMotionPose(body,rig,a,bladeIntroClock);NativeBladeMotion.IntroActor=-1;}
+            if(a.Id==bladeIntroActor&&bladeIntroActor>=0&&bladeIntro!=null&&bladeIntro.Clip(bladeIntroClock,out var introClip,out var introTime)){NativeBladeMotion.IntroActor=a.Id;NativeBladeMotion.IntroClip=introClip;NativeBladeMotion.IntroTime=introTime;NativeBladeMotion.IntroFade=bladeIntro.Fade(bladeIntroClock);VisualMotionPose(body,rig,a,bladeIntroClock);NativeBladeMotion.IntroActor=-1;NativeBladeMotion.IntroFade=.12f;}
             VisualHandFit(body,rig,held);
             body.Moved=true;
         }
@@ -1058,7 +1062,8 @@ namespace ChipArena.UnityConversion
             var binding=new NativeVisualRigBinding(root.transform,skeleton);var pose=rig.Pose;pose.World();
             binding.Apply(pose,VisualGrasp(death.actor??new Actor(),pose,death.at,0),false,false);
             bones=binding.Bones;joint=VisualJoints(binding);
-            // Its hair under its hat as the live body wore it (VisualHatHair), hidden under the robot's helmet.
+            // Its hair under its hat as the live body wore it (VisualHatHair), hidden under the robot's helmet; the Hot Dog's sprigs.
+            HotDogUnderHat(root,death.actor?.Hat);
             string under=hood==null&&death.actor!=null&&WearsHelm(death.id)?NativeRobotHelm.Hair:NativeModelHatMeshes.PressesHair(death.actor?.Hat)?death.actor.Hat:null;
             if(under!=null)
                 foreach(var skin in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
@@ -1632,7 +1637,7 @@ namespace ChipArena.UnityConversion
             if(corpse.Twin!=null&&corpse.Bisect is BisectFx fx&&fx.Request!=null&&fx.Request.HalfOf(CapturedRig.Head,CutNum(corpse.Bind[CapturedRig.Head].GetColumn(3)))==1)on=corpse.Twin;
             if(!visualCorpses.TryGetValue(on,out var c)||c.Root==null||!c.Root.activeSelf||c.Look!=0)return false;
             if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");if(c.Head<0)return false;
-            corpseHat=VisualHatFit(c.Bones[c.Head],hat,!c.Hood&&WearsHelm(death.id));var dogHat=HotDogHatOn(c.Bones[c.Head]);if(dogHat!=c.Bones[c.Head])corpseHat=VisualHatFit(dogHat,hat);corpseHatBone??=_=>corpseHat;
+            corpseHat=VisualHatFit(c.Bones[c.Head],hat,!c.Hood&&WearsHelm(death.id));var dogHat=HotDogHatOn(hat,c.Bones[c.Head]);if(dogHat!=c.Bones[c.Head])corpseHat=VisualHatFit(dogHat,hat);corpseHatBone??=_=>corpseHat;
             if(hat==NativeSheldonHead.Hat)return c.Hood&&VisualDeadHood(corpseHat,death,alpha);
             if(!AuditorHalo(hat,corpseHat,clock,alpha,HaloReduced,0,null,color:a.HatColor)&&corpse.HatModel!=null)sourceModels.QueueShadowless(VisualHatModel(hat,a.HatColor)??corpse.HatModel,Matrix4x4.identity,corpseHatBone,null,HatBody(hat,a.HatColor),null,alpha);
             return true;

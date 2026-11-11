@@ -50,13 +50,23 @@ internal static class HotDogChecks
             var side=new Vector3(j.Offset.X,0,j.Offset.Z);
             Check(Finite(j.Offset)&&Finite(j.Velocity)&&side.Length()<=NativeHotDog.MaxLean+1e-4f&&Math.Abs(j.Offset.Y)<=NativeHotDog.MaxSquash*NativeHotDog.Height+1e-4f,"bounded at any frame rate (step "+i+")");
         }
+        // Hats on the crown: every hat the game offers has its fit (scaled about the band, its band round the sausage and lifted so
+        // its crown clears the dome), the closed ones hide the sprigs and the open ones show them.
+        foreach(var hat in NativeModelHatMeshes.Hats)
+        {
+            NativeHotDog.HatFit(hat,out float k,out var move);var band=NativeHotDog.HatPivot*k+move;
+            Check(k>.8f&&k<1.25f&&band.Y>=NativeModelHatMeshes.BandY+.01f&&band.Z>NativeModelHatMeshes.BandZ,"the "+hat+"'s fit on the crown: its band lifted and ahead");
+            Check(NativeHotDog.HidesSprigs(hat)==(hat!="crown"&&hat!="antenna"&&hat!="halo"),"the "+hat+" hides the sprigs only if it closes over the crown");
+        }
+        NativeHotDog.HatFit("no-such-hat",out float k0,out var m0);NativeHotDog.HatFit("cap",out float k1,out var m1);
+        Check(k0==k1&&m0==m1&&NativeHotDog.HidesSprigs(NativeHatLooks.SheldonHead)&&!NativeHotDog.HidesSprigs(NativeAuditorHalo.Hat),"an unlisted hat takes the cap's fit; the Sheldon Head covers the sprigs, the auditor's halo doesn't");
         // The runtime: the live pilot's body jiggles after it is posed, only on the sausage's twins (made under the spine's bones),
         // and a hat rides the head's twin.
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
         var body=R("NativeVisualBodyPresentation.cs");var dog=R("NativeHotDogPresentation.cs");
         Check(body.Contains("VisualBigHead(body);\n            HotDogJiggle(body);")||body.Contains("VisualBigHead(body);\r\n            HotDogJiggle(body);"),"the jiggle runs once the body is posed");
         Check(dog.Contains("foreach(var t in body.Root.GetComponentsInChildren<Transform>(true))if(t.name.StartsWith(HotDogTwin,StringComparison.Ordinal))")&&dog.Contains("bool twin=name.StartsWith(\"~\",StringComparison.Ordinal)"),"the jiggle moves only the twins");
-        Check(body.Contains("{var head=HotDogHatOn(VisualHeadOf(body));if(head!=null)return VisualHatFit(head,hat,body.Helm);}")&&body.Contains("var dogHat=HotDogHatOn(c.Bones[c.Head]);if(dogHat!=c.Bones[c.Head])corpseHat=VisualHatFit(dogHat,hat);")&&dog.Contains("if(hotDogBones[i]==\"~head\"){var hat=new GameObject(HotDogHat).transform;hat.SetParent(twin,false);"),"a hat rides the sausage's crown, alive or dead");
+        Check(body.Contains("{var head=HotDogHatOn(hat,VisualHeadOf(body));if(head!=null)return VisualHatFit(head,hat,body.Helm);}")&&body.Contains("var dogHat=HotDogHatOn(hat,c.Bones[c.Head]);if(dogHat!=c.Bones[c.Head])corpseHat=VisualHatFit(dogHat,hat);")&&dog.Contains("if(hotDogBones[i]==\"~head\"){var hat=new GameObject(HotDogHat).transform;hat.SetParent(twin,false);}")&&dog.Contains("var at=m.MultiplyPoint3x4(crownHead+new Vector3(move.X,move.Y,move.Z));")&&body.Contains("HotDogUnderHat(body?.Root,hat);")&&body.Contains("HotDogUnderHat(root,death.actor?.Hat);"),"a hat rides the sausage's crown, alive or dead");
         Check(body.Contains("if(NativeHotDog.Worn(look))simulate=false;")&&R("NativeVisualSkeletonPresentation.cs").Contains("if(HotDogOn(root))return null;"),"no human skeleton in the sausage (and no hair or cloth simulated), alive or dead");
         Check(body.Contains("if(NativeHotDog.Worn(VisualOutfitOf(id)))return; // (None on the Hot Dog")&&R("NativeSheldonHoodPresentation.cs").Contains("if(hoodFailed||HotDogOn(root))return null;")&&NativeRobotSuit.Shown(NativeLook.With("",NativeLook.Upper,NativeHotDog.Id),false)==0&&NativeRobotSuit.Shown("",false)!=0,"no face gear, Sheldon hood or robot plates on it");
             // The face (Core NativeHotDogFace; owner 2026-11-09: "animate eyes and mouth with hotdog character. Give them expressions"): every
@@ -93,6 +103,6 @@ internal static class HotDogChecks
         Check(face.Contains("if(dead)mood=HotDogMood.Dead;")&&face.Contains("if(!host){if(view.enabled){view.enabled=false;hidden=true;}return;}"),"a corpse's face is dead, and it hides with the Hot Dog without overriding the body's own hiding");
         Check(face.Contains("var sr=go.AddComponent<SkinnedMeshRenderer>();")&&face.Contains("sr.bones=hotDog.bones;sr.rootBone=hotDog.rootBone;")&&face.Contains("weights[i]=fit.WeightAt(fit.Theta(q),q.Y);"),"the face is skinned on the Hot Dog's bones, each corner weighted as the skin under it, so it stays on the head (owner 2026-11-09)");
         Check(body.Contains("if(!NativeHotDog.Worn(body.Look)&&!NativeHotDog.Worn(VisualOutfitOf(a.Id)))"),"no chest core on the Hot Dog (owner 2026-11-09)");
-        Check(R("NativeWeaponPresentation.cs").Contains("if(!first&&(bone==CapturedRig.RHand||bone==CapturedRig.LHand))m=PalmGrip(rig,a,m,bone==CapturedRig.LHand);")&&R("NativeWeaponPresentation.cs").Contains("if(a==null||a.SourceSpec!=NativeTopDog.Spec&&a.SourceSpec!=NativeBombs.Spec&&a.SourceSpec!=NativeGlaive.Spec&&!NativeBlades.Is(a.SourceSpec))return m;"),"the Top Dog's mallet and the Bombadier's TNT through the palm, not at the wrist (owner 2026-11-09: \"the hands are off the handle\")");
+        Check(R("NativeWeaponPresentation.cs").Contains("if(!first&&(bone==CapturedRig.RHand||bone==CapturedRig.LHand))m=PalmGrip(rig,a,m,bone==CapturedRig.LHand);")&&R("NativeWeaponPresentation.cs").Contains("PalmGrip(CapturedAnimation.Player rig,Actor a,Matrix4x4 m,bool left)=>a==null?m:PalmGrip(rig,a.SourceSpec,m,left);")&&R("NativeWeaponPresentation.cs").Contains("if(spec!=NativeTopDog.Spec&&spec!=NativeBombs.Spec&&spec!=NativeGlaive.Spec&&!NativeBlades.Is(spec))return m;"),"the Top Dog's mallet and the Bombadier's TNT through the palm, not at the wrist (owner 2026-11-09: \"the hands are off the handle\")");
     }
 }
