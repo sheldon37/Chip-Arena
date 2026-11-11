@@ -1,3 +1,26 @@
+## 2026-11-11 — Claude: the Hot Dog's hats fit its crown (owner report)
+
+- Branch `claude/hotdog-hats`, base shared `b1674f0d`. Forwarded by the NOCTIEL and THE DEEP END session.
+- **The owner:** "Hats don't fit on hotdog model correctly."
+- **Why they didn't:** a hat rode an anchor on the head's twin, 3.5 cm up and 5 cm ahead of where it sits on the pilot.
+  - The sausage's crown follows the head bone only about 30% (its weights are 40% neck, 28% upper spine, so its top doesn't fold), so in any stance that pitches or turns the head the hat tilted and slid off.
+  - 5 cm ahead was twice the measured offset (2.2 cm), putting hats over the face.
+  - The three crown sprigs (3 to 5 cm over the dome) poked through every closed hat.
+  - Measured from the bank in the head bone's frame: at the hat band (0.118) the crown is the pilot skull's size (half width 0.12, as deep); its dome tops out at 0.24, 2.5 cm over a closed hat's crown (0.215).
+- **The fix** (`docs/HOT-DOG-SKIN.md`, "Hats"):
+  - Runtime `HotDogHatOn` places the anchor each time a hat is drawn in the crown's own skinning frame: the blend of a crown vertex's four bones, read once from the bank. Live bodies, portraits and corpses alike.
+  - Core `NativeHotDog.HatFit` is each hat's fit on the crown, like the helmet's (`NativeRobotHelm.HatFit`): about the band's middle, 3 cm up (the wizard 4.5, its floppy brim clear of the eyes), 2.2 cm ahead.
+  - `HotDogUnderHat` draws a copy of the mesh without the sprigs under a closed hat (cap, beanie, top hat, wizard, cowboy, cone, Sheldon Head), from `VisualHatHair` and the corpse's dressing. The sprigs are found at load: the small parts wholly within 8 cm of the top, welded across the bank's seams.
+  - The crown, antenna and halos leave them standing.
+- **Animation impact:** presentation only. No hit timing, hitbox, damage, cooldown, movement or wire value changes.
+- **Checks:**
+  - `--hot-dog` gains every model hat's fit (band lifted and ahead, scale sane), which hats hide the sprigs, an unlisted hat taking the cap's fit, and the runtime's hooks.
+  - Unity compile PASS.
+- **Seen in the Editor** (BoZo on Brickfall, a DEV pilot in the Hot Dog with the sword, orbit shots framed on the head with a new local tool option `headframe=UP,DIST`):
+  - all eleven hats (cap, beanie, top hat, wizard, crown, cone, antenna, halo, cowboy, auditor's halo, Sheldon Head), against shared's code first.
+  - Before: tilted off the crown, over the face, sprigs through the cowboy hat. After: each on the crown and following its lean, the sprigs hidden under the closed hats.
+- **Not run:** no person or two-client run; corpses with hats and the Locker's portrait not looked at; only the sword's idle stance.
+
 ## 2026-11-11 — Claude: the stage revamp: Breakwater, Pier 9, Deepwell, Polaris Station and Skyframe rebuilt; Brickfall, Ward Zero, the Factory and Cyber City modelled (owner request)
 
 - Branch `claude/stage-revamp` (from shared `f81e663e`, shared `9851a8ce` merged in): one Fable 5.2 agent a stage, each on its own branch, merged here: `claude/rework-breakwater` (`16265469`), `claude/rework-harbor` (`8ecfabde`), `claude/rework-rig` (`223a9619`), `claude/rework-polar` (`03e2f3e7`), `claude/rework-skyframe` (`584639c4`), `claude/artpass-cybercity` (`ee2e75e9`), `claude/artpass-brickfall` (`566c073f`), `claude/artpass-wardzero` (`35d4e6ae`), `claude/artpass-factory` (`fee3f5eb`).
