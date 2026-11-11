@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
         public const float Poise=.9f,DrawAt=1.25f,CutAt=2.55f,HoldTo=3.4f,SheatheAt=3.5f,ClickAt=4.35f,Hero=4.7f;
         public override string Spec=>NativeKatana.Spec;
         public override float Length=>Total;public override float SettleAt=>End;protected override float HeroAt=>CardAt;
-        private static readonly Vector3 Moon=new Vector3(1.8f,3.6f,-9f),White=new Vector3(1,1,1),Crimson=NativeEntranceFx.Hex(0xff3d6e),Blossom=NativeEntranceFx.Hex(0xffb3c6),Night=NativeEntranceFx.Hex(0x14101e);
+        private static readonly Vector3 Moon=new Vector3(8f,4.8f,-10f),White=new Vector3(1,1,1),Crimson=NativeEntranceFx.Hex(0xff3d6e),Blossom=NativeEntranceFx.Hex(0xffb3c6),Night=NativeEntranceFx.Hex(0x14101e);
         /// <summary>The line the cut leaves, across the stage at its height (stage frame).</summary>
         public static readonly Vector3 LineFrom=Local(-2.6f,1.25f,.9f),LineTo=Local(2.8f,1.05f,.35f);
         public NativeKatanaIntro():base(NativeKatana.Entrance,CutAt,0xff3d6e)
@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
         {
             float floor=NativeEntranceStage.FloorY;bool low=q<.5f;
             // The moon: a great crimson disc low behind the stage, its halo breathing, flaring at the split.
-            float flare=NativeEntranceMath.Pulse(t,ClickAt,.02f,.9f);fx.Glow(Moon,Crimson*(1.6f+2.4f*flare),0,3.2f+.8f*flare,2,0,21000);fx.Glow(Moon,(Crimson*.5f+White*.5f)*(1.2f+1.5f*flare),0,2.1f,1,0,21001);
+            float flare=NativeEntranceMath.Pulse(t,ClickAt,.02f,.9f);fx.Glow(Moon,Crimson*(1.2f+2.4f*flare),0,4.4f+.8f*flare,2,0,21000);fx.Glow(Moon,(Crimson*.6f+White*.4f)*(1.6f+1.5f*flare),0,3f,1,0,21001);fx.Glow(Moon,(Crimson*.3f+White*.7f)*(1.1f+flare),0,1.7f,1,0,21002);
             // Petals drifting across the night (fewer on Reduced), falling faster once the line splits.
             int n=low?18:46;for(int i=0;i<n;i++)
             {
@@ -124,7 +124,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             // Mist low over the floor all through, parting at the cut.
-            int mist=low?6:14;for(int i=0;i<mist;i++){float a=((t*.12f+NativeEntranceMath.Rand(21600,i))%1+1)%1;var p=new Vector3(-4+8*NativeEntranceMath.Rand(21600,i+20),floor+.12f,-3+6*a);fx.Glow(p,Night*2+Crimson*.15f,0,1.4f,0,a,21610+i);}
+            int mist=low?6:14;for(int i=0;i<mist;i++){float a=((t*.12f+NativeEntranceMath.Rand(21600,i))%1+1)%1;var p=new Vector3(-4+8*NativeEntranceMath.Rand(21600,i+20),floor+.12f,-3+6*a);fx.Glow(p,Night*1.1f+Crimson*.05f,0,2.2f,0,a,21610+i);}
         }
     }
 

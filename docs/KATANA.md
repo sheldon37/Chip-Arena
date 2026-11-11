@@ -46,10 +46,10 @@ Every number is in Core `NativeKatana`.
 
 7.2 s, the name at 5.4 s. The pack's clips play on the model (Core `NativeBladeIntros`, the arena's motion on the intro body).
 
-1. Night, a crimson moon low behind the pilot, petals drifting. The pilot stands with the blade sheathed (the unarmed idle).
+1. Night, a crimson moon over the pilot's shoulder, petals drifting, a low haze. The pilot stands with the blade sheathed (the unarmed idle).
 2. At 2.55 s, one great iai cut (stance two's skill, slowed at its height) leaves a line of light hanging across the stage.
 3. The blade is slid home. At the click (4.35 s) the line splits, the moon flares and the petals burst.
-4. The hero: standing calm, the hand at the hilt.
+4. The hero: standing calm, the blade back in its saya at the hip, the moon to one side.
 
 Its music is the arc-salute bed. Presentation only.
 
