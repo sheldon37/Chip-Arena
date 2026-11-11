@@ -44,6 +44,21 @@
   - In the player, `-nointro` and `-batchmode` logged `BOOT_INTRO off (Argument)` and `(BatchMode)`, with the old synchronous path.
 - **Not verified:** a person watching and hearing it; the builder's own build and the installed updater; other GPUs and slower CPUs; a two-monitor or fullscreen launch.
 
+## 2026-11-11 — Claude: hats checked on the Top Dog; the Hot Dog's sausage keeps its bend even (owner reports)
+
+- Branch `claude/hotdog-hats` (after `86f774a8`), shared merged in. Forwarded by the NOCTIEL and THE DEEP END session and the Katana session.
+- **The owner:** "Top hat is 'off' of hotdog model" (a screenshot: the Top Dog mid-stride, mallet over the shoulder, the hat upright beside the bent tip); then, through the Katana session, "their hot dog skin deforms during the Katana's counter".
+- **The top hat:** the screenshot matches the hat fit before `86f774a8` (a hat on the head bone, which the mallet's stance keeps upright while the spine bends the sausage).
+  - On the current code, in a real match on Cyber City in the Top Dog (the mallet up, a run, a swing, Q), the top hat, wizard, cowboy hat and cap sit on the bent tip and lean with it, from the match camera and close on the head.
+  - No change was needed beyond `86f774a8`. The owner's build may predate revision 639300200572615902.
+- **The counter's fold** (presentation, `docs/HOT-DOG-SKIN.md` "The bend kept even"):
+  - The counter curls the spine about 50 degrees past the stance at one or two joints, and the sausage folded into a spike there; the jiggle was idle (the Katana session's `dogtrack` log).
+  - Now `HotDogJiggle` eases each sausage twin's turn toward its neighbours' before the jiggle (Core `NativeHotDog.SpineEven`, `SpinePasses`), the pelvis's and the head's as posed. The bend spreads down the sausage as an arc.
+  - Seen against the Katana session's own capture of the same staged counter (a greatsword bot, `parryhit=6.03`, slow motion): before, a spike; after, a smooth arc with its face and hat. The Top Dog's stances and the hats above were captured with it in.
+- **Animation impact:** presentation only. No hit timing, hitbox, damage, cooldown, movement or wire value changes; the arms, hands, legs and weapons stay on the real bones.
+- **Checks:** `--hot-dog` gains the evened bend's hooks; Unity compile PASS.
+- **Not run:** no person or two-client run; corpses not looked at with the evened bend (they keep their twins at rest).
+
 ## 2026-11-11 — Astra: Expedition party loading and host deployment sequence
 
 - Branch `codex/expedition-party-load-fix`, based on shared `9b827fe12e37d89cd27519197e8284878c725726`. Owner reports that only the host loads on a shared instance entry, and host deployment skips the station drop/loading screen.
