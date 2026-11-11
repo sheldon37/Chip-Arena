@@ -66,6 +66,12 @@ def hull(g, L, T):
         g.face(((-m0, DECK, z0), (m0, DECK, z0), (m1, DECK, z1), (-m1, DECK, z1)), F['deck'], normal=(0, 1, 0))
         for s in (-1, 1):
             g.face(((s * m0, DECK, z0), (s * w0, DECK, z0), (s * w1, DECK, z1), (s * m1, DECK, z1)), F['steel-dark'], normal=(0, 1, 0))
+    # the fore hatch: a coaming a hand high and its battened cover
+    sk.box(g, -2.0, 2.0, DECK, DECK + .05, 14.6, 16.6, F['steel-dark'], T, bevel=.015, cell=0, skip=('-y',))
+    sk.box(g, -1.86, 1.86, DECK + .05, DECK + .09, 14.74, 16.46, F['tarp'], T, bevel=.02, cell=0, skip=('-y',))
+    if T.detail:
+        for x in (-1.2, 0, 1.2):
+            sk.box(g, x - .04, x + .04, DECK + .09, DECK + .105, 14.7, 16.5, F['steel'], T, bevel=0, cell=0, skip=('-y',))
     # the bow's toe rail (the bulwarks begin at the parallel body) and the ice piled at her waterline
     for side in (-1, 1):
         path = [(side * max(.06, np.interp(z, Z, W) - .07), DECK + .07, z) for z in np.linspace(zs[0] + .15, 14.0, (26, 12, 6)[T.i])]
@@ -289,6 +295,23 @@ def observatory(g, L, T, B):
     if T.detail:
         for x in np.arange(x0 + 2, x1 - 1, 2.0):
             sk.box(g, x - .02, x + .02, y0 + .45, y1 - .36, z1 - .05, z1 - .045 + .0, F['concrete-dark'], T, bevel=0, cell=0)
+    # the bearing ring painted on the terrace round the pedestal: a circle, ticks every 15 degrees, the cardinal ones long
+    px, pz = 0.0, (bx(B['polar-obs-pedestal'])[4] + bx(B['polar-obs-pedestal'])[5]) / 2
+    n = (48, 24, 12)[T.i]
+    for k in range(n):
+        a0, a1 = 2 * math.pi * k / n, 2 * math.pi * (k + 1) / n
+        pts = [(px + math.cos(a) * r, y1, pz + math.sin(a) * r) for a, r in ((a0, 2.9), (a1, 2.9), (a1, 3.0), (a0, 3.0))]
+        if all(z0 + .1 < p[2] < z1 - .3 for p in pts):
+            g.face(pts, F['yellow'], normal=(0, 1, 0))
+    if T.detail:
+        for k in range(24):
+            a = 2 * math.pi * k / 24
+            r0, r1 = 3.0, (3.5 if k % 6 == 0 else 3.2)
+            c, s = math.cos(a), math.sin(a)
+            pts = [(px + c * r0 - s * .03, y1, pz + s * r0 + c * .03), (px + c * r0 + s * .03, y1, pz + s * r0 - c * .03),
+                   (px + c * r1 + s * .03, y1, pz + s * r1 - c * .03), (px + c * r1 - s * .03, y1, pz + s * r1 + c * .03)]
+            if all(z0 + .1 < p[2] < z1 - .3 for p in pts):
+                g.face(pts, F['white'] if k % 6 else F['yellow'], normal=(0, 1, 0))
     # stairs
     for b in L['blocks']:
         if b['id'].startswith('polar-stair-obs-'):
