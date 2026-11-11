@@ -13,9 +13,9 @@ namespace ChipArena.UnityConversion
     public static class NativeNewStageLooks
     {
         public const string Breakwater="breakwater",Harbor="harbor",Skyframe="skyframe",Rig="rig",Polar="polar";
-        public static readonly string[] Maps={Breakwater,Harbor,Skyframe,Rig,Polar};
+        public static readonly string[] Maps={Breakwater,Harbor,Skyframe,Rig};
         /// <summary>The look each stage names (UnityMaps.json `look`; MapLooks.json carries one entry for each).</summary>
-        public static readonly string[] Looks={"breakwater-blue-hour","harbor-night","skyframe-high-noon","rig-storm","polar-aurora"};
+        public static readonly string[] Looks={"breakwater-blue-hour","harbor-night","skyframe-high-noon","rig-storm"};
         /// <summary>The stage's index in <see cref="Maps"/>, or -1 for every other map (whose presentation never changes here).</summary>
         public static int Index(string mapId){for(int i=0;i<Maps.Length;i++)if(Maps[i]==mapId)return i;return -1;}
         public static bool Active(string mapId)=>Index(mapId)>=0;
