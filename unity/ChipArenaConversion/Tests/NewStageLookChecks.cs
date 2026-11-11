@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
                 }
                 Check(NativeNewStageKit.Build(new ContentMap{id="factory",blocks=map.blocks},look,mats)==null,"another map gets no kit");
             }
-            Check(attached>3000&&overhead>100,"attached and overhead parts on the four (Deepwell left with its derrick) ("+attached+", "+overhead+")");
+            Check(attached>3000&&overhead>60,"attached and overhead parts on the three (Pier 9 and Deepwell left, Deepwell with its derrick) ("+attached+", "+overhead+")");
 
             // 3. The pack rules: real blocks, solid props, inside their colliders, the same every time (a synthetic bank of real bounds).
             var table=JsonSerializer.Deserialize<PackDressingSet>(R("Assets/Conversion/Resources/PackDressing.json"),o);NativePackDressing.Validate(table);

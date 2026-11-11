@@ -298,7 +298,7 @@ namespace ChipArena.UnityConversion
             // off the shared M1 paths
             Check(!NativeNewStageLooks.Active("rig")&&NativeNewStageLooks.Index("rig")<0&&!NativeNewStageLooks.Maps.Contains("rig")&&NativeNewStageLooks.Maps.All(id=>NativeNewStageLooks.Index(id)==Array.IndexOf(new[]{"breakwater","harbor","skyframe","rig","polar"},id)),"Deepwell is off the M1 presentation; the others keep their stage numbers");
             Check(NativeStageArt.BankOf("rig")==NativeDeepwellArt.Bank,"its bank is registered");
-            var gen=File.ReadAllText(Path.Combine(root,"tools/generate_stage_hazards.py"));Check(gen.Contains("DRAFTS={'rig':'rig_m2'}")&&gen.Contains("'rig':('rig-top-wall','rig-top-glass','rig-top-bulkhead')")&&gen.Contains("'rig':('rig-top-pylon',)"),"the generator reads the new draft and opens the stage");
+            var gen=File.ReadAllText(Path.Combine(root,"tools/generate_stage_hazards.py"));Check(gen.Contains("'rig':'rig_m2'")&&gen.Contains("'rig':('rig-top-wall','rig-top-glass','rig-top-bulkhead')")&&gen.Contains("'rig':('rig-top-pylon',)"),"the generator reads the new draft and opens the stage");
             var guids=new HashSet<string>();
             foreach(var f in new[]{"Core/NativeDeepwellLooks.cs","Core/NativeDeepwellKit.cs","Core/NativeDeepwellFx.cs","Core/NativeDeepwellArt.cs","Runtime/NativeDeepwellPresentation.cs"})
             {
