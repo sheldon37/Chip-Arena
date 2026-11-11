@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
         }
         private bool TryMelee(NativePilot p,bool chained=false)
         {
-            if(TechniqueBusy(p)||Frozen(p)||SpecialBusy(p)||!NativeMeleeRules.Standard(p.Seat.spec)||Time<p.RollEnd||Incapacitated(p)||!chained&&(Time<p.AttackEnd||Time<p.Ready)||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||Time<p.BlockEnd&&!RiposteOpen(p))return false;
+            if(TechniqueBusy(p)||Frozen(p)||SpecialBusy(p)||!NativeMeleeRules.Standard(p.Seat.spec)&&!KitSlam(p)||Time<p.RollEnd||Incapacitated(p)||!chained&&(Time<p.AttackEnd||Time<p.Ready)||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||Time<p.BlockEnd&&!RiposteOpen(p))return false;
             bool air=NativeAirAttackSimulation.Airborne(p.Grounded,NativeHazards.InLava(MapId,Vec(p.Body.position)));if(air&&(!NativeAirAttackSimulation.Starts(p.Grounded,p.AirborneAt,p.AirAttackUsed,Time,p.Input)||chained))return false;
             bool sprint=NativeSprintAttack.Starts(chained,Time>p.MeleeComboUntil?1:p.Combo+2,p.Grounded,p.Input,p.Pose.Sprinting);
             float cost=NativeSprintAttack.Cost(p.Weapon,p.Stats,sprint)*(air?(NativeAirAttackSimulation.DownPitch(p.Input.Pitch)?1.4f:1.25f):1);if(PilotMutator(p,"adrenaline"))cost=0;if(p.Stamina<cost)return false;

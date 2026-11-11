@@ -580,7 +580,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The Glaive's skim: the legs sprint through its lunge (its ring keyed by hand over them).</summary>
         private static bool GlaiveCast(Set set,Actor a,float time,IClips clips,out Pick pick)
         {
-            pick=default;if(set.Spec!=NativeGlaive.Spec)return false;var k=NativeGlaiveView.Of(a);if(k?.CastKind!=NativeGlaive.Skim||time<k.CastAt||time>=k.CastRelease+NativeGlaive.SkimTime||!clips.Has(GlaiveRun))return false;
+            pick=default;if(set.Spec!=NativeGlaive.Spec)return false;if(NativeBladeMotion.Slam(set,a,time,clips,out pick))return true;var k=NativeGlaiveView.Of(a);if(k?.CastKind!=NativeGlaive.Skim||time<k.CastAt||time>=k.CastRelease+NativeGlaive.SkimTime||!clips.Has(GlaiveRun))return false;
             float len=Math.Max(.05f,clips.Length(GlaiveRun));pick=new Pick{Clip=GlaiveRun,Time=((time-k.CastAt)*2.4f)%len,Fade=FadeIn};return true;
         }
         /// <summary>The Top Dog's arm cast at `time` (its clip and that clip's time), or false: none, or a whole-body move.</summary>

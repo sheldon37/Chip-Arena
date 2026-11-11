@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
         // ---- the combo ----
         /// <summary>The five cuts: the wind-up to the hit (s), the whole move (s), damage, reach (m), half arc (rad), the step in (m) and the venom
         /// each leaves.</summary>
-        public static readonly float[] CutHit={.1f,.1f,.12f,.12f,.16f},CutLength={.3f,.3f,.36f,.38f,.52f},CutDamage={10,10,11,12,18},CutReach={2.1f,2.1f,2.2f,2.2f,2.6f},CutArc={1.2f,1.2f,1.2f,1.4f,1f},CutLunge={0,0,.5f,0,1.2f};
+        public static readonly float[] CutHit={.14f,.13f,.15f,.15f,.2f},CutLength={.38f,.36f,.42f,.44f,.6f},CutDamage={11,11,12,14,20},CutReach={2.1f,2.1f,2.2f,2.2f,2.6f},CutArc={1.2f,1.2f,1.2f,1.4f,1f},CutLunge={0,0,.5f,0,1.2f};
         public static readonly int[] CutVenom={1,1,1,1,2};
         public const float ComboWindow=.4f;
         public const int Steps=5;
@@ -38,7 +38,9 @@ namespace ChipArena.UnityConversion
         /// <summary>Up to VenomMax stacks on a foe, each VenomDps a second, every stack's clock refreshed to VenomFor by a new one.</summary>
         public const int VenomMax=6;public const float VenomDps=1.6f,VenomFor=4;
         // ---- the pounce (a sprint's attack) ----
-        public const float PounceWind=.1f,PounceTime=.32f,PounceReach=5,PounceRadius=1.6f,PounceDamage=20,PounceRecover=.3f;public const int PounceVenom=2;
+        // The dash (owner 2026-11-11: the old leap only cut where it landed, 5 m on, past anyone closer): a 5 m dash cutting everyone it
+        // passes within PounceWidth of its line, once each, as the Katana's rush does.
+        public const float PounceWind=.1f,PounceTime=.32f,PounceReach=5,PounceRadius=1.6f,PounceWidth=1.4f,PounceDamage=20,PounceRecover=.3f;public const int PounceVenom=2;
         // ---- the shadow step (Q) ----
         /// <summary>Gone for StepVanish s, then behind the foe nearest the aim (within StepRange m and StepCone of the look, in sight), StepBehind m
         /// behind it and facing it, and a stab (StepDamage, StepVenom); with no foe, StepBlink m along the look.</summary>

@@ -95,6 +95,12 @@ namespace ChipArena.UnityConversion
             root=tip=default;if(rig==null||a.WeaponAway)return false;string spec=a.SourceSpec;
             if(sourceModels!=null&&!string.IsNullOrEmpty(spec))
             {
+                // The blade classes from their designs' own sockets (Core NativeBladeView.Line), the standard blades from the table.
+                if(NativeBladeView.Line(spec,left,out var kitRoot,out var kitTip))
+                {
+                    var k=SourceWeaponBone(rig,a,time,first,left?CapturedRig.LHand:CapturedRig.RHand,WeaponReach(rig,a,time));
+                    root=k.MultiplyPoint3x4(U(CapturedRig.Mirror(kitRoot)));tip=k.MultiplyPoint3x4(U(CapturedRig.Mirror(kitTip)));return true;
+                }
                 if(NativeWeaponDressing.Fist(spec)||!NativeWeaponDressing.BladeTip(spec,out var socket))return false;
                 var m=SourceWeaponBone(rig,a,time,first,left?CapturedRig.LHand:CapturedRig.RHand,WeaponReach(rig,a,time));
                 root=m.MultiplyPoint3x4(U(CapturedRig.Mirror(spec=="shield"?new NVector(0,.05f,.25f):new NVector(0,0,.22f))));tip=m.MultiplyPoint3x4(U(CapturedRig.Mirror(socket)));return true;

@@ -100,9 +100,9 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The spec's proposal (fixtures and the fallback when a replicated time is missing).</summary>
         public const float Windup=.08f,DropSpeed=-24,HorizontalKeep=.15f,MinimumAir=.15f,PitchGate=-45,HeightFrom=2,HeightTo=8;
-        public static bool Handles(string spec)=>spec=="sword"||spec=="daggers"||spec=="shield"||spec=="greatsword";
-        public static float Radius(string spec)=>spec=="daggers"?.9f:spec=="sword"?1f:spec=="shield"?1.2f:spec=="greatsword"?1.4f:1;
-        public static float Recovery(string spec)=>spec=="daggers"?.3f:spec=="sword"?.45f:spec=="shield"?.5f:spec=="greatsword"?.7f:.45f;
+        public static bool Handles(string spec)=>spec=="sword"||spec=="daggers"||spec=="shield"||spec=="greatsword"||NativeAirAttackSimulation.KitSlam(spec);
+        public static float Radius(string spec)=>(spec=NativeAirAttackSimulation.Kin(spec))=="daggers"?.9f:spec=="sword"?1f:spec=="shield"?1.2f:spec=="greatsword"?1.4f:1;
+        public static float Recovery(string spec)=>(spec=NativeAirAttackSimulation.Kin(spec))=="daggers"?.3f:spec=="sword"?.45f:spec=="shield"?.5f:spec=="greatsword"?.7f:.45f;
         /// <summary>The height bonus range as a 0..1 weight: 0 at 2 m (and below), 1 at 8 m and above (the +60% cap).</summary>
         public static float Heavy(float height)=>MathUtil.Finite(height)?MeleeMath.Clamp((height-HeightFrom)/(HeightTo-HeightFrom),0,1):0;
 

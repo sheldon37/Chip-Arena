@@ -17,7 +17,14 @@ namespace ChipArena.UnityConversion
     {
         private static readonly Vector3 BladeWhite=new Vector3(1,1,1),BladeVenomDark=new Vector3(.05f,.12f,.03f),SmokeGrey=new Vector3(.16f,.17f,.19f),ShadowSmoke=new Vector3(.03f,.035f,.033f),Petal=new Vector3(1,.55f,.68f);
         private static Vector3 BladeTint(IKitFxScene scene,Actor a,Vector3 fallback){var c=WeaponPaint.Linear(scene.WeaponColor(a));float m=Math.Max(c.X,Math.Max(c.Y,c.Z));return m>1e-3f?c/m:fallback;}
-        private sealed class BladeTrail{public readonly Vector3[] Root=new Vector3[16],Tip=new Vector3[16];public readonly float[] At=new float[16];public int Count,Head;public float Last=-100;}
+        private sealed class BladeTrail
+        {
+            public const int Size=32;
+            public readonly Vector3[] Root=new Vector3[Size],Tip=new Vector3[Size],Body=new Vector3[Size];public readonly float[] At=new float[Size],Power=new float[Size];public readonly bool[] Start=new bool[Size];
+            public int Count,Head;public float Last=-100;
+            /// <summary>The ring index `back` samples before the newest.</summary>
+            public int Index(int back)=>((Head-back)%Size+Size)%Size;
+        }
         private readonly Dictionary<long,BladeTrail> bladeTrails=new Dictionary<long,BladeTrail>();
         private float bladeTrailClock=-1;
         /// <summary>Draws every blade class's moves, hits and lingering effects of the frame at `time`.</summary>
@@ -29,59 +36,97 @@ namespace ChipArena.UnityConversion
             {
                 var a=actors[i];var k=NativeBladeView.Of(a);if(k==null)continue;long seed=a.Id*7919L;bool katana=a.SourceSpec==NativeKatana.Spec;
                 var tint=BladeTint(scene,a,katana?new Vector3(1,.24f,.43f):new Vector3(.49f,1,.23f));
-                BladeTrails(s,scene,a,k,time,tint,katana,q,low);
+                BladeTrails(s,scene,a,k,time,tint,katana,seed+11,q,low);
                 if(katana){KatanaLine(s,a,k,time,tint,seed,q,low);KatanaStorm(s,scene,a,k,time,tint,seed+3,q,low);}
                 else{FangsVeil(s,scene,a,k,time,tint,seed+5,q,low);FangsCloud(s,k,time,tint,seed+9,q,low);}
                 if(k.Hits!=null)foreach(var h in k.Hits)if(h!=null){if(katana)KatanaHitFx(s,k,h,time,tint,seed+h.Id*37L,q,low);else FangsHitFx(s,scene,a,k,h,time,tint,seed+h.Id*41L,q,low);}
             }
         }
-        // A cut's live moment: the move's wind-up end to a little after its hit.
-        private static bool BladeSwinging(NativeBladeKit k,float time,bool katana)
+        // A move's live stretch for its trail, and the trail's least power through it: a dash's blade rides the dash, so it trails at full
+        // power however still it is in the hand; a cut's trail follows the blade's own speed (TrailPower). -1: no move.
+        private static float BladeLive(Actor a,NativeBladeKit k,float time,bool katana)
         {
-            if(k.CastKind==null||time<k.CastAt)return false;float rel=k.CastRelease;
+            // The plunging slam from the air (the standard swing, Core NativeAirAttackSimulation.KitSlam): from its start to past its landing.
+            if(a.AirAttack&&a.AttackAt>-90&&time>=a.AttackAt&&NativePlungeFields.Kind(a)==NativePlungeFields.DownKind&&time<(a.ImpactAt>a.AttackAt?a.ImpactAt+.16f:a.AttackAt+1.6f))return .55f;
+            if(k.CastKind==null||time<k.CastAt)return -1;float rel=k.CastRelease,until=k.CastUntil;
             if(katana)switch(k.CastKind)
             {
-                case NativeKatana.Cut:return time>=rel-.12f&&time<rel+.14f;
-                case NativeKatana.Rush:return time>=rel-.06f&&time<rel+NativeKatana.RushTime+.1f;
-                case NativeKatana.Iai:return time>=rel-.04f&&time<rel+NativeKatana.IaiDash+.08f;
-                case NativeKatana.Storm:return time>=rel-.05f&&time<k.CastUntil-NativeKatana.StormRecover*.6f;
-                case NativeKatana.Counter:return k.PairHit>-50&&time>=k.PairHit-.18f&&time<k.PairHit+.16f;
+                case NativeKatana.Cut:return time<until?0:-1;
+                case NativeKatana.Rush:return time>=rel-.06f&&time<rel+NativeKatana.RushTime+.12f?1:-1;
+                case NativeKatana.Iai:return time>=rel-.04f&&time<rel+NativeKatana.IaiDash+.12f?1:-1;
+                case NativeKatana.Storm:return time>=rel-.05f&&time<until-NativeKatana.StormRecover*.5f?.35f:-1;
+                case NativeKatana.Counter:return k.PairHit>-50&&time>=k.PairHit-.3f&&time<k.PairHit+.2f?0:-1;
             }
             else switch(k.CastKind)
             {
-                case NativeFangs.Cut:return time>=rel-.08f&&time<rel+.1f;
-                case NativeFangs.Pounce:return time>=rel&&time<rel+NativeFangs.PounceTime+.08f;
-                case NativeFangs.Step:return time>=rel&&time<rel+.16f;
-                case NativeFangs.Assassinate:return k.PairHit>-50&&time>=k.PairHit-.15f&&time<k.PairHit+.12f;
+                case NativeFangs.Cut:return time<until?0:-1;
+                case NativeFangs.Pounce:return time>=rel-.04f&&time<rel+NativeFangs.PounceTime+.1f?1:-1;
+                case NativeFangs.Step:return time>=rel&&time<rel+.24f?.3f:-1;
+                case NativeFangs.Fan:return time<rel+.12f?0:-1;
+                case NativeFangs.Bloom:return time<rel+.16f?0:-1;
+                case NativeFangs.Assassinate:return k.PairHit>-50&&time>=k.PairHit-.35f&&time<k.PairHit+.16f?0:-1;
             }
-            return false;
+            return -1;
         }
-        /// <summary>The crescent trail: the drawn blade sampled each frame while it swings, its sweep laid as bands that fade from the back.</summary>
-        private void BladeTrails(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeBladeKit k,float time,Vector3 tint,bool katana,float q,bool low)
+        /// <summary>The blade's speed in the hand (m/s: its tip's, the body's own travel taken out) to the trail's power 0..1.</summary>
+        private static float TrailPower(float speed,bool katana)=>katana?Clamp01((speed-4.5f)/9):Clamp01((speed-3)/6);
+        private static Vector3 Spline(Vector3 p0,Vector3 p1,Vector3 p2,Vector3 p3,float u){float u2=u*u,u3=u2*u;return .5f*(2*p1+(p2-p0)*u+(2*p0-5*p1+4*p2-p3)*u2+(3*p1-p0-3*p2+p3)*u3);}
+        /// <summary>The weapon trails (owner 2026-11-11: "Give both weapon weapon trail vfx"): each drawn blade (both of the Fangs') sampled
+        /// up to 120 times a second through its moves, its sweep laid as a smooth crescent (a spline through the samples) that narrows toward
+        /// its tail and fades: a soft sheet in the weapon colour from part way up the blade, a white-hot edge along the tip's path and a
+        /// faint halo past both; a glint at the tip, and the Katana's sparks or the Fangs' venom shed off the fastest of it. Its power follows
+        /// the blade's speed in the hand, so a wind-up leaves little and a cut a bright arc; a dash or a slam trails at a set power.</summary>
+        private void BladeTrails(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeBladeKit k,float time,Vector3 tint,bool katana,long seed,float q,bool low)
         {
-            bool view=scene.Viewer==a.Id;
+            bool view=scene.Viewer==a.Id;if(!view&&NativeBladeView.Veiled(a,time))return;float live=BladeLive(a,k,time,katana);
             for(int hand=0;hand<(katana?1:2);hand++)
             {
                 long key=a.Id*4L+hand;bladeTrails.TryGetValue(key,out var t);
-                if(BladeSwinging(k,time,katana)&&(view?scene.ViewBlade(hand==1,out var root,out var tip):scene.Blade(a,hand==1,out root,out tip)))
+                if(live>=0&&(view?scene.ViewBlade(hand==1,out var root,out var tip):scene.Blade(a,hand==1,out root,out tip)))
                 {
                     if(t==null){t=new BladeTrail();bladeTrails[key]=t;}
-                    if(time-t.Last>.2f)t.Count=0;
-                    if(time-t.Last>=1/90f){t.Head=(t.Head+1)%t.Root.Length;t.Root[t.Head]=root;t.Tip[t.Head]=tip;t.At[t.Head]=time;t.Count=Math.Min(t.Root.Length,t.Count+1);t.Last=time;}
+                    if(time-t.Last>=1/120f)
+                    {
+                        // A new trail after a break (no move for a moment, or a vanish: the body somewhere else at once).
+                        var body=scene.Feet(a);int h=t.Head;bool start=t.Count==0||time-t.Last>.05f||(root-t.Root[h]).LengthSquared()>6.25f;float power=live;
+                        if(!start)power=Math.Max(live,TrailPower(((tip-t.Tip[h])-(body-t.Body[h])).Length()/Math.Max(1e-3f,time-t.At[h]),katana));
+                        t.Head=(h+1)%BladeTrail.Size;h=t.Head;t.Root[h]=root;t.Tip[h]=tip;t.Body[h]=body;t.At[h]=time;t.Power[h]=power;t.Start[h]=start;
+                        t.Count=Math.Min(BladeTrail.Size,t.Count+1);t.Last=time;
+                    }
                 }
-                if(t==null||t.Count<2)continue;float life=katana?.16f:.11f;if(time-t.At[t.Head]>life){t.Count=0;continue;}
-                bool finisher=katana&&(k.CastKind==NativeKatana.Counter||k.CastKind==NativeKatana.Iai||k.CastKind==NativeKatana.Cut&&k.CastStep==NativeKatana.Steps-1);
-                var hot=Vector3.Lerp(tint,BladeWhite,.55f);float bright=finisher?1.5f:1;int n=Math.Min(t.Count,low?6:t.Root.Length);
+                if(t==null||t.Count<2)continue;float life=katana?.3f:.24f;if(time-t.At[t.Head]>life){t.Count=0;continue;}
+                bool finisher=katana?k.CastKind==NativeKatana.Counter||k.CastKind==NativeKatana.Iai||k.CastKind==NativeKatana.Cut&&k.CastStep==NativeKatana.Steps-1
+                    :k.CastKind==NativeFangs.Assassinate||k.CastKind==NativeFangs.Pounce||k.CastKind==NativeFangs.Cut&&k.CastStep==NativeFangs.Steps-1;
+                var hot=Vector3.Lerp(tint,BladeWhite,.6f);float bright=finisher?1.45f:1,inner=katana?.28f:.12f;int n=Math.Min(t.Count,BladeTrail.Size),sub=low?1:3;
                 for(int j=0;j<n-1;j++)
                 {
-                    int i0=(t.Head-j+t.Root.Length)%t.Root.Length,i1=(t.Head-j-1+t.Root.Length)%t.Root.Length;
-                    float f0=1-Clamp01((time-t.At[i0])/life),f1=1-Clamp01((time-t.At[i1])/life);if(f0<=0&&f1<=0)continue;
-                    // From a third of the way up the blade to past its tip: the sweep of the edge.
-                    var a0=Vector3.Lerp(t.Root[i0],t.Tip[i0],.3f);var b0=t.Tip[i0]+(t.Tip[i0]-t.Root[i0])*.06f;var a1=Vector3.Lerp(t.Root[i1],t.Tip[i1],.3f);var b1=t.Tip[i1]+(t.Tip[i1]-t.Root[i1])*.06f;
-                    s.Band(view,a0,a1,b1,b0,.45f*f0*bright,.45f*f1*bright,tint*1.25f);
-                    s.Band(view,b0-(b0-a0)*.16f,b1-(b1-a1)*.16f,b1,b0,.95f*f0*bright,.95f*f1*bright,hot*1.7f);
+                    int i0=t.Index(j),i1=t.Index(j+1);float age0=time-t.At[i0],age1=time-t.At[i1];if(age0>=life)break;if(t.Start[i0])continue;
+                    // The curve's neighbours: the next newer and the next older sample, where the trail goes on.
+                    int ip=j>0&&!t.Start[t.Index(j-1)]?t.Index(j-1):i0,iq=j+2<n&&!t.Start[i1]?t.Index(j+2):i1;
+                    Vector3 in0=default,out0=default;float a0=0;
+                    for(int st=0;st<=sub;st++)
+                    {
+                        float u=st/(float)sub,age=age0+(age1-age0)*u,f=1-Clamp01(age/life),power=t.Power[i0]+(t.Power[i1]-t.Power[i0])*u;
+                        var r=Spline(t.Root[ip],t.Root[i0],t.Root[i1],t.Root[iq],u);var p=Spline(t.Tip[ip],t.Tip[i0],t.Tip[i1],t.Tip[iq],u);
+                        // Narrowing toward the tail: its inner edge climbs the blade as it fades.
+                        var e=Vector3.Lerp(r,p,inner+(1-inner)*.55f*(1-f));var o=p+(p-r)*.04f;float al=power*(float)Math.Pow(f,1.5)*bright;
+                        if(st>0&&(a0>.004f||al>.004f))
+                        {
+                            s.Band(view,in0,e,o,out0,.62f*a0,.62f*al,tint*1.4f);
+                            s.Band(view,out0-(out0-in0)*.22f,o-(o-e)*.22f,o,out0,a0,al,hot*2.2f);
+                            if(!low)s.Band(view,in0-(out0-in0)*.08f,e-(o-e)*.08f,o+(o-e)*.14f,out0+(out0-in0)*.14f,.3f*a0,.3f*al,tint*.8f);
+                        }
+                        in0=e;out0=o;a0=al;
+                    }
+                    // Shed off the fastest of it: the Katana's sparks flying off the edge, the Fangs' venom falling.
+                    if(!low&&(j&1)==0&&t.Power[i0]>.5f&&age0<.2f)
+                    {
+                        float g=1-age0/.2f;var along=t.Tip[i0]-t.Root[i0];along=along.LengthSquared()>1e-6f?Vector3.Normalize(along):Up;int id=(int)(t.At[i0]*997)+hand*131;
+                        if(katana)s.Sprite(view,t.Tip[i0]+along*(.1f*age0/.2f)+RandomDir(seed,id)*(.12f*age0/.2f),hot*(1.6f*g*t.Power[i0]),.026f,Sparkle);
+                        else s.Sprite(view,t.Tip[i0]+RandomDir(seed,id)*(.05f*age0/.2f)-Up*(3.2f*age0*age0),tint*(1.5f*g*t.Power[i0]),.028f,Soft);
+                    }
                 }
-                if(t.Count>=2&&time-t.At[t.Head]<.03f)s.Sprite(view,t.Tip[t.Head],hot*(2.2f*bright),katana?.1f:.07f,Sparkle);
+                if(time-t.At[t.Head]<.035f&&t.Power[t.Head]>.35f)s.Sprite(view,t.Tip[t.Head],hot*(2.4f*bright*t.Power[t.Head]),katana?.11f:.075f,Sparkle);
             }
         }
         /// <summary>The iai's line of light hanging where the dash went, from the dash's end to the split; then it flares and breaks.</summary>

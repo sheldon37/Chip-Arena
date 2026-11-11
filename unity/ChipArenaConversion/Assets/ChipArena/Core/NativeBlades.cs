@@ -93,5 +93,14 @@ namespace ChipArena.UnityConversion
         public static NativeBladeKit Fangs(Actor a)=>a?.SourceSpec==NativeFangs.Spec?a.Blade:null;
         /// <summary>Whether a Fangs pilot is veiled (unseen by enemies) at `time`.</summary>
         public static bool Veiled(Actor a,float time){var k=Fangs(a);return k!=null&&time>=k.VeilAt&&time<k.VeilUntil;}
+        /// <summary>A blade class's blade in its weapon frame (its design's sockets: where the blade leaves the hilt, and its tip), for its
+        /// trails (the owner, 2026-11-11: "Give both weapon weapon trail vfx"). The standard table (NativeWeaponDressing.BladeTip) keeps to
+        /// the standard blades, whose sweeps and slash crescents read it. The left fang is its mirror (its hook the other way).</summary>
+        public static bool Line(string spec,bool left,out Vector3 root,out Vector3 tip)
+        {
+            if(spec==NativeKatana.Spec&&!left){root=NativeWeaponModels.KatanaBladeBase;tip=NativeWeaponModels.KatanaBladeTip;return true;}
+            if(spec==NativeFangs.Spec){root=NativeWeaponModels.FangBladeBase;tip=NativeWeaponModels.FangBladeTip;if(left)tip.X=-tip.X;return true;}
+            root=tip=default;return false;
+        }
     }
 }

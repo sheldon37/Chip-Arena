@@ -97,6 +97,8 @@ namespace ChipArena.UnityConversion
             try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,introNow,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             // Crimson Moon: the saya at the hip, and the blade in it while the script has it sheathed (NativeBladePresentation.cs).
             if(script is NativeKatanaIntro)KatanaSaya(introRig,actor,introNow,false,0,null,null,1);
+            // The blade classes' entrances: the blades where the model holds them, for their trails, drips and flung venom (Core NativeBladeIntro.Blade).
+            if(script is NativeBladeIntro held)BladeIntroHeld(held,t,style,solid||script.Solid(t,CapturedRig.RHand)>.5f);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
             if(script is NativeBombadierIntro last){if(solid)BombGear(introRig);var palm=introRig.Bones[CapturedRig.LHand];var at=palm.position+palm.rotation*new Vector3(0,-.06f,0);last.PalmNow=new System.Numerics.Vector3(-at.x,at.y,at.z);var fist=introRig.Bones[CapturedRig.RHand];var tip=fist.position+fist.rotation*CapturedAnimation.Vec(CapturedRig.Mirror(NativeWeaponModels.TntFuseTip));last.FuseNow=new System.Numerics.Vector3(-tip.x,tip.y,tip.z);}
             EntranceGhosts(script,style,t);
@@ -199,6 +201,10 @@ namespace ChipArena.UnityConversion
             if(style==NativeGlaiveIntro.Id&&!NativeGlaiveIntro.InHand(entranceTime))return;
             // The Katana's blade in its saya while the intro has it sheathed (Core NativeBladeIntros; the saya draws it there).
             if(bladeIntro!=null&&bladeIntro.Sheathed(entranceTime))return;
+            // The blade classes' entrances pose the model with a clip after the rig is bound (Core NativeBladeIntros), and only the right
+            // hand is fitted back onto the model (VisualHandFit): the Fangs' off-hand blade takes the model's own left hand (its joint
+            // frame), or it hung where the hidden rig's hand was.
+            if(bladeIntro!=null){bladeIntroHand??=b=>(b==CapturedRig.LHand?VisualJointFrame(introRig,b):introRig.Bones[b].localToWorldMatrix)*introGrip;sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,bladeIntroHand,accent:introAccent);return;}
             if(!VisualWeaponDrawn(introRig,introHand(CapturedRig.RHand)))sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
             if(NativeIntroRules.IntroMuzzleFlash(style,age,out var flash))QueuePiece(flash,introHand(CapturedRig.RHand),0,null);
         }

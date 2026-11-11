@@ -16,7 +16,7 @@ internal static class LoadoutChecks
             ["leet"]="32 DMG · 1.7 / SEC · 7 MANA",["pistol"]="23 DMG · 2.4 / SEC",["rifle"]="58 DMG · 0.9 / SEC",["machinegun"]="8 DMG · 11.8 / SEC",
             ["fire"]="24 DMG · 2.0 / SEC · 8 MANA",["water"]="20 DMG · 2.6 / SEC · 6 MANA",["lightning"]="15 DMG · 3.6 / SEC · 5 MANA",["darkness"]="34 DMG · 1.5 / SEC · 10 MANA",
             ["sword"]="30 DMG · 1.6 / SEC · 14 STAMINA · 2.5 M",["daggers"]="15 DMG · 2.9 / SEC · 7 STAMINA · 1.75 M",["shield"]="23 DMG · 1.3 / SEC · 16 STAMINA · 2.1 M",
-            ["greatsword"]="52 DMG · 0.8 / SEC · 20 STAMINA · 3.4 M",["bow"]="18\u201362 DMG · 0.8 S DRAW",["cyberlord"]="12 DMG · 3.6 / SEC · 2.2 M",["bombadier"]="12 DMG · 1.5 / SEC",["topdog"]="14 DMG · 2.1 / SEC · 2.9 M",["glaive"]="16 DMG · 2.5 / SEC · 2.5 M",["katana"]="18 DMG · 2.4 / SEC · 2.7 M",["fangs"]="10 DMG · 3.3 / SEC · 2.1 M",
+            ["greatsword"]="52 DMG · 0.8 / SEC · 20 STAMINA · 3.4 M",["bow"]="18\u201362 DMG · 0.8 S DRAW",["cyberlord"]="12 DMG · 3.6 / SEC · 2.2 M",["bombadier"]="12 DMG · 1.5 / SEC",["topdog"]="14 DMG · 2.1 / SEC · 2.9 M",["glaive"]="16 DMG · 2.5 / SEC · 2.5 M",["katana"]="18 DMG · 2.4 / SEC · 2.7 M",["fangs"]="11 DMG · 2.6 / SEC · 2.1 M",
         };
         if(data.weapons.Length!=expected.Count)throw new Exception("Weapon count changed: "+data.weapons.Length);
         var previous=CultureInfo.CurrentCulture;

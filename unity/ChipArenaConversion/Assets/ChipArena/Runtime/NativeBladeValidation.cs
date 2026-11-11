@@ -7,7 +7,8 @@ namespace ChipArena.UnityConversion
 {
     // The blade classes' rules against the real arena (docs/KATANA.md, docs/FANGS.md): the Katana public and the Fangs DEV; the Katana's cuts,
     // rush, iai (the dash, the marks, the delayed split), storm and counter (the paired hold); the Fangs' venom stacks, step, veil, fan, bloom
-    // and takedown; their chips registered; the record over the real frame codec. Run by the Editor build checks beside the Glaive's.
+    // and takedown, its dash cutting through; the plunging slam from the air for both; their chips registered; the record over the real frame
+    // codec. Run by the Editor build checks beside the Glaive's.
     public sealed partial class NativeArena
     {
         private void BladeClear(NativePilot p)
@@ -93,9 +94,21 @@ namespace ChipArena.UnityConversion
                 Setup(NativeFangs.Spec);b.Body.position=o+new Vector3(0,0,1.6f);b.Yaw=0;Physics.SyncTransforms();Press(key:3);
                 Check(a.Blade.CastKind==NativeFangs.Assassinate&&b.BladeHeldBy==a&&a.BladePairLethal,"3 from behind is the takedown");Step(NativeFangs.BehindHold+.05f);Check(b.Hp<=0,"lethal at its blow");
                 foreach(var id in NativeFangsChips.Ids)Check(Content.chips.Any(x=>x.id==id&&ImplementedChip(x)),"live supported chip "+id);
+                // The dash on a sprint (owner 2026-11-11: the old leap was "VERY hard to hit"): it cuts the one close in its path, not only where it ends.
+                Setup(NativeFangs.Spec);a.Pose.Sprinting=true;a.Input=new InputFrame{Shoot=true,Attack=true,Sprint=true,Z=1};StepBladeInput(a);Check(a.Blade.CastKind==NativeFangs.Pounce,"a cut on a sprint is the dash");
+                hp=b.Hp;Step(NativeFangs.PounceWind+NativeFangs.PounceTime+.05f);Check(b.Hp<hp&&a.BladeVenom.ContainsKey(b.Seat.id),"the dash cuts the one close in its path and poisons it");
+                // The plunging slam from the air (owner 2026-11-11: "Slam attacks" from the air): a moment airborne and looking down, a click is the
+                // standard plunge (Core NativeAirAttackSimulation.KitSlam), the kit's own cut held back.
+                foreach(var spec in new[]{NativeKatana.Spec,NativeFangs.Spec})
+                {
+                    Setup(spec);a.Body.useGravity=false;a.Body.position=o+new Vector3(0,3,0);a.Grounded=false;a.AirborneAt=Time-1;a.AirAttackUsed=false;Physics.SyncTransforms();
+                    a.Ready=0;a.Input=new InputFrame{Shoot=true,Attack=true,Pitch=-80};StepBladeInput(a);StepMeleeInput(a);
+                    Check(a.Swing!=null&&NativeAirAttackSimulation.Down(a.Swing)&&a.Blade.CastKind==null,spec+": airborne and looking down, a click is the plunging slam");
+                    a.Body.useGravity=true;
+                }
                 Debug.Log("Native blades: "+checks+" checks");
             }
-            finally{UnityEngine.Object.DestroyImmediate(floor);foreach(var p in Pilots){BladeClear(p);p.Seat.chips.Clear();p.Body.useGravity=true;p.Pose.Sprinting=false;}}
+            finally{UnityEngine.Object.DestroyImmediate(floor);foreach(var p in Pilots){BladeClear(p);p.Seat.chips.Clear();p.Body.useGravity=true;p.Pose.Sprinting=false;p.Swing=null;p.AirAttackUsed=false;p.AirborneAt=-1;p.Grounded=true;}}
         }
     }
 }

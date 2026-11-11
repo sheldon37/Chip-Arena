@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeBladeMotion
     {
-        private const string K="Frank_RPG_Katana_",A="Frank_RPG_Assassin_";
+        private const string K="Frank_RPG_Katana_",A="Frank_RPG_Assassin_",R="Frank_Rogue_";
         // ---- the Katana's clips ----
         public static readonly string[] KatanaCuts={K+"S1_Combo01_01",K+"S1_Combo01_02",K+"S1_Combo01_03",K+"S1_Combo03_03"};
         public const string KatanaRush=K+"S3_Combo01_02",KatanaIai=K+"S3_Skill01",KatanaSheathe=K+"Unequip",KatanaStorm=K+"S3_Skill02",KatanaIdle=K+"Stance1_Idle",
@@ -19,8 +19,11 @@ namespace ChipArena.UnityConversion
         /// <summary>The counter's paired critical: the wielder's clip and its victim's.</summary>
         public const string KatanaCritical="Frank_Damage@Damage_Critical_Katana",KatanaCriticalHit="Frank_Damage@Damage_Critical_Katana_Hit";
         // ---- the Fangs' clips ----
-        public static readonly string[] FangsCuts={A+"Combo01_1_IP",A+"Combo01_2_IP",A+"Combo01_3_IP",A+"Combo02_2_IP",A+"Combo02_3_IP"};
-        public const string FangsPounce=A+"Attack07_IP",FangsStep=A+"Skill01_IP",FangsVeil=A+"Evade_B_IP",FangsFan=A+"Attack06_IP",FangsBloom=A+"Skill02_IP",FangsIdle=A+"Equip_Idle",
+        // The flurry is the Frank Rogue (dual blade) set's third combination chain (a leaping cut, a lunging double, a step cut), its
+        // fourth chain's double and the third's low spinning finisher (owner 2026-11-11: "The Fangs need a MUCH better basic combo,
+        // utilize the Rogue"); the dash its fifth chain's long low lunge with both blades out.
+        public static readonly string[] FangsCuts={R+"Combination_03_1",R+"Combination_03_2",R+"Combination_03_3",R+"Combination_04_2",R+"Combination_03_4"};
+        public const string FangsPounce=R+"Combination_05_2",FangsStep=A+"Skill01_IP",FangsVeil=A+"Evade_B_IP",FangsFan=A+"Attack06_IP",FangsBloom=A+"Skill02_IP",FangsIdle=A+"Equip_Idle",
             FangsGuard=A+"Guard",FangsBlock=A+"Block",FangsTumble=A+"Tumbling_F";
         /// <summary>The takedown from behind and the frontal critical: the wielder's clips and their victims'.</summary>
         public const string FangsTakedown="Frank_Stealth_Kill_Behind_05",FangsTakedownHit="Frank_Stealth_Kill_Hit_Behind_05",FangsCritical="Frank_Damage@Damage_Critical_Assassin",FangsCriticalHit="Frank_Damage@Damage_Critical_Assassin_Hit";
@@ -43,12 +46,12 @@ namespace ChipArena.UnityConversion
                 case KatanaSheathe:return new Window(1.3f,1.85f,2.35f);
                 case KatanaStorm:return new Window(1f,1.3f,1.78f);
                 case KatanaCritical:case KatanaCriticalHit:return new Window(.9f,1.45f,2.25f);
-                case A+"Combo01_1_IP":return new Window(0,.2f,.55f);
-                case A+"Combo01_2_IP":return new Window(0,.283f,.65f);
-                case A+"Combo01_3_IP":return new Window(0,.28f,.8f);
-                case A+"Combo02_2_IP":return new Window(0,.233f,.75f);
-                case A+"Combo02_3_IP":return new Window(0,.233f,.85f);
-                case FangsPounce:return new Window(0,.233f,.95f);
+                case R+"Combination_03_1":return new Window(.17f,.45f,.9f);
+                case R+"Combination_03_2":return new Window(0,.3f,.75f);
+                case R+"Combination_03_3":return new Window(0,.317f,.75f);
+                case R+"Combination_04_2":return new Window(0,.317f,.8f);
+                case R+"Combination_03_4":return new Window(.3f,.7f,1.35f);
+                case FangsPounce:return new Window(.95f,1.28f,1.85f);
                 case FangsStep:return new Window(.45f,.7f,1.15f);
                 case FangsVeil:return new Window(0,.2f,.58f);
                 case FangsFan:return new Window(0,.35f,.8f);
@@ -60,14 +63,16 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>At most this many times a clip's pace, before its strike (a move too quick starts later into the window).</summary>
         public const float StrikeRate=1.6f;
+        /// <summary>The Rogue's dual-blade clips are slower than the daggers' quick cuts: they may run twice their pace before the strike.</summary>
+        public static float RateOf(string clip)=>clip!=null&&clip.StartsWith(R,StringComparison.Ordinal)?2f:StrikeRate;
         /// <summary>The clip time at `time` for a move from `start` striking at `hitAt` and ending at `end`, on the clip's window (the clip's
         /// own length `len` when it has none: its middle the strike).</summary>
         public static float Fit(string clip,float len,float time,float start,float hitAt,float end)
         {
             var w=WindowOf(clip);float from=float.IsNaN(w.From)?0:w.From,hit=float.IsNaN(w.Hit)?len*.5f:Math.Min(w.Hit,len),to=float.IsNaN(w.To)?len:Math.Min(w.To,len);
-            float first=Math.Max(from,hit-Math.Max(1e-3f,hitAt-start)*StrikeRate);
+            float rate=RateOf(clip),first=Math.Max(from,hit-Math.Max(1e-3f,hitAt-start)*rate);
             if(time<=hitAt)return first+(hit-first)*Clamp01((time-start)/Math.Max(1e-3f,hitAt-start));
-            return hit+(to-hit)*Clamp01((time-hitAt)/Math.Max(Math.Max(1e-3f,end-hitAt),(to-hit)/StrikeRate));
+            return hit+(to-hit)*Clamp01((time-hitAt)/Math.Max(Math.Max(1e-3f,end-hitAt),(to-hit)/rate));
         }
 
         /// <summary>The move a blade pilot's body plays at `time` (the whole body), or false (none: the set's own stance and stride). `moving`:
@@ -77,10 +82,22 @@ namespace ChipArena.UnityConversion
             pick=default;
             // The class's entrance: the intro body plays the clip the script names (Core NativeBladeIntros.Clip).
             if(IntroActor>=0&&a!=null&&a.Id==IntroActor&&IntroClip!=null&&clips.Has(IntroClip)){pick=new NativeVisualMotion.Pick{Clip=IntroClip,Time=IntroTime,Fade=.12f};return true;}
+            if(Slam(set,a,time,clips,out pick))return true;
             var k=NativeBladeView.Of(a);if(k?.CastKind==null||time<k.CastAt)return false;
             if(!Clip(a,k,time,clips,out string clip,out float t,out bool whole,out bool flight))return false;
             if(!whole&&moving)return false;
             pick=new NativeVisualMotion.Pick{Clip=clip,Time=t,Fade=NativeVisualMotion.FadeIn,Flight=flight};return true;
+        }
+        /// <summary>The plunging slam (the standard swing's air attack of kind "down", Core NativeAirAttackSimulation; the Glaive, the
+        /// Katana and the Fangs take it, owner 2026-11-11): the set's air attack clip, run to just short of its strike through the drop and
+        /// held there, its strike on the landing, then its recovery. The Glaive's motion takes it too (NativeVisualMotion.GlaiveCast).</summary>
+        public static bool Slam(NativeVisualMotion.Set set,Actor a,float time,NativeVisualMotion.IClips clips,out NativeVisualMotion.Pick pick)
+        {
+            pick=default;
+            if(a==null||set?.AirAttack==null||!a.AirAttack||a.AttackAt<-90||time<a.AttackAt||NativePlungeFields.Kind(a)!=NativePlungeFields.DownKind||!clips.Has(set.AirAttack))return false;
+            float hit=clips.Hit(set.AirAttack),len=clips.Length(set.AirAttack);
+            float impact=a.ImpactAt>a.AttackAt?a.ImpactAt:Math.Max(a.AttackAt+hit,time+.08f);
+            pick=new NativeVisualMotion.Pick{Clip=set.AirAttack,Time=NativeVisualMotion.Retime(time,a.AttackAt,impact,impact+(len-hit),hit,len),Fade=NativeVisualMotion.FadeIn};return true;
         }
         /// <summary>The entrance's intro body (its actor id, -1: none) and the clip and time its script names this frame (set around the
         /// intro body's motion only).</summary>
@@ -125,7 +142,7 @@ namespace ChipArena.UnityConversion
                 switch(k.CastKind)
                 {
                     case NativeFangs.Cut:whole=k.CastStep==NativeFangs.Steps-1;return On(FangsCuts[Math.Max(0,k.CastStep)%FangsCuts.Length],at,rel,until,time,clips,out clip,out t);
-                    case NativeFangs.Pounce:flight=true;return On(FangsPounce,at,rel+NativeFangs.PounceTime,until,time,clips,out clip,out t);
+                    case NativeFangs.Pounce:return On(FangsPounce,at,rel+NativeFangs.PounceTime*.5f,until,time,clips,out clip,out t);
                     case NativeFangs.Step:return On(FangsStep,at,rel+.04f,until,time,clips,out clip,out t);
                     case NativeFangs.Veil:return On(FangsVeil,at,rel,until,time,clips,out clip,out t);
                     case NativeFangs.Fan:whole=false;return On(FangsFan,at,rel,until,time,clips,out clip,out t);
