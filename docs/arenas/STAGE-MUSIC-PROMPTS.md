@@ -554,3 +554,46 @@ Oh-oh, oh-oh
 
 [End]
 ```
+
+## The main menu (2026-11-11)
+
+The owner asked for a new menu song ("Lets bring our menu music up to date"), with the lyrics box first. The home screen's backdrop is
+the Pilot's Rooftop (Runtime NativeRooftopPresentation): a rain-wet neon city at night, holo screens, flying cars and a distant duel.
+The menu plays `music/menu-afterglow`, currently the owner's "Chip Arena Main". A new song replaces that asset and keeps its importer
+GUID, as the 2026-10-12 replacement did. The vocoded "Chip... Arena" tag is optional; delete it, or both wordless lines, for a
+purely instrumental take.
+
+Lyric field:
+
+```
+[Intro: rain on a rooftop, distant traffic hum, a holo screen buzzing on, a warm electric piano plays a short hopeful five-note motif]
+
+[Verse: laid-back groove at low volume, soft four-on-the-floor kick, swung hats, round sub bass, clean funky guitar licks between the piano chords]
+Ooh, ooh
+
+[Pre-Chorus: a filtered bell arpeggio rising, a flying car whooshing past overhead, the motif on a bright synth bell]
+
+[Chorus: full groove, glossy pads opening like the city's screens lighting up, the five-note motif on a bright lead, vocoder chops answering]
+Chip... Arena
+Oh-oh, oh-oh
+
+[Ricochet Interlude: a playful ping-pong delay bleep riff bouncing left and right, like a chip card ricocheting across the screens]
+
+[Breakdown: drums drop to a soft kick, only rain, piano and the motif played slowly, the calm before a match]
+
+[Build-Up: snare roll, risers, the bass climbing, a sense of a match about to start]
+
+[Chorus: full groove, the motif an octave up, guitar and vocoder trading phrases]
+Chip... Arena
+Oh-oh, oh-oh
+
+[Outro: back to the rain and the piano motif, seamless loop]
+
+[End]
+```
+
+Style field:
+
+```
+Main menu theme for a cyber arena game, 100 BPM, a pilot's rooftop above a rain-wet neon city at night: holo screens flickering with ads, flying cars streaming between towers, steam and mist, a duel flashing on a distant roof. Anime city-pop meets future funk and lo-fi house: warm Rhodes electric piano chords, round sub bass, crisp laid-back drums with a soft four-on-the-floor kick and swung hats, clean funky guitar licks, glossy synth pads, sparkling bell arpeggios, ping-pong delay bleeps bouncing like a ricochet, a short hopeful five-note signature motif that returns in every section. Cool, inviting, hopeful and a little restless, the calm before a match, easy to hear on repeat. Vocoder chops only, no lead singer. Seamless loop, no hard ending.
+```
