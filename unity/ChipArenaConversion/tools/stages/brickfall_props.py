@@ -81,12 +81,14 @@ def pier(g, T, hx, hy, hz, f, band=True, trim=None):
     """A brick pier on a stone base under a stone cap, its shaft's faces sunk between its corners; with the band."""
     trim = F['stone'] if trim is None else trim
     y0, y1 = -hy, hy
+    # (the shaft and the top stand a hair inside the block and under its top: the walls, panels and floors that meet a pier end
+    # in its faces' planes)
     sk.box(g, -hx - .04, hx + .04, y0, y0 + .5, -hz - .04, hz + .04, trim, T, .03, cell=0, skip=('-y',))
-    sk.box(g, -hx, hx, y0 + .5, y1 - .34, -hz, hz, f, T, .025, cell=(.9, 0, 0)[T.i], skip=('-y', '+y'))
-    sk.box(g, -hx - .05, hx + .05, y1 - .34, y1 - .12, -hz - .05, hz + .05, trim, T, .03, cell=0, skip=('-y',) if not T.detail else ())
-    sk.box(g, -hx, hx, y1 - .12, y1, -hz, hz, trim, T, .02, cell=0, skip=('-y',))
+    sk.box(g, -hx + .012, hx - .012, y0 + .5, y1 - .33, -hz + .012, hz - .012, f, T, .025, cell=(.9, 0, 0)[T.i], skip=('-y', '+y'))
+    sk.box(g, -hx - .05, hx + .05, y1 - .33, y1 - .12, -hz - .05, hz + .05, trim, T, .03, cell=0, skip=('-y',) if not T.detail else ())
+    sk.box(g, -hx + .012, hx - .012, y1 - .12, y1 - .015, -hz + .012, hz - .012, trim, T, .02, cell=0, skip=('-y',))
     if band:
-        bk.band(g, T, hx, hz, y0)
+        bk.band(g, T, hx - .012, hz - .012, y0)
 
 
 def base(g, T, hx, hy, hz):
@@ -169,7 +171,7 @@ def bearing(g, T, hx, hy, hz):
     """A skybridge's bearing: a riveted steel bracket with gussets on the building's side, banded (local +z: the bridge)."""
     f = F['green']
     # (its top a hair under the deck's and the floor's, which lie over it at the same height)
-    sk.box(g, -hx, hx, -hy, hy - .015, -hz, hz, f, T, .02, cell=0)
+    sk.box(g, -hx + .025, hx - .025, -hy, hy - .015, -hz, hz, f, T, .02, cell=0)
     fr = Frame((-hx, -hy, hz), (1, 0, 0))
     if T.detail:
         for x in (.12, 2 * hx - .12):
