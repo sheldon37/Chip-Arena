@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         public NativeBeamList Beams;
         public int Telegraph,Atmosphere,Lights,Aurora;
         private bool active;private string prepared;
-        private double[] lamp=Array.Empty<double>();private int lampCount;private double[] smoke=Array.Empty<double>();private int smokeCount;
+        private double[] lamp=Array.Empty<double>();private int lampCount;private double[] smoke=Array.Empty<double>();private int smokeCount;private double[] ice=Array.Empty<double>();private int iceCount;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz,quality;private bool low;
         private static double H(int a,int b=0,int c=0)=>NativePolarLooks.Hash(a,b,c);
         private static double Frac(double v)=>v-Math.Floor(v);
@@ -37,13 +37,14 @@ namespace ChipArena.UnityConversion
         /// <summary>The map's fixed lamps and smoke stacks, once per map (allocates; nothing for another map).</summary>
         public void Prepare(ContentMap map)
         {
-            if(map?.id==prepared)return;prepared=map?.id;active=NativePolarLooks.Active(map?.id);var lamps=new List<double>();var stacks=new List<double>();if(!active){lamp=smoke=Array.Empty<double>();lampCount=smokeCount=0;return;}
+            if(map?.id==prepared)return;prepared=map?.id;active=NativePolarLooks.Active(map?.id);var lamps=new List<double>();var stacks=new List<double>();var crystals=new List<double>();if(!active){lamp=smoke=ice=Array.Empty<double>();lampCount=smokeCount=iceCount=0;return;}
             void Lamp(double x,double y,double z,int hex,double size,double blink=0){lamps.Add(x);lamps.Add(y);lamps.Add(z);lamps.Add(hex);lamps.Add(size);lamps.Add(blink);}
             foreach(var b in map.blocks??Array.Empty<ContentBlock>())
             {
                 if(b?.id==null)continue;double top=b.pos.y+b.size.y/2,x0=b.pos.x-b.size.x/2,x1=b.pos.x+b.size.x/2,z0=b.pos.z-b.size.z/2,z1=b.pos.z+b.size.z/2;bool alongZ=b.size.x<b.size.z;
                 if(b.id.EndsWith("-roof",StringComparison.Ordinal)&&!b.id.StartsWith("polar-ship",StringComparison.Ordinal))
                 {double px=b.pos.x+(b.pos.x<0?1:-1)*(b.size.x/2-1.2),pz=b.pos.z+b.size.z/2-1.4;stacks.Add(px);stacks.Add(top+.9);stacks.Add(pz);stacks.Add(.5);}
+                else if(b.id.StartsWith("polar-spire-",StringComparison.Ordinal)||b.id.StartsWith("polar-floe-",StringComparison.Ordinal)){crystals.Add(b.pos.x);crystals.Add(b.pos.y);crystals.Add(b.pos.z);crystals.Add(b.size.x/2);crystals.Add(b.size.y/2);crystals.Add(b.size.z/2);}
                 else if(b.id.IndexOf("-lintel",StringComparison.Ordinal)>=0)
                 {double ox=alongZ?(b.pos.x-(b.pos.x<0?-26.8:26.8)>0?x1+.12:x0-.12):b.pos.x,oz=alongZ?b.pos.z:(b.pos.z-(b.pos.z>10?17.6:b.pos.z<-10?-18:0)>0?z1+.12:z0-.12);Lamp(ox,b.pos.y-.05,oz,Warm,1.5);}
                 else if(b.id.StartsWith("polar-mast-",StringComparison.Ordinal)||b.id=="polar-ship-mast"||b.id=="polar-obs-beacon")Lamp(b.pos.x,top+.2,b.pos.z,0xFF3020,2.0,1.6+H(1,(int)(b.pos.x*3))*1.2);
@@ -56,7 +57,7 @@ namespace ChipArena.UnityConversion
             // the icebreaker past the bound: her masthead and side lights, the funnel's stack
             Lamp(0,34.4,31.44,0xFF3020,3.2,2.6);Lamp(-3.75,29.75,31.44,0xFF3020,1.6);Lamp(3.75,29.75,31.44,0x30FF60,1.6);
             stacks.Add(0);stacks.Add(26);stacks.Add(40.04);stacks.Add(2.6);
-            lamp=lamps.ToArray();lampCount=lamp.Length/6;smoke=stacks.ToArray();smokeCount=smoke.Length/4;
+            lamp=lamps.ToArray();lampCount=lamp.Length/6;smoke=stacks.ToArray();smokeCount=smoke.Length/4;ice=crystals.ToArray();iceCount=ice.Length/6;
         }
 
         /// <summary>Fills <see cref="Quads"/>: the map's hazards and each segment's replicated state at field clock `now`, the camera
@@ -72,7 +73,7 @@ namespace ChipArena.UnityConversion
                 NativePolarLooks.SheetAt(d,st,t0,now,out double crack,out double sink,out bool open,out double since);Sheet(d,s,crack,sink,open,since,t);
             }
             for(int i=0;i<(map.hazards?.Length??0);i++){var h=map.hazards[i];if(h?.kind==NativeFactoryHazards.Vent)VentFx(h,round,clock,t,i);}
-            Smoke(t);Spindrift(t);Snow(t);LampHalos(t);Balloon(t);
+            Smoke(t);Spindrift(t);Snow(t);Glints(t);LampHalos(t);Balloon(t);
         }
         private int Count(int full)=>low?Math.Max(1,full/3):Math.Max(1,(int)Math.Round(full*(.35+.65*quality)));
 
@@ -244,6 +245,21 @@ namespace ChipArena.UnityConversion
             {
                 double fy=Frac(H(91,i)-t*(.09+.05*H(91,i,3))),fx=Frac(H(91,i,1)+t*.035+Math.Sin(t*.4+i)*.01),fz=Frac(H(91,i,2)+t*.012);
                 double x=ex+(fx-.5)*2*box,y=ey-3+fy*tall,z=ez+(fz-.5)*2*box;if(y<.02)continue;Sprite(x,y,z,.05+.05*H(91,i,4),.95,.97,1,.75*Math.Sin(fy*Math.PI),false);Atmosphere++;
+            }
+        }
+        // The ice's glints: a spark of the aurora's light catching a crystal's edge or a floe's face, each for a moment.
+        private void Glints(double t)
+        {
+            int per=low?1:3;
+            for(int i=0;i<iceCount;i++)
+            {
+                int o=i*6;
+                for(int k=0;k<per;k++)
+                {
+                    double period=2.6+3*H(i,k,61),u=Frac(t/period+H(i,k,62)),w=u<.24?Math.Sin(u/.24*Math.PI):0;if(w<=.02)continue;int cyc=(int)Math.Floor(t/period+H(i,k,62))%997;
+                    double sx=H(i,k*7+cyc,63)<.5?-1:1,face=H(i,k*7+cyc,64);double x=ice[o]+(face<.5?sx*(ice[o+3]+.03):(H(i,cyc,65)*2-1)*ice[o+3]),z=ice[o+2]+(face<.5?(H(i,cyc,66)*2-1)*ice[o+5]:sx*(ice[o+5]+.03)),y=ice[o+1]+(H(i,k+cyc,67)*1.6-.6)*ice[o+4];
+                    int hex=H(i,k,68)<.6?Ice:AuroraGreen;Hex(x,y,z,.16+.3*w,hex,.9*w,true,1.8);if(!low)HexStreak(x-rx*.5*w,y-ry*.5*w,z-rz*.5*w,x+rx*.5*w,y+ry*.5*w,z+rz*.5*w,.03,.03,hex,.7*w,1.6);Atmosphere++;
+                }
             }
         }
         private void LampHalos(double t)
