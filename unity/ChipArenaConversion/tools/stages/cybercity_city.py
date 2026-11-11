@@ -904,11 +904,10 @@ def bar(g, S, b, T, north):
     if T.detail:
         for u in (-wrd / 2, wrd / 2):
             rod(g, fr.at(u, tall, -.03), fr.at(u, tall + .9, -1.0), .025, F['steel'], 4, caps=False)
-        # the flue and a duct
+        # a low cowl and a hatch on the roof (nothing a pilot up there could walk through)
         c = fr.at(half - .8, tall, -2.6)
-        sk.cylinder(g, c, sk._add(c, (0, 1.3, 0)), .16, F['steel'], (8, 6, 4)[T.i], caps=False)
-        lathe(g, [(.26, 0), (.05, .16)], sk._add(c, (0, 1.36, 0)), F['steel'], (8, 6, 4)[T.i])
-        fr.box(g, -half + .4, -half + 2.2, tall, tall + .4, -3.2, -2.4, F['steel'], T, .03, skip=('-y',))
+        lathe(g, [(.3, 0), (.3, .12), (.12, .22), (1e-3, .23)], c, F['steel'], (8, 6, 4)[T.i])
+        fr.box(g, -half + .4, -half + 1.6, tall, tall + .12, -3.2, -2.2, F['steel'], T, .03, skip=('-y',))
     for p in S.parts(b):
         if p['look'] == 'neon':
             c, h = p['c'], p['h']
@@ -1259,12 +1258,12 @@ def planter(g, S, b, T):
     for i, p in enumerate(S.parts(b)):
         c, h = p['c'], p['h']
         if p['look'] == 'plain':
-            # a shrub: a few leafy mounds
+            # a clipped shrub: low leafy mounds (no higher than a pilot's ankle: nothing to walk through)
             n = 3 if T.i < 2 else 1
             for k in range(n):
                 u = (k - (n - 1) / 2) * h[0] * .7
                 r = min(h[0], h[2]) * (.75 + .3 * h01(b.id, 'shrub', i, k))
-                ck.ball(g, (c[0] + u, b.y1 + r * .55, c[2] + (h01(b.id, 'sz', i, k) - .5) * h[2] * .5), r, F['leaf'] if (i + k) % 2 else F['leaflight'], (8, 6, 5)[T.i], (5, 4, 3)[T.i], squash=.85)
+                ck.dome(g, (c[0] + u, b.y1, c[2] + (h01(b.id, 'sz', i, k) - .5) * h[2] * .5), r, F['leaf'] if (i + k) % 2 else F['leaflight'], (8, 6, 5)[T.i], (3, 2, 2)[T.i], squash=.24 / r)
         else:
             piece(g, S, b, p, T)
 

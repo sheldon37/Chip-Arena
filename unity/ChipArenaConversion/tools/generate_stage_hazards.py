@@ -112,6 +112,9 @@ def open_tops(m):
 # stand on anything they can reach.
 EDGES={'club':('club-top-wall','club-top-barrier','club-top-rail-mezz'),'emporium':('emporium-top-wall',),'sanctum':('sanctum-top-vault',),'causeway':()}
 OVERHANG={'club':('club-top-tower','club-top-cube'),'causeway':('causeway-spire-','causeway-gable-')}
+# Cyber City (2026-11-11, the art pass): its columns are the frontage's tops and the tunnel mouths (the map's edge; the art shows the
+# mouths' light gates) and the spires' tops at the ceiling (their crowns and masts stand on them). None opens onto a lethal drop.
+EDGES['cybercity']=('cybercity-frontage-top','cybercity-tunnel-');OVERHANG['cybercity']=('cybercity-spire-top',)
 def open_stage(m):
     sides=column_sides(m);keep=EDGES[m['id']]+OVERHANG.get(m['id'],());kept=[];bots=0
     for p in m['pilotBlocks']:
