@@ -73,9 +73,14 @@ namespace ChipArena.UnityConversion
             Debug.Log("PASS native texture imports: three base images preserved, mip chains retained and truncated pixels rejected");
         }
 #endif
+        // Under the logo intro the SourceModels JSON decodes on a worker from the top of Awake (NativeBankLoad.cs, docs/BOOT-
+        // INTRO.md); the bank still builds here, in presentation.Initialize, from the same data.
+        private static NativeBankLoad<SourceModelSet> prefetch;
+        public static void PrefetchAsync(){if(prefetch==null)prefetch=new NativeBankLoad<SourceModelSet>("SourceModels",(json,begin)=>JsonUtility.FromJson<SourceModelSet>(json));}
+        private static SourceModelSet Prefetched(){var load=prefetch;prefetch=null;return load?.Join();}
         public NativeSourceModels()
         {
-            var data=JsonUtility.FromJson<SourceModelSet>(Decode("SourceModels"));
+            var data=Prefetched()??JsonUtility.FromJson<SourceModelSet>(Decode("SourceModels"));
             foreach(var source in data.textures)textures.Add(CreateTexture(source));
             // Stage hazard parts (tools/export_hazards.mjs) share the source format; they carry no textures.
             var hazards=JsonUtility.FromJson<SourceModelSet>(Decode("HazardModels"));if(hazards.models.Any(m=>m.sections.Any(x=>x.texture>=0)))throw new InvalidDataException("Hazard models must not reference textures");

@@ -59,6 +59,8 @@ namespace ChipArena.UnityConversion
         {
             try
             {
+                // The logo intro's workers start first, so the banks decode while Awake goes on (NativeBootLoad.cs).
+                BootPrefetch();
                 var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new InvalidOperationException("GameContent.json is missing");
                 content=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(content);content.Validate();if(InitializeDedicated())return;
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR

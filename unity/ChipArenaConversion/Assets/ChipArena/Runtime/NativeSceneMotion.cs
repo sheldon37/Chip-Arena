@@ -16,8 +16,8 @@ namespace ChipArena.UnityConversion
         // read, the loading step's or an early caller's, waits for it.
         private static NativeBankLoad<Dictionary<string,NativeSceneClip>> loading;
         public static void PrewarmAsync(){if(clips==null&&loading==null)loading=new NativeBankLoad<Dictionary<string,NativeSceneClip>>("SceneMotion",Build);}
-        /// <summary>The bank reads without waiting (it is in, or its worker has finished). Steps a background load.</summary>
-        public static bool Ready{get{if(clips!=null)return true;if(loading==null)return false;loading.Step();return loading.Done;}}
+        /// <summary>The bank reads without waiting (it is in, or its worker has finished).</summary>
+        public static bool Ready=>clips!=null||loading!=null&&loading.Done;
         private static void Ensure()
         {
             if(clips!=null)return;
