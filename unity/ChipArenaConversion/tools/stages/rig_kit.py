@@ -52,7 +52,7 @@ def finishes():
     F['white'] = A.fin('dw-white', 0xFFFFFF, glow=1.0)
     # the sea
     F['sand'] = A.fin('dw-sand', 0x5A665C, A.DETAIL_NONE, smooth=.08, dirt=.7)
-    F['silt'] = A.fin('dw-silt', 0x3F4B48, A.DETAIL_NONE, smooth=.06, dirt=.7)
+    F['silt'] = A.fin('dw-silt', 0x4C5852, A.DETAIL_NONE, smooth=.06, dirt=.7)
     F['rock'] = A.fin('dw-rock', 0x2F3A3E, A.DETAIL_NONE, smooth=.1, dirt=.6)
     F['rockpale'] = A.fin('dw-rockpale', 0x566058, A.DETAIL_NONE, smooth=.1, dirt=.6)
     F['coral'] = A.fin('dw-coral', 0xD0627C, A.DETAIL_NONE, smooth=.2, dirt=.3)
