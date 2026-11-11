@@ -381,3 +381,12 @@ columns, the numbers). What it adds to the recipe:
   cascade.
 - **Pilot columns of an older stage** go through `open_stage` with the nav computed before the columns open, so the nav (and the
   catalogue's size) does not change.
+
+## 13. The 2026-11-11 stage revamp: every stage's page
+
+The owner's revamp of the older stages (each built by its own agent on its own branch, merged on `claude/stage-revamp`):
+- Rebuilt from scratch, layout and art together: Pier 9 (docs/arenas/HARBOR.md), Deepwell (DEEPWELL.md), Polaris Station
+  (POLAR.md), Skyframe (SKYFRAME.md, section 11 above).
+- Art passes on a kept layout: Brickfall (BRICKFALL-ART.md: breakable blocks as models posed by their blocks, landed rubble as
+  heaps, `DETAIL_BRICK`), Ward Zero (WARDZERO-ART.md: both records on one bank, movers and Hulk walls posed), the Factory
+  (FACTORY-ART.md, section 12 above), Cyber City (CYBERCITY-ART.md).
