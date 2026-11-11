@@ -8,7 +8,7 @@
   - Credited in `docs/ASSET-CREDITS.md` "Logo intro", with a receipt in `tools/asset-lock.json`.
   - Its last frame is `Resources/BootIntroLogo.jpg`, held after a skip.
 - **The intro** (`Runtime/NativeBootIntro.cs`; the timeline is Core `NativeBootIntroFlow`):
-  - It plays full screen after Unity's splash, letterboxed 16:9 on black.
+  - Black from about 1.2 s after launch (its curtain), then the clip full screen, letterboxed 16:9 on black.
   - Its sound plays at the Menu Music level, levelled to the menu song (x0.72); Mute audio silences it.
   - A click, Esc, Enter or Space (pad A, B, Start) skips it after 0.5 s.
   - If the game is not ready when it ends or is skipped, the final logo holds and an orange dot ring with "LOADING" fades in after 0.3 s.
@@ -21,19 +21,37 @@
   - Awake otherwise runs as before, in the same order; without the intro it is unchanged.
   - Then, one step a frame: the banks are joined; the model's bake, outfit table and icon sets come in by LoadAsync; and once the clip settles on its logo (8.1 s), the menu's scene and then its GUI draw twice each under it.
   - LateFrame and OnGUI wait until their step, and Update takes no input under the intro. A one-token hook in NativeAudio holds the menu song (`MenuHeld`).
-- **Measured** (Windows Development builds with a scratch probe that was never committed, RTX 4090, 1600x900, fresh preferences):
-  - **Frames while the clip moves (0-8.1 s):** 1166 frames, mean 6.9 ms, p99 7.1 ms, max 7.6-9.4 ms, none over 20 ms (144 fps cap).
-  - **Under the settled logo:** the menu's build lands there: 0.35, 0.03, 0.23, 0.08 s.
-  - **Launch to an interactive menu:** before 11.0-11.2 s, with a 0.8-0.9 s frozen first menu frame. After: 17.2-17.5 s when the clip plays out; 8.3-8.4 s when it is skipped at 0.5 s.
-  - **The clip's first frame** comes 7.1-7.5 s after launch. Before, the menu's first frame came at 10.2-10.3 s.
-  - **The first 3 s of menu:** p99 22-24 ms, max 38-41 ms before; p99 10-11 ms, max 15-16 ms after.
-- **Still on the main thread before the first frame**, a grey window after Unity's splash for about 4.1 s:
-  - the maps, 0.75 s (content: Astra's side);
-  - presentation.Initialize, 2.6 s, mostly NativeSourceModels' procedural builds: `HordeKindModels` 1.1 s, `HelmModels` 0.47 s, `WeaponSkins` 0.23 s.
-  - These are the next to move, by their owners: built lazily, or under the settled logo.
-- **Unity's splash** shows in builds (Player Settings, not tracked) and plays before the intro. Turning it off, or making its background black, is a Player Settings call for the owner or Astra; nothing here changes it.
+  - **Sculpts on a worker:** Core `NativeBootSculpts` makes the pure geometry behind NativeSourceModels' slowest builds on a worker from the same hook (229 jobs: the minion kinds and zone props, the robot helmets, the Standard weapons; about 1.7 s on the worker).
+    - The builders (`HordeKindModels`, `IronworksModels`, `StationPropModels`, `HelmModels`, `WeaponSkins`) still run in presentation.Initialize, in the same order, and make every mesh and material there.
+    - Each takes its sculpt (`NativeBootSculpts.Take`, which waits for the whole worker the first time, so nothing sculpts beside it after that), or sculpts it itself as before.
+    - CoreTests hold the worker's results, made beside a thread making them again, byte for byte to the single-threaded ones.
+    - `HordeKindModels` went from 1.1 s to 0.18 s on the main thread, and `HelmModels` from 0.47 s to 4 ms.
+  - **The curtain:** with the intro to play, `ConversionGame.Boot` raises the intro's black curtain and makes the game one frame later (`NativeBootDefer`). Without the splash, the window showed white until the first frame, through Awake.
+    - Awake is unchanged.
+    - The curtain neither plays nor runs its clock until Awake arms it.
+    - An unarmed curtain (Awake failed, or chose no intro) comes down at once.
+- **Unity's splash is off** (owner: "Yes, remove it"): `m_ShowUnitySplashScreen: 0` in the tracked `ProjectSettings/ProjectSettings.asset`, in its own commit, the only Player Settings change. The build shows `PlayerSettings.SplashScreen.show=False`.
+- **Measured** (Windows Development builds with a scratch probe that was never committed, RTX 4090, 1600x900, fresh preferences; 3 runs each, 2 for skips):
+  - **Launch to anything on screen:**
+    - before: the menu at 10.2-10.3 s;
+    - intro with the splash: the clip at 7.1-7.5 s;
+    - now: black at 1.2 s and the clip at 3.3-3.7 s.
+  - **Launch to an interactive menu:**
+    - before: 11.0-11.2 s, with a 0.8-0.9 s frozen first menu frame;
+    - intro with the splash: 17.2-17.5 s played out, 8.3-8.4 s skipped at 0.5 s;
+    - now: 13.4-13.7 s played out, 4.6 s skipped at 0.5 s.
+  - **Frames while the clip moves (0-8.1 s):** 1165-1166 frames, mean 6.9-7.0 ms, p99 7.1-7.3 ms, max 7.6-10.3 ms, none over 20 ms (144 fps cap).
+  - **Under the settled logo:** the menu's build lands there: 0.35, 0.03, 0.21, 0.08 s.
+  - **The first 3 s of menu:** p99 22-24 ms, max 38-41 ms before; p99 8.5-9.5 ms, max 12-14 ms now.
+- **Still on the main thread before the clip** (black now, Awake about 2.4 s):
+  - **For Astra:** the maps loader, `NativeUnityMapLoader.Load` (UnityMaps.json, 23.6 MB, parsed and merged into the content), takes 0.9 s. It is content, so I left it alone. Its JSON could decode on a worker from the same BeforeSplashScreen hook.
+  - presentation.Initialize, 1.3 s: the source models' meshes and materials, `MachineSkins` 0.16 s, `ModelHats` 0.17 s, `SuitModels` 0.07 s, `CapturedAnimation` 0.17 s.
 - **Package:** `Packages/manifest.json` gains `com.unity.modules.video` in its own commit. The project had no Video module, so this one line is needed for the VideoPlayer. It is the only manifest change; it is in the 6000.3.24f1 catalog and passes `package_source.py`. Accepted by the integrating session (a built-in module the feature needs).
-  - **For capture scripts:** once this lands on shared, a script that runs `git checkout --detach` in the Editor checkout must cross this file with `git checkout -m`. That checkout carries a local `com.unity.shadergraph` edit to `Packages/manifest.json`, and a plain checkout between commits that differ there is refused.
+  - **For capture scripts:** once this branch lands on shared, a script that runs `git checkout --detach` in the Editor checkout must cross two files with `git checkout -m`. That checkout carries local edits to both:
+    - `Packages/manifest.json` (a `com.unity.shadergraph` line);
+    - `ProjectSettings/ProjectSettings.asset` (Unity's full serialisation; this branch adds `m_ShowUnitySplashScreen: 0`).
+    A plain checkout between commits that differ there is refused.
+  - **A refresh does not resolve packages:** after crossing the manifest change, `AssetDatabase.Refresh` (the BoZo refresh request) compiled without the Video module and failed. The Package Manager must resolve first; the local tool now takes `Temp/bozo-resolve.request` (`Client.Resolve()`).
 - **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement, network or save change; presentation and load order only.
 - **Checks:**
   - CoreTests `--boot-intro`: 82 checks (rules, timeline, letterbox, the clip's size, hash, metas, receipt and credits, and the wiring and order).
