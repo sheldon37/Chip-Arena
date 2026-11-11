@@ -164,9 +164,11 @@ def wall(g, b, T, seed):
         s.box(g, a - wide / 2, a + wide / 2, L0, LW - .45, 0, .2, F['dressed'], T, bevel=.03, skip=('+z',))
         if T.i < 2:
             g.face((s.P(a - wide / 2, LW - .45, .2), s.P(a + wide / 2, LW - .45, .2), s.P(a + wide / 2, LW - .2, 0), s.P(a - wide / 2, LW - .2, 0)), F['coping'], normal=(0, .6, -.8))
-    for xa, xb in zip(piers[:2], piers[1:3]):
+    for k, (xa, xb) in enumerate(zip(piers[:2], piers[1:3])):
         s.arch(g, s.at((xa + xb) / 2), .62, L0 + .34, 1.15, .62, .008, F['deep'], F['dressed'], T)
-        if T.i < 2:
+        if k == (0 if west else 1):
+            bk.lifebuoy(g, s, s.at((xa + xb) / 2), 1.12, T)             # a lifebuoy in the bay nearer the end
+        elif T.i < 2:
             bk.ring(g, ((xa + xb) / 2, .95, z0), (0, 0, -1), .12, .02, F['rust'], T, hang=.08)
     ashlar(g, s, vis0, vis1, LW - .9, LW - .36, T, seed + 5, course=.54)
 
@@ -503,12 +505,18 @@ def hall(g, sx, T, R):
         ashlar(g, front, 2.72, 5, .4, 4.3, T, 62)
         ashlar(g, front, -.5, .5, 2.7, 4.3, T, 63)
         front.mould(g, STRING, 4.5, a0, a1, F['coping'], T)
+        # a net hung to dry on the south pier, a lifebuoy on the north one
+        a0n, a1n = span(front, -4.3, -2.9)
+        bk.net(g, front, a0n, a1n, .5, 2.35, T, 3)
+        bk.lifebuoy(g, front, front.at(3.6), 1.6, T)
         # the harbour board's bronze on the middle pier
         front.box(g, front.at(0) - .3, front.at(0) + .3, 1.25, 2.3, 0, .045, F['bronze'], T, bevel=.012)
     else:
         front.quad(g, a0, a1, 4.05, 4.75, .008, F['band'])
         quoins(g, (min(xf, xb), max(xf, xb), 0, 5, -5, 5), L0, 5.0, T, corners=((-sx, 1), (-sx, -1)))
         front.box(g, front.at(0) - .3, front.at(0) + .3, 1.25, 2.3, 0, .045, F['band'], T, bevel=.012)
+        bk.lifebuoy(g, front, front.at(-3.6), 1.6, T)
+        bk.lifebuoy(g, front, front.at(3.6), 1.6, T)
     front.mould(g, CORNICE, 5.4, a0 - .2, a1 + .2, F['coping'], T)
     panel(g, front, -5, 5, 5.0, 5.2, F[wallf], T)
     # ---- the sides and the back (outside): seen from the walk, the quay and outside the map
@@ -723,6 +731,11 @@ def static_scene(L, T):
         elif i.startswith('breakwater-bollard-'):
             e = ext(b)
             bk.bollard(g, (e[0] + e[1]) / 2, e[2], (e[4] + e[5]) / 2, T, r=(e[1] - e[0]) / 2 - .02, h=e[3] - e[2])
+            if T.i < 2 and 'quay' not in i:
+                cxb, czb = (e[0] + e[1]) / 2, (e[4] + e[5]) / 2
+                sgn = 1 if cxb < 0 else -1
+                bk.rope_line(g, [(cxb, e[2] + .3, czb - .3), (cxb + sgn * .2, e[2] + .06, czb - .5), (cxb + sgn * .5, e[2] + .05, -5.06), (cxb + sgn * .6, e[2] - .5, -5.1), (cxb + sgn * .62, e[2] - 1.3, -5.06)], T)
+                bk.rope_coil(g, cxb - sgn * .8, e[2], czb + .55, .32, T)
             if T.i < 2 and 'quay' in i:
                 bk.rope_coil(g, (e[0] + e[1]) / 2 + (.75 if e[0] < 0 else -.75), e[2], (e[4] + e[5]) / 2 + .5, .3, T)
         elif i.startswith('breakwater-lamp-'):

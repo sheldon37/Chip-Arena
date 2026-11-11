@@ -210,3 +210,40 @@ Aaah, aaah, aaah
 The owner's songs are in (2026-11-10): Celestial Bell Motif, Neon Substation, Hot Dog Palace and Moonlit Ostinato, packaged like
 the eight above (the original MP3 bytes, streaming import, full-track looping; durations are ffprobe's). Each placeholder remains
 only as its record's fallback. Neon Substation runs at about 132 BPM rather than 128 (see docs/arenas/CLUB.md "Music").
+
+## The 2026-11-11 rebuilds
+
+### Breakwater — Storm Light
+
+Breakwater was rebuilt on 2026-11-11 (docs/arenas/BREAKWATER.md): a storm-battered granite mole at blue hour, the lighthouse turning
+at its head, seas breaking over the wave wall. It keeps the owner's **Last Light Duel** (`breakwater-arena-duel`) as its track; this
+brief is for a new song if the owner wants one for the rebuilt stage (it would take the same place: NativeStageMusic.Theme's
+`breakwater` entry, under the key `breakwater-theme`).
+
+Instrumental duel soundtrack, 132 BPM, a storm-battered stone breakwater at blue hour, a lighthouse sweeping its beam through rain and sea spray. Tense nautical breakbeat: tight dry drums with rolling floor toms like breaking waves, a deep swelling analog bass that rises and falls in four-bar swells, a lonely descending four-note motif on muted bell and brass-band cornet, tremolo strings like wind in rigging, a distant ship's bell on the off-beat, bowed cymbal washes. Cold, wide, brave, salt-bitten; one-on-one focus. Every eight bars a swell builds and breaks. No vocals. Clean loopable ending.
+
+Lyric field:
+
+```
+[Intro: wind and a slow ship's bell, a lone muted cornet plays a descending four-note motif over a low swell of bass]
+
+[Build-Up: floor toms roll in like a wave gathering, tremolo strings rise, the bell quickens]
+
+[Main Theme: tight breakbeat, swelling bass, the four-note motif in bell and cornet together, strings answering]
+Ooh, ooh
+Ooh, ooh
+
+[Instrumental Break: drums and bass alone, toms rolling and breaking every four bars, bowed cymbal spray]
+
+[Breakdown: the beat drops out, only the lighthouse motif on a soft bell, wind, a held low note]
+
+[Build-Up: snare roll, the swell rises, strings climb]
+
+[Climax: full band, the motif shouted by brass over the breakbeat, the wave breaks on every downbeat]
+Ooh, ooh
+Ooh, ooh
+
+[Outro: drums thin to the bell and the bass swell, the cornet repeats the motif, seamless loop]
+
+[End]
+```

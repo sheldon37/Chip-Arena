@@ -111,9 +111,10 @@ for side, (x0, x1, off) in enumerate(((-WASH[1], -WASH[0], 0.0), (WASH[0], WASH[
 # ---- spawns (x, z, floor); yaw from +z toward +x, facing the origin
 teamA = [(-19.9, 3.6, L0), (-19.9, -3.6, L0), (-18.2, 3.6, L0), (-18.2, -3.6, L0)]
 teamB = [(-x, z, y) for x, z, y in teamA]
-ffa_names = ['A1', 'B1', 'A2', 'B2', 'q', 'Q', 'w', 'W']
+# (FFA order: the first four, a four-pilot room's, stand two at each end on four different floors and rooms)
+ffa_names = ['A1', 'B2', 'W', 'q', 'A2', 'B1', 'Q', 'w']
 _q, _w = (-19.3, -6.9, LQ), (-19.6, 6.6, LW)
-ffa = [teamA[0], teamB[0], teamA[1], teamB[1], _q, (-_q[0], _q[1], _q[2]), _w, (-_w[0], _w[1], _w[2])]
+ffa = [teamA[0], teamB[1], (-_w[0], _w[1], _w[2]), _q, teamA[1], teamB[0], (-_q[0], _q[1], _q[2]), _w]
 def yaw(p): return (math.degrees(math.atan2(-p[0], -p[1])) + 360) % 360
 
 # ---- pilot-only exclusion columns (infinite upward). The integration (tools/generate_stage_hazards.py open_stage) keeps for everyone
@@ -155,7 +156,7 @@ def paint():
                 for z in (z0 + .5, z1 - .5): rect(x0, x1, z, z + .25, '~')
         for e in sorted(els, key=lambda e: e['box'][3]):
             if in_slice(e, h) and not e['plate'] and e['ch'] != '/' and e['box'][2] >= h - .05: b = e['box']; rect(b[0], b[1], b[4], b[5], e['ch'])
-        for nm, (x, z, y) in [('1234'[i], p) for i, p in enumerate(teamA)] + [('5678'[i], p) for i, p in enumerate(teamB)] + list(zip(ffa_names[4:], ffa[4:])):
+        for nm, (x, z, y) in [('1234'[i], p) for i, p in enumerate(teamA)] + [('5678'[i], p) for i, p in enumerate(teamB)] + [(n, p) for n, p in zip(ffa_names, ffa) if n in 'qQwW']:
             if abs(y - h) < .05: put(x, z, nm)
         out.append(name + '   (1 char = 0.5 m x 1 m)')
         for r in range(R): z = BOUNDS['maxZ'] - r; out.append(f'{z-1:+6.1f}..{z:+5.1f} ' + ''.join(g[r]))
@@ -271,7 +272,7 @@ def png(path, scale=12):
             if in_slice(e, h) and not e['plate'] and e['ch'] != '/' and e['box'][2] >= h - .05: b = e['box']; fill(k, b[0], b[1], b[4], b[5], col.get(e['ch'], (128, 128, 128)), .6 if e['box'][3] - e['box'][2] < 1.25 else 1.0)
         for i, p in enumerate(teamA + teamB):
             if abs(p[2] - h) < .05: fill(k, p[0] - .4, p[0] + .4, p[1] - .4, p[1] + .4, (60, 200, 255) if i < 4 else (255, 90, 120))
-        for p in ffa[4:]:
+        for p in [q for n, q in zip(ffa_names, ffa) if n in 'qQwW']:
             if abs(p[2] - h) < .05: fill(k, p[0] - .4, p[0] + .4, p[1] - .4, p[1] + .4, (250, 250, 250))
     raw = b''.join(b'\x00' + bytes(img[j * W * 3:(j + 1) * W * 3]) for j in range(H))
     ch = lambda t, d: struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)

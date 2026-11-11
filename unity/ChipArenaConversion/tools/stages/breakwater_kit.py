@@ -468,3 +468,43 @@ def wave(g, half, height, depth, T, f, f_foam, curl=.0, foam=.22, ends=.35):
     c_j = max(1, round(n * .36))
     grid_surface(g, P, f, inside=(0, -height * 4, 0), fin_fn=lambda i, j: f_foam if (foam > 0 and abs(j + .5 - c_j) < max(.9, n * foam / 2) and 0 < i < m - 1) else f)
     return P
+
+
+def lifebuoy(g, fc, a, y, T, r=.3, t=.07):
+    """A lifebuoy hung on a face: red and white quarters, a grab line round it, the peg it hangs on."""
+    seg = (16, 8, 8)[T.i]
+    sides = (6, 4, 3)[T.i]
+    for q in range(4):
+        n = seg // 4
+        path = [fc.P(a + math.cos(2 * math.pi * (q * n + k) / seg) * r, y + math.sin(2 * math.pi * (q * n + k) / seg) * r, t + .02) for k in range(n + 1)]
+        sk.tube(g, path, t, F['red' if q % 2 == 0 else 'hullwhite'], sides, caps=False)
+    if T.i < 2:
+        fc.box(g, a - .03, a + .03, y + r - .02, y + r + .1, 0, .12, F['ironplain'], T, bevel=.008)
+        path = [fc.P(a + math.cos(2 * math.pi * k / 8) * (r + t + .04), y + math.sin(2 * math.pi * k / 8) * (r + t + .04) - .02, t + .02) for k in range(8)]
+        sk.tube(g, path, .012, F['rope'], 3, closed=True)
+
+
+def net(g, fc, a0, a1, y0, y1, T, seed):
+    """A net hung to dry on a face: its mesh in sagging folds, cork floats along its head rope."""
+    cols = (10, 5, 2)[T.i]
+    rows = (5, 3, 1)[T.i]
+    P = np.zeros((cols + 1, rows + 1, 3))
+    for i in range(cols + 1):
+        for j in range(rows + 1):
+            u, v = i / cols, j / rows
+            sag = .12 * math.sin(math.pi * u) * (1 - v) + .05 * math.sin(u * 9 + seed) * v
+            d = .04 + .05 * (.5 + .5 * math.sin(u * 14 + v * 3 + seed))
+            P[i, j] = fc.P(a0 + (a1 - a0) * u, y1 - (y1 - y0) * v - sag * (1 - v), d)
+    c = fc.P((a0 + a1) / 2, (y0 + y1) / 2, -2)
+    grid_surface(g, P, F['net'], inside=c)
+    if T.i < 2:
+        for i in range(0, cols + 1, 2):
+            p = P[i, 0]
+            lathe(g, [(.0, -.06), (.045, -.03), (.045, .03), (.0, .06)], (p[0] + fc.n[0] * .03, p[1], p[2] + fc.n[2] * .03), F['red' if i % 4 == 0 else 'plank'], 5, axis=fc.u)
+
+
+def rope_line(g, pts, T, r=.03):
+    """A mooring rope lying along a floor (or over an edge) through the points."""
+    if T.i == 2:
+        return
+    sk.tube(g, sk.catmull(pts, per=(5, 3)[T.i]), r, F['rope'], (5, 4)[T.i])
