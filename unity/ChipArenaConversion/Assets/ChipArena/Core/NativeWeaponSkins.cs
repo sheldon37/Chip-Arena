@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         public static readonly string[] SeriesWeapons={"pistol","rifle","machinegun"};
         public static readonly string[] SeriesKeys={Arsenal,Arsenal2};
         private static readonly string[] GunKeys={Standard,Prototype,Arsenal,Arsenal2};
-        private static readonly string[][] SeriesLabels={new[]{"Arsenal Service","Arsenal Heavy"},new[]{"Arsenal Marksman","Arsenal Ranger"},new[]{"Arsenal Carbine","Arsenal Gunner"}};
+        private static readonly string[][] SeriesLabels={new[]{"Arsenal Service","Arsenal Heavy"},new[]{"Arsenal Recon","Arsenal Ranger"},new[]{"Arsenal Carbine","Arsenal Gunner"}};
         private static readonly string[][] GunLabels=System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(SeriesLabels,l=>new[]{Labels[0],Labels[1],l[0],l[1]}));
         private static readonly string[][] SeriesEntries=System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(SeriesWeapons,w=>new[]{w+"@"+Arsenal,w+"@"+Arsenal2}));
         public static bool HasSeries(string spec)=>spec!=null&&Array.IndexOf(SeriesWeapons,spec)>=0;

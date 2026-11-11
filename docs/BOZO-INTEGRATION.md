@@ -1074,6 +1074,26 @@ owner's new packs (POLY Mega Weapons Kit, SciFantasy Sword Pack; `docs/ASSET-CRE
   - Presentation only: aim, muzzle rules, reach, hit volumes, timing and the wire are unchanged.
 - **Builds:** the packed bake grows to 202 files and 19.3 MB (the kit meshes, texture and the cut machine-gun mesh, the two
   sword meshes and the sword texture's copy).
+- **The guns' Arsenal Series** (owner 2026-11-10, "Low Poly Weapon Bundle Pack V" by CASTLE BRAVO, licensed, never committed):
+  two more models for each gun, picked per gun in the Locker's Skins tab like a finish.
+  - The picks are two more keys of the gun's skin entry, `arsenal` and `arsenal2` (`Core/NativeWeaponSkins.cs`): pistol
+    `CW_Pistol_C` (Arsenal Service) and `Pistol_R` (Arsenal Heavy); rifle `Recon_R_PreSet` (Arsenal Recon) and
+    `WWII_Recon_B_PreSet` without its suppressor (Arsenal Ranger), both scoped; machine gun `AR_AA_PreSet` (Arsenal Carbine)
+    and `WWII_LMG_B` (Arsenal Gunner).
+  - A series pick is the Standard finish holding another model: `NativeWeaponSkins.Index` reads it as Standard, so the
+    muzzle flash, chip modules, kit pieces, sounds and every rule are the Standard gun's; `Series` names the model.
+  - The bake carries each as its own `VisualWeapons` entry beside the gun's Standard one, named `spec@key`
+    (`pistol@arsenal`), with the same `Model`, `Fit`, `Support`, `Stock` and `Sight`. The local tool's weapons table has a
+    `Skin` for them, `Forward` (the pack's bore is +z; the model is turned into the kit's frame) and `Drop` (parts left out).
+    `bozo-weapons.request` with `dry=1` builds the entries on a scratch object and draws their sheets without touching the
+    bake, for fitting.
+  - The visual body holds the picked model wherever the Standard one would draw (third person, first person, portraits, the
+    Locker's stage). Where the bake has no such entry (an install without the local bake, the Classic body, an older
+    client) the Standard gun draws, and the Locker offers a series model only where the bake carries it.
+  - The keys are no longer than `prototype`, so the longest skin map and the seat frame's limit are unchanged. An older
+    client or host drops a key it does not know (Standard).
+  - Not done here (Astra): the account service's allowlist (`src/relay/accounts.ts` `WEAPON_SKINS`) accepts only
+    `standard` and `prototype`, so a signed-in pilot's series pick is dropped when the profile is saved and read back.
 - **Checks:** `--visual-rig` (wiring), and Play mode on Moonlit with each weapon:
   - every grip sits in its fist; the rifle and machine gun are shouldered with the support hand on the handguard; the pistol
     is held two-handed;
