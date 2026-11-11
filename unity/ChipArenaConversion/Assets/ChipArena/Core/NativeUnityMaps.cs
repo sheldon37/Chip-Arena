@@ -16,7 +16,9 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class MapTeamSpawns { public int side; public MapSpawn[] points; }
     [Serializable] public sealed class MapSpawns { public MapSpawn[] ffa; public MapTeamSpawns[] teams; }
     [Serializable] public sealed class MapVolume { public V3 center,size; }
-    [Serializable] public sealed class MapPilotBlock { public string id; public V3 center,size; public float bottom; }
+    /// <summary>A pilot-only exclusion column, infinite upward from `bottom`. `bots`: it stops only bots (owner 2026-11-10: a column at a
+    /// lethal drop keeps bots from vaulting a rail into the void, while players may jump over or be knocked over it and fall).</summary>
+    [Serializable] public sealed class MapPilotBlock { public string id; public V3 center,size; public float bottom; public bool bots; }
     [Serializable] public sealed class MapNavNode { public string id; public V3 pos; public int layer;public bool safe; }
     [Serializable] public sealed class MapNavLink { public string id,a,b; public string kind="walk"; public string[] requires=Array.Empty<string>(),after=Array.Empty<string>(),hazards=Array.Empty<string>(); }
     [Serializable] public sealed class MapNav { public MapNavNode[] nodes; public MapNavLink[] links; }
@@ -94,13 +96,14 @@ namespace ChipArena.UnityConversion
             {int side=groups[0].Key==seats[index].team?0:1;int seat=seats.Take(index).Count(s=>s.team==seats[index].team);return m.spawns.teams.First(t=>t.side==side).points[seat];}
             return m.spawns.ffa[Math.Min(index,7)];
         }
-        // Infinite upward columns cannot become a standable ceiling, including at extreme chip jump heights.
-        public static V3 ExcludeTops(ContentMap m,V3 p)
+        // Infinite upward columns cannot become a standable ceiling, including at extreme chip jump heights. `bot`: the pilot is a bot (a
+        // bots-only column stops it; a player passes one).
+        public static V3 ExcludeTops(ContentMap m,V3 p,bool bot=true)
         {
             var original=p;
             foreach(var v in m.pilotBlocks??Array.Empty<MapPilotBlock>())
             {
-                if(p.y+.85f<v.bottom)continue;float loX=v.center.x-v.size.x/2-PilotRadius,hiX=v.center.x+v.size.x/2+PilotRadius,loZ=v.center.z-v.size.z/2-PilotRadius,hiZ=v.center.z+v.size.z/2+PilotRadius;
+                if(p.y+.85f<v.bottom||v.bots&&!bot)continue;float loX=v.center.x-v.size.x/2-PilotRadius,hiX=v.center.x+v.size.x/2+PilotRadius,loZ=v.center.z-v.size.z/2-PilotRadius,hiZ=v.center.z+v.size.z/2+PilotRadius;
                 if(p.x<=loX||p.x>=hiX||p.z<=loZ||p.z>=hiZ)continue;
                 float[] gaps={p.x-loX,hiX-p.x,p.z-loZ,hiZ-p.z};int n=Array.IndexOf(gaps,gaps.Min());if(n==0)p.x=loX-.01f;else if(n==1)p.x=hiX+.01f;else if(n==2)p.z=loZ-.01f;else p.z=hiZ+.01f;
             }return m.bounds!=null&&(p-original).Length>.0001f?Clamp(m,p):p;

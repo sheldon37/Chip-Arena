@@ -12,7 +12,10 @@ LW, L0, LC = -3.2, 0.0, 4.4                    # the lower walkways, the span (p
 X0, X1, Z0, Z1 = -38, 38, -9.8, 9.8            # the structure's extent (towers x +-38, walkways z +-9.8)
 # The sim clamps bots, abilities and teleports to the bounds minus the capsule (NativeUnityMaps.Clamp), not walking pilots: the bounds
 # run 4 m past every open edge, so a pilot who walks, jumps short or is blown off falls into the void and dies at killY.
-BOUNDS = {'minX': -42, 'maxX': 42, 'minZ': -14, 'maxZ': 14, 'ceiling': 24, 'killY': -10}
+# killY -6 (owner 2026-11-10: "On the bridge, we can let people get knocked off the map. Its a instant death when falling off"; was
+# -10): a body's middle below it dies, about half a second after it leaves the span or the walkways; one standing on the lowest
+# floor (the walkways' top, -3.2) is 3.7 m clear of it.
+BOUNDS = {'minX': -42, 'maxX': 42, 'minZ': -14, 'maxZ': 14, 'ceiling': 24, 'killY': -6}
 els = []   # dict: id, mat, role, box (x0,x1,y0,y1,z0,z1), ch, hp, plate (a walkable floor: decks, plazas, walkways, crowns)
 SWAP = {'n': 's', 's': 'n', 'w': 'e', 'e': 'w', 'a': 'b', 'b': 'a'}
 def mirror_id(i): return '-'.join(SWAP.get(t, t) for t in i.split('-'))
@@ -337,8 +340,11 @@ if __name__ == '__main__':
     inb = all(BOUNDS['minX'] + 4 <= x <= BOUNDS['maxX'] - 4 and BOUNDS['minZ'] + 4 <= z <= BOUNDS['maxZ'] - 4 for x, z, y in sp)
     print('all spawns inside the bounds minus 4 m:', inb); need(inb, 'bounds')
     past = [e['id'] for e in els if e['box'][0] < BOUNDS['minX'] + 4 - 1e-6 or e['box'][1] > BOUNDS['maxX'] - 4 + 1e-6 or e['box'][4] < BOUNDS['minZ'] + 4 - 1e-6 or e['box'][5] > BOUNDS['maxZ'] - 4 + 1e-6]
-    print('blocks within 4 m of the bounds (the void must run 4 m past every edge): %s; lowest block base %.1f, killY %d' % (past or 'none', min(e['box'][2] for e in els), BOUNDS['killY']))
-    need(not past and min(e['box'][2] for e in els) > BOUNDS['killY'], 'open edges')
+    # The lowest floor a pilot can stand on keeps its body (its middle .9 m up) clear of killY by 2 m; the walkways' thick undersides
+    # may hang past it (nothing stands on an underside).
+    low_top = min(e['box'][3] for e in els if e['plate'])
+    print('blocks within 4 m of the bounds (the void must run 4 m past every edge): %s; lowest floor %.1f, killY %d' % (past or 'none', low_top, BOUNDS['killY']))
+    need(not past and low_top + .9 - 2 > BOUNDS['killY'], 'open edges')
     band = [e['id'] for e in els if e['ch'] not in '-/' and not e['plate'] and 1.3 < e['box'][3] - base_of(e) < 2.2]
     print('blocks topping out 1.3..2.2 m over their level:', band or 'none'); need(not band, 'cover band')
     pil_ids = {p['id'] for p in PILOT}; miss = [e['id'] for e in els if needs_pilot(e) and e['id'] + '-top' not in pil_ids]

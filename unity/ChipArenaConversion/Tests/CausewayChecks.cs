@@ -131,7 +131,7 @@ namespace ChipArena.UnityConversion
             }
             Check(map.blocks.Count(b=>NativeCausewayLooks.KitBlock(b.id))==18,"eighteen sculpted blocks (four wardens, two watchers, six braziers, six fallen drums)");
             // the Shattered Arch: every stone at least Clearance over every standable top under it, at any time
-            var tops=map.blocks.Where(b=>!map.pilotBlocks.Any(p=>Math.Abs(p.center.x-b.pos.x)<.01&&Math.Abs(p.center.z-b.pos.z)<.01)).Select(Of).ToList();
+            var tops=map.blocks.Where(b=>!map.pilotBlocks.Any(p=>!p.bots&&Math.Abs(p.center.x-b.pos.x)<.01&&Math.Abs(p.center.z-b.pos.z)<.01)).Select(Of).ToList();
             for(double t=0;t<200;t+=3.7)for(int k=0;k<NativeCausewayRig.ArchStones;k++)
             {
                 NativeCausewayRig.ArchStone(k,t,out double x,out double y,out double z,out _);double under=tops.Where(b=>x+.9>b.X0&&x-.9<b.X1&&z+1.2>b.Z0&&z-1.2<b.Z1&&b.Y1<y).Select(b=>b.Y1).DefaultIfEmpty(-99).Max();

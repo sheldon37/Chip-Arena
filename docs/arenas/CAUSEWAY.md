@@ -14,7 +14,11 @@ other game.
 ## Layout (docs/arenas/scripts/causeway_m1.py)
 
 x east, z north, y up; point symmetric (x, z) → (−x, −z); team A west (Tower A), team B east. 295 blocks (all static), 8 FFA
-spawns and two team tables of 4; bounds x ±42, z ±14 (4 m of void past every edge), ceiling 24, killY −10.
+spawns and two team tables of 4; bounds x ±42, z ±14 (4 m of void past every edge), ceiling 24, killY −6 (−10 until the owner's
+"On the bridge, we can let people get knocked off the map. Its a instant death when falling off", 2026-11-10: a fall kills about
+half a second after it leaves the span or the walkways, credited to whoever hit them last). Every pilot column at an edge (the
+rails, parapets and crown edges) stops bots only, so a player can jump over a rail or be knocked over it; the spires and gables
+keep theirs under the floating crown stones.
 
 | Level | y | What |
 |---|---|---|
@@ -234,7 +238,7 @@ The owner's song **Celestial Bell Motif** (Suno, 2026-11-10; 219.8 s) plays unde
 
 Kit 4175 parts (packed once into instanced batches of 500); rig up to 269 parts a frame; effects up to 3507 quads a frame (low tier
 1428); backdrop 50 119 vertices / 40 658 triangles in five meshes (three sectors, the planet, its rings); the rig and effects build
-in about 0.3 ms a frame, allocation free. Map record: 295 blocks (0 replicated: all static), 74 pilot columns, nav 1203 nodes.
+in about 0.3 ms a frame, allocation free. Map record: 295 blocks (0 replicated: all static), 68 pilot columns (58 bots only), nav 1303 nodes.
 
 ## Not done / not seen
 

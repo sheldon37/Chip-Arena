@@ -1489,6 +1489,7 @@ def main():
                 props.bank_props(sb, L, sk.Tier(ti), soot, floors_of(L), args.no_ao)
             continue
         g = static_scene(L, T, pew_ids)
+        print('  coplanar: %d overlapping pairs, %.2f m2, %d faces stacked, %.0f mm at most' % sk.lift_coplanar(g, eps=sk.NEAR_TIER[1 if ti == 0 and not args.own_mid else ti], lift=sk.LIFT_TIER[1 if ti == 0 and not args.own_mid else ti]))
         pews = props.pew_scene(L, T)
         print('tier %s: static %d faces, %.1f s' % (T.name, g.faces, time.time() - t))
         ao = None
