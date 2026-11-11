@@ -65,9 +65,9 @@ internal static class BrickfallArtChecks
 
         // ---- the runtime's wiring and its fallback ----
         string R(string p)=>File.ReadAllText(Path.Combine(root,p));
-        var pres=R("Assets/ChipArena/Runtime/NativeBrickfallPresentation.cs");
+        var pres=R("Assets/ChipArena/Runtime/NativeBrickfallArtPresentation.cs");var scenery=R("Assets/ChipArena/Runtime/NativeBrickfallPresentation.cs");
         Check(pres.Contains("brickfallArt=gameObject.AddComponent<NativeStageArtDraw>();brickfallArt.Tell=BrickfallTell;")&&pres.Contains("if(!brickfallArt.Prepare(map,null,null))return false;")&&pres.Contains("BrickfallArtDrawn=brickfallArt.Render(arena,WorldEye,LowGraphics,null);"),"the presentation prepares and renders the art");
-        Check(pres.Contains("BrickfallCover(arena);DrawBrickfall(now,WorldEye,true,roundStart);BrickfallArt(arena);")&&R("Assets/ChipArena/Runtime/NativeStagePrewarm.cs").Contains("if(NativeBrickfallScenery.Active(id)&&EnsureBrickfall()){BrickfallArtPrepare(map);built++;}"),"the art draws with the arena's scenery and is prepared behind the loading screen");
+        Check(scenery.Contains("BrickfallCover(arena);DrawBrickfall(now,WorldEye,true,roundStart);BrickfallArt(arena);")&&R("Assets/ChipArena/Runtime/NativeStagePrewarm.cs").Contains("if(NativeBrickfallScenery.Active(id)&&EnsureBrickfall()){BrickfallArtPrepare(map);built++;}"),"the art draws with the arena's scenery and is prepared behind the loading screen");
         Check(pres.Contains("stressed=fx.TelegraphFor(NativeStructureFx.Seed(arena.MapId,k.segment,NativeStructureFx.RoundIndex(match.Set,match.Round)),new V3(at.x,at.y,at.z),brickfallArtNow,out window,out var sag,out float qx,out float qy,out float qz,out float qw);")
             &&pres.Contains("if(stressed){at+=new Vector3(sag.x,sag.y,sag.z);rotation=new Quaternion(qx,qy,qz,qw)*rotation;}")&&pres.Contains("if(!k.band){glow=new Vector4(window,window,window,1);return;}")
             &&pres.Contains("NativeBrickfallArt.Lamp(NativeBlockLooks.Lamp(stage,stressed,brickfallArtLocked,brickfallArtRed),out float r,out float g,out float b);"),"the models take the dressing's telegraph: the sag and lean, the window light, the band lamp");
@@ -79,7 +79,7 @@ internal static class BrickfallArtChecks
         Check(draw.Contains("foreach(var sd in map.segments??Array.Empty<StructureDefinition>())foreach(var b in sd.rubble??Array.Empty<ContentBlock>())")&&draw.Contains("if(b==null||b.Definition?.id==null||b.Definition.role!=\"rubble\"||!blocks.TryGetValue(b.Definition.id,out var bd))continue;"),"the drawer draws a landed segment's rubble models");
         Check(draw.Contains("var bank=NativePackBanks.Bank(name);if(bank==null)return false;"),"without the bank nothing is made (the dressed blocks draw as before)");
         var shader=R("Assets/ChipArena/Resources/NativeStageLit.shader");Check(shader.Contains("#define DETAIL_BRICK 21")&&shader.Contains("else if(detail==DETAIL_BRICK)")&&R("tools/stages/stagekit.py").Contains("DETAIL_BRICK = 21"),"the brickwork surface, in the shader and the stage kit");
-        foreach(var f in new[]{"Assets/ChipArena/Core/NativeBrickfallArt.cs"})Check(File.Exists(Path.Combine(root,f+".meta")),f+" has its meta");
+        foreach(var f in new[]{"Assets/ChipArena/Core/NativeBrickfallArt.cs","Assets/ChipArena/Runtime/NativeBrickfallArtPresentation.cs"})Check(File.Exists(Path.Combine(root,f+".meta")),f+" has its meta");
         foreach(var f in new[]{"tools/stages/brickfall_art.py","tools/stages/brickfall_parts.py","tools/stages/brickfall_props.py","tools/stages/brickfall_kit.py"})Check(File.Exists(Path.Combine(root,f)),f+" is in the tools");
 
         // ---- the bank, where it is on this machine ----

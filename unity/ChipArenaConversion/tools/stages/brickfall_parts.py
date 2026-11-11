@@ -435,8 +435,8 @@ def monument(g, T, b, v):
         ln = math.hypot(bx - ax, bz - az)
         fbox(g, T, fr, .3, ln - .3, .9, 1.6, -.001, .03, F['bronze'], .012, skip=('-z',))
         if T.detail:
-            bk.text(g, fr, ln / 2, 1.3, .028, ('TO THE', 'BUILDERS')[0], F['stone'], .034)
-            bk.text(g, fr, ln / 2, 1.02, .028, ('BRICKMAKERS', 'MASONS')[v], F['stone'], .034)
+            bk.text(g, fr, ln / 2, 1.3, .022, 'TO THE', F['stone'], .034)
+            bk.text(g, fr, ln / 2, 1.04, .014 if v == 0 else .022, ('BRICKMAKERS', 'MASONS')[v], F['stone'], .034)
     if T.detail:
         # what is left of the figure: two bronze dowels and a stump
         for (dx, dz) in ((-.2, .1), (.22, -.12)):

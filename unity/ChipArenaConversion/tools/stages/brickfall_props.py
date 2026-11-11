@@ -334,13 +334,14 @@ def barricade(g, T, hx, hy, hz):
     th = 2 * hy / rows
     for j in range(rows):
         y0 = -hy + j * th
-        f = (F['timber-dark-x'], F['timber-dark-z'])[j % 2]
-        for k in range(3):
-            a = -1 + k * .76 + r.uniform(-.02, .02)
+        # four sleepers a layer, laid tight (it is cover: nothing shows through), each layer across the one under it
+        for k in range(4):
+            a, b = -1 + k * .5, -.5 + k * .5
+            e = r.uniform(0, .05)
             if j % 2 == 0:
-                sk.box(g, -hx, hx, y0, y0 + th - .01, a * hz / 1.0, a * hz / 1.0 + .48 * hz, f, T, .025, cell=0)
+                sk.box(g, -hx + e, hx - r.uniform(0, .05), y0, y0 + th, a * hz, b * hz, F['timber-dark-x'], T, .03, cell=0, skip=('-y',) if j == 0 else ())
             else:
-                sk.box(g, a * hx / 1.0, a * hx / 1.0 + .48 * hx, y0, y0 + th - .01, -hz, hz, F['timber-dark-z'], T, .025, cell=0)
+                sk.box(g, a * hx, b * hx, y0, y0 + th, -hz + e, hz - r.uniform(0, .05), F['timber-dark-z'], T, .03, cell=0)
     fr = Frame((-hx, -hy, hz), (1, 0, 0))
     fbox(g, T, fr, 0, 2 * hx, .62, .9, 0, .03, F['white-paint'], .008, skip=('-z',))
     bk.chevrons(g, fr, .02, 2 * hx - .02, .64, .88, .034, F['danger'], .36)
