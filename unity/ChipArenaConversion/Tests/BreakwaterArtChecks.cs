@@ -108,7 +108,7 @@ internal static class BreakwaterArtChecks
             Check(slots.All(s=>sp.Rig.ContainsKey(s)&&sp.Rig[s].All(p=>p>=0)&&sp.Rig[s].Distinct().Count()==3),"every rig slot has its model in three tiers ("+string.Join(",",slots.Where(s=>!sp.Rig.ContainsKey(s)))+")");
             var near=sp.Static.Where(c=>int.TryParse(c.Id,out _)).ToList();var far=sp.Static.Where(c=>!int.TryParse(c.Id,out _)).ToList();
             // (a chunk that holds only the thinnest things, a staff or a vane, may lack its Low tier: the nearest tier stands in)
-            Check(near.Count>=8&&near.Count(c=>c.Props.Distinct().Count()==3)>=near.Count-2,"the mole's chunks in three tiers ("+near.Count+")");
+            Check(near.Count>=4&&near.Count(c=>c.Props.Distinct().Count()==3)>=near.Count-2,"the mole's chunks in three tiers ("+near.Count+")");
             Check(far.Count>=3&&far.All(c=>c.Props.Distinct().Count()==1),"the far chunks (the sea, the lighthouse, the shore), one tier each ("+far.Count+")");
             Check(bytes<=20500000,"the bank stays within its budget of about 20 MB ("+(bytes/1e6).ToString("0.0")+" MB)");
             // the reflection probe stands at the centre of the art's bounds (Runtime NativeStageArtDraw): over the deck, clear of every block

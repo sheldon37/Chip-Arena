@@ -804,7 +804,8 @@ def main():
     import breakwater_props as props
     import breakwater_far as far
     sb = sk.StageBank()
-    chunks = sk.Chunks(12.0, (-36.0, -24.0), (-1.0, 9.0))
+    # big chunks: the whole mole is 44 x 18 m and seen end to end, so fewer, larger draws cost less than finer culling saves
+    chunks = sk.Chunks(22.0, (-44.0, -22.0), (-1.0, 9.0))
     t0 = time.time()
     for ti in [int(x) for x in args.tiers.split(',')]:
         T = sk.Tier(ti)
