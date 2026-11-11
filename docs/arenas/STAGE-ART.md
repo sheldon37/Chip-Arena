@@ -390,3 +390,10 @@ The owner's revamp of the older stages (each built by its own agent on its own b
 - Art passes on a kept layout: Brickfall (BRICKFALL-ART.md: breakable blocks as models posed by their blocks, landed rubble as
   heaps, `DETAIL_BRICK`), Ward Zero (WARDZERO-ART.md: both records on one bank, movers and Hulk walls posed), the Factory
   (FACTORY-ART.md, section 12 above), Cyber City (CYBERCITY-ART.md).
+
+## 14. The main menu's rooftop (2026-11-11)
+
+Not a stage, but the same recipe: docs/MENU-ROOFTOP-ART.md. What it adds: a layout made of **notes** (Core logs each piece it
+builds, only when the export asks) instead of a kit's lists; **facade faces** (walls banked for the scene's own procedural
+facade shader, so a modelled tower keeps its windows); its own small drawer and shader in the scene's light rather than
+`NativeStageArtDraw`; coplanar tolerances by the camera's real range (to 750 m).
