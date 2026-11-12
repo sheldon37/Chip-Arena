@@ -2,6 +2,8 @@
 
 2026-11-12 Claude (`claude/hotdog-rig`, owner report): the Hot Dog no longer morphs in the Katana's and DEV Katana's parry hit and counter. Its sausage rig takes only the twins its renderer skins with; the motion and stride proxies' copies had mixed three poses into it. Presentation only.
 
+2026-11-12 Claude (`claude/hotdog-rig`, owner report): the Hot Dog no longer morphs in the Katana's and DEV Katana's parry hit and counter. Its sausage rig takes only the twins its renderer skins with; the motion and stride proxies' copies had mixed three poses into it. Presentation only. Released: shared `330a003a`, test channel revision 639300621350669836.
+
 2026-11-12 Claude (`claude/boot-intro-2`, owner notes on the released intro): the intro hands over to the menu as the logo settles (0.4 s fade; was 3.0 s after it), the menu built under the curtain before the clip (which now starts at about 5 s and plays smoothly); the Greatsword's first entrance no longer freezes the loading screen (2.8 s to 0.3 s: the pack entrances build on a worker at start-up) and the first countdown's hitch is 0.06-0.07 s (was 0.3-0.36 s: the arena draws once behind the loading screen) (docs/BOOT-INTRO.md). On the branch, not merged; the Unity build checks wait for the shared Editor.
 2026-11-11 Claude (`claude/dev-classes-fixes`): the DEV Katana guards with the pack's front-facing great sword guard (the katana set's turned its back with the blade behind). **Next:** the owner picks the DEV animations (a picker is planned).
 

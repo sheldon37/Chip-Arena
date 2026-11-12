@@ -39,6 +39,7 @@
     counter doubles the sausage over, straightens it and lunges, its face showing. The guard on the move matches shared.
 - **Not run:** no person or two-client run. Hats were not re-captured in a counter (they ride the drawn head twin as before),
   and the Top Dog (same rig) was not captured.
+- **Released** to the test channel: full suite at `372ff453` (1018 groups, exit 0); `git diff --check` clean; Unity compile PASS. Merged into shared as `330a003a` and synced to the builder, which built and published it: revision 639300621350669836, 367.9 MiB. No live release; the Drive zip unchanged.
 
 ## 2026-11-12 — Claude: two owner notes on the released intro: the handoff, and the Greatsword's first entrance
 
