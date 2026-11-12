@@ -163,6 +163,7 @@ internal static class SanctumChecks
             var probe=new NativeSanctumFx();probe.Prepare(map,kit);probe.Build(hz,rig,0,NativePhase.Fight,0,30,30,-20,1.7,-3,1,0,0,0,1,0,1,false);
             NativeSanctumLooks.MoonRay(out double mx,out double my,out double mz);int floors=0,walls=0;
             foreach(var w in NativeSanctumLooks.Windows){if(NativeSanctumLooks.MoonShare(w)<.05)continue;for(double v=-.8;v<=.8;v+=.4){double py=w.Y+v*w.HalfY;if(NativeSanctumFx.Top(map.blocks,w.X+w.Nx*.45,py,w.Z+w.Nz*.45,mx,my,mz,90,out double sy)){floors++;Check(map.blocks.Any(b=>b.role=="static"&&Math.Abs(b.pos.y+b.size.y/2-sy)<1e-6&&Math.Min(b.size.x,b.size.z)>=.6),"a pool's floor is a static block's top");}else walls++;}}
+            Console.WriteLine("Sanctum pools: "+probe.Pools+" on floors (of "+(floors+walls)+" probed rays "+floors+" meet a floor)");
             Check(floors>20&&probe.Pools>60,"the moon's pools lie on floors ("+probe.Pools+" pools; of "+(floors+walls)+" probed rays "+floors+" meet a floor)");
             Check(NativeSanctumFx.GroundLift>=.035&&NativeSanctumFx.GroundLift<=.06,"the floor's lights lie over the runner and the inlays (25 mm), under a boot");
         }
