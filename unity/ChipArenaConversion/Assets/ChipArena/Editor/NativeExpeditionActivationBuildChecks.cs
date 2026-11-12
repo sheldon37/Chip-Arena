@@ -81,6 +81,19 @@ namespace ChipArena.UnityConversion.Editor
                     var preview=NativeExpeditionFrames.ForRecipient(target,source,member,Seat(who),layout);
                     var frame=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=preview})).frame;
                     Check(frame.Valid(content)&&frame.areaIdentity.Matches(member.Ticket),"pre-ACK destination snapshot validates for "+who);
+                    ExpeditionView Project(string id,string viewer)
+                    {
+                        var projected=NativeExpeditionView.Build(sessions[id].Run,viewer,sessions[id].Sources);
+                        projected.mine=NativeExpeditionView.Build(sessions[cohorts.Member(viewer).Area].Run,viewer).mine;
+                        projected.members=cohorts.Members.Select(m=>NativeExpeditionView.Build(sessions[m.Area].Run,null).Member(m.Account)).ToArray();
+                        return projected;
+                    }
+                    var recipient=ExpeditionAreaProjection.Build(who,cohorts,Project,transfers.Joins);
+                    var bundle=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-state",epoch=7,deployment=generated?.Ticket,frame=preview,expeditionPublic=recipient.Public,expeditionPrivate=recipient.Private}));
+                    var receiver=new ExpeditionViewReceiver(who);
+                    Check(receiver.BindArea(bundle.expeditionPublic.areaIdentity)&&!receiver.Public(bundle.expeditionPublic)&&receiver.Private(bundle.expeditionPrivate),"pre-ACK atomic destination bundle pairs through Unity codec for "+who);
+                    Check(receiver.View.loading&&ExpeditionAreaReady.Capture(receiver.View)?.generation==member.Ticket.serial&&bundle.frame.Valid(content),"pending ticket, load barrier and snapshot agree for "+who);
+
                     Check(source.Pilots.Any(p=>p.Seat.id==Seat(who))&&!target.Pilots.Any(p=>p.Seat.id==Seat(who)),"preview preserves source ownership for "+who);
                     var scene=EditorSceneManager.NewPreviewScene();NativeArena guest=null;
                     try

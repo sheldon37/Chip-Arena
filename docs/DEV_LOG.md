@@ -1,3 +1,11 @@
+## 2026-11-11 — Astra: retry Expedition destination loads and refresh party progress
+
+- Branch `codex/expedition-transfer-sync`, base shared `13e5f2fe`. Owner reports guests held at the join circle while host loads then rolls back, plus stationary remote loading bars; guest logs unavailable.
+- Track the applied destination ticket independently of the received public view. A received ticket does not prove scene construction. Requeue snapshots until that ticket is applied, restore a missing deferred loading action, and gate collision/readiness reporting on the applied ticket. Existing all-ready commit and timeout rollback remain authoritative.
+- Loading guests receive replaceable full snapshots at 4 Hz instead of 0.2 Hz. Those snapshots already contain per-member progress; removed redundant reliable party-load packets from the split sender, preserving bounded receive queues during synchronous loads. Host progress waits for the destination arena observer, avoiding source-area 100% progress poisoning the next ticket.
+- Added managed applied-ticket/reset/interrupted-load recovery and snapshot cadence checks; expanded native transfer checks to pair the actual atomic destination bundle through Unity serialization before ACK.
+- This is a defensive repair, not a confirmed reproduction of the owner's exact freeze. No two-PC or native Unity execution here; no combat/animation changes. Validation and delivery receipts follow in the PR. No live/Site release.
+
 ## 2026-11-11 — Claude: DEV Greatsword and DEV Katana, the Grruzam sword pack on two DEV classes
 
 - Branch `claude/greatsword-grruzam`, base shared `034d35a6` (shared `b1674f0d` merged, with the Katana's released saya and intro fixes).
