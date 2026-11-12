@@ -112,6 +112,13 @@ bone's against its rest with the body's own turn taken off, is eased toward its 
 quarter each side; the pelvis's and the head's kept as posed) and the twins take the eased turn (`SpineEven`, all of it). The
 bend is the same but spread down the sausage as an arc. Hats and the animated face ride the same twins, so they follow it.
 
+The owner, again (2026-11-11): "Dev Katana / Katana both morph player model in parry hit. (Using hotdog)". The rig gathered every
+`HotDog~` twin under the body's root. The body's motion and stride proxies (`Visual motion`, `Visual stride`) are copies of the
+skeleton made after the twins, so each carries twins of its own, posed by other clips. So the easing mixed three skeletons' turns.
+In idle they agree. In the parry hit and the counter the motion proxy plays the raw pack clip, and the sausage folded, bulged and
+wrung. Now the rig takes only the twins the sausage's renderer skins with (its bones), and it is rebuilt until that renderer
+exists.
+
 ## Wounds and cuts
 
 The Hot Dog has no human skeleton inside, alive or dead (the body's and the corpse's `VisualSkeletonMake` are skipped for it).
