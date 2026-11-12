@@ -257,5 +257,5 @@ packaged.
 Owner: "Seems to be light flickering in the background of Skyframe". The other towers' lit windows (`tools/stages/skyframe_sky.py`
 `skyline`) stand 5 cm off their walls, 300 to 900 m away, under the depth buffer's step at that range: window and wall traded
 pixels as the eye moved. The far chunks are now layered at a far reach (docs/arenas/STAGE-ART.md section 14, "Far chunks"), so
-every window draws over its wall at any distance. Bank rebuilt (11.70 MB). The look is unchanged; the beacons still blink as
+every window draws over its wall at any distance (49,055 m2 of window and wall within 25 cm on one layer before, 2 m2 after). Bank rebuilt (11.70 MB). The look is unchanged; the beacons still blink as
 designed. Measured, not yet filmed (the shared Editor was closed).

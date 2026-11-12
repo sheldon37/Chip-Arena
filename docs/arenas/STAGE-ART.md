@@ -505,14 +505,26 @@ trading pixels. Left as it is; a calmer fine surface for that floor is an art ch
 Skyframe". The far chunks (the named ones: Skyframe's other towers, its tower's body, the cloud sea) were settled with a 5 cm
 lift, and the layers reach 30 mm, so their stacked faces had none: the sixteen towers' lit windows stand 5 cm off their walls 300
 to 900 m from the garden, where a 24 bit depth buffer's step behind the 0.06 m near plane is 0.1 to 0.8 m (distance² x 1e-6).
-A lit window and its wall trade pixels as the eye moves: lights flickering in the distance. Measured on the released bank
-(`zfight.py --tier 2 --eps .12 --amin .01`): 20,841 m² of same-facing faces within 12 cm on one layer in the skyline, 403 m² in
-the sea, 265 m² on the tower's body. `StageBank.layer` now layers the far chunks once more among themselves at `FAR_REACH`
-(12 cm), and a layer's push grows with the distance (four depth steps at any range: 1 m at 500 m), so each window draws over
-its wall. After: 0 m² in every far chunk (the Low map chunks keep 202 m² of real 3 to 12 cm steps, seen from under 70 m, where
-the step is 5 mm). Only the Skyframe bank was rebuilt; the other stages' far chunks get their layers when their banks are next
-built. **Not filmed:** the shared Editor was closed, so the flicker before and its absence after are measured, not seen; the
-beacons' blink (0.55 Hz, by design), the tiers' switches, the cascades and the fog were not looked at in the Editor either.
+A lit window and its wall trade pixels as the eye moves: lights flickering in the distance. `StageBank.layer` now layers the
+far chunks among themselves at `FAR_REACH` (25 cm; their planes met in wider turns, since a far roof's two skins are rarely
+quite parallel; a far chunk takes these layers alone), and a layer's push grows with the distance (four depth steps at any
+range: 1 m at 500 m), so each window draws over its wall. Measured (`zfight.py --tier 2 --eps .25 --amin .01`: m² of
+same-facing faces within 25 cm on one layer, in the far chunks), released bank and rebuilt:
+
+| Stage | Far chunks | Before | After |
+|---|---|---|---|
+| Skyframe | the skyline, the sea, the tower's body, the turbines | 49,055 | 2.1 |
+| Cyber City | the near ring and tunnels | 4,141 | 284 |
+| Starfall Causeway | the lost ruins, north and south | 832 | 0.1 |
+| Breakwater | the shore, the far light | 493 | 0.3 |
+| Polaris Station | the far bergs | 448 | 0.0 |
+| Deepwell | the far habitats | 85 | 0.0 |
+
+Cyber City's 284 m² are its ring's own steps of 11 to 25 cm (a roof's rim over its deck), under 100 m from the play space, where
+the step is a centimetre: they cannot fight. The six banks were rebuilt; no other stage has far chunks with such faces (the
+Sanctum's bank is the Sanctum polish's to build). **Not filmed:** the shared Editor was closed, so the flicker before and its
+absence after are measured, not seen; the beacons' blink (0.55 Hz, by design), the tiers' switches, the cascades and the fog
+were not looked at in the Editor either.
 
 **Rules for the next stage.** Model paint, boards and marks as faces on their surface (a few millimetres proud, or in its plane):
 the bank writer layers them. Call `chunks.split(g)` after the lift. A kit box kept over the art goes through `Nearer`. Run the

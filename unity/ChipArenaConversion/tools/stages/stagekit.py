@@ -859,12 +859,14 @@ class StageBank:
                 counts.append(len(idx))
             if not sum(counts):
                 continue
-            lay = layer_polys(np.concatenate(tris), np.full(sum(counts), 3, dtype=np.int64), reach)
+            # (the far chunks' planes are met in wider turns: a far roof's two skins a hair out of parallel still count)
+            lay = layer_polys(np.concatenate(tris), np.full(sum(counts), 3, dtype=np.int64), reach, turn=400 if reach == LAYER_REACH else 48)
             at = 0
             for (mi, m), c in zip(parts, counts):
                 got = lay[at:at + c]
                 at += c
-                layers[mi] = np.maximum(layers[mi], got) if mi in layers else got.copy()
+                # (a far chunk takes its far layers alone: the most of two orders is no order)
+                layers[mi] = np.maximum(layers[mi], got) if mi in layers and reach == LAYER_REACH else got.copy()
         done = total = 0
         for mi, lay in layers.items():
             om = meshes[mi][1]
@@ -1106,7 +1108,7 @@ LAYER_MOST = 10
 # depth buffer's step is decimetres (distance^2 x 1e-6 m: 0.25 m at 500 m), so a lit window 5 cm off its tower's wall trades pixels
 # with the wall as the eye moves (owner 2026-11-12: "light flickering in the background of Skyframe"); within this reach it gets
 # its layer, and the shader's push (4e-6 of the distance per layer and metre) carries it clear at any range
-FAR_REACH = .12
+FAR_REACH = .25
 
 
 def layer_faces(g, reach=LAYER_REACH, least=2e-4, share=.02):
@@ -1115,7 +1117,7 @@ def layer_faces(g, reach=LAYER_REACH, least=2e-4, share=.02):
     return layer_polys(P.astype(np.float64), S, reach, least, share)
 
 
-def layer_polys(P64, S, reach=LAYER_REACH, least=2e-4, share=.02):
+def layer_polys(P64, S, reach=LAYER_REACH, least=2e-4, share=.02, turn=400):
     """How many faces each face lies on (0: none; at most LAYER_MOST): a face is on another when both are turned the same way,
     it overlaps it (over `least` m2 or `share` of the smaller) and stands 0 to `reach` over it along their normal (in one plane:
     the smaller is on the larger, as lift_coplanar stacks them). Across a floor from a pilot's eye height the depth between two
@@ -1148,7 +1150,7 @@ def layer_polys(P64, S, reach=LAYER_REACH, least=2e-4, share=.02):
     lo = np.minimum.reduceat(P64, starts, axis=0)
     hi = np.maximum.reduceat(P64, starts, axis=0)
     ax = np.argmax(np.abs(unit), axis=1)
-    kn = np.round(unit * 400).astype(np.int64)
+    kn = np.round(unit * turn).astype(np.int64)
     kd = np.floor(d / reach).astype(np.int64)
     cell = 3.0
     clo = np.floor(lo / cell).astype(np.int64)
