@@ -1369,6 +1369,7 @@
 - Opening selection temporarily mutes all NativeAudio sources, including already-playing loops and music, and restores them at intro without changing saved sound preferences. This intentionally silences chip UI cues too. Exact offending sound was not identified or heard here; the entire requested opening phase is now silent.
 - Extended the native opening fixture to require five normal-tier reward records. Local source/package checks and remote CI results recorded in PR. Unity/Windows listening and multiplayer acceptance remain unrun.
 - No assets, visuals, attack timings or hitboxes changed. No live/Site release.
+
 ## 2026-11-07 — Claude: the Backrooms bosses' rules half and the boss relics live (owner: "make the changes yourself")
 
 - The owner asked Claude to make the rules half itself instead of handing it to Astra (role split set aside for this task by the owner). Branch `claude/backrooms-boss-rules`, base shared `f61671ae`.
@@ -1812,6 +1813,7 @@ Fixed the no-song Backrooms arrival fallback and made Deep End authoritative col
 - Tuning: oldest-ready eligible move first; stillness overrides ordinary moves and clip recovery, but simultaneous campers are served in oldest-waiting order because each authored action has one target. Single-pilot stationary acceptance is 8.5 s (phases 1/2), 6.5 s (phase 3), including windup. Moving-circle production acceptance is 40 s for an actual contact/current/add near that pilot; this is a different measure from the presentation stand-in's 1.5 m near-miss limits, not proof of those limits. Hum head fracture uses 5% max HP. Pulse contact ends at 2.6 s, matching the existing fade; enrage pulses originate at room centre so their visible radius reaches every corner.
 - Verification: production rules grid 2,483 assertions plus Poolrooms rules 13,148 passed; collision routes 20,700 anchors / 52 seeds / both maps passed. Pinned Unity assemblies compile; packaging passes after adding receipts for the already committed songs. Full managed suite and final integration receipt recorded below when complete.
 - Native fixture added to generated-area validation: corner/wall/door/spawn damage deadline, compound parts, phase invulnerability, real Unity JSON codec, guest view binding and death unseal. It is compiled here, **not executed here**: Unity/PhysX, actual eight-player combat, audio playback and human gameplay require the Windows builder/playtest. Existing pending positional sound clips/mixer work remain Claude's. No live or Site release.
+
 ## 2026-11-05 — Astra: opt-in ElevenLabs builder queue, no fal
 
 - Added a one-time Windows setup window (DPAPI-encrypted local key, pending request/duration caps, optional status mirror) and approved Git queue processed by the existing asset installer. The queue is empty: no batch or paid generation is implicitly authorized by setup. No visual/gameplay/audio-content changes.
@@ -2103,6 +2105,7 @@ Usual verification and a DEV_LOG entry with actual results, separating what you 
 - **Risks:** a thin line can read weaker than the old fat orb from directly behind the camera; the owner's call in a build. A round unseen by any frame whose stopping point is on the world is matched to its shooter by time and distance, so two shooters side by side can swap muzzles for a frame (request 1).
 - **Requests for Astra:** (1) `Projectile` on the gun Shot event, or `Owner` on `NativeShotEnd`; (2) `Projectile` and `Normal` on `EventKind.Ricochet`; (3) parent `Projectile` on `EventKind.Split`; (4) an Impact with `Normal` for world-collider hits (today only props and `bit-bolt` raise one); (5) a sample time on `NativeBomb` records so a guest can carry thrown TNT along its arc between frames. All in the handoff's prompt.
 - **Next:** owner judges the look in a build; Astra picks up the requests; the presentation adopts them where it now guesses.
+
 ## 2026-11-04 — Claude: the TNT's orange blocks, and the Necronomicon off voxels
 
 - **Owner:** "Bombadier currently has two orange blocks sticking out of their tnt?", "The orange blocks might be coming from one of the mod options we have", "I think some chips still use voxel implementations too".
@@ -2468,7 +2471,6 @@ Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironwork
 - **Publication:** waits with the rest of shared on #317's build failure (Astra); the builder branch was not pushed.
 - **Next (Claude):** Ward Zero's props (surgical masks, stethoscopes) as gear; the garments reviewed on their own maps.
 
-
 ## 2026-11-03 — Claude: zombies dressed for their area, bespoke garments with Magica Cloth, and fallen pilots
 
 - **Branch:** `claude/zombie-outfits`, base shared `0bcdaf45`; implementation `457fccd0` (areas and pilots), `fa1e48b5` (garments).
@@ -2497,7 +2499,6 @@ Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironwork
 - **Next (Claude):** bespoke garments for the other areas where the pack's pieces fall short (the station's coats, the foundry's
   coveralls and aprons); surgical masks and stethoscopes as gear; the garments on more body types in motion.
 
-
 ## 2026-11-03 — Claude: the Tiler, its own body (a crab of the pool's tiles)
 
 - **Branch:** `claude/hound-tiler`, base shared `9ef4f826`; implementation `8b3ac962`.
@@ -2521,7 +2522,6 @@ Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironwork
 - **Publication:** waits with the rest of shared on #317's build failure (Astra); the builder branch was not pushed.
 - **Next (Claude):** the owner's new request: zombies in the player's default suit (broken helmet and suit), and zombie clothes
   themed to their areas (Ward Zero: lab coats, patient gowns).
-
 
 ## 2026-11-03 — Claude: the Hound as a starved beast on all fours, its own doglike head
 
@@ -2556,7 +2556,6 @@ Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironwork
 - **Next (Claude):** the Tiler's own body (a tile crab on six legs); the Hound's claws and a lighter head for the farther adds;
   the Smiler's dread and fixture stutter.
 
-
 ## 2026-11-03 — Claude: the Smiler as a smoke apparition, off the player's model
 
 - **Branch:** `claude/smiler-apparition`, base shared `c289fdad` (shared `b337d1b6` merged in); implementation `58adef6e`..`8c64c7c2`, a pin update `148d10ee`.
@@ -2579,7 +2578,6 @@ Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironwork
 - **Next (Claude):** the Smiler's dread on the pilot it struck and the fixtures' stutter round its blink; the Hound on all
   fours; the Tiler's own body.
 
-
 ## 2026-11-03 — Claude: the Online Players (invite) chip and panel restyled and animated
 
 - **Branch:** `claude/online-players-panel`, base shared `c289fdad`; implementation `3e128a35`.
@@ -2599,7 +2597,6 @@ Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironwork
   frames, the Create screen, the Locker and the pause menu. Not run: hover (the tool does not move the pointer), a real
   two-account invite and join, a room's lobby (needs a hosted relay room), a Windows build.
 - **Publication:** waits with the rest of shared on #317's build failure (Astra); the builder branch was not pushed.
-
 
 ## 2026-11-03 — Claude: the Backrooms' entities on the model (first pass)
 
@@ -2628,7 +2625,6 @@ Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironwork
   (Astra, see the entry below). The builder branch was not pushed.
 - **Next (Claude):** the Hound on all fours (quadruped gallop, pounce, pin), the Tiler's tile-crab body, the Smiler's blink
   and dread, the Drowned's water effects and swim, the hook's line; captures on Level 0 and the Poolrooms.
-
 
 ## 2026-11-03 — Claude: Central Station's kinds on the model, their gear modelled in Blender
 
@@ -2664,7 +2660,6 @@ Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironwork
   I left the check as it is (the Drowned's route out of the water is a rule). The builder branch was not pushed.
 - **Next (Claude):** the Backrooms' six entities on their dedicated looks and motion against #317's rules (Astra's section 6
   lists the hooks and the pending motion acceptance); then City Ironworks' five kinds; the bosses. Lighter gear cuts for far adds.
-
 
 ## 2026-11-03 — Astra: approved enemy-rule upload
 
@@ -2744,7 +2739,6 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - **Next (Claude):** Central Station's four kinds on the player's model, then City Ironworks' five, the Backrooms' entities, the
   bosses.
 
-
 ## 2026-11-03 — Claude: unblock the builder (Poolrooms' exit in the activation build check)
 
 - **Branch:** `claude/poolrooms-build-check`, base shared `721a329b`.
@@ -2760,7 +2754,6 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - **Status:** shared `9df67046`, published to the test channel in builder build `9df67046` (BUILD SUCCEEDED, publication
   succeeded 03:29 UTC). It carries Level 0 at its new scale and Astra's playable Poolrooms (#316) with the waves.
 - **Astra:** please review (your check, your area). If the Poolrooms should have machines after all, revert this line and add them.
-
 
 ## 2026-11-03 — Claude: Level 0 scaled up round the pilots
 
@@ -2787,7 +2780,6 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - **Status:** merged into shared as `721a329b`. The builder's run of it failed in Astra's new Expedition activation build
   check (fixed in the entry above); published with that fix in builder build `9df67046` (03:29 UTC).
 - **Next:** owner check in the Windows build.
-
 
 ## 2026-11-03 — Astra: playable Poolrooms and grounded water rules
 
@@ -2857,7 +2849,6 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
   enemies, Hulks under 3.6 m), and a swimming state on `Actor` when there is one.
 - **Next:** with the Poolrooms' map: an underwater view, bodies bobbing at the surface, splash and wading sounds.
 
-
 ## 2026-11-02 — Claude: Level 0 in the add-on's textures; the Poolrooms (DEV preview)
 
 - **Branch:** `claude/backrooms-addon-look`, base shared `97099d38`.
@@ -2892,7 +2883,6 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - **Astra:** the Poolrooms need a map, a production generator, collision and nav, spawns, and the water's rules (wading, deep
   water, climbing out, what water does to movement and weapons, Hulks under 3.6 m). See docs/BACKROOMS.md "The Poolrooms".
 - **Next:** owner check of Level 0 in the Windows build; the Backrooms map looks; the Poolrooms once its map exists.
-
 
 ## 2026-11-02 — Astra: owner recordings for the eight new-stage music prompts
 
@@ -2937,7 +2927,6 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - **Status:** merged into shared as `62b00b09`. Published to the test channel in builder build `3e9ec012` (Astra's #314 on
   top), BUILD SUCCEEDED, publication succeeded 23:52 UTC.
 - **Next:** owner check in the Windows build. The daggers' squat keeps the head low over the blades.
-
 
 ## 2026-11-02 — Astra: generated Backrooms Level 0 and builder recovery
 
@@ -3267,6 +3256,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
   - `tools/check_unity_compile.py`: all four assemblies PASS. `git diff --check` clean.
 - **Not checked:** a shut 10 m gate seen in Unity. Offline captures have no hub state, so gates draw at rest; the geometry is
   covered by the checks. Also not checked: a Windows build or a live co-op run.
+
 ## 2026-11-02 — Astra: stop Deployment Station rebuilding reel art every frame
 
 - **Branch/base:** `codex/deployment-performance` from shared/builder `b95834ea8a44f5a9b4689b827820136d419a6779` (published mutator activation). Owner reports the station screen lags.
@@ -3338,6 +3328,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
     boon/bane/chaos landings and all three sweeps; the card art loads.
 - **Not checked:** reduced effects seen in Unity (checked in tests only), a Windows build, a live room (the live
   mutator roll is still off until Astra's effects), audio.
+
 ## 2026-11-02 — Astra: Expedition mutator rules and Claude handoff
 
 - **Branch/base:** `codex/expedition-mutators` from shared `bfc770a029bf355dcedc9554ee8c1ebecd99c4e9`. Source handoff; no builder/feed publication. Keep this feature draft until Claude's visibility/telegraph work and Windows acceptance pass.
@@ -3815,6 +3806,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
   - Optional: on the host, `TrainingReadouts()` allocates its rows on every call (at the 10 Hz poll rate only). A
     non-allocating accessor would remove that.
 - **Next:** check the look in Unity and on Windows, then the five PvP stage looks (`claude/new-stages-look`).
+
 ## 2026-10-31 — Astra: live Deployment Station and generated-run integration
 
 - Branch/base: `codex/deployment-completion`, from pushed continuation `c9039362`; merged Claude station branch `654c4f85` locally, preserving both handoffs and test entry points.
@@ -3844,6 +3836,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - Actual checks: focused managed suite PASS (49 deployment checks); CoreTests build zero warnings/errors; pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compile PASS. Full managed/real-relay regression PASS: 884 PASS lines, final 35 managed-core checks, exit 0. The normal runner initially failed in the .NET CLI Process.StartTime lookup (environment); using its supported compiled-assemblies arguments avoids that CLI failure. Added native JsonUtility/codec/promotion checks; compiled, not executed in Unity.
 - Incomplete scope: full generated playable map/manifest/nav/collision and static-city-equivalent seed validation, generated map runtime loading/handshake, readiness-to-Deploy startup, active-run endpoint migration, station presentation and approved mutator rules. This is deliberately a draft continuation, not completion of the owner's entire Astra list. No generated geometry or working scene is claimed. Windows/PhysX/two-client play unrun.
 - Gameplay timing, hitboxes, damage, cooldowns and animation unchanged. No live release, account mutation, shared merge or test-feed publication. Follow-up must finish the generated-world path before enabling the station in menus.
+
 ## 2026-10-31 — Claude: the Deployment Station drawn (models, scene, console, DEV preview)
 
 - **Branch/base:** `claude/deployment-station`, stacked on Astra's draft PR #302
@@ -4906,7 +4899,6 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - **Next:** owner look in the Locker, lobby cards, rooftop and entrances on the PC. No Astra handoff.
 - **Merge (Claude, 2026-10-28):** reviewed and merged into shared and the builder at `823952e` (signed merge of `69eb33f`, tree identical to the branch head). Five checks on the merge: Unity compile OK; relay/CoreTests 868 PASS; Python 166 OK (one Windows-only skip); package (2,771 files) and diff checks pass.
 
-
 ## 2026-10-28 — Claude: skin tone with a colour wheel, and MASKS in place of the model's body skins
 
 - **Branch/base:** `claude/skin-color-masks` from shared `d91fee6` (advanced lighting merged). No PR; merged into shared and the builder by Claude (owner standing authorization).
@@ -5111,6 +5103,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - Initial regressions caught stale exact-source assertions after adding the field and Python `-I` sibling import resolution; fixed without weakening behavioral gates. This environment's dotnet CLI sometimes fails its process-stat lookup inside Python; compiled both projects directly and used the supported `--compiled-relay`/`--compiled-tests` path.
 - Private Drive `LocalAssets.zip` updated October 27 verifies: 226 audio keys/593 clips, 651 visual-body files/63.65 MB. It contains **no** Magica or bridge. The licensed-asset PC must repack with `--with-cloth`, following DEVELOPMENT.md, then replace its private builder input. Nothing sent to Claude or others.
 - Gameplay/animation: no hit timing, hitboxes, damage, cooldowns, movement or animation changes. Additive cosmetic fields only; network protocol unchanged. Status: task branch, not released. Live account Worker deployment, real Unity import/cloth registration, Windows player build, two-player visuals and test-feed publication are not claimed. Do not say cloth is active merely because source CI passes.
+
 ## 2026-10-28 — Claude: pack effects for hits and motion: muzzle flashes, blood splats, impacts for every surface, afterimage trails (merged into shared)
 
 - **Branch/base:** `claude/pack-fx-hits` from `claude/pack-bank` `55a6e5d` (its `606c39c` docs merged in). No PR; merged into shared and the builder by Claude after review.
@@ -8068,6 +8061,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - Root defect: initial cohorts have null cohort ids, which Unity JsonUtility decodes as empty strings. ExpeditionAreaChannel.Valid rejected the empty string, so ExpeditionViewReceiver.BindArea silently rejected the initial public view; subsequent world frames could never match a bound ticket. Accept empty optional cohort consistently with ExpeditionCohortTicket.Matches; malformed nonempty ids remain rejected.
 - Added managed regressions for null/empty initial tickets and whitespace rejection. Extended the real Unity activation fixture: round-trip initial public/private messages and a hub frame for each of four members, bind the receiver, capture readiness and acknowledge the decoded identity. Previous native fixture acknowledged initial tickets directly and only tested codec transfer tickets with nonempty cohort ids.
 - Verification/publication results recorded in the task PR after gates complete. Requires the native fixture to pass before publication; no claim of human host/guest acceptance yet.
+
 ## 2026-10-18 — Astra: protect multiplayer Expedition startup from loading stalls
 
 - Branch `codex/expedition-guest-start`, base shared `ffeee79c2c97`. Owner reports host enters city while guest stays in lobby with CONNECTION STALLED. Code inspection finds synchronous four-area construction without a loading notice, the normal 12 s disconnect deadline, and 20 Hz public/private/frame batches capable of overflowing a guest's 128-packet queue while loading.
@@ -8101,6 +8095,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - #17: `ExpeditionAreaProjection.Build` chooses the pending destination ticket immediately and emits joins only for the world ticket. Deployers do not receive their fresh hub deploy record on successful transfer; hub bystanders do.
 - Publication correction: the owner's current desktop log identifies source `bc397907a6a3`, successful Unity build, and the status file reports publication succeeded 2026-10-17 20:33:43 UTC. The public feed was updated at 20:33:02 UTC to version `7b5a3845ab7a`, revision `639278659473702045`, channel `84c1dfc`. This is newer than `5dc860d` and includes the exit laser door. Verified existing publication, not a new publish by this task.
 - Cloud run 416 still fails before a build number with HTTP 500. Main PR #270 adds bounded allowlisted request diagnostics (15 focused tests; hosted checks passed); merged as `f19bd67`. Root cause is not yet established; no blind POST retry or target changes.
+
 ## 2026-10-17 — Claude: THE CONVERTER in-game presentation (merged into shared, not live)
 
 - Branch `claude/boss-ironworks-presentation`, base shared `bc39790`, merged with shared `03dddab` (THE 6:47 presentation: zone boss names routed for both bosses, DEV panel and prewarm keep both), `97046f7` (zombie motion) and `a4d61ae` (THE 6:47 stage wiring, voxel zombies). Commits `73b951d` (the gait opt-ins, same change as `84cfbcf`), `53c243a` (presentation), `dd60261` (checks and the fixes they found), `77efc45` (no preview boss before its spawn), `96b60c9` (the two run5b findings), `40e562b` (the foreman's suit in aluminised grey, apart from the pilots' white).
@@ -8451,6 +8446,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - **Renders** (scratch, not in the repo, `renders-boss-station/`): a four-view turnaround with a pilot, the arrival hero shot, five attack frames (Departure, All Aboard, Platform Alteration, Live Rail, Terminus) and the TERMINUS phase change.
 - **Not done / risks:** runtime rules, AI and fields (Astra); the presentation binding (Claude, after Astra's fields and the motion library); audio clips; Unity Editor, Windows and play are unrun. The renders are concept frames with quad effects.
 - **Next:** the owner's decisions (doc section 11), then Astra's rules and record, then Claude's runtime model, gait and sequences.
+
 ## 2026-10-17 — Claude: boss motion foundation for the Central Station and City Ironworks bosses (on branch, not merged)
 
 - Branch `claude/boss-motion`, base shared `claude/sleepy-ritchie-g8ruhv` `598c41b` (includes zone music 77c3696 and Astra's PR #264). Implementation commit `7eb82c7`. Not merged, no PR, builder untouched, nothing published.
@@ -9203,6 +9199,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - **Next:** owner review (the doc's section 12). Astra: the parser's spawn fields, instance gates (the converter shutter), stats
   and AI for the four kinds, hazard authority, the importer's third map. Claude: NativeIronworksKit, the molten flow shader, the
   light picker (6 warm + 2 cool), the four kinds' models and animation once their content exists.
+
 ## 2026-10-16 — Claude: PR #254 verification, sanctuary header for fresh runs
 
 - Branch `claude/sanctuary-fresh-run-header`, base shared `0c684d8` (the owner's merge of Astra's PR #254).
@@ -9292,6 +9289,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
   - Concrete takes needed +17 to +23 dB to reach -24 LUFS (quiet source); noise stays about 40 dB under the step.
   - The town's foundation and Ward Zero's stone both stay concrete.
 - **Next**: the owner installs `LocalAssets-footsteps-surfaces.zip` on the builder and listens on Ward Zero's floor and decks; merge into shared after review.
+
 ## 2026-10-16 — Claude: join circle layout draft (exp-layout-4, not live)
 
 - Branch `claude/join-circle-layout-draft`, base shared `b54596f` (includes Astra's join parser, PR #250, and the area runtime foundation, PR #252). Implementation `85a1e74`. Fast-forwarded into shared and the builder (inert: nothing loads the draft); no PR, not live, no publication.
@@ -9728,7 +9726,6 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - **Collision, movement, networking:** none changed. No collider, layout, navigation, rule, timing constant, hit timing, hitbox, damage, cooldown, movement or wire change; animation is the gate leaves only (no gameplay reads them).
 - **Astra next step:** the run-through fix (EXPEDITION-HUB.md "Run-through report"): real-overlap occupancy instead of radius + 0.15 m; re-open on occupancy only before a closing blocks; occupancy holds the collider off only in that window; optionally keep the collider's state across a reversal. `Tests/ExpeditionHubAuthorityChecks.cs:21` would move with it.
 
-
 ## 2026-10-15 — Astra — Expedition choosing also holds camera
 - Owner follow-up supersedes the earlier camera-survives behavior. Branch `codex/expedition-camera-hold`, base shared `ee46074c`.
 - Authority retains held yaw/pitch instead of copying new chooser aim. Client blocks mouse look and clears lock-on tracking using the public choosing flag, including the final Install + 1.95 s wrist plant after the tray closes. Digits/Alt-click remain usable. Existing close/lifecycle release, vulnerability and world clocks are unchanged; no animation, combat timing or network schema changes.
@@ -9866,7 +9863,6 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - Contract and Claude UI wiring steps: `docs/EXPEDITION-PRESENTATION.md`, "Chip screen authority contract". Public offers remain prohibited. No hit timing, damage, cooldown, balance or asset changes; choosing cancels existing combat/movement actions as required by D18.
 - Validation: 80 focused Expedition integration assertions pass; native authority freeze/camera/install/duplicate checks added to the Windows M1 acceptance gate. Pinned Unity 6000.3.24f1 / C# 9 Player, Runtime and Editor compilation passes. Full managed/real-relay regression passes (712 PASS groups, exit 0); the source guard now permits the read-only IsChoosing query and explicitly prohibits presentation calling SetChoosing. One concurrent compiler launch failed in the SDK process lookup; the sequential rerun passed. Promotion receipt follows in the PR. Native Unity/PhysX, Windows, live host/guest, sounds and wrist-hologram acceptance cannot run here; UI binding still belongs to Claude.
 
-
 ## 2026-10-15 — Astra — Windows air-jump JSON build gate
 - Branch `codex/fix-air-jump-build`, base shared/builder `25a26ef6` (PR #231 merged). Drive log at 13:09Z exits 1 in ValidateAirJumps because the cloned frame is invalid.
 - Cyber v2 added nullable Kit2/Kit2R records and a validator requiring them absent for version 0. Unity inline JSON expands absent records, so default/legacy actor kits fail validation. Preserve explicit record presence through the existing frame codec for snapshot actors, pilot death actors and corpse actors. Keep strict v2 validation; no gameplay, movement, cooldown or presentation changes.
@@ -9890,14 +9886,12 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - Tests: wallet debit/duplicate/restoration/personal ownership/dead/invalid cases added; native acceptance now drives cache purchase/refusal/restock, chip application, med pulses, recruit spawn, range refusal and both Sirens through real thresholds, possession kill, growth, enrage and final cleanup.
 - Validation: pinned Unity 6000.3.24f1 / C# 9 player, editor-context Runtime and Editor compilation passes; focused Expedition 481, director 98 and integration 59 checks pass; full managed/real-relay regression passes (689 PASS groups, exit 0). Initial concurrent run hit the unchanged Bisect timing gate at 1197 ms; isolated rerun passes at 203 ms (<400 ms), no threshold changes. Fresh precompiled assemblies used after an SDK launcher process-stat failure. Native Unity/PhysX execution and Windows gameplay are not available here; the builder must execute the expanded native gate and publish. Full in-game acceptance remains required. No account deployment or live release.
 
-
 ## 2026-10-15 — Astra — Ward Zero horde emergency-navigation hitch
 - Branch `codex/horde-navigation-fix`, base shared/builder `cea5faf`. Owner capture: six minions, six fixed ticks, 150.32 ms frame, 134.69 ms navigation, zero route searches, only 0.066 ms link checks. The emergency escape branches are outside those sub-timers and evaluated visibility for every matching floor node before selecting the nearest.
 - Replace filter-before-sort emergency queries with the existing reusable nearest search: expensive live safety/visibility checks run in distance order and stop at the first valid destination. Preserve pocket preference, height limits, tie order, live geometry checks and movement return rules. General escape checks reuse the existing static hazard candidate index with live phase/clock evaluation. Evaluate the actor's stage danger once per call. Include escape work in NavigationNearestMs.
 - No scene detail, lights, hazards, AI population, damage, movement speed, fixed-step or networking changes. No visual ownership changes.
 - Regression adds clear, obstructed and unreachable pocket/floor destination equivalence and visibility-query counts over authored maps. Existing broad-phase tests compare node safety against direct hazard evaluation across clocks/phases/rounds.
 - Validation: all three pinned Unity 6000.3.24f1 / C# 9 assembly compile targets PASS (player, editor-context Runtime, Editor); focused `--navigation` suite PASS, including 4,253,544 hazard broad-phase comparisons and 288 escape destination cases (652,962 -> 218,002 visibility predicates including fully unreachable cases), existing route/flow/zero-allocation checks; `git diff --check` clean. This addresses an identified unbounded repeated query; actual Windows frame-time improvement and the earlier 3.46 s stall remain unverified. Desktop builder must compile/package/publish the test update after shared/builder synchronization.
-
 
 ## 2026-10-14 — Claude — DEV monsters: the panel's Monsters tab, the DEV MONSTER tag and the summon-in rift (owner: "Allow options to spawn monsters in the dev menu")
 - Branch `claude/dev-monsters` on shared `6f30f82`, fast-forwarded to shared `afade5d` (docs only). Implementation commit `12ef880`. Pushed on the branch; no PR, merge or release.
@@ -10577,6 +10571,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - Checks: direct SDK Roslyn Core/Tests and relay compilation passed; full final check_relay.py exit 0 including real WebSocket/UDP/TCP and final 35 managed-core checks; Python 101 tests OK (one skip); source package validation 1,821 files; Runtime C# syntax parse zero errors; diff check clean. An earlier exploratory relay run was invalidated while its assembly was recompiled and is not counted; the final run used the frozen compiled assembly throughout.
 - Integrated concurrent shared `bf083e7d` Cyber Lord aura without changing its implementation; kept both DEV_LOG/PROJECT_STATE entries and both test registrations. Fresh combined managed compilation and focused navigation regression are checked separately.
 - Unity runtime/Editor compilation, PhysX, Windows build and rendered performance unavailable here. Existing native Ward traversal gate must pass on the desktop builder. Owner standing push/merge/builder-sync authorization applies; source integration is not a compiled release. Next: owner retests Ward PvP and spawn waves after installing the new build; send a separate PvP death PERF_HITCH if that remains.
+
 ## 2026-10-13 — Claude — Cyber Lord aura skin (owner: "Change Cyber lord weapon to instead just show an aura around the hands (Like a glitchy / cyber aura)"; "(We can use this current model as a prototype)")
 - Branch `claude/cyberlord-aura`, base shared `ae3bbbb` (`claude/sleepy-ritchie-g8ruhv`). Signed commit on the branch; not pushed, merged or released.
 - Skins: the Cyber Lord joins the cosmetic skin map as `cyberlord` (after the weapons, before `body`; `Core/NativeWeaponSkins.cs`; longest map now 298 of 320). Standard (default) is the new aura; `cyberlord:prototype` is today's hardlight gauntlets and fist shells, drawn piece for piece as before (pinned digest of the shared head's output). A missing, unknown or malformed value reads as the aura. It rides the existing map, so seats, the killcam and the Locker carry it. The Locker's Skins tab lists it behind the class's DEV gate and tries it on the stage. `NativeWeaponSkins.Modelled` is false for it (no model ids).
@@ -10951,6 +10946,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - `accountCosmetics` preserves `sheldon-idle` only for the current DB row's DEV account, like Sheldon Head/Intro. Shared `LOBBY_POSES` and Electron normalizer stay unchanged. API tests cover save/read/login, forged DEV fields, item-only unlocks, revocation, regular poses and invalid IDs. Reviewed Claude's host-seat/account-load one-liners: verified token access plus NativeCosmeticGate's DEV/expiry checks are correct; kept unchanged. Existing SheldonIdleChecks cover guest, expired and item-only rejection.
 - Data Dash remains single-trail authority: recasting overwrites path/expiry/timer, cancelling older damage; fast spam can prevent trail ticks entirely. Spec does not confirm intentional replacement; documented as implementation limitation in CYBER-LORD.md, with 4 × 6 damage over 1.2 s when uninterrupted. No trail damage change requested or applied.
 - Actual checks: fresh managed Roslyn compile with warnings as errors; full check_relay.py (35 managed-core summary groups), including jump, Cyber boost and Sheldon Idle checks; accounts+lobby tests 16/16; Python 95 OK (one skip); source package 1684 files; diff check clean. Native Unity runtime/editor compile, PhysX gate, Windows and two-client play are unrun in this environment. Accounts Worker needs deployment after source integration to make saves persistent in the live service.
+
 ## 2026-10-13 — Astra — Cut stair collision and expanded PhysX gate
 - Task `codex/cut-stair-physx`, base shared `258e348f` including Claude’s merged exit guidance. Integrates the previously local cut fix and expands the owner’s requested traversal coverage. The older `codex/cybercity-cut-exits` is superseded; do not merge it over current presentation.
 - Four invisible closed wedge colliders replace tread collision: 4 m rise / 8.8 m run (24.44 degrees), 1.8 m wide, including the final street lip. All 64 `pit-*-stair-*` content blocks, IDs, transforms and renderers are unchanged. No extra exits. Collision helper is `NativeCyberCityStairs`; Claude’s `NativeCyberCityExits`, marker discovery and HUD remain untouched. Corpse-only PhysX retains authored tread boxes.
@@ -11193,6 +11189,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - NativeAudio selects factory-anvil-loop for map id factory and cybercity-neon-riot for cybercity. Existing menu, boss/PvE music priority, volume and stage pause behavior stay intact. These maps currently have dormant presentation but no shipped map entries; this wires their future arena playback without enabling incomplete maps or replacing music on unrelated maps.
 - Checks: both full MP3s decode with ffmpeg without errors; package_source.check validates all asset receipts, unique metadata and dependencies; git diff --check passes. Unity/Windows audio playback is not run here. No gameplay/timing/network changes. Claude owns further audio-visual tuning.
 - Release: source PR/shared/cloud publication follows owner request. Compiled Update delivery still requires the local Build-and-Publish run; the new maps require their separate simulation/content integration before their music is audible in play.
+
 ## 2026-10-12 — Claude — merged Astra's Cyber Lord kit (#142); the Cyber Lord visuals read her fields
 - Branch `claude/cyberlord`. Shared head `607ebce` merged as `eb0e645`. PR #142 head `8a2ed88` merged as `116ea8a` (merge, mapping and pins together). Then the shared heads `27e6e8f` (Cyber City, PR #143; merged as `96fe55e`), `bb3c8f6` (PR #144; `a431bb6`) and `dfd45f3` (PR #145 and the field-initializer guard) merged, so the branch fast-forwards onto the shared head. Not pushed, merged or released.
 - Her `NativeCyberKit` (`Core/NativeCyberRules.cs`), `Actor.Cyber` and `Runtime/NativeCyberLord.cs` are kept as she wrote them. My proposed kit, `NativeCyberCast` and the `Actor.CyberKit` slot are deleted. Her `Tests/CyberChecks.cs` keeps its name; the presentation test is `CyberLordChecks`.
@@ -11259,6 +11256,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
 - Run Kernel Panic in a fresh NativeMatch/NativeArena and dedicated preview physics scene after disposing the prior fixture. Add a clean-state precondition and a boss-exclusion regression case; restore the saved boss flag in cleanup. Gameplay rules, immunity, damage, animation timing and replication are unchanged.
 - Checks: `/tmp/chip-dotnet/dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -c Release` passed (35 final managed-core groups, including Kernel Panic); `git diff --check` passed. The managed suite does not compile/execute the Editor-only fixture. Unity Editor/PhysX and Windows build are unavailable here and remain required via the local builder.
 - Integration: owner approved merging PR #143 and updating the builder source on 2026-10-12. Refreshed against shared `dfe1917`, preserving both sides of the DEV_LOG-only conflict; the two fix source files are unchanged. Merge/build-source advancement follows this resolution; no compiled update published. Unity/Windows validation remains for Build-and-Publish; do not bypass the gate.
+
 ## 2026-10-12 — Claude — CI: relay startup wait is a deadline
 - `native-source` failed on `3cf02f1` with "Relay startup timed out" before any test ran. The relay was unchanged. The cause: `tools/check_relay.py` polled 200 times, and a refused connection returns at once, so the poll gave the relay only ~10 s to start; the busy runner needed longer.
 - The wait is now a deadline: 60 s by default, set with `--startup-timeout` or `CHIP_RELAY_STARTUP_SECONDS`. Test behaviour and the test timeout are unchanged.
@@ -11556,6 +11554,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
   - The direct/ring split guesses from timing and distance until a Detail exists.
   - If Astra's numbers change, the presentation follows the replicated times; the pull/free shares are presentation tuning.
 - Next: Astra adds the kind and height; then a one-line change in `NativePlungeFields` and an owner review on Windows.
+
 ## 2026-10-12 — Claude — BODY SKIN row in Customize · Appearance (owner: "If it wasnt added already, add Body skin selection in customization")
 - Branch `claude/body-skin-row`, base shared head `1426250`; one signed commit on the branch only: not pushed, merged or released. Presentation/UI only; no wire, account, save-field or simulation change (`src/relay/accounts.ts` untouched).
 - Before: the body skin (Standard, Prototype, DEV Sheldon Clothes) could be picked only on the Pilot body card in Locker · Skins. Now Appearance has a BODY SKIN row between CALLSIGN and BODY COLOUR: small row cards (the Idle Pose card, `LkRowCard`, with a drawn voxel thumbnail of each body in the pilot's colours in place of the icon) laid out as two or three segments across; the Sheldon Clothes card carries the DEV badge and its thumbnail seams take the same glow as the coat (`NativeBodySkins.SheldonGlowRgb`). Hovering a card lifts it and tries the body on the Locker stage ("TRYING ON"), a click equips it, and the stage shows it at once. Reduced effects drops the thumbnail's hover scan line.
@@ -12616,6 +12615,7 @@ Owner explicitly approved the public GitHub upload. PR #317 targets `claude/slee
   - a rocket into a wall and a ground blast.
 - Known: a chip field's own ambient emitters (acid rain motes, wildfire flames) and the time/repulsion domes still sit at the field height minus .95 m, as in the source. Moving them would separate the look from the gameplay sphere; owner call.
 - Release: pushed to PR #62 and fast-forwarded to `codex/unity-cloud-current`. Publication waits on native CI and UBA for that exact head.
+
 ## 2026-10-11 — Astra — Brickfall simulation implementation (PR #109)
 - Branch `codex/brickfall-simulation-20261011`, exact base `ce3c506`; H0 was published first as `9f673411`. Implemented the owner's A/B/C simulation scope. Handoff and schema deltas: `docs/arenas/BRICKFALL-SIMULATION-CONTRACT.md`. This is an unaccepted G1/G2 candidate, not a passed playtest. PR: https://github.com/sheldon37/Chip-Arena/pull/109.
 - Loader/network: independent schema-1 JsonUtility `UnityMaps.json`; runtime SHA-256 `contentRevision` in hello/welcome/frame, protocol 6, mismatch refusal. The generated content revision is `17926c4efe8cb1aa59525e4311fdaee045b93c9bccfd0728d23cae8f7c3621bf`. Exporter, GameContent, relay and LAN discovery are unchanged. All 14 old arenas plus Ward Zero remain; Brickfall is selectable with `rotation:false`, and Random uses that flag.
@@ -13101,6 +13101,7 @@ containing an entry; no self-referential commit hash is required.
   - Not run: Unity Editor/GPU, real shader compile (glslang HLSL check only), D3D11 player, Windows, multiplayer, on-screen check.
 - Placeholder sweep: 50 distinct items, triaged into 5 fix batches. The batch agents did not build anything (an owner question reached them mid-task); they are being rerun.
   - Astra list from the triage: merge PR #88 (Admin Pause event, Impact events on adds/summons, Pong rally fields); Impact From and colour; slowed/meleeRebound events; L33t event origins; Arc events for the lightning chain, Blink Strike and shield catch; replicate SprintExhausted, DEV fighter HUD/charge, Siren cooldowns, parry/dash timing, juggle timing, and the Siren grab victim and crush time.
+
 ## 2026-10-10 — Codex/Astra — Emperor wave cancel and Claude's simulation/data follow-ups
 - Task branch `codex/unity-combat-parity`, current shared/cloud base `b51583ea0a0a1a4681940732c36b3fd92fb884e1`; retains Claude's wavedash animation and the allied-bot repair. Owner requested the listed fixes; no unrelated backlog included.
 - Emperor Q and jab can replace a wave without bypassing attack recovery or incapacitation. Held E resumes after the attack. Waves require ground contact, reset jab-chain memory as in the source, and keep their 9 m/s external push to the original 0.18 s deadline through a cancel, then use 3.1/s drag; Electric Hook adds its existing 6 m/s grounded step. Fixed the independent bot ability gate that otherwise suppressed mid-wave Q. Ansatsuken confirmed-cancel rules retained.
@@ -13123,6 +13124,7 @@ containing an entry; no self-referential commit hash is required.
   - Harness: scratchpad `wavedash/cancel/run.sh`.
 - Checks on the merged tree: Unity runtime+editor compile OK; check_relay 179 PASS, exit 0; Python OK (1 skip); package_source OK. Not run: Unity Editor/GPU, Windows, multiplayer.
 - Also still in progress after the usage-limit interruption: chip seat (chest-up table), intro NaN/artifact fix, Siren intro lights (review fixes), Siren smile reveal and gun/Siren runs (reviews), placeholder sweep.
+
 ## 2026-10-10 — Astra — allied bots attack in Siren boss mode
 - Task branch `codex/unity-boss-allied-bots`, base shared/cloud `530321ec2b5e3b0ee13678db1517166d6f2674ae`. Owner reports allied bots moving without attacking.
 - The arena evaluated PvP AI before PvE AI. The first pass consumed the bot reaction window on Siren; the second could select a minion but retain aim at Siren. Route through one mode-specific brain before observing a target.
@@ -13281,6 +13283,7 @@ containing an entry; no self-referential commit hash is required.
   All requested APIs/profile fields and Reload saved pilot remain. Windows sign-in,
   DEV menu and cross-device save/load need owner runtime verification after Update.
   No gameplay, hit timing, hitbox, cooldown, movement or animation changes.
+
 ## 2026-10-09 — Claude — Follow-ups on Astra's data, C16 cinematic cameras, C12 DEV fighter and Siren effects
 - Lean pass (one builder, one reviewer, a fix only when needed). Branches merged into `claude/sleepy-ritchie-g8ruhv`: `claude/wip-followups-b` (`e1ac132`, includes the extra room UI fixes `e16b570`), `claude/wip-c16` (`b98295a`), `claude/wip-c12-b` (`4e5b2be` Siren, `321d6ce` DEV fighters, review fix `ddbc7bb`). Presentation only: no simulation, rules, damage, timing, hitbox, movement, networking or save change.
 - Follow-ups: event sounds now route by Astra's Detail tags (BLAST_CUE layers per ability fx, static arc cue, Leet nuke at 1.0, proc and debris cues by damage kind, break material, blink-strike teleport, ball-lightning/leet-lock arcs, saw hazard); 98 source scenarios in EventFeedbackChecks. Real zone Born, ChipField.Effect, per-punch fighter sweeps from LastAttack, directed gore normals; cached CA- room code display; stale "needs Astra" notes removed. The held-chip size fix on this branch is superseded by the chip table.
@@ -13419,6 +13422,7 @@ containing an entry; no self-referential commit hash is required.
 - Not run: Unity import/play mode, real IMGUI input (clicks, text focus, the team list taking clicks and the wheel), Windows build, a LAN invite round trip.
 - Needs Astra: a host-side per-seat team call (e.g. `RequestTeam(seatId, team)`; `ChangeTeam` moves only the caller, so the host cannot set a guest's team as the source can); clear `receivedOptions`/`lobbySeats` (and the copied `prefs.pve`) in `CloseNetwork`/`JoinRoom` (the UI ignores stale ones for now); online CA- directory codes (A8).
 - No simulation, rules, protocol, save or account change.
+
 ## 2026-10-08 23:14 EDT — Codex/Astra — owner reports cloud-built update worked
 
 - Owner reports “looks like it worked” after being asked to update the existing native installation to cloud build #4. Record this as the first **owner-reported successful cloud-to-installed Update**: compiled source `51841828e142c551b521ca6698d7487390cd4880`, version `659a376e`, revision `639271111007548341`, published channel `1d4b4f62762698f0c3e9f01d114dcbc29574f1df`. Actual cloud build/delivery and public-download checks are recorded below.
@@ -13591,6 +13595,7 @@ containing an entry; no self-referential commit hash is required.
 - UI state only: the class filters the cards; a pick sets `prefs.weapon` with the old side effect (host rebroadcast). No save, network, rules, hit timing, hitbox, damage, cooldown or movement change. Adaptations: weapon cards in the menus (the source picks them in its in-match phase, A18 / owner decision 5), a selected look borrowed from the active class card, 25 px between card rows, a 60 px lobby class card so the row fits under the roster.
 - Checks: Unity 6000.3.24f1 Runtime+Editor compile (warnings as errors) OK; managed core checks 35 passed incl. new `Tests/LoadoutChecks.cs` (15 stat lines, comma locale, hints, class lists for guest/developer/grant); 24 Python tests OK; package_source OK. The first renders used the superseded push-time clip model; after the merge the cards were re-rendered with the current offline renderer (Unity's draw-time clip model) at 1920×1080, 1280×720, interface scale 1.5 and 3440×1440, scrolled and unscrolled, for Play, Boss, lobby host/guest/PvE and Customize. The review also removed per-frame allocations in the kit (tracked text, wrap and texture cache keys, closures). Not run: Unity import/play, real IMGUI input, Windows build, multiplayer.
 - Next: owner check in Unity; Astra items from the C4 spec (A18 phase and seat class, Siren uniqueness, PvE Siren rule, unready on loadout change). Create/Join class rows and the pilot card's DEV class label were left out (networking file / C2 overlap).
+
 ## 2026-10-08 — Codex/Astra — Unity parity logic handoff, PR #66
 
 - Branch `codex/unity-parity-logic-current`, target `claude/sleepy-ritchie-g8ruhv` (PR #62), requested base `b828acb`. Earlier code checkpoints `718cd4f`, `d80d974`, `c9888fc`; this handoff also includes the regression-checked ordinary-bot/Siren intro ordering and 12-second disconnect grace. Claude drawing changes through `4207641` preserved. PR #65 conflicted after Claude advanced; replacement PR #66 is directly based on `4207641` with the identical reviewed tree in `9921c78`, avoiding a merge/force push. PR #66 remains a draft pending Unity acceptance. Implemented on branch; not merged or released.
@@ -14926,6 +14931,7 @@ containing an entry; no self-referential commit hash is required.
   unchanged (no golden trace uses a reworked chip). Not run: Windows, real-app play, network suites, perf on GPU.
 - Risks: duel numbers are bot-based (bots rarely Block/roll); Thunder Step/Comet/Supernova may need owner tuning;
   Static Discharge (rare) showed no arcs in bot duels (not investigated). Status: implemented on branch, not merged.
+
 ## 2026-10-03 — Claude — menus: Boss Test skull pill, simpler online room
 
 - Branch `claude/pve-menus` from `claude/pve-batch2` 9b5445c. Owner asks: "glossy black pill
@@ -14993,6 +14999,7 @@ containing an entry; no self-referential commit hash is required.
   downed party bot and charged $150; holding F 3 s revived once; too poor = no revive.
 - Not run: Windows build, hosted multi-browser play. Risk: owner judgement of the new numbers.
   Status: implemented on branch; not merged; not released.
+
 ## 2026-10-03 — Claude — more damage/health chips, green/red chip stat lines, PvE money chips
 
 - Branch `claude/pve-chips` from `213f62b` (PR #30 head, `claude/pve-fix-desync-holdchip`); no PR opened.
@@ -15020,6 +15027,7 @@ containing an entry; no self-referential commit hash is required.
   not been playtested. Picks now draw extra economy RNG, which shifts seeded PvE runs.
   The draw comes after the catalogue offers.
 - Status: implemented on branch; not merged; not released.
+
 ## 2026-10-03 — Claude — camera snaps ("pulls another direction randomly and instantly")
 
 - Branch `claude/pve-camera` from `claude/pve-fix-desync-holdchip` `213f62b`; no PR (orchestrator). Not merged, not released.
@@ -15046,6 +15054,7 @@ containing an entry; no self-referential commit hash is required.
   missed the Esc close; now 0 on Choose later click, Esc and card pick; aiming after re-lock exact.
 - Next: owner playtest on Windows; if snaps persist, consider `requestPointerLock({unadjustedMovement:true})` (raw input;
   removes OS acceleration, so a feel change to decide).
+
 ## 2026-10-03 — Claude — PvE Tab party board (no rounds/sets; kills, deaths, money)
 
 - Branch `claude/pve-tab-board` from `claude/visual-revision` `6fd525c`; no PR (orchestrator). Not merged, not released.
@@ -17147,6 +17156,7 @@ In the CI layout, the layout test's two script tests skip and its three fixture 
 earlier CI-layout run that used the shared-directory `ci-relay.sh` was stopped and is not counted.
 Not run: Unity Editor, PhysX, Windows, gameplay. The branch is pushed and unmerged; nothing is
 released or published.
+
 ## 2026-10-14 — Astra: agreed Expedition layout validation and director state
 
 Branch `codex/expedition-layout-director`, based on local foundation `8379f4cf`
@@ -17978,7 +17988,6 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   validates and publishes the native test update. Not run here: Unity Editor/player, Windows, the test-channel
   publish itself, or host/guest play.
 
-
 ## 2026-10-15 — Astra: Expedition M1 runtime and 18 m spitter authority
 
 - Branch `codex/unity-expedition-m1`, integrated on shared `3a15faf` (includes Claude's Ward Zero silence and `150075d` fix). PR #223 already merged the C# 9 compiler pin and builder was synced to `3a15faf`.
@@ -17989,7 +17998,6 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - Actual checks: C# 9 compilation against Unity 6000.3.24f1 assemblies passes player, editor-context Runtime and Editor; Python 106 tests pass (1 skipped); source package passes 2,032 files. Managed/relay regression passes all 688 PASS groups (rc 0) with a 1,200 s budget after the default 300 s run timed out without an assertion failure.
 - Status: implemented on branch, not yet a released/playable build. DEV_LOG history preserved. Intended launch and Claude checklist are in EXPEDITION-PLAYTEST-M1.md. Native builder receipt and observed Windows route are still required; do not substitute semantic compilation for a playtest. Claude should begin local visuals only on that exact successful native build, then host/guest after its runtime support exists.
 
-
 ## 2026-10-15 — Astra: expose Expedition startup refusal and close native gate gap
 
 - Branch `codex/unity-expedition-start-fix`, base shared `8c5e83d`. Owner reports a short stall and return to Test Boss on Expedition click. Drive Latest-Build.txt (03:25 UTC) confirms that source's Unity Windows build and native M1 combat/placement checks succeeded; it is not a player runtime log.
@@ -17997,13 +18005,11 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - Extract the exact startup layout loader into NativeArena and invoke it from native build acceptance too, covering anchors, interactions and every inherited spawn in addition to the earlier slot/boss subset. Preserve safety checks; failures now identify map, coordinates and capsule dimensions. This is diagnostic/gate parity, not a claim that the owner's underlying refusal is fixed.
 - Verification: player Unity-assembly compilation passed; remaining compile receipt and promotion are recorded in the PR. Native execution of this change and the specific player exception remain pending. Full DEV_LOG history preserved. Next: obtain the full-gate builder result or player's startup exception and repair the concrete cause.
 
-
 ## 2026-10-15 — Astra: Expedition startup rejects authored Hulk drop
 
 - Follow-up `codex/unity-expedition-drop-fix` on shared/builder `8a2fdee` (PR #225). The expanded native gate reproduced the startup refusal: `Expedition route blocked: expedition-ward-zero (35.8, 6, 2) to (-35, 0, -26.2), radius 0.954` in the 03:35 UTC Windows log.
 - Startup navigation required continuous floor support and straight LOS on authored one-way drop links. Falling links intentionally leave the floor; live authority NavLinkActiveCore already handles them separately. Use that authored drop policy (NavLinkEnabled) after real support/capsule checks on both endpoints; ordinary links keep their support/LOS checks and NativeNavSearch keeps drops directional. No map geometry or visual changes.
 - The full startup gate added in PR #225 stays required; its next native receipt must confirm every spawn can reach the area. Semantic compile and native result are recorded in the follow-up PR. Do not claim the click-to-play route is verified until the user/native run confirms it.
-
 
 ## 2026-10-15 — Claude: Expedition M1 acceptance — receipt, startup diagnosis, boss-crack height (no live run)
 
@@ -18044,7 +18050,6 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
 - Owner reports missing lights, doors, detail and hazards after PR #227. Base `003bf32`, branch `codex/expedition-ward-render`. Found the outer SourceWorld dispatch still required literal `siren`, bypassing WardZeroScenery for `expedition-ward-zero` even though its inner Active gate accepts both. Prior data/native checks did not establish visual parity; the earlier completion claim was too strong.
 - Remove the redundant literal-ID restriction in live and backdrop dispatch, retaining the canonical Active gate and backdrop map-identity check. This invokes the existing boss-test scenery, practical lights, door rigs and hazard dressing without redesigning Claude assets. Update the existing hook checks to prevent reintroducing the excluded alias.
 - All three Unity-reference compile targets and the focused --wardzero-simulation suite pass. Exact Windows build receipt will be in PR. Manual visual confirmation remains required.
-
 
 ## 2026-10-15 — Claude: PvE machines, dispensed chip and chip cards redesign
 
@@ -18766,7 +18771,6 @@ Shared and builder: `886a584` (signed merge of Astra's PR #218 on `920b9c5`), `e
   - The gate leaf hinge overlaps its post by a few centimetres at 160 degrees.
 - **Movement, collision and networking impact:** the town's colliders and navigation change as listed above. There is no change to hit timing, hitboxes, damage, cooldowns, movement rules, networking or saves code.
 
-
 ## 2026-10-15 — Astra — Expedition hub authority
 
 - Branch `codex/expedition-hub-authority`, base Claude hub `3c13863` (contains shared
@@ -18871,7 +18875,6 @@ rerun the unchanged native acceptance gates before publication.
 - **Animation impact:** presentation only. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged. The drawn rig moves up to 20 cm off the capsule (25 at a run) and returns by each step's end. The lead foot steps up to 30 cm. The Overclock compresses the step and the trails with the windows.
 - **Next:** the owner checks the feel in a native build. Astra decides whether to add the step (contract above); the presentation already reads it.
 
-
 ## 2026-10-16 — Astra: stand-in rule and native cohort adapter (inactive integration)
 
 - Branch `codex/expedition-split-integration`, based on pushed cohort foundation `e75d251` (shared/builder base `bb4b36a`). This is partial implementation, not the requested finished builder feature.
@@ -18880,7 +18883,6 @@ rerun the unchanged native acceptance gates before publication.
 - Managed C#9 warnings-as-errors compilation and affected checks pass: join 25, cohort 69, registry 292, co-op 41, director 98, draft 38, layout 268. Source package check passes (2219 files). Unity API compile checked separately; see integration handoff for exact final result.
 - Not executed: new native fixture, transport acceptance, Windows host + 3 guests, actual two-area timing. Existing live exp-layout-3 and F entry remain unchanged. No live pin or save compatibility switch, no build/publication claim.
 - Next: resolve combat-clock/effect ownership migration, integrate area director/session, per-recipient wire and schema reader, then native and Windows gates before Claude enables layout/ring/HUD. Full blockers in EXPEDITION-SPLIT-INTEGRATION.md. Animation assets unchanged.
-
 
 ## 2026-10-16 — Astra: fresh-run scope and split wire isolation
 
@@ -18897,13 +18899,11 @@ rerun the unchanged native acceptance gates before publication.
 - Validation: managed C#9 warnings-as-errors compilation; fresh-run, integration, rule/view, director and co-op checks; pinned Unity API Player/Runtime/Editor compilation. Native Unity execution and Windows visual play not performed in this environment; publication must be confirmed from the builder.
 - Animation, damage, cooldowns and movement unchanged. Host extraction with connected guests remains refused under the existing no-endpoint-migration rule.
 
-
 ## 2026-10-16 — Astra: builder validation physics-mode repair
 
 - Build of `8d1ec86` failed at 15:59 UTC in the airborne chooser landing assertion. Latest-Build.txt reports Physics.Simulate refused every step because simulationMode was not Script. This fixture runs before ConversionGame startup configures physics.
 - Scope the fixture's falling loop to SimulationMode.Script, step the owning PhysicsScene, sync transforms and restore the prior mode in finally. Retain the landing/horizontal-hold assertions. This repairs the validation setup, not a gameplay bypass.
 - Pinned Unity Runtime compile checked; next Windows build must execute the retained native gate. No publication claim until the builder succeeds.
-
 
 ## 2026-10-17 — Astra: Station and Ironworks gameplay candidate
 
@@ -18911,11 +18911,8 @@ Branch `codex/unity-zone-gameplay`, base `dfb8aac`; owner requested completion a
 
 Local validation so far: 243 new managed zone checks; Station/Ironworks presentation and layout checks; genuine Unity 6000.3.24f1 Player/runtime/editor API compile; 140 Python tests, one existing skip. Final regression and hosted gates pending. Native authority/guest attack and event fixtures added to the four-area build gate, not yet executed in Windows. Candidate only: not merged or published at this checkpoint. No human multiplayer playtest claimed.
 
-
 2026-10-17 Astra validation checkpoint, PR #264: gameplay head `37fca579` passes both hosted native jobs (run 39040123192, retry 2), including all three Unity assembly compiles, full managed suite, real relay, Python/package and Windows updater/launcher checks. First hosted run hit the documented intermittent GunMotion allocation check (7,960 bytes); isolated and full local gun checks pass, retry passes without weakening assertions. Local full suite reached the historical Bow allocation assertion (15,424 bytes). Merged current shared `77c3696` into the candidate, preserving Claude's zone boss music and both project-state entries; conflict was documentation only. Native Unity execution/publication still pending.
 
-
 2026-10-17 Astra native gate repair: build of merged PR #264 (`598c41b`) failed before publication because Ward Zero had no spawned horde. Unity JsonUtility materializes the new absent `PveEntry.allowed` array as empty when cloning legacy content. Empty now uses the original Ward entry rules; nonempty authored lists still restrict zone spawns. Added both cases to ZoneCombatChecks (245 checks). Native gate is retained and must pass before release.
-
 
 2026-10-17 Astra native follow-up: `ce85919` restores native spawning (Ward 8, Station 12, Ironworks 12 after 1,800 ticks). Station enemy ability/weak-point and guest event checks reached the final hazard-clock assertion. Split that compound assertion into authority validity, decoded validity, presence and time checks, with raw/decoded values on failure; use 0.1 ms tolerance for the JSON float round trip instead of binary equality. Malformed/NaN state rejection remains exact. No publication yet.
