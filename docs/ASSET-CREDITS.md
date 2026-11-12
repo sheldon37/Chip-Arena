@@ -172,6 +172,10 @@ The model's own animation (`docs/BOZO-INTEGRATION.md`) plays the same pack's `2H
 are sampled on the body at the bake into a motion bank (`ChipArenaVisualMotion.bytes`, humanoid poses per frame). The bank
 ships in the licensed-assets zip; the pack's clip files do not.
 
+Since 2026-11-11 (`claude/greatsword-grruzam`, not yet released) the DEV Greatsword and the DEV Katana play the great sword and katana
+clips of Grruzam's Powerful Sword Animation (Great Sword, Katana), v2.1.3, a Unity package the owner bought, sampled into the same bank
+the same way; the pack's clip files are never committed or shipped as files.
+
 ### Stage kits (2026-10-28, owner licence)
 
 The stage props and harbour yards (`docs/arenas/STAGE-KITS.md`) draw meshes and the palette, lights and logos atlases of
