@@ -836,6 +836,12 @@
       "source": "Owner-supplied NOCTIEL song committed on shared Unity branch d20ef450"
     },
     {
+      "path": "Assets/StreamingAssets/BootIntro.mp4",
+      "bytes": 5266834,
+      "gitBlob": "9e8e99337ab9a65270cf7e1a01c999a3e39a6212",
+      "source": "Owner-supplied logo intro (2026-11-11), re-encoded to 4 Mbps H.264 with its AAC audio copied (docs/ASSET-CREDITS.md)"
+    },
+    {
       "path": "Assets/Conversion/Resources/UnityMaps.json",
       "bytes": 23622154,
       "gitBlob": "278a814781a48287f482ac7a3de2ec4a5dc18b82",

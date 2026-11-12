@@ -14,6 +14,137 @@
 - **Not changed:** gameplay, hazards, the Electron game's music, Containment Sirens' 1.5x gain (it applies to that file only).
 - **Checks:** see the release line below.
 
+## 2026-11-11 — Claude: the logo intro at launch, with the game loading under it (owner request)
+
+- Branch `claude/boot-intro`, base shared `7e4d6378`. Owner: "Lets add this as an intro when starting the game (Use this time to load assets in). (This is also the new logo for the game)". Full description: `docs/BOOT-INTRO.md`.
+- **The clip:** `Assets/StreamingAssets/BootIntro.mp4`, played by URL.
+  - The owner's 11.3 MB, 8.9 Mbps upload re-encoded to 4 Mbps H.264 High without B-frames: 5,266,834 bytes. It keeps the same 241 frames, 24 fps and 1280x720, with the AAC copied unchanged.
+  - Unity's Windows decoder warned about and skewed the B-frame timestamps, so the re-encode has none.
+  - SSIM 0.995 and PSNR 49 dB against the upload.
+  - Credited in `docs/ASSET-CREDITS.md` "Logo intro", with a receipt in `tools/asset-lock.json`.
+  - Its last frame is `Resources/BootIntroLogo.jpg`, held after a skip.
+- **The intro** (`Runtime/NativeBootIntro.cs`; the timeline is Core `NativeBootIntroFlow`):
+  - Black from about 1.2 s after launch (its curtain), then the clip full screen, letterboxed 16:9 on black.
+  - Its sound plays at the Menu Music level, levelled to the menu song (x0.72); Mute audio silences it.
+  - A click, Esc, Enter or Space (pad A, B, Start) skips it after 0.5 s.
+  - If the game is not ready when it ends or is skipped, the final logo holds and an orange dot ring with "LOADING" fades in after 0.3 s.
+  - Then a 0.6 s crossfade into the menu. The menu song starts from its top, and a notice raised under the intro shows after it for its full time.
+  - A start-up error ends the hold and shows after the intro, never under it.
+- **It does not play** on a dedicated server, in batch mode, with `-nointro`, or in the Editor unless asked (Chip Arena > Boot intro > Play once / Play in Play mode). It never plays under the BoZo tool's play runs unless the run asks for it (`bootintro=1`).
+- **The loading under it** (`Runtime/NativeBootLoad.cs`, `NativeBankLoad.cs`):
+  - From a BeforeSplashScreen hook, the two motion banks and the SourceModels JSON decode on workers. The main thread only reads their bytes (25 ms), and all three finish during Unity's splash. Every bank read waits for its pending load.
+  - The source models still build in presentation.Initialize, from that JSON (11 ms instead of 0.9 s).
+  - Awake otherwise runs as before, in the same order; without the intro it is unchanged.
+  - Then, one step a frame: the banks are joined; the model's bake, outfit table and icon sets come in by LoadAsync; and once the clip settles on its logo (8.1 s), the menu's scene and then its GUI draw twice each under it.
+  - LateFrame and OnGUI wait until their step, and Update takes no input under the intro. A one-token hook in NativeAudio holds the menu song (`MenuHeld`).
+  - **Sculpts on a worker:** Core `NativeBootSculpts` makes the pure geometry behind NativeSourceModels' slowest builds on a worker from the same hook (229 jobs: the minion kinds and zone props, the robot helmets, the Standard weapons; about 1.7 s on the worker).
+    - The builders (`HordeKindModels`, `IronworksModels`, `StationPropModels`, `HelmModels`, `WeaponSkins`) still run in presentation.Initialize, in the same order, and make every mesh and material there.
+    - Each takes its sculpt (`NativeBootSculpts.Take`, which waits for the whole worker the first time, so nothing sculpts beside it after that), or sculpts it itself as before.
+    - CoreTests hold the worker's results, made beside a thread making them again, byte for byte to the single-threaded ones.
+    - `HordeKindModels` went from 1.1 s to 0.18 s on the main thread, and `HelmModels` from 0.47 s to 4 ms.
+  - **The curtain:** with the intro to play, `ConversionGame.Boot` raises the intro's black curtain and makes the game one frame later (`NativeBootDefer`). Without the splash, the window showed white until the first frame, through Awake.
+    - Awake is unchanged.
+    - The curtain neither plays nor runs its clock until Awake arms it.
+    - An unarmed curtain (Awake failed, or chose no intro) comes down at once.
+- **Unity's splash is off** (owner: "Yes, remove it"): `m_ShowUnitySplashScreen: 0` in the tracked `ProjectSettings/ProjectSettings.asset`, in its own commit, the only Player Settings change. The build shows `PlayerSettings.SplashScreen.show=False`.
+- **Measured** (Windows Development builds with a scratch probe that was never committed, RTX 4090, 1600x900, fresh preferences; 3 runs each, 2 for skips):
+  - **Launch to anything on screen:**
+    - before: the menu at 10.2-10.3 s;
+    - intro with the splash: the clip at 7.1-7.5 s;
+    - now: black at 1.2 s and the clip at 3.3-3.7 s.
+  - **Launch to an interactive menu:**
+    - before: 11.0-11.2 s, with a 0.8-0.9 s frozen first menu frame;
+    - intro with the splash: 17.2-17.5 s played out, 8.3-8.4 s skipped at 0.5 s;
+    - now: 13.4-13.7 s played out, 4.6 s skipped at 0.5 s.
+  - **Frames while the clip moves (0-8.1 s):** 1165-1166 frames, mean 6.9-7.0 ms, p99 7.1-7.3 ms, max 7.6-10.3 ms, none over 20 ms (144 fps cap).
+  - **Under the settled logo:** the menu's build lands there: 0.35, 0.03, 0.21, 0.08 s.
+  - **The first 3 s of menu:** p99 22-24 ms, max 38-41 ms before; p99 8.5-9.5 ms, max 12-14 ms now.
+- **Still on the main thread before the clip** (black now, Awake about 2.4 s):
+  - **For Astra:** the maps loader, `NativeUnityMapLoader.Load` (UnityMaps.json, 23.6 MB, parsed and merged into the content), takes 0.9 s. It is content, so I left it alone. Its JSON could decode on a worker from the same BeforeSplashScreen hook.
+  - presentation.Initialize, 1.3 s: the source models' meshes and materials, `MachineSkins` 0.16 s, `ModelHats` 0.17 s, `SuitModels` 0.07 s, `CapturedAnimation` 0.17 s.
+- **Package:** `Packages/manifest.json` gains `com.unity.modules.video` in its own commit. The project had no Video module, so this one line is needed for the VideoPlayer. It is the only manifest change; it is in the 6000.3.24f1 catalog and passes `package_source.py`. Accepted by the integrating session (a built-in module the feature needs).
+  - **For capture scripts:** once this branch lands on shared, a script that runs `git checkout --detach` in the Editor checkout must cross two files with `git checkout -m`. That checkout carries local edits to both:
+    - `Packages/manifest.json` (a `com.unity.shadergraph` line);
+    - `ProjectSettings/ProjectSettings.asset` (Unity's full serialisation; this branch adds `m_ShowUnitySplashScreen: 0`).
+    A plain checkout between commits that differ there is refused.
+  - **A refresh does not resolve packages:** after crossing the manifest change, `AssetDatabase.Refresh` (the BoZo refresh request) compiled without the Video module and failed. The Package Manager must resolve first; the local tool now takes `Temp/bozo-resolve.request` (`Client.Resolve()`).
+- **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement, network or save change; presentation and load order only.
+- **Checks:**
+  - CoreTests `--boot-intro`: 104 checks. They cover:
+    - the rules, the timeline and the letterbox;
+    - the clip's size, hash, metas, receipt and credits;
+    - the wiring and the order;
+    - the curtain and the splash setting;
+    - the 229 sculpts made on a worker beside a thread making them again, byte for byte the single-threaded ones.
+  - The full CoreTests at `9166905a` (shared `dd643702` merged in; Windows path patch in a throwaway worktree, as always on this PC): 1016 PASS lines, exit 0. `git diff --check` against shared: clean.
+  - Unity compile PASS.
+  - `PrototypeBuild.Validate` in batch mode on a copy of the project at `9166905a`: passed, 396 PASS lines.
+  - Python suite: the same 12 failures as the base on this PC, none new. `package_source.py --check` passed.
+  - **The shared Editor** (`bootcap4.sh`, the lock held per run): the Editor checkout's local manifest and Player Settings rode on top and were put back byte for byte; the lock was released only after the Editor had resolved packages and compiled clean and the tool answered.
+    - A BoZo run with `bootintro=1`: the intro played in Play mode and crossfaded into the menu as its clip ended (10.3 s on its clock); the match followed. All 229 sculpts were taken.
+    - A plain BoZo run on the branch logged `BOOT_INTRO off (EditorAutomation)` and loaded the banks at once, as before.
+  - **Windows builds** (batch, on a scratch copy of the project, with Unity's splash off from the tracked setting: `SplashScreen.show=False`):
+    - the build check logged `BOOT_INTRO_CLIP_IN_BUILD`;
+    - window grabs show black from 1.2 s, the clip, and the crossfade into the menu;
+    - the held logo with its indicator (`--ca-boot-hold`) and the 4:3 letterbox were seen in an earlier build of the branch;
+    - `-nointro` and `-batchmode` logged `BOOT_INTRO off (Argument)` and `(BatchMode)`, with the old synchronous path.
+  - **The exact branch head** (`9166905a`, no probe) was built and launched once:
+    - the clip played with no decoder warning: 1323 frames, mean 7.6 ms, p99 10.3 ms, the largest the 0.36 s menu build under the settled logo;
+    - interactive 12.65 s after start;
+    - sculpts 229 made, 229 taken, 0 sculpted by a builder itself, 0 unused.
+- **Not verified:** a person watching and hearing it; the builder's own build and the installed updater; other GPUs and slower CPUs; a two-monitor or fullscreen launch.
+
+## 2026-11-11 — Claude: DEV Greatsword and DEV Katana, the Grruzam sword pack on two DEV classes
+
+- Branch `claude/greatsword-grruzam`, base shared `034d35a6` (shared `b1674f0d` merged, with the Katana's released saya and intro fixes).
+  Commits: `a1ae7c30` the DEV Greatsword, `aeddba08` the DEV Katana, `8e1201f1` docs, `6b066799` and `022b2bed` shared merged (the latter
+  with the stage z-fight fix), then this log. Implemented on the branch; not merged, not released.
+- **The owner:** "Great Sword and Katana" (Grruzam's Powerful Sword Animation pack, v2.1.3, bought), then "For those new animations;
+  Maybe lets put them on DEV classes. Call them like ... DEV Katana and DEV Greatsword", then "Yes, grantable". The Greatsword and the
+  Katana keep their own animation; nothing of theirs changed.
+- **What they are** (docs/BOZO-INTEGRATION.md, "The DEV animation classes"): `dev-greatsword` and `dev-katana`, devOnly content rows with
+  their base's numbers (GameContent weights 12 and 1, as their bases), a DEV screen card, spec icons (`ClassIcons.json`), Locker and loadout text. In a
+  match each plays its base class exactly; only the model's animation set differs (Core `NativeDevMotions`, `NativeDevGreatswordMotion`,
+  `NativeDevKatanaMotion`). The DEV Katana's iai, sheathing and counter critical keep the Frank Slash Pack's clips (the pack has no saya
+  or partner clip).
+- **For Astra (shared code, networking):** the arena spawns a seat that picked a DEV animation class as its base (`NativeDevMotions.Normalize`
+  at the top of `SpawnPilot`: `seat.spec` becomes the base, the DEV class goes to the new `NativeSeat.motion`). The seat frame carries
+  `motion` (`NativeSeatFrame.motion`; a guest keeps it only for a DEV class whose base the seat plays), the lobby seat copies it, and
+  every actor of the seat has it as `Actor.Motion` (`[NonSerialized]`, filled at spawn on the host and from the seat on guests). So
+  rules, hit timing, hitboxes, damage, cooldowns, movement, bots and HUD are the base class's; no rule code was copied. Please review
+  the field and its wire path. Other hooks: `NativeVisualMotionPresentation` picks the set by `NativeDevMotions.Set(a)`;
+  `NativeBladeMotion.Clip` picks the DEV Katana's clips for an actor whose `Motion` is it; `NativeVisualMotionClips.Read` takes the
+  measured strikes of the pack's clips (they carry no Hit event); `NativeWeaponSkinModels` aliases the base's weapon models;
+  `NativeLockerUI.LockerSignature` gives the base's entrance; `NativeParityChecks` counts 24 weapon rows (22 before the two).
+- **Animation against the rules:** each clip is fitted to the base's timing. The DEV Greatsword's strikes (measured on the body at 30 fps)
+  land on the middle of each hit window, the combo an even cycle so each cut keeps the rules' sweep (1 right to left, 2 left to right...);
+  the DEV Katana's moves are clip windows whose strike lands on the rules' hit, at most 1.6 times the clip's pace. Hitboxes and reach
+  are unchanged. The game's hold of each blade is kept: the pack's own sword lies 4-22 degrees from it on average (the greatsword) and
+  about 26 (the katana, a steady offset); both packs' A-version strides carry the sword off the hand, so the B versions are used.
+- **Grants (owner: "Yes, grantable"):** `weapon:dev-greatsword` and `weapon:dev-katana` are in Core `NativeDevGrants.Server` and
+  `src/shared/access.ts` `GRANTABLE_CONTENT` (CoreTests `--dev-grants` holds them equal). **For Astra: a Site publish** so the live account
+  server accepts them; until then it refuses a save that grants either. The earlier `weapon:fangs` key (the DEV Fangs,
+  2026-11-10/11) is in neither list yet: the Fangs are grantable once it is added and published.
+- **The motion bank** (local, git-ignored): the DEV Greatsword's 35 clips and the DEV Katana's 31, merged into the live bank with every
+  other clip byte-identical (409 clips, 4,877,308 bytes, became 475 in 5,663,961). The pack is installed under the git-ignored
+  `Assets/LocalAssets/Grruzam Powerful Sword Animation(Great Sword, Katana)/`; the local tool's `MotionClipFolders` and `MotionSpecs`
+  have both. Nothing licensed, baked or captured is committed. The Drive zip is not repacked, so a builder build has none of the two
+  classes' clips. Licence: the owner bought the pack ("Yes, I bought it").
+- **Checks:** the full CoreTests on `a1ae7c30` and `aeddba08` (1014 PASS), on `6b066799` (1015) and on `022b2bed` with shared's z-fight
+  fix and the rebuilt stage banks (1015 PASS; the Windows path patch applied locally and reverted); `--visual-rig`, `--blades`,
+  `--dev-grants`; `git diff --check` against shared; the Editor compiled `972f490d` and the builder's Editor checks passed on it
+  (`PrototypeBuild.Validate`: ok; every weapon model found, the DEV classes drawing their bases'). Captures in play (cybercity, DEV
+  access, one idle bot), both classes: idle, the combo, the roll, the jump and air attack, the held guard and a blocked hit in it, the
+  parry, the hit reactions from each side, the knockdown and get-up, Q and E; the DEV Katana's parry into its counter (the paired
+  critical); the DEV screen with both class cards (grantable, "No entrance of its own"). Not run: play by a person, a guest over the
+  network (the seat's motion on the wire is covered by CoreTests only), a Windows build, the builder. (The local tool's `mehurt=` and
+  `knock=` now follow `zclock=arena` like `apress=`; on the wall clock they fired seconds early.)
+- **Known risks:** the ClassIcons generator (`tools/export_class_icons.mjs`) does not draw the two new icons (they were added to
+  `ClassIcons.json` directly). The greatsword's strafes slide about 30% (the pack's jog is slower than the game's run). The DEV Katana's
+  Dodge_Front is the pack's flip, not the Katana's tumble.
+- **Next:** the owner reviews the captures; Astra reviews the seat's `motion` and publishes the Site for the two keys; to ship them,
+  repack the Drive zip's bank with the Grruzam clips.
+
 ## 2026-11-11 — Claude: depth fighting on the stage art (owner report), Polaris's middle first
 
 - Branch `claude/stage-zfight` from shared `b1674f0d`; local commits, **not pushed, not merged, not released** (the integrator merges, repacks the Drive zip with the rebuilt banks and releases). Visuals only: no rule, collider, timing, nav or pilot column changed.
@@ -26,6 +157,7 @@
 - **Animation impact:** none (no hit timing, hitbox, damage, cooldown, movement or networking change).
 - **Checks:** `--stage-art` (585 checks, with the layers', the cells' and the kept boxes' own), every stage's art suite on the rebuilt banks (`--polar-art`, `--pier-art`, `--deepwell-art`, `--skyframe-art`, `--breakwater-art`, `--brickfall-art`, `--wardzero-art`, `--factory-art`, `--cybercity-art`, `--club-art`, `--emporium-art`, `--causeway-art`, `--sanctum`, `--polar`): all pass; the Unity compile (`check_unity_compile.py`: Unity.InputSystem, ChipArena.Player, Assembly-CSharp, Assembly-CSharp-Editor pass); the full suite at `fde60a5d` against the rebuilt banks (in the worktree's own git-ignored LocalAssets): 1014 groups, exit 0. The Editor's build checks (`wtvalidate.sh` at `e05af585`, the released banks in place): ok. The rebuilt banks must ship with this branch's checks: shared's own Causeway and Factory budget checks fail on them.
 - **Not done / not seen:** see docs/arenas/STAGE-ART.md section 14 ("Seen in the Editor"): seen in the Editor are Polaris's middle before and after (High with the final bank; Low with the first rebuilt bank) and the other eight stages' floors before and after at High; not seen: those eight on the Low graphics tier, the four 2026-11-10 stages' rebuilt banks; outside Polaris the floors did not visibly fight in the Editor's captures before the change either (the doubled floors show only where two tiers meet with different bakes; measured, not filmed in motion); no human playtest, guests, Windows build or killcam; Skyframe's paving blotches are the fine surface under the toon ramp, not depth fighting, and are left.
+- **Released** to the test channel (Windows builder): merged into shared at `dd643702` and synced to the builder with a new Drive zip (only the thirteen stage banks changed, checked by hash; the released motion bank kept; the zip before kept beside it as `LocalAssets-2026-11-11-before-zfight.zip`); the release suite at `c97c399a` (1015 groups, exit 0) and the Unity compile passed; the Editor build checks passed on the branch (`e05af585`); built and published as revision `639300370278681515` (2026-11-11 23:40 UTC, 317.4 MiB). The Editor checkout now holds the rebuilt banks. Not played by a person.
 
 ## 2026-11-11 — Claude: the Katana after the owner's third notes: the intro's draw seen, a parried attacker's reel, the counter's foe thrown back (owner request)
 

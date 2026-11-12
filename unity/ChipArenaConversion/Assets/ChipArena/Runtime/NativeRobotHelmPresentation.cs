@@ -13,9 +13,9 @@ namespace ChipArena.UnityConversion
         {
             var lit=Resources.Load<Shader>("NativeSourceLit");if(lit==null)return;
             var material=new Material(lit){enableInstancing=true,name="Robot helmet"};material.SetInt("_Cull",2);material.SetFloat("_Ink",0);materials.Add(material);
-            models[Helm]=HelmParts(NativeRobotHelm.Helm(),material,"Robot helmet");models[HalfMask]=HelmParts(NativeRobotHelm.Half(),material,"Robot half mask");
+            models[Helm]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.Helm,NativeRobotHelm.Helm),material,"Robot helmet");models[HalfMask]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.HalfMask,NativeRobotHelm.Half),material,"Robot half mask");
             // (A fallen pilot's smashed helmets: Core NativeZombieLooks, Runtime ZombieSuit.)
-            for(int b=0;b<NativeRobotHelm.BrokenCount;b++)models[BrokenHelm+b]=HelmParts(NativeRobotHelm.Broken(b),material,"Robot helmet smashed "+b);
+            for(int b=0;b<NativeRobotHelm.BrokenCount;b++)models[BrokenHelm+b]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.BrokenHelm(b),()=>NativeRobotHelm.Broken(b)),material,"Robot helmet smashed "+b);
         }
         private Part[] HelmParts(SheldonSection[] sections,Material material,string name)
         {

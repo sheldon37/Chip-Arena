@@ -16,7 +16,7 @@ internal static class ChipSelectChecks
     public static IEnumerable<string> Run(ConversionContent content)
     {
         // Legacy Core pose fixture: the TNT kit and the Top Dog use NativeVisualMotion, exercised by BombadierChecks, TopDogChecks and native acceptance.
-        var specs=content.weapons.Select(w=>w.id).Where(id=>id!="siren"&&id!=NativeBombs.Spec&&id!=NativeTopDog.Spec&&id!=NativeGlaive.Spec&&!NativeBlades.Is(id)).ToArray();
+        var specs=content.weapons.Select(w=>w.id).Where(id=>id!="siren"&&id!=NativeBombs.Spec&&id!=NativeTopDog.Spec&&id!=NativeGlaive.Spec&&!NativeBlades.Is(id)&&!NativeDevMotions.Is(id)).ToArray();
         Check(specs.Length>=16&&specs.Contains("cyberlord")&&specs.Contains("bow"),"the class list ("+string.Join(",",specs)+")");
         yield return Mapping();
         yield return Track();

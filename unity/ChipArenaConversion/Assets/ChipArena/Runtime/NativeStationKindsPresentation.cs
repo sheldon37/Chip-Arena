@@ -564,7 +564,7 @@ namespace ChipArena.UnityConversion
             var material=new Material(shader){name="Native station props",enableInstancing=true};material.SetInt("_Cull",2);material.SetFloat("_Ink",0);material.SetFloat(MinionGlowId,1);materials.Add(material);
             foreach(NativeHordeModels.StationProp prop in Enum.GetValues(typeof(NativeHordeModels.StationProp)))for(int tier=0;tier<NativeHordeModels.Tiers;tier++)
             {
-                string id=NativeHordeModels.StationPropId(prop,tier);var built=NativeHordeModels.BuildStationProp(prop,tier);var parts=new List<Part>();
+                string id=NativeHordeModels.StationPropId(prop,tier);var built=NativeBootSculpts.Take(NativeBootSculpts.StationProp(prop,tier),()=>NativeHordeModels.BuildStationProp(prop,tier));var parts=new List<Part>();
                 foreach(var s in built.Sections){var mesh=BodyMesh(s,id+" / joint "+s.Bone);if(mesh!=null)parts.Add(new Part{Name=id,Bone=-1,Mesh=mesh,Material=material,NoShadow=tier!=NativeHordeModels.Full});}
                 models[id]=parts.ToArray();
             }

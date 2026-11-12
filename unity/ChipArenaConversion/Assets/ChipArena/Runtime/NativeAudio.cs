@@ -8,6 +8,8 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeAudio:MonoBehaviour
     {
         public float Effects=.3f,Music=.35f,Menu=.6f;public bool Muted;
+        // The menu song waits under the logo intro (NativeBootIntro.cs): loaded, paused, then started from its top at the crossfade.
+        public bool MenuHeld;
         // The replacement menu master is loud; trim playback without overwriting saved sliders.
         private const float MenuTrackGain=.3f;
         private readonly Dictionary<string,AudioClip> clips=new Dictionary<string,AudioClip>();
@@ -120,7 +122,7 @@ namespace ChipArena.UnityConversion
             foreach(var voice in voices)voice.mute=opening;music.mute=opening;introVoice.mute=opening;
             // audio.ts update: falloff and pan are heard from the local pilot (`listener=self.pos`), turned by the view yaw.
             if(camera!=null){listener=camera.transform.position;yaw=camera.transform.eulerAngles.y*Mathf.Deg2Rad;}if(arena?.Local?.Body!=null)listener=arena.Local.Body.position;
-            Slender(arena,menu);StructureQueue(arena);EffectsFrame(arena,menu);KitAudio(arena,menu);DoorHumFrame(arena,menu);IronworksBossLoopFrame(arena,menu);if(arena==null){CyberCityCues(null,true);Track("music/menu-afterglow",Menu*MenuTrackGain);return;}
+            Slender(arena,menu);StructureQueue(arena);EffectsFrame(arena,menu);KitAudio(arena,menu);DoorHumFrame(arena,menu);IronworksBossLoopFrame(arena,menu);if(arena==null){CyberCityCues(null,true);Track("music/menu-afterglow",Menu*MenuTrackGain,MenuHeld);return;}
             if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();installCue.Clear();phase="";countdown=-1;foreach(var v in voices){v.Stop();v.loop=false;}}
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             CyberCityCues(arena,menu);
