@@ -379,6 +379,17 @@ no loudness remaster or seamless-loop edit. The video stream is not packaged.
 Legacy Electron music is unchanged. These are owner-supplied recordings; no
 additional artist identity or license terms were supplied with the uploads.
 
+## Game logo and icons (2026-11-11)
+
+Owner-supplied on 2026-11-11 as a logo intro video ("This is also the new logo for the game"): a purple microchip with gold
+pins, CHIP ARENA in cream slanted capitals, an orange swoosh and spark burst. `unity/ChipArenaConversion/Assets/ChipArena/Resources/ChipArenaLogo.png`
+is a transparent matte of the video's still final second (the median of its last 20 frames, the black ground keyed out; no
+repainting). SHA-256: `55eea604c04fcb337cbd29e0385e7f81d06fcf5bcb6fdc1d502475c6e45ec545`.
+`unity/ChipArenaConversion/Assets/ChipArena/Branding/ChipArenaIcon.ico`, `ChipArenaIcon-1024.png` and `ChipArenaIcon-<size>.png` are made from it by
+`unity/ChipArenaConversion/tools/branding/make_icons.py` (owner: "Yes, icon too"): the logo itself at 64 px and up; at 48 px and
+below a simplified mark drawn for this project from the logo's parts (chip, pins, swoosh, a C). No artist identity or licence
+terms came with the upload beyond the owner's instruction to use it as the game's logo. The video itself is not committed here.
+
 ## Logo intro
 
 The owner supplied the new Chip Arena logo animation on 2026-11-11 as
