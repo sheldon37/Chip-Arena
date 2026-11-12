@@ -61,6 +61,9 @@ namespace ChipArena.UnityConversion
         private static readonly int GlowId=Shader.PropertyToID("_StageGlow"),TintId=Shader.PropertyToID("_StageTint"),GlowFlag=Shader.PropertyToID("_Glow"),LiftId=Shader.PropertyToID("_StageLift");
         /// <summary>The art is loaded for the prepared map (its boxes give way to it).</summary>
         public bool Ready=>plan!=null&&root!=null;
+        /// <summary>Whether the loaded bank has a model for a rig slot (a stage whose newer poses need newer props falls back
+        /// to its older ones on an older bank).</summary>
+        public bool HasRig(int slot)=>rig!=null&&slot>=0&&slot<rig.Length&&rig[slot]!=null&&rig[slot][NativeStageArt.Fine]!=null;
         /// <summary>Last frame: the static chunks shown at each tier, the block models and rig parts drawn.</summary>
         public int ChunksFine{get;private set;}public int ChunksMid{get;private set;}public int ChunksLow{get;private set;}public int Drawn{get;private set;}
         /// <summary>A stage's own say over a block model this frame (Brickfall's collapse telegraph): it may move the model (the

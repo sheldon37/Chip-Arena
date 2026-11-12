@@ -16,6 +16,10 @@ namespace ChipArena.UnityConversion
         /// <summary>Sectors: the south windows, the north windows, the ends (the four roses).</summary>
         public const int Sectors=3;
         public const double Plane=.3,Lead=.03;
+        /// <summary>Panes that lie over other panes (the border's pearls and the medallions over the ground's quarries, a jewel over
+        /// its petals) stand a step nearer the hall each, so no two overlapping panes share a plane: glowing glass in one plane
+        /// trades pixels (owner 2026-11-11: depth fighting with the lights).</summary>
+        public const double Step=.008;
         private static readonly int[] Ruby={0xD0182E,0x9A0C1E},Sapphire={0x2246D8,0x10288A},Emerald={0x1AAE52,0x0E6A34},Amber={0xF4A824,0xC07414},Violet={0x8A34C8,0x52207E},Pale={0xDCE4F4,0xB8C4DC};
         private static int[][] Palette(int design)
         {
@@ -66,7 +70,7 @@ namespace ChipArena.UnityConversion
                 double[] my={y0+(top-y0)*.18,y0+(top-y0)*.5,y0+(top-y0)*.82};const double mr=.34;
                 bool Inside(double u,double y,double m)=>Math.Abs(u)<=Arch(y)-m&&u>=u0+m&&u<=u1-m&&y>=y0+m&&y<=y1-m;
                 // the pearled border
-                for(double y=y0+.08;y<y1;y+=.16)foreach(double u in new[]{u0+.05,u1-.05}){if(!Inside(u,y,.03))continue;int k=(int)Math.Round((y-y0)/.16);Pane(b,w,u,y,.035,.035,(k%2==0?pal[1]:pal[2])[0],Level(w,(y-y0)/(y1-y0))*1.05,Plane,45);}
+                for(double y=y0+.08;y<y1;y+=.16)foreach(double u in new[]{u0+.05,u1-.05}){if(!Inside(u,y,.03))continue;int k=(int)Math.Round((y-y0)/.16);Pane(b,w,u,y,.035,.035,(k%2==0?pal[1]:pal[2])[0],Level(w,(y-y0)/(y1-y0))*1.05,Plane-Step,45);}
                 // the ground's quarries, staggered, clear of the medallions
                 const double a=.24;int rows=(int)((y1-y0)/(a/2))+2,cols=(int)(lw/a)+2;
                 for(int j=0;j<rows;j++)for(int i=-1;i<cols;i++)
@@ -79,14 +83,14 @@ namespace ChipArena.UnityConversion
                 for(int m=0;m<3;m++)
                 {
                     double y=my[m],lv=Level(w,(y-y0)/(y1-y0))*1.1;int ring=m==1?2:1,petal=m==1?1:3;
-                    for(int k=0;k<14;k++){double t=2*Math.PI*k/14;Pane(b,w,cu+Math.Cos(t)*mr,y+Math.Sin(t)*mr,.075,.035,pal[ring][k%2],lv,Plane,t*180/Math.PI+90);}
-                    for(int k=0;k<4;k++){double t=Math.PI/2*k+Math.PI/4;Pane(b,w,cu+Math.Cos(t)*.15,y+Math.Sin(t)*.15,.1,.05,pal[petal][0],lv*1.1,Plane,t*180/Math.PI);}
-                    for(int k=0;k<4;k++){double t=Math.PI/2*k;Pane(b,w,cu+Math.Cos(t)*.2,y+Math.Sin(t)*.2,.04,.04,pal[3][1],lv,Plane,45);}
-                    Pane(b,w,cu,y,.065,.065,pal[2][0],lv*1.4,Plane,45);
-                    if(m<2){double ym=(my[m]+my[m+1])/2;Pane(b,w,cu,ym,.09,.09,pal[2][0],lv,Plane,45);Pane(b,w,cu,ym,.045,.045,pal[1][0],lv*1.2,Plane,45);}
+                    for(int k=0;k<14;k++){double t=2*Math.PI*k/14;Pane(b,w,cu+Math.Cos(t)*mr,y+Math.Sin(t)*mr,.075,.035,pal[ring][k%2],lv,Plane-Step*(1+.5*(k%2)),t*180/Math.PI+90);}
+                    for(int k=0;k<4;k++){double t=Math.PI/2*k+Math.PI/4;Pane(b,w,cu+Math.Cos(t)*.15,y+Math.Sin(t)*.15,.1,.05,pal[petal][0],lv*1.1,Plane-Step*2,t*180/Math.PI);}
+                    for(int k=0;k<4;k++){double t=Math.PI/2*k;Pane(b,w,cu+Math.Cos(t)*.2,y+Math.Sin(t)*.2,.04,.04,pal[3][1],lv,Plane-Step*2.5,45);}
+                    Pane(b,w,cu,y,.065,.065,pal[2][0],lv*1.4,Plane-Step*3,45);
+                    if(m<2){double ym=(my[m]+my[m+1])/2;Pane(b,w,cu,ym,.09,.09,pal[2][0],lv,Plane-Step,45);Pane(b,w,cu,ym,.045,.045,pal[1][0],lv*1.2,Plane-Step*2,45);}
                 }
                 // the head's rosette
-                double hy=spring+1.0;for(int k=0;k<6;k++){double t=2*Math.PI*k/6;Pane(b,w,cu+Math.Cos(t)*.14,hy+Math.Sin(t)*.14,.07,.04,pal[1][k%2],Level(w,.95)*1.2,Plane,t*180/Math.PI);}Pane(b,w,cu,hy,.05,.05,pal[2][0],Level(w,.95)*1.5,Plane,45);
+                double hy=spring+1.0;for(int k=0;k<6;k++){double t=2*Math.PI*k/6;Pane(b,w,cu+Math.Cos(t)*.14,hy+Math.Sin(t)*.14,.07,.04,pal[1][k%2],Level(w,.95)*1.2,Plane-Step*(1+.5*(k%2)),t*180/Math.PI);}Pane(b,w,cu,hy,.05,.05,pal[2][0],Level(w,.95)*1.5,Plane-Step*2.5,45);
             }
         }
         private static void Rose(NativeSceneryBuilder b,in NativeSanctumLooks.Window w)

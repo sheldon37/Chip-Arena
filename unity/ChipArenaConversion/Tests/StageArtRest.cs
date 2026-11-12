@@ -67,6 +67,7 @@ internal static class StageArtRest
                 for(int i=0;i<kit.Parts.Length;i++){if(!kit.Keeps[i])continue;var p=kit.Parts[i];if(p.Parent<0||p.Parent>=map.blocks.Length)continue;Child(kit.Family[i],map.blocks[p.Parent],p.X,p.Y,p.Z,p.Hx,p.Hy,p.Hz,NativeStageArt.KitLayers+up[i]);}
                 break;
             }
+            case "sanctum":{var rig=new NativeSanctumRig(NativeSanctumLooks.Resolve(look.kitLooks));rig.Build(map.hazards,0,NativePhase.Fight,0,t,t);NativeSanctumArt.Pose(rig,map.hazards,t,pose);slots=NativeSanctumArt.Slots;break;}
             case "brickfall":break;
             default:throw new Exception("no rest export for "+mapId);
         }
