@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
             if(pilot==null)return;introNow=float.IsNaN(clock)?arena.Time:clock;introSkins=pilot.Seat.weaponSkins;introAccent=AccentTint(pilot.Seat.accentColor);style=NativeIntroRules.Entrance(style,pilot.Seat.spec);sirenLookCamera=camera;if(introRig==null||introActor!=pilot.Seat.id){introRig?.Dispose();introRig=captured.Create(transform,-100);introActor=pilot.Seat.id;}
             sourceModels.Begin();foreach(var b in batches)b.Clear();FirstPerson=false;combatGlow?.Clear();particles.Clear();
             Actor actor=null;foreach(var a in arena.Snapshot().Actors)if(a.Id==pilot.Seat.id){actor=a;break;}actor??=pilot.Pose;
-            var script=NativeEntranceDirector.Script(style);if(script!=null){DirectedIntro(script,arena,pilot,actor,style,age,camera);return;}
+            var script=NativeEntranceDirector.Script(style);if(script!=null){lock(script.PoseLock)DirectedIntro(script,arena,pilot,actor,style,age,camera);return;}
             NativeSourceMotion.Intro(introRig,style,age,camera);introBeats=style=="dev-siren"?arena.BossTrack?.beats:null;
             // The pilot on its visual body (NativeVisualBodyPresentation.cs VisualIntroPose), shown for this frame below.
             if(style!="dev-siren")VisualIntroPose(introRig,actor,introNow,NativeSourceMotion.IntroPose,null,NativeIntroRules.IntroWeapon(style)!=null);

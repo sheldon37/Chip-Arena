@@ -219,13 +219,14 @@ namespace ChipArena.UnityConversion
         private static Vector3 Clamp(Vector3 v){float l=v.Length();return l>MaxPush?v*(MaxPush/l):v;}
         // The push that clears limb `left`'s deepest probe out of the body (world), if any sinks in beyond contact
         // (`pose` world and Inverses current).
-        private static bool Push(int w,CapturedRig.Pose pose,bool left,out Vector3 push)
+        private static bool Push(int w,CapturedRig.Pose pose,bool left,out Vector3 push)=>Push(w,pose,left,out push,probes,inverse);
+        private static bool Push(int w,CapturedRig.Pose pose,bool left,out Vector3 push,Probe[] probes,Quaternion[] inverse)
         {
             push=Vector3.Zero;int n=Limb(Weapons[w],left,probes);float worst=.008f;
             for(int i=0;i<n;i++)
             {
                 // A forearm probe moves about as far as its share of the forearm when the wrist moves, so the wrist goes further.
-                var p=probes[i];var c=pose.WorldPosition[p.Bone]+Vector3.Transform(p.Offset,pose.WorldRotation[p.Bone]);float d=Exit(pose,c,p.Radius,out var dir);
+                var p=probes[i];var c=pose.WorldPosition[p.Bone]+Vector3.Transform(p.Offset,pose.WorldRotation[p.Bone]);float d=Exit(pose,c,p.Radius,out var dir,inverse);
                 float gain=p.Bone==CapturedRig.LElbow||p.Bone==CapturedRig.RElbow?Math.Min(2.2f,.25f/-p.Offset.Y):1;
                 if(d>worst){worst=d;push=dir*((d-.004f)*gain);}
             }
@@ -234,6 +235,11 @@ namespace ChipArena.UnityConversion
         /// <summary>The push (rig frame) that clears arm `left`'s deepest forearm, hand or weapon probe of weapon intro `style`
         /// out of the torso and head (zero when nothing sinks in beyond contact; `pose` world current).</summary>
         public static Vector3 BodyPush(string style,CapturedRig.Pose pose,bool left){int w=WeaponIntro(style);if(w<0)return Vector3.Zero;Inverses(pose);Push(w,pose,left,out var push);return push;}
+        /// <summary>BodyPush on the caller's own scratch, so a pack entrance can plan on a worker (Core NativeEntranceDirector.Warm)
+        /// while this class's shared scratch serves the main thread and the bank's worker: the same push.</summary>
+        public static Vector3 BodyPush(string style,CapturedRig.Pose pose,bool left,PushScratch scratch){int w=WeaponIntro(style);if(w<0)return Vector3.Zero;Inverses(pose,scratch.Inverse);Push(w,pose,left,out var push,scratch.Probes,scratch.Inverse);return push;}
+        /// <summary>BodyPush's working arrays (the probes and the torso joints' inverse rotations), one set per caller.</summary>
+        public sealed class PushScratch{internal readonly Probe[] Probes=new Probe[32];internal readonly Quaternion[] Inverse=new Quaternion[CapturedRig.Head+1];}
         /// <summary>
         /// Re-solves arm `left` so its wrist reaches `target` with rotation `rotation` (both in the rig frame), keeping the
         /// elbow on its present side (CapturedRig.Arm works in the chest frame).
@@ -298,7 +304,8 @@ namespace ChipArena.UnityConversion
         // The torso and head boxes (pelvis, spine, chest, neck, head) and, per pose, their joints' inverse rotations.
         private static readonly int[] Torso=TorsoBoxes();private static readonly Quaternion[] inverse=new Quaternion[CapturedRig.Head+1];
         private static int[] TorsoBoxes(){int n=0;foreach(var b in CapturedRig.Boxes)if(b.Bone>=CapturedRig.Pelvis&&b.Bone<=CapturedRig.Head)n++;var into=new int[n];n=0;for(int i=0;i<CapturedRig.Boxes.Length;i++){var b=CapturedRig.Boxes[i];if(b.Bone>=CapturedRig.Pelvis&&b.Bone<=CapturedRig.Head)into[n++]=i;}return into;}
-        private static void Inverses(CapturedRig.Pose pose){for(int b=CapturedRig.Pelvis;b<=CapturedRig.Head;b++)inverse[b]=Quaternion.Inverse(pose.WorldRotation[b]);}
+        private static void Inverses(CapturedRig.Pose pose)=>Inverses(pose,inverse);
+        private static void Inverses(CapturedRig.Pose pose,Quaternion[] into){for(int b=CapturedRig.Pelvis;b<=CapturedRig.Head;b++)into[b]=Quaternion.Inverse(pose.WorldRotation[b]);}
         // Depth of a sphere inside the torso/head boxes (Inverses must be current).
         private static float Inside(CapturedRig.Pose pose,Vector3 c,float r)
         {
@@ -315,7 +322,7 @@ namespace ChipArena.UnityConversion
         // the front (the rig faces +z), through the back when it is well behind the middle, or sideways when it only grazes
         // a flank, never up or down (which only slides it into the next box); the exits are blended by inverse cost so the
         // direction turns smoothly as the limb moves, and boxes add up weighted by their depth.
-        private static float Exit(CapturedRig.Pose pose,Vector3 c,float r,out Vector3 dir)
+        private static float Exit(CapturedRig.Pose pose,Vector3 c,float r,out Vector3 dir,Quaternion[] inverse)
         {
             float worst=0;var sum=Vector3.Zero;var boxes=CapturedRig.Boxes;
             for(int i=0;i<Torso.Length;i++)

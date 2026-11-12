@@ -161,7 +161,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Whether `q` is unseen by enemies (the Fangs' veil): bots and the lock-on pass over it.</summary>
         private bool BladeUnseen(NativePilot q)=>q!=null&&q.Seat.spec==NativeFangs.Spec&&Time>=q.Blade.VeilAt&&Time<q.Blade.VeilUntil;
-        /// <summary>From BlockProc: a block or parry landed (the Katana's counter opens).</summary>
+        /// <summary>From BlockProc: a timed parry landed (the Katana's counter opens; a blow held on the raised guard does not open it).</summary>
         private void BladeBlocked(NativePilot p,NativePilot attacker)
         {
             if(p.Seat.spec!=NativeKatana.Spec||p.Hp<=0)return;float window=NativeKatana.CounterWindow*(BladeChip(p,NativeKatanaChips.MirrorMoon)?NativeKatanaChips.MirrorWindow:1);
