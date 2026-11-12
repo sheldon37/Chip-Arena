@@ -50,6 +50,14 @@
   the snap, the links landing) if the owner wants sounds for them: the cues are unchanged.
 
 
+## 2026-11-11 — Astra: keep host networking alive while the destination has no local pilot
+
+- Branch `codex/expedition-null-pilot-fix`, base `0ccb5a0`; owner requested fix and test Update publication.
+- Host log records 1,685 null references from PvePickOpen -> ControllerStep -> UpdateFrame. Split-area transfer presents the destination before moving the local pilot; the unsafe local-seat lookup throws before NetworkTick, starving destination snapshots and readiness processing while transport heartbeats continue.
+- Make the pick query return false for a missing arena, local pilot/seat or PvE row; retain normal open-pick behavior. No transfer timeout, all-ready gate, collision rule, gameplay tuning or visual change.
+- Added native regression checks using actual hub/empty-destination arenas and the same predicate used by ControllerStep: missing arena/pilot, closed/open pick, and another seat's open pick. Checks run for authored and generated activation fixtures.
+- Validation and delivery receipts pending below. Native Windows multiplayer verification is still required; do not treat compilation as a playtest. Earlier diagnostic-only branch is not included.
+
 ## 2026-11-11 — Claude: PR #385 (Expedition transfer sync) re-landed with its native check fixed; for Astra's review
 
 - **Owner:** "Can you revert it, then bring it back yourself instead of astra?" Branch `claude/expedition-transfer-sync`, from
