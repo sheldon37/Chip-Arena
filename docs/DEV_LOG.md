@@ -54,15 +54,28 @@
   - **A refresh does not resolve packages:** after crossing the manifest change, `AssetDatabase.Refresh` (the BoZo refresh request) compiled without the Video module and failed. The Package Manager must resolve first; the local tool now takes `Temp/bozo-resolve.request` (`Client.Resolve()`).
 - **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement, network or save change; presentation and load order only.
 - **Checks:**
-  - CoreTests `--boot-intro`: 82 checks (rules, timeline, letterbox, the clip's size, hash, metas, receipt and credits, and the wiring and order).
-  - The full CoreTests at the merge with shared (`890d77bf`; Windows path patch applied in a throwaway worktree, as always on this PC): 1016 PASS lines, exit 0. `git diff --check` against shared: clean.
+  - CoreTests `--boot-intro`: 104 checks. They cover:
+    - the rules, the timeline and the letterbox;
+    - the clip's size, hash, metas, receipt and credits;
+    - the wiring and the order;
+    - the curtain and the splash setting;
+    - the 229 sculpts made on a worker beside a thread making them again, byte for byte the single-threaded ones.
+  - The full CoreTests at `9166905a` (shared `dd643702` merged in; Windows path patch in a throwaway worktree, as always on this PC): 1016 PASS lines, exit 0. `git diff --check` against shared: clean.
   - Unity compile PASS.
-  - `PrototypeBuild.Validate` in batch mode on a copy of the project at the branch: passed, 396 PASS lines.
-  - Python suite: the same 12 failures as the base on this PC, none new; `package_source.py --check` passed.
-  - Windows builds (batch, on a scratch copy of the project): the build check logged `BOOT_INTRO_CLIP_IN_BUILD`; the player played the clip, held the logo with the indicator (`--ca-boot-hold`), crossfaded into the menu, and letterboxed at 4:3.
-  - In the player, `-nointro` and `-batchmode` logged `BOOT_INTRO off (Argument)` and `(BatchMode)`, with the old synchronous path.
-  - The exact branch head (`4adbbe19`, no probe) was built and launched once. It played the clip with no decoder warning: 1319 frames, mean 7.6 ms, p99 10.4 ms, the largest the 0.34 s menu build under the settled logo. It went interactive 16.4 s after start.
-  - **Not run yet:** the shared Editor. The Play-mode run with the intro, and a capture run showing the tool's runs skip it, were held for the Editor queue. The local tool's patch for its `bootintro=1`, `bootshots=`, `bootskip=` and `boothold=` options is ready but not installed.
+  - `PrototypeBuild.Validate` in batch mode on a copy of the project at `9166905a`: passed, 396 PASS lines.
+  - Python suite: the same 12 failures as the base on this PC, none new. `package_source.py --check` passed.
+  - **The shared Editor** (`bootcap4.sh`, the lock held per run): the Editor checkout's local manifest and Player Settings rode on top and were put back byte for byte; the lock was released only after the Editor had resolved packages and compiled clean and the tool answered.
+    - A BoZo run with `bootintro=1`: the intro played in Play mode and crossfaded into the menu as its clip ended (10.3 s on its clock); the match followed. All 229 sculpts were taken.
+    - A plain BoZo run on the branch logged `BOOT_INTRO off (EditorAutomation)` and loaded the banks at once, as before.
+  - **Windows builds** (batch, on a scratch copy of the project, with Unity's splash off from the tracked setting: `SplashScreen.show=False`):
+    - the build check logged `BOOT_INTRO_CLIP_IN_BUILD`;
+    - window grabs show black from 1.2 s, the clip, and the crossfade into the menu;
+    - the held logo with its indicator (`--ca-boot-hold`) and the 4:3 letterbox were seen in an earlier build of the branch;
+    - `-nointro` and `-batchmode` logged `BOOT_INTRO off (Argument)` and `(BatchMode)`, with the old synchronous path.
+  - **The exact branch head** (`9166905a`, no probe) was built and launched once:
+    - the clip played with no decoder warning: 1323 frames, mean 7.6 ms, p99 10.3 ms, the largest the 0.36 s menu build under the settled logo;
+    - interactive 12.65 s after start;
+    - sculpts 229 made, 229 taken, 0 sculpted by a builder itself, 0 unused.
 - **Not verified:** a person watching and hearing it; the builder's own build and the installed updater; other GPUs and slower CPUs; a two-monitor or fullscreen launch.
 
 ## 2026-11-11 — Claude: depth fighting on the stage art (owner report), Polaris's middle first
