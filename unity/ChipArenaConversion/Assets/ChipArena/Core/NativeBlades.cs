@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
         public V3 From,To;public float PathAt=-100,PathUntil=-100;
         /// <summary>The Katana's iai: the line it cut (LineFrom to LineTo, drawn at LineAt) and when it splits (SplitAt).</summary>
         public V3 LineFrom,LineTo;public float LineAt=-100,SplitAt=-100;
-        /// <summary>The Katana's counter window (a block or parry landed; the next cut is the counter until then).</summary>
+        /// <summary>The Katana's counter window (a timed parry landed; the next cut is the counter until then).</summary>
         public float CounterUntil=-100;
         /// <summary>The Fangs' veil: unseen by enemies from VeilAt until VeilUntil (an attack ends it).</summary>
         public float VeilAt=-100,VeilUntil=-100;

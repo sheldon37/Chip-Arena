@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
 {
     // The Katana's rules (owner 2026-11-10: "Make very high quality designed katana ... classes"; docs/KATANA.md; Claude builds them at the owner's
     // word, logged for Astra). Its left click is its own: four cuts that chain (the third steps in, the fourth cleaves), a rushing draw on a
-    // sprint, and within a moment of a block or parry the counter (a paired critical, the foe held through it). Q the iai: sheathed and
+    // sprint, and within a moment of a timed parry the counter (a paired critical, the foe held through it). Q the iai: sheathed and
     // gathered, a dash along the aim, and the line it cut splits a moment later. E the petal storm: cuts all round, the last a launch. Its
     // ten chips (Core NativeKatanaChips) change these rules here, each only for a Katana holding it.
     public sealed partial class NativeArena
@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
                 p.BladeStormCut=0;p.BladeStormNext=k.CastRelease;k.Ready[1]=k.CastUntil+NativeKatana.Cooldown[1]*cd;return;
             }
             if(!attack)return;
-            // The counter: a cut within the window after a block or parry, its foe within reach in front.
+            // The counter: a cut within the window after a timed parry, its foe within reach in front.
             if(press&&Time<k.CounterUntil&&KatanaCounter(p))return;
             if(p.Grounded&&Time>k.ComboUntil&&NativeMeleeFeel.SprintAttack(p.Input,p.Pose.Sprinting))
             {
