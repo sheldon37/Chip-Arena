@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
                 material.SetFloat("_Ink",1);material.SetFloat(InkRimId,HordeInkRim);material.SetFloat(InkFlowId,HordeInkFlow);material.SetFloat(MinionGlowId,HordeFlickers(kind)?1:0);materials.Add(material);
                 for(int look=0;look<NativeHordeKinds.Looks[kind];look++)for(int tier=0;tier<NativeHordeModels.Tiers;tier++)
                 {
-                    var built=NativeHordeModels.Build(kind,look,tier);string id=NativeHordeModels.Id(kind,look,tier);var parts=new List<Part>();
+                    var built=NativeBootSculpts.Take(NativeBootSculpts.Horde(kind,look,tier),()=>NativeHordeModels.Build(kind,look,tier));string id=NativeHordeModels.Id(kind,look,tier);var parts=new List<Part>();
                     foreach(var s in built.Mesh.Sections){var mesh=BodyMesh(s,id+" / joint "+s.Bone);if(mesh!=null)parts.Add(new Part{Name=id,Bone=s.Bone,Mesh=mesh,Material=material,NoShadow=tier!=NativeHordeModels.Full});}
                     models[id]=parts.ToArray();HordeKindTriangles[id]=built.Triangles;HordeKindModelCount++;
                     if(tier==NativeHordeModels.Full)NativeHordeGoreBody.Keep(built);// the gore's surface (no hit builds a model)
