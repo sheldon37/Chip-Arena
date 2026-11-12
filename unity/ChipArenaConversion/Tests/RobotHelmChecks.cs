@@ -115,7 +115,7 @@ namespace ChipArena.UnityConversion
             // The runtime.
             string Src(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime",f)).Replace("\r\n","\n");
             string pres=Src("NativeRobotHelmPresentation.cs"),body=Src("NativeVisualBodyPresentation.cs"),bank=Src("NativeSourceModels.cs"),suit=Src("NativeRobotSuitPresentation.cs"),locker=Src("NativeLockerSkinsUI.cs");
-            Check(bank.Contains("ModelHats();SuitModels();HelmModels();")&&pres.Contains("models[Helm]=HelmParts(NativeRobotHelm.Helm(),material,\"Robot helmet\");models[HalfMask]=HelmParts(NativeRobotHelm.Half(),material,\"Robot half mask\");"),"both in the bank");
+            Check(bank.Contains("ModelHats();SuitModels();HelmModels();")&&pres.Contains("models[Helm]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.Helm,NativeRobotHelm.Helm),material,\"Robot helmet\");models[HalfMask]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.HalfMask,NativeRobotHelm.Half),material,\"Robot half mask\");"),"both in the bank");
             Check(body.Contains("bool helm=gear==NativeWeaponSkins.FaceHelm;")&&body.Contains("if(helm||gear==NativeWeaponSkins.FaceHalf)")&&body.Contains("if(sourceModels.Has(model))sourceModels.Queue(model,gearMatrix,gearBone,null,layer,camera,BodyTint(bodyColor),accent,1,reveal,tint,lit,null,flash);"),
                 "drawn as the face gear, in the body colour with the accent's light");
             Check(body.Contains("body.Helm=!body.Hood&&WearsHelm(a.Id);")&&body.Contains("if(hat==NativeRobotHelm.Hair)")&&body.Contains("made.SetTriangles(Array.Empty<int>(),i,false);")

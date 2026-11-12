@@ -230,7 +230,7 @@ internal static class ZombieModelChecks
         // The runtime: the area each frame, the dressed look by it, the suit and helmet on the model's bones with the bank's models.
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));string zm=R("NativeZombieModelPresentation.cs"),kp=R("NativeHordeKindPresentation.cs"),hp=R("NativeRobotHelmPresentation.cs");
         Check(zm.Contains("var v=NativeZombieLooks.Of(kind,id,zombieTheme);")&&kp.Contains("ZombieThemeOf(arena);ZombieModelsPrewarm(arena);")&&zm.Contains("ZombieCarry(z,t,flash);ZombieSuit(z,flash);return;}")
-            &&zm.Contains("ZombieCarry(z,t,flash);ZombieSuit(z,flash);\n            DiagnosticZombiePoseMs")&&zm.Contains("sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,zombieSuitBone,zombieSuitVisible,")&&hp.Contains("models[BrokenHelm+b]=HelmParts(NativeRobotHelm.Broken(b),"),
+            &&zm.Contains("ZombieCarry(z,t,flash);ZombieSuit(z,flash);\n            DiagnosticZombiePoseMs")&&zm.Contains("sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,zombieSuitBone,zombieSuitVisible,")&&hp.Contains("models[BrokenHelm+b]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.BrokenHelm(b),()=>NativeRobotHelm.Broken(b)),"),
             "wired: the area each frame, the look by it, the suit's plates and the smashed helmet from the bank on the model's bones");
     }
 

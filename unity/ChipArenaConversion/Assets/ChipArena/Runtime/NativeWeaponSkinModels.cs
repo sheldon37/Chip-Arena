@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
                 if(!NativeWeaponModels.Designed(spec))continue;bool handHeld=armorPilot!=null&&NativeArmorLight.HandHeld(NativeWeaponSkins.PrototypeHeld(spec));
                 for(int tier=0;tier<NativeWeaponModels.Tiers;tier++)
                 {
-                    var built=NativeWeaponModels.Build(spec,tier);var parts=new List<Part>();
+                    var built=NativeBootSculpts.Take(NativeBootSculpts.Weapon(spec,tier),()=>NativeWeaponModels.Build(spec,tier));var parts=new List<Part>();
                     foreach(var s in built.Sections)
                     {
                         var material=plain;
@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
                     }
                     models[NativeWeaponSkins.StandardModel(spec,tier)]=parts.ToArray();StandardWeaponModels++;
                 }
-                var loose=NativeWeaponModels.Loose(spec);var looseParts=new List<Part>();
+                var loose=NativeBootSculpts.Take(NativeBootSculpts.Loose(spec),()=>NativeWeaponModels.Loose(spec));var looseParts=new List<Part>();
                 foreach(var s in loose.Sections){var mesh=WeaponMeshOf(s,spec+" / loose");if(mesh!=null)looseParts.Add(new Part{Name="std-loose-"+spec,Bone=-1,Mesh=mesh,Material=plain});}
                 models[NativeWeaponSkins.StandardLoose(spec)]=looseParts.ToArray();StandardWeaponModels++;
                 // The Bombadier and the Top Dog have one finish and no Prototype Series, so its plain ids are the Standard model.
