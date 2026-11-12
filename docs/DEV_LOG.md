@@ -1,3 +1,19 @@
+## 2026-11-11 — Claude: the owner's ten new songs: the nine remodelled stages and the menu (owner request)
+
+- **Request:** the owner sent ten Suno songs made from the 2026-11-11 briefs and asked Claude to import them ("Astra keeps failing to
+  import these songs; Can you import them?"). Branch `claude/owner-songs-2026-11-11` from shared `dd643702`.
+- **What plays now** (`NativeStageMusic.Theme`; each map record's own `music` stays the fallback, and every earlier track stays packaged):
+  Pier 9 *Last Night of the Season* (`harbor-theme`), Deepwell *The Station Below* (`rig-theme`), Polaris Station *Northern Lights
+  Array* (`polar-theme`), Skyframe *Garden Above the Clouds* (`skyframe-theme`), Breakwater *Storm Light* (`breakwater-theme`),
+  Brickfall *Demolition Day* (`brickfall-theme`), Ward Zero *Containment* (`wardzero-theme`, on `siren` and `expedition-ward-zero`,
+  PvP and PvE; the Siren's boss song still takes over for the boss), the Factory *Heavy Shift* (`factory-theme`), Cyber City
+  *Helix Line* (`cybercity-theme`). The menu plays *Pilot's Rooftop* in the same `music/menu-afterglow` slot (importer GUID kept).
+- **Packaging:** the original MP3 bytes (48 kHz stereo, embedded cover art kept, as with the 2026-11-10 songs), the same streaming
+  importer settings as `causeway-theme`, asset-lock receipts, length pins in `Editor/NativeBuildChecks`, routing checks in
+  `ZoneMusicChecks`, `PierChecks` and `PolarChecks`; docs in STAGE-MUSIC-PROMPTS, ASSET-CREDITS and the five rebuilt stages' pages.
+- **Not changed:** gameplay, hazards, the Electron game's music, Containment Sirens' 1.5x gain (it applies to that file only).
+- **Checks:** see the release line below.
+
 ## 2026-11-11 — Astra: retry Expedition destination loads and refresh party progress
 
 - Branch `codex/expedition-transfer-sync`, base shared `13e5f2fe`. Owner reports guests held at the join circle while host loads then rolls back, plus stationary remote loading bars; guest logs unavailable.

@@ -15,11 +15,17 @@ namespace ChipArena.UnityConversion
         {
             switch(map)
             {
-                case "breakwater":return "breakwater-arena-duel";
-                case "harbor":return "harbor-container-terminal";
-                case "skyframe":return "skyframe-rising-motif";
-                case "rig":return "rig-offshore";
-                case "polar":return "polar-pulse-de-la-mort";
+                // The owner's songs for the nine stages remodelled on 2026-11-11 (docs/arenas/STAGE-MUSIC-PROMPTS.md, "The remodelled
+                // stages"); each map record's own track stays its fallback. Ward Zero's plays on both of its records.
+                case "breakwater":return "breakwater-theme";
+                case "harbor":return "harbor-theme";
+                case "skyframe":return "skyframe-theme";
+                case "rig":return "rig-theme";
+                case "polar":return "polar-theme";
+                case "brickfall":return "brickfall-theme";
+                case "siren":case "expedition-ward-zero":return "wardzero-theme";
+                case "factory":return "factory-theme";
+                case "cybercity":return "cybercity-theme";
                 case NativePoolroomsGenerator.ArenaId:case NativePoolroomsGenerator.InstanceMap:return PoolroomsTrack;
                 case "backrooms-level-0":case "expedition-backrooms-level-0":return "backrooms-fluorescent-loop";
                 case "training":return "training-steady-groove";

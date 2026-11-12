@@ -337,6 +337,26 @@ SHA-256: `3093119a80cdac42bf46a3cbb44b5da2ec6920ec5580ef153f01ea3bc6417d25`.
 The Windows package includes `Music-Credits.txt`; this owner-supplied song is
 separate from the locally installed licensed effects bank.
 
+## The remodelled stages and the main menu — owner songs (2026-11-11)
+
+Owner-supplied on 2026-11-11, made by the owner with Suno from the briefs in `docs/arenas/STAGE-MUSIC-PROMPTS.md`. The complete
+MP3s are retained without transcoding (48 kHz stereo), each in its own `music/` resource slot with the existing stage or menu
+playback, loop, pause/resume and volume controls. No seamless-loop edit or loudness remaster was made.
+
+- **Last Night of the Season** (`harbor-theme`, 196.000 s, 4,679,364 bytes)
+- **The Station Below** (`rig-theme`, 266.800 s, 6,349,789 bytes)
+- **Northern Lights Array** (`polar-theme`, 262.800 s, 6,275,778 bytes)
+- **Garden Above the Clouds** (`skyframe-theme`, 237.200 s, 5,645,512 bytes)
+- **Storm Light** (`breakwater-theme`, 228.800 s, 5,355,432 bytes)
+- **Demolition Day** (`brickfall-theme`, 198.800 s, 4,720,193 bytes)
+- **Containment** (`wardzero-theme`, 253.720 s, 6,020,007 bytes)
+- **Heavy Shift** (`factory-theme`, 229.200 s, 5,528,168 bytes)
+- **Helix Line** (`cybercity-theme`, 197.040 s, 4,865,047 bytes)
+- **Pilot’s Rooftop** (`menu-afterglow`, 187.880 s, 4,256,998 bytes)
+
+Pilot's Rooftop replaces Midnight Arena Skyline in the `menu-afterglow` slot (importer GUID kept). Containment plays on Ward
+Zero in place of Containment Sirens, which stays packaged as the fallback. Legacy Electron music is unchanged.
+
 ## Main menu — Midnight Arena Skyline
 
 Owner-supplied on 2026-10-13 as `Midnight_Arena_Skyline_2026-10-13T230445.mp4`.
