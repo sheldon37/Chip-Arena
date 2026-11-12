@@ -42,12 +42,14 @@ internal static class BootIntroChecks
         Run(f,ref clip,.2f,true,started:false);Check(f.State==NativeBootIntroFlow.Phase.Playing&&f.Blocking&&f.Video==0&&!f.LogoShown&&f.Cover==1,"black until the clip's first frame, game held");
         clip=0;Run(f,ref clip,.2f,true);Check(f.Video==1&&f.Cover==1&&f.Indicator==0&&f.Sound==1&&!f.Settled,"the clip plays opaque, at full sound");
         Check(!f.Skip()&&!f.Skipped,"no skip in the first half second");
-        Run(f,ref clip,NativeBootIntroRules.SettledFrom-clip-.05f,true);Check(!f.Settled&&f.State==NativeBootIntroFlow.Phase.Playing,"loaded early, the clip still plays out (and is not yet settled at 8 s)");
-        Run(f,ref clip,.1f,true);Check(f.Settled&&f.Blocking,"from 8.1 s the logo has settled: the menu may build under it");
-        Run(f,ref clip,NativeBootIntroRules.ClipSeconds-clip,true);f.Step(1f/60,clip,true,false,true);
-        Check(f.State==NativeBootIntroFlow.Phase.Fading&&!f.Blocking&&f.HoldAt<0&&f.Video==1,"at its end, ready: straight into the crossfade on its last frame, input to the menu");
-        float before=f.Cover;Run(f,ref clip,.3f,true,ended:true);Check(f.Cover<before&&f.Cover>0&&f.Sound<1,"the crossfade fades the picture");
-        Run(f,ref clip,.31f,true,ended:true);Check(f.State==NativeBootIntroFlow.Phase.Done&&f.Cover==0,"done after "+NativeBootIntroRules.Crossfade+" s");
+        Run(f,ref clip,NativeBootIntroRules.SettledFrom-clip-.05f,true);Check(!f.Settled&&f.State==NativeBootIntroFlow.Phase.Playing&&f.Blocking,"ready early, the clip plays its animation out");
+        Run(f,ref clip,.1f,true);
+        Check(f.Settled&&f.State==NativeBootIntroFlow.Phase.Fading&&!f.Blocking&&f.HoldAt<0&&f.Video==1&&Near(f.Up-f.FadeAt,0,.06f),"its animation finished (7.6 s), ready: the crossfade starts that frame, input to the menu (owner: \"transition a lot quicker after animation finishes\")");
+        float before=f.Cover;Run(f,ref clip,.2f,true);Check(f.Cover<before&&f.Cover>0&&f.Sound<1,"the crossfade fades the picture and the still logo's sound");
+        Run(f,ref clip,.21f,true);Check(f.State==NativeBootIntroFlow.Phase.Done&&f.Cover==0,"done after "+NativeBootIntroRules.Crossfade+" s, long before the clip's end ("+NativeBootIntroRules.ClipSeconds+" s)");
+        // Not ready at 7.6 s: the clip plays on, and the crossfade comes the moment the game is.
+        f=new NativeBootIntroFlow();clip=0;Run(f,ref clip,NativeBootIntroRules.SettledFrom+.5f,false);Check(f.Settled&&f.State==NativeBootIntroFlow.Phase.Playing,"settled but loading: the clip plays on");
+        f.Step(1f/60,clip+=1f/60,false,false,true);Check(f.State==NativeBootIntroFlow.Phase.Fading,"then the crossfade the moment the game is ready");
 
         // Skipped while the game still loads: the logo holds with the indicator, then the crossfade.
         f=new NativeBootIntroFlow();clip=0;Run(f,ref clip,1,false);
@@ -75,7 +77,16 @@ internal static class BootIntroChecks
         Run(f,ref clip,NativeBootIntroRules.StallTimeout,true,stopAt:2);Check(f.VideoEnded&&f.State!=NativeBootIntroFlow.Phase.Playing,"a clock stopped "+NativeBootIntroRules.StallTimeout+" s counts as the end");
         // A first frame after a long hitch neither skips phases nor blends at once.
         f=new NativeBootIntroFlow();f.Step(float.NaN,-1,false,false,false);f.Step(-1,-1,false,false,false);Check(f.Up==0,"a bad dt counts as none");
-        Check(Near(NativeBootIntroRules.SkipAfter,.5f)&&Near(NativeBootIntroRules.Crossfade,.6f)&&Near(NativeBootIntroRules.SettledFrom,8.1f)&&Near(NativeBootIntroRules.Gain,.72f),"pinned timings and level");
+        Check(Near(NativeBootIntroRules.SkipAfter,.5f)&&Near(NativeBootIntroRules.Crossfade,.4f)&&Near(NativeBootIntroRules.SettledFrom,7.6f)&&Near(NativeBootIntroRules.Gain,.72f),"pinned timings and level");
+        // The menu under the curtain counts as settled after 30 frames in a row under 20 ms, or 1.5 s after it was built.
+        {
+            Check(NativeBootIntroRules.SmoothFrames==30&&Near(NativeBootIntroRules.SmoothFrame,.02f)&&Near(NativeBootIntroRules.SettleCap,1.5f),"pinned settle");
+            int smooth=0;bool settled=false;float since=0;for(int i=0;i<29;i++){since+=1/144f;settled|=NativeBootIntroRules.Settled(ref smooth,1/144f,since);}
+            Check(!settled,"29 smooth frames are not enough");Check(NativeBootIntroRules.Settled(ref smooth,1/144f,since+1/144f),"the 30th settles it");
+            smooth=0;since=0;for(int i=0;i<29;i++){since+=1/144f;NativeBootIntroRules.Settled(ref smooth,1/144f,since);}
+            Check(!NativeBootIntroRules.Settled(ref smooth,.05f,since+.05f)&&smooth==0,"a 50 ms frame starts the count again");
+            smooth=0;Check(!NativeBootIntroRules.Settled(ref smooth,.03f,1.49f)&&NativeBootIntroRules.Settled(ref smooth,.03f,1.5f),"a menu that never runs smoothly lets the clip start 1.5 s after it was built");
+        }
 
         // ---- the clip, the logo and the project ----
         string U(string rel)=>Path.Combine(root,rel);string Text(string rel)=>File.ReadAllText(U(rel));
@@ -116,9 +127,13 @@ internal static class BootIntroChecks
         Check(game.Contains("AccountXpTick();\n            // The logo intro holds the game (no input) while it loads under it (NativeBootLoad.cs).\n            if(BootIntroHolds())return;\n            if(padInputCaptured)"),"Update: the network, deployment and account ticks run, then the intro holds all input");
         Check(game.Contains("private void LateFrame()\n        {\n            // Under the logo intro the menu builds only once the loading allows it (NativeBootLoad.cs).\n            if(BootIntroFrame())return;"),"LateFrame: nothing draws or reads a bank until the loading allows it");
         Check(game.Contains("private void OnGUI()\n        {\n            // Under the logo intro the menu's GUI draws only once the loading allows it (NativeBootLoad.cs).\n            if(BootIntroGui())return;"),"OnGUI: the menu's GUI waits first");
-        Check(Regex.IsMatch(load,@"enum BootStage\{Banks,Assets,Scene,Gui,Ready\}")&&load.Contains("if(bootStage<BootStage.Scene||bootStage==BootStage.Scene&&!bootIntro.Flow.Settled)return true;")&&load.Contains("if(bootStage<BootStage.Gui)return true;"),
-            "the order: banks, assets, the menu's scene (once the logo has settled), its GUI, ready");
+        Check(Regex.IsMatch(load,@"enum BootStage\{Banks,Assets,Scene,Gui,Ready\}")&&load.Contains("if(bootStage<BootStage.Scene)return true;")&&load.Contains("if(bootStage<BootStage.Gui)return true;"),
+            "the order: banks, assets, the menu's scene, its GUI, ready: all under the curtain, before the clip");
         Check(load.Contains("bool sourceIn=NativeSourceMotion.Ready,sceneIn=NativeSceneMotion.Ready;if(!sourceIn||!sceneIn)return;")&&load.Contains("NativeSourceMotion.Prewarm();NativeSceneMotion.Prewarm();")&&load.Contains("MOTION_BANKS_READY source={0} scene={1}"),"the banks are joined (and logged) before the menu may read them");
+        Check(load.Contains("Func<bool> built=()=>bootStage==BootStage.Ready&&bootSettled||error.Length>0||bootFailed;")&&intro.Contains("if(canPlay!=null&&!canPlay())return;")&&intro.Contains("player.Play();started=true;startedAt=Ms;Application.backgroundLoadingPriority=loadingPriority;"),
+            "the clip starts only once the menu is built under the curtain (nothing heavy while it plays or after it), loading at full speed until then");
+        Check(load.Contains("if(bootGuiFrames>=2){BootStep(\"gui\");bootStage=BootStage.Ready;bootBuiltAt=BootMs;}return;")&&load.Contains("if(!bootSettled&&NativeBootIntroRules.Settled(ref bootSmooth,Time.unscaledDeltaTime,(float)(BootMs-bootBuiltAt)/1000)){bootSettled=true;BootStep(\"settled\");}return;"),
+            "and once the built menu runs smoothly under the curtain (its first frames after the build land there, not on the clip's opening)");
         Check(load.Contains("()=>bootStage==BootStage.Ready&&BootMs>=bootDevHold*1000||error.Length>0")&&load.Contains("if(bootIntro==null||error.Length>0)return false;"),"a start-up error ends the hold and draws through the crossfade, never under a held intro");
         Check(load.Contains("if(noticeText.Length>0&&noticeLast>=bootNoticeFrom){noticeShown=noticeLast=Time.unscaledTime;}"),"a notice raised under the intro shows after it, for its full time");
         // Without Unity's splash the window stayed unpainted (white) through Awake: the intro's black curtain goes up first and
@@ -126,7 +141,7 @@ internal static class BootIntroChecks
         Check(game.Contains("private static void Boot(){if(FindFirstObjectByType<ConversionGame>()==null&&!BootCurtain())new GameObject(\"Chip Arena Native Conversion\").AddComponent<ConversionGame>();}"),"the game is made at once unless the curtain goes up first");
         Check(load.Contains("NativeBootPrefetch.Decide();if(!NativeBootPrefetch.Wanted||NativeBootIntro.Current!=null)return false;")&&load.Contains("NativeBootIntro.Curtain();new GameObject(\"Boot defer\").AddComponent<NativeBootDefer>();return true;"),"only when the intro will play");
         Check(load.Contains("if(++updates<2)return;")&&load.Contains("var curtain=NativeBootIntro.Current;if(curtain!=null&&!curtain.Armed)curtain.Dismiss();"),"the game a frame later; an unarmed curtain lifted (Awake failed or chose no intro: its error shows)");
-        Check(intro.Contains("if(finished||!armed)return;")&&load.Contains("NativeBootIntro.Current!=null&&!NativeBootIntro.Current.Armed?NativeBootIntro.Current.Arm(level,ready):NativeBootIntro.Begin(level,ready)"),"the curtain neither plays nor runs its clock until Awake arms it");
+        Check(intro.Contains("if(finished||!armed)return;")&&load.Contains("NativeBootIntro.Current!=null&&!NativeBootIntro.Current.Armed?NativeBootIntro.Current.Arm(level,ready,built):NativeBootIntro.Begin(level,ready,built)"),"the curtain neither plays nor runs its clock until Awake arms it");
         Check(Text("ProjectSettings/ProjectSettings.asset").Contains("\n  m_ShowUnitySplashScreen: 0\n"),"no Unity splash screen (owner: \"Yes, remove it\")");
         Check(load.Contains("nativeAudio.MenuHeld=NativeBootIntro.Blocking;")&&Text("Assets/ChipArena/Runtime/NativeAudio.cs").Contains("Track(\"music/menu-afterglow\",Menu*MenuTrackGain,MenuHeld);return;}"),"the menu song waits for the crossfade");
         Check(load.Contains("prefs.sound?Mathf.Clamp01(prefs.menuMusic)*NativeBootIntroRules.Gain:0"),"its sound follows Mute audio and the Menu Music slider");
