@@ -1,4 +1,4 @@
-2026-11-11 Claude (`claude/dev-classes-fixes`): the DEV Katana guards with the pack's front-facing great sword guard (the katana set's turned its back with the blade behind). **Next:** the after captures, the body check and `wtvalidate` once the Editor is back; then the owner picks the DEV animations.
+2026-11-11 Claude (`claude/dev-classes-fixes`): the DEV Katana guards with the pack's front-facing great sword guard (the katana set's turned its back with the blade behind). **Next:** the owner picks the DEV animations (a picker is planned).
 
 2026-11-11 Claude (`claude/owner-songs-2026-11-11`, owner request): the owner's ten new songs are in: one for each of the nine remodelled stages (Ward Zero's on both records) and the menu's Pilot's Rooftop; earlier tracks stay packaged as fallbacks.
 

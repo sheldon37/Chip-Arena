@@ -1,7 +1,7 @@
 ## 2026-11-11 — Claude: the DEV Katana guards facing ahead, the blade in front (owner note)
 
-- Branch `claude/dev-classes-fixes` from shared `0ccb5a0a` (13e5f2fe in it); commit `e00c348d`, then this log. Implemented on the
-  branch; not merged, not released.
+- Branch `claude/dev-classes-fixes` from shared `0ccb5a0a` (13e5f2fe in it); commit `e00c348d`, shared `e2d1aed5` merged (`f5f729c9`),
+  then this log. Implemented on the branch; not merged, not released.
 - **The owner** (the released DEV classes, revision 639300460006585328): "Dev Katana block holds katana behind them?"
 - **Cause: the clip, not the grip.** The katana set's guard is a back-turned block: `Revenge_Guard_Start` turns the body about 172
   degrees away (the torso from 58 to -114 degrees off the clip's forward) into a low stance with the blade down behind it. The game's
@@ -12,20 +12,30 @@
   and the bank is unchanged.
   - The great sword guard faces ahead (26 degrees off the clip's forward) with the hands by the head. The blade hangs across the front
     to the left: the game holds the katana within 5 degrees of the great sword.
-  - Measured on the earlier clip frames: in the held guard the tip is 0.10-0.15 m in front of the hips' plane, and the blade comes
-    no closer than 0.17 m to a vertical line up from the hips. In the blocked hit's first frame it passes 0.08 m from that line; the
-    precise check will confirm.
+  - Measured on the body (the local tool's clip frames, 26 samples a clip, the game's katana 0.12-1.09 m from the grip): in the guard
+    and its blocked hit the blade never passes through the torso or the head and never behind. It stays 0.17-0.32 m from the
+    chest-neck line, its tip 0.19-0.40 m in front of the shoulders, 0.09-0.13 m from the left forearm's axis and 0.15 m from the right:
+    across the front, clear of both forearms. The katana set's guard had the blade behind in every frame.
   - The same clip plays the reel when the DEV Katana's own attack is parried (`NativeVisualMotion.ParriedRecoil` for blade sets).
 - **Animation impact:** presentation only; rules, hit timing, hitboxes, damage, cooldowns, movement and networking unchanged.
-- **Every DEV pose against the body** (the earlier clip frames, an approximation: the torso a vertical line above the hips):
-  - Held poses with the blade behind are the DEV Greatsword's shoulder carry (idle and strides, by design: over the shoulder and down
-    the back), the DEV Katana's B runs (the blade trailing low) and the knockdowns. Swings pass behind in their wind-ups.
-  - The greatsword's shoulder-carry strides come within 0.13 m of that line, near the upper back.
-  - A precise check is ready for the Editor: the local tool's clip frames gain the chest, neck, head, shoulders, elbows and hands.
-- **Checks:** the full CoreTests on `e00c348d` (1018 PASS; the Windows path patch applied locally and reverted); `--visual-rig`,
-  `--blades`, `--dev-grants`; `git diff --check` against shared.
-- **Not run (the Editor was down):** the Unity compile, the after captures of the guard, the precise body check, `wtvalidate`.
-- **Next:** those four when the Editor is back, then the owner picks the DEV classes' animations himself.
+- **Every DEV pose against the body** (the same check: torso within 0.13 m of the hips-chest-neck line, head 0.11 m, forearms 0.045 m;
+  "behind" is the tip over 0.1 m behind the shoulders' plane):
+  - DEV Katana, held poses with the blade behind (the pack's design): the B run and fast run (the blade trailing low), the jump
+    start and fall (held back), the knockdown. Through the torso only for a moment: the rolling get-up (0.22-0.26 s) and the fourth
+    cut (0.73 s).
+  - The Frank clips it keeps (the released Katana plays them too, unchanged): the iai's draw stance brings the blade within 0.09 m of
+    the torso's line at 1.0-1.17 s and it lies along the left forearm (the saya hand); the counter critical passes the torso in five
+    frames, and its victim's clip passes the victim's own head.
+  - DEV Greatsword: the shoulder carry (stance, every stride, the jumps, the crouch) rests the blade behind, over the shoulder,
+    never through the torso. Through for a moment: the dodge roll (1.10-1.15 s, by the head too), the rolling get-up, the jump's
+    start, the crouch's start and the front and back flinches. Its guard holds the great sword 0.04-0.06 m from the left forearm's axis,
+    grazing it (the katana in the same pose clears it).
+- **Checks:** the full CoreTests on `e00c348d` and on `f5f729c9` (1018 PASS each; the Windows path patch applied locally and reverted);
+  `--visual-rig`, `--blades`, `--dev-grants`; `git diff --check` against shared; the Editor compiled `f5f729c9` and the builder's
+  Editor checks passed on it (`PrototypeBuild.Validate`: ok). Captured in play (cybercity, DEV access, one idle bot), before
+  and after: the held guard and a blocked hit, the parry into the counter, from the old angle, from behind and in the game's own view.
+  Not run: play by a person, a guest over the network, a Windows build, the builder.
+- **Next:** the owner picks the DEV classes' animations himself (a picker is planned).
 
 ## 2026-11-11 — Astra: keep host networking alive while the destination has no local pilot
 
