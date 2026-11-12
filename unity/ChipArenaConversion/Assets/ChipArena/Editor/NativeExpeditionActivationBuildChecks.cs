@@ -56,6 +56,24 @@ namespace ChipArena.UnityConversion.Editor
                     runtime.SetOccupants(area.id==layout.world?4:0);sessions.Add(area.id,session);
                 }
                 var hub=registry.Find(layout.world);Check(hub.Arena.PlaceExpeditionParty(Enumerable.Range(1,4).ToDictionary(id=>"p"+id,id=>layout.Area(layout.world).slots[id-1])),"hub placement");
+                // Exercise the actual predicate called before NetworkTick, with the host
+                // looking at an empty destination while its pilot remains in the hub.
+                var pickQuery=typeof(ConversionGame).GetMethod("PvePickOpenFor",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic);
+                Check(pickQuery!=null,"controller pick query available");
+                bool PickOpen(NativeArena current)=>(bool)pickQuery.Invoke(null,new object[]{current});
+                Check(!PickOpen(null),"no arena does not open a pick");
+                var destination=registry.Find(layout.instances[0]).Arena;
+                destination.LocalId=1;
+                Check(destination.Local==null&&!PickOpen(destination),"pre-commit destination without host pilot cannot abort network update");
+                hub.Arena.LocalId=1;
+                var pickRow=hub.Arena.Pve.Rows[1];var previousPick=pickRow.Open;
+                try
+                {
+                    pickRow.Open=null;Check(!PickOpen(hub.Arena),"closed pick stays closed");
+                    pickRow.Open=new NativePvePick();Check(PickOpen(hub.Arena),"present local pilot retains open pick");
+                    hub.Arena.LocalId=999;Check(!PickOpen(hub.Arena),"absent local seat is safe even when another seat has a pick");
+                }
+                finally{hub.Arena.LocalId=1;pickRow.Open=previousPick;}
                 var cohorts=new ExpeditionCohorts("native-split",1,layout.compatibility,layout.areas.Select(a=>a.id));
                 foreach(int id in new[]{1,2,3,4})
                 {

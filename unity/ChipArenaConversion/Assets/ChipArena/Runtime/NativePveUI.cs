@@ -5,7 +5,12 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
-        private bool PvePickOpen=>arena?.Pve!=null&&arena.Pve.Rows.TryGetValue(arena.Local.Seat.id,out var row)&&row.Open!=null;
+        private bool PvePickOpen=>PvePickOpenFor(arena);
+        // During a split-area transfer the destination is presented before the local
+        // pilot moves there. ControllerStep queries this before NetworkTick, so a
+        // missing local pilot must not abort the host's network update.
+        internal static bool PvePickOpenFor(NativeArena current)=>current?.Pve!=null&&
+            current.Local?.Seat is NativeSeat seat&&current.Pve.Rows.TryGetValue(seat.id,out var row)&&row?.Open!=null;
         private int pvePending;private float pvePendingAt=-10;private readonly NativeHudTrail bossTrail=new NativeHudTrail();
         private static readonly float[] SirenHealthEdges={0f,.25f,.5f,.75f,1f},ConverterHealthEdges={0f,.35f,.70f,1f},ZoneHealthEdges={0f,.30f,.65f,1f};
         private string PveBossName=>arena?.ZoneBoss?.archetype switch
