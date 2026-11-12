@@ -63,8 +63,16 @@ namespace ChipArena.UnityConversion
                 // The storm: cuts all round, the last a launch.
                 Setup(NativeKatana.Spec);b.Body.position=o+new Vector3(-1.6f,0,-1f);Physics.SyncTransforms();Press(e:true);Check(a.Blade.CastKind==NativeKatana.Storm,"E is the storm");
                 hp=b.Hp;Step(NativeKatana.StormWind+NativeKatana.StormEvery*NativeKatana.StormCuts+.1f);Check(b.Hp<hp-NativeKatana.StormDamage*2&&a.Blade.Hits.Any(h=>h.Kind==NativeKatana.HitLaunch),"it cuts the one beside again and again, then launches");
-                // The counter: after a block, the next cut holds the foe in the paired critical and strikes.
-                Setup(NativeKatana.Spec);BladeBlocked(a,b);Check(a.Blade.CounterUntil>Time,"a block opens the counter");hp=b.Hp;Press(shoot:true);
+                // The counter: after a timed parry, the next cut holds the foe in the paired critical and strikes. Only the parry opens it (owner
+                // 2026-11-11: "Katana / Dev katana for some reason able to parry even on normal blocks?"): a blow held on the raised guard (right
+                // click) opens nothing and staggers no one; one inside the F parry's window opens the counter on its striker and reels it.
+                Setup(NativeKatana.Spec);a.Input=new InputFrame{Guard=true};StepGuard(a);Check(a.Guarding,"the Katana raises its guard");
+                Damage(a,b,20,Vector3.back,0,false,melee:true,weaponHit:true);Check(a.Blade.CounterUntil<=Time&&a.BladeCounterFoe==null&&b.StunEnd<=Time,"a blow held on the guard opens no counter and reels no one");
+                a.Input=new InputFrame();StepGuard(a);Check(!a.Guarding&&TryBlock(a),"the guard down, the parry");
+                Damage(a,b,20,Vector3.back,0,false,melee:true,weaponHit:true);Check(a.Blade.CounterUntil>Time&&a.BladeCounterFoe==b&&b.StunEnd>Time,"a blow on the parry opens the counter on its striker and reels it");
+                // (The click comes once the parry's window has shut: no move starts inside it, KatanaInput.)
+                Step(Mathf.Max(0f,a.BlockEnd-Time)+Frame);Check(Time>=a.BlockEnd&&a.Blade.CounterUntil>Time,"the parry's window shut, the counter still open");
+                hp=b.Hp;Press(shoot:true);
                 Check(a.Blade.CastKind==NativeKatana.Counter&&b.BladeHeldBy==a&&PinBladeVictim(b),"the cut is the counter, the foe held");Step(NativeKatana.CounterHold+.05f);Check(b.Hp<hp&&b.BladeHeldBy==null,"it strikes and lets go");
                 {var gap=b.Body.position-a.Body.position;gap.y=0;Check(gap.magnitude>NativeKatana.CounterStand+.8f,"the foe thrown back as its clip carries it ("+gap.magnitude.ToString("0.00")+" m)");}
                 // The record crosses the codec.

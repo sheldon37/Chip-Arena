@@ -525,7 +525,12 @@ namespace ChipArena.UnityConversion
                     &&dev.Block==NativeDevKatanaMotion.Guard&&dev.BlockHit==NativeDevKatanaMotion.GuardHit&&dev.Roll==NativeDevKatanaMotion.Roll&&dev.Knockdown==NativeDevKatanaMotion.Knockdown&&dev.RollBack==NativeDevKatanaMotion.RollBack,
                     "the DEV Katana's stance, guard, roll, knockdown, cuts, rush and plunge on the pack's clips");
                 var kept=new[]{"Armed-Stunned",NativeBladeMotion.KatanaIai,NativeBladeMotion.KatanaSheathe,NativeBladeMotion.KatanaCritical,NativeBladeMotion.KatanaCriticalHit};
-                Check(Array.TrueForAll(dev.All,c=>NativeDevKatanaMotion.Is(c)||Array.IndexOf(kept,c)>=0)&&Array.TrueForAll(kept,c=>Array.IndexOf(dev.All,c)>=0),"its every clip the pack's but the stun, the iai, the sheathing and the paired critical");
+                Check(Array.TrueForAll(dev.All,c=>NativeDevKatanaMotion.Is(c)||c==dev.Block||c==dev.BlockHit||Array.IndexOf(kept,c)>=0)&&Array.TrueForAll(kept,c=>Array.IndexOf(dev.All,c)>=0),"its every clip the pack's katana set's but the guard, the stun, the iai, the sheathing and the paired critical");
+                // Its guard (owner 2026-11-11: "Dev Katana block holds katana behind them?"): the same pack's great sword guard, which faces
+                // ahead with the blade across the front; the katana set's revenge guard turns the body away with the blade behind it.
+                Check(dev.Block==NativeDevGreatswordMotion.Guard&&dev.BlockHit==NativeDevGreatswordMotion.GuardHit&&NativeDevGreatswordMotion.Is(dev.Block)&&NativeDevGreatswordMotion.Is(dev.BlockHit)
+                    &&Array.IndexOf(dev.All,NativeDevKatanaMotion.BackGuard)<0&&Array.IndexOf(dev.All,NativeDevKatanaMotion.BackGuardHit)<0&&NativeVisualMotion.Loops(NativeDevMotions.Katana).Contains(dev.Block),
+                    "the DEV Katana guards with the great sword guard (the katana set's back-turned guard unplayed), looped as the stance");
                 Check(Array.TrueForAll(dev.Locomotion,c=>NativeDevKatanaMotion.Is(c)&&c.Contains("_Root"))&&dev.Locomotion[NativeVisualStride.Sprint]==NativeDevKatanaMotion.Sprint&&NativeVisualMotion.Loops(NativeDevMotions.Katana).Contains(dev.Idle),"the root-motion stride (their travel sets its rate), the stance a loop");
                 foreach(var c in new[]{dev.Attacks[0],dev.Attacks[1],dev.Attacks[2],dev.Attacks[3],NativeDevKatanaMotion.Rush,NativeDevKatanaMotion.Storm,NativeDevKatanaMotion.Plunge})
                 {

@@ -124,13 +124,17 @@ internal static class StageArtChecks
         Check(draw.Contains("solidUp.SetFloat(LiftId,NativeStageArt.ModelLayers);")&&draw.Contains("glowUp.SetFloat(LiftId,NativeStageArt.ModelLayers);")&&draw.Contains("Graphics.DrawMesh(piece.Mesh,m,s==0?solidUp:glowUp,0,null,s,block,ShadowCastingMode.TwoSided,true)")
             &&draw.Contains("Graphics.DrawMeshInstanced(b.Piece.Mesh,s,s==0?solidUp:glowUp,b.M,b.Count,block")&&draw.Contains("r.sharedMaterials=piece.Subs>1?new[]{solid,glow}:new[]{solid};"),"the blocks' and the rig's models draw their layers up; the chunks do not");
         var kitPy=R("tools/stages/stagekit.py");
-        Check(kitPy.Contains("def layer_polys(P64, S, reach=LAYER_REACH, least=2e-4, share=.02):")&&kitPy.Contains("LAYER_REACH = .03")&&kitPy.Contains("om.uv1.append([u[0] + L / 32.0, u[1]])")&&kitPy.Contains("        self.layer()")&&kitPy.Contains("def layer(self):"),
+        Check(kitPy.Contains("def layer_polys(P64, S, reach=LAYER_REACH, least=2e-4, share=.02, turn=400):")&&kitPy.Contains("LAYER_REACH = .03")&&kitPy.Contains("om.uv1.append([u[0] + L / 32.0, u[1]])")&&kitPy.Contains("        self.layer()")&&kitPy.Contains("def layer(self):"),
             "every bank is layered as it is written");
         // cells: no floor reaches out of its chunk's cell (a floor is never drawn twice where neighbours draw at different tiers)
         Check(kitPy.Contains("def split(self, g, reach=24, least=.08, upright=2.0):")&&kitPy.Contains("def at(self, block_id, pos, quat=(0.0, 0.0, 0.0, 1.0)):"),"the chunks cut their faces along their cells; a stage may place its block models");
         foreach(var script in new[]{"sanctum","club","emporium","causeway","breakwater","harbor","rig","polar","skyframe","brickfall","factory","cybercity"})
             Check(R("tools/stages/"+script+"_art.py").Contains("% chunks.split(g))"),script+": the static scene is cut along the chunks' cells before its bake");
         Check(R("tools/stages/wardzero_art.py").Contains("% chunks.split(S.static))"),"Ward Zero: the static scene is cut along the chunks' cells before its bake");
+        // far chunks: a lit window 5 cm off a tower 500 m away is under the depth buffer's step there (0.25 m), so the far chunks
+        // are layered among themselves at a far reach, and a layer's push there (4 steps) carries it clear
+        Check(kitPy.Contains("FAR_REACH = .25")&&kitPy.Contains("[(p, FAR_REACH) for p in far.values()]")&&kitPy.Contains("if not name.split('/')[1].lstrip('-').isdigit():"),"the far chunks are layered at their own reach");
+        Check(.05<500f*500f*1e-6f&&NativeStageArt.Nearer(500,1)*500>=3*500f*500f*1e-6f&&NativeStageArt.Nearer(1700,2)*1700>=2*3*1700f*1700f*1e-6f,"a far layer comes three depth steps nearer at 500 m and at the sea's edge");
         // the kept kit boxes' own stacking
         {
             // a slab; a strip on it (6 mm proud); a mark on the strip (in the strip's plane: the smaller lies on the larger); a box apart; a turned box

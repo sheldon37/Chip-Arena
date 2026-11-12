@@ -509,6 +509,36 @@ them over the art's inlays and draws each corner `NativeStageArt.MostLayers` nea
 that falls on a surface is traced to that surface, corner by corner, and kept only where it lies whole on it; glowing panes
 that overlap stand on steps. docs/arenas/SANCTUM.md, "The hazards' polish and the lights' depth fighting".
 
+**Far chunks (2026-11-12).** Owner, on the release with the layers: "Seems to be light flickering in the background of
+Skyframe". The far chunks (the named ones: Skyframe's other towers, its tower's body, the cloud sea) were settled with a 5 cm
+lift, and the layers reach 30 mm, so their stacked faces had none: the sixteen towers' lit windows stand 5 cm off their walls 300
+to 900 m from the garden, where a 24 bit depth buffer's step behind the 0.06 m near plane is 0.1 to 0.8 m (distance² x 1e-6).
+A lit window and its wall trade pixels as the eye moves: lights flickering in the distance. `StageBank.layer` now layers the
+far chunks among themselves at `FAR_REACH` (25 cm; their planes met in wider turns, since a far roof's two skins are rarely
+quite parallel; a far chunk takes these layers alone), and a layer's push grows with the distance (four depth steps at any
+range: 1 m at 500 m), so each window draws over its wall. Measured (`zfight.py --tier 2 --eps .25 --amin .01`: m² of
+same-facing faces within 25 cm on one layer, in the far chunks), released bank and rebuilt:
+
+| Stage | Far chunks | Before | After |
+|---|---|---|---|
+| Skyframe | the skyline, the sea, the tower's body, the turbines | 49,055 | 2.1 |
+| Cyber City | the near ring and tunnels | 4,141 | 284 |
+| Starfall Causeway | the lost ruins, north and south | 832 | 0.1 |
+| Breakwater | the shore, the far light | 493 | 0.3 |
+| Polaris Station | the far bergs | 448 | 0.0 |
+| Deepwell | the far habitats | 85 | 0.0 |
+
+Cyber City's 284 m² are its ring's own steps of 11 to 25 cm (a roof's rim over its deck), under 100 m from the play space, where
+the step is a centimetre: they cannot fight. The six banks were rebuilt; no other stage has far chunks with such faces (the
+Sanctum's bank is the Sanctum polish's to build). **Seen in the Editor** (2026-11-12, the released bank against the rebuilt one
+under one lock hold; eight background views, each eye twice 3 mm apart, at High and on the Low graphics tier; two twelve-frame
+pans on Skyframe and one on Cyber City): on the released bank the far towers show only some of their lit windows (the rest
+lost to the wall behind them) and, at High, a bright wedge across a tower's face; on the rebuilt bank every window shows on
+every frame and the faces are whole. That is clearest on the Low tier, which has no haze. Cyber City's pan looks the same
+before and after (its ring is near; nothing fought there). Not depth fighting, and left as they are: the cloud sea's drifting
+haze (84 soft banks, Core NativeSkyframeFx.Sea) washes the far towers pale as it passes, and the beacons blink at 0.55 Hz, both
+by design; if the owner still sees flicker, the haze is the next thing to look at.
+
 **Rules for the next stage.** Model paint, boards and marks as faces on their surface (a few millimetres proud, or in its plane):
 the bank writer layers them. Call `chunks.split(g)` after the lift. A kit box kept over the art goes through `Nearer`. Run the
 analyser on the new bank at every tier: all faces, `--floors`, and `--with-tier`: each should come out at a few dm² at most.

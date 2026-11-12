@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
             Chip(4,"Severing Line",1,"Moonlit Draw's split kills anyone it leaves below 20% health. A kill takes 4 s off its cooldown."),
             Chip(5,"Flash Step",1,"Rushing Draw dashes 60% farther, and you are untouchable while it dashes."),
             Chip(6,"Still Water",1,"After 1.2 s without attacking, your next cut deals +50% damage."),
-            Chip(7,"Mirror Moon",1,"The counter's window after a block or parry lasts 2 s. The counter deals +50% and heals you for 15."),
+            Chip(7,"Mirror Moon",1,"The counter's window after a parry lasts 2 s. The counter deals +50% and heals you for 15."),
             Chip(8,"Falling Blossom",1,"Petal Storm's last cut throws them higher, and your next cut on a launched enemy within 2 s deals +60%."),
             Chip(9,"Sheathed Fury",1,"Moonlit Draw's cooldown is 30% shorter and its draw is quicker (0.2 s).")};
         /// <summary>Adds the rows to the content (nothing if they are there). For the live content load; the Dev Sandbox's preview calls it on its own copy.</summary>

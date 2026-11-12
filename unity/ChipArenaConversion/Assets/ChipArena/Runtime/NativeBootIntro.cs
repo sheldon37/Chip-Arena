@@ -12,9 +12,11 @@ namespace ChipArena.UnityConversion
     /// The logo intro at launch (owner 2026-11-11: "Lets add this as an intro when starting the game (Use this time to load
     /// assets in). (This is also the new logo for the game)"; docs/BOOT-INTRO.md). The clip plays full screen, letterboxed 16:9
     /// on black, its sound at the Menu Music level (silent under Mute audio), while the game loads under it (NativeBootLoad.cs).
-    /// A click, Esc, Enter or Space (a pad's A, B or Start) skips it after half a second. If the game is not ready when the clip
-    /// ends or is skipped, the final logo holds with a small loading indicator; then it crossfades into the main menu. Drawn over
-    /// every other GUI (GUI.depth); nothing under it takes input. The timeline is Core NativeBootIntroFlow. Presentation only.
+    /// The clip starts once the menu has been built under the black curtain (`canPlay`), so nothing heavy runs while it plays
+    /// or after it. A click, Esc, Enter or Space (a pad's A, B or Start) skips it after half a second. When its animation finishes
+    /// (NativeBootIntroRules.SettledFrom) it crossfades into the main menu at once; if the game is not ready when the clip ends
+    /// or is skipped, the final logo holds with a small loading indicator first. Drawn over every other GUI (GUI.depth); nothing
+    /// under it takes input. The timeline is Core NativeBootIntroFlow. Presentation only.
     /// </summary>
     [DefaultExecutionOrder(-500)]
     public sealed class NativeBootIntro : MonoBehaviour
@@ -31,16 +33,16 @@ namespace ChipArena.UnityConversion
         public NativeBootIntroFlow Flow=>flow;
         private readonly NativeBootIntroFlow flow=new NativeBootIntroFlow();
         private VideoPlayer player;private AudioSource voice;private RenderTexture frame;private Texture2D logo,dot;private ResourceRequest logoLoad;
-        private Func<bool> ready;private float level;private bool prepared,started,ended,failed,splashDone,shown,stopped,finished;private string failure;
+        private Func<bool> ready,canPlay;private float level;private bool prepared,started,ended,failed,splashDone,shown,stopped,finished;private string failure;
         private ThreadPriority loadingPriority;private GUIStyle label;
         private readonly List<float> playFrames=new List<float>();private readonly Stopwatch clock=Stopwatch.StartNew();
-        private double shownAt=-1,startedAt=-1,overAt=-1,readyAt=-1,fadeAt=-1;
+        private double shownAt=-1,startedAt=-1,overAt=-1,readyAt=-1,fadeAt=-1,settledAt=-1;
         private bool Moving=>started&&player!=null&&player.frame>=0&&!flow.VideoEnded&&!flow.Skipped&&!flow.VideoFailed;
         /// <summary>
         /// Starts the intro (ConversionGame.Awake, once the preferences are in): the clip prepares at once and plays once Unity's
         /// own splash screen is over. `level` 0-1 is the sound's volume; `ready` says when the game below may be shown.
         /// </summary>
-        public static NativeBootIntro Begin(float level,Func<bool> ready)=>Curtain().Arm(level,ready);
+        public static NativeBootIntro Begin(float level,Func<bool> ready,Func<bool> canPlay=null)=>Curtain().Arm(level,ready,canPlay);
         /// <summary>
         /// The intro before the game exists (ConversionGame.Boot, one frame ahead of the game's Awake): black over everything, so
         /// the window shows black, not an unpainted white, through Awake's work; the clip prepares meanwhile. Nothing plays and
@@ -50,10 +52,11 @@ namespace ChipArena.UnityConversion
         {
             var go=new GameObject("Boot intro");DontDestroyOnLoad(go);var intro=go.AddComponent<NativeBootIntro>();intro.Setup();return intro;
         }
-        /// <summary>The game's Awake hands over its sound level and its readiness: the intro starts.</summary>
-        public NativeBootIntro Arm(float level,Func<bool> ready)
+        /// <summary>The game's Awake hands over its sound level, its readiness, and when the clip may start (the menu built under
+        /// the curtain, NativeBootLoad.cs): the intro starts then.</summary>
+        public NativeBootIntro Arm(float level,Func<bool> ready,Func<bool> canPlay=null)
         {
-            this.ready=ready;this.level=Mathf.Clamp01(level);if(voice!=null)voice.volume=this.level;armed=true;return this;
+            this.ready=ready;this.canPlay=canPlay;this.level=Mathf.Clamp01(level);if(voice!=null)voice.volume=this.level;armed=true;return this;
         }
         public bool Armed=>armed;private bool armed;
         /// <summary>A curtain the game never armed (its Awake failed before the intro, or chose none): gone at once.</summary>
@@ -61,8 +64,8 @@ namespace ChipArena.UnityConversion
         private void Setup()
         {
             Current=this;
-            // The intro's loads (and the game's) integrate in small slices while the clip plays; restored when it ends.
-            loadingPriority=Application.backgroundLoadingPriority;Application.backgroundLoadingPriority=ThreadPriority.Low;
+            // Under the curtain the game's loads integrate in big slices (nothing moves yet); the clip plays at the usual priority.
+            loadingPriority=Application.backgroundLoadingPriority;Application.backgroundLoadingPriority=ThreadPriority.High;
             logoLoad=Resources.LoadAsync<Texture2D>(NativeBootIntroRules.Logo);
             dot=Dot();
             string path=Path.Combine(Application.streamingAssetsPath,NativeBootIntroRules.Clip);
@@ -92,10 +95,12 @@ namespace ChipArena.UnityConversion
         private void Update()
         {
             if(finished||!armed)return;
+            // The clip waits for the menu to be built under the curtain: its clock does not run and no press counts meanwhile.
+            if(canPlay!=null&&!canPlay())return;
             // Unity's splash screen (Player Settings) draws over everything: the clip waits for it, the loading does not.
             if(!splashDone){splashDone=SplashDone();if(!splashDone)return;}
             float dt=Mathf.Min(Time.unscaledDeltaTime,.1f);if(!shown){shown=true;dt=0;shownAt=Ms;}
-            if(!started&&prepared&&!failed){player.Play();started=true;startedAt=Ms;}
+            if(!started&&prepared&&!failed){player.Play();started=true;startedAt=Ms;Application.backgroundLoadingPriority=loadingPriority;}
             if(logo==null&&logoLoad!=null&&logoLoad.isDone){logo=logoLoad.asset as Texture2D;logoLoad=null;}
             if(Moving)playFrames.Add(Time.unscaledDeltaTime*1000);
             if(Pressed())flow.Skip();
@@ -103,6 +108,7 @@ namespace ChipArena.UnityConversion
             float videoTime=started&&player.frame>=0?(float)player.time:-1;
             flow.Step(dt,videoTime,ended,failed,loaded);
             if(overAt<0&&(flow.Skipped||flow.VideoEnded||flow.VideoFailed))overAt=Ms;if(fadeAt<0&&flow.State==NativeBootIntroFlow.Phase.Fading)fadeAt=Ms;
+            if(settledAt<0&&flow.Settled)settledAt=Ms;
             if(voice!=null)voice.volume=level*flow.Sound;
             // A skipped clip stops once it has given way to the logo (its decoder freed for the loading).
             if(player!=null&&started&&!stopped&&flow.Skipped&&flow.Video<=0){player.Stop();stopped=true;}
@@ -148,8 +154,8 @@ namespace ChipArena.UnityConversion
         {
             var a=playFrames.OrderBy(v=>v).ToArray();float P(float q)=>a.Length==0?0:a[Math.Min(a.Length-1,(int)Math.Ceiling(q*a.Length)-1)];
             Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"{0}",string.Format(CultureInfo.InvariantCulture,
-                "BOOT_INTRO shown_ms={0:F0} play_ms={1:F0} over_ms={2:F0} ready_ms={3:F0} fade_ms={4:F0} done_ms={5:F0} skipped={6} failed={7} held_ms={8:F0} frames n={9} mean={10:F1} p95={11:F1} p99={12:F1} max={13:F1} over33={14} over50={15}{16}",
-                shownAt,startedAt,overAt,readyAt,fadeAt,Ms,flow.Skipped,flow.VideoFailed,flow.HoldAt>=0?(fadeAt-overAt):0,a.Length,a.Length==0?0:a.Average(),P(.95f),P(.99f),a.Length==0?0:a[a.Length-1],a.Count(v=>v>33.4f),a.Count(v=>v>50),failure!=null?" failure="+failure:""));
+                "BOOT_INTRO shown_ms={0:F0} play_ms={1:F0} over_ms={2:F0} ready_ms={3:F0} fade_ms={4:F0} done_ms={5:F0} skipped={6} failed={7} held_ms={8:F0} frames n={9} mean={10:F1} p95={11:F1} p99={12:F1} max={13:F1} over33={14} over50={15} settled_ms={17:F0} settled_to_interactive_ms={18:F0}{16}",
+                shownAt,startedAt,overAt,readyAt,fadeAt,Ms,flow.Skipped,flow.VideoFailed,flow.HoldAt>=0?(fadeAt-overAt):0,a.Length,a.Length==0?0:a.Average(),P(.95f),P(.99f),a.Length==0?0:a[a.Length-1],a.Count(v=>v>33.4f),a.Count(v=>v>50),failure!=null?" failure="+failure:"",settledAt,settledAt>=0&&fadeAt>=0?fadeAt-settledAt:-1));
         }
         private void Finish()
         {

@@ -146,10 +146,15 @@ namespace ChipArena.UnityConversion
         {
             if(!NativeHotDog.Worn(body.Look))return;
             var rig=body.Dog;
-            if(rig==null)
+            if(rig==null||rig.Skin==null)
             {
                 rig=body.Dog=new HotDogRig();var twins=new List<Transform>();
-                foreach(var t in body.Root.GetComponentsInChildren<Transform>(true))if(t.name.StartsWith(HotDogTwin,StringComparison.Ordinal)){twins.Add(t);if(t.name==HotDogTwin+"pelvis")rig.Pelvis=t.parent;}
+                // Only the twins the sausage's renderer skins with. The body's motion and stride proxies are copies of the skeleton
+                // made after the twins, so each carries twins of its own, posed by other clips; gathered with the rest, they had the
+                // evened sausage mixing three skeletons' poses, and in a pack clip (the Katana's parry and counter, 2026-11-11: "morph
+                // player model in parry hit") it folded and wrung.
+                hotDogByRoot.TryGetValue(body.Root,out var drawn);
+                if(drawn!=null)foreach(var t in drawn.bones)if(t!=null&&t.name.StartsWith(HotDogTwin,StringComparison.Ordinal)){twins.Add(t);if(t.name==HotDogTwin+"pelvis")rig.Pelvis=t.parent;}
                 // Bottom to top by where their bones rest, each with that rest turn (the bank's bind poses).
                 var bind=hotDogMesh!=null?hotDogMesh.bindposes:new Matrix4x4[0];var rest=new List<(Transform t,float y,Quaternion q)>();
                 foreach(var t in twins){int i=Array.IndexOf(hotDogBones,"~"+t.name.Substring(HotDogTwin.Length));if(i>=0&&i<bind.Length){var m=bind[i].inverse;rest.Add((t,m.m13,m.rotation));}}
