@@ -251,3 +251,12 @@ packaged.
 - No shadows from the practical lights (as STAGE-ART.md says for every stage). The jib's own shadow falls outside the shadow
   distance at this sun height; the frame's, the trees' and the carried bundle's fall across the garden.
 - Frame time on the Low tier was not measured; the perf views before and after are not the same place (the map is new).
+
+## Lights flickering in the background (2026-11-12)
+
+Owner: "Seems to be light flickering in the background of Skyframe". The other towers' lit windows (`tools/stages/skyframe_sky.py`
+`skyline`) stand 5 cm off their walls, 300 to 900 m away, under the depth buffer's step at that range: window and wall traded
+pixels as the eye moved. The far chunks are now layered at a far reach (docs/arenas/STAGE-ART.md section 14, "Far chunks"), so
+every window draws over its wall at any distance (49,055 m2 of window and wall within 25 cm on one layer before, 2 m2 after). Bank rebuilt (11.70 MB). The look is unchanged; the beacons still blink as
+designed. Seen in the Editor at High and Low: on the released bank the far towers showed only some of their windows; on the
+rebuilt bank all of them, on every frame. The cloud sea's drifting haze still passes over the far towers (by design).
