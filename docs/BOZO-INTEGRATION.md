@@ -1611,13 +1611,36 @@ already? Cant we utilize that?"
       and the counter's paired critical keep the Frank Slash Pack's clips: the pack has no saya (the iai draws from and sheathes into
       the saya the left hand carries, Core `NativeKatanaSaya`) and no partner clip for the critical's victim. The pack has no dazed
       loop: the stun keeps `Armed-Stunned`. The blade, the saya at the hip, the trail and every effect are the Katana's.
+    - **The owner's picks (2026-11-12):** the owner chose each DEV class's clips in a picker (the artifact's `picks` documents); the
+      slots not picked keep theirs. Every clip plays in place (the rules move the pilot; the bake leaves root travel out) with its strike
+      on the base class's hit, measured on the body at 30 frames a second; no rule, hitbox, damage or cooldown changed.
+      - **DEV Greatsword:** the combo on the seven-hit chain's first four parts (`Attack_7Combo_1..4_Inplace`, strikes 0.565, 0.485,
+        0.6, 0.4 s; the fourth's overhead comes over right to left against the rules' left to right; the picker's 6.9 s
+        `Attack_7Combo_4` is the in-place take's swing and five seconds standing), the sprint attack on `Dash_Attack_ver_B` (0.39 s),
+        Sunder on `Skill_F` (its slam to the front right, 0.63 s); Iron Vow keeps `Idle_To_Crouch`.
+      - **DEV Katana:** the cuts on the five-hit chain's first four parts (`Attack_5Combo_1..4_Inplace`, windows 0/0.31/1.0,
+        0/0.3/0.83, 0/0.43/1.03 and, the fourth a flurry of cuts and kicks, 1.2/1.97/2.33: its last high sweep), the plunge on
+        `Jump_Attack_Combo_4_Attach_ZeroHeight` (0/0.22/0.77: a downward cut into a crouched landing), the counter on
+        `Revenge_Guard_Attack_ver_A` (0/0.4/1.47: out of the katana set's back-turned guard it spins round into a rising cut) in place
+        of the Frank paired critical. The pack has no partner clip, so the countered foe plays the katana set's
+        `Damage_Front_Big_ver_A` from the blow, at its own pace to the hold's end (`NativeDevMotions.VictimClip`, named on the host
+        by the holder's motion); the rules' pair, hold and 2.82 m knock-back are the Katana's. The guard stays the front-facing great
+        sword guard (owner: "Front-facing block").
+      - **Their own entrances** (Core `NativeDevIntros`; `NativeIntroRules.Style` gives a seat that picked one, or spawned as its
+        base, its own): the DEV Greatsword's Heavy Turn (4.8 s, the card at 3.2: the great sword set's `Intro`, its back turned, then
+        round in two swings onto the shoulder) in place of the Colossus Oath, the DEV Katana's Edge Flourish (5.3 s, the card at 3.7:
+        the katana set's `Intro`) in place of Crimson Moon. The pack's clip on the model (an entrance's intro body now plays its
+        script's clip whatever its set, `NativeVisualMotion.Choose`), the weapon held as the match holds it (`NativeDevMotions.Grip`),
+        a keyed stance under it for the Classic body, a camera, the stage's light and dust where the beat lands.
     - **The katana's hold:** the game holds the blade 20-30 degrees from where the pack's own katana lies (26 on average over the
       attacks and the B stride; 49 at most), a steady offset through every clip: the arms and the swing are the pack's,
       the blade sits that much differently in the hand.
-    - **The bank** gains the DEV Greatsword's 35 clips (433,786 bytes) and the DEV Katana's 31 (352,883 bytes), each merged into the
-      live bank with every other clip kept byte-identical (409 clips in 4,877,308 bytes became 444 in 5,311,078, then 475 in
-      5,663,961). Rebake by merging (the extra bake, then a merge), not from scratch: NOCTIEL's and other bosses' clips are named by
-      no player set.
+    - **The bank** gains the DEV Greatsword's 35 clips (433,786 bytes) and the DEV Katana's 31 (352,883 bytes), then the owner's
+      picks' 14 (266,094 bytes: the great sword set's `Attack_7Combo_2..4_Inplace`, `Dash_Attack_ver_B`, `Skill_F`, `Intro`; the katana
+      set's `Attack_5Combo_1..4_Inplace`, `Jump_Attack_Combo_4_Attach_ZeroHeight`, `Revenge_Guard_Attack_ver_A`,
+      `Damage_Front_Big_ver_A`, `Intro`), each merged into the live bank with every other clip kept byte-identical (409 clips in
+      4,877,308 bytes became 444 in 5,311,078, 475 in 5,663,961, then 489 in 5,930,039, sha256 b5d3d2f0...). Rebake by merging (the
+      extra bake, then a merge), not from scratch: NOCTIEL's and other bosses' clips are named by no player set.
   - **Sword, daggers and shield kit moves (2026-10-24, `claude/motion-kits`):** every melee weapon's Q and E now play
     pack clips.
     - **Sword:** Flash Step plays the armed dash's lunge on the release. Rising Dragon plays the pack's rising thrust

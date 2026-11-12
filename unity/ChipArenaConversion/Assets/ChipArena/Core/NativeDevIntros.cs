@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
                 var at=new Vector3((float)Math.Cos(a)*r,floor+.08f+.25f*u*NativeEntranceMath.Rand(23120,i),(float)Math.Sin(a)*r);
                 fx.Smoke(at,Dust,.45f*(1-u),.22f+.5f*u,u,23130+i,floor);
             }
-            if(s<.3f){float u=s/.3f;fx.Glow(new Vector3(0,1.25f,0)+Local(0,0,.7f),(Vector3.One*2+Accent)*(1.6f*(1-u)),0,.45f+.6f*u,1,u,23140);}
+            if(s<.25f){float u=s/.25f;fx.Glow(new Vector3(0,1.25f,0)+Local(0,0,.7f),(Vector3.One+Accent)*(1.1f*(1-u)),0,.16f+.28f*u,1,u,23140);}
         }
         private static readonly Vector3 Dust=NativeEntranceFx.Hex(0x8f8a80);
     }
