@@ -55,6 +55,8 @@ namespace ChipArena.UnityConversion
             // The Standard skins' Chip modules (NativeChipModuleModels.cs), built with the models they mount on, and the body chips'
             // parts for the player's model (NativeBodyChipModels.cs).
             ChipModules();BodyChipParts();
+            // The DEV animation classes draw their base classes' weapons (Core NativeDevMotions).
+            foreach(var dev in NativeDevMotions.All){string b=NativeDevMotions.Base(dev);foreach(var k in new[]{"weapon-","loose-"})if(models.TryGetValue(k+b,out var m))models[k+dev]=m;}
         }
         private static Mesh WeaponMeshOf(WeaponSection s,string name)
         {

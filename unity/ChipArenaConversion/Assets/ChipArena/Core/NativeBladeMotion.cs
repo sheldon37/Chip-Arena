@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
                 case FangsBloom:return new Window(.45f,.9f,1.5f);
                 case FangsTakedown:case FangsTakedownHit:return new Window(0,.9f,1.45f);
                 case FangsCritical:case FangsCriticalHit:return new Window(.5f,1.1f,1.7f);
-                default:return new Window(float.NaN,float.NaN,float.NaN);
+                default:return NativeDevKatanaMotion.WindowOf(clip);
             }
         }
         /// <summary>At most this many times a clip's pace, before its strike (a move too quick starts later into the window).</summary>
@@ -117,10 +117,12 @@ namespace ChipArena.UnityConversion
             if(a.SourceSpec==NativeKatana.Spec)
             {
                 if(time>=until+.12f)return false;
+                // The DEV Katana plays these moves on its own clips (Core NativeDevKatanaMotion; the iai and the counter keep these).
+                bool dev=a.Motion==NativeDevMotions.Katana;string[] cuts=dev?NativeDevKatanaMotion.Cuts:KatanaCuts;
                 switch(k.CastKind)
                 {
-                    case NativeKatana.Cut:whole=k.CastStep>=2;return On(KatanaCuts[Math.Max(0,k.CastStep)%KatanaCuts.Length],at,rel,until,time,clips,out clip,out t);
-                    case NativeKatana.Rush:return On(KatanaRush,at,rel+NativeKatana.RushTime*.5f,until,time,clips,out clip,out t);
+                    case NativeKatana.Cut:whole=k.CastStep>=2;return On(cuts[Math.Max(0,k.CastStep)%cuts.Length],at,rel,until,time,clips,out clip,out t);
+                    case NativeKatana.Rush:return On(dev?NativeDevKatanaMotion.Rush:KatanaRush,at,rel+NativeKatana.RushTime*.5f,until,time,clips,out clip,out t);
                     case NativeKatana.Iai:
                     {
                         // The draw stance and the dash cut, then the blade slid home with its click on the split.
@@ -130,7 +132,7 @@ namespace ChipArena.UnityConversion
                     case NativeKatana.Storm:
                     {
                         // The flurry's span stretched across the cuts (Thousand Petals: more of them).
-                        float span=until-rel-NativeKatana.StormRecover;return On(KatanaStorm,at,rel,rel+span+NativeKatana.StormRecover,time,clips,out clip,out t);
+                        float span=until-rel-NativeKatana.StormRecover;return On(dev?NativeDevKatanaMotion.Storm:KatanaStorm,at,rel,rel+span+NativeKatana.StormRecover,time,clips,out clip,out t);
                     }
                     case NativeKatana.Counter:return On(KatanaCritical,at,k.PairHit>-50?k.PairHit:rel,until,time,clips,out clip,out t);
                 }

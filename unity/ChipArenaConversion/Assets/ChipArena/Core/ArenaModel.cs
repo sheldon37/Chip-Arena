@@ -50,6 +50,8 @@ namespace ChipArena.UnityConversion
         public NativeWound[] Wounds=Array.Empty<NativeWound>();public string SourceSpec,SourceAction,BodyColor="#e5e7eb",AccentColor="#70e1d0",Hat="none";public float SourceModeAt=-100;public float SourceAt,SourceUntil,RigScale=1;public int SourceIndex,SourceTotal,SourceSide=1;public bool SourceRanged;
         // The headwear colour (NativeHatLooks), filled from the seat on host and guests alike: never on the wire per tick.
         [NonSerialized] public string HatColor="";
+        // The DEV animation class the model plays by (Core NativeDevMotions), filled from the seat on host and guests alike: never on the wire per tick.
+        [NonSerialized] public string Motion="";
         // Native authority presentation only; the inherited lab wire codec does not transport these.
         public bool HasKernel;public NativeKernelPanic Kernel;public NativeMeleeKit MeleeKit;public NativeTechniqueMark[] TechniqueMarks;public NativeChipGauge[] ChipGauges;public bool HasTechnique;public NativeTechnique Technique;public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
         public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;

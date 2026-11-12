@@ -67,6 +67,9 @@ namespace ChipArena.UnityConversion
             public string Knockdown, RollBack;
             /// <summary>The clips the set's technique plays beyond its own (NativeTechniques; the bake's controller carries them).</summary>
             public string[] TechClips;
+            /// <summary>A set's own clips for the greatsword techniques' crouch (into it, then held), Sunder's overhead and Reaping Sweep's sweep
+            /// (null: the old two-handed set's).</summary>
+            public string VowStart, VowHold, Overhead, Sweep;
             /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
             public string[] All;
         }
@@ -79,6 +82,18 @@ namespace ChipArena.UnityConversion
             AirAttack="2Hand-Sword-Air-Attack1",SprintAttack="2Hand-Sword-Run-Forward-Attack1",
             Attacks=Names("2Hand-Sword-Attack","1","2","4","3","5","6"),Reactions=Names("2Hand-Sword-GetHit-","F1","B1","L1","R1"),
             TechClips=new[]{TechThrowStart,TechThrowEnd,TechVowStart,TechVowHold},KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{"2Hand-Sword-Attack11","2Hand-Sword-Attack2"},KitHits=new[]{float.NaN,WhirlHold},Knockdown="2Hand-Sword-Knockdown1",RollBack="2Hand-Sword-Roll-Backward"},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
+        // The DEV Greatsword (Core NativeDevMotions; owner 2026-11-11): the Greatsword's rules on Grruzam's great sword set (Core
+        // NativeDevGreatswordMotion: its stance, shoulder carry stride, jumps, guard, dodge roll, reactions, knockdown and rolling get-up, its
+        // combo's cuts alternating as the rules sweep, its leaping slam on the sprint, its jump attack, its ground slam and spinning sweep for the
+        // kit, its crouch, overhead and spin for the techniques). The pack has no dazed loop, so the stun keeps the two-handed set's. Its Spec is
+        // the Greatsword's, the class it plays as.
+        private static readonly Set DevGreatsword=Strides(new Set{Spec="greatsword",Idle=NativeDevGreatswordMotion.Idle,Jump=NativeDevGreatswordMotion.Jump,Flip=NativeDevGreatswordMotion.Flip,Fall=NativeDevGreatswordMotion.Fall,
+            Land=NativeDevGreatswordMotion.Land,Block=NativeDevGreatswordMotion.Guard,BlockHit=NativeDevGreatswordMotion.GuardHit,Stunned="2Hand-Sword-Stunned",Roll=NativeDevGreatswordMotion.Roll,
+            AirAttack=NativeDevGreatswordMotion.JumpCut,SprintAttack=NativeDevGreatswordMotion.Cleave,Attacks=NativeDevGreatswordMotion.Cuts,Reactions=NativeDevGreatswordMotion.Reactions,
+            TechClips=new[]{TechThrowStart,TechThrowEnd,NativeDevGreatswordMotion.Crouch,NativeDevGreatswordMotion.Crouched,NativeDevGreatswordMotion.Overhead,NativeDevGreatswordMotion.Reap},
+            VowStart=NativeDevGreatswordMotion.Crouch,VowHold=NativeDevGreatswordMotion.Crouched,Overhead=NativeDevGreatswordMotion.Overhead,Sweep=NativeDevGreatswordMotion.Reap,
+            KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{NativeDevGreatswordMotion.Slam,NativeDevGreatswordMotion.Spin},KitHits=new[]{float.NaN,NativeDevGreatswordMotion.SpinHold},
+            Knockdown=NativeDevGreatswordMotion.Knockdown,RollBack=NativeDevGreatswordMotion.RollBack},NativeDevGreatswordMotion.Runs,NativeDevGreatswordMotion.Walks,NativeDevGreatswordMotion.Sprint);
         // Sword: the pack's armed (one weapon in the right hand) set and its one-handed sword's cuts, in the game's combo of
         // three (a forehand cut right to left, a backhand left to right, the thrust): R1, R3, R4, then R6, R2, R4 (their blade
         // tips' sweeps, measured on the body at the bake).
@@ -101,6 +116,14 @@ namespace ChipArena.UnityConversion
             Block=NativeBladeMotion.KatanaGuard,BlockHit=NativeBladeMotion.KatanaBlock,Stunned="Armed-Stunned",Roll=NativeBladeMotion.KatanaTumble,AirAttack="Armed-Air-Attack-R1",SprintAttack=NativeBladeMotion.KatanaRush,
             Attacks=NativeBladeMotion.KatanaCuts,Reactions=new[]{"Frank_RPG_Katana_Hit01","Frank_RPG_Katana_Hit02","Frank_RPG_Katana_Hit03","Frank_RPG_Katana_Hit02"},
             TechClips=NativeBladeMotion.KatanaExtra,Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Frank_RPG_Katana@Velocity_8Way_Run_","Frank_RPG_Katana@Velocity_8Way_GuardWalk_","Frank_RPG_Katana_Run01_Velocity");
+        // The DEV Katana (owner 2026-11-11: "lets put them on DEV classes"): Grruzam's katana set (Core NativeDevKatanaMotion: its stance,
+        // stride, jumps, guard, dodge roll, reactions, knockdown and rolling get-up, its plunging slam; the Katana's moves on its clips through
+        // Core NativeBladeMotion, the iai, the sheathing and the paired critical kept the Frank Slash Pack's). The pack has no dazed loop, so the
+        // stun keeps the armed set's. Its Spec is the Katana's, the class it plays as.
+        private static readonly Set DevKatana=Strides(new Set{Spec=NativeKatana.Spec,Idle=NativeDevKatanaMotion.Idle,Jump=NativeDevKatanaMotion.Jump,Flip=NativeDevKatanaMotion.Flip,Fall=NativeDevKatanaMotion.Fall,
+            Land=NativeDevKatanaMotion.Land,Block=NativeDevKatanaMotion.Guard,BlockHit=NativeDevKatanaMotion.GuardHit,Stunned="Armed-Stunned",Roll=NativeDevKatanaMotion.Roll,
+            AirAttack=NativeDevKatanaMotion.Plunge,SprintAttack=NativeDevKatanaMotion.Rush,Attacks=NativeDevKatanaMotion.Cuts,Reactions=NativeDevKatanaMotion.Reactions,
+            TechClips=NativeDevKatanaMotion.Extra,Knockdown=NativeDevKatanaMotion.Knockdown,RollBack=NativeDevKatanaMotion.RollBack},NativeDevKatanaMotion.Runs,NativeDevKatanaMotion.Walks,NativeDevKatanaMotion.Sprint);
         // The Fangs (owner 2026-11-10: "Testing different abilities and animation sets"): the pack's assassin set, low and quick: its stance,
         // root-motion stride, guard, block, tumble and reactions; its moves (and its stealth kills and criticals) in Core NativeBladeMotion.
         private static readonly Set Fangs=Frank(new Set{Spec=NativeFangs.Spec,Idle=NativeBladeMotion.FangsIdle,Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",Land="Armed-Land",
@@ -118,9 +141,9 @@ namespace ChipArena.UnityConversion
             foreach(var l in new[]{s.Attacks,s.Reactions,s.Locomotion,s.TechClips})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
-        /// <summary>The clips a set plays as loops though the pack marks them single (the Frank Slash Pack's stances and strides): its idle, its
-        /// stride and its guard (the bake loops them).</summary>
-        public static string[] Loops(string spec){var s=For(spec);if(s==null||!NativeBlades.Is(spec))return Array.Empty<string>();var l=new System.Collections.Generic.List<string>{s.Idle,s.Block};l.AddRange(s.Locomotion);return l.ToArray();}
+        /// <summary>The clips a set plays as loops though the pack marks them single (the Frank Slash Pack's stances and strides, the DEV classes'
+        /// Grruzam fast run): its idle, its stride and its guard (the bake loops them).</summary>
+        public static string[] Loops(string spec){var s=For(spec);if(s==null||!NativeBlades.Is(spec)&&!NativeDevMotions.Is(spec))return Array.Empty<string>();var l=new System.Collections.Generic.List<string>{s.Idle,s.Block};l.AddRange(s.Locomotion);return l.ToArray();}
         // Daggers: the armed set's dual block and attacks and the pack's dagger cuts, alternating hands in the game's four
         // (a forehand right to left, then three left to right, the last the finisher): R1, L3, R2, L2 (their blade tips'
         // sweeps on the body); the dual running cut opens both blades as the game's twin sprint sweeps do.
@@ -207,6 +230,18 @@ namespace ChipArena.UnityConversion
             s.Locomotion=new string[NativeVisualStride.Clips];
             for(int i=0;i<dirs.Length;i++){s.Locomotion[i]=run+Dir(i)+(mirrored?Mirror:"");s.Locomotion[NativeVisualStride.Walks+i]=walk+Dir(i)+(mirrored?Mirror:"");}
             s.Locomotion[NativeVisualStride.Sprint]=sprint;
+            return Every(s);
+        }
+        /// <summary>A set whose stride is named clip by clip (NativeVisualStride's order: 8 runs, 8 walks, the sprint).</summary>
+        private static Set Strides(Set s,string[] runs,string[] walks,string sprint)
+        {
+            s.Locomotion=new string[NativeVisualStride.Clips];
+            for(int i=0;i<NativeVisualStride.Directions;i++){s.Locomotion[i]=runs[i];s.Locomotion[NativeVisualStride.Walks+i]=walks[i];}
+            s.Locomotion[NativeVisualStride.Sprint]=sprint;return Every(s);
+        }
+        /// <summary>Every clip the set plays (All), from its fields.</summary>
+        private static Set Every(Set s)
+        {
             var all=new System.Collections.Generic.List<string>{s.Idle,s.Jump,s.Flip,s.Fall,s.Land,s.Block,s.BlockHit,s.Stunned,s.Roll,s.AirAttack,s.SprintAttack};
             foreach(var c in new[]{s.Knockdown,s.RollBack,s.Electric,s.Wave,s.Hadoken,s.ChargeStart,s.ChargeLoop,s.Shoryuken,s.Step})if(c!=null&&!all.Contains(c))all.Add(c);
             if(s.Kicks!=null)foreach(var c in s.Kicks)if(!all.Contains(c))all.Add(c);
@@ -216,8 +251,9 @@ namespace ChipArena.UnityConversion
             foreach(var l in new[]{s.KitClips,s.KitRecast,s.KitThen,s.AbilityStarts,s.AbilityEnds,s.TechClips})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
-        /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
-        public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
+        /// <summary>The set a weapon spec (or a DEV animation class, NativeDevMotions) plays on the model, or null (the game's own pose: not moved
+        /// over yet).</summary>
+        public static Set For(string spec)=>spec==NativeDevMotions.Greatsword?DevGreatsword:spec==NativeDevMotions.Katana?DevKatana:spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
             spec=="rifle"||spec=="machinegun"?Rifle:spec==NativeBombs.Spec?Bomb:spec==NativeTopDog.Spec?TopDog:spec==NativeGlaive.Spec?Glaive:spec==NativeKatana.Spec?Katana:spec==NativeFangs.Spec?Fangs:spec=="pistol"?Pistol:spec=="bow"?Bow:
             spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:spec=="emperor"||spec=="ansatsuken"?Unarmed:null;
 
@@ -730,8 +766,11 @@ namespace ChipArena.UnityConversion
                     if(k.Recast(time))return Part(set.Flip,k.RecastAt,Math.Max(k.RecastAt+.1f,k.Until),out pick);
                     if(time>=k.At&&time<k.Until&&clips.Has(TechSurf)){pick=new Pick{Clip=TechSurf,Time=time-k.At,Fade=FadeIn};return true;}return false;
                 case NativeTechniques.IronVow:
-                    if(time<k.Release)return Part(TechVowStart,k.At,k.Release,out pick);
-                    if(time<k.End&&clips.Has(TechVowHold)){pick=new Pick{Clip=TechVowHold,Time=time-k.Release,Fade=FadeIn};return true;}return false;
+                {
+                    string vowHold=set.VowHold??TechVowHold;
+                    if(time<k.Release)return Part(set.VowStart??TechVowStart,k.At,k.Release,out pick);
+                    if(time<k.End&&clips.Has(vowHold)){pick=new Pick{Clip=vowHold,Time=time-k.Release,Fade=FadeIn};return true;}return false;
+                }
                 case NativeTechniques.BountyRound:return Part(set.Fire!=null?set.Fire[0]:null,k.At,back,out pick);
                 case NativeTechniques.RecoilBurst:
                     if(time>=k.Release&&time<k.Until&&set.Fall!=null&&clips.Has(set.Fall)){pick=new Pick{Clip=set.Fall,Time=time-k.Release,Fade=FadeIn};return true;}

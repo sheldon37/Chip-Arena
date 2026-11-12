@@ -9,6 +9,57 @@
 - Checks run: the full CoreTests (exit 0, 1,017 PASS lines, with the Windows-only path fix for ExpeditionEndingChecks applied for the run and not committed), `--rooftop` with the bank present, `tools/check_unity_compile.py` (all assemblies), `git diff --check`, the Blender build's sight-line and coplanar measures (0 of 71 targets blocked; 0 m2 fighting on the roof and the near city). Pins changed in RooftopChecks are listed in the art page.
 - Seen in the shared Editor (captures at High and Low, before and after, every slide, the egg; docs/MENU-ROOFTOP-ART.md "Seen in the Editor"): both shaders draw, the logo and the TV set are clear of the menu, frame time no worse (High 10.38 to 9.58 ms mean, Low 9.85 to 9.29, Editor). The bank is read on a worker thread (`NativeRooftopModels.Prewarm`); `Load` held the main thread 164 ms at the menu's first frame. Not verified: engine draw calls, reduced effects, 21:9, a Windows build, the top-bar logo. Shared (`dd643702`) is merged in. Not merged, not released; the bank must go into the Drive zip before a builder push.
 - Animation, hit timing, hitboxes, damage, cooldowns, movement, networking: untouched (the rooftop's distant pilots keep their scripts and places).
+## 2026-11-11 — Claude: DEV Greatsword and DEV Katana, the Grruzam sword pack on two DEV classes
+
+- Branch `claude/greatsword-grruzam`, base shared `034d35a6` (shared `b1674f0d` merged, with the Katana's released saya and intro fixes).
+  Commits: `a1ae7c30` the DEV Greatsword, `aeddba08` the DEV Katana, `8e1201f1` docs, `6b066799` and `022b2bed` shared merged (the latter
+  with the stage z-fight fix), then this log. Implemented on the branch; not merged, not released.
+- **The owner:** "Great Sword and Katana" (Grruzam's Powerful Sword Animation pack, v2.1.3, bought), then "For those new animations;
+  Maybe lets put them on DEV classes. Call them like ... DEV Katana and DEV Greatsword", then "Yes, grantable". The Greatsword and the
+  Katana keep their own animation; nothing of theirs changed.
+- **What they are** (docs/BOZO-INTEGRATION.md, "The DEV animation classes"): `dev-greatsword` and `dev-katana`, devOnly content rows with
+  their base's numbers (GameContent weights 12 and 1, as their bases), a DEV screen card, spec icons (`ClassIcons.json`), Locker and loadout text. In a
+  match each plays its base class exactly; only the model's animation set differs (Core `NativeDevMotions`, `NativeDevGreatswordMotion`,
+  `NativeDevKatanaMotion`). The DEV Katana's iai, sheathing and counter critical keep the Frank Slash Pack's clips (the pack has no saya
+  or partner clip).
+- **For Astra (shared code, networking):** the arena spawns a seat that picked a DEV animation class as its base (`NativeDevMotions.Normalize`
+  at the top of `SpawnPilot`: `seat.spec` becomes the base, the DEV class goes to the new `NativeSeat.motion`). The seat frame carries
+  `motion` (`NativeSeatFrame.motion`; a guest keeps it only for a DEV class whose base the seat plays), the lobby seat copies it, and
+  every actor of the seat has it as `Actor.Motion` (`[NonSerialized]`, filled at spawn on the host and from the seat on guests). So
+  rules, hit timing, hitboxes, damage, cooldowns, movement, bots and HUD are the base class's; no rule code was copied. Please review
+  the field and its wire path. Other hooks: `NativeVisualMotionPresentation` picks the set by `NativeDevMotions.Set(a)`;
+  `NativeBladeMotion.Clip` picks the DEV Katana's clips for an actor whose `Motion` is it; `NativeVisualMotionClips.Read` takes the
+  measured strikes of the pack's clips (they carry no Hit event); `NativeWeaponSkinModels` aliases the base's weapon models;
+  `NativeLockerUI.LockerSignature` gives the base's entrance; `NativeParityChecks` counts 24 weapon rows (22 before the two).
+- **Animation against the rules:** each clip is fitted to the base's timing. The DEV Greatsword's strikes (measured on the body at 30 fps)
+  land on the middle of each hit window, the combo an even cycle so each cut keeps the rules' sweep (1 right to left, 2 left to right...);
+  the DEV Katana's moves are clip windows whose strike lands on the rules' hit, at most 1.6 times the clip's pace. Hitboxes and reach
+  are unchanged. The game's hold of each blade is kept: the pack's own sword lies 4-22 degrees from it on average (the greatsword) and
+  about 26 (the katana, a steady offset); both packs' A-version strides carry the sword off the hand, so the B versions are used.
+- **Grants (owner: "Yes, grantable"):** `weapon:dev-greatsword` and `weapon:dev-katana` are in Core `NativeDevGrants.Server` and
+  `src/shared/access.ts` `GRANTABLE_CONTENT` (CoreTests `--dev-grants` holds them equal). **For Astra: a Site publish** so the live account
+  server accepts them; until then it refuses a save that grants either. The earlier `weapon:fangs` key (the DEV Fangs,
+  2026-11-10/11) is in neither list yet: the Fangs are grantable once it is added and published.
+- **The motion bank** (local, git-ignored): the DEV Greatsword's 35 clips and the DEV Katana's 31, merged into the live bank with every
+  other clip byte-identical (409 clips, 4,877,308 bytes, became 475 in 5,663,961). The pack is installed under the git-ignored
+  `Assets/LocalAssets/Grruzam Powerful Sword Animation(Great Sword, Katana)/`; the local tool's `MotionClipFolders` and `MotionSpecs`
+  have both. Nothing licensed, baked or captured is committed. The Drive zip is not repacked, so a builder build has none of the two
+  classes' clips. Licence: the owner bought the pack ("Yes, I bought it").
+- **Checks:** the full CoreTests on `a1ae7c30` and `aeddba08` (1014 PASS), on `6b066799` (1015) and on `022b2bed` with shared's z-fight
+  fix and the rebuilt stage banks (1015 PASS; the Windows path patch applied locally and reverted); `--visual-rig`, `--blades`,
+  `--dev-grants`; `git diff --check` against shared; the Editor compiled `972f490d` and the builder's Editor checks passed on it
+  (`PrototypeBuild.Validate`: ok; every weapon model found, the DEV classes drawing their bases'). Captures in play (cybercity, DEV
+  access, one idle bot), both classes: idle, the combo, the roll, the jump and air attack, the held guard and a blocked hit in it, the
+  parry, the hit reactions from each side, the knockdown and get-up, Q and E; the DEV Katana's parry into its counter (the paired
+  critical); the DEV screen with both class cards (grantable, "No entrance of its own"). Not run: play by a person, a guest over the
+  network (the seat's motion on the wire is covered by CoreTests only), a Windows build, the builder. (The local tool's `mehurt=` and
+  `knock=` now follow `zclock=arena` like `apress=`; on the wall clock they fired seconds early.)
+- **Known risks:** the ClassIcons generator (`tools/export_class_icons.mjs`) does not draw the two new icons (they were added to
+  `ClassIcons.json` directly). The greatsword's strafes slide about 30% (the pack's jog is slower than the game's run). The DEV Katana's
+  Dodge_Front is the pack's flip, not the Katana's tumble.
+- **Next:** the owner reviews the captures; Astra reviews the seat's `motion` and publishes the Site for the two keys; to ship them,
+  repack the Drive zip's bank with the Grruzam clips.
+
 ## 2026-11-11 — Claude: depth fighting on the stage art (owner report), Polaris's middle first
 
 - Branch `claude/stage-zfight` from shared `b1674f0d`; local commits, **not pushed, not merged, not released** (the integrator merges, repacks the Drive zip with the rebuilt banks and releases). Visuals only: no rule, collider, timing, nav or pilot column changed.
@@ -21,6 +72,7 @@
 - **Animation impact:** none (no hit timing, hitbox, damage, cooldown, movement or networking change).
 - **Checks:** `--stage-art` (585 checks, with the layers', the cells' and the kept boxes' own), every stage's art suite on the rebuilt banks (`--polar-art`, `--pier-art`, `--deepwell-art`, `--skyframe-art`, `--breakwater-art`, `--brickfall-art`, `--wardzero-art`, `--factory-art`, `--cybercity-art`, `--club-art`, `--emporium-art`, `--causeway-art`, `--sanctum`, `--polar`): all pass; the Unity compile (`check_unity_compile.py`: Unity.InputSystem, ChipArena.Player, Assembly-CSharp, Assembly-CSharp-Editor pass); the full suite at `fde60a5d` against the rebuilt banks (in the worktree's own git-ignored LocalAssets): 1014 groups, exit 0. The Editor's build checks (`wtvalidate.sh` at `e05af585`, the released banks in place): ok. The rebuilt banks must ship with this branch's checks: shared's own Causeway and Factory budget checks fail on them.
 - **Not done / not seen:** see docs/arenas/STAGE-ART.md section 14 ("Seen in the Editor"): seen in the Editor are Polaris's middle before and after (High with the final bank; Low with the first rebuilt bank) and the other eight stages' floors before and after at High; not seen: those eight on the Low graphics tier, the four 2026-11-10 stages' rebuilt banks; outside Polaris the floors did not visibly fight in the Editor's captures before the change either (the doubled floors show only where two tiers meet with different bakes; measured, not filmed in motion); no human playtest, guests, Windows build or killcam; Skyframe's paving blotches are the fine surface under the toon ramp, not depth fighting, and are left.
+- **Released** to the test channel (Windows builder): merged into shared at `dd643702` and synced to the builder with a new Drive zip (only the thirteen stage banks changed, checked by hash; the released motion bank kept; the zip before kept beside it as `LocalAssets-2026-11-11-before-zfight.zip`); the release suite at `c97c399a` (1015 groups, exit 0) and the Unity compile passed; the Editor build checks passed on the branch (`e05af585`); built and published as revision `639300370278681515` (2026-11-11 23:40 UTC, 317.4 MiB). The Editor checkout now holds the rebuilt banks. Not played by a person.
 
 ## 2026-11-11 — Claude: the Katana after the owner's third notes: the intro's draw seen, a parried attacker's reel, the counter's foe thrown back (owner request)
 
