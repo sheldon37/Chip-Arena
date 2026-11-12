@@ -28,7 +28,6 @@
 - **Not run:** no person or two-client run. Hats were not re-captured in a counter (they ride the drawn head twin as before),
   and the Top Dog (same rig) was not captured.
 
-<<<<<<< HEAD
 ## 2026-11-12 — Claude: two owner notes on the released intro: the handoff, and the Greatsword's first entrance
 
 - **Owner notes** (on revision `639300460006585328`, shared `0ccb5a0a`): "Some lag after intro plays, feels like it should transition
@@ -65,8 +64,7 @@
   490 methods (`FixedUpdate`). And the account/updater replies' continuations (`UnitySynchronizationContext`, about 40 ms with their
   first compile) land under the curtain only when they arrive within 1.5 s of the menu's build.
 - **Not verified:** a slower PC (only this RTX 4090 PC), cold driver shader caches, real multiplayer stage loads. Not merged or released.
-=======
-<<<<<<< HEAD
+
 ## 2026-11-11 — Claude: the DEV Katana guards facing ahead, the blade in front (owner note)
 
 - Branch `claude/dev-classes-fixes` from shared `0ccb5a0a` (13e5f2fe in it); commit `e00c348d`, shared `e2d1aed5` merged (`f5f729c9`),
@@ -105,7 +103,7 @@
   and after: the held guard and a blocked hit, the parry into the counter, from the old angle, from behind and in the game's own view.
   Not run: play by a person, a guest over the network, a Windows build, the builder.
 - **Next:** the owner picks the DEV classes' animations himself (a picker is planned).
-=======
+
 ## 2026-11-11 — Claude: the Katana's counter opens on a timed parry only, not a blow held on the guard (owner request)
 
 - Branch `claude/blades` (from shared `0ccb5a0a`, merged with shared `e2d1aed5`): `fc66b841`, `e01d8dbb` and this entry. Relayed by the NOCTIEL session.
@@ -116,9 +114,7 @@
 - **Checks:** CoreTests `--blades` (224; the wiring check flipped: `NativeGuard.cs` no longer calls `BladeBlocked`, the parry's window still does); the full suite at `fc66b841` (1018 groups, exit 0); the Unity compile; the Editor build gate on `e01d8dbb` (`PrototypeBuild.Validate` ok, Native blades 67): it stages both through the arena's own `Damage` (the guarded blow opens no counter and staggers no one; the parried one opens the counter on its striker and reels it; the click lands once the parry's window has shut, as in play: `KatanaInput` starts no move inside it, which the gate's first run tripped on).
 - **The Hot Dog in the parry** (the owner's other note: "Dev Katana / Katana both morph player model in parry hit (Using hotdog)"): filmed by the hot dog session on shared `e2d1aed5` and its candidate, Katana and DEV Katana, standing, moving and countering. The parry hit itself deforms neither; the counter does (its clip curls the spine so far that the sausage folds 90 to 120 degrees at mid height). The fix is the Hot Dog's (the body side: the twist kept and spread, only the swing capped), agreed with its session. The parry hologram copies the Hot Dog's own renderer with its own bones (the spine twins), mesh and bind poses, so it follows the sausage exactly; DEV Katana's parry pose (Grruzam's `Revenge_Guard_Loop`) is a moderate crouch.
 - **Not seen / not done:** played by a person.
->>>>>>> origin/claude/sleepy-ritchie-g8ruhv
 - **Released** to the test channel (Windows builder): merged into shared at `8fb8b6d8` and synced to the builder; the release suite at `77b2bb12` (1018 groups, exit 0; the stage art checks against the Drive zip's stage banks), the Unity compile and the Editor build checks (Native blades 67, on `e01d8dbb`) passed; built and published as revision `639300576421555823` (2026-11-12 05:24 UTC). Not played by a person.
->>>>>>> origin/claude/sleepy-ritchie-g8ruhv
 
 ## 2026-11-11 — Astra: keep host networking alive while the destination has no local pilot
 
