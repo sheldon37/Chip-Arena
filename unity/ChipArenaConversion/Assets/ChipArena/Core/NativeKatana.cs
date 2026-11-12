@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     /// The Katana's names and numbers (docs/KATANA.md): the owner's public melee class of 2026-11-10 ("Make very high quality designed
     /// katana ... Use the new animation pack"). A long curved blade held two-handed, on the Frank Slash Pack's katana set: four cuts that flow
     /// (the third steps in, the fourth cleaves), a rushing draw cut on a sprint, Q the iai (the blade sheathed, a dash along the aim, and the
-    /// line it cut splits a moment later), E a storm of cuts all round that ends in a rising launch, and a counter after a block or parry: the
+    /// line it cut splits a moment later), E a storm of cuts all round that ends in a rising launch, and a counter after a timed parry: the
     /// next cut is a paired critical (the foe held through it). The rules (Runtime NativeKatanaAuthority.cs) and the presentation both read
     /// these, so a number lives in one place. Pure.
     /// </summary>
@@ -44,8 +44,8 @@ namespace ChipArena.UnityConversion
         /// (StormLift m/s). The wielder moves at StormSlow of its pace through it.</summary>
         public const float StormWind=.3f,StormEvery=.13f,StormRadius=2.9f,StormDamage=8,StormLift=6.5f,StormRecover=.35f,StormSlow=.45f;
         public const int StormCuts=6;
-        // ---- the counter (after a block or parry) ----
-        /// <summary>A block or parry landed opens CounterWindow s; the next left click within it (the foe within CounterReach in front) is the
+        // ---- the counter (after a timed parry) ----
+        /// <summary>A timed parry landed (a blow inside the F parry's window; not one held on the raised guard) opens CounterWindow s; the next left click within it (the foe within CounterReach in front) is the
         /// counter: the paired critical, the foe held from the wind-up to CounterHold s, CounterDamage at the blow (CounterHit s in).</summary>
         public const float CounterWindow=1,CounterReach=3.2f,CounterHit=.55f,CounterHold=1.25f,CounterDamage=38,CounterStand=1.6f;
 
