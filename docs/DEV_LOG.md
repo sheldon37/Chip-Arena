@@ -1,3 +1,15 @@
+## 2026-11-11 — Claude: PR #385 reverted from shared for now (owner request); Claude re-lands it
+
+- **Why:** the builder failed shared `b6b38803` in the Unity build checks. The cause is #385's new native transfer check: its pre-ACK
+  bundle step (`NativeExpeditionActivationBuildChecks.cs:91`, `LoadBeforeReady`) calls `ExpeditionAreaProjection.Build`, which
+  throws "Cross-area public data refused". #385's entry notes no native Unity execution, so this is the check's first Unity run.
+  None of the other merges in that build touch Expedition code.
+- **Owner:** "Can you revert it, then bring it back yourself instead of astra?" Branch `claude/revert-pr385` reverts merge `5cf0eeea`
+  (`git revert -m 1`): the nine code and test files go back to shared `a3c26e5b`'s. Astra's DEV_LOG and PROJECT_STATE lines stay.
+  `codex/expedition-transfer-sync` is untouched.
+- **Next:** Claude finds why the projection refuses (the check's projected view, or the runtime), fixes it on a branch from that
+  one, runs the Unity build checks and the Expedition suites, and re-lands #385's repair.
+
 ## 2026-11-11 — Claude: the main menu's rooftop out of its boxy look, new screen ads, the Ricochet egg, the new logo and icons
 
 - Branch `claude/menu-rooftop`, base shared `f0275643`. Owner: "I would like to bring this to update to date non-boxy style as well ... Changing animations happening on the TV screens as well, since things on there are out dated. Maybe reference the "Ricochet" thats on there currently as an easter egg lol"; later "This is also the new logo for the game" and "Yes, icon too". The whole account: docs/MENU-ROOFTOP-ART.md.

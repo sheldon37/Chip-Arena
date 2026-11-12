@@ -116,7 +116,7 @@ namespace ChipArena.UnityConversion
                 // Present the ticket destination while the actor remains reserved at source.
                 // Local readiness requires the same collision and presentation gate as a guest.
                 BindSplitLocal(own.Ticket.area);
-                if(!own.Ready&&ReferenceEquals(stageSeen,arena)&&StageLoadProgress>=0)
+                if(!own.Ready&&StageLoadProgress>=0)
                     expeditionLoadReports.Accept(own.Account,own.Ticket,false,own.Connected,StageLoadProgress,Time.unscaledTime);
                 if(!own.Ready&&splitAreas.Find(own.Ticket.area)?.Load==ExpeditionRuntimeLoad.Ready&&ReferenceEquals(stageSeen,arena)&&StagePresentationReady&&StagePresentation.Generation==arena.Generation)splitCohorts.Acknowledge(own.Account,own.Ticket);
                 if(!deploymentInitialReady)
@@ -202,13 +202,19 @@ namespace ChipArena.UnityConversion
         {
             if(Time.unscaledTime<expeditionNextSend)return;expeditionNextSend=Time.unscaledTime+.05f;
             SyncSplitSpectators();ExpeditionView=SplitView(account.Access.AccountId);
+            bool relay=Time.unscaledTime>=expeditionNextLoadBroadcast&&splitCohorts.Members.Any(m=>m.Connected&&!m.Ready);
+            var updates=relay?expeditionLoadReports.Frames(splitRun.PartySnapshot().run,splitRun.PartySnapshot().epoch,splitCohorts.Members):Array.Empty<ExpeditionLoadStatusFrame>();
+            if(relay)expeditionNextLoadBroadcast=Time.unscaledTime+.25f;
             foreach(var peer in peers.Where(p=>p.Connection?.Closed==false&&p.Seat?.access!=null))
             {
                 var who=peer.Seat.access.AccountId;var member=splitCohorts.Member(who);if(member==null)continue;
-                // Loading snapshots already carry every member's measured progress.
-                // Both transport ends replace undrained snapshots, so update at 4 Hz
-                // without queuing reliable progress packets behind a blocked Unity thread.
-                if(!member.Ready){var ticket=member.Ticket;peer.Loading.Begin(ticket.run+":"+ticket.epoch+":"+ticket.area+":"+ticket.serial,NetworkNow);if(!peer.Loading.Send(NetworkNow,NativeExpeditionLoadWindow.SnapshotSeconds))continue;}else peer.Loading.Complete();
+                // A loading Unity main thread cannot drain reliable reports. Keep these on the
+                // same bounded retry cadence as its state bundle (including both eight-pilot chunks).
+                // Ready peers still receive live progress at 4 Hz while they wait for the others.
+                if(!member.Ready){var ticket=member.Ticket;peer.Loading.Begin(ticket.run+":"+ticket.epoch+":"+ticket.area+":"+ticket.serial,NetworkNow);if(!peer.Loading.Send(NetworkNow))continue;}else peer.Loading.Complete();
+                var reports=!member.Ready&&updates.Length==0?expeditionLoadReports.Frames(splitRun.PartySnapshot().run,splitRun.PartySnapshot().epoch,splitCohorts.Members):updates;
+                foreach(var update in reports)
+                    peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-party-load",expeditionLoadStatus=update}));
                 var view=SplitRecipient(who);var frame=SplitFrame(who);
                 // One replaceable recipient snapshot keeps public/private/arena state coherent
                 // and cannot fill the reliable command queue during a slow write.

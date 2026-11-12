@@ -23,9 +23,9 @@ internal static class TransportBacklogChecks
     {
         string runtime=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionSplitRuntime.cs"));
         int start=runtime.IndexOf("private void SplitNetworkStep()",StringComparison.Ordinal);
-        int gate=runtime.IndexOf("if(!peer.Loading.Send(NetworkNow,NativeExpeditionLoadWindow.SnapshotSeconds))continue;",start,StringComparison.Ordinal);
+        int gate=runtime.IndexOf("if(!peer.Loading.Send(NetworkNow))continue;",start,StringComparison.Ordinal);
         int reports=runtime.IndexOf("type=\"expedition-party-load\"",start,StringComparison.Ordinal);
-        Check(gate>start&&reports<0&&runtime.Contains("peer.Connection.SendEncoded(packet,true)"),"four-Hz loading progress uses replaceable snapshots, never a reliable report backlog");
+        Check(gate>start&&reports>gate,"loading cadence gates reliable reports as well as snapshots");
         string network=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeNetwork.cs"));
         string game=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/ConversionGame.cs"));
         string progress=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionNetwork.cs"));

@@ -21,13 +21,13 @@ namespace ChipArena.UnityConversion
     // One fixed deadline per load identity. Repeated packets cannot keep a dead peer alive forever.
     public sealed class NativeExpeditionLoadWindow
     {
-        public const double Seconds=60,RetrySeconds=5,SnapshotSeconds=.25;
+        public const double Seconds=60,RetrySeconds=5;
         public static bool ProgressDue(float progress,float previous,double elapsed)=>elapsed>=.25&&
             (previous<0||progress>=1&&previous<1||progress-previous>=.02f||elapsed>=RetrySeconds);
         private string identity;private double until,next;
         public void Begin(string key,double now){if(key==null||key==identity)return;identity=key;until=now+Seconds;next=0;}
         public bool Active(double now)=>identity!=null&&now<until;
-        public bool Send(double now,double interval=RetrySeconds){if(now<next)return false;next=now+interval;return true;}
+        public bool Send(double now){if(now<next)return false;next=now+RetrySeconds;return true;}
         public void Complete(){until=0;next=0;}
         public void Reset(){identity=null;Complete();}
     }
