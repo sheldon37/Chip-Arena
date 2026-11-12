@@ -6,8 +6,8 @@ namespace ChipArena.UnityConversion
     /// The DEV Katana's animation (Core NativeDevMotions; owner 2026-11-11: "Great Sword and Katana", then "lets put them on DEV classes"):
     /// Grruzam's Powerful Sword Animation pack's katana set (its clips are named by their files, `M_katana_Blade@...`), baked into the local
     /// motion bank like the other packs' and played as the Katana's moves are (Core NativeBladeMotion: each move a clip window, its strike on
-    /// the rules' hit): the stance, the stride, the jumps, the guard, the dodge roll, the reactions, the knockdown and its rolling get-up, the
-    /// four cuts, the rushing cut, the storm and the plunging slam. The pack has no saya, so the iai and its sheathing (the blade drawn from
+    /// the rules' hit): the stance, the stride, the jumps, the dodge roll, the reactions, the knockdown and its rolling get-up, the four cuts,
+    /// the rushing cut, the storm and the plunging slam; the guard is the same pack's great sword guard (Guard). The pack has no saya, so the iai and its sheathing (the blade drawn from
     /// and slid home into the saya the left hand carries) and the counter's paired critical (its victim's clip played with it) stay the Frank
     /// Slash Pack's. The class plays the Katana's rules, so the windows are fitted to the Katana's timing. Presentation only.
     /// </summary>
@@ -15,8 +15,16 @@ namespace ChipArena.UnityConversion
     {
         private const string K="M_katana_Blade@";
         public const string Idle=K+"Idle_ver_B",Jump=K+"Jump_Start",Flip=K+"Double_Jump_Start",Fall=K+"Jump_Loop",Land=K+"Jump_End",
-            Guard=K+"Revenge_Guard_Loop",GuardHit=K+"Revenge_Guard_Accept",Roll=K+"Dodge_Front",
-            Knockdown=K+"KnockDown_Front_ver_A",RollBack=K+"KnockDown_Front_BW_Rolling_StandUp";
+            Roll=K+"Dodge_Front",Knockdown=K+"KnockDown_Front_ver_A",RollBack=K+"KnockDown_Front_BW_Rolling_StandUp";
+        /// <summary>The guard and its blocked hit: the same pack's great sword guard (owner 2026-11-11: "Dev Katana block holds katana behind
+        /// them?"). The katana set's own guard (`Revenge_Guard_Loop`, `_Accept`) is a back-turned block: its start turns the body about 172
+        /// degrees away and holds the blade down behind it (the pack's own katana lies there too, about 125 degrees off the torso's facing),
+        /// so in the game the pilot turned its back with the blade behind. The great sword guard faces ahead (the torso 26 degrees off the
+        /// clip's forward; the katana stance's is 58) with the hands raised by the head and the blade hanging down across the front to the
+        /// left (the game holds the katana within 5 degrees of the great sword); both clips are the DEV Greatsword's, already in the bank.</summary>
+        public const string Guard=NativeDevGreatswordMotion.Guard,GuardHit=NativeDevGreatswordMotion.GuardHit;
+        /// <summary>The katana set's back-turned guard, no longer played (kept named for the clip checks).</summary>
+        public const string BackGuard=K+"Revenge_Guard_Loop",BackGuardHit=K+"Revenge_Guard_Accept";
         /// <summary>The four cuts: the pack's own four-hit chain (each part takes up where the last left off): a diagonal cut down across the
         /// front, a rising backhand, a low spinning cut (the step in), the finisher's high cut.</summary>
         public static readonly string[] Cuts={K+"Attack_4Combo_1_Inplace",K+"Attack_4Combo_2_Inplace",K+"Attack_4Combo_3_Inplace",K+"Attack_4Combo_4_Inplace"};
