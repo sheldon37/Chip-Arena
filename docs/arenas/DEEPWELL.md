@@ -220,6 +220,8 @@ fields) is in `docs/arenas/STAGE-MUSIC-PROMPTS.md` ("Deepwell — The Station Be
 `Assets/ChipArena/Resources/Audio/music/rig-theme.mp3` with a streaming `.meta`, an asset-lock entry, the length pin
 (`Editor/NativeBuildChecks`, `Tests/ZoneMusicChecks`) and `case "rig":return "rig-theme";` in `NativeStageMusic.Theme`.
 
+**In (2026-11-11):** the owner's **The Station Below** (266.800 s) plays as `rig-theme`; Offshore Rig stays packaged.
+
 ## Not done / not seen
 
 - Played only by an idle bot under scripted cameras: no human playtest, no network (guest) test, no native Windows build, no

@@ -9,6 +9,31 @@
 - Checks run: the full CoreTests on the head merged with shared `a3c26e5b` (exit 0, 1,018 PASS lines, with the Windows-only path fix for ExpeditionEndingChecks applied for the run and not committed), `--rooftop` with the bank present, `tools/check_unity_compile.py` (all assemblies), `git diff --check`, the Blender build's sight-line and coplanar measures (0 of 71 targets blocked; 0 m2 fighting on the roof and the near city). Pins changed in RooftopChecks are listed in the art page.
 - Seen in the shared Editor (captures at High and Low, before and after, every slide, the egg; docs/MENU-ROOFTOP-ART.md "Seen in the Editor"): both shaders draw, the logo and the TV set are clear of the menu, frame time no worse (High 10.38 to 9.58 ms mean, Low 9.85 to 9.29, Editor). The bank is read on a worker thread (`NativeRooftopModels.Prewarm`); `Load` held the main thread 164 ms at the menu's first frame. Not verified: engine draw calls, reduced effects, 21:9, a Windows build, the top-bar logo. Shared (`a3c26e5b`: the z-fight fix, the DEV Greatsword and Katana, the boot intro) is merged in; the last capture ran on that head, after the intro. Not merged, not released; the bank must go into the Drive zip before a builder push.
 - Animation, hit timing, hitboxes, damage, cooldowns, movement, networking: untouched (the rooftop's distant pilots keep their scripts and places).
+
+## 2026-11-11 — Claude: the owner's ten new songs: the nine remodelled stages and the menu (owner request)
+
+- **Request:** the owner sent ten Suno songs made from the 2026-11-11 briefs and asked Claude to import them ("Astra keeps failing to
+  import these songs; Can you import them?"). Branch `claude/owner-songs-2026-11-11` from shared `dd643702`.
+- **What plays now** (`NativeStageMusic.Theme`; each map record's own `music` stays the fallback, and every earlier track stays packaged):
+  Pier 9 *Last Night of the Season* (`harbor-theme`), Deepwell *The Station Below* (`rig-theme`), Polaris Station *Northern Lights
+  Array* (`polar-theme`), Skyframe *Garden Above the Clouds* (`skyframe-theme`), Breakwater *Storm Light* (`breakwater-theme`),
+  Brickfall *Demolition Day* (`brickfall-theme`), Ward Zero *Containment* (`wardzero-theme`, on `siren` and `expedition-ward-zero`,
+  PvP and PvE; the Siren's boss song still takes over for the boss), the Factory *Heavy Shift* (`factory-theme`), Cyber City
+  *Helix Line* (`cybercity-theme`). The menu plays *Pilot's Rooftop* in the same `music/menu-afterglow` slot (importer GUID kept).
+- **Packaging:** the original MP3 bytes (48 kHz stereo, embedded cover art kept, as with the 2026-11-10 songs), the same streaming
+  importer settings as `causeway-theme`, asset-lock receipts, length pins in `Editor/NativeBuildChecks`, routing checks in
+  `ZoneMusicChecks`, `PierChecks` and `PolarChecks`; docs in STAGE-MUSIC-PROMPTS, ASSET-CREDITS and the five rebuilt stages' pages.
+- **Not changed:** gameplay, hazards, the Electron game's music, Containment Sirens' 1.5x gain (it applies to that file only).
+- **Checks:** see the release line below.
+
+## 2026-11-11 — Astra: retry Expedition destination loads and refresh party progress
+
+- Branch `codex/expedition-transfer-sync`, base shared `13e5f2fe`. Owner reports guests held at the join circle while host loads then rolls back, plus stationary remote loading bars; guest logs unavailable.
+- Track the applied destination ticket independently of the received public view. A received ticket does not prove scene construction. Requeue snapshots until that ticket is applied, restore a missing deferred loading action, and gate collision/readiness reporting on the applied ticket. Existing all-ready commit and timeout rollback remain authoritative.
+- Loading guests receive replaceable full snapshots at 4 Hz instead of 0.2 Hz. Those snapshots already contain per-member progress; removed redundant reliable party-load packets from the split sender, preserving bounded receive queues during synchronous loads. Host progress waits for the destination arena observer, avoiding source-area 100% progress poisoning the next ticket.
+- Added managed applied-ticket/reset/interrupted-load recovery and snapshot cadence checks; expanded native transfer checks to pair the actual atomic destination bundle through Unity serialization before ACK.
+- This is a defensive repair, not a confirmed reproduction of the owner's exact freeze. No two-PC or native Unity execution here; no combat/animation changes. Validation and delivery receipts follow in the PR. No live/Site release.
+
 ## 2026-11-11 — Claude: the logo intro at launch, with the game loading under it (owner request)
 
 - Branch `claude/boot-intro`, base shared `7e4d6378`. Owner: "Lets add this as an intro when starting the game (Use this time to load assets in). (This is also the new logo for the game)". Full description: `docs/BOOT-INTRO.md`.

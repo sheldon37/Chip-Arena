@@ -441,9 +441,9 @@
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/menu-afterglow.mp3",
-      "bytes": 2898597,
-      "gitBlob": "60abe2860aa5956edd397ba99debd10b52237e72",
-      "source": "Owner upload: Midnight_Arena_Skyline_2026-10-13T230445.mp4 (2026-10-13); full audio extracted to MP3 VBR q2"
+      "bytes": 4256998,
+      "gitBlob": "14ca3e24b8b6c95f199719dceb181118c9aeedfe",
+      "source": "Owner upload 2026-11-11: Pilot's Rooftop.mp3 (the menu song; replaces Midnight Arena Skyline in the same slot)"
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/moonlit-wilderness.mp3",
@@ -762,6 +762,60 @@
       "bytes": 4649598,
       "gitBlob": "54a35ebf76a802f2156b6a970a477f65509def5b",
       "source": "Owner upload 2026-11-10: Moonlit Ostinato.mp3"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/harbor-theme.mp3",
+      "bytes": 4679364,
+      "gitBlob": "2960da24296f9e6c1046ae0c341d1792692953c9",
+      "source": "Owner upload 2026-11-11: Last Night of the Season.mp3"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/rig-theme.mp3",
+      "bytes": 6349789,
+      "gitBlob": "48979996f9c2e0f364c15826bca0a43e884c4a46",
+      "source": "Owner upload 2026-11-11: The Station Below.mp3"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/polar-theme.mp3",
+      "bytes": 6275778,
+      "gitBlob": "0d669234cb9fa55cdae6f13af75e668b35b87082",
+      "source": "Owner upload 2026-11-11: Northern Lights Array.mp3"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/skyframe-theme.mp3",
+      "bytes": 5645512,
+      "gitBlob": "60ee95f1b2052a1da31b3a7ecb461d8535ae94de",
+      "source": "Owner upload 2026-11-11: Garden Above the Clouds.mp3"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/breakwater-theme.mp3",
+      "bytes": 5355432,
+      "gitBlob": "1b9b474514dedf2a794433166377973356d955b1",
+      "source": "Owner upload 2026-11-11: Storm Light.mp3"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/brickfall-theme.mp3",
+      "bytes": 4720193,
+      "gitBlob": "ed99906e9e37ee31e4b80d4efc7c4c3706241058",
+      "source": "Owner upload 2026-11-11: Demolition Day.mp3"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/wardzero-theme.mp3",
+      "bytes": 6020007,
+      "gitBlob": "18762f3d25e3487d8fbd0d11cc35280477a0c3cf",
+      "source": "Owner upload 2026-11-11: Containment.mp3"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/factory-theme.mp3",
+      "bytes": 5528168,
+      "gitBlob": "d601924e31fefc6c89f732ed9da712b94f03ddb0",
+      "source": "Owner upload 2026-11-11: Heavy Shift.mp3"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/cybercity-theme.mp3",
+      "bytes": 4865047,
+      "gitBlob": "a45f4defd4a893197a33e14db98a8b368eba5df0",
+      "source": "Owner upload 2026-11-11: Helix Line.mp3"
     },
     {
       "path": "Assets/ChipArena/Resources/Audio/music/level0-boss.mp3",

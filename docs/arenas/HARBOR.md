@@ -148,6 +148,9 @@ The stage keeps its current track as the placeholder: the map record's `music` i
 yard). The key the owner's new song will take is **`harbor-theme`**; its Suno prompt is in
 docs/arenas/STAGE-MUSIC-PROMPTS.md ("Pier 9 — Last Night of the Season").
 
+**In (2026-11-11):** the owner's **Last Night of the Season** (196.000 s) plays as `harbor-theme`; Container Terminal
+stays packaged and the record's `music` stays the fallback.
+
 ## Files
 
 - Draft: `docs/arenas/scripts/harbor_m2.py` (layout, hazards, checks, plan PNG). Generator: `tools/generate_stage_hazards.py`

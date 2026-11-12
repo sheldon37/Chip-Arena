@@ -239,6 +239,23 @@ Each stage plays its current song until the owner's new one is in. The new song 
 | The Factory | `factory` | `factory-anvil-loop` | `factory-theme` |
 | Cyber City | `cybercity` | `cybercity-neon-riot` | `cybercity-theme` |
 
+The owner's songs are in (2026-11-11), packaged like the earlier ones: the original MP3 bytes, streaming import, full-track
+looping, durations by ffprobe. Each stage's earlier track stays packaged and its map record's `music` stays the fallback.
+Ward Zero's song plays on both of its records (`siren` and `expedition-ward-zero`), PvP and PvE; the Siren's boss song still
+takes over for the boss.
+
+| Stage | Owner file | Resource key | Duration |
+|---|---|---|---|
+| Pier 9 | Last Night of the Season.mp3 | `harbor-theme` | 196.000 s |
+| Deepwell | The Station Below.mp3 | `rig-theme` | 266.800 s |
+| Polaris Station | Northern Lights Array.mp3 | `polar-theme` | 262.800 s |
+| Skyframe | Garden Above the Clouds.mp3 | `skyframe-theme` | 237.200 s |
+| Breakwater | Storm Light.mp3 | `breakwater-theme` | 228.800 s |
+| Brickfall | Demolition Day.mp3 | `brickfall-theme` | 198.800 s |
+| Ward Zero | Containment.mp3 | `wardzero-theme` | 253.720 s |
+| The Factory | Heavy Shift.mp3 | `factory-theme` | 229.200 s |
+| Cyber City | Helix Line.mp3 | `cybercity-theme` | 197.040 s |
+
 ### Pier 9 — Last Night of the Season (`harbor-theme`)
 
 A seaside amusement pier at night (docs/arenas/HARBOR.md).
@@ -562,6 +579,9 @@ This is that version; the first draft (a 100 BPM city-pop take with a vocoded "C
 screen's backdrop is the Pilot's Rooftop (Runtime NativeRooftopPresentation): a rain-wet neon city at night. The menu plays
 `music/menu-afterglow`, currently the owner's "Chip Arena Main". A new song replaces that asset and keeps its importer GUID, as the
 2026-10-12 replacement did.
+
+**In (2026-11-11):** the owner's **Pilot's Rooftop** (187.880 s) is the menu song, in the same `music/menu-afterglow`
+slot with the same importer GUID.
 
 How to use it in Suno: with Instrumental on, paste only the style field. To steer the sections, turn Instrumental off and add the
 lyric field, which holds only bracketed directions.
