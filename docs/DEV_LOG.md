@@ -37,15 +37,27 @@
 - **Affected:** Core `NativeSanctumRig`, `NativeSanctumArt`, `NativeSanctumFx`, `NativeSanctumScenery`; Runtime
   `NativeSanctumPresentation` (one argument), `NativeStageArt` (`HasRig`); Tests `SanctumChecks`, `StageArtChecks`, `StageArtRest`
   (the sanctum's rest export for the analyser); `tools/stages/sanctum_props.py`; docs SANCTUM.md, STAGE-ART.md 14.
-- **Checks run:** full CoreTests (1018 PASS lines, exit 0; Windows path patch applied for the run and reverted); `--sanctum`,
+- **Checks run:** full CoreTests on the branch with shared `e2d1aed5` merged in (1018 PASS lines, exit 0; Windows path patch
+  applied for the run and reverted); the Editor build checks (`wtvalidate`: ok); `--sanctum`,
   `--stage-art` with the rebuilt bank and with the released one; `tools/check_unity_compile.py` (Assembly-CSharp and the Editor
   assembly pass); `git diff --check`; the stage bank analyser on the rebuilt bank with the rigs posed.
-- **Not run, not seen:** the shared Unity Editor was closed for the whole task, so nothing here has been seen in the Editor:
-  no two-frame light captures (High or Low), no frame strips from the match camera, no `PrototypeBuild.Validate` build checks.
-  The effects (smoke, sparks, dust, the pools) are unseen altogether; the poses were looked at only as Blender renders of the
-  rig's art pose (no lighting, no effects). The depth-fighting fixes are measured and reasoned, not filmed. Also not run: a
-  Windows build, guests, the killcam, a human playtest. The motion's amounts (the cock, the whip, the lash, the hops) are
-  first values and want tuning by eye.
+- **Seen in the Editor** (2026-11-12, after it was reopened; the branch with current shared merged in, the rebuilt bank
+  installed only inside each hold and the released one restored and hash-checked after):
+  - the light survey at High (18 eyes) and the Low graphics tier (7 eyes), each eye twice 3 mm apart, before and after. None
+    of the views showed two faces trading pixels between the two frames, before or after: the pools and telegraphs were wrong
+    in place (pools on pews, on a balustrade, hidden under the runner), not flickering. What does look like depth fighting is
+    **the polished metals' speckle**: the reredos's gilded niches behind the high altar break into blocky speckles under the
+    candles, at High and worse at Low. The gold, brass, bronze, silver, pipe and inlay finishes carried the shader's
+    brushed-brass bump; they now carry no fine surface (`POLISHED` in `sanctum_art.py`, a bank change; the shared shader is
+    untouched) and the niches show a clean highlight at both tiers;
+  - the Thurible's whole cycle from a pilot's eye in the nave, before and after, every 0.1 s: the cocked hold, the release,
+    the tether trailing, the smoke along the arc, the sparks, the catch;
+  - the chandelier's fall before and after; the wreck with its thrown candles and the chain;
+  - `PrototypeBuild.Validate` (the builder's core and project checks) on `4a8fee86`: ok.
+- **Not run, not seen:** a Windows build, guests, the killcam, a human playtest; the hazards in motion (the strips are stills
+  0.1 s apart); the new moments' sound. The motion's amounts (the cock, the whip, the lash, the hops) are first values and
+  want the owner's eye. The holy fire's floor channel reads as broken red blocks at a grazing angle (its grate over the ember
+  bed), before and after: left as it is, noted for a follow-up.
 - **Next:** the integrator packs the rebuilt bank into the Drive zip with the merge. An ear for the new moments (the heaves,
   the snap, the links landing) if the owner wants sounds for them: the cues are unchanged.
 

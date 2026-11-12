@@ -246,6 +246,16 @@ Checked (`--sanctum`): stepping a round at 5 ms nothing drawn jumps by more than
 with a bank from before this (`NativeStageArtDraw.HasRig`) poses those older models (`NativeSanctumArt.Pose(..., legacy)`), so
 bank and build may ship in either order. The bank: 20,205,478 bytes (19.27 MiB; the check allows 21).
 
+### Seen in the Editor (2026-11-12)
+The shared Editor, the branch with current shared merged in; the rebuilt bank installed for each run and the released one put
+back after. The light survey at High (18 eyes) and at the Low graphics tier (7 eyes), each eye twice 3 mm apart, before and
+after: no view showed two faces trading pixels between its two frames, before or after; before, pools lay on pews and on a
+balustrade and under the runner, and the gilded niches speckled under the candles (worse at Low); after, the pools lie on the
+floors and the runner and the niches take a clean highlight. The Thurible's cycle and a chandelier's fall, every 0.1 s from a
+pilot's eye, before and after. `PrototypeBuild.Validate`: ok. Not seen: the hazards in motion, a Windows build, guests, the
+killcam. The holy fire's floor channel (its grate over the ember bed) reads as broken red blocks at a grazing angle, before
+and after: not changed here.
+
 ## Not done / not seen
 
 - Audio: the cues are wired and checked for timing, but not heard (the captures are pictures); the clip and pitch choices
