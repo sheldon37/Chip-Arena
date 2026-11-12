@@ -9,8 +9,9 @@ namespace ChipArena.UnityConversion
     // engine and in the managed checks, and no font or texture asset ships:
     //  - the chamfered monoline capitals of the CHIP ARENA wordmark (a 40-unit-tall cell), shared by the home screen's title
     //    and the rooftop scene's holo screens;
-    //  - the holo screens' ads (Chip Arena, the RICOCHET chip card, The Siren with the Boss Test skull, the CHIP banner, the
-    //    ARENA blade sign), drawn on a 100-unit square; non-square screens sample the sub-rectangle AdUv returns.
+    //  - the holo screens' fixed ads (the CHIP banner, the ARENA blade sign and the old RICOCHET "RARE" chip card, retired
+    //    from the rotation on 2026-11-11 and kept as the old TV set's easter egg), drawn on a 100-unit square; non-square
+    //    screens sample the sub-rectangle AdUv returns. The rotating ads are NativeRooftopAds'.
     public static class NativeRooftopArt
     {
         public const float GlyphHeight=40;
@@ -22,6 +23,16 @@ namespace ChipArena.UnityConversion
             ['P']=new Glyph{W=21,D="M1 39V1H15L21 7V15L15 21H1"},['A']=new Glyph{W=22,D="M1 39V11L11 1L21 11V39M1 25H21"},['R']=new Glyph{W=21,D="M1 39V1H15L21 7V15L15 21H1M11 21L21 39"},
             ['E']=new Glyph{W=20,D="M20 1H1V39H20M1 20H15"},['N']=new Glyph{W=22,D="M1 39V1L21 39V1"},['B']=new Glyph{W=21,D="M1 39V1H13L19 7V14L13 20H1M13 20L21 26V33L15 39H1"},
             ['O']=new Glyph{W=22,D="M7 1H15L21 7V33L15 39H7L1 33V7Z"},['S']=new Glyph{W=21,D="M21 7L15 1H7L1 7V14L7 20H15L21 26V33L15 39H7L1 33"},['T']=new Glyph{W=22,D="M1 1H21M11 1V39"},
+            // the rest of the alphabet, the digits and the hyphen (2026-11-11: the holo screens' rotating ads name every class and stage)
+            ['D']=new Glyph{W=22,D="M1 1H15L21 7V33L15 39H1Z"},['F']=new Glyph{W=20,D="M20 1H1V39M1 20H15"},['G']=new Glyph{W=23,D="M22 7L16 1H7L1 7V33L7 39H16L22 33V21H12"},
+            ['J']=new Glyph{W=18,D="M17 1V33L11 39H7L1 33V27"},['K']=new Glyph{W=22,D="M1 1V39M21 1L1 22M8 15L21 39"},['L']=new Glyph{W=20,D="M1 1V39H19"},
+            ['M']=new Glyph{W=26,D="M1 39V1L13 17L25 1V39"},['Q']=new Glyph{W=23,D="M7 1H15L21 7V33L15 39H7L1 33V7ZM14 30L22 40"},['U']=new Glyph{W=22,D="M1 1V33L7 39H15L21 33V1"},
+            ['V']=new Glyph{W=22,D="M1 1L11 39L21 1"},['W']=new Glyph{W=28,D="M1 1L7 39L14 13L21 39L27 1"},['X']=new Glyph{W=22,D="M1 1L21 39M21 1L1 39"},
+            ['Y']=new Glyph{W=22,D="M1 1L11 19L21 1M11 19V39"},['Z']=new Glyph{W=22,D="M1 1H21L1 39H21"},['-']=new Glyph{W=18,D="M2 20H16"},
+            ['0']=new Glyph{W=22,D="M7 1H15L21 7V33L15 39H7L1 33V7ZM6 30L16 10"},['1']=new Glyph{W=18,D="M3 9L10 1V39M2 39H17"},['2']=new Glyph{W=22,D="M1 7L7 1H15L21 7V15L1 39H21"},
+            ['3']=new Glyph{W=22,D="M1 7L7 1H15L21 7V14L15 20H9M15 20L21 26V33L15 39H7L1 33"},['4']=new Glyph{W=22,D="M16 39V1L1 27H21"},['5']=new Glyph{W=22,D="M21 1H2V17H15L21 23V33L15 39H7L1 33"},
+            ['6']=new Glyph{W=22,D="M21 7L15 1H7L1 7V33L7 39H15L21 33V25L15 19H1"},['7']=new Glyph{W=22,D="M1 1H21L9 39"},
+            ['8']=new Glyph{W=22,D="M7 1H15L21 7V14L15 20H7L1 14V7ZM7 20L1 26V33L7 39H15L21 33V26L15 20"},['9']=new Glyph{W=22,D="M1 33L7 39H15L21 33V7L15 1H7L1 7V15L7 21H21"},
         };
         public static bool Has(char c)=>glyphs.ContainsKey(c)||c==' ';
         public static float Advance(char c,float spacing)=>c==' '?spacing*1.6f:glyphs.TryGetValue(c,out var g)?g.W+spacing:0;
@@ -70,28 +81,13 @@ namespace ChipArena.UnityConversion
         // ---- the holo screens' ads (100-unit square, top-left origin) ----
         public const int AdPixels=384;
         // The screen's (u0, v0, du, dv) of the square texture (bottom row first, as NativeIconRaster writes it).
-        public static (float u0,float v0,float du,float dv) AdUv(string kind)=>kind=="chip"?(0f,.125f,1f,.75f):kind=="banner"?(1/3f,0f,1/3f,1f):kind=="sign"?(.32f,0f,.36f,1f):(0f,0f,1f,1f);
+        public static (float u0,float v0,float du,float dv) AdUv(string kind)=>kind=="ricochet"||kind=="retro"||kind=="stages"?(0f,.125f,1f,.75f):kind=="banner"?(1/3f,0f,1/3f,1f):kind=="sign"?(.32f,0f,.36f,1f):(0f,0f,1f,1f);
         public static string Ad(string kind)
         {
             var sb=new StringBuilder();
             switch(kind)
             {
-                case "siren":
-                    sb.Append("<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" fill=\"#140826\"/><circle cx=\"50\" cy=\"40\" r=\"32\" fill=\"#2c1554\"/><circle cx=\"50\" cy=\"40\" r=\"22\" fill=\"#3e1f72\"/>");
-                    // the Boss Test skull, from primitives: cranium, jaw, sockets with magenta eyes, nose, teeth
-                    sb.Append("<circle cx=\"50\" cy=\"36\" r=\"17\" fill=\"#efe9ff\"/><rect x=\"38\" y=\"40\" width=\"24\" height=\"16\" rx=\"3\" fill=\"#efe9ff\"/>");
-                    sb.Append("<circle cx=\"43\" cy=\"38\" r=\"5\" fill=\"#120a1e\"/><circle cx=\"57\" cy=\"38\" r=\"5\" fill=\"#120a1e\"/><circle cx=\"43\" cy=\"38\" r=\"1.8\" fill=\"#ff4fd8\"/><circle cx=\"57\" cy=\"38\" r=\"1.8\" fill=\"#ff4fd8\"/>");
-                    sb.Append("<path d=\"M50 43L47.5 47.5H52.5Z\" fill=\"#120a1e\"/><path d=\"M43 52H57M46 52V56M50 52V56M54 52V56\" fill=\"none\" stroke=\"#120a1e\" stroke-width=\"1.1\"/>");
-                    {float w=Width("THE SIREN",9)*(9/GlyphHeight);Text(sb,"THE SIREN",50-w/2,74,9,9,"#f4ecff",1.4f);}
-                    {float w=Width("BOSS TEST",9)*(5.5f/GlyphHeight);Text(sb,"BOSS TEST",50-w/2,88,5.5f,9,"#ff6be3",1.1f);}
-                    break;
-                case "arena":
-                    sb.Append("<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" fill=\"#03121a\"/>");
-                    {float w=Width("CHIP",12)*(20/GlyphHeight);Text(sb,"CHIP",50-w/2,18,20,12,"#5ff4ff",2.2f);}
-                    {float w=Width("ARENA",11)*(16/GlyphHeight);Text(sb,"ARENA",50-w/2,46,16,11,"#ff4fd8",1.9f);}
-                    sb.Append("<rect x=\"18\" y=\"72\" width=\"64\" height=\"1.4\" fill=\"#5ff4ff\"/><rect x=\"18\" y=\"72\" width=\"10\" height=\"1.4\" fill=\"#ff4fd8\"/>");
-                    break;
-                case "chip":
+                case "ricochet":
                     sb.Append("<rect x=\"0\" y=\"12.5\" width=\"100\" height=\"75\" fill=\"#050812\"/>");
                     for(int k=0;k<7;k++){float x=10+k*5.6f;sb.Append("<rect x=\""+F(x)+"\" y=\"20\" width=\"2\" height=\"6\" fill=\"#c9a24a\"/><rect x=\""+F(x)+"\" y=\"66\" width=\"2\" height=\"6\" fill=\"#c9a24a\"/>");}
                     sb.Append("<rect x=\"6\" y=\"26\" width=\"44\" height=\"40\" fill=\"#0c2a28\" stroke=\"#c9a24a\" stroke-width=\"1\"/><rect x=\"13\" y=\"32\" width=\"30\" height=\"28\" fill=\"#8c939d\"/>");

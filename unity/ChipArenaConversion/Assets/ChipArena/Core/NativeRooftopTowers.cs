@@ -122,12 +122,15 @@ namespace ChipArena.UnityConversion
         private static void Towers(World w,List<Lot> lots)
         {
             Camera(0,out var eye,out var fwd);var ahead=Vector3.Normalize(new Vector3(fwd.X,0,fwd.Z));
-            var trims=new List<(Vector3[] fp,float y,float hue,float seed)>();
-            foreach(var l in lots)
+            var trims=new List<(Vector3[] fp,float y,float hue,float seed,int lot,bool city)>();
+            for(int li=0;li<lots.Count;li++)
             {
+                var l=lots[li];int first=w.Quads.Count;w.NoteLot=li;
                 float x0=l.X0,x1=l.X0+l.W,z0=l.Z0-l.D,z1=l.Z0,top=Street+l.H;
                 var mid=new Vector3((x0+x1)*.5f,0,(z0+z1)*.5f);var to=new Vector3(mid.X-eye.X,0,mid.Z-eye.Z);float dist=to.Length();float facing=dist>1?Vector3.Dot(to/dist,ahead):1;
                 int detail=facing<ViewFacing?-1:dist<NearDetail?2:dist<MidDetail?1:0;
+                // the art's part: the towers in view to the middle distance, and every placed one (the actors' roofs, the screens' towers)
+                bool city=detail>=1||l.Bare;
                 var r=new Random((uint)Math.Floor(l.Seed*131)+7);float pick=r.Next(),pick2=r.Next();
                 int style=l.H>170?(pick<.55f?Glazed:Corporate):l.H>95?(pick<.35f?Glazed:pick<.7f?Corporate:Residential):(pick<.45f?Residential:pick<.8f?Masonry:Glazed);
                 // the seed whole (the facade shader rounds it back from the interpolator before hashing it)
@@ -135,21 +138,23 @@ namespace ChipArena.UnityConversion
                 float chamfer=style==Glazed&&pick2<.6f?Lerp(2.5f,6,r.Next()):style==Corporate&&pick2<.3f?Lerp(1.5f,3,r.Next()):0,baseChamfer=chamfer,firstTop=top;
                 int tiers=style==Corporate?2+(int)Math.Floor(r.Next()*2.99f):style==Glazed?(l.Tier>.6f?2:1):style==Residential?(l.Tier>.75f?2:1):1;
                 if(l.Bare)tiers=1;
+                if(w.Notes!=null)Note(w,"lot",x0,x1,z0,z1,top,style,seed,l.Hue,share,detail,l.Bare?1:0,chamfer,tiers,l.Tier,city?1:0);
                 float y=Street;Vector3[] fp=null;
                 for(int k=0;k<tiers;k++)
                 {
                     float ty=k==tiers-1?top:Lerp(Street,top,(k+1)/(tiers+.45f));fp=Footprint(x0,z0,x1,z1,chamfer);
                     Extrude(w,fp,y,ty,Tower,attr,RoofSkin,ty);if(k==0)firstTop=ty;
+                    if(w.Notes!=null)Note(w,"tier",x0,z0,x1,z1,chamfer,y,ty,k);
                     if(k<tiers-1)
                     {
                         if(detail>=1){var ledge=Grow(fp,.7f);for(int e=0;e<ledge.Length;e++)Wall(w,ledge[e],ledge[(e+1)%ledge.Length],ty-.55f,ty+.12f,Prop,PaleConcrete);Cap(w,ledge,ty+.12f,Prop,PaleConcrete);Cap(w,ledge,ty-.55f,Prop,DarkConcrete,true);}
-                        if(l.Tier>.8f||style==Corporate)trims.Add((fp,ty,l.Hue,l.Seed+k));
+                        if(l.Tier>.8f||style==Corporate)trims.Add((fp,ty,l.Hue,l.Seed+k,li,city));
                     }
                     y=ty;float ins=Math.Min(5,(x1-x0)*.12f);x0+=ins;x1-=ins;z0+=ins;z1-=ins;chamfer=Math.Max(0,chamfer-ins*.3f);
                 }
-                trims.Add((fp,top,l.Hue,l.Seed+9));
+                trims.Add((fp,top,l.Hue,l.Seed+9,li,city));
                 x0=l.X0;x1=l.X0+l.W;z0=l.Z0-l.D;z1=l.Z0;
-                if(l.Bare||detail<0)continue;
+                if(l.Bare||detail<0){if(city)w.Stamp(first,CityPart);continue;}
                 var rt=new Random((uint)Math.Floor(l.Seed*977)+3);
                 // the top: a parapet, the plant, and the style's crown
                 var topFp=fp;float tx0=topFp[0].X,tx1=topFp[0].X,tz0=topFp[0].Z,tz1=topFp[0].Z;foreach(var p in topFp){tx0=Math.Min(tx0,p.X);tx1=Math.Max(tx1,p.X);tz0=Math.Min(tz0,p.Z);tz1=Math.Max(tz1,p.Z);}
@@ -161,21 +166,22 @@ namespace ChipArena.UnityConversion
                     // a glazed lantern on the roof and a mast with a blinking beacon
                     float lw=tw*.45f,ld=td*.45f;var lan=Footprint(tc.X-lw/2,tc.Z-ld/2,tc.X+lw/2,tc.Z+ld/2,Math.Min(2,lw*.2f));
                     Extrude(w,lan,top,top+5.5f,Tower,new Vector4(seed+3,Glazed,l.Hue,Math.Min(1,share+.3f)),DarkSteel,top+5.5f);
+                    if(w.Notes!=null)Note(w,"lantern",tc.X-lw/2,tc.Z-ld/2,tc.X+lw/2,tc.Z+ld/2,Math.Min(2,lw*.2f),top,5.5f,seed+3,Math.Min(1,share+.3f));
                     if(r.Next()<.8f)Mast(w,rt,new Vector3(tc.X,top+5.5f,tc.Z),12+18*r.Next(),detail);
-                    if(detail>=1&&chamfer<=0)Fins(w,topFp,Street,top,Steel);
+                    if(detail>=1&&chamfer<=0){Fins(w,topFp,Street,top,Steel);if(w.Notes!=null)Note(w,"fins",top);}
                 }
                 else if(style==Corporate)
                 {
                     if(rt.Next()<.45f){if(detail>=1)Helipad(w,tc,Math.Min(tw,td)*.38f,top+.2f);}
                     else if(detail>=1||l.H>200)Crown(w,topFp,top,l.Hue,rt);
-                    if(detail>=1)CornerNeon(w,topFp,Street+30,top,l.Hue);
+                    if(detail>=1){CornerNeon(w,topFp,Street+30,top,l.Hue);if(w.Notes!=null)Note(w,"cornerneon",Street+30,top,l.Hue);}
                     if(rt.Next()<.7f)Mast(w,rt,new Vector3(tc.X+tw*.3f,top,tc.Z-td*.3f),8+14*rt.Next(),detail);
                 }
                 else
                 {
                     if(rt.Next()<.65f&&detail>=1)Tank(w,rt,new Vector3(Lerp(tx0+4,tx1-4,rt.Next()),top,Lerp(tz0+4,tz1-4,rt.Next())));
                     if(detail>=1&&rt.Next()<.55f)Billboard(w,rt,eye,topFp,top,l.Hue);
-                    if(style==Masonry&&detail>=1)Cornice(w,topFp,top);
+                    if(style==Masonry&&detail>=1){Cornice(w,topFp,top);if(w.Notes!=null)Note(w,"cornice",top);}
                 }
                 // the faces the camera sees, near: balconies, air-con, a fire escape, a hanging sign
                 var baseFp=Footprint(x0,z0,x1,z1,baseChamfer);
@@ -190,13 +196,17 @@ namespace ChipArena.UnityConversion
                     if(style==Masonry&&rt.Next()<.7f)FireEscape(w,rt,p0,p1,n,bot,firstTop-2);
                     if(rt.Next()<.45f)HangingSign(w,rt,p0,p1,n,Math.Max(Street+12,firstTop-30-rt.Next()*20),l.Hue);
                 }
+                if(city)w.Stamp(first,CityPart);
             }
+            w.NoteLot=-1;
             // neon roof and setback trims (about two of three), the roof's glow over some
             var tr=new Random(5);
             foreach(var t in trims)
             {
-                if(tr.Next()<.35f)continue;var col=t.hue<.55f?new Vector3(.2f,2.4f,3f):new Vector3(2.8f,.25f,2.2f);col*=.8f+tr.Next()*.8f;
+                if(tr.Next()<.35f)continue;var col=t.hue<.55f?new Vector3(.2f,2.4f,3f):new Vector3(2.8f,.25f,2.2f);col*=.8f+tr.Next()*.8f;int first=w.Quads.Count;
                 for(int k=0;k<t.fp.Length;k++){var a=t.fp[k];var b=t.fp[(k+1)%t.fp.Length];NeonBar(w,new Vector3(a.X,t.y,a.Z),new Vector3(b.X,t.y,b.Z),.35f,col);}
+                if(t.city)w.Stamp(first,CityPart);
+                if(w.Notes!=null&&t.city){var v=new float[4+t.fp.Length*2];v[0]=t.y;v[1]=col.X;v[2]=col.Y;v[3]=col.Z;for(int k=0;k<t.fp.Length;k++){v[4+k*2]=t.fp[k].X;v[5+k*2]=t.fp[k].Z;}w.Notes.Add(new RooftopNote{Kind="trim",Lot=t.lot,V=v});}
                 if(Hash2((int)Math.Floor(t.seed),9)>=.65f){var c=Vector3.Zero;foreach(var p in t.fp)c+=p;c/=t.fp.Length;w.Glows.Add(new RooftopSprite{Position=new Vector3(c.X,t.y,c.Z),Color=t.hue<.55f?new Vector4(.15f,.7f,.9f,.18f):new Vector4(.8f,.1f,.6f,.18f),Size=40,Kind=Glow});}
             }
         }
@@ -207,16 +217,18 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<n;k++)
             {
                 float bw=2+r.Next()*4.5f,bd=1.6f+r.Next()*3,bh=1.2f+r.Next()*2.2f,cx=Lerp(x0+bw,x1-bw,r.Next()),cz=Lerp(z0+bd,z1-bd,r.Next());
-                Box(w,cx-bw/2,y,cz-bd/2,cx+bw/2,y+bh,cz+bd/2,Prop,r.Next()<.5f?Steel:DarkSteel);
+                bool pale=r.Next()<.5f;Box(w,cx-bw/2,y,cz-bd/2,cx+bw/2,y+bh,cz+bd/2,Prop,pale?Steel:DarkSteel);
                 Box(w,cx-bw/2+.2f,y+bh,cz-bd/2+.2f,cx+bw/2-.2f,y+bh+.12f,cz+bd/2-.2f,Prop,Vent);
-                if(detail>=2&&r.Next()<.5f)Box(w,cx+bw/2,y+.3f,cz-.25f,cx+bw/2+2.5f,y+.8f,cz+.25f,Prop,DarkSteel);
+                bool duct=detail>=2&&r.Next()<.5f;if(duct)Box(w,cx+bw/2,y+.3f,cz-.25f,cx+bw/2+2.5f,y+.8f,cz+.25f,Prop,DarkSteel);
+                if(w.Notes!=null)Note(w,"plant",cx,cz,bw,bd,bh,y,pale?1:0,duct?1:0);
             }
-            if(r.Next()<.5f){float hx=Lerp(x0,x1-4,r.Next()),hz=Lerp(z0,z1-3,r.Next());Box(w,hx,y,hz,hx+3.6f,y+3,hz+2.6f,Prop,DarkConcrete);Box(w,hx-.2f,y+3,hz-.2f,hx+3.8f,y+3.18f,hz+2.8f,Prop,PaleConcrete);}
+            if(r.Next()<.5f){float hx=Lerp(x0,x1-4,r.Next()),hz=Lerp(z0,z1-3,r.Next());if(w.Notes!=null)Note(w,"stairhut",hx,hz,y);Box(w,hx,y,hz,hx+3.6f,y+3,hz+2.6f,Prop,DarkConcrete);Box(w,hx-.2f,y+3,hz-.2f,hx+3.8f,y+3.18f,hz+2.8f,Prop,PaleConcrete);}
         }
         // A lattice mast: three legs tapering to a pole, rings of braces, a red beacon blinking at the top; far off (`detail` 0,
         // its members under a pixel) a single pole under the beacon.
         private static void Mast(World w,Random r,Vector3 at,float h,int detail=2)
         {
+            if(w.Notes!=null)Note(w,"mast",at.X,at.Y,at.Z,h,detail);
             if(detail<1){Strut(w,at,at+new Vector3(0,h,0),.6f,DarkSteel);w.Glows.Add(new RooftopSprite{Position=at+new Vector3(0,h+.2f,0),Color=new Vector4(2.6f,.15f,.25f,1),Size=3.2f,Kind=Beacon,Seed=r.Next()});return;}
             float b=.9f;var legs=new[]{at+new Vector3(b,0,0),at+new Vector3(-b*.5f,0,b*.87f),at+new Vector3(-b*.5f,0,-b*.87f)};var tip=at+new Vector3(0,h*.75f,0);
             foreach(var p in legs)Strut(w,p,tip,.09f,DarkSteel);
@@ -238,6 +250,7 @@ namespace ChipArena.UnityConversion
         private static void Crown(World w,Vector3[] fp,float y,float hue,Random r)
         {
             var ring=Grow(fp,-1.5f);float h=4+r.Next()*4;var col=hue<.55f?new Vector3(.25f,2.2f,2.9f):new Vector3(2.6f,.3f,2.1f);
+            if(w.Notes!=null)Note(w,"crown",y,h,col.X,col.Y,col.Z);
             for(int k=0;k<ring.Length;k++)
             {
                 var a=ring[k];var b=ring[(k+1)%ring.Length];Strut(w,new Vector3(a.X,y,a.Z),new Vector3(a.X,y+h,a.Z),.3f,DarkSteel);
@@ -248,6 +261,7 @@ namespace ChipArena.UnityConversion
         private static void Helipad(World w,Vector3 c,float r,float y)
         {
             var deck=Ring(c,r,12,.13f);Extrude(w,deck,y-.4f,y,Prop,DarkSteel,PaleConcrete);
+            if(w.Notes!=null)Note(w,"helipad",c.X,c.Z,r,y);
             var col=new Vector3(2.4f,1.9f,.6f);
             for(int k=0;k<12;k+=2){var p=deck[k];w.Glows.Add(new RooftopSprite{Position=new Vector3(p.X,y+.15f,p.Z),Color=new Vector4(1.8f,1.5f,.6f,.9f),Size=1.2f,Kind=Glow});}
             float s=r*.35f;Quad(w,new Vector3(c.X-s,y+.02f,c.Z+s),new Vector3(c.X-s+.6f,y+.02f,c.Z+s),new Vector3(c.X-s+.6f,y+.02f,c.Z-s),new Vector3(c.X-s,y+.02f,c.Z-s),Vector3.UnitY,Vector4.Zero,Neon,new Vector4(col,1));
@@ -269,7 +283,8 @@ namespace ChipArena.UnityConversion
         // A water tank on its stand: four legs and a ring beam, the staves, a conical lid.
         private static void Tank(World w,Random r,Vector3 at,float scale=1)
         {
-            float rad=(1.6f+r.Next()*.9f)*scale,leg=(2.2f+r.Next()*1.2f)*scale,h=(2.8f+r.Next()*1.4f)*scale;var wood=r.Next()<.6f?Mat(.075f,.048f,.032f,Metal):Steel;
+            float rad=(1.6f+r.Next()*.9f)*scale,leg=(2.2f+r.Next()*1.2f)*scale,h=(2.8f+r.Next()*1.4f)*scale;bool staves=r.Next()<.6f;var wood=staves?Mat(.075f,.048f,.032f,Metal):Steel;
+            if(w.Notes!=null)Note(w,"tank",at.X,at.Y,at.Z,rad,leg,h,staves?1:0);
             for(int k=0;k<4;k++){float a=k*(float)Math.PI/2+.785f;var p=at+new Vector3(rad*.8f*(float)Math.Cos(a),0,rad*.8f*(float)Math.Sin(a));Strut(w,p,p+new Vector3(0,leg,0),.18f,DarkSteel);}
             var fp=Ring(new Vector3(at.X,0,at.Z),rad,10);Cap(w,fp,at.Y+leg,Prop,DarkSteel,true);
             for(int k=0;k<fp.Length;k++)Wall(w,fp[k],fp[(k+1)%fp.Length],at.Y+leg,at.Y+leg+h,Prop,wood);
@@ -292,6 +307,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in new[]{p0,p1,c})Strut(w,new Vector3(p.X,y,p.Z),new Vector3(p.X,y+lift+bh,p.Z),.35f,DarkSteel);
             Wall(w,p1,p0,y+lift,y+lift+bh,Prop,DarkSteel);
             var f0=p0+n*.25f;var f1=p1+n*.25f;var glow=hue<.5f?new Vector3(.3f,1.8f,2.4f):hue<.8f?new Vector3(2.4f,.35f,1.6f):new Vector3(2.2f,1.4f,.4f);
+            if(w.Notes!=null)Note(w,"billboard",p0.X,p0.Z,p1.X,p1.Z,n.X,n.Z,y,lift,bh,glow.X,glow.Y,glow.Z);
             Wall(w,f0,f1,y+lift+.3f,y+lift+bh-.3f,Prop,new Vector4(glow*(.8f+.4f*r.Next()),SignPanel));
             Strut(w,new Vector3(f0.X,y+lift,f0.Z),new Vector3(f1.X,y+lift,f1.Z),.3f,Steel);Strut(w,new Vector3(f0.X,y+lift+bh,f0.Z),new Vector3(f1.X,y+lift+bh,f1.Z),.3f,Steel);
         }
@@ -311,7 +327,7 @@ namespace ChipArena.UnityConversion
                 if(Hash2((int)(y*7),k*13+(int)(a.X))<.3f)continue;
                 var c0=a+t*(1+k*bay+.4f);var c1=a+t*(1+(k+1)*bay-.4f);var o0=c0+n*1.2f;var o1=c1+n*1.2f;
                 float xa=Math.Min(Math.Min(c0.X,c1.X),Math.Min(o0.X,o1.X)),xb=Math.Max(Math.Max(c0.X,c1.X),Math.Max(o0.X,o1.X)),za=Math.Min(Math.Min(c0.Z,c1.Z),Math.Min(o0.Z,o1.Z)),zb=Math.Max(Math.Max(c0.Z,c1.Z),Math.Max(o0.Z,o1.Z));
-                Slab(w,xa,y-.18f,za,xb,y,zb,DarkConcrete);
+                Slab(w,xa,y-.18f,za,xb,y,zb,DarkConcrete);if(w.Notes!=null)Note(w,"balcony",c0.X,c0.Z,c1.X,c1.Z,n.X,n.Z,y);
                 Wall(w,o0,o1,y,y+1.05f,Prop,DarkSteel);Strut(w,new Vector3(o0.X,y+1.05f,o0.Z),new Vector3(o1.X,y+1.05f,o1.Z),.06f,Steel);
             }
         }
@@ -324,13 +340,14 @@ namespace ChipArena.UnityConversion
                 if(Hash2((int)(y*3.1f),(int)(s*5.3f)+(int)a.Z)>.16f)continue;
                 var p=a+t*s;var q=p+n*.55f;var e=p+t*.9f;var eq=e+n*.55f;
                 float xa=Math.Min(Math.Min(p.X,q.X),Math.Min(e.X,eq.X)),xb=Math.Max(Math.Max(p.X,q.X),Math.Max(e.X,eq.X)),za=Math.Min(Math.Min(p.Z,q.Z),Math.Min(e.Z,eq.Z)),zb=Math.Max(Math.Max(p.Z,q.Z),Math.Max(e.Z,eq.Z));
-                Box(w,xa,y,za,xb,y+.6f,zb,Prop,Steel);
+                Box(w,xa,y,za,xb,y+.6f,zb,Prop,Steel);if(w.Notes!=null)Note(w,"aircon",p.X,p.Z,t.X,t.Z,n.X,n.Z,y);
             }
         }
         // A fire escape: a landing at every storey on brackets, rails, the stair flights zigzagging between them.
         private static void FireEscape(World w,Random r,Vector3 a,Vector3 b,Vector3 n,float y0,float y1)
         {
             var t=Vector3.Normalize(b-a);float len=Vector3.Distance(a,b);if(len<14)return;float s0=len*(.2f+.4f*r.Next());var c0=a+t*s0;var c1=c0+t*5.5f;const float storey=3.3f;bool flip=false;
+            if(w.Notes!=null)Note(w,"fireescape",c0.X,c0.Z,c1.X,c1.Z,n.X,n.Z,y0,y1,storey);
             for(float y=y0;y<y1;y+=storey)
             {
                 var o0=c0+n*1.3f;var o1=c1+n*1.3f;
@@ -346,6 +363,7 @@ namespace ChipArena.UnityConversion
             var t=Vector3.Normalize(b-a);float len=Vector3.Distance(a,b);var at=a+t*(len*(.08f+.15f*r.Next()));float h=7+r.Next()*9,sw=1.2f,dep=1.8f;
             var p0=at+n*.6f;var p1=at+n*(.6f+dep);var glow=r.Next()<.45f?new Vector3(2.4f,.3f,1.7f):r.Next()<.6f?new Vector3(.3f,1.9f,2.5f):new Vector3(2.4f,1.5f,.4f);
             var s=t*(sw*.5f);
+            if(w.Notes!=null)Note(w,"hangsign",at.X,at.Z,t.X,t.Z,n.X,n.Z,y,h,sw,dep,glow.X,glow.Y,glow.Z);
             float xa=Math.Min(Math.Min(p0.X-s.X,p0.X+s.X),Math.Min(p1.X-s.X,p1.X+s.X)),xb=Math.Max(Math.Max(p0.X-s.X,p0.X+s.X),Math.Max(p1.X-s.X,p1.X+s.X)),za=Math.Min(Math.Min(p0.Z-s.Z,p0.Z+s.Z),Math.Min(p1.Z-s.Z,p1.Z+s.Z)),zb=Math.Max(Math.Max(p0.Z-s.Z,p0.Z+s.Z),Math.Max(p1.Z-s.Z,p1.Z+s.Z));
             Box(w,xa,y,za,xb,y+h,zb,Prop,DarkSteel);
             // the two faces across the street (either side of the sign)
@@ -357,6 +375,7 @@ namespace ChipArena.UnityConversion
         // ---- our roof ----
         private static void Perch(World w)
         {
+            int first=w.Quads.Count;
             // the membrane, its laps and wet patches in the shader (one sheet, no tiles), and the roof's thickness
             Quad(w,new Vector3(RoofX0,0,RoofZ1),new Vector3(RoofX1,0,RoofZ1),new Vector3(RoofX1,0,RoofZ0),new Vector3(RoofX0,0,RoofZ0),Vector3.UnitY,new Vector4(RoofX0,RoofZ0,RoofX1,RoofZ1),Prop,RoofSkin);
             // our tower below the lip (its windows, the storey ledges)
@@ -406,34 +425,46 @@ namespace ChipArena.UnityConversion
             var pole=new Vector3(-14.8f,0,-.9f);Strut(w,pole,pole+new Vector3(0,3.4f,0),.08f,DarkSteel);
             var s0=new Vector3(-6.95f,3.6f,-1.15f);var s1=pole+new Vector3(0,3.3f,0);Vector3 prev=s0;
             for(int k=1;k<=12;k++){float f=k/12f;var p=Vector3.Lerp(s0,s1,f)-new Vector3(0,.55f*4*f*(1-f),0);Strut(w,prev,p,.015f,DarkSteel);if(k<12)w.Glows.Add(new RooftopSprite{Position=p-new Vector3(0,.06f,0),Color=new Vector4(1.8f,1.15f,.55f,.95f),Size=.32f,Kind=Glow,Seed=f});prev=p;}
-            // puddles
+            // puddles (they stay under the modelled roof too: the Far part)
+            w.Stamp(first,PerchPart);
             foreach(var (x,z,s) in new[]{(-1.2f,-.85f,1.3f),(.9f,-.6f,1f),(-4.4f,.6f,1.6f),(-1.6f,1.6f,2.2f),(-8.8f,2.4f,1.8f),(-12.6f,.2f,1.2f),(-3.1f,3.5f,1.4f)}){float hx=s*.8f,hz=s*.5f;Quad(w,new Vector3(x-hx,.012f,z+hz),new Vector3(x+hx,.012f,z+hz),new Vector3(x+hx,.012f,z-hz),new Vector3(x-hx,.012f,z-hz),Vector3.UnitY,new Vector4(0,0,1,1),Puddle,Vector4.Zero);}
             // the blade sign: a magenta box hanging off the corner below the lip on its brackets, its lit letters facing out (+x)
+            first=w.Quads.Count;
             Box(w,RoofX1+.1f,-7.25f,-2.5f,RoofX1+.6f,-.75f,.1f,Neon,new Vector4(2.4f,.25f,1.9f,1));
             Box(w,RoofX1,-1.15f,-1.6f,RoofX1+.12f,-.95f,-.8f,Prop,DarkSteel);Box(w,RoofX1,-6.9f,-1.6f,RoofX1+.12f,-6.7f,-.8f,Prop,DarkSteel);
+            w.Stamp(first,PerchPart);
             w.Screens.Add(new RooftopScreen{Kind="sign",Center=new Vector3(RoofX1+.62f,-4,-1.2f),Width=2.2f,Height=6,Yaw=(float)Math.PI/2,Gain=2.2f});
+            // the old TV set by the pilot (the Ricochet easter egg: NativeRooftopScreens): a tube set on a crate, its screen toward the camera
+            first=w.Quads.Count;w.EggFirst=first;
+            {
+                var n=new Vector3((float)Math.Sin(RetroYaw),0,(float)Math.Cos(RetroYaw));var tt=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,n));var c=RetroCenter;
+                Block(w,c-n*.33f+tt*.1f,tt*(RetroWidth*.5f+.17f),Vector3.UnitY*(RetroHeight*.5f+.08f),n*.3f,Mat(.26f,.24f,.19f,Metal));
+                Block(w,new Vector3(c.X,(c.Y-RetroHeight*.5f-.08f)*.5f,c.Z)-n*.3f+tt*.1f,tt*.36f,Vector3.UnitY*((c.Y-RetroHeight*.5f-.08f)*.5f),n*.26f,Mat(.03f,.06f,.11f,Metal));
+            }
+            w.EggCount=w.Quads.Count-first;w.Stamp(first,PerchPart);
+            w.Screens.Add(new RooftopScreen{Kind="retro",Center=RetroCenter,Width=RetroWidth,Height=RetroHeight,Yaw=RetroYaw,Gain=1.5f});
             w.SignLight=new Vector3(RoofX1+.4f,-1.2f,-1);w.CyanLight=new Vector3(-1.2f,.9f,-1.2f);w.Beacon=new Vector3(-6.95f,9.2f,-1.15f);
         }
 
-        // A light's colour at `time`: a screen's breathes with its panel (ScreenState: brighter while its own loop plays).
+        // A light's colour at `time`: a screen's breathes with its panel (ScreenAnim: the old TV set's rises while its card shows).
         public static Vector3 ScreenLight(RooftopLight l,float time)
         {
-            if(l.Screen==null)return l.Color;ScreenState(l.Screen,time,out float pulse,out float mix,out _,out _);return l.Color*(pulse+.25f*mix);
+            if(l.Screen==null)return l.Color;var a=ScreenAnim(l.Screen,time);return l.Color*(a.Pulse+.2f*a.Cut);
         }
-        // The scene's eight lights: the four holo screens (a little in front of each, reaching about its size), the corner
-        // sign, the lip strip, the stair house's lamp and the string of lamps.
+        // The scene's eight lights: the four holo screens (a little in front of each, reaching about its size), the old TV
+        // set's glow on the roof by the pilot, the corner sign, the lip strip and the string of lamps. (The stair house's lamp,
+        // out of every frame, gave its slot to the TV set on 2026-11-11; its glow sprite stays.)
         private static void Lights(World w)
         {
             Camera(0,out var eye,out _);
             foreach(var s in w.Screens)
             {
                 if(s.Kind=="sign")continue;var toward=Vector3.Normalize(new Vector3(eye.X-s.Center.X,0,eye.Z-s.Center.Z));float size=Math.Max(s.Width,s.Height);
-                var col=s.Kind=="siren"?new Vector3(.9f,.3f,1.4f):s.Kind=="chip"?new Vector3(.3f,1.2f,1.5f):s.Kind=="banner"?new Vector3(1.4f,.3f,1.1f):new Vector3(.3f,1.1f,1.5f);
+                var col=s.Kind=="classes"?new Vector3(.9f,.3f,1.4f):s.Kind=="stages"?new Vector3(.3f,1.2f,1.5f):s.Kind=="banner"?new Vector3(1.4f,.3f,1.1f):s.Kind=="retro"?new Vector3(.3f,.42f,.7f):new Vector3(.3f,1.1f,1.5f);
                 w.Lights.Add(new RooftopLight{Position=s.Center+toward*size*.35f,Reach=size*1.4f,Wrap=.6f,Color=col*1.8f,Screen=s.Kind});
             }
             w.Lights.Add(new RooftopLight{Position=w.SignLight,Reach=2.6f,Wrap=.3f,Color=new Vector3(2.4f,.25f,1.9f)*.9f,Screen="sign"});
             w.Lights.Add(new RooftopLight{Position=w.CyanLight,Reach=1.6f,Wrap=.2f,Color=new Vector3(.2f,1.2f,1.5f)*.8f});
-            w.Lights.Add(new RooftopLight{Position=new Vector3(-14.4f,2.4f,7.7f),Reach=2.8f,Wrap=.2f,Color=new Vector3(1.6f,1.0f,.55f)});
             w.Lights.Add(new RooftopLight{Position=new Vector3(-10.9f,2.6f,-1.0f),Reach=3.8f,Wrap=.4f,Color=new Vector3(1.0f,.62f,.3f)*.7f});
             while(w.Lights.Count>LightCount)w.Lights.RemoveAt(w.Lights.Count-1);
             while(w.Lights.Count<LightCount)w.Lights.Add(new RooftopLight{Position=new Vector3(0,-9999,0),Reach=.01f,Color=Vector3.Zero});
