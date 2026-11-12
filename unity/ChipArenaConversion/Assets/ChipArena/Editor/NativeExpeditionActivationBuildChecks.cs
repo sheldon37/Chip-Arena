@@ -84,6 +84,9 @@ namespace ChipArena.UnityConversion.Editor
                     ExpeditionView Project(string id,string viewer)
                     {
                         var projected=NativeExpeditionView.Build(sessions[id].Run,viewer,sessions[id].Sources);
+                        // Scope it as ConversionGame.AreaView does: each director lists every area's doors and gates.
+                        projected.closures=projected.closures.Where(c=>c.area==id).ToArray();projected.bossArrivals=projected.bossArrivals.Where(a=>a.area==id).ToArray();
+                        string prefix=projected.loop+":"+id+":";projected.loot=projected.loot.Where(r=>r.id.StartsWith(prefix,StringComparison.Ordinal)).ToArray();projected.dice=projected.dice.Where(d=>d.boss.StartsWith(prefix,StringComparison.Ordinal)).ToArray();
                         projected.mine=NativeExpeditionView.Build(sessions[cohorts.Member(viewer).Area].Run,viewer).mine;
                         projected.members=cohorts.Members.Select(m=>NativeExpeditionView.Build(sessions[m.Area].Run,null).Member(m.Account)).ToArray();
                         return projected;
