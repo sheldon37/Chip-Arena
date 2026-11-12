@@ -49,6 +49,7 @@
 - **The Hot Dog in the parry** (the owner's other note: "Dev Katana / Katana both morph player model in parry hit (Using hotdog)"): filmed by the hot dog session on shared `e2d1aed5` and its candidate, Katana and DEV Katana, standing, moving and countering. The parry hit itself deforms neither; the counter does (its clip curls the spine so far that the sausage folds 90 to 120 degrees at mid height). The fix is the Hot Dog's (the body side: the twist kept and spread, only the swing capped), agreed with its session. The parry hologram copies the Hot Dog's own renderer with its own bones (the spine twins), mesh and bind poses, so it follows the sausage exactly; DEV Katana's parry pose (Grruzam's `Revenge_Guard_Loop`) is a moderate crouch.
 - **Not seen / not done:** played by a person.
 >>>>>>> origin/claude/sleepy-ritchie-g8ruhv
+- **Released** to the test channel (Windows builder): merged into shared at `8fb8b6d8` and synced to the builder; the release suite at `77b2bb12` (1018 groups, exit 0; the stage art checks against the Drive zip's stage banks), the Unity compile and the Editor build checks (Native blades 67, on `e01d8dbb`) passed; built and published as revision `639300576421555823` (2026-11-12 05:24 UTC). Not played by a person.
 
 ## 2026-11-11 — Astra: keep host networking alive while the destination has no local pilot
 
