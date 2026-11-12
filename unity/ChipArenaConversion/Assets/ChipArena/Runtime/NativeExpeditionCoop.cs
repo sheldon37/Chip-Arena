@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
             (ExpeditionView?.machineRevive?.spit!=null&&ExpeditionView.machineRevive.spit.Account==ExpeditionView.viewer&&arena.Time<ExpeditionView.machineRevive.spit.At+NativeReviveMachine.HoldUntil||ExpeditionView==null||ExpeditionView.loading||ExpeditionView.mine?.alive!=true||ExpeditionView.mine.extracted||ExpeditionView.Member(ExpeditionView.viewer)?.choosing==true||!arena.ExpeditionCollisionReady||expeditionReplicaGeneration!=arena.Generation);
         private void ExpeditionReplicaTick()
         {
-            if(!prefs.expedition||arena?.Replica!=true||ExpeditionView==null||arena.Generation!=expeditionReplicaGeneration)return;
+            if(!prefs.expedition||arena?.Replica!=true||ExpeditionView==null||arena.Generation!=expeditionReplicaGeneration||ExpeditionView.areaIdentity!=null&&!expeditionLoadInbox.Applied(ExpeditionView.areaIdentity))return;
             if(expeditionReplicaLayout==null){expeditionReplicaJson=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;expeditionReplicaLayout=deploymentBundle?.Layout??NativeExpeditionLayout.Parse(expeditionReplicaJson);expeditionReplicaIdentity=deploymentBundle?.Identity??NativeExpeditionLayout.Compatibility(expeditionReplicaJson,content);}
             string json=expeditionReplicaJson;
             var view=ExpeditionView;var area=expeditionReplicaLayout.Area(view.area);

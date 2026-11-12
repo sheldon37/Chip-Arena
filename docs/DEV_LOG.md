@@ -14,6 +14,14 @@
 - **Not changed:** gameplay, hazards, the Electron game's music, Containment Sirens' 1.5x gain (it applies to that file only).
 - **Checks:** see the release line below.
 
+## 2026-11-11 — Astra: retry Expedition destination loads and refresh party progress
+
+- Branch `codex/expedition-transfer-sync`, base shared `13e5f2fe`. Owner reports guests held at the join circle while host loads then rolls back, plus stationary remote loading bars; guest logs unavailable.
+- Track the applied destination ticket independently of the received public view. A received ticket does not prove scene construction. Requeue snapshots until that ticket is applied, restore a missing deferred loading action, and gate collision/readiness reporting on the applied ticket. Existing all-ready commit and timeout rollback remain authoritative.
+- Loading guests receive replaceable full snapshots at 4 Hz instead of 0.2 Hz. Those snapshots already contain per-member progress; removed redundant reliable party-load packets from the split sender, preserving bounded receive queues during synchronous loads. Host progress waits for the destination arena observer, avoiding source-area 100% progress poisoning the next ticket.
+- Added managed applied-ticket/reset/interrupted-load recovery and snapshot cadence checks; expanded native transfer checks to pair the actual atomic destination bundle through Unity serialization before ACK.
+- This is a defensive repair, not a confirmed reproduction of the owner's exact freeze. No two-PC or native Unity execution here; no combat/animation changes. Validation and delivery receipts follow in the PR. No live/Site release.
+
 ## 2026-11-11 — Claude: the logo intro at launch, with the game loading under it (owner request)
 
 - Branch `claude/boot-intro`, base shared `7e4d6378`. Owner: "Lets add this as an intro when starting the game (Use this time to load assets in). (This is also the new logo for the game)". Full description: `docs/BOOT-INTRO.md`.
