@@ -442,7 +442,7 @@ namespace ChipArena.UnityConversion
                 Block(w,new Vector3(c.X,(c.Y-RetroHeight*.5f-.08f)*.5f,c.Z)-n*.3f+tt*.1f,tt*.36f,Vector3.UnitY*((c.Y-RetroHeight*.5f-.08f)*.5f),n*.26f,Mat(.03f,.06f,.11f,Metal));
             }
             w.EggCount=w.Quads.Count-first;w.Stamp(first,PerchPart);
-            w.Screens.Add(new RooftopScreen{Kind="retro",Center=RetroCenter,Width=RetroWidth,Height=RetroHeight,Yaw=RetroYaw,Gain=1.15f});
+            w.Screens.Add(new RooftopScreen{Kind="retro",Center=RetroCenter,Width=RetroWidth,Height=RetroHeight,Yaw=RetroYaw,Gain=1.5f});
             w.SignLight=new Vector3(RoofX1+.4f,-1.2f,-1);w.CyanLight=new Vector3(-1.2f,.9f,-1.2f);w.Beacon=new Vector3(-6.95f,9.2f,-1.15f);
         }
 

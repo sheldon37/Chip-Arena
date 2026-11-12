@@ -1,7 +1,7 @@
 # The main menu's rooftop: the art, the screens, the logo
 
 2026-11-11 · Claude (visuals) · branch `claude/menu-rooftop` from `claude/sleepy-ritchie-g8ruhv` (`f0275643`).
-Status: **implemented on the branch; CoreTests and the Unity compile pass; NOT seen in the Editor yet** (see "Not verified").
+Status: **implemented on the branch and seen in the shared Editor at High and Low** (see "Seen in the Editor").
 Not merged, not released. The bank is local (git-ignored); the integrator packs it into the builder's Drive zip.
 
 Owner (2026-11-11), on the home screen's "Pilot's Rooftop": "I would like to bring this to update to date non-boxy style as
@@ -98,10 +98,10 @@ metric coordinate along the wall and the tower's top, uv1 its seed and its style
 
 ### Numbers (2026-11-11, bank built on this branch)
 
-- Bank: 19,671,360 bytes (18.8 MB), 22 props. The Drive zip's visual body was about 369 MB of its 480 MB cap.
+- Bank: 19,756,588 bytes (18.8 MB), 22 props. The Drive zip's visual body was about 369 MB of its 480 MB cap.
 - High: 196,567 triangles (192,075 solid in 260,779 vertices; 4,492 facade); Low: 69,156. Cars: 4,028 triangles for the five
   fine models, 1,516 low. Core's quads kept beside the art: 30,062 of 63,536 (the far towers, the street, the puddles).
-- Draw calls with the art (counted from the code, not measured): 3 quad meshes + 2 art meshes + 6 screens + up to 7 car
+- Draw calls with the art (counted from the code; not measured in the engine): 3 quad meshes + 2 art meshes + 6 screens + up to 7 car
   batches (5 kinds far, at most 2 near) + 6 sprite layers = 24, against 16 before (3 + 5 screens + 1 car mesh + 6 + the sky in
   both). The four opaque meshes also draw a depth pass each while the outline is on.
 - Screen textures: 29 slides at 320 px and 3 fixed ads at 384 px, RGBA with mipmaps: about 18 MB (before: 5 ads at 384 px, 4 MB).
@@ -183,13 +183,31 @@ stair house lamp's slot, which lit nothing in frame) and rises while the card sh
 - new: the pinned fallback hash, the parts, the notes, the bank's plan (a synthetic bank), the wiring and the fallback (source),
   the logo; with the bank on the machine: its covers, tiers, budget (under 30 MB), facade vertices and the roof's span.
 
+## Seen in the Editor (2026-11-11, shared Editor, 1470 x 719 Game view)
+
+Captures of the home screen with the scene's clock held (DEV hooks `NativeRooftopScene.CaptureTime` / `CaptureBare`, set only by
+the local capture tool): eight moments round the camera's loop with and without the menu, before (the base commit with the
+hooks, no bank) and after, at High and at the Low graphics tier; every class and stage slide and the brand rotation; a slide's
+entrance; the egg.
+
+- Both new shaders compile and draw; the towers' walls draw through the facade shader; the cars fly instanced; the logo
+  imports and draws as the title and on the brand screen.
+- The title logo and the TV set are clear of the home screen's menu (the set sits under the last entry, left of the pilot).
+- The egg: the card on the set at 71, 74, 77.95 (in the corner), 78.3, 82 and 84.5 s, a new colour each time. After the
+  first look the card was made larger (half the screen) and brighter.
+- Frame time over 6 s of the running menu (Editor, back to back with other sessions' work, so indicative only):
+  High 10.38 ms mean / 11.65 p95 before, 9.58 / 11.40 after; Low 9.85 / 10.92 before, 9.29 / 10.73 after.
+- The bank's read: the first build read it on the main thread in 752 ms at the menu's first frame. It is now parsed on a
+  worker thread (`NativeRooftopModels.Prewarm`; 136 ms there at High, 96 ms at Low); `Load` held the main thread 164 ms (High)
+  and 112 ms (Low), the wait for the worker included. Anything shown before the home screen (the start-up intro) can call
+  `Prewarm(low)` to hide the wait; nothing calls it early yet.
+- Seen on the base commit, not caused here: at the Low graphics tier the quad fallback draws some of our roof's boxes in raw
+  red, green and blue. With the art those boxes are not drawn.
+
 ## Not verified
 
-- **Nothing here has been seen in the Unity Editor.** The shared Editor was held for a release when the work was ready; no
-  capture ran on this branch (not the before shots either). The shaders have not been compiled by Unity (the model shader is
-  new; the screen shader was rewritten), so their look, the instanced cars, the logo's import and the frame cost are all
-  untested. Captures to take: `roof/py/roofcap.sh` in the session's scratchpad (the tool options `roofshots=`, `roofbare=`,
-  `roofperf=` it adds to the local capture tool are compile-checked but not yet installed).
-- Frame time and real draw calls: not measured. The bank's read time at the menu's first frame: not measured.
-- Native Windows build, 21:9, the Low graphics tier and reduced effects in the engine: not run.
+- Draw calls in the engine (the counts above are from the code). Reduced effects, 21:9 and other aspect ratios in the engine.
+- A native Windows build; the bank travelling through the Drive zip and the installer.
+- `Prewarm` called early (no caller yet), and the first-frame cost in a player build.
+- The panel screens' top-bar logo (only the home screen was captured).
 - The icons are not wired anywhere.

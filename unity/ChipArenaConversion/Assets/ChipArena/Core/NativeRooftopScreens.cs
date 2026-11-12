@@ -29,8 +29,9 @@ namespace ChipArena.UnityConversion
         public static int ScreenLetters(string kind)=>kind=="banner"?4:kind=="sign"?5:0;
         public const float ScreenSweep=6,ScreenBreath=4,ScreenChase=4,SlideCut=.3f;
         /// <summary>The easter egg's timing (s): its cycle, when in it the card shows and for how long, and the time the card
-        /// takes across and up the screen (their common multiple is the showing, so its middle is a corner hit).</summary>
-        public const float EggCycle=96,EggFrom=70,EggSeconds=16,EggAcross=3.2f,EggUp=2,EggCard=.42f;
+        /// takes across and up the screen (their common multiple is the showing, so its middle is a corner hit), and the card's
+        /// share of the screen's width and height (the screen shader's own .5).</summary>
+        public const float EggCycle=96,EggFrom=70,EggSeconds=16,EggAcross=3.2f,EggUp=2,EggCard=.5f;
         /// <summary>The old TV set's screen on our roof (source frame): its centre, size and heading (toward the camera).</summary>
         public static readonly Vector3 RetroCenter=new Vector3(-1.2f,.78f,-.45f);public const float RetroWidth=.8f,RetroHeight=.6f,RetroYaw=1.02f;
         private static float ScreenPhase(int k)=>k==0?0:k==1?9:k==2?3:k==3?6:k==4?15:11;
