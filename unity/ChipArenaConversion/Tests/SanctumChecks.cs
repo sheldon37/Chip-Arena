@@ -85,6 +85,8 @@ internal static class SanctumChecks
         var glass=NativeSanctumScenery.Build();Check(glass.Length==NativeSanctumScenery.Sectors&&glass.Sum(g=>g.Boxes)>4000,"the glass ("+glass.Sum(g=>g.Boxes)+" panes)");
         foreach(var g in glass)Check(g.MinY>=7.9f,"glass stays in its windows");
         Check(glass.Any(g=>Enumerable.Range(0,g.Emission.Length/4).Any(i=>g.Emission[i*4]+g.Emission[i*4+1]+g.Emission[i*4+2]>1.5f)),"the moonlit glass glows past the bloom's threshold");
+        // no two panes overlap in one plane (owner 2026-11-11: depth fighting with the lights; glowing panes in one plane trade pixels)
+        {double shared=GlassOverlap(glass);Console.WriteLine("Sanctum glass: "+shared.ToString("0.000")+" m2 of panes overlap in one plane");Check(shared<1e-3,"no two panes of the glass overlap in one plane ("+shared.ToString("0.0000")+" m2)");}
         // the rigs follow the replicated state
         var rig=new NativeSanctumRig(looks);var hz=map.hazards;int ci=Array.FindIndex(hz,h=>h.kind=="crane"),ri=Array.FindIndex(hz,h=>h.kind=="saw-rail");
         for(double t=0;t<70;t+=.37)for(int round=0;round<2;round++)
@@ -201,6 +203,50 @@ internal static class SanctumChecks
         Console.WriteLine("PASS sanctum: "+count+" checks (map, nav, hazards, look, kit "+kit.Parts.Count+" parts and "+kit.Candles.Count/5+" candles, glass "+glass.Sum(g=>g.Boxes)+" panes, rigs, effects, lights, cues, wiring)");
     }
     private static double Dist(double[] a,int i,double[] b,int j)=>Math.Sqrt((a[i]-b[j])*(a[i]-b[j])+(a[i+1]-b[j+1])*(a[i+1]-b[j+1])+(a[i+2]-b[j+2])*(a[i+2]-b[j+2]));
+    // The area (m2) of the glass's triangles that overlap another triangle lying in the same plane (within half a millimetre),
+    // turned the same way: what trades pixels however fine the depth buffer.
+    private static double GlassOverlap(NativeSceneryMesh[] meshes)
+    {
+        double total=0;
+        foreach(var m in meshes)
+        {
+            var cells=new Dictionary<(int,long,int,int),List<int>>();int tris=m.Indices.Length/3;var uv=new double[tris*6];var axis=new int[tris];
+            for(int t=0;t<tris;t++)
+            {
+                int a=m.Indices[t*3]*3,b=m.Indices[t*3+1]*3,c=m.Indices[t*3+2]*3;
+                double nx=Math.Abs(m.Normals[a]),nz=Math.Abs(m.Normals[a+2]);int ax=nx>.9?0:nz>.9?2:-1;axis[t]=ax;if(ax<0)continue;int u=ax==0?2:0;
+                uv[t*6]=m.Positions[a+u];uv[t*6+1]=m.Positions[a+1];uv[t*6+2]=m.Positions[b+u];uv[t*6+3]=m.Positions[b+1];uv[t*6+4]=m.Positions[c+u];uv[t*6+5]=m.Positions[c+1];
+                long plane=(long)Math.Round(m.Positions[a+ax]*2000.0);double cu=(uv[t*6]+uv[t*6+2]+uv[t*6+4])/3,cv=(uv[t*6+1]+uv[t*6+3]+uv[t*6+5])/3;int sign=m.Normals[a+ax]>0?1:0;
+                for(int du=-1;du<=1;du++)for(int dv=-1;dv<=1;dv++){var key=(ax*2+sign,plane,(int)Math.Floor(cu/.4)+du,(int)Math.Floor(cv/.4)+dv);if(!cells.TryGetValue(key,out var l)){l=new List<int>();cells[key]=l;}if(du==0&&dv==0)l.Add(t);else l.Add(-t-1);}
+            }
+            var poly=new List<(double,double)>();var next=new List<(double,double)>();
+            foreach(var l in cells.Values)for(int i=0;i<l.Count;i++)
+            {
+                int t=l[i];if(t<0)continue;
+                for(int j=0;j<l.Count;j++)
+                {
+                    int o=l[j]<0?-l[j]-1:l[j];if(o<=t)continue;
+                    // clip triangle t by triangle o's three edges (either winding)
+                    poly.Clear();for(int k=0;k<3;k++)poly.Add((uv[t*6+k*2],uv[t*6+k*2+1]));
+                    double area2=(uv[o*6+2]-uv[o*6])*(uv[o*6+5]-uv[o*6+1])-(uv[o*6+4]-uv[o*6])*(uv[o*6+3]-uv[o*6+1]);double w=area2>=0?1:-1;
+                    for(int e=0;e<3&&poly.Count>0;e++)
+                    {
+                        double x0=uv[o*6+e*2],y0=uv[o*6+e*2+1],x1=uv[o*6+(e+1)%3*2],y1=uv[o*6+(e+1)%3*2+1];next.Clear();
+                        for(int k=0;k<poly.Count;k++)
+                        {
+                            var p=poly[k];var q=poly[(k+1)%poly.Count];double dp=w*((x1-x0)*(p.Item2-y0)-(y1-y0)*(p.Item1-x0)),dq=w*((x1-x0)*(q.Item2-y0)-(y1-y0)*(q.Item1-x0));
+                            if(dp>=0)next.Add(p);if(dp>=0!=dq>=0){double f=dp/(dp-dq);next.Add((p.Item1+(q.Item1-p.Item1)*f,p.Item2+(q.Item2-p.Item2)*f));}
+                        }
+                        (poly,next)=(next,poly);
+                    }
+                    double sum=0;for(int k=0;k<poly.Count;k++){var p=poly[k];var q=poly[(k+1)%poly.Count];sum+=p.Item1*q.Item2-q.Item1*p.Item2;}
+                    // (a pair seen from two neighbouring cells counts once: only from the cell that holds t's centre)
+                    total+=Math.Abs(sum)/2;
+                }
+            }
+        }
+        return total;
+    }
     // a part's half extent along a world axis (its rotated box's)
     private static float Ext(in FactoryPart p,int axis)
     {
