@@ -522,9 +522,14 @@ same-facing faces within 25 cm on one layer, in the far chunks), released bank a
 
 Cyber City's 284 m² are its ring's own steps of 11 to 25 cm (a roof's rim over its deck), under 100 m from the play space, where
 the step is a centimetre: they cannot fight. The six banks were rebuilt; no other stage has far chunks with such faces (the
-Sanctum's bank is the Sanctum polish's to build). **Not filmed:** the shared Editor was closed, so the flicker before and its
-absence after are measured, not seen; the beacons' blink (0.55 Hz, by design), the tiers' switches, the cascades and the fog
-were not looked at in the Editor either.
+Sanctum's bank is the Sanctum polish's to build). **Seen in the Editor** (2026-11-12, the released bank against the rebuilt one
+under one lock hold; eight background views, each eye twice 3 mm apart, at High and on the Low graphics tier; two twelve-frame
+pans on Skyframe and one on Cyber City): on the released bank the far towers show only some of their lit windows (the rest
+lost to the wall behind them) and, at High, a bright wedge across a tower's face; on the rebuilt bank every window shows on
+every frame and the faces are whole. That is clearest on the Low tier, which has no haze. Cyber City's pan looks the same
+before and after (its ring is near; nothing fought there). Not depth fighting, and left as they are: the cloud sea's drifting
+haze (84 soft banks, Core NativeSkyframeFx.Sea) washes the far towers pale as it passes, and the beacons blink at 0.55 Hz, both
+by design; if the owner still sees flicker, the haze is the next thing to look at.
 
 **Rules for the next stage.** Model paint, boards and marks as faces on their surface (a few millimetres proud, or in its plane):
 the bank writer layers them. Call `chunks.split(g)` after the lift. A kit box kept over the art goes through `Nearer`. Run the
