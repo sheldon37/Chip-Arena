@@ -1,3 +1,55 @@
+## 2026-11-11 — Claude: the Hollow Sanctum's polish (the lights' depth fighting, the Thurible, the Fall of the Lights)
+
+- **Owner**, on the test build (revision 639300460006585328): "Seems there is Z-Fighting with lights on the hollow sanctum in a lot
+  of places, also; the swinging hazard animation / dropping hazard animation need significant improvements." Branch
+  `claude/sanctum-polish` from `claude/sleepy-ritchie-g8ruhv` (`0ccb5a0a`). **Implemented on the branch and pushed; not merged,
+  not released.** Visuals only (Claude's lane): no hazard's state, timing, zone or kill moment changes; the simulation's
+  functions (`NativeFactoryHazards`, `NativeWardZeroHazards`) are untouched and the rigs still read only them.
+- **What fought** (docs/arenas/SANCTUM.md, "The hazards' polish and the lights' depth fighting"). The bank itself measures clean;
+  the lights drawn over it at run time did not:
+  - the moon's pools of window light: of 204, 59 lay in the floor's own plane, 125 were level quads on the sides of piers,
+    balustrades and walls (half in the stone, half in the air), 13 on pew blocks' tops and 7 on copings. Now 99 pools, each
+    traced corner by corner down the moon's ray and kept only where it lies whole on a floor;
+  - the warning rings and glow, the censer's always-lit path strip, the fire's glyph line, the gates' strobe: 25 to 30 mm up,
+    where the art's inlays lie 16 to 25 mm up and the fire's grate 30 mm. Every floor light now lies 40 mm up
+    (`NativeSanctumFx.GroundLift`) and is drawn nearer the eye than the art's deepest layer stack (`Ground`, `NativeStageArt.Nearer`);
+  - the stained glass: 1.02 m2 of glowing panes overlapped in one plane (pearls and medallions on the quarries, jewels on their
+    petals). Overlapping sets stand on 8 mm steps: 0 m2.
+- **The Thurible.** Its centre stays on the simulation's point (checked). About it (`NativeSanctumRig.CenserMotion`): cocked back by
+  a tether from the south bridge, three heaves through the warning, a whip at the release, the bowl trailing and leading its
+  rope, a turn on its swivel, the lid lifting on its chains, the rope bowed, the tether paid out slack and hauled in for the
+  catch. Effects: smoke let go where the censer was (a column at rest, along the arc in the swing), sparks, the coals' glow
+  drawn out behind it and on the floor under it.
+- **The Fall of the Lights.** The swing now runs on the warning's own time (it used to multiply the whole hazard clock by a
+  rising rate, so later cycles shook faster and faster); two slips with a jolt, a ripple up the chain, plaster and sparks; the
+  snap (the upper chain lashes, links and plaster rain down); the fall tips, flames torn into streaks, the low rim at the
+  simulation's load height; the crash (the wreck slams, hops twice, rocks to rest; a flash, a shock ring, skipping sparks,
+  dust, embers; candles and shards thrown); the winch pays the chain out through the regrip and rights it on the hoist with
+  its candles relit one by one. No pop is left between phases (`--sanctum` steps a round at 5 ms).
+- **Animation impact on rules:** none. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged; all new
+  motion is a pure function of the replicated hazard state and clocks (nothing integrates per frame), so host, guests and
+  the killcam draw the same take.
+- **Bank:** `tools/stages/sanctum_props.py` adds six rig props (`censer-body`, `censer-lid`, `candle-loose`, `debris-iron`,
+  `debris-link`, `debris-plaster`). The rebuilt `ChipArenaStageSanctum.bytes` is 20,205,478 bytes (git-ignored; it is in the
+  task's scratchpad for the integrator to pack). A runtime with the released bank draws the older censer and strewn candles
+  (`NativeStageArtDraw.HasRig`, `NativeSanctumArt.Pose(..., legacy)`), so the bank and the build may ship in either order;
+  `--stage-art` accepts either bank.
+- **Affected:** Core `NativeSanctumRig`, `NativeSanctumArt`, `NativeSanctumFx`, `NativeSanctumScenery`; Runtime
+  `NativeSanctumPresentation` (one argument), `NativeStageArt` (`HasRig`); Tests `SanctumChecks`, `StageArtChecks`, `StageArtRest`
+  (the sanctum's rest export for the analyser); `tools/stages/sanctum_props.py`; docs SANCTUM.md, STAGE-ART.md 14.
+- **Checks run:** full CoreTests (1018 PASS lines, exit 0; Windows path patch applied for the run and reverted); `--sanctum`,
+  `--stage-art` with the rebuilt bank and with the released one; `tools/check_unity_compile.py` (Assembly-CSharp and the Editor
+  assembly pass); `git diff --check`; the stage bank analyser on the rebuilt bank with the rigs posed.
+- **Not run, not seen:** the shared Unity Editor was closed for the whole task, so nothing here has been seen in the Editor:
+  no two-frame light captures (High or Low), no frame strips from the match camera, no `PrototypeBuild.Validate` build checks.
+  The effects (smoke, sparks, dust, the pools) are unseen altogether; the poses were looked at only as Blender renders of the
+  rig's art pose (no lighting, no effects). The depth-fighting fixes are measured and reasoned, not filmed. Also not run: a
+  Windows build, guests, the killcam, a human playtest. The motion's amounts (the cock, the whip, the lash, the hops) are
+  first values and want tuning by eye.
+- **Next:** the integrator packs the rebuilt bank into the Drive zip with the merge. An ear for the new moments (the heaves,
+  the snap, the links landing) if the owner wants sounds for them: the cues are unchanged.
+
+
 ## 2026-11-11 — Claude: PR #385 (Expedition transfer sync) re-landed with its native check fixed; for Astra's review
 
 - **Owner:** "Can you revert it, then bring it back yourself instead of astra?" Branch `claude/expedition-transfer-sync`, from
