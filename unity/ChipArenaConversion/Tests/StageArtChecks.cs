@@ -32,7 +32,7 @@ internal static class StageArtChecks
         var maps=JsonSerializer.Deserialize<UnityMapContent>(text,o);NativeMapRules.Merge(content,maps,text);var map=content.Map("sanctum");
         var set=JsonSerializer.Deserialize<MapLookSet>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/MapLooks.json")),o);var looks=NativeSanctumLooks.Resolve(NativeMapLooks.Find(set,"sanctum").kitLooks);
         var rig=new NativeSanctumRig(looks);var pose=new NativeStageArtPose();
-        Check(NativeSanctumArt.Slots.Length==29&&NativeSanctumArt.Slots.Distinct().Count()==29&&NativeSanctumArt.Slots[NativeSanctumArt.BannerBlue]=="banner-blue"&&NativeSanctumArt.Slots[NativeSanctumArt.Fire+3]=="fire-sanctum-fire-s-1","the rig slots");
+        Check(NativeSanctumArt.Slots.Length==35&&NativeSanctumArt.Slots.Distinct().Count()==35&&NativeSanctumArt.Slots[NativeSanctumArt.FirstPolishSlot]=="censer-body"&&NativeSanctumArt.Slots[NativeSanctumArt.DebrisPlaster]=="debris-plaster"&&NativeSanctumArt.Slots[NativeSanctumArt.BannerBlue]=="banner-blue"&&NativeSanctumArt.Slots[NativeSanctumArt.Fire+3]=="fire-sanctum-fire-s-1","the rig slots");
         Check(map.hazards.Count(h=>h.kind=="shutter")==2&&map.hazards.Count(h=>h.kind=="burner")==2&&map.hazards.Where(h=>h.kind=="shutter").Select(h=>"gate-"+h.id).SequenceEqual(NativeSanctumArt.Slots.Skip(NativeSanctumArt.Gate).Take(2)),"a gate slot per shutter, in the hazards' order");
         double worst=0;int seen=0,down=0,falling=0,held=0,swung=0;var phases=new HashSet<int>();
         for(int round=0;round<2;round++)for(double t=0;t<70;t+=.05)
@@ -47,7 +47,7 @@ internal static class StageArtChecks
                     At(pose,i,0,NativeSanctumLooks.CrownHeight,0,out double x,out double y,out double z);worst=Math.Max(worst,Nearest(rig,x,y,z,.18f,.22f,.18f));
                 }
                 else if(slot==NativeSanctumArt.Wreck){down++;At(pose,i,0,.6,0,out double x,out double y,out double z);worst=Math.Max(worst,Nearest(rig,x,y,z,.18f,.22f,.18f));}
-                else if(slot==NativeSanctumArt.Censer)
+                else if(slot==NativeSanctumArt.CenserBody)
                 {
                     // the coals' disc (.5 x .06 x .5) at the frame's (0, .02, 0)
                     At(pose,i,0,.02,0,out double x,out double y,out double z);worst=Math.Max(worst,Nearest(rig,x,y,z,.5f,.06f,.5f));if(Math.Abs(pose.Place[i*12+6])>1e-3)swung++;
@@ -167,7 +167,12 @@ internal static class StageArtChecks
             foreach(var b in map.blocks)Check(sp.Covers.Contains(b.id),"the art replaces block "+b.id);
             var pews=map.blocks.Where(b=>b.role!="static").ToArray();
             Check(pews.Length==14&&pews.All(b=>sp.Blocks.ContainsKey(b.id)&&sp.Blocks[b.id].All(p=>p>=0)),"every breakable pew has its model in every tier");
-            Check(NativeSanctumArt.Slots.All(s=>sp.Rig.ContainsKey(s)&&sp.Rig[s].All(p=>p>=0)),"every rig slot has its model in every tier ("+string.Join(",",NativeSanctumArt.Slots.Where(s=>!sp.Rig.ContainsKey(s)))+")");
+            // (a bank from before the hazards' polish lacks the polish slots, all of them: the runtime then poses the older models)
+            var first=NativeSanctumArt.Slots.Take(NativeSanctumArt.FirstPolishSlot).ToArray();var polish=NativeSanctumArt.Slots.Skip(NativeSanctumArt.FirstPolishSlot).ToArray();
+            Check(first.All(s=>sp.Rig.ContainsKey(s)&&sp.Rig[s].All(p=>p>=0)),"every rig slot has its model in every tier ("+string.Join(",",first.Where(s=>!sp.Rig.ContainsKey(s)))+")");
+            bool polished=polish.All(s=>sp.Rig.ContainsKey(s)&&sp.Rig[s].All(p=>p>=0));Check(polished||polish.All(s=>!sp.Rig.ContainsKey(s)),"the hazards' polish props are all in the bank, or none of them ("+string.Join(",",polish.Where(s=>!sp.Rig.ContainsKey(s)))+")");
+            Console.WriteLine("Stage art: the Sanctum bank "+(polished?"has the hazards' polish props":"is from before the hazards' polish (the older censer and strewn candles draw)"));
+            Check(new FileInfo(bankPath).Length<=21*1048576,"the bank keeps to its budget, about 20 MB ("+(new FileInfo(bankPath).Length/1048576.0).ToString("0.00")+" MB)");
             Check(sp.Static.Count>=20&&sp.Static.All(c=>c.Props.Distinct().Count()==3),"the static chunks, each in three tiers");
             // the play space: below 2 m over its floor the Fine art keeps to the blocks (within .25 m, the stage rule; a thin prop
             // such as the altars' candlesticks within .9 m); higher is overhead (the crypt's vault springs 2.2 m up); nothing

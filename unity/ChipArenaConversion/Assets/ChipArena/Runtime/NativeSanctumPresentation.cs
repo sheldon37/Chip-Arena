@@ -34,8 +34,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The stage art drew last frame (the kit's and the rig's boxes did not).</summary>
         public bool ArtDrawn{get;private set;}
         // The art's rig slots that cast shadows: the chandeliers, the censer, the bell, the gates, the baskets, the banners (not the
-        // chains, candles, ropes or the lanterns' glass).
-        private static bool ArtCasts(int slot)=>slot!=NativeSanctumArt.Chain&&slot!=NativeSanctumArt.PullRope&&!(slot>=NativeSanctumArt.Candles&&slot<NativeSanctumArt.Gate)&&!(slot>=NativeSanctumArt.Lanterns&&slot<NativeSanctumArt.Fire);
+        // chains, candles, ropes, the lanterns' glass or a fall's thrown candles and debris).
+        private static bool ArtCasts(int slot)=>slot!=NativeSanctumArt.Chain&&slot!=NativeSanctumArt.PullRope&&!(slot>=NativeSanctumArt.Candles&&slot<NativeSanctumArt.Gate)&&!(slot>=NativeSanctumArt.Lanterns&&slot<NativeSanctumArt.Fire)&&slot<NativeSanctumArt.LooseCandle;
         private static readonly int SizeId=Shader.PropertyToID("_BlockSize"),RestId=Shader.PropertyToID("_BlockRest"),ColorId=Shader.PropertyToID("_BlockColor"),LookId=Shader.PropertyToID("_BlockLook");
         /// <summary>The frame's volumetric beam list (null: the effects' billboards).</summary>
         public NativeBeamList Beams;
@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
             Draws=Instances=0;if(!Prepare(arena))return;var map=arena.Map;var match=arena.Match;int round=NativeStructureFx.RoundIndex(match.Set,match.Round);
             foreach(var m in sectors)Graphics.DrawMesh(m,Matrix4x4.identity,glassLit,NativeSceneryBuilder.BackdropLayer,null,0,null,ShadowCastingMode.Off,true);
             if(rigBuilder!=null)rigBuilder.Build(map.hazards,round,match.Phase,match.FightAt,now,render);
-            ArtDrawn=false;if(art!=null&&art.Ready){NativeSanctumArt.Pose(rigBuilder,map.hazards,render,artPose);ArtDrawn=art.Render(arena,camera,low,artPose);}
+            ArtDrawn=false;if(art!=null&&art.Ready){NativeSanctumArt.Pose(rigBuilder,map.hazards,render,artPose,!art.HasRig(NativeSanctumArt.FirstPolishSlot));ArtDrawn=art.Render(arena,camera,low,artPose);}
             if(!ArtDrawn){foreach(var b in kit)Draw(b,instancing);if(rigBuilder!=null){Fill(rigBuilder.Parts);foreach(var b in rig)Draw(b,instancing);}}
             Effects(arena,round,now,render,camera,quality,low);LowKey(low);
         }

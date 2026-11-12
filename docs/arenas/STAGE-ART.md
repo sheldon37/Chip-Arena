@@ -501,6 +501,14 @@ not change between two frames a few millimetres apart and stand still in the wor
 under the anime style's ramp at the stage's low sun (section 7's note on fine surfaces breaking into blotches), not two faces
 trading pixels. Left as it is; a calmer fine surface for that floor is an art change for the owner to ask for.
 
+**Lights drawn at run time over the art** (the Hollow Sanctum, 2026-11-11; owner: "Z-Fighting with lights ... in a lot of
+places"). The analyser sees the bank, the rig and kept boxes; it does not see a stage's effect quads or its SourceLit scenery.
+The Sanctum's pools of window light, warning rings and path strips lay in or within a few millimetres of the art's floor, runner
+and inlays, and its stained glass held overlapping panes in one plane. A stage's floor effects go through one helper that lifts
+them over the art's inlays and draws each corner `NativeStageArt.MostLayers` nearer the eye (`NativeSanctumFx.Ground`); a light
+that falls on a surface is traced to that surface, corner by corner, and kept only where it lies whole on it; glowing panes
+that overlap stand on steps. docs/arenas/SANCTUM.md, "The hazards' polish and the lights' depth fighting".
+
 **Rules for the next stage.** Model paint, boards and marks as faces on their surface (a few millimetres proud, or in its plane):
 the bank writer layers them. Call `chunks.split(g)` after the lift. A kit box kept over the art goes through `Nearer`. Run the
 analyser on the new bank at every tier: all faces, `--floors`, and `--with-tier`: each should come out at a few dm² at most.

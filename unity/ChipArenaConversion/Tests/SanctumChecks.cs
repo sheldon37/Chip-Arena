@@ -102,6 +102,68 @@ internal static class SanctumChecks
             Check(Math.Abs(rig.CenserY-cs.Center.y)<.75,"the censer's arc stays inside its live volume's height");
             var gs=NativeWardZeroHazards.At(hz.First(h=>h.kind=="shutter"),NativePhase.Fight,round,0,t);Check(Math.Abs(rig.Gate-NativeWardZeroHazards.Closure(gs))<1e-9,"the gates close by the shutters' closure");
         }
+        // the hazards' polish (2026-11-11): the drawn motion is one unbroken take. Stepping two rounds at 5 ms, no chandelier's
+        // frame, chain end or thrown piece and nothing of the censer (its turn, its lid, its rope and tether) jumps between two
+        // steps by more than its fastest honest motion (the fall's 16 m/s, the whip's lash); the censer's centre never leaves
+        // the simulation's point and the low rim of a falling chandelier rides the simulation's load height
+        {
+            double atBody=0,atRope=0,worstBody=0,worstTurn=0,worstChain=0,worstLoose=0,worstCenser=0,worstRope=0,worstLid=0,rim=0;var was=new double[4*3];var wasQ=new FactoryQ[4];var wasEnd=new double[4*3];var wasLoose=new double[rig.Loose.Length];var wasScrap=new double[rig.Scrap.Length];
+            var wasCenser=FactoryQ.Identity;var wasRope=new double[NativeSanctumRig.RopePoints*3+NativeSanctumRig.TetherPoints*3];double wasLid=0;bool begun=false;int tipped=0,whipped=0,thrown=0,cocked=0,slack=0;
+            for(double t=3;t<64;t+=.005)
+            {
+                rig.Build(hz,0,NativePhase.Fight,0,t,t);double clock=NativeFactoryHazards.Clock(NativePhase.Fight,0,t);var st=NativeFactoryHazards.State(hz[ci],0,clock);
+                for(int k=0;k<4;k++)
+                {
+                    int e=(k*NativeSanctumRig.ChainPoints+rig.ChainCount[k]-1)*3;var bq=rig.BodyQ[k];
+                    if(begun)
+                    {
+                        {double d=Dist(rig.Body,k*3,was,k*3);if(d>worstBody){worstBody=d;atBody=t;}}worstTurn=Math.Max(worstTurn,1-Math.Abs(bq.X*wasQ[k].X+bq.Y*wasQ[k].Y+bq.Z*wasQ[k].Z+bq.W*wasQ[k].W));
+                        // (the chain's end is let go at the snap and taken up at the hoist: its line is unbroken between)
+                        bool cut=st.Zone==k&&(st.Phase==NativeFactoryHazards.Falling&&rig.Snap[k]<.006||st.Phase==NativeFactoryHazards.Hoisting&&rig.Hoist[k]<.006);if(!cut)worstChain=Math.Max(worstChain,Dist(rig.ChainPts,e,wasEnd,k*3));
+                        for(int i=0;i<NativeSanctumRig.ChandelierCandles;i++){int lo=(k*NativeSanctumRig.ChandelierCandles+i)*8;if(rig.Loose[lo+7]>0&&wasLoose[lo+7]>0)worstLoose=Math.Max(worstLoose,Dist(rig.Loose,lo,wasLoose,lo));}
+                        for(int i=0;i<NativeSanctumRig.DebrisCount;i++){int so=(k*NativeSanctumRig.DebrisCount+i)*8;if(rig.Scrap[so+7]>0&&wasScrap[so+7]>0)worstLoose=Math.Max(worstLoose,Dist(rig.Scrap,so,wasScrap,so));}
+                    }
+                    Array.Copy(rig.Body,k*3,was,k*3,3);wasQ[k]=bq;Array.Copy(rig.ChainPts,e,wasEnd,k*3,3);
+                    if(st.Zone==k&&st.Phase==NativeFactoryHazards.Falling)
+                    {
+                        // the lowest point of the hoop (radius Hoop, tipped) against the load's underside
+                        bq.Rotate(0,1,0,out _,out double up,out _);double low=rig.Body[k*3+1]-NativeSanctumRig.Hoop*Math.Sqrt(Math.Max(0,1-up*up));if(st.LoadY<hz[ci].zones[k].center.y+4)rim=Math.Max(rim,Math.Abs(low-st.LoadY));if(up<.97)tipped++;
+                    }
+                    if(rig.Snap[k]>.1&&rig.Snap[k]<.4&&Math.Abs(rig.ChainPts[e]-hz[ci].zones[k].center.x)>.4)whipped++;
+                    if(Enumerable.Range(0,NativeSanctumRig.ChandelierCandles).Any(i=>rig.Loose[(k*NativeSanctumRig.ChandelierCandles+i)*8+7]>0))thrown++;
+                }
+                Array.Copy(rig.Loose,wasLoose,wasLoose.Length);Array.Copy(rig.Scrap,wasScrap,wasScrap.Length);
+                var cq=rig.CenserQ;
+                if(begun)
+                {
+                    worstCenser=Math.Max(worstCenser,1-Math.Abs(cq.X*wasCenser.X+cq.Y*wasCenser.Y+cq.Z*wasCenser.Z+cq.W*wasCenser.W));worstLid=Math.Max(worstLid,Math.Abs(rig.LidHop-wasLid));
+                    for(int i=0;i<NativeSanctumRig.RopePoints;i++){double d=Dist(rig.RopePts,i*3,wasRope,i*3);if(d>worstRope){worstRope=d;atRope=t;}}
+                    for(int i=0;i<NativeSanctumRig.TetherPoints;i++){double d=Dist(rig.TetherPts,i*3,wasRope,(NativeSanctumRig.RopePoints+i)*3);if(d>worstRope){worstRope=d;atRope=t;}}
+                }
+                wasCenser=cq;wasLid=rig.LidHop;Array.Copy(rig.RopePts,wasRope,NativeSanctumRig.RopePoints*3);Array.Copy(rig.TetherPts,0,wasRope,NativeSanctumRig.RopePoints*3,NativeSanctumRig.TetherPoints*3);
+                var cs=NativeFactoryHazards.State(hz[ri],0,clock);cq.Rotate(0,1,0,out _,out double cy,out double cz);
+                if(cs.Phase==NativeFactoryHazards.Warning&&cz>.6)cocked++;if(!rig.CenserHeld)slack++;
+                // the rope's foot is the censer's crown ring, the tether's its foot ring, their heads the yoke and the cleat
+                cq.Rotate(0,NativeSanctumRig.CenserRing,0,out double rx,out double ry,out double rz);Check(Math.Abs(rig.RopePts[0]-rig.CenserX-rx)+Math.Abs(rig.RopePts[1]-rig.CenserY-ry)+Math.Abs(rig.RopePts[2]-rig.CenserZ-rz)<1e-9,"the rope takes the censer by its crown ring");
+                int tl=(NativeSanctumRig.TetherPoints-1)*3;Check(Math.Abs(rig.TetherPts[tl])+Math.Abs(rig.TetherPts[tl+1]-NativeSanctumRig.CleatY)+Math.Abs(rig.TetherPts[tl+2]-NativeSanctumRig.CleatZ)<1e-9,"the tether runs to its cleat");
+                begun=true;
+            }
+            Console.WriteLine("Sanctum motion: worst step in 5 ms: chandelier "+worstBody.ToString("0.000")+" m, its turn "+worstTurn.ToString("0.00000")+", chain end "+worstChain.ToString("0.000")+" m, thrown pieces "+worstLoose.ToString("0.000")+" m; censer turn "+worstCenser.ToString("0.00000")+", lid "+worstLid.ToString("0.0000")+" m, rope and tether "+worstRope.ToString("0.000")+" m; rim off the load "+rim.ToString("0.000")+" m (at "+atBody.ToString("0.000")+" s, "+atRope.ToString("0.000")+" s)");
+            Check(worstBody<.11&&worstTurn<2e-4,"a chandelier's frame never jumps (worst step "+worstBody.ToString("0.000")+" m, turn "+worstTurn.ToString("0.00000")+")");
+            Check(worstChain<.2&&worstLoose<.2,"the chain's end and the thrown candles and debris never jump (worst "+worstChain.ToString("0.000")+", "+worstLoose.ToString("0.000")+" m)");
+            Check(worstCenser<2e-4&&worstLid<.02&&worstRope<.12,"the censer's turn, its lid, its rope and its tether never jump (worst "+worstCenser.ToString("0.00000")+", "+worstLid.ToString("0.0000")+" m, "+worstRope.ToString("0.000")+" m)");
+            Check(rim<.12,"a falling chandelier's low rim rides the simulation's load height ("+rim.ToString("0.000")+" m off at most)");
+            Check(tipped>0&&whipped>0&&thrown>0&&cocked>0&&slack>0,"a fall tips, the snapped chain lashes, candles are thrown; the censer is cocked back through its warning and its tether pays out in the swing");
+        }
+        // the lights on the floor (owner 2026-11-11: depth fighting with the lights): every pool of moonlight lies on the top of a
+        // static block .6 m or more wide (never a pew, a coping or a pier's side), lifted over the runner and the inlays
+        {
+            var probe=new NativeSanctumFx();probe.Prepare(map,kit);probe.Build(hz,rig,0,NativePhase.Fight,0,30,30,-20,1.7,-3,1,0,0,0,1,0,1,false);
+            NativeSanctumLooks.MoonRay(out double mx,out double my,out double mz);int floors=0,walls=0;
+            foreach(var w in NativeSanctumLooks.Windows){if(NativeSanctumLooks.MoonShare(w)<.05)continue;for(double v=-.8;v<=.8;v+=.4){double py=w.Y+v*w.HalfY;if(NativeSanctumFx.Top(map.blocks,w.X+w.Nx*.45,py,w.Z+w.Nz*.45,mx,my,mz,90,out double sy)){floors++;Check(map.blocks.Any(b=>b.role=="static"&&Math.Abs(b.pos.y+b.size.y/2-sy)<1e-6&&Math.Min(b.size.x,b.size.z)>=.6),"a pool's floor is a static block's top");}else walls++;}}
+            Check(floors>20&&probe.Pools>60,"the moon's pools lie on floors ("+probe.Pools+" pools; of "+(floors+walls)+" probed rays "+floors+" meet a floor)");
+            Check(NativeSanctumFx.GroundLift>=.035&&NativeSanctumFx.GroundLift<=.06,"the floor's lights lie over the runner and the inlays (25 mm), under a boot");
+        }
         rig.Build(hz,0,NativePhase.Countdown,0,1,1);Check(Enumerable.Range(0,4).All(k=>rig.Ring[k*5+4]==0&&Math.Abs(rig.Ring[k*5+1]-.12-crane.carry)<1e-6)&&rig.Gate==0,"parked before the fight");
         // the effects: telegraphs never reduced; the lights; determinism; no allocation per frame
         var fx=new NativeSanctumFx();fx.Prepare(map,kit);
@@ -138,6 +200,7 @@ internal static class SanctumChecks
         Check(!NativeSanctumLooks.Active("rig")&&NativeSanctumLooks.Active("sanctum"),"keyed on the sanctum alone");
         Console.WriteLine("PASS sanctum: "+count+" checks (map, nav, hazards, look, kit "+kit.Parts.Count+" parts and "+kit.Candles.Count/5+" candles, glass "+glass.Sum(g=>g.Boxes)+" panes, rigs, effects, lights, cues, wiring)");
     }
+    private static double Dist(double[] a,int i,double[] b,int j)=>Math.Sqrt((a[i]-b[j])*(a[i]-b[j])+(a[i+1]-b[j+1])*(a[i+1]-b[j+1])+(a[i+2]-b[j+2])*(a[i+2]-b[j+2]));
     // a part's half extent along a world axis (its rotated box's)
     private static float Ext(in FactoryPart p,int axis)
     {

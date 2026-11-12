@@ -63,13 +63,25 @@ All on existing kinds and their simulation (no rules or networking change). Noth
 | **The Toll** (`sanctum-gate-w`, `-e`) | `shutter` | the great bell over the oculus; the iron gates at the crypt's two doors (x +-8.2) | every 32 s from FightAt + 14 s: three strokes 3.0 s, the gates fall 1.0 s, sealed 8.0 s, rise 1.5 s | a collider door with push 6 m/s and the interlock (never closes through a pilot); the crypt is sealed while they stand |
 
 Telegraphs (light, sound and motion; never reduced by the quality or the tier):
-- Chandeliers: the served one sways ever wider (to 0.16 rad), its crown slips twice on the chain (sounds at 45% and 80%), plaster
-  sifts from its anchor, a ring of warning light on its zone (gold quickening to red) under a cone from the chandelier; the
-  brass ring inlaid round every zone shows the danger at rest. The fall: the chain snaps and whips, flames streak; the crash:
-  sparks, a dust ring, candles scattered and guttering, smoke from the wreck. The winch takes it up with its candles relit.
-- Censer: its coals flare through the pierced lid, smoke billows, its path smoulders on the floor (a lit strip with bright
-  edges, kindling through the warning, burning through the swing); the pull rope to the south bridge lets go; whooshes, a
-  smoke trail and sparks while it swings.
+- Chandeliers: the served one sways ever wider (to 0.16 rad, an ellipse, its hoop rocking behind the swing), its crown slips
+  twice on the chain (sounds at 45% and 80%: a 7 cm drop with a rebound, a ripple up the chain, a burst of plaster and sparks
+  at the crown ring); the second slip kills the swing into a shudder and its crown gives to one side, so it hangs nearly plumb
+  over its zone when the chain goes. A ring of warning light on its zone (gold quickening to red) under a cone from the
+  chandelier; the brass ring inlaid round every zone shows the danger at rest. The fall: the chain snaps above the crown (a
+  flash, sparks; the upper length lashes up and hangs, links rain down after it, plaster falls from the anchor), the
+  chandelier tips as it drops with its flames torn up into streaks, embers and smoke left along its path; its low rim rides
+  the simulation's load height, so the rim meets the floor at the impact. The crash: the wreck slams flat, hops twice and
+  rocks to rest; a flash, a shock ring across the floor, sparks that skip, a dust ring and a plume, embers; most of its
+  candles are thrown off in arcs and roll to rest guttering, with shards of its arms. Through the regrip the winch pays the
+  chain out to the wreck; the hoist rights it as it rises, its candles relit one by one, the debris gone.
+- Censer: the tether from the south bridge holds it cocked back past its rope (its foot drawn toward the cleat); each of the
+  warning's three heaves cocks it further with a snatch (the lid rattles, sparks cough through it, the tether twangs), its
+  coals flare, smoke billows, its path smoulders on the floor (a lit strip with bright edges, kindling through the warning,
+  burning through the swing). The release: the tether goes slack with a wave down it, the censer whips through and past
+  its rope once, then the bowl trails the rope while it gathers speed and swings ahead of it while it slows; it turns on its
+  swivel, its lid jumps on its chains at the release, the turn and the catch, the rope bows behind it; smoke lies along the
+  arc where it passed, sparks fall from it, the coals' light crosses the floor under it. The tether is hauled in on the way
+  back and catches it at the south arch with a rebound.
 - Holy fire: the baskets' coals kindle (the ward-burner grate look heating), embers drip, a faint curtain of light and the
   floor's brass channel flare through the warning; white-gold fire pours down in a curtain while it burns; smoke after.
 - Toll: the bell swings through three strokes (deep tolls), rings of light fall down the oculus with each, dust shakes from the
@@ -124,7 +136,7 @@ between them and a rosette in the head; each rose its eye, rings and petals; a d
 ### The rigs (Core `NativeSanctumRig`) and effects (Core `NativeSanctumFx`)
 Posed only from the replicated state (the very functions the simulation decides hits with): the chandeliers (the served one is
 the crane's load from the warning to the hoist; checked), the censer on its pendulum at the simulation's point along the path
-(checked), the fire baskets, the bell and the portcullises (the shutters' closure; checked), the banners stirring (crimson on
+(checked; its lean, turn, lid, rope and tether are secondary motion about that point: "The hazards' polish" below), the fire baskets, the bell and the portcullises (the shutters' closure; checked), the banners stirring (crimson on
 A's half, blue on B's). The effects: every moonlit window's shaft down the moon's ray to the surface it meets (found once per
 map against the blocks) and the window's coloured light as a mosaic of pools there, motes in the shafts, every candle's flame
 and halo, incense haze, the telegraphs above. Allocation free per frame (checked), deterministic (checked); the low tier and
@@ -163,6 +175,69 @@ pools carry the light.
 Performance (Editor, High tier, the nave toward the crossing, 983 frames over 10 s): mean 10.5 ms, p95 11.1 ms; the worst frame
 (473 ms) is the screenshot the tool took inside the window. Kit 8948 parts (18 instanced batches of 500), the rig up to about
 1500 parts a frame (6 batches), the glass 16912 panes in 3 SourceLit sectors, the effects about 2000 quads (capacity 7000).
+
+## The hazards' polish and the lights' depth fighting (2026-11-11)
+
+Owner, on the test build (revision 639300460006585328): "Seems there is Z-Fighting with lights on the hollow sanctum in a lot of
+places, also; the swinging hazard animation / dropping hazard animation need significant improvements." Branch
+`claude/sanctum-polish` from `claude/sleepy-ritchie-g8ruhv` (`0ccb5a0a`). Visuals only: no hazard's state, timing, zone or kill
+moment changed (the simulation's functions are untouched and the rigs still read only them).
+
+### What fought, and the fixes
+The stage bank itself measures clean (docs/arenas/STAGE-ART.md 14: 0.00 m2 exact, 1.3 m2 within 4 mm, with the rigs posed). What
+fought was drawn at run time over it, none of it layered:
+- **The moon's pools of window light** (about 240 additive quads) lay at the exact height of the block top the ray met: in the
+  plane of the art's flagstones (y 0), under its runner (12 mm) and inlays (16 to 25 mm). A ray that met a pier's or a wall's
+  side still drew a level quad there, half in the stone and half in the air; one that met a pew drew at the pew block's top,
+  over its seat. Now each cell's four corners are traced down the moon's ray; a cell is kept only where all four land on the
+  top of one height of static blocks .6 m or more wide (a floor, a gallery, a step, a tomb's lid; a breakable pew is passed
+  through), a cell that straddles an edge is quartered once and only its whole quarters kept, and the pool lies 40 mm over
+  that floor (`NativeSanctumFx.GroundLift`).
+- **The telegraphs on the floor**: the chandelier's warning rings and glow (30 and 25 mm up), the censer's path strip, which
+  is always lit (30 and 28 mm), the holy fire's glyph line (30 mm: the plane of its grate's bars), the gates' strobe, the
+  toll's ring. All now lie at `GroundLift` or a few millimetres either side of it by their own order.
+- **Every such quad is drawn nearer the eye** along each corner's own ray by more than the art's deepest stack of layers
+  (`NativeSanctumFx.Ground`, Core `NativeStageArt.Nearer` at `MostLayers`: the same pixel, a nearer depth), as STAGE-ART 14
+  does for kept kit boxes, so no distance or grazing angle brings them back into the floor's depth step.
+- **The stained glass**: panes that overlap in one plane traded pixels as glowing colours: the border's pearls and the
+  medallions over the ground's quarries, the medallions' ring panes at their corners, the jewel over its petals, the two
+  lozenges between medallions, the head's rosette. Each overlapping set now stands a step (8 mm, `NativeSanctumScenery.Step`)
+  nearer the hall than what it lies over (the ring's and the rosette's panes alternate half a step).
+
+### The Thurible (Core `NativeSanctumRig.CenserMotion`, `Censer`)
+The bowl's centre stays on the simulation's point at every moment (checked), on the arc from the yoke. About it:
+- its axis leans north past its rope by `lean`: held cocked by the tether (.32 rad), three heaves of the warning at 12%, 42% and
+  72% (each .075 rad more, a snatch with a ring), at the release a damped whip through and past the rope, then the bowl
+  trails the rope by up to .2 rad while it gathers speed and leads it while it slows (both swings), a nod at the turn, and
+  the catch (cocked back again with one rebound);
+- it turns on its swivel (2.9 rad through the swing, unwound on the way back, a slow stir at rest); a small lean across the path;
+- the lid lifts on its chains (a rattle at each heave, 12 cm at the release, 7 cm at the turn, 8 cm at the catch) and tips;
+- the six chains bow behind the motion; the rope to the yoke is a line of twelve pieces, bowed behind the swing, with a ripple
+  down it after the release; the tether to the cleat is taut while it holds (twanging at each heave and the catch), paid out
+  slack (3% of its span) with a wave down it at the release, and hauled in over the way back.
+The art draws it as `censer-body`, `censer-lid`, six chains and the rope and tether laid link by link (`NativeSanctumArt`).
+
+### The Fall of the Lights (Core `NativeSanctumRig.Warned`, `ChandelierSet`, `LooseCandle`, `Debris`)
+Each chandelier has a frame (`Body`, `BodyQ`) the box rig and the art both draw in; the simulation's load height stays in `Ring`.
+- Warning, on the warning's own time (the first rig multiplied the whole hazard clock by a rising rate, so later cycles shook
+  faster and faster): the swing and the slips above; the swing's last offset (under .35 m) eases out in the fall's first .6.
+- Fall: tips to .30 rad about its own level axis, turning; its centre rides `Lift(tilt)` over the load height so the low rim
+  is the load's underside below 4 m (within 9 cm, checked).
+- Crash: the wreck's tilt rocks from .30 to its rest .11 (`Rocking`), it hops 20 cm and 6 cm (`Hop`), the collider is the
+  simulation's as before. Eleven or so candles per chandelier are thrown (`LooseCandle`: an arc of .4 to .7 s, tumbling, a
+  bounce, a roll; kept inside the central aisle), six iron shards, eight links from the break (they land .5 s after the crash)
+  and eight lumps of plaster from the anchor (1 s after), each with one bounce (`Debris`).
+- The chain: twelve points; a ripple after each slip; snapped, the upper 8.2 m lashes (`Lash`: up to .85 rad at its end a
+  fifth of a second after the snap, a wave running down it) and hangs; a 1.2 m stub flails over the falling chandelier and
+  drapes across the wreck; through the regrip it is paid out to the wreck's ring; the hoist is taut.
+- The others shiver when one crashes. Ambient stir fades out before a chandelier's own cycle and in after it (nothing jumps).
+Checked (`--sanctum`): stepping a round at 5 ms nothing drawn jumps by more than its honest speed (the fall's 16 m/s).
+
+### The bank
+`tools/stages/sanctum_props.py` adds six rig props (`censer-body`, `censer-lid`, `candle-loose`, `debris-iron`, `debris-link`,
+`debris-plaster`; 122 KB in all); the first bank's `censer` and `floor-candles-K` stay for a runtime from before this. A runtime
+with a bank from before this (`NativeStageArtDraw.HasRig`) poses those older models (`NativeSanctumArt.Pose(..., legacy)`), so
+bank and build may ship in either order. The bank: 20,205,478 bytes (19.27 MiB; the check allows 21).
 
 ## Not done / not seen
 

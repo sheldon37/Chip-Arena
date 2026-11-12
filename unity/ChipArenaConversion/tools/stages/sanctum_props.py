@@ -9,8 +9,14 @@ The rig frames (Unity space, metres; Core NativeSanctumArt holds the same):
   wreck-candles-K       the candles still standing on wreck K
   floor-candles-K       wreck K's candles lying round its zone (origin at the zone's centre on the floor, unturned)
   chain                 one metre of chain from y 0 to 1 (drawn end to end, the last one scaled)
-  censer                origin at the censer's centre, +y up its rope to the yoke (the rope included: its length is fixed)
-  pull-rope             one metre of rope from y 0 to 1 (scaled between its ends)
+  censer                origin at the censer's centre, +y up its rope to the yoke (the rope included: its length is fixed);
+                        the one rigid model of the first bank, kept for a runtime from before the hazards' polish
+  censer-body           the bowl, its gold band, the coals, the foot ring the tether takes (y -.92) and the crown ring the six
+                        chains and the rope meet at (y 2.4): no lid, chains or rope (the pose lays those link by link)
+  censer-lid            the pierced lid and its finial in the body's frame (the pose lifts and tips it on its chains)
+  pull-rope             one metre of rope from y 0 to 1 (scaled between its ends: the tether, and the censer's rope thicker)
+  candle-loose          a candle a fall throws off, one metre long along y about its middle (scaled to the candle's height)
+  debris-iron, -link, -plaster   a shard of a broken arm, a link of the chain, a lump of plaster, about their own middles
   bell, clapper         origin at the headstock's pivot, the bell hanging down -y
   gate                  a portcullis's grille, origin at the foot of its middle (bars up +y to its height, across z)
   lanterns-<gate>       the gate's four lanterns' glass (world frame), tinted each frame
@@ -260,17 +266,20 @@ def rope(T, r=.022):
 # ---------------------------------------------------------------------------------------------------------------------------
 # The censer, the bell, the gates, the fire baskets, the banners
 # ---------------------------------------------------------------------------------------------------------------------------
-def censer(T, rope_len):
-    g = Geo()
+def censer_bowl(g, T):
+    """The bowl: foot, belly, gold band, the coals' glow under the lid."""
     S, G, E = F['silver'], F['gold'], F['ember']
     sides = T.round
-    # the bowl: foot, belly, gold band
     lathe(g, [(0, -.94), (.2, -.92), (.24, -.86), (.12, -.8), (.14, -.74), (.32, -.66), (.48, -.5), (.56, -.3), (.58, -.12), (.6, -.04), (.62, 0.0), (.56, .02)],
           (0, 0, 0), S, sides, cap0=True)
     lathe(g, [(.6, -.05), (.64, -.03), (.64, .03), (.6, .05)], (0, 0, 0), G, sides)
-    # the coals' glow under the lid
     lathe(g, [(0, .06), (.42, .04), (.5, .02)], (0, 0, 0), E, sides, cap0=False)
-    # the pierced lid in tiers, its windows dark (the coals glow through them)
+
+
+def censer_top(g, T):
+    """The pierced lid in tiers, its windows dark (the coals glow through them), and its finial."""
+    S, G, E = F['silver'], F['gold'], F['ember']
+    sides = T.round
     lid = [(.56, .04), (.54, .12), (.48, .22), (.42, .3), (.36, .4), (.3, .5), (.22, .6), (.14, .7), (.1, .78), (.06, .84)]
     lathe(g, lid, (0, 0, 0), S, sides)
     if T.detail:
@@ -285,17 +294,84 @@ def censer(T, rope_len):
                 pts = [sk._add(sk._add(c, u, -1), v, -1), sk._add(sk._add(c, u, 1), v, -1), sk._add(sk._add(c, u, 1), v, 1), sk._add(sk._add(c, u, -1), v, 1)]
                 g.face(pts, E, nrm)
     lathe(g, [(.06, .84), (.08, .9), (.05, .96), (.07, 1.0), (0, 1.08)], (0, 0, 0), G, T.small)
-    # six chains to the crown ring, the ring, the rope to the yoke
+
+
+def censer_crown(g, T):
+    """The crown ring the chains and the rope meet at, and its knop."""
+    G = F['gold']
+    sweep(g, sk.circle_section(.03, T.small), [(math.cos(t) * .2, 2.4, math.sin(t) * .2) for t in np.linspace(0, 2 * math.pi, 13)[:-1]], G, closed=True)
+    lathe(g, [(.05, 2.38), (.07, 2.48), (.04, 2.56)], (0, 0, 0), G, T.small, cap1=True)
+
+
+def censer(T, rope_len):
+    """The first bank's censer: one rigid model with its lid, six straight chains and its whole rope."""
+    g = Geo()
+    censer_bowl(g, T)
+    censer_top(g, T)
     for k in range(6):
         a = math.pi / 3 * k
         p0 = (math.cos(a) * .6, .12, math.sin(a) * .6)
         p1 = (math.cos(a) * .18, 2.4, math.sin(a) * .18)
         sk.tube(g, [p0, p1], .012, F['chain'], 4, caps=False)
-    sweep(g, sk.circle_section(.03, T.small), [(math.cos(t) * .2, 2.4, math.sin(t) * .2) for t in np.linspace(0, 2 * math.pi, 13)[:-1]], G, closed=True)
-    lathe(g, [(.05, 2.38), (.07, 2.48), (.04, 2.56)], (0, 0, 0), G, T.small, cap1=True)
+    censer_crown(g, T)
     n = 24 if T.fine else 10
     rp = [(0, 2.56 + (rope_len - .1 - 2.56) * t, 0) for t in np.linspace(0, 1, n)]
     sk.tube(g, rp, .035, F['rope'], (8, 6, 4)[T.i])
+    return g
+
+
+def censer_body(T):
+    """The censer the pose articulates: the bowl with six lugs on its rim for the chains, the foot ring the tether takes, the
+    crown ring; its lid, chains and rope are their own props."""
+    g = Geo()
+    censer_bowl(g, T)
+    G = F['gold']
+    for k in range(6):
+        a = math.pi / 3 * k
+        lathe(g, [(0, 0), (.035, .01), (.03, .05), (0, .07)], (math.cos(a) * .6, .1, math.sin(a) * .6), G, 5)
+    # the foot ring under the bowl, standing in the swing's plane
+    sk.tube(g, [(0, -.94 - .06 + math.sin(t) * .06, math.cos(t) * .06) for t in np.linspace(0, 2 * math.pi, 9)], .014, F['iron'], 4, closed=True)
+    censer_crown(g, T)
+    return g
+
+
+def censer_lid(T):
+    g = Geo()
+    censer_top(g, T)
+    return g
+
+
+def candle_loose(T):
+    """A thrown candle: a metre long along y about its middle (the pose scales it to its height), its wick end up."""
+    g = Geo()
+    sk.cylinder(g, (0, -.5, 0), (0, .5, 0), .035, F['wax'], (8, 6, 4)[T.i])
+    if T.detail:
+        lathe(g, [(.0035, 0.0), (.0025, .1)], (0, .5, 0), F['wick'], 3)
+    return g
+
+
+def debris_iron(T):
+    """A shard of a broken arm: a bent bar with a torn curl, about .36 m."""
+    g = Geo()
+    sk.tube(g, [(0, -.18, 0), (.02, -.06, .005), (-.012, .07, .02), (.03, .18, 0)], .022, F['iron'], (6, 5, 4)[T.i])
+    if T.detail:
+        sk.tube(g, [(.03, .18, 0), (.07, .2, .01), (.09, .16, .02), (.07, .13, .02)], .013, F['iron'], 4)
+    return g
+
+
+def debris_link(T):
+    """One link of the chain, half as big again as the hanging chain's (it must read on the floor)."""
+    g = Geo()
+    n = 10 if T.fine else 6
+    pts = [(.042 * math.cos(2 * math.pi * k / n), .09 * math.sin(2 * math.pi * k / n), 0) for k in range(n)]
+    sweep(g, sk.circle_section(.013, 5 if T.fine else 4), pts, F['chain'], closed=True)
+    return g
+
+
+def debris_plaster(T):
+    """A lump of plaster from the vault: an uneven five-sided stone about .14 m."""
+    g = Geo()
+    lathe(g, [(0, -.05), (.055, -.04), (.075, -.005), (.06, .03), (.03, .05), (0, .052)], (0, 0, 0), F['trim'], 5, phase=.4)
     return g
 
 
@@ -512,6 +588,12 @@ def bank_props(sb, L, T, soot, floors, no_ao):
     cen = next(h for h in L['hazards'] if h['kind'] == 'saw-rail')
     items.append(('rig/censer', censer(T, rig['censerPivot'] - cen['a'][1]), None, (0, 1.3, -5)))
     items.append(('rig/pull-rope', rope(T), None, (0, 3, -6)))
+    items.append(('rig/censer-body', censer_body(T), None, (0, 1.3, -5)))
+    items.append(('rig/censer-lid', censer_lid(T), None, (0, 1.3, -5)))
+    items.append(('rig/candle-loose', candle_loose(T), None, (-12.6, .3, 0)))
+    items.append(('rig/debris-iron', debris_iron(T), None, (-12.6, .3, 0)))
+    items.append(('rig/debris-link', debris_link(T), None, (-12.6, .3, 0)))
+    items.append(('rig/debris-plaster', debris_plaster(T), None, (-12.6, .3, 0)))
     items.append(('rig/bell', bell(T, rig['bellMouth'], rig['bellHeight']), None, tuple(rig['bell'])))
     items.append(('rig/clapper', clapper(T), None, tuple(rig['bell'])))
     for h in L['hazards']:
