@@ -1596,8 +1596,12 @@ already? Cant we utilize that?"
       Katana's clips for an actor whose `Motion` is it): the stance (`Idle_ver_B`, the blade low in the right hand), the stride on the
       pack's B versions (the jog's eight directions for the walks and the runs off the forward line, `Run_Root_ver_B` ahead,
       `Run_Fast_Root_ver_B` the sprint; the A versions carry the katana in the left hand, 40-60 cm off the game's grip, so they are not
-      used), the jumps (`Jump_Start`, `Double_Jump_Start`, `Jump_Loop`, `Jump_End`), the guard (`Revenge_Guard_Loop`, its hit
-      `Revenge_Guard_Accept`), the dodge roll (`Dodge_Front`), the small reactions, the knockdown and its backward rolling get-up. The
+      used), the jumps (`Jump_Start`, `Double_Jump_Start`, `Jump_Loop`, `Jump_End`), the dodge roll (`Dodge_Front`), the small
+      reactions, the knockdown and its backward rolling get-up. The guard and its blocked hit are the same pack's great sword guard
+      (`M_Big_Sword@Revenge_Guard_Loop`, `_Accept`, the DEV Greatsword's; owner 2026-11-11: "Dev Katana block holds katana behind
+      them?"): the katana set's own guard is a back-turned block (its start turns the body about 172 degrees away and holds the blade
+      down behind it, the pack's own katana there too), so in the game the pilot turned its back with the blade behind. The great sword
+      guard faces ahead with the hands by the head and the blade hanging across the front to the left. The
       four cuts are the pack's four-hit chain (`Attack_4Combo_1..4_Inplace`, each part taking up where the last left off: a diagonal cut
       down across the front, a rising backhand, a low spinning cut for the step in, the finisher's high cut), the rush its lunging dash
       cut (`Dash_Attack_ver_B`), the storm `Skill_D` (cuts swept low all round, then a rising cut: the launch) and the plunging slam
@@ -1608,7 +1612,7 @@ already? Cant we utilize that?"
       the saya the left hand carries, Core `NativeKatanaSaya`) and no partner clip for the critical's victim. The pack has no dazed
       loop: the stun keeps `Armed-Stunned`. The blade, the saya at the hip, the trail and every effect are the Katana's.
     - **The katana's hold:** the game holds the blade 20-30 degrees from where the pack's own katana lies (26 on average over the
-      attacks, the guard and the B stride; 49 at most), a steady offset through every clip: the arms and the swing are the pack's,
+      attacks and the B stride; 49 at most), a steady offset through every clip: the arms and the swing are the pack's,
       the blade sits that much differently in the hand.
     - **The bank** gains the DEV Greatsword's 35 clips (433,786 bytes) and the DEV Katana's 31 (352,883 bytes), each merged into the
       live bank with every other clip kept byte-identical (409 clips in 4,877,308 bytes became 444 in 5,311,078, then 475 in

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 2026-11-12 Claude (`claude/boot-intro-2`, owner notes on the released intro): the intro hands over to the menu as the logo settles (0.4 s fade; was 3.0 s after it), the menu built under the curtain before the clip (which now starts at about 5 s and plays smoothly); the Greatsword's first entrance no longer freezes the loading screen (2.8 s to 0.3 s: the pack entrances build on a worker at start-up) and the first countdown's hitch is 0.06-0.07 s (was 0.3-0.36 s: the arena draws once behind the loading screen) (docs/BOOT-INTRO.md). On the branch, not merged; the Unity build checks wait for the shared Editor.
+=======
+2026-11-11 Claude (`claude/dev-classes-fixes`): the DEV Katana guards with the pack's front-facing great sword guard (the katana set's turned its back with the blade behind). **Next:** the owner picks the DEV animations (a picker is planned).
+>>>>>>> origin/claude/sleepy-ritchie-g8ruhv
 
 2026-11-11 Claude (`claude/owner-songs-2026-11-11`, owner request): the owner's ten new songs are in: one for each of the nine remodelled stages (Ward Zero's on both records) and the menu's Pilot's Rooftop; earlier tracks stay packaged as fallbacks.
 
@@ -14,7 +18,7 @@
 
 2026-11-11 Claude (`claude/hotdog-hats`): hats fit the Hot Dog: each rides the crown's own skinning with its own fit (no more tilting off or sitting over the face), and the crown's sprigs hide under closed hats (docs/HOT-DOG-SKIN.md "Hats").
 
-2026-11-11 Claude (`claude/blades`, the owner's third notes; a rules change for Astra to review): Crimson Moon's draw is slowed and filmed from the saya's side; a parried attacker recoils, stays dazed while the parry's shove slides it, then stands (it walked backwards in place), a Katana or Fangs attacker on its block; the counter's foe is thrown back 1.23 m with its clip (rules). The Hot Dog's fold in the counter is with the Hot Dog's session.
+2026-11-11 Claude (`claude/blades`, the owner's fourth note; a rules change for Astra to review): only a timed parry (F) opens the Katana's and DEV Katana's counter; a blow held on the raised guard no longer does (it led a plain guard into the paired critical). The Hot Dog's fold in the counter is the Hot Dog session's to fix (body side).
 
 2026-11-11 Claude (`claude/stage-revamp`, owner request): the stage revamp: Breakwater (a lighthouse duel on a storm-battered mole), Pier 9 (a night amusement pier), Deepwell (a station on the ocean floor), Polaris Station (an arctic observatory under the aurora) and Skyframe (a sky garden above the clouds) rebuilt on their own code; Brickfall, Ward Zero, the Factory and Cyber City modelled. No invisible walls (columns only at edges and under low art; bots only at drops). The nine banks are in the Drive zip (the installer holds a 480 MB visual body). The M1 stages' shared code is now unused.
 

@@ -35,8 +35,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Damage, for a guarding pilot: a hit from within the guard's arc of where it faces lets only part through (Core
         /// NativeMeleeRules.GuardShare blocked), the blocked part paid from its stamina; with too little stamina the guard breaks, blocks only
         /// what the stamina covers, and cannot go up again for a moment. Each blocked hit is an EventKind.Block "hold" (a break "guard-break")
-        /// at the guard's face, its amount the damage stopped, for the effects. A held hit opens the Katana's counter as a block does
-        /// (NativeBladeAuthority.BladeBlocked; a break does not).</summary>
+        /// at the guard's face, its amount the damage stopped, for the effects. A held hit does not open the Katana's counter: only a timed
+        /// parry does (owner 2026-11-11: "Katana / Dev katana for some reason able to parry even on normal blocks?").</summary>
         private float GuardDamage(NativePilot target,NativePilot source,float amount,Vector3 direction,Vector3? hitPoint)
         {
             if(!target.Guarding||amount<=0)return amount;
@@ -44,7 +44,7 @@ namespace ChipArena.UnityConversion
             var toward=from-target.Body.position;toward.y=0;if(toward.sqrMagnitude<1e-6f){toward=-direction;toward.y=0;}if(toward.sqrMagnitude<1e-6f)return amount;
             var faces=Vec(V3.Forward(target.Yaw));faces.y=0;if(!NativeMeleeRules.GuardFaces(faces.x,faces.z,toward.x,toward.z))return amount;
             float blocked=amount*NativeMeleeRules.GuardShare,cost=blocked*NativeMeleeRules.GuardStamina;var at=target.Body.position+Vector3.up*.35f+toward.normalized*.55f;
-            if(target.Stamina>=cost){target.Stamina-=cost;target.GuardedAt=Time;target.RegenAt=Math.Max(target.RegenAt,Time+NativeMeleeRules.GuardRegenPause);Emit(EventKind.Block,target,source!=null&&source!=target?source.Seat.id:0,at,blocked,"hold");BladeBlocked(target,source!=target?source:null);return amount-blocked;}
+            if(target.Stamina>=cost){target.Stamina-=cost;target.GuardedAt=Time;target.RegenAt=Math.Max(target.RegenAt,Time+NativeMeleeRules.GuardRegenPause);Emit(EventKind.Block,target,source!=null&&source!=target?source.Seat.id:0,at,blocked,"hold");return amount-blocked;}
             float covered=cost>0?blocked*target.Stamina/cost:0;target.Stamina=0;target.Guarding=false;target.GuardBrokenUntil=Time+NativeMeleeRules.GuardBreak;
             Emit(EventKind.Block,target,source!=null&&source!=target?source.Seat.id:0,at,covered,"guard-break");return amount-covered;
         }
