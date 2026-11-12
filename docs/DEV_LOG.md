@@ -1,3 +1,32 @@
+## 2026-11-11 — Claude: the DEV Katana guards facing ahead, the blade in front (owner note)
+
+- Branch `claude/dev-classes-fixes` from shared `0ccb5a0a` (13e5f2fe in it); commit `e00c348d`, then this log. Implemented on the
+  branch; not merged, not released.
+- **The owner** (the released DEV classes, revision 639300460006585328): "Dev Katana block holds katana behind them?"
+- **Cause: the clip, not the grip.** The katana set's guard is a back-turned block: `Revenge_Guard_Start` turns the body about 172
+  degrees away (the torso from 58 to -114 degrees off the clip's forward) into a low stance with the blade down behind it. The game's
+  katana is 121 degrees off the torso's facing, and the pack's own katana is at 125, 20 degrees apart. In the game the pilot turned its
+  back with the blade behind, and the blocked hit (`Revenge_Guard_Accept`) did the same.
+- **Fix** (Core `NativeDevKatanaMotion.Guard`/`GuardHit`): the DEV Katana's guard and blocked hit are now the same pack's great sword
+  guard (`M_Big_Sword@Revenge_Guard_Loop`, `_Accept`, the DEV Greatsword's). Those clips are already in the bank, so there was no rebake
+  and the bank is unchanged.
+  - The great sword guard faces ahead (26 degrees off the clip's forward) with the hands by the head. The blade hangs across the front
+    to the left: the game holds the katana within 5 degrees of the great sword.
+  - Measured on the earlier clip frames: in the held guard the tip is 0.10-0.15 m in front of the hips' plane, and the blade comes
+    no closer than 0.17 m to a vertical line up from the hips. In the blocked hit's first frame it passes 0.08 m from that line; the
+    precise check will confirm.
+  - The same clip plays the reel when the DEV Katana's own attack is parried (`NativeVisualMotion.ParriedRecoil` for blade sets).
+- **Animation impact:** presentation only; rules, hit timing, hitboxes, damage, cooldowns, movement and networking unchanged.
+- **Every DEV pose against the body** (the earlier clip frames, an approximation: the torso a vertical line above the hips):
+  - Held poses with the blade behind are the DEV Greatsword's shoulder carry (idle and strides, by design: over the shoulder and down
+    the back), the DEV Katana's B runs (the blade trailing low) and the knockdowns. Swings pass behind in their wind-ups.
+  - The greatsword's shoulder-carry strides come within 0.13 m of that line, near the upper back.
+  - A precise check is ready for the Editor: the local tool's clip frames gain the chest, neck, head, shoulders, elbows and hands.
+- **Checks:** the full CoreTests on `e00c348d` (1018 PASS; the Windows path patch applied locally and reverted); `--visual-rig`,
+  `--blades`, `--dev-grants`; `git diff --check` against shared.
+- **Not run (the Editor was down):** the Unity compile, the after captures of the guard, the precise body check, `wtvalidate`.
+- **Next:** those four when the Editor is back, then the owner picks the DEV classes' animations himself.
+
 ## 2026-11-11 — Claude: PR #385 (Expedition transfer sync) re-landed with its native check fixed; for Astra's review
 
 - **Owner:** "Can you revert it, then bring it back yourself instead of astra?" Branch `claude/expedition-transfer-sync`, from

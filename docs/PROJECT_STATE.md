@@ -1,3 +1,5 @@
+2026-11-11 Claude (`claude/dev-classes-fixes`): the DEV Katana guards with the pack's front-facing great sword guard (the katana set's turned its back with the blade behind). **Next:** the after captures, the body check and `wtvalidate` once the Editor is back; then the owner picks the DEV animations.
+
 2026-11-11 Claude (`claude/owner-songs-2026-11-11`, owner request): the owner's ten new songs are in: one for each of the nine remodelled stages (Ward Zero's on both records) and the menu's Pilot's Rooftop; earlier tracks stay packaged as fallbacks.
 
 2026-11-11 Claude (`claude/boot-intro`, owner request): the owner's new logo plays at launch (skippable after 0.5 s; Unity's splash removed at the owner's word, black from 1.2 s, the clip at about 3.5 s), while the motion banks, the source models' JSON and their slowest sculpts load on workers and the menu builds under the settled logo; then it crossfades into the menu (docs/BOOT-INTRO.md). Adds `com.unity.modules.video` (Packages/manifest.json) and `m_ShowUnitySplashScreen: 0` (ProjectSettings.asset). The maps loader (0.9 s before the clip) is noted for Astra. On the branch, not merged.
