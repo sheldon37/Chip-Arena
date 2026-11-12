@@ -60,6 +60,7 @@
   bed), before and after: left as it is, noted for a follow-up.
 - **Next:** the integrator packs the rebuilt bank into the Drive zip with the merge. An ear for the new moments (the heaves,
   the snap, the links landing) if the owner wants sounds for them: the cues are unchanged.
+- **Released** to the test channel: merged into shared at `8968437c` (the release suite at `f43e219d`, 1018 groups, exit 0; the Unity compile passed); shipped with a new Drive zip (the six far-chunk banks and the Sanctum bank changed, each checked by hash, nothing else; the zip before kept as `LocalAssets-2026-11-12-before-farflicker-sanctum.zip`); built and published as revision `639300651230469037` (2026-11-12 07:28 UTC, 368.0 MiB). Not played by a person.
 
 ## 2026-11-12 — Claude: Skyframe's far lights flicker (owner report): the far chunks get their layers
 
@@ -72,6 +73,7 @@
 - **Checks:** `--stage-art` (587 checks, with the far reach's own); the full suite with the rebuilt banks through `CHIPARENA_STAGE_BANKS` (the art checks of Skyframe, the Causeway, Breakwater, Deepwell and Polaris read them): 1018 groups, exit 0; `--cybercity-art` on the rebuilt Cyber City bank (its check does not take the variable: the bank in the worktree's own git-ignored LocalAssets): pass; `git diff --check` clean. No C# under Assets changed, so the Unity compile is as shared's.
 - **Seen in the Editor** (shared `e2d1aed5` merged in; the released bank against the rebuilt one under one lock hold, the released banks back and their hashes checked each time): Skyframe's background at High and Low (eight views, each eye twice) and two pans: on the released bank the far towers show only some of their lit windows and, at High, a bright wedge across a face; on the rebuilt bank every window on every frame. Cyber City's pan: the same before and after. The Editor's build checks (`wtvalidate.sh` at `2f132179`): ok.
 - **Not done / not seen:** the other four rebuilt banks (the Causeway, Breakwater, Polaris, Deepwell) were not looked at in the Editor (measured only); the cloud sea's drifting haze over the far towers and the beacons' blink are by design and left; no human playtest.
+- **Released** to the test channel: merged into shared at `7a22f4e2` (the release suite at `9c8024ba`, 1018 groups, exit 0, with the rebuilt banks); shipped with a new Drive zip (the six far-chunk banks and the Sanctum bank changed, each checked by hash, nothing else; the zip before kept as `LocalAssets-2026-11-12-before-farflicker-sanctum.zip`); built and published as revision `639300651230469037`. Not played by a person.
 
 ## 2026-11-12 — Claude: the Hot Dog no longer morphs in the Katana's parry hit and counter (owner report)
 
@@ -140,6 +142,7 @@
   490 methods (`FixedUpdate`). And the account/updater replies' continuations (`UnitySynchronizationContext`, about 40 ms with their
   first compile) land under the curtain only when they arrive within 1.5 s of the menu's build.
 - **Not verified:** a slower PC (only this RTX 4090 PC), cold driver shader caches, real multiplayer stage loads. Not merged or released.
+- **Released** to the test channel: merged into shared at `762b7f1e` (the release suite at `f39b0f80`, 1018 groups, exit 0; the Unity compile passed); built and published as revision `639300603892886526` (2026-11-12 06:09 UTC). Not watched in person.
 
 ## 2026-11-11 — Claude: the DEV Katana guards facing ahead, the blade in front (owner note)
 
@@ -179,6 +182,7 @@
   and after: the held guard and a blocked hit, the parry into the counter, from the old angle, from behind and in the game's own view.
   Not run: play by a person, a guest over the network, a Windows build, the builder.
 - **Next:** the owner picks the DEV classes' animations himself (a picker is planned).
+- **Released** to the test channel: merged into shared at `4c51b03c` (the release suite at `33dd9b80`, 1018 groups, exit 0); built and published as revision `639300595002333799` (2026-11-12 05:55 UTC). Not played by a person.
 
 ## 2026-11-11 — Claude: the Katana's counter opens on a timed parry only, not a blow held on the guard (owner request)
 
