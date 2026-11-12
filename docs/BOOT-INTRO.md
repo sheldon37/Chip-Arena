@@ -7,8 +7,8 @@ the game under it. Presentation only: no rule, save or network state reads it.
 ## What the player sees
 
 1. Black from about 1.2 s after launch: the intro's curtain, up a frame before the game's Awake. There is no Unity splash
-   screen any more (owner, 2026-11-11: "Yes, remove it"; see "Unity's splash screen" below). The clip starts about 3.5 s after
-   launch.
+   screen any more (owner, 2026-11-11: "Yes, remove it"; see "Unity's splash screen" below). The main menu is built under the
+   curtain first, so the clip starts about 5.0-5.5 s after launch and nothing heavy runs while it plays or after it.
 2. The clip, full screen. It is letterboxed or pillarboxed to keep 16:9 on any screen, with black elsewhere.
    - Its sound plays at the **Menu Music** level, levelled to the menu song (x0.72; the clip measures -21.7 LUFS, the menu song
      -14.1 LUFS at its x0.3). **Mute audio** silences it.
@@ -17,13 +17,16 @@ the game under it. Presentation only: no rule, save or network state reads it.
    Start. The clip gives way to the final logo over 0.25 s, and its sound fades with it.
 4. **A hold:** if the game is not ready when the clip ends or is skipped, the final logo holds. After 0.3 s a small loading
    indicator fades in under the chip: ten orange dots turning, and `L O A D I N G` in the logo's cream.
-5. **The crossfade:** once the game is ready (and the clip is over), the intro crossfades into the main menu over 0.6 s.
+5. **The crossfade:** as soon as the clip's animation has finished (the logo stands still from 7.6 s into the clip), the
+   intro crossfades into the main menu over 0.4 s (owner, 2026-11-12: "Some lag after intro plays, feels like it should
+   transition a lot quicker after animation finishes"). The clip's last 2.4 s of still logo are not waited for; the logo
+   fades out with them. A skipped clip crossfades at once.
    - The menu takes input from the start of the crossfade.
    - The menu song starts from its top.
    - A notice raised under the intro (a save warning, an account message) shows now, for its full 6.5 s.
    - A start-up error ends the hold and shows after the intro, never under it.
 
-If loading finishes early, the clip still plays out unless skipped. A clip that cannot play (the file missing, no decoder, an
+The clip's animation always plays out unless skipped. A clip that cannot play (the file missing, no decoder, an
 error, or no frame within 4 s) is replaced by the final logo, which holds while the game loads. A clip whose clock stops for 2 s
 counts as over.
 
@@ -79,14 +82,18 @@ With the intro (Runtime/NativeBootLoad.cs):
 3. **Awake** runs as before, in the same order. The intro is armed where the banks used to load.
 4. **Banks joined.** The first frame's loading step joins both banks and logs `MOTION_BANKS_READY ... (on workers from before
    the splash ...)`.
-5. **Assets.** What the menu's first frames would load on the main thread comes in by `Resources.LoadAsync`. This runs at the
-   Low background priority while the intro plays (restored after it): the model's bake (`ChipArenaVisualBody`, unless
-   `--ca-voxel-bodies`), its outfit table and the two icon sets.
-6. **Scene.** Once the clip has settled on its logo (from 8.1 s, or once it is over or skipped), the menu's scene builds and
-   draws for two frames under it, with its music held (`NativeAudio.MenuHeld`). Its stalls (0.35 s, then 0.03 s) land on a
-   still frame.
-7. **GUI.** Then the menu's GUI draws for two frames under it (0.21 s, then 0.08 s), making its skins, text, icons and portraits.
-8. **Ready.** The intro may crossfade.
+5. **Assets.** What the menu's first frames would load on the main thread comes in by `Resources.LoadAsync`, at the High
+   background priority (nothing moves on screen yet; the usual priority comes back when the clip starts): the model's bake
+   (`ChipArenaVisualBody`, unless `--ca-voxel-bodies`), its outfit table and the two icon sets.
+6. **Scene.** The menu's scene builds and draws for two frames under the curtain, with its music held (`NativeAudio.MenuHeld`):
+   0.62-0.66 s, then 0.02 s.
+7. **GUI.** Then the menu's GUI draws for two frames under it (0.37-0.42 s, then 0.01 s), making its skins, text, icons and
+   portraits. Its first frame also lays out a line in every face the UI draws (`NativeUi.WarmFaces`: the UI font and the mono
+   one, plain, bold, italic and bold italic), so no later screen reads a face's OpenType tables in view (10-20 ms a face).
+8. **Settled.** The built menu still makes what it first draws for a moment (20-77 ms frames for about 0.4 s: its cloth's first
+   step, the first network replies, more first draws). The clip waits under the curtain until the menu has run 30 frames in a
+   row under 20 ms, or 1.5 s after it was built (`NativeBootIntroRules.Settled`). The clip is 24 fps.
+9. **Ready.** The clip plays; the intro crossfades into the menu as its animation finishes.
 
 Until step 6, `LateFrame` and `OnGUI` return at once and `Update` takes no input. The network, deployment and account ticks
 still run. The rest of Awake (audio, presentation, cameras, lighting, settings, updater) runs exactly as before, in the same
@@ -136,13 +143,76 @@ intro still waits for `SplashScreen.isFinished`, which is now true at once.
 
 - `BOOT_INTRO playing at T s since start` or `BOOT_INTRO off (reason)`, from Awake.
 - `MOTION_BANKS_READY ...`.
-- `BOOT_HANDOFF interactive at T s since start ...`, with the steps' times since the workers started, the warm frames' cost,
-  and the sculpts: made, taken by their builders, sculpted by a builder itself, and unused (all 229 taken when the list matches).
+- `BOOT_HANDOFF interactive at T s since start ...`, with the steps' times since the workers started (`settled=` the clip's
+  start), the warm frames' cost, and the sculpts: made, taken by their builders, sculpted by a builder itself, and unused (all
+  229 taken when the list matches).
 - `BOOT_INTRO shown_ms= play_ms= over_ms= ready_ms= fade_ms= done_ms= skipped= failed= held_ms= frames n= mean= p95= p99=
-  max= over33= over50=`. These are the main-thread frame intervals while the clip moved.
+  max= over33= over50= settled_ms= settled_to_interactive_ms=`. The frames are the main-thread frame intervals while the clip
+  moved; `settled_to_interactive_ms` is how long the menu took to take input after the logo stood still.
+- `ENTRANCE_WARM scripts=10 ms=` once the pack entrances are built on their worker (below).
 
 **DEV:** `--ca-boot-hold S` keeps the loading open until S seconds after the intro began, to see the hold and its indicator.
 The capture tool's `boothold=S` sets the same.
+
+## The first match: entrances and the countdown
+
+Owner, 2026-11-12: "Greatsword / DEV Greatsword VERY bad lag on intro. Seems to happen only first time it plays?" Measured in a
+Windows Development build from a fresh launch (Brickfall, one pistol bot), the first match of a session did this, and the
+second none of it:
+
+- **The entrance's first frame** froze the stage's loading screen: 2.8 s for the Greatsword and the DEV Greatsword (both play
+  the Colossus Oath), 0.65 s for the Sword, 0.3-0.35 s for every other class. The pack-motion signatures (Core
+  `NativePackIntro`: sword, greatsword, shield, guns and staffs) plan their arms, body sink and foot spots on their first pose,
+  and the script samples its camera anchors from those poses. The Colossus Oath's two-handed blade, cleared out of the body
+  at every sample, made its plan the slowest by far.
+- **The countdown's first frame** came in view as the entrance handed over: 0.30-0.36 s, every class. Through an entrance only
+  the entrance's stage draws, so the arena's first frame came there: the pilots' match bodies and their motion bank, the
+  stage's dressing, scenery and light volume, and about 1,350 methods' first compile.
+- **The fight's first frame:** about 80 ms, every class. That is the simulation's first fight tick compiling its code (about 490
+  methods, `FixedUpdate`): Astra's side, left as it is.
+
+What builds them now:
+
+1. **The pack entrances on a worker** (Core `NativeEntranceDirector.Warm`). Once the source motion bank is in (under the intro at
+   its Banks step; without it, after Awake's own load), each pack signature is bound to its baked clip on the main thread and
+   built on a worker: its pack's plan and its camera anchors, about 3.9-4.0 s for all ten, done before the menu is up. Each
+   pack has its own blade clearance and body-push scratch, so nothing it touches is shared with the main thread or the bank's
+   worker; the script is staged (`DirectedIntro`) under its `PoseLock`, which the worker holds while it builds that script.
+   CoreTests hold the worker's plans to the single-threaded ones, pose for pose, bit for bit.
+2. **The arena's own frame behind the loading screen.** The stage preload's first warm frame (`StagePreloadStep.Frames`) draws the
+   arena as the countdown will, unseen behind the closed screen; the second draws the entrance. The arena's root goes back off
+   at the end of that frame, before the next physics step. Nothing of the arena, its clock or the match changes.
+3. **The UI's faces** are laid out under the intro's curtain (step 7 above), so the fight HUD's faces are read before the
+   countdown.
+
+Measured the same way (Brickfall, one pistol bot, a fresh launch per class; the loading screen covers everything before the
+entrance shows):
+
+| First match of a session | Before (released 0ccb5a0a) | After |
+| --- | --- | --- |
+| Entrance's first frame (loading screen frozen) | Greatsword 2.80 s, DEV Greatsword 2.94 s, Sword 0.65 s, the other five classes 0.30-0.35 s | 0.29-0.33 s, every class |
+| Stage loading screen up | Greatsword 3.9-4.0 s, Sword 1.75 s, others 1.37-1.45 s | 1.64-1.69 s, every class |
+| The entrance as shown | no frame over 31 ms | no frame over 19 ms |
+| Countdown's first second, worst frame | 299-362 ms (3-4 frames over 20 ms) | 61-73 ms (1 frame over 20 ms) |
+| Fight's first second, worst frame | 80-124 ms | 77-84 ms (unchanged: the simulation's compile) |
+| Second match: countdown's worst frame | 25-32 ms | 10-20 ms |
+
+The countdown's remaining frame is its own code's first compile (about 300 methods: the HUD, the countdown and the spawn-in, which
+only run then) and is left as it is: drawing the HUD early would change its own entry flares.
+
+## Measured (2026-11-12): the handoff
+
+Windows Development builds, fresh preferences, 1600x900, the same PC; the boots of the class runs above (8 before, 5 after).
+
+| | Before (released 0ccb5a0a) | After |
+| --- | --- | --- |
+| Launch to the clip's first frame | 3.4-3.9 s | 5.0-5.5 s (the menu builds under the curtain first) |
+| Logo stands still (7.6 s into the clip) to the crossfade's start | 2.44-2.46 s | 0.03 s |
+| ... to the menu fully in | 3.04-3.06 s | 0.43-0.44 s |
+| Launch to an interactive menu | 13.5-13.9 s | 12.7-13.1 s |
+| Main-thread frames while the clip plays | worst 607-680 ms, 4-8 over 33 ms, p99 15-18 ms | worst 14-17 ms, none over 33 ms, p99 9-11 ms |
+
+A skip at 0.5 s now hands over at once (the menu is built): interactive 5.9 s after launch.
 
 ## Measured (2026-11-11)
 
