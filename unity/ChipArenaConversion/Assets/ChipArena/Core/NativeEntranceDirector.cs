@@ -67,6 +67,9 @@ namespace ChipArena.UnityConversion
         // ---- anchors: the pose sampled at 120 Hz over the clip, built on first use (a pure function of the script) ----
         public const int AnchorRate=120;
         private Vector3[] anchors;private readonly CapturedRig.Pose anchorPose=new CapturedRig.Pose();
+        /// <summary>Held while the script is staged (Runtime DirectedIntro) and while NativeEntranceDirector.Warm builds it ahead
+        /// on a worker: one thread at a time poses it and builds its anchors and its pack's plan.</summary>
+        public readonly object PoseLock=new object();
         private void BuildAnchors()
         {
             int n=(int)(Length*AnchorRate)+2,k=(int)NativeEntranceAnchor.Count;var a=new Vector3[n*k];
@@ -279,5 +282,21 @@ namespace ChipArena.UnityConversion
             if(style==null||!makers.TryGetValue(style,out var make))return null;if(!scripts.TryGetValue(style,out var s)){s=make();scripts.Add(style,s);}return s;
         }
         public static IEnumerable<string> Styles=>makers.Keys;
+        /// <summary>
+        /// Builds the pack-motion signatures' plans and camera anchors ahead of their first play (owner 2026-11-12: "Greatsword /
+        /// DEV Greatsword VERY bad lag on intro. Seems to happen only first time it plays?": the Colossus Oath's first pose
+        /// planned its arms, its sink and its camera anchors for 2.4 s in one frame; the Flash Draw's for .3 s). `clip` gives each
+        /// its baked clip, on the calling thread (the main thread, once the source motion bank is in); the rest runs on the
+        /// returned worker, each script under its PoseLock, so a pose never sees half a plan. Each builds what its first pose would
+        /// (the same functions on the script's and its pack's own state): nothing a frame shows changes. `count`: the scripts it
+        /// builds; the task's result: the worker's milliseconds.
+        /// </summary>
+        public static System.Threading.Tasks.Task<double> Warm(Func<string,NativeEntranceClip> clip,out int count)
+        {
+            var list=new List<NativeEntranceScript>();
+            foreach(var pack in NativePackIntros.All){if(!(Script(pack.Style) is NativeWeaponEntrance s))continue;s.Bind(clip(pack.Style));if(s.Ready&&s.Pack!=null)list.Add(s);}
+            count=list.Count;
+            return System.Threading.Tasks.Task.Run(()=>{var clock=System.Diagnostics.Stopwatch.StartNew();foreach(var s in list)lock(s.PoseLock)s.Prepare();return clock.Elapsed.TotalMilliseconds;});
+        }
     }
 }

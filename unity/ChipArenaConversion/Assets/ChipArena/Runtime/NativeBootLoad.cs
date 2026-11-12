@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     //   1. Banks: joined once both workers are done.
     //   2. Assets: what the menu's first frames load synchronously comes in by Resources.LoadAsync, at High priority (nothing moves yet).
     //   3. Scene: the menu's scene builds and draws for two frames under the black curtain.
-    //   4. Gui: then the menu's GUI draws for two frames under it (its skins, text and portraits made).
+    //   4. Gui: then the menu's GUI draws for two frames under it (its skins, text and portraits made, every face laid out once).
     //   5. Ready: once the built menu runs smoothly (NativeBootIntroRules.Settled) the clip starts; when its animation finishes
     //      (owner 2026-11-12: "feels like it should transition a lot quicker after animation finishes") it crossfades at once.
     // Until a step allows it, LateFrame and OnGUI return at once (nothing reads a bank before it is in) and Update takes no
@@ -67,6 +67,21 @@ namespace ChipArena.UnityConversion
             return true;
         }
         private void BootStep(string what){bootSteps.Add(what+"="+BootMs.ToString("F0",CultureInfo.InvariantCulture));}
+        // The pack entrances' plans and camera anchors (Core NativeEntranceDirector.Warm), built on a worker as soon as the source
+        // motion bank is in, so no entrance's first frame builds them (owner 2026-11-12: "Greatsword / DEV Greatsword VERY bad lag
+        // on intro. Seems to happen only first time it plays?": the Colossus Oath's took 2.4 s, under the stage's loading screen).
+        private System.Threading.Tasks.Task<double> entranceWarm;private int entranceWarmCount;private bool entranceWarmLogged;
+        private void EntranceWarmBegin()
+        {
+            if(entranceWarm!=null||dedicated||Application.isBatchMode)return;
+            try{entranceWarm=NativeEntranceDirector.Warm(NativeSourceMotion.EntranceClip,out entranceWarmCount);}catch(Exception e){Debug.LogWarning("Entrance warm skipped: "+e.Message);}
+        }
+        private void EntranceWarmReport()
+        {
+            if(entranceWarm==null||entranceWarmLogged||!entranceWarm.IsCompleted)return;entranceWarmLogged=true;
+            if(entranceWarm.IsFaulted)Debug.LogWarning("Entrance warm failed (each entrance builds on its first frame instead): "+entranceWarm.Exception?.GetBaseException().Message);
+            else Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"ENTRANCE_WARM scripts={0} ms={1:F0} (on a worker)",entranceWarmCount,entranceWarm.Result);
+        }
         /// <summary>Update, before any input is read: steps the loading; true while the intro holds the game (no input then).</summary>
         private bool BootIntroHolds()
         {
@@ -82,7 +97,7 @@ namespace ChipArena.UnityConversion
         {
             // The frame a warm step ran in costs its whole interval (its build, its draw); recorded on the next frame.
             if(bootWarmFrame>=0&&Time.frameCount>bootWarmFrame){bootSteps.Add("frame"+(bootSceneFrames+bootGuiFrames)+"="+(Time.unscaledDeltaTime*1000).ToString("F0",CultureInfo.InvariantCulture)+"ms");bootWarmFrame=-1;}
-            if(bootFailed||error.Length>0)return;
+            EntranceWarmReport();if(bootFailed||error.Length>0)return;
             try
             {
                 switch(bootStage)
@@ -92,7 +107,7 @@ namespace ChipArena.UnityConversion
                         bool sourceIn=NativeSourceMotion.Ready,sceneIn=NativeSceneMotion.Ready;if(!sourceIn||!sceneIn)return;
                         long joinAt=Stopwatch.GetTimestamp();NativeSourceMotion.Prewarm();NativeSceneMotion.Prewarm();
                         UnityEngine.Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"MOTION_BANKS_READY source={0} scene={1} ms={2:F1} (on workers from before the splash; joined in {3:F1} ms)",NativeSourceMotion.ClipCount,NativeSceneMotion.Count,BootMs,HitchMs(joinAt));
-                        BootStep("banks");bootStage=BootStage.Assets;return;
+                        BootStep("banks");EntranceWarmBegin();bootStage=BootStage.Assets;return;
                     case BootStage.Assets:
                         foreach(var r in bootAssets)if(!r.isDone)return;
                         BootStep("assets");bootStage=BootStage.Scene;return;
@@ -124,7 +139,7 @@ namespace ChipArena.UnityConversion
         {
             if(bootIntro==null||error.Length>0)return false;
             if(bootStage<BootStage.Gui)return true;
-            if(bootStage==BootStage.Gui&&bootGuiFrames<2&&Event.current.type==EventType.Repaint){bootGuiFrames++;bootWarmFrame=Time.frameCount;}
+            if(bootStage==BootStage.Gui&&bootGuiFrames<2&&Event.current.type==EventType.Repaint){if(bootGuiFrames==0)NativeUi.WarmFaces();bootGuiFrames++;bootWarmFrame=Time.frameCount;}
             return false;
         }
         // The crossfade began: the menu takes input, its song starts from the top, and a notice raised under the intro (the

@@ -1,7 +1,9 @@
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using ChipArena.UnityConversion;
 
@@ -134,6 +136,8 @@ internal static class BootIntroChecks
             "the clip starts only once the menu is built under the curtain (nothing heavy while it plays or after it), loading at full speed until then");
         Check(load.Contains("if(bootGuiFrames>=2){BootStep(\"gui\");bootStage=BootStage.Ready;bootBuiltAt=BootMs;}return;")&&load.Contains("if(!bootSettled&&NativeBootIntroRules.Settled(ref bootSmooth,Time.unscaledDeltaTime,(float)(BootMs-bootBuiltAt)/1000)){bootSettled=true;BootStep(\"settled\");}return;"),
             "and once the built menu runs smoothly under the curtain (its first frames after the build land there, not on the clip's opening)");
+        Check(load.Contains("{if(bootGuiFrames==0)NativeUi.WarmFaces();bootGuiFrames++;bootWarmFrame=Time.frameCount;}")&&Text("Assets/ChipArena/Runtime/NativeUi.cs").Contains("foreach(bool m in new[]{false,true})for(int f=0;f<4;f++)"),
+            "every face the UI draws is laid out once under the curtain (the fight HUD's faces read their tables there, not at the countdown)");
         Check(load.Contains("()=>bootStage==BootStage.Ready&&BootMs>=bootDevHold*1000||error.Length>0")&&load.Contains("if(bootIntro==null||error.Length>0)return false;"),"a start-up error ends the hold and draws through the crossfade, never under a held intro");
         Check(load.Contains("if(noticeText.Length>0&&noticeLast>=bootNoticeFrom){noticeShown=noticeLast=Time.unscaledTime;}"),"a notice raised under the intro shows after it, for its full time");
         // Without Unity's splash the window stayed unpainted (white) through Awake: the intro's black curtain goes up first and
@@ -161,6 +165,7 @@ internal static class BootIntroChecks
         }
         Check(source.Contains("NativeIntroMotion.Prepare(c.key.Substring(6),c.values,c.frames,c.duration);\n            return clips;}"),"the weapon intros' plans are built with the clips, before the bank is published");
         Sculpts(root);
+        FirstPlay(root);
         Console.WriteLine("PASS boot intro: "+count+" checks");
     }
     // ---- the sculpts made on a worker (Core NativeBootSculpts) ----
@@ -216,6 +221,76 @@ internal static class BootIntroChecks
         var skins=R("NativeWeaponSkinModels.cs");Check(skins.Contains("System.Linq.Enumerable.Append(System.Linq.Enumerable.Append(System.Linq.Enumerable.Append(NativeWeaponSkins.Weapons,NativeBombs.Spec),NativeTopDog.Spec),NativeGlaive.Spec),new[]{NativeKatana.Spec,NativeFangs.Spec})")&&NativeBootSculpts.WeaponSpecs().SequenceEqual(NativeWeaponSkins.Weapons.Concat(new[]{NativeBombs.Spec,NativeTopDog.Spec,NativeGlaive.Spec,NativeKatana.Spec,NativeFangs.Spec})),
             "the worker sculpts the weapons WeaponSkins builds");
         var load=R("NativeBootLoad.cs");Check(load.Contains("NativeBootSculpts.Start();")&&load.Contains("private static void Reset(){Decided=Wanted=false;NativeBootSculpts.Reset();}"),"the worker starts with the banks', before the splash, and only then");
+    }
+    // ---- the first play (owner 2026-11-12: "Greatsword / DEV Greatsword VERY bad lag on intro. Seems to happen only first time it
+    // plays?"): the pack entrances planned on a worker at start-up, and the arena's own frame behind the stage's loading screen ----
+    private static NativePackIntro Copy(NativePackIntro p)=>new NativePackIntro(p.Style,p.Track,p.TwoHand?new[]{p.Support.X,p.Support.Y,p.Support.Z,p.SupportAlways?1f:0f}:null,p.Hit,p.PlantsLeft,p.PlantsRight,p.Breathe);
+    private static bool Same(CapturedRig.Pose a,CapturedRig.Pose b){for(int i=0;i<a.Position.Length;i++)if(a.Position[i]!=b.Position[i]||a.Rotation[i]!=b.Rotation[i])return false;return true;}
+    private static System.Collections.Generic.Dictionary<string,NativeEntranceClip> Clips(string root)
+    {
+        using var envelope=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/SourceMotion.json")));
+        using var bytes=new MemoryStream(Convert.FromBase64String(envelope.RootElement.GetProperty("data").GetString()));using var zip=new GZipStream(bytes,CompressionMode.Decompress);using var reader=new StreamReader(zip);
+        using var doc=JsonDocument.Parse(reader.ReadToEnd());var map=new System.Collections.Generic.Dictionary<string,NativeEntranceClip>();
+        foreach(var c in doc.RootElement.GetProperty("clips").EnumerateArray())
+        {
+            string key=c.GetProperty("key").GetString();if(!key.StartsWith("intro-weapon-"))continue;
+            map[key]=new NativeEntranceClip(c.GetProperty("values").EnumerateArray().Select(v=>(float)v.GetDouble()).ToArray(),c.GetProperty("roots").EnumerateArray().Select(v=>(float)v.GetDouble()).ToArray(),c.GetProperty("frames").GetInt32(),(float)c.GetProperty("duration").GetDouble());
+        }
+        return map;
+    }
+    private static void FirstPlay(string root)
+    {
+        // The blade clearance is stateless per call: a fresh one gives the shared one's blade, whatever either solved before.
+        var gs=NativePackIntros.All.First(p=>p.Style=="weapon-greatsword");var set=MeleeSet.For("greatsword");var probe=new CapturedRig.Pose();var rig=new MeleeRig();
+        int cleared=0,samples=0;
+        for(float t=0;t<=4.8f;t+=.1f)
+        {
+            gs.Captured(t,probe,out _,out _);rig.ReadPose(probe);var g0=new System.Numerics.Vector3(.1f,-.2f,.35f);var b0=System.Numerics.Vector3.Normalize(new System.Numerics.Vector3(.2f,.9f,-.3f));var e0=System.Numerics.Vector3.Normalize(System.Numerics.Vector3.Cross(b0,System.Numerics.Vector3.UnitY));
+            var (ga,ba,ea)=(g0,b0,e0);MeleeClearance.Shared.Clear(rig,ref ga,ref ba,ref ea,-set.Fit.Pommel,set.BladeEnd,true,set.Fit.HalfWidth,false);
+            var (gb,bb,eb)=(g0,b0,e0);new MeleeClearance().Clear(rig,ref gb,ref bb,ref eb,-set.Fit.Pommel,set.BladeEnd,true,set.Fit.HalfWidth,false);
+            samples++;if(ga==gb&&ba==bb&&ea==eb)cleared++;
+        }
+        Check(cleared==samples,"a pack's own blade clearance is the shared one's ("+cleared+"/"+samples+")");
+        // The body push on its caller's scratch is the shared scratch's.
+        int pushed=0;var scratch=new NativeIntroMotion.PushScratch();
+        for(float t=0;t<=4.8f;t+=.1f){gs.Captured(t,probe,out _,out _);probe.World();foreach(bool left in new[]{false,true})if(NativeIntroMotion.BodyPush(gs.Style,probe,left)==NativeIntroMotion.BodyPush(gs.Style,probe,left,scratch))pushed++;}
+        Check(pushed==samples*2,"the body push on a scratch of its own is the shared one's");
+        // Every pack planned on a worker, while this thread plans copies of them and runs the shared clearance and body push (as the
+        // gameplay and the bank's worker do), poses exactly as one planned on this thread alone.
+        var packs=NativePackIntros.All;var alone=packs.Select(Copy).ToArray();var worked=packs.Select(Copy).ToArray();var beside=new[]{Copy(packs.First(p=>p.Style=="weapon-pistol"))};
+        var pose=new CapturedRig.Pose();foreach(var p in alone)p.Pose(0,pose,out _,out _);
+        var worker=System.Threading.Tasks.Task.Run(()=>{var q=new CapturedRig.Pose();foreach(var p in worked)p.Pose(0,q,out _,out _);});
+        while(!worker.IsCompleted){foreach(var p in beside)p.Pose(1.7f,pose,out _,out _);pose.World();NativeIntroMotion.BodyPush(gs.Style,pose,false);rig.ReadPose(pose);var (g,b,e)=(System.Numerics.Vector3.Zero,System.Numerics.Vector3.UnitY,System.Numerics.Vector3.UnitX);MeleeClearance.Shared.Clear(rig,ref g,ref b,ref e,-.27f,1.6f);}
+        worker.Wait();
+        int same=0,poses=0;var a=new CapturedRig.Pose();var w=new CapturedRig.Pose();
+        for(int i=0;i<packs.Length;i++)for(int k=0;k<=144;k++){float t=k/30f;alone[i].Pose(t,a,out var ra,out var qa);worked[i].Pose(t,w,out var rw,out var qw);poses++;if(ra==rw&&qa==qw&&Same(a,w))same++;}
+        Check(packs.Length==10&&same==poses,"the ten pack entrances planned on a worker pose as planned alone ("+same+"/"+poses+")");
+        // The director's warm: each pack signature bound to its clip on this thread, built on its worker under its PoseLock;
+        // afterwards its camera and pose cost nothing more (the first frame builds nothing).
+        var clips=Clips(root);var task=NativeEntranceDirector.Warm(style=>clips.TryGetValue("intro-"+style,out var c)?c:null,out int built);double ms=task.Result;
+        Check(built==packs.Length&&ms>0,"the warm builds the "+packs.Length+" pack signatures on a worker ("+built+", "+ms.ToString("F0")+" ms)");
+        foreach(var p in packs)
+        {
+            var script=NativeEntranceDirector.Script(p.Style);var clock=System.Diagnostics.Stopwatch.StartNew();script.Prepare();script.Camera(1.2f,out var view);script.Pose(1.8f,pose,out _,out _);
+            Check(clock.Elapsed.TotalMilliseconds<20&&float.IsFinite(view.Eye.X),p.Style+" is built before its first frame ("+clock.Elapsed.TotalMilliseconds.ToString("F1")+" ms)");
+        }
+        // Left as the other groups find them: unbound (EntranceDirectorChecks binds its own clips).
+        foreach(var p in packs)NativeEntranceDirector.Script(p.Style).Bind(null);
+        Check(packs.All(p=>!NativeEntranceDirector.Script(p.Style).Ready),"the scripts are unbound again");
+        // The wiring (source text).
+        string R(string f)=>File.ReadAllText(Path.Combine(root,f));
+        string game=R("Assets/ChipArena/Runtime/ConversionGame.cs"),load=R("Assets/ChipArena/Runtime/NativeBootLoad.cs"),intros=R("Assets/ChipArena/Runtime/NativeIntros.cs"),stage=R("Assets/ChipArena/Runtime/NativeStageLoadingUI.cs"),pack=R("Assets/ChipArena/Core/NativeEntrancePack.cs");
+        Check(load.Contains("BootStep(\"banks\");EntranceWarmBegin();bootStage=BootStage.Assets;return;")&&game.Contains("NativeSceneMotion.Count,HitchMs(motionAt));}\n                // Without the intro the pack entrances' plans build on a worker from here (under it, from its Banks step).\n                if(bootIntro==null)EntranceWarmBegin();\n                nativeAudio=gameObject.AddComponent<NativeAudio>();"),
+            "the warm starts as soon as the source motion bank is in: under the intro at its Banks step, else after Awake's load");
+        Check(load.Contains("if(entranceWarm!=null||dedicated||Application.isBatchMode)return;")&&load.Contains("entranceWarm=NativeEntranceDirector.Warm(NativeSourceMotion.EntranceClip,out entranceWarmCount);"),"never on a dedicated server or in batch mode; the clips are the ones the entrance binds");
+        Check(intros.Contains("if(script!=null){lock(script.PoseLock)DirectedIntro(script,arena,pilot,actor,style,age,camera);return;}"),"a directed entrance is staged under its script's PoseLock (never beside the worker)");
+        Check(pack.Contains("melee.ReadPose(p);clearance.Clear(melee,ref grip,ref blade,ref edge,")&&!pack.Contains("MeleeClearance.Shared")&&pack.Contains("NativeIntroMotion.BodyPush(Style,planPose,false,push)")&&pack.Contains("NativeIntroMotion.BodyPush(Style,planPose,true,push)"),
+            "a pack's plan touches no shared scratch");
+        Check(game.Contains("if(DraftFrame())return;if(!menu&&IntroActive&&!StageWarmsArena){arena.Root.SetActive(false);")&&game.Contains("NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);StageArenaWarming();"),
+            "the arena draws its own frame once behind the loading screen while the entrance holds the match");
+        Check(stage.Contains("private bool StageWarmsArena=>stageLoad.Covered&&!stageLoad.ActionPending&&stagePlan.Step==StagePreloadStep.Frames&&stageFrames==0&&arena!=null&&match!=null&&match.Phase==NativePhase.Intro;")&&StagePreloadPlan.WarmFrames==2,
+            "only the first of the two warm frames, fully covered, in a match's entrance: the second draws the entrance");
+        Check(stage.Contains("yield return new WaitForEndOfFrame();\n            if(ReferenceEquals(arena,warmed)&&warmed.Root!=null&&IntroActive)warmed.Root.SetActive(false);"),"the arena's root goes back off at the end of that frame, before the next physics step");
     }
     private static int IndexOf(byte[] data,string tag){var t=System.Text.Encoding.ASCII.GetBytes(tag);for(int i=0;i+t.Length<=data.Length&&i<data.Length;i++){int k=0;while(k<t.Length&&data[i+k]==t[k])k++;if(k==t.Length)return i;}return -1;}
 }
