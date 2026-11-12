@@ -8,6 +8,13 @@
 - **Animation impact:** none.
 - **Checks:** `--stage-art` (587 checks, with the far reach's own); the full suite with the rebuilt banks through `CHIPARENA_STAGE_BANKS` (the art checks of Skyframe, the Causeway, Breakwater, Deepwell and Polaris read them): 1018 groups, exit 0; `--cybercity-art` on the rebuilt Cyber City bank (its check does not take the variable: the bank in the worktree's own git-ignored LocalAssets): pass; `git diff --check` clean. No C# under Assets changed, so the Unity compile is as shared's.
 - **Not done / not seen:** the shared Editor was closed (no capture or validation could run): the flicker before and its absence after are **not filmed**, `wtvalidate.sh` is **not run**, and the other candidates (the beacons' blink, tier switches, shadow cascades, fog and billboard order) were not looked at in the Editor. If the flicker is still there with this bank, those are next.
+## 2026-11-11 — Astra: keep host networking alive while the destination has no local pilot
+
+- Branch `codex/expedition-null-pilot-fix`, base `0ccb5a0`; owner requested fix and test Update publication.
+- Host log records 1,685 null references from PvePickOpen -> ControllerStep -> UpdateFrame. Split-area transfer presents the destination before moving the local pilot; the unsafe local-seat lookup throws before NetworkTick, starving destination snapshots and readiness processing while transport heartbeats continue.
+- Make the pick query return false for a missing arena, local pilot/seat or PvE row; retain normal open-pick behavior. No transfer timeout, all-ready gate, collision rule, gameplay tuning or visual change.
+- Added native regression checks using actual hub/empty-destination arenas and the same predicate used by ControllerStep: missing arena/pilot, closed/open pick, and another seat's open pick. Checks run for authored and generated activation fixtures.
+- Validation and delivery receipts pending below. Native Windows multiplayer verification is still required; do not treat compilation as a playtest. Earlier diagnostic-only branch is not included.
 
 ## 2026-11-11 — Claude: PR #385 (Expedition transfer sync) re-landed with its native check fixed; for Astra's review
 
