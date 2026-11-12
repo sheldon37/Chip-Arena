@@ -7,6 +7,7 @@ PlayerSettings:
   m_ColorSpace: 1
   companyName: ChipArenaConversion
   productName: Chip Arena
+  m_ShowUnitySplashScreen: 0
   bundleVersion: 0.1.0-native-foundation
   defaultScreenWidth: 1600
   defaultScreenHeight: 900

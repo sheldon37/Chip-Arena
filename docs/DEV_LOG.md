@@ -9,6 +9,86 @@
 - Checks run: the full CoreTests (exit 0, 1,017 PASS lines, with the Windows-only path fix for ExpeditionEndingChecks applied for the run and not committed), `--rooftop` with the bank present, `tools/check_unity_compile.py` (all assemblies), `git diff --check`, the Blender build's sight-line and coplanar measures (0 of 71 targets blocked; 0 m2 fighting on the roof and the near city). Pins changed in RooftopChecks are listed in the art page.
 - Seen in the shared Editor (captures at High and Low, before and after, every slide, the egg; docs/MENU-ROOFTOP-ART.md "Seen in the Editor"): both shaders draw, the logo and the TV set are clear of the menu, frame time no worse (High 10.38 to 9.58 ms mean, Low 9.85 to 9.29, Editor). The bank is read on a worker thread (`NativeRooftopModels.Prewarm`); `Load` held the main thread 164 ms at the menu's first frame. Not verified: engine draw calls, reduced effects, 21:9, a Windows build, the top-bar logo. Shared (`dd643702`) is merged in. Not merged, not released; the bank must go into the Drive zip before a builder push.
 - Animation, hit timing, hitboxes, damage, cooldowns, movement, networking: untouched (the rooftop's distant pilots keep their scripts and places).
+## 2026-11-11 — Claude: the logo intro at launch, with the game loading under it (owner request)
+
+- Branch `claude/boot-intro`, base shared `7e4d6378`. Owner: "Lets add this as an intro when starting the game (Use this time to load assets in). (This is also the new logo for the game)". Full description: `docs/BOOT-INTRO.md`.
+- **The clip:** `Assets/StreamingAssets/BootIntro.mp4`, played by URL.
+  - The owner's 11.3 MB, 8.9 Mbps upload re-encoded to 4 Mbps H.264 High without B-frames: 5,266,834 bytes. It keeps the same 241 frames, 24 fps and 1280x720, with the AAC copied unchanged.
+  - Unity's Windows decoder warned about and skewed the B-frame timestamps, so the re-encode has none.
+  - SSIM 0.995 and PSNR 49 dB against the upload.
+  - Credited in `docs/ASSET-CREDITS.md` "Logo intro", with a receipt in `tools/asset-lock.json`.
+  - Its last frame is `Resources/BootIntroLogo.jpg`, held after a skip.
+- **The intro** (`Runtime/NativeBootIntro.cs`; the timeline is Core `NativeBootIntroFlow`):
+  - Black from about 1.2 s after launch (its curtain), then the clip full screen, letterboxed 16:9 on black.
+  - Its sound plays at the Menu Music level, levelled to the menu song (x0.72); Mute audio silences it.
+  - A click, Esc, Enter or Space (pad A, B, Start) skips it after 0.5 s.
+  - If the game is not ready when it ends or is skipped, the final logo holds and an orange dot ring with "LOADING" fades in after 0.3 s.
+  - Then a 0.6 s crossfade into the menu. The menu song starts from its top, and a notice raised under the intro shows after it for its full time.
+  - A start-up error ends the hold and shows after the intro, never under it.
+- **It does not play** on a dedicated server, in batch mode, with `-nointro`, or in the Editor unless asked (Chip Arena > Boot intro > Play once / Play in Play mode). It never plays under the BoZo tool's play runs unless the run asks for it (`bootintro=1`).
+- **The loading under it** (`Runtime/NativeBootLoad.cs`, `NativeBankLoad.cs`):
+  - From a BeforeSplashScreen hook, the two motion banks and the SourceModels JSON decode on workers. The main thread only reads their bytes (25 ms), and all three finish during Unity's splash. Every bank read waits for its pending load.
+  - The source models still build in presentation.Initialize, from that JSON (11 ms instead of 0.9 s).
+  - Awake otherwise runs as before, in the same order; without the intro it is unchanged.
+  - Then, one step a frame: the banks are joined; the model's bake, outfit table and icon sets come in by LoadAsync; and once the clip settles on its logo (8.1 s), the menu's scene and then its GUI draw twice each under it.
+  - LateFrame and OnGUI wait until their step, and Update takes no input under the intro. A one-token hook in NativeAudio holds the menu song (`MenuHeld`).
+  - **Sculpts on a worker:** Core `NativeBootSculpts` makes the pure geometry behind NativeSourceModels' slowest builds on a worker from the same hook (229 jobs: the minion kinds and zone props, the robot helmets, the Standard weapons; about 1.7 s on the worker).
+    - The builders (`HordeKindModels`, `IronworksModels`, `StationPropModels`, `HelmModels`, `WeaponSkins`) still run in presentation.Initialize, in the same order, and make every mesh and material there.
+    - Each takes its sculpt (`NativeBootSculpts.Take`, which waits for the whole worker the first time, so nothing sculpts beside it after that), or sculpts it itself as before.
+    - CoreTests hold the worker's results, made beside a thread making them again, byte for byte to the single-threaded ones.
+    - `HordeKindModels` went from 1.1 s to 0.18 s on the main thread, and `HelmModels` from 0.47 s to 4 ms.
+  - **The curtain:** with the intro to play, `ConversionGame.Boot` raises the intro's black curtain and makes the game one frame later (`NativeBootDefer`). Without the splash, the window showed white until the first frame, through Awake.
+    - Awake is unchanged.
+    - The curtain neither plays nor runs its clock until Awake arms it.
+    - An unarmed curtain (Awake failed, or chose no intro) comes down at once.
+- **Unity's splash is off** (owner: "Yes, remove it"): `m_ShowUnitySplashScreen: 0` in the tracked `ProjectSettings/ProjectSettings.asset`, in its own commit, the only Player Settings change. The build shows `PlayerSettings.SplashScreen.show=False`.
+- **Measured** (Windows Development builds with a scratch probe that was never committed, RTX 4090, 1600x900, fresh preferences; 3 runs each, 2 for skips):
+  - **Launch to anything on screen:**
+    - before: the menu at 10.2-10.3 s;
+    - intro with the splash: the clip at 7.1-7.5 s;
+    - now: black at 1.2 s and the clip at 3.3-3.7 s.
+  - **Launch to an interactive menu:**
+    - before: 11.0-11.2 s, with a 0.8-0.9 s frozen first menu frame;
+    - intro with the splash: 17.2-17.5 s played out, 8.3-8.4 s skipped at 0.5 s;
+    - now: 13.4-13.7 s played out, 4.6 s skipped at 0.5 s.
+  - **Frames while the clip moves (0-8.1 s):** 1165-1166 frames, mean 6.9-7.0 ms, p99 7.1-7.3 ms, max 7.6-10.3 ms, none over 20 ms (144 fps cap).
+  - **Under the settled logo:** the menu's build lands there: 0.35, 0.03, 0.21, 0.08 s.
+  - **The first 3 s of menu:** p99 22-24 ms, max 38-41 ms before; p99 8.5-9.5 ms, max 12-14 ms now.
+- **Still on the main thread before the clip** (black now, Awake about 2.4 s):
+  - **For Astra:** the maps loader, `NativeUnityMapLoader.Load` (UnityMaps.json, 23.6 MB, parsed and merged into the content), takes 0.9 s. It is content, so I left it alone. Its JSON could decode on a worker from the same BeforeSplashScreen hook.
+  - presentation.Initialize, 1.3 s: the source models' meshes and materials, `MachineSkins` 0.16 s, `ModelHats` 0.17 s, `SuitModels` 0.07 s, `CapturedAnimation` 0.17 s.
+- **Package:** `Packages/manifest.json` gains `com.unity.modules.video` in its own commit. The project had no Video module, so this one line is needed for the VideoPlayer. It is the only manifest change; it is in the 6000.3.24f1 catalog and passes `package_source.py`. Accepted by the integrating session (a built-in module the feature needs).
+  - **For capture scripts:** once this branch lands on shared, a script that runs `git checkout --detach` in the Editor checkout must cross two files with `git checkout -m`. That checkout carries local edits to both:
+    - `Packages/manifest.json` (a `com.unity.shadergraph` line);
+    - `ProjectSettings/ProjectSettings.asset` (Unity's full serialisation; this branch adds `m_ShowUnitySplashScreen: 0`).
+    A plain checkout between commits that differ there is refused.
+  - **A refresh does not resolve packages:** after crossing the manifest change, `AssetDatabase.Refresh` (the BoZo refresh request) compiled without the Video module and failed. The Package Manager must resolve first; the local tool now takes `Temp/bozo-resolve.request` (`Client.Resolve()`).
+- **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement, network or save change; presentation and load order only.
+- **Checks:**
+  - CoreTests `--boot-intro`: 104 checks. They cover:
+    - the rules, the timeline and the letterbox;
+    - the clip's size, hash, metas, receipt and credits;
+    - the wiring and the order;
+    - the curtain and the splash setting;
+    - the 229 sculpts made on a worker beside a thread making them again, byte for byte the single-threaded ones.
+  - The full CoreTests at `9166905a` (shared `dd643702` merged in; Windows path patch in a throwaway worktree, as always on this PC): 1016 PASS lines, exit 0. `git diff --check` against shared: clean.
+  - Unity compile PASS.
+  - `PrototypeBuild.Validate` in batch mode on a copy of the project at `9166905a`: passed, 396 PASS lines.
+  - Python suite: the same 12 failures as the base on this PC, none new. `package_source.py --check` passed.
+  - **The shared Editor** (`bootcap4.sh`, the lock held per run): the Editor checkout's local manifest and Player Settings rode on top and were put back byte for byte; the lock was released only after the Editor had resolved packages and compiled clean and the tool answered.
+    - A BoZo run with `bootintro=1`: the intro played in Play mode and crossfaded into the menu as its clip ended (10.3 s on its clock); the match followed. All 229 sculpts were taken.
+    - A plain BoZo run on the branch logged `BOOT_INTRO off (EditorAutomation)` and loaded the banks at once, as before.
+  - **Windows builds** (batch, on a scratch copy of the project, with Unity's splash off from the tracked setting: `SplashScreen.show=False`):
+    - the build check logged `BOOT_INTRO_CLIP_IN_BUILD`;
+    - window grabs show black from 1.2 s, the clip, and the crossfade into the menu;
+    - the held logo with its indicator (`--ca-boot-hold`) and the 4:3 letterbox were seen in an earlier build of the branch;
+    - `-nointro` and `-batchmode` logged `BOOT_INTRO off (Argument)` and `(BatchMode)`, with the old synchronous path.
+  - **The exact branch head** (`9166905a`, no probe) was built and launched once:
+    - the clip played with no decoder warning: 1323 frames, mean 7.6 ms, p99 10.3 ms, the largest the 0.36 s menu build under the settled logo;
+    - interactive 12.65 s after start;
+    - sculpts 229 made, 229 taken, 0 sculpted by a builder itself, 0 unused.
+- **Not verified:** a person watching and hearing it; the builder's own build and the installed updater; other GPUs and slower CPUs; a two-monitor or fullscreen launch.
+
 ## 2026-11-11 — Claude: DEV Greatsword and DEV Katana, the Grruzam sword pack on two DEV classes
 
 - Branch `claude/greatsword-grruzam`, base shared `034d35a6` (shared `b1674f0d` merged, with the Katana's released saya and intro fixes).

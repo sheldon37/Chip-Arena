@@ -341,11 +341,11 @@ namespace ChipArena.UnityConversion
         private void IronworksModels(Shader shader)
         {
             var material=new Material(shader){name="Native Ironworks props",enableInstancing=true};material.SetInt("_Cull",2);material.SetFloat("_Ink",1);material.SetFloat(InkRimId,0);material.SetFloat(InkFlowId,0);material.SetFloat(MinionGlowId,1);materials.Add(material);
-            for(int p=0;p<NativeHordeModels.PropCount;p++)for(int t=0;t<NativeHordeModels.PropTiers;t++)Register(NativeHordeModels.PropId(p,t),NativeHordeModels.IronworksProp(p,t),material,t!=0);
+            for(int p=0;p<NativeHordeModels.PropCount;p++)for(int t=0;t<NativeHordeModels.PropTiers;t++)Register(NativeHordeModels.PropId(p,t),NativeBootSculpts.Take(NativeBootSculpts.Prop(p,t),()=>NativeHordeModels.IronworksProp(p,t)),material,t!=0);
             var crust=materials.Find(m=>m.name=="Native Siren minion / slagback")??material;
-            for(int l=0;l<2;l++)for(int t=0;t<NativeHordeModels.Tiers;t++)Register("iw-slagback-crust-"+l+"-"+NativeHordeModels.TierNames[t],NativeHordeModels.IronworksCrust(l,t),crust,t!=NativeHordeModels.Full);
+            for(int l=0;l<2;l++)for(int t=0;t<NativeHordeModels.Tiers;t++)Register("iw-slagback-crust-"+l+"-"+NativeHordeModels.TierNames[t],NativeBootSculpts.Take(NativeBootSculpts.Crust(l,t),()=>NativeHordeModels.IronworksCrust(l,t)),crust,t!=NativeHordeModels.Full);
             var brute=materials.Find(m=>m.name=="Native Siren minion / brute")??material;
-            for(int l=0;l<NativeHordeKinds.Looks[NativeHordeKinds.Brute];l++)for(int t=0;t<NativeHordeModels.Tiers;t++)Register(NativeHordeModels.CreamId(l,t),NativeHordeModels.Build(NativeHordeKinds.Brute,l,t,NativeIronworksKinds.BruteSeam).Mesh,brute,t!=NativeHordeModels.Full);
+            for(int l=0;l<NativeHordeKinds.Looks[NativeHordeKinds.Brute];l++)for(int t=0;t<NativeHordeModels.Tiers;t++)Register(NativeHordeModels.CreamId(l,t),NativeBootSculpts.Take(NativeBootSculpts.Cream(l,t),()=>NativeHordeModels.Build(NativeHordeKinds.Brute,l,t,NativeIronworksKinds.BruteSeam)).Mesh,brute,t!=NativeHordeModels.Full);
         }
         private void Register(string id,WeaponMesh mesh,Material material,bool noShadow)
         {

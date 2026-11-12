@@ -54,11 +54,13 @@ namespace ChipArena.UnityConversion
             }
         }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Boot(){if(FindFirstObjectByType<ConversionGame>()==null)new GameObject("Chip Arena Native Conversion").AddComponent<ConversionGame>();}
+        private static void Boot(){if(FindFirstObjectByType<ConversionGame>()==null&&!BootCurtain())new GameObject("Chip Arena Native Conversion").AddComponent<ConversionGame>();}
         private void Awake()
         {
             try
             {
+                // The logo intro's workers start first, so the banks decode while Awake goes on (NativeBootLoad.cs).
+                BootPrefetch();
                 var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new InvalidOperationException("GameContent.json is missing");
                 content=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(content);content.Validate();if(InitializeDedicated())return;
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
@@ -73,9 +75,11 @@ namespace ChipArena.UnityConversion
                 if(!content.weapons.Any(w=>w.id==prefs.weapon&&!w.devOnly))prefs.weapon="pistol";prefs.bots=Mathf.Clamp(prefs.bots,prefs.pve?0:1,prefs.pve?3:7);
                 InitializeAccount();Application.runInBackground=true;Application.targetFrameRate=144;QualitySettings.vSyncCount=0;Time.fixedDeltaTime=1f/60;Time.maximumDeltaTime=.1f;
                 previousSimulation=Physics.simulationMode;previousGravity=Physics.gravity;ownsPhysics=true;Physics.simulationMode=SimulationMode.Script;Physics.gravity=new Vector3(0,-23,0);
-                // These compressed banks expand to ~14 MB and ~94 MB of JSON. Never first-load them on a kill.
+                // These compressed banks expand to ~14 MB and ~94 MB of JSON. Never first-load them on a kill. Under the logo intro
+                // they decode on workers while it plays, and nothing reads them before they are in (NativeBootLoad.cs); else here.
+                if(!BootIntroStart()){
                 long motionAt=System.Diagnostics.Stopwatch.GetTimestamp();NativeSourceMotion.Prewarm();NativeSceneMotion.Prewarm();
-                UnityEngine.Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"MOTION_BANKS_READY source={0} scene={1} ms={2:F1}",NativeSourceMotion.ClipCount,NativeSceneMotion.Count,HitchMs(motionAt));
+                UnityEngine.Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"MOTION_BANKS_READY source={0} scene={1} ms={2:F1}",NativeSourceMotion.ClipCount,NativeSceneMotion.Count,HitchMs(motionAt));}
                 nativeAudio=gameObject.AddComponent<NativeAudio>();presentation=gameObject.AddComponent<ArenaPresentation>();presentation.Initialize(false);nativeAudio.Footfalls=presentation.Footfalls;presentation.DebrisEnabled=false;Physics.IgnoreLayerCollision(8,11,true);Physics.IgnoreLayerCollision(11,11,true);
                 var cam=new GameObject("Native match camera");cam.transform.SetParent(transform);cameraView=cam.AddComponent<Camera>();cam.AddComponent<AudioListener>();
                 // HDR explicitly (Unity's default, which the additive effects and the damage screen already assume) and the bloom,
@@ -134,6 +138,8 @@ namespace ChipArena.UnityConversion
             ControllerStep();
             SyncDevelopmentConsole();
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();DeploymentBundleTick();AccountXpTick();
+            // The logo intro holds the game (no input) while it loads under it (NativeBootLoad.cs).
+            if(BootIntroHolds())return;
             if(padInputCaptured){pending=new InputFrame{CancelAbilities=true};Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(SplitLocalLoading){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
@@ -192,6 +198,8 @@ namespace ChipArena.UnityConversion
         private void LateUpdate(){long at=System.Diagnostics.Stopwatch.GetTimestamp();try{try{LateFrame();DamageScreen();GlitchScreen();}finally{FinishHitchFrame(HitchMs(at));}}finally{StageLoadingStep();}}
         private void LateFrame()
         {
+            // Under the logo intro the menu builds only once the loading allows it (NativeBootLoad.cs).
+            if(BootIntroFrame())return;
             // A bound Expedition session's world pieces (NativeExpeditionWorldPresentation.cs): one mesh drawn for this frame.
             // Settings · Player model: Classic draws the voxel pilot body in place of the new one, set before any path draws a
             // pilot (previews, replays, the draft and the intros return before the arena renders).
@@ -392,6 +400,8 @@ namespace ChipArena.UnityConversion
         }
         private void OnGUI()
         {
+            // Under the logo intro the menu's GUI draws only once the loading allows it (NativeBootLoad.cs).
+            if(BootIntroGui())return;
             // The stage loading screen holds the GUI's input while it closes and while it is closed; it draws over every screen.
             if(dedicated)return;var originalMouse=Event.current.mousePosition;try{ControllerGuiEvent();if(SlenderGUI())return;Styles();StageInputGate();bool socialWasEnabled=GUI.enabled;if(socialOpen&&menu&&account?.Account!=null&&!StageInputHeld)GUI.enabled=false;GuiFrame();GUI.enabled=socialWasEnabled;CutsceneSkipGui();SocialGui();if(error.Length==0)NoticeToast();BuildCorner();ExpeditionTransferGui();StageLoadingGui();ControllerCursor();}finally{Event.current.mousePosition=originalMouse;}
         }
