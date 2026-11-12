@@ -198,7 +198,7 @@ namespace ChipArena.UnityConversion
                 ClientMessage(new NativeNetMessage{type="expedition-public",epoch=message.epoch,generation=frame.generation,expeditionPublic=view});
                 ClientMessage(new NativeNetMessage{type="expedition-private",expeditionPrivate=personal});
                 if(ExpeditionView?.areaIdentity?.Matches(frame.areaIdentity)!=true)return;
-                if(expeditionLoadInbox.Pending||changed||arena==null||arena.MapId!=frame.map)
+                if(expeditionLoadInbox.Pending||!expeditionLoadInbox.Applied(frame.areaIdentity)||arena==null||arena.MapId!=frame.map)
                 {
                     bool waiting=expeditionLoadInbox.Pending;
                     if(!expeditionLoadInbox.Offer(frame.areaIdentity,frame.sequence,message))return;

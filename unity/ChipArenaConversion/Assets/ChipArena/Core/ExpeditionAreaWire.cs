@@ -50,6 +50,10 @@ namespace ChipArena.UnityConversion
     {
         private ExpeditionAreaChannel<T> channel=new ExpeditionAreaChannel<T>();
         private T pending;
+        private ExpeditionCohortTicket applied;
+        public bool Applied(ExpeditionCohortTicket ticket)=>applied?.Matches(ticket)==true;
+        public void MarkApplied(ExpeditionCohortTicket ticket)
+        {if(channel.Identity?.Matches(ticket)!=true)throw new InvalidOperationException("Loaded ticket is no longer current.");applied=ticket.Copy();}
         public bool Pending=>pending!=null;
         public T Latest=>pending;
         public bool Offer(ExpeditionCohortTicket ticket,long sequence,T payload)
@@ -58,7 +62,7 @@ namespace ChipArena.UnityConversion
             pending=payload;return true;
         }
         public T Take(){var value=pending;pending=null;return value;}
-        public void Reset(){pending=null;channel=new ExpeditionAreaChannel<T>();}
+        public void Reset(){pending=null;applied=null;channel=new ExpeditionAreaChannel<T>();}
     }
     // Host command/input readiness is checked against the sender's current ticket,
     // never a client-supplied account or the host's displayed scene.

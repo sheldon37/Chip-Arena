@@ -1,3 +1,31 @@
+## 2026-11-11 — Claude: PR #385 (Expedition transfer sync) re-landed with its native check fixed; for Astra's review
+
+- **Owner:** "Can you revert it, then bring it back yourself instead of astra?" Branch `claude/expedition-transfer-sync`, from
+  `claude/revert-pr385` (`911aa81c`). Commit `fa8926db` reverts that revert, so Astra's `862f322d` comes back unchanged: the applied
+  ticket, snapshot requeueing until it is applied, 4 Hz loading snapshots, readiness gated on the applied ticket, no reliable
+  party-load packets. Every DEV_LOG and PROJECT_STATE entry stays. Astra, please review the fix below.
+- **Cause:** the check was wrong, not the runtime. #385's pre-ACK bundle step (`NativeExpeditionActivationBuildChecks.cs`,
+  `LoadBeforeReady`) built the destination view with `NativeExpeditionView.Build` and the area session's Sources. Each
+  `ExpeditionDirector` lists closures for every area in the layout: the hub's three doors and final gate, and each instance's exit.
+  So the view carried other areas' closures, and `ExpeditionAreaProjection.Build` refused it ("Cross-area public data refused").
+  The game's provider, `ConversionGame.AreaView`, has filtered closures and boss arrivals to the area, and loot and dice to the
+  area's loop prefix, since `f50cb88a` (2026-10-16). The check's helper skipped those filters. CoreTests missed it because their
+  projection helpers build views without a director.
+- **Fix** (`a9e77f55`): the check's helper applies the same four filters as `AreaView`. The runtime is unchanged. The check still
+  pairs the atomic pre-ACK destination bundle (frame, public, private) through the Unity codec for each pilot before its ACK.
+- **Checks** (on `a9e77f55`):
+  - Unity build checks (`PrototypeBuild.Validate`) in the shared Editor: ok, 397 PASS lines. They include the native Expedition
+    activation on the authored layout and on four generated worlds, the check that failed shared `b6b38803`.
+  - Full CoreTests: exit 0, 1016 PASS lines, with the usual Windows-only `ExpeditionEndingChecks` path patch applied for the run
+    and reverted after. The Expedition flags all pass: `--expedition-loading` (279 checks), `--transport-backlog`,
+    `--expedition-area-wire`, `--expedition-cohorts`, `--expedition-split`, `--expedition-handoff`, `--expedition-areas`,
+    `--expedition-director`, `--expedition-integration`, `--expedition-joins`, `--laser-door`, `--expedition-deployment`,
+    `--expedition-acceptance`, `--expedition-view` and `--expedition-fresh`.
+  - `tools/check_unity_compile.py` (Unity 6000.3.24f1 references): all four assemblies compile. `git diff --check`: clean.
+- **Not verified:** no two-PC playtest, so the owner's report (guests held at the join circle, then a rollback; still loading bars)
+  is not reproduced or confirmed fixed. The native check is an automated fixture, not real multiplayer. Not merged or released.
+- **Next:** the integrating session merges this branch into shared. Astra reviews the re-land.
+
 ## 2026-11-11 — Claude: PR #385 reverted from shared for now (owner request); Claude re-lands it
 
 - **Why:** the builder failed shared `b6b38803` in the Unity build checks. The cause is #385's new native transfer check: its pre-ACK
