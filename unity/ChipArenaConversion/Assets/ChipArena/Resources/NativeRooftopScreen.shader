@@ -83,7 +83,7 @@ Shader "ChipArena/NativeRooftopScreen"
                 float bar=smoothstep(.12,0.0,abs(frac(q.y+t*.11)-.5))*.5;
                 float2 cu=(q-_Egg.xy*(1.0-.5))/.5;float inside=step(0.0,cu.x)*step(cu.x,1.0)*step(0.0,cu.y)*step(cu.y,1.0)*card;
                 float3 cardRgb=tex2Dlod(_MainTex,float4(_UvRect.xy+saturate(cu)*_UvRect.zw,0.0,1.0)).rgb;float cl=dot(cardRgb,float3(.3,.59,.11));
-                float3 tint=lerp(float3(1.0,1.0,1.0),Tone(_Egg.w+.5),.7);cardRgb=lerp(cardRgb,cl*tint*3.6,.75)+float3(.04,.05,.07)+tint*exp(-_Egg2.x*7.0)*.4;
+                float3 tint=lerp(float3(1.0,1.0,1.0),Tone(_Egg.w+.5),.7);cardRgb=lerp(cardRgb,cl*tint*3.0,.75)+tint*exp(-_Egg2.x*7.0)*.14;
                 float rim=inside*(1.0-step(.03,min(min(cu.x,1.0-cu.x),min(cu.y,1.0-cu.y))));
                 float3 tv=float3(.05,.07,.10)*(.35+snow*(1.3-card*.9))+float3(.10,.13,.17)*bar*(1.0-card*.6);
                 tv=lerp(tv,cardRgb+tint*rim*.8,inside)+float3(.5,.55,.6)*snow*cut;
