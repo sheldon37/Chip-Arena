@@ -32,6 +32,24 @@ namespace ChipArena.UnityConversion
         private int stageFrames,stageSerial=-1,stageAudioStart=-1;private float stageStartedAt;private StageLoadPhase stagePhaseWas;
         private StageReadiness stageReadiness;
 
+        /// <summary>
+        /// The arena's own frame behind the closed screen while an entrance holds the match (owner 2026-11-12: "Greatsword / DEV
+        /// Greatsword VERY bad lag on intro. Seems to happen only first time it plays?"). Through an entrance LateFrame draws only
+        /// the entrance's stage, so the arena's first frame came as the entrance handed over to the countdown, in view: the
+        /// pilots' match bodies and their motion bank, the stage's dressing, scenery and light volume and 1,300 methods' first
+        /// compile (330 ms at the countdown, every class, the first match of a session). Now the first of the preload's warm
+        /// frames (StagePreloadStep.Frames) draws the arena as the countdown will, unseen; the other draws the entrance. The arena's
+        /// root goes back off at the end of that frame, before the next physics step. Presentation only: no arena, clock or match
+        /// state changes.
+        /// </summary>
+        private bool StageWarmsArena=>stageLoad.Covered&&!stageLoad.ActionPending&&stagePlan.Step==StagePreloadStep.Frames&&stageFrames==0&&arena!=null&&match!=null&&match.Phase==NativePhase.Intro;
+        private void StageArenaWarming(){if(!menu&&IntroActive&&arena?.Root!=null)StartCoroutine(StageArenaWarmed(arena));}
+        private System.Collections.IEnumerator StageArenaWarmed(NativeArena warmed)
+        {
+            yield return new WaitForEndOfFrame();
+            if(ReferenceEquals(arena,warmed)&&warmed.Root!=null&&IntroActive)warmed.Root.SetActive(false);
+        }
+
         /// <summary>The local presentation's readiness for the stage the arena holds (Astra: report it to the authority's gate for
         /// this epoch and map). Ready once the preload behind the loading screen finished, or the screen opened early.</summary>
         internal StageReadiness StagePresentation=>stageReadiness;
@@ -142,7 +160,7 @@ namespace ChipArena.UnityConversion
             switch(stagePlan.Step)
             {
                 case StagePreloadStep.Stage:
-                    if(!StageInPlace)return;
+                    if(!StageInPlace)return;EntranceWarmReport();
                     if(stageLoad.Kind==StageLoadKind.Return)stageView.Returning(InRoom,Time.unscaledTime);
                     else stageView.Stage(content.Map(arena.MapId),Time.unscaledTime,StageAreaName());
                     // The kit builds in this same frame (the stage's own build frame), so even a load the game opens at once

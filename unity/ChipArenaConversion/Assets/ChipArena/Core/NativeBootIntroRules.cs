@@ -24,14 +24,22 @@ namespace ChipArena.UnityConversion
         public const float SkipBlend=.25f;
         /// <summary>A hold for loading shows the loading indicator once it has lasted this long, fading in over IndicatorFade.</summary>
         public const float IndicatorDelay=.3f,IndicatorFade=.35f;
-        /// <summary>The crossfade into the main menu.</summary>
-        public const float Crossfade=.6f;
+        /// <summary>The crossfade into the main menu (owner, 2026-11-12: "feels like it should transition a lot quicker after
+        /// animation finishes"): quick, and the menu takes input from its first frame.</summary>
+        public const float Crossfade=.4f;
         /// <summary>A video that never shows a frame this long after the intro is up (no decoder, the file missing) gives way to the
         /// logo; a playing video whose clock stops this long counts as over.</summary>
         public const float PrepareTimeout=4f,StallTimeout=2f;
-        /// <summary>From this far into the clip the logo has settled (the last 2 s are the logo centred on black, sparks drifting
-        /// off): the menu's scene may build and draw once under it (NativeBootLoad.cs), where a stall hides on a still frame.</summary>
-        public const float SettledFrom=8.1f;
+        /// <summary>From this far into the clip its animation has finished: the spark burst has fallen away and the logo stands
+        /// still (the frames' change drops under 1% of full scale at 7.6 s, measured on the clip). The intro crossfades into the
+        /// menu here when the game is ready, without the 2.5 s of still logo after it.</summary>
+        public const float SettledFrom=7.6f;
+        /// <summary>The clip starts once the menu built under the curtain runs smoothly: SmoothFrames frames in a row shorter than
+        /// SmoothFrame (its first frames after the build still make what they first draw: 20-85 ms frames for about 0.4 s, which
+        /// would land on the clip's opening), or SettleCap after it was built, whichever is first.</summary>
+        public const int SmoothFrames=30;public const float SmoothFrame=.02f,SettleCap=1.5f;
+        /// <summary>One frame of that wait: `smooth` counts the run of smooth frames; true once the menu counts as settled.</summary>
+        public static bool Settled(ref int smooth,float dt,float sinceBuilt){smooth=dt>=0&&dt<SmoothFrame?smooth+1:0;return smooth>=SmoothFrames||sinceBuilt>=SettleCap;}
         /// <summary>The clip's sound against the Menu Music level: the clip measures -21.7 LUFS and the menu song -14.1 LUFS at its
         /// x.3 gain (NativeAudio.MenuTrackGain), so x.72 plays the logo as loud as the song that follows it.</summary>
         public const float Gain=.72f;
@@ -64,8 +72,9 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The intro's timeline, one Step a frame (Runtime/NativeBootIntro.cs feeds it the clip's state and whether the game below is
-    /// ready). Playing until the clip ends or a press skips it; then Holding on the final logo while the game still loads (the
-    /// indicator after a moment); then the Crossfade into the menu; then Done. A clip that never plays holds the logo instead.
+    /// ready). Playing until the clip's animation finishes (SettledFrom) with the game ready, or the clip ends, or a press skips
+    /// it; then Holding on the final logo while the game still loads (the indicator after a moment); then the Crossfade into the
+    /// menu; then Done. A clip that never plays holds the logo instead.
     /// </summary>
     public sealed class NativeBootIntroFlow
     {
@@ -110,6 +119,8 @@ namespace ChipArena.UnityConversion
             bool over=Skipped||VideoEnded||VideoFailed;
             Settled=over||videoStarted&&videoTime>=NativeBootIntroRules.SettledFrom;
             if(State==Phase.Playing&&over){State=loaded?Phase.Fading:Phase.Holding;if(State==Phase.Holding)HoldAt=Up;else FadeAt=Up;}
+            // The animation has finished and the game is ready: straight into the crossfade (the still logo's tail fades with it).
+            else if(State==Phase.Playing&&Settled&&loaded){State=Phase.Fading;FadeAt=Up;}
             else if(State==Phase.Holding&&loaded){State=Phase.Fading;FadeAt=Up;}
             if(State==Phase.Fading&&Up-FadeAt>=NativeBootIntroRules.Crossfade)State=Phase.Done;
             // The layers.

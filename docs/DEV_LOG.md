@@ -1,4 +1,42 @@
 <<<<<<< HEAD
+## 2026-11-12 — Claude: two owner notes on the released intro: the handoff, and the Greatsword's first entrance
+
+- **Owner notes** (on revision `639300460006585328`, shared `0ccb5a0a`): "Some lag after intro plays, feels like it should transition
+  a lot quicker after animation finishes." and "Greatsword / DEV Greatsword VERY bad lag on intro. Seems to happen only first time
+  it plays?" Branch `claude/boot-intro-2` from shared `0ccb5a0a`; commits `aa893a73` (the handoff) and `258be5c6` (the first play).
+- **The handoff** (`aa893a73`): the intro crossfades into the menu as soon as the clip's logo stands still (7.6 s into the clip),
+  over 0.4 s, instead of after the clip's still 2.4 s tail and a 0.6 s fade. The menu's scene and GUI warm frames now run under the
+  black curtain before the clip starts (High background priority there), and the clip waits until the built menu runs smoothly
+  (30 frames in a row under 20 ms, or 1.5 s: `NativeBootIntroRules.Settled`), so nothing heavy runs while the clip plays or after
+  it. Trade-off: the clip starts later (5.0-5.5 s after launch, was 3.4-3.9 s); the menu is interactive sooner.
+- **The first play** (`258be5c6`; measured, docs/BOOT-INTRO.md "The first match"): the Greatsword's and the DEV Greatsword's
+  entrance (the Colossus Oath) froze the stage's loading screen 2.8-2.9 s on its first frame (Sword 0.65 s, the others 0.3 s): the
+  pack-motion signatures plan their arms, sink and foot spots on their first pose and the script samples its camera anchors from
+  them. Now Core `NativeEntranceDirector.Warm` builds all ten pack signatures on a worker once the source motion bank is in (3.9-4.0
+  s, before the menu is up), each pack on its own clearance and body-push scratch, under the script's `PoseLock` (which
+  `DirectedIntro` holds). The countdown's first frame (0.30-0.36 s, every class) was the arena's first frame: the stage preload's
+  first warm frame now draws the arena behind the closed screen (`StageWarmsArena`; the root goes back off at the end of that frame,
+  before the next physics step). `NativeUi.WarmFaces` lays out every UI face under the intro's curtain.
+- **Systems:** presentation only: the boot intro, the entrance director and pack poses (results unchanged), the stage loading
+  screen's preload frames, the UI's text faces. No rule, simulation, network, save or updater code. **Animation impacts:** none on
+  hit timing, hitboxes, damage, cooldowns, movement or networking; the entrances' poses, cameras and effects are the same (CoreTests
+  bit for bit; the Colossus Oath's frames at 0.7, 1.85 and 3.4 s match the released build's within capture jitter).
+- **Measured** (Windows Development builds, this PC, fresh launches; Brickfall, one pistol bot): the logo standing still to the menu
+  fully in 3.04-3.06 s to 0.43-0.44 s; launch to an interactive menu 13.5-13.9 s to 12.7-13.1 s; frames while the clip plays worst
+  607-680 ms to 14-17 ms (none over 33 ms); the first match's entrance frame Greatsword 2.80 s, DEV Greatsword 2.94 s to 0.29 s
+  (every class 0.29-0.33 s); its loading screen 3.9-4.0 s to 1.65 s; the countdown's worst frame 299-362 ms to 61-73 ms. A skip at
+  0.5 s hands over at once (5.9 s after launch). `-nointro` builds the warm from Awake (the Greatsword's first frame 0.29 s).
+- **Checks:** the full CoreTests at `c48fd452` and again at `64bea18a` (this branch merged with shared `e2d1aed5`): exit 0, 1018 PASS
+  lines each (the Windows-only `ExpeditionEndingChecks` path patch applied in a throwaway worktree for the runs, not committed);
+  `--boot-intro` (135 checks; the first commit alone: 112); `tools/check_unity_compile.py` (all four assemblies); `git diff --check`.
+  The Unity build checks (`PrototypeBuild.Validate`) in the shared Editor on `64bea18a`: ok, 397 PASS lines (lock 23:28-23:31; the
+  Editor checkout returned to `f5f729c9` with its local manifest and Player Settings byte for byte, compiled with no errors).
+- **For Astra:** the fight's first frame is still about 80 ms in every first match: the simulation's first fight tick compiling about
+  490 methods (`FixedUpdate`). And the account/updater replies' continuations (`UnitySynchronizationContext`, about 40 ms with their
+  first compile) land under the curtain only when they arrive within 1.5 s of the menu's build.
+- **Not verified:** a slower PC (only this RTX 4090 PC), cold driver shader caches, real multiplayer stage loads. Not merged or released.
+=======
+<<<<<<< HEAD
 ## 2026-11-11 — Claude: the DEV Katana guards facing ahead, the blade in front (owner note)
 
 - Branch `claude/dev-classes-fixes` from shared `0ccb5a0a` (13e5f2fe in it); commit `e00c348d`, shared `e2d1aed5` merged (`f5f729c9`),
@@ -48,6 +86,8 @@
 - **Checks:** CoreTests `--blades` (224; the wiring check flipped: `NativeGuard.cs` no longer calls `BladeBlocked`, the parry's window still does); the full suite at `fc66b841` (1018 groups, exit 0); the Unity compile; the Editor build gate on `e01d8dbb` (`PrototypeBuild.Validate` ok, Native blades 67): it stages both through the arena's own `Damage` (the guarded blow opens no counter and staggers no one; the parried one opens the counter on its striker and reels it; the click lands once the parry's window has shut, as in play: `KatanaInput` starts no move inside it, which the gate's first run tripped on).
 - **The Hot Dog in the parry** (the owner's other note: "Dev Katana / Katana both morph player model in parry hit (Using hotdog)"): filmed by the hot dog session on shared `e2d1aed5` and its candidate, Katana and DEV Katana, standing, moving and countering. The parry hit itself deforms neither; the counter does (its clip curls the spine so far that the sausage folds 90 to 120 degrees at mid height). The fix is the Hot Dog's (the body side: the twist kept and spread, only the swing capped), agreed with its session. The parry hologram copies the Hot Dog's own renderer with its own bones (the spine twins), mesh and bind poses, so it follows the sausage exactly; DEV Katana's parry pose (Grruzam's `Revenge_Guard_Loop`) is a moderate crouch.
 - **Not seen / not done:** played by a person.
+>>>>>>> origin/claude/sleepy-ritchie-g8ruhv
+- **Released** to the test channel (Windows builder): merged into shared at `8fb8b6d8` and synced to the builder; the release suite at `77b2bb12` (1018 groups, exit 0; the stage art checks against the Drive zip's stage banks), the Unity compile and the Editor build checks (Native blades 67, on `e01d8dbb`) passed; built and published as revision `639300576421555823` (2026-11-12 05:24 UTC). Not played by a person.
 >>>>>>> origin/claude/sleepy-ritchie-g8ruhv
 
 ## 2026-11-11 — Astra: keep host networking alive while the destination has no local pilot

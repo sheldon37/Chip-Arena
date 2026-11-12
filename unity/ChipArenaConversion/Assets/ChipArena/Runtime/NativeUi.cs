@@ -72,6 +72,13 @@ namespace ChipArena.UnityConversion
             // White base so GUI.contentColor is the exact colour drawn (the menu skin's label colour would tint every overlay).
             text.normal.textColor=Color.white;
         }
+        /// <summary>Lays out a line once in every face the UI draws (its font and the mono one, each plain, bold, italic and bold
+        /// italic), so the first screen to use a face does not read its OpenType tables in view (10-20 ms a face: the fight HUD's
+        /// landed on the countdown's first frames). Called under the logo intro's curtain (NativeBootLoad.cs). Draws nothing.</summary>
+        public static void WarmFaces()
+        {
+            Ensure();foreach(bool m in new[]{false,true})for(int f=0;f<4;f++){content.text="Ag 0123456789 %:/";Style(14,(f&1)!=0,m,TextAnchor.UpperLeft,false,(f&2)!=0).CalcSize(content);}
+        }
         public static Font MonoFont=>Mono();
         private static Font Mono()
         {

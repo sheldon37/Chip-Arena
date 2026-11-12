@@ -10,19 +10,21 @@ namespace ChipArena.UnityConversion
     // below), through the splash and Awake; the source models are still built in presentation.Initialize (which waits for its
     // JSON) and the banks are joined here. Then, in order, one step a frame:
     //   1. Banks: joined once both workers are done.
-    //   2. Assets: what the menu's first frames load synchronously comes in by Resources.LoadAsync, at Low priority meanwhile.
-    //   3. Scene: once the clip has settled on its logo (or is over), the menu's scene builds and draws for two frames under it.
-    //   4. Gui: then the menu's GUI draws for two frames under it (its skins, text and portraits made).
-    //   5. Ready: the intro may crossfade into the menu.
+    //   2. Assets: what the menu's first frames load synchronously comes in by Resources.LoadAsync, at High priority (nothing moves yet).
+    //   3. Scene: the menu's scene builds and draws for two frames under the black curtain.
+    //   4. Gui: then the menu's GUI draws for two frames under it (its skins, text and portraits made, every face laid out once).
+    //   5. Ready: once the built menu runs smoothly (NativeBootIntroRules.Settled) the clip starts; when its animation finishes
+    //      (owner 2026-11-12: "feels like it should transition a lot quicker after animation finishes") it crossfades at once.
     // Until a step allows it, LateFrame and OnGUI return at once (nothing reads a bank before it is in) and Update takes no
-    // input; the rest of Awake ran as it always did. Without the intro (a dedicated server, batch mode, -nointro, the Editor
+    // input; the rest of Awake ran as it always did. So nothing heavy runs while the clip plays or after it. Without the intro (a dedicated server, batch mode, -nointro, the Editor
     // unless asked) the banks load in Awake as before and none of this runs. Presentation only.
     public sealed partial class ConversionGame
     {
         private enum BootStage{Banks,Assets,Scene,Gui,Ready}
         private NativeBootIntro bootIntro;private BootStage bootStage;private bool bootHanded,bootFailed;
         private readonly List<ResourceRequest> bootAssets=new List<ResourceRequest>();
-        private int bootSceneFrames,bootGuiFrames,bootWarmFrame=-1;private long bootAt;private float bootNoticeFrom;
+        private int bootSceneFrames,bootGuiFrames,bootWarmFrame=-1,bootSmooth;private long bootAt;private float bootNoticeFrom;
+        private bool bootSettled;private double bootBuiltAt=-1;
         private readonly List<string> bootSteps=new List<string>();
         // DEV: `--ca-boot-hold S` keeps the loading open until S seconds after the intro began, to see the held logo and its
         // indicator (the local capture tool sets it too). Never set in normal play.
@@ -54,14 +56,32 @@ namespace ChipArena.UnityConversion
         {
             if(!bootWanted||dedicated)return false;
             bootNoticeFrom=Time.unscaledTime;
-            float level=prefs.sound?Mathf.Clamp01(prefs.menuMusic)*NativeBootIntroRules.Gain:0;Func<bool> ready=()=>bootStage==BootStage.Ready&&BootMs>=bootDevHold*1000||error.Length>0;
-            bootIntro=NativeBootIntro.Current!=null&&!NativeBootIntro.Current.Armed?NativeBootIntro.Current.Arm(level,ready):NativeBootIntro.Begin(level,ready);
+            float level=prefs.sound?Mathf.Clamp01(prefs.menuMusic)*NativeBootIntroRules.Gain:0;
+            // The clip starts once the menu is built (its stalls land on the black curtain, never on the moving clip or after it);
+            // the crossfade waits for that too (and for a DEV hold).
+            Func<bool> built=()=>bootStage==BootStage.Ready&&bootSettled||error.Length>0||bootFailed;Func<bool> ready=()=>bootStage==BootStage.Ready&&BootMs>=bootDevHold*1000||error.Length>0||bootFailed;
+            bootIntro=NativeBootIntro.Current!=null&&!NativeBootIntro.Current.Armed?NativeBootIntro.Current.Arm(level,ready,built):NativeBootIntro.Begin(level,ready,built);
             bool voxel=Array.IndexOf(Environment.GetCommandLineArgs(),ArenaPresentation.VoxelBodiesArgument)>=0;
             foreach(var (path,type) in BootAssets)if(!(voxel&&type==typeof(GameObject)))bootAssets.Add(Resources.LoadAsync(path,type));
             Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"BOOT_INTRO playing at {0:F2} s since start ({1:F0} ms after its workers started, before the splash)",Time.realtimeSinceStartupAsDouble,BootMs);
             return true;
         }
         private void BootStep(string what){bootSteps.Add(what+"="+BootMs.ToString("F0",CultureInfo.InvariantCulture));}
+        // The pack entrances' plans and camera anchors (Core NativeEntranceDirector.Warm), built on a worker as soon as the source
+        // motion bank is in, so no entrance's first frame builds them (owner 2026-11-12: "Greatsword / DEV Greatsword VERY bad lag
+        // on intro. Seems to happen only first time it plays?": the Colossus Oath's took 2.4 s, under the stage's loading screen).
+        private System.Threading.Tasks.Task<double> entranceWarm;private int entranceWarmCount;private bool entranceWarmLogged;
+        private void EntranceWarmBegin()
+        {
+            if(entranceWarm!=null||dedicated||Application.isBatchMode)return;
+            try{entranceWarm=NativeEntranceDirector.Warm(NativeSourceMotion.EntranceClip,out entranceWarmCount);}catch(Exception e){Debug.LogWarning("Entrance warm skipped: "+e.Message);}
+        }
+        private void EntranceWarmReport()
+        {
+            if(entranceWarm==null||entranceWarmLogged||!entranceWarm.IsCompleted)return;entranceWarmLogged=true;
+            if(entranceWarm.IsFaulted)Debug.LogWarning("Entrance warm failed (each entrance builds on its first frame instead): "+entranceWarm.Exception?.GetBaseException().Message);
+            else Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"ENTRANCE_WARM scripts={0} ms={1:F0} (on a worker)",entranceWarmCount,entranceWarm.Result);
+        }
         /// <summary>Update, before any input is read: steps the loading; true while the intro holds the game (no input then).</summary>
         private bool BootIntroHolds()
         {
@@ -77,7 +97,7 @@ namespace ChipArena.UnityConversion
         {
             // The frame a warm step ran in costs its whole interval (its build, its draw); recorded on the next frame.
             if(bootWarmFrame>=0&&Time.frameCount>bootWarmFrame){bootSteps.Add("frame"+(bootSceneFrames+bootGuiFrames)+"="+(Time.unscaledDeltaTime*1000).ToString("F0",CultureInfo.InvariantCulture)+"ms");bootWarmFrame=-1;}
-            if(bootFailed||error.Length>0)return;
+            EntranceWarmReport();if(bootFailed||error.Length>0)return;
             try
             {
                 switch(bootStage)
@@ -87,14 +107,17 @@ namespace ChipArena.UnityConversion
                         bool sourceIn=NativeSourceMotion.Ready,sceneIn=NativeSceneMotion.Ready;if(!sourceIn||!sceneIn)return;
                         long joinAt=Stopwatch.GetTimestamp();NativeSourceMotion.Prewarm();NativeSceneMotion.Prewarm();
                         UnityEngine.Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"MOTION_BANKS_READY source={0} scene={1} ms={2:F1} (on workers from before the splash; joined in {3:F1} ms)",NativeSourceMotion.ClipCount,NativeSceneMotion.Count,BootMs,HitchMs(joinAt));
-                        BootStep("banks");bootStage=BootStage.Assets;return;
+                        BootStep("banks");EntranceWarmBegin();bootStage=BootStage.Assets;return;
                     case BootStage.Assets:
                         foreach(var r in bootAssets)if(!r.isDone)return;
                         BootStep("assets");bootStage=BootStage.Scene;return;
                     case BootStage.Scene:
                         if(bootSceneFrames>=2){BootStep("scene");bootStage=BootStage.Gui;}return;
                     case BootStage.Gui:
-                        if(bootGuiFrames>=2){BootStep("gui");bootStage=BootStage.Ready;}return;
+                        if(bootGuiFrames>=2){BootStep("gui");bootStage=BootStage.Ready;bootBuiltAt=BootMs;}return;
+                    case BootStage.Ready:
+                        // The clip waits for the built menu to run smoothly under the curtain (NativeBootIntroRules.Settled).
+                        if(!bootSettled&&NativeBootIntroRules.Settled(ref bootSmooth,Time.unscaledDeltaTime,(float)(BootMs-bootBuiltAt)/1000)){bootSettled=true;BootStep("settled");}return;
                 }
             }
             catch(Exception e)
@@ -107,7 +130,7 @@ namespace ChipArena.UnityConversion
         private bool BootIntroFrame()
         {
             if(bootIntro==null)return false;if(bootFailed)return true;
-            if(bootStage<BootStage.Scene||bootStage==BootStage.Scene&&!bootIntro.Flow.Settled)return true;
+            if(bootStage<BootStage.Scene)return true;
             if(bootStage==BootStage.Scene&&bootSceneFrames<2){bootSceneFrames++;bootWarmFrame=Time.frameCount;}
             return false;
         }
@@ -116,7 +139,7 @@ namespace ChipArena.UnityConversion
         {
             if(bootIntro==null||error.Length>0)return false;
             if(bootStage<BootStage.Gui)return true;
-            if(bootStage==BootStage.Gui&&bootGuiFrames<2&&Event.current.type==EventType.Repaint){bootGuiFrames++;bootWarmFrame=Time.frameCount;}
+            if(bootStage==BootStage.Gui&&bootGuiFrames<2&&Event.current.type==EventType.Repaint){if(bootGuiFrames==0)NativeUi.WarmFaces();bootGuiFrames++;bootWarmFrame=Time.frameCount;}
             return false;
         }
         // The crossfade began: the menu takes input, its song starts from the top, and a notice raised under the intro (the

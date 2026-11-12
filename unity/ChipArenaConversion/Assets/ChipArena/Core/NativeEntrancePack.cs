@@ -13,8 +13,10 @@ namespace ChipArena.UnityConversion
     /// cast's slam) resting on it; the magic schools' staff rides the left hand (the pack's casts read mirrored), the right
     /// hand casting; the feet are planted with leg IK
     /// on the floor spots they land on through each contact the exporter found, so nothing slides. Every pose is a pure
-    /// function of time; allocation-free per frame once the plan (spots, body sink, arm correction) is built on the first
-    /// pose (main thread only).
+    /// function of time; allocation-free per frame once the plan (spots, body sink, arm correction) is built, on the first
+    /// pose or ahead of it on a worker (NativeEntranceDirector.Warm: the Colossus Oath's plan took 2.4 s of its first frame).
+    /// Its working state is its own (the clearance and the body push included), so it plans on any one thread at a time:
+    /// its script's PoseLock.
     /// </summary>
     public sealed class NativePackIntro
     {
@@ -55,7 +57,7 @@ namespace ChipArena.UnityConversion
             Vector3 blade=CapturedRig.Unit(Row(f,MeleeCapture.Blade),Vector3.UnitZ),edge=Row(f,MeleeCapture.Edge);edge=CapturedRig.Unit(edge-blade*Vector3.Dot(blade,edge),Vector3.UnitX);var grip=Row(f,MeleeCapture.Grip)+fixRight+HoldClear(Style,t);
             float holdTurn=HoldTurn(Style,t);if(holdTurn!=0){var q=Quaternion.CreateFromAxisAngle(Vector3.UnitY,holdTurn);blade=Vector3.Transform(blade,q);edge=Vector3.Transform(edge,q);p.Rotation[CapturedRig.Head]=Quaternion.Normalize(p.Rotation[CapturedRig.Head]*Quaternion.CreateFromAxisAngle(Vector3.UnitY,ShieldHead*holdTurn/ShieldTurn));}
             // The blade and hilt kept out of the voxel head, pauldrons and torso exactly as in play (MeleeCapture.Apply's clearance).
-            var set=Melee;if(set!=null&&set.Fit.Clear!=MeleeClear.None){melee.ReadPose(p);MeleeClearance.Shared.Clear(melee,ref grip,ref blade,ref edge,-set.Fit.Pommel,set.BladeEnd,true,set.Fit.HalfWidth,false);}
+            var set=Melee;if(set!=null&&set.Fit.Clear!=MeleeClear.None){melee.ReadPose(p);clearance.Clear(melee,ref grip,ref blade,ref edge,-set.Fit.Pommel,set.BladeEnd,true,set.Fit.HalfWidth,false);}
             var right=CapturedRig.Basis(edge,Vector3.Cross(blade,edge),blade);
             // Two-handed, the grip comes toward the support shoulder by whatever the support hand falls short of it (the
             // retarget's own rule, again after the clearance and the floor guard have moved the blade).
@@ -106,6 +108,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The gameplay melee set of the weapon (its blade, pommel and clearance), or null.</summary>
         public MeleeSet Melee{get{if(!meleeKnown){meleeSet=MeleeSet.For(Style.StartsWith("weapon-",StringComparison.Ordinal)?Style.Substring(7):"");meleeKnown=true;}return meleeSet;}}
         private MeleeSet meleeSet;private bool meleeKnown;private readonly MeleeRig melee=new MeleeRig();
+        // Its own blade clearance (stateless per call: the same blade as the shared one's) and body-push scratch.
+        private readonly MeleeClearance clearance=new MeleeClearance();private readonly NativeIntroMotion.PushScratch push=new NativeIntroMotion.PushScratch();
         /// <summary>The melee blade's length past the wrist (MeleeSet blade end; 0: no floor guard, as for the shield and guns).</summary>
         public float Blade=>Melee!=null&&Melee.Fit.Clear!=MeleeClear.None?Melee.BladeEnd:0;
         /// <summary>The floor top in the rig frame (the root stands RootHeight above it, turned only about +y).</summary>
@@ -202,7 +206,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<n;i++)
                 {
                     float t=i/(float)ArmRate;Captured(t,planPose,out _,out _,Drop(t));planPose.World();var chest=Quaternion.Inverse(planPose.WorldRotation[CapturedRig.Chest]);
-                    var pr=Vector3.Transform(NativeIntroMotion.BodyPush(Style,planPose,false),chest);var pl=Vector3.Transform(NativeIntroMotion.BodyPush(Style,planPose,true),chest);
+                    var pr=Vector3.Transform(NativeIntroMotion.BodyPush(Style,planPose,false,push),chest);var pl=Vector3.Transform(NativeIntroMotion.BodyPush(Style,planPose,true,push),chest);
                     if(TwoHand){rawRight[i]=right[i]+.9f*(pr+pl);rawLeft[i]=left[i];}else{rawRight[i]=right[i]+.9f*pr;rawLeft[i]=left[i]+.9f*pl;}
                 }
                 right=Blur(rawRight);left=Blur(rawLeft);
