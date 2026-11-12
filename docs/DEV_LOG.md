@@ -25,6 +25,7 @@
 - **Not verified:** no two-PC playtest, so the owner's report (guests held at the join circle, then a rollback; still loading bars)
   is not reproduced or confirmed fixed. The native check is an automated fixture, not real multiplayer. Not merged or released.
 - **Next:** the integrating session merges this branch into shared. Astra reviews the re-land.
+- **Released** to the test channel: merged into shared at `b5eac23b`; the release suite at `e39553f4` (1018 groups, exit 0) and the Unity compile passed; the Unity build checks passed on `a9e77f55`; built and published as revision `639300460006585328` (2026-11-12 02:09 UTC, 367.9 MiB). Not played by a person; no two-PC test.
 
 ## 2026-11-11 — Claude: PR #385 reverted from shared for now (owner request); Claude re-lands it
 
@@ -37,6 +38,7 @@
   `codex/expedition-transfer-sync` is untouched.
 - **Next:** Claude finds why the projection refuses (the check's projected view, or the runtime), fixes it on a branch from that
   one, runs the Unity build checks and the Expedition suites, and re-lands #385's repair.
+- **Released:** merged into shared at `90fe7574` (the release suite at `ffcacf3f`, 1018 groups, exit 0) and built without #385 as revision `639300442847215192` (2026-11-12 01:41 UTC, 367.9 MiB; shared `90fe7574`, with the new Drive zip: the 475-clip motion bank and the menu rooftop bank added, every other file unchanged by hash; the zip before kept as `LocalAssets-2026-11-11-before-menu.zip`); #385 came back fixed in the next build (see the entry above).
 
 ## 2026-11-11 — Claude: the main menu's rooftop out of its boxy look, new screen ads, the Ricochet egg, the new logo and icons
 
@@ -49,6 +51,7 @@
 - Checks run: the full CoreTests on the head merged with shared `a3c26e5b` (exit 0, 1,018 PASS lines, with the Windows-only path fix for ExpeditionEndingChecks applied for the run and not committed), `--rooftop` with the bank present, `tools/check_unity_compile.py` (all assemblies), `git diff --check`, the Blender build's sight-line and coplanar measures (0 of 71 targets blocked; 0 m2 fighting on the roof and the near city). Pins changed in RooftopChecks are listed in the art page.
 - Seen in the shared Editor (captures at High and Low, before and after, every slide, the egg; docs/MENU-ROOFTOP-ART.md "Seen in the Editor"): both shaders draw, the logo and the TV set are clear of the menu, frame time no worse (High 10.38 to 9.58 ms mean, Low 9.85 to 9.29, Editor). The bank is read on a worker thread (`NativeRooftopModels.Prewarm`); `Load` held the main thread 164 ms at the menu's first frame. Not verified: engine draw calls, reduced effects, 21:9, a Windows build, the top-bar logo. Shared (`a3c26e5b`: the z-fight fix, the DEV Greatsword and Katana, the boot intro) is merged in; the last capture ran on that head, after the intro. Not merged, not released; the bank must go into the Drive zip before a builder push.
 - Animation, hit timing, hitboxes, damage, cooldowns, movement, networking: untouched (the rooftop's distant pilots keep their scripts and places).
+- **Released** to the test channel: merged into shared at `313d7a6e` (the release suite at `4f2021d2`, 1018 groups, exit 0; the Unity compile passed); the rooftop bank is in the Drive zip; built and published as revision `639300442847215192` (2026-11-12 01:41 UTC, 367.9 MiB; shared `90fe7574`, with the new Drive zip: the 475-clip motion bank and the menu rooftop bank added, every other file unchanged by hash; the zip before kept as `LocalAssets-2026-11-11-before-menu.zip`). Not played by a person.
 
 ## 2026-11-11 — Claude: the owner's ten new songs: the nine remodelled stages and the menu (owner request)
 
@@ -65,6 +68,7 @@
   `ZoneMusicChecks`, `PierChecks` and `PolarChecks`; docs in STAGE-MUSIC-PROMPTS, ASSET-CREDITS and the five rebuilt stages' pages.
 - **Not changed:** gameplay, hazards, the Electron game's music, Containment Sirens' 1.5x gain (it applies to that file only).
 - **Checks:** see the release line below.
+- **Released** to the test channel: the Unity build checks passed on `e5cfbd29` ("twenty-one owner stage songs and the menu song: complete imported clips"); merged into shared at `b6b38803` (the release suite at `59b51b31`, 1016 groups, exit 0); the first build of it failed on #385's check (see the revert entry); built and published as revision `639300442847215192` (2026-11-12 01:41 UTC, 367.9 MiB; shared `90fe7574`, with the new Drive zip: the 475-clip motion bank and the menu rooftop bank added, every other file unchanged by hash; the zip before kept as `LocalAssets-2026-11-11-before-menu.zip`). Not listened to in a build by a person.
 
 ## 2026-11-11 — Astra: retry Expedition destination loads and refresh party progress
 
@@ -153,6 +157,7 @@
     - interactive 12.65 s after start;
     - sculpts 229 made, 229 taken, 0 sculpted by a builder itself, 0 unused.
 - **Not verified:** a person watching and hearing it; the builder's own build and the installed updater; other GPUs and slower CPUs; a two-monitor or fullscreen launch.
+- **Released** to the test channel: merged into shared at `a3c26e5b` (the release suite at `b8daf945`, 1016 groups, exit 0); built and published as revision `639300442847215192` (2026-11-12 01:41 UTC, 367.9 MiB; shared `90fe7574`, with the new Drive zip: the 475-clip motion bank and the menu rooftop bank added, every other file unchanged by hash; the zip before kept as `LocalAssets-2026-11-11-before-menu.zip`). The Editor checkout was moved onto it with the Video module resolved (its local manifest and Player Settings edits kept; note in the side-session notes, `editor-checkout-video-module.md`). Not watched in person.
 
 ## 2026-11-11 — Claude: DEV Greatsword and DEV Katana, the Grruzam sword pack on two DEV classes
 
@@ -204,6 +209,7 @@
   Dodge_Front is the pack's flip, not the Katana's tumble.
 - **Next:** the owner reviews the captures; Astra reviews the seat's `motion` and publishes the Site for the two keys; to ship them,
   repack the Drive zip's bank with the Grruzam clips.
+- **Released** to the test channel: merged into shared at `13e5f2fe` (the release suite at `93ff15f6`, 1015 groups, exit 0); the 475-clip motion bank (the released 409 clips byte-identical, 66 added) is in the Drive zip; built and published as revision `639300442847215192` (2026-11-12 01:41 UTC, 367.9 MiB; shared `90fe7574`, with the new Drive zip: the 475-clip motion bank and the menu rooftop bank added, every other file unchanged by hash; the zip before kept as `LocalAssets-2026-11-11-before-menu.zip`). The Site's grant keys still wait on Astra. Not played by a person.
 
 ## 2026-11-11 — Claude: depth fighting on the stage art (owner report), Polaris's middle first
 
