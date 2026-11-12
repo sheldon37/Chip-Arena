@@ -54,6 +54,8 @@ namespace ChipArena.UnityConversion
                 case NativeGlaive.Spec:return "A ring blade you cut, throw and burst";
                 case NativeKatana.Spec:return "A curved blade that draws, cuts and splits";
                 case NativeFangs.Spec:return "DEV twin venom daggers of the shadows";
+                case NativeDevMotions.Greatsword:return "DEV · the Greatsword on new animations";
+                case NativeDevMotions.Katana:return "DEV · the Katana on new animations";
                 case "pistol":return "Precise sidearm · 7-round magazine";
                 case "rifle":return "Long-range sniper · 3 heavy rounds";
                 case "machinegun":return "Rapid automatic fire · 48 rounds";
