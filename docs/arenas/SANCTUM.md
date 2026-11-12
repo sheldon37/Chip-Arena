@@ -204,6 +204,13 @@ fought was drawn at run time over it, none of it layered:
   lozenges between medallions, the head's rosette. Each overlapping set now stands a step (8 mm, `NativeSanctumScenery.Step`)
   nearer the hall than what it lies over (the ring's and the rosette's panes alternate half a step).
 
+- **The polished metals' speckle** (seen in the Editor; the likeliest thing the owner saw): the gold, brass, bronze, silver,
+  organ-pipe and inlay finishes carried the shader's brushed-brass fine surface, a faint bump on a 4.5 cm lattice. On a smooth
+  metal a candle's or the moon's crisp highlight breaks on it into blocky speckles that crawl as the eye moves: the reredos's
+  gilded niches behind the high altar, the chandeliers' and the censer's gilding, the floor's brass. It is steady between two
+  frames 3 mm apart (not two faces trading pixels), but it reads as depth fighting wherever a light falls on metal. Those six
+  finishes now carry no fine surface (`POLISHED` in `tools/stages/sanctum_art.py`: a bank change, the shared shader is untouched).
+
 ### The Thurible (Core `NativeSanctumRig.CenserMotion`, `Censer`)
 The bowl's centre stays on the simulation's point at every moment (checked), on the arc from the yoke. About it:
 - its axis leans north past its rope by `lean`: held cocked by the tether (.32 rad), three heaves of the warning at 12%, 42% and

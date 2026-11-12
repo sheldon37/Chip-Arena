@@ -58,10 +58,14 @@ def finishes(L):
     F['cryptwall'] = A.fin('cryptwall', 0x55505C, A.DETAIL_ASHLAR, smooth=.2, moss=.7, param=.62)
     F['marble'] = A.fin('marble', K('marble'), A.DETAIL_MARBLE, smooth=.72, dirt=.4)
     F['blackmarble'] = A.fin('blackmarble', 0x2A262E, A.DETAIL_MARBLE, smooth=.78, dirt=.3)
-    F['gold'] = A.fin('gold', K('gold'), A.DETAIL_BRASS, smooth=.8, metal=1.0, dirt=.25, wear=.2)
-    F['brass'] = A.fin('brass', K('brass'), A.DETAIL_BRASS, smooth=.72, metal=1.0, dirt=.35, wear=.25)
+    # The polished metals carry no fine surface. The shader's brushed-brass grain (a faint bump on a lattice) breaks a candle's or
+    # the moon's crisp highlight on a smooth metal into blocky speckles that crawl as the eye moves: on the reredos's gilded
+    # niches, the chandeliers' gilding and the floor's inlays it read as depth fighting (owner 2026-11-11: "Z-Fighting with lights").
+    POLISHED = A.DETAIL_NONE
+    F['gold'] = A.fin('gold', K('gold'), POLISHED, smooth=.8, metal=1.0, dirt=.25, wear=.2)
+    F['brass'] = A.fin('brass', K('brass'), POLISHED, smooth=.72, metal=1.0, dirt=.35, wear=.25)
     F['iron'] = A.fin('iron', 0x2C2A32, A.DETAIL_IRON, smooth=.34, metal=.75, wear=.35)
-    F['bronze'] = A.fin('bronze', K('bronze'), A.DETAIL_BRASS, smooth=.55, metal=1.0, dirt=.5)
+    F['bronze'] = A.fin('bronze', K('bronze'), POLISHED, smooth=.55, metal=1.0, dirt=.5)
     F['wax'] = A.fin('wax', K('wax'), A.DETAIL_WAX, smooth=.5, dirt=.15)
     F['wick'] = A.fin('wick', 0x1A1410, A.DETAIL_NONE, smooth=.1, dirt=0)
     for axis, tag in ((0, 'x'), (1, 'y'), (2, 'z')):
@@ -72,15 +76,15 @@ def finishes(L):
     F['clothgold'] = A.fin('clothgold', K('cloth-gold'), A.DETAIL_CLOTH, smooth=.35, metal=.4, dirt=.3)
     F['velvet'] = A.fin('velvet', K('velvet'), A.DETAIL_CLOTH, smooth=.18, dirt=.4)
     F['carpet'] = A.fin('carpet', K('carpet'), A.DETAIL_CLOTH, smooth=.1, dirt=.6)
-    F['pipe'] = A.fin('pipe', K('pipe'), A.DETAIL_BRASS, smooth=.7, metal=1.0, dirt=.3)
+    F['pipe'] = A.fin('pipe', K('pipe'), POLISHED, smooth=.7, metal=1.0, dirt=.3)
     F['lead'] = A.fin('lead', K('lead'), A.DETAIL_IRON, smooth=.3, metal=.6)
     F['statue'] = A.fin('statue', K('statue'), A.DETAIL_CARVED, smooth=.28, wear=.2, dirt=.8)
     F['bone'] = A.fin('bone', K('bone'), A.DETAIL_CARVED, smooth=.3)
-    F['silver'] = A.fin('silver', K('silver'), A.DETAIL_BRASS, smooth=.82, metal=1.0, dirt=.3)
+    F['silver'] = A.fin('silver', K('silver'), POLISHED, smooth=.82, metal=1.0, dirt=.3)
     F['chain'] = A.fin('chain', K('chain'), A.DETAIL_IRON, smooth=.4, metal=.85)
     F['rope'] = A.fin('rope', K('rope'), A.DETAIL_CLOTH, smooth=.1)
     F['coal'] = A.fin('coal', K('coal'), A.DETAIL_IRON, smooth=.15, metal=.2)
-    F['inlay'] = A.fin('inlay', K('inlay'), A.DETAIL_BRASS, smooth=.6, metal=.8)
+    F['inlay'] = A.fin('inlay', K('inlay'), POLISHED, smooth=.6, metal=.8)
     F['glass'] = A.fin('glass', K('glass'), A.DETAIL_NONE, smooth=.9)
     F['glow'] = A.fin('glow', K('glow'), A.DETAIL_GLOW, glow=2.6)
     F['ember'] = A.fin('ember', K('ember'), A.DETAIL_GLOW, glow=3.0)
