@@ -1,3 +1,33 @@
+## 2026-11-12 — Claude: the Hot Dog no longer morphs in the Katana's parry hit and counter (owner report)
+
+- Branch `claude/hotdog-rig`, from shared `4c51b03c` (shared merged in). Forwarded by the NOCTIEL and THE DEEP END session.
+- **The owner:** "Dev Katana / Katana both morph player model in parry hit. (Using hotdog)", on revision 639300460006585328 (with
+  the even bend, `6d63564f`).
+- **Cause** (presentation): `HotDogJiggle`'s rig gathered every `HotDog~` twin under the body's root.
+  - The body's `Visual motion` and `Visual stride` proxies are copies of the skeleton made after the twins. So each carries a
+    set of twins posed by other clips (three `HotDog~head` per body in the log).
+  - The rig chained 21 twins from three skeletons and eased each toward neighbours from the others.
+  - In idle the three poses agree. In the parry hit and the counter the motion proxy plays the raw pack clip, so the sausage
+    folded, bulged and wrung.
+- **Fix:** the rig takes only the twins the sausage's renderer skins with (its bones). It is rebuilt until that renderer
+  exists. `docs/HOT-DOG-SKIN.md` "The bend kept even".
+- **How it was found:** Editor frames of shared and of each try, for Katana and DEV Katana against a greatsword bot (`parryhit`,
+  and the counter on Attack). Then a local probe at the parry hit: each drawn twin's turn and place against its bone. Its ends
+  sat on their bones while the spine was doubled over.
+- **Tried and dropped** (local `claude/hotdog-parry`, never pushed): a stiff even arc in four versions (`81051239`..`ca5862ab`):
+  a whole-turn cap; a bend-only cap with the twist kept; arcs from the real spine's chords; the twist summed joint by joint.
+  They were tuned on the mixed rig. Once the rig was fixed, the arc folded the sausage over its top at the parry hit, where the
+  eased bend did not.
+- **Animation impact:** presentation only. No hit timing, hitbox, damage, cooldown, movement or wire value changes; the arms,
+  hands, legs and weapons stay on the real bones.
+- **Checks:**
+  - `--hot-dog`: the pinned line now asserts the drawn twins, and that the old gather is gone.
+  - Unity compile PASS.
+  - Editor captures (front-left, side, back-right and back views) of both counters and of the DEV Katana guard on the move: the
+    counter doubles the sausage over, straightens it and lunges, its face showing. The guard on the move matches shared.
+- **Not run:** no person or two-client run. Hats were not re-captured in a counter (they ride the drawn head twin as before),
+  and the Top Dog (same rig) was not captured.
+
 <<<<<<< HEAD
 ## 2026-11-12 — Claude: two owner notes on the released intro: the handoff, and the Greatsword's first entrance
 
