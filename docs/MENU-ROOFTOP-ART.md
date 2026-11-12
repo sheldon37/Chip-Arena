@@ -194,7 +194,8 @@ entrance; the egg.
   imports and draws as the title and on the brand screen.
 - The title logo and the TV set are clear of the home screen's menu (the set sits under the last entry, left of the pilot).
 - The egg: the card on the set at 71, 74, 77.95 (in the corner), 78.3, 82 and 84.5 s, a new colour each time. After the
-  first look the card was made larger (half the screen) and brighter.
+  first look the card was made larger (half the screen) and brighter, and its bounce flash toned down; seen again on the
+  final head (merged with shared `a3c26e5b`, after the boot intro): 10.08 ms mean, 11.85 p95 there.
 - Frame time over 6 s of the running menu (Editor, back to back with other sessions' work, so indicative only):
   High 10.38 ms mean / 11.65 p95 before, 9.58 / 11.40 after; Low 9.85 / 10.92 before, 9.29 / 10.73 after.
 - The bank's read: the first build read it on the main thread in 752 ms at the menu's first frame. It is now parsed on a
