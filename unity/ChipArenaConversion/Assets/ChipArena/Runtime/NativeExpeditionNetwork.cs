@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
         private ExpeditionView expeditionView;
         private readonly ExpeditionLoadReportStore expeditionLoadReports=new ExpeditionLoadReportStore();
         private ExpeditionCohortTicket expeditionProgressTicket;
-        private float expeditionLastProgress=-1,expeditionLastProgressAt=-1000;
+        private float expeditionLastProgress=-1,expeditionLastProgressAt=-1000,expeditionNextLoadBroadcast;
         // Reports are rate-limited by ticket and by change; an eventual final 1.0 is always transmitted.
         private void ExpeditionProgressTick()
         {
@@ -105,28 +105,12 @@ namespace ChipArena.UnityConversion
         {
             var message=expeditionLoadInbox.Take();
             if(message==null||server==null||server.Closed||ExpeditionView?.areaIdentity?.Matches(message.frame.areaIdentity)!=true)return;
-            try
-            {
-                ClientMessage(new NativeNetMessage{type="frame",epoch=message.epoch,frame=message.frame});
-                if(arena?.Replica!=true||arena.MapId!=message.frame.map||arena.Generation!=message.frame.generation)
-                    throw new InvalidOperationException("Destination snapshot was not applied.");
-                expeditionLoadInbox.MarkApplied(message.frame.areaIdentity);stageFrom=null;
-            }
+            try{ClientMessage(new NativeNetMessage{type="frame",epoch=message.epoch,frame=message.frame});stageFrom=null;}
             catch(Exception e)
             {Debug.LogWarning("Expedition destination load failed: "+e);joinError="Expedition destination load failed: "+e.Message;server.Dispose();throw;}
         }
-        // UI observation can replace/cancel a deferred action. Keep the received ticket
-        // pending until construction succeeds, and restore the action without resetting
-        // an action already waiting for its first repaint.
-        private void EnsureExpeditionLoadScheduled()
-        {
-            var message=expeditionLoadInbox.Latest;
-            if(message==null||server==null||server.Closed||stageLoad.ActionPending&&stageAction!=null)return;
-            RequestStage(arena==null?StageLoadKind.Expedition:StageLoadKind.Area,ApplyPendingExpeditionFrame);
-            StageRestart();stageView.Stage(content.Map(message.frame.map),Time.unscaledTime,NativeExpeditionStates.AreaName(message.expeditionPublic.area));
-        }
         private void ResetExpeditionNetwork()
-        {expeditionLoadInbox.Reset();ResetBossBattleContent();expeditionLoading.Reset();expeditionLoadReports.Clear();expeditionProgressTicket=null;expeditionLastProgress=-1;expeditionLastProgressAt=-1000;DisposeSplitAreas();expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
+        {expeditionLoadInbox.Reset();ResetBossBattleContent();expeditionLoading.Reset();expeditionLoadReports.Clear();expeditionProgressTicket=null;expeditionLastProgress=-1;expeditionLastProgressAt=-1000;expeditionNextLoadBroadcast=0;DisposeSplitAreas();expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
         private void ExpeditionNetworkTick()
         {
             try{ExpeditionNetworkStep();}
@@ -135,7 +119,7 @@ namespace ChipArena.UnityConversion
         private void ExpeditionNetworkStep()
         {
             if(ExpeditionSplit){SplitNetworkStep();return;}
-            if(server!=null){EnsureExpeditionLoadScheduled();ExpeditionProgressTick();ExpeditionReplicaTick();ExpeditionReadyTick();return;}
+            if(server!=null){ExpeditionProgressTick();ExpeditionReplicaTick();ExpeditionReadyTick();return;}
             if(expeditionSession==null)return;
             if(ExpeditionM1&&expeditionDirector.Barrier.active&&expeditionLoadedGeneration!=expeditionDirector.Barrier.generation)return;
             if(!ExpeditionM1)expeditionSession.Tick(Time.unscaledDeltaTime);

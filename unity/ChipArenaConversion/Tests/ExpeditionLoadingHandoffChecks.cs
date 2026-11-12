@@ -44,9 +44,6 @@ namespace ChipArena.UnityConversion
                     Check(inbox.Offer(ticket,3,"destination-3")&&!inbox.Offer(ticket,2,"stale")&&!inbox.Offer(old,1000,"old-area"),"coalesce latest frame and reject old area/sequence");
                     loading.ContentPresented();Check(loading.CanBuild&&loading.TakeAction(),"paint releases construction exactly once");
                     Check(inbox.Take()=="destination-3"&&!inbox.Pending&&inbox.Take()==null&&!loading.TakeAction(),"only newest destination builds once");
-                    Check(!inbox.Applied(ticket),"received UI ticket is not proof that the destination was built");
-                    inbox.MarkApplied(ticket);Check(inbox.Applied(ticket)&&!inbox.Applied(old),"only the constructed ticket may acknowledge readiness");
-                    inbox.Reset();Check(!inbox.Applied(ticket),"reconnect clears constructed ticket");
                     var ready=ExpeditionAreaReady.Capture(receiver.View);
                     Check(ready!=null&&ready.target=="ward"&&cohorts.Acknowledge(who,ticket),"loaded recipient acknowledges its destination ticket");
                     if(who!=accounts.Last())Check(!cohorts.Commit("join:1")&&placement.Applied==0,"host readiness cannot move the party before guests load");
@@ -57,17 +54,6 @@ namespace ChipArena.UnityConversion
                 var cancelled=new ExpeditionLoadInbox<string>();var current=cohorts.Member(accounts[1]).Ticket;
                 Check(cancelled.Offer(current,1,"abandoned"),"pending scene exists before disconnect");cancelled.Reset();Check(cancelled.Take()==null,"disconnect discards deferred scene");
             }
-            var cadence=new NativeExpeditionLoadWindow();cadence.Begin("load",0);
-            Check(cadence.Send(0,NativeExpeditionLoadWindow.SnapshotSeconds),"first loading snapshot immediate");
-            Check(!cadence.Send(.1,NativeExpeditionLoadWindow.SnapshotSeconds)&&cadence.Send(.25,NativeExpeditionLoadWindow.SnapshotSeconds),"loading snapshots refresh at four Hz");
-            var recovered=new ExpeditionLoadInbox<string>();
-            var recoveryTicket=new ExpeditionCohortTicket{run="recover",epoch=1,area="ward",layout=new string('a',64),serial=1};
-            recovered.Offer(recoveryTicket,1,"first");var interrupted=new NativeStageLoading();interrupted.Request(StageLoadKind.Area,false);interrupted.Cancel();
-            Check(recovered.Pending&&!recovered.Applied(recoveryTicket)&&!interrupted.ActionPending,"cancelled UI leaves destination pending for rescheduling");
-            recovered.Offer(recoveryTicket,2,"newest");interrupted.Request(StageLoadKind.Area,false);
-            for(int i=0;i<60;i++){interrupted.Step(1/60f,new StageLoadSignals{Waiting=true},0);interrupted.ContentPresented();}
-            Check(interrupted.CanBuild&&interrupted.TakeAction()&&recovered.Take()=="newest","rescheduled load constructs newest snapshot");
-            recovered.MarkApplied(recoveryTicket);Check(recovered.Applied(recoveryTicket),"recovered destination can acknowledge");
             // Guard the actual network/GUI handoff, since the managed runner cannot create Unity scenes.
             string runtime=Path.Combine(root,"Assets/ChipArena/Runtime");
             var network=File.ReadAllText(Path.Combine(runtime,"NativeNetwork.cs"));

@@ -1,3 +1,15 @@
+## 2026-11-11 — Claude: PR #385 reverted from shared for now (owner request); Claude re-lands it
+
+- **Why:** the builder failed shared `b6b38803` in the Unity build checks. The cause is #385's new native transfer check: its pre-ACK
+  bundle step (`NativeExpeditionActivationBuildChecks.cs:91`, `LoadBeforeReady`) calls `ExpeditionAreaProjection.Build`, which
+  throws "Cross-area public data refused". #385's entry notes no native Unity execution, so this is the check's first Unity run.
+  None of the other merges in that build touch Expedition code.
+- **Owner:** "Can you revert it, then bring it back yourself instead of astra?" Branch `claude/revert-pr385` reverts merge `5cf0eeea`
+  (`git revert -m 1`): the nine code and test files go back to shared `a3c26e5b`'s. Astra's DEV_LOG and PROJECT_STATE lines stay.
+  `codex/expedition-transfer-sync` is untouched.
+- **Next:** Claude finds why the projection refuses (the check's projected view, or the runtime), fixes it on a branch from that
+  one, runs the Unity build checks and the Expedition suites, and re-lands #385's repair.
+
 ## 2026-11-11 — Claude: the owner's ten new songs: the nine remodelled stages and the menu (owner request)
 
 - **Request:** the owner sent ten Suno songs made from the 2026-11-11 briefs and asked Claude to import them ("Astra keeps failing to
