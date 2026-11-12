@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
         private static readonly Set DevGreatsword=Strides(new Set{Spec="greatsword",Idle=NativeDevGreatswordMotion.Idle,Jump=NativeDevGreatswordMotion.Jump,Flip=NativeDevGreatswordMotion.Flip,Fall=NativeDevGreatswordMotion.Fall,
             Land=NativeDevGreatswordMotion.Land,Block=NativeDevGreatswordMotion.Guard,BlockHit=NativeDevGreatswordMotion.GuardHit,Stunned="2Hand-Sword-Stunned",Roll=NativeDevGreatswordMotion.Roll,
             AirAttack=NativeDevGreatswordMotion.JumpCut,SprintAttack=NativeDevGreatswordMotion.Cleave,Attacks=NativeDevGreatswordMotion.Cuts,Reactions=NativeDevGreatswordMotion.Reactions,
-            TechClips=new[]{TechThrowStart,TechThrowEnd,NativeDevGreatswordMotion.Crouch,NativeDevGreatswordMotion.Crouched,NativeDevGreatswordMotion.Overhead,NativeDevGreatswordMotion.Reap},
+            TechClips=new[]{TechThrowStart,TechThrowEnd,NativeDevGreatswordMotion.Crouch,NativeDevGreatswordMotion.Crouched,NativeDevGreatswordMotion.Overhead,NativeDevGreatswordMotion.Reap,NativeDevGreatswordMotion.Intro},
             VowStart=NativeDevGreatswordMotion.Crouch,VowHold=NativeDevGreatswordMotion.Crouched,Overhead=NativeDevGreatswordMotion.Overhead,Sweep=NativeDevGreatswordMotion.Reap,
             KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{NativeDevGreatswordMotion.Slam,NativeDevGreatswordMotion.Spin},KitHits=new[]{float.NaN,NativeDevGreatswordMotion.SpinHold},
             Knockdown=NativeDevGreatswordMotion.Knockdown,RollBack=NativeDevGreatswordMotion.RollBack},NativeDevGreatswordMotion.Runs,NativeDevGreatswordMotion.Walks,NativeDevGreatswordMotion.Sprint);
@@ -477,6 +477,8 @@ namespace ChipArena.UnityConversion
             pick=default;
             if(a.Grounded!=m.WasGrounded){if(a.Grounded)m.LandedAt=time;else m.AirSince=time;m.WasGrounded=a.Grounded;}
             Declined=null;
+            // An entrance's intro body: the clip its script names (Core NativeBladeIntros, NativeDevIntros), whatever the set.
+            if(NativeBladeMotion.IntroActor>=0&&a.Id==NativeBladeMotion.IntroActor&&NativeBladeMotion.IntroClip!=null&&clips.Has(NativeBladeMotion.IntroClip)){pick=new Pick{Clip=NativeBladeMotion.IntroClip,Time=NativeBladeMotion.IntroTime,Fade=NativeBladeMotion.IntroFade};return true;}
             // Held in a blade class's paired move: the victim's clip (Core NativeBladeMotion).
             if(NativeBladeMotion.Victim(a,time,clips,out pick))return true;
             // Knocked down: the pack's fall (its flight while airborne, held short of the impact; its landing and lying once the

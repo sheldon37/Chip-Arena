@@ -390,6 +390,8 @@ namespace ChipArena.UnityConversion
                 if(a.Id==NativeBladeMotion.IntroActor)
                 {
                     if(NativeBladeGrip.Of(a.SourceSpec,false,out var grip)){m.HoldPosition=Vector3.zero;m.HoldRotation=new Quaternion(grip.X,grip.Y,grip.Z,grip.W);}
+                    // The DEV animation classes' entrances hold their base's weapon as the match does (Core NativeDevMotions.Grip).
+                    else if(NativeDevMotions.Grip(a.SourceSpec,out var devAt,out var devTurn)){m.HoldPosition=new Vector3(devAt.X,devAt.Y,devAt.Z);m.HoldRotation=new Quaternion(devTurn.X,devTurn.Y,devTurn.Z,devTurn.W);}
                     if(NativeBladeGrip.Of(a.SourceSpec,true,out var off)){m.LeftHoldPosition=Vector3.zero;m.LeftHoldRotation=new Quaternion(off.X,off.Y,off.Z,off.W);}
                 }
                 // A shaft in the left fist (the staff): its axis (the off-hand frame's most upright, as the game carries it) along
