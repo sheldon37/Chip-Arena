@@ -25,7 +25,8 @@
   607-680 ms to 14-17 ms (none over 33 ms); the first match's entrance frame Greatsword 2.80 s, DEV Greatsword 2.94 s to 0.29 s
   (every class 0.29-0.33 s); its loading screen 3.9-4.0 s to 1.65 s; the countdown's worst frame 299-362 ms to 61-73 ms. A skip at
   0.5 s hands over at once (5.9 s after launch). `-nointro` builds the warm from Awake (the Greatsword's first frame 0.29 s).
-- **Checks:** full CoreTests (see the receipt below), `--boot-intro` (135 checks; the first commit alone: 112), `tools/check_unity_compile.py`
+- **Checks:** the full CoreTests at `c48fd452`: exit 0, 1018 PASS lines (the Windows-only `ExpeditionEndingChecks` path patch applied
+  in a throwaway worktree for the run, not committed); `--boot-intro` (135 checks; the first commit alone: 112), `tools/check_unity_compile.py`
   (all four assemblies), `git diff --check`. The Unity build checks (`wtvalidate`) are **not run**: the shared Editor has been closed
   since 21:07 and the coordinator asked for no lock until it is back.
 - **For Astra:** the fight's first frame is still about 80 ms in every first match: the simulation's first fight tick compiling about
