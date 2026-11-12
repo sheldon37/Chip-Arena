@@ -70,6 +70,8 @@ namespace ChipArena.UnityConversion
                 Damage(a,b,20,Vector3.back,0,false,melee:true,weaponHit:true);Check(a.Blade.CounterUntil<=Time&&a.BladeCounterFoe==null&&b.StunEnd<=Time,"a blow held on the guard opens no counter and reels no one");
                 a.Input=new InputFrame();StepGuard(a);Check(!a.Guarding&&TryBlock(a),"the guard down, the parry");
                 Damage(a,b,20,Vector3.back,0,false,melee:true,weaponHit:true);Check(a.Blade.CounterUntil>Time&&a.BladeCounterFoe==b&&b.StunEnd>Time,"a blow on the parry opens the counter on its striker and reels it");
+                // (The click comes once the parry's window has shut: no move starts inside it, KatanaInput.)
+                Step(Mathf.Max(0f,a.BlockEnd-Time)+Frame);Check(Time>=a.BlockEnd&&a.Blade.CounterUntil>Time,"the parry's window shut, the counter still open");
                 hp=b.Hp;Press(shoot:true);
                 Check(a.Blade.CastKind==NativeKatana.Counter&&b.BladeHeldBy==a&&PinBladeVictim(b),"the cut is the counter, the foe held");Step(NativeKatana.CounterHold+.05f);Check(b.Hp<hp&&b.BladeHeldBy==null,"it strikes and lets go");
                 {var gap=b.Body.position-a.Body.position;gap.y=0;Check(gap.magnitude>NativeKatana.CounterStand+.8f,"the foe thrown back as its clip carries it ("+gap.magnitude.ToString("0.00")+" m)");}
