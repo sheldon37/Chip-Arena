@@ -18,7 +18,11 @@ namespace ChipArena.UnityConversion
     //  - Traffic lanes whose periods divide the 48 s loop; the near lane is timed so a car crosses in front of the pilot as its
     //    gaze follows it (NativeRooftopActors).
     public struct RooftopBox {public Vector3 Min,Max;public int Mode;public Vector4 Attr;}
-    public struct RooftopQuad {public Vector3 A,B,C,D,Normal;public Vector4 Uv;public int Mode;public Vector4 Attr;public float W;}
+    public struct RooftopQuad {public Vector3 A,B,C,D,Normal;public Vector4 Uv;public int Mode;public Vector4 Attr;public float W;public int Part;}
+    /// <summary>A note on one piece the city builds (its kind, its lot's index or -1, its numbers), written only for the art's layout
+    /// export (Build with `notes`; Tests/RooftopLayout.cs, docs/MENU-ROOFTOP-ART.md): the modelled scene stands its pieces where these are.
+    /// Nothing draws or is placed by a note.</summary>
+    public struct RooftopNote {public string Kind;public int Lot;public float[] V;}
     public struct RooftopScreen {public string Kind;public Vector3 Center;public float Width,Height,Yaw,Gain;}
     public struct RooftopSite {public string Id;public Vector3 Position;public float Yaw;}
     public struct RooftopSprite {public Vector3 Position;public Vector4 Color;public float Size,Seed;public int Kind;public Vector4 Move;}
@@ -31,6 +35,10 @@ namespace ChipArena.UnityConversion
         // own shaders (Tower, Prop: NativeRooftopTowers.cs).
         public const int Facade=0,Lit=1,Neon=2,Puddle=4;
         public const int Kinds=7;
+        // The parts of the static city the modelled art can stand in for (RooftopQuad.Part; docs/MENU-ROOFTOP-ART.md): our own roof
+        // (Perch), and the towers in view with their built detail, the actors' roofs, bridges and huts and the screens' frames
+        // (City). Far: everything else, always the quads (the far and unseen towers, the street's glow, the puddles).
+        public const int Far=0,PerchPart=1,CityPart=2;
         // Sprite kinds (NativeRooftopSprite.shader); a beacon is a glow that blinks.
         public const int Glow=0,FlatMist=1,Mote=2,Puff=3,Rain=4,Spark=5,Beacon=6;
         // Our roof: x -26..1.7, z -1.8..16 (front edge where the pilot sits), lip .32 high and .42 deep.
@@ -79,15 +87,20 @@ namespace ChipArena.UnityConversion
             public readonly List<RooftopSprite> Glows=new List<RooftopSprite>(),Mist=new List<RooftopSprite>(),Steam=new List<RooftopSprite>(),Motes=new List<RooftopSprite>(),Rain=new List<RooftopSprite>();
             public readonly List<RooftopLight> Lights=new List<RooftopLight>();
             public Vector3 SparkAt,SignLight,CyanLight,Beacon;public int LotCount;
+            /// <summary>The old TV set's quads (first, count): the one piece added to the city on 2026-11-11.</summary>
+            public int EggFirst,EggCount;
+            /// <summary>The layout export's notes (null unless Build was asked for them) and the lot being built.</summary>
+            public List<RooftopNote> Notes;public int NoteLot=-1;
+            internal void Stamp(int from,int part){for(int i=from;i<Quads.Count;i++){var q=Quads[i];q.Part=part;Quads[i]=q;}}
         }
         private struct Lot {public float X0,Z0,W,D,H,Seed,Tier,Hue;public bool Bare;}
         private struct Rect2 {public float X0,X1,Z0,Z1;public Rect2(float x0,float x1,float z0,float z1){X0=x0;X1=x1;Z0=z0;Z1=z1;}}
         private static bool Overlaps(Lot l,Rect2 r)=>l.X0<r.X1&&l.X0+l.W>r.X0&&l.Z0-l.D<r.Z1&&l.Z0>r.Z0;
 
         // quality: 1 high, .6 reduced effects, .34 the low graphics tier (fewer motes and raindrops, no mist puffs).
-        public static World Build(float quality=1)
+        public static World Build(float quality=1,bool notes=false)
         {
-            var w=new World();bool low=quality<.5f;
+            var w=new World();bool low=quality<.5f;if(notes)w.Notes=new List<RooftopNote>();
             var custom=new List<Lot>();var keepOut=new List<Rect2>{new Rect2(-30,3,-4,20),new Rect2(4,48,-1300,80)};
             void Bld(float x0,float x1,float z0,float z1,float top,float hue,bool bare=true){custom.Add(new Lot{X0=x0,Z0=z1,W=x1-x0,D=z1-z0,H=top-Street,Seed=Math.Abs(x0*13+z0*7)%1000,Tier=.2f,Hue=hue,Bare=bare});keepOut.Add(new Rect2(x0-6,x1+6,z0-6,z1+6));}
             var bridges=new List<(float x0,float x1,float z0,float z1,float y)>();var huts=new List<(float x0,float x1,float z0,float z1,float y0,float y1)>();
@@ -110,23 +123,26 @@ namespace ChipArena.UnityConversion
             {
                 var c=At(sx,sy,dist);float half=size*.5f,ry=(float)Math.Atan2(eye0.X-c.X,eye0.Z-c.Z),back=half*Math.Abs((float)Math.Sin(ry))+2;
                 keepOut.Add(new Rect2(c.X-size*.75f,c.X+size*.75f,c.Z-back-size*1.2f,c.Z+size*.6f));
-                Bld(c.X-size*.6f,c.X+size*.6f,c.Z-size*1.1f-back,c.Z-back,c.Y+half*aspect+(kind=="chip"?2.5f:10+size*.25f),kind=="siren"?.6f:.2f,kind!="siren");
-                w.Screens.Add(new RooftopScreen{Kind=kind,Center=c,Width=size,Height=size*aspect,Yaw=ry,Gain=gain});ScreenFrame(w,c,ry,size,size*aspect,back);
+                Bld(c.X-size*.6f,c.X+size*.6f,c.Z-size*1.1f-back,c.Z-back,c.Y+half*aspect+(kind=="stages"?2.5f:10+size*.25f),kind=="classes"?.6f:.2f,kind!="classes");
+                w.Screens.Add(new RooftopScreen{Kind=kind,Center=c,Width=size,Height=size*aspect,Yaw=ry,Gain=gain});int from=w.Quads.Count;ScreenFrame(w,c,ry,size,size*aspect,back);w.Stamp(from,CityPart);
             }
-            Tower("siren",.82f,.21f,320,48,1,1.8f);Tower("arena",.57f,.13f,470,34,1,1.6f);Tower("chip",.665f,.43f,160,30,.75f,1.5f);Tower("banner",.955f,.33f,210,9,3,1.6f);
+            Tower("classes",.82f,.21f,320,48,1,1.8f);Tower("brand",.57f,.13f,470,34,1,1.6f);Tower("stages",.665f,.43f,160,30,.75f,1.5f);Tower("banner",.955f,.33f,210,9,3,1.6f);
             var lots=Lots(custom,keepOut);w.LotCount=lots.Count;
             Towers(w,lots);Perch(w);
-            foreach(var b in bridges){Slab(w,b.x0,b.y-1.2f,b.z0,b.x1,b.y,b.z1,Mat(.045f,.05f,.07f,Metal));Box(w,b.x0,b.y,b.z0,b.x1,b.y+1,b.z0+.15f,Prop,DarkSteel);Box(w,b.x0,b.y,b.z1-.15f,b.x1,b.y+1,b.z1,Prop,DarkSteel);
+            int set=w.Quads.Count;
+            foreach(var b in bridges){if(w.Notes!=null)Note(w,"bridge",b.x0,b.x1,b.z0,b.z1,b.y);Slab(w,b.x0,b.y-1.2f,b.z0,b.x1,b.y,b.z1,Mat(.045f,.05f,.07f,Metal));Box(w,b.x0,b.y,b.z0,b.x1,b.y+1,b.z0+.15f,Prop,DarkSteel);Box(w,b.x0,b.y,b.z1-.15f,b.x1,b.y+1,b.z1,Prop,DarkSteel);
              foreach(float zz in new[]{b.z0,b.z1})NeonBar(w,new Vector3(b.x0,b.y+1,zz),new Vector3(b.x1,b.y+1,zz),.12f,new Vector3(.2f,2.2f,2.8f));}
-            foreach(var h in huts){Box(w,h.x0,h.y0,h.z0,h.x1,h.y1,h.z1,Prop,DarkConcrete);Slab(w,h.x0-.25f,h.y1,h.z0-.25f,h.x1+.25f,h.y1+.18f,h.z1+.25f,PaleConcrete);NeonBar(w,new Vector3(h.x0,h.y1-.12f,h.z1+.01f),new Vector3(h.x1,h.y1-.12f,h.z1+.01f),.12f,new Vector3(2.4f,.3f,2f));}
+            foreach(var h in huts){if(w.Notes!=null)Note(w,"runhut",h.x0,h.x1,h.z0,h.z1,h.y0,h.y1);Box(w,h.x0,h.y0,h.z0,h.x1,h.y1,h.z1,Prop,DarkConcrete);Slab(w,h.x0-.25f,h.y1,h.z0-.25f,h.x1+.25f,h.y1+.18f,h.z1+.25f,PaleConcrete);NeonBar(w,new Vector3(h.x0,h.y1-.12f,h.z1+.01f),new Vector3(h.x1,h.y1-.12f,h.z1+.01f),.12f,new Vector3(2.4f,.3f,2f));}
+            w.Stamp(set,CityPart);
             // street glow strips along the avenue floor
             for(float z=60;z>-1500;z-=6){float k=.6f+.4f*Hash2((int)z,3);Quad(w,new Vector3(30,Street+.2f,z),new Vector3(62,Street+.2f,z),new Vector3(62,Street+.2f,z-5),new Vector3(30,Street+.2f,z-5),Vector3.UnitY,Vector4.Zero,Neon,new Vector4(.25f*k,.08f*k,.25f*k,1));}
             Traffic(w);Sprites(w,quality,low);
-            var chip=w.Screens.Find(s=>s.Kind=="chip");w.SparkAt=new Vector3(chip.Center.X-chip.Width*.5f,chip.Center.Y+chip.Height*.5f,chip.Center.Z);
+            var chip=w.Screens.Find(s=>s.Kind=="stages");w.SparkAt=new Vector3(chip.Center.X-chip.Width*.5f,chip.Center.Y+chip.Height*.5f,chip.Center.Z);
             Lights(w);
             return w;
         }
         private static Vector4 Albedo(float r,float g,float b)=>new Vector4(r,g,b,1);
+        private static void Note(World w,string kind,params float[] v)=>w.Notes.Add(new RooftopNote{Kind=kind,Lot=w.NoteLot,V=v});
         private static List<Lot> Lots(List<Lot> custom,List<Rect2> keepOut)
         {
             var lots=new List<Lot>();var r=new Random(77);const float B=34,S=16,step=B+S;
@@ -198,7 +214,7 @@ namespace ChipArena.UnityConversion
         {
             var r=new Random(2026);
             foreach(var s in w.Screens){if(s.Kind=="sign")continue;Camera(0,out var eye,out _);var p=s.Center+Vector3.Normalize(eye-s.Center)*(Math.Max(s.Width,s.Height)*.9f);
-                w.Glows.Add(new RooftopSprite{Position=p,Color=s.Kind=="siren"?new Vector4(.8f,.25f,1.2f,.35f):s.Kind=="chip"?new Vector4(.2f,.8f,1f,.35f):new Vector4(.2f,.9f,1.1f,.35f),Size=Math.Max(s.Width,s.Height)*2.4f,Kind=Glow});}
+                w.Glows.Add(new RooftopSprite{Position=p,Color=s.Kind=="classes"?new Vector4(.8f,.25f,1.2f,.35f):s.Kind=="stages"?new Vector4(.2f,.8f,1f,.35f):s.Kind=="retro"?new Vector4(.35f,.5f,.8f,.22f):new Vector4(.2f,.9f,1.1f,.35f),Size=Math.Max(s.Width,s.Height)*2.4f,Kind=Glow});}
             w.Glows.Add(new RooftopSprite{Position=w.Beacon,Color=new Vector4(2.6f,.25f,1.4f,1),Size=.9f,Kind=Glow,Seed=.1f});
             w.Glows.Add(new RooftopSprite{Position=new Vector3(RoofX1+.7f,-3.5f,-1.3f),Color=new Vector4(2,.2f,1.6f,.5f),Size=9,Kind=Glow});
             w.Glows.Add(new RooftopSprite{Position=new Vector3(RoofX1+.7f,-4,-1.3f),Color=new Vector4(2.4f,.3f,2,.8f),Size=3,Kind=Glow});

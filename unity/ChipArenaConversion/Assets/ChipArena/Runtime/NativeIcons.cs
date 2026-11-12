@@ -37,6 +37,9 @@ namespace ChipArena.UnityConversion
         public static string Chip(string id){Ensure();return chips.TryGetValue(id??"",out var i)?i:NativeChipIcons.Native(id)??"cpu";}
         public static string Class(string id){Ensure();return NativeIconRaster.Resolve(artClasses,classes,artFallback,id);}
         public static string Spec(string id){Ensure();return NativeIconRaster.Resolve(artSpecs,specs,artFallback,id);}
+        /// <summary>A class or weapon art icon's own markup and its view box (null for a line icon): the rooftop's holo screens
+        /// rasterise it into their slides on worker threads (NativeRooftopAds.Compose).</summary>
+        public static string ArtMarkup(string id,out float box){Ensure();box=artBox;return art.TryGetValue(id??"",out var e)?e.markup:null;}
         public static string Action(string id){Ensure();return actions.TryGetValue(id??"",out var i)?i:null;}
         // Draw icon `id` filling the virtual rect `r` (square), tinted `c`. Art icons switch to their simplified small
         // drawing at or below the set's small size (physical pixels).

@@ -504,3 +504,10 @@ trading pixels. Left as it is; a calmer fine surface for that floor is an art ch
 **Rules for the next stage.** Model paint, boards and marks as faces on their surface (a few millimetres proud, or in its plane):
 the bank writer layers them. Call `chunks.split(g)` after the lift. A kit box kept over the art goes through `Nearer`. Run the
 analyser on the new bank at every tier: all faces, `--floors`, and `--with-tier`: each should come out at a few dm² at most.
+
+## 15. The main menu's rooftop (2026-11-11)
+
+Not a stage, but the same recipe: docs/MENU-ROOFTOP-ART.md. What it adds: a layout made of **notes** (Core logs each piece it
+builds, only when the export asks) instead of a kit's lists; **facade faces** (walls banked for the scene's own procedural
+facade shader, so a modelled tower keeps its windows); its own small drawer and shader in the scene's light rather than
+`NativeStageArtDraw`; coplanar tolerances by the camera's real range (to 750 m).

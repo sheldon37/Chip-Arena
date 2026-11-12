@@ -62,6 +62,7 @@ namespace ChipArena.UnityConversion
         // ---- Routing -------------------------------------------------------------------------------------------------
         private void HomeMenu()
         {
+            if(NativeRooftopScene.CaptureBare)return; // a DEV capture of the rooftop alone (the local capture tool)
             MenuStyles();float now=Time.unscaledTime;if(now-menuSeen>.25f)menuScreenAt=now;menuSeen=now;
             // The transition's swap and its input hold (NativeMenuTransitionUI.cs); `seen`: this menu was drawn a moment ago.
             bool seen=now-homeSeen<=.25f;MenuTransitionFrame(now,seen);
@@ -146,6 +147,17 @@ namespace ChipArena.UnityConversion
         private static readonly Dictionary<char,string> wordmarkMarkup=new Dictionary<char,string>(),haloMarkup=new Dictionary<char,string>();
         private static float Wordmark(float x,float y,float height,float alpha,float age)
         {
+            // The game's logo (owner 2026-11-11: "This is also the new logo for the game"; NativeRooftopScene.Logo) stands where the
+            // monoline wordmark did, its foot on the wordmark's line: 3.3 cap heights tall at home (2.6 in the panel screens' top
+            // bar), rising in with `age` over a slow warm glow. Without the image the vector wordmark below draws as before.
+            var mark=NativeRooftopScene.Logo();
+            if(mark!=null)
+            {
+                float lh=height*(height>=30?3.3f:2.6f),lw=lh*mark.width/mark.height,e=age<0?1:In(age,.04f,.6f),beat=.5f+.5f*Mathf.Sin(Time.unscaledTime*1.6f);
+                var r=new Rect(x-lw*.035f,y+height+(height>=30?8:12)-lh+10*(1-e),lw,lh);
+                U.Glow(new Rect(r.x+lw*.22f,r.y+lh*.32f,lw*.56f,lh*.36f),new Color(1f,.55f,.12f,(.10f+.07f*beat)*alpha*e),lh*.3f);
+                U.Image(r,mark,new Color(1,1,1,alpha*e));return lw*.93f;
+            }
             float gs=height/NativeRooftopArt.GlyphHeight,bm=height*.72f,by=y+(height-bm)/2;
             U.Glow(new Rect(x,by,bm,bm),C.Cyan(.32f*alpha),3+height*.2f);U.Fill(new Rect(x,by,bm,bm),C.Cyan(alpha));U.Fill(new Rect(x+2,by+2,bm-4,bm-4),C.Navy(alpha));
             float inset=bm*.27f;U.Fill(new Rect(x+inset,by+inset,bm-2*inset,bm-2*inset),C.Cyan(alpha));
