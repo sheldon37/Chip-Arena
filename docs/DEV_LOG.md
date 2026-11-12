@@ -1,3 +1,14 @@
+## 2026-11-12 — Claude: Skyframe's far lights flicker (owner report): the far chunks get their layers
+
+- Branch `claude/skyframe-flicker` from shared `0ccb5a0a`; pushed, **not merged, not released**. Visuals only (a Blender script and its bank): no rule, collider, timing, nav or runtime code changed.
+- **The owner:** "Seems to be light flickering in the background of Skyframe" (the release with the stage art's layers).
+- **Cause (measured):** the far chunks were outside the layers' 30 mm reach (they are settled with a 5 cm lift). The sixteen other towers' lit windows stand 5 cm off their walls 300 to 900 m away, where a 24 bit depth buffer's step is 0.1 to 0.8 m: 20,841 m2 of window and wall on one layer in the skyline (403 m2 in the cloud sea, 265 m2 on the tower's body).
+- **Fix:** `stagekit.StageBank.layer` layers the named (far) chunks once more among themselves at `FAR_REACH` 12 cm; the shader's push per layer already grows with the distance. After: 0 m2 in every far chunk. Pinned in `--stage-art`. docs/arenas/STAGE-ART.md section 14 "Far chunks", docs/arenas/SKYFRAME.md.
+- **Bank rebuilt:** Skyframe only (git-ignored; 11,697,653 bytes, sha256 `c44e6bb315c55795b60ea1fb6e457e3bb8114ace526b82d37539d01bee759ab5`; the released one is 11,695,717 bytes, `df78bdcf...`). The other stages' far chunks (Cyber City's, Pier 9's, Deepwell's, Breakwater's, the Causeway's) get their layers when their banks are next built; not rebuilt here.
+- **Animation impact:** none.
+- **Checks:** `--stage-art` (587 checks, with the far reach's own); `--skyframe-art` on the rebuilt bank (`CHIPARENA_STAGE_BANKS`): pass; the full suite with the rebuilt bank: 1018 groups, exit 0; `git diff --check` clean. No C# under Assets changed, so the Unity compile is as shared's.
+- **Not done / not seen:** the shared Editor was closed (no capture or validation could run): the flicker before and its absence after are **not filmed**, `wtvalidate.sh` is **not run**, and the other candidates (the beacons' blink, tier switches, shadow cascades, fog and billboard order) were not looked at in the Editor. If the flicker is still there with this bank, those are next.
+
 ## 2026-11-11 — Claude: PR #385 (Expedition transfer sync) re-landed with its native check fixed; for Astra's review
 
 - **Owner:** "Can you revert it, then bring it back yourself instead of astra?" Branch `claude/expedition-transfer-sync`, from

@@ -501,6 +501,19 @@ not change between two frames a few millimetres apart and stand still in the wor
 under the anime style's ramp at the stage's low sun (section 7's note on fine surfaces breaking into blotches), not two faces
 trading pixels. Left as it is; a calmer fine surface for that floor is an art change for the owner to ask for.
 
+**Far chunks (2026-11-12).** Owner, on the release with the layers: "Seems to be light flickering in the background of
+Skyframe". The far chunks (the named ones: Skyframe's other towers, its tower's body, the cloud sea) were settled with a 5 cm
+lift, and the layers reach 30 mm, so their stacked faces had none: the sixteen towers' lit windows stand 5 cm off their walls 300
+to 900 m from the garden, where a 24 bit depth buffer's step behind the 0.06 m near plane is 0.1 to 0.8 m (distance² x 1e-6).
+A lit window and its wall trade pixels as the eye moves: lights flickering in the distance. Measured on the released bank
+(`zfight.py --tier 2 --eps .12 --amin .01`): 20,841 m² of same-facing faces within 12 cm on one layer in the skyline, 403 m² in
+the sea, 265 m² on the tower's body. `StageBank.layer` now layers the far chunks once more among themselves at `FAR_REACH`
+(12 cm), and a layer's push grows with the distance (four depth steps at any range: 1 m at 500 m), so each window draws over
+its wall. After: 0 m² in every far chunk (the Low map chunks keep 202 m² of real 3 to 12 cm steps, seen from under 70 m, where
+the step is 5 mm). Only the Skyframe bank was rebuilt; the other stages' far chunks get their layers when their banks are next
+built. **Not filmed:** the shared Editor was closed, so the flicker before and its absence after are measured, not seen; the
+beacons' blink (0.55 Hz, by design), the tiers' switches, the cascades and the fog were not looked at in the Editor either.
+
 **Rules for the next stage.** Model paint, boards and marks as faces on their surface (a few millimetres proud, or in its plane):
 the bank writer layers them. Call `chunks.split(g)` after the lift. A kit box kept over the art goes through `Nearer`. Run the
 analyser on the new bank at every tier: all faces, `--floors`, and `--with-tier`: each should come out at a few dm² at most.

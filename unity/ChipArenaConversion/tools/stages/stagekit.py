@@ -820,18 +820,21 @@ class StageBank:
     def layer(self):
         """Writes every triangle's layer (layer_polys) into the meshes, as layer / 32 on top of the fine surface's kind (uv1.x: a
         runtime without layers rounds it away), for ChipArena/StageLit to part stacked faces by: the static chunks of each tier together, in the world (a chunk's paint
-        on its neighbour's slab; the parts a chunk was baked in) with the block models that were given their place (`at`); each
-        other block's and each rig part's model by itself. A corner
+        on its neighbour's slab; the parts a chunk was baked in) with the block models that were given their place (`at`); the
+        far chunks (the named ones) once more among themselves at FAR_REACH; each other block's and each rig part's model by
+        itself. A corner
         that triangles of different layers share is split. Returns (triangles layered, triangles)."""
         meshes = self.bank.meshes
         scenes, seen = [], set()
-        tiers = {}
+        tiers, far = {}, {}
         for name, group, lo, hi, parts in self.bank.props:
             if not parts:
                 continue
             rest = self.rests.get(name[6:].rsplit('/', 1)[0]) if group == 'block' else None
             if group == 'static':
                 tiers.setdefault(name.rsplit('/', 1)[-1], []).extend(parts)
+                if not name.split('/')[1].lstrip('-').isdigit():
+                    far.setdefault(name.rsplit('/', 1)[-1], []).extend(parts)
             elif rest is not None:
                 for mi, m in parts:
                     A = np.array(m, dtype=np.float64).reshape(3, 4)
@@ -839,10 +842,10 @@ class StageBank:
                     tiers.setdefault(name.rsplit('/', 1)[-1], []).append((mi, W.reshape(-1).tolist()))
             else:
                 scenes.append(list(parts))
-        scenes = list(tiers.values()) + scenes
+        scenes = [(p, LAYER_REACH) for p in list(tiers.values()) + scenes] + [(p, FAR_REACH) for p in far.values()]
         layers = {}  # mesh index -> the layer of each of its triangles (the most any scene gives it)
-        for parts in scenes:
-            key = tuple(sorted((mi, tuple(round(float(x), 6) for x in m)) for mi, m in parts))
+        for parts, reach in scenes:
+            key = (reach,) + tuple(sorted((mi, tuple(round(float(x), 6) for x in m)) for mi, m in parts))
             if key in seen:
                 continue
             seen.add(key)
@@ -856,7 +859,7 @@ class StageBank:
                 counts.append(len(idx))
             if not sum(counts):
                 continue
-            lay = layer_polys(np.concatenate(tris), np.full(sum(counts), 3, dtype=np.int64))
+            lay = layer_polys(np.concatenate(tris), np.full(sum(counts), 3, dtype=np.int64), reach)
             at = 0
             for (mi, m), c in zip(parts, counts):
                 got = lay[at:at + c]
@@ -1099,6 +1102,11 @@ def lift_coplanar(g, eps=None, report=None, lift=None, passes=3):
 
 LAYER_REACH = .03   # m: a face this close over another (turned the same way, overlapping) lies on it
 LAYER_MOST = 10
+# m: the same for a far chunk (a named one: the skyline, the sea, the banks). Its faces are seen from hundreds of metres, where the
+# depth buffer's step is decimetres (distance^2 x 1e-6 m: 0.25 m at 500 m), so a lit window 5 cm off its tower's wall trades pixels
+# with the wall as the eye moves (owner 2026-11-12: "light flickering in the background of Skyframe"); within this reach it gets
+# its layer, and the shader's push (4e-6 of the distance per layer and metre) carries it clear at any range
+FAR_REACH = .12
 
 
 def layer_faces(g, reach=LAYER_REACH, least=2e-4, share=.02):
