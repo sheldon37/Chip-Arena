@@ -38,6 +38,7 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import local_cloth
+import private_addons
 
 ROOT = Path(__file__).resolve().parents[1]
 BANK_SOURCE = ROOT / 'Assets/ChipArena/Core/NativeSoundBank.cs'
@@ -381,6 +382,7 @@ def main(argv=None):
             keys, clips, total = verify(content)
             body = verify_visual_body(content)
             cloth = local_cloth.verify(content)
+            addons = private_addons.verify(content)
             if args.require_cloth and not cloth:
                 raise Problem('cloth runtime required: repack on the licensed-asset PC with pack_visual_body.py --with-cloth')
             print(f"Cloth runtime: {len(cloth)} verified files" if cloth else "Cloth runtime: absent (posed-body fallback)")
@@ -390,6 +392,7 @@ def main(argv=None):
                 verify(project / 'Assets/LocalAssets')
                 install_visual_body(content, project, body)
                 install_visual_body(content, project, cloth)
+                install_visual_body(content, project, addons)
         except Problem as problem:
             print('Licensed assets rejected:\n' + str(problem), file=sys.stderr)
             return 1
