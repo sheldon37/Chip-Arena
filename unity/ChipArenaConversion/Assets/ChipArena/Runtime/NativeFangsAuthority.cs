@@ -63,14 +63,24 @@ namespace ChipArena.UnityConversion
         /// character location"; rules at the owner's word, logged for Astra): `metres` along `dir` (flat) from where the pilot stands, on the
         /// blade classes' own path (BladePath: a wall stops it short; the host moves the pilot, guests see it in the snapshots), timed by the
         /// clip's root (Core NativeBladeMotion.FangsTravelShare, through NativeBlades.PathAt) to the end of the slice the game plays. Only from
-        /// the ground (a cut in the air does not hover along it), and never off a drop (FangsFloorTo).</summary>
+        /// the ground (a cut in the air does not hover along it), never off a drop (FangsFloorTo), and never through a foe: one in the way
+        /// stops it at arm's length (FangsTravelFoe), so a lunge ends on the one it cuts.</summary>
         private void FangsTravel(NativePilot p,Vector3 dir,float metres)
         {
             var k=p.Blade;if(!(metres>0)||!p.Grounded||!NativeBladeMotion.FangsTravelSpan(k,out float ends,out float peak))return;
             dir.y=0;dir=dir.sqrMagnitude>1e-6f?dir.normalized:Vector3.forward;var from=p.Body.position;
-            BladePath(p,dir,metres*peak,Time,ends);float way=Math.Min(Vector3.Distance(from,Vec(k.To)),FangsFloorTo(from,dir,metres*peak));
+            BladePath(p,dir,metres*peak,Time,ends);float way=Math.Min(Math.Min(Vector3.Distance(from,Vec(k.To)),FangsFloorTo(from,dir,metres*peak)),FangsTravelFoe(p,from,dir));
             k.To=Vec(from+dir*(way/peak));
         }
+        /// <summary>How far along `dir` from `from` the nearest foe in the way (within a body's width of the line) lets the pilot go: to
+        /// FangsArm short of it (unlimited with none).</summary>
+        private float FangsTravelFoe(NativePilot p,Vector3 from,Vector3 dir)
+        {
+            float best=float.MaxValue;
+            void At(Vector3 q){var d=q-from;if(Math.Abs(d.y)>1.8f)return;d.y=0;float along=Vector3.Dot(d,dir);if(along<=0||(d-dir*along).magnitude>FangsWidth)return;best=Math.Min(best,Math.Max(0,along-FangsArm));}
+            foreach(var q in BladePilots(p))At(q.Body.position);foreach(var m in BladeMinions(p))At(m.Body.position);return best;
+        }
+        private const float FangsWidth=.8f,FangsArm=.9f;
         /// <summary>How far along `dir` from `from` (at most `distance`) there is floor to stand on: the first point with none within a metre
         /// under the feet (a ledge, a lethal edge) ends the way short of it.</summary>
         private float FangsFloorTo(Vector3 from,Vector3 dir,float distance)

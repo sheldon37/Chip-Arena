@@ -136,7 +136,7 @@ namespace ChipArena.UnityConversion
                 Check(NativeBladeMotion.Cast(NativeVisualMotion.For(NativeFangs.Spec),bmover,bk.CastRelease,bank,true,out var bp)&&bp.Clip==NativeBladeMotion.FangsBloom,"the bloom's legs carry its lunge even on the move");
                 var fsrc=R(root,"NativeFangsAuthority.cs");
                 Check(fsrc.Contains("FangsTravel(p,p.BladeFacing,NativeFangs.CutLunge[step]);")&&fsrc.Contains("FangsTravel(p,-p.BladeFacing,NativeFangs.VeilHop);")&&fsrc.Contains("FangsTravel(p,p.BladeFacing,NativeFangs.BloomLunge);")
-                    &&fsrc.Contains("BladePath(p,dir,metres*peak,Time,ends);")&&fsrc.Contains("FangsFloorTo(from,dir,metres*peak)")&&fsrc.Contains("!p.Grounded"),"the rules carry the pilot on the blade path, short of walls and drops, from the ground only");
+                    &&fsrc.Contains("BladePath(p,dir,metres*peak,Time,ends);")&&fsrc.Contains("FangsFloorTo(from,dir,metres*peak)")&&fsrc.Contains("FangsTravelFoe(p,from,dir)")&&fsrc.Contains("!p.Grounded"),"the rules carry the pilot on the blade path, short of walls, drops and foes, from the ground only");
             }
             // The plunging slam (owner 2026-11-11: slam attacks from the air for the Glaive, the Fangs and the Katana): the standard plunge for
             // the three kits, its rules by kin, its look the set's air attack held to the landing.

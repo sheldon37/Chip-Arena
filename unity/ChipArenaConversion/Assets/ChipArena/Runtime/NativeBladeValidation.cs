@@ -96,7 +96,7 @@ namespace ChipArena.UnityConversion
                 // The cuts carry the pilot as their clips' roots do (owner 2026-11-13: "The movements look like they should be moving the character location").
                 Check(a.Body.position.z>cutFrom.z+NativeFangs.CutLunge[0]*.7f&&Mathf.Abs(a.Body.position.x-cutFrom.x)<.05f,"the first cut steps in along the facing ("+(a.Body.position.z-cutFrom.z).ToString("F2")+" m)");
                 for(int step=1;step<NativeFangs.Steps;step++){a.BladeAttackHeld=false;b.StaggerImmune=0;b.Body.position=a.Body.position+Vector3.forward*1.8f;Physics.SyncTransforms();Press(shoot:true);Step(NativeFangs.CutLength[step]+Frame);}
-                Check(a.BladeVenom.TryGetValue(b.Seat.id,out int n5)&&n5>=5,"the flurry stacks the venom ("+n5+")");
+                Check(a.BladeVenom.TryGetValue(b.Seat.id,out int n5)&&n5>=5,"the flurry stacks the venom ("+n5+")");Check(b.Body.position.z-a.Body.position.z>.6f,"its lunges stop on the foe, never through it ("+(b.Body.position.z-a.Body.position.z).ToString("F2")+" m apart)");
                 // The bloom spends the stacks at once.
                 hp=b.Hp;Press(key:2);Step(NativeFangs.BloomRelease+.05f);Check(b.Hp<hp-NativeFangs.BloomPerStack*3&&!a.BladeVenom.ContainsKey(b.Seat.id),"2 blooms the venom");
                 // The step: behind the foe nearest the aim, and the stab.
