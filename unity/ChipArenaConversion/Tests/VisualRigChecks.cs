@@ -657,9 +657,9 @@ namespace ChipArena.UnityConversion
                 Check(NativeDevMotions.VictimClip(NativeBladeMotion.KatanaCritical,NativeDevMotions.Katana)==NativeDevKatanaMotion.CounterHit&&NativeDevMotions.VictimClip(NativeBladeMotion.KatanaCritical,"")==NativeBladeMotion.KatanaCriticalHit
                     &&NativeDevMotions.VictimClip(NativeBladeMotion.FangsTakedown,NativeDevMotions.Katana)==NativeBladeMotion.FangsTakedownHit,"the DEV Katana's countered foe takes the pack's reaction; every other pair keeps its victim clip");
                 var foe=new Actor{Id=23,PairClip=NativeDevKatanaMotion.CounterHit,PairAt=cAt,PairUntil=cAt+NativeKatana.CounterHold};
-                bool pkBefore=NativeBladeMotion.Victim(foe,cAt+.3f,pkBook,out var fp0)&&fp0.Time<=0,onBlow=NativeBladeMotion.Victim(foe,cAt+NativeKatana.CounterHit,pkBook,out var fp1)&&Math.Abs(fp1.Time)<1e-3f;
+                bool pkBefore=!NativeBladeMotion.Victim(foe,cAt+.3f,pkBook,out _)&&NativeBladeMotion.Holds(foe,cAt+.3f),onBlow=NativeBladeMotion.Victim(foe,cAt+NativeKatana.CounterHit,pkBook,out var fp1)&&Math.Abs(fp1.Time)<1e-3f;
                 bool atEnd=NativeBladeMotion.Victim(foe,cAt+NativeKatana.CounterHold-1e-3f,pkBook,out var fp2)&&Math.Abs(fp2.Time-(NativeKatana.CounterHold-NativeKatana.CounterHit))<.01f;
-                Check(pkBefore&&onBlow&&atEnd,"the countered foe's reaction starts on the blow and runs at its own pace to the hold's end");
+                Check(pkBefore&&onBlow&&atEnd,"the countered foe's reaction starts on the blow (before it, held, the foe plays on what it played: the parry's daze) and runs at its own pace to the hold's end");
                 string auth=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeBladeAuthority.cs")).Replace("\r\n","\n");
                 Check(auth.Contains("a.PairClip=held?NativeDevMotions.VictimClip(hk.PairClip,h.Seat.motion):null;"),"the host names the foe's clip by its holder's motion (guests read it from the actor)");
                 // Each class's own entrance: the pack's Intro on the model, held as the match holds the weapon, in place of its base's.
