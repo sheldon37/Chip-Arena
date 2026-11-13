@@ -70,30 +70,37 @@ namespace ChipArena.UnityConversion
             /// <summary>A set's own clips for the greatsword techniques' crouch (into it, then held), Sunder's overhead and Reaping Sweep's sweep
             /// (null: the old two-handed set's).</summary>
             public string VowStart, VowHold, Overhead, Sweep;
+            /// <summary>The plunging slam's own clip (an air attack of kind "down"; PlungeSlam: its strike on the landing). Null: the game's
+            /// plunge pose (the blade classes play their air attack instead, NativeBladeMotion.Slam).</summary>
+            public string Plunge;
             /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
             public string[] All;
         }
         /// <summary>A clip's length and the time of its Hit event (seconds; a clip without one: its middle).</summary>
         public interface IClips { bool Has(string clip); float Length(string clip); float Hit(string clip); }
 
-        // Greatsword: the pack's two-handed sword set.
+        // Greatsword: the pack's two-handed sword set; four moves on Grruzam's great sword set (the owner's picks 2026-11-13, Core
+        // NativeDevGreatswordMotion): the jump attack's spinning flip (`Jump_Attack_Combo_3_ZeroHeight`, the DEV Greatsword's; it was
+        // `2Hand-Sword-Air-Attack1`), Earthsplitter's lunging slam (`Skill_H`, the DEV Greatsword's; it was `2Hand-Sword-Attack11`), Sunder's
+        // somersault into a slam (`Skill_G_2`; it was `2Hand-Sword-Attack11`) and the plunging slam (`Skill_F`; it was the game's plunge pose).
         private static readonly Set Greatsword=Build(new Set{Spec="greatsword",Idle="2Hand-Sword-Idle",Jump="2Hand-Sword-Jump",Flip="2Hand-Sword-Jump-Flip",Fall="2Hand-Sword-Fall",
             Land="2Hand-Sword-Land",Block="2Hand-Sword-Block",BlockHit="2Hand-Sword-Block-GetHit1",Stunned="2Hand-Sword-Stunned",Roll="2Hand-Sword-Roll-Forward",
-            AirAttack="2Hand-Sword-Air-Attack1",SprintAttack="2Hand-Sword-Run-Forward-Attack1",
+            AirAttack=NativeDevGreatswordMotion.JumpCut,SprintAttack="2Hand-Sword-Run-Forward-Attack1",
             Attacks=Names("2Hand-Sword-Attack","1","2","4","3","5","6"),Reactions=Names("2Hand-Sword-GetHit-","F1","B1","L1","R1"),
-            TechClips=new[]{TechThrowStart,TechThrowEnd,TechVowStart,TechVowHold},KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{"2Hand-Sword-Attack11","2Hand-Sword-Attack2"},KitHits=new[]{float.NaN,WhirlHold},Knockdown="2Hand-Sword-Knockdown1",RollBack="2Hand-Sword-Roll-Backward"},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
+            TechClips=new[]{TechThrowStart,TechThrowEnd,TechVowStart,TechVowHold},KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{NativeDevGreatswordMotion.Slam,"2Hand-Sword-Attack2"},KitHits=new[]{float.NaN,WhirlHold},Knockdown="2Hand-Sword-Knockdown1",RollBack="2Hand-Sword-Roll-Backward",
+            Overhead=NativeDevGreatswordMotion.GreatswordSunder,Plunge=NativeDevGreatswordMotion.GreatswordPlunge},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
         // The DEV Greatsword (Core NativeDevMotions; owner 2026-11-11): the Greatsword's rules on Grruzam's great sword set (Core
         // NativeDevGreatswordMotion: its stance, shoulder carry stride, jumps, guard, dodge roll, reactions, knockdown and rolling get-up, its
-        // combo's cuts alternating as the rules sweep, its leaping slam on the sprint, its jump attack, its ground slam and spinning sweep for the
-        // kit, its crouch, overhead and spin for the techniques). The pack has no dazed loop, so the stun keeps the two-handed set's. Its Spec is
-        // the Greatsword's, the class it plays as.
+        // combo's cuts alternating as the rules sweep, its leaping slam on the sprint, its jump attack, its plunging slam, its ground slam and
+        // spinning sweep for the kit, its crouch, overhead and spin for the techniques). The pack has no dazed loop, so the stun keeps the
+        // two-handed set's. Its Spec is the Greatsword's, the class it plays as.
         private static readonly Set DevGreatsword=Strides(new Set{Spec="greatsword",Idle=NativeDevGreatswordMotion.Idle,Jump=NativeDevGreatswordMotion.Jump,Flip=NativeDevGreatswordMotion.Flip,Fall=NativeDevGreatswordMotion.Fall,
             Land=NativeDevGreatswordMotion.Land,Block=NativeDevGreatswordMotion.Guard,BlockHit=NativeDevGreatswordMotion.GuardHit,Stunned="2Hand-Sword-Stunned",Roll=NativeDevGreatswordMotion.Roll,
             AirAttack=NativeDevGreatswordMotion.JumpCut,SprintAttack=NativeDevGreatswordMotion.Cleave,Attacks=NativeDevGreatswordMotion.Cuts,Reactions=NativeDevGreatswordMotion.Reactions,
             TechClips=new[]{TechThrowStart,TechThrowEnd,NativeDevGreatswordMotion.Crouch,NativeDevGreatswordMotion.Crouched,NativeDevGreatswordMotion.Overhead,NativeDevGreatswordMotion.Reap,NativeDevGreatswordMotion.Intro},
             VowStart=NativeDevGreatswordMotion.Crouch,VowHold=NativeDevGreatswordMotion.Crouched,Overhead=NativeDevGreatswordMotion.Overhead,Sweep=NativeDevGreatswordMotion.Reap,
             KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{NativeDevGreatswordMotion.Slam,NativeDevGreatswordMotion.Spin},KitHits=new[]{float.NaN,NativeDevGreatswordMotion.SpinHold},
-            Knockdown=NativeDevGreatswordMotion.Knockdown,RollBack=NativeDevGreatswordMotion.RollBack},NativeDevGreatswordMotion.Runs,NativeDevGreatswordMotion.Walks,NativeDevGreatswordMotion.Sprint);
+            Knockdown=NativeDevGreatswordMotion.Knockdown,RollBack=NativeDevGreatswordMotion.RollBack,Plunge=NativeDevGreatswordMotion.Plunge},NativeDevGreatswordMotion.Runs,NativeDevGreatswordMotion.Walks,NativeDevGreatswordMotion.Sprint);
         // Sword: the pack's armed (one weapon in the right hand) set and its one-handed sword's cuts, in the game's combo of
         // three (a forehand cut right to left, a backhand left to right, the thrust): R1, R3, R4, then R6, R2, R4 (their blade
         // tips' sweeps, measured on the body at the bake).
@@ -250,6 +257,7 @@ namespace ChipArena.UnityConversion
             foreach(var l in new[]{s.Aim,s.Fire,s.Pull,s.CastStart,s.CastEnd})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);
             foreach(var c in new[]{s.Reload,s.AbilityStart,s.AbilityEnd})if(c!=null&&!all.Contains(c))all.Add(c);
             foreach(var l in new[]{s.KitClips,s.KitRecast,s.KitThen,s.AbilityStarts,s.AbilityEnds,s.TechClips})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
+            foreach(var c in new[]{s.VowStart,s.VowHold,s.Overhead,s.Sweep,s.Plunge})if(c!=null&&!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
         /// <summary>The set a weapon spec (or a DEV animation class, NativeDevMotions) plays on the model, or null (the game's own pose: not moved
@@ -460,6 +468,25 @@ namespace ChipArena.UnityConversion
             up=default;if(!DashLanded(s,a,time,clips))return false;
             up=new Upper{A=s.SprintAttack,TimeA=AttackTime(a,time,s.SprintAttack,clips),Raised=true,Snap=true};return true;
         }
+        /// <summary>A set's own plunging slam (Plunge) at `time`, fitted as the owner's picker previewed it (2026-11-13): the clip runs at
+        /// most NativeBladeMotion.StrikeRate times its pace into its strike, which lands on the landing, then on at its own pace through the
+        /// stuck recovery. While the drop is under way (the landing not yet replicated) it starts as a drop from a jump's top would have it
+        /// (PlungeDrop before the strike, at the rate's pace) and slows short of the strike until the landing (a longer drop holds the blade
+        /// high until it lands, a shorter one skips the last hundredths). False: the set has no plunge clip, or the bank lacks it.</summary>
+        public static bool PlungeSlam(Set set,Actor a,float time,IClips clips,out Pick pick)
+        {
+            pick=default;if(set?.Plunge==null||a==null||!clips.Has(set.Plunge))return false;
+            float hit=clips.Hit(set.Plunge),len=clips.Length(set.Plunge),since=Math.Max(0,time-a.AttackAt),rate=NativeBladeMotion.StrikeRate,t;
+            bool landed=a.ImpactAt>a.AttackAt;float span=landed?Math.Max(1e-3f,a.ImpactAt-a.AttackAt):PlungeDrop,first=Math.Max(0,hit-span*rate);
+            if(landed&&time>=a.ImpactAt)t=Math.Min(len,hit+(time-a.ImpactAt));
+            else t=first+(hit-first)*Clamp01(since/(landed?span:Math.Max(span,since+PlungeLead)));
+            pick=new Pick{Clip=set.Plunge,Time=t,Fade=FadeIn};return true;
+        }
+        /// <summary>A plunge pressed at a jump's top: its drop to the landing (the windup, then the fall from the jump's height at the drop's
+        /// speed: 0.145 s), which PlungeSlam fits the run-in to while the landing is not known; and how far ahead of the clock a drop still
+        /// under way keeps the strike (s).</summary>
+        public static readonly float PlungeDrop=NativePlungeRules.Windup+Rules.JumpSpeed*Rules.JumpSpeed/(2*Rules.Gravity)/Math.Abs(NativePlungeRules.DropSpeed);
+        public const float PlungeLead=.02f;
         /// <summary>The pack's knockdown: its back reaches the floor at KnockImpact of the clip; airborne, it holds at KnockFlight of
         /// that (the legs-up flight). The backward roll is on its back from RollFromBack of the clip.</summary>
         public const float KnockImpact=.52f, KnockFlight=.8f, RollFromBack=.22f;
@@ -518,8 +545,13 @@ namespace ChipArena.UnityConversion
             // The plunging stab (an air attack of kind "down": docs/MELEE-FEEL.md "Plunging stab"): the pack has no take for it, so
             // the model takes the game's own plunge pose (Core NativePlungePose on the rig: blade point-down, the drop, the plant,
             // stuck, pulled out) rather than the forward jump attack's chop (owner 2026-11-02: "Ever since we changed player
-            // models, we dont really have a slam attack anymore").
-            if(a.AirAttack&&!a.SprintAttack&&a.AttackAt>-90&&time>=a.AttackAt&&NativePlungeFields.Kind(a)==NativePlungeFields.DownKind&&NativePlungeRules.Handles(a.SourceSpec)){Declined="plunge";return false;}
+            // models, we dont really have a slam attack anymore"). A set with a plunge of its own plays it (the Greatsword's and the
+            // DEV Greatsword's, the owner's picks 2026-11-13: PlungeSlam).
+            if(a.AirAttack&&!a.SprintAttack&&a.AttackAt>-90&&time>=a.AttackAt&&NativePlungeFields.Kind(a)==NativePlungeFields.DownKind&&NativePlungeRules.Handles(a.SourceSpec))
+            {
+                if(PlungeSlam(set,a,time,clips,out pick))return true;
+                Declined="plunge";return false;
+            }
             // The forward jump attack: its Hit on the impact (the landing), else on the clip's own.
             if(a.AirAttack&&a.AttackAt>-90&&time>=a.AttackAt)
             {

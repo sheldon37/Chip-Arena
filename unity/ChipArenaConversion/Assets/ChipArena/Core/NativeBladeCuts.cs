@@ -18,9 +18,9 @@ namespace ChipArena.UnityConversion
     /// <item>A part: the Katana's and the Glaive's first two cuts (the head where the cut crosses the neck or above, else an arm),
     /// the Glaive's flick and thrown ring (its throw, ricochets and return: the head or an arm, by the death's seed), its halo, its
     /// burst and Shatterpoint's shards (an arm).</item>
-    /// <item>The Fangs as the daggers: a slit throat on the combo's first four cuts; an arm (a forearm when the cut is low) on its
-    /// finisher, the pounce, the shadow step's stab, the takedown, the critical and a thrown knife; the slam's chop takes an arm. The
-    /// bloom (a venom burst) cuts nothing.</item>
+    /// <item>The Fangs as the daggers: a slit throat on the combo's first four cuts and on the takedown from behind (its clip a throat
+    /// cut, NativeBladeMotion.FangsTakedown); an arm (a forearm when the cut is low) on its finisher, the pounce, the shadow step's stab,
+    /// the frontal critical and a thrown knife; the slam's chop takes an arm. The bloom (a venom burst) cuts nothing.</item>
     /// </list>
     /// The cut's plane is a slash across the wielder's front: the blade's travel in its frontal plane (an angle) through the height
     /// where it crosses the victim's centre line, the plane holding the line from the wielder to the victim (a slash through what is
@@ -140,12 +140,14 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>A clip's slash, measured or written (false: its move's, or for a standard weapon its captured cut).</summary>
         public static bool TrySlash(string clip,out Slash slash){slash=default;return clip!=null&&clips.TryGetValue(clip,out slash);}
-        /// <summary>The clip a DEV Greatsword's standard swing plays (its picks, NativeVisualMotion's choice for its set: the jump attack, the
-        /// sprint attack or the combo's cut), null for any other pilot, or for a Q/E kit or E special hit (their own cuts).</summary>
+        /// <summary>The clip a DEV Greatsword's standard swing plays (its picks, NativeVisualMotion's choice for its set: the plunging slam,
+        /// the jump attack, the sprint attack or the combo's cut), null for any other pilot, or for a Q/E kit or E special hit (their own
+        /// cuts).</summary>
         public static string DevSwingClip(Actor a,bool special,bool kit)
         {
             if(a==null||a.Motion!=NativeDevMotions.Greatsword||special||kit)return null;var cuts=NativeDevGreatswordMotion.Cuts;
-            return a.AirAttack?NativeDevGreatswordMotion.JumpCut:a.SprintAttack?NativeDevGreatswordMotion.Cleave:cuts.Length>0?cuts[Math.Max(0,a.Combo)%cuts.Length]:null;
+            if(a.AirAttack)return NativePlungeFields.Kind(a)==NativePlungeFields.DownKind?NativeDevGreatswordMotion.Plunge:NativeDevGreatswordMotion.JumpCut;
+            return a.SprintAttack?NativeDevGreatswordMotion.Cleave:cuts.Length>0?cuts[Math.Max(0,a.Combo)%cuts.Length]:null;
         }
         /// <summary>Whether this clip's cut was measured or written for it (the rest take their move's).</summary>
         public static bool Known(string clip)=>clip!=null&&clips.ContainsKey(clip);
@@ -181,11 +183,12 @@ namespace ChipArena.UnityConversion
         // ---- what the cut takes ----
         public enum Take{Part,Through,Slit,Limb,Arm}
         /// <summary>What a move's kill takes: a part (the head or an arm by the cut's height), through the body, a slit throat or a limb (the
-        /// Fangs' as the daggers'), an arm alone (the Glaive's halo, burst and shards). The slam chops, top-down.</summary>
-        public static Take TakeOf(string spec,Move move,int index)
+        /// Fangs' as the daggers'; the takedown from behind, whose `clip` is the stealth kill's throat cut, slits the throat), an arm alone
+        /// (the Glaive's halo, burst and shards). The slam chops, top-down.</summary>
+        public static Take TakeOf(string spec,Move move,int index,string clip=null)
         {
             int step=Math.Max(1,index)-1;
-            if(spec==NativeFangs.Spec)return move==Move.Cut&&step<NativeFangs.Steps-1?Take.Slit:Take.Limb;
+            if(spec==NativeFangs.Spec)return move==Move.Cut&&step<NativeFangs.Steps-1||move==Move.Takedown&&clip==NativeBladeMotion.FangsTakedown?Take.Slit:Take.Limb;
             switch(move)
             {
                 case Move.Cut:return spec==NativeKatana.Spec&&step>=2?Take.Through:Take.Part;

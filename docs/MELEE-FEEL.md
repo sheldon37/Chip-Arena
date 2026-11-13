@@ -1104,7 +1104,11 @@ not a sprint attack, a weapon with plunge keys: `NativePlungeRules.Handles`) is 
 model then takes the game's own plunge pose through `NativeVisualRig`: the point-down drop, the plant, stuck, the pull-out.
 The motion leaves the jump take over `PlungeEase` (0.06 s) instead of the usual 0.15 s, so the drop doesn't show a blend of
 the jump's raised blade and the plunge's lowered one. The forward jump attack and the weapons without plunge keys keep the
-pack's take.
+pack's take. Since the owner's picks of 2026-11-13 a set may name a plunge clip of its own (`Set.Plunge`, `PlungeSlam`): the
+Greatsword plays Grruzam's `M_Big_Sword@Skill_F` and the DEV Greatsword `M_Big_Sword@Skill_L`, the clip's strike on the
+landing (from a jump's top the drop takes 0.145 s, so the clip starts that far before its strike at up to 1.6 times its pace),
+then on at its own pace through the stuck recovery. The game rig, the first-person view and the effects keep the plunge's
+own pose and timeline.
 
 The plant keys were retuned for the model (owner: "the pictures looked weird"). The old keys bowed the torso almost flat
 with the sword arm raised overhead relative to it. That reads on the big-headed voxel rig, but on the human model it folded

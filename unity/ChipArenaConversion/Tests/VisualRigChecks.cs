@@ -393,7 +393,11 @@ namespace ChipArena.UnityConversion
         // The model's own animation (owner 2026-10-24: "Pack animations whole, and adjust hit timing as needed", "Retime clips to
         // rules", greatsword first): Core NativeVisualMotion's choices and timing, and its wiring (Runtime
         // NativeVisualMotionPresentation.cs).
-        private sealed class MotionBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null&&c.StartsWith("2Hand-Sword-",StringComparison.Ordinal);public float Length(string c)=>1.2f;public float Hit(string c)=>.42f; }
+        private sealed class MotionBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null&&(c.StartsWith("2Hand-Sword-",StringComparison.Ordinal)||NativeDevGreatswordMotion.Is(c));public float Length(string c)=>1.2f;public float Hit(string c)=>.42f; }
+        // Every clip 2.5 s long, its Hit a great sword clip's measured strike (the greatsword classes' plunges play past 1.6 s).
+        private sealed class PickBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null;public float Length(string c)=>2.5f;public float Hit(string c)=>NativeDevGreatswordMotion.Strike(c,out float s)?s:.5f; }
+        // One pilot's technique record (actor 1).
+        private sealed class TechBook : ITechniqueSource { public NativeTechnique K;public NativeTechnique Of(int actor)=>actor==1?K:null; }
         // Every clip, its Hit a DEV animation class's measured strike (as the bank reads it) or .42.
         private sealed class StrikeBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null;public float Length(string c)=>1.6f;public float Hit(string c)=>NativeDevGreatswordMotion.Strike(c,out float s)?s:.42f; }
         // Every clip, 3.5 s long (a blade move's window is never clipped short).
@@ -485,13 +489,14 @@ namespace ChipArena.UnityConversion
                 Check(set.Idle=="2Hand-Sword-Idle"&&set.KitClips[1]=="2Hand-Sword-Attack2"&&set.Attacks.Length==6&&dev!=null&&dev!=set&&dev.Spec=="greatsword","the Greatsword keeps its set; the DEV Greatsword has its own, playing as the Greatsword");
                 Check(dev.Idle==NativeDevGreatswordMotion.Idle&&dev.Attacks==NativeDevGreatswordMotion.Cuts&&dev.Attacks.Length%2==0&&dev.SprintAttack==NativeDevGreatswordMotion.Cleave&&dev.AirAttack==NativeDevGreatswordMotion.JumpCut
                     &&dev.KitClips[0]==NativeDevGreatswordMotion.Slam&&dev.KitClips[1]==NativeDevGreatswordMotion.Spin&&dev.KitHits[1]==NativeDevGreatswordMotion.SpinHold&&dev.Knockdown==NativeDevGreatswordMotion.Knockdown&&dev.RollBack==NativeDevGreatswordMotion.RollBack
-                    &&dev.VowStart==NativeDevGreatswordMotion.Crouch&&dev.VowHold==NativeDevGreatswordMotion.Crouched&&dev.Overhead==NativeDevGreatswordMotion.Overhead&&dev.Sweep==NativeDevGreatswordMotion.Reap&&set.VowStart==null&&set.Overhead==null,
+                    &&dev.VowStart==NativeDevGreatswordMotion.Crouch&&dev.VowHold==NativeDevGreatswordMotion.Crouched&&dev.Overhead==NativeDevGreatswordMotion.Overhead&&dev.Sweep==NativeDevGreatswordMotion.Reap&&dev.Plunge==NativeDevGreatswordMotion.Plunge
+                    &&set.VowStart==null&&set.Sweep==null&&set.Overhead==NativeDevGreatswordMotion.GreatswordSunder&&set.Plunge==NativeDevGreatswordMotion.GreatswordPlunge,
                     "the DEV Greatsword's moves on the pack's clips (an even combo, so each cut keeps the rules' sweep as it cycles)");
                 Check(Array.TrueForAll(dev.All,c=>NativeDevGreatswordMotion.Is(c)||c=="2Hand-Sword-Stunned"||c.StartsWith("Armed-Cast-R-Attack2_",StringComparison.Ordinal)),"its every clip the pack's but the stun and the shared throw");
                 Check(dev.Locomotion[0]==NativeDevGreatswordMotion.Runs[0]&&dev.Locomotion[NativeVisualStride.Walks]==NativeDevGreatswordMotion.Walks[0]&&dev.Locomotion[NativeVisualStride.Sprint]==NativeDevGreatswordMotion.Sprint
                     &&Array.TrueForAll(dev.Locomotion,c=>c.EndsWith("_Root",StringComparison.Ordinal)&&(c.Contains("verB")||c.Contains("ver_B"))),"the shoulder carry's root-motion stride (their travel sets its rate), in the stride's order");
                 Check(NativeVisualMotion.Loops(NativeDevMotions.Greatsword).Contains(NativeDevGreatswordMotion.Sprint)&&NativeVisualMotion.Loops(NativeDevMotions.Greatsword).Contains(dev.Idle)&&NativeVisualMotion.Loops("greatsword").Length==0,"the fast run the pack marks single loops in the bake");
-                foreach(var c in new[]{dev.Attacks[0],dev.Attacks[1],dev.Attacks[2],dev.Attacks[3],dev.SprintAttack,dev.AirAttack,dev.KitClips[0],dev.Overhead})
+                foreach(var c in new[]{dev.Attacks[0],dev.Attacks[1],dev.Attacks[2],dev.Attacks[3],dev.SprintAttack,dev.AirAttack,dev.KitClips[0],dev.Overhead,dev.Plunge})
                     Check(NativeDevGreatswordMotion.Strike(c,out float st)&&st>.2f&&st<1.2f,"a measured strike: "+c);
                 Check(!NativeDevGreatswordMotion.Strike("2Hand-Sword-Attack1",out _)&&!NativeDevGreatswordMotion.Strike(null,out _),"no strike for another pack's clip");
                 int gm=2,gw=NativeVisualMotionClips.Head+gm;NativeDevGreatswordMotion.Strike(dev.Attacks[0],out float first);
@@ -575,8 +580,18 @@ namespace ChipArena.UnityConversion
             // fitted to the base class's timing; the rest keep theirs; each class's own entrance on the pack's Intro.
             {
                 var gs=NativeVisualMotion.For(NativeDevMotions.Greatsword);var kt=NativeVisualMotion.For(NativeDevMotions.Katana);const string G="M_Big_Sword@",K="M_katana_Blade@";
-                Check(gs.Attacks.SequenceEqual(new[]{G+"Attack_7Combo_1_Inplace",G+"Attack_7Combo_2_Inplace",G+"Attack_7Combo_3_Inplace",G+"Attack_7Combo_4_Inplace"})&&gs.SprintAttack==G+"Dash_Attack_ver_B"&&gs.Overhead==G+"Skill_F"&&gs.VowStart==G+"Idle_To_Crouch",
-                    "the DEV Greatsword's picks: the seven-hit chain's first four parts, Dash_Attack_ver_B, Sunder on Skill_F, Iron Vow's crouch kept");
+                // The second picks (2026-11-13): the DEV Greatsword's plunge on Skill_L (its Earthsplitter and jump attack kept); the Greatsword's own
+                // four moves on the great sword set's clips (the DEV Greatsword's Earthsplitter and jump attack, its own plunge and Sunder), each on its
+                // measured strike and baked with the set; everything else its RPG set.
+                Check(gs.Plunge==G+"Skill_L"&&gs.KitClips[0]==G+"Skill_H"&&gs.AirAttack==G+"Jump_Attack_Combo_3_ZeroHeight"&&NativeDevGreatswordMotion.Strike(gs.Plunge,out float dgsPlunge)&&dgsPlunge>.2f&&dgsPlunge<1.2f&&Array.IndexOf(gs.All,gs.Plunge)>=0,
+                    "the DEV Greatsword's plunge on Skill_L, on its measured strike, baked with the set; Earthsplitter and the jump attack kept");
+                var pub=NativeVisualMotion.For("greatsword");
+                Check(pub.Plunge==G+"Skill_F"&&pub.KitClips[0]==G+"Skill_H"&&pub.Overhead==G+"Skill_G_2"&&pub.AirAttack==G+"Jump_Attack_Combo_3_ZeroHeight"&&pub.KitClips[0]==gs.KitClips[0]&&pub.AirAttack==gs.AirAttack
+                    &&pub.Idle=="2Hand-Sword-Idle"&&pub.SprintAttack=="2Hand-Sword-Run-Forward-Attack1"&&pub.Attacks.All(c=>c.StartsWith("2Hand-Sword-",StringComparison.Ordinal))&&pub.KitClips[1]=="2Hand-Sword-Attack2"&&pub.VowStart==null&&pub.Sweep==null,
+                    "the Greatsword's picks: the plunge on Skill_F, Earthsplitter on Skill_H, Sunder on Skill_G_2, the jump attack on Jump_Attack_Combo_3 (zero height); the rest its two-handed set");
+                foreach(var c in new[]{pub.Plunge,pub.KitClips[0],pub.Overhead,pub.AirAttack})Check(NativeDevGreatswordMotion.Strike(c,out float st)&&st>.2f&&st<1.2f&&Array.IndexOf(pub.All,c)>=0&&pub.All.Count(x=>x==c)==1,"the Greatsword's pick on a measured strike, baked with the set: "+c);
+                Check(gs.Attacks.SequenceEqual(new[]{G+"Attack_7Combo_1_Inplace",G+"Attack_7Combo_2_Inplace",G+"Attack_7Combo_3_Inplace",G+"Attack_7Combo_4_Inplace"})&&gs.SprintAttack==G+"Dash_Attack_ver_B"&&gs.Overhead==G+"Skill_J_Inplace"&&gs.VowStart==G+"Idle_To_Crouch",
+                    "the DEV Greatsword's picks: the seven-hit chain's first four parts, Dash_Attack_ver_B, Sunder on Skill_J_Inplace (2026-11-13), Iron Vow's crouch kept");
                 foreach(var c in gs.Attacks.Append(gs.SprintAttack).Append(gs.Overhead))Check(NativeDevGreatswordMotion.Strike(c,out float st)&&st>.2f&&st<1.2f&&Array.IndexOf(gs.All,c)>=0,"a measured strike, baked with the set: "+c);
                 Check(kt.Attacks.SequenceEqual(new[]{K+"Attack_5Combo_1_Inplace",K+"Attack_5Combo_2_Inplace",K+"Attack_5Combo_3_Inplace",K+"Attack_3Combo_3_Inplace"})&&kt.AirAttack==K+"Jump_Attack_Combo_4_Attach_ZeroHeight"
                     &&kt.Block==NativeDevGreatswordMotion.Guard&&kt.BlockHit==NativeDevGreatswordMotion.GuardHit&&Array.IndexOf(kt.All,NativeDevKatanaMotion.Counter)>=0&&Array.IndexOf(kt.All,NativeDevKatanaMotion.CounterHit)>=0&&Array.IndexOf(kt.All,NativeDevKatanaMotion.Intro)>=0,
@@ -685,11 +700,46 @@ namespace ChipArena.UnityConversion
             cut.SprintAttack=true;Check(P(cut,10.2f).Clip==set.SprintAttack,"a sprint attack its own clip");
             var roll=Ground();roll.RollAt=5;Check(P(roll,5+roll.VisualRollDuration*.5f).Clip==set.Roll&&Math.Abs(P(roll,5+roll.VisualRollDuration*.5f).Time-roll.VisualRollDuration*.5f*NativeVisualMotion.MaxRollRate)<1e-3f,"a roll plays through the roll at most MaxRollRate times its pace");
             var plunge=new Actor{Grounded=false,AirAttack=true,AttackAt=20,AttackUntil=21,ImpactAt=20.5f};Check(P(plunge,20.5f).Clip==set.AirAttack&&Math.Abs(P(plunge,20.5f).Time-.42f)<1e-4f,"the plunge's Hit on its impact");
-            // The plunging stab (kind "down"): the pack has no take for it, so the model keeps the game's plunge pose (owner
-            // 2026-11-02: "we dont really have a slam attack anymore"); a weapon without plunge keys still plays the jump attack.
+            // The plunging stab (kind "down"): a set without a plunge clip keeps the game's plunge pose (owner 2026-11-02: "we dont really
+            // have a slam attack anymore"); the greatsword classes play their own (the owner's picks 2026-11-13); a weapon without plunge keys
+            // still plays the jump attack.
             var stab=new Actor{Grounded=false,AirAttack=true,AttackAt=20,AttackUntil=21,ImpactAt=20.5f,AirKind=NativePlungeFields.DownKind,SourceSpec="sword"};
-            foreach(var spec in new[]{"sword","daggers","shield","greatsword"}){stab.SourceSpec=spec;Check(!NativeVisualMotion.Choose(set,stab,20.3f,new NativeVisualMotion.Memory(),book,false,out _)&&NativeVisualMotion.Declined=="plunge","a "+spec+" plunging stab shows the game's plunge pose, not the forward chop");}
+            foreach(var spec in new[]{"sword","daggers","shield"}){stab.SourceSpec=spec;var own=NativeVisualMotion.For(spec);Check(own.Plunge==null&&!NativeVisualMotion.Choose(own,stab,20.3f,new NativeVisualMotion.Memory(),book,false,out _)&&NativeVisualMotion.Declined=="plunge","a "+spec+" plunging stab shows the game's plunge pose, not the forward chop");}
+            stab.SourceSpec="greatsword";Check(P(stab,20.3f).Clip==set.Plunge&&set.Plunge!=set.AirAttack,"the Greatsword's plunging slam plays its own clip, not the forward jump attack");
             stab.SourceSpec="spear";Check(P(stab,20.5f).Clip==set.AirAttack,"a weapon without plunge keys keeps the jump attack");
+            // The greatsword classes' plunge as the picker previewed it (2026-11-13): pressed at a jump's top, the clip from PlungeDrop before its
+            // strike at the blade fit's 1.6 times its pace, its strike on the landing, then its own pace (Skill_F 0.40..1.32 s, Skill_L 0.84..1.76
+            // over the move's 0.85 s at 30 a second); before the landing is known it slows short of the strike and only moves forward.
+            {
+                var picks=new PickBook();
+                foreach(var (s,from,to) in new[]{(set,.40f,1.32f),(NativeVisualMotion.For(NativeDevMotions.Greatsword),.84f,1.76f)})
+                {
+                    NativeDevGreatswordMotion.Strike(s.Plunge,out float strike);
+                    var drop=new Actor{Grounded=false,AirAttack=true,AttackAt=40,AttackUntil=41.5f,ImpactAt=-1,AirKind=NativePlungeFields.DownKind,SourceSpec="greatsword"};
+                    bool fitted=NativeVisualMotion.PlungeSlam(s,drop,40,picks,out var p0)&&Math.Abs(p0.Time-from)<.01f&&Math.Abs(p0.Time-(strike-NativeVisualMotion.PlungeDrop*NativeBladeMotion.StrikeRate))<1e-4f;
+                    float lastT=-1;bool forward=true,shy=true;for(float t=40;t<41.2f;t+=1/120f){NativeVisualMotion.PlungeSlam(s,drop,t,picks,out var pp);forward&=pp.Time>=lastT-1e-5f;shy&=pp.Time<strike;lastT=pp.Time;}
+                    drop.ImpactAt=40+NativeVisualMotion.PlungeDrop;NativeVisualMotion.PlungeSlam(s,drop,drop.ImpactAt,picks,out var p1);NativeVisualMotion.PlungeSlam(s,drop,40+25/30f,picks,out var p2);
+                    Check(fitted&&forward&&shy&&Math.Abs(p1.Time-strike)<1e-4f&&Math.Abs(p2.Time-to)<.01f&&Math.Abs(NativeVisualMotion.PlungeDrop-.1454f)<1e-3f,
+                        s.Plunge+": its strike on the landing, from "+p0.Time.ToString("0.00")+" to "+p2.Time.ToString("0.00")+" s as previewed; held short of the strike through a long drop");
+                }
+                // Sunder on a set's own clip (the greatsword classes): its strike on the slam (the rules' release), its recovery at the pace the
+                // picker previewed (laid over SunderTail) until the rules free the pilot 0.3 s after the slam, where the stance takes over.
+                var keepSource=NativeTechniques.Source;
+                try
+                {
+                    NativeTechniques.Source=new TechBook{K=new NativeTechnique{Kind=NativeTechniques.Sunder,At=50,Release=50.55f,Until=54.55f,RecoverUntil=50.55f}};
+                    var sunder=new Actor{Id=1,Grounded=true,SourceSpec="greatsword"};
+                    foreach(var s in new[]{set,NativeVisualMotion.For(NativeDevMotions.Greatsword)})
+                    {
+                        NativeDevGreatswordMotion.Strike(s.Overhead,out float strike);
+                        bool onSlam=NativeVisualMotion.Choose(s,sunder,50.55f,new NativeVisualMotion.Memory(),picks,false,out var q0)&&q0.Clip==s.Overhead&&Math.Abs(q0.Time-strike)<1e-3f;
+                        bool paced=NativeVisualMotion.Choose(s,sunder,50.849f,new NativeVisualMotion.Memory(),picks,false,out var q1)&&q1.Clip==s.Overhead&&Math.Abs(q1.Time-(strike+(2.5f-strike)*.299f/NativeVisualMotion.SunderTail))<.01f;
+                        bool freed=NativeVisualMotion.Choose(s,sunder,50.86f,new NativeVisualMotion.Memory(),picks,false,out var q2)&&q2.Clip==s.Idle;
+                        Check(onSlam&&paced&&freed&&NativeVisualMotion.SunderTail==.6f,s.Overhead+": Sunder strikes on the slam, recovers at the previewed pace, the stance from 0.3 s after it");
+                    }
+                }
+                finally{NativeTechniques.Source=keepSource;}
+            }
             stab.SourceSpec="sword";stab.SprintAttack=true;Check(NativeVisualMotion.Choose(set,stab,20.3f,new NativeVisualMotion.Memory(),book,false,out _),"a sprint attack is never a plunge");
             var air=new Actor{Grounded=false,Velocity=new V3(0,3,0)};Check(P(air,30).Clip==set.Jump,"rising: the jump");
             air.Velocity=new V3(0,-3,0);Check(P(air,30).Clip==set.Fall,"falling: the fall");

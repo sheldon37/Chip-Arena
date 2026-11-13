@@ -34,20 +34,25 @@ Every number is in Core `NativeFangs`. Cooldowns: Q 7, E 12 (from its end), 1 6,
 ## The look
 
 - **The kills** (Core `NativeBladeCuts`; owner 2026-11-12: "I also want all bladed weapons to support gibbing"; docs/BISECT-GIB.md "Blade
-  classes"): as the daggers', a slit throat on the first four cuts, an arm (a forearm when the cut is low) on the finisher, the pounce, the shadow
-  step's stab, the takedown, the critical and a thrown knife; the slam's chop an arm. The venom bloom cuts nothing.
+  classes"): as the daggers', a slit throat on the first four cuts and on the takedown from behind (a throat cut), an arm (a forearm when the
+  cut is low) on the finisher, the pounce, the shadow step's stab, the frontal critical and a thrown knife; the slam's chop an arm. The venom
+  bloom cuts nothing.
 - **The daggers** (Core `NativeWeaponModels.Fangs.cs`, sculpted with WeaponSculpt): twin recurved fangs, a venom channel lit in the accent,
   blackened steel with a bright edge, a serpent's guard, a wrapped grip. Thrown knives fly as their own blades (Runtime
   `NativeBladePresentation.cs`).
 - **The motion** (Core `NativeBladeMotion`): the pack's assassin stance (its equipped idle), root-motion runs and walks, guard, block, tumble
-  and hit reactions. The cuts and the dash are the pack's Rogue (dual blade) set (owner 2026-11-11: "The Fangs need a MUCH better basic
-  combo, utilize the "Rogue" from the frank slash animation set"): its third combination's four parts with its fourth's second as the
-  fourth cut, and the fifth's deep lunge as the dash, at twice the clips' pace. The slam is the set's air attack, held to the landing. The
-  step its dashing stab
+  and hit reactions. The cuts are the pack's Dual (twin swords) set's chain (the owner's pick 2026-11-13, in place of the Rogue's): its first
+  combo's flat forehand, springing double and bent-over lunging cut, its sixth combo's long forehand lunge, then its first combo's low
+  spinning sweep as the finisher (`Frank_RPG_Dual_Combo01_1`, `01_2`, `01_3`, `06_1`, `01_4`; strikes 0.43, 0.26, 0.24, 0.30, 0.24 s, at up
+  to 1.6 times the clips' pace; the set ships as root-motion takes only, played in place). The cuts that lunge (the third's step in, the finisher) take the whole body even on the move, their legs carrying the
+  lunge; the others play on the upper body over the stride while moving. The dash is the Rogue (dual blade) set's fifth
+  chain's deep lunge (owner 2026-11-11: "utilize the "Rogue" from the frank slash animation set"), at up to twice its pace. The slam is the
+  set's air attack, held to the landing. The step its dashing stab
   skill; the veil its backward evade; the fan its two-handed outward sweep (Attack06: the knives flung from both hands; its spinning
   Attack04 lay the body flat on the floor) and the bloom its two-handed strike skill (both on the upper body while moving, the legs free);
-  the takedown the pack's stealth kill from behind (the victim plays the matching hit clip) and the frontal critical the assassin's
-  paired critical.
+  the takedown the pack's stealth kill from behind, its throat cut (`Frank_Stealth_Kill_Behind_01`, the owner's pick 2026-11-13: the foe's
+  head held with a fang at its throat, the fang drawn across on the blow at 1.3 s of the clip; the victim plays the matching
+  `Hit_Behind_01` on the same window, so both bodies stay together) and the frontal critical the assassin's paired critical.
 - **Effects** (Core `NativeBladeFx.cs`, in the pilot's weapon colour):
   - weapon trails from both blades (owner 2026-11-11: "Give both weapon weapon trail vfx"): each blade sampled through every move, its
     sweep a smooth crescent (a spline through the samples) narrowing to its tail: a sheet in the weapon colour, a white-hot edge, a faint

@@ -681,12 +681,16 @@ namespace ChipArena.UnityConversion
     public static partial class NativeVisualMotion
     {
         private const string MeleeOverhead="2Hand-Sword-Attack11",MeleeSweep="2Hand-Sword-Attack2";
+        /// <summary>The span a set's own Sunder clip's recovery is laid over (s after the slam; the technique preview's recovery, which the
+        /// owner's picks were shown at).</summary>
+        public const float SunderTail=.6f;
         private static bool PoseMelee(Set set,NativeTechnique k,float time,float back,IClips clips,out Pick pick)
         {
             pick=default;Pick got=default;
             bool Part(string clip,float from,float to){return time>=from&&time<to&&clip!=null&&clips.Has(clip)&&Fit(clip,time,from,to,clips,FadeIn,out got);}
-            // A clip with its own Hit (or `struck` s into it, where its blade really is low) on `at`, each side stretched to fit.
-            bool Struck(string clip,float from,float at,float to,float struck=-1){if(time<from||time>=to||clip==null||!clips.Has(clip))return false;float len=clips.Length(clip),h=struck>0?struck:clips.Hit(clip);got=new Pick{Clip=clip,Time=Retime(time,from,at,to,h>0&&h<len?h:len*.5f,len),Fade=FadeIn};return true;}
+            // A clip with its own Hit (or `struck` s into it, where its blade really is low) on `at`, each side stretched to fit; with a `tail`,
+            // the side after `at` laid over at least that long (the clip cut where `to` ends it, what comes next fading it out).
+            bool Struck(string clip,float from,float at,float to,float struck=-1,float tail=0){if(time<from||time>=to||clip==null||!clips.Has(clip))return false;float len=clips.Length(clip),h=struck>0?struck:clips.Hit(clip);if(!(h>0&&h<len))h=len*.5f;got=new Pick{Clip=clip,Time=tail>0&&time>at?h+(len-h)*Clamp01((time-at)/Math.Max(to-at,tail)):Retime(time,from,at,to,h,len),Fade=FadeIn};return true;}
             bool hit=false;
             switch(k.Kind)
             {
@@ -703,8 +707,10 @@ namespace ChipArena.UnityConversion
                     else if(time<k.Until&&set.Block!=null&&clips.Has(set.Block)){got=new Pick{Clip=set.Block,Time=Math.Min(time-k.At,clips.Length(set.Block)*.4f),Fade=FadeIn};hit=true;}
                     break;
                 // The big overhead, its own Hit on the landing.
-                // A set with its own (the DEV Greatsword's) plays them on their measured strikes (NativeVisualMotionClips.Read).
-                case NativeTechniques.Sunder:hit=set.Overhead!=null?Struck(set.Overhead,k.At,k.Release,Math.Max(back,k.Release+.3f)):Struck(MeleeOverhead,k.At,k.Release,Math.Max(back,k.Release+.3f),BombSlamHit);break;
+                // A set with its own (the greatsword classes' great sword clips) plays them on their measured strikes (NativeVisualMotionClips.Read),
+                // the recovery at the pace the owner's picker previewed it (2026-11-13: over SunderTail) until the rules free the pilot, 0.3 s after
+                // the slam, where the stance fades in (fitted into those 0.3 s, the pack's second-long recoveries raced through at about 4 times).
+                case NativeTechniques.Sunder:hit=set.Overhead!=null?Struck(set.Overhead,k.At,k.Release,Math.Max(back,k.Release+.3f),-1,SunderTail):Struck(MeleeOverhead,k.At,k.Release,Math.Max(back,k.Release+.3f),BombSlamHit);break;
                 case NativeTechniques.ReapingSweep:hit=Part(set.VowHold??TechVowHold,k.At,k.Release)||Struck(set.Sweep??MeleeSweep,k.Release-.02f,k.Release+.1f,Math.Max(back,k.Release+.3f));break;
                 // The drag is the run itself; the rise tears up out of it.
                 case NativeTechniques.BladeDrag:if(k.Recast(time))hit=Struck(set.SprintAttack,k.RecastAt-.02f,k.RecastAt+.1f,Math.Max(back,k.RecastAt+.3f));break;
