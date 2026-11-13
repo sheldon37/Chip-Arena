@@ -1620,7 +1620,8 @@ already? Cant we utilize that?"
         Sunder on `Skill_F` (its slam to the front right, 0.63 s); Iron Vow keeps `Idle_To_Crouch`.
       - **DEV Katana:** the cuts on the five-hit chain's first four parts (`Attack_5Combo_1..4_Inplace`, windows 0/0.31/1.0,
         0/0.3/0.83, 0/0.43/1.03 and, the fourth a flurry of cuts and kicks, 1.2/1.97/2.33: its last high sweep), the plunge on
-        `Jump_Attack_Combo_4_Attach_ZeroHeight` (0/0.22/0.77: a downward cut into a crouched landing), the counter on
+        `Jump_Attack_Combo_4_Attach_ZeroHeight` (0/0.74/0.77: a cut down and a turn in the air through the drop, the landing driving
+        the blade into the floor), the counter on
         `Revenge_Guard_Attack_ver_A` (0/0.4/1.47: out of the katana set's back-turned guard it spins round into a rising cut) in place
         of the Frank paired critical. The pack has no partner clip, so the countered foe plays the katana set's
         `Damage_Front_Big_ver_A` from the blow, at its own pace to the hold's end (`NativeDevMotions.VictimClip`, named on the host

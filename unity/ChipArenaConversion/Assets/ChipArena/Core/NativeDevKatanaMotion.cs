@@ -78,8 +78,9 @@ namespace ChipArena.UnityConversion
                 case CounterHit:return new NativeBladeMotion.Window(-NativeKatana.CounterHit,0,NativeKatana.CounterHold-NativeKatana.CounterHit);
                 case Rush:return new NativeBladeMotion.Window(0,.43f,.83f);
                 case Storm:return new NativeBladeMotion.Window(.2f,.53f,1.25f);
-                // The owner's picked plunge: a downward cut into a crouched landing, the blade meeting the floor at its strike.
-                case Plunge:return new NativeBladeMotion.Window(0,.22f,.77f);
+                // The owner's picked plunge: a cut down and a turn in the air, then the landing that drives the blade into the floor at the
+                // right (its strike, on the impact: the cut and the turn play through the drop).
+                case Plunge:return new NativeBladeMotion.Window(0,.74f,.77f);
                 default:return new NativeBladeMotion.Window(float.NaN,float.NaN,float.NaN);
             }
         }
