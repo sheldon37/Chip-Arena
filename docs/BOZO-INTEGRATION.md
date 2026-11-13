@@ -1638,6 +1638,35 @@ already? Cant we utilize that?"
         with the sword across the back, the right hand reaching over the shoulder for its hilt: through the held first frame and to
         0.11 s of the clip it is there, on the chest (`NativeDevKatanaIntro.CarryAt`/`CarryTurn`, measured on the bake's body), and it
         goes into the hand as the hand closes on it (0.15 s). The great sword's `Intro` keeps its blade in the hand throughout.
+    - **The owner's second picks (2026-11-13, branch `claude/more-move-picks`):** chosen the same way, each candidate previewed as only
+      the slice of its clip the game plays, fitted to the rules' timing. Presentation only: no rule, timing, hitbox or wire changed.
+      - **The Greatsword** plays four moves on the great sword set (its stance, stride, combo and Whirlwind stay the RPG set's): the
+        plunging slam on `Skill_F` (out of a spinning leap the blade slammed to the front right on the landing, then a wide low crouch;
+        it had the game's plunge pose), Earthsplitter on `Skill_H` and the jump attack on `Jump_Attack_Combo_3_ZeroHeight` (the DEV
+        Greatsword's, on their strikes 0.61 and 0.62 s; they were `2Hand-Sword-Attack11` and `2Hand-Sword-Air-Attack1`), Sunder on
+        `Skill_G_2` (a somersault, the pack's fall from a leap kept on the floor, up into a slam at 0.57 s; it was `Attack11`). Its
+        blade is held as the DEV Greatsword's (the hold the body takes from the game pose).
+      - **The DEV Greatsword:** the plunge on `Skill_L` (out of a spin the blade touches the floor in front, rises and comes down again:
+        the second, heavier blow, 1.07 s), Sunder on `Skill_J_Inplace` (the blade dragged low, lifted overhead and slammed, 0.94 s; it was
+        `Skill_F`). Its Earthsplitter and jump attack are kept.
+      - **A plunge on a clip** (`Set.Plunge`, `NativeVisualMotion.PlungeSlam`): the clip's strike on the landing, its run-in at up to
+        1.6 times its pace (from a jump's top the drop takes 0.145 s, so the clip starts 0.23 s before its strike: `Skill_F` from 0.40 s,
+        `Skill_L` from 0.84 s), then its own pace through the stuck recovery (to about 1.32 and 1.76 s). While the drop is under way the
+        clip slows short of its strike until the landing is known. The game rig, the first-person view and the plunge's effects keep
+        their own pose and timeline.
+      - **Paces:** the kit fit plays the whole clip without a cap, so Earthsplitter plays `Skill_H`'s last second (the blade swung
+        back onto the shoulder) in the cast's last 0.3 s, about 3.2 times its pace (as previewed). Sunder's run-in plays the clip whole to
+        the slam (`Skill_G_2` at its own pace, `Skill_J_Inplace` at 1.7 times). The rules free the pilot at the slam and the presentation
+        ends Sunder 0.3 s after it, but the picker previewed a 0.6 s recovery (the technique preview's): fitted into 0.3 s the pack's
+        second-long recoveries raced through at about 4 times (the DEV Greatsword's `Skill_F` did). A set's own Sunder clip now lays its
+        recovery over 0.6 s as previewed (`NativeVisualMotion.SunderTail`), and the stance fades in from where the 0.3 s leave it (the
+        crouch rising, the blade still low). The jump attack's run-in is 2.4 times its pace (into its strike on the landing), its recovery
+        its own.
+      - **Strikes** checked on the bake body at 30 frames a second with the game's blade in the hand (where the blade arrives in front
+        and stops): `Skill_G_2` 0.567-0.60 s, `Skill_J_Inplace` 0.933-0.967, `Skill_L` 1.067-1.10 (a lighter first touch at 0.90),
+        `Skill_F` 0.633.
+      - **The bank** gains `Skill_G_2` and `Skill_L` with the Fangs' seven (docs/FANGS.md): 490 clips in 5,960,298 bytes became 499 in
+        6,136,627 (sha256 37ec44d2...), every other clip byte-identical.
     - **The katana's hold:** the game holds the blade 20-30 degrees from where the pack's own katana lies (26 on average over the
       attacks and the B stride; 49 at most), a steady offset through every clip: the arms and the swing are the pack's,
       the blade sits that much differently in the hand.
