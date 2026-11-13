@@ -16,6 +16,7 @@
   - the cards read "Katana · Beheaded" (the first cut), "Katana · Cut in two" (the third), "Katana · Dismembered" (the second's forearm), "Fangs · Slashed" (the slit throat) and "Greatsword · Cut in two" (the DEV Greatsword's first cut along its surveyed 46-degree slash);
   - the first take caught a bug in the change itself: the final killcam read its cause at the round's last kill, before the presentation had seen the killing hit, and the lookup kept "no blow" for the death, so the body was cut by the swing before (the third cut read "Dismembered" and took a forearm). The lookup now never keeps a blow and the card reads the cause again until the body's has settled; refilmed, every body after the label's early read is cut by its own blow.
 - **Not seen / not done:** played by a person; the label on a zombie kill (the horde shows no killcam card).
+- **Released:** shared `3c132414` (the builder at `3c132414`), test channel revision `639301416396171962` (build `63f4eae2`); the suite at `012820a1` (1,021 groups, exit 0), the Unity compile, the Editor build gate on `2a70cf20`. A first run stopped on `FinalKillcamChecks` (the broadcast frame built its cause line); `2a70cf20` refreshes it in `FinalFrame`, rebuilt only when the cause changes.
 
 ## 2026-11-12 — Claude: Skyframe's haze banks popped as the camera turned (owner report)
 
