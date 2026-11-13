@@ -1,3 +1,23 @@
+## 2026-11-12 — Claude: the Katana's parry dazes its striker as a standard parry does (owner request; a rules change at the owner's word)
+
+- Branch `claude/katana-parry-daze` (from shared `3c132414`): `9c48bb1d` and this entry. Relayed by the NOCTIEL session.
+- **The owner:** "For the daze animation on dev katana parry and katana parry, use the daze we use when we parry someone". Asked whether Claude or Astra makes the rule: "Claude does it".
+- **Why it looked different:** the parried striker plays the same clips whoever parries (its set's recoil, then its daze, through its stun: Core `NativeVisualMotion`). The stun differed. `SuccessfulMeleeBlock` (Runtime `NativeMelee`) gave the riposte's long stun (`NativeMeleeRules.BlockPunish`) only to human parriers with a standard melee weapon (`NativeMeleeRules.Standard`: sword, daggers, greatsword, shield); the Katana and the DEV Katana (seat spec `katana`) got only `BlockStun`, so the striker was back in its guard before its daze showed.
+- **The rules change (for Astra to review):**
+  - the Katana's timed parry sets the riposte too: its striker stunned for `BlockPunish`, until the Katana's first primary blow (`SettleRiposte`), and the HUD's "RIPOSTE · LMB counter" shows;
+  - inside the parry's window the click is the counter once the parry has landed (`RiposteOpen`), and it ends the window as a standard riposte's attack does (`TryMelee`); after the window the counter is as before (1 s, Mirror Moon 2 s);
+  - bots still never riposte (`!blocker.Seat.bot`), as for every class.
+- **Numbers** (a Greatsword bot's blow landed on a timed parry, the editor's `parryhit`; the tool's log of the foe's stun): before, a Sword's parry stunned the striker 1.26 s and the Katana's and DEV Katana's 0.57 s; after, the Sword's 1.26 s, the Katana's 1.28 s, the DEV Katana's 1.28 s.
+- **No lock:** the riposte's stun is bounded (`BlockPunish`: at most 1.4 s plus the shove) and the Katana's first primary blow ends it (the counter's blow, a cut). Non-primary hits (the iai's split, the storm) leave it to run out, as for any riposte. The striker can't attack while stunned, so it can't feed the next parry.
+- **Mirrors:** none. The native authority is the only rule side (host; guests replicate the stun and the riposte flags already on the wire); bots never riposte; the Electron game has no Katana; no generated rule table holds the riposte.
+- **Animation impact:** the striker's daze now plays through the stun (no clip change); hit timing, hitboxes, damage, cooldowns and movement unchanged; the counter can start inside the parry's window once the parry has landed.
+- **Checks:**
+  - CoreTests `--blades` (225: the new rule and the riposte counter pinned);
+  - the Editor build gate (`PrototypeBuild.Validate` ok, Native blades with the new staging: the parry dazes its striker at least 1 s, the riposte open; inside the window the click is the counter and ends the window; its blow ends the daze);
+  - the full suite at the release commit (relgen); the Unity compile.
+- **Filmed** (the Editor, a Greatsword bot's blow on the parry): the before captures `pd_s` (a Sword's parry), `pd_k` (the Katana's), `pd_dk` (the DEV Katana's); the after `pe_s`, `pe_k`, `pe_dk`, and `pe_kc` (the counter clicked inside the window): clicked 0.15 s after the parry landed, the counter starts at once (the pilot closes in, the blow's flash, the foe thrown back) (local, in Claude's scratchpad `dcap/`).
+- **Not seen / not done:** played by a person; a parry by a bot (no riposte, as before).
+
 ## 2026-11-12 — Claude: the killcam names a blade kill by its cut; the DEV Greatsword cuts along its own swings (owner request)
 
 - Branch `claude/blade-labels` (from `claude/blades` `7872df66`, merged with shared after the blade gibbing's release): `dab8c9a3`, `bc7c3aea` and this entry. Relayed by the NOCTIEL session.
