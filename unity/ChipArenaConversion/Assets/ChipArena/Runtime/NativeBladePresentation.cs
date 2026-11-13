@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
             var grip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             for(int hand=0;hand<2;hand++)
             {
-                if(introRig==null||!shown||intro.Sheathed(t)||!NativeBladeView.Line(intro.Spec,hand==1,out var root,out var tip)){intro.Blade(t,hand,default,default,false);continue;}
+                if(introRig==null||!shown||intro.Sheathed(t)||!NativeDevPackIntro.BladeLine(intro,hand==1,out var root,out var tip)){intro.Blade(t,hand,default,default,false);continue;}
                 var m=BladeIntroFrame(hand==1?CapturedRig.LHand:CapturedRig.RHand,grip);
                 var r=m.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(root)));var p=m.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(tip)));
                 intro.Blade(t,hand,new NVector(-r.x,r.y,r.z),new NVector(-p.x,p.y,p.z),true);
@@ -180,6 +180,8 @@ namespace ChipArena.UnityConversion
             if(k.Hits!=null)foreach(var h in k.Hits)
             {
                 if(h==null||t<h.At||t-h.At>=.15f||!Once(p.Seat.id+"blhit"+h.Id,h.At))continue;var at=new Vector3(h.Pos.x,h.Pos.y,h.Pos.z);
+                // A blow (the DEV Katana's kick, NativeBladeCuts.BluntHit) lands with the fighters' kick.
+                if(katana&&NativeBladeCuts.BluntHit(p.Seat.spec,p.Seat.motion,h)){Cue(NativeSoundCues.Fighter("arcade-kick"),"arcade-kick",at,.85f,mine:mine);continue;}
                 switch(h.Kind)
                 {
                     case NativeKatana.HitSplit:Toon("blade-split",at,1,mine,h.Amount>0?1.2f:1);break;

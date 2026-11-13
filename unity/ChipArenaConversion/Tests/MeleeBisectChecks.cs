@@ -105,12 +105,55 @@ namespace ChipArena.UnityConversion
             Check(NativeKillCause.Of(true,"ranged","rifle",false,null)==NativeKillCause.Direct&&NativeKillCause.Of(false,null,null,false,null)==NativeKillCause.Environment,"guns and the environment unchanged");
             report.Add("the killcam names a blade's kill by its cut: beheaded, cut in two, dismembered, slashed (a slit throat); blunt melee keeps blunt force, guns and the environment unchanged");
         }
+
+        // ---- 1e. The DEV Katana's third hit is a kick (owner 2026-11-13: "3rd hit of dev katana is a kick, so its blunt damage rather
+        // than slicing"): keyed on its clip, its kill crushes as the shield's (nothing cut, the killcam's blunt force), its hit is a blow
+        // (the impact burst, the fighters' kick, a bruise's wound); the plain Katana's third cut and the DEV Katana's other cuts unchanged ----
+        private static void Kick(List<string> report)
+        {
+            string K=NativeKatana.Spec,dev=NativeDevMotions.Katana,kick="M_katana_Blade@Attack_5Combo_3_Inplace";
+            Check(NativeBladeCuts.Blunt(kick)&&NativeDevKatanaMotion.Cuts[2]==kick,"the DEV Katana's third hit is its kick ("+NativeDevKatanaMotion.Cuts[2]+")");
+            foreach(var clip in NativeBladeMotion.KatanaCuts.Concat(NativeDevKatanaMotion.Cuts).Concat(new[]{NativeBladeMotion.KatanaStorm,NativeBladeMotion.KatanaCritical,NativeDevKatanaMotion.Storm,NativeDevKatanaMotion.Rush,NativeBladeCuts.DevCounter,"M_Big_Sword@Attack_7Combo_1_Inplace",null}))
+                Check(NativeBladeCuts.Blunt(clip)==(clip==kick),(clip??"no clip")+(clip==kick?": a blow":": no blow"));
+            // The combo's clip by its step and motion set (as NativeBladeMotion.Clip plays it); a hit record by its step (its Amount).
+            for(int s=0;s<NativeKatana.Steps;s++)
+            {
+                Check(NativeBladeCuts.CutClip(K,dev,s)==NativeDevKatanaMotion.Cuts[s]&&NativeBladeCuts.CutClip(K,"",s)==NativeBladeMotion.KatanaCuts[s]&&NativeBladeCuts.CutClip(NativeFangs.Spec,dev,s)==null,"the combo's clip at step "+(s+1));
+                var h=new NativeBladeHit{Kind=s==NativeKatana.Steps-1?NativeKatana.HitFinisher:NativeKatana.HitCut,Amount=s};
+                Check(NativeBladeCuts.BluntHit(K,dev,h)==(s==2)&&!NativeBladeCuts.BluntHit(K,"",h)&&!NativeBladeCuts.BluntHit(NativeFangs.Spec,dev,h),"a hit record is a blow only for the DEV Katana's third (step "+(s+1)+")");
+            }
+            Check(!NativeBladeCuts.BluntHit(K,dev,new NativeBladeHit{Kind=NativeKatana.HitStorm,Amount=2})&&!NativeBladeCuts.BluntHit(K,dev,new NativeBladeHit{Kind=NativeKatana.HitWave,Amount=2})&&!NativeBladeCuts.BluntHit(K,dev,null),"no other hit is a blow");
+            // The wound record: the kick's impact is a blunt strike's (a bruise); every other blow keeps the weapon's (null).
+            var kit=new NativeBladeKit{CastKind=NativeKatana.Cut,CastStep=2};var impact=NativeBladeCuts.WoundImpact(K,dev,kit,"cut",true,1);
+            Check(impact!=null&&impact.kind=="blunt"&&NativeBladeCuts.WoundImpact(K,"",kit,"cut",true,1)==null&&NativeBladeCuts.WoundImpact(K,dev,new NativeBladeKit{CastKind=NativeKatana.Cut,CastStep=1},"cut",true,1)==null
+                &&NativeBladeCuts.WoundImpact(K,dev,new NativeBladeKit{CastKind=NativeKatana.Storm,CastStep=2},"storm",false,1)==null&&NativeBladeCuts.WoundImpact(K,dev,kit,"rush",true,1)==null&&NativeBladeCuts.WoundImpact(K,dev,null,"cut",true,1)==null,"the kick's wound is a blow's; every other blow keeps the weapon's");
+            int part=NativeBodyDamage.Part(new V3(0,.3f,0),0);var bruise=NativeBodyDamage.Resolve(impact,part,40,false);var fatal=NativeBodyDamage.Resolve(impact,part,90,true);var cutWound=NativeBodyDamage.Resolve(NativeBodyDamage.Melee(K,1),part,40,false);
+            Check(bruise.kind=="bruise"&&fatal.kind=="bruise"&&!fatal.destroyed&&cutWound.kind=="cut","the kick bruises ("+bruise.kind+", a kill's "+fatal.kind+"); the Katana's cut ("+cutWound.kind+")");
+            // Its kills: the shield's crush (the head from a high blow, else the arm it meets), nothing cut, a blunt kill; the plain Katana's
+            // third still cuts through the body.
+            int heads=0,arms=0;var rnd=new Random(1311);
+            for(int k=0;k<80;k++)
+            {
+                float yaw=(float)rnd.NextDouble()*360-180,dist=1f+(float)rnd.NextDouble()*1.2f,face=yaw+180+(float)(rnd.NextDouble()*120-60);
+                var q=MeleeMath.AxisAngle(MeleeMath.Y,-yaw*D);var at=Vector3.Transform(new Vector3(0,0,dist),q);var victim=new V3(-at.X,NativeMeleeSlice.RootHeight,at.Z);
+                var blow=BladeHit(new Move{Spec=K,Motion=dev,Detail="blade-cut",Cast=NativeKatana.Cut,Step=2},yaw,new V3(0,0,0),victim,out var e,out var a);
+                Check(blow.Clip==kick&&NativeBladeCuts.Cuts(e,a),"the kick is kept as a blade class's blow, with its clip");
+                var plan=new SlicePlan();Check(NativeMeleeSlice.Plan(blow,true,K,Wound("sword"),victim,face,k,plan)&&plan.Kind==SliceKind.Crush&&plan.Count==0&&!plan.Throat&&!NativeMeleeBisect.Cuts(plan)&&NativeMeleeBisect.Request(plan,new Vector3[22],Vector3.Zero,1)==null,"the kick's kill crushes, nothing cut");
+                Check(plan.Crush==CapturedRig.Head||plan.Crush==CapturedRig.LArm||plan.Crush==CapturedRig.RArm,"it crushes the head or an arm");if(plan.Crush==CapturedRig.Head)heads++;else arms++;
+                Check(NativeKillCause.Of(true,"melee",K,true,plan)==NativeKillCause.Blunt,"the killcam reads the kick's kill as blunt force");
+                var cut=new SlicePlan();var plain=BladeHit(new Move{Spec=K,Motion="",Detail="blade-cut",Cast=NativeKatana.Cut,Step=2},yaw,new V3(0,0,0),victim,out _,out _);
+                Check(NativeMeleeSlice.Plan(plain,true,K,Wound("sword"),victim,face,k,cut)&&cut.Kind==SliceKind.Cleave&&NativeKillCause.Of(true,"melee",K,true,cut)==NativeKillCause.CutInTwo,"the plain Katana's third cut still cuts in two");
+            }
+            Check(heads>0&&arms>0,"the kick crushes the head ("+heads+") or an arm ("+arms+")");
+            report.Add("the DEV Katana's kick (hit 3, by its clip) is a blow: its kill crushes as the shield's (the head "+heads+", an arm "+arms+" of 80), blunt force; its hit an impact burst with the fighters' kick, its wound a bruise; the Katana's third and the DEV Katana's other cuts unchanged");
+        }
         private static void Blades(Dictionary<string,Blow> picks,List<string> report)
         {
             string K=NativeKatana.Spec,F=NativeFangs.Spec,G=NativeGlaive.Spec,dev=NativeDevMotions.Katana;var moves=new List<Move>();
             foreach(var motion in new[]{"",dev})
             {
-                for(int s=0;s<NativeKatana.Steps;s++)moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-cut",Cast=NativeKatana.Cut,Step=s,Want=s<2?"part":"through"});
+                // The DEV Katana's third hit is a kick (owner 2026-11-13): a blow, its kill the shield's crush (section 1e).
+                for(int s=0;s<NativeKatana.Steps;s++)moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-cut",Cast=NativeKatana.Cut,Step=s,Want=motion==dev&&s==2?"crush":s<2?"part":"through"});
                 moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-rush",Cast=NativeKatana.Rush,Want="through"});
                 moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-iai",Cast=NativeKatana.Iai,Line=true,Want="through"});
                 moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-sever",Cast=NativeKatana.Iai,Line=true,Want="through"});
@@ -155,6 +198,11 @@ namespace ChipArena.UnityConversion
                     var plan=new SlicePlan();bool planned=NativeMeleeSlice.Plan(blow,true,m.Spec,Wound("sword"),victim,face,seed,plan);
                     if(m.Want=="none"){Check(!planned&&!plan.Any,label+": a venom burst cuts nothing");continue;}
                     Check(planned&&plan.Spec==m.Spec,label+": a plan");blows++;
+                    if(m.Want=="crush")
+                    {
+                        Check(plan.Kind==SliceKind.Crush&&plan.Count==0&&!plan.Throat&&(plan.Crush==CapturedRig.Head||plan.Crush==CapturedRig.LArm||plan.Crush==CapturedRig.RArm)&&!NativeMeleeBisect.Cuts(plan),label+": a blow crushes the head or an arm, nothing cut");
+                        kinds["crush"]=kinds.TryGetValue("crush",out int c0)?c0+1:1;continue;
+                    }
                     var bones=BisectChecks.Pose(new Vector3(victim.x,victim.y-NativeMeleeSlice.RootHeight,victim.z),face);var joints=Joints(bones);
                     var r=NativeMeleeBisect.Request(plan,joints,new Vector3(0,0,0),(uint)seed*2654435761u);int piece=NativeMeleeBisect.Piece(plan);
                     string kind=m.Want=="throat"?"throat":r==null?"none":piece<0?(plan.Kind==SliceKind.Chop?"chop":"through"):piece==CapturedRig.Head?"head":"limb";
@@ -289,7 +337,7 @@ namespace ChipArena.UnityConversion
             Check(!picks.Keys.Any(k=>k.StartsWith("greatsword head")||k.StartsWith("greatsword limb")),"a greatsword always cleaves through");
             Check(!picks.Keys.Any(k=>k.StartsWith("daggers through")),"a dagger never goes through the body: a limb, or the throat");
             report.Add("lethal blows (500 each, random reach, facing, index, jump and kit): "+string.Join("; ",tally));
-            Blades(picks,report);DevGreatsword(report);Causes(picks,report);
+            Blades(picks,report);DevGreatsword(report);Causes(picks,report);Kick(report);
 
             // ---- 2. The cuts on the real body: sealed, whole, capped on the plane, only the part, blood along the seam ----
             double slowestFull=0,slowestPart=0;long bytesFull=0,bytesPart=0;int full=0,part=0;var lines=new List<string>();
@@ -508,9 +556,17 @@ namespace ChipArena.UnityConversion
                 &&R("NativeFinalKillcamPresentation.cs").Contains("private void FinalFrame(){if(finalOn)presentation.ClockRate=finalCurve.Speed(FinalWall);FinalCause();}")&&R("NativeFinalKillcamPresentation.cs").Contains("var cause=KillCause(finalHowDeath,finalHowKiller);if(ReferenceEquals(cause,finalHowCause))return;")
                 &&core("NativeHitReact.cs").Contains("Clip=NativeBladeCuts.DevSwingClip(a,special,kit)")&&horde.Contains("s.Blow.Clip=NativeBladeCuts.DevSwingClip(actor,s.Blow.Special!=null,s.Blow.Kit!=null);")
                 &&!Regex.IsMatch(core("NativeKillCause.cs"),@"UnityEngine|NativeArena|NativePilot|Random\("),"the killcam names the cut a death shows (its lookup never keeps a blow before the body does; the final card reads it again until settled); the DEV Greatsword's swings carry their clips");
+            // The DEV Katana's kick lands as a blow (owner 2026-11-13): the fighters' kick, an impact burst and no slash, by its hit record.
+            Check(R("NativeBladePresentation.cs").Contains("if(katana&&NativeBladeCuts.BluntHit(p.Seat.spec,p.Seat.motion,h)){Cue(NativeSoundCues.Fighter(\"arcade-kick\"),\"arcade-kick\",at,.85f,mine:mine);continue;}")
+                &&core("NativeBladeFx.cs").Contains("KatanaHitFx(s,k,h,time,tint,seed+h.Id*37L,q,low,NativeBladeCuts.BluntHit(a.SourceSpec,a.Motion,h))")&&core("NativeBladeFx.cs").Contains("if(blow)\n            {\n                if(age>.35f)return;")
+                &&NativeSoundCues.Fighter("arcade-kick")=="dev.fist.hit","the DEV Katana's kick lands as a blow: the fighters' kick, an impact burst, no slash");
+            // The blade authority reads one thing of NativeBladeCuts: a blow's impact for its wound record (presentation data no rule reads).
+            const string woundLine="var wound=NativeBladeCuts.WoundImpact(p.Seat.spec,p.Seat.motion,p.Blade,kind,melee,(float)p.Stats[\"attackRate\"]);";
             foreach(var f in new[]{"Runtime/NativeBladeAuthority.cs","Runtime/NativeKatanaAuthority.cs","Runtime/NativeFangsAuthority.cs","Runtime/NativeGlaiveAuthority.cs","Runtime/NativeArena.cs","Runtime/NativeDeaths.cs","Runtime/NativeNetworkFrame.cs"})
             {
-                var p=Path.Combine(root,"Assets/ChipArena",f);if(!File.Exists(p))continue;Check(!File.ReadAllText(p).Contains("NativeBladeCuts"),f+" (the blade classes' rules, kills, the wire) never reads their cuts");
+                var p=Path.Combine(root,"Assets/ChipArena",f);if(!File.Exists(p))continue;var text=File.ReadAllText(p);
+                if(f=="Runtime/NativeBladeAuthority.cs"){Check(text.Contains(woundLine)&&text.Contains(",impact:wound);"),"the blade authority's wound record takes a blow's impact");text=text.Replace(woundLine,"");}
+                Check(!text.Contains("NativeBladeCuts"),f+" (the blade classes' rules, kills, the wire) never reads their cuts");
             }
             report.Add("wiring: melee kill -> plan -> cut, joint slice kept for gore off, kill effects, slit throats and shields; hold until split; stand-in pelvis; weapon/halo/bands by half; killcam-safe blows; no simulation file reads it");
 
