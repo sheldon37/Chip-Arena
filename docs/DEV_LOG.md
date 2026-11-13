@@ -60,6 +60,7 @@
   - zombies, the Crescent Wave, the Fangs' knives and the slams not filmed (the tests cover their path);
   - the DEV Katana's picked cuts filmed only on its first picks (its surveyed planes are checked by the tests);
   - the DEV Greatsword's cuts still take the old greatsword's captured plane, not its Grruzam clips' (the survey's numbers are queued; a follow-up).
+- **Released:** shared `4a94ce09` (the builder at `4a94ce09`), test channel revision `639301334639769695` (build `39b4c078`); the suite at `16024ce2` (1,019 groups, exit 0), the Unity compile, the Editor build gate on `7872df66`.
 
 ## 2026-11-12 — Claude: the owner's DEV animation picks wired in (DEV Greatsword, DEV Katana)
 
@@ -105,6 +106,7 @@
   - Not run: play by a person, a guest over the network, a Windows build, the builder.
 - **Next:** the owner reviews the captures; the Drive zip needs the new clips before a build has them; the Katana session's gib cuts
   can key on the windows above.
+- **Released** to the test channel: merged into shared at `5f8ee5ea` (the release suite at `0337ad7f`, 1018 groups, exit 0; the Unity compile passed; the Unity build checks passed on `9bc2201a`); shipped with a new Drive zip (only the motion bank changed: 489 clips, the released 475 byte-identical; the zip before kept as `LocalAssets-2026-11-12-before-dev-picks.zip`); built and published as revision `639301312995266621` (2026-11-13 01:51 UTC, 368.2 MiB). Not played by a person.
 
 ## 2026-11-11 — Claude: the Hollow Sanctum's polish (the lights' depth fighting, the Thurible, the Fall of the Lights)
 
