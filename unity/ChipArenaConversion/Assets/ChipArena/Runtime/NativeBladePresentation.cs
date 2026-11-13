@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
             var grip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             for(int hand=0;hand<2;hand++)
             {
-                if(introRig==null||!shown||intro.Sheathed(t)||!NativeBladeView.Line(intro.Spec,hand==1,out var root,out var tip)){intro.Blade(t,hand,default,default,false);continue;}
+                if(introRig==null||!shown||intro.Sheathed(t)||!NativeDevPackIntro.BladeLine(intro,hand==1,out var root,out var tip)){intro.Blade(t,hand,default,default,false);continue;}
                 var m=BladeIntroFrame(hand==1?CapturedRig.LHand:CapturedRig.RHand,grip);
                 var r=m.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(root)));var p=m.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(tip)));
                 intro.Blade(t,hand,new NVector(-r.x,r.y,r.z),new NVector(-p.x,p.y,p.z),true);
