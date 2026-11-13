@@ -677,21 +677,23 @@ namespace ChipArena.UnityConversion
         /// One loose fragment of a broken prop, drawn this frame in the realistic style in place of its box (call after
         /// <see cref="Frame"/>; the voxel style draws nothing here and the box stays). Centre, full size and rotation are the
         /// fragment's own, so what is drawn stays where the match collides: concrete and masonry one rough chunk filling the
-        /// box, timber a clump of three torn boards, metal two bent panels, glass three shards. Colour 0: the kind's.
+        /// box, timber a clump of four torn boards, metal two bent panels, glass three shards. Colour 0: the kind's.
         /// </summary>
         public void Loose(NativeStructureMaterial m,int color,V3 center,V3 size,float qx,float qy,float qz,float qw,uint seed)
         {
             if(Style==NativeDebrisStyle.Voxel)return;int hex=color!=0?color:BaseColor(m);if(m==NativeStructureMaterial.Timber)hex=Mix(hex,Weathered,.55f);Rgb(hex,out float r,out float g,out float b);int v=(int)(seed%983);
             if(m!=NativeStructureMaterial.Timber&&m!=NativeStructureMaterial.Metal&&m!=NativeStructureMaterial.Glass){Piece(NativeDebrisShape.Rock,v,center,size,qx,qy,qz,qw,r,g,b);return;}
-            int n=m==NativeStructureMaterial.Metal?2:3;
+            int n=m==NativeStructureMaterial.Metal?2:m==NativeStructureMaterial.Timber?4:3;
             for(int i=0;i<n;i++)
             {
                 float h=H(seed,i,1),h2=H(seed,i,2),yaw,roll;V3 off,dim;
                 if(m==NativeStructureMaterial.Metal){off=new V3(0,i==0?-size.y*.25f:size.y*.1f,0);dim=i==0?new V3(size.x,size.y*.5f,size.z):new V3(size.x*.8f,size.y*.45f,size.z*.7f);yaw=i==0?0:1.2f;roll=0;}
                 else
                 {
-                    off=new V3((i-1)*size.x*.33f,(h-.5f)*size.y*.2f,(h2-.5f)*size.z*.1f);yaw=(h2-.5f)*.3f;roll=(h-.5f)*.3f;
-                    dim=m==NativeStructureMaterial.Timber?new V3(size.x*.3f,size.y*(.5f+.3f*h),size.z*(.78f+.2f*h2)):new V3(size.x*.3f,size.y*(.4f+.4f*h),size.z*(.6f+.35f*h2));
+                    yaw=(h2-.5f)*.3f;roll=(h-.5f)*.3f;
+                    // Timber: two layers of two boards, each a little out of line; glass: three slivers side by side.
+                    if(m==NativeStructureMaterial.Timber){off=new V3((i%2==0?-.24f:.24f)*size.x,(i<2?-.24f:.24f)*size.y,(h2-.5f)*size.z*.12f);dim=new V3(size.x*(.38f+.08f*h),size.y*(.3f+.12f*h2),size.z*(.72f+.24f*h2));}
+                    else{off=new V3((i-1)*size.x*.33f,(h-.5f)*size.y*.2f,(h2-.5f)*size.z*.1f);dim=new V3(size.x*.3f,size.y*(.4f+.4f*h),size.z*(.6f+.35f*h2));}
                 }
                 AxisAngle(new V3(0,1,0),yaw,out float ax,out float ay,out float az,out float aw);AxisAngle(new V3(0,0,1),roll,out float bx,out float by,out float bz,out float bw);Mul(ax,ay,az,aw,bx,by,bz,bw,out ax,out ay,out az,out aw);
                 Mul(qx,qy,qz,qw,ax,ay,az,aw,out float px,out float py,out float pz,out float pw);float tint=.86f+.26f*H(seed,i,3);

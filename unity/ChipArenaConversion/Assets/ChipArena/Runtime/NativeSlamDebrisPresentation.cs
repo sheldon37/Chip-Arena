@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     /// <list type="bullet">
     /// <item>the plunging stab (NativePlungeFx.Structures) and the jump attack's landing (NativeAirAttackFxPresentation), which
     /// call the kit themselves with the floor found here (<see cref="NativeStructureFxPresentation.FloorKind"/>);</item>
-    /// <item>the Earthsplitter's fissure: a heavy burst where the blade lands, then a lighter one about every 1.25 m along the
+    /// <item>the Earthsplitter's fissure: a heavy burst where the blade lands, then a lighter one about every 1.5 m along the
     /// crack as its front passes (born at the front's own time), each chipping and cracking the floor;</item>
     /// <item>a kit move's landing (the Land events the melee kit raises: Skyfall and the rest), a Bulwark wall slam (chunks
     /// off the wall along its normal), and the techniques that strike the floor (Ground Slam's landing, Sunder's smash).</item>
@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<int,float> slamFissures=new Dictionary<int,float>(),slamTechniques=new Dictionary<int,float>();
         private int slamCursor,slamGeneration=-1;private float slamClock=-1;
         /// <summary>How far apart the fissure's bursts sit along it (m), and the most one fissure throws.</summary>
-        public const float FissureStep=1.25f;public const int FissureBursts=8;
+        public const float FissureStep=1.5f,FissureWeight=.38f;public const int FissureBursts=8;
         private static uint SlamSeed(int id,float time,int k)=>((uint)id*73856093u)^(uint)BitConverter.SingleToInt32Bits(time)^((uint)k*19349663u)^0x51a3u;
         private void SlamDebris(NativeArena arena)
         {
@@ -66,7 +66,7 @@ namespace ChipArena.UnityConversion
                     for(int j=0;j<n;j++)
                     {
                         float along=(j+.5f)*k.FissureLength/n;Vector3 at=new Vector3(start.x,floor,start.z)+d*along;
-                        NativeStructureFxPresentation.Slam(arena,kit,at,floor,j==0?1:.5f,j==0?d:Vector3.zero,SlamSeed(a.Id,k.FissureAt,10+j),k.FissureAt+along/k.FissureSpeed,true);
+                        NativeStructureFxPresentation.Slam(arena,kit,at,floor,j==0?1:FissureWeight,j==0?d:Vector3.zero,SlamSeed(a.Id,k.FissureAt,10+j),k.FissureAt+along/k.FissureSpeed,true);
                     }
                 }
                 var q=a.HasTechnique?a.Technique:null;if(q?.Kind==null)continue;

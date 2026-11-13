@@ -171,7 +171,7 @@ namespace ChipArena.UnityConversion
             Check(fx.CubeCount==1&&fx.Cubes[0].Shape==NativeDebrisShape.Rock&&fx.Cubes[0].Center.Equals(at)&&fx.Cubes[0].Size.Equals(size)&&Math.Abs(fx.Cubes[0].R-128/255f)<1e-4f,"a stone fragment is one rough chunk filling its own box, in its colour");
             fx.Frame(0,Eye,1);fx.Loose(NativeStructureMaterial.Masonry,0,at,size,0,0,0,1,5);Check(fx.CubeCount==1&&fx.Cubes[0].Shape==NativeDebrisShape.Rock,"a brick fragment too");
             fx.Frame(0,Eye,1);fx.Loose(NativeStructureMaterial.Timber,0,at,size,0,0,0,1,5);
-            Check(fx.CubeCount==3&&fx.Cubes.Take(3).All(c=>c.Shape==NativeDebrisShape.Plank&&c.Size.z>c.Size.x*2&&Math.Abs(c.Center.x-at.x)<=size.x*.5f&&Math.Abs(c.Center.y-at.y)<=size.y*.5f&&Math.Abs(c.Center.z-at.z)<=size.z*.5f&&c.Size.x<=size.x&&c.Size.y<=size.y&&c.Size.z<=size.z),"a timber fragment is a clump of three torn boards inside its box");
+            Check(fx.CubeCount==4&&fx.Cubes.Take(4).All(c=>c.Shape==NativeDebrisShape.Plank&&c.Size.z>c.Size.x*1.5f&&c.Size.y<c.Size.x&&Math.Abs(c.Center.x-at.x)<=size.x*.5f&&Math.Abs(c.Center.y-at.y)<=size.y*.5f&&Math.Abs(c.Center.z-at.z)<=size.z*.5f&&c.Size.x<=size.x&&c.Size.y<=size.y&&c.Size.z<=size.z),"a timber fragment is a clump of four torn boards inside its box");
             fx.Frame(0,Eye,1);fx.Loose(NativeStructureMaterial.Metal,0,at,size,0,0,0,1,5);
             Check(fx.CubeCount==2&&fx.Cubes.Take(2).All(c=>c.Shape==NativeDebrisShape.Panel&&c.Size.x<=size.x&&c.Size.y<=size.y&&c.Size.z<=size.z),"a metal fragment is two bent panels inside its box");
             // Turned with the fragment.
@@ -195,8 +195,14 @@ namespace ChipArena.UnityConversion
             for(float t=.2f;t<1;t+=.2f){busy.Frame(t,Eye,1);most=Math.Max(most,busy.CubeCount);}
             Check(busy.LiveSlams==NativeStructureFx.BurstSlots&&most<=NativeStructureFx.CubeCap&&most<=NativeStructureFx.BurstSlots*32,"slams are pooled in the burst slots and stay inside the piece cap ("+most+" pieces from "+NativeStructureFx.BurstSlots+" slams)");
         }
+        // The fissure's bursts stay modest: one about every 1.5 m, at most eight, light after the first.
+        private static bool ArenaPresentation_FissureStep(string slam)=>slam.Contains("FissureStep=1.5f,FissureWeight=.38f;public const int FissureBursts=8;")&&slam.Contains("j==0?1:FissureWeight");
         private static void Hooks(string root)
         {
+            string status=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeStatusPresentation.cs"));
+            Check(status.Contains("bool drops=(structureFx!=null?structureFx.Fx.Style:NativeDebrisLook.Default)==NativeDebrisStyle.Realistic;")&&status.Contains("Add(slowDrops?m*dropLocal:m);")&&status.Contains("var bead=drops?statusMeshes[2]:cube;"),"the slow marker is beads in the realistic style and the cubes on a voxel map");
+            Check(File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeStructureFxPresentation.cs")).Contains("Color lt=PieceLight(Light(n))"),"pieces take the tamed light; the cubes keep theirs");
+
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r","");
             string kit=R("Runtime/NativeStructureFxPresentation.cs"),slam=R("Runtime/NativeSlamDebrisPresentation.cs"),air=R("Runtime/NativeAirAttackFxPresentation.cs"),dress=R("Runtime/NativeArenaDressing.cs"),core=R("Core/NativeStructureFx.cs"),shapes=R("Core/NativeDebrisShapes.cs"),plunge=R("Core/NativePlungeFx.cs");
             Check(kit.Contains("fx.Style=NativeDebrisLook.For(arena.MapId,debris);")&&kit.Contains("debris=look?.debris;"),"the kit takes the map's style from its look every frame");
@@ -206,7 +212,7 @@ namespace ChipArena.UnityConversion
             Check(kit.Contains("decals,push);")&&kit.Contains("p.Seat.id==e.Source"),"a break leans away from the pilot who struck it");
             Check(air.Contains("NativePlungeFx.Structures(st,b,t,fm,fc);")&&air.Contains("NativeStructureFxPresentation.FloorKind(arena,")&&air.Contains("NativeSlamDebris.Jump(p.Seat.spec,b.Strength)")&&air.Contains("SlamDebris(arena);"),"the plunge and the jump attack throw the floor's own chunks, and the kit slams run");
             Check(plunge.Contains("st.Slam(material,color,at,b.Floor,NativeSlamDebris.Plunge(b.Spec,b.Heavy),")&&plunge.Contains("if(voxel){if(b.Heavy>=RubbleFrom)st.Break(NativeStructureMaterial.Concrete,RubbleColor,"),"the plunge keeps its cube rubble for the voxel style");
-            Check(slam.Contains("k.FissureAt+along/k.FissureSpeed")&&slam.Contains("q.Kind==\"ground-slam\"&&q.Phase==\"slam\"")&&slam.Contains("q.Kind==\"sunder\"&&q.Phase==\"smash\"")&&slam.Contains("e.Kind==EventKind.Land")&&slam.Contains("e.WallSlam"),"the fissure, the kit landings, the wall slam, Ground Slam and Sunder throw floor debris");
+            Check(slam.Contains("k.FissureAt+along/k.FissureSpeed")&&slam.Contains("q.Kind==\"ground-slam\"&&q.Phase==\"slam\"")&&slam.Contains("q.Kind==\"sunder\"&&q.Phase==\"smash\"")&&slam.Contains("e.Kind==EventKind.Land")&&slam.Contains("e.WallSlam")&&ArenaPresentation_FissureStep(slam),"the fissure, the kit landings, the wall slam, Ground Slam and Sunder throw floor debris");
             // Cosmetic only: no collider, body, object, light or sound of its own, and nothing sent or simulated.
             foreach(var (name,text) in new[]{("slam presentation",slam),("piece shapes",shapes)})
                 foreach(string banned in new[]{"Collider","Rigidbody","AddComponent","new GameObject","CreatePrimitive","AudioSource","new Light","Emit(","Damage(","NetworkFrame","Physics."})Check(!text.Contains(banned),"the "+name+" has no "+banned);

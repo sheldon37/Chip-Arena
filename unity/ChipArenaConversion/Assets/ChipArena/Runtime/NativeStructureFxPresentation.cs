@@ -141,7 +141,7 @@ namespace ChipArena.UnityConversion
             if(float.IsNegativeInfinity(best))return false;floor=best;string id=found?.Definition?.material;material=NativeStructureFx.Classify(id);
             // The block's content colour drawn toward the map's own floor tone (the dressed floor is nearer that than the raw material).
             int tone=arena.Map!=null?arena.Map.floor:0,own=string.IsNullOrEmpty(id)||id=="foundation"?0:NativeImpactCues.MaterialColor(arena.Content?.materials,id);
-            color=own==0?tone:tone==0?own:Mix(tone,own,.4f);return true;
+            color=own==0?tone:tone==0?own:Mix(tone,own,.6f);return true;
         }
         private static int Mix(int a,int b,float t){int R(int s)=>(int)Math.Round(((a>>s)&255)+(((b>>s)&255)-((a>>s)&255))*t);return R(16)<<16|R(8)<<8|R(0);}
         /// <summary>A melee slam's floor debris at <paramref name="at"/> (Core NativeStructureFx.Slam) on the floor found under it.</summary>
@@ -316,11 +316,19 @@ namespace ChipArena.UnityConversion
             float ix=1/c.Size.x,iy=1/c.Size.y,iz=1/c.Size.z;Vector4 uv=Uv(0,0,NativeFxDraw.Flat,Authored);var P=mesh.P;var N=mesh.N;
             for(int t=0;t<mesh.Triangles;t++)
             {
-                int k=t*9,j=t*3;Vector3 n=(ux*(N[j]*ix)+uy*(N[j+1]*iy)+uz*(N[j+2]*iz)).normalized;Color lt=Light(n),col=new Color(c.R*lt.r,c.G*lt.g,c.B*lt.b,1);int s=layer.Count;
+                int k=t*9,j=t*3;Vector3 n=(ux*(N[j]*ix)+uy*(N[j+1]*iy)+uz*(N[j+2]*iz)).normalized;Color lt=PieceLight(Light(n)),col=new Color(c.R*lt.r,c.G*lt.g,c.B*lt.b,1);int s=layer.Count;
                 layer.Vertex(o+ax*P[k]+ay*P[k+1]+az*P[k+2],n,col,uv,Vector4.zero,Vector4.zero);layer.Vertex(o+ax*P[k+3]+ay*P[k+4]+az*P[k+5],n,col,uv,Vector4.zero,Vector4.zero);
                 layer.Vertex(o+ax*P[k+6]+ay*P[k+7]+az*P[k+8],n,col,uv,Vector4.zero,Vector4.zero);layer.Triangle(s,s+1,s+2);
             }
         }
+        // A piece's light: the cube light drawn halfway to its own grey and held between a floor and white, so a strong warm key
+        // never turns a brown board neon (the cubes did) and a dim map never loses the pieces in the dark.
+        private static Color PieceLight(Color l)
+        {
+            float grey=.299f*l.r+.587f*l.g+.114f*l.b;l=new Color((l.r+grey)*.5f,(l.g+grey)*.5f,(l.b+grey)*.5f,1);float top=Mathf.Max(l.r,Mathf.Max(l.g,l.b));
+            float gain=top>1?1/top:grey<PieceLightFloor?(grey+PieceLightFloor)/(2*Mathf.Max(grey,.02f)):1;return new Color(l.r*gain,l.g*gain,l.b*gain,1);
+        }
+        private const float PieceLightFloor=.42f;
         private readonly float[] bevelCorners=new float[12];
         private void ShadedCube(NativeFxDraw.Layer layer,in NativeStructureCube c)
         {
