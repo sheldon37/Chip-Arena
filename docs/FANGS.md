@@ -52,7 +52,9 @@ Every number is in Core `NativeFangs`. Cooldowns: Q 7, E 12 (from its end), 1 6,
   Attack04 lay the body flat on the floor) and the bloom its two-handed strike skill (both on the upper body while moving, the legs free);
   the takedown the pack's stealth kill from behind, its throat cut (`Frank_Stealth_Kill_Behind_01`, the owner's pick 2026-11-13: the foe's
   head held with a fang at its throat, the fang drawn across on the blow at 1.3 s of the clip; the victim plays the matching
-  `Hit_Behind_01` on the same window, so both bodies stay together) and the frontal critical the assassin's paired critical.
+  `Hit_Behind_01` on the same window, so both bodies stay together) and the frontal critical the assassin's paired critical. A foe of
+  any class plays its side (owner 2026-11-13: "Give one to everyone"; before, only the Katana's, DEV Katana's and Fangs' bodies did):
+  docs/KATANA.md "The record".
 - **Effects** (Core `NativeBladeFx.cs`, in the pilot's weapon colour):
   - weapon trails from both blades (owner 2026-11-11: "Give both weapon weapon trail vfx"): each blade sampled through every move, its
     sweep a smooth crescent (a spline through the samples) narrowing to its tail: a sheet in the weapon colour, a white-hot edge, a faint
