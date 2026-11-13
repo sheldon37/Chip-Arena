@@ -28,6 +28,9 @@ While the ring is out the hand is empty: the left click bursts it instead of cut
 
 ## The look
 
+- **The kills** (Core `NativeBladeCuts`; owner 2026-11-12: "I also want all bladed weapons to support gibbing"; docs/BISECT-GIB.md "Blade
+  classes"): the forehand takes the head, the rising backhand an arm; the whirl and the skim cut through the body; the flick and the thrown ring
+  (its ricochets and return too) take the head or an arm; the halo, the burst and Shatterpoint's shards an arm; the slam chops top-down.
 - **The ring** (Core `NativeWeaponModels.Glaive.cs`), redesigned at the owner's word (2026-11-09: "make the glaive a better design"): the
   tri-crescent. A heavy stepped ring of blade round the fist (a dark hub, a raised steel band, a bevelled edge lit all round in the
   pilot's accent, a lit inner rim, inlaid arcs on both faces), three broad crescent fangs sweeping off its rim with the spin, each with a

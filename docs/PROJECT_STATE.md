@@ -23,7 +23,7 @@
 
 2026-11-11 Claude (`claude/hotdog-hats`): hats fit the Hot Dog: each rides the crown's own skinning with its own fit (no more tilting off or sitting over the face), and the crown's sprigs hide under closed hats (docs/HOT-DOG-SKIN.md "Hats").
 
-2026-11-11 Claude (`claude/blades`, the owner's fourth note; a rules change for Astra to review): only a timed parry (F) opens the Katana's and DEV Katana's counter; a blow held on the raised guard no longer does (it led a plain guard into the paired critical). The Hot Dog's fold in the counter is the Hot Dog session's to fix (body side).
+2026-11-12 Claude (`claude/blades`, the owner's "all bladed weapons to support gibbing"): the Katana's, DEV Katana's, DEV Fangs' and Glaive's kills cut the body (Core `NativeBladeCuts`, presentation only). Next: the DEV Katana's new Grruzam cuts' surveyed planes (from the DEV classes agent) and, if wanted, the DEV Greatsword's own clips' planes.
 
 2026-11-11 Claude (`claude/stage-revamp`, owner request): the stage revamp: Breakwater (a lighthouse duel on a storm-battered mole), Pier 9 (a night amusement pier), Deepwell (a station on the ocean floor), Polaris Station (an arctic observatory under the aurora) and Skyframe (a sky garden above the clouds) rebuilt on their own code; Brickfall, Ward Zero, the Factory and Cyber City modelled. No invisible walls (columns only at edges and under low art; bots only at drops). The nine banks are in the Drive zip (the installer holds a 480 MB visual body). The M1 stages' shared code is now unused.
 

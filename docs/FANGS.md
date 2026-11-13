@@ -33,6 +33,9 @@ Every number is in Core `NativeFangs`. Cooldowns: Q 7, E 12 (from its end), 1 6,
 
 ## The look
 
+- **The kills** (Core `NativeBladeCuts`; owner 2026-11-12: "I also want all bladed weapons to support gibbing"; docs/BISECT-GIB.md "Blade
+  classes"): as the daggers', a slit throat on the first four cuts, an arm (a forearm when the cut is low) on the finisher, the pounce, the shadow
+  step's stab, the takedown, the critical and a thrown knife; the slam's chop an arm. The venom bloom cuts nothing.
 - **The daggers** (Core `NativeWeaponModels.Fangs.cs`, sculpted with WeaponSculpt): twin recurved fangs, a venom channel lit in the accent,
   blackened steel with a bright edge, a serpent's guard, a wrapped grip. Thrown knives fly as their own blades (Runtime
   `NativeBladePresentation.cs`).

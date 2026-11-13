@@ -13,8 +13,10 @@ namespace ChipArena.UnityConversion
     /// or two late. `Swing`: the swing's id the hit carries (ArenaEvent.Projectile; every primary swing's hit since PR #205,
     /// extra strikes and minion targets included, an extra strike sharing its swing's id; 0 for Q/E kit and E special hits
     /// and older frames), which the ledger finds the killing blow by. `Struck` (`Exact`, the id present): the hit's own From,
-    /// the attacker's body centre (not its feet) captured at contact (docs/BISECT-GIB.md "Melee cuts").</summary>
-    public struct MeleeBlow{public float At,CommitYaw,SwingAt,SwingUntil,Yaw,Amount;public int Source,Index,Swing;public string Spec,Special,Kit,Detail;public bool Air,Aimed,Exact;public V3 From,Toward,Struck;}
+    /// the attacker's body centre (not its feet) captured at contact (docs/BISECT-GIB.md "Melee cuts"). A blade class's blow
+    /// (NativeBladeCuts.Blow): `Detail` its move's damage kind, `Index` its kit's combo step + 1, `Move` the kit's move and `Clip` the
+    /// clip it played at the hit.</summary>
+    public struct MeleeBlow{public float At,CommitYaw,SwingAt,SwingUntil,Yaw,Amount;public int Source,Index,Swing;public string Spec,Special,Kit,Detail,Move,Clip;public bool Air,Aimed,Exact;public V3 From,Toward,Struck;}
 
     public enum SliceKind{None,Clean,Cleave,Slit,Limb,Crush,Chop}
 
@@ -53,7 +55,9 @@ namespace ChipArena.UnityConversion
     /// fragments; its thrown edge (Aegis) severs. Jump attacks and vertical Q/E kills (Earthsplitter, Wolf Knight, Rising
     /// Dragon) split top-down: head, the arm under the blade and, for the heavy ones, the waist.</item>
     /// </list>
-    /// Only for a pilot's lethal melee blow by a standard melee weapon; living pilots never lose limbs. Pure, deterministic.
+    /// The blade classes (the Katana, the Fangs, the Glaive) cut by their own moves (NativeBladeCuts): a slash across the front, level
+    /// along a dash or a flight, or a chop; through the trunk, a part, or (the Fangs, as the daggers) a slit throat or a limb.
+    /// Only for a pilot's lethal melee blow by a standard melee weapon or a blade class; living pilots never lose limbs. Pure, deterministic.
     /// Where it applies (a blade, gore on, a stock ending) NativeMeleeBisect turns this plan into a cut of the body's mesh; the
     /// joints here stay the presentation everywhere else.
     /// </summary>
@@ -65,7 +69,7 @@ namespace ChipArena.UnityConversion
         public const float RootHeight=.865f;
         /// <summary>A joint's rest position above the feet in the pilot's facing frame (source frame: +x its left, +z forward).</summary>
         public static Vector3 Rest(int bone){var p=Vector3.Zero;for(int b=bone;b>=0;b=CapturedRig.Bones[b].Parent)p+=CapturedRig.Bones[b].Position;return p+new Vector3(0,RootHeight,0);}
-        public static bool Covers(string spec)=>NativeMeleeRules.Standard(spec);
+        public static bool Covers(string spec)=>NativeMeleeRules.Standard(spec)||NativeBladeCuts.Is(spec);
 
         // ---- the captured swing's plane ----
         /// <summary>A cut's blade at its front crossing, in the attacker's facing frame (source frame, from the rig root):
@@ -115,6 +119,8 @@ namespace ChipArena.UnityConversion
         public static bool Plan(in MeleeBlow blow,bool hasBlow,string spec,NativeWound wound,V3 victim,float victimYaw,int seed,SlicePlan into)
         {
             into.Clear();if(!Covers(spec))return false;uint h=unchecked((uint)seed*2654435761u);h^=h>>15;
+            // A blade class's move (NativeBladeCuts) names its cut; a hit that cuts nothing (the Fangs' venom bloom) plans none.
+            bool blade=NativeBladeCuts.Is(spec);var move=blade?NativeBladeCuts.MoveOf(blow,hasBlow):NativeBladeCuts.Move.None;if(blade&&move==NativeBladeCuts.Move.None)return false;
             var vq=Facing(victimYaw);Vector3 vp=Source(victim)-new Vector3(0,RootHeight,0);
             Vector3 J(int bone)=>vp+Vector3.Transform(Rest(bone),vq);
             string kit=hasBlow?blow.Kit:null,special=hasBlow?blow.Special:null;
@@ -127,7 +133,7 @@ namespace ChipArena.UnityConversion
             float reach=spec=="greatsword"?3.4f:spec=="sword"?2.5f:spec=="shield"?2.1f:1.75f;
             Vector3 vs=Source(victim);
             bool thrown=hasBlow&&(exact?Math.Sqrt((attacker.X-vs.X)*(attacker.X-vs.X)+(attacker.Z-vs.Z)*(attacker.Z-vs.Z)):Math.Sqrt((blow.From.x-victim.x)*(blow.From.x-victim.x)+(blow.From.z-victim.z)*(blow.From.z-victim.z)))>reach+1.6f;
-            bool chop=air||Is(kit,"earthsplitter")||Is(kit,"wolf-knight")||Is(kit,"rising-dragon")||Is(kit,"skyfall")||Is(special,"slam")||Is(special,"launch");
+            bool chop=blade?move==NativeBladeCuts.Move.Slam:air||Is(kit,"earthsplitter")||Is(kit,"wolf-knight")||Is(kit,"rising-dragon")||Is(kit,"skyfall")||Is(special,"slam")||Is(special,"launch");
             bool spin=Is(kit,"whirlwind")||Is(kit,"spin")||Is(special,"spin")||Is(kit,"hurricane");
             // The plane (source world): normal n through C; the blade's travel t.
             Vector3 n,t,c;
@@ -139,8 +145,23 @@ namespace ChipArena.UnityConversion
             if(chop)
             {
                 // Top-down: a vertical plane along the blow, through the weapon arm's side of the victim.
-                float side=hasBlow&&MeleeSet.For(spec)!=null&&!MeleeSet.For(spec).Dual?-.12f:((h&1)==0?.12f:-.12f);
+                float side=hasBlow&&(MeleeSet.For(spec)!=null&&!MeleeSet.For(spec).Dual||spec==NativeKatana.Spec||spec==NativeGlaive.Spec)?-.12f:((h&1)==0?.12f:-.12f);
                 n=Vector3.Normalize(right);t=new Vector3(0,-1,0)*.85f+toVictim*.5f;t=Vector3.Normalize(t);c=vp+new Vector3(0,1.25f,0)+right*side;
+            }
+            else if(blade)
+            {
+                // A blade class's slash (NativeBladeCuts): across the front of the wielder facing the victim, the plane holding the line
+                // between them, through the height where it crosses the victim's centre line (a cut through the body kept on the
+                // trunk); or level along the dash, along the flight (the Hit event's own direction: the iai's line, the wave, the
+                // ring, a knife) or round the wielder (the whirl, the halo), tilted a little the way it travels and to a side by the seed.
+                var s=NativeBladeCuts.SlashOf(blow,spec,move,(h&4)!=0);float height=s.Height;
+                if(NativeBladeCuts.TakeOf(spec,move,blow.Index)==NativeBladeCuts.Take.Through)height=MeleeMath.Clamp(height,NativeBladeCuts.TrunkLow,NativeBladeCuts.TrunkHigh);
+                Vector3 along=toVictim;
+                if(s.Sweep==NativeBladeCuts.Sweep.Line&&hasBlow&&blow.Aimed){var flight=Source(blow.Toward);flight.Y=0;if(flight.LengthSquared()>.04f)along=Vector3.Normalize(flight);}
+                Vector3 left=Vector3.Cross(Vector3.UnitY,along);
+                if(s.Sweep==NativeBladeCuts.Sweep.Swing){var across=s.Across;t=left*across.X+Vector3.UnitY*across.Y;n=Vector3.Cross(along,t);}
+                else{t=s.Sweep==NativeBladeCuts.Sweep.Orbit?left*((h&2)==0?1:-1):along;n=Vector3.Normalize(Vector3.UnitY+t*.12f+Vector3.Cross(Vector3.UnitY,t)*(((h>>3)&1)==0?.07f:-.07f));}
+                c=vp+new Vector3(0,height,0);
             }
             else if(spin||thrown||!hasBlow||Is(kit,"flash-step")||Is(kit,"kunai")||Is(kit,"aegis"))
             {
@@ -201,6 +222,39 @@ namespace ChipArena.UnityConversion
                     into.Blood=1.2f;into.Kick=3f;
                     if(thrown||Is(kit,"aegis")){into.Kind=SliceKind.Clean;into.Add(Clean());break;}
                     into.Kind=SliceKind.Crush;into.Crush=h0>=.98f&&h%3!=0?CapturedRig.Head:Near(CapturedRig.LArm,CapturedRig.RArm);break;
+                }
+                case NativeFangs.Spec:
+                {
+                    // As the daggers: a slit throat on a light cut, an arm on the rest (a forearm when the cut is low); the slam chops.
+                    into.Kick=2.6f;into.Blood=1.8f;
+                    if(chop){into.Kind=SliceKind.Chop;into.Add(CapturedRig.Head);into.Add(Near(CapturedRig.LArm,CapturedRig.RArm));break;}
+                    if(NativeBladeCuts.TakeOf(spec,move,blow.Index)==NativeBladeCuts.Take.Limb){into.Kind=SliceKind.Limb;into.Add(h0>=1.05f?Near(CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow):Near(CapturedRig.LElbow,CapturedRig.RElbow));}
+                    else{into.Kind=SliceKind.Slit;into.Throat=true;}
+                    break;
+                }
+                case NativeKatana.Spec:case NativeGlaive.Spec:
+                {
+                    bool katana=spec==NativeKatana.Spec;into.Kick=katana?3.6f:3.4f;into.Blood=katana?1.3f:1.2f;into.Spin=katana?9.5f:10;
+                    if(chop){into.Kind=SliceKind.Chop;into.Add(CapturedRig.Head);into.Add(Near(CapturedRig.LArm,CapturedRig.RArm));into.Add(CapturedRig.Spine);break;}
+                    if(NativeBladeCuts.TakeOf(spec,move,blow.Index)==NativeBladeCuts.Take.Through)
+                    {
+                        // Through the trunk: the part above the cut (the trunk, or the head and shoulders from a high cut) with the joints
+                        // the plane passes nearest (a zombie's parts; a pilot's mesh is cut by the plane itself).
+                        into.Kind=SliceKind.Cleave;into.Add(h0>=1.22f?CapturedRig.Head:CapturedRig.Spine);
+                        for(int k=0;k<2&&into.Count<SlicePlan.Max;k++)
+                        {
+                            int pick=-1;float least=.13f;foreach(int j in Joints)if(!into.Has(j)){float d=S(j);if(d<least){least=d;pick=j;}}
+                            if(pick<0)break;into.Add(pick);
+                        }
+                        break;
+                    }
+                    // A part: the head from a cut at the neck or above (the thrown ring's and the flick's by the seed), else the arm it
+                    // passes (a forearm when low); the halo, the burst and the shards an arm.
+                    into.Kind=SliceKind.Clean;bool ring=move==NativeBladeCuts.Move.Throw||move==NativeBladeCuts.Move.Flick;
+                    int arm=h0>=NativeBladeCuts.ArmAt||ring?Near(CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow):Near(CapturedRig.LElbow,CapturedRig.RElbow);
+                    bool armOnly=NativeBladeCuts.TakeOf(spec,move,blow.Index)==NativeBladeCuts.Take.Arm;
+                    into.Add(ring?((h&8)==0?CapturedRig.Head:arm):!armOnly&&h0>=NativeBladeCuts.HeadAt?CapturedRig.Head:arm);
+                    break;
                 }
                 default:
                 {

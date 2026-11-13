@@ -180,6 +180,9 @@ namespace ChipArena.UnityConversion
         {
             var attacker=e.Source>0?HordePilot(arena,e.Source):null;string spec=attacker?.Seat.spec;var actor=attacker?.Pose;
             var w=NativeStaggerRules.Classify(spec,e.Detail??"direct",e.Amount);bool melee=e.Detail=="melee"||NativeHitRules.Standard(spec)&&(e.Detail=="direct"||e.Detail=="ability");
+            // A blade class's cutting move (Core NativeBladeCuts: the Katana's, the Fangs', the Glaive's, thrown ones included) is a melee
+            // blow here as a sword's is: its wound is a blade's gash and its kill is cut by it (it used to read as a bullet's).
+            bool blade=NativeBladeCuts.Cuts(e,actor);melee|=blade;
             // The authority's push (ArenaEvent.Normal), else from the attacker to the add.
             Vector3 at=m!=null?m.Body.position:NativeArena.Vec(e.Position);Vector3 dir=NativeArena.Vec(e.Normal);dir.y=0;
             if(dir.sqrMagnitude<1e-6f&&actor!=null){dir=at-NativeArena.Vec(actor.Position);dir.y=0;}
@@ -206,6 +209,7 @@ namespace ChipArena.UnityConversion
                 }
                 s.Push=push;IronworksHit(m,s,e,new Vector3(push.X,0,push.Y),heavy);
                 if(melee&&actor!=null&&NativeHitRules.Standard(spec)){s.Spec=spec;s.HasBlow=true;s.BlowAt=e.Time;s.Blow=new MeleeBlow{At=e.Time,Source=e.Source,Spec=spec,CommitYaw=actor.CommitYaw,Index=actor.Combo+1,SwingAt=actor.SwingAt,SwingUntil=actor.SwingUntil,Air=actor.AirAttack,Special=actor.SpecialKind!=null&&e.Time>=actor.SpecialAt-.05f&&e.Time<=actor.SpecialUntil+.05f?actor.SpecialKind:null,Kit=e.Detail=="ability"&&actor.MeleeKit!=null&&!string.IsNullOrEmpty(actor.MeleeKit.Kind)?actor.MeleeKit.Kind:null,From=actor.Position,Yaw=actor.Yaw,Detail=e.Detail,Amount=e.Amount,Toward=e.Normal,Aimed=Mathf.Abs(e.Normal.x*e.Normal.x+e.Normal.y*e.Normal.y+e.Normal.z*e.Normal.z-1)<.19f};}
+                else if(blade){s.Spec=spec;s.HasBlow=true;s.BlowAt=e.Time;s.Blow=NativeBladeCuts.Blow(e,actor);}
             }
             else if(hordeDead.TryGetValue(e.Target,out var dead)&&Math.Abs(dead.At-e.Time)<.1f){dead.Push=push;dead.Melee|=melee;hordeDead[e.Target]=dead;}
             // The gore (NativeHordeGorePresentation.cs): the wound on the part struck, red blood out of it and along the shot into the

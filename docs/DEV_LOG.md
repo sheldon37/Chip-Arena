@@ -1,3 +1,47 @@
+## 2026-11-12 — Claude: the blade classes' kills cut the body (the Katana, DEV Katana, DEV Fangs and Glaive; owner request)
+
+- Branch `claude/blades` (from shared `f747643b`, merged with shared `5f8ee5ea`, the owner's DEV picks): `aae41772`, `dae1c522`, `14cc0dcd`, `05f3c25b`, `9c686348`, `c753feae` and this entry. Relayed by the NOCTIEL session.
+- **The owner:** "I also want all bladed weapons to support gibbing (Katanas, Glaive, etc.)"
+- **Why they never cut:** the hit ledger kept only the standard melee weapons' blows; `NativeMeleeSlice.Covers` and `NativeMeleeBisect.Cuts` took only the sword, greatsword and daggers; and the blade classes' kits have no captured swing to take a plane from. Their kills fell whole. On zombies their hits even read as bullets (a bullet's wound, no slice).
+- **The change** (Core `NativeBladeCuts`, docs/BISECT-GIB.md "Blade classes"). Presentation only: no rule, damage, timing or wire change, so nothing for Astra to review.
+  - The Hit event's damage kind names the move. The ledger records it with the attacker's kit step and the clip it played.
+  - **Through the body:** the Katana's third and fourth cuts, rush, iai (along its line), storm, counter and Crescent Wave; the Glaive's whirl and skim. These stay on the trunk, never the legs.
+  - **A part:** the Katana's and the Glaive's first two cuts take the head where the cut crosses at 1.1 m or above, else an arm. The Glaive's flick and thrown ring take the head or an arm (by the seed); its halo, burst and shards take an arm.
+  - **The Fangs, as the daggers:** a slit throat on the first four cuts; an arm on the finisher, the pounce, the stab, the takedown, the critical and a knife. The bloom cuts nothing.
+  - **Slams:** chop top-down.
+  - **Planes:** the Katana's Frank clips are measured in Blender at each strike. The DEV Katana's picks are from the DEV classes agent's 200 fps survey in the Editor: its five-hit chain, its storm and its counter (`M_katana_Blade@Revenge_Guard_Attack_ver_A`); Grruzam's files are ASCII FBX, which Blender cannot read. The Fangs' and the Glaive's are written from their clips' descriptions.
+  - A pilot killed by a blade class's non-melee move (the iai, the wave, the thrown ring, the knives) is cut by its killer's blade blow. A zombie now reads blade-class hits as melee blows: the blade's gash, and its kill launches the cut parts.
+- **DEV Greatsword** plays the greatsword's rules, so its kills cut through the standard greatsword path. That plane is the old captured swing's, not its Grruzam clips'.
+- **Coordination:** the DEV classes agent moved the DEV Katana's counter and cuts onto new Grruzam clips (released first, shared `5f8ee5ea`) and surveyed their strikes for my table. The table is keyed by clip name; a clip not in it takes its move's cut.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks:**
+  - CoreTests `--melee-bisect`, 36,543 checks:
+    - 2,640 blade kills over 45 moves, each taking what its move should, tilting as its slash;
+    - through-cuts kept on the trunk, flights along their direction, a late guest identical;
+    - representative cuts sealed on the real body;
+    - the ledger keeps blade blows with move, step and clip; venom, bleed ticks and guns are no blows.
+  - The full suite at `aae41772` (1,019 groups, exit 0) and on the merge with the DEV picks.
+  - The Unity compile.
+  - The Editor build gate on `aae41772`: `PrototypeBuild.Validate` ok, Native blades 67.
+- **Filmed** in the Editor, on a local-only probe build that makes only the named move lethal (cybercity, a rifle bot); each kill's logged plan, and the killcam replay's side view:
+  - **The Katana:**
+    - the first cut takes the head (a sealed neck, the head lying apart in the replay); the second a forearm;
+    - the third cuts through diagonally at 1.05 m, the finisher through at the waist;
+    - the rush splits the body level along its dash, the upper half sliding off;
+    - the iai splits it level along its line (its death is no melee one in the rules);
+    - the storm cuts through across the waist, red faces on both halves; the counter (the Frank critical) cuts through.
+  - **The DEV Katana** (on its first picks, before the owner's): its first cut takes the head; its third cuts through level.
+  - **The Fangs:** the first cut slits the throat (no part comes off, as the daggers'); the finisher and the pounce take a forearm.
+  - **The Glaive:** the first cut takes the head; the skim cuts through level; the thrown ring takes an arm (its death no melee one either).
+  - **The DEV Greatsword:** cuts through on the standard greatsword path.
+  - Each death planned the same cut three times (the kill, the killcam's rebuilt body, the replay's).
+  - Not caught on film: the Glaive's whirl. The first two cuts' knockback shoved the frozen bot out of its reach (it has no lunge); its plan is the tested level through-cut.
+- **Not seen / not done:**
+  - played by a person;
+  - zombies, the Crescent Wave, the Fangs' knives and the slams not filmed (the tests cover their path);
+  - the DEV Katana's picked cuts filmed only on its first picks (its surveyed planes are checked by the tests);
+  - the DEV Greatsword's cuts still take the old greatsword's captured plane, not its Grruzam clips' (the survey's numbers are queued; a follow-up).
+
 ## 2026-11-12 — Claude: the owner's DEV animation picks wired in (DEV Greatsword, DEV Katana)
 
 - Branch `claude/dev-classes-picks` from shared `f747643b`. Commits: `4c7d2bb2` the picks, `6b81490f` a smaller entrance glint and the

@@ -26,6 +26,11 @@ Every number is in Core `NativeKatana`.
 
 ## The look
 
+- **The kills** (Core `NativeBladeCuts`; owner 2026-11-12: "I also want all bladed weapons to support gibbing"; docs/BISECT-GIB.md "Blade
+  classes"): the first two cuts take the head or an arm (the first, a level forehand at the chest, beheads; the second, a rising backhand that
+  strikes low, takes a forearm); the third and fourth cuts, the rush, the iai (along its line), the storm, the counter and the Crescent Wave cut
+  through the body; the plunging slam chops it top-down. The planes are the pack's own blade at each strike. The DEV Katana cuts the same ways on
+  its own clips (surveyed at 200 fps by the DEV classes agent).
 - **The blade** (Core `NativeWeaponModels.Katana.cs`, sculpted with WeaponSculpt): a curved single-edged blade with a lit hamon in the pilot's
   accent, a habaki, a pierced tsuba, a wrapped tsuka and a kashira. The blade rests in its saya from the sheathing's click to the iai's end.
 - **The saya** (Core `NativeKatanaSaya`, drawn by Runtime `NativeBladePresentation.cs`; owner 2026-11-11: "sheathe is still not on body"):
