@@ -32,6 +32,15 @@ namespace ChipArena.UnityConversion
             clip=idle;time=t-ClipEnd;return true;
         }
         public override float Fade(float t)=>t>=ClipEnd-.02f&&t<ClipEnd+.4f?.3f:.12f;
+        /// <summary>
+        /// How far the clip carries the weapon off the hand at entrance time `t`: 1 wholly on the body (its frame in the chest bone's,
+        /// CarryFrame), 0 in the hand as the match holds it. A pack Intro may open with the weapon elsewhere than the right fist (the
+        /// katana's across the back, the hand reaching over the shoulder for its hilt); the hold alone hung it from the open hand (owner
+        /// 2026-11-12: "On dev katana intro, the katana isn't held correctly~ the hilt is not in hand").
+        /// </summary>
+        public virtual float Carried(float t)=>0;
+        /// <summary>The carried weapon's frame in the model's chest bone frame (Unity axes; false: the clip never carries it).</summary>
+        public virtual bool CarryFrame(out Vector3 at,out Quaternion turn){at=Vector3.Zero;turn=Quaternion.Identity;return false;}
         public override Vector3 CameraJolt(float t)
         {
             float s=NativeEntranceMath.Pulse(t,Hit,.01f,.35f)*.025f;
@@ -88,6 +97,19 @@ namespace ChipArena.UnityConversion
     {
         public const string Name="Edge Flourish",Music="audio/intros/arc-salute",Blurb="The katana raised, swept round and spun in a flourish, then the stance.";
         public const float Total=5.3f,CardAt=3.7f,End=4.95f,ClipAt=.3f,ClipLength=2.83f,Beat=ClipAt+2.53f;
+        /// <summary>
+        /// The pack's Intro opens with the katana across the back, its hilt over the right shoulder, until the right hand closes on it
+        /// (clip s): wholly on the back to CarryUntil, in the hand from TakenAt (measured on the bake's body at 100 a second: the pack's
+        /// sword rigid to the chest to 0.11 s, rigid to the hand from 0.15 s). Its first frame, held from the entrance's start, has it
+        /// on the back.
+        /// </summary>
+        public const float CarryUntil=.11f,TakenAt=.15f;
+        /// <summary>The carry, in the chest bone's frame: the hilt where the right palm closes on it at TakenAt, the blade along the pack's
+        /// (behind the left shoulder toward the left hip), its edge turned as the match turns it in the hand.</summary>
+        public static readonly Vector3 CarryAt=new Vector3(-.5128f,.3403f,.1467f);
+        public static readonly Quaternion CarryTurn=new Quaternion(-.30222f,.8703f,-.18511f,.34203f);
+        public override float Carried(float t)=>1-NativeEntranceMath.Ramp(t-ClipAt,CarryUntil,TakenAt);
+        public override bool CarryFrame(out Vector3 at,out Quaternion turn){at=CarryAt;turn=CarryTurn;return true;}
         public NativeDevKatanaIntro():base(NativeDevMotions.KatanaEntrance,NativeDevMotions.Katana,NativeDevKatanaMotion.Intro,ClipLength,NativeDevKatanaMotion.Idle,ClipAt,Beat,Total,CardAt,End,0xff3d6e)
         {
             Shots=new[]
