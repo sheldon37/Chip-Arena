@@ -25,10 +25,11 @@ namespace ChipArena.UnityConversion
         public const string Guard=NativeDevGreatswordMotion.Guard,GuardHit=NativeDevGreatswordMotion.GuardHit;
         /// <summary>The katana set's back-turned guard, no longer played (kept named for the clip checks).</summary>
         public const string BackGuard=K+"Revenge_Guard_Loop",BackGuardHit=K+"Revenge_Guard_Accept";
-        /// <summary>The four cuts: the pack's own four-hit chain (each part takes up where the last left off): a diagonal cut down across the
-        /// front, a rising backhand, a low spinning cut (the step in), the finisher's high cut.</summary>
-        /// The owner's pick (2026-11-12): the pack's five-hit chain's first four parts, in place (`Attack_5Combo_1..4_Inplace`).
-        public static readonly string[] Cuts={K+"Attack_5Combo_1_Inplace",K+"Attack_5Combo_2_Inplace",K+"Attack_5Combo_3_Inplace",K+"Attack_5Combo_4_Inplace"};
+        /// <summary>The four cuts, the owner's picks (2026-11-12), in place: the pack's five-hit chain's first three parts
+        /// (`Attack_5Combo_1..3_Inplace`: a forehand across the front, a rising backhand, a spinning cut), and for the finisher its three-hit
+        /// chain's last (`Attack_3Combo_3_Inplace`: the blade raised overhead in both hands and chopped down into a crouch; owner: "Hit 3:
+        /// Attack_5Combo_3 · Hit 4: Attack_3Combo_3", after "Dev Katana 4th hit doesn't look right~").</summary>
+        public static readonly string[] Cuts={K+"Attack_5Combo_1_Inplace",K+"Attack_5Combo_2_Inplace",K+"Attack_5Combo_3_Inplace",K+"Attack_3Combo_3_Inplace"};
         /// <summary>The rushing cut (a sprint's attack: the pack's lunging dash cut), the storm (cuts swept low all round, then a rising cut: the
         /// launch) and the plunging slam (the air attack: a downward chop that ends with the blade low in front; run to just short of its
         /// strike through the drop, its strike on the landing).</summary>
@@ -59,11 +60,18 @@ namespace ChipArena.UnityConversion
         {
             switch(clip)
             {
-                // The owner's picked cuts: a forehand across the front, a backhand, a falling diagonal; the fourth a flurry of cuts and kicks,
-                // its last high sweep (right to left at head height) the finisher's strike, so the move shows its close.
+                // The owner's picked cuts: a forehand across the front, a backhand, a spinning cut.
                 case K+"Attack_5Combo_1_Inplace":return new NativeBladeMotion.Window(0,.31f,1f);
                 case K+"Attack_5Combo_2_Inplace":return new NativeBladeMotion.Window(0,.3f,.83f);
                 case K+"Attack_5Combo_3_Inplace":return new NativeBladeMotion.Window(0,.43f,1.03f);
+                // The finisher (owner 2026-11-12: "Hit 4: Attack_3Combo_3", the three-hit chain's last): from the blade raised overhead in
+                // both hands it drops behind the back, comes up and over the head and chops down across the front into a crouch (its strike
+                // as it comes down in front at head height, at its fastest, crossing the centre line at the chest 0.015 s later); the body
+                // follows the blade round to the left and turns back toward its stance, the furthest the Katana's timing reaches (the clip's
+                // own return, after two more cuts, is at 2.43 s).
+                case K+"Attack_3Combo_3_Inplace":return new NativeBladeMotion.Window(0,.8f,1.7f);
+                // The five-hit chain's fourth part, the finisher until the owner's 2026-11-12 pick (the bank keeps it; no longer played): a
+                // flurry of cuts and kicks, its last high sweep (right to left at head height) the strike.
                 case K+"Attack_5Combo_4_Inplace":return new NativeBladeMotion.Window(1.2f,1.97f,2.33f);
                 // The released chain's cuts (the bank keeps them; no longer played).
                 case K+"Attack_4Combo_1_Inplace":return new NativeBladeMotion.Window(0,.4f,1.1f);
