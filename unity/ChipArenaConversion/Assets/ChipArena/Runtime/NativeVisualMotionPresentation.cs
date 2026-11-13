@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
             public bool HasHold; public Vector3 HoldPosition, LeftHoldPosition; public Quaternion HoldRotation=Quaternion.identity, LeftHoldRotation=Quaternion.identity;
             // The sword's running carry (Core NativeSwordTrail): its arm, fist, spine and head, the carry's eased share and the
             // clip's own arm swing's eased mean and the fist's last twist (NaN: not carrying).
-            public Transform RightArm, RightForearm, RightFist, Spine, Head; public float Trail, TrailMean=float.NaN, TrailTwist=float.NaN;
+            public Transform RightArm, RightForearm, RightFist, Spine, Chest, Head; public float Trail, TrailMean=float.NaN, TrailTwist=float.NaN;
             // Each locomotion clip's stride offset onto the first's (NativeVisualMotionClips.StridePhase).
             public readonly float[] LocoOffset=new float[NativeVisualStride.Clips];
             // The motion's inertia (VisualMotionInertia): the last drawn mix and its rate, the difference being carried off and its
@@ -117,7 +117,7 @@ namespace ChipArena.UnityConversion
             m.LeftIndex=Body(HumanBodyBones.LeftIndexProximal);m.LeftLittle=Body(HumanBodyBones.LeftLittleProximal);
             m.LeftFist=Body(HumanBodyBones.LeftMiddleProximal);
             m.RightArm=Body(HumanBodyBones.RightUpperArm);m.RightForearm=Body(HumanBodyBones.RightLowerArm);m.RightFist=Body(HumanBodyBones.RightMiddleProximal);
-            m.Spine=Body(HumanBodyBones.Spine);m.Head=Body(HumanBodyBones.Head);
+            m.Spine=Body(HumanBodyBones.Spine);m.Chest=Body(HumanBodyBones.Chest);m.Head=Body(HumanBodyBones.Head);
             m.LegUpper[0]=Body(HumanBodyBones.LeftUpperLeg);m.LegLower[0]=Body(HumanBodyBones.LeftLowerLeg);m.LegFoot[0]=Body(HumanBodyBones.LeftFoot);
             m.LegUpper[1]=Body(HumanBodyBones.RightUpperLeg);m.LegLower[1]=Body(HumanBodyBones.RightLowerLeg);m.LegFoot[1]=Body(HumanBodyBones.RightFoot);
             // Each stride's offset, so the mixed runs, walks and sprint put the same foot down together.
@@ -577,6 +577,15 @@ namespace ChipArena.UnityConversion
                 weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);
                 // The Katana's blade turned over for the sheathing as the pack turns it, in the hand's frame (Core NativeKatanaSaya.Turn).
                 if(body.SayaFrame==Time.frameCount&&body.SayaTurn>0){var q=NativeKatanaSaya.SheatheTurn;weaponHand.rotation=m.RightHand.rotation*Quaternion.Slerp(Quaternion.identity,new Quaternion(q.X,q.Y,q.Z,q.W),body.SayaTurn)*m.HoldRotation;}
+                // A DEV entrance whose clip carries the weapon off the hand (the DEV Katana's Intro opens with it across the back: Core
+                // NativeDevPackIntro.Carried): there, on the chest, until the hand closes on its hilt.
+                if(a.Id==NativeBladeMotion.IntroActor&&bladeIntro is NativeDevPackIntro devIntro&&m.Chest!=null)
+                {
+                    float carried=devIntro.Carried(bladeIntroClock);
+                    if(carried>0&&devIntro.CarryFrame(out var carryAt,out var carryTurn))
+                        weaponHand.SetPositionAndRotation(Vector3.Lerp(weaponHand.position,m.Chest.position+m.Chest.rotation*new Vector3(carryAt.X,carryAt.Y,carryAt.Z),carried),
+                            Quaternion.Slerp(weaponHand.rotation,m.Chest.rotation*new Quaternion(carryTurn.X,carryTurn.Y,carryTurn.Z,carryTurn.W),carried));
+                }
                 if(m.LeftHand!=null&&m.Set.Spec!="greatsword")offHand.SetPositionAndRotation(m.LeftHand.position+m.LeftHand.rotation*m.LeftHoldPosition,m.LeftHand.rotation*m.LeftHoldRotation);
                 // A raised gun's barrel turned onto the aim (about its grip, a little): its rounds leave its muzzle. A raised bow's
                 // likewise, about its riser: its arrow line on the aim.

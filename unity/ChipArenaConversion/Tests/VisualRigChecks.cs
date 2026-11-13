@@ -591,6 +591,18 @@ namespace ChipArena.UnityConversion
                     bool first=script.Clip(0,out var c0,out float t0)&&c0==intro&&t0==0,mid=script.Clip(script.StartAt+.5f,out var c1,out float t1)&&c1==intro&&Math.Abs(t1-.5f)<1e-4f,after=script.Clip(script.ClipEnd+.2f,out var c2,out _)&&c2==NativeVisualMotion.For(spec).Idle;
                     Check(first&&mid&&after&&Array.IndexOf(NativeVisualMotion.For(spec).All,intro)>=0,spec+": the Intro from its first frame, at its own pace, then the stance");
                 }
+                // The DEV Katana's Intro opens with the katana across the back (owner 2026-11-12: "the hilt is not in hand"): on the chest
+                // through its held first frame, in the hand once the right hand closes on it; the DEV Greatsword's never leaves the hand. Both
+                // entrances hold the blade as the match draws it (the palm's pull by the base class's spec).
+                var ktIntro=(NativeDevKatanaIntro)NativeEntranceDirector.Script(NativeDevMotions.KatanaEntrance);var gsIntro=(NativeDevGreatswordIntro)NativeEntranceDirector.Script(NativeDevMotions.GreatswordEntrance);
+                bool carriedBack=ktIntro.Carried(0)==1&&ktIntro.Carried(ktIntro.StartAt+NativeDevKatanaIntro.CarryUntil)==1&&ktIntro.CarryFrame(out _,out _),
+                    inHand=ktIntro.Carried(ktIntro.StartAt+NativeDevKatanaIntro.TakenAt)==0&&ktIntro.Carried(ktIntro.ClipEnd)==0,
+                    between=ktIntro.Carried(ktIntro.StartAt+(NativeDevKatanaIntro.CarryUntil+NativeDevKatanaIntro.TakenAt)/2)>0&&ktIntro.Carried(ktIntro.StartAt+(NativeDevKatanaIntro.CarryUntil+NativeDevKatanaIntro.TakenAt)/2)<1,
+                    gsHeld=gsIntro.Carried(0)==0&&gsIntro.Carried(gsIntro.StartAt+.1f)==0&&!gsIntro.CarryFrame(out _,out _);
+                Check(carriedBack&&inHand&&between&&gsHeld,"the DEV Katana's entrance has the katana on its back until the hand closes on it; the DEV Greatsword's stays in the hand");
+                string bladePres=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeBladePresentation.cs")).Replace("\r\n","\n"),motionPres=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeVisualMotionPresentation.cs")).Replace("\r\n","\n");
+                Check(bladePres.Contains("PalmGrip(introRig,NativeDevMotions.Base(bladeIntro.Spec)??bladeIntro.Spec,m,b==CapturedRig.LHand)")&&bladePres.Contains("dev.Carried(bladeIntroClock)")
+                    &&motionPres.Contains("bladeIntro is NativeDevPackIntro devIntro&&m.Chest!=null")&&motionPres.Contains("m.Chest=Body(HumanBodyBones.Chest);"),"the entrances draw the blade in the palm as the match does and carry it where the clip does");
                 var introActor=new Actor{Id=31,SourceSpec=NativeDevMotions.Greatsword,Grounded=true};int keepActor=NativeBladeMotion.IntroActor;string keepClip=NativeBladeMotion.IntroClip;float keepTime=NativeBladeMotion.IntroTime;
                 NativeBladeMotion.IntroActor=31;NativeBladeMotion.IntroClip=NativeDevGreatswordMotion.Intro;NativeBladeMotion.IntroTime=.7f;
                 bool introPick=NativeVisualMotion.Choose(gs,introActor,1,new NativeVisualMotion.Memory(),pkBook,false,out var ip)&&ip.Clip==NativeDevGreatswordMotion.Intro&&Math.Abs(ip.Time-.7f)<1e-4f;

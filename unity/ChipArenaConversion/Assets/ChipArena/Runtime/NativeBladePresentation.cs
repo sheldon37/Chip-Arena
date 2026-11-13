@@ -64,11 +64,17 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>A blade class's entrance: the blade in hand `b`'s frame where the model holds it this frame: the rig's hand bone, which
         /// the model's own motion puts on the model's hand with the match's hold (VisualMotionPose, Core NativeBladeGrip), its handle through
-        /// the palm as the match draws it (PalmGrip).</summary>
+        /// the palm as the match draws it (PalmGrip). A DEV class's entrance holds its base's blade so too (its spec is the DEV class's, Core
+        /// NativeDevMotions.Base: the DEV Katana's hung from the wrist, owner 2026-11-12: "the hilt is not in hand"); one its clip carries off
+        /// the hand (Core NativeDevPackIntro.Carried) takes the palm's pull only as far as it is in the hand.</summary>
         private Matrix4x4 BladeIntroFrame(int b,Matrix4x4 grip)
         {
             var m=introRig.Bones[b].localToWorldMatrix*grip;
-            return bladeIntro!=null&&(b==CapturedRig.RHand||b==CapturedRig.LHand)?PalmGrip(introRig,bladeIntro.Spec,m,b==CapturedRig.LHand):m;
+            if(bladeIntro==null||b!=CapturedRig.RHand&&b!=CapturedRig.LHand)return m;
+            var palm=PalmGrip(introRig,NativeDevMotions.Base(bladeIntro.Spec)??bladeIntro.Spec,m,b==CapturedRig.LHand);
+            float carried=b==CapturedRig.RHand&&bladeIntro is NativeDevPackIntro dev?dev.Carried(bladeIntroClock):0;
+            if(carried>0)palm.SetColumn(3,Vector4.Lerp(palm.GetColumn(3),m.GetColumn(3),carried));
+            return palm;
         }
         /// <summary>The model's bone for game joint `j` (or its nearest mapped ancestor's), or null.</summary>
         private static Transform VisualBoneOf(VisualBody body,int j)
