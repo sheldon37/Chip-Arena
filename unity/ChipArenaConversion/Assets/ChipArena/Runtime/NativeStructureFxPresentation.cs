@@ -137,8 +137,11 @@ namespace ChipArena.UnityConversion
             float best=float.NegativeInfinity;NativePropBody found=null;
             for(int i=0;i<n;i++){if(Movable(hits[i].collider)||hits[i].point.y<=best)continue;best=hits[i].point.y;found=hits[i].collider.GetComponent<NativePropBody>();}
             if(float.IsNegativeInfinity(best))return false;floor=best;string id=found?.Definition?.material;material=NativeStructureFx.Classify(id);
-            color=string.IsNullOrEmpty(id)||id=="foundation"?(arena.Map!=null?arena.Map.floor:0):NativeImpactCues.MaterialColor(arena.Content?.materials,id);return true;
+            // The block's content colour drawn toward the map's own floor tone (the dressed floor is nearer that than the raw material).
+            int tone=arena.Map!=null?arena.Map.floor:0,own=string.IsNullOrEmpty(id)||id=="foundation"?0:NativeImpactCues.MaterialColor(arena.Content?.materials,id);
+            color=own==0?tone:tone==0?own:Mix(tone,own,.4f);return true;
         }
+        private static int Mix(int a,int b,float t){int R(int s)=>(int)Math.Round(((a>>s)&255)+(((b>>s)&255)-((a>>s)&255))*t);return R(16)<<16|R(8)<<8|R(0);}
         /// <summary>A melee slam's floor debris at <paramref name="at"/> (Core NativeStructureFx.Slam) on the floor found under it.</summary>
         public static void Slam(NativeArena arena,NativeStructureFx kit,Vector3 at,float fallbackFloor,float weight,Vector3 push,uint seed,float time,bool marks)
         {

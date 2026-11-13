@@ -603,7 +603,9 @@ namespace ChipArena.UnityConversion
         private void SlamFrame(in Burst b,float t,V3 eye,float q)
         {
             float w=b.Weight,k=Reduced(q);uint seed=b.Seed;var m=b.Material;V3 c=b.Center;float floor=b.Floor;bool aimed=b.Push.x!=0||b.Push.z!=0;float lean=(float)Math.Atan2(b.Push.z,b.Push.x);
-            int baseHex=b.Color!=0?b.Color:BaseColor(m),fresh=FreshColor(m),chunks=(int)Math.Round(NativeSlamDebris.Chunks(w)*k),stones=(int)Math.Round(NativeSlamDebris.Stones(w)*k);
+            int baseHex=b.Color!=0?b.Color:BaseColor(m),chunks=(int)Math.Round(NativeSlamDebris.Chunks(w)*k),stones=(int)Math.Round(NativeSlamDebris.Stones(w)*k);
+            // The floor's own colour, and its fresh break: a floor that brought its colour breaks a shade toward the kind's pale one.
+            Rgb(baseHex,out float br,out float bg,out float bb);Lerp(baseHex,FreshColor(m),b.Color!=0?.3f:1,out float fr,out float fg,out float fb);
             float edge=NativeSlamDebris.Edge(w),reach=NativeSlamDebris.Reach(w);
             for(int i=0;i<chunks;i++)
             {
@@ -620,7 +622,7 @@ namespace ChipArena.UnityConversion
                         shape=Chunk(m,i);
                         dim=shape==NativeDebrisShape.Brick?new V3(e*.55f,e*.4f,e*1.1f):new V3(e*(.75f+.5f*H(seed,i,26)),e*(.55f+.4f*H(seed,i,27)),e*(.75f+.5f*H(seed,i,28)));break;
                 }
-                float tint=.82f+.3f*H(seed,i,29);Rgb(H(seed,i,31)<.6f?baseHex:fresh,out float r,out float g,out float bl);
+                float tint=.82f+.3f*H(seed,i,29);bool broken=H(seed,i,31)>=.6f;float r=broken?fr:br,g=broken?fg:bg,bl=broken?fb:bb;
                 Thrown(shape,(int)(seed%977)+i,p0,v0,dim,5+3*H(seed,i,32),floor,t,life,m,seed,i,40,0,0,0,1,Math.Min(1,r*tint),Math.Min(1,g*tint),Math.Min(1,bl*tint));
             }
             Lerp(m==NativeStructureMaterial.Metal?SteelFresh:m==NativeStructureMaterial.Timber?TimberFresh:Grit,baseHex,.35f,out float sr,out float sg,out float sb);
