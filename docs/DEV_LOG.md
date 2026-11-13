@@ -32,8 +32,8 @@
   replays the model. Off the Causeway's Breach the body falls on as the model's ragdoll before and after. The sandbox splat lands as the
   model with the dust and pop. Caveats: a dead local pilot's camera spectates at once and its kill cam starts within two capture frames,
   so the fixed views see other players' view of the fall; the splat drops rather than landing cleanly face down.
-- **Checks:** full CoreTests on `771734f4`, `167a479f` and `66fc356f` with the Windows path patch applied and reverted: 1,022 / 1,022 /
-  1,023 PASS lines, exit 0 (the new `VentFallChecks`: 1,358 checks; the `DeathFxChecks` route pin updated); `check_unity_compile.py`
+- **Checks:** full CoreTests on `771734f4`, `167a479f`, `66fc356f` and `a861bafb` with the Windows path patch applied and reverted:
+  1,022 / 1,022 / 1,023 / 1,023 PASS lines, exit 0 (the new `VentFallChecks`: 1,358 checks; the `DeathFxChecks` route pin updated); `check_unity_compile.py`
   pass; the Editor build gate (`PrototypeBuild.Validate` on `66fc356f`): ok (its two edit-mode `Destroy` errors are in earlier gates
   too); `git diff --check` against shared clean. The Editor checkout went back to `9319026b` with its local files, the banks as released.
 - **Not run:** a Windows build, online play (a guest's and the killcam's corpse come from the same code, filmed only offline), the Low
