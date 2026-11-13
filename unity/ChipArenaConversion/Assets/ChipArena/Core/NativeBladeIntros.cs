@@ -268,7 +268,7 @@ namespace ChipArena.UnityConversion
         public override float Length=>Total;public override float SettleAt=>End;protected override float HeroAt=>CardAt;
         private static readonly Vector3 Venom=NativeEntranceFx.Hex(0x7dff3a),White=new Vector3(1,1,1),Smoke=NativeEntranceFx.Hex(0x5c6660),Haze=NativeEntranceFx.Hex(0x46524a);
         // The venom's hot edge (a pale yellow green, where plain white read as any blade's spark) and its fumes' body.
-        private static readonly Vector3 Bile=NativeEntranceFx.Hex(0xd9ff8a),Fumes=NativeEntranceFx.Hex(0x58b83e),Across=Local(1,0,0);
+        private static readonly Vector3 Bile=NativeEntranceFx.Hex(0xd9ff8a),Fumes=NativeEntranceFx.Hex(0x3f9a30),Across=Local(1,0,0);
         // The flurry's and the strike's own travel (owner 2026-11-13: "This applies to the intro too (They flip in place with no movement)"):
         // the in-place takes leave their roots' way out, so the pilot shown carries it. The flurry (the assassin's fifth combo) leaps: its
         // lowest point (feet, shins, hips, chest, head, hands, as the model's contacts) up to 1.78 m off the floor through its somersaults,
@@ -338,14 +338,6 @@ namespace ChipArena.UnityConversion
         /// the clip's), thins away into the step and snaps back out of it.
         public override float Solid(float t,int bone)=>t<StepAt?NativeEntranceMath.Clamp01((t-FormAt)/FormFade):t<ArriveAt-.03f?1-NativeEntranceMath.Clamp01((t-StepAt)/.04f):NativeEntranceMath.Clamp01((t-(ArriveAt-.03f))/.05f);
         public const float FormFade=.3f;
-        /// <summary>The shadow step's afterimages: the crouch it left, three venom silhouettes smeared along its way and gone in .4 s.</summary>
-        public override int Ghosts(float t,Span<NativeEntranceGhost> into)
-        {
-            float s=t-StepAt;if(s<0||s>=StepGhost||into.Length<3)return 0;float fade=1-s/StepGhost;var way=Arrive-Before;
-            for(int i=0;i<3;i++)into[i]=new NativeEntranceGhost{Lag=s+.02f,Opacity=.5f*fade*fade*(1-.28f*i),Color=Venom*(.55f-.12f*i),Offset=way*(.24f*i*NativeEntranceMath.Smooth(s/.2f))};
-            return 3;
-        }
-        public const float StepGhost=.42f;
         public override bool Clip(float t,out string clip,out float time)
         {
             const string A="Frank_RPG_Assassin_";
@@ -443,9 +435,9 @@ namespace ChipArena.UnityConversion
                     for(int coil=0;coil<2;coil++)for(int i=0;i<n;i++)
                     {
                         float f=i/(float)(n-1),a=(coil==0?1:-1)*(f*5.4f+s*3.2f)+coil*3.1415927f,r=(1.3f*(1-k)+.17f)*(1-.3f*f);
-                        fx.Smoke(Before+new Vector3((float)Math.Sin(a)*r,.12f+1.4f*f*rise,(float)Math.Cos(a)*r),Smoke,.62f*fade*(.6f+.4f*(1-f)),.32f+.22f*k,NativeEntranceMath.Clamp01(s/1.25f),22160+coil*16+i,floor);
+                        fx.Smoke(Before+new Vector3((float)Math.Sin(a)*r,.12f+1.05f*f*rise,(float)Math.Cos(a)*r),Smoke,.62f*fade*(.6f+.4f*(1-f)),.32f+.22f*k,NativeEntranceMath.Clamp01(s/1.25f),22160+coil*16+i,floor);
                     }
-                    if(s<.65f){int m=low?5:12;var c=Before+new Vector3(0,.85f,0);for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(22180,i);d.Y*=.5f;var p=c+d*(1.25f*(1-s/.65f));fx.Streak(p,-d*6,Venom*(2.2f*(1-s/.65f)),.02f,.12f,.03f,.6f,s/.65f,22190+i);}}
+                    if(s<.65f){int m=low?5:12;var c=Before+new Vector3(0,.55f,0);for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(22180,i);d.Y*=.5f;var p=c+d*(1.25f*(1-s/.65f));fx.Streak(p,-d*6,Venom*(2.2f*(1-s/.65f)),.02f,.12f,.03f,.6f,s/.65f,22190+i);}}
                 }
             }
             BladeGlint(fx,t,FormAt+FormFade,.42f,0,.12f,22140);BladeGlint(fx,t,FormAt+FormFade+.12f,.42f,1,.1f,22144);
@@ -526,7 +518,7 @@ namespace ChipArena.UnityConversion
                         {
                             float f=(j+1f)/per,shown=NativeEntranceMath.Smooth(s*9-j*.7f);if(shown<=0)continue;
                             var p=on+d*(1.55f*(float)Math.Pow(f,1.5)*open+.25f*u*f)+new Vector3(0,.1f+1.2f*f*open+.55f*u*f,0);
-                            Fume(fx,p,Fumes,.62f*shown*hang*(1-.25f*f),.3f+.42f*f*open+.45f*u,NativeEntranceMath.Clamp01(s/BloomGone),22840+i*8+j,floor,.42f);
+                            Fume(fx,p,Fumes,.4f*shown*hang*(1-.3f*f),.34f+.5f*f*open+.5f*u,NativeEntranceMath.Clamp01(s/BloomGone),22840+i*8+j,floor,.35f);
                         }
                     }
                     NativeEntranceFx.GroundDust(fx,t,StrikeAt,on,low?6:13,.35f,3.1f,1.5f,Haze,.5f,.8f,22900,1,floor);
@@ -543,14 +535,15 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i<wisps;i++)
                     {
                         float a=(((t-Hero)/Period+i/(float)wisps+hand*.37f)%1+1)%1;var p=Vector3.Lerp(root,tip,.3f+.65f*NativeEntranceMath.Rand(22960+hand,i))+new Vector3(.05f*(float)Math.Sin(a*5+i),.5f*a,.04f*(float)Math.Cos(a*4+i));
-                        Fume(fx,p,Fumes,.4f*up*(float)Math.Sin(Math.PI*a),.07f+.17f*a,a,22970+hand*8+i,floor,.45f);
+                        Fume(fx,p,Fumes,.3f*up*(float)Math.Sin(Math.PI*a),.08f+.2f*a,a,22970+hand*8+i,floor,.4f);
                     }
                 }
             }
             BladeGlint(fx,t,CardAt+.04f,.5f,0,.17f,22990);BladeGlint(fx,t,CardAt+.3f,.45f,1,.13f,22994);
         }
-        /// <summary>Where the eyes hang in the dark (m above the floor at Before): the crouched model's.</summary>
-        public const float EyeHeight=1.25f;
+        /// <summary>Where the eyes hang in the dark (m above the floor at Before): the crouched model's visor, measured in the Editor (the
+        /// stealth idle crouches half a metre under the keyed stance's head).</summary>
+        public const float EyeHeight=.76f;
         /// <summary>The step's wake of smoke (s), the blade speed a cut's star needs (m/s), and the strike's veins and petals.</summary>
         public const float StepWake=.9f,CutSpeed=7f;public const int VeinSegments=4,BloomPetals=7;
         // A burst of smoke (the step's): dark puffs thrown out and rising, green sparks out of it, a short green flash at its heart.
@@ -562,8 +555,8 @@ namespace ChipArena.UnityConversion
             if(s<.15f)fx.Glow(c,Venom*(2.6f*(1-s/.15f)),0,.3f+.3f*s/.15f,1,s/.15f,seed+90);
         }
     }
-    /// <summary>Silent Kill's venom, for a sink that can draw it (the runtime's; a checker's need not): fumes that glow in their own colour
-    /// (`glow` 0 to about .5) and teardrops (`segment` the drop's tail; `coverage` 0 adds it).</summary>
+    /// <summary>Silent Kill's venom, for a sink that can draw it (the runtime's; a checker's need not): fumes, a soft vapour that glows in
+    /// its own colour (`glow` 0 to about .5; the toon smoke's hard lobes read as green shrubs in the Editor), and teardrops (`segment` the drop's tail; `coverage` 0 adds it).</summary>
     public interface INativeEntranceVenom
     {
         void Fume(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor,float glow);

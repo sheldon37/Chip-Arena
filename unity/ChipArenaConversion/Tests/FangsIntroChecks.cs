@@ -126,16 +126,10 @@ namespace ChipArena.UnityConversion
                 int set=intros.IndexOf("if(script is NativeFangsIntro silent)silent.Shake=CameraShake;",StringComparison.Ordinal),cam=intros.IndexOf("script.Camera(age,out var view);",StringComparison.Ordinal);
                 Check(set>0&&cam>set&&game.Contains("presentation.CameraShake=prefs.cameraShake;"),"the runtime hands the player's Camera shake setting to the entrance before it asks for the camera");
             }
-            // ---- the look: condensing, afterimages on the step ----
+            // ---- the look: condensing ----
             Check(fi.Solid(0,CapturedRig.Chest)==0&&fi.Solid(NativeFangsIntro.FormAt,CapturedRig.Chest)==0&&fi.Solid(NativeFangsIntro.FormAt+NativeFangsIntro.FormFade*.5f,CapturedRig.Chest) is >.3f and <.7f&&fi.Solid(NativeFangsIntro.FormAt+NativeFangsIntro.FormFade,CapturedRig.Head)==1&&fi.Solid(NativeFangsIntro.StepAt-.01f,CapturedRig.Chest)==1
                 &&fi.Solid((NativeFangsIntro.StepAt+NativeFangsIntro.ArriveAt)*.5f,CapturedRig.Chest)==0&&fi.Solid(NativeFangsIntro.ArriveAt+.03f,CapturedRig.Chest)==1&&fi.Solid(6,CapturedRig.RHand)==1,"unseen, condensed over the form, gone through the step, whole after it");
-            {
-                var g=new NativeEntranceGhost[8];
-                Check(fi.Ghosts(NativeFangsIntro.StepAt-.01f,g)==0&&fi.Ghosts(NativeFangsIntro.StepAt+NativeFangsIntro.StepGhost+.001f,g)==0&&fi.Ghosts(3,g)==0&&fi.Ghosts(NativeFangsIntro.StepAt+.1f,new NativeEntranceGhost[2])==0,"no afterimage outside the step");
-                Check(fi.Ghosts(NativeFangsIntro.StepAt+.05f,g)==3,"three afterimages on the step");float o0=g[0].Opacity,lag=g[0].Lag;var far=g[2].Offset;
-                Check(o0>0&&o0<=.5f&&g[1].Opacity<o0&&g[2].Opacity<g[1].Opacity&&Math.Abs(lag-.07f)<1e-4f&&g[0].Offset==Vector3.Zero,"the first where it stood, in the crouch it left, each further one fainter");
-                fi.Ghosts(NativeFangsIntro.StepAt+.3f,g);Check(g[0].Opacity<o0*.2f&&g[2].Offset.Length()>far.Length()&&Vector3.Dot(g[2].Offset,NativeFangsIntro.After-NativeFangsIntro.Before)>0&&g[2].Offset.Length()<(NativeFangsIntro.After-NativeFangsIntro.Before).Length(),"they smear along its way and fade");
-            }
+            Check(fi.Ghosts(NativeFangsIntro.StepAt+.05f,new NativeEntranceGhost[8])==0,"no afterimage on the step (the keyed stance's silhouette is not the crouch the model is in)");
             // ---- the effects ----
             // A playthrough at 60 frames a second with the blades handed in: whole, inside the entrance budget, thinner on the low tier, and
             // the same number of draws through a sink that knows venom as through one that does not.
