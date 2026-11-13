@@ -289,6 +289,44 @@ namespace ChipArena.UnityConversion
                 body.JointBone[j]=v;body.JointFrom[j]=v>=0?bones[v].worldToLocalMatrix*rig.Bones[j].localToWorldMatrix:Matrix4x4.identity;
             }
         }
+        // A pilot killed while its model played a paired move's victim clip (its motion's VictimAt at the death: VisualMotionPose; owner
+        // 2026-11-13 via the coordinator, "build the corpse from the drawn body's pose"): the dead rig's joints put on the model as last
+        // drawn (each joint's frame on its bone, as VisualJointFrame reads it, parents first), its pose read back, so the ragdoll starts
+        // from the reaction the body showed rather than the game's stance; the model corpse then wears that drawn pose bone for bone
+        // (VisualDeathBody, while visualDeathDrawn is set). Any other death: false, nothing moved.
+        private const float VictimDeathGap=.25f;
+        private VisualBody visualDeathDrawn;private static int[] rigDepthOrder;
+        private bool VisualRigFromDrawn(CapturedAnimation.Player rig,NativeDeath death)
+        {
+            visualDeathDrawn=null;
+            if(rig==null||death==null||!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.Binding==null||body.JointFrom==null||body.Motion==null
+                ||float.IsNaN(body.Motion.VictimAt)||Mathf.Abs(body.Motion.VictimAt-death.at)>VictimDeathGap)return false;
+            int n=Mathf.Min(body.JointBone.Length,rig.Bones.Length);var bones=body.Binding.Bones;var frames=new Matrix4x4[n];
+            for(int j=0;j<n;j++){int v=body.JointBone[j];frames[j]=v>=0&&v<bones.Length&&bones[v]!=null?bones[v].localToWorldMatrix*body.JointFrom[j]:rig.Bones[j].localToWorldMatrix;}
+            foreach(int j in RigDepthOrder(n)){var f=frames[j];rig.Bones[j].SetPositionAndRotation(f.GetColumn(3),f.rotation);}
+            rig.Overlay(_=>false);visualDeathDrawn=body;return true;
+        }
+        // The rig's joints, parents before children.
+        private static int[] RigDepthOrder(int n)
+        {
+            if(rigDepthOrder!=null&&rigDepthOrder.Length==n)return rigDepthOrder;
+            var depth=new int[n];for(int j=0;j<n;j++){int d=0;for(int k=CapturedRig.Bones[j].Parent;k>=0&&d<64;k=CapturedRig.Bones[k].Parent)d++;depth[j]=d;}
+            var order=new int[n];for(int j=0;j<n;j++)order[j]=j;System.Array.Sort(order,(x,y)=>depth[x]!=depth[y]?depth[x].CompareTo(depth[y]):x.CompareTo(y));
+            return rigDepthOrder=order;
+        }
+        // The drawn body's pose onto a death body's bones (the same bake: bone for bone, or by name where the lists differ; its skeleton
+        // root stays where the corpse put it).
+        private static void VisualCopyDrawn(VisualBody from,Transform[] to)
+        {
+            var src=from?.Binding?.Bones;if(src==null||to==null)return;
+            bool same=src.Length==to.Length;for(int v=0;same&&v<src.Length;v++)if(src[v]==null||to[v]==null||src[v].name!=to[v].name)same=false;
+            Dictionary<string,Transform> byName=null;if(!same){byName=new Dictionary<string,Transform>();foreach(var t in to)if(t!=null)byName[t.name]=t;}
+            for(int v=1;v<src.Length;v++)
+            {
+                var s=src[v];if(s==null)continue;var d=same?to[v]:byName.TryGetValue(s.name,out var t)?t:null;if(d==null||d==to[0])continue;
+                d.localRotation=s.localRotation;d.localPosition=s.localPosition;
+            }
+        }
         // Joint `j`'s frame where `rig` draws: on its visual body (following the model) when it wears one this frame, else the rig's.
         private Matrix4x4 VisualJointFrame(CapturedAnimation.Player rig,int j)
         {
@@ -1061,6 +1099,8 @@ namespace ChipArena.UnityConversion
             var at=rig.Root.transform;root.transform.SetPositionAndRotation(at.TransformPoint(new Vector3(0,NativeVisualRig.Floor,0))+offset,at.rotation);
             var binding=new NativeVisualRigBinding(root.transform,skeleton);var pose=rig.Pose;pose.World();
             binding.Apply(pose,VisualGrasp(death.actor??new Actor(),pose,death.at,0),false,false);
+            // A death in a paired move's victim clip (VisualRigFromDrawn): the model as it was last drawn.
+            if(visualDeathDrawn!=null)VisualCopyDrawn(visualDeathDrawn,binding.Bones);
             bones=binding.Bones;joint=VisualJoints(binding);
             // Its hair under its hat as the live body wore it (VisualHatHair), hidden under the robot's helmet; the Hot Dog's sprigs.
             HotDogUnderHat(root,death.actor?.Hat);

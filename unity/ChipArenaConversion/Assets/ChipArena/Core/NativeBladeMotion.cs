@@ -32,6 +32,32 @@ namespace ChipArena.UnityConversion
         public const string FangsTakedown="Frank_Stealth_Kill_Behind_01",FangsTakedownHit="Frank_Stealth_Kill_Hit_Behind_01",FangsCritical="Frank_Damage@Damage_Critical_Assassin",FangsCriticalHit="Frank_Damage@Damage_Critical_Assassin_Hit";
         /// <summary>A paired attacker clip's victim clip (null: none).</summary>
         public static string VictimClip(string clip)=>clip==KatanaCritical?KatanaCriticalHit:clip==FangsTakedown?FangsTakedownHit:clip==FangsCritical?FangsCriticalHit:null;
+        /// <summary>Every paired move's victim clip, as the host names them on the held foe (Actor.PairClip, NativeDevMotions.VictimClip): the
+        /// Katana's counter, the DEV Katana's, the Fangs' takedown and frontal critical. Any pilot's model plays the one it is held in, whatever
+        /// its class (owner 2026-11-13: "Give one to everyone"): a set that does not list it borrows it from the motion bank the first time the
+        /// host names it (Lent; Runtime VisualMotionLend), and a class with no set of its own plays it on NativeVisualMotion.Held.</summary>
+        public static readonly string[] VictimClips={KatanaCriticalHit,NativeDevKatanaMotion.CounterHit,FangsTakedownHit,FangsCriticalHit};
+        /// <summary>Whether `clip` is the paired victim clip the host names on pilot `a` (a body whose set lacks it borrows it; nothing else is
+        /// borrowed, and the client never picks one of its own).</summary>
+        public static bool Lent(Actor a,string clip)=>a!=null&&clip!=null&&clip==a.PairClip&&Array.IndexOf(VictimClips,clip)>=0;
+        /// <summary>Whether `clip` is a counter's victim clip, shown from the blow only (Victim): the Katana's and the DEV Katana's counters
+        /// answer a parry, so their foe is dazed until struck. The Fangs' takedown and critical keep their whole paired window (the foe is
+        /// seized before the blow).</summary>
+        public static bool StruckOnBlow(string clip)=>clip==KatanaCriticalHit||clip==NativeDevKatanaMotion.CounterHit;
+        /// <summary>Whether a paired move holds pilot `a` at `time` (the span Victim plays its clip over, the last 0.15 s fading back).</summary>
+        public static bool Holds(Actor a,float time)=>a!=null&&!string.IsNullOrEmpty(a.PairClip)&&a.PairAt>-50&&time>=a.PairAt&&time<a.PairUntil+.15f;
+        /// <summary>Whether `spec`'s weapon hangs head-down from the grip while its pilot plays a victim clip (Runtime VisualVictimHang: its
+        /// length along the hand's forward, as every gun's barrel, blade and the mallet's handle run). One rule for every class: a weapon
+        /// held flat-on across the hand (its tip off that axis: the shield, whose rim stands up the hand's side) keeps its own hang.</summary>
+        public static bool Hangs(string spec)=>!(NativeWeaponDressing.BladeTip(spec,out var tip)&&Math.Abs(tip.Z)<Math.Abs(tip.Y));
+        /// <summary>How far `spec`'s weapon reaches from the wrist along its length (m: a blade's tip, the mallet's head, a gun's muzzle): a
+        /// hung weapon tips out to its hand's side just enough to keep that end above the floor (Runtime VisualVictimHang).</summary>
+        public static float HangReach(string spec)
+        {
+            if(spec==NativeTopDog.Spec)return NativeWeaponModels.MalletHead+NativeWeaponModels.MalletRadius;
+            if(NativeWeaponDressing.BladeTip(spec,out var tip))return tip.Length();
+            return spec=="pistol"?.35f:spec=="rifle"||spec=="machinegun"?1.05f:NativeWeaponDressing.BladeLength(spec)+.28f;
+        }
 
         /// <summary>A clip window: where it starts, its strike and where it ends (s into the clip).</summary>
         public readonly struct Window { public readonly float From,Hit,To;public Window(float from,float hit,float to){From=from;Hit=hit;To=to;} }
@@ -200,8 +226,12 @@ namespace ChipArena.UnityConversion
             pick=default;if(a==null||string.IsNullOrEmpty(a.PairClip)||a.PairAt<-50||time<a.PairAt||time>=a.PairUntil+.15f||!clips.Has(a.PairClip))return false;
             var w=WindowOf(a.PairClip);float len=clips.Length(a.PairClip);float hit=float.IsNaN(w.Hit)?len*.5f:w.Hit,from=float.IsNaN(w.From)?0:w.From,to=float.IsNaN(w.To)?len:Math.Min(len,w.To);
             // The victim's clip runs on the same window as its attacker's, from the same moment.
-            float span=Math.Max(.05f,a.PairUntil-a.PairAt),u=Clamp01((time-a.PairAt)/span);
-            pick=new NativeVisualMotion.Pick{Clip=a.PairClip,Time=from+(to-from)*u,Fade=NativeVisualMotion.FadeIn};return true;
+            float span=Math.Max(.05f,a.PairUntil-a.PairAt),u=Clamp01((time-a.PairAt)/span),t=from+(to-from)*u;
+            // A counter's foe is struck on the blow (StruckOnBlow: the Katana's and the DEV Katana's, both answering a parry): its clip shows
+            // from the blow, and before it the foe plays on what it played, the parry's daze, rather than standing through the wind-up or
+            // holding the hit's first frame (owner 2026-11-13: "They still kind of just sit there").
+            if(t<0||StruckOnBlow(a.PairClip)&&t<hit){pick=default;return false;}
+            pick=new NativeVisualMotion.Pick{Clip=a.PairClip,Time=t,Fade=NativeVisualMotion.FadeIn};return true;
         }
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
         /// <summary>How far a paired move's victim is thrown back at `time` (m, on along its way from the wielder), as its clip carries it: the

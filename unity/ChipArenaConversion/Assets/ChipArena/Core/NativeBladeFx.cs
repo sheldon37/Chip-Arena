@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
                 BladeTrails(s,scene,a,k,time,tint,katana,seed+11,q,low);
                 if(katana){KatanaLine(s,a,k,time,tint,seed,q,low);KatanaStorm(s,scene,a,k,time,tint,seed+3,q,low);}
                 else{FangsVeil(s,scene,a,k,time,tint,seed+5,q,low);FangsCloud(s,k,time,tint,seed+9,q,low);}
-                if(k.Hits!=null)foreach(var h in k.Hits)if(h!=null){if(katana)KatanaHitFx(s,k,h,time,tint,seed+h.Id*37L,q,low);else FangsHitFx(s,scene,a,k,h,time,tint,seed+h.Id*41L,q,low);}
+                if(k.Hits!=null)foreach(var h in k.Hits)if(h!=null){if(katana)KatanaHitFx(s,k,h,time,tint,seed+h.Id*37L,q,low,NativeBladeCuts.BluntHit(a.SourceSpec,a.Motion,h));else FangsHitFx(s,scene,a,k,h,time,tint,seed+h.Id*41L,q,low);}
             }
         }
         // A move's live stretch for its trail, and the trail's least power through it: a dash's blade rides the dash, so it trails at full
@@ -170,10 +170,19 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        private static void KatanaHitFx(ITechniqueFxSink s,NativeBladeKit k,NativeBladeHit h,float time,Vector3 tint,long seed,float q,bool low)
+        private static void KatanaHitFx(ITechniqueFxSink s,NativeBladeKit k,NativeBladeHit h,float time,Vector3 tint,long seed,float q,bool low,bool blow=false)
         {
             float age=time-h.At;if(age<0||age>1.4f)return;var at=NativeBlades.N(h.Pos);var dir=NativeBlades.N(h.Dir);if(dir.LengthSquared()<1e-6f)dir=Up;dir=Vector3.Normalize(dir);
             var hot=Vector3.Lerp(tint,BladeWhite,.6f);var side=Vector3.Normalize(Vector3.Cross(dir,Up).LengthSquared()>1e-6f?Vector3.Cross(dir,Up):Vector3.UnitX);
+            // A blow (the DEV Katana's kick, NativeBladeCuts.BluntHit) lands as the fighters' strikes do: an impact burst (a white-hot core,
+            // two rings spreading out) and a few chips knocked off along the blow; no slash.
+            if(blow)
+            {
+                if(age>.35f)return;float u=age/.35f,fade=(1-u)*(1-u);var white=Vector3.Lerp(tint,BladeWhite,.8f);
+                s.Sprite(false,at,BladeWhite*(5*fade),.5f,Hot);s.Sprite(false,at,white*(2.2f*fade),.4f+1.3f*OutCubic(u),RingSprite);
+                s.Sprite(false,at-dir*.05f,tint*(1.8f*fade),.3f+1.8f*OutCubic(Math.Min(1,u*1.5f)),RingSprite);s.Glow(at,hot*(1.4f*fade),0,1.1f,Core,u,seed);
+                Sparks(s,at,age,.3f,Count(6,q,low),3.2f,white,seed+3,9,.035f,dir*.9f);return;
+            }
             switch(h.Kind)
             {
                 case NativeKatana.HitCut:case NativeKatana.HitRush:case NativeKatana.HitStorm:case NativeKatana.HitPetal:case NativeKatana.HitWave:

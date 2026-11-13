@@ -20,6 +20,10 @@ namespace ChipArena.UnityConversion
             public string[] Names; public NativeVisualMotionClips.Clip[] Clips; public float[] Weights, Times; public readonly Dictionary<string,int> Index=new Dictionary<string,int>();
             /// <summary>Per clip: whether it holds its last pose while it fades out (NativeBladeMotion.HeldOut: the DEV Katana's finisher).</summary>
             public bool[] HeldOut;
+            /// <summary>Per clip: whether it is a paired move's victim clip (NativeBladeMotion.VictimClips; VisualMotionVictimSpot). The
+            /// victim clips' share of this frame's mix, and when it last took the body (the arena's clock; NaN: never): a weapon hangs by
+            /// that share, and a death then falls from the drawn pose (VisualRigFromDrawn).</summary>
+            public bool[] Victim; public float VictimShare, VictimAt=float.NaN;
             public int[] Loco; public readonly float[] LocoWeights=new float[NativeVisualStride.Clips],SpeedX=new float[NativeVisualStride.Clips],SpeedZ=new float[NativeVisualStride.Clips],LocoLength=new float[NativeVisualStride.Clips];
             public float Phase, Weight, LocoShare, Time=float.NaN, GaitSpeed; public Vector3 LastAt, Velocity;
             public Transform[] ProxyBones, BodyBones; public Transform BodyHips, ProxyHips, RightHand, LeftHand, LeftArm, LeftForearm, LeftFist, LeftIndex, LeftLittle;
@@ -87,9 +91,10 @@ namespace ChipArena.UnityConversion
         private static string visualMotionWhy;
 
         // A body's motion for `spec` (made once per set the body plays; null without the set or its clips in the bake).
-        private static VisualMotion VisualMotionFor(VisualBody body,string spec)
+        private static VisualMotion VisualMotionFor(VisualBody body,string spec)=>VisualMotionFor(body,NativeVisualMotion.For(spec));
+        private static VisualMotion VisualMotionFor(VisualBody body,NativeVisualMotion.Set set)
         {
-            var set=NativeVisualMotion.For(spec);if(set==null)return null;
+            if(set==null)return null;
             if(body.Motion!=null&&body.Motion.Set==set)return body.Motion;
             VisualMotionRelease(body);body.Motion=null;
             var bank=VisualMotionBank;if(bank==null)return null;
@@ -104,6 +109,7 @@ namespace ChipArena.UnityConversion
             m.Pose.muscles=new float[bank.Muscles];
             m.Clips=new NativeVisualMotionClips.Clip[names.Count];m.Weights=new float[names.Count];m.Times=new float[names.Count];m.HeldOut=new bool[names.Count];
             for(int i=0;i<names.Count;i++){m.Index[names[i]]=i;m.Clips[i]=bank.Clips[names[i]];m.HeldOut[i]=NativeBladeMotion.HeldOut(names[i]);}
+            m.Victim=new bool[names.Count];for(int i=0;i<names.Count;i++)m.Victim[i]=System.Array.IndexOf(NativeBladeMotion.VictimClips,names[i])>=0;
             m.Loco=new int[NativeVisualStride.Clips];
             for(int k=0;k<m.Loco.Length;k++)
             {
@@ -136,6 +142,54 @@ namespace ChipArena.UnityConversion
             if(m.BodyHips==null||m.RightHand==null){visualMotionWhy="no hips or right hand";m.Handler.Dispose();Destroy(proxy);return null;}
             visualMotionWhy=null;body.Motion=m;return m;
         }
+        // A paired move's victim clip the body's set does not list (Core NativeBladeMotion.Lent: only the one the host names on it), taken on
+        // the first time it is named: one more clip in this body's mix, its poses the bank's own (shared). A body never held carries nothing
+        // more, and blends nothing more (a clip at no weight costs nothing). Its index, or -1 without the clip in the bank.
+        private static int VisualMotionLend(VisualMotion m,string clip)
+        {
+            if(m.Index.TryGetValue(clip,out int had))return had;
+            var bank=VisualMotionBank;if(bank==null||!bank.Clips.TryGetValue(clip,out var c))return -1;
+            int n=m.Names.Length;
+            System.Array.Resize(ref m.Names,n+1);System.Array.Resize(ref m.Clips,n+1);System.Array.Resize(ref m.Weights,n+1);System.Array.Resize(ref m.Times,n+1);System.Array.Resize(ref m.HeldOut,n+1);
+            m.Names[n]=clip;m.Clips[n]=c;m.HeldOut[n]=NativeBladeMotion.HeldOut(clip);m.Index[clip]=n;
+            System.Array.Resize(ref m.Victim,n+1);m.Victim[n]=true;return n;
+        }
+        // A paired move's victim clip keeps its hips over the body's own spot (horizontally) while it shows, into the hold and out of it:
+        // its own drift (the frontal critical's foe 0.3 to 1.4 m back while the rules hold it, the counter's 0.85 m on top of the rules'
+        // throw) is taken out of the mix (normalised: each clip's share of `sum`), so the throw is the rules' alone and the fade at the
+        // hold's end has nothing to slide back. Nothing for a body whose victim clips have no weight. Returns their share of the mix.
+        private static float[] victimSpotSample;
+        private static float VisualMotionVictimSpot(VisualMotion m,float sum)
+        {
+            if(m.Victim==null||!(sum>1e-6f))return 0;float share=0;
+            for(int i=0;i<m.Clips.Length&&i<m.Victim.Length;i++)
+            {
+                if(!m.Victim[i])continue;float e=Ease(m.Weights[i]);if(e<=0)continue;
+                if(victimSpotSample==null||victimSpotSample.Length<m.Mix.Length)victimSpotSample=new float[m.Mix.Length];
+                System.Array.Clear(victimSpotSample,0,victimSpotSample.Length);NativeVisualMotionClips.Add(m.Clips[i],m.Times[i],1,victimSpotSample);
+                m.Mix[0]-=e*victimSpotSample[0]/sum;m.Mix[2]-=e*victimSpotSample[2]/sum;share+=e/sum;
+            }
+            return Mathf.Clamp01(share);
+        }
+        // Held in a paired move's victim clip (made for an unarmed foe; owner 2026-11-13 via the coordinator): the right hand's weapon
+        // turned to hang head-down from the grip by `share` (the clip's share of the mix), along its length (the hand's forward: a gun's
+        // barrel, a blade, the mallet's handle; Core NativeBladeMotion.Hangs: a weapon held flat-on across the hand, the shield, keeps
+        // its own hang), so a hand raised to the attacker's arm swings nothing through the attacker's head. A weapon longer than the hand
+        // is high (`reach`, Core NativeBladeMotion.HangReach) tips out to the hand's side just enough to keep its far end over the floor
+        // (HangClear). Every weapon class alike.
+        private const float HangClear=.08f;
+        private static void VisualVictimHang(Transform weaponHand,Transform origin,float share,float reach)
+        {
+            if(share<=0)return;var along=weaponHand.rotation*Vector3.forward;var up=origin.up;
+            float c=reach>1e-3f?Mathf.Clamp01((Vector3.Dot(weaponHand.position-origin.position,up)-HangClear)/reach):1;
+            var hung=(-up*c+origin.right*Mathf.Sqrt(1-c*c)).normalized;
+            var axis=Vector3.Cross(along,hung);if(axis.sqrMagnitude<1e-6f)axis=weaponHand.rotation*Vector3.right;
+            weaponHand.rotation=Quaternion.AngleAxis(Vector3.Angle(along,hung)*Mathf.Clamp01(share),axis.normalized)*weaponHand.rotation;
+        }
+        // How much of a held weapon still shows while its body plays a victim clip, for the one weapon the hang does not clear: the Top Dog's
+        // mallet, whose head is the size of a torso (hung, tipped clear of the floor, it still swept across the body and the camera): 1 less
+        // the clip's share, so it goes away into the hand for the hold and comes back after (NativeSourcePresentation.cs, its shown scale).
+        private float VisualVictimKeep(CapturedAnimation.Player rig)=>rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Motion!=null&&body.PosedFrame==Time.frameCount?1-Mathf.Clamp01(body.Motion.VictimShare):1;
         // A two-bone reach for an arm: the elbow kept on the clip's side of the shoulder-to-target line, leaning toward `pole`
         // (down and out), so it never flips across the line when the clip's elbow lies near it.
         private static void ArmReachTo(Transform upper,Transform lower,Transform hand,Vector3 target,Vector3 pole)
@@ -370,6 +424,9 @@ namespace ChipArena.UnityConversion
         {
             // A DEV animation class plays its own set over its base class (Core NativeDevMotions).
             string motionSet=NativeDevMotions.Set(a);var m=NativeVisualMotion.For(motionSet)!=null&&!StrideOff?VisualMotionFor(body,motionSet):null;
+            // A class with no set of its own (the DEV Cyber Lord, on the game's pose) held in a paired move or dazed by a parry: the held set
+            // (Core NativeVisualMotion.Held) plays the victim's clip or the daze, and stays on until its weight has eased back to the game's pose.
+            if(m==null&&!StrideOff&&NativeVisualMotion.For(motionSet)==null&&(NativeBladeMotion.Holds(a,time)||NativeVisualMotion.Dazed(a,time)||body.Motion?.Set==NativeVisualMotion.Held&&body.Motion.Weight>0))m=VisualMotionFor(body,NativeVisualMotion.Held);
             if(m==null){if(body.Motion!=null)body.Motion.Weight=0;return;}
             float dt=float.IsNaN(m.Time)?0:Mathf.Clamp(time-m.Time,0,.1f);m.Time=time;
             // The body's travel (smoothed, as the stride's).
@@ -413,12 +470,16 @@ namespace ChipArena.UnityConversion
             var local=Quaternion.Inverse(body.Root.transform.rotation)*velocity;float speed=new Vector2(local.x,local.z).magnitude;
             bool moving=a.Grounded&&speed>NativeVisualStride.Moving;
             bool covered=NativeVisualMotion.Choose(m.Set,a,time,m.Memory,VisualMotionBank,moving,out var pick);
+            // Held in a paired move (owner 2026-11-13: "Give one to everyone"): a body whose set does not list the victim's clip the host
+            // names (before, only the Katana's, the DEV Katana's and the Fangs' sets listed any) takes it on now and plays the reaction.
+            if(covered&&!pick.Locomotion&&NativeBladeMotion.Lent(a,pick.Clip)&&!m.Index.ContainsKey(pick.Clip))VisualMotionLend(m,pick.Clip);
             // A plunge leaves the pack's jump within its windup: over the usual ease the drop showed a blend of the jump's raised
             // blade and the plunge's lowered one (the blade swung flat over the head).
             m.Weight=Mathf.MoveTowards(m.Weight,covered?1:0,dt/(!covered&&NativeVisualMotion.Declined=="plunge"?PlungeEase:MotionEase));
             if(m.Weight<=0&&!covered)
             {
                 // Off the model: what carried its pose over (inertia, the guard's switch, the feet) starts afresh.
+                m.VictimShare=0;
                 m.HasOut=m.GuardSeen=false;m.GuardCarry=m.GuardCarryVel=0;m.FootLocked[0]=m.FootLocked[1]=false;m.FootLockWeight[0]=m.FootLockWeight[1]=0;m.UpA=null;
                 if(m.Off!=null){System.Array.Clear(m.Off,0,m.Off.Length);System.Array.Clear(m.OffVel,0,m.OffVel.Length);}
                 return;
@@ -461,6 +522,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<m.Clips.Length;i++)NativeVisualMotionClips.Add(m.Clips[i],m.Times[i],Ease(m.Weights[i]),m.Mix);
             for(int k=0;k<m.Loco.Length;k++){int i=m.Loco[k];if(i>=0)NativeVisualMotionClips.Add(m.Clips[i],Mathf.Repeat(m.Phase+m.LocoOffset[k],1)*m.LocoLength[k],m.LocoWeights[k]*loco,m.Mix);}
             NativeVisualMotionClips.Finish(m.Mix,sum);
+            // A paired move's victim clip on its own spot (its drift taken out), and how much of the body it takes this frame.
+            m.VictimShare=VisualMotionVictimSpot(m,sum)*m.Weight;if(m.VictimShare>.5f)m.VictimAt=time;
             // The Katana's saya and blade by the pack's clips' shares (Core NativeKatanaSaya): how much the left hand carries the saya, with
             // which carry, and how far the blade is turned over in the right hand (NativeBladePresentation.cs KatanaSaya; the hold below).
             if(m.Set.Spec==NativeKatana.Spec)
@@ -603,6 +666,8 @@ namespace ChipArena.UnityConversion
                 // A lowered gun (a long gun at rest, any gun sprinting): the muzzle tipped down about the grip (the low ready carry;
                 // owner 2026-10-24, and 2026-11-10 for the rifle and machine gun at rest).
                 if(m.Set.Gun&&!reloading&&m.Upper<1)weaponHand.rotation=Quaternion.AngleAxis(CarryTilt*(1-m.Upper)*wgt*(m.Set.RestReady?1-Ease(m.Rest):1),weaponHand.rotation*Vector3.right)*weaponHand.rotation;
+                // Held in a paired move's victim clip: the weapon hangs head-down from the grip, and the support hand lets it go (below).
+                float hang=!m.Set.Fighter&&!m.Set.HeldOnly&&NativeBladeMotion.Hangs(m.Set.Spec)?m.VictimShare:0;VisualVictimHang(weaponHand,body.Root.transform,hang,NativeBladeMotion.HangReach(m.Set.Spec));
                 // A two-handed weapon: the support fist onto its handle (the greatsword's behind the right fist, a long gun's
                 // handguard), while the clip keeps it near; not while reloading.
                 bool longGun=body.Held!=null&&body.Held.Supported&&(m.Set.Spec=="rifle"||m.Set.Spec=="machinegun");
@@ -611,7 +676,7 @@ namespace ChipArena.UnityConversion
                     Vector3 grip=weaponHand.position+weaponHand.rotation*(longGun?body.Held.Support:new Vector3(0,0,SupportAlong));
                     Vector3 fist=m.LeftFist!=null?Vector3.Lerp(m.LeftHand.position,m.LeftFist.position,.6f):m.LeftHand.position;
                     float far=(fist-grip).magnitude,hold=1-Mathf.Clamp01((far-SupportReach)/(SupportLetGo-SupportReach));m.SupportGap=far;
-                    m.Support=Mathf.MoveTowards(m.Support,reloading?0:hold,dt/SupportEase);
+                    m.Support=Mathf.MoveTowards(m.Support,reloading||m.VictimShare>.01f?0:hold,dt/SupportEase);
                     if(m.Support>0){var turnHand=m.LeftHand.rotation;var origin=body.Root.transform;ArmReachTo(m.LeftArm,m.LeftForearm,m.LeftHand,m.LeftHand.position+(grip-fist)*m.Support*wgt,-origin.up-origin.right);m.LeftHand.rotation=turnHand;}
                 }
             }
