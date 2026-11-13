@@ -1,3 +1,42 @@
+## 2026-11-13 — Claude: gore flesh: the cut faces, wounds, lumps and bone drawn as flesh in the blood's light (owner request; presentation only)
+
+- Branch `claude/gore-flesh` (from shared `41bfb1d7`): `bd1b6a77` the flesh, `98ff362b` its checks, `1056c5ef` a comment, then the docs. Pushed, **not merged, not released**. Details: `docs/GORE-FLESH.md`.
+- **The owner:** "Also gibbing- we do use new blood, but the gibbing seems to still use voxel flesh and wounds? Can we essentially match
+  the quality with our blood? Using higher quality bone structure and flesh."
+- **What was voxel:** the model's cut face was 1.2 cm cells of flat colour (Core `NativeBisect.CapOf`), a bone's face 1.2 mm cells, a
+  severed joint's opening a three-colour fan, a wound's pit a three-colour tube, a gib's fragments three noisy spheres in one flat
+  colour. The model already had its skeleton inside (2026-10-28), so the bones at a cut were shaped; their faces were not.
+- **The change:**
+  - `Resources/NativeFlesh.shader`: one shader, lit as the blood pack is (`NativeBloodLight.cginc`), wet, untextured (noise in the
+    body's own space). A cross-section is the skin's or sleeve's own colour at the edge, a band of fat, then a few large muscles in fine
+    bundles with pale sheaths, blood lying in it; a bone's face is cortex, spongy bone and marrow (or the skull round the brain).
+  - Core `NativeBisect`: a cap whose look names a kind (`BisectLook.Flesh`) keeps every cell its own piece and gives each vertex its exact
+    distance in from the section's edge and the nearest outline's paint. The region filled is the same, so the caps stay sealed.
+  - Runtime: the caps, sever openings and wound pits draw on it; a gib's fragments are five torn lumps and three bone shards, made once
+    and drawn through the source-model batches; the skin about an open wound is soaked in the blood's red (`WoundSoak` in the body's toon).
+  - **Tiers:** the Low tier (and a build without the shader) keeps the coloured cells and plain lumps. Nothing is allocated per frame.
+  - **Skins:** the Hot Dog's cut is a sausage's (casing, then meat) and it no longer gets bone stubs (it is sausage through). Classic
+    (voxel) bodies keep their voxel caps and wounds. The horde's gore is not touched.
+  - No pack asset is used; the Drive zip is unchanged.
+- **Not changed:** which kills cut, the planes, the pieces, timing, damage, hit volumes, networking (nothing for Astra to review).
+- **Animation impact:** none.
+- **Local tool:** the capture tool gained the play option `cuts=dist[,most]` (a shot square on to each of the largest cut faces).
+- **Checks:**
+  - Full CoreTests on the code as pushed (`1056c5ef`): 1,021 groups, exit 0 (the Windows path patch applied in a throwaway
+    worktree, not committed). `--melee-bisect` 37,041 checks; `--visual-rig` with the new flesh checks; `--blood-pack`.
+  - The Unity compile (`tools/check_unity_compile.py`): all four assemblies pass. The shader also compiles under the Windows SDK's fxc
+    in its plain, instanced, shadowed and gamma variants, and the Editor imported it with no shader error.
+  - `git diff --check` against shared: clean.
+  - **Filmed in the Editor** (Cyber City, close shots square on to each cut face): a Katana through-cut, a greatsword's neck cut, a
+    sword's forearm cut and a kill on the Hot Dog, on the first version of the shader. Judged: the faces read as cross-sections
+    (skin, fat, muscle, the forearm's two bones, the neck's vertebra), smooth, in the model's style; a face turned from the light was
+    dark, so its own light share went up (0.14 to 0.2), some sheaths were made faint and a glint from overhead was added afterwards.
+  - **Not yet done** (the Editor was reserved for other work by the owner's "Nearly-done first"): the same close shots on the shared
+    head ("before"), the tuned shader's shots, the lumps and shards, the wound's pit and soak on a living pilot, the saw preview, and
+    the Editor build gate (`PrototypeBuild.Validate`). The lumps' and shards' shapes and the tissue's look were checked in offline
+    ports of their code only. Not played by a person; the Low tier and gore off not seen on screen.
+- **Next:** the remaining captures and the build gate when the Editor is free; then the owner looks.
+
 ## 2026-11-13 — Claude: a fall into a Ward Zero vent ragdolls the model down the shaft, never the voxel body (owner report; presentation only)
 
 - Owner (2026-11-13): "Falling through vent still reverts back to voxel model, but when falling down the player should ragdoll (If they

@@ -45,11 +45,20 @@ namespace ChipArena.UnityConversion
         private sealed class CapSet
         {
             public readonly List<Vector3> At=new List<Vector3>(),Normal=new List<Vector3>();public readonly List<Color> Color=new List<Color>();public readonly List<int> Tris=new List<int>(),Bone=new List<int>();
+            // What the flesh is drawn from (Resources/NativeFlesh.shader): each vertex's distance in from its section's edge (m) and
+            // its kind (Core BisectLook; 0: its own colour), and the shell's paint there (as VisualCutPaint gives it).
+            public readonly List<Vector2> Data=new List<Vector2>();public readonly List<Vector3> Shell=new List<Vector3>();
+            public void Flesh(float depth,int kind,NVector4 shell){Data.Add(new Vector2(depth,kind));Shell.Add(new Vector3(shell.X,shell.Y,shell.Z));}
             // A cap as made (half 0's face) or mirrored (half 1's), each triangle on `bone` of its middle.
             public void Add(WeaponSection cap,float glow,Func<Vector3,int> bone,bool mirror)
             {
                 int first=At.Count;
-                for(int i=0;i<cap.Positions.Count;i++){var p=cap.Positions[i];var q=cap.Normals[i];var c=cap.Colors[i];At.Add(new Vector3(p.X,p.Y,p.Z));Normal.Add(mirror?new Vector3(-q.X,-q.Y,-q.Z):new Vector3(q.X,q.Y,q.Z));Color.Add(new Color(c.X,c.Y,c.Z,glow));}
+                bool smooth=cap.Data.Count==cap.Positions.Count;
+                for(int i=0;i<cap.Positions.Count;i++)
+                {
+                    var p=cap.Positions[i];var q=cap.Normals[i];var c=cap.Colors[i];At.Add(new Vector3(p.X,p.Y,p.Z));Normal.Add(mirror?new Vector3(-q.X,-q.Y,-q.Z):new Vector3(q.X,q.Y,q.Z));Color.Add(new Color(c.X,c.Y,c.Z,glow));
+                    if(smooth)Flesh(cap.Data[i].X,(int)cap.Data[i].Y,cap.Emission[i]);else Flesh(0,0,c);
+                }
                 for(int t=0;t+2<cap.Indices.Count;t+=3)
                 {
                     int a=first+cap.Indices[t],b=first+cap.Indices[t+1],c=first+cap.Indices[t+2];Tris.Add(a);if(mirror){Tris.Add(c);Tris.Add(b);}else{Tris.Add(b);Tris.Add(c);}
@@ -62,6 +71,8 @@ namespace ChipArena.UnityConversion
         {
             // The bodies: a split body's two halves (the plane), or the one severed body (Pieces, its keep values on already).
             public VisualCorpse[] Halves;public CutPart[] Parts;public int Count;public bool Pieces;public Vector3 Point,Normal;public uint Seed;
+            // The Hot Dog's cut is a sausage's (docs/HOT-DOG-SKIN.md): casing and meat, not the layers of a person's flesh.
+            public bool Sausage;
             // The bones the caps may ride: each one's segment in the death pose, its index in the corpse's bones and its piece.
             public Vector3[] BoneA,BoneB;public int[] BoneOf,BonePiece;
             public float[] Keep;
@@ -122,6 +133,7 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<a.Count;k++){int c=join.Find(ends[k]);by.TryGetValue(c,out float bl);if(bl*2<total[c])continue;ka.Add(N(a[k]));kb.Add(N(b[k]));kp.Add(paint[k]);}
                 var cap=NativeBisect.CapOf(ka,kb,kp,new BisectPlane(N(Point),N(Normal)),NativeBisect.ModelLook,0,Seed,true);
                 // Each cap triangle rides the crossed bone nearest its middle; half 1's face mirrors half 0's.
+                if(Sausage)for(int i=0;i<cap.Data.Count;i++)cap.Data[i]=new System.Numerics.Vector2(cap.Data[i].X,BisectLook.Sausage);
                 Caps[0].Add(cap,1,q=>Nearest(q,-1),false);Caps[1].Add(cap,1,q=>Nearest(q,-1),true);
                 // The bones' faces (each kind its own: cortex and marrow, spongy bone, the skull and brain, cartilage), on fine cells,
                 // a little proud of the flesh's; each triangle on the bone of the section nearest it.
@@ -200,6 +212,9 @@ namespace ChipArena.UnityConversion
                     var rim=new Color(s.paint.X*.7f,s.paint.Y*.7f,s.paint.Z*.7f,1);
                     var cs=Caps[0];int i=cs.At.Count;cs.At.Add(s.a);cs.At.Add(s.b);cs.At.Add(Rim(s.b));cs.At.Add(Rim(s.a));cs.At.Add(mid);
                     for(int j=0;j<5;j++)cs.Normal.Add(n);cs.Color.Add(rim);cs.Color.Add(rim);cs.Color.Add(FleshOuter);cs.Color.Add(FleshOuter);cs.Color.Add(FleshDeep);
+                    // The flesh's depth: none at the hole's edge, to the middle as far as the middle lies from this stretch of it.
+                    int tissue=Sausage?BisectLook.Sausage:BisectLook.Tissue;float inA=(Rim(s.a)-s.a).magnitude,inB=(Rim(s.b)-s.b).magnitude;
+                    cs.Flesh(0,tissue,s.paint);cs.Flesh(0,tissue,s.paint);cs.Flesh(inB,tissue,s.paint);cs.Flesh(inA,tissue,s.paint);cs.Flesh(Mathf.Min(NativeBisect.FleshReach,(mid-(s.a+s.b)*.5f).magnitude),tissue,s.paint);
                     cs.Tris.AddRange(new[]{i,i+1,i+2,i,i+2,i+3,i+3,i+2,i+4});cs.Bone.Add(bone);cs.Bone.Add(bone);cs.Bone.Add(bone);
                 }
             }
@@ -231,7 +246,7 @@ namespace ChipArena.UnityConversion
         private const int CutWidth=1024;
         // A sever cap's flesh (linear; Core NativeBisect's outer and deep layers).
         private static readonly Color FleshOuter=new Color(.66f,.08f,.12f).linear,FleshDeep=new Color(.31f,.024f,.063f).linear;
-        private MaterialPropertyBlock cutBlock;private Material cutCapMaterial;
+        private MaterialPropertyBlock cutBlock;private Material cutCapMaterial,fleshMaterial;private bool fleshFailed;
 
         // VisualCorpseMake, for both halves of a split body (made from one rig, so their renderers and bones match): starts the cut
         // and puts the crossed bones' stubs on. False when the body cannot be cut this way (the caller severs it at the joints).
@@ -254,7 +269,7 @@ namespace ChipArena.UnityConversion
             {
                 if(cut[k]||r0[k]==null||r1[k]==null)continue;bool far=Vector3.Dot(r0[k].bounds.center-point,normal)>=0;(far?r0[k]:r1[k]).enabled=false;
             }
-            var job=new CutJob{Halves=halves,Parts=parts.ToArray(),Count=count,Point=point,Normal=normal,Seed=fx.Seed,BoneA=boneA.ToArray(),BoneB=boneB.ToArray(),BoneOf=boneOf.ToArray(),BonePiece=new int[boneOf.Count]};
+            var job=new CutJob{Sausage=HotDogOn(halves[0].Root),Halves=halves,Parts=parts.ToArray(),Count=count,Point=point,Normal=normal,Seed=fx.Seed,BoneA=boneA.ToArray(),BoneB=boneB.ToArray(),BoneOf=boneOf.ToArray(),BonePiece=new int[boneOf.Count]};
             halves[0].Cut=job;halves[1].Cut=job;halves[1].Root.SetActive(false);VisualCutStart(job);
             // The halves part only once the cut is on them (as they wait for the voxel split).
             var ready=corpse.SplitReady;var wait=corpse.AwaitSplit;
@@ -278,7 +293,7 @@ namespace ChipArena.UnityConversion
             // The bones the caps may ride: every bone of a piece, at its place.
             var boneA=new List<Vector3>();var bonePiece=new List<int>();var boneOf=new List<int>();
             for(int v=0;v<c.Bones.Length&&v<pieceOfBone.Length;v++)if(c.Bones[v]!=null&&pieceOfBone[v]>=0){boneA.Add(c.Bind[v].GetColumn(3));boneOf.Add(v);bonePiece.Add(pieceOfBone[v]);}
-            var job=new CutJob{Halves=new[]{c},Parts=parts.ToArray(),Count=count,Pieces=true,BoneA=boneA.ToArray(),BoneB=boneA.ToArray(),BoneOf=boneOf.ToArray(),BonePiece=bonePiece.ToArray()};
+            var job=new CutJob{Sausage=HotDogOn(c.Root),Halves=new[]{c},Parts=parts.ToArray(),Count=count,Pieces=true,BoneA=boneA.ToArray(),BoneB=boneA.ToArray(),BoneOf=boneOf.ToArray(),BonePiece=bonePiece.ToArray()};
             c.Cut=job;VisualCutStart(job);return true;
         }
         private static Dictionary<Transform,int> VisualCutIndex(VisualCorpse c){var index=new Dictionary<Transform,int>();for(int v=0;v<c.Bones.Length;v++)if(c.Bones[v]!=null)index[c.Bones[v]]=v;return index;}
@@ -406,6 +421,7 @@ namespace ChipArena.UnityConversion
             foreach(var g in groups)
             {
                 var into=c.Bind[g.Key].inverse;var map=new Dictionary<int,int>();var at=new List<Vector3>();var nm=new List<Vector3>();var col=new List<Color>();var uv=new List<Vector2>();var tris=new List<int>();
+                var data=new List<Vector2>();var shell=new List<Vector3>();var rest=new List<Vector3>();
                 foreach(int t in g.Value)
                 {
                     for(int k=0;k<3;k++)
@@ -413,13 +429,13 @@ namespace ChipArena.UnityConversion
                         int i=caps.Tris[t*3+k];if(!map.TryGetValue(i,out int o))
                         {
                             o=at.Count;map[i]=o;var p=caps.At[i];at.Add(into.MultiplyPoint3x4(p));nm.Add(into.MultiplyVector(caps.Normal[i]).normalized);
-                            var cl=caps.Color[i];col.Add(linear?cl:cl.gamma);uv.Add(new Vector2(p.x+p.z,p.y)*2);
+                            var cl=caps.Color[i];col.Add(linear?cl:cl.gamma);uv.Add(new Vector2(p.x+p.z,p.y)*2);data.Add(caps.Data[i]);shell.Add(caps.Shell[i]);rest.Add(p);
                         }
                         tris.Add(o);
                     }
                 }
                 var mesh=new Mesh{name="Visual corpse cut",indexFormat=at.Count>65535?UnityEngine.Rendering.IndexFormat.UInt32:UnityEngine.Rendering.IndexFormat.UInt16};
-                mesh.SetVertices(at);mesh.SetNormals(nm);mesh.SetColors(col);mesh.SetUVs(0,uv);mesh.SetTriangles(tris,0);mesh.RecalculateBounds();(c.Owned??=new List<Mesh>()).Add(mesh);
+                mesh.SetVertices(at);mesh.SetNormals(nm);mesh.SetColors(col);mesh.SetUVs(0,uv);mesh.SetUVs(1,data);mesh.SetUVs(2,shell);mesh.SetUVs(3,rest);mesh.SetTriangles(tris,0);mesh.RecalculateBounds();(c.Owned??=new List<Mesh>()).Add(mesh);
                 var go=new GameObject("Visual cut");go.transform.SetParent(c.Bones[g.Key],false);go.AddComponent<MeshFilter>().sharedMesh=mesh;
                 var r=go.AddComponent<MeshRenderer>();r.sharedMaterial=look;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;added.Add(r);
             }
@@ -430,6 +446,14 @@ namespace ChipArena.UnityConversion
         private Material VisualCutCapMaterial(VisualCorpse c)=>VisualCutCapMaterial(c.All);
         private Material VisualCutCapMaterial(Renderer[] all)
         {
+            // The flesh (owner 2026-11-13: "match the quality with our blood"; Resources/NativeFlesh.shader): the cap's own shader,
+            // drawn from the depth and kind its vertices carry. The Low tier, and a build without the shader, keep the toon's
+            // coloured cells below.
+            if(!LowGraphics&&!fleshFailed)
+            {
+                if(fleshMaterial==null){var shader=Resources.Load<Shader>("NativeFlesh");if(shader==null||!shader.isSupported)fleshFailed=true;else fleshMaterial=new Material(shader){name="Visual corpse flesh",hideFlags=HideFlags.HideAndDontSave};}
+                if(fleshMaterial!=null)return fleshMaterial;
+            }
             if(cutCapMaterial!=null)return cutCapMaterial;Material source=null;
             foreach(var r in all)if(r is SkinnedMeshRenderer&&r.sharedMaterial!=null&&r.sharedMaterial.HasProperty(VertexAlbedoId)){source=r.sharedMaterial;break;}
             if(source==null)return null;
@@ -446,6 +470,7 @@ namespace ChipArena.UnityConversion
         {
             var c=halves[0];var index=VisualCutIndex(c);
             Material source=null;foreach(var r in c.All)if(r is SkinnedMeshRenderer&&r.sharedMaterial!=null){source=r.sharedMaterial;break;}
+            if(HotDogOn(c.Root))source=null; // (No bones in the Hot Dog: it is sausage through.)
             var boneLook=source!=null?VisualGoreMaterial(source,NativeModelGore.Bone):null;var marrowLook=source!=null?VisualGoreMaterial(source,NativeModelGore.Marrow):null;
             goreStub??=GoreCylinder();goreDisc??=GoreDisc();var added=new List<Renderer>[2]{new List<Renderer>(),new List<Renderer>()};
             var facing=c.Root.transform.rotation;
