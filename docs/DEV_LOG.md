@@ -70,6 +70,7 @@
   build; the Drive zip (not repacked). A takedown's foe of a class whose set does not list the paired victim clips (only the Katana's, the
   DEV Katana's and the Fangs' bodies carry them) keeps its own stance while held, before and after this change (Runtime
   `NativeVisualMotionPresentation` builds each body's clips from its set): a follow-up.
+- **Released:** shared `d15fdfb1` (the builder at `d15fdfb1`), test channel revision `639301534288730018` (build `b01d524e`); the suite at `927a2f0e` (1,021 groups, exit 0), the Unity compile; the Drive zip repacked with the 499-clip motion bank (6,136,627 bytes, sha256 `37ec44d2`; only the bank and `visual-body.json` changed), the old zip kept beside it as `LocalAssets-2026-11-13-before-more-move-picks.zip`.
 
 ## 2026-11-13 — Claude: the DEV Katana's hit 4 is the three-hit chain's overhead chop (owner's pick)
 
