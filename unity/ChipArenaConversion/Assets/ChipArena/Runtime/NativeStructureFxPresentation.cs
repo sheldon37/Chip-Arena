@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -46,7 +45,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The loose fragments are drawn as broken pieces this frame (the realistic debris style), so the dressed
         /// blocks leave their boxes out (NativeArenaDressing).</summary>
         public static bool ShapedFragments{get;private set;}
-        private readonly List<Renderer> fragmentBoxes=new List<Renderer>();
+        // The fragment boxes switched to shadow only (at most the match's 80 fragments; a fixed store).
+        private readonly Renderer[] fragmentBoxes=new Renderer[128];private int fragmentBoxCount;
         private readonly int[] order=new int[NativeStructureFx.PuffCap];private readonly float[] depth=new float[NativeStructureFx.PuffCap];
         private readonly Color[] faceLight=new Color[6];private Color topLight,bottomLight;
         private static readonly RaycastHit[] hits=new RaycastHit[24];
@@ -156,8 +156,8 @@ namespace ChipArena.UnityConversion
             bool shaped=fx.Style==NativeDebrisStyle.Realistic;ShapedFragments=shaped;
             if(!shaped)
             {
-                foreach(var r in fragmentBoxes)if(r!=null){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;r.forceRenderingOff=dressedMap;}
-                fragmentBoxes.Clear();return;
+                for(int i=0;i<fragmentBoxCount;i++){var r=fragmentBoxes[i];fragmentBoxes[i]=null;if(r!=null){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;r.forceRenderingOff=dressedMap;}}
+                fragmentBoxCount=0;return;
             }
             var props=arena.Props;
             for(int i=0;i<props.Count;i++)
@@ -165,9 +165,9 @@ namespace ChipArena.UnityConversion
                 var p=props[i];if(p==null||!p.Fragment||p.Definition==null)continue;var t=p.transform;Quaternion q=t.rotation;string material=p.Definition.material;
                 fx.Loose(NativeStructureFx.Classify(material),NativeImpactCues.MaterialColor(arena.Content?.materials,material),V(t.position),p.Definition.size,q.x,q.y,q.z,q.w,NativeBlockLooks.Hash(p.Definition.id));
                 var box=p.GetComponent<Renderer>();if(box==null||box.shadowCastingMode==UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly&&!box.forceRenderingOff)continue;
-                box.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;box.forceRenderingOff=false;if(!fragmentBoxes.Contains(box))fragmentBoxes.Add(box);
+                box.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;box.forceRenderingOff=false;if(Array.IndexOf(fragmentBoxes,box,0,fragmentBoxCount)<0&&fragmentBoxCount<fragmentBoxes.Length)fragmentBoxes[fragmentBoxCount++]=box;
             }
-            for(int i=fragmentBoxes.Count-1;i>=0;i--)if(fragmentBoxes[i]==null)fragmentBoxes.RemoveAt(i);
+            for(int i=fragmentBoxCount-1;i>=0;i--)if(fragmentBoxes[i]==null){fragmentBoxes[i]=fragmentBoxes[--fragmentBoxCount];fragmentBoxes[fragmentBoxCount]=null;}
         }
         // Only blasts and fire scorch (NativeStructureFx.ScorchScale): trampolines, static procs, wormholes and fields leave none.
         private void Scorch(NativeArena arena,in ArenaEvent e)

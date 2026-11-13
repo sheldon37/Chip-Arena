@@ -503,6 +503,9 @@ namespace ChipArena.UnityConversion
             if(ax*bx+ay*by+az*bz+aw*bw<0){bx=-bx;by=-by;bz=-bz;bw=-bw;}x=ax+(bx-ax)*t;y=ay+(by-ay)*t;z=az+(bz-az)*t;w=aw+(bw-aw)*t;
             float l=(float)Math.Sqrt(x*x+y*y+z*z+w*w);if(l<1e-6f){x=y=z=0;w=1;return;}x/=l;y/=l;z/=l;w/=l;
         }
+        /// <summary>Weathered timber: a board's outside is duller and darker than the content's wood colour; its break is the pale fresh one.</summary>
+        public const int Weathered=0x6b5136;
+        private static int Mix(int a,int b,float t){int ar=(a>>16)&255,ag=(a>>8)&255,ab=a&255;return (int)Math.Round(ar+(((b>>16)&255)-ar)*t)<<16|(int)Math.Round(ag+(((b>>8)&255)-ag)*t)<<8|(int)Math.Round(ab+((b&255)-ab)*t);}
         private static V3 Level(V3 v){float l=(float)Math.Sqrt(v.x*v.x+v.z*v.z);return l<1e-4f?new V3():new V3(v.x/l,0,v.z/l);}
         private static V3 Turn(V3 v,float qx,float qy,float qz,float qw)
         {float tx=2*(qy*v.z-qz*v.y),ty=2*(qz*v.x-qx*v.z),tz=2*(qx*v.y-qy*v.x);return new V3(v.x+qw*tx+qy*tz-qz*ty,v.y+qw*ty+qz*tx-qx*tz,v.z+qw*tz+qx*ty-qy*tx);}
@@ -535,7 +538,7 @@ namespace ChipArena.UnityConversion
         private void RealBurst(in Burst b,float t,float q)
         {
             float s=BurstScale(b.Size),root=(float)Math.Sqrt(s);V3 c=b.Center,half=b.Size*.5f;uint seed=b.Seed;var m=b.Material;
-            int baseHex=b.Color!=0?b.Color:BaseColor(m);BurstCounts(m,s,out int pieces,out int grit,out _,out _);float k=Reduced(q);pieces=(int)Math.Round(pieces*k);grit=(int)Math.Round(grit*k);
+            int baseHex=b.Color!=0?b.Color:BaseColor(m);if(m==NativeStructureMaterial.Timber)baseHex=Mix(baseHex,Weathered,.55f);BurstCounts(m,s,out int pieces,out int grit,out _,out _);float k=Reduced(q);pieces=(int)Math.Round(pieces*k);grit=(int)Math.Round(grit*k);
             float longest=Math.Max(b.Size.x,Math.Max(b.Size.y,b.Size.z)),least=Math.Min(b.Size.x,Math.Min(b.Size.y,b.Size.z));
             int big=m==NativeStructureMaterial.Timber?Math.Max(3,(int)Math.Round(pieces*.4f)):m==NativeStructureMaterial.Concrete?Math.Min(3,pieces):0;
             for(int i=0;i<pieces;i++)
@@ -675,7 +678,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public void Loose(NativeStructureMaterial m,int color,V3 center,V3 size,float qx,float qy,float qz,float qw,uint seed)
         {
-            if(Style==NativeDebrisStyle.Voxel)return;Rgb(color!=0?color:BaseColor(m),out float r,out float g,out float b);int v=(int)(seed%983);
+            if(Style==NativeDebrisStyle.Voxel)return;int hex=color!=0?color:BaseColor(m);if(m==NativeStructureMaterial.Timber)hex=Mix(hex,Weathered,.55f);Rgb(hex,out float r,out float g,out float b);int v=(int)(seed%983);
             if(m!=NativeStructureMaterial.Timber&&m!=NativeStructureMaterial.Metal&&m!=NativeStructureMaterial.Glass){Piece(NativeDebrisShape.Rock,v,center,size,qx,qy,qz,qw,r,g,b);return;}
             int n=m==NativeStructureMaterial.Metal?2:3;
             for(int i=0;i<n;i++)
