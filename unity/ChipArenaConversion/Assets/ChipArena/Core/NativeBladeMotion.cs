@@ -40,6 +40,10 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether `clip` is the paired victim clip the host names on pilot `a` (a body whose set lacks it borrows it; nothing else is
         /// borrowed, and the client never picks one of its own).</summary>
         public static bool Lent(Actor a,string clip)=>a!=null&&clip!=null&&clip==a.PairClip&&Array.IndexOf(VictimClips,clip)>=0;
+        /// <summary>Whether `clip` is a counter's victim clip, shown from the blow only (Victim): the Katana's and the DEV Katana's counters
+        /// answer a parry, so their foe is dazed until struck. The Fangs' takedown and critical keep their whole paired window (the foe is
+        /// seized before the blow).</summary>
+        public static bool StruckOnBlow(string clip)=>clip==KatanaCriticalHit||clip==NativeDevKatanaMotion.CounterHit;
         /// <summary>Whether a paired move holds pilot `a` at `time` (the span Victim plays its clip over, the last 0.15 s fading back).</summary>
         public static bool Holds(Actor a,float time)=>a!=null&&!string.IsNullOrEmpty(a.PairClip)&&a.PairAt>-50&&time>=a.PairAt&&time<a.PairUntil+.15f;
         /// <summary>Whether `spec`'s weapon hangs head-down from the grip while its pilot plays a victim clip (Runtime VisualVictimHang: its
@@ -223,10 +227,10 @@ namespace ChipArena.UnityConversion
             var w=WindowOf(a.PairClip);float len=clips.Length(a.PairClip);float hit=float.IsNaN(w.Hit)?len*.5f:w.Hit,from=float.IsNaN(w.From)?0:w.From,to=float.IsNaN(w.To)?len:Math.Min(len,w.To);
             // The victim's clip runs on the same window as its attacker's, from the same moment.
             float span=Math.Max(.05f,a.PairUntil-a.PairAt),u=Clamp01((time-a.PairAt)/span),t=from+(to-from)*u;
-            // A victim clip that begins on the blow (its window opens before the clip: the DEV Katana's counter, whose foe takes the katana
-            // set's big hit) shows from the blow; before it the foe plays on what it played (the parry's daze), not the hit's first frame
-            // held still (owner 2026-11-13: "They still kind of just sit there").
-            if(t<0){pick=default;return false;}
+            // A counter's foe is struck on the blow (StruckOnBlow: the Katana's and the DEV Katana's, both answering a parry): its clip shows
+            // from the blow, and before it the foe plays on what it played, the parry's daze, rather than standing through the wind-up or
+            // holding the hit's first frame (owner 2026-11-13: "They still kind of just sit there").
+            if(t<0||StruckOnBlow(a.PairClip)&&t<hit){pick=default;return false;}
             pick=new NativeVisualMotion.Pick{Clip=a.PairClip,Time=t,Fade=NativeVisualMotion.FadeIn};return true;
         }
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;

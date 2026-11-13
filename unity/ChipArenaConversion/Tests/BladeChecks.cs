@@ -184,6 +184,15 @@ namespace ChipArena.UnityConversion
                 Check(mp.Contains("m.Mix[0]-=e*victimSpotSample[0]/sum;m.Mix[2]-=e*victimSpotSample[2]/sum;share+=e/sum;")&&mp.Contains("m.Victim[i]=System.Array.IndexOf(NativeBladeMotion.VictimClips,names[i])>=0;")&&mp.Contains("System.Array.Resize(ref m.Victim,n+1);m.Victim[n]=true;"),"every victim clip a body carries, its own or borrowed, keeps to the body's spot");
                 Check(mp.Contains("float hang=!m.Set.Fighter&&!m.Set.HeldOnly&&NativeBladeMotion.Hangs(m.Set.Spec)?m.VictimShare:0;VisualVictimHang(weaponHand,body.Root.transform,hang,NativeBladeMotion.HangReach(m.Set.Spec));")&&mp.Contains("m.Support=Mathf.MoveTowards(m.Support,reloading||m.VictimShare>.01f?0:hold,dt/SupportEase);"),"the weapon hangs by the victim clip's share and the support hand lets go");
                 Check(R(root,"NativeSourcePresentation.cs").Contains("float shown=TopDogMallet(a,time)*VisualVictimKeep(rig);")&&mp.Contains("1-Mathf.Clamp01(body.Motion.VictimShare):1;")&&mp.Contains("m.VictimShare=0;"),"the one weapon the hang does not clear, the Top Dog's mallet, goes away into the hand for the hold");
+                // A counter's foe is dazed until the blow (owner 2026-11-13: "They still kind of just sit there"): the Katana's and the DEV Katana's
+                // victim clips show from the blow only; the Fangs' foes are seized before it and keep their whole window.
+                {
+                    var kf=new Actor{Id=47,SourceSpec="rifle",PairClip=NativeBladeMotion.KatanaCriticalHit,PairAt=30,PairUntil=30+NativeKatana.CounterHold};var kw=NativeBladeMotion.WindowOf(NativeBladeMotion.KatanaCriticalHit);
+                    float blowAt=30+NativeKatana.CounterHold*(kw.Hit-kw.From)/(kw.To-kw.From);
+                    Check(NativeBladeMotion.StruckOnBlow(NativeBladeMotion.KatanaCriticalHit)&&NativeBladeMotion.StruckOnBlow(NativeDevKatanaMotion.CounterHit)&&!NativeBladeMotion.StruckOnBlow(NativeBladeMotion.FangsTakedownHit)&&!NativeBladeMotion.StruckOnBlow(NativeBladeMotion.FangsCriticalHit)
+                        &&!NativeBladeMotion.Victim(kf,blowAt-.05f,bank,out _)&&NativeBladeMotion.Victim(kf,blowAt+.01f,bank,out var kp)&&kp.Time>=kw.Hit&&NativeBladeMotion.Holds(kf,blowAt-.05f)
+                        &&NativeBladeMotion.Victim(new Actor{Id=48,SourceSpec="rifle",PairClip=NativeBladeMotion.FangsTakedownHit,PairAt=30,PairUntil=31.45f},30.1f,bank,out _),"a counter's foe is dazed until the blow; the Fangs' foes are seized from the start");
+                }
                 string dp=R(root,"NativeDeathPresentation.cs"),vb=R(root,"NativeVisualBodyPresentation.cs");
                 Check(dp.Contains("if(pilot&&!temporary&&age<VictimDeathGap)VisualRigFromDrawn(rig,death);")&&dp.Contains("visualDeathDrawn=null;")&&vb.Contains("if(visualDeathDrawn!=null)VisualCopyDrawn(visualDeathDrawn,binding.Bones);")
                     &&vb.Contains("||float.IsNaN(body.Motion.VictimAt)||Mathf.Abs(body.Motion.VictimAt-death.at)>VictimDeathGap)return false;"),"a death in a victim clip falls from the drawn pose; any other death is built as before");
