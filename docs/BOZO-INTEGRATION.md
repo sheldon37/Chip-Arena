@@ -1618,8 +1618,12 @@ already? Cant we utilize that?"
         0.6, 0.4 s; the fourth's overhead comes over right to left against the rules' left to right; the picker's 6.9 s
         `Attack_7Combo_4` is the in-place take's swing and five seconds standing), the sprint attack on `Dash_Attack_ver_B` (0.39 s),
         Sunder on `Skill_F` (its slam to the front right, 0.63 s); Iron Vow keeps `Idle_To_Crouch`.
-      - **DEV Katana:** the cuts on the five-hit chain's first four parts (`Attack_5Combo_1..4_Inplace`, windows 0/0.31/1.0,
-        0/0.3/0.83, 0/0.43/1.03 and, the fourth a flurry of cuts and kicks, 1.2/1.97/2.33: its last high sweep), the plunge on
+      - **DEV Katana:** the cuts on the five-hit chain's first three parts (`Attack_5Combo_1..3_Inplace`, windows 0/0.31/1.0,
+        0/0.3/0.83, 0/0.43/1.03) and the finisher on the three-hit chain's last (`Attack_3Combo_3_Inplace`, 0/0.8/1.7: the blade
+        raised overhead in both hands, then up and over the head and chopped down across the front into a crouch; owner, later on
+        2026-11-12: "Hit 3: Attack_5Combo_3 · Hit 4: Attack_3Combo_3", after "Dev Katana 4th hit doesn't look right~": the five-hit
+        chain's fourth, a 2.3 s flurry of cuts and kicks, played only its last 0.7 s at the Katana's timing, standing with the blade
+        low), the plunge on
         `Jump_Attack_Combo_4_Attach_ZeroHeight` (0/0.74/0.77: a cut down and a turn in the air through the drop, the landing driving
         the blade into the floor), the counter on
         `Revenge_Guard_Attack_ver_A` (0/0.4/1.47: out of the katana set's back-turned guard it spins round into a rising cut) in place
@@ -1644,8 +1648,9 @@ already? Cant we utilize that?"
     - **The bank** gains the DEV Greatsword's 35 clips (433,786 bytes) and the DEV Katana's 31 (352,883 bytes), then the owner's
       picks' 14 (266,094 bytes: the great sword set's `Attack_7Combo_2..4_Inplace`, `Dash_Attack_ver_B`, `Skill_F`, `Intro`; the katana
       set's `Attack_5Combo_1..4_Inplace`, `Jump_Attack_Combo_4_Attach_ZeroHeight`, `Revenge_Guard_Attack_ver_A`,
-      `Damage_Front_Big_ver_A`, `Intro`), each merged into the live bank with every other clip kept byte-identical (409 clips in
-      4,877,308 bytes became 444 in 5,311,078, 475 in 5,663,961, then 489 in 5,930,039, sha256 b5d3d2f0...). Rebake by merging (the
+      `Damage_Front_Big_ver_A`, `Intro`), then the finisher's `Attack_3Combo_3_Inplace` (30,259 bytes), each merged into the live
+      bank with every other clip kept byte-identical (409 clips in 4,877,308 bytes became 444 in 5,311,078, 475 in 5,663,961, 489 in
+      5,930,039, sha256 b5d3d2f0..., then 490 in 5,960,298, sha256 6b639872...). Rebake by merging (the
       extra bake, then a merge), not from scratch: NOCTIEL's and other bosses' clips are named by no player set.
   - **Sword, daggers and shield kit moves (2026-10-24, `claude/motion-kits`):** every melee weapon's Q and E now play
     pack clips.
