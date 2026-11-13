@@ -29,6 +29,7 @@
   Editor was busy all session and then under the owner's priority hold. The look has only been judged from an offline storyboard
   (camera, rig and effect positions as dots), which shows framing, not rendering. **Next:** film before and after in the Editor, judge
   and tune, run the build gate, merge the travel branch in once it is on shared.
+
 ## 2026-11-13 — Claude: hand-off to Astra (owner: "To save on usage, please hand me any things your able to for astra")
 
 Base: shared `claude/sleepy-ritchie-g8ruhv`. Each item is yours to pick up; Claude is not working on any of them.
