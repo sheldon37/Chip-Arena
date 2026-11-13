@@ -108,7 +108,13 @@ namespace ChipArena.UnityConversion
             // later pick takes its move's cut until its own is surveyed; the storm's low sweeps end in a rising cut.
             const string Dk="M_katana_Blade@";
             Add(Dk+"Attack_4Combo_1_Inplace",S(35,1.15f));Add(Dk+"Attack_4Combo_2_Inplace",S(-145,1.02f));Add(Dk+"Attack_4Combo_3_Inplace",S(0,.92f));Add(Dk+"Attack_4Combo_4_Inplace",S(-170,1.25f));
-            Add(NativeDevKatanaMotion.Storm,S(-155,1f));
+            // Its picks (the owner's, 2026-11-12: Grruzam's five-hit chain and the storm), surveyed by the DEV classes agent at 200 fps in the
+            // clip's root frame: the first falls toward the wielder's left (19.5 degrees) across the front at 1.17 m; the second rises toward
+            // its right (14) at 1.11 m; the third is a spinning back cut, nearly level at 1 m (no front crossing: the body turns through the
+            // foe); the fourth's slow sweep falls toward its left (7) at the shoulders (1.42-1.53 m). The storm's front stroke rises steeply
+            // toward its right (45-75 degrees) up over the head.
+            Add(Dk+"Attack_5Combo_1_Inplace",S(19.5f,1.17f));Add(Dk+"Attack_5Combo_2_Inplace",S(-166,1.11f));Add(Dk+"Attack_5Combo_3_Inplace",S(-175,1f));Add(Dk+"Attack_5Combo_4_Inplace",S(7,1.45f));
+            Add(NativeDevKatanaMotion.Storm,S(-120,1.25f));
             // Its counter (the DEV classes' pick, 2026-11-12, in place of the Frank critical; surveyed by the DEV classes agent at 200 fps):
             // the blow in front comes down from the wielder's high left to its low right, 33-34 degrees below level, at 0.40-0.43 s,
             // crossing the centre line 1.31-1.39 m high (the rising stroke before it passes behind the body).
