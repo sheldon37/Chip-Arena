@@ -80,6 +80,26 @@ namespace ChipArena.UnityConversion
             return Quads.Add(x-ax,y-ay,z-az,x+bx,y+by,z+bz,x+ax,y+ay,z+az,x-bx,y-by,z-bz,r,g,b,a,mode,additive,1);
         }
         private bool Hex(double x,double y,double z,double size,int hex,double a,bool additive,double gain=1)=>Sprite(x,y,z,size,L(hex,16)*gain,L(hex,8)*gain,L(hex,0)*gain,a,additive);
+        /// <summary>The effects' sprite mode of a soft bank (ChipArena/NativeSirenFx mode 5): a radial sprite that fades out as it
+        /// nears whatever stands behind it, over <see cref="BankFade"/> metres (where the camera has a depth texture).</summary>
+        public const int BankMode=5;
+        /// <summary>Metres over which a bank fades into the clouds and towers it passes through.</summary>
+        public const double BankFade=70;
+        // A bank of the cloud sea's haze or of the sun's pooled light: hundreds of metres wide, standing among the cloud sea's
+        // heaps and the far towers. It faces the eye's place, not the eye's turn (owner 2026-11-12: "Skyframe still looks
+        // glitchy in background. Maybe z-fighting?": a sprite turned with the camera swung its whole plane through the clouds
+        // behind it as the pilot looked round, 1.7 m of depth 100 m off its middle for every degree, so whole clouds went in
+        // and out of the haze from one frame to the next), and it draws in the bank mode, so where it does pass through
+        // something it fades instead of cutting.
+        private bool Bank(double x,double y,double z,double size,int hex,double a,bool additive,double gain=1)
+        {
+            double fx=ex-x,fy=ey-y,fz=ez-z,fl=Math.Sqrt(fx*fx+fy*fy+fz*fz);if(fl<1e-6)return false;fx/=fl;fy/=fl;fz/=fl;
+            // right = up x toward the eye, up = toward the eye x right (a bank straight under the eye lies flat)
+            double qx=fz,qz=-fx,ql=Math.Sqrt(qx*qx+qz*qz);if(ql<1e-6){qx=1;qz=0;ql=1;}qx/=ql;qz/=ql;
+            double vx=fy*qz,vy=fz*qx-fx*qz,vz=-fy*qx,h=size/2;
+            double ax=(qx+vx)*h,ay=vy*h,az=(qz+vz)*h,bx=(qx-vx)*h,by=-vy*h,bz=(qz-vz)*h;
+            return Quads.Add(x-ax,y-ay,z-az,x+bx,y+by,z+bz,x+ax,y+ay,z+az,x-bx,y-by,z-bz,L(hex,16)*gain,L(hex,8)*gain,L(hex,0)*gain,a,BankMode,additive,1);
+        }
         // a camera-facing sprite stretched wide (w along the camera's right, h along its up)
         private bool Wide(double x,double y,double z,double w,double h,int hex,double a,bool additive,double gain=1)
         {
@@ -110,7 +130,7 @@ namespace ChipArena.UnityConversion
             NativeSkyframeLooks.Sun(out double sx,out double sy,out double sz);double d=1500,x=ex+sx*d,y=ey+sy*d,z=ez+sz*d;
             Hex(x,y,z,1100,Gold,.34,true);Hex(x,y,z,420,0xFFE2B0,.5,true,1.4);Hex(x,y,z,150,0xFFF4DC,.9,true,2.2);Wide(x,y,z,2400,70,Gold,.3,true,1.3);Atmosphere+=4;
             // the light pooled on the cloud sea under the sun
-            double hd=Math.Sqrt(sx*sx+sz*sz);for(int k=0;k<5;k++){double f=160+k*150;Hex(sx/hd*f,NativeSkyframeLooks.CloudY+16,sz/hd*f,220+k*60,0xFFC890,.16,true);Atmosphere++;}
+            double hd=Math.Sqrt(sx*sx+sz*sz);for(int k=0;k<5;k++){double f=160+k*150;Bank(sx/hd*f,NativeSkyframeLooks.CloudY+16,sz/hd*f,220+k*60,0xFFC890,.16,true);Atmosphere++;}
         }
         private void Sea(double t)
         {
@@ -121,7 +141,10 @@ namespace ChipArena.UnityConversion
                 double h0=H(301,i),h1=H(301,i,1),h2=H(301,i,2),h3=H(301,i,3);
                 double x=(Frac(h0+t*NativeSkyframeLooks.CloudDrift*(.6+.5*h3)/span)-.5)*span,z=(h1-.5)*span,d=Math.Sqrt(x*x+z*z);if(d<52)continue;
                 double y=NativeSkyframeLooks.CloudY+6+h2*12-(d<120?(120-d)*.12:0),size=130+h3*150;
-                Hex(x,y,z,size,i%3==0?Rose:Cream,.2+.12*h2,false,.9);if(i%2==0)Hex(x+12,y+10,z,size*.6,Gold,.1,true);Atmosphere++;
+                // a bank comes in and goes out at the ends of its run (it used to jump from one end to the other at full
+                // strength) and thins out as it nears the tower (it used to vanish at 52 m)
+                double k=Math.Min(1,Math.Min((span/2-Math.Abs(x))/60,(d-52)/40));if(k<=0)continue;k=k*k*(3-2*k);
+                Bank(x,y,z,size,i%3==0?Rose:Cream,(.2+.12*h2)*k,false,.9);if(i%2==0)Bank(x+12,y+10,z,size*.6,Gold,.1*k,true);Atmosphere++;
             }
         }
 
