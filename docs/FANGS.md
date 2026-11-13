@@ -17,13 +17,13 @@ Status: on `claude/blades` (merged into shared and the test channel with this re
 
 | Key | Move (`id`) | What it does | Damage |
 | --- | --- | --- | --- |
-| LMB | Fang Flurry (`fangs-cut`) | Five quick cuts that chain (0.4 s window): a leaping strike, a double, a backhand, a cross and a spinning finisher. Each leaves a venom stack; the last leaves two | 11, 11, 12, 14, 20 |
+| LMB | Fang Flurry (`fangs-cut`) | Five quick cuts that chain (0.4 s window): a leaping strike, a double, a backhand, a cross and a spinning finisher, each but the fourth stepping in as its clip does (0.63, 1.07, 1.0, 0, 1.67 m; see "Travel"). Each leaves a venom stack; the last leaves two | 11, 11, 12, 14, 20 |
 | LMB on a sprint | Pounce (`fangs-pounce`) | A 5 m dash in 0.32 s, cutting everyone it passes within 1.4 m of its line (once each) and leaving two stacks; a ring of dust where it ends | 20 |
 | LMB in the air, looking down | Plunging slam | The plunge every melee weapon has (owner 2026-11-11: slam attacks from the air for the Glaive, the Fangs and the Katana): looking 45 degrees or more down after a moment airborne, a click drops you at 24 m/s and the landing cuts everyone within 0.9 m, then a 0.3 s recovery. Not while a move of the kit runs. Core `NativeAirAttackSimulation` by kin (the daggers') | 1.5 times the weapon's 11, up to 60% more from higher |
 | Q | Shadow Step (`fangs-step`) | Gone for 0.14 s, then behind the foe nearest the aim (12 m, 35 degrees of the look, in sight), facing it (the view turns with you), and a stab with two stacks. With no foe, a 6 m blink along the look | 24 |
-| E | Smoke Veil (`fangs-veil`) | Smoke, and unseen by enemies for 4 s or until you attack: the body, the name and the health bar are not drawn for them, bots and the lock-on pass you over. That attack deals twice as much and leaves three more stacks | |
+| E | Smoke Veil (`fangs-veil`) | A backward evade 2.5 m into smoke, and unseen by enemies for 4 s or until you attack: the body, the name and the health bar are not drawn for them, bots and the lock-on pass you over. That attack deals twice as much and leaves three more stacks | |
 | 1 | Fang Fan (`fangs-fan`) | Five venom knives across 30 degrees, 34 m/s out to 18 m, each 9 and a stack | 9 each |
-| 2 | Venom Bloom (`fangs-bloom`) | Every poisoned foe within 14 m takes 6 per stack at once; the stacks are spent | 6 a stack |
+| 2 | Venom Bloom (`fangs-bloom`) | A lunging two-handed strike (1 m on): every poisoned foe within 14 m takes 6 per stack at once; the stacks are spent | 6 a stack |
 | 3 | Assassinate (`fangs-assassinate`) | The foe in front within 2.4 m. From behind (its back to you within 75 degrees) or below 40% health: the takedown, both held in the pack's paired stealth kill, lethal at its blow (a boss takes 60 and is not held). Otherwise the paired frontal critical for 45 | 45 / lethal |
 | RMB, F, Shift | Guard, parry, roll | As any melee weapon | |
 
@@ -44,7 +44,8 @@ Every number is in Core `NativeFangs`. Cooldowns: Q 7, E 12 (from its end), 1 6,
   and hit reactions. The cuts are the pack's Dual (twin swords) set's chain (the owner's pick 2026-11-13, in place of the Rogue's): its first
   combo's flat forehand, springing double and bent-over lunging cut, its sixth combo's long forehand lunge, then its first combo's low
   spinning sweep as the finisher (`Frank_RPG_Dual_Combo01_1`, `01_2`, `01_3`, `06_1`, `01_4`; strikes 0.43, 0.26, 0.24, 0.30, 0.24 s, at up
-  to 1.6 times the clips' pace; the set ships as root-motion takes only, played in place). The cuts that lunge (the third's step in, the finisher) take the whole body even on the move, their legs carrying the
+  to 1.6 times the clips' pace; the set ships as root-motion takes only, played in place, the rules carrying the pilot along the roots'
+  way: "Travel"). The cuts that lunge (all but the fourth) take the whole body even on the move, their legs carrying the
   lunge; the others play on the upper body over the stride while moving. The dash is the Rogue (dual blade) set's fifth
   chain's deep lunge (owner 2026-11-11: "utilize the "Rogue" from the frank slash animation set"), at up to twice its pace. The slam is the
   set's air attack, held to the landing. The step its dashing stab
@@ -67,15 +68,48 @@ Every number is in Core `NativeFangs`. Cooldowns: Q 7, E 12 (from its end), 1 6,
   - the bloom: a green pulse from the wielder, and a burst sized by the stacks on each poisoned one;
   - the takedown's dark flash and, on a kill, its smoke.
 
+## Travel
+
+The owner, 2026-11-13 (after the second picks): "Review fangs animations; The movements look like they should be moving the character
+location". The pack's moves are authored with their root travelling (the Dual chain ships as root-motion takes only; the assassin set's
+moves have root-motion takes beside the in-place ones the game bakes), but the motion bank draws every clip in place: the bake samples the
+humanoid with its root motion left out (the Dual takes' root follows the centre of mass and the body's turn; the in-place takes have none),
+so the legs lunged and leapt while the pilot stood still. The rules now carry the pilot along each move's root (a rules change at the
+owner's word, logged for Astra in docs/DEV_LOG.md):
+
+- **How far:** each clip's root bone over the slice the game plays (as `NativeBladeMotion.Fit` lays the clip on the rules' times), read
+  from the root-motion take in the FBX, at 0.835 of the pack's skeleton (the bake body against it: a fit of the drawn joints to the
+  authored ones over the Dual clips' frames). The rules' numbers are `NativeFangs.CutLunge` (0.63, 1.07, 1.0, 0, 1.67 m; were 0, 0, 0.5,
+  0, 1.2), `VeilHop` 2.5 m back and `BloomLunge` 1 m on.
+- **When:** the clip's own root curve, through the same fit (Core `NativeBladeMotion.FangsTravelShare`, 30 samples a second per clip, on
+  the blade path's `NativeBlades.PathAt`): the pilot moves as the drawn feet do, the first cut's and the bloom's root running a little
+  past and back as authored. The path runs to the clip's end (up to 0.1 s past the move), and the next move ends it.
+- **Which way:** along the facing (the root's forward, where the clips strike); the roots' sideways drift (under 7 cm) is left out. The
+  fourth cut's root goes 17 cm out and comes back (6 cm net), so it keeps its stride; the fan barely moves; the pounce keeps its 5 m dash
+  (its clip's own slice travels 0.7 m: the dash is the move); the shadow step keeps its blink, which lands when the clip's own 3.4 m dash
+  does (0.12-0.17 s against the rules' 0.14 s). The paired moves (the takedown, the frontal critical) are unchanged.
+- **The hit:** the pilot is partway along the lunge at the hit (32, 50, 64 and 52% for the cuts that travel), so each reach is shortened
+  by that much (`CutReach` 1.9, 1.57, 2.06, 2.2, 2.93 m; were 2.1, 2.1, 2.2, 2.2, 2.6) and gets back whatever of it was not travelled
+  (`NativeFangs.CutReachAt`: in the air, at a wall, at a foe): every cut lands as far from where it was cast as before.
+- **Safety:** on the blade classes' path (`BladePath`: a wall stops it short, the host moves the pilot, guests see it in the
+  snapshots), only from the ground (a cut in the air does not hover along it), stopped short of a drop (no floor within a metre under the
+  feet, `FangsFloorTo`) and at arm's length (0.9 m) from a foe in the way, never through it (`FangsTravelFoe`).
+- **On the model:** the bake also takes out the Dual clips' own turn (the body's yaw follows its orientation frame by frame; a fit of the
+  drawn frames to the authored ones turns through up to 200 degrees in a cut), so a pivoting foot still turns on the floor; restoring the
+  clips' turn on the drawn body would be a presentation follow-up.
+
 ## The intro: Silent Kill (`fangs-silent-kill`)
 
 7 s, the name at 5.2 s, on the pack's clips (Core `NativeBladeIntros`).
 
 1. Darkness and a low dark mist (lit smoke, the venom light under it). Two points of venom-green light, then the pilot forms out of
    gathering smoke, green sparks drawn in with it, crouched (the stealth sneak idle).
-2. A shadow step: gone in a burst of smoke, a streak of green along its way, back a stride ahead in another burst.
-3. The twin daggers in a flurry (the assassin's fifth combo): green trails from both blades, venom flung off the fastest of them.
-4. The two-handed strike into the floor (4.25 s): a hot flash at the blades, a shockwave of green spikes over the floor, venom splashing
+2. A shadow step: gone in a burst of smoke, a streak of green along its way, back a stride ahead in another burst (0.6 m short of the
+   hero's spot: the flurry and the strike carry it the rest).
+3. The twin daggers in a flurry (the assassin's fifth combo, its somersaulting leap carrying the pilot 1.78 m off the floor, as its
+   root-motion take does; the camera's look follows the chest and its eye rises half the leap): green trails from both blades, venom flung off the fastest of them.
+4. The two-handed strike into the floor (4.25 s; its lunge 1.26 m on and its step back carry the pilot onto the hero's spot, the strike's
+   effects where it lands): a hot flash at the blades, a shockwave of green spikes over the floor, venom splashing
    out, a billow of smoke.
 5. The hero: the daggers held low, venom beads swelling and dripping from both tips, smoke curling round the legs.
 
