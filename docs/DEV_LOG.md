@@ -1,3 +1,90 @@
+## 2026-11-13 — Claude: hand-off to Astra (owner: "To save on usage, please hand me any things your able to for astra")
+
+Base: shared `claude/sleepy-ritchie-g8ruhv`. Each item is yours to pick up; Claude is not working on any of them.
+
+1. **Private add-on route for licensed pack code** (owner: "Yes I am good with doing a private add-on"; the repo stays public).
+   - Goal: packs that need their own scripts and shaders (Volumetric Light Beam, UniStorm or Weather Maker, Bakery) ship only in the private Drive zip's LocalAssets, never in git.
+   - Public code: small generic hooks an add-on registers into at start (`[RuntimeInitializeOnLoadMethod]`), for example an optional lighting, sky or weather provider, and map built or torn down events carrying the map id, its look and the built roots. With no add-on present, everything behaves as today; CoreTests and the public build stay green.
+   - Tooling: `tools/pack_visual_body.py` and `tools/install_local_assets.py` carry an add-on's `.cs`, `.asmdef`, `.shader`, `.cginc`, `.hlsl`, `.compute` and `.meta` files, by an explicit allow-list (no pack demo scripts), with size and meta checks.
+   - Prove it end to end with a stand-in add-on in a test zip before the real Drive zip. Document it in `docs/PRIVATE-ADDONS.md`.
+   - Per pack, given maps built at run time from JSON:
+     - VLB and the weather packs run live.
+     - Bakery needs an Editor bake per map into a per-map light bank, plus lightmap sampling in our world shaders.
+   - Background: `docs/LIGHTING-ADVANCED.md`. Ownership of the four packs is unconfirmed; ask the owner before any download.
+2. **Site grant keys and icons for the DEV classes** `dev-greatsword`, `dev-katana` and `fangs` (still open from 2026-11-12; Claude cannot publish the Site).
+3. **Rules review of changes made at the owner's word:**
+   - The Katana's and DEV Katana's timed parry now gives the long riposte stun (`e0317fba`, DEV_LOG 2026-11-12).
+   - `claude/fangs-travel` (in progress) will make the Fangs' cuts travel with their clips and change their lunge numbers; it will log before and after values.
+   - Optional, owner's call: the frontal critical has no push-back. Its victim clip's backward drift is now stripped, so a push-back would need a rules throw like the counter's.
+4. **Melee bisect sealing hole:** on a DEV Katana diagonal plane at 52 degrees, `--melee-bisect` left a 13-ray gap in the Standard body's cap ("half 0 is sealed" failed). 50 degrees seals. Core `NativeMeleeBisect` likely has a robustness gap at some plane angles; sweep the planes.
+5. **Network checks (host plus guest) of today's releases.** None of these has been tested over the network:
+   - every class playing the paired victim clips (`af539862`);
+   - the parry daze;
+   - the DEV Katana hit 4's blends and trail (`5d84ea13`);
+   - the DEV Katana kick as a blunt hit (`089bff85`);
+   - the Fangs' Behind_01 takedown pair (`d15fdfb1`).
+6. **Editor lock tooling.** Agents share one Editor through `F:/Chip Arena Development/.editor-lock` (an `mkdir` lock). They waited hours, and stopped agents left orphaned waiter scripts polling it. A small local tool would help: a holder file inside the lock (who, which task, since when), a first-in-first-out queue, a priority file, stale-lock detection, and waiters that exit when their parent stops.
+7. **Stage bank rebuilds:** a plain rebuild of the Rooftop bank with today's stage kit no longer matched the released one (named chunks were treated as far scenery). `claude/menu-zfight` added `StageBank.far_layers` (off for the rooftop). Check that the other stages' banks still rebuild byte for byte.
+
+## 2026-11-13 — Claude: the DEV Katana's and DEV Greatsword's entrances as cinematics (presentation only)
+
+- Owner, 2026-11-13: "Lets also add more camera work and effects to DEV Katana and DEV Greatsword", then "For previous mention, I mean
+  for there intros": the two entrances only. No in-match move, camera or effect is touched. Branch `claude/dev-blade-fx` (from shared
+  `41bfb1d7`). Pushed, **not merged, not released**.
+- **What the match sees is what it saw:** each entrance's length (Heavy Turn 4.8 s, Edge Flourish 5.3 s), its name card (3.2 s, 3.7 s)
+  and the pack's `Intro` clip from the same start at its own pace. Nothing on a seat, an actor or the wire. No rule, timing, hitbox,
+  damage, cooldown or networking change; no clip, bank or pack asset added (the Drive zip is as it was).
+- **DEV Greatsword, Heavy Turn** (Core `NativeDevGreatswordIntro`): dark, an ember light from above on its turned back, embers rising.
+  - Camera (six shots, were five): low in front looking up its back as the great sword is heaved overhead; on the floor at its right
+    as it comes round and the blade bites the floor a stride from the lens; whipped round low and close for the wind-up; the second
+    swing (the beat, 1.67 s) slowed, the same eye thrown back and wide by it; rising round to the front as the blade comes to rest,
+    carried without a cut into the name card's frame.
+  - Effects on the beats: a star on the tip at the top of the heave (0.6 s); the blade's sweep as a gold-white edge over one broad
+    ember ribbon, embers shed off it at speed; at the bite (1.1 s) sparks along the blade's way, a score left hot in the floor and
+    cooling to an ember line for three seconds, grit thrown (lit chips, one bounce) and dust off it; embers drawn in to the blade
+    through the wind-up; on the beat a flash on the blade, a wave of light streaks over the floor, sparks thrown wide, a little low
+    dust, the stage's lights and pylons waking; a low puff and the light running up the edge as the blade comes to rest.
+- **DEV Katana, Edge Flourish** (Core `NativeDevKatanaIntro`): cold and clean, a steel-blue light from behind, no smoke.
+  - Camera (six shots, were six): low in front as the hand goes over the shoulder for the hilt; close at the shoulder as the blade is
+    drawn up and out and turned in the light; high over its right shoulder for the cut down in front and the level sweep round that
+    side; whipped down in front of it for the flourish (its wheel stands in the plane that faces the lens) and pushed in on through the
+    last cut (the beat, 2.83 s), slowed, the frame canting a little; out to the hero frame, carried without a cut into the name card's.
+  - Effects on the beats: a glint on the hilt as the hand closes on it; the edge's sweep as a razor's white line in a breath of crimson,
+    steel dust off it; the light running up the raised edge and a star on its tip; a pinch of sparks and a hairline scratch where
+    the tip flicks the floor in the flourish; on the last cut a hairline of light carried on across the stage along the cut's own
+    stroke, held a moment and gone; a last star on the tip in the stance.
+- **How the effects find the blade:** the runtime hands each entrance its blade where the model holds it every frame (as it does the
+  Katana's and Fangs' entrances); the DEV classes' edge is their base class's (`NativeDevPackIntro.Line`; `BladeLine` in Runtime
+  `BladeIntroHeld`, one call). The sweep is drawn on a curve through those frames, over a set length behind the tip and only at
+  speed, so a blade at rest carries nothing; the marks on the floor are where the tip really met it. The camera's shots stand on the
+  stage's own axes (the keyed stance under the clip is not where the model is), placed from the blades' paths as the model swings them
+  (logged in the Editor). A checker that hands no blade in sees the entrances without the sweep, the marks and the last cut's line.
+- **Camera shake:** the entrances' camera shakes (the bite, the beat, the blade coming to rest; the katana's last cut) are small
+  (0.035 m at most; the old single shake reached 0.043 m), short, wholly still by the name card, and **off with the player's Camera shake setting**
+  (Settings, Effects): `NativeDevPackIntro.Shake`, set from `prefs.cameraShake` on every entrance frame (a match's entrance and the
+  Locker's preview). A camera offset on this client only; with it off the clock, the pose and every effect are the same. Reduced
+  effects thins the effects as it does every entrance's.
+- **Affected systems:** Core `NativeDevIntros.cs`; Runtime `NativeBladePresentation.cs` (the blade line, one call), `NativeIntros.cs`
+  (the shake setting, one line), `ConversionGame.cs` and `NativePreview.cs` (the setting passed on an entrance frame); Tests
+  `VisualRigChecks.cs`; docs BOZO-INTEGRATION. Animation impact on hit timing, hitboxes, damage, cooldowns, movement, networking: none.
+- **Checks:** full CoreTests green on the code as pushed (1,021 groups, exit 0; LF worktree, the Windows path patch applied for the
+  run and reverted), with new checks in `--visual-rig` (130,210 checks): phase, card, clip length and beat unchanged; the clock slowed
+  only from just before the great cut and the age again by the card; six shots or more on the stage's axes; the camera off the floor,
+  the hero frame carried into the card's, still after it settles; the shakes small, over by the card, the eye alone, zero with the
+  setting off and wired from `prefs.cameraShake` before the camera is placed; the blade lines; the effects following a blade handed
+  in, at most 600 a frame, thinned by Reduced effects; a replay starting over; a broken blade refused. `pins.py`: 0 broken;
+  `git diff --check` against shared clean. In the Editor (the shared one, under the lock, checkout and banks put back as found):
+  both entrances filmed at 60 frames a second before (shared `41bfb1d7`) and after (`60aa9d9a`), on the entrance's own camera, and
+  the build gate (`PrototypeBuild.Validate`) ok on `60aa9d9a`. Not run: a built client; the Classic body; the Locker's preview.
+- **Filming an entrance:** the game draws an entrance on a clock that advances on the unscaled frame time, so a capture's stalled
+  frames made the drawn age run back and forth (trails restarted every other frame; the first "before" sheets show it). The local
+  Editor tool has a play option `introsteady=1` for it now (git-ignored, compile-checked on a copy; shared note
+  `entrance-captures-introsteady.md`). The Katana's and Fangs' entrances are filmed whole with it too.
+- **Risks / next:** seen in the Editor's captures only (60 frames a second, the entrance's own camera), not in a built client or by
+  the owner; the Classic body's keyed stance draws the same camera and effects round a different pose. **Next:** the owner looks;
+  then merge and release with the next test update.
+- **Released:** shared `8c7d8853` (the builder at `8c7d8853`), test channel revision `639302009003468048` (build `981a6560`); the suite at `5c05b0e9` (1,022 groups, exit 0), the Unity compile. No bank or Drive zip change.
+
 ## 2026-11-13 — Claude: the menu's z-fighting behind the pilot: the roof's laps lay in the puddles' plane (presentation only)
 
 - Owner (2026-11-13): "Small amount of Z-Fighting on the menu behind the player". Branch `claude/menu-zfight` from shared `41bfb1d7`:
@@ -37,6 +124,7 @@
   Not run: the Python suite (no test reads the stage tools), a Windows build, the Low and reduced-effects tiers and 21:9 in the Editor.
 - **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement or networking change.
 - **Next:** the integrator swaps the rebuilt bank into the Drive zip with the merge; the owner looks at the menu.
+- **Released:** shared `5fa2343e` (the builder at `5fa2343e`), test channel revision `639301988090420547` (build `d89df137`); the suite at `9a64c3c2` (1,022 groups, exit 0), the Unity compile; the Drive zip repacked with the rebuilt Rooftop bank (19,756,456 bytes, sha256 `7f875dcd`; only it and `visual-body.json` changed), the old zip kept as `LocalAssets-2026-11-13-before-menu-zfight.zip`. The Editor checkout holds the new Rooftop bank.
 
 ## 2026-11-13 — Claude: the DEV Katana's kick (its hit 3) lands as a blow, not a cut (owner request)
 
@@ -55,6 +143,7 @@
   - the full suite at `3fcebb5f` (1,022 groups, exit 0) and at the release commit (relgen); the Editor build gate on `3fcebb5f` (`PrototypeBuild.Validate` ok, Native blades 72); the Unity compile.
 - **Filmed** (the Editor, a probe build: local only, only the named cut kills): `kk_b_kill` and `kk_a_kill` (a kill on hit 3, live and in the final killcam: before the body cut in two and "Katana · Cut in two"; after the body whole with an arm crushed and "Katana · Blunt force"), `kk_b_hit` and `kk_a_hit` (a real non-lethal hit 3: before the slash with a cut's blood spray; after the impact burst with the bruise's chips and no spray, the kick's cue logged), `kk_a_k3` (the plain Katana's third cut after: still "Cut in two"); the authority's wound record of the kick before cut/cut, after bruise/blunt (local, in Claude's scratchpad `dcap/`).
 - **Not seen / not done:** played by a person; the kick's sound heard (the probe logged the cue; no audio capture).
+- **Released:** shared `089bff85` (the builder at `089bff85`), test channel revision `639301965114352752` (build `1e351397`); the suite at `18fd257f` (1,022 groups, exit 0), the Unity compile, the Editor build gate on `3fcebb5f`.
 
 ## 2026-11-13 — Claude: the floating blood near a DEV Katana pilot (on hold at the owner's word; nothing changed)
 
@@ -172,6 +261,8 @@
 - **Risks:** a hung long weapon (the greatsword) tips out to its hand's side and can cross a wall beside the foe; the drawn-death path
   re-poses the dead pilot's game rig (only when its last frame was a victim clip), which every corpse kind then reads (whole, sliced,
   split, smashed); the counter's foe now leaves the pack's pairing before the blow (dazed rather than standing through the wind-up).
+- **Released:** shared `af539862` (the builder at `af539862`), test channel revision `639301944433363899` (build `2a93b19b`); the suite at `e234321a` (1,021 groups, exit 0), the Unity compile. No bank or Drive zip change.
+
 ## 2026-11-13 — Claude: the owner's second animation picks: the Greatsword, the DEV Greatsword and the Fangs (presentation only)
 
 - Branch `claude/more-move-picks` (from shared `e0317fba`, the Katana parry daze; shared `5d84ea13`, the DEV Katana's hit 4, merged in):

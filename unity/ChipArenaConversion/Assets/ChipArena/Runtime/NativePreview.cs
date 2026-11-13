@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
             // The preview's own arena is the one its pilot belongs to, as the match intro's is (ConversionGame.cs): its seat dresses the body in
             // the pilot's outfit and its pilot drives the glows; without it the body fell back to bare clothes glowing in the accent (owner
             // 2026-11-09: "players appear their accent color in intro previews").
-            presentation.WeaponLoadout=previewArena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(previewArena,previewArena.Local,previewStyle,drawn,cameraView,PreviewClock+drawn);return true;
+            presentation.WeaponLoadout=previewArena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.CameraShake=prefs.cameraShake;presentation.RenderIntro(previewArena,previewArena.Local,previewStyle,drawn,cameraView,PreviewClock+drawn);return true;
         }
         // intro-preview (main.ts screen==='intro-preview'): exactly the match-intro overlay for the local pilot (01 — 01),
         // with .btn.intro-close "Back to customization" at the top right (right 3vw, top 145 px); Escape also closes it.

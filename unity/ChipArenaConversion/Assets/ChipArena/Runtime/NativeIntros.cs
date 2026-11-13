@@ -81,6 +81,8 @@ namespace ChipArena.UnityConversion
             var sheldon=script as NativeSheldonIntroScript;if(sheldon!=null)actor=SheldonIntroBegin(sheldon,actor,pilot,t);
             script.Pose(t,entrancePose,out var root,out var rotation);
             if(NativePoseWriter.Write(introRig.Bones,entrancePose,"the intro rig")){introRig.Root.transform.SetPositionAndRotation(CapturedAnimation.Vec(CapturedRig.Mirror(root)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)));introRig.Root.transform.localScale=Vector3.one;}
+            // The DEV animation classes' entrances shake their camera only with the player's Camera shake setting on (Core NativeDevPackIntro.Shake).
+            if(script is NativeDevPackIntro shaken)shaken.Shake=CameraShake;
             script.Camera(age,out var view);var eye=CapturedAnimation.Vec(CapturedRig.Mirror(view.Eye));var forward=CapturedAnimation.Vec(CapturedRig.Mirror(view.Look-view.Eye));
             if(forward.sqrMagnitude>1e-8f)camera.transform.SetPositionAndRotation(eye,Quaternion.LookRotation(forward,CapturedAnimation.Vec(CapturedRig.Mirror(view.Up))));camera.fieldOfView=view.Fov;
             EntranceBlasts(script,style+":"+pilot.Seat.id+":"+Mathf.RoundToInt(quality*10),t,quality);
