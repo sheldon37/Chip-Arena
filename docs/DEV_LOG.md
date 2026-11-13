@@ -36,6 +36,7 @@
     the Editor build gate (`PrototypeBuild.Validate`). The lumps' and shards' shapes and the tissue's look were checked in offline
     ports of their code only. Not played by a person; the Low tier and gore off not seen on screen.
 - **Next:** the remaining captures and the build gate when the Editor is free; then the owner looks.
+- **Released:** shared `7a20b3c0` (the builder at `7a20b3c0`), test channel revision `639302090409307676` (build `3025f858`); the suite at `dfbd9f0b` (1,023 groups, exit 0), the Unity compile, and the builder's own Unity build and checks. The agent stopped on the Fable usage limit before its build gate and last close shots; the integrator released it from its pushed branch after viewing its before/after close shots of a Katana cut (voxel cells before, a smooth cross-section after). The Hot Dog's cut was not caught square on. No bank or Drive zip change.
 
 ## 2026-11-13 — Claude: a fall into a Ward Zero vent ragdolls the model down the shaft, never the voxel body (owner report; presentation only)
 
@@ -80,6 +81,7 @@
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; the kill, its credit and the splat's
   spot and time are the rules'.
 - **Next:** the owner plays a Ward Zero vent fall; merge and release.
+- **Released:** shared `897e0d0d` (the builder at `897e0d0d`), test channel revision `639302070018175420` (build `943f34a3`); the suite at `c82c1d09` (1,023 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-13 — Claude: hand-off to Astra (owner: "To save on usage, please hand me any things your able to for astra")
 
