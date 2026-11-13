@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
                 foreach(var p in Pilots)
                 {
                     p.Seat.chips.Clear();BladeClear(p);p.Death=null;p.Seat.connected=p.Seat.alive=true;p.Seat.bot=false;p.Seat.spec=p==a?spec:"pistol";p.Seat.access=p==a&&spec==NativeFangs.Spec?grant:NativeAccess.Guest;p.Weapon=Content.Weapon(p.Seat.spec);
-                    p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,new Dictionary<string,int>());p.Hp=(float)p.Stats["hp"];p.Mana=p.Stamina=100;p.Ammo=6;p.Ready=p.BlockEnd=p.RollEnd=p.ReloadEnd=p.AttackEnd=p.StunEnd=p.ShieldUntil=p.SlowEnd=0;p.SlowFactor=1;p.Down=null;p.Dots.Clear();
+                    p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,new Dictionary<string,int>());p.Hp=(float)p.Stats["hp"];p.Mana=p.Stamina=100;p.Ammo=6;p.Ready=p.BlockEnd=p.RollEnd=p.ReloadEnd=p.AttackEnd=p.StunEnd=p.ShieldUntil=p.SlowEnd=0;p.RiposteAt=-100;p.RiposteBy=-1;p.RiposteUntil=0;p.SlowFactor=1;p.Down=null;p.Dots.Clear();
                     p.Kernel=null;p.Technique=null;p.Swing=null;p.Special=null;p.AbilityCast=null;p.DevGod=false;p.Body.isKinematic=false;p.Body.useGravity=true;p.Collider.enabled=true;p.Yaw=0;
                     p.Body.position=o+new Vector3(p==a?0:p==b?0:6,0,p==a?0:p==b?2.2f:12);p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;p.Input=new InputFrame();p.Grounded=true;p.StaggerImmune=0;
                     // (The Glaive's validation, run before this one in the same arena, leaves its pilot sprinting: a cut would be the rush.)
@@ -70,11 +70,18 @@ namespace ChipArena.UnityConversion
                 Damage(a,b,20,Vector3.back,0,false,melee:true,weaponHit:true);Check(a.Blade.CounterUntil<=Time&&a.BladeCounterFoe==null&&b.StunEnd<=Time,"a blow held on the guard opens no counter and reels no one");
                 a.Input=new InputFrame();StepGuard(a);Check(!a.Guarding&&TryBlock(a),"the guard down, the parry");
                 Damage(a,b,20,Vector3.back,0,false,melee:true,weaponHit:true);Check(a.Blade.CounterUntil>Time&&a.BladeCounterFoe==b&&b.StunEnd>Time,"a blow on the parry opens the counter on its striker and reels it");
+                // The standard parry's daze (owner 2026-11-12): the riposte's stun (BlockPunish, about a second; BlockStun was a third of one).
+                Check(RiposteOpen(a)&&b.RiposteBy==a.Seat.id&&b.StunEnd-Time>=1f&&b.StunEnd-Time>NativeMeleeRules.BlockStun(20,0)*2,"the parry dazes its striker as a standard parry does ("+(b.StunEnd-Time).ToString("0.00")+" s, the riposte's)");
                 // (The click comes once the parry's window has shut: no move starts inside it, KatanaInput.)
                 Step(Mathf.Max(0f,a.BlockEnd-Time)+Frame);Check(Time>=a.BlockEnd&&a.Blade.CounterUntil>Time,"the parry's window shut, the counter still open");
                 hp=b.Hp;Press(shoot:true);
                 Check(a.Blade.CastKind==NativeKatana.Counter&&b.BladeHeldBy==a&&PinBladeVictim(b),"the cut is the counter, the foe held");Step(NativeKatana.CounterHold+.05f);Check(b.Hp<hp&&b.BladeHeldBy==null,"it strikes and lets go");
                 {var gap=b.Body.position-a.Body.position;gap.y=0;Check(gap.magnitude>NativeKatana.CounterStand+.8f,"the foe thrown back as its clip carries it ("+gap.magnitude.ToString("0.00")+" m)");}
+                // The riposte inside the window: once the parry has landed, the click is the counter at once and the window ends; the counter's
+                // blow ends the daze (SettleRiposte), so a parry never chains into a lock.
+                Setup(NativeKatana.Spec);Check(TryBlock(a),"the parry again");Damage(a,b,20,Vector3.back,0,false,melee:true,weaponHit:true);Check(RiposteOpen(a)&&Time<a.BlockEnd,"the riposte open inside the window");
+                hp=b.Hp;Press(shoot:true);Check(a.Blade.CastKind==NativeKatana.Counter&&b.BladeHeldBy==a&&a.BlockEnd<=Time,"inside the window the click is the counter, the window ended");
+                Step(NativeKatana.CounterHold+.05f);Check(b.Hp<hp&&b.BladeHeldBy==null&&b.StunEnd<=Time+NativeKatana.CounterHold&&b.RiposteBy<0,"its blow lands and ends the daze");
                 // The record crosses the codec.
                 Setup(NativeKatana.Spec);Press(q:true);Step(NativeKatana.IaiDraw+.05f);
                 {var cf=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=NetworkFrame()})).frame;Check(cf.Valid(Content),"the record crosses the codec");var ka=cf.snapshot.Actors.First(x=>x.Id==a.Seat.id).Blade;Check(ka!=null&&ka.CastKind==NativeKatana.Iai&&ka.Valid(),"the iai in the frame");}
