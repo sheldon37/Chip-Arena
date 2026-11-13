@@ -187,7 +187,7 @@ namespace ChipArena.UnityConversion
         {
             a.Blade=BladeSpec(p)?p.Blade.ViewCopy():null;if(p.Seat.spec==NativeKatana.Spec)a.VisualSet=0;else if(p.Seat.spec==NativeFangs.Spec)a.VisualSet=1;
             var h=p.BladeHeldBy;var hk=h?.Blade;bool held=h!=null&&hk!=null&&h.BladePairVictim==p&&p.Hp>0;
-            a.PairBy=held?h.Seat.id:0;a.PairClip=held?NativeBladeMotion.VictimClip(hk.PairClip):null;a.PairAt=held?hk.PairAt:-100;a.PairUntil=held?hk.PairUntil:-100;
+            a.PairBy=held?h.Seat.id:0;a.PairClip=held?NativeDevMotions.VictimClip(hk.PairClip,h.Seat.motion):null;a.PairAt=held?hk.PairAt:-100;a.PairUntil=held?hk.PairUntil:-100;
         }
 
         // ---- the paired moves (the Katana's counter, the Fangs' takedowns) ----

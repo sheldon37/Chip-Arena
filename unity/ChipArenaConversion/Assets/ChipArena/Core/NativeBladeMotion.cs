@@ -134,7 +134,7 @@ namespace ChipArena.UnityConversion
                         // The flurry's span stretched across the cuts (Thousand Petals: more of them).
                         float span=until-rel-NativeKatana.StormRecover;return On(dev?NativeDevKatanaMotion.Storm:KatanaStorm,at,rel,rel+span+NativeKatana.StormRecover,time,clips,out clip,out t);
                     }
-                    case NativeKatana.Counter:return On(KatanaCritical,at,k.PairHit>-50?k.PairHit:rel,until,time,clips,out clip,out t);
+                    case NativeKatana.Counter:return On(dev?NativeDevKatanaMotion.Counter:KatanaCritical,at,k.PairHit>-50?k.PairHit:rel,until,time,clips,out clip,out t);
                 }
                 return false;
             }
