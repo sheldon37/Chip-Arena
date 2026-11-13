@@ -225,6 +225,26 @@ namespace ChipArena.UnityConversion
             int verts=sectors.Sum(m=>m.Vertices),tris=sectors.Sum(m=>m.Indices.Length/3);
             Check(rigMax<NativeSkyframeRig.Capacity-40&&fxMax<NativeSkyframeFx.Capacity&&fxLow<fxMax,"the frame's parts and quads fit and the low tier draws fewer ("+rigMax+", "+fxMax+", "+fxLow+")");
             Console.WriteLine("   skyframe: kit "+kit.Count+" parts ("+overhead+" overhead); rig up to "+rigMax+" parts a frame; effects up to "+fxMax+" quads (low tier "+fxLow+"); backdrop "+verts+" vertices, "+tris+" triangles in "+sectors.Length+" meshes; rig + effects "+ms.ToString("0.00")+" ms a frame (CoreTests, Release)");
+            // the haze banks and the sun's pools (owner 2026-11-12: "Skyframe still looks glitchy in background"): they face the eye's
+            // place, so looking round moves none of them; they draw in the depth-aware bank mode; a bank is faint at both ends of
+            // its run and near the tower; it never jumps
+            {
+                float[] Banks(NativeSkyframeFx f){var l=new List<float>();for(int i=0;i<f.Quads.Count;i++)if(f.Quads.Modes[i]==NativeSkyframeFx.BankMode){for(int k=0;k<12;k++)l.Add(f.Quads.Corners[i*12+k]);l.Add(f.Quads.Colors[i*4+3]);}return l.ToArray();}
+                fx.Build(map.hazards,1,NativePhase.Fight,fight,fight+20,fight+20,-10,2,-4,1,0,0,0,1,0,1,false);var ahead=Banks(fx);
+                fx.Build(map.hazards,1,NativePhase.Fight,fight,fight+20,fight+20,-10,2,-4,.6,0,-.8,.16,.98,.12,1,false);var turned=Banks(fx);
+                Check(ahead.Length>=13*60&&ahead.SequenceEqual(turned),"the haze banks stand where they stood when the camera turns ("+ahead.Length/13+" banks)");
+                fx.Build(map.hazards,1,NativePhase.Fight,fight,fight+20,fight+20,-10,2,-4,1,0,0,0,1,0,1,true);Check(Banks(fx).Length>=13*20,"the low tier keeps its banks");
+                double worst=0;float[] prev=null;
+                for(double t=fight+20;t<fight+50;t+=1.0/30)
+                {
+                    fx.Build(map.hazards,1,NativePhase.Fight,fight,t,t,-10,2,-4,1,0,0,0,1,0,1,false);var cur=Banks(fx);
+                    // a bank's strength changes little in a frame: the quads keep their order while none comes or goes at more than a faint strength
+                    if(prev!=null&&prev.Length==cur.Length)for(int i=12;i<cur.Length;i+=13)worst=Math.Max(worst,Math.Abs(cur[i]-prev[i]));
+                    else if(prev!=null){/* a bank came or went: it must have been faint */double faint=1;for(int i=12;i<cur.Length;i+=13)faint=Math.Min(faint,cur[i]);for(int i=12;i<prev.Length;i+=13)faint=Math.Min(faint,prev[i]);worst=Math.Max(worst,faint);}
+                    prev=cur;
+                }
+                Check(worst<.02,"no bank comes, goes or changes by more than a fiftieth of full strength in a frame ("+worst.ToString("0.000")+")");
+            }
             var other=new NativeSkyframeFx();other.Prepare(new ContentMap{id="polar"});other.Build(map.hazards,0,NativePhase.Fight,0,30,30,0,0,0,1,0,0,0,1,0,1,false);Check(other.Quads.Count==0,"another map draws no Skyframe effects");
             Check(NativeSkyframeScenery.Build(new ContentMap{id="polar"})==null&&NativeSkyframeKit.Build(new ContentMap{id="polar"},look)==null,"another map builds no Skyframe scenery or kit");
         }
@@ -243,6 +263,9 @@ namespace ChipArena.UnityConversion
         private static void Wiring(string root)
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/"+f));
+            var bankShader=R("Resources/NativeSirenFx.shader");var bankDraw=R("Runtime/NativeSkyframePresentation.cs");
+            Check(NativeSkyframeFx.BankMode==5&&bankShader.Contains("if(mode>4.5)")&&bankShader.Contains("a*=smoothstep(0,1,saturate((scene-i.screen.z)/max(i.p.x,.01)));")&&bankShader.Contains("if(_ChipArenaFxSoft>.5)")
+            &&bankDraw.Contains("mode==NativeSkyframeFx.BankMode?bankFade:Vector4.zero")&&bankDraw.Contains("Shader.SetGlobalFloat(FxSoftId,!low&&(camera.depthTextureMode&DepthTextureMode.Depth)!=0?1:0);"),"the bank mode fades into the scene behind it where the camera has a depth texture");
             Check(R("Runtime/NativeSourcePresentation.cs").Contains("SkyframeScenery(arena);")&&R("Runtime/NativeStagePrewarm.cs").Contains("if(PrewarmSkyframe(arena))built++;"),"SourceWorld draws it and PrewarmStage builds it");
             Check(R("Runtime/NativeAudio.cs").Contains("SkyframeCues(arena,menu);"),"the cues play");
             var guids=new HashSet<string>();
