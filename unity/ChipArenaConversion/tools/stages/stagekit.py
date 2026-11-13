@@ -785,6 +785,9 @@ class StageBank:
         self.glowm = self.bank.material('stage-glow', emission_color=(1, 1, 1))
         self.stats = {}
         self.rests = {}
+        # False: the named static chunks are not far scenery (the menu's rooftop names its chunks and draws them through its
+        # own shader, which reads no layer), so `layer` gives them no far layers
+        self.far_layers = True
 
     def at(self, block_id, pos, quat=(0.0, 0.0, 0.0, 1.0)):
         """Where a block's model stands at the round's start (its map block's centre and rotation), for a stage whose blocks
@@ -842,6 +845,8 @@ class StageBank:
                     tiers.setdefault(name.rsplit('/', 1)[-1], []).append((mi, W.reshape(-1).tolist()))
             else:
                 scenes.append(list(parts))
+        if not self.far_layers:
+            far = {}
         scenes = [(p, LAYER_REACH) for p in list(tiers.values()) + scenes] + [(p, FAR_REACH) for p in far.values()]
         layers = {}  # mesh index -> the layer of each of its triangles (the most any scene gives it)
         for parts, reach in scenes:
