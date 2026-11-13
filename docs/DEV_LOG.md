@@ -49,6 +49,7 @@
   - the full suite at the release commit (relgen); the Unity compile.
 - **Filmed** (the Editor, a Greatsword bot's blow on the parry): the before captures `pd_s` (a Sword's parry), `pd_k` (the Katana's), `pd_dk` (the DEV Katana's); the after `pe_s`, `pe_k`, `pe_dk`, and `pe_kc` (the counter clicked inside the window): clicked 0.15 s after the parry landed, the counter starts at once (the pilot closes in, the blow's flash, the foe thrown back) (local, in Claude's scratchpad `dcap/`).
 - **Not seen / not done:** played by a person; a parry by a bot (no riposte, as before).
+- **Released:** shared `e0317fba` (the builder at `e0317fba`), test channel revision `639301443533796833` (build `ef821a53`); the suite at `29f20c26` (1,021 groups, exit 0), the Unity compile, the Editor build gate on `9c48bb1d`.
 
 ## 2026-11-12 — Claude: the killcam names a blade kill by its cut; the DEV Greatsword cuts along its own swings (owner request)
 
