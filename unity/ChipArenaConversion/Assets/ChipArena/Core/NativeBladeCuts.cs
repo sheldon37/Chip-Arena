@@ -125,7 +125,23 @@ namespace ChipArena.UnityConversion
             var cuts=NativeBladeMotion.KatanaCuts;
             Add(cuts[0],S(6,1.16f));Add(cuts[1],S(-143,.59f));Add(cuts[2],S(28,1.05f));Add(cuts[3],S(-152,.84f));
             Add(NativeBladeMotion.KatanaStorm,S(-159,1.01f));Add(NativeBladeMotion.KatanaCritical,S(32,.94f));
+            // The DEV Greatsword's picks (the owner's, 2026-11-12), surveyed by the DEV classes agent at 200 fps in the clip's root frame:
+            // the first cut falls toward the wielder's left (44-48 degrees) across the front at 1.15-1.18 m; the second rises steeply toward
+            // its right (57-67) at 1.2-1.5 m; the third falls toward its right (43-46 at the crossing) at 1.35-1.37 m; the sprint attack is a
+            // steep forward chop falling toward its right (about 46) at 1.43-1.59 m. The fourth (an overhead that only crosses above the
+            // head, then falls down the wielder's left side) keeps the greatsword's captured cut.
+            const string Gs="M_Big_Sword@";
+            Add(Gs+"Attack_7Combo_1_Inplace",S(46,1.17f));Add(Gs+"Attack_7Combo_2_Inplace",S(-118,1.3f));Add(Gs+"Attack_7Combo_3_Inplace",S(135.5f,1.36f));Add(Gs+"Dash_Attack_ver_B",S(134,1.5f));
             return d;
+        }
+        /// <summary>A clip's slash, measured or written (false: its move's, or for a standard weapon its captured cut).</summary>
+        public static bool TrySlash(string clip,out Slash slash){slash=default;return clip!=null&&clips.TryGetValue(clip,out slash);}
+        /// <summary>The clip a DEV Greatsword's standard swing plays (its picks, NativeVisualMotion's choice for its set: the jump attack, the
+        /// sprint attack or the combo's cut), null for any other pilot, or for a Q/E kit or E special hit (their own cuts).</summary>
+        public static string DevSwingClip(Actor a,bool special,bool kit)
+        {
+            if(a==null||a.Motion!=NativeDevMotions.Greatsword||special||kit)return null;var cuts=NativeDevGreatswordMotion.Cuts;
+            return a.AirAttack?NativeDevGreatswordMotion.JumpCut:a.SprintAttack?NativeDevGreatswordMotion.Cleave:cuts.Length>0?cuts[Math.Max(0,a.Combo)%cuts.Length]:null;
         }
         /// <summary>Whether this clip's cut was measured or written for it (the rest take their move's).</summary>
         public static bool Known(string clip)=>clip!=null&&clips.ContainsKey(clip);

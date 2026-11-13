@@ -361,6 +361,8 @@ namespace ChipArena.UnityConversion
         /// (<see cref="killBlows"/>): the killcam's reset clears the ledger, and the body rebuilt after it, and the replay's,
         /// must be cut the same way. A blade class's kill (Core NativeBladeCuts) is cut by its killer's blade blow at the death's tick
         /// even when the move was not a melee hit (the iai's split, the Crescent Wave, the Glaive's thrown ring, the Fangs' knives).</summary>
+        /// <summary>The cut a death shows (null: none), for the killcam's cause line (ConversionGame.KillCause).</summary>
+        public SlicePlan KillSlice(NativeArena arena,NativeDeath death)=>MeleeSlice(arena,death);
         private SlicePlan MeleeSlice(NativeArena arena,NativeDeath death)
         {
             if(death==null||death.kept||(death.model??"pilot")!="pilot"||death.style=="voxel-burst"||death.style=="vent-fall"||death.style=="vent-splat"||death.damageKind=="collapse")return null;

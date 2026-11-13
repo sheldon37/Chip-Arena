@@ -170,6 +170,13 @@ namespace ChipArena.UnityConversion
                 // A level cut tilts a little the way it travels, so it reads as a swing rather than a guillotine.
                 n=Vector3.Normalize(n+t*.12f);
             }
+            else if(NativeBladeCuts.TrySlash(blow.Clip,out var devSlash))
+            {
+                // A DEV class's own swing (the DEV Greatsword's picks, surveyed: NativeBladeCuts) slashes across the front as the blade
+                // classes' do, through the trunk; its swings the survey does not cover keep the captured cut.
+                Vector3 side=Vector3.Cross(Vector3.UnitY,toVictim);var across=devSlash.Across;t=side*across.X+Vector3.UnitY*across.Y;n=Vector3.Cross(toVictim,t);
+                c=vp+new Vector3(0,MeleeMath.Clamp(devSlash.Height,NativeBladeCuts.TrunkLow,NativeBladeCuts.TrunkHigh),0);
+            }
             else
             {
                 var set=MeleeSet.For(spec);var cut=CutOf(set,set.Cut(Math.Max(1,blow.Index)));

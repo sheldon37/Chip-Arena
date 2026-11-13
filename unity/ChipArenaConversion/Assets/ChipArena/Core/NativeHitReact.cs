@@ -305,12 +305,13 @@ namespace ChipArena.UnityConversion
             var a=attacker;bool special=a.SpecialKind!=null&&e.Time>=a.SpecialAt-.05f&&e.Time<=a.SpecialUntil+.05f,kit=e.Detail=="ability"&&a.MeleeKit!=null&&!string.IsNullOrEmpty(a.MeleeKit.Kind);
             // Air: the swing's own replicated flag (a landing attack hits at ground contact, so the attacker is grounded by then);
             // Toward: the event's direction, the authority's at the hit's tick; Swing: the swing's id a primary swing's hit carries
-            // in Projectile (PR #205; 0 for kit, special and older hits); Struck: the hit's From, with an id the attacker's body
+            // in Projectile (PR #205; 0 for kit, special and older hits); Clip: a DEV class's own clip for the swing (NativeBladeCuts);
+            // Struck: the hit's From, with an id the attacker's body
             // centre at contact (NativeMeleeSlice.Attacker checks it against Toward).
             float aim=e.Normal.x*e.Normal.x+e.Normal.y*e.Normal.y+e.Normal.z*e.Normal.z;
             if(!blows.TryGetValue(e.Target,out var ring))blows[e.Target]=ring=new Blows();
             ring.Add(new MeleeBlow{At=e.Time,Source=e.Source,Spec=a.SourceSpec,CommitYaw=a.CommitYaw,Index=a.Combo+1,SwingAt=a.SwingAt,SwingUntil=a.SwingUntil,Air=a.AirAttack,
-                Special=special?a.SpecialKind:null,Kit=kit?a.MeleeKit.Kind:null,From=a.Position,Yaw=a.Yaw,Detail=e.Detail,Amount=e.Amount,Toward=e.Normal,Aimed=aim>.81f&&aim<1.21f,Swing=e.Projectile,Exact=e.Projectile>0,Struck=e.From});
+                Special=special?a.SpecialKind:null,Kit=kit?a.MeleeKit.Kind:null,From=a.Position,Yaw=a.Yaw,Detail=e.Detail,Amount=e.Amount,Toward=e.Normal,Aimed=aim>.81f&&aim<1.21f,Swing=e.Projectile,Exact=e.Projectile>0,Struck=e.From,Clip=NativeBladeCuts.DevSwingClip(a,special,kit)});
         }
         /// <summary>A blade class's blow (the Katana's, the Fangs', the Glaive's: NativeBladeCuts), the one a kill is cut by; no blood on
         /// the blade (their kits draw their own).</summary>

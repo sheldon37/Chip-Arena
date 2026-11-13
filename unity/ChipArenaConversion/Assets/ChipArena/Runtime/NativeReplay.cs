@@ -122,8 +122,17 @@ namespace ChipArena.UnityConversion
             if(transition){bool dead=now>=death.at;p.Hp=dead?b.hp:a.hp;p.Death=dead?death:a.death;p.Collider.enabled=!dead&&p.Seat.connected;}
         }
         private float replayTime,replayReturnAt=-10;
-        // killcam-hud.ts CAUSES for the causes the native death record can name.
-        private static string KillCause(NativeDeath d,NativePilot killer)=>killer==null?"Environment":killer.Weapon.@class=="melee"?(d.melee?"Blunt force":"Special attack"):"Direct hit";
+        // killcam-hud.ts CAUSES for the causes the native death record can name; a blade's kill names its cut (Core NativeKillCause: "Beheaded",
+        // "Cut in two", "Dismembered", "Slashed"), from the death's own slice plan as the body shows it, read once per death.
+        private readonly Dictionary<long,string> killCauses=new Dictionary<long,string>();
+        private string KillCause(NativeDeath d,NativePilot killer)
+        {
+            if(killer==null||d==null)return NativeKillCause.Of(killer!=null,killer?.Weapon.@class,killer?.Seat.spec,d?.melee??false,null);
+            long key=((long)d.id<<32)^(uint)d.seed;if(killCauses.TryGetValue(key,out var known))return known;
+            var plan=NativeKillCause.Blade(killer.Seat.spec)&&presentation!=null?presentation.KillSlice(arena,d):null;
+            string cause=NativeKillCause.Of(true,killer.Weapon.@class,killer.Seat.spec,d.melee,plan);
+            if(killCauses.Count>=32)killCauses.Clear();killCauses[key]=cause;return cause;
+        }
         // killcam-hud.ts / killcam.css: a broadcast frame on the screen edges so the fatal hit in the centre stays clear.
         private void ReplayHud(float width,float height)
         {
