@@ -1,3 +1,22 @@
+## 2026-11-12 — Claude: the killcam names a blade kill by its cut; the DEV Greatsword cuts along its own swings (owner request)
+
+- Branch `claude/blade-labels` (from `claude/blades` `7872df66`, merged with shared after the blade gibbing's release): `dab8c9a3`, `bc7c3aea` and this entry. Relayed by the NOCTIEL session.
+- **The owner**, on my note that every melee kill read "Blunt force" in the killcam: "Yes, fix the label". Blade kills name what happened; blunt kills keep "Blunt force".
+- **The label** (Core `NativeKillCause`, Runtime `ConversionGame.KillCause`): a blade's kill (the sword, greatsword, daggers, Katana, DEV Katana, Fangs, Glaive, thrown or not) reads its cut from the death's own slice plan (`ArenaPresentation.KillSlice`, the cut the body shows):
+  - "Beheaded" for the head, "Cut in two" through the body, "Dismembered" for a limb;
+  - "Slashed" for a slit throat or a cut that took nothing off;
+  - blunt melee (the shield, the fighters, the mallet) keeps "Blunt force", guns "Direct hit", no killer "Environment". Read once per death.
+- **The DEV Greatsword's own swings:** the hit ledger records the clip a DEV Greatsword swing played (`MeleeBlow.Clip`: its combo's cut, sprint attack or jump attack; pilots and zombies). A surveyed one (the DEV classes agent at 200 fps) cuts across the front as its slash, through the trunk: the first cut falls toward the wielder's left (46 degrees), the second rises steeply toward its right (62), the third falls toward its right (45), the sprint attack's chop falls toward its right (46). The fourth cut (an overhead crossing only above the head) and the plain Greatsword keep the captured plane.
+- Presentation only: no rule, damage, timing or wire change, so nothing for Astra to review.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks:**
+  - CoreTests `--melee-bisect`, 37,336 checks: the DEV Greatsword's swings carry their clips through the ledger and tilt as their slashes on the trunk, the fourth cut and the plain Greatsword unchanged; the cause line for every kind of cut (the sword's, the greatsword's, the daggers', the blade classes'), a slit throat slashed, blunt melee, guns and the environment unchanged; the wiring.
+  - The Unity compile.
+- **Filmed** in the Editor (a local-only probe build making only the named move lethal; the final killcam's card):
+  - the cards read "Katana · Beheaded" (the first cut), "Katana · Cut in two" (the third), "Katana · Dismembered" (the second's forearm), "Fangs · Slashed" (the slit throat) and "Greatsword · Cut in two" (the DEV Greatsword's first cut along its surveyed 46-degree slash);
+  - the first take caught a bug in the change itself: the final killcam read its cause at the round's last kill, before the presentation had seen the killing hit, and the lookup kept "no blow" for the death, so the body was cut by the swing before (the third cut read "Dismembered" and took a forearm). The lookup now never keeps a blow and the card reads the cause again until the body's has settled; refilmed, every body after the label's early read is cut by its own blow.
+- **Not seen / not done:** played by a person; the label on a zombie kill (the horde shows no killcam card).
+
 ## 2026-11-12 — Claude: Skyframe's haze banks popped as the camera turned (owner report)
 
 - Branch `claude/skyframe-haze` from shared (`69fbfb63` merged in); pushed, **not merged, not released**. Visuals only: Core `NativeSkyframeFx`, Runtime `NativeSkyframePresentation`, `Resources/NativeSirenFx.shader` (a new sprite mode; the other modes and every other stage's effects are untouched), `Tests/SkyframeChecks.cs`. No bank, rule, collider or timing changed.
