@@ -96,6 +96,8 @@ namespace ChipArena.UnityConversion
             public Slash Mirrored=>new Slash(Sweep,180-Angle,Height);
         }
         private static Slash S(float angle,float height)=>new Slash(Sweep.Swing,angle,height);
+        /// <summary>The DEV Katana's counter clip (Grruzam's katana set), named here until the DEV motion names it.</summary>
+        public const string DevCounter="M_katana_Blade@Revenge_Guard_Attack_ver_A";
         private static Slash Level(Sweep sweep,float height)=>new Slash(sweep,0,height);
         private static readonly Dictionary<string,Slash> clips=Clips();
         private static Dictionary<string,Slash> Clips()
@@ -106,6 +108,9 @@ namespace ChipArena.UnityConversion
             var dev=NativeDevKatanaMotion.Cuts;
             if(dev.Length>0)Add(dev[0],S(35,1.15f));if(dev.Length>1)Add(dev[1],S(-145,1.02f));if(dev.Length>2)Add(dev[2],S(0,.92f));if(dev.Length>3)Add(dev[3],S(-170,1.25f));
             Add(NativeDevKatanaMotion.Storm,S(-155,1f));
+            // Its counter (the DEV classes' pick, 2026-11-12, in place of the Frank critical): a rising diagonal from low on the wielder's
+            // right, behind it (the tip 0.9 m up), to high on its left in front (2 m up), the strike 0.4 s in.
+            Add(DevCounter,S(-35,1.25f));
             // The Katana's (the Frank Slash Pack), measured on the pack's blade at each strike: a level forehand at the chest (toward the
             // left), a rising backhand that strikes low (the forearm), a cut down from the right shoulder, the finisher rising from the
             // left hip; the storm's strike rises across the waist; the counter's critical cuts down across the waist.

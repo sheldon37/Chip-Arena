@@ -96,7 +96,8 @@ namespace ChipArena.UnityConversion
                     bool cuts=NativeBladeCuts.Cuts(e,actor);Check(cuts==(m.Want!="none"),label+": the ledger keeps exactly the cutting blows");
                     // The clip the move played, from the kit: the Katana's measured, the DEV Katana's own (written), the Glaive's flick its fourth step.
                     if(m.Spec==K&&m.Cast==NativeKatana.Cut&&m.Detail=="blade-cut")Check(blow.Clip==(m.Motion==dev?NativeDevKatanaMotion.Cuts:NativeBladeMotion.KatanaCuts)[m.Step]&&NativeBladeCuts.Known(blow.Clip),label+": its clip ("+blow.Clip+") and its cut");
-                    if(m.Spec==K&&m.Cast==NativeKatana.Counter)Check(blow.Clip==NativeBladeMotion.KatanaCritical&&NativeBladeCuts.Known(blow.Clip),label+": the counter's critical and its measured cut");
+                    // The counter's clip: the Frank critical (measured), the DEV Katana's its own pick (written) when its motion names one.
+                    if(m.Spec==K&&m.Cast==NativeKatana.Counter)Check((m.Motion==dev||blow.Clip==NativeBladeMotion.KatanaCritical)&&NativeBladeCuts.Known(blow.Clip),label+": the counter's clip ("+blow.Clip+") and its cut");
                     if(m.Flick)Check(blow.Index==4&&NativeBladeCuts.MoveOf(blow,true)==NativeBladeCuts.Move.Flick,label+": the ring on its loop is the flick");
                     var plan=new SlicePlan();bool planned=NativeMeleeSlice.Plan(blow,true,m.Spec,Wound("sword"),victim,face,seed,plan);
                     if(m.Want=="none"){Check(!planned&&!plan.Any,label+": a venom burst cuts nothing");continue;}
@@ -157,7 +158,7 @@ namespace ChipArena.UnityConversion
                 Check(picks.Keys.Any(k=>k.StartsWith(want+" ",StringComparison.Ordinal)),"the blade classes' kills include a "+want+" cut ("+string.Join(", ",picks.Keys.Where(k=>!k.StartsWith("sword")&&!k.StartsWith("greatsword")&&!k.StartsWith("daggers")))+")");
             Check(!picks.Keys.Any(k=>k.StartsWith("fangs through",StringComparison.Ordinal)||k.StartsWith("fangs head",StringComparison.Ordinal)),"the Fangs never go through the body nor take the head: an arm or the throat, as the daggers");
             // The Katana's own clips measured; the DEV Katana's written; every clip its cut moves play is known.
-            foreach(var clip in NativeBladeMotion.KatanaCuts.Concat(NativeDevKatanaMotion.Cuts).Concat(new[]{NativeBladeMotion.KatanaStorm,NativeBladeMotion.KatanaCritical,NativeDevKatanaMotion.Storm}))
+            foreach(var clip in NativeBladeMotion.KatanaCuts.Concat(NativeDevKatanaMotion.Cuts).Concat(new[]{NativeBladeMotion.KatanaStorm,NativeBladeMotion.KatanaCritical,NativeDevKatanaMotion.Storm,NativeBladeCuts.DevCounter}))
                 Check(NativeBladeCuts.Known(clip),clip+": its cut is measured or written");
             // The ledger keeps a blade class's blow the way it keeps a sword's: by the frame's events and actors, nothing else.
             {
