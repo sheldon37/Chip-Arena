@@ -42,6 +42,7 @@
   - Not run: play by a person, a guest over the network, a Windows build, the builder.
 - **Next:** the owner reviews the captures; the Drive zip needs the new clips before a build has them; the Katana session's gib cuts
   can key on the windows above.
+- **Released** to the test channel: merged into shared at `5f8ee5ea` (the release suite at `0337ad7f`, 1018 groups, exit 0; the Unity compile passed; the Unity build checks passed on `9bc2201a`); shipped with a new Drive zip (only the motion bank changed: 489 clips, the released 475 byte-identical; the zip before kept as `LocalAssets-2026-11-12-before-dev-picks.zip`); built and published as revision `639301312995266621` (2026-11-13 01:51 UTC, 368.2 MiB). Not played by a person.
 
 ## 2026-11-11 — Claude: the Hollow Sanctum's polish (the lights' depth fighting, the Thurible, the Fall of the Lights)
 
