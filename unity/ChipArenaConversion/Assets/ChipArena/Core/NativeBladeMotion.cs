@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
             var k=NativeBladeView.Of(a);if(k?.CastKind==null||time<k.CastAt)return false;
             if(!Clip(a,k,time,clips,out string clip,out float t,out bool whole,out bool flight))return false;
             if(!whole&&moving)return false;
-            pick=new NativeVisualMotion.Pick{Clip=clip,Time=t,Fade=NativeVisualMotion.FadeIn,Flight=flight};return true;
+            pick=new NativeVisualMotion.Pick{Clip=clip,Time=t,Fade=BlendIn(clip),Flight=flight};return true;
         }
         /// <summary>The plunging slam (the standard swing's air attack of kind "down", Core NativeAirAttackSimulation; the Glaive, the
         /// Katana and the Fangs take it, owner 2026-11-11): the set's air attack clip, run to just short of its strike through the drop and
@@ -114,6 +114,32 @@ namespace ChipArena.UnityConversion
             up=default;var k=NativeBladeView.Of(a);if(k?.CastKind==null||time<k.CastAt)return false;
             if(!Clip(a,k,time,clips,out string clip,out float t,out bool whole,out _)||whole)return false;
             up=new NativeVisualMotion.Upper{A=clip,TimeA=t,Raised=true};return true;
+        }
+        /// <summary>A move's blend in: NativeVisualMotion.FadeIn, or its clip's own (the DEV Katana's finisher, NativeDevKatanaMotion.BlendIn).</summary>
+        public static float BlendIn(string clip){float f=NativeDevKatanaMotion.BlendIn(clip);return float.IsNaN(f)?NativeVisualMotion.FadeIn:f;}
+        /// <summary>The DEV Katana cut a blade pilot's kit last played (null: none, or not the DEV Katana's) and when that move ends
+        /// (`ends`: where Clip stops showing it).</summary>
+        private static string DevCut(Actor a,NativeBladeKit k,out float ends)
+        {
+            ends=float.NaN;if(a==null||k==null||a.SourceSpec!=NativeKatana.Spec||a.Motion!=NativeDevMotions.Katana||k.CastKind!=NativeKatana.Cut)return null;
+            float at=k.CastAt,rel=Math.Max(at+.01f,k.CastRelease);ends=Math.Max(rel+.05f,k.CastUntil)+.12f;var cuts=NativeDevKatanaMotion.Cuts;return cuts[Math.Max(0,k.CastStep)%cuts.Length];
+        }
+        /// <summary>The stance's (or the stride's) blend in at `time`: `fade`, or longer through the settle after a move whose clip has its
+        /// own (NativeDevKatanaMotion.BlendOut: the finisher's lunge, turned away from the stance).</summary>
+        public static float SettleFade(Actor a,float time,float fade)
+        {
+            string clip=DevCut(a,NativeBladeView.Of(a),out float ends);if(clip==null)return fade;float f=NativeDevKatanaMotion.BlendOut(clip);
+            return !float.IsNaN(f)&&time>=ends-.05f&&time<ends+f+.1f?f:fade;
+        }
+        /// <summary>Whether a clip, fading out, holds its last pose (NativeDevKatanaMotion.BlendOut: it runs on into other cuts).</summary>
+        public static bool HeldOut(string clip)=>!float.IsNaN(NativeDevKatanaMotion.BlendOut(clip));
+        /// <summary>When a blade cut's trail starts (the arena's clock): the move's start, or for a clip whose wind-up leaves none
+        /// (NativeDevKatanaMotion.TrailFrom, s into the clip) the moment its fitted wind-up reaches that time (as Fit maps it).</summary>
+        public static float TrailFrom(Actor a,NativeBladeKit k)
+        {
+            if(k==null)return float.NaN;string clip=DevCut(a,k,out _);float from=clip!=null?NativeDevKatanaMotion.TrailFrom(clip):float.NaN;if(float.IsNaN(from))return k.CastAt;
+            var w=WindowOf(clip);float at=k.CastAt,rel=Math.Max(at+.01f,k.CastRelease),first=Math.Max(float.IsNaN(w.From)?0:w.From,w.Hit-Math.Max(1e-3f,rel-at)*RateOf(clip));
+            return from<=first?at:from>=w.Hit?rel:at+(from-first)/(w.Hit-first)*(rel-at);
         }
         /// <summary>The clip a blade move plays at `time` and its time; `whole`: it takes the whole body even on the move; `flight`: its own
         /// height is kept (the pounce's leap).</summary>

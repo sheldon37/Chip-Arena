@@ -210,8 +210,9 @@ namespace ChipArena.UnityConversion
             foreach(var want in new[]{"katana through","katana head","katana limb","dev-katana through","dev-katana head","fangs limb","glaive through","glaive head","glaive limb","katana chop","glaive chop"})
                 Check(picks.Keys.Any(k=>k.StartsWith(want+" ",StringComparison.Ordinal)),"the blade classes' kills include a "+want+" cut ("+string.Join(", ",picks.Keys.Where(k=>!k.StartsWith("sword")&&!k.StartsWith("greatsword")&&!k.StartsWith("daggers")))+")");
             Check(!picks.Keys.Any(k=>k.StartsWith("fangs through",StringComparison.Ordinal)||k.StartsWith("fangs head",StringComparison.Ordinal)),"the Fangs never go through the body nor take the head: an arm or the throat, as the daggers");
-            // The Katana's own clips measured; the DEV Katana's storm and counter written (its cuts as picked, or its move's).
-            foreach(var clip in NativeBladeMotion.KatanaCuts.Concat(new[]{NativeBladeMotion.KatanaStorm,NativeBladeMotion.KatanaCritical,NativeDevKatanaMotion.Storm,NativeBladeCuts.DevCounter}))
+            // The Katana's own clips measured; the DEV Katana's picked cuts, storm and counter surveyed (its hit 4, the three-hit chain's
+            // overhead chop, among them).
+            foreach(var clip in NativeBladeMotion.KatanaCuts.Concat(new[]{NativeBladeMotion.KatanaStorm,NativeBladeMotion.KatanaCritical,NativeDevKatanaMotion.Storm,NativeBladeCuts.DevCounter}).Concat(NativeDevKatanaMotion.Cuts))
                 Check(NativeBladeCuts.Known(clip),clip+": its cut is measured or written");
             // The ledger keeps a blade class's blow the way it keeps a sword's: by the frame's events and actors, nothing else.
             {
