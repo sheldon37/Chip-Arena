@@ -1,3 +1,64 @@
+## 2026-11-13 — Claude: every pilot plays the foe's side of the paired moves (owner: "Give one to everyone"; presentation only)
+
+- Branch `claude/paired-reactions-all` (from shared `41bfb1d7`): `a256b4ee` the change and its checks, then this entry. Pushed, **not
+  merged, not released**. Asked after being told that in a Fangs takedown only a Katana, DEV Katana or Fangs foe showed the matching
+  reaction; the owner: "Give one to everyone".
+- **The paired moves** (the foe held, its body playing the move's victim clip; the host names the clip on the held actor, `Actor.PairClip`
+  from `NativeDevMotions.VictimClip`): the Katana's counter (`Frank_Damage@Damage_Critical_Katana_Hit`), the DEV Katana's counter
+  (`M_katana_Blade@Damage_Front_Big_ver_A`), the Fangs' takedown (`Frank_Stealth_Kill_Hit_Behind_01`) and frontal critical
+  (`Frank_Damage@Damage_Critical_Assassin_Hit`). No other move holds a pilot in a pack clip: the Cyber Lord's Kernel Panic poses its victim
+  on the game rig (`CyberLordMotion.VictimPose`), the Top Dog's feast and the Siren's drop have their own victim presentations; untouched.
+- **Cause:** Core `NativeVisualMotion.Choose` already picked the victim clip for any set, but Runtime `VisualMotionFor` builds a body's clip
+  list from its set, and only the Katana's, DEV Katana's and Fangs' sets listed victim clips (not all four: a Katana or Fangs foe of the
+  DEV Katana's counter, and a DEV Katana foe of the Fangs, kept their stance too). The pick then fell through to the stance.
+- **Change** (Core `NativeBladeMotion`, `NativeVisualMotion`; Runtime `NativeVisualMotionPresentation`):
+  - `NativeBladeMotion.VictimClips` lists the four; `Lent(a, clip)` is true only for the victim clip the host names on that actor. A body
+    whose set does not list it takes it on the first time it is named (`VisualMotionLend`: one more entry in that body's clip arrays, the
+    poses the bank's own, shared). A body never held carries and blends nothing more; nothing is loaded per frame.
+  - The Cyber Lord (no set: the game's pose) plays it on `NativeVisualMotion.Held` (the unarmed stance under it, `HeldOnly`: Choose covers
+    the hold and nothing else), kept until its weight has eased back to the game's pose. `For` never returns it.
+  - `Layer` lays nothing over a held body (a gun pilot's last shot or reload raised the gun over the reaction).
+  - Pilot bodies only (Runtime `VisualBodyPose`: players and bots on the pilot model; the Siren is not on it). The horde, bosses and other
+    bodies are untouched. The bake's sets are unchanged.
+- **Motion bank:** unchanged and not rebaked; all four clips were already in the 499-clip bank (6,136,627 bytes, sha256 `37ec44d2...`,
+  checked with the scratch bank reader). No Drive zip change.
+- **Animation impact:** hit timing, hitboxes, damage, cooldowns, movement, networking and the wire unchanged (the host still names the clip;
+  the client borrows only that one). A held foe of any class now takes the whole-body reaction; it eases in over the pick's 0.1 s fade.
+- **Filmed** in the Editor (cybercity, the game stepped at 60 a second, shot at 30 a second on the arena clock), before on shared
+  `41bfb1d7` and after on `a256b4ee`; sheets local in Claude's scratchpad `pra/sheets/` (`<move>_compare.png`, before over after):
+  - the Fangs takedown on a rifle, a greatsword, a Top Dog (the Hot Dog skin) and a Cyber Lord foe; the frontal critical on a shield foe;
+    the Katana counter on a fire caster foe.
+  - Before, every one of those foes stood in its own stance through the hold. After, every one plays the reaction, its head held and pulled
+    back with the attacker's arm at its throat (the takedown), staggering (the critical), arching on the blow then doubling over (the
+    counter), in step with the attacker's clip on the rules' window (the blow on the attacker's strike frame). The Cyber Lord eases from its
+    fighting stance into the reaction over 0.15 s.
+- **Seen, not changed** (proposals for the owner):
+  - **Held weapons in clips made for an unarmed foe:** the takedown's foe raises its gun hand to the attacker's arm, so a rifle's barrel
+    swings up past the attacker's head, and the Top Dog's mallet head sweeps across the body and the camera. The shield hangs at the side
+    and reads well; the staff is fine. Proposal: while held, turn the right hand's weapon to hang head-down about the grip (long guns and
+    the mallet; the support hand lets go), or fade it out for the hold.
+  - **The lethal blow's corpse starts from the game pose** (Runtime `NativeCorpse`, `VisualDeathBody`: posed from the game rig), so at the
+    takedown's blow the foe pops from the reaction's lean to its stance, then falls. Already so for Katana, DEV Katana and Fangs foes, and
+    for any death during a pack clip; now seen on every class. Proposal: seed the ragdoll and the model corpse from the drawn body when its
+    motion weighs in (its own pass, with the corpse checks).
+  - **The victim clips carry their own drift** (the bank's hips, measured over each window): the frontal critical's foe 0.34 m back on its
+    first frame to 1.40 m at the end, while the rules hold it 0.85 m in front; the counter's 0.85 m back by its end on top of the rules'
+    1.23 m (`VictimTravel`). As the clip fades out at the hold's end the body slides back onto its spot (about 1.4 m and 0.85 m over 0.1 s).
+    Already so on Katana, DEV Katana and Fangs foes. Proposal: keep a victim clip's hips on the body's spot (horizontally) while it plays,
+    and, if the frontal critical's push back is wanted, give it a travel like the counter's (rules, for Astra).
+- **Checks:**
+  - CoreTests, the full suite on `a256b4ee`: 1,021 groups, exit 0 (the Windows path patch applied in a throwaway worktree, not committed).
+    `--blades` 360 checks (was 236): every class on the pilot model (23 rows, the Siren aside; the DEV classes by their motion; the Cyber
+    Lord on the held set) plays each of the four victim clips as the host names it, on Victim's time, nothing laid over it, its set's own or
+    borrowed; only the named victim clip is ever borrowed; a free gun pilot still raises its gun; the held set covers only the hold; the
+    Runtime's borrowing and held-set lines pinned.
+  - The Unity compile (four assemblies) on `a256b4ee`.
+  - The Editor build gate (`PrototypeBuild.Validate`, the builder's Editor checks) on `a256b4ee`: ok, 397 PASS lines (354 distinct).
+  - `git diff --check` against shared: clean. The stage banks (14 incl. the Rooftop's) and the motion bank unchanged through every hold.
+- **Not done / not seen:** played by a person; a guest over the network (the host names the clip as before; a guest's body borrows it the
+  same way); a Windows build; the DEV Katana's counter and a DEV Katana foe filmed (CoreTests cover them); the weapon, corpse and drift
+  proposals above.
+
 ## 2026-11-13 — Claude: the owner's second animation picks: the Greatsword, the DEV Greatsword and the Fangs (presentation only)
 
 - Branch `claude/more-move-picks` (from shared `e0317fba`, the Katana parry daze; shared `5d84ea13`, the DEV Katana's hit 4, merged in):
