@@ -1,3 +1,5 @@
+2026-11-12 Claude (`claude/dev-intro-grip`; pushed, not merged): the DEV Katana's entrance holds the katana's hilt in the hand (it hung from the wrist), and has it across the back until the hand draws it, as the pack's Intro does. **Next:** merge and release.
+
 2026-11-12 Claude (`claude/dev-classes-picks`; pushed, not merged): the owner's DEV animation picks wired in: the DEV Greatsword and DEV Katana play the clips chosen in the picker, with their own entrances on the pack's Intro clips. **Next:** the owner reviews the captures; the Drive zip needs the 14 new clips.
 
 2026-11-12 Claude (`claude/skyframe-flicker`, owner report; pushed, not merged): Skyframe's far lights flickered because the far chunks had no layers (the other towers' lit windows 5 cm off their walls, hundreds of metres away); the far chunks are layered at a far reach and six banks are rebuilt (Skyframe, Cyber City, the Causeway, Breakwater, Polaris, Deepwell). Seen in the Editor on Skyframe (High and Low) and the build checks pass. Next: merge and repack the zip with the six rebuilt banks.
