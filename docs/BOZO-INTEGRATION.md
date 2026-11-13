@@ -1638,7 +1638,14 @@ already? Cant we utilize that?"
         round in two swings onto the shoulder) in place of the Colossus Oath, the DEV Katana's Edge Flourish (5.3 s, the card at 3.7:
         the katana set's `Intro`) in place of Crimson Moon. The pack's clip on the model (an entrance's intro body now plays its
         script's clip whatever its set, `NativeVisualMotion.Choose`), the weapon held as the match holds it (`NativeDevMotions.Grip`),
-        a keyed stance under it for the Classic body, a camera, the stage's light and dust where the beat lands.
+        a keyed stance under it for the Classic body. Each is a cinematic of its own (owner 2026-11-13: more camera work and effects,
+        "for there intros"; length, name card and the clip's pace unchanged): a camera of six shots cut to the clip's beats on the
+        stage's own axes, the scene slowed through the great cut (the Greatsword's second swing, the Katana's last cut), and effects
+        that follow the blade as the model holds it (`NativeDevPackIntro.Line`, handed in by `BladeIntroHeld`): the sweep (an edge
+        line and one soft ribbon, a set length behind the tip, only at speed), sparks and a score where the tip meets the floor, the
+        light the edge catches. Heavy Turn is dark and ember-lit (the bite into the floor at 1.1 s, a wave of light over the floor
+        on the beat); Edge Flourish cold and clean (a razor's line, a hairline of light along the last cut). Their camera shakes are
+        small, short and off with the player's Camera shake setting (`NativeDevPackIntro.Shake`).
         Their blade is drawn as the match draws it, its handle through the palm (by the base class's spec, `NativeDevMotions.Base`: by
         the DEV spec the DEV Katana's hung from the wrist, owner 2026-11-12: "the hilt is not in hand"). The katana set's `Intro` opens
         with the sword across the back, the right hand reaching over the shoulder for its hilt: through the held first frame and to
