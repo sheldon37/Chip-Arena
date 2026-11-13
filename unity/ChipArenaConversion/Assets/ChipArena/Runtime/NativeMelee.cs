@@ -124,7 +124,10 @@ namespace ChipArena.UnityConversion
             if(attacker.Hp<=0||SirenArmor(attacker))return;
             float force=NativeMeleeRules.Rebound(damage,(float)blocker.Stats["blockForce"]);
             float travel=NativeMeleeRules.ReboundTravel(damage,force,(float)attacker.Stats["damage"],(float)attacker.Stats["knockbackTaken"],(float)blocker.Stats["speed"]);
-            bool riposte=!blocker.Seat.bot&&NativeMeleeRules.Standard(blocker.Seat.spec)&&attacker.Seat.spec!="siren";
+            // The riposte (the striker dazed until the parrier's first blow, SettleRiposte): a standard melee parry, and the Katana's timed
+            // parry (the DEV Katana plays its rules; owner 2026-11-12: "use the daze we use when we parry someone", a rules change at the
+            // owner's word: the Katana's parry stunned only for BlockStun, so its striker was back in guard before its daze showed).
+            bool riposte=!blocker.Seat.bot&&(NativeMeleeRules.Standard(blocker.Seat.spec)||blocker.Seat.spec==NativeKatana.Spec)&&attacker.Seat.spec!="siren";
             float stun=NativeMeleeRules.BlockStun(damage,impulse);
             if(riposte)stun=Math.Max(stun,NativeMeleeRules.BlockPunish(damage,Math.Max(0,blocker.Ready-Time)+(float)(blocker.Weapon.windup/blocker.Stats["attackRate"]),travel));
             StunMelee(attacker,stun);

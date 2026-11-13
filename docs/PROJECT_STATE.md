@@ -1,6 +1,6 @@
-2026-11-12 Claude (`claude/skyframe-haze`, owner report; pushed, not merged): Skyframe's background glitch was the cloud sea's haze banks, sprites turned with the camera that cut through the clouds and far towers as the pilot looked round; they now face the eye's place, fade into the scene behind them by depth and fade at the ends of their run. Next: merge and release; the owner looks again.
+2026-11-12 Claude (`claude/skyframe-haze`, owner report; merged into shared `eb24aa2c`, test channel revision 639301398326184446): Skyframe's background glitch was the cloud sea's haze banks, sprites turned with the camera that cut through the clouds and far towers as the pilot looked round; they now face the eye's place, fade into the scene behind them by depth and fade at the ends of their run. Next: the owner looks again.
 
-2026-11-12 Claude (`claude/dev-intro-grip`; pushed, not merged): the DEV Katana's entrance holds the katana's hilt in the hand (it hung from the wrist), and has it across the back until the hand draws it, as the pack's Intro does. **Next:** merge and release.
+2026-11-12 Claude (`claude/dev-intro-grip`; merged into shared `bad50d08`, test channel revision 639301378639264113): the DEV Katana's entrance holds the katana's hilt in the hand (it hung from the wrist), and has it across the back until the hand draws it, as the pack's Intro does. **Next:** the owner looks at the entrance.
 
 2026-11-12 Claude (`claude/dev-classes-picks`; pushed, not merged): the owner's DEV animation picks wired in: the DEV Greatsword and DEV Katana play the clips chosen in the picker, with their own entrances on the pack's Intro clips. **Next:** the owner reviews the captures; the Drive zip needs the 14 new clips.
 
@@ -27,6 +27,7 @@
 
 2026-11-11 Claude (`claude/hotdog-hats`): hats fit the Hot Dog: each rides the crown's own skinning with its own fit (no more tilting off or sitting over the face), and the crown's sprigs hide under closed hats (docs/HOT-DOG-SKIN.md "Hats").
 
+2026-11-12 Claude (`claude/katana-parry-daze`, the owner's "use the daze we use when we parry someone"; a rules change at the owner's word, for Astra to review): the Katana's and DEV Katana's timed parry gives the riposte (the striker dazed as long as a standard parry's, until the Katana's first blow); the counter answers it inside the parry's window.
 2026-11-12 Claude (`claude/blades`, `claude/blade-labels`; the owner's "all bladed weapons to support gibbing" and "Yes, fix the label"): the Katana's, DEV Katana's, DEV Fangs' and Glaive's kills cut the body (Core `NativeBladeCuts`), the DEV Greatsword's along its own surveyed swings, and the killcam names a blade kill by its cut (Beheaded, Cut in two, Dismembered, Slashed). Presentation only.
 
 2026-11-11 Claude (`claude/stage-revamp`, owner request): the stage revamp: Breakwater (a lighthouse duel on a storm-battered mole), Pier 9 (a night amusement pier), Deepwell (a station on the ocean floor), Polaris Station (an arctic observatory under the aurora) and Skyframe (a sky garden above the clouds) rebuilt on their own code; Brickfall, Ward Zero, the Factory and Cyber City modelled. No invisible walls (columns only at edges and under low art; bots only at drops). The nine banks are in the Drive zip (the installer holds a 480 MB visual body). The M1 stages' shared code is now unused.

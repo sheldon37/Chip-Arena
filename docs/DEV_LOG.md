@@ -1,3 +1,23 @@
+## 2026-11-12 — Claude: the Katana's parry dazes its striker as a standard parry does (owner request; a rules change at the owner's word)
+
+- Branch `claude/katana-parry-daze` (from shared `3c132414`): `9c48bb1d` and this entry. Relayed by the NOCTIEL session.
+- **The owner:** "For the daze animation on dev katana parry and katana parry, use the daze we use when we parry someone". Asked whether Claude or Astra makes the rule: "Claude does it".
+- **Why it looked different:** the parried striker plays the same clips whoever parries (its set's recoil, then its daze, through its stun: Core `NativeVisualMotion`). The stun differed. `SuccessfulMeleeBlock` (Runtime `NativeMelee`) gave the riposte's long stun (`NativeMeleeRules.BlockPunish`) only to human parriers with a standard melee weapon (`NativeMeleeRules.Standard`: sword, daggers, greatsword, shield); the Katana and the DEV Katana (seat spec `katana`) got only `BlockStun`, so the striker was back in its guard before its daze showed.
+- **The rules change (for Astra to review):**
+  - the Katana's timed parry sets the riposte too: its striker stunned for `BlockPunish`, until the Katana's first primary blow (`SettleRiposte`), and the HUD's "RIPOSTE · LMB counter" shows;
+  - inside the parry's window the click is the counter once the parry has landed (`RiposteOpen`), and it ends the window as a standard riposte's attack does (`TryMelee`); after the window the counter is as before (1 s, Mirror Moon 2 s);
+  - bots still never riposte (`!blocker.Seat.bot`), as for every class.
+- **Numbers** (a Greatsword bot's blow landed on a timed parry, the editor's `parryhit`; the tool's log of the foe's stun): before, a Sword's parry stunned the striker 1.26 s and the Katana's and DEV Katana's 0.57 s; after, the Sword's 1.26 s, the Katana's 1.28 s, the DEV Katana's 1.28 s.
+- **No lock:** the riposte's stun is bounded (`BlockPunish`: at most 1.4 s plus the shove) and the Katana's first primary blow ends it (the counter's blow, a cut). Non-primary hits (the iai's split, the storm) leave it to run out, as for any riposte. The striker can't attack while stunned, so it can't feed the next parry.
+- **Mirrors:** none. The native authority is the only rule side (host; guests replicate the stun and the riposte flags already on the wire); bots never riposte; the Electron game has no Katana; no generated rule table holds the riposte.
+- **Animation impact:** the striker's daze now plays through the stun (no clip change); hit timing, hitboxes, damage, cooldowns and movement unchanged; the counter can start inside the parry's window once the parry has landed.
+- **Checks:**
+  - CoreTests `--blades` (225: the new rule and the riposte counter pinned);
+  - the Editor build gate (`PrototypeBuild.Validate` ok, Native blades with the new staging: the parry dazes its striker at least 1 s, the riposte open; inside the window the click is the counter and ends the window; its blow ends the daze);
+  - the full suite at the release commit (relgen); the Unity compile.
+- **Filmed** (the Editor, a Greatsword bot's blow on the parry): the before captures `pd_s` (a Sword's parry), `pd_k` (the Katana's), `pd_dk` (the DEV Katana's); the after `pe_s`, `pe_k`, `pe_dk`, and `pe_kc` (the counter clicked inside the window): clicked 0.15 s after the parry landed, the counter starts at once (the pilot closes in, the blow's flash, the foe thrown back) (local, in Claude's scratchpad `dcap/`).
+- **Not seen / not done:** played by a person; a parry by a bot (no riposte, as before).
+
 ## 2026-11-12 — Claude: the killcam names a blade kill by its cut; the DEV Greatsword cuts along its own swings (owner request)
 
 - Branch `claude/blade-labels` (from `claude/blades` `7872df66`, merged with shared after the blade gibbing's release): `dab8c9a3`, `bc7c3aea` and this entry. Relayed by the NOCTIEL session.
@@ -16,10 +36,11 @@
   - the cards read "Katana · Beheaded" (the first cut), "Katana · Cut in two" (the third), "Katana · Dismembered" (the second's forearm), "Fangs · Slashed" (the slit throat) and "Greatsword · Cut in two" (the DEV Greatsword's first cut along its surveyed 46-degree slash);
   - the first take caught a bug in the change itself: the final killcam read its cause at the round's last kill, before the presentation had seen the killing hit, and the lookup kept "no blow" for the death, so the body was cut by the swing before (the third cut read "Dismembered" and took a forearm). The lookup now never keeps a blow and the card reads the cause again until the body's has settled; refilmed, every body after the label's early read is cut by its own blow.
 - **Not seen / not done:** played by a person; the label on a zombie kill (the horde shows no killcam card).
+- **Released:** shared `3c132414` (the builder at `3c132414`), test channel revision `639301416396171962` (build `63f4eae2`); the suite at `012820a1` (1,021 groups, exit 0), the Unity compile, the Editor build gate on `2a70cf20`. A first run stopped on `FinalKillcamChecks` (the broadcast frame built its cause line); `2a70cf20` refreshes it in `FinalFrame`, rebuilt only when the cause changes.
 
 ## 2026-11-12 — Claude: Skyframe's haze banks popped as the camera turned (owner report)
 
-- Branch `claude/skyframe-haze` from shared (`69fbfb63` merged in); pushed, **not merged, not released**. Visuals only: Core `NativeSkyframeFx`, Runtime `NativeSkyframePresentation`, `Resources/NativeSirenFx.shader` (a new sprite mode; the other modes and every other stage's effects are untouched), `Tests/SkyframeChecks.cs`. No bank, rule, collider or timing changed.
+- Branch `claude/skyframe-haze` from shared (`69fbfb63` merged in); pushed, merged into shared `eb24aa2c` and released. Visuals only: Core `NativeSkyframeFx`, Runtime `NativeSkyframePresentation`, `Resources/NativeSirenFx.shader` (a new sprite mode; the other modes and every other stage's effects are untouched), `Tests/SkyframeChecks.cs`. No bank, rule, collider or timing changed.
 - **The owner:** "Skyframe still looks glitchy in background. Maybe z-fighting?" (a recording from the garden's edge with the camera moving).
 - **Cause:** not depth fighting. The cloud sea's 84 haze banks and the sun's five pools of light were camera-turned sprites hundreds of metres wide standing among the cloud heaps and far towers; each swung its plane through them as the pilot looked round (1.7 m of depth 100 m off its middle per degree), so whole clouds and tower faces went in and out of the haze between frames with a hard cut. A bank also jumped across its run at full strength and vanished at 52 m.
 - **Fix:** a bank faces the eye's place (looking round moves nothing); it draws in ChipArena/NativeSirenFx mode 5, which fades it out over 70 m as it nears the scene behind it (the camera's depth texture; not on the low tier); it fades in and out at the ends of its run and towards the tower. docs/arenas/SKYFRAME.md has the account.
@@ -27,6 +48,7 @@
 - **Seen in the Editor** (the camera turning 1.5 degrees a frame, shared's head against the branch, High and Low, two views): before, whole clouds with blocky edges and the far tower change between frames; after, only the turbines and edges. Mean change in the sky's part of the frame (of 255): 3.9 to 2.5 and 3.5 to 2.1 at High, 5.2 to 3.7 and 3.9 to 2.6 on the Low tier.
 - **Checks:** `--skyframe` (57,665 checks, four new: the banks stand still when the camera turns, none comes, goes or changes by more than a fiftieth in a frame over 30 s, the low tier keeps its banks, the wiring); the full suite: 1019 groups, exit 0; the Unity compile (four assemblies pass); the Editor's build checks (`wtvalidate.sh` at `9319026b`): ok; `git diff --check` clean.
 - **Not done / not seen:** no 30 fps recording in the Editor (the capture tool takes stills; the frames are a second apart, 1.5 degrees between them); the owner's own view was matched by eye, not by position; no human playtest.
+- **Released:** shared `eb24aa2c` (the builder at `eb24aa2c`), test channel revision `639301398326184446` (build `aec826a1`); the suite at `f7658015` (1,019 groups, exit 0), the Unity compile, the Editor build gate on `9319026b`. No bank or Drive zip change.
 
 ## 2026-11-12 — Claude: the DEV entrances' grip (the DEV Katana's hilt in the hand)
 

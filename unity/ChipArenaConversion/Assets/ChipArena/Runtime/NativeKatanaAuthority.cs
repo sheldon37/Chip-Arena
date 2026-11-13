@@ -25,7 +25,10 @@ namespace ChipArena.UnityConversion
         private int KatanaStormCuts(NativePilot p)=>NativeKatana.StormCuts+(BladeChip(p,NativeKatanaChips.ThousandPetals)?NativeKatanaChips.PetalsMore:0);
         private void KatanaInput(NativePilot p,bool attack,bool press)
         {
-            var k=p.Blade;if(BladeBusy(p)||Time<p.RollEnd||Time<p.BlockEnd||Time<p.Ready)return;
+            var k=p.Blade;if(BladeBusy(p)||Time<p.RollEnd||Time<p.Ready)return;
+            // Inside the parry's window only the riposte: once the parry has landed (RiposteOpen, the HUD's "RIPOSTE · LMB counter") a click is
+            // the counter, and it ends the window as a standard parry's riposte does (TryMelee).
+            if(Time<p.BlockEnd){if(attack&&press&&RiposteOpen(p)&&Time<k.CounterUntil&&KatanaCounter(p))p.BlockEnd=0;return;}
             float rate=Math.Max(.5f,(float)p.Stats["attackRate"]),cd=(float)p.Stats["abilityCooldown"];
             if(p.Input.AbilityQ&&Time>=k.Ready[0])
             {
