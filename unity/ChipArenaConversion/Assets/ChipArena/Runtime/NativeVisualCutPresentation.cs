@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
         {
             public readonly List<Vector3> At=new List<Vector3>(),Normal=new List<Vector3>();public readonly List<Color> Color=new List<Color>();public readonly List<int> Tris=new List<int>(),Bone=new List<int>();
             // What the flesh is drawn from (Resources/NativeFlesh.shader): each vertex's distance in from its section's edge (m) and
-            // its kind (Core BisectLook; 0: its own colour), and the shell's paint there (linear).
+            // its kind (Core BisectLook; 0: its own colour), and the shell's paint there (as VisualCutPaint gives it).
             public readonly List<Vector2> Data=new List<Vector2>();public readonly List<Vector3> Shell=new List<Vector3>();
             public void Flesh(float depth,int kind,NVector4 shell){Data.Add(new Vector2(depth,kind));Shell.Add(new Vector3(shell.X,shell.Y,shell.Z));}
             // A cap as made (half 0's face) or mirrored (half 1's), each triangle on `bone` of its middle.
