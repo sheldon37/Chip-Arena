@@ -62,7 +62,10 @@ namespace ChipArena.UnityConversion
         private float BladeHurt(NativePilot p,NativePilot q,float amount,Vector3 dir,string kind,float impulse=0,bool melee=false)
         {
             float share=p.Seat.spec==NativeKatana.Spec?KatanaShare(p,q.Seat.id,melee):FangsShare(p,q.Hp/Math.Max(1,(float)q.Stats["hp"]));
-            float actual=Damage(q,p,amount*share*(melee?(float)p.Stats["damage"]:BladeScale(p)),dir,impulse,false,primary:melee,melee:melee,weaponHit:melee,damageKind:"blade-"+kind,hitPoint:q.Body.position+Vector3.up*.3f);
+            // The wound record (presentation only, no rule reads it): a blow that is no cut (the DEV Katana's kick) bruises as a blunt
+            // strike does (owner 2026-11-13: "3rd hit of dev katana is a kick, so its blunt damage rather than slicing"); its damage is the cut's.
+            var wound=NativeBladeCuts.WoundImpact(p.Seat.spec,p.Seat.motion,p.Blade,kind,melee,(float)p.Stats["attackRate"]);
+            float actual=Damage(q,p,amount*share*(melee?(float)p.Stats["damage"]:BladeScale(p)),dir,impulse,false,primary:melee,melee:melee,weaponHit:melee,damageKind:"blade-"+kind,hitPoint:q.Body.position+Vector3.up*.3f,impact:wound);
             if(actual>0)BladeLanded(p,q.Seat.id,q.Hp<=0);return actual;
         }
         private float BladeHurt(NativePilot p,NativeMinion m,float amount,Vector3 dir,string kind,float impulse=0,bool melee=false)

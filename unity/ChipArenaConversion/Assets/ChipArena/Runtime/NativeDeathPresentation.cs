@@ -228,8 +228,9 @@ namespace ChipArena.UnityConversion
             // kill effect's scene (owner 2026-10-14).
             var gib=pilot?HazardGibOf(arena,death):null;
             if(SourceMinionDeath(arena,death,age)||SirenDrop(arena,death,age,up)||!remains&&gib==null&&SourceDeathScene(death,age,up))return;
-            // Ward Zero vent deaths are vent-fall.ts's scripted victim (NativeVentDeathPresentation.cs), not a physics corpse.
-            if(VentStyle(death.style)){PresentVent(arena,death,pilot,KillClock(arena)-death.at,live);return;}
+            // Ward Zero vent deaths: a pilot on the model falls down the vent's shaft as its ragdoll, and its splat lands as one
+            // (NativeVentFallPresentation.cs); vent-fall.ts's scripted victim (NativeVentDeathPresentation.cs) is the voxel body's.
+            if(VentStyle(death.style)){if(!VentModel(death,pilot)){PresentVent(arena,death,pilot,KillClock(arena)-death.at,live);return;}VentFresh(death);}
             if(!corpses.TryGetValue(death.id,out var corpse))
             {
                 if(corpses.Count>=32&&!retain)return;long buildAt=System.Diagnostics.Stopwatch.GetTimestamp();DiagnosticDeathCreates++;CapturedAnimation.Player rig=null;bool temporary=false;
@@ -257,6 +258,7 @@ namespace ChipArena.UnityConversion
                 int band=pilot&&live!=null&&(death.model??"pilot")=="pilot"?NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,live.Seat.AuthorityBoss,live.Seat.team,live.Seat.id==arena.LocalId):-1;
                 if(corpse.Bisect is BisectFx split){split.Band=band;corpse.SetupBisect(budget,Mathf.Clamp01(EffectsQuality),counted,NativeStructureFxPresentation.KillFloor(arena));}
                 else corpse.SetupKill(budget,Mathf.Clamp01(EffectsQuality),counted,hatModel,band,NativeStructureFxPresentation.KillFloor(arena));if(counted)killUsed+=corpse.FxCount;
+                if(VentStyle(death.style))VentLaunch(corpse,death);
                 DiagnosticDeathBuildMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-buildAt)*1000d/System.Diagnostics.Stopwatch.Frequency;
             }
             long stepAt=System.Diagnostics.Stopwatch.GetTimestamp();corpse.Smooth=SlowBodies;corpse.Step(age);DiagnosticDeathStepMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-stepAt)*1000d/System.Diagnostics.Stopwatch.Frequency;if(corpse.Bisect!=null)BisectBlood(corpse,death,KillClock(arena));if(corpse.Smash!=null)SmashBlood(corpse,death,KillClock(arena));string style=corpse.Style??"impact-ragdoll";bool stock=StockEnding(style);
@@ -287,6 +289,7 @@ namespace ChipArena.UnityConversion
             }
             Vector3 center=corpse.PresentedPosition(1);
             if(revived)alpha*=1-Mathf.Clamp01(upFx/.8f);
+            if(VentHidden(corpse,center))alpha=0;
             bool soul=swarm!=null&&swarm.BodyColor>=0&&style=="ragdoll-soul"&&corpse.RigCount>0,frost=swarm!=null&&swarm.BodyColor>=0&&style=="ragdoll-frost";
             // The hat rides on the head unless it flies loose; a crushed head that threw no hat shows none (it had no part). The
             // dropped weapon is presented like its hand part (sink, shrink, collapse; NativeCorpse.PresentedWeapon).
@@ -354,6 +357,7 @@ namespace ChipArena.UnityConversion
             if(remains)return;
             KillSpray(corpse,shown,alpha,clock);if(corpse.Twin!=null)KillSpray(corpse.Twin,shown,alpha,clock);KillSwarm(corpse,shown);KillBurst(corpse,fx);
             if(style=="confetti")VoxelCloud(death.position,fx,6,death.seed,60);
+            VentSplatFx(death,fx);
             if(style=="siren-dissipate"||style=="siren-crush"){VoxelCloud(death.position,fx,10,death.seed,50,true);Ring(death.position-Vector3.up*.75f,Mathf.Clamp01(fx)*2,7,fx*60);}
             if(style=="dev-raging-demon")for(int j=0;j<12;j++){float t=j*.13f;if(fx>=t&&fx<t+.12f){Vector3 p=death.position+new Vector3(Mathf.Sin(j*13)*.45f,Mathf.Cos(j*9)*.7f,Mathf.Cos(j*11)*.45f);Beam(p-Vector3.up*.24f,p+Vector3.up*.24f,.08f,7);}}
         }

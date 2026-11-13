@@ -26,6 +26,31 @@ namespace ChipArena.UnityConversion
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Visual rig: "+what);count++;}
         private static bool Near(Vector3 a,Vector3 b,float e)=>Vector3.Distance(a,b)<=e;
         private static bool Near(Quaternion a,Quaternion b,float e)=>Math.Abs(Math.Abs(Quaternion.Dot(Quaternion.Normalize(a),Quaternion.Normalize(b)))-1)<=e;
+        // Counts what a DEV entrance draws (its effects and its set pieces), and that every place is a real one.
+        private sealed class DevIntroSink:INativeEntranceFx,INativeEntranceProps
+        {
+            public int Fx,Streaks,Pieces;public bool Broken;
+            private void V(Vector3 v){if(!(float.IsFinite(v.X)&&float.IsFinite(v.Y)&&float.IsFinite(v.Z)))Broken=true;}
+            public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){V(at);V(color);Fx++;}
+            public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){V(head);V(velocity);V(color);Fx++;Streaks++;}
+            public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){V(at);Fx++;}
+            public void Piece(WeaponShape shape,bool glow,Vector3 position,Quaternion rotation,Vector3 scale,Vector3 color){V(position);V(scale);Pieces++;}
+        }
+        private static NativeDevPackIntro NewDevIntro(NativeDevPackIntro like)=>like is NativeDevGreatswordIntro?(NativeDevPackIntro)new NativeDevGreatswordIntro():new NativeDevKatanaIntro();
+        // A DEV entrance played at 60 frames a second, its blade handed in (`feed`: a blade wheeling round the pilot and through the
+        // floor, as the clips' do) or not: everything it draws, the most effects in one frame, and the streaks among them.
+        private static DevIntroSink PlayDevIntro(NativeDevPackIntro intro,bool feed,float quality,out int peak)
+        {
+            var all=new DevIntroSink();peak=0;
+            for(int i=0;i/60f<=intro.Length;i++)
+            {
+                float t=intro.Clock(i/60f),a=t*11,dip=-1.25f*(float)Math.Sin(t*2.6f);var hilt=new Vector3(.2f*(float)Math.Sin(t),1.1f,.25f);
+                if(feed)intro.Blade(t,0,hilt,hilt+1.5f*new Vector3((float)(Math.Cos(a)*Math.Cos(dip)),(float)Math.Sin(dip),(float)(Math.Sin(a)*Math.Cos(dip))),true);
+                var frame=new DevIntroSink();intro.Props(t,frame,quality);intro.Effects(t,frame,quality);
+                peak=Math.Max(peak,frame.Fx);all.Fx+=frame.Fx;all.Streaks+=frame.Streaks;all.Pieces+=frame.Pieces;all.Broken|=frame.Broken;
+            }
+            return all;
+        }
         private static float Angle(Vector3 a,Vector3 b)=>(float)Math.Acos(Math.Clamp(Vector3.Dot(Vector3.Normalize(a),Vector3.Normalize(b)),-1f,1f));
 
         // ---- the synthetic skeleton: world rest positions (Pose body space, floor at -.865) and bone frames off identity ----
@@ -686,6 +711,44 @@ namespace ChipArena.UnityConversion
                 string bladePres=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeBladePresentation.cs")).Replace("\r\n","\n"),motionPres=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeVisualMotionPresentation.cs")).Replace("\r\n","\n");
                 Check(bladePres.Contains("PalmGrip(introRig,NativeDevMotions.Base(bladeIntro.Spec)??bladeIntro.Spec,m,b==CapturedRig.LHand)")&&bladePres.Contains("dev.Carried(bladeIntroClock)")
                     &&motionPres.Contains("bladeIntro is NativeDevPackIntro devIntro&&m.Chest!=null")&&motionPres.Contains("m.Chest=Body(HumanBodyBones.Chest);"),"the entrances draw the blade in the palm as the match does and carry it where the clip does");
+                // The DEV entrances as cinematics (owner 2026-11-13: "Lets also add more camera work and effects to DEV Katana and DEV Greatsword
+                // ... I mean for there intros"). The match sees what it saw: the entrance's length, its name card, the clip at its own pace
+                // (above). The scene slows only through the great cut and the clock is the age again by the name card; the camera is cut to
+                // the clip's beats, keeps off the floor, carries its hero frame into the card's without a jump and settles still; its shakes are
+                // small, short, this client's own (a camera offset from this client's Camera shake setting, nothing a seat or a frame
+                // carries) and gone with the setting off; the effects follow the blade handed in, within the entrances' budget.
+                foreach(var dev in new NativeDevPackIntro[]{new NativeDevGreatswordIntro(),new NativeDevKatanaIntro()})
+                {
+                    bool great=dev is NativeDevGreatswordIntro;string s=dev.Style;float length=dev.Length,card=(float)NativeIntroRules.NameAt(s),beat=great?NativeDevGreatswordIntro.Beat:NativeDevKatanaIntro.Beat;
+                    Check(Math.Abs(NativeIntroRules.Duration(s)-(great?4.8:5.3))<1e-4&&Math.Abs(card-(great?3.2f:3.7f))<1e-4f&&Math.Abs(dev.ClipEnd-dev.StartAt-(great?2f:2.83f))<1e-4f&&Math.Abs(beat-dev.StartAt-(great?1.27f:2.53f))<1e-4f,s+": its phase, its name card, its clip's length and its beat are what they were");
+                    float clockWas=-1,beatAge=-1;bool forward=true,sameBefore=true,sameAfter=true;
+                    for(float age=0;age<=length;age+=1/240f){float t=dev.Clock(age);if(t<clockWas-1e-6f)forward=false;clockWas=t;if(age<=dev.Hit&&Math.Abs(t-age)>2e-4f)sameBefore=false;if(age>=card&&Math.Abs(t-age)>2e-4f)sameAfter=false;if(beatAge<0&&t>=beat+.02f)beatAge=age;}
+                    Check(forward&&sameBefore&&sameAfter&&dev.Hit>dev.StartAt&&dev.Hit<beat&&beat-dev.Hit<.1f&&dev.Hit+dev.SlowHold+dev.SlowCatchUp<=card&&beatAge>beat,s+": the scene slows just before its great cut, never runs back and is on the age again by the name card");
+                    var shots=dev.Shots;Check(shots.Length>=6&&shots[0].At==0&&shots[^1].At==card&&Enumerable.Range(1,shots.Length-1).All(k=>shots[k].At>=shots[k-1].At+.2f)&&shots.All(k=>k.Track==0&&k.Follow<0),s+": a camera of six shots or more on the stage's own axes (the keyed stance under the clip is not where the model is), none shorter than a fifth of a second, the last on the name card");
+                    bool clear=true;for(float age=0;age<=length;age+=1/120f){dev.Camera(age,out var v);if(!(v.Eye.Y>=NativeEntranceStage.FloorY+NativeEntranceCamera.EyeClearance-1e-3f)||!(v.Fov>=25&&v.Fov<=60)||!float.IsFinite(v.Look.X))clear=false;}
+                    dev.Camera(card-.004f,out var heroEnd);dev.Camera(card+.004f,out var cardStart);dev.Camera(dev.SettleAt+.05f,out var settled);dev.Camera(length,out var lastFrame);
+                    Check(clear&&Vector3.Distance(heroEnd.Eye,cardStart.Eye)<.04f&&Vector3.Distance(heroEnd.Look,cardStart.Look)<.04f&&Math.Abs(heroEnd.Fov-cardStart.Fov)<.5f&&settled.Eye==lastFrame.Eye&&settled.Look==lastFrame.Look,s+": the camera stays off the floor, carries the hero frame into the name card's and settles still");
+                    float most=0,late=0;bool still=true;dev.Shake=true;
+                    for(float t=0;t<=length;t+=1/240f){float j=dev.CameraJolt(t).Length();most=Math.Max(most,j);if(t>=card)late=Math.Max(late,j);}
+                    dev.Camera(beatAge,out var shaken);float clockOn=dev.Clock(beatAge);dev.Shake=false;for(float t=0;t<=length;t+=1/240f)if(dev.CameraJolt(t)!=Vector3.Zero)still=false;dev.Camera(beatAge,out var steady);float clockOff=dev.Clock(beatAge);dev.Shake=true;
+                    Check(most>.004f&&most<=.04f&&late<.002f&&still&&shaken.Eye!=steady.Eye&&Vector3.Distance(shaken.Eye,steady.Eye)<=.04f&&shaken.Look==steady.Look&&shaken.Fov==steady.Fov&&clockOn==clockOff,
+                        s+": its camera shakes are small ("+most.ToString("0.000")+" m at most), over by the name card, move the eye alone, and are gone with Camera shake off (the clock the same)");
+                    Check(dev.Line(false,out var bladeRoot,out var bladeTip)&&bladeTip.Z>bladeRoot.Z+.5f&&NativeDevPackIntro.BladeLine(dev,false,out var lineRoot,out var lineTip)&&lineRoot==bladeRoot&&lineTip==bladeTip&&!dev.Line(true,out _,out _),s+": its blade's line is its base class's, in the right hand");
+                    var bare=PlayDevIntro(NewDevIntro(dev),false,1,out int barePeak);var fed=PlayDevIntro(dev,true,1,out int fedPeak);var thin=PlayDevIntro(NewDevIntro(dev),true,.3f,out int thinPeak);
+                    Check(!bare.Broken&&!fed.Broken&&!thin.Broken&&fed.Streaks>bare.Streaks+2000&&fedPeak<=600&&barePeak<=fedPeak&&thin.Fx<fed.Fx*.75f&&thinPeak<fedPeak,
+                        s+": its effects follow the blade handed in ("+bare.Streaks+" / "+fed.Streaks+" streaks), "+fedPeak+" a frame at most, thinned by the effects setting ("+thin.Fx+" of "+fed.Fx+")");
+                    // A replay (the clock run back) starts the blade's marks and its last cut's line over: the frame a fresh one draws.
+                    var again=new DevIntroSink();dev.Blade(.5f,0,default,default,false);dev.Props(.5f,again,1);dev.Effects(.5f,again,1);var fresh=new DevIntroSink();var unplayed=NewDevIntro(dev);unplayed.Props(.5f,fresh,1);unplayed.Effects(.5f,fresh,1);
+                    Check(again.Fx==fresh.Fx&&again.Pieces==fresh.Pieces&&again.Streaks==fresh.Streaks,s+": a replay starts its effects over");
+                    var broken=NewDevIntro(dev);var nan=new DevIntroSink();broken.Blade(1,0,new Vector3(0,1,0),new Vector3(float.NaN,0,0),true);broken.Props(1,nan,1);broken.Effects(1,nan,1);Check(!nan.Broken,s+": a broken blade is refused");
+                }
+                Check(NativeDevPackIntro.BladeLine(new NativeDevKatanaIntro(),false,out var devKatanaRoot,out var devKatanaTip)&&NativeBladeView.Line(NativeKatana.Spec,false,out var katanaRoot,out var katanaTip)&&devKatanaRoot==katanaRoot&&devKatanaTip==katanaTip
+                    &&NativeDevPackIntro.BladeLine(new NativeFangsIntro(),true,out var fangRoot,out var fangTip)&&NativeBladeView.Line(NativeFangs.Spec,true,out var fangRoot2,out var fangTip2)&&fangRoot==fangRoot2&&fangTip==fangTip2
+                    &&NativeDevPackIntro.BladeLine(new NativeKatanaIntro(),false,out var moonRoot,out _)&&moonRoot==katanaRoot,"the DEV Katana's edge is the Katana's; the blade classes' own entrances keep theirs");
+                string introsText=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeIntros.cs")),gameText=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","ConversionGame.cs")),previewText=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativePreview.cs"));
+                Check(introsText.Contains("if(script is NativeDevPackIntro shaken)shaken.Shake=CameraShake;")&&introsText.IndexOf("shaken.Shake=CameraShake;",StringComparison.Ordinal)<introsText.IndexOf("script.Camera(age,out var view);",StringComparison.Ordinal)
+                    &&gameText.Contains("presentation.CameraShake=prefs.cameraShake;presentation.RenderIntro(arena,IntroPilot,")&&previewText.Contains("presentation.CameraShake=prefs.cameraShake;presentation.RenderIntro(previewArena,")
+                    &&bladePres.Contains("!NativeDevPackIntro.BladeLine(intro,hand==1,out var root,out var tip)"),"the entrance's camera takes this client's Camera shake setting before it is placed (a match's entrance and the Locker's preview alike), and the entrances are handed their blades by their own lines");
                 var introActor=new Actor{Id=31,SourceSpec=NativeDevMotions.Greatsword,Grounded=true};int keepActor=NativeBladeMotion.IntroActor;string keepClip=NativeBladeMotion.IntroClip;float keepTime=NativeBladeMotion.IntroTime;
                 NativeBladeMotion.IntroActor=31;NativeBladeMotion.IntroClip=NativeDevGreatswordMotion.Intro;NativeBladeMotion.IntroTime=.7f;
                 bool introPick=NativeVisualMotion.Choose(gs,introActor,1,new NativeVisualMotion.Memory(),pkBook,false,out var ip)&&ip.Clip==NativeDevGreatswordMotion.Intro&&Math.Abs(ip.Time-.7f)<1e-4f;
