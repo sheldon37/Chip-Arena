@@ -1,3 +1,76 @@
+## 2026-11-13 — Claude: the owner's second animation picks: the Greatsword, the DEV Greatsword and the Fangs (presentation only)
+
+- Branch `claude/more-move-picks` (from shared `e0317fba`, the Katana parry daze; shared `5d84ea13`, the DEV Katana's hit 4, merged in):
+  `06180f9f` the picks, `21e527b0` Sunder's recovery pace and the docs, `ae93338f` the merge, `8a0b1ebf` the Fangs' lunging third cut,
+  then this entry. Pushed, **not merged, not released**. Relayed by the NOCTIEL session from the owner's picker (each candidate previewed
+  as the slice of its clip the game plays, at game speed, fitted to the rules' timing).
+- **The picks (what plays now):**
+  - **Greatsword** (public; its stance, stride, combo and Whirlwind stay the RPG set's): the plunging slam on Grruzam's
+    `M_Big_Sword@Skill_F` (was the game's hand-posed plunge), Earthsplitter on `Skill_H` and the jump attack on
+    `Jump_Attack_Combo_3_ZeroHeight` (the DEV Greatsword's; were `2Hand-Sword-Attack11`, `2Hand-Sword-Air-Attack1`), Sunder on `Skill_G_2`
+    (was `Attack11`). It holds the blade as the DEV Greatsword does (the same hold the body takes from the game pose).
+  - **DEV Greatsword:** the plunge on `Skill_L` (was the game's plunge), Sunder on `Skill_J_Inplace` (was `Skill_F`); its Earthsplitter and
+    jump attack kept.
+  - **Fangs:** Fang Flurry on the Frank Dual set's chain (`Frank_RPG_Dual_Combo01_1`, `01_2`, `01_3`, `06_1`, `01_4`; was the Rogue set's),
+    the takedown from behind on the stealth kill's throat cut (`Frank_Stealth_Kill_Behind_01` with its foe's `Hit_Behind_01`; was `_05`).
+    Every other Fangs move kept.
+- **Code** (Core): `NativeDevGreatswordMotion` (clips, strikes), `NativeVisualMotion` (the Greatsword set; `Set.Plunge` and `PlungeSlam`:
+  a set's own plunge clip, which the game's plunge pose had no slot for), `NativeTechniqueThirdMelee` (Sunder's recovery),
+  `NativeBladeMotion` (the Fangs' clips, windows, a lunging cut on the whole body), `NativeBladeCuts`/`NativeMeleeSlice` (the takedown's kill
+  slits the throat; the DEV Greatsword's plunge records its own clip). Docs: BOZO-INTEGRATION, FANGS, MELEE-FEEL, BISECT-GIB.
+- **Strikes / windows** (clip s), checked on the bake body at 30 a second (`bozo-clipframes`; the great sword ones with the game's blade
+  in the hand, where it arrives in front and stops; the Fangs' by the fastest hand, the picker having measured the pack's fangs):
+  `Skill_G_2` 0.57 (arrives 0.567, still from 0.60), `Skill_L` 1.07 (the second blow arrives 1.067, still from 1.10; a lighter first touch
+  at 0.90), `Skill_J_Inplace` 0.94 (0.933-0.967), `Skill_F` 0.63 (unchanged, now the Greatsword's plunge); the Dual windows 0/0.43/0.9,
+  0/0.26/0.72, 0/0.24/0.7, 0/0.30/0.75, 0/0.24/0.85 (hand peaks 0.433, 0.267-0.30, 0.20-0.267, 0.30-0.333 with a second at 0.57-0.60, 0.233-0.267);
+  the throat cut 0.02/1.3/1.98 for both bodies (the fang's pull 1.233-1.30; the foe drops from 1.3). One strike per clip: `Skill_H`,
+  `Jump_Attack_Combo_3_ZeroHeight` and `Skill_F` keep the strikes they had.
+- **How each fits** (the previews' fits): the plunge's strike on the landing, its run-in at up to 1.6 times the clip's pace (from a
+  jump's top: `Skill_F` from 0.40 s, `Skill_L` from 0.84), its own pace after; while the drop is under way the clip slows short of its
+  strike until the landing is known. Earthsplitter the whole clip on the cast (its last second in the cast's last 0.3 s, about 3.2
+  times its pace, as previewed). The jump attack's strike on the landing (run-in 2.4 times), own pace after. Sunder: the picker
+  previewed a 0.6 s recovery (the technique preview's numbers) but the rules free the pilot at the slam and the presentation ends Sunder
+  0.3 s after it; fitted into 0.3 s the recoveries raced at about 4 times (as the DEV Greatsword's `Skill_F` did), so a set's own Sunder
+  clip now lays its recovery over 0.6 s as previewed (`SunderTail`) and the stance fades in where the 0.3 s leave it (the crouch rising).
+  The Fangs' cuts on the blade fit (1.6 times), the takedown's pair on one window from the rules' pair moments.
+- **The Fangs' third cut** steps in 0.5 m; that step read as moving, so it played on the upper body over a walk (the Rogue's too). A cut that
+  lunges (`NativeFangs.CutLunge`: the third, the finisher) now takes the whole body, as the Katana's stepping cuts do.
+- **The takedown's kill** slits the throat (the clip is a throat cut; `Behind_05` dragged the foe down and took an arm), so the killcam reads
+  "Slashed"; the frontal critical still takes an arm.
+- **Animation impact:** hit timing, hitboxes, damage, cooldowns, movement and networking unchanged (the host still names the takedown's
+  pair by `NativeBladeMotion.FangsTakedown`; 28 and 32 characters on the wire, under the 48 limit). Paces: Earthsplitter's fast tail as
+  above (previewed); Sunder's tail cut at 0.3 s into a 0.2 s blend to the stance; the plunge's run-in capped at 1.6 times.
+- **The motion bank** (local, not committed): the nine new clips (`Skill_G_2`, `Skill_L`, the five Dual, the throat-cut pair) baked with
+  `bozo-motionextra` and merged: 490 clips in 5,960,298 bytes (sha256 6b639872...) became 499 in 6,136,627 bytes (sha256
+  37ec44d2df03df90f85acba58687328436a6d79b8dc38357cd6df77e407ee988); every one of the 490 byte-identical and in order (per-clip compare,
+  CAMO v1, 95 muscles). The Drive zip is not repacked: **release this code only with the new bank** (without `Skill_G_2`, the Dual
+  clips and the throat-cut pair the Greatsword's Sunder, the Fangs' cuts and the takedown show the stance; without `Skill_L` the DEV
+  Greatsword's plunge keeps the game's pose).
+- **Filmed** in the Editor (cybercity, the game stepped evenly at 60 a second, shot at 30 a second on the arena clock, every frame's
+  clip logged), before on shared `e0317fba` and after on the branch (`21e527b0`; the Fangs' flurry re-filmed on `8a0b1ebf`): the
+  Greatsword's plunge, Earthsplitter, Sunder and jump attack, the DEV Greatsword's plunge and Sunder, the Fangs' five-cut flurry standing
+  and on the move, the takedown with both bodies in frame (a Fangs foe brought in front and cut below 40% by the flurry first). Sheets with
+  the strike frame framed in red (the plunges' landing in orange), local in Claude's scratchpad `mmp/sheets/`; the previews laid out the
+  same way in `mmp/previews/`. Read against the previews:
+  - every pick lands its blow on the rules' hit (the plunges on the landing, both at 5.533 with the clip at its strike; the slams on the
+    release; the cuts on their hits within a frame; the throat cut on the takedown's blow), and keeps its weapon in the hands;
+  - the plunges, Earthsplitter, the jump attack, the DEV Sunder, the flurry and the takedown match their previews; the Greatsword's
+    Sunder matches up to 0.3 s after the slam (the blade on the floor for that third of a second), then rises into the stance over the
+    0.2 s blend (the preview rose over 0.3 s more);
+  - into and out of the stance every move blends (0.1 s in, 0.2 s out); the Greatsword's picks start from and end in the RPG set's
+    stance, so the first and last blends cross from the RPG hold to the great sword set's.
+- **Checks:**
+  - CoreTests, the full suite: `06180f9f` 1,021 groups, exit 0; `21e527b0` 1,021, exit 0; the merge `ae93338f` 1,021, exit 0; `8a0b1ebf`
+    1,021, exit 0. The Windows path patch applied in a throwaway worktree, not committed. `--visual-rig`, `--blades` (236), `--melee-bisect`
+    (37,041) on the merge.
+  - The Unity compile (four assemblies) on `21e527b0` and `8a0b1ebf`.
+  - The Editor build gate (`PrototypeBuild.Validate`, the builder's Editor checks) on `8a0b1ebf`: ok, 397 PASS lines (354 distinct).
+  - `git diff --check` against shared: clean. The stage banks (14 incl. the Rooftop's) unchanged through every Editor hold.
+- **Not done / not seen:** played by a person; a guest over the network (the takedown's pair is named on the host as before); a Windows
+  build; the Drive zip (not repacked). A takedown's foe of a class whose set does not list the paired victim clips (only the Katana's, the
+  DEV Katana's and the Fangs' bodies carry them) keeps its own stance while held, before and after this change (Runtime
+  `NativeVisualMotionPresentation` builds each body's clips from its set): a follow-up.
+
 ## 2026-11-13 — Claude: the DEV Katana's hit 4 is the three-hit chain's overhead chop (owner's pick)
 
 - Branch `claude/dev-katana-hit4` (from shared `3c132414`, the blade labels' merge; shared `e0317fba` merged in): `fa48205c`, the hand-over fix `4df57263` and this entry. Pushed, **not merged, not released**: the Drive zip needs the new motion bank first.
