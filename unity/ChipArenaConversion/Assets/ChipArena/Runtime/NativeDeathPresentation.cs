@@ -235,6 +235,9 @@ namespace ChipArena.UnityConversion
             {
                 if(corpses.Count>=32&&!retain)return;long buildAt=System.Diagnostics.Stopwatch.GetTimestamp();DiagnosticDeathCreates++;CapturedAnimation.Player rig=null;bool temporary=false;
                 if(!rigs.TryGetValue(death.id,out rig)&&!minionRigs.TryGetValue(death.id,out rig)){rig=captured.Create(transform,death.id);var actor=death.actor??new Actor();actor.Hp=Math.Max(1,actor.Hp);rig.ActorPose(actor,death.position-Vector3.up*.865f,death.at);temporary=true;}
+                // A pilot killed in a paired move's victim clip (any class) falls from the reaction its model showed, not the game's stance
+                // (VisualRigFromDrawn); every other death is built exactly as before.
+                if(pilot&&!temporary&&age<VictimDeathGap)VisualRigFromDrawn(rig,death);
                 var slice=pilot?MeleeSlice(arena,death):null;
                 // A blade's killing blow cuts the body's mesh along its swing, a Factory saw splits it in two (both
                 // NativeBisectPresentation); every other death, and a melee kill those keep as it was, is one corpse as before.
@@ -246,6 +249,7 @@ namespace ChipArena.UnityConversion
                 if(pilot)VisualCorpseMake(corpse,death,rig);
                 // Its cosmetic body's boxes fitted to the model it carries, so the model rests on the floor rather than through it.
                 if(pilot)VisualCorpseFit(corpse,arena);
+                visualDeathDrawn=null;
                 if(temporary)rig.Dispose();
                 // A cut body's blood is its seam's (BisectBlood); the fatal wound still bleeds as it falls.
                 BleedDeath(death,corpse.Bisect!=null?null:slice,KillClock(arena));
