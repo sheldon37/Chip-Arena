@@ -46,8 +46,8 @@
   setting off and wired from `prefs.cameraShake` before the camera is placed; the blade lines; the effects following a blade handed
   in, at most 600 a frame, thinned by Reduced effects; a replay starting over; a broken blade refused. `pins.py`: 0 broken;
   `git diff --check` against shared clean. In the Editor (the shared one, under the lock, checkout and banks put back as found):
-  both entrances filmed at 60 frames a second before (shared `41bfb1d7`) and after, on the entrance's own camera. Not run: a built
-  client; the Classic body; the Locker's preview.
+  both entrances filmed at 60 frames a second before (shared `41bfb1d7`) and after (`60aa9d9a`), on the entrance's own camera, and
+  the build gate (`PrototypeBuild.Validate`) ok on `60aa9d9a`. Not run: a built client; the Classic body; the Locker's preview.
 - **Filming an entrance:** the game draws an entrance on a clock that advances on the unscaled frame time, so a capture's stalled
   frames made the drawn age run back and forth (trails restarted every other frame; the first "before" sheets show it). The local
   Editor tool has a play option `introsteady=1` for it now (git-ignored, compile-checked on a copy; shared note
