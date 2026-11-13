@@ -1214,6 +1214,7 @@ namespace ChipArena.UnityConversion
         {
             // The skeleton shows a corpse's own bones at its cuts (NativeVisualSkeletonPresentation.cs): no stubs then.
             if(c.Root==null||c.All==null||c.Parent==null||c.Skeleton!=null)return;Material source=null;
+            if(HotDogOn(c.Root))return; // (No bones in the Hot Dog: it is sausage through.)
             foreach(var r in c.All)if(r is SkinnedMeshRenderer&&r.sharedMaterial!=null){source=r.sharedMaterial;break;}
             if(source==null)return;
             var boneLook=VisualGoreMaterial(source,NativeModelGore.Bone);var marrowLook=VisualGoreMaterial(source,NativeModelGore.Marrow);
@@ -1252,12 +1253,17 @@ namespace ChipArena.UnityConversion
             var go=new GameObject(name);go.transform.SetPositionAndRotation(at,turn);go.transform.localScale=size;go.transform.SetParent(on,true);
             go.AddComponent<MeshFilter>().sharedMesh=mesh;var r=go.AddComponent<MeshRenderer>();r.sharedMaterial=look;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;return r;
         }
-        // A unit cylinder (radius 0.5, height 1 along y about its middle, capped) and a unit disc (radius 0.5 facing +y).
+        // A unit cylinder (radius 0.5, height 1 along y about its middle, capped) and a unit disc (radius 0.5 facing +y). The
+        // cylinder's lower end (the bone's cut end) is a broken one (owner 2026-11-13: "higher quality bone structure"): a ring of
+        // uneven teeth stands a little past it, flared, round where the marrow's disc sits.
         private static Mesh GoreCylinder()
         {
             const int n=12;var v=new List<Vector3>();var nm=new List<Vector3>();var t=new List<int>();
             for(int i=0;i<=n;i++){float a=i*2*Mathf.PI/n;var d=new Vector3(Mathf.Cos(a)*.5f,0,Mathf.Sin(a)*.5f);v.Add(d+Vector3.down*.5f);nm.Add(d*2);v.Add(d+Vector3.up*.5f);nm.Add(d*2);}
             for(int i=0;i<n;i++){int a=i*2;t.AddRange(new[]{a,a+1,a+3,a,a+3,a+2});}
+            int teeth=v.Count;
+            for(int i=0;i<=n;i++){int k=i%n;float a=i*2*Mathf.PI/n,jag=.03f+.11f*Mathf.Abs(Mathf.Sin(k*2.37f+.6f));var d=new Vector3(Mathf.Cos(a)*.5f,0,Mathf.Sin(a)*.5f);v.Add(d*1.07f+Vector3.down*(.5f+jag));nm.Add((d*2+Vector3.down*.3f).normalized);}
+            for(int i=0;i<n;i++){int a=teeth+i,b=i*2;t.AddRange(new[]{a,b,b+2,a,b+2,a+1});}
             for(int e=0;e<2;e++)
             {
                 float y=e==0?-.5f:.5f;int c=v.Count;v.Add(new Vector3(0,y,0));nm.Add(new Vector3(0,e==0?-1:1,0));

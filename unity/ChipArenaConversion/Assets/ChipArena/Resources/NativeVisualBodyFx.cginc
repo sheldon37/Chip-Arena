@@ -326,6 +326,33 @@ void WoundClip(float3 world)
   if(e*e+dot(w,w)<_WoundAt[k].w*_WoundAt[k].w)clip(-1.0);
  }
 }
+// The blood round an open wound (owner 2026-11-13: "the gibbing seems to still use voxel flesh and wounds? Can we essentially
+// match the quality with our blood?"): the skin and clothes about a hole are soaked in the blood's red, wholly at its lip and
+// thinning over a wound's width, further below it where it runs. Returns the soak's share (0 unset or away from every wound).
+float WoundSoak(float3 world)
+{
+ float soak=0.0;
+ if(_Wounds<0.5)return soak;
+ for(int k=0;k<4;k++)
+ {
+  if(k>=_Wounds)break;
+  float3 v=world-_WoundAt[k].xyz;float t=dot(v,_WoundIn[k].xyz);if(t<-0.03||t>_WoundIn[k].w)continue;
+  float a=dot(v,_WoundAlong[k].xyz);float3 w=v-_WoundIn[k].xyz*t-_WoundAlong[k].xyz*a;float e=max(abs(a)-_WoundAlong[k].w,0.0);
+  float r=_WoundAt[k].w,d=sqrt(e*e+dot(w,w)),reach=r*(1.9+2.6*saturate(-v.y/(r*5.0)));
+  float ragged=0.75+0.5*frac(sin(dot(floor(world*310.0),float3(12.9898,78.233,37.719)))*43758.5453);
+  soak=max(soak,1.0-smoothstep(r*1.02,max(reach*ragged,r*1.1),d));
+ }
+ return soak;
+}
+// The soaked colour: the blood's (Core NativeBloodSplash.Tint), in the project's colour space.
+float3 WoundSoaked(float3 c,float soak)
+{
+ float3 blood=float3(0.16,0.003,0.006);
+ #ifdef UNITY_COLORSPACE_GAMMA
+ blood=LinearToGammaSpace(blood);
+ #endif
+ return lerp(c,blood,soak*0.9);
+}
 #ifdef SHADER_TARGET_SURFACE_ANALYSIS
 float CutKeep(uint vid){return 1.0;}
 #else

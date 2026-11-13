@@ -92,17 +92,30 @@ namespace ChipArena.UnityConversion
             return twin;
         }
         /// <summary>A stump cap cell (lit, wound glow .3, no shadow): since 2026-11-09 (realistic blood) a soft wet lump a little wider
-        /// than its cell, so the cells run together into a torn surface instead of a grid of cubes.</summary>
-        public void KillCap(Matrix4x4 matrix,Color color,float opacity)
+        /// than its cell, so the cells run together into a torn surface instead of a grid of cubes. With `flesh` (owner 2026-11-13:
+        /// "match the quality with our blood") it is drawn as wet tissue (Resources/NativeFlesh.shader) in the cell's colour.</summary>
+        public void KillCap(Matrix4x4 matrix,Color color,float opacity,bool flesh=false)
         {
+            if(flesh&&FleshReady())
+            {
+                if(fleshCap==null){var b=new Builder();Sphere(10,7,b.P,b.N,b.I);for(int i=0;i<b.P.Count;i++)b.P[i]*=.62f;fleshCap=FleshPart("flesh-cap",b.Mesh("Flesh cap",Color.white,Vector4.zero),1,false,2);}
+                if(fleshCap!=null){Draw(fleshCap,matrix,new Vector4(1,1,1,opacity),color,Vector4.one);return;}
+            }
             if(killCap==null){var b=new Builder();Sphere(10,7,b.P,b.N,b.I);for(int i=0;i<b.P.Count;i++)b.P[i]*=.62f;killCap=KillPart("kill-cap",b.Mesh("Kill cap",Color.white,new Vector4(.3f,.3f,.3f,0)),false);}
             if(killCap!=null)Draw(killCap,matrix,new Vector4(1,1,1,opacity),color,Vector4.one);
         }
         private readonly Part[] killChunks=new Part[3];
         /// <summary>A crushed part's fragment (CrushDebris; it casts a shadow): one of three rounded, torn lumps (a sphere pushed in and out
-        /// by its own noise), about the size of the cube it replaces. `variant` picks the lump.</summary>
-        public void KillChunk(Matrix4x4 matrix,Color color,float opacity,int variant)
+        /// by its own noise), about the size of the cube it replaces. `variant` picks the lump. With `flesh` it is one of five
+        /// torn lumps of wet tissue, or with `bone` one of three shards of bone (FleshLump, BoneShard).</summary>
+        public void KillChunk(Matrix4x4 matrix,Color color,float opacity,int variant,bool flesh=false,bool bone=false)
         {
+            if(flesh&&FleshReady())
+            {
+                var list=bone?boneShards:fleshLumps;int f=((variant%list.Length)+list.Length)%list.Length;
+                if(list[f]==null)list[f]=FleshPart((bone?"bone-shard-":"flesh-lump-")+f,bone?BoneShard(f):FleshLump(f),bone?2:1,true,bone?0:2);
+                if(list[f]!=null){Draw(list[f],matrix,new Vector4(1,1,1,opacity),color,Vector4.one);return;}
+            }
             int v=((variant%3)+3)%3;
             if(killChunks[v]==null)
             {
@@ -115,6 +128,91 @@ namespace ChipArena.UnityConversion
                 killChunks[v]=KillPart("kill-chunk-"+v,mesh,false);if(killChunks[v]!=null)killChunks[v].NoShadow=false;
             }
             if(killChunks[v]!=null)Draw(killChunks[v],matrix,new Vector4(1,1,1,opacity),color,Vector4.one);
+        }
+        // ---- flesh and bone (owner 2026-11-13: "Using higher quality bone structure and flesh"; Resources/NativeFlesh.shader) ---
+        // The lumps and shards are made once each and drawn through the same instanced batches as the pieces above, so a gib
+        // makes nothing per frame.
+        private Part fleshCap;private readonly Part[] fleshLumps=new Part[5],boneShards=new Part[3];private Shader fleshShader;private bool fleshMissing;
+        private bool FleshReady(){if(fleshShader==null&&!fleshMissing){fleshShader=Resources.Load<Shader>("NativeFlesh");if(fleshShader==null||!fleshShader.isSupported){fleshShader=null;fleshMissing=true;}}return fleshShader!=null;}
+        // (A shard is drawn from both sides: its broken ends are open, and the shader lights whichever face shows.)
+        private Part FleshPart(string id,Mesh mesh,int mode,bool shadow,int cull)
+        {
+            var material=new Material(fleshShader){enableInstancing=true,name="Gore "+id};material.SetInt("_Cull",cull);material.SetFloat("_Mode",mode);materials.Add(material);
+            var part=new Part{Name=id,Bone=-1,Mesh=mesh,Material=material,NoShadow=!shadow};models[id]=new[]{part};return part;
+        }
+        private static float GoreHash(int x,int y,int z,int seed){uint h=(uint)(x*374761393+y*668265263+z*2147483647+seed*362437);h=(h^(h>>13))*1274126177u;h^=h>>16;return (h&0xffffff)/16777215f;}
+        private static float GoreNoise(Vector3 p,int seed)
+        {
+            int x=Mathf.FloorToInt(p.x),y=Mathf.FloorToInt(p.y),z=Mathf.FloorToInt(p.z);float fx=p.x-x,fy=p.y-y,fz=p.z-z;fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);fz=fz*fz*(3-2*fz);
+            float a=Mathf.Lerp(Mathf.Lerp(GoreHash(x,y,z,seed),GoreHash(x+1,y,z,seed),fx),Mathf.Lerp(GoreHash(x,y+1,z,seed),GoreHash(x+1,y+1,z,seed),fx),fy);
+            float b=Mathf.Lerp(Mathf.Lerp(GoreHash(x,y,z+1,seed),GoreHash(x+1,y,z+1,seed),fx),Mathf.Lerp(GoreHash(x,y+1,z+1,seed),GoreHash(x+1,y+1,z+1,seed),fx),fy);
+            return Mathf.Lerp(a,b,fz);
+        }
+        // Smooth normals from the faces, shared by vertices at one place (a sphere's seam and poles), turned out from `inside`.
+        private static void GoreNormals(Builder b,Func<Vector3,Vector3> inside)
+        {
+            var acc=new Dictionary<(int,int,int),Vector3>();(int,int,int) Key(Vector3 p)=>(Mathf.RoundToInt(p.x*4096),Mathf.RoundToInt(p.y*4096),Mathf.RoundToInt(p.z*4096));
+            for(int t=0;t+2<b.I.Count;t+=3){Vector3 p0=b.P[b.I[t]],p1=b.P[b.I[t+1]],p2=b.P[b.I[t+2]];var fn=Vector3.Cross(p1-p0,p2-p0);if(fn.sqrMagnitude<1e-16f)continue;var mid=(p0+p1+p2)/3;if(Vector3.Dot(fn,mid-inside(mid))<0)fn=-fn;foreach(var p in new[]{p0,p1,p2}){acc.TryGetValue(Key(p),out var sum);acc[Key(p)]=sum+fn;}}
+            for(int i=0;i<b.P.Count;i++)b.N[i]=acc.TryGetValue(Key(b.P[i]),out var n)&&n.sqrMagnitude>1e-16f?n.normalized:(b.P[i]-inside(b.P[i])).normalized;
+        }
+        // Each face wound so its front (Unity's clockwise) looks away from `inside`.
+        private static void GoreWind(Builder b,Func<Vector3,Vector3> inside)
+        {
+            for(int t=0;t+2<b.I.Count;t+=3){Vector3 p0=b.P[b.I[t]],p1=b.P[b.I[t+1]],p2=b.P[b.I[t+2]];var mid=(p0+p1+p2)/3;if(Vector3.Dot(Vector3.Cross(p1-p0,p2-p0),mid-inside(mid))<0){int k=b.I[t+1];b.I[t+1]=b.I[t+2];b.I[t+2]=k;}}
+        }
+        /// <summary>A torn lump of flesh, about the size of the cube it replaces (a sphere pulled into its shape, then pushed in
+        /// and out by two sizes of noise): 0 a clump, 1 a strip, 2 a flat slab, 3 two lobes, 4 a tapering shred.</summary>
+        private static Mesh FleshLump(int v)
+        {
+            var b=new Builder();Sphere(14,9,b.P,b.N,b.I);
+            var shape=v==0?new Vector3(.56f,.5f,.54f):v==1?new Vector3(.78f,.3f,.4f):v==2?new Vector3(.62f,.24f,.6f):v==3?new Vector3(.7f,.4f,.42f):new Vector3(.86f,.26f,.3f);
+            for(int i=0;i<b.P.Count;i++)
+            {
+                var u=b.P[i];float big=GoreNoise(u*1.7f+Vector3.one*(v*3.1f),v)-.5f,small=GoreNoise(u*4.6f+Vector3.one*(v*5.3f),v+11)-.5f;
+                float r=1+.5f*big+.2f*small;
+                if(v==3)r*=.72f+.4f*Mathf.Abs(u.x);else if(v==4)r*=Mathf.Lerp(1.15f,.45f,(u.x+1)*.5f);else if(v==1)r*=1+.18f*Mathf.Sin(u.x*5);
+                b.P[i]=Vector3.Scale(u,shape)*r;
+            }
+            GoreWind(b,_=>Vector3.zero);GoreNormals(b,_=>Vector3.zero);return b.Mesh("Flesh lump "+v,Color.white,Vector4.zero);
+        }
+        /// <summary>A shard of bone about the size of the cube it replaces, along x: 0 a shaft's end with its knuckle, broken off
+        /// at the other end; 1 a long splinter; 2 a curved piece of rib. The broken ends are jagged and show the marrow (their
+        /// vertex colour: the shader darkens the bone by it); a whole end is rounded.</summary>
+        private static Mesh BoneShard(int v)
+        {
+            var b=new Builder();const int sides=9;int rings=v==2?9:7;var colors=new List<Color>();var marrow=new Color(.34f,.05f,.05f);
+            Vector3 Axis(float t)=>v==2?new Vector3(Mathf.Sin((t-.5f)*1.5f)*.62f,(Mathf.Cos((t-.5f)*1.5f)-.86f)*.62f,0):new Vector3((t-.5f)*(v==1?1.5f:1.2f),0,0);
+            float Radius(float t)=>v==0?Mathf.Lerp(.15f,.13f,t)+.2f*Mathf.Exp(-t*t*30):v==1?Mathf.Lerp(.02f,.13f,Mathf.Sin(t*Mathf.PI)):.085f+.02f*Mathf.Sin(t*9);
+            for(int r=0;r<rings;r++)
+            {
+                float t=r/(float)(rings-1);var at=Axis(t);var along=(Axis(Mathf.Min(1,t+.01f))-Axis(Mathf.Max(0,t-.01f))).normalized;var side=Vector3.Cross(along,Vector3.forward).normalized;var up=Vector3.Cross(side,along);
+                bool broken=r==rings-1||v==2&&r==0;
+                for(int k=0;k<sides;k++)
+                {
+                    float a=k*2*Mathf.PI/sides,rad=Radius(t)*(v==2?1:1+.12f*(GoreHash(k,r,v,5)-.5f));float flat=v==2?.55f:v==1?.6f:1;
+                    var p=at+(side*Mathf.Cos(a)+up*Mathf.Sin(a)*flat)*rad;if(broken)p+=along*((r==0?-1:1)*.16f*GoreHash(k,r,v,9));
+                    b.P.Add(p);b.N.Add(Vector3.up);colors.Add(Color.white);
+                }
+            }
+            for(int r=0;r<rings-1;r++)for(int k=0;k<sides;k++){int a=r*sides+k,c=r*sides+(k+1)%sides,d=a+sides,e=c+sides;b.I.AddRange(new[]{a,d,c,c,d,e});}
+            // The ends: a rounded knuckle closes whole; a broken end closes on its marrow, sunk a little into the shaft.
+            for(int end=0;end<2;end++)
+            {
+                int ring=end==0?0:(rings-1)*sides;bool broken=end==1||v==2;float t=end;var along=(Axis(Mathf.Min(1,t+.01f))-Axis(Mathf.Max(0,t-.01f))).normalized*(end==0?-1:1);
+                var mid=Vector3.zero;for(int k=0;k<sides;k++)mid+=b.P[ring+k];mid/=sides;mid+=along*(broken?-.05f:Radius(t)*.6f);
+                int first=b.P.Count;
+                if(broken)for(int k=0;k<sides;k++){b.P.Add(Vector3.Lerp(b.P[ring+k],mid,.3f)-along*.03f);b.N.Add(along);colors.Add(marrow);}
+                else for(int k=0;k<sides;k++){b.P.Add(Vector3.Lerp(b.P[ring+k],mid,.45f)+along*(Radius(t)*.12f));b.N.Add(along);colors.Add(Color.white);}
+                int centre=b.P.Count;b.P.Add(mid);b.N.Add(along);colors.Add(broken?marrow:Color.white);
+                for(int k=0;k<sides;k++)
+                {
+                    int a=ring+k,c=ring+(k+1)%sides;
+                    int ia=first+k,ic=first+(k+1)%sides;b.I.AddRange(new[]{a,ia,c,c,ia,ic,ia,centre,ic});
+                }
+            }
+            Vector3 Inside(Vector3 p){float best=float.MaxValue;var at=Vector3.zero;for(int k=2;k<=14;k++){var q=Axis(k/16f);float d=(q-p).sqrMagnitude;if(d<best){best=d;at=q;}}return at;}
+            GoreWind(b,Inside);GoreNormals(b,Inside);
+            var mesh=new Mesh{name="Bone shard "+v};mesh.SetVertices(b.P);mesh.SetNormals(b.N);mesh.SetColors(colors);mesh.uv=new Vector2[b.P.Count];mesh.SetTriangles(b.I,0);mesh.RecalculateBounds();mesh.UploadMeshData(true);return mesh;
         }
         /// <summary>A lit cube without emission (a voxel-burst chunk).</summary>
         public void KillCube(Matrix4x4 matrix,Color albedo)
