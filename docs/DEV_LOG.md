@@ -1,3 +1,47 @@
+## 2026-11-13 — Claude: a fall into a Ward Zero vent ragdolls the model down the shaft, never the voxel body (owner report; presentation only)
+
+- Owner (2026-11-13): "Falling through vent still reverts back to voxel model, but when falling down the player should ragdoll (If they
+  are far enough in vent)". Branch `claude/vent-fall-ragdoll` from shared `41bfb1d7`: `771734f4` the change, shared merged in three
+  times (`167a479f`, `66fc356f`, `a861bafb`), then this entry. Pushed, **not merged, not released**.
+- **The vents:** only Ward Zero has vents a pilot falls into: its eight song vents (PvP `siren` on `NativeVentRules.Ward`'s schedule, PvE
+  `expedition-ward-zero` on the horde's dives; positions from `PveContent.json` `song` entries). Every other map's `vent` is a steam,
+  wind, shove or geyser column on a solid floor.
+- **The cause:** a fall is the rules' kill at the lip (`StepVents`: the centre within .78 m of the vent's on both axes, the vent at
+  least half open; style `vent-fall`, then PvE's kept body turns `vent-splat` 0.6 s before it lands on the hall's centre). The
+  presentation sent both styles past the corpse to vent-fall.ts's scripted victim (`NativeVentDeathPresentation.cs`), which is drawn
+  with `sourceModels.Queue` on the voxel body: the only death path that never got the model (every other corpse wears it through
+  `VisualCorpseMake`, every death scene through `VisualSceneShown`). Off-edge falls (killY) already ragdoll the model: filmed before
+  and after on Starfall Causeway, unchanged.
+- **Now** (`Core/NativeVentFall.cs`, `Runtime/NativeVentFallPresentation.cs`, hooks in `NativeDeathPresentation.PresentDeath` and
+  `NativeCorpseWorld.RefreshWorld`): a pilot on the model takes the corpse every other death takes (its model, skin and hat; the Hot
+  Dog's included), from the pose it had at the kill, launched straight down at 1.5 m/s, arms thrown up, tipping forward. Its own
+  physics world has the shaft the stage draws (`NativeWardPit`): the slab laid round the 2.1 m opening in four pieces, four walls and a
+  bottom 7 m down. It hides once its pelvis is 2.4 m under the lip (the open pit's quad already covers what is under the lip; the hide
+  keeps it out of sight once the grate closes; reached in about .44 s, inside the drawn pit's .7 s close margin). PvE's splat lands as
+  the model's ragdoll: from 10 m over its spot at 11.3 m/s, tipping, at VENT_PIT.drop, with the scripted splat's dust and SPLAT! pop.
+  A kept fall's body knows it is stale when its record turns into the splat in place (its seed and style kept at birth).
+- **"Far enough"** is the rules' own kill: until the pilot's centre is .78 m inside a half-open vent the authority's floor holds it up
+  and it keeps control and its pose (the vents are not holes in the authority, so nothing slips at the rim); from that tick the model
+  ragdolls. Filmed: the pilot stands at the open vent's edge, 0.95 m from its centre, alive, then walks in.
+- **Voxels kept on purpose:** `NativeVentDeath` and the scripted victim are untouched and still drawn for the voxel bodies
+  (`ArenaPresentation.VentModel`: Settings - Player model Classic `ClassicBodies`, the `--ca-voxel-bodies` launch, a client without the
+  bake). A voxel map could choose them the same way (set `ClassicBodies` for that map); not wired.
+- **Seen in the Editor** (shared Editor, 1470 x 719, 30 fps fixed steps, shared `5fa2343e` before, `66fc356f` after; sheets and zooms in
+  the session scratchpad `ventfall/cap`): before, the default pilot and the Hot Dog turn into the white voxel robot, arms up, and sink
+  into the pit (live and in the kill cam); after, the same pilot and the Hot Dog ragdoll in, tumbling over the rim, and the kill cam
+  replays the model. Off the Causeway's Breach the body falls on as the model's ragdoll before and after. The sandbox splat lands as the
+  model with the dust and pop. Caveats: a dead local pilot's camera spectates at once and its kill cam starts within two capture frames,
+  so the fixed views see other players' view of the fall; the splat drops rather than landing cleanly face down.
+- **Checks:** full CoreTests on `771734f4`, `167a479f` and `66fc356f` with the Windows path patch applied and reverted: 1,022 / 1,022 /
+  1,023 PASS lines, exit 0 (the new `VentFallChecks`: 1,358 checks; the `DeathFxChecks` route pin updated); `check_unity_compile.py`
+  pass; the Editor build gate (`PrototypeBuild.Validate` on `66fc356f`): ok (its two edit-mode `Destroy` errors are in earlier gates
+  too); `git diff --check` against shared clean. The Editor checkout went back to `9319026b` with its local files, the banks as released.
+- **Not run:** a Windows build, online play (a guest's and the killcam's corpse come from the same code, filmed only offline), the Low
+  tier, a PvE Ward Zero run (the kept fall and splat were filmed in the PvP sandbox, where the same rules make them).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; the kill, its credit and the splat's
+  spot and time are the rules'.
+- **Next:** the owner plays a Ward Zero vent fall; merge and release.
+
 ## 2026-11-13 — Claude: hand-off to Astra (owner: "To save on usage, please hand me any things your able to for astra")
 
 Base: shared `claude/sleepy-ritchie-g8ruhv`. Each item is yours to pick up; Claude is not working on any of them.
