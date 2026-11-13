@@ -38,6 +38,142 @@ namespace ChipArena.UnityConversion
         }
         private static Vector3[] Joints(Matrix4x4[] bones){var j=new Vector3[22];for(int b=0;b<22;b++)j[b]=Vector3.Transform(Vector3.Zero,bones[b]);return j;}
 
+        // ---- 1b. The blade classes' kills (Core NativeBladeCuts; owner 2026-11-12: "I also want all bladed weapons to support gibbing
+        // (Katanas, Glaive, etc.)"): every move's lethal hit as the authority emits it (NativeArena.Damage: its damage kind, the
+        // direction from the attacker's body centre to the victim's, or the move's own line) and its attacker as the frame has it (the
+        // kit mid-move, the DEV class), read the way the hit ledger reads it ----
+        private sealed class Move{public string Spec,Motion,Detail,Cast,Want;public int Step;public bool Flick,Line,Air;}
+        private static MeleeBlow BladeHit(Move m,float yaw,V3 from,V3 victim,out ArenaEvent e,out Actor a)
+        {
+            a=new Actor{Id=7,SourceSpec=m.Spec,Position=from,Yaw=yaw,Motion=m.Motion??"",AirAttack=m.Air};
+            if(m.Spec==NativeGlaive.Spec)a.Glaive=new NativeGlaiveKit{Ready=new float[2],CastKind=m.Cast,CastStep=m.Step,CastAt=1,CastRelease=1.2f,CastUntil=1.6f,Disc=m.Flick?NativeGlaive.Flick:NativeGlaive.Hand};
+            else a.Blade=new NativeBladeKit{Ready=new float[m.Spec==NativeKatana.Spec?2:5],CastKind=m.Cast,CastStep=m.Step,CastAt=1,CastRelease=1.2f,CastUntil=1.6f};
+            var c=new Vector3(from.x,from.y+NativeMeleeSlice.RootHeight,from.z);var to=Vector3.Normalize(new Vector3(victim.x,victim.y,victim.z)-c);
+            // A move that flies (the iai's line, the wave, the ring, a knife) carries its flight, here across the line to the victim.
+            if(m.Line){var flat=Vector3.Normalize(new Vector3(to.X,0,to.Z));to=Vector3.Normalize(flat+new Vector3(flat.Z,0,-flat.X)*.6f);}
+            e=new ArenaEvent{Kind=EventKind.Hit,Id=1,Time=1.2f,Source=7,Target=9,Detail=m.Detail,Amount=40,Normal=new V3(to.X,to.Y,to.Z),From=new V3(c.X,c.Y,c.Z)};
+            return NativeBladeCuts.Blow(e,a);
+        }
+        private static void Blades(Dictionary<string,Blow> picks,List<string> report)
+        {
+            string K=NativeKatana.Spec,F=NativeFangs.Spec,G=NativeGlaive.Spec,dev=NativeDevMotions.Katana;var moves=new List<Move>();
+            foreach(var motion in new[]{"",dev})
+            {
+                for(int s=0;s<NativeKatana.Steps;s++)moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-cut",Cast=NativeKatana.Cut,Step=s,Want=s<2?"part":"through"});
+                moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-rush",Cast=NativeKatana.Rush,Want="through"});
+                moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-iai",Cast=NativeKatana.Iai,Line=true,Want="through"});
+                moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-sever",Cast=NativeKatana.Iai,Line=true,Want="through"});
+                moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-storm",Cast=NativeKatana.Storm,Want="through"});
+                moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-counter",Cast=NativeKatana.Counter,Want="through"});
+                moves.Add(new Move{Spec=K,Motion=motion,Detail="blade-wave",Cast=NativeKatana.Cut,Step=3,Line=true,Want="through"});
+                moves.Add(new Move{Spec=K,Motion=motion,Detail="direct",Cast=null,Air=true,Want="chop"});
+            }
+            for(int s=0;s<NativeFangs.Steps;s++)moves.Add(new Move{Spec=F,Detail="blade-cut",Cast=NativeFangs.Cut,Step=s,Want=s<NativeFangs.Steps-1?"throat":"limb"});
+            foreach(var (d,c) in new[]{("blade-pounce",NativeFangs.Pounce),("blade-step",NativeFangs.Step),("blade-takedown",NativeFangs.Assassinate),("blade-critical",NativeFangs.Assassinate),("blade-knife",NativeFangs.Fan)})
+                moves.Add(new Move{Spec=F,Detail=d,Cast=c,Line=d=="blade-knife",Want="limb"});
+            moves.Add(new Move{Spec=F,Detail="blade-bloom",Cast=NativeFangs.Bloom,Want="none"});
+            moves.Add(new Move{Spec=F,Detail="direct",Air=true,Want="limb"});
+            for(int s=0;s<3;s++)moves.Add(new Move{Spec=G,Detail="glaive-"+NativeGlaive.Swing,Cast=NativeGlaive.Swing,Step=s,Want=s<2?"part":"through"});
+            moves.Add(new Move{Spec=G,Detail="glaive-"+NativeGlaive.Swing,Cast=NativeGlaive.Swing,Step=3,Flick=true,Line=true,Want="ring"});
+            moves.Add(new Move{Spec=G,Detail="glaive-"+NativeGlaive.Swing,Cast=null,Step=0,Flick=true,Line=true,Want="ring"});// the ring still on its loop
+            moves.Add(new Move{Spec=G,Detail="glaive-"+NativeGlaive.Skim,Cast=NativeGlaive.Skim,Want="through"});
+            moves.Add(new Move{Spec=G,Detail="glaive-"+NativeGlaive.Throw,Cast=NativeGlaive.Throw,Line=true,Want="ring"});
+            moves.Add(new Move{Spec=G,Detail="glaive-"+NativeGlaive.Halo,Cast=NativeGlaive.Halo,Want="arm"});
+            moves.Add(new Move{Spec=G,Detail="glaive-"+NativeGlaive.Burst,Cast=NativeGlaive.Burst,Line=true,Want="arm"});
+            moves.Add(new Move{Spec=G,Detail="glaive-"+NativeGlaive.HitShard,Cast=null,Line=true,Want="arm"});
+            moves.Add(new Move{Spec=G,Detail="direct",Air=true,Want="chop"});
+
+            var rnd=new Random(2611);var tally=new Dictionary<string,Dictionary<string,int>>();int blows=0,heads=0,ringHeads=0,ringArms=0;float worstLate=0;
+            foreach(var m in moves)
+            {
+                string who=m.Spec==K&&m.Motion==dev?"dev-katana":m.Spec,label=who+" "+m.Detail+(m.Detail.EndsWith("cut")?" "+(m.Step+1):"")+(m.Flick?" (flick)":"");
+                if(!tally.TryGetValue(who,out var kinds))tally[who]=kinds=new Dictionary<string,int>();
+                for(int k=0;k<60;k++)
+                {
+                    float turn=(float)(rnd.NextDouble()*120-60),yaw=(float)rnd.NextDouble()*360-180,dist=1f+(float)rnd.NextDouble()*1.5f,face=yaw+180+turn;
+                    var q=MeleeMath.AxisAngle(MeleeMath.Y,-yaw*D);var at=Vector3.Transform(new Vector3(0,0,dist),q);var victim=new V3(-at.X,NativeMeleeSlice.RootHeight+(float)rnd.NextDouble()*.08f,at.Z);
+                    var blow=BladeHit(m,yaw,new V3(0,0,0),victim,out var e,out var actor);int seed=k*7+3;
+                    bool cuts=NativeBladeCuts.Cuts(e,actor);Check(cuts==(m.Want!="none"),label+": the ledger keeps exactly the cutting blows");
+                    // The clip the move played, from the kit: the Katana's measured, the DEV Katana's own (written), the Glaive's flick its fourth step.
+                    if(m.Spec==K&&m.Cast==NativeKatana.Cut&&m.Detail=="blade-cut")Check(blow.Clip==(m.Motion==dev?NativeDevKatanaMotion.Cuts:NativeBladeMotion.KatanaCuts)[m.Step]&&NativeBladeCuts.Known(blow.Clip),label+": its clip ("+blow.Clip+") and its cut");
+                    if(m.Spec==K&&m.Cast==NativeKatana.Counter)Check(blow.Clip==NativeBladeMotion.KatanaCritical&&NativeBladeCuts.Known(blow.Clip),label+": the counter's critical and its measured cut");
+                    if(m.Flick)Check(blow.Index==4&&NativeBladeCuts.MoveOf(blow,true)==NativeBladeCuts.Move.Flick,label+": the ring on its loop is the flick");
+                    var plan=new SlicePlan();bool planned=NativeMeleeSlice.Plan(blow,true,m.Spec,Wound("sword"),victim,face,seed,plan);
+                    if(m.Want=="none"){Check(!planned&&!plan.Any,label+": a venom burst cuts nothing");continue;}
+                    Check(planned&&plan.Spec==m.Spec,label+": a plan");blows++;
+                    var bones=BisectChecks.Pose(new Vector3(victim.x,victim.y-NativeMeleeSlice.RootHeight,victim.z),face);var joints=Joints(bones);
+                    var r=NativeMeleeBisect.Request(plan,joints,new Vector3(0,0,0),(uint)seed*2654435761u);int piece=NativeMeleeBisect.Piece(plan);
+                    string kind=m.Want=="throat"?"throat":r==null?"none":piece<0?(plan.Kind==SliceKind.Chop?"chop":"through"):piece==CapturedRig.Head?"head":"limb";
+                    switch(m.Want)
+                    {
+                        case "throat":Check(r==null&&plan.Throat&&plan.Count==0,label+": a slit throat, as the daggers'");break;
+                        case "limb":Check(r!=null&&piece>=0&&piece!=CapturedRig.Head,label+": an arm, as the daggers' ("+kind+")");break;
+                        case "part":Check(r!=null&&piece>=0,label+": a part (the head or an arm: "+kind+")");break;
+                        case "arm":Check(r!=null&&piece>=0&&piece!=CapturedRig.Head,label+": an arm ("+kind+")");break;
+                        case "ring":Check(r!=null&&piece>=0,label+": the head or an arm ("+kind+")");if(piece==CapturedRig.Head)ringHeads++;else ringArms++;break;
+                        case "through":Check(r!=null&&piece<0&&plan.Kind==SliceKind.Cleave&&r.Mask==uint.MaxValue,label+": through the body ("+kind+")");break;
+                        case "chop":Check(r!=null&&piece<0&&plan.Kind==SliceKind.Chop&&Tilt(plan.Normal)>75,label+": the slam chops top-down ("+kind+")");break;
+                    }
+                    if(piece==CapturedRig.Head)heads++;
+                    kinds[kind]=kinds.TryGetValue(kind,out int n0)?n0+1:1;
+                    if(r==null)continue;
+                    var centre=new Vector3(victim.x,victim.y,victim.z);
+                    Check(Math.Abs(r.Normal.Length()-1)<1e-4f&&r.Hitch>0&&r.Hitch<.2f&&r.Travel.Length()>5&&Math.Abs(Vector3.Dot(Vector3.Normalize(r.Travel),r.Normal))<1e-3f,label+": a unit plane, a short hold, the blade's travel along it");
+                    float flat=new Vector2(r.Point.X-centre.X,r.Point.Z-centre.Z).Length(),rise=r.Point.Y-(centre.Y-NativeMeleeSlice.RootHeight);
+                    Check(flat<.55f&&rise>.25f&&rise<1.75f,label+": the cut meets the body ("+flat.ToString("0.00")+" m off its centre line, "+rise.ToString("0.00")+" m up)");
+                    if(kind=="through")Check(plan.Height>=NativeBladeCuts.TrunkLow-1e-3f&&plan.Height<=NativeBladeCuts.TrunkHigh+1e-3f&&r.Side(joints[CapturedRig.Pelvis])<=1e-4f,label+": through the trunk ("+plan.Height.ToString("0.00")+" m), half 0 keeps the pelvis");
+                    // The slash's own plane: a measured or written swing tilts as its travel across the front; a flight's or a dash's is level.
+                    uint hs=unchecked((uint)seed*2654435761u);hs^=hs>>15;var slash=NativeBladeCuts.SlashOf(blow,m.Spec,NativeBladeCuts.MoveOf(blow,true),(hs&4)!=0);
+                    bool chopped=plan.Kind==SliceKind.Chop;
+                    if(!chopped&&slash.Sweep==NativeBladeCuts.Sweep.Swing)
+                    {
+                        float want=(float)(Math.Acos(Math.Min(1,Math.Abs(Math.Cos(slash.Angle*Math.PI/180))))/D);
+                        Check(Math.Abs(Tilt(plan.Normal)-want)<.6f,label+": the cut tilts as the slash ("+Tilt(plan.Normal).ToString("0.0")+"° vs "+want.ToString("0.0")+"°)");
+                    }
+                    else if(!chopped)Check(Tilt(plan.Normal)<9,label+": a dash, a flight or a whirl cuts level ("+Tilt(plan.Normal).ToString("0.0")+"°)");
+                    if(m.Line&&!chopped)
+                    {
+                        var along=new Vector3(blow.Toward.x,0,blow.Toward.z);along=Vector3.Normalize(along);var tr=new Vector3(plan.Travel.X,0,plan.Travel.Z);
+                        Check(tr.LengthSquared()>.5f&&Vector3.Dot(Vector3.Normalize(tr),along)>.97f,label+": the cut runs along its flight");
+                    }
+                    if(piece>=0)
+                    {
+                        int from=piece==CapturedRig.Head?CapturedRig.Neck:piece,to=piece==CapturedRig.Head?CapturedRig.Head:piece+1;
+                        var axis=Vector3.Normalize(joints[to]-joints[from]);float lean=(float)(Math.Acos(Math.Min(1,Vector3.Dot(r.Normal,axis)))/D),limit=piece==CapturedRig.Head?NativeMeleeBisect.NeckTilt:NativeMeleeBisect.LimbTilt;
+                        Check(lean<=limit+.05f&&r.Mask==NativeMeleeBisect.MaskOf(piece),label+": the part's cut within "+limit+"° of square across it, only its bodies");
+                    }
+                    // A guest's frame a tick or two late (the attacker carried on) cuts the same: the plane holds the line the Hit event gives.
+                    var late=blow;late.From=new V3(blow.From.x+(float)rnd.NextDouble()*.3f-.15f,0,blow.From.z+(float)rnd.NextDouble()*.3f-.15f);var again=new SlicePlan();
+                    NativeMeleeSlice.Plan(late,true,m.Spec,Wound("sword"),victim,face,seed,again);var r2=NativeMeleeBisect.Request(again,joints,Vector3.Zero,(uint)seed*2654435761u);
+                    Check(r2!=null&&NativeMeleeBisect.Piece(again)==piece,label+": a late guest takes the same part");
+                    if(r2!=null){float off=Vector3.Distance(r2.Point,r.Point)+(1-Math.Abs(Vector3.Dot(r2.Normal,r.Normal)));worstLate=Math.Max(worstLate,off);}
+                    // The cuts split on the real body (section 2) face the attacker within 30 degrees, as the standard blades' do.
+                    string key=who+" "+kind+" "+Shape(Tilt(plan.Normal));if(!picks.ContainsKey(key)&&Math.Abs(turn)<=30&&(kind=="through"||kind=="head"||kind=="limb"||kind=="chop"))picks[key]=new Blow{Spec=m.Spec,B=blow,Wound=Wound("sword"),Victim=victim,Face=face,Seed=seed,Plan=plan,Request=r,Bones=bones,Joints=joints};
+                }
+            }
+            Check(worstLate<2e-3f,"a guest a tick late cuts the blade classes' kills where the host does ("+worstLate.ToString("0.0000")+")");
+            Check(ringHeads>0&&ringArms>0,"the Glaive's ring takes the head ("+ringHeads+") or an arm ("+ringArms+")");
+            foreach(var want in new[]{"katana through","katana head","katana limb","dev-katana through","dev-katana head","fangs limb","glaive through","glaive head","glaive limb","katana chop","glaive chop"})
+                Check(picks.Keys.Any(k=>k.StartsWith(want+" ",StringComparison.Ordinal)),"the blade classes' kills include a "+want+" cut ("+string.Join(", ",picks.Keys.Where(k=>!k.StartsWith("sword")&&!k.StartsWith("greatsword")&&!k.StartsWith("daggers")))+")");
+            Check(!picks.Keys.Any(k=>k.StartsWith("fangs through",StringComparison.Ordinal)||k.StartsWith("fangs head",StringComparison.Ordinal)),"the Fangs never go through the body nor take the head: an arm or the throat, as the daggers");
+            // The Katana's own clips measured; the DEV Katana's written; every clip its cut moves play is known.
+            foreach(var clip in NativeBladeMotion.KatanaCuts.Concat(NativeDevKatanaMotion.Cuts).Concat(new[]{NativeBladeMotion.KatanaStorm,NativeBladeMotion.KatanaCritical,NativeDevKatanaMotion.Storm}))
+                Check(NativeBladeCuts.Known(clip),clip+": its cut is measured or written");
+            // The ledger keeps a blade class's blow the way it keeps a sword's: by the frame's events and actors, nothing else.
+            {
+                var m=new Move{Spec=K,Motion=dev,Detail="blade-cut",Cast=NativeKatana.Cut,Step=2};BladeHit(m,30,new V3(0,0,0),new V3(0,NativeMeleeSlice.RootHeight,1.6f),out var e,out var a);
+                var target=new Actor{Id=9,SourceSpec="rifle"};var ledger=new NativeHitLedger();
+                var bloom=e;bloom.Id=2;bloom.Detail="blade-bloom";bloom.Time=1.25f;var tick=e;tick.Id=3;tick.Detail="field";tick.Time=1.3f;
+                ledger.Observe(new Snapshot{Actors=new[]{a,target},Events=new[]{e}});
+                Check(ledger.Blow(9,1.2f,out var got)&&got.Spec==K&&got.Detail=="blade-cut"&&got.Index==3&&got.Move==NativeKatana.Cut&&got.Clip==NativeDevKatanaMotion.Cuts[2],"the ledger keeps a blade class's blow with its move, step and clip ("+got.Clip+")");
+                ledger.Observe(new Snapshot{Actors=new[]{a,target},Events=new[]{e,bloom,tick}});
+                Check(ledger.Blow(9,1.2f,out var same)&&same.Detail=="blade-cut"&&!ledger.Blow(9,1.25f,out _)&&!ledger.Blow(9,1.3f,out _),"a venom burst and a bleed's tick are no blows");
+                var gun=new Actor{Id=7,SourceSpec="rifle",Position=new V3(0,0,0)};var shot=e;shot.Id=4;shot.Detail="direct";shot.Time=2f;var fresh=new NativeHitLedger();
+                fresh.Observe(new Snapshot{Actors=new[]{gun,target},Events=new[]{shot}});Check(!fresh.Blow(9,2f,out _),"a gun's hit is no blow");
+            }
+            report.Add("blade classes' kills ("+blows+" lethal blows over "+moves.Count+" moves, random reach and facing): "+string.Join("; ",tally.Select(t=>t.Key+" ["+string.Join(", ",t.Value.OrderByDescending(p=>p.Value).Select(p=>p.Key+" "+(p.Value*100/Math.Max(1,t.Value.Values.Sum()))+"%"))+"]"))+"; a late guest within "+worstLate.ToString("0.0000"));
+        }
+
         public static void Run(string root)
         {
             count=0;var report=new List<string>();var options=new JsonSerializerOptions{IncludeFields=true};
@@ -98,6 +234,7 @@ namespace ChipArena.UnityConversion
             Check(!picks.Keys.Any(k=>k.StartsWith("greatsword head")||k.StartsWith("greatsword limb")),"a greatsword always cleaves through");
             Check(!picks.Keys.Any(k=>k.StartsWith("daggers through")),"a dagger never goes through the body: a limb, or the throat");
             report.Add("lethal blows (500 each, random reach, facing, index, jump and kit): "+string.Join("; ",tally));
+            Blades(picks,report);
 
             // ---- 2. The cuts on the real body: sealed, whole, capped on the plane, only the part, blood along the seam ----
             double slowestFull=0,slowestPart=0;long bytesFull=0,bytesPart=0;int full=0,part=0;var lines=new List<string>();
@@ -303,6 +440,17 @@ namespace ChipArena.UnityConversion
                 var p=Path.Combine(root,"Assets/ChipArena",f);if(!File.Exists(p))continue;Check(!Regex.IsMatch(File.ReadAllText(p),@"NativeMeleeBisect|killBlows|SplitReady|\.Mask\b|MeleeBisect"),f+" (hits, damage, interruption, kills, the wire) never reads the cut");
             }
             Check(!Regex.IsMatch(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeMeleeBisect.cs")),@"UnityEngine|NativeBodySkins|NativeArena|NativePilot|Random\("),"the cut is engine free, skin agnostic and reads no authority state");
+            // The blade classes' kills: the ledger keeps their blows, a pilot's death is cut by its killer's blade blow (an iai, a wave or
+            // a thrown ring is no melee death in the rules), a zombie's reads it as a melee blow (it read as a bullet's) and is cut by it.
+            string core(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core",f)).Replace("\r","");string horde=R("NativeHordeKindPresentation.cs");
+            Check(core("NativeHitReact.cs").Contains("else if(NativeBladeCuts.Cuts(e,attacker))BladeBlow(e,attacker);")&&death.Contains("if(!death.melee&&!(has&&NativeBladeCuts.Is(blow.Spec)&&blow.Source==death.owner))return null;")
+                &&horde.Contains("bool blade=NativeBladeCuts.Cuts(e,actor);melee|=blade;")&&horde.Contains("else if(blade){s.Spec=spec;s.HasBlow=true;s.BlowAt=e.Time;s.Blow=NativeBladeCuts.Blow(e,actor);}")
+                &&horde.Contains("if(d.Melee&&d.HasBlow&&NativeMeleeSlice.Plan(d.Blow,true,d.Blow.Spec,null,"),"a blade class's kill: the ledger keeps its blow, a pilot's death is cut by its killer's, a zombie's is a melee blow cut by it");
+            Check(!Regex.IsMatch(core("NativeBladeCuts.cs"),@"UnityEngine|NativeArena|NativePilot|Random\("),"the blade classes' cuts are engine free and read no authority state");
+            foreach(var f in new[]{"Runtime/NativeBladeAuthority.cs","Runtime/NativeKatanaAuthority.cs","Runtime/NativeFangsAuthority.cs","Runtime/NativeGlaiveAuthority.cs","Runtime/NativeArena.cs","Runtime/NativeDeaths.cs","Runtime/NativeNetworkFrame.cs"})
+            {
+                var p=Path.Combine(root,"Assets/ChipArena",f);if(!File.Exists(p))continue;Check(!File.ReadAllText(p).Contains("NativeBladeCuts"),f+" (the blade classes' rules, kills, the wire) never reads their cuts");
+            }
             report.Add("wiring: melee kill -> plan -> cut, joint slice kept for gore off, kill effects, slit throats and shields; hold until split; stand-in pelvis; weapon/halo/bands by half; killcam-safe blows; no simulation file reads it");
 
             foreach(var line in report)Console.WriteLine("PASS melee bisect: "+line);

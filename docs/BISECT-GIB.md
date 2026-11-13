@@ -59,7 +59,7 @@ A new cause (a greatsword execution, a laser, a Kernel Panic finisher, a minion)
 
 Owner task (2026-10-14): connect the melee impact information to the slicing presentation. Until now a melee kill only detached preset ragdoll joints along the swing's plane (`NativeMeleeSlice`, 2026-10-12). Now a lethal blade blow cuts the body's own mesh along that plane, with sealed caps, detached pieces and blood along the cut. It is presentation only, from replicated data only.
 
-- **Which kills.** A pilot killed by a sword, greatsword or daggers blow (swing, sprint attack, jump attack, E special, Q/E kit hit), gore on, a stock ending (`impact-ragdoll` / `ragdoll`), not a revivable PvE body, not a Siren.
+- **Which kills.** A pilot killed by a sword, greatsword or daggers blow (swing, sprint attack, jump attack, E special, Q/E kit hit), or by a blade class's move (the Katana and DEV Katana, the Fangs, the Glaive: see "Blade classes" below), gore on, a stock ending (`impact-ragdoll` / `ragdoll`), not a revivable PvE body, not a Siren.
   - Everything else keeps today's joint slice exactly: gore off, a killer's purchased kill effect, a dagger's slit throat (no part comes off), every shield kill (crush, or the Aegis edge's joint).
   - Horde zombies keep their own launch path. They only gain the air-flag fix below.
 - **The plane.** It is the one `NativeMeleeSlice.Plan` already derived: the posed blade of the attack index the attacker played (`MeleeSwing.VisibleSweep`), turned by its committed yaw (locked during the hit window), through where that blade passes the victim. Jump attacks and vertical kit kills chop top-down; spins, Flash Step and Kunai cut level.
@@ -97,6 +97,22 @@ The presentation binds them as follows (`NativeHitLedger`, `NativeMeleeSlice`):
 - **At contact.** With the id, `NativeMeleeSlice.Attacker` puts the attacker's feet `RootHeight` (0.865 m) under the hit's `From`, if `From` agrees with the event's direction within 2°. Otherwise it falls back to the direction at the frame's distance. The swing's plane and the thrown test (beyond reach) both use that position. A late frame, even one showing the attacker far off after a dash, no longer moves the cut or turns a contact swing into a throw.
 - **Unchanged:** cases without an id cut exactly as before. Horde adds keep their own last-blow window (`NativeHordeKindPresentation`) and do not read the id.
 
+### Blade classes (owner 2026-11-12)
+
+Owner: "I also want all bladed weapons to support gibbing (Katanas, Glaive, etc.)". Their kills used to never cut: the hit ledger kept only standard melee blows, `NativeMeleeSlice.Covers` and `NativeMeleeBisect.Cuts` took only the sword, greatsword and daggers, and the blade classes' kits have no captured swing to take a plane from. Core `NativeBladeCuts` adds them. It is presentation only, from replicated data only; no rule, damage or wire changed.
+
+- **The blow.** The Hit event's damage kind names the move (`blade-` and the hit's kind from `BladeHurt`, `glaive-` and the move's id from `GlaiveHurt`; a `direct` hit with the swing's air flag is the plunging slam every blade class plays). The ledger records it with the attacker's kit at that tick: the move, its combo step (`MeleeBlow.Index`; the Glaive's ring in its flick is the fourth step) and the clip it played (`MeleeBlow.Clip`, from `NativeBladeMotion.Clip`, the DEV Katana's own clips included).
+- **Which moves take what.**
+  - Through the body: the Katana's third and fourth cuts, the rush, the iai's split (and Severing Line's sever), the storm, the counter and the Crescent Wave; the Glaive's whirl and skim. Kept on the trunk (0.85 to 1.3 m above the feet), never through the legs.
+  - A part: the Katana's and the Glaive's first two cuts take the head where the cut crosses at 1.1 m or above, else an arm (a forearm below 0.92 m). The Glaive's flick and thrown ring (throw, ricochets, return) take the head or an arm by the death's seed; the halo, the burst and Shatterpoint's shards take an arm.
+  - The Fangs as the daggers: a slit throat on the first four cuts; an arm (a forearm when low) on the finisher, the pounce, the shadow step's stab, the takedown, the critical and a thrown knife. The venom bloom cuts nothing.
+  - The slams chop top-down on the weapon arm's side (the Fangs' chop takes an arm, as the daggers').
+- **The plane.** A slash across the front of the wielder facing the victim: the blade's travel in the wielder's frontal plane (an angle) through the height where it crosses the victim's centre line, the plane holding the line between them. The Katana's own clips (Frank Slash Pack) are measured on the pack's blade at each strike (Blender: the tip's travel flattened onto the front, through the blade's point 70% to the tip): the first cut a level forehand at 1.16 m, the second a rising backhand 37° that strikes low (0.59 m: the forearm), the third a cut down from the right shoulder (28°), the finisher rising from the left hip (28°), the storm rising across the waist (21°), the counter's critical down across the waist (32°). The DEV Katana's Grruzam clips are ASCII FBX, which Blender cannot read, so theirs, the Fangs' and the Glaive's hand-keyed moves are written from their clips' descriptions; a clip not in the table takes its move's. Moves that fly (the iai's line, the wave, the ring, a knife) cut level along the Hit event's own direction; the dashes level along the dash; the whirl and the halo level around the wielder, each tilted under 8° by the seed.
+- **Hold and speed:** the Katana's blade passes at 11 m/s with a 0.05 s hold, the Glaive's at 10 m/s (0.05 s), the Fangs' at 10 m/s (0.045 s); a chop holds 0.03 s more.
+- **Pilots whose death is not a melee one.** The iai's split, the wave, the thrown ring and the knives deal ability damage, so the death record's `melee` is false. The death presentation cuts such a death when the ledger's blow is the killer's own blade blow at the death's tick.
+- **Zombies.** A blade class's hit on a horde add used to read as a bullet's (a bullet wound, no slice). It is now a melee blow there as a sword's is: the blade's gash, and its kill launches the planned parts.
+- **Agreement.** The plane holds the Hit event's direction and the crossing height is the slash's, so a guest's late frame cuts exactly as the host (checked: within 0.0000 over 2,640 random blows).
+
 ### Checks
 
 `Tests/MeleeBisectChecks.cs`; run alone with `dotnet Tests/bin/Release/net8.0/CoreTests.dll --melee-bisect` after building the test project.
@@ -106,7 +122,8 @@ The presentation binds them as follows (`NativeHitLedger`, `NativeMeleeSlice`):
 - **Blood and allocation:** the seam's gushes run along the cut, and the hold and gushes allocate nothing per frame.
 - **Agreement:** host vs a late guest, and the exact contract path.
 - **Swing link:** the killing swing is found by its id over a newer blow by another swing; an extra strike's kill takes its own strike; host, a late guest and the replay cut identically through the attacker at contact; a far frame is not a throw. Without an id (a kit kill, an older host, no Death read) the time rule and the frame's plan are unchanged.
-- **Wiring and isolation:** the ledger read and the runtime wiring are checked, and no simulation or wire file references any of it.
+- **Blade classes:** 60 random lethal blows for each of the 45 moves (the Katana and DEV Katana, the Fangs, the Glaive: their kits and clips as the frame has them): each takes what its move should (through, a part, the throat, an arm, a chop), the plane tilts as its slash, flights run along their direction, through-cuts stay on the trunk, a late guest cuts identically, and representative cuts split sealed on the real body. The ledger keeps a blade class's blow with its move, step and clip; a venom burst, a bleed's tick and a gun's hit are no blows.
+- **Wiring and isolation:** the ledger read and the runtime wiring are checked (the blade classes' too: the death's blade blow, the zombie's melee read), and no simulation or wire file references any of it.
 
 ## Factory saws
 

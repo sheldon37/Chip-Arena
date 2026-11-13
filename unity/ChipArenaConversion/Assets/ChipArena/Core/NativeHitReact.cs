@@ -312,6 +312,13 @@ namespace ChipArena.UnityConversion
             ring.Add(new MeleeBlow{At=e.Time,Source=e.Source,Spec=a.SourceSpec,CommitYaw=a.CommitYaw,Index=a.Combo+1,SwingAt=a.SwingAt,SwingUntil=a.SwingUntil,Air=a.AirAttack,
                 Special=special?a.SpecialKind:null,Kit=kit?a.MeleeKit.Kind:null,From=a.Position,Yaw=a.Yaw,Detail=e.Detail,Amount=e.Amount,Toward=e.Normal,Aimed=aim>.81f&&aim<1.21f,Swing=e.Projectile,Exact=e.Projectile>0,Struck=e.From});
         }
+        /// <summary>A blade class's blow (the Katana's, the Fangs', the Glaive's: NativeBladeCuts), the one a kill is cut by; no blood on
+        /// the blade (their kits draw their own).</summary>
+        private void BladeBlow(in ArenaEvent e,Actor attacker)
+        {
+            if(!blows.TryGetValue(e.Target,out var ring))blows[e.Target]=ring=new Blows();
+            ring.Add(NativeBladeCuts.Blow(e,attacker));
+        }
         public void Observe(Snapshot s)
         {
             var events=s?.Events;if(events==null)return;int newest=0;
@@ -349,6 +356,8 @@ namespace ChipArena.UnityConversion
                     // A standard melee weapon's swing, thrown blade or Q/E kit hit ("ability": the Whirlwind's pulses, Earthsplitter):
                     // the blow a kill is sliced by and the blood on the blade.
                     if(e.Amount>0&&NativeHitRules.Standard(spec)&&(hit.Melee||e.Detail=="ability"))MeleeHit(e,attacker);
+                    // A blade class's cutting move (its damage kind names it: the cuts, the iai's split, the thrown ring, the slam).
+                    else if(NativeBladeCuts.Cuts(e,attacker))BladeBlow(e,attacker);
                 }
                 else if(e.Kind==EventKind.Block&&e.Source>0)
                 {

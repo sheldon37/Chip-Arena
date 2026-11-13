@@ -16,8 +16,10 @@ namespace ChipArena.UnityConversion
     /// request's <see cref="BisectRequest.Mask"/>), at the point the swing's plane crosses it (kept inside the limb), with the
     /// swing's bevel kept within <see cref="LimbTilt"/> (<see cref="NeckTilt"/> for the neck) of square across it. The part
     /// flies along the swing as the old severed joint did.</item>
-    /// <item>No mesh cut: a dagger's slit throat (no part comes off) and every shield kill (a crush, or the thrown edge's
-    /// severed joint) keep the joint presentation; so does a death this does not apply to (gore off, a kill effect).</item>
+    /// <item>The blade classes (NativeBladeCuts) the same ways: the Katana's big swings, rush, iai, storm, counter and wave and the
+    /// Glaive's whirl and skim through the body; their light cuts, the Glaive's ring and the Fangs' finishers a part; the slams chop.</item>
+    /// <item>No mesh cut: a dagger's (or the Fangs') slit throat (no part comes off) and every shield kill (a crush, or the thrown
+    /// edge's severed joint) keep the joint presentation; so does a death this does not apply to (gore off, a kill effect).</item>
     /// </list>
     /// Pure and deterministic: the same plan, joints, velocity and seed give the same request on every peer.
     /// </summary>
@@ -25,12 +27,14 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>Most a part cut's plane leans off square across the limb (degrees), and across the neck.</summary>
         public const float LimbTilt=35,NeckTilt=15;
-        /// <summary>Seconds the cut holds before the parts separate, by weapon: the blade's pass, felt as a hit-stop.</summary>
-        public static float Hitch(string spec,bool chop)=>(spec=="greatsword"?.1f:spec=="daggers"?.045f:.06f)+(chop?.03f:0);
+        /// <summary>Seconds the cut holds before the parts separate, by weapon: the blade's pass, felt as a hit-stop (the blade classes':
+        /// NativeBladeCuts).</summary>
+        public static float Hitch(string spec,bool chop)=>(NativeBladeCuts.Is(spec)?NativeBladeCuts.Hitch(spec):spec=="greatsword"?.1f:spec=="daggers"?.045f:.06f)+(chop?.03f:0);
         /// <summary>The blade's speed through the body (m/s) by weapon.</summary>
-        public static float Speed(string spec)=>spec=="greatsword"?7.5f:spec=="daggers"?10:9;
-        /// <summary>Whether this plan cuts the mesh: a blade (sword, greatsword, daggers) that takes a part or goes through.</summary>
-        public static bool Cuts(SlicePlan plan)=>plan!=null&&plan.Any&&(plan.Spec=="sword"||plan.Spec=="greatsword"||plan.Spec=="daggers")&&plan.Kind!=SliceKind.Slit&&plan.Kind!=SliceKind.Crush&&plan.Count>0;
+        public static float Speed(string spec)=>NativeBladeCuts.Is(spec)?NativeBladeCuts.Speed(spec):spec=="greatsword"?7.5f:spec=="daggers"?10:9;
+        /// <summary>Whether this plan cuts the mesh: a blade (sword, greatsword, daggers, the blade classes) that takes a part or goes
+        /// through.</summary>
+        public static bool Cuts(SlicePlan plan)=>plan!=null&&plan.Any&&(plan.Spec=="sword"||plan.Spec=="greatsword"||plan.Spec=="daggers"||NativeBladeCuts.Is(plan.Spec))&&plan.Kind!=SliceKind.Slit&&plan.Kind!=SliceKind.Crush&&plan.Count>0;
         /// <summary>The ragdoll part root the cut takes off alone, or -1 when it goes through the body.</summary>
         public static int Piece(SlicePlan plan)
         {
@@ -38,7 +42,7 @@ namespace ChipArena.UnityConversion
             if(plan.Kind==SliceKind.Cleave)return -1;
             if(plan.Kind==SliceKind.Chop)
             {
-                if(plan.Spec!="daggers")return -1;
+                if(plan.Spec!="daggers"&&plan.Spec!=NativeFangs.Spec)return -1;
                 for(int i=0;i<plan.Count;i++)if(Limb(plan.Joints[i]))return plan.Joints[i];return CapturedRig.Head;
             }
             int j=plan.Joints[0];return j==CapturedRig.Head||Limb(j)?j:-1;

@@ -353,19 +353,21 @@ namespace ChipArena.UnityConversion
             if(style=="siren-dissipate"||style=="siren-crush"){VoxelCloud(death.position,fx,10,death.seed,50,true);Ring(death.position-Vector3.up*.75f,Mathf.Clamp01(fx)*2,7,fx*60);}
             if(style=="dev-raging-demon")for(int j=0;j<12;j++){float t=j*.13f;if(fx>=t&&fx<t+.12f){Vector3 p=death.position+new Vector3(Mathf.Sin(j*13)*.45f,Mathf.Cos(j*9)*.7f,Mathf.Cos(j*11)*.45f);Beam(p-Vector3.up*.24f,p+Vector3.up*.24f,.08f,7);}}
         }
-        /// <summary>A pilot's lethal melee blow by a standard melee weapon cuts the body along its swing (Core/NativeMeleeSlice):
+        /// <summary>A pilot's lethal melee blow by a standard melee weapon or a blade class cuts the body along its swing (Core/NativeMeleeSlice):
         /// planned from the killing blow's replicated swing as the hit ledger read it (or, unseen, from the wound and the seed).
         /// The ledger finds that blow by the swing id the killing hit carries, with the attacker's position at contact, or by
         /// time for a hit without one (NativeHitLedger.Blow), so host, guests and the replay pick the same swing.
         /// Not for a revivable PvE body, nor a style that shows no body. The blow first seen for a death is kept for the round
         /// (<see cref="killBlows"/>): the killcam's reset clears the ledger, and the body rebuilt after it, and the replay's,
-        /// must be cut the same way.</summary>
+        /// must be cut the same way. A blade class's kill (Core NativeBladeCuts) is cut by its killer's blade blow at the death's tick
+        /// even when the move was not a melee hit (the iai's split, the Crescent Wave, the Glaive's thrown ring, the Fangs' knives).</summary>
         private SlicePlan MeleeSlice(NativeArena arena,NativeDeath death)
         {
-            if(death==null||!death.melee||death.kept||(death.model??"pilot")!="pilot"||death.style=="voxel-burst"||death.style=="vent-fall"||death.style=="vent-splat"||death.damageKind=="collapse")return null;
+            if(death==null||death.kept||(death.model??"pilot")!="pilot"||death.style=="voxel-burst"||death.style=="vent-fall"||death.style=="vent-splat"||death.damageKind=="collapse")return null;
             long key=((long)death.id<<32)^(uint)death.seed;bool has;MeleeBlow blow;
             if(killBlows.TryGetValue(key,out var seen)){has=seen.has;blow=seen.blow;}
             else{has=hitLedger.Blow(death.id,death.at,out blow);if(killBlows.Count>=64)killBlows.Clear();killBlows[key]=(has,blow);}
+            if(!death.melee&&!(has&&NativeBladeCuts.Is(blow.Spec)&&blow.Source==death.owner))return null;
             string spec=has?blow.Spec:PilotOf(arena,death.owner)?.Seat.spec;if(!NativeMeleeSlice.Covers(spec))return null;
             var plan=new SlicePlan();return NativeMeleeSlice.Plan(blow,has,spec,death.wound,NativeArena.Vec(death.position),death.yaw,death.seed,plan)?plan:null;
         }
