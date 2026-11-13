@@ -75,6 +75,8 @@ namespace ChipArena.UnityConversion
             public string Plunge;
             /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
             public string[] All;
+            /// <summary>The held set (Held): it covers a paired move's victim clip and nothing else.</summary>
+            public bool HeldOnly;
         }
         /// <summary>A clip's length and the time of its Hit event (seconds; a clip without one: its middle).</summary>
         public interface IClips { bool Has(string clip); float Length(string clip); float Hit(string clip); }
@@ -226,6 +228,31 @@ namespace ChipArena.UnityConversion
             AirAttack="Unarmed-Air-Attack1",SprintAttack="Unarmed-Run-Forward-Attack1-Right",Attacks=Names("Unarmed-Attack-","R1","L1","R2","L2","R3"),Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Fighter=true,Knockdown="Unarmed-Knockdown1",RollBack="Unarmed-Roll-Backward",
             Electric="Unarmed-Run-Forward-Attack1-Right",Wave="Unarmed-Dash-Forward",Step="Unarmed-Dash-Forward",Hadoken="Unarmed-Cast-Dual-Attack1_end",
             ChargeStart="Unarmed-Cast-Dual-AOE1_start",ChargeLoop="Unarmed-Cast-Dual-AOE1_loop",Shoryuken="Unarmed-Boost1",Kicks=Names("Unarmed-Attack-Kick-","R2","L2")},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
+        /// <summary>The held set: a class whose model has no set of its own (the DEV Cyber Lord, on the game's pose) plays a paired move's victim
+        /// clip on it while held (owner 2026-11-13: "Give one to everyone"), and nothing else (HeldOnly: the game's pose shows before and after,
+        /// the motion's weight easing across). The unarmed set's stance and stride stand under it (never shown). Not a class's: For never
+        /// gives it.</summary>
+        public static readonly Set Held=HeldSet();
+        private static Set HeldSet()
+        {
+            // Its daze (HeldDaze): a parried attacker's reel on the unarmed set's recoil and Stunned, which every other class has in its own set.
+            var s=new Set{Spec="held",HeldOnly=true,Idle=Unarmed.Idle,Locomotion=Unarmed.Locomotion,Attacks=Array.Empty<string>(),Reactions=Unarmed.Reactions,Stunned=Unarmed.Stunned,TechClips=NativeBladeMotion.VictimClips};
+            var all=new System.Collections.Generic.List<string>{s.Idle,s.Stunned};foreach(var l in new[]{s.Locomotion,s.Reactions,s.TechClips})foreach(var c in l)if(!all.Contains(c))all.Add(c);
+            s.All=all.ToArray();return s;
+        }
+        /// <summary>Whether a parried attacker's reel holds pilot `a` at `time` (the blow's recoil, then the daze, through the stun and its
+        /// settle; Choose).</summary>
+        public static bool Dazed(Actor a,float time)=>a!=null&&a.ReactionParry&&a.ReactionAt>-90&&time>=a.ReactionAt&&time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin)+ParrySettle;
+        /// <summary>The held set's daze (owner 2026-11-13: a Katana's parry dazes its striker; the Cyber Lord, with no set of its own, stood on
+        /// the game's pose): the parried attacker's reel as every set plays it, the recoil from its side, then the Stunned loop.</summary>
+        private static bool HeldDaze(Set set,Actor a,float time,IClips clips,out Pick pick)
+        {
+            pick=default;if(!Dazed(a,time)||set.Reactions==null||set.Reactions.Length==0)return false;
+            string hit=set.Reactions[Side(a.ReactionYaw)%set.Reactions.Length];if(!clips.Has(hit))return false;
+            float len=clips.Length(hit),into=time-a.ReactionAt;bool daze=set.Stunned!=null&&clips.Has(set.Stunned);
+            if(into<len||!daze){pick=new Pick{Clip=hit,Time=Math.Min(len,into),Fade=FadeIn};return true;}
+            pick=new Pick{Clip=set.Stunned,Time=into-len,Fade=ParryDazeFade};return true;
+        }
         /// <summary>A clip's name suffix asking the bake for its mirror image (left and right swapped).</summary>
         public const string Mirror="~mirror";
         private static string M(string clip)=>clip+Mirror;
@@ -347,6 +374,9 @@ namespace ChipArena.UnityConversion
         public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up,bool ready=false)
         {
             up=default;
+            // Held in a paired move, the victim's clip takes the whole body: no aim, recoil, reload or cast laid over it (a gun pilot's
+            // last shot or reload would raise the gun over the reaction).
+            if(NativeBladeMotion.Holds(a,time)&&clips.Has(a.PairClip))return false;
             if(SpinUpper(s,a,time,clips,out up))return true;
             if(DashUpper(s,a,time,clips,out up))return true;
             if(GuardUpper(s,a,time,clips,out up))return true;
@@ -504,6 +534,8 @@ namespace ChipArena.UnityConversion
             pick=default;
             if(a.Grounded!=m.WasGrounded){if(a.Grounded)m.LandedAt=time;else m.AirSince=time;m.WasGrounded=a.Grounded;}
             Declined=null;
+            // The held set (a class with no set of its own): a paired move's victim clip, else the game's pose.
+            if(set.HeldOnly){if(NativeBladeMotion.Victim(a,time,clips,out pick)||HeldDaze(set,a,time,clips,out pick))return true;Declined="held";return false;}
             // An entrance's intro body: the clip its script names (Core NativeBladeIntros, NativeDevIntros), whatever the set.
             if(NativeBladeMotion.IntroActor>=0&&a.Id==NativeBladeMotion.IntroActor&&NativeBladeMotion.IntroClip!=null&&clips.Has(NativeBladeMotion.IntroClip)){pick=new Pick{Clip=NativeBladeMotion.IntroClip,Time=NativeBladeMotion.IntroTime,Fade=NativeBladeMotion.IntroFade};return true;}
             // Held in a blade class's paired move: the victim's clip (Core NativeBladeMotion).
