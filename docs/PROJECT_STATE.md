@@ -33,6 +33,8 @@
 
 2026-11-11 Claude (`claude/hotdog-hats`): hats fit the Hot Dog: each rides the crown's own skinning with its own fit (no more tilting off or sitting over the face), and the crown's sprigs hide under closed hats (docs/HOT-DOG-SKIN.md "Hats").
 
+2026-11-13 Claude: the floating blood near a DEV Katana pilot is on hold at the owner's word (not reproduced; leads in DEV_LOG).
+2026-11-13 Claude (`claude/dev-katana-kick`, the owner's "3rd hit of dev katana is a kick"): the DEV Katana's hit 3 is a blow by its clip: its kill crushes as a shield's ("Blunt force"), its hit an impact burst with the fighters' kick and a bruise; presentation only, the rules are the third cut's.
 2026-11-12 Claude (`claude/katana-parry-daze`, the owner's "use the daze we use when we parry someone"; a rules change at the owner's word, for Astra to review): the Katana's and DEV Katana's timed parry gives the riposte (the striker dazed as long as a standard parry's, until the Katana's first blow); the counter answers it inside the parry's window.
 2026-11-12 Claude (`claude/blades`, `claude/blade-labels`; the owner's "all bladed weapons to support gibbing" and "Yes, fix the label"): the Katana's, DEV Katana's, DEV Fangs' and Glaive's kills cut the body (Core `NativeBladeCuts`), the DEV Greatsword's along its own surveyed swings, and the killcam names a blade kill by its cut (Beheaded, Cut in two, Dismembered, Slashed). Presentation only.
 
