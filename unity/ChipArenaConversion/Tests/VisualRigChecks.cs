@@ -544,6 +544,23 @@ namespace ChipArena.UnityConversion
                     var dkKit=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Cut,CastStep=ks,CastAt=1,CastRelease=1+NativeKatana.CutHit[ks],CastUntil=1+NativeKatana.CutLength[ks]};devActor.Blade=dkKit;katActor.Blade=dkKit;
                     Check(NativeBladeMotion.Clip(devActor,dkKit,dkKit.CastRelease,dkBook,out string clip,out float t,out _,out _)&&clip==NativeDevKatanaMotion.Cuts[ks]&&Math.Abs(t-NativeBladeMotion.WindowOf(clip).Hit)<1e-3f
                         &&NativeBladeMotion.Clip(katActor,dkKit,dkKit.CastRelease,dkBook,out string own,out _,out _,out _)&&own==NativeBladeMotion.KatanaCuts[ks],"cut "+ks+": the DEV Katana's clip, its strike on the hit; the Katana's its own");
+                    // The finisher's hand-overs (Attack_3Combo_3: hit 3 ends turned far from its raised start, its move ends in a lunge turned
+                    // away from the stance): its own blend in, whole before the strike; the stance or stride back over its own longer blend, its
+                    // last pose held as it fades; its trail from the blade's rise over the head. Every other cut, and the Katana, as before.
+                    bool fin=ks==NativeKatana.Steps-1;float ends=dkKit.CastUntil+.12f;
+                    Check(NativeBladeMotion.Cast(dev,devActor,dkKit.CastAt+.05f,dkBook,false,out var cp)&&cp.Fade==(fin?NativeDevKatanaMotion.FinisherBlendIn:NativeVisualMotion.FadeIn)
+                        &&NativeBladeMotion.Cast(kat,katActor,dkKit.CastAt+.05f,dkBook,false,out var kp)&&kp.Fade==NativeVisualMotion.FadeIn&&(!fin||NativeDevKatanaMotion.FinisherBlendIn<NativeKatana.CutHit[ks]),
+                        "cut "+ks+": blends in over "+cp.Fade+" s"+(fin?", whole before its strike":""));
+                    bool idleBack=NativeVisualMotion.Choose(dev,devActor,ends+.01f,new NativeVisualMotion.Memory(),dkBook,false,out var back)&&back.Clip==dev.Idle;
+                    bool strideBack=NativeVisualMotion.Choose(dev,devActor,ends+.01f,new NativeVisualMotion.Memory(),dkBook,true,out var strideTo)&&strideTo.Locomotion;
+                    bool later=NativeVisualMotion.Choose(dev,devActor,ends+1.5f,new NativeVisualMotion.Memory(),dkBook,false,out var settled)&&settled.Fade==NativeVisualMotion.FadeOut;
+                    bool katBack=NativeVisualMotion.Choose(kat,katActor,ends+.01f,new NativeVisualMotion.Memory(),dkBook,false,out var kb)&&kb.Fade==NativeVisualMotion.FadeOut;
+                    float want=fin?NativeDevKatanaMotion.FinisherBlendOut:NativeVisualMotion.FadeOut;
+                    Check(idleBack&&back.Fade==want&&strideBack&&strideTo.Fade==want&&later&&katBack&&NativeBladeMotion.HeldOut(NativeDevKatanaMotion.Cuts[ks])==fin&&!NativeBladeMotion.HeldOut(NativeBladeMotion.KatanaCuts[ks]),
+                        "cut "+ks+": the stance or stride back over "+back.Fade+" s"+(fin?", the finisher's last pose held as it fades":"")+"; the Katana's as before");
+                    float from=NativeBladeMotion.TrailFrom(devActor,dkKit),fromClip=NativeBladeMotion.Fit(NativeDevKatanaMotion.Cuts[ks],3.5f,from,dkKit.CastAt,dkKit.CastRelease,dkKit.CastUntil);
+                    Check(fin?from>dkKit.CastAt+.1f&&from<dkKit.CastRelease&&Math.Abs(fromClip-NativeDevKatanaMotion.FinisherTrailFrom)<1e-3f:from==dkKit.CastAt&&NativeBladeMotion.TrailFrom(katActor,dkKit)==dkKit.CastAt,
+                        "cut "+ks+": its trail from "+(from-dkKit.CastAt).ToString("0.000")+" s into the move"+(fin?" (the blade's rise over the head, "+(dkKit.CastRelease-from).ToString("0.000")+" s before the strike)":""));
                 }
                 devActor.Blade=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Rush,CastAt=1,CastRelease=1+NativeKatana.RushWind,CastUntil=1+NativeKatana.RushWind+NativeKatana.RushTime+NativeKatana.RushRecover};
                 bool rush=NativeBladeMotion.Clip(devActor,devActor.Blade,1.1f,dkBook,out string rc,out _,out _,out _)&&rc==NativeDevKatanaMotion.Rush;
@@ -753,8 +770,9 @@ namespace ChipArena.UnityConversion
                 Check(mo.Contains("if(m.Weights[ti]>.02f&&(d<-.02f||d>.05f+dt*2.5f))jumped=true;")&&mo.Contains("if(upper&&m.UpA!=null&&(up.A!=m.UpA||!(Mathf.Abs(up.TimeA-m.UpTimeA-dt)<.05f+dt*2.5f)))jumped=true;")
                     &&mo.Contains("VisualMotionInertia(m,jumped,dt,upper);")&&mo.IndexOf("VisualMotionInertia(m,jumped,dt,upper);",StringComparison.Ordinal)<mo.IndexOf("VisualMotionApply(m,m.Mix);",StringComparison.Ordinal),
                     "a pose that would jump is carried over (its difference sprung away) before it goes on the body");
-                Check(mo.Contains("NativeVisualMotionClips.Add(m.Clips[i],m.Times[i],Ease(m.Weights[i]),m.Mix);")&&mo.Contains("if(i!=target&&m.Weights[i]>0){var c=m.Clips[i];m.Times[i]=c.Loop?m.Times[i]+dt:Mathf.Min(m.Times[i]+dt,c.Length);}")
-                    &&mo.Contains("Mathf.Repeat(m.Phase+m.LocoOffset[k],1)*m.LocoLength[k]"),"crossfades eased, a fading clip going on at its pace, each stride on its offset");
+                Check(mo.Contains("NativeVisualMotionClips.Add(m.Clips[i],m.Times[i],Ease(m.Weights[i]),m.Mix);")&&mo.Contains("if(i!=target&&m.Weights[i]>0&&!m.HeldOut[i]){var c=m.Clips[i];m.Times[i]=c.Loop?m.Times[i]+dt:Mathf.Min(m.Times[i]+dt,c.Length);}")
+                    &&mo.Contains("m.HeldOut[i]=NativeBladeMotion.HeldOut(names[i]);")&&mo.Contains("Mathf.Repeat(m.Phase+m.LocoOffset[k],1)*m.LocoLength[k]"),
+                    "crossfades eased, a fading clip going on at its pace (the DEV Katana's finisher held at its last pose), each stride on its offset");
                 Check(mo.Contains("if(m.GuardSeen&&pin!=m.GuardPin){m.GuardCarry+=m.GuardApplied-goal;m.GuardCarryVel=0;}")&&mo.Contains("float applied=m.GuardApplied=Mathf.Min(goal+m.GuardCarry,deepest);"),"the guard's switch carried off, never under the floor");
                 int feet=mo.IndexOf("VisualMotionFeet(m,body.Root.transform,plant,pick.Locomotion,dt,wgt);",StringComparison.Ordinal),guarded=mo.IndexOf("m.BodyHips.position-=origin.up*(applied*wgt);",StringComparison.Ordinal),carried=mo.IndexOf("if(m.Trail>0)VisualSwordTrail(",StringComparison.Ordinal);
                 Check(feet>guarded&&carried>feet,"the feet plant after the guard and before the sword's carry");

@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         /// (`Attack_5Combo_1..3_Inplace`: a forehand across the front, a rising backhand, a spinning cut), and for the finisher its three-hit
         /// chain's last (`Attack_3Combo_3_Inplace`: the blade raised overhead in both hands and chopped down into a crouch; owner: "Hit 3:
         /// Attack_5Combo_3 · Hit 4: Attack_3Combo_3", after "Dev Katana 4th hit doesn't look right~").</summary>
-        public static readonly string[] Cuts={K+"Attack_5Combo_1_Inplace",K+"Attack_5Combo_2_Inplace",K+"Attack_5Combo_3_Inplace",K+"Attack_3Combo_3_Inplace"};
+        public static readonly string[] Cuts={K+"Attack_5Combo_1_Inplace",K+"Attack_5Combo_2_Inplace",K+"Attack_5Combo_3_Inplace",Finisher};
         /// <summary>The rushing cut (a sprint's attack: the pack's lunging dash cut), the storm (cuts swept low all round, then a rising cut: the
         /// launch) and the plunging slam (the air attack: a downward chop that ends with the blade low in front; run to just short of its
         /// strike through the drop, its strike on the landing).</summary>
@@ -92,6 +92,20 @@ namespace ChipArena.UnityConversion
                 default:return new NativeBladeMotion.Window(float.NaN,float.NaN,float.NaN);
             }
         }
+        /// <summary>The finisher's hand-overs (the owner's pick, Attack_3Combo_3_Inplace): hit 3 ends turned about 90-110 degrees from its
+        /// raised start and the move ends in a deep lunge turned away from the stance, so the usual blends (NativeVisualMotion.FadeIn, 0.1 s
+        /// in; FadeOut, 0.2 s back to the stance) whipped the torso round and snapped it upright. It blends in over BlendIn (its weight
+        /// whole by 0.2 s, before the rules' 0.22 s strike, so the chop shows unblended) and the stance or stride comes back over BlendOut,
+        /// its last pose held as it fades (its clip runs on into two more cuts). Its trail starts at TrailFrom s into the clip (the blade
+        /// rising behind the head, just before it comes over the top and down), so the wind-up leaves none.</summary>
+        public const string Finisher=K+"Attack_3Combo_3_Inplace";
+        public const float FinisherBlendIn=.2f,FinisherBlendOut=.35f,FinisherTrailFrom=.76f;
+        /// <summary>A clip's own blend in (s; NaN: the move's usual).</summary>
+        public static float BlendIn(string clip)=>clip==Finisher?FinisherBlendIn:float.NaN;
+        /// <summary>The blend back to the stance or stride after a clip's move (s; NaN: the usual); such a clip is held at its last pose as it fades.</summary>
+        public static float BlendOut(string clip)=>clip==Finisher?FinisherBlendOut:float.NaN;
+        /// <summary>Where a cut's trail starts, s into its clip (NaN: from the move's start).</summary>
+        public static float TrailFrom(string clip)=>clip==Finisher?FinisherTrailFrom:float.NaN;
         /// <summary>A clip's strike (its window's, s into it) for the bank as it is read (the pack's clips carry no Hit event): the plunging
         /// slam's is where the blade meets the floor. False for any other clip.</summary>
         public static bool Strike(string clip,out float at){at=Is(clip)?WindowOf(clip).Hit:float.NaN;if(float.IsNaN(at)){at=0;return false;}return true;}

@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
         {
             public NativeVisualMotion.Set Set; public GameObject Proxy; public Animator Animator; public HumanPoseHandler Handler; public HumanPose Pose; public float[] Mix, UpperMix, RestMix; public float Upper, Rest;
             public string[] Names; public NativeVisualMotionClips.Clip[] Clips; public float[] Weights, Times; public readonly Dictionary<string,int> Index=new Dictionary<string,int>();
+            /// <summary>Per clip: whether it holds its last pose while it fades out (NativeBladeMotion.HeldOut: the DEV Katana's finisher).</summary>
+            public bool[] HeldOut;
             public int[] Loco; public readonly float[] LocoWeights=new float[NativeVisualStride.Clips],SpeedX=new float[NativeVisualStride.Clips],SpeedZ=new float[NativeVisualStride.Clips],LocoLength=new float[NativeVisualStride.Clips];
             public float Phase, Weight, LocoShare, Time=float.NaN, GaitSpeed; public Vector3 LastAt, Velocity;
             public Transform[] ProxyBones, BodyBones; public Transform BodyHips, ProxyHips, RightHand, LeftHand, LeftArm, LeftForearm, LeftFist, LeftIndex, LeftLittle;
@@ -100,8 +102,8 @@ namespace ChipArena.UnityConversion
             var animator=proxy.GetComponent<Animator>();animator.runtimeAnimatorController=null;animator.applyRootMotion=false;animator.enabled=true;
             var m=new VisualMotion{Set=set,Proxy=proxy,Animator=animator,Names=names.ToArray(),Handler=new HumanPoseHandler(source.avatar,proxy.transform),Mix=new float[NativeVisualMotionClips.Head+bank.Muscles],UpperMix=new float[NativeVisualMotionClips.Head+bank.Muscles],RestMix=new float[NativeVisualMotionClips.Head+bank.Muscles]};
             m.Pose.muscles=new float[bank.Muscles];
-            m.Clips=new NativeVisualMotionClips.Clip[names.Count];m.Weights=new float[names.Count];m.Times=new float[names.Count];
-            for(int i=0;i<names.Count;i++){m.Index[names[i]]=i;m.Clips[i]=bank.Clips[names[i]];}
+            m.Clips=new NativeVisualMotionClips.Clip[names.Count];m.Weights=new float[names.Count];m.Times=new float[names.Count];m.HeldOut=new bool[names.Count];
+            for(int i=0;i<names.Count;i++){m.Index[names[i]]=i;m.Clips[i]=bank.Clips[names[i]];m.HeldOut[i]=NativeBladeMotion.HeldOut(names[i]);}
             m.Loco=new int[NativeVisualStride.Clips];
             for(int k=0;k<m.Loco.Length;k++)
             {
@@ -436,7 +438,8 @@ namespace ChipArena.UnityConversion
             float step=dt/Mathf.Max(.02f,pick.Fade);
             for(int i=0;i<m.Weights.Length;i++)
             {
-                if(i!=target&&m.Weights[i]>0){var c=m.Clips[i];m.Times[i]=c.Loop?m.Times[i]+dt:Mathf.Min(m.Times[i]+dt,c.Length);}
+                // (A clip that runs on into other cuts holds its last pose instead: NativeBladeMotion.HeldOut.)
+                if(i!=target&&m.Weights[i]>0&&!m.HeldOut[i]){var c=m.Clips[i];m.Times[i]=c.Loop?m.Times[i]+dt:Mathf.Min(m.Times[i]+dt,c.Length);}
                 m.Weights[i]=Mathf.MoveTowards(m.Weights[i],i==target?1:0,step);
             }
             m.LocoShare=Mathf.MoveTowards(m.LocoShare,covered&&pick.Locomotion?1:0,step);
