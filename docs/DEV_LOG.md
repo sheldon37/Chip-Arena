@@ -1,3 +1,43 @@
+## 2026-11-13 — Claude: the menu's z-fighting behind the pilot: the roof's laps lay in the puddles' plane (presentation only)
+
+- Owner (2026-11-13): "Small amount of Z-Fighting on the menu behind the player". Branch `claude/menu-zfight` from shared `41bfb1d7`:
+  `60bce18c` the capture hook, `9c2c1245` the fix, then the docs. Pushed, **not merged, not released**.
+- **What fought (one spot kind, seven places):** the modelled roof's membrane laps (14 cm strips across the roof every 1.9 m,
+  `static/perch/0` in the local bank `ChipArenaStageRooftop`) stood 12 mm proud of the sheet, exactly the height of Core's seven
+  puddles (`NativeRooftopTowers`, mode Puddle, the Far part: drawn over the art through `NativeRooftop.shader`). Where a lap crossed a
+  puddle the two lay in one plane and traded pixels as the menu camera drifted: a dark dash inside each puddle on the roof behind the
+  seated pilot. Coplanar faces of two materials, not a sprite and not depth precision (8 to 18 m from the eye).
+- **Fix (at the source, the bank):** the laps stand 6 mm proud, under the water (`tools/stages/rooftop_perch.py`: `PUDDLE, LAP`). Nothing
+  else moved: compared mesh by mesh, the rebuilt bank differs from the released one only in `static/perch/0` (the laps' 140 triangles
+  6 mm lower, one drain's disc back at its own 14 mm, the baked occlusion of 328 triangles beside them); every other mesh is identical.
+  The Low tier never had laps.
+- **The bank (local, not committed):** rebuilt the way it was made (`--rooftop-layout`, Blender, `rooftop_art.py`); 19,756,456 bytes,
+  sha256 `7f875dcda61380e21f596ba4235d52d93817c640e59a3bf5c2fecf59968f259b` (released: 19,756,588 bytes, `a0e5f332...`). The Drive zip is
+  not repacked: **the fix reaches players only with the new bank in the zip.** The code on this branch is safe with either bank.
+- **Bank writer:** the rooftop's chunks are named, so `StageBank.layer` had begun to give them far layers (FAR_REACH, added after the
+  bank's release); a rebuild grew to 19,940,068 bytes with layers the menu's shader does not read. `StageBank.far_layers` (default on,
+  off in `rooftop_art.py`) keeps a rebuild byte-identical to the released bank but for the fix (checked: a0e5f332 reproduced first).
+- **Code:** Runtime `NativeRooftopScene.CaptureEyeTime` (a DEV capture hook beside `CaptureTime`: the eye on its loop at another time than
+  the held scene's; NaN in the game); `Tests/RooftopChecks` (the perch script names Core's puddle height and keeps its laps under it;
+  with a bank on the machine the art bank line tells the area in the puddles' plane: told, not failed, since the bank ships apart).
+- **How it was found:** a software scan of the menu's view (the bank, Core's kept quads and the screens; each pixel's two nearest front
+  faces) and Editor captures with the scene held and the eye stepped (docs/MENU-ROOFTOP-ART.md "No z-fighting").
+- **Seen in the Editor** (shared Editor, High, 1470 x 719, no menu, the scene held at 30 s, the eye stepped .2 s at a time through ten
+    steps at four places on its loop; released bank on `60bce18c`, rebuilt bank on `9c2c1245`; a control pair of the same eye differs
+    in 0 px): before, each lap shows as a dark dash inside its puddle and as a strip that changes at every step; after, the puddles lie
+    whole. Pixels of the roof's part of the view (735 x 299) that changed in three steps or more, at a 5 x 5 tolerance: 911 / 1,393 /
+    887 / 488 before, 9 / 13 / 10 / 18 after; the whole view: 1,098 / 1,567 / 1,054 / 657 before, 196 / 188 / 178 / 187 after.
+- **What is left** (not depth fighting): the far towers' neon tubes and the mast's lattice, a pixel wide or less, step along their
+    length as the eye moves (aliasing of thin bright lines); near rain streaks slide (parallax); the
+    dish's sky mirror moves with the eye; the pilot's own body changes (not isolated: probably its cloth, which runs on the real clock). The brand screen, 57 mm off
+    its modelled backing 450 m away (2.4 steps of a 24-bit buffer), does not flicker.
+- **Checks:** full CoreTests on `9c2c1245` with the Windows path patch applied and reverted: 1,021 PASS lines, 0 FAIL, exit 0;
+  `--rooftop` with the released and the rebuilt bank in place (1.80 m2 and 0.00 m2 in the puddles' plane); `git diff --check` against
+  shared clean; the pin scan clean (one pin kept by leaving `stagekit`'s far-chunk line as it was). The Editor build gate (`PrototypeBuild.Validate` through the shared Editor on `9c2c1245`): ok, 397 PASS lines; the checkout, its local files and every bank back as found.
+  Not run: the Python suite (no test reads the stage tools), a Windows build, the Low and reduced-effects tiers and 21:9 in the Editor.
+- **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement or networking change.
+- **Next:** the integrator swaps the rebuilt bank into the Drive zip with the merge; the owner looks at the menu.
+
 ## 2026-11-13 — Claude: the DEV Katana's kick (its hit 3) lands as a blow, not a cut (owner request)
 
 - Branch `claude/dev-katana-kick` (from shared `41bfb1d7`): `3fcebb5f` and this entry. Relayed by the NOCTIEL session.
