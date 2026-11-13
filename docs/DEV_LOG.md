@@ -29,6 +29,76 @@
   Editor was busy all session and then under the owner's priority hold. The look has only been judged from an offline storyboard
   (camera, rig and effect positions as dots), which shows framing, not rendering. **Next:** film before and after in the Editor, judge
   and tune, run the build gate, merge the travel branch in once it is on shared.
+## 2026-11-13 — Claude: the menu's z-fighting behind the pilot: the roof's laps lay in the puddles' plane (presentation only)
+
+- Owner (2026-11-13): "Small amount of Z-Fighting on the menu behind the player". Branch `claude/menu-zfight` from shared `41bfb1d7`:
+  `60bce18c` the capture hook, `9c2c1245` the fix, then the docs. Pushed, **not merged, not released**.
+- **What fought (one spot kind, seven places):** the modelled roof's membrane laps (14 cm strips across the roof every 1.9 m,
+  `static/perch/0` in the local bank `ChipArenaStageRooftop`) stood 12 mm proud of the sheet, exactly the height of Core's seven
+  puddles (`NativeRooftopTowers`, mode Puddle, the Far part: drawn over the art through `NativeRooftop.shader`). Where a lap crossed a
+  puddle the two lay in one plane and traded pixels as the menu camera drifted: a dark dash inside each puddle on the roof behind the
+  seated pilot. Coplanar faces of two materials, not a sprite and not depth precision (8 to 18 m from the eye).
+- **Fix (at the source, the bank):** the laps stand 6 mm proud, under the water (`tools/stages/rooftop_perch.py`: `PUDDLE, LAP`). Nothing
+  else moved: compared mesh by mesh, the rebuilt bank differs from the released one only in `static/perch/0` (the laps' 140 triangles
+  6 mm lower, one drain's disc back at its own 14 mm, the baked occlusion of 328 triangles beside them); every other mesh is identical.
+  The Low tier never had laps.
+- **The bank (local, not committed):** rebuilt the way it was made (`--rooftop-layout`, Blender, `rooftop_art.py`); 19,756,456 bytes,
+  sha256 `7f875dcda61380e21f596ba4235d52d93817c640e59a3bf5c2fecf59968f259b` (released: 19,756,588 bytes, `a0e5f332...`). The Drive zip is
+  not repacked: **the fix reaches players only with the new bank in the zip.** The code on this branch is safe with either bank.
+- **Bank writer:** the rooftop's chunks are named, so `StageBank.layer` had begun to give them far layers (FAR_REACH, added after the
+  bank's release); a rebuild grew to 19,940,068 bytes with layers the menu's shader does not read. `StageBank.far_layers` (default on,
+  off in `rooftop_art.py`) keeps a rebuild byte-identical to the released bank but for the fix (checked: a0e5f332 reproduced first).
+- **Code:** Runtime `NativeRooftopScene.CaptureEyeTime` (a DEV capture hook beside `CaptureTime`: the eye on its loop at another time than
+  the held scene's; NaN in the game); `Tests/RooftopChecks` (the perch script names Core's puddle height and keeps its laps under it;
+  with a bank on the machine the art bank line tells the area in the puddles' plane: told, not failed, since the bank ships apart).
+- **How it was found:** a software scan of the menu's view (the bank, Core's kept quads and the screens; each pixel's two nearest front
+  faces) and Editor captures with the scene held and the eye stepped (docs/MENU-ROOFTOP-ART.md "No z-fighting").
+- **Seen in the Editor** (shared Editor, High, 1470 x 719, no menu, the scene held at 30 s, the eye stepped .2 s at a time through ten
+    steps at four places on its loop; released bank on `60bce18c`, rebuilt bank on `9c2c1245`; a control pair of the same eye differs
+    in 0 px): before, each lap shows as a dark dash inside its puddle and as a strip that changes at every step; after, the puddles lie
+    whole. Pixels of the roof's part of the view (735 x 299) that changed in three steps or more, at a 5 x 5 tolerance: 911 / 1,393 /
+    887 / 488 before, 9 / 13 / 10 / 18 after; the whole view: 1,098 / 1,567 / 1,054 / 657 before, 196 / 188 / 178 / 187 after.
+- **What is left** (not depth fighting): the far towers' neon tubes and the mast's lattice, a pixel wide or less, step along their
+    length as the eye moves (aliasing of thin bright lines); near rain streaks slide (parallax); the
+    dish's sky mirror moves with the eye; the pilot's own body changes (not isolated: probably its cloth, which runs on the real clock). The brand screen, 57 mm off
+    its modelled backing 450 m away (2.4 steps of a 24-bit buffer), does not flicker.
+- **Checks:** full CoreTests on `9c2c1245` with the Windows path patch applied and reverted: 1,021 PASS lines, 0 FAIL, exit 0;
+  `--rooftop` with the released and the rebuilt bank in place (1.80 m2 and 0.00 m2 in the puddles' plane); `git diff --check` against
+  shared clean; the pin scan clean (one pin kept by leaving `stagekit`'s far-chunk line as it was). The Editor build gate (`PrototypeBuild.Validate` through the shared Editor on `9c2c1245`): ok, 397 PASS lines; the checkout, its local files and every bank back as found.
+  Not run: the Python suite (no test reads the stage tools), a Windows build, the Low and reduced-effects tiers and 21:9 in the Editor.
+- **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement or networking change.
+- **Next:** the integrator swaps the rebuilt bank into the Drive zip with the merge; the owner looks at the menu.
+
+## 2026-11-13 — Claude: the DEV Katana's kick (its hit 3) lands as a blow, not a cut (owner request)
+
+- Branch `claude/dev-katana-kick` (from shared `41bfb1d7`): `3fcebb5f` and this entry. Relayed by the NOCTIEL session.
+- **The owner:** "3rd hit of dev katana is a kick, so its blunt damage rather than slicing". Hit 3 is Grruzam's `M_katana_Blade@Attack_5Combo_3_Inplace` (window 0 / .43 / 1.03): a rising knee with the blade swept out to the side. It played as any Katana cut: its kill was cut through the body ("Cut in two"), its hit drew the blade's slash with the blade's slice sound, its wound a cut.
+- **How the game tells blunt from blade:** a kill's cut is the slice plan's (Core `NativeMeleeSlice`, from the blow's clip and move; `NativeBladeCuts`); the killcam's cause reads that plan (`NativeKillCause`: "Blunt force" for blunt weapons and crushes); the Katana's hit spark and sound come from its kit's hit records (Core `NativeTechniqueFx` blade hits, Runtime `NativeAudio.BladeMoments`); the blood and the wound's mark from the authority's wound record (`NativeBodyDamage`: a blade's impact is a cut, a blunt weapon's a bruise).
+- **The change** (keyed on the clip, as the cut planes are: `NativeBladeCuts.Blunt`; the combo's clip from the motion set and the step, `CutClip`; a hit record by the step it carries, `BluntHit`):
+  - the kill: the shield's crush (the head from a high blow on two seeds in three, else the arm it meets), nothing bisected or sliced; the killcam reads "Blunt force";
+  - the hit: an impact burst (a white-hot core, two rings spreading out, a few chips along the blow) instead of the slash line; the fighters' kick (`dev.fist.hit`, built-in `arcade-kick`) instead of the blade's slice;
+  - the blood: the authority's wound record takes the fighters' blunt strike for the kick (`NativeBladeCuts.BlowImpact`, passed as `BladeHurt`'s impact): a bruise (chips off the body's shell, a dark dent, little blood) instead of a cut's gash and spray.
+- **Rules (for Astra): none changed.** The damage kind stays `blade-cut`: no rule reads it (no armor, resistance or chip; it feeds the hit reaction, zombie gore and the death record). In the rules the kick is the Katana's third cut: its damage, stun, reach and arc, Honed Edge's bleed (a chip: the kick still bleeds with it), the combo and the counter. The one authority line is the wound record's impact in `BladeHurt` (Runtime `NativeBladeAuthority`), presentation data no rule reads (`NativeDeaths.Wound`); the test that keeps the blade authority off `NativeBladeCuts` now allows exactly that line.
+- **Unchanged:** the plain Katana's third cut (the Frank pack's) still cuts through the body; the DEV Katana's first and second cuts, its finisher (hit 4), rush, iai, storm, counter and slam. Zombies: a kick kill crushes as a shield's (the horde's slice plan); a zombie's hit spray stays the game's melee one (the shield's too).
+- **Animation impact:** none: clips, hit timing, hitboxes, damage, cooldowns, movement and networking unchanged (the wound's kind travels in the existing record).
+- **Checks:**
+  - CoreTests `--melee-bisect` (37,171: section 1e, the kick: its clip a blow, the combo's clips by step and motion set, the hit records by step, the wound's impact a bruise, 80 kills crushing the head (55) or an arm (25) with "Blunt force", the plain Katana's third still cut in two; section 1b's 60 DEV Katana kicks crush), `--blades` (236), `--killcam`;
+  - the full suite at `3fcebb5f` (1,022 groups, exit 0) and at the release commit (relgen); the Editor build gate on `3fcebb5f` (`PrototypeBuild.Validate` ok, Native blades 72); the Unity compile.
+- **Filmed** (the Editor, a probe build: local only, only the named cut kills): `kk_b_kill` and `kk_a_kill` (a kill on hit 3, live and in the final killcam: before the body cut in two and "Katana · Cut in two"; after the body whole with an arm crushed and "Katana · Blunt force"), `kk_b_hit` and `kk_a_hit` (a real non-lethal hit 3: before the slash with a cut's blood spray; after the impact burst with the bruise's chips and no spray, the kick's cue logged), `kk_a_k3` (the plain Katana's third cut after: still "Cut in two"); the authority's wound record of the kick before cut/cut, after bruise/blunt (local, in Claude's scratchpad `dcap/`).
+- **Not seen / not done:** played by a person; the kick's sound heard (the probe logged the cue; no audio capture).
+
+## 2026-11-13 — Claude: the floating blood near a DEV Katana pilot (on hold at the owner's word; nothing changed)
+
+- **The owner** (relayed by the NOCTIEL session): "noticed I think... voxel blood floating? It's anchored to me somewhere"; "Using dev katana"; "after I hit someone with dev katana"; "the floating blood- its moves with me as I walk (It looks anchored to the weapon, but its not on the weapon)". The screenshot (`owner-floating-blood.png`, the NOCTIEL session's notes): a Hot Dog pilot in a top hat with the DEV Katana, round 2, and a short glowing red capsule in the air beside the pilot, away from the blade. Then (2026-11-13): "we can put a hold temporarily for the floating blood~ I can find the cause and get back on that one."
+- **Not reproduced** (the Editor, local probe builds): a Hot Dog pilot in a top hat with the DEV Katana, the Katana, the DEV Greatsword and the Fangs (and the DEV Katana on the plain body), with kills, real non-lethal combos on a 100-hp bot and a rush, then strafing, filmed from all round the pilot. Those runs had god mode on from 4 s (`god=4`) and idle bots (`idlebots=0`), so the pilot itself was never wounded. They were in round 1 with no chips; the owner's was round 2.
+- **Ruled out in code:**
+  - the edge blood (Runtime `NativeWeaponPresentation.BladeBlood`: the sword, greatsword and daggers only; the DEV Katana is seat spec `katana`, motion `dev-katana`);
+  - the weapon's chip modules and enchant pieces (`WeaponDressing`: the Katana has no designed modules, `NativeChipModules.Family`; the blade classes return before the enchant);
+  - the blade trails, their tip glint and sparks (gone within 0.34 s); the Katana's hit effects (world space, at the victim);
+  - the blood drops and their stains (world colliders only; a stain on a moving surface fades);
+  - the saya (black lacquer and gold; its inlay is a long line in the accent colour).
+- **Lead for whoever picks it up:** the pilot's own wound. A wound on a model body, the Hot Dog's included, shows a hole and a flesh pit (Runtime `NativeVisualWoundPresentation`: for a cut a capsule-shaped tube in the cut's glowing material, riding the wound's bone). The Hot Dog's limbs are thin noodles (`NativeVisualBodyPresentation`: "its wounds' pits of flesh ... out past its noodle limbs"); a pit longer than the limb is wide would stand out beside the arm that holds the blade, and move with it. To test: a Hot Dog pilot with the DEV Katana, no god mode, bots that fire back (or `mehurt`), then walk, and watch the pits. Not tested; the owner's "after I hit someone" may point elsewhere.
+- **Status:** on hold at the owner's word; nothing changed.
 
 ## 2026-11-13 — Claude: every pilot plays the foe's side of the paired moves (owner: "Give one to everyone"; presentation only)
 
