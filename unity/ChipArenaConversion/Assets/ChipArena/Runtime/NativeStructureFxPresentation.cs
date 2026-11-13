@@ -42,9 +42,11 @@ namespace ChipArena.UnityConversion
         private int generation=-1,lastEvent;private float lastNow=-1;private string blockMap;private ContentBlock[] blocks;
         // The map's debris style (Core NativeDebrisLook: its look's `debris`), read when the map binds.
         private string debris;private bool dressedMap;
-        /// <summary>The loose fragments are drawn as broken pieces this frame (the realistic debris style), so the dressed
-        /// blocks leave their boxes out (NativeArenaDressing).</summary>
-        public static bool ShapedFragments{get;private set;}
+        /// <summary>The loose fragments are drawn as broken pieces (the realistic debris style, by a kit that rendered this frame
+        /// or the last), so the dressed blocks leave their boxes out (NativeArenaDressing). A kit that stops rendering gives
+        /// the boxes back at once: a fragment is never left undrawn.</summary>
+        public static bool ShapedFragments=>Time.frameCount-shapedFrame<=1;
+        private static int shapedFrame=-10;
         // The fragment boxes switched to shadow only (at most the match's 80 fragments; a fixed store).
         private readonly Renderer[] fragmentBoxes=new Renderer[128];private int fragmentBoxCount;
         private readonly int[] order=new int[NativeStructureFx.PuffCap];private readonly float[] depth=new float[NativeStructureFx.PuffCap];
@@ -153,7 +155,7 @@ namespace ChipArena.UnityConversion
         // voxel style leaves the boxes as they were. The fragment's body, collider, damage and replication are never touched.
         private void Fragments(NativeArena arena)
         {
-            bool shaped=fx.Style==NativeDebrisStyle.Realistic;ShapedFragments=shaped;
+            bool shaped=fx.Style==NativeDebrisStyle.Realistic;shapedFrame=shaped?Time.frameCount:-10;
             if(!shaped)
             {
                 for(int i=0;i<fragmentBoxCount;i++){var r=fragmentBoxes[i];fragmentBoxes[i]=null;if(r!=null){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;r.forceRenderingOff=dressedMap;}}

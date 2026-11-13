@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<events.Length;i++)
                 {
                     var e=events[i];if(e.Id<=slamCursor||t-e.Time>1)continue;
-                    if(e.Kind==EventKind.Land&&!string.IsNullOrEmpty(e.Detail)&&!NativePlungeFields.Impact(e)&&e.Detail!="melee-down"&&e.Detail!="melee-air")
+                    if(e.Kind==EventKind.Land&&!string.IsNullOrEmpty(e.Detail)&&!NativePlungeFields.Impact(e)&&e.Detail!="melee-air")
                     {
                         // A kit move's landing (the event's place is the pilot's centre).
                         Vector3 at=NativeArena.Vec(e.Position)-Vector3.up*.84f;
