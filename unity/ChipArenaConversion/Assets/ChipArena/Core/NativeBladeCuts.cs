@@ -103,10 +103,11 @@ namespace ChipArena.UnityConversion
         private static Dictionary<string,Slash> Clips()
         {
             var d=new Dictionary<string,Slash>(StringComparer.Ordinal);void Add(string clip,Slash s){if(!string.IsNullOrEmpty(clip))d[clip]=s;}
-            // The DEV Katana's (Grruzam's katana set), written from its clips (NativeDevKatanaMotion): a diagonal cut down across the
-            // front, a rising backhand, a low spinning cut, the finisher's high cut; the storm's low sweeps end in a rising cut.
-            var dev=NativeDevKatanaMotion.Cuts;
-            if(dev.Length>0)Add(dev[0],S(35,1.15f));if(dev.Length>1)Add(dev[1],S(-145,1.02f));if(dev.Length>2)Add(dev[2],S(0,.92f));if(dev.Length>3)Add(dev[3],S(-170,1.25f));
+            // The DEV Katana's (Grruzam's katana set), written from its clips' descriptions (NativeDevKatanaMotion): its first four-hit
+            // chain (a diagonal cut down across the front, a rising backhand, a low spinning cut, the finisher's high cut) by name, so a
+            // later pick takes its move's cut until its own is surveyed; the storm's low sweeps end in a rising cut.
+            const string Dk="M_katana_Blade@";
+            Add(Dk+"Attack_4Combo_1_Inplace",S(35,1.15f));Add(Dk+"Attack_4Combo_2_Inplace",S(-145,1.02f));Add(Dk+"Attack_4Combo_3_Inplace",S(0,.92f));Add(Dk+"Attack_4Combo_4_Inplace",S(-170,1.25f));
             Add(NativeDevKatanaMotion.Storm,S(-155,1f));
             // Its counter (the DEV classes' pick, 2026-11-12, in place of the Frank critical; surveyed by the DEV classes agent at 200 fps):
             // the blow in front comes down from the wielder's high left to its low right, 33-34 degrees below level, at 0.40-0.43 s,

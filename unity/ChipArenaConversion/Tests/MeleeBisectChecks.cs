@@ -95,7 +95,8 @@ namespace ChipArena.UnityConversion
                     var blow=BladeHit(m,yaw,new V3(0,0,0),victim,out var e,out var actor);int seed=k*7+3;
                     bool cuts=NativeBladeCuts.Cuts(e,actor);Check(cuts==(m.Want!="none"),label+": the ledger keeps exactly the cutting blows");
                     // The clip the move played, from the kit: the Katana's measured, the DEV Katana's own (written), the Glaive's flick its fourth step.
-                    if(m.Spec==K&&m.Cast==NativeKatana.Cut&&m.Detail=="blade-cut")Check(blow.Clip==(m.Motion==dev?NativeDevKatanaMotion.Cuts:NativeBladeMotion.KatanaCuts)[m.Step]&&NativeBladeCuts.Known(blow.Clip),label+": its clip ("+blow.Clip+") and its cut");
+                    // (A DEV Katana pick not yet surveyed takes its move's cut: only the Katana's own clips must be in the table.)
+                    if(m.Spec==K&&m.Cast==NativeKatana.Cut&&m.Detail=="blade-cut")Check(blow.Clip==(m.Motion==dev?NativeDevKatanaMotion.Cuts:NativeBladeMotion.KatanaCuts)[m.Step]&&(m.Motion==dev||NativeBladeCuts.Known(blow.Clip)),label+": its clip ("+blow.Clip+") and its cut");
                     // The counter's clip: the Frank critical (measured), the DEV Katana's its own pick (written) when its motion names one.
                     if(m.Spec==K&&m.Cast==NativeKatana.Counter)Check((m.Motion==dev||blow.Clip==NativeBladeMotion.KatanaCritical)&&NativeBladeCuts.Known(blow.Clip),label+": the counter's clip ("+blow.Clip+") and its cut");
                     if(m.Flick)Check(blow.Index==4&&NativeBladeCuts.MoveOf(blow,true)==NativeBladeCuts.Move.Flick,label+": the ring on its loop is the flick");
@@ -157,8 +158,8 @@ namespace ChipArena.UnityConversion
             foreach(var want in new[]{"katana through","katana head","katana limb","dev-katana through","dev-katana head","fangs limb","glaive through","glaive head","glaive limb","katana chop","glaive chop"})
                 Check(picks.Keys.Any(k=>k.StartsWith(want+" ",StringComparison.Ordinal)),"the blade classes' kills include a "+want+" cut ("+string.Join(", ",picks.Keys.Where(k=>!k.StartsWith("sword")&&!k.StartsWith("greatsword")&&!k.StartsWith("daggers")))+")");
             Check(!picks.Keys.Any(k=>k.StartsWith("fangs through",StringComparison.Ordinal)||k.StartsWith("fangs head",StringComparison.Ordinal)),"the Fangs never go through the body nor take the head: an arm or the throat, as the daggers");
-            // The Katana's own clips measured; the DEV Katana's written; every clip its cut moves play is known.
-            foreach(var clip in NativeBladeMotion.KatanaCuts.Concat(NativeDevKatanaMotion.Cuts).Concat(new[]{NativeBladeMotion.KatanaStorm,NativeBladeMotion.KatanaCritical,NativeDevKatanaMotion.Storm,NativeBladeCuts.DevCounter}))
+            // The Katana's own clips measured; the DEV Katana's storm and counter written (its cuts as picked, or its move's).
+            foreach(var clip in NativeBladeMotion.KatanaCuts.Concat(new[]{NativeBladeMotion.KatanaStorm,NativeBladeMotion.KatanaCritical,NativeDevKatanaMotion.Storm,NativeBladeCuts.DevCounter}))
                 Check(NativeBladeCuts.Known(clip),clip+": its cut is measured or written");
             // The ledger keeps a blade class's blow the way it keeps a sword's: by the frame's events and actors, nothing else.
             {
