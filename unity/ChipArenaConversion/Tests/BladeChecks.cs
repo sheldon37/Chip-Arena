@@ -168,8 +168,19 @@ namespace ChipArena.UnityConversion
                     &&NativeVisualMotion.Held.All.Contains(NativeVisualMotion.Held.Idle)&&NativeBladeMotion.VictimClips.All(c=>NativeVisualMotion.Held.All.Contains(c)),"the held set covers the hold alone, and no class plays it as its own");
                 Check(NativeBladeMotion.VictimClips.All(c=>specs.Any(s=>NativeVisualMotion.For(s)?.All.Contains(c)==true)),"every victim clip is in a class's set (the bake carries it)");
                 string mp=R(root,"NativeVisualMotionPresentation.cs");
-                Check(mp.Contains("if(covered&&!pick.Locomotion&&NativeBladeMotion.Lent(a,pick.Clip)&&!m.Index.ContainsKey(pick.Clip))VisualMotionLend(m,pick.Clip);")&&mp.Contains("m.Names[n]=clip;m.Clips[n]=c;m.HeldOut[n]=NativeBladeMotion.HeldOut(clip);m.Index[clip]=n;return n;")
+                Check(mp.Contains("if(covered&&!pick.Locomotion&&NativeBladeMotion.Lent(a,pick.Clip)&&!m.Index.ContainsKey(pick.Clip))VisualMotionLend(m,pick.Clip);")&&mp.Contains("m.Names[n]=clip;m.Clips[n]=c;m.HeldOut[n]=NativeBladeMotion.HeldOut(clip);m.Index[clip]=n;")
                     &&mp.Contains("(NativeBladeMotion.Holds(a,time)||body.Motion?.Set==NativeVisualMotion.Held&&body.Motion.Weight>0))m=VisualMotionFor(body,NativeVisualMotion.Held);"),"the body takes the named clip on when first held; a class with no set plays the held set until it has eased back");
+                // The coordinator's three fixes (2026-11-13), presentation only: a victim clip's hips stay over the body's own spot (its drift taken
+                // out of the mix, so the fade at the hold's end slides nothing back and the counter's throw is the rules' alone); the held weapon
+                // hangs head-down from the grip along its length and the support hand lets go (a weapon held flat-on across the hand, the
+                // shield, keeps its hang); a death in a victim clip falls from the drawn pose, every other death built as before.
+                Check(new[]{"rifle","machinegun","pistol","sword","greatsword",NativeTopDog.Spec,NativeKatana.Spec,NativeFangs.Spec,"daggers"}.All(NativeBladeMotion.Hangs)&&!NativeBladeMotion.Hangs("shield"),"every weapon held along the hand hangs head-down; the shield, held flat-on, keeps its own hang");
+                Check(mp.Replace("\r\n","\n").Contains("NativeVisualMotionClips.Finish(m.Mix,sum);\n            // A paired move's victim clip on its own spot (its drift taken out), and how much of the body it takes this frame.\n            m.VictimShare=VisualMotionVictimSpot(m,sum)*m.Weight;if(m.VictimShare>.5f)m.VictimAt=time;"),"the victim clip's drift comes out of the mix right after it is made");
+                Check(mp.Contains("m.Mix[0]-=e*victimSpotSample[0]/sum;m.Mix[2]-=e*victimSpotSample[2]/sum;share+=e/sum;")&&mp.Contains("m.Victim[i]=System.Array.IndexOf(NativeBladeMotion.VictimClips,names[i])>=0;")&&mp.Contains("System.Array.Resize(ref m.Victim,n+1);m.Victim[n]=true;"),"every victim clip a body carries, its own or borrowed, keeps to the body's spot");
+                Check(mp.Contains("float hang=!m.Set.Fighter&&!m.Set.HeldOnly&&NativeBladeMotion.Hangs(m.Set.Spec)?m.VictimShare:0;VisualVictimHang(weaponHand,body.Root.transform,hang);")&&mp.Contains("m.Support=Mathf.MoveTowards(m.Support,reloading||m.VictimShare>.01f?0:hold,dt/SupportEase);"),"the weapon hangs by the victim clip's share and the support hand lets go");
+                string dp=R(root,"NativeDeathPresentation.cs"),vb=R(root,"NativeVisualBodyPresentation.cs");
+                Check(dp.Contains("if(pilot&&!temporary&&age<VictimDeathGap)VisualRigFromDrawn(rig,death);")&&dp.Contains("visualDeathDrawn=null;")&&vb.Contains("if(visualDeathDrawn!=null)VisualCopyDrawn(visualDeathDrawn,binding.Bones);")
+                    &&vb.Contains("||float.IsNaN(body.Motion.VictimAt)||Mathf.Abs(body.Motion.VictimAt-death.at)>VictimDeathGap)return false;"),"a death in a victim clip falls from the drawn pose; any other death is built as before");
             }
             // ---- the chips ----
             foreach(var katana in new[]{true,false})

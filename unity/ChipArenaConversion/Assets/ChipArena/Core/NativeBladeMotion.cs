@@ -42,6 +42,10 @@ namespace ChipArena.UnityConversion
         public static bool Lent(Actor a,string clip)=>a!=null&&clip!=null&&clip==a.PairClip&&Array.IndexOf(VictimClips,clip)>=0;
         /// <summary>Whether a paired move holds pilot `a` at `time` (the span Victim plays its clip over, the last 0.15 s fading back).</summary>
         public static bool Holds(Actor a,float time)=>a!=null&&!string.IsNullOrEmpty(a.PairClip)&&a.PairAt>-50&&time>=a.PairAt&&time<a.PairUntil+.15f;
+        /// <summary>Whether `spec`'s weapon hangs head-down from the grip while its pilot plays a victim clip (Runtime VisualVictimHang: its
+        /// length along the hand's forward, as every gun's barrel, blade and the mallet's handle run). One rule for every class: a weapon
+        /// held flat-on across the hand (its tip off that axis: the shield, whose rim stands up the hand's side) keeps its own hang.</summary>
+        public static bool Hangs(string spec)=>!(NativeWeaponDressing.BladeTip(spec,out var tip)&&Math.Abs(tip.Z)<Math.Abs(tip.Y));
 
         /// <summary>A clip window: where it starts, its strike and where it ends (s into the clip).</summary>
         public readonly struct Window { public readonly float From,Hit,To;public Window(float from,float hit,float to){From=from;Hit=hit;To=to;} }
