@@ -81,6 +81,22 @@ Its look (owner 2026-11-11: "Floating parts, needs much improved vfx"): the off-
 the hidden rig's hand was); the trails, drips and flung venom taken from the blades where the model holds them (the runtime hands them to
 the script each frame, Runtime `NativeBladePresentation.BladeIntroHeld`); smoke where soft glow balls hung before; no glow rings.
 
+Its camera and effects (owner 2026-11-13: "Fangs we also need more camera work and the effects still need improvement", then "I mean
+for there intros"; presentation only, the length, the name's moment, the clips and the beats as they were; Tests `FangsIntroChecks`):
+
+- **Camera, a shot to each beat** (stage axes): creeping low toward the eyes, the frame tilted; climbing round the body as it forms; from
+  behind its shoulder for the step, so it is seen to go and to be there ahead; whipped round to its front as it lands and circling close
+  through the flurry, with a cut to its other side on the second cut; under the leap; straight down on the strike, the cut on the blow
+  itself, lifting and turning over the bloom; then one move down through the fumes to the hero, done before the name's cut. Small jolts
+  on the strike, the step's arrival and each cut of the flurry; none with the **Camera shake** setting off (`NativeFangsIntro.Shake`,
+  set by `DirectedIntro` each frame).
+- **Effects:** the eyes are slits that blink; the smoke winds in as two coils from the floor up and the body is dithered in with it; the
+  step leaves three venom afterimages smeared along its way and a wake of smoke, the light drawn in where it lands; a glint runs up
+  each fang as it forms, as it lands and as the name lands, and a star rides a tip at a cut's fastest; flung venom flies as drops; the
+  strike blooms: veins of venom light crack out over the floor and die slowly, a thin wave races out, drops splash up, and seven petals
+  of glowing fumes open round the blow and lift away; thin fumes rise off both fangs at the hero. Venom motes drift up all through.
+  The fumes and drops use the runtime's glowing smoke and teardrop (`INativeEntranceVenom`); at most about 420 particles a frame.
+
 Its music is the pulse-wave bed.
 
 ## The chips
