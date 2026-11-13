@@ -554,6 +554,49 @@ namespace ChipArena.UnityConversion
                 Check(rush&&storm&&iai,"the rush and the storm on the pack's clips; the iai and its sheathing the Katana's (the saya)");
                 Check(NativeDevMotions.Set(devActor)==NativeDevMotions.Katana&&NativeVisualMotion.For(NativeDevMotions.Set(devActor))==dev&&NativeVisualMotion.For(NativeDevMotions.Set(katActor))==kat,"the model plays the DEV Katana's set; the Katana its own");
             }
+            // The owner's DEV animation picks (2026-11-12, the picker's `picks` documents): each slot on the clip it names, played in place and
+            // fitted to the base class's timing; the rest keep theirs; each class's own entrance on the pack's Intro.
+            {
+                var gs=NativeVisualMotion.For(NativeDevMotions.Greatsword);var kt=NativeVisualMotion.For(NativeDevMotions.Katana);const string G="M_Big_Sword@",K="M_katana_Blade@";
+                Check(gs.Attacks.SequenceEqual(new[]{G+"Attack_7Combo_1_Inplace",G+"Attack_7Combo_2_Inplace",G+"Attack_7Combo_3_Inplace",G+"Attack_7Combo_4_Inplace"})&&gs.SprintAttack==G+"Dash_Attack_ver_B"&&gs.Overhead==G+"Skill_F"&&gs.VowStart==G+"Idle_To_Crouch",
+                    "the DEV Greatsword's picks: the seven-hit chain's first four parts, Dash_Attack_ver_B, Sunder on Skill_F, Iron Vow's crouch kept");
+                foreach(var c in gs.Attacks.Append(gs.SprintAttack).Append(gs.Overhead))Check(NativeDevGreatswordMotion.Strike(c,out float st)&&st>.2f&&st<1.2f&&Array.IndexOf(gs.All,c)>=0,"a measured strike, baked with the set: "+c);
+                Check(kt.Attacks.SequenceEqual(new[]{K+"Attack_5Combo_1_Inplace",K+"Attack_5Combo_2_Inplace",K+"Attack_5Combo_3_Inplace",K+"Attack_5Combo_4_Inplace"})&&kt.AirAttack==K+"Jump_Attack_Combo_4_Attach_ZeroHeight"
+                    &&kt.Block==NativeDevGreatswordMotion.Guard&&kt.BlockHit==NativeDevGreatswordMotion.GuardHit&&Array.IndexOf(kt.All,NativeDevKatanaMotion.Counter)>=0&&Array.IndexOf(kt.All,NativeDevKatanaMotion.CounterHit)>=0&&Array.IndexOf(kt.All,NativeDevKatanaMotion.Intro)>=0,
+                    "the DEV Katana's picks: the five-hit chain's first four parts, Jump_Attack_Combo_4_Attach (zero height), the counter's clips; the guard stays the front-facing great sword guard (owner: \"Front-facing block\")");
+                foreach(var c in kt.Attacks.Append(kt.AirAttack).Append(NativeDevKatanaMotion.Counter)){var w=NativeBladeMotion.WindowOf(c);Check(!float.IsNaN(w.Hit)&&w.From<=w.Hit&&w.Hit<w.To,"a measured window: "+c);}
+                // The counter: the DEV Katana's clip on the pair's blow; its foe's big hit reaction from the blow (its first frame held until then),
+                // at its own pace to the hold's end; the Katana's (and every other holder's) victim clip unchanged.
+                var pkBook=new LongBook();var cAt=10f;var counter=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Counter,CastAt=cAt,CastRelease=cAt+NativeKatana.CounterHit,CastUntil=cAt+NativeKatana.CounterHold,PairHit=cAt+NativeKatana.CounterHit};
+                var devC=new Actor{Id=21,SourceSpec=NativeKatana.Spec,Motion=NativeDevMotions.Katana,Grounded=true,Blade=counter};var katC=new Actor{Id=22,SourceSpec=NativeKatana.Spec,Grounded=true,Blade=counter};
+                Check(NativeBladeMotion.Clip(devC,counter,counter.PairHit,pkBook,out string cc,out float ct,out _,out _)&&cc==NativeDevKatanaMotion.Counter&&Math.Abs(ct-NativeBladeMotion.WindowOf(cc).Hit)<1e-3f
+                    &&NativeBladeMotion.Clip(katC,counter,counter.PairHit,pkBook,out string kc,out _,out _,out _)&&kc==NativeBladeMotion.KatanaCritical,"the DEV Katana's counter strikes on the blow on its own clip; the Katana's stays its paired critical");
+                Check(NativeDevMotions.VictimClip(NativeBladeMotion.KatanaCritical,NativeDevMotions.Katana)==NativeDevKatanaMotion.CounterHit&&NativeDevMotions.VictimClip(NativeBladeMotion.KatanaCritical,"")==NativeBladeMotion.KatanaCriticalHit
+                    &&NativeDevMotions.VictimClip(NativeBladeMotion.FangsTakedown,NativeDevMotions.Katana)==NativeBladeMotion.FangsTakedownHit,"the DEV Katana's countered foe takes the pack's reaction; every other pair keeps its victim clip");
+                var foe=new Actor{Id=23,PairClip=NativeDevKatanaMotion.CounterHit,PairAt=cAt,PairUntil=cAt+NativeKatana.CounterHold};
+                bool pkBefore=NativeBladeMotion.Victim(foe,cAt+.3f,pkBook,out var fp0)&&fp0.Time<=0,onBlow=NativeBladeMotion.Victim(foe,cAt+NativeKatana.CounterHit,pkBook,out var fp1)&&Math.Abs(fp1.Time)<1e-3f;
+                bool atEnd=NativeBladeMotion.Victim(foe,cAt+NativeKatana.CounterHold-1e-3f,pkBook,out var fp2)&&Math.Abs(fp2.Time-(NativeKatana.CounterHold-NativeKatana.CounterHit))<.01f;
+                Check(pkBefore&&onBlow&&atEnd,"the countered foe's reaction starts on the blow and runs at its own pace to the hold's end");
+                string auth=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeBladeAuthority.cs")).Replace("\r\n","\n");
+                Check(auth.Contains("a.PairClip=held?NativeDevMotions.VictimClip(hk.PairClip,h.Seat.motion):null;"),"the host names the foe's clip by its holder's motion (guests read it from the actor)");
+                // Each class's own entrance: the pack's Intro on the model, held as the match holds the weapon, in place of its base's.
+                foreach(var (spec,style,intro) in new[]{(NativeDevMotions.Greatsword,NativeDevMotions.GreatswordEntrance,NativeDevGreatswordMotion.Intro),(NativeDevMotions.Katana,NativeDevMotions.KatanaEntrance,NativeDevKatanaMotion.Intro)})
+                {
+                    var picked=new NativeSeat{spec=spec};var spawned=new NativeSeat{spec=spec};NativeDevMotions.Normalize(spawned);
+                    var script=NativeEntranceDirector.Script(style) as NativeDevPackIntro;
+                    Check(NativeIntroRules.Style(picked)==style&&NativeIntroRules.Style(spawned)==style&&NativeIntroRules.Style(new NativeSeat{spec=NativeDevMotions.Base(spec)})!=style&&NativeIntroRules.Pickable(style)&&NativeEntranceDirector.Directed(style)&&script!=null&&script.Spec==spec,
+                        spec+": its own entrance, picked or spawned as its base (the base keeps its own)");
+                    Check(Math.Abs(NativeIntroRules.Duration(style)-script.Length)<1e-4&&NativeIntroRules.NameAt(style)<NativeIntroRules.Duration(style)&&NativeIntroRules.IntroWeapon(style)=="weapon-"+spec&&NativeIntroRules.StyleName(style).StartsWith("DEV · ",StringComparison.Ordinal)
+                        &&NativeLocker.IntroText(style).Length>0&&NativeLocker.IntroIcon(style)!=null&&NativeDevMotions.Grip(spec,out _,out _),spec+": its entrance's phase, card, weapon, name, Locker text and hold");
+                    bool first=script.Clip(0,out var c0,out float t0)&&c0==intro&&t0==0,mid=script.Clip(script.StartAt+.5f,out var c1,out float t1)&&c1==intro&&Math.Abs(t1-.5f)<1e-4f,after=script.Clip(script.ClipEnd+.2f,out var c2,out _)&&c2==NativeVisualMotion.For(spec).Idle;
+                    Check(first&&mid&&after&&Array.IndexOf(NativeVisualMotion.For(spec).All,intro)>=0,spec+": the Intro from its first frame, at its own pace, then the stance");
+                }
+                var introActor=new Actor{Id=31,SourceSpec=NativeDevMotions.Greatsword,Grounded=true};int keepActor=NativeBladeMotion.IntroActor;string keepClip=NativeBladeMotion.IntroClip;float keepTime=NativeBladeMotion.IntroTime;
+                NativeBladeMotion.IntroActor=31;NativeBladeMotion.IntroClip=NativeDevGreatswordMotion.Intro;NativeBladeMotion.IntroTime=.7f;
+                bool introPick=NativeVisualMotion.Choose(gs,introActor,1,new NativeVisualMotion.Memory(),pkBook,false,out var ip)&&ip.Clip==NativeDevGreatswordMotion.Intro&&Math.Abs(ip.Time-.7f)<1e-4f;
+                NativeBladeMotion.IntroActor=keepActor;NativeBladeMotion.IntroClip=keepClip;NativeBladeMotion.IntroTime=keepTime;
+                Check(introPick,"an entrance's intro body plays its script's clip whatever its set (the DEV Greatsword's is no blade set)");
+            }
             // A sprint (dash) attack keeps its leaping run's flight (owner 2026-10-26: "it looks like they need to be in the air
             // when dash attacking?"); the greatsword's rides the game's hop; a plain swing stays on the floor.
             {

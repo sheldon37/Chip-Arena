@@ -17,15 +17,23 @@ namespace ChipArena.UnityConversion
         public const string Idle=G+"Idle",Jump=G+"Jump_Start",Flip=G+"Double_Jump_Start",Fall=G+"Jump_Loop",Land=G+"Jump_End",
             Guard=G+"Revenge_Guard_Loop",GuardHit=G+"Revenge_Guard_Accept",Roll=G+"Dodge_Front",
             Knockdown=G+"KnockDown_Front_ver_A",RollBack=G+"KnockDown_Front_BW_Rolling_StandUp";
-        /// <summary>The combo by attack index from 1. The rules sweep the first cut right to left, the next left to right and so on (each cut's
-        /// blade crosses the facing that way at its strike): a diagonal cleave from high on the right, a level backhand, a wide forehand
-        /// sweep, a spinning low sweep. Each starts from the stance and settles back to it.</summary>
-        public static readonly string[] Cuts={G+"Attack_7Combo_1_Inplace",G+"Attack_4Combo_2_Inplace",G+"Skill_B",G+"Attack_4Combo_1B_Inplace"};
-        /// <summary>The leaping cleave (the sprint attack: the game's hop, the slam on its landing), the jump attack's downward chop, Earthsplitter's
-        /// lunging slam onto the floor, the Whirlwind's level spinning sweep (held through the spin, WhirlHold), Sunder's leaping overhead,
-        /// Reaping Sweep's spin, and the vow's crouch (into it, then held).</summary>
-        public const string Cleave=G+"Attack_4Combo_4_Inplace",JumpCut=G+"Jump_Attack_Combo_3_ZeroHeight",Slam=G+"Skill_H",Spin=G+"Skill_E",
-            Overhead=G+"Skill_J_Inplace",Reap=G+"Attack_4Combo_1B_Inplace",Crouch=G+"Idle_To_Crouch",Crouched=G+"Crouch_Idle";
+        /// <summary>The combo by attack index from 1, the owner's pick (2026-11-12): the pack's seven-hit chain's first four parts, in place
+        /// (`Attack_7Combo_1..4_Inplace`): a diagonal cleave from high on the right, a great circling swing up the left and over (crossing the
+        /// front left to right), an overhead from behind the right shoulder down to the left, and an overhead circle up the right and down the
+        /// left. The rules sweep the first cut right to left, the next left to right and so on: the first three cross the front that way at
+        /// their strikes; the fourth's overhead comes over right to left against the rules' left to right (the owner's pick: its strike is
+        /// the overhead's top, where it is fastest). The picker's `Attack_7Combo_4` (6.9 s) is this same swing followed by five seconds
+        /// standing; the in-place take is the swing alone.</summary>
+        public static readonly string[] Cuts={G+"Attack_7Combo_1_Inplace",G+"Attack_7Combo_2_Inplace",G+"Attack_7Combo_3_Inplace",G+"Attack_7Combo_4_Inplace"};
+        /// <summary>The sprint attack (the owner's pick 2026-11-12: `Dash_Attack_ver_B`, a lunging diagonal cut down from the left, played in
+        /// place: the rules move the pilot, the bake leaves the clip's root travel out), the jump attack's downward chop, Earthsplitter's
+        /// lunging slam onto the floor, the Whirlwind's level spinning sweep (held through the spin, WhirlHold), Sunder (the owner's pick:
+        /// `Skill_F`, a low swing round behind and a great slam down to the front right, in place), Reaping Sweep's spin (the low sweep the
+        /// old combo's fourth cut was) and the vow's crouch (into it, then held).</summary>
+        public const string Cleave=G+"Dash_Attack_ver_B",JumpCut=G+"Jump_Attack_Combo_3_ZeroHeight",Slam=G+"Skill_H",Spin=G+"Skill_E",
+            Overhead=G+"Skill_F",Reap=G+"Attack_4Combo_1B_Inplace",Crouch=G+"Idle_To_Crouch",Crouched=G+"Crouch_Idle";
+        /// <summary>The class's own entrance's clip (Core NativeDevIntros; owner 2026-11-12: "entrance → Intro").</summary>
+        public const string Intro=G+"Intro";
         /// <summary>Where the Whirlwind holds the spinning sweep through the spin (a share of it, as NativeVisualMotion.WhirlHold for the old
         /// set): 0.66 s of its 1.83, the arms out and the blade level at the waist, 1.8 m out.</summary>
         public const float SpinHold=.36f;
@@ -42,20 +50,24 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether a clip is one of the pack's.</summary>
         public static bool Is(string clip)=>clip!=null&&clip.StartsWith(G,StringComparison.Ordinal);
         /// <summary>A clip's strike (s into it), measured on the body frame by frame at 30 a second with the game's own blade in the hand: a
-        /// cut's where its tip crosses the pilot's facing sweeping as the rules' arc does (the hit window's middle points there); a slam's where
-        /// the blade stops on the floor. False for any other clip.</summary>
+        /// cut's where its tip crosses the pilot's facing sweeping as the rules' arc does (the hit window's middle points there; an overhead's,
+        /// where it is fastest); a slam's where the blade stops on the floor. The old combo's clips keep theirs (the bank keeps them). False
+        /// for any other clip.</summary>
         public static bool Strike(string clip,out float at)
         {
             switch(clip)
             {
                 case G+"Attack_7Combo_1_Inplace":at=.565f;return true;
+                case G+"Attack_7Combo_2_Inplace":at=.485f;return true;
+                case G+"Attack_7Combo_3_Inplace":at=.6f;return true;
+                case G+"Attack_7Combo_4_Inplace":at=.4f;return true;
                 case G+"Attack_4Combo_2_Inplace":at=.696f;return true;
                 case G+"Skill_B":at=.393f;return true;
                 case G+"Attack_4Combo_1B_Inplace":at=.586f;return true;
-                case Cleave:at=.34f;return true;
+                case Cleave:at=.39f;return true;
                 case JumpCut:at=.62f;return true;
                 case Slam:at=.61f;return true;
-                case Overhead:at=.95f;return true;
+                case Overhead:at=.63f;return true;
                 default:at=0;return false;
             }
         }

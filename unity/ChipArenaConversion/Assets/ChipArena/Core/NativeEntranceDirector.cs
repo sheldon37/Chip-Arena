@@ -273,6 +273,8 @@ namespace ChipArena.UnityConversion
             {NativeGlaiveIntro.Id,()=>new NativeGlaiveIntro()},
             // The Katana's Crimson Moon and the Fangs' Silent Kill (Core/NativeBladeIntros.cs; each class's own entrance, on the pack's clips).
             {NativeKatana.Entrance,()=>new NativeKatanaIntro()},{NativeFangs.Entrance,()=>new NativeFangsIntro()},
+            // The DEV animation classes' own entrances (Core NativeDevIntros: the pack's Intro clips).
+            {NativeDevMotions.GreatswordEntrance,()=>new NativeDevGreatswordIntro()},{NativeDevMotions.KatanaEntrance,()=>new NativeDevKatanaIntro()},
         };
         /// <summary>True for a style the director stages (the twelve weapon signatures, the procedural entrances and the Sheldon Intro).</summary>
         public static bool Directed(string style)=>style!=null&&makers.ContainsKey(style);

@@ -1,3 +1,48 @@
+## 2026-11-12 — Claude: the owner's DEV animation picks wired in (DEV Greatsword, DEV Katana)
+
+- Branch `claude/dev-classes-picks` from shared `f747643b`. Commits: `4c7d2bb2` the picks, `6b81490f` a smaller entrance glint and the
+  docs, `9bc2201a` the plunge's strike on its landing, then this log. Implemented on the branch; not merged, not released.
+- **The owner** picked each class's clips in the picker (the artifact's `picks` documents, docs `dev-greatsword` and `dev-katana`). On the
+  DEV Katana's block the owner answered "Front-facing block", so its guard and guard hit stay the great sword set's front-facing guard.
+  Slots not picked keep their clips.
+- **What changed** (docs/BOZO-INTEGRATION.md, "The owner's picks"). Every clip plays in place, each strike measured on the body at
+  30 fps and fitted to the base class's hit; no rule, hitbox, damage or cooldown changed.
+  - DEV Greatsword: the combo is `Attack_7Combo_1..4_Inplace` (strikes 0.565, 0.485, 0.6, 0.4 s). The sprint attack is
+    `Dash_Attack_ver_B` (0.39). Sunder is `Skill_F` (0.63, its slam). Iron Vow keeps `Idle_To_Crouch`.
+  - DEV Katana: the cuts are `Attack_5Combo_1..4_Inplace` (windows 0/0.31/1.0, 0/0.3/0.83, 0/0.43/1.03, 1.2/1.97/2.33). The plunge is
+    `Jump_Attack_Combo_4_Attach_ZeroHeight` (0/0.74/0.77). The counter is `Revenge_Guard_Attack_ver_A` (0/0.4/1.47) in place of the
+    Frank paired critical, and its foe plays the katana set's `Damage_Front_Big_ver_A` from the blow.
+  - Their own entrances (Core `NativeDevIntros`) play the pack's Intro clips: Heavy Turn (DEV Greatsword, 4.8 s) in place of the
+    Colossus Oath, Edge Flourish (DEV Katana, 5.3 s) in place of Crimson Moon.
+- **For Astra:**
+  - `NativeIntroRules.Style` now gives a seat that picked a DEV animation class (or spawned as its base) that class's own entrance. So a
+    DEV Katana pilot's intro phase is 5.3 s, not Crimson Moon's 7.2; the DEV Greatsword's stays 4.8.
+  - The host names a held foe's clip by its holder's seat motion: `NativeDevMotions.VictimClip` (one line in Runtime
+    `NativeBladeAuthority`). The rules' pair, the hold and the 2.82 m knock-back are the Katana's.
+  - An entrance's intro body now plays its script's clip whatever its set (`NativeVisualMotion.Choose`). The DEV entrances hold the
+    weapon as the match does (`NativeDevMotions.Grip`).
+- **The motion bank** (local) gained the 14 picked clips, merged so every released clip stays byte-identical: 475 clips (5,663,961
+  bytes) became 489 (5,930,039 bytes, sha256 b5d3d2f086ad1f74a3f5ad02c89672a3024a584da9f50567d6f726933e7003db). The bodies stay in
+  place within 3 cm. The Drive zip is not repacked, so a build from it lacks these clips.
+- **Notes:**
+  - The DEV Greatsword's fourth cut's overhead comes over right to left, against the rules' left-to-right arc for that step.
+  - The picker's 6.9 s `Attack_7Combo_4` is the in-place take's swing followed by five seconds standing, so the in-place take is used.
+  - The DEV Katana's fourth cut (a 2.3 s flurry) shows only its last high sweep: the rules give the finisher 0.66 s.
+  - The counter starts from the katana set's back-turned stance. From the front guard it snaps there in about 0.1 s, then spins round
+    into the cut.
+  - The counter's blow (0.40 s, measured at 200 frames a second): in front of the wielder the blade comes down from high left to
+    low right, about 34° below level, and crosses the centre line at 1.3–1.4 m high, 1.1–1.3 m ahead. Its rising stroke toward the
+    left (0.30–0.37 s) is behind the body, before the blade comes over the top.
+- **The local tool:** `seat=`, `hold=` and `pitch=` now follow `zclock=arena` (`mehurt=` and `knock=` already did). The clip-frames log
+  carries the body's points.
+- **Checks:**
+  - Ran: the full CoreTests on the code head `9bc2201a` (1018 PASS lines, 0 failed, exit 0; the Windows path patch applied
+    locally and reverted); `--visual-rig`, `--blades`; the Editor compiled `4c7d2bb2`, `6b81490f` and `9bc2201a`; the builder's Editor checks on `9bc2201a`:
+    ok, 397 PASS lines (354 distinct), none failed. Captures of every changed slot, before (`f747643b`) over after.
+  - Not run: play by a person, a guest over the network, a Windows build, the builder.
+- **Next:** the owner reviews the captures; the Drive zip needs the new clips before a build has them; the Katana session's gib cuts
+  can key on the windows above.
+
 ## 2026-11-11 — Claude: the Hollow Sanctum's polish (the lights' depth fighting, the Thurible, the Fall of the Lights)
 
 - **Owner**, on the test build (revision 639300460006585328): "Seems there is Z-Fighting with lights on the hollow sanctum in a lot

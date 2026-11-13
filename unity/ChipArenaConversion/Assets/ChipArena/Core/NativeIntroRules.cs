@@ -14,11 +14,13 @@ namespace ChipArena.UnityConversion
             // A chosen entrance plays only while it is one this client stages; a retired or unknown pick (an older client's
             // neon-drop, vector-slide, ...) falls through to the pilot's weapon signature instead of a fallback stage.
             if(seat.overrideIntro&&Pickable(seat.intro)&&(seat.intro=="sheldon-intro"?access.Developer&&access.Expires>now:!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return seat.intro;
+            // A DEV animation class (picked, or spawned as its base) has its own entrance (Core NativeDevIntros).
+            var devMotion=NativeDevMotions.Of(seat);if(devMotion!=null)return NativeDevMotions.Entrance(devMotion);
             if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";if(seat.spec==CyberLordSpec.Id)return CyberLordSpec.Entrance;if(seat.spec==NativeBombs.Spec)return NativeBombs.Entrance;if(seat.spec==NativeTopDog.Spec)return NativeTopDog.Entrance;if(seat.spec==NativeGlaive.Spec)return NativeGlaiveIntro.Id;if(seat.spec==NativeKatana.Spec)return NativeKatana.Entrance;if(seat.spec==NativeFangs.Spec)return NativeFangs.Entrance;return Signature(seat.spec);
         }
-        public static double Duration(string style)=>style=="dev-siren"?9.0678:style=="dev-emperor"?7.8:style=="dev-matrix"?8:style=="dev-ansatsuken"?7.2:style==NativeBombs.Entrance?7.6:style==NativeTopDog.Entrance?NativeTopDogIntro.Total:style==NativeGlaiveIntro.Id?NativeGlaiveIntro.Total:style==NativeKatana.Entrance?NativeKatanaIntro.Total:style==NativeFangs.Entrance?NativeFangsIntro.Total:4.8;
+        public static double Duration(string style)=>style=="dev-siren"?9.0678:style=="dev-emperor"?7.8:style=="dev-matrix"?8:style=="dev-ansatsuken"?7.2:style==NativeBombs.Entrance?7.6:style==NativeTopDog.Entrance?NativeTopDogIntro.Total:style==NativeGlaiveIntro.Id?NativeGlaiveIntro.Total:style==NativeKatana.Entrance?NativeKatanaIntro.Total:style==NativeFangs.Entrance?NativeFangsIntro.Total:style==NativeDevMotions.GreatswordEntrance?NativeDevGreatswordIntro.Total:style==NativeDevMotions.KatanaEntrance?NativeDevKatanaIntro.Total:4.8;
         // Presentation only (the HUD's name card): shared/intros.ts introNameAt, SIREN_INTRO.nameAt 6.4261 for the Siren.
-        public static double NameAt(string style)=>style=="dev-siren"?6.4261:style=="dev-emperor"?5.95:style=="dev-matrix"?6.25:style=="dev-ansatsuken"?5.45:style==NativeBombs.Entrance?6:style==NativeTopDog.Entrance?NativeTopDogIntro.CardAt:style==NativeGlaiveIntro.Id?NativeGlaiveIntro.CardAt:style==NativeKatana.Entrance?NativeKatanaIntro.CardAt:style==NativeFangs.Entrance?NativeFangsIntro.CardAt:3.2;
+        public static double NameAt(string style)=>style=="dev-siren"?6.4261:style=="dev-emperor"?5.95:style=="dev-matrix"?6.25:style=="dev-ansatsuken"?5.45:style==NativeBombs.Entrance?6:style==NativeTopDog.Entrance?NativeTopDogIntro.CardAt:style==NativeGlaiveIntro.Id?NativeGlaiveIntro.CardAt:style==NativeKatana.Entrance?NativeKatanaIntro.CardAt:style==NativeFangs.Entrance?NativeFangsIntro.CardAt:style==NativeDevMotions.GreatswordEntrance?NativeDevGreatswordIntro.CardAt:style==NativeDevMotions.KatanaEntrance?NativeDevKatanaIntro.CardAt:3.2;
         // The overlay's own clock length (shared/intros.ts introDuration). The Siren's source intro is 7.2678 s; Duration keeps the
         // native phase length unchanged (9.0678 s for a PvP Siren intro), which is a gameplay-timing difference left for review.
         public static double OverlayDuration(string style)=>style=="dev-siren"?7.2678:Duration(style);
@@ -38,7 +40,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The intro preference held when nothing is picked (overrideIntro false), and the entrance of a pilot whose
         /// weapon has no signature (an ungranted DEV weapon, an unknown spec).</summary>
         public const string Default="hero-landing";
-        public static bool Pickable(string style)=>style!=null&&(style=="sheldon-intro"||style==CyberLordSpec.Entrance||style==NativeBombs.Entrance||style==NativeTopDog.Entrance||style==NativeGlaiveIntro.Id||style==NativeKatana.Entrance||style==NativeFangs.Entrance||Array.IndexOf(Entrances,style)>=0);
+        public static bool Pickable(string style)=>style!=null&&(style=="sheldon-intro"||style==CyberLordSpec.Entrance||style==NativeBombs.Entrance||style==NativeTopDog.Entrance||style==NativeGlaiveIntro.Id||style==NativeKatana.Entrance||style==NativeFangs.Entrance||style==NativeDevMotions.GreatswordEntrance||style==NativeDevMotions.KatanaEntrance||Array.IndexOf(Entrances,style)>=0);
         /// <summary>The weapon signature of `spec` ("weapon-"+spec), or Default for a weapon without one.</summary>
         public static string Signature(string spec){string s="weapon-"+spec;return Array.IndexOf(Entrances,s)>=0?s:Default;}
         /// <summary>A style this client stages; anything else (retired, unknown, null) becomes Default.</summary>
@@ -62,7 +64,7 @@ namespace ChipArena.UnityConversion
         // Emperor's Oath (buildWeapon(weapon/offWeapon,'emperor'), shown by poseEmperor; weapon-emperor holds both gauntlets).
         // Every other entrance shows empty hands: the poses, the Rain Warrior and the L33T Throne hide r.weapon and the Siren
         // hides it. The L33T Throne's staff is the stage's own prop, grabbed at 4 s.
-        public static string IntroWeapon(string style)=>style=="dev-emperor"?"weapon-emperor":style==NativeBombs.Entrance?"weapon-"+NativeBombs.Spec:style==NativeTopDog.Entrance?"weapon-"+NativeTopDog.Spec:style==NativeGlaiveIntro.Id?"weapon-"+NativeGlaive.Spec:style==NativeKatana.Entrance?"weapon-"+NativeKatana.Spec:style==NativeFangs.Entrance?"weapon-"+NativeFangs.Spec:style!=null&&style.StartsWith("weapon-",StringComparison.Ordinal)&&Array.IndexOf(Entrances,style)>=0?style:null;
+        public static string IntroWeapon(string style)=>style=="dev-emperor"?"weapon-emperor":style==NativeBombs.Entrance?"weapon-"+NativeBombs.Spec:style==NativeTopDog.Entrance?"weapon-"+NativeTopDog.Spec:style==NativeGlaiveIntro.Id?"weapon-"+NativeGlaive.Spec:style==NativeKatana.Entrance?"weapon-"+NativeKatana.Spec:style==NativeFangs.Entrance?"weapon-"+NativeFangs.Spec:style==NativeDevMotions.GreatswordEntrance?"weapon-"+NativeDevMotions.Greatsword:style==NativeDevMotions.KatanaEntrance?"weapon-"+NativeDevMotions.Katana:style!=null&&style.StartsWith("weapon-",StringComparison.Ordinal)&&Array.IndexOf(Entrances,style)>=0?style:null;
         // character-rig.ts: the hand socket on the wrist joint, where an ungripped weapon sits (source frame, +x the rig's left).
         public static readonly System.Numerics.Vector3 HandSocket=new System.Numerics.Vector3(0,-.065f,.055f);
         /// <summary>
@@ -160,7 +162,9 @@ namespace ChipArena.UnityConversion
                 // The Glaive's Crescent Return lands its beats on the 150 bpm signal-spin bed (no source sting).
                 case NativeGlaiveIntro.Id:return "audio/intros/signal-spin";
                 // The Katana's Moonlit Draw and the Fangs' Venom Bloom on their own beds (Core NativeKatanaIntro, NativeFangsIntro).
-                case NativeKatana.Entrance:return NativeKatanaIntro.Music;case NativeFangs.Entrance:return NativeFangsIntro.Music;}
+                case NativeKatana.Entrance:return NativeKatanaIntro.Music;case NativeFangs.Entrance:return NativeFangsIntro.Music;
+                // The DEV animation classes' entrances on the generic beds (Core NativeDevIntros).
+                case NativeDevMotions.GreatswordEntrance:return NativeDevGreatswordIntro.Music;case NativeDevMotions.KatanaEntrance:return NativeDevKatanaIntro.Music;}
             return "audio/intros/"+style;
         }
         /// <summary>The music an entrance plays from its first frame (song time = intro age), or null: black-siren-protocol for dev-siren.</summary>
@@ -170,7 +174,7 @@ namespace ChipArena.UnityConversion
         {
             switch(style)
             {
-                case "dev-siren":return "DEV · Black Siren Protocol";case "dev-emperor":return "DEV · Emperor’s Oath";case "dev-ansatsuken":return "DEV · Rain Warrior";case "dev-matrix":return "DEV · L33T Throne";case "sheldon-intro":return "DEV · Sheldon Intro";case CyberLordSpec.Entrance:return "DEV · Hardlight Boot";case NativeBombs.Entrance:return "DEV · Last Warning";case NativeTopDog.Entrance:return "DEV · Order Up!";case NativeGlaiveIntro.Id:return NativeGlaiveIntro.Name;case NativeKatana.Entrance:return NativeKatanaIntro.Name;case NativeFangs.Entrance:return NativeFangsIntro.Name;
+                case "dev-siren":return "DEV · Black Siren Protocol";case "dev-emperor":return "DEV · Emperor’s Oath";case "dev-ansatsuken":return "DEV · Rain Warrior";case "dev-matrix":return "DEV · L33T Throne";case "sheldon-intro":return "DEV · Sheldon Intro";case CyberLordSpec.Entrance:return "DEV · Hardlight Boot";case NativeBombs.Entrance:return "DEV · Last Warning";case NativeTopDog.Entrance:return "DEV · Order Up!";case NativeGlaiveIntro.Id:return NativeGlaiveIntro.Name;case NativeKatana.Entrance:return NativeKatanaIntro.Name;case NativeFangs.Entrance:return NativeFangsIntro.Name;case NativeDevMotions.GreatswordEntrance:return "DEV · "+NativeDevGreatswordIntro.Name;case NativeDevMotions.KatanaEntrance:return "DEV · "+NativeDevKatanaIntro.Name;
                 case "weapon-sword":return "Flash Draw";case "weapon-daggers":return "Twin Phantom";case "weapon-greatsword":return "Colossus Oath";case "weapon-shield":return "Bastion Drop";
                 case "weapon-pistol":return "Deadeye";case "weapon-rifle":return "Longwatch";case "weapon-machinegun":return "Belt Rattle";case "weapon-bow":return "Arrowfall";case "weapon-fire":return "Cinder Crown";
                 case "weapon-water":return "Tidal Serpent";case "weapon-lightning":return "Thunderstep";case "weapon-darkness":return "Eventide Gate";
