@@ -176,8 +176,7 @@ namespace ChipArena.UnityConversion
             public void Streak(System.Numerics.Vector3 head,System.Numerics.Vector3 velocity,System.Numerics.Vector3 color,float width,float minLength,float blur,float taper,float u,float seed)=>vfx.Streak(U(head),U(velocity),new Color(color.X,color.Y,color.Z,0),width,minLength,blur,taper,u,seed);
             public void Smoke(System.Numerics.Vector3 at,System.Numerics.Vector3 albedo,float opacity,float size,float u,float seed,float floor)=>vfx.Smoke(U(at),new Color(albedo.X,albedo.Y,albedo.Z,0),opacity,size,u,seed,floor);
             public void Fire(System.Numerics.Vector3 at,System.Numerics.Vector3 tint,float opacity,float size,float u,float seed,float floor)=>vfx.Fireball(U(at),new Color(tint.X,tint.Y,tint.Z),opacity,size,u,seed,floor);
-            // Silent Kill's venom (Core NativeFangsIntro): a soft vapour glowing in its own colour, and teardrops.
-            public void Fume(System.Numerics.Vector3 at,System.Numerics.Vector3 albedo,float opacity,float size,float u,float seed,float floor,float glow)=>vfx.Vapor(U(at),new Color(albedo.X,albedo.Y,albedo.Z,0),opacity,size,u,seed,floor,glow);
+            // Silent Kill's venom drops (Core NativeFangsIntro): teardrops.
             public void Bead(System.Numerics.Vector3 head,System.Numerics.Vector3 segment,System.Numerics.Vector3 color,float coverage,float width,float u,float seed)=>vfx.Drop(U(head),U(segment),new Color(color.X,color.Y,color.Z,coverage),width,u,seed);
         }
         // player-intros.ts: the bare intro rig holds only a weapon intro's own weapon (WEAPON_INTROS[style].spec) or the Emperor's

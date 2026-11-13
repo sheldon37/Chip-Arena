@@ -20,18 +20,17 @@ namespace ChipArena.UnityConversion
         private static int count;private static void Check(bool ok,string what){if(!ok)throw new Exception("Fangs intro: "+what);count++;}
         private class Sink:INativeEntranceFx,INativeEntranceProps
         {
-            public int Count,Glows,Streaks,Smokes,Floor,Eyes,Stars;public bool Broken;public readonly List<(WeaponShape shape,bool glow,Vector3 p,Vector3 s)> Pieces=new List<(WeaponShape,bool,Vector3,Vector3)>();
+            public int Count,Glows,Streaks,Smokes,Floor,Eyes,Stars,Fumes;public bool Broken;public readonly List<(WeaponShape shape,bool glow,Vector3 p,Vector3 s)> Pieces=new List<(WeaponShape,bool,Vector3,Vector3)>();
             protected void V(Vector3 v){if(!(float.IsFinite(v.X)&&float.IsFinite(v.Y)&&float.IsFinite(v.Z)))Broken=true;}
-            public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){Count++;Glows++;V(at);V(color);if(profile==1&&size<.08f&&Math.Abs(at.Y-NativeFangsIntro.EyeHeight)<.05f)Eyes++;if(profile==1)Stars++;}
+            public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){Count++;Glows++;V(at);V(color);if(profile==1&&size<.08f&&Math.Abs(at.Y-NativeFangsIntro.EyeHeight)<.05f)Eyes++;if(profile==1)Stars++;if(seed>=22840&&seed<22900||seed>=22970&&seed<22990){Fumes++;if(coverage!=0||profile!=1)Broken=true;}}
             public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){Count++;Streaks++;V(head);V(velocity);V(color);if(blur==1&&head.Y<NativeEntranceStage.FloorY+.06f)Floor++;}
             public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){Count++;Smokes++;V(at);}
             public void Piece(WeaponShape shape,bool glow,Vector3 position,Quaternion rotation,Vector3 scale,Vector3 color){V(position);Pieces.Add((shape,glow,position,scale));}
-            public void Reset(){Count=Glows=Streaks=Smokes=Floor=Eyes=Stars=0;Pieces.Clear();}
+            public void Reset(){Count=Glows=Streaks=Smokes=Floor=Eyes=Stars=Fumes=0;Pieces.Clear();}
         }
         private sealed class VenomSink:Sink,INativeEntranceVenom
         {
-            public int Fumes,Beads;
-            public void Fume(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor,float glow){Count++;Fumes++;V(at);if(!(glow>=0&&glow<=.5f))Broken=true;}
+            public int Beads;
             public void Bead(Vector3 head,Vector3 segment,Vector3 color,float coverage,float width,float u,float seed){Count++;Beads++;V(head);V(segment);}
         }
         private static float AgeOf(NativeEntranceScript sc,float t){float lo=0,hi=sc.Length+1;for(int i=0;i<40;i++){float m=(lo+hi)*.5f;if(sc.Clock(m)<t)lo=m;else hi=m;}return hi;}
@@ -139,15 +138,15 @@ namespace ChipArena.UnityConversion
                 for(float age=0;age<=7;age+=1/60f)
                 {
                     float t=hi.Clock(age);Feed(hi,t);Feed(lo,t);Feed(plain,t);
-                    s.Reset();hi.Effects(t,s,1);if(s.Count>peak){peak=s.Count;peakAt=age;}sum+=s.Count;broken|=s.Broken;fumes+=s.Fumes;beads+=s.Beads;s.Fumes=s.Beads=0;
-                    l.Reset();lo.Effects(t,l,.3f);peakLow=Math.Max(peakLow,l.Count);sumLow+=l.Count;broken|=l.Broken;l.Fumes=l.Beads=0;
+                    s.Reset();hi.Effects(t,s,1);if(s.Count>peak){peak=s.Count;peakAt=age;}sum+=s.Count;broken|=s.Broken;fumes+=s.Fumes;beads+=s.Beads;s.Beads=0;
+                    l.Reset();lo.Effects(t,l,.3f);peakLow=Math.Max(peakLow,l.Count);sumLow+=l.Count;broken|=l.Broken;l.Beads=0;
                     p.Reset();plain.Effects(t,p,1);same&=p.Count==s.Count;broken|=p.Broken;
                     s.Reset();hi.Props(t,s,1);broken|=s.Broken;
                     foreach(var piece in s.Pieces){if(!piece.glow||piece.p.Y>NativeEntranceStage.FloorY+.25f)continue;bool flat=piece.s.Y<.12f&&Math.Min(piece.s.X,piece.s.Z)>.25f;Check(!(flat||piece.shape==WeaponShape.Ring),"no glowing ring or disc on the floor at "+age.ToString("0.00"));}
                     hi.Lights(t,lights);Check(lights.Points<=NativeStageLighting.Max&&lights.Directionals<=NativeEntranceLights.MaxDirectional,"its lights fit the stage at "+age.ToString("0.00"));
                 }
                 Check(!broken,"every effect whole");Check(peak<=600,"at most 600 effect particles a frame ("+peak+" at "+peakAt.ToString("0.00")+")");Check(sumLow<sum*.6,"the low tier thins them ("+sumLow+" of "+sum+")");
-                Check(same,"a sink without venom draws as many");Check(fumes>200&&beads>100,"the venom's fumes and drops go to a sink that knows them ("+fumes+", "+beads+")");
+                Check(same,"a sink without venom draws as many");Check(fumes>200&&beads>100,"the venom's fumes are drawn as light, and its drops go to a sink that knows them ("+fumes+", "+beads+")");
                 Console.WriteLine("PASS Fangs intro effects: at most "+peak+" particles a frame (at "+peakAt.ToString("0.00")+" s; "+peakLow+" on the low tier, "+(100*sumLow/Math.Max(1,sum))+"% of the draws)");
             }
             // Each beat's own: the eyes; the glints up the fangs when they are handed in; the strike's veins over the floor and its bloom.

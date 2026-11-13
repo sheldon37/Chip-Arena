@@ -267,8 +267,8 @@ namespace ChipArena.UnityConversion
         public override string Spec=>NativeFangs.Spec;
         public override float Length=>Total;public override float SettleAt=>End;protected override float HeroAt=>CardAt;
         private static readonly Vector3 Venom=NativeEntranceFx.Hex(0x7dff3a),White=new Vector3(1,1,1),Smoke=NativeEntranceFx.Hex(0x5c6660),Haze=NativeEntranceFx.Hex(0x46524a);
-        // The venom's hot edge (a pale yellow green, where plain white read as any blade's spark) and its fumes' body.
-        private static readonly Vector3 Bile=NativeEntranceFx.Hex(0xd9ff8a),Fumes=NativeEntranceFx.Hex(0x3f9a30),Across=Local(1,0,0);
+        // The venom's hot edge (a pale yellow green, where plain white read as any blade's spark) and its fumes' light.
+        private static readonly Vector3 Bile=NativeEntranceFx.Hex(0xd9ff8a),Fumes=NativeEntranceFx.Hex(0x4dd22e),Across=Local(1,0,0);
         // The flurry's and the strike's own travel (owner 2026-11-13: "This applies to the intro too (They flip in place with no movement)"):
         // the in-place takes leave their roots' way out, so the pilot shown carries it. The flurry (the assassin's fifth combo) leaps: its
         // lowest point (feet, shins, hips, chest, head, hands, as the model's contacts) up to 1.78 m off the floor through its somersaults,
@@ -396,9 +396,10 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        // Venom through the runtime's own looks when the sink has them (fumes that glow in their colour, teardrops); a plain sink draws
-        // smoke and motes, one draw each either way.
-        private static void Fume(INativeEntranceFx fx,Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor,float glow){if(fx is INativeEntranceVenom v)v.Fume(at,albedo,opacity,size,u,seed,floor,glow);else fx.Smoke(at,albedo,opacity,size,u,seed,floor);}
+        // Venom's fumes are light, not smoke: soft additive glows that overlap into a luminous mist (in the Editor both of the renderer's smoke
+        // puffs, the toon one and the soft one, drew hard green lobes that read as shrubs). Its drops are the runtime's teardrop when the
+        // sink has one; a plain sink draws a mote, one draw either way.
+        private static void Fume(INativeEntranceFx fx,Vector3 at,float level,float size,float u,float seed)=>fx.Glow(at,Fumes*level,0,size,1,u,seed);
         private static void Bead(INativeEntranceFx fx,Vector3 at,Vector3 velocity,Vector3 color,float width,float u,float seed){if(fx is INativeEntranceVenom v)v.Bead(at,velocity*.03f,color,.92f,width,u,seed);else fx.Glow(at,color,0,width*1.3f,0,u,seed);}
         /// <summary>A glint running up the blade in `hand` from `at` for `life` s: a four-point star that swells and dies as it reaches the tip
         /// (nothing while the blade is not handed in).</summary>
@@ -518,7 +519,7 @@ namespace ChipArena.UnityConversion
                         {
                             float f=(j+1f)/per,shown=NativeEntranceMath.Smooth(s*9-j*.7f);if(shown<=0)continue;
                             var p=on+d*(1.55f*(float)Math.Pow(f,1.5)*open+.25f*u*f)+new Vector3(0,.1f+1.2f*f*open+.55f*u*f,0);
-                            Fume(fx,p,Fumes,.4f*shown*hang*(1-.3f*f),.34f+.5f*f*open+.5f*u,NativeEntranceMath.Clamp01(s/BloomGone),22840+i*8+j,floor,.35f);
+                            Fume(fx,p,.2f*shown*hang*(1-.35f*f),.5f+.7f*f*open+.5f*u,NativeEntranceMath.Clamp01(s/BloomGone),22840+i*8+j);
                         }
                     }
                     NativeEntranceFx.GroundDust(fx,t,StrikeAt,on,low?6:13,.35f,3.1f,1.5f,Haze,.5f,.8f,22900,1,floor);
@@ -535,7 +536,7 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i<wisps;i++)
                     {
                         float a=(((t-Hero)/Period+i/(float)wisps+hand*.37f)%1+1)%1;var p=Vector3.Lerp(root,tip,.3f+.65f*NativeEntranceMath.Rand(22960+hand,i))+new Vector3(.05f*(float)Math.Sin(a*5+i),.5f*a,.04f*(float)Math.Cos(a*4+i));
-                        Fume(fx,p,Fumes,.3f*up*(float)Math.Sin(Math.PI*a),.08f+.2f*a,a,22970+hand*8+i,floor,.4f);
+                        Fume(fx,p,.35f*up*(float)Math.Sin(Math.PI*a),.07f+.16f*a,a,22970+hand*8+i);
                     }
                 }
             }
@@ -555,11 +556,10 @@ namespace ChipArena.UnityConversion
             if(s<.15f)fx.Glow(c,Venom*(2.6f*(1-s/.15f)),0,.3f+.3f*s/.15f,1,s/.15f,seed+90);
         }
     }
-    /// <summary>Silent Kill's venom, for a sink that can draw it (the runtime's; a checker's need not): fumes, a soft vapour that glows in
-    /// its own colour (`glow` 0 to about .5; the toon smoke's hard lobes read as green shrubs in the Editor), and teardrops (`segment` the drop's tail; `coverage` 0 adds it).</summary>
+    /// <summary>Silent Kill's venom drops, for a sink that can draw a teardrop (the runtime's; a checker's need not): `segment` the drop's
+    /// tail; `coverage` 0 adds it.</summary>
     public interface INativeEntranceVenom
     {
-        void Fume(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor,float glow);
         void Bead(Vector3 head,Vector3 segment,Vector3 color,float coverage,float width,float u,float seed);
     }
 }
