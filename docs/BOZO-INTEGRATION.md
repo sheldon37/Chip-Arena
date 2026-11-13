@@ -1633,6 +1633,11 @@ already? Cant we utilize that?"
         the katana set's `Intro`) in place of Crimson Moon. The pack's clip on the model (an entrance's intro body now plays its
         script's clip whatever its set, `NativeVisualMotion.Choose`), the weapon held as the match holds it (`NativeDevMotions.Grip`),
         a keyed stance under it for the Classic body, a camera, the stage's light and dust where the beat lands.
+        Their blade is drawn as the match draws it, its handle through the palm (by the base class's spec, `NativeDevMotions.Base`: by
+        the DEV spec the DEV Katana's hung from the wrist, owner 2026-11-12: "the hilt is not in hand"). The katana set's `Intro` opens
+        with the sword across the back, the right hand reaching over the shoulder for its hilt: through the held first frame and to
+        0.11 s of the clip it is there, on the chest (`NativeDevKatanaIntro.CarryAt`/`CarryTurn`, measured on the bake's body), and it
+        goes into the hand as the hand closes on it (0.15 s). The great sword's `Intro` keeps its blade in the hand throughout.
     - **The katana's hold:** the game holds the blade 20-30 degrees from where the pack's own katana lies (26 on average over the
       attacks and the B stride; 49 at most), a steady offset through every clip: the arms and the swing are the pack's,
       the blade sits that much differently in the hand.
