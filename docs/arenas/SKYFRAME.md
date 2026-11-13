@@ -260,3 +260,28 @@ pixels as the eye moved. The far chunks are now layered at a far reach (docs/are
 every window draws over its wall at any distance (49,055 m2 of window and wall within 25 cm on one layer before, 2 m2 after). Bank rebuilt (11.70 MB). The look is unchanged; the beacons still blink as
 designed. Seen in the Editor at High and Low: on the released bank the far towers showed only some of their windows; on the
 rebuilt bank all of them, on every frame. The cloud sea's drifting haze still passes over the far towers (by design).
+
+## The haze banks popped as the camera turned (2026-11-12)
+
+Owner, on the build with the far chunks' layers: "Skyframe still looks glitchy in background. Maybe z-fighting?" (a recording
+from the garden's edge over the cloud sea, the camera moving: whole cloud shapes lighting up between single frames, dashed
+streaks round the far tower). Not depth fighting this time. The cloud sea's haze (Core `NativeSkyframeFx.Sea`: 84 soft banks
+130 to 280 m wide) and the sun's five pools of light were sprites turned with the camera, standing among the cloud heaps and
+the far towers. A sprite turned with the camera swings its whole plane about its middle as the pilot looks round: 1.7 m of
+depth 100 m off its middle for every degree. Every cloud and tower face near that plane went in front of the haze or behind it
+from one frame to the next, with the cut's hard edge. Also a bank jumped from one end of its 760 m run to the other at full
+strength, and vanished at 52 m from the tower.
+
+Now (`NativeSkyframeFx.Bank`): a bank faces the eye's place, so looking round moves none of them (only walking does, slowly);
+it draws in a new effects mode (ChipArena/NativeSirenFx mode 5: the soft radial sprite, fading out over
+`NativeSkyframeFx.BankFade` 70 m as it nears the scene behind it, read from the camera's depth texture; the low tier has none
+and keeps the plain sprite); it comes in and goes out over the last 60 m of its run and thins out over 40 m towards the tower.
+The look (the banks' colours, sizes, drift) is as it was.
+
+Seen in the Editor (the match camera turning 1.5 degrees a frame from a fixed eye, fourteen frames, shared's head against the
+branch under one lock hold; each frame against the one before, shifted to fit): before, whole clouds with blocky edges and the
+far tower's faces and windows change between frames; after, only the turbines' blades, the trees' edges and the sky's own
+bands do. Mean change in the sky's part of the frame, of 255: north over the clouds 3.9 to 2.5 (Low tier 5.2 to 3.7); from the
+east roof toward the sunset 3.5 to 2.1 (Low 3.9 to 2.6); what is left is the turbines and the edges. `--skyframe` checks that
+the banks stand still when the camera turns, that none comes, goes or changes by more than a fiftieth in a frame over 30 s, and
+the shader's and the presentation's wiring.
