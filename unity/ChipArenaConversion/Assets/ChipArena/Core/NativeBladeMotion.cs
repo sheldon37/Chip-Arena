@@ -21,7 +21,8 @@ namespace ChipArena.UnityConversion
         // ---- the Fangs' clips ----
         // The flurry is the Frank Dual (twin swords) set's chain (the owner's pick 2026-11-13; it was the Rogue set's third and fourth
         // combinations): its first combo's flat forehand, springing double and bent-over lunging cut, its sixth combo's long forehand lunge,
-        // then its first combo's low spinning sweep as the finisher. The set ships as root-motion takes only; the bake plays them in place.
+        // then its first combo's low spinning sweep as the finisher. The set ships as root-motion takes only; the bake plays them in place,
+        // and the rules carry the pilot along their roots' way (FangsTravelShare, owner 2026-11-13).
         // The dash is the Rogue (dual blade) set's fifth chain's long low lunge with both blades out (owner 2026-11-11: "utilize the Rogue").
         public static readonly string[] FangsCuts={D+"Combo01_1",D+"Combo01_2",D+"Combo01_3",D+"Combo06_1",D+"Combo01_4"};
         public const string FangsPounce=R+"Combination_05_2",FangsStep=A+"Skill01_IP",FangsVeil=A+"Evade_B_IP",FangsFan=A+"Attack06_IP",FangsBloom=A+"Skill02_IP",FangsIdle=A+"Equip_Idle",
@@ -175,15 +176,16 @@ namespace ChipArena.UnityConversion
                 if(time>=until+.1f)return false;
                 switch(k.CastKind)
                 {
-                    // A cut that lunges (the third's step in, the finisher's lunge: NativeFangs.CutLunge) takes the whole body, its legs carrying
-                    // the lunge (the rules' step read as moving, so the third played on the upper body over a walk); the others the upper body
-                    // over the stride while moving.
+                    // A cut that lunges (NativeFangs.CutLunge: every one but the fourth, along its clip's root, FangsTravelShare) takes the
+                    // whole body, its legs carrying the lunge (the rules' step read as moving, so a lunge played on the upper body over a walk);
+                    // the fourth the upper body over the stride while moving.
                     case NativeFangs.Cut:whole=NativeFangs.CutLunge[Math.Max(0,k.CastStep)%NativeFangs.Steps]>0;return On(FangsCuts[Math.Max(0,k.CastStep)%FangsCuts.Length],at,rel,until,time,clips,out clip,out t);
                     case NativeFangs.Pounce:return On(FangsPounce,at,rel+NativeFangs.PounceTime*.5f,until,time,clips,out clip,out t);
                     case NativeFangs.Step:return On(FangsStep,at,rel+.04f,until,time,clips,out clip,out t);
                     case NativeFangs.Veil:return On(FangsVeil,at,rel,until,time,clips,out clip,out t);
                     case NativeFangs.Fan:whole=false;return On(FangsFan,at,rel,until,time,clips,out clip,out t);
-                    case NativeFangs.Bloom:whole=false;return On(FangsBloom,at,rel,until,time,clips,out clip,out t);
+                    // The bloom's strike lunges (NativeFangs.BloomLunge), so its legs carry it even on the move.
+                    case NativeFangs.Bloom:return On(FangsBloom,at,rel,until,time,clips,out clip,out t);
                     case NativeFangs.Assassinate:
                     {
                         string c=k.PairClip??FangsCritical;return On(c,at,k.PairHit>-50?k.PairHit:rel,until,time,clips,out clip,out t);
@@ -219,6 +221,61 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The Katana's critical's victim clip's travel back (clip s, m), from its root in the pack's FBX.</summary>
         private static readonly float[] KatanaKnock={1.45f,0,1.5f,.1f,1.75f,.67f,2f,1.08f,2.25f,1.23f};
+
+        // ---- the Fangs' own travel (owner 2026-11-13: "Review fangs animations; The movements look like they should be moving the character location") ----
+        /// <summary>How far each travelling Fangs clip's root has gone along its facing (m on the game body), 30 a second from its window's
+        /// start: the pack's root-motion takes (the Dual chain ships as nothing else; the assassin set's sit beside its in-place takes) read
+        /// in the FBX, the root bone's forward way at 0.835 of the pack's skeleton (the bake body against it, fitted over the drawn frames of
+        /// the Dual clips). The bake leaves every root's travel out and draws the clips in place, so the rules carry the pilot along it: the
+        /// length is the rules' (NativeFangs.CutLunge, VeilHop, BloomLunge), this the timing. The root's sideways drift (under 7 cm) is
+        /// left out; the root's forward is the facing (where the clip strikes). The fourth cut's comes back to where it started (17 cm out,
+        /// 6 cm net), the fan's barely moves, the pounce's dash and the shadow step's blink keep their own (docs/FANGS.md "Travel").</summary>
+        private static readonly float[] Cut1Way={0,.008f,.014f,.019f,.024f,.029f,.036f,.045f,.057f,.072f,.093f,.127f,.179f,.245f,.321f,.42f,.539f,.65f,.721f,.751f,.76f,.754f,.741f,.727f,.716f,.701f,.683f,.663f},
+            Cut2Way={0,.105f,.212f,.316f,.41f,.492f,.568f,.64f,.711f,.784f,.866f,.953f,1.029f,1.079f,1.108f,1.134f,1.156f,1.176f,1.193f,1.208f,1.221f,1.233f,1.24f},
+            Cut3Way={0,.089f,.179f,.268f,.356f,.448f,.542f,.628f,.696f,.748f,.795f,.836f,.873f,.906f,.935f,.96f,.975f,.977f,.974f,.972f,.979f,1.001f},
+            Cut5Way={0,.062f,.117f,.175f,.25f,.354f,.565f,.833f,.986f,1.016f,1.037f,1.056f,1.075f,1.1f,1.134f,1.176f,1.222f,1.273f,1.325f,1.379f,1.433f,1.487f,1.537f,1.584f,1.627f,1.664f,1.679f},
+            VeilWay={0,-.219f,-.438f,-.654f,-.862f,-1.07f,-1.301f,-1.557f,-1.81f,-2.029f,-2.203f,-2.337f,-2.422f,-2.464f,-2.485f,-2.492f,-2.494f,-2.499f};
+        /// <summary>The bloom's two-handed strike (Skill02; the Fangs' entrance strikes on it too, Core NativeFangsIntro): its lunge, from
+        /// clip .45 s.</summary>
+        public static readonly float[] BloomWay={0,.004f,.009f,.018f,.024f,.022f,.03f,.042f,.049f,.055f,.084f,.082f,.51f,.974f,1.205f,1.226f,1.241f,1.251f,1.256f,1.257f,1.254f,1.248f,1.24f,1.23f,1.219f,1.208f,1.196f,1.185f,1.176f,1.162f,1.114f,1.037f,.944f,.847f,.759f,.722f};
+        public const float WayRate=30,BloomWayFrom=.45f;
+        private static float[] WayOf(string clip,out float from)
+        {
+            from=0;
+            switch(clip){case D+"Combo01_1":return Cut1Way;case D+"Combo01_2":return Cut2Way;case D+"Combo01_3":return Cut3Way;case D+"Combo01_4":return Cut5Way;case FangsVeil:return VeilWay;case FangsBloom:from=BloomWayFrom;return BloomWay;default:return null;}
+        }
+        /// <summary>A table's value at clip time `c` (`from`: its first sample's time), between its samples, held at its ends.</summary>
+        public static float Sample(float[] way,float from,float c)
+        {
+            if(way==null||way.Length==0)return 0;float f=(c-from)*WayRate;if(!(f>0))return way[0];int last=way.Length-1;if(f>=last)return way[last];int i=(int)f;return way[i]+(way[i+1]-way[i])*(f-i);
+        }
+        /// <summary>How far `clip`'s root has gone along its facing at clip time `c` (m; 0 for a clip without a table).</summary>
+        public static float Way(string clip,float c){var w=WayOf(clip,out float from);return w==null?0:Sample(w,from,c);}
+        /// <summary>The clip a travelling Fangs move plays and the times Clip fits it on (false: the move has no travel of its own).</summary>
+        private static bool Travels(NativeBladeKit k,out string clip,out float at,out float rel,out float until)
+        {
+            clip=null;at=rel=until=0;if(k?.CastKind==null)return false;at=k.CastAt;rel=Math.Max(at+.01f,k.CastRelease);until=Math.Max(rel+.05f,k.CastUntil);
+            switch(k.CastKind){case NativeFangs.Cut:clip=FangsCuts[Math.Max(0,k.CastStep)%FangsCuts.Length];break;case NativeFangs.Veil:clip=FangsVeil;break;case NativeFangs.Bloom:clip=FangsBloom;break;default:return false;}
+            return WayOf(clip,out _)!=null;
+        }
+        /// <summary>A travelling Fangs move's share of its way at `time`: its clip's root from where the slice the game plays starts (as Fit
+        /// lays it) to the window's end, at the clip time Clip shows, so the pilot moves when the drawn feet do. It passes 1 where the root
+        /// runs on and comes back (the first cut, the bloom). False for a move without travel (the rules' path keeps its own easing).</summary>
+        public static bool FangsTravelShare(NativeBladeKit k,float time,out float share)
+        {
+            share=0;if(!Travels(k,out string clip,out float at,out float rel,out float until))return false;
+            var w=WindowOf(clip);float first=Math.Max(w.From,w.Hit-Math.Max(1e-3f,rel-at)*RateOf(clip)),from=Way(clip,first),span=Way(clip,w.To)-from;
+            if(Math.Abs(span)<1e-3f)return false;share=(Way(clip,Fit(clip,w.To,time,at,rel,until))-from)/span;return true;
+        }
+        /// <summary>When a travelling Fangs move's way ends (its clip at its window's end, no later than Clip shows the move) and its farthest
+        /// share on the way (1, or more where the root runs on and comes back).</summary>
+        public static bool FangsTravelSpan(NativeBladeKit k,out float ends,out float peak)
+        {
+            ends=0;peak=1;if(!Travels(k,out string clip,out float at,out float rel,out float until))return false;
+            var w=WindowOf(clip);ends=Math.Min(rel+Math.Max(Math.Max(1e-3f,until-rel),(w.To-w.Hit)/RateOf(clip)),until+.1f);
+            if(!FangsTravelShare(k,at,out _))return false;for(float t=at;t<=ends+1e-4f;t+=1/60f){FangsTravelShare(k,t,out float s);peak=Math.Max(peak,s);}
+            return true;
+        }
         /// <summary>Every clip the two classes play beyond their sets' own (the bake's controller carries them).</summary>
         public static readonly string[] KatanaExtra={KatanaRush,KatanaIai,KatanaSheathe,KatanaStorm,KatanaCritical,KatanaCriticalHit,KatanaDraw,FangsTakedownHit,FangsCriticalHit,K+"Unequip_Idle",K+"S2_Skill02"};
         public static readonly string[] FangsExtra={FangsPounce,FangsStep,FangsVeil,FangsFan,FangsBloom,FangsTakedown,FangsTakedownHit,FangsCritical,FangsCriticalHit,KatanaCriticalHit,"Frank_Stealth_Kill_Sneak_Idle",A+"Evade_F_IP",A+"Combo05_All_IP"};

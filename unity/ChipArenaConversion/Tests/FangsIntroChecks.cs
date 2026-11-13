@@ -64,8 +64,9 @@ namespace ChipArena.UnityConversion
             Check(shots.Any(s=>s.At==NativeFangsIntro.FormAt&&s.In==NativeEntranceCut.Cut),"a shot of its own as it forms");
             Check(shots.Any(s=>s.In==NativeEntranceCut.Cut&&s.At<NativeFangsIntro.StepAt&&s.At>=NativeFangsIntro.StepAt-.4f),"a shot set before the step, so the step is seen whole");
             Check(shots.Count(s=>s.In==NativeEntranceCut.Whip)==1&&shots.Any(s=>s.In==NativeEntranceCut.Whip&&s.At>=NativeFangsIntro.ArriveAt&&s.At<=NativeFangsIntro.FlurryAt&&s.InTime<=.25f),"one whip, landing with the step");
-            Check(shots.Any(s=>s.In==NativeEntranceCut.Cut&&s.At>NativeFangsIntro.FlurryAt&&s.At<NativeFangsIntro.StrikeAt-.6f),"a cut inside the flurry");
-            Check(shots.Any(s=>s.In==NativeEntranceCut.Cut&&s.At==NativeFangsIntro.StrikeAt&&s.Eye0.Y>2.5f&&s.Eye2.Y>s.Eye0.Y&&s.Fov1>s.Fov0),"the cut to the strike is on the blow, from above, lifting and widening over the bloom");
+            Check(shots.Any(s=>s.In==NativeEntranceCut.Cut&&s.At==NativeFangsIntro.LeapAt&&s.Follow<0&&s.Eye0.Y<.6f&&s.Look0.Y>1.3f&&s.Fov0>=50)&&NativeFangsIntro.Way(NativeFangsIntro.LeapAt).Y<.15f&&NativeFangsIntro.Way(NativeFangsIntro.LeapAt+.25f).Y>1f,"a cut as it leaves the floor: low, wide and looking up, the leap held in a still frame");
+            Check(shots.Any(s=>s.In==NativeEntranceCut.Cut&&s.At<NativeFangsIntro.StrikeAt-.2f&&s.At>NativeFangsIntro.StrikeAt-.7f&&Math.Abs(s.Eye0.X)>2.5f&&Math.Abs(s.Eye0.Z)<.6f),"the strike's lunge in profile");
+            Check(shots.Any(s=>s.In==NativeEntranceCut.Cut&&s.At==NativeFangsIntro.StrikeAt&&s.Eye0.Y>2.5f&&s.Eye2.Y>s.Eye0.Y&&s.Fov1>s.Fov0&&Math.Abs(s.Look0.X-NativeFangsIntro.StrikeSpot.X)<.5f&&Math.Abs(s.Look0.Z-NativeFangsIntro.StrikeSpot.Z)<.5f),"the cut to the strike is on the blow, from above where it lands, lifting and widening over the bloom");
             Check(shots.Any(s=>s.In==NativeEntranceCut.Blend&&s.At>NativeFangsIntro.StrikeAt&&s.At+s.InTime<=NativeFangsIntro.CardAt+1e-4f),"the camera comes down from the strike to the hero in one move, done before the name's cut");
             Check(shots.All(s=>Math.Abs(s.Roll0)<=.4f&&Math.Abs(s.Roll1)<=.4f&&s.Fov0>=28&&s.Fov0<=60&&s.Fov1>=28&&s.Fov1<=60)&&shots[^1].Roll0==0&&shots[^1].Roll1==0&&shots[^2].Roll0==0&&shots[^2].Roll1==0,"tilts and lenses stay moderate, and the hero and the name are level");
             // Clear of the floor and the pilot, smooth outside the cuts, the whip and the hit-stop, still from the settle, the pilot in frame.
@@ -93,6 +94,12 @@ namespace ChipArena.UnityConversion
                 }
             }
             Check(framed>=visible*.9,"the pilot is in frame only "+framed+" of "+visible+" samples");
+            // The leap whole in its frame: head and feet both inside it from the launch to the landing, and the lunge's whole way in the profile.
+            for(float t=NativeFangsIntro.LeapAt+.02f;t<NativeFangsIntro.StrikeAt-.02f;t+=1/60f)
+            {
+                fi.Camera(AgeOf(fi,t),out var v);var head=fi.Anchor(NativeEntranceAnchor.Head,t);var feet=(fi.Anchor(NativeEntranceAnchor.LeftFoot,t)+fi.Anchor(NativeEntranceAnchor.RightFoot,t))*.5f;
+                bool headIn=InFrame(v,head,aspect,out _,out float hy),feetIn=InFrame(v,feet,aspect,out _,out float fy);Check(headIn&&feetIn&&Math.Abs(hy)<.9f&&Math.Abs(fy)<.95f,"the leap or the lunge leaves the frame at "+t.ToString("0.00")+" (head "+hy.ToString("0.00")+", feet "+fy.ToString("0.00")+")");
+            }
             // With its jolts on: still clear of the floor and the pilot, and still from the settle.
             fi.Shake=true;
             for(int i=0;i*dt<=fi.Length;i++)
