@@ -111,6 +111,7 @@
   - The Editor checkout was put back on `9319026b` after every hold, with its local manifest and Player Settings.
   - **Found:** with the plane at 52 degrees (the average over the strike), the melee bisect's sampled DEV Katana diagonal cut left a 13-ray gap in the Standard body's cap ("half 0 is sealed" failed). At 50 degrees (the centre-line crossing's angle, the survey's convention) it is sealed. Other planes near it were not swept; the bisect's sealing is the likely weak point, not this table.
 - **Not seen / not done:** played by a person; multiplayer, where a guest plays the same clip from the replicated kit; the first captures and Editor checks ran before the merge with shared `e0317fba` (a Katana rules change in Runtime, no overlap), the fix's after it. The Drive zip is not repacked; merging and releasing are the integrator's.
+- **Released:** shared `5d84ea13` (the builder at `5d84ea13`), test channel revision `639301493581801481` (build `f997607e`); the suite at `3189a9a8` (1,021 groups, exit 0), the Unity compile; the Drive zip repacked with the 490-clip motion bank (5,960,298 bytes, sha256 `6b639872`; only the bank and `visual-body.json` changed), the old zip kept beside it as `LocalAssets-2026-11-13-before-dev-katana-hit4.zip`.
 
 ## 2026-11-12 — Claude: the Katana's parry dazes its striker as a standard parry does (owner request; a rules change at the owner's word)
 
