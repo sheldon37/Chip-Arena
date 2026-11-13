@@ -41,6 +41,7 @@
   - zombies, the Crescent Wave, the Fangs' knives and the slams not filmed (the tests cover their path);
   - the DEV Katana's picked cuts filmed only on its first picks (its surveyed planes are checked by the tests);
   - the DEV Greatsword's cuts still take the old greatsword's captured plane, not its Grruzam clips' (the survey's numbers are queued; a follow-up).
+- **Released:** shared `4a94ce09` (the builder at `4a94ce09`), test channel revision `639301334639769695` (build `39b4c078`); the suite at `16024ce2` (1,019 groups, exit 0), the Unity compile, the Editor build gate on `7872df66`.
 
 ## 2026-11-12 — Claude: the owner's DEV animation picks wired in (DEV Greatsword, DEV Katana)
 
