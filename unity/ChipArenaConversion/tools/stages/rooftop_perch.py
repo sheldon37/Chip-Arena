@@ -17,6 +17,8 @@ from rooftop_kit import F, glow, h01, Fr, rod, box, lathe, sweep
 
 # Core's own numbers (NativeRooftopCity): the roof, the lip, the retro screen
 LIP, LIPD = .32, .42
+# m over the sheet: Core's puddles (NativeRooftopTowers, drawn over the art), and the laps' tops, half way under them
+PUDDLE, LAP = .012, .006
 
 
 def X(x):
@@ -54,10 +56,11 @@ def deck(g, x0, x1, z0, z1, T):
     box(g, x0, x1, -.4, 0, z0, z1, F['membrane'], T, 0, cell=(1.0, 0, 3.0)[T.i], skip=('-y', '-x', '-z', '+x', '+z'))
     if T.i == 2:
         return
-    # laps across the roof every 1.9 m (thin strips standing a membrane's thickness proud)
+    # laps across the roof every 1.9 m (thin strips standing proud of the sheet, and under the water: at 12 mm, the puddles' own
+    # height, each lap lay in a puddle's plane where it crossed one and the two fought for the depth buffer)
     xx = x0 + 1.2
     while xx < x1 - .5:
-        box(g, xx, xx + .14, 0, .012, z0 + LIPD + .05, z1 - .2, F['membranelap'], None, 0, cell=0, skip=('-y',))
+        box(g, xx, xx + .14, 0, LAP, z0 + LIPD + .05, z1 - .2, F['membranelap'], None, 0, cell=0, skip=('-y',))
         xx += 1.9
     # ballast beds along the back and a paver walk from the stair house toward the plant
     box(g, 7.5, 14.4, 0, .05, 2.6, 6.5, F['gravel'], T, .02, cell=1.0, skip=('-y',))

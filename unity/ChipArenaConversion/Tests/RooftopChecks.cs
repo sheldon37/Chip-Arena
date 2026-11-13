@@ -51,6 +51,14 @@ internal static class RooftopChecks
         NativeRooftopBank.Facade(2+.9f*.55f,out float style,out float share);Check(style==2&&Math.Abs(share-.55f)<1e-4f,"a facade vertex unpacks its style and lit share");
         int cars=w.Lanes.Sum(l=>l.Count);var kinds=new int[5];for(int l=0;l<w.Lanes.Count;l++)for(int k=0;k<w.Lanes[l].Count;k++)kinds[NativeRooftopBank.CarKind(l,k,5)]++;
         Check(kinds.All(k=>k>=cars/12)&&NativeRooftopBank.CarKind(2,1,5)==NativeRooftopBank.CarKind(2,1,5)&&NativeRooftopBank.CarKind(0,0,0)==0,"every kind of car flies ("+string.Join("/",kinds)+"), the same car each loop");
+        // Core's puddles draw over the modelled roof (the Far part), so nothing the art lays on the sheet may stand in their plane
+        // (owner 2026-11-13: "Small amount of Z-Fighting on the menu behind the player": the membrane's laps did, at 12 mm): the
+        // perch script names the puddles' height as Core builds it and keeps its laps well under it.
+        var puddles=w.Quads.Where(q=>q.Mode==NativeRooftopCity.Puddle).ToList();float puddleY=puddles[0].A.Y;
+        string perchScript=File.ReadAllText(Path.Combine(root,"tools/stages/rooftop_perch.py"));
+        var heights=System.Text.RegularExpressions.Regex.Match(perchScript,@"^PUDDLE, LAP = ([0-9.]+), ([0-9.]+)?$",System.Text.RegularExpressions.RegexOptions.Multiline);
+        float F(int g)=>float.Parse(heights.Groups[g].Value,System.Globalization.CultureInfo.InvariantCulture);
+        Check(puddles.Count==7&&puddles.All(q=>q.A.Y==puddleY&&q.B.Y==puddleY&&q.C.Y==puddleY&&q.D.Y==puddleY)&&heights.Success&&Math.Abs(F(1)-puddleY)<1e-6f&&F(2)>=.003f&&F(2)<=puddleY-.004f&&perchScript.Contains("box(g, xx, xx + .14, 0, LAP,")&&!perchScript.Contains("box(g, xx, xx + .14, 0, .012,"),"the modelled roof's laps lie under Core's puddles, not in their plane");
         string path=Path.Combine(root,"Assets/LocalAssets/ChipArenaLocal/Resources",NativeRooftopBank.Name+".bytes");
         if(!File.Exists(path)){Console.WriteLine("PASS Rooftop art: the plan (the bank is not on this machine: its own checks are skipped)");return;}
         long bytes=new FileInfo(path).Length;var real=NativePackBank.Read(File.ReadAllBytes(path));var hi=NativeRooftopBank.Read(real,false);var lo=NativeRooftopBank.Read(real,true);
@@ -62,7 +70,25 @@ internal static class RooftopChecks
         // the art stands on the composition: the pilot's lip, the actors' roofs
         var perch=real.Props[hi.Static.First(p=>real.Props[p].Name.StartsWith("static/perch"))];
         Check(Math.Abs(perch.Max.Y-9.2f)<.6f&&perch.Min.X<-1.6f&&perch.Max.X>25.5f&&perch.Min.Z<-1.7f,"the modelled roof spans Core's (the mast to its beacon, the lip to the corner)");
-        Console.WriteLine("PASS Rooftop art bank: "+(bytes/1048576f).ToString("0.0")+" MB, "+hiTris+" / "+loTris+" triangles (High / Low), "+hi.Cars.Count+" car kinds, "+real.Props.Count+" props");
+        // What the roof on this machine lays in the puddles' plane, under them (told, not failed: a bank built before the laps were
+        // lowered is still a valid bank; the bank ships apart from the code). Triangles facing up within half a millimetre of the
+        // plane, by the share of their bounds inside a puddle's (Unity's frame: x mirrored).
+        float fought=0;
+        {
+            var pm=real.Meshes[perch.Parts[0].Mesh];
+            foreach(var sm in pm.Submeshes)for(int i=0;i+2<sm.Indices.Length;i+=3)
+            {
+                var a=pm.Positions[sm.Indices[i]];var b=pm.Positions[sm.Indices[i+1]];var c=pm.Positions[sm.Indices[i+2]];
+                if(Math.Abs(a.Y-puddleY)>.0005f||Math.Abs(b.Y-puddleY)>.0005f||Math.Abs(c.Y-puddleY)>.0005f)continue;
+                float x0=Math.Min(a.X,Math.Min(b.X,c.X)),x1=Math.Max(a.X,Math.Max(b.X,c.X)),z0=Math.Min(a.Z,Math.Min(b.Z,c.Z)),z1=Math.Max(a.Z,Math.Max(b.Z,c.Z));
+                foreach(var q in puddles)
+                {
+                    float qx0=-Math.Max(q.A.X,q.C.X),qx1=-Math.Min(q.A.X,q.C.X),qz0=Math.Min(q.A.Z,q.C.Z),qz1=Math.Max(q.A.Z,q.C.Z);
+                    float ox=Math.Min(x1,qx1)-Math.Max(x0,qx0),oz=Math.Min(z1,qz1)-Math.Max(z0,qz0);if(ox>0&&oz>0)fought+=ox*oz*.5f;
+                }
+            }
+        }
+        Console.WriteLine("PASS Rooftop art bank: "+(bytes/1048576f).ToString("0.0")+" MB, "+hiTris+" / "+loTris+" triangles (High / Low), "+hi.Cars.Count+" car kinds, "+real.Props.Count+" props; in the puddles' plane under them: "+fought.ToString("0.00")+" m2"+(fought>.01f?" (a bank from before the laps were lowered: they fight the puddles)":""));
     }
     public static void Run(string root)
     {

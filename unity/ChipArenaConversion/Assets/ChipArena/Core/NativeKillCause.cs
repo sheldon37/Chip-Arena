@@ -6,7 +6,8 @@ namespace ChipArena.UnityConversion
     /// (NativeMeleeSlice, the cut the body shows), "Beheaded" for the head, "Cut in two" through the body, "Dismembered" for a limb, and
     /// "Slashed" when the cut took no part off (a slit throat, a kill shown whole). The blades: the sword, the greatsword and the daggers
     /// (their DEV classes too) and the blade classes (the Katana, the Fangs, the Glaive, thrown or not). Blunt melee (the shield, the
-    /// fighters, the mallet) keeps "Blunt force"; a melee class's kill by a move that was no blow (a tick, a burst) "Special attack"; the
+    /// fighters, the mallet) keeps "Blunt force", as does a blade class's blow that is no cut (the DEV Katana's kick, owner 2026-11-13:
+    /// its kill crushes as the shield's); a melee class's kill by a move that was no blow (a tick, a burst) "Special attack"; the
     /// guns "Direct hit"; no killer "Environment". Pure.
     /// </summary>
     public static class NativeKillCause
@@ -25,6 +26,8 @@ namespace ChipArena.UnityConversion
             // A blade's cut: what the plan takes (as NativeMeleeBisect cuts it, or the joints it detaches with gore off).
             if(plan!=null&&plan.Any)
             {
+                // A blade class's blow that is no cut (the DEV Katana's kick) crushes as a blunt weapon's: a blunt kill.
+                if(plan.Kind==SliceKind.Crush)return Blunt;
                 if(plan.Count==0)return Slashed;
                 if(plan.Kind==SliceKind.Cleave)return CutInTwo;
                 if(plan.Kind==SliceKind.Chop&&spec!="daggers"&&spec!=NativeFangs.Spec)return CutInTwo;
