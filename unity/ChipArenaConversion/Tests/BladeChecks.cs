@@ -39,6 +39,11 @@ namespace ChipArena.UnityConversion
             public int Viewer=>0;public bool ViewBlade(bool left,out Vector3 root,out Vector3 tip){root=tip=default;return false;}
             public int WeaponColor(Actor a)=>a.SourceSpec==NativeKatana.Spec?0xff3d6e:0x7dff3a;public int Shots=>0;public bool Shot(int index,out Vector3 at,out Vector3 velocity,out string fx,out int owner){at=velocity=default;fx=null;owner=0;return false;}
         }
+        /// <summary>Short clips (a parry's recoil ends well inside its daze).</summary>
+        private sealed class ShortBank:NativeVisualMotion.IClips
+        {
+            public bool Has(string clip)=>!string.IsNullOrEmpty(clip);public float Length(string clip)=>.5f;public float Hit(string clip)=>.25f;
+        }
         private sealed class Bank:NativeVisualMotion.IClips
         {
             public bool Has(string clip)=>!string.IsNullOrEmpty(clip);public float Length(string clip)=>3.5f;public float Hit(string clip)=>1.75f;
@@ -144,14 +149,14 @@ namespace ChipArena.UnityConversion
                     Check(own!=null||spec=="cyberlord",spec+": a set of its own (the Cyber Lord alone has none)");
                     foreach(var clip in named)
                     {
-                        var held=new Actor{Id=40,SourceSpec=baseSpec,Motion=motion,Grounded=true,PairBy=41,PairClip=clip,PairAt=10,PairUntil=11.5f,LastShot=9.95f,ReloadAt=9.9f,ReloadUntil=11.6f,Aiming=true};bool plays=true;
+                        var held=new Actor{Id=40,SourceSpec=baseSpec,Motion=motion,Grounded=true,PairBy=41,PairClip=clip,PairAt=10,PairUntil=11.5f,LastShot=9.95f,ReloadAt=9.9f,ReloadUntil=11.6f,Aiming=true};bool plays=true;int shown=0;
                         for(float t=10;t<11.6f;t+=.1f)
                         {
-                            bool covered=NativeVisualMotion.Choose(set,held,t,new NativeVisualMotion.Memory(),bank,false,out var pick);NativeBladeMotion.Victim(held,t,bank,out var want);
-                            plays&=covered&&pick.Clip==clip&&Math.Abs(pick.Time-want.Time)<1e-5f&&!NativeVisualMotion.Layer(set,held,t,bank,out _,true);
+                            bool covered=NativeVisualMotion.Choose(set,held,t,new NativeVisualMotion.Memory(),bank,false,out var pick);bool on=NativeBladeMotion.Victim(held,t,bank,out var want);if(on)shown++;
+                            plays&=(on?covered&&pick.Clip==clip&&Math.Abs(pick.Time-want.Time)<1e-5f:pick.Clip!=clip)&&!NativeVisualMotion.Layer(set,held,t,bank,out _,true);
                         }
                         bool listed=set.All.Contains(clip),lent=NativeBladeMotion.Lent(held,clip);if(!listed)borrows++;
-                        Check(plays&&(listed||lent),spec+" held in "+clip+": its body plays the victim's clip on the pair's time ("+(listed?"its set's":"borrowed")+"), nothing over it");
+                        Check(plays&&shown>=8&&(listed||lent),spec+" held in "+clip+": its body plays the victim's clip on the pair's time ("+(listed?"its set's":"borrowed")+"), nothing over it");
                     }
                 }
                 Check(sets==specs.Length-1&&borrows>=4*(specs.Length-3),"the sets that lacked the victims' clips borrow them ("+borrows+")");
@@ -169,18 +174,34 @@ namespace ChipArena.UnityConversion
                 Check(NativeBladeMotion.VictimClips.All(c=>specs.Any(s=>NativeVisualMotion.For(s)?.All.Contains(c)==true)),"every victim clip is in a class's set (the bake carries it)");
                 string mp=R(root,"NativeVisualMotionPresentation.cs");
                 Check(mp.Contains("if(covered&&!pick.Locomotion&&NativeBladeMotion.Lent(a,pick.Clip)&&!m.Index.ContainsKey(pick.Clip))VisualMotionLend(m,pick.Clip);")&&mp.Contains("m.Names[n]=clip;m.Clips[n]=c;m.HeldOut[n]=NativeBladeMotion.HeldOut(clip);m.Index[clip]=n;")
-                    &&mp.Contains("(NativeBladeMotion.Holds(a,time)||body.Motion?.Set==NativeVisualMotion.Held&&body.Motion.Weight>0))m=VisualMotionFor(body,NativeVisualMotion.Held);"),"the body takes the named clip on when first held; a class with no set plays the held set until it has eased back");
+                    &&mp.Contains("(NativeBladeMotion.Holds(a,time)||NativeVisualMotion.Dazed(a,time)||body.Motion?.Set==NativeVisualMotion.Held&&body.Motion.Weight>0))m=VisualMotionFor(body,NativeVisualMotion.Held);"),"the body takes the named clip on when first held; a class with no set plays the held set until it has eased back");
                 // The coordinator's three fixes (2026-11-13), presentation only: a victim clip's hips stay over the body's own spot (its drift taken
                 // out of the mix, so the fade at the hold's end slides nothing back and the counter's throw is the rules' alone); the held weapon
                 // hangs head-down from the grip along its length and the support hand lets go (a weapon held flat-on across the hand, the
                 // shield, keeps its hang); a death in a victim clip falls from the drawn pose, every other death built as before.
-                Check(new[]{"rifle","machinegun","pistol","sword","greatsword",NativeTopDog.Spec,NativeKatana.Spec,NativeFangs.Spec,"daggers"}.All(NativeBladeMotion.Hangs)&&!NativeBladeMotion.Hangs("shield"),"every weapon held along the hand hangs head-down; the shield, held flat-on, keeps its own hang");
+                Check(new[]{"rifle","machinegun","pistol","sword","greatsword",NativeTopDog.Spec,NativeKatana.Spec,NativeFangs.Spec,"daggers"}.All(s=>NativeBladeMotion.Hangs(s)&&NativeBladeMotion.HangReach(s)>.2f)&&!NativeBladeMotion.Hangs("shield")&&Math.Abs(NativeBladeMotion.HangReach("greatsword")-1.69f)<.01f&&Math.Abs(NativeBladeMotion.HangReach(NativeTopDog.Spec)-1.32f)<.01f,"every weapon held along the hand hangs head-down, by its reach; the shield, held flat-on, keeps its own hang");
                 Check(mp.Replace("\r\n","\n").Contains("NativeVisualMotionClips.Finish(m.Mix,sum);\n            // A paired move's victim clip on its own spot (its drift taken out), and how much of the body it takes this frame.\n            m.VictimShare=VisualMotionVictimSpot(m,sum)*m.Weight;if(m.VictimShare>.5f)m.VictimAt=time;"),"the victim clip's drift comes out of the mix right after it is made");
                 Check(mp.Contains("m.Mix[0]-=e*victimSpotSample[0]/sum;m.Mix[2]-=e*victimSpotSample[2]/sum;share+=e/sum;")&&mp.Contains("m.Victim[i]=System.Array.IndexOf(NativeBladeMotion.VictimClips,names[i])>=0;")&&mp.Contains("System.Array.Resize(ref m.Victim,n+1);m.Victim[n]=true;"),"every victim clip a body carries, its own or borrowed, keeps to the body's spot");
-                Check(mp.Contains("float hang=!m.Set.Fighter&&!m.Set.HeldOnly&&NativeBladeMotion.Hangs(m.Set.Spec)?m.VictimShare:0;VisualVictimHang(weaponHand,body.Root.transform,hang);")&&mp.Contains("m.Support=Mathf.MoveTowards(m.Support,reloading||m.VictimShare>.01f?0:hold,dt/SupportEase);"),"the weapon hangs by the victim clip's share and the support hand lets go");
+                Check(mp.Contains("float hang=!m.Set.Fighter&&!m.Set.HeldOnly&&NativeBladeMotion.Hangs(m.Set.Spec)?m.VictimShare:0;VisualVictimHang(weaponHand,body.Root.transform,hang,NativeBladeMotion.HangReach(m.Set.Spec));")&&mp.Contains("m.Support=Mathf.MoveTowards(m.Support,reloading||m.VictimShare>.01f?0:hold,dt/SupportEase);"),"the weapon hangs by the victim clip's share and the support hand lets go");
                 string dp=R(root,"NativeDeathPresentation.cs"),vb=R(root,"NativeVisualBodyPresentation.cs");
                 Check(dp.Contains("if(pilot&&!temporary&&age<VictimDeathGap)VisualRigFromDrawn(rig,death);")&&dp.Contains("visualDeathDrawn=null;")&&vb.Contains("if(visualDeathDrawn!=null)VisualCopyDrawn(visualDeathDrawn,binding.Bones);")
                     &&vb.Contains("||float.IsNaN(body.Motion.VictimAt)||Mathf.Abs(body.Motion.VictimAt-death.at)>VictimDeathGap)return false;"),"a death in a victim clip falls from the drawn pose; any other death is built as before");
+                // A Katana's parry dazes its striker (owner 2026-11-13: "we still need 'reaction' animations"): every class reels, then plays a
+                // Stunned of its own; the Cyber Lord, with no set, on the held set's (the unarmed set's recoil and Stunned), and only while dazed.
+                var shortBank=new ShortBank();int dazes=0;
+                foreach(var spec in specs)
+                {
+                    string baseSpec=NativeDevMotions.Base(spec)??spec,motion=NativeDevMotions.Is(spec)?spec:"";
+                    var set=NativeVisualMotion.For(NativeDevMotions.Set(new Actor{SourceSpec=baseSpec,Motion=motion}))??NativeVisualMotion.Held;
+                    var struck=new Actor{Id=45,SourceSpec=baseSpec,Motion=motion,Grounded=true,ReactionParry=true,ReactionAt=20,ReactionUntil=21.3f,StunUntil=21.3f};
+                    bool reel=NativeVisualMotion.Choose(set,struck,20.2f,new NativeVisualMotion.Memory(),shortBank,false,out var r0)&&r0.Clip!=set.Stunned;
+                    bool daze=NativeVisualMotion.Choose(set,struck,21f,new NativeVisualMotion.Memory(),shortBank,false,out var r1)&&r1.Clip==set.Stunned&&set.Stunned!=null;
+                    if(reel&&daze)dazes++;else Check(false,spec+": a parried striker reels, then plays its own Stunned");
+                }
+                var dazedLord=new Actor{Id=46,SourceSpec="cyberlord",Grounded=true,ReactionParry=true,ReactionAt=20,ReactionUntil=21.3f};
+                Check(dazes==specs.Length&&NativeVisualMotion.Held.Stunned=="Unarmed-Stunned"&&NativeVisualMotion.Held.All.Contains("Unarmed-Stunned")&&NativeVisualMotion.Dazed(dazedLord,20.5f)&&!NativeVisualMotion.Dazed(dazedLord,22f)&&!NativeVisualMotion.Dazed(new Actor{ReactionAt=20,ReactionUntil=21},20.5f)
+                    &&!NativeVisualMotion.Choose(NativeVisualMotion.Held,dazedLord,22f,new NativeVisualMotion.Memory(),shortBank,false,out _)
+                    &&mp.Contains("(NativeBladeMotion.Holds(a,time)||NativeVisualMotion.Dazed(a,time)||body.Motion?.Set==NativeVisualMotion.Held&&body.Motion.Weight>0))m=VisualMotionFor(body,NativeVisualMotion.Held);"),"every class's daze, the Cyber Lord's on the held set while dazed");
             }
             // ---- the chips ----
             foreach(var katana in new[]{true,false})

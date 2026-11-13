@@ -235,9 +235,23 @@ namespace ChipArena.UnityConversion
         public static readonly Set Held=HeldSet();
         private static Set HeldSet()
         {
-            var s=new Set{Spec="held",HeldOnly=true,Idle=Unarmed.Idle,Locomotion=Unarmed.Locomotion,Attacks=Array.Empty<string>(),Reactions=Array.Empty<string>(),TechClips=NativeBladeMotion.VictimClips};
-            var all=new System.Collections.Generic.List<string>{s.Idle};foreach(var c in s.Locomotion)if(!all.Contains(c))all.Add(c);foreach(var c in s.TechClips)if(!all.Contains(c))all.Add(c);
+            // Its daze (HeldDaze): a parried attacker's reel on the unarmed set's recoil and Stunned, which every other class has in its own set.
+            var s=new Set{Spec="held",HeldOnly=true,Idle=Unarmed.Idle,Locomotion=Unarmed.Locomotion,Attacks=Array.Empty<string>(),Reactions=Unarmed.Reactions,Stunned=Unarmed.Stunned,TechClips=NativeBladeMotion.VictimClips};
+            var all=new System.Collections.Generic.List<string>{s.Idle,s.Stunned};foreach(var l in new[]{s.Locomotion,s.Reactions,s.TechClips})foreach(var c in l)if(!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
+        }
+        /// <summary>Whether a parried attacker's reel holds pilot `a` at `time` (the blow's recoil, then the daze, through the stun and its
+        /// settle; Choose).</summary>
+        public static bool Dazed(Actor a,float time)=>a!=null&&a.ReactionParry&&a.ReactionAt>-90&&time>=a.ReactionAt&&time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin)+ParrySettle;
+        /// <summary>The held set's daze (owner 2026-11-13: a Katana's parry dazes its striker; the Cyber Lord, with no set of its own, stood on
+        /// the game's pose): the parried attacker's reel as every set plays it, the recoil from its side, then the Stunned loop.</summary>
+        private static bool HeldDaze(Set set,Actor a,float time,IClips clips,out Pick pick)
+        {
+            pick=default;if(!Dazed(a,time)||set.Reactions==null||set.Reactions.Length==0)return false;
+            string hit=set.Reactions[Side(a.ReactionYaw)%set.Reactions.Length];if(!clips.Has(hit))return false;
+            float len=clips.Length(hit),into=time-a.ReactionAt;bool daze=set.Stunned!=null&&clips.Has(set.Stunned);
+            if(into<len||!daze){pick=new Pick{Clip=hit,Time=Math.Min(len,into),Fade=FadeIn};return true;}
+            pick=new Pick{Clip=set.Stunned,Time=into-len,Fade=ParryDazeFade};return true;
         }
         /// <summary>A clip's name suffix asking the bake for its mirror image (left and right swapped).</summary>
         public const string Mirror="~mirror";
@@ -521,7 +535,7 @@ namespace ChipArena.UnityConversion
             if(a.Grounded!=m.WasGrounded){if(a.Grounded)m.LandedAt=time;else m.AirSince=time;m.WasGrounded=a.Grounded;}
             Declined=null;
             // The held set (a class with no set of its own): a paired move's victim clip, else the game's pose.
-            if(set.HeldOnly){if(NativeBladeMotion.Victim(a,time,clips,out pick))return true;Declined="held";return false;}
+            if(set.HeldOnly){if(NativeBladeMotion.Victim(a,time,clips,out pick)||HeldDaze(set,a,time,clips,out pick))return true;Declined="held";return false;}
             // An entrance's intro body: the clip its script names (Core NativeBladeIntros, NativeDevIntros), whatever the set.
             if(NativeBladeMotion.IntroActor>=0&&a.Id==NativeBladeMotion.IntroActor&&NativeBladeMotion.IntroClip!=null&&clips.Has(NativeBladeMotion.IntroClip)){pick=new Pick{Clip=NativeBladeMotion.IntroClip,Time=NativeBladeMotion.IntroTime,Fade=NativeBladeMotion.IntroFade};return true;}
             // Held in a blade class's paired move: the victim's clip (Core NativeBladeMotion).

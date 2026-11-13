@@ -46,6 +46,14 @@ namespace ChipArena.UnityConversion
         /// length along the hand's forward, as every gun's barrel, blade and the mallet's handle run). One rule for every class: a weapon
         /// held flat-on across the hand (its tip off that axis: the shield, whose rim stands up the hand's side) keeps its own hang.</summary>
         public static bool Hangs(string spec)=>!(NativeWeaponDressing.BladeTip(spec,out var tip)&&Math.Abs(tip.Z)<Math.Abs(tip.Y));
+        /// <summary>How far `spec`'s weapon reaches from the wrist along its length (m: a blade's tip, the mallet's head, a gun's muzzle): a
+        /// hung weapon tips out to its hand's side just enough to keep that end above the floor (Runtime VisualVictimHang).</summary>
+        public static float HangReach(string spec)
+        {
+            if(spec==NativeTopDog.Spec)return NativeWeaponModels.MalletHead+NativeWeaponModels.MalletRadius;
+            if(NativeWeaponDressing.BladeTip(spec,out var tip))return tip.Length();
+            return spec=="pistol"?.35f:spec=="rifle"||spec=="machinegun"?1.05f:NativeWeaponDressing.BladeLength(spec)+.28f;
+        }
 
         /// <summary>A clip window: where it starts, its strike and where it ends (s into the clip).</summary>
         public readonly struct Window { public readonly float From,Hit,To;public Window(float from,float hit,float to){From=from;Hit=hit;To=to;} }
@@ -214,8 +222,12 @@ namespace ChipArena.UnityConversion
             pick=default;if(a==null||string.IsNullOrEmpty(a.PairClip)||a.PairAt<-50||time<a.PairAt||time>=a.PairUntil+.15f||!clips.Has(a.PairClip))return false;
             var w=WindowOf(a.PairClip);float len=clips.Length(a.PairClip);float hit=float.IsNaN(w.Hit)?len*.5f:w.Hit,from=float.IsNaN(w.From)?0:w.From,to=float.IsNaN(w.To)?len:Math.Min(len,w.To);
             // The victim's clip runs on the same window as its attacker's, from the same moment.
-            float span=Math.Max(.05f,a.PairUntil-a.PairAt),u=Clamp01((time-a.PairAt)/span);
-            pick=new NativeVisualMotion.Pick{Clip=a.PairClip,Time=from+(to-from)*u,Fade=NativeVisualMotion.FadeIn};return true;
+            float span=Math.Max(.05f,a.PairUntil-a.PairAt),u=Clamp01((time-a.PairAt)/span),t=from+(to-from)*u;
+            // A victim clip that begins on the blow (its window opens before the clip: the DEV Katana's counter, whose foe takes the katana
+            // set's big hit) shows from the blow; before it the foe plays on what it played (the parry's daze), not the hit's first frame
+            // held still (owner 2026-11-13: "They still kind of just sit there").
+            if(t<0){pick=default;return false;}
+            pick=new NativeVisualMotion.Pick{Clip=a.PairClip,Time=t,Fade=NativeVisualMotion.FadeIn};return true;
         }
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
         /// <summary>How far a paired move's victim is thrown back at `time` (m, on along its way from the wielder), as its clip carries it: the

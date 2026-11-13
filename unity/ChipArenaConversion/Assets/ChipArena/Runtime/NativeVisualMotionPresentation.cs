@@ -174,12 +174,17 @@ namespace ChipArena.UnityConversion
         // Held in a paired move's victim clip (made for an unarmed foe; owner 2026-11-13 via the coordinator): the right hand's weapon
         // turned to hang head-down from the grip by `share` (the clip's share of the mix), along its length (the hand's forward: a gun's
         // barrel, a blade, the mallet's handle; Core NativeBladeMotion.Hangs: a weapon held flat-on across the hand, the shield, keeps
-        // its own hang), so a hand raised to the attacker's arm swings nothing through the attacker's head. Every weapon class alike.
-        private static void VisualVictimHang(Transform weaponHand,Transform origin,float share)
+        // its own hang), so a hand raised to the attacker's arm swings nothing through the attacker's head. A weapon longer than the hand
+        // is high (`reach`, Core NativeBladeMotion.HangReach) tips out to the hand's side just enough to keep its far end over the floor
+        // (HangClear). Every weapon class alike.
+        private const float HangClear=.08f;
+        private static void VisualVictimHang(Transform weaponHand,Transform origin,float share,float reach)
         {
-            if(share<=0)return;var along=weaponHand.rotation*Vector3.forward;var down=-origin.up;
-            var axis=Vector3.Cross(along,down);if(axis.sqrMagnitude<1e-6f)axis=weaponHand.rotation*Vector3.right;
-            weaponHand.rotation=Quaternion.AngleAxis(Vector3.Angle(along,down)*Mathf.Clamp01(share),axis.normalized)*weaponHand.rotation;
+            if(share<=0)return;var along=weaponHand.rotation*Vector3.forward;var up=origin.up;
+            float c=reach>1e-3f?Mathf.Clamp01((Vector3.Dot(weaponHand.position-origin.position,up)-HangClear)/reach):1;
+            var hung=(-up*c+origin.right*Mathf.Sqrt(1-c*c)).normalized;
+            var axis=Vector3.Cross(along,hung);if(axis.sqrMagnitude<1e-6f)axis=weaponHand.rotation*Vector3.right;
+            weaponHand.rotation=Quaternion.AngleAxis(Vector3.Angle(along,hung)*Mathf.Clamp01(share),axis.normalized)*weaponHand.rotation;
         }
         // A two-bone reach for an arm: the elbow kept on the clip's side of the shoulder-to-target line, leaning toward `pole`
         // (down and out), so it never flips across the line when the clip's elbow lies near it.
@@ -415,9 +420,9 @@ namespace ChipArena.UnityConversion
         {
             // A DEV animation class plays its own set over its base class (Core NativeDevMotions).
             string motionSet=NativeDevMotions.Set(a);var m=NativeVisualMotion.For(motionSet)!=null&&!StrideOff?VisualMotionFor(body,motionSet):null;
-            // A class with no set of its own (the DEV Cyber Lord, on the game's pose) held in a paired move: the held set (Core
-            // NativeVisualMotion.Held) plays the victim's clip, and stays on until its weight has eased back to the game's pose.
-            if(m==null&&!StrideOff&&NativeVisualMotion.For(motionSet)==null&&(NativeBladeMotion.Holds(a,time)||body.Motion?.Set==NativeVisualMotion.Held&&body.Motion.Weight>0))m=VisualMotionFor(body,NativeVisualMotion.Held);
+            // A class with no set of its own (the DEV Cyber Lord, on the game's pose) held in a paired move or dazed by a parry: the held set
+            // (Core NativeVisualMotion.Held) plays the victim's clip or the daze, and stays on until its weight has eased back to the game's pose.
+            if(m==null&&!StrideOff&&NativeVisualMotion.For(motionSet)==null&&(NativeBladeMotion.Holds(a,time)||NativeVisualMotion.Dazed(a,time)||body.Motion?.Set==NativeVisualMotion.Held&&body.Motion.Weight>0))m=VisualMotionFor(body,NativeVisualMotion.Held);
             if(m==null){if(body.Motion!=null)body.Motion.Weight=0;return;}
             float dt=float.IsNaN(m.Time)?0:Mathf.Clamp(time-m.Time,0,.1f);m.Time=time;
             // The body's travel (smoothed, as the stride's).
@@ -657,7 +662,7 @@ namespace ChipArena.UnityConversion
                 // owner 2026-10-24, and 2026-11-10 for the rifle and machine gun at rest).
                 if(m.Set.Gun&&!reloading&&m.Upper<1)weaponHand.rotation=Quaternion.AngleAxis(CarryTilt*(1-m.Upper)*wgt*(m.Set.RestReady?1-Ease(m.Rest):1),weaponHand.rotation*Vector3.right)*weaponHand.rotation;
                 // Held in a paired move's victim clip: the weapon hangs head-down from the grip, and the support hand lets it go (below).
-                float hang=!m.Set.Fighter&&!m.Set.HeldOnly&&NativeBladeMotion.Hangs(m.Set.Spec)?m.VictimShare:0;VisualVictimHang(weaponHand,body.Root.transform,hang);
+                float hang=!m.Set.Fighter&&!m.Set.HeldOnly&&NativeBladeMotion.Hangs(m.Set.Spec)?m.VictimShare:0;VisualVictimHang(weaponHand,body.Root.transform,hang,NativeBladeMotion.HangReach(m.Set.Spec));
                 // A two-handed weapon: the support fist onto its handle (the greatsword's behind the right fist, a long gun's
                 // handguard), while the clip keeps it near; not while reloading.
                 bool longGun=body.Held!=null&&body.Held.Supported&&(m.Set.Spec=="rifle"||m.Set.Spec=="machinegun");
