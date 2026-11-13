@@ -9,6 +9,30 @@
 - **Checks:** `--skyframe` (57,665 checks, four new: the banks stand still when the camera turns, none comes, goes or changes by more than a fiftieth in a frame over 30 s, the low tier keeps its banks, the wiring); the full suite: 1019 groups, exit 0; the Unity compile (four assemblies pass); the Editor's build checks (`wtvalidate.sh` at `9319026b`): ok; `git diff --check` clean.
 - **Not done / not seen:** no 30 fps recording in the Editor (the capture tool takes stills; the frames are a second apart, 1.5 degrees between them); the owner's own view was matched by eye, not by position; no human playtest.
 
+## 2026-11-12 — Claude: the DEV entrances' grip (the DEV Katana's hilt in the hand)
+
+- **Owner**, on the released DEV picks (revision 639301312995266621): "On dev katana intro, the katana isn't held correctly~ the hilt
+  is not in hand." Branch `claude/dev-intro-grip` from shared `4a94ce09`. Implemented on the branch and pushed; not merged, not
+  released. Presentation only (Claude's lane): no rule, timing, hitbox or network change.
+- **Why:** the DEV entrances draw their blade by the DEV class's spec (`dev-katana`), which the palm grip did not know. So the DEV
+  Katana's katana hung from the wrist through the whole Edge Flourish, its handle beside the fist, while the match draws it through
+  the palm (by `katana`). Also, the pack's katana `Intro` opens with the sword across the back, the right hand reaching over the
+  shoulder for its hilt, and the entrance had it in the open hand from the start, through the clip's held first frame.
+- **What changed:**
+  - Runtime `NativeBladePresentation.BladeIntroFrame` takes the palm's pull by the base class's spec (`NativeDevMotions.Base`).
+  - Core `NativeDevPackIntro.Carried`/`CarryFrame`: the DEV Katana's entrance has the katana on its back (the frame in the chest
+    bone's, measured on the bake's body at 100 a second) through the held first frame and to 0.11 s of the clip, then into the hand
+    as the hand closes on the hilt (0.15 s). Runtime `VisualMotionPose` places it there; the palm's pull follows the same share.
+  - The DEV Greatsword's Heavy Turn keeps its blade in the hand throughout (the pack's great sword never leaves the hand). Its grip
+    was already the match's (its hold position puts the handle in the palm), so it is unchanged.
+- **Checks:**
+  - Ran: the full CoreTests on `68a345a4` (1019 PASS lines, 0 failed, exit 0; the Windows path patch applied locally and
+    reverted); the builder's Editor checks on `68a345a4`: ok, 397 PASS lines (354 distinct), none failed. Both entrances filmed
+    close on the hands, before (`4a94ce09`) and after.
+  - Not run: play by a person, a guest over the network, a Windows build, the builder.
+- **Next:** the owner looks at the entrances; merge and release with the next DEV build.
+- **Released:** shared `bad50d08` (the builder at `bad50d08`), test channel revision `639301378639264113` (build `7402f07d`); the suite at `4660a7e3` (1,019 groups, exit 0), the Unity compile, the Editor build gate on `68a345a4`. No Drive zip change.
+
 ## 2026-11-12 — Claude: the blade classes' kills cut the body (the Katana, DEV Katana, DEV Fangs and Glaive; owner request)
 
 - Branch `claude/blades` (from shared `f747643b`, merged with shared `5f8ee5ea`, the owner's DEV picks): `aae41772`, `dae1c522`, `14cc0dcd`, `05f3c25b`, `9c686348`, `c753feae` and this entry. Relayed by the NOCTIEL session.
