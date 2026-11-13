@@ -1,3 +1,14 @@
+## 2026-11-12 — Claude: Skyframe's haze banks popped as the camera turned (owner report)
+
+- Branch `claude/skyframe-haze` from shared (`69fbfb63` merged in); pushed, **not merged, not released**. Visuals only: Core `NativeSkyframeFx`, Runtime `NativeSkyframePresentation`, `Resources/NativeSirenFx.shader` (a new sprite mode; the other modes and every other stage's effects are untouched), `Tests/SkyframeChecks.cs`. No bank, rule, collider or timing changed.
+- **The owner:** "Skyframe still looks glitchy in background. Maybe z-fighting?" (a recording from the garden's edge with the camera moving).
+- **Cause:** not depth fighting. The cloud sea's 84 haze banks and the sun's five pools of light were camera-turned sprites hundreds of metres wide standing among the cloud heaps and far towers; each swung its plane through them as the pilot looked round (1.7 m of depth 100 m off its middle per degree), so whole clouds and tower faces went in and out of the haze between frames with a hard cut. A bank also jumped across its run at full strength and vanished at 52 m.
+- **Fix:** a bank faces the eye's place (looking round moves nothing); it draws in ChipArena/NativeSirenFx mode 5, which fades it out over 70 m as it nears the scene behind it (the camera's depth texture; not on the low tier); it fades in and out at the ends of its run and towards the tower. docs/arenas/SKYFRAME.md has the account.
+- **Animation impact:** none.
+- **Seen in the Editor** (the camera turning 1.5 degrees a frame, shared's head against the branch, High and Low, two views): before, whole clouds with blocky edges and the far tower change between frames; after, only the turbines and edges. Mean change in the sky's part of the frame (of 255): 3.9 to 2.5 and 3.5 to 2.1 at High, 5.2 to 3.7 and 3.9 to 2.6 on the Low tier.
+- **Checks:** `--skyframe` (57,665 checks, four new: the banks stand still when the camera turns, none comes, goes or changes by more than a fiftieth in a frame over 30 s, the low tier keeps its banks, the wiring); the full suite: 1019 groups, exit 0; the Unity compile (four assemblies pass); the Editor's build checks (`wtvalidate.sh` at `9319026b`): ok; `git diff --check` clean.
+- **Not done / not seen:** no 30 fps recording in the Editor (the capture tool takes stills; the frames are a second apart, 1.5 degrees between them); the owner's own view was matched by eye, not by position; no human playtest.
+
 ## 2026-11-12 — Claude: the DEV entrances' grip (the DEV Katana's hilt in the hand)
 
 - **Owner**, on the released DEV picks (revision 639301312995266621): "On dev katana intro, the katana isn't held correctly~ the hilt
@@ -20,6 +31,7 @@
     close on the hands, before (`4a94ce09`) and after.
   - Not run: play by a person, a guest over the network, a Windows build, the builder.
 - **Next:** the owner looks at the entrances; merge and release with the next DEV build.
+- **Released:** shared `bad50d08` (the builder at `bad50d08`), test channel revision `639301378639264113` (build `7402f07d`); the suite at `4660a7e3` (1,019 groups, exit 0), the Unity compile, the Editor build gate on `68a345a4`. No Drive zip change.
 
 ## 2026-11-12 — Claude: the blade classes' kills cut the body (the Katana, DEV Katana, DEV Fangs and Glaive; owner request)
 
