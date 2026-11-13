@@ -139,7 +139,7 @@ namespace ChipArena.UnityConversion
             Check(!broadcast.Contains("1.485f")&&!broadcast.Contains("Add(8,")&&!broadcast.Contains("Beam("),"no cube rocket, cube stars or beam frame");
             Check(broadcast.Contains("broadcasts.Shown(index,t)"),"only the newest three broadcasts show");
             string death=R("NativeDeathPresentation.cs"),vent=R("NativeVentDeathPresentation.cs");
-            Check(death.Contains("if(VentStyle(death.style)){PresentVent(")&&!death.Contains("style==\"vent-fall\"){overlay")&&!death.Contains("style==\"vent-splat\"){overlay"),"vent deaths take the scripted vent-fall.ts victim, not the sliding corpse");
+            Check(death.Contains("if(VentStyle(death.style)){if(!VentModel(death,pilot)){PresentVent(")&&!death.Contains("style==\"vent-fall\"){overlay")&&!death.Contains("style==\"vent-splat\"){overlay"),"vent deaths on the voxel body take the scripted vent-fall.ts victim (on the model, its ragdoll: VentFallChecks), never the sliding corpse");
             Check(vent.Contains("NativeVentDeath.Fall(")&&vent.Contains("NativeVentDeath.Splat(")&&vent.Contains("NativeVentDeath.DustPose(")&&vent.Contains("\"SPLAT!\""),"vent fall, splat, dust and SPLAT! drawn from Core");
             Check(R("NativeInteractionPresentation.cs").Contains("Vent(d.id) is VentBody vent"),"a kept vent-splat revives from the body as drawn");
             Check(draw.Contains("MeshTopology.Lines")&&draw.Contains("Resources.Load<Shader>(\"NativeDeathFx\")"),"one-pixel lines through the death fx shader");
