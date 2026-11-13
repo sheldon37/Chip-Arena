@@ -1,6 +1,6 @@
-2026-11-12 Claude (`claude/skyframe-haze`, owner report; pushed, not merged): Skyframe's background glitch was the cloud sea's haze banks, sprites turned with the camera that cut through the clouds and far towers as the pilot looked round; they now face the eye's place, fade into the scene behind them by depth and fade at the ends of their run. Next: merge and release; the owner looks again.
+2026-11-12 Claude (`claude/skyframe-haze`, owner report; merged into shared `eb24aa2c`, test channel revision 639301398326184446): Skyframe's background glitch was the cloud sea's haze banks, sprites turned with the camera that cut through the clouds and far towers as the pilot looked round; they now face the eye's place, fade into the scene behind them by depth and fade at the ends of their run. Next: the owner looks again.
 
-2026-11-12 Claude (`claude/dev-intro-grip`; pushed, not merged): the DEV Katana's entrance holds the katana's hilt in the hand (it hung from the wrist), and has it across the back until the hand draws it, as the pack's Intro does. **Next:** merge and release.
+2026-11-12 Claude (`claude/dev-intro-grip`; merged into shared `bad50d08`, test channel revision 639301378639264113): the DEV Katana's entrance holds the katana's hilt in the hand (it hung from the wrist), and has it across the back until the hand draws it, as the pack's Intro does. **Next:** the owner looks at the entrance.
 
 2026-11-12 Claude (`claude/dev-classes-picks`; pushed, not merged): the owner's DEV animation picks wired in: the DEV Greatsword and DEV Katana play the clips chosen in the picker, with their own entrances on the pack's Intro clips. **Next:** the owner reviews the captures; the Drive zip needs the 14 new clips.
 
