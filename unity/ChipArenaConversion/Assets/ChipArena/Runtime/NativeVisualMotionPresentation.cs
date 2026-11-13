@@ -186,6 +186,10 @@ namespace ChipArena.UnityConversion
             var axis=Vector3.Cross(along,hung);if(axis.sqrMagnitude<1e-6f)axis=weaponHand.rotation*Vector3.right;
             weaponHand.rotation=Quaternion.AngleAxis(Vector3.Angle(along,hung)*Mathf.Clamp01(share),axis.normalized)*weaponHand.rotation;
         }
+        // How much of a held weapon still shows while its body plays a victim clip, for the one weapon the hang does not clear: the Top Dog's
+        // mallet, whose head is the size of a torso (hung, tipped clear of the floor, it still swept across the body and the camera): 1 less
+        // the clip's share, so it goes away into the hand for the hold and comes back after (NativeSourcePresentation.cs, its shown scale).
+        private float VisualVictimKeep(CapturedAnimation.Player rig)=>rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Motion!=null&&body.PosedFrame==Time.frameCount?1-Mathf.Clamp01(body.Motion.VictimShare):1;
         // A two-bone reach for an arm: the elbow kept on the clip's side of the shoulder-to-target line, leaning toward `pole`
         // (down and out), so it never flips across the line when the clip's elbow lies near it.
         private static void ArmReachTo(Transform upper,Transform lower,Transform hand,Vector3 target,Vector3 pole)
@@ -475,6 +479,7 @@ namespace ChipArena.UnityConversion
             if(m.Weight<=0&&!covered)
             {
                 // Off the model: what carried its pose over (inertia, the guard's switch, the feet) starts afresh.
+                m.VictimShare=0;
                 m.HasOut=m.GuardSeen=false;m.GuardCarry=m.GuardCarryVel=0;m.FootLocked[0]=m.FootLocked[1]=false;m.FootLockWeight[0]=m.FootLockWeight[1]=0;m.UpA=null;
                 if(m.Off!=null){System.Array.Clear(m.Off,0,m.Off.Length);System.Array.Clear(m.OffVel,0,m.OffVel.Length);}
                 return;
