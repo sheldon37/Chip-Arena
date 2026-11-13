@@ -1,3 +1,35 @@
+## 2026-11-13 — Claude: Silent Kill's camera and effects (the Fangs' entrance; presentation only)
+
+- Owner: "Fangs we also need more camera work and the effects still need improvement", then "For previous mention, I mean for there
+  intros". So the entrance only: no in-match camera move and no change to the moves' effects.
+- Branch `claude/fangs-fx` (from shared `41bfb1d7`): `f927cb38` the camera and effects, `4f76a355` FANGS.md, then this entry. Pushed,
+  **not merged, not released**.
+- **Camera** (Core `NativeFangsIntro.FangsShots`): a shot to each beat where there were six: low toward the eyes with the frame tilted;
+  climbing round the body as it forms; from behind its shoulder for the step; whipped to its front as it lands; a cut inside the flurry;
+  under the leap; straight down on the strike, the cut on the blow, lifting and turning over the bloom; one move down to the hero, done
+  before the name's cut. Jolts on the strike, the step's arrival and each cut; none with the existing **Camera shake** setting off
+  (`NativeFangsIntro.Shake`, set in Runtime `DirectedIntro`; no new setting).
+- **Effects** (Core `NativeFangsIntro.Effects`, `Ghosts`, `Solid`, `Lights`): slit eyes that blink; smoke winding in as two coils and the
+  body dithered in; three afterimages and a wake on the step; glints up the fangs; flung venom as drops; the strike's bloom (veins of
+  venom light over the floor, a thin wave, drops, seven petals of glowing fumes that are gone by the name); fumes off the fangs at the
+  hero; a rim light that flares on the step and the cuts. New optional sink `INativeEntranceVenom` (the runtime's glowing smoke and
+  teardrop, both already in `NativeVfxDraw`); no pack asset, nothing for the Drive zip. At most 422 particles a frame (the entrance
+  budget is 600), 27-28% of the draws on the low tier.
+- **Unchanged:** the entrance's length (7 s), the name's moment (5.2 s), its clips and their timing, its music; every rule, timing,
+  hitbox, damage, cooldown and all networking.
+- **Coordination:** `claude/fangs-travel` (the flurry's leap and the strike's lunge in the entrance; not on shared when this was written)
+  edits the same class. A local trial merge with its head `5aad24fb` is prepared (the shots rebuilt on its travel: the leap held in one
+  still wide frame, the lunge in profile, the strike's shot and effects on its `StrikeSpot`); it goes on this branch once that branch is
+  on shared.
+- **Checks:** new `FangsIntroChecks` (`--fangs-intro`; about 88,500 checks: the shots and their beats, clear of floor and pilot, smooth
+  outside cuts, still from the settle, the pilot in frame, the Camera shake setting, the effects' budget and each beat's own). Full
+  CoreTests on `f927cb38`: exit 0, 1,023 PASS lines. Offline Unity compile (`check_unity_compile.py`): all four assemblies pass.
+  `git diff --check` against shared: clean.
+- **Not done / not verified:** no Editor capture of the new entrance yet and no Editor build gate (`PrototypeBuild.Validate`): the shared
+  Editor was busy all session and then under the owner's priority hold. The look has only been judged from an offline storyboard
+  (camera, rig and effect positions as dots), which shows framing, not rendering. **Next:** film before and after in the Editor, judge
+  and tune, run the build gate, merge the travel branch in once it is on shared.
+
 ## 2026-11-13 — Claude: the owner's second animation picks: the Greatsword, the DEV Greatsword and the Fangs (presentation only)
 
 - Branch `claude/more-move-picks` (from shared `e0317fba`, the Katana parry daze; shared `5d84ea13`, the DEV Katana's hit 4, merged in):
