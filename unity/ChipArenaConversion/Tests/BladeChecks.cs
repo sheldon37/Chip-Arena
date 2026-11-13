@@ -125,6 +125,52 @@ namespace ChipArena.UnityConversion
                     &&Math.Abs(onBlow-tw.Hit)<1e-3f&&Math.Abs(tw.Hit-1.3f)<1e-4f&&together,"the takedown: the throat cut and its foe's clip on one window, the cut on the blow, the two bodies together through the hold");
             }
             Check(NativeVisualMotion.For(NativeKatana.Spec).All.Contains(NativeBladeMotion.KatanaCriticalHit)&&NativeVisualMotion.For(NativeKatana.Spec).All.Contains(NativeBladeMotion.FangsTakedownHit)&&NativeVisualMotion.For(NativeFangs.Spec).All.Contains(NativeBladeMotion.KatanaCriticalHit),"the victims' clips are in the bank");
+            // Every pilot's body plays the foe's side of every paired move (owner 2026-11-13: "Give one to everyone"; before, only the Katana's,
+            // the DEV Katana's and the Fangs' bodies listed the victims' clips, so a foe of any other class kept its stance while held): every
+            // class on the pilot model (the Siren is not on it), the DEV animation classes by their motion, the Cyber Lord (no set of its own)
+            // on the held set. Held as the host names it, its body plays that clip on Victim's time, nothing laid over it; the clip is its set's
+            // own or one it borrows from the bank (only the one named on it). Presentation only: the host still names the clip.
+            {
+                NativeBladeMotion.IntroActor=-1;
+                var pairs=new[]{(NativeBladeMotion.KatanaCritical,""),(NativeBladeMotion.KatanaCritical,NativeDevMotions.Katana),(NativeBladeMotion.FangsTakedown,""),(NativeBladeMotion.FangsCritical,""),(NativeBladeMotion.FangsTakedown,NativeDevMotions.Katana)};
+                var named=pairs.Select(p=>NativeDevMotions.VictimClip(p.Item1,p.Item2)).Distinct().ToArray();
+                Check(named.Length==4&&NativeBladeMotion.VictimClips.Length==4&&named.All(c=>NativeBladeMotion.VictimClips.Contains(c))&&NativeBladeMotion.VictimClips.Contains(NativeDevKatanaMotion.CounterHit),"every paired move's victim clip, as the host names it, is one any body may borrow");
+                var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren").ToArray();int sets=0,borrows=0;
+                Check(specs.Length>=20&&specs.Contains("rifle")&&specs.Contains(NativeTopDog.Spec)&&specs.Contains("cyberlord")&&specs.Contains(NativeDevMotions.Katana),"every class on the pilot model");
+                foreach(var spec in specs)
+                {
+                    string baseSpec=NativeDevMotions.Base(spec)??spec,motion=NativeDevMotions.Is(spec)?spec:"";
+                    var own=NativeVisualMotion.For(NativeDevMotions.Set(new Actor{SourceSpec=baseSpec,Motion=motion}));var set=own??NativeVisualMotion.Held;if(own!=null)sets++;
+                    Check(own!=null||spec=="cyberlord",spec+": a set of its own (the Cyber Lord alone has none)");
+                    foreach(var clip in named)
+                    {
+                        var held=new Actor{Id=40,SourceSpec=baseSpec,Motion=motion,Grounded=true,PairBy=41,PairClip=clip,PairAt=10,PairUntil=11.5f,LastShot=9.95f,ReloadAt=9.9f,ReloadUntil=11.6f,Aiming=true};bool plays=true;
+                        for(float t=10;t<11.6f;t+=.1f)
+                        {
+                            bool covered=NativeVisualMotion.Choose(set,held,t,new NativeVisualMotion.Memory(),bank,false,out var pick);NativeBladeMotion.Victim(held,t,bank,out var want);
+                            plays&=covered&&pick.Clip==clip&&Math.Abs(pick.Time-want.Time)<1e-5f&&!NativeVisualMotion.Layer(set,held,t,bank,out _,true);
+                        }
+                        bool listed=set.All.Contains(clip),lent=NativeBladeMotion.Lent(held,clip);if(!listed)borrows++;
+                        Check(plays&&(listed||lent),spec+" held in "+clip+": its body plays the victim's clip on the pair's time ("+(listed?"its set's":"borrowed")+"), nothing over it");
+                    }
+                }
+                Check(sets==specs.Length-1&&borrows>=4*(specs.Length-3),"the sets that lacked the victims' clips borrow them ("+borrows+")");
+                // Only the clip the host names, and only a victim's: a body never borrows anything else, and never picks one itself.
+                var foe=new Actor{Id=42,SourceSpec="rifle",PairClip=NativeBladeMotion.FangsTakedownHit,PairAt=10,PairUntil=11.5f};
+                Check(NativeBladeMotion.Lent(foe,NativeBladeMotion.FangsTakedownHit)&&!NativeBladeMotion.Lent(foe,NativeBladeMotion.FangsCriticalHit)&&!NativeBladeMotion.Lent(new Actor{PairClip=NativeBladeMotion.FangsTakedown},NativeBladeMotion.FangsTakedown)
+                    &&!NativeBladeMotion.Lent(null,NativeBladeMotion.FangsTakedownHit)&&!NativeBladeMotion.Lent(foe,null),"a body borrows only the victim's clip the host names on it");
+                Check(NativeBladeMotion.Holds(foe,10)&&NativeBladeMotion.Holds(foe,11.6f)&&!NativeBladeMotion.Holds(foe,9.9f)&&!NativeBladeMotion.Holds(foe,11.7f)&&!NativeBladeMotion.Holds(new Actor{PairClip=NativeBladeMotion.FangsTakedownHit},10),"held over Victim's span");
+                // A free gun pilot still raises its gun after a shot; the held set covers nothing but the hold (the game's pose before and after).
+                var rifleSet=NativeVisualMotion.For("rifle");var free=new Actor{Id=43,SourceSpec="rifle",Grounded=true,LastShot=9.95f};
+                Check(NativeVisualMotion.Layer(rifleSet,free,10,bank,out var raise)&&raise.Raised,"a free gun pilot's shot still raises the gun");
+                Check(!NativeVisualMotion.Choose(NativeVisualMotion.Held,new Actor{Id=44,SourceSpec="cyberlord",Grounded=true},10,new NativeVisualMotion.Memory(),bank,false,out _)&&NativeVisualMotion.Declined=="held"
+                    &&!NativeVisualMotion.Choose(NativeVisualMotion.Held,foe,9.9f,new NativeVisualMotion.Memory(),bank,false,out _)&&NativeVisualMotion.Held.HeldOnly&&specs.All(s=>NativeVisualMotion.For(s)!=NativeVisualMotion.Held)
+                    &&NativeVisualMotion.Held.All.Contains(NativeVisualMotion.Held.Idle)&&NativeBladeMotion.VictimClips.All(c=>NativeVisualMotion.Held.All.Contains(c)),"the held set covers the hold alone, and no class plays it as its own");
+                Check(NativeBladeMotion.VictimClips.All(c=>specs.Any(s=>NativeVisualMotion.For(s)?.All.Contains(c)==true)),"every victim clip is in a class's set (the bake carries it)");
+                string mp=R(root,"NativeVisualMotionPresentation.cs");
+                Check(mp.Contains("if(covered&&!pick.Locomotion&&NativeBladeMotion.Lent(a,pick.Clip)&&!m.Index.ContainsKey(pick.Clip))VisualMotionLend(m,pick.Clip);")&&mp.Contains("m.Names[n]=clip;m.Clips[n]=c;m.HeldOut[n]=NativeBladeMotion.HeldOut(clip);m.Index[clip]=n;return n;")
+                    &&mp.Contains("(NativeBladeMotion.Holds(a,time)||body.Motion?.Set==NativeVisualMotion.Held&&body.Motion.Weight>0))m=VisualMotionFor(body,NativeVisualMotion.Held);"),"the body takes the named clip on when first held; a class with no set plays the held set until it has eased back");
+            }
             // ---- the chips ----
             foreach(var katana in new[]{true,false})
             {

@@ -32,6 +32,16 @@ namespace ChipArena.UnityConversion
         public const string FangsTakedown="Frank_Stealth_Kill_Behind_01",FangsTakedownHit="Frank_Stealth_Kill_Hit_Behind_01",FangsCritical="Frank_Damage@Damage_Critical_Assassin",FangsCriticalHit="Frank_Damage@Damage_Critical_Assassin_Hit";
         /// <summary>A paired attacker clip's victim clip (null: none).</summary>
         public static string VictimClip(string clip)=>clip==KatanaCritical?KatanaCriticalHit:clip==FangsTakedown?FangsTakedownHit:clip==FangsCritical?FangsCriticalHit:null;
+        /// <summary>Every paired move's victim clip, as the host names them on the held foe (Actor.PairClip, NativeDevMotions.VictimClip): the
+        /// Katana's counter, the DEV Katana's, the Fangs' takedown and frontal critical. Any pilot's model plays the one it is held in, whatever
+        /// its class (owner 2026-11-13: "Give one to everyone"): a set that does not list it borrows it from the motion bank the first time the
+        /// host names it (Lent; Runtime VisualMotionLend), and a class with no set of its own plays it on NativeVisualMotion.Held.</summary>
+        public static readonly string[] VictimClips={KatanaCriticalHit,NativeDevKatanaMotion.CounterHit,FangsTakedownHit,FangsCriticalHit};
+        /// <summary>Whether `clip` is the paired victim clip the host names on pilot `a` (a body whose set lacks it borrows it; nothing else is
+        /// borrowed, and the client never picks one of its own).</summary>
+        public static bool Lent(Actor a,string clip)=>a!=null&&clip!=null&&clip==a.PairClip&&Array.IndexOf(VictimClips,clip)>=0;
+        /// <summary>Whether a paired move holds pilot `a` at `time` (the span Victim plays its clip over, the last 0.15 s fading back).</summary>
+        public static bool Holds(Actor a,float time)=>a!=null&&!string.IsNullOrEmpty(a.PairClip)&&a.PairAt>-50&&time>=a.PairAt&&time<a.PairUntil+.15f;
 
         /// <summary>A clip window: where it starts, its strike and where it ends (s into the clip).</summary>
         public readonly struct Window { public readonly float From,Hit,To;public Window(float from,float hit,float to){From=from;Hit=hit;To=to;} }

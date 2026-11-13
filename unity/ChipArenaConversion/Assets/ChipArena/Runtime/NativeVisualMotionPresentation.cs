@@ -87,9 +87,10 @@ namespace ChipArena.UnityConversion
         private static string visualMotionWhy;
 
         // A body's motion for `spec` (made once per set the body plays; null without the set or its clips in the bake).
-        private static VisualMotion VisualMotionFor(VisualBody body,string spec)
+        private static VisualMotion VisualMotionFor(VisualBody body,string spec)=>VisualMotionFor(body,NativeVisualMotion.For(spec));
+        private static VisualMotion VisualMotionFor(VisualBody body,NativeVisualMotion.Set set)
         {
-            var set=NativeVisualMotion.For(spec);if(set==null)return null;
+            if(set==null)return null;
             if(body.Motion!=null&&body.Motion.Set==set)return body.Motion;
             VisualMotionRelease(body);body.Motion=null;
             var bank=VisualMotionBank;if(bank==null)return null;
@@ -135,6 +136,17 @@ namespace ChipArena.UnityConversion
             }
             if(m.BodyHips==null||m.RightHand==null){visualMotionWhy="no hips or right hand";m.Handler.Dispose();Destroy(proxy);return null;}
             visualMotionWhy=null;body.Motion=m;return m;
+        }
+        // A paired move's victim clip the body's set does not list (Core NativeBladeMotion.Lent: only the one the host names on it), taken on
+        // the first time it is named: one more clip in this body's mix, its poses the bank's own (shared). A body never held carries nothing
+        // more, and blends nothing more (a clip at no weight costs nothing). Its index, or -1 without the clip in the bank.
+        private static int VisualMotionLend(VisualMotion m,string clip)
+        {
+            if(m.Index.TryGetValue(clip,out int had))return had;
+            var bank=VisualMotionBank;if(bank==null||!bank.Clips.TryGetValue(clip,out var c))return -1;
+            int n=m.Names.Length;
+            System.Array.Resize(ref m.Names,n+1);System.Array.Resize(ref m.Clips,n+1);System.Array.Resize(ref m.Weights,n+1);System.Array.Resize(ref m.Times,n+1);System.Array.Resize(ref m.HeldOut,n+1);
+            m.Names[n]=clip;m.Clips[n]=c;m.HeldOut[n]=NativeBladeMotion.HeldOut(clip);m.Index[clip]=n;return n;
         }
         // A two-bone reach for an arm: the elbow kept on the clip's side of the shoulder-to-target line, leaning toward `pole`
         // (down and out), so it never flips across the line when the clip's elbow lies near it.
@@ -370,6 +382,9 @@ namespace ChipArena.UnityConversion
         {
             // A DEV animation class plays its own set over its base class (Core NativeDevMotions).
             string motionSet=NativeDevMotions.Set(a);var m=NativeVisualMotion.For(motionSet)!=null&&!StrideOff?VisualMotionFor(body,motionSet):null;
+            // A class with no set of its own (the DEV Cyber Lord, on the game's pose) held in a paired move: the held set (Core
+            // NativeVisualMotion.Held) plays the victim's clip, and stays on until its weight has eased back to the game's pose.
+            if(m==null&&!StrideOff&&NativeVisualMotion.For(motionSet)==null&&(NativeBladeMotion.Holds(a,time)||body.Motion?.Set==NativeVisualMotion.Held&&body.Motion.Weight>0))m=VisualMotionFor(body,NativeVisualMotion.Held);
             if(m==null){if(body.Motion!=null)body.Motion.Weight=0;return;}
             float dt=float.IsNaN(m.Time)?0:Mathf.Clamp(time-m.Time,0,.1f);m.Time=time;
             // The body's travel (smoothed, as the stride's).
@@ -413,6 +428,9 @@ namespace ChipArena.UnityConversion
             var local=Quaternion.Inverse(body.Root.transform.rotation)*velocity;float speed=new Vector2(local.x,local.z).magnitude;
             bool moving=a.Grounded&&speed>NativeVisualStride.Moving;
             bool covered=NativeVisualMotion.Choose(m.Set,a,time,m.Memory,VisualMotionBank,moving,out var pick);
+            // Held in a paired move (owner 2026-11-13: "Give one to everyone"): a body whose set does not list the victim's clip the host
+            // names (before, only the Katana's, the DEV Katana's and the Fangs' sets listed any) takes it on now and plays the reaction.
+            if(covered&&!pick.Locomotion&&NativeBladeMotion.Lent(a,pick.Clip)&&!m.Index.ContainsKey(pick.Clip))VisualMotionLend(m,pick.Clip);
             // A plunge leaves the pack's jump within its windup: over the usual ease the drop showed a blend of the jump's raised
             // blade and the plunge's lowered one (the blade swung flat over the head).
             m.Weight=Mathf.MoveTowards(m.Weight,covered?1:0,dt/(!covered&&NativeVisualMotion.Declined=="plunge"?PlungeEase:MotionEase));
