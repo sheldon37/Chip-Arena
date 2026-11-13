@@ -23,12 +23,12 @@
   - **Proposed, not done:** a longer blend into this cut (0.2 s instead of `FadeIn` 0.1) and out of it to the stance (about 0.35 s instead of `FadeOut` 0.2), for this clip only. It would be a per-clip fade in `NativeBladeMotion.Cast` and the stance pick, and is the owner's call after seeing it.
 - **Checks:**
   - CoreTests `--melee-bisect` and `--visual-rig` pass.
-  - The full suite at `fa48205c` passes: 1,021 groups, exit 0, Windows path patch applied in a throwaway worktree and reverted.
+  - The full suite passes at `fa48205c` and again at `d7b2cfaf` (with shared `e0317fba` merged in): 1,021 groups, exit 0 each time, Windows path patch applied in a throwaway worktree and reverted.
   - The Editor's build checks (`PrototypeBuild.Validate` through the BoZo validate request) at `fa48205c`: ok.
   - `git diff --check` against shared: clean.
   - The Editor checkout was put back on `9319026b` after every hold, with its local manifest and Player Settings.
   - **Found:** with the plane at 52 degrees (the average over the strike), the melee bisect's sampled DEV Katana diagonal cut left a 13-ray gap in the Standard body's cap ("half 0 is sealed" failed). At 50 degrees (the centre-line crossing's angle, the survey's convention) it is sealed. Other planes near it were not swept; the bisect's sealing is the likely weak point, not this table.
-- **Not seen / not done:** played by a person; multiplayer, where a guest plays the same clip from the replicated kit; the merge with shared `e0317fba` was checked by `git diff --check` only (its own release ran the suite). The Drive zip is not repacked; merging and releasing are the integrator's.
+- **Not seen / not done:** played by a person; multiplayer, where a guest plays the same clip from the replicated kit; the Editor checks and captures ran before the merge with shared `e0317fba` (a Katana rules change in Runtime, no overlap). The Drive zip is not repacked; merging and releasing are the integrator's.
 
 ## 2026-11-12 — Claude: the Katana's parry dazes its striker as a standard parry does (owner request; a rules change at the owner's word)
 
