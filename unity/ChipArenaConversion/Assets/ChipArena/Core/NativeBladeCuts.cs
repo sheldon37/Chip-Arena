@@ -108,9 +108,10 @@ namespace ChipArena.UnityConversion
             var dev=NativeDevKatanaMotion.Cuts;
             if(dev.Length>0)Add(dev[0],S(35,1.15f));if(dev.Length>1)Add(dev[1],S(-145,1.02f));if(dev.Length>2)Add(dev[2],S(0,.92f));if(dev.Length>3)Add(dev[3],S(-170,1.25f));
             Add(NativeDevKatanaMotion.Storm,S(-155,1f));
-            // Its counter (the DEV classes' pick, 2026-11-12, in place of the Frank critical): a rising diagonal from low on the wielder's
-            // right, behind it (the tip 0.9 m up), to high on its left in front (2 m up), the strike 0.4 s in.
-            Add(DevCounter,S(-35,1.25f));
+            // Its counter (the DEV classes' pick, 2026-11-12, in place of the Frank critical; surveyed by the DEV classes agent at 200 fps):
+            // the blow in front comes down from the wielder's high left to its low right, 33-34 degrees below level, at 0.40-0.43 s,
+            // crossing the centre line 1.31-1.39 m high (the rising stroke before it passes behind the body).
+            Add(DevCounter,S(147,1.35f));
             // The Katana's (the Frank Slash Pack), measured on the pack's blade at each strike: a level forehand at the chest (toward the
             // left), a rising backhand that strikes low (the forearm), a cut down from the right shoulder, the finisher rising from the
             // left hip; the storm's strike rises across the waist; the counter's critical cuts down across the waist.
