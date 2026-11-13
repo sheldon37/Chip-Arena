@@ -1,3 +1,61 @@
+## 2026-11-13 — Claude: the DEV Katana's and DEV Greatsword's entrances as cinematics (presentation only)
+
+- Owner, 2026-11-13: "Lets also add more camera work and effects to DEV Katana and DEV Greatsword", then "For previous mention, I mean
+  for there intros": the two entrances only. No in-match move, camera or effect is touched. Branch `claude/dev-blade-fx` (from shared
+  `41bfb1d7`). Pushed, **not merged, not released**.
+- **What the match sees is what it saw:** each entrance's length (Heavy Turn 4.8 s, Edge Flourish 5.3 s), its name card (3.2 s, 3.7 s)
+  and the pack's `Intro` clip from the same start at its own pace. Nothing on a seat, an actor or the wire. No rule, timing, hitbox,
+  damage, cooldown or networking change; no clip, bank or pack asset added (the Drive zip is as it was).
+- **DEV Greatsword, Heavy Turn** (Core `NativeDevGreatswordIntro`): dark, an ember light from above on its turned back, embers rising.
+  - Camera (six shots, were five): low in front looking up its back as the great sword is heaved overhead; on the floor at its right
+    as it comes round and the blade bites the floor a stride from the lens; whipped round low and close for the wind-up; the second
+    swing (the beat, 1.67 s) slowed, the same eye thrown back and wide by it; rising round to the front as the blade comes to rest,
+    carried without a cut into the name card's frame.
+  - Effects on the beats: a star on the tip at the top of the heave (0.6 s); the blade's sweep as a gold-white edge over one broad
+    ember ribbon, embers shed off it at speed; at the bite (1.1 s) sparks along the blade's way, a score left hot in the floor and
+    cooling to an ember line for three seconds, grit thrown (lit chips, one bounce) and dust off it; embers drawn in to the blade
+    through the wind-up; on the beat a flash on the blade, a wave of light streaks over the floor, sparks thrown wide, a little low
+    dust, the stage's lights and pylons waking; a low puff and the light running up the edge as the blade comes to rest.
+- **DEV Katana, Edge Flourish** (Core `NativeDevKatanaIntro`): cold and clean, a steel-blue light from behind, no smoke.
+  - Camera (six shots, were six): low in front as the hand goes over the shoulder for the hilt; close at the shoulder as the blade is
+    drawn up and out and turned in the light; high over its right shoulder for the cut down in front and the level sweep round that
+    side; whipped down in front of it for the flourish (its wheel stands in the plane that faces the lens) and pushed in on through the
+    last cut (the beat, 2.83 s), slowed, the frame canting a little; out to the hero frame, carried without a cut into the name card's.
+  - Effects on the beats: a glint on the hilt as the hand closes on it; the edge's sweep as a razor's white line in a breath of crimson,
+    steel dust off it; the light running up the raised edge and a star on its tip; a pinch of sparks and a hairline scratch where
+    the tip flicks the floor in the flourish; on the last cut a hairline of light carried on across the stage along the cut's own
+    stroke, held a moment and gone; a last star on the tip in the stance.
+- **How the effects find the blade:** the runtime hands each entrance its blade where the model holds it every frame (as it does the
+  Katana's and Fangs' entrances); the DEV classes' edge is their base class's (`NativeDevPackIntro.Line`; `BladeLine` in Runtime
+  `BladeIntroHeld`, one call). The sweep is drawn on a curve through those frames, over a set length behind the tip and only at
+  speed, so a blade at rest carries nothing; the marks on the floor are where the tip really met it. The camera's shots stand on the
+  stage's own axes (the keyed stance under the clip is not where the model is), placed from the blades' paths as the model swings them
+  (logged in the Editor). A checker that hands no blade in sees the entrances without the sweep, the marks and the last cut's line.
+- **Camera shake:** the entrances' camera shakes (the bite, the beat, the blade coming to rest; the katana's last cut) are small
+  (0.035 m at most; the old single shake reached 0.043 m), short, wholly still by the name card, and **off with the player's Camera shake setting**
+  (Settings, Effects): `NativeDevPackIntro.Shake`, set from `prefs.cameraShake` on every entrance frame (a match's entrance and the
+  Locker's preview). A camera offset on this client only; with it off the clock, the pose and every effect are the same. Reduced
+  effects thins the effects as it does every entrance's.
+- **Affected systems:** Core `NativeDevIntros.cs`; Runtime `NativeBladePresentation.cs` (the blade line, one call), `NativeIntros.cs`
+  (the shake setting, one line), `ConversionGame.cs` and `NativePreview.cs` (the setting passed on an entrance frame); Tests
+  `VisualRigChecks.cs`; docs BOZO-INTEGRATION. Animation impact on hit timing, hitboxes, damage, cooldowns, movement, networking: none.
+- **Checks:** full CoreTests green on the code as pushed (1,021 groups, exit 0; LF worktree, the Windows path patch applied for the
+  run and reverted), with new checks in `--visual-rig` (130,210 checks): phase, card, clip length and beat unchanged; the clock slowed
+  only from just before the great cut and the age again by the card; six shots or more on the stage's axes; the camera off the floor,
+  the hero frame carried into the card's, still after it settles; the shakes small, over by the card, the eye alone, zero with the
+  setting off and wired from `prefs.cameraShake` before the camera is placed; the blade lines; the effects following a blade handed
+  in, at most 600 a frame, thinned by Reduced effects; a replay starting over; a broken blade refused. `pins.py`: 0 broken;
+  `git diff --check` against shared clean. In the Editor (the shared one, under the lock, checkout and banks put back as found):
+  both entrances filmed at 60 frames a second before (shared `41bfb1d7`) and after, on the entrance's own camera. Not run: a built
+  client; the Classic body; the Locker's preview.
+- **Filming an entrance:** the game draws an entrance on a clock that advances on the unscaled frame time, so a capture's stalled
+  frames made the drawn age run back and forth (trails restarted every other frame; the first "before" sheets show it). The local
+  Editor tool has a play option `introsteady=1` for it now (git-ignored, compile-checked on a copy; shared note
+  `entrance-captures-introsteady.md`). The Katana's and Fangs' entrances are filmed whole with it too.
+- **Risks / next:** seen in the Editor's captures only (60 frames a second, the entrance's own camera), not in a built client or by
+  the owner; the Classic body's keyed stance draws the same camera and effects round a different pose. **Next:** the owner looks;
+  then merge and release with the next test update.
+
 ## 2026-11-13 — Claude: the owner's second animation picks: the Greatsword, the DEV Greatsword and the Fangs (presentation only)
 
 - Branch `claude/more-move-picks` (from shared `e0317fba`, the Katana parry daze; shared `5d84ea13`, the DEV Katana's hit 4, merged in):
