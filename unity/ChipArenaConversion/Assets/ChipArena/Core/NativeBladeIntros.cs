@@ -326,8 +326,8 @@ namespace ChipArena.UnityConversion
             Arc(FormAt,NativeEntranceCut.Cut,38,33,V(1.9f,.5f,.4f),V(1.6f,.75f,.9f),V(.9f,1f,1.2f),V(0,.8f,-1.4f),V(0,.95f,-1.4f),0,0),
             Shot(StepAt-.2f,NativeEntranceCut.Cut,46,42,V(-.9f,1.45f,-3.6f),V(-.7f,1.35f,-3.2f),V(0,.9f,-1f),V(Arrive.X,.9f,Arrive.Z),1,0),
             Shot(ArriveAt+.05f,NativeEntranceCut.Whip,40,36,V(1.9f,.9f,1.7f),V(.3f,1.1f,2.2f),V(Arrive.X,1f,Arrive.Z),V(Arrive.X,1f,Arrive.Z),1,0,.18f),
-            Shot(LeapAt,NativeEntranceCut.Cut,56,54,V(-2.6f,.3f,2.3f),V(-2.3f,.32f,2.5f),V(Arrive.X,1.55f,Arrive.Z),V(Arrive.X,1.7f,Arrive.Z),2,0),
-            Shot(StrikeAt-.5f,NativeEntranceCut.Cut,42,38,V(3.1f,.55f,.2f),V(2.9f,.6f,.1f),V(0,.85f,-.35f),V(0,.8f,.1f),2,0),
+            Shot(LeapAt,NativeEntranceCut.Cut,52,50,V(-2.3f,.3f,1.9f),V(-2.05f,.32f,2.1f),V(Arrive.X,1.55f,Arrive.Z),V(Arrive.X,1.62f,Arrive.Z),2,0),
+            Shot(StrikeAt-.5f,NativeEntranceCut.Cut,46,42,V(3.6f,.6f,-.1f),V(3.4f,.62f,.1f),V(0,.95f,-.55f),V(0,.9f,.15f),2,0),
             Shot(StrikeAt,NativeEntranceCut.Cut,46,56,StrikeSpot+V(.25f,2.7f,.9f),StrikeSpot+V(.35f,3f,1.1f),StrikeSpot+V(0,.2f,.3f),StrikeSpot+V(0,.2f,.3f),1,0,roll0:0,roll1:.3f),
             Shot(StrikeAt+.15f,NativeEntranceCut.Blend,40,36,V(-1.05f,.95f,3.4f),V(-.85f,1f,3.25f),V(0,1.05f,0),V(-.05f,1.08f,0),1,0,.8f),
             Shot(CardAt,NativeEntranceCut.Cut,36,33,V(-.8f,.98f,3.45f),V(-.64f,1.01f,3.2f),V(-.08f,1.12f,0),V(-.1f,1.14f,0),1,0),
@@ -382,8 +382,9 @@ namespace ChipArena.UnityConversion
             {float s=t-StrikeAt;if(s>0&&s<BloomLife)l.Add(StrikeSpot+Local(0,.45f,.35f),Venom*(1.7f*NativeEntranceMath.Smooth(s*6)*(1-s/BloomLife)),6);}
             if(t>=CardAt-.2f){float k=NativeEntranceMath.Ramp(t,CardAt-.2f,CardAt+.3f);l.Add(new Vector3(2.2f,2.2f,1.8f),Venom*(1.8f*k),8);}
         }
-        /// <summary>How long the strike's bloom of venom fumes hangs (s).</summary>
-        public const float BloomLife=1.9f;
+        /// <summary>How long the strike's bloom lasts (s; its veins the longest), and its fumes: whole until BloomHang, thinned away by
+        /// BloomGone, which is the name's moment (they open between the hero's camera and the pilot, and must not veil the name).</summary>
+        public const float BloomLife=1.9f,BloomHang=.45f,BloomGone=CardAt-StrikeAt;
         protected override float Pylon(int i,float t)=>t<StrikeAt?.04f:PowerOn(i,t-StrikeAt+.05f,.12f);
         // The blade tip in `hand` now: the model's (handed in), else the keyed stance's hand.
         private Vector3 Tip(float t,int hand){if(Held(t,hand,out _,out var tip))return tip;return Anchor(hand==0?NativeEntranceAnchor.RightTip:NativeEntranceAnchor.LeftTip,t);}
@@ -516,7 +517,8 @@ namespace ChipArena.UnityConversion
                     if(s<.7f){float w=s/.7f;int ring=low?14:32;for(int i=0;i<ring;i++){float a=i*6.2831853f/ring;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));fx.Streak(on+new Vector3(0,.03f,0)+d*(.4f+4.4f*(1-(1-w)*(1-w))),d*6,Venom*(1.7f*(1-w)),.026f,.2f,.03f,.7f,w,22700+i);}}
                     if(s<.9f){int m=low?10:24;for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(22760,i,true);var v=new Vector3(d.X*2.6f,d.Y*3.4f,d.Z*2.6f);var p=at+v*s+new Vector3(0,-4.9f*s*s,0);if(p.Y<floor)continue;Bead(fx,p,v+new Vector3(0,-9.8f*s,0),Venom*(2*(1-s/.9f)),.034f,s/.9f,22800+i);}}
                     // The bloom: each petal a run of fumes from the blow outward and up, opening over half a second.
-                    int petals=low?5:BloomPetals,per=low?3:5;float open=NativeEntranceMath.EaseOut(s/.55f);
+                    int petals=low?5:BloomPetals,per=low?3:5;float open=NativeEntranceMath.EaseOut(s/.55f),hang=1-NativeEntranceMath.Smooth((s-BloomHang)/(BloomGone-BloomHang));
+                    if(hang<=0)petals=0;
                     for(int i=0;i<petals;i++)
                     {
                         float a=i*6.2831853f/petals+.45f;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));
@@ -524,7 +526,7 @@ namespace ChipArena.UnityConversion
                         {
                             float f=(j+1f)/per,shown=NativeEntranceMath.Smooth(s*9-j*.7f);if(shown<=0)continue;
                             var p=on+d*(1.55f*(float)Math.Pow(f,1.5)*open+.25f*u*f)+new Vector3(0,.1f+1.2f*f*open+.55f*u*f,0);
-                            Fume(fx,p,Fumes,.62f*shown*(1-u)*(1-.25f*f),.3f+.42f*f*open+.45f*u,u,22840+i*8+j,floor,.42f);
+                            Fume(fx,p,Fumes,.62f*shown*hang*(1-.25f*f),.3f+.42f*f*open+.45f*u,NativeEntranceMath.Clamp01(s/BloomGone),22840+i*8+j,floor,.42f);
                         }
                     }
                     NativeEntranceFx.GroundDust(fx,t,StrikeAt,on,low?6:13,.35f,3.1f,1.5f,Haze,.5f,.8f,22900,1,floor);
