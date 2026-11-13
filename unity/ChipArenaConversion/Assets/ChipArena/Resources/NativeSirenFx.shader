@@ -4,7 +4,9 @@
 //   TEXCOORD0  uv.xy, mode (z), flags (w: +1 additive, +2 authored sRGB colour)
 //   TEXCOORD1  mode parameters: slash (sweep, fade), shell (fade, speed), orb/ink (local position xyz, rim strength)
 //   TEXCOORD2  second colour: slash/shell edge, orb/ink rim (w: 1 orb churn with power 2.2, 0 ink rim power 3)
-// Modes: 0 flat, 1 soft radial sprite (alpha (1-r)^1.6), 2 claw slash, 3 flame shell, 4 orb / ink rim.
+// Modes: 0 flat, 1 soft radial sprite (alpha (1-r)^1.6), 2 claw slash, 3 flame shell, 4 orb / ink rim, 5 soft bank (the radial
+// sprite, fading out over p.x metres as it nears the scene behind it: Skyframe's haze among its clouds; only where the global
+// _ChipArenaFxSoft says the camera has a depth texture).
 // "Raw" colours come from three.js ShaderMaterials, which write their linear colour values to the screen unencoded
 // (particleMaterial, glowMaterial, orbMaterial, flameShellMaterial, the slash); authored colours are MeshBasic, Lambert
 // or Sprite colours, which three encodes to sRGB. Both reach the screen as the source shows them in a Linear or Gamma
@@ -35,13 +37,15 @@ Shader "ChipArena/NativeSirenFx"
             #pragma multi_compile_fog
             #pragma target 3.0
             #include "UnityCG.cginc"
-            float _FxTime;
+            float _FxTime;float _ChipArenaFxSoft;
+            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             struct appdata {float4 vertex:POSITION;float3 normal:NORMAL;float4 color:COLOR;float4 uv:TEXCOORD0;float4 p:TEXCOORD1;float4 q:TEXCOORD2;};
-            struct v2f {float4 position:SV_POSITION;float4 color:COLOR;float4 uv:TEXCOORD0;float4 p:TEXCOORD1;float4 q:TEXCOORD2;float3 normal:TEXCOORD3;float3 world:TEXCOORD4;UNITY_FOG_COORDS(5)};
+            struct v2f {float4 position:SV_POSITION;float4 color:COLOR;float4 uv:TEXCOORD0;float4 p:TEXCOORD1;float4 q:TEXCOORD2;float3 normal:TEXCOORD3;float3 world:TEXCOORD4;UNITY_FOG_COORDS(5) float4 screen:TEXCOORD6;};
             v2f vert(appdata v)
             {
                 v2f o;o.position=UnityObjectToClipPos(v.vertex);o.color=v.color;o.uv=v.uv;o.p=v.p;o.q=v.q;
-                o.normal=UnityObjectToWorldNormal(v.normal);o.world=mul(unity_ObjectToWorld,v.vertex).xyz;UNITY_TRANSFER_FOG(o,o.position);return o;
+                o.normal=UnityObjectToWorldNormal(v.normal);o.world=mul(unity_ObjectToWorld,v.vertex).xyz;UNITY_TRANSFER_FOG(o,o.position);
+                o.screen=ComputeScreenPos(o.position);o.screen.z=-UnityObjectToViewPos(v.vertex).z;return o;
             }
             float4 frag(v2f i):SV_Target
             {
@@ -49,7 +53,17 @@ Shader "ChipArena/NativeSirenFx"
                 float3 c=i.color.rgb,e=i.q.rgb;float a=i.color.a;
                 // Authored colours work in linear light (three's built-in materials); raw ones in display values.
                 if(authored){c=GammaToLinearSpace(c);e=GammaToLinearSpace(e);}
-                if(mode>3.5)
+                if(mode>4.5)
+                {
+                    // A soft bank: the radial sprite, thinning to nothing where the scene stands close behind it (depth-aware).
+                    a*=pow(saturate(1-length(i.uv.xy)),1.6);
+                    if(_ChipArenaFxSoft>.5)
+                    {
+                        float scene=LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen)));
+                        a*=smoothstep(0,1,saturate((scene-i.screen.z)/max(i.p.x,.01)));
+                    }
+                }
+                else if(mode>3.5)
                 {
                     // orbMaterial: core + rim·(f·strength + churn·f·.6), f = (1-|N·V|)^2.2; InkMaterial rim: f = (1-|N·V|)^3.
                     float3 V=normalize(_WorldSpaceCameraPos-i.world);float facing=saturate(abs(dot(normalize(i.normal),V)));

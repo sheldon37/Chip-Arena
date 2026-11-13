@@ -29,6 +29,7 @@ namespace ChipArena.UnityConversion
         private Mesh block;private Material lit,sceneryLit;private MaterialPropertyBlock props;private bool failed;
         private Batch[] kit=Array.Empty<Batch>();private readonly Batch[] rig={new Batch{Shadow=true},new Batch{Shadow=true},new Batch(),new Batch(),new Batch()};
         private ContentMap built;private NativeSkyframeRig rigBuilder;private Mesh[] sectors=Array.Empty<Mesh>();
+        private static readonly int FxSoftId=Shader.PropertyToID("_ChipArenaFxSoft");
         private NativeFxDraw fxDraw;private readonly NativeSkyframeFx fx=new NativeSkyframeFx();
         private NativeStageArtDraw art;private readonly NativeStageArtPose artPose=new NativeStageArtPose();
         /// <summary>The stage art drew last frame (docs/arenas/STAGE-ART.md): the kit's and the rig's boxes and the box-built
@@ -87,11 +88,13 @@ namespace ChipArena.UnityConversion
             if(camera==null||fxDraw==null)return;var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;var match=arena.Match;
             fx.Beams=Beams;fx.Build(arena.Map.hazards,round,match.Phase,match.FightAt,now,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(quality),low);
             var q=fx.Quads;fxDraw.Clear();
+            // the banks fade into what they pass through where the camera has a depth texture (not on the low tier)
+            Shader.SetGlobalFloat(FxSoftId,!low&&(camera.depthTextureMode&DepthTextureMode.Depth)!=0?1:0);var bankFade=new Vector4((float)NativeSkyframeFx.BankFade,0,0,0);
             for(int i=0;i<q.Count;i++)
             {
                 var target=q.Layers[i]==0?fxDraw.Solid:fxDraw.Effects;int o=i*12,k=i*4;float flags=NativeFxDraw.Authored+(q.Additive[i]!=0?NativeFxDraw.Additive:0),mode=q.Modes[i];
                 var color=new Color(q.Colors[k],q.Colors[k+1],q.Colors[k+2],q.Colors[k+3]).gamma;int a=target.Count;
-                for(int v=0;v<4;v++)target.Vertex(new Vector3(q.Corners[o+v*3],q.Corners[o+v*3+1],q.Corners[o+v*3+2]),Vector3.up,color,new Vector4(v==1||v==2?1:-1,v>=2?1:-1,mode,flags),Vector4.zero,Vector4.zero);
+                for(int v=0;v<4;v++)target.Vertex(new Vector3(q.Corners[o+v*3],q.Corners[o+v*3+1],q.Corners[o+v*3+2]),Vector3.up,color,new Vector4(v==1||v==2?1:-1,v>=2?1:-1,mode,flags),mode==NativeSkyframeFx.BankMode?bankFade:Vector4.zero,Vector4.zero);
                 target.Triangle(a,a+1,a+2);target.Triangle(a,a+2,a+3);
             }
             fxDraw.Draw(camera,null,now);
