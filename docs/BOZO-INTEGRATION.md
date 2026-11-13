@@ -1623,7 +1623,9 @@ already? Cant we utilize that?"
         raised overhead in both hands, then up and over the head and chopped down across the front into a crouch; owner, later on
         2026-11-12: "Hit 3: Attack_5Combo_3 · Hit 4: Attack_3Combo_3", after "Dev Katana 4th hit doesn't look right~": the five-hit
         chain's fourth, a 2.3 s flurry of cuts and kicks, played only its last 0.7 s at the Katana's timing, standing with the blade
-        low), the plunge on
+        low; it blends in over 0.2 s and back to the stance over 0.35 s with its last pose held, since hit 3 ends far from its raised
+        start and it ends in a lunge turned away, and its trail starts as the blade rises over the head, `NativeDevKatanaMotion.BlendIn`,
+        `BlendOut`, `TrailFrom`), the plunge on
         `Jump_Attack_Combo_4_Attach_ZeroHeight` (0/0.74/0.77: a cut down and a turn in the air through the drop, the landing driving
         the blade into the floor), the counter on
         `Revenge_Guard_Attack_ver_A` (0/0.4/1.47: out of the katana set's back-turned guard it spins round into a rising cut) in place

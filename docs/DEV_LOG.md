@@ -1,6 +1,6 @@
 ## 2026-11-13 — Claude: the DEV Katana's hit 4 is the three-hit chain's overhead chop (owner's pick)
 
-- Branch `claude/dev-katana-hit4` (from shared `3c132414`, the blade labels' merge; shared `e0317fba` merged in): `fa48205c` and this entry. Pushed, **not merged, not released**: the Drive zip needs the new motion bank first.
+- Branch `claude/dev-katana-hit4` (from shared `3c132414`, the blade labels' merge; shared `e0317fba` merged in): `fa48205c`, the hand-over fix `4df57263` and this entry. Pushed, **not merged, not released**: the Drive zip needs the new motion bank first.
 - **The owner:** "Dev Katana 4th hit doesn't look right~ What options do we have? (Show 3rd hit too please so I can pick accordingly)". From a picker of each candidate's slice at the game's pace, they chose "Hit 3: Attack_5Combo_3 · Hit 4: Attack_3Combo_3". Hit 3 is unchanged.
 - **Why the old hit 4 looked wrong:** the Katana's cut 4 hits at 0.22 s and lasts 0.66 s. `NativeBladeMotion.Fit` (StrikeRate 1.6) fitted `Attack_5Combo_4_Inplace`'s window (1.2/1.97/2.33) to that, so the game played only 1.62-2.33 s of a 2.3 s flurry: the pilot stood upright and turned with the blade low, with no clear cut.
 - **The change** (Core `NativeDevKatanaMotion`, `NativeBladeCuts`; presentation only):
@@ -20,15 +20,24 @@
   - The arc itself takes about 3 game frames at 60 fps, so at 30 fps it is one frame from overhead to down; the trail carries it. The Hot Dog skin plays it the same way, with no fold.
   - **A snap at the start:** hit 3 ends turned about 100 degrees from the new clip's raised start, so the 0.1 s blend whips the torso round. Per frame at 60 fps: up to 24 degrees of torso turn and 0.44 m of hand travel; the old hand-over was 3 degrees and 0.17 m. Hit 3's own spin reaches 44-59 degrees a frame, so no single frame jumps, but at 30 fps it reads as a quick swing, and the weapon trail draws a full ring round the pilot during the blend and the raise.
   - **A snap at the end:** the stance comes back over 0.2 s from the lunge. The hips rise 0.35 m and the torso turns about 100 degrees (up to 12.5 degrees a frame); the old hit 4 ended in the stance pose (0.2 degrees a frame).
-  - **Proposed, not done:** a longer blend into this cut (0.2 s instead of `FadeIn` 0.1) and out of it to the stance (about 0.35 s instead of `FadeOut` 0.2), for this clip only. It would be a per-clip fade in `NativeBladeMotion.Cast` and the stance pick, and is the owner's call after seeing it.
+- **The hand-over fix** (`4df57263`, asked for by the coordinator before release; presentation only, this clip only):
+  - The finisher blends in over 0.2 s instead of `NativeVisualMotion.FadeIn`'s 0.1 (`NativeDevKatanaMotion.BlendIn` through `NativeBladeMotion.BlendIn`). Its weight is whole by 0.2 s, before the rules' 0.22 s strike, so the chop shows unblended; in game the clip is at full weight from 0.748 s, before the blade comes over the top (0.785) and strikes (0.8).
+  - The stance or stride comes back over 0.35 s instead of `FadeOut`'s 0.2 (`NativeBladeMotion.SettleFade` in the stance and stride picks, through the settle after this move only). The clip is held at its last pose while it fades (`NativeBladeMotion.HeldOut`, the presentation's fade loop): running on, it went into the clip's next two cuts, and the old 0.2 s fade already showed a second sweep across the front.
+  - Its trail starts at 0.76 s into the clip, the blade rising behind the head just before it comes over the top and down, mapped through the fitted window (`NativeBladeMotion.TrailFrom` in the blade trail's live stretch: 0.025 s before the strike at the rules' pace). Every other cut's trail still starts with its move.
+  - Refilmed (same presses, default pilot from two sides and the game camera, the Hot Dog):
+    - Into the move: the turn is spread over 12 frames, at most 15 degrees of torso turn a frame (was 24) and 0.27 m of joint travel (was 0.44, now a foot's own step). At 30 fps the pilot turns into the raise over four shots instead of jumping between two.
+    - The ring is gone: the game camera shows no trail through the hand-over and the raise; the trail appears on the strike frame as a line falling through the crosshair and follows the chop's sweep to the left. Hit 3's own trail is unchanged.
+    - Back to the stance: 21 frames, at most 8.5 degrees a frame (was 12.5) and 0.13 m (was 0.18); the pilot holds the lunge a moment, then rises and turns into the stance over about five shots instead of standing up between two. The blade swings down to the stance's low hold over the last shots of the blend.
+    - The chop itself is unchanged. The Hot Dog plays the same (15 and 9 degrees a frame at most).
+  - Left: the turn into the move is still quick (the clip's raised start is about 100 degrees from hit 3's end), and a new chain's hit 1 straight after hit 4 still blends in over 0.1 s from the lunge (about 160 degrees between the poses; not filmed).
 - **Checks:**
-  - CoreTests `--melee-bisect` and `--visual-rig` pass.
-  - The full suite passes at `fa48205c` and again at `d7b2cfaf` (with shared `e0317fba` merged in): 1,021 groups, exit 0 each time, Windows path patch applied in a throwaway worktree and reverted.
-  - The Editor's build checks (`PrototypeBuild.Validate` through the BoZo validate request) at `fa48205c`: ok.
+  - CoreTests `--melee-bisect` and `--visual-rig` pass at `fa48205c`, and with `--blades` at `4df57263`; `--visual-rig` now checks each cut's blend in, the stance's and stride's blend back, the held last pose and the trail's start (the finisher's own, every other cut and the Katana as before), and the crossfade pin names the held pose.
+  - The full suite passes at `fa48205c`, at `d7b2cfaf` (with shared `e0317fba` merged in) and at the fix `4df57263`: 1,021 groups, exit 0 each time, Windows path patch applied in a throwaway worktree and reverted.
+  - The Editor's build checks (`PrototypeBuild.Validate` through the BoZo validate request) at `fa48205c` and at `4df57263`: ok. The offline Unity compile at `4df57263`: both assemblies pass.
   - `git diff --check` against shared: clean.
   - The Editor checkout was put back on `9319026b` after every hold, with its local manifest and Player Settings.
   - **Found:** with the plane at 52 degrees (the average over the strike), the melee bisect's sampled DEV Katana diagonal cut left a 13-ray gap in the Standard body's cap ("half 0 is sealed" failed). At 50 degrees (the centre-line crossing's angle, the survey's convention) it is sealed. Other planes near it were not swept; the bisect's sealing is the likely weak point, not this table.
-- **Not seen / not done:** played by a person; multiplayer, where a guest plays the same clip from the replicated kit; the Editor checks and captures ran before the merge with shared `e0317fba` (a Katana rules change in Runtime, no overlap). The Drive zip is not repacked; merging and releasing are the integrator's.
+- **Not seen / not done:** played by a person; multiplayer, where a guest plays the same clip from the replicated kit; the first captures and Editor checks ran before the merge with shared `e0317fba` (a Katana rules change in Runtime, no overlap), the fix's after it. The Drive zip is not repacked; merging and releasing are the integrator's.
 
 ## 2026-11-12 — Claude: the Katana's parry dazes its striker as a standard parry does (owner request; a rules change at the owner's word)
 
