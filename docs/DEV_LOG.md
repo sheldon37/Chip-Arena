@@ -56,6 +56,140 @@
   the owner; the Classic body's keyed stance draws the same camera and effects round a different pose. **Next:** the owner looks;
   then merge and release with the next test update.
 
+## 2026-11-13 — Claude: the DEV Katana's kick (its hit 3) lands as a blow, not a cut (owner request)
+
+- Branch `claude/dev-katana-kick` (from shared `41bfb1d7`): `3fcebb5f` and this entry. Relayed by the NOCTIEL session.
+- **The owner:** "3rd hit of dev katana is a kick, so its blunt damage rather than slicing". Hit 3 is Grruzam's `M_katana_Blade@Attack_5Combo_3_Inplace` (window 0 / .43 / 1.03): a rising knee with the blade swept out to the side. It played as any Katana cut: its kill was cut through the body ("Cut in two"), its hit drew the blade's slash with the blade's slice sound, its wound a cut.
+- **How the game tells blunt from blade:** a kill's cut is the slice plan's (Core `NativeMeleeSlice`, from the blow's clip and move; `NativeBladeCuts`); the killcam's cause reads that plan (`NativeKillCause`: "Blunt force" for blunt weapons and crushes); the Katana's hit spark and sound come from its kit's hit records (Core `NativeTechniqueFx` blade hits, Runtime `NativeAudio.BladeMoments`); the blood and the wound's mark from the authority's wound record (`NativeBodyDamage`: a blade's impact is a cut, a blunt weapon's a bruise).
+- **The change** (keyed on the clip, as the cut planes are: `NativeBladeCuts.Blunt`; the combo's clip from the motion set and the step, `CutClip`; a hit record by the step it carries, `BluntHit`):
+  - the kill: the shield's crush (the head from a high blow on two seeds in three, else the arm it meets), nothing bisected or sliced; the killcam reads "Blunt force";
+  - the hit: an impact burst (a white-hot core, two rings spreading out, a few chips along the blow) instead of the slash line; the fighters' kick (`dev.fist.hit`, built-in `arcade-kick`) instead of the blade's slice;
+  - the blood: the authority's wound record takes the fighters' blunt strike for the kick (`NativeBladeCuts.BlowImpact`, passed as `BladeHurt`'s impact): a bruise (chips off the body's shell, a dark dent, little blood) instead of a cut's gash and spray.
+- **Rules (for Astra): none changed.** The damage kind stays `blade-cut`: no rule reads it (no armor, resistance or chip; it feeds the hit reaction, zombie gore and the death record). In the rules the kick is the Katana's third cut: its damage, stun, reach and arc, Honed Edge's bleed (a chip: the kick still bleeds with it), the combo and the counter. The one authority line is the wound record's impact in `BladeHurt` (Runtime `NativeBladeAuthority`), presentation data no rule reads (`NativeDeaths.Wound`); the test that keeps the blade authority off `NativeBladeCuts` now allows exactly that line.
+- **Unchanged:** the plain Katana's third cut (the Frank pack's) still cuts through the body; the DEV Katana's first and second cuts, its finisher (hit 4), rush, iai, storm, counter and slam. Zombies: a kick kill crushes as a shield's (the horde's slice plan); a zombie's hit spray stays the game's melee one (the shield's too).
+- **Animation impact:** none: clips, hit timing, hitboxes, damage, cooldowns, movement and networking unchanged (the wound's kind travels in the existing record).
+- **Checks:**
+  - CoreTests `--melee-bisect` (37,171: section 1e, the kick: its clip a blow, the combo's clips by step and motion set, the hit records by step, the wound's impact a bruise, 80 kills crushing the head (55) or an arm (25) with "Blunt force", the plain Katana's third still cut in two; section 1b's 60 DEV Katana kicks crush), `--blades` (236), `--killcam`;
+  - the full suite at `3fcebb5f` (1,022 groups, exit 0) and at the release commit (relgen); the Editor build gate on `3fcebb5f` (`PrototypeBuild.Validate` ok, Native blades 72); the Unity compile.
+- **Filmed** (the Editor, a probe build: local only, only the named cut kills): `kk_b_kill` and `kk_a_kill` (a kill on hit 3, live and in the final killcam: before the body cut in two and "Katana · Cut in two"; after the body whole with an arm crushed and "Katana · Blunt force"), `kk_b_hit` and `kk_a_hit` (a real non-lethal hit 3: before the slash with a cut's blood spray; after the impact burst with the bruise's chips and no spray, the kick's cue logged), `kk_a_k3` (the plain Katana's third cut after: still "Cut in two"); the authority's wound record of the kick before cut/cut, after bruise/blunt (local, in Claude's scratchpad `dcap/`).
+- **Not seen / not done:** played by a person; the kick's sound heard (the probe logged the cue; no audio capture).
+
+## 2026-11-13 — Claude: the floating blood near a DEV Katana pilot (on hold at the owner's word; nothing changed)
+
+- **The owner** (relayed by the NOCTIEL session): "noticed I think... voxel blood floating? It's anchored to me somewhere"; "Using dev katana"; "after I hit someone with dev katana"; "the floating blood- its moves with me as I walk (It looks anchored to the weapon, but its not on the weapon)". The screenshot (`owner-floating-blood.png`, the NOCTIEL session's notes): a Hot Dog pilot in a top hat with the DEV Katana, round 2, and a short glowing red capsule in the air beside the pilot, away from the blade. Then (2026-11-13): "we can put a hold temporarily for the floating blood~ I can find the cause and get back on that one."
+- **Not reproduced** (the Editor, local probe builds): a Hot Dog pilot in a top hat with the DEV Katana, the Katana, the DEV Greatsword and the Fangs (and the DEV Katana on the plain body), with kills, real non-lethal combos on a 100-hp bot and a rush, then strafing, filmed from all round the pilot. Those runs had god mode on from 4 s (`god=4`) and idle bots (`idlebots=0`), so the pilot itself was never wounded. They were in round 1 with no chips; the owner's was round 2.
+- **Ruled out in code:**
+  - the edge blood (Runtime `NativeWeaponPresentation.BladeBlood`: the sword, greatsword and daggers only; the DEV Katana is seat spec `katana`, motion `dev-katana`);
+  - the weapon's chip modules and enchant pieces (`WeaponDressing`: the Katana has no designed modules, `NativeChipModules.Family`; the blade classes return before the enchant);
+  - the blade trails, their tip glint and sparks (gone within 0.34 s); the Katana's hit effects (world space, at the victim);
+  - the blood drops and their stains (world colliders only; a stain on a moving surface fades);
+  - the saya (black lacquer and gold; its inlay is a long line in the accent colour).
+- **Lead for whoever picks it up:** the pilot's own wound. A wound on a model body, the Hot Dog's included, shows a hole and a flesh pit (Runtime `NativeVisualWoundPresentation`: for a cut a capsule-shaped tube in the cut's glowing material, riding the wound's bone). The Hot Dog's limbs are thin noodles (`NativeVisualBodyPresentation`: "its wounds' pits of flesh ... out past its noodle limbs"); a pit longer than the limb is wide would stand out beside the arm that holds the blade, and move with it. To test: a Hot Dog pilot with the DEV Katana, no god mode, bots that fire back (or `mehurt`), then walk, and watch the pits. Not tested; the owner's "after I hit someone" may point elsewhere.
+- **Status:** on hold at the owner's word; nothing changed.
+
+## 2026-11-13 — Claude: every pilot plays the foe's side of the paired moves (owner: "Give one to everyone"; presentation only)
+
+- Branch `claude/paired-reactions-all` (from shared `41bfb1d7`): `a256b4ee` the change and its checks, `27bc7351` the first entry,
+  `008f8f89`, `491c1747`, `ca97749f`, `b1c94728` the second round, then this update. Pushed, **not merged, not released**. Asked after
+  being told that in a Fangs takedown only a Katana, DEV Katana or Fangs foe showed the matching reaction; the owner: "Give one to
+  everyone". The second round follows the coordinator's notes on the first round's sheets and the owner's report on the parry attack.
+- **The paired moves** (the foe held, its body playing the move's victim clip; the host names the clip on the held actor, `Actor.PairClip`
+  from `NativeDevMotions.VictimClip`): the Katana's counter (`Frank_Damage@Damage_Critical_Katana_Hit`), the DEV Katana's counter
+  (`M_katana_Blade@Damage_Front_Big_ver_A`), the Fangs' takedown (`Frank_Stealth_Kill_Hit_Behind_01`) and frontal critical
+  (`Frank_Damage@Damage_Critical_Assassin_Hit`). No other move holds a pilot in a pack clip: the Cyber Lord's Kernel Panic poses its victim
+  on the game rig (`CyberLordMotion.VictimPose`), the Top Dog's feast and the Siren's drop have their own victim presentations; untouched.
+- **Cause:** Core `NativeVisualMotion.Choose` already picked the victim clip for any set, but Runtime `VisualMotionFor` builds a body's clip
+  list from its set, and only the Katana's, DEV Katana's and Fangs' sets listed victim clips (not all four: a Katana or Fangs foe of the
+  DEV Katana's counter, and a DEV Katana foe of the Fangs, kept their stance too). The pick then fell through to the stance.
+- **Change** (Core `NativeBladeMotion`, `NativeVisualMotion`; Runtime `NativeVisualMotionPresentation`):
+  - `NativeBladeMotion.VictimClips` lists the four; `Lent(a, clip)` is true only for the victim clip the host names on that actor. A body
+    whose set does not list it takes it on the first time it is named (`VisualMotionLend`: one more entry in that body's clip arrays, the
+    poses the bank's own, shared). A body never held carries and blends nothing more; nothing is loaded per frame.
+  - The Cyber Lord (no set: the game's pose) plays it on `NativeVisualMotion.Held` (the unarmed stance under it, `HeldOnly`: Choose covers
+    the hold and nothing else), kept until its weight has eased back to the game's pose. `For` never returns it.
+  - `Layer` lays nothing over a held body (a gun pilot's last shot or reload raised the gun over the reaction).
+  - Pilot bodies only (Runtime `VisualBodyPose`: players and bots on the pilot model; the Siren is not on it). The horde, bosses and other
+    bodies are untouched. The bake's sets are unchanged.
+- **Second round** (the coordinator's notes on the first round's sheets; the owner, 2026-11-13: "when performing parry attack, we still
+  need 'reaction' animations for dev katana / katana. They still kind of just sit there or run in place backwards"): `008f8f89` the
+  three fixes, `491c1747` and `ca97749f` the follow-ups from the trial captures, `b1c94728` the counters' daze until the blow.
+  Presentation only; the rules' throw, hold, daze, damage and timings are unchanged.
+  - **Held weapons** (Runtime `VisualVictimHang`; Core `NativeBladeMotion.Hangs`, `HangReach`): while the body plays a victim clip the
+    right hand's weapon turns to hang head-down from the grip along its length, by the clip's share of the mix, and the support hand
+    lets go. One rule for every class: a weapon held flat-on across the hand (the shield: its rim's tip off the hand's length) keeps its
+    own hang, and a weapon longer than its hand is high tips out to the hand's side just enough to keep its far end over the floor (hung
+    straight, the trial put the mallet's head through the floor). The Top Dog's mallet, its head the size of a torso, still swept across
+    the body and the camera when tipped clear, so it goes away into the hand by the same share (its shown scale) and comes back after.
+    The staff is in the left fist and is untouched.
+  - **The lethal blow's corpse** (Runtime `VisualRigFromDrawn`, `VisualCopyDrawn`): a pilot killed while its model played a victim clip
+    (its last victim frame within 0.25 s of the death, the corpse built within 0.25 s of it) has the dead rig's joints put on the model
+    as last drawn (each joint's frame on its bone, as `VisualJointFrame` reads it), so the ragdoll starts from the reaction, and the model
+    corpse wears the drawn pose bone for bone. On every death's path this adds one dictionary lookup and a time comparison
+    (`NativeDeathPresentation.PresentDeath`; false: nothing moved), one null check in `VisualDeathBody` and one assignment after the
+    build; every other death is built exactly as before.
+  - **The end slide** (Runtime `VisualMotionVictimSpot`): every victim clip a body carries, its own or borrowed, has its horizontal hips
+    drift taken out of the mix while it shows (into the hold and out of it), so the hips stay over the body's spot: the frontal
+    critical's foe stays where the rules hold it, the counter's foe travels only the rules' 1.23 m, and the hold's end slides nothing.
+  - **The counters' foe before the blow** (Core `NativeBladeMotion.Victim`, `StruckOnBlow`): the Katana's and the DEV Katana's counters
+    answer a parry, so their foe plays the parry's daze until the blow and the victim clip from the blow on (it stood through the
+    Katana's wind-up, and held the DEV hit's first frame still for 0.55 s: the "just sit there"). The Fangs' takedown and critical keep
+    their whole window (the foe is seized before the blow).
+  - **The parry's daze** (Core `NativeVisualMotion.Held`, `HeldDaze`, `Dazed`): every class's set has a Stunned in the bank (`Armed-`,
+    `2Hand-Sword-`, `2Hand-Shooting-`, `2Hand-Staff-` (mirrored), `2Hand-Bow-`, `Unarmed-Stunned`), and a parried striker reels on its
+    recoil, then plays it through the stun and its settle. The Cyber Lord (no set) stood on the game's pose; it now plays the same reel
+    on the held set (the unarmed set's recoil and `Unarmed-Stunned`), only while dazed.
+  - **The throw:** the counter's victim clip covers the whole throw (the throw ends with the hold; the clip fades over the next 0.15 s),
+    so from the blow until the foe stops it plays the reaction, never its stride, then eases back to its stance. The live build's "run in
+    place backwards" was a foe whose set lacked the victim clip (every class but the Katana and the Fangs, and a Katana or Fangs foe of
+    the DEV Katana's counter): the pick fell through to the stride while the throw carried it.
+- **Motion bank:** unchanged and not rebaked; every clip used is in the 499-clip bank (6,136,627 bytes, sha256 `37ec44d2...`, checked with
+  the scratch bank reader: the four victim clips and every set's Stunned). No Drive zip change.
+- **Animation impact:** hit timing, hitboxes, damage, cooldowns, movement, networking and the wire unchanged (the host still names the clip;
+  the client borrows only that one; the rules' throw and hold untouched). A held foe of any class takes the whole-body reaction, easing
+  in over the pick's 0.1 s fade; a counter's foe only from the blow (dazed before it); the victim's drawn hips stay over its capsule (no
+  drift ahead of or behind the hurtbox); the held weapon hangs (the mallet is put away) for the hold; a lethal paired blow's corpse
+  starts from the drawn pose.
+- **Filmed** in the Editor (cybercity, the game stepped at 60 a second, shot at 30 a second on the arena clock), sheets local in Claude's
+  scratchpad `pra/sheets/` (`<move>_compare.png`: shared over round 1; `<move>_compare2.png`: shared, round 1 where filmed, round 2):
+  - shared `41bfb1d7` (`before`: this morning's, the same commit, scripts and banks; `before2`: the parry and counter set, filmed now),
+    round 1 `a256b4ee` (`after`), round 2 `491c1747` (`after2`: all fourteen) and the head `b1c94728` (`after3`: the Top Dog takedown
+    and the Katana counters, the two moves the last two commits change). The six takedown, critical and counter moves; the counter and
+    the parry alone for the Katana and the DEV Katana on a fire caster and on a Katana foe; the parry on a Cyber Lord.
+  - **Round 1** (`a256b4ee` against shared): before, every foe of the six stood in its own stance through the hold; after, every one plays
+    the reaction in step with the attacker's clip on the rules' window. Seen then (and fixed in round 2): a rifle's barrel swung up past
+    the attacker's head and the mallet's head across the body and the camera; the lethal takedown's corpse popped from the reaction's
+    lean back to the game stance at the blow; the frontal critical's foe drifted 1.4 m back from its spot and the counter's 0.85 m past
+    the throw, each sliding back as the clip faded at the hold's end.
+  - **Round 2** (`491c1747` and the head): the takedown's foes play the reaction with the weapon hanging from the hand (the rifle straight
+    down before the body; the greatsword tipped out to the foe's side, clear of the floor; the Top Dog's mallet gone into the hand on the
+    hold's first frame), and at the blow they fall from the drawn pose: the frame of the blow and the one after match, then the ragdoll
+    falls (forward, face down for the greatsword and Cyber Lord foes). The frontal critical's foe stays on its spot through the hold,
+    its shield at its side as before, and is back in its stance with nothing sliding. The counters (the Katana's and the DEV Katana's, on
+    a fire caster and on a Katana foe): the foe recoils from the parry and sways dazed until the blow, arches on it, doubles over or
+    staggers back while the throw carries it (staying over its spot, no stride), and is back in its stance about 0.15 s after the hold,
+    without a slide. Shared, filmed now: the Katana foe stood through the wind-up and drifted out of its frame before sliding back; the
+    fire caster stood or walked in its staff stance through the whole throw (the "run in place backwards"); the DEV Katana's foes the
+    same. The parry alone: the fire caster and the Katana striker reel and sway dazed on shared and on the branch alike (each set's own
+    Stunned, unchanged); the Cyber Lord striker crouched still on the game pose on shared, and on the branch reels, then sways dazed on
+    the unarmed set's Stunned.
+  - The view each sheet calls `s (foe)` follows the foe's facing, so it turns when the rules let the foe's facing go at the hold's end
+    (on shared too); the game camera's view (`screen`) does not.
+- **Checks:**
+  - CoreTests, the full suite: `a256b4ee` 1,021 groups, exit 0; `008f8f89` 1,021, exit 0; `ca97749f` 1,021, exit 0; `b1c94728` 1,021,
+    exit 0 (the Windows path patch applied in a throwaway worktree, not committed). `--blades` 368 checks on the head (236 on shared):
+    every class on the pilot model plays each victim clip as the host names it, nothing laid over it, its set's own or borrowed; the
+    counters' foes only from the blow; every class reels and dazes on a parry, the Cyber Lord on the held set; the hang rule and reach;
+    the Runtime's borrowing, drift removal, hang, mallet and drawn-death lines pinned. `--visual-rig` on the head.
+  - The Unity compile (four assemblies) on every commit.
+  - The Editor build gate (`PrototypeBuild.Validate`, the builder's Editor checks): `a256b4ee` and the head `b1c94728`, ok, 397 PASS
+    lines (354 distinct) each.
+  - `git diff --check` against shared: clean. The stage banks (14 incl. the Rooftop's) and the motion bank unchanged through every hold.
+- **Not done / not seen:** played by a person; a guest over the network (the host names the clip as before; a guest's body borrows it
+  and strips its drift the same way); a Windows build; the Glaive, Bombadier, bow and daggers held in a victim clip (the hang's rule
+  covers them: none is filmed); the first six's `before` not re-filmed (shared and the scripts are unchanged since this morning).
+- **Risks:** a hung long weapon (the greatsword) tips out to its hand's side and can cross a wall beside the foe; the drawn-death path
+  re-poses the dead pilot's game rig (only when its last frame was a victim clip), which every corpse kind then reads (whole, sliced,
+  split, smashed); the counter's foe now leaves the pack's pairing before the blow (dazed rather than standing through the wind-up).
 ## 2026-11-13 — Claude: the owner's second animation picks: the Greatsword, the DEV Greatsword and the Fangs (presentation only)
 
 - Branch `claude/more-move-picks` (from shared `e0317fba`, the Katana parry daze; shared `5d84ea13`, the DEV Katana's hit 4, merged in):

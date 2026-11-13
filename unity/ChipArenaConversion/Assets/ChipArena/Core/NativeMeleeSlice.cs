@@ -56,7 +56,8 @@ namespace ChipArena.UnityConversion
     /// Dragon) split top-down: head, the arm under the blade and, for the heavy ones, the waist.</item>
     /// </list>
     /// The blade classes (the Katana, the Fangs, the Glaive) cut by their own moves (NativeBladeCuts): a slash across the front, level
-    /// along a dash or a flight, or a chop; through the trunk, a part, or (the Fangs, as the daggers) a slit throat or a limb.
+    /// along a dash or a flight, or a chop; through the trunk, a part, or (the Fangs, as the daggers) a slit throat or a limb; a blow
+    /// that is no cut (the DEV Katana's kick, NativeBladeCuts.Blunt) crushes as the shield's.
     /// Only for a pilot's lethal melee blow by a standard melee weapon or a blade class; living pilots never lose limbs. Pure, deterministic.
     /// Where it applies (a blade, gore on, a stock ending) NativeMeleeBisect turns this plan into a cut of the body's mesh; the
     /// joints here stay the presentation everywhere else.
@@ -121,6 +122,8 @@ namespace ChipArena.UnityConversion
             into.Clear();if(!Covers(spec))return false;uint h=unchecked((uint)seed*2654435761u);h^=h>>15;
             // A blade class's move (NativeBladeCuts) names its cut; a hit that cuts nothing (the Fangs' venom bloom) plans none.
             bool blade=NativeBladeCuts.Is(spec);var move=blade?NativeBladeCuts.MoveOf(blow,hasBlow):NativeBladeCuts.Move.None;if(blade&&move==NativeBladeCuts.Move.None)return false;
+            // A blade class's blow that is no cut (the DEV Katana's kick: NativeBladeCuts.Blunt, by the clip it played) crushes as the shield's.
+            bool blunt=blade&&hasBlow&&NativeBladeCuts.Blunt(blow.Clip);
             var vq=Facing(victimYaw);Vector3 vp=Source(victim)-new Vector3(0,RootHeight,0);
             Vector3 J(int bone)=>vp+Vector3.Transform(Rest(bone),vq);
             string kit=hasBlow?blow.Kit:null,special=hasBlow?blow.Special:null;
@@ -148,6 +151,8 @@ namespace ChipArena.UnityConversion
                 float side=hasBlow&&(MeleeSet.For(spec)!=null&&!MeleeSet.For(spec).Dual||spec==NativeKatana.Spec||spec==NativeGlaive.Spec)?-.12f:((h&1)==0?.12f:-.12f);
                 n=Vector3.Normalize(right);t=new Vector3(0,-1,0)*.85f+toVictim*.5f;t=Vector3.Normalize(t);c=vp+new Vector3(0,1.25f,0)+right*side;
             }
+            // A blow: level where it lands, along the blow (the arm nearer the striker is the one it meets).
+            else if(blunt){n=Vector3.UnitY;t=toVictim;c=vp+new Vector3(0,NativeBladeCuts.BlowAt,0);}
             else if(blade)
             {
                 // A blade class's slash (NativeBladeCuts): across the front of the wielder facing the victim, the plane holding the line
@@ -243,6 +248,8 @@ namespace ChipArena.UnityConversion
                 case NativeKatana.Spec:case NativeGlaive.Spec:
                 {
                     bool katana=spec==NativeKatana.Spec;into.Kick=katana?3.6f:3.4f;into.Blood=katana?1.3f:1.2f;into.Spin=katana?9.5f:10;
+                    // A blow: the shield's crush (the head from a high blow, else the arm it meets), nothing cut.
+                    if(blunt){into.Blood=1.2f;into.Kick=3f;into.Kind=SliceKind.Crush;into.Crush=h0>=.98f&&h%3!=0?CapturedRig.Head:Near(CapturedRig.LArm,CapturedRig.RArm);break;}
                     if(chop){into.Kind=SliceKind.Chop;into.Add(CapturedRig.Head);into.Add(Near(CapturedRig.LArm,CapturedRig.RArm));into.Add(CapturedRig.Spine);break;}
                     if(NativeBladeCuts.TakeOf(spec,move,blow.Index)==NativeBladeCuts.Take.Through)
                     {

@@ -21,6 +21,7 @@ namespace ChipArena.UnityConversion
     /// <item>The Fangs as the daggers: a slit throat on the combo's first four cuts and on the takedown from behind (its clip a throat
     /// cut, NativeBladeMotion.FangsTakedown); an arm (a forearm when the cut is low) on its finisher, the pounce, the shadow step's stab,
     /// the frontal critical and a thrown knife; the slam's chop takes an arm. The bloom (a venom burst) cuts nothing.</item>
+    /// <item>A blow (a clip whose strike is no cut: the DEV Katana's kick, Blunt) crushes as a blunt weapon's.</item>
     /// </list>
     /// The cut's plane is a slash across the wielder's front: the blade's travel in its frontal plane (an angle) through the height
     /// where it crosses the victim's centre line, the plane holding the line from the wielder to the victim (a slash through what is
@@ -151,6 +152,34 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Whether this clip's cut was measured or written for it (the rest take their move's).</summary>
         public static bool Known(string clip)=>clip!=null&&clips.ContainsKey(clip);
+
+        // ---- the blows ----
+        /// <summary>Clips whose strike is a blow, not a cut, by name as the slashes are (owner 2026-11-13: "3rd hit of dev katana is a
+        /// kick, so its blunt damage rather than slicing"): the DEV Katana's third hit, Grruzam's five-hit chain's third (a rising knee,
+        /// the blade swept out to the side). A blow lands as a blunt weapon's: its kill crushes as the shield's (NativeMeleeSlice) and
+        /// reads "Blunt force" (NativeKillCause), its hit is an impact burst (NativeTechniqueFx) with the fighters' kick (NativeAudio),
+        /// its wound a bruise (BlowImpact). The rules are the cut's: its damage, stun, chips and combo step are the Katana's third cut.</summary>
+        private static readonly HashSet<string> blows=new HashSet<string>(StringComparer.Ordinal){"M_katana_Blade@Attack_5Combo_3_Inplace"};
+        public static bool Blunt(string clip)=>clip!=null&&blows.Contains(clip);
+        /// <summary>Where a blow lands on the victim (m above its feet): the knee rises into the chest.</summary>
+        public const float BlowAt=1.1f;
+        /// <summary>The clip a Katana's combo cut at `step` plays (NativeBladeMotion.Clip's choice: the DEV Katana's own for its motion
+        /// set), null for any other weapon.</summary>
+        public static string CutClip(string spec,string motion,int step)
+        {
+            if(spec!=NativeKatana.Spec)return null;var cuts=motion==NativeDevMotions.Katana?NativeDevKatanaMotion.Cuts:NativeBladeMotion.KatanaCuts;
+            return cuts.Length>0?cuts[Math.Max(0,step)%cuts.Length]:null;
+        }
+        /// <summary>Whether a Katana's hit record is a blow: a combo cut's (its record carries the cut's step in Amount,
+        /// NativeKatanaAuthority.KatanaCut) whose clip is one.</summary>
+        public static bool BluntHit(string spec,string motion,NativeBladeHit h)=>h!=null&&(h.Kind==NativeKatana.HitCut||h.Kind==NativeKatana.HitFinisher)&&Blunt(CutClip(spec,motion,h.Amount));
+        /// <summary>A blow's body impact (the authority's wound record, NativeBodyDamage: presentation only, no rule reads it): the
+        /// fighters' blunt strike (3.5 kg at 10 m/s, .12 m across), so the wound is a bruise as theirs is, not the blade's cut.</summary>
+        public static NativeBodyImpact BlowImpact(float attackRate)=>NativeBodyDamage.Melee("ansatsuken",attackRate);
+        /// <summary>The wound record's impact for a blade class's blow struck now (the authority's BladeHurt at the cut's tick: the
+        /// Katana's combo cut at its kit's step, on the clip its motion set plays): the blow's, or null for a cut (the weapon's own).</summary>
+        public static NativeBodyImpact WoundImpact(string spec,string motion,NativeBladeKit k,string kind,bool melee,float attackRate)=>
+            melee&&kind=="cut"&&k!=null&&k.CastKind==NativeKatana.Cut&&Blunt(CutClip(spec,motion,k.CastStep))?BlowImpact(attackRate):null;
         /// <summary>The cut of a blow by `spec` (no blow seen: a default one): its clip's, else its move's. `mirror` (the death's seed)
         /// turns the storm's slash the other way round (its cuts go both ways).</summary>
         public static Slash SlashOf(in MeleeBlow blow,string spec,Move move,bool mirror)

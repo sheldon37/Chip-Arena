@@ -180,6 +180,8 @@ namespace ChipArena.UnityConversion
             if(k.Hits!=null)foreach(var h in k.Hits)
             {
                 if(h==null||t<h.At||t-h.At>=.15f||!Once(p.Seat.id+"blhit"+h.Id,h.At))continue;var at=new Vector3(h.Pos.x,h.Pos.y,h.Pos.z);
+                // A blow (the DEV Katana's kick, NativeBladeCuts.BluntHit) lands with the fighters' kick.
+                if(katana&&NativeBladeCuts.BluntHit(p.Seat.spec,p.Seat.motion,h)){Cue(NativeSoundCues.Fighter("arcade-kick"),"arcade-kick",at,.85f,mine:mine);continue;}
                 switch(h.Kind)
                 {
                     case NativeKatana.HitSplit:Toon("blade-split",at,1,mine,h.Amount>0?1.2f:1);break;

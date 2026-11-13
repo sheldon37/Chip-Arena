@@ -30,7 +30,9 @@ Every number is in Core `NativeKatana`.
   classes"): the first two cuts take the head or an arm (the first, a level forehand at the chest, beheads; the second, a rising backhand that
   strikes low, takes a forearm); the third and fourth cuts, the rush, the iai (along its line), the storm, the counter and the Crescent Wave cut
   through the body; the plunging slam chops it top-down. The planes are the pack's own blade at each strike. The DEV Katana cuts the same ways on
-  its own clips (surveyed at 200 fps by the DEV classes agent).
+  its own clips (surveyed at 200 fps by the DEV classes agent), but for its third hit, a kick (owner 2026-11-13: "3rd hit of dev katana is a kick,
+  so its blunt damage rather than slicing"; `NativeBladeCuts.Blunt`, by its clip): a blow, whose kill crushes the head or an arm as a shield's and
+  reads "Blunt force", whose hit lands as an impact burst with the fighters' kick and a bruise. Its rules are the third cut's.
 - **The blade** (Core `NativeWeaponModels.Katana.cs`, sculpted with WeaponSculpt): a curved single-edged blade with a lit hamon in the pilot's
   accent, a habaki, a pierced tsuba, a wrapped tsuka and a kashira. The blade rests in its saya from the sheathing's click to the iai's end.
 - **The saya** (Core `NativeKatanaSaya`, drawn by Runtime `NativeBladePresentation.cs`; owner 2026-11-11: "sheathe is still not on body"):
@@ -122,7 +124,11 @@ click, the split, the dash, a gust, the ringing edge, a chime, the whetstone, th
 
 `Actor.Blade` (Core `NativeBladeKit`, shared with the Fangs): the move, the combo, the ready times, a move's travel, the iai's line and its
 split, the counter's window, a paired move's victim and clip, the chips held and the last 1.5 s of hits. A held victim's actor carries
-`PairBy`, `PairClip`, `PairAt` and `PairUntil`, and its body plays the victim's clip. The record is replicated in snapshots, late join, death
+`PairBy`, `PairClip`, `PairAt` and `PairUntil`, and its body plays the victim's clip whatever its class (owner 2026-11-13: "Give one to
+everyone": a set that does not list the clip borrows it from the motion bank when the host first names it, Core `NativeBladeMotion.Lent`,
+Runtime `VisualMotionLend`; the Cyber Lord, with no set, plays it on `NativeVisualMotion.Held`). A counter's foe sways in the parry's daze
+until the blow (`NativeBladeMotion.StruckOnBlow`); while it plays the clip its weapon hangs from the hand and its hips stay over its spot,
+and a lethal blow's corpse falls from the drawn pose. The record is replicated in snapshots, late join, death
 records and the killcam, and checked with `Valid()`.
 
 ## Files
