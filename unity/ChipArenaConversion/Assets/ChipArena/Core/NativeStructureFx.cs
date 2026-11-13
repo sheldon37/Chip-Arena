@@ -538,7 +538,10 @@ namespace ChipArena.UnityConversion
         private void RealBurst(in Burst b,float t,float q)
         {
             float s=BurstScale(b.Size),root=(float)Math.Sqrt(s);V3 c=b.Center,half=b.Size*.5f;uint seed=b.Seed;var m=b.Material;
-            int baseHex=b.Color!=0?b.Color:BaseColor(m);if(m==NativeStructureMaterial.Timber)baseHex=Mix(baseHex,Weathered,.55f);BurstCounts(m,s,out int pieces,out int grit,out _,out _);float k=Reduced(q);pieces=(int)Math.Round(pieces*k);grit=(int)Math.Round(grit*k);
+            int baseHex=b.Color!=0?b.Color:BaseColor(m);if(m==NativeStructureMaterial.Timber)baseHex=Mix(baseHex,Weathered,.55f);BurstCounts(m,s,out int pieces,out int grit,out _,out _);
+            // A metal box is all sheet: more panels than the voxel style's plates, and small torn scraps where the others throw grit.
+            if(m==NativeStructureMaterial.Metal){pieces=(int)Math.Round(pieces*1.8f);grit=(int)Math.Round(8*s);}
+            float k=Reduced(q);pieces=(int)Math.Round(pieces*k);grit=(int)Math.Round(grit*k);
             float longest=Math.Max(b.Size.x,Math.Max(b.Size.y,b.Size.z)),least=Math.Min(b.Size.x,Math.Min(b.Size.y,b.Size.z));
             int big=m==NativeStructureMaterial.Timber?Math.Max(3,(int)Math.Round(pieces*.4f)):m==NativeStructureMaterial.Concrete?Math.Min(3,pieces):0;
             for(int i=0;i<pieces;i++)
@@ -573,7 +576,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<grit;i++)
             {
                 float life=2.2f+1.2f*H(seed,i,50);if(t>=life)continue;float e=.04f+.045f*H(seed,i,51);Launch(seed,i,52,c,half,2,5.5f,1.2f,4,out V3 p0,out V3 v0);v0=v0+b.Push*(1.5f+2*H(seed,i,57));
-                bool chip=m==NativeStructureMaterial.Timber,sliver=m==NativeStructureMaterial.Glass;
+                bool chip=m==NativeStructureMaterial.Timber,sliver=m==NativeStructureMaterial.Glass||m==NativeStructureMaterial.Metal;
                 Thrown(chip?NativeDebrisShape.Splinter:sliver?NativeDebrisShape.Shard:NativeDebrisShape.Pebble,(int)(seed%971)+i,p0,v0,chip?new V3(e*.4f,e*.3f,e*2.2f):sliver?new V3(e,e*.2f,e*.8f):new V3(e,e*.8f,e),10,b.Floor,t,life,m,seed,i,58,0,0,0,1,gr,gg,gb);
             }
         }
@@ -684,7 +687,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<n;i++)
             {
                 float h=H(seed,i,1),h2=H(seed,i,2),yaw,roll;V3 off,dim;
-                if(m==NativeStructureMaterial.Metal){off=new V3(0,i==0?0:-size.y*.12f,0);dim=i==0?size:new V3(size.x*.8f,size.y*.6f,size.z*.7f);yaw=i==0?0:1.2f;roll=0;}
+                if(m==NativeStructureMaterial.Metal){off=new V3(0,i==0?-size.y*.25f:size.y*.1f,0);dim=i==0?new V3(size.x,size.y*.5f,size.z):new V3(size.x*.8f,size.y*.45f,size.z*.7f);yaw=i==0?0:1.2f;roll=0;}
                 else
                 {
                     off=new V3((i-1)*size.x*.33f,(h-.5f)*size.y*.2f,(h2-.5f)*size.z*.1f);yaw=(h2-.5f)*.3f;roll=(h-.5f)*.3f;
