@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -40,6 +41,12 @@ namespace ChipArena.UnityConversion
         /// <summary>The presentation that hears every structure event this kit takes in (ArenaPresentation.StructureHeard).</summary>
         internal ArenaPresentation Owner;
         private int generation=-1,lastEvent;private float lastNow=-1;private string blockMap;private ContentBlock[] blocks;
+        // The map's debris style (Core NativeDebrisLook: its look's `debris`), read when the map binds.
+        private string debris;private bool dressedMap;
+        /// <summary>The loose fragments are drawn as broken pieces this frame (the realistic debris style), so the dressed
+        /// blocks leave their boxes out (NativeArenaDressing).</summary>
+        public static bool ShapedFragments{get;private set;}
+        private readonly List<Renderer> fragmentBoxes=new List<Renderer>();
         private readonly int[] order=new int[NativeStructureFx.PuffCap];private readonly float[] depth=new float[NativeStructureFx.PuffCap];
         private readonly Color[] faceLight=new Color[6];private Color topLight,bottomLight;
         private static readonly RaycastHit[] hits=new RaycastHit[24];
@@ -61,10 +68,10 @@ namespace ChipArena.UnityConversion
         public void Render(NativeArena arena,Camera camera,float now,float quality)
         {
             if(arena==null||camera==null)return;
-            if(generation!=arena.Generation||blockMap!=arena.MapId){Clear();generation=arena.Generation;blockMap=arena.MapId;blocks=arena.Content?.maps?.FirstOrDefault(m=>m.id==arena.MapId)?.blocks;}
+            if(generation!=arena.Generation||blockMap!=arena.MapId){Clear();generation=arena.Generation;blockMap=arena.MapId;blocks=arena.Content?.maps?.FirstOrDefault(m=>m.id==arena.MapId)?.blocks;var look=arena.Map!=null?NativeLighting.Look(arena.Map):null;debris=look?.debris;dressedMap=NativeBlockLooks.Dressed(look,NativeArenaDressing.Preview);}
             else if(now<lastNow-.25f)lastEvent=0;lastNow=now;Clock=now;
-            fx.Wind=NativeStructureFx.WindFor(arena.MapId);Intake(arena,now);SyncStructures(arena,now);if(QualitySettings.pixelLightCount<=3)quality=Math.Min(quality,.45f);
-            fx.Frame(now,V(camera.transform.position),quality);draw.Clear();Lights();Fill(camera);draw.Draw(camera,null,now);
+            fx.Wind=NativeStructureFx.WindFor(arena.MapId);fx.Style=NativeDebrisLook.For(arena.MapId,debris);Intake(arena,now);SyncStructures(arena,now);if(QualitySettings.pixelLightCount<=3)quality=Math.Min(quality,.45f);
+            fx.Frame(now,V(camera.transform.position),quality);Fragments(arena);draw.Clear();Lights();Fill(camera);draw.Draw(camera,null,now);
         }
         private void Intake(NativeArena arena,float now)
         {
@@ -114,7 +121,50 @@ namespace ChipArena.UnityConversion
         {
             var def=Block(e.SurfaceId);V3 size=def!=null?def.size:new V3(1,1,1);Vector3 at=NativeArena.Vec(e.Position);
             float floor=SurfaceBelow(arena,at+Vector3.down*(size.y*.5f-.05f),at.y-size.y*.5f);
-            fx.Break(NativeStructureFx.Classify(e.Detail),NativeImpactCues.MaterialColor(arena.Content?.materials,e.Detail),e.Position,size,floor,Seed(arena,e.SurfaceId??e.Detail),e.Time,decals);
+            // The blow's direction: from the pilot who broke it (levelled), so the realistic pieces lean away from the hit.
+            V3 push=default;if(e.Source!=0)foreach(var p in arena.Pilots)if(p?.Seat!=null&&p.Seat.id==e.Source&&p.Body!=null){Vector3 d=at-p.Body.transform.position;d.y=0;if(d.sqrMagnitude>.04f)push=V(d.normalized);break;}
+            fx.Break(NativeStructureFx.Classify(e.Detail),NativeImpactCues.MaterialColor(arena.Content?.materials,e.Detail),e.Position,size,floor,Seed(arena,e.SurfaceId??e.Detail),e.Time,decals,push);
+        }
+        /// <summary>
+        /// The floor under <paramref name="at"/> for a slam's debris: its material kind and colour (the block's content
+        /// material; a foundation takes the map's floor colour) and its height, from a ray down through anything that is not
+        /// <see cref="Movable"/>. False (concrete, the kind's own colour, <paramref name="fallback"/>) where there is none.
+        /// </summary>
+        public static bool FloorKind(NativeArena arena,Vector3 at,out NativeStructureMaterial material,out int color,out float floor,float fallback)
+        {
+            material=NativeStructureMaterial.Concrete;color=0;floor=fallback;if(arena?.Root==null)return false;
+            var physics=arena.Root.scene.GetPhysicsScene();int n=physics.Raycast(at+Vector3.up*.6f,Vector3.down,hits,3,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);
+            float best=float.NegativeInfinity;NativePropBody found=null;
+            for(int i=0;i<n;i++){if(Movable(hits[i].collider)||hits[i].point.y<=best)continue;best=hits[i].point.y;found=hits[i].collider.GetComponent<NativePropBody>();}
+            if(float.IsNegativeInfinity(best))return false;floor=best;string id=found?.Definition?.material;material=NativeStructureFx.Classify(id);
+            color=string.IsNullOrEmpty(id)||id=="foundation"?(arena.Map!=null?arena.Map.floor:0):NativeImpactCues.MaterialColor(arena.Content?.materials,id);return true;
+        }
+        /// <summary>A melee slam's floor debris at <paramref name="at"/> (Core NativeStructureFx.Slam) on the floor found under it.</summary>
+        public static void Slam(NativeArena arena,NativeStructureFx kit,Vector3 at,float fallbackFloor,float weight,Vector3 push,uint seed,float time,bool marks)
+        {
+            if(kit==null||!(weight>0))return;FloorKind(arena,new Vector3(at.x,Mathf.Max(at.y,fallbackFloor),at.z),out var material,out int color,out float floor,fallbackFloor);
+            kit.Slam(material,color,new V3(at.x,floor,at.z),floor,weight,new V3(push.x,0,push.z),seed,time,marks);
+        }
+        // The loose fragments a broken prop leaves in the match (arena.Props with Fragment set). In the realistic debris style each
+        // is drawn as its material's broken piece inside its own box (fx.Loose) and the box's renderer only casts its shadow; the
+        // voxel style leaves the boxes as they were. The fragment's body, collider, damage and replication are never touched.
+        private void Fragments(NativeArena arena)
+        {
+            bool shaped=fx.Style==NativeDebrisStyle.Realistic;ShapedFragments=shaped;
+            if(!shaped)
+            {
+                foreach(var r in fragmentBoxes)if(r!=null){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;r.forceRenderingOff=dressedMap;}
+                fragmentBoxes.Clear();return;
+            }
+            var props=arena.Props;
+            for(int i=0;i<props.Count;i++)
+            {
+                var p=props[i];if(p==null||!p.Fragment||p.Definition==null)continue;var t=p.transform;Quaternion q=t.rotation;string material=p.Definition.material;
+                fx.Loose(NativeStructureFx.Classify(material),NativeImpactCues.MaterialColor(arena.Content?.materials,material),V(t.position),p.Definition.size,q.x,q.y,q.z,q.w,NativeBlockLooks.Hash(p.Definition.id));
+                var box=p.GetComponent<Renderer>();if(box==null||box.shadowCastingMode==UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly&&!box.forceRenderingOff)continue;
+                box.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;box.forceRenderingOff=false;if(!fragmentBoxes.Contains(box))fragmentBoxes.Add(box);
+            }
+            for(int i=fragmentBoxes.Count-1;i>=0;i--)if(fragmentBoxes[i]==null)fragmentBoxes.RemoveAt(i);
         }
         // Only blasts and fire scorch (NativeStructureFx.ScorchScale): trampolines, static procs, wormholes and fields leave none.
         private void Scorch(NativeArena arena,in ArenaEvent e)
@@ -231,7 +281,7 @@ namespace ChipArena.UnityConversion
         private void Fill(Camera camera)
         {
             var solid=draw.Solid;var layer=draw.Effects;var cam=camera.transform;Vector3 eye=cam.position,right=cam.right,up=cam.up;
-            for(int i=0;i<fx.CubeCount;i++)ShadedCube(solid,fx.Cubes[i]);
+            for(int i=0;i<fx.CubeCount;i++){if(fx.Cubes[i].Shape==NativeDebrisShape.Block)ShadedCube(solid,fx.Cubes[i]);else ShadedPiece(solid,fx.Cubes[i]);}
             // Decals and the crush footprint first, then the dust far to near, then wires, then the additive sparks and glints.
             Color upLight=faceLight[2];
             for(int i=0;i<fx.FlatCount;i++)
@@ -251,6 +301,20 @@ namespace ChipArena.UnityConversion
             }
             for(int pass=0;pass<2;pass++)for(int i=0;i<fx.LineCount;i++){var l=fx.Lines[i];if(l.Additive!=(pass==1))continue;Ribbon(layer,U(l.From),U(l.To),l.Width,new Color(l.R,l.G,l.B,l.Alpha),eye,l.Additive?Glowing:Authored);}
             for(int i=0;i<fx.GlowCount;i++){var g=fx.Glows[i];draw.Sprite(layer,U(g.Center),right,up,g.Size,new Color(g.R,g.G,g.B,g.Alpha),Glowing);}
+        }
+        // A broken piece (Core NativeDebrisShapes): its mesh scaled to the record's box and turned, each facet lit by its own
+        // normal in the same baked light as the cubes (and the anime style's ramp), so it sits with the blocks it came from.
+        private void ShadedPiece(NativeFxDraw.Layer layer,in NativeStructureCube c)
+        {
+            var mesh=NativeDebrisShapes.Mesh(c.Shape,c.Variant);if(mesh==null){ShadedCube(layer,c);return;}
+            var q=new Quaternion(c.Qx,c.Qy,c.Qz,c.Qw);Vector3 o=U(c.Center),ux=q*Vector3.right,uy=q*Vector3.up,uz=q*Vector3.forward,ax=ux*c.Size.x,ay=uy*c.Size.y,az=uz*c.Size.z;
+            float ix=1/c.Size.x,iy=1/c.Size.y,iz=1/c.Size.z;Vector4 uv=Uv(0,0,NativeFxDraw.Flat,Authored);var P=mesh.P;var N=mesh.N;
+            for(int t=0;t<mesh.Triangles;t++)
+            {
+                int k=t*9,j=t*3;Vector3 n=(ux*(N[j]*ix)+uy*(N[j+1]*iy)+uz*(N[j+2]*iz)).normalized;Color lt=Light(n),col=new Color(c.R*lt.r,c.G*lt.g,c.B*lt.b,1);int s=layer.Count;
+                layer.Vertex(o+ax*P[k]+ay*P[k+1]+az*P[k+2],n,col,uv,Vector4.zero,Vector4.zero);layer.Vertex(o+ax*P[k+3]+ay*P[k+4]+az*P[k+5],n,col,uv,Vector4.zero,Vector4.zero);
+                layer.Vertex(o+ax*P[k+6]+ay*P[k+7]+az*P[k+8],n,col,uv,Vector4.zero,Vector4.zero);layer.Triangle(s,s+1,s+2);
+            }
         }
         private readonly float[] bevelCorners=new float[12];
         private void ShadedCube(NativeFxDraw.Layer layer,in NativeStructureCube c)

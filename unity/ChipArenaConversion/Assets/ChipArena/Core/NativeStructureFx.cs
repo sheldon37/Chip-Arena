@@ -6,8 +6,10 @@ namespace ChipArena.UnityConversion
     /// <summary>The structure events of docs/arenas/ARENA_PROPOSAL.md §5.4 (authoritative EventKinds drive their look).</summary>
     public enum NativeStructureCue{Stress,Fall,Land}
     public enum NativeStructureMark{Scorch,Chip,Crack,Stain}
-    /// <summary>An opaque debris cube: centre, full edges, rotation, albedo (sRGB 0..1).</summary>
-    public struct NativeStructureCube{public V3 Center,Size;public float Qx,Qy,Qz,Qw,R,G,B;}
+    /// <summary>An opaque debris piece in its box: centre, full edges, rotation, albedo (sRGB 0..1).</summary>
+    public struct NativeStructureCube{public V3 Center,Size;public float Qx,Qy,Qz,Qw,R,G,B;
+        /// <summary>The piece's shape (Block: the cube) and which variant of it (Core/NativeDebrisShapes.cs).</summary>
+        public NativeDebrisShape Shape;public int Variant;}
     /// <summary>A soft camera-facing dust billboard (premultiplied over): width and height in metres, sRGB albedo, opacity,
     /// and the light multipliers of its top and bottom edge.</summary>
     public struct NativeStructurePuff{public V3 Center;public float Width,Height,R,G,B,Alpha,Top,Bottom;}
@@ -50,7 +52,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeStructureFx
     {
-        public const int BurstSlots=24,EventSlots=48,DecalSlots=256,ShakeSlots=8,MockSlots=2;
+        public const int BurstSlots=40,EventSlots=48,DecalSlots=256,ShakeSlots=8,MockSlots=2;
         public const int CubeCap=1024,PuffCap=120,FlatCap=1536,LineCap=512,GlowCap=256;
         public const float BurstLife=2.6f,StressTail=.9f,StressHold=4,FallLife=4.6f,LandLife=15,ThinNear=3,Gravity=14;
         /// <summary>Fall accelerations (m/s²): the contract's pancake maxAccel (§5.2, §6.1: a rider stays on the slab) and g, the
@@ -74,8 +76,11 @@ namespace ChipArena.UnityConversion
         public int CubeCount,PuffCount,FlatCount,LineCount,GlowCount;
         /// <summary>Collapse dust drift (m/s; Brickfall: east at .7, §3.10 atmosphere). Set per map by the presentation.</summary>
         public V3 Wind;
+        /// <summary>How loose debris is drawn and thrown (Core/NativeDebrisShapes.cs NativeDebrisLook: broken pieces by default,
+        /// the voxel cubes on a map that asks for them). Set per map by the presentation.</summary>
+        public NativeDebrisStyle Style=NativeDebrisLook.Default;
 
-        private struct Burst{public bool Live;public NativeStructureMaterial Material;public V3 Center,Size;public int Color;public float Floor,Born;public uint Seed;}
+        private struct Burst{public bool Live,Ground;public NativeStructureMaterial Material;public V3 Center,Size,Push;public int Color;public float Floor,Born,Weight;public uint Seed;}
         private struct Record{public bool Live;public NativeStructureCue Cue;public NativeStructureMaterial Material;public V3 Center,Normal,BoxCenter,BoxHalf;public float Radius,Amount,Floor,Born,Accel;public uint Seed,Base;}
         private struct Mark{public bool Live;public NativeStructureMark Kind;public V3 Center,Normal;public float Size,Born;public uint Seed;}
         private struct Shake{public bool Live,Rise;public V3 At;public float Peak,Born,Duration;public uint Seed;}
@@ -203,6 +208,8 @@ namespace ChipArena.UnityConversion
         // ---------- output ----------
         private bool Cube(V3 c,V3 s,float qx,float qy,float qz,float qw,float r,float g,float b)
         {if(CubeCount>=CubeCap||s.x<=.002f||s.y<=.002f||s.z<=.002f)return false;Cubes[CubeCount++]=new NativeStructureCube{Center=c,Size=s,Qx=qx,Qy=qy,Qz=qz,Qw=qw,R=r,G=g,B=b};return true;}
+        private bool Piece(NativeDebrisShape shape,int variant,V3 c,V3 s,float qx,float qy,float qz,float qw,float r,float g,float b)
+        {if(CubeCount>=CubeCap||s.x<=.002f||s.y<=.002f||s.z<=.002f)return false;Cubes[CubeCount++]=new NativeStructureCube{Center=c,Size=s,Qx=qx,Qy=qy,Qz=qz,Qw=qw,R=r,G=g,B=b,Shape=Style==NativeDebrisStyle.Voxel?NativeDebrisShape.Block:shape,Variant=variant};return true;}
         private bool Box(V3 c,V3 s,int hex){Rgb(hex,out float r,out float g,out float b);return Cube(c,s,0,0,0,1,r,g,b);}
         private bool Puff(V3 c,float w,float h,float r,float g,float b,float a,float top,float bottom,V3 eye)
         {if(PuffCount>=PuffCap)return false;a*=NearThin(Len(c-eye));if(a<=.004f||w<=.01f)return true;Puffs[PuffCount++]=new NativeStructurePuff{Center=c,Width=w,Height=h,R=r,G=g,B=b,Alpha=a,Top=top,Bottom=bottom};return true;}
@@ -219,10 +226,12 @@ namespace ChipArena.UnityConversion
         private static readonly Func<Mock,bool> MockLive=m=>m.Live;private static readonly Func<Mock,float> MockBorn=m=>m.Born;
         /// <summary>A Break event: the block's material kind and content colour (0: the kind's own), centre, full size and the floor
         /// under it. <paramref name="decals"/>: also leave chip and crack marks below (Brickfall, <see cref="MapMarks"/>).</summary>
-        public void Break(NativeStructureMaterial material,int color,V3 center,V3 size,float floor,uint seed,float time,bool decals)
+        public void Break(NativeStructureMaterial material,int color,V3 center,V3 size,float floor,uint seed,float time,bool decals)=>Break(material,color,center,size,floor,seed,time,decals,new V3());
+        /// <summary>The same break struck along <paramref name="push"/> (world, levelled): the realistic style's pieces lean away from the blow.</summary>
+        public void Break(NativeStructureMaterial material,int color,V3 center,V3 size,float floor,uint seed,float time,bool decals,V3 push)
         {
             for(int i=0;i<BurstSlots;i++)if(bursts[i].Live&&bursts[i].Seed==seed&&bursts[i].Born==time)return;
-            bursts[Oldest(bursts,BurstLive,BurstBorn)]=new Burst{Live=true,Material=material,Center=center,Size=new V3(Math.Max(.2f,size.x),Math.Max(.2f,size.y),Math.Max(.2f,size.z)),Color=color,Floor=Math.Min(floor,center.y),Born=time,Seed=seed};
+            bursts[Oldest(bursts,BurstLive,BurstBorn)]=new Burst{Live=true,Material=material,Center=center,Size=new V3(Math.Max(.2f,size.x),Math.Max(.2f,size.y),Math.Max(.2f,size.z)),Color=color,Floor=Math.Min(floor,center.y),Born=time,Seed=seed,Push=Level(push)};
             if(!decals)return;float s=BurstScale(size);V3 at=new V3(center.x,floor,center.z),up=new V3(0,1,0);
             AddMark(NativeStructureMark.Chip,at,up,(.7f+.4f*H(seed,1,90))*s,seed^MarkSalt,time);AddMark(NativeStructureMark.Crack,at,up,(1f+.5f*H(seed,2,90))*s,seed^MarkSalt^1,time);
         }
@@ -357,7 +366,7 @@ namespace ChipArena.UnityConversion
         public void Frame(float now,V3 eye,float quality)
         {
             CubeCount=PuffCount=FlatCount=LineCount=GlowCount=0;float q=Clamp01(quality);
-            for(int i=0;i<BurstSlots;i++)if(bursts[i].Live&&now-bursts[i].Born>=BurstLife)bursts[i].Live=false;
+            for(int i=0;i<BurstSlots;i++)if(bursts[i].Live&&now-bursts[i].Born>=(Style==NativeDebrisStyle.Voxel?BurstLife:PieceLife))bursts[i].Live=false;
             for(int i=0;i<EventSlots;i++){var r=records[i];if(!r.Live)continue;float a=now-r.Born;if(r.Cue==NativeStructureCue.Stress?a>r.Amount+StressTail&&!Holding(r,a,now):a>=(r.Cue==NativeStructureCue.Land?LandLife:FallLife))records[i].Live=false;}
             for(int i=0;i<MockSlots;i++)if(mocks[i].Live&&now-mocks[i].Born>=NativeStructurePreview.LandAt+LandLife)mocks[i].Live=false;
             for(int i=0;i<DecalSlots;i++)if(marks[i].Live)MarkFrame(marks[i],now);
@@ -396,10 +405,15 @@ namespace ChipArena.UnityConversion
         }
         private void BurstFrame(in Burst b,float now,V3 eye,float q)
         {
-            float t=now-b.Born;if(t<0||t>=BurstLife)return;float s=BurstScale(b.Size),k=Reduced(q),root=(float)Math.Sqrt(s);V3 c=b.Center,half=b.Size*.5f;uint seed=b.Seed;
+            float t=now-b.Born;if(t<0||t>=(Style==NativeDebrisStyle.Voxel?BurstLife:PieceLife))return;if(b.Ground){SlamFrame(b,t,eye,q);return;}
+            float s=BurstScale(b.Size),k=Reduced(q),root=(float)Math.Sqrt(s);V3 c=b.Center,half=b.Size*.5f;uint seed=b.Seed;
             int baseHex=b.Color!=0?b.Color:BaseColor(b.Material);BurstCounts(b.Material,s,out int pieces,out int grit,out int puffs,out int sparks);
             pieces=(int)Math.Round(pieces*k);grit=(int)Math.Round(grit*k);puffs=Math.Max(1,(int)Math.Round(puffs*k));sparks=(int)Math.Round(sparks*k);
             var m=b.Material;
+            // The realistic style throws broken pieces that follow the material (RealBurst); the voxel style keeps its cubes.
+            if(Style==NativeDebrisStyle.Realistic)RealBurst(b,t,q);
+            else
+            {
             for(int i=0;i<pieces;i++)
             {
                 float life=1.8f+.8f*H(seed,i,20);if(t>=life)continue;V3 dim;float lo,hi,upLo,upHi,spin;int hex;float pick=H(seed,i,21);
@@ -430,6 +444,7 @@ namespace ChipArena.UnityConversion
                 float life=1.1f+.5f*H(seed,i,50);if(t>=life)continue;float e=.035f+.03f*H(seed,i,51);Launch(seed,i,52,c,half,2,5.5f,1.2f,4,out V3 p0,out V3 v0);Throw(p0,v0,Gravity,b.Floor+e*.5f,t,out V3 p);
                 float shrink=Math.Min(1,(life-t)/.3f);Rgb(gritHex,out float r,out float g,out float bl);Cube(p,new V3(e,e,e)*shrink,0,0,0,1,r,g,bl);
             }
+            }
             if(m!=NativeStructureMaterial.Metal&&m!=NativeStructureMaterial.Glass)
             {
                 // The puff: the first is the pop at the block's centre, the rest roll out from its faces and settle.
@@ -451,6 +466,228 @@ namespace ChipArena.UnityConversion
                 }
                 // The clank: a white-hot flash and a short orange core (additive sprites, no Unity light).
                 if(t<.14f)Glow(c,1.5f*s,Flash,(1-t/.14f)*(1-t/.14f));if(t<.3f)Glow(c,.7f*s,FlashCore,1-t/.3f);
+            }
+        }
+
+        // ---------- the realistic style: broken pieces with weight (owner 2026-11-13) ----------
+        /// <summary>How long a realistic burst lasts: its pieces lie where they settle, then sink away over the last
+        /// <see cref="PieceSink"/> s of their own lives.</summary>
+        public const float PieceLife=4.4f,PieceSink=.5f;
+        /// <summary>How much of its landing speed a piece of the material keeps on a bounce, and of its run along the floor.</summary>
+        public static float Bounce(NativeStructureMaterial m)=>m==NativeStructureMaterial.Metal?.42f:m==NativeStructureMaterial.Timber?.34f:m==NativeStructureMaterial.Glass?.12f:m==NativeStructureMaterial.Masonry?.22f:.2f;
+        public static float Grip(NativeStructureMaterial m)=>m==NativeStructureMaterial.Metal?.7f:m==NativeStructureMaterial.Timber?.62f:m==NativeStructureMaterial.Glass?.45f:m==NativeStructureMaterial.Masonry?.55f:.5f;
+        /// <summary>
+        /// A thrown piece with weight: ballistic under <paramref name="g"/> to <paramref name="floor"/>, up to four bounces (each
+        /// keeps <paramref name="bounce"/> of the landing speed and <paramref name="grip"/> of the run along the floor), then a
+        /// slide that dies away. Pure in t, never integrated. <paramref name="air"/>: how long it has tumbled freely (each
+        /// bounce halves the tumble); <paramref name="rest"/>: 0 in flight, rising to 1 once it has settled.
+        /// </summary>
+        public static void Tumble(V3 p0,V3 v0,float g,float floor,float t,float bounce,float grip,out V3 p,out float air,out float rest)
+        {
+            float x=p0.x,y=Math.Max(p0.y,floor),z=p0.z,vx=v0.x,vy=v0.y,vz=v0.z,left=Math.Max(0,t),rate=1;air=0;rest=0;
+            for(int n=0;n<4;n++)
+            {
+                float hit=(vy+(float)Math.Sqrt(Math.Max(0,vy*vy+2*g*(y-floor))))/g;
+                if(left<hit){p=new V3(x+vx*left,y+vy*left-.5f*g*left*left,z+vz*left);air+=left*rate;return;}
+                x+=vx*hit;z+=vz*hit;left-=hit;air+=hit*rate;float into=Math.Abs(vy-g*hit);y=floor;vy=into*bounce;vx*=grip;vz*=grip;rate*=.5f;
+                if(vy<.5f)break;
+            }
+            const float drag=6;float slid=(1-(float)Math.Exp(-drag*left))/drag;p=new V3(x+vx*slid,floor,z+vz*slid);air+=rate*slid;rest=Clamp01(left/.4f);
+        }
+        /// <summary>How high the centre of a box of full edges <paramref name="d"/>, turned by the quaternion, stands over the
+        /// floor it touches.</summary>
+        public static float Stand(V3 d,float qx,float qy,float qz,float qw)
+        {float a=2*(qx*qy+qz*qw),b=1-2*(qx*qx+qz*qz),c=2*(qy*qz-qx*qw);return .5f*(Math.Abs(a)*d.x+Math.Abs(b)*d.y+Math.Abs(c)*d.z);}
+        private static void Nlerp(float ax,float ay,float az,float aw,float bx,float by,float bz,float bw,float t,out float x,out float y,out float z,out float w)
+        {
+            if(ax*bx+ay*by+az*bz+aw*bw<0){bx=-bx;by=-by;bz=-bz;bw=-bw;}x=ax+(bx-ax)*t;y=ay+(by-ay)*t;z=az+(bz-az)*t;w=aw+(bw-aw)*t;
+            float l=(float)Math.Sqrt(x*x+y*y+z*z+w*w);if(l<1e-6f){x=y=z=0;w=1;return;}x/=l;y/=l;z/=l;w/=l;
+        }
+        private static V3 Level(V3 v){float l=(float)Math.Sqrt(v.x*v.x+v.z*v.z);return l<1e-4f?new V3():new V3(v.x/l,0,v.z/l);}
+        private static V3 Turn(V3 v,float qx,float qy,float qz,float qw)
+        {float tx=2*(qy*v.z-qz*v.y),ty=2*(qz*v.x-qx*v.z),tz=2*(qx*v.y-qy*v.x);return new V3(v.x+qw*tx+qy*tz-qz*ty,v.y+qw*ty+qz*tx-qx*tz,v.z+qw*tz+qx*ty-qy*tx);}
+        /// <summary>The shape a loose chunk of a material takes: brick halves among rough lumps, boards, bent panels, shards,
+        /// else a rough chunk.</summary>
+        public static NativeDebrisShape Chunk(NativeStructureMaterial m,int i)=>m==NativeStructureMaterial.Masonry?(i%3==0?NativeDebrisShape.Rock:NativeDebrisShape.Brick):m==NativeStructureMaterial.Timber?NativeDebrisShape.Plank:m==NativeStructureMaterial.Metal?NativeDebrisShape.Panel:m==NativeStructureMaterial.Glass?NativeDebrisShape.Shard:NativeDebrisShape.Rock;
+        // A near-cubic rubble box drawn as its material's piece: a board is long and thin, a panel wide and flat, a shard a sliver.
+        private V3 Reshape(NativeStructureMaterial m,V3 d)
+        {
+            if(Style==NativeDebrisStyle.Voxel)return d;
+            switch(m){case NativeStructureMaterial.Timber:return new V3(d.x*.4f,d.y*.3f,Math.Min(.42f,d.z*1.6f));case NativeStructureMaterial.Metal:return new V3(Math.Min(.42f,d.x*1.25f),d.y*.35f,d.z);case NativeStructureMaterial.Glass:return new V3(d.x,d.y*.1f,d.z);default:return d;}
+        }
+        // One thrown piece: tumbling through the air, bouncing, coming to lie flat on a heading of its own, never sunk into the
+        // floor (its box's own height over it), a soft shadow under the bigger ones while they are near the floor, and at
+        // the end of its life sinking away.
+        private void Thrown(NativeDebrisShape shape,int variant,V3 p0,V3 v0,V3 dim,float spin,float floor,float t,float life,NativeStructureMaterial m,uint seed,int i,int ch,float ix,float iy,float iz,float iw,float r,float g,float b)
+        {
+            Tumble(p0,v0,Gravity,floor,t,Bounce(m),Grip(m),out V3 p,out float air,out float rest);
+            AxisAngle(Axis(seed,i,ch),spin*(.4f+.6f*H(seed,i,ch+2))*air,out float qx,out float qy,out float qz,out float qw);Mul(qx,qy,qz,qw,ix,iy,iz,iw,out qx,out qy,out qz,out qw);
+            if(rest>0){AxisAngle(new V3(0,1,0),H(seed,i,ch+3)*6.2831855f,out float lx,out float ly,out float lz,out float lw);Nlerp(qx,qy,qz,qw,lx,ly,lz,lw,Smooth(rest),out qx,out qy,out qz,out qw);}
+            float stand=Stand(dim,qx,qy,qz,qw),gone=Smooth((t-(life-PieceSink))/PieceSink);if(p.y<floor+stand)p.y=floor+stand;
+            float shade=1-Clamp01((p.y-floor-stand)/.5f),wide=Math.Max(dim.x,dim.z);
+            if(wide>.12f&&shade>0&&gone<1)Quad(new V3(p.x,floor+.014f,p.z),new V3(wide*.7f,0,0),new V3(0,0,wide*.7f),Ink,.3f*shade*(1-gone),true,false);
+            if(gone>0){p.y-=(stand*2+.02f)*gone;dim=dim*(1-.35f*gone);}
+            Piece(shape,variant,p,dim,qx,qy,qz,qw,r,g,b);
+        }
+        // A realistic break: pieces that follow the prop's material and size. A timber crate goes to boards as long as its
+        // edges (starting along them) and splinters; a metal box to bent panels; concrete to a few big lumps and many small
+        // ones; masonry to bricks snapped at their ends; glass to shards. The blow's direction leans them (Burst.Push).
+        private void RealBurst(in Burst b,float t,float q)
+        {
+            float s=BurstScale(b.Size),root=(float)Math.Sqrt(s);V3 c=b.Center,half=b.Size*.5f;uint seed=b.Seed;var m=b.Material;
+            int baseHex=b.Color!=0?b.Color:BaseColor(m);BurstCounts(m,s,out int pieces,out int grit,out _,out _);float k=Reduced(q);pieces=(int)Math.Round(pieces*k);grit=(int)Math.Round(grit*k);
+            float longest=Math.Max(b.Size.x,Math.Max(b.Size.y,b.Size.z)),least=Math.Min(b.Size.x,Math.Min(b.Size.y,b.Size.z));
+            int big=m==NativeStructureMaterial.Timber?Math.Max(3,(int)Math.Round(pieces*.4f)):m==NativeStructureMaterial.Concrete?Math.Min(3,pieces):0;
+            for(int i=0;i<pieces;i++)
+            {
+                float life=3f+1.2f*H(seed,i,20);if(t>=life)continue;float h=H(seed,i,22),h2=H(seed,i,23),pick=H(seed,i,21);V3 dim;float lo,hi,upLo,upHi,spin;int hex;NativeDebrisShape shape;float ix=0,iy=0,iz=0,iw=1;
+                switch(m)
+                {
+                    case NativeStructureMaterial.Masonry:shape=NativeDebrisShape.Brick;dim=new V3(.105f,.075f,pick<.35f?.12f:.21f)*(.85f+.3f*h);lo=1.2f;hi=4.2f;upLo=1;upHi=3.5f;spin=7;hex=pick<.6f?baseHex:pick<.85f?BrickDark:BrickFresh;break;
+                    case NativeStructureMaterial.Timber:
+                        if(i<big)
+                        {
+                            shape=NativeDebrisShape.Plank;dim=new V3(.09f+.07f*h2,.022f+.014f*h,Math.Max(.3f,Math.Min(1.5f,longest*(.45f+.45f*h))));lo=1.4f;hi=3.8f;upLo=1.2f;upHi=3.4f;spin=5;hex=pick<.7f?baseHex:TimberFresh;
+                            // A board starts along one of the prop's own edges.
+                            int axis=i%3;if(axis==0)AxisAngle(new V3(0,1,0),1.5707963f,out ix,out iy,out iz,out iw);else if(axis==1)AxisAngle(new V3(1,0,0),-1.5707963f,out ix,out iy,out iz,out iw);
+                        }
+                        else{shape=NativeDebrisShape.Splinter;dim=new V3(.03f+.02f*h2,.022f+.016f*h2,.14f+.3f*h)*root;lo=1.8f;hi=5;upLo=1.2f;upHi=4;spin=9;hex=pick<.4f?baseHex:TimberFresh;}
+                        break;
+                    case NativeStructureMaterial.Metal:shape=NativeDebrisShape.Panel;dim=new V3(Math.Min(.6f,longest*(.22f+.22f*h)),.05f+.07f*h2,Math.Min(.5f,longest*(.18f+.2f*H(seed,i,24))));lo=1.5f;hi=4;upLo=1.5f;upHi=3.5f;spin=5;hex=pick<.75f?baseHex:SteelFresh;break;
+                    case NativeStructureMaterial.Glass:shape=NativeDebrisShape.Shard;dim=new V3(.08f+.12f*h,.012f,.06f+.1f*h2);lo=1.5f;hi=4.5f;upLo=.5f;upHi=3;spin=12;hex=pick<.5f?0xb9dbe2:0xe2f2f5;break;
+                    default:
+                    {
+                        bool lump=i<big;float e=lump?Math.Min(.42f,Math.Max(.2f,least*(.3f+.16f*h))):(.07f+.15f*h*h)*root;shape=NativeDebrisShape.Rock;
+                        dim=new V3(e*(.75f+.5f*h2),e*(.6f+.4f*H(seed,i,24)),e*(.75f+.5f*H(seed,i,25)));lo=lump?.8f:1.2f;hi=lump?2.6f:4;upLo=1;upHi=lump?2.4f:3.2f;spin=lump?4:6;hex=pick<.55f?baseHex:ConcreteFresh;break;
+                    }
+                }
+                Launch(seed,i,30,c,half,lo,hi,upLo,upHi,out V3 p0,out V3 v0);v0=v0+b.Push*(1.2f+2.2f*H(seed,i,27));
+                float tint=.88f+.24f*H(seed,i,26);Rgb(hex,out float r,out float g,out float bl);
+                Thrown(shape,(int)(seed%977)+i,p0,v0,dim,spin,b.Floor,t,life,m,seed,i,40,ix,iy,iz,iw,Math.Min(1,r*tint),Math.Min(1,g*tint),Math.Min(1,bl*tint));
+            }
+            int gritHex=m==NativeStructureMaterial.Masonry?Mortar:m==NativeStructureMaterial.Timber?TimberFresh:m==NativeStructureMaterial.Concrete?ConcreteDust:m==NativeStructureMaterial.Metal?SteelFresh:Grit;
+            Rgb(gritHex,out float gr,out float gg,out float gb);
+            for(int i=0;i<grit;i++)
+            {
+                float life=2.2f+1.2f*H(seed,i,50);if(t>=life)continue;float e=.04f+.045f*H(seed,i,51);Launch(seed,i,52,c,half,2,5.5f,1.2f,4,out V3 p0,out V3 v0);v0=v0+b.Push*(1.5f+2*H(seed,i,57));
+                bool chip=m==NativeStructureMaterial.Timber,sliver=m==NativeStructureMaterial.Glass;
+                Thrown(chip?NativeDebrisShape.Splinter:sliver?NativeDebrisShape.Shard:NativeDebrisShape.Pebble,(int)(seed%971)+i,p0,v0,chip?new V3(e*.4f,e*.3f,e*2.2f):sliver?new V3(e,e*.2f,e*.8f):new V3(e,e*.8f,e),10,b.Floor,t,life,m,seed,i,58,0,0,0,1,gr,gg,gb);
+            }
+        }
+
+        // ---------- slams: a melee blow into the floor ----------
+        /// <summary>
+        /// A melee slam into the floor at <paramref name="at"/> (owner 2026-11-13): chunks of the floor's own material and colour
+        /// (0: the kind's) thrown up and out round the point, more of them, bigger and farther for a heavier
+        /// <paramref name="weight"/> (0..1, Core NativeSlamDebris) and leaning along <paramref name="push"/>; small stones; dust
+        /// kicked up and rolling out low; sparks and a flash off a metal floor; and from NativeSlamDebris.RingFrom a dust ring
+        /// racing out. <paramref name="marks"/>: also chip and crack the floor there. The voxel style throws the cube burst
+        /// the plunge used to. Deduplicated by (seed, time) like a break; a time in the future waits for it.
+        /// </summary>
+        public void Slam(NativeStructureMaterial material,int color,V3 at,float floor,float weight,V3 push,uint seed,float time,bool marks)
+        {
+            float w=Clamp01(weight);if(w<=0)return;
+            if(Style==NativeDebrisStyle.Voxel){float size=.45f+.75f*w;Break(material,color,new V3(at.x,floor+size*.25f,at.z),new V3(size,size*.5f,size),floor,seed,time,false);}
+            else
+            {
+                for(int i=0;i<BurstSlots;i++)if(bursts[i].Live&&bursts[i].Seed==seed&&bursts[i].Born==time)return;
+                bursts[Oldest(bursts,BurstLive,BurstBorn)]=new Burst{Live=true,Ground=true,Weight=w,Material=material,Center=new V3(at.x,floor,at.z),Size=new V3(1,1,1),Color=color,Floor=floor,Born=time,Seed=seed,Push=Level(push)};
+            }
+            if(!marks)return;V3 up=new V3(0,1,0);
+            AddMark(NativeStructureMark.Chip,new V3(at.x,floor,at.z),up,.35f+.5f*w,seed^MarkSalt,time);
+            int n=2+(int)Math.Round(3*w);
+            for(int i=0;i<n;i++){float a=i*6.2831855f/n+H(seed,i,91)*.9f,d=(.2f+.5f*w)*(.5f+.5f*H(seed,i,92));AddMark(NativeStructureMark.Crack,new V3(at.x+(float)Math.Cos(a)*d,floor,at.z+(float)Math.Sin(a)*d),up,(.6f+.8f*w)*(.8f+.4f*H(seed,i,93)),seed^MarkSalt^(uint)(i+1),time);}
+        }
+        /// <summary>The live slams (ground bursts).</summary>
+        public int LiveSlams{get{int n=0;for(int i=0;i<BurstSlots;i++)if(bursts[i].Live&&bursts[i].Ground)n++;return n;}}
+        private void SlamFrame(in Burst b,float t,V3 eye,float q)
+        {
+            float w=b.Weight,k=Reduced(q);uint seed=b.Seed;var m=b.Material;V3 c=b.Center;float floor=b.Floor;bool aimed=b.Push.x!=0||b.Push.z!=0;float lean=(float)Math.Atan2(b.Push.z,b.Push.x);
+            int baseHex=b.Color!=0?b.Color:BaseColor(m),fresh=FreshColor(m),chunks=(int)Math.Round(NativeSlamDebris.Chunks(w)*k),stones=(int)Math.Round(NativeSlamDebris.Stones(w)*k);
+            float edge=NativeSlamDebris.Edge(w),reach=NativeSlamDebris.Reach(w);
+            for(int i=0;i<chunks;i++)
+            {
+                float life=2.8f+1.4f*H(seed,i,20);if(t>=life)continue;float h=H(seed,i,22);
+                float a=aimed?lean+(H(seed,i,21)-.5f)*4.4f:H(seed,i,21)*6.2831855f,r0=reach*(.15f+.6f*H(seed,i,23)),e=edge*(.35f+.65f*(float)Math.Pow(h,1.6f));
+                V3 dir=new V3((float)Math.Cos(a),0,(float)Math.Sin(a)),p0=new V3(c.x+dir.x*r0,floor+e*.3f,c.z+dir.z*r0),v0=dir*((1+3*w)*(.35f+.65f*H(seed,i,24)))+new V3(0,(2.6f+3.4f*w)*(.45f+.55f*H(seed,i,25)),0);
+                NativeDebrisShape shape;V3 dim;
+                switch(m)
+                {
+                    case NativeStructureMaterial.Timber:shape=h<.5f?NativeDebrisShape.Plank:NativeDebrisShape.Splinter;dim=new V3(e*.45f,e*.2f,e*(1.6f+1.4f*H(seed,i,26)));break;
+                    case NativeStructureMaterial.Metal:shape=NativeDebrisShape.Panel;dim=new V3(e*1.2f,e*.35f,e*(.8f+.5f*H(seed,i,26)));break;
+                    case NativeStructureMaterial.Glass:shape=NativeDebrisShape.Shard;dim=new V3(e,e*.1f,e*.8f);break;
+                    default:
+                        shape=Chunk(m,i);
+                        dim=shape==NativeDebrisShape.Brick?new V3(e*.55f,e*.4f,e*1.1f):new V3(e*(.75f+.5f*H(seed,i,26)),e*(.55f+.4f*H(seed,i,27)),e*(.75f+.5f*H(seed,i,28)));break;
+                }
+                float tint=.82f+.3f*H(seed,i,29);Rgb(H(seed,i,31)<.6f?baseHex:fresh,out float r,out float g,out float bl);
+                Thrown(shape,(int)(seed%977)+i,p0,v0,dim,5+3*H(seed,i,32),floor,t,life,m,seed,i,40,0,0,0,1,Math.Min(1,r*tint),Math.Min(1,g*tint),Math.Min(1,bl*tint));
+            }
+            Lerp(m==NativeStructureMaterial.Metal?SteelFresh:m==NativeStructureMaterial.Timber?TimberFresh:Grit,baseHex,.35f,out float sr,out float sg,out float sb);
+            for(int i=0;i<stones;i++)
+            {
+                float life=1.6f+1.2f*H(seed,i,50);if(t>=life)continue;float e=.03f+.04f*H(seed,i,51),a=aimed?lean+(H(seed,i,52)-.5f)*5f:H(seed,i,52)*6.2831855f,r0=reach*.6f*H(seed,i,53);
+                V3 dir=new V3((float)Math.Cos(a),0,(float)Math.Sin(a)),p0=new V3(c.x+dir.x*r0,floor+.02f,c.z+dir.z*r0),v0=dir*((1.5f+4*w)*(.3f+.7f*H(seed,i,54)))+new V3(0,(2.4f+4*w)*(.4f+.6f*H(seed,i,55)),0);
+                bool chip=m==NativeStructureMaterial.Timber;
+                Thrown(chip?NativeDebrisShape.Splinter:NativeDebrisShape.Pebble,(int)(seed%971)+i,p0,v0,chip?new V3(e*.4f,e*.3f,e*2.4f):new V3(e,e*.8f,e),10,floor,t,life,m,seed,i,58,0,0,0,1,sr,sg,sb);
+            }
+            if(m==NativeStructureMaterial.Metal)
+            {
+                // A metal floor rings: sparks skittering out and a short flash, no dust.
+                int sparks=(int)Math.Round((8+16*w)*k);
+                for(int i=0;i<sparks;i++)
+                {
+                    float life=.3f+.4f*H(seed,i,80);if(t>=life)continue;float u=t/life,a=aimed?lean+(H(seed,i,81)-.5f)*4.4f:H(seed,i,81)*6.2831855f,sp=(3+7*w)*(.4f+.6f*H(seed,i,82));
+                    V3 p0=new V3(c.x,floor+.05f,c.z),v0=new V3((float)Math.Cos(a)*sp,(2+5*w)*(.3f+.7f*H(seed,i,83)),(float)Math.Sin(a)*sp);
+                    Throw(p0,v0,9.8f,floor,t,out V3 head);Throw(p0,v0,9.8f,floor,Math.Max(0,t-.035f),out V3 tail);Lerp(SparkHot,SparkCool,u,out float r,out float g,out float bl);Line(tail,head,.02f,r,g,bl,1-u,true);
+                }
+                if(t<.12f)Glow(new V3(c.x,floor+.1f,c.z),.5f+.9f*w,Flash,(1-t/.12f)*(1-t/.12f));
+                return;
+            }
+            if(m==NativeStructureMaterial.Glass)return;
+            // Dust kicked up at the point and rolling out low over the floor.
+            Rgb(DustColor(m),out float dr,out float dg,out float db);int puffs=Math.Max(2,(int)Math.Round((4+6*w)*k));
+            for(int i=0;i<puffs;i++)
+            {
+                float born=i*.02f,a=t-born,life=.9f+.5f*w+.3f*H(seed,i,60);if(a<0||a>=life)continue;float u=a/life,ang=i*6.2831855f/puffs+H(seed,i,61)*.8f,rad=reach*.3f+(.5f+1.3f*w)*EaseOut(u)*(.6f+.4f*H(seed,i,62)),wide=(.35f+.5f*w)*(.7f+1.1f*EaseOut(u));
+                Puff(new V3(c.x+(float)Math.Cos(ang)*rad,floor+wide*.3f+.25f*u,c.z+(float)Math.Sin(ang)*rad)+Wind*a,wide,wide*.8f,dr,dg,db,(.3f+.2f*w)*(float)Math.Pow(1-u,1.5f)*Math.Min(1,a/.04f),1.1f,.85f,eye);
+            }
+            if(w>=NativeSlamDebris.RingFrom&&t<RingLife)
+            {
+                // The heaviest slams: a low dust ring racing out, and a pale shock over the floor under it.
+                float u=t/RingLife,o=.42f*(1-u)*(1-u)*Math.Min(1,t/.03f),rad=SlamRing(w,t);int n=Math.Max(6,(int)Math.Round((10+8*w)*k));
+                for(int i=0;i<n;i++){float ang=i*6.2831855f/n+H(seed,i,70)*.3f,hgt=.35f+.25f*H(seed,i,71);if(!Puff(new V3(c.x+(float)Math.Cos(ang)*rad,floor+hgt*.45f,c.z+(float)Math.Sin(ang)*rad),.8f+.5f*H(seed,i,72)+.6f*u,hgt,dr,dg,db,o,1.05f,.85f,eye))break;}
+                float fs=.5f+rad;Quad(new V3(c.x,floor+.02f,c.z),new V3(fs,0,0),new V3(0,0,fs),Dust,.3f*(1-u),true,true);
+            }
+        }
+        public const float RingLife=.75f;
+        /// <summary>The dust ring's radius (m) <paramref name="t"/> s after a slam of <paramref name="weight"/>: out to 1.6-4 m in half a second.</summary>
+        public static float SlamRing(float weight,float t)=>.4f+(1.6f+2.4f*Clamp01(weight))*EaseOut(t/.5f);
+
+        // ---------- loose fragments: the pieces a broken prop leaves in the match ----------
+        /// <summary>
+        /// One loose fragment of a broken prop, drawn this frame in the realistic style in place of its box (call after
+        /// <see cref="Frame"/>; the voxel style draws nothing here and the box stays). Centre, full size and rotation are the
+        /// fragment's own, so what is drawn stays where the match collides: concrete and masonry one rough chunk filling the
+        /// box, timber a clump of three torn boards, metal two bent panels, glass three shards. Colour 0: the kind's.
+        /// </summary>
+        public void Loose(NativeStructureMaterial m,int color,V3 center,V3 size,float qx,float qy,float qz,float qw,uint seed)
+        {
+            if(Style==NativeDebrisStyle.Voxel)return;Rgb(color!=0?color:BaseColor(m),out float r,out float g,out float b);int v=(int)(seed%983);
+            if(m!=NativeStructureMaterial.Timber&&m!=NativeStructureMaterial.Metal&&m!=NativeStructureMaterial.Glass){Piece(NativeDebrisShape.Rock,v,center,size,qx,qy,qz,qw,r,g,b);return;}
+            int n=m==NativeStructureMaterial.Metal?2:3;
+            for(int i=0;i<n;i++)
+            {
+                float h=H(seed,i,1),h2=H(seed,i,2),yaw,roll;V3 off,dim;
+                if(m==NativeStructureMaterial.Metal){off=new V3(0,i==0?0:-size.y*.12f,0);dim=i==0?size:new V3(size.x*.8f,size.y*.6f,size.z*.7f);yaw=i==0?0:1.2f;roll=0;}
+                else
+                {
+                    off=new V3((i-1)*size.x*.33f,(h-.5f)*size.y*.2f,(h2-.5f)*size.z*.1f);yaw=(h2-.5f)*.3f;roll=(h-.5f)*.3f;
+                    dim=m==NativeStructureMaterial.Timber?new V3(size.x*.3f,size.y*(.5f+.3f*h),size.z*(.78f+.2f*h2)):new V3(size.x*.3f,size.y*(.4f+.4f*h),size.z*(.6f+.35f*h2));
+                }
+                AxisAngle(new V3(0,1,0),yaw,out float ax,out float ay,out float az,out float aw);AxisAngle(new V3(0,0,1),roll,out float bx,out float by,out float bz,out float bw);Mul(ax,ay,az,aw,bx,by,bz,bw,out ax,out ay,out az,out aw);
+                Mul(qx,qy,qz,qw,ax,ay,az,aw,out float px,out float py,out float pz,out float pw);float tint=.86f+.26f*H(seed,i,3);
+                Piece(m==NativeStructureMaterial.Timber?NativeDebrisShape.Plank:m==NativeStructureMaterial.Metal?NativeDebrisShape.Panel:NativeDebrisShape.Shard,v+i,center+Turn(off,qx,qy,qz,qw),dim,px,py,pz,pw,Math.Min(1,r*tint),Math.Min(1,g*tint),Math.Min(1,b*tint));
             }
         }
 
@@ -478,7 +715,7 @@ namespace ChipArena.UnityConversion
                     {
                         float born=j*period,tau=t-born;if(tau<0||tau>=fallT)continue;if(H(seed,corner,j)>.4f+.6f*Clamp01(born/T))continue;
                         float gy=top-4.9f*tau*tau-H(seed,corner,j+500)*tau,e=.05f+.05f*H(seed,corner,j+1000);if(gy<floor+e*.5f)continue;
-                        Cube(new V3(cx+(H(seed,corner,j+1500)-.5f)*(.24f+.3f*tau),gy,cz+(H(seed,corner,j+2000)-.5f)*(.24f+.3f*tau)),new V3(e,e,e),0,0,0,1,gr,gg,gb);
+                        Piece(NativeDebrisShape.Pebble,j,new V3(cx+(H(seed,corner,j+1500)-.5f)*(.24f+.3f*tau),gy,cz+(H(seed,corner,j+2000)-.5f)*(.24f+.3f*tau)),new V3(e,e,e),0,0,0,1,gr,gg,gb);
                     }
                     float seg=h/3;for(int j=0;j<3;j++){float fall=(t*1.1f+j*seg)%h;Puff(new V3(cx,top-fall,cz),.8f+.4f*H(seed,corner,j+2500),seg*1.2f,dr,dg,db,.3f*ramp*on*off,1.15f,.9f,eye);}
                 }
@@ -493,7 +730,7 @@ namespace ChipArena.UnityConversion
                 {
                     int slot=(int)Math.Floor((t-phase)/.45f)-j;float born=phase+slot*.45f,tau=t-born;if(slot<0||born>T||tau<0||tau>=.9f)continue;float u=tau/.9f;
                     Puff(p+n*.15f+new V3(0,-1.1f*tau,0),.4f+.7f*u,(.4f+.7f*u)*1.3f,dr,dg,db,.45f*(1-u)*on,1.15f,.9f,eye);
-                    for(int g=0;g<2;g++){float gy=p.y-4.9f*tau*tau;if(gy>floor)Cube(p+n*(.08f+.1f*g)+new V3(0,gy-p.y,0),new V3(.05f,.05f,.05f),0,0,0,1,gr,gg,gb);}
+                    for(int g=0;g<2;g++){float gy=p.y-4.9f*tau*tau;if(gy>floor)Piece(NativeDebrisShape.Pebble,k*2+g,p+n*(.08f+.1f*g)+new V3(0,gy-p.y,0),new V3(.05f,.05f,.05f),0,0,0,1,gr,gg,gb);}
                 }
             }
         }
@@ -519,7 +756,7 @@ namespace ChipArena.UnityConversion
                 for(int j=0;j<3;j++)
                 {
                     float lag=t-.05f*j;if(lag<0)continue;V3 at=FallPath(p0,dir,R,D,A,floor,lag)+new V3((H(seed,k,10+j)-.5f)*.8f,0,(H(seed,k,20+j)-.5f)*.8f);if(at.y<=floor+.05f)continue;
-                    float e=.14f+.18f*H(seed,k,30+j);AxisAngle(Axis(seed,k*3+j,40),8*lag,out float qx,out float qy,out float qz,out float qw);Rgb(H(seed,k,50+j)<.5f?baseHex:fresh,out float cr,out float cg,out float cb);Cube(at,new V3(e,e*.8f,e*1.2f),qx,qy,qz,qw,cr,cg,cb);
+                    float e=.14f+.18f*H(seed,k,30+j);AxisAngle(Axis(seed,k*3+j,40),8*lag,out float qx,out float qy,out float qz,out float qw);Rgb(H(seed,k,50+j)<.5f?baseHex:fresh,out float cr,out float cg,out float cb);Piece(Chunk(r.Material,k*3+j),k*3+j,at,Reshape(r.Material,new V3(e,e*.8f,e*1.2f)),qx,qy,qz,qw,cr,cg,cb);
                 }
             }
             Rgb(Black,out float wr,out float wg,out float wb);
@@ -583,7 +820,7 @@ namespace ChipArena.UnityConversion
                 float edge=.08f+.24f*(float)Math.Pow(H(seed,j,25),2.6f);V3 dim=new V3(edge*(.7f+.6f*H(seed,j,26)),edge*(.7f+.6f*H(seed,j,27)),edge*(.7f+.6f*H(seed,j,28)))*sink;
                 float hit=Throw(p0,dir*sp+new V3(0,up,0),Gravity,floor+dim.y*.4f,t,out V3 p);AxisAngle(Axis(seed,j,30),(1+7*H(seed,j,32))*SpinTime(t,hit),out float qx,out float qy,out float qz,out float qw);
                 Rgb(H(seed,j,33)<.6f?fresh:baseHex,out float pr,out float pg,out float pb);float tint=.85f+.25f*H(seed,j,34);pr*=tint;pg*=tint;pb*=tint;
-                if(!Cube(p,dim,qx,qy,qz,qw,pr+(cr-pr)*coat,pg+(cg-pg)*coat,pb+(cb-pb)*coat))break;
+                if(!Piece(Chunk(r.Material,j),j,p,Reshape(r.Material,dim),qx,qy,qz,qw,pr+(cr-pr)*coat,pg+(cg-pg)*coat,pb+(cb-pb)*coat))break;
             }
             if(t>=WispFrom)
             {
@@ -662,7 +899,7 @@ namespace ChipArena.UnityConversion
             {
                 float rx=(H(m.Seed,i,20)-.5f)*(hw*2+1.5f),rz=(H(m.Seed,i,21)-.5f)*(hd*2+1.5f),rd=Math.Max(Math.Abs(rx)/(hw+.75f),Math.Abs(rz)/(hd+.75f)),heap=.6f+2.8f*(1-rd);
                 float e=1.1f+1.3f*H(m.Seed,i,22);AxisAngle(Axis(m.Seed,i,23),.5f*H(m.Seed,i,25),out float qx,out float qy,out float qz,out float qw);Rgb(H(m.Seed,i,26)<.45f?fresh:wall,out float pr,out float pg,out float pb);
-                Cube(new V3(s.x+rx,floor+heap*.5f,s.z+rz),new V3(e,heap,e*(.8f+.4f*H(m.Seed,i,27))),qx,qy,qz,qw,pr+(cr-pr)*coat,pg+(cg-pg)*coat,pb+(cb-pb)*coat);
+                Piece(NativeDebrisShape.Rock,i,new V3(s.x+rx,floor+heap*.5f,s.z+rz),new V3(e,heap,e*(.8f+.4f*H(m.Seed,i,27))),qx,qy,qz,qw,pr+(cr-pr)*coat,pg+(cg-pg)*coat,pb+(cb-pb)*coat);
             }
             for(int i=0;i<2;i++){AxisAngle(new V3(i==0?1:-1,0,.3f),.55f,out float qx,out float qy,out float qz,out float qw);Rgb(Concrete,out float sr,out float sg,out float sb);Cube(new V3(s.x+(i==0?-1.2f:1.4f),floor+2.2f,s.z+(i==0?.8f:-.6f)),new V3(3.4f,.3f,2.6f),qx,qy,qz,qw,sr+(cr-sr)*coat,sg+(cg-sg)*coat,sb+(cb-sb)*coat);}
         }
