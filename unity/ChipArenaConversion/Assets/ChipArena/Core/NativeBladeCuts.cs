@@ -96,8 +96,8 @@ namespace ChipArena.UnityConversion
             public Slash Mirrored=>new Slash(Sweep,180-Angle,Height);
         }
         private static Slash S(float angle,float height)=>new Slash(Sweep.Swing,angle,height);
-        /// <summary>The DEV Katana's counter clip (Grruzam's katana set), named here until the DEV motion names it.</summary>
-        public const string DevCounter="M_katana_Blade@Revenge_Guard_Attack_ver_A";
+        /// <summary>The DEV Katana's counter clip (Grruzam's katana set: NativeDevKatanaMotion.Counter).</summary>
+        public const string DevCounter=NativeDevKatanaMotion.Counter;
         private static Slash Level(Sweep sweep,float height)=>new Slash(sweep,0,height);
         private static readonly Dictionary<string,Slash> clips=Clips();
         private static Dictionary<string,Slash> Clips()
