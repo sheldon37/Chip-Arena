@@ -51,7 +51,8 @@ namespace ChipArena.UnityConversion
             if(k.CastKind==null||time<k.CastAt)return -1;float rel=k.CastRelease,until=k.CastUntil;
             if(katana)switch(k.CastKind)
             {
-                case NativeKatana.Cut:return time<until?0:-1;
+                // A cut from its start (the DEV Katana's finisher from its blade's rise over the head: NativeBladeMotion.TrailFrom).
+                case NativeKatana.Cut:return time<until&&time>=NativeBladeMotion.TrailFrom(a,k)?0:-1;
                 case NativeKatana.Rush:return time>=rel-.06f&&time<rel+NativeKatana.RushTime+.12f?1:-1;
                 case NativeKatana.Iai:return time>=rel-.04f&&time<rel+NativeKatana.IaiDash+.12f?1:-1;
                 case NativeKatana.Storm:return time>=rel-.05f&&time<until-NativeKatana.StormRecover*.5f?.35f:-1;

@@ -596,9 +596,10 @@ namespace ChipArena.UnityConversion
                 float rate=Math.Max(LandRate,clips.Length(set.Land)/LandFor),since=time-m.LandedAt;
                 if(since<clips.Length(set.Land)/rate){pick=new Pick{Clip=set.Land,Time=since*rate,Fade=FadeIn};return true;}
             }
-            if(moving){pick=new Pick{Locomotion=true,Fade=FadeOut};return true;}
+            // The stride or the stance back (after the DEV Katana's finisher, over its own longer blend: NativeBladeMotion.SettleFade).
+            if(moving){pick=new Pick{Locomotion=true,Fade=NativeBladeMotion.SettleFade(a,time,FadeOut)};return true;}
             if(!clips.Has(set.Idle))return false;
-            pick=new Pick{Clip=set.Idle,Time=time,Fade=FadeOut};return true;
+            pick=new Pick{Clip=set.Idle,Time=time,Fade=NativeBladeMotion.SettleFade(a,time,FadeOut)};return true;
         }
 
         // The techniques' clips (docs/WEAPON-TECHNIQUES.md): throws and gestures out of the pack's casts, pickups and activations.
