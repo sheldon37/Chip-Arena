@@ -129,9 +129,10 @@ namespace ChipArena.UnityConversion
         {
             if(killer==null||d==null)return NativeKillCause.Of(killer!=null,killer?.Weapon.@class,killer?.Seat.spec,d?.melee??false,null);
             long key=((long)d.id<<32)^(uint)d.seed;if(killCauses.TryGetValue(key,out var known))return known;
-            var plan=NativeKillCause.Blade(killer.Seat.spec)&&presentation!=null?presentation.KillSlice(arena,d):null;
+            // A blade's cause is kept once its body's blow has settled (until then it is read again: the ledger may not have seen the hit).
+            bool settled=true;var plan=NativeKillCause.Blade(killer.Seat.spec)&&presentation!=null?presentation.KillSlice(arena,d,out settled):null;
             string cause=NativeKillCause.Of(true,killer.Weapon.@class,killer.Seat.spec,d.melee,plan);
-            if(killCauses.Count>=32)killCauses.Clear();killCauses[key]=cause;return cause;
+            if(settled){if(killCauses.Count>=32)killCauses.Clear();killCauses[key]=cause;}return cause;
         }
         // killcam-hud.ts / killcam.css: a broadcast frame on the screen edges so the fatal hit in the centre stays clear.
         private void ReplayHud(float width,float height)

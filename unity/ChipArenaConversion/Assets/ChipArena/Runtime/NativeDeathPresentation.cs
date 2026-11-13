@@ -361,14 +361,19 @@ namespace ChipArena.UnityConversion
         /// (<see cref="killBlows"/>): the killcam's reset clears the ledger, and the body rebuilt after it, and the replay's,
         /// must be cut the same way. A blade class's kill (Core NativeBladeCuts) is cut by its killer's blade blow at the death's tick
         /// even when the move was not a melee hit (the iai's split, the Crescent Wave, the Glaive's thrown ring, the Fangs' knives).</summary>
-        /// <summary>The cut a death shows (null: none), for the killcam's cause line (ConversionGame.KillCause).</summary>
-        public SlicePlan KillSlice(NativeArena arena,NativeDeath death)=>MeleeSlice(arena,death);
-        private SlicePlan MeleeSlice(NativeArena arena,NativeDeath death)
+        /// <summary>The cut a death shows (null: none), for the killcam's cause line (ConversionGame.KillCause): the blow its body was cut
+        /// by once the body is built (`settled`), else the ledger's now, never kept: a label read before the ledger saw the killing hit
+        /// must not leave the body without its blow.</summary>
+        public SlicePlan KillSlice(NativeArena arena,NativeDeath death,out bool settled)
+        {
+            settled=death!=null&&killBlows.ContainsKey(((long)death.id<<32)^(uint)death.seed);return MeleeSlice(arena,death,false);
+        }
+        private SlicePlan MeleeSlice(NativeArena arena,NativeDeath death,bool keep=true)
         {
             if(death==null||death.kept||(death.model??"pilot")!="pilot"||death.style=="voxel-burst"||death.style=="vent-fall"||death.style=="vent-splat"||death.damageKind=="collapse")return null;
             long key=((long)death.id<<32)^(uint)death.seed;bool has;MeleeBlow blow;
             if(killBlows.TryGetValue(key,out var seen)){has=seen.has;blow=seen.blow;}
-            else{has=hitLedger.Blow(death.id,death.at,out blow);if(killBlows.Count>=64)killBlows.Clear();killBlows[key]=(has,blow);}
+            else{has=hitLedger.Blow(death.id,death.at,out blow);if(keep){if(killBlows.Count>=64)killBlows.Clear();killBlows[key]=(has,blow);}}
             if(!death.melee&&!(has&&NativeBladeCuts.Is(blow.Spec)&&blow.Source==death.owner))return null;
             string spec=has?blow.Spec:PilotOf(arena,death.owner)?.Seat.spec;if(!NativeMeleeSlice.Covers(spec))return null;
             var plan=new SlicePlan();return NativeMeleeSlice.Plan(blow,has,spec,death.wound,NativeArena.Vec(death.position),death.yaw,death.seed,plan)?plan:null;

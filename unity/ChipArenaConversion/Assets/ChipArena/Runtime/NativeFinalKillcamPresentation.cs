@@ -15,6 +15,8 @@ namespace ChipArena.UnityConversion
         private int finalProjectile,finalCameraSide;private bool finalFlew;private float finalImpactWall;private Vector3 finalCameraAim,finalFlightEye,finalFlightAim;
         private readonly FinalKillCandidate[] finalDeaths=new FinalKillCandidate[16];
         // The broadcast frame's text and colours, fixed when the clip starts (no per-frame strings).
+        // The credited kill whose cause line the card reads again while it shows (KillCause settles once the body is built).
+        private NativePilot finalHowKiller;private NativeDeath finalHowDeath;
         private string finalKillerName="",finalVictimName="",finalHow="",finalWinnerLabel="",finalWinnerName="",finalOutcome="",finalRound="",finalTag="FINAL KILL";
         private Color finalKillerColor,finalVictimColor,finalWinnerColor;private bool finalKillerTeam;private string finalKillerTeamName="";private Color finalKillerTeamColor;
         private int FinalSide(NativeSeat s)=>match.Teams?s.team:s.id;
@@ -72,6 +74,7 @@ namespace ChipArena.UnityConversion
             {
                 finalKillerName=killer?.Seat.name??match.Seat(finalKiller)?.name??"Unknown";finalKillerColor=SeatColor(killer?.Seat??match.Seat(finalKiller));
                 finalHow=killer!=null&&victim?.Death!=null?killer.Weapon.name+"  ·  "+KillCause(victim.Death,killer):"Final elimination";
+                finalHowKiller=killer!=null&&victim?.Death!=null?killer:null;finalHowDeath=finalHowKiller!=null?victim.Death:null;
                 finalKillerTeam=match.Teams&&killer!=null;if(finalKillerTeam){finalKillerTeamColor=TeamColor(killer.Seat.team);finalKillerTeamName=NativeMatch.TeamNames[TeamIndex(killer.Seat.team)].ToUpperInvariant();}
             }
             // A simultaneous knockout has no winner: the outcome card says so with the round's result line.
@@ -280,6 +283,7 @@ namespace ChipArena.UnityConversion
                 }
                 ly+=fs*1.15f+3;
                 if(finalKillerTeam){var tr=new Rect(cx+16,ly,NativeUi.Measure(finalKillerTeamName,10,true,true,.12f).x+12,16);NativeUi.Round(tr,Color.clear,4,NativeUi.A(finalKillerTeamColor,lower));NativeUi.Text(tr,finalKillerTeamName,10,NativeUi.A(finalKillerTeamColor,lower),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.12f);ly+=20;}
+                if(!finalSolo&&finalHowKiller!=null&&finalHowDeath!=null)finalHow=finalHowKiller.Weapon.name+"  ·  "+KillCause(finalHowDeath,finalHowKiller);
                 NativeUi.Text(new Rect(cx+16,ly,cw-34,18),finalHow,13,NativeCyberTheme.Ink(lower),TextAnchor.MiddleLeft);
             }
             // Outcome: who took the round (set, match), centred above the bottom letterbox, after the slow motion.
