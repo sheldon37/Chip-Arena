@@ -15,8 +15,9 @@
   - The DEV Greatsword's Heavy Turn keeps its blade in the hand throughout (the pack's great sword never leaves the hand). Its grip
     was already the match's (its hold position puts the handle in the palm), so it is unchanged.
 - **Checks:**
-  - Ran: the full CoreTests on `68a345a4` (1019 PASS lines, 0 failed, exit 0; the Windows path patch applied locally and reverted); the builder's
-    Editor checks on the branch: ok on `68a345a4`, 397 PASS lines (354 distinct), none failed. Both entrances filmed close on the hands, before (`4a94ce09`) and after.
+  - Ran: the full CoreTests on `68a345a4` (1019 PASS lines, 0 failed, exit 0; the Windows path patch applied locally and
+    reverted); the builder's Editor checks on `68a345a4`: ok, 397 PASS lines (354 distinct), none failed. Both entrances filmed
+    close on the hands, before (`4a94ce09`) and after.
   - Not run: play by a person, a guest over the network, a Windows build, the builder.
 - **Next:** the owner looks at the entrances; merge and release with the next DEV build.
 
@@ -63,6 +64,7 @@
   - zombies, the Crescent Wave, the Fangs' knives and the slams not filmed (the tests cover their path);
   - the DEV Katana's picked cuts filmed only on its first picks (its surveyed planes are checked by the tests);
   - the DEV Greatsword's cuts still take the old greatsword's captured plane, not its Grruzam clips' (the survey's numbers are queued; a follow-up).
+- **Released:** shared `4a94ce09` (the builder at `4a94ce09`), test channel revision `639301334639769695` (build `39b4c078`); the suite at `16024ce2` (1,019 groups, exit 0), the Unity compile, the Editor build gate on `7872df66`.
 
 ## 2026-11-12 — Claude: the owner's DEV animation picks wired in (DEV Greatsword, DEV Katana)
 
