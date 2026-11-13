@@ -44,7 +44,8 @@ Every number is in Core `NativeFangs`. Cooldowns: Q 7, E 12 (from its end), 1 6,
   and hit reactions. The cuts are the pack's Dual (twin swords) set's chain (the owner's pick 2026-11-13, in place of the Rogue's): its first
   combo's flat forehand, springing double and bent-over lunging cut, its sixth combo's long forehand lunge, then its first combo's low
   spinning sweep as the finisher (`Frank_RPG_Dual_Combo01_1`, `01_2`, `01_3`, `06_1`, `01_4`; strikes 0.43, 0.26, 0.24, 0.30, 0.24 s, at up
-  to 1.6 times the clips' pace; the set ships as root-motion takes only, played in place). The dash is the Rogue (dual blade) set's fifth
+  to 1.6 times the clips' pace; the set ships as root-motion takes only, played in place). The cuts that lunge (the third's step in, the finisher) take the whole body even on the move, their legs carrying the
+  lunge; the others play on the upper body over the stride while moving. The dash is the Rogue (dual blade) set's fifth
   chain's deep lunge (owner 2026-11-11: "utilize the "Rogue" from the frank slash animation set"), at up to twice its pace. The slam is the
   set's air attack, held to the landing. The step its dashing stab
   skill; the veil its backward evade; the fan its two-handed outward sweep (Attack06: the knives flung from both hands; its spinning

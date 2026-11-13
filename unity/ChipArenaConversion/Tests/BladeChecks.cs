@@ -92,6 +92,13 @@ namespace ChipArena.UnityConversion
                 Check(NativeBladeMotion.Clip(fangsActor,fangsActor.Blade,fangsActor.Blade.CastRelease,bank,out string fclip,out float ftime,out _,out _)&&fclip==NativeBladeMotion.FangsCuts[step]&&Math.Abs(ftime-NativeBladeMotion.WindowOf(fclip).Hit)<1e-3f,"Fangs cut "+step+": its clip's strike on the hit");
             }
             fangsActor.Blade=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Cut,CastStep=0,CastAt=1,CastRelease=1.1f,CastUntil=1.3f};
+            // A cut that lunges (the third's step in, the finisher) takes the whole body even on the move: its legs carry the lunge.
+            for(int step=0;step<NativeFangs.Steps;step++)
+            {
+                var lk=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Cut,CastStep=step,CastAt=1,CastRelease=1+NativeFangs.CutHit[step],CastUntil=1+NativeFangs.CutLength[step]};var mover=new Actor{Id=8,SourceSpec=NativeFangs.Spec,Grounded=true,Blade=lk};
+                bool lunges=NativeFangs.CutLunge[step]>0,whole=NativeBladeMotion.Cast(NativeVisualMotion.For(NativeFangs.Spec),mover,lk.CastRelease,bank,true,out _),upper=NativeBladeMotion.Upper(NativeVisualMotion.For(NativeFangs.Spec),mover,lk.CastRelease,bank,out _);
+                Check(whole==lunges&&upper==!lunges&&(step!=2&&step!=NativeFangs.Steps-1||lunges),"Fangs cut "+(step+1)+" on the move: "+(lunges?"the whole body (it lunges)":"the upper body over the stride"));
+            }
             // The plunging slam (owner 2026-11-11: slam attacks from the air for the Glaive, the Fangs and the Katana): the standard plunge for
             // the three kits, its rules by kin, its look the set's air attack held to the landing.
             Check(new[]{NativeKatana.Spec,NativeFangs.Spec,NativeGlaive.Spec}.All(x=>NativeAirAttackSimulation.KitSlam(x)&&NativePlungeRules.Handles(x))&&!NativeAirAttackSimulation.KitSlam("sword")&&!NativeAirAttackSimulation.KitSlam("pistol"),"the three kits slam from the air");

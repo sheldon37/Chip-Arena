@@ -175,7 +175,10 @@ namespace ChipArena.UnityConversion
                 if(time>=until+.1f)return false;
                 switch(k.CastKind)
                 {
-                    case NativeFangs.Cut:whole=k.CastStep==NativeFangs.Steps-1;return On(FangsCuts[Math.Max(0,k.CastStep)%FangsCuts.Length],at,rel,until,time,clips,out clip,out t);
+                    // A cut that lunges (the third's step in, the finisher's lunge: NativeFangs.CutLunge) takes the whole body, its legs carrying
+                    // the lunge (the rules' step read as moving, so the third played on the upper body over a walk); the others the upper body
+                    // over the stride while moving.
+                    case NativeFangs.Cut:whole=NativeFangs.CutLunge[Math.Max(0,k.CastStep)%NativeFangs.Steps]>0;return On(FangsCuts[Math.Max(0,k.CastStep)%FangsCuts.Length],at,rel,until,time,clips,out clip,out t);
                     case NativeFangs.Pounce:return On(FangsPounce,at,rel+NativeFangs.PounceTime*.5f,until,time,clips,out clip,out t);
                     case NativeFangs.Step:return On(FangsStep,at,rel+.04f,until,time,clips,out clip,out t);
                     case NativeFangs.Veil:return On(FangsVeil,at,rel,until,time,clips,out clip,out t);
