@@ -7,6 +7,7 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--fangs-intro"){FangsIntroChecks.Run(ProjectRoot());return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--expedition-loading")ExpeditionLoadingHandoffChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--expedition-loading")return 0;
             if(args.Length==3&&args[0]=="--stage-layout"){StageArtLayout.Write(ProjectRoot(),args[1],args[2]);return 0;}
@@ -304,7 +305,7 @@ internal static class Program
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
             StructureFxChecks.Run(root);
             IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);IronworksBossPresentationChecks.Run(root);BossVfxRealismChecks.Run(root);
-            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);TechniqueChecks.Run(root);TechniqueRulesChecks.Run(root);BombadierChecks.Run(root);TopDogChecks.Run(root);GlaiveChecks.Run(root);GlaiveChipChecks.Run(root);BladeChecks.Run(root);ReviveMachineChecks.Run(root);InstanceMachineChecks.Run();ExpeditionDressingChecks.Run(root);GeneratedDistrictChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionCityChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
+            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);TechniqueChecks.Run(root);TechniqueRulesChecks.Run(root);BombadierChecks.Run(root);TopDogChecks.Run(root);GlaiveChecks.Run(root);GlaiveChipChecks.Run(root);BladeChecks.Run(root);FangsIntroChecks.Run(root);ReviveMachineChecks.Run(root);InstanceMachineChecks.Run();ExpeditionDressingChecks.Run(root);GeneratedDistrictChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionCityChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
             PartyLoadingChecks.Run(root);
             AccountXpChecks.Run(root);AccountXpProgressionChecks.RunChecks(root);
             MoveVisualChecks.Run(root);

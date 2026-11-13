@@ -81,6 +81,7 @@ namespace ChipArena.UnityConversion
             var sheldon=script as NativeSheldonIntroScript;if(sheldon!=null)actor=SheldonIntroBegin(sheldon,actor,pilot,t);
             script.Pose(t,entrancePose,out var root,out var rotation);
             if(NativePoseWriter.Write(introRig.Bones,entrancePose,"the intro rig")){introRig.Root.transform.SetPositionAndRotation(CapturedAnimation.Vec(CapturedRig.Mirror(root)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)));introRig.Root.transform.localScale=Vector3.one;}
+            if(script is NativeFangsIntro silent)silent.Shake=CameraShake;
             script.Camera(age,out var view);var eye=CapturedAnimation.Vec(CapturedRig.Mirror(view.Eye));var forward=CapturedAnimation.Vec(CapturedRig.Mirror(view.Look-view.Eye));
             if(forward.sqrMagnitude>1e-8f)camera.transform.SetPositionAndRotation(eye,Quaternion.LookRotation(forward,CapturedAnimation.Vec(CapturedRig.Mirror(view.Up))));camera.fieldOfView=view.Fov;
             EntranceBlasts(script,style+":"+pilot.Seat.id+":"+Mathf.RoundToInt(quality*10),t,quality);
@@ -167,7 +168,7 @@ namespace ChipArena.UnityConversion
             }
         }
         /// <summary>A directed entrance's effects into the shared effects renderer (mirrored into Unity's frame).</summary>
-        private sealed class EntranceFx:INativeEntranceFx,INativeEntranceFire
+        private sealed class EntranceFx:INativeEntranceFx,INativeEntranceFire,INativeEntranceVenom
         {
             private readonly NativeVfxDraw vfx;public EntranceFx(NativeVfxDraw vfx){this.vfx=vfx;}
             private static Vector3 U(System.Numerics.Vector3 v)=>new Vector3(-v.X,v.Y,v.Z);
@@ -175,6 +176,9 @@ namespace ChipArena.UnityConversion
             public void Streak(System.Numerics.Vector3 head,System.Numerics.Vector3 velocity,System.Numerics.Vector3 color,float width,float minLength,float blur,float taper,float u,float seed)=>vfx.Streak(U(head),U(velocity),new Color(color.X,color.Y,color.Z,0),width,minLength,blur,taper,u,seed);
             public void Smoke(System.Numerics.Vector3 at,System.Numerics.Vector3 albedo,float opacity,float size,float u,float seed,float floor)=>vfx.Smoke(U(at),new Color(albedo.X,albedo.Y,albedo.Z,0),opacity,size,u,seed,floor);
             public void Fire(System.Numerics.Vector3 at,System.Numerics.Vector3 tint,float opacity,float size,float u,float seed,float floor)=>vfx.Fireball(U(at),new Color(tint.X,tint.Y,tint.Z),opacity,size,u,seed,floor);
+            // Silent Kill's venom (Core NativeFangsIntro): fumes glowing in their own colour, and teardrops.
+            public void Fume(System.Numerics.Vector3 at,System.Numerics.Vector3 albedo,float opacity,float size,float u,float seed,float floor,float glow)=>vfx.Smoke(U(at),new Color(albedo.X,albedo.Y,albedo.Z,0),opacity,size,u,seed,floor,glow);
+            public void Bead(System.Numerics.Vector3 head,System.Numerics.Vector3 segment,System.Numerics.Vector3 color,float coverage,float width,float u,float seed)=>vfx.Drop(U(head),U(segment),new Color(color.X,color.Y,color.Z,coverage),width,u,seed);
         }
         // player-intros.ts: the bare intro rig holds only a weapon intro's own weapon (WEAPON_INTROS[style].spec) or the Emperor's
         // gauntlets, with no chip dressing; every other entrance keeps its hands empty, so the L33T Throne's floating staff (a
