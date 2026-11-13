@@ -42,12 +42,12 @@ namespace ChipArena.UnityConversion
         // (Katanas, Glaive, etc.)"): every move's lethal hit as the authority emits it (NativeArena.Damage: its damage kind, the
         // direction from the attacker's body centre to the victim's, or the move's own line) and its attacker as the frame has it (the
         // kit mid-move, the DEV class), read the way the hit ledger reads it ----
-        private sealed class Move{public string Spec,Motion,Detail,Cast,Want;public int Step;public bool Flick,Line,Air;}
+        private sealed class Move{public string Spec,Motion,Detail,Cast,Want,Pair;public int Step;public bool Flick,Line,Air;}
         private static MeleeBlow BladeHit(Move m,float yaw,V3 from,V3 victim,out ArenaEvent e,out Actor a)
         {
             a=new Actor{Id=7,SourceSpec=m.Spec,Position=from,Yaw=yaw,Motion=m.Motion??"",AirAttack=m.Air};
             if(m.Spec==NativeGlaive.Spec)a.Glaive=new NativeGlaiveKit{Ready=new float[2],CastKind=m.Cast,CastStep=m.Step,CastAt=1,CastRelease=1.2f,CastUntil=1.6f,Disc=m.Flick?NativeGlaive.Flick:NativeGlaive.Hand};
-            else a.Blade=new NativeBladeKit{Ready=new float[m.Spec==NativeKatana.Spec?2:5],CastKind=m.Cast,CastStep=m.Step,CastAt=1,CastRelease=1.2f,CastUntil=1.6f};
+            else a.Blade=new NativeBladeKit{Ready=new float[m.Spec==NativeKatana.Spec?2:5],CastKind=m.Cast,CastStep=m.Step,CastAt=1,CastRelease=1.2f,CastUntil=1.6f,PairClip=m.Pair};
             var c=new Vector3(from.x,from.y+NativeMeleeSlice.RootHeight,from.z);var to=Vector3.Normalize(new Vector3(victim.x,victim.y,victim.z)-c);
             // A move that flies (the iai's line, the wave, the ring, a knife) carries its flight, here across the line to the victim.
             if(m.Line){var flat=Vector3.Normalize(new Vector3(to.X,0,to.Z));to=Vector3.Normalize(flat+new Vector3(flat.Z,0,-flat.X)*.6f);}
@@ -80,7 +80,10 @@ namespace ChipArena.UnityConversion
                 }
                 else if(dev&&!air)Check(want.EndsWith("7Combo_4_Inplace"),"DEV Greatsword: only the fourth cut keeps the captured plane");
             }
-            report.Add("the DEV Greatsword's swings cut along their own surveyed slashes ("+string.Join(", ",lines)+"); the fourth cut, the jump attack and the plain Greatsword unchanged");
+            // Its plunging slam records its own clip (the owner's pick 2026-11-13: Skill_L); the plain Greatsword's swings record none.
+            Check(NativeBladeCuts.DevSwingClip(new Actor{SourceSpec="greatsword",Motion=NativeDevMotions.Greatsword,AirAttack=true,AirKind=NativePlungeFields.DownKind},false,false)==NativeDevGreatswordMotion.Plunge
+                &&NativeBladeCuts.DevSwingClip(new Actor{SourceSpec="greatsword",AirAttack=true,AirKind=NativePlungeFields.DownKind},false,false)==null,"DEV Greatsword: its plunge records its own clip");
+            report.Add("the DEV Greatsword's swings cut along their own surveyed slashes ("+string.Join(", ",lines)+"); the fourth cut, the jump attack, the plunge and the plain Greatsword unchanged");
         }
 
         // ---- 1d. The killcam's cause line names the cut (Core NativeKillCause; owner 2026-11-12: "Yes, fix the label") ----
@@ -117,8 +120,9 @@ namespace ChipArena.UnityConversion
                 moves.Add(new Move{Spec=K,Motion=motion,Detail="direct",Cast=null,Air=true,Want="chop"});
             }
             for(int s=0;s<NativeFangs.Steps;s++)moves.Add(new Move{Spec=F,Detail="blade-cut",Cast=NativeFangs.Cut,Step=s,Want=s<NativeFangs.Steps-1?"throat":"limb"});
+            // The takedown from behind is the stealth kill's throat cut (the owner's pick 2026-11-13): it slits the throat; the frontal critical an arm.
             foreach(var (d,c) in new[]{("blade-pounce",NativeFangs.Pounce),("blade-step",NativeFangs.Step),("blade-takedown",NativeFangs.Assassinate),("blade-critical",NativeFangs.Assassinate),("blade-knife",NativeFangs.Fan)})
-                moves.Add(new Move{Spec=F,Detail=d,Cast=c,Line=d=="blade-knife",Want="limb"});
+                moves.Add(new Move{Spec=F,Detail=d,Cast=c,Line=d=="blade-knife",Pair=d=="blade-takedown"?NativeBladeMotion.FangsTakedown:d=="blade-critical"?NativeBladeMotion.FangsCritical:null,Want=d=="blade-takedown"?"throat":"limb"});
             moves.Add(new Move{Spec=F,Detail="blade-bloom",Cast=NativeFangs.Bloom,Want="none"});
             moves.Add(new Move{Spec=F,Detail="direct",Air=true,Want="limb"});
             for(int s=0;s<3;s++)moves.Add(new Move{Spec=G,Detail="glaive-"+NativeGlaive.Swing,Cast=NativeGlaive.Swing,Step=s,Want=s<2?"part":"through"});

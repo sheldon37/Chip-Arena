@@ -7,9 +7,10 @@ namespace ChipArena.UnityConversion
     /// Grruzam's Powerful Sword Animation pack's great sword set (its clips are named by their files, `M_Big_Sword@...`), baked into the local
     /// motion bank like the other packs' and played by the generic set (Core NativeVisualMotion): the stance, the shoulder carry's stride, the
     /// jumps, the guard, the dodge roll, the reactions, the knockdown and its rolling get-up, the combo, the leaping cleave, the jump attack,
-    /// both kit moves and the techniques. The pack's clips carry no Hit event (the bake's Hit is a clip's middle), so each strike is measured on
-    /// the body here (Strike) and the bank takes it as it is read. The class plays the Greatsword's rules, so the clips are fitted to the
-    /// Greatsword's timing, reach, steps and arcs. Presentation only.
+    /// the plunging slam, both kit moves and the techniques. The pack's clips carry no Hit event (the bake's Hit is a clip's middle), so each
+    /// strike is measured on the body here (Strike) and the bank takes it as it is read. The class plays the Greatsword's rules, so the clips
+    /// are fitted to the Greatsword's timing, reach, steps and arcs. The Greatsword itself plays four of the set's clips (owner 2026-11-13:
+    /// its plunge, Earthsplitter, Sunder and jump attack). Presentation only.
     /// </summary>
     public static class NativeDevGreatswordMotion
     {
@@ -26,12 +27,21 @@ namespace ChipArena.UnityConversion
         /// standing; the in-place take is the swing alone.</summary>
         public static readonly string[] Cuts={G+"Attack_7Combo_1_Inplace",G+"Attack_7Combo_2_Inplace",G+"Attack_7Combo_3_Inplace",G+"Attack_7Combo_4_Inplace"};
         /// <summary>The sprint attack (the owner's pick 2026-11-12: `Dash_Attack_ver_B`, a lunging diagonal cut down from the left, played in
-        /// place: the rules move the pilot, the bake leaves the clip's root travel out), the jump attack's downward chop, Earthsplitter's
-        /// lunging slam onto the floor, the Whirlwind's level spinning sweep (held through the spin, WhirlHold), Sunder (the owner's pick:
-        /// `Skill_F`, a low swing round behind and a great slam down to the front right, in place), Reaping Sweep's spin (the low sweep the
-        /// old combo's fourth cut was) and the vow's crouch (into it, then held).</summary>
+        /// place: the rules move the pilot, the bake leaves the clip's root travel out), the jump attack's spinning flip (its strike on the
+        /// landing), Earthsplitter's lunging slam onto the floor, the Whirlwind's level spinning sweep (held through the spin, WhirlHold),
+        /// Sunder (the owner's pick 2026-11-13: `Skill_J_Inplace`, the blade dragged low, lifted overhead on one leg and slammed down into a
+        /// deep crouch, its leap kept on the floor; it was `Skill_F`), Reaping Sweep's spin (the low sweep the old combo's fourth cut was),
+        /// the vow's crouch (into it, then held) and the plunging slam (the owner's pick 2026-11-13: `Skill_L`, out of a spin with the blade
+        /// high, its second and heavier blow driven into the floor on the landing, then held in the crouch; it had no clip: the game's
+        /// plunge pose).</summary>
         public const string Cleave=G+"Dash_Attack_ver_B",JumpCut=G+"Jump_Attack_Combo_3_ZeroHeight",Slam=G+"Skill_H",Spin=G+"Skill_E",
-            Overhead=G+"Skill_F",Reap=G+"Attack_4Combo_1B_Inplace",Crouch=G+"Idle_To_Crouch",Crouched=G+"Crouch_Idle";
+            Overhead=G+"Skill_J_Inplace",Reap=G+"Attack_4Combo_1B_Inplace",Crouch=G+"Idle_To_Crouch",Crouched=G+"Crouch_Idle",Plunge=G+"Skill_L";
+        /// <summary>The Greatsword's own moves on this set (the owner's picks 2026-11-13; the class keeps its two-handed RPG set for everything
+        /// else, Core NativeVisualMotion): its plunging slam on `Skill_F` (out of a spinning leap the blade slammed to the front right on the
+        /// landing, then a wide low crouch with the blade on the floor; it had no clip: the game's plunge pose), Sunder on `Skill_G_2` (a
+        /// somersault, the pack's fall from a leap kept on the floor, up with the blade overhead and slammed into a deep crouch), and the DEV
+        /// Greatsword's Earthsplitter (Slam) and jump attack (JumpCut) on their strikes here.</summary>
+        public const string GreatswordPlunge=G+"Skill_F",GreatswordSunder=G+"Skill_G_2";
         /// <summary>The class's own entrance's clip (Core NativeDevIntros; owner 2026-11-12: "entrance → Intro").</summary>
         public const string Intro=G+"Intro";
         /// <summary>Where the Whirlwind holds the spinning sweep through the spin (a share of it, as NativeVisualMotion.WhirlHold for the old
@@ -51,8 +61,9 @@ namespace ChipArena.UnityConversion
         public static bool Is(string clip)=>clip!=null&&clip.StartsWith(G,StringComparison.Ordinal);
         /// <summary>A clip's strike (s into it), measured on the body frame by frame at 30 a second with the game's own blade in the hand: a
         /// cut's where its tip crosses the pilot's facing sweeping as the rules' arc does (the hit window's middle points there; an overhead's,
-        /// where it is fastest); a slam's where the blade stops on the floor. The old combo's clips keep theirs (the bank keeps them). False
-        /// for any other clip.</summary>
+        /// where it is fastest); a slam's where the blade stops on the floor (a plunge's on its landing). The old combo's clips keep theirs
+        /// (the bank keeps them). One strike per clip: every move that plays a clip strikes there (Skill_F was the DEV Greatsword's Sunder
+        /// and is now the Greatsword's plunge, both on its slam). False for any other clip.</summary>
         public static bool Strike(string clip,out float at)
         {
             switch(clip)
@@ -67,7 +78,10 @@ namespace ChipArena.UnityConversion
                 case Cleave:at=.39f;return true;
                 case JumpCut:at=.62f;return true;
                 case Slam:at=.61f;return true;
-                case Overhead:at=.63f;return true;
+                case GreatswordPlunge:at=.63f;return true;
+                case Overhead:at=.94f;return true;
+                case GreatswordSunder:at=.57f;return true;
+                case Plunge:at=1.07f;return true;
                 default:at=0;return false;
             }
         }

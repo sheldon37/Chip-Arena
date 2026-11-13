@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeBladeMotion
     {
-        private const string K="Frank_RPG_Katana_",A="Frank_RPG_Assassin_",R="Frank_Rogue_";
+        private const string K="Frank_RPG_Katana_",A="Frank_RPG_Assassin_",R="Frank_Rogue_",D="Frank_RPG_Dual_";
         // ---- the Katana's clips ----
         public static readonly string[] KatanaCuts={K+"S1_Combo01_01",K+"S1_Combo01_02",K+"S1_Combo01_03",K+"S1_Combo03_03"};
         public const string KatanaRush=K+"S3_Combo01_02",KatanaIai=K+"S3_Skill01",KatanaSheathe=K+"Unequip",KatanaStorm=K+"S3_Skill02",KatanaIdle=K+"Stance1_Idle",
@@ -19,14 +19,17 @@ namespace ChipArena.UnityConversion
         /// <summary>The counter's paired critical: the wielder's clip and its victim's.</summary>
         public const string KatanaCritical="Frank_Damage@Damage_Critical_Katana",KatanaCriticalHit="Frank_Damage@Damage_Critical_Katana_Hit";
         // ---- the Fangs' clips ----
-        // The flurry is the Frank Rogue (dual blade) set's third combination chain (a leaping cut, a lunging double, a step cut), its
-        // fourth chain's double and the third's low spinning finisher (owner 2026-11-11: "The Fangs need a MUCH better basic combo,
-        // utilize the Rogue"); the dash its fifth chain's long low lunge with both blades out.
-        public static readonly string[] FangsCuts={R+"Combination_03_1",R+"Combination_03_2",R+"Combination_03_3",R+"Combination_04_2",R+"Combination_03_4"};
+        // The flurry is the Frank Dual (twin swords) set's chain (the owner's pick 2026-11-13; it was the Rogue set's third and fourth
+        // combinations): its first combo's flat forehand, springing double and bent-over lunging cut, its sixth combo's long forehand lunge,
+        // then its first combo's low spinning sweep as the finisher. The set ships as root-motion takes only; the bake plays them in place.
+        // The dash is the Rogue (dual blade) set's fifth chain's long low lunge with both blades out (owner 2026-11-11: "utilize the Rogue").
+        public static readonly string[] FangsCuts={D+"Combo01_1",D+"Combo01_2",D+"Combo01_3",D+"Combo06_1",D+"Combo01_4"};
         public const string FangsPounce=R+"Combination_05_2",FangsStep=A+"Skill01_IP",FangsVeil=A+"Evade_B_IP",FangsFan=A+"Attack06_IP",FangsBloom=A+"Skill02_IP",FangsIdle=A+"Equip_Idle",
             FangsGuard=A+"Guard",FangsBlock=A+"Block",FangsTumble=A+"Tumbling_F";
-        /// <summary>The takedown from behind and the frontal critical: the wielder's clips and their victims'.</summary>
-        public const string FangsTakedown="Frank_Stealth_Kill_Behind_05",FangsTakedownHit="Frank_Stealth_Kill_Hit_Behind_05",FangsCritical="Frank_Damage@Damage_Critical_Assassin",FangsCriticalHit="Frank_Damage@Damage_Critical_Assassin_Hit";
+        /// <summary>The takedown from behind and the frontal critical: the wielder's clips and their victims'. The takedown is the stealth
+        /// kill's throat cut (the owner's pick 2026-11-13: `Behind_01`, the foe's head held with a fang at its throat, the fang drawn across
+        /// on the blow; it was `Behind_05`), its foe on the matching `Hit_Behind_01`.</summary>
+        public const string FangsTakedown="Frank_Stealth_Kill_Behind_01",FangsTakedownHit="Frank_Stealth_Kill_Hit_Behind_01",FangsCritical="Frank_Damage@Damage_Critical_Assassin",FangsCriticalHit="Frank_Damage@Damage_Critical_Assassin_Hit";
         /// <summary>A paired attacker clip's victim clip (null: none).</summary>
         public static string VictimClip(string clip)=>clip==KatanaCritical?KatanaCriticalHit:clip==FangsTakedown?FangsTakedownHit:clip==FangsCritical?FangsCriticalHit:null;
 
@@ -46,24 +49,27 @@ namespace ChipArena.UnityConversion
                 case KatanaSheathe:return new Window(1.3f,1.85f,2.35f);
                 case KatanaStorm:return new Window(1f,1.3f,1.78f);
                 case KatanaCritical:case KatanaCriticalHit:return new Window(.9f,1.45f,2.25f);
-                case R+"Combination_03_1":return new Window(.17f,.45f,.9f);
-                case R+"Combination_03_2":return new Window(0,.3f,.75f);
-                case R+"Combination_03_3":return new Window(0,.317f,.75f);
-                case R+"Combination_04_2":return new Window(0,.317f,.8f);
-                case R+"Combination_03_4":return new Window(.3f,.7f,1.35f);
+                // The Dual chain: each strike where a fang is fastest (the left in the first four cuts, the right in the finisher).
+                case D+"Combo01_1":return new Window(0,.43f,.9f);
+                case D+"Combo01_2":return new Window(0,.26f,.72f);
+                case D+"Combo01_3":return new Window(0,.24f,.7f);
+                case D+"Combo06_1":return new Window(0,.3f,.75f);
+                case D+"Combo01_4":return new Window(0,.24f,.85f);
                 case FangsPounce:return new Window(.95f,1.28f,1.85f);
                 case FangsStep:return new Window(.45f,.7f,1.15f);
                 case FangsVeil:return new Window(0,.2f,.58f);
                 case FangsFan:return new Window(0,.35f,.8f);
                 case FangsBloom:return new Window(.45f,.9f,1.5f);
-                case FangsTakedown:case FangsTakedownHit:return new Window(0,.9f,1.45f);
+                // The throat cut: the fang drawn across the throat at 1.3 s (the foe falls from about 1.56 s); both bodies on one window.
+                case FangsTakedown:case FangsTakedownHit:return new Window(.02f,1.3f,1.98f);
                 case FangsCritical:case FangsCriticalHit:return new Window(.5f,1.1f,1.7f);
                 default:return NativeDevKatanaMotion.WindowOf(clip);
             }
         }
         /// <summary>At most this many times a clip's pace, before its strike (a move too quick starts later into the window).</summary>
         public const float StrikeRate=1.6f;
-        /// <summary>The Rogue's dual-blade clips are slower than the daggers' quick cuts: they may run twice their pace before the strike.</summary>
+        /// <summary>The Rogue's dual-blade clips (the dash's) are slower than the daggers' quick cuts: they may run twice their pace before the
+        /// strike. The Dual chain's keep StrikeRate.</summary>
         public static float RateOf(string clip)=>clip!=null&&clip.StartsWith(R,StringComparison.Ordinal)?2f:StrikeRate;
         /// <summary>The clip time at `time` for a move from `start` striking at `hitAt` and ending at `end`, on the clip's window (the clip's
         /// own length `len` when it has none: its middle the strike).</summary>

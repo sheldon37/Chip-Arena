@@ -232,10 +232,11 @@ namespace ChipArena.UnityConversion
                 }
                 case NativeFangs.Spec:
                 {
-                    // As the daggers: a slit throat on a light cut, an arm on the rest (a forearm when the cut is low); the slam chops.
+                    // As the daggers: a slit throat on a light cut (and the takedown's throat cut), an arm on the rest (a forearm when the
+                    // cut is low); the slam chops.
                     into.Kick=2.6f;into.Blood=1.8f;
                     if(chop){into.Kind=SliceKind.Chop;into.Add(CapturedRig.Head);into.Add(Near(CapturedRig.LArm,CapturedRig.RArm));break;}
-                    if(NativeBladeCuts.TakeOf(spec,move,blow.Index)==NativeBladeCuts.Take.Limb){into.Kind=SliceKind.Limb;into.Add(h0>=1.05f?Near(CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow):Near(CapturedRig.LElbow,CapturedRig.RElbow));}
+                    if(NativeBladeCuts.TakeOf(spec,move,blow.Index,blow.Clip)==NativeBladeCuts.Take.Limb){into.Kind=SliceKind.Limb;into.Add(h0>=1.05f?Near(CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow):Near(CapturedRig.LElbow,CapturedRig.RElbow));}
                     else{into.Kind=SliceKind.Slit;into.Throat=true;}
                     break;
                 }

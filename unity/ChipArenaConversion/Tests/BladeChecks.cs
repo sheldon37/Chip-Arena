@@ -81,9 +81,11 @@ namespace ChipArena.UnityConversion
             var fangsActor=new Actor{Id=8,SourceSpec=NativeFangs.Spec,Grounded=true,Blade=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Cut,CastStep=0,CastAt=1,CastRelease=1.1f,CastUntil=1.3f}};
             Check(NativeBladeMotion.Cast(NativeVisualMotion.For(NativeFangs.Spec),fangsActor,1.1f,bank,false,out var fp)&&fp.Clip==NativeBladeMotion.FangsCuts[0],"a Fangs cut standing takes the whole body");
             Check(!NativeBladeMotion.Cast(NativeVisualMotion.For(NativeFangs.Spec),fangsActor,1.1f,bank,true,out _)&&NativeBladeMotion.Upper(NativeVisualMotion.For(NativeFangs.Spec),fangsActor,1.1f,bank,out var up)&&up.A==NativeBladeMotion.FangsCuts[0],"on the move it is the upper body over the stride");
-            // The Fangs' combo and dash on the Frank Rogue set (owner 2026-11-11: utilize the Rogue from the Frank Slash animation set), each cut's
-            // strike on its hit, the set's clips at its own rate.
-            Check(NativeBladeMotion.FangsCuts.Length==NativeFangs.Steps&&NativeBladeMotion.FangsCuts.All(x=>x.StartsWith("Frank_Rogue_",StringComparison.Ordinal))&&NativeBladeMotion.FangsPounce.StartsWith("Frank_Rogue_",StringComparison.Ordinal)&&NativeBladeMotion.RateOf(NativeBladeMotion.FangsPounce)==2,"the Fangs' five cuts and the dash are the Rogue's");
+            // The Fangs' combo on the Frank Dual set's chain (the owner's pick 2026-11-13), the dash on the Rogue set (owner 2026-11-11: utilize the
+            // Rogue from the Frank Slash animation set), each cut's strike on its hit, the Rogue's clips at its own rate, the Dual's at the blades'.
+            Check(NativeBladeMotion.FangsCuts.SequenceEqual(new[]{"Frank_RPG_Dual_Combo01_1","Frank_RPG_Dual_Combo01_2","Frank_RPG_Dual_Combo01_3","Frank_RPG_Dual_Combo06_1","Frank_RPG_Dual_Combo01_4"})&&NativeBladeMotion.FangsCuts.Length==NativeFangs.Steps
+                &&NativeBladeMotion.FangsCuts.All(x=>NativeBladeMotion.RateOf(x)==NativeBladeMotion.StrikeRate)&&NativeBladeMotion.FangsPounce.StartsWith("Frank_Rogue_",StringComparison.Ordinal)&&NativeBladeMotion.RateOf(NativeBladeMotion.FangsPounce)==2,"the Fangs' five cuts are the Dual chain's, the dash the Rogue's");
+            foreach(var cut in NativeBladeMotion.FangsCuts){var w=NativeBladeMotion.WindowOf(cut);Check(!float.IsNaN(w.Hit)&&w.From<=w.Hit&&w.Hit<w.To&&w.To<1.3f&&Array.IndexOf(NativeVisualMotion.For(NativeFangs.Spec).All,cut)>=0,"a measured window, baked with the set: "+cut);}
             for(int step=0;step<NativeFangs.Steps;step++)
             {
                 fangsActor.Blade=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Cut,CastStep=step,CastAt=1,CastRelease=1+NativeFangs.CutHit[step],CastUntil=1+NativeFangs.CutLength[step]};
@@ -104,6 +106,17 @@ namespace ChipArena.UnityConversion
             var victim=new Actor{Id=9,SourceSpec="sword",PairBy=8,PairClip=NativeBladeMotion.FangsTakedownHit,PairAt=2,PairUntil=3.45f};
             Check(NativeBladeMotion.Victim(victim,2.5f,bank,out var vp)&&vp.Clip==NativeBladeMotion.FangsTakedownHit&&!NativeBladeMotion.Victim(victim,1.9f,bank,out _)&&!NativeBladeMotion.Victim(victim,4,bank,out _),"a held victim plays its paired clip, only while held");
             Check(NativeBladeMotion.VictimClip(NativeBladeMotion.KatanaCritical)==NativeBladeMotion.KatanaCriticalHit&&NativeBladeMotion.VictimClip(NativeBladeMotion.FangsTakedown)==NativeBladeMotion.FangsTakedownHit&&NativeBladeMotion.VictimClip("x")==null,"each attacker clip's victim clip");
+            // The takedown from behind is the stealth kill's throat cut (the owner's pick 2026-11-13: Behind_01 and its foe's Hit_Behind_01, the
+            // pair the host names): both bodies on one window, the fang drawn across the throat on the rules' blow, together through the hold.
+            {
+                float at=5;var td=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Assassinate,CastAt=at,CastRelease=at+NativeFangs.BehindHit,CastUntil=at+NativeFangs.BehindHold,PairClip=NativeBladeMotion.FangsTakedown,PairAt=at,PairHit=at+NativeFangs.BehindHit,PairUntil=at+NativeFangs.BehindHold};
+                var killer=new Actor{Id=31,SourceSpec=NativeFangs.Spec,Grounded=true,Blade=td};var held=new Actor{Id=32,SourceSpec="sword",PairBy=31,PairClip=NativeBladeMotion.VictimClip(td.PairClip),PairAt=at,PairUntil=at+NativeFangs.BehindHold};
+                var tw=NativeBladeMotion.WindowOf(NativeBladeMotion.FangsTakedown);bool together=true;
+                for(float t=at;t<at+NativeFangs.BehindHold;t+=1/60f){NativeBladeMotion.Clip(killer,td,t,bank,out string kc,out float kt,out _,out _);NativeBladeMotion.Victim(held,t,bank,out var vk);together&=kc==NativeBladeMotion.FangsTakedown&&vk.Clip==NativeBladeMotion.FangsTakedownHit&&Math.Abs(kt-vk.Time)<.02f;}
+                NativeBladeMotion.Clip(killer,td,td.PairHit,bank,out _,out float onBlow,out _,out _);
+                Check(NativeBladeMotion.FangsTakedown=="Frank_Stealth_Kill_Behind_01"&&NativeBladeMotion.FangsTakedownHit=="Frank_Stealth_Kill_Hit_Behind_01"&&NativeBladeMotion.WindowOf(NativeBladeMotion.FangsTakedownHit).Hit==tw.Hit
+                    &&Math.Abs(onBlow-tw.Hit)<1e-3f&&Math.Abs(tw.Hit-1.3f)<1e-4f&&together,"the takedown: the throat cut and its foe's clip on one window, the cut on the blow, the two bodies together through the hold");
+            }
             Check(NativeVisualMotion.For(NativeKatana.Spec).All.Contains(NativeBladeMotion.KatanaCriticalHit)&&NativeVisualMotion.For(NativeKatana.Spec).All.Contains(NativeBladeMotion.FangsTakedownHit)&&NativeVisualMotion.For(NativeFangs.Spec).All.Contains(NativeBladeMotion.KatanaCriticalHit),"the victims' clips are in the bank");
             // ---- the chips ----
             foreach(var katana in new[]{true,false})
