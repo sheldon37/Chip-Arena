@@ -7,6 +7,7 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--effects-audio"){foreach(var result in EffectsAudioChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--expedition-loading")ExpeditionLoadingHandoffChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--expedition-loading")return 0;
             if(args.Length==3&&args[0]=="--stage-layout"){StageArtLayout.Write(ProjectRoot(),args[1],args[2]);return 0;}

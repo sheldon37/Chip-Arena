@@ -168,7 +168,7 @@ namespace ChipArena.UnityConversion
         /// (Core NativeToonSynth), with the usual falloff and pan from the listener.</summary>
         public void Toon(string id,Vector3? position,float gain,bool mine=false,float rate=1)
         {
-            if(id==null||!NativeToonSynth.Known(id))return;if(!bankLoaded)LoadBank();if(BankPlay(NativeToonSynth.Prefix+id,position,gain,0,null,mine))return;
+            if(id==null||!NativeToonSynth.Known(id))return;if(!bankLoaded)LoadBank();if(BankPlay(NativeToonSynth.Prefix+id,position,gain,0,null,mine,rateScale:rate))return;
             if(Muted||Effects<=0||voices==null)return;
             if(!toonClips.TryGetValue(id,out var clip)||clip==null){var data=NativeToonSynth.Samples(id);clip=AudioClip.Create("Toon "+id,data.Length,1,NativeToonSynth.Rate,false);clip.SetData(data,0);toonClips[id]=clip;}
             int free=-1;for(int i=0;i<voices.Length;i++)if(!voices[i].isPlaying){free=i;break;}if(free<0)return;
