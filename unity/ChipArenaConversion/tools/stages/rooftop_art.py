@@ -140,6 +140,8 @@ def main():
     import rooftop_city as city
     import rooftop_cars as cars
     sb = sk.StageBank()
+    # (its chunks are named, not numbered, and none is far scenery in the stages' sense: NativeRooftopModel reads no layer)
+    sb.far_layers = False
     t0 = time.time()
     for ti in [int(x) for x in args.tiers.split(',')]:
         T = sk.Tier(ti)
