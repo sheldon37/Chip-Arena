@@ -48,13 +48,14 @@ namespace ChipArena.UnityConversion
             CapturedRig.LHand,CapturedRig.RHand,CapturedRig.LFoot,CapturedRig.RFoot};
         // The plates a corpse keeps (owner 2026-11-01: "Death is removing suits"; NativeVisualBodyPresentation.cs, the corpse's
         // frame): a bit per suit bone; a crushed head drops its own, and each half of a split body keeps those on its side of
-        // the cut (the bisect's HalfOf, as the helmet's VisualCorpseHead).
+        // the cut (the bisect's HalfOf, as the helmet's VisualCorpseHead); while the cut is being made the first half draws the
+        // whole body and keeps them all, the second none (Core NativeSplitShow).
         private int VisualCorpseSuit(NativeCorpse corpse)
         {
             int keep=-1;if(corpse.IsCrushed(CapturedRig.Head))keep&=~(1<<NativeRobotSuit.Head);
             var first=corpse.Host??corpse;if(first.Twin==null)return corpse.Host==null?keep:0;
-            if(!(first.Bisect is BisectFx fx)||fx.Request==null)return 0;
-            for(int b=0;b<SuitJoints.Length;b++){int j=SuitJoints[b],half=fx.Request.HalfOf(j,CutNum(first.Bind[j].GetColumn(3)));if(corpse.Host==null?half==1:half!=1)keep&=~(1<<b);}
+            if(!(first.Bisect is BisectFx fx)||fx.Request==null)return 0;var stage=VisualSplitStage(first);int mine=corpse.Host==null?0:1;
+            for(int b=0;b<SuitJoints.Length;b++){int j=SuitJoints[b],half=fx.Request.HalfOf(j,CutNum(first.Bind[j].GetColumn(3)));if(!NativeSplitShow.Wears(mine,half==1?1:0,stage))keep&=~(1<<b);}
             return keep;
         }
         // A body's suit bones (Found: a bit each one found; a piece whose bone the body lacks is left off).

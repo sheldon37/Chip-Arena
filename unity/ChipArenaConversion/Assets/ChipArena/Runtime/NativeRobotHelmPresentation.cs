@@ -50,12 +50,13 @@ namespace ChipArena.UnityConversion
         private bool HelmEars(int id){int gear=FaceGearWorn(id);return gear==NativeWeaponSkins.FaceHelm||gear==NativeWeaponSkins.FaceHalf;}
         // A hat's place on the helmet, in the head bone's frame.
         private static Matrix4x4 HelmHatFit(string hat){NativeRobotHelm.HatFit(hat,out float k,out var move);return Matrix4x4.TRS(new Vector3(move.X,move.Y,move.Z),Quaternion.identity,Vector3.one*k);}
-        // Whether a corpse holds its head: a whole one, or the half of a split one its cut left the head on (VisualCorpseHat's test).
+        // Whether a corpse holds its head: a whole one, or the half of a split one its cut left the head on (VisualCorpseHat's test),
+        // the first half while it draws the whole body (Core NativeSplitShow).
         private bool VisualCorpseHead(NativeCorpse corpse)
         {
             var first=corpse.Host??corpse;if(first.Twin==null)return corpse.Host==null;
             int half=first.Bisect is BisectFx fx&&fx.Request!=null?fx.Request.HalfOf(CapturedRig.Head,CutNum(first.Bind[CapturedRig.Head].GetColumn(3))):0;
-            return corpse.Host==null?half!=1:half==1;
+            return NativeSplitShow.Wears(corpse.Host==null?0:1,half==1?1:0,VisualSplitStage(first));
         }
     }
 }

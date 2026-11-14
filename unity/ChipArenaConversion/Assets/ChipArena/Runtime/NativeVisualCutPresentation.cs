@@ -19,8 +19,9 @@ namespace ChipArena.UnityConversion
     //    the voxel halves are (Core NativeBisect.CapOf: the section's union, its rim in the shell's colour, then flesh in layers;
     //    the two faces mirror each other), each cap piece on the crossed bone nearest it, with the bones the plane crosses as
     //    stubs (Core NativeModelGore). The skinning, the section and its cap are worked out on a worker while the halves hold on
-    //    the blade: the second half shows once they are in (the first draws the whole body till then), and the halves wait for
-    //    them before they part.
+    //    the blade: the second half shows once they are in (the first draws the whole body till then, wearing all the whole
+    //    body wears: its face gear, hat, plates and every renderer; VisualCorpseWhole), and the halves wait for them before they
+    //    part. A cut that fails leaves the first half whole and the second hidden, so no part ever shows twice.
     //  - A body severed at its joints (a cut or crushed part, a smash; VisualCorpseSever): one body, keeping each vertex all of
     //    whose weight is on one piece's bones (none on a crushed part's), so no skin stretches between pieces as they part; each
     //    hole is capped (skin rim, flesh to a dark middle) on the piece's bone nearest it, the joint's bones as stubs
@@ -78,7 +79,10 @@ namespace ChipArena.UnityConversion
             public float[] Keep;
             // Each body's caps.
             public readonly CapSet[] Caps={new CapSet(),new CapSet()};
-            public System.Threading.Tasks.Task Task;public Exception Error;public bool Finished;
+            public System.Threading.Tasks.Task Task;public Exception Error;public bool Finished,Failed;
+            // The first half's renderers the cut does not read whose middle lies on the second half's side: drawn with the whole
+            // body until the cut is on, then left to the second half (VisualCutFinish).
+            public List<Renderer> Later;
             public bool Done=>Finished||Task==null||Task.IsCompleted;
             public void Run(){try{if(Pieces)MakePieces();else MakePlane();}catch(Exception e){Error=e;}}
             // Each vertex where the death pose put it (its blend shapes, then its four bones).
@@ -264,12 +268,14 @@ namespace ChipArena.UnityConversion
             // The bones the cut may cross: the stubs of those it does now, and the segments the cap's pieces pick from.
             var boneA=new List<Vector3>();var boneB=new List<Vector3>();var boneOf=new List<int>();
             VisualCutBones(halves,joint,point,normal,request.Mask,boneA,boneB,boneOf);
-            // A renderer the cut does not read goes whole to the half its middle is on.
+            // A renderer the cut does not read goes whole to the half its middle is on (the first half's share of the second's once
+            // the cut is on: it draws the whole body till then).
+            List<Renderer> later=null;
             for(int k=0;k<r0.Length;k++)
             {
-                if(cut[k]||r0[k]==null||r1[k]==null)continue;bool far=Vector3.Dot(r0[k].bounds.center-point,normal)>=0;(far?r0[k]:r1[k]).enabled=false;
+                if(cut[k]||r0[k]==null||r1[k]==null)continue;bool far=Vector3.Dot(r0[k].bounds.center-point,normal)>=0;if(far)(later??=new List<Renderer>()).Add(r0[k]);else r1[k].enabled=false;
             }
-            var job=new CutJob{Sausage=HotDogOn(halves[0].Root),Halves=halves,Parts=parts.ToArray(),Count=count,Point=point,Normal=normal,Seed=fx.Seed,BoneA=boneA.ToArray(),BoneB=boneB.ToArray(),BoneOf=boneOf.ToArray(),BonePiece=new int[boneOf.Count]};
+            var job=new CutJob{Sausage=HotDogOn(halves[0].Root),Halves=halves,Parts=parts.ToArray(),Count=count,Point=point,Normal=normal,Seed=fx.Seed,BoneA=boneA.ToArray(),BoneB=boneB.ToArray(),BoneOf=boneOf.ToArray(),BonePiece=new int[boneOf.Count],Later=later};
             halves[0].Cut=job;halves[1].Cut=job;halves[1].Root.SetActive(false);VisualCutStart(job);
             // The halves part only once the cut is on them (as they wait for the voxel split).
             var ready=corpse.SplitReady;var wait=corpse.AwaitSplit;
@@ -277,6 +283,19 @@ namespace ChipArena.UnityConversion
             corpse.AwaitSplit=()=>{wait?.Invoke();VisualCutFinish(job);};
             return true;
         }
+        // The stage of a split corpse's model cut (Core NativeSplitShow): being made on the worker, failed, else on (also a body that
+        // could not be cut so and was severed per half instead).
+        private NativeSplitShow.Stage VisualSplitStage(NativeCorpse corpse)
+        {
+            var first=corpse.Host??corpse;
+            if(!visualCorpses.TryGetValue(first,out var c)||c.Cut==null||c.Cut.Pieces||c.Cut.Halves.Length<2||c!=c.Cut.Halves[0])return NativeSplitShow.Stage.On;
+            return !c.Cut.Finished?NativeSplitShow.Stage.Making:c.Cut.Failed?NativeSplitShow.Stage.Failed:NativeSplitShow.Stage.On;
+        }
+        // Whether a corpse's visual body draws the whole model: a whole corpse, or the first half of a split one whose cut is not on
+        // yet (the worker is still making it) or failed, while the second half waits hidden (VisualCorpseShown). Such a half wears
+        // what the whole body wears, its face gear, hat and every plate (owner 2026-11-13: "the head/face appear for a moment when the
+        // player dies": the head's half held them, hidden, so the first half's whole body showed its bare face till the cut was in).
+        private bool VisualCorpseWhole(NativeCorpse corpse)=>corpse!=null&&corpse.Host==null&&(corpse.Twin==null||NativeSplitShow.Whole(0,VisualSplitStage(corpse)));
         // VisualCorpseSever: a body severed at its joints (per visual bone its piece, `pieceOfBone`, -1 dropped) cut in its shader;
         // false when it cannot be (the caller copies its meshes).
         private bool VisualCorpseSeverCut(VisualCorpse c,int[] pieceOfBone)
@@ -389,16 +408,19 @@ namespace ChipArena.UnityConversion
             tex.SetPixelData(data,0);tex.Apply(false,true);return tex;
         }
         // Puts a finished cut on its bodies: a split's keep values (each half its slice of the texture; the second half shows),
-        // then the caps. Waits for the worker if it is still running. A failed split's halves both draw whole.
+        // then the caps. Waits for the worker if it is still running. A failed split stays as it was while the cut was being made:
+        // the first half whole, the second hidden (VisualCorpseShown), so nothing is drawn twice (owner 2026-11-13: "the head/face
+        // appear for a moment when the player dies").
         private void VisualCutFinish(CutJob job)
         {
             if(job==null||job.Finished)return;var halves=job.Halves;
             if(job.Task!=null&&!job.Task.IsCompleted)try{job.Task.Wait();}catch(Exception e){job.Error=e;}
             job.Finished=true;foreach(var h in halves)if(h.Root==null)return;
-            if(job.Error!=null||!job.Pieces&&job.Keep==null){Debug.LogWarning("Visual corpse cut failed: "+job.Error?.Message);if(halves.Length>1)halves[1].Root.SetActive(halves[0].Root.activeSelf);return;}
+            if(job.Error!=null||!job.Pieces&&job.Keep==null){Debug.LogWarning("Visual corpse cut failed: "+job.Error?.Message);job.Failed=true;return;}
             cutBlock??=new MaterialPropertyBlock();
             if(!job.Pieces)
             {
+                if(job.Later!=null)foreach(var r in job.Later)if(r!=null)r.enabled=false;
                 var tex=VisualCutTexture(job.Keep,job.Count);halves[0].CutTexture=tex;
                 for(int h=0;h<halves.Length;h++)foreach(var p in job.Parts)
                 {

@@ -1604,8 +1604,11 @@ namespace ChipArena.UnityConversion
         {
             if(!visualCorpses.TryGetValue(corpse,out var c)||c.Root==null)return false;
             c.Frame=Time.frameCount;
-            // A split body's cut being made: the first half draws the whole body meanwhile, the second waits (VisualCorpseCut).
-            if(c.Cut!=null&&!c.Cut.Finished){if(c.Cut.Done)VisualCutFinish(c.Cut);else if(c.Cut.Halves.Length>1&&c==c.Cut.Halves[1]){if(c.Root.activeSelf)c.Root.SetActive(false);return true;}}
+            // A split body's cut being made: the first half draws the whole body meanwhile (wearing all it wears: VisualCorpseWhole)
+            // and puts the cut on once it is in, the second waits (VisualCorpseCut); a failed cut keeps them so. Only the first puts
+            // it on, so what the first drew whole this frame is never also drawn by the second.
+            if(c.Cut!=null&&!c.Cut.Finished&&c.Cut.Done&&c==c.Cut.Halves[0])VisualCutFinish(c.Cut);
+            if(c.Cut!=null&&c.Cut.Halves.Length>1&&c==c.Cut.Halves[1]&&!NativeSplitShow.Shown(1,VisualSplitStage(corpse))){if(c.Root.activeSelf)c.Root.SetActive(false);return true;}
             // With the bake's noise the body dissolves as the corpse fades (cells away, the front in the pilot's accent); without, it goes at half.
             if(alpha<(visualDissolve?.01f:.5f)){if(c.Root.activeSelf)c.Root.SetActive(false);return true;}
             if(!c.Root.activeSelf)c.Root.SetActive(true);
@@ -1628,8 +1631,9 @@ namespace ChipArena.UnityConversion
             if(flat){var scale=new Vector3(overlay.GetColumn(0).magnitude,overlay.GetColumn(1).magnitude,overlay.GetColumn(2).magnitude);root.localScale=scale;root.position=(Vector3)overlay.GetColumn(3)+Vector3.Scale(scale,at);}
             if(c.Holes!=null)VisualHolesCut(c.All,c.Bones,c.Holes,null);
             // The face gear stays on a whole corpse's head as it fades (not on a split half, a crushed head, under a kill look or
-            // under the Sheldon hood, whose face it would break through).
-            if(c.Look==0&&!c.Hood&&corpse.Twin==null&&corpse.Host==null&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)
+            // under the Sheldon hood, whose face it would break through); also on a split body's first half while it draws the
+            // whole body (VisualCorpseWhole), so the face never shows bare as the cut is made.
+            if(c.Look==0&&!c.Hood&&VisualCorpseWhole(corpse)&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)
             {
                 if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");
                 if(c.Head>=0){corpseFade=alpha;VisualFaceGear(c.Bones[c.Head],corpse.Death.id,corpse.Death.actor?.BodyColor,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);}
@@ -1674,13 +1678,14 @@ namespace ChipArena.UnityConversion
         }
         private float corpseFade;private Func<int,float> corpseFadeOf;
         // PresentDeath, once a pilot's model corpse is shown: its hat on its head (owner 2026-10-28: "hat still seems to remove
-        // on death"), fitted as the live body wears it (VisualHatFit), on the half its head went to; the Sheldon Head as the
-        // body's own cloth hood with its void and the face as it died. False when the corpse has no model head.
+        // on death"), fitted as the live body wears it (VisualHatFit), on the half its head went to (on the first while it draws
+        // the whole body: VisualCorpseWhole); the Sheldon Head as the body's own cloth hood with its void and the face as it died.
+        // False when the corpse has no model head.
         private Matrix4x4 corpseHat;private Func<int,Matrix4x4> corpseHatBone;
         private bool VisualCorpseHat(NativeCorpse corpse,NativeDeath death,float alpha,float clock)
         {
             var a=death.actor;string hat=a?.Hat;if(string.IsNullOrEmpty(hat)||hat=="none"||a.SourceSpec=="siren")return false;var on=corpse;
-            if(corpse.Twin!=null&&corpse.Bisect is BisectFx fx&&fx.Request!=null&&fx.Request.HalfOf(CapturedRig.Head,CutNum(corpse.Bind[CapturedRig.Head].GetColumn(3)))==1)on=corpse.Twin;
+            if(corpse.Twin!=null&&corpse.Bisect is BisectFx fx&&fx.Request!=null&&NativeSplitShow.Wears(1,fx.Request.HalfOf(CapturedRig.Head,CutNum(corpse.Bind[CapturedRig.Head].GetColumn(3)))==1?1:0,VisualSplitStage(corpse)))on=corpse.Twin;
             if(!visualCorpses.TryGetValue(on,out var c)||c.Root==null||!c.Root.activeSelf||c.Look!=0)return false;
             if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");if(c.Head<0)return false;
             corpseHat=VisualHatFit(c.Bones[c.Head],hat,!c.Hood&&WearsHelm(death.id));var dogHat=HotDogHatOn(hat,c.Bones[c.Head]);if(dogHat!=c.Bones[c.Head])corpseHat=VisualHatFit(dogHat,hat);corpseHatBone??=_=>corpseHat;
