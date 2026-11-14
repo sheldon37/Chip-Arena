@@ -35,6 +35,17 @@ namespace ChipArena.UnityConversion
             Check(!looks.Contains("\"debris\""),"no shipped look asks for voxel debris (the realistic style everywhere)");
             var set=System.Text.Json.JsonSerializer.Deserialize<MapLookSet>("{\"maps\":[{\"id\":\"blockworld\",\"debris\":\"voxel\"}]}",new System.Text.Json.JsonSerializerOptions{IncludeFields=true});
             Check(set?.maps!=null&&set.maps.Length==1&&set.maps[0].debris=="voxel"&&NativeDebrisLook.For(set.maps[0].id,set.maps[0].debris)==NativeDebrisStyle.Voxel,"a look entry carries the switch");
+            // Every shipped look is held styled (NativeLighting.LookSet: NativeMapStyle.Styled copies the look field by field), so the
+            // copy must carry the switch: a styled voxel look draws voxel debris (it dropped it once, and the voxel style never showed).
+            var shipped=System.Text.Json.JsonSerializer.Deserialize<MapLookSet>(looks,new System.Text.Json.JsonSerializerOptions{IncludeFields=true});int styled=0;
+            foreach(var m in shipped.maps)
+            {
+                if(!NativeMapStyle.On(m,false))continue;styled++;m.debris="voxel";
+                try{var s=NativeMapStyle.Styled(m,false);Check(!ReferenceEquals(s,m)&&s.debris=="voxel"&&NativeDebrisLook.For(s.id,s.debris)==NativeDebrisStyle.Voxel,m.id+": the styled look keeps its debris switch");}finally{m.debris=null;}
+                Check(NativeDebrisLook.For(m.id,NativeMapStyle.Styled(m,false).debris)==NativeDebrisStyle.Realistic,m.id+": styled without the switch, realistic");
+            }
+            Check(styled>=10,"the styled looks were checked ("+styled+")");
+            Check(typeof(MapLook).GetFields().Count(f=>f.Name=="debris")==1,"the look has one debris field");
         }
         private static void Shapes()
         {
