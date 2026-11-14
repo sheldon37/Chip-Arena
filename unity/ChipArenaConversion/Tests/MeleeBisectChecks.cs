@@ -147,6 +147,44 @@ namespace ChipArena.UnityConversion
             Check(heads>0&&arms>0,"the kick crushes the head ("+heads+") or an arm ("+arms+")");
             report.Add("the DEV Katana's kick (hit 3, by its clip) is a blow: its kill crushes as the shield's (the head "+heads+", an arm "+arms+" of 80), blunt force; its hit an impact burst with the fighters' kick, its wound a bruise; the Katana's third and the DEV Katana's other cuts unchanged");
         }
+        // ---- 1f. The head, drawn once (owner 2026-11-13: "On the new gib, it appears the head/face appear for a moment when the player
+        // dies?"): the DEV Katana's first cut takes the head, and at every stage of the model's cut (Core NativeSplitShow: being made on
+        // the worker, on, failed) each side of the cut (the head with its face gear, hat and plates; the body) is worn by exactly one
+        // shown body: the whole body while the cut is made (it showed the head bare, its gear and hat on the hidden half), then the
+        // half the cut left it on. Once the cut is on the body's half has no head ----
+        private static void HeadOnce(List<string> report)
+        {
+            string K=NativeKatana.Spec,dev=NativeDevMotions.Katana;var stages=(NativeSplitShow.Stage[])Enum.GetValues(typeof(NativeSplitShow.Stage));
+            foreach(var stage in stages)
+            {
+                Check(NativeSplitShow.Shown(0,stage)&&NativeSplitShow.Shown(1,stage)==(stage==NativeSplitShow.Stage.On),"the first half always draws, the second only once the cut is on ("+stage+")");
+                Check(NativeSplitShow.Whole(0,stage)==(stage!=NativeSplitShow.Stage.On)&&!NativeSplitShow.Whole(1,stage),"the first half draws the whole body until the cut is on, for good if it failed ("+stage+")");
+                for(int side=0;side<2;side++)
+                {
+                    int wearers=0;for(int h=0;h<2;h++)if(NativeSplitShow.Wears(h,side,stage)){wearers++;Check(NativeSplitShow.Shown(h,stage),"only a shown half wears anything ("+stage+")");}
+                    Check(wearers==1,"side "+side+" of the cut is worn by exactly one body ("+stage+": "+wearers+")");
+                }
+            }
+            var rnd=new Random(1113);int heads=0;
+            for(int k=0;k<60;k++)
+            {
+                float turn=(float)(rnd.NextDouble()*120-60),yaw=(float)rnd.NextDouble()*360-180,dist=1f+(float)rnd.NextDouble()*1.5f,face=yaw+180+turn;
+                var q=MeleeMath.AxisAngle(MeleeMath.Y,-yaw*D);var at=Vector3.Transform(new Vector3(0,0,dist),q);var victim=new V3(-at.X,NativeMeleeSlice.RootHeight,at.Z);
+                var blow=BladeHit(new Move{Spec=K,Motion=dev,Detail="blade-cut",Cast=NativeKatana.Cut,Step=0},yaw,new V3(0,0,0),victim,out _,out _);
+                var plan=new SlicePlan();Check(NativeMeleeSlice.Plan(blow,true,K,Wound("sword"),victim,face,k,plan),"the DEV Katana's first cut plans a kill");
+                var joints=Joints(BisectChecks.Pose(new Vector3(victim.x,victim.y-NativeMeleeSlice.RootHeight,victim.z),face));
+                var r=NativeMeleeBisect.Request(plan,joints,Vector3.Zero,(uint)k*2654435761u);
+                Check(r!=null&&NativeMeleeBisect.Piece(plan)==CapturedRig.Head,"the DEV Katana's first cut takes the head (piece "+NativeMeleeBisect.Piece(plan)+")");heads++;
+                int head=r.HalfOf(CapturedRig.Head,joints[CapturedRig.Head]),chest=r.HalfOf(CapturedRig.Chest,joints[CapturedRig.Chest]),pelvis=r.HalfOf(CapturedRig.Pelvis,joints[CapturedRig.Pelvis]);
+                Check(head==1&&chest==0&&pelvis==0,"the head goes with the cut-off part, the trunk stays with the body");
+                var on=NativeSplitShow.Stage.On;
+                Check(NativeSplitShow.Wears(1,head,on)&&!NativeSplitShow.Wears(0,head,on),"once the cut is on the cut-off head wears its gear and hat, and the body has no head");
+                Check(NativeSplitShow.Wears(0,chest,on)&&!NativeSplitShow.Wears(1,chest,on),"and the body keeps its own plates");
+                foreach(var s in new[]{NativeSplitShow.Stage.Making,NativeSplitShow.Stage.Failed})
+                    Check(NativeSplitShow.Wears(0,head,s)&&NativeSplitShow.Wears(0,chest,s)&&!NativeSplitShow.Shown(1,s),"while the cut is made (or after it failed) the whole body wears its head's gear and hat, the head's half hidden ("+s+")");
+            }
+            report.Add("the head drawn once (the DEV Katana's first cut, "+heads+" kills, each the head): the whole body wears the head's gear, hat and plates while the cut is made and after a failed one, then the cut-off head alone; each side of the cut on exactly one shown body at every stage");
+        }
         private static void Blades(Dictionary<string,Blow> picks,List<string> report)
         {
             string K=NativeKatana.Spec,F=NativeFangs.Spec,G=NativeGlaive.Spec,dev=NativeDevMotions.Katana;var moves=new List<Move>();
@@ -337,7 +375,7 @@ namespace ChipArena.UnityConversion
             Check(!picks.Keys.Any(k=>k.StartsWith("greatsword head")||k.StartsWith("greatsword limb")),"a greatsword always cleaves through");
             Check(!picks.Keys.Any(k=>k.StartsWith("daggers through")),"a dagger never goes through the body: a limb, or the throat");
             report.Add("lethal blows (500 each, random reach, facing, index, jump and kit): "+string.Join("; ",tally));
-            Blades(picks,report);DevGreatsword(report);Causes(picks,report);Kick(report);
+            Blades(picks,report);DevGreatsword(report);Causes(picks,report);Kick(report);HeadOnce(report);
 
             if(sweep)
             {
