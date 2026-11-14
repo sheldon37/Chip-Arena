@@ -98,6 +98,7 @@
   travel (the takedown's 0.98 m, the frontal critical's 0.87 m: the bank draws them in their pose less a straight drift, and their pair
   is the paired-reactions work's); the entrance step's last 0.1 s (the clip's evade runs 0.36 m on after the step lands; the root
   holds); the veil's 0.25 m hop (the bank draws the in-place takes at standing height); the feet (above).
+- **Released:** shared `1ab3b894` (the builder at `1ab3b894`), test channel revision `639302243868854485` (build `660afc01`); the suite at `5fe5c6cb` (1,023 groups, exit 0), the Unity compile. No bank or Drive zip change. The foot slide and the entrance's camera and effects (`claude/fangs-fx`) follow.
 
 ## 2026-11-13 — Claude: gore flesh: the cut faces, wounds, lumps and bone drawn as flesh in the blood's light (owner request; presentation only)
 
