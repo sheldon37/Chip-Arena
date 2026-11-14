@@ -1,3 +1,104 @@
+## 2026-11-13 — Claude: the Fangs' moves carry the pilot as their clips do, and Silent Kill's flurry leaps (owner request; a rules change at the owner's word, for Astra)
+
+- Branch `claude/fangs-travel` (from shared `41bfb1d7`; shared `af539862` and `8c7d8853` merged in): `72b409ae` the travel and the
+  entrance, `5aad24fb` the foe stop and the build gate's checks, `7aaa1486` and this entry's commit the docs. Pushed, **not merged, not released**.
+- **The owner** (after the second picks' release, shared `d15fdfb1`): "Review fangs animations; The movements look like they should be
+  moving the character location", "This applies to the intro too (They flip in place with no movement)".
+- **Why they stood still:** the motion bank draws every clip in place. The Dual chain ships as root-motion takes only, imported with
+  their root on the centre of mass and the body's turn, not baked, so the bake (applyRootMotion off) loses all of their travel (the drawn
+  body's centre stays within 2 cm); the assassin set's in-place takes have none, and their height goes too (the body's centre stays at
+  0.845 m through the entrance's somersaults). The rules moved the pilot only by `CutLunge` {0, 0, .5, 0, 1.2}, eased from cast to hit.
+- **Measured** (the root-motion takes' root bone over the slice the game plays, from the FBX, at 0.835 of the pack's skeleton: the bake
+  body against it, fitted over the drawn frames of the Dual clips; scratch `ftravel/moves.py`, `fitframe.py`):
+
+  | Move (clip, slice played) | Authored travel over the slice (game body) | When (move s: 10/50/90% of it) | Before | After |
+  | --- | --- | --- | --- | --- |
+  | Cut 1 (Dual `Combo01_1`, 0.21-0.90 s) | 0.63 m on (runs to 0.72, back), no lift | 0.09/0.18/0.22 (hit 0.14) | none | 0.63 m on, on its root |
+  | Cut 2 (`Combo01_2`, 0.05-0.72) | 1.07 m on | 0.03/0.14/0.28 (hit 0.13) | none | 1.07 m |
+  | Cut 3 (`Combo01_3`, 0-0.70) | 1.00 m on | 0.03/0.12/0.27 (hit 0.15) | 0.5 m, cast to hit, eased out | 1.0 m |
+  | Cut 4 (`Combo06_1`, 0.06-0.75) | 0.06 m net (0.17 out and back) | - | none | none (keeps its stride) |
+  | Cut 5 (`Combo01_4`, 0-0.85) | 1.68 m on | 0.08/0.21/0.51 (hit 0.20) | 1.2 m, cast to hit | 1.67 m |
+  | Pounce (Rogue `Combination_05_2`, 0.95-1.85) | 0.67 m on (0.87 out), its 0.4 m hop drawn by the bank | 0.03/0.13/0.25 | 5 m dash, 0.10-0.42 | unchanged |
+  | Step's stab (Assassin `Skill01`, 0.45-1.15) | 3.39 m on, a dash | 0.12/0.14/0.17 | the blink behind the foe at 0.14 | unchanged (the blink lands with the clip's dash) |
+  | Veil (`Evade_B`, 0-0.58) | 2.50 m back, a 0.25 m hop (not drawn) | 0.05/0.20/0.29 | none | 2.5 m back |
+  | Fan (`Attack06`, 0.03-0.80) | 0 (0.14 out and back) | - | none | none |
+  | Bloom (`Skill02`, 0.45-1.50) | 0.99 m on (1.26 out, steps back) | 0.26/0.27/0.29 (strike 0.30) | none | 1.0 m (1.27 out) |
+  | Takedown (`Stealth_Kill_Behind_01`, 0.02-1.98) | 0.98 m: 0.61 on, 0.76 to the left (-51 deg); the bank draws it in the pose less a straight drift | 0.05/0.95/1.26 | held, foe 0.85 m ahead | unchanged (paired) |
+  | Frontal critical (`Damage_Critical_Assassin`, 0.50-1.70) | 0.87 m on | 0.30/0.33/0.37 | held | unchanged (paired) |
+  | Entrance step (`Evade_F`, 0.05-0.50; intro 1.6-1.95) | 2.45 m on, a 0.19 m hop | most while unseen | keyed 1.4 m, Before to After | keyed 0.78 m, Before to Arrive |
+  | Entrance flurry (`Combo05_All`, 0.35-1.95; intro 1.95-3.8) | lowest point up to 1.78 m (root 1.91), 0.12 m back | the leap at intro 2.8-3.66 | flips on the floor (body centre held at 0.845 m) | carried: leaps 1.78 m |
+  | Entrance strike (`Skill02`, 0.45-1.6; intro 3.8-4.95) | 1.26 m on, back to 0.74 | the lunge at intro 4.15-4.25 | none | carried; ends on the hero's spot |
+
+  Direction: every root goes straight along its own forward (the sideways drift under 7 cm), the takedown's excepted; the travel is laid
+  along the pilot's facing. The bake's drawn body faces its own orientation frame by frame (the Dual stance's body faces 59 degrees off
+  its root's forward, and a fit of the drawn frames to the authored ones turns through up to 200 degrees inside a cut), so "the root's
+  forward" is the clip's travel toward what it strikes; that is the facing.
+
+- **Rules changed (at the owner's word; Astra please review):**
+  - `NativeFangs.CutLunge` {0, 0, .5, 0, 1.2} -> **{.63, 1.07, 1, 0, 1.67}** m, timed by each clip's root through the presentation's fit
+    (Core `NativeBladeMotion.FangsTravelShare`, `NativeBlades.PathAt`; was eased out from cast to hit), the path running to the clip's
+    end (at most 0.1 s past the move; the next move ends it).
+  - `NativeFangs.CutReach` {2.1, 2.1, 2.2, 2.2, 2.6} -> **{1.9, 1.57, 2.06, 2.2, 2.93}** m: the pilot is 32/50/64/52% along at the hit,
+    so every cut lands as far from where it was cast as before (2.1, 2.1, 2.7, 2.2, 3.8 m); `NativeFangs.CutReachAt` gives back what was
+    not travelled (a cut in the air, at a wall or a foe).
+  - New `NativeFangs.VeilHop` **2.5** m back over the veil's cast (was none; the stride still runs at 0.9 after it) and `BloomLunge`
+    **1** m on at the bloom's strike (was none; the bloom now takes the whole body).
+  - The travel only from the ground (a cut in the air does not hover along it), never off a drop (`FangsFloorTo`: no floor within 1 m
+    under the feet ends it short), never through a foe (`FangsTravelFoe`: 0.9 m short of one within 0.8 m of the line), walls as the
+    blade path's sweep. `BladeBegin` ends a Fangs path when the next Fangs move starts (gated to Fangs kinds; the Katana unchanged).
+  - Unchanged: the pounce's 5 m dash (its clip's slice travels 0.7 m; the dash is the move), the shadow step's blink (it lands as the
+    clip's own 3.4 m dash does), the fan, the fourth cut (its root comes back), the paired takedown and frontal critical (their pairs are
+    the paired-reactions session's area).
+- **The entrance** (presentation only, Core `NativeFangsIntro`): the shown pilot carries the flurry's leap (its lowest point up to 1.78 m
+  off the floor, 0.12 m drift back) and the strike's lunge (1.26 m on, back to 0.74 m: 0.62 m on in all) on the intro rig's root
+  (`RootPath`). **Approach: start offset.** The
+  shadow step (unseen in its smoke) comes out 0.62 m short of the hero's spot, so the flurry and the strike end exactly on it (the
+  strike's own step back, inside the hero shot): no snap, and the hero, the card and play start where they did. Chosen over bending the
+  way back (the hero would slide 0.62 m in its stance) and over blending it away at a cut (the hero shot starts as a blend). The step's look, the arrival burst and the strike's flash, rings and
+  smoke follow the new spots; the flurry's shot follows the chest and its eye rises half the leap.
+- **Animation impact:** hit timing unchanged (every strike on its rules hit); hitboxes: reaches as above, landing as far from the cast as
+  before; damage, cooldowns unchanged; movement: the cuts (but the fourth), the veil and the bloom move the pilot and stop the stride
+  while they do; networking: the host moves the pilot on the existing blade path (`From`/`To`/`PathAt`/`PathUntil`, no new wire field);
+  guests see it in the snapshots, and a guest's own prediction does not model blade travel (as for the Katana's lunges and the pounce
+  today), so it is corrected by the host during the lunge.
+- **Filmed** in the Editor (Cybercity's open street, the pilot placed facing east, the game stepped at 60 a second, shots at 30 a second
+  on the arena clock, every frame's motion logged), before on shared `41bfb1d7`, after on the branch `b3f95ae9`; the travel takes also
+  side-on on the capture tool's 1 m checked floor (`zstudio`), the entrance from a fixed side camera on its stage and its own camera.
+  Sheets in Claude's scratchpad `ftravel/sheets/` (not committed). What they show:
+  - **The body travels now.** The standing flurry moves the pilot 4.3 m over its five cuts (1.7 m before: the old 0.5 and 1.2 m
+    lunges), each lunge over the checks as its clip's root does; on the move the travelling cuts stop the stride and lunge (6.3 m over
+    the take, 9.8 m before, when the walk carried it); the veil rolls back (1.78 m in the take, a wall behind it stopping the 2.5 m) and
+    the bloom lunges 1.0 m and steps back; the pounce and the step are unchanged (7.1 and 7.0 m; 3.35 m both).
+  - **The feet do not carry it everywhere.** The bake takes the Dual clips' own turn out (up to 200 degrees inside a cut), so the drawn
+    legs pivot round a body that does not turn; standing, the foot lock had pinned them, and while the pilot travels the lock lets go
+    (as for every lunge), so the feet slide with the body through the travel: the standing flurry's low feet slid 9.6 m in all before,
+    14.9 m after (motion.csv). Restoring the clips' turn on the drawn body (or baking it into the pose) is the follow-up that would let
+    them carry it.
+  - **Snaps:** none seen; the path follows the clip's root, and each move's travel ends when the next starts.
+  - **The hits:** every strike on its rules hit (the red frames, the clip at its strike); a lunge stops 0.9 m short of a foe (in the
+    open-street take a bot in the way stopped the finisher at 0.64 m). The after take with the foe brought in front lost its foe to the
+    capture tool's ordering (the bot was brought before the pilot was placed), so the landing after is shown by the build gate's real
+    arena run (below), not on film; a short extra hold to film it gave up after 45 minutes waiting for the Editor lock.
+  - **The entrance:** the flurry now somersaults through the air (before: on the floor, the body's centre held at standing height), the
+    entrance camera keeps the leaping pilot in frame, the strike lunges and steps back, and the pilot stands on the hero's spot from
+    the hero shot on, as before: no snap, no slide.
+- **Checks:**
+  - CoreTests, the full suite (Windows path patch applied in the worktree and reverted, not committed): `72b409ae` 1,021 groups exit 0;
+    `5aad24fb` 1,021 exit 0; the merge `8339c21a` 1,021 exit 0; the merge `b3f95ae9` 1,022 exit 0. `--blades`: 271 checks on the
+    branch, 403 after the merges (new: the travel's length, timing, peak and reach for each cut, the veil and the bloom, the Katana and
+    the dash keeping their easing, the bloom's whole body, the entrance's leap, way, end, strike spot, rig root and the flurry
+    camera keeping the chest in frame).
+  - The Unity compile (four assemblies) on `5aad24fb`, `8339c21a` and `b3f95ae9`.
+  - The Editor build gate (`PrototypeBuild.Validate`) on `b3f95ae9`: ok, "Native blades: 77 checks" (new: the first cut steps in along
+    the facing, the flurry's lunges stop on the foe, the veil hops back, a drop ends the travel and the floor carries it on).
+  - `git diff --check` against shared: clean; pins scan: none broken. The 14 stage banks and the motion bank unchanged through both
+    holds (the Rooftop's at the menu z-fight release's `7f875dcd`).
+- **Not seen / not done:** played by a person; a guest over the network (the host moves the pilot on the blade path as for the Katana's
+  lunges; a guest's own prediction does not model blade travel and is corrected during the lunge); a Windows build; the paired moves'
+  travel (the takedown's 0.98 m, the frontal critical's 0.87 m: the bank draws them in their pose less a straight drift, and their pair
+  is the paired-reactions work's); the entrance step's last 0.1 s (the clip's evade runs 0.36 m on after the step lands; the root
+  holds); the veil's 0.25 m hop (the bank draws the in-place takes at standing height); the feet (above).
+
 ## 2026-11-13 — Claude: the DEV Katana's and DEV Greatsword's entrances as cinematics (presentation only)
 
 - Owner, 2026-11-13: "Lets also add more camera work and effects to DEV Katana and DEV Greatsword", then "For previous mention, I mean
