@@ -301,7 +301,6 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The pilot's spot on the floor at `t` (stage frame; After from the strike's step back on).</summary>
         private static Vector3 Feet(float t){var w=Way(t);return After+new Vector3(w.X,0,w.Z);}
-        private static NativeEntranceShot Following(NativeEntranceShot s,NativeEntranceAnchor a){s.Follow=(int)a;return s;}
         public NativeFangsIntro():base(NativeFangs.Entrance,StrikeAt,0x7dff3a)
         {
             SlowRate=.3f;SlowHold=.14f;SlowRecover=.25f;SlowCatchUp=.6f;RootPath=(t,r)=>r+Way(t);
@@ -312,7 +311,6 @@ namespace ChipArena.UnityConversion
             k.Key(Total,stand).Root(After.X,.84f,After.Z,Facing).Planted(1).Drop(-.04f).J(B,.08f).J(LA,-.3f,0,.3f).J(RA,-.3f,0,-.3f);Keys=k;
             Shots=FangsShots();
         }
-        /// <summary>Unseen until it forms out of the smoke; gone through the step.</summary>
         /// <summary>The camera (owner 2026-11-13: more camera work on the Fangs' intro), a shot to each beat, in the stage's own axes:
         /// creeping low toward the eyes with the frame tilted; climbing round the body as the smoke winds into it; from behind its
         /// shoulder for the step, so it is seen to go and to be there ahead; whipped round to its front as it lands and circling close
@@ -334,8 +332,8 @@ namespace ChipArena.UnityConversion
         };
         /// <summary>When the flurry leaves the floor (its second cut; the leap is the clip's own, FlurryLift).</summary>
         public const float LeapAt=FlurryAt+.85f;
-        /// It condenses out of the smoke (dithered in over FormFade, the whole body as one: the reveal's segments are the keyed stance's, not
-        /// the clip's), thins away into the step and snaps back out of it.
+        /// <summary>Unseen until it condenses out of the smoke (dithered in over FormFade, the whole body as one: the reveal's segments are the
+        /// keyed stance's, not the clip's); it thins away into the step and snaps back out of it.</summary>
         public override float Solid(float t,int bone)=>t<StepAt?NativeEntranceMath.Clamp01((t-FormAt)/FormFade):t<ArriveAt-.03f?1-NativeEntranceMath.Clamp01((t-StepAt)/.04f):NativeEntranceMath.Clamp01((t-(ArriveAt-.03f))/.05f);
         public const float FormFade=.3f;
         public override bool Clip(float t,out string clip,out float time)
