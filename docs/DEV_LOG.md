@@ -64,6 +64,7 @@
   owner's recording about 0.13 s); online play; the Low tier on screen. Wound holes on the head's side appear only once the cut is on (the
   whole body shows that side unwounded for the 1-2 frames).
 - **Next:** the owner looks; merge and release; the owner decides on the corpse's weapon and chest core.
+- **Released:** shared `75c22664` (the builder at `75c22664`), test channel revision `639302450123239183` (build `be471c27`); the suite at `a5d56c1a` (1,027 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-13 — Claude: slams and breaking props throw real pieces, not voxel cubes; the voxel style kept as a map switch (presentation only)
 
