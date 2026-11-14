@@ -3,7 +3,7 @@
 - Owner, 2026-11-13: "We still seem to use voxel effects on slam attacks- Cubes show from collision; Can we improve this with higher
   quality poly or realistic effects?" and "Breaking boxes also seem to still break into cubes still, I want more realistic physic
   destruction now; (We can keep the information however in case I want to make a 'voxel' map.)"
-- Branch `claude/slam-debris` (from shared `41bfb1d7`, shared merged in at `af539862` and `9d1e3c3a`): WIP commits `3bda60bf` to
+- Branch `claude/slam-debris` (from shared `41bfb1d7`, shared merged in at `af539862`, `9d1e3c3a` and `59d68f99`): WIP commits `3bda60bf` to
   `0cde9b9b`, the voxel switch fix `60f651d1`, the Sunder and Ground Slam fix `4a929ca6`, then the docs. Pushed, **not merged, not released**. Details: `docs/SLAM-DEBRIS.md`.
 - **Where the cubes came from** (the destruction kit, `Core/NativeStructureFx.cs`, drawn by `Runtime/NativeStructureFxPresentation.cs`):
   the plunging stab's rubble burst and the greatsword's pale pull-out cubes (`NativePlungeFx.Structures`), every prop break's material
@@ -34,11 +34,13 @@
   any map (all are styled); the first voxel take still showed pieces. `DebrisChecks` now styles every shipped look with the switch.
 - **Rules, timing, damage, hitboxes, cooldowns, movement, networking:** none touched. No animation changed. Nothing for Astra.
 - **Checks:**
-  - Full CoreTests on `60f651d1` and again on `4a929ca6`: 1,024 groups, exit 0 both times (the Windows path patch applied for the
-    run and reverted). `--debris`: 15,707 checks; the new switch check fails without the `Styled` fix (tried by reverting it).
-  - The Unity compile gate (`tools/check_unity_compile.py`, Unity 6000.3.24f1 references) on `4a929ca6`: every assembly passes.
+  - Full CoreTests on `60f651d1`, `4a929ca6` and the final merge of shared `59d68f99` (`cde33322`): 1,024 groups, exit 0 each
+    time (the Windows path patch applied for the run and reverted). `--debris`: 15,707 checks; the new switch check fails without the `Styled` fix (tried by reverting it).
+  - The Unity compile gate (`tools/check_unity_compile.py`, Unity 6000.3.24f1 references) on `4a929ca6` and
+    `cde33322`: every assembly passes.
   - The Editor build gate (`PrototypeBuild.Validate`) on `60f651d1`: ok, 397 PASS lines, no FAIL. On `4a929ca6` (the Sunder
-    fix): ok, 397 PASS lines, no FAIL.
+    fix): ok, 397 PASS lines, no FAIL. Not re-run on the
+    final merge (it brings only shared's own released code).
   - `git diff --check` against shared: clean. The banks were as released at every lock release (13 stage banks, Rooftop, the
     motion bank's 6,136,627 bytes).
 - **Captures** (the shared Editor, arena clock, 30 fps; frames and sheets in `<1123469f scratchpad>/slamfx/cap/<take>/`):
