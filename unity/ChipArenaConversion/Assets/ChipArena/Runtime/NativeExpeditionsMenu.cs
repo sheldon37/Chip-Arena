@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         {
             float now=Time.unscaledTime;var seat=ExpSeat;bool room=seat!=X.Seat.Solo;if(room)roomGuest=seat==X.Seat.Guest;expAge=age;
             // (By frames, not seconds: a hitch while it stays open must not reopen it and lose the mode.)
-            if(Time.frameCount-expSeenFrame>2)ExpOpen(seat);expSeenFrame=Time.frameCount;
+            if(Time.frameCount-expSeenFrame>2){ExpOpen(seat);if(room)LbEnter();}expSeenFrame=Time.frameCount;
             // Guests read the host's replicated mode and boss.
             if(seat==X.Seat.Guest){expMode=X.ModeOf(receivedOptions?.expedition==true);expBoss=NativeBossBattle.Index(receivedOptions?.boss);}
             if(expMode!=expModeShown){expModeShown=expMode;expModeAt=now;expStep=-1;}
@@ -69,6 +69,7 @@ namespace ChipArena.UnityConversion
             }
             finally{U.Pop();menuBlockedNow=held;}
             ExpDrawer(L,seat,e,now);
+            if(room)LbSync();
         }
         // Reopening the screen keeps the room's mode and the last boss picked.
         private void ExpOpen(X.Seat seat)
@@ -757,7 +758,7 @@ namespace ChipArena.UnityConversion
             NativeSeatFrame mine=null;if(seat==X.Seat.Guest)foreach(var s in RoomSeats)if(s!=null&&s.id==networkId)mine=s;
             if(seat==X.Seat.Solo&&!string.IsNullOrEmpty(expeditionError)){lead="Expedition could not start.";rest=expeditionError;tone=C.Danger();}
             else if(!string.IsNullOrEmpty(networkStatus)&&NetworkError){lead=networkStatus;rest="";tone=C.Danger();}
-            else if(mine!=null&&mine.spec!=prefs.weapon){lead="Send Loadout";rest="so the host gives you "+(LobbyWeapon(prefs.weapon)?.name??prefs.weapon)+".";tone=C.CyanSoft();}
+            else if(mine!=null&&mine.spec!=prefs.weapon){lead="Room loadout";rest="Waiting for the host to confirm "+(LobbyWeapon(prefs.weapon)?.name??prefs.weapon)+".";tone=C.CyanSoft();}
             else if(seat==X.Seat.Guest){lead=networkReady?"You are ready.":"Ready up";rest=networkReady?"Waiting for the host to start.":"when your loadout is set. The host picks the fight.";tone=networkReady?C.Good():C.CyanSoft();}
             else if(!go.Enabled&&!string.IsNullOrEmpty(go.Reason)){lead=go.Reason;rest="";tone=C.Warn();}
             else if(seat==X.Seat.Host&&waiting>0){lead="Waiting for "+waiting+" pilot"+(waiting==1?"":"s");rest="· start when every pilot is ready.";tone=C.CyanSoft();}
@@ -785,7 +786,7 @@ namespace ChipArena.UnityConversion
             var body=new Rect(r.x+24,r.y+82,r.width-48,r.height-82-18);if(!expDrawer)return;
             var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*q);GUILayout.BeginArea(body);U.BeginDeferred();expDrawerScroll=GUILayout.BeginScrollView(expDrawerScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);
             try{ExpDrawerBody(seat,body.width);}
-            finally{GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)expDrawerContent=GUILayoutUtility.GetLastRect().yMax;GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(body,expDrawerScroll);}
+            finally{GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)expDrawerContent=GUILayoutUtility.GetLastRect().yMax;GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;NativeControllerPointer.SetClip(body);try{U.EndDeferred(body,expDrawerScroll);}finally{NativeControllerPointer.ClearClip();}}
         }
         private void ExpDrawerBody(X.Seat seat,float width)
         {
@@ -800,7 +801,7 @@ namespace ChipArena.UnityConversion
                 RuleCheck(7586,RoomOpt.Mirror,rulesLocked?"Party bots use the host's weapon":"Party bots use my weapon (otherwise mixed loadouts)",o.mirrorWeapons);
             }
             ClassRow("Your class",ClassCardStyle.Stacked);WeaponCards("Your weapon");
-            Fine(seat==X.Seat.Guest?"After a change, Send Loadout so the host gives you this weapon.":expMode==X.Mode.Boss?"Boss Battle drops the party straight into the fight. Intros play as normal.":"Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
+            Fine(seat==X.Seat.Guest?"Weapon changes are sent to the host automatically.":expMode==X.Mode.Boss?"Boss Battle drops the party straight into the fight. Intros play as normal.":"Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
         }
     }
 }

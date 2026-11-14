@@ -1,3 +1,7 @@
+## 2026-11-14 — Astra: online lobby weapon navigation and invite joins
+
+Branch `codex/online-lobby-selection-invites`, base `bade2681`. Exclude background PvP controls from controller focus, clip the weapon grid and scroll the open PvP or Expedition picker. Expedition and Boss lobbies send loadout changes through the existing ready/profile flow. Invite actions supersede read-only polling, acceptance opens Join with the room code, and a signed-in pilot can reclaim their own disconnected pre-match seat with a fresh invite. Active matches still require the resume token. No protocol or service change. Node 24 SQLite invitation test, managed controller/social/Expedition menu checks and diff check passed. Two-PC play and Windows publication require the test build.
+
 ## 2026-11-14 — Claude: the Fangs' takedown and frontal critical connect, the two bodies drawn together as the pack pairs them; the counters too (owner report; presentation only)
 
 - **The owner (2026-11-14):** "Fang assassinate animation doesn't actually connect to the enemy player model (Though it does function

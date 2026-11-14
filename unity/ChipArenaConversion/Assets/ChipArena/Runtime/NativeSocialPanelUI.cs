@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         private float socialOpenAt=-99,socialCloseAt=-99,socialShownAt=-99,socialSeenAt=-99,socialPingAt=-99,socialStatusAt=-99,socialScroll,socialTabAt=-99,socialCaretFrom,socialCaretShown;
         private Rect socialChipRect,socialInvitesRect,socialPanelRect;private bool socialPanelShown;private string socialStatusWas="";private int socialInvitesWas;
         private readonly Dictionary<string,float> socialInviteSeen=new Dictionary<string,float>(),socialSent=new Dictionary<string,float>();private readonly List<string> socialStale=new List<string>();
-        private bool CanAcceptInvite=>arena==null&&!Hosting&&server==null&&connecting==null&&relayConnecting==null&&!StageInputHeld;
+        private bool CanAcceptInvite=>ModsReady&&arena==null&&!Hosting&&server==null&&connecting==null&&relayConnecting==null&&!StageInputHeld;
         private bool SocialCanInvite=>relayHost!=null&&!relayHost.Closed&&!UseManagedRelay&&arena==null&&!deploymentLocked;
         private const string SocialMail="<path d=\"M3.5 6.5H20.5V17.5H3.5Z\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M4 7.5L12 13L20 7.5\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/>";
         private const string SocialSend="<path d=\"M21 3L10.5 13.5M21 3L14.5 21L10.5 13.5L3 9.5Z\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/>";
@@ -286,13 +286,13 @@ namespace ChipArena.UnityConversion
                 NativeIcons.Draw(new Rect(d.xMax-58,d.y+11,11,11),"hourglass",U.A(t,.85f*a));U.Text(new Rect(d.xMax-46,d.y+8,36,16),(s/60)+":"+(s%60).ToString("00"),10,U.A(U.Mix(t,Color.white,.4f),a),TextAnchor.MiddleLeft,mono:true,bold:true);
                 U.Fill(new Rect(d.x+8,d.yMax-3,(d.width-16),2),C.Edge(.35f*a));U.HGradient(new Rect(d.x+8,d.yMax-3,(d.width-16)*f,2),U.A(t,.35f*a),U.A(t,.95f*a));
             }
-            bool busy=account.SocialBusy;float by=d.yMax-34,bw=92;
+            bool busy=account.SocialActionBusy;float by=d.yMax-34,bw=92;
             bool usable=e>.9f&&d.y>=view.y&&d.yMax<=view.yMax;
             if(SocialButton(new Rect(d.xMax-10-bw,by,bw,24),"ACCEPT","check",0,canAccept&&!busy&&usable,a,hid*3+1))SocialAccept(inv);
             if(SocialButton(new Rect(d.xMax-10-bw*2-8,by,bw,24),"DECLINE","x",1,!busy&&usable,a,hid*3+2))account.AnswerInvite(inv.id,false,null);
         }
         // Accepting, from the panel's card or the pop-up: the one path.
-        private void SocialAccept(NativePlayerInvite inv)=>account.AnswerInvite(inv.id,true,code=>{if(!CanAcceptInvite)return;internetRooms=true;relayOverride="";joinCode=code;socialToastJoining=null;socialToastGone.Add(inv.id);SocialClose();JoinRoom();});
+        private void SocialAccept(NativePlayerInvite inv)=>account.AnswerInvite(inv.id,true,code=>{if(!CanAcceptInvite)return;internetRooms=true;relayOverride="";joinCode=code;socialToastJoining=null;socialToastGone.Add(inv.id);SocialClose();Go(MenuScreen.Join);JoinRoom();});
 
         // ---- the pop-up ----
         // Where it may show: a menu (the pause menu too) or a match's end, never mid-fight; the invitation waits on the service meanwhile (two minutes).
@@ -302,7 +302,7 @@ namespace ChipArena.UnityConversion
             if(!SocialToastSurface){socialToast=null;socialToastOutAt=-1;socialToastJoining=null;return;}
             float now=Time.unscaledTime;
             // The answer came back without a join: say so (the panel's status line isn't showing).
-            if(socialToastJoining!=null&&!account.SocialBusy){socialToastGone.Add(socialToastJoining);socialToastJoining=null;Notice("That invitation couldn't be accepted. It may have expired.");}
+            if(socialToastJoining!=null&&!account.SocialActionBusy){socialToastGone.Add(socialToastJoining);socialToastJoining=null;Notice("That invitation couldn't be accepted. It may have expired.");}
             // The open invitations panel shows them all: what it has shown doesn't pop up again. Either panel sits where the card would,
             // so the card steps aside while one is open and comes back after (without a second chime).
             bool panelUp=socialOpen&&menu&&now-socialSeenAt<.2f;
@@ -355,7 +355,7 @@ namespace ChipArena.UnityConversion
                 var sc=new Vector2(r.xMax-96,by+12);U.Push(sc,Vector2.zero,1,now*300);NativeIcons.Draw(new Rect(sc.x-7,sc.y-7,14,14),"circle-dashed",C.CyanSoft(a));U.Pop();
                 U.Text(new Rect(sc.x+13,by,80,24),"JOINING",9.5f,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,tracking:.18f);return;
             }
-            bool busy=account.SocialBusy;
+            bool busy=account.SocialActionBusy;
             if(SocialButton(new Rect(r.xMax-12-bw,by,bw,24),"ACCEPT","check",0,canAccept&&!busy&&usable,a,9705)){socialToastJoining=inv.id;SocialAccept(inv);}
             if(SocialButton(new Rect(r.xMax-12-bw*2-8,by,bw,24),"DECLINE","x",1,!busy&&usable,a,9706)){account.AnswerInvite(inv.id,false,null);socialToastGone.Add(inv.id);}
             // The others wait in the invitations panel.
@@ -382,7 +382,7 @@ namespace ChipArena.UnityConversion
                 U.Pill(b,C.Good(.16f*a),C.Good(.7f*a));NativeIcons.Draw(new Rect(b.x+14,b.center.y-6,12,12),"check",C.Good(a));
                 U.Text(new Rect(b.x+30,b.y,b.width-34,b.height),"SENT",9.5f,U.A(U.Mix(C.Good(),Color.white,.4f),a),TextAnchor.MiddleLeft,bold:true,tracking:.18f);U.Pop();
             }
-            else if(SocialButton(b,"INVITE",null,2,canInvite&&!account.SocialBusy&&usable,a,hid*3)&&NativeRoomCodes.Valid(roomCode)){account.InvitePlayer(p.id,roomCode,()=>socialSent[p.id]=Time.unscaledTime);}
+            else if(SocialButton(b,"INVITE",null,2,canInvite&&!account.SocialActionBusy&&usable,a,hid*3)&&NativeRoomCodes.Valid(roomCode)){account.InvitePlayer(p.id,roomCode,()=>socialSent[p.id]=Time.unscaledTime);}
         }
         // A button: 0 accept (cyan, void ink), 1 ghost, 2 invite (a cyan outline filling on hover, the paper plane).
         private bool SocialButton(Rect r,string label,string icon,int style,bool enabled,float alpha,int id)

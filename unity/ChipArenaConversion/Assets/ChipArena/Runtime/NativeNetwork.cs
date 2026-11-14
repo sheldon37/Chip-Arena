@@ -112,6 +112,15 @@ namespace ChipArena.UnityConversion
                 if(message.type!="hello"||!NativeMapRules.Compatible(message.version,message.source,message.contentRevision,content)||message.room!=roomCode){c.Reject(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="Room code, game content, or Mods selection does not match. Update and use identical rules and chip packs."}));return;}
                 peer.DeploymentProtocol=message.deploymentProtocol;peer.LobbyProtocol=message.lobbyProtocol;peer.ExpeditionProtocol=message.expeditionProtocol;
                 NativePeer previous=!string.IsNullOrEmpty(message.resume)?peers.Find(p=>p!=peer&&p.Resume==message.resume&&(p.Connection!=null||(DateTime.UtcNow-p.Disconnected).TotalSeconds<=90)):null;
+                bool freshLobbyJoin=false;
+                if(previous==null&&arena==null&&expeditionSession==null&&deploymentRoom?.Deployed!=true&&peers.Any(p=>p.Connection==null&&p.Seat!=null))
+                {
+                    // A signed-in pilot may accept a fresh invitation after restarting without the resume token.
+                    var access=NativeAccess.Verify(message.token,s=>JsonUtility.FromJson<NativePlayerClaim>(s),DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                    if(!string.IsNullOrEmpty(access.AccountId))
+                        previous=peers.Find(p=>p.Connection==null&&p.Seat?.access?.AccountId==access.AccountId&&(DateTime.UtcNow-p.Disconnected).TotalSeconds<=90);
+                    freshLobbyJoin=previous!=null;
+                }
                 if(deploymentRoom!=null)
                 {
                     var access=NativeAccess.Verify(message.token,s=>JsonUtility.FromJson<NativePlayerClaim>(s),DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
@@ -129,6 +138,12 @@ namespace ChipArena.UnityConversion
                         !expeditionSession.Run.PartySnapshot().members.Any(m=>m.account==access.AccountId&&!m.extracted))
                     {c.Reject(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="Sign in as the original Expedition pilot to reconnect."}));return;}
                     previous.Seat.access=access;
+                }
+                if(freshLobbyJoin)
+                {
+                    var updated=SanitizedSeat(previous.Seat.id,message.profile,message.token);
+                    updated.team=previous.Seat.team;previous.Seat=updated;
+                    previous.Ready=false;previous.Resume=RandomToken(32);
                 }
                 if(previous!=null){if(ExpeditionSplit){splitCohorts.Disconnect(previous.Seat.access?.AccountId);}previous.Connection?.Dispose();peer.Seat=previous.Seat;peer.Resume=previous.Resume;peer.Ready=previous.Ready;peer.Seat.connected=true;if(expeditionSession!=null)expeditionSession.Run.Reconnect(peer.Seat.access?.AccountId);peers.Remove(previous);(SplitPilotArena(peer.Seat.access?.AccountId)??arena)?.SetPilotConnected(peer.Seat.id,true);if(ExpeditionSplit)splitCohorts.Reconnect(peer.Seat.access?.AccountId);if(expeditionSession!=null){(SplitPilotArena(peer.Seat.access?.AccountId)??arena)?.RestoreExpeditionMembers();expeditionStamp=null;}}
                 else

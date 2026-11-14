@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
             var l=BeginScreen("PRIVATE ROOM","Match lobby",Mathf.Min(1520,U.W-48),age,false,actions:false,close:false,lobby:true);lbPanel=l.Panel;float e=l.Enter;
             // While the picker sheet is open nothing under it takes the pointer or the pad: the pointer is moved off the canvas for the room's
             // controls (their layout stays as it is) and the pad's focus is clipped away from them.
-            var ev=Event.current;bool cover=LbDrawerShown;var mouse=ev.mousePosition;if(cover){ev.mousePosition=new Vector2(-99999,-99999);NativeControllerPointer.SetClip(new Rect(-60,-60,1,1));}
+            var ev=Event.current;bool cover=LbDrawerShown;var mouse=ev.mousePosition;if(cover){ev.mousePosition=new Vector2(-99999,-99999);NativeControllerPointer.Blocked=true;}
             try
             {
                 // Customize and Settings open over the room (their close returns here); saving a new look updates the room. Beside them, the code.
@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
                 LobbyRoomColumn(new Rect(col.x,col.y+LbLoadoutH+14,col.width,col.height-LbLoadoutH-14),e);
                 LobbyBar(new Rect(b.x,b.yMax-barH,b.width,barH),roster,e,blocked);
             }
-            finally{if(cover){ev.mousePosition=mouse;NativeControllerPointer.ClearClip();}}
+            finally{if(cover){ev.mousePosition=mouse;NativeControllerPointer.Blocked=false;}}
             LbDrawer(e);TeamPopupDraw();LbSync();
         }
         // The bar under the room: Leave Room at the left; Start (the host) or Ready (a guest) at the right; between them the room's status, the
