@@ -411,7 +411,7 @@ namespace ChipArena.UnityConversion
             float floor=NativeEntranceStage.FloorY;bool low=q<.5f;
             // The low mist: a dark haze hugging the floor (the venom light under it), and a faint green breath at the floor. Blended soft
             // light, not smoke puffs: the toon puffs' lobes read as lumps of cloud standing on the floor.
-            int mist=low?5:10;for(int i=0;i<mist;i++){float a=((t*.07f+NativeEntranceMath.Rand(22000,i))%1+1)%1;var p=new Vector3(-4+8*NativeEntranceMath.Rand(22000,i+20)+.8f*(a-.5f),floor+.22f+.1f*a,-3+6*NativeEntranceMath.Rand(22000,i+40));fx.Glow(p,Haze*.6f,MistCover*(float)Math.Sin(Math.PI*a),2.8f+.9f*a,1,a,22010+i);}
+            int mist=low?5:10;for(int i=0;i<mist;i++){float a=((t*.07f+NativeEntranceMath.Rand(22000,i))%1+1)%1;var p=new Vector3(-4+8*NativeEntranceMath.Rand(22000,i+20)+.8f*(a-.5f),floor+.22f+.1f*a,-3+6*NativeEntranceMath.Rand(22000,i+40));fx.Glow(p,Haze*.35f,MistCover*(float)Math.Sin(Math.PI*a),2.6f+.8f*a,1,a,22010+i);}
             for(int i=0;i<(low?2:4);i++){var p=new Vector3(-2.4f+1.6f*i,floor+.05f,-1+NativeEntranceMath.Signed(22050,i));fx.Glow(p,Venom*(.05f+.02f*(float)Math.Sin(t*1.7f+i)),0,2.4f,0,0,22060+i);}
             // Venom motes adrift in the dark all through, rising slowly out of the mist.
             NativeEntranceFx.Embers(fx,t,-2.6f,Total,new Vector3(0,floor+.08f,-.5f),3.4f,low?2.5f:6,.2f,2.6f,Venom*.6f,.02f,22070,1,.25f);
@@ -435,7 +435,7 @@ namespace ChipArena.UnityConversion
                     for(int coil=0;coil<2;coil++)for(int i=0;i<n;i++)
                     {
                         float f=i/(float)(n-1),a=(coil==0?1:-1)*(f*5.4f+s*3.2f)+coil*3.1415927f,r=(1.3f*(1-k)+.17f)*(1-.3f*f);
-                        fx.Smoke(Before+new Vector3((float)Math.Sin(a)*r,.12f+1.05f*f*rise,(float)Math.Cos(a)*r),Smoke,.5f*fade*(.6f+.4f*(1-f)),.36f+.24f*k,NativeEntranceMath.Clamp01(s/1.25f),22160+coil*16+i,floor);
+                        fx.Smoke(Before+new Vector3((float)Math.Sin(a)*r,.12f+1.05f*f*rise,(float)Math.Cos(a)*r),Smoke,.4f*fade*(.6f+.4f*(1-f)),.36f+.24f*k,NativeEntranceMath.Clamp01(s/1.25f),22160+coil*16+i,floor);
                     }
                     if(s<.65f){int m=low?5:12;var c=Before+new Vector3(0,.55f,0);for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(22180,i);d.Y*=.5f;var p=c+d*(1.25f*(1-s/.65f));fx.Streak(p,-d*6,Venom*(2.2f*(1-s/.65f)),.02f,.12f,.03f,.6f,s/.65f,22190+i);}}
                 }
@@ -547,7 +547,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The step's wake of smoke (s), the blade speed a cut's star needs (m/s), and the strike's veins and petals.</summary>
         public const float StepWake=.9f,CutSpeed=7f;public const int VeinSegments=4,BloomPetals=7;
         /// <summary>The low mist's coverage at its thickest (its haze is blended light: 0 would add it).</summary>
-        public const float MistCover=.28f;
+        public const float MistCover=.16f;
         // A burst of smoke (the step's): dark puffs thrown out and rising, green sparks out of it, a short green flash at its heart.
         private static void Burst(INativeEntranceFx fx,float t,float at,Vector3 c,float floor,bool low,int seed)
         {
