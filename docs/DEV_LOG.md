@@ -38,19 +38,20 @@
     run and reverted). `--debris`: 15,707 checks; the new switch check fails without the `Styled` fix (tried by reverting it).
   - The Unity compile gate (`tools/check_unity_compile.py`, Unity 6000.3.24f1 references) on `4a929ca6`: every assembly passes.
   - The Editor build gate (`PrototypeBuild.Validate`) on `60f651d1`: ok, 397 PASS lines, no FAIL. On `4a929ca6` (the Sunder
-    fix): queued behind other sessions when this was written.
+    fix): ok, 397 PASS lines, no FAIL.
   - `git diff --check` against shared: clean. The banks were as released at every lock release (13 stage banks, Rooftop, the
     motion bank's 6,136,627 bytes).
 - **Captures** (the shared Editor, arena clock, 30 fps; frames and sheets in `<1123469f scratchpad>/slamfx/cap/<take>/`):
   - `slamfx/sheets/` holds before/after rows at the same frames: `earthsplitter-close`/`-player`, `gs-plunge-close` (with a
     voxel-switch row)/`-player`, `katana-plunge-close`/`-player`, `crate-close` (with a voxel-switch row)/`-player`,
-    `bin-close`/`-player`, `metal-floor-close`. Before is shared `41bfb1d7` (`9d1e3c3a` for the Katana, Sunder
+    `bin-close`/`-player`, `metal-floor-close`, `sunder-close`/`-player`. Before is shared `41bfb1d7` (`9d1e3c3a` for the Katana, Sunder
     and bin player views; this code did not change between them); after `60f651d1`.
   - **Judged:** the cubes are gone. Earthsplitter throws grey stone along the fissure where it showed only the Slow marker's
     cyan cubes (now beads); the greatsword plunge's pale pull-out cubes are floor chunks that settle; the crate goes to boards
     and splinters (was neon sticks and slabs); the Cyber City bin to bent panels (was blue plates and slabs). The voxel take (a
     throwaway commit with the switch on the Factory and Cyber City) shows exactly the old cubes for the crate and the plunge.
-  - Sunder: the `60f651d1` take showed no chunks (the bug below); its re-take on `4a929ca6` was queued when this was written.
+  - Sunder: the `60f651d1` take showed no chunks (the bug below); on `4a929ca6`
+    it throws grey stone forward along the smash that lands and settles over fresh cracks (both views).
 - **Risks / not verified:**
   - Found and fixed on this branch: the first voxel take still showed pieces (the anime style's look copy dropped the switch,
     `60f651d1`); Sunder and Ground Slam threw nothing on the host or offline (they read the frame codec's presence flag,
