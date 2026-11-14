@@ -25,6 +25,7 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import local_cloth
+import private_addons
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import install_local_assets as installer  # noqa: E402
@@ -117,11 +118,12 @@ def entry(name):
     return info
 
 
-def pack(base, output, project, with_cloth=False):
+def pack(base, output, project, with_cloth=False, addons_allowlist=None):
     local = project / 'Assets/LocalAssets'
     listed, skipped = dependencies(project)
     files = {rel: installer.sha256(local / rel) for rel in listed}
     cloth = local_cloth.collect(local) if with_cloth else {}
+    addons = private_addons.collect(local, addons_allowlist) if addons_allowlist else {}
     manifest = {'schema': 1, 'prefab': PREFAB, 'files': files,
                 'note': 'Written by tools/pack_visual_body.py from the owner\'s local bake; installed by tools/install_local_assets.py.'}
     with zipfile.ZipFile(base) as source:
@@ -133,14 +135,21 @@ def pack(base, output, project, with_cloth=False):
             if prefix + local_cloth.MANIFEST in source.namelist():
                 old = json.loads(source.read(prefix + local_cloth.MANIFEST))
                 replaced |= {prefix + rel for rel in old.get('files', {})}
+        if addons_allowlist:
+            replaced |= {prefix + rel for rel in addons} | {prefix + private_addons.MANIFEST}
+            if prefix + private_addons.MANIFEST in source.namelist():
+                old = json.loads(source.read(prefix + private_addons.MANIFEST))
+                replaced |= {prefix + rel for rel in old.get('files', {})}
         kept = sorted(n for n in source.namelist() if not n.endswith('/') and n not in replaced)
         output.parent.mkdir(parents=True, exist_ok=True)
         staged = output.with_name(output.name + '.writing')
         with zipfile.ZipFile(staged, 'w') as out:
             for name in kept:
                 out.writestr(entry(name), source.read(name))
-            for rel in sorted(files.keys() | cloth.keys()):
+            for rel in sorted(files.keys() | cloth.keys() | addons.keys()):
                 out.writestr(entry(prefix + rel), (local / rel).read_bytes())
+            if addons_allowlist:
+                out.writestr(entry(prefix + private_addons.MANIFEST), json.dumps({'schema': 1, 'files': addons}, sort_keys=True) + '\n')
             if with_cloth:
                 out.writestr(entry(prefix + local_cloth.MANIFEST), json.dumps({'schema': 1, 'files': cloth}, indent=1, sort_keys=True) + '\n')
             out.writestr(entry(prefix + installer.VISUAL_BODY_MANIFEST), json.dumps(manifest, indent=1, sort_keys=True) + '\n')
@@ -150,6 +159,7 @@ def pack(base, output, project, with_cloth=False):
         installer.verify(content)
         body = installer.verify_visual_body(content)
         local_cloth.verify(content)
+        private_addons.verify(content)
     os.replace(staged, output)
     size = sum((local / rel).stat().st_size for rel in files)
     return len(body), size, skipped, len(kept)
@@ -161,13 +171,14 @@ def main(argv=None):
     parser.add_argument('output', help='the zip to write')
     parser.add_argument('--project', default=str(ROOT), help='Unity project root with the local bake (default: this project)')
     parser.add_argument('--with-cloth', action='store_true', help='include trusted local Magica code and the current cloth bridge; exclude examples')
+    parser.add_argument('--addons-allowlist', type=Path, help='reviewed JSON listing of private add-on paths under LocalAssets')
     args = parser.parse_args(argv)
     base, output, project = Path(args.base).resolve(), Path(args.output).resolve(), Path(args.project).resolve()
     if output == base:
         print('OUTPUT_ZIP must differ from BASE_ZIP', file=sys.stderr)
         return 1
     try:
-        count, size, skipped, kept = pack(base, output, project, args.with_cloth)
+        count, size, skipped, kept = pack(base, output, project, args.with_cloth, args.addons_allowlist)
     except (installer.Problem, OSError, zipfile.BadZipFile) as problem:
         print('Visual body not packed:\n' + str(problem), file=sys.stderr)
         return 1

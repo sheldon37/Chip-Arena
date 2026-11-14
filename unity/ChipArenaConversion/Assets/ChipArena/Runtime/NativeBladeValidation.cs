@@ -92,18 +92,23 @@ namespace ChipArena.UnityConversion
                 // ---- the Fangs ----
                 var frow=Content.Weapon(NativeFangs.Spec);Check(frow!=null&&frow.devOnly&&frow.@class=="melee","the Fangs are a DEV melee row");
                 Setup(NativeFangs.Spec);a.Seat.access=NativeAccess.Guest;Press(shoot:true);Check(a.Blade.CastKind==null,"a guest's Fangs do nothing");
-                Setup(NativeFangs.Spec);Press(shoot:true);Step(NativeFangs.CutLength[0]+Frame);Check(a.BladeVenom.TryGetValue(b.Seat.id,out int n1)&&n1==1&&b.Dots.ContainsKey(a.Seat.id+":venom"),"a cut leaves a venom stack");
+                Setup(NativeFangs.Spec);var cutFrom=a.Body.position;Press(shoot:true);Step(NativeFangs.CutLength[0]+Frame);Check(a.BladeVenom.TryGetValue(b.Seat.id,out int n1)&&n1==1&&b.Dots.ContainsKey(a.Seat.id+":venom"),"a cut leaves a venom stack");
+                // The cuts carry the pilot as their clips' roots do (owner 2026-11-13: "The movements look like they should be moving the character location").
+                Check(a.Body.position.z>cutFrom.z+NativeFangs.CutLunge[0]*.7f&&Mathf.Abs(a.Body.position.x-cutFrom.x)<.05f,"the first cut steps in along the facing ("+(a.Body.position.z-cutFrom.z).ToString("F2")+" m)");
                 for(int step=1;step<NativeFangs.Steps;step++){a.BladeAttackHeld=false;b.StaggerImmune=0;b.Body.position=a.Body.position+Vector3.forward*1.8f;Physics.SyncTransforms();Press(shoot:true);Step(NativeFangs.CutLength[step]+Frame);}
-                Check(a.BladeVenom.TryGetValue(b.Seat.id,out int n5)&&n5>=5,"the flurry stacks the venom ("+n5+")");
+                Check(a.BladeVenom.TryGetValue(b.Seat.id,out int n5)&&n5>=5,"the flurry stacks the venom ("+n5+")");Check(b.Body.position.z-a.Body.position.z>.6f,"its lunges stop on the foe, never through it ("+(b.Body.position.z-a.Body.position.z).ToString("F2")+" m apart)");
                 // The bloom spends the stacks at once.
                 hp=b.Hp;Press(key:2);Step(NativeFangs.BloomRelease+.05f);Check(b.Hp<hp-NativeFangs.BloomPerStack*3&&!a.BladeVenom.ContainsKey(b.Seat.id),"2 blooms the venom");
                 // The step: behind the foe nearest the aim, and the stab.
                 Setup(NativeFangs.Spec);b.Body.position=o+new Vector3(0,0,6);b.Yaw=180;Physics.SyncTransforms();hp=b.Hp;Press(q:true);Step(NativeFangs.StepVanish+.05f);
                 Check(a.Body.position.z>b.Body.position.z+.6f&&b.Hp<hp,"Q steps behind the foe and stabs (at "+a.Body.position.ToString("F2")+", foe at "+b.Body.position.ToString("F2")+")");
                 // The veil: unseen, the next cut twice as hard (once its 0.4 s cast is over), then seen again.
-                Setup(NativeFangs.Spec);Press(e:true);Step(NativeFangs.VeilCast+.05f);Check(BladeUnseen(a),"E veils");
+                Setup(NativeFangs.Spec);var veilFrom=a.Body.position;Press(e:true);Step(NativeFangs.VeilCast+.05f);Check(BladeUnseen(a),"E veils");
                 {var bot=Pilots.Where(q=>q!=a&&q.Hp>0&&Enemy(b,q)&&!BladeUnseen(q)).ToList();Check(!bot.Contains(a),"bots pass over the veiled");}
-                Step(.2f);hp=b.Hp;a.BladeAttackHeld=false;Press(shoot:true);Step(NativeFangs.CutLength[0]+Frame);float veiled=hp-b.Hp;Check(!BladeUnseen(a)&&veiled>NativeFangs.CutDamage[0]*1.5f,"the veil's strike is twice as hard and ends it");
+                Step(.2f);Check(a.Body.position.z<veilFrom.z-NativeFangs.VeilHop*.85f,"its backward evade hops back as its clip does ("+(veilFrom.z-a.Body.position.z).ToString("F2")+" m)");
+                // A drop ahead ends a move's travel short of it (the floor here ends 40 m out).
+                {float floorTo=FangsFloorTo(o+new Vector3(0,0,39.2f),Vector3.forward,2);Check(floorTo>.2f&&floorTo<1f,"the travel stops short of a drop ("+floorTo.ToString("F2")+" m of 2)");Check(FangsFloorTo(o,Vector3.forward,2)==2,"and runs on over the floor");}
+                b.Body.position=a.Body.position+Vector3.forward*1.6f;Physics.SyncTransforms();hp=b.Hp;a.BladeAttackHeld=false;Press(shoot:true);Step(NativeFangs.CutLength[0]+Frame);float veiled=hp-b.Hp;Check(!BladeUnseen(a)&&veiled>NativeFangs.CutDamage[0]*1.5f,"the veil's strike is twice as hard and ends it");
                 // The fan: knives into the foe.
                 Setup(NativeFangs.Spec);b.Body.position=o+new Vector3(0,0,8);Physics.SyncTransforms();hp=b.Hp;Press(key:1);Step(NativeFangs.FanRelease+.5f);Check(b.Hp<hp&&a.BladeVenom.ContainsKey(b.Seat.id),"1 fans knives into the foe");
                 // The takedown from behind: both held, lethal at its blow.

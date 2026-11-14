@@ -303,6 +303,7 @@ namespace ChipArena.UnityConversion
             // The advanced lighting (Runtime NativeAdvancedLighting): the look's light volume, scattering, beams and weather on
             // this graphics tier (nothing on the low tier or for a look without them).
             NativeAdvancedLighting.Apply(map,look);
+            NativePrivateAddons.Applied(map,look,camera);
             applyCount++;
         }
         /// <summary>

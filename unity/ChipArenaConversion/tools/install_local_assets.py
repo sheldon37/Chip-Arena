@@ -38,6 +38,7 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import local_cloth
+import private_addons
 
 ROOT = Path(__file__).resolve().parents[1]
 BANK_SOURCE = ROOT / 'Assets/ChipArena/Core/NativeSoundBank.cs'
@@ -194,6 +195,38 @@ def sha256(path):
         for block in iter(lambda: f.read(1 << 20), b''):
             h.update(block)
     return h.hexdigest()
+
+
+def audio_coverage(content):
+    """Validate the effective bank, then report recorded coverage (empty keys are not recordings).
+
+    Read-only: never calls the generation queue. A base zip and a queue-derived bank
+    can have different coverage; report the actual tree passed here.
+    """
+    entries, clips, total = verify(content)
+    keys, _, _, budget = contract()
+    events = json.loads((content / 'Resources/EffectsAudio/manifest.json').read_text(encoding='utf-8'))['events']
+    recorded = {key: len(entry.get('clips', [])) for key, entry in events.items() if entry.get('clips')}
+    groups = {}
+    for prefix in ('boss.hum.', 'boss.deepend.', 'boss.noctiel.', 'topdog.blade-', 'topdog.fang-', 'pve.ironworks.', 'pve.station.'):
+        expected = sorted(key for key in keys if key.startswith(prefix))
+        if not expected:
+            continue
+        present = [key for key in expected if key in recorded]
+        groups[prefix] = {'expected_keys': len(expected), 'recorded_keys': len(present),
+                          'clips': sum(recorded[key] for key in present),
+                          'missing_keys': [key for key in expected if key not in recorded]}
+    return {'entries': entries, 'recorded_keys': len(recorded), 'clips': clips,
+            'bytes': total, 'budget_bytes': budget, 'headroom_bytes': budget - total,
+            'groups': groups}
+
+
+def print_audio_coverage(content, scope):
+    report = audio_coverage(content)
+    print(f"Effects audio coverage ({scope}): {report['recorded_keys']}/{report['entries']} entries have recordings; "
+          f"{report['headroom_bytes']} bytes below the {report['budget_bytes']} byte limit")
+    for prefix, group in report['groups'].items():
+        print(f"  {prefix} {group['recorded_keys']}/{group['expected_keys']} keys, {group['clips']} clips")
 
 
 def verify_visual_body(content):
@@ -379,17 +412,21 @@ def main(argv=None):
             else:
                 raise Problem('SOURCE must be a folder or a .zip: ' + str(source))
             keys, clips, total = verify(content)
+            if args.check:
+                print_audio_coverage(content, 'source only; sound queue not run')
             body = verify_visual_body(content)
             cloth = local_cloth.verify(content)
+            addons = private_addons.verify(content)
             if args.require_cloth and not cloth:
                 raise Problem('cloth runtime required: repack on the licensed-asset PC with pack_visual_body.py --with-cloth')
             print(f"Cloth runtime: {len(cloth)} verified files" if cloth else "Cloth runtime: absent (posed-body fallback)")
             body_bytes = sum(content.joinpath(*PurePosixPath(rel).parts).stat().st_size for rel in body)
             if not args.check:
                 install(content, project)
-                verify(project / 'Assets/LocalAssets')
+                print_audio_coverage(project / 'Assets/LocalAssets', 'installed, after sound queue')
                 install_visual_body(content, project, body)
                 install_visual_body(content, project, cloth)
+                install_visual_body(content, project, addons)
         except Problem as problem:
             print('Licensed assets rejected:\n' + str(problem), file=sys.stderr)
             return 1

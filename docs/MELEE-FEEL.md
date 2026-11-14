@@ -1045,18 +1045,29 @@ stamina or network data.
     - hot sparks (embers for the greatsword);
     - grit chunks;
     - a dust wave rolling out;
-    - through the destruction kit (`NativePlungeFx.Structures`): a crater stain, a chip and 3-7 crack decals, a
-      concrete rubble burst from 3.5 m, and the camera kick.
+    - through the destruction kit (`NativePlungeFx.Structures`): a crater stain, a chip and 3-7 crack decals,
+      chunks of the floor (below), and the camera kick.
   - The direct victim: a hit flash, a ring and sparks at its chest.
-  - The pull-out: a puff of grit where the blade comes out (rubble chips for the greatsword).
+  - The pull-out: a puff of grit where the blade comes out (a few floor chunks for the greatsword).
 
   | Fall weight 0 (2 m) to 1 (8 m), sword ring | 2 m | 8 m |
   |---|---|---|
   | Crater radius | 0.40 m | 1.00 m |
   | Cracks reach | 0.45 m | 1.40 m |
   | Dust wave reach | 1.1 m | 2.1 m |
-  | Rubble | none (from 3.5 m) | burst of size 1.2 |
+  | Floor chunks, greatsword (weight 0.60 to 1) | 10, up to 0.24 m, dust ring | 14, up to 0.34 m, dust ring |
+  | Floor chunks, sword, katana, glaive (0.33 to 0.75) | 7, up to 0.18 m | 11, up to 0.28 m, dust ring |
+  | Floor chunks, daggers, Fangs (0.15 to 0.41) | 5, up to 0.14 m | 7, up to 0.20 m |
   | Camera kick (peak, length) | 3.5 cm, 0.32 s | 10 cm, 0.60 s |
+
+  Floor debris (owner 2026-11-13; `NativeStructureFx.Slam`, sized by `NativeSlamDebris`): every slam that reaches the
+  floor throws rough chunks of the floor's own material and colour (rock on stone, bent scraps and sparks on
+  metal, boards and splinters on wood), small stones and low dust; from weight 0.6 a dust ring races out. The
+  chunks bounce, settle and sink away after about 3 to 4 s, have no collider, and thin at Reduced effects and on
+  the low tier. The same call serves the jump attack's landing, Earthsplitter's fissure (a burst about every
+  1.5 m as its front passes), the kit's landings, the Bulwark wall slam, Ground Slam and Sunder
+  (`Runtime/NativeSlamDebrisPresentation.cs`; `docs/SLAM-DEBRIS.md`). A voxel map (`"debris":"voxel"` on its look in `MapLooks.json`)
+  keeps the cube rubble: none below 3.5 m, a burst of size 1.2 from 8 m.
 
   The kick is the destruction kit's shake. It is heavier than the jump attack's 2.5-6.5 cm and stays inside the
   structure shake's rules: the camera-shake setting gates it, Reduced effects halve it, the 0.3 m cap and distance

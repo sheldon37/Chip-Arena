@@ -47,6 +47,9 @@ namespace ChipArena.UnityConversion
             public readonly Transform[] LegUpper=new Transform[2], LegLower=new Transform[2], LegFoot=new Transform[2];
             public readonly bool[] FootLocked=new bool[2]; public readonly Vector3[] FootLock=new Vector3[2], FootFrom=new Vector3[2];
             public readonly float[] FootYaw=new float[2], FootFromYaw=new float[2], FootLockWeight=new float[2], FootStep={-1f,-1f}; public float Plant;
+            // The clips' own turn put back (VisualMotionTurn): per clip, whether it showed last frame and the whole turns it came in with;
+            // the locomotion's likewise; whether the set has any such clip; the turn shown and a jump's difference being carried off.
+            public bool[] TurnOn; public float[] TurnWrap; public bool Turns, LocoTurnOn; public float LocoTurnWrap, TurnShown, TurnCarry;
         }
         // The bake's motion bank (null without one: the game's pose everywhere), read once.
         private static NativeVisualMotionClips.Library visualMotionBank; private static bool visualMotionRead;
@@ -414,6 +417,37 @@ namespace ChipArena.UnityConversion
                 ArmReachTo(m.LegUpper[f],m.LegLower[f],foot,Vector3.Lerp(foot.position,target,w),origin.forward);foot.rotation=turn;
             }
         }
+        // The clips' own turn (Core NativeBladeMotion.Turns; the Fangs' travel's follow-up, 2026-11-13: "the feet still slide through it"):
+        // the bake took the Dual cuts' turn out (the body kept the rig's forward while the clip spun it through up to 200 degrees), so the
+        // legs pivoted round a body that did not turn and, with the rules carrying the pilot along the clip's root, the feet slid. The mix's
+        // turn (each clip's own by its eased share; the rest, the stride included, none) goes back on about the hips: the clip strikes
+        // along the facing and its planted feet stay put. The pilot's facing, the rules' and every other set's are untouched. A clip
+        // coming in takes the whole turns nearest the body's (a crossfade never spins the long way round), and a jump in a showing clip's
+        // time (VisualMotionInertia's) is carried off over TurnSettle instead of snapping. Degrees, + to the pilot's right.
+        private const float TurnSettle=.08f;
+        private static float VisualMotionTurn(VisualMotion m,float loco,float sum,bool jumped,float dt)
+        {
+            int n=m.Clips.Length;
+            if(m.TurnOn==null||m.TurnOn.Length!=n)
+            {
+                System.Array.Resize(ref m.TurnOn,n);System.Array.Resize(ref m.TurnWrap,n);m.Turns=false;
+                for(int i=0;i<n;i++)m.Turns|=NativeBladeMotion.Turns(m.Names[i]);
+            }
+            if(!m.Turns||!(sum>1e-6f))return 0;
+            float total=0,was=m.TurnShown-m.TurnCarry;
+            for(int i=0;i<n;i++)
+            {
+                float e=Ease(m.Weights[i]);if(e<=0){m.TurnOn[i]=false;continue;}
+                NativeBladeMotion.Turns(m.Names[i],m.Times[i],out float own);
+                if(!m.TurnOn[i]){m.TurnWrap[i]=360f*Mathf.Round((was-own)/360f);m.TurnOn[i]=true;}
+                total+=e*(own+m.TurnWrap[i]);
+            }
+            if(loco>0){if(!m.LocoTurnOn){m.LocoTurnWrap=360f*Mathf.Round(was/360f);m.LocoTurnOn=true;}total+=loco*m.LocoTurnWrap;}else m.LocoTurnOn=false;
+            float turn=total/sum;
+            if(jumped)m.TurnCarry=Mathf.DeltaAngle(turn,m.TurnShown);
+            m.TurnCarry*=Mathf.Exp(-dt/TurnSettle);
+            return m.TurnShown=turn+m.TurnCarry;
+        }
         private static void VisualMotionRelease(VisualBody body)
         {
             var m=body?.Motion;if(m==null)return;m.Handler?.Dispose();if(m.Proxy!=null)Destroy(m.Proxy);body.Motion=null;
@@ -482,6 +516,7 @@ namespace ChipArena.UnityConversion
                 m.VictimShare=0;
                 m.HasOut=m.GuardSeen=false;m.GuardCarry=m.GuardCarryVel=0;m.FootLocked[0]=m.FootLocked[1]=false;m.FootLockWeight[0]=m.FootLockWeight[1]=0;m.UpA=null;
                 if(m.Off!=null){System.Array.Clear(m.Off,0,m.Off.Length);System.Array.Clear(m.OffVel,0,m.OffVel.Length);}
+                m.TurnShown=m.TurnCarry=0;m.LocoTurnOn=false;if(m.TurnOn!=null)System.Array.Clear(m.TurnOn,0,m.TurnOn.Length);
                 return;
             }
             // The mix: the picked clip (or the locomotion blend) fades in over the pick's fade, the rest fade out, going on at
@@ -581,6 +616,8 @@ namespace ChipArena.UnityConversion
                 b.localRotation=wgt>=.999f?p.localRotation:Quaternion.Slerp(b.localRotation,p.localRotation,wgt);
                 if(b==m.BodyHips)b.localPosition=Vector3.Lerp(b.localPosition,p.localPosition,wgt);
             }
+            // The Fangs' cuts turn the body as their clips do (VisualMotionTurn), about its hips.
+            float clipTurn=VisualMotionTurn(m,loco,sum,jumped,dt);if(clipTurn!=0)m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,Mathf.DeltaAngle(0,clipTurn)*wgt);
             // A spinning kit move (the Whirlwind): the body turned about its hips to the game's spin, less the clip's own turn;
             // by the pick's Align, turned instead so the drawn blade (the hold's +z off the right hand) lies on the game's tip,
             // which crosses the facing on each of the rules' pulses (a near-upright blade has no bearing: the spin's turn).
@@ -614,10 +651,11 @@ namespace ChipArena.UnityConversion
                 }
             }
             // The feet planted on the floor: on the ground, in anything but a flight, a spin, a roll, a knockdown or a kit move,
-            // and outside the stride only while the body barely travels (a strike's lunge slides as the rules move it).
+            // and outside the stride only while the body barely travels (a strike's lunge slides as the rules move it), but for a cut
+            // whose own turn is back on the body (VisualMotionTurn): its legs carry the travel the rules give it, so its feet stay down.
             {
                 bool grounded=covered&&a.Grounded&&!pick.Flight&&!pick.Spin&&!a.Rolling(time)&&!NativeSpecialPose.Down(a,time)&&a.JuggleUntil<=time&&!MeleeKitMotion.Clock(a,time,out _);
-                float plant=grounded?pick.Locomotion?1:1-Mathf.Clamp01((speed-1f)/1.5f):0;
+                float plant=grounded?pick.Locomotion||NativeBladeMotion.Turns(pick.Clip)?1:1-Mathf.Clamp01((speed-1f)/1.5f):0;
                 VisualMotionFeet(m,body.Root.transform,plant,pick.Locomotion,dt,wgt);
             }
             // The free arm's run (NativeRunArm): the pack's runs and sprint fling it up and out; lowered in the chest's frontal

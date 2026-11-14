@@ -68,6 +68,9 @@ namespace ChipArena.UnityConversion
     {
         public string id,look;public float farClip;public int background;public MapLookLight key,rim;public MapLookAmbient ambient;public MapLookFog fog;
         public MapLookShadows shadows;public MapLookSky sky;public MapLookPractical[] lights;public MapLookBlock[] blockLooks,kitLooks;public string dressing,backdrop,atmosphere,ambience;public MapLookBlocks blocks;
+        /// <summary>The map's loose debris (Core NativeDebrisLook): "voxel" keeps the cube debris for breaks and slams; missing or
+        /// anything else is the realistic broken pieces.</summary>
+        public string debris;
         /// <summary>The anime map style (Core NativeMapStyle; docs/MAP-STYLE-ANIME.md): missing or `on` false is the legacy look.</summary>
         public MapLookToon toon;
         /// <summary>The advanced lighting (Core NativeAdvancedLooks; docs/LIGHTING-ADVANCED.md): the light volume, the fog's
