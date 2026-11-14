@@ -142,6 +142,30 @@ namespace ChipArena.UnityConversion
                 var fsrc=R(root,"NativeFangsAuthority.cs");
                 Check(fsrc.Contains("FangsTravel(p,p.BladeFacing,NativeFangs.CutLunge[step]);")&&fsrc.Contains("FangsTravel(p,-p.BladeFacing,NativeFangs.VeilHop);")&&fsrc.Contains("FangsTravel(p,p.BladeFacing,NativeFangs.BloomLunge);")
                     &&fsrc.Contains("BladePath(p,dir,metres*peak,Time,ends);")&&fsrc.Contains("FangsFloorTo(from,dir,metres*peak)")&&fsrc.Contains("FangsTravelFoe(p,from,dir)")&&fsrc.Contains("!p.Grounded"),"the rules carry the pilot on the blade path, short of walls, drops and foes, from the ground only");
+                // The cuts turn the drawn body as their clips do (the travel's follow-up: the bake took the Dual clips' turn out, and the feet
+                // slid while the rules carried the pilot): the five cuts only, every other clip of every set untouched; each table whole
+                // (30 a second over its clip), smooth (no step past the clips' own fastest spin) and back at the Dual stance by its end; at
+                // each cut's strike the drawn body within 35 degrees of the facing; the runtime turns the body about its hips after the pose
+                // goes on and before the feet, and keeps a turning cut's feet planted while the rules carry it.
+                var cutLength=new[]{1.267f,1f,1.067f,1.167f,1.05f};
+                for(int ci=0;ci<NativeBladeMotion.FangsCuts.Length;ci++)
+                {
+                    string turnCut=NativeBladeMotion.FangsCuts[ci];Check(NativeBladeMotion.Turns(turnCut),"the cut "+turnCut+" turns as its clip does");
+                    float len=cutLength[ci],most=0,last=0;
+                    for(int tf=0;tf/30f<=len+1e-4f;tf++){NativeBladeMotion.Turns(turnCut,tf/30f,out float td);if(tf>0)most=Math.Max(most,Math.Abs(td-last));last=td;}
+                    NativeBladeMotion.Turns(turnCut,len+1,out float held);NativeBladeMotion.Turns(turnCut,NativeBladeMotion.WindowOf(turnCut).Hit,out float atHit);
+                    Check(most<=85&&Math.Abs(held-last)<1e-3f&&Math.Abs(held-59)<3,"its turn is smooth ("+most.ToString("0")+" deg a frame at most) and ends at the Dual stance ("+held.ToString("0")+")");
+                    Check(Math.Abs(atHit)<35,turnCut+" strikes along the facing (turned "+atHit.ToString("0")+" deg at the strike)");
+                }
+                {
+                    var others=NativeBladeMotion.KatanaCuts.Concat(NativeDevKatanaMotion.Cuts).Concat(NativeBladeMotion.KatanaExtra).Concat(NativeBladeMotion.FangsExtra)
+                        .Concat(data.weapons.SelectMany(w=>NativeVisualMotion.For(w.id)?.All??Array.Empty<string>())).Where(o=>o!=null&&Array.IndexOf(NativeBladeMotion.FangsCuts,o)<0).Distinct().ToArray();
+                    Check(others.Length>100&&others.All(o=>!NativeBladeMotion.Turns(o)&&!NativeBladeMotion.Turns(o,.3f,out float z)&&z==0)&&!NativeBladeMotion.Turns(null)&&!NativeBladeMotion.Turns(null,0,out _),"no other clip of any set turns ("+others.Length+" checked)");
+                    string tp=R(root,"NativeVisualMotionPresentation.cs");int put=tp.IndexOf("float clipTurn=VisualMotionTurn(m,loco,sum,jumped,dt);",StringComparison.Ordinal),posed=tp.IndexOf("if(b==m.BodyHips)b.localPosition=Vector3.Lerp(b.localPosition,p.localPosition,wgt);",StringComparison.Ordinal),feet=tp.IndexOf("VisualMotionFeet(m,body.Root.transform,plant,pick.Locomotion,dt,wgt);",StringComparison.Ordinal);
+                    Check(put>posed&&posed>0&&feet>put&&tp.Contains("if(clipTurn!=0)m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,Mathf.DeltaAngle(0,clipTurn)*wgt);")
+                        &&tp.Contains("float plant=grounded?pick.Locomotion||NativeBladeMotion.Turns(pick.Clip)?1:")&&tp.Contains("if(!m.TurnOn[i]){m.TurnWrap[i]=360f*Mathf.Round((was-own)/360f);m.TurnOn[i]=true;}")
+                        &&tp.Contains("if(!m.Turns||!(sum>1e-6f))return 0;"),"the runtime turns the drawn body about its hips after the pose, before the feet, and keeps a turning cut's feet down");
+                }
             }
             // The plunging slam (owner 2026-11-11: slam attacks from the air for the Glaive, the Fangs and the Katana): the standard plunge for
             // the three kits, its rules by kin, its look the set's air attack held to the landing.
