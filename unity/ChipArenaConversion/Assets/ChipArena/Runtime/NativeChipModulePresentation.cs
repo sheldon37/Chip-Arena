@@ -40,6 +40,13 @@ namespace ChipArena.UnityConversion
             chips.TryGetValue("ember",out int ember);chips.TryGetValue("poison",out int motes);int flames=NativeChipModules.Enchant(spec,fire,poison,ember,motes,chipModules,0);
             for(int hand=0;hand<(daggers?2:1);hand++){var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);for(int i=0;i<flames;i++)QueueChip(spec,chipModules[i],parent,hand==1,tier,time,first,layer,camera,1);}
         }
+        // A dead pilot's dropped Standard weapon (NativeCorpseDressPresentation.cs CarryModules): its designed modules on the main piece at
+        // `parent` (when it shows) and on the left dagger at `left`, held as they were at `time` (the death); no enchant.
+        private void StandardModulesAt(string spec,NativePilot pilot,Matrix4x4 parent,Matrix4x4? left,bool main,int tier,float time)
+        {
+            int count=NativeChipModules.Modules(spec,pilot.Weapon.@class=="ranged",(int)pilot.Weapon.color,pilot.Seat.chips,pilot.Stats,chipModules);
+            for(int i=0;i<count;i++){if(main)QueueChip(spec,chipModules[i],parent,false,tier,time,false,0,null,1);if(left.HasValue)QueueChip(spec,chipModules[i],left.Value,true,tier,time,false,0,null,1);}
+        }
         // One attachment: animated, mirrored onto the left dagger, framed by the reach stretch, tinted by its Chip colour.
         private void QueueChip(string spec,ChipModule p,Matrix4x4 parent,bool left,int tier,float time,bool first,int layer,Camera camera,float dim)
         {

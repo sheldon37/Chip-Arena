@@ -279,8 +279,7 @@ namespace ChipArena.UnityConversion
             if(StandardChips(a))
             {
                 var eye=WorldEye;float distance=eye!=null?Vector3.Distance(eye.transform.position,w.Drop.GetColumn(3)):0;int tier=NativeWeaponSkins.Tier(LowGraphics,WeaponEffectsQuality,distance,false);
-                int count=NativeChipModules.Modules(spec,ranged,color,chips,stats,chipModules);
-                for(int hand=0;hand<hands;hand++){if(hand==0&&!held.Main)continue;var parent=Parent(hand);for(int i=0;i<count;i++)QueueChip(spec,chipModules[i],parent,hand==1,tier,held.At,false,0,null,1);}
+                StandardModulesAt(spec,pilot,Parent(0),hands>1?Parent(1):(Matrix4x4?)null,held.Main,tier,held.At);
                 return;
             }
             if(spec==NativeBombs.Spec||spec==NativeTopDog.Spec||spec==NativeGlaive.Spec||NativeBlades.Is(spec))return;
