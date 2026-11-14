@@ -632,6 +632,8 @@ namespace ChipArena.UnityConversion
                 }
                 m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,turn*wgt);
             }
+            // A paired move's two bodies laid together as the pack pairs them: this body's part (Core NativePairAlign; NativePairAlignPresentation.cs).
+            VisualPairAlign(m,body.Root.transform,a,time,sum);
             // The contact guard: the body's lowest point (each contact bone less its clearance) on the pilot's floor point, its
             // feet's place (the pack's character stands a little lower on its feet than the body; its jumps, falls and plunges
             // carry their own lift, which the game's own height already gives). Running, or a sprint attack's leaping run (the

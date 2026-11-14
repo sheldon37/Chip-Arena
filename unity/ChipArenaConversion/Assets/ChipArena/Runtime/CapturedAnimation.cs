@@ -390,6 +390,10 @@ namespace ChipArena.UnityConversion
                 v.ActionKind=a.SpecialKind;v.ActionAt=a.SpecialAt;v.ActionUntil=a.SpecialUntil;
                 v.Reaction=a.ReactionAt>-90;v.Parry=a.ReactionParry;v.ReactionAt=a.ReactionAt;v.ReactionUntil=a.ReactionUntil;v.ReactionYaw=a.ReactionYaw;v.ReactionTurn=a.ReactionTurn;v.ReactionStrength=a.ReactionStrength;
                 v.ReactionDir=new NVector(a.ReactionDir.x,a.ReactionDir.y,a.ReactionDir.z);v.ReactionPoint=new NVector(a.ReactionPoint.x,a.ReactionPoint.y,a.ReactionPoint.z);v.ReactionZone=a.ReactionZone;
+                // Held in a paired move (Core NativeBladeMotion.Holds): the hold's stun kept the last hit's reaction facing, so a foe hit
+                // before a takedown faced its hitter instead of turning its back as the rules hold it. It faces the rules' way (Core
+                // NativePairAlign lays the two bodies together from there).
+                if(NativeBladeMotion.Holds(a,time))v.ReactionYaw=v.Yaw;
                 v.Down=NativeSpecialPose.Down(a,time);v.DownPhase=v.Down?NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):null;v.WeaponAway=a.WeaponAway;
                 return v;
             }
