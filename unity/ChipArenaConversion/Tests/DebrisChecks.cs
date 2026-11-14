@@ -224,6 +224,9 @@ namespace ChipArena.UnityConversion
             Check(air.Contains("NativePlungeFx.Structures(st,b,t,fm,fc);")&&air.Contains("NativeStructureFxPresentation.FloorKind(arena,")&&air.Contains("NativeSlamDebris.Jump(p.Seat.spec,b.Strength)")&&air.Contains("SlamDebris(arena);"),"the plunge and the jump attack throw the floor's own chunks, and the kit slams run");
             Check(plunge.Contains("st.Slam(material,color,at,b.Floor,NativeSlamDebris.Plunge(b.Spec,b.Heavy),")&&plunge.Contains("if(voxel){if(b.Heavy>=RubbleFrom)st.Break(NativeStructureMaterial.Concrete,RubbleColor,"),"the plunge keeps its cube rubble for the voxel style");
             Check(slam.Contains("k.FissureAt+along/k.FissureSpeed")&&slam.Contains("q.Kind==\"ground-slam\"&&q.Phase==\"slam\"")&&slam.Contains("q.Kind==\"sunder\"&&q.Phase==\"smash\"")&&slam.Contains("e.Kind==EventKind.Land")&&slam.Contains("e.WallSlam")&&ArenaPresentation_FissureStep(slam),"the fissure, the kit landings, the wall slam, Ground Slam and Sunder throw floor debris");
+            // A host that sends no frame never sets the codec's HasTechnique, so Ground Slam and Sunder read the record itself
+            // (they threw nothing offline and on the host once).
+            Check(slam.Contains("var q=a.Technique??NativeTechniques.Of(a);")&&!slam.Contains("HasTechnique?"),"the technique slams read the record, not the codec's presence flag");
             // Cosmetic only: no collider, body, object, light or sound of its own, and nothing sent or simulated.
             foreach(var (name,text) in new[]{("slam presentation",slam),("piece shapes",shapes)})
                 foreach(string banned in new[]{"Collider","Rigidbody","AddComponent","new GameObject","CreatePrimitive","AudioSource","new Light","Emit(","Damage(","NetworkFrame","Physics."})Check(!text.Contains(banned),"the "+name+" has no "+banned);

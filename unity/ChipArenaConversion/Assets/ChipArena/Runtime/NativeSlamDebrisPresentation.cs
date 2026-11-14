@@ -69,7 +69,9 @@ namespace ChipArena.UnityConversion
                         NativeStructureFxPresentation.Slam(arena,kit,at,floor,j==0?1:FissureWeight,j==0?d:Vector3.zero,SlamSeed(a.Id,k.FissureAt,10+j),k.FissureAt+along/k.FissureSpeed,true);
                     }
                 }
-                var q=a.HasTechnique?a.Technique:null;if(q?.Kind==null)continue;
+                // The record itself (HasTechnique is only the frame codec's presence flag, false on a host that sends no frame),
+                // else the technique source the other presentations read (the sandbox preview's).
+                var q=a.Technique??NativeTechniques.Of(a);if(q?.Kind==null)continue;
                 bool ground=q.Kind=="ground-slam"&&q.Phase=="slam",smash=q.Kind=="sunder"&&q.Phase=="smash";
                 if(!(ground||smash)||slamTechniques.TryGetValue(a.Id,out float pressed)&&pressed==q.At)continue;
                 slamTechniques[a.Id]=q.At;Vector3 dir=NativeArena.Vec(q.Dir);dir.y=0;dir=dir.sqrMagnitude>1e-6f?dir.normalized:Vector3.zero;Vector3 point=NativeArena.Vec(q.Point);
