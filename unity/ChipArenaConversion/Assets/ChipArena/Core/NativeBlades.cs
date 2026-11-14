@@ -19,11 +19,12 @@ namespace ChipArena.UnityConversion
         public static Vector3 N(V3 v)=>new Vector3(v.x,v.y,v.z);
         /// <summary>A flat unit direction from the yaw (degrees).</summary>
         public static Vector3 Facing(float yaw){float r=yaw*(float)Math.PI/180;return new Vector3((float)Math.Sin(r),0,(float)Math.Cos(r));}
-        /// <summary>A move's travel at `time` along From to To between `at` and `until` (eased out); false outside it.</summary>
+        /// <summary>A move's travel at `time` along From to To between `at` and `until` (eased out; a Fangs move that travels as its clip's
+        /// root does, by that root's way: NativeBladeMotion.FangsTravelShare); false outside it.</summary>
         public static bool PathAt(NativeBladeKit k,float time,out Vector3 at,out float u)
         {
             at=default;u=0;if(k==null||k.PathAt<-50||time<k.PathAt||time>k.PathUntil+1e-3f)return false;
-            u=Clamp01((time-k.PathAt)/Math.Max(1e-3f,k.PathUntil-k.PathAt));float e=1-(1-u)*(1-u);at=Vector3.Lerp(N(k.From),N(k.To),e);return true;
+            u=Clamp01((time-k.PathAt)/Math.Max(1e-3f,k.PathUntil-k.PathAt));float e=NativeBladeMotion.FangsTravelShare(k,time,out float s)?s:1-(1-u)*(1-u);at=Vector3.Lerp(N(k.From),N(k.To),e);return true;
         }
         public static float Clamp01(float v)=>v<0?0:v>1?1:v;
         /// <summary>Whether a hit kind is one of either class's (the record's Valid).</summary>

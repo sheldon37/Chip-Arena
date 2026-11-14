@@ -267,12 +267,42 @@ namespace ChipArena.UnityConversion
         public override string Spec=>NativeFangs.Spec;
         public override float Length=>Total;public override float SettleAt=>End;protected override float HeroAt=>CardAt;
         private static readonly Vector3 Venom=NativeEntranceFx.Hex(0x7dff3a),White=new Vector3(1,1,1),Smoke=NativeEntranceFx.Hex(0x5c6660),Haze=NativeEntranceFx.Hex(0x46524a);
-        public static readonly Vector3 Before=Local(0,0,-1.4f),After=Local(0,0,0);
+        // The flurry's and the strike's own travel (owner 2026-11-13: "This applies to the intro too (They flip in place with no movement)"):
+        // the in-place takes leave their roots' way out, so the pilot shown carries it. The flurry (the assassin's fifth combo) leaps: its
+        // lowest point (feet, shins, hips, chest, head, hands, as the model's contacts) up to 1.78 m off the floor through its somersaults,
+        // and drifts 12 cm back; the strike (the two-handed Skill02) lunges 1.26 m on and steps back 0.53. Both read from the root-motion
+        // takes in the FBX (the game body's 0.835 of the pack's skeleton), 30 a second from the clip times the script starts them at. The
+        // way ends Travel m on from where the shadow step comes out of the smoke, so the step comes out that far short of the hero's spot
+        // (Arrive): the pilot ends where play starts, with no snap and no slide.
+        private static readonly float[] FlurryWay={0,-.033f,-.056f,-.059f,-.055f,-.049f,-.04f,-.03f,-.018f,-.006f,.005f,.016f,.025f,.033f,.037f,.038f,.039f,.04f,.041f,.041f,.041f,.041f,.041f,.04f,.039f,.038f,.035f,.032f,.027f,.021f,.015f,.007f,-.001f,-.01f,-.019f,-.028f,-.038f,-.047f,-.057f,-.066f,-.076f,-.085f,-.093f,-.101f,-.108f,-.114f,-.119f,-.122f,-.124f},
+            FlurryLift={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,.091f,.778f,1.09f,1.625f,1.779f,1.672f,1.568f,1.545f,1.575f,1.633f,1.648f,1.652f,1.669f,1.701f,1.611f,1.429f,1.118f,.73f,.242f,0,0,0,0};
+        private const float FlurryFrom=.35f,FlurryHit=1.217f,FlurryTo=1.95f,StrikeFrom=NativeBladeMotion.BloomWayFrom,StrikeHit=.9f,StrikeTo=1.6f;
+        /// <summary>How far the flurry and the strike carry the pilot on (m, along its facing).</summary>
+        public static readonly float Travel=FlurryWay[FlurryWay.Length-1]+NativeBladeMotion.Sample(NativeBladeMotion.BloomWay,StrikeFrom,StrikeTo);
+        public static readonly Vector3 Before=Local(0,0,-1.4f),After=Local(0,0,0),Arrive=Local(0,0,-Travel);
         /// <summary>The flurry's cuts (when venom flies off the blades, if the runtime has not handed them in).</summary>
         private static readonly float[] Cuts={FlurryAt+.45f,FlurryAt+.85f,FlurryAt+1.45f};
+        /// <summary>Where the strike lands (the pilot's spot on the floor at its blow).</summary>
+        public static readonly Vector3 StrikeSpot=new Vector3(Way(StrikeAt).X,0,Way(StrikeAt).Z);
+        private static float FlurryClip(float t)=>Fit(t,FlurryAt,FlurryAt+.85f,StrikeAt-.45f,FlurryFrom,FlurryHit,FlurryTo);
+        private static float StrikeClip(float t)=>Fit(t,StrikeAt-.45f,StrikeAt,Hero+.3f,StrikeFrom,StrikeHit,StrikeTo);
+        /// <summary>The pilot's way at `t` from the keyed root (the stage's frame): through the shadow step back by Travel (unseen), then on
+        /// along the flurry's and the strike's roots and up the flurry's leap, ending on the hero's spot.</summary>
+        public static Vector3 Way(float t)
+        {
+            if(t<StepAt)return Vector3.Zero;
+            if(t<FlurryAt)return Local(0,0,-Travel*NativeEntranceMath.Clamp01((t-StepAt)/(ArriveAt-StepAt)));
+            float on,up=0;
+            if(t<StrikeAt-.45f){float c=FlurryClip(t);on=NativeBladeMotion.Sample(FlurryWay,FlurryFrom,c);up=NativeBladeMotion.Sample(FlurryLift,FlurryFrom,c);}
+            else on=FlurryWay[FlurryWay.Length-1]+NativeBladeMotion.Sample(NativeBladeMotion.BloomWay,StrikeFrom,t<Hero+.3f?StrikeClip(t):StrikeTo);
+            return Local(0,up,on-Travel);
+        }
+        /// <summary>The pilot's spot on the floor at `t` (stage frame; After from the strike's step back on).</summary>
+        private static Vector3 Feet(float t){var w=Way(t);return After+new Vector3(w.X,0,w.Z);}
+        private static NativeEntranceShot Following(NativeEntranceShot s,NativeEntranceAnchor a){s.Follow=(int)a;return s;}
         public NativeFangsIntro():base(NativeFangs.Entrance,StrikeAt,0x7dff3a)
         {
-            SlowRate=.3f;SlowHold=.14f;SlowRecover=.25f;SlowCatchUp=.6f;
+            SlowRate=.3f;SlowHold=.14f;SlowRecover=.25f;SlowCatchUp=.6f;RootPath=(t,r)=>r+Way(t);
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             k.Key(0,stand).Root(Before.X,.7f,Before.Z,Facing).Planted(1).Drop(-.18f).J(B,.25f).J(LA,-.5f,0,.4f).J(RA,-.5f,0,-.4f);
             k.Key(StepAt,stand).Root(Before.X,.7f,Before.Z,Facing).Planted(1).Drop(-.18f).J(B,.25f);
@@ -282,10 +312,10 @@ namespace ChipArena.UnityConversion
             {
                 // Low over the mist: the eyes in the dark.
                 Shot(0,NativeEntranceCut.Cut,44,40,V(.4f,.5f,4.4f),V(.3f,.55f,3.9f),V(0,.75f,-1.4f),V(0,.8f,-1.2f),1,0),
-                // The shadow step: wide and to the side.
-                Shot(StepAt-.15f,NativeEntranceCut.Cut,50,46,V(-3.2f,1.2f,1.8f),V(-3f,1.25f,1.6f),V(0,.9f,-.8f),V(0,.95f,-.2f),1,0),
-                // Close and circling through the flurry.
-                Shot(FlurryAt+.1f,NativeEntranceCut.Whip,40,36,V(1.8f,1.1f,2.2f),V(-1.2f,1.2f,2.4f),V(0,1f,0),V(0,1f,0),1,0,.12f),
+                // The shadow step: wide and to the side, onto where it comes out (Arrive).
+                Shot(StepAt-.15f,NativeEntranceCut.Cut,50,46,V(-3.2f,1.2f,1.8f),V(-3f,1.25f,1.6f),V(0,.9f,-.8f),V(Arrive.X,.95f,Arrive.Z),1,0),
+                // Close and circling through the flurry, the look on the chest and the eye rising half the leap (it leaps 1.8 m).
+                Following(Shot(FlurryAt+.1f,NativeEntranceCut.Whip,40,36,V(1.8f,1.1f,2.2f),V(-1.2f,1.2f,2.4f),V(0,0,0),V(0,0,0),1,0,.12f,trackY:.5f),NativeEntranceAnchor.Chest),
                 // High over the strike and its bloom.
                 Shot(StrikeAt-.3f,NativeEntranceCut.Cut,54,58,V(.3f,3.4f,3.4f),V(.6f,3.8f,3.8f),V(0,.4f,0),V(0,.3f,0),1,0),
                 // The hero.
@@ -301,8 +331,8 @@ namespace ChipArena.UnityConversion
             if(t<StepAt){clip="Frank_Stealth_Kill_Sneak_Idle";time=t;return true;}
             if(t<FlurryAt){clip=A+"Evade_F_IP";time=Fit(t,StepAt,ArriveAt,FlurryAt,.05f,.35f,.5f);return true;}
             // The flurry (the pack's fifth combo, its three cuts), then the two-handed strike (its blow on StrikeAt), then the stance.
-            if(t<StrikeAt-.45f){clip=A+"Combo05_All_IP";time=Fit(t,FlurryAt,FlurryAt+.85f,StrikeAt-.45f,.35f,1.217f,1.95f);return true;}
-            if(t<Hero+.3f){clip=A+"Skill02_IP";time=Fit(t,StrikeAt-.45f,StrikeAt,Hero+.3f,.45f,.9f,1.6f);return true;}
+            if(t<StrikeAt-.45f){clip=A+"Combo05_All_IP";time=FlurryClip(t);return true;}
+            if(t<Hero+.3f){clip=A+"Skill02_IP";time=StrikeClip(t);return true;}
             clip=A+"Equip_Idle";time=t-Hero;return true;
         }
         public override Vector3 CameraJolt(float t)
@@ -314,7 +344,7 @@ namespace ChipArena.UnityConversion
         {
             float up=NativeEntranceMath.Ramp(t,StrikeAt,CardAt);l.DriveProbe=true;NativeEntranceStage.Rig(l,.05f+.45f*up,Accent,.25f+.5f*up,.06f+.35f*up,.08f+.45f*up);
             l.Add(new Vector3(0,.3f,0),Venom*(.8f+.4f*(float)Math.Sin(t*2.1f)),5);
-            float strike=NativeEntranceMath.Pulse(t,StrikeAt,.01f,.8f);if(strike>.01f)l.Add(new Vector3(0,.5f,.4f),(Venom*2+White)*(4*strike),8);
+            float strike=NativeEntranceMath.Pulse(t,StrikeAt,.01f,.8f);if(strike>.01f)l.Add(StrikeSpot+new Vector3(0,.5f,.4f),(Venom*2+White)*(4*strike),8);
             if(t>=CardAt-.2f){float k=NativeEntranceMath.Ramp(t,CardAt-.2f,CardAt+.3f);l.Add(new Vector3(2.2f,2.2f,1.8f),Venom*(1.8f*k),8);}
         }
         protected override float Pylon(int i,float t)=>t<StrikeAt?.04f:PowerOn(i,t-StrikeAt+.05f,.12f);
@@ -355,10 +385,10 @@ namespace ChipArena.UnityConversion
                 }
             }
             // The step: a burst of smoke where it went, a streak of green along its way, a burst where it came out.
-            Burst(fx,t,StepAt,Before+new Vector3(0,.85f,0),floor,low,22200);Burst(fx,t,ArriveAt-.03f,After+new Vector3(0,.85f,0),floor,low,22300);
+            Burst(fx,t,StepAt,Before+new Vector3(0,.85f,0),floor,low,22200);Burst(fx,t,ArriveAt-.03f,Arrive+new Vector3(0,.85f,0),floor,low,22300);
             {
                 float s=t-StepAt,span=ArriveAt-StepAt;
-                if(s>=0&&s<span+.25f){float u=NativeEntranceMath.Clamp01(s/span),fade=1-NativeEntranceMath.Clamp01((s-span)/.25f);for(int i=0;i<3;i++){var from=Before+new Vector3(0,.45f+.4f*i,0);var to=Vector3.Lerp(from,After+new Vector3(0,.45f+.4f*i,0),u);var d=to-from;if(d.LengthSquared()>1e-4f)fx.Streak(to,d*4,Venom*(1.6f*fade*(i==1?1:.6f)),.03f,0,.25f,.5f,1-fade,22250+i);}}
+                if(s>=0&&s<span+.25f){float u=NativeEntranceMath.Clamp01(s/span),fade=1-NativeEntranceMath.Clamp01((s-span)/.25f);for(int i=0;i<3;i++){var from=Before+new Vector3(0,.45f+.4f*i,0);var to=Vector3.Lerp(from,Arrive+new Vector3(0,.45f+.4f*i,0),u);var d=to-from;if(d.LengthSquared()>1e-4f)fx.Streak(to,d*4,Venom*(1.6f*fade*(i==1?1:.6f)),.03f,0,.25f,.5f,1-fade,22250+i);}}
             }
             // The flurry and the strike: both blades' green trails, venom flung off the fastest of them.
             Trail(fx,t,0,.32f,Venom,White,.022f,1,22320,low);Trail(fx,t,1,.32f,Venom,White,.022f,1,22520,low);
@@ -384,17 +414,17 @@ namespace ChipArena.UnityConversion
             {
                 float s=t-StrikeAt;if(s>=0&&s<1.6f)
                 {
-                    float u=s/1.6f;var at=Local(0,.25f,.35f);if(s<.22f)fx.Glow(at,(Venom*2+White)*(3.5f*(1-s/.22f)),0,.3f+.6f*s/.22f,1,s/.22f,22600);
-                    int petals=low?10:22;for(int i=0;i<petals;i++){float a=i*6.2831853f/petals;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));float r=.3f+2.6f*(1-(1-u)*(1-u));for(int j=0;j<3;j++){var p=new Vector3(0,floor+.05f+.25f*j,0)+d*(r*(1-.15f*j));fx.Streak(p,d*4+new Vector3(0,2,0),Venom*(2.4f*(1-u)),.04f,.25f,.03f,.6f,u,22620+i*3+j);}}
-                    int ring=low?20:48;for(int i=0;i<ring;i++){float a=i*6.2831853f/ring;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));fx.Streak(new Vector3(0,floor+.03f,0)+d*(.4f+4.2f*(1-(1-u)*(1-u))),d*6,Venom*(1.8f*(1-u)),.03f,.2f,.03f,.7f,u,22700+i);}
+                    float u=s/1.6f;var at=StrikeSpot+Local(0,.25f,.35f);if(s<.22f)fx.Glow(at,(Venom*2+White)*(3.5f*(1-s/.22f)),0,.3f+.6f*s/.22f,1,s/.22f,22600);
+                    int petals=low?10:22;for(int i=0;i<petals;i++){float a=i*6.2831853f/petals;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));float r=.3f+2.6f*(1-(1-u)*(1-u));for(int j=0;j<3;j++){var p=StrikeSpot+new Vector3(0,floor+.05f+.25f*j,0)+d*(r*(1-.15f*j));fx.Streak(p,d*4+new Vector3(0,2,0),Venom*(2.4f*(1-u)),.04f,.25f,.03f,.6f,u,22620+i*3+j);}}
+                    int ring=low?20:48;for(int i=0;i<ring;i++){float a=i*6.2831853f/ring;var d=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));fx.Streak(StrikeSpot+new Vector3(0,floor+.03f,0)+d*(.4f+4.2f*(1-(1-u)*(1-u))),d*6,Venom*(1.8f*(1-u)),.03f,.2f,.03f,.7f,u,22700+i);}
                     if(s<.9f){int m=low?10:26;for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(22760,i,true);var p=at+new Vector3(d.X*2.6f,d.Y*3.2f,d.Z*2.6f)*s+new Vector3(0,-4.9f*s*s,0);if(p.Y<floor)continue;fx.Glow(p,Venom*(2*(1-s/.9f)),0,.04f,0,s/.9f,22800+i);}}
-                    int bil=low?5:12;for(int i=0;i<bil;i++){var d=NativeEntranceMath.Direction(22840,i,true);d.Y*=.35f;fx.Smoke(After+new Vector3(0,.2f,0)+d*(.3f+1.7f*NativeEntranceMath.EaseOut(u))+new Vector3(0,.9f*u,0),Haze,.55f*(1-u),.6f+1.1f*u,u,22850+i,floor);}
+                    int bil=low?5:12;for(int i=0;i<bil;i++){var d=NativeEntranceMath.Direction(22840,i,true);d.Y*=.35f;fx.Smoke(StrikeSpot+new Vector3(0,.2f,0)+d*(.3f+1.7f*NativeEntranceMath.EaseOut(u))+new Vector3(0,.9f*u,0),Haze,.55f*(1-u),.6f+1.1f*u,u,22850+i,floor);}
                 }
             }
             // The hero: smoke curling round the legs.
             if(t>=Hero)
             {
-                int sm=low?4:10;for(int i=0;i<sm;i++){float a=((t*.45f+NativeEntranceMath.Rand(22900,i))%1+1)%1,ang=i*.63f+t*.9f+a*2.2f,r=.32f+.12f*(float)Math.Sin(t+i);var p=After+new Vector3((float)Math.Sin(ang)*r,.08f+1.1f*a,(float)Math.Cos(ang)*r);fx.Smoke(p,Smoke,.32f*(float)Math.Sin(Math.PI*a),.3f+.35f*a,a,22910+i,floor);}
+                int sm=low?4:10;for(int i=0;i<sm;i++){float a=((t*.45f+NativeEntranceMath.Rand(22900,i))%1+1)%1,ang=i*.63f+t*.9f+a*2.2f,r=.32f+.12f*(float)Math.Sin(t+i);var p=Feet(t)+new Vector3((float)Math.Sin(ang)*r,.08f+1.1f*a,(float)Math.Cos(ang)*r);fx.Smoke(p,Smoke,.32f*(float)Math.Sin(Math.PI*a),.3f+.35f*a,a,22910+i,floor);}
             }
         }
         // A burst of smoke (the step's): dark puffs thrown out and rising, green sparks out of it, a short green flash at its heart.

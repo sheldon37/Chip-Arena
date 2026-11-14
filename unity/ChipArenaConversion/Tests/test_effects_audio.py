@@ -72,6 +72,19 @@ class EffectsAudioTests(unittest.TestCase):
         (self.project / 'Assets').mkdir(parents=True)
         self.tree = LicensedTree(self.tmp / 'licensed')
 
+    def test_effective_coverage_counts_recordings_not_empty_entries(self):
+        report = installer.audio_coverage(self.tree.base)
+        self.assertEqual((report['entries'], report['recorded_keys'], report['clips']), (3, 2, 3))
+        self.assertEqual(report['bytes'], installer.verify(self.tree.base)[2])
+        self.assertEqual(report['headroom_bytes'], 18000000 - report['bytes'])
+        self.assertEqual(report['groups']['boss.noctiel.']['expected_keys'], 57)
+        self.assertEqual(report['groups']['boss.noctiel.']['recorded_keys'], 0)
+        self.assertEqual(report['groups']['topdog.blade-']['expected_keys'], 14)
+        self.assertEqual(report['groups']['topdog.fang-']['expected_keys'], 10)
+        (self.tree.bank / 'impact.stone/0.ogg').unlink()
+        with self.assertRaises(installer.Problem):
+            installer.audio_coverage(self.tree.base)
+
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
@@ -116,7 +129,7 @@ class EffectsAudioTests(unittest.TestCase):
 
     def test_contract_matches_the_core_bank(self):
         keys, schema, clips, budget = installer.contract()
-        self.assertEqual((len(keys), schema, clips, budget), (420, 1, 16, 18000000))  # incl. the 57 NOCTIEL keys and 81 Backrooms boss keys, the 14 zombie voice and footfall keys (docs/audio/SOUND-REQUESTS.md), the 34 City Ironworks enemy keys and the 22 Central Station enemy cues
+        self.assertEqual((len(keys), schema, clips, budget), (444, 1, 16, 18000000))  # incl. the 57 NOCTIEL keys and 81 Backrooms boss keys, the 14 zombie voice and footfall keys (docs/audio/SOUND-REQUESTS.md), the 34 City Ironworks enemy keys and the 22 Central Station enemy cues
         self.assertEqual(sum(1 for k in keys if k.startswith('pve.station.')), 22)  # docs/EXPEDITION-CENTRAL-STATION.md section 10's enemy cues
         self.assertEqual(sum(1 for k in keys if k.startswith('intro.')), 20)  # the 19 entrances and the DEV Sheldon Intro
         self.assertEqual(keys['gun.machinegun.shot'], ('3d', .32))

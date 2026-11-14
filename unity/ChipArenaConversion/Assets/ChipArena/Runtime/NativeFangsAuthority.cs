@@ -45,10 +45,10 @@ namespace ChipArena.UnityConversion
             if(p.Input.AbilityE&&Time>=k.Ready[1])
             {
                 p.BladeVeilStrike=false;BladeBegin(p,NativeFangs.Veil,NativeFangs.VeilCast,NativeFangs.VeilCast+.2f);k.ComboUntil=0;float lasts=NativeFangs.VeilFor+(BladeChip(p,NativeFangsChips.SilentVeil)?NativeFangsChips.SilentLonger:0);
-                k.Ready[1]=k.CastRelease+lasts+NativeFangs.Cooldown[1]*cd;return;
+                k.Ready[1]=k.CastRelease+lasts+NativeFangs.Cooldown[1]*cd;FangsTravel(p,-p.BladeFacing,NativeFangs.VeilHop);return;
             }
             if(key==1&&Time>=k.Ready[2]){FangsStrike(p);BladeBegin(p,NativeFangs.Fan,NativeFangs.FanRelease,NativeFangs.FanRelease+NativeFangs.FanRecover);k.ComboUntil=0;k.Ready[2]=Time+NativeFangs.Cooldown[2]*cd;return;}
-            if(key==2&&Time>=k.Ready[3]){p.BladeVeilStrike=false;BladeBegin(p,NativeFangs.Bloom,NativeFangs.BloomRelease,NativeFangs.BloomRelease+NativeFangs.BloomRecover);k.ComboUntil=0;k.Ready[3]=Time+NativeFangs.Cooldown[3]*cd;return;}
+            if(key==2&&Time>=k.Ready[3]){p.BladeVeilStrike=false;BladeBegin(p,NativeFangs.Bloom,NativeFangs.BloomRelease,NativeFangs.BloomRelease+NativeFangs.BloomRecover);k.ComboUntil=0;k.Ready[3]=Time+NativeFangs.Cooldown[3]*cd;FangsTravel(p,p.BladeFacing,NativeFangs.BloomLunge);return;}
             if(key==3&&Time>=k.Ready[4]&&FangsAssassinate(p,cd))return;
             if(!attack)return;
             if(p.Grounded&&Time>k.ComboUntil&&NativeMeleeFeel.SprintAttack(p.Input,p.Pose.Sprinting))
@@ -57,7 +57,40 @@ namespace ChipArena.UnityConversion
             }
             int step=Time<=k.ComboUntil?(k.Combo+1)%NativeFangs.Steps:0;k.Combo=step;FangsStrike(p);
             BladeBegin(p,NativeFangs.Cut,NativeFangs.CutHit[step]/rate,NativeFangs.CutLength[step]/rate,step);k.ComboUntil=k.CastUntil+NativeFangs.ComboWindow;
-            float lunge=NativeFangs.CutLunge[step];if(lunge>0)BladePath(p,p.BladeFacing,lunge,Time,k.CastRelease);
+            FangsTravel(p,p.BladeFacing,NativeFangs.CutLunge[step]);
+        }
+        /// <summary>A move that carries the pilot as its clip does (owner 2026-11-13: "The movements look like they should be moving the
+        /// character location"; rules at the owner's word, logged for Astra): `metres` along `dir` (flat) from where the pilot stands, on the
+        /// blade classes' own path (BladePath: a wall stops it short; the host moves the pilot, guests see it in the snapshots), timed by the
+        /// clip's root (Core NativeBladeMotion.FangsTravelShare, through NativeBlades.PathAt) to the end of the slice the game plays. Only from
+        /// the ground (a cut in the air does not hover along it), never off a drop (FangsFloorTo), and never through a foe: one in the way
+        /// stops it at arm's length (FangsTravelFoe), so a lunge ends on the one it cuts.</summary>
+        private void FangsTravel(NativePilot p,Vector3 dir,float metres)
+        {
+            var k=p.Blade;if(!(metres>0)||!p.Grounded||!NativeBladeMotion.FangsTravelSpan(k,out float ends,out float peak))return;
+            dir.y=0;dir=dir.sqrMagnitude>1e-6f?dir.normalized:Vector3.forward;var from=p.Body.position;
+            BladePath(p,dir,metres*peak,Time,ends);float way=Math.Min(Math.Min(Vector3.Distance(from,Vec(k.To)),FangsFloorTo(from,dir,metres*peak)),FangsTravelFoe(p,from,dir));
+            k.To=Vec(from+dir*(way/peak));
+        }
+        /// <summary>How far along `dir` from `from` the nearest foe in the way (within a body's width of the line) lets the pilot go: to
+        /// FangsArm short of it (unlimited with none).</summary>
+        private float FangsTravelFoe(NativePilot p,Vector3 from,Vector3 dir)
+        {
+            float best=float.MaxValue;
+            void At(Vector3 q){var d=q-from;if(Math.Abs(d.y)>1.8f)return;d.y=0;float along=Vector3.Dot(d,dir);if(along<=0||(d-dir*along).magnitude>FangsWidth)return;best=Math.Min(best,Math.Max(0,along-FangsArm));}
+            foreach(var q in BladePilots(p))At(q.Body.position);foreach(var m in BladeMinions(p))At(m.Body.position);return best;
+        }
+        private const float FangsWidth=.8f,FangsArm=.9f;
+        /// <summary>How far along `dir` from `from` (at most `distance`) there is floor to stand on: the first point with none within a metre
+        /// under the feet (a ledge, a lethal edge) ends the way short of it.</summary>
+        private float FangsFloorTo(Vector3 from,Vector3 dir,float distance)
+        {
+            var physics=root.scene.GetPhysicsScene();
+            for(float d=.25f;;d+=.25f)
+            {
+                float at=Math.Min(d,distance);if(!physics.Raycast(from+dir*at+Vector3.up*.3f,Vector3.down,out _,1.3f+NativeLocomotionRules.HalfHeight,WorldMask,QueryTriggerInteraction.Ignore))return Math.Max(0,at-.45f);
+                if(at>=distance)return distance;
+            }
         }
         private void FangsRelease(NativePilot p)
         {
@@ -88,7 +121,9 @@ namespace ChipArena.UnityConversion
         /// <summary>A cut: a cone ahead, venom on each one it cuts (the finisher more; Twin Venom more again).</summary>
         private void FangsCut(NativePilot p,int step)
         {
-            var at=p.Body.position;var f=p.BladeFacing;float reach=NativeFangs.CutReach[step],arc=NativeFangs.CutArc[step],damage=NativeFangs.CutDamage[step];bool finisher=step==NativeFangs.Steps-1;
+            // Its reach from here, plus whatever of its step in it has not travelled by the hit (in the air, at a wall), so it lands where it would.
+            var k=p.Blade;var at=p.Body.position;var f=p.BladeFacing;float travelled=k.PathAt==k.CastAt&&k.PathUntil>k.PathAt?new Vector2(at.x-k.From.x,at.z-k.From.z).magnitude:0;
+            float reach=NativeFangs.CutReachAt(step,NativeBladeMotion.FangsTravelShare(k,k.CastRelease,out float share)?share:0,travelled),arc=NativeFangs.CutArc[step],damage=NativeFangs.CutDamage[step];bool finisher=step==NativeFangs.Steps-1;
             int venom=FangsVenom(p,finisher&&BladeChip(p,NativeFangsChips.TwinVenom)?NativeFangsChips.TwinFinisher:NativeFangs.CutVenom[step]);string kind=finisher?NativeFangs.HitFinisher:NativeFangs.HitCut;
             BladeCone(p,at,f,reach,arc,(q,d)=>{if(BladeHurt(p,q,damage,d,"cut",(float)p.Weapon.impulse,true)<=0)return;StaggerMelee(q,NativeMeleeRules.HitStun(p.Weapon,(float)p.Stats["attackRate"]));int n=AddVenom(p,q,venom);BladeHit(p,kind,q.Body.position+Vector3.up*.45f,d,q.Seat.id,n);},
                 (m,d)=>{if(BladeHurt(p,m,damage,d,"cut",0,true)<=0)return;int n=AddVenom(p,m,venom);BladeHit(p,kind,m.Body.position+Vector3.up*.45f,d,BladeKey(m),n);});

@@ -116,6 +116,8 @@ namespace ChipArena.UnityConversion
             var k=p.Blade;p.BladeReleased=false;k.CastKind=kind;k.CastAt=Time;k.CastStep=step;k.CastRelease=Time+release;k.CastUntil=Time+until;
             p.BladeAim=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)).normalized;p.BladeFacing=Vec(V3.Forward(p.Input.Yaw));p.Yaw=p.Input.Yaw;p.AttackAt=p.LastAttack=p.BladeLastAttack=Time;
             p.Ready=k.CastUntil-(kind==NativeKatana.Cut||kind==NativeFangs.Cut?.04f:0);p.BladeStruck.Clear();
+            // A Fangs move's travel runs to its clip's end, past the move's own (NativeFangsAuthority.FangsTravel): the next move ends it.
+            if(NativeFangs.IsCast(kind))k.PathUntil=Math.Min(k.PathUntil,Time);
             Emit(EventKind.AbilityCast,p,0,p.Body.position,0,kind);
         }
         private void StepBladeWorld()
