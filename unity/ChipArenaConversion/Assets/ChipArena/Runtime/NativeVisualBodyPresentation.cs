@@ -1596,7 +1596,23 @@ namespace ChipArena.UnityConversion
             for(int j=0;j<22;j++)s.Now[j]=bone(j)*s.Inverse[j];
             for(int v=0;v<s.Bones.Length;v++){var m=s.Now[s.Joint[v]]*s.Bind[v];s.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
             VisualSceneHood(s,death,alpha);if(visible(CapturedRig.Head))VisualSceneFace(s,death,alpha);
+            VisualSceneDress(s,death,visible,alpha);
             return true;
+        }
+        // A death scene's body keeps what the live body wore, as a corpse does (owner 2026-11-14: "Pilot still seems to 'remove' helmet
+        // and clothes time of death for a moment"; the scene drew the helmet but not the robot pieces' plates or the hat): the plates on
+        // the parts the scene shows, the hat on its head while the head shows (fitted as the live body wears it, VisualHatFit; the Sheldon
+        // Head's hood is the body's own, VisualSceneHood).
+        private Matrix4x4 sceneHat;private Func<int,Matrix4x4> sceneHatBone;
+        private void VisualSceneDress(VisualScene s,NativeDeath death,Func<int,bool> visible,float alpha)
+        {
+            var a=death.actor;if(a==null)return;sceneFade=alpha;
+            int keep=0;for(int b=0;b<SuitJoints.Length;b++)if(visible(SuitJoints[b]))keep|=1<<b;
+            if(keep!=0)VisualSuit(s.Root,death.id,a.BodyColor,a.AccentColor,0,null,alpha<1?sceneFadeOf??=_=>sceneFade:null,null,0,keep);
+            string hat=a.Hat;if(s.Hood||s.Head<0||!visible(CapturedRig.Head)||string.IsNullOrEmpty(hat)||hat=="none"||hat==NativeSheldonHead.Hat||a.SourceSpec=="siren")return;
+            sceneHat=VisualHatFit(s.Bones[s.Head],hat,WearsHelm(death.id));var dogHat=HotDogHatOn(hat,s.Bones[s.Head]);if(dogHat!=s.Bones[s.Head])sceneHat=VisualHatFit(dogHat,hat);sceneHatBone??=_=>sceneHat;
+            var model=VisualHatModel(hat,a.HatColor)??NativeHatLooks.Model(hat,a.HatColor);
+            if(model!=null&&!AuditorHalo(hat,sceneHat,Time.time,alpha,HaloReduced,0,null,color:a.HatColor))sourceModels.QueueShadowless(model,Matrix4x4.identity,sceneHatBone,null,HatBody(hat,a.HatColor),null,alpha);
         }
         // PresentDeath, where the body draws: pose the corpse's visual body; true when it stands in for the voxel body this frame
         // (also while hidden for a fade under half opacity).
