@@ -11,6 +11,7 @@ Owner request: a quick replay of how the local player died, Siren super armor du
 
 ## Replay behavior and contract
 
+- Unity final killcam (2026-10-13, `docs/FINAL-KILLCAM.md`): when a round ends on a kill, every client plays that kill in slow motion through this same presentation scene (`ReplayActive` is true). Once the final kill is decided, no normal killcam arms that round, and a normal one playing or waiting is cut over, so the last victim sees only the final one. Every other death keeps the behaviour below.
 - Automatic, once per witnessed local death, in both local practice and online rooms. Records authoritative snapshots, not predicted input or video. No new network messages, server rewind, recorded files or upload traffic.
 - Keeps up to five seconds at 20 Hz, at most 112 snapshots / 100,000 top-level player, prop, projectile and event entries. The active clip retains its bounded frame references while live history continues. Minimum useful prehistory is 0.2 seconds. A late-joining dead spectator never replays an unwitnessed death.
 - Plays up to three seconds before the fatal hit plus 0.6 seconds afterward, at normal speed. Waits briefly for the aftermath; a one-second wall-clock deadline handles stopped packets. Missing history shortens the clip.

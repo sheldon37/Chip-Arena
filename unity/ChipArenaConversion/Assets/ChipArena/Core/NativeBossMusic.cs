@@ -3,6 +3,42 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeMusicLoop {public double start,end;public int fromBar,toBar;}
     [Serializable] public sealed class NativeMusicSection {public string id;public int fromBar,toBar;}
+    // audio.ts ArenaAudio.updateStageMusic: PvP map music only plays in countdown, fight and result (the player intros, draft and
+    // match screens are silent); the PvE stage track loops from the first in-game phase (lobby and match idle it) and dips to .35
+    // under a player intro sting. The Siren's boss song (bossSong) silences both.
+    public static class NativeStageMusic
+    {
+        // Owner uploads, in prompt order. Poolrooms is packaged but has no playable map yet. The four 2026-11-10 stages take the owner's
+        // songs of the same day (docs/arenas/STAGE-MUSIC-PROMPTS.md); their map records keep the placeholder as the fallback.
+        public const string PoolroomsTrack="poolrooms-untitled";
+        public static string Theme(string map,string fallback)
+        {
+            switch(map)
+            {
+                // The owner's songs for the nine stages remodelled on 2026-11-11 (docs/arenas/STAGE-MUSIC-PROMPTS.md, "The remodelled
+                // stages"); each map record's own track stays its fallback. Ward Zero's plays on both of its records.
+                case "breakwater":return "breakwater-theme";
+                case "harbor":return "harbor-theme";
+                case "skyframe":return "skyframe-theme";
+                case "rig":return "rig-theme";
+                case "polar":return "polar-theme";
+                case "brickfall":return "brickfall-theme";
+                case "siren":case "expedition-ward-zero":return "wardzero-theme";
+                case "factory":return "factory-theme";
+                case "cybercity":return "cybercity-theme";
+                case NativePoolroomsGenerator.ArenaId:case NativePoolroomsGenerator.InstanceMap:return PoolroomsTrack;
+                case "backrooms-level-0":case "expedition-backrooms-level-0":return "backrooms-fluorescent-loop";
+                case "training":return "training-steady-groove";
+                case "causeway":return "causeway-theme";
+                case "club":return "club-theme";
+                case "emporium":return "emporium-theme";
+                case "sanctum":return "sanctum-theme";
+                default:return fallback;
+            }
+        }
+        public static bool Plays(NativePhase phase,bool pve,bool bossSong)=>!bossSong&&(pve?phase!=NativePhase.Lobby&&phase!=NativePhase.Match:phase==NativePhase.Countdown||phase==NativePhase.Fight||phase==NativePhase.Result);
+        public static float Dip(NativePhase phase,bool pve)=>pve&&phase==NativePhase.Intro?.35f:1;
+    }
     [Serializable] public sealed class NativeBossTrack
     {
         public string id,file;public double duration,introEnd;public double[] beats;public int firstDownbeat;public NativeMusicLoop loop;public NativeMusicSection[] sections;

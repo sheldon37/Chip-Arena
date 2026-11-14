@@ -14,6 +14,11 @@ __pycache__/
 /LocalAssets/
 /Assets/LocalAssets/
 /Assets/LocalAssets.meta
+# Licensed Asset Store packs land here on import; they belong under Assets/LocalAssets (docs/BOZO-INTEGRATION.md).
+/Assets/BoZo_StylizedModularCharacters/
+/Assets/BoZo_StylizedModularCharacters.meta
+/Assets/MagicaCloth2/
+/Assets/MagicaCloth2.meta
 
 /Relay/bin/
 /Relay/obj/

@@ -5,11 +5,12 @@ namespace ChipArena.UnityConversion
 {
     public sealed class NativeMeleeAction
     {
-        public string Kind;public float At,Release,Until,Yaw,Landed=-1;public bool Released;public int Shot;
+        public string Kind,Fx,Phase;public int Target,Tick,LockTarget;public float Distance;public V3 Direction,Aim;public float At,Release,Until,RecoverUntil,RecoverAt=-1,Yaw,Landed=-1;public bool Released;public int Shot;
         public readonly HashSet<string> Hit=new HashSet<string>();
     }
     [Serializable] public sealed class NativeRecovery
     {
+        public NativeRecovery ViewCopy()=>(NativeRecovery)MemberwiseClone();
         public float At,Until,Landed=-1,PickupUntil,RollAt=-1,RollUntil,JuggleUntil;public bool PickupUsed,HasDirection,Ragdoll;
         public int JuggleHits,Source;public V3 Direction;
     }

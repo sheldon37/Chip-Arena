@@ -7,6 +7,16 @@ namespace ChipArena.UnityConversion
     public static class NativeFirstPersonPose
     {
         public const float Scale=.78f,StaffScale=.85f,StaffRoll=20;
+        // The visual body's view model (owner 2026-11-01: "Also need to fix first person, weapons looks super small"): with a
+        // life-size weapon model in hand, its forearms, hands and that model draw larger about the right hand's weapon frame
+        // (ModelScale: a gun ModelView, a blade, bow or staff ModelBlade, as their models already reach the game's tip), and the
+        // hold rises into view (ModelLift, camera frame, m; aiming down the sights still centres the sight). The hand stays on
+        // the weapon frame; the weapon grows out of it, the forearm back off screen. Presentation only: aim, muzzle, reach and
+        // hit volumes are the game's.
+        public const float ModelView=1.7f,ModelBlade=1.3f;
+        public static readonly Vector3 ModelPistolLift=new Vector3(-.02f,.10f,0),ModelGunLift=new Vector3(0,.05f,0),ModelBladeLift=new Vector3(0,0,0);
+        public static float ModelScale(bool gun)=>gun?ModelView:ModelBlade;
+        public static Vector3 ModelLift(bool gun,bool pistol,bool blade)=>gun?pistol?ModelPistolLift:ModelGunLift:blade?ModelBladeLift:Vector3.Zero;
         // Captured native torso sits lower than the source rig; a 5 cm lift keeps the crystal visible during casts.
         public const float NativeRigLift=.05f;
         public static readonly Vector3 MagicOffset=new Vector3(.20f,-.50f+NativeRigLift,.20f);
@@ -18,9 +28,10 @@ namespace ChipArena.UnityConversion
             if(Math.Abs(m13)<.9999999f)return new Vector3((float)Math.Atan2(2*(q.X*q.W-q.Y*q.Z),1-2*(q.X*q.X+q.Y*q.Y)),y,(float)Math.Atan2(2*(q.Z*q.W-q.X*q.Y),1-2*(q.Y*q.Y+q.Z*q.Z)));
             return new Vector3((float)Math.Atan2(2*(q.Y*q.Z+q.X*q.W),1-2*(q.X*q.X+q.Z*q.Z)),y,0);
         }
+        private static readonly int[] SettleBones={CapturedRig.Body,CapturedRig.Pelvis,CapturedRig.Spine};
         public static void SettleTorso(CapturedRig.Pose pose)
         {
-            foreach(int bone in new[]{CapturedRig.Body,CapturedRig.Pelvis,CapturedRig.Spine})
+            foreach(int bone in SettleBones)
             {var e=EulerXYZ(pose.Rotation[bone]);pose.Rotation[bone]=CapturedRig.Euler(e.X,e.Y*.2f,e.Z);}
             Vector3 p=pose.Position[CapturedRig.Body];pose.Position[CapturedRig.Body]=new Vector3(MathUtil.Clamp(p.X,-.03f,.03f),p.Y*.5f,MathUtil.Clamp(p.Z,-.03f,.03f));
             pose.World();

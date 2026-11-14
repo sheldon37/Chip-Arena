@@ -24,21 +24,5 @@ namespace ChipArena.UnityConversion
             }
         }
     }
-    public sealed partial class ConversionGame
-    {
-        private string adminQuery="";private bool showAdmin;private NativeAccountData[] managedPlayers=Array.Empty<NativeAccountData>();
-        private readonly Dictionary<string,HashSet<string>> editedGrants=new Dictionary<string,HashSet<string>>(),editedFlags=new Dictionary<string,HashSet<string>>();
-        private static readonly string[] Grantable={"weapon:siren","weapon:emperor","weapon:leet","weapon:ansatsuken","intro:dev-siren","intro:dev-emperor","intro:dev-matrix","intro:dev-ansatsuken","hat:auditor-halo","effect:dev-singularity","effect:dev-raging-demon","effect:dev-clown","effect:dev-clown-love","effect:dev-bass-van"};
-        private void AdminPanel()
-        {
-            if(!account.Developer)return;if(GUILayout.Button(showAdmin?"Close player management":"Developer · manage players",button))showAdmin=!showAdmin;if(!showAdmin)return;
-            adminQuery=GUILayout.TextField(adminQuery,32);GUI.enabled=!account.Busy;if(GUILayout.Button("Search registered players",button))account.Manage("players",JsonUtility.ToJson(new NativeAdminQuery{query=adminQuery}),response=>{managedPlayers=(response.players??Array.Empty<NativeAccountData>()).Where(p=>p!=null&&!string.IsNullOrEmpty(p.id)).Take(100).ToArray();editedGrants.Clear();editedFlags.Clear();});
-            foreach(var p in managedPlayers)
-            {
-                GUILayout.Label(p.username+(p.developer?" · Developer":""),label);if(!editedGrants.TryGetValue(p.id,out var grants)){grants=new HashSet<string>(p.unlocks??Array.Empty<string>());editedGrants[p.id]=grants;}if(!editedFlags.TryGetValue(p.id,out var flags)){flags=new HashSet<string>(p.flags??Array.Empty<string>());editedFlags[p.id]=flags;}
-                foreach(var key in Grantable){bool selected=GUILayout.Toggle(grants.Contains(key),key);if(selected)grants.Add(key);else grants.Remove(key);}foreach(var flag in new[]{"playtester","vip"}){bool selected=GUILayout.Toggle(flags.Contains(flag),flag);if(selected)flags.Add(flag);else flags.Remove(flag);}
-                if(GUILayout.Button("Save grants for "+p.username,button))account.Manage("grant",JsonUtility.ToJson(new NativeGrantRequest{accountId=p.id,grantVersion=p.grantVersion,unlocks=grants.ToArray(),flags=flags.ToArray()}),response=>{if(response.account?.id!=p.id)return;p.grantVersion=response.account.grantVersion;p.unlocks=response.account.unlocks;p.flags=response.account.flags;});
-            }GUI.enabled=true;
-        }
-    }
+    // The DEV screen that uses these requests: Runtime/NativeDevGrantsUI.cs.
 }

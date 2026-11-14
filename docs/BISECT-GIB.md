@@ -1,0 +1,205 @@
+# Bisect gib: split a body in two
+
+Owner request (2026-10-12): "For the buzzsaw death on factory, can we add essentially a "split in the middle" gib? This can be useful for future things too".
+
+The bisect gib is presentation only. No hitbox, damage, timing, network or hazard rule reads it, and no simulation file references it (the managed checks enforce this). Every client builds it from the replicated death record, so the host, guests, late joiners and the killcam see the same split.
+
+Since 2026-11-13 the model's cut faces, wound pits and a gib's fragments are drawn as flesh and bone by one shader lit as the
+blood is; see `docs/GORE-FLESH.md`. The cut itself (which kills, the plane, the pieces, the sealing) is unchanged.
+
+## Pieces
+
+| Layer | File | Role |
+|---|---|---|
+| Core (engine free) | `Core/NativeBisect.cs` | `Split`, `Plan`, `Request`, `Applies`, and the effect functions (`Shudder`, `Sparks`, `Gush`) |
+| Core | `Core/NativeSawBisect.cs` | The Factory saws: which saw made a death, and its request |
+| Core | `Core/NativeMeleeBisect.cs` | Melee blade kills: the swing's plane (from `NativeMeleeSlice`'s plan) as a request, through the body or only the part it takes |
+| Core | `NativeBodyModels.CutLook(skin)` | The cap look per body skin |
+| Runtime | `Runtime/NativeBisectModels.cs` | Gathers the meshes a body draws, runs the split (on a worker), and uploads the half models |
+| Runtime | `Runtime/NativeBisectCorpse.cs` | Two `NativeCorpse` halves in one physics scene: a hold, then they part |
+| Runtime | `Runtime/NativeBisectPresentation.cs` | The saw death, its blood and sparks, the `Gore` switch and the Dev Sandbox preview |
+| Core | `Core/NativeSmashGib.cs` | The smash gib: which hazard, the plan, the squash and sprawl, the throw, the blood, the hazard gib gate |
+| Core | `Core/NativeArrowGib.cs` | Arrow gibbing: the lodge depth, lodge or pass, the arrow points' blood |
+| Runtime | `Runtime/NativeSmashPresentation.cs` | The smashed corpse (pinned or thrown), its overlay, blood, mist and flash |
+| Runtime | `Runtime/NativeArrowGibPresentation.cs` | Arrow strikes, holes, the trickle and the split body's half |
+
+## Core API
+
+- **`BisectSource{Bone, Group, Mesh, Fill, Cap}`** is one mesh the body draws. `Mesh` is in its own joint's draw frame, exactly as uploaded. `Group` indexes the `looks` array (0 is the body, 1 the hat). `Fill` is a closed, never-drawn stand-in whose section caps an open mesh: a wound cut's skin is open at its hole, so its unwounded part fills the cap. `Cap=false` means the mesh is cut but never capped (glass, inset lines).
+- **`NativeBisect.Split(sources, draw, plane, looks, tier, seed)`** returns a `BisectCut`.
+  - `draw[bone]` is each joint's mesh-to-world matrix (System.Numerics row vectors).
+  - A mesh wholly on one side goes to that half untouched (`Whole`); a crossed mesh is clipped exactly.
+  - Each ragdoll body (`NativeBisect.Bodies`) and look group gets one sealed cap per half. The cap is the union of its closed meshes' sections, coloured by depth from the edge (`BisectLook`: the shell's paint, then the lining band, then flesh layers).
+  - The split is deterministic for the same inputs and seed. Cell sizes are `Cells[tier]`.
+  - It only reads its inputs, so it can run on a worker thread.
+- **`BisectCut.Rooted[h]`**: whether half `h` has pelvis geometry of its own. A half without it (a head, a torso cut off above the hips) keeps the pelvis only as its corpse's root; `NativeCorpse` makes that stand-in still and collisionless and hangs nothing from it, so the piece cannot stand on an invisible pelvis.
+- **`NativeBisect.Plan(sources, draw, plane)`** is the cheap part: which bodies each half keeps and their bounds, without pieces. The corpses are built from it at once, before the split finishes.
+- **`BisectLook`** sets the cap paint. `NativeBodyModels.CutLook(skin)` gives each skin's look: Standard is the darkened shell, then the undersuit with accent conduit glints, then flesh; Sheldon Clothes uses the coat lining; the Prototype is shell, then flesh. `BisectLook.Hat` caps in the hat's own paint.
+- **`BisectRequest`** is a cut and how the halves leave it:
+  - `Cause`, `Point`, `Normal`; half 1 lies along `Normal`.
+  - `Travel`: the cutter's velocity.
+  - `Away0/1`, `Spin0/1`: each half's parting velocity and tumble.
+  - `Hitch`: seconds the halves hold on the cutter. `Blood`: the blood scale.
+  - `Sparks`: a metal cutter.
+  - `Hub`, `Axle`, `Rate`, `Radius`: a spinning blade (blood flung off its rim, sparks along its motion). Leave `Radius` at 0 for none.
+  - `Seed`.
+  - `Mask`: the ragdoll bodies the cut may cross (bit = the body's joint). Everything else stays whole on half 0, whichever side it is on. All bodies by default; a melee head or limb cut names that part's (`NativeBisect.MaskOf`). `HalfOf(bone, point)` says which half a joint ends up on (the dropped weapon, an Auditor halo and the team bands use it).
+  - `Seam`, `SeamHalf`: the line the cut's blood leaves along (unit, in the plane, through `Point`), in order the way the blade passed. Zero keeps the saw's vertical seam over the body's height.
+- **`NativeBisect.Request(cause, point, normal, travel, seed, part, lift, push, topple, hitch, blood, sparks)`** builds a request from a plane and a few feel numbers.
+- **`NativeBisect.Applies(gore, style, kept, model)`** decides whether a melee death is cut: gore on, a pilot body, not a kept (revivable) PvE body, and a stock ending (`impact-ragdoll`/`ragdoll`). A killer's purchased kill effect keeps its own look.
+- **The hazard gibs (the Factory saws' split and the smash) use `NativeSmashGib.Applies` instead** (see "Hazard gib gate" below): any style except the Siren and vent endings.
+- **After the split nothing allocates.** `Shudder(r, age)` (the hold's tremble), `Sparks(r, age, quality, into)` (at most `MaxSparks`, into a caller array) and `Gush(r, k, ...)` (the blood sprays) are pure functions of the request and the age.
+
+## Adding a cause
+
+A new cause (a greatsword execution, a laser, a Kernel Panic finisher, a minion) only maps itself to a `BisectRequest`:
+
+1. In Core, from replicated data only, decide that the death qualifies, then build the plane, usually with `NativeBisect.Request` and a few feel numbers. `NativeSawBisect.Find` and `Request` are the worked example: the plane is the killing blade's (normal = axle) through the pelvis.
+2. In `ArenaPresentation`, add a method like `SawBisect`. It checks `NativeBisect.Applies(Gore, ...)`, then returns `SplitCorpse(arena, death, rig, -1, pelvis => <your request>)`. Add your check where `SawBisect` is called in `NativeDeathPresentation` (corpse creation). A null return falls back to the current corpse.
+3. Everything after is shared: the split, both half corpses, the hold and part, the fountains, the cut blood and sparks, the floor splats, and `ReleaseBisect`.
+
+## Melee cuts
+
+Owner task (2026-10-14): connect the melee impact information to the slicing presentation. Until now a melee kill only detached preset ragdoll joints along the swing's plane (`NativeMeleeSlice`, 2026-10-12). Now a lethal blade blow cuts the body's own mesh along that plane, with sealed caps, detached pieces and blood along the cut. It is presentation only, from replicated data only.
+
+- **Which kills.** A pilot killed by a sword, greatsword or daggers blow (swing, sprint attack, jump attack, E special, Q/E kit hit), or by a blade class's move (the Katana and DEV Katana, the Fangs, the Glaive: see "Blade classes" below), gore on, a stock ending (`impact-ragdoll` / `ragdoll`), not a revivable PvE body, not a Siren.
+  - Everything else keeps today's joint slice exactly: gore off, a killer's purchased kill effect, a dagger's slit throat (no part comes off), every shield kill (crush, or the Aegis edge's joint).
+  - Horde zombies keep their own launch path. They only gain the air-flag fix below.
+- **The plane.** It is the one `NativeMeleeSlice.Plan` already derived: the posed blade of the attack index the attacker played (`MeleeSwing.VisibleSweep`), turned by its committed yaw (locked during the hit window), through where that blade passes the victim. Jump attacks and vertical kit kills chop top-down; spins, Flash Step and Kunai cut level.
+  - The attacker's position is the authority's at contact when the killing hit carries its swing's id (see "Exact swing link" below). Without an id it comes from the **Hit event's own direction** (`ArenaEvent.Normal`, the authority's unit vector from the attacker's body centre to the target's at the hit's tick), and only the attacker's distance is the frame's. The plan also records where the plane meets the body (`SlicePlan.Point`) and the weapon (`Spec`).
+- **Through the body** (a sword's trunk cut, every greatsword cleave, a sword or greatsword chop): the whole body is cut by that plane. Half 0 keeps the pelvis. The part above a level or sloping cut slides off along the swing (down the slope) and topples the way the blade went. A chop's halves fall apart to the sides.
+- **Only a part** (a sword's head or arm cut, a dagger's limb on a finisher or kit kill, a dagger chop's arm): only that part's bodies are cut (`Mask`: the neck with the head, an upper arm with its forearm, a forearm).
+  - The cut falls where the swing's plane crosses the part, kept inside it. The swing's bevel is kept within 35° of square across a limb and 15° across the neck.
+  - The part flies along the swing with the old severed joint's kick and spin. The body falls on as it was going.
+- **Feel.**
+  - **Hold:** the halves hold for a hit-stop of 0.045 s (daggers), 0.06 s (sword) or 0.1 s (greatsword), 0.03 s more for a chop, and shudder.
+  - **Blood:** the seam gushes from entry to exit along the blade's pass, and both halves fountain from their cut faces. There are no sparks.
+  - **Momentum:** a moving body's halves keep its momentum, capped at 12 m/s.
+  - The weapon, an Auditor halo and team bands go with the half their joint is on; a part cut keeps them on the body.
+- **No stall.** The split runs on a worker. Through-cuts take at most 8 ms and 5.6 MB; part cuts about 1 ms and 0.7 MB (Standard Full body; managed timing here, not Windows).
+  - If the split is not in by the end of the hitch, the halves keep holding (`NativeCorpse.SplitReady`, at most `HoldLimit` = 1.5 s more) instead of blocking the frame.
+  - On the model (`Runtime/NativeVisualCutPresentation.cs`), until its own cut is in, the first half draws the whole body and the second is hidden. Core `NativeSplitShow` decides what each half wears at each stage (being made, on, failed): while the cut is made, the whole body wears everything (the face gear, the hat, every plate and every renderer the cut does not read); once it is on, each half wears its own side. So each side of the cut is drawn exactly once. A failed cut keeps the first half whole and the second hidden. (Until 2026-11-13 the head's gear and hat sat on the hidden half, so the whole body showed its bare face until the cut was in; the owner saw it once the flesh caps made the cut slower.)
+  - Bodies first seen late (a late join, a body rebuilt after a killcam) also split in the background now, for saws too; they used to split at once on the main thread.
+- **Host, guests and the replay.** Every peer builds the cut from the same replicated swing, Hit event and death record.
+  - Every peer picks the same killing blow: by the swing's id when the killing hit carries one, else by time (see below).
+  - The killcam's reset clears the hit ledger, so each death's first-seen blow is kept for the round (`killBlows`). The body rebuilt after a killcam and the replay's body are cut the same way. The cache is cleared at round end and on a full reset.
+  - The ledger now reads a jump attack from the swing's replicated `AirAttack`. `!Grounded` was always false at a landing attack's hit, so landing kills never chopped.
+- **Measured agreement.** With the swing's id (every current host's primary swing), a guest cuts exactly as the host. Without one (a Q/E kit or E special kill, an older host's frame or replay), a guest whose frame comes 30–150 ms after the hit, with the attacker 3–15 cm further along its lunge, gets the same plane orientation. Its cut position can still be up to 7.6 cm off, and in 48 of 691 random blows a different part is taken (head vs arm by the height thresholds).
+
+### Exact swing link (Astra, PR #205)
+
+Since PR #205 (merged), every primary melee swing's Hit/Headshot event carries two fields, extra strikes and minion targets included. Damage, hit detection, timing, kill credit and the wire format are unchanged; both fields already existed, are serialized and are validated.
+
+- **`Projectile`** is the swing's `Id`, on the swing's contacts in `StepMelee` (sprint attacks and a jump attack's landing contact included). An extra strike shares its swing's id. Q/E kit, E special, plunge (down-attack) and thrown-blade hits keep 0.
+- **`From`** is the attacker's Rigidbody position captured at contact: its **body centre**, not its feet. Every pilot melee hit carries it, with or without an id.
+
+The presentation binds them as follows (`NativeHitLedger`, `NativeMeleeSlice`):
+
+- **The killing hit.** The ledger links each pilot's Death event to the last damaging Hit on that pilot in the same tick. `Damage` emits that Hit just before the Death. The ledger keeps each target's last four melee blows, each with the swing id its hit carried (`MeleeBlow.Swing`).
+- **By the swing's id.** When the killing hit carries an id, the blow is the one read from that hit: the same attacker, the same id and the same tick. A newer blow by another swing does not replace it, and an extra strike's kill takes the strike that landed it. If no such blow was read (its attacker was missing from the frame), there is no blow, rather than another swing's.
+- **By time (unchanged).** A killing hit without an id, or a death whose Death event was not read, keeps the old rule: the latest melee blow on the pilot, if it landed within 0.02 s of the death.
+- **At contact.** With the id, `NativeMeleeSlice.Attacker` puts the attacker's feet `RootHeight` (0.865 m) under the hit's `From`, if `From` agrees with the event's direction within 2°. Otherwise it falls back to the direction at the frame's distance. The swing's plane and the thrown test (beyond reach) both use that position. A late frame, even one showing the attacker far off after a dash, no longer moves the cut or turns a contact swing into a throw.
+- **Unchanged:** cases without an id cut exactly as before. Horde adds keep their own last-blow window (`NativeHordeKindPresentation`) and do not read the id.
+
+### Blade classes (owner 2026-11-12)
+
+Owner: "I also want all bladed weapons to support gibbing (Katanas, Glaive, etc.)". Their kills used to never cut: the hit ledger kept only standard melee blows, `NativeMeleeSlice.Covers` and `NativeMeleeBisect.Cuts` took only the sword, greatsword and daggers, and the blade classes' kits have no captured swing to take a plane from. Core `NativeBladeCuts` adds them. It is presentation only, from replicated data only; no rule, damage or wire changed.
+
+- **The blow.** The Hit event's damage kind names the move (`blade-` and the hit's kind from `BladeHurt`, `glaive-` and the move's id from `GlaiveHurt`; a `direct` hit with the swing's air flag is the plunging slam every blade class plays). The ledger records it with the attacker's kit at that tick: the move, its combo step (`MeleeBlow.Index`; the Glaive's ring in its flick is the fourth step) and the clip it played (`MeleeBlow.Clip`, from `NativeBladeMotion.Clip`, the DEV Katana's own clips included).
+- **Which moves take what.**
+  - Through the body: the Katana's third and fourth cuts, the rush, the iai's split (and Severing Line's sever), the storm, the counter and the Crescent Wave; the Glaive's whirl and skim. Kept on the trunk (0.85 to 1.3 m above the feet), never through the legs.
+  - A part: the Katana's and the Glaive's first two cuts take the head where the cut crosses at 1.1 m or above, else an arm (a forearm below 0.92 m). The Glaive's flick and thrown ring (throw, ricochets, return) take the head or an arm by the death's seed; the halo, the burst and Shatterpoint's shards take an arm.
+  - The Fangs as the daggers: a slit throat on the first four cuts and on the takedown from behind (its clip, the stealth kill's `Behind_01`, is a throat cut: the owner's pick 2026-11-13); an arm (a forearm when low) on the finisher, the pounce, the shadow step's stab, the frontal critical and a thrown knife. The venom bloom cuts nothing.
+  - The slams chop top-down on the weapon arm's side (the Fangs' chop takes an arm, as the daggers').
+- **The plane.** A slash across the front of the wielder facing the victim: the blade's travel in the wielder's frontal plane (an angle) through the height where it crosses the victim's centre line, the plane holding the line between them. The Katana's own clips (Frank Slash Pack) are measured on the pack's blade at each strike (Blender: the tip's travel flattened onto the front, through the blade's point 70% to the tip): the first cut a level forehand at 1.16 m, the second a rising backhand 37° that strikes low (0.59 m: the forearm), the third a cut down from the right shoulder (28°), the finisher rising from the left hip (28°), the storm rising across the waist (21°), the counter's critical down across the waist (32°). The DEV Katana's Grruzam clips are ASCII FBX, which Blender cannot read: its picks (the five-hit chain, the storm, the counter) were surveyed in the Editor at 200 fps by the DEV classes agent (the first cut falls toward the wielder's left across the front, the second rises toward its right, the third is a spinning back cut nearly level at 1 m, the storm's front stroke rises steeply, the counter falls toward the right at 33 degrees); the fourth, since the owner's later pick the three-hit chain's overhead chop (`Attack_3Combo_3_Inplace`), was surveyed the same way: it comes down across the front toward the wielder's left, 50 degrees below level at the centre line, at 1.17 m. The Fangs' and the Glaive's hand-keyed moves are written from their clips' descriptions; a clip not in the table takes its move's. Moves that fly (the iai's line, the wave, the ring, a knife) cut level along the Hit event's own direction; the dashes level along the dash; the whirl and the halo level around the wielder, each tilted under 8° by the seed.
+- **Hold and speed:** the Katana's blade passes at 11 m/s with a 0.05 s hold, the Glaive's at 10 m/s (0.05 s), the Fangs' at 10 m/s (0.045 s); a chop holds 0.03 s more.
+- **Pilots whose death is not a melee one.** The iai's split, the wave, the thrown ring and the knives deal ability damage, so the death record's `melee` is false. The death presentation cuts such a death when the ledger's blow is the killer's own blade blow at the death's tick.
+- **Zombies.** A blade class's hit on a horde add used to read as a bullet's (a bullet wound, no slice). It is now a melee blow there as a sword's is: the blade's gash, and its kill launches the planned parts.
+- **The DEV Greatsword's own swings** (a follow-up, 2026-11-12): it plays the greatsword's rules, so its kills take the standard cut; the hit ledger now records the clip each of its swings played (`MeleeBlow.Clip`, from the attacker's DEV class: the combo's cut, the sprint attack, the jump attack; pilots and zombies alike), and a surveyed one (the DEV classes agent at 200 fps: the first cut falling toward the wielder's left at 46 degrees, the second rising steeply toward its right, the third falling toward its right, the sprint attack's steep chop) cuts across the front as its slash, through the trunk. Its fourth cut (an overhead that crosses only above the head) and the plain Greatsword keep the captured plane.
+- **The killcam's cause line** (owner 2026-11-12: "Yes, fix the label"; Core `NativeKillCause`, Runtime `ConversionGame.KillCause`): a blade's kill names its cut from the death's own slice plan (`ArenaPresentation.KillSlice`): "Beheaded", "Cut in two", "Dismembered", or "Slashed" (a slit throat, a cut that took nothing off). The sword, greatsword, daggers and the blade classes (thrown or not); blunt melee (the shield, the fighters, the mallet) keeps "Blunt force", guns "Direct hit".
+- **The DEV Katana's kick** (owner 2026-11-13: "3rd hit of dev katana is a kick, so its blunt damage rather than slicing"; Core `NativeBladeCuts.Blunt`): its third hit, Grruzam's `Attack_5Combo_3_Inplace` (a rising knee, the blade swept out to the side), is a blow, keyed on the clip as the slashes are. Its kill takes the shield's crush (`SliceKind.Crush`: the head from a high blow on two seeds in three, else the arm it meets; the blow lands at 1.1 m), nothing bisected, and the killcam reads "Blunt force". Its hit is an impact burst (no slash line, `NativeTechniqueFx`), with the fighters' kick (`dev.fist.hit`, built-in `arcade-kick`) for the blade's slice; its wound record takes the fighters' blunt strike (`NativeBladeCuts.BlowImpact`, passed by `BladeHurt`), so it is a bruise. The rules are the third cut's (damage, stun, reach, Honed Edge's bleed, the combo); the plain Katana's third cut still cuts through the body.
+- **Agreement.** The plane holds the Hit event's direction and the crossing height is the slash's, so a guest's late frame cuts exactly as the host (checked: within 0.0000 over 2,640 random blows).
+
+### Checks
+
+`Tests/MeleeBisectChecks.cs`; run alone with `dotnet Tests/bin/Release/net8.0/CoreTests.dll --melee-bisect` after building the test project.
+
+- **Request validity:** 500 random lethal blows per weapon (reach, facing, index, jump, kit). Every request lies on the body and on the swing's plane, part cuts are kept across the limb, and the request is deterministic.
+- **Body splits:** representative horizontal, diagonal and vertical cuts on the Standard body (and the Sheldon Clothes and Prototype bodies for chops and heads) split sealed, whole and capped on the plane, and a part cut takes only its part.
+- **Blood and allocation:** the seam's gushes run along the cut, and the hold and gushes allocate nothing per frame.
+- **Agreement:** host vs a late guest, and the exact contract path.
+- **Swing link:** the killing swing is found by its id over a newer blow by another swing; an extra strike's kill takes its own strike; host, a late guest and the replay cut identically through the attacker at contact; a far frame is not a throw. Without an id (a kit kill, an older host, no Death read) the time rule and the frame's plan are unchanged.
+- **Blade classes:** 60 random lethal blows for each of the 45 moves (the Katana and DEV Katana, the Fangs, the Glaive: their kits and clips as the frame has them): each takes what its move should (through, a part, the throat, an arm, a chop), the plane tilts as its slash, flights run along their direction, through-cuts stay on the trunk, a late guest cuts identically, and representative cuts split sealed on the real body. The ledger keeps a blade class's blow with its move, step and clip; a venom burst, a bleed's tick and a gun's hit are no blows.
+- **Wiring and isolation:** the ledger read and the runtime wiring are checked (the blade classes' too: the death's blade blow, the zombie's melee read), and no simulation or wire file references any of it.
+
+## Factory saws
+
+- **Which saw.** The record names its hazard (`NativeDeath.hazardId`, Astra 2026-10-14): a named saw splits, a named press, crane or vent does not. An older frame without the id is reconstructed: the authority kills with the first lethal hazard touching the body, in `Map.hazards` order, and `NativeSawBisect.Find` repeats that from the death record (the record's time and one frame earlier, the round and `FightAt`). If the first touching hazard is not a saw (the crane, a press, a lethal vent), the death is not split. If nothing touches (the record's float time missed the tick), it takes the nearest lethal saw within 0.75 m. `NativeSmashGib.Saw` does both.
+- **Any style splits** (owner, 2026-10-14: "Always show gib in saws too"). The hazard gib gate applies, and the halves are the stock ending; a purchased kill effect's body does not play.
+- **Slot saw** (axle z): the halves part to the sides and topple outward. **Rail saw** (axle x): the cut is front and back.
+- The halves hold on the blade for 0.17 s (slot) or 0.13 s (rail). They shudder, with sparks and blood out of the seam, then part through the existing ragdoll path.
+- Each half's trunk fountains. The blood along the cut and flung off the rim lands as the round's splats. The blade keeps a drying blood smear (`NativeFactoryRig.Build(..., blood)`). The weapon drops whole, with the half its hand is on.
+
+## Hazard gib gate (owner decisions, 2026-10-14)
+
+Owner: "Keep the smash even with kill effects", then "Always show gib in saws too".
+
+- **`NativeSmashGib.Applies(gore, style, kept, model)`** gates the train, press, crane and saw gibs alike. It needs:
+  - gore on;
+  - a pilot's own body (not a Siren);
+  - not a kept (revivable) PvE body;
+  - not a Siren ending (`siren-dissipate`, `siren-crush`) or a vent ending (`vent-fall`, `vent-splat`).
+- **Every other style gibs**, including a purchased kill effect from a credited pusher (`NativeSirenRules.DeathStyle` gives a hazard death the pusher's effect).
+- **The override is presentation only.** The replicated `style`, the kill feed, the credit and the kill-effect sound cue are unchanged. The gibbed corpse is the stock ending (`NativeCorpse.Style` is `impact-ragdoll`). The kill effect's body, its death scene and the Raging Demon victim screen do not play.
+- **No style is named.** The gate reads no kill-effect style by name, so it holds if the kill effects are later revamped or removed.
+- **Melee cuts keep their own stock-ending gate** (`NativeBisect.Applies`), unchanged in this task.
+
+## Smash gib
+
+Owner request (2026-10-14): "Need to add a "smash" gib, something that can be used when getting hit by the train on cyber city, or smashed from things on factory."
+
+Presentation only, from the replicated death record (kind, time, place, yaw, seed, `hazardId`), the map's hazards, the round and `FightAt`. No new death kind exists, and no hit, damage, timing, network or hazard rule reads it.
+
+- **Which cause** (`NativeSmashGib.Plan`):
+  - `maglev`: Cyber City's train (the named maglev, else the map's).
+  - `hazard` on the Factory: the named hazard, else reconstructed (`NativeSmashGib.Killer`: the first live hazard touching the body in map order on the death's tick or the one before, a bursting vent included, else the nearest lethal one within 0.75 m; for saws it agrees with `NativeSawBisect.Find`).
+  - A press or the crane smashes; a saw splits (above); a vent, grid or anything else keeps its death.
+- **Pinned** (a press ram or the crane's load coming down, the body's centre within 0.2 m of its footprint):
+  - The body is crushed where it stood. Its ragdoll bodies are kinematic, posed by a seeded sprawl (`Sprawl`): it buckles and goes down on its back or face round the pelvis, legs and arms thrown out, the head turned aside.
+  - It is drawn squashed about the floor (`Squash`, `Overlay`) as the crusher's own underside comes down (the hazard's pure state at the death's clock plus the age), never standing above it. It is flat (8.5% height, spread up to 1.3) the moment the crusher is down, and stays flat for the round.
+  - Press: the ram slams in about 0.1 s, holds 0.6 s and lifts. Crane: the load lands in about 0.1 s, stays 6.65 s and is hoisted.
+  - Blood squirts out from under the crusher's edges at the floor the moment it is down (8 `squirt` sprays), a low blood mist leaves the edges, and a pool of up to 16 splats is laid round the body on the bed or floor.
+- **Thrown** (the train; a crusher that only clipped the body or struck it as it rose):
+  - The body holds for a hit-stop (0.05 s train, 0.03 s edge), then flies along the travel (the train's direction, or out from under the edge) and tumbles.
+  - Several parts are crushed to fragments (`CrushSet`): the train takes 3 or 4 of the head, upper arms and thighs, the most exposed to the train first, by the death's yaw and seed so every peer agrees; an edge takes 1 or 2.
+  - The fragments are carried along the travel at most 30 m/s; the torn children are capped ragged and each stump sprays.
+  - Blood: a heavy burst along the travel, carried at the train's pace (`sever`/`crush` sprays with a carry velocity), a blood mist riding the travel, streaks on the track bed ahead, and the train's impact flash for 0.12 s.
+- **Budgets.** Reduced effects and the low graphics tier thin the sprays, splats and mist. The fragments share the kill-effect budget. Gore off: no smash.
+- **Late joiners and the killcam** build the same plan; gushes first seen 0.6 s late are skipped, the splats are laid once per round.
+
+## Arrow gibbing
+
+Owner request (2026-10-14): "Add gibbing from arrows (Can pierce through enemies if player has pierce modifiers, can go in body/head and stop halfway) Blood coming out of arrow gibbing points".
+
+- **Which hits.** Only a bow pilot's arrow hits stick or gib: the Hit Detail `direct` (the drawn arrow, the Volley's, the Rain's) or `secondary` (a projectile chip's copy: split shards, extra fan arrows). `reflected` (a blocker's returned shot, now the blocker's), `thorns`, `chain`, chip `blast`, `field` and ability or stage hits are not arrows.
+- **Lodge or pass** (`NativeArrowGib.Fate`):
+  - A hit with its projectile id (every current host: `ArenaEvent.Projectile`) is decided by its own replicated flag, `ArenaEvent.Pierced`: true passes through, false lodges.
+  - An older frame's hit (no id) falls back to the paths: the shooter's live arrow whose line passes nearest the hit (0.3 m) passes only when it is already past the hit and its chips' pierces (less the ones it was seen to spend) allow it. In doubt it lodges.
+- **Halfway** (`Lodge`): an arrow that stops buries about the middle of the struck part along its flight, measured on the joint's body boxes (`CapturedRig.Boxes`), 50% ±10% seeded. A head shot stops about halfway into the head. This replaces the fixed 0.14 m bury for pilots; a miss of the boxes keeps it.
+- **Through**: no arrow stays. The entry and the far side of the part along the flight become bleeding holes; the exit sprays a `cavity` cone along the flight; the flying arrow goes on.
+- **Blood from the arrow points**:
+  - The wound's own spray is the existing wound path's (the bow's wound is now a puncture or cavity, Astra 2026-10-14), so nothing doubles it.
+  - Each lodged arrow's entry, and both holes of a pass-through, drip a short, decaying trickle (about 6 drops over 6.5 s), riding the joint, alive or ragdolled.
+  - A killing full-draw arrow bleeds a little more, and a pass-through's exit sprays harder.
+  - At most 12 points bleed at once (5 with reduced effects or the low tier), and the exit spray stays under the per-target blood budget.
+  - No blood with gore off, and none from the local pilot in first person.
+- **Riding the body.** Arrows follow the corpse as drawn (sink, shrink and a smash's squash included). A split body's arrow rides the half its point sat on as the body died (`Half`). An arrow in a crushed part goes with it.
+- **Unchanged:** damage, the headshot rule, hitboxes, hit timing, cooldowns, movement and the wire.
+
+## Switches and preview
+
+- **`ArenaPresentation.Gore`** (default true). False keeps every death as it was: no split, no smash, no cut blood, no blade blood, no arrow-point blood. There is no player setting for it yet; this is the field one would drive.
+- **Effects settings.** Reduced effects and the low graphics tier thin the sparks and blood; the split itself stays.
+- **`SplitInBackground`** is false on WebGL, where the split runs at once. A body first seen after its hold (a late join, a corpse rebuilt after the killcam) also splits at once.
+- **Dev Sandbox: "Preview Saw Split".** It cycles every skin through the slot and rail cuts on a stand-in 3.2 m ahead, every 3.4 s.
+- **Checks: `Tests/BisectChecks.cs`** (and `Tests/MeleeBisectChecks.cs` for melee cuts, `Tests/GibChecks.cs` for the smash and arrow gibbing: `CoreTests.dll --gib`). They cover determinism, volume, silhouette, the see-through sweep, the cap area, every skin and tier with a headshot, the saw plane, the gore-off fallback, no allocation after the split, and the wiring.

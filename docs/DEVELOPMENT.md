@@ -18,6 +18,8 @@ Python 3 is needed only for desktop packaging. Put its executable on PATH as
 | Unit regression | `npm test` | Existing suite, known baseline failures; nonzero exit remains a failure. |
 | Standard checks | `npm run verify:standard` | Types, all unit tests, client/relay/server compilation. |
 | Broad checks | `npm run verify` | Standard checks plus real WebSocket match and local HTTPS relay integration; collects failures and exits nonzero. |
+| Relay checks (CI) | `npm run verify:relay` | Types, the relay's own tests (accounts, directory, local host invite, party join, relay) and the Worker relay build. This is what the Unity client still uses. |
+| Relay checks + HTTPS | `npm run verify:relay-full` | Relay checks plus the real HTTPS + SQLite room round trip (`test:https`, the Electron game over `/exchange`). Local or manual `workflow_dispatch` only. |
 | Compile without release packages | `npm run build:check` | Generates icons/build identity; compiles client, Worker relay and Node server. |
 | Serve compiled game | `npm start` | After build:check; http://localhost:8788. |
 | WebSocket integration | `npm run test:network:local` | Own isolated server on :8792; override TEST_PORT if occupied. |
@@ -87,14 +89,54 @@ read onto the game's right hand; the daggers use a reverse grip; the converter k
 (fists, pommel, blade root) off the voxel head, pauldrons and torso; captured cuts stand on the procedural phrase's footwork.
 The earlier Mixamo greatsword set (`node scripts/mocap/convert-greatsword.mjs <pack dir>`, the owner's "Great Sword Pack")
 is superseded: running it writes that set back into greatsword-clips.ts.
+The Unity melee hit reactions use the same pack: `node unity/ChipArenaConversion/tools/export_pack_reactions.mjs
+<pack>/Animations` rewrites `Assets/ChipArena/Core/NativePackClips.Generated.cs` and `tools/pack-reactions-provenance.json`
+deterministically (GetHit, Block-GetHit and Stunned per weapon set; the choices are its SETS table), then run the
+Tests project (`Tests/PackReactionChecks.cs` compares each track with the provenance hashes).
+The Unity weapon-signature entrances' pilot motion uses the same pack: `node unity/ChipArenaConversion/tools/export_pack_intros.mjs
+<pack>/Animations` rewrites `Assets/ChipArena/Core/NativePackIntros.Generated.cs` and `tools/pack-intros-provenance.json`
+deterministically (one 4.8 s, 60 Hz track per entrance, sequenced from pack clips with timing keys, cross-fades, root
+continuity and foot contacts; the choices are its ENTRANCES table; the daggers keep their baked clip), then run the Tests
+project (`Tests/PackIntroChecks.cs` checks the hashes, planted feet, floor, grips, blade and staff clearance, the hits, the
+detail shots' framing and the daggers' fingerprint).
+The Unity jump animation uses the same pack: `node unity/ChipArenaConversion/tools/export_pack_jumps.mjs <pack>/Animations`
+rewrites `Assets/ChipArena/Core/NativePackJumps.Generated.cs` and `tools/pack-jumps-provenance.json` deterministically
+(per weapon style the guard frame, the Jump and Land takes split by their .meta frame ranges, the Fall loop and the
+Jump-Flip; the choices are its SETS table), then run the Tests project (`Tests/JumpMotionChecks.cs` checks the hashes,
+phase tracking, floor contact, grips, the dagger flip and the hooks).
+The Unity melee travel carry uses the same pack: `node unity/ChipArenaConversion/tools/export_pack_locomotion.mjs <pack>/Animations`
+rewrites `Assets/ChipArena/Core/NativePackLocomotion.Generated.cs` and `tools/pack-locomotion-provenance.json`
+deterministically (per melee weapon Walk-Slow, Walk and the seven strafes, and the run in eight directions, each with its
+left-foot strike; the mirrored shield swaps left and right; the choices are its SETS table), then run the Tests project
+(`Tests/PackLocomotionChecks.cs` checks the hashes, the steady torso, the hand carry, the legs and the hooks).
+The Unity gun and magic travel carry uses the same pack: `node unity/ChipArenaConversion/tools/export_pack_ranged_locomotion.mjs <pack>/Animations`
+rewrites `Assets/ChipArena/Core/NativePackRangedLocomotion.Generated.cs` and `tools/pack-ranged-locomotion-provenance.json`
+deterministically (the pistol: Armed walk and strafes, Unarmed run in eight directions; the long guns: 2Hand-Shooting; the
+staff: 2Hand-Staff mirrored onto the left-hand staff; plus Unarmed-Sprint; the choices are its SETS table), then run the
+Tests project (`Tests/RangedLocomotionChecks.cs` checks the hashes, contact-foot slip, the aim, the torso, distinct carries,
+transitions, the first-person bob and the hooks).
+The Unity Siren zombies use the owner's MoCap Online ZOMBIE PRO pack (licensed; FBX, .meta, textures and audio never
+committed): extract its `Assets/Zombie_27` (the `MotusMan_v55` rig, `Animation/In_Place` and the `Root_Motion` walk, shamble,
+chase, sprint and crawl takes, each FBX with its .meta) outside the repository, then
+`node unity/ChipArenaConversion/tools/export_pack_zombie.mjs <extract>/Assets/Zombie_27` rewrites
+`Assets/ChipArena/Core/NativePackZombie.Generated.cs` and `tools/pack-zombie-provenance.json` deterministically (gait cycles
+cut from the loops at the left foot's strike with their natural speed and foot phases read from the root-motion twins,
+idles, single blows cut from the attack loops with hand-set marks, knockbacks, deaths, the entrances and the jump-down;
+the choices are its CLIPS table; the rig profile is `scripts/mocap/zombie-pack.mjs`), then run the Tests project
+(`Tests/ZombieMotionChecks.cs` checks the hashes, planted feet on the drawn rig, the strike timing, entrances, deaths, the
+drop and the hooks).
 
 ## CI and agent access
 
 `.github/workflows/checks.yml` runs on PRs or explicit workflow_dispatch, with no
 push trigger, no publication jobs, no secrets, no paid AI and read-only contents.
-Docs-only PRs run whitespace/scope checks without dependencies/builds. Other edits
-run standard checks; cross-cutting edits run broad checks. There is one stable
-`Required checks` gate. npm's download cache is keyed by OS/architecture and the
+Docs-only PRs run whitespace/scope checks without dependencies/builds. Unity-only PRs
+(`unity/`, `docs/`, the Unity workflows) skip this job: `unity-conversion.yml` verifies them.
+Other edits run `verify:relay`. Owner direction 2026-10-15: the frozen Electron game's own
+suites (all other unit tests, the Electron client/server build, the WebSocket match and the
+HTTPS room round trip `test:https`, which plays the Electron game over `/exchange`; the Unity
+client uses only `/api/accounts` and `/api/directory`) are no longer run on PRs; they stay
+available locally through `npm test`, `verify:standard`, `verify:relay-full` and `verify`. There is one stable `Required checks` gate. npm's download cache is keyed by OS/architecture and the
 lockfile through setup-node. Logs expire after 7 days. There is no automatic
 Windows package workflow; the local procedure above is the phase-1 build path.
 
@@ -249,3 +291,38 @@ npm run verify
 Record command exit codes and the tested SHA. Read MIGRATION-REPORT for the actual
 results, environment limits and existing failures. Setup/compilation do not require
 production secrets; account service tests generate disposable signing keys.
+
+### Native relay check timeout
+
+`unity/ChipArenaConversion/tools/check_relay.py` allows 300 seconds for the test
+process by default. Loaded machines can set `CHIP_TEST_TIMEOUT_SECONDS=600` or
+pass `--test-timeout 600` (the CLI wins). Values must be positive integer seconds;
+invalid configuration fails before starting builds or the relay. This changes no
+test assertions, relay startup deadline, or CI job deadline.
+
+### Optional Magica Cloth in native test builds
+
+`pack_visual_body.py --with-cloth` adds a separate `cloth-runtime.json` to the
+private licensed-assets ZIP. Run it on the PC holding the current Magica import
+and regenerated bridge:
+
+```sh
+python unity/ChipArenaConversion/tools/pack_visual_body.py LocalAssets.zip LocalAssets-with-cloth.zip --with-cloth
+python unity/ChipArenaConversion/tools/install_local_assets.py LocalAssets-with-cloth.zip --check
+```
+
+The packer includes `Assets/LocalAssets/MagicaCloth2` (excluding examples/samples)
+and `ChipArenaLocalTools/Runtime/ChipArenaClothBridge.cs`, with file/folder metas.
+The installer validates paths, hashes, GUIDs and a 12 MiB cloth budget before
+copying. These are trusted local scripts which Unity compiles on import, not
+assets to obtain from an untrusted ZIP. They stay git-ignored and out of source
+packages. Without the optional manifest, existing ZIPs retain posed-body fallback.
+Normal body repacks preserve an existing cloth bundle; use `--with-cloth` whenever
+the bridge or plugin changes. Fresh builder worktrees prevent obsolete installed
+scripts from surviving a new build. Installing over a manually maintained project
+does not delete its unrelated local files.
+
+The manifest pins Burst 1.8.30, Collections 2.6.8 and Mathematics 1.3.3; package
+availability/dependencies are recorded in the source-package catalog. Do not
+commit Magica's generated `MAGICACLOTH2` ProjectSettings changes. Native import,
+bridge registration and hair/skirt/hood motion still require a real Unity build.

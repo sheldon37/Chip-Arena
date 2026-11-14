@@ -978,14 +978,59 @@
       "bytes": 18095
     },
     {
+      "path": "src/relay/accounts.ts",
+      "gitBlob": "610e6d4417a9adf1f16910b8041447fce3d88ca6",
+      "bytes": 13190
+    },
+    {
+      "path": "src/relay/auth.ts",
+      "gitBlob": "f0d4d45492c46d653ed9aec0c25410aabd26579e",
+      "bytes": 3374
+    },
+    {
+      "path": "src/relay/directory.ts",
+      "gitBlob": "81d5ea3c66660f57b98e03043f670a862318a6e9",
+      "bytes": 3816
+    },
+    {
+      "path": "src/relay/local.ts",
+      "gitBlob": "854d57298fa1b76c264af72ca455a32f2ac58db2",
+      "bytes": 2312
+    },
+    {
+      "path": "src/relay/party.ts",
+      "gitBlob": "d007aaa4f923a9eea7006bf09a7bd426a4685306",
+      "bytes": 6355
+    },
+    {
+      "path": "src/relay/worker.ts",
+      "gitBlob": "d57772ab6a5b23e37c4895732b0e8f556729f014",
+      "bytes": 8626
+    },
+    {
       "path": "src/server/auth-proxy.ts",
       "gitBlob": "c69df1562184517d3a83fe11a5746335e044905b",
       "bytes": 1142
     },
     {
+      "path": "src/server/directory-lease.ts",
+      "gitBlob": "2ed1a667a4c46e31907f804d3795f6408b421ecd",
+      "bytes": 1428
+    },
+    {
       "path": "src/server/index.ts",
       "gitBlob": "77a49343fae06cb13b6454e78d306ddb66dc57da",
       "bytes": 11597
+    },
+    {
+      "path": "src/server/socket-output.ts",
+      "gitBlob": "fa9160adff5ba0aeb0d94699d54452894d024158",
+      "bytes": 1264
+    },
+    {
+      "path": "src/server/static-path.ts",
+      "gitBlob": "72772ae63eb9da7afa073cd09b1782bf02998283",
+      "bytes": 491
     },
     {
       "path": "src/shared/abilities.ts",
@@ -1666,38 +1711,43 @@
     },
     {
       "id": "siren",
-      "batches": 24,
-      "vertices": 19049
+      "batches": 29,
+      "vertices": 5249
     },
     {
       "id": "horde-0",
-      "batches": 24,
-      "vertices": 22704
+      "batches": 21,
+      "vertices": 21480
     },
     {
       "id": "horde-1",
-      "batches": 23,
-      "vertices": 22008
+      "batches": 21,
+      "vertices": 21192
     },
     {
       "id": "horde-2",
-      "batches": 22,
-      "vertices": 23856
+      "batches": 20,
+      "vertices": 23040
     },
     {
       "id": "horde-3",
-      "batches": 21,
-      "vertices": 19560
+      "batches": 20,
+      "vertices": 19152
     },
     {
       "id": "horde-4",
-      "batches": 22,
-      "vertices": 22824
+      "batches": 20,
+      "vertices": 22008
     },
     {
       "id": "horde-5",
-      "batches": 23,
-      "vertices": 24792
+      "batches": 20,
+      "vertices": 23568
+    },
+    {
+      "id": "horde-tongue",
+      "batches": 2,
+      "vertices": 816
     },
     {
       "id": "summon-toy",
@@ -1831,8 +1881,8 @@
     },
     {
       "id": "map-siren",
-      "batches": 5,
-      "vertices": 133597
+      "batches": 4,
+      "vertices": 116417
     },
     {
       "id": "ward-motion-0",
@@ -1978,7 +2028,37 @@
       "id": "ward-motion-28",
       "batches": 1,
       "vertices": 24
+    },
+    {
+      "id": "ward-motion-29",
+      "batches": 1,
+      "vertices": 50
+    },
+    {
+      "id": "ward-motion-30",
+      "batches": 1,
+      "vertices": 50
+    },
+    {
+      "id": "ward-motion-31",
+      "batches": 1,
+      "vertices": 50
+    },
+    {
+      "id": "ward-motion-32",
+      "batches": 1,
+      "vertices": 50
+    },
+    {
+      "id": "ward-motion-33",
+      "batches": 1,
+      "vertices": 50
+    },
+    {
+      "id": "ward-motion-34",
+      "batches": 1,
+      "vertices": 50
     }
   ],
-  "uncompressedBytes": 67516429
+  "uncompressedBytes": 66574072
 }

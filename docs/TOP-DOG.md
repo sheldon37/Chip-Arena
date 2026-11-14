@@ -1,0 +1,250 @@
+# Top Dog: a DEV class for the Hot Dog
+
+The owner's request, 2026-11-08: "Id like to make another dev class with an intro (aimed towards this new hotdog skin) VERY high quality and
+detailed. It will essentially use toon power, with multiple abilities 1-5, An ultimate ability, they will trap a player and put wiggling
+hotdogs in their mouth. the player will then be released, their stomach fully expanded and then blow up (Gibbing)"
+
+The owner's choices the same day:
+
+- Claude builds all of it, the rules as well as the look (not the usual split with Astra).
+- Q, E and 1 to 5 are abilities; the ultimate is on 6.
+- The class always wears the Hot Dog skin (docs/HOT-DOG-SKIN.md).
+- The left click is a cartoon mallet.
+
+Status: on `claude/top-dog`, DEV access only, like the Bombadier and the Cyber Lord. It has not been played by a person or between two
+real clients.
+
+## The idea
+
+A cartoon. Everything the Top Dog does is a gag you can see coming: a mallet as big as its body, a spring under its feet, a dust cloud left
+standing where it was, an anvil whose shadow grows on the floor, a banana peel, a squeeze bottle of mustard, a boxing glove on a scissor
+arm, a cream pie. The ultimate is the punchline.
+
+## The kit
+
+| Key | Ability (`id`) | What it does | Damage | Cooldown |
+| --- | --- | --- | --- | --- |
+| LMB | Big Mallet (`big-mallet`) | Three swings, two-handed: a forehand from the right to the left, a backhand back from the left to the right, then a toon jump slam whose head lands flat on the floor 1.7 m ahead and **flattens** everyone within 2.1 m of it for 0.8 s. A swing hits 2.9 m out in a 115 degree arc and staggers. The combo carries on if you swing again within 0.45 s | 14, 14, 26 | |
+| LMB on a sprint | Mallet Dash (`mallet-dash`) | Owner 2026-11-09: "Give them a dash sprint attack and slam attack as well". A beat to tuck the mallet (0.12 s), then a charge 6.5 m along your facing in 0.34 s (a wall stops it short), the mallet swung low through everyone within 1.4 m of the path ahead: bonked and batted on ahead at 11 m/s, 5 up. The greatsword's running swing | 20 | |
+| LMB in the air, looking ahead | Mallet Smash (`mallet-smash`) | Owner 2026-11-09: "make slam attack and overhead slam (When jumping and looking down)". Once an airtime, as any melee weapon's air attack: hung 0.14 s with the mallet cocked over the shoulder, then down at 16 m/s, carried on along your facing at 4 m/s (your run's speed when faster, up to 9), the mallet swung down in front; its head lands flat 1.6 m ahead: everyone within 2.4 m of that point, flattened within 1.4 m for 0.7 s, the rest thrown on and out | 24 | |
+| LMB in the air, looking down | Mallet Slam (`mallet-slam`) | Once an airtime (a jump's or a Boing!'s), as any melee weapon's plunge (looking 45 degrees or more down): hung 0.2 s with the mallet raised overhead, then straight down at 26 m/s; the landing slams 3.2 m round, flattening everyone within 2.2 m for 0.9 s and throwing the rest out. A Boing! slammed out of lands no thud | 30 | |
+| RMB, F, Shift | Guard, Parry, Roll | As any melee weapon (the held guard on right click, the parry on F) | | |
+| Q | Boing! (`boing`) | A spring pops out under the feet and throws you 9 m up and 8 m/s along your look. The landing thuds: 2.6 m round you, a small knock-up | 8 | 8 s |
+| E | Zip (`zip`) | 0.3 s running on the spot (rooted), then you zip 12 m ahead in 0.3 s (a wall stops you), leaving your dust cloud standing behind. Anyone within 1.3 m of the path is swatted aside | 10 | 7 s |
+| 1 | Anvil (`anvil`) | Point at a spot up to 22 m away. Its shadow and a red ring grow there for 0.9 s while it falls, then it lands: 2.1 m round, **flattened** for 1.1 s. It sits there 3.5 s, then goes in a puff | 28 | 10 s |
+| 2 | Banana Peel (`banana-peel`) | Toss a peel up to 10 m. An enemy whose feet come within 0.75 m of it slips: legs up, onto the back (knocked down), slid along. Two charges, three peels out at most, each lasts 20 s | 8 | 6 s a charge |
+| 3 | Mustard Blaster (`mustard`) | Squirt mustard for 1.6 s at half speed, aiming as you go: a 9 m stream, 22 degrees each side. It slows by 45% for 1.8 s and leaves puddles that slow anyone standing in them | 20 a second | 11 s |
+| 4 | Spring Glove (`spring-glove`) | A boxing glove on a scissor arm shoots 13 m along your aim. The first one it reaches is punched away at 15 m/s and sees stars for 0.7 s. Blockable, like a punch | 18 | 9 s |
+| 5 | Cream Pie (`cream-pie`) | Throw a pie on a light arc. Whoever it hits has cream over their eyes for 2.6 s; anyone within 1.2 m gets a smaller splash | 8 (4 splash) | 12 s |
+| 6 | **All You Can Eat** (`all-you-can-eat`) | The ultimate, below | the kill | meter |
+
+The meter fills 1% a second, 6% a mallet hit and 8% an ability hit.
+
+## All You Can Eat
+
+1. **The twirl, 0 to 0.6 s.** A rope of sausage links whirled overhead. The caster's screen: a red and white diner check, "ALL YOU
+   CAN EAT!". Everyone else: a banner and a dinner bell. The caster is rooted from here until it lets go.
+2. **The throw.** The links fly along the aim at 32 m/s, 0.8 m wide, up to 18 m. A dodge roll goes through them. A **block snaps
+   them**. A boss (the Siren, a zone boss, NOCTIEL) takes 30 and the links snap. A miss gives half the meter back.
+3. **The catch.** The victim is wrapped in the links, reeled in over 0.5 s to 1.25 m in front of the Top Dog, and held: no moving,
+   no acting, their face turned up to the Top Dog's hands. Their arms are pinned straight down their sides inside three turns of the
+   links, and they struggle against them in jerks: the chest twists and rocks, the elbows shove out and bulge the links, the shoulders
+   heave; strain lines flick off their sides, sweat flies off and their feet scuff up dust (owner 2026-11-09: "like their arms are
+   downwards, and they're struggling to get out"; Core `NativeTopDog.Bound`, `Strain`).
+4. **The feeding, by hand** (owner 2026-11-09: "literally animate opening the players mouth and just putting hotdogs in there"). The
+   Top Dog's left hand cups the victim's chin from below and holds the jaw open, tugging it down for each one; the right hand brings six
+   bare, wiggling sausages (no bun), one every 0.5 s. Made real (owner 2026-11-09: "actually look like they are realistically putting hot
+   dogs in the players mouth"): each pops into the right hand at its side, pinched by its end between the thumb and fingers with the rest
+   of it along them; the hand eases it onto the lips and forces it half in along its slot with a judder, the lips closing a little round
+   it and the head giving with the push, then lets go and swings back out for the next. Each stays stuck in the mouth, wiggling for 2.6 s,
+   the six crowding the mouth's opening, before it is slurped down; each gulp drips a little juice off the lips. Each hot dog does 3 (it
+   never kills). The belly grows with each one. It feeds facing its victim (owner 2026-11-09: "it puts both his arms on one side of his
+   body ~ We need to allow the hot dog to rotate correctly and have an arm on each side correctly"): its stance stands side-on and its
+   yaw follows the pilot's look, so from the catch to the let-go (or the snap) its body turns until its shoulders are square to the
+   victim (in over 0.2 s, back over 0.3 s after), whatever the view does: the right arm feeds from the right, the left cups the chin
+   from the left. Presentation only; the pilot's aim and the rules' yaw are untouched.
+5. **The snap.** While it feeds, the Top Dog is rooted and can be hit. **If it takes 40 damage, or is stunned, knocked down or killed,
+   the links snap**: the victim is free, takes 6 for each hot dog already down, and the belly goes down with a burp.
+6. **The let-go**, 0.2 s after the last hot dog: a kick sends the victim staggering 1.8 m back, "STUFFED!". The belly keeps ballooning
+   and trembling faster.
+7. **The pop**, 1.5 s later: the victim bursts. It is an execution of their current health, as the Siren's crush is. The other enemies
+   of the Top Dog within 3.2 m take 22 and are thrown. The death keeps the Top Dog's own kill effect (owner 2026-11-09: "use the kill
+   effect if applicable (Like hot dog friends should work)"): its record's damage kind `topdog-pop` (Core `NativeTopDog.PopKind`) says it
+   burst. With gore on the body bursts (below) and the hot dogs fly out of it in a mist of blood; with gore off the killer's kill effect
+   plays as on any death, with the toon pop (confetti, mustard, ketchup). Once it has let go, the pop comes even if the Top Dog dies, and
+   the round waits for it.
+
+## The intro: "DEV · Order Up!" (`dev-topdog`)
+
+8.6 s, the name at 6.6 s, an old cartoon from the first frame.
+
+| Time | Beat |
+| --- | --- |
+| 0 | An iris opens on a hot dog cart in the dark arena, steaming under its striped umbrella, the grill sizzling |
+| 0.85 | A bell rings for service |
+| 1.45 | A drumroll: the cart rattles, the lid rattles, more steam (close on the lid) |
+| 2.45 | The lid bursts open in a white puff, hot dogs fly out, and the Top Dog springs out on a giant spring (whip out wide, looking up) |
+| 2.95 | At the top, spread like a star |
+| 3.45 | It lands in front of the cart in a deep squash and springs back up, dust round it |
+| 4.0 | It reaches behind its back and pulls out the mallet, which grows out of nothing with a twinkle (over the shoulder) |
+| 4.55 | A squat with the mallet up in both hands, then a spring up, stretched long, the mallet swung up and over until its head hangs far down behind its back (knees up, held a beat) |
+| 5.0 | The two-handed toon slam: the head over the top and flat onto the floor in front, a deep squash held, a white ring tearing over the floor, dust, stars, the hot dogs on the floor hopping |
+| 5.7 | It leans on the mallet |
+| 6.6 | A diner sign swings down on its chains, bulbs chasing round it, the name stamped on it in cream, TOP DOG on a mustard ribbon, confetti |
+| 7.35 | A thumbs up |
+| 7.7 | The iris closes on it |
+
+Its sound is its own toon cues, no music bed.
+
+## The looks
+
+- **The Hot Dog, always:** the body takes the Hot Dog (`upper:hot-dog`) whenever the seat's weapon is the Top Dog, and through its
+  intro whatever the pilot carries (Runtime `NativeTopDogPresentation.cs` `TopDogSeat`). Without the local bank the default top shows,
+  as for the skin itself.
+- **The class icon** is a smiling hot dog stood in its bun, googly eyes and tongue out (`spec-topdog` in `tools/export_class_icons.mjs`,
+  with a small drawing for 22 px and below; owner 2026-11-09).
+- **Casting on the move** (owner 2026-11-09: "when they cast abilities while running, they start sliding"): the arm casts (the mallet's
+  swings, the twirl and throw, the anvil, the peel, the bottle, the glove and the pie) take the whole body only standing on the ground;
+  running or in the air the legs keep the stride, jump or fall and the cast plays on the upper body over them. The dash, the slam, the
+  spring, the zip and the feeding stay whole-body moves.
+- **The mallet** is a held weapon model (Core `NativeWeaponModels.Dog.cs`), held two-handed as the greatsword is. It goes into
+  hammerspace while the hands hold a prop or the feast's hot dogs, with a cartoon poof where it goes and where it comes back (a white
+  pop, a ring of puffs, twinkles; owner 2026-11-09).
+- **The mallet's moves are keyed by hand** (owner 2026-11-09: "fix combo animation to swing from right to left, left to right ... make it
+  connect with ground and face the correct direction ... a toon like jump overhead slam for the 3rd hit"; "Dash attack and air attack ...
+  hitting from the side instead of the flat parts"). The pack's sword clips rolled the head onto its side, so every mallet move (the three
+  swings, the dash, the smash, the slam and Order Up!'s slam) is a set of toon keys (Core `NativeDogMallet`) laid over the legs' own clip
+  (the stance, the stride, the fall, the landing) on the model (Runtime `NativeDogMalletPresentation.cs`): the chest twists, bends and
+  leans along the spine, the body squashes, stretches, hops and tucks its legs, both fists close on the handle by reach (the right one
+  carrying it, the left below it), and the barrel is turned along the head's own travel, so a flat end always leads into the hit. Each swing
+  coils with a held beat, whips through the hit, overshoots and settles, and ends where the next begins (the forehand ends on the left, the
+  backhand starts there and ends with the head rising over the right shoulder into the jump slam). Every slam brings its head down flat on
+  the floor ahead (a small correction on the model's own height). A pale smear sweeps behind the head through each fast part, with speed
+  lines off its outer edge, and the mallet stretches through the smear and squashes on an impact. The hits stay at the rules' moments: each
+  move's strike key is the authority's hit (the slam's ring is drawn as its head lands, 0.1 s after the feet).
+- **The mustard** leaves the drawn bottle's nozzle (owner 2026-11-09), the bottle held round its middle with the nozzle along the aim; the
+  stream bends on to where the rules' squirt reaches.
+- **The props** are built in C# (Core `NativeTopDogModels`): the mallet's art aside, the wiggling hot dog (bun, sausage, a mustard
+  zigzag), the anvil, the banana peel, the cream pie, the spring, the glove and its scissor arm, the mustard bottle, the sausage links,
+  the stars and the cart. They draw in the pilots' own toon shader with its outline, so they light and line as the characters do.
+- **The body:** the feast's victim's belly balloons: a warp about the belly in the body's own shader (`_Belly`, Resources
+  `NativeVisualBodyFx.cginc` `BellyVert`), so the skin, the clothes, everything worn and the links round them swell together (each piece
+  is weighted to the spine differently, so scaling a bone pushed the skin through the shirt). Each point moves out along its ray from a
+  centre inside the torso, most at the front (the way the face looks), never folding, so a layer outside another stays outside it. Its
+  head is thrown back and its mouth wide (the face's Gobble mood, then Bloat once stuffed). A flattened pilot is squashed to a fifth of its
+  height.
+- **Effects:** cartoon impact bursts and stars, comic words over each hit (BONK!, WHAM!, CLANG!, SPLAT!, POW!, GULP!, KA-POP!...), the
+  anvil's shadow, the mustard stream and drips, the zip's dust silhouette, cream over a pied pilot's eyes.
+- **The burst:** a new kind of the smash gib (Core `NativeSmashGib.Burst`): the trunk goes to torn chunks (mostly flesh, a few bits of
+  bone and the clothes, most small and a few large) thrown out from the belly, the head, arms and legs come away and land a metre or
+  three off, blood gushing all round. It wears the killer's kill effect where it fits its pieces (`NativeSmashGib.BurstStyle`): the
+  ragdoll endings, the swarms (embers, frost, static, the vortex, pinball, fireworks, the soul, petals, the black hole) and Maximum
+  Gore's spray play on them, and Hotdog Friends carry them off through their door; an effect that takes the whole body away (voxels,
+  confetti, the beam, a ghost, the clown car, the van) leaves it the stock ending. Gore off: no burst, the killer's kill effect.
+- **The cameras:** the caster's twirl and throw, then side-on to both through the feeding and the swelling to the pop, on whichever
+  side is clear of walls (a high shot over the shoulder when neither is); the victim's own feeding and swelling, face on.
+- **Its face** (owner 2026-11-09: "animate eyes and mouth with hotdog character. Give them expressions"): the bank's face is sculpted
+  (the eyes and brows bulge out of the head; the pupils, the mouth and its five teeth are shells of their own). At load those shells
+  are dropped, the bulges pressed onto a map of the skin round them (filled over them), and the paint taken off (the face's texels
+  that are not the sausage's red); a toon face is laid on the head in its place, on the head's sausage twin so it jiggles with it
+  (Runtime `NativeHotDogFacePresentation.cs`), the size of the painted one and skinned as the skin under it is, so it bends and
+  jiggles with the head: white eyes whose pupils look about, lids that blink, squint, wink and laugh, brows, and a mouth with teeth and a tongue. Its moods (Core `NativeHotDogFace`):
+  the smug gritted grin at rest; angry on a swing; a shout on the mallet's slam and the mustard; surprised on a Boing; a grin on the
+  catch; hungry, tongue out, while it feeds; laughing at the pop and on the spring out of the cart; dizzy while dazed; a wince when
+  hit; X eyes on a corpse. Order Up! has its own: surprise at the lid, a laugh on the spring, a shout on the slam, the wink with the
+  thumbs up. The face is anyone's who wears the Hot Dog, not only the Top Dog's.
+- **No chest core** on the Hot Dog (its anchor sits under the mouth).
+- **The mallet's faces** land: the barrel runs across the swing, so the flat ends strike, not its side.
+
+## The chips
+
+The owner's follow-up, 2026-11-08: "we can also make exclusive chips for this character; about 10 of them with their own really well
+animated effects when selected. Make them significant effects too"
+
+Ten chips of its own, a signature set like the Bombadier's: their own tier (`topdog`, "TOP DOG SPECIAL"), offered only to the Top Dog
+and likely in its drafts (two guaranteed, 85%: the content's `exclusiveOdds`). Rules, numbers and copy: Core `NativeDogChips`; the rules
+Runtime `NativeTopDogAuthority.cs` (Claude builds this class's rules at the owner's word).
+
+| Chip (`id`) | Copies | What it does |
+| --- | --- | --- |
+| Bigger Mallet (`dog-bigger-mallet`) | 2 | The mallet 25% bigger a copy (you can see it): +0.5 m reach and about 10 degrees more arc, the slam 0.5 m wider, +12% mallet damage |
+| Hammerspace (`dog-hammerspace`) | 1 | Every 4th swing that lands pulls a grand piano out of nowhere onto the first one it struck: 0.55 s later, 30 within 2.3 m, flattened 1.2 s |
+| Anvil Shower (`dog-anvil-shower`) | 1 | Anvil drops three: two smaller ones 2.6 m either side across the aim, 0.18 s apart, 20 each, flattened 0.8 s |
+| Banana Bonanza (`dog-banana-bonanza`) | 2 | +1 peel charge and 2 more peels out a copy; a slip slides 60% farther and the peel flies on with them to land again (once, never under the same one) |
+| Hot Sauce (`dog-hot-sauce`) | 1 | The Mustard Blaster squirts hot sauce: +30%, burning 8 a second for 3 s, its puddles burn 6 a second; steam out of the victims' ears |
+| Pie Volley (`dog-pie-volley`) | 1 | Three pies in a fan (10 degrees apart), the cream on 50% longer |
+| Knockout Glove (`dog-knockout`) | 1 | The glove reaches 17 m (to a wall) and punches everyone in its line; one sent into a wall within 0.6 s splats on it: 15 more, stunned 1 s |
+| Double Boing (`dog-double-boing`) | 1 | Boing! bounces again within 3 s, in the air too; the landing reaches 3.2 m and flattens for 0.6 s instead of a knock-up |
+| Second Helpings (`dog-second-helpings`) | 1 | The meter fills 35% faster; the lasso 60% wider and 24 m long; the pop throws out 6 hot dogs, each a heal of 8 for the Top Dog who walks over it (10 s) |
+| Toon Logic (`dog-toon-logic`) | 1 | Once a round (and again after a death), a blow that would kill flattens it instead: 1.5 s flat and untouchable, then back up with 35% health, 20 and a throw to enemies within 3 m |
+
+Every number is in `NativeDogChips`. The record carries what the look needs (`Mallet`, `PeelCap`, `Sauce`, `Wide`, `Bounce`) and the new
+props (`piano`, `snack`), marks (`sauced`, `walled`) and hits (`piano`, `wall`, `munch`, `toon-flat`, `toon-pop`; PLUNK!, SPLAT!, MUNCH!,
+SPLUT!, TA-DA!). A new synthesized sound, the piano's crash (`piano`).
+
+**The card** (Runtime `NativeDogChipArt.Face`): a diner card, a red and white check along the top, a mustard zigzag along the foot, bulbs
+chasing round the edge as on the intro's sign, each chip's emblem in the core and large behind the text, and its own small loop.
+
+**The pick** (`NativeDogChipArt.Reveal` and `Pose`, over the INSTALLED card; its toon cues in Core `NativeTopDogSounds.Picks`): a gag for
+each, the card itself squashed, stretched, knocked and bounced in time:
+
+- Bigger Mallet: a mallet as big as the card comes over the top and BONKS it flat; stars; it lifts away bigger still.
+- Hammerspace: a hole opens beside the card, a gloved hand pulls out a mallet, an anvil, then a grand piano that drops on it: PLUNK!, keys
+  and notes flying.
+- Anvil Shower: three shadows, three anvils, CLANG CLANG CLANG, the card knocked down further each time.
+- Banana Bonanza: peels rain under the card; it slips, turns over nearly flat and scrambles back up: WHOOPS!
+- Hot Sauce: a bottle swings in and squirts along the card; flames climb out under it, steam whistles off it: HOT HOT HOT!
+- Pie Volley: three pies SPLAT across the screen in front of the card, cream sliding down, then a squeegee wipes them off.
+- Knockout Glove: a scissor arm springs out of the left and POWs the card off to the right; stars round it as it wobbles back.
+- Double Boing: a giant spring throws the card up; it lands, boings, boings again.
+- Second Helpings: a dinner bell, DING!; a silver cloche comes down and lifts in steam; hot dogs shower over the card: SECONDS!
+- Toon Logic: an anvil flattens the card to a pancake; a bicycle pump puffs it back up in three strokes; it pops round with stars and a
+  halo: TA-DA!
+
+Reduced effects keeps one soft glow. The draft holds 5.2 s on one of these (`NativeDogChips.RevealSeconds`).
+
+## Sound
+
+Every cue is a toon sound synthesized in C# (Core `NativeToonSynth`, 34 of them: bonk, slam, boing, slide whistles, the anvil's whistle
+and clang, splats, gulp, burp, pop, the dinner bell, a fanfare...), so the class needs no clip and is never silent. Core
+`NativeTopDogSounds` maps the hits, casts and the entrance to them. The playback asks the effects bank for `topdog.<id>` first, so
+recorded versions can replace them later: those keys are not in the bank's key table or a request list yet.
+
+## The record (`Actor.Dog`, Core `NativeTopDogKit`)
+
+Replicated in snapshots, late join, death records and the killcam like the Bombadier's kit, checked with `Valid()`:
+
+- `Props`: what is out (anvil, peel, pie, glove, squirt, puddle, spring, zip), sampled flights.
+- `Hits`: the last 1.5 s of contacts, for effects, words and sound.
+- `Marks`: toon states on victims (pancake, slip, pied, mustard, dazed, stuffed).
+- `Feast`: All You Can Eat's clocks, its victim, the lasso and how many hot dogs are down.
+- `Meter`, `Peels`, `Combo`, `Ready` (Q, E, 1-5), and the cast (`CastKind`, `CastAt`, `CastRelease`, `CastUntil`, `CastStep`).
+
+## Files
+
+| Piece | File |
+| --- | --- |
+| Names, numbers, timeline, belly, glyphs | `Core/NativeTopDog.cs` |
+| The record | `Core/NativeTopDogKit.cs` |
+| The rules (host) | `Runtime/NativeTopDogAuthority.cs`, wired in `NativeArena.cs` |
+| Rules validation (build checks) | `Runtime/NativeTopDogValidation.cs` |
+| Effects, the camera, where things are | `Core/NativeTopDogFx.cs` |
+| Props | `Core/NativeTopDogModels.cs`, the mallet `Core/NativeWeaponModels.Dog.cs` |
+| Sound | `Core/NativeToonSynth.cs`, `Core/NativeTopDogSounds.cs` |
+| The intro | `Core/NativeTopDogIntro.cs`, staged in `Runtime/NativeIntros.cs` |
+| Presentation | `Runtime/NativeTopDogPresentation.cs` |
+| HUD, card, words, audio | `Runtime/NativeTopDogScreen.cs` |
+| Poses | `Core/NativeVisualMotion.cs` (`TopDog`, `DogCast`, `DogArms`, `DogUpper`) |
+| The mallet's moves by hand | `Core/NativeDogMallet.cs` (the keys), `Runtime/NativeDogMalletPresentation.cs` (on the model) |
+| The burst | `Core/NativeSmashGib.cs` (`Burst`), `Runtime/NativeSmashPresentation.cs` |
+| Sandbox preview | `Core/NativeTopDogPreview.cs` |
+| The chips | `Core/NativeDogChips.cs`; the card and the pick `Runtime/NativeDogChipArt.cs`; the rules in `Runtime/NativeTopDogAuthority.cs` |
+| The Hot Dog's face | `Core/NativeHotDogFace.cs` (the moods), `Runtime/NativeHotDogFacePresentation.cs` (the sculpted face off at load, the toon face on) |
+| The feast's hands | `Runtime/NativeTopDogPresentation.cs` (`DogFeedArms`, `DogReach`, `DogFeastTurn`), `Core/NativeTopDogFx.cs` (`NativeDogView.FeedState`, `FeedHand`, `Facing`) |
+| Checks | `Tests/TopDogChecks.cs` (`CoreTests --top-dog`), the face in `Tests/HotDogChecks.cs` (`CoreTests --hot-dog`) |
+
+## To see it
+
+- With DEV access: pick Top Dog in the weapon picker (???). Customize, Entrance, "DEV · Order Up!", Preview Intro.
+- DEV no-cooldowns also fills its meter and gives the peels back.
+- The controller has no key 6 yet: the ultimate is keyboard only.

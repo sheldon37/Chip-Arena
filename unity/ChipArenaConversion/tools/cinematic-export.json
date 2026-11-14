@@ -326,7 +326,7 @@
       "key": "death-siren-dissipate",
       "duration": 5,
       "frames": 151,
-      "tracks": 901,
+      "tracks": 1165,
       "victim": [],
       "dropped": -1,
       "lights": 0
@@ -506,11 +506,12 @@
       "key": "stage-dev-siren",
       "duration": 9.0678,
       "frames": 274,
-      "tracks": 825,
+      "tracks": 856,
       "victim": [],
       "dropped": -1,
+      "head": 11,
       "lights": 16
     }
   ],
-  "modelCount": 133
+  "modelCount": 139
 }

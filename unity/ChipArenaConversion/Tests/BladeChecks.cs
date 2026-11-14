@@ -1,0 +1,396 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using ChipArena.UnityConversion;
+
+namespace ChipArena.UnityConversion
+{
+    /// <summary>
+    /// The blade classes (docs/KATANA.md, docs/FANGS.md; owner 2026-11-10): the Katana public and the Fangs DEV in the content with their
+    /// abilities, the shared record (valid, refused when broken, its copies), the moves on the pack's clips (each move a clip window fitted to
+    /// its hit, the victims' paired clips, the sets' strides), the twenty chips (rows, lines, emblems, picks and their sounds), the effects
+    /// (whole, deterministic, thinner on the low tier), the entrances, and the Runtime wiring read as text (CoreTests compiles Core only).
+    /// </summary>
+    internal static class BladeChecks
+    {
+        private static int count;private static void Check(bool ok,string what){if(!ok)throw new Exception("Blades: "+what);count++;}
+        private sealed class Recorder:ITechniqueFxSink,INativeEntranceFx
+        {
+            public int Draws,Bands,Streaks;public bool Broken;
+            private void V(Vector3 v){if(!MathUtil.Finite(v.X)||!MathUtil.Finite(v.Y)||!MathUtil.Finite(v.Z))Broken=true;Draws++;}
+            public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){V(at);V(color);}
+            public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){V(head);Streaks++;}
+            public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){V(at);}
+            public void Sprite(bool view,Vector3 at,Vector3 color,float size,int profile){V(at);}
+            public void Line(bool view,Vector3 tail,Vector3 head,Vector3 color,float width,bool shard){V(tail);V(head);}
+            public void Band(bool view,Vector3 a,Vector3 b,Vector3 c,Vector3 d,float ua,float ub,Vector3 color){V(a);V(b);V(c);V(d);Bands++;}
+            public void Fire(Vector3 at,Vector3 tint,float opacity,float size,float u,float seed,float floor){V(at);}
+            public void Water(Vector3 at,Vector3 lit,int shade,float opacity,float size,Vector3 segment,float u,float seed,float floor){V(at);}
+            public void Drop(Vector3 at,Vector3 segment,Vector3 color,float opacity,float size,float u,float seed){V(at);}
+            public void Tongue(bool view,Vector3 a,Vector3 b,Vector3 color,float width){V(a);V(b);}
+        }
+        private sealed class Scene:IKitFxScene
+        {
+            public readonly List<Actor> List=new List<Actor>();public IReadOnlyList<Actor> Actors=>List;public Vector3 Feet(Actor a)=>new Vector3(a.Position.x,a.Position.y,a.Position.z);
+            public bool Chest(Actor a,out Vector3 chest){chest=Feet(a)+Vector3.UnitY*1.2f;return true;}
+            public bool Blade(Actor a,bool left,out Vector3 root,out Vector3 tip){root=Feet(a)+new Vector3(.3f,1.1f,.4f);tip=root+new Vector3((float)Math.Sin(a.Yaw),.3f,(float)Math.Cos(a.Yaw));return true;}
+            public int Viewer=>0;public bool ViewBlade(bool left,out Vector3 root,out Vector3 tip){root=tip=default;return false;}
+            public int WeaponColor(Actor a)=>a.SourceSpec==NativeKatana.Spec?0xff3d6e:0x7dff3a;public int Shots=>0;public bool Shot(int index,out Vector3 at,out Vector3 velocity,out string fx,out int owner){at=velocity=default;fx=null;owner=0;return false;}
+        }
+        /// <summary>Short clips (a parry's recoil ends well inside its daze).</summary>
+        private sealed class ShortBank:NativeVisualMotion.IClips
+        {
+            public bool Has(string clip)=>!string.IsNullOrEmpty(clip);public float Length(string clip)=>.5f;public float Hit(string clip)=>.25f;
+        }
+        private sealed class Bank:NativeVisualMotion.IClips
+        {
+            public bool Has(string clip)=>!string.IsNullOrEmpty(clip);public float Length(string clip)=>3.5f;public float Hit(string clip)=>1.75f;
+        }
+        private static string R(string root,string file)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",file));
+        public static void Run(string root)
+        {
+            count=0;var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});data.Validate();
+            // ---- the rows ----
+            var kr=data.Weapon(NativeKatana.Spec);Check(kr!=null&&!kr.devOnly&&kr.@class=="melee"&&kr.name==NativeKatana.Name,"the Katana is a public melee row");
+            var fr=data.Weapon(NativeFangs.Spec);Check(fr!=null&&fr.devOnly&&fr.@class=="melee"&&fr.name==NativeFangs.Name,"the Fangs are a DEV melee row");
+            Check(data.abilities.Count(a=>a.spec==NativeKatana.Spec)==2&&data.Ability(NativeKatana.Spec,"q")?.id==NativeKatana.Iai&&data.Ability(NativeKatana.Spec,"e")?.id==NativeKatana.Storm,"the Katana's Q (the iai) and E (the storm)");
+            Check(data.abilities.Count(a=>a.spec==NativeFangs.Spec)==5&&NativeFangs.SlotMoves.Select((m,i)=>data.Ability(NativeFangs.Spec,i==0?"q":i==1?"e":(i-1).ToString())?.id==m).Count(x=>x)==5,"the Fangs' Q, E and 1-3 (the numbered rows by key)");
+            Check(data.rarities.Any(r=>r.id==NativeKatanaChips.Tier&&r.weight==0&&r.color==NativeKatanaChips.Color)&&data.rarities.Any(r=>r.id==NativeFangsChips.Tier&&r.weight==0&&r.color==NativeFangsChips.Color),"their chip tiers, never rolled");
+            Check(data.exclusiveOdds.Any(o=>o.spec==NativeKatana.Spec&&o.guaranteed==2)&&data.exclusiveOdds.Any(o=>o.spec==NativeFangs.Spec&&o.guaranteed==2),"their chips' odds in their drafts");
+            Check(NativeRangedRules.KeyboardQ(data,NativeKatana.Spec,true)&&NativeRangedRules.KeyboardQ(data,NativeFangs.Spec,true),"Q is theirs");
+            Check(NativeBlades.Slots(NativeKatana.Spec)==2&&NativeBlades.Slots(NativeFangs.Spec)==5&&NativeBlades.Slots("sword")==0&&NativeBlades.Is(NativeKatana.Spec)&&NativeBlades.Is(NativeFangs.Spec)&&!NativeBlades.Is(NativeGlaive.Spec),"their slots");
+            // ---- the record ----
+            var k=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Iai,CastAt=10,CastRelease=10.32f,CastUntil=10.94f,LineFrom=new V3(0,1,0),LineTo=new V3(0,1,7.5f),LineAt=10.44f,SplitAt=10.89f,
+                Hits=new[]{new NativeBladeHit{Id=1,Kind=NativeKatana.HitMark,At=10.4f,Pos=new V3(0,1,3),Dir=new V3(0,0,1),Victim=2}}};
+            Check(k.Valid(),"a live iai is valid");var c=k.ViewCopy();Check(c.Hits!=k.Hits&&c.Hits[0]!=k.Hits[0]&&c.Ready!=k.Ready&&c.Hits[0].Kind==k.Hits[0].Kind,"its copy shares nothing");
+            Check(!new NativeBladeKit{CastKind="sword-launch"}.Valid()&&!new NativeBladeKit{CastStep=99}.Valid()&&!new NativeBladeKit{Ready=new float[9]}.Valid()&&!new NativeBladeKit{Hits=new[]{new NativeBladeHit{Kind="nope"}}}.Valid()&&!new NativeBladeKit{PathAt=float.NaN}.Valid(),"a broken one is refused");
+            Check(!NativeKatana.Sheathed(k,10.1f)&&!NativeKatana.Sheathed(k,10.5f)&&!NativeKatana.Sheathed(k,10.85f)&&NativeKatana.Sheathed(k,10.885f)&&NativeKatana.Sheathed(k,10.92f)&&!NativeKatana.Sheathed(null,0),"the blade in the hand through the draw and the sheathing, in its saya from the click");
+            // ---- the moves on the pack's clips ----
+            var bank=new Bank();
+            foreach(var spec in new[]{NativeKatana.Spec,NativeFangs.Spec})
+            {
+                var set=NativeVisualMotion.For(spec);Check(set!=null&&set.Spec==spec&&set.Locomotion.All(l=>l.StartsWith("Frank_RPG_",StringComparison.Ordinal))&&set.All.Length>30,spec+": a Frank set with its stride");
+                Check(NativeVisualMotion.Loops(spec).Contains(set.Idle)&&NativeVisualMotion.Loops(spec).Length==NativeVisualStride.Clips+2,spec+": its stance and stride loop");
+            }
+            Check(NativeVisualMotion.Loops("sword").Length==0,"other sets keep their loops");
+            var katanaActor=new Actor{Id=7,SourceSpec=NativeKatana.Spec,Grounded=true};
+            for(int step=0;step<NativeKatana.Steps;step++)
+            {
+                katanaActor.Blade=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Cut,CastStep=step,CastAt=1,CastRelease=1+NativeKatana.CutHit[step],CastUntil=1+NativeKatana.CutLength[step]};
+                Check(NativeBladeMotion.Clip(katanaActor,katanaActor.Blade,katanaActor.Blade.CastRelease,bank,out string clip,out float t,out _,out _)&&clip==NativeBladeMotion.KatanaCuts[step]&&Math.Abs(t-NativeBladeMotion.WindowOf(clip).Hit)<1e-3f,"cut "+step+": its clip's strike on the hit");
+            }
+            katanaActor.Blade=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Iai,CastAt=1,CastRelease=1.32f,CastUntil=1.94f,SplitAt=1.89f};
+            Check(NativeBladeMotion.Clip(katanaActor,katanaActor.Blade,1.38f,bank,out string iai,out _,out _,out _)&&iai==NativeBladeMotion.KatanaIai&&NativeBladeMotion.Clip(katanaActor,katanaActor.Blade,1.89f,bank,out string sh,out float st,out _,out _)&&sh==NativeBladeMotion.KatanaSheathe&&Math.Abs(st-NativeBladeMotion.WindowOf(sh).Hit)<1e-3f,"the iai's dash, then the sheathe's click on the split");
+            var fangsActor=new Actor{Id=8,SourceSpec=NativeFangs.Spec,Grounded=true,Blade=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Cut,CastStep=3,CastAt=1,CastRelease=1.1f,CastUntil=1.3f}};
+            Check(NativeBladeMotion.Cast(NativeVisualMotion.For(NativeFangs.Spec),fangsActor,1.1f,bank,false,out var fp)&&fp.Clip==NativeBladeMotion.FangsCuts[3],"a Fangs cut standing takes the whole body");
+            Check(!NativeBladeMotion.Cast(NativeVisualMotion.For(NativeFangs.Spec),fangsActor,1.1f,bank,true,out _)&&NativeBladeMotion.Upper(NativeVisualMotion.For(NativeFangs.Spec),fangsActor,1.1f,bank,out var up)&&up.A==NativeBladeMotion.FangsCuts[3],"on the move the fourth (it travels nowhere) is the upper body over the stride");
+            // The Fangs' combo on the Frank Dual set's chain (the owner's pick 2026-11-13), the dash on the Rogue set (owner 2026-11-11: utilize the
+            // Rogue from the Frank Slash animation set), each cut's strike on its hit, the Rogue's clips at its own rate, the Dual's at the blades'.
+            Check(NativeBladeMotion.FangsCuts.SequenceEqual(new[]{"Frank_RPG_Dual_Combo01_1","Frank_RPG_Dual_Combo01_2","Frank_RPG_Dual_Combo01_3","Frank_RPG_Dual_Combo06_1","Frank_RPG_Dual_Combo01_4"})&&NativeBladeMotion.FangsCuts.Length==NativeFangs.Steps
+                &&NativeBladeMotion.FangsCuts.All(x=>NativeBladeMotion.RateOf(x)==NativeBladeMotion.StrikeRate)&&NativeBladeMotion.FangsPounce.StartsWith("Frank_Rogue_",StringComparison.Ordinal)&&NativeBladeMotion.RateOf(NativeBladeMotion.FangsPounce)==2,"the Fangs' five cuts are the Dual chain's, the dash the Rogue's");
+            foreach(var cut in NativeBladeMotion.FangsCuts){var w=NativeBladeMotion.WindowOf(cut);Check(!float.IsNaN(w.Hit)&&w.From<=w.Hit&&w.Hit<w.To&&w.To<1.3f&&Array.IndexOf(NativeVisualMotion.For(NativeFangs.Spec).All,cut)>=0,"a measured window, baked with the set: "+cut);}
+            for(int step=0;step<NativeFangs.Steps;step++)
+            {
+                fangsActor.Blade=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Cut,CastStep=step,CastAt=1,CastRelease=1+NativeFangs.CutHit[step],CastUntil=1+NativeFangs.CutLength[step]};
+                Check(NativeBladeMotion.Clip(fangsActor,fangsActor.Blade,fangsActor.Blade.CastRelease,bank,out string fclip,out float ftime,out _,out _)&&fclip==NativeBladeMotion.FangsCuts[step]&&Math.Abs(ftime-NativeBladeMotion.WindowOf(fclip).Hit)<1e-3f,"Fangs cut "+step+": its clip's strike on the hit");
+            }
+            fangsActor.Blade=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Cut,CastStep=0,CastAt=1,CastRelease=1.1f,CastUntil=1.3f};
+            // A cut that lunges (the third's step in, the finisher) takes the whole body even on the move: its legs carry the lunge.
+            for(int step=0;step<NativeFangs.Steps;step++)
+            {
+                var lk=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Cut,CastStep=step,CastAt=1,CastRelease=1+NativeFangs.CutHit[step],CastUntil=1+NativeFangs.CutLength[step]};var mover=new Actor{Id=8,SourceSpec=NativeFangs.Spec,Grounded=true,Blade=lk};
+                bool lunges=NativeFangs.CutLunge[step]>0,whole=NativeBladeMotion.Cast(NativeVisualMotion.For(NativeFangs.Spec),mover,lk.CastRelease,bank,true,out _),upper=NativeBladeMotion.Upper(NativeVisualMotion.For(NativeFangs.Spec),mover,lk.CastRelease,bank,out _);
+                Check(whole==lunges&&upper==!lunges&&(step==3||lunges),"Fangs cut "+(step+1)+" on the move: "+(lunges?"the whole body (it lunges)":"the upper body over the stride"));
+            }
+            // The Fangs' moves carry the pilot as their clips' roots do (owner 2026-11-13: "Review fangs animations; The movements look like they
+            // should be moving the character location"): each cut's step in, the veil's hop back and the bloom's lunge are the root-motion takes'
+            // way over the slice the game plays, timed by it; the hit still lands as far from where the cut was cast as before.
+            {
+                float[] oldLunge={0,0,.5f,0,1.2f},oldReach={2.1f,2.1f,2.2f,2.2f,2.6f};
+                for(int step=0;step<NativeFangs.Steps;step++)
+                {
+                    var tk=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Cut,CastStep=step,CastAt=1,CastRelease=1+NativeFangs.CutHit[step],CastUntil=1+NativeFangs.CutLength[step],PathAt=1,PathUntil=3,From=new V3(0,0,0),To=new V3(0,0,1)};
+                    string clip=NativeBladeMotion.FangsCuts[step];var w=NativeBladeMotion.WindowOf(clip);
+                    float first=Math.Max(w.From,w.Hit-NativeFangs.CutHit[step]*NativeBladeMotion.RateOf(clip)),way=NativeBladeMotion.Way(clip,w.To)-NativeBladeMotion.Way(clip,first);
+                    bool travels=NativeBladeMotion.FangsTravelShare(tk,1,out float s0);
+                    Check(travels==(NativeFangs.CutLunge[step]>0)&&(!travels||Math.Abs(way-NativeFangs.CutLunge[step])<.02f&&Math.Abs(s0)<1e-4f),"Fangs cut "+(step+1)+"'s step in is its clip's root over the slice ("+way.ToString("0.00")+" m, the rules "+NativeFangs.CutLunge[step]+")");
+                    if(!travels)continue;
+                    Check(NativeBladeMotion.FangsTravelSpan(tk,out float ends,out float peak)&&ends>tk.CastRelease&&ends<=tk.CastUntil+.1f+1e-4f&&peak>=1&&peak<1.25f,"Fangs cut "+(step+1)+" travels to its clip's end ("+ends.ToString("0.000")+", peak "+peak.ToString("0.00")+")");
+                    NativeBladeMotion.FangsTravelShare(tk,tk.CastRelease,out float hit);NativeBladeMotion.FangsTravelShare(tk,ends,out float last);
+                    Check(hit>.2f&&hit<.8f&&last>.9f,"Fangs cut "+(step+1)+": partway at the hit ("+hit.ToString("0.00")+"), there by the end ("+last.ToString("0.00")+")");
+                    float lands=NativeFangs.CutLunge[step]*hit+NativeFangs.CutReachAt(step,hit,NativeFangs.CutLunge[step]*hit);
+                    Check(Math.Abs(lands-(oldLunge[step]+oldReach[step]))<.03f&&Math.Abs(NativeFangs.CutReachAt(step,hit,0)-(oldLunge[step]+oldReach[step]))<.03f,"Fangs cut "+(step+1)+" lands as far from its cast as before, travelled or not ("+lands.ToString("0.00")+" m)");
+                    // The path follows the share, not the old easing; the Katana's keeps its own.
+                    Check(NativeBlades.PathAt(tk,tk.CastRelease,out var pa,out _)&&Math.Abs(pa.Z-hit)<1e-4f,"its path is where its clip's root is");
+                }
+                Check(NativeFangs.CutLunge[3]==0&&!NativeBladeMotion.FangsTravelShare(new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Cut,CastStep=3,CastAt=1,CastRelease=1.15f,CastUntil=1.44f},1.1f,out _),"the fourth cut keeps its stride (its root comes back where it started)");
+                var kk=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Cut,CastStep=2,CastAt=1,CastRelease=1.18f,CastUntil=1.5f,PathAt=1,PathUntil=1.18f,From=new V3(0,0,0),To=new V3(0,0,1)};
+                Check(!NativeBladeMotion.FangsTravelShare(kk,1.1f,out _)&&NativeBlades.PathAt(kk,1.09f,out var kp,out float ku)&&Math.Abs(kp.Z-(1-(1-ku)*(1-ku)))<1e-5f,"the Katana's lunges keep their easing");
+                var pk=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Pounce,CastAt=1,CastRelease=1.1f,CastUntil=1.72f};
+                Check(!NativeBladeMotion.FangsTravelShare(pk,1.2f,out _)&&!NativeBladeMotion.FangsTravelShare(new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Fan,CastAt=1,CastRelease=1.2f,CastUntil=1.45f},1.2f,out _),"the dash and the fan keep theirs");
+                var vk=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Veil,CastAt=1,CastRelease=1+NativeFangs.VeilCast,CastUntil=1+NativeFangs.VeilCast+.2f};
+                Check(NativeBladeMotion.FangsTravelShare(vk,1,out float v0)&&Math.Abs(v0)<1e-4f&&NativeBladeMotion.FangsTravelSpan(vk,out float vend,out _)&&NativeBladeMotion.FangsTravelShare(vk,vend,out float v1)&&v1>.98f
+                    &&Math.Abs(NativeBladeMotion.Way(NativeBladeMotion.FangsVeil,.58f)+NativeFangs.VeilHop)<.03f,"the veil's backward evade hops back "+NativeFangs.VeilHop+" m, as its root does");
+                var bk=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Bloom,CastAt=1,CastRelease=1+NativeFangs.BloomRelease,CastUntil=1+NativeFangs.BloomRelease+NativeFangs.BloomRecover};
+                var bw=NativeBladeMotion.WindowOf(NativeBladeMotion.FangsBloom);
+                Check(NativeBladeMotion.FangsTravelShare(bk,bk.CastRelease-.1f,out float b0)&&b0<.15f&&NativeBladeMotion.FangsTravelShare(bk,bk.CastRelease,out float b1)&&b1>.8f
+                    &&Math.Abs(NativeBladeMotion.Way(NativeBladeMotion.FangsBloom,bw.To)-NativeBladeMotion.Way(NativeBladeMotion.FangsBloom,bw.From)-NativeFangs.BloomLunge)<.03f,"the bloom lunges "+NativeFangs.BloomLunge+" m on its strike, as its root does");
+                var bmover=new Actor{Id=8,SourceSpec=NativeFangs.Spec,Grounded=true,Blade=bk};
+                Check(NativeBladeMotion.Cast(NativeVisualMotion.For(NativeFangs.Spec),bmover,bk.CastRelease,bank,true,out var bp)&&bp.Clip==NativeBladeMotion.FangsBloom,"the bloom's legs carry its lunge even on the move");
+                var fsrc=R(root,"NativeFangsAuthority.cs");
+                Check(fsrc.Contains("FangsTravel(p,p.BladeFacing,NativeFangs.CutLunge[step]);")&&fsrc.Contains("FangsTravel(p,-p.BladeFacing,NativeFangs.VeilHop);")&&fsrc.Contains("FangsTravel(p,p.BladeFacing,NativeFangs.BloomLunge);")
+                    &&fsrc.Contains("BladePath(p,dir,metres*peak,Time,ends);")&&fsrc.Contains("FangsFloorTo(from,dir,metres*peak)")&&fsrc.Contains("FangsTravelFoe(p,from,dir)")&&fsrc.Contains("!p.Grounded"),"the rules carry the pilot on the blade path, short of walls, drops and foes, from the ground only");
+                // The cuts turn the drawn body as their clips do (the travel's follow-up: the bake took the Dual clips' turn out, and the feet
+                // slid while the rules carried the pilot): the five cuts only, every other clip of every set untouched; each table whole
+                // (30 a second over its clip), smooth (no step past the clips' own fastest spin) and back at the Dual stance by its end; at
+                // each cut's strike the drawn body within 35 degrees of the facing; the runtime turns the body about its hips after the pose
+                // goes on and before the feet, and keeps a turning cut's feet planted while the rules carry it.
+                var cutLength=new[]{1.267f,1f,1.067f,1.167f,1.05f};
+                for(int ci=0;ci<NativeBladeMotion.FangsCuts.Length;ci++)
+                {
+                    string turnCut=NativeBladeMotion.FangsCuts[ci];Check(NativeBladeMotion.Turns(turnCut),"the cut "+turnCut+" turns as its clip does");
+                    float len=cutLength[ci],most=0,last=0;
+                    for(int tf=0;tf/30f<=len+1e-4f;tf++){NativeBladeMotion.Turns(turnCut,tf/30f,out float td);if(tf>0)most=Math.Max(most,Math.Abs(td-last));last=td;}
+                    NativeBladeMotion.Turns(turnCut,len+1,out float held);NativeBladeMotion.Turns(turnCut,NativeBladeMotion.WindowOf(turnCut).Hit,out float atHit);
+                    Check(most<=85&&Math.Abs(held-last)<1e-3f&&Math.Abs(held-59)<3,"its turn is smooth ("+most.ToString("0")+" deg a frame at most) and ends at the Dual stance ("+held.ToString("0")+")");
+                    Check(Math.Abs(atHit)<35,turnCut+" strikes along the facing (turned "+atHit.ToString("0")+" deg at the strike)");
+                }
+                {
+                    var others=NativeBladeMotion.KatanaCuts.Concat(NativeDevKatanaMotion.Cuts).Concat(NativeBladeMotion.KatanaExtra).Concat(NativeBladeMotion.FangsExtra)
+                        .Concat(data.weapons.SelectMany(w=>NativeVisualMotion.For(w.id)?.All??Array.Empty<string>())).Where(o=>o!=null&&Array.IndexOf(NativeBladeMotion.FangsCuts,o)<0).Distinct().ToArray();
+                    Check(others.Length>100&&others.All(o=>!NativeBladeMotion.Turns(o)&&!NativeBladeMotion.Turns(o,.3f,out float z)&&z==0)&&!NativeBladeMotion.Turns(null)&&!NativeBladeMotion.Turns(null,0,out _),"no other clip of any set turns ("+others.Length+" checked)");
+                    string tp=R(root,"NativeVisualMotionPresentation.cs");int put=tp.IndexOf("float clipTurn=VisualMotionTurn(m,loco,sum,jumped,dt);",StringComparison.Ordinal),posed=tp.IndexOf("if(b==m.BodyHips)b.localPosition=Vector3.Lerp(b.localPosition,p.localPosition,wgt);",StringComparison.Ordinal),feet=tp.IndexOf("VisualMotionFeet(m,body.Root.transform,plant,pick.Locomotion,dt,wgt);",StringComparison.Ordinal);
+                    Check(put>posed&&posed>0&&feet>put&&tp.Contains("if(clipTurn!=0)m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,Mathf.DeltaAngle(0,clipTurn)*wgt);")
+                        &&tp.Contains("float plant=grounded?pick.Locomotion||NativeBladeMotion.Turns(pick.Clip)?1:")&&tp.Contains("if(!m.TurnOn[i]){m.TurnWrap[i]=360f*Mathf.Round((was-own)/360f);m.TurnOn[i]=true;}")
+                        &&tp.Contains("if(!m.Turns||!(sum>1e-6f))return 0;"),"the runtime turns the drawn body about its hips after the pose, before the feet, and keeps a turning cut's feet down");
+                }
+            }
+            // The plunging slam (owner 2026-11-11: slam attacks from the air for the Glaive, the Fangs and the Katana): the standard plunge for
+            // the three kits, its rules by kin, its look the set's air attack held to the landing.
+            Check(new[]{NativeKatana.Spec,NativeFangs.Spec,NativeGlaive.Spec}.All(x=>NativeAirAttackSimulation.KitSlam(x)&&NativePlungeRules.Handles(x))&&!NativeAirAttackSimulation.KitSlam("sword")&&!NativeAirAttackSimulation.KitSlam("pistol"),"the three kits slam from the air");
+            Check(NativeAirAttackSimulation.Kin(NativeFangs.Spec)=="daggers"&&NativeAirAttackSimulation.Kin(NativeKatana.Spec)=="sword"&&NativeAirAttackSimulation.Kin(NativeGlaive.Spec)=="sword"&&NativeAirAttackSimulation.DownRadius(NativeFangs.Spec)==NativeAirAttackSimulation.DownRadius("daggers")&&NativeAirAttackSimulation.DownRadius(NativeKatana.Spec)==NativeAirAttackSimulation.DownRadius("sword"),"their slams by kin");
+            Check(new[]{NativeKatana.Spec,NativeFangs.Spec,NativeGlaive.Spec,"sword","daggers"}.All(x=>NativePlungeRules.Kit(x)==NativeAirAttackSimulation.KitSlam(x)&&NativePlungeRules.Kin(x)==NativeAirAttackSimulation.Kin(x)&&NativePlungeRules.Radius(x)==NativeAirAttackSimulation.DownRadius(x)),"the look's copy of the kits and their kin is the rule's");
+            foreach(var spec in new[]{NativeKatana.Spec,NativeFangs.Spec,NativeGlaive.Spec})
+            {
+                var set=NativeVisualMotion.For(spec);var air=new Actor{Id=11,SourceSpec=spec,AirAttack=true,AirKind=NativePlungeFields.DownKind,AttackAt=2,ImpactAt=2.6f};
+                Check(set?.AirAttack!=null&&NativeBladeMotion.Slam(set,air,2.3f,bank,out var sp)&&sp.Clip==set.AirAttack&&!NativeBladeMotion.Slam(set,new Actor{Id=12,SourceSpec=spec,AttackAt=2},2.3f,bank,out _),spec+": the slam plays the set's air attack");
+            }
+            // The victim of a pair plays its clip from the move's start, whatever its own set.
+            var victim=new Actor{Id=9,SourceSpec="sword",PairBy=8,PairClip=NativeBladeMotion.FangsTakedownHit,PairAt=2,PairUntil=3.45f};
+            Check(NativeBladeMotion.Victim(victim,2.5f,bank,out var vp)&&vp.Clip==NativeBladeMotion.FangsTakedownHit&&!NativeBladeMotion.Victim(victim,1.9f,bank,out _)&&!NativeBladeMotion.Victim(victim,4,bank,out _),"a held victim plays its paired clip, only while held");
+            Check(NativeBladeMotion.VictimClip(NativeBladeMotion.KatanaCritical)==NativeBladeMotion.KatanaCriticalHit&&NativeBladeMotion.VictimClip(NativeBladeMotion.FangsTakedown)==NativeBladeMotion.FangsTakedownHit&&NativeBladeMotion.VictimClip("x")==null,"each attacker clip's victim clip");
+            // The takedown from behind is the stealth kill's throat cut (the owner's pick 2026-11-13: Behind_01 and its foe's Hit_Behind_01, the
+            // pair the host names): both bodies on one window, the fang drawn across the throat on the rules' blow, together through the hold.
+            {
+                float at=5;var td=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Assassinate,CastAt=at,CastRelease=at+NativeFangs.BehindHit,CastUntil=at+NativeFangs.BehindHold,PairClip=NativeBladeMotion.FangsTakedown,PairAt=at,PairHit=at+NativeFangs.BehindHit,PairUntil=at+NativeFangs.BehindHold};
+                var killer=new Actor{Id=31,SourceSpec=NativeFangs.Spec,Grounded=true,Blade=td};var held=new Actor{Id=32,SourceSpec="sword",PairBy=31,PairClip=NativeBladeMotion.VictimClip(td.PairClip),PairAt=at,PairUntil=at+NativeFangs.BehindHold};
+                var tw=NativeBladeMotion.WindowOf(NativeBladeMotion.FangsTakedown);bool together=true;
+                for(float t=at;t<at+NativeFangs.BehindHold;t+=1/60f){NativeBladeMotion.Clip(killer,td,t,bank,out string kc,out float kt,out _,out _);NativeBladeMotion.Victim(held,t,bank,out var vk);together&=kc==NativeBladeMotion.FangsTakedown&&vk.Clip==NativeBladeMotion.FangsTakedownHit&&Math.Abs(kt-vk.Time)<.02f;}
+                NativeBladeMotion.Clip(killer,td,td.PairHit,bank,out _,out float onBlow,out _,out _);
+                Check(NativeBladeMotion.FangsTakedown=="Frank_Stealth_Kill_Behind_01"&&NativeBladeMotion.FangsTakedownHit=="Frank_Stealth_Kill_Hit_Behind_01"&&NativeBladeMotion.WindowOf(NativeBladeMotion.FangsTakedownHit).Hit==tw.Hit
+                    &&Math.Abs(onBlow-tw.Hit)<1e-3f&&Math.Abs(tw.Hit-1.3f)<1e-4f&&together,"the takedown: the throat cut and its foe's clip on one window, the cut on the blow, the two bodies together through the hold");
+            }
+            Check(NativeVisualMotion.For(NativeKatana.Spec).All.Contains(NativeBladeMotion.KatanaCriticalHit)&&NativeVisualMotion.For(NativeKatana.Spec).All.Contains(NativeBladeMotion.FangsTakedownHit)&&NativeVisualMotion.For(NativeFangs.Spec).All.Contains(NativeBladeMotion.KatanaCriticalHit),"the victims' clips are in the bank");
+            // Every pilot's body plays the foe's side of every paired move (owner 2026-11-13: "Give one to everyone"; before, only the Katana's,
+            // the DEV Katana's and the Fangs' bodies listed the victims' clips, so a foe of any other class kept its stance while held): every
+            // class on the pilot model (the Siren is not on it), the DEV animation classes by their motion, the Cyber Lord (no set of its own)
+            // on the held set. Held as the host names it, its body plays that clip on Victim's time, nothing laid over it; the clip is its set's
+            // own or one it borrows from the bank (only the one named on it). Presentation only: the host still names the clip.
+            {
+                NativeBladeMotion.IntroActor=-1;
+                var pairs=new[]{(NativeBladeMotion.KatanaCritical,""),(NativeBladeMotion.KatanaCritical,NativeDevMotions.Katana),(NativeBladeMotion.FangsTakedown,""),(NativeBladeMotion.FangsCritical,""),(NativeBladeMotion.FangsTakedown,NativeDevMotions.Katana)};
+                var named=pairs.Select(p=>NativeDevMotions.VictimClip(p.Item1,p.Item2)).Distinct().ToArray();
+                Check(named.Length==4&&NativeBladeMotion.VictimClips.Length==4&&named.All(c=>NativeBladeMotion.VictimClips.Contains(c))&&NativeBladeMotion.VictimClips.Contains(NativeDevKatanaMotion.CounterHit),"every paired move's victim clip, as the host names it, is one any body may borrow");
+                var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren").ToArray();int sets=0,borrows=0;
+                Check(specs.Length>=20&&specs.Contains("rifle")&&specs.Contains(NativeTopDog.Spec)&&specs.Contains("cyberlord")&&specs.Contains(NativeDevMotions.Katana),"every class on the pilot model");
+                foreach(var spec in specs)
+                {
+                    string baseSpec=NativeDevMotions.Base(spec)??spec,motion=NativeDevMotions.Is(spec)?spec:"";
+                    var own=NativeVisualMotion.For(NativeDevMotions.Set(new Actor{SourceSpec=baseSpec,Motion=motion}));var set=own??NativeVisualMotion.Held;if(own!=null)sets++;
+                    Check(own!=null||spec=="cyberlord",spec+": a set of its own (the Cyber Lord alone has none)");
+                    foreach(var clip in named)
+                    {
+                        var held=new Actor{Id=40,SourceSpec=baseSpec,Motion=motion,Grounded=true,PairBy=41,PairClip=clip,PairAt=10,PairUntil=11.5f,LastShot=9.95f,ReloadAt=9.9f,ReloadUntil=11.6f,Aiming=true};bool plays=true;int shown=0;
+                        for(float t=10;t<11.6f;t+=.1f)
+                        {
+                            bool covered=NativeVisualMotion.Choose(set,held,t,new NativeVisualMotion.Memory(),bank,false,out var pick);bool on=NativeBladeMotion.Victim(held,t,bank,out var want);if(on)shown++;
+                            plays&=(on?covered&&pick.Clip==clip&&Math.Abs(pick.Time-want.Time)<1e-5f:pick.Clip!=clip)&&!NativeVisualMotion.Layer(set,held,t,bank,out _,true);
+                        }
+                        bool listed=set.All.Contains(clip),lent=NativeBladeMotion.Lent(held,clip);if(!listed)borrows++;
+                        Check(plays&&shown>=8&&(listed||lent),spec+" held in "+clip+": its body plays the victim's clip on the pair's time ("+(listed?"its set's":"borrowed")+"), nothing over it");
+                    }
+                }
+                Check(sets==specs.Length-1&&borrows>=4*(specs.Length-3),"the sets that lacked the victims' clips borrow them ("+borrows+")");
+                // Only the clip the host names, and only a victim's: a body never borrows anything else, and never picks one itself.
+                var foe=new Actor{Id=42,SourceSpec="rifle",PairClip=NativeBladeMotion.FangsTakedownHit,PairAt=10,PairUntil=11.5f};
+                Check(NativeBladeMotion.Lent(foe,NativeBladeMotion.FangsTakedownHit)&&!NativeBladeMotion.Lent(foe,NativeBladeMotion.FangsCriticalHit)&&!NativeBladeMotion.Lent(new Actor{PairClip=NativeBladeMotion.FangsTakedown},NativeBladeMotion.FangsTakedown)
+                    &&!NativeBladeMotion.Lent(null,NativeBladeMotion.FangsTakedownHit)&&!NativeBladeMotion.Lent(foe,null),"a body borrows only the victim's clip the host names on it");
+                Check(NativeBladeMotion.Holds(foe,10)&&NativeBladeMotion.Holds(foe,11.6f)&&!NativeBladeMotion.Holds(foe,9.9f)&&!NativeBladeMotion.Holds(foe,11.7f)&&!NativeBladeMotion.Holds(new Actor{PairClip=NativeBladeMotion.FangsTakedownHit},10),"held over Victim's span");
+                // A free gun pilot still raises its gun after a shot; the held set covers nothing but the hold (the game's pose before and after).
+                var rifleSet=NativeVisualMotion.For("rifle");var free=new Actor{Id=43,SourceSpec="rifle",Grounded=true,LastShot=9.95f};
+                Check(NativeVisualMotion.Layer(rifleSet,free,10,bank,out var raise)&&raise.Raised,"a free gun pilot's shot still raises the gun");
+                Check(!NativeVisualMotion.Choose(NativeVisualMotion.Held,new Actor{Id=44,SourceSpec="cyberlord",Grounded=true},10,new NativeVisualMotion.Memory(),bank,false,out _)&&NativeVisualMotion.Declined=="held"
+                    &&!NativeVisualMotion.Choose(NativeVisualMotion.Held,foe,9.9f,new NativeVisualMotion.Memory(),bank,false,out _)&&NativeVisualMotion.Held.HeldOnly&&specs.All(s=>NativeVisualMotion.For(s)!=NativeVisualMotion.Held)
+                    &&NativeVisualMotion.Held.All.Contains(NativeVisualMotion.Held.Idle)&&NativeBladeMotion.VictimClips.All(c=>NativeVisualMotion.Held.All.Contains(c)),"the held set covers the hold alone, and no class plays it as its own");
+                Check(NativeBladeMotion.VictimClips.All(c=>specs.Any(s=>NativeVisualMotion.For(s)?.All.Contains(c)==true)),"every victim clip is in a class's set (the bake carries it)");
+                string mp=R(root,"NativeVisualMotionPresentation.cs");
+                Check(mp.Contains("if(covered&&!pick.Locomotion&&NativeBladeMotion.Lent(a,pick.Clip)&&!m.Index.ContainsKey(pick.Clip))VisualMotionLend(m,pick.Clip);")&&mp.Contains("m.Names[n]=clip;m.Clips[n]=c;m.HeldOut[n]=NativeBladeMotion.HeldOut(clip);m.Index[clip]=n;")
+                    &&mp.Contains("(NativeBladeMotion.Holds(a,time)||NativeVisualMotion.Dazed(a,time)||body.Motion?.Set==NativeVisualMotion.Held&&body.Motion.Weight>0))m=VisualMotionFor(body,NativeVisualMotion.Held);"),"the body takes the named clip on when first held; a class with no set plays the held set until it has eased back");
+                // The coordinator's three fixes (2026-11-13), presentation only: a victim clip's hips stay over the body's own spot (its drift taken
+                // out of the mix, so the fade at the hold's end slides nothing back and the counter's throw is the rules' alone); the held weapon
+                // hangs head-down from the grip along its length and the support hand lets go (a weapon held flat-on across the hand, the
+                // shield, keeps its hang); a death in a victim clip falls from the drawn pose, every other death built as before.
+                Check(new[]{"rifle","machinegun","pistol","sword","greatsword",NativeTopDog.Spec,NativeKatana.Spec,NativeFangs.Spec,"daggers"}.All(s=>NativeBladeMotion.Hangs(s)&&NativeBladeMotion.HangReach(s)>.2f)&&!NativeBladeMotion.Hangs("shield")&&Math.Abs(NativeBladeMotion.HangReach("greatsword")-1.69f)<.01f&&Math.Abs(NativeBladeMotion.HangReach(NativeTopDog.Spec)-1.32f)<.01f,"every weapon held along the hand hangs head-down, by its reach; the shield, held flat-on, keeps its own hang");
+                Check(mp.Replace("\r\n","\n").Contains("NativeVisualMotionClips.Finish(m.Mix,sum);\n            // A paired move's victim clip on its own spot (its drift taken out), and how much of the body it takes this frame.\n            m.VictimShare=VisualMotionVictimSpot(m,sum)*m.Weight;if(m.VictimShare>.5f)m.VictimAt=time;"),"the victim clip's drift comes out of the mix right after it is made");
+                Check(mp.Contains("m.Mix[0]-=e*victimSpotSample[0]/sum;m.Mix[2]-=e*victimSpotSample[2]/sum;share+=e/sum;")&&mp.Contains("m.Victim[i]=System.Array.IndexOf(NativeBladeMotion.VictimClips,names[i])>=0;")&&mp.Contains("System.Array.Resize(ref m.Victim,n+1);m.Victim[n]=true;"),"every victim clip a body carries, its own or borrowed, keeps to the body's spot");
+                Check(mp.Contains("float hang=!m.Set.Fighter&&!m.Set.HeldOnly&&NativeBladeMotion.Hangs(m.Set.Spec)?m.VictimShare:0;VisualVictimHang(weaponHand,body.Root.transform,hang,NativeBladeMotion.HangReach(m.Set.Spec));")&&mp.Contains("m.Support=Mathf.MoveTowards(m.Support,reloading||m.VictimShare>.01f?0:hold,dt/SupportEase);"),"the weapon hangs by the victim clip's share and the support hand lets go");
+                Check(R(root,"NativeSourcePresentation.cs").Contains("float shown=TopDogMallet(a,time)*VisualVictimKeep(rig);")&&mp.Contains("1-Mathf.Clamp01(body.Motion.VictimShare):1;")&&mp.Contains("m.VictimShare=0;"),"the one weapon the hang does not clear, the Top Dog's mallet, goes away into the hand for the hold");
+                // A counter's foe is dazed until the blow (owner 2026-11-13: "They still kind of just sit there"): the Katana's and the DEV Katana's
+                // victim clips show from the blow only; the Fangs' foes are seized before it and keep their whole window.
+                {
+                    var kf=new Actor{Id=47,SourceSpec="rifle",PairClip=NativeBladeMotion.KatanaCriticalHit,PairAt=30,PairUntil=30+NativeKatana.CounterHold};var kw=NativeBladeMotion.WindowOf(NativeBladeMotion.KatanaCriticalHit);
+                    float blowAt=30+NativeKatana.CounterHold*(kw.Hit-kw.From)/(kw.To-kw.From);
+                    Check(NativeBladeMotion.StruckOnBlow(NativeBladeMotion.KatanaCriticalHit)&&NativeBladeMotion.StruckOnBlow(NativeDevKatanaMotion.CounterHit)&&!NativeBladeMotion.StruckOnBlow(NativeBladeMotion.FangsTakedownHit)&&!NativeBladeMotion.StruckOnBlow(NativeBladeMotion.FangsCriticalHit)
+                        &&!NativeBladeMotion.Victim(kf,blowAt-.05f,bank,out _)&&NativeBladeMotion.Victim(kf,blowAt+.01f,bank,out var kp)&&kp.Time>=kw.Hit&&NativeBladeMotion.Holds(kf,blowAt-.05f)
+                        &&NativeBladeMotion.Victim(new Actor{Id=48,SourceSpec="rifle",PairClip=NativeBladeMotion.FangsTakedownHit,PairAt=30,PairUntil=31.45f},30.1f,bank,out _),"a counter's foe is dazed until the blow; the Fangs' foes are seized from the start");
+                }
+                string dp=R(root,"NativeDeathPresentation.cs"),vb=R(root,"NativeVisualBodyPresentation.cs");
+                // (Since 2026-11-14 every death seen as it happens falls from the drawn pose, a victim clip's among them: CorpseDressChecks.)
+                Check(dp.Contains("if(pilot&&!temporary&&NativeCorpseDress.FromDrawn(age))VisualRigFromDrawn(rig,death);")&&dp.Contains("visualDeathDrawn=null;")&&vb.Contains("if(visualDeathDrawn!=null)VisualCopyDrawn(visualDeathDrawn,binding.Bones);")
+                    &&vb.Contains("||!NativeCorpseDress.Drawn(body.PosedFrame,Time.frameCount))return false;"),"a death in a victim clip falls from the drawn pose (as every death seen as it happens does)");
+                // A Katana's parry dazes its striker (owner 2026-11-13: "we still need 'reaction' animations"): every class reels, then plays a
+                // Stunned of its own; the Cyber Lord, with no set, on the held set's (the unarmed set's recoil and Stunned), and only while dazed.
+                var shortBank=new ShortBank();int dazes=0;
+                foreach(var spec in specs)
+                {
+                    string baseSpec=NativeDevMotions.Base(spec)??spec,motion=NativeDevMotions.Is(spec)?spec:"";
+                    var set=NativeVisualMotion.For(NativeDevMotions.Set(new Actor{SourceSpec=baseSpec,Motion=motion}))??NativeVisualMotion.Held;
+                    var struck=new Actor{Id=45,SourceSpec=baseSpec,Motion=motion,Grounded=true,ReactionParry=true,ReactionAt=20,ReactionUntil=21.3f,StunUntil=21.3f};
+                    bool reel=NativeVisualMotion.Choose(set,struck,20.2f,new NativeVisualMotion.Memory(),shortBank,false,out var r0)&&r0.Clip!=set.Stunned;
+                    bool daze=NativeVisualMotion.Choose(set,struck,21f,new NativeVisualMotion.Memory(),shortBank,false,out var r1)&&r1.Clip==set.Stunned&&set.Stunned!=null;
+                    if(reel&&daze)dazes++;else Check(false,spec+": a parried striker reels, then plays its own Stunned");
+                }
+                var dazedLord=new Actor{Id=46,SourceSpec="cyberlord",Grounded=true,ReactionParry=true,ReactionAt=20,ReactionUntil=21.3f};
+                Check(dazes==specs.Length&&NativeVisualMotion.Held.Stunned=="Unarmed-Stunned"&&NativeVisualMotion.Held.All.Contains("Unarmed-Stunned")&&NativeVisualMotion.Dazed(dazedLord,20.5f)&&!NativeVisualMotion.Dazed(dazedLord,22f)&&!NativeVisualMotion.Dazed(new Actor{ReactionAt=20,ReactionUntil=21},20.5f)
+                    &&!NativeVisualMotion.Choose(NativeVisualMotion.Held,dazedLord,22f,new NativeVisualMotion.Memory(),shortBank,false,out _)
+                    &&mp.Contains("(NativeBladeMotion.Holds(a,time)||NativeVisualMotion.Dazed(a,time)||body.Motion?.Set==NativeVisualMotion.Held&&body.Motion.Weight>0))m=VisualMotionFor(body,NativeVisualMotion.Held);"),"every class's daze, the Cyber Lord's on the held set while dazed");
+            }
+            // ---- the chips ----
+            foreach(var katana in new[]{true,false})
+            {
+                var chips=katana?NativeKatanaChips.Chips():NativeFangsChips.Chips();string tier=katana?NativeKatanaChips.Tier:NativeFangsChips.Tier;string pre=katana?NativeKatanaChips.Prefix:NativeFangsChips.Prefix;
+                Check(chips.Length==10&&chips.Select(x=>x.id).Distinct().Count()==10&&chips.All(x=>x.id.StartsWith(pre)&&x.rarity==tier&&x.mechanic==x.id&&x.tags.Contains(tier)&&x.max>=1&&x.max<=2&&x.description.Length>20),tier+": ten chips of their own");
+                Check(chips.Select(x=>katana?NativeKatanaChips.Confirm(x.id):NativeFangsChips.Confirm(x.id)).Distinct().Count()==10,tier+": each its own line");
+                Check(chips.All(x=>(katana?NativeKatanaChips.Glyph(x.id):NativeFangsChips.Glyph(x.id))?.Contains("<path")==true&&NativeChipIcons.Native(x.id)==x.id),tier+": each its own emblem");
+                var picks=katana?NativeKatanaChips.Picks:NativeFangsChips.Picks;Check(picks.Length==10&&picks.All(l=>l.Length>=3&&l.All(cue=>NativeToonSynth.Known(cue.Id))),tier+": each pick's cues are sounds");
+                Check(picks.All(l=>l.Zip(l.Skip(1),(x,y)=>x.At<=y.At).All(b=>b)),tier+": in time order");
+                Check(NativeChipCartridge.Known(tier)&&NativeChipCartridge.Rarity(tier)==(katana?0xff3d6e:0x7dff3a),tier+": its cartridge");
+                var all=new ConversionContent{chips=data.chips.ToArray(),incompatibilities=data.incompatibilities.ToArray(),contentRevision="x"};if(katana)NativeKatanaChips.Apply(all);else NativeFangsChips.Apply(all);int n0=all.chips.Length;if(katana)NativeKatanaChips.Apply(all);else NativeFangsChips.Apply(all);
+                Check(all.chips.Length==n0&&all.chips.Count(x=>x.rarity==tier)==10,tier+": the overlay goes in once");
+            }
+            Check(NativeFangsChips.Bit(NativeFangsChips.Hydra)==2&&NativeKatanaChips.Holds(new NativeBladeKit{Chips=NativeKatanaChips.Bit(NativeKatanaChips.TwinMoons)},NativeKatanaChips.TwinMoons),"the record's chip bits");
+            // ---- the effects ----
+            var scene=new Scene();var fx=new NativeTechniqueFx();
+            var ka=new Actor{Id=1,SourceSpec=NativeKatana.Spec,Position=new V3(0,0,0),Blade=new NativeBladeKit{Ready=new float[2],CastKind=NativeKatana.Storm,CastAt=0,CastRelease=.3f,CastUntil=1.2f,LineFrom=new V3(0,0,0),LineTo=new V3(0,0,7),LineAt=.4f,SplitAt=.9f,
+                Hits=new[]{new NativeBladeHit{Id=1,Kind=NativeKatana.HitSplit,At=.9f,Pos=new V3(0,1,3),Dir=new V3(0,0,1),Victim=2},new NativeBladeHit{Id=2,Kind=NativeKatana.HitWave,At=.5f,Pos=new V3(0,1,0),Dir=new V3(0,0,1)}}}};
+            var fa=new Actor{Id=2,SourceSpec=NativeFangs.Spec,Position=new V3(3,0,0),Blade=new NativeBladeKit{Ready=new float[5],VeilAt=0,VeilUntil=4,ChipAt=0,
+                Hits=new[]{new NativeBladeHit{Id=3,Kind=NativeFangs.HitThrow,At=.2f,Pos=new V3(3,1,0),Dir=new V3(0,0,1),Amount=5},new NativeBladeHit{Id=4,Kind=NativeFangs.HitBloom,At=.6f,Pos=new V3(3,1,4),Dir=new V3(0,1,0),Victim=5,Amount=6},new NativeBladeHit{Id=5,Kind=NativeFangs.HitCloud,At=0,Pos=new V3(3,0,0),Dir=new V3(0,1,0)}}}};
+            scene.List.Add(ka);scene.List.Add(fa);
+            var full=new Recorder();fx.DrawBlades(full,scene,.95f,1,false);var full2=new Recorder();new NativeTechniqueFx().DrawBlades(full2,scene,.95f,1,false);var low=new Recorder();new NativeTechniqueFx().DrawBlades(low,scene,.95f,.3f,true);
+            Check(!full.Broken&&full.Draws>100,"the effects draw ("+full.Draws+")");Check(full2.Draws==full.Draws,"the same frame draws the same");Check(low.Draws<full.Draws,"thinner on the low tier ("+low.Draws+" of "+full.Draws+")");
+            // The weapon trails (owner 2026-11-11: weapon trails for both): their blades from their designs' sockets (the left fang mirrored);
+            // a fast cut lays bands from both fangs, a still blade none, a veiled one none.
+            Check(NativeBladeView.Line(NativeKatana.Spec,false,out _,out var kt0)&&kt0==NativeWeaponModels.KatanaBladeTip&&!NativeBladeView.Line(NativeKatana.Spec,true,out _,out _)&&NativeBladeView.Line(NativeFangs.Spec,true,out _,out var ft1)&&ft1.X==-NativeWeaponModels.FangBladeTip.X&&!NativeBladeView.Line("sword",false,out _,out _),"the blades' lines");
+            int Trails(float yawStep,bool veiled)
+            {
+                var sc=new Scene();var tf=new NativeTechniqueFx();var cutter=new Actor{Id=21,SourceSpec=NativeFangs.Spec,Position=new V3(0,0,0),Blade=new NativeBladeKit{Ready=new float[5],CastKind=NativeFangs.Cut,CastStep=1,CastAt=0,CastRelease=.13f,CastUntil=.36f,VeilAt=veiled?0:-100,VeilUntil=veiled?4:-100}};sc.List.Add(cutter);
+                var r=new Recorder();for(int i=0;i<12;i++){cutter.Yaw=i*yawStep;r.Bands=0;tf.DrawBlades(r,sc,i/60f,1,false);}return r.Bands;
+            }
+            Check(Trails(.3f,false)>=40&&Trails(0,false)==0&&Trails(.3f,true)==0,"a fast cut trails from both fangs, a still blade and a veiled one do not");
+            // ---- the entrances ----
+            Check(NativeIntroRules.Pickable(NativeKatana.Entrance)&&NativeIntroRules.Pickable(NativeFangs.Entrance)&&NativeEntranceDirector.Styles.Contains(NativeKatana.Entrance)&&NativeEntranceDirector.Styles.Contains(NativeFangs.Entrance),"their entrances are staged and pickable");
+            var ki=new NativeKatanaIntro();var fi=new NativeFangsIntro();
+            Check(Math.Abs(NativeIntroRules.Duration(NativeKatana.Entrance)-NativeKatanaIntro.Total)<1e-3&&Math.Abs(NativeIntroRules.NameAt(NativeFangs.Entrance)-NativeFangsIntro.CardAt)<1e-3,"their lengths and names' moments");
+            for(float t=0;t<NativeKatanaIntro.Total;t+=.1f)Check(ki.Clip(t,out var kc,out float kt)&&kc.StartsWith("Frank_RPG_Katana_",StringComparison.Ordinal)&&kt>=0&&kt<6,"the Katana's entrance plays the pack's clips at "+t.ToString("F1"));
+            for(float t=0;t<NativeFangsIntro.Total;t+=.1f)Check(fi.Clip(t,out var fc,out float ft)&&fc.StartsWith("Frank_",StringComparison.Ordinal)&&ft>=0&&ft<5,"the Fangs' entrance plays the pack's clips at "+t.ToString("F1"));
+            Check(ki.Sheathed(.5f)&&!ki.Sheathed(3f)&&ki.Sheathed(5f)&&!fi.Sheathed(1),"the katana sheathed, drawn, sheathed again");
+            // Silent Kill's flurry leaps and its strike lunges (owner 2026-11-13: "This applies to the intro too (They flip in place with no
+            // movement)"): the shown pilot carries the clips' roots, out of the step short of the hero's spot by their way, ending on it.
+            {
+                var ipose=new CapturedRig.Pose();float top=0,worst=0,flat=0;var prev=default(System.Numerics.Vector3);bool any=false;
+                for(float t=NativeFangsIntro.FlurryAt;t<=NativeFangsIntro.Total;t+=1/120f)
+                {
+                    var w=NativeFangsIntro.Way(t);top=Math.Max(top,w.Y);
+                    if(any){worst=Math.Max(worst,Math.Abs(w.Y-prev.Y));flat=Math.Max(flat,new System.Numerics.Vector2(w.X-prev.X,w.Z-prev.Z).Length());}prev=w;any=true;
+                }
+                Check(top>1.6f&&top<1.9f,"the flurry leaps "+top.ToString("0.00")+" m");
+                Check(flat<.13f&&worst<.14f,"its way never snaps (at most "+flat.ToString("0.000")+" m along the floor and "+worst.ToString("0.000")+" m up in 1/120 s: the strike's lunge and the leap's launch, the takes' own)");
+                Check(NativeFangsIntro.Way(NativeFangsIntro.CardAt).Length()<1e-4f&&NativeFangsIntro.Way(NativeFangsIntro.Total).Length()<1e-4f,"the pilot holds the hero's spot from the card on");
+                Check((NativeFangsIntro.Way(NativeFangsIntro.FlurryAt)-(NativeFangsIntro.Arrive-NativeFangsIntro.After)).Length()<1e-4f&&NativeFangsIntro.Travel>.4f&&NativeFangsIntro.Travel<.8f,"the step comes out "+NativeFangsIntro.Travel.ToString("0.00")+" m short of it");
+                var ws=NativeFangsIntro.Way(NativeFangsIntro.StrikeAt);
+                Check(Math.Abs(ws.Y)<1e-4f&&Math.Abs(ws.X-NativeFangsIntro.StrikeSpot.X)<1e-4f&&Math.Abs(ws.Z-NativeFangsIntro.StrikeSpot.Z)<1e-4f&&ws.Length()>.2f,"the strike lands on its lunge, its effects there");
+                fi.Pose(NativeFangsIntro.FlurryAt+1.3f,ipose,out var rHigh,out _);fi.Pose(NativeFangsIntro.FlurryAt,ipose,out var rLow,out _);Check(rHigh.Y>rLow.Y+1.4f,"the rig's root rises with the leap (the model rides it)");
+                // The flurry's camera keeps the leaping pilot's chest in frame.
+                int framed=0,seen=0;
+                for(float age=NativeFangsIntro.FlurryAt+.2f;age<NativeFangsIntro.StrikeAt-.35f;age+=1/30f)
+                {
+                    fi.Camera(age,out var v);var chest=fi.Anchor(NativeEntranceAnchor.Chest,fi.Clock(age));var d=System.Numerics.Vector3.Normalize(chest-v.Eye);var f=System.Numerics.Vector3.Normalize(v.Look-v.Eye);
+                    seen++;if(Math.Acos(Math.Clamp(System.Numerics.Vector3.Dot(d,f),-1,1))*180/Math.PI<v.Fov*.5f)framed++;
+                }
+                Check(framed==seen,"the flurry's camera keeps the leaping chest in frame ("+framed+" of "+seen+")");
+            }
+            // The saya where the pack wears it and moves it, the blade held as the match holds it (owner 2026-11-11: "Katana intro is broken, they
+            // dont hold it. Also, sheathe is still not on body."; Core NativeKatanaSaya).
+            Check(ki.Clip(NativeKatanaIntro.DrawAt+.2f,out var dc,out _)&&dc==NativeBladeMotion.KatanaIai&&ki.Clip(NativeKatanaIntro.SheatheAt+.2f,out var sc,out _)&&sc==NativeBladeMotion.KatanaSheathe
+                &&ki.Clip(NativeKatanaIntro.ClickAt,out _,out float clickT)&&Math.Abs(clickT-NativeKatanaSaya.SheatheClick)<1e-3f&&ki.Clip(NativeKatanaIntro.GrabAt,out _,out float grabT)&&Math.Abs(grabT-NativeKatanaSaya.IaiDraw)<1e-3f,
+                "Crimson Moon draws on the pack's iai and sheathes on its whole sheathing, the draw and the click on the pack's moments");
+            Check(ki.Sheathed(NativeKatanaIntro.GrabAt-.01f)&&!ki.Sheathed(NativeKatanaIntro.GrabAt+.01f)&&!ki.Sheathed(NativeKatanaIntro.ClickAt-.05f)&&ki.Sheathed(NativeKatanaIntro.ClickAt),"its blade leaves the saya on the draw and enters on the click");
+            // The draw seen (owner 2026-11-11: "They don't pull sword out until animation is done essentially"): the clip's draw-out before the cut
+            // plays at under a third of its pace, the blade out of the saya before the cut, and the shot near enough to see it.
+            Check(ki.Clip(NativeKatanaIntro.WhipAt,out _,out float whip0)&&ki.Clip(NativeKatanaIntro.WhipAt+.1f,out _,out float whip1)&&(whip1-whip0)/.1f<.35f&&ki.Clip(NativeKatanaIntro.WhipAt-.1f,out _,out float pull)&&pull<whip0
+                &&NativeKatanaIntro.GrabAt<NativeKatanaIntro.WhipAt&&NativeKatanaIntro.WhipAt<NativeKatanaIntro.CutAt&&!ki.Sheathed(NativeKatanaIntro.WhipAt),"its draw-out is slowed before the cut, the blade already out of the saya");
+            // The counter's victim thrown back as its clip carries it (owner 2026-11-11: "Parry with katana make enemy walk backwards in place").
+            {
+                const float at=20,until=20+NativeKatana.CounterHold;float Back(float t)=>NativeBladeMotion.VictimTravel(NativeBladeMotion.KatanaCritical,t,at,until);
+                Check(Back(at)==0&&Back(at+.4f)==0&&Back(at+.8f)>.2f&&Back(at+1.0f)>Back(at+.8f)&&Math.Abs(Back(until)-1.23f)<1e-3f&&Back(until+1)==Back(until)
+                    &&NativeBladeMotion.VictimTravel(NativeBladeMotion.FangsCritical,at+1,at,until)==0&&NativeBladeMotion.VictimTravel(NativeBladeMotion.FangsTakedown,at+1,at,until)==0,"the counter's victim thrown back after the blow, as its clip carries it; the Fangs' held");
+                Check(R(root,"NativeBladeAuthority.cs").Contains("float back=NativeBladeMotion.VictimTravel(p.Blade.PairClip,Time,p.Blade.PairAt,p.Blade.PairUntil);"),"the hold follows it");
+            }
+            Check(ki.Fade(NativeKatanaIntro.DrawAt+.1f)>ki.Fade(.5f)&&ki.Fade(NativeKatanaIntro.SheatheAt+.1f)>ki.Fade(.5f)&&fi.Fade(1)==.12f,"it eases into the draw and the sheathing");
+            Check(NativeKatanaSaya.Carry(NativeBladeMotion.KatanaIai,1,out int ih)==1&&ih==NativeKatanaSaya.Draw&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaRush,.4f,out _)==1&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaStorm,1,out _)==1&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaStorm,1.6f,out _)==0
+                &&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaSheathe,0,out int shh)==0&&shh==NativeKatanaSaya.Sheathe&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaSheathe,NativeKatanaSaya.SheatheClick,out _)==1&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaSheathe,2.5f,out _)==0
+                &&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaIdle,1,out _)==0&&NativeKatanaSaya.Carry(NativeBladeMotion.KatanaCuts[0],.3f,out _)==0,"the left hand carries the saya in the stance-three moves and the sheathing, and nowhere else");
+            Check(NativeKatanaSaya.Turn(NativeBladeMotion.KatanaSheathe,0)==0&&NativeKatanaSaya.Turn(NativeBladeMotion.KatanaSheathe,.3f)==1&&NativeKatanaSaya.Turn(NativeBladeMotion.KatanaSheathe,NativeKatanaSaya.SheatheClick)==1&&NativeKatanaSaya.Turn(NativeBladeMotion.KatanaIai,1)==0
+                &&Math.Abs(NativeKatanaSaya.SheatheTurn.Length()-1)<1e-3f&&Math.Abs(NativeKatanaSaya.RestTurn.Length()-1)<1e-3f&&NativeKatanaSaya.CarryTurn.All(q=>Math.Abs(q.Length()-1)<1e-3f)&&NativeKatanaSaya.CarryAt.Length==NativeKatanaSaya.CarryTurn.Length,
+                "the blade turns over in the hand for the sheathing only, and the saya's frames are whole turns");
+            Check(NativeBladeGrip.Of(NativeKatana.Spec,false,out var kg)&&!NativeBladeGrip.Of(NativeKatana.Spec,true,out _)&&NativeBladeGrip.Of(NativeFangs.Spec,false,out var fg)&&NativeBladeGrip.Of(NativeFangs.Spec,true,out var fl)&&!NativeBladeGrip.Of("sword",false,out _)
+                &&Math.Abs(kg.Length()-1)<1e-3f&&Math.Abs(fg.Length()-1)<1e-3f&&Math.Abs(fl.Length()-1)<1e-3f,"their entrances hold the blades as the match does");
+            // Their effects follow the blades as the model holds them (owner 2026-11-11: floating parts, much improved effects): handed in, the
+            // draw trails; a replay starts it over; never handed in, nothing trails; a broken blade is refused.
+            int IntroStreaks(NativeBladeIntro intro,float at,bool feed)
+            {
+                if(feed)for(int i=0;i<24;i++){float t=at-.4f+i/60f;var root=new Vector3(0,1.2f,0);intro.Blade(t,0,root,root+new Vector3((float)Math.Sin(i*.25f),.2f,(float)Math.Cos(i*.25f)),true);}
+                var r=new Recorder();intro.Effects(at-.4f+23/60f,r,1);return r.Streaks;
+            }
+            int bare=IntroStreaks(new NativeKatanaIntro(),NativeKatanaIntro.CutAt+.2f,false),fed=IntroStreaks(new NativeKatanaIntro(),NativeKatanaIntro.CutAt+.2f,true);
+            var replay=new NativeKatanaIntro();IntroStreaks(replay,NativeKatanaIntro.CutAt+.2f,true);var again=new Recorder();replay.Blade(.5f,0,default,default,false);replay.Effects(.5f,again,1);var still=new Recorder();new NativeKatanaIntro().Effects(.5f,still,1);
+            Check(fed>bare+20&&again.Streaks==still.Streaks,"the draw trails the blade handed in ("+bare+" / "+fed+"), and a replay starts over");
+            var fiFed=new NativeFangsIntro();fiFed.Blade(1,0,new Vector3(0,1,0),new Vector3(float.NaN,0,0),true);var nan=new Recorder();fiFed.Effects(1,nan,1);Check(!nan.Broken,"a broken blade is refused");
+            // ---- the Runtime wiring (as text) ----
+            Check(R(root,"NativeArena.cs").Contains("StepBladeWorld();")&&R(root,"NativeArena.cs").Contains("StepBladeInput(p);")&&R(root,"NativeArena.cs").Contains("if(PinBladeVictim(p))return;")&&R(root,"NativeArena.cs").Contains("BladeSnapshot(p,a);"),"the arena steps them, pins their victims and snapshots them");
+            Check(R(root,"NativeMelee.cs").Contains("bool riposte=!blocker.Seat.bot&&(NativeMeleeRules.Standard(blocker.Seat.spec)||blocker.Seat.spec==NativeKatana.Spec)&&attacker.Seat.spec!=\"siren\";")&&R(root,"NativeKatanaAuthority.cs").Contains("if(Time<p.BlockEnd){if(attack&&press&&RiposteOpen(p)&&Time<k.CounterUntil&&KatanaCounter(p))p.BlockEnd=0;return;}")
+                &&R(root,"NativeBladeValidation.cs").Contains("the parry dazes its striker as a standard parry does"),"the Katana's timed parry gives the standard parry's riposte (its striker dazed as long; the counter answers it inside the window)");
+            Check(R(root,"NativeChips.cs").Contains("BladeBlocked(p,attacker);")&&!R(root,"NativeGuard.cs").Contains("BladeBlocked(")&&R(root,"NativeArena.cs").Contains("&&Time<target.BlockEnd){BlockProc(target,source,")&&R(root,"NativeBladeValidation.cs").Contains("\"a blow held on the guard opens no counter and reels no one\"")&&R(root,"NativeCombatHud.cs").Contains("||presentation.BladeHidesHud(p.Seat.id)")&&R(root,"NativeBots.cs").Contains("!BladeUnseen(q)")&&R(root,"NativeSourcePresentation.cs").Contains("reveal=BladeReveal(a,time,reveal);"),"only a timed parry opens the counter (a blow held on the guard does not), the veil hides from bots and enemies");
+            Check(R(root,"NativeStructures.cs").Contains("NativeKatanaChips.Apply(content);")&&R(root,"NativeStructures.cs").Contains("NativeFangsChips.Apply(content);"),"their chips go live");
+            Check(R(root,"NativeBladeAuthority.cs").Contains("Allows(\"weapon:\"+NativeFangs.Spec"),"the DEV Fangs answer only a pilot allowed them");
+            Check(R(root,"NativeMelee.cs").Contains("!NativeMeleeRules.Standard(p.Seat.spec)&&!KitSlam(p)")&&R(root,"NativeMeleeAbilities.cs").Contains("if(p.Input.Attack&&p.Swing==null&&KitSlam(p))TryMelee(p);")&&R(root,"NativeBladeAuthority.cs").Contains("if(KitSlam(p)){attack=press=false;}")&&R(root,"NativeGlaiveAuthority.cs").Contains("if(KitSlam(p)){")&&R(root,"NativeReplicaMotion.cs").Contains("NativeAirAttackSimulation.KitSlam(p.Seat.spec)&&a.AirAttack"),"the slam: the standard plunge for the kits, their own cuts held back, guests predicting it");
+            Check(R(root,"NativeFangsAuthority.cs").Contains("FangsPounceStep(p);")&&R(root,"NativeBlockFxPresentation.cs").Contains("NativeBladeView.Line(spec,left,out var kitRoot,out var kitTip)")&&R(root,"NativeMeleeKitPresentation.cs").Contains("a.SourceSpec!=NativeFangs.Spec")&&R(root,"NativeIntros.cs").Contains("BladeIntroHeld(held,t,style,"),"the dash cuts its path; the trails find both blades; the intros get the blades as held");
+            Check(R(root,"NativeVisualMotionPresentation.cs").Contains("NativeKatanaSaya.Carry(m.Names[i],m.Times[i],out int h)")&&R(root,"NativeVisualMotionPresentation.cs").Contains("NativeBladeGrip.Of(a.SourceSpec,false,out var grip)")&&R(root,"NativeVisualMotionPresentation.cs").Contains("weaponHand.rotation=m.RightHand.rotation*Quaternion.Slerp(Quaternion.identity,new Quaternion(q.X,q.Y,q.Z,q.W),body.SayaTurn)*m.HoldRotation;")
+                &&R(root,"NativeBladePresentation.cs").Contains("frame=SayaRigid(pelvis)*Matrix4x4.TRS(SayaVec(NativeKatanaSaya.RestAt)")&&R(root,"NativeBladePresentation.cs").Contains("PalmGrip(introRig,NativeDevMotions.Base(bladeIntro.Spec)??bladeIntro.Spec,m,b==CapturedRig.LHand)")&&R(root,"NativeIntros.cs").Contains("bladeIntroHand??=b=>BladeIntroFrame(b,introGrip);")
+                &&R(root,"NativeVisualBodyPresentation.cs").Contains("NativeBladeMotion.IntroFade=bladeIntro.Fade(bladeIntroClock);"),"the saya rides the pelvis and the left hand, the blade turns over in the hand, the entrances hold as the match does");
+            Console.WriteLine("PASS blades: "+count+" checks");
+        }
+    }
+}

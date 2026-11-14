@@ -18,7 +18,7 @@ static class Program
         public string App{get{return Path.Combine(Root,"app");}}
         public Fixture()
         {
-            Directory.CreateDirectory(Root);File.WriteAllText(Path.Combine(Root,NativeUpdateRules.Executable),"stable launcher");File.WriteAllText(Path.Combine(Root,"native-install.txt"),NativeUpdateRules.Product+"/1");
+            Directory.CreateDirectory(Root);File.WriteAllText(Path.Combine(Root,NativeUpdateRules.LegacyExecutable),"stable launcher");File.WriteAllText(Path.Combine(Root,"native-install.txt"),NativeUpdateRules.Product+"/1");
             Player(App,Identity('a',1));File.WriteAllText(Path.Combine(App,"obsolete.dll"),"old");File.WriteAllText(Path.Combine(Root,"settings-sentinel.json"),"preserve");
         }
         public static void Player(string dir,NativeBuildIdentity build)
@@ -39,6 +39,19 @@ static class Program
     }
     static void Main()
     {
+        CloudPlayerChecks.Run();StarterPackageChecks.Run();
+        Check(new NativeBuildIdentity().bootstrap==2&&NativeUpdateRules.BootstrapVersion==2,"renamed player requires bootstrap 2, rejected by bootstrap-1 guard");
+        Check(NativeUpdateRules.Executable=="Chip Arena.exe"&&NativeUpdateRules.DataDirectory=="Chip Arena_Data","friendly player and matching Unity data directory");
+        using(var f=new Fixture())
+        {
+            string old=Path.Combine(f.Root,NativeUpdateRules.LegacyExecutable),friendly=Path.Combine(f.Root,NativeUpdateRules.LauncherExecutable);
+            Check(NativeUpdateRules.LauncherPath(f.Root)==old,"legacy launcher remains discoverable");
+            File.Move(old,friendly);UpdateStorage.ValidateRoot(f.Root);
+            Check(NativeUpdateRules.LauncherPath(f.Root)==friendly,"friendly launcher works without a legacy alias");
+            var request=f.Request();var installer=f.Installer();installer.Prepare(request);installer.Swap(request);f.Ack(request);installer.Confirm(request);
+            Check(UpdateStorage.Build(f.App).version==new string('b',64)&&File.Exists(friendly),"friendly installation updates while preserving launcher");
+            File.Delete(friendly);Reject(()=>UpdateStorage.ValidateRoot(f.Root),"missing launcher is rejected");
+        }
         foreach(string path in new[]{"../outside","C:/escape","a\\b","/absolute","a/../b","CON.dll","LPT1.txt","COM¹.dll","a. ","a ","a.","a//b","a:stream","dir/NUL","dir/./b"})Reject(()=>NativeUpdateRules.SafeRelativePath(path),"reject unsafe path "+path);
         Check(NativeUpdateRules.SafeRelativePath("MonoBleedingEdge/etc/mono/4.5/machine.config")!="","normal Unity path accepted");
         Check(NativeUpdateRules.IsNewer(Identity('a',1),Identity('b',2)),"new build available");

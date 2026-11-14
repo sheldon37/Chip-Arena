@@ -11,7 +11,7 @@ whole project in a new folder; the repaired native build still needs to run.
 1. Extract the whole source archive into a new folder and add `ChipArenaConversion` in Unity Hub.
 2. Open with Unity **6000.3.24f1**, choose **Chip Arena → Open test arena**, then Play.
 3. For Windows, close this project in the Editor and run **Build-Windows.cmd**.
-4. Wait for **UNITY_TEST_BUILD_READY**. Run `Builds/Windows/ChipArena-Native-Conversion-TEST.exe`.
+4. Wait for **UNITY_TEST_BUILD_READY**. Run `Builds/Windows/Chip Arena.exe`.
 
 The builder runs the import, content, animation, shader and native physics gates before packaging `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep the top-level launcher and `app` folder together. The EXE retains the voxel CA icon. This source archive contains no precompiled executable; an activated Windows Editor is required.
 
@@ -27,7 +27,7 @@ change. Build/publish instructions and Claude's UI handoff are in
 - Ward Zero co-op: waves, money, stations, recruits, revives, boss phases, horde limb damage, entry queues, vents and moving Ward scenery.
 - Source-authored voxel models, textures, 165 motion clips, 20 entrance stages and 11 scripted elimination scenes; voxel wounds, headshot collapse, native physics bodies, combat glow, animated scenery, source music and sound effects.
 - First/third person, ADS and rifle scope, timed block, lock-on, spectator switching, elimination replay, settings, appearance previews, the animated 3D Chip draft, build inspection and local DEV sandbox.
-- Native LAN rooms, standalone WebSocket relay/discovery, reconnect seats, configured account service and headless authority. See [Relay/README.md](Relay/README.md).
+- Automatic Cloudflare online rooms with six-character codes, native LAN rooms, optional operator-managed WebSocket relay/discovery, reconnect seats, account service and headless authority. See [Relay/README.md](Relay/README.md).
 
 Rendering, menu layout, procedural audio and physics use native adapters, so the result is not pixel-identical to Three.js/Rapier. A player-hosted room ends when its authority closes; automatic host migration is not present in the pinned original source either. The implementation has passed source/managed checks, but rendered Windows gameplay and the EXE build still await native acceptance.
 
@@ -52,4 +52,4 @@ Rendering, menu layout, procedural audio and physics use native adapters, so the
 | Escape | Menu; closes preview, inspection or replay first |
 | F9 | Individual-draw rendering fallback |
 
-Preferences are separate from the original game. Account and relay URLs must be configured; no credentials are bundled. Unity clients use their own room protocol and cannot join Electron rooms.
+Preferences are separate from the original game. Online hosting and room lookup configure themselves; no relay URL or Cloudflare account is needed. No credentials are bundled. Unity clients use their own room protocol and cannot join Electron rooms.
