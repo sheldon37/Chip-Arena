@@ -306,6 +306,24 @@ namespace ChipArena.UnityConversion
             if(!FangsTravelShare(k,at,out _))return false;for(float t=at;t<=ends+1e-4f;t+=1/60f){FangsTravelShare(k,t,out float s);peak=Math.Max(peak,s);}
             return true;
         }
+        // ---- the Fangs' cuts' own turn (presentation; the travel's follow-up: "the feet still slide through it", docs/FANGS.md "Travel") ----
+        /// <summary>The turn the bake took out of each Fangs cut (degrees about the vertical, + toward the pilot's right, 30 a second from
+        /// clip 0). The Dual chain ships as root-motion takes, and the bake keeps their body facing the rig's forward frame by frame (the
+        /// clip's own turn went to the root motion it drops), so the drawn legs pivoted round a body that did not turn while the clips spin
+        /// it through up to 200 degrees a cut; with the pilot carried along the roots (FangsTravelShare) the feet slid. These put it back:
+        /// the bearing of the drawn body against the pack's authored one, root forward on the pilot's facing (a flat fit of the bake body's
+        /// joints, frame by frame, onto the root-motion take's at 0.835 of its skeleton). With it the clip strikes along its root's forward
+        /// (the facing; the drawn body at the strike within about 25 degrees of it) and the feet it plants stay planted while the rules carry
+        /// the pilot. Runtime VisualMotionTurn turns the drawn body about its hips by the mix's share of it; the rules' facing is untouched.</summary>
+        private static readonly float[] Cut1Turn={59,76,96,114,125,132,137,140,139,134,123,100,63,23,-14,-52,-91,-122,-143,-154,-160,-162,-159,-149,-134,-112,-84,-55,-28,-4,16,32,42,50,54,57,58,59,59},Cut2Turn={-143,-162,-184,-197,-190,-160,-113,-59,-3,41,74,103,124,133,134,131,127,121,115,107,100,92,85,78,72,68,65,62,61,59,59},Cut3Turn={133,133,134,131,117,86,47,2,-39,-69,-95,-115,-130,-138,-141,-138,-130,-119,-106,-91,-75,-59,-43,-28,-13,0,11,21,31,40,48,55,59},Cut4Turn={59,70,90,109,120,128,128,115,80,26,-26,-58,-82,-96,-95,-71,-14,53,105,127,130,125,120,113,105,96,88,80,73,68,65,63,61,60,59,59},Cut5Turn={-137,-147,-161,-174,-178,-166,-108,-28,9,15,18,20,20,20,19,20,21,23,25,28,31,35,40,44,49,52,55,57,58,59,59,59};
+        private static float[] TurnOf(string clip)
+        {
+            switch(clip){case D+"Combo01_1":return Cut1Turn;case D+"Combo01_2":return Cut2Turn;case D+"Combo01_3":return Cut3Turn;case D+"Combo06_1":return Cut4Turn;case D+"Combo01_4":return Cut5Turn;default:return null;}
+        }
+        /// <summary>Whether `clip`'s own turn is put back on the drawn body (the Fangs' five cuts; no other clip of any set).</summary>
+        public static bool Turns(string clip)=>clip!=null&&TurnOf(clip)!=null;
+        /// <summary>`clip`'s own turn at clip time `c` (degrees, + toward the pilot's right; held at the clip's ends), false for a clip without.</summary>
+        public static bool Turns(string clip,float c,out float degrees){var w=clip!=null?TurnOf(clip):null;degrees=w==null?0:Sample(w,0,c);return w!=null;}
         /// <summary>Every clip the two classes play beyond their sets' own (the bake's controller carries them).</summary>
         public static readonly string[] KatanaExtra={KatanaRush,KatanaIai,KatanaSheathe,KatanaStorm,KatanaCritical,KatanaCriticalHit,KatanaDraw,FangsTakedownHit,FangsCriticalHit,K+"Unequip_Idle",K+"S2_Skill02"};
         public static readonly string[] FangsExtra={FangsPounce,FangsStep,FangsVeil,FangsFan,FangsBloom,FangsTakedown,FangsTakedownHit,FangsCritical,FangsCriticalHit,KatanaCriticalHit,"Frank_Stealth_Kill_Sneak_Idle",A+"Evade_F_IP",A+"Combo05_All_IP"};

@@ -94,23 +94,32 @@ owner's word, logged for Astra in docs/DEV_LOG.md):
 - **Safety:** on the blade classes' path (`BladePath`: a wall stops it short, the host moves the pilot, guests see it in the
   snapshots), only from the ground (a cut in the air does not hover along it), stopped short of a drop (no floor within a metre under the
   feet, `FangsFloorTo`) and at arm's length (0.9 m) from a foe in the way, never through it (`FangsTravelFoe`).
-- **On the model:** the bake also takes out the Dual clips' own turn (the body's yaw follows its orientation frame by frame; a fit of the
-  drawn frames to the authored ones turns through up to 200 degrees in a cut), so the drawn legs pivot round a body that does not turn.
-  Standing, the presentation's foot lock pinned them (the body lunged on the spot); while the pilot travels the lock lets go (as for
-  every lunge), so the feet now slide with the body through the travel (filmed 2026-11-13 on the capture tool's checked floor: the
-  standing flurry's low feet slid 9.6 m in all before, 14.9 m after). Restoring the clips' turn on the drawn body (or baking it into the
-  pose) would let the feet carry it; that is a presentation (or bake) follow-up, not done.
+- **On the model:** the bake takes out the Dual clips' own turn (their root-motion takes' body yaw goes to the root motion it drops: the
+  drawn body keeps the rig's forward while the clips spin it through up to 200 degrees a cut), so the drawn legs pivoted round a body
+  that did not turn, and while the pilot travelled the foot lock let go (as for every lunge): the feet slid with the body. **Put back**
+  (presentation, 2026-11-13, `claude/fangs-fx`): Core `NativeBladeMotion.Turns` holds each cut's turn, 30 a second over its clip (the
+  bearing of the drawn body against the authored one with the root's forward on the pilot's facing, from a flat fit of the bake body's
+  drawn joints, the Editor's clipframes, onto the root-motion take's; fit error under 6 cm). Runtime `VisualMotionTurn` turns the drawn
+  body about its hips by the mix's share of it (each clip by its eased weight, the stride and every other clip none; a clip coming in
+  takes the whole turns nearest the body's, so a crossfade never spins the long way round; a jump in a showing clip's time is carried
+  off over 0.08 s), and a turning cut keeps the foot lock while the rules carry the pilot, so the feet it plants stay down. Each cut
+  now spins as authored and strikes along its root's forward, the facing (the authored body within about 25 degrees of it at each
+  strike). Filmed on the capture tool's checked floor (4.9-6.93 s of the arena clock, presses at 5.0-6.68): the standing flurry's low
+  feet travelled 13.6 m before, 3.1 m after, the support foot 5.3 m before, 0.6 m after; from a walk 11.2 m before, 3.9 m after
+  (support foot 5.3, 0.75); the pilot's travel and every strike's clip time on its rules hit unchanged. The rules' facing, timing,
+  travel, reach and hits are unchanged; no other set's clip turns (the Katana's keep the turn their bake kept).
 
 ## The intro: Silent Kill (`fangs-silent-kill`)
 
 7 s, the name at 5.2 s, on the pack's clips (Core `NativeBladeIntros`).
 
-1. Darkness and a low dark mist (lit smoke, the venom light under it). Two points of venom-green light, then the pilot forms out of
-   gathering smoke, green sparks drawn in with it, crouched (the stealth sneak idle).
+1. Darkness and a low dark haze over the floor (blended soft light, the venom light under it). Two points of venom-green light, then
+   the pilot forms out of gathering smoke, green sparks drawn in with it, crouched (the stealth sneak idle).
 2. A shadow step: gone in a burst of smoke, a streak of green along its way, back a stride ahead in another burst (0.6 m short of the
    hero's spot: the flurry and the strike carry it the rest).
 3. The twin daggers in a flurry (the assassin's fifth combo, its somersaulting leap carrying the pilot 1.78 m off the floor, as its
-   root-motion take does; the camera's look follows the chest and its eye rises half the leap): green trails from both blades, venom flung off the fastest of them.
+   root-motion take does; the camera holds the whole leap in one still wide frame): green trails from both blades, venom flung off the
+   fastest of them.
 4. The two-handed strike into the floor (4.25 s; its lunge 1.26 m on and its step back carry the pilot onto the hero's spot, the strike's
    effects where it lands): a hot flash at the blades, a shockwave of green spikes over the floor, venom splashing
    out, a billow of smoke.
@@ -119,6 +128,28 @@ owner's word, logged for Astra in docs/DEV_LOG.md):
 Its look (owner 2026-11-11: "Floating parts, needs much improved vfx"): the off-hand fang held in the model's own left hand (it hung where
 the hidden rig's hand was); the trails, drips and flung venom taken from the blades where the model holds them (the runtime hands them to
 the script each frame, Runtime `NativeBladePresentation.BladeIntroHeld`); smoke where soft glow balls hung before; no glow rings.
+
+Its camera and effects (owner 2026-11-13: "Fangs we also need more camera work and the effects still need improvement", then "I mean
+for there intros"; presentation only, the length, the name's moment, the clips and the beats as they were; Tests `FangsIntroChecks`):
+
+- **Camera, a shot to each beat** (stage axes): creeping low toward the eyes, the frame tilted; climbing round the body as it forms; from
+  behind its shoulder for the step, so it is seen to go and to be there ahead; whipped round to its front as it lands and circling close
+  through the flurry on the floor; cut low and wide as it leaps, the whole leap held in one still frame (the take launches and drops in
+  a tenth of a second, so a look that chased it would whip; before, the leap left the top of the frame); in profile for the strike's
+  lunge, which crosses the frame; straight down on the strike where it lands, the cut on the blow itself, lifting and turning over the
+  bloom; then one move down through the fumes to the hero, done before the name's cut. Small jolts on the strike, the step's arrival and
+  each cut of the flurry; none with the **Camera shake** setting off (`NativeFangsIntro.Shake`, set by `DirectedIntro` each frame).
+- **Effects:** the eyes are slits that blink, at the crouched model's visor; the smoke winds in as two coils from the floor up and the
+  body is dithered in with it; the step leaves a wake of smoke, the light drawn in where it lands; a glint runs up each fang as it
+  forms, as it lands and as the name lands, and a star rides a tip at a cut's fastest; flung venom flies as drops; the strike blooms:
+  veins of venom light crack out over the floor and die slowly, a thin wave races out, drops splash up, and seven petals of
+  fumes open round the blow and are gone by the name; thin fumes rise off both fangs at the hero. Venom motes drift up all through. The
+  fumes are light (soft additive glows that overlap into a mist); the low mist is a dark haze of blended soft light and the step's
+  bursts a few close puffs round a soft core, so no smoke stands as lumps of cloud; the drops use the runtime's teardrop
+  (`INativeEntranceVenom`); at most about 420 particles a frame.
+- Tried in the Editor and taken out: afterimages on the step (the keyed stance's silhouette, standing, where the model crouches); the
+  fumes as smoke (both of the renderer's puffs, toon and soft, drew hard green lobes that read as shrubs); the low mist as toon puffs
+  and the step's bursts as rings of them (their lobes stood as lumps of cloud); a thicker haze (0.28 coverage washed the lower frame grey).
 
 Its music is the pulse-wave bed.
 

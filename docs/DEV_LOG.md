@@ -67,6 +67,83 @@
   - No frame-time measurement in a build (the caps and no per-frame allocation are checked, not timed).
 - **Next:** the owner reviews the sheets; then merge into shared and publish to the test channel.
 
+## 2026-11-14 — Claude: Silent Kill's camera and effects on the final travel, softer smoke; the Fangs' cuts turn as their clips do, and the feet stay down (presentation only)
+
+- Branch `claude/fangs-fx` (from shared `41bfb1d7`; the travel branch's `5aad24fb`/`7aaa1486` and shared through `59d68f99` merged in,
+  the travel itself through `1ab3b894`): `f927cb38`..`8fc1a004` the entrance's camera and effects (an earlier session, which stopped on
+  a usage limit; its entry is folded in here), `c28dda72` the merge of the released travel, `a50e953d` the entrance tidy, `fc6a5c95` the
+  cuts' turn, `cd7cca9f`, `273f4582` and `43a04a7a` the softer smoke, `dae8bb59` shared's receipt, then the docs. Pushed, **not merged,
+  not released**.
+- **The owner:** "Fangs we also need more camera work and the effects still need improvement", then "I mean for there intros"; and on the
+  travel, the coordinator's follow-up from its DEV_LOG entry: the drawn feet slide through the travelling cuts.
+- **The entrance's camera and effects** (the earlier session, Core `NativeFangsIntro`, Tests `FangsIntroChecks` `--fangs-intro`): a
+  shot to each beat (low toward the slit eyes with the frame tilted; climbing round the body as it forms; behind its shoulder for the
+  step; whipped to its front as it lands; the leap held in one still wide frame; in profile for the lunge; straight down on the strike,
+  lifting over the bloom; one move down to the hero before the name); jolts on the strike, the arrival and each cut, none with the
+  **Camera shake** setting off. Effects: blinking slit eyes at the crouch's visor, smoke winding in as two coils and the body dithered in,
+  a wake and the light drawn in on the step, glints up the fangs, flung venom as teardrops (new optional sink `INativeEntranceVenom`),
+  the strike's bloom (veins of venom light over the floor, a thin wave, drops, seven petals of fumes as light, gone by the name), fumes
+  off the fangs at the hero, a rim light flaring on the step and the cuts. Its Editor captures took out the step's afterimages and the
+  fumes as smoke (hard green lobes); about 420 particles a frame at most (budget 600).
+- **The entrance, reconciled** (Core `NativeFangsIntro`): the travel's code was already on this branch (merged at `c341a764` from its
+  `5aad24fb`; its later commits were docs), so the final travel brought only docs and Astra's hand-off (one `Tests/Program.cs` conflict:
+  both switches kept). Kept from the travel: the flurry's leap (`FlurryLift`, 1.78 m), the start offset (the step comes out `Travel`
+  0.62 m short at `Arrive`), the strike's spot (`StrikeSpot`) and the hero's (`After`), the rig root on `RootPath`. Kept from the
+  entrance work, at those spots: its nine shots (the step's look onto `Arrive`, the whip onto `Arrive`, the leap held in one still wide
+  frame looking at `Arrive` 1.6 m up, the profile across the lunge, the top shot on `StrikeSpot`), the burst and the light drawn in at
+  `Arrive`, the bloom, veins, wave, drops and fumes on `StrikeSpot`, the hero's smoke and fumes on `Feet`, the rim light on `Before`/`Feet`.
+  Where both moved the flurry's camera, the entrance work's still leap frame replaces the travel's chest-following shot (the travel's
+  check that the chest stays in frame passes on it). Removed: the now unused `Following` helper; a doubled doc comment.
+- **Softer smoke** (the coordinator's review of the last capture: "the smoke clouds look a little lumpy"): the low mist is a blended haze
+  hugging the floor (soft glows at 0.16 coverage) instead of toon puffs, whose lobes stood on the floor as lumps of cloud; the step's
+  bursts one soft cloud (8 close puffs at 0.34, were 16 spread at 0.7, round a denser soft core); the forming coils and the hero's wisps
+  thinner. Three rounds in the Editor: 0.28 coverage washed the lower frame grey (`cd7cca9f`), `273f4582` thinned and darkened the haze
+  but the bursts still stood as rings of puffs, `43a04a7a` merged them into one cloud.
+- **The feet** (Core `NativeBladeMotion.Turns`, Runtime `VisualMotionTurn`): the bake keeps the Dual clips' body facing the rig's forward
+  (their turn went to the root motion it drops), so the legs pivoted round a body that did not turn while the clips spin it up to 200
+  degrees a cut. Each cut's turn (30 a second, from a flat fit of the bake body's drawn joints, the Editor's clipframes, onto the
+  root-motion take's; fit error under 6 cm) goes back on the drawn body about its hips by the mix's share of it, with root forward on the
+  pilot's facing, so each cut spins as authored and strikes along the facing; a turning cut keeps the foot lock while the rules carry
+  it. A clip coming in takes the whole turns nearest the body's, a jump in a showing clip's time is carried off over 0.08 s. No re-bake.
+  Only the five Fangs cuts turn (checked against every clip of every set); the Katana and every other class are untouched.
+- **Animation impact:** presentation only. Hit timing, hitboxes, reach, damage, cooldowns, the rules' facing and travel, and networking
+  unchanged (guests draw the same from the snapshot's clip times). The drawn body now faces where its clip faces through each cut (its
+  back turned in the spins), so the trails and blood that follow the model's blades sweep as authored.
+- **Filmed** in the Editor (three holds; the checkout back on `9319026b` each time with its local manifest and Player Settings byte for
+  byte, compiled, the 15 banks as released). Before on shared `1ab3b894`, after on `cd7cca9f` (feet) and `273f4582`/`43a04a7a` (entrance):
+  - **Feet**, Cybercity on the capture tool's 1 m checked floor, side view, the game stepped at 60 a second, shots 30 a second, motion
+    logged; measured as the travel agent did (scratch `ftravel/slidemetric.py`; `ffeet/measure.py` adds the support foot), over the
+    window both takes cover (4.90-6.93 s, presses 5.0, 5.4, 5.78, 6.23, 6.68):
+
+    | Take | Pilot's travel | Low feet's travel (the travel agent's slide) | Support foot's travel | Low feet under 3 m/s |
+    | --- | --- | --- | --- | --- |
+    | Standing flurry, before / after | 3.35 / 3.35 m | 13.6 / 3.1 m | 5.33 / 0.56 m | 1.34 / 0.84 m |
+    | From a walk, before / after | 5.08 / 5.06 m | 11.2 / 3.9 m | 5.33 / 0.75 m | 1.27 / 0.75 m |
+
+    Every strike shows the same clip at the same time on its rules hit before and after (e.g. the first cut's `Combo01_1` at 0.398 s).
+    The fastest drawn turns are inside the clips at full weight (the sixth combo's spin and the double's, up to 3,800 degrees a second
+    at the cuts' pace, as authored); crossfades turn no faster than the clips (at most about 3,000). No frame pops in the sheets.
+  - **Entrance**, Cybercity, `introsteady=1`, 30 a second on the arena clock, 0.3-8.3 s (the before joined from two takes at 3.0 s; the
+    after's opening to 2.6 s on `43a04a7a`, the rest on `273f4582`, whose code is the same from there): the travel's step out 0.62 m
+    short, the leap (the body's lowest point up to 1.78 m) and the lunge onto the hero's spot play as on shared; the entrance work's
+    shots and effects sit on them (the step's shot and the whip onto the arrival, the leap whole in one still wide frame, the profile
+    across the lunge, the bloom, veins and fumes on the strike's spot, the hero's fumes at its feet, the name card clear); where shared
+    showed grey lumps of cloud (the low mist, the step's bursts, dark billows behind the hero) the after shows a dark haze over the floor,
+    one soft cloud at each burst and green fumes as light. The forming coils still show the toon puff's lobes faintly.
+- **Sheets** (Claude's scratchpad `ffeet/sheets/`, not committed): `entrance-30fps_00..06.png` (before and after rows, every frame),
+  `feet-standing-cut12.png`, `feet-standing-cut345.png`, `feet-moving.png` (side views on the checks); captures in `ffeet/cap/`.
+- **Checks:** CoreTests, the full suite (the Windows path patch applied in the worktree and reverted, not committed) on `cd7cca9f` and
+  again on `43a04a7a`: exit 0, 1,025 PASS lines each; `--blades` 420 checks (17 new: each cut turns, its table smooth and back at the
+  Dual stance by its end, turned under 35 degrees at its strike; no other clip of any set turns; the runtime's order and the kept foot
+  lock); `--fangs-intro` 88,616 checks on `43a04a7a`. The Unity compile (four assemblies) on `fc6a5c95`, `cd7cca9f`, `273f4582` and
+  `43a04a7a`. The Editor build gate (`PrototypeBuild.Validate`) on `cd7cca9f`: ok, 397 PASS lines, "Native blades: 77 checks"
+  (`273f4582` and `43a04a7a` change only the entrance's smoke constants; not gated again). `git diff --check` against shared: clean.
+- **Not seen / not done:** played by a person; a guest over the network; a Windows build; the veil's and the bloom's legs (in-place
+  takes that keep their turn but not the stance's 66 degrees against their root: their travel is still along the facing; not measured
+  here); the paired moves. The before entrance was filmed in two parts (the first hold's takes stopped at 3.0 s: the tool's `at=` is
+  real seconds and a frame costs about 1.2 s), joined on the arena clock.
+- **Next:** the owner looks at the entrance and plays the flurry; merge and release.
+
 ## 2026-11-13 — Claude: the Fangs' moves carry the pilot as their clips do, and Silent Kill's flurry leaps (owner request; a rules change at the owner's word, for Astra)
 
 - Branch `claude/fangs-travel` (from shared `41bfb1d7`; shared `af539862`, `8c7d8853`, `9d1e3c3a` and `28359653` merged in): `72b409ae` the travel and the
