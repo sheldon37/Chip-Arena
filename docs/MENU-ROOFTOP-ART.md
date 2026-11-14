@@ -115,6 +115,37 @@ faces start at those distances: `Ctx.o`). Measured after settling, the walls cou
 0 m2, city far 11.4 m2 at High (14 pairs, all of them a neon tube's own faces lying on their neighbours of the same finish);
 Low: 0 / 0.8 / 52 m2, the same tubes.
 
+**Against what Core draws over the art (2026-11-13).** Owner: "Small amount of Z-Fighting on the menu behind the player". The
+measure above settles the art among itself. Core's seven puddles (the Far part: they draw over the modelled roof, 12 mm over
+the sheet) were not in it, and the membrane's laps (14 cm strips across the roof every 1.9 m) stood exactly 12 mm proud: at each
+of seven crossings a lap lay in a puddle's plane, on the roof behind the seated pilot, and the two traded pixels as the camera
+drifted (a dark dash inside the puddle that crawled). The laps now stand 6 mm proud, under the water (`rooftop_perch.py`:
+`PUDDLE, LAP`; RooftopChecks holds the script to Core's height). Low never had laps.
+
+How it was found, for the next time: (1) a software scan of the menu's own view (each pixel's two nearest front faces among
+the bank's scenery and walls, Core's kept quads and the screens: where both face the same way and lie in one plane, they
+fight) named the pair, 3,100 to 3,800 px of a 1470 x 719 view round the loop, and nothing else in one plane that shows (a few
+roof caps of one finish and colour overlap themselves; two puddles' quads overlap where both are cut away); (2) in the Editor
+the scene's clock is held and only the eye steps along its loop (`NativeRooftopScene.CaptureEyeTime`, a DEV capture hook like
+`CaptureTime`): with nothing animated, two frames of the same eye are identical to the pixel, so what changes between steps
+is depth fighting or a thin line's aliasing.
+
+- **Seen in the Editor** (shared Editor, High, 1470 x 719, no menu, the scene held at 30 s, the eye stepped .2 s at a time through ten
+  steps at four places on its loop; released bank on `60bce18c`, rebuilt bank on `9c2c1245`; a control pair of the same eye differs
+  in 0 px): before, each lap shows as a dark dash inside its puddle and as a strip that changes at every step; after, the puddles lie
+  whole. Pixels of the roof's part of the view (735 x 299) that changed in three steps or more, at a 5 x 5 tolerance: 911 / 1,393 /
+  887 / 488 before, 9 / 13 / 10 / 18 after; the whole view: 1,098 / 1,567 / 1,054 / 657 before, 196 / 188 / 178 / 187 after.
+- **What is left** (not depth fighting): the far towers' neon tubes and the mast's lattice, a pixel wide or less, step along their
+  length as the eye moves (aliasing of thin bright lines); near rain streaks slide (parallax); the
+  dish's sky mirror moves with the eye; the pilot's own body changes (not isolated: probably its cloth, which runs on the real clock). The brand screen, 57 mm off
+  its modelled backing 450 m away (2.4 steps of a 24-bit buffer), does not flicker.
+
+**The rooftop bank's layers.** The bank writer records stacked faces as layers for `ChipArena/StageLit`
+(docs/arenas/STAGE-ART.md section 14). `NativeRooftopModel` reads none, and the rooftop's chunks are named (`perch`,
+`city-0`, `city-1`), which the writer has since taken for far scenery (`FAR_REACH`): a rebuild split 24,305 triangles more
+(19,940,068 bytes). `StageBank.far_layers` (off for the rooftop) keeps a rebuild byte-identical to the released bank
+(a0e5f332...) but for the change made: checked before the laps were touched.
+
 ### Sight lines
 
 `--check` casts the camera's rays at 24 places round its loop to the 71 composition targets Core itself keeps clear (the

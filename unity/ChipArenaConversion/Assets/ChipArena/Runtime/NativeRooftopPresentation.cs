@@ -37,8 +37,10 @@ namespace ChipArena.UnityConversion
     {
         public const int DynamicCapacity=1024;
         /// <summary>DEV capture hooks, set by the local capture tool through reflection and never by the game: the scene's clock held at
-        /// this time (NaN: the game's own), the home screen's menu left off, and a line about what drew (the bank, the meshes).</summary>
-        public static float CaptureTime=float.NaN;public static bool CaptureBare;public static string CaptureInfo;
+        /// this time (NaN: the game's own), the home screen's menu left off, and a line about what drew (the bank, the meshes).
+        /// CaptureEyeTime places the camera on its loop at another time than the scene's (NaN: the scene's), so a capture can
+        /// move the eye alone over a held scene: what then changes between two frames is depth fighting, not animation.</summary>
+        public static float CaptureTime=float.NaN;public static bool CaptureBare;public static string CaptureInfo;public static float CaptureEyeTime=float.NaN;
         public readonly float Quality;public readonly NativeRooftopCity.World World;
         private readonly Material worldMaterial,skyMaterial,screenMaterial,towerMaterial,propMaterial;private readonly Material[] layers=new Material[6];
         // The modelled art (NativeRooftopModels; null without its bank: every quad draws) in place of the parts it covers.
@@ -202,7 +204,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public void Draw(Camera camera,float time,bool reduced)
         {
-            NativeRooftopCity.Camera(time,out var eye,out var forward,reduced?.5f:1);
+            NativeRooftopCity.Camera(float.IsNaN(CaptureEyeTime)?time:CaptureEyeTime,out var eye,out var forward,reduced?.5f:1);
             camera.transform.SetPositionAndRotation(U(eye),Quaternion.LookRotation(U(forward),Vector3.up));camera.fieldOfView=NativeRooftopCity.FovDegrees;camera.nearClipPlane=.5f;
             NativeLighting.Rooftop(camera,skyMaterial);
             Shader.SetGlobalFloat(TimeId,time);Shader.SetGlobalVector(RoofToonFogId,roofToonFog);var sign=U(World.SignLight);var cyan=U(World.CyanLight);Shader.SetGlobalVector(SignPosId,new Vector4(sign.x,sign.y,sign.z,1));Shader.SetGlobalVector(SignColorId,new Vector4(2.4f,.25f,1.9f,1));Shader.SetGlobalVector(CyanPosId,new Vector4(cyan.x,cyan.y,cyan.z,1));

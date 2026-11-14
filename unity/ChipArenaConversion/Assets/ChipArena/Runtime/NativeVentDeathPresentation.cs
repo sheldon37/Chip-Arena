@@ -84,19 +84,25 @@ namespace ChipArena.UnityConversion
             if(v.Weapon!=null)sourceModels.Queue(v.Weapon,root,v.WeaponBone,v.WeaponShown);
             if(v.Band>=0&&StatusReady())for(int k=0;k<bandLocal.Length;k++)teamBands[v.Band].Add(v.At(NativeStatusVisuals.BandBones[k])*bandLocal[k]);
             if(!v.Splat||!extras||!v.Landed)return;
+            VentSplatExtras(v.Dust,death,v.Since);
+        }
+        /// <summary>The splat's dust and voxel puff, then its SPLAT! pop, <paramref name="since"/> seconds after it landed: the
+        /// scripted victim's, and the model's ragdoll's (NativeVentFallPresentation.cs VentSplatFx).</summary>
+        private void VentSplatExtras(NativeVentDeath.Dust[] puff,NativeDeath death,float since)
+        {
             // Dust and voxel puff along the floor: translucent Lambert cubes, every fifth in the player's colour.
-            float floor=death.position.y-NativeVentDeath.FloorOffset,opacity=NativeVentDeath.DustOpacity(v.Since);
+            float floor=death.position.y-NativeVentDeath.FloorOffset,opacity=NativeVentDeath.DustOpacity(since);
             NativeKillEffectRules.Linear(NativeVentDeath.DustColor,out double dr,out double dg,out double db);NativeKillEffectRules.Linear(NativeKillEffectRules.ParseHex(death.actor?.AccentColor,0x70e1d0),out double cr,out double cg,out double cb);
             Color dust=new Color((float)dr,(float)dg,(float)db,1),chip=new Color((float)cr,(float)cg,(float)cb,1);
-            for(int i=0;i<v.Dust.Length;i++)
+            for(int i=0;i<puff.Length;i++)
             {
-                if(!NativeVentDeath.DustPose(v.Dust[i],v.Since,out float along,out float height,out float rx,out float ry,out float scale))continue;var d=v.Dust[i];
+                if(!NativeVentDeath.DustPose(puff[i],since,out float along,out float height,out float rx,out float ry,out float scale))continue;var d=puff[i];
                 var at=new Vector3(death.position.x-d.X*along,floor+height,death.position.z+d.Z*along);
                 sourceModels.KillDust(Matrix4x4.TRS(at,CapturedAnimation.Quat(CapturedRig.Mirror(MeleeMath.Euler(rx,ry,0))),Vector3.one*scale),i%5==0?chip:dust,opacity);
             }
             // SPLAT! pops over the body: a camera-facing sprite, drawn over everything (depthTest false, renderOrder 6).
             var fx=DeathFx();var eye=WorldEye;
-            if(fx!=null&&eye!=null&&NativeVentDeath.Pop(v.Since,out float width,out float rise,out float alpha))
+            if(fx!=null&&eye!=null&&NativeVentDeath.Pop(since,out float width,out float rise,out float alpha))
             {
                 var centre=new Vector3(death.position.x,floor+rise,death.position.z);float px=width/NativeVentDeath.PopWidth;
                 Vector3 right=eye.transform.right*px,down=-eye.transform.up*px,origin=centre-right*(NativeVentDeath.PopWidth*.5f)-down*(NativeVentDeath.PopHeightPx*.5f);

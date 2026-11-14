@@ -26,6 +26,8 @@ namespace ChipArena.UnityConversion
             // A bisected body's second half lives in its first half's scene, whose copies serve both.
             if(Host!=null)return false;
             if(age<worldAt+NativeCorpseRules.WorldRefreshSeconds)return false;worldAt=age;
+            // A body that fell into an open vent has the vent's shaft (NativeVentFallPresentation.cs).
+            VentShaftOnce();
             bool changed=false;seenObstacles.Clear();float radius2=NativeCorpseRules.WorldRadius*NativeCorpseRules.WorldRadius;
             foreach(var prop in arena.AllBlocks)
             {
@@ -39,7 +41,7 @@ namespace ChipArena.UnityConversion
                 // A split body's other half (a head or limb thrown clear) needs its floor too.
                 if(!near&&Twin!=null)foreach(var pair in Twin.Parts)if(!Twin.Still(pair.Key)&&bounds.SqrDistance(pair.Value.position)<=radius2){near=true;break;}
                 if(!near&&weapon!=null)near=bounds.SqrDistance(weapon.position)<=radius2;
-                if(!near)continue;seenObstacles.Add(prop);
+                if(!near||VentFloor(prop,original,bounds))continue;seenObstacles.Add(prop);
                 bool added=!obstacles.TryGetValue(prop,out var copy);
                 if(added){var go=new GameObject("Body obstacle "+prop.name);go.transform.SetParent(root.transform);copy=go.AddComponent<BoxCollider>();copy.sharedMaterial=surface;obstacles.Add(prop,copy);}
                 var source=original.transform;var target=copy.transform;

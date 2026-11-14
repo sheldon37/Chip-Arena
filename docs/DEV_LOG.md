@@ -1,3 +1,248 @@
+## 2026-11-13 — Claude: gore flesh: the cut faces, wounds, lumps and bone drawn as flesh in the blood's light (owner request; presentation only)
+
+- Branch `claude/gore-flesh` (from shared `41bfb1d7`): `bd1b6a77` the flesh, `98ff362b` its checks, `1056c5ef` a comment, then the docs. Pushed, **not merged, not released**. Details: `docs/GORE-FLESH.md`.
+- **The owner:** "Also gibbing- we do use new blood, but the gibbing seems to still use voxel flesh and wounds? Can we essentially match
+  the quality with our blood? Using higher quality bone structure and flesh."
+- **What was voxel:** the model's cut face was 1.2 cm cells of flat colour (Core `NativeBisect.CapOf`), a bone's face 1.2 mm cells, a
+  severed joint's opening a three-colour fan, a wound's pit a three-colour tube, a gib's fragments three noisy spheres in one flat
+  colour. The model already had its skeleton inside (2026-10-28), so the bones at a cut were shaped; their faces were not.
+- **The change:**
+  - `Resources/NativeFlesh.shader`: one shader, lit as the blood pack is (`NativeBloodLight.cginc`), wet, untextured (noise in the
+    body's own space). A cross-section is the skin's or sleeve's own colour at the edge, a band of fat, then a few large muscles in fine
+    bundles with pale sheaths, blood lying in it; a bone's face is cortex, spongy bone and marrow (or the skull round the brain).
+  - Core `NativeBisect`: a cap whose look names a kind (`BisectLook.Flesh`) keeps every cell its own piece and gives each vertex its exact
+    distance in from the section's edge and the nearest outline's paint. The region filled is the same, so the caps stay sealed.
+  - Runtime: the caps, sever openings and wound pits draw on it; a gib's fragments are five torn lumps and three bone shards, made once
+    and drawn through the source-model batches; the skin about an open wound is soaked in the blood's red (`WoundSoak` in the body's toon).
+  - **Tiers:** the Low tier (and a build without the shader) keeps the coloured cells and plain lumps. Nothing is allocated per frame.
+  - **Skins:** the Hot Dog's cut is a sausage's (casing, then meat) and it no longer gets bone stubs (it is sausage through). Classic
+    (voxel) bodies keep their voxel caps and wounds. The horde's gore is not touched.
+  - No pack asset is used; the Drive zip is unchanged.
+- **Not changed:** which kills cut, the planes, the pieces, timing, damage, hit volumes, networking (nothing for Astra to review).
+- **Animation impact:** none.
+- **Local tool:** the capture tool gained the play option `cuts=dist[,most]` (a shot square on to each of the largest cut faces).
+- **Checks:**
+  - Full CoreTests on the code as pushed (`1056c5ef`): 1,021 groups, exit 0 (the Windows path patch applied in a throwaway
+    worktree, not committed). `--melee-bisect` 37,041 checks; `--visual-rig` with the new flesh checks; `--blood-pack`.
+  - The Unity compile (`tools/check_unity_compile.py`): all four assemblies pass. The shader also compiles under the Windows SDK's fxc
+    in its plain, instanced, shadowed and gamma variants, and the Editor imported it with no shader error.
+  - `git diff --check` against shared: clean.
+  - **Filmed in the Editor** (Cyber City, close shots square on to each cut face): a Katana through-cut, a greatsword's neck cut, a
+    sword's forearm cut and a kill on the Hot Dog, on the first version of the shader. Judged: the faces read as cross-sections
+    (skin, fat, muscle, the forearm's two bones, the neck's vertebra), smooth, in the model's style; a face turned from the light was
+    dark, so its own light share went up (0.14 to 0.2), some sheaths were made faint and a glint from overhead was added afterwards.
+  - **Not yet done** (the Editor was reserved for other work by the owner's "Nearly-done first"): the same close shots on the shared
+    head ("before"), the tuned shader's shots, the lumps and shards, the wound's pit and soak on a living pilot, the saw preview, and
+    the Editor build gate (`PrototypeBuild.Validate`). The lumps' and shards' shapes and the tissue's look were checked in offline
+    ports of their code only. Not played by a person; the Low tier and gore off not seen on screen.
+- **Next:** the remaining captures and the build gate when the Editor is free; then the owner looks.
+- **Released:** shared `7a20b3c0` (the builder at `7a20b3c0`), test channel revision `639302090409307676` (build `3025f858`); the suite at `dfbd9f0b` (1,023 groups, exit 0), the Unity compile, and the builder's own Unity build and checks. The agent stopped on the Fable usage limit before its build gate and last close shots; the integrator released it from its pushed branch after viewing its before/after close shots of a Katana cut (voxel cells before, a smooth cross-section after). The Hot Dog's cut was not caught square on. No bank or Drive zip change.
+
+## 2026-11-13 — Claude: a fall into a Ward Zero vent ragdolls the model down the shaft, never the voxel body (owner report; presentation only)
+
+- Owner (2026-11-13): "Falling through vent still reverts back to voxel model, but when falling down the player should ragdoll (If they
+  are far enough in vent)". Branch `claude/vent-fall-ragdoll` from shared `41bfb1d7`: `771734f4` the change, shared merged in three
+  times (`167a479f`, `66fc356f`, `a861bafb`), then this entry. Pushed, **not merged, not released**.
+- **The vents:** only Ward Zero has vents a pilot falls into: its eight song vents (PvP `siren` on `NativeVentRules.Ward`'s schedule, PvE
+  `expedition-ward-zero` on the horde's dives; positions from `PveContent.json` `song` entries). Every other map's `vent` is a steam,
+  wind, shove or geyser column on a solid floor.
+- **The cause:** a fall is the rules' kill at the lip (`StepVents`: the centre within .78 m of the vent's on both axes, the vent at
+  least half open; style `vent-fall`, then PvE's kept body turns `vent-splat` 0.6 s before it lands on the hall's centre). The
+  presentation sent both styles past the corpse to vent-fall.ts's scripted victim (`NativeVentDeathPresentation.cs`), which is drawn
+  with `sourceModels.Queue` on the voxel body: the only death path that never got the model (every other corpse wears it through
+  `VisualCorpseMake`, every death scene through `VisualSceneShown`). Off-edge falls (killY) already ragdoll the model: filmed before
+  and after on Starfall Causeway, unchanged.
+- **Now** (`Core/NativeVentFall.cs`, `Runtime/NativeVentFallPresentation.cs`, hooks in `NativeDeathPresentation.PresentDeath` and
+  `NativeCorpseWorld.RefreshWorld`): a pilot on the model takes the corpse every other death takes (its model, skin and hat; the Hot
+  Dog's included), from the pose it had at the kill, launched straight down at 1.5 m/s, arms thrown up, tipping forward. Its own
+  physics world has the shaft the stage draws (`NativeWardPit`): the slab laid round the 2.1 m opening in four pieces, four walls and a
+  bottom 7 m down. It hides once its pelvis is 2.4 m under the lip (the open pit's quad already covers what is under the lip; the hide
+  keeps it out of sight once the grate closes; reached in about .44 s, inside the drawn pit's .7 s close margin). PvE's splat lands as
+  the model's ragdoll: from 10 m over its spot at 11.3 m/s, tipping, at VENT_PIT.drop, with the scripted splat's dust and SPLAT! pop.
+  A kept fall's body knows it is stale when its record turns into the splat in place (its seed and style kept at birth).
+- **"Far enough"** is the rules' own kill: until the pilot's centre is .78 m inside a half-open vent the authority's floor holds it up
+  and it keeps control and its pose (the vents are not holes in the authority, so nothing slips at the rim); from that tick the model
+  ragdolls. Filmed: the pilot stands at the open vent's edge, 0.95 m from its centre, alive, then walks in.
+- **Voxels kept on purpose:** `NativeVentDeath` and the scripted victim are untouched and still drawn for the voxel bodies
+  (`ArenaPresentation.VentModel`: Settings - Player model Classic `ClassicBodies`, the `--ca-voxel-bodies` launch, a client without the
+  bake). A voxel map could choose them the same way (set `ClassicBodies` for that map); not wired.
+- **Seen in the Editor** (shared Editor, 1470 x 719, 30 fps fixed steps, shared `5fa2343e` before, `66fc356f` after; sheets and zooms in
+  the session scratchpad `ventfall/cap`): before, the default pilot and the Hot Dog turn into the white voxel robot, arms up, and sink
+  into the pit (live and in the kill cam); after, the same pilot and the Hot Dog ragdoll in, tumbling over the rim, and the kill cam
+  replays the model. Off the Causeway's Breach the body falls on as the model's ragdoll before and after. The sandbox splat lands as the
+  model with the dust and pop. Caveats: a dead local pilot's camera spectates at once and its kill cam starts within two capture frames,
+  so the fixed views see other players' view of the fall; the splat drops rather than landing cleanly face down.
+- **Checks:** full CoreTests on `771734f4`, `167a479f`, `66fc356f` and `a861bafb` with the Windows path patch applied and reverted:
+  1,022 / 1,022 / 1,023 / 1,023 PASS lines, exit 0 (the new `VentFallChecks`: 1,358 checks; the `DeathFxChecks` route pin updated); `check_unity_compile.py`
+  pass; the Editor build gate (`PrototypeBuild.Validate` on `66fc356f`): ok (its two edit-mode `Destroy` errors are in earlier gates
+  too); `git diff --check` against shared clean. The Editor checkout went back to `9319026b` with its local files, the banks as released.
+- **Not run:** a Windows build, online play (a guest's and the killcam's corpse come from the same code, filmed only offline), the Low
+  tier, a PvE Ward Zero run (the kept fall and splat were filmed in the PvP sandbox, where the same rules make them).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; the kill, its credit and the splat's
+  spot and time are the rules'.
+- **Next:** the owner plays a Ward Zero vent fall; merge and release.
+- **Released:** shared `897e0d0d` (the builder at `897e0d0d`), test channel revision `639302070018175420` (build `943f34a3`); the suite at `c82c1d09` (1,023 groups, exit 0), the Unity compile. No bank or Drive zip change.
+
+## 2026-11-13 — Claude: hand-off to Astra (owner: "To save on usage, please hand me any things your able to for astra")
+
+Base: shared `claude/sleepy-ritchie-g8ruhv`. Each item is yours to pick up; Claude is not working on any of them.
+
+1. **Private add-on route for licensed pack code** (owner: "Yes I am good with doing a private add-on"; the repo stays public).
+   - Goal: packs that need their own scripts and shaders (Volumetric Light Beam, UniStorm or Weather Maker, Bakery) ship only in the private Drive zip's LocalAssets, never in git.
+   - Public code: small generic hooks an add-on registers into at start (`[RuntimeInitializeOnLoadMethod]`), for example an optional lighting, sky or weather provider, and map built or torn down events carrying the map id, its look and the built roots. With no add-on present, everything behaves as today; CoreTests and the public build stay green.
+   - Tooling: `tools/pack_visual_body.py` and `tools/install_local_assets.py` carry an add-on's `.cs`, `.asmdef`, `.shader`, `.cginc`, `.hlsl`, `.compute` and `.meta` files, by an explicit allow-list (no pack demo scripts), with size and meta checks.
+   - Prove it end to end with a stand-in add-on in a test zip before the real Drive zip. Document it in `docs/PRIVATE-ADDONS.md`.
+   - Per pack, given maps built at run time from JSON:
+     - VLB and the weather packs run live.
+     - Bakery needs an Editor bake per map into a per-map light bank, plus lightmap sampling in our world shaders.
+   - Background: `docs/LIGHTING-ADVANCED.md`. Ownership of the four packs is unconfirmed; ask the owner before any download.
+2. **Site grant keys and icons for the DEV classes** `dev-greatsword`, `dev-katana` and `fangs` (still open from 2026-11-12; Claude cannot publish the Site).
+3. **Rules review of changes made at the owner's word:**
+   - The Katana's and DEV Katana's timed parry now gives the long riposte stun (`e0317fba`, DEV_LOG 2026-11-12).
+   - `claude/fangs-travel` (in progress) will make the Fangs' cuts travel with their clips and change their lunge numbers; it will log before and after values.
+   - Optional, owner's call: the frontal critical has no push-back. Its victim clip's backward drift is now stripped, so a push-back would need a rules throw like the counter's.
+4. **Melee bisect sealing hole:** on a DEV Katana diagonal plane at 52 degrees, `--melee-bisect` left a 13-ray gap in the Standard body's cap ("half 0 is sealed" failed). 50 degrees seals. Core `NativeMeleeBisect` likely has a robustness gap at some plane angles; sweep the planes.
+5. **Network checks (host plus guest) of today's releases.** None of these has been tested over the network:
+   - every class playing the paired victim clips (`af539862`);
+   - the parry daze;
+   - the DEV Katana hit 4's blends and trail (`5d84ea13`);
+   - the DEV Katana kick as a blunt hit (`089bff85`);
+   - the Fangs' Behind_01 takedown pair (`d15fdfb1`).
+6. **Editor lock tooling.** Agents share one Editor through `F:/Chip Arena Development/.editor-lock` (an `mkdir` lock). They waited hours, and stopped agents left orphaned waiter scripts polling it. A small local tool would help: a holder file inside the lock (who, which task, since when), a first-in-first-out queue, a priority file, stale-lock detection, and waiters that exit when their parent stops.
+7. **Stage bank rebuilds:** a plain rebuild of the Rooftop bank with today's stage kit no longer matched the released one (named chunks were treated as far scenery). `claude/menu-zfight` added `StageBank.far_layers` (off for the rooftop). Check that the other stages' banks still rebuild byte for byte.
+
+## 2026-11-13 — Claude: the DEV Katana's and DEV Greatsword's entrances as cinematics (presentation only)
+
+- Owner, 2026-11-13: "Lets also add more camera work and effects to DEV Katana and DEV Greatsword", then "For previous mention, I mean
+  for there intros": the two entrances only. No in-match move, camera or effect is touched. Branch `claude/dev-blade-fx` (from shared
+  `41bfb1d7`). Pushed, **not merged, not released**.
+- **What the match sees is what it saw:** each entrance's length (Heavy Turn 4.8 s, Edge Flourish 5.3 s), its name card (3.2 s, 3.7 s)
+  and the pack's `Intro` clip from the same start at its own pace. Nothing on a seat, an actor or the wire. No rule, timing, hitbox,
+  damage, cooldown or networking change; no clip, bank or pack asset added (the Drive zip is as it was).
+- **DEV Greatsword, Heavy Turn** (Core `NativeDevGreatswordIntro`): dark, an ember light from above on its turned back, embers rising.
+  - Camera (six shots, were five): low in front looking up its back as the great sword is heaved overhead; on the floor at its right
+    as it comes round and the blade bites the floor a stride from the lens; whipped round low and close for the wind-up; the second
+    swing (the beat, 1.67 s) slowed, the same eye thrown back and wide by it; rising round to the front as the blade comes to rest,
+    carried without a cut into the name card's frame.
+  - Effects on the beats: a star on the tip at the top of the heave (0.6 s); the blade's sweep as a gold-white edge over one broad
+    ember ribbon, embers shed off it at speed; at the bite (1.1 s) sparks along the blade's way, a score left hot in the floor and
+    cooling to an ember line for three seconds, grit thrown (lit chips, one bounce) and dust off it; embers drawn in to the blade
+    through the wind-up; on the beat a flash on the blade, a wave of light streaks over the floor, sparks thrown wide, a little low
+    dust, the stage's lights and pylons waking; a low puff and the light running up the edge as the blade comes to rest.
+- **DEV Katana, Edge Flourish** (Core `NativeDevKatanaIntro`): cold and clean, a steel-blue light from behind, no smoke.
+  - Camera (six shots, were six): low in front as the hand goes over the shoulder for the hilt; close at the shoulder as the blade is
+    drawn up and out and turned in the light; high over its right shoulder for the cut down in front and the level sweep round that
+    side; whipped down in front of it for the flourish (its wheel stands in the plane that faces the lens) and pushed in on through the
+    last cut (the beat, 2.83 s), slowed, the frame canting a little; out to the hero frame, carried without a cut into the name card's.
+  - Effects on the beats: a glint on the hilt as the hand closes on it; the edge's sweep as a razor's white line in a breath of crimson,
+    steel dust off it; the light running up the raised edge and a star on its tip; a pinch of sparks and a hairline scratch where
+    the tip flicks the floor in the flourish; on the last cut a hairline of light carried on across the stage along the cut's own
+    stroke, held a moment and gone; a last star on the tip in the stance.
+- **How the effects find the blade:** the runtime hands each entrance its blade where the model holds it every frame (as it does the
+  Katana's and Fangs' entrances); the DEV classes' edge is their base class's (`NativeDevPackIntro.Line`; `BladeLine` in Runtime
+  `BladeIntroHeld`, one call). The sweep is drawn on a curve through those frames, over a set length behind the tip and only at
+  speed, so a blade at rest carries nothing; the marks on the floor are where the tip really met it. The camera's shots stand on the
+  stage's own axes (the keyed stance under the clip is not where the model is), placed from the blades' paths as the model swings them
+  (logged in the Editor). A checker that hands no blade in sees the entrances without the sweep, the marks and the last cut's line.
+- **Camera shake:** the entrances' camera shakes (the bite, the beat, the blade coming to rest; the katana's last cut) are small
+  (0.035 m at most; the old single shake reached 0.043 m), short, wholly still by the name card, and **off with the player's Camera shake setting**
+  (Settings, Effects): `NativeDevPackIntro.Shake`, set from `prefs.cameraShake` on every entrance frame (a match's entrance and the
+  Locker's preview). A camera offset on this client only; with it off the clock, the pose and every effect are the same. Reduced
+  effects thins the effects as it does every entrance's.
+- **Affected systems:** Core `NativeDevIntros.cs`; Runtime `NativeBladePresentation.cs` (the blade line, one call), `NativeIntros.cs`
+  (the shake setting, one line), `ConversionGame.cs` and `NativePreview.cs` (the setting passed on an entrance frame); Tests
+  `VisualRigChecks.cs`; docs BOZO-INTEGRATION. Animation impact on hit timing, hitboxes, damage, cooldowns, movement, networking: none.
+- **Checks:** full CoreTests green on the code as pushed (1,021 groups, exit 0; LF worktree, the Windows path patch applied for the
+  run and reverted), with new checks in `--visual-rig` (130,210 checks): phase, card, clip length and beat unchanged; the clock slowed
+  only from just before the great cut and the age again by the card; six shots or more on the stage's axes; the camera off the floor,
+  the hero frame carried into the card's, still after it settles; the shakes small, over by the card, the eye alone, zero with the
+  setting off and wired from `prefs.cameraShake` before the camera is placed; the blade lines; the effects following a blade handed
+  in, at most 600 a frame, thinned by Reduced effects; a replay starting over; a broken blade refused. `pins.py`: 0 broken;
+  `git diff --check` against shared clean. In the Editor (the shared one, under the lock, checkout and banks put back as found):
+  both entrances filmed at 60 frames a second before (shared `41bfb1d7`) and after (`60aa9d9a`), on the entrance's own camera, and
+  the build gate (`PrototypeBuild.Validate`) ok on `60aa9d9a`. Not run: a built client; the Classic body; the Locker's preview.
+- **Filming an entrance:** the game draws an entrance on a clock that advances on the unscaled frame time, so a capture's stalled
+  frames made the drawn age run back and forth (trails restarted every other frame; the first "before" sheets show it). The local
+  Editor tool has a play option `introsteady=1` for it now (git-ignored, compile-checked on a copy; shared note
+  `entrance-captures-introsteady.md`). The Katana's and Fangs' entrances are filmed whole with it too.
+- **Risks / next:** seen in the Editor's captures only (60 frames a second, the entrance's own camera), not in a built client or by
+  the owner; the Classic body's keyed stance draws the same camera and effects round a different pose. **Next:** the owner looks;
+  then merge and release with the next test update.
+- **Released:** shared `8c7d8853` (the builder at `8c7d8853`), test channel revision `639302009003468048` (build `981a6560`); the suite at `5c05b0e9` (1,022 groups, exit 0), the Unity compile. No bank or Drive zip change.
+
+## 2026-11-13 — Claude: the menu's z-fighting behind the pilot: the roof's laps lay in the puddles' plane (presentation only)
+
+- Owner (2026-11-13): "Small amount of Z-Fighting on the menu behind the player". Branch `claude/menu-zfight` from shared `41bfb1d7`:
+  `60bce18c` the capture hook, `9c2c1245` the fix, then the docs. Pushed, **not merged, not released**.
+- **What fought (one spot kind, seven places):** the modelled roof's membrane laps (14 cm strips across the roof every 1.9 m,
+  `static/perch/0` in the local bank `ChipArenaStageRooftop`) stood 12 mm proud of the sheet, exactly the height of Core's seven
+  puddles (`NativeRooftopTowers`, mode Puddle, the Far part: drawn over the art through `NativeRooftop.shader`). Where a lap crossed a
+  puddle the two lay in one plane and traded pixels as the menu camera drifted: a dark dash inside each puddle on the roof behind the
+  seated pilot. Coplanar faces of two materials, not a sprite and not depth precision (8 to 18 m from the eye).
+- **Fix (at the source, the bank):** the laps stand 6 mm proud, under the water (`tools/stages/rooftop_perch.py`: `PUDDLE, LAP`). Nothing
+  else moved: compared mesh by mesh, the rebuilt bank differs from the released one only in `static/perch/0` (the laps' 140 triangles
+  6 mm lower, one drain's disc back at its own 14 mm, the baked occlusion of 328 triangles beside them); every other mesh is identical.
+  The Low tier never had laps.
+- **The bank (local, not committed):** rebuilt the way it was made (`--rooftop-layout`, Blender, `rooftop_art.py`); 19,756,456 bytes,
+  sha256 `7f875dcda61380e21f596ba4235d52d93817c640e59a3bf5c2fecf59968f259b` (released: 19,756,588 bytes, `a0e5f332...`). The Drive zip is
+  not repacked: **the fix reaches players only with the new bank in the zip.** The code on this branch is safe with either bank.
+- **Bank writer:** the rooftop's chunks are named, so `StageBank.layer` had begun to give them far layers (FAR_REACH, added after the
+  bank's release); a rebuild grew to 19,940,068 bytes with layers the menu's shader does not read. `StageBank.far_layers` (default on,
+  off in `rooftop_art.py`) keeps a rebuild byte-identical to the released bank but for the fix (checked: a0e5f332 reproduced first).
+- **Code:** Runtime `NativeRooftopScene.CaptureEyeTime` (a DEV capture hook beside `CaptureTime`: the eye on its loop at another time than
+  the held scene's; NaN in the game); `Tests/RooftopChecks` (the perch script names Core's puddle height and keeps its laps under it;
+  with a bank on the machine the art bank line tells the area in the puddles' plane: told, not failed, since the bank ships apart).
+- **How it was found:** a software scan of the menu's view (the bank, Core's kept quads and the screens; each pixel's two nearest front
+  faces) and Editor captures with the scene held and the eye stepped (docs/MENU-ROOFTOP-ART.md "No z-fighting").
+- **Seen in the Editor** (shared Editor, High, 1470 x 719, no menu, the scene held at 30 s, the eye stepped .2 s at a time through ten
+    steps at four places on its loop; released bank on `60bce18c`, rebuilt bank on `9c2c1245`; a control pair of the same eye differs
+    in 0 px): before, each lap shows as a dark dash inside its puddle and as a strip that changes at every step; after, the puddles lie
+    whole. Pixels of the roof's part of the view (735 x 299) that changed in three steps or more, at a 5 x 5 tolerance: 911 / 1,393 /
+    887 / 488 before, 9 / 13 / 10 / 18 after; the whole view: 1,098 / 1,567 / 1,054 / 657 before, 196 / 188 / 178 / 187 after.
+- **What is left** (not depth fighting): the far towers' neon tubes and the mast's lattice, a pixel wide or less, step along their
+    length as the eye moves (aliasing of thin bright lines); near rain streaks slide (parallax); the
+    dish's sky mirror moves with the eye; the pilot's own body changes (not isolated: probably its cloth, which runs on the real clock). The brand screen, 57 mm off
+    its modelled backing 450 m away (2.4 steps of a 24-bit buffer), does not flicker.
+- **Checks:** full CoreTests on `9c2c1245` with the Windows path patch applied and reverted: 1,021 PASS lines, 0 FAIL, exit 0;
+  `--rooftop` with the released and the rebuilt bank in place (1.80 m2 and 0.00 m2 in the puddles' plane); `git diff --check` against
+  shared clean; the pin scan clean (one pin kept by leaving `stagekit`'s far-chunk line as it was). The Editor build gate (`PrototypeBuild.Validate` through the shared Editor on `9c2c1245`): ok, 397 PASS lines; the checkout, its local files and every bank back as found.
+  Not run: the Python suite (no test reads the stage tools), a Windows build, the Low and reduced-effects tiers and 21:9 in the Editor.
+- **Animation impact:** none. No hit timing, hitbox, damage, cooldown, movement or networking change.
+- **Next:** the integrator swaps the rebuilt bank into the Drive zip with the merge; the owner looks at the menu.
+- **Released:** shared `5fa2343e` (the builder at `5fa2343e`), test channel revision `639301988090420547` (build `d89df137`); the suite at `9a64c3c2` (1,022 groups, exit 0), the Unity compile; the Drive zip repacked with the rebuilt Rooftop bank (19,756,456 bytes, sha256 `7f875dcd`; only it and `visual-body.json` changed), the old zip kept as `LocalAssets-2026-11-13-before-menu-zfight.zip`. The Editor checkout holds the new Rooftop bank.
+
+## 2026-11-13 — Claude: the DEV Katana's kick (its hit 3) lands as a blow, not a cut (owner request)
+
+- Branch `claude/dev-katana-kick` (from shared `41bfb1d7`): `3fcebb5f` and this entry. Relayed by the NOCTIEL session.
+- **The owner:** "3rd hit of dev katana is a kick, so its blunt damage rather than slicing". Hit 3 is Grruzam's `M_katana_Blade@Attack_5Combo_3_Inplace` (window 0 / .43 / 1.03): a rising knee with the blade swept out to the side. It played as any Katana cut: its kill was cut through the body ("Cut in two"), its hit drew the blade's slash with the blade's slice sound, its wound a cut.
+- **How the game tells blunt from blade:** a kill's cut is the slice plan's (Core `NativeMeleeSlice`, from the blow's clip and move; `NativeBladeCuts`); the killcam's cause reads that plan (`NativeKillCause`: "Blunt force" for blunt weapons and crushes); the Katana's hit spark and sound come from its kit's hit records (Core `NativeTechniqueFx` blade hits, Runtime `NativeAudio.BladeMoments`); the blood and the wound's mark from the authority's wound record (`NativeBodyDamage`: a blade's impact is a cut, a blunt weapon's a bruise).
+- **The change** (keyed on the clip, as the cut planes are: `NativeBladeCuts.Blunt`; the combo's clip from the motion set and the step, `CutClip`; a hit record by the step it carries, `BluntHit`):
+  - the kill: the shield's crush (the head from a high blow on two seeds in three, else the arm it meets), nothing bisected or sliced; the killcam reads "Blunt force";
+  - the hit: an impact burst (a white-hot core, two rings spreading out, a few chips along the blow) instead of the slash line; the fighters' kick (`dev.fist.hit`, built-in `arcade-kick`) instead of the blade's slice;
+  - the blood: the authority's wound record takes the fighters' blunt strike for the kick (`NativeBladeCuts.BlowImpact`, passed as `BladeHurt`'s impact): a bruise (chips off the body's shell, a dark dent, little blood) instead of a cut's gash and spray.
+- **Rules (for Astra): none changed.** The damage kind stays `blade-cut`: no rule reads it (no armor, resistance or chip; it feeds the hit reaction, zombie gore and the death record). In the rules the kick is the Katana's third cut: its damage, stun, reach and arc, Honed Edge's bleed (a chip: the kick still bleeds with it), the combo and the counter. The one authority line is the wound record's impact in `BladeHurt` (Runtime `NativeBladeAuthority`), presentation data no rule reads (`NativeDeaths.Wound`); the test that keeps the blade authority off `NativeBladeCuts` now allows exactly that line.
+- **Unchanged:** the plain Katana's third cut (the Frank pack's) still cuts through the body; the DEV Katana's first and second cuts, its finisher (hit 4), rush, iai, storm, counter and slam. Zombies: a kick kill crushes as a shield's (the horde's slice plan); a zombie's hit spray stays the game's melee one (the shield's too).
+- **Animation impact:** none: clips, hit timing, hitboxes, damage, cooldowns, movement and networking unchanged (the wound's kind travels in the existing record).
+- **Checks:**
+  - CoreTests `--melee-bisect` (37,171: section 1e, the kick: its clip a blow, the combo's clips by step and motion set, the hit records by step, the wound's impact a bruise, 80 kills crushing the head (55) or an arm (25) with "Blunt force", the plain Katana's third still cut in two; section 1b's 60 DEV Katana kicks crush), `--blades` (236), `--killcam`;
+  - the full suite at `3fcebb5f` (1,022 groups, exit 0) and at the release commit (relgen); the Editor build gate on `3fcebb5f` (`PrototypeBuild.Validate` ok, Native blades 72); the Unity compile.
+- **Filmed** (the Editor, a probe build: local only, only the named cut kills): `kk_b_kill` and `kk_a_kill` (a kill on hit 3, live and in the final killcam: before the body cut in two and "Katana · Cut in two"; after the body whole with an arm crushed and "Katana · Blunt force"), `kk_b_hit` and `kk_a_hit` (a real non-lethal hit 3: before the slash with a cut's blood spray; after the impact burst with the bruise's chips and no spray, the kick's cue logged), `kk_a_k3` (the plain Katana's third cut after: still "Cut in two"); the authority's wound record of the kick before cut/cut, after bruise/blunt (local, in Claude's scratchpad `dcap/`).
+- **Not seen / not done:** played by a person; the kick's sound heard (the probe logged the cue; no audio capture).
+- **Released:** shared `089bff85` (the builder at `089bff85`), test channel revision `639301965114352752` (build `1e351397`); the suite at `18fd257f` (1,022 groups, exit 0), the Unity compile, the Editor build gate on `3fcebb5f`.
+
+## 2026-11-13 — Claude: the floating blood near a DEV Katana pilot (on hold at the owner's word; nothing changed)
+
+- **The owner** (relayed by the NOCTIEL session): "noticed I think... voxel blood floating? It's anchored to me somewhere"; "Using dev katana"; "after I hit someone with dev katana"; "the floating blood- its moves with me as I walk (It looks anchored to the weapon, but its not on the weapon)". The screenshot (`owner-floating-blood.png`, the NOCTIEL session's notes): a Hot Dog pilot in a top hat with the DEV Katana, round 2, and a short glowing red capsule in the air beside the pilot, away from the blade. Then (2026-11-13): "we can put a hold temporarily for the floating blood~ I can find the cause and get back on that one."
+- **Not reproduced** (the Editor, local probe builds): a Hot Dog pilot in a top hat with the DEV Katana, the Katana, the DEV Greatsword and the Fangs (and the DEV Katana on the plain body), with kills, real non-lethal combos on a 100-hp bot and a rush, then strafing, filmed from all round the pilot. Those runs had god mode on from 4 s (`god=4`) and idle bots (`idlebots=0`), so the pilot itself was never wounded. They were in round 1 with no chips; the owner's was round 2.
+- **Ruled out in code:**
+  - the edge blood (Runtime `NativeWeaponPresentation.BladeBlood`: the sword, greatsword and daggers only; the DEV Katana is seat spec `katana`, motion `dev-katana`);
+  - the weapon's chip modules and enchant pieces (`WeaponDressing`: the Katana has no designed modules, `NativeChipModules.Family`; the blade classes return before the enchant);
+  - the blade trails, their tip glint and sparks (gone within 0.34 s); the Katana's hit effects (world space, at the victim);
+  - the blood drops and their stains (world colliders only; a stain on a moving surface fades);
+  - the saya (black lacquer and gold; its inlay is a long line in the accent colour).
+- **Lead for whoever picks it up:** the pilot's own wound. A wound on a model body, the Hot Dog's included, shows a hole and a flesh pit (Runtime `NativeVisualWoundPresentation`: for a cut a capsule-shaped tube in the cut's glowing material, riding the wound's bone). The Hot Dog's limbs are thin noodles (`NativeVisualBodyPresentation`: "its wounds' pits of flesh ... out past its noodle limbs"); a pit longer than the limb is wide would stand out beside the arm that holds the blade, and move with it. To test: a Hot Dog pilot with the DEV Katana, no god mode, bots that fire back (or `mehurt`), then walk, and watch the pits. Not tested; the owner's "after I hit someone" may point elsewhere.
+- **Status:** on hold at the owner's word; nothing changed.
+
 ## 2026-11-13 — Claude: every pilot plays the foe's side of the paired moves (owner: "Give one to everyone"; presentation only)
 
 - Branch `claude/paired-reactions-all` (from shared `41bfb1d7`): `a256b4ee` the change and its checks, `27bc7351` the first entry,
@@ -101,6 +346,8 @@
 - **Risks:** a hung long weapon (the greatsword) tips out to its hand's side and can cross a wall beside the foe; the drawn-death path
   re-poses the dead pilot's game rig (only when its last frame was a victim clip), which every corpse kind then reads (whole, sliced,
   split, smashed); the counter's foe now leaves the pack's pairing before the blow (dazed rather than standing through the wind-up).
+- **Released:** shared `af539862` (the builder at `af539862`), test channel revision `639301944433363899` (build `2a93b19b`); the suite at `e234321a` (1,021 groups, exit 0), the Unity compile. No bank or Drive zip change.
+
 ## 2026-11-13 — Claude: the owner's second animation picks: the Greatsword, the DEV Greatsword and the Fangs (presentation only)
 
 - Branch `claude/more-move-picks` (from shared `e0317fba`, the Katana parry daze; shared `5d84ea13`, the DEV Katana's hit 4, merged in):

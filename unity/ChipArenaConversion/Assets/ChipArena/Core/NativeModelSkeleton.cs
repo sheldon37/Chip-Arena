@@ -49,9 +49,9 @@ namespace ChipArena.UnityConversion
         /// and an orbit their own colour throughout.</summary>
         public static BisectLook CutLook(byte kind)=>kind==LongBone?LongCut:kind==Skull?SkullCut:kind==Spongy?SpongyCut:SolidCut;
         private static Vector3 L(int hex)=>NativePortraitRules.Linear(hex);
-        private static readonly BisectLook LongCut=new BisectLook{Rim=.0022f,Inner=.0016f,RimShade=1,InnerColor=L(0xd8b88a)};
-        private static readonly BisectLook SpongyCut=new BisectLook{Rim=.0014f,Inner=1,RimShade=1,InnerColor=L(0xd3ab82),ConduitShare=.22f,Conduit=L(0x9c2a24),ConduitLevel=.25f};
-        private static readonly BisectLook SkullCut=new BisectLook{Rim=.0035f,Inner=1,RimShade=1,InnerColor=L(0xd9a3a0),ConduitShare=.12f,Conduit=L(0xa86868),ConduitLevel=.2f};
+        private static readonly BisectLook LongCut=new BisectLook{Rim=.0022f,Inner=.0016f,RimShade=1,InnerColor=L(0xd8b88a),Flesh=BisectLook.LongBone};
+        private static readonly BisectLook SpongyCut=new BisectLook{Rim=.0014f,Inner=1,RimShade=1,InnerColor=L(0xd3ab82),ConduitShare=.22f,Conduit=L(0x9c2a24),ConduitLevel=.25f,Flesh=BisectLook.Spongy};
+        private static readonly BisectLook SkullCut=new BisectLook{Rim=.0035f,Inner=1,RimShade=1,InnerColor=L(0xd9a3a0),ConduitShare=.12f,Conduit=L(0xa86868),ConduitLevel=.2f,Flesh=BisectLook.Skull};
         private static readonly BisectLook SolidCut=new BisectLook{Solid=true,RimShade=1};
 
         /// <summary>The skeleton for joints at `rest` (a bone's rest position in the model's root space by its name, null when

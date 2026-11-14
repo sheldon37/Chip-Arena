@@ -26,6 +26,31 @@ namespace ChipArena.UnityConversion
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Visual rig: "+what);count++;}
         private static bool Near(Vector3 a,Vector3 b,float e)=>Vector3.Distance(a,b)<=e;
         private static bool Near(Quaternion a,Quaternion b,float e)=>Math.Abs(Math.Abs(Quaternion.Dot(Quaternion.Normalize(a),Quaternion.Normalize(b)))-1)<=e;
+        // Counts what a DEV entrance draws (its effects and its set pieces), and that every place is a real one.
+        private sealed class DevIntroSink:INativeEntranceFx,INativeEntranceProps
+        {
+            public int Fx,Streaks,Pieces;public bool Broken;
+            private void V(Vector3 v){if(!(float.IsFinite(v.X)&&float.IsFinite(v.Y)&&float.IsFinite(v.Z)))Broken=true;}
+            public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){V(at);V(color);Fx++;}
+            public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){V(head);V(velocity);V(color);Fx++;Streaks++;}
+            public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){V(at);Fx++;}
+            public void Piece(WeaponShape shape,bool glow,Vector3 position,Quaternion rotation,Vector3 scale,Vector3 color){V(position);V(scale);Pieces++;}
+        }
+        private static NativeDevPackIntro NewDevIntro(NativeDevPackIntro like)=>like is NativeDevGreatswordIntro?(NativeDevPackIntro)new NativeDevGreatswordIntro():new NativeDevKatanaIntro();
+        // A DEV entrance played at 60 frames a second, its blade handed in (`feed`: a blade wheeling round the pilot and through the
+        // floor, as the clips' do) or not: everything it draws, the most effects in one frame, and the streaks among them.
+        private static DevIntroSink PlayDevIntro(NativeDevPackIntro intro,bool feed,float quality,out int peak)
+        {
+            var all=new DevIntroSink();peak=0;
+            for(int i=0;i/60f<=intro.Length;i++)
+            {
+                float t=intro.Clock(i/60f),a=t*11,dip=-1.25f*(float)Math.Sin(t*2.6f);var hilt=new Vector3(.2f*(float)Math.Sin(t),1.1f,.25f);
+                if(feed)intro.Blade(t,0,hilt,hilt+1.5f*new Vector3((float)(Math.Cos(a)*Math.Cos(dip)),(float)Math.Sin(dip),(float)(Math.Sin(a)*Math.Cos(dip))),true);
+                var frame=new DevIntroSink();intro.Props(t,frame,quality);intro.Effects(t,frame,quality);
+                peak=Math.Max(peak,frame.Fx);all.Fx+=frame.Fx;all.Streaks+=frame.Streaks;all.Pieces+=frame.Pieces;all.Broken|=frame.Broken;
+            }
+            return all;
+        }
         private static float Angle(Vector3 a,Vector3 b)=>(float)Math.Acos(Math.Clamp(Vector3.Dot(Vector3.Normalize(a),Vector3.Normalize(b)),-1f,1f));
 
         // ---- the synthetic skeleton: world rest positions (Pose body space, floor at -.865) and bone frames off identity ----
@@ -170,6 +195,57 @@ namespace ChipArena.UnityConversion
             var ra=new List<Vector3>(b);var rb=new List<Vector3>(a);
             Check(NativeBisect.CapOf(ra,rb,paint,plane,NativeBisect.ModelLook,0,1,true).Indices.Count==0&&NativeBisect.CapOf(a.Take(3).ToList(),b.Take(3).ToList(),paint,plane,NativeBisect.ModelLook,0,1,true).Indices.Count==0,"an outline turned the wrong way or left open caps nothing");
             Check(NativeBisect.ModelLook.Inner==0&&NativeBisect.ModelLook.Rim<NativeBodyModels.CutLook(NativeBodySkins.StandardIndex).Rim,"the model's cut has no suit lining and a thin rim");
+            // The flesh (owner 2026-11-13: "we do use new blood, but the gibbing seems to still use voxel flesh and wounds? Can we
+            // essentially match the quality with our blood? Using higher quality bone structure and flesh"; docs/GORE-FLESH.md): the
+            // model's cap also carries what a smooth cross-section is drawn from, over the same sealed region.
+            Check(NativeBisect.ModelLook.Flesh==BisectLook.Tissue&&front.Data.Count==front.Positions.Count&&front.Emission.Count==front.Positions.Count&&front.Data.All(d=>d.Y==BisectLook.Tissue),"the model's cap carries a depth and its kind at every vertex");
+            float worst=0,deepest=0;int onEdge=0;
+            for(int i=0;i<front.Positions.Count;i++)
+            {
+                var p=front.Positions[i]-o;float x=Vector3.Dot(p,u),y=Vector3.Dot(p,v);float want=Math.Min(NativeBisect.FleshReach,Math.Max(0,Math.Min(.08f-Math.Abs(x),.06f-Math.Abs(y))));
+                worst=Math.Max(worst,Math.Abs(front.Data[i].X-want));deepest=Math.Max(deepest,front.Data[i].X);if(front.Data[i].X<1e-5f)onEdge++;
+            }
+            Check(worst<2e-5f&&onEdge>=8&&deepest>.05f&&deepest<=NativeBisect.FleshReach,"each vertex's depth is its distance in from the section's edge (worst "+worst.ToString("G3")+", "+onEdge+" on the edge, deepest "+deepest.ToString("F4")+")");
+            Check(front.Emission.All(c=>Math.Abs(c.X-skin.X)<1e-5f&&Math.Abs(c.Y-skin.Y)<1e-5f&&Math.Abs(c.Z-skin.Z)<1e-5f),"and the shell's own paint, for the skin at its edge");
+            float Area(WeaponSection m){double sum=0;for(int t=0;t+2<m.Indices.Count;t+=3){var p0=m.Positions[m.Indices[t]];sum+=Vector3.Cross(m.Positions[m.Indices[t+1]]-p0,m.Positions[m.Indices[t+2]]-p0).Length()*.5;}return (float)sum;}
+            var cells=new BisectLook{Rim=NativeBisect.ModelLook.Rim,Inner=0,RimShade=NativeBisect.ModelLook.RimShade};var plain=NativeBisect.CapOf(a,b,paint,plane,cells,0,0x5a17u,true);
+            Check(plain.Data.Count==0&&plain.Indices.Count<front.Indices.Count&&Math.Abs(Area(front)-Area(plain))<.0192f*.03f&&Area(front)>=.0192f-1e-5f&&Area(front)<.0192f*1.03f,"the smooth cap fills the same region as the cells' (every cell its own piece), "+Area(front).ToString("F5")+" m2 of 0.01920");
+            Check(front.Colors.Count==front.Positions.Count&&front.Colors.Any(c=>BisectChecks.Flesh(new Vector3(c.X,c.Y,c.Z))),"its cells keep their colours (the Low tier draws them)");
+            // An L-shaped section: the depth is from the nearest edge, the notch's included.
+            var ell=new[]{P(-.08f,-.06f),P(.08f,-.06f),P(.08f,0),P(0,0),P(0,.06f),P(-.08f,.06f)};var la=new List<Vector3>();var lb=new List<Vector3>();var lp=new List<Vector4>();
+            for(int k=0;k<6;k++){la.Add(ell[k]);lb.Add(ell[(k+1)%6]);lp.Add(k<3?skin:new Vector4(.1f,.2f,.7f,1));}
+            var notch=NativeBisect.CapOf(la,lb,lp,plane,NativeBisect.ModelLook,0,3,true);float bad=0;bool blue=false,tan=false;
+            for(int i=0;i<notch.Positions.Count;i++)
+            {
+                var p=notch.Positions[i]-o;float x=Vector3.Dot(p,u),y=Vector3.Dot(p,v);float box=Math.Min(.08f-Math.Abs(x),.06f-Math.Abs(y));
+                float corner=x<=0&&y<=0?MathF.Sqrt(x*x+y*y):x>0?-y:y>0?-x:0;float want=Math.Min(NativeBisect.FleshReach,Math.Max(0,Math.Min(box,corner)));bad=Math.Max(bad,Math.Abs(notch.Data[i].X-want));
+                if(notch.Data[i].X<.004f&&notch.Emission[i].Z>.6f)blue=true;if(notch.Data[i].X<.004f&&Math.Abs(notch.Emission[i].X-skin.X)<1e-5f)tan=true;
+            }
+            Check(notch.Positions.Count>0&&bad<2e-5f&&blue&&tan,"a notched section's depth is from its nearest edge, each edge its own shell's paint (worst "+bad.ToString("G3")+")");
+            Check(NativeModelSkeleton.CutLook(NativeModelSkeleton.LongBone).Flesh==BisectLook.LongBone&&NativeModelSkeleton.CutLook(NativeModelSkeleton.Spongy).Flesh==BisectLook.Spongy&&NativeModelSkeleton.CutLook(NativeModelSkeleton.Skull).Flesh==BisectLook.Skull&&NativeModelSkeleton.CutLook(NativeModelSkeleton.Cartilage).Flesh==0
+                &&NativeBisect.SausageLook.Flesh==BisectLook.Sausage&&NativeBodyModels.CutLook(NativeBodySkins.StandardIndex).Flesh==0&&BisectLook.Hat.Flesh==0,"each bone's face names its kind, the Hot Dog's a sausage; the voxel bodies' and the hats' caps stay cells");
+            // A gib's fragments: the bits of bone are flagged, so they are drawn as shards.
+            foreach(bool burst in new[]{false,true})
+            {
+                NativeKillEffectRules.Linear(NativeKillCaps.Bone,out double br,out double bg,out double bb);int bones=0,agree=0,all=0;
+                for(uint seed=1;seed<=6;seed++)
+                {
+                    var box=new double[]{.3,0,0,0, 0,.3,0,0, 0,0,.3,0, 0,1,0,1};var debris=new NativeKillDebris(box,new double[]{.2,.3,.4},1,new double[0],0,0,1,0,0,0,1,0,0,0,2,.8,seed,64,0,burst);all+=debris.Chunks;
+                    for(int i=0;i<debris.Chunks;i++){bool ivory=Math.Abs(debris.Colors[i*3]-br)<1e-9&&Math.Abs(debris.Colors[i*3+1]-bg)<1e-9&&Math.Abs(debris.Colors[i*3+2]-bb)<1e-9;if(debris.Bone[i])bones++;if(debris.Bone[i]==ivory)agree++;}
+                }
+                Check(all==384&&agree==all&&bones>=3&&bones<=70,(burst?"a burst":"a crushed part")+"'s fragments flag their bits of bone ("+bones+" of "+all+")");
+            }
+            // The wiring: the flesh shader in the blood's light, the Low tier on the cells, the Hot Dog a sausage with no bones.
+            {
+                string flesh=R("Resources/NativeFlesh.shader"),cutCode=R("Runtime/NativeVisualCutPresentation.cs"),bodyCode=R("Runtime/NativeVisualBodyPresentation.cs"),woundCode=R("Runtime/NativeVisualWoundPresentation.cs"),kills=R("Runtime/NativeKillModels.cs"),killFx=R("Runtime/NativeKillEffectPresentation.cs");
+                Check(flesh.Contains("Shader \"ChipArena/NativeFlesh\"")&&flesh.Contains("#include \"NativeBloodLight.cginc\"")&&flesh.Contains("\"LightMode\"=\"ForwardBase\"")&&flesh.Contains("BloodArenaLights(")&&flesh.Contains("BloodGlint(")&&flesh.Contains("#pragma multi_compile_instancing")&&!flesh.Contains("tex2D(_MainTex"),"the flesh is lit as the blood is, wet, untextured");
+                Check(flesh.Contains("float3 FleshTissue(")&&flesh.Contains("float3 FleshBone(")&&flesh.Contains("float3 FleshSausage(")&&flesh.Contains("clip(dn-cut);")&&System.Text.RegularExpressions.Regex.IsMatch(R("Resources/NativeFlesh.shader.meta"),@"^guid: [0-9a-f]{32}$",System.Text.RegularExpressions.RegexOptions.Multiline),"tissue, bone and sausage per pixel; a corpse's dissolve takes its caps");
+                Check(cutCode.Contains("if(!LowGraphics&&!fleshFailed)")&&cutCode.Contains("Resources.Load<Shader>(\"NativeFlesh\")")&&cutCode.Contains("mesh.SetUVs(1,data);mesh.SetUVs(2,shell);mesh.SetUVs(3,rest);")&&cutCode.Contains("if(cutCapMaterial!=null)return cutCapMaterial;"),"the caps on the flesh shader; the Low tier and a build without it keep the cells");
+                Check(cutCode.Contains("Sausage=HotDogOn(halves[0].Root)")&&cutCode.Contains("Sausage=HotDogOn(c.Root)")&&cutCode.Contains("if(HotDogOn(c.Root))source=null;")&&bodyCode.Contains("if(HotDogOn(c.Root))return; // (No bones in the Hot Dog: it is sausage through.)"),"the Hot Dog's cut is a sausage's, with no bone in it");
+                Check(R("Resources/NativeVisualBodyFx.cginc").Contains("float WoundSoak(float3 world)")&&R("Resources/NativeVisualBodyFx.cginc").Contains("if(_Wounds<0.5)return soak;")&&R("Resources/NativeVisualBodyToon.shader").Contains("if(_VertexAlbedo<=0){float soak=WoundSoak(i.worldPos);o.Albedo=WoundSoaked(o.Albedo,soak);"),"the skin and clothes about an open wound are soaked in the blood's red (nothing read without a wound)");
+                Check(woundCode.Contains("data.Add(new Vector2(depths[ring]-top,pit));")&&woundCode.Contains("int pit=HotDogOn(body.gameObject)?BisectLook.Sausage:BisectLook.Pit;")&&woundCode.Contains("const int rings=5;"),"a wound's pit carries its depth down the wall");
+                Check(killFx.Contains("alpha,i,!LowGraphics,debris.Bone[i]);")&&killFx.Contains("corpse.CapColors[cap.Start+i],alpha,!LowGraphics);")&&kills.Contains("private readonly Part[] fleshLumps=new Part[5],boneShards=new Part[3];")&&kills.Contains("if(killChunks[v]!=null)Draw(killChunks[v],matrix,new Vector4(1,1,1,opacity),color,Vector4.one);"),"a gib's fragments are lumps of flesh and shards of bone, made once; the Low tier keeps the plain lumps");
+            }
             // The shaders: a keep value per vertex by its index, interpolated, the outline and the hologram cut with the body.
             string fx=R("Resources/NativeVisualBodyFx.cginc"),toon=R("Resources/NativeVisualBodyToon.shader"),ghost=R("Resources/NativeWeaponGhost.shader");
             Check(fx.Contains("if(_CutPick.x+_CutPick.y<0.5)return 1.0;")&&fx.Contains("return dot(_CutTex.Load(int3(i%w,i/w,0)).rg,_CutPick.xy);")&&fx.Contains("#ifdef SHADER_TARGET_SURFACE_ANALYSIS"),"unset, nothing is read or cut; set, a vertex's keep value is read by its index");
@@ -635,6 +711,44 @@ namespace ChipArena.UnityConversion
                 string bladePres=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeBladePresentation.cs")).Replace("\r\n","\n"),motionPres=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeVisualMotionPresentation.cs")).Replace("\r\n","\n");
                 Check(bladePres.Contains("PalmGrip(introRig,NativeDevMotions.Base(bladeIntro.Spec)??bladeIntro.Spec,m,b==CapturedRig.LHand)")&&bladePres.Contains("dev.Carried(bladeIntroClock)")
                     &&motionPres.Contains("bladeIntro is NativeDevPackIntro devIntro&&m.Chest!=null")&&motionPres.Contains("m.Chest=Body(HumanBodyBones.Chest);"),"the entrances draw the blade in the palm as the match does and carry it where the clip does");
+                // The DEV entrances as cinematics (owner 2026-11-13: "Lets also add more camera work and effects to DEV Katana and DEV Greatsword
+                // ... I mean for there intros"). The match sees what it saw: the entrance's length, its name card, the clip at its own pace
+                // (above). The scene slows only through the great cut and the clock is the age again by the name card; the camera is cut to
+                // the clip's beats, keeps off the floor, carries its hero frame into the card's without a jump and settles still; its shakes are
+                // small, short, this client's own (a camera offset from this client's Camera shake setting, nothing a seat or a frame
+                // carries) and gone with the setting off; the effects follow the blade handed in, within the entrances' budget.
+                foreach(var dev in new NativeDevPackIntro[]{new NativeDevGreatswordIntro(),new NativeDevKatanaIntro()})
+                {
+                    bool great=dev is NativeDevGreatswordIntro;string s=dev.Style;float length=dev.Length,card=(float)NativeIntroRules.NameAt(s),beat=great?NativeDevGreatswordIntro.Beat:NativeDevKatanaIntro.Beat;
+                    Check(Math.Abs(NativeIntroRules.Duration(s)-(great?4.8:5.3))<1e-4&&Math.Abs(card-(great?3.2f:3.7f))<1e-4f&&Math.Abs(dev.ClipEnd-dev.StartAt-(great?2f:2.83f))<1e-4f&&Math.Abs(beat-dev.StartAt-(great?1.27f:2.53f))<1e-4f,s+": its phase, its name card, its clip's length and its beat are what they were");
+                    float clockWas=-1,beatAge=-1;bool forward=true,sameBefore=true,sameAfter=true;
+                    for(float age=0;age<=length;age+=1/240f){float t=dev.Clock(age);if(t<clockWas-1e-6f)forward=false;clockWas=t;if(age<=dev.Hit&&Math.Abs(t-age)>2e-4f)sameBefore=false;if(age>=card&&Math.Abs(t-age)>2e-4f)sameAfter=false;if(beatAge<0&&t>=beat+.02f)beatAge=age;}
+                    Check(forward&&sameBefore&&sameAfter&&dev.Hit>dev.StartAt&&dev.Hit<beat&&beat-dev.Hit<.1f&&dev.Hit+dev.SlowHold+dev.SlowCatchUp<=card&&beatAge>beat,s+": the scene slows just before its great cut, never runs back and is on the age again by the name card");
+                    var shots=dev.Shots;Check(shots.Length>=6&&shots[0].At==0&&shots[^1].At==card&&Enumerable.Range(1,shots.Length-1).All(k=>shots[k].At>=shots[k-1].At+.2f)&&shots.All(k=>k.Track==0&&k.Follow<0),s+": a camera of six shots or more on the stage's own axes (the keyed stance under the clip is not where the model is), none shorter than a fifth of a second, the last on the name card");
+                    bool clear=true;for(float age=0;age<=length;age+=1/120f){dev.Camera(age,out var v);if(!(v.Eye.Y>=NativeEntranceStage.FloorY+NativeEntranceCamera.EyeClearance-1e-3f)||!(v.Fov>=25&&v.Fov<=60)||!float.IsFinite(v.Look.X))clear=false;}
+                    dev.Camera(card-.004f,out var heroEnd);dev.Camera(card+.004f,out var cardStart);dev.Camera(dev.SettleAt+.05f,out var settled);dev.Camera(length,out var lastFrame);
+                    Check(clear&&Vector3.Distance(heroEnd.Eye,cardStart.Eye)<.04f&&Vector3.Distance(heroEnd.Look,cardStart.Look)<.04f&&Math.Abs(heroEnd.Fov-cardStart.Fov)<.5f&&settled.Eye==lastFrame.Eye&&settled.Look==lastFrame.Look,s+": the camera stays off the floor, carries the hero frame into the name card's and settles still");
+                    float most=0,late=0;bool still=true;dev.Shake=true;
+                    for(float t=0;t<=length;t+=1/240f){float j=dev.CameraJolt(t).Length();most=Math.Max(most,j);if(t>=card)late=Math.Max(late,j);}
+                    dev.Camera(beatAge,out var shaken);float clockOn=dev.Clock(beatAge);dev.Shake=false;for(float t=0;t<=length;t+=1/240f)if(dev.CameraJolt(t)!=Vector3.Zero)still=false;dev.Camera(beatAge,out var steady);float clockOff=dev.Clock(beatAge);dev.Shake=true;
+                    Check(most>.004f&&most<=.04f&&late<.002f&&still&&shaken.Eye!=steady.Eye&&Vector3.Distance(shaken.Eye,steady.Eye)<=.04f&&shaken.Look==steady.Look&&shaken.Fov==steady.Fov&&clockOn==clockOff,
+                        s+": its camera shakes are small ("+most.ToString("0.000")+" m at most), over by the name card, move the eye alone, and are gone with Camera shake off (the clock the same)");
+                    Check(dev.Line(false,out var bladeRoot,out var bladeTip)&&bladeTip.Z>bladeRoot.Z+.5f&&NativeDevPackIntro.BladeLine(dev,false,out var lineRoot,out var lineTip)&&lineRoot==bladeRoot&&lineTip==bladeTip&&!dev.Line(true,out _,out _),s+": its blade's line is its base class's, in the right hand");
+                    var bare=PlayDevIntro(NewDevIntro(dev),false,1,out int barePeak);var fed=PlayDevIntro(dev,true,1,out int fedPeak);var thin=PlayDevIntro(NewDevIntro(dev),true,.3f,out int thinPeak);
+                    Check(!bare.Broken&&!fed.Broken&&!thin.Broken&&fed.Streaks>bare.Streaks+2000&&fedPeak<=600&&barePeak<=fedPeak&&thin.Fx<fed.Fx*.75f&&thinPeak<fedPeak,
+                        s+": its effects follow the blade handed in ("+bare.Streaks+" / "+fed.Streaks+" streaks), "+fedPeak+" a frame at most, thinned by the effects setting ("+thin.Fx+" of "+fed.Fx+")");
+                    // A replay (the clock run back) starts the blade's marks and its last cut's line over: the frame a fresh one draws.
+                    var again=new DevIntroSink();dev.Blade(.5f,0,default,default,false);dev.Props(.5f,again,1);dev.Effects(.5f,again,1);var fresh=new DevIntroSink();var unplayed=NewDevIntro(dev);unplayed.Props(.5f,fresh,1);unplayed.Effects(.5f,fresh,1);
+                    Check(again.Fx==fresh.Fx&&again.Pieces==fresh.Pieces&&again.Streaks==fresh.Streaks,s+": a replay starts its effects over");
+                    var broken=NewDevIntro(dev);var nan=new DevIntroSink();broken.Blade(1,0,new Vector3(0,1,0),new Vector3(float.NaN,0,0),true);broken.Props(1,nan,1);broken.Effects(1,nan,1);Check(!nan.Broken,s+": a broken blade is refused");
+                }
+                Check(NativeDevPackIntro.BladeLine(new NativeDevKatanaIntro(),false,out var devKatanaRoot,out var devKatanaTip)&&NativeBladeView.Line(NativeKatana.Spec,false,out var katanaRoot,out var katanaTip)&&devKatanaRoot==katanaRoot&&devKatanaTip==katanaTip
+                    &&NativeDevPackIntro.BladeLine(new NativeFangsIntro(),true,out var fangRoot,out var fangTip)&&NativeBladeView.Line(NativeFangs.Spec,true,out var fangRoot2,out var fangTip2)&&fangRoot==fangRoot2&&fangTip==fangTip2
+                    &&NativeDevPackIntro.BladeLine(new NativeKatanaIntro(),false,out var moonRoot,out _)&&moonRoot==katanaRoot,"the DEV Katana's edge is the Katana's; the blade classes' own entrances keep theirs");
+                string introsText=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeIntros.cs")),gameText=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","ConversionGame.cs")),previewText=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativePreview.cs"));
+                Check(introsText.Contains("if(script is NativeDevPackIntro shaken)shaken.Shake=CameraShake;")&&introsText.IndexOf("shaken.Shake=CameraShake;",StringComparison.Ordinal)<introsText.IndexOf("script.Camera(age,out var view);",StringComparison.Ordinal)
+                    &&gameText.Contains("presentation.CameraShake=prefs.cameraShake;presentation.RenderIntro(arena,IntroPilot,")&&previewText.Contains("presentation.CameraShake=prefs.cameraShake;presentation.RenderIntro(previewArena,")
+                    &&bladePres.Contains("!NativeDevPackIntro.BladeLine(intro,hand==1,out var root,out var tip)"),"the entrance's camera takes this client's Camera shake setting before it is placed (a match's entrance and the Locker's preview alike), and the entrances are handed their blades by their own lines");
                 var introActor=new Actor{Id=31,SourceSpec=NativeDevMotions.Greatsword,Grounded=true};int keepActor=NativeBladeMotion.IntroActor;string keepClip=NativeBladeMotion.IntroClip;float keepTime=NativeBladeMotion.IntroTime;
                 NativeBladeMotion.IntroActor=31;NativeBladeMotion.IntroClip=NativeDevGreatswordMotion.Intro;NativeBladeMotion.IntroTime=.7f;
                 bool introPick=NativeVisualMotion.Choose(gs,introActor,1,new NativeVisualMotion.Memory(),pkBook,false,out var ip)&&ip.Clip==NativeDevGreatswordMotion.Intro&&Math.Abs(ip.Time-.7f)<1e-4f;
