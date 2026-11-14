@@ -150,7 +150,9 @@ namespace ChipArena.UnityConversion
                         foreach(var s in list)if(s.kind==kind){sa.Add(N(s.a));sb.Add(N(s.b));sp.Add(BonePaint(kind));mids.Add(((s.a+s.b)*.5f,s.bone));}
                         if(sa.Count<3)continue;
                         var face=NativeBisect.CapOf(sa,sb,sp,at,NativeModelSkeleton.CutLook(kind),0,Seed^(uint)(kind*7919+h*131),h==0,.0012f);
-                        Caps[h].Add(face,.35f,q=>{float best=float.MaxValue;int on=-1;foreach(var m in mids){float e=(m.at-q).sqrMagnitude;if(e<best){best=e;on=m.bone;}}return on;},false);
+                        // (A face all of one bone, the usual, rides it without a search per triangle: the flesh's fine faces have many.)
+                        int only=mids[0].bone;foreach(var m in mids)if(m.bone!=only){only=int.MinValue;break;}
+                        Caps[h].Add(face,.35f,only!=int.MinValue?(Func<Vector3,int>)(q=>only):q=>{float best=float.MaxValue;int on=-1;foreach(var m in mids){float e=(m.at-q).sqrMagnitude;if(e<best){best=e;on=m.bone;}}return on;},false);
                     }
                 }
             }

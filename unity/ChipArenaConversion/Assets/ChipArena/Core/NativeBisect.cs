@@ -503,17 +503,35 @@ namespace ChipArena.UnityConversion
             var palette=new List<Paint>();var index=new Dictionary<Paint,int>();var paint=new int[W*H];bool smooth=look.Flesh>0;
             // A smooth cap keeps every cell its own piece (no runs of one paint), so the depth it carries is right at each corner.
             int Id(Vector4 col,Vector4 em){var p=new Paint{C=col,E=em};if(smooth){palette.Add(p);return palette.Count-1;}if(!index.TryGetValue(p,out int id)){id=palette.Count;palette.Add(p);index[p]=id;}return id;}
-            // A smooth cap's vertex: how far in from the nearest outline it lies (at most FleshReach) and that outline's paint.
-            int span=(int)Math.Ceiling(FleshReach/c)+1;
+            // A smooth cap's vertex: how far in from the nearest outline it lies (at most FleshReach) and that outline's paint: the
+            // nearest of the outlines in the rows within FleshReach of it, the first in row order (then the row's slanted outlines
+            // before its level ones, each list in order) where two are as near. The rows are searched out from the vertex's own,
+            // nearest first, passing over a row or an outline farther off than the nearest found so far, which finds the same
+            // outline as a scan of every row in reach (the bones' fine cells made that scan the cut's longest step on its worker,
+            // long enough that the halves held on the blade well past their hitch; owner 2026-11-13).
+            int span=(int)Math.Ceiling(FleshReach/c)+1;var firstRow=new int[n];for(int i=0;i<n;i++)firstRow[i]=Math.Max(0,(int)Math.Floor((smin[i].Y-v0)/c));
+            float Gap(int rr,float y)=>Math.Max(0,Math.Max(v0+rr*c-y,y-(v0+(rr+1)*c)));
             float Depth(Vector2 p,out Vector4 shell)
             {
-                float best=FleshReach*FleshReach;shell=new Vector4(.5f,.5f,.5f,1);int r=(int)Math.Floor((p.Y-v0)/c);
-                for(int rr=Math.Max(0,r-span);rr<=Math.Min(H-1,r+span);rr++)for(int pass=0;pass<2;pass++)
+                float best=FleshReach*FleshReach,within=FleshReach*1.001f+1e-6f;int win=-1;long winKey=long.MaxValue;shell=new Vector4(.5f,.5f,.5f,1);
+                int r=(int)Math.Floor((p.Y-v0)/c),lo=Math.Max(0,r-span),hi=Math.Min(H-1,r+span);if(lo>hi)return FleshReach;
+                int down=Math.Min(hi,Math.Max(lo,r)),up=down+1;
+                while(true)
                 {
-                    var list=pass==0?rows[rr]:flat[rr];if(list==null)continue;
-                    foreach(int si in list){if(smin[si].X>p.X+FleshReach||smax[si].X<p.X-FleshReach)continue;float q=SegDist(p,segs[si].A,segs[si].B);if(q<best){best=q;shell=segs[si].Color;}}
+                    float gd=down>=lo?Gap(down,p.Y):float.MaxValue,gu=up<=hi?Gap(up,p.Y):float.MaxValue;int rr;
+                    if(gd<=gu){if(gd>within)break;rr=down--;}else{if(gu>within)break;rr=up++;}
+                    for(int pass=0;pass<2;pass++)
+                    {
+                        var list=pass==0?rows[rr]:flat[rr];if(list==null)continue;
+                        foreach(int si in list)
+                        {
+                            if(smin[si].X>p.X+within||smax[si].X<p.X-within)continue;float q=SegDist(p,segs[si].A,segs[si].B);if(q>best)continue;
+                            long key=((long)Math.Max(firstRow[si],lo)*2+pass)*n+si;
+                            if(q<best||win>=0&&key<winKey){best=q;win=si;winKey=key;within=(float)Math.Sqrt(best)*1.001f+1e-6f;}
+                        }
+                    }
                 }
-                return (float)Math.Sqrt(best);
+                if(win>=0)shell=segs[win].Color;return (float)Math.Sqrt(best);
             }
             int reach=(int)Math.Ceiling(look.Rim/c)+2;
             for(int r=0;r<H;r++)for(int j=0;j<W;j++)
