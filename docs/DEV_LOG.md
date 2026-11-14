@@ -1,3 +1,77 @@
+## 2026-11-14 — Claude: the Fangs' takedown and frontal critical connect, the two bodies drawn together as the pack pairs them; the counters too (owner report; presentation only)
+
+- **The owner (2026-11-14):** "Fang assassinate animation doesn't actually connect to the enemy player model (Though it does function
+  correctly, just needs animation adjustments)". Branch `claude/fangs-pair-align` from shared `78ae7c93`: `2257e9f2` the Fangs' pairs, the
+  held foe's facing and the checks, `10ec1188` the Katana's and DEV Katana's counters, then this entry. Pushed, **not merged, not released**.
+- **Cause** (measured three ways: the pack's FBX joints; the bake body's drawn joints, the Editor's clipframes; and both bodies' bones in
+  play, through a new local capture option):
+  - The pack authors each pair on one floor with the foe set well off and both roots travelling into the contact. The stealth kill's foe
+    stands 1.66 m ahead, back turned; its attacker rises and springs 0.96 m in while the foe is pulled 0.38 m back. The critical's foe
+    stands about 1.75 m off, facing; its attacker dashes 1.1 m in at 0.83-0.9 s.
+  - The motion bank draws each clip on its own root (the stealth kill on its root bone, the criticals on the centre of mass with their
+    turn left out), `VisualMotionVictimSpot` keeps the foe's centre of mass on its spot, and the rules hold the foe 0.85 m off. The drawn
+    bodies stood about 0.6 m further apart than authored: the pack's drawn roots are 0.07-0.38 m apart through the takedown's hold and
+    0.54 m at the critical's blow.
+  - A foe hit before it was seized faced its hitter: the hold's stun kept `MeleeMotion.PresentedYaw` on the last hit's reaction (the
+    melee-route rigs, `CapturedAnimation.MeleeViewOf`). In the captures the takedown's foe stood 115 degrees off the rules' facing.
+  - The counters (filmed on a parried greatsword bot held 1.6 m off): the Katana's blade passed 0.36 m short of the foe at the blow, the
+    DEV Katana's 0.76 m.
+- **Change** (Core `NativePairAlign` new; Runtime `NativePairAlignPresentation` new, `NativeVisualMotionPresentation` one call,
+  `CapturedAnimation` one line):
+  - Per attacker clip, where the foe's drawn root stands in the attacker's, 30 a second over the span the bodies touch in. The takedown
+    and critical are measured on the bake body (clipframes fitted onto the pack at 0.83-0.88 of its skeleton, error 3-9 cm) and laid
+    together by their contact: the takedown's left hand on the face from 0.4 to 1.25 s (2-6 cm in the pack), the critical's fang in the
+    belly from 0.9 s. The counters have no contact to lay their takes by (the Katana's slash spins its attacker, whom the bake keeps
+    facing its root; the DEV Katana's foe clip is no pair of its attack), so their foe stands where the drawn blade crosses it at the
+    blow (1 m and 0.85 m, measured in play), then goes back as the rules throw it.
+  - Eased in from the rules' placement and out to it on the attacker's clip time (takedown 0.02-0.4 in, out 1.3-1.98; critical 0.7-0.92,
+    1.3-1.65; Katana 1.1-1.4, 1.55-2.2; DEV 0.1-0.36, 0.5-1.4). Each drawn body takes half the closing, turned about its root and moved,
+    after the clips' own turns and before the contact guard and the feet. The attacker's part goes by its clip's share of the mix, the
+    foe's by its motion weight. Scaled by the two pilots' mean size; computed from replicated data (the attacker's record and clip, both
+    scales, both rig roots at their replicated places and facings).
+  - A held foe faces the rules' way: `MeleeViewOf` sets the reaction facing to the hold's while `NativeBladeMotion.Holds`.
+- **Animation impact:** hit timing, hitboxes, damage, cooldowns, movement, the rules' places and facing, and networking unchanged (no
+  rule or wire file reads the pairing; BladeChecks pins that). Drawn only: during a pairing each body is drawn up to about 0.35 m
+  (takedown), 0.2 m (critical) or 0.35 m (counters) off its capsule toward the other, the attacker turned up to 10 degrees. Hit effects
+  still draw at the foe's capsule (about 0.35 m from its drawn throat at the takedown's cut). A takedown's corpse falls from the drawn
+  pose. A held foe that was hit before snaps to the rules' facing at the hold's start, as an unhit foe already did.
+- **Filmed** in the Editor (Cybercity, the game stepped at 60 a second, shot at 30 a second on the arena clock, every shot logging both
+  bodies' bones), before on shared `78ae7c93` and after on `10ec1188`: the local DEV Fangs' takedown and frontal critical on a sword bot
+  in its robot armour and on one in the Hot Dog skin, the Katana's and DEV Katana's counters on a parried greatsword bot.
+
+  | Move, foe | Contact at the contact frames (m) | Before | After |
+  | --- | --- | --- | --- |
+  | Takedown, robot armour | left hand to face, hold median; fang to throat over the cut; hips apart | 1.19; 1.15; 1.10 | 0.09; 0.19 (0.06-0.12 in the hold); 0.45 |
+  | Takedown, Hot Dog | same | 1.20; 1.18; 1.10 | 0.10; 0.17; 0.44 |
+  | Critical, robot armour | fang to the torso's surface at the blow; hips apart | 0.21 outside; 1.11 | 0.05 inside; 0.85 |
+  | Critical, Hot Dog | same | 0.20 outside; 1.12 | 0.04 inside; 0.85 |
+  | Katana counter | blade to the torso's surface at the blow | 0.36 outside | 0.05 inside |
+  | DEV Katana counter | same | 0.76 outside | 0.02 inside |
+
+  - **Seen on the sheets:** before, the takedown's foe stood side-on 1 m off while the hand closed on air. After, it is pulled back
+    against the attacker, the hand over its face and the fang at its throat through the cut, and its corpse falls from there.
+  - The critical's fang now enters the belly from the dash and comes out above the back.
+  - The Hot Dog's sausage arches back against the attacker; its thick body touches the attacker's hips.
+  - The counters' blades cross the foe's body at the blow, and the throw carries it off as before.
+  - **No pops:** the largest step of a body's hips between shots is the attacker's own clip, as before (0.10, 0.05, 0.17, 0.08 m). The
+    foe's is 0.04 m while it is drawn in, 0.14 and 0.12 m in the counters' throw (0.13 and 0.08 before).
+- **Checks:**
+  - CoreTests, the full suite: `2257e9f2` and `10ec1188` 1,028 groups, exit 0 (the Windows path patch in a throwaway worktree, not
+    committed).
+  - `--blades` 454 checks (445 on shared): the pairings, their ease in and out, the bodies meeting as authored, the shares, the scale,
+    the counters' throw, the wiring, and no rule or wire file reading them.
+  - The Unity compile (four assemblies) on both commits; `git diff --check` clean; no broken pins.
+  - The Editor build gate (`PrototypeBuild.Validate`) on `10ec1188`: ok, 397 PASS lines (354 distinct), as shared's.
+  - The stage banks (13 + Rooftop) and the motion bank (499 clips, 6,136,627 bytes, `37ec44d2`) unchanged through every hold.
+- **Local tooling** (not in git): the BoZo tool's play options `pairbones=1` (every pilot's rig root, weapon wrists and model bones each
+  shot) and `botseat=T,field,value` (a field on the first bot's seat, e.g. `look=upper:hot-dog`). Sheets and capture data are in
+  Claude's scratchpad `pairalign/sheets` and `pairalign/cap`.
+- **Not done / not seen:** played by a person; a guest over the network (the inputs are replicated; a partner posed later in a frame is
+  read where it stood last frame); a Windows build; the Hot Dog as a counter's foe; foes of other classes; a takedown that does not kill
+  (god mode); a pairing beside a wall.
+- **Risks:** a pairing beside a wall can draw a body up to 0.35 m into it; hit effects stay at the capsule; the facing fix also turns a
+  held foe on the voxel bodies; a counter's foe is drawn in over 0.3 s while still dazed before the blow.
+
 ## 2026-11-14 — Claude: model corpses start from the drawn pose, drop the weapon they held and keep the core, device and emblem (owner request; presentation only)
 
 - **The owner (2026-11-14):** "Yes, fix them", on the three corpse gaps listed with the helmet fix (`claude/gib-head-fix`): model corpses

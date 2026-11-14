@@ -128,8 +128,11 @@ split, the counter's window, a paired move's victim and clip, the chips held and
 everyone": a set that does not list the clip borrows it from the motion bank when the host first names it, Core `NativeBladeMotion.Lent`,
 Runtime `VisualMotionLend`; the Cyber Lord, with no set, plays it on `NativeVisualMotion.Held`). A counter's foe sways in the parry's daze
 until the blow (`NativeBladeMotion.StruckOnBlow`); while it plays the clip its weapon hangs from the hand and its hips stay over its spot,
-and a lethal blow's corpse falls from the drawn pose. The record is replicated in snapshots, late join, death
-records and the killcam, and checked with `Valid()`.
+and a lethal blow's corpse falls from the drawn pose. The counter's blade reached 0.36 m short of the foe held 1.6 m off (the DEV
+Katana's 0.76 m), so the two bodies are drawn together for the blow (presentation, 2026-11-14; Core `NativePairAlign`, docs/FANGS.md
+"The paired moves"): the foe where the drawn blade crosses it, 1 m off (the DEV Katana's 0.85 m), facing, each body taking half of the
+closing from 1.1 s of the clip (the DEV Katana's 0.1 s) and the foe then going back with the rules' throw, the closing eased out by
+2.2 s (1.4 s). The record is replicated in snapshots, late join, death records and the killcam, and checked with `Valid()`.
 
 ## Files
 

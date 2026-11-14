@@ -87,7 +87,8 @@ owner's word, logged for Astra in docs/DEV_LOG.md):
 - **Which way:** along the facing (the root's forward, where the clips strike); the roots' sideways drift (under 7 cm) is left out. The
   fourth cut's root goes 17 cm out and comes back (6 cm net), so it keeps its stride; the fan barely moves; the pounce keeps its 5 m dash
   (its clip's own slice travels 0.7 m: the dash is the move); the shadow step keeps its blink, which lands when the clip's own 3.4 m dash
-  does (0.12-0.17 s against the rules' 0.14 s). The paired moves (the takedown, the frontal critical) are unchanged.
+  does (0.12-0.17 s against the rules' 0.14 s). The paired moves (the takedown, the frontal critical) keep their places: "The paired
+  moves".
 - **The hit:** the pilot is partway along the lunge at the hit (32, 50, 64 and 52% for the cuts that travel), so each reach is shortened
   by that much (`CutReach` 1.9, 1.57, 2.06, 2.2, 2.93 m; were 2.1, 2.1, 2.2, 2.2, 2.6) and gets back whatever of it was not travelled
   (`NativeFangs.CutReachAt`: in the air, at a wall, at a foe): every cut lands as far from where it was cast as before.
@@ -108,6 +109,56 @@ owner's word, logged for Astra in docs/DEV_LOG.md):
   feet travelled 13.6 m before, 3.1 m after, the support foot 5.3 m before, 0.6 m after; from a walk 11.2 m before, 3.9 m after
   (support foot 5.3, 0.75); the pilot's travel and every strike's clip time on its rules hit unchanged. The rules' facing, timing,
   travel, reach and hits are unchanged; no other set's clip turns (the Katana's keep the turn their bake kept).
+
+## The paired moves
+
+The owner, 2026-11-14: "Fang assassinate animation doesn't actually connect to the enemy player model (Though it does function
+correctly, just needs animation adjustments)". Presentation only (`claude/fangs-pair-align`): the rules' places, facing, timing, hits
+and the wire are unchanged.
+
+- **Why the bodies missed:**
+  - The pack authors each pair's two takes on one floor with the foe set well off: the stealth kill's foe 1.66 m ahead, its back
+    turned; the critical's about 1.75 m off, facing. Both roots travel into the contact: the throat cut's attacker rises and springs
+    0.96 m in (0.8 m on the game's body) while the foe is pulled 0.38 m back; the critical's attacker dashes 1.1 m in at 0.83-0.9 s.
+  - The motion bank draws every clip on its own root: the stealth kill on its root bone, the criticals on the centre of mass with their
+    turn left out. `VisualMotionVictimSpot` keeps the foe's centre of mass on its spot, and the rules hold the foe 0.85 m off. So the
+    drawn bodies stood about 0.6 m further apart than authored through the hold: the pack's drawn roots are 0.07-0.38 m apart at the
+    takedown's grab and hold, 0.54 m at the critical's blow.
+  - A foe hit before it was seized faced its hitter, not the rules' way: the hold's stun kept `MeleeMotion.PresentedYaw` on the last
+    hit's reaction (the melee-route rigs, `CapturedAnimation.MeleeViewOf`). In the captures the takedown's foe stood 115 degrees off.
+- **The fix:**
+  - Core `NativePairAlign` holds where the pack puts the foe's drawn root in the attacker's, 30 a second over the span the two bodies
+    touch in. It is measured on the bake body: each take's drawn joints (the Editor's clipframes) fitted onto the pack's, at 0.83-0.88
+    of its skeleton (fit error 3-9 cm), then the two takes laid together by their contact: the takedown's left hand on the foe's face
+    from 0.4 to 1.25 s (2-6 cm in the pack), the critical's fang in the foe's belly from the dash's end (0.9 s). Play captures agree
+    with it to 3-10 cm.
+  - Runtime `NativePairAlignPresentation` (from `VisualMotionPose`, after the clips' own turns, before the contact guard and the feet)
+    eases the two drawn bodies from the rules' placement to the pack's and back, on the attacker's clip time:
+    - the takedown: in from the pair's start to the grab (0.02-0.4 s), held through the throat cut (1.3 s), out by the clip's end
+      (1.98 s). The foe dies at the cut and falls from its drawn pose.
+    - the critical: in over 0.7-0.92 s (to the dash's end), held through the blow (1.1 s) to 1.3 s, out by 1.65 s (the hold ends at 1.7).
+  - Each body takes half of the closing: the attacker turns and steps in, the foe is drawn toward it. The placement scales with the two
+    pilots' mean size and comes from replicated data only (the attacker's record and clip, both pilots' scales and drawn roots).
+  - A held foe faces the rules' way (`MeleeViewOf`: its reaction facing is the hold's), on the model and the voxel bodies.
+  - The Katana's and DEV Katana's counters are drawn the same way (docs/KATANA.md "The record").
+- **Measured** in the Editor (Cybercity, 60 steps a second, a shot each 1/30 s, before on shared `78ae7c93`, after on the branch; the
+  local DEV Fangs on a sword bot in its robot armour and on one in the Hot Dog skin):
+
+  | Move, foe | Contact (m) | Before | After |
+  | --- | --- | --- | --- |
+  | Takedown, robot armour | left hand to face through the hold (median) | 1.19 (0.79-1.24), the foe 115 degrees off | 0.09 (0.05-0.10) |
+  | | nearest fang to throat over the cut (1.15-1.3 s) | 1.15 | 0.19 (0.06-0.12 through the hold) |
+  | | hips apart through the hold | 1.10 | 0.45 |
+  | Takedown, Hot Dog | left hand to face / fang to throat / hips | 1.20 / 1.18 / 1.10 | 0.10 / 0.17 / 0.44 |
+  | Critical, robot armour | fang to the torso's surface at the blow (- inside) | 0.21 outside | 0.05 inside |
+  | | hips apart through the contact | 1.11 | 0.85 |
+  | Critical, Hot Dog | fang to torso / hips | 0.20 outside / 1.12 | 0.04 inside / 0.85 |
+
+  Seen on the sheets: before, the takedown's foe stood side-on 1 m off while the hand closed on air; after, it is pulled back
+  against the attacker, the hand over its face and the fang at its throat through the cut, and its corpse falls from there. The
+  critical's fang now enters the belly from the dash and comes out above the back. The Hot Dog's sausage arches back against the
+  attacker and its thick body touches the attacker's hips. No pop: the largest step of either body's hips between shots (1/30 s) is
+  the attacker's own (0.10 m, as before), the foe's 0.04 m while it is drawn in.
 
 ## The intro: Silent Kill (`fangs-silent-kill`)
 
