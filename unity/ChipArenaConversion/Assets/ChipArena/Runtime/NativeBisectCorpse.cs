@@ -40,8 +40,9 @@ namespace ChipArena.UnityConversion
         }
         private static NVector3 N(Vector3 v)=>new NVector3(v.x,v.y,v.z);
         private static Vector3 U(NVector3 v)=>new Vector3(v.X,v.Y,v.Z);
-        /// <summary>The hand the dropped weapon leaves (the magic weapons' off hand, else the right).</summary>
-        private static int WeaponHand(NativeDeath death){var s=death.actor?.SourceSpec;return s=="fire"||s=="water"||s=="lightning"||s=="darkness"||s=="leet"?9:13;}
+        /// <summary>The hand the dropped weapon leaves: the hand that holds it (the staffs', L33t's and the bow's left, else the right; Core
+        /// NativeCorpseDress.Hand), so a split body's weapon goes with the half that hand is on.</summary>
+        private static int WeaponHand(NativeDeath death)=>NativeCorpseDress.Hand(death.actor?.SourceSpec);
         /// <summary>Whether this corpse drops the weapon: every whole body does; of two halves, the one the hand is on.</summary>
         private bool HoldsWeapon(Vector3[] at)=>!Halved||Request.HalfOf(WeaponHand(Death),N(at[WeaponHand(Death)]))==Half;
         /// <summary>A half body's collider bounds in its own frame: the half's geometry on that joint (Core BisectCut).</summary>

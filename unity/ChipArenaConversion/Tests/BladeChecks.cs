@@ -257,8 +257,9 @@ namespace ChipArena.UnityConversion
                         &&NativeBladeMotion.Victim(new Actor{Id=48,SourceSpec="rifle",PairClip=NativeBladeMotion.FangsTakedownHit,PairAt=30,PairUntil=31.45f},30.1f,bank,out _),"a counter's foe is dazed until the blow; the Fangs' foes are seized from the start");
                 }
                 string dp=R(root,"NativeDeathPresentation.cs"),vb=R(root,"NativeVisualBodyPresentation.cs");
-                Check(dp.Contains("if(pilot&&!temporary&&age<VictimDeathGap)VisualRigFromDrawn(rig,death);")&&dp.Contains("visualDeathDrawn=null;")&&vb.Contains("if(visualDeathDrawn!=null)VisualCopyDrawn(visualDeathDrawn,binding.Bones);")
-                    &&vb.Contains("||float.IsNaN(body.Motion.VictimAt)||Mathf.Abs(body.Motion.VictimAt-death.at)>VictimDeathGap)return false;"),"a death in a victim clip falls from the drawn pose; any other death is built as before");
+                // (Since 2026-11-14 every death seen as it happens falls from the drawn pose, a victim clip's among them: CorpseDressChecks.)
+                Check(dp.Contains("if(pilot&&!temporary&&NativeCorpseDress.FromDrawn(age))VisualRigFromDrawn(rig,death);")&&dp.Contains("visualDeathDrawn=null;")&&vb.Contains("if(visualDeathDrawn!=null)VisualCopyDrawn(visualDeathDrawn,binding.Bones);")
+                    &&vb.Contains("||!NativeCorpseDress.Drawn(body.PosedFrame,Time.frameCount))return false;"),"a death in a victim clip falls from the drawn pose (as every death seen as it happens does)");
                 // A Katana's parry dazes its striker (owner 2026-11-13: "we still need 'reaction' animations"): every class reels, then plays a
                 // Stunned of its own; the Cyber Lord, with no set, on the held set's (the unarmed set's recoil and Stunned), and only while dazed.
                 var shortBank=new ShortBank();int dazes=0;

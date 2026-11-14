@@ -289,18 +289,18 @@ namespace ChipArena.UnityConversion
                 body.JointBone[j]=v;body.JointFrom[j]=v>=0?bones[v].worldToLocalMatrix*rig.Bones[j].localToWorldMatrix:Matrix4x4.identity;
             }
         }
-        // A pilot killed while its model played a paired move's victim clip (its motion's VictimAt at the death: VisualMotionPose; owner
-        // 2026-11-13 via the coordinator, "build the corpse from the drawn body's pose"): the dead rig's joints put on the model as last
-        // drawn (each joint's frame on its bone, as VisualJointFrame reads it, parents first), its pose read back, so the ragdoll starts
-        // from the reaction the body showed rather than the game's stance; the model corpse then wears that drawn pose bone for bone
-        // (VisualDeathBody, while visualDeathDrawn is set). Any other death: false, nothing moved.
-        private const float VictimDeathGap=.25f;
+        // A pilot killed as it is seen (owner 2026-11-13 via the coordinator, "build the corpse from the drawn body's pose", first for a
+        // paired move's victim clip; 2026-11-14, every model death: "On the first corpse frame the body snaps"): the dead rig's joints put
+        // on the model as last drawn (each joint's frame on its bone, as VisualJointFrame reads it, parents first), its pose read back, so
+        // the ragdoll starts from the pose the body showed (its pack clips, stride, hand fits, a reaction) rather than the game rig's; the
+        // model corpse then wears that drawn pose bone for bone (VisualDeathBody, while visualDeathDrawn is set). A body not drawn this
+        // frame or the one before (first person, the voxel bodies, a late first sight): false, nothing moved (Core NativeCorpseDress.Drawn).
         private VisualBody visualDeathDrawn;private static int[] rigDepthOrder;
         private bool VisualRigFromDrawn(CapturedAnimation.Player rig,NativeDeath death)
         {
             visualDeathDrawn=null;
-            if(rig==null||death==null||!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.Binding==null||body.JointFrom==null||body.Motion==null
-                ||float.IsNaN(body.Motion.VictimAt)||Mathf.Abs(body.Motion.VictimAt-death.at)>VictimDeathGap)return false;
+            if(rig==null||death==null||ClassicBodies||!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.Binding==null||body.JointFrom==null
+                ||!NativeCorpseDress.Drawn(body.PosedFrame,Time.frameCount))return false;
             int n=Mathf.Min(body.JointBone.Length,rig.Bones.Length);var bones=body.Binding.Bones;var frames=new Matrix4x4[n];
             for(int j=0;j<n;j++){int v=body.JointBone[j];frames[j]=v>=0&&v<bones.Length&&bones[v]!=null?bones[v].localToWorldMatrix*body.JointFrom[j]:rig.Bones[j].localToWorldMatrix;}
             foreach(int j in RigDepthOrder(n)){var f=frames[j];rig.Bones[j].SetPositionAndRotation(f.GetColumn(3),f.rotation);}
