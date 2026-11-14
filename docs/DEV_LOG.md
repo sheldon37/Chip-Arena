@@ -133,6 +133,7 @@
   - A light plunge (a Katana from a short jump) throws only a few small stones, easy to miss on a dark floor (by weight).
   - No frame-time measurement in a build (the caps and no per-frame allocation are checked, not timed).
 - **Next:** the owner reviews the sheets; then merge into shared and publish to the test channel.
+- **Released:** shared `d9b05857` (the builder at `d9b05857`), test channel revision `639302420060001165` (build `db866d61`); the suite at `bcc1787c` (1,026 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-14 — Claude: Silent Kill's camera and effects on the final travel, softer smoke; the Fangs' cuts turn as their clips do, and the feet stay down (presentation only)
 
@@ -210,6 +211,7 @@
   here); the paired moves. The before entrance was filmed in two parts (the first hold's takes stopped at 3.0 s: the tool's `at=` is
   real seconds and a frame costs about 1.2 s), joined on the arena clock.
 - **Next:** the owner looks at the entrance and plays the flurry; merge and release.
+- **Released:** shared `79325e9a` (the builder at `79325e9a`), test channel revision `639302399920732164` (build `a766392d`); the suite at `d4168b24` (1,025 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-13 — Claude: the Fangs' moves carry the pilot as their clips do, and Silent Kill's flurry leaps (owner request; a rules change at the owner's word, for Astra)
 
