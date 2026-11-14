@@ -69,6 +69,7 @@
   Drift on a model corpse (code path only); the daggers, shield, bow, staffs, Glaive and a non-Standard skin's dropped model (code path
   and checks only); a death scene (unchanged).
 - **Next:** the owner looks; merge and release.
+- **Released:** shared `53805631` (the builder at `53805631`), test channel revision `639302607748371412` (build `33c2638e`); the suite at `179df65b` (1,028 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-14 — Claude: a pilot no longer loses its helmet, hat and plates for a moment as it dies (owner reports; presentation only)
 
