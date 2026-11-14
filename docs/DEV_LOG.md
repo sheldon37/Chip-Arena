@@ -1,3 +1,70 @@
+## 2026-11-14 — Claude: a pilot no longer loses its helmet, hat and plates for a moment as it dies (owner reports; presentation only)
+
+- **The owner (2026-11-13):** "On the new gib, it appears the head/face appear for a moment when the player dies?" (a recording of a Hot Dog
+  pilot's DEV Katana cut through a yellow pilot's neck). **Then (2026-11-14):** "Pilot still seems to 'remove' helmet and clothes time of
+  death for a moment". Branch `claude/gib-head-fix` from shared `9d1e3c3a`: `ac81d12a` the cut, `3166e5f2` its speed, `326250fe` the death
+  scenes, `9b352838` shared `d9b05857` merged in, then this entry. Pushed, **not merged, not released**.
+- **What the recording shows** (30 fps frames): for about four frames after the killing blow (1.13-1.23 s) the victim stands with a bald,
+  bare face, with no helmet, visor or cap. Then the severed head, helmet and cap on, flies off a headless body. There are never two heads.
+  The loose head does not vanish: it lies on the floor until the killcam (it only left the zoomed crop as the camera turned).
+- **The cause** (`Runtime/NativeVisualCutPresentation.cs`, since `eae4c3c7` 2026-10-28 and the helmet's `236c65cf` 2026-10-30):
+  - A split model corpse's cut is made on a worker. Until it is in, the first half draws the whole body and the second half is hidden. For a
+    neck cut, the second half is the head's.
+  - The robot helmet, the hat and the head's suit plates were put on the half that holds the head: the hidden one. For as long as the cut took,
+    the whole body showed its bare face (its hair is hidden under the helmet).
+  - Before the gore flesh this lasted one frame. `claude/gore-flesh` (`7a20b3c0`) gives each smooth cap's vertex its depth by scanning every
+    row within 6 cm, which on the bones' 1.2 mm cells made the worker over ten times slower. In the Editor (probe build, the same kill):
+    28 ms (1 frame) on `897e0d0d`, 283-376 ms (17-24 frames) on `9d1e3c3a`. So: an older bisect behaviour that the new flesh made visible.
+  - The same gap hid any renderer the cut does not read on the head's side. A cut that failed showed both halves whole (two heads).
+- **The fix:**
+  - Core `NativeSplitShow` says what each half draws at each stage of the cut (being made, on, failed). While the cut is made, or after it
+    failed, the first half wears all of the whole body (face gear, hat, every plate, every renderer) and the second is hidden. Once the cut is
+    on, each half wears its own side. Only the first half puts the cut on, so nothing is drawn twice in the frame it lands.
+  - Core `NativeBisect`: a smooth cap's depth search goes out from the vertex's row, nearest first, and stops past the nearest outline found.
+    Ties keep the old row order, so the caps are byte for byte the same (600 random sections, 2.4 M vertices, against the old Core). A bone
+    face all on one bone skips its search per triangle. The worker is back to 28-50 ms in the Editor (1-2 frames).
+  - **Death scenes** (a kill effect's scripted death: the clown car, the bass van, the Raging Demon's finish) played on the model with the
+    helmet but without the plates or the hat. The scene's body now wears the plates on the parts the scene shows and the hat while the head
+    shows (`VisualSceneDress`).
+- **Every death path checked** (the coordinator's list):
+  - **Whole corpse** (stock ragdoll, kill effects, vent falls `897e0d0d`, held paired deaths `af539862`, joint severs): the helmet, hat,
+    plates, garments and skin are on from the corpse's first frame; unchanged.
+  - **Split corpse** (blade and saw cuts): fixed above.
+  - **Death scenes**: fixed above.
+  - **Still missing on every model corpse** (permanent, not for a moment; not changed, for the owner's call):
+    - The held weapon. No dropped weapon is drawn for a model corpse: `9599d795` (2026-10-23, minutes after model corpses arrived) wrapped
+      the hat lines in the voxel body's `if(!dressed)` and took the weapon line with them. Drawing it back needs the model weapon the pilot held (the bake's
+      `VisualWeapons` or the skin's model), not the voxel-era loose model.
+    - The chest core, the wrist device and the back emblem (`VisualGear`): live bodies only, by design so far.
+  - **Graphics tiers:** none of this depends on the tier (the Low tier changes only the caps' material).
+- **Not changed:** which kills cut, the planes, the pieces, the flesh's look, timing, damage, networking (nothing for Astra). **Animation
+  impact:** none.
+- **Checks:**
+  - Full CoreTests on `3166e5f2`, `326250fe` (1,024 PASS lines each) and the merge `9b352838` (1,027), Windows path patch applied in a
+    throwaway worktree and reverted: exit 0 each. The Unity compile passes on the merge.
+  - `--melee-bisect`: 37,609 checks, including the new "head drawn once" checks. Each side of the cut is worn by exactly one shown body at
+    every stage. The DEV Katana's first cut takes the head (60 of 60 random blows), and the body's half has none once the cut is on.
+  - `--visual-rig`: the wiring pins, and a death scene's plates and hat.
+  - `tools/check_unity_compile.py`: all four assemblies pass.
+  - The Editor build gate (`PrototypeBuild.Validate`) on `3166e5f2`: ok. Its two edit-mode `Destroy` errors are in earlier gates too. Also ok on `326250fe`.
+  - `git diff --check` against shared: clean.
+- **Filmed in the Editor** (probe builds that only add timing logs, local and never pushed; Cybercity; every frame shot through the kill;
+  the scratchpad's `headgib/cap` and `headgib/*.png`):
+  - **Before** (`897e0d0d`, `9d1e3c3a`; DEV Katana neck cut on a bot in the robot helmet, outfit and a cap, by the local Hot Dog): the
+    kill frame shows the bald, bare face with no helmet or cap. The next frame the severed head flies off wearing both. On a death scene
+    (the clown car) the body lost its cap and every plate for the whole scene.
+  - **After** (`3166e5f2`/`326250fe` + probe): the kill frame keeps the helmet, cap and plates on the whole body. Then the head piece
+    wears them and the body has none. Shown on the neck, body (rush) and limb (Glaive halo) cuts at 30 fps; on the neck cut and a whole
+    corpse at 60 fps; on the Hot Dog victim's neck, body and limb cuts (two pieces, nothing doubled); and on the clown car (cap and
+    plates kept). The head piece stays on the floor with the body (shots 3-7 s after the kill).
+  - **Killcam:** the replay rebuilds the corpse through the same cut (probe: 30 ms worker, 1 frame). Its frame at the cut shows the
+    helmet and cap on. The replay runs on wall time, so the capture caught only a few of its frames.
+  - Pre-existing, not changed: the first corpse frame snaps from the drawn pose to the game rig's.
+- **Not seen / not done:** a Windows build; the owner's frame rate (the Editor's frames are slower: there the gap was 17-24 frames, in the
+  owner's recording about 0.13 s); online play; the Low tier on screen. Wound holes on the head's side appear only once the cut is on (the
+  whole body shows that side unwounded for the 1-2 frames).
+- **Next:** the owner looks; merge and release; the owner decides on the corpse's weapon and chest core.
+
 ## 2026-11-13 — Claude: slams and breaking props throw real pieces, not voxel cubes; the voxel style kept as a map switch (presentation only)
 
 - Owner, 2026-11-13: "We still seem to use voxel effects on slam attacks- Cubes show from collision; Can we improve this with higher

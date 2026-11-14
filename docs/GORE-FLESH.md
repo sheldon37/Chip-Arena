@@ -43,7 +43,9 @@ piece as the ragdoll moves, and no pack asset is used or needed. The Drive zip i
 cap keeps every cell its own piece and gives each vertex its exact distance in from the section's edge (at most
 `NativeBisect.FleshReach`, 6 cm) and the nearest outline's own paint. The region filled is the same as before (the same
 outlines, the same exact trapezoids at the edge), so the caps stay sealed. The cells' colours are still written, for the
-Low tier.
+Low tier. The nearest outline is searched for row by row out from the vertex's own row, nearest first, and the search stops once a row lies
+farther than the nearest outline found. Ties go to the first outline in row order, so the result is the same as scanning every row in
+reach (2026-11-13: that full scan on the bones' 1.2 mm cells had made the cut's worker 10-40 times slower).
 
 The runtime puts these on the cap's mesh: `texcoord1` (depth, kind), `texcoord2` (the shell's paint, in the project's colour space), `texcoord3` (the point
 in the death pose). The shader draws the layers from the depth, with their borders wobbled by noise.
