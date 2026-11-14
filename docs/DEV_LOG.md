@@ -1,3 +1,75 @@
+## 2026-11-14 — Claude: model corpses start from the drawn pose, drop the weapon they held and keep the core, device and emblem (owner request; presentation only)
+
+- **The owner (2026-11-14):** "Yes, fix them", on the three corpse gaps listed with the helmet fix (`claude/gib-head-fix`): model corpses
+  draw no dropped weapon (since `9599d795`, 2026-10-23), no chest core, wrist device or back emblem, and their first frame snaps from the
+  drawn pose to the game rig's. Branch `claude/corpse-dressing` from shared `75472990`: `e10c9e75` the change, `4604c2fb` (the Hot Dog and
+  armour read once per corpse), `09e96df3` (the modules through the module presentation, a ChipModuleChecks rule), `9ea99ec2` (the
+  dropped weapon eases out of an overlap), `8ef644ab` (its comment corrected), then this entry. Pushed, **not merged, not released**.
+- **The snap** (every model death, not only paired ones): the corpse was built from the game rig's pose while the body on screen had been
+  drawn by its pack clips, stride and hand fits. `VisualRigFromDrawn` (the paired path's, `af539862`) now runs for every model death seen
+  as it happens (Core `NativeCorpseDress.FromDrawn`/`Drawn`: the death under 0.25 s old, the body drawn this frame or the one before; no
+  longer gated to a victim clip): the dead rig's joints go onto the model as last drawn, the ragdoll, the bisect's halves and every cut
+  are made from them, and the model corpse wears the drawn pose bone for bone. Once per death (22 joints, the bones once).
+  - **Not from the drawn pose** (no drawn body of that moment; the rig's pose as before): a death first seen late (a guest's first sight
+    of an old death, the bodies rebuilt after the killcam's reset), the local pilot in first person (its third-person body is not drawn),
+    the Classic voxel bodies. Not corpses, unchanged: the death scenes (the clown car, the bass van, the Raging Demon's finish: authored
+    motion from the game rig's joints) and the Siren's crush drop (its own body from the crush clip).
+- **The weapon** (`Runtime/NativeCorpseDressPresentation.cs`): before the rig moves, `VisualHeldOf` reads what the hand held where it was
+  drawn: the bake's life-size model (a gun's Arsenal Series where picked; the fitted hand's frame unfitted, as `VisualWeaponDrawn` mounts
+  it), the pack bank's (daggers, shield, the bow at the bow hand, the staffs, L33t's) or the game's model in the pilot's skin (Katana,
+  Glaive, every non-Standard skin), with its chip modules (their animation stopped at the death; no enchant, blood or muzzle). The
+  dropped weapon's cosmetic body (`NativeCorpse`) is seated round that model (its middle, turn and size), loose of the body's own parts
+  (it lies on the floor and never pushes the body apart), eases out of an overlap at 1 m/s (`NativeCorpseDress.SeatEase`) and flies with a
+  hand cut off the body. The bake's models are the corpse's own hidden copies (every model body carries every entry); the pack's are
+  pooled mounts; no gameplay collider. A split body's weapon goes with the half its hand is on (drawn by the first half while that one
+  still draws the whole body); the daggers' second blade stays in the left hand. The dropped weapon's hand is the hand that holds it, the
+  bow's left now included (`NativeBisectCorpse.WeaponHand`; the voxel bow drops from that hand too).
+  - **Kept off** (Core `NativeCorpseDress.Of`, every class checked against GameContent): the Top Dog's mallet (put away) and the Fangs'
+    paired daggers (the coordinator's call); the Bombadier's TNT (lit and thrown by the moment: a loose bundle reads as a live bomb); the
+    fighters' fists and the Cyber Lord's gauntlets (worn); the Siren (none). Hidden as the game hid it at the death: a sheathed Katana, a
+    Glaive whose ring is out, a thrown main dagger (its second blade stays), a veiled Fangs, a weapon put away. The Katana's saya is not
+    drawn on corpses (unchanged).
+- **The gear**: the chest core, the wrist device (lid shut, no chip) and the back emblem stay on the corpse at its model's own anchors (the
+  outfit's, as the live body's), by the live body's rules (no core on the Hot Dog, no emblem under the robot armour's back plate), each on
+  the half its bone went to at every stage of a cut (Core `NativeSplitShow`), gone with a crushed part, fading with the body, iced under
+  Frostbreak, none through Soul Drift's ghost. Their light holds 0.15 s, then fails in stutters to a faint rest over 1.1 s
+  (`NativeCorpseDress.DeadGlow`; one constant keeps it lit if the owner prefers). Not on the death scenes (unchanged).
+- **Not changed:** the rules, damage, timing, hitboxes, cooldowns, movement, networking (nothing for Astra); which kills cut and where;
+  the cosmetic bodies' physics but for the dropped weapon's body (seated and loose of the body, as above). **Animation impact:** none.
+- **Checks:**
+  - Full CoreTests on `09e96df3` and `9ea99ec2` (Windows path patch applied in the worktree and reverted): 1,028 PASS lines each, exit 0
+    (the new `CorpseDressChecks`, `--corpse-dress`: 16,717 checks; BladeChecks' paired-death pin updated). An earlier run on `4604c2fb`
+    stopped at ChipModuleChecks (only the module bank and presentation may name `NativeChipModules`), fixed in `09e96df3`.
+  - `--melee-bisect` (37,609 checks), `--visual-rig` and `--blades` on `e10c9e75`, exit 0; the full runs above include them.
+  - `tools/check_unity_compile.py`: all four assemblies on `e10c9e75`, `09e96df3` and `9ea99ec2`.
+  - The Editor build gate (`PrototypeBuild.Validate`) on `9ea99ec2`: ok, 397 PASS lines (its two edit-mode `Destroy` errors are in
+    earlier gates too). `8ef644ab` changes a comment only.
+  - `git diff --check` against shared: clean. The Editor checkout went back to `9319026b` with its local files after every hold; the 13
+    stage banks, Rooftop `7f875dcd` and the motion bank (6,136,627 bytes, `37ec44d2`) as released at every release.
+- **Filmed** in the shared Editor (Cybercity and Ward Zero, the game stepped at 60 a second, every frame shot through the death; frames
+  in the session scratchpad's `corpse/cap`, before/after rows aligned on the death in `corpse/sheets`). Before: shared `75472990`;
+  after: `9ea99ec2` (`d-gunlog`: the same with every renderer logged; `p-rifle`: a local-only probe build of it, never pushed).
+  - **The snap:** before, every scene's first corpse frame changes the pose (the greatsword pilot drops from its raised stance into a
+    kneel, the rifle and sword pilots' arms fall, the Hot Dog folds); after, the first corpse frame is the last live frame's pose in the
+    gun, greatsword, neck, weapon arm, Hot Dog and vent scenes. The takedown's victim already fell from the drawn pose before (`af539862`).
+  - **The weapon:** before, it vanishes on the first corpse frame in every scene; after, it is in the hand on that frame and drops with
+    the body: the greatsword and rifle land beside it, the sword falls with the neck-cut body, the cut-off forearm carries its sword
+    away, the Hot Dog's sword lies by the sausage, the vent bot's sword falls down the shaft with it, the takedown victim's hanging
+    greatsword drops as it falls. A probe on the gun bot: the dropped rifle starts at the drawn mount (within 1 cm) and falls a step a
+    frame.
+  - **The gear:** after, the core stays lit on the hoodie pilot's chest through its first corpse frame (front view), the device rides
+    the Hot Dog's wrist as it lies (before: a bare wrist) and the sword bot's cut-off forearm, and the emblem (the smile with crossed eyes)
+    shows on the hoodie pilot's back as it lies, where before its first corpse frame lost it. The robot-armoured bots wear no emblem (its
+    back plate covers it, as alive); their cores were not caught front-on.
+  - Capture caveats: a dead local pilot's killcam cuts in within two shots (its later live frames are the replay's or rebuilt), and its
+    corpse catches up several physics steps per capture frame on the tool's forced kill (the hoodie pilot's rifle had dropped about
+    0.7 m by its first corpse frame, the body crumples within three); bot deaths step one physics step per frame. The corpses' fall speed
+    in these captures is the tool's clock, not the game's.
+- **Not seen / not done:** a Windows build; online play (a guest's first sight, the replay's corpse); the Low tier; Frostbreak and Soul
+  Drift on a model corpse (code path only); the daggers, shield, bow, staffs, Glaive and a non-Standard skin's dropped model (code path
+  and checks only); a death scene (unchanged).
+- **Next:** the owner looks; merge and release.
+
 ## 2026-11-14 — Claude: a pilot no longer loses its helmet, hat and plates for a moment as it dies (owner reports; presentation only)
 
 - **The owner (2026-11-13):** "On the new gib, it appears the head/face appear for a moment when the player dies?" (a recording of a Hot Dog
