@@ -277,7 +277,7 @@ namespace ChipArena.UnityConversion
             report.Add("blade classes' kills ("+blows+" lethal blows over "+moves.Count+" moves, random reach and facing): "+string.Join("; ",tally.Select(t=>t.Key+" ["+string.Join(", ",t.Value.OrderByDescending(p=>p.Value).Select(p=>p.Key+" "+(p.Value*100/Math.Max(1,t.Value.Values.Sum()))+"%"))+"]"))+"; a late guest within "+worstLate.ToString("0.0000"));
         }
 
-        public static void Run(string root)
+        public static void Run(string root,bool sweep=false)
         {
             count=0;var report=new List<string>();var options=new JsonSerializerOptions{IncludeFields=true};
             var bank=BisectChecks.Bank(root);var woundParts=JsonSerializer.Deserialize<NativeWoundParts>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/WoundParts.json")),options).parts;
@@ -338,6 +338,33 @@ namespace ChipArena.UnityConversion
             Check(!picks.Keys.Any(k=>k.StartsWith("daggers through")),"a dagger never goes through the body: a limb, or the throat");
             report.Add("lethal blows (500 each, random reach, facing, index, jump and kit): "+string.Join("; ",tally));
             Blades(picks,report);DevGreatsword(report);Causes(picks,report);Kick(report);
+
+            if(sweep)
+            {
+                var failures=new List<string>();int tested=0;
+                foreach(var pair in picks.Where(p=>p.Key.StartsWith("dev-katana through")&&p.Key.EndsWith("diagonal")))
+                {
+                    var b=pair.Value;var sources=BisectChecks.Sources(bank,woundParts,NativeBodySkins.StandardIndex,0,null,"top",out var looks);
+                    var original=b.Request.Normal;var horizontal=Vector3.Normalize(new Vector3(original.X,0,original.Z));
+                    for(int angle=0;angle<=90;angle++)
+                    {
+                        var normal=horizontal*(float)Math.Sin(angle*D)+Vector3.UnitY*(Math.Sign(original.Y)*(float)Math.Cos(angle*D));
+                        var plane=new BisectPlane(b.Request.Point,normal);
+                        var cut=NativeBisect.Split(sources,b.Bones,plane,looks,0,0x5a17u,b.Request.Mask);
+                        NativeBisect.Basis(normal,out var su,out var sv);var at=b.Request.Point+su*.00317f+sv*.00213f;
+                        int baseline=BisectChecks.Sweep(BisectChecks.World(sources,b.Bones,null,-1),normal,at,out _,2e-4f);
+                        for(int half=0;half<2;half++)
+                        {
+                            int back=BisectChecks.Sweep(BisectChecks.World(sources,b.Bones,cut,half),normal,at,out int rays,2e-4f);
+                            tested++;if(back>baseline+2)failures.Add(angle+" degrees half "+half+": "+back+"/"+rays+" vs "+baseline);
+                        }
+                    }
+                }
+                Check(tested>0,"plane sweep found a DEV Katana diagonal fixture");
+                foreach(var failure in failures)Console.WriteLine("GAP "+failure);
+                Check(failures.Count==0,"plane sweep: "+failures.Count+" failing halves of "+tested);
+                Console.WriteLine("PASS melee plane sweep: "+tested+" halves");return;
+            }
 
             // ---- 2. The cuts on the real body: sealed, whole, capped on the plane, only the part, blood along the seam ----
             double slowestFull=0,slowestPart=0;long bytesFull=0,bytesPart=0;int full=0,part=0;var lines=new List<string>();
