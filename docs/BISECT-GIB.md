@@ -4,6 +4,9 @@ Owner request (2026-10-12): "For the buzzsaw death on factory, can we add essent
 
 The bisect gib is presentation only. No hitbox, damage, timing, network or hazard rule reads it, and no simulation file references it (the managed checks enforce this). Every client builds it from the replicated death record, so the host, guests, late joiners and the killcam see the same split.
 
+Since 2026-11-13 the model's cut faces, wound pits and a gib's fragments are drawn as flesh and bone by one shader lit as the
+blood is; see `docs/GORE-FLESH.md`. The cut itself (which kills, the plane, the pieces, the sealing) is unchanged.
+
 ## Pieces
 
 | Layer | File | Role |

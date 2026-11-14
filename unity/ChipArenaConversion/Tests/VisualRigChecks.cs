@@ -195,6 +195,57 @@ namespace ChipArena.UnityConversion
             var ra=new List<Vector3>(b);var rb=new List<Vector3>(a);
             Check(NativeBisect.CapOf(ra,rb,paint,plane,NativeBisect.ModelLook,0,1,true).Indices.Count==0&&NativeBisect.CapOf(a.Take(3).ToList(),b.Take(3).ToList(),paint,plane,NativeBisect.ModelLook,0,1,true).Indices.Count==0,"an outline turned the wrong way or left open caps nothing");
             Check(NativeBisect.ModelLook.Inner==0&&NativeBisect.ModelLook.Rim<NativeBodyModels.CutLook(NativeBodySkins.StandardIndex).Rim,"the model's cut has no suit lining and a thin rim");
+            // The flesh (owner 2026-11-13: "we do use new blood, but the gibbing seems to still use voxel flesh and wounds? Can we
+            // essentially match the quality with our blood? Using higher quality bone structure and flesh"; docs/GORE-FLESH.md): the
+            // model's cap also carries what a smooth cross-section is drawn from, over the same sealed region.
+            Check(NativeBisect.ModelLook.Flesh==BisectLook.Tissue&&front.Data.Count==front.Positions.Count&&front.Emission.Count==front.Positions.Count&&front.Data.All(d=>d.Y==BisectLook.Tissue),"the model's cap carries a depth and its kind at every vertex");
+            float worst=0,deepest=0;int onEdge=0;
+            for(int i=0;i<front.Positions.Count;i++)
+            {
+                var p=front.Positions[i]-o;float x=Vector3.Dot(p,u),y=Vector3.Dot(p,v);float want=Math.Min(NativeBisect.FleshReach,Math.Max(0,Math.Min(.08f-Math.Abs(x),.06f-Math.Abs(y))));
+                worst=Math.Max(worst,Math.Abs(front.Data[i].X-want));deepest=Math.Max(deepest,front.Data[i].X);if(front.Data[i].X<1e-5f)onEdge++;
+            }
+            Check(worst<2e-5f&&onEdge>=8&&deepest>.05f&&deepest<=NativeBisect.FleshReach,"each vertex's depth is its distance in from the section's edge (worst "+worst.ToString("G3")+", "+onEdge+" on the edge, deepest "+deepest.ToString("F4")+")");
+            Check(front.Emission.All(c=>Math.Abs(c.X-skin.X)<1e-5f&&Math.Abs(c.Y-skin.Y)<1e-5f&&Math.Abs(c.Z-skin.Z)<1e-5f),"and the shell's own paint, for the skin at its edge");
+            float Area(WeaponSection m){double sum=0;for(int t=0;t+2<m.Indices.Count;t+=3){var p0=m.Positions[m.Indices[t]];sum+=Vector3.Cross(m.Positions[m.Indices[t+1]]-p0,m.Positions[m.Indices[t+2]]-p0).Length()*.5;}return (float)sum;}
+            var cells=new BisectLook{Rim=NativeBisect.ModelLook.Rim,Inner=0,RimShade=NativeBisect.ModelLook.RimShade};var plain=NativeBisect.CapOf(a,b,paint,plane,cells,0,0x5a17u,true);
+            Check(plain.Data.Count==0&&plain.Indices.Count<front.Indices.Count&&Math.Abs(Area(front)-Area(plain))<.0192f*.03f&&Area(front)>=.0192f-1e-5f&&Area(front)<.0192f*1.03f,"the smooth cap fills the same region as the cells' (every cell its own piece), "+Area(front).ToString("F5")+" m2 of 0.01920");
+            Check(front.Colors.Count==front.Positions.Count&&front.Colors.Any(c=>BisectChecks.Flesh(new Vector3(c.X,c.Y,c.Z))),"its cells keep their colours (the Low tier draws them)");
+            // An L-shaped section: the depth is from the nearest edge, the notch's included.
+            var ell=new[]{P(-.08f,-.06f),P(.08f,-.06f),P(.08f,0),P(0,0),P(0,.06f),P(-.08f,.06f)};var la=new List<Vector3>();var lb=new List<Vector3>();var lp=new List<Vector4>();
+            for(int k=0;k<6;k++){la.Add(ell[k]);lb.Add(ell[(k+1)%6]);lp.Add(k<3?skin:new Vector4(.1f,.2f,.7f,1));}
+            var notch=NativeBisect.CapOf(la,lb,lp,plane,NativeBisect.ModelLook,0,3,true);float bad=0;bool blue=false,tan=false;
+            for(int i=0;i<notch.Positions.Count;i++)
+            {
+                var p=notch.Positions[i]-o;float x=Vector3.Dot(p,u),y=Vector3.Dot(p,v);float box=Math.Min(.08f-Math.Abs(x),.06f-Math.Abs(y));
+                float corner=x<=0&&y<=0?MathF.Sqrt(x*x+y*y):x>0?-y:y>0?-x:0;float want=Math.Min(NativeBisect.FleshReach,Math.Max(0,Math.Min(box,corner)));bad=Math.Max(bad,Math.Abs(notch.Data[i].X-want));
+                if(notch.Data[i].X<.004f&&notch.Emission[i].Z>.6f)blue=true;if(notch.Data[i].X<.004f&&Math.Abs(notch.Emission[i].X-skin.X)<1e-5f)tan=true;
+            }
+            Check(notch.Positions.Count>0&&bad<2e-5f&&blue&&tan,"a notched section's depth is from its nearest edge, each edge its own shell's paint (worst "+bad.ToString("G3")+")");
+            Check(NativeModelSkeleton.CutLook(NativeModelSkeleton.LongBone).Flesh==BisectLook.LongBone&&NativeModelSkeleton.CutLook(NativeModelSkeleton.Spongy).Flesh==BisectLook.Spongy&&NativeModelSkeleton.CutLook(NativeModelSkeleton.Skull).Flesh==BisectLook.Skull&&NativeModelSkeleton.CutLook(NativeModelSkeleton.Cartilage).Flesh==0
+                &&NativeBisect.SausageLook.Flesh==BisectLook.Sausage&&NativeBodyModels.CutLook(NativeBodySkins.StandardIndex).Flesh==0&&BisectLook.Hat.Flesh==0,"each bone's face names its kind, the Hot Dog's a sausage; the voxel bodies' and the hats' caps stay cells");
+            // A gib's fragments: the bits of bone are flagged, so they are drawn as shards.
+            foreach(bool burst in new[]{false,true})
+            {
+                NativeKillEffectRules.Linear(NativeKillCaps.Bone,out double br,out double bg,out double bb);int bones=0,agree=0,all=0;
+                for(uint seed=1;seed<=6;seed++)
+                {
+                    var box=new double[]{.3,0,0,0, 0,.3,0,0, 0,0,.3,0, 0,1,0,1};var debris=new NativeKillDebris(box,new double[]{.2,.3,.4},1,new double[0],0,0,1,0,0,0,1,0,0,0,2,.8,seed,64,0,burst);all+=debris.Chunks;
+                    for(int i=0;i<debris.Chunks;i++){bool ivory=Math.Abs(debris.Colors[i*3]-br)<1e-9&&Math.Abs(debris.Colors[i*3+1]-bg)<1e-9&&Math.Abs(debris.Colors[i*3+2]-bb)<1e-9;if(debris.Bone[i])bones++;if(debris.Bone[i]==ivory)agree++;}
+                }
+                Check(all==384&&agree==all&&bones>=3&&bones<=70,(burst?"a burst":"a crushed part")+"'s fragments flag their bits of bone ("+bones+" of "+all+")");
+            }
+            // The wiring: the flesh shader in the blood's light, the Low tier on the cells, the Hot Dog a sausage with no bones.
+            {
+                string flesh=R("Resources/NativeFlesh.shader"),cutCode=R("Runtime/NativeVisualCutPresentation.cs"),bodyCode=R("Runtime/NativeVisualBodyPresentation.cs"),woundCode=R("Runtime/NativeVisualWoundPresentation.cs"),kills=R("Runtime/NativeKillModels.cs"),killFx=R("Runtime/NativeKillEffectPresentation.cs");
+                Check(flesh.Contains("Shader \"ChipArena/NativeFlesh\"")&&flesh.Contains("#include \"NativeBloodLight.cginc\"")&&flesh.Contains("\"LightMode\"=\"ForwardBase\"")&&flesh.Contains("BloodArenaLights(")&&flesh.Contains("BloodGlint(")&&flesh.Contains("#pragma multi_compile_instancing")&&!flesh.Contains("tex2D(_MainTex"),"the flesh is lit as the blood is, wet, untextured");
+                Check(flesh.Contains("float3 FleshTissue(")&&flesh.Contains("float3 FleshBone(")&&flesh.Contains("float3 FleshSausage(")&&flesh.Contains("clip(dn-cut);")&&System.Text.RegularExpressions.Regex.IsMatch(R("Resources/NativeFlesh.shader.meta"),@"^guid: [0-9a-f]{32}$",System.Text.RegularExpressions.RegexOptions.Multiline),"tissue, bone and sausage per pixel; a corpse's dissolve takes its caps");
+                Check(cutCode.Contains("if(!LowGraphics&&!fleshFailed)")&&cutCode.Contains("Resources.Load<Shader>(\"NativeFlesh\")")&&cutCode.Contains("mesh.SetUVs(1,data);mesh.SetUVs(2,shell);mesh.SetUVs(3,rest);")&&cutCode.Contains("if(cutCapMaterial!=null)return cutCapMaterial;"),"the caps on the flesh shader; the Low tier and a build without it keep the cells");
+                Check(cutCode.Contains("Sausage=HotDogOn(halves[0].Root)")&&cutCode.Contains("Sausage=HotDogOn(c.Root)")&&cutCode.Contains("if(HotDogOn(c.Root))source=null;")&&bodyCode.Contains("if(HotDogOn(c.Root))return; // (No bones in the Hot Dog: it is sausage through.)"),"the Hot Dog's cut is a sausage's, with no bone in it");
+                Check(R("Resources/NativeVisualBodyFx.cginc").Contains("float WoundSoak(float3 world)")&&R("Resources/NativeVisualBodyFx.cginc").Contains("if(_Wounds<0.5)return soak;")&&R("Resources/NativeVisualBodyToon.shader").Contains("if(_VertexAlbedo<=0){float soak=WoundSoak(i.worldPos);o.Albedo=WoundSoaked(o.Albedo,soak);"),"the skin and clothes about an open wound are soaked in the blood's red (nothing read without a wound)");
+                Check(woundCode.Contains("data.Add(new Vector2(depths[ring]-top,pit));")&&woundCode.Contains("int pit=HotDogOn(body.gameObject)?BisectLook.Sausage:BisectLook.Pit;")&&woundCode.Contains("const int rings=5;"),"a wound's pit carries its depth down the wall");
+                Check(killFx.Contains("alpha,i,!LowGraphics,debris.Bone[i]);")&&killFx.Contains("corpse.CapColors[cap.Start+i],alpha,!LowGraphics);")&&kills.Contains("private readonly Part[] fleshLumps=new Part[5],boneShards=new Part[3];")&&kills.Contains("if(killChunks[v]!=null)Draw(killChunks[v],matrix,new Vector4(1,1,1,opacity),color,Vector4.one);"),"a gib's fragments are lumps of flesh and shards of bone, made once; the Low tier keeps the plain lumps");
+            }
             // The shaders: a keep value per vertex by its index, interpolated, the outline and the hologram cut with the body.
             string fx=R("Resources/NativeVisualBodyFx.cginc"),toon=R("Resources/NativeVisualBodyToon.shader"),ghost=R("Resources/NativeWeaponGhost.shader");
             Check(fx.Contains("if(_CutPick.x+_CutPick.y<0.5)return 1.0;")&&fx.Contains("return dot(_CutTex.Load(int3(i%w,i/w,0)).rg,_CutPick.xy);")&&fx.Contains("#ifdef SHADER_TARGET_SURFACE_ANALYSIS"),"unset, nothing is read or cut; set, a vertex's keep value is read by its index");

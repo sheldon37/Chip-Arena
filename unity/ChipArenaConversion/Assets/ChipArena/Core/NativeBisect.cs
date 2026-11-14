@@ -32,9 +32,19 @@ namespace ChipArena.UnityConversion
     /// then a lining band (<see cref="Inner"/> m: a suit's undersuit with glints of conduit, a coat's lining; none on the
     /// Prototype), then flesh in layers (brighter at the lining, darker to the core, blood glints). <see cref="Solid"/> caps
     /// in the section's own paint throughout (a hat).
+    /// <para><see cref="Flesh"/> (owner 2026-11-13: "we do use new blood, but the gibbing seems to still use voxel flesh and
+    /// wounds? Can we essentially match the quality with our blood? Using higher quality bone structure and flesh"), above 0,
+    /// also gives the cap what a smooth cross-section is drawn from (Resources/NativeFlesh.shader): every cell its own piece,
+    /// each vertex its distance in from the section's edge (m, at most <see cref="NativeBisect.FleshReach"/>) and this kind in
+    /// the section's Data, and the nearest outline's own paint in its Emission. The cells' colours stay as they are (the Low
+    /// tier and a renderer without the shader draw them).</para>
     /// </summary>
     public sealed class BisectLook
     {
+        /// <summary>The kinds of <see cref="Flesh"/>: tissue (skin, fat, muscle), a long bone (cortex, spongy bone, marrow), spongy
+        /// bone, the skull round the brain, a sausage (the Hot Dog: casing, then meat), a wound's pit.</summary>
+        public const int Tissue=1,LongBone=2,Spongy=3,Skull=4,Sausage=5,Pit=6;
+        public int Flesh;
         public bool Solid;public float Rim=.011f,Inner=.018f,RimShade=.62f,ConduitShare,ConduitLevel=1.4f;
         public Vector3 InnerColor=new Vector3(.047f,.065f,.078f),Conduit;public int InnerTag;
         public static readonly BisectLook Hat=new BisectLook{Solid=true,RimShade=.55f};
@@ -145,7 +155,11 @@ namespace ChipArena.UnityConversion
         // ================================================================================================ the split
         /// <summary>The model's look at a cut (Runtime NativeVisualBodyPresentation.cs VisualCorpseCut): a thin rim in the
         /// shell's own colour (its skin or cloth), no lining (the model is a person), then the flesh.</summary>
-        public static readonly BisectLook ModelLook=new BisectLook{Rim=.005f,Inner=0,RimShade=.8f};
+        public static readonly BisectLook ModelLook=new BisectLook{Rim=.005f,Inner=0,RimShade=.8f,Flesh=BisectLook.Tissue};
+        /// <summary>The Hot Dog's look at a cut (docs/HOT-DOG-SKIN.md: it is sausage through): its casing, then meat.</summary>
+        public static readonly BisectLook SausageLook=new BisectLook{Rim=.005f,Inner=0,RimShade=.8f,Flesh=BisectLook.Sausage};
+        /// <summary>How far in from a section's edge a smooth cap's depth is measured (m): deeper reads as this.</summary>
+        public const float FleshReach=.06f;
         /// <summary>
         /// A cap for a section found elsewhere (the model's skinned meshes, cut in its shader: Runtime
         /// NativeVisualBodyPresentation.cs VisualCorpseCut). Segment k runs from `a[k]` to `b[k]` (world points on `plane`)
@@ -486,8 +500,21 @@ namespace ChipArena.UnityConversion
             for(int r=H-2;r>=1;r--)for(int j=W-2;j>=1;j--){int i=r*W+j;if(depth[i]==0)continue;int d=depth[i];
                 d=Math.Min(d,depth[i+1]+3);d=Math.Min(d,depth[i+W]+3);d=Math.Min(d,depth[i+W+1]+4);d=Math.Min(d,depth[i+W-1]+4);depth[i]=d;}
             // Each cell's paint: by its depth from the edge, the shell's own paint (the nearest outline's) at the rim.
-            var palette=new List<Paint>();var index=new Dictionary<Paint,int>();var paint=new int[W*H];
-            int Id(Vector4 col,Vector4 em){var p=new Paint{C=col,E=em};if(!index.TryGetValue(p,out int id)){id=palette.Count;palette.Add(p);index[p]=id;}return id;}
+            var palette=new List<Paint>();var index=new Dictionary<Paint,int>();var paint=new int[W*H];bool smooth=look.Flesh>0;
+            // A smooth cap keeps every cell its own piece (no runs of one paint), so the depth it carries is right at each corner.
+            int Id(Vector4 col,Vector4 em){var p=new Paint{C=col,E=em};if(smooth){palette.Add(p);return palette.Count-1;}if(!index.TryGetValue(p,out int id)){id=palette.Count;palette.Add(p);index[p]=id;}return id;}
+            // A smooth cap's vertex: how far in from the nearest outline it lies (at most FleshReach) and that outline's paint.
+            int span=(int)Math.Ceiling(FleshReach/c)+1;
+            float Depth(Vector2 p,out Vector4 shell)
+            {
+                float best=FleshReach*FleshReach;shell=new Vector4(.5f,.5f,.5f,1);int r=(int)Math.Floor((p.Y-v0)/c);
+                for(int rr=Math.Max(0,r-span);rr<=Math.Min(H-1,r+span);rr++)for(int pass=0;pass<2;pass++)
+                {
+                    var list=pass==0?rows[rr]:flat[rr];if(list==null)continue;
+                    foreach(int si in list){if(smin[si].X>p.X+FleshReach||smax[si].X<p.X-FleshReach)continue;float q=SegDist(p,segs[si].A,segs[si].B);if(q<best){best=q;shell=segs[si].Color;}}
+                }
+                return (float)Math.Sqrt(best);
+            }
             int reach=(int)Math.Ceiling(look.Rim/c)+2;
             for(int r=0;r<H;r++)for(int j=0;j<W;j++)
             {
@@ -520,7 +547,11 @@ namespace ChipArena.UnityConversion
             void Poly(Span<Vector2> a,int na,Paint p)
             {
                 if(na<3)return;int first=into.Positions.Count;
-                for(int k=0;k<na;k++){into.Positions.Add(plane.O+plane.U*a[k].X+plane.V*a[k].Y);into.Normals.Add(normal);into.Colors.Add(p.C);into.Emission.Add(p.E);}
+                for(int k=0;k<na;k++)
+                {
+                    into.Positions.Add(plane.O+plane.U*a[k].X+plane.V*a[k].Y);into.Normals.Add(normal);into.Colors.Add(p.C);
+                    if(smooth){float d=Depth(a[k],out var shell);into.Emission.Add(shell);into.Data.Add(new Vector2(d,look.Flesh));}else into.Emission.Add(p.E);
+                }
                 for(int k=1;k+1<na;k++){into.Indices.Add(first);if(front){into.Indices.Add(first+k);into.Indices.Add(first+k+1);}else{into.Indices.Add(first+k+1);into.Indices.Add(first+k);}}
             }
             // Cells no outline touches lie wholly inside: rectangles of one paint, merged greedily (a hair over their sides,

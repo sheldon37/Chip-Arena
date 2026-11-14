@@ -337,13 +337,13 @@ namespace ChipArena.UnityConversion
         private void KillWound(NativeCorpse corpse,float age,float alpha)
         {
             if(alpha<=.001f)return;
-            foreach(var cap in corpse.Caps){var on=corpse.PartMatrix(cap.Part)*cap.Local;for(int i=0;i<cap.Count;i++)sourceModels.KillCap(on*corpse.CapCells[cap.Start+i],corpse.CapColors[cap.Start+i],alpha);}
+            foreach(var cap in corpse.Caps){var on=corpse.PartMatrix(cap.Part)*cap.Local;for(int i=0;i<cap.Count;i++)sourceModels.KillCap(on*corpse.CapCells[cap.Start+i],corpse.CapColors[cap.Start+i],alpha,!LowGraphics);}
             var debris=corpse.Debris;if(debris==null)return;
             for(int i=0;i<debris.Chunks;i++)
             {
                 debris.Chunk(i,age,out double x,out double y,out double z,out double qx,out double qy,out double qz,out double qw,out double s);if(s<=1e-5)continue;
                 var chunk=NativeCorpse.Mirror(x,y,z,qx,qy,qz,qw,s,s,s);if(GutChunk(corpse,i,debris.Chunks,chunk,alpha))continue;
-                sourceModels.KillChunk(chunk,new Color((float)debris.Colors[i*3],(float)debris.Colors[i*3+1],(float)debris.Colors[i*3+2],1),alpha,i);
+                sourceModels.KillChunk(chunk,new Color((float)debris.Colors[i*3],(float)debris.Colors[i*3+1],(float)debris.Colors[i*3+2],1),alpha,i,!LowGraphics,debris.Bone[i]);
             }
             if(corpse.LooseHat>=0&&corpse.HatModel!=null)
             {
