@@ -111,7 +111,7 @@ namespace ChipArena.UnityConversion
                 joint.lowAngularXLimit=new SoftJointLimit{limit=elbow?-149:knee?-3:head?-32:-75};joint.highAngularXLimit=new SoftJointLimit{limit=elbow?3:knee?149:head?37:75};joint.angularYLimit=new SoftJointLimit{limit=elbow||knee?2:head?20:65};joint.angularZLimit=new SoftJointLimit{limit=elbow||knee?2:head?20:65};joint.projectionMode=JointProjectionMode.PositionAndRotation;joint.projectionDistance=.08f;joint.projectionAngle=12;
             }
             if(!string.IsNullOrEmpty(death.actor?.SourceSpec)&&death.actor.SourceSpec!="siren"&&HoldsWeapon(at))
-            {var go=new GameObject("Dropped weapon");go.transform.SetParent(root.transform);int hand=death.actor.SourceSpec=="fire"||death.actor.SourceSpec=="water"||death.actor.SourceSpec=="lightning"||death.actor.SourceSpec=="darkness"||death.actor.SourceSpec=="leet"?9:13;go.transform.SetPositionAndRotation(at[hand],turn[hand]);weapon=go.AddComponent<Rigidbody>();weapon.mass=.7f;weapon.useGravity=false;weapon.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;weapon.linearVelocity=Vector3.ClampMagnitude(death.velocity,8);weapon.angularVelocity=new Vector3(1,2,1);weapon.linearDamping=.3f;var box=go.AddComponent<BoxCollider>();box.size=new Vector3(.15f,.15f,.45f);box.sharedMaterial=surface;
+            {var go=new GameObject("Dropped weapon");go.transform.SetParent(root.transform);int hand=WeaponHand(death);go.transform.SetPositionAndRotation(at[hand],turn[hand]);weapon=go.AddComponent<Rigidbody>();weapon.mass=.7f;weapon.useGravity=false;weapon.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;weapon.linearVelocity=Vector3.ClampMagnitude(death.velocity,8);weapon.angularVelocity=new Vector3(1,2,1);weapon.linearDamping=.3f;var box=go.AddComponent<BoxCollider>();box.size=new Vector3(.15f,.15f,.45f);box.sharedMaterial=surface;
              // A crush drop's weapon (hidden in the hold) leaves the opening hand at the release with the hand's handed-over motion,
              // sliding out of it rather than being shoved out of the overlapping hand part.
              if(drop){weapon.linearVelocity=linear[hand];weapon.angularVelocity=angular[hand]+new Vector3(1,2,1);if(Parts.TryGetValue(Anchor[hand],out var grip))Physics.IgnoreCollision(box,grip.GetComponent<Collider>());}
@@ -177,7 +177,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Each melee death's killing blow as first seen (key: id and seed), kept across the killcam's reset and cleared
         /// with the round (MeleeSlice).</summary>
         private readonly Dictionary<long,(bool has,MeleeBlow blow)> killBlows=new Dictionary<long,(bool has,MeleeBlow blow)>();
-        private void ClearCorpses(){foreach(var c in corpses.Values)c.Dispose();corpses.Clear();ClearVisualCorpses();carriedDeaths.Clear();ClearVents();ClearSawGallery();ReleaseKillEffects();}
+        private void ClearCorpses(){CorpseCarriedClear();foreach(var c in corpses.Values)c.Dispose();corpses.Clear();ClearVisualCorpses();carriedDeaths.Clear();ClearVents();ClearSawGallery();ReleaseKillEffects();}
         // The clock kill effects are presented on (see PresentDeath): FieldClock, the continuous snapshot clock a guest renders at
         // (PresentationClock on the host and in the killcam replay).
         private float KillClock(NativeArena arena)=>FieldClock(arena);
@@ -215,6 +215,7 @@ namespace ChipArena.UnityConversion
             SawSplitPreview(arena);
             EndKillFrame();
             VisualCorpsesShown();
+            CorpseCarriedShown();
         }
         private void PresentDeath(NativeArena arena,NativeDeath death,bool pilot)
         {
@@ -235,9 +236,12 @@ namespace ChipArena.UnityConversion
             {
                 if(corpses.Count>=32&&!retain)return;long buildAt=System.Diagnostics.Stopwatch.GetTimestamp();DiagnosticDeathCreates++;CapturedAnimation.Player rig=null;bool temporary=false;
                 if(!rigs.TryGetValue(death.id,out rig)&&!minionRigs.TryGetValue(death.id,out rig)){rig=captured.Create(transform,death.id);var actor=death.actor??new Actor();actor.Hp=Math.Max(1,actor.Hp);rig.ActorPose(actor,death.position-Vector3.up*.865f,death.at);temporary=true;}
-                // A pilot killed in a paired move's victim clip (any class) falls from the reaction its model showed, not the game's stance
-                // (VisualRigFromDrawn); every other death is built exactly as before.
-                if(pilot&&!temporary&&age<VictimDeathGap)VisualRigFromDrawn(rig,death);
+                // What the hand held, where it was drawn (VisualHeldOf), before the rig moves: the model corpse drops it.
+                var held=pilot?VisualHeldOf(rig,death):null;
+                // A pilot killed as it is seen falls from the pose its model showed (its pack clips, stride and hand fits; a paired move's
+                // reaction too), not the game rig's, so the corpse's first frame does not snap (VisualRigFromDrawn); a death first seen late
+                // (no drawn body of that moment) is built from the rig's pose as before (Core NativeCorpseDress).
+                if(pilot&&!temporary&&NativeCorpseDress.FromDrawn(age))VisualRigFromDrawn(rig,death);
                 var slice=pilot?MeleeSlice(arena,death):null;
                 // A blade's killing blow cuts the body's mesh along its swing, a Factory saw splits it in two (both
                 // NativeBisectPresentation); every other death, and a melee kill those keep as it was, is one corpse as before.
@@ -249,6 +253,8 @@ namespace ChipArena.UnityConversion
                 if(pilot)VisualCorpseMake(corpse,death,rig);
                 // Its cosmetic body's boxes fitted to the model it carries, so the model rests on the floor rather than through it.
                 if(pilot)VisualCorpseFit(corpse,arena);
+                // Its gear on its model, and the weapon it held dropped loose (NativeCorpseDressPresentation.cs).
+                if(pilot)VisualCorpseCarry(corpse,death,held);
                 visualDeathDrawn=null;
                 if(temporary)rig.Dispose();
                 // A cut body's blood is its seam's (BisectBlood); the fatal wound still bleeds as it falls.
@@ -352,6 +358,8 @@ namespace ChipArena.UnityConversion
                     if(recolored)sourceModels.KillCube(m,ice);else teamBands[corpse.Band].Add(m);
                 }
             }
+            // The model corpse's gear and dropped weapon, wherever its model showed this frame (NativeCorpseDressPresentation.cs).
+            VisualCorpseCarried(corpse,death,alpha,clock);
             KillWound(corpse,shown,alpha);
             // Expired swarms must stop drawing too: retaining a body cannot leave their last cached frame alive.
             if(remains)return;
