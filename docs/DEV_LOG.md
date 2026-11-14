@@ -1,3 +1,69 @@
+## 2026-11-13 — Claude: slams and breaking props throw real pieces, not voxel cubes; the voxel style kept as a map switch (presentation only)
+
+- Owner, 2026-11-13: "We still seem to use voxel effects on slam attacks- Cubes show from collision; Can we improve this with higher
+  quality poly or realistic effects?" and "Breaking boxes also seem to still break into cubes still, I want more realistic physic
+  destruction now; (We can keep the information however in case I want to make a 'voxel' map.)"
+- Branch `claude/slam-debris` (from shared `41bfb1d7`, shared merged in at `af539862` and `9d1e3c3a`): WIP commits `3bda60bf` to
+  `0cde9b9b`, the voxel switch fix `60f651d1`, the Sunder and Ground Slam fix `4a929ca6`, then the docs. Pushed, **not merged, not released**. Details: `docs/SLAM-DEBRIS.md`.
+- **Where the cubes came from** (the destruction kit, `Core/NativeStructureFx.cs`, drawn by `Runtime/NativeStructureFxPresentation.cs`):
+  the plunging stab's rubble burst and the greatsword's pale pull-out cubes (`NativePlungeFx.Structures`), every prop break's material
+  burst, a broken prop's loose fragments (boxes), collapse rubble and the telegraph's grit. The jump attack, Earthsplitter, kit
+  landings, Ground Slam and Sunder threw no solid debris. The cyan cubes round the legs on Earthsplitter were the Slow status marker
+  (`NativeStatusVisuals`), shown because the fissure's slow ground starts under its caster.
+- **Now** (the realistic style, the default on every map):
+  - **Pieces** (`Core/NativeDebrisShapes.cs`): low-poly flat-shaded meshes made in code, six variants each (rough chunk, stone, snapped
+    brick, torn board, splinter, bent sheet-metal panel, glass shard), at most 48 triangles, lit per facet in the kit's baked light.
+    No pack asset; the Drive zip is unchanged.
+  - **Breaks:** a crate to boards as long as its edges and splinters (weathered, pale breaks); a metal box to bent panels and scraps
+    with sparks; concrete to big lumps, small ones and stones; masonry to snapped bricks; glass to shards. Kit dust; the pieces lean
+    away from the pilot who struck the prop. Loose fragments are drawn as their material's pieces inside their own boxes.
+  - **Slams** (`NativeStructureFx.Slam`, weight by `NativeSlamDebris`: greatswords 1, shield .8, sword/katanas/glaive .55,
+    daggers/Fangs .25; a plunge adds the fall, a jump attack the impact): 3 to 14 floor chunks up to 0.10-0.34 m in the floor's
+    material and tone (a ray down finds the block), 5 to 18 stones, low dust, sparks and a flash on metal, from weight 0.6 a dust ring.
+    Callers: the plunge and its pull-out, the jump attack, and `Runtime/NativeSlamDebrisPresentation.cs` for Earthsplitter's fissure
+    (a heavy burst at the blade, then a light one about every 1.5 m as the front passes, each cracking the floor), kit Land events
+    (Skyfall), the Bulwark wall slam, Ground Slam and Sunder.
+  - **Motion** (`NativeStructureFx.Tumble`, pure in time): up to four bounces by material, a dying slide, then the piece lies flat,
+    never sunk, on a soft shadow, and sinks away at the end of its 3-4.2 s. The Slow marker is ten round beads, not cubes.
+  - **Cost:** the kit's pooled records and fixed arrays (40 burst slots, 1,024-piece and 120-puff caps), no allocation per frame, no
+    GameObject, collider, body, light or sound. Reduced effects and the low tier halve the pieces and dust.
+- **The voxel style** (`NativeDebrisLook`): a map turns it on with `"debris":"voxel"` on its look in
+  `Assets/Conversion/Resources/MapLooks.json`; `NativeDebrisLook.VoxelMaps` (by id, from code) and `NativeDebrisLook.Preview` (forces a
+  style) do the same. One switch for breaks, fragments, collapse rubble, plunge rubble, slams and the Slow marker. No shipped map sets
+  it. **Fixed on this branch:** the anime style's look copy (`NativeMapStyle.Styled`) dropped the key, so the switch never took on
+  any map (all are styled); the first voxel take still showed pieces. `DebrisChecks` now styles every shipped look with the switch.
+- **Rules, timing, damage, hitboxes, cooldowns, movement, networking:** none touched. No animation changed. Nothing for Astra.
+- **Checks:**
+  - Full CoreTests on `60f651d1` and again on `4a929ca6`: 1,024 groups, exit 0 both times (the Windows path patch applied for the
+    run and reverted). `--debris`: 15,707 checks; the new switch check fails without the `Styled` fix (tried by reverting it).
+  - The Unity compile gate (`tools/check_unity_compile.py`, Unity 6000.3.24f1 references) on `4a929ca6`: every assembly passes.
+  - The Editor build gate (`PrototypeBuild.Validate`) on `60f651d1`: ok, 397 PASS lines, no FAIL. On `4a929ca6` (the Sunder
+    fix): queued behind other sessions when this was written.
+  - `git diff --check` against shared: clean. The banks were as released at every lock release (13 stage banks, Rooftop, the
+    motion bank's 6,136,627 bytes).
+- **Captures** (the shared Editor, arena clock, 30 fps; frames and sheets in `<1123469f scratchpad>/slamfx/cap/<take>/`):
+  - `slamfx/sheets/` holds before/after rows at the same frames: `earthsplitter-close`/`-player`, `gs-plunge-close` (with a
+    voxel-switch row)/`-player`, `katana-plunge-close`/`-player`, `crate-close` (with a voxel-switch row)/`-player`,
+    `bin-close`/`-player`, `metal-floor-close`. Before is shared `41bfb1d7` (`9d1e3c3a` for the Katana, Sunder
+    and bin player views; this code did not change between them); after `60f651d1`.
+  - **Judged:** the cubes are gone. Earthsplitter throws grey stone along the fissure where it showed only the Slow marker's
+    cyan cubes (now beads); the greatsword plunge's pale pull-out cubes are floor chunks that settle; the crate goes to boards
+    and splinters (was neon sticks and slabs); the Cyber City bin to bent panels (was blue plates and slabs). The voxel take (a
+    throwaway commit with the switch on the Factory and Cyber City) shows exactly the old cubes for the crate and the plunge.
+  - Sunder: the `60f651d1` take showed no chunks (the bug below); its re-take on `4a929ca6` was queued when this was written.
+- **Risks / not verified:**
+  - Found and fixed on this branch: the first voxel take still showed pieces (the anime style's look copy dropped the switch,
+    `60f651d1`); Sunder and Ground Slam threw nothing on the host or offline (they read the frame codec's presence flag,
+    `4a929ca6`).
+  - Not filmed: Ground Slam, kit landings (Skyfall), the Bulwark wall slam, the jump attack, and the Fangs, glaive, shield and
+    dagger plunges (the same calls as the filmed ones; weights pinned in `DebrisChecks`); the Reduced and Low tiers (counts in
+    the checks); a guest's view in a two-window match (the motion is pure in time, so peers agree; checks only).
+  - Colour: pieces take the content material's colour, as the cubes did, not a stage model's paint (the Cyber City bin shows
+    dark green and breaks into blue-grey panels). Boards read a little bright and orange under the Factory's warm key light.
+  - A light plunge (a Katana from a short jump) throws only a few small stones, easy to miss on a dark floor (by weight).
+  - No frame-time measurement in a build (the caps and no per-frame allocation are checked, not timed).
+- **Next:** the owner reviews the sheets; then merge into shared and publish to the test channel.
+
 ## 2026-11-13 — Claude: gore flesh: the cut faces, wounds, lumps and bone drawn as flesh in the blood's light (owner request; presentation only)
 
 - Branch `claude/gore-flesh` (from shared `41bfb1d7`): `bd1b6a77` the flesh, `98ff362b` its checks, `1056c5ef` a comment, then the docs. Pushed, **not merged, not released**. Details: `docs/GORE-FLESH.md`.
