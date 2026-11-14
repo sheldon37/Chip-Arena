@@ -21,10 +21,11 @@ namespace ChipArena.UnityConversion
         internal Rigidbody WeaponBody=>weapon;
         /// <summary>The dropped weapon's body seated round the model weapon the pilot held (ArenaPresentation.VisualCorpseCarry): at its
         /// middle `at`, turned `turn`, its box `size`; loose of every part of the body (it lies on the floor and never pushes the body
-        /// apart); a weapon whose hand `hand` was cut off the body flies with that hand's piece.</summary>
+        /// apart), easing out of what its model started in (NativeCorpseDress.SeatEase); a weapon whose hand `hand` was cut off the body
+        /// flies with that hand's piece.</summary>
         internal void SeatWeapon(Vector3 at,Quaternion turn,Vector3 size,int hand)
         {
-            if(weapon==null)return;weapon.transform.SetPositionAndRotation(at,turn);weapon.position=at;weapon.rotation=turn;
+            if(weapon==null)return;weapon.transform.SetPositionAndRotation(at,turn);weapon.position=at;weapon.rotation=turn;weapon.maxDepenetrationVelocity=NativeCorpseDress.SeatEase;
             var box=weapon.GetComponent<BoxCollider>();
             if(box!=null)
             {

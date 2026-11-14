@@ -56,6 +56,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The dropped weapon's box (m, each side) round the model it carries: its size, never thinner than BoxLeast (a blade's
         /// edge would tunnel through a floor) nor longer than BoxMost.</summary>
         public const float BoxLeast=.04f,BoxMost=1.8f;
+        /// <summary>How fast (m/s) the dropped weapon eases out of a floor or wall its model started in: a rifle held low starts with its
+        /// muzzle in the floor, and PhysX's own 10 m/s popped it 0.3-0.4 m in the first frame (filmed 2026-11-14).</summary>
+        public const float SeatEase=1f;
         public static float Box(float size)=>MathUtil.Finite(size)?MathUtil.Clamp(size,BoxLeast,BoxMost):BoxLeast;
 
         // ---- the gear ----
