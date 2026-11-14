@@ -71,6 +71,7 @@
   (god mode); a pairing beside a wall.
 - **Risks:** a pairing beside a wall can draw a body up to 0.35 m into it; hit effects stay at the capsule; the facing fix also turns a
   held foe on the voxel bodies; a counter's foe is drawn in over 0.3 s while still dazed before the blow.
+- **Released:** shared `32dac4db` (the builder at `32dac4db`), test channel revision `639302904771846480` (build `b7762482`); the suite at `73f7de2b` (1,028 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-14 — Claude: model corpses start from the drawn pose, drop the weapon they held and keep the core, device and emblem (owner request; presentation only)
 
