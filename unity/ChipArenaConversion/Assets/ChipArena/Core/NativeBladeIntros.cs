@@ -431,11 +431,11 @@ namespace ChipArena.UnityConversion
                 float s=t-(FormAt-.45f);
                 if(s>=0&&s<1.25f)
                 {
-                    float k=NativeEntranceMath.EaseOut(s/.8f),fade=1-NativeEntranceMath.Ramp(s,.65f,1.25f),rise=NativeEntranceMath.Clamp01(.25f+s/.5f);int n=low?4:9;
+                    float k=NativeEntranceMath.EaseOut(s/.8f),fade=1-NativeEntranceMath.Ramp(s,.65f,1.25f),rise=NativeEntranceMath.Clamp01(.25f+s/.5f);int n=low?4:7;
                     for(int coil=0;coil<2;coil++)for(int i=0;i<n;i++)
                     {
                         float f=i/(float)(n-1),a=(coil==0?1:-1)*(f*5.4f+s*3.2f)+coil*3.1415927f,r=(1.3f*(1-k)+.17f)*(1-.3f*f);
-                        fx.Smoke(Before+new Vector3((float)Math.Sin(a)*r,.12f+1.05f*f*rise,(float)Math.Cos(a)*r),Smoke,.4f*fade*(.6f+.4f*(1-f)),.36f+.24f*k,NativeEntranceMath.Clamp01(s/1.25f),22160+coil*16+i,floor);
+                        fx.Smoke(Before+new Vector3((float)Math.Sin(a)*r,.12f+1.05f*f*rise,(float)Math.Cos(a)*r),Smoke,.32f*fade*(.6f+.4f*(1-f)),.42f+.26f*k,NativeEntranceMath.Clamp01(s/1.25f),22160+coil*16+i,floor);
                     }
                     if(s<.65f){int m=low?5:12;var c=Before+new Vector3(0,.55f,0);for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(22180,i);d.Y*=.5f;var p=c+d*(1.25f*(1-s/.65f));fx.Streak(p,-d*6,Venom*(2.2f*(1-s/.65f)),.02f,.12f,.03f,.6f,s/.65f,22190+i);}}
                 }
@@ -551,10 +551,10 @@ namespace ChipArena.UnityConversion
         // A burst of smoke (the step's): dark puffs thrown out and rising, green sparks out of it, a short green flash at its heart.
         private static void Burst(INativeEntranceFx fx,float t,float at,Vector3 c,float floor,bool low,int seed)
         {
-            float s=t-at;if(s<0||s>.9f)return;float u=s/.9f;int n=low?5:12;
-            for(int i=0;i<n;i++){var d=NativeEntranceMath.Direction(seed,i);d.Y*=.6f;var p=c+d*(.2f+.8f*NativeEntranceMath.EaseOut(u))+new Vector3(0,.4f*u,0);fx.Smoke(p,Smoke,.5f*(1-u)*(1-u),.4f+.5f*u,u,seed+i,floor);}
-            // A soft core of the same smoke as blended light, so the puffs read as one cloud rather than as lumps.
-            if(s<.75f){float k=s/.75f;fx.Glow(c+new Vector3(0,.3f*k,0),Smoke*.45f,.4f*(1-k)*(1-k),1f+1.5f*k,1,k,seed+95);}
+            float s=t-at;if(s<0||s>.9f)return;float u=s/.9f;int n=low?4:8;
+            for(int i=0;i<n;i++){var d=NativeEntranceMath.Direction(seed,i);d.Y*=.6f;var p=c+d*(.15f+.6f*NativeEntranceMath.EaseOut(u))+new Vector3(0,.4f*u,0);fx.Smoke(p,Smoke,.34f*(1-u)*(1-u),.55f+.6f*u,u,seed+i,floor);}
+            // A soft core of the same smoke as blended light, so the few puffs, close together, read as one cloud rather than as lumps.
+            if(s<.75f){float k=s/.75f;fx.Glow(c+new Vector3(0,.3f*k,0),Smoke*.4f,.55f*(1-k)*(1-k),1.1f+1.4f*k,1,k,seed+95);}
             if(s<.35f){int m=low?5:10;for(int i=0;i<m;i++){var d=NativeEntranceMath.Direction(seed+40,i);fx.Streak(c+d*(.15f+1.3f*s),d*7,Venom*(2*(1-s/.35f)),.02f,.1f,.03f,.6f,s/.35f,seed+50+i);}}
             if(s<.15f)fx.Glow(c,Venom*(2.6f*(1-s/.15f)),0,.3f+.3f*s/.15f,1,s/.15f,seed+90);
         }
