@@ -86,6 +86,7 @@
 ## 2026-11-13 — Astra: audio handoff foundation and effective-bank audit
 
 Based on shared `claude/sleepy-ritchie-g8ruhv` at `5d77d1663d62`. Added the 24 optional blade/Fangs recording keys, preserved Toon playback rate for recordings, and added effective installed-bank coverage reporting. No licensed clips imported. Latest builder log proves 213 boss clips/138 keys were imported and reached build-ready; a base LocalAssets.zip survey alone misses the generated-audio overlay. See `docs/audio/HANDOFF-2026-11-13.md` for evidence, remaining licensed-bank work and the DEV kick routing constraint. No release/publication from this branch.
+- **Merged and released (Claude, owner: "Yes, merge them"):** both Astra branches merged on `claude/merge-astra-nov13` (one Tests/Program.cs conflict: both sides' switches kept) into shared `28359653` (the builder at `28359653`), test channel revision `639302214682901166` (build `ed415257`); the suite at `6279fa38` (1,023 groups, exit 0), the Unity compile; the merged installer accepts today's Drive zip; private add-on 9 and cloth 5 tests pass; test_effects_audio (1) and test_import_sound_requests (5) fail exactly as on shared before the merge (this PC's live sound queue and local data).
 
 ## 2026-11-13 — Claude: hand-off to Astra (owner: "To save on usage, please hand me any things your able to for astra")
 
@@ -125,6 +126,7 @@ Base: shared `claude/sleepy-ritchie-g8ruhv`. Each item is yours to pick up; Clau
 - Added opt-in `--melee-bisect-sweep`: **fails**, 10 of 182 halves at 0 and 45–49 degrees. Sealing is unresolved; no production geometry change or tolerance relaxation. Diagnostic fixture is not an exact replay of the original 52-degree report.
 - Reviewed Katana parry and separate Fangs branch `8339c21a`; before/after values and native acceptance gaps in ASTRA-HANDOFF-20261113.md. No optional frontal push-back, combat timing/damage/cooldown, network protocol or animation changes in this task.
 - Host/guest rendered acceptance, real pack execution, private bank rebuild comparisons and Windows lock acceptance remain unrun. No shared/builder sync, test update or Site publication.
+- **Merged and released (Claude, owner: "Yes, merge them"):** both Astra branches merged on `claude/merge-astra-nov13` (one Tests/Program.cs conflict: both sides' switches kept) into shared `28359653` (the builder at `28359653`), test channel revision `639302214682901166` (build `ed415257`); the suite at `6279fa38` (1,023 groups, exit 0), the Unity compile; the merged installer accepts today's Drive zip; private add-on 9 and cloth 5 tests pass; test_effects_audio (1) and test_import_sound_requests (5) fail exactly as on shared before the merge (this PC's live sound queue and local data).
 
 ## 2026-11-13 — Claude: the DEV Katana's and DEV Greatsword's entrances as cinematics (presentation only)
 
