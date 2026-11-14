@@ -58,8 +58,9 @@ namespace ChipArena.UnityConversion
         // shows (a thrown dagger's does not), the daggers' second blade, and the main piece's box in its frame.
         private sealed class CorpseHeld{public string Spec,Entry,Model;public PackWeaponAsset Pack;public int Hand;public bool Main=true,Left;public Matrix4x4 Frame,BoneR,BoneL;public Bounds Box;public Actor Actor;public float At;}
         // A half's (or a whole corpse's) carried things: its gear's anchors on its model (the core, the device and its radius, the chest
-        // bone and the emblem's frame on it), the parts they ride, the cut's side of their bones, and the dropped weapon when its body is this one's.
-        private sealed class CorpseCarry{public Transform Core,Device,Chest;public float Radius;public Matrix4x4 Emblem=EmblemFrame;public int CorePart=-1,DevicePart=-1,CoreSide,DeviceSide;public Color Lens=Color.cyan;public CorpseWeapon Weapon;}
+        // bone and the emblem's frame on it), the parts they ride, the cut's side of their bones, whether it is the Hot Dog (no core) or wears the
+        // robot armour (no emblem), and the dropped weapon when its body is this one's.
+        private sealed class CorpseCarry{public Transform Core,Device,Chest;public float Radius;public Matrix4x4 Emblem=EmblemFrame;public int CorePart=-1,DevicePart=-1,CoreSide,DeviceSide;public Color Lens=Color.cyan;public bool Dog,Armour;public CorpseWeapon Weapon;}
         // A dropped weapon: what was held, its frames in the weapon body's (the main piece's, the hands' weapon bones), the model it is drawn
         // with (the instance's bake entry or a pooled pack mount, on `Host`), and the second blade's half, part and frame at death.
         private sealed class CorpseWeapon
@@ -158,6 +159,7 @@ namespace ChipArena.UnityConversion
             k.Chest=chest>=0?c.Bones[chest]:null;k.CorePart=chest>=0?c.Part[chest]:-1;
             int device=k.Device!=null?CarryBone(c,k.Device):-1;k.DevicePart=device>=0?c.Part[device]:-1;
             if(ColorUtility.TryParseHtmlString(death.actor?.AccentColor??"#70e1d0",out var lens))k.Lens=lens.linear;
+            k.Dog=HotDogOn(c.Root)||NativeHotDog.Worn(VisualOutfitOf(death.id));k.Armour=WearsArmour(death.id);
             var first=half.Host??half;
             if(first.Twin!=null&&first.Bisect is BisectFx fx&&fx.Request!=null)
             {
@@ -191,9 +193,9 @@ namespace ChipArena.UnityConversion
             var accent=AccentTint(frost?c.LookHex:death.actor?.AccentColor);gearBone??=GearBoneOf;corpseFade=alpha;var fade=alpha<1?corpseFadeOf??=_=>corpseFade:null;
             bool coreSide=!split||NativeSplitShow.Wears(mine,k.CoreSide,stage),chestKept=k.CorePart<0||!half.IsCrushed(k.CorePart);
             // (No core on the Hot Dog, as alive; no emblem under the robot armour's back plate.)
-            if(k.Core!=null&&coreSide&&chestKept&&!HotDogOn(c.Root))
+            if(k.Core!=null&&coreSide&&chestKept&&!k.Dog)
             {gearMatrix=k.Core.localToWorldMatrix;sourceModels.Queue(NativeSourceModels.GearCore,gearMatrix,gearBone,null,0,null,tint,accent,1,fade,null,new Vector4(glow,glow,glow,1),null,1);}
-            if(k.Chest!=null&&coreSide&&chestKept&&!WearsArmour(death.id))
+            if(k.Chest!=null&&coreSide&&chestKept&&!k.Armour)
             {gearMatrix=k.Chest.localToWorldMatrix*k.Emblem;sourceModels.Queue(NativeSourceModels.GearEmblem,gearMatrix,gearBone,null,0,null,tint,accent,1,fade,null,new Vector4(glow,glow,glow,1),null,1);}
             if(k.Device==null||split&&!NativeSplitShow.Wears(mine,k.DeviceSide,stage)||k.DevicePart>=0&&half.IsCrushed(k.DevicePart))return;
             var dev=NativeCorpseDress.Device(glow);var m=k.Device.localToWorldMatrix;float r=Mathf.Round(Mathf.Clamp(k.Radius,.02f,.08f)*1000)/1000;
