@@ -5,7 +5,7 @@ export const GRANTABLE_CONTENT={
  'intro:dev-matrix':'Matrix throne intro','intro:dev-ansatsuken':'Rain warrior intro',
  'hat:auditor-halo':'Auditor Halo','effect:dev-singularity':'Singularity Override','effect:dev-raging-demon':'Raging Demon','effect:dev-clown':'Clown getaway','effect:dev-clown-love':'Clown Love','effect:dev-bass-van':'Bass Van',
  'weapon:cyberlord':'Cyber Lord','intro:dev-cyberlord':'Hardlight Boot intro','weapon:bombadier':'Bombadier','intro:dev-bombadier':'Last Warning intro','weapon:topdog':'Top Dog','intro:dev-topdog':'Order Up! intro','effect:dev-hotdog-friends':'Hotdog Friends',
- 'weapon:dev-greatsword':'DEV Greatsword','weapon:dev-katana':'DEV Katana'
+ 'weapon:dev-greatsword':'DEV Greatsword','weapon:dev-katana':'DEV Katana','weapon:fangs':'Fangs'
 } as const;
 export const ACCOUNT_FLAGS={playtester:'Playtester',vip:'VIP'} as const;
 export interface Access {developer:boolean;unlocks:string[];accountId?:string;flags?:string[];}

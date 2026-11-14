@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     // The Top Dog's toon sounds (docs/TOP-DOG.md "Sound"): original, synthesized from nothing (no clip, no LocalAssets), so the
     // class is never silent. Each is a short cartoon cue: the mallet's bonk, the spring's boing, the slide whistle, the anvil's
     // fall and clang, splats, the gulp, the burp, the pop. NativeAudio asks the effects bank for "topdog.<id>" first (no such clip
-    // is registered yet), and plays these otherwise. Deterministic: the same id always makes the
+    // exists by default; blade/fang keys accept optional licensed recordings), and plays these otherwise. Deterministic: the same id always makes the
     // same samples. Mono, Rate Hz, peaks normalised to Peak, the ends faded so nothing clicks. Presentation only.
     public static class NativeToonSynth
     {

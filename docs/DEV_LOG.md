@@ -184,6 +184,10 @@
 - **Next:** the owner plays a Ward Zero vent fall; merge and release.
 - **Released:** shared `897e0d0d` (the builder at `897e0d0d`), test channel revision `639302070018175420` (build `943f34a3`); the suite at `c82c1d09` (1,023 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
+## 2026-11-13 — Astra: audio handoff foundation and effective-bank audit
+
+Based on shared `claude/sleepy-ritchie-g8ruhv` at `5d77d1663d62`. Added the 24 optional blade/Fangs recording keys, preserved Toon playback rate for recordings, and added effective installed-bank coverage reporting. No licensed clips imported. Latest builder log proves 213 boss clips/138 keys were imported and reached build-ready; a base LocalAssets.zip survey alone misses the generated-audio overlay. See `docs/audio/HANDOFF-2026-11-13.md` for evidence, remaining licensed-bank work and the DEV kick routing constraint. No release/publication from this branch.
+
 ## 2026-11-13 — Claude: hand-off to Astra (owner: "To save on usage, please hand me any things your able to for astra")
 
 Base: shared `claude/sleepy-ritchie-g8ruhv`. Each item is yours to pick up; Claude is not working on any of them.
@@ -211,6 +215,17 @@ Base: shared `claude/sleepy-ritchie-g8ruhv`. Each item is yours to pick up; Clau
    - the Fangs' Behind_01 takedown pair (`d15fdfb1`).
 6. **Editor lock tooling.** Agents share one Editor through `F:/Chip Arena Development/.editor-lock` (an `mkdir` lock). They waited hours, and stopped agents left orphaned waiter scripts polling it. A small local tool would help: a holder file inside the lock (who, which task, since when), a first-in-first-out queue, a priority file, stale-lock detection, and waiters that exit when their parent stops.
 7. **Stage bank rebuilds:** a plain rebuild of the Rooftop bank with today's stage kit no longer matched the released one (named chunks were treated as far scenery). `claude/menu-zfight` added `StageBank.far_layers` (off for the rooftop). Check that the other stages' banks still rebuild byte for byte.
+
+## 2026-11-13 — Astra: private add-on route, lock tooling, DEV grants and bisect diagnostics
+
+- Branch `codex/nov13-handoff`, base shared `8c7d8853`; not merged/released. No licensed pack download or Drive zip change.
+- Added explicit private add-on code/shader allowlists, size/hash/meta validation, deterministic zip replacement and stand-in pack/install tests. Added optional per-map build/teardown and post-lighting callbacks, absent-subscriber no-op; runtime adapters still require native acceptance. See PRIVATE-ADDONS.md.
+- Added FIFO Editor command wrapper with holder metadata, priority ticket, conservative dead-holder recovery and parent-exit cleanup. Four real-process Linux tests pass; Windows/Editor unrun. See EDITOR-LOCK.md.
+- Fangs now mirrors into both grant lists; Site/class icon mappings added. Native ClassIcons already has all three. Site source isolated at `81d4b38`, not published: its eight baseline TypeScript errors are unchanged, although Worker bundling and direct grant checks pass.
+- Actual checks: 9 private-add-on/cloth tests, 5 cloth tests, 6 visual asset tests; DEV grants 52 checks; original melee-bisect 37,171 checks; pinned Unity InputSystem/Player/Runtime/Editor compile pass (existing warnings); 3,938-file source check passes. Full managed run stopped after 283 PASS groups at BootIntroChecks (weapon-sword first-frame 28 ms); focused --boot-intro rerun passed 135 checks. The full run is not green.
+- Added opt-in `--melee-bisect-sweep`: **fails**, 10 of 182 halves at 0 and 45–49 degrees. Sealing is unresolved; no production geometry change or tolerance relaxation. Diagnostic fixture is not an exact replay of the original 52-degree report.
+- Reviewed Katana parry and separate Fangs branch `8339c21a`; before/after values and native acceptance gaps in ASTRA-HANDOFF-20261113.md. No optional frontal push-back, combat timing/damage/cooldown, network protocol or animation changes in this task.
+- Host/guest rendered acceptance, real pack execution, private bank rebuild comparisons and Windows lock acceptance remain unrun. No shared/builder sync, test update or Site publication.
 
 ## 2026-11-13 — Claude: the DEV Katana's and DEV Greatsword's entrances as cinematics (presentation only)
 
