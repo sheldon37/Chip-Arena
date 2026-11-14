@@ -98,6 +98,8 @@ namespace ChipArena.UnityConversion
         public static float DustReach(float radius,float heavy)=>radius*(1.1f+1f*MeleeMath.Clamp(heavy,0,1));
         public static float Rubble(float heavy)=>.45f+.75f*MeleeMath.Clamp(heavy,0,1);
         public const float RubbleFrom=.25f;public const int RubbleColor=0x9a9ea6;
+        /// <summary>The slam weight of the bits a greatsword drags out of the floor as it pulls free.</summary>
+        public const float PullWeight=.18f;
         /// <summary>The camera kick (the destruction kit's shake: distance falloff, the camera-shake setting, Reduced halving it,
         /// the .3 m cap): peak offset (m) and length (s), heavier for a bigger fall; the jump attack's is .025-.065 m.</summary>
         public static float ShakePeak(float heavy)=>.035f+.065f*MeleeMath.Clamp(heavy,0,1);
@@ -113,10 +115,15 @@ namespace ChipArena.UnityConversion
         // ---- the destruction kit's share (crater marks, rubble, the camera kick) ----
         /// <summary>The crater stain and chip at the contact and cracks round it, a rubble burst and the shake, by the fall height;
         /// a pull-out leaves a small chip and puff of grit. Decals stay on the floor (the ground point's height).</summary>
-        public static void Structures(NativeStructureFx st,in Burst b,float time)
+        public static void Structures(NativeStructureFx st,in Burst b,float time)=>Structures(st,b,time,NativeStructureMaterial.Concrete,RubbleColor);
+        /// <summary>The same with the floor the blade met (its material kind and colour, found by the presentation): in the realistic
+        /// debris style every impact throws chunks of that floor, sized by the weapon and the fall (Core NativeSlamDebris.Plunge),
+        /// and a greatsword's pull-out a few more; the voxel style keeps the cube rubble as it was.</summary>
+        public static void Structures(NativeStructureFx st,in Burst b,float time,NativeStructureMaterial material,int color)
         {
             if(st==null)return;var at=new V3(b.Point.X,b.Floor,b.Point.Z);var up=new V3(0,1,0);uint seed=(uint)b.Seed*2654435761u;
-            if(b.Pull){if(b.Spec=="greatsword")st.Break(NativeStructureMaterial.Concrete,RubbleColor,new V3(at.x,b.Floor+.08f,at.z),new V3(.3f,.16f,.3f),b.Floor,seed^0x51u,time,false);return;}
+            bool voxel=st.Style==NativeDebrisStyle.Voxel;
+            if(b.Pull){if(b.Spec=="greatsword"){if(voxel)st.Break(NativeStructureMaterial.Concrete,RubbleColor,new V3(at.x,b.Floor+.08f,at.z),new V3(.3f,.16f,.3f),b.Floor,seed^0x51u,time,false);else st.Slam(material,color,at,b.Floor,PullWeight,new V3(),seed^0x51u,time,false);}return;}
             float crater=Crater(b.Radius,b.Heavy),size=Rubble(b.Heavy);
             st.Quake(new V3(b.Feet.X,b.Floor,b.Feet.Z),ShakePeak(b.Heavy),ShakeSeconds(b.Heavy),seed,time);
             st.AddMark(NativeStructureMark.Stain,at,up,crater*2.1f,seed^1,time);
@@ -124,7 +131,8 @@ namespace ChipArena.UnityConversion
             int n=3+(int)Math.Round(4*b.Heavy);
             for(int i=0;i<n;i++){float a=i*MeleeMath.TAU/n+Hash(b.Seed,i)*.6f,d=crater*(.55f+.35f*Hash(b.Seed,i+40));st.AddMark(NativeStructureMark.Crack,new V3(at.x+(float)Math.Cos(a)*d,b.Floor,at.z+(float)Math.Sin(a)*d),up,(.8f+.9f*b.Heavy)*(.8f+.4f*Hash(b.Seed,i+60)),seed^(uint)(10+i),time);}
             // Rubble only from a real drop (from about 3.5 m): the smaller ones throw the effect's own grit.
-            if(b.Heavy>=RubbleFrom)st.Break(NativeStructureMaterial.Concrete,RubbleColor,new V3(at.x,b.Floor+size*.25f,at.z),new V3(size,size*.5f,size),b.Floor,seed^0x77u,time,false);
+            if(voxel){if(b.Heavy>=RubbleFrom)st.Break(NativeStructureMaterial.Concrete,RubbleColor,new V3(at.x,b.Floor+size*.25f,at.z),new V3(size,size*.5f,size),b.Floor,seed^0x77u,time,false);}
+            else{var f=Forward(b.Yaw);st.Slam(material,color,at,b.Floor,NativeSlamDebris.Plunge(b.Spec,b.Heavy),new V3(f.X,0,f.Z),seed^0x77u,time,false);}
         }
 
         // ---- the cues (existing bank keys only) ----

@@ -56,7 +56,8 @@ namespace ChipArena.UnityConversion
         {
             foreach(NativeStructureMaterial m in Enum.GetValues(typeof(NativeStructureMaterial)))
             {
-                var fx=new NativeStructureFx();fx.Break(m,0,new V3(0,1,0),new V3(1,1,1),0,11,0,false);fx.Frame(.15f,Eye,1);int cubes=fx.CubeCount,puffs=fx.PuffCount,lines=fx.LineCount,glows=fx.GlowCount;
+                // The voxel style's cube bursts, as they always were (the realistic style's are DebrisChecks').
+                var fx=new NativeStructureFx{Style=NativeDebrisStyle.Voxel};fx.Break(m,0,new V3(0,1,0),new V3(1,1,1),0,11,0,false);fx.Frame(.15f,Eye,1);int cubes=fx.CubeCount,puffs=fx.PuffCount,lines=fx.LineCount,glows=fx.GlowCount;
                 NativeStructureFx.BurstCounts(m,NativeStructureFx.BurstScale(new V3(1,1,1)),out int pieces,out int grit,out int puffN,out int sparks);
                 Check(cubes>=pieces&&cubes<=pieces+grit,m+" burst draws its pieces ("+cubes+")");
                 bool dusty=m==NativeStructureMaterial.Masonry||m==NativeStructureMaterial.Concrete||m==NativeStructureMaterial.Timber;Check(dusty?puffs>0:puffs==0,m+" puff only for masonry, concrete and timber");
@@ -66,7 +67,7 @@ namespace ChipArena.UnityConversion
                 fx.Frame(.15f,Eye,.3f);Check(fx.CubeCount<cubes,m+" reduced draws fewer pieces");
                 fx.Frame(NativeStructureFx.BurstLife,Eye,1);Check(fx.CubeCount==0&&fx.LiveBursts==0,m+" gone after its life");
             }
-            var g=new NativeStructureFx();g.Break(NativeStructureMaterial.Glass,0,new V3(0,1,0),new V3(1,1,1),0,12,0,false);int glints=0;for(float t=0;t<1.5f;t+=.05f){g.Frame(t,Eye,1);glints+=g.GlowCount;}Check(glints>0,"glass shards glint");
+            var g=new NativeStructureFx{Style=NativeDebrisStyle.Voxel};g.Break(NativeStructureMaterial.Glass,0,new V3(0,1,0),new V3(1,1,1),0,12,0,false);int glints=0;for(float t=0;t<1.5f;t+=.05f){g.Frame(t,Eye,1);glints+=g.GlowCount;}Check(glints>0,"glass shards glint");
             var b=new NativeStructureFx();b.Break(NativeStructureMaterial.Masonry,0x9c4a30,new V3(0,1,0),new V3(1,1,1),0,13,0,true);Check(b.LiveMarks==2,"a Brickfall break leaves a chip and a crack mark");
             var big=new NativeStructureFx();for(int i=0;i<40;i++)big.Break(NativeStructureMaterial.Masonry,0,new V3(i,1,0),new V3(4,4,.5f),0,(uint)i,i*.01f,false);big.Frame(.5f,Eye,1);Check(big.LiveBursts==NativeStructureFx.BurstSlots&&big.CubeCount<=NativeStructureFx.CubeCap,"bursts are pooled and capped");
         }

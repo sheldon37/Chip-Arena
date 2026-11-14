@@ -23,6 +23,8 @@ namespace ChipArena.UnityConversion
         private readonly NativeStatusVisuals.Piece[] statusPieces=new NativeStatusVisuals.Piece[NativeStatusVisuals.MaxPieces];
         private readonly NativeMinion[] statusAdds=new NativeMinion[NativeStatusVisuals.AddRigs];private readonly float[] statusAddDistance=new float[NativeStatusVisuals.AddRigs];private readonly byte[] statusAddFlags=new byte[NativeStatusVisuals.AddRigs];
         private readonly Matrix4x4[] bandLocal=new Matrix4x4[4];private Matrix4x4 coreLocal,rimLocal,glintLocal;private bool statusReady,statusFailed;
+        // The slow marker as beads (the bubble's sphere at .6 of the cube's edge); false draws the cubes.
+        private bool slowDrops;private readonly Matrix4x4 dropLocal=Matrix4x4.Scale(new Vector3(.6f,.6f,.6f));
         // Team for the draft stage's pilot (draft-stage.ts:164 teamArmor), or -1; set by the draft screen each frame.
         public int DraftBandTeam=-1;
 
@@ -30,6 +32,10 @@ namespace ChipArena.UnityConversion
         public void RenderStatus(NativeArena arena,Camera camera,float quality,bool view=true)
         {
             if(arena==null||camera==null||!StatusReady())return;
+            // The slow marker's drops: round beads in the realistic debris style (owner 2026-11-13: no cubes on slams; Earthsplitter's
+            // slow ground marks its own caster), the source's cubes on a voxel map (Core NativeDebrisLook, the destruction kit's style).
+            bool drops=(structureFx!=null?structureFx.Fx.Style:NativeDebrisLook.Default)==NativeDebrisStyle.Realistic;
+            if(drops!=slowDrops){slowDrops=drops;var bead=drops?statusMeshes[2]:cube;statusWorld[(int)NativeStatusVisuals.Surface.Slow].Mesh=bead;statusView[(int)NativeStatusVisuals.Surface.Slow].Mesh=bead;}
             float time=arena.Time;double now=arena.Match.Time;bool fight=arena.Match.Phase==NativePhase.Fight,teams=arena.Match.Teams;
             Vector3 eye=camera.transform.position;Quaternion look=camera.transform.rotation;
             // The same camera in the source frame: mirrored, and turned about y because three cameras look down -z.
@@ -102,7 +108,7 @@ namespace ChipArena.UnityConversion
                     case NativeStatusVisuals.Kind.Bubble:
                         // A popping bubble keeps only its rim (status-effects.ts:50).
                         if(!p.Popping)target[(int)NativeStatusVisuals.Surface.Bubble].Add(m);target[(int)NativeStatusVisuals.Surface.Rim].Add(m*rimLocal);if(!p.Popping)target[(int)NativeStatusVisuals.Surface.Glint].Add(m*glintLocal);break;
-                    case NativeStatusVisuals.Kind.Slow:target[(int)NativeStatusVisuals.Surface.Slow].Add(m);break;
+                    case NativeStatusVisuals.Kind.Slow:target[(int)NativeStatusVisuals.Surface.Slow].Add(slowDrops?m*dropLocal:m);break;
                     case NativeStatusVisuals.Kind.Shackle:target[(int)NativeStatusVisuals.Surface.Shackle].Add(m);break;
                     default:target[(int)NativeStatusVisuals.Surface.Mark].Add(m);break;
                 }
@@ -168,7 +174,7 @@ namespace ChipArena.UnityConversion
         private void DisposeStatus()
         {
             foreach(var m in statusMaterials)if(m!=null)CapturedAnimation.Release(m);foreach(var m in statusMeshes)if(m!=null)CapturedAnimation.Release(m);
-            System.Array.Clear(statusMaterials,0,statusMaterials.Length);System.Array.Clear(statusMeshes,0,statusMeshes.Length);statusReady=false;
+            System.Array.Clear(statusMaterials,0,statusMaterials.Length);System.Array.Clear(statusMeshes,0,statusMeshes.Length);statusReady=false;slowDrops=false;
         }
     }
 }

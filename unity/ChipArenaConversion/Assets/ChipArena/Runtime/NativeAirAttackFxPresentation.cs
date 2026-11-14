@@ -48,6 +48,8 @@ namespace ChipArena.UnityConversion
                     var at=new V3(b.Point.x,b.Point.y,b.Point.z);
                     structures?.Quake(at,NativeAirAttackFx.ShakePeak(b.Strength),NativeAirAttackFx.ShakeSeconds,(uint)b.Seed,now);
                     structures?.AddMark(NativeStructureMark.Crack,at,new V3(0,1,0),.5f+.4f*b.Strength,(uint)b.Seed,now);
+                    // Chunks of the floor thrown from under the blow, by the weapon's weight and the impact's strength.
+                    if(structures!=null)NativeStructureFxPresentation.Slam(arena,structures,b.Point,b.Floor,NativeSlamDebris.Jump(p.Seat.spec,b.Strength),Quaternion.Euler(0,a.Yaw,0)*Vector3.forward,(uint)b.Seed*2654435761u^0xa17u,now,false);
                 }
             }
             for(int i=bursts.Count-1;i>=0;i--)if(now-bursts[i].At>=NativeAirAttackFx.Life||now<bursts[i].At-.25f)bursts.RemoveAt(i);
@@ -93,7 +95,9 @@ namespace ChipArena.UnityConversion
                 plungeFx.Track(a.Id,a.SourceSpec,NativePlungeFields.Of(a),kitScene.Feet(a),NativePlungeFx.Facing(a),a.Grounded,t,owned);
             }
             plungeFx.Events(s.Events,t);
-            var st=structureFx?.Fx;foreach(var b in plungeFx.Fresh)NativePlungeFx.Structures(st,b,t);
+            // The floor the blade met gives the impact's chunks their material and colour (the realistic debris style).
+            var st=structureFx?.Fx;foreach(var b in plungeFx.Fresh){NativeStructureFxPresentation.FloorKind(arena,new Vector3(b.Point.X,b.Floor,b.Point.Z),out var fm,out int fc,out _,b.Floor);NativePlungeFx.Structures(st,b,t,fm,fc);}
+            SlamDebris(arena);
             plungeFx.Draw(kitSink,kitScene,t,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics);
         }
         private int plungeGeneration=-1;
