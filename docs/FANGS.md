@@ -95,8 +95,11 @@ owner's word, logged for Astra in docs/DEV_LOG.md):
   snapshots), only from the ground (a cut in the air does not hover along it), stopped short of a drop (no floor within a metre under the
   feet, `FangsFloorTo`) and at arm's length (0.9 m) from a foe in the way, never through it (`FangsTravelFoe`).
 - **On the model:** the bake also takes out the Dual clips' own turn (the body's yaw follows its orientation frame by frame; a fit of the
-  drawn frames to the authored ones turns through up to 200 degrees in a cut), so a pivoting foot still turns on the floor; restoring the
-  clips' turn on the drawn body would be a presentation follow-up.
+  drawn frames to the authored ones turns through up to 200 degrees in a cut), so the drawn legs pivot round a body that does not turn.
+  Standing, the presentation's foot lock pinned them (the body lunged on the spot); while the pilot travels the lock lets go (as for
+  every lunge), so the feet now slide with the body through the travel (filmed 2026-11-13 on the capture tool's checked floor: the
+  standing flurry's low feet slid 9.6 m in all before, 14.9 m after). Restoring the clips' turn on the drawn body (or baking it into the
+  pose) would let the feet carry it; that is a presentation (or bake) follow-up, not done.
 
 ## The intro: Silent Kill (`fangs-silent-kill`)
 

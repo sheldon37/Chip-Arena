@@ -1,34 +1,193 @@
-## 2026-11-13 — Claude: Silent Kill's camera and effects (the Fangs' entrance; presentation only)
+## 2026-11-13 — Claude: the Fangs' moves carry the pilot as their clips do, and Silent Kill's flurry leaps (owner request; a rules change at the owner's word, for Astra)
 
-- Owner: "Fangs we also need more camera work and the effects still need improvement", then "For previous mention, I mean for there
-  intros". So the entrance only: no in-match camera move and no change to the moves' effects.
-- Branch `claude/fangs-fx` (from shared `41bfb1d7`): `f927cb38` the camera and effects, `4f76a355` FANGS.md, then this entry. Pushed,
-  **not merged, not released**.
-- **Camera** (Core `NativeFangsIntro.FangsShots`): a shot to each beat where there were six: low toward the eyes with the frame tilted;
-  climbing round the body as it forms; from behind its shoulder for the step; whipped to its front as it lands; a cut inside the flurry;
-  under the leap; straight down on the strike, the cut on the blow, lifting and turning over the bloom; one move down to the hero, done
-  before the name's cut. Jolts on the strike, the step's arrival and each cut; none with the existing **Camera shake** setting off
-  (`NativeFangsIntro.Shake`, set in Runtime `DirectedIntro`; no new setting).
-- **Effects** (Core `NativeFangsIntro.Effects`, `Ghosts`, `Solid`, `Lights`): slit eyes that blink; smoke winding in as two coils and the
-  body dithered in; three afterimages and a wake on the step; glints up the fangs; flung venom as drops; the strike's bloom (veins of
-  venom light over the floor, a thin wave, drops, seven petals of glowing fumes that are gone by the name); fumes off the fangs at the
-  hero; a rim light that flares on the step and the cuts. New optional sink `INativeEntranceVenom` (the runtime's glowing smoke and
-  teardrop, both already in `NativeVfxDraw`); no pack asset, nothing for the Drive zip. At most 422 particles a frame (the entrance
-  budget is 600), 27-28% of the draws on the low tier.
-- **Unchanged:** the entrance's length (7 s), the name's moment (5.2 s), its clips and their timing, its music; every rule, timing,
-  hitbox, damage, cooldown and all networking.
-- **Coordination:** `claude/fangs-travel` (the flurry's leap and the strike's lunge in the entrance; not on shared when this was written)
-  edits the same class. A local trial merge with its head `5aad24fb` is prepared (the shots rebuilt on its travel: the leap held in one
-  still wide frame, the lunge in profile, the strike's shot and effects on its `StrikeSpot`); it goes on this branch once that branch is
-  on shared.
-- **Checks:** new `FangsIntroChecks` (`--fangs-intro`; about 88,500 checks: the shots and their beats, clear of floor and pilot, smooth
-  outside cuts, still from the settle, the pilot in frame, the Camera shake setting, the effects' budget and each beat's own). Full
-  CoreTests on `f927cb38`: exit 0, 1,023 PASS lines. Offline Unity compile (`check_unity_compile.py`): all four assemblies pass.
-  `git diff --check` against shared: clean.
-- **Not done / not verified:** no Editor capture of the new entrance yet and no Editor build gate (`PrototypeBuild.Validate`): the shared
-  Editor was busy all session and then under the owner's priority hold. The look has only been judged from an offline storyboard
-  (camera, rig and effect positions as dots), which shows framing, not rendering. **Next:** film before and after in the Editor, judge
-  and tune, run the build gate, merge the travel branch in once it is on shared.
+- Branch `claude/fangs-travel` (from shared `41bfb1d7`; shared `af539862`, `8c7d8853`, `9d1e3c3a` and `28359653` merged in): `72b409ae` the travel and the
+  entrance, `5aad24fb` the foe stop and the build gate's checks, `7aaa1486` and this entry's commit the docs. Pushed, **not merged, not released**.
+- **The owner** (after the second picks' release, shared `d15fdfb1`): "Review fangs animations; The movements look like they should be
+  moving the character location", "This applies to the intro too (They flip in place with no movement)".
+- **Why they stood still:** the motion bank draws every clip in place. The Dual chain ships as root-motion takes only, imported with
+  their root on the centre of mass and the body's turn, not baked, so the bake (applyRootMotion off) loses all of their travel (the drawn
+  body's centre stays within 2 cm); the assassin set's in-place takes have none, and their height goes too (the body's centre stays at
+  0.845 m through the entrance's somersaults). The rules moved the pilot only by `CutLunge` {0, 0, .5, 0, 1.2}, eased from cast to hit.
+- **Measured** (the root-motion takes' root bone over the slice the game plays, from the FBX, at 0.835 of the pack's skeleton: the bake
+  body against it, fitted over the drawn frames of the Dual clips; scratch `ftravel/moves.py`, `fitframe.py`):
+
+  | Move (clip, slice played) | Authored travel over the slice (game body) | When (move s: 10/50/90% of it) | Before | After |
+  | --- | --- | --- | --- | --- |
+  | Cut 1 (Dual `Combo01_1`, 0.21-0.90 s) | 0.63 m on (runs to 0.72, back), no lift | 0.09/0.18/0.22 (hit 0.14) | none | 0.63 m on, on its root |
+  | Cut 2 (`Combo01_2`, 0.05-0.72) | 1.07 m on | 0.03/0.14/0.28 (hit 0.13) | none | 1.07 m |
+  | Cut 3 (`Combo01_3`, 0-0.70) | 1.00 m on | 0.03/0.12/0.27 (hit 0.15) | 0.5 m, cast to hit, eased out | 1.0 m |
+  | Cut 4 (`Combo06_1`, 0.06-0.75) | 0.06 m net (0.17 out and back) | - | none | none (keeps its stride) |
+  | Cut 5 (`Combo01_4`, 0-0.85) | 1.68 m on | 0.08/0.21/0.51 (hit 0.20) | 1.2 m, cast to hit | 1.67 m |
+  | Pounce (Rogue `Combination_05_2`, 0.95-1.85) | 0.67 m on (0.87 out), its 0.4 m hop drawn by the bank | 0.03/0.13/0.25 | 5 m dash, 0.10-0.42 | unchanged |
+  | Step's stab (Assassin `Skill01`, 0.45-1.15) | 3.39 m on, a dash | 0.12/0.14/0.17 | the blink behind the foe at 0.14 | unchanged (the blink lands with the clip's dash) |
+  | Veil (`Evade_B`, 0-0.58) | 2.50 m back, a 0.25 m hop (not drawn) | 0.05/0.20/0.29 | none | 2.5 m back |
+  | Fan (`Attack06`, 0.03-0.80) | 0 (0.14 out and back) | - | none | none |
+  | Bloom (`Skill02`, 0.45-1.50) | 0.99 m on (1.26 out, steps back) | 0.26/0.27/0.29 (strike 0.30) | none | 1.0 m (1.27 out) |
+  | Takedown (`Stealth_Kill_Behind_01`, 0.02-1.98) | 0.98 m: 0.61 on, 0.76 to the left (-51 deg); the bank draws it in the pose less a straight drift | 0.05/0.95/1.26 | held, foe 0.85 m ahead | unchanged (paired) |
+  | Frontal critical (`Damage_Critical_Assassin`, 0.50-1.70) | 0.87 m on | 0.30/0.33/0.37 | held | unchanged (paired) |
+  | Entrance step (`Evade_F`, 0.05-0.50; intro 1.6-1.95) | 2.45 m on, a 0.19 m hop | most while unseen | keyed 1.4 m, Before to After | keyed 0.78 m, Before to Arrive |
+  | Entrance flurry (`Combo05_All`, 0.35-1.95; intro 1.95-3.8) | lowest point up to 1.78 m (root 1.91), 0.12 m back | the leap at intro 2.8-3.66 | flips on the floor (body centre held at 0.845 m) | carried: leaps 1.78 m |
+  | Entrance strike (`Skill02`, 0.45-1.6; intro 3.8-4.95) | 1.26 m on, back to 0.74 | the lunge at intro 4.15-4.25 | none | carried; ends on the hero's spot |
+
+  Direction: every root goes straight along its own forward (the sideways drift under 7 cm), the takedown's excepted; the travel is laid
+  along the pilot's facing. The bake's drawn body faces its own orientation frame by frame (the Dual stance's body faces 59 degrees off
+  its root's forward, and a fit of the drawn frames to the authored ones turns through up to 200 degrees inside a cut), so "the root's
+  forward" is the clip's travel toward what it strikes; that is the facing.
+
+- **Rules changed (at the owner's word; Astra please review):**
+  - `NativeFangs.CutLunge` {0, 0, .5, 0, 1.2} -> **{.63, 1.07, 1, 0, 1.67}** m, timed by each clip's root through the presentation's fit
+    (Core `NativeBladeMotion.FangsTravelShare`, `NativeBlades.PathAt`; was eased out from cast to hit), the path running to the clip's
+    end (at most 0.1 s past the move; the next move ends it).
+  - `NativeFangs.CutReach` {2.1, 2.1, 2.2, 2.2, 2.6} -> **{1.9, 1.57, 2.06, 2.2, 2.93}** m: the pilot is 32/50/64/52% along at the hit,
+    so every cut lands as far from where it was cast as before (2.1, 2.1, 2.7, 2.2, 3.8 m); `NativeFangs.CutReachAt` gives back what was
+    not travelled (a cut in the air, at a wall or a foe).
+  - New `NativeFangs.VeilHop` **2.5** m back over the veil's cast (was none; the stride still runs at 0.9 after it) and `BloomLunge`
+    **1** m on at the bloom's strike (was none; the bloom now takes the whole body).
+  - The travel only from the ground (a cut in the air does not hover along it), never off a drop (`FangsFloorTo`: no floor within 1 m
+    under the feet ends it short), never through a foe (`FangsTravelFoe`: 0.9 m short of one within 0.8 m of the line), walls as the
+    blade path's sweep. `BladeBegin` ends a Fangs path when the next Fangs move starts (gated to Fangs kinds; the Katana unchanged).
+  - Unchanged: the pounce's 5 m dash (its clip's slice travels 0.7 m; the dash is the move), the shadow step's blink (it lands as the
+    clip's own 3.4 m dash does), the fan, the fourth cut (its root comes back), the paired takedown and frontal critical (their pairs are
+    the paired-reactions session's area).
+- **The entrance** (presentation only, Core `NativeFangsIntro`): the shown pilot carries the flurry's leap (its lowest point up to 1.78 m
+  off the floor, 0.12 m drift back) and the strike's lunge (1.26 m on, back to 0.74 m: 0.62 m on in all) on the intro rig's root
+  (`RootPath`). **Approach: start offset.** The
+  shadow step (unseen in its smoke) comes out 0.62 m short of the hero's spot, so the flurry and the strike end exactly on it (the
+  strike's own step back, inside the hero shot): no snap, and the hero, the card and play start where they did. Chosen over bending the
+  way back (the hero would slide 0.62 m in its stance) and over blending it away at a cut (the hero shot starts as a blend). The step's look, the arrival burst and the strike's flash, rings and
+  smoke follow the new spots; the flurry's shot follows the chest and its eye rises half the leap.
+- **Animation impact:** hit timing unchanged (every strike on its rules hit); hitboxes: reaches as above, landing as far from the cast as
+  before; damage, cooldowns unchanged; movement: the cuts (but the fourth), the veil and the bloom move the pilot and stop the stride
+  while they do; networking: the host moves the pilot on the existing blade path (`From`/`To`/`PathAt`/`PathUntil`, no new wire field);
+  guests see it in the snapshots, and a guest's own prediction does not model blade travel (as for the Katana's lunges and the pounce
+  today), so it is corrected by the host during the lunge.
+- **Filmed** in the Editor (Cybercity's open street, the pilot placed facing east, the game stepped at 60 a second, shots at 30 a second
+  on the arena clock, every frame's motion logged), before on shared `41bfb1d7`, after on the branch `b3f95ae9`; the travel takes also
+  side-on on the capture tool's 1 m checked floor (`zstudio`), the entrance from a fixed side camera on its stage and its own camera.
+  Sheets in Claude's scratchpad `ftravel/sheets/` (not committed). What they show:
+  - **The body travels now.** The standing flurry moves the pilot 4.3 m over its five cuts (1.7 m before: the old 0.5 and 1.2 m
+    lunges), each lunge over the checks as its clip's root does; on the move the travelling cuts stop the stride and lunge (6.3 m over
+    the take, 9.8 m before, when the walk carried it); the veil rolls back (1.78 m in the take, a wall behind it stopping the 2.5 m) and
+    the bloom lunges 1.0 m and steps back; the pounce and the step are unchanged (7.1 and 7.0 m; 3.35 m both).
+  - **The feet do not carry it everywhere.** The bake takes the Dual clips' own turn out (up to 200 degrees inside a cut), so the drawn
+    legs pivot round a body that does not turn; standing, the foot lock had pinned them, and while the pilot travels the lock lets go
+    (as for every lunge), so the feet slide with the body through the travel: the standing flurry's low feet slid 9.6 m in all before,
+    14.9 m after (motion.csv). Restoring the clips' turn on the drawn body (or baking it into the pose) is the follow-up that would let
+    them carry it.
+  - **Snaps:** none seen; the path follows the clip's root, and each move's travel ends when the next starts.
+  - **The hits:** every strike on its rules hit (the red frames, the clip at its strike); a lunge stops 0.9 m short of a foe (in the
+    open-street take a bot in the way stopped the finisher at 0.64 m). The after take with the foe brought in front lost its foe to the
+    capture tool's ordering (the bot was brought before the pilot was placed), so the landing after is shown by the build gate's real
+    arena run (below), not on film; a short extra hold to film it gave up after 45 minutes waiting for the Editor lock.
+  - **The entrance:** the flurry now somersaults through the air (before: on the floor, the body's centre held at standing height), the
+    entrance camera keeps the leaping pilot in frame, the strike lunges and steps back, and the pilot stands on the hero's spot from
+    the hero shot on, as before: no snap, no slide.
+- **Checks:**
+  - CoreTests, the full suite (Windows path patch applied in the worktree and reverted, not committed): `72b409ae` 1,021 groups exit 0;
+    `5aad24fb` 1,021 exit 0; the merge `8339c21a` 1,021 exit 0; the merge `b3f95ae9` 1,022 exit 0; the merge `4e5c1442` (shared `9d1e3c3a`) 1,023 exit 0; the merge `c41104a5` (shared `28359653`) 1,023 exit 0. `--blades`: 271 checks on the
+    branch, 403 after the merges (new: the travel's length, timing, peak and reach for each cut, the veil and the bloom, the Katana and
+    the dash keeping their easing, the bloom's whole body, the entrance's leap, way, end, strike spot, rig root and the flurry
+    camera keeping the chest in frame).
+  - The Unity compile (four assemblies) on `5aad24fb`, `8339c21a`, `b3f95ae9`, `4e5c1442` and `c41104a5`.
+  - The Editor build gate (`PrototypeBuild.Validate`) on `b3f95ae9`: ok, "Native blades: 77 checks" (new: the first cut steps in along
+    the facing, the flurry's lunges stop on the foe, the veil hops back, a drop ends the travel and the floor carries it on).
+  - `git diff --check` against shared: clean; pins scan: none broken. The 14 stage banks and the motion bank unchanged through both
+    holds (the Rooftop's at the menu z-fight release's `7f875dcd`).
+- **Not seen / not done:** played by a person; a guest over the network (the host moves the pilot on the blade path as for the Katana's
+  lunges; a guest's own prediction does not model blade travel and is corrected during the lunge); a Windows build; the paired moves'
+  travel (the takedown's 0.98 m, the frontal critical's 0.87 m: the bank draws them in their pose less a straight drift, and their pair
+  is the paired-reactions work's); the entrance step's last 0.1 s (the clip's evade runs 0.36 m on after the step lands; the root
+  holds); the veil's 0.25 m hop (the bank draws the in-place takes at standing height); the feet (above).
+
+## 2026-11-13 — Claude: gore flesh: the cut faces, wounds, lumps and bone drawn as flesh in the blood's light (owner request; presentation only)
+
+- Branch `claude/gore-flesh` (from shared `41bfb1d7`): `bd1b6a77` the flesh, `98ff362b` its checks, `1056c5ef` a comment, then the docs. Pushed, **not merged, not released**. Details: `docs/GORE-FLESH.md`.
+- **The owner:** "Also gibbing- we do use new blood, but the gibbing seems to still use voxel flesh and wounds? Can we essentially match
+  the quality with our blood? Using higher quality bone structure and flesh."
+- **What was voxel:** the model's cut face was 1.2 cm cells of flat colour (Core `NativeBisect.CapOf`), a bone's face 1.2 mm cells, a
+  severed joint's opening a three-colour fan, a wound's pit a three-colour tube, a gib's fragments three noisy spheres in one flat
+  colour. The model already had its skeleton inside (2026-10-28), so the bones at a cut were shaped; their faces were not.
+- **The change:**
+  - `Resources/NativeFlesh.shader`: one shader, lit as the blood pack is (`NativeBloodLight.cginc`), wet, untextured (noise in the
+    body's own space). A cross-section is the skin's or sleeve's own colour at the edge, a band of fat, then a few large muscles in fine
+    bundles with pale sheaths, blood lying in it; a bone's face is cortex, spongy bone and marrow (or the skull round the brain).
+  - Core `NativeBisect`: a cap whose look names a kind (`BisectLook.Flesh`) keeps every cell its own piece and gives each vertex its exact
+    distance in from the section's edge and the nearest outline's paint. The region filled is the same, so the caps stay sealed.
+  - Runtime: the caps, sever openings and wound pits draw on it; a gib's fragments are five torn lumps and three bone shards, made once
+    and drawn through the source-model batches; the skin about an open wound is soaked in the blood's red (`WoundSoak` in the body's toon).
+  - **Tiers:** the Low tier (and a build without the shader) keeps the coloured cells and plain lumps. Nothing is allocated per frame.
+  - **Skins:** the Hot Dog's cut is a sausage's (casing, then meat) and it no longer gets bone stubs (it is sausage through). Classic
+    (voxel) bodies keep their voxel caps and wounds. The horde's gore is not touched.
+  - No pack asset is used; the Drive zip is unchanged.
+- **Not changed:** which kills cut, the planes, the pieces, timing, damage, hit volumes, networking (nothing for Astra to review).
+- **Animation impact:** none.
+- **Local tool:** the capture tool gained the play option `cuts=dist[,most]` (a shot square on to each of the largest cut faces).
+- **Checks:**
+  - Full CoreTests on the code as pushed (`1056c5ef`): 1,021 groups, exit 0 (the Windows path patch applied in a throwaway
+    worktree, not committed). `--melee-bisect` 37,041 checks; `--visual-rig` with the new flesh checks; `--blood-pack`.
+  - The Unity compile (`tools/check_unity_compile.py`): all four assemblies pass. The shader also compiles under the Windows SDK's fxc
+    in its plain, instanced, shadowed and gamma variants, and the Editor imported it with no shader error.
+  - `git diff --check` against shared: clean.
+  - **Filmed in the Editor** (Cyber City, close shots square on to each cut face): a Katana through-cut, a greatsword's neck cut, a
+    sword's forearm cut and a kill on the Hot Dog, on the first version of the shader. Judged: the faces read as cross-sections
+    (skin, fat, muscle, the forearm's two bones, the neck's vertebra), smooth, in the model's style; a face turned from the light was
+    dark, so its own light share went up (0.14 to 0.2), some sheaths were made faint and a glint from overhead was added afterwards.
+  - **Not yet done** (the Editor was reserved for other work by the owner's "Nearly-done first"): the same close shots on the shared
+    head ("before"), the tuned shader's shots, the lumps and shards, the wound's pit and soak on a living pilot, the saw preview, and
+    the Editor build gate (`PrototypeBuild.Validate`). The lumps' and shards' shapes and the tissue's look were checked in offline
+    ports of their code only. Not played by a person; the Low tier and gore off not seen on screen.
+- **Next:** the remaining captures and the build gate when the Editor is free; then the owner looks.
+- **Released:** shared `7a20b3c0` (the builder at `7a20b3c0`), test channel revision `639302090409307676` (build `3025f858`); the suite at `dfbd9f0b` (1,023 groups, exit 0), the Unity compile, and the builder's own Unity build and checks. The agent stopped on the Fable usage limit before its build gate and last close shots; the integrator released it from its pushed branch after viewing its before/after close shots of a Katana cut (voxel cells before, a smooth cross-section after). The Hot Dog's cut was not caught square on. No bank or Drive zip change.
+
+## 2026-11-13 — Claude: a fall into a Ward Zero vent ragdolls the model down the shaft, never the voxel body (owner report; presentation only)
+
+- Owner (2026-11-13): "Falling through vent still reverts back to voxel model, but when falling down the player should ragdoll (If they
+  are far enough in vent)". Branch `claude/vent-fall-ragdoll` from shared `41bfb1d7`: `771734f4` the change, shared merged in three
+  times (`167a479f`, `66fc356f`, `a861bafb`), then this entry. Pushed, **not merged, not released**.
+- **The vents:** only Ward Zero has vents a pilot falls into: its eight song vents (PvP `siren` on `NativeVentRules.Ward`'s schedule, PvE
+  `expedition-ward-zero` on the horde's dives; positions from `PveContent.json` `song` entries). Every other map's `vent` is a steam,
+  wind, shove or geyser column on a solid floor.
+- **The cause:** a fall is the rules' kill at the lip (`StepVents`: the centre within .78 m of the vent's on both axes, the vent at
+  least half open; style `vent-fall`, then PvE's kept body turns `vent-splat` 0.6 s before it lands on the hall's centre). The
+  presentation sent both styles past the corpse to vent-fall.ts's scripted victim (`NativeVentDeathPresentation.cs`), which is drawn
+  with `sourceModels.Queue` on the voxel body: the only death path that never got the model (every other corpse wears it through
+  `VisualCorpseMake`, every death scene through `VisualSceneShown`). Off-edge falls (killY) already ragdoll the model: filmed before
+  and after on Starfall Causeway, unchanged.
+- **Now** (`Core/NativeVentFall.cs`, `Runtime/NativeVentFallPresentation.cs`, hooks in `NativeDeathPresentation.PresentDeath` and
+  `NativeCorpseWorld.RefreshWorld`): a pilot on the model takes the corpse every other death takes (its model, skin and hat; the Hot
+  Dog's included), from the pose it had at the kill, launched straight down at 1.5 m/s, arms thrown up, tipping forward. Its own
+  physics world has the shaft the stage draws (`NativeWardPit`): the slab laid round the 2.1 m opening in four pieces, four walls and a
+  bottom 7 m down. It hides once its pelvis is 2.4 m under the lip (the open pit's quad already covers what is under the lip; the hide
+  keeps it out of sight once the grate closes; reached in about .44 s, inside the drawn pit's .7 s close margin). PvE's splat lands as
+  the model's ragdoll: from 10 m over its spot at 11.3 m/s, tipping, at VENT_PIT.drop, with the scripted splat's dust and SPLAT! pop.
+  A kept fall's body knows it is stale when its record turns into the splat in place (its seed and style kept at birth).
+- **"Far enough"** is the rules' own kill: until the pilot's centre is .78 m inside a half-open vent the authority's floor holds it up
+  and it keeps control and its pose (the vents are not holes in the authority, so nothing slips at the rim); from that tick the model
+  ragdolls. Filmed: the pilot stands at the open vent's edge, 0.95 m from its centre, alive, then walks in.
+- **Voxels kept on purpose:** `NativeVentDeath` and the scripted victim are untouched and still drawn for the voxel bodies
+  (`ArenaPresentation.VentModel`: Settings - Player model Classic `ClassicBodies`, the `--ca-voxel-bodies` launch, a client without the
+  bake). A voxel map could choose them the same way (set `ClassicBodies` for that map); not wired.
+- **Seen in the Editor** (shared Editor, 1470 x 719, 30 fps fixed steps, shared `5fa2343e` before, `66fc356f` after; sheets and zooms in
+  the session scratchpad `ventfall/cap`): before, the default pilot and the Hot Dog turn into the white voxel robot, arms up, and sink
+  into the pit (live and in the kill cam); after, the same pilot and the Hot Dog ragdoll in, tumbling over the rim, and the kill cam
+  replays the model. Off the Causeway's Breach the body falls on as the model's ragdoll before and after. The sandbox splat lands as the
+  model with the dust and pop. Caveats: a dead local pilot's camera spectates at once and its kill cam starts within two capture frames,
+  so the fixed views see other players' view of the fall; the splat drops rather than landing cleanly face down.
+- **Checks:** full CoreTests on `771734f4`, `167a479f`, `66fc356f` and `a861bafb` with the Windows path patch applied and reverted:
+  1,022 / 1,022 / 1,023 / 1,023 PASS lines, exit 0 (the new `VentFallChecks`: 1,358 checks; the `DeathFxChecks` route pin updated); `check_unity_compile.py`
+  pass; the Editor build gate (`PrototypeBuild.Validate` on `66fc356f`): ok (its two edit-mode `Destroy` errors are in earlier gates
+  too); `git diff --check` against shared clean. The Editor checkout went back to `9319026b` with its local files, the banks as released.
+- **Not run:** a Windows build, online play (a guest's and the killcam's corpse come from the same code, filmed only offline), the Low
+  tier, a PvE Ward Zero run (the kept fall and splat were filmed in the PvP sandbox, where the same rules make them).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; the kill, its credit and the splat's
+  spot and time are the rules'.
+- **Next:** the owner plays a Ward Zero vent fall; merge and release.
+- **Released:** shared `897e0d0d` (the builder at `897e0d0d`), test channel revision `639302070018175420` (build `943f34a3`); the suite at `c82c1d09` (1,023 groups, exit 0), the Unity compile. No bank or Drive zip change.
+
+## 2026-11-13 — Astra: audio handoff foundation and effective-bank audit
+
+Based on shared `claude/sleepy-ritchie-g8ruhv` at `5d77d1663d62`. Added the 24 optional blade/Fangs recording keys, preserved Toon playback rate for recordings, and added effective installed-bank coverage reporting. No licensed clips imported. Latest builder log proves 213 boss clips/138 keys were imported and reached build-ready; a base LocalAssets.zip survey alone misses the generated-audio overlay. See `docs/audio/HANDOFF-2026-11-13.md` for evidence, remaining licensed-bank work and the DEV kick routing constraint. No release/publication from this branch.
+- **Merged and released (Claude, owner: "Yes, merge them"):** both Astra branches merged on `claude/merge-astra-nov13` (one Tests/Program.cs conflict: both sides' switches kept) into shared `28359653` (the builder at `28359653`), test channel revision `639302214682901166` (build `ed415257`); the suite at `6279fa38` (1,023 groups, exit 0), the Unity compile; the merged installer accepts today's Drive zip; private add-on 9 and cloth 5 tests pass; test_effects_audio (1) and test_import_sound_requests (5) fail exactly as on shared before the merge (this PC's live sound queue and local data).
 
 ## 2026-11-13 — Claude: hand-off to Astra (owner: "To save on usage, please hand me any things your able to for astra")
 
@@ -57,6 +216,18 @@ Base: shared `claude/sleepy-ritchie-g8ruhv`. Each item is yours to pick up; Clau
    - the Fangs' Behind_01 takedown pair (`d15fdfb1`).
 6. **Editor lock tooling.** Agents share one Editor through `F:/Chip Arena Development/.editor-lock` (an `mkdir` lock). They waited hours, and stopped agents left orphaned waiter scripts polling it. A small local tool would help: a holder file inside the lock (who, which task, since when), a first-in-first-out queue, a priority file, stale-lock detection, and waiters that exit when their parent stops.
 7. **Stage bank rebuilds:** a plain rebuild of the Rooftop bank with today's stage kit no longer matched the released one (named chunks were treated as far scenery). `claude/menu-zfight` added `StageBank.far_layers` (off for the rooftop). Check that the other stages' banks still rebuild byte for byte.
+
+## 2026-11-13 — Astra: private add-on route, lock tooling, DEV grants and bisect diagnostics
+
+- Branch `codex/nov13-handoff`, base shared `8c7d8853`; not merged/released. No licensed pack download or Drive zip change.
+- Added explicit private add-on code/shader allowlists, size/hash/meta validation, deterministic zip replacement and stand-in pack/install tests. Added optional per-map build/teardown and post-lighting callbacks, absent-subscriber no-op; runtime adapters still require native acceptance. See PRIVATE-ADDONS.md.
+- Added FIFO Editor command wrapper with holder metadata, priority ticket, conservative dead-holder recovery and parent-exit cleanup. Four real-process Linux tests pass; Windows/Editor unrun. See EDITOR-LOCK.md.
+- Fangs now mirrors into both grant lists; Site/class icon mappings added. Native ClassIcons already has all three. Site source isolated at `81d4b38`, not published: its eight baseline TypeScript errors are unchanged, although Worker bundling and direct grant checks pass.
+- Actual checks: 9 private-add-on/cloth tests, 5 cloth tests, 6 visual asset tests; DEV grants 52 checks; original melee-bisect 37,171 checks; pinned Unity InputSystem/Player/Runtime/Editor compile pass (existing warnings); 3,938-file source check passes. Full managed run stopped after 283 PASS groups at BootIntroChecks (weapon-sword first-frame 28 ms); focused --boot-intro rerun passed 135 checks. The full run is not green.
+- Added opt-in `--melee-bisect-sweep`: **fails**, 10 of 182 halves at 0 and 45–49 degrees. Sealing is unresolved; no production geometry change or tolerance relaxation. Diagnostic fixture is not an exact replay of the original 52-degree report.
+- Reviewed Katana parry and separate Fangs branch `8339c21a`; before/after values and native acceptance gaps in ASTRA-HANDOFF-20261113.md. No optional frontal push-back, combat timing/damage/cooldown, network protocol or animation changes in this task.
+- Host/guest rendered acceptance, real pack execution, private bank rebuild comparisons and Windows lock acceptance remain unrun. No shared/builder sync, test update or Site publication.
+- **Merged and released (Claude, owner: "Yes, merge them"):** both Astra branches merged on `claude/merge-astra-nov13` (one Tests/Program.cs conflict: both sides' switches kept) into shared `28359653` (the builder at `28359653`), test channel revision `639302214682901166` (build `ed415257`); the suite at `6279fa38` (1,023 groups, exit 0), the Unity compile; the merged installer accepts today's Drive zip; private add-on 9 and cloth 5 tests pass; test_effects_audio (1) and test_import_sound_requests (5) fail exactly as on shared before the merge (this PC's live sound queue and local data).
 
 ## 2026-11-13 — Claude: the DEV Katana's and DEV Greatsword's entrances as cinematics (presentation only)
 

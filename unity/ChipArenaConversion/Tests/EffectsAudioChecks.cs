@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
             }
             passed.Add("hover audio: 10,000 stationary repaints cue once; slot/offer/keyboard edges, disabled/re-entry/reset, fixed 40/70 ms ticks and overlap budget pass");
             // ---------- key contract ----------
-            var keys=NativeSoundKeys.All;Check(keys.Length==420&&keys.Count(k=>k.Key.StartsWith("boss.noctiel.",StringComparison.Ordinal))==NativeFallenBossCues.Keys.Length&&NativeFallenBossCues.Keys.Length==57&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20&&keys.Count(k=>k.Key.StartsWith("pve.zombie.",StringComparison.Ordinal))==14&&keys.Count(k=>k.Key.StartsWith("pve.ironworks.",StringComparison.Ordinal))==34&&keys.Count(k=>k.Key.StartsWith(NativeStationKinds.Prefix,StringComparison.Ordinal))==22,"262 effect keys (19 of them the hazard kit's, 14 the zombies' voices and footfalls, 34 the City Ironworks enemies', 22 the Central Station enemies', 57 NOCTIEL's) and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
+            var keys=NativeSoundKeys.All;Check(keys.Length==444&&keys.Count(k=>k.Key.StartsWith("boss.noctiel.",StringComparison.Ordinal))==NativeFallenBossCues.Keys.Length&&NativeFallenBossCues.Keys.Length==57&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20&&keys.Count(k=>k.Key.StartsWith("pve.zombie.",StringComparison.Ordinal))==14&&keys.Count(k=>k.Key.StartsWith("pve.ironworks.",StringComparison.Ordinal))==34&&keys.Count(k=>k.Key.StartsWith(NativeStationKinds.Prefix,StringComparison.Ordinal))==22,"262 effect keys (19 of them the hazard kit's, 14 the zombies' voices and footfalls, 34 the City Ironworks enemies', 22 the Central Station enemies', 57 NOCTIEL's) and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
             foreach(var k in keys)
             {
                 Check(Regex.IsMatch(k.Key,"^[a-z]+(\\.[a-z0-9-]+)+$")&&NativeSoundKeys.Known(k.Key),k.Key+" name");
@@ -49,6 +49,10 @@ namespace ChipArena.UnityConversion
                 if(k.Key.StartsWith("ui.",StringComparison.Ordinal))Check(k.Space==NativeSoundSpace.Flat&&k.Priority==NativeSoundPriority.High,k.Key+" UI is 2D, high priority");
                 if(k.Key.StartsWith("impact.",StringComparison.Ordinal)||k.Key.StartsWith("move.step.",StringComparison.Ordinal)||k.Key.StartsWith("pve.zombie.step.",StringComparison.Ordinal)||k.Key.EndsWith("-tick",StringComparison.Ordinal))Check(k.Priority==NativeSoundPriority.Low,k.Key+" frequent detail is low priority");
             }
+            var bladeIds=NativeToonSynth.Ids.Where(id=>id.StartsWith("blade-",StringComparison.Ordinal)||id.StartsWith("fang-",StringComparison.Ordinal)).ToArray();
+            Check(bladeIds.Length==24&&bladeIds.All(id=>NativeSoundKeys.Known(NativeToonSynth.Prefix+id)),"every blade/fang synth accepts an optional recording");
+            var bladeBank=NativeSoundBank.Parse("{\"schema\":1,\"events\":{"+string.Join(",",bladeIds.Select(id=>"\""+NativeToonSynth.Prefix+id+"\":{\"clips\":[\"0\"]}"))+"}}");
+            Check(bladeBank.Errors.Count==0,"blade/fang recordings pass the public key contract");
             // The plan's voice-budget caps for the busiest cues.
             float Cap(string key){Check(NativeSoundKeys.Find(key,out var d),key+" known");return d.Cap;}
             Check(Cap("gun.machinegun.shot")<=.32f&&Cap("melee.daggers.swing")<=.4f&&Cap("impact.stone")<=.45f&&Cap("move.step.concrete")<=.35f&&Cap("status.burn-tick")<=.35f&&Cap("blast.leet-nuke")<=5&&Cap("blast.transient")<=.1f,"high-rate cues keep the plan's short caps");
@@ -201,6 +205,7 @@ namespace ChipArena.UnityConversion
             // ---------- hook points route through the bank ----------
             {
                 string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
+                Check(R("NativeTopDogScreen.cs").Contains("BankPlay(NativeToonSynth.Prefix+id,position,gain,0,null,mine,rateScale:rate)"),"recorded Toon cues preserve the caller playback rate");
                 string audio=R("NativeAudio.cs"),scene=R("NativeSceneAudio.cs"),st=R("NativeStructureAudio.cs"),ui=R("NativeUi.cs"),fx=R("NativeEffectsAudio.cs");
                 foreach(var hook in new[]{"int plays=NativeSoundPlan.Event(bank,context,detail,routed,n,planned);","for(int i=0;i<plays;i++)Perform(planned[i],pos,from,arena.Time-e.Time,context.SourceMe||context.TargetMe);",
                     "Cue(NativeSoundCues.Roll(roll),roll,pos,.45f,mine:mine);","Cue(NativeSoundCues.Swing(p.Seat.spec,swing),swing,pos,.4f,cover:NativeSoundCues.SwingCover(p.Seat.spec),mine:mine);",

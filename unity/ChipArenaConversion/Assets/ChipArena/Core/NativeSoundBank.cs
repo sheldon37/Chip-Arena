@@ -49,6 +49,13 @@ namespace ChipArena.UnityConversion
             K("impact.wood",P,.45f,L),
             K("magic.ball-lightning",O,6f,L),K("magic.blink-strike",P,1.2f,N),K("magic.darkness.hit",P,.9f,N),K("magic.darkness.shot",P,1f,N),K("magic.fire.hit",P,.8f,N),K("magic.fire.shot",P,.9f,N),K("magic.flame-lance",P,1.5f,N),K("magic.geyser",P,2.5f,N),
             K("magic.lightning.hit",P,.6f,N),K("magic.lightning.shot",P,.55f,N),K("magic.meteor.incoming",P,2.5f,N),K("magic.shackles",P,1.5f,N),K("magic.singularity",O,6f,L),K("magic.tidal-wave",P,2f,N),K("magic.water.hit",P,.8f,N),K("magic.water.shot",P,.8f,N),
+            // Optional licensed blade recordings; absent entries retain NativeToonSynth. Legacy topdog namespace matches Toon callers.
+            K("topdog.blade-cut",P,2f,N),K("topdog.blade-slice",P,2f,N),K("topdog.blade-draw",P,2f,N),K("topdog.blade-sheathe",P,2f,N),
+            K("topdog.blade-click",P,2f,N),K("topdog.blade-split",P,2f,N),K("topdog.blade-dash",P,2f,N),K("topdog.blade-wind",P,2f,N),
+            K("topdog.blade-ring",P,2f,N),K("topdog.blade-chime",P,2f,N),K("topdog.blade-hone",P,2f,N),K("topdog.blade-wave",P,2f,N),
+            K("topdog.blade-drop",P,2f,N),K("topdog.blade-clash",P,2f,N),K("topdog.fang-cut",P,2f,N),K("topdog.fang-stab",P,2f,N),
+            K("topdog.fang-drip",P,2f,N),K("topdog.fang-hiss",P,2f,N),K("topdog.fang-throw",P,2f,N),K("topdog.fang-vanish",P,2f,N),
+            K("topdog.fang-smoke",P,2f,N),K("topdog.fang-bloom",P,2f,N),K("topdog.fang-beat",P,2f,N),K("topdog.fang-toll",P,2f,N),
             K("melee.block",P,.9f,N),K("melee.daggers.hit",P,.5f,N),K("melee.daggers.swing",P,.4f,N),K("melee.daggers.throw",P,.8f,N),K("melee.greatsword.hit",P,.9f,N),K("melee.greatsword.spin",P,1.5f,N),K("melee.greatsword.swing",P,1f,N),K("melee.miss",P,.6f,N),
             K("melee.shield.bash",P,.7f,N),K("melee.shield.block",P,.9f,N),K("melee.shield.throw",P,1f,N),K("melee.sword.hit",P,.7f,N),K("melee.sword.swing",P,.6f,N),
             K("move.jump",P,.4f,N),K("move.land",P,.4f,N),K("move.roll",P,.6f,N),K("move.step.concrete",P,.35f,L),K("move.step.gravel",P,.35f,L),K("move.step.metal",P,.35f,L),K("move.step.snow",P,.4f,L),K("move.step.stone",P,.35f,L),

@@ -8,6 +8,9 @@ internal static class Program
         try
         {
             if(args.Length==1&&args[0]=="--fangs-intro"){FangsIntroChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--melee-bisect-sweep"){MeleeBisectChecks.Run(ProjectRoot(),true);return 0;}
+            if(args.Length==1&&args[0]=="--dev-grants-only"){DevGrantsChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--effects-audio"){foreach(var result in EffectsAudioChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--expedition-loading")ExpeditionLoadingHandoffChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--expedition-loading")return 0;
             if(args.Length==3&&args[0]=="--stage-layout"){StageArtLayout.Write(ProjectRoot(),args[1],args[2]);return 0;}
@@ -246,6 +249,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--sprint"){SprintMotionChecks.Run(ProjectRoot());SprintArmChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--greatsword-sprint"){var gsRoot=ProjectRoot();GreatswordSprintChecks.Run(gsRoot,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(gsRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--bow"){BowChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--vent-fall"){DeathFxChecks.Run(ProjectRoot());VentFallChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--gib"){GibChecks.Run(ProjectRoot());BowChecks.Run(ProjectRoot());return 0;}
             CyberRangedSimulationChecks.Run();
             HitchChecks.Run();KernelPanicChecks.Run();OnlineRoomChecks.Run();
@@ -297,7 +301,7 @@ internal static class Program
             StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();KillEffectChecks.Run(root);SirenFxChecks.Run(root);SirenMarkChecks.Run(root);SirenLookChecks.Run(root);DevFxChecks.Run(root);
             SirenSmileChecks.Run(root);SirenDetailChecks.Run(root);SirenSmileFaceChecks.Run(root);
             HudPlaceholderChecks.Run(root);HudCyberChecks.Run(root,data);
-            DeathFxChecks.Run(root);CorpseChecks.Run(data);
+            DeathFxChecks.Run(root);CorpseChecks.Run(data);VentFallChecks.Run(root);
             StageVentChecks.Run(root);MinionFxChecks.Run(root);MinionHintChecks.Run(root);
             HordeDropChecks.Run(root);HordeKindChecks.Run(root);IronworksKindChecks.Run(root);IronworksPropChecks.Run(root);StationEnemyChecks.Run(root);FallenBossChecks.Run(root);BossChipChecks.Run(root);BossGuideChecks.Run(root);BossPicksChecks.Run(root);TelegraphChecks.Run(root);FallenIntroMocapChecks.Run(root);StationBossModelChecks.Run(root);HumBossChecks.Run(root);DeepEndBossChecks.Run(root);BackroomsBossSoundChecks.Run(root);BackroomsBossSafeSpotChecks.Run(root);StationBossPresentationChecks.Run(root);ZombieMotionChecks.Run(root);ZombieFlowChecks.Run(root);ZombieTwitchChecks.Run(root);ZombieLocoChecks.Run(root);ZombieGoreChecks.Run(root);HordeRoamChecks.Run(root);HulkSpitterChecks.Run(root);HulkBreachFxChecks.Run(root);ZombieFxChecks.Run(root);HulkMotionChecks.Run(root);HulkChargeChecks.Run(root);HulkHuntChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);

@@ -100,6 +100,8 @@ Shader "ChipArena/VisualBodyToon" {
   if(_VertexAlbedo>0&&_ZombieTint.w>0)o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D,0,0);
   if(_VertexAlbedo<=0){float band=ZombieBand(i.rest);o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D,band,ZombieStripe(i.rest))*ZombieLean(i.rest,i.uv_Texture2D);if(_ZombieEye.w>1)o.Emission+=_ZombieEye.rgb*(_ZombieEye.w-1);o.Emission+=ZombieTapeShine(band,normalize(i.worldNormal),normalize(i.viewDir));}
   if(_VertexAlbedo>0)o.Emission+=i.color.rgb*_VertexAlbedo*i.color.a;else if(_UseCustomTexture>.5)o.Emission+=SpawnTinted(VisualAccentPart(map.rgb,i.color.rgb),i.worldPos.y)*_AccentGlow;
+  // The blood round an open wound soaks the skin and clothes about its hole (not the caps or the skeleton).
+  if(_VertexAlbedo<=0){float soak=WoundSoak(i.worldPos);o.Albedo=WoundSoaked(o.Albedo,soak);o.Emission*=1.0-soak*0.8;}
   float3 n=normalize(i.worldNormal);
   ZombieChar(i.rest,o.Albedo,o.Emission);ZombieFoil(n,normalize(i.viewDir),o.Albedo,o.Emission);
   if(_ArenaActorLit>.5)o.Emission+=o.Albedo*ToonPoints(ActorLights(i.worldPos,n));

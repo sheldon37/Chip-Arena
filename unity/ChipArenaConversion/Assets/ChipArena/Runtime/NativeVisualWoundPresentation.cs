@@ -152,12 +152,18 @@ namespace ChipArena.UnityConversion
             {
                 float a=k*2*Mathf.PI/sides,ca=Mathf.Cos(a),sa=Mathf.Sin(a);var round=h.Along*ca+side*sa;var o=round*r+h.Along*(Mathf.Sign(ca)*h.Half);normal=-round;return h.At+h.In*depth+o;
             }
-            float[] depths={h.Rim-.001f,(h.Rim+h.Depth)*.5f,h.Depth};Color[] cols={rimC,midC,deepC};
-            for(int ring=0;ring<3;ring++)for(int k=0;k<sides;k++){at.Add(Ring(k,depths[ring],out var n));nm.Add(n);col.Add(cols[ring]);}
-            for(int ring=0;ring<2;ring++)for(int k=0;k<sides;k++){int a=ring*sides+k,b=ring*sides+(k+1)%sides,c=a+sides,d=b+sides;tris.AddRange(new[]{a,c,b,b,c,d});}
-            int bottom=at.Count;at.Add(h.At+h.In*h.Depth);nm.Add(-h.In);col.Add(C(FleshDeep*.7f,.4f));
-            for(int k=0;k<sides;k++)tris.AddRange(new[]{bottom,2*sides+k,2*sides+(k+1)%sides});
-            var mesh=new Mesh{name="Visual wound pit",hideFlags=HideFlags.HideAndDontSave};mesh.SetVertices(at);mesh.SetNormals(nm);mesh.SetColors(col);mesh.SetTriangles(tris,0);mesh.RecalculateBounds();
+            // Its rings: the lip, the skin's and the fat's ends under it (the flesh's layers down the wall, NativeFlesh.shader), the
+            // middle and the bottom; each vertex carries how far down the pit it is.
+            float top=h.Rim-.001f,span=Mathf.Max(.001f,h.Depth-top);const int rings=5;
+            float[] depths={top,top+Mathf.Min(.002f,span*.2f),top+Mathf.Min(.006f,span*.45f),top+span*.72f,h.Depth};Color[] cols={rimC,rimC,midC,midC,deepC};
+            var data=new List<Vector2>();var shell=new List<Vector3>();var lip=new Color(.42f,.06f,.07f);if(linear)lip=lip.linear;var lipC=new Vector3(lip.r,lip.g,lip.b);
+            // (The Hot Dog's pit is a sausage's: meat under its casing.)
+            var body=bone;while(body.parent!=null&&!body.name.StartsWith("Visual ",StringComparison.Ordinal))body=body.parent;int pit=HotDogOn(body.gameObject)?BisectLook.Sausage:BisectLook.Pit;
+            for(int ring=0;ring<rings;ring++)for(int k=0;k<sides;k++){at.Add(Ring(k,depths[ring],out var n));nm.Add(n);col.Add(cols[ring]);data.Add(new Vector2(depths[ring]-top,pit));shell.Add(lipC);}
+            for(int ring=0;ring<rings-1;ring++)for(int k=0;k<sides;k++){int a=ring*sides+k,b=ring*sides+(k+1)%sides,c=a+sides,d=b+sides;tris.AddRange(new[]{a,c,b,b,c,d});}
+            int bottom=at.Count;at.Add(h.At+h.In*h.Depth);nm.Add(-h.In);col.Add(C(FleshDeep*.7f,.4f));data.Add(new Vector2(span,pit));shell.Add(lipC);
+            for(int k=0;k<sides;k++)tris.AddRange(new[]{bottom,(rings-1)*sides+k,(rings-1)*sides+(k+1)%sides});
+            var mesh=new Mesh{name="Visual wound pit",hideFlags=HideFlags.HideAndDontSave};mesh.SetVertices(at);mesh.SetNormals(nm);mesh.SetColors(col);mesh.SetUVs(1,data);mesh.SetUVs(2,shell);mesh.SetUVs(3,at);mesh.SetTriangles(tris,0);mesh.RecalculateBounds();
             var go=new GameObject("Visual wound");go.transform.SetParent(bone,false);go.AddComponent<MeshFilter>().sharedMesh=mesh;var mr=go.AddComponent<MeshRenderer>();mr.sharedMaterial=look;mr.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
             return go;
         }

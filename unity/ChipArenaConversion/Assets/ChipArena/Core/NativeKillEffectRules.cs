@@ -446,6 +446,8 @@ namespace ChipArena.UnityConversion
     public sealed class NativeKillDebris
     {
         public readonly int Count,Chunks,Loose;private readonly double[] start,vel,spin,size;public readonly double[] Colors;
+        /// <summary>Whether fragment i is a bit of bone (drawn as a shard, not a lump of flesh: Runtime NativeKillModels.cs).</summary>
+        public readonly bool[] Bone;
         private readonly double[] looseStart,looseVel,looseSpin;private readonly double floor;
         /// <summary><paramref name="sources"/>: world matrices (16 doubles each) and linear colours (3 each) of the crushed
         /// part's meshes; <paramref name="loose"/>: the start positions (3 each) of the objects it carried.</summary>
@@ -467,7 +469,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             Loose=Math.Min(looseCount,Math.Max(0,limit));Chunks=Math.Max(0,Math.Min(limit-Loose,n));double sev=NativeKillEffectRules.Clamp(severity);
-            start=new double[Chunks*3];vel=new double[Chunks*3];spin=new double[Chunks*3];size=new double[Chunks];Colors=new double[Chunks*3];
+            start=new double[Chunks*3];vel=new double[Chunks*3];spin=new double[Chunks*3];size=new double[Chunks];Colors=new double[Chunks*3];Bone=new bool[Chunks];
             for(int i=0;i<Chunks;i++)
             {
                 int c=(int)Math.Floor(i*(double)n/Chunks);double H(int k)=>NativeWoundCarve.Hash(seed,i,k);double h0=H(0),r,g,b;
@@ -477,7 +479,7 @@ namespace ChipArena.UnityConversion
                 else if(h0<.3)NativeKillEffectRules.Linear(NativeKillCaps.Bone,out r,out g,out b);
                 else if(h0<.36)NativeKillEffectRules.Linear(NativeKillCaps.Mid,out r,out g,out b);
                 else{double s=.75+.3*H(1);r=sourceColors[cc[c]*3]*s;g=sourceColors[cc[c]*3+1]*s;b=sourceColors[cc[c]*3+2]*s;}
-                Colors[i*3]=r;Colors[i*3+1]=g;Colors[i*3+2]=b;
+                Colors[i*3]=r;Colors[i*3+1]=g;Colors[i*3+2]=b;Bone[i]=burst?h0>=.72&&h0<.76:h0>=.22&&h0<.3;
                 double x=cp[c*3],y=cp[c*3+1],z=cp[c*3+2],qx=x-ox,qy=Math.Max(y-oy,0),qz=z-oz;if(qx*qx+qy*qy+qz*qz<1e-6){qx=H(2)-.5;qy=.5;qz=H(3)-.5;}
                 double ql=Math.Sqrt(qx*qx+qy*qy+qz*qz);qx/=ql;qy/=ql;qz/=ql;double push=(2+2.6*H(4))*(.6+.6*sev),along=kick*(.35+.55*H(5));
                 vel[i*3]=ix+qx*push+dx*along+(H(6)-.5)*1.4;vel[i*3+1]=iy+qy*push+dy*along+1.2+1.8*H(7);vel[i*3+2]=iz+qz*push+dz*along+(H(8)-.5)*1.4;
