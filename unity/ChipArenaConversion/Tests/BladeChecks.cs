@@ -399,31 +399,33 @@ namespace ChipArena.UnityConversion
         private static void PairAlign(string root)
         {
             string take=NativeBladeMotion.FangsTakedown,crit=NativeBladeMotion.FangsCritical;
-            Check(NativePairAlign.Aligns(take)&&NativePairAlign.Aligns(crit)&&!NativePairAlign.Aligns(NativeBladeMotion.KatanaCritical)&&!NativePairAlign.Aligns(NativeDevKatanaMotion.Counter)&&!NativePairAlign.Aligns(NativeBladeMotion.FangsTakedownHit)&&!NativePairAlign.Aligns(null),"the Fangs' takedown and frontal critical are laid together (the counters keep their placement)");
-            // The rules' placement (NativeBladeAuthority.BladeStartPair): the foe PairGap ahead, its back turned for the takedown, facing for the critical.
+            string kat=NativeBladeMotion.KatanaCritical,dev=NativeDevKatanaMotion.Counter;
+            Check(NativePairAlign.Aligns(take)&&NativePairAlign.Aligns(crit)&&NativePairAlign.Aligns(kat)&&NativePairAlign.Aligns(dev)&&!NativePairAlign.Aligns(NativeDevKatanaMotion.CounterHit)&&!NativePairAlign.Aligns(NativeBladeMotion.FangsTakedownHit)&&!NativePairAlign.Aligns(NativeBladeMotion.KatanaCriticalHit)&&!NativePairAlign.Aligns(null),"the Fangs' takedown and frontal critical and both counters are laid together (only the attackers' clips name a pairing)");
+            // The rules' placement (NativeBladeAuthority.BladeStartPair): the foe PairGap ahead, its back turned for the takedown, facing for the critical;
+            // the Katana's counter CounterStand ahead, facing.
             float gap=NativeFangs.PairGap;
-            foreach(var (clip,gyaw) in new[]{(take,0f),(crit,180f)})
+            foreach(var (clip,gyaw,gap0) in new[]{(take,0f,gap),(crit,180f,gap),(kat,180f,NativeKatana.CounterStand),(dev,180f,NativeKatana.CounterStand)})
             {
                 Check(NativePairAlign.Span(clip,out float from,out float to)&&NativePairAlign.Weight(clip,from)==0&&NativePairAlign.Weight(clip,to)==0&&NativePairAlign.Weight(clip,from-.1f)==0&&NativePairAlign.Weight(clip,to+.1f)==0
-                    &&!NativePairAlign.Shift(clip,from,0,gap,gyaw,1,out _,out _)&&!NativePairAlign.Shift(clip,to,0,gap,gyaw,1,out _,out _),clip+": nothing moves at the pairing's ends (the rules' placement, no pop in or out)");
+                    &&!NativePairAlign.Shift(clip,from,0,gap0,gyaw,1,out _,out _)&&!NativePairAlign.Shift(clip,to,0,gap0,gyaw,1,out _,out _),clip+": nothing moves at the pairing's ends (the rules' placement, no pop in or out)");
                 var w=NativeBladeMotion.WindowOf(clip);float full=0,lastW=0;bool mono=true;NativePairAlign.Move pa=default,pv=default;float jump=0,turnJump=0;
                 for(float c=from;c<=to+1e-4f;c+=1/60f)
                 {
                     float wt=NativePairAlign.Weight(clip,c);if(wt>=1)full+=1/60f;
-                    NativePairAlign.Shift(clip,c,0,gap,gyaw,1,out var ma,out var mv);
+                    NativePairAlign.Shift(clip,c,0,gap0,gyaw,1,out var ma,out var mv);
                     if(c>from){jump=Math.Max(jump,Math.Max(Math.Abs(ma.X-pa.X)+Math.Abs(ma.Z-pa.Z),Math.Abs(mv.X-pv.X)+Math.Abs(mv.Z-pv.Z)));turnJump=Math.Max(turnJump,Math.Max(Math.Abs(ma.Yaw-pa.Yaw),Math.Abs(mv.Yaw-pv.Yaw)));}
                     pa=ma;pv=mv;lastW=wt;
                     // Drawn, the victim's root (the rules' place, then its move) sits where the attacker's (its move) and the shown placement put it.
                     if(NativePairAlign.Authored(clip,c,out float mx,out float mz,out float myaw))
                     {
-                        float bx=0+(mx-0)*wt,bz=gap+(mz-gap)*wt,byaw=gyaw+DeltaAngle(gyaw,myaw)*wt;
+                        float bx=0+(mx-0)*wt,bz=gap0+(mz-gap0)*wt,byaw=gyaw+DeltaAngle(gyaw,myaw)*wt;
                         NativePairAlign.Turn(ma.Yaw,bx,bz,out float ax,out float az);ax+=ma.X;az+=ma.Z;
-                        NativePairAlign.Turn(gyaw,mv.X,mv.Z,out float vx,out float vz);vx+=0;vz+=gap;
+                        NativePairAlign.Turn(gyaw,mv.X,mv.Z,out float vx,out float vz);vx+=0;vz+=gap0;
                         if(Math.Abs(ax-vx)>1e-3f||Math.Abs(az-vz)>1e-3f||Math.Abs(DeltaAngle(ma.Yaw+byaw,gyaw+mv.Yaw))>.05f)mono=false;
                     }
                 }
                 Check(mono,clip+": the drawn victim stands where the drawn attacker and the pack's placement put it");
-                Check(full>.25f&&jump<.06f&&turnJump<4,clip+": held through the contact ("+full.ToString("0.00")+" s of clip) and eased in and out without a pop (largest step "+jump.ToString("0.000")+" m, "+turnJump.ToString("0.0")+" degrees a 60th)");
+                Check(full>.12f&&jump<.06f&&turnJump<4,clip+": held through the contact ("+full.ToString("0.00")+" s of clip) and eased in and out without a pop (largest step "+jump.ToString("0.000")+" m, "+turnJump.ToString("0.0")+" degrees a 60th)");
                 Check(NativePairAlign.Span(clip,out float f0,out float t0)&&f0>=w.From-1e-3f&&t0<=w.To+1e-3f,clip+": the pairing lies in the move's clip window");
             }
             // The takedown: from the grab (0.4 s) the attacker's left hand holds the face, the roots under 0.4 m apart (the rules 0.85); the
@@ -437,6 +439,15 @@ namespace ChipArena.UnityConversion
             // The critical: its fang in the belly from the dash (0.9 s) to 1.3; the foe faces the attacker, turned a little to its thrust.
             held=true;for(float c=.92f;c<=1.3f;c+=.05f){NativePairAlign.Authored(crit,c,out float x,out float z,out float yaw);if(!(z>.3f&&z<.7f&&Math.Abs(DeltaAngle(yaw,180))<30))held=false;}
             Check(held&&NativePairAlign.Weight(crit,1.1f)==1&&NativePairAlign.Weight(crit,.5f)==0,"the critical's foe stands facing the attacker, its belly on the fang, through the blow");
+            // The counters: from the blow the foe stands where the drawn blade crosses it (the Katana's 1 m off, the DEV Katana's 0.85; the rules
+            // 1.6), then goes back as the rules throw it, the closing kept through the throw (the rules' clock: the blow 0.55 s in, the hold 1.25);
+            // before the slash nothing moves.
+            float Throw(float c,float hitClip,float rate)=>NativeBladeMotion.VictimTravel(kat,NativeKatana.CounterHit+(c-hitClip)/rate,0,NativeKatana.CounterHold);
+            NativePairAlign.Authored(kat,1.45f,out _,out float kz,out float kyaw);NativePairAlign.Authored(kat,2f,out _,out float kz2,out _);
+            NativePairAlign.Authored(dev,.4f,out _,out float dz,out float dyaw);NativePairAlign.Authored(dev,1f,out _,out float dz2,out _);
+            Check(Math.Abs(kz-1)<.01f&&Math.Abs(DeltaAngle(kyaw,180))<1&&Math.Abs(kz2-kz-(Throw(2f,1.45f,.8f/.7f)-Throw(1.45f,1.45f,.8f/.7f)))<.02f&&NativePairAlign.Weight(kat,1f)==0&&NativePairAlign.Weight(kat,1.47f)==1
+                &&Math.Abs(dz-.85f)<.01f&&Math.Abs(DeltaAngle(dyaw,180))<1&&Math.Abs(dz2-dz-(Throw(1f,.4f,1.07f/.7f)-Throw(.4f,.4f,1.07f/.7f)))<.02f&&NativePairAlign.Weight(dev,.05f)==0&&NativePairAlign.Weight(dev,.42f)==1,
+                "the counters draw the foe where the blade crosses it at the blow and let the rules' throw carry it");
             // Moves only where they are asked for: a pair held off the rules' place (a wall) keeps its relative shift.
             NativePairAlign.Shift(take,1f,.3f,gap,15,1,out var ka,out var kv);NativePairAlign.Shift(take,1f,.3f,gap,15,1,out var ka2,out var kv2);
             Check(ka.X==ka2.X&&ka.Z==ka2.Z&&ka.Yaw==ka2.Yaw&&kv.X==kv2.X&&kv.Z==kv2.Z&&kv.Yaw==kv2.Yaw,"the same replicated placement gives every client the same moves");
@@ -445,7 +456,7 @@ namespace ChipArena.UnityConversion
             int turnAt=motion.IndexOf("float clipTurn=VisualMotionTurn(m,loco,sum,jumped,dt);"),alignAt=motion.IndexOf("VisualPairAlign(m,body.Root.transform,a,time,sum);"),guardAt=motion.IndexOf("            // The contact guard:");
             Check(turnAt>0&&alignAt>turnAt&&guardAt>alignAt,"each body's part is drawn after its clip's own turns and before the contact guard and the feet");
             Check(align.Contains("cyberSnapshot?.Actors")&&align.Contains("var g=Quaternion.Inverse(Quaternion.Euler(0,ay,0))*(vt.position-at.position);")&&align.Contains("Mathf.DeltaAngle(ay,vt.eulerAngles.y)")&&align.Contains("(attacker.RigScale+victim.RigScale)*.5f")
-                &&align.Contains("k.Pair!=victim.Id")&&align.Contains("NativeBladeMotion.Clip(attacker,k,time,bank,out clip,out clipTime,out _,out _)&&NativePairAlign.Aligns(clip)")&&align.Contains("share=m.VictimShare;"),"the pairing comes from replicated data (the attacker's record and clip, both pilots' scales and drawn roots), by each clip's share");
+                &&align.Contains("k.Pair!=victim.Id")&&align.Contains("NativeBladeMotion.Clip(attacker,k,time,bank,out clip,out clipTime,out _,out _)&&NativePairAlign.Aligns(clip)")&&align.Contains("if(a==victim)share=m.Weight;"),"the pairing comes from replicated data (the attacker's record and clip, both pilots' scales and drawn roots), by each clip's share");
             Check(R(root,"CapturedAnimation.cs").Contains("if(NativeBladeMotion.Holds(a,time))v.ReactionYaw=v.Yaw;"),"a held foe faces as the rules hold it (not its last hit's reaction)");
             foreach(var f in new[]{"NativeBladeAuthority.cs","NativeFangsAuthority.cs","NativeKatanaAuthority.cs","NativeArena.cs","NativeNetworkFrame.cs","NativeFrameCodec.cs"})Check(!R(root,f).Contains("NativePairAlign"),f+" does not read the pairing (the rules, hits and wire are unchanged)");
             Check(NativeFangs.PairGap==.85f&&NativeFangs.BehindHit==.95f&&NativeFangs.BehindHold==1.45f&&NativeFangs.FrontHit==.6f&&NativeFangs.FrontHold==1.2f,"the rules' hold is unchanged (0.85 m; the takedown's blow 0.95 s of 1.45, the critical's 0.6 of 1.2)");

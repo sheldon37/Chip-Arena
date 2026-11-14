@@ -13,7 +13,8 @@ namespace ChipArena.UnityConversion
     /// victim's turn against the attacker's, degrees, 30 a second over the clip span the two bodies touch in, held at its ends; measured
     /// on the bake body, each take's drawn joints, the Editor's clipframes, fitted onto the pack's, and the two takes laid together as
     /// the pair's contact puts them: the takedown's left hand on the face from 0.4 to 1.25 s, the critical's fang in the belly from its
-    /// dash at 0.9 s), how it comes in (In) and goes (Out), on the attacker's clip time, and how the closing is shared (Victim: the
+    /// dash at 0.9 s; the counters by where the drawn blade crosses the foe at the blow), how it comes in (In) and goes (Out), on
+    /// the attacker's clip time, and how the closing is shared (Victim: the
     /// victim's share, the attacker's the rest). Shift turns the rules' placement into each drawn body's move. Presentation only: the
     /// rules' places, facing, timing, hits and the wire are untouched; every client works it out from the replicated actors (the pair's
     /// clip and times, both pilots' places, yaws and scales).
@@ -34,10 +35,19 @@ namespace ChipArena.UnityConversion
         // bake draws the attacker on its centre of mass and keeps it facing its root (the crouch before the dash is authored turned 140
         // degrees off the foe, so only the contact is laid together; before it the placement is held at the dash's end).
         private static readonly float[] CriticalPlace={.245f,.486f,-159.7f,.268f,.515f,-159,.228f,.544f,-162.7f,.228f,.553f,-163.1f,.245f,.549f,-161.4f,.263f,.543f,-159.6f,.269f,.539f,-158.6f,.271f,.539f,-158.4f,.269f,.541f,-158.5f,.262f,.543f,-159.2f,.255f,.548f,-160.1f,.243f,.552f,-161.1f,.228f,.561f,-162.3f};
+        // The counters (the Katana's paired katana critical; the DEV Katana's Grruzam guard counter, whose foe's clip is no pair of it): the
+        // Katana's slash at 1.4-1.47 s spins its attacker, whom the bake keeps facing its root, so its two takes leave no contact to lay them
+        // by, and the DEV Katana's have none. Each foe stands where the drawn blade crosses its body at the blow (the Katana's 1 m off, the
+        // DEV Katana's 0.85 m, facing; the rules 1.6 m), measured in play, then goes back as the rules throw it (NativeBladeMotion
+        // .VictimTravel's curve on the rules' clock), so the throw is kept and the closing stays the same through it.
+        private static readonly float[] KatanaPlace={0,1,180,0,1.07f,180,0,1.142f,180,0,1.214f,180,0,1.286f,180,0,1.357f,180,0,1.429f,180,0,1.501f,180,0,1.573f,180,0,1.627f,180,0,1.679f,180,0,1.73f,180,0,1.782f,180,0,1.834f,180,0,1.885f,180,0,1.937f,180,0,1.989f,180,0,2.01f,180,0,2.029f,180,0,2.047f,180,0,2.066f,180,0,2.085f,180,0,2.104f,180,0,2.123f,180,0,2.142f,180};
+        private static readonly float[] DevKatanaPlace={0,.85f,180,0,.902f,180,0,.956f,180,0,1.009f,180,0,1.063f,180,0,1.117f,180,0,1.171f,180,0,1.224f,180,0,1.278f,180,0,1.332f,180,0,1.385f,180,0,1.437f,180,0,1.476f,180,0,1.514f,180,0,1.553f,180,0,1.592f,180,0,1.63f,180,0,1.669f,180,0,1.707f,180,0,1.746f,180,0,1.785f,180,0,1.823f,180,0,1.849f,180,0,1.863f,180,0,1.878f,180,0,1.892f,180,0,1.906f,180,0,1.92f,180,0,1.934f,180,0,1.948f,180,0,1.962f,180,0,1.976f,180,0,1.991f,180};
         private static readonly Pair[] Pairs=
         {
             new Pair{Clip=NativeBladeMotion.FangsTakedown,From=0,Place=TakedownPlace,In0=.02f,In1=.4f,Out0=1.3f,Out1=1.98f,Victim=.5f},
             new Pair{Clip=NativeBladeMotion.FangsCritical,From=.9f,Place=CriticalPlace,In0=.7f,In1=.92f,Out0=1.3f,Out1=1.65f,Victim=.5f},
+            new Pair{Clip=NativeBladeMotion.KatanaCritical,From=1.45f,Place=KatanaPlace,In0=1.1f,In1=1.4f,Out0=1.55f,Out1=2.2f,Victim=.5f},
+            new Pair{Clip=NativeDevKatanaMotion.Counter,From=.4f,Place=DevKatanaPlace,In0=.1f,In1=.36f,Out0=.5f,Out1=1.4f,Victim=.5f},
         };
         private static Pair Find(string clip){if(clip==null)return null;foreach(var p in Pairs)if(p.Clip==clip)return p;return null;}
         /// <summary>Whether the attacker's clip `clip` is a paired move whose bodies are laid together here.</summary>

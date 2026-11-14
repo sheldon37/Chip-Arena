@@ -21,12 +21,13 @@ namespace ChipArena.UnityConversion
             return NativeBladeMotion.Clip(attacker,k,time,bank,out clip,out clipTime,out _,out _)&&NativePairAlign.Aligns(clip);
         }
         // This body's part of the pairing (VisualMotionPose, after the clip's own turns, before the contact guard and the feet): its drawn
-        // hips turned about its root and moved, by its share of the paired clip in the mix (the attacker's clip, or the victim clip's).
+        // hips turned about its root and moved, by the attacker clip's share of the attacker's mix, and by the held foe's motion weight
+        // (a counter's foe sways in the parry's daze until the blow, NativeBladeMotion.StruckOnBlow, and is drawn in all the same).
         private void VisualPairAlign(VisualMotion m,Transform root,Actor a,float time,float sum)
         {
             if(m.BodyHips==null||!VisualPairOf(a,time,out var attacker,out var victim,out string clip,out float c))return;
             float share;
-            if(a==victim)share=m.VictimShare;
+            if(a==victim)share=m.Weight;
             else share=m.Index.TryGetValue(clip,out int i)&&sum>1e-4f?Mathf.Clamp01(Ease(m.Weights[i])/sum)*m.Weight:0;
             if(share<=0||!rigs.TryGetValue(attacker.Id,out var ar)||!rigs.TryGetValue(victim.Id,out var vr)||ar?.Root==null||vr?.Root==null)return;
             // The rules' placement as drawn: the victim's rig root in the attacker's (the replicated places and facings; a held foe faces
