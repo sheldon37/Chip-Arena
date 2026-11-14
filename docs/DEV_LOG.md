@@ -1,6 +1,6 @@
 ## 2026-11-13 — Claude: the Fangs' moves carry the pilot as their clips do, and Silent Kill's flurry leaps (owner request; a rules change at the owner's word, for Astra)
 
-- Branch `claude/fangs-travel` (from shared `41bfb1d7`; shared `af539862` and `8c7d8853` merged in): `72b409ae` the travel and the
+- Branch `claude/fangs-travel` (from shared `41bfb1d7`; shared `af539862`, `8c7d8853` and `9d1e3c3a` merged in): `72b409ae` the travel and the
   entrance, `5aad24fb` the foe stop and the build gate's checks, `7aaa1486` and this entry's commit the docs. Pushed, **not merged, not released**.
 - **The owner** (after the second picks' release, shared `d15fdfb1`): "Review fangs animations; The movements look like they should be
   moving the character location", "This applies to the intro too (They flip in place with no movement)".
@@ -84,11 +84,11 @@
     the hero shot on, as before: no snap, no slide.
 - **Checks:**
   - CoreTests, the full suite (Windows path patch applied in the worktree and reverted, not committed): `72b409ae` 1,021 groups exit 0;
-    `5aad24fb` 1,021 exit 0; the merge `8339c21a` 1,021 exit 0; the merge `b3f95ae9` 1,022 exit 0. `--blades`: 271 checks on the
+    `5aad24fb` 1,021 exit 0; the merge `8339c21a` 1,021 exit 0; the merge `b3f95ae9` 1,022 exit 0; the merge `4e5c1442` (shared `9d1e3c3a`) 1,023 exit 0. `--blades`: 271 checks on the
     branch, 403 after the merges (new: the travel's length, timing, peak and reach for each cut, the veil and the bloom, the Katana and
     the dash keeping their easing, the bloom's whole body, the entrance's leap, way, end, strike spot, rig root and the flurry
     camera keeping the chest in frame).
-  - The Unity compile (four assemblies) on `5aad24fb`, `8339c21a` and `b3f95ae9`.
+  - The Unity compile (four assemblies) on `5aad24fb`, `8339c21a`, `b3f95ae9` and `4e5c1442`.
   - The Editor build gate (`PrototypeBuild.Validate`) on `b3f95ae9`: ok, "Native blades: 77 checks" (new: the first cut steps in along
     the facing, the flurry's lunges stop on the foe, the veil hops back, a drop ends the travel and the floor carries it on).
   - `git diff --check` against shared: clean; pins scan: none broken. The 14 stage banks and the motion bank unchanged through both
