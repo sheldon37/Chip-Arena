@@ -6,6 +6,7 @@ namespace ChipArena.UnityConversion
     public static class NativeControllerPointer
     {
         public static bool Active;
+        public static bool Blocked;
         public static readonly NativeMenuNavigation Navigation=new NativeMenuNavigation();
         public static bool Navigating;private static int sliderStep,sliderFrame=-1;
         private static Vector2 press,point,screenOrigin;
@@ -41,11 +42,12 @@ namespace ChipArena.UnityConversion
         public static void ClearClip(){clip=null;}
         private static int Register(Rect rect,bool slider)
         {
-            if(!GUI.enabled||Event.current.type!=EventType.Repaint)return -1;
+            if(Blocked||!GUI.enabled||Event.current.type!=EventType.Repaint)return -1;
             var s=ScreenRect(rect);return Navigation.Add(new NativeMenuNavigation.Item{X=s.x,Y=s.y,W=s.width,H=s.height,Slider=slider,Clipped=clip.HasValue,ClipY=clip?.y??0,ClipH=clip?.height??0});
         }
         public static bool Click(Rect rect)
         {
+            if(Blocked)return false;
             int index=Register(rect,false);
             if(!Active||!GUI.enabled||Event.current.type!=EventType.Repaint||released!=Time.frameCount||consumed==Time.frameCount)return false;
             var screen=ScreenRect(rect);
@@ -66,7 +68,7 @@ namespace ChipArena.UnityConversion
             int index=Register(rect,true);
             if(Active&&Navigating&&index>=0&&index==Navigation.Focus&&sliderFrame==Time.frameCount&&sliderStep!=0)
             {result=Mathf.Clamp(result+sliderStep*(max-min)*.05f,min,max);sliderStep=0;}
-            if(Active&&!Navigating&&GUI.enabled&&Event.current.type==EventType.Repaint&&(pressed||released==Time.frameCount)&&(clip==null||clip.Value.Contains(point)))
+            if(!Blocked&&Active&&!Navigating&&GUI.enabled&&Event.current.type==EventType.Repaint&&(pressed||released==Time.frameCount)&&(clip==null||clip.Value.Contains(point)))
             {
                 var screen=ScreenRect(rect);if(screen.Contains(press)&&screen.width>0){result=Mathf.Lerp(min,max,Mathf.Clamp01((point.x-screen.x)/screen.width));consumed=Time.frameCount;}
             }

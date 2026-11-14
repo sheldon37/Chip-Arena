@@ -253,7 +253,7 @@ namespace ChipArena.UnityConversion
             {
                 var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*q);GUILayout.BeginArea(body);U.BeginDeferred();lbDrawerLayout=GUILayout.BeginScrollView(lbDrawerLayout,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);
                 try{BeginRules(false,body.width);ClassRow("Your class",ClassCardStyle.Stacked);WeaponCards("Your weapon");}
-                finally{GUI.enabled=true;GUILayout.Space(4);GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(body,lbDrawerLayout);}
+                finally{GUI.enabled=true;GUILayout.Space(4);GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;NativeControllerPointer.SetClip(body);try{U.EndDeferred(body,lbDrawerLayout);}finally{NativeControllerPointer.ClearClip();}}
                 return;
             }
             LbAbilityList(body,w,mode,mode=="q"?lbQ:lbE,q);

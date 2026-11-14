@@ -83,14 +83,21 @@ namespace ChipArena.UnityConversion
             if(NativeControllerPointer.Navigating)
             {
                 padPointerActive=true;padPointer=focus;
-                if(menu&&scroll!=0)screenScroll.y=Mathf.Clamp(screenScroll.y+scroll/Mathf.Max(.1f,NativeUi.S),0,Mathf.Max(0,screenContent));
             }
             if(padPointerActive)
             {
                 NativeControllerPointer.Active=true;
                 NativeControllerPointer.Update(padPointer,pad.buttonSouth.wasPressedThisFrame,pad.buttonSouth.wasReleasedThisFrame);
                 padScroll=-right.y*Time.unscaledDeltaTime*900;
-                if(menu)screenScroll.y=Mathf.Clamp(screenScroll.y+padScroll,0,Mathf.Max(0,screenContent-200));
+                if(menu)
+                {
+                    float delta=padScroll+scroll/Mathf.Max(.1f,NativeUi.S);
+                    if(menuScreen==MenuScreen.Lobby&&!prefs.pve&&lbDrawer=="weapon")
+                        lbDrawerLayout.y=Mathf.Max(0,lbDrawerLayout.y+delta);
+                    else if((menuScreen==MenuScreen.Boss||menuScreen==MenuScreen.Lobby&&prefs.pve)&&expDrawer)
+                        expDrawerScroll.y=Mathf.Max(0,expDrawerScroll.y+delta);
+                    else screenScroll.y=Mathf.Clamp(screenScroll.y+delta,0,Mathf.Max(0,screenContent-200));
+                }
             }
         }
 

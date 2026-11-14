@@ -40,6 +40,8 @@ internal static class SocialPanelChecks
         Check(ui.Contains("if(usable&&!joining&&U.Button(x))socialToastGone.Add(inv.id);")&&!ui.Contains("U.Button(x)){account.AnswerInvite"),"closing the pop-up answers nothing: the invitation stays on the INVITES chip");
         Check(ui.Contains("if(panelUp&&socialTab==1)socialToastGone.Add(i.id);")&&ui.Contains("(!still||panelUp||socialToastGone.Contains(socialToast.id))")&&ui.Contains("if(socialToast==null&&next!=null&&!panelUp)")&&ui.Contains("if(usable&&U.Button(m))InvitesToggle();")&&ui.Contains("U.Hover(socialToastRect)")&&ui.Contains("couldn't be accepted"),"what the invitations panel has shown doesn't pop up again, the card steps aside while a panel is open, +N MORE opens the invitations, the menu under the card is blocked, and a failed Accept says so");
         Check(logic.Contains("private void TickSocial(){if(Account!=null&&session.Length>0&&!SocialBusy&&Time.unscaledTime>=socialNext)SocialRequest(\"social\",\"{}\");}"),"the account service's polling is unchanged");
+        Check(ui.Contains("canInvite&&!account.SocialActionBusy")&&logic.Contains("socialEpoch++;socialPoll.Abort()")&&logic.Contains("if(epoch!=socialEpoch"),"invite actions can supersede an inbox refresh and its stale completion");
+        Check(ui.Contains("Go(MenuScreen.Join);JoinRoom();")&&ui.Contains("CanAcceptInvite=>ModsReady"),"accept starts on the join status screen once the client can join");
         Console.WriteLine("PASS social panel ("+count+" checks)");
     }
 }

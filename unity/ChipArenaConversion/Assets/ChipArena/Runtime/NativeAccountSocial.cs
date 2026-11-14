@@ -15,18 +15,27 @@ namespace ChipArena.UnityConversion
         public NativePlayerInvite[] Invitations=Array.Empty<NativePlayerInvite>();
         public string SocialStatus="";
         public bool SocialBusy{get;private set;}
+        private UnityWebRequest socialPoll;
+        public bool SocialActionBusy=>SocialBusy&&socialPoll==null;
         // 75 background polls per five minutes stays below the service's 100/action limit.
         private const float SocialPollSeconds=4;
         private int socialEpoch;private float socialNext,socialActionStatusUntil;private Action<string> invitationAccepted;
-        private void ResetSocial(){socialEpoch++;SocialBusy=false;socialNext=0;socialActionStatusUntil=0;OnlinePlayers=Array.Empty<NativeOnlinePlayer>();Invitations=Array.Empty<NativePlayerInvite>();SocialStatus="";invitationAccepted=null;}
+        private void ResetSocial(){socialEpoch++;socialPoll=null;SocialBusy=false;socialNext=0;socialActionStatusUntil=0;OnlinePlayers=Array.Empty<NativeOnlinePlayer>();Invitations=Array.Empty<NativePlayerInvite>();SocialStatus="";invitationAccepted=null;}
         private void TickSocial(){if(Account!=null&&session.Length>0&&!SocialBusy&&Time.unscaledTime>=socialNext)SocialRequest("social","{}");}
         public void InvitePlayer(string target,string code,Action sent=null)
         {
             if(!NativeRoomCodes.Valid(code)||code.Length!=NativeRoomCodes.Length){SocialStatus="Create an online Unity room before inviting.";return;}
             SocialRequest("invite",JsonUtility.ToJson(new NativeInviteRequest{target=target,code=NativeRoomDirectory.Key(code)}),sent);
         }
-        public void AnswerInvite(string id,bool accept,Action<string> accepted){if(SocialBusy)return;invitationAccepted=accepted;SocialRequest("invite-answer",JsonUtility.ToJson(new NativeInviteRequest{id=id,accept=accept}));}
-        private void SocialRequest(string action,string body,Action sent=null){if(Account==null||session.Length==0||SocialBusy)return;SocialBusy=true;if(action!="social")SocialStatus="";socialNext=Time.unscaledTime+SocialPollSeconds;StartCoroutine(SocialSend(action,body,sent));}
+        public void AnswerInvite(string id,bool accept,Action<string> accepted){if(SocialActionBusy)return;invitationAccepted=accepted;SocialRequest("invite-answer",JsonUtility.ToJson(new NativeInviteRequest{id=id,accept=accept}));}
+        private void SocialRequest(string action,string body,Action sent=null){if(Account==null||session.Length==0||SocialActionBusy)return;
+            if(socialPoll!=null)
+            {
+                // A click supersedes a read-only refresh. Its late completion cannot overwrite the action.
+                if(action=="social")return;
+                socialEpoch++;socialPoll.Abort();socialPoll=null;
+            }
+            SocialBusy=true;if(action!="social")SocialStatus="";socialNext=Time.unscaledTime+SocialPollSeconds;StartCoroutine(SocialSend(action,body,sent));}
         private IEnumerator SocialSend(string action,string body,Action sent)
         {
             int epoch=socialEpoch;string owner=Account.id,origin=Origin;
@@ -34,9 +43,10 @@ namespace ChipArena.UnityConversion
             {
                 request.timeout=8;request.redirectLimit=0;request.downloadHandler=new DownloadHandlerBuffer();request.uploadHandler=new UploadHandlerRaw(Encoding.UTF8.GetBytes(body));
                 request.SetRequestHeader("Content-Type","application/json");request.SetRequestHeader("Authorization","Bearer "+session);
+                if(action=="social")socialPoll=request;
                 yield return request.SendWebRequest();
                 if(epoch!=socialEpoch||owner!=Account?.id||origin!=Origin)yield break;
-                SocialBusy=false;NativeSocialResponse r=null;
+                socialPoll=null;SocialBusy=false;NativeSocialResponse r=null;
                 if(request.downloadedBytes<=65536)try{r=JsonUtility.FromJson<NativeSocialResponse>(request.downloadHandler.text);}catch(ArgumentException){}
                 if(request.result!=UnityWebRequest.Result.Success||r==null||!string.IsNullOrEmpty(r.error)||action!="social"&&!r.ok){
                     SocialStatus=!string.IsNullOrEmpty(r?.error)?r.error:request.responseCode==404?"Online invitations need the updated account service.":action=="social"?"Online players unavailable.":"Invitation was not confirmed. Please try again.";
