@@ -29,9 +29,17 @@ namespace ChipArena.UnityConversion
 
         // ---- the combo ----
         /// <summary>The five cuts: the wind-up to the hit (s), the whole move (s), damage, reach (m), half arc (rad), the step in (m) and the venom
-        /// each leaves.</summary>
-        public static readonly float[] CutHit={.14f,.13f,.15f,.15f,.2f},CutLength={.38f,.36f,.42f,.44f,.6f},CutDamage={11,11,12,14,20},CutReach={2.1f,2.1f,2.2f,2.2f,2.6f},CutArc={1.2f,1.2f,1.2f,1.4f,1f},CutLunge={0,0,.5f,0,1.2f};
+        /// each leaves. The step in is each clip's own travel (owner 2026-11-13: "The movements look like they should be moving the character
+        /// location"; a rules change at the owner's word, logged for Astra; it was 0, 0, .5, 0, 1.2): the Dual chain's root over the slice the
+        /// game plays (Core NativeBladeMotion.FangsTravel, timed by the clip's root; the fourth's comes back, so it has none). The pilot is
+        /// partway along it at the hit, so each reach is shortened by that much (it was 2.1, 2.1, 2.2, 2.2, 2.6): every cut still lands as far
+        /// from where it was cast as before.</summary>
+        public static readonly float[] CutHit={.14f,.13f,.15f,.15f,.2f},CutLength={.38f,.36f,.42f,.44f,.6f},CutDamage={11,11,12,14,20},CutReach={1.9f,1.57f,2.06f,2.2f,2.93f},CutArc={1.2f,1.2f,1.2f,1.4f,1f},CutLunge={.63f,1.07f,1f,0,1.67f};
         public static readonly int[] CutVenom={1,1,1,1,2};
+        /// <summary>A cut's reach at its hit: CutReach, plus whatever of its step in it has not travelled by then (`hitShare` of CutLunge is
+        /// where the clip's root has it at the hit; `travelled`, how far it has gone): a cut cast in the air (no travel) or cut short by a
+        /// wall lands as far from where it was cast as a full lunge does.</summary>
+        public static float CutReachAt(int step,float hitShare,float travelled)=>CutReach[step]+Math.Max(0,CutLunge[step]*hitShare-Math.Max(0,travelled));
         public const float ComboWindow=.4f;
         public const int Steps=5;
         // ---- venom (the arena's poison, by stacks) ----
@@ -48,6 +56,9 @@ namespace ChipArena.UnityConversion
         // ---- the veil (E) ----
         /// <summary>Smoke, and unseen by enemies for VeilFor s or until an attack; that attack deals VeilBonus times and leaves VeilVenom more.</summary>
         public const float VeilCast=.2f,VeilFor=4,VeilBonus=2;public const int VeilVenom=3;
+        /// <summary>The veil's backward evade carries the pilot VeilHop m back, and the bloom's strike BloomLunge m on, as their clips' roots
+        /// do (owner 2026-11-13; rules at the owner's word, logged for Astra: both stood still before).</summary>
+        public const float VeilHop=2.5f,BloomLunge=1f;
         // ---- the fan (1) ----
         /// <summary>FanKnives knives across FanSpread degrees at FanSpeed m/s out to FanRange m, each FanDamage and a venom stack.</summary>
         public const int FanKnives=5;public const float FanRelease=.2f,FanRecover=.25f,FanSpread=30,FanSpeed=34,FanRange=18,FanDamage=9,FanRadius=.45f;
