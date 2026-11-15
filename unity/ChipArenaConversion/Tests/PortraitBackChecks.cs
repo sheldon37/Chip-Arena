@@ -18,6 +18,23 @@ internal static class PortraitBackChecks
     private static bool Near(float a,float b,float eps=1e-4f)=>Math.Abs(a-b)<=eps;
     public static void Run(string root)
     {
+        foreach(int fps in new[]{15,30,60,144})
+        foreach(int seats in new[]{1,2,3,4,8})
+        {
+            var budget=new LobbyPortraitBudget();
+            var renders=new int[seats];
+            for(int sampleFrame=1;sampleFrame<=fps*8;sampleFrame++)
+            {
+                double now=(sampleFrame-1+.01)/fps;
+                for(int i=0;i<seats;i++)budget.Request(10000+i,sampleFrame-1);
+                int draws=0;
+                for(int i=seats-1;i>=0;i--)
+                    if(budget.ShouldRender(10000+i,sampleFrame,now)){renders[i]++;draws++;}
+                Check(draws<=1&&budget.ShouldRender(20001,sampleFrame,now),"lobby camera frame budget and result-card exemption");
+            }
+            Check(renders.Max()-renders.Min()<=1&&renders.Min()>0,"every visible card takes its turn");
+            Check(renders.Sum()==8*Math.Min(fps,Math.Min(60,seats*30)),"aggregate portrait refresh rate");
+        }
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
         string ui=R("NativePortraitBackUI.cs"),portrait=R("NativePortraitUI.cs"),locker=R("NativeLockerUI.cs"),network=R("NativeNetwork.cs"),frame=R("NativeNetworkFrame.cs"),lobby=R("NativeLobbyLogic.cs"),account=R("NativeAccount.cs"),game=R("ConversionGame.cs"),profile=R("NativeProfileUI.cs");
         var icons=new HashSet<string>();using(var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/Icons.json"))))foreach(var i in doc.RootElement.GetProperty("icons").EnumerateArray())icons.Add(i.GetProperty("id").GetString());

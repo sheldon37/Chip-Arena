@@ -15,20 +15,62 @@ namespace ChipArena.UnityConversion
         public void Clear(){Positions.Clear();Normals.Clear();Indices.Clear();}
     }
     public struct PortraitPiece {public string Name;public Vector3 Position,Size;public int Color;}
+    // Both portrait renderers share this queue. A delayed frame never has to catch up
+    // on missed camera passes. New cards go first, then the oldest displayed image.
+    public sealed class LobbyPortraitBudget
+    {
+        private struct Card { public int Key,Seen; public long LastRefresh; }
+        private readonly Card[] cards=new Card[12];
+        private long lastTick=-1;
+        private int selectedFrame=-1,selectedKey=-1;
+
+        public void Request(int key,int frame)
+        {
+            if(!NativePortraitRules.IsLobbyCard(key))return;
+            int free=-1;
+            for(int i=0;i<cards.Length;i++)
+            {
+                if(cards[i].Key==key)
+                {
+                    if(cards[i].Seen<frame-1)cards[i].LastRefresh=-2;
+                    cards[i].Seen=frame;
+                    return;
+                }
+                if(free<0&&(cards[i].Key==0||cards[i].Seen<frame-1))free=i;
+            }
+            if(free>=0)cards[free]=new Card{Key=key,Seen=frame,LastRefresh=-2};
+        }
+
+        public bool ShouldRender(int key,int frame,double now)
+        {
+            if(!NativePortraitRules.IsLobbyCard(key))return true;
+            if(selectedFrame==frame)return selectedKey==key;
+            selectedFrame=frame;
+            selectedKey=-1;
+            long tick=(long)Math.Floor(now*60);
+            if(tick==lastTick)return false;
+            int oldest=-1;
+            for(int i=0;i<cards.Length;i++)
+            {
+                var card=cards[i];
+                if(card.Key==0||card.Seen<frame-1||tick-card.LastRefresh<2)continue;
+                if(oldest<0||card.LastRefresh<cards[oldest].LastRefresh)oldest=i;
+            }
+            if(oldest>=0)
+            {
+                selectedKey=cards[oldest].Key;
+                cards[oldest].LastRefresh=lastTick=tick;
+            }
+            return selectedKey==key;
+        }
+    }
     public static class NativePortraitRules
     {
         // menu-portraits.ts:47: the mannequin group stands .88 up, over the podium.
         public const float GroupY=.88f,Near=.1f,Far=30;
         // menu-portraits.ts:24: toneMapping ACESFilmic, toneMappingExposure 1.1; alpha clear (0,0).
         public const float Exposure=1.1f;
-        // Lobby keys are 10000 + seat id. Offset their camera refreshes across a 30 Hz cycle.
-        public static bool RefreshCamera(int key,int slot,bool ready,double now,ref long lastTick)
-        {
-            if(key<10000||key>=20000)return true;
-            long tick=(long)Math.Floor(now*30+(slot*.61803398875)%1);
-            if(ready&&tick==lastTick)return false;
-            lastTick=tick;return true;
-        }
+        public static bool IsLobbyCard(int key)=>key>=10000&&key<20000;
         // menu-portraits.ts:50: HemisphereLight(0xe3eeff, 0x474054, 1.7); key DirectionalLight(0xffedda, 2.6) at (3.5,4,2.5);
         // cool rim DirectionalLight(0x849fe3, 2) at (-3,2,-2). Directional lights shine from their position toward the origin.
         public const int HemiSky=0xe3eeff,HemiGround=0x474054,KeyColor=0xffedda,RimColor=0x849fe3;

@@ -20,6 +20,7 @@ namespace ChipArena.UnityConversion
         private Texture Portrait(int key,in PortraitLook look,Rect stage,out float top,bool own=false)
         {
             top=0;if(Event.current.type!=EventType.Repaint||presentation==null||!OnScreen(stage))return null;
+            presentation.LobbyPortraits.Request(key,Time.frameCount);
             // On the model while it draws (Runtime/NativeVisualPortraitPresentation.cs): this client's own cards in its outfit and skins.
             if(presentation.ModelPortraitFor(look)){presentation.ModelPortraitReduced=prefs.reducedEffects;return presentation.ModelPortrait(key,look,own?LookShown():PortraitOutfit(key),PortraitSkins(look,own),stage.width,stage.height,U.S,out top);}
             if(portraitRenderer==null){portraitRenderer=gameObject.AddComponent<NativePortraitRenderer>();portraitRenderer.Initialize(presentation,cameraView);}
@@ -82,6 +83,7 @@ namespace ChipArena.UnityConversion
         // the lobby roster's cards sit in a scroll clip (the results grid is laid out on the panel).
         private void LobbyPortrait(Rect stage,Vector2 centre,float ring,in LobbyPilot p,int index,float a,float t,ContentWeapon weapon,Color style,bool result)
         {
+            if(Event.current.type!=EventType.Repaint)return;
             string icon=weapon!=null?NativeIcons.Spec(weapon.id):"shuffle";Color tone=weapon!=null?U.Hex((int)weapon.color):style;int ticks=ring<56?20:28;
             if(weapon==null||!CardLook(p,index,result,out int key,out var look,out string back,out int backColor)){PilotEmblem(centre,ring,p.accent,p.body,icon,tone,a,t,index*1.7f,ticks);return;}
             PortraitStage(stage,key,look,back,backColor,p.accent,p.body,icon,tone,a,t,index*1.7f,centre,ring,ticks,!result,result?p.tag=="YOU":p.you);
