@@ -1,3 +1,7 @@
+## 2026-11-14 — Astra: mouse selection in the online PvP weapon drawer
+
+Branch `codex/lobby-picker-mouse`, base `5cfc3c3c`. The host recording shows a local class selection sticking on Fire. Route mouse down/up to the visible class or weapon before the covered lobby handles the event. Use the last painted tile bounds, clipped to the scroll viewport, and require release on the same item. Controller and mouse selections share the existing loadout actions. The pinned Unity player/runtime/editor compile and eight isolated mouse sequences passed. The input harness models the pointer and viewport; the packaged game still needs a hand-played check.
+
 ## 2026-11-14 — Astra: online lobby weapon navigation and invite joins
 
 Branch `codex/online-lobby-selection-invites`, base `bade2681`. Exclude background PvP controls from controller focus, clip the weapon grid and scroll the open PvP or Expedition picker. Expedition and Boss lobbies send loadout changes through the existing ready/profile flow. Invite actions supersede read-only polling, acceptance opens Join with the room code, and a signed-in pilot can reclaim their own disconnected pre-match seat with a fresh invite. Active matches still require the resume token. No protocol or service change. Node 24 SQLite invitation test, managed controller/social/Expedition menu checks and diff check passed. Two-PC play and Windows publication require the test build.
