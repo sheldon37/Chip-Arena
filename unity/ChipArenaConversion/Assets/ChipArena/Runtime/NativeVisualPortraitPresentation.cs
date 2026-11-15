@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         private const int PortraitLayer=NativePortraitRenderer.Layer;
         private sealed class ModelPortraitSlot
         {
-            public int Key=int.MinValue,W,H,Frame=-10,Body=-1,Accent=-1,LastPose=-1;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public string Outfit="",Skins,BodyHex,AccentHex;
+            public long CameraTick=-1;public int Key=int.MinValue,W,H,Frame=-10,Body=-1,Accent=-1,LastPose=-1;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public string Outfit="",Skins,BodyHex,AccentHex;
             public readonly MeleeRig Rig=new MeleeRig();public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();public readonly Actor Actor=new Actor();
             public CapturedAnimation.Player Player;public VisualBody Model;public RenderTexture Texture;public bool Ready;
             // The lobby pose's held weapons this frame, whether the model drew them itself, and the game's model's frames where not.
@@ -77,7 +77,7 @@ namespace ChipArena.UnityConversion
             // (the menu's scene keeps its own).
             var active=RenderTexture.active;bool fog=RenderSettings.fog;var sun=RenderSettings.sun;var ambient=RenderSettings.ambientProbe;
             RenderSettings.fog=false;RenderSettings.sun=modelPortraitKey;RenderSettings.ambientProbe=modelPortraitAmbient;
-            try{for(int i=0;i<ModelPortraitSlots;i++){var s=modelPortraits[i];if(s!=null&&s.Key!=int.MinValue&&s.Frame>=Time.frameCount-1)ModelPortraitRender(s,i);}}
+            try{for(int i=0;i<ModelPortraitSlots;i++){var s=modelPortraits[i];if(s!=null&&s.Key!=int.MinValue&&s.Frame>=Time.frameCount-1&&NativePortraitRules.RefreshCamera(s.Key,i,s.Ready,Time.unscaledTimeAsDouble,ref s.CameraTick))ModelPortraitRender(s,i);}}
             catch(Exception e){modelPortraitFailed=true;Debug.LogWarning("Model portraits disabled: "+e.Message);}
             finally{RenderSettings.fog=fog;RenderSettings.sun=sun;RenderSettings.ambientProbe=ambient;RenderTexture.active=active;modelPortraitView.targetTexture=null;gearLayer=0;gearCamera=null;}
         }

@@ -21,6 +21,14 @@ namespace ChipArena.UnityConversion
         public const float GroupY=.88f,Near=.1f,Far=30;
         // menu-portraits.ts:24: toneMapping ACESFilmic, toneMappingExposure 1.1; alpha clear (0,0).
         public const float Exposure=1.1f;
+        // Lobby keys are 10000 + seat id. Offset their camera refreshes across a 30 Hz cycle.
+        public static bool RefreshCamera(int key,int slot,bool ready,double now,ref long lastTick)
+        {
+            if(key<10000||key>=20000)return true;
+            long tick=(long)Math.Floor(now*30+(slot*.61803398875)%1);
+            if(ready&&tick==lastTick)return false;
+            lastTick=tick;return true;
+        }
         // menu-portraits.ts:50: HemisphereLight(0xe3eeff, 0x474054, 1.7); key DirectionalLight(0xffedda, 2.6) at (3.5,4,2.5);
         // cool rim DirectionalLight(0x849fe3, 2) at (-3,2,-2). Directional lights shine from their position toward the origin.
         public const int HemiSky=0xe3eeff,HemiGround=0x474054,KeyColor=0xffedda,RimColor=0x849fe3;

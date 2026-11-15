@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
             process.OutputDataReceived+=Log;process.ErrorDataReceived+=Log;
             process.Exited+=(_,__)=>{Interlocked.Exchange(ref closed,1);var error=new NativeOnlineRoomException("The online tunnel could not connect. Check your internet connection and try again.");address.TrySetException(error);connected.TrySetException(error);};
         }
-        public static async Task<NativeTunnelProcess> Start(string executable,int port,CancellationToken token,bool linuxTest=false)
+        public static async Task<NativeTunnelProcess> Start(string executable,int port,CancellationToken token,bool linuxTest=false,Func<string,Task> prepareOrigin=null)
         {
             token.ThrowIfCancellationRequested();await Task.Run(()=>NativeTunnelBinary.Verify(executable,linuxTest),token).ConfigureAwait(false);
             var tunnel=new NativeTunnelProcess(executable,port);
@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
                 if(Environment.OSVersion.Platform==PlatformID.Win32NT)tunnel.job=AttachLifetime(tunnel.process.Handle);
                 tunnel.process.BeginOutputReadLine();tunnel.process.BeginErrorReadLine();
                 tunnel.cancellation=token.Register(tunnel.StopProcess);
-                var ready=Task.WhenAll(tunnel.address.Task,tunnel.connected.Task);
+                var ready=PrepareRoom(tunnel.address.Task,tunnel.connected.Task,prepareOrigin,token);
                 if(await Task.WhenAny(ready,Task.Delay(90000,token)).ConfigureAwait(false)!=ready)
                 {token.ThrowIfCancellationRequested();throw new NativeOnlineRoomException("Online hosting took too long to start. Check your connection and try again.");}
                 await ready.ConfigureAwait(false);token.ThrowIfCancellationRequested();
@@ -50,6 +50,14 @@ namespace ChipArena.UnityConversion
                 tunnel.Origin=tunnel.address.Task.Result;return tunnel;
             }
             catch{tunnel.Dispose();throw;}
+        }
+        internal static Task PrepareRoom(Task<string> address,Task connected,Func<string,Task> prepare,CancellationToken token)
+            =>Task.WhenAll(RegisterAfterAddress(address,prepare,token),connected);
+        private static async Task RegisterAfterAddress(Task<string> address,Func<string,Task> prepare,CancellationToken token)
+        {
+            string origin=await address.ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            if(prepare!=null)await prepare(origin).ConfigureAwait(false);
         }
         private void Log(object sender,DataReceivedEventArgs e)
         {

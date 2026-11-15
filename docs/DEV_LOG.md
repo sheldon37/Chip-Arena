@@ -1,3 +1,7 @@
+## 2026-11-15 — Astra: lobby drawer close, room creation and idle lobby work
+
+Branch `codex/lobby-close-and-performance`, base `3dac46fe`. The picker X now owns press/release in all three PvP loadout drawers; covered header buttons are disabled while the drawer is open. Begin reserving the online room code as soon as cloudflared supplies its address and gate host readiness on both registration and edge connection. Refresh each lobby portrait camera at 30 Hz with offsets between seats; sample host room options at the existing five-per-second broadcast rate. Input checks covered X and drag-off for weapon/Q/E. Managed fixtures cover both startup completion orders. Actual creation latency and lobby FPS on the owner's PC are unmeasured.
+
 ## 2026-11-14 — Astra: mouse selection in the online PvP weapon drawer
 
 Branch `codex/lobby-picker-mouse`, base `5cfc3c3c`. The host recording shows a local class selection sticking on Fire. Route mouse down/up to the visible class or weapon before the covered lobby handles the event. Use the last painted tile bounds, clipped to the scroll viewport, and require release on the same item. Controller and mouse selections share the existing loadout actions. The pinned Unity player/runtime/editor compile and eight isolated mouse sequences passed. The input harness models the pointer and viewport; the packaged game still needs a hand-played check.

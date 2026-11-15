@@ -221,7 +221,8 @@ namespace ChipArena.UnityConversion
         // The scroll view lays the cards out locally. Keep the tiles from the last paint in
         // canvas coordinates so mouse input sees exactly what the player saw, before the room draws.
         private readonly List<(Rect rect,string key,bool weapon)> lbMouseTiles=new List<(Rect,string,bool)>();
-        private Rect lbPaintedSheet,lbPaintedBody;
+        private Rect lbPaintedSheet,lbPaintedBody,lbPaintedClose;
+        private bool lbClosePressed;
         private Vector2 lbPaintedOffset;
         private string lbPressedTile;
         private bool lbPressedWeapon,lbRecordingTiles;
@@ -234,10 +235,16 @@ namespace ChipArena.UnityConversion
         private bool LbWeaponPointer()
         {
             var ev=Event.current;
-            if(lbDrawer!="weapon"||!GUI.enabled||MenuBlocked()||ev.button!=0||
+            if(!LbDrawerShown||!GUI.enabled||MenuBlocked()||ev.button!=0||
                 (ev.type!=EventType.MouseDown&&ev.type!=EventType.MouseUp))return false;
             bool down=ev.type==EventType.MouseDown;
-            if(down)lbPressedTile=null;
+            if(down){lbPressedTile=null;lbClosePressed=U.Hover(lbPaintedClose);}
+            if(lbClosePressed)
+            {
+                if(!down){lbClosePressed=false;if(U.Hover(lbPaintedClose)){Click();LbCloseDrawer();}}
+                ev.Use();return true;
+            }
+            if(lbDrawer!="weapon")return false;
             if(lbPaintedBody.width>0&&U.Hover(lbPaintedBody))
                 foreach(var tile in lbMouseTiles)
                 {
@@ -255,7 +262,7 @@ namespace ChipArena.UnityConversion
             return false;
         }
         private bool LbDrawerShown=>lbDrawer.Length>0;
-        private void LbOpenDrawer(string mode){lbMouseTiles.Clear();lbPressedTile=null;lbPaintedSheet=lbPaintedBody=Rect.zero;lbDrawer=mode;lbDrawerAt=Time.unscaledTime;lbDrawerScroll=0;lbDrawerLayout=Vector2.zero;teamPopupSeat=0;}
+        private void LbOpenDrawer(string mode){lbMouseTiles.Clear();lbPressedTile=null;lbClosePressed=false;lbPaintedClose=lbPaintedSheet=lbPaintedBody=Rect.zero;lbDrawer=mode;lbDrawerAt=Time.unscaledTime;lbDrawerScroll=0;lbDrawerLayout=Vector2.zero;teamPopupSeat=0;}
         private void LbCloseDrawer(){if(lbDrawer.Length==0)return;lbDrawer="";lbDrawerAt=Time.unscaledTime;}
         private Rect LbDrawerRect(float k)
         {
@@ -283,7 +290,9 @@ namespace ChipArena.UnityConversion
             string eyebrow=weapon?"LOADOUT · WEAPON":"ABILITY · "+mode.ToUpperInvariant()+" SLOT",title=weapon?"Choose your weapon":(w?.name??"Weapon")+" · "+(mode=="q"?"Q ability":"E ability");
             U.Text(new Rect(r.x+26,r.y+22,r.width-100,16),eyebrow,11,C.CyanSoft(.95f*q),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.22f);
             U.Text(new Rect(r.x+26,r.y+40,r.width-100,32),title,22,C.Ink(q),TextAnchor.MiddleLeft,bold:true,tracking:-.02f);
-            if(LbIconButton(new Rect(r.xMax-26-38,r.y+22,38,38),"x",62020,true,q)){LbCloseDrawer();return;}
+            var close=new Rect(r.xMax-26-38,r.y+22,38,38);
+            if(ev.type==EventType.Repaint)lbPaintedClose=close;
+            if(LbIconButton(close,"x",62020,true,q)){LbCloseDrawer();return;}
             var body=new Rect(r.x+26,r.y+88,r.width-52,r.height-88-22);
             if(weapon)
             {

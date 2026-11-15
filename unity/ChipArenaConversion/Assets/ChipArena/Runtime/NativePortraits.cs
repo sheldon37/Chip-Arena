@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
         public const int Layer=30,Slots=12,TextureCap=1280;
         private sealed class Slot
         {
-            public int Key=int.MinValue,W,H,Frame=-10,TopPose=-1,Back;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public bool Ready;public RenderTexture Texture;
+            public long CameraTick=-1;public int Key=int.MinValue,W,H,Frame=-10,TopPose=-1,Back;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public bool Ready;public RenderTexture Texture;
             public readonly MeleeRig Rig=new MeleeRig();public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();
             // Derived once per look (no per-frame strings or colour maths): model ids, the idle clip and the colour tints.
             public string Spec="pistol",Hat="none",WeaponModel,HatModel,HatColor="",IdleClip,BodyModel=NativeBodySkins.PrototypeModel;public Vector4 BodyTint,AccentTint,EdgeTint,FlexTint,HatTint;
@@ -105,7 +105,7 @@ namespace ChipArena.UnityConversion
             clock+=Mathf.Min(Time.unscaledDeltaTime,.05f);float time=Reduced?0:clock;
             if(!Ensure())return;
             var active=RenderTexture.active;
-            try{for(int i=0;i<Slots;i++){var s=slots[i];if(s.Key!=int.MinValue&&s.Frame>=Time.frameCount-1)Render(s,i,time);}}
+            try{for(int i=0;i<Slots;i++){var s=slots[i];if(s.Key!=int.MinValue&&s.Frame>=Time.frameCount-1&&NativePortraitRules.RefreshCamera(s.Key,i,s.Ready,Time.unscaledTimeAsDouble,ref s.CameraTick))Render(s,i,time);}}
             catch(Exception e){failed=true;Debug.LogWarning("Pilot portraits disabled: "+e.Message);}
             finally{RenderTexture.active=active;view.targetTexture=null;}
         }
