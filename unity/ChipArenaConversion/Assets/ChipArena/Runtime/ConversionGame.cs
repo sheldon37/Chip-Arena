@@ -104,7 +104,7 @@ namespace ChipArena.UnityConversion
         }
         private void StartMatch()
         {
-            if(PromotionBusy||!ModsReady)return;
+            if(OpeningOnlineLobby||PromotionBusy||!ModsReady)return;
             if(trainingRoom&&!trainingWanted){StartTraining();return;}
             if(!trainingWanted&&prefs.pve&&prefs.expedition){StartExpeditionM1();return;}
             expeditionDirector=null;ResetExpeditionNetwork();Time.timeScale=1;sandboxSpeed=1;endFlow.Reset();

@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
         private string bossBattlePick="siren";private ExpeditionRunBundle bossBattleBundle;
         private uint roomSeed=NativeMatch.NewSeed();private string lastLobbyOptions="";private NativeRoomOptions receivedOptions;
         public IReadOnlyList<NativeSeatFrame> LobbySeats=>lobbySeats;
-        private bool GuestsReady=>!PromotionBusy&&!peers.Any(p=>p.Seat!=null&&p.Connection?.Closed==false&&!p.Ready);
+        private bool GuestsReady=>!OpeningOnlineLobby&&!PromotionBusy&&!peers.Any(p=>p.Seat!=null&&p.Connection?.Closed==false&&!p.Ready);
         public NativeRoomOptions RoomOptions=>Hosting||!Online?CaptureRoomOptions():receivedOptions;
         private string PreviewMapId=>trainingRoom?"training":NativeLobbyRules.PreviewMap(prefs.map,prefs.pve);
         private string SelectMatchMap()

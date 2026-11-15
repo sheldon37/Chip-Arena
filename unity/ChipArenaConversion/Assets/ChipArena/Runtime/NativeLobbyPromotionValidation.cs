@@ -70,6 +70,11 @@ namespace ChipArena.UnityConversion
             try
             {
                 host.content=guest.content=data;host.prefs=new ConversionPreferences{pve=true,expedition=true,bots=0};guest.prefs=new ConversionPreferences();
+                var opening=new System.Threading.Tasks.TaskCompletionSource<INativeOnlineHost>();
+                host.relayConnecting=opening.Task;
+                Check(host.InRoom&&host.Hosting&&!host.GuestsReady&&!host.SocialCanInvite&&host.ShownRoomCode()=="","local lobby available before online admission");
+                host.StartMatch();Check(host.arena==null,"pending transport cannot launch");
+                host.CloseNetwork();opening.SetCanceled();Check(!host.InRoom,"leaving cancels the pending lobby");
                 host.listener=new NativeListener(0);host.roomCode=NativeRoomCodes.Create();guest.internetRooms=false;guest.joinCode=host.roomCode;
                 // Reclaim the same seat repeatedly, even before the authority observes a disconnect.
                 for(int attempt=0;attempt<3;attempt++)

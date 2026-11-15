@@ -1,3 +1,7 @@
+## 2026-11-15 — Astra: immediate host lobby and prepared internet connection
+
+Branch `codex/instant-online-room`, base `0fa55aad`. The Create screen prepares the private Cloudflare connection while the host chooses rules. Its listener refuses guests until Create is pressed. Create adopts the same task, enters the host lobby locally, and publishes the code and enables invites/start once ready. Leaving setup, choosing LAN, cancelling or shutting down releases the unused connection. A failed preparation gets a fresh attempt on Create. Managed loopback checks cover admission before/after activation; the Unity lobby fixture covers the cold-start UI and launch gate. Packaged click-to-paint timing on the owner's PC is unmeasured.
+
 ## 2026-11-15 — Astra: lobby drawer close, room creation and idle lobby work
 
 Branch `codex/lobby-close-and-performance`, base `3dac46fe`. The picker X now owns press/release in all three PvP loadout drawers; covered header buttons are disabled while the drawer is open. Begin reserving the online room code as soon as cloudflared supplies its address and gate host readiness on both registration and edge connection. Refresh each lobby portrait camera at 30 Hz with offsets between seats; sample host room options at the existing five-per-second broadcast rate. Input checks covered X and drag-off for weapon/Q/E. Managed fixtures cover both startup completion orders. Actual creation latency and lobby FPS on the owner's PC are unmeasured.
