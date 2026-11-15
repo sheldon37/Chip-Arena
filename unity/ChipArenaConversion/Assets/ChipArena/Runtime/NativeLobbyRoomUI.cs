@@ -218,8 +218,44 @@ namespace ChipArena.UnityConversion
         // Over the room's right side, under a scrim: the weapon picker (the class and weapon cards), or every option for one ability slot. A click
         // outside it, Escape or the pad's B closes it; while it is open nothing under it takes the pointer or the pad.
         private string lbDrawer="";private float lbDrawerAt=-10,lbDrawerScroll,lbDrawerContent;private Vector2 lbDrawerLayout;private bool lbDrawerClosing;
+        // The scroll view lays the cards out locally. Keep the tiles from the last paint in
+        // canvas coordinates so mouse input sees exactly what the player saw, before the room draws.
+        private readonly List<(Rect rect,string key,bool weapon)> lbMouseTiles=new List<(Rect,string,bool)>();
+        private Rect lbPaintedSheet,lbPaintedBody;
+        private Vector2 lbPaintedOffset;
+        private string lbPressedTile;
+        private bool lbPressedWeapon,lbRecordingTiles;
+        private void LbRecordTile(Rect tile,string key,bool weapon)
+        {
+            if(!lbRecordingTiles)return;
+            tile.position+=lbPaintedOffset;
+            lbMouseTiles.Add((tile,key,weapon));
+        }
+        private bool LbWeaponPointer()
+        {
+            var ev=Event.current;
+            if(lbDrawer!="weapon"||!GUI.enabled||MenuBlocked()||ev.button!=0||
+                (ev.type!=EventType.MouseDown&&ev.type!=EventType.MouseUp))return false;
+            bool down=ev.type==EventType.MouseDown;
+            if(down)lbPressedTile=null;
+            if(lbPaintedBody.width>0&&U.Hover(lbPaintedBody))
+                foreach(var tile in lbMouseTiles)
+                {
+                    if(!U.Hover(tile.rect))continue;
+                    if(down){lbPressedTile=tile.key;lbPressedWeapon=tile.weapon;}
+                    else if(lbPressedTile==tile.key&&lbPressedWeapon==tile.weapon)
+                    {
+                        if(tile.weapon)PickLoadoutWeapon(tile.key);else PickLoadoutClass(tile.key);
+                    }
+                    if(!down)lbPressedTile=null;
+                    ev.Use();return true;
+                }
+            if(!down&&lbPressedTile!=null){lbPressedTile=null;ev.Use();return true;}
+            if(down&&lbPaintedSheet.width>0&&!U.Hover(lbPaintedSheet)){ev.Use();Click();LbCloseDrawer();return true;}
+            return false;
+        }
         private bool LbDrawerShown=>lbDrawer.Length>0;
-        private void LbOpenDrawer(string mode){lbDrawer=mode;lbDrawerAt=Time.unscaledTime;lbDrawerScroll=0;lbDrawerLayout=Vector2.zero;teamPopupSeat=0;}
+        private void LbOpenDrawer(string mode){lbMouseTiles.Clear();lbPressedTile=null;lbPaintedSheet=lbPaintedBody=Rect.zero;lbDrawer=mode;lbDrawerAt=Time.unscaledTime;lbDrawerScroll=0;lbDrawerLayout=Vector2.zero;teamPopupSeat=0;}
         private void LbCloseDrawer(){if(lbDrawer.Length==0)return;lbDrawer="";lbDrawerAt=Time.unscaledTime;}
         private Rect LbDrawerRect(float k)
         {
@@ -236,7 +272,7 @@ namespace ChipArena.UnityConversion
         {
             float now=Time.unscaledTime,since=now-lbDrawerAt;bool open=LbDrawerShown;float k=open?Mathf.Clamp01(since/.22f):1-Mathf.Clamp01(since/.16f);if(prefs.reducedEffects)k=open?1:0;if(k<=0||e<=0)return;
             float q=LbEase(k)*e;var r=LbDrawerRect(LbEase(k));var ev=Event.current;
-            if(open&&ev.type==EventType.MouseDown&&!U.Hover(r)){ev.Use();Click();LbCloseDrawer();return;}
+            if(open&&lbDrawer!="weapon"&&ev.type==EventType.MouseDown&&!U.Hover(r)){ev.Use();Click();LbCloseDrawer();return;}
             if(ev.type==EventType.Repaint)
             {
                 U.Fill(new Rect(lbPanel.x,lbPanel.y,lbPanel.width,lbPanel.height),C.Void(.5f*q));U.Glow(new Rect(r.x,r.y+30,r.width,r.height),new Color(0,0,0,.5f*q),50);U.Backdrop(r,0,16,q);
@@ -253,7 +289,14 @@ namespace ChipArena.UnityConversion
             {
                 var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*q);GUILayout.BeginArea(body);U.BeginDeferred();lbDrawerLayout=GUILayout.BeginScrollView(lbDrawerLayout,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);
                 try{BeginRules(false,body.width);ClassRow("Your class",ClassCardStyle.Stacked);WeaponCards("Your weapon");}
-                finally{GUI.enabled=true;GUILayout.Space(4);GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;NativeControllerPointer.SetClip(body);try{U.EndDeferred(body,lbDrawerLayout);}finally{NativeControllerPointer.ClearClip();}}
+                finally{GUI.enabled=true;GUILayout.Space(4);GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;NativeControllerPointer.SetClip(body);
+                    if(ev.type==EventType.Repaint)
+                    {
+                        lbPaintedSheet=r;lbPaintedBody=body;lbMouseTiles.Clear();
+                        lbPaintedOffset=body.position-new Vector2(Mathf.Round(lbDrawerLayout.x*U.S),Mathf.Round(lbDrawerLayout.y*U.S))/U.S;
+                        lbRecordingTiles=true;
+                    }
+                    try{U.EndDeferred(body,lbDrawerLayout);}finally{lbRecordingTiles=false;NativeControllerPointer.ClearClip();}}
                 return;
             }
             LbAbilityList(body,w,mode,mode=="q"?lbQ:lbE,q);

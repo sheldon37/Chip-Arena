@@ -55,6 +55,7 @@ namespace ChipArena.UnityConversion
             // The team list and the picker sheet belong to this screen: they close when the lobby was not drawn a moment ago (left and re-entered).
             // (By frames, not time: a long frame, a portrait being made, is not a new visit.)
             if(Time.frameCount-lobbySeenFrame>3){teamPopupSeat=0;LbEnter();}lobbySeenFrame=Time.frameCount;lobbySeenAt=Time.unscaledTime;
+            if(LbWeaponPointer())return;
             LbDrawerInput();if(!LbDrawerShown)TeamPopupInput();
             var l=BeginScreen("PRIVATE ROOM","Match lobby",Mathf.Min(1520,U.W-48),age,false,actions:false,close:false,lobby:true);lbPanel=l.Panel;float e=l.Enter;
             // While the picker sheet is open nothing under it takes the pointer or the pad: the pointer is moved off the canvas for the room's

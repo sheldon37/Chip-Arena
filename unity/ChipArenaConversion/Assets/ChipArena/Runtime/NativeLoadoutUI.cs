@@ -81,6 +81,17 @@ namespace ChipArena.UnityConversion
             =>new T.Look{Alpha=alpha,Hover=hover,HoverAge=now-f.HoverAt,Selected=selected?1:0,SelectAge=now-f.SelectAt,Time=now,Col=col,Row=row,Calm=prefs.reducedEffects,Mystery=mystery,Dev=dev,Accent=accent};
         private static string ClassTileLabel(string c){if(!classLabels.TryGetValue(c??"",out var s)){s=NativeLoadoutText.Name(c).ToUpperInvariant();classLabels[c??""]=s;}return s;}
 
+        private void PickLoadoutClass(string selectedClass)
+        {
+            Click();menuClass=selectedClass;
+            SetWeapon(NativeLoadoutText.Pick(content.weapons,prefs.weapon,selectedClass,account.Developer,AllowedWeapon));
+        }
+        private void PickLoadoutWeapon(string id)
+        {
+            if(id==prefs.weapon)return;
+            nativeAudio?.UiCue("ui.loadout.select","install",.4f);SetWeapon(id);
+        }
+
         // ---- Class row -------------------------------------------------------------------------------------------------
         // One row of equal class tiles (two columns on a very narrow slot), the DEV class (developers) last. Clicking plays
         // the ui sound; a weapon outside the class gives way to the class default (preferredWeapon).
@@ -116,7 +127,7 @@ namespace ChipArena.UnityConversion
                     T.Class(new Rect(tile.x,tile.y+G.Rise*(1-enter),tile.width,tile.height),look,row,NativeIcons.Class(c),ClassTileLabel(c));
                 }
                 if(locker){if(!lockerBlocked&&hot&&U.Button(tile)&&!on){Click();menuClass=c;SetWeapon(NativeLoadoutText.Pick(content.weapons,prefs.weapon,c,dev,AllowedWeapon));}}
-                else if(U.Button(tile)){Click();menuClass=c;SetWeapon(NativeLoadoutText.Pick(content.weapons,prefs.weapon,c,dev,AllowedWeapon));}
+                else{LbRecordTile(tile,c,false);if(U.Button(tile))PickLoadoutClass(c);}
             }
         }
 
@@ -148,7 +159,7 @@ namespace ChipArena.UnityConversion
                 if(repaint&&enter>0)T.Weapon(new Rect(tile.x,tile.y+G.Rise*(1-enter),tile.width,tile.height),TileLook(f,e*enter,h,selected,now,G.Col(g,i),G.RowOf(g,i),U.Hex((int)w.color),false,w.devOnly),NativeIcons.Spec(w.id),w.name);
                 if(hot){hovered=w;hoveredX=tile.center.x;}if(selected){equipped=w;equippedX=tile.center.x;}
                 if(locker){if(hot&&repaint)lockerWeapon=w.id;if(!lockerBlocked&&lockerViewHot&&U.Button(tile)){Click();if(!selected){nativeAudio?.Play("install",null,.4f);SetWeapon(w.id);}}}
-                else if(U.Button(tile)&&!selected){nativeAudio?.UiCue("ui.loadout.select","install",.4f);SetWeapon(w.id);}
+                else{LbRecordTile(tile,w.id,true);if(U.Button(tile))PickLoadoutWeapon(w.id);}
             }
             if(repaint)WeaponStrip(new Rect(r.x,r.y+g.Height+G.StripGap,width,G.StripHeight),hovered??equipped,hovered!=null,hovered!=null?hoveredX:equippedX,equipped,e*G.Enter(age,0,calm),now);
         }
