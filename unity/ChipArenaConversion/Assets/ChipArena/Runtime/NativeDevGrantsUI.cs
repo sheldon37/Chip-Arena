@@ -25,6 +25,8 @@ namespace ChipArena.UnityConversion
         private bool adminWaiting,adminOk,adminLeftWarn,adminClassLinks,adminLookLinks,adminIntroLinks;private int adminListedFor=-1;private float adminScrollL,adminScrollR,adminContentL,adminContentR;private GUIStyle adminField;
         private NativeAccountData[] managedPlayers=Array.Empty<NativeAccountData>(),adminRowsFor;
         private readonly Dictionary<string,Dictionary<string,bool>> adminGrants=new Dictionary<string,Dictionary<string,bool>>(),adminFlags=new Dictionary<string,Dictionary<string,bool>>();
+        private string[] adminAllowed=NativeDevGrants.LegacyServer;
+        private bool AdminGrantable(string key)=>NativeDevGrants.Grantable(key)&&Array.IndexOf(adminAllowed,key)>=0;
         private readonly List<AdminItem> adminClasses=new List<AdminItem>(),adminLooks=new List<AdminItem>(),adminIntros=new List<AdminItem>();
         private readonly List<string> adminClassKeys=new List<string>(),adminLookKeys=new List<string>(),adminIntroKeys=new List<string>();
         private readonly List<AdminRow> adminRows=new List<AdminRow>();
@@ -67,7 +69,7 @@ namespace ChipArena.UnityConversion
             {
                 if(w==null||!w.devOnly)continue;string intro=LockerSignature(w.id);
                 var item=new AdminItem{Key="weapon:"+w.id,Id=w.id,Name=w.name,Kind=AdminClassKind(w.@class),Icon=NativeIcons.Spec(w.id),Tone=U.Hex((int)w.color),Sub="No entrance of its own"};
-                item.Server=NativeDevGrants.Grantable(item.Key);adminClassKeys.Add(item.Key);
+                item.Server=AdminGrantable(item.Key);adminClassKeys.Add(item.Key);
                 if(NativeDevGrants.Offered(intro)){item.Entrance=AdminIntroItem(intro,item.Tone);item.Sub="Entrance · "+item.Entrance.Name;paired.Add(intro);adminClassKeys.Add(item.Entrance.Key);}
                 adminClasses.Add(item);
             }
@@ -75,7 +77,7 @@ namespace ChipArena.UnityConversion
             foreach(var id in NativeCosmeticRules.Hats)if(NativeDevGrants.Offered(id))adminLooks.Add(AdminLookItem("hat:",id,2,"Headwear"));
             foreach(var id in NativeCosmeticRules.Intros)if(NativeDevGrants.Offered(id)&&!paired.Contains(id))adminIntros.Add(AdminIntroItem(id,U.Hex(0xb7a8ff)));
             foreach(var it in adminLooks)adminLookKeys.Add(it.Key);foreach(var it in adminIntros)adminIntroKeys.Add(it.Key);
-            adminClassLinks=adminClassKeys.Exists(NativeDevGrants.Grantable);adminLookLinks=adminLookKeys.Exists(NativeDevGrants.Grantable);adminIntroLinks=adminIntroKeys.Exists(NativeDevGrants.Grantable);
+            adminClassLinks=adminClassKeys.Exists(AdminGrantable);adminLookLinks=adminLookKeys.Exists(AdminGrantable);adminIntroLinks=adminIntroKeys.Exists(AdminGrantable);
         }
         private static string AdminClassKind(string c)=>c=="melee"?"MELEE · DEV CLASS":c=="magic"?"MAGIC · DEV CLASS":c=="ranged"?"RANGED · DEV CLASS":"DEV CLASS";
         // The Locker's labels without their DEV marks ("DEV · Emperor's Oath", "Clown getaway · DEV ONLY").
@@ -84,8 +86,8 @@ namespace ChipArena.UnityConversion
             if(label==null)return "";if(label.StartsWith("DEV · ",StringComparison.Ordinal))label=label.Substring(6);
             int i=label.IndexOf(" · DEV ONLY",StringComparison.Ordinal);return i>0?label.Substring(0,i):label;
         }
-        private static AdminItem AdminLookItem(string prefix,string id,int look,string kind)=>new AdminItem{Key=prefix+id,Id=id,Name=AdminName(NativeCosmeticRules.Label(id)),Kind=kind,Look=look,Server=NativeDevGrants.Grantable(prefix+id)};
-        private static AdminItem AdminIntroItem(string id,Color tone)=>new AdminItem{Key="intro:"+id,Id=id,Name=AdminName(NativeCosmeticRules.Label(id)),Kind="Entrance",Icon=NativeLocker.IntroIcon(id)??"sparkles",Tone=tone,Look=3,Server=NativeDevGrants.Grantable("intro:"+id)};
+        private AdminItem AdminLookItem(string prefix,string id,int look,string kind)=>new AdminItem{Key=prefix+id,Id=id,Name=AdminName(NativeCosmeticRules.Label(id)),Kind=kind,Look=look,Server=AdminGrantable(prefix+id)};
+        private AdminItem AdminIntroItem(string id,Color tone)=>new AdminItem{Key="intro:"+id,Id=id,Name=AdminName(NativeCosmeticRules.Label(id)),Kind="Entrance",Icon=NativeLocker.IntroIcon(id)??"sparkles",Tone=tone,Look=3,Server=AdminGrantable("intro:"+id)};
 
         // ---- Players found -------------------------------------------------------------------------------------------
         private void AdminRowsSync()
@@ -125,7 +127,10 @@ namespace ChipArena.UnityConversion
             adminAction="players";adminAsked=q;adminWaiting=true;adminOk=false;adminError=null;adminNote=null;adminLeftNote="Searching…";adminLeftWarn=false;
             account.Manage("players",JsonUtility.ToJson(new NativeAdminQuery{query=q}),response=>
             {
-                adminOk=true;managedPlayers=(response.players??Array.Empty<NativeAccountData>()).Where(p=>p!=null&&!string.IsNullOrEmpty(p.id)).Take(100).ToArray();
+                adminOk=true;
+                adminAllowed=response.grantCatalogVersion>=1 ? response.grantableUnlocks??Array.Empty<string>() : NativeDevGrants.LegacyServer;
+                adminListedFor=-1;
+                managedPlayers=(response.players??Array.Empty<NativeAccountData>()).Where(p=>p!=null&&!string.IsNullOrEmpty(p.id)).Take(100).ToArray();
                 adminSearched=adminAsked;adminScrollL=adminScrollR=0;adminGrants.Clear();adminFlags.Clear();adminPick=null;
                 adminLeftNote=managedPlayers.Length==0?"No registered player starts with “"+adminSearched+"”.":managedPlayers.Length==1?"1 player starts with “"+adminSearched+"”.":managedPlayers.Length+" players start with “"+adminSearched+"”.";adminLeftWarn=managedPlayers.Length==0;
             });
@@ -139,7 +144,13 @@ namespace ChipArena.UnityConversion
             string id=p.id,name=p.username;adminAction="grant";adminWaiting=true;adminOk=false;adminError=null;adminNote=null;
             account.Manage("grant",JsonUtility.ToJson(request),response=>
             {
-                adminOk=true;var a=response.account;if(a==null||a.id!=id)return;
+                adminOk=true;
+                var a=response.account;
+                if(a==null||a.id!=id||a.grantVersion<=request.grantVersion||a.unlocks==null||a.flags==null)
+                {
+                    adminError="The account service did not confirm the changes for "+name+".";
+                    return;
+                }
                 p.grantVersion=a.grantVersion;p.unlocks=a.unlocks;p.flags=a.flags;p.developer=a.developer;adminGrants.Remove(id);adminFlags.Remove(id);adminRowsFor=null;
                 adminNote="Saved for "+name+". They get it after refreshing their account and rejoining.";
             });
@@ -212,7 +223,7 @@ namespace ChipArena.UnityConversion
         {
             var row=AdminRowFor(adminPick);if(row==null){AdminEmptyEditor(r,e);return;}
             var p=row.P;AdminHeader(new Rect(r.x,r.y,r.width,104),row,e);
-            var view=new Rect(r.x,r.y+104+18,r.width,r.height-104-18);var ev=Event.current;bool hot=!MenuBlocked()&&U.Hover(view);
+            var view=new Rect(r.x,r.y+104+18,r.width,r.height-104-18);var ev=Event.current;bool hot=!MenuBlocked()&&!adminWaiting&&U.Hover(view);
             if(hot&&ev.type==EventType.ScrollWheel){adminScrollR+=ev.delta.y*26;ev.Use();}
             adminScrollR=Mathf.Clamp(adminScrollR,0,Mathf.Max(0,adminContentR-view.height));
             float w=view.width-(adminContentR>view.height?14:0),x=view.x,y=view.y-adminScrollR,y0=y;
@@ -271,8 +282,8 @@ namespace ChipArena.UnityConversion
             if(links)
             {
                 var none=new Rect(x+w-56,y,56,22);var all=new Rect(none.x-62,y,56,22);
-                if(AdminLink(all,"ALL",AdminHover+900+section*2,hot,e))NativeDevGrants.SetAll(p.unlocks,AdminChanges(adminGrants,p.id),keys,true,NativeDevGrants.Server);
-                if(AdminLink(none,"NONE",AdminHover+901+section*2,hot,e))NativeDevGrants.SetAll(p.unlocks,AdminChanges(adminGrants,p.id),keys,false,NativeDevGrants.Server);
+                if(AdminLink(all,"ALL",AdminHover+900+section*2,hot,e))NativeDevGrants.SetAll(p.unlocks,AdminChanges(adminGrants,p.id),keys,true,adminAllowed);
+                if(AdminLink(none,"NONE",AdminHover+901+section*2,hot,e))NativeDevGrants.SetAll(p.unlocks,AdminChanges(adminGrants,p.id),keys,false,adminAllowed);
             }
             U.Fill(new Rect(x,y+30,w,1),C.Edge(.55f*e));U.Fill(new Rect(x,y+30,26,1),C.Cyan(.8f*e));return y+44;
         }
@@ -303,7 +314,7 @@ namespace ChipArena.UnityConversion
             {
                 var strip=new Rect(d.x+14,cy,d.width-28,32);U.Round(strip,U.A(AdminDevFill,.85f*e),8,U.A(AdminDevEdge,.45f*e));
                 NativeIcons.Draw(new Rect(strip.x+10,strip.center.y-8,16,16),"shield-alert",U.A(AdminDevInk,e));
-                U.Text(new Rect(strip.x+34,strip.y,strip.width-40,strip.height),"DEV ACCOUNTS ONLY",10,U.A(AdminDevInk,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
+                U.Text(new Rect(strip.x+34,strip.y,strip.width-40,strip.height),NativeDevGrants.Grantable(it.Key)?"SERVICE UPDATE REQUIRED":"DEV ACCOUNTS ONLY",10,U.A(AdminDevInk,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
                 if(strip.width>300)U.Text(new Rect(strip.x,strip.y,strip.width-12,strip.height),"not grantable yet",11,C.Muted(.9f*e),TextAnchor.MiddleRight);
                 return;
             }
@@ -375,16 +386,16 @@ namespace ChipArena.UnityConversion
             if(MenuButton(revert,"undo-2","Revert",null,false,n>0&&!busy,e,15,true)&&row!=null){adminGrants.Remove(row.P.id);adminFlags.Remove(row.P.id);adminError=null;}
             if(MenuButton(save,"check",saving?"Saving…":"Save changes",null,true,n>0&&!busy,e,15,true))AdminSave();
             float tx=r.x,tw=revert.x-20-tx,my=save.center.y;
-            if(n>0)
+            if(adminError!=null)
+            {
+                NativeIcons.Draw(new Rect(tx,my-9,18,18),"circle-alert",C.Danger(e));var lines=AdminWrap(adminError,13,tw-28,2);
+                for(int i=0;i<lines.Count;i++)U.Text(new Rect(tx+28,my-lines.Count*9+i*18,tw-28,18),lines[i],13,U.Hex(0xff8aa0,e),TextAnchor.MiddleLeft);
+            }
+            else if(n>0)
             {
                 if(adminBarFor.Item1!=n||adminBarFor.Item2!=row.P.id){adminBarFor=(n,row.P.id);adminBarText=(n==1?"1 unsaved change":n+" unsaved changes")+" for "+row.P.username;}
                 U.RadialStops(new Rect(tx,my-14,9,9),C.Warn(e),AdminDiscAt,AdminDiscA);U.Text(new Rect(tx+18,my-20,tw-18,20),AdminFit(adminBarText,14,true,tw-18),14,C.Ink(e),TextAnchor.MiddleLeft,bold:true);
                 U.Text(new Rect(tx+18,my+1,tw-18,18),AdminFit("Save sends them. The player gets them after refreshing their account and rejoining.",12,false,tw-18),12,C.Muted(e),TextAnchor.MiddleLeft);
-            }
-            else if(adminError!=null)
-            {
-                NativeIcons.Draw(new Rect(tx,my-9,18,18),"circle-alert",C.Danger(e));var lines=AdminWrap(adminError,13,tw-28,2);
-                for(int i=0;i<lines.Count;i++)U.Text(new Rect(tx+28,my-lines.Count*9+i*18,tw-28,18),lines[i],13,U.Hex(0xff8aa0,e),TextAnchor.MiddleLeft);
             }
             else
             {

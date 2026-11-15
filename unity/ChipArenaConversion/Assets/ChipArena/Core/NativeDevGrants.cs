@@ -13,6 +13,8 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The account server's GRANTABLE_CONTENT keys, in its order.</summary>
         public static readonly string[] Server={"weapon:siren","intro:dev-siren","weapon:emperor","intro:dev-emperor","weapon:leet","weapon:ansatsuken","intro:dev-matrix","intro:dev-ansatsuken","hat:auditor-halo","effect:dev-singularity","effect:dev-raging-demon","effect:dev-clown","effect:dev-clown-love","effect:dev-bass-van","weapon:cyberlord","intro:dev-cyberlord","weapon:bombadier","intro:dev-bombadier","weapon:topdog","intro:dev-topdog","effect:dev-hotdog-friends","weapon:dev-greatsword","weapon:dev-katana","weapon:fangs"};
+        // Published account services through v69 omit the catalog from player searches.
+        public static readonly string[] LegacyServer={"weapon:siren","intro:dev-siren","weapon:emperor","intro:dev-emperor","weapon:leet","weapon:ansatsuken","intro:dev-matrix","intro:dev-ansatsuken","hat:auditor-halo","effect:dev-singularity","effect:dev-raging-demon","effect:dev-clown","effect:dev-clown-love","effect:dev-bass-van"};
         /// <summary>The account server's ACCOUNT_FLAGS keys.</summary>
         public static readonly string[] Flags={"playtester","vip"};
         public static bool Grantable(string key)=>key!=null&&Array.IndexOf(Server,key)>=0;
