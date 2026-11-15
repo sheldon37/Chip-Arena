@@ -54,6 +54,13 @@ internal static class DevGrantsChecks
         var flagChanges=new Dictionary<string,bool>();NativeDevGrants.Toggle(new[]{"vip"},flagChanges,"vip",NativeDevGrants.Flags);NativeDevGrants.Toggle(new[]{"vip"},flagChanges,"playtester",NativeDevGrants.Flags);
         var flagsSent=NativeDevGrants.Merge(new[]{"vip"},flagChanges,NativeDevGrants.Flags);Check(flagsSent.Length==1&&flagsSent[0]=="playtester","labels change the same way");
 
+        var legacyEdits=new Dictionary<string,bool>();
+        NativeDevGrants.SetAll(null,legacyEdits,NativeDevGrants.Server,true,NativeDevGrants.LegacyServer);
+        Check(legacyEdits.Count==14&&legacyEdits.ContainsKey("weapon:emperor")&&!legacyEdits.ContainsKey("weapon:fangs"),"ALL on the v69 service selects only its fourteen supported grants");
+        var newerEdits=new Dictionary<string,bool>();
+        NativeDevGrants.SetAll(null,newerEdits,NativeDevGrants.Server,true,new[]{"weapon:fangs"});
+        Check(newerEdits.Count==1&&newerEdits.ContainsKey("weapon:fangs"),"ALL follows the grant catalog supplied by the connected service");
+
         // What the screen offers: every DEV look a grant unlocks, never the owner's own.
         Check(NativeDevGrants.Offered(NativeHotdogFriends.Style)&&NativeDevGrants.Offered("dev-clown")&&NativeDevGrants.Offered("auditor-halo")&&NativeDevGrants.Offered("dev-topdog"),"the DEV kill effects, the Auditor Halo and the DEV entrances are offered");
         foreach(var own in new[]{"dev-gibber",NativeHatLooks.SheldonHead,NativeCosmeticGate.SheldonIntro,NativeCosmeticGate.SheldonIdle,"ragdoll","crown","weapon-sword"})Check(!NativeDevGrants.Offered(own),own+" is not offered");

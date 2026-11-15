@@ -3,7 +3,7 @@ import {confirmXp,readXp} from './account-xp.js';
 import {scryptAsync} from '@noble/hashes/scrypt.js';
 import {base64url} from '../shared/dev-auth.js';
 import {GAME_CLAIM_MS} from '../shared/account-auth.js';
-import {cleanGrants,cleanFlags,canUse,Access} from '../shared/access.js';
+import {GRANTABLE_CONTENT,cleanGrants,cleanFlags,canUse,Access} from '../shared/access.js';
 import {cosmetics} from '../shared/cosmetics.js';
 import type {AuthEnv} from './auth.js';
 const encoder=new TextEncoder(),SESSION_MS=12*3600000,REMEMBER_MS=30*24*3600000;
@@ -138,7 +138,7 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
   if(!row.developer)throw fail('Only DEVs can manage registered players.',403);
   if(action==='players'){
    const query=typeof input.query==='string'?input.query.trim().toLowerCase():'';if(!/^[a-z0-9_]{2,20}$/.test(query))throw fail('Enter at least 2 username characters.');
-   const r=await env.DB.batch([env.DB.prepare('SELECT * FROM player_accounts WHERE username>=? AND username<? ORDER BY username LIMIT 20').bind(query,query+'\uffff')]);return response({players:r[0].results.map(view)});
+   const r=await env.DB.batch([env.DB.prepare('SELECT * FROM player_accounts WHERE username>=? AND username<? ORDER BY username LIMIT 20').bind(query,query+'\uffff')]);return response({players:r[0].results.map(view),grantCatalogVersion:1,grantableUnlocks:Object.keys(GRANTABLE_CONTENT)});
   }
   if(action==='grant'){
    if(typeof input.accountId!=='string'||!Number.isSafeInteger(input.grantVersion)||!Array.isArray(input.unlocks)||!Array.isArray(input.flags))throw fail('Invalid player grant.');

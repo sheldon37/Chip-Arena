@@ -19,6 +19,23 @@ test('DEV migration reserves the existing username; grants are audited and signe
  const search:any=await(await f.request('players',{query:'fr'},dev.session)).json();assert.equal(search.players.length,1);assert.ok(!JSON.stringify(search).includes('scrypt$'));assert.ok(!JSON.stringify(search).includes(user.session));
  }finally{f.db.close();}});
 test('recovery rotates the one-use code, revokes all sessions and requires the new password',async()=>{const f=await fixture();try{const a:any=await(await f.request('register',{username:'recover_me',password})).json();const newPassword='a different long password';assert.equal((await f.request('recover',{username:'recover_me',password:newPassword,recoveryCode:'invalid'})).status,401);const recovered:any=await(await f.request('recover',{username:'recover_me',password:newPassword,recoveryCode:a.recoveryCode})).json();assert.ok(recovered.session);assert.notEqual(recovered.recoveryCode,a.recoveryCode);assert.equal((await f.request('me',undefined,a.session)).status,401);assert.equal((await f.request('recover',{username:'recover_me',password:newPassword,recoveryCode:a.recoveryCode})).status,401);assert.equal((await f.request('login',{username:'recover_me',password})).status,401);assert.equal((await f.request('login',{username:'recover_me',password:newPassword})).status,200);}finally{f.db.close();}});
+test('DEV menu can save the advertised grants and retrieve them in a fresh player search',async()=>{
+ const f=await fixture();
+ try{
+  const player=await (await f.request('register',{username:'grant_target',password})).json();
+  const dev=await (await f.request('login',{username:'Sheldon',password})).json();
+  const search=async()=>await (await f.request('players',{query:'grant_target'},dev.session)).json();
+  const before=await search();
+  assert.equal(before.grantCatalogVersion,1);
+  assert.ok(before.grantableUnlocks.includes('weapon:fangs'));
+  const saved=await f.request('grant',{accountId:player.account.id,grantVersion:before.players[0].grantVersion,unlocks:before.grantableUnlocks,flags:['vip']},dev.session);
+  assert.equal(saved.status,200);
+  const after=(await search()).players[0];
+  assert.deepEqual(after.unlocks,before.grantableUnlocks);
+  assert.deepEqual(after.flags,['vip']);
+  assert.equal(after.grantVersion,before.players[0].grantVersion+1);
+ }finally{f.db.close();}
+});
 test('public API handles CORS without cookies, rejects oversized bodies, rate limits auth and preserves room schema',async()=>{const f=await fixture();try{const pre=await worker.fetch(new Request('https://arena.example/api/accounts/login',{method:'OPTIONS',headers:{Origin:'https://some-host.trycloudflare.com'}}),f.env);assert.equal(pre.status,204);assert.equal(pre.headers.get('Access-Control-Allow-Origin'),'*');assert.equal(pre.headers.get('Access-Control-Allow-Credentials'),null);assert.equal((await f.request('register',{username:'abc',password:'x'.repeat(9000)})).status,413);let last:Response|undefined;for(let i=0;i<13;i++)last=await f.request('login',{username:'!',password:''},'',now,'same-ip');assert.equal(last!.status,429);assert.equal((await f.request('grant',{accountId:'x',developer:true})).status,401);const tables=f.db.sql.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x=>x.name);assert.ok(tables.includes('party_rooms')&&tables.includes('online_rooms')&&tables.includes('player_accounts'));}finally{f.db.close();}});
 test('Remember me issues a 30-day revocable session; normal sessions still expire after twelve hours',async()=>{const f=await fixture();try{const data:any=await(await f.request('register',{username:'remember_me',password,remember:true})).json();assert.equal(data.expires,now+30*24*3600000);assert.equal((await f.request('me',undefined,data.session,now+29*24*3600000)).status,200);assert.equal((await f.request('me',undefined,data.session,data.expires+1)).status,401);assert.equal((await f.request('logout',{},data.session)).status,200);assert.equal((await f.request('me',undefined,data.session)).status,401);}finally{f.db.close();}});
 

@@ -1,3 +1,7 @@
+## 2026-11-15 - Astra: main menu DEV grant saves
+
+Branch `codex/dev-menu-save`, based on `d53d8011`. Site v69's bundled account service accepts 14 of the Unity menu's 24 grant keys. A single unsupported grant rejects the entire save, and the pending count hid the error. Limit individual and bulk selection to the service catalog, using the verified v69 list when player search omits it. Updated service source advertises its own list. Display save errors, keep unconfirmed edits, and prevent edits during submission. Against v69 code with temporary SQLite, a mixed request returned 400 and all 14 supported grants plus VIP persisted on fresh search. 54 managed grant checks and 16 account tests passed, including saving and re-reading the updated service catalog. Windows click-through and publication unverified. Live service deployment pending owner approval.
+
 ## 2026-11-15 — Astra: shared camera budget for crowded lobbies
 
 Branch `codex/budget-lobby-portraits`, base `cf4b531e`. The owner's recording shows the host removing bots from an eight-seat lobby. Both portrait renderers now share one refresh per frame and 60 per second across the roster. The oldest image gets the next turn. Lobby portrait decoration skips input/layout events. The focused portrait suite passed 58,400 checks, including scheduling at 15, 30, 60 and 144 FPS. Player and Editor assemblies compiled against the pinned Unity references. Actual Windows frame times remain unmeasured.
