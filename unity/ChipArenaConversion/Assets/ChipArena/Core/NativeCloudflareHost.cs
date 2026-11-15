@@ -33,17 +33,20 @@ namespace ChipArena.UnityConversion
             var host=new NativeCloudflareHost(decode,token);
             try
             {
-                host.tunnel=await NativeTunnelProcess.Start(executable,host.listener.Port,host.stop.Token,linuxTest).ConfigureAwait(false);
-                for(int attempt=0;attempt<8;attempt++)
-                {
-                    string code=NativeRoomCodes.Create();
-                    if(!await NativeRoomDirectory.Register(host.http,code,host.Origin,host.secret,decode,host.stop.Token).ConfigureAwait(false))continue;
-                    host.Room=code;Interlocked.Exchange(ref host.directoryUntil,DateTime.UtcNow.AddSeconds(150).Ticks);
-                    host.stop.Token.ThrowIfCancellationRequested();_=host.Renew();return host;
-                }
-                throw new NativeOnlineRoomException("Could not reserve a room code. Please try creating the room again.");
+                host.tunnel=await NativeTunnelProcess.Start(executable,host.listener.Port,host.stop.Token,linuxTest,host.ReserveCode).ConfigureAwait(false);
+                host.stop.Token.ThrowIfCancellationRequested();_=host.Renew();return host;
             }
             catch{host.Dispose();throw;}
+        }
+        private async Task ReserveCode(string origin)
+        {
+            for(int attempt=0;attempt<8;attempt++)
+            {
+                string code=NativeRoomCodes.Create();
+                if(!await NativeRoomDirectory.Register(http,code,origin,secret,decode,stop.Token).ConfigureAwait(false))continue;
+                Room=code;Interlocked.Exchange(ref directoryUntil,DateTime.UtcNow.AddSeconds(150).Ticks);return;
+            }
+            throw new NativeOnlineRoomException("Could not reserve a room code. Please try creating the room again.");
         }
         private async Task Renew()
         {

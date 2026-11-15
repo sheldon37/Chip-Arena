@@ -19,6 +19,19 @@ internal static class CloudflareChecks
     {Console.WriteLine("Starting "+name);var result=await action();Console.WriteLine("PASS "+name);return result;}
     public static async Task Run()
     {
+        foreach(bool edgeFirst in new[]{false,true})
+        {
+            var address=new TaskCompletionSource<string>();var edge=new TaskCompletionSource<bool>();
+            var registering=new TaskCompletionSource<string>();var registered=new TaskCompletionSource<bool>();
+            var ready=NativeTunnelProcess.PrepareRoom(address.Task,edge.Task,origin=>{registering.SetResult(origin);return registered.Task;},CancellationToken.None);
+            Check(!registering.Task.IsCompleted,"registration requires a tunnel address");
+            address.SetResult("https://fixture-room.trycloudflare.com");
+            Check(await registering.Task=="https://fixture-room.trycloudflare.com","registration starts before edge readiness");
+            if(edgeFirst)edge.SetResult(true);else registered.SetResult(true);
+            Check(!ready.IsCompleted,"one startup confirmation alone cannot open the room");
+            if(edgeFirst)registered.SetResult(true);else edge.SetResult(true);
+            await ready;
+        }
         Check(NativeRoomDirectory.Key("7km-r4p")=="UN7KMR4P","short codes map into the existing directory contract");
         Check(NativeRoomDirectory.Key("CAABCD")=="UNCAABCD","CA prefix remains part of a six-character code");
         foreach(string room in new[]{"7KMR4P","CAABCD","UNABCD"})

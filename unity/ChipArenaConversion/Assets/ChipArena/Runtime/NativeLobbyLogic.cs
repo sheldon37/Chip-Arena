@@ -37,9 +37,11 @@ namespace ChipArena.UnityConversion
         private NativeSeatFrame LobbySeat(NativeSeat s,bool ready)=>new NativeSeatFrame{weaponTechniques=s.bot?"":NativeTechniqueLoadout.Normalize(s.weaponTechniques),devRevealed=s.devRevealed,devCommandsRan=s.devCommandsRan,devDummy=s.devDummy,devScale=s.devScale,id=s.id,name=s.name,spec=s.spec,team=s.team,connected=s.connected,ready=ready,bot=s.bot,difficulty=s.difficulty,bodyColor=s.bodyColor,accentColor=s.accentColor,hat=s.hat,lobbyPose=s.lobbyPose,lobbyBack=s.lobbyBack,hatColor=s.hatColor,backColor=s.backColor,weaponSkins=s.weaponSkins,look=s.look,pod=NativePodRun.Look(s.pod),motion=s.motion,killEffect=s.killEffect,intro=s.intro,introText=s.introText};
         private NativeSeat[] LobbyBots(int humans)
         {var options=CaptureRoomOptions();options.Normalize(content);return Enumerable.Range(0,Math.Max(0,Math.Min(options.bots,(prefs.pve?4:8)-humans))).Select(i=>NativeLobbyRules.Bot(content,options,i,prefs.weapon,roomSeed)).ToArray();}
+        private float nextLobbyOptionsCheck;
         private void LobbyTick()
         {
-            if(!Hosting||arena!=null)return;
+            if(!Hosting||arena!=null||Time.unscaledTime<nextLobbyOptionsCheck)return;
+            nextLobbyOptionsCheck=Time.unscaledTime+.2f;
             string options=JsonUtility.ToJson(CaptureRoomOptions());if(options!=lastLobbyOptions){lastLobbyOptions=options;LobbyBroadcast();}
             // Ready is consent to the host's next Start click, never a request to start the room.
         }
