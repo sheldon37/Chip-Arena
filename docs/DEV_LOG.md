@@ -1,3 +1,7 @@
+## 2026-11-15 — Astra: shared camera budget for crowded lobbies
+
+Branch `codex/budget-lobby-portraits`, base `cf4b531e`. The owner's recording shows the host removing bots from an eight-seat lobby. Both portrait renderers now share one refresh per frame and 60 per second across the roster. The oldest image gets the next turn. Lobby portrait decoration skips input/layout events. The focused portrait suite passed 58,400 checks, including scheduling at 15, 30, 60 and 144 FPS. Player and Editor assemblies compiled against the pinned Unity references. Actual Windows frame times remain unmeasured.
+
 ## 2026-11-15 — Astra: immediate host lobby and prepared internet connection
 
 Branch `codex/instant-online-room`, base `0fa55aad`. The Create screen prepares the private Cloudflare connection while the host chooses rules. Its listener refuses guests until Create is pressed. Create adopts the same task, enters the host lobby locally, and publishes the code and enables invites/start once ready. Leaving setup, choosing LAN, cancelling or shutting down releases the unused connection. A failed preparation gets a fresh attempt on Create. Managed loopback checks cover admission before/after activation; the Unity lobby fixture covers the cold-start UI and launch gate. Packaged click-to-paint timing on the owner's PC is unmeasured.
