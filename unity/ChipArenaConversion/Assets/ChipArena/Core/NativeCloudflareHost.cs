@@ -22,15 +22,16 @@ namespace ChipArena.UnityConversion
         public bool Closed=>stop.IsCancellationRequested||tunnel?.Closed==true;
         public bool CodeAvailable=>DateTime.UtcNow.Ticks<Interlocked.Read(ref directoryUntil);
         public ConcurrentQueue<NativeConnection> Accepted=>listener.Accepted;
-        private NativeCloudflareHost(Func<string,NativeDirectoryEntry> decode,CancellationToken token)
+        public void AdmitGuests()=>listener.AdmitGuests();
+        private NativeCloudflareHost(Func<string,NativeDirectoryEntry> decode,CancellationToken token,bool standby)
         {
             this.decode=decode;stop=CancellationTokenSource.CreateLinkedTokenSource(token);http=NativeRoomDirectory.Client();
-            listener=new NativeListener(0,true);byte[] bytes=new byte[32];using(var random=RandomNumberGenerator.Create())random.GetBytes(bytes);
+            listener=new NativeListener(0,true,standby);byte[] bytes=new byte[32];using(var random=RandomNumberGenerator.Create())random.GetBytes(bytes);
             secret=BitConverter.ToString(bytes).Replace("-","").ToLowerInvariant();
         }
-        public static async Task<NativeCloudflareHost> Start(string executable,Func<string,NativeDirectoryEntry> decode,CancellationToken token,bool linuxTest=false)
+        public static async Task<NativeCloudflareHost> Start(string executable,Func<string,NativeDirectoryEntry> decode,CancellationToken token,bool linuxTest=false,bool standby=false)
         {
-            var host=new NativeCloudflareHost(decode,token);
+            var host=new NativeCloudflareHost(decode,token,standby);
             try
             {
                 host.tunnel=await NativeTunnelProcess.Start(executable,host.listener.Port,host.stop.Token,linuxTest,host.ReserveCode).ConfigureAwait(false);

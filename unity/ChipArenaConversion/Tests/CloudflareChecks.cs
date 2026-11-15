@@ -59,6 +59,19 @@ internal static class CloudflareChecks
                 bool cancelled=false;try{await pending;}catch(OperationCanceledException){cancelled=true;}Check(cancelled,"leaving cancels an in-flight lookup");
             }
         }
+        using(var waiting=new NativeListener(0,true,true))
+        using(var early=await NativeConnection.Connect("127.0.0.1",waiting.Port,CancellationToken.None))
+        {
+            await Until(()=>early.Closed);
+            Check(waiting.Accepted.IsEmpty,"standby transport refuses early guests");
+            waiting.AdmitGuests();
+            using(var guest=await NativeConnection.Connect("127.0.0.1",waiting.Port,CancellationToken.None))
+            {
+                await Until(()=>!waiting.Accepted.IsEmpty);
+                Check(waiting.Accepted.TryDequeue(out var accepted),"activation admits the next guest");
+                accepted.Dispose();
+            }
+        }
         string file=Path.GetTempFileName();try{File.WriteAllText(file,"untrusted executable");bool refused=false;try{NativeTunnelBinary.Verify(file);}catch(NativeOnlineRoomException){refused=true;}Check(refused,"modified connector cannot execute");}finally{File.Delete(file);}
         Console.WriteLine("PASS Cloudflare directory: short-code namespace, lease collision, strict origins, response bounds, cancellation and connector integrity");
     }
@@ -84,8 +97,11 @@ internal static class CloudflareChecks
         {
             NativeTunnelBuild.Stage(project,player);string binary=Path.Combine(player,NativeTunnelBinary.RelativePath);NativeTunnelBinary.Verify(binary);
             Console.WriteLine("PASS Windows player stages the hash-verified pinned connector and license");
-            using(var stop=new CancellationTokenSource(TimeSpan.FromMinutes(3)))
-            using(var host=await LiveStep("public host registration",()=>NativeCloudflareHost.Start(binary,Decode,stop.Token)))
+            using var stop=new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            using var host=await LiveStep("prepare public host during room setup",()=>NativeCloudflareHost.Start(binary,Decode,stop.Token,standby:true));
+            var activation=System.Diagnostics.Stopwatch.StartNew();
+            host.AdmitGuests();
+            Console.WriteLine("Prepared transport activation took "+activation.Elapsed.TotalMilliseconds.ToString("F2")+" ms");
             using(var first=await LiveStep("first guest code lookup and connection",()=>NativeCloudflareHost.Join(host.Room.ToLowerInvariant(),Decode,stop.Token)))
             using(var second=await LiveStep("second guest code lookup and connection",()=>NativeCloudflareHost.Join(host.Room,Decode,stop.Token)))
             {
