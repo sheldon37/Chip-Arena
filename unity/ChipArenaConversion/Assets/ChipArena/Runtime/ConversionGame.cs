@@ -567,7 +567,7 @@ namespace ChipArena.UnityConversion
                 NativeUi.Fill(new Rect(r.x,r.y+6-hv,2,r.height-12),match.Teams?TeamColor(p.team):SeatColor(p));
                 NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),p.name+(you?"  · YOU":""),13,NativeCyberTheme.Ink(alive?1:.6f),TextAnchor.MiddleLeft,bold:you);
                 NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),(content.weapons.FirstOrDefault(c=>c.id==p.spec)?.name??p.spec)+"  ·  "+p.chips.Values.Sum()+" chips",11,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft);
-                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),arena?.Pve!=null?"":"SETS "+p.score+" · ROUNDS "+p.roundWins,11,NativeCyberTheme.CyanSoft(),TextAnchor.MiddleRight,mono:true);
+                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),arena?.Pve!=null?"":match.DeathmatchTarget>0?(match.Teams?"TEAM KILLS ":"KILLS ")+p.score+" / "+match.DeathmatchTarget:"SETS "+p.score+" · ROUNDS "+p.roundWins,11,NativeCyberTheme.CyanSoft(),TextAnchor.MiddleRight,mono:true);
                 NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),!p.connected?"OFFLINE":alive?"ALIVE":"OUT",10,alive?NativeCyberTheme.Good():NativeCyberTheme.Muted(),TextAnchor.MiddleRight,mono:true,tracking:.1f);
                 if(NativeUi.Button(r))inspectSeat=p.id;cy+=46;
             }
