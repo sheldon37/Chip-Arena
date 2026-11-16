@@ -9,6 +9,11 @@ namespace ChipArena.UnityConversion
         private ExpeditionDirector expeditionDirector;private ExpeditionLayout expeditionM1Layout;private NativePveContent expeditionHorde;
         private string expeditionError;private long expeditionLoadedGeneration=-1;
         private bool ExpeditionM1=>expeditionDirector!=null;
+        private string ExpeditionPartyRefusal(System.Collections.Generic.IEnumerable<NativeSeat> seats)
+            =>NativeExpeditionParty.Validate(seats.Select(s=>s.access?.AccountId),
+                seats.All(s=>s.access!=null&&s.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),
+                GuestsReady,peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).All(p=>p.ExpeditionProtocol==NativeExpeditionParty.Protocol));
+
         private void StartExpeditionM1()
         {
             if(!ModsReady||deploymentRoom!=null&&!deploymentLaunch)return;
@@ -16,7 +21,8 @@ namespace ChipArena.UnityConversion
             var party=peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).ToArray();
             var host=SanitizedSeat(1,Profile(),account?.Token);
             var seats=new[]{host}.Concat(party.Select(p=>p.Seat)).ToArray();
-            string refusal=NativeExpeditionParty.Validate(seats.Select(s=>s.access?.AccountId),seats.All(s=>s.access!=null&&s.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),GuestsReady,party.All(p=>p.ExpeditionProtocol==NativeExpeditionParty.Protocol));
+            foreach(var member in seats)ApplyOpeningWeapon(member);
+            string refusal=ExpeditionPartyRefusal(seats);
             if(refusal!=null){networkStatus=refusal;Notice(refusal);return;}
             prefs.pve=true;prefs.expedition=true;prefs.bots=0;
             // Reliable notice precedes synchronous construction of all area PhysicsScenes.

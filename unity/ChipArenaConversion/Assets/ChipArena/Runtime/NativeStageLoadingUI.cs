@@ -65,7 +65,13 @@ namespace ChipArena.UnityConversion
         /// </summary>
         private void RequestStage(StageLoadKind kind,Action action)
         {
-            if(action==null||PromotionBusy)return;if(dedicated||cameraView==null||error.Length>0){action();return;}
+            if(action==null||PromotionBusy)return;
+            if(!trainingRoom&&kind!=StageLoadKind.Sandbox&&(action==(Action)StartMatch||action==(Action)StartExpeditionM1)&&BeginOpening(()=>QueueStage(kind,()=>WithOpening(action))))return;
+            QueueStage(kind,action);
+        }
+        private void QueueStage(StageLoadKind kind,Action action)
+        {
+            if(dedicated||cameraView==null||error.Length>0){action();return;}
             stageLoad.Request(kind,prefs.reducedEffects);stageAction=action;stageActed=false;StageBegan();
         }
         private StageLoadKind StageKindOf(NativeArena a)

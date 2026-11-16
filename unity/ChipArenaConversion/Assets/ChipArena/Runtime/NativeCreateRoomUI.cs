@@ -146,7 +146,7 @@ namespace ChipArena.UnityConversion
                 if(!o.cooperative)
                 {
                     var map=o.map=="random"?null:content.Map(o.map);Line("ARENA",map?.name??"Random",map!=null?U.Mix(U.Hex(map.accent),Color.white,.35f):C.CyanSoft());
-                    Line("FORMAT","First to "+o.sets+(o.sets==1?" set":" sets")+" · "+o.rounds+(o.rounds==1?" round":" rounds"),C.Ink());
+                    Line("FORMAT",o.deathmatch?"Deathmatch · first to "+o.EffectiveTarget+" kills":"First to "+o.sets+(o.sets==1?" set":" sets")+" · "+o.rounds+(o.rounds==1?" round":" rounds"),C.Ink());
                     Line("BOTS",o.bots<=0?"None":o.bots+(o.bots==1?" bot":" bots")+" · "+Capital(o.botDifficulty),C.Ink());
                 }
                 Line("JOIN",internetRooms?"Online · room code":"Local network · port "+portText,C.Ink());

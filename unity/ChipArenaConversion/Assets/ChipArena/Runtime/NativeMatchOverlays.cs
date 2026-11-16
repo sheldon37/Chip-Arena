@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
         private void ResultOverlay()
         {
             if(FinalWaiting)return;
-            float left=Mathf.Max(0,(float)(match.PhaseEnd-match.Time)),age=FinalResultAge(ResultSeconds()-left),W=U.W,H=U.H;var winner=match.Seats.Find(s=>s.id==match.Winner);bool won=OnMySide(winner),final=match.Seats.Any(s=>s.score>=match.SetsToWin);
+            float left=Mathf.Max(0,(float)(match.PhaseEnd-match.Time)),age=FinalResultAge(ResultSeconds()-left),W=U.W,H=U.H;var winner=match.Seats.Find(s=>s.id==match.Winner);bool won=OnMySide(winner),final=match.DeathmatchTarget>0||match.Seats.Any(s=>s.score>=match.SetsToWin);
             string title=won?(final?"MATCH SECURED":match.SetWinner!=0?"SET SECURED":"ROUND SECURED"):winner!=null?"KNOCKOUT":"DOUBLE KNOCKOUT";
             float F=Mathf.Clamp(W*.046f,34,64),h2=Mathf.Clamp(W*.014f,15,19),bw=Mathf.Min(680,W*.85f),bx=(W-bw)/2;
             // result-arrive .45 s from 12 px above; result-word .6 s closes the heading's tracking from .4em to .08em.
@@ -125,6 +125,7 @@ namespace ChipArena.UnityConversion
         {
             float W=U.W,w=310,x=W-20-w,y=62;var me=arena.Local.Seat;var players=match.Seats.Where(s=>!s.AuthorityBoss).ToList();
             var scoring=match.Teams?players.Where((p,i)=>players.FindIndex(q=>q.team==p.team)==i).ToList():players;int wins=Math.Max(1,Math.Min(20,match.SetsToWin)),columns=Math.Min(10,wins);
+            if(match.DeathmatchTarget>0){DeathmatchScores(x,y,w,scoring);return;}
             float rows=Mathf.Ceil(wins/(float)columns),row=Mathf.Max(30,rows*15+10),aliveH=players.Count*34;float h=14+20+scoring.Count*row+10+9+19+aliveH+14;
             NativeHudChrome.Panel(new Rect(x,y,w,h));float cy=y+14;
             U.Text(new Rect(x+14,cy,w-28,16),"SET SCORE",12,NativeCyberTheme.Ink(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
@@ -167,7 +168,7 @@ namespace ChipArena.UnityConversion
             U.Text(new Rect(ix,y,iw,16),"CHIP ARENA",12,NativeCyberTheme.CyanSoft(enter),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.18f);y+=22;
             U.Text(new Rect(ix,y,iw,40),lost?"Match ended":won?"Match won":defeat?"Match lost":"Match ended",30,U.A(won||defeat?tone:NativeCyberTheme.Ink(),enter),TextAnchor.MiddleLeft,bold:true,tracking:-.035f,glow:U.A(tone,.25f*enter));y+=50;
             U.Text(new Rect(ix,y,iw,40),lost?(networkStatus.Length>0?networkStatus:"The host disconnected."):match.Result,16,NativeCyberTheme.Muted(enter),TextAnchor.UpperLeft,wrap:true);y+=60;
-            U.Text(new Rect(ix,y,iw,20),"SETS WON",12,NativeCyberTheme.Muted(enter),TextAnchor.MiddleCenter,mono:true,tracking:.12f);y+=24;
+            U.Text(new Rect(ix,y,iw,20),match.DeathmatchTarget>0?(match.Teams?"TEAM KILLS":"KILLS"):"SETS WON",12,NativeCyberTheme.Muted(enter),TextAnchor.MiddleCenter,mono:true,tracking:.12f);y+=24;
             foreach(var p in players){var r=new Rect(ix,y+12,iw,56);bool mine=p.id==me.id;NativeHudChrome.Cut(r,NativeCyberTheme.Indigo(.92f*enter),NativeHudCyber.CardCut);NativeHudChrome.Outline(r,mine?NativeCyberTheme.Cyan(.8f*enter):NativeCyberTheme.Edge(enter),NativeHudCyber.CardCut);
                 U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.name+(mine?" · YOU":""),15,NativeCyberTheme.Ink(enter),TextAnchor.MiddleLeft);U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.score.ToString(),15,mine?NativeCyberTheme.Cyan(enter):NativeCyberTheme.Ink(enter),TextAnchor.MiddleRight,bold:true,mono:true);y+=68;}
             U.Text(new Rect(ix,y+8,iw,20),me.chips.Values.Sum()+" CHIPS INSTALLED · BUILD COMPLETE",13,NativeCyberTheme.Muted(enter),TextAnchor.MiddleCenter,mono:true);y+=40+24;
