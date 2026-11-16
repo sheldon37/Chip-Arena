@@ -36,9 +36,9 @@ namespace ChipArena.UnityConversion
                 if(!match.Start())throw new InvalidOperationException("Expedition arena could not start.");
                 expeditionM1Layout=arena.LoadExpeditionM1Layout(layoutText,expeditionHorde);
                 // Three times the original 12-kill preview quota before each instance boss.
-                var run=NativeExpedition.Create("m1-"+Guid.NewGuid().ToString("N"),expeditionM1Layout.world,account.Access.AccountId,seat.spec,NativeMatch.NewSeed(),
+                var run=NativeExpedition.Create("m1-"+Guid.NewGuid().ToString("N"),expeditionM1Layout.world,account.Access.AccountId,seat.SelectedWeapon,NativeMatch.NewSeed(),
                     expeditionM1Layout.instances.Select(id=>new ExpeditionInstance{id=id,target=36}).ToArray(),deploymentBundle?.Mutators);
-                foreach(var guest in party)if(!run.Join(guest.Seat.access.AccountId,guest.Seat.spec))throw new InvalidOperationException("Party member could not join the run.");
+                foreach(var guest in party)if(!run.Join(guest.Seat.access.AccountId,guest.Seat.SelectedWeapon))throw new InvalidOperationException("Party member could not join the run.");
                 var session=CreateExpeditionSession(run);
                 expeditionDirector=new ExpeditionDirector(session,expeditionM1Layout,id=>arena?.Pilots.FirstOrDefault(p=>p.Seat.access?.AccountId==id) is NativePilot p?NativeArena.Vec(p.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight):(V3?)null,
                     (a,b)=>arena.ExpeditionVisible(a,b),100,NativeReviveMachine.Price,60);

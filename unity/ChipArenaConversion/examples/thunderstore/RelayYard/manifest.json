@@ -1,0 +1,7 @@
+{
+  "name": "RelayYard",
+  "version_number": "1.0.0",
+  "website_url": "https://github.com/sheldon37/Chip-Arena",
+  "description": "Example custom arena, selectable Relay Saber, attack animation and signature chip.",
+  "dependencies": []
+}

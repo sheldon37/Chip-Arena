@@ -50,6 +50,22 @@ internal static class MovementModsChecks
         bad=Pack("bad");bad.Pack.chips[0].mechanic="custom-script";Reject(()=>NativeMods.Apply(clean,0,new[]{bad}),"scripts blocked");
         var pinball=Content();NativeMods.Apply(pinball,NativeMods.Pinball,Array.Empty<NativeLoadedPack>());Check(pinball.baseStats.Single(s=>s.name=="impulse").value==2,"pinball modifier");
         var extreme=Content();var stress=Pack("stress");stress.Pack.chips=Enumerable.Range(0,64).Select(i=>new ContentChip{id="boost-"+i,name="Boost",description="Stress",rarity="common",max=10,tags=new[]{"all"},effects=Enumerable.Range(0,6).Select(_=>NativeMovementContent.Effect("damage","mul",3)).ToArray()}).ToArray();NativeMods.Apply(extreme,0,new[]{stress});var extremeHeld=extreme.chips.Where(c=>c.id.StartsWith("stress:")).ToDictionary(c=>c.id,c=>10);Check(NativeContentRules.Stats(extreme,"pistol",extremeHeld)["damage"]==1000000,"legal pack combinations stay finite");
+        var selected=Content();
+        var saber=selected.Weapon("sword").Variant("mod.relay-yard.relay-saber","Relay Saber","relay-yard.relay");
+        selected.weapons=selected.weapons.Concat(new[]{saber}).ToArray();
+        var signature=Pack("relay-yard");
+        var sig=signature.Pack.chips[0];sig.uniqueWeapon="relay-yard.relay";sig.tags=new[]{"melee"};
+        NativeMods.Apply(selected,0,new[]{signature});
+        bool HasSignature(string id)=>NativeContentRules.Eligible(selected,id,new Dictionary<string,int>()).Any(c=>c.id=="relay-yard:hops");
+        Check(HasSignature(saber.id)&&!HasSignature("sword")&&!HasSignature("pistol"),"unique chips require the selected family");
+        var seat=new NativeSeat{spec=saber.id};selected.NormalizeSelection(seat);selected.NormalizeSelection(seat);
+        Check(seat.spec=="sword"&&seat.SelectedWeapon==saber.id&&seat.motion==saber.id,"combat kit and selected identity survive reset");
+        Check(selected.CleanMotion(seat.motion,"sword")==saber.id&&selected.CleanMotion(seat.motion,"pistol")=="","guest only accepts matching selection and combat base");
+        seat.spec="pistol";selected.NormalizeSelection(seat);Check(seat.SelectedWeapon=="pistol","switching kits clears stale animation");
+        var fixture=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"examples/thunderstore/RelayYard/chiparena.pack.json"))).RootElement;
+        var arena=JsonSerializer.Deserialize<ContentMap>(fixture.GetProperty("maps")[0].GetProperty("map").GetRawText(),new JsonSerializerOptions{IncludeFields=true});
+        arena.id="mod.relay-yard."+arena.id;arena.unity=true;NativeMapRules.Validate(arena);
+        Check(NativeMapRules.Selection(selected.WithGeneratedMap(arena),arena.id)==arena.id,"example arena selectable");
         JumpSimulationChecks.Run(Content());
         Console.WriteLine("PASS movement chips/mod packs: "+checks+" checks plus existing jump simulation suite");
     }

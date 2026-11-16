@@ -37,6 +37,8 @@ chip-scaled grounded jump speed. Existing jump animations are reused.
 Rules compose with chips and existing stat caps. NPC minions and environmental
 physics are not globally rescaled. All rules default off.
 
+For community arenas, weapon selections and animations, see [Community content](COMMUNITY-CONTENT.md).
+
 ## External packs
 
 Use **Open Mods folder** in Settings. It is in the persistent player-data

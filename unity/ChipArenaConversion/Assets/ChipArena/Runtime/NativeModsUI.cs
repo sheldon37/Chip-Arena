@@ -10,6 +10,17 @@ namespace ChipArena.UnityConversion
         private bool activeRoundsCardsPlus;private string[] activeRoundsPacks=Array.Empty<string>();
         private string modsError="",modsFingerprint="Vanilla";private string[] modsFiles=Array.Empty<string>();private int activeModRules;private string[] activeChipPacks=Array.Empty<string>();
         private const string ModsHelp="Chip Arena JSON chip packs, schema 1\nUse Main menu > Mods > Create example chip pack. Enable the file and restart. Share the exact JSON with friends; they must enable the same rules and packs. No code, DLLs or automatic downloads.\nPack IDs beginning rounds- are reserved for bundled adaptations. Pack/chip IDs: 2-24 lowercase letters/digits/hyphens, starting with a letter. Version: major.minor.patch. Dependencies: requires [pack-id@version]. Runtime chip IDs: pack-id:chip-id.\n16 enabled packs, 64 external chips total, 128 KiB/file. Ordinary rarities; tags all/melee/ranged/magic/projectile/roll. 1-10 stacks, 1-6 effects/chip.\nStats: extraAirJumps, speed, jumpPower, playerGravity, rollDistance, rollSpeed, rollCost, staminaRegen, maxStamina, dashCooldown, bounces, impulse, projectileSpeed, projectileSize, attackRate, damage, hp, knockbackTaken.\nEffects: add 0-100, mul 0.25-3. extraAirJumps and bounces require add with a whole number 0-6. Optional author at pack or chip level (chip overrides pack), up to 48 plain-text characters. No set, mechanic or excludes. Names up to 48 characters; descriptions up to 240.\nAir jumps add to the weapon's natural budget, capped at 6. Speed caps at 2.5x; gravity at 0.1-3x; jump power at 0.1-2.5x. Invalid enabled packs block hosting/joining; disable and restart. Selections and packs persist across game updates.\n";
+        private int communityCount;
+        private bool communityDisabled;
+        private string CommunityRoot()
+        {
+            string[] args=Environment.GetCommandLineArgs();
+            int index=Array.IndexOf(args,"--chiparena-mods");
+            if(index<0)return Path.Combine(ModsDirectory,"Community");
+            if(index+1>=args.Length||!Path.IsPathRooted(args[index+1])||!Directory.Exists(args[index+1]))
+                throw new ArgumentException("--chiparena-mods requires an existing absolute package directory");
+            return Path.GetFullPath(args[index+1]);
+        }
         private string ModsDirectory=>Path.Combine(NativeUserDataPath,"Mods");
         private bool ModsReady{get{if(modsError.Length==0)return true;networkStatus="Mods could not be loaded. Check Main menu > Mods, then restart.";return false;}}
         private void LoadMods()
@@ -33,8 +44,14 @@ namespace ChipArena.UnityConversion
                     }
                 }
                 modsFingerprint=NativeMods.Apply(content,activeModRules,packs);if(activeRoundsCardsPlus||activeRoundsPacks.Length>0)modsFingerprint=content.contentRevision;
+                communityDisabled=prefs.disableCommunityContent;
+                if(!communityDisabled)
+                {
+                    content=NativeCommunityPacks.Load(content,CommunityRoot(),out communityCount);
+                    if(communityCount>0)modsFingerprint=content.contentRevision;
+                }
             }
-            catch(Exception e)when(e is IOException||e is UnauthorizedAccessException||e is ArgumentException||e is InvalidOperationException){modsError=e.Message;Debug.LogWarning("Mods: "+modsError);}
+            catch(Exception e)when(e is InvalidDataException||e is IOException||e is UnauthorizedAccessException||e is ArgumentException||e is InvalidOperationException){modsError=e.Message;Debug.LogWarning("Mods: "+modsError);}
         }
         private void ScanMods()=>modsFiles=Directory.GetFiles(ModsDirectory,"*.json",SearchOption.TopDirectoryOnly).Select(Path.GetFileName).OrderBy(x=>x,StringComparer.Ordinal).Take(64).ToArray();
         private void ModsScreen(float age)
@@ -45,7 +62,7 @@ namespace ChipArena.UnityConversion
         }
         private void ModsBody()
         {
-            Field("Mods");Fine("Active: "+(modsFingerprint=="Vanilla"?"Vanilla":modsFingerprint.Substring(0,12))+". Players must use the same rules and exact chip-pack files to join.");
+            Field("Mods");Fine("Active: "+(modsFingerprint=="Vanilla"?"Vanilla":modsFingerprint.Substring(0,12))+". Players must use the same rules and exact installed content to join.");
             Fine("Selections apply after restarting Chip Arena. Packs add chips to draft and PvE offers; they do not grant chips immediately.");
             if(modsError.Length>0)Fine("Load error: "+modsError);
             GUILayout.Label("Gameplay modifiers",small);int flags=prefs.modRules;
@@ -56,12 +73,17 @@ namespace ChipArena.UnityConversion
             if(rounds!=prefs.roundsCardsPlus){prefs.roundsCardsPlus=rounds;Save();}
             var bundled=new HashSet<string>(prefs.roundsPacks??Array.Empty<string>(),StringComparer.Ordinal);
             foreach(string id in NativeRoundsPacks.Ids.Concat(bundled).Distinct().ToArray()){bool was=bundled.Contains(id),on=NativeControllerPointer.Toggle(was,NativeRoundsPacks.Label(id)+(NativeRoundsPacks.Ids.Contains(id)?"":" (unavailable)"));if(was!=on){if(on)bundled.Add(id);else bundled.Remove(id);prefs.roundsPacks=bundled.OrderBy(x=>x,StringComparer.Ordinal).ToArray();Save();}}
+            GUILayout.Label("Community maps and weapons",small);
+            Fine(communityCount+" active content packs. Use Mods/Community or launch with a manager profile. Restart after changing installed content.");
+            bool enabled=NativeControllerPointer.Toggle(!prefs.disableCommunityContent,"Load installed community content");
+            if(enabled==prefs.disableCommunityContent){prefs.disableCommunityContent=!enabled;Save();}
+            if(communityDisabled!=prefs.disableCommunityContent)Fine("Restart required to apply the community content setting.");
             GUILayout.Label("External chip packs",small);bool changed=flags!=prefs.modRules;prefs.modRules=flags;var selected=new HashSet<string>(prefs.chipPacks??Array.Empty<string>(),StringComparer.Ordinal);
             foreach(string file in modsFiles.Concat(selected).Distinct().OrderBy(x=>x,StringComparer.Ordinal).ToArray())
             {bool old=selected.Contains(file),on=NativeControllerPointer.Toggle(old,file+(modsFiles.Contains(file)?"":" (missing)"));if(old!=on){changed=true;if(on)selected.Add(file);else selected.Remove(file);}}
             if(changed){prefs.chipPacks=selected.OrderBy(x=>x,StringComparer.Ordinal).ToArray();Save();}
             if(!bundled.SetEquals(activeRoundsPacks)||prefs.roundsCardsPlus!=activeRoundsCardsPlus||prefs.modRules!=activeModRules||!selected.SetEquals(activeChipPacks))Fine("Restart required to apply these selections.");
-            if(NativeControllerPointer.Button("Disable all mods for next launch",button)){prefs.roundsPacks=Array.Empty<string>();prefs.roundsCardsPlus=false;prefs.modRules=0;prefs.chipPacks=Array.Empty<string>();Save();}
+            if(NativeControllerPointer.Button("Disable all mods for next launch",button)){prefs.disableCommunityContent=true;prefs.roundsPacks=Array.Empty<string>();prefs.roundsCardsPlus=false;prefs.modRules=0;prefs.chipPacks=Array.Empty<string>();Save();}
             if(NativeControllerPointer.Button("Open Mods folder",button))Application.OpenURL(new Uri(ModsDirectory+Path.DirectorySeparatorChar).AbsoluteUri);
             if(NativeControllerPointer.Button("Create example chip pack",button))
             {try{string path=Path.Combine(ModsDirectory,"example-mobility.json");var pack=new NativeChipPack{schema=1,id="example-mobility",name="Example Mobility",version="1.0.0",requires=Array.Empty<string>(),chips=new[]{new ContentChip{id="hop-drive",name="Hop Drive",description="+1 extra mid-air jump and +8% movement speed.",rarity="rare",max=2,tags=new[]{"all"},effects=new[]{NativeMovementContent.Effect("extraAirJumps","add",1),NativeMovementContent.Effect("speed","mul",1.08)}}}};using(var stream=new FileStream(path,FileMode.CreateNew,FileAccess.Write))using(var writer=new StreamWriter(stream))writer.Write(JsonUtility.ToJson(pack,true));ScanMods();networkStatus="Example created; enable it and restart to use it.";}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){networkStatus=e.Message;}}

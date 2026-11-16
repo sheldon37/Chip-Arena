@@ -10,13 +10,20 @@ namespace ChipArena.UnityConversion
     {
         public string id,name,@class,description,secondary; public bool devOnly;
         // Missing fields preserve legacy simulated shots and their 3 s / 160 m budgets.
+        [NonSerialized] public string combatBase,uniqueChipId;
+        public ContentWeapon Variant(string key,string label,string unique)
+        {
+            var copy=(ContentWeapon)MemberwiseClone();
+            copy.combatBase=id;copy.id=key;copy.name=label;copy.uniqueChipId=unique;
+            return copy;
+        }
         public string projectileMode;public double gravityMultiplier=1,projectileLifetime,projectileRange,projectileImpactSpeed;
         public int projectileBounces;public double projectileBounceRetention=1;
         public double damage,interval,speed,gravity,range,impulse,ammo,reload,cost,spread,windup,arc,secondaryCooldown,secondaryCost,color,burn,blast,drain,chain,shotRadius,weight;
     }
     [Serializable] public sealed class ChipEffect { public string stat,op;public double value; }
     [Serializable] public sealed class ContentChip
-    { public string id,name,description,rarity,icon,mechanic,author,sourcePack,sourceCard;public string[] tags,excludes;public int max;public ChipEffect[] effects; }
+    { public string id,name,description,rarity,icon,mechanic,author,sourcePack,sourceCard,uniqueWeapon;public string[] tags,excludes;public int max;public ChipEffect[] effects; }
     [Serializable] public sealed class RarityData { public string id,name,color; public double weight,leetWeight; }
     [Serializable] public sealed class ExclusionData { public string spec; public string[] ids; }
     [Serializable] public sealed class ExclusiveOdds { public string spec;public int guaranteed;public double chance; }
@@ -48,6 +55,19 @@ namespace ChipArena.UnityConversion
         {
             if(generated==null||maps.Any(m=>m.id==generated.id))throw new ArgumentException("Generated map must have a fresh id.");
             var copy=(ConversionContent)MemberwiseClone();copy.maps=maps.Concat(new[]{generated}).ToArray();return copy;
+        }
+        public ConversionContent CopyCatalog()=>(ConversionContent)MemberwiseClone();
+        public string CleanMotion(string motion,string spec)
+        {
+            if(motion!=null&&motion.StartsWith("mod.",StringComparison.Ordinal)&&weapons.Any(w=>w.id==motion&&w.combatBase==spec))return motion;
+            return NativeDevMotions.Clean(motion,spec);
+        }
+        public void NormalizeSelection(NativeSeat seat)
+        {
+            var weapon=Weapon(seat.spec);
+            if(weapon.combatBase!=null){seat.motion=seat.spec;seat.spec=weapon.combatBase;}
+            else if(NativeDevMotions.Is(seat.spec))NativeDevMotions.Normalize(seat);
+            else seat.motion=CleanMotion(seat.motion,seat.spec);
         }
         public ContentWeapon Weapon(string id) {foreach(var x in weapons)if(x.id==id)return x;throw new ArgumentException("Unknown weapon: "+id);}
         public ContentChip Chip(string id) {foreach(var x in chips)if(x.id==id)return x;throw new ArgumentException("Unknown chip: "+id);}
@@ -117,15 +137,15 @@ namespace ChipArena.UnityConversion
         }
         public static List<ContentChip> Eligible(ConversionContent data,string spec,IReadOnlyDictionary<string,int> held,string abilityLoadout=null)
         {
-            var weapon=data.Weapon(spec);var tags=new HashSet<string>{"all",weapon.@class};if(spec!="ansatsuken")tags.Add("roll");
-            if(new[]{"leet","ansatsuken","emperor","siren",NativeBombs.Spec,NativeTopDog.Spec,NativeGlaive.Spec,NativeKatana.Spec,NativeFangs.Spec}.Contains(spec))tags.Add(spec);
+            var weapon=data.Weapon(spec);string unique=weapon.uniqueChipId;spec=weapon.combatBase??spec;var tags=new HashSet<string>{"all",weapon.@class};if(spec!="ansatsuken")tags.Add("roll");
+            if(new[]{"leet","ansatsuken","emperor","siren",NativeBombs.Spec,NativeTopDog.Spec,NativeGlaive.Spec,NativeKatana.Spec,NativeFangs.Spec}.Contains(spec)&&(weapon.combatBase==null||unique==spec))tags.Add(spec);
             if(weapon.@class!="melee")tags.Add("projectile");if(weapon.ammo>0)tags.Add("gun");
             if(!weapon.devOnly&&(weapon.@class=="ranged"||weapon.@class=="magic"))
             {tags.Add("ability");if(weapon.@class=="magic"){tags.Add("spellcraft");tags.Add("spell-"+spec);}else tags.Add("gunplay");}
             bool Has(string id)=>held.TryGetValue(id,out int n)&&n>0;
             var blocked=new HashSet<string>(data.chips.Where(c=>Has(c.id)&&c.excludes!=null).SelectMany(c=>c.excludes));
             var excluded=Array.Find(data.incompatibilities,x=>x.spec==spec);
-            return data.chips.Where(c=>(c.tags.Any(tags.Contains)||NativeAbilityChips.Is(c.id))&&(abilityLoadout==null||NativeAbilityChipRules.Slotted(data,spec,abilityLoadout,c.id))&&(!held.TryGetValue(c.id,out int n)||n<c.max)&&!blocked.Contains(c.id)&&!(c.excludes?.Any(Has)??false)&&!(excluded?.ids.Contains(c.id)??false)).ToList();
+            return data.chips.Where(c=>(string.IsNullOrEmpty(c.uniqueWeapon)||c.uniqueWeapon==(weapon.combatBase==null?spec:unique))&&(c.tags.Any(tags.Contains)||NativeAbilityChips.Is(c.id))&&(abilityLoadout==null||NativeAbilityChipRules.Slotted(data,spec,abilityLoadout,c.id))&&(!held.TryGetValue(c.id,out int n)||n<c.max)&&!blocked.Contains(c.id)&&!(c.excludes?.Any(Has)??false)&&!(excluded?.ids.Contains(c.id)??false)).ToList();
         }
         public static List<string> Offers(ConversionContent data,string spec,IReadOnlyDictionary<string,int> held,Func<double> random,int count=6,Func<ContentChip,bool> filter=null,Dictionary<string,double> weights=null,bool exclusives=true,string abilityLoadout=null)
         {
@@ -142,6 +162,7 @@ namespace ChipArena.UnityConversion
                 var choices=abilityPool.Where(c=>c.rarity==tier.id).ToArray();var pick=choices[Math.Min(choices.Length-1,(int)(Clamp(random(),0,.999999999)*choices.Length))];result.Add(pick.id);pool.Remove(pick);
             }
             // Signature cards keep their own rarity for presentation and share one tier roll per weapon.
+            var selected=data.Weapon(spec);spec=selected.combatBase==null?spec:selected.uniqueChipId;
             string signatureTier=spec=="emperor"?"mishima":spec=="leet"?"l44t":spec;
             var uncommon=Array.Find(data.rarities,r=>r.id=="uncommon");
             double TierWeight(RarityData tier)

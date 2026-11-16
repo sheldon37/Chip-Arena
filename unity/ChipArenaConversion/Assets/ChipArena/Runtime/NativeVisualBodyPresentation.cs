@@ -201,9 +201,12 @@ namespace ChipArena.UnityConversion
             var pose=rig.Pose;pose.World();
             bool roll=a.Rolling(time),juggle=NativeJugglePose.Active(a.JuggleUntil,time);
             // (While the pack's clips covered the whole body last frame they overwrite the arms: no relaxing them.)
-            var held=VisualBodyBind(body,rig,a,time,pose,a.Grounded&&!roll&&!juggle,roll||juggle,body.Motion!=null&&body.Motion.Weight>=1?VisualArms.Reach:VisualArms.Live);
-            VisualStridePose(body,rig,a,time,roll,juggle);
-            VisualMotionPose(body,rig,a,time);
+            var held=VisualBodyBind(body,rig,a,time,pose,a.Grounded&&!roll&&!juggle,roll||juggle,!rig.CommunityPoseActive&&body.Motion!=null&&body.Motion.Weight>=1?VisualArms.Reach:VisualArms.Live);
+            if(!rig.CommunityPoseActive)
+            {
+                VisualStridePose(body,rig,a,time,roll,juggle);
+                VisualMotionPose(body,rig,a,time);
+            }
             VisualHandFit(body,rig,held);
             VisualBigHead(body);
             HotDogJiggle(body);

@@ -91,6 +91,7 @@ namespace ChipArena.UnityConversion
             {materials[definition.id]=new Material(shader){color=ColorOf(definition.id=="foundation"?map.floor:definition.color)};surfaces[definition.id]=new PhysicsMaterial(definition.id){dynamicFriction=definition.friction,staticFriction=definition.friction,bounciness=0};}
             if(!surfaces.ContainsKey("pilot"))surfaces["pilot"]=new PhysicsMaterial("Pilot friction"){dynamicFriction=0,staticFriction=0,bounciness=0,frictionCombine=PhysicsMaterialCombine.Minimum};
             Structures=new NativeStructureState(map);foreach(var block in map.blocks)AddProp(block);
+            NativeCommunityPacks.BuildGeometry(MapId,root.transform,materials);
             BuildCutExitCollision();NameWardPanels();PrepareNavigation();
             for(int i=0;i<Match.Seats.Count;i++)SpawnPilot(Match.Seats[i],i);
             TrainingInitialize();Physics.SyncTransforms();
@@ -99,7 +100,7 @@ namespace ChipArena.UnityConversion
         private NativePilot SpawnPilot(NativeSeat seat,int index)
         {
                 // A DEV animation class plays its base class, kept as the seat's motion (Core NativeDevMotions).
-                NativeDevMotions.Normalize(seat);
+                Content.NormalizeSelection(seat);
                 var stats=NativeContentRules.Stats(Content,seat.spec,seat.chips);if(!seat.AuthorityBoss)NativeExpeditionMutators.PilotStats(ActiveMutators,stats,seat.spec);var weapon=Content.Weapon(seat.spec);
                 var obj=new GameObject(seat.name);obj.layer=ActorLayer;obj.transform.SetParent(root.transform);var spawn=NativeMapRules.Spawn(Content,Map,Match.Seats,index,Match.Teams);obj.transform.position=Vec(spawn.pos);
                 var capsule=obj.AddComponent<CapsuleCollider>();capsule.radius=NativeLocomotionRules.Radius;capsule.height=2*NativeLocomotionRules.HalfHeight;capsule.sharedMaterial=surfaces["pilot"];

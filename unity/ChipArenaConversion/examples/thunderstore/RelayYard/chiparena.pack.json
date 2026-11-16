@@ -1,0 +1,444 @@
+{
+  "schema": 1,
+  "id": "relay-yard",
+  "version": "1.0.0",
+  "maps": [
+    {
+      "map": {
+        "id": "yard",
+        "name": "Relay Yard",
+        "tag": "Open yard",
+        "theme": "industrial",
+        "look": "factory",
+        "sky": 3425877,
+        "floor": 3423815,
+        "accent": 15440222,
+        "rotation": false,
+        "bounds": {
+          "minX": -14,
+          "maxX": 14,
+          "minZ": -11,
+          "maxZ": 11,
+          "ceiling": 15,
+          "killY": -8
+        },
+        "spawns": {
+          "ffa": [
+            {
+              "pos": {
+                "x": -10,
+                "y": 1,
+                "z": -7
+              },
+              "yaw": 90
+            },
+            {
+              "pos": {
+                "x": -10,
+                "y": 1,
+                "z": -2
+              },
+              "yaw": 90
+            },
+            {
+              "pos": {
+                "x": -10,
+                "y": 1,
+                "z": 2
+              },
+              "yaw": 90
+            },
+            {
+              "pos": {
+                "x": -10,
+                "y": 1,
+                "z": 7
+              },
+              "yaw": 90
+            },
+            {
+              "pos": {
+                "x": 10,
+                "y": 1,
+                "z": -7
+              },
+              "yaw": -90
+            },
+            {
+              "pos": {
+                "x": 10,
+                "y": 1,
+                "z": -2
+              },
+              "yaw": -90
+            },
+            {
+              "pos": {
+                "x": 10,
+                "y": 1,
+                "z": 2
+              },
+              "yaw": -90
+            },
+            {
+              "pos": {
+                "x": 10,
+                "y": 1,
+                "z": 7
+              },
+              "yaw": -90
+            }
+          ],
+          "teams": [
+            {
+              "side": 0,
+              "points": [
+                {
+                  "pos": {
+                    "x": -10,
+                    "y": 1,
+                    "z": -7
+                  },
+                  "yaw": 90
+                },
+                {
+                  "pos": {
+                    "x": -10,
+                    "y": 1,
+                    "z": -2
+                  },
+                  "yaw": 90
+                },
+                {
+                  "pos": {
+                    "x": -10,
+                    "y": 1,
+                    "z": 2
+                  },
+                  "yaw": 90
+                },
+                {
+                  "pos": {
+                    "x": -10,
+                    "y": 1,
+                    "z": 7
+                  },
+                  "yaw": 90
+                }
+              ]
+            },
+            {
+              "side": 1,
+              "points": [
+                {
+                  "pos": {
+                    "x": 10,
+                    "y": 1,
+                    "z": -7
+                  },
+                  "yaw": -90
+                },
+                {
+                  "pos": {
+                    "x": 10,
+                    "y": 1,
+                    "z": -2
+                  },
+                  "yaw": -90
+                },
+                {
+                  "pos": {
+                    "x": 10,
+                    "y": 1,
+                    "z": 2
+                  },
+                  "yaw": -90
+                },
+                {
+                  "pos": {
+                    "x": 10,
+                    "y": 1,
+                    "z": 7
+                  },
+                  "yaw": -90
+                }
+              ]
+            }
+          ]
+        },
+        "blocks": [
+          {
+            "id": "yard-floor",
+            "pos": {
+              "x": 0,
+              "y": -0.3,
+              "z": 0
+            },
+            "size": {
+              "x": 28,
+              "y": 0.6,
+              "z": 22
+            },
+            "material": "foundation",
+            "role": "static",
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            }
+          }
+        ],
+        "nav": {
+          "nodes": [
+            {
+              "id": "n0",
+              "pos": {
+                "x": -10,
+                "y": 0.9,
+                "z": -7
+              },
+              "safe": true
+            },
+            {
+              "id": "n1",
+              "pos": {
+                "x": -10,
+                "y": 0.9,
+                "z": -2
+              },
+              "safe": true
+            },
+            {
+              "id": "n2",
+              "pos": {
+                "x": -10,
+                "y": 0.9,
+                "z": 2
+              },
+              "safe": true
+            },
+            {
+              "id": "n3",
+              "pos": {
+                "x": -10,
+                "y": 0.9,
+                "z": 7
+              },
+              "safe": true
+            },
+            {
+              "id": "n4",
+              "pos": {
+                "x": 10,
+                "y": 0.9,
+                "z": -7
+              },
+              "safe": true
+            },
+            {
+              "id": "n5",
+              "pos": {
+                "x": 10,
+                "y": 0.9,
+                "z": -2
+              },
+              "safe": true
+            },
+            {
+              "id": "n6",
+              "pos": {
+                "x": 10,
+                "y": 0.9,
+                "z": 2
+              },
+              "safe": true
+            },
+            {
+              "id": "n7",
+              "pos": {
+                "x": 10,
+                "y": 0.9,
+                "z": 7
+              },
+              "safe": true
+            }
+          ],
+          "links": [
+            {
+              "id": "link-0-1",
+              "a": "n0",
+              "b": "n1",
+              "kind": "walk"
+            },
+            {
+              "id": "link-1-2",
+              "a": "n1",
+              "b": "n2",
+              "kind": "walk"
+            },
+            {
+              "id": "link-2-3",
+              "a": "n2",
+              "b": "n3",
+              "kind": "walk"
+            },
+            {
+              "id": "link-3-7",
+              "a": "n3",
+              "b": "n7",
+              "kind": "walk"
+            },
+            {
+              "id": "link-7-6",
+              "a": "n7",
+              "b": "n6",
+              "kind": "walk"
+            },
+            {
+              "id": "link-6-5",
+              "a": "n6",
+              "b": "n5",
+              "kind": "walk"
+            },
+            {
+              "id": "link-5-4",
+              "a": "n5",
+              "b": "n4",
+              "kind": "walk"
+            },
+            {
+              "id": "link-4-0",
+              "a": "n4",
+              "b": "n0",
+              "kind": "walk"
+            }
+          ]
+        },
+        "hazards": [],
+        "segments": [],
+        "ramps": [],
+        "pilotBlocks": []
+      },
+      "meshes": [
+        {
+          "material": "brick",
+          "solid": true,
+          "vertices": [
+            {
+              "x": -3,
+              "y": 0,
+              "z": -2
+            },
+            {
+              "x": 3,
+              "y": 0,
+              "z": -2
+            },
+            {
+              "x": 3,
+              "y": 0,
+              "z": 2
+            },
+            {
+              "x": -3,
+              "y": 0,
+              "z": 2
+            },
+            {
+              "x": 0,
+              "y": 2,
+              "z": 0
+            }
+          ],
+          "triangles": [
+            0,
+            4,
+            1,
+            1,
+            4,
+            2,
+            2,
+            4,
+            3,
+            3,
+            4,
+            0
+          ]
+        }
+      ]
+    }
+  ],
+  "weapons": [
+    {
+      "id": "relay-saber",
+      "name": "Relay Saber",
+      "category": "melee",
+      "baseWeapon": "sword",
+      "unique": "relay",
+      "animations": [
+        {
+          "action": "attack",
+          "seconds": 0.55,
+          "tracks": [
+            {
+              "bone": "right-shoulder",
+              "rotations": [
+                {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0.1736482,
+                  "w": 0.9848078
+                },
+                {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0.6087614,
+                  "w": 0.7933533
+                },
+                {
+                  "x": 0,
+                  "y": 0,
+                  "z": -0.4617486,
+                  "w": 0.8870108
+                },
+                {
+                  "x": 0,
+                  "y": 0,
+                  "z": -0.1305262,
+                  "w": 0.9914449
+                },
+                {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0.1736482,
+                  "w": 0.9848078
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "chips": [
+    {
+      "id": "coil-edge",
+      "name": "Coil Edge",
+      "description": "Relay weapons deal 10% more damage.",
+      "rarity": "uncommon",
+      "max": 2,
+      "tags": [
+        "melee"
+      ],
+      "uniqueWeapon": "relay-yard.relay",
+      "effects": [
+        {
+          "stat": "damage",
+          "op": "mul",
+          "value": 1.1
+        }
+      ]
+    }
+  ]
+}
