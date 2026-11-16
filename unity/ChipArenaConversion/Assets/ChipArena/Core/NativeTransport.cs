@@ -29,7 +29,8 @@ namespace ChipArena.UnityConversion
         private readonly int receiveLimit;private int reliableCount,receivedCount,reliableBytes;private readonly Task reader,writer;
         public NativeConnection(TcpClient socket,int inboundLimit=MaxFrame)
         {client=socket;client.NoDelay=true;receiveLimit=inboundLimit;stream=client.GetStream();reader=Task.Run(ReadLoop);writer=Task.Run(WriteLoop);}
-        public NativeConnection(Stream transport,int inboundLimit=MaxFrame){stream=transport;receiveLimit=inboundLimit;reader=Task.Run(ReadLoop);writer=Task.Run(WriteLoop);}
+        public ulong RemoteSteamId { get; }
+        public NativeConnection(Stream transport,int inboundLimit=MaxFrame,ulong remoteSteamId=0){RemoteSteamId=remoteSteamId;stream=transport;receiveLimit=inboundLimit;reader=Task.Run(ReadLoop);writer=Task.Run(WriteLoop);}
         public static async Task<NativeConnection> Connect(string host,int port,CancellationToken cancellation)
         {
             var socket=new TcpClient();try{var connect=socket.ConnectAsync(host,port);var timeout=Task.Delay(8000,cancellation);if(await Task.WhenAny(connect,timeout).ConfigureAwait(false)!=connect)throw new TimeoutException("Connection timed out");await connect.ConfigureAwait(false);cancellation.ThrowIfCancellationRequested();return new NativeConnection(socket);}catch{socket.Dispose();throw;}

@@ -1,5 +1,7 @@
 # Windows Steam Playtest
 
+For the opt-in player-hosted Steam networking build, configure the [Steam multiplayer profile](STEAM-MULTIPLAYER.md) before building the player.
+
 For a fresh build and Steam package in one run, use `Build-Windows.cmd --steam-playtest`.
 
 After the Windows builder produces its verified native update feed, run the following from the Unity conversion project. This stages the same Unity player that the standalone updater delivers, including its build identity and compiled assets. The starter launcher and updater feed stay outside the depot.

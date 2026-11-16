@@ -87,7 +87,7 @@ namespace ChipArena.UnityConversion
         // Applied in the replay's mouse event, so the next layout pass already sees the new rows.
         private void ApplyRule(RoomOpt opt,int v,int arg)
         {
-            if(opt==RoomOpt.Online||opt==RoomOpt.Connection){if(connecting!=null||relayConnecting!=null)return;listStop?.Cancel();internetRooms=v==0;return;}
+            if(opt==RoomOpt.Online||opt==RoomOpt.Connection){if(connecting!=null||relayConnecting!=null||steamRooms!=null&&server!=null)return;listStop?.Cancel();internetRooms=v==0;return;}
             // An open guest connection changes no rules: RoomOptions is then the host's copy (or none) and SetRoomOptions
             // refuses; a guest's own team goes through the lobby's team picker.
             if(!Hosting&&server!=null)return;

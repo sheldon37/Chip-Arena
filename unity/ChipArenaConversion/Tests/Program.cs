@@ -7,6 +7,17 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--player-rooms")PlayerRoomChecks.Run().GetAwaiter().GetResult();
+            if(args.Length==1&&args[0]=="--player-rooms")
+            {
+                CloudflareChecks.Run().GetAwaiter().GetResult();
+                SocialPanelChecks.Run(ProjectRoot());
+                TransportBacklogChecks.Run(ProjectRoot());
+                ReconnectChecks.Run();
+                ExpeditionLoadingHandoffChecks.Run(ProjectRoot());
+                DeathmatchChecks.Run(ProjectRoot());
+                return 0;
+            }
             if(args.Length==0||args.Length==1&&args[0]=="--deathmatch")DeathmatchChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--deathmatch")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--weapon-chip-odds")WeaponChipOddsChecks.Run(ProjectRoot());

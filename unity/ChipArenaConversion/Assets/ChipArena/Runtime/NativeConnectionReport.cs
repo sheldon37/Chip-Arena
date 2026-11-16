@@ -116,6 +116,7 @@ namespace ChipArena.UnityConversion
             if(stageLoad.Visible)report.Append(" | ").Append(stageLoad.Kind).Append(" | ").Append(stagePlan.Step);
             if(StageGate.Waiting)report.Append(" | ready ").Append(StageGate.Ready).Append('/').Append(StageGate.Required);
             report.Append("\nLast load: ").Append(diagnosticLoad).Append("\nLast disconnect: ").Append(diagnosticDisconnect);
+            if(steamRooms!=null)report.Append("\n").Append(steamRooms.Diagnostics);
             GUIUtility.systemCopyBuffer=report.ToString();
             Notice("Diagnostics copied.");
         }
@@ -124,6 +125,7 @@ namespace ChipArena.UnityConversion
         {
             var inv=CultureInfo.InvariantCulture;var entries=new List<string>();
             entries.Add("  \"transport\": "+JsonText(TransportLabel()));entries.Add("  \"room\": "+JsonText(Online?ShownRoomCode():""));
+            if(steamRooms!=null)entries.Add("  \"steam\": "+JsonText(steamRooms.Diagnostics));
             entries.Add("  \"phase\": "+JsonText(match!=null?match.Phase.ToString().ToLowerInvariant():"lobby"));
             entries.Add("  \"players\": "+(match!=null?match.Seats.Count:InRoom?lobbySeats.Length:0).ToString(inv));
             entries.Add("  \"fps\": "+Mathf.RoundToInt(FrameRate()).ToString(inv));entries.Add("  \"simulationTickMs\": "+stepMs.ToString("0.##",inv));
@@ -231,7 +233,7 @@ namespace ChipArena.UnityConversion
             if(HostLost)return "DISCONNECTED";
             if(!Online)return arena==null?"LOCAL ENGINE":arena.Sandbox?"LOCAL SANDBOX":arena.Pve!=null?"LOCAL BOSS TEST":"LOCAL PRACTICE";
             bool lost=!Hosting&&(server==null||server.Closed),stalled=!Hosting&&!lost&&(DateTime.UtcNow-server.LastReceived).TotalSeconds>3;
-            return lost?"DISCONNECTED":!Hosting&&expeditionLoading.Active(NetworkNow)?"LOADING EXPEDITION":stalled?"CONNECTION STALLED":listener!=null?"LAN · HOST":Hosting?"ONLINE · HOST":internetRooms?"ONLINE":"LOCAL NETWORK";
+            return lost?"DISCONNECTED":!Hosting&&expeditionLoading.Active(NetworkNow)?"LOADING EXPEDITION":stalled?"CONNECTION STALLED":SteamOnline?(Hosting?"STEAM · HOST":"STEAM · GUEST"):listener!=null?"LAN · HOST":Hosting?"ONLINE · HOST":internetRooms?"ONLINE":"LOCAL NETWORK";
         }
         // The lobby pill's text with the source's " · N MS" (main.ts drawHud, mode online): the round trip from
         // ConnectionMetrics, read twice a second; rebuilt only when a part changes.
@@ -239,7 +241,7 @@ namespace ChipArena.UnityConversion
         private string shownRaw,shownCode;private bool shownOnline;
         private string ShownRoomCode()
         {
-            string raw=Hosting?roomCode:joinCode;bool online=Hosting?relayHost!=null:internetRooms;
+            string raw=Hosting?roomCode:joinCode;if(SteamOnline)return raw??"";bool online=Hosting?relayHost!=null:internetRooms;
             if(raw!=shownRaw||online!=shownOnline||shownCode==null)
             {shownRaw=raw;shownOnline=online;shownCode=raw??"";if(online&&!string.IsNullOrEmpty(raw))try{shownCode=NativeRoomCodes.Online(raw);}catch(ArgumentException){}}
             return shownCode;

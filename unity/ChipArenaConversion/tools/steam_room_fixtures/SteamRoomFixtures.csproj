@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <DefineConstants>CHIP_ARENA_STEAM</DefineConstants>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Tests/CoreTests.csproj"/>
+    <Compile Include="../../Assets/ChipArena/Runtime/ISteamPlayerRooms.cs"/>
+    <Compile Include="../../Assets/ChipArena/Runtime/SteamPlayerRooms.cs"/>
+    <Compile Include="../../Assets/ChipArena/Runtime/SteamRoomDirectory.cs"/>
+    <Compile Include="../../Assets/ChipArena/Runtime/SteamRoomSocket.cs"/>
+  </ItemGroup>
+</Project>
