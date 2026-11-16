@@ -9,14 +9,14 @@ namespace ChipArena.UnityConversion
     {
         public void ValidateRoundsCards()
         {
-            var oldChips=Content.chips;string oldRevision=Content.contentRevision;var p=Pilots[0];var held=new Dictionary<string,int>(p.Seat.chips);var oldStats=p.Stats;
+            var p=Pilots[0];var held=new Dictionary<string,int>(p.Seat.chips);var oldStats=p.Stats;
             void Check(bool yes,string why){if(!yes)throw new Exception("Native ROUNDS adaptations: "+why);}
             void Hold(string id){p.Seat.chips.Clear();p.Seat.chips[NativeRoundsCards.Prefix+id]=1;p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);}
             try
             {
-                NativeRoundsCards.Apply(Content);NativeRoundsPacks.Apply(Content,NativeRoundsPacks.Ids);
                 foreach(var chip in NativeRoundsCards.Chips().Concat(NativeRoundsPacks.Chips()))
                 {
+                    Check(Content.chips.Count(c=>c.id==chip.id)==1,"default catalog includes exactly one "+chip.id);
                     var rows=NativeChipCard.Lines(chip);Check(rows.Length==NativeChipStatText.Lines(chip).Length,"adapted stat rows reach renderer");
                     Check(ReferenceEquals(rows,NativeChipCard.Lines(chip)),"stat rows cached between draw passes");
                     Check(ImplementedChip(chip),"offered mechanics implemented: "+chip.id);
@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
                 var negative=new NativeBullet{Mods=new Dictionary<string,int>{{"corkscrew",-1}}};Check(Has(negative,"corkscrew"),"legacy negative shot modifier retained");
                 Debug.Log("PASS native ROUNDS adaptations: all 138 definitions, Unity credit codec, block phase, roll/impact fields, summon, satellites and legacy shot modifier");
             }
-            finally{Content.chips=oldChips;Content.contentRevision=oldRevision;p.Seat.chips.Clear();foreach(var kv in held)p.Seat.chips[kv.Key]=kv.Value;p.Stats=oldStats;}
+            finally{p.Seat.chips.Clear();foreach(var kv in held)p.Seat.chips[kv.Key]=kv.Value;p.Stats=oldStats;}
         }
     }
 }
