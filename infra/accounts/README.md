@@ -2,6 +2,8 @@
 
 The Cloudflare account owner administers Workers, D1, secrets, metrics and backups in their own dashboard. The only outbound dependency on the existing Site in the independent account Worker is a public room-code lookup when sending an invitation. Registration, recovery, saved pilots, privileges, XP and sessions use the independent D1 binding. Game packets never pass through this Worker.
 
+See the [hosted staging results and current bindings](STAGING-REPORT.md) before provisioning.
+
 ## Source inventory, November 16, 2026
 
 The live Site reported a successful v70 deployment at `51c0401a3d242d67df2ae113098870e6e5442ee9`. Its source repository's deployment branch is `main`. The GitHub game development base was `claude/sleepy-ritchie-g8ruhv` at `4f57b8ae7596325eaaf0ba4b478bb5348b39fc79`. GitHub's default `main` is a different branch. The live D1 overview and column metadata confirmed the 12 tables below. All seven packaged SQL migrations and the deployed schema declaration matched the GitHub base. Physical constraints, row counts and application data on production must be checked again from a consistent export. Neither a Site version nor its Git checkout contains a backup of the live database.

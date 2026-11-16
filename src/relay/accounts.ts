@@ -19,7 +19,7 @@ export async function passwordHash(password:string,salt=base64url(crypto.getRand
  if(hashes>=2)throw fail('Login is busy. Try again in a moment.',503);hashes++;
  try{return `scrypt$32768$8$3$${salt}$${base64url(await scryptAsync(password,bytes(salt),{N:32768,r:8,p:3,dkLen:32,maxmem:40*1024*1024,asyncTick:10}))}`;}finally{hashes--;}
 }
-async function passwordMatches(password:string,stored:string){const p=stored.split('$');if(p.length!==6||p.slice(0,4).join('$')!=='scrypt$32768$8$3')return false;const computed=await passwordHash(password,p[4]);return equal(bytes(computed.split('$')[5]),bytes(p[5]));}
+async function passwordMatches(password:string,stored:string,hashPassword=passwordHash){const p=stored.split('$');if(p.length!==6||p.slice(0,4).join('$')!=='scrypt$32768$8$3')return false;const computed=await hashPassword(password,p[4]);return equal(bytes(computed.split('$')[5]),bytes(p[5]));}
 async function legacyMatches(username:string,password:string,env:AuthEnv){if(!env.DEV_ACCOUNT_VERIFIER)return false;const a=JSON.parse(env.DEV_ACCOUNT_VERIFIER),key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);const actual=new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:bytes(a.salt),iterations:a.iterations},key,256));return username===a.username.toLowerCase()&&equal(actual,bytes(a.hash));}
 function access(row:any):Access{return {accountId:row.id,developer:row.developer===1,unlocks:cleanGrants(JSON.parse(row.unlocks)),flags:cleanFlags(JSON.parse(row.flags))};}
 // Native profile ids are stored by the shared service without adding them to Electron's rendering catalog.
@@ -90,6 +90,7 @@ async function issueSession(row:any,env:AuthEnv,now:number,remember:boolean,reco
  return {session,expires,account:view(row),token,recoveryCode};
 }
 export interface IndependentAccountOptions {
+ hashPassword:typeof passwordHash;
  steam:SteamConfig;
  roomExists:(code:string,now:number)=>Promise<boolean>;
 }
@@ -97,6 +98,7 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now(),indepe
  // Public bearer-token API. No cookies or ambient credentials; game hosts receive only short-lived claims.
  const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
  const response=(b:unknown,status=200)=>Response.json(b,{status,headers});
+ const hashPassword=independent?.hashPassword??passwordHash;
  if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
  try{
   if(!['GET','POST'].includes(request.method))throw fail('Method not allowed.',405);
@@ -121,25 +123,25 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now(),indepe
    let recoveryCode:string|undefined;
    if(action==='register'){
     if(row||username===reserved)throw fail('That username is unavailable.',409);
-    const hash=await passwordHash(input.password);recoveryCode=random();const id=crypto.randomUUID();
+    const hash=await hashPassword(input.password);recoveryCode=random();const id=crypto.randomUUID();
     try{await env.DB.prepare('INSERT INTO player_accounts(id,username,password,recovery,created,updated) VALUES(?,?,?,?,?,?)').bind(id,username,hash,await digest(recoveryCode),now,now).run();}catch{throw fail('That username is unavailable.',409);}
     row=await env.DB.prepare('SELECT * FROM player_accounts WHERE id=?').bind(id).first();
    }else if(action==='recover'){
     if(typeof input.recoveryCode!=='string'||input.recoveryCode.length>80)throw fail('Enter your recovery code and a new password.');
     const recovery=await digest(input.recoveryCode.trim());if(!row||!equal(encoder.encode(recovery),encoder.encode(row.recovery)))throw fail('Username or recovery code is incorrect.',401);
-    const hash=await passwordHash(input.password);recoveryCode=random();
+    const hash=await hashPassword(input.password);recoveryCode=random();
     // Atomic compare-and-swap consumes each recovery code once, even across simultaneous requests.
     const result=await env.DB.batch([env.DB.prepare('UPDATE player_accounts SET password=?,recovery=?,updated=? WHERE id=? AND recovery=?').bind(hash,await digest(recoveryCode),now,row.id,recovery),env.DB.prepare('DELETE FROM player_sessions WHERE account_id=? AND EXISTS(SELECT 1 FROM player_accounts WHERE id=? AND password=?)').bind(row.id,row.id,hash)]);
     if(!result[0].meta.changes)throw fail('This recovery code was already used.',401);
     row=await env.DB.prepare('SELECT * FROM player_accounts WHERE id=?').bind(row.id).first();
    }else{
     if(!row&&username===reserved&&await legacyMatches(username,input.password,env)){
-     const hash=await passwordHash(input.password);recoveryCode=random();const id=crypto.randomUUID();
+     const hash=await hashPassword(input.password);recoveryCode=random();const id=crypto.randomUUID();
      await env.DB.prepare('INSERT INTO player_accounts(id,username,password,recovery,developer,created,updated) VALUES(?,?,?,?,1,?,?) ON CONFLICT(username) DO NOTHING').bind(id,username,hash,await digest(recoveryCode),now,now).run();
      row=await env.DB.prepare('SELECT * FROM player_accounts WHERE username=?').bind(username).first();
      if(row.id!==id)recoveryCode=undefined;
-    }else if(!row){await passwordHash(input.password,'AAAAAAAAAAAAAAAAAAAAAA');throw fail('Username or password is incorrect.',401);}
-    if(!row||!await passwordMatches(input.password,row.password))throw fail('Username or password is incorrect.',401);
+    }else if(!row){await hashPassword(input.password,'AAAAAAAAAAAAAAAAAAAAAA');throw fail('Username or password is incorrect.',401);}
+    if(!row||!await passwordMatches(input.password,row.password,hashPassword))throw fail('Username or password is incorrect.',401);
    }
    return response(await issueSession(row,env,now,input.remember===true,recoveryCode));
   }
@@ -147,7 +149,7 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now(),indepe
   const hash=await digest(session);let row=await env.DB.prepare('SELECT a.* FROM player_accounts a JOIN player_sessions s ON s.account_id=a.id WHERE s.hash=? AND s.expires>?').bind(hash,now).first();if(!row)throw fail('Session expired. Please log in again.',401);
   if(independent&&action==='steam-link'){
    if(request.method!=='POST')throw fail('Method not allowed.',405);
-   if(typeof input.password!=='string'||input.password.length>128||!await passwordMatches(input.password,row.password))throw fail('Re-enter your current password.',401);
+   if(typeof input.password!=='string'||input.password.length>128||!await passwordMatches(input.password,row.password,hashPassword))throw fail('Re-enter your current password.',401);
    const identity=await steamIdentity(input.ticket,independent.steam);
    await consumeSteamTicket(env,identity,now);
    const result=await env.DB.batch([

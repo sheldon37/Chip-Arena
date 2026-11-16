@@ -1,3 +1,4 @@
+import {randomBytes,scryptSync} from 'node:crypto';
 import {accounts,readBody} from './accounts.js';
 import {login,type AuthEnv} from './auth.js';
 import {accountMaintenance,accountRateRequest} from './account-routing.js';
@@ -15,6 +16,13 @@ const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cac
 // Validate the signing pair once per isolate/config before accepting a write.
 // A malformed or mismatched secret must never consume a recovery code.
 let cached:{raw:string;stage:string;ready:Promise<boolean>}|undefined;
+// One native KDF invocation at a time on this isolate's JS thread. The old
+// Site uses an async JS KDF guarded by a shared counter, which can remain busy
+// after requests are interrupted. Keep the exact public v70 encoding and cost.
+async function nativePasswordHash(password:string,salt=randomBytes(16).toString('base64url')){
+ const derived=scryptSync(password,Buffer.from(salt,'base64url'),32,{N:32768,r:8,p:3,maxmem:40*1024*1024});
+ return `scrypt$32768$8$3$${salt}$${derived.toString('base64url')}`;
+}
 function keyReady(env:Env){
  const raw=env.DEV_SIGNING_KEY||'',stage=env.ACCOUNT_ENV||'';
  if(cached?.raw===raw&&cached.stage===stage)return cached.ready;
@@ -78,7 +86,7 @@ export default {async fetch(request:Request,env:Env){
    const action=path.slice('/api/accounts/'.length);
    if(!path.startsWith('/api/accounts/')||!actions.has(action))return json({error:'Unknown route.'},404);
    operation=action;
-   result=await accounts(await accountRateRequest(request,env.ACCOUNT_BRIDGE_SECRET),env,Date.now(),{steam:env,roomExists:(code,now)=>directoryHasRoom(env.ROOM_DIRECTORY_ORIGIN,code,now)});
+   result=await accounts(await accountRateRequest(request,env.ACCOUNT_BRIDGE_SECRET),env,Date.now(),{hashPassword:nativePasswordHash,steam:env,roomExists:(code,now)=>directoryHasRoom(env.ROOM_DIRECTORY_ORIGIN,code,now)});
   }
   if(result.status>=500)console.warn('account_service',{operation,status:result.status});
   return result;

@@ -8,7 +8,7 @@ const {Miniflare,convertV4MiniflareOptions}=createRequire(require.resolve('wrang
 const [work,port]=process.argv.slice(2);
 const cfg=JSON.parse(readFileSync(join(work,'wrangler.json'),'utf8'));
 const worker=new Miniflare(convertV4MiniflareOptions({
- modules:true,modulesRoot:join(work,'bundle'),scriptPath:join(work,'bundle','account-worker.js'),compatibilityDate:cfg.compatibility_date,
+ modules:true,modulesRoot:join(work,'bundle'),scriptPath:join(work,'bundle','account-worker.js'),compatibilityDate:cfg.compatibility_date,compatibilityFlags:cfg.compatibility_flags,
  bindings:cfg.vars,d1Databases:{DB:cfg.d1_databases[0].database_id},resourcePersistencePath:join(work,'.wrangler','state','v3'),
  host:'127.0.0.1',port:Number(port)
 }));

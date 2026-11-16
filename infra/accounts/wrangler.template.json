@@ -2,6 +2,7 @@
   "name": "chip-arena-accounts",
   "main": "../../src/relay/account-worker.ts",
   "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
   "observability": {
