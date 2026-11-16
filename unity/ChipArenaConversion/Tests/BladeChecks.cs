@@ -57,8 +57,8 @@ namespace ChipArena.UnityConversion
             var fr=data.Weapon(NativeFangs.Spec);Check(fr!=null&&fr.devOnly&&fr.@class=="melee"&&fr.name==NativeFangs.Name,"the Fangs are a DEV melee row");
             Check(data.abilities.Count(a=>a.spec==NativeKatana.Spec)==2&&data.Ability(NativeKatana.Spec,"q")?.id==NativeKatana.Iai&&data.Ability(NativeKatana.Spec,"e")?.id==NativeKatana.Storm,"the Katana's Q (the iai) and E (the storm)");
             Check(data.abilities.Count(a=>a.spec==NativeFangs.Spec)==5&&NativeFangs.SlotMoves.Select((m,i)=>data.Ability(NativeFangs.Spec,i==0?"q":i==1?"e":(i-1).ToString())?.id==m).Count(x=>x)==5,"the Fangs' Q, E and 1-3 (the numbered rows by key)");
-            Check(data.rarities.Any(r=>r.id==NativeKatanaChips.Tier&&r.weight==0&&r.color==NativeKatanaChips.Color)&&data.rarities.Any(r=>r.id==NativeFangsChips.Tier&&r.weight==0&&r.color==NativeFangsChips.Color),"their chip tiers, never rolled");
-            Check(data.exclusiveOdds.Any(o=>o.spec==NativeKatana.Spec&&o.guaranteed==2)&&data.exclusiveOdds.Any(o=>o.spec==NativeFangs.Spec&&o.guaranteed==2),"their chips' odds in their drafts");
+            Check(data.rarities.Any(r=>r.id==NativeKatanaChips.Tier&&r.weight==0&&r.color==NativeKatanaChips.Color)&&data.rarities.Any(r=>r.id==NativeFangsChips.Tier&&r.weight==0&&r.color==NativeFangsChips.Color),"their signature tiers and colors");
+
             Check(NativeRangedRules.KeyboardQ(data,NativeKatana.Spec,true)&&NativeRangedRules.KeyboardQ(data,NativeFangs.Spec,true),"Q is theirs");
             Check(NativeBlades.Slots(NativeKatana.Spec)==2&&NativeBlades.Slots(NativeFangs.Spec)==5&&NativeBlades.Slots("sword")==0&&NativeBlades.Is(NativeKatana.Spec)&&NativeBlades.Is(NativeFangs.Spec)&&!NativeBlades.Is(NativeGlaive.Spec),"their slots");
             // ---- the record ----

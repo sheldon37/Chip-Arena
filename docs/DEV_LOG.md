@@ -1,3 +1,7 @@
+## 2026-11-16 - Astra: weapon-exclusive chip draft odds
+
+Branch `codex/uncommon-weapon-chip-odds`, shared base `51567c16`. Signature and Uncommon each receive one equally weighted tier in ordinary rolls and use the reward's Uncommon weight in PvE. Removed guaranteed signature slots. L44T also admits Uncommon buffs in its custom draft. Existing rainbow and reward filters apply. Release-mode CoreTests compiled. Weapon odds checks passed across nine sets and 60 seeded drafts, plus ExpansionFoundation, Bombadier, GlaiveChip, TopDog and Blade checks. Windows packaging and test-channel publication pending at commit time.
+
 ## 2026-11-15 - Astra: main menu DEV grant saves
 
 Branch `codex/dev-menu-save`, based on `d53d8011`. Site v69's bundled account service accepts 14 of the Unity menu's 24 grant keys. A single unsupported grant rejects the entire save, and the pending count hid the error. Limit individual and bulk selection to the service catalog, using the verified v69 list when player search omits it. Updated service source advertises its own list. Display save errors, keep unconfirmed edits, and prevent edits during submission. Against v69 code with temporary SQLite, a mixed request returned 400 and all 14 supported grants plus VIP persisted on fresh search. 54 managed grant checks and 16 account tests passed, including saving and re-reading the updated service catalog. Windows click-through and publication unverified. Live service deployment pending owner approval.

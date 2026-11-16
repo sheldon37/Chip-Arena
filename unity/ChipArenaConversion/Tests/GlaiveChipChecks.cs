@@ -68,7 +68,7 @@ namespace ChipArena.UnityConversion
             Check(NativeChipCartridge.Known(NativeGlaiveChips.Tier)&&NativeChipCartridge.Of(NativeGlaiveChips.Tier).Crest==NativeChipCartridge.Crest.Crescent&&NativeChipCartridge.Rarity(NativeGlaiveChips.Tier)==0x4fe8ff&&NativeChipBake.HasCrest(NativeGlaiveChips.Tier),"its tier's look on the 3D chip: the tri-crescent crest");
             Check(Array.IndexOf(NativeChipCartridge.Tiers,NativeGlaiveChips.Tier)==Array.IndexOf(NativeChipCartridge.Tiers,NativeDogChips.Tier)+1&&NativeChipRanks.RarityRank(NativeGlaiveChips.Tier)<NativeChipRanks.RarityRank("boss-siren"),"its rank after the Top Dog's, before the boss relics");
             Check(NativeChipCartridge.Tiers.Count(t=>NativeChipCartridge.Of(t).Crest==NativeChipCartridge.Crest.Crescent)==1,"the crescent crest is its alone");
-            Check(data.rarities.Any(r=>r.id==NativeGlaiveChips.Tier&&r.weight==0&&r.leetWeight==0&&r.color==NativeGlaiveChips.Color)&&data.exclusiveOdds.Any(o=>o.spec==NativeGlaive.Spec&&o.guaranteed==2&&Math.Abs(o.chance-.85)<1e-9),"its rarity (never rolled) and its signature odds in the content");
+            Check(data.rarities.Any(r=>r.id==NativeGlaiveChips.Tier&&r.weight==0&&r.leetWeight==0&&r.color==NativeGlaiveChips.Color),"its signature tier and color");
             Check(data.chips.All(c=>!NativeGlaiveChips.Is(c.id)),"the rows come from the overlay");
             {
                 // The whole catalog as the game loads it (Runtime NativeStructures) with the Rounds cards and every Rounds pack on still fits the cap,
@@ -86,7 +86,7 @@ namespace ChipArena.UnityConversion
             foreach(var spec in new[]{"pistol","sword","greatsword",NativeBombs.Spec,NativeTopDog.Spec})Check(!NativeContentRules.Eligible(data,spec,held).Any(c=>NativeGlaiveChips.Is(c.id)),"nobody else is offered them: "+spec);
             {var keen=new Dictionary<string,int>{[NativeGlaiveChips.KeenEdge]=1,[NativeGlaiveChips.TwinOrbit]=1};var after=NativeContentRules.Eligible(data,NativeGlaive.Spec,keen);Check(after.Any(c=>c.id==NativeGlaiveChips.KeenEdge)&&!after.Any(c=>c.id==NativeGlaiveChips.TwinOrbit),"Keen Edge can come again, a single one cannot");}
             var rng=new Random(53);int offers=0,ours=0;for(int i=0;i<400;i++){var picks=NativeContentRules.Offers(data,NativeGlaive.Spec,held,rng.NextDouble,3);offers+=picks.Count;ours+=picks.Count(NativeGlaiveChips.Is);}
-            Check(ours>offers/3,"likely in its own draft ("+ours+" of "+offers+")");
+            Check(ours>offers*.17&&ours<offers*.27,"signature share in ordinary drafts ("+ours+" of "+offers+")");
             // ---- the pick ----
             foreach(var id in NativeGlaiveChips.Ids)Check(NativeSoundCues.DevInstall(id),"its install is its own: "+id);
             Check(NativeGlaiveChips.Picks.Length==10&&NativeGlaiveChips.Picks.All(l=>l.Length>=3&&l.All(c=>NativeToonSynth.Known(c.Id)&&c.At>=0&&c.At<3.2f&&c.Gain>0&&c.Gain<=1)&&l.Zip(l.Skip(1),(x,y)=>x.At<=y.At).All(o=>o)),"each pick has its own cues, in order, all synthesized");

@@ -6,7 +6,7 @@ using System.Linq;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ParityCase
-    { public string spec;public uint seed;public ChipCount[] chips;public NumberValue[] stats;public string[] eligible,offers;public RollValues roll; }
+    { public string spec;public uint seed;public ChipCount[] chips;public NumberValue[] stats;public string[] eligible,offers,unityOffers;public RollValues roll; }
     [Serializable] public sealed class HazardCase { public string map;public double time;public NativeHazard[] hazards; }
     [Serializable] public sealed class ParityFixtures { public string sourceCommit;public ParityCase[] cases;public HazardCase[] hazards; }
     public static class NativeParityChecks
@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
                 var held=c.chips.ToDictionary(x=>x.id,x=>x.count);var stats=NativeContentRules.Stats(data,c.spec,held);
                 foreach(var v in c.stats){Check(Math.Abs(stats[v.name]-v.value)<1e-8*Math.Max(1,Math.Abs(v.value)),"Stat mismatch "+c.spec+" / "+v.name);values++;}
                 Check(c.eligible.SequenceEqual(NativeContentRules.Eligible(data,c.spec,held).Select(x=>x.id)),"Eligibility mismatch "+c.spec);
-                Check(c.offers.SequenceEqual(NativeContentRules.Offers(data,c.spec,held,new SourceRandom(c.seed).Next)),"Draft mismatch "+c.spec);
+                Check((c.unityOffers??c.offers).SequenceEqual(NativeContentRules.Offers(data,c.spec,held,new SourceRandom(c.seed).Next)),"Draft mismatch "+c.spec);
                 var r=NativeContentRules.Roll(data,c.spec,stats);
                 foreach(var f in typeof(RollValues).GetFields())Check(Math.Abs((double)f.GetValue(r)-(double)f.GetValue(c.roll))<1e-8,"Roll mismatch "+c.spec+" / "+f.Name);
             }

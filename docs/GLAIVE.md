@@ -81,7 +81,7 @@ the 150 bpm signal-spin bed. Presentation only.
 The owner's request, 2026-11-09: "create uniquely designed chips to benefit the glaive with effects on selection".
 
 Ten chips of its own, a signature set like the Top Dog's: their own tier (`glaive`, "GLAIVE SPECIAL", cyan `#4fe8ff`, a tri-crescent
-crest on the 3D chip), offered only to the Glaive and likely in its drafts (two guaranteed, 85%: the content's `exclusiveOdds`); the
+crest on the 3D chip), offered only to the Glaive and weighted as one Uncommon tier in its drafts; the
 ordinary projectiles' chips are not offered to it (its ring is its own). Rules, numbers and copy: Core `NativeGlaiveChips`; the rules
 Runtime `NativeGlaiveAuthority.cs`, host-side (Claude builds this class's rules at the owner's word; logged for Astra).
 
