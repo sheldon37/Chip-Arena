@@ -97,7 +97,7 @@ the arena's body) and the palm grip the match draws with.
 ## The chips
 
 Ten chips of its own (tier `katana`, "KATANA SPECIAL", crimson `#ff3d6e`, a lacquer cartridge with the knot crest, the tsuka's wrap; the crescent is the Glaive's alone). They are offered only
-to the Katana and are likely in its drafts (two guaranteed, 85%). Rules: Runtime `NativeKatanaAuthority.cs`; numbers and copy: Core
+to the Katana and share the same draft weight as the Uncommon tier. Rules: Runtime `NativeKatanaAuthority.cs`; numbers and copy: Core
 `NativeKatanaChips`.
 
 | Chip (`id`) | Copies | What it does |

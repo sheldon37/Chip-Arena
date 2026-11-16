@@ -141,19 +141,33 @@ namespace ChipArena.UnityConversion
                 double roll=Clamp(random(),0,.999999999)*tiers.Sum(Weight);var tier=tiers[tiers.Length-1];foreach(var r in tiers){roll-=Weight(r);if(roll<0){tier=r;break;}}
                 var choices=abilityPool.Where(c=>c.rarity==tier.id).ToArray();var pick=choices[Math.Min(choices.Length-1,(int)(Clamp(random(),0,.999999999)*choices.Length))];result.Add(pick.id);pool.Remove(pick);
             }
-            var odds=exclusives?Array.Find(data.exclusiveOdds,x=>x.spec==spec):null;
+            // Signature cards keep their own rarity for presentation and share one tier roll per weapon.
+            string signatureTier=spec=="emperor"?"mishima":spec=="leet"?"l44t":spec;
+            var uncommon=Array.Find(data.rarities,r=>r.id=="uncommon");
+            double TierWeight(RarityData tier)
+            {
+                if(tier.id==signatureTier)
+                {
+                    if(!exclusives||uncommon==null)return 0;
+                    tier=uncommon;
+                }
+                if(weights!=null)return weights.TryGetValue(tier.id,out double value)?value:0;
+                if(spec=="leet"&&tier.id!="uncommon")return tier.leetWeight;
+                return tier.weight;
+            }
             while(pool.Count>0&&result.Count<count)
             {
-                var exclusive=odds==null?new List<ContentChip>():pool.Where(c=>c.tags.Contains(spec)).ToList();ContentChip pick;
-                if(exclusive.Count>0&&(result.Count<odds.guaranteed||random()<odds.chance))pick=exclusive[Math.Min(exclusive.Count-1,(int)Math.Floor(Math.Max(0,random())*exclusive.Count))];
-                else
+                var tiers=data.rarities.Where(r=>TierWeight(r)>0&&pool.Any(c=>c.rarity==r.id)).ToArray();
+                if(tiers.Length==0)break;
+                double roll=Clamp(random(),0,.999999999)*tiers.Sum(TierWeight);
+                var tier=tiers[tiers.Length-1];
+                foreach(var candidate in tiers)
                 {
-                    var tiers=data.rarities.Where(r=>pool.Any(c=>c.rarity==r.id)).ToArray();bool leetWeights=tiers.Any(r=>r.leetWeight>0);
-                    double Weight(RarityData r)=>weights!=null?(weights.TryGetValue(r.id,out double value)?value:0):spec=="leet"?(leetWeights?r.leetWeight:1):r.weight;
-                    double roll=Clamp(random(),0,.999999999)*tiers.Sum(Weight);var tier=tiers[tiers.Length-1];
-                    foreach(var r in tiers){roll-=Weight(r);if(roll<0){tier=r;break;}}
-                    var choices=pool.Where(c=>c.rarity==tier.id).ToArray();pick=choices[Math.Min(choices.Length-1,(int)Math.Floor(Math.Max(0,random())*choices.Length))];
+                    roll-=TierWeight(candidate);
+                    if(roll<0){tier=candidate;break;}
                 }
+                var choices=pool.Where(c=>c.rarity==tier.id).ToArray();
+                var pick=choices[Math.Min(choices.Length-1,(int)(Clamp(random(),0,.999999999)*choices.Length))];
                 result.Add(pick.id);pool.Remove(pick);
             }
             return result;

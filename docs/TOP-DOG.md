@@ -162,7 +162,7 @@ The owner's follow-up, 2026-11-08: "we can also make exclusive chips for this ch
 animated effects when selected. Make them significant effects too"
 
 Ten chips of its own, a signature set like the Bombadier's: their own tier (`topdog`, "TOP DOG SPECIAL"), offered only to the Top Dog
-and likely in its drafts (two guaranteed, 85%: the content's `exclusiveOdds`). Rules, numbers and copy: Core `NativeDogChips`; the rules
+and weighted as one Uncommon tier in its drafts. Rules, numbers and copy: Core `NativeDogChips`; the rules
 Runtime `NativeTopDogAuthority.cs` (Claude builds this class's rules at the owner's word).
 
 | Chip (`id`) | Copies | What it does |

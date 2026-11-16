@@ -212,12 +212,12 @@ namespace ChipArena.UnityConversion
                 Check(chips.All(c=>NativeDogChips.Glyph(c.id)?.Contains("<path")==true&&NativeTopDog.Glyph(c.id)==NativeDogChips.Glyph(c.id))&&chips.Select(c=>NativeDogChips.Glyph(c.id)).Distinct().Count()==10&&NativeChipIcons.Native(chips[0].id)==chips[0].id,"each its own emblem, drawn through the class's glyphs");
                 Check(chips.Select(c=>NativeDogChips.Confirm(c.id)).Distinct().Count()==10,"each its own line as it goes in");
                 Check(NativeChipCartridge.Known(NativeDogChips.Tier)&&NativeChipCartridge.Of(NativeDogChips.Tier).Crest==NativeChipCartridge.Crest.Crown&&NativeChipCartridge.Rarity(NativeDogChips.Tier)==0xe8322b,"its tier's look on the 3D chip");
-                Check(data.rarities.Any(r=>r.id==NativeDogChips.Tier&&r.weight==0&&r.color=="#e8322b")&&data.exclusiveOdds.Any(o=>o.spec==NativeTopDog.Spec&&o.guaranteed==2&&o.chance>.8),"its rarity and its signature odds in the content");
+                Check(data.rarities.Any(r=>r.id==NativeDogChips.Tier&&r.weight==0&&r.color=="#e8322b"),"its signature tier and color");
                 Check(data.chips.All(c=>!NativeDogChips.Is(c.id)),"the rows come from the overlay");
                 string before=data.contentRevision;NativeDogChips.Apply(data);int n0=data.chips.Length;NativeDogChips.Apply(data);Check(data.chips.Length==n0&&data.contentRevision!=before,"the overlay goes in once and marks the revision");data.Validate();
                 var held=new Dictionary<string,int>();Check(NativeContentRules.Eligible(data,NativeTopDog.Spec,held).Count(c=>NativeDogChips.Is(c.id))==10,"the Top Dog can be offered all ten");
                 foreach(var spec in new[]{"pistol","sword",NativeBombs.Spec})Check(!NativeContentRules.Eligible(data,spec,held).Any(c=>NativeDogChips.Is(c.id)),"nobody else is offered them: "+spec);
-                var rng=new Random(47);int offers=0,ours=0;for(int i=0;i<400;i++){var picks=NativeContentRules.Offers(data,NativeTopDog.Spec,held,rng.NextDouble,3);offers+=picks.Count;ours+=picks.Count(NativeDogChips.Is);}Check(ours>offers/3,"likely in its own draft ("+ours+" of "+offers+")");
+                var rng=new Random(47);int offers=0,ours=0;for(int i=0;i<400;i++){var picks=NativeContentRules.Offers(data,NativeTopDog.Spec,held,rng.NextDouble,3);offers+=picks.Count;ours+=picks.Count(NativeDogChips.Is);}Check(ours>offers*.17&&ours<offers*.27,"signature share in ordinary drafts ("+ours+" of "+offers+")");
                 foreach(var id in NativeDogChips.Ids)Check(NativeSoundCues.DevInstall(id),"its install is its own: "+id);
                 Check(NativeTopDogSounds.Picks.Length==10&&NativeTopDogSounds.Picks.All(l=>l.Length>=3&&l.All(c=>Array.IndexOf(NativeToonSynth.Ids,c.Id)>=0&&c.At>=0&&c.At<3.2f)),"each pick has its own toon cues");
                 Check(NativeDogChips.RevealSeconds>=NativeDraftPlant.DetailsAt+.55f+2.9f,"the draft holds for the whole gag");

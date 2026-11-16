@@ -50,6 +50,24 @@ for(const spec of Object.keys(content.WEAPONS))for(let index=0;index<setups.leng
  const chips=setups[index],stats=content.statsFor(chips,spec),seed=12345+index;
  fixtures.cases.push({spec,seed,chips:Object.entries(chips).map(([id,count])=>({id,count})),stats:pairs(stats),eligible:content.eligibleChips(spec,chips).map(c=>c.id),offers:content.offerChips(spec,chips,random(seed),6),roll:souls.rollProfile(spec,stats)});
 }
+// Retain the Electron receipt and independently roll Unity's rebalanced signature drafts.
+for(const row of fixtures.cases){
+ const signature={emperor:'mishima',siren:'siren',ansatsuken:'ansatsuken',leet:'l44t'}[row.spec];
+ if(!signature)continue;
+ const next=random(row.seed),pool=row.eligible.map(id=>catalogue.chips.find(c=>c.id===id));
+ const commonWeight=catalogue.rarities.find(r=>r.id==='uncommon').weight;
+ row.unityOffers=[];
+ while(row.unityOffers.length<6){
+  const tiers=catalogue.rarities.map(r=>({cards:pool.filter(c=>c.rarity===r.id),
+   weight:r.id===signature||r.id==='uncommon'?commonWeight:row.spec==='leet'?r.leetWeight:r.weight}))
+   .filter(t=>t.cards.length&&t.weight>0);
+  if(!tiers.length)break;
+  let roll=next()*tiers.reduce((sum,t)=>sum+t.weight,0);
+  const cards=tiers.find(t=>(roll-=t.weight)<0).cards;
+  const pick=cards[Math.floor(next()*cards.length)];
+  row.unityOffers.push(pick.id);pool.splice(pool.indexOf(pick),1);
+ }
+}
 fixtures.hazards=['foundry','sawmill','spikevault','lavaworks'].flatMap(map=>[0,2.9,3.65,4.8,8.3].map(time=>({map,time,hazards:hazards.stageHazards(map,time)})));
 const out=path.join(project,'Assets/Conversion/Resources');fs.mkdirSync(out,{recursive:true});
 fs.writeFileSync(path.join(out,'GameContent.json'),JSON.stringify(catalogue)+'\n');

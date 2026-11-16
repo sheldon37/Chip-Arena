@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--weapon-chip-odds")WeaponChipOddsChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--weapon-chip-odds")return 0;
             if(args.Length==1&&args[0]=="--fangs-intro"){FangsIntroChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--melee-bisect-sweep"){MeleeBisectChecks.Run(ProjectRoot(),true);return 0;}
             if(args.Length==1&&args[0]=="--dev-grants-only"){DevGrantsChecks.Run(ProjectRoot());return 0;}

@@ -74,7 +74,7 @@ The entrance everyone recognises and dreads. 7.6 s, the name at 6 s. No music fo
 
 ## The chips
 
-Owner: "a set of 10 bombadier chips? Make them highly likely to show in their chip selection pool; Give them a unique design and an effect when selecting them." A signature set, like the Emperor's or the Siren's: their own tier (`bombadier`, "LIVE ORDNANCE"), their own tag, and the signature sets' odds (`exclusiveOdds`: two of every pick guaranteed, the rest at 85%, until the set runs out). All in `Core/NativeBombChips.cs`.
+Owner: "a set of 10 bombadier chips? Make them highly likely to show in their chip selection pool; Give them a unique design and an effect when selecting them." A signature set, like the Emperor's or the Siren's: their own tier (`bombadier`, "LIVE ORDNANCE"), their own tag, and a combined draft weight equal to the Uncommon tier. All in `Core/NativeBombChips.cs`.
 
 | Chip | `id` | What it does | Max | Needs a rule? | When it goes in |
 | --- | --- | --- | --- | --- | --- |

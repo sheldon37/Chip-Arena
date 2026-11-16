@@ -207,7 +207,7 @@ Its music is the pulse-wave bed.
 ## The chips
 
 Ten chips of its own (tier `fangs`, "FANGS SPECIAL", venom green `#7dff3a`, a black chrome cartridge with the shards crest). They are offered
-only to the Fangs (two guaranteed, 85%). Rules: Runtime `NativeFangsAuthority.cs`; numbers and copy: Core `NativeFangsChips`.
+only to the Fangs, with the set weighted equally to the Uncommon tier. Rules: Runtime `NativeFangsAuthority.cs`; numbers and copy: Core `NativeFangsChips`.
 
 | Chip (`id`) | Copies | What it does |
 | --- | --- | --- |

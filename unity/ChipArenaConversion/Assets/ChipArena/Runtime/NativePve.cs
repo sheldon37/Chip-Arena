@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
         public void ClosePvePick(NativePilot p){if(Pve!=null&&Pve.Rows.TryGetValue(p.Seat.id,out var row))row.Open=null;}
         private void RollPveOffers(NativePilot p,NativePvePick pick)
         {
-            bool rainbow=pick.Tier=="rainbow";var weights=Pve.Content.offerWeights.First(x=>x.id==pick.Tier).weights.ToDictionary(x=>x.name,x=>x.value);if(p.Seat.spec=="leet"&&!rainbow)weights["l44t"]=weights["legendary"];
+            bool rainbow=pick.Tier=="rainbow";var weights=Pve.Content.offerWeights.First(x=>x.id==pick.Tier).weights.ToDictionary(x=>x.name,x=>x.value);
             const int count=3;pick.Offers=NativeContentRules.Offers(Content,p.Seat.spec,p.Seat.chips,Pve.EconomyRandom.Next,count,c=>ImplementedChip(c)&&c.rarity!="siren",weights,!rainbow,p.Seat.bot?"":p.Seat.weaponTechniques??"");
             // A boss's own pick (NOCTIEL's draft): rarely, one of that boss's relics.
             if(pick.Source=="boss"&&ZoneBoss?.archetype!=null){var offered=pick.Offers;var eligible=NativeContentRules.Eligible(Content,p.Seat.spec,p.Seat.chips,p.Seat.bot?"":p.Seat.weaponTechniques??"");
