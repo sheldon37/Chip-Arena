@@ -35,6 +35,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Absolute ready times in NativeBombs.Slot order: Q, E, 1, 2, 3, 4.</summary>
         public float[] Ready;
         /// <summary>What the pilot is doing, for the pose: the ability's id and its times.</summary>
+        public bool ReleasePending;
         public string CastKind;public float CastAt=-100,CastRelease,CastUntil;
         public bool HasLine,HasFinale;
         public void CapturePresence(){HasLine=Line!=null;HasFinale=Finale!=null;}

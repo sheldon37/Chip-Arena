@@ -219,7 +219,7 @@ namespace ChipArena.UnityConversion
                 int n=NativeStationBossCues.Collect(v,rig,t-1/60f,t,buf);for(int i=0;i<n;i++)heard[buf[i].Key]=true;}
             var missing=Enumerable.Range(0,heard.Length).Where(i=>!heard[i]).Select(i=>NativeStationBossCues.Keys[i]).ToArray();
             Check(missing.Length==0,"every boss.station key plays somewhere in the preview (missing: "+string.Join(", ",missing)+")");
-            string rt=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeStationBossPresentation.cs"));Check(rt.Contains("Cue(key,null,place,c.Gain)"),"the cues play through the bank path with no stand-in (silent without clips)");
+            string rt=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeStationBossPresentation.cs"));Check(rt.Contains("ExpeditionRecording(key,place,c.Gain)"),"Station cues retain their authored gain and position");
         }
         private static readonly float[] blowAt=new float[8],blowSize=new float[8];private static readonly Vector3[] blowPush=new Vector3[8];
 

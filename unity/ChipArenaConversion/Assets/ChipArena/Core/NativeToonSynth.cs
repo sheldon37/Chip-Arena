@@ -14,6 +14,8 @@ namespace ChipArena.UnityConversion
         public const string Prefix="topdog.";
         /// <summary>Every sound, by id.</summary>
         public static readonly string[] Ids={"bonk","slam","swing","boing","zip","windup","slide-up","slide-down","whistle-fall","clang","slip","splat","squirt","sproing","punch","pie","gulp","burp","inflate","pop","bell","honk","tweet","sizzle","fanfare","drumroll","crash","poof","squeak","wobble","hiccup","whirl","stretch","chomp","piano","ring-cut","ring-slice","ring-throw","ring-ping","ring-hum","ring-burst","ring-catch","ring-flick","ring-chime","ring-skip","blade-cut","blade-slice","blade-draw","blade-sheathe","blade-click","blade-split","blade-dash","blade-wind","blade-ring","blade-chime","blade-hone","blade-wave","blade-drop","blade-clash","fang-cut","fang-stab","fang-drip","fang-hiss","fang-throw","fang-vanish","fang-smoke","fang-bloom","fang-beat","fang-toll"};
+        private static readonly string[] bankKeys=Array.ConvertAll(Ids,id=>Prefix+id);
+        public static string BankKey(string id){int i=Array.IndexOf(Ids,id);return i<0?null:bankKeys[i];}
         public static bool Known(string id)=>Array.IndexOf(Ids,id)>=0;
         /// <summary>The sound's samples (a new array each call; the runtime keeps one clip per id).</summary>
         public static float[] Samples(string id){lock(Gate)return Make(id);}

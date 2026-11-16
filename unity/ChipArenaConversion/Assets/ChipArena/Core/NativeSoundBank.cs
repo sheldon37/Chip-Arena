@@ -122,7 +122,40 @@ namespace ChipArena.UnityConversion
             K("boss.noctiel.verdict.split",F,2f,H),K("boss.noctiel.choir",P,2f,N),K("boss.noctiel.cantor",P,2f,L),K("boss.noctiel.cantor.death",P,1f,N),K("boss.noctiel.sweep.shake",P,1f,N),K("boss.noctiel.sweep",P,1.3f,H),K("boss.noctiel.eclipse",F,3.5f,H),K("boss.noctiel.eclipse.pool",P,1.2f,L),
             K("boss.noctiel.penance",P,1.6f,N),K("boss.noctiel.penitent",P,1.2f,N),K("boss.noctiel.penitent.latch",P,0.6f,N),K("boss.noctiel.fall.mark",P,0.8f,N),K("boss.noctiel.fall",P,1.2f,H),K("boss.noctiel.throne",P,2f,L),K("boss.noctiel.throne.fire",P,0.8f,N),K("boss.noctiel.throne.break",P,1.5f,N),
             K("boss.noctiel.hush",F,1.5f,H),K("boss.noctiel.hush.open",P,1f,N),K("boss.noctiel.life.lost",F,1.1f,N),K("boss.noctiel.return",P,1.1f,N),K("boss.noctiel.revive",F,2f,L),K("boss.noctiel.revive.done",F,1.1f,N),K("boss.noctiel.death",F,3.5f,H),K("boss.noctiel.shatter",F,2.4f,H),
-            K("boss.noctiel.enrage",F,3.5f,H)
+            K("boss.noctiel.enrage",F,3.5f,H),
+            // Glaive optional recordings, Central Station PA and physical cues, and the Converter's five loops.
+            K("topdog.ring-cut",P,2f,N),K("topdog.ring-slice",P,2f,N),K("topdog.ring-throw",P,2f,N),
+            K("topdog.ring-ping",P,2f,N),K("topdog.ring-hum",P,2f,N),K("topdog.ring-burst",P,2f,N),
+            K("topdog.ring-catch",P,2f,N),K("topdog.ring-flick",P,2f,N),K("topdog.ring-chime",P,2f,N),
+            K("topdog.ring-skip",P,2f,N),K("boss.station.horn",P,1.5f,H),K("boss.station.chime",F,3f,H),
+            K("boss.station.announce",F,1.2f,N),K("boss.station.doors-warn",F,0.8f,H),K("boss.station.doors",P,0.4f,N),
+            K("boss.station.grab",P,0.6f,N),K("boss.station.unfold",P,1f,N),K("boss.station.wheels",P,1.2f,N),
+            K("boss.station.charge",P,1.4f,N),K("boss.station.brakes",P,1.5f,N),K("boss.station.impact",P,1.2f,N),
+            K("boss.station.step",P,1f,L),K("boss.station.swipe-windup",P,0.5f,H),K("boss.station.swipe",P,0.3f,N),
+            K("boss.station.brace",P,0.7f,N),K("boss.station.panto",P,1.2f,N),K("boss.station.arc",P,0.8f,N),
+            K("boss.station.rear",P,1.4f,N),K("boss.station.slam",P,1f,N),K("boss.station.shockwave",P,0.9f,N),
+            K("boss.station.bell",P,1f,N),K("boss.station.tick",F,.6f,N),K("boss.station.spill",P,1.5f,N),
+            K("boss.station.voice",P,3f,L),K("boss.station.hurt",P,0.6f,L),K("boss.station.lamp-break",P,0.6f,N),
+            K("boss.station.panto-break",P,1f,N),K("boss.station.express-hit",P,2f,N),K("boss.station.barrier",P,1.2f,N),
+            K("boss.station.board",P,2.5f,N),K("boss.station.roof",P,1.5f,N),K("boss.station.death",P,3.5f,H),
+            K("boss.station.clocks",F,2f,N),K("boss.station.departed",F,4f,H),K("boss.ironworks.arrive.rumble",P,3.5f,N),
+            K("boss.ironworks.arrive.crack",P,3.5f,N),K("boss.ironworks.arrive.emerge",P,3.5f,N),K("boss.ironworks.arrive.lamps",P,3.5f,N),
+            K("boss.ironworks.arrive.blow",P,3.5f,N),K("boss.ironworks.idle.burn",O,5f,L),K("boss.ironworks.step.tong",P,1f,L),
+            K("boss.ironworks.step.bogie",P,1f,L),K("boss.ironworks.gear.tilt",P,2f,N),K("boss.ironworks.slosh",P,2f,N),
+            K("boss.ironworks.foreman.lever",P,2f,N),K("boss.ironworks.foreman.valve",P,2f,N),K("boss.ironworks.foreman.groan",P,2f,N),
+            K("boss.ironworks.pour.windup",P,2f,N),K("boss.ironworks.pour.loop",O,5f,L),K("boss.ironworks.pour.splash",P,2f,N),
+            K("boss.ironworks.blow.inhale",P,2f,H),K("boss.ironworks.blow.roar",P,2f,N),K("boss.ironworks.blow.rain",O,5f,L),
+            K("boss.ironworks.blow.land",P,2f,N),K("boss.ironworks.blow.choke",P,2f,N),K("boss.ironworks.stomp.lift",P,2f,N),
+            K("boss.ironworks.stomp.impact",P,2f,N),K("boss.ironworks.grab.reach",P,2f,H),K("boss.ironworks.grab.snap",P,2f,N),
+            K("boss.ironworks.grab.squeeze",P,2f,N),K("boss.ironworks.grab.throw",P,2f,N),K("boss.ironworks.rear.creak",P,2f,H),
+            K("boss.ironworks.slam.impact",P,2f,N),K("boss.ironworks.slam.wave",P,2f,N),K("boss.ironworks.deslag.roll",P,2f,H),
+            K("boss.ironworks.deslag.lob",P,2f,N),K("boss.ironworks.deslag.land",P,2f,N),K("boss.ironworks.call.bellow",P,2f,N),
+            K("boss.ironworks.charge.windup",P,2f,H),K("boss.ironworks.charge.gallop",O,5f,L),K("boss.ironworks.charge.skid",P,2f,N),
+            K("boss.ironworks.charge.crash",P,2f,N),K("boss.ironworks.crust.crack",P,2f,N),K("boss.ironworks.crust.break",P,2f,N),
+            K("boss.ironworks.shed.burst",P,2f,N),K("boss.ironworks.break.tear",P,2f,N),K("boss.ironworks.break.split",P,2f,N),
+            K("boss.ironworks.pit.overflow",P,2f,N),K("boss.ironworks.knee.buckle",P,2f,N),K("boss.ironworks.hurt.clang",P,1f,L),
+            K("boss.ironworks.death.buckle",P,3.5f,N),K("boss.ironworks.death.pour",P,3.5f,N),K("boss.ironworks.death.cool",O,5f,L),
+            K("boss.ironworks.death.whistle",P,3.5f,N),
         };
         private static Dictionary<string,int> index;
         public static bool Find(string key,out Def def)
@@ -146,7 +179,17 @@ namespace ChipArena.UnityConversion
         public string Key;public string[] Clips=Array.Empty<string>();public float Gain=1,Rate=1,Jitter=.03f,MaxLength,Cooldown;
         public NativeSoundPriority Priority;public NativeSoundSpace Space;
         public bool Positional=>Space!=NativeSoundSpace.Flat;public bool Loop=>Space==NativeSoundSpace.Loop;public int Count=>Clips.Length;
-        public string Path(int variation)=>NativeSoundKeys.Folder+Key+"/"+Clips[Math.Max(0,Math.Min(Clips.Length-1,variation))];
+        private string[] paths;
+        internal void CachePaths()
+        {
+            paths=new string[Count];
+            for(int i=0;i<Count;i++)paths[i]=NativeSoundKeys.Folder+Key+"/"+Clips[i];
+        }
+        public string Path(int variation)
+        {
+            if(paths==null)CachePaths();
+            return paths[Math.Max(0,Math.Min(paths.Length-1,variation))];
+        }
     }
 
     /// <summary>
@@ -171,7 +214,20 @@ namespace ChipArena.UnityConversion
         /// <summary>The resource path of entrance <paramref name="style"/>'s music, its intro key's first clip (the others are
         /// alternates), with the entry's gain trim; null (gain 1) when the style has no intro key (DEV, retired, unknown) or no
         /// clip is installed, so the caller plays today's sting exactly as before.</summary>
-        public string IntroClip(string style,out float gain){var e=Entry(NativeSoundKeys.Intro(style));if(e==null||e.Count==0){gain=1;return null;}gain=e.Gain;return e.Path(0);}
+        public string IntroClip(string style,out float gain)
+        {
+            gain=1;
+            if(style==NativeDevMotions.GreatswordEntrance)
+            {
+                var sword=Entry("intro.weapon-greatsword");
+                int take=sword==null?-1:Array.IndexOf(sword.Clips,"phoenix-rising");
+                if(take<0)return null;
+                gain=sword.Gain;return sword.Path(take);
+            }
+            var e=Entry(NativeSoundKeys.Intro(style));
+            if(e==null||e.Count==0)return null;
+            gain=e.Gain;return e.Path(0);
+        }
         /// <summary>The next variation of <paramref name="key"/>: a seeded shuffle bag, so every clip plays once per round of the
         /// bag and the same clip never plays twice in a row (with two or more clips).</summary>
         public int Next(string key)
@@ -190,9 +246,10 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The per-key dedup window: false while <paramref name="key"/> played less than its cooldown ago; else stamps it.
         /// A clock that went backwards (a new round, a rewind) admits.</summary>
-        public bool Admit(string key,double now)
+        public bool Admit(string key,double now,string cue=null)
         {
             var e=Entry(key);if(e==null||e.Cooldown<=0)return e!=null;
+            key=cue??key;
             if(played.TryGetValue(key,out double at)&&now>=at&&now-at<e.Cooldown)return false;
             played[key]=now;return true;
         }
@@ -246,7 +303,8 @@ namespace ChipArena.UnityConversion
             if(o.TryGetValue("priority",out var p)){if(p is string ps&&Priority(ps,out var pr))e.Priority=pr;else Fail("priority must be high, normal or low");}
             if(o.TryGetValue("space",out var sp)&&!(sp is string ss&&ss==SpaceName(def.Space)))Fail("space must be "+SpaceName(def.Space));
             if(o.TryGetValue("note",out var note)&&!(note is string))Fail("note must be a string");
-            return errors.Count==before?e:null;
+            if(errors.Count!=before)return null;
+            e.CachePaths();return e;
         }
         private static readonly string[] Fields={"clips","gain","rate","jitter","priority","space","maxLength","cooldown","note"};
         public static bool ClipName(string s){if(string.IsNullOrEmpty(s)||s.Length>40)return false;foreach(char c in s)if(!(c>='a'&&c<='z'||c>='0'&&c<='9'||c=='_'||c=='-'))return false;return true;}

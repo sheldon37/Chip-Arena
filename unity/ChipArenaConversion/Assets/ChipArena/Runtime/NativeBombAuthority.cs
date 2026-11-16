@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
             else {slot=p.Input.AbilityQ?0:p.Input.AbilityE?1:p.Input.SirenAbility>=1&&p.Input.SirenAbility<=4?p.Input.SirenAbility+1:-1;if(slot>=0&&Time>=k.Ready[slot]&&(slot!=2||k.MineCharges>0))kind=NativeBombs.Slot[slot];}
             if(kind==null&&p.Input.Shoot){if(p.Ammo<=0){Reload(p);return;}kind=NativeBombs.PopBomb;slot=-1;}
             if(kind==null)return;
-            k.CastKind=kind;k.CastAt=Time;k.CastRelease=Time+(kind==NativeBombs.ClusterLob?.28f:.16f);k.CastUntil=k.CastRelease+.4f;p.BombReleased=false;
+            k.ReleasePending=kind!=NativeBombs.GrandFinale;k.CastKind=kind;k.CastAt=Time;k.CastRelease=Time+(kind==NativeBombs.ClusterLob?.28f:.16f);k.CastUntil=k.CastRelease+.4f;p.BombReleased=false;
             p.BombAim=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));p.BombFacing=Vec(V3.Forward(p.Input.Yaw));p.BombPoint=AimedAbilityPoint(p,18);p.AttackAt=p.LastAttack=Time;p.Ready=kind==NativeBombs.PopBomb?Time+NativeBombs.PopPeriod:k.CastUntil;
             if(kind==NativeBombs.PopBomb)p.Ammo--;
             else if(kind==NativeBombs.GrandFinale)
@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
         }
         private void BombRelease(NativePilot p)
         {
-            var k=p.Bomb;var feet=p.Body.position-Vector3.up*.865f;var hand=p.Body.position+Vector3.up*.4f;float at=k.CastRelease;
+            var k=p.Bomb;k.ReleasePending=false;var feet=p.Body.position-Vector3.up*.865f;var hand=p.Body.position+Vector3.up*.4f;float at=k.CastRelease;
             switch(k.CastKind)
             {
                 case NativeBombs.PopBomb:AddBomb(p,NativeBombs.Pop,hand,p.BombAim*(float)p.Weapon.speed*NativeBombChipRules.PopSpeed(BombStacks(p,NativeBombChips.ShortFuse)),at,NativeBombChipRules.PopFuse(BombStacks(p,NativeBombChips.ShortFuse)));break;

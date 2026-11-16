@@ -199,7 +199,7 @@ namespace ChipArena.UnityConversion
             else if(p.Input.AbilityE&&Time>=k.Ready[1])kind=NativeGlaive.Halo;
             else if(attack)kind=p.Grounded&&Time>k.ComboUntil&&NativeMeleeFeel.SprintAttack(p.Input,p.Pose.Sprinting)?NativeGlaive.Skim:NativeGlaive.Swing;
             if(kind==null)return;
-            float rate=Math.Max(.5f,(float)p.Stats["attackRate"]),cd=(float)p.Stats["abilityCooldown"];p.GlaiveReleased=false;k.CastKind=kind;k.CastAt=Time;k.CastStep=0;
+            float rate=Math.Max(.5f,(float)p.Stats["attackRate"]),cd=(float)p.Stats["abilityCooldown"];p.GlaiveReleased=false;k.ReleasePending=true;k.CastKind=kind;k.CastAt=Time;k.CastStep=0;
             p.GlaiveAim=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)).normalized;p.GlaiveFacing=Vec(V3.Forward(p.Input.Yaw));p.Yaw=p.Input.Yaw;p.AttackAt=p.LastAttack=Time;
             switch(kind)
             {
@@ -229,7 +229,7 @@ namespace ChipArena.UnityConversion
                 if(k.CastKind!=null&&Time<k.CastUntil&&!able){k.CastUntil=Time;if(k.CastKind==NativeGlaive.Throw&&!p.GlaiveReleased)k.Ready[0]=Time;}
                 if(p.Hp<=0&&k.Disc!=NativeGlaive.Hand){k.Disc=NativeGlaive.Hand;k.DiscAt=Time;k.Reformed=false;k.Ready[0]=Math.Min(k.Ready[0],Time+NativeGlaive.Cooldown[0]);}
                 GlaiveChipRecord(p);
-                if(!p.GlaiveReleased&&k.CastKind!=null&&Time>=k.CastRelease){p.GlaiveReleased=true;if(able&&Time<=k.CastUntil+.001f)GlaiveRelease(p);}
+                if(!p.GlaiveReleased&&k.CastKind!=null&&Time>=k.CastRelease){p.GlaiveReleased=true;if(able&&Time<=k.CastUntil+.001f){k.ReleasePending=false;GlaiveRelease(p);}}
                 if(able)GlaiveSkimStep(p);
                 GlaiveDiscStep(p);
                 if(p.GlaiveShards.Count>0)GlaiveShardStep(p);
@@ -421,7 +421,7 @@ namespace ChipArena.UnityConversion
             if(GlaiveChip(p,NativeGlaiveChips.Shatterpoint))for(int i=0;i<NativeGlaiveChips.Shards;i++){var dir=NativeGlaiveChips.ShardDir(burst.Id,i);p.GlaiveShards.Add(new GlaiveShard{Pos=at,Dir=new Vector3(dir.X,dir.Y,dir.Z)});}
             k.Disc=NativeGlaive.Gone;k.DiscAt=Time;k.DiscPos=Vec(at);k.DiscVel=default;k.DiscSampleAt=Time;
             // A pose for it: the free hand snapped shut.
-            if(!GlaiveBusy(p)){k.CastKind=NativeGlaive.Burst;k.CastAt=Time;k.CastRelease=Time+.05f;k.CastUntil=Time+.3f;k.CastStep=0;p.GlaiveReleased=true;}
+            if(!GlaiveBusy(p)){k.ReleasePending=false;k.CastKind=NativeGlaive.Burst;k.CastAt=Time;k.CastRelease=Time+.05f;k.CastUntil=Time+.3f;k.CastStep=0;p.GlaiveReleased=true;}
             Emit(EventKind.AbilityCast,p,0,at,0,NativeGlaive.Burst);
         }
     }

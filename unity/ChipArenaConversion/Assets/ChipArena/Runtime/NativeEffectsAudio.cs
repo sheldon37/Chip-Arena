@@ -33,6 +33,8 @@ namespace ChipArena.UnityConversion
             foreach(var error in bank.Errors)Debug.LogWarning("Effects audio manifest: "+error);
             // Entrance music preloads only the clip that plays (the first); its alternates load if they are moved first.
             foreach(var e in bank.Entries)for(int i=0,n=NativeSoundKeys.IsIntro(e.Key)?Math.Min(1,e.Count):e.Count;i<n;i++)bankPreload.Enqueue(e.Path(i));
+            string heavy=bank.IntroClip(NativeDevMotions.GreatswordEntrance,out _);
+            if(heavy!=null)bankPreload.Enqueue(heavy);
             bankVoiceClip=new AudioClip[voices.Length];bankVoicePriority=new NativeSoundPriority[voices.Length];bankVoiceEnd=new double[voices.Length];busyScratch=new bool[voices.Length];heldScratch=new NativeSoundPriority[voices.Length];
         }
         private AudioClip BankClip(string path){if(!bankClips.TryGetValue(path,out var c)){c=Resources.Load<AudioClip>(path);bankClips[path]=c;}return c;}
@@ -44,7 +46,7 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// The music clip of entrance <paramref name="style"/>: its intro key's first clip (NativeSoundBank.IntroClip) while
         /// LocalAssets has one that loads, with the entry's gain trim; else exactly today's sting <paramref name="sting"/> at gain 1.
-        /// The DEV entrances have no intro key, so they always keep theirs (the Siren plays its boss song, not a sting).
+        /// Heavy Turn uses its named alternate; the Siren plays its boss song.
         /// </summary>
         private AudioClip IntroClip(string style,string sting,out float gain)
         {
@@ -60,7 +62,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public void Cue(string key,string clip,Vector3? position=null,float gain=1,float rate=0,string gate=null,string cover=null,bool mine=false)
         {
-            if(key!=null&&BankPlay(key,position,gain,0,gate,mine))return;
+            if(key!=null&&BankPlay(key,position,gain,0,gate,mine,rateScale:rate>0?rate:1))return;
             if(cover!=null&&bank.Has(cover))return;
             if(clip!=null)Play(clip,position,gain,rate,gate);
         }
@@ -102,14 +104,14 @@ namespace ChipArena.UnityConversion
         /// One bank play of <paramref name="key"/>. False when the key has no clips or its clip failed to load (the caller falls
         /// back); true when it played or was skipped on purpose (muted, its dedup window, the limiter gate, no voice by priority).
         /// </summary>
-        private bool BankPlay(string key,Vector3? position,float gain,float delay=0,string gate=null,bool mine=false,NativeSoundPriority? priority=null,float rateScale=1,float startAt=0,int variation=-1)
+        private bool BankPlay(string key,Vector3? position,float gain,float delay=0,string gate=null,bool mine=false,NativeSoundPriority? priority=null,float rateScale=1,float startAt=0,int variation=-1,string cue=null)
         {
             var e=bank.Entry(key);if(e==null||e.Count==0||e.Loop||voices==null)return false;
             var clip=BankClip(e.Path(variation>=0?variation:bank.Next(key)));if(clip==null||clip.loadState==AudioDataLoadState.Failed)return false;
-            if(Muted||Effects<=0)return true;if(!bank.Admit(key,Time.unscaledTimeAsDouble))return true;
+            if(Muted||Effects<=0)return true;if(!bank.Admit(key,Time.unscaledTimeAsDouble,cue))return true;
             if(gate!=null){gain=(float)limiter.Cue(gate,Time.unscaledTime,gain);if(gain<=0)return true;}
             int v=BankVoice(gate!=null,priority??NativeSoundPlan.Priority(e.Priority,mine));if(v<0)return true;
-            var voice=voices[v];keyedVoices[v]=gate!=null;gain*=e.Gain;float pan=0;
+            var voice=voices[v];entranceVoices[v]=playingEntranceCue?clip:null;keyedVoices[v]=gate!=null;gain*=e.Gain;float pan=0;
             if(position.HasValue&&e.Positional){var d=position.Value-listener;gain*=NativeEventSounds.Falloff(d.magnitude);pan=NativeEventSounds.Pan(NativeArena.Vec(d),yaw);}
             float rate=NativeSoundBank.Rate(e,(float)bankRandom.NextDouble(),rateScale);startAt=Mathf.Clamp(startAt,0,Math.Max(0,clip.length-.02f));
             voice.loop=false;voice.clip=clip;voice.volume=Mathf.Clamp01(gain*Effects);voice.panStereo=pan;voice.pitch=rate;
@@ -117,6 +119,20 @@ namespace ChipArena.UnityConversion
             bankVoiceClip[v]=clip;bankVoicePriority[v]=priority??NativeSoundPlan.Priority(e.Priority,mine);bankVoiceEnd[v]=AudioSettings.dspTime+Math.Max(0,delay)+Math.Min(clip.length-startAt,e.MaxLength)/rate+.02;
             return true;
         }
+        private bool PlayRecording(string cue,NativeRecording recording,Vector3? position,float gain,bool mine=false,float rate=1)
+        {
+            var entry=bank.Entry(recording.Key);
+            if(entry==null||entry.Count==0)return false;
+            int take=recording.Take==null?-1:Array.IndexOf(entry.Clips,recording.Take);
+            if(recording.Take!=null&&take<0)return false;
+            NativeSoundPriority? priority=NativeSoundKeys.Find(cue,out var def)?NativeSoundPlan.Priority(def.Priority,mine):(NativeSoundPriority?)null;
+            return BankPlay(entry.Key,position,gain*recording.Gain,mine:mine,priority:priority,rateScale:rate*recording.Rate,variation:take,cue:cue);
+        }
+        private bool ExpeditionRecording(string key,Vector3? at,float gain)
+        {
+            return BankPlay(key,at,gain)||PlayRecording(key,NativeRecordedCues.Expedition(key),at,gain);
+        }
+
         private int BankVoice(bool gated,NativeSoundPriority priority)
         {
             for(int i=0;i<voices.Length;i++){busyScratch[i]=voices[i].isPlaying;heldScratch[i]=bankVoiceClip[i]!=null&&voices[i].clip==bankVoiceClip[i]?bankVoicePriority[i]:NativeSoundPriority.Normal;}

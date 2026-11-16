@@ -356,14 +356,15 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeAudio
     {
         // ---------- the Ironworks enemies' cues (NativeIronworksKinds.CueKeys: docs/EXPEDITION-CITY-IRONWORKS.md section 8) ----------
-        // Bank only: each plays when the owner's LocalAssets bank has its clips (silent otherwise; the zombie voices and the attack
-        // layers keep playing for the kind as drawn). A zone cue that plays takes the attack layer's slot, so the two never double.
+        // Dedicated recordings and selected substitutes share the attack layer's slot to prevent duplicate playback.
         /// <summary>HordeCues, per living Ironworks add before its attack layers: the wind-up and strike in the zone's keys (when the
         /// bank has them), the specials from the view, the hanging Rigger's rattle and lamp.</summary>
         private void IronworksCues(NativeArena arena,NativeMinion m,int kind,float strike,Vector3 pos,float t)
         {
             int z=NativeIronworksKinds.Local(kind);if(z<0)return;var a=m.Pve;var v=ArenaPresentation.IronworksViewOf(m);string K(string cue)=>NativeIronworksKinds.Cue(z,cue);
-            bool Cue(string cue,float at,string slot,float gain=.8f){if(t<at||t-at>=.12f)return false;var key=K(cue);if(key==null||!bank.Has(key))return false;if(!Once(slot,at))return true;BankPlay(key,pos,gain);return true;}
+            bool Cue(string cue,float at,string slot,float gain=.8f){if(!(t>=at)||t-at>=.12f)return false;var key=K(cue);if(key==null||cues.TryGetValue(slot,out float played)&&played==at)return false;
+                if(!ExpeditionRecording(key,pos,gain))return false;
+                cues[slot]=at;return true;}
             // the attack: its wind-up and strike in the zone's keys take the attack layer's slots (HordeCues' "w" and "s")
             string wind=z==0?"flare":z==1?null:z==2?"slam.windup":z==3?null:"swing.windup",hit=z==0?"screech":z==1?"rake":z==2?"slam":z==3?"swing":"swing";
             if(wind!=null)Cue(wind,m.LastAttack,"add"+m.Id+"w",.75f);Cue(hit,m.LastAttack+strike,"add"+m.Id+"s",.8f);
@@ -386,7 +387,7 @@ namespace ChipArena.UnityConversion
         private void IronworksDeathCues(NativeArena arena,float t)
         {
             var deaths=arena.MinionDeaths;for(int i=0;i<deaths.Count;i++){var d=deaths[i];if(d==null)continue;int kind=zombieVoices.KindOf(d.id);if(NativeIronworksKinds.Local(kind)!=NativeIronworksKinds.Cinderling)continue;float at=d.at+NativeIronworksKinds.PopFuse;
-                if(t>=at&&t-at<.12f){var key=NativeIronworksKinds.Cue(NativeIronworksKinds.Cinderling,"pop");if(bank.Has(key)&&Once("iw"+d.id+"pop",at))BankPlay(key,d.position,.85f);}}
+                if(t>=at&&t-at<.12f){var key=NativeIronworksKinds.Cue(NativeIronworksKinds.Cinderling,"pop");if(Once("iw"+d.id+"pop",at))ExpeditionRecording(key,d.position,.85f);}}
         }
     }
 }

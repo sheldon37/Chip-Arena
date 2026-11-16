@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
                 case Swing:if(v.ComboAt>-90){at=v.ComboAt;n=S(o,n,"dev.fist.swing","arcade-punch",v.ComboStep==2?.45f:.38f);}break;
                 case Palm:if(v.ComboStep==2&&v.ComboHit>-90){at=v.ComboHit;n=S(o,n,"impact.energy","electric-hook",.4f);}break;
                 case QRelease:if(v.Release[CyberLordSpec.Q]>-90){at=v.Release[CyberLordSpec.Q];n=S(o,n,"move.roll","dash",.5f);n=S(o,n,"dev.leet.glitch","darkness",.3f);}break;
-                case ERelease:if(v.WallBorn>-90){at=v.WallBorn;n=S(o,n,"field.repulsion","parry",.55f);}break;
+                case ERelease:if(v.WallBorn>-90){at=v.WallBorn;n=S(o,n,"impact.ceiling","parry",.55f);}break;
                 case WallEnd:if(v.WallUntil>-90){at=v.WallUntil;n=S(o,n,"dev.leet.glitch","metal",.3f);}break;
                 case OneRelease:if(v.Release[CyberLordSpec.One]>-90){at=v.Release[CyberLordSpec.One];n=S(o,n,"dev.leet.glitch","lightning",.5f);}break;
                 case TwoRelease:if(v.LinkAt>-90&&v.LinkTarget!=0){at=v.LinkAt;n=S(o,n,"magic.shackles","electric-hook",.45f);}break;
@@ -105,7 +105,7 @@ namespace ChipArena.UnityConversion
         /// jump): the Data Dash's whoosh, lighter, and a glitch tick.</summary>
         public static int AirBoost(NativeKitSound[] o){int n=0;n=S(o,n,"move.roll","dash",.35f);n=S(o,n,"dev.leet.glitch","darkness",.22f);return n;}
         /// <summary>The bank keys this routing may play (Tests/CyberLordChecks: every one is an existing bank key).</summary>
-        public static readonly string[] Keys={"dev.fist.swing","impact.energy","move.roll","dev.leet.glitch","field.repulsion","magic.shackles","status.shock-zap","blast.quake","blast.static",
+        public static readonly string[] Keys={"dev.fist.swing","impact.energy","move.roll","dev.leet.glitch","impact.ceiling","magic.shackles","status.shock-zap","blast.quake","blast.static",
             "melee.miss","blast.implosion","dev.fist.hit","magic.blink-strike","chip.split","melee.shield.block","status.burn-tick","blast.leet-nuke",
             "chip.delayed.charge","magic.lightning.shot","magic.flame-lance","gun.frag.throw","field.time","chip.teleport","chip.mine.arm","chip.bomb.fuse-beep","blast.mine","blast.shock","blast.nova","magic.fire.shot","magic.fire.hit"};
         public static readonly string[] Clips={"arcade-punch","electric-hook","dash","darkness","parry","metal","lightning","stone","explosion","arcade-heavy","demon-step","arcade-kick","burn-tick","fire"};

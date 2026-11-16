@@ -49,6 +49,7 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>What the pilot is doing, for the pose: the move's id and its times (CastRelease: its hit), the combo's step and when the
         /// combo lapses.</summary>
+        public bool ReleasePending;
         public string CastKind;public float CastAt=-100,CastRelease,CastUntil,ComboUntil;public int CastStep,Combo;
         /// <summary>Absolute ready times by slot (the Katana Q, E; the Fangs Q, E, 1, 2, 3).</summary>
         public float[] Ready;

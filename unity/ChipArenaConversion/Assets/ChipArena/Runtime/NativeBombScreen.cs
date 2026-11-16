@@ -137,20 +137,29 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class NativeAudio
     {
-        private readonly NativeKitSound[] bombSounds=new NativeKitSound[4];private int bombIntroCue;private float bombIntroLast=-1;
+        private readonly NativeKitSound[] bombSounds=new NativeKitSound[4];
         // A blast's sound once, when the record first shows it; the Finale's beeps; the entrance's own cues (it has no music: see NativeIntroRules.IntroSting).
         private void BombMoments(NativePilot p,Vector3 pos,float t,bool mine)
         {
-            var k=NativeBombs.Source?.Of(p.Seat.id);if(k==null)return;
-            if(k.Blasts!=null)foreach(var b in k.Blasts){if(b==null||t<b.At||t-b.At>=.15f||!Once(p.Seat.id+"bomb"+b.Id,b.At))continue;int n=NativeBombSounds.Blast(b,bombSounds);for(int i=0;i<n;i++)Cue(bombSounds[i].Key,bombSounds[i].Clip,new Vector3(b.Pos.x,b.Pos.y,b.Pos.z),bombSounds[i].Gain,mine:mine);}
-            if(k.CastKind!=null&&t>=k.CastRelease&&t-k.CastRelease<.15f&&Once(p.Seat.id+"bombcast"+k.CastKind,k.CastRelease)){int n=NativeBombSounds.Cast(k.CastKind,bombSounds);for(int i=0;i<n;i++)Cue(bombSounds[i].Key,bombSounds[i].Clip,pos,bombSounds[i].Gain,mine:mine);}
-            var f=k.Finale;if(f!=null&&t>=f.At&&t<f.Strike){float beats=t<f.Lock?5:14,step=Mathf.Floor((t-f.At)*beats);if(Once(p.Seat.id+"bombbeep",f.At+step*1000))Cue("ui.countdown","ui",new Vector3(f.Box.x,f.Box.y,f.Box.z),t<f.Lock?.6f:.9f,mine:true);}
+            if(p.Seat.spec!=NativeBombs.Spec)return;var k=p.Bomb;if(k==null)return;
+            if(k.Blasts!=null)foreach(var blast in k.Blasts)
+            {
+                if(blast==null||!weaponAudio.Hit(p.Seat.id,blast.Id,blast.At,t))continue;
+                if(blast.Kind==NativeBombs.Column&&!NativeBombSounds.NearestColumn(k.Blasts,blast,NativeArena.Vec(listener)))continue;
+                int count=NativeBombSounds.Blast(blast,bombSounds);
+                for(int i=0;i<count;i++)Cue(bombSounds[i].Key,bombSounds[i].Clip,NativeArena.Vec(blast.Pos),bombSounds[i].Gain,gate:i==0?"explosion":"proc",mine:mine);
+            }
+            var f=k.Finale;
+            bool finale=k.CastKind==NativeBombs.GrandFinale;
+            float release=finale&&f!=null?f.At:k.CastRelease;
+            if(k.CastKind!=null&&(!finale||f!=null)&&weaponAudio.Release(p.Seat.id,k.ReleasePending,release,k.CastUntil,t))
+            {
+                var source=finale?new Vector3(f.Box.x,f.Box.y,f.Box.z):pos;
+                int n=NativeBombSounds.Cast(k.CastKind,bombSounds);
+                for(int i=0;i<n;i++)Cue(bombSounds[i].Key,bombSounds[i].Clip,source,bombSounds[i].Gain,mine:mine);
+            }
+            if(f!=null&&t>=f.At&&t<f.Strike){float beats=t<f.Lock?5:14,step=Mathf.Floor((t-f.At)*beats);if(Once(p.Seat.id+"bombbeep",f.At+step*1000))Cue("chip.bomb.fuse-beep","ui",new Vector3(f.Box.x,f.Box.y,f.Box.z),t<f.Lock?.44f:.6f,mine:true);}
             if(f!=null&&t>=f.Lock&&t-f.Lock<.15f&&Once(p.Seat.id+"bomblock",f.Lock))Cue("impact.metal","metal",new Vector3(f.Box.x,f.Box.y,f.Box.z),1,mine:true);
-        }
-        /// <summary>The Last Warning's cues on the entrance clock, each once as `age` passes it.</summary>
-        public void BombIntro(float age)
-        {
-            if(age<bombIntroLast-.2f)bombIntroCue=0;bombIntroLast=age;var list=NativeBombSounds.Intro;while(bombIntroCue<list.Length&&age>=list[bombIntroCue].At){var c=list[bombIntroCue++];if(age-c.At<.25f)UiCue(c.Key,c.Clip,c.Gain);}
         }
     }
 }

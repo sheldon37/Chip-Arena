@@ -168,18 +168,20 @@ namespace ChipArena.UnityConversion
         private void BladeMoments(NativePilot p,Vector3 pos,float t,bool mine)
         {
             var k=p.Blade;if(!NativeBlades.Is(p.Seat.spec)||k==null)return;bool katana=p.Seat.spec==NativeKatana.Spec;
-            if(k.CastKind!=null&&t>=k.CastRelease&&t-k.CastRelease<.15f&&Once(p.Seat.id+"blrel"+k.CastKind+k.CastStep,k.CastRelease))
+            if(k.CastKind!=null&&weaponAudio.Release(p.Seat.id,k.ReleasePending,k.CastRelease,k.CastUntil,t))
             {
                 string id=null;float gain=.85f,rate=1;
                 if(katana)switch(k.CastKind){case NativeKatana.Cut:id="blade-cut";rate=1+.06f*k.CastStep;if(k.CastStep==NativeKatana.Steps-1){gain=1;rate=.85f;}break;case NativeKatana.Rush:id="blade-dash";break;case NativeKatana.Iai:id="blade-draw";gain=1;break;case NativeKatana.Storm:id="blade-wind";break;case NativeKatana.Counter:id="blade-clash";gain=1;break;}
                 else switch(k.CastKind){case NativeFangs.Cut:id="fang-cut";rate=1+.05f*k.CastStep;break;case NativeFangs.Pounce:id="fang-throw";rate=.8f;break;case NativeFangs.Step:id="fang-vanish";break;case NativeFangs.Veil:id="fang-smoke";gain=1;break;case NativeFangs.Fan:id="fang-throw";break;case NativeFangs.Bloom:id="fang-hiss";break;case NativeFangs.Assassinate:id="fang-hiss";rate=.7f;break;}
-                if(id!=null)Toon(id,pos,gain,mine,rate);
+                if(katana&&k.CastKind==NativeKatana.Cut&&NativeBladeCuts.Blunt(NativeBladeCuts.CutClip(p.Seat.spec,p.Seat.motion,k.CastStep)))
+                    Cue("melee.miss","dash",pos,gain,rate,mine:mine);
+                else if(id!=null)Toon(id,pos,gain,mine,rate);
             }
             // The storm's cuts: a swish each.
-            if(katana&&k.CastKind==NativeKatana.Storm&&t>=k.CastRelease&&t<k.CastUntil-NativeKatana.StormRecover){float step=Mathf.Floor((t-k.CastRelease)/NativeKatana.StormEvery);if(Once(p.Seat.id+"blstorm"+k.CastAt,step))Toon("blade-cut",pos,.6f,mine,1.15f+.04f*(step%4));}
+            if(katana&&!k.ReleasePending&&k.CastKind==NativeKatana.Storm&&t>=k.CastRelease&&t<k.CastUntil-NativeKatana.StormRecover){float step=Mathf.Floor((t-k.CastRelease)/NativeKatana.StormEvery);if(Once(p.Seat.id+"blstorm"+k.CastAt,step))Toon("blade-cut",pos,.6f,mine,1.15f+.04f*(step%4));}
             if(k.Hits!=null)foreach(var h in k.Hits)
             {
-                if(h==null||t<h.At||t-h.At>=.15f||!Once(p.Seat.id+"blhit"+h.Id,h.At))continue;var at=new Vector3(h.Pos.x,h.Pos.y,h.Pos.z);
+                if(h==null||!weaponAudio.Hit(p.Seat.id,h.Id,h.At,t))continue;var at=new Vector3(h.Pos.x,h.Pos.y,h.Pos.z);
                 // A blow (the DEV Katana's kick, NativeBladeCuts.BluntHit) lands with the fighters' kick.
                 if(katana&&NativeBladeCuts.BluntHit(p.Seat.spec,p.Seat.motion,h)){Cue(NativeSoundCues.Fighter("arcade-kick"),"arcade-kick",at,.85f,mine:mine);continue;}
                 switch(h.Kind)

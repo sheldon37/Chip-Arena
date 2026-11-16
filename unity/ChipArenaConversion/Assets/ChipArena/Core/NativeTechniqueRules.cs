@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
             return false;
         }
         public static void End(NativeTechnique k,float now)
-        {if(k==null)return;k.Until=Math.Max(k.Release,Math.Min(k.Until,now));k.RecoverUntil=Math.Min(k.RecoverUntil,now);k.Phase="recovery";}
+        {if(k==null)return;if(now<k.End)k.EndedEarly=true;k.Until=Math.Max(k.Release,Math.Min(k.Until,now));k.RecoverUntil=Math.Min(k.RecoverUntil,now);k.Phase="recovery";}
         public static bool Live(NativeTechnique k,float now)=>k?.Kind!=null&&now>=k.Release&&now<k.Until;
         public static bool Busy(NativeTechnique k,float now)=>k?.Kind!=null&&now<k.RecoverUntil;
         public static bool Moving(NativeTechnique k,float now)=>Live(k,now)&&(k.Kind=="chain-hook"||k.Kind=="slide-shot"||k.Kind=="iaido"||k.Kind=="blade-drag"&&k.Phase=="drag"||k.Kind=="lodestone"&&k.Phase=="draw"||k.Kind=="hydro-jet"||k.Kind=="disarm"&&k.Phase=="lunge"||k.Kind=="ground-slam"&&k.Phase=="leap"||k.Kind=="vault-shot"&&now<k.RecoverUntil||k.Kind=="bipod"||k.Kind=="dragon-breath"||k.Kind=="soul-siphon"||k.Kind=="parting-line"&&k.Phase=="hop"&&now<k.Release+.28f||k.Kind=="shield-surf"&&!k.Recast(now)||k.Kind=="recoil-burst"||k.Kind=="grave-walk"||k.Kind=="iron-vow"||k.Kind==NativeTechniques.GrappleLine&&now>=k.Arm||k.Kind==NativeTechniques.AnchorThrow&&k.Recast(now));

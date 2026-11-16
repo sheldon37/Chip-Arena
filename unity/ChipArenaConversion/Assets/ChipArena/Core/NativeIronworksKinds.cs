@@ -249,7 +249,12 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         // Audio: the zone's enemy cue keys (doc section 8; the owner's clips come later: the bank plays each when it has it)
         // ================================================================================================================
-        public static string Cue(int local,string cue)=>local>=0&&local<KindCount?CueKeys[local*CueSlots+Array.IndexOf(CueNames[local],cue)]:null;
+        public static string Cue(int local,string cue)
+        {
+            if(local<0||local>=KindCount)return null;
+            int slot=Array.IndexOf(CueNames[local],cue);
+            return slot<0?null:CueKeys[local*CueSlots+slot];
+        }
         public const int CueSlots=14;
         /// <summary>Section 8's keys per kind, spelled out so the bank contract's audit sees each one named in code.</summary>
         public static readonly string[][] Keys={

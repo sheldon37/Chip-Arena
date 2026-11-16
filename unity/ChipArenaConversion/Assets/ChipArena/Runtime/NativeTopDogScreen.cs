@@ -168,16 +168,19 @@ namespace ChipArena.UnityConversion
         /// (Core NativeToonSynth), with the usual falloff and pan from the listener.</summary>
         public void Toon(string id,Vector3? position,float gain,bool mine=false,float rate=1)
         {
-            if(id==null||!NativeToonSynth.Known(id))return;if(!bankLoaded)LoadBank();if(BankPlay(NativeToonSynth.Prefix+id,position,gain,0,null,mine,rateScale:rate))return;
+            string key=NativeToonSynth.BankKey(id);if(key==null)return;
+            if(!bankLoaded)LoadBank();
+            if(BankPlay(key,position,gain,0,null,mine,rateScale:rate))return;
+            if(PlayRecording(id,NativeRecordedCues.Weapon(id),position,gain,mine,rate))return;
             if(Muted||Effects<=0||voices==null)return;
             if(!toonClips.TryGetValue(id,out var clip)||clip==null){var data=NativeToonSynth.Samples(id);clip=AudioClip.Create("Toon "+id,data.Length,1,NativeToonSynth.Rate,false);clip.SetData(data,0);toonClips[id]=clip;}
             int free=-1;for(int i=0;i<voices.Length;i++)if(!voices[i].isPlaying){free=i;break;}if(free<0)return;
-            var voice=voices[free];keyedVoices[free]=false;float pan=0;
+            var voice=voices[free];entranceVoices[free]=playingEntranceCue?clip:null;keyedVoices[free]=false;float pan=0;
             if(position.HasValue){var d=position.Value-listener;gain*=NativeEventSounds.Falloff(d.magnitude);pan=NativeEventSounds.Pan(NativeArena.Vec(d),yaw);}
             voice.loop=false;voice.clip=clip;voice.volume=Mathf.Clamp01(gain*Effects);voice.panStereo=pan;voice.pitch=rate;voice.Play();
         }
         private void ClearToonClips(){foreach(var c in toonClips.Values)CapturedAnimation.Release(c);toonClips.Clear();}
-        private readonly (string id,float gain)[] dogSounds=new (string,float)[4];private int dogIntroCue;private float dogIntroLast=-1;
+        private readonly (string id,float gain)[] dogSounds=new (string,float)[4];
         // The Top Dog's hits, casts and feast, each once as the record first shows it.
         private void DogMoments(NativePilot p,Vector3 pos,float t,bool mine)
         {
@@ -207,9 +210,9 @@ namespace ChipArena.UnityConversion
             while(dogPickCue<list.Length&&s>=list[dogPickCue].At){var c=list[dogPickCue++];if(s-c.At<.25f)Toon(c.Id,null,c.Gain,true,c.Rate);}
         }
         /// <summary>The Top Dog's entrance cues on its clock, each once as `age` passes it.</summary>
-        public void DogIntro(float age)
+        private void DogIntro()
         {
-            if(age<dogIntroLast-.2f)dogIntroCue=0;dogIntroLast=age;var list=NativeTopDogSounds.Intro;while(dogIntroCue<list.Length&&age>=list[dogIntroCue].At){var c=list[dogIntroCue++];if(age-c.At<.25f)Toon(c.Id,null,c.Gain,true,c.Rate);}
+            foreach(var c in NativeTopDogSounds.Intro)if(entranceCues.Crossed(c.At))Toon(c.Id,null,c.Gain,true,c.Rate);
         }
     }
 }

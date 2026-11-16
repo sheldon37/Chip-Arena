@@ -47,15 +47,44 @@ namespace ChipArena.UnityConversion
             if(Muted||Effects<=0)return;var clip=Clip("audio/"+id);if(clip==null)return;
             if(gate!=null){gain=(float)limiter.Cue(gate,Time.unscaledTime,gain);if(gain<=0)return;}
             int free=-1,keyed=0;for(int i=0;i<voices.Length;i++){if(!voices[i].isPlaying){if(free<0)free=i;}else if(keyedVoices[i])keyed++;}if(free<0||gate!=null&&keyed>=8)return;
-            var voice=voices[free];keyedVoices[free]=gate!=null;float pan=0;
+            var voice=voices[free];entranceVoices[free]=playingEntranceCue?clip:null;keyedVoices[free]=gate!=null;float pan=0;
             if(position.HasValue){var d=position.Value-listener;gain*=NativeEventSounds.Falloff(d.magnitude);pan=NativeEventSounds.Pan(NativeArena.Vec(d),yaw);}
             voice.loop=false;voice.clip=clip;voice.volume=Mathf.Clamp01(gain*Effects);voice.panStereo=pan;voice.pitch=rate>0?rate:NativeEventSounds.Rate(id,UnityEngine.Random.value);voice.Play();
         }
         // The entrance's music from intro age `age` (a late joiner seeks into it): the installed LocalAssets clip of the style's
         // intro key when there is one (IntroClip, with its manifest gain trim), else today's sting at the music volume.
+        private readonly NativeWeaponAudioHistory weaponAudio=new NativeWeaponAudioHistory();
+        private readonly NativeEntranceCueClock entranceCues=new NativeEntranceCueClock();
+        private readonly AudioClip[] entranceVoices=new AudioClip[NativeVoicePool.Voices];
+        private string foleyInstance,foleyStyle;
+        private bool playingEntranceCue;
+
+        public void EntranceFoley(float drawnAge)
+        {
+            var beats=NativeEntranceAudio.Timeline(foleyStyle);
+            if(foleyInstance==null||beats.Length==0&&foleyStyle!=NativeTopDog.Entrance)return;
+            entranceCues.Step(foleyInstance,foleyStyle,NativeEntranceDirector.Script(foleyStyle).Clock(drawnAge));
+            if(!bankLoaded)LoadBank();
+            playingEntranceCue=true;
+            foreach(var beat in beats)
+                if(entranceCues.Crossed(beat.At))Cue(beat.Key,beat.Clip,null,beat.Gain,mine:true);
+            if(foleyStyle==NativeTopDog.Entrance)DogIntro();
+            playingEntranceCue=false;
+        }
+
         public void Entrance(string key,string style,float age)
         {
-            if(style==NativeBombs.Entrance)BombIntro(age);else if(style==NativeTopDog.Entrance)DogIntro(age);
+            if(foleyInstance!=key||foleyStyle!=style)
+            {
+                for(int i=0;i<entranceVoices.Length;i++)
+                {
+                    if(entranceVoices[i]!=null&&voices[i].clip==entranceVoices[i])voices[i].Stop();
+                    entranceVoices[i]=null;
+                }
+                entranceCues.Step(null,null,0);
+                foleyInstance=key;
+                foleyStyle=style;
+            }
             string sting=NativeIntroRules.IntroSting(style);
             if(key==null||sting==null||Muted||Music<=0){introVoice.Stop();introKey="";return;}introVoice.volume=Mathf.Clamp01(Music*introGain);
             if(introKey==key)return;introKey=key;introVoice.Stop();introVoice.clip=IntroClip(style,sting,out introGain);introVoice.volume=Mathf.Clamp01(Music*introGain);if(introVoice.clip==null||age>=introVoice.clip.length)return;introVoice.time=Math.Max(0,age);introVoice.Play();
@@ -123,7 +152,7 @@ namespace ChipArena.UnityConversion
             // audio.ts update: falloff and pan are heard from the local pilot (`listener=self.pos`), turned by the view yaw.
             if(camera!=null){listener=camera.transform.position;yaw=camera.transform.eulerAngles.y*Mathf.Deg2Rad;}if(arena?.Local?.Body!=null)listener=arena.Local.Body.position;
             Slender(arena,menu);StructureQueue(arena);EffectsFrame(arena,menu);KitAudio(arena,menu);DoorHumFrame(arena,menu);IronworksBossLoopFrame(arena,menu);if(arena==null){CyberCityCues(null,true);Track("music/menu-afterglow",Menu*MenuTrackGain,MenuHeld);return;}
-            if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();installCue.Clear();phase="";countdown=-1;foreach(var v in voices){v.Stop();v.loop=false;}}
+            if(generation!=arena.Generation){generation=arena.Generation;cursor=0;weaponAudio.Clear();deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();installCue.Clear();phase="";countdown=-1;foreach(var v in voices){v.Stop();v.loop=false;}}
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             CyberCityCues(arena,menu);
             if(menu)Track("music/menu-afterglow",Menu*MenuTrackGain);
