@@ -113,20 +113,23 @@ namespace ChipArena.UnityConversion
             bool directBoss=!trainingWanted&&prefs.pve&&!prefs.expedition&&NativeBossBattle.Zone(bossBattlePick);
             if(directBoss)prefs.bots=0;
             if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);
-            if(server!=null||deploymentRoom!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&!GuestsReady){networkStatus="Wait for the other pilots to be ready.";return;}
-            // Refuse a match that cannot start (a host alone with no bots, or every pilot on one team) before the running arena
-            // is touched, so the reason shows in the menu instead of the fatal error screen.
-            {var sides=new System.Collections.Generic.HashSet<int>();int n=0;if(!dedicated){sides.Add(prefs.pve?0:prefs.teams?prefs.team:1);n++;}
-             foreach(var p in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){sides.Add(prefs.pve?0:prefs.teams?p.Seat.team:p.Seat.id);n++;}
-             foreach(var bot in LobbyBots(n)){sides.Add(prefs.pve?0:prefs.teams?bot.team:bot.id);n++;}if(prefs.pve){sides.Add(1);n++;}
-             if(!trainingWanted&&(n<2||sides.Count<2)){networkStatus=n>=2?"Both teams need a pilot: add a bot or change teams.":"Add a bot or wait for a pilot to join.";return;}}
-            if(!trainingWanted&&!prefs.pve&&prefs.map=="breakwater"){var seats=new System.Collections.Generic.List<NativeSeat>();if(!dedicated)seats.Add(new NativeSeat{id=1,team=prefs.team});seats.AddRange(peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).Select(p=>p.Seat));seats.AddRange(LobbyBots(seats.Count));if(!NativeTrainingRules.RoomFits("breakwater",seats,prefs.teams)){networkStatus="Breakwater supports up to 4 pilots: FFA, 1v1 or 2v2.";return;}}
+            if(server!=null||deploymentRoom!=null)return;
+            if(Hosting&&!GuestsReady){networkStatus="Wait for the other pilots to be ready.";return;}
+            var roster=MatchRoster();
+            if(!trainingWanted&&RefuseOpening(roster))return;
             if(directBoss)PrepareBossBattle(bossBattlePick);
             if(!dedicated)Save();EndPreview();inspectSeat=0;ClearReplay();arena?.Dispose();presentation?.ResetPresentation();networkEpoch++;
             match=new NativeMatch(content){DeathmatchTarget=!prefs.pve&&!trainingWanted&&!sandboxWanted&&prefs.deathmatch?CaptureRoomOptions().EffectiveTarget:0,ComebackChips=prefs.deathmatchChips==2,StartingChip=ApplyOpeningChip,Training=trainingWanted,FinalKillcams=Online&&!trainingWanted,ShowIntros=!directBoss&&!trainingWanted&&!prefs.skipPlayerIntros&&!sandboxWanted,Cooperative=prefs.pve,Teams=trainingWanted||prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
-            if(!dedicated){var local=SanitizedSeat(1,Profile(),account.Token);local.team=prefs.pve?0:prefs.team;match.Seats.Add(local);}
-            foreach(var peer in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){peer.Seat.devWeaponAccess=null;peer.Seat.devRevealed=peer.Seat.devCommandsRan=false;peer.Seat.devScale=1;peer.Seat.team=prefs.pve?0:peer.Seat.team;match.Seats.Add(peer.Seat);peer.Ready=false;}
-            if(trainingWanted){foreach(var s in match.Seats)s.team=0;NativeTrainingRules.AddDummies(match,content.Map("training"));}else match.Seats.AddRange(LobbyBots(match.Seats.Count));
+            match.Seats.AddRange(roster);
+            foreach(var peer in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false))
+            {
+                peer.Seat.devWeaponAccess=null;
+                peer.Seat.devRevealed=peer.Seat.devCommandsRan=false;
+                peer.Seat.devScale=1;
+                peer.Ready=false;
+            }
+            if(prefs.pve||trainingWanted)foreach(var seat in roster)seat.team=0;
+            if(trainingWanted)NativeTrainingRules.AddDummies(match,content.Map("training"));
             if(prefs.pve)match.Seats.Add(new NativeSeat{id=900,name="The Siren",spec="siren",bot=true,team=1,AuthorityBoss=true});
             arena=new NativeArena(content,match,trainingWanted?"training":directBoss?NativeBossBattle.Map(bossBattlePick):SelectMatchMap()){RandomizeMapEachSet=!trainingWanted&&prefs.randomizeMap,FriendlyFire=!trainingWanted&&prefs.friendlyFire,LocalId=dedicated?0:1,StationaryBots=prefs.stationary,Sandbox=trainingWanted||sandboxWanted&&account.Developer&&!Online&&!prefs.pve};
             foreach(var player in match.Seats)ApplyOpeningWeapon(player);
@@ -144,8 +147,8 @@ namespace ChipArena.UnityConversion
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();DeploymentBundleTick();AccountXpTick();
             // The logo intro holds the game (no input) while it loads under it (NativeBootLoad.cs).
             if(BootIntroHolds())return;
-            if(openingView!=null){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(padInputCaptured){pending=new InputFrame{CancelAbilities=true};Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
+            if(openingView!=null){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(SplitLocalLoading){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;

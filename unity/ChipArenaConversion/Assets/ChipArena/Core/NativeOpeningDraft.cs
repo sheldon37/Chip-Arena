@@ -69,6 +69,21 @@ namespace ChipArena.UnityConversion
             return false;
         }
 
+        public static string RoomRefusal(IReadOnlyCollection<NativeSeat> seats,bool cooperative,bool teams,string map)
+        {
+            if(cooperative)
+                return seats.Count>4?"Siren co-op supports up to four party members.":
+                    seats.Count==0?"Wait for a pilot to join.":null;
+            if(seats.Count<2)return "Add a bot or wait for a pilot to join.";
+            if(seats.Select(s=>teams?s.team:s.id).Distinct().Count()<2)
+                return "Both teams need a pilot: add a bot or change teams.";
+            if(!NativeTrainingRules.RoomFits(map,seats,teams))
+                return "Breakwater supports up to 4 pilots: FFA, 1v1 or 2v2.";
+            return null;
+        }
+
+        public bool Disconnect(int seat)=>Pilots.Remove(seat);
+
         public void Tick(double now)
         {
             foreach(var p in Pilots.Values)

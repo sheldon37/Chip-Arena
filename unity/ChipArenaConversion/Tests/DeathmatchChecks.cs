@@ -27,6 +27,26 @@ internal static class DeathmatchChecks
         Check(draft.Pilots[1].Weapon=="sword"&&draft.Pilots[1].Step==OpeningStep.Chip,"timeout uses highlight; duplicates permitted");
         draft.Tick(40);
         Check(draft.Ready&&draft.Pilots[1].Chip=="vital"&&a.chips.Count==0,"chip timeout with private picks");
+        var missing=new NativeSeat{id=4,spec="pistol",team=1};
+        var interrupted=new NativeOpeningDraft(new[]{a,b,missing},true,true,0,p=>new[]{"vital"},(s,id)=>true);
+        foreach(var seat in new[]{a,b})
+        {
+            interrupted.Submit(seat.id,OpeningStep.Weapon,"sword",true,1);
+            interrupted.Submit(seat.id,OpeningStep.Chip,"vital",true,2);
+        }
+        Check(!interrupted.Ready&&interrupted.Disconnect(missing.id),"disconnect removes outstanding pick");
+        Check(interrupted.Ready&&interrupted.Pilots.Count==2&&!interrupted.Pilots.ContainsKey(missing.id),"reveal immediately includes only the remaining pilots");
+        Check(!interrupted.Submit(missing.id,OpeningStep.Weapon,"sword",true,2),"late pick cannot restore a removed seat");
+        Check(!interrupted.Disconnect(missing.id),"repeated disconnect is harmless");
+        string Refusal(bool teams,string map,params NativeSeat[] seats)=>NativeOpeningDraft.RoomRefusal(seats,false,teams,map);
+        Check(Refusal(false,"breakwater",a)!=null,"single pilot refused before pick");
+        Check(Refusal(true,"breakwater",a,c)!=null,"single team refused");
+        Check(Refusal(true,"breakwater",a,b,c,missing)==null,"two versus two allowed");
+        Check(Refusal(false,"breakwater",a,b,c,missing,new NativeSeat{id=5})!=null,"over-capacity map refused");
+        Check(Refusal(true,"breakwater",a,b,c,new NativeSeat{id=5,team=0})!=null,"three versus one refused");
+        Check(Refusal(false,"breakwater",a,b,c,missing)==null,"four-pilot FFA allowed");
+        Check(NativeOpeningDraft.RoomRefusal(new[]{a},true,true,"siren")==null,"solo co-op allowed");
+        Check(NativeOpeningDraft.RoomRefusal(new[]{a,b,c,missing,new NativeSeat{id=5}},true,true,"siren")!=null,"co-op capacity enforced");
         var options=new NativeRoomOptions();
         Check(options.EffectiveTarget==15,"FFA target");options.teams=true;
         Check(options.EffectiveTarget==30,"team target");options.killTarget=120;options.Normalize(content);

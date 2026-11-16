@@ -29,14 +29,8 @@ namespace ChipArena.UnityConversion
             }
             if(!prefs.blindPick&&!chips)return false;
             if(Hosting&&!GuestsReady)return true;
-            var seats=new List<NativeSeat>();
-            if(!dedicated)seats.Add(SanitizedSeat(1,Profile(),account.Token));
-            seats.AddRange(peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).Select(p=>p.Seat));
-            if(!prefs.pve || !prefs.expedition&&!NativeBossBattle.Zone(bossBattlePick))
-            {
-                if(!prefs.pve&&!Online&&!dedicated)prefs.bots=Math.Max(1,prefs.bots);
-                seats.AddRange(LobbyBots(seats.Count));
-            }
+            var seats=MatchRoster();
+            if(RefuseOpening(seats))return true;
             var rng=new SourceRandom(NativeMatch.NewSeed());
             openingRun=new NativeOpeningDraft(seats,prefs.blindPick,chips,Time.unscaledTimeAsDouble,
                 p=>NativeContentRules.Offers(content,p.Weapon,new Dictionary<string,int>(),rng.Next,prefs.choices,
@@ -46,6 +40,52 @@ namespace ChipArena.UnityConversion
             openingRevealUntil=0;
             OpeningTick();
             return true;
+        }
+
+        private List<NativeSeat> MatchRoster()
+        {
+            var seats=new List<NativeSeat>();
+            if(!dedicated)
+            {
+                var local=SanitizedSeat(1,Profile(),account.Token);
+                local.team=prefs.team;
+                seats.Add(local);
+            }
+            seats.AddRange(peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).Select(p=>p.Seat));
+            if(applyingOpening)
+                seats.AddRange(openingRun.Pilots.Values.Where(p=>p.Seat.bot).Select(p=>p.Seat));
+            else if(!trainingWanted&&(!prefs.pve||!prefs.expedition&&!NativeBossBattle.Zone(bossBattlePick)))
+            {
+                if(!prefs.pve&&!Online&&!dedicated)prefs.bots=Math.Max(1,prefs.bots);
+                seats.AddRange(LobbyBots(seats.Count));
+            }
+            return seats;
+        }
+
+        private bool RefuseOpening(IReadOnlyCollection<NativeSeat> seats)
+        {
+            string reason=prefs.pve&&prefs.expedition?ExpeditionPartyRefusal(seats):
+                NativeOpeningDraft.RoomRefusal(seats,prefs.pve,prefs.teams,prefs.map);
+            if(reason==null)return false;
+            networkStatus=reason;
+            if(!dedicated)Notice(reason);
+            return true;
+        }
+
+        private void OpeningDisconnected(int id)
+        {
+            if(openingRun==null||!openingRun.Disconnect(id))return;
+            nextOpeningView=0;
+            if(openingLaunch==null||!RefuseOpening(openingRun.Pilots.Values.Select(p=>p.Seat).ToArray()))return;
+            NotifyOpeningEnded(networkStatus);
+            ClearOpening();
+            LobbyBroadcast();
+        }
+
+        private void NotifyOpeningEnded(string reason=null)
+        {
+            foreach(var peer in peers)if(peer.Seat!=null&&peer.Connection?.Closed==false)
+                peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="opening-end",pickSession=openingRun.Session,error=reason}));
         }
 
         private bool OpeningWeaponAllowed(NativeSeat seat,string id)
@@ -89,8 +129,7 @@ namespace ChipArena.UnityConversion
             if(openingRevealUntil>0&&now>=openingRevealUntil)
             {
                 var launch=openingLaunch;openingLaunch=null;openingView=null;
-                foreach(var peer in peers)if(peer.Seat!=null&&peer.Connection?.Closed==false)
-                    peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="opening-end",pickSession=openingRun.Session}));
+                NotifyOpeningEnded();
                 launch();
                 return;
             }
@@ -124,7 +163,15 @@ namespace ChipArena.UnityConversion
 
         private bool OpeningClientMessage(NativeNetMessage m)
         {
-            if(m.type=="opening-end"){if(openingView?.pickSession==m.pickSession)openingView=null;return true;}
+            if(m.type=="opening-end")
+            {
+                if(openingView?.pickSession==m.pickSession)
+                {
+                    openingView=null;
+                    if(!string.IsNullOrEmpty(m.error)){networkStatus=m.error;Notice(networkStatus);}
+                }
+                return true;
+            }
             if(m.type!="opening-view")return false;
             if(m.pick>=0&&m.pick<=3&&m.id>=0&&m.team<=8&&m.id<=m.team&&m.pickSession?.Length==32&&m.pickCards?.Length<=12)
                 AcceptOpeningView(m);

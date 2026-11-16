@@ -1,3 +1,7 @@
+## 2026-11-16 — Astra: Blind Pick audit fixes, PR #397
+
+Follow-up to `f1984bec` on `codex/blind-pick-deathmatch`. The host checks the roster before opening a draft and again at launch. A detected disconnect removes the seat before evaluating readiness and sending the reveal. If the roster can no longer start, the host closes the draft for everyone with the lobby refusal. Retained pilots keep their choices. Dropped seats may return in the lobby. The same bots that drafted enter the match. Controller input capture again immediately follows the boot intro guard. New managed regressions cover disconnect, stale selection, seat count, opposing sides, Breakwater and co-op capacity. No animation work. Two-client Windows play remains a separate check.
+
 ## 2026-11-16 — Astra: Blind Pick and Deathmatch
 
 Branch `codex/blind-pick-deathmatch` from shared `4f57b8ae`. Advanced room options and Play vs Bots support Blind Pick, Deathmatch, a 1–100 kill target (auto 15 FFA / 30 team), and starting-chip / off / comeback rules. Each enemy kill adds one point to its side. Respawn is three seconds. Comeback choices queue on personal opponent deaths three and six, survive respawn, and use the existing eligible offer pool. The first kill to reach the target freezes scoring and supplies the final killcam. Training and cooperative simulation retain their own win rules.
