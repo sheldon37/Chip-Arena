@@ -13,6 +13,8 @@ namespace ChipArena.UnityConversion
         /// <summary>When moment `m` of the record falls (float.NaN: this cast has none).</summary>
         public static float At(NativeTechnique k,int m)
         {
+            if(k.EndedEarly&&m!=Hit&&m!=Recast)return float.NaN;
+            if(k.ReleasePending&&!(m==Release&&ThirdFromPress(k.Kind)))return float.NaN;
             switch(m)
             {
                 case Release:return ThirdFromPress(k.Kind)?k.At:k.Release;
@@ -30,7 +32,7 @@ namespace ChipArena.UnityConversion
             switch(kind)
             {
                 case NativeTechniques.Riposte:if(m==Hit){n=S(o,n,"melee.shield.block","parry",.9f);n=S(o,n,"melee.sword.swing","sword",.7f);}else if(m==Release)n=S(o,n,"melee.sword.swing","sword",.25f);break;
-                case NativeTechniques.SmokeVeil:if(m==Release){atPoint=true;n=S(o,n,"melee.daggers.throw","daggers",.4f);n=S(o,n,"blast.transient","dash",.6f);}break;
+                case NativeTechniques.SmokeVeil:if(m==Release){atPoint=true;n=S(o,n,"turret.overheat","dash",.56f);}break;
                 case NativeTechniques.Bastion:if(m==Release){atPoint=true;n=S(o,n,"melee.shield.bash","shield",.9f);n=S(o,n,"impact.metal","metal",.6f);}else if(m==Hit){atPoint=true;n=S(o,n,"melee.shield.block","parry",.7f);}break;
                 case NativeTechniques.AnchorThrow:if(m==Release)n=S(o,n,"melee.greatsword.swing","greatsword",.8f);else if(m==Arm){atPoint=true;n=S(o,n,"impact.metal","metal",.9f);n=S(o,n,"blast.quake","stone",.5f);}else if(m==Recast)n=S(o,n,"move.jump","jump",.8f);else if(m==End){atPoint=true;n=S(o,n,"move.land","explosion",.6f);}break;
                 case NativeTechniques.RicochetCoin:if(m==Release)n=S(o,n,"gun.reload.end","metal",.35f);else if(m==Hit){atPoint=true;n=S(o,n,"gun.ricochet","metal",1);}break;
@@ -42,12 +44,12 @@ namespace ChipArena.UnityConversion
                 case NativeTechniques.StaticRecall:if(m==Release){n=S(o,n,"blast.static","lightning",.7f);}else if(m==Recast){n=S(o,n,"magic.blink-strike","demon-step",.9f);n=S(o,n,"blast.shock","lightning",.6f);}break;
                 case NativeTechniques.ShadeSwap:if(m==Release)n=S(o,n,"magic.darkness.shot","darkness",.8f);else if(m==Hit){atPoint=true;n=S(o,n,"magic.darkness.hit","darkness",.9f);n=S(o,n,"magic.blink-strike","demon-step",.7f);}break;
                 case NativeTechniques.PartingLine:if(m==Release){n=S(o,n,"melee.sword.swing","sword",.5f);n=S(o,n,"move.roll","dash",.5f);}else if(m==Arm){atPoint=true;n=S(o,n,"blast.kinetic","dash",.8f);n=S(o,n,"melee.sword.hit","sword",.5f);}break;
-                case NativeTechniques.Tripwire:if(m==Release)n=S(o,n,"melee.daggers.throw","daggers",.8f);else if(m==Arm){atPoint=true;n=S(o,n,"impact.metal","metal",.45f);}else if(m==Hit){n=S(o,n,"melee.daggers.hit","daggers",.8f);n=S(o,n,"gun.reload.end","metal",.4f);}break;
+                case NativeTechniques.Tripwire:if(m==Release)n=S(o,n,"melee.daggers.throw","daggers",.8f);else if(m==Arm){atPoint=true;n=S(o,n,"chip.mine.arm","metal",.48f);}else if(m==Hit){n=S(o,n,"melee.daggers.hit","daggers",.8f);n=S(o,n,"gun.reload.end","metal",.4f);}break;
                 case NativeTechniques.ShieldSurf:if(m==Release){n=S(o,n,"impact.metal","metal",.6f);n=S(o,n,"move.roll","dash",.6f);}else if(m==Recast)n=S(o,n,"move.jump","jump",.8f);else if(m==End)n=S(o,n,"melee.shield.block","parry",.3f);break;
                 case NativeTechniques.IronVow:if(m==Release){atPoint=true;n=S(o,n,"blast.quake","stone",.7f);n=S(o,n,"melee.greatsword.hit","greatsword",.7f);}else if(m==Hit)n=S(o,n,"melee.shield.block","parry",.7f);else if(m==End)n=S(o,n,"blast.kinetic","dash",.8f);break;
                 case NativeTechniques.BountyRound:if(m==Release)n=S(o,n,"gun.pistol.shot","pistol",.9f);else if(m==Hit)n=S(o,n,"gun.ricochet","metal",.7f);break;
                 case NativeTechniques.RecoilBurst:if(m==Release){n=S(o,n,"gun.machinegun.shot","machinegun",1);n=S(o,n,"blast.fire","explosion",.6f);}else if(m==End)n=S(o,n,"gun.dryfire","metal",.7f);break;
-                case NativeTechniques.SonarDart:if(m==Release)n=S(o,n,"gun.frag.throw","dash",.5f);else if(m==Arm){atPoint=true;n=S(o,n,"gun.reload.end","metal",.4f);}else if(m==Hit){atPoint=true;n=S(o,n,"impact.metal","metal",.6f);}break;
+                case NativeTechniques.SonarDart:if(m==Release)n=S(o,n,"gun.frag.throw","dash",.5f);else if(m==Arm){atPoint=true;n=S(o,n,"turret.lock","metal",.42f);}else if(m==Hit){atPoint=true;n=S(o,n,"impact.metal","metal",.6f);}break;
                 case NativeTechniques.SpiritHawk:if(m==Release)n=S(o,n,"move.roll","dash",.5f);else if(m==Hit)n=S(o,n,"melee.daggers.hit","daggers",.7f);break;
                 case NativeTechniques.WildfireRun:if(m==Release){n=S(o,n,"blast.fire","explosion",.5f);n=S(o,n,"magic.flame-lance","fire",.4f);}break;
                 case NativeTechniques.Slipstream:if(m==Release){n=S(o,n,"magic.geyser","water",.5f);n=S(o,n,"impact.water","water",.5f);}break;

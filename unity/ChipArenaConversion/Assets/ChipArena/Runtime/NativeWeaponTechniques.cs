@@ -110,7 +110,7 @@ namespace ChipArena.UnityConversion
             if(melee)p.Stamina-=cost;if(magic)p.Mana-=cost;p.RegenAt=Time+.45f;
             float ready=Time+(p.DevNoCooldowns?0:(float)((id=="ricochet-coin"&&AbilityChip(p,"ab-lucky-coin")?6:d.cooldown)*p.Stats["abilityCooldown"]));if(slot=="q")p.QReady=ready;else{p.EReady=ready;p.ECharges=0;}
             float release=Time+NativeAbilityRules.CastTime(d.windup,p.Stats);
-            p.Technique=new NativeTechnique{Kind=d.id,Phase=TechniqueFirstPhase(d.id),At=Time,Release=release,Until=release+(float)d.duration,RecoverUntil=release+NativeAbilityRules.CastTime(d.lockout,p.Stats),From=Vec(p.Body.position+Vector3.up*.3f),Point=Vec(point),Dir=Vec(direction)};
+            p.Technique=new NativeTechnique{ReleasePending=true,Kind=d.id,Phase=TechniqueFirstPhase(d.id),At=Time,Release=release,Until=release+(float)d.duration,RecoverUntil=release+NativeAbilityRules.CastTime(d.lockout,p.Stats),From=Vec(p.Body.position+Vector3.up*.3f),Point=Vec(point),Dir=Vec(direction)};
             p.TechniqueCastSlot=slot;p.TechniqueReleased=false;p.TechniqueNext=release;p.TechniqueHealth=0;
             p.TechniqueScale=magic?NativeAbilityRules.Scale(p.Stats,p.Mana+cost>=.75f*p.Stats["maxMana"]):(float)p.Stats["damage"];
             p.Ready=Math.Max(p.Ready,p.Technique.RecoverUntil);return true;
@@ -120,6 +120,7 @@ namespace ChipArena.UnityConversion
         private void ReleaseTechnique(NativePilot p)
         {
             p.TechniqueReleased=true;var k=p.Technique;if(TechniqueBlocked(p)){EndTechnique(p);return;}
+            k.ReleasePending=false;
             Vector3 feet=p.Body.position-Vector3.up*.865f,forward=Vec(V3.Forward(p.Input.Yaw));k.From=Vec(p.Body.position+Vector3.up*.3f);p.TechniquePosition=Vec(k.From);
             if(ReleaseThirdTechnique(p)||ReleaseMoreTechnique(p,feet,forward))return;
             switch(k.Kind)

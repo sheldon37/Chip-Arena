@@ -305,7 +305,7 @@ namespace ChipArena.UnityConversion
             var missing=Enumerable.Range(0,heard.Length).Where(i=>!heard[i]).Select(i=>NativeIronworksBossCues.Keys[i]).ToArray();
             Check(missing.Length==0,"every boss.ironworks key plays somewhere in the preview (missing: "+string.Join(", ",missing)+")");
             string au=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeIronworksBossAudio.cs"));
-            Check(au.Contains("Cue(NativeIronworksBossCues.Keys[")&&!au.Contains("Fallback"),"the cues play through the bank path with no stand-in (silent without clips)");
+            Check(au.Contains("ExpeditionRecording(NativeIronworksBossCues.Keys[")&&au.Contains("fire.Loop")&&au.Contains("BankVoice(false,NativeSoundPriority.Low)"),"pooled encounter one-shots and furnace loop");
             string na=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeAudio.cs"));Check(na.Contains("DoorHumFrame(arena,menu);IronworksBossLoopFrame(arena,menu);"),"NativeAudio calls the boss's audio frame once, beside the door hum (not in the music branch)");
         }
 

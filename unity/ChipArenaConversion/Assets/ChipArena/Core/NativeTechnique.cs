@@ -13,6 +13,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The technique's id and its phase (docs/WEAPON-TECHNIQUES.md).</summary>
         public string Kind,Phase;
         /// <summary>The press; when the move leaves the pilot; the effect's end; the pilot's own lock's end.</summary>
+        public bool ReleasePending,EndedEarly;
         public float At=-100,Release,Until,RecoverUntil;
         /// <summary>The triggered moment and the recast (-100: not yet); a time of the kind's own (armed, stuck, burst), or a share.</summary>
         public float HitAt=-100,RecastAt=-100,Arm;

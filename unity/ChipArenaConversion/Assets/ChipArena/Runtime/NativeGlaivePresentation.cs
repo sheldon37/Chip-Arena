@@ -67,14 +67,14 @@ namespace ChipArena.UnityConversion
         private void GlaiveMoments(NativePilot p,Vector3 pos,float t,bool mine)
         {
             var k=p.Glaive;if(p.Seat.spec!=NativeGlaive.Spec||k==null)return;
-            if(k.CastKind!=null&&t>=k.CastRelease&&t-k.CastRelease<.15f&&Once(p.Seat.id+"glrel"+k.CastKind+k.CastStep,k.CastRelease))
+            if(k.CastKind!=null&&weaponAudio.Release(p.Seat.id,k.ReleasePending,k.CastRelease,k.CastUntil,t))
             {
                 string id=k.CastKind==NativeGlaive.Throw?"ring-throw":k.CastKind==NativeGlaive.Swing&&k.CastStep==3?"ring-flick":k.CastKind==NativeGlaive.Swing||k.CastKind==NativeGlaive.Skim?"ring-cut":k.CastKind==NativeGlaive.Halo?"ring-throw":null;
                 if(id!=null)Toon(id,pos,k.CastKind==NativeGlaive.Swing&&k.CastStep==2?1:.85f,mine,k.CastKind==NativeGlaive.Swing&&k.CastStep==2?.8f:1);
             }
             if(k.Hits!=null)foreach(var h in k.Hits)
             {
-                if(h==null||t<h.At||t-h.At>=.15f||!Once(p.Seat.id+"glhit"+h.Id,h.At))continue;var at=new Vector3(h.Pos.x,h.Pos.y,h.Pos.z);
+                if(h==null||!weaponAudio.Hit(p.Seat.id,h.Id,h.At,t))continue;var at=new Vector3(h.Pos.x,h.Pos.y,h.Pos.z);
                 switch(h.Kind)
                 {
                     case NativeGlaive.HitBurst:Toon("ring-burst",at,1,mine);break;

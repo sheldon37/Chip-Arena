@@ -330,7 +330,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeAudio
     {
         // ---------- THE 6:47's cues (Core NativeStationBossCues: the doc's boss.station.* keys) ----------
-        // Bank only: a key plays its clips when the owner's bank has them, else nothing (no stand-in). 2D keys play flat.
+        // Physical events can borrow from the installed bank. Station-wide warnings play flat.
         private readonly StationBossCue[] stationBossCues=new StationBossCue[NativeStationBossCues.QueueSize];
         private float stationBossHurt=float.NegativeInfinity;
         private void StationBossCues(NativeArena arena,bool menu)
@@ -338,9 +338,9 @@ namespace ChipArena.UnityConversion
             int n=NativeStationBossCues.Drain(stationBossCues);if(menu||arena==null)return;
             for(int i=0;i<n;i++)
             {
-                var c=stationBossCues[i];if(c.Key==NativeStationBossCues.Hurt){if(c.At-stationBossHurt<1.2f)continue;stationBossHurt=c.At;}
+                var c=stationBossCues[i];if(c.Key==NativeStationBossCues.Hurt){if(c.At>=stationBossHurt&&c.At-stationBossHurt<1.2f)continue;stationBossHurt=c.At;}
                 string key=NativeStationBossCues.Keys[c.Key];Vector3? place=NativeStationBossCues.Flat(c.Key)?(Vector3?)null:new Vector3(c.At3.X,c.At3.Y,c.At3.Z);
-                Cue(key,null,place,c.Gain);
+                ExpeditionRecording(key,place,c.Gain);
             }
         }
     }

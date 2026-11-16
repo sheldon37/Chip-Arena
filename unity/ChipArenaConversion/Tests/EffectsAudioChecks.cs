@@ -40,8 +40,45 @@ namespace ChipArena.UnityConversion
                 Check(pcm[0]==0&&pcm[pcm.Length-1]==0&&pcm.All(s=>!float.IsNaN(s)&&!float.IsInfinity(s)&&Math.Abs(s)<1)&&pcm.Any(s=>Math.Abs(s)>.1),"finite audible hover with silent ends and no clipping");
             }
             passed.Add("hover audio: 10,000 stationary repaints cue once; slot/offer/keyboard edges, disabled/re-entry/reset, fixed 40/70 ms ticks and overlap budget pass");
+            var clock=new NativeEntranceCueClock();
+            clock.Step("host","intro",0);clock.Step("host","intro",.2f);
+            Check(clock.Crossed(.2f),"intro beat crossed");
+            clock.Step("host","intro",.2f);Check(!clock.Crossed(.2f),"duplicate frame silent");
+            clock.Step("host","intro",.16f);clock.Step("host","intro",.21f);
+            Check(!clock.Crossed(.2f),"clock correction never replays a beat");
+            clock.Step("guest","intro",2.01f);
+            Check(!clock.Crossed(.2f)&&clock.Crossed(2f),"late guest skips backlog and plays fresh beat");
+            clock.Step(null,null,0);Check(!clock.Crossed(0),"closed entrance silent");
+            foreach(string style in new[]{NativeKatana.Entrance,NativeFangs.Entrance,NativeDevMotions.GreatswordEntrance,
+                NativeDevMotions.KatanaEntrance,NativeGlaiveIntro.Id,CyberLordSpec.Entrance,NativeBombs.Entrance})
+            {
+                var beats=NativeEntranceAudio.Timeline(style);
+                Check(beats.Length>=4&&beats.All(b=>NativeSoundKeys.Known(b.Key)&&b.At>=0&&b.At<NativeIntroRules.Duration(style))
+                    &&beats.SequenceEqual(beats.OrderBy(b=>b.At)),style+" ordered authored cues");
+            }
+            var history=new NativeWeaponAudioHistory();
+            var kit=new NativeGlaiveKit{CastKind=NativeGlaive.Throw,ReleasePending=true,CastRelease=1,CastUntil=1.4f};
+            var pending=kit.ViewCopy();
+            Check(!history.Release(1,pending.ReleasePending,1,1.4f,1.05f),"pending guest wind-up silent");
+            kit.ReleasePending=false;
+            Check(history.Release(1,kit.ViewCopy().ReleasePending,1,1.4f,1.11f)&&!history.Release(1,false,1,1.4f,1.12f),"confirmed release once");
+            Check(!history.Release(2,false,1,.9f,1.01f)&&!history.Release(2,false,1,1.4f,1.5f),"cancelled or stale release silent");
+            Check(history.Hit(1,10,2,2.1f)&&!history.Hit(1,10,2,2.11f)&&!history.Hit(1,9,2,2.12f)&&history.Hit(2,9,2,2.13f),"hit cursor ordered per pilot");
+            history.Clear();Check(history.Hit(1,1,0,.01f),"new arena resets hit history");
+            var technique=new NativeTechnique{Kind=NativeTechniques.Tripwire,ReleasePending=true,At=0,Release=.2f,Arm=.5f,Until=2};
+            Check(float.IsNaN(NativeTechniqueSounds.At(technique.ViewCopy(),NativeTechniqueSounds.Release)),"pending placement silent");
+            technique.ReleasePending=false;Check(NativeTechniqueSounds.At(technique,NativeTechniqueSounds.Arm)==.5f,"confirmed trap can arm");
+            NativeTechniqueRules.End(technique,.3f);
+            Check(float.IsNaN(NativeTechniqueSounds.At(technique,NativeTechniqueSounds.Arm))&&float.IsNaN(NativeTechniqueSounds.At(technique,NativeTechniqueSounds.End)),"interruption drops future cues");
+            var columns=new[]{new NativeBlast{Kind=NativeBombs.Column,Id=7,At=1,Pos=new V3(2,0,0)},new NativeBlast{Kind=NativeBombs.Column,Id=8,At=1,Pos=new V3(-2,0,0)}};
+            Check(NativeBombSounds.NearestColumn(columns,columns[0],default)&&!NativeBombSounds.NearestColumn(columns,columns[1],default)
+                &&NativeBombSounds.NearestColumn(columns,columns[1],new V3(-3,0,0)),"one closest Finale column per listener");
+            Check(NativeIronworksKinds.Cue(0,"missing")==null&&NativeIronworksKinds.Cue(1,"missing")==null,"unknown enemy cues silent");
+            Check(NativeStationBossCues.Keys.All(NativeSoundKeys.Known)&&NativeIronworksBossCues.Keys.All(NativeSoundKeys.Known)
+                &&NativeToonSynth.Ids.Where(id=>id.StartsWith("ring-")).All(id=>NativeSoundKeys.Known(NativeToonSynth.BankKey(id))),"optional encounter and Glaive keys");
+            passed.Add("authored entrance clocks, cast cancellation, replica confirmation, hit cursors, closest column");
             // ---------- key contract ----------
-            var keys=NativeSoundKeys.All;Check(keys.Length==444&&keys.Count(k=>k.Key.StartsWith("boss.noctiel.",StringComparison.Ordinal))==NativeFallenBossCues.Keys.Length&&NativeFallenBossCues.Keys.Length==57&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20&&keys.Count(k=>k.Key.StartsWith("pve.zombie.",StringComparison.Ordinal))==14&&keys.Count(k=>k.Key.StartsWith("pve.ironworks.",StringComparison.Ordinal))==34&&keys.Count(k=>k.Key.StartsWith(NativeStationKinds.Prefix,StringComparison.Ordinal))==22,"262 effect keys (19 of them the hazard kit's, 14 the zombies' voices and footfalls, 34 the City Ironworks enemies', 22 the Central Station enemies', 57 NOCTIEL's) and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
+            var keys=NativeSoundKeys.All;Check(keys.Length==538&&keys.Count(k=>k.Key.StartsWith("boss.noctiel.",StringComparison.Ordinal))==NativeFallenBossCues.Keys.Length&&NativeFallenBossCues.Keys.Length==57&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20&&keys.Count(k=>k.Key.StartsWith("pve.zombie.",StringComparison.Ordinal))==14&&keys.Count(k=>k.Key.StartsWith("pve.ironworks.",StringComparison.Ordinal))==34&&keys.Count(k=>k.Key.StartsWith(NativeStationKinds.Prefix,StringComparison.Ordinal))==22,"262 effect keys (19 of them the hazard kit's, 14 the zombies' voices and footfalls, 34 the City Ironworks enemies', 22 the Central Station enemies', 57 NOCTIEL's) and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
             foreach(var k in keys)
             {
                 Check(Regex.IsMatch(k.Key,"^[a-z]+(\\.[a-z0-9-]+)+$")&&NativeSoundKeys.Known(k.Key),k.Key+" name");
@@ -190,7 +227,7 @@ namespace ChipArena.UnityConversion
                 Check(steals>0&&lowRefused>0&&keyRefused>0,"the simulation reached every cap ("+steals+" steals, "+lowRefused+" low refusals, "+keyRefused+" gate refusals)");
                 string fx=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeEffectsAudio.cs"));
                 Check(!fx.Contains("AddComponent<AudioSource>")&&fx.Contains("new LoopSlot[NativeVoicePool.MaxLoops]")&&NativeVoicePool.MaxLoops==3&&fx.Contains("int v=BankVoice(false,NativeSoundPriority.Low);")&&fx.Contains("NativeVoicePool.Pick(busyScratch,keyedVoices,heldScratch,gated,priority,out bool steal)"),"loops and one-shots share the 24 voices through the pool, at most 3 loops, no new AudioSource");
-                Check(fx.Contains("gain=(float)limiter.Cue(gate,Time.unscaledTime,gain);")&&fx.Contains("if(!bank.Admit(key,Time.unscaledTimeAsDouble))return true;"),"bank plays keep the limiter gate and their dedup window");
+                Check(fx.Contains("gain=(float)limiter.Cue(gate,Time.unscaledTime,gain);")&&fx.Contains("if(!bank.Admit(key,Time.unscaledTimeAsDouble,cue))return true;"),"bank plays keep the limiter gate and their dedup window");
                 passed.Add("effects audio: voice pool over 20000 random plays: at most 8 gated of 24, 4 voices reserved from low priority, high steals only low, at most 3 field loops; no new AudioSource");
             }
 
@@ -205,7 +242,7 @@ namespace ChipArena.UnityConversion
             // ---------- hook points route through the bank ----------
             {
                 string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
-                Check(R("NativeTopDogScreen.cs").Contains("BankPlay(NativeToonSynth.Prefix+id,position,gain,0,null,mine,rateScale:rate)"),"recorded Toon cues preserve the caller playback rate");
+                Check(R("NativeTopDogScreen.cs").Contains("BankPlay(key,position,gain,0,null,mine,rateScale:rate)"),"recorded Toon cues preserve the caller playback rate");
                 string audio=R("NativeAudio.cs"),scene=R("NativeSceneAudio.cs"),st=R("NativeStructureAudio.cs"),ui=R("NativeUi.cs"),fx=R("NativeEffectsAudio.cs");
                 foreach(var hook in new[]{"int plays=NativeSoundPlan.Event(bank,context,detail,routed,n,planned);","for(int i=0;i<plays;i++)Perform(planned[i],pos,from,arena.Time-e.Time,context.SourceMe||context.TargetMe);",
                     "Cue(NativeSoundCues.Roll(roll),roll,pos,.45f,mine:mine);","Cue(NativeSoundCues.Swing(p.Seat.spec,swing),swing,pos,.4f,cover:NativeSoundCues.SwingCover(p.Seat.spec),mine:mine);",
@@ -217,7 +254,7 @@ namespace ChipArena.UnityConversion
                 Check(st.Contains("var clip=BankStructureClip(layer.Clip,out var banked);if(clip==null)clip=StructureClip(layer.Clip);if(clip==null)continue;"),"structure layers take the bank override, else the synth");
                 Check(ui.Contains("public static bool Button(Rect r,bool enabled=true)=>Pressed(r,enabled,NativeUiSounds.Click);")&&ui.Contains("return Pressed(r,enabled,alpha>.5f?NativeUiSounds.Button(label,primary):null)&&alpha>.5f;")&&ui.Contains("Sound?.Invoke(NativeUiSounds.Error);")&&ui.Contains("Sound?.Invoke(NativeUiSounds.Hover);")&&ui.Contains("if(hit&&enabled&&sound!=null)Sound?.Invoke(sound);"),"U.Button / U.Btn raise click, back, confirm, error and hover once");
                 Check(R("NativeLoadoutUI.cs").Contains("nativeAudio?.UiCue(\"ui.loadout.select\",\"install\",.4f);")&&R("NativeDraftScreen.cs").Contains("nativeAudio.UiCue(\"ui.draft.pick\",\"ui\",.4f);")&&R("NativeDraftScreen.cs").Contains("nativeAudio?.UiCue(\"ui.draft.hover\",null,.5f);")&&R("NativeHomeMenu.cs").Contains("nativeAudio?.UiCue(\"ui.click\",\"ui\",.4f);")&&R("NativeNotice.cs").Contains("nativeAudio?.Cue(\"ui.notice\",null,null,.5f,mine:true);"),"screen UI cues use the shared audio entrypoints (hover has fixed built-in ticks)");
-                Check(fx.Contains("if(key!=null&&BankPlay(key,position,gain,0,gate,mine))return;")&&fx.Contains("if(cover!=null&&bank.Has(cover))return;")&&fx.Contains("if(clip!=null)Play(clip,position,gain,rate,gate);"),"Cue falls back to exactly today's Play");
+                Check(fx.Contains("if(key!=null&&BankPlay(key,position,gain,0,gate,mine,rateScale:rate>0?rate:1))return;")&&fx.Contains("if(cover!=null&&bank.Has(cover))return;")&&fx.Contains("if(clip!=null)Play(clip,position,gain,rate,gate);"),"Cue falls back to exactly today's Play");
                 Check(fx.Contains("if(s.Key==null){if(s.Tone)ArcadeTone();else Play(s.Clip,s.Positional?at:(Vector3?)null,s.Gain,s.Rate,s.Gate);return;}"),"an unbanked plan entry is today's play");
                 Check(fx.Contains("FieldBorn(NativeFieldSounds.Born(f.Kind,fx),")&&fx.Contains("BankPlay(\"chip.mine.arm\",at,.6f);")&&fx.Contains("FuseBeeps(f.Id,at,f.Born,f.Until,t);")&&fx.Contains("WantLoop((long)f.Id*2,loop,at);")&&fx.Contains("WantLoop((long)z.Id*2+1,loop,z.Position);")&&fx.Contains("BankPlay(\"move.jump\",")&&fx.Contains("BankPlay(\"gun.ads\",null,.5f,0,null,true);"),"field, fuse, loop, jump and scope hooks play only through the bank");
                 string steps=R("NativeFootstepAudio.cs");Check(steps.Contains("CreatureCue(\"move.land\",null,1,at,pick.Gain,NativeFootsteps.LandRate(f.Air),priority);")&&steps.Contains("if(bank.Has(key)){BankPlay(key,at,gain,0,null,false,priority,rate);return true;}"),"landings and footsteps take the bank first (then a stand-in, then the built-in take; a key with clips only its own)");
@@ -247,7 +284,16 @@ namespace ChipArena.UnityConversion
                 {
                     string folder=Path.GetDirectoryName(local);var installed=NativeSoundBank.Parse(File.ReadAllText(local));
                     Check(installed.Errors.Count==0,"LocalAssets manifest: "+string.Join("; ",installed.Errors.Take(5)));
-                    var missing=named.Where(k=>installed.Entry(k)==null).ToList();Check(missing.Count==0,"LocalAssets manifest lacks keys the code names: "+string.Join(", ",missing));
+                    var optional=new HashSet<string>(NativeStationKinds.CueKeys.Concat(NativeIronworksKinds.CueKeys));
+                    Check(installed.Entry("field.fire")?.Loop==true&&installed.Has("field.fire"),"Converter furnace has a loopable donor");
+                    var donors=NativeToonSynth.Ids.Select(NativeRecordedCues.Weapon).Concat(
+                        NativeStationBossCues.Keys.Concat(NativeIronworksBossCues.Keys).Concat(NativeIronworksKinds.Keys.SelectMany(k=>k)).Select(NativeRecordedCues.Expedition));
+                    foreach(var recording in donors.Where(r=>r.Key!=null))
+                    {
+                        var entry=installed.Entry(recording.Key);
+                        Check(entry!=null&&entry.Count>0&&!entry.Loop&&(recording.Take==null||entry.Clips.Contains(recording.Take)),"playable recording "+recording.Key+"/"+recording.Take);
+                    }
+                    var missing=named.Where(k=>!optional.Contains(k)&&installed.Entry(k)==null).ToList();Check(missing.Count==0,"LocalAssets manifest lacks keys the code names: "+string.Join(", ",missing));
                     long bytes=Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories).Sum(f=>new FileInfo(f).Length);Check(bytes<NativeSoundKeys.BudgetBytes,"EffectsAudio "+bytes+" bytes over the 18 MB budget");
                     int clips=0;double seconds=0;var listed=new HashSet<string>(StringComparer.Ordinal);
                     foreach(var e in installed.Entries)for(int i=0;i<e.Count;i++)
@@ -260,7 +306,7 @@ namespace ChipArena.UnityConversion
                     }
                     var extra=Directory.EnumerateFiles(folder,"*.ogg",SearchOption.AllDirectories).Select(Path.GetFullPath).Where(f=>!listed.Contains(f)).ToList();Check(extra.Count==0,"unlisted clips: "+string.Join(", ",extra.Take(3)));
                     foreach(var dir in Directory.EnumerateDirectories(folder,"*",SearchOption.AllDirectories))Check(File.Exists(dir+".meta"),"folder meta "+dir);
-                    passed.Add("effects audio: LocalAssets present: "+installed.Count+" keys, "+clips+" clips, "+seconds.ToString("0")+" s, "+(bytes/1e6).ToString("0.00")+" MB < 18 MB; every clip has a .meta, fits its cap, 44.1 kHz, mono when positional; covers all "+named.Count+" named keys");
+                    passed.Add("effects audio: LocalAssets present: "+installed.Count+" keys, "+clips+" clips, "+seconds.ToString("0")+" s, "+(bytes/1e6).ToString("0.00")+" MB < 18 MB; every clip has a .meta, fits its cap, 44.1 kHz, mono when positional; all required named keys and borrowed takes present");
                 }
             }
             return passed;

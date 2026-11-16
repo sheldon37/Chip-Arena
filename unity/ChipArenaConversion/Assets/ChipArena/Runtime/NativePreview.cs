@@ -23,6 +23,7 @@ namespace ChipArena.UnityConversion
             if(previewArena==null)return false;float age=Time.unscaledTime-previewStarted;if(age>NativeIntroRules.Duration(previewStyle)+.7f){EndPreview();return false;}
             nativeAudio.Muted=!prefs.sound;nativeAudio.PreviewIntro("preview:"+previewSerial,previewStyle,age);
             float drawn=(float)previewClock.Sample(NativeIntroClock.Target(age,nativeAudio.SongPlayback(NativeIntroRules.IntroSong(previewStyle)),true),Time.unscaledDeltaTime);
+            nativeAudio.EntranceFoley(drawn);
             if(arena?.Root!=null)foreach(var r in arena.Root.GetComponentsInChildren<Renderer>()){if(!previewVisibility.ContainsKey(r))previewVisibility[r]=r.enabled;r.enabled=false;}viewModelCamera.enabled=false;
             // The preview's own arena is the one its pilot belongs to, as the match intro's is (ConversionGame.cs): its seat dresses the body in
             // the pilot's outfit and its pilot drives the glows; without it the body fell back to bare clothes glowing in the accent (owner

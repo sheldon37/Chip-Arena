@@ -1,3 +1,7 @@
+## 2026-11-16 · Astra · Unity audio integration
+
+Branch `codex/unity-audio-integration`, shared base `4f57b8ae`. Added recorded weapon, technique, entrance and expedition routes, cast confirmation, intro interruption and 94 optional bank keys. Rebuilt and checked the private bank with all 806 clips, including 213 custom boss takes. The [integration report](audio/INTEGRATION-2026-11-16.md) links the inventory, test evidence, limitations and Claude handoff. Exact-head source and compile checks are tracked in PR #401. Windows host/guest listening and player profiling remain pending. Updated a stale cinematic guard to exercise both intro rig calls on the sampled clock. No deployment or media redistribution.
+
 ## 2026-11-16 — Astra: Blind Pick audit fixes, PR #397
 
 Follow-up to `f1984bec` on `codex/blind-pick-deathmatch`. The host checks the roster before opening a draft and again at launch. A detected disconnect removes the seat before evaluating readiness and sending the reveal. If the roster can no longer start, the host closes the draft for everyone with the lobby refusal. Retained pilots keep their choices. Dropped seats may return in the lobby. The same bots that drafted enter the match. Controller input capture again immediately follows the boot intro guard. New managed regressions cover disconnect, stale selection, seat count, opposing sides, Breakwater and co-op capacity. No animation work. Two-client Windows play remains a separate check.
