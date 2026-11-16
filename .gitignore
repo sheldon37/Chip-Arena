@@ -27,3 +27,11 @@ CLAUDE.local.md
 Thumbs.db
 account-session.dat
 /tools/visual-lab/mocap-preview.generated.ts
+
+# Independent account operations. Real snapshots belong outside the checkout.
+.wrangler/
+.dev.vars*
+infra/accounts/wrangler.*.local.json
+*.cms
+infra/accounts/*.pem
+*.sqlite

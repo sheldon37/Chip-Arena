@@ -28,6 +28,23 @@ export async function confirmXp(db:Database,account:string,input:any,now:number)
  ]);
  const row=result[3].results[0],balance=result[4].results[0];
  if(row.payload!==payload)throw fail('Completion ID already belongs to a different result.',409);
+ return receipt(account,c,row,balance);
+}
+
+// Common client polling path. Only an already-recorded, authoritative result
+// can be acknowledged, including migrated awards and lost-response retries.
+export async function confirmedReceipt(db:Database,account:string,input:any){
+ const c=xpCompletion(input);
+ const rows=await db.batch([
+  db.prepare('SELECT * FROM account_xp_awards WHERE account=? AND completion=?').bind(account,c.completionId),
+  db.prepare('SELECT total,revision FROM account_xp WHERE account=?').bind(account)
+ ]);
+ const row=rows[0].results[0];
+ if(!row)throw fail('Awaiting verified match result.',503);
+ return receipt(account,xpCompletion(JSON.parse(row.payload)),row,rows[1].results[0]);
+}
+function receipt(account:string,c:ReturnType<typeof xpCompletion>,row:any,balance:any){
+ const lines=xpLines(c);
  const previousTotal=row.previous_total,newTotal=row.new_total,previousLevel=xpLevel(previousTotal),newLevel=xpLevel(newTotal),bands=[];
  let remaining=newTotal-previousTotal;for(const line of lines){line.xp=Math.min(line.xp,remaining);remaining-=line.xp;}
  for(let level=previousLevel;level<=newLevel;level++){const start=250*(level-1)*level/2;bands.push({level,start,next:level===100?start:start+250*level});}

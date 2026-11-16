@@ -1,5 +1,6 @@
+import {steamIdentity,consumeSteamTicket,type SteamConfig} from './account-steam.js';
 import {accountSocial} from './account-social.js';
-import {confirmXp,readXp} from './account-xp.js';
+import {confirmXp,readXp,confirmedReceipt} from './account-xp.js';
 import {scryptAsync} from '@noble/hashes/scrypt.js';
 import {base64url} from '../shared/dev-auth.js';
 import {GAME_CLAIM_MS} from '../shared/account-auth.js';
@@ -75,9 +76,24 @@ function accountCosmetics(raw:any,a:Access){
 function savedProfile(raw:any,a:Access){return {name:typeof raw?.name==='string'?raw.name.replace(/[<>\u0000-\u001f]/g,'').slice(0,20)||'Pilot':'Pilot',class:(['ranged','melee','magic'].includes(raw?.class)||raw?.class==='dev'&&a.developer)?raw.class:'ranged',color:/^#[0-9a-f]{6}$/i.test(raw?.color||'')?raw.color:'#ff6b35',cosmetics:accountCosmetics(raw?.cosmetics,a)};}
 function view(row:any){return {id:row.id,username:row.username,profileSchema:2,...access(row),profile:savedProfile(JSON.parse(row.profile),access(row)),hasProfile:row.profile!=='{}',revision:row.revision,grantVersion:row.grant_version};}
 async function sign(row:any,env:AuthEnv,now:number){const payload=base64url(encoder.encode(JSON.stringify({kind:'chip-arena-player',user:row.username,...access(row),iat:now,exp:now+GAME_CLAIM_MS}))),key=await crypto.subtle.importKey('jwk',JSON.parse(env.DEV_SIGNING_KEY!),{name:'ECDSA',namedCurve:'P-256'},false,['sign']);return payload+'.'+base64url(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},key,encoder.encode(payload)));}
-async function rate(request:Request,env:AuthEnv,now:number,username:string,action:string){const ip=await digest(request.headers.get('CF-Connecting-IP')||'local');const sensitive=['login','register','recover'].includes(action);const identity=sensitive?username:await digest(request.headers.get('authorization')||ip);for(const [label,limit,window] of [[`account-ip:${sensitive?'auth':'api'}:${ip}`,sensitive?12:180,60000],[`account-user:${identity}:${action}`,sensitive?15:100,300000]] as const){const key=label+':'+Math.floor(now/window);const r=await env.DB.batch([env.DB.prepare('INSERT INTO dev_login_rates(id,hits,expires) VALUES(?,1,?) ON CONFLICT(id) DO UPDATE SET hits=hits+1').bind(key,now+window*2),env.DB.prepare('SELECT hits FROM dev_login_rates WHERE id=?').bind(key)]);if(r[1].results[0].hits>limit)throw fail('Too many requests. Try again in a few minutes.',429);}}
-async function readBody(request:Request){if(request.method==='GET')return {};if(!request.headers.get('content-type')?.includes('application/json'))throw fail('Expected JSON.',415);const reader=request.body?.getReader();if(!reader)throw fail('Missing request.');let size=0,text='';const decoder=new TextDecoder();while(true){const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>8192){await reader.cancel();throw fail('Request too large.',413);}text+=decoder.decode(r.value,{stream:true});}try{const value=JSON.parse(text+decoder.decode());if(!value||typeof value!=='object'||Array.isArray(value))throw Error();return value;}catch{throw fail('Invalid request.');}}
-export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
+async function rate(request:Request,env:AuthEnv,now:number,username:string,action:string){const ip=await digest(request.headers.get('CF-Connecting-IP')||'local');const sensitive=['login','register','recover','steam-login','steam-link'].includes(action);const identity=sensitive&&!action.startsWith('steam-')?username:await digest(request.headers.get('authorization')||ip);for(const [label,limit,window] of [[`account-ip:${sensitive?'auth':'api'}:${ip}`,sensitive?12:180,60000],[`account-user:${identity}:${action}`,sensitive?15:100,300000]] as const){const key=label+':'+Math.floor(now/window);const r=await env.DB.batch([env.DB.prepare('INSERT INTO dev_login_rates(id,hits,expires) VALUES(?,1,?) ON CONFLICT(id) DO UPDATE SET hits=hits+1').bind(key,now+window*2),env.DB.prepare('SELECT hits FROM dev_login_rates WHERE id=?').bind(key)]);if(r[1].results[0].hits>limit)throw fail('Too many requests. Try again in a few minutes.',429);}}
+export async function readBody(request:Request){if(request.method==='GET')return {};if(!request.headers.get('content-type')?.includes('application/json'))throw fail('Expected JSON.',415);const reader=request.body?.getReader();if(!reader)throw fail('Missing request.');let size=0,text='';const decoder=new TextDecoder();while(true){const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>8192){await reader.cancel();throw fail('Request too large.',413);}text+=decoder.decode(r.value,{stream:true});}try{const value=JSON.parse(text+decoder.decode());if(!value||typeof value!=='object'||Array.isArray(value))throw Error();return value;}catch{throw fail('Invalid request.');}}
+async function issueSession(row:any,env:AuthEnv,now:number,remember:boolean,recoveryCode?:string){
+ const session=random(),hash=await digest(session),expires=now+(remember?REMEMBER_MS:SESSION_MS);
+ const token=await sign(row,env,now);
+ const result=await env.DB.batch([
+  env.DB.prepare('DELETE FROM player_sessions WHERE hash IN (SELECT hash FROM player_sessions WHERE expires<? LIMIT 100)').bind(now),
+  env.DB.prepare('DELETE FROM dev_login_rates WHERE id IN (SELECT id FROM dev_login_rates WHERE expires<? LIMIT 100)').bind(now),
+  env.DB.prepare('INSERT INTO player_sessions(hash,account_id,expires) SELECT ?,id,? FROM player_accounts WHERE id=? AND password=?').bind(hash,expires,row.id,row.password)
+ ]);
+ if(!result[2].meta.changes)throw fail('Account credentials changed. Sign in again.',401);
+ return {session,expires,account:view(row),token,recoveryCode};
+}
+export interface IndependentAccountOptions {
+ steam:SteamConfig;
+ roomExists:(code:string,now:number)=>Promise<boolean>;
+}
+export async function accounts(request:Request,env:AuthEnv,now=Date.now(),independent?:IndependentAccountOptions){
  // Public bearer-token API. No cookies or ambient credentials; game hosts receive only short-lived claims.
  const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
  const response=(b:unknown,status=200)=>Response.json(b,{status,headers});
@@ -89,6 +105,14 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
   const username=typeof input.username==='string'?input.username.trim().toLowerCase():'';
   if(username.length>32)throw fail('Username is too long.');
   await rate(request,env,now,username||'signed-in',action);
+  if(independent&&action==='steam-login'){
+   if(request.method!=='POST')throw fail('Method not allowed.',405);
+   const identity=await steamIdentity(input.ticket,independent.steam);
+   await consumeSteamTicket(env,identity,now);
+   const row=await env.DB.prepare('SELECT a.* FROM player_accounts a JOIN steam_links l ON l.account_id=a.id WHERE l.steam_id=?').bind(identity.id).first();
+   if(!row)throw fail('Sign in with your password to link this Steam account.',401);
+   return response(await issueSession(row,env,now,input.remember===true));
+  }
   if(['login','register','recover'].includes(action)){
    if(request.method!=='POST')throw fail('Use the account form.',405);
    if(!/^[a-z0-9_]{3,20}$/.test(username)||typeof input.password!=='string'||input.password.length>128||input.password.length<1)throw fail('Use a username of 3–20 letters, numbers or underscores, and a password.');
@@ -117,21 +141,36 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
     }else if(!row){await passwordHash(input.password,'AAAAAAAAAAAAAAAAAAAAAA');throw fail('Username or password is incorrect.',401);}
     if(!row||!await passwordMatches(input.password,row.password))throw fail('Username or password is incorrect.',401);
    }
-   const session=random(),hash=await digest(session),expires=now+(input.remember===true?REMEMBER_MS:SESSION_MS);
-   await env.DB.batch([env.DB.prepare('DELETE FROM player_sessions WHERE hash IN (SELECT hash FROM player_sessions WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('DELETE FROM dev_login_rates WHERE id IN (SELECT id FROM dev_login_rates WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('INSERT INTO player_sessions(hash,account_id,expires) VALUES(?,?,?)').bind(hash,row.id,expires)]);
-   return response({session,expires:expires,account:view(row),token:await sign(row,env,now),recoveryCode});
+   return response(await issueSession(row,env,now,input.remember===true,recoveryCode));
   }
   const session=request.headers.get('authorization')?.replace(/^Bearer /,'');if(!session||!/^[-\w]{43}$/.test(session))throw fail('Please log in.',401);
   const hash=await digest(session);let row=await env.DB.prepare('SELECT a.* FROM player_accounts a JOIN player_sessions s ON s.account_id=a.id WHERE s.hash=? AND s.expires>?').bind(hash,now).first();if(!row)throw fail('Session expired. Please log in again.',401);
-  if(['social','invite','invite-answer'].includes(action)){if(request.method!=='POST')throw fail('Method not allowed.',405);return response(await accountSocial(env.DB,row.id,action,input,now));}
+  if(independent&&action==='steam-link'){
+   if(request.method!=='POST')throw fail('Method not allowed.',405);
+   if(typeof input.password!=='string'||input.password.length>128||!await passwordMatches(input.password,row.password))throw fail('Re-enter your current password.',401);
+   const identity=await steamIdentity(input.ticket,independent.steam);
+   await consumeSteamTicket(env,identity,now);
+   const result=await env.DB.batch([
+    env.DB.prepare('INSERT INTO steam_links(account_id,steam_id,linked_at) SELECT id,?,? FROM player_accounts WHERE id=? AND password=? AND EXISTS(SELECT 1 FROM player_sessions WHERE hash=? AND account_id=? AND expires>?) ON CONFLICT DO NOTHING').bind(identity.id,now,row.id,row.password,hash,row.id,now),
+    env.DB.prepare('SELECT steam_id FROM steam_links WHERE account_id=?').bind(row.id)
+   ]);
+   if(result[1].results[0]?.steam_id!==identity.id)throw fail('The accounts could not be linked.',409);
+   return response({ok:true});
+  }
+  if(['social','invite','invite-answer'].includes(action)){if(request.method!=='POST')throw fail('Method not allowed.',405);return response(await accountSocial(env.DB,row.id,action,input,now,independent?.roomExists));}
   if(action==='xp'&&request.method==='GET')return response({summary:await readXp(env.DB,row.id)});
-  if(action==='xp'&&request.method==='POST')return response(await confirmXp(env.DB,row.id,input,now));
+  if(action==='xp'&&request.method==='POST')return response(independent?await confirmedReceipt(env.DB,row.id,input):await confirmXp(env.DB,row.id,input,now));
   if(action==='me'&&request.method==='GET')return response({account:view(row),token:await sign(row,env,now)});
   if(request.method!=='POST')throw fail('Method not allowed.',405);
   if(action==='logout'){await env.DB.prepare('DELETE FROM player_sessions WHERE hash=?').bind(hash).run();return response({ok:true});}
   if(action==='profile'){
    if(!Number.isSafeInteger(input.revision))throw fail('Reload your saved pilot before saving.',409);
-   const profile=savedProfile(input.profile,access(row));const r=await env.DB.prepare('UPDATE player_accounts SET profile=?,revision=revision+1,updated=? WHERE id=? AND revision=?').bind(JSON.stringify(profile),now,row.id,input.revision).run();
+   const clean=savedProfile(input.profile,access(row));
+   // Preserve unrecognized stored fields (including historical statistics). Only
+   // the sanitized projection from the client may modify the saved document.
+   const old=JSON.parse(row.profile);
+   const profile={...old,...clean,cosmetics:{...old?.cosmetics,...clean.cosmetics}};
+   const r=await env.DB.prepare('UPDATE player_accounts SET profile=?,revision=revision+1,updated=? WHERE id=? AND revision=?').bind(JSON.stringify(profile),now,row.id,input.revision).run();
    if(!r.meta.changes)throw fail('Your pilot changed on another device. Reload your saved pilot before saving again.',409);
    row=await env.DB.prepare('SELECT * FROM player_accounts WHERE id=?').bind(row.id).first();return response({account:view(row),token:await sign(row,env,now)});
   }

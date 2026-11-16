@@ -128,6 +128,10 @@ namespace ChipArena.UnityConversion.Editor
         {
             if(!File.Exists(Path.Combine(folder,"UnityPlayer.dll"))||!Directory.Exists(Path.Combine(folder,"Chip Arena_Data")))
                 throw new Exception("The Windows player is incomplete: UnityPlayer.dll or its game data folder is missing.");
+            var accountOrigin=Environment.GetEnvironmentVariable("CHIP_ARENA_ACCOUNT_ORIGIN");
+            var assets=Path.Combine(folder,"Chip Arena_Data","StreamingAssets");
+            Directory.CreateDirectory(assets);
+            File.WriteAllText(Path.Combine(assets,NativeAccount.OriginFile),string.IsNullOrWhiteSpace(accountOrigin)?NativeAccount.DefaultOrigin:NativeAccount.ValidateOrigin(accountOrigin));
             var identity=NativeUpdateBuild.Package(root,folder);string install=Path.GetDirectoryName(folder);
             File.WriteAllText(Path.Combine(install,"READ-ME.txt"),
                 "CHIP ARENA\r\n\r\nOpen Chip Arena.exe to play.\r\n"+
