@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             if(pick<0){Debug.Log("Final killcam skipped: "+finalSkip);return;}
             // Only the authority knows the room's sets to win (a guest's match holds its own prefs), so a guest always fits
             // the clip into the Result time.
-            var f=finalDeaths[pick];bool credited=NativeFinalKillcam.Credited(f,match.Teams),matchEnds=(!Online||Hosting)&&match.Seats.Any(s=>s.score>=match.SetsToWin);
+            var f=finalDeaths[pick];bool credited=NativeFinalKillcam.Credited(f,match.Teams),matchEnds=match.DeathmatchTarget>0||(!Online||Hosting)&&match.Seats.Any(s=>s.score>=match.SetsToWin);
             float history=replayFrames.Count>1?(float)(f.At-replayFrames[0].time):0;
             if(!NativeFinalKillcam.Fit(NativeFinalKillcam.Available(match.PhaseEnd,match.Time+NativeFinalKillcam.StartDelay,matchEnds),history,NativeFinalKillcam.Behind(match.Time,f.At),out var curve,out finalSkip)){Debug.Log("Final killcam skipped: "+finalSkip);return;}
             var start=NativeFinalKillcam.Begin(replayRunning,replayDeath>=0,finalShown);if(start==NativeFinalKillcam.Start.Already)return;
@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
             // A simultaneous knockout has no winner: the outcome card says so with the round's result line.
             finalWinnerLabel=winner==null?"NO WINNER":matchEnds?"MATCH WINNER":match.SetWinner!=0?"SET WINNER":"ROUND WINNER";
             finalWinnerName=winner==null?"Draw":match.Teams?NativeMatch.TeamNames[TeamIndex(winner.team)]+" team":winner.name;finalWinnerColor=winner==null?NativeCyberTheme.Ink():match.Teams?TeamColor(winner.team):SeatColor(winner);
-            finalOutcome=match.Result??"";finalRound="ROUND "+match.Round+"  ·  SET "+match.Set;
+            finalOutcome=match.Result??"";finalRound=match.DeathmatchTarget>0?"DEATHMATCH · FINAL KILL":"ROUND "+match.Round+"  ·  SET "+match.Set;
         }
         /// <summary>RenderReplayFrame's start block, final killcam: the clip window from the fitted curve and the slowed
         /// presentation. If history was trimmed since the pick (normally not: FinalKeeps pins it during the delay), refit to it.</summary>

@@ -7,7 +7,7 @@ using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
-    { public string[] roundsPacks=Array.Empty<string>();public bool roundsCardsPlus;public int modRules;public string[] chipPacks=Array.Empty<string>();public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>(),pendingIntros=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro=NativeIntroRules.Default,introText="Ready to make an impact",accountOrigin=NativeAccount.DefaultOrigin;public int accountServiceVersion;public bool overrideIntro;public string name="Pilot",map=NativeMapRules.DefaultArena,weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full",damageScreen="Full",alarmLights="Full",playerModel="New";public bool pve,expedition,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson;
+    { public bool blindPick,deathmatch;public int killTarget,deathmatchChips;public string[] roundsPacks=Array.Empty<string>();public bool roundsCardsPlus;public int modRules;public string[] chipPacks=Array.Empty<string>();public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>(),pendingIntros=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro=NativeIntroRules.Default,introText="Ready to make an impact",accountOrigin=NativeAccount.DefaultOrigin;public int accountServiceVersion;public bool overrideIntro;public string name="Pilot",map=NativeMapRules.DefaultArena,weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full",damageScreen="Full",alarmLights="Full",playerModel="New";public bool pve,expedition,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson;
         // Older Unity installs shipped an unconfigured account URL. Upgrade it once;
         // thereafter an empty URL is the player's explicit offline choice.
         public bool MigrateAccountService()
@@ -105,6 +105,7 @@ namespace ChipArena.UnityConversion
         private void StartMatch()
         {
             if(OpeningOnlineLobby||PromotionBusy||!ModsReady)return;
+            if(!trainingWanted&&!trainingRoom&&!sandboxWanted&&BeginOpening(()=>WithOpening(StartMatch)))return;
             if(trainingRoom&&!trainingWanted){StartTraining();return;}
             if(!trainingWanted&&prefs.pve&&prefs.expedition){StartExpeditionM1();return;}
             expeditionDirector=null;ResetExpeditionNetwork();Time.timeScale=1;sandboxSpeed=1;endFlow.Reset();
@@ -112,22 +113,26 @@ namespace ChipArena.UnityConversion
             bool directBoss=!trainingWanted&&prefs.pve&&!prefs.expedition&&NativeBossBattle.Zone(bossBattlePick);
             if(directBoss)prefs.bots=0;
             if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);
-            if(server!=null||deploymentRoom!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&!GuestsReady){networkStatus="Wait for the other pilots to be ready.";return;}
-            // Refuse a match that cannot start (a host alone with no bots, or every pilot on one team) before the running arena
-            // is touched, so the reason shows in the menu instead of the fatal error screen.
-            {var sides=new System.Collections.Generic.HashSet<int>();int n=0;if(!dedicated){sides.Add(prefs.pve?0:prefs.teams?prefs.team:1);n++;}
-             foreach(var p in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){sides.Add(prefs.pve?0:prefs.teams?p.Seat.team:p.Seat.id);n++;}
-             foreach(var bot in LobbyBots(n)){sides.Add(prefs.pve?0:prefs.teams?bot.team:bot.id);n++;}if(prefs.pve){sides.Add(1);n++;}
-             if(!trainingWanted&&(n<2||sides.Count<2)){networkStatus=n>=2?"Both teams need a pilot: add a bot or change teams.":"Add a bot or wait for a pilot to join.";return;}}
-            if(!trainingWanted&&!prefs.pve&&prefs.map=="breakwater"){var seats=new System.Collections.Generic.List<NativeSeat>();if(!dedicated)seats.Add(new NativeSeat{id=1,team=prefs.team});seats.AddRange(peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).Select(p=>p.Seat));seats.AddRange(LobbyBots(seats.Count));if(!NativeTrainingRules.RoomFits("breakwater",seats,prefs.teams)){networkStatus="Breakwater supports up to 4 pilots: FFA, 1v1 or 2v2.";return;}}
+            if(server!=null||deploymentRoom!=null)return;
+            if(Hosting&&!GuestsReady){networkStatus="Wait for the other pilots to be ready.";return;}
+            var roster=MatchRoster();
+            if(!trainingWanted&&RefuseOpening(roster))return;
             if(directBoss)PrepareBossBattle(bossBattlePick);
             if(!dedicated)Save();EndPreview();inspectSeat=0;ClearReplay();arena?.Dispose();presentation?.ResetPresentation();networkEpoch++;
-            match=new NativeMatch(content){Training=trainingWanted,FinalKillcams=Online&&!trainingWanted,ShowIntros=!directBoss&&!trainingWanted&&!prefs.skipPlayerIntros&&!sandboxWanted,Cooperative=prefs.pve,Teams=trainingWanted||prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
-            if(!dedicated){var local=SanitizedSeat(1,Profile(),account.Token);local.team=prefs.pve?0:prefs.team;match.Seats.Add(local);}
-            foreach(var peer in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){peer.Seat.devWeaponAccess=null;peer.Seat.devRevealed=peer.Seat.devCommandsRan=false;peer.Seat.devScale=1;peer.Seat.team=prefs.pve?0:peer.Seat.team;match.Seats.Add(peer.Seat);peer.Ready=false;}
-            if(trainingWanted){foreach(var s in match.Seats)s.team=0;NativeTrainingRules.AddDummies(match,content.Map("training"));}else match.Seats.AddRange(LobbyBots(match.Seats.Count));
+            match=new NativeMatch(content){DeathmatchTarget=!prefs.pve&&!trainingWanted&&!sandboxWanted&&prefs.deathmatch?CaptureRoomOptions().EffectiveTarget:0,ComebackChips=prefs.deathmatchChips==2,StartingChip=ApplyOpeningChip,Training=trainingWanted,FinalKillcams=Online&&!trainingWanted,ShowIntros=!directBoss&&!trainingWanted&&!prefs.skipPlayerIntros&&!sandboxWanted,Cooperative=prefs.pve,Teams=trainingWanted||prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
+            match.Seats.AddRange(roster);
+            foreach(var peer in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false))
+            {
+                peer.Seat.devWeaponAccess=null;
+                peer.Seat.devRevealed=peer.Seat.devCommandsRan=false;
+                peer.Seat.devScale=1;
+                peer.Ready=false;
+            }
+            if(prefs.pve||trainingWanted)foreach(var seat in roster)seat.team=0;
+            if(trainingWanted)NativeTrainingRules.AddDummies(match,content.Map("training"));
             if(prefs.pve)match.Seats.Add(new NativeSeat{id=900,name="The Siren",spec="siren",bot=true,team=1,AuthorityBoss=true});
             arena=new NativeArena(content,match,trainingWanted?"training":directBoss?NativeBossBattle.Map(bossBattlePick):SelectMatchMap()){RandomizeMapEachSet=!trainingWanted&&prefs.randomizeMap,FriendlyFire=!trainingWanted&&prefs.friendlyFire,LocalId=dedicated?0:1,StationaryBots=prefs.stationary,Sandbox=trainingWanted||sandboxWanted&&account.Developer&&!Online&&!prefs.pve};
+            foreach(var player in match.Seats)ApplyOpeningWeapon(player);
             if(!match.Start()){arena.Dispose();arena=null;match=null;foreach(var peer in peers)peer.Ready=true;networkStatus="A match needs at least two opposing sides.";LobbyBroadcast();return;}
             if(directBoss)arena.ConfigureBossBattle(bossBattlePick,bossBattleBundle,JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
             else if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves,NativeMatch.NewSeed());
@@ -143,6 +148,7 @@ namespace ChipArena.UnityConversion
             // The logo intro holds the game (no input) while it loads under it (NativeBootLoad.cs).
             if(BootIntroHolds())return;
             if(padInputCaptured){pending=new InputFrame{CancelAbilities=true};Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
+            if(openingView!=null){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(SplitLocalLoading){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;
@@ -161,6 +167,8 @@ namespace ChipArena.UnityConversion
             // C in an Expedition opens its chip screen instead (ExpeditionLiveKeys, NativeExpeditionChipScreen.cs).
             if((Input.GetKeyDown(KeyCode.C)||PadDown(PadAction.Chips))&&arena?.Pve!=null&&LiveExpedition==null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
+            DeathmatchPickKeys();
+            if(deathPickOpen&&!menu){pending=new InputFrame{Yaw=yaw,Pitch=-pitch};Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             bool play=arena!=null&&!menu&&!BoardOpen&&!ExpeditionScreenOpen&&(match.Phase==NativePhase.Fight||match.ResultMovement&&!ReplayActive)&&arena.Local.Hp>0&&!PvePickOpen&&!arena.BossOpening&&arena.Pve?.Holding!=true&&!DevHoldsPilot;
             // The Expedition chip pick frees the cursor to click a card for the whole hold, no Alt (NativeExpeditionChipScreen.cs).
             bool look=!BoardOpen&&!ExpeditionScreenOpen&&DevLook(play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight)&&!ExpeditionPickPointer;Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
@@ -411,6 +419,7 @@ namespace ChipArena.UnityConversion
         {
             // One canvas for every overlay and the menus (NativeUiMotion.Measure): 900 units tall at 16:9, wider at 21:9 (2150 at 3440x1440).
             var ui=NativeUi.Begin(prefs?.uiScale??1);float scale=ui.Scale,width=ui.Width,height=ui.Height;GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);
+            if(OpeningGui(width,height)||DeathmatchPickGui(width,height))return;
             if(SplitLocalLoading)return;
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
             // DEV ONLY: the Expedition screens preview (--ca-expedition-preview), in place of the main menu (NativeExpeditionPreviewUI.cs).
@@ -477,7 +486,7 @@ namespace ChipArena.UnityConversion
         {
             if(lobby){LobbyRulesBody();return;}
             BeginRules(false,578);var o=rules;
-            Fine(FirstToText(prefs.sets,prefs.rounds));ClassRow("Your class",ClassCardStyle.Stacked);WeaponCards("Your weapon");
+            Fine(o.deathmatch?"Deathmatch · first to "+o.EffectiveTarget+" kills":FirstToText(prefs.sets,prefs.rounds));if(!o.blindPick){ClassRow("Your class",ClassCardStyle.Stacked);WeaponCards("Your weapon");}
             MatchOptions(RulesPart.All,true,false);int bots=Mathf.Clamp(o.bots,1,7);BotLoadouts(bots,24);if(o.teams)TeamSetup(bots);
             if(RulesFoldBegin(0,"Draft & intro rules"))
             {
@@ -561,7 +570,7 @@ namespace ChipArena.UnityConversion
                 NativeUi.Fill(new Rect(r.x,r.y+6-hv,2,r.height-12),match.Teams?TeamColor(p.team):SeatColor(p));
                 NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),p.name+(you?"  · YOU":""),13,NativeCyberTheme.Ink(alive?1:.6f),TextAnchor.MiddleLeft,bold:you);
                 NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),(content.weapons.FirstOrDefault(c=>c.id==p.spec)?.name??p.spec)+"  ·  "+p.chips.Values.Sum()+" chips",11,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft);
-                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),arena?.Pve!=null?"":"SETS "+p.score+" · ROUNDS "+p.roundWins,11,NativeCyberTheme.CyanSoft(),TextAnchor.MiddleRight,mono:true);
+                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),arena?.Pve!=null?"":match.DeathmatchTarget>0?(match.Teams?"TEAM KILLS ":"KILLS ")+p.score+" / "+match.DeathmatchTarget:"SETS "+p.score+" · ROUNDS "+p.roundWins,11,NativeCyberTheme.CyanSoft(),TextAnchor.MiddleRight,mono:true);
                 NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),!p.connected?"OFFLINE":alive?"ALIVE":"OUT",10,alive?NativeCyberTheme.Good():NativeCyberTheme.Muted(),TextAnchor.MiddleRight,mono:true,tracking:.1f);
                 if(NativeUi.Button(r))inspectSeat=p.id;cy+=46;
             }

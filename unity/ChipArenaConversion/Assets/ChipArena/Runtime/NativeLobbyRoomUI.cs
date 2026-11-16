@@ -107,7 +107,7 @@ namespace ChipArena.UnityConversion
                 U.Text(new Rect(r.x+pad,ty,w,22),Fit(p.name,17,w,true,-.02f),17,C.Ink(a),TextAnchor.MiddleLeft,bold:true,tracking:-.02f);
                 if(text>=70)
                 {
-                    string wn=weapon?.name??"Random";string cls=weapon!=null?ClassName(weapon.@class):"Mixed";
+                    string wn=weapon?.name??"Blind pick";string cls=weapon!=null?ClassName(weapon.@class):"Mixed";
                     NativeIcons.Draw(new Rect(r.x+pad,ty+26,15,15),weapon!=null?NativeIcons.Spec(weapon.id):"shuffle",U.A(style,a));
                     float nw=Mathf.Min(w-22,U.Measure(wn,13,true).x+2);U.Text(new Rect(r.x+pad+21,ty+22,nw,22),Fit(wn,13,w-22,true,0),13,U.A(U.Mix(Color.white,style,.42f),a),TextAnchor.MiddleLeft,bold:true);
                     U.Text(new Rect(r.x+pad+21+nw+6,ty+22,Mathf.Max(0,w-27-nw),22),"· "+cls,12,C.Muted(a),TextAnchor.MiddleLeft);
