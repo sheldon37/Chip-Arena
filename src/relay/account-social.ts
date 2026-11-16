@@ -2,7 +2,7 @@ import type {Database} from './worker.js';
 const fail=(message:string,status=400)=>Object.assign(Error(message),{status});
 const ONLINE_MS=60000,INVITE_MS=120000;
 /** Authenticated identity comes only from accounts(), never the submitted body. */
-export async function accountSocial(db:Database,who:string,action:string,input:any,now:number){
+export async function accountSocial(db:Database,who:string,action:string,input:any,now:number,roomExists?:(code:string,now:number)=>Promise<boolean>){
  if(action==='social'){
   await db.batch([
    db.prepare('INSERT INTO player_presence(account_id,seen) VALUES(?,?) ON CONFLICT(account_id) DO UPDATE SET seen=excluded.seen').bind(who,now),
@@ -20,7 +20,7 @@ export async function accountSocial(db:Database,who:string,action:string,input:a
   const target=await db.prepare('SELECT account_id FROM player_presence WHERE account_id=? AND seen>?').bind(input.target,now-ONLINE_MS).first();
   if(!target)throw fail('That player is no longer online.',409);
   // Codes resolve only through the existing trusted room directory; no arbitrary endpoint or credential is accepted.
-  const room=await db.prepare('SELECT code FROM online_rooms WHERE code=? AND expires>?').bind(input.code,now).first();
+  const room=roomExists?await roomExists(input.code,now):await db.prepare('SELECT code FROM online_rooms WHERE code=? AND expires>?').bind(input.code,now).first();
   if(!room)throw fail('The room is no longer available.',409);
   const id=crypto.randomUUID();
   const result=await db.prepare(`INSERT INTO player_invites(id,sender,recipient,code,created,expires)

@@ -1,10 +1,12 @@
-import {AUTH_ORIGIN} from '../shared/dev-auth.js';
+import {accountOrigin,LEGACY_ACCOUNT_ORIGIN} from '../shared/account-origin.js';
+declare const __ACCOUNT_ORIGIN__:string|undefined;
+const AUTH_ORIGIN=accountOrigin(typeof __ACCOUNT_ORIGIN__==='undefined'?undefined:__ACCOUNT_ORIGIN__);
 import {verifyPlayerToken} from '../shared/account-auth.js';
 import type {Access} from '../shared/access.js';
 import type {Cosmetics} from '../shared/cosmetics.js';
 import type {ClassId} from '../shared/config.js';
 export interface Account extends Access {id:string;username:string;profile:{name:string;class:ClassId;color:string;cosmetics:Cosmetics};hasProfile:boolean;revision:number;grantVersion:number;}
-const SESSION_KEY='chip-arena-account-session';
+const SESSION_KEY='chip-arena-account-session'+(AUTH_ORIGIN===LEGACY_ACCOUNT_ORIGIN?'':':'+AUTH_ORIGIN);
 const desktop=typeof window!=='undefined'?(window as any).arenaAccount as {request:(action:string,body?:unknown)=>Promise<{ok:boolean;status:number;data:any}>}|undefined:undefined;
 export class PlayerAccount {
  session=desktop?'desktop':localStorage.getItem(SESSION_KEY)||sessionStorage.getItem(SESSION_KEY)||'';remember=localStorage.getItem('chip-arena-remember')!=='false';account:Account|null=null;token='';recoveryCode='';

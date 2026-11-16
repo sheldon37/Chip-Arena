@@ -26,8 +26,19 @@ namespace ChipArena.UnityConversion
         private string SessionPath=>Path.Combine(ConversionGame.NativeUserDataPath,"conversion-account.bin");
         public static string ValidateOrigin(string value)
         {if(!Uri.TryCreate(value.Trim(),UriKind.Absolute,out var uri)||uri.UserInfo.Length>0||uri.Query.Length>0||uri.Fragment.Length>0||uri.AbsolutePath!="/"||uri.Scheme!="https"&&!(uri.Scheme=="http"&&uri.IsLoopback))throw new ArgumentException("Use an HTTPS account service origin, or HTTP on localhost for development.");return uri.GetLeftPart(UriPartial.Authority);}
+        public const string OriginFile="chip-arena-account-origin.txt";
+        private static string ConfiguredOrigin()
+        {
+            var value=Environment.GetEnvironmentVariable("CHIP_ARENA_ACCOUNT_ORIGIN");
+            if(!string.IsNullOrWhiteSpace(value))return ValidateOrigin(value);
+            var path=Path.Combine(Application.streamingAssetsPath,OriginFile);
+            try{return File.Exists(path)?ValidateOrigin(File.ReadAllText(path)):DefaultOrigin;}
+            catch(IOException e){throw new ArgumentException("Could not read the account service configuration.",e);}
+            catch(UnauthorizedAccessException e){throw new ArgumentException("Could not read the account service configuration.",e);}
+        }
         public void Configure(string origin,bool loadRemembered=false)
         {
+            if(origin==DefaultOrigin)origin=ConfiguredOrigin();
             string next=string.IsNullOrWhiteSpace(origin)?"":ValidateOrigin(origin);if(Origin!=next){StopAllCoroutines();Busy=false;Clear(false);Origin=next;}
             if(loadRemembered&&Origin.Length>0&&File.Exists(SessionPath))try{string value=Encoding.UTF8.GetString(NativeSessionVault.Unprotect(File.ReadAllBytes(SessionPath),Origin));if(ValidSession(value)){session=value;remember=true;Refresh();}}catch(Exception e)when(e is IOException||e is System.Security.Cryptography.CryptographicException||e is NotSupportedException){Status="Saved sign-in could not be opened; sign in again.";}
         }

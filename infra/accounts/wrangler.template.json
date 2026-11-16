@@ -1,0 +1,19 @@
+{
+  "name": "chip-arena-accounts",
+  "main": "../../src/relay/account-worker.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "traces": {"enabled": false},
+    "logs": {"enabled": true, "invocation_logs": false}
+  },
+  "vars": {
+    "ACCOUNT_STATE": "maintenance",
+    "ROOM_DIRECTORY_ORIGIN": "https://chip-arena-prototype.sheldon37.chatgpt.site"
+  },
+  "d1_databases": [{"binding":"DB","database_name":"chip-arena-accounts","migrations_dir":"migrations"}]
+}

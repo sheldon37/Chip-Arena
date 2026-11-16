@@ -1,0 +1,7 @@
+{
+  "name": "chip-arena-account-operations",
+  "private": true,
+  "type": "module",
+  "scripts": {"cf": "node cf.mjs"},
+  "devDependencies": {"wrangler": "4.163.0"}
+}
