@@ -1,6 +1,6 @@
 # Additional ROUNDS pack adaptations — batch 2
 
-118 new chips across eight independently selectable packs; 138 including Cards+. **This is a partial implementation of the rest of Booga, not completion of the profile.** Off by default; restart required; exact enabled content is part of multiplayer compatibility. Lower-left credit names the original concept author; Chip Arena implementation, names and descriptions are new. No DLL, third-party code or art was copied.
+118 new chips from eight packs in the standard catalog; 138 including Cards+. **This is a partial implementation of the rest of Booga, not completion of the profile.** Lower-left credit names the original concept author; Chip Arena implementation, names and descriptions are new. No DLL, third-party code or art was copied.
 
 ## Source evidence and scope
 
@@ -17,16 +17,16 @@ Source repositories were inspected at the commits below on 2026-10-18. Declared 
 | wwc | 13 | 1.12.1 | 1.12.01 | https://github.com/willuwontu/wills-wacky-cards/tree/3902394e6eeb968f81567dd754cd31885bfd6b56 |
 | cpc | 10 | 1.4.3 | 1.4.2 | https://github.com/poppycars22/ChaosPoppycarsCards/tree/af7680b32106b5fe0e978b216c6eb93a9bcccf6f |
 
-VECs covers its 12 saved concepts, with substantial documented substitutions. RSC has 15 adaptations; Nothing Field remains unverified, and Repentance/Repentence is one concept. Arcana leaves The Fool, Temperance and Wheel of Fortune pending because draft/score/shop mechanics are not implemented. Other seven pack toggles are explicitly marked partial. BSC card-copy/theft, dynamic airborne/charge bonuses and custom armor; Keys treasure/transform progression; PCE draft grants/control changes; WWC curse/null/pick systems; CPC classes/crafting/curses remain pending.
+VECs covers its 12 saved concepts, with substantial documented substitutions. RSC has 15 adaptations; Nothing Field remains unverified, and Repentance/Repentence is one concept. Arcana leaves The Fool, Temperance and Wheel of Fortune pending because draft/score/shop mechanics are not implemented. The other seven packs have partial coverage. BSC card-copy/theft, dynamic airborne/charge bonuses and custom armor; Keys treasure/transform progression; PCE draft grants/control changes; WWC curse/null/pick systems; CPC classes/crafting/curses remain pending.
 
 Other profile families (CR, BudsCards, BPP, GearUP, Root modules, Supcom2Cards, ZOMC, UnstableCards, FFC, Tesseract, SCME, Luck) are **not implemented by this batch**. Their saved names are not sufficient mechanical specifications. Some public pages provide only names; exact installed plugin files or source release links are still needed for version verification. Framework/utilities among the 129 packages are not chip packs.
 
 ## Gameplay contract
 
 - Uses trusted bundled definitions only. External packs cannot use reserved `rounds-` IDs to impersonate built-in mechanics. External schema stays stat-only.
-- IDs and pack selection order are deterministic. Unknown/duplicate selections fail closed; loading errors prevent hosting/joining, including bundled-only configurations.
+- Clients and dedicated servers load the same built-in IDs in a deterministic order, regardless of old mod selections.
 - Mechanic aliases share mutual draft exclusions across all packs and vanilla counterparts. They never grant a proc until the corresponding chip is held with a positive count.
-- Existing 512-chip catalog/64-external-chip limits remain. All bundled chips plus the full external allowance fit.
+- Existing 1024-chip catalog/64-external-chip limits remain. All bundled chips plus the full external allowance fit.
 - Magazine/reload-focused adaptations use an internal gun tag and are not offered to ammo-less bows.
 - Magazine capacity is a multiplier; thorns is a fraction of received direct damage; regeneration starts after 3 seconds without damage. Added projectile volleys retain the existing 0.75 multi-projectile damage factor as well as chip damage stats.
 - Air jumps share the existing authority/prediction budget and six-extra-jump cap; no new movement replication protocol.
