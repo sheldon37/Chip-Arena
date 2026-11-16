@@ -35,6 +35,7 @@ namespace ChipArena.UnityConversion
             {
                 Require(c!=null&&c.id!=null&&Id.IsMatch(c.id)&&ids.Add(c.id),"invalid or duplicate chip id");
                 Require(!string.IsNullOrWhiteSpace(c.name)&&c.name.Length<=48&&!c.name.Any(char.IsControl),"invalid chip name");
+                Require(string.IsNullOrEmpty(c.uniqueWeapon)||Regex.IsMatch(c.uniqueWeapon,@"\A(?:[a-z][a-z0-9-]{0,23}\.)?[a-z][a-z0-9-]{0,23}\z"),"invalid unique weapon selector");
                 Require(CreditValid(c.author)&&CreditValid(c.sourcePack)&&CreditValid(c.sourceCard),"invalid attribution");
                 Require(c.description!=null&&c.description.Length<=240&&!c.description.Any(char.IsControl),"invalid chip description");
                 Require(content.rarities.Any(r=>r.id==c.rarity&&r.weight>0),"unsupported rarity");
@@ -62,7 +63,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in packs)foreach(var dependency in p.Pack.requires??Array.Empty<string>())if(!versions.Contains(dependency))throw new ArgumentException("Missing dependency "+dependency+" required by "+p.Pack.id);
             if(packs.Sum(p=>p.Pack.chips.Length)>MaxChips)throw new ArgumentException("At most 64 external chips may be enabled");
             var additions=packs.SelectMany(p=>p.Pack.chips.Select(c=>new ContentChip{id=p.Pack.id+":"+c.id,name=c.name,description=c.description,rarity=c.rarity,max=c.max,
-                author=string.IsNullOrWhiteSpace(c.author)?p.Pack.author:c.author,sourcePack=p.Pack.name,sourceCard=c.sourceCard,icon="sparkles",tags=c.tags.ToArray(),excludes=Array.Empty<string>(),effects=c.effects.Select(e=>new ChipEffect{stat=e.stat,op=e.op,value=e.value}).ToArray()})).ToArray();
+                uniqueWeapon=c.uniqueWeapon,author=string.IsNullOrWhiteSpace(c.author)?p.Pack.author:c.author,sourcePack=p.Pack.name,sourceCard=c.sourceCard,icon="sparkles",tags=c.tags.ToArray(),excludes=Array.Empty<string>(),effects=c.effects.Select(e=>new ChipEffect{stat=e.stat,op=e.op,value=e.value}).ToArray()})).ToArray();
             if(content.chips.Length+additions.Length>MaxCatalog)throw new ArgumentException("Chip catalog exceeds "+MaxCatalog+" entries");
             if(additions.Any(c=>content.chips.Any(old=>old.id==c.id)))throw new ArgumentException("External chip ID collision");
             if(rules==0&&packs.Length==0)return "Vanilla";
@@ -71,7 +72,8 @@ namespace ChipArena.UnityConversion
             if((rules&Airborne)!=0)stats.Single(s=>s.name=="extraAirJumps").value+=2;
             if((rules&Overclocked)!=0)Scale("speed",1.25);
             if((rules&Pinball)!=0){Scale("impulse",2);Scale("knockbackTaken",1.5);}
-            string fingerprint=NativeMapRules.Revision("mods-v1|"+rules+"|"+string.Join("|",packs.Select(p=>p.Pack.id+"@"+p.Pack.version+":"+p.Digest)));
+            string format=additions.Any(c=>!string.IsNullOrEmpty(c.uniqueWeapon))?"mods-v2-unique":"mods-v1";
+            string fingerprint=NativeMapRules.Revision(format+"|"+rules+"|"+string.Join("|",packs.Select(p=>p.Pack.id+"@"+p.Pack.version+":"+p.Digest)));
             content.baseStats=stats;content.chips=content.chips.Concat(additions).ToArray();content.contentRevision=NativeMapRules.Revision(content.contentRevision+"|"+fingerprint);
             return fingerprint;
         }

@@ -415,7 +415,14 @@ namespace ChipArena.UnityConversion
                     }
                 }
             }
+            public bool CommunityPoseActive { get; private set; }
             public void ActorPose(Actor a,Vector3 position,float time,bool firstPerson=false)
+            {
+                BaseActorPose(a,position,time,firstPerson);
+                CommunityPoseActive=NativeCommunityPacks.Pose(a,time,Bones);
+                if(CommunityPoseActive)ReadPose();
+            }
+            private void BaseActorPose(Actor a,Vector3 position,float time,bool firstPerson)
             {
                 switch(route=NativePoseRoute.For(a,firstPerson))
                 {

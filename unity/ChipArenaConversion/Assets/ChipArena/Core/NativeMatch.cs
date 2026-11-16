@@ -16,6 +16,7 @@ namespace ChipArena.UnityConversion
         public string weaponTechniques="";public string weaponSkins="";public string look="";public string pod="";
         // A DEV animation class this seat plays its class as (Core NativeDevMotions: "" none; set as the arena spawns it).
         public string motion="";
+        public string SelectedWeapon=>motion!=null&&motion.StartsWith("mod.",StringComparison.Ordinal)?motion:spec;
     }
     [Serializable] public class NativeMatchFrame
     {public string completionId;public double completionStarted;public int completionSeconds;public bool hasFinalKillcam;public int finalVictim,finalSeed;public double resultAt;public int[] rematchVotes=Array.Empty<int>();public int rematchRequired;public float lobbyReturnSeconds;public int introSeat;public double introStarted;public string introStyle;public int round,set,winner,setWinner,draftSeat;public string result,chosen;public NativePhase phase;public double time,phaseEnd,fightAt,readyAt,chosenAt;public bool teams,cooperative;}
@@ -101,7 +102,7 @@ namespace ChipArena.UnityConversion
                 if(SetWinner==0){if(Winner!=0)Round++;BeginRound();return;}
                 queue.Clear();
                 foreach(var p in Seats.Where(p=>p.connected&&(BothDraft||!SameSide(p,Seat(SetWinner)))).OrderBy(p=>SameSide(p,Seat(SetWinner))))
-                {p.offers=NativeContentRules.Offers(data,p.spec,p.chips,random.Next,Choices,DraftFilter,abilityLoadout:p.bot?"":p.weaponTechniques??"");if(p.offers.Count>0)queue.Add(p.id);}
+                {p.offers=NativeContentRules.Offers(data,p.SelectedWeapon,p.chips,random.Next,Choices,DraftFilter,abilityLoadout:p.bot?"":p.weaponTechniques??"");if(p.offers.Count>0)queue.Add(p.id);}
                 Phase=NativePhase.Draft;turn=0;NextDraft();
             }
             else if(Phase==NativePhase.Draft)
@@ -164,11 +165,11 @@ namespace ChipArena.UnityConversion
             NextSet();
         }
         public bool PreviewDraft(int id,string rarity=null)
-        {var p=Seat(id);if(p==null)return false;p.offers=NativeContentRules.Eligible(data,p.spec,p.chips,p.bot?"":p.weaponTechniques??"").Where(c=>DraftFilter==null||DraftFilter(c)).Where(c=>rarity==null||c.rarity==rarity).Take(Choices).Select(c=>c.id).ToList();if(p.offers.Count==0)return false;queue.Clear();queue.Add(id);turn=0;Phase=NativePhase.Draft;NextDraft();return true;}
+        {var p=Seat(id);if(p==null)return false;p.offers=NativeContentRules.Eligible(data,p.SelectedWeapon,p.chips,p.bot?"":p.weaponTechniques??"").Where(c=>DraftFilter==null||DraftFilter(c)).Where(c=>rarity==null||c.rarity==rarity).Take(Choices).Select(c=>c.id).ToList();if(p.offers.Count==0)return false;queue.Clear();queue.Add(id);turn=0;Phase=NativePhase.Draft;NextDraft();return true;}
         public bool Choose(int seat,string id)
         {
             var p=Seat(seat);if(Phase!=NativePhase.Draft||p==null||!p.connected||DraftSeat!=seat||Chosen!=null||Time<ReadyAt||!p.offers.Contains(id))return false;
-            if(!NativeContentRules.Eligible(data,p.spec,p.chips,p.bot?"":p.weaponTechniques??"").Any(c=>c.id==id))return false;
+            if(!NativeContentRules.Eligible(data,p.SelectedWeapon,p.chips,p.bot?"":p.weaponTechniques??"").Any(c=>c.id==id))return false;
             p.chips.TryGetValue(id,out int n);p.chips[id]=n+1;Chosen=id;chosenAt=Time;return true;
         }
     }

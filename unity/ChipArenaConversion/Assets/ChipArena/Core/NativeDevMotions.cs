@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A seat's motion as it may be: a DEV animation class whose base the seat plays, else none.</summary>
         public static string Clean(string motion,string spec)=>Is(motion)&&Base(motion)==spec?motion:"";
         /// <summary>The animation set an actor's model plays by: its motion when it has one, else its own class.</summary>
-        public static string Set(Actor a)=>a==null?null:!string.IsNullOrEmpty(a.Motion)?a.Motion:a.SourceSpec;
+        public static string Set(Actor a)=>a==null?null:Is(a.Motion)?a.Motion:a.SourceSpec;
         /// <summary>Each class's own entrance (owner 2026-11-12, the DEV animation picks: "entrance → Intro"): the pack's Intro clip on the
         /// model (Core NativeDevIntros), in place of its base class's (the Colossus Oath, Crimson Moon).</summary>
         public const string GreatswordEntrance="dev-greatsword-intro",KatanaEntrance="dev-katana-intro";

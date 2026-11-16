@@ -609,7 +609,7 @@ namespace ChipArena.UnityConversion
                 Check(asBase&&again&&seat.motion==""&&NativeDevMotions.Base(NativeDevMotions.Katana)==NativeKatana.Spec&&!NativeDevMotions.Is("greatsword")&&NativeDevMotions.Clean(NativeDevMotions.Greatsword,"sword")==""&&NativeDevMotions.Clean("junk","greatsword")=="",
                     "a seat that picked a DEV animation class plays its base with the class as its motion; another class clears it");
                 string arenaSrc=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeArena.cs")).Replace("\r\n","\n"),frameSrc=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeNetworkFrame.cs")).Replace("\r\n","\n");
-                Check(arenaSrc.Contains("NativeDevMotions.Normalize(seat);")&&arenaSrc.Contains("a.SourceSpec=p.Seat.spec;a.Motion=p.Seat.motion;")&&frameSrc.Contains("motion=s.motion,")&&frameSrc.Contains("seat.motion=NativeDevMotions.Clean(sf.motion,sf.spec);")&&frameSrc.Contains("v.HatColor=p.Seat.hatColor;v.Motion=p.Seat.motion;"),
+                Check(arenaSrc.Contains("Content.NormalizeSelection(seat);")&&arenaSrc.Contains("a.SourceSpec=p.Seat.spec;a.Motion=p.Seat.motion;")&&frameSrc.Contains("motion=s.motion,")&&frameSrc.Contains("seat.motion=Content.CleanMotion(sf.motion,sf.spec);")&&frameSrc.Contains("v.HatColor=p.Seat.hatColor;v.Motion=p.Seat.motion;"),
                     "the arena spawns the base and keeps the motion; the seat frame carries it and guests fill their actors from it");
             }
             // The DEV Katana: Grruzam's katana set on the model, the Katana's moves on its clips (the iai, the sheathing and the paired critical
