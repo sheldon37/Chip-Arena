@@ -26,10 +26,12 @@ class ChipSelect(unittest.TestCase):
 
  def test_hooks(self):
   arena=read('Runtime/ArenaPresentation.cs')
-  self.assertIn('CyberVictimPose(rig,a,time); ChipSelectPose(rig,a,time);',arena,'the pose layer after the route and the other overlays')
+  self.assertLess(arena.index('CyberVictimPose(rig,a,time);'),arena.index('ChipSelectPose(rig,a,time);'),'the pose layer after the route and the other overlays')
   self.assertIn('RenderChipSelect(s);',arena,'the world holograms after the rigs are posed')
   view=read('Runtime/NativeViewPresentation.cs')
   sway,hook,draw=view.index('ApplyViewSway(shown,time,ads);'),view.index('ChipSelectView(viewRig,source,time);'),view.index('SourceCharacter(viewRig,shown,time,true)')
+  self.assertLess(view.index('BombViewArms(viewRig,shown,time);'),hook)
+  self.assertLess(view.index('SirenViewArms(shown,time);'),hook)
   self.assertTrue(sway<hook<draw,'the first-person wrist after the view rig is placed, before it is drawn')
   self.assertIn('ChipSelectTags(scale,height);',read('Runtime/NativeCombatHud.cs'),'the tag with the overhead bars')
   self.assertIn('"Preview Chip Selecting"',read('Runtime/NativeSandbox.cs'),'the Dev Sandbox preview')

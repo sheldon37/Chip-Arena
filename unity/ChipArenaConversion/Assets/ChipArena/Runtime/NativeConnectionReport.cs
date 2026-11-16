@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 using U=ChipArena.UnityConversion.NativeUi;
@@ -32,7 +33,9 @@ namespace ChipArena.UnityConversion
         internal void TopLayerGUI()
         {
             if(dedicated||prefs==null||content==null||error.Length>0)return;
-            var e=Event.current;if(e.type==EventType.Repaint){EndFlowNotices();SessionSamples();}
+            var e=Event.current;
+            if(e.type==EventType.KeyDown&&e.control&&e.shift&&e.keyCode==KeyCode.F9){CopyDiagnostics();e.Use();return;}
+            if(e.type==EventType.Repaint){EndFlowNotices();SessionSamples();}
             if(reportOpen&&(arena!=reportArena||arena!=null&&!menu))reportOpen=false;
             bool banner=arena!=null&&LobbyReturnSeconds>0&&!TopLayerCovered();if(!banner&&!reportOpen)return;
             GUI.skin=NativeMenuSkin.Skin;GUI.matrix=Matrix4x4.identity;GUI.color=GUI.contentColor=Color.white;GUI.enabled=true;U.Begin(prefs.uiScale);
@@ -95,6 +98,28 @@ namespace ChipArena.UnityConversion
         // summary; the host's per-guest PeerMetrics as "peers". No account or resume tokens, addresses or URLs go in.
         private bool reportOpen;private NativeArena reportArena;private string reportText="";private float reportScroll,reportPreH,reportWrapW=-1,reportWrapS=-1;
         private readonly List<string> reportLines=new List<string>();private Action reportDraw;
+        private string diagnosticLoad="None",diagnosticDisconnect="None";
+        private string DiagnosticRole=>Hosting?"host":server!=null||arena?.Replica==true||reconnect.Active?"guest":"local";
+        private int DiagnosticPlayers=>match?.Seats.Count(s=>s.connected&&!s.bot&&!s.AuthorityBoss)??(InRoom?lobbySeats.Count(s=>s.connected&&!s.bot&&!s.boss):0);
+        private string DiagnosticContext()=>DiagnosticRole+" | "+(arena?.MapId??"menu")+" | "+DiagnosticPlayers+" players";
+        private string DiagnosticEvent(string detail)=>DateTime.UtcNow.ToString("HH:mm:ss 'UTC'",CultureInfo.InvariantCulture)+" | "+DiagnosticContext()+" | "+detail;
+
+        private void CopyDiagnostics()
+        {
+            var build=Updater?.Installed;
+            string version=NativeBuildLabel.Text(build,content?.sourceCommit);
+            var report=new StringBuilder("Chip Arena diagnostics");
+            report.Append("\nBuild: ").Append(version).Append(Updater?.SteamManaged==true?" (Steam Playtest)":"");
+            report.Append("\nSession: ").Append(DiagnosticContext()).Append(" | ").Append(match?.Phase.ToString()??"lobby");
+            report.Append("\nFPS: ").Append(Mathf.RoundToInt(FrameRate())).Append(" | Worst frame ms: ").Append(hitchWindow.WorstMs.ToString("0.0",CultureInfo.InvariantCulture));
+            report.Append("\nLoading: ").Append(stageLoad.Phase);
+            if(stageLoad.Visible)report.Append(" | ").Append(stageLoad.Kind).Append(" | ").Append(stagePlan.Step);
+            if(StageGate.Waiting)report.Append(" | ready ").Append(StageGate.Ready).Append('/').Append(StageGate.Required);
+            report.Append("\nLast load: ").Append(diagnosticLoad).Append("\nLast disconnect: ").Append(diagnosticDisconnect);
+            GUIUtility.systemCopyBuffer=report.ToString();
+            Notice("Diagnostics copied.");
+        }
+
         private void OpenConnectionReport()
         {
             var inv=CultureInfo.InvariantCulture;var entries=new List<string>();
@@ -169,7 +194,7 @@ namespace ChipArena.UnityConversion
             U.Fill(new Rect(0,0,W,H),new Color(0,0,0,.667f));U.Round(d,U.Hex(0x101820),12,U.Hex(0x46727b));
             float x=d.x+25,y=d.y+25+20;
             U.Text(new Rect(x,y,iw,29),"Connection report",24,U.Hex(0xe3f1fa),TextAnchor.MiddleLeft,bold:true);y+=29+20;
-            U.Text(new Rect(x,y,iw,16),"Take this report from both players while the lag is happening.",13,U.Hex(0xa8bac9),TextAnchor.MiddleLeft);y+=16+13;
+            U.Text(new Rect(x,y,iw,16),"Copy diagnostics here or press Ctrl+Shift+F9 during play.",13,U.Hex(0xa8bac9),TextAnchor.MiddleLeft);y+=16+13;
             var pre=new Rect(x,y,iw,reportPreH);
             if(e.type==EventType.ScrollWheel&&U.Hover(d)){reportScroll+=e.delta.y*20;e.Use();}reportScroll=Mathf.Clamp(reportScroll,0,max);
             if(e.type==EventType.Repaint)
@@ -177,9 +202,10 @@ namespace ChipArena.UnityConversion
                 U.BeginDeferred();U.Defer(reportDraw??(reportDraw=DrawReportLines));U.EndDeferred(pre,new Vector2(0,reportScroll));
                 if(max>0){float th=Mathf.Max(24,reportPreH*reportPreH/full);U.Round(new Rect(pre.xMax+6,pre.y+(reportPreH-th)*(reportScroll/max),4,th),U.Hex(0x46727b,.8f),4);}
             }
-            y=pre.yMax+24;float bw=(iw-10)/2;
+            y=pre.yMax+24;float bw=(iw-20)/3;
             if(MenuButton(new Rect(x,y,bw,48),null,"Copy report",null,true,true,1,15,true)){GUIUtility.systemCopyBuffer=reportText;Notice("Connection report copied.");}
-            if(MenuButton(new Rect(x+bw+10,y,bw,48),null,"Close",null,false,true,1,15,true))reportOpen=false;
+            if(MenuButton(new Rect(x+bw+10,y,bw,48),null,"Copy diagnostics",null,false,true,1,14,true))CopyDiagnostics();
+            if(MenuButton(new Rect(x+2*(bw+10),y,bw,48),null,"Close",null,false,true,1,15,true))reportOpen=false;
             // Modal: nothing under the backdrop takes the mouse or keys while it is open.
             if(e.isMouse||e.type==EventType.ScrollWheel||e.type==EventType.KeyDown)e.Use();
         }

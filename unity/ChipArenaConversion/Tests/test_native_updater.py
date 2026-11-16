@@ -54,6 +54,30 @@ class NativePublisherTests(unittest.TestCase):
     def manifest(self, m):
         (self.feed / 'latest.json').write_text(json.dumps(m))
 
+    def test_steam_stage_is_the_player_and_script_is_outside_the_depot(self):
+        import sys
+        with patch.object(sys, 'path', [str(PROJECT / 'tools')] + sys.path):
+            import package_steam_playtest as steam
+        self.payload(extra={'Chip Arena_BurstDebugInformation_DoNotShip/Data/a.txt': b'debug'})
+        dest = self.root / 'steam'
+        self.assertEqual(steam.stage(self.feed, dest), 'Chip Arena.exe')
+        self.assertEqual({p.name for p in (dest / 'content').iterdir()},
+                         {'Chip Arena.exe', 'Chip Arena_Data', 'UnityPlayer.dll', 'native-build.json', 'steam-playtest.txt'})
+        vdf = (dest / 'app_build.vdf').read_text()
+        self.assertIn('"PLAYTEST_APP_ID"', vdf)
+        self.assertIn('"WINDOWS_DEPOT_ID"', vdf)
+        self.assertNotIn('SetLive', vdf)
+        with self.assertRaises(ValueError):
+            steam.stage(self.feed, dest)
+        dest = self.root / 'numeric'
+        steam.stage(self.feed, dest, '123', '456')
+        self.assertIn('"AppID" "123"', (dest / 'app_build.vdf').read_text())
+        self.assertIn('"456"', (dest / 'app_build.vdf').read_text())
+        self.payload(extra={'../escape': b'bad'})
+        with self.assertRaises(ValueError):
+            steam.stage(self.feed, self.root / 'bad')
+        self.assertFalse((self.root / 'bad').exists())
+
     def test_stage_preserves_electron_and_previous_native_objects(self):
         (self.channel / 'feed').mkdir(parents=True)
         electron = self.channel / 'feed/latest.json'

@@ -17,6 +17,7 @@ namespace ChipArena.UnityConversion
         public float Progress { get;private set; }
         public NativeBuildIdentity Installed { get;private set; }
         public NativeBuildIdentity Available { get { return manifest==null?null:manifest.build; } }
+        public bool SteamManaged { get;private set; }
         public bool Busy { get { return State==NativeUpdateState.Checking||State==NativeUpdateState.Downloading||State==NativeUpdateState.Verifying||State==NativeUpdateState.Preparing||State==NativeUpdateState.Restarting; } }
         public bool CanCancel { get { return State==NativeUpdateState.Checking||State==NativeUpdateState.Downloading; } }
         public bool CanInstall { get { return State==NativeUpdateState.Available&&canInstall!=null&&canInstall(); } }
@@ -31,6 +32,14 @@ namespace ChipArena.UnityConversion
             string app=Path.GetFullPath(Path.Combine(Application.dataPath,".."));root=Path.GetFullPath(Path.Combine(app,".."));
             try
             {
+                SteamManaged=File.Exists(Path.Combine(app,"steam-playtest.txt"));
+                if(SteamManaged)
+                {
+                    Status="Steam manages updates for this Playtest.";
+                    Installed=JsonUtility.FromJson<NativeBuildIdentity>(File.ReadAllText(Path.Combine(app,NativeUpdateRules.IdentityFile)));
+                    NativeUpdateRules.ValidateBuild(Installed);
+                    return;
+                }
                 if(Path.GetFileName(app)!="app"||!File.Exists(NativeUpdateRules.LauncherPath(root))||File.ReadAllText(Path.Combine(root,"native-install.txt")).Trim()!=NativeUpdateRules.Product+"/1")
                     throw new InvalidOperationException("Install the Windows starter ZIP once to enable updates.");
                 NativeUpdateRules.RejectReparsePoints(root);
@@ -53,7 +62,7 @@ namespace ChipArena.UnityConversion
             }
         }
         public void CheckForUpdates()
-        {if(Busy||Installed==null)return;StartOperation(Check());}
+        {if(SteamManaged||Busy||Installed==null)return;StartOperation(Check());}
         public void InstallAvailableUpdate()
         {if(!CanInstall)return;StartOperation(Download());}
         public void Cancel(){if(CanCancel){cancelled=true;if(active!=null)active.Abort();}}

@@ -357,6 +357,10 @@ internal static class ChipScreenChecks
     {
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
         string wrist=R("Runtime/NativeChipSelectPresentation.cs"),screen=R("Runtime/NativeChipScreenPresentation.cs"),exp=R("Runtime/NativeExpeditionChipScreen.cs"),game=R("Runtime/ConversionGame.cs"),ui=R("Runtime/NativeUi.cs"),core=R("Core/NativeChipScreen.cs");
+        string motion=R("Runtime/NativeVisualMotionPresentation.cs");
+        Check(motion.Contains("body.Arena&&ExpeditionChoosing!=null?ChipLookOf(a.Id):0")&&
+            motion.Contains("m.Weight=Mathf.Min(m.Weight,1-chipLook);")&&motion.Contains("float wgt=m.Weight;"),
+            "the model's full-body weapon idle yields to this Expedition pilot's selection and installation overlay");
         // In an Expedition the world look builds the screen in place of the small panel; first person and the Boss Test keep theirs.
         Check(wrist.Contains("if(!first&&ExpeditionChoosing!=null)return BuildChipScreen(sink,slot,frame,look,id);"),"an Expedition's world look draws the wrist screen");
         Check(screen.Contains("Count=mine?slot.Count:3")&&screen.Contains("Lit=mine?ChipScreenLit:-1")&&screen.Contains("Chosen=mine?slot.PlantChosen:-1")&&screen.Contains("Mine=mine"),"anyone else's screen: the standard three, no hover, no chosen card");
