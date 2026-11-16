@@ -231,7 +231,11 @@ namespace ChipArena.UnityConversion
             Check(Regex.Matches(exp,@"if\(edit&&expMode==X\.Mode\.Boss\)ExpPickBoss").Count==2&&Regex.Matches(exp,@"if\(edit&&expMode==X\.Mode\.Boss&&Input\.GetKeyDown").Count==2&&exp.Contains("if(edit)ExpPickBoss(i,")&&exp.Contains("bool live=ExpLive(a)&&edit;float h=U.HoverAmount(9500+index")&&exp.Contains("ExpPartyCard(slot,party[i],i,ce,now,seat,edit&&i==newest,bots)")&&exp.Contains("bool canAdd=edit&&")&&exp.Contains("int n=K.BossCount;bool live=ExpLive(a)&&edit;"),"a guest's keys, mode tiles, roster and bot buttons do nothing");
             Check(exp.Contains("BeginRules(false,width);var o=rules;"),"the drawer's party rows go through BeginRules (read-only on a guest connection)");
             var fields=typeof(NativeRoomOptions).GetFields().Select(f=>f.Name).OrderBy(s=>s,StringComparer.Ordinal).ToArray();
-            Check(string.Join(",",fields)=="boss,botDifficulty,botOptions,bothDraft,bots,choices,cooperative,expedition,friendlyFire,hostTeam,map,mirrorWeapons,randomizeMap,rounds,selectionSeconds,sets,skipBotDrafts,skipPlayerIntros,skipWaves,stationary,teams,training","NativeRoomOptions keeps its fields ("+string.Join(",",fields)+")");
+            Check(string.Join(",",fields)=="blindPick,boss,botDifficulty,botOptions,bothDraft,bots,choices,cooperative,deathmatch,deathmatchChips,expedition,friendlyFire,hostTeam,killTarget,map,mirrorWeapons,randomizeMap,rounds,selectionSeconds,sets,skipBotDrafts,skipPlayerIntros,skipWaves,stationary,teams,training","NativeRoomOptions keeps its fields ("+string.Join(",",fields)+")");
+            var options=new NativeRoomOptions{blindPick=true,deathmatch=true,killTarget=43,deathmatchChips=2,teams=true};
+            var json=new JsonSerializerOptions{IncludeFields=true};
+            var copy=JsonSerializer.Deserialize<NativeRoomOptions>(JsonSerializer.Serialize(options,json),json);
+            Check(copy.blindPick&&copy.deathmatch&&copy.teams&&copy.EffectiveTarget==43&&copy.deathmatchChips==2,"all Deathmatch room settings survive a field-based round trip");
             Check(!exp.Contains("type=\"expedition")&&!Regex.IsMatch(exp,@"new NativeNetMessage\{type=""(?!profile"")"),"the screen sends no new message");
             // The roster's state and the sample are presentation: no randomness, no authority read.
             Check(!exp.Contains("Random")&&!exp.Contains("Expedition.Session")&&!exp.Contains("deploymentRoom"),"the screen rolls nothing and reads no run");

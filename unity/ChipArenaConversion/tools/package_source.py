@@ -7,6 +7,8 @@ import struct
 import sys
 import zipfile
 
+import configure_steam_multiplayer as steam_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 TOP = {'Assets', 'Packages', 'ProjectSettings', 'Tests', 'tools', 'Relay', 'Updater'}
 FILES = {'README.md', 'CONVERSION-STATUS.md', 'VALIDATION.md', 'ICON.md', 'ANIMATIONS.md', 'Build-Windows.cmd', 'Publish-Native.cmd', '.gitignore', '.dockerignore'}
@@ -17,6 +19,8 @@ def validate_dependencies(dependencies, catalog):
     if not isinstance(dependencies, dict) or not dependencies:
         raise ValueError('The prototype must declare its built-in module dependencies')
     for name, version in dependencies.items():
+        if name == steam_profile.PACKAGE and version == steam_profile.PIN:
+            continue
         if name not in catalog['packages'] or version != catalog['packages'][name]:
             raise ValueError(f'Unsupported dependency for Unity {catalog["editor_version"]}: {name}@{version}')
 
