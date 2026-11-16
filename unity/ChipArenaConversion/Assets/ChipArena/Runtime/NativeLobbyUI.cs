@@ -36,11 +36,13 @@ namespace ChipArena.UnityConversion
                     accent=you?HexColor(prefs.accentColor,0x70e1d0):HexColor(s.accentColor,w!=null?(int)w.color:0xb8aabb),body=you?HexColor(prefs.bodyColor,0xe5e7eb):HexColor(s.bodyColor,0xe5e7eb)});
             }
             if(Hosting&&!dedicated&&!own)list.Insert(0,new LobbyPilot{id=1,you=true,name=NativeCosmeticRules.Name(prefs.name),weapon=prefs.weapon,techniques=prefs.weaponTechniques,tag="YOU",ready=true,connected=true,team=prefs.team,accent=HexColor(prefs.accentColor,0x70e1d0),body=HexColor(prefs.bodyColor,0xe5e7eb)});
+            if(RoomBlind)for(int i=0;i<list.Count;i++){var pilot=list[i];pilot.weapon=null;list[i]=pilot;}
             return list;
         }
         private ContentWeapon LobbyWeapon(string id){if(id!=null)foreach(var w in content.weapons)if(w.id==id)return w;return null;}
         // A teams room as the viewer knows it: the host's own setting, or the guest's copy of the host's rules once this
         // connection has received them.
+        private bool RoomBlind=>!trainingRoom&&(Hosting?prefs.blindPick:GuestRules?.blindPick==true);
         private bool RoomTeams=>!prefs.pve&&(RulesGuest?GuestRules?.teams==true:prefs.teams);
         // main.ts:156 teamsBlocked: every pilot on one team.
         private static bool TeamsBlocked(List<LobbyPilot> roster){int mask=0,n=0;foreach(var p in roster){int bit=1<<TeamIndex(p.team);if((mask&bit)==0){mask|=bit;n++;}}return n<2;}
@@ -55,7 +57,8 @@ namespace ChipArena.UnityConversion
             // The team list and the picker sheet belong to this screen: they close when the lobby was not drawn a moment ago (left and re-entered).
             // (By frames, not time: a long frame, a portrait being made, is not a new visit.)
             if(Time.frameCount-lobbySeenFrame>3){teamPopupSeat=0;LbEnter();}lobbySeenFrame=Time.frameCount;lobbySeenAt=Time.unscaledTime;
-            if(LbWeaponPointer())return;
+            if(RoomBlind&&LbDrawerShown)LbCloseDrawer();
+            if(!RoomBlind&&LbWeaponPointer())return;
             LbDrawerInput();if(!LbDrawerShown)TeamPopupInput();
             var l=BeginScreen("PRIVATE ROOM","Match lobby",Mathf.Min(1520,U.W-48),age,false,actions:false,close:false,lobby:true);lbPanel=l.Panel;float e=l.Enter;
             // While the picker sheet is open nothing under it takes the pointer or the pad: the pointer is moved off the canvas for the room's
@@ -72,8 +75,10 @@ namespace ChipArena.UnityConversion
                 var main=new Rect(b.x,b.y+4,b.width-side-gap,b.height-barH-22);var col=new Rect(main.xMax+gap,main.y,side,main.height);
                 LbRoster(main,roster,e,teams);
                 U.Fill(new Rect(col.x-gap/2f,col.y,1,col.height),C.Edge(.5f*e));
-                LbLoadoutPanel(new Rect(col.x,col.y,col.width,LbLoadoutH),e);
-                LobbyRoomColumn(new Rect(col.x,col.y+LbLoadoutH+14,col.width,col.height-LbLoadoutH-14),e);
+                float loadoutHeight=RoomBlind?52:LbLoadoutH;
+                if(RoomBlind)U.Text(new Rect(col.x,col.y,col.width,loadoutHeight),"Blind pick · Choose your weapon at match start",15,C.Ink(e),TextAnchor.MiddleLeft);
+                else LbLoadoutPanel(new Rect(col.x,col.y,col.width,loadoutHeight),e);
+                LobbyRoomColumn(new Rect(col.x,col.y+loadoutHeight+14,col.width,col.height-loadoutHeight-14),e);
                 LobbyBar(new Rect(b.x,b.yMax-barH,b.width,barH),roster,e,blocked);
             }
             finally{if(cover){menuBlockedNow=wasBlocked;ev.mousePosition=mouse;NativeControllerPointer.Blocked=false;}}

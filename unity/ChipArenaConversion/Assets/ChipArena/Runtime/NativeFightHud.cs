@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         private void FightHud(NativePilot p)
         {
             float W=U.W,H=U.H;if(hudEventGeneration!=arena.Generation){hudEvents.Clear();hudEventGeneration=arena.Generation;}
-            if(arena.Pve==null)SetTag("SET "+match.Set+"  ·  ROUND "+match.Round,NativeCyberTheme.Cyan(),W);
+            if(arena.Pve==null)SetTag(match.DeathmatchTarget>0?"DEATHMATCH   ·   "+arena.Local.Seat.score+" / "+match.DeathmatchTarget+" KILLS":"SET "+match.Set+"  ·  ROUND "+match.Round,NativeCyberTheme.Cyan(),W);
             var box=HealthBox(p,24,H-24);Cooldowns(p,W-24,H-24);
             if(Event.current.type!=EventType.Repaint)return;
             HealReadout(box);
