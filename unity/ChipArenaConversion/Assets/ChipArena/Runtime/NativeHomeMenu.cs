@@ -543,14 +543,14 @@ namespace ChipArena.UnityConversion
         }
         private void JoinScreen(float age)
         {
-            var l=BeginScreen("CHIP ARENA","Join a private room",650,age,true);if(l.Closed){CloseNetwork();Go(MenuScreen.Home);return;}
+            var l=BeginScreen("CHIP ARENA",steamRooms!=null?"Join a room":"Join a private room",650,age,true);if(l.Closed){CloseNetwork();Go(MenuScreen.Home);return;}
             ScreenBody(l,JoinBody);if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Your loadout is sent to the host when you join.");
             bool busy=connecting!=null||server!=null&&!InRoom;ScreenStatus(l,networkStatus,NetworkError);MarkRoomStale();
             // A pasted room invite link joins through JoinInvite (its address, port and code); anything else is a room code:
             // Online is the default; Local network is an optional connection mode. Legacy CA- codes remain pasteable.
             if(ScreenActions(l,("play",busy?"Finding room…":"Join Room",true,!busy&&joinCode.Trim().Length>0))==0)
             {
-                string entry=joinCode.Trim();if(JoinInvite(entry))return;
+                string entry=joinCode.Trim();if(SteamOnline){JoinRoom();return;}if(JoinInvite(entry))return;
                 if(entry.IndexOf("://",StringComparison.Ordinal)>=0)networkStatus="Could not find the room.";
                 else if(entry.StartsWith("CA-",StringComparison.OrdinalIgnoreCase))JoinRoom();
                 else if(!RoomCodeShape(entry))networkStatus=JoinCodeShapeError;

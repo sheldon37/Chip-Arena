@@ -139,6 +139,7 @@ def input_system_sources(output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--unity-root", type=Path)
+    parser.add_argument("--steamworks-package", type=Path, help="Compile the optional Steam player with this pinned Steamworks.NET UPM package directory")
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--dotnet", default="dotnet")
@@ -164,6 +165,15 @@ def main():
     input_assembly = compile_assembly(args.dotnet, csc, args.output, "Unity.InputSystem", input_system_sources(args.output), player_refs, package_defines)
     refs.append(input_assembly)
     player_refs.append(input_assembly)
+    if args.steamworks_package:
+        package = args.steamworks_package.resolve()
+        manifest = json.loads((package / "package.json").read_text())
+        if (manifest["name"], manifest["version"]) != ("com.rlabrecque.steamworks.net", "2025.165.0"):
+            parser.error("Expected Steamworks.NET 2025.165.0")
+        wrapper = compile_assembly(args.dotnet, csc, args.output, manifest["name"], sorted((package / "Runtime").rglob("*.cs")), player_refs, defines + ["UNITY_2017_1_OR_NEWER"])
+        player_refs.append(wrapper)
+        refs.append(wrapper)
+        defines.append("CHIP_ARENA_STEAM")
     compile_assembly(args.dotnet, csc, args.output, "ChipArena.Player", runtime, player_refs, defines)
     compiled = compile_assembly(args.dotnet, csc, args.output, "Assembly-CSharp", runtime, refs, defines + ["UNITY_EDITOR", "UNITY_EDITOR_WIN"])
     compile_assembly(args.dotnet, csc, args.output, "Assembly-CSharp-Editor", editor, refs + [compiled], defines + ["UNITY_EDITOR", "UNITY_EDITOR_WIN"])

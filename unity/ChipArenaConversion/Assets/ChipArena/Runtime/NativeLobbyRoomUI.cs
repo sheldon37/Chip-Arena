@@ -32,9 +32,10 @@ namespace ChipArena.UnityConversion
             string code=ShownRoomCode();bool has=!string.IsNullOrEmpty(code);
             H.Cut(r,C.Navy(.92f*e),9);H.Outline(r,C.Edge(.9f*e),9);U.Fill(new Rect(r.x+9,r.y,r.width-18,1),C.Cyan(.5f*e));
             U.Text(new Rect(r.x+16,r.y+8,r.width-110,14),Fit(RoomCodeLabel(),9.5f,r.width-110,false,.14f),9.5f,C.Muted(e),TextAnchor.MiddleLeft,mono:true,tracking:.14f);
-            U.Text(new Rect(r.x+16,r.y+22,r.width-110,26),has?code:"—",22,C.CyanSoft(e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f,glow:C.Cyan(.25f*e));
+            U.Text(new Rect(r.x+16,r.y+22,r.width-110,26),has?code:"—",SteamOnline?13:22,C.CyanSoft(e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f,glow:C.Cyan(.25f*e));
             var copy=new Rect(r.xMax-12-38,r.y+7,38,38);if(LbIconButton(copy,"copy-code",62001,has,e)){GUIUtility.systemCopyBuffer=code;Notice("Room code copied.");}
-            var link=new Rect(copy.x-8-38,copy.y,38,38);if(inviteLink!=null&&LbIconButton(link,"copy-invite",62002,true,e)){GUIUtility.systemCopyBuffer=inviteLink;Notice("Invite link copied.");}
+            var link=new Rect(copy.x-8-38,copy.y,38,38);if(SteamOnline&&Hosting&&LbIconButton(link,"users",62002,has,e))SteamInvite();
+            else if(inviteLink!=null&&LbIconButton(link,"copy-invite",62002,true,e)){GUIUtility.systemCopyBuffer=inviteLink;Notice("Invite link copied.");}
         }
         // A square icon button: navy glass, its edge and icon lighting cyan on hover.
         private bool LbIconButton(Rect r,string icon,int id,bool enabled,float e)

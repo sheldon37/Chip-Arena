@@ -731,7 +731,8 @@ namespace ChipArena.UnityConversion
             if(lanLines.Count>0&&!compact)U.Text(new Rect(x,r.yMax-11,cw+60,12),lanLines[0],8.5f,C.Dim(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
             x+=cw+14;float bw=compact?88:100,bh=compact?26:30,y=r.center.y-bh/2;
             if(ExpChipButton(new Rect(x,y,bw,bh),"copy","CODE",9580,a,live,true,has,10)){GUIUtility.systemCopyBuffer=code;Notice("Room code copied.");}x+=bw+6;
-            if(inviteLink!=null){if(ExpChipButton(new Rect(x,y,bw,bh),"copy","INVITE",9581,a,live,false,true,10)){GUIUtility.systemCopyBuffer=inviteLink;Notice("Invite link copied.");}x+=bw+6;}
+            if(SteamOnline&&Hosting){if(ExpChipButton(new Rect(x,y,bw,bh),"users","INVITE",9581,a,live,false,has,10))SteamInvite();x+=bw+6;}
+            else if(inviteLink!=null){if(ExpChipButton(new Rect(x,y,bw,bh),"copy","INVITE",9581,a,live,false,true,10)){GUIUtility.systemCopyBuffer=inviteLink;Notice("Invite link copied.");}x+=bw+6;}
             float lw=compact?100:116;if(ExpChipButton(new Rect(x,y,lw,bh),"log-out","LEAVE ROOM",9582,a,live,false,true,10))LeaveRoom();x+=lw;
             return x;
         }

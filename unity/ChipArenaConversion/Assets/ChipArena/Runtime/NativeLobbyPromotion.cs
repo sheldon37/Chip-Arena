@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
         private bool PromotionBusy=>promotionToken!=null||promotionMoveAt>0||promotionExpected>peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)&&NetworkNow<promotionDeadline;
         // Lobby transfers must never replace a locked generated run, including its loading window.
         private bool PromotionLobbyOpen=>arena==null&&expeditionSession==null&&!stageLoad.Requested&&!deploymentLocked&&DeploymentState?.deployed!=true;
-        private bool CanPromote(int id)=>Hosting&&!dedicated&&PromotionLobbyOpen&&
+        private bool CanPromote(int id)=>!SteamOnline&&Hosting&&!dedicated&&PromotionLobbyOpen&&
             peers.Any(p=>p.Seat?.id==id&&p.Seat.connected&&p.Connection?.Closed==false&&p.LobbyProtocol==1)&&
             peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).All(p=>p.LobbyProtocol==1);
         private void PromotionButton(Rect r,LobbyPilot p,float alpha)
@@ -53,6 +53,7 @@ namespace ChipArena.UnityConversion
         }
         private bool PromotionClientMessage(NativeNetMessage message)
         {
+            if(SteamOnline&&message.type!=null&&message.type.StartsWith("host-",StringComparison.Ordinal))return true;
             if(message.type=="host-prepare")
             {
                 if(server==null||networkId<1||!PromotionLobbyOpen||receivedOptions==null||PromotionBusy||message.transfer?.Length!=32)return true;

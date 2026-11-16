@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
         private Rect socialChipRect,socialInvitesRect,socialPanelRect;private bool socialPanelShown;private string socialStatusWas="";private int socialInvitesWas;
         private readonly Dictionary<string,float> socialInviteSeen=new Dictionary<string,float>(),socialSent=new Dictionary<string,float>();private readonly List<string> socialStale=new List<string>();
         private bool CanAcceptInvite=>ModsReady&&arena==null&&!Hosting&&server==null&&connecting==null&&relayConnecting==null&&!StageInputHeld;
-        private bool SocialCanInvite=>relayHost!=null&&!relayHost.Closed&&!UseManagedRelay&&arena==null&&!deploymentLocked;
+        private bool SocialCanInvite=>!SteamOnline&&relayHost!=null&&!relayHost.Closed&&!UseManagedRelay&&arena==null&&!deploymentLocked;
         private const string SocialMail="<path d=\"M3.5 6.5H20.5V17.5H3.5Z\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M4 7.5L12 13L20 7.5\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/>";
         private const string SocialSend="<path d=\"M21 3L10.5 13.5M21 3L14.5 21L10.5 13.5L3 9.5Z\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/>";
         private const float SocialWidth=372,SocialChipH=30,SocialChipGap=8,SocialHeadH=54,SocialRowH=44,SocialCardH=80,SocialEmptyH=86,SocialToastH=94;
@@ -292,7 +292,7 @@ namespace ChipArena.UnityConversion
             if(SocialButton(new Rect(d.xMax-10-bw*2-8,by,bw,24),"DECLINE","x",1,!busy&&usable,a,hid*3+2))account.AnswerInvite(inv.id,false,null);
         }
         // Accepting, from the panel's card or the pop-up: the one path.
-        private void SocialAccept(NativePlayerInvite inv)=>account.AnswerInvite(inv.id,true,code=>{if(!CanAcceptInvite)return;internetRooms=true;relayOverride="";joinCode=code;socialToastJoining=null;socialToastGone.Add(inv.id);SocialClose();Go(MenuScreen.Join);JoinRoom();});
+        private void SocialAccept(NativePlayerInvite inv)=>account.AnswerInvite(inv.id,true,code=>{if(!CanAcceptInvite)return;internetRooms=true;relayOverride="";joinCode=code;steamSelected=false;socialToastJoining=null;socialToastGone.Add(inv.id);SocialClose();Go(MenuScreen.Join);JoinRoom();});
 
         // ---- the pop-up ----
         // Where it may show: a menu (the pause menu too) or a match's end, never mid-fight; the invitation waits on the service meanwhile (two minutes).

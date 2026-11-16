@@ -44,10 +44,12 @@ namespace ChipArena.UnityConversion
                 DraftOptions();IntroOptions();RuleCheck(7486,RoomOpt.BothDraft,"All players draft after each set",o.bothDraft);
             }
             else{CreateSection("PARTY","Set in the room");RuleFine(7488,"Party bots and where the run starts are set in the lobby.",0,6);IntroOptions();}
-            CreateSection("CONNECTION",internetRooms?"Friends on any network join with your code":"Players on your local network");
+            CreateSection("CONNECTION",SteamOnline?"Steam lobby visibility":internetRooms?"Friends on any network join with your code":"Players on your local network");
             CreateSwitch(7604,"Connection","Online","Local network",internetRooms?0:1,v=>ApplyRule(RoomOpt.Online,v,0));
-            RuleFine(7484,internetRooms?"This computer hosts the match. Share your room code so friends can join from any network.":"Only players on the same local network can join. The room shows your LAN address and invite link once it is open.",0,4);
+            RoomBackendPicker();
+            RuleFine(7484,SteamOnline?"This computer hosts the match. Steam connects invited players and lists public rooms.":internetRooms?"This computer hosts the match. Share your room code so friends can join from any network.":"Only players on the same local network can join. The room shows your LAN address and invite link once it is open.",0,4);
             if(!internetRooms){Field("Port");portText=GUILayout.TextField(portText,5,GUILayout.Width(120));}
+            else if(SteamOnline) SteamCreateFields();
             else if(UseManagedRelay){listedRoom=NativeControllerPointer.Toggle(listedRoom,"Show in public room list");}
             RuleFine(7494,"Keep your game open while friends are in your room.",8,6);
         }

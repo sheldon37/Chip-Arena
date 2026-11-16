@@ -1,5 +1,6 @@
 """Stage the verified Windows player and SteamPipe scripts. Does not contact Steam."""
 import argparse
+import json
 from pathlib import Path
 import re
 import shutil
@@ -13,6 +14,24 @@ def steam_id(value):
     if not re.fullmatch(r'[1-9][0-9]{0,9}', value) or int(value) > 4294967295:
         raise argparse.ArgumentTypeError('Expected a positive numeric Steam ID')
     return value
+
+
+def prepare_networking(content, exe, app_id):
+    for local_id in content.rglob('steam_appid.txt'):
+        local_id.unlink()
+    data = content / (Path(exe).stem + '_Data')
+    config = data / 'StreamingAssets/ChipArenaSteam.json'
+    if not config.exists():
+        return app_id
+    settings = json.loads(config.read_text(encoding='utf-8'))
+    expected = settings.get('appId')
+    if type(expected) is not int or not 0 < expected <= 4294967295:
+        raise ValueError('Invalid Steam networking App ID in the player')
+    if app_id and str(expected) != app_id:
+        raise ValueError('Depot app and Steam networking App IDs differ')
+    if not any(data.rglob('steam_api64.dll')):
+        raise ValueError('Steam networking player is missing the Win64 Steam API plugin')
+    return str(expected)
 
 
 def stage(feed, destination, app_id=None, depot_id=None):
@@ -33,7 +52,7 @@ def stage(feed, destination, app_id=None, depot_id=None):
             if debug_folder.is_dir():
                 shutil.rmtree(debug_folder)
         (content / 'steam-playtest.txt').write_text('Chip Arena Playtest\n', encoding='ascii')
-        app = app_id or 'PLAYTEST_APP_ID'
+        app = prepare_networking(content, exe, app_id) or 'PLAYTEST_APP_ID'
         depot = depot_id or 'WINDOWS_DEPOT_ID'
         script = '''"AppBuild"
 {
@@ -76,7 +95,7 @@ def main():
         parser.exit(1, f'Steam packaging failed: {error}\n')
     print(f'Staged {destination}\nSteamworks Windows launch executable: {exe}')
     if not args.app_id:
-        print('Fill in both placeholder IDs in app_build.vdf before uploading.')
+        print('Check the app and depot IDs in app_build.vdf before uploading.')
 
 
 if __name__ == '__main__':

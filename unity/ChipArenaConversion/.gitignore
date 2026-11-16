@@ -22,3 +22,10 @@ __pycache__/
 
 /Relay/bin/
 /Relay/obj/
+
+# Local Steam development identity and generated per-profile config
+/steam_appid.txt
+/Assets/StreamingAssets/ChipArenaSteam.json
+/Assets/StreamingAssets/ChipArenaSteam.json.meta
+/tools/steam_room_fixtures/bin/
+/tools/steam_room_fixtures/obj/

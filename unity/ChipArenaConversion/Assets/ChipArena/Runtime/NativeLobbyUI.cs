@@ -368,7 +368,7 @@ namespace ChipArena.UnityConversion
             float e=GUI.color.a;var lines=U.Wrap(text,13,Mathf.Max(80,lobbyRoomInner),false,6);var r=GUILayoutUtility.GetRect(0,lines.Count*20+16,GUILayout.ExpandWidth(true));
             U.Defer(()=>{if(Event.current.type!=EventType.Repaint)return;float y=r.y+8;foreach(var l in lines){U.Text(new Rect(r.x+4,y,r.width-8,20),l,13,C.Muted(e),TextAnchor.MiddleLeft);y+=20;}});
         }
-        private string RoomCodeLabel()=>OpeningOnlineLobby?"GETTING ROOM CODE":!Hosting?"ROOM CODE":listener!=null?"ROOM CODE · LAN":"ROOM CODE · ONLINE";
+        private string RoomCodeLabel()=>SteamOnline?"STEAM LOBBY ID":OpeningOnlineLobby?"GETTING ROOM CODE":!Hosting?"ROOM CODE":listener!=null?"ROOM CODE · LAN":"ROOM CODE · ONLINE";
         // The LAN address lines and the invite link, refreshed on a layout pass when the room changes and every 5 s
         // (LanAddresses walks the network interfaces): one line when it fits the card, else an address per line and the port.
         private float lanCheckedAt=-99;private int lanPort=-1;private string lanCode,inviteLink;private readonly List<string> lanLines=new List<string>(4);

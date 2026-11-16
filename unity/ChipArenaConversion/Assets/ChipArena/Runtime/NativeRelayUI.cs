@@ -17,21 +17,23 @@ namespace ChipArena.UnityConversion
         private string relayOverride="";private bool UseManagedRelay=>relayOverride.Length>0;
         private static string OnlineError(Exception error,string fallback)=>error?.GetBaseException() is NativeOnlineRoomException known?known.Message:fallback;
         private Task<string> ResolveOnlineOrigin(CancellationToken token){token.ThrowIfCancellationRequested();return Task.FromResult(relayOverride);}
+        private IPlayerRoomBackend OnlineBackend => SteamOnline ? (IPlayerRoomBackend)steamRooms : new CloudflareRoomBackend(Path.GetFullPath(Path.Combine(Application.dataPath,"..",NativeTunnelBinary.RelativePath)), s=>JsonUtility.FromJson<NativeDirectoryEntry>(s));
         private async Task<INativeOnlineHost> CreateOnlineRoom(CancellationToken token,bool standby=false)
         {
-            if(UseManagedRelay){string origin=await ResolveOnlineOrigin(token);return await NativeRelayHost.Host(origin,content.sourceCommit,prefs.name+"’s room",listedRoom,token);}
+            if(!SteamOnline&&UseManagedRelay){string origin=await ResolveOnlineOrigin(token);return await NativeRelayHost.Host(origin,content.sourceCommit,prefs.name+"’s room",listedRoom,token);}
+            if(!standby) return await OnlineBackend.Create(SteamOnline?SteamDescription():null,SteamOnline?SteamCompatibility:null,token);
             string executable=Path.GetFullPath(Path.Combine(Application.dataPath,"..",NativeTunnelBinary.RelativePath));
             return await NativeCloudflareHost.Start(executable,s=>JsonUtility.FromJson<NativeDirectoryEntry>(s),token,standby:standby);
         }
         private async Task<NativeConnection> JoinOnlineRoom(string code,CancellationToken token)
-        {if(UseManagedRelay){string origin=await ResolveOnlineOrigin(token);return await NativeRelayHost.Join(origin,code,content.sourceCommit,token);}return await NativeCloudflareHost.Join(code,s=>JsonUtility.FromJson<NativeDirectoryEntry>(s),token);}
+        {if(!SteamOnline&&UseManagedRelay){string origin=await ResolveOnlineOrigin(token);return await NativeRelayHost.Join(origin,code,content.sourceCommit,token);}return await OnlineBackend.Join(code,SteamOnline?SteamCompatibility:null,token);}
         private Task<INativeOnlineHost> standbyRoom;
         private CancellationTokenSource standbyStop;
         private bool OpeningOnlineLobby=>!dedicated&&relayConnecting!=null;
         private void UpdateStandbyRoom()
         {
             // Only prepare the built-in private transport while the pilot is setting up an online room.
-            if(dedicated||!menu||MenuTarget!=MenuScreen.Create||!internetRooms||UseManagedRelay||
+            if(dedicated||!menu||MenuTarget!=MenuScreen.Create||!internetRooms||UseManagedRelay||SteamOnline||
                 Hosting||server!=null||connecting!=null||relayConnecting!=null||modsError.Length!=0)
             {DiscardStandbyRoom();return;}
             if(standbyRoom!=null)return;
@@ -69,7 +71,7 @@ namespace ChipArena.UnityConversion
             try
             {
                 Time.timeScale=1;EndPreview();
-                var pending=UseManagedRelay?null:standbyRoom;var preparedStop=pending!=null?standbyStop:null;
+                var pending=UseManagedRelay||SteamOnline?null:standbyRoom;var preparedStop=pending!=null?standbyStop:null;
                 if(pending!=null){standbyRoom=null;standbyStop=null;}
                 CloseNetwork();ClearReplay();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();if(!dedicated)Save();
                 roomCode="";connectStop=preparedStop??new CancellationTokenSource();
