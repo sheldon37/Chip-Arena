@@ -99,7 +99,7 @@ def prepare_channel(channel):
     return read_manifest(current.read_bytes()) if current.exists() else None
 
 
-def validate(feed):
+def validate(feed, extract_to=None):
     metadata = feed / 'latest.json'
     if metadata.stat().st_size > 128 * 1024:
         raise ValueError('Manifest too large')
@@ -148,6 +148,8 @@ def validate(feed):
                 raise ValueError('Embedded build differs from manifest')
             if archive.testzip() is not None:
                 raise ValueError('Corrupt ZIP entry')
+            if extract_to is not None:
+                archive.extractall(extract_to)
     return m
 
 

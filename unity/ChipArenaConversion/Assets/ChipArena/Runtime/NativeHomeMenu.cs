@@ -230,7 +230,7 @@ namespace ChipArena.UnityConversion
         // update is waiting or the updater is off; the card stays open on its own while an update downloads and installs.
         private void UpdateCircle(Vector2 c,float r,float alpha)
         {
-            var u=Updater;var s=u.State;float t=Time.unscaledTime;bool spin=s==NativeUpdateState.Checking||s==NativeUpdateState.Verifying||s==NativeUpdateState.Preparing||s==NativeUpdateState.Restarting;
+            var u=Updater;if(u.SteamManaged)return;var s=u.State;float t=Time.unscaledTime;bool spin=s==NativeUpdateState.Checking||s==NativeUpdateState.Verifying||s==NativeUpdateState.Preparing||s==NativeUpdateState.Restarting;
             bool busy=s==NativeUpdateState.Downloading||s==NativeUpdateState.Verifying||s==NativeUpdateState.Preparing||s==NativeUpdateState.Restarting,live=s==NativeUpdateState.Available||busy,ready=s==NativeUpdateState.Available;
             var hit=new Rect(c.x-r-12,c.y-r-12,2*r+24,2*r+24);bool blocked=MenuBlocked();float h=Mathf.Max(U.HoverAmount(9101,hit,!blocked),updateOpen?1:0);
             // An update waiting beats (owner 2026-10-14: "make the button pulse"): the halo swells on each beat, two sonar rings

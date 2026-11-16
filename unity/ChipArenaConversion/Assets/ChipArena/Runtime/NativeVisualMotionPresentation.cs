@@ -504,12 +504,17 @@ namespace ChipArena.UnityConversion
             var local=Quaternion.Inverse(body.Root.transform.rotation)*velocity;float speed=new Vector2(local.x,local.z).magnitude;
             bool moving=a.Grounded&&speed>NativeVisualStride.Moving;
             bool covered=NativeVisualMotion.Choose(m.Set,a,time,m.Memory,VisualMotionBank,moving,out var pick);
+            // The captured rig already carries the selecting wrist and install gesture. Fade the
+            // full-body weapon layer off that pose for this pilot only.
+            float chipLook=body.Arena&&ExpeditionChoosing!=null?ChipLookOf(a.Id):0;
+            if(chipLook>=1)covered=false;
             // Held in a paired move (owner 2026-11-13: "Give one to everyone"): a body whose set does not list the victim's clip the host
             // names (before, only the Katana's, the DEV Katana's and the Fangs' sets listed any) takes it on now and plays the reaction.
             if(covered&&!pick.Locomotion&&NativeBladeMotion.Lent(a,pick.Clip)&&!m.Index.ContainsKey(pick.Clip))VisualMotionLend(m,pick.Clip);
             // A plunge leaves the pack's jump within its windup: over the usual ease the drop showed a blend of the jump's raised
             // blade and the plunge's lowered one (the blade swung flat over the head).
             m.Weight=Mathf.MoveTowards(m.Weight,covered?1:0,dt/(!covered&&NativeVisualMotion.Declined=="plunge"?PlungeEase:MotionEase));
+            m.Weight=Mathf.Min(m.Weight,1-chipLook);
             if(m.Weight<=0&&!covered)
             {
                 // Off the model: what carried its pose over (inertia, the guard's switch, the feet) starts afresh.

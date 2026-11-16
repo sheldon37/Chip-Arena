@@ -77,7 +77,7 @@ namespace ChipArena.UnityConversion
         // A new load (a new serial): the preload, the view and the readiness start over.
         private void StageBegan()
         {
-            if(stageLoad.Serial==stageSerial)return;stageSerial=stageLoad.Serial;StageRestart();stageStartedAt=Time.unscaledTime;
+            if(stageLoad.Serial==stageSerial)return;stageSerial=stageLoad.Serial;diagnosticLoad=DiagnosticEvent(stageLoad.Kind+" started");StageRestart();stageStartedAt=Time.unscaledTime;
             stageFailed=false;stageFrom=null;if(!stageLoad.Requested){stageAction=null;stageActed=false;}
         }
         private void StageRestart()
@@ -131,6 +131,7 @@ namespace ChipArena.UnityConversion
                 if(LiveExpedition?.areaBarrier?.active!=true)expeditionTransferFade.Reset();
                 // Opening onto the menu (a return, a refused start): its screen enters as the shutters open, not unseen under them.
                 if(arena==null)menuScreenAt=Time.unscaledTime;
+                diagnosticLoad=DiagnosticEvent(stageLoad.Kind+" reveal: "+stageLoad.Reason);
                 Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"STAGE_LOADING serial={0} kind={1} map={2} reason={3} held={4:F2} preload={5} warmed={6}",
                     stageLoad.Serial,stageLoad.Kind,arena?.MapId??"menu",stageLoad.Reason,stageLoad.Held,stagePlan.Done?"done":stagePlan.Step.ToString(),shaderWarm?.Warmed??0);
             }

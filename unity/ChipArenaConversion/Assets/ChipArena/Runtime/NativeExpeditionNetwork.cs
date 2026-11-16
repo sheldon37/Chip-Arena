@@ -113,7 +113,7 @@ namespace ChipArena.UnityConversion
                 expeditionLoadInbox.MarkApplied(message.frame.areaIdentity);stageFrom=null;
             }
             catch(Exception e)
-            {Debug.LogWarning("Expedition destination load failed: "+e);joinError="Expedition destination load failed: "+e.Message;server.Dispose();throw;}
+            {diagnosticLoad=DiagnosticEvent("Expedition destination failed: "+e.GetType().Name);Debug.LogWarning("Expedition destination load failed: "+e);joinError="Expedition destination load failed: "+e.Message;server.Dispose();throw;}
         }
         // UI observation can replace/cancel a deferred action. Keep the received ticket
         // pending until construction succeeds, and restore the action without resetting

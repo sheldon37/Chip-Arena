@@ -31,6 +31,10 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+if /I "%~1"=="--steam-playtest" (
+  call "%~dp0Package-Steam-Playtest.cmd"
+  if errorlevel 1 exit /b 1
+)
 echo Ready: "%~dp0Builds\Chip-Arena-Windows.zip"
 echo Preview newest build: "%~dp0Builds\Windows\Chip Arena.exe"
 echo The EXE carries the voxel CA icon. Keep the launcher and app folder together.

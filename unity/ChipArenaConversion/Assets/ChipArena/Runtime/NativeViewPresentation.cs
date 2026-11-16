@@ -85,10 +85,10 @@ namespace ChipArena.UnityConversion
                 viewRig.Root.transform.position-=(ViewCamera.transform.right*local.x+ViewCamera.transform.up*local.y)*ads;
             }
             ApplyViewSway(shown,time,ads);
-            // PvE chip selection: the raised wrist and its hologram in view (NativeChipSelectPresentation.cs).
-            ChipSelectView(viewRig,source,time);
             if(shown.SourceSpec=="siren")SirenViewArms(shown,time);
             if(bomb)BombViewArms(viewRig,shown,time);
+            // PvE chip selection: the raised wrist and its hologram in view (NativeChipSelectPresentation.cs).
+            ChipSelectView(viewRig,source,time);
             // The visual body's forearms and hands in place of the voxel arms (NativeVisualBodyPresentation.cs).
             VisualViewPose(viewRig,shown,time,ScopeActive);
             PlayerState=viewRig.State;
