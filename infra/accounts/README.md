@@ -59,11 +59,11 @@ export CHIP_ACCOUNT_STATE=active
 node cf.mjs staging
 "$W" deploy -c "$C"
 export CHIP_STAGING_ORIGIN='https://chip-arena-accounts-staging.<account-subdomain>.workers.dev'
-export CHIP_STAGING_PUBLIC_JWK='/private/path/staging-public.json'
+export CHIP_STAGING_PUBLIC_JWK="$PWD/staging-public.jwk.json"
 node staging-smoke.mjs
 ```
 
-The smoke runner also requires the staging issuer secret in its process environment. It creates one synthetic account, verifies the signed multiplayer claim against the supplied **public** key, and tests password recovery, expiry of the old session, a profile save, privilege denial, presence and idempotent XP. Run migrations and byte comparisons on a fresh database **before** generating smoke-test writes. Local verification needs no Cloudflare identity:
+The checked-in public verification key matches the staging deployment in the report. Replace it with the new public JWK after an operator-controlled staging signing-key rotation. The smoke runner also requires the staging issuer secret in its process environment. It creates one synthetic account, verifies the signed multiplayer claim against the supplied **public** key, and tests password recovery, expiry of the old session, a profile save, privilege denial, presence and idempotent XP. Run migrations and byte comparisons on a fresh database **before** generating smoke-test writes. Local verification needs no Cloudflare identity:
 
 ```sh
 cd infra/accounts
