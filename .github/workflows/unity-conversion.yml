@@ -25,6 +25,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             unity/ChipArenaConversion
+            docs/arenas
             docs/audio
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
