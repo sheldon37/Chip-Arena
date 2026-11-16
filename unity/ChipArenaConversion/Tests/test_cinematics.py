@@ -1,5 +1,5 @@
 """Validate exported scene topology and source-specific lifetimes, without claiming rendered acceptance."""
-import base64, gzip, json, math, unittest
+import base64, gzip, json, math, re, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 def resource(name):
@@ -138,7 +138,11 @@ class CinematicChecks(unittest.TestCase):
     def test_intro_rig_holds_only_a_weapon_intros_weapon(self):
         # player-intros.ts builds a weapon only for a weapon intro; the L33T Throne's staff is its own stage prop.
         intros=(ROOT/'Assets/ChipArena/Runtime/NativeIntros.cs').read_text(encoding='utf-8')
-        self.assertIn('SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age)',intros)  # the Auditor halo on the entrance age
+        self.assertIn('introNow=float.IsNaN(clock)?arena.Time:clock;',intros)
+        rig_calls=re.findall(r'SourceCharacter\(introRig,actor,([^)]*)\)',intros)
+        self.assertTrue(rig_calls)
+        for args in rig_calls:
+            self.assertEqual(args.split(',')[:3], ['introNow','weapon:false','halo:age'])
         self.assertIn('NativeIntroRules.IntroWeapon(style)',intros)
         self.assertIn('stage-dev-matrix',self.clips)
         # The intro clips are baked from the rig player-intros.ts arms (braceWeapon's support grip needs the weapon).

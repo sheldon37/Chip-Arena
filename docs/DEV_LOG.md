@@ -1,6 +1,6 @@
 ## 2026-11-16 · Astra · Unity audio integration
 
-Branch `codex/unity-audio-integration`, shared base `4f57b8ae`. Added recorded weapon, technique, entrance and expedition routes, cast confirmation, intro interruption and 94 optional bank keys. Rebuilt and checked the private bank with all 806 clips, including 213 custom boss takes. The [integration report](audio/INTEGRATION-2026-11-16.md) links the inventory, test evidence, limitations and Claude handoff. Exact-head compilation, Windows host/guest listening and player profiling remain pending following the local workspace outage. No deployment or media redistribution.
+Branch `codex/unity-audio-integration`, shared base `4f57b8ae`. Added recorded weapon, technique, entrance and expedition routes, cast confirmation, intro interruption and 94 optional bank keys. Rebuilt and checked the private bank with all 806 clips, including 213 custom boss takes. The [integration report](audio/INTEGRATION-2026-11-16.md) links the inventory, test evidence, limitations and Claude handoff. Exact-head source and compile checks are tracked in PR #401. Windows host/guest listening and player profiling remain pending. Updated a stale cinematic guard to exercise both intro rig calls on the sampled clock. No deployment or media redistribution.
 
 ## 2026-11-16 - Astra: Steam Playtest preparation, diagnostics and Expedition chip selection
 
