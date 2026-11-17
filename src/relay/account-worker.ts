@@ -10,7 +10,7 @@ import {DEV_PUBLIC_KEY} from '../shared/dev-public-key.js';
 interface Env extends AuthEnv,SteamConfig {
  ACCOUNT_BRIDGE_SECRET?:string; ACCOUNT_STATE?:string; ACCOUNT_ENV?:string; ROOM_DIRECTORY_ORIGIN?:string; XP_ISSUER_SECRET?:string;
 }
-const actions=new Set(['register','login','logout','recover','profile','me','players','grant','xp','social','invite','invite-answer','steam-login','steam-link']);
+const actions=new Set(['register','login','logout','recover','profile','me','players','grant','xp','boss-clear','social','invite','invite-answer','steam-login','steam-link']);
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store'}});
 
 // Validate the signing pair once per isolate/config before accepting a write.

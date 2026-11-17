@@ -21,7 +21,7 @@ def fixture(password='generated-for-unit-tests', recovery='fixture-recovery'):
     recovery_hash = b64(hashlib.sha256(recovery.encode()).digest())
     for n in (1, 2):
         profile = json.dumps({'name': "O'Brien 雪", 'stats': {'wins': 4}, 'cosmetics': {'hat': 'cap'}})
-        db.execute('INSERT INTO player_accounts VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', (
+        db.execute('INSERT INTO player_accounts(id,username,password,recovery,developer,unlocks,flags,profile,revision,grant_version,created,updated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', (
             f'id-{n}', f'pilot_{n}', encoded, recovery_hash, n-1, '["weapon:leet"]',
             '["playtester","vip"]', profile, 7, 3, 1, 2))
     db.execute("INSERT INTO account_audit VALUES ('audit','id-2','id-1','grant','{}',1)")
@@ -55,6 +55,19 @@ class SnapshotTests(unittest.TestCase):
         self.assertTrue(s.verify(self.source,self.dest)['ok'])
         self.assertEqual(s.count(self.dest,'player_sessions'),0)
         self.assertFalse(set(s.ROOMS) & s.names(self.dest))
+
+    def test_earned_bosses_survive_copy(self):
+        self.source.execute("UPDATE player_accounts SET boss_clears=33 WHERE id='id-1'")
+        self.copy()
+        self.assertTrue(s.verify(self.source, self.dest)['ok'])
+        self.assertEqual(self.dest.execute("SELECT boss_clears FROM player_accounts WHERE id='id-1'").fetchone(), (33,))
+
+    def test_pre_practice_snapshot_defaults_to_no_clears(self):
+        self.source.execute('ALTER TABLE player_accounts DROP COLUMN boss_clears')
+        self.copy()
+        self.assertTrue(s.verify(self.source, self.dest)['ok'])
+        self.dest.execute("UPDATE player_accounts SET boss_clears=1 WHERE id='id-1'")
+        self.assertFalse(s.verify(self.source, self.dest)['ok'])
 
     def test_reject_changed_schema(self):
         self.source.execute('ALTER TABLE player_accounts ADD COLUMN score INTEGER')
