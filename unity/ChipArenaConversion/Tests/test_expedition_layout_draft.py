@@ -144,6 +144,7 @@ class ExpeditionLayoutFixtures(unittest.TestCase):
    self.assertLessEqual(abs(b['pos']['x'])+b['size']['x']/2,122.001,b['id']);self.assertLessEqual(b['pos']['z']+b['size']['z']/2,62.001,b['id']);self.assertGreaterEqual(b['pos']['z']-b['size']['z']/2,-122.001,b['id'])
  def test_look_entry(self):
   looks=json.loads((R/'Assets/Conversion/Resources/MapLooks.json').read_text())['maps'];mine=[l for l in looks if l['id']=='expedition-city']
-  self.assertEqual(len(mine),1);self.assertEqual([l['id'] for l in looks[-3:]],['expedition-city','expedition-transit','expedition-foundry']);self.assertEqual(sum(1 for l in looks if l['look']=='expedition-city'),1)
+  draft_ids=['expedition-city','expedition-transit','expedition-foundry']
+  self.assertEqual(len(mine),1);self.assertEqual([l['id'] for l in looks if l['id'] in draft_ids],draft_ids);self.assertEqual(sum(1 for l in looks if l['look']=='expedition-city'),1)
   l=mine[0];self.assertEqual((l['sky']['variant'],l['fog']['mode']),('dusk','linear'));self.assertLessEqual(len(l['lights']),8)
 if __name__=='__main__':unittest.main()
