@@ -7,7 +7,7 @@ Verified November 16, 2026 against the account owner's Cloudflare account. Stagi
 | `chip-arena-accounts-staging` Worker | Active. [Health endpoint](https://chip-arena-accounts-staging.chip-arena-sheldon37.workers.dev/healthz) |
 | `chip-arena-accounts-staging-restore-01` D1 | Current staging `DB` binding. Set `CHIP_D1_STAGING_NAME` to this name when regenerating staging configuration. Look up its UUID in the owner's D1 dashboard. |
 | `chip-arena-accounts-staging` D1 | Earlier isolated migration rehearsal retained. Contains synthetic data. |
-| `chip-arena-accounts-production` D1 | Both schema migrations applied. Confirmed zero player accounts. Production account Worker activation is pending owner approval. |
+| `chip-arena-accounts-production` D1 | Both schema migrations applied. Confirmed zero player accounts. The owner approved live migration and sign-in cutover on November 16, 2026, once the cutover checks pass. |
 
 ## Remote transfer report
 
@@ -31,5 +31,7 @@ Foreign keys and administration references passed. Destination sessions, presenc
 - Unity 6000.3.24f1 input, player, runtime and Editor assemblies compiled. V70 bundle checks confirmed that the compatibility wrapper fences both account prefixes and passes ordinary assets, directory and network responses through.
 - The standalone Electron server build has four existing TypeScript errors in `chaos.ts`, `leet.ts` and `standard-melee.ts`, reproduced at the unchanged GitHub base. The project type check with its normal bundler configuration passed.
 - Live Steam tickets, Windows host/guest gameplay, Expedition reconnection under load, old-client cutover and production player rows still need verification. Sites marks both production signing and legacy verifier values secret and redacts them. Full production export access, signing-key continuity and a trusted producer for ordinary player-hosted XP remain cutover prerequisites.
+
+The approval also covers opening destination writes after the checks pass. The provider snapshot, production signing-key continuity, trusted XP issuance and signed two-client Windows rehearsal remain outstanding. This approval records no live transfer or routing change.
 
 See [account operations and rollback](README.md) for the exact operator procedure.
