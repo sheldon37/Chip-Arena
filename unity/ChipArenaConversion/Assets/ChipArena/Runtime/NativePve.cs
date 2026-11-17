@@ -112,6 +112,7 @@ namespace ChipArena.UnityConversion
         private void BeginBossVictory()
         {
             var v=Pve;if(v.Stage=="victory"||v.Stage=="ended")return;
+            if(Expedition==null)AwardBossClear("siren");
             v.Holding=false;v.Cinematic=null;v.Outcome="victory";v.Stage="victory";v.StageAt=Time;v.StageUntil=Time+5;v.Rate=0;v.SpawnBudget=0;
             CancelSiren(v.Boss);KillPveHorde();
             foreach(var m in Minions.Where(m=>m.Owner==v.Boss).ToArray()){m.Hp=0;Emit(EventKind.Death,null,m.Id,m.Body.position,0);RemoveMinion(m,false);}

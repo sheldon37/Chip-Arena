@@ -9,7 +9,9 @@ namespace ChipArena.UnityConversion
         {if(completion.completionId==xpLastQueued&&account.Access.AccountId==xpLastOwner)return;xpLastQueued=completion.completionId;xpLastOwner=account.Access.AccountId;account.QueueXp(completion);}
         private void AccountXpTick()
         {
-            if(account?.Account==null||arena==null||previewArena!=null||ReplayActive||arena.Sandbox)return;
+            if(account?.Account==null||arena==null||previewArena!=null||ReplayActive||arena.Sandbox||arena.PracticePhase>0)return;
+            var seat=arena.Local?.Seat;
+            if(seat!=null&&seat.clearMask!=0)account.RememberBosses(seat.clearOwner,seat.clearMask);
             var view=LiveExpedition;
             if(view!=null)
             {

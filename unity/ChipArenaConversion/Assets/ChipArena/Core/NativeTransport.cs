@@ -24,6 +24,8 @@ namespace ChipArena.UnityConversion
         // Only host-to-guest state is replaceable; commands and replies remain ordered.
         private static readonly Regex StateEnvelope=new Regex(@"^\{""version"":7,""epoch"":-?[0-9]+,""type"":""(?:frame|expedition-state)"",",RegexOptions.CultureInvariant);
         private static readonly Regex HeartbeatEnvelope=new Regex(@"^\{""version"":7,""epoch"":0,""type"":""(ping|pong)"",""id"":([1-9][0-9]{0,9})\}$",RegexOptions.CultureInvariant);
+        private long sentWireBytes;
+        public long SentWireBytes=>Interlocked.Read(ref sentWireBytes);
         private long lastReceived=DateTime.UtcNow.Ticks;
         public readonly NativeConnectionMetrics Metrics=new NativeConnectionMetrics();public readonly ConcurrentQueue<string> Received=new ConcurrentQueue<string>();public string Error{get;private set;}public bool Closed=>stop.IsCancellationRequested;public DateTime LastReceived=>new DateTime(Interlocked.Read(ref lastReceived),DateTimeKind.Utc);
         private readonly int receiveLimit;private int reliableCount,receivedCount,reliableBytes;private readonly Task reader,writer;
@@ -118,6 +120,7 @@ namespace ChipArena.UnityConversion
                             Buffer.BlockCopy(data,0,wire,8,n);
                             // One WebSocket message per framed packet, rather than separate header/body messages.
                             await stream.WriteAsync(wire,0,n+8,stop.Token).ConfigureAwait(false);
+                            Interlocked.Add(ref sentWireBytes,n+8);
                         }
                         finally{System.Buffers.ArrayPool<byte>.Shared.Return(wire);}
                         writes++;

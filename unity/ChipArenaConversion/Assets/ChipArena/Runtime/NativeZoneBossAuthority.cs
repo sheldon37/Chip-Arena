@@ -113,7 +113,7 @@ namespace ChipArena.UnityConversion
         {
             var z=ZoneBoss;var m=zoneBossActor;if(z==null||m==null||Pve.Holding)return;
             Pve.Boss.Hp=m.Hp;Pve.Boss.Body.position=m.Body.position+Vector3.up*.9f;
-            if(m.Hp<=0){if(z.deathAt<0){z.deathAt=Time;BossRelease();z.cancelAt=Time;bossPools.Clear();z.hazards=Array.Empty<NativeZoneBossHazardFrame>();foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;}if(z.backrooms!=null)BackroomGeometry();return;}
+            if(m.Hp<=0){if(z.deathAt<0){if(Expedition==null)AwardBossClear(NativeBossBattle.Id(MapId));z.deathAt=Time;BossRelease();z.cancelAt=Time;bossPools.Clear();z.hazards=Array.Empty<NativeZoneBossHazardFrame>();foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;}if(z.backrooms!=null)BackroomGeometry();return;}
             foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time&&d.Next<=d.Until){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)d.Dps*.25f,Vector3.zero,0,kind:"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}
             if(NativeBackroomsBossRules.Is(z.archetype)){StepBackroomBoss();return;}
             int phase=NativeZoneBossRules.Phase(z.archetype,m.Hp,m.MaxHp);

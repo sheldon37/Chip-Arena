@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
      // Headwear and backdrop colours (NativeHatLooks; "" Auto). No initializer: a profile without them leaves the local pick alone.
      public string hatColor,backColor;}
     [Serializable] public sealed class NativeProfile {public string name="Pilot",@class="ranged",color="#70e1d0";public NativeCosmetics cosmetics=new NativeCosmetics();}
-    [Serializable] public sealed class NativeAccountData {public string id,username;public NativeProfile profile;public bool hasProfile,developer;public string[] unlocks,flags;public int revision,grantVersion,profileSchema;}
+    [Serializable] public sealed class NativeAccountData {public string id,username;public NativeProfile profile;public bool hasProfile,developer;public string[] unlocks,flags;public int bossClears,revision,grantVersion,profileSchema;}
     [Serializable] public sealed class NativeAccountResponse {public string error,token,session,recoveryCode;public NativeAccountData account;public NativeAccountData[] players;public int grantCatalogVersion;public string[] grantableUnlocks;}
     [Serializable] public sealed class NativeLoginRequest {public string username,password,recoveryCode;public bool remember;}
     [Serializable] public sealed class NativeProfileRequest {public int revision;public NativeProfile profile;}
@@ -60,8 +60,8 @@ namespace ChipArena.UnityConversion
                 Accepted?.Invoke(Account,loadProfile);
             }
         }
-        private void Update(){TickSocial();TickXp();if(Account==null||Busy)return;if(pendingProfile!=null){var profile=pendingProfile;pendingProfile=null;Save(profile);}else if(Time.unscaledTime>=refreshAt)Refresh();}
-        public void Clear(bool erase=true){ResetSocial();ResetXp();pendingProfile=null;reloadProfile=false;Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status=OfflineStatus;if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){Status="Signed out; saved session could not be removed.";}}
+        private void Update(){TickSocial();TickXp();SyncBossClears();if(Account==null||Busy)return;if(pendingProfile!=null){var profile=pendingProfile;pendingProfile=null;Save(profile);}else if(Time.unscaledTime>=refreshAt)Refresh();}
+        public void Clear(bool erase=true){clearGeneration++;clearBusy=false;clearOwner=null;clearOrigin=null;ResetSocial();ResetXp();pendingProfile=null;reloadProfile=false;Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status=OfflineStatus;if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){Status="Signed out; saved session could not be removed.";}}
     }
     public static class NativeSessionVault
     {

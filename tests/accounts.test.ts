@@ -244,3 +244,20 @@ test('native weapon techniques persist per weapon and reject scope, DEV and malf
   }
  }finally{f.db.close();}
 });
+
+test('boss clears accumulate per pilot across sessions and duplicate reports', async()=>{
+ const f=await fixture();
+ try{
+  const pilot=await (await f.request('register',{username:'practice_pilot',password})).json();
+  const other=await (await f.request('register',{username:'other_pilot',password})).json();
+  assert.equal(pilot.account.bossClears,0);
+  assert.equal((await f.request('boss-clear',{boss:'siren'})).status,401);
+  assert.equal((await f.request('boss-clear',{boss:'unknown'},pilot.session)).status,400);
+  const save=(boss:string)=>f.request('boss-clear',{boss,accountId:other.account.id},pilot.session);
+  const replies=await Promise.all([save('siren'),save('noctiel'),save('siren')]);
+  assert.ok(replies.every(r=>r.status===200));
+  const again=await (await f.request('login',{username:'practice_pilot',password})).json();
+  assert.equal(again.account.bossClears,33);
+  assert.equal((await (await f.request('me',undefined,other.session)).json()).account.bossClears,0);
+ }finally{f.db.close();}
+});

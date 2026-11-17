@@ -6,6 +6,19 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
+        public void ValidatePracticeBookmark()
+        {
+            if(Pve.Holding && Pve.Cinematic=="reveal")PveHoldTick(Pve.HoldLeft+.01f);
+            if(Pve.Phase!=PracticePhase || Match.CanEarnProgression(LocalId) || BossOpening ||
+                Pve.Rows.Values.Any(r=>r.Picks.Any(p=>p.Source==NativeBossPicks.Source)))
+                throw new Exception("Practice opening mismatch "+PracticeBoss+" phase "+PracticePhase+" actual "+Pve.Phase);
+            if(PracticeBoss=="siren" && PracticePhase==2 && (!Pve.Hidden || Pve.Possessed==0))
+                throw new Exception("Siren practice missing possessed add");
+            if(PracticeBoss=="station" && PracticePhase==3 && (ZoneBoss.barrierDownAt<0 || ZoneBoss.roofOpenAt<0))
+                throw new Exception("Station phase three missing arena changes");
+            if(PracticeBoss=="noctiel" && PracticePhase>1 && (ZoneBoss.fallen.draftAt<0 || ZoneBoss.fallen.chipOffer.Length!=3))
+                throw new Exception("NOCTIEL practice missing phase draft");
+        }
         public void ValidateBossOpening()
         {
             void Check(bool ok,string why){if(!ok)throw new Exception("Boss opening: "+why);}

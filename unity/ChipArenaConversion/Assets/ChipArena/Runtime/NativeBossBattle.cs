@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         }
         private void BossBattleEndTick()
         {
-            if(arena==null||arena.Replica||arena.Expedition!=null||arena.ZoneBoss==null||match.Phase!=NativePhase.Match)return;
+            if(arena==null||arena.PracticePhase>0||arena.Replica||arena.Expedition!=null||arena.ZoneBoss==null||match.Phase!=NativePhase.Match)return;
             // Completion is authoritative. The newer lobby epoch returns every guest without leaving the room.
             afterMatch=MenuScreen.Boss;ReturnToLobby();Go(Hosting?MenuScreen.Lobby:MenuScreen.Boss);
         }
@@ -68,6 +68,7 @@ namespace ChipArena.UnityConversion
             if(ZoneBoss!=null){ZoneBoss.action=null;ZoneBoss.actionAt=ZoneBoss.hitAt=-100;ZoneBoss.duration=0;}
             foreach(var p in Members())
             {
+                if(PracticePhase>0)continue;
                 for(int i=0;i<5;i++)GrantPvePick(p,"common",false,NativeBossPicks.Source);
                 OpenPvePick(p);
             }
@@ -111,6 +112,7 @@ namespace ChipArena.UnityConversion
             }
             BeginPveHold("intro");
             if(ZoneBoss?.archetype==NativeFallenBoss.Archetype)ConfigureFallenBattle();
+            if(PracticePhase>0)OpenPracticePhase();
             return true;
         }
         private void StepBossBattle()

@@ -269,7 +269,7 @@ namespace ChipArena.UnityConversion
                 if(defeated)
                 {
                     bool accepted=s.phase==ExpeditionPhase.FinalBoss?Expedition.FinalDefeated(Vec(boss.Body.position)):Expedition.BossDefeated(expeditionBoss,ZoneBoss?.backrooms!=null?expeditionArea.bossPoints[0].Position:Vec(boss.Body.position));
-                    if(accepted){KillPveHorde();pveAcid.Clear();Bullets.Clear();SetBossHidden(true);Pve.Stage="intermission";Pve.Rate=0;BossSongAt=-1;BossSongLead=0;}
+                    if(accepted){AwardBossClear(ZoneBoss==null?"siren":NativeBossBattle.Id(MapId));KillPveHorde();pveAcid.Clear();Bullets.Clear();SetBossHidden(true);Pve.Stage="intermission";Pve.Rate=0;BossSongAt=-1;BossSongLead=0;}
                 }
             }
             StepZoneHazards();StepZoneEvents();StepPveServices();StepPveHorde();StepPveAcid();
