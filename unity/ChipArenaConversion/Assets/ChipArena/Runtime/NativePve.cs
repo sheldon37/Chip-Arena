@@ -130,7 +130,13 @@ namespace ChipArena.UnityConversion
         private void BeginPveHold(string cinematic,int reveal=0)
         {
             if(cinematic=="victory"){BeginBossVictory();return;}
-            var v=Pve;Emit(EventKind.PvePhase,v.Boss,reveal,v.Boss.Body.position,0,cinematic);v.Holding=true;v.Cinematic=cinematic;v.Reveal=reveal;if(cinematic=="intro"){BossSongAt=Time;BossSongLead=0;}v.HoldDuration=v.HoldLeft=cinematic=="reveal"?5:cinematic=="intro"?9.0678f:cinematic=="victory"?4:3;
+            var v=Pve;Emit(EventKind.PvePhase,v.Boss,reveal,v.Boss.Body.position,0,cinematic);v.Holding=true;v.Cinematic=cinematic;v.Reveal=reveal;v.HoldDuration=v.HoldLeft=cinematic=="reveal"?5:cinematic=="intro"?9.0678f:cinematic=="victory"?4:3;
+            if(cinematic=="intro")
+            {
+                BossSongAt=Time;
+                // A split Expedition area keeps ticking during the hold. Other arenas freeze.
+                BossSongLead=Expedition?.Session.Run.SplitAreas==true?0:v.HoldDuration;
+            }
             CancelSiren(v.Boss);pveAcid.Clear();SirenFields.Clear();Bullets.RemoveAll(b=>b.SirenKind!=null);
             foreach(var p in Pilots){p.Dots.Clear();if(!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;}
             foreach(var row in v.Rows.Values)if(row.HealAt>=0&&row.HealPulses<4){Heal(row.Pilot,(float)row.Pilot.Stats["hp"]*.125f*(4-row.HealPulses));row.HealPulses=4;}
@@ -141,7 +147,7 @@ namespace ChipArena.UnityConversion
             if(Pve==null||!Pve.Holding)return false;var v=Pve;v.HoldLeft-=dt;if(v.HoldLeft>0)return true;string cinematic=v.Cinematic;v.Holding=false;
             if(cinematic=="victory"||cinematic=="defeat"){KillPveHorde();v.Outcome=cinematic;v.Stage="ended";Match.FinishCooperative(cinematic=="victory");return true;}
             if(cinematic=="reveal"&&v.Reveal==1){var boss=v.Boss;v.MaxHp=NativePveRules.BossHp(PartySize);boss.Stats["hp"]=v.MaxHp;boss.Hp=v.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(PartySize);SetBossHidden(false);PlacePveBoss(BossSpawn);boss.Yaw=v.Content.boss.yaw;boss.Input=new InputFrame{Yaw=boss.Yaw};v.Floor=v.MaxHp*.75f;BeginPveHold("intro");return true;}
-            if(cinematic=="intro"){if(ZoneBoss?.fallen!=null)ZoneBoss.fallen.phaseStarted=Time;if(ZoneBoss!=null){ZoneBoss.action=null;ZoneBoss.actionAt=ZoneBoss.hitAt=-100;ZoneBoss.duration=0;}BossSongLead=NativeBossSongClock.ReleaseLead(Time,BossSongAt,v.HoldDuration);v.Stage="boss";v.StageAt=Time;v.Phase=1;}
+            if(cinematic=="intro"){if(ZoneBoss?.backrooms!=null)ZoneBoss.backrooms.started=Time;if(ZoneBoss?.fallen!=null)ZoneBoss.fallen.phaseStarted=Time;if(ZoneBoss!=null){ZoneBoss.action=null;ZoneBoss.actionAt=ZoneBoss.hitAt=-100;ZoneBoss.duration=0;}BossSongLead=NativeBossSongClock.ReleaseLead(Time,BossSongAt,v.HoldDuration);v.Stage="boss";v.StageAt=Time;v.Phase=1;}
             else if(cinematic=="reveal")
             {
                 v.Phase=v.Reveal;v.Floor=v.Phase==2?v.MaxHp*.5f:v.Phase==3?v.MaxHp*.25f:0;

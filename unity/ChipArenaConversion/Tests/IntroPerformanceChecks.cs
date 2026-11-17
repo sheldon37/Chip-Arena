@@ -21,6 +21,8 @@ internal static class IntroPerformanceChecks
                 float age=tick/60f;now=start+(running?age:0);left=hold-age;
                 double song=NativeBossSongClock.Age(now,start,0,true,hold,left);
                 Check(Math.Abs(song-age)<.0001,"intro advances once with running or frozen match clock");
+                float pose=NativeBossSongClock.Presentation(now,start,running?0:hold,true,hold,left,out float spawned);
+                Check(Math.Abs((pose-spawned)-song)<.0001,"arrival pose and song stay on the same beat");
                 Check(song>=previous,"intro clock monotonic");previous=song;
                 if(clockSync.SeekStable(age,song,age))corrections++;
             }
