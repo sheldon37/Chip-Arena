@@ -115,13 +115,21 @@ def layout(db, table):
     return columns, keys, sorted(indexes)
 
 
-def validate(db, destination):
+def validate(db, destination, *, legacy_source=False):
     expected = schema(destination)
     if names(db) != names(expected):
         raise Stop('Unexpected or missing tables. Reconcile the schema before continuing.')
     for t in sorted(names(expected)):
-        if layout(db, t) != layout(expected, t):
-            raise Stop('Schema differs for ' + t)
+        actual_layout, expected_layout = layout(db, t), layout(expected, t)
+        if actual_layout == expected_layout:
+            continue
+        # Pre-practice Site and independent backups lack only the appended clear mask.
+        cols, keys, indexes = expected_layout
+        if (t == 'player_accounts' and (not destination or legacy_source)
+                and cols[-1][1] == 'boss_clears'
+                and actual_layout == (cols[:-1], keys, indexes)):
+            continue
+        raise Stop('Schema differs for ' + t)
     if db.execute('PRAGMA integrity_check').fetchone() != ('ok',):
         raise Stop('SQLite integrity check failed.')
     if db.execute('PRAGMA foreign_key_check').fetchone():
@@ -148,7 +156,7 @@ def count(db, table):
 
 def source_tables(source):
     independent = 'steam_links' in names(source)
-    validate(source, independent)
+    validate(source, independent, legacy_source=True)
     return DURABLE + NEW if independent else DURABLE
 
 
@@ -202,6 +210,8 @@ def verify(source, dest):
                     if a[i] != b[i] or type(a[i]) != type(b[i]):
                         name = column[1]
                         mismatches[name] = mismatches.get(name, 0) + 1
+                if t == 'player_accounts' and len(b) == len(a)+1 and b[-1] != 0:
+                    mismatches['boss_clears'] = mismatches.get('boss_clears', 0)+1
                 a, b = next(left, None), next(right, None)
         report[t] = dict(source=count(source,t), destination=count(dest,t), missing=missing,
                          extra=extra_count, field_mismatches=mismatches)

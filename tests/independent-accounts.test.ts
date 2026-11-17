@@ -155,3 +155,17 @@ test('legacy proxy authenticates the original rate-limit address across Cloudfla
  const r=await routeOldAccounts(req,{ACCOUNT_ROUTING:'forward',ACCOUNT_UPSTREAM:'https://new.test',ACCOUNT_BRIDGE_SECRET:secret});
  assert.equal(r?.status,200);
 });
+
+test('practice clears route records only the signed-in pilot and survives a new session',async()=>{
+ const f=await fixture();
+ try{
+  const user=await (await f.api('register',{username:'practice_one',password:f.password})).json();
+  const other=await (await f.api('register',{username:'practice_two',password:f.password})).json();
+  const clear=await f.api('boss-clear',{boss:'noctiel',accountId:other.account.id},user.session);
+  assert.equal(clear.status,200);
+  assert.equal((await clear.json()).bossClears,32);
+  const again=await (await f.api('login',{username:'practice_one',password:f.password})).json();
+  assert.equal(again.account.bossClears,32);
+  assert.equal((await (await f.api('me',undefined,other.session)).json()).account.bossClears,0);
+ }finally{f.db.close();}
+});
