@@ -6,6 +6,11 @@ namespace ChipArena.UnityConversion
     {
         public static double Age(float now,float started,float lead,bool intro,float duration,float left)
             =>started<0?-1:intro?duration-left:now-started+lead;
+        public static float Presentation(float renderTime,float started,float lead,bool intro,float duration,float left,out float spawned)
+        {
+            spawned=started-lead;
+            return intro?spawned+(duration-left):renderTime;
+        }
         public static float ReleaseLead(float now,float started,float duration)=>duration-(now-started);
     }
 }

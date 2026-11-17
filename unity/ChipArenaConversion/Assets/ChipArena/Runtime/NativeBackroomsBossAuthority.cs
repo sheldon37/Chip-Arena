@@ -112,8 +112,24 @@ namespace ChipArena.UnityConversion
             if(Time<p.RollEnd)return;direction.y=0;if(direction.sqrMagnitude<1e-4f)return;
             var delta=direction.normalized*(speed*PoolMove(p.Body.position)/60);var at=p.Body.position;if(!SceneLinecast(at,at+delta*2,WorldMask)){p.Body.position=at+delta;p.Body.transform.position=p.Body.position;}
         }
-        private Vector3 BackroomContactPoint(NativeMinion m,Vector3 from)
-        {if(m!=zoneBossActor||ZoneBoss?.backrooms==null)return m.Body.position;Vector3 best=m.Body.position;float d=float.MaxValue;foreach(var c in backroomParts)if(c!=null&&c.enabled){var at=c.ClosestPoint(from);float dist=(at-from).sqrMagnitude;if(dist<d){d=dist;best=at;}}return best;}
+        private Vector3 BackroomContactPoint(NativeMinion m,Vector3 from,out Collider collider)
+        {
+            collider=m.Collider;
+            if(m!=zoneBossActor||ZoneBoss?.backrooms==null)return m.Body.position;
+            var best=m.Body.position;
+            float distance=float.PositiveInfinity;
+            foreach(var part in backroomParts)
+            {
+                if(part==null||!part.enabled)continue;
+                var point=part.ClosestPoint(from);
+                float squared=(point-from).sqrMagnitude;
+                if(squared>=distance)continue;
+                best=point;
+                distance=squared;
+                collider=part;
+            }
+            return best;
+        }
         private float BackroomHitScale(NativeMinion m,NativePilot source,float damage,Vector3? point)
         {
             var z=ZoneBoss;var b=z.backrooms;bool hum=z.archetype==NativeHumBoss.Archetype;

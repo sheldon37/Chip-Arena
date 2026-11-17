@@ -57,7 +57,11 @@ namespace ChipArena.UnityConversion
         private IEnumerable<(int id,NativePilot pilot,NativeMinion minion,Vector3 at,Collider collider)> MeleeTargets(NativePilot p)
         {
             foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q))yield return(q.Seat.id,q,null,q.Body.position,q.Collider);
-            foreach(var m in Minions)if(m.Hp>0&&CanHit(p,m))yield return(m.Id,null,m,m.Body.position,m.Collider);
+            foreach(var m in Minions)if(m.Hp>0&&CanHit(p,m))
+            {
+                var point=BackroomContactPoint(m,p.Body.position,out var collider);
+                yield return(m.Id,null,m,point,collider);
+            }
         }
         private (int id,NativePilot pilot,NativeMinion minion,Vector3 at,Collider collider) MeleeTarget(NativePilot p,int id)=>MeleeTargets(p).FirstOrDefault(t=>t.id==id);
         private bool MeleeRecastOpen(NativePilot p)=>NativeWhirlwindRules.CanRecast(p.Special,Time)||Time<p.MeleeKit.RecastUntil&&p.MeleeKit.Target!=0&&MeleeTarget(p,p.MeleeKit.Target).collider!=null;

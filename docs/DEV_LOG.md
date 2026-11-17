@@ -1,3 +1,7 @@
+## 2026-11-16 · Astra · Expedition boss intros and exposed melee contacts
+
+Based on shared commit 99b6cd35. THE DEEP END, THE HUM and THE 6:47 now sample their arrival poses from the replicated cinematic countdown. The split area's running clock previously counted the intro twice. On release, the Backrooms authority anchors its combat rig to the completed hold. Katana cuts, rush and standard melee targeting use the nearest enabled Backrooms boss segment. Existing phase and submerged immunities still apply. Added a native compound-body contact and range regression and managed checks for frozen and advancing clocks. Windows visual and PhysX playthrough pending.
+
 ## 2026-11-16 · Astra · Unity audio integration
 
 Branch `codex/unity-audio-integration`, shared base `4f57b8ae`. Added recorded weapon, technique, entrance and expedition routes, cast confirmation, intro interruption and 94 optional bank keys. Rebuilt and checked the private bank with all 806 clips, including 213 custom boss takes. The [integration report](audio/INTEGRATION-2026-11-16.md) links the inventory, test evidence, limitations and Claude handoff. Exact-head source and compile checks are tracked in PR #401. Windows host/guest listening and player profiling remain pending. Updated a stale cinematic guard to exercise both intro rig calls on the sampled clock. No deployment or media redistribution.

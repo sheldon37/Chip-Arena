@@ -15,6 +15,26 @@ namespace ChipArena.UnityConversion
             Pve.Holding=false;Pve.Stage="boss";Pve.Rate=0;Pve.MaxHp=6000;Pve.Boss.Hp=6000;Match.SynchronizeExpeditionClock(Math.Max(Time+1,300));
             SpawnZoneBoss(kind,Vector3.zero,180);var z=ZoneBoss;var b=z.backrooms;var m=zoneBossActor;z.action=null;PoseBackroomBody();
             Check(z.Valid(),"initial record finite");Check(backroomParts.Count>=9,"joint-driven compound hit volumes");
+            if(kind==NativeDeepEndBoss.Archetype)
+            {
+                // Isolate one exposed segment well away from the root and level geometry.
+                var part=backroomParts[0];var previous=part.transform.position;
+                var segment=new Vector3(b.cx,40,b.cz);part.transform.position=segment;
+                var attacker=segment-Vector3.forward*(part.radius+1);
+                Physics.SyncTransforms();
+                int contacts=0;float previousHp=m.Hp;
+                BladeCone(p,attacker,Vector3.forward,2,1,(q,d)=>{},(enemy,delta)=>
+                {
+                    if(enemy!=m)return;
+                    contacts++;
+                    HitMinion(m,p,10,delta.normalized,0,attacker+delta,"blade-cut");
+                });
+                Check(contacts==1&&m.Hp<previousHp,"katana cuts an exposed segment with its root out of reach");
+                contacts=0;
+                BladeCone(p,attacker-Vector3.forward*5,Vector3.forward,2,1,(q,d)=>{},(enemy,d)=>{if(enemy==m)contacts++;});
+                Check(contacts==0,"katana cannot hit the segment beyond reach");
+                part.transform.position=previous;Physics.SyncTransforms();Pve.Boss.Hp=m.Hp=previousHp;
+            }
             float half=kind==NativeHumBoss.Archetype?NativeHumArena.Size/2:20;
             var spots=new[]{new Vector3(-half+1,0,-half+1),new Vector3(half-1,0,-half+1),new Vector3(-half+1,0,half-1),new Vector3(half-1,0,half-1),new Vector3(0,0,-half+1),new Vector3(half-1,0,0),new Vector3(0,0,half-1),new Vector3(-half+1,0,0),new Vector3(0,0,-14)};
             foreach(var spot in spots)

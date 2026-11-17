@@ -71,7 +71,8 @@ namespace ChipArena.UnityConversion
         private float BladeHurt(NativePilot p,NativeMinion m,float amount,Vector3 dir,string kind,float impulse=0,bool melee=false)
         {
             float share=p.Seat.spec==NativeKatana.Spec?KatanaShare(p,BladeKey(m),melee):FangsShare(p,m.Hp/Math.Max(1,m.MaxHp));
-            float actual=HitMinion(m,p,amount*share*(melee?(float)p.Stats["damage"]:BladeScale(p)),dir,impulse,m.Body.position,"blade-"+kind);
+            var point=melee?BackroomContactPoint(m,p.Body.position,out _):m.Body.position;
+            float actual=HitMinion(m,p,amount*share*(melee?(float)p.Stats["damage"]:BladeScale(p)),dir,impulse,point,"blade-"+kind);
             if(actual>0)BladeLanded(p,BladeKey(m),m.Hp<=0);return actual;
         }
         private void BladePush(NativeMinion m,Vector3 horizontal,float lift)
@@ -94,7 +95,11 @@ namespace ChipArena.UnityConversion
         {
             bool Inside(Vector3 q){var d=q-at;if(Math.Abs(d.y)>1.9f)return false;var flat=new Vector3(d.x,0,d.z);float l=flat.magnitude;if(l>reach+.45f)return false;if(l<.6f||arc>=3.1f)return true;return Vector3.Angle(facing,flat)*Mathf.Deg2Rad<=arc;}
             foreach(var q in BladePilots(p))if(Inside(q.Body.position)&&MeleeVisible(at+Vector3.up*.3f,q.Body.position,p,q.Collider))pilot(q,q.Body.position-at);
-            foreach(var m in BladeMinions(p))if(Inside(m.Body.position)&&MeleeVisible(at+Vector3.up*.3f,m.Body.position,p,m.Collider))minion(m,m.Body.position-at);
+            foreach(var m in BladeMinions(p))
+            {
+                var point=BackroomContactPoint(m,at,out var collider);
+                if(Inside(point)&&MeleeVisible(at+Vector3.up*.3f,point,p,collider))minion(m,point-at);
+            }
         }
 
         // ---- the arena's hooks ----

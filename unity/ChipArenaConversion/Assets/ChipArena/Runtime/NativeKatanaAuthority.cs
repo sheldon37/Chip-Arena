@@ -83,7 +83,7 @@ namespace ChipArena.UnityConversion
             var at=p.Body.position;var f=p.BladeFacing;float reach=NativeKatana.CutReach[step],arc=NativeKatana.CutArc[step],damage=NativeKatana.CutDamage[step];bool finisher=step==NativeKatana.Steps-1;
             string kind=finisher?NativeKatana.HitFinisher:NativeKatana.HitCut;float stun=NativeMeleeRules.HitStun(p.Weapon,(float)p.Stats["attackRate"])*(finisher?NativeKatana.FinisherStun:1);
             BladeCone(p,at,f,reach,arc,(q,d)=>{if(BladeHurt(p,q,damage,d,"cut",(float)p.Weapon.impulse,true)<=0)return;StaggerMelee(q,stun);if(finisher)q.Knockback+=new Vector3(d.x,0,d.z).normalized*NativeKatana.FinisherPush;KatanaBleed(p,q);BladeHit(p,kind,q.Body.position+Vector3.up*.45f,d,q.Seat.id,step);},
-                (m,d)=>{if(BladeHurt(p,m,damage,d,"cut",0,true)<=0)return;if(finisher)BladePush(m,new Vector3(d.x,0,d.z).normalized*NativeKatana.FinisherPush,1);KatanaBleed(p,m);BladeHit(p,kind,m.Body.position+Vector3.up*.45f,d,BladeKey(m),step);});
+                (m,d)=>{if(BladeHurt(p,m,damage,d,"cut",0,true)<=0)return;if(finisher)BladePush(m,new Vector3(d.x,0,d.z).normalized*NativeKatana.FinisherPush,1);KatanaBleed(p,m);BladeHit(p,kind,IsZoneBoss(m)?at+d:m.Body.position+Vector3.up*.45f,d,BladeKey(m),step);});
             if(finisher&&BladeChip(p,NativeKatanaChips.CrescentWave)){var w=new BladeWave{From=at+Vector3.up*.3f,Dir=f,At=Time};p.BladeWaves.Add(w);BladeHit(p,NativeKatana.HitWave,w.From,f);}
         }
         /// <summary>The counter: the foe of the block or parry, if it is within reach in front and in sight; the paired critical begins.</summary>
@@ -162,7 +162,7 @@ namespace ChipArena.UnityConversion
             }
             foreach(var m in BladeMinions(p))
             {
-                int id=BladeKey(m);if(p.BladeStruck.Contains(id))continue;var d=m.Body.position-p.Body.position;if(!Beside(d))continue;p.BladeStruck.Add(id);
+                int id=BladeKey(m);if(p.BladeStruck.Contains(id))continue;var d=BackroomContactPoint(m,p.Body.position,out _)-p.Body.position;if(!Beside(d))continue;p.BladeStruck.Add(id);
                 if(BladeHurt(p,m,NativeKatana.RushDamage,d,"rush",0,true)>0){BladePush(m,p.BladeFacing*NativeKatana.RushPush,1);KatanaBleed(p,m);BladeHit(p,NativeKatana.HitRush,m.Body.position+Vector3.up*.45f,p.BladeFacing,id);}
             }
         }

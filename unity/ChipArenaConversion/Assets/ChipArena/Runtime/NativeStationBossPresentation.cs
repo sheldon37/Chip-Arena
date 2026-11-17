@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
             if(!NativeExpeditionStation.Active(arena.MapId)){StationBossHide();return;}
             StationBossPartsBuild(false);
             float now=PresentationClock(arena);
-            if(!ReferenceEquals(arena,stationBossArena)||arena.Generation!=stationBossGeneration){stationBossArena=arena;stationBossGeneration=arena.Generation;stationBossLast=-1;stationBossHp=float.NaN;stationBossSongSpawn=float.NaN;stationBossSongLast=-1;}
+            if(!ReferenceEquals(arena,stationBossArena)||arena.Generation!=stationBossGeneration){stationBossArena=arena;stationBossGeneration=arena.Generation;stationBossLast=-1;stationBossHp=float.NaN;}
             // The record: the DEV preview's script while it runs, else the authority's (None until bound).
             NVector velocity=NVector.Zero;bool hasTarget=false;NVector target=NVector.Zero;
             if(NativeStationBossPreview.On)
@@ -76,22 +76,10 @@ namespace ChipArena.UnityConversion
                 }
             }
             if(!stationBossView.live||!EnsureStationBoss()){StationBossHide();return;}
-            // The boss song binds the arrival (docs/ZONE-BOSS-MUSIC.md): its accents give the beats (the doc's table when its file
-            // is missing), and its clock times them. The arena clock waits through the intro hold while NativeArena.BossSongTime
-            // runs, so the boss's own clock trails the arena's by what is left of the hold and meets it at the hold's end; the
-            // arrival starts at song time 0 on it. Contacts and every later time stay on the arena clock.
             NativeStationBossBeats.UseSong(NativeZoneBossSongs.ForMap(arena.MapId));
             if(!NativeStationBossPreview.On)
             {
-                double song=arena.BossSongTime;
-                if(song>=0&&song<1e6)
-                {
-                    float lag=Math.Max(0f,NativeStationBossBeats.Current.Hold-(float)song);now-=lag;
-                    // Latched once per arrival, so the rig sees one `spawned` (a new song start restarts it).
-                    if(float.IsNaN(stationBossSongSpawn)||song<stationBossSongLast)stationBossSongSpawn=now-(float)song;
-                    stationBossSongLast=song;stationBossView.spawned=stationBossSongSpawn;
-                }
-                else{stationBossSongSpawn=float.NaN;stationBossSongLast=-1;}
+                arena.SampleBossArrival(ref now,ref stationBossView.spawned);
             }
             float dt=stationBossLast<0?0:Mathf.Clamp(now-stationBossLast,0,.1f);
             if(!NativeStationBossPreview.On&&stationBossLast>=0&&dt>0)velocity=(new NVector(stationBossView.x,stationBossView.y,stationBossView.z)-stationBossPrev)/dt;
@@ -122,7 +110,7 @@ namespace ChipArena.UnityConversion
             if(stationBossLast>=0)NativeStationBossCues.Queue(stationBossView,stationBoss,stationBossLast,now);
             stationBossLast=now;
         }
-        private float stationBossSongSpawn=float.NaN;private double stationBossSongLast=-1;
+        
         private NVector stationBossPrev;private float stationBossLastBlow=float.NegativeInfinity;
         private readonly float[] blowAt=new float[8],blowSize=new float[8];private readonly NVector[] blowPush=new NVector[8];
         private void StationBossBlow(float at,NVector push,float size){stationBoss.Hit(at,push,size);stationBossLastBlow=Math.Max(stationBossLastBlow,at);stationBossFlash=size;}

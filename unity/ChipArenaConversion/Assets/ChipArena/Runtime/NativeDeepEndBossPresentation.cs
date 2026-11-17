@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
 
         private readonly DeepEndBossRig deepEndRig=new DeepEndBossRig();private readonly NativeDeepEndBossFx deepEndFx=new NativeDeepEndBossFx();private DeepEndBossView deepEndView=DeepEndBossView.None;
         private float deepEndLast=float.NaN,deepEndHp=float.NaN,deepEndFlash,deepEndLastBlow=float.NegativeInfinity;private bool deepEndDrawnLast;private NVector deepEndOrigin;private NativeArena deepEndArena;private int deepEndGeneration=-1;
-        private readonly NVector2[] deepEndPilots=new NVector2[8];private float deepEndHurt=float.NegativeInfinity;private float deepEndSongSpawn=float.NaN;private double deepEndSongLast=-1;private readonly float[] deepEndBlowAt=new float[8],deepEndBlowSize=new float[8];
+        private readonly NVector2[] deepEndPilots=new NVector2[8];private float deepEndHurt=float.NegativeInfinity;private readonly float[] deepEndBlowAt=new float[8],deepEndBlowSize=new float[8];
         /// <summary>The rig the local tool's bosscam frames (public Root and Yaw).</summary>
         public DeepEndBossRig DeepEndBossRigShown=>deepEndRig;
         /// <summary>The boss's draws last frame (budget lines), and its tier.</summary>
@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
         {
             if(arena==null||!NativePoolroomsGenerator.IsMap(arena.MapId)){DeepEndBossHide();return;}
             var eye=WorldEye;float wall=PresentationClock(arena);
-            if(!ReferenceEquals(arena,deepEndArena)||arena.Generation!=deepEndGeneration){deepEndArena=arena;deepEndGeneration=arena.Generation;deepEndLast=float.NaN;deepEndHp=float.NaN;deepEndSongSpawn=float.NaN;deepEndSongLast=-1;deepEndRig.Clear();deepEndWaves?.Clear();}
+            if(!ReferenceEquals(arena,deepEndArena)||arena.Generation!=deepEndGeneration){deepEndArena=arena;deepEndGeneration=arena.Generation;deepEndLast=float.NaN;deepEndHp=float.NaN;deepEndRig.Clear();deepEndWaves?.Clear();}
             // The record: the DEV preview's script while it runs, else the authority's (None until bound). Everything below runs on `now`: the preview's own clock, or the presentation clock.
             bool preview=NativeDeepEndBossPreview.On;float now=wall;NVector2 target=default;bool hasLook=false;
             if(preview)
@@ -73,14 +73,8 @@ namespace ChipArena.UnityConversion
                 {
                     // The effects' pilots, in the room's frame: the Jet bursts on whoever stands in its line, the Whistle's rings rise round them.
                     if(DeepEndBossCentre(out var pilotsAt)){int np=0;foreach(var q in arena.Pilots){if(q?.Body==null||q.Seat==null||q.Seat.AuthorityBoss||q.Hp<=0||np>=deepEndPilots.Length)continue;var qp=q.Body.position;deepEndPilots[np++]=new NVector2(qp.x-pilotsAt.X,qp.z-pilotsAt.Z);}deepEndFx.Pilots=deepEndPilots;deepEndFx.PilotCount=np;}
-                    NativeDeepEndBossBeats.UseSong(NativeZoneBossSongs.ForMap(arena.MapId));double song=arena.BossSongTime;
-                    if(song>=0&&song<1e6)
-                    {
-                        float lag=Math.Max(0f,NativeDeepEndBossBeats.Current.Hold-(float)song);now-=lag;
-                        if(float.IsNaN(deepEndSongSpawn)||song<deepEndSongLast)deepEndSongSpawn=now-(float)song;
-                        deepEndSongLast=song;deepEndView.spawned=deepEndSongSpawn;
-                    }
-                    else{deepEndSongSpawn=float.NaN;deepEndSongLast=-1;}
+                    NativeDeepEndBossBeats.UseSong(NativeZoneBossSongs.ForMap(arena.MapId));
+                    arena.SampleBossArrival(ref now,ref deepEndView.spawned);
                 }
             }
             if(!deepEndView.live||poolroomsLayout==null||eye==null||!DeepEndWaterReady()){DeepEndBossHide();return;}
