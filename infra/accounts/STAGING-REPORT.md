@@ -32,6 +32,6 @@ Foreign keys and administration references passed. Destination sessions, presenc
 - The standalone Electron server build has four existing TypeScript errors in `chaos.ts`, `leet.ts` and `standard-melee.ts`, reproduced at the unchanged GitHub base. The project type check with its normal bundler configuration passed.
 - Live Steam tickets, Windows host/guest gameplay, Expedition reconnection under load, old-client cutover and production player rows still need verification. Sites marks both production signing and legacy verifier values secret and redacts them. Full production export access, signing-key continuity and a trusted producer for ordinary player-hosted XP remain cutover prerequisites.
 
-The approval also covers opening destination writes after the checks pass. The provider snapshot, production signing-key continuity, trusted XP issuance and signed two-client Windows rehearsal remain outstanding. This approval records no live transfer or routing change.
+The approval also covers opening destination writes after the checks pass. The in-app capture rehearsal and final transfer, production signing-key rotation and compatible client rollout, trusted XP issuance and signed two-client Windows rehearsal remain outstanding. This approval records no live transfer or routing change.
 
 See [account operations and rollback](README.md) for the exact operator procedure.

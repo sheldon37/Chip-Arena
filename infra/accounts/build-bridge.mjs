@@ -12,9 +12,11 @@ if(readFileSync(legacy,'utf8').includes(marker))throw Error('The input already c
 const result=await build({stdin:{sourcefile:'account-bridge.js',resolveDir:process.cwd(),contents:`
  import legacy from ${JSON.stringify(legacy)};
  export * from ${JSON.stringify(legacy)};
+ import {exportAccounts} from ${JSON.stringify(fileURLToPath(new URL('./sites-export.mjs',import.meta.url)))};
  import {routeOldAccounts} from ${JSON.stringify(routing)};
  export default {...legacy,async fetch(request,env,ctx){
   const path=new URL(request.url).pathname;
+  if(path==='/internal/account-migration/export')return exportAccounts(request,env);
   if(path.startsWith('/api/accounts/')||path==='/api/auth/login'){
    const response=await routeOldAccounts(request,env);
    if(response)return response;
