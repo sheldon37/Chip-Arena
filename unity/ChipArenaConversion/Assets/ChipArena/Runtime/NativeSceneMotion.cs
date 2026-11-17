@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ArenaPresentation
     {
-        private readonly Dictionary<int,(int seed,Matrix4x4[] bones)> carriedDeaths=new Dictionary<int,(int,Matrix4x4[])>();
+        private readonly Dictionary<(int id,int seed),(int seed,Matrix4x4[] bones)> carriedDeaths=new Dictionary<(int,int),(int,Matrix4x4[])>();
         private bool SourceDeathScene(NativeDeath death,float age,float revival=-1)
         {
             if(death.kept&&death.style!="siren-crush")return false;if(death.kept)age=Math.Min(age,2.6f);string key="death-"+death.style;var clip=NativeSceneMotion.Get(key);if(clip==null)return false;Matrix4x4 root=Matrix4x4.TRS(death.position-Vector3.up*.865f,Quaternion.Euler(0,death.yaw,0),Vector3.one);
@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             if(clip.dropped>=0&&!string.IsNullOrEmpty(death.actor?.SourceSpec))sourceModels.Queue(Skinned(death.actor,"loose-"+death.actor.SourceSpec),root*NativeSceneMotion.Matrix(clip,clip.dropped,age),layer:layer,camera:only,opacity:fade*NativeSceneMotion.Opacity(clip,clip.dropped,age));
             if(clip.victim.Length==22)
             {
-                if(!carriedDeaths.TryGetValue(death.id,out var carried)||carried.seed!=death.seed){var matrices=new Matrix4x4[22];if(rigs.TryGetValue(death.id,out var rig)||minionRigs.TryGetValue(death.id,out rig))for(int i=0;i<22;i++)matrices[i]=rig.Bones[i].localToWorldMatrix;else for(int i=0;i<22;i++)matrices[i]=root*NativeSceneMotion.Matrix(clip,clip.victim[i],0);carried=(death.seed,matrices);carriedDeaths[death.id]=carried;}
+                if(!carriedDeaths.TryGetValue(DeathKey(death),out var carried)||carried.seed!=death.seed){var matrices=new Matrix4x4[22];if(rigs.TryGetValue(death.id,out var rig)||minionRigs.TryGetValue(death.id,out rig))for(int i=0;i<22;i++)matrices[i]=rig.Bones[i].localToWorldMatrix;else for(int i=0;i<22;i++)matrices[i]=root*NativeSceneMotion.Matrix(clip,clip.victim[i],0);carried=(death.seed,matrices);carriedDeaths[DeathKey(death)]=carried;}
                 Matrix4x4 Bone(int b){var goal=root*NativeSceneMotion.Matrix(clip,clip.victim[b],age);float t=Mathf.Clamp01(age/(death.style=="siren-crush"?.08f:.2f));t=t*t*t*(t*(t*6-15)+10);if(t<1)for(int i=0;i<16;i++)goal[i]=Mathf.Lerp(carried.bones[b][i],goal[i],t);return goal;}
                 bool Visible(int b)=>NativeSceneMotion.Opacity(clip,clip.victim[b],age)>.001f;
                 // The victim wears its body skin (NativeBodySkinPresentation.cs) at the scene's distance.

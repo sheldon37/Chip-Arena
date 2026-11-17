@@ -61,15 +61,15 @@ namespace ChipArena.UnityConversion
                 // A kept Siren-crush body is rebuilt from its dropped ragdoll as it lies (NativeSirenDropPresentation.cs).
                 if(d.style=="siren-crush"&&SirenDropPose(WeaponLoadout,d,age,r.Body,r.Missing)){}
                 // A kept vent-splat rebuilds from the body as drawn (vent-fall.ts; NativeVentDeathPresentation.cs).
-                else if(Vent(d.id) is VentBody vent&&vent.Seed==d.seed)for(int b=0;b<22;b++)r.Body[b]=vent.Bones[b];
+                else if(Vent(d) is VentBody vent&&vent.Seed==d.seed)for(int b=0;b<22;b++)r.Body[b]=vent.Bones[b];
                 else
                 {
                     // A split body (NativeBisectPresentation) floats back together from its two halves.
-                    if(corpses.TryGetValue(d.id,out var split)&&split.Death.seed==d.seed&&HalvesBody(r,split)){}
-                    else if(!corpses.TryGetValue(d.id,out var corpse)||corpse.Death.seed!=d.seed)
+                    if(corpses.TryGetValue(DeathKey(d),out var split)&&split.Death.seed==d.seed&&HalvesBody(r,split)){}
+                    else if(!corpses.TryGetValue(DeathKey(d),out var corpse)||corpse.Death.seed!=d.seed)
                     {
                         corpse?.Dispose();var temp=captured.Create(transform,-d.id);
-                        try {var atDeath=d.actor?.ViewCopy()??new Actor();atDeath.Hp=Math.Max(1,atDeath.Hp);temp.ActorPose(atDeath,d.position-Vector3.up*.865f,d.at);corpse=new NativeCorpse(d,temp,WeaponLoadout);corpses[d.id]=corpse;
+                        try {var atDeath=d.actor?.ViewCopy()??new Actor();atDeath.Hp=Math.Max(1,atDeath.Hp);temp.ActorPose(atDeath,d.position-Vector3.up*.865f,d.at);corpse=new NativeCorpse(d,temp,WeaponLoadout);corpses[DeathKey(d)]=corpse;
                             // The corpse made here first wears its visual body as one made by the death presentation does.
                             if((d.model??"pilot")=="pilot")VisualCorpseMake(corpse,d,temp);}
                         finally {temp.Dispose();}

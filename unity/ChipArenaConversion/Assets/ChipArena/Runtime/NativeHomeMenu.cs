@@ -621,7 +621,7 @@ namespace ChipArena.UnityConversion
         // ---- Pause menu ----------------------------------------------------------------------------------------------
         // main.ts:157 "Match menu" (Escape during a match): the status line, Resume, Connection report, Settings, the
         // sandbox tools in a sandbox, Restart offline, Return to Lobby, Return to Main Menu, the control hints; with the
-        // pilot board beside it outside the sandbox. Return to Lobby starts the cancellable three-second return
+        // pilot board beside it outside the sandbox. Return to Lobby starts the cancellable one-second return
         // (RequestLobbyReturn) and closes the menu as the source's 'lobby' action does; it is disabled for guests and
         // while the return runs, whose banner (NativeConnectionReport.cs) shows over this menu. The panel enters once per
         // opening; there is no close X.

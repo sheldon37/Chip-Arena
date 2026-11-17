@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
             if(ReferenceEquals(anchorArena,arena)&&arena.Time>=anchorAt&&arena.Time<anchorAt+.1f)return;
             anchorArena=arena;anchorAt=arena.Time;
             foreach(var p in arena.Pilots)
-                if(p.Hp<=0&&p.Death!=null&&corpses.TryGetValue(p.Seat.id,out var body)&&body.Death.seed==p.Death.seed)
+                if(p.Hp<=0&&p.Death!=null&&corpses.TryGetValue(DeathKey(p.Death),out var body)&&body.Death.seed==p.Death.seed)
                     arena.SetReviveAnchor(p,body.Center);
         }
     }

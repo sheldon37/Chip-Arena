@@ -158,7 +158,10 @@ namespace ChipArena.UnityConversion
         private bool BowBone(int target,int bone,NVector local,out NMatrix world)
         {
             world=NMatrix.Identity;
-            if(corpses.TryGetValue(target,out var corpse)){var half=ArrowHalf(corpse,bone,local);if(!half.ShownBone(bone))return false;world=BowN(half.PresentedBone(bone));return true;}
+            NativeDeath death=bowArena==null?null:PilotOf(bowArena,target)?.Death;
+            if(death==null&&bowArena!=null&&target>=10000)
+                foreach(var d in bowArena.MinionDeaths)if(d.id==target)death=d;
+            if(death!=null&&corpses.TryGetValue(DeathKey(death),out var corpse)){var half=ArrowHalf(corpse,bone,local);if(!half.ShownBone(bone))return false;world=BowN(half.PresentedBone(bone));return true;}
             // A horde add (NativeHordeGorePresentation.cs): its live or falling rig, then its corpse; none once gibbed or gone.
             if(target>=10000)return HordeArrowBone(target,bone,out world);
             if(bowArena!=null){var p=PilotOf(bowArena,target);if(p==null||p.Hp<=0)return false;}

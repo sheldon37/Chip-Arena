@@ -1,3 +1,7 @@
+## 2026-11-17 - Astra - Kill effects through respawn and faster lobby return
+
+Branch `codex/respawn-effects-lobby-delay`, shared base `ab45f769`. Presentation retains an observed pilot death for its five-second effect and keys corpse, vent and carried-pose state by victim and death seed. Gameplay respawn timing stays independent. Return to Lobby now uses a cancellable one-second deadline. Updated deadline and vent harness checks. All eleven baked death clips have a five-second duration. Windows visual and host/guest playthrough pending.
+
 ## 2026-11-16 · Astra · Expedition boss intros and exposed melee contacts
 
 Based on shared commit 99b6cd35. THE DEEP END, THE HUM and THE 6:47 now sample their arrival poses from the replicated cinematic countdown. The split area's running clock previously counted the intro twice. On release, the Backrooms authority anchors its combat rig to the completed hold. Katana cuts, rush and standard melee targeting use the nearest enabled Backrooms boss segment. Existing phase and submerged immunities still apply. Added a native compound-body contact and range regression and managed checks for frozen and advancing clocks. Windows visual and PhysX playthrough pending.

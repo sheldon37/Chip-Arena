@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
         private bool VentModel(NativeDeath death,bool pilot)=>pilot&&VisualDeathFor(death);
         /// <summary>Drops a vent death's body made for an earlier record of it (a kept fall's record turns into its splat in place).</summary>
         private void VentFresh(NativeDeath death)
-        {if(corpses.TryGetValue(death.id,out var old)&&old.VentStale(death)){old.Dispose();corpses.Remove(death.id);}}
+        {if(corpses.TryGetValue(DeathKey(death),out var old)&&old.VentStale(death)){old.Dispose();corpses.Remove(DeathKey(death));}}
         /// <summary>A vent death's body as it is made: a fall starts down its shaft (straight down, the arms thrown up, tipping forward);
         /// a splat starts high over its spot, tipping so it lands face down at VENT_PIT.drop.</summary>
         private static void VentLaunch(NativeCorpse corpse,NativeDeath death)

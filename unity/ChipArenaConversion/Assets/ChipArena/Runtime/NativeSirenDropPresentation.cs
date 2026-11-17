@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
         /// (StartRevival) are the same ragdoll.</summary>
         private NativeCorpse SirenDropBody(NativeArena arena,NativeDeath death)
         {
-            if(corpses.TryGetValue(death.id,out var old)){if(old.Death.seed==death.seed&&old.Drop)return old;old.Dispose();corpses.Remove(death.id);}
+            if(corpses.TryGetValue(DeathKey(death),out var old)){if(old.Death.seed==death.seed&&old.Drop)return old;old.Dispose();corpses.Remove(DeathKey(death));}
             if(arena==null||corpses.Count>=32&&!death.kept&&!NativeCorpseRules.Retain(PilotOf(arena,death.id)!=null,arena.Match.Cooperative))return null;var clip=dropClip;
             var owner=PilotOf(arena,death.owner);var hold=owner?.Pose;
             bool holding=owner!=null&&owner.Hp>0&&hold!=null&&hold.SourceSpec=="siren"&&hold.SourceAction=="grab"&&hold.SourceUntil>death.at+NativeSirenDrop.Limp&&(death.actor==null||death.actor.GrabOwner!=death.owner||Math.Abs(hold.SourceAt-death.actor.GrabAt)<.05f);
@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
             for(int b=0;b<22;b++){pose[b]=DropUnity(bind,b*16);linear[b]=new Vector3(-lin[b*3],lin[b*3+1],lin[b*3+2]);angular[b]=new Vector3(ang[b*3],-ang[b*3+1],-ang[b*3+2]);}
             var body=NativeCorpse.SirenDrop(death,arena,pose,linear,angular,release);
             if(arena.Root!=null&&arena.Root.scene.GetPhysicsScene().Raycast(death.position,Vector3.down,out var hit,8,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))body.FloorDrop=Mathf.Max(0,death.position.y-.865f-hit.point.y);
-            corpses[death.id]=body;return body;
+            corpses[DeathKey(death)]=body;return body;
         }
         /// <summary>Sets the drawn state for <paramref name="death"/> at <paramref name="age"/> (clip age <paramref name="shown"/>).</summary>
         private void DropFrame(NativeDeath death,NativeCorpse body,float age,float shown)
@@ -68,8 +68,8 @@ namespace ChipArena.UnityConversion
             if(shown<NativeSirenDrop.Carry)
             {
                 // SourceDeathScene's carry: the last pose the live rig showed (the held victim), blended into the clip over .08 s.
-                if(!carriedDeaths.TryGetValue(death.id,out var carried)||carried.seed!=death.seed)
-                {var m=new Matrix4x4[22];if(rigs.TryGetValue(death.id,out var rig)||minionRigs.TryGetValue(death.id,out rig))for(int i=0;i<22;i++)m[i]=rig.Bones[i].localToWorldMatrix;else for(int i=0;i<22;i++)m[i]=DropClipBone(i,0);carried=(death.seed,m);carriedDeaths[death.id]=carried;}
+                if(!carriedDeaths.TryGetValue(DeathKey(death),out var carried)||carried.seed!=death.seed)
+                {var m=new Matrix4x4[22];if(rigs.TryGetValue(death.id,out var rig)||minionRigs.TryGetValue(death.id,out rig))for(int i=0;i<22;i++)m[i]=rig.Bones[i].localToWorldMatrix;else for(int i=0;i<22;i++)m[i]=DropClipBone(i,0);carried=(death.seed,m);carriedDeaths[DeathKey(death)]=carried;}
                 dropCarried=carried.bones;
             }
             if(dropFallen&&dropGone>0)dropPivot=body.Bone(CapturedRig.Pelvis).GetColumn(3);

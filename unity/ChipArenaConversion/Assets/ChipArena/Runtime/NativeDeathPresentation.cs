@@ -173,17 +173,21 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ArenaPresentation
     {
-        private readonly Dictionary<int,NativeCorpse> corpses=new Dictionary<int,NativeCorpse>();private readonly List<int> staleCorpses=new List<int>();
+        private readonly Dictionary<(int id,int seed),NativeCorpse> corpses=new Dictionary<(int id,int seed),NativeCorpse>();private readonly List<(int id,int seed)> staleCorpses=new List<(int,int)>();
         /// <summary>Each melee death's killing blow as first seen (key: id and seed), kept across the killcam's reset and cleared
         /// with the round (MeleeSlice).</summary>
         private readonly Dictionary<long,(bool has,MeleeBlow blow)> killBlows=new Dictionary<long,(bool has,MeleeBlow blow)>();
-        private void ClearCorpses(){CorpseCarriedClear();foreach(var c in corpses.Values)c.Dispose();corpses.Clear();ClearVisualCorpses();carriedDeaths.Clear();ClearVents();ClearSawGallery();ReleaseKillEffects();}
+        private readonly Dictionary<(int id,int seed),NativeDeath> playingDeaths=new Dictionary<(int,int),NativeDeath>();
+        private readonly List<(int id,int seed)> finishedDeaths=new List<(int,int)>();
+        private static (int id,int seed) DeathKey(NativeDeath d)=>(d.id,d.seed);
+        private void ClearCorpses(){CorpseCarriedClear();playingDeaths.Clear();foreach(var c in corpses.Values)c.Dispose();corpses.Clear();ClearVisualCorpses();carriedDeaths.Clear();ClearVents();ClearSawGallery();ReleaseKillEffects();}
         // The clock kill effects are presented on (see PresentDeath): FieldClock, the continuous snapshot clock a guest renders at
         // (PresentationClock on the host and in the killcam replay).
         private float KillClock(NativeArena arena)=>FieldClock(arena);
         private static bool StockEnding(string style)=>style=="impact-ragdoll"||style=="ragdoll"||style=="dev-gibber"||NativeKillEffectRules.Swarm(style);
-        private static bool DeathListed(NativeArena arena,int id,int seed)
+        private bool DeathListed(NativeArena arena,int id,int seed)
         {
+            if(playingDeaths.ContainsKey((id,seed)))return true;
             foreach(var p in arena.Pilots)if(p.Death!=null&&p.Death.id==id&&p.Death.seed==seed)return true;
             foreach(var d in arena.MinionDeaths)if(d.id==id&&d.seed==seed)return true;return false;
         }
@@ -201,15 +205,39 @@ namespace ChipArena.UnityConversion
         }
         private void DeathPresentationCore(NativeArena arena)
         {
-            if(NativeCorpseRules.RoundEnded(arena.Match.Cooperative,arena.Match.Phase)){if(corpses.Count>0||ventBodies.Count>0||carriedDeaths.Count>0||killPointMesh!=null)ClearCorpses();hazardGibs.Clear();if(blood.Splats.Live>0||stainedWounds.Count>0)ClearBlood(true);killBlows.Clear();return;}
+            if(NativeCorpseRules.RoundEnded(arena.Match.Cooperative,arena.Match.Phase)){if(playingDeaths.Count>0||corpses.Count>0||ventBodies.Count>0||carriedDeaths.Count>0||killPointMesh!=null)ClearCorpses();hazardGibs.Clear();if(blood.Splats.Live>0||stainedWounds.Count>0)ClearBlood(true);killBlows.Clear();return;}
+            // Keep the original event on its own clock when a respawn clears or replaces the seat's death.
+            float clock=SlowBodies||arena.ReplaySampledShots?KillClock(arena):arena.Time;
+            finishedDeaths.Clear();
+            foreach(var entry in playingDeaths)
+            {
+                float age=clock-entry.Value.at;
+                if(age<0||NativeCorpseRules.EffectsFinished(age))finishedDeaths.Add(entry.Key);
+            }
+            foreach(var key in finishedDeaths)playingDeaths.Remove(key);
+            foreach(var p in arena.Pilots)
+            {
+                var d=p.Death;
+                if(d==null||d.kept||clock<d.at||NativeCorpseRules.EffectsFinished(clock-d.at))continue;
+                var key=DeathKey(d);
+                if(!playingDeaths.ContainsKey(key))playingDeaths.Add(key,d.ViewCopy());
+            }
             staleCorpses.Clear();
-            foreach(var item in corpses){var d=item.Value.Death;var live=PilotOf(arena,item.Key);if(!DeathListed(arena,item.Key,d.seed)||NativeCorpseRules.Expired(arena.Time-d.at,d.kept,item.Value.RetainUntilRoundEnd)||live!=null&&live.Hp>0&&arena.Time-live.RevivedAt>1.1f)staleCorpses.Add(item.Key);}
-            foreach(int id in staleCorpses){corpses[id].Dispose();corpses.Remove(id);}
+            foreach(var item in corpses){var d=item.Value.Death;var live=PilotOf(arena,d.id);if(!DeathListed(arena,d.id,d.seed)||NativeCorpseRules.Expired(arena.Time-d.at,d.kept,item.Value.RetainUntilRoundEnd)||d.kept&&live!=null&&live.Hp>0&&arena.Time-live.RevivedAt>1.1f)staleCorpses.Add(item.Key);}
+            foreach(var id in staleCorpses){corpses[id].Dispose();corpses.Remove(id);}
+            finishedDeaths.Clear();
+            foreach(var key in carriedDeaths.Keys)if(!DeathListed(arena,key.id,key.seed))finishedDeaths.Add(key);
+            foreach(var key in finishedDeaths)carriedDeaths.Remove(key);
             PruneVents(arena);
             // DeathEffects: live (not kept) pilot effects share ANIMATION.maxDeathVoxels pieces; a new one gets what is left.
             killUsed=0;foreach(var c in corpses.Values)if(c.Counted&&!NativeCorpseRules.EffectsFinished(arena.Time-c.Death.at))killUsed+=c.FxCount;
             BeginKillFrame();
             foreach(var p in arena.Pilots)if(p.Death!=null)PresentDeath(arena,p.Death,true);
+            foreach(var entry in playingDeaths)
+            {
+                var current=PilotOf(arena,entry.Key.id)?.Death;
+                if(current==null||current.seed!=entry.Key.seed)PresentDeath(arena,entry.Value,true);
+            }
             foreach(var d in arena.MinionDeaths)PresentDeath(arena,d,false);
             SyncReviveAnchors(arena);
             SawSplitPreview(arena);
@@ -219,7 +247,7 @@ namespace ChipArena.UnityConversion
         }
         private void PresentDeath(NativeArena arena,NativeDeath death,bool pilot)
         {
-            bool retain=NativeCorpseRules.Retain(pilot,arena.Match.Cooperative);float age=(SlowBodies||arena.ReplaySampledShots?KillClock(arena):arena.Time)-death.at;var live=PilotOf(arena,death.id);bool revived=live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||NativeCorpseRules.Expired(age,death.kept,retain)||revived&&up>1.1f)return;
+            bool retain=NativeCorpseRules.Retain(pilot,arena.Match.Cooperative);float age=(SlowBodies||arena.ReplaySampledShots?KillClock(arena):arena.Time)-death.at;var live=PilotOf(arena,death.id);bool revived=death.kept&&live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||NativeCorpseRules.Expired(age,death.kept,retain)||revived&&up>1.1f)return;
             // The repair owns the kept body until it hands the pose to the live rig; never also draw the old revive fade.
             if(revived&&death.kept&&revivals.TryGetValue(death.id,out var repair)&&repair.At==live.RevivedAt)return;
             // Last Laugh: the crush clip, then the dropped body falls as a ragdoll (NativeSirenDropPresentation.cs).
@@ -232,7 +260,7 @@ namespace ChipArena.UnityConversion
             // Ward Zero vent deaths: a pilot on the model falls down the vent's shaft as its ragdoll, and its splat lands as one
             // (NativeVentFallPresentation.cs); vent-fall.ts's scripted victim (NativeVentDeathPresentation.cs) is the voxel body's.
             if(VentStyle(death.style)){if(!VentModel(death,pilot)){PresentVent(arena,death,pilot,KillClock(arena)-death.at,live);return;}VentFresh(death);}
-            if(!corpses.TryGetValue(death.id,out var corpse))
+            if(!corpses.TryGetValue(DeathKey(death),out var corpse))
             {
                 if(corpses.Count>=32&&!retain)return;long buildAt=System.Diagnostics.Stopwatch.GetTimestamp();DiagnosticDeathCreates++;CapturedAnimation.Player rig=null;bool temporary=false;
                 if(!rigs.TryGetValue(death.id,out rig)&&!minionRigs.TryGetValue(death.id,out rig)){rig=captured.Create(transform,death.id);var actor=death.actor??new Actor();actor.Hp=Math.Max(1,actor.Hp);rig.ActorPose(actor,death.position-Vector3.up*.865f,death.at);temporary=true;}
@@ -248,7 +276,7 @@ namespace ChipArena.UnityConversion
                 corpse=!pilot?null:slice!=null?MeleeBisect(arena,death,rig,slice):SawBisect(arena,death,rig);
                 // The train, a press ram or the crane's load smashes the body (NativeSmashPresentation.cs).
                 if(corpse==null&&gib?.Smash!=null)corpse=new NativeCorpse(death,rig,arena,null,gib.Smash);
-                if(corpse==null)corpse=new NativeCorpse(death,rig,arena,slice);corpses[death.id]=corpse;
+                if(corpse==null)corpse=new NativeCorpse(death,rig,arena,slice);corpses[DeathKey(death)]=corpse;
                 // A pilot's whole body falls as its visual body (NativeVisualBodyPresentation.cs), posed from the rig before it goes.
                 if(pilot)VisualCorpseMake(corpse,death,rig);
                 // Its cosmetic body's boxes fitted to the model it carries, so the model rests on the floor rather than through it.

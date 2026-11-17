@@ -28,14 +28,14 @@ namespace ChipArena.UnityConversion
             public Func<int,Matrix4x4> Bone,WeaponBone;public Func<int,bool> WeaponShown;public string Hat,Weapon;
             public Matrix4x4 At(int b)=>Bones[b];
         }
-        private readonly Dictionary<int,VentBody> ventBodies=new Dictionary<int,VentBody>();private readonly List<int> staleVents=new List<int>();
+        private readonly Dictionary<(int id,int seed),VentBody> ventBodies=new Dictionary<(int id,int seed),VentBody>();private readonly List<(int id,int seed)> staleVents=new List<(int,int)>();
         private static bool VentStyle(string style)=>style=="vent-fall"||style=="vent-splat";
-        private VentBody Vent(int id)=>ventBodies.TryGetValue(id,out var v)?v:null;
+        private VentBody Vent(NativeDeath death)=>ventBodies.TryGetValue(DeathKey(death),out var v)?v:null;
         private void ClearVents(){ventBodies.Clear();}
         /// <summary>Drops vent bodies whose death is gone or replaced (a vent-fall becomes a vent-splat with a new seed).</summary>
         private void PruneVents(NativeArena arena)
         {
-            staleVents.Clear();foreach(var item in ventBodies)if(!DeathListed(arena,item.Key,item.Value.Seed))staleVents.Add(item.Key);foreach(int id in staleVents)ventBodies.Remove(id);
+            staleVents.Clear();foreach(var item in ventBodies)if(!DeathListed(arena,item.Key.id,item.Value.Seed))staleVents.Add(item.Key);foreach(var id in staleVents)ventBodies.Remove(id);
         }
         /// <summary>
         /// vent-fall.ts for one death at presentation-clock age <paramref name="fx"/>: poses the scripted rig (vent-fall: carried
@@ -45,9 +45,9 @@ namespace ChipArena.UnityConversion
         /// </summary>
         private VentBody PresentVent(NativeArena arena,NativeDeath death,bool pilot,float fx,NativePilot live,bool draw=true)
         {
-            if(!ventBodies.TryGetValue(death.id,out var v)||v.Seed!=death.seed)
+            if(!ventBodies.TryGetValue(DeathKey(death),out var v)||v.Seed!=death.seed)
             {
-                v=new VentBody{Seed=death.seed,Splat=death.style=="vent-splat"};ventBodies[death.id]=v;var body=v;v.Bone=b=>body.At(b);
+                v=new VentBody{Seed=death.seed,Splat=death.style=="vent-splat"};ventBodies[DeathKey(death)]=v;var body=v;v.Bone=b=>body.At(b);
                 string spec=death.actor?.SourceSpec;v.Caster=spec=="fire"||spec=="water"||spec=="lightning"||spec=="darkness"||spec=="leet";bool caster=v.Caster;
                 // buildWeapon(victim.weapon, spec): one weapon in the right hand (a caster's staff too; no off-hand weapon).
                 v.WeaponBone=b=>body.At(caster&&b==CapturedRig.LHand?CapturedRig.RHand:b);v.WeaponShown=b=>b==CapturedRig.RHand||caster&&b==CapturedRig.LHand;

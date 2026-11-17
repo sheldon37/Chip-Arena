@@ -151,7 +151,7 @@ namespace ChipArena.UnityConversion
 
         // ---- Match end (main.ts:161 phase 'match', .panel) ----
         // Rematch and Return to Lobby, or only Return to Main Menu once the host is gone (main.ts peerLost: "Match ended"
-        // over the reason). Return to Lobby starts the cancellable three-second return and is disabled for guests and while
+        // over the reason). Return to Lobby starts the cancellable one-second return and is disabled for guests and while
         // it runs; its banner and Cancel are in NativeConnectionReport.cs, and each vote's "n/N pilots ready for rematch."
         // toast is EndFlowNotices there (the source's button carries no count). The reason says the seat can be reclaimed
         // for 90 seconds, so Return to Main Menu keeps the resume token and lands on Join Room (LeaveLostHost).

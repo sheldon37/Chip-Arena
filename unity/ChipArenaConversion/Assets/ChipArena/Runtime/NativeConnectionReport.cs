@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- #lobby-return banner ----------------------------------------------------------------------------------------
-        // Over the match (paused or not) while the three-second return runs: "Returning to lobby in N…" (at least 1, as
+        // Over the match (paused or not) while the one-second return runs: "Returning to lobby in N…" (at least 1, as
         // main.ts rounds up) over "Everyone will return together." in a room or "Your match will reset." offline, with
         // Cancel for the host and offline. lobby.css .lobby-return: top 22, centred, #171c27, 1 px #ffac70, radius 12,
         // 16 / 22 px padding, 24 px gap, 0 12px 45px #0009; strong 20 px #fff, span 14 px #c8ceda 4 px below; the .btn is
