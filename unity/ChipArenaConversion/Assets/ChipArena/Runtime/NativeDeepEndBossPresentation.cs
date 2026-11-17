@@ -40,12 +40,13 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Whether the boss's own water and lamps stand in for the level's sheet and discs this frame.</summary>
         private bool DeepEndBossRoomOn=>NativeDeepEndBossStage.Shown.On;
-        /// <summary>Whether a level block (its centre; PoolroomsBlockCells square) reaches into the boss's room while it's on: those are drawn however far the eye is. The room is
-        /// 40 m across and the level is drawn within PoolroomsReach of the eye, so from its right side the far corner's blocks went undrawn and the void showed through
-        /// their wall, ceiling and deck (the owner's black box, 2026-11-07).</summary>
+        // The room is carved before its encounter starts and remains after it ends.
+        // Include chunks touching the perimeter: the adjoining chunk can own the wall mesh.
         private bool DeepEndRoomBlock(Vector3 centre)
         {
-            if(!DeepEndBossRoomOn)return false;float h=NativeDeepEndArena.Half+PoolroomsBlockCells*PoolroomsLayout.Cell*.5f+.5f;return Mathf.Abs(centre.x-deepEndOrigin.X)<h&&Mathf.Abs(centre.z-deepEndOrigin.Z)<h;
+            if (!DeepEndBossCentre(out var room)) return false;
+            float reach = NativeDeepEndArena.Half + PoolroomsBlockCells * PoolroomsLayout.Cell * .5f + .5f;
+            return Mathf.Abs(centre.x - room.X) < reach && Mathf.Abs(centre.z - room.Z) < reach;
         }
 
         // BackroomsBossScenery, right after PoolroomsWorld.
