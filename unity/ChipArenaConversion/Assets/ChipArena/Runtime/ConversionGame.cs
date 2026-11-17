@@ -475,14 +475,13 @@ namespace ChipArena.UnityConversion
                 else if(!menu&&match.Phase==NativePhase.Match)PveResultsPanel();
                 if(BoardOpen)Board(width);if(inspectSeat!=0)Inspect(width,height);LockHud(scale);
             }
+            if(!menu&&arena?.LabSample!=null){
+                var trial=arena.LabSample;
+                GUI.Label(new Rect(16,height-64,420,48),"Chip Lab · "+(trial.Started<0?"Hit a target to begin":Mathf.Clamp(arena.Time-trial.Started,0,10).ToString("0.0")+" / 10s · "+trial.Total.ToString("0.0")+" damage")+"  ·  Esc to compare");
+            }
             // The DEV panel, its view tools and the DEV reveal (NativeDevPanel.cs, NativeDevOverlays.cs).
             if(arena!=null)DevGui(width,height);
-            if(!menu&&arena!=null){
-                if(arena.LabSample!=null){
-                    var trial=arena.LabSample;
-                    GUI.Label(new Rect(16,height-64,420,48),"Chip Lab · "+(trial.Started<0?"Hit a target to begin":Mathf.Clamp(arena.Time-trial.Started,0,10).ToString("0.0")+" / 10s · "+trial.Total.ToString("0.0")+" damage")+"  ·  Esc to compare");
-                }
-                ReplayHud(width,height);PveHud(width,height);ExpeditionLiveHud(width,height);ReviveMachineGui(width,height);return;}
+            if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);ExpeditionLiveHud(width,height);ReviveMachineGui(width,height);return;}
             // The menus (NativeHomeMenu): the home screen and its panels without a match, the pause menu during one.
             if(arena!=null){if(labPanel&&arena.Training&&!Online)ChipLabPanel();else{PauseMenu();TrainingControls();}}else HomeMenu();
         }
