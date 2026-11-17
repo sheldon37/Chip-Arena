@@ -1,3 +1,24 @@
+## 2026-11-17 — Claude: Blind Pick and Deathmatch screens (Astra's 2026-11-16 handoff; presentation only)
+
+Branch `claude/opening-draft-ui`, base shared `claude/sleepy-ritchie-g8ruhv` at `c69c30c7`. Owner: "Do the UI work; We can use the same kind of screens we use for chip selection ... Kind of like chips, but animated and styled with very high quality."
+
+- **Weapon pick.** A grid of animated weapon cards (new `Runtime/NativeWeaponCard.cs`), with a hero card that previews the highlighted weapon, a Lock in bar, the locked-in pips and a countdown ring.
+- **Starting chip and comeback chip.** Both use the chip draft's tray (`LayoutTray` / `DrawTray`).
+- **Locked in.** The pilot's own card, stamped LOCKED IN, with their starting chip beside it.
+- **Reveal.** A 2 s flip of every pilot's card in turn, with nameplates.
+- **Respawn and score.** A respawn countdown ring, the comeback prompt, and an animated FIRST TO n score panel.
+
+Details are in `docs/BLIND-PICK-SCREENS.md`. The opening rules, messages, timers, privacy until the reveal, the respawn time and the chip install are unchanged. `DeathmatchPickKeys` is untouched. Controller clicks go through `U.SilentButton`. There are no rule, hitbox, timing, damage or network changes.
+
+**Checks.**
+- The pinned 6000.3.24f1 semantic compile (`tools/check_unity_compile.py`) passes for Input System, Player, Assembly-CSharp and Editor, with no warnings in the changed files.
+- `CoreTests --deathmatch` passes 140 checks.
+- Python discovery: 208 tests, OK (1 skipped).
+
+**Not run.** No Unity Editor, player or Windows build was run (cloud session), so nothing has been seen on screen yet.
+
+**Next.** Check the layouts at 16:9, 21:9, 4:3 and 1280x720 in the Editor. Then do a host plus guest Blind Pick (including a timeout), a team game, deferred comeback picks, the winning killcam and a rematch. After that, merge and release.
+
 ## 2026-11-17 - Astra - Kill effects through respawn and faster lobby return
 
 Branch `codex/respawn-effects-lobby-delay`, shared base `ab45f769`. Presentation retains an observed pilot death for its five-second effect and keys corpse, vent and carried-pose state by victim and death seed. Gameplay respawn timing stays independent. Return to Lobby now uses a cancellable one-second deadline. Updated deadline and vent harness checks. All eleven baked death clips have a five-second duration. Windows visual and host/guest playthrough pending.
