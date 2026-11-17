@@ -49,7 +49,8 @@ namespace ChipArena.UnityConversion
         public static int DepartureLeg(int phase,float sinceHit,float strike)=>sinceHit<0?-1:sinceHit<=strike?0:phase>=3&&sinceHit>=2&&sinceHit<=2+strike?1:-1;
         public static bool Known(string id)=>id==Station||id==Ironworks||id==NativeFallenBoss.Archetype||NativeBackroomsBossRules.Is(id);
         public static string Archetype(string map)=>map==NativeFallenRules.Map?NativeFallenBoss.Archetype:NativeZoneCombat.Station(map)?Station:NativeZoneCombat.Ironworks(map)?Ironworks:map==NativeBackroomsGenerator.InstanceMap?NativeHumBoss.Archetype:map==NativePoolroomsGenerator.InstanceMap?NativeDeepEndBoss.Archetype:null;
-        public static int Phase(string id,float hp,float maxHp)=>hp<=maxHp*(id!=Ironworks?.30f:.35f)?3:hp<=maxHp*(id!=Ironworks?.65f:.70f)?2:1;
+        public static float PhaseStart(string id,int phase)=>phase==3?(id==Ironworks?.35f:.30f):phase==2?(id==Ironworks?.70f:.65f):1f;
+        public static int Phase(string id,float hp,float maxHp)=>hp<=maxHp*PhaseStart(id,3)?3:hp<=maxHp*PhaseStart(id,2)?2:1;
         public static bool Action(string boss,string id,out ZoneBossAction value)
         {
             value=default;

@@ -607,7 +607,7 @@ namespace ChipArena.UnityConversion
         private void ExpModePanel(X.Layout L,X.Seat seat,K.Boss boss,X.Launch go,float a,float now)
         {
             if(a<=.01f)return;var m=X.Panel(L.Mode,L.Compact);ExpModeHead(m,seat,a);ExpModeTiles(m,seat,a,now,L.Compact);
-            ExpFightNotes(ExpRect(m.Detail),boss,go,X.Editable(seat),a,L.Compact);ExpLoadoutRow(ExpRect(m.Loadout),seat,boss,a,now,ExpLive(a),L.Compact);
+            if(seat==X.Seat.Solo&&boss!=null)PracticeMenu(ExpRect(m.Detail),boss.Id,a);else ExpFightNotes(ExpRect(m.Detail),boss,go,X.Editable(seat),a,L.Compact);ExpLoadoutRow(ExpRect(m.Loadout),seat,boss,a,now,ExpLive(a),L.Compact);
         }
         private void ExpModeHead(X.ModePanel m,X.Seat seat,float a)
         {

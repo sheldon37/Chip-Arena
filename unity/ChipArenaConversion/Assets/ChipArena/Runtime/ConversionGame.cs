@@ -105,7 +105,7 @@ namespace ChipArena.UnityConversion
         private void StartMatch()
         {
             if(OpeningOnlineLobby||PromotionBusy||!ModsReady)return;
-            if(!trainingWanted&&!trainingRoom&&!sandboxWanted&&BeginOpening(()=>WithOpening(StartMatch)))return;
+            if(launchingPractice==0&&!trainingWanted&&!trainingRoom&&!sandboxWanted&&BeginOpening(()=>WithOpening(StartMatch)))return;
             if(trainingRoom&&!trainingWanted){StartTraining();return;}
             if(!trainingWanted&&prefs.pve&&prefs.expedition){StartExpeditionM1();return;}
             expeditionDirector=null;ResetExpeditionNetwork();Time.timeScale=1;sandboxSpeed=1;endFlow.Reset();
@@ -116,10 +116,10 @@ namespace ChipArena.UnityConversion
             if(server!=null||deploymentRoom!=null)return;
             if(Hosting&&!GuestsReady){networkStatus="Wait for the other pilots to be ready.";return;}
             var roster=MatchRoster();
-            if(!trainingWanted&&RefuseOpening(roster))return;
+            if(launchingPractice==0&&!trainingWanted&&RefuseOpening(roster))return;
             if(directBoss)PrepareBossBattle(bossBattlePick);
-            if(!dedicated)Save();EndPreview();inspectSeat=0;ClearReplay();arena?.Dispose();presentation?.ResetPresentation();networkEpoch++;
-            match=new NativeMatch(content){DeathmatchTarget=!prefs.pve&&!trainingWanted&&!sandboxWanted&&prefs.deathmatch?CaptureRoomOptions().EffectiveTarget:0,ComebackChips=prefs.deathmatchChips==2,StartingChip=ApplyOpeningChip,Training=trainingWanted,FinalKillcams=Online&&!trainingWanted,ShowIntros=!directBoss&&!trainingWanted&&!prefs.skipPlayerIntros&&!sandboxWanted,Cooperative=prefs.pve,Teams=trainingWanted||prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
+            if(!dedicated&&launchingPractice==0)Save();EndPreview();inspectSeat=0;ClearReplay();arena?.Dispose();presentation?.ResetPresentation();networkEpoch++;
+            match=new NativeMatch(content){Practice=launchingPractice>0,DeathmatchTarget=!prefs.pve&&!trainingWanted&&!sandboxWanted&&prefs.deathmatch?CaptureRoomOptions().EffectiveTarget:0,ComebackChips=prefs.deathmatchChips==2,StartingChip=ApplyOpeningChip,Training=trainingWanted,FinalKillcams=Online&&!trainingWanted,ShowIntros=launchingPractice==0&&!directBoss&&!trainingWanted&&!prefs.skipPlayerIntros&&!sandboxWanted,Cooperative=prefs.pve,Teams=trainingWanted||prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
             match.Seats.AddRange(roster);
             foreach(var peer in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false))
             {
@@ -133,9 +133,11 @@ namespace ChipArena.UnityConversion
             if(prefs.pve)match.Seats.Add(new NativeSeat{id=900,name="The Siren",spec="siren",bot=true,team=1,AuthorityBoss=true});
             arena=new NativeArena(content,match,trainingWanted?"training":directBoss?NativeBossBattle.Map(bossBattlePick):SelectMatchMap()){RandomizeMapEachSet=!trainingWanted&&prefs.randomizeMap,FriendlyFire=!trainingWanted&&prefs.friendlyFire,LocalId=dedicated?0:1,StationaryBots=prefs.stationary,Sandbox=trainingWanted||sandboxWanted&&account.Developer&&!Online&&!prefs.pve};
             foreach(var player in match.Seats)ApplyOpeningWeapon(player);
+            if(launchingPractice>0){arena.PracticePhase=launchingPractice;arena.PracticeBoss=bossBattlePick;match.Seat(1).spec=practiceBuild.Weapon;match.Seat(1).weaponTechniques=practiceBuild.Techniques;}
             if(!match.Start()){arena.Dispose();arena=null;match=null;foreach(var peer in peers)peer.Ready=true;networkStatus="A match needs at least two opposing sides.";LobbyBroadcast();return;}
             if(directBoss)arena.ConfigureBossBattle(bossBattlePick,bossBattleBundle,JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
-            else if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves,NativeMatch.NewSeed());
+            else if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves,launchingPractice>0?(uint)NativeBossBattle.Seed:NativeMatch.NewSeed());
+            if(launchingPractice>0)arena.ApplyPracticeBuild(practiceBuild);
             if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;NativeLighting.Apply(content.Map(arena.MapId),cameraView);
         }
         private float shakeAmount;private int shakeEvent,shakeGeneration=-1;
@@ -147,6 +149,7 @@ namespace ChipArena.UnityConversion
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();DeploymentBundleTick();AccountXpTick();
             // The logo intro holds the game (no input) while it loads under it (NativeBootLoad.cs).
             if(BootIntroHolds())return;
+            if(PracticeResult!=null){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(padInputCaptured){pending=new InputFrame{CancelAbilities=true};Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(openingView!=null){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(SplitLocalLoading){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
@@ -322,7 +325,7 @@ namespace ChipArena.UnityConversion
         private void FixedUpdate(){long at=System.Diagnostics.Stopwatch.GetTimestamp();try{FixedFrame();}finally{hitchFixed+=HitchMs(at);hitchTicks++;}}
         private void FixedFrame()
         {
-            if(arena==null||menu&&!Online)return;if(ExpeditionSplit){SplitFixedFrame();return;}if(arena.Replica){if(StageGate.Waiting||ExpeditionGuestBlocked||arena.PodDeparting(networkId)){pending=pending.HeldOnly();return;}if(server!=null){if(server.Closed||!inputSendWindow.TrySend()){pending=pending.HeldOnly();return;}pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});arena.PredictReplica(pending);pending=pending.HeldOnly();}return;}if(!StageAuthorityReady()||!ExpeditionM1BeforeStep())return;timer.Restart();bool held=arena.Pve?.Holding==true;
+            if(arena==null||menu&&!Online||PracticeResult!=null)return;if(ExpeditionSplit){SplitFixedFrame();return;}if(arena.Replica){if(StageGate.Waiting||ExpeditionGuestBlocked||arena.PodDeparting(networkId)){pending=pending.HeldOnly();return;}if(server!=null){if(server.Closed||!inputSendWindow.TrySend()){pending=pending.HeldOnly();return;}pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});arena.PredictReplica(pending);pending=pending.HeldOnly();}return;}if(!StageAuthorityReady()||!ExpeditionM1BeforeStep())return;timer.Restart();bool held=arena.Pve?.Holding==true;
             double nearestBefore=arena.NavigationNearestMs,linksBefore=arena.NavigationLinkMs;int linkChecksBefore=arena.NavigationLinkChecks;
             double navBefore=arena.NavigationMs,deathBefore=arena.DeathRecordMs,hordeBefore=arena.HordeMs,spawnBefore=arena.HordeSpawnMs;int searchesBefore=arena.NavigationSearches;
             long stepAt=System.Diagnostics.Stopwatch.GetTimestamp();
@@ -419,7 +422,7 @@ namespace ChipArena.UnityConversion
         {
             // One canvas for every overlay and the menus (NativeUiMotion.Measure): 900 units tall at 16:9, wider at 21:9 (2150 at 3440x1440).
             var ui=NativeUi.Begin(prefs?.uiScale??1);float scale=ui.Scale,width=ui.Width,height=ui.Height;GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);
-            if(OpeningGui(width,height)||DeathmatchPickGui(width,height))return;
+            if(PracticeResultGui(width,height)||OpeningGui(width,height)||DeathmatchPickGui(width,height))return;
             if(SplitLocalLoading)return;
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
             // DEV ONLY: the Expedition screens preview (--ca-expedition-preview), in place of the main menu (NativeExpeditionPreviewUI.cs).
@@ -446,7 +449,7 @@ namespace ChipArena.UnityConversion
             BossPicksWaitReset();if(previewArena==null&&BossPicksWaiting){BossPicksWaitScreen(width,height);BossPicksClock();return;}
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             // The Last Laugh cutscene hides the HUD behind its letterbox (style.css data-cutscene); the board and pause menu stay.
-            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(cinematic.ZoneArrival)ZoneBossArrivalHud(width,height);else KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu){PauseMenu();TrainingControls();}return;}
+            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(cinematic.ZoneArrival)ZoneBossArrivalHud(width,height);else KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu){if(labPanel&&arena.Training&&!Online)ChipLabPanel();else{PauseMenu();TrainingControls();}}return;}
             if(!cinematic.Private)CombatWorldHud(scale,width,height);
             PveBeaconHud();
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
@@ -475,9 +478,14 @@ namespace ChipArena.UnityConversion
             }
             // The DEV panel, its view tools and the DEV reveal (NativeDevPanel.cs, NativeDevOverlays.cs).
             if(arena!=null)DevGui(width,height);
-            if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);ExpeditionLiveHud(width,height);ReviveMachineGui(width,height);return;}
+            if(!menu&&arena!=null){
+                if(arena.LabSample!=null){
+                    var trial=arena.LabSample;
+                    GUI.Label(new Rect(16,height-64,420,48),"Chip Lab · "+(trial.Started<0?"Hit a target to begin":Mathf.Clamp(arena.Time-trial.Started,0,10).ToString("0.0")+" / 10s · "+trial.Total.ToString("0.0")+" damage")+"  ·  Esc to compare");
+                }
+                ReplayHud(width,height);PveHud(width,height);ExpeditionLiveHud(width,height);ReviveMachineGui(width,height);return;}
             // The menus (NativeHomeMenu): the home screen and its panels without a match, the pause menu during one.
-            if(arena!=null){PauseMenu();TrainingControls();}else HomeMenu();
+            if(arena!=null){if(labPanel&&arena.Training&&!Online)ChipLabPanel();else{PauseMenu();TrainingControls();}}else HomeMenu();
         }
         // Play vs Bots (main.ts:147 practice screen) in the source order: the set line, YOUR CLASS (and the weapon cards),
         // matchOptions() in its box, botLoadouts, the team setup in teams mode, and the "Draft & intro rules" fold (BETWEEN

@@ -81,6 +81,11 @@ namespace ChipArena.UnityConversion
                 // main.ts account screen: the one-time recovery code box, the status, the flags, the unlocked items and the
                 // refresh note.
                 if(account.RecoveryCode.Length>0)RecoveryBox(account.RecoveryCode);
+                int earned=account.EarnedBosses;
+                var cleared=NativeExpeditionCatalogue.Bosses.Where(b=>(NativePracticeRules.Bit(b.Id)&earned)!=0).Select(b=>b.Name).ToArray();
+                AccountLine("Boss clears · "+cleared.Length+" / "+NativePracticeRules.Bosses.Length,16,NativeUi.Hex(0xf4f4f5));
+                if(cleared.Length>0)Fine(string.Join(" · ",cleared));
+                if(account.PendingBossSync)Fine("Earned on this device · waiting for account sync");
                 AccountLine(account.Developer?"DEV access":"Registered player",16,NativeUi.Hex(0xbfc0c9));
                 var a=account.Account;var flags=(a.flags??Array.Empty<string>()).Select(NativeCosmeticRules.Label).ToArray();if(flags.Length>0)Fine(string.Join(" · ",flags));
                 if(account.Developer)AccountLine("All DEV weapons and intros are available.",16,NativeUi.Hex(0xf4f4f5));

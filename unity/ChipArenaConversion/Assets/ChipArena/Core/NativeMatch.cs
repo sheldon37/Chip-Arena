@@ -9,6 +9,7 @@ namespace ChipArena.UnityConversion
     {
         internal NativeAccess devWeaponAccess=null;public bool devRevealed,devCommandsRan,devDummy;public float devScale=1;public double disconnectedAt=-1;public bool overrideIntro;public string lobbyPose="weapon";public string intro=NativeIntroRules.Default,introText="Ready to make an impact";public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll";internal bool AuthorityBoss=false;public NativeAccess access=NativeAccess.Guest;public int id,team,roundWins,score;public string name,spec="pistol",difficulty="normal";public bool bot,connected=true,alive=true;
         public readonly Dictionary<string,int> chips=new Dictionary<string,int>();public List<string> offers=new List<string>();
+        public string clearOwner;public int clearMask;
         public int pickTicket,enemyDeaths,owedPicks; public double respawnAt=-1;
         public string lobbyBack=NativePortraitBacks.Default;
         // Headwear and backdrop colours (NativeHatLooks: "" Auto, the look every seat had before; bots stay Auto).
@@ -60,7 +61,8 @@ namespace ChipArena.UnityConversion
         public void ApplyNetwork(NativeMatchFrame f){DeathmatchTarget=f.deathmatchTarget;CompletionId=f.completionId;CompletionStarted=f.completionStarted;CompletionSeconds=f.completionSeconds;HasFinalKillcam=f.hasFinalKillcam;FinalVictim=f.hasFinalKillcam?f.finalVictim:0;FinalSeed=f.hasFinalKillcam?f.finalSeed:0;ResultAt=f.hasFinalKillcam?f.resultAt:0;IntroSeat=f.introSeat;IntroStarted=f.introStarted;IntroStyle=f.introStyle;Phase=f.phase;Time=f.time;PhaseEnd=f.phaseEnd;FightAt=f.fightAt;ReadyAt=f.readyAt;Round=f.round;Set=f.set;Winner=f.winner;SetWinner=f.setWinner;DraftSeat=f.draftSeat;Chosen=string.IsNullOrEmpty(f.chosen)?null:f.chosen;chosenAt=f.chosenAt;Result=f.result;Teams=f.teams;Cooperative=f.cooperative;}
         public bool SameSide(NativeSeat a,NativeSeat b)=>a!=null&&b!=null&&(a.id==b.id||Teams&&a.team==b.team);
         public NativeSeat Seat(int id)=>Seats.Find(p=>p.id==id);
-        public bool CanEarnProgression(int id)=>!Training&&Seat(id)!=null&&!Seat(id).bot&&!Seat(id).devCommandsRan;
+        public bool Practice;
+        public bool CanEarnProgression(int id)=>!Practice&&!Training&&Seat(id)!=null&&!Seat(id).bot&&!Seat(id).devCommandsRan;
         public bool Start()
         {
             if(Phase!=NativePhase.Lobby&&Phase!=NativePhase.Match)return false;

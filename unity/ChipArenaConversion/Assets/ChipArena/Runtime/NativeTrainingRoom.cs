@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
             }
         }
         private void TrainingHit(NativePilot target,NativePilot source,float actual,bool head,string sourceKind)
-        {if(Training&&trainingMeters.TryGetValue(target.Seat.id,out var meter))meter.Hit(Time,actual,head,source?.Seat.id??0,(source?.Seat.spec??"environment")+":"+sourceKind,source==null?0:Vector3.Distance(source.Body.position,target.Body.position));}
+        {if(LabSample!=null&&source==Local&&TrainingDummy(target))LabSample.Hit(Time,actual);if(Training&&trainingMeters.TryGetValue(target.Seat.id,out var meter))meter.Hit(Time,actual,head,source?.Seat.id??0,(source?.Seat.spec??"environment")+":"+sourceKind,source==null?0:Vector3.Distance(source.Body.position,target.Body.position));}
         public TrainingReadout[] TrainingReadouts()=>!Training?Array.Empty<TrainingReadout>():Replica?TrainingRemote:trainingMeters.Values.Select(m=>m.Read(Time)).ToArray();
         // Host-owned reset restores the original authored props, dummies and human spawn pad together.
         public bool ResetTraining(){if(!Training||Replica)return false;Reset();return true;}
@@ -35,6 +35,7 @@ namespace ChipArena.UnityConversion
         private void StartTraining()
         {
             if(server!=null)return;
+            labPanel=false;
             int bots=prefs.bots;trainingWanted=true;
             try{StartMatch();}finally{trainingWanted=false;prefs.bots=bots;}
         }
@@ -42,8 +43,9 @@ namespace ChipArena.UnityConversion
         {
             if(arena?.Training!=true||!menu)return;
             GUILayout.BeginArea(new Rect(20,Screen.height/GUI.matrix.m11-100,260,80));
-            GUILayout.Label("Training Room · targets respawn in 5 s");
-            if(server==null&&GUILayout.Button("Reset targets, readouts and samples"))arena.ResetTraining();
+            if(!Online&&GUILayout.Button("Chip Lab")){labBuild=SelectedLabBuild();if(arena.LabSample==null)arena.ResetLab(labBuild);labPanel=true;}
+            else if(Online)GUILayout.Label("Training Room · targets respawn in 5 s");
+            if(server==null&&GUILayout.Button("Reset targets, readouts and samples")){if(arena.LabSample!=null)arena.ResetLab(labBuild);else arena.ResetTraining();}
             GUILayout.EndArea();
         }
     }

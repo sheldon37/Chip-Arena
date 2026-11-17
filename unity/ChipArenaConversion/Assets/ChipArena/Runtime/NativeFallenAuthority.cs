@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
         private void StepFallenBattle()
         {
             var z=ZoneBoss;var f=z.fallen;var m=zoneBossActor;Pve.Rate=0;Pve.SpawnBudget=0;Pve.Boss.Hp=m.Hp;Pve.Boss.Body.position=m.Body.position+Vector3.up;
-            if(m.Hp<=0){if(z.deathAt<0){z.deathAt=Time;z.action=null;z.actionAt=z.hitAt=-100;z.duration=0;foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;foreach(var add in Minions.Where(a=>a.Kind.StartsWith("fallen-",StringComparison.Ordinal)).ToArray())RemoveMinion(add,false);Bullets.Clear();}if(Time-z.deathAt>=NativeFallenRules.DeathSeconds){Pve.Outcome="victory";Pve.Stage="ended";Match.FinishCooperative(true);}return;}
+            if(m.Hp<=0){if(z.deathAt<0){if(Expedition==null)AwardBossClear("noctiel");z.deathAt=Time;z.action=null;z.actionAt=z.hitAt=-100;z.duration=0;foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;foreach(var add in Minions.Where(a=>a.Kind.StartsWith("fallen-",StringComparison.Ordinal)).ToArray())RemoveMinion(add,false);Bullets.Clear();}if(Time-z.deathAt>=NativeFallenRules.DeathSeconds){Pve.Outcome="victory";Pve.Stage="ended";Match.FinishCooperative(true);}return;}
             foreach(var d in m.Dots.Values.ToArray())while(m.Hp>0&&d.Next<=Time&&d.Next<=d.Until){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)d.Dps*.25f,Vector3.zero,0,kind:"field");d.Next+=.25;}
             FallenLives();if(!Members().Any(p=>p.Seat.connected&&f.hush.Any(s=>s.id==p.Seat.id&&s.lives>0))){BeginPveHold("defeat");return;}
             FallenPhase();if(FallenPaused){fallenApproach.Pause();return;}

@@ -50,6 +50,13 @@
       "when": 1793648460592,
       "tag": "0006_player_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794953192293,
+      "tag": "0007_boss_practice",
+      "breakpoints": true
     }
   ]
 }

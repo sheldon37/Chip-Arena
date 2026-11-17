@@ -38,6 +38,7 @@ namespace ChipArena.UnityConversion
             double deathBuild=presentation?.DiagnosticDeathBuildMs??0,deathStep=presentation?.DiagnosticDeathStepMs??0,deathWound=presentation?.DiagnosticDeathWoundMs??0;
             int deathCreates=presentation?.DiagnosticDeathCreates??0;bool sameDeathView=ReferenceEquals(hitchDeathView,presentation);
             double deathViewMs=ReferenceEquals(hitchDeathView,presentation)?Math.Max(0,deathView-hitchDeathViewLast):deathView;
+            if(hitchReady&&!dedicated)ObservePartyFrame((now-hitchLast)*1000d/Stopwatch.Frequency,viewMs);
             if(hitchReady&&!dedicated&&arena!=null)
             {
                 double dt=(now-hitchLast)*1000d/Stopwatch.Frequency;
