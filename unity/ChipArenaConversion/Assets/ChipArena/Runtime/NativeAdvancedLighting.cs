@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
         private static Texture2D coverTexture;private static NativeWeatherCover coverOf;
         // The volume: the bake in flight (its key), the one up (its key and texture).
         private static System.Threading.Tasks.Task<(NativeLightVolume volume,ushort[] half)> bake;private static string bakeKey,volumeKey;private static NativeLightVolume volume;private static Texture3D volumeTexture;
-        private static readonly List<NativeVolumeLight> candidates=new List<NativeVolumeLight>();private static string candidatesMap;
+        private static readonly List<NativeVolumeLight> candidates=new List<NativeVolumeLight>();private static string candidatesMap,candidatesRun;
         /// <summary>The light volume's cell size and bake time once up (the HUD's diagnostics; 0 while none).</summary>
         public static float VolumeCell=>volume?.Cell??0;public static double VolumeMs=>volume?.BakeMs??0;
 
@@ -40,16 +40,20 @@ namespace ChipArena.UnityConversion
         /// <summary>A map's look applied (NativeLighting.Apply, after its own globals): resolves what this tier draws and writes it.</summary>
         public static void Apply(ContentMap m,MapLook l)
         {
-            if(!ReferenceEquals(m,map))candidates.Clear();map=m;look=l;keyStale=true;appliedFrame=Time.frameCount;NativeAdvancedLooks.Resolve(l,Tier,Reduced,State);on=State.Any;
+            if(!ReferenceEquals(m,map)){candidates.Clear();candidatesRun=null;}map=m;look=l;keyStale=true;appliedFrame=Time.frameCount;NativeAdvancedLooks.Resolve(l,Tier,Reduced,State);on=State.Any;
             if(!on){Off();return;}
             Write();
         }
         /// <summary>A map's own light candidates for the volume (the town's, the station's, the Ironworks' practical lights: more
-        /// than the eight slots), handed by its presentation before the bake starts; the look's eight are always in.</summary>
-        public static void Candidates(string mapId,IList<NativeVolumeLight> lights)
+        /// than the eight slots), handed by its presentation before the bake starts; the look's own are always in, the candidates
+        /// fill the rest. `run`: the identity of a map whose id every run shares (the generated Expedition city: its world seed and
+        /// generator Version, Core NativeLightVolume.RunKey; null elsewhere), part of the volume's key, so each run bakes its own
+        /// volume and never takes an earlier run's (expedition overhaul W0).</summary>
+        public static void Candidates(string mapId,IList<NativeVolumeLight> lights,string run)
         {
-            if(map==null||map.id!=mapId||candidatesMap==mapId&&candidates.Count>0)return;candidatesMap=mapId;candidates.Clear();keyStale=true;
-            if(lights!=null)for(int i=0;i<lights.Count&&candidates.Count<NativeLightVolume.MaxLights-NativeMapLooks.MaxLights;i++)candidates.Add(lights[i]);
+            if(map==null||map.id!=mapId||candidatesMap==mapId&&candidatesRun==run&&candidates.Count>0)return;candidatesMap=mapId;candidatesRun=run;candidates.Clear();keyStale=true;
+            int room=NativeLightVolume.MaxLights-Math.Min(NativeMapLooks.MaxLights,look?.lights?.Length??0);
+            if(lights!=null)for(int i=0;i<lights.Count&&candidates.Count<room;i++)candidates.Add(lights[i]);
         }
         /// <summary>Everything off (a stage, the draft, the rooftop; the low tier; a look without it). Apply turns it back on.</summary>
         public static void Off()
@@ -76,12 +80,13 @@ namespace ChipArena.UnityConversion
             var v=volume;Shader.SetGlobalTexture(GiVolumeId,volumeTexture);Shader.SetGlobalVector(GiBoxId,new Vector4(v.MinX,v.MinY,v.MinZ,v.Cell));Shader.SetGlobalVector(GiSizeId,new Vector4(v.Nx*v.Cell,v.Ny*v.Cell,v.Nz*v.Cell,s.GiActors));
             Shader.SetGlobalVector(GiId,new Vector4(s.GiOcclusion,s.GiBounce,s.GiFloor,1));
         }
-        // The volume's identity (map, look, cell, rays, the candidates' count), built again only when one of them changes (Apply,
-        // Candidates): Frame and VolumeGlobals read it every frame and must not allocate.
+        // The volume's identity (map, look, cell, rays, the candidates' count, the run: a generated map's world seed and generator
+        // Version), built again only when one of them changes (Apply, Candidates): Frame and VolumeGlobals read it every frame and
+        // must not allocate.
         private static string keyCache;private static bool keyStale=true;
         private static string Key()
         {
-            if(keyStale){keyCache=map==null||look==null?null:map.id+"|"+look.look+"|"+State.GiCell.ToString("0.###")+"|"+State.GiRays+"|"+candidates.Count;keyStale=false;}
+            if(keyStale){keyCache=map==null||look==null?null:map.id+"|"+look.look+"|"+State.GiCell.ToString("0.###")+"|"+State.GiRays+"|"+candidates.Count+"|"+candidatesRun;keyStale=false;}
             return keyCache;
         }
         /// <summary>

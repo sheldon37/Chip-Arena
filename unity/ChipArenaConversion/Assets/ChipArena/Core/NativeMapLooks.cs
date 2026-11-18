@@ -76,6 +76,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The advanced lighting (Core NativeAdvancedLooks; docs/LIGHTING-ADVANCED.md): the light volume, the fog's
         /// scattering, the volumetric beams and the weather. Missing is today's look.</summary>
         public MapLookAdvanced advanced;
+        /// <summary>A shallow copy (its parts shared), for a map that draws a look with one part of its own
+        /// (NativeExpeditionCityLights.ForMap).</summary>
+        public MapLook Copy()=>(MapLook)MemberwiseClone();
     }
     [Serializable] public sealed class MapLookLight {public int color;public float intensity,elevation,bearing,shadowStrength;public V3 from;public string shadows;}
     [Serializable] public sealed class MapLookAmbient {public int sky,equator,ground;public float skyScale,equatorScale,groundScale;}

@@ -325,6 +325,43 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The share of a look's base colour the bounce takes (the shaders' paint, grime and dust darken it).</summary>
         public const float AlbedoShare=.8f;
+
+        /// <summary>
+        /// Up to `count` of `pool`'s lights for the bake, by importance and spread (expedition overhaul W0), into `into` (cleared
+        /// first). A map with more sources than the bake takes (the generated city's few hundred wall lamps, floods, beacons and
+        /// neon) bakes its strongest across the whole map, not the first in build order (which on the generated city were only the
+        /// westernmost, so its east and south got no bounce). A light's importance is its linear luminance times its range squared
+        /// (how much it lights), times how much of it reaches the walkable `ground` under it (the slots' fall-off over its height
+        /// above that ground, kept to at least a tenth: a roof's beacon or a hall's flood 19 m up lights the street little; NaN
+        /// leaves the height out); each pick then discounts every light still waiting by how deep it stands in the picked one's
+        /// reach (its distance over the two ranges' sum, at most 1; the smallest over the picks so far), so the next pick goes where
+        /// nothing is lit yet. A light at the same place with the same range as an earlier one counts once. Deterministic (ties go
+        /// to the earlier light); O(n x count); allocates only its two scratch arrays.
+        /// </summary>
+        public static void Pick(IList<NativeVolumeLight> pool,int count,List<NativeVolumeLight> into,float ground=float.NaN)
+        {
+            into.Clear();int n=pool?.Count??0;if(n==0||count<=0)return;
+            var weight=new double[n];var cover=new double[n];
+            for(int i=0;i<n;i++)
+            {
+                var l=pool[i];double lum=l.R*.3+l.G*.55+l.B*.15;weight[i]=l.Range>0&&lum>0?lum*l.Range*l.Range*(float.IsNaN(ground)?1:.1+.9*Falloff(Math.Max(0,l.Y-ground),l.Range)):0;cover[i]=1;
+                for(int j=0;j<i;j++){var o=pool[j];if(Math.Abs(o.X-l.X)<.01f&&Math.Abs(o.Y-l.Y)<.01f&&Math.Abs(o.Z-l.Z)<.01f&&Math.Abs(o.Range-l.Range)<.01f){weight[i]=0;break;}}
+            }
+            for(int k=0;k<count;k++)
+            {
+                int best=-1;double score=0;
+                for(int i=0;i<n;i++){double s=weight[i]*cover[i];if(s>score){score=s;best=i;}}
+                if(best<0)break;var b=pool[best];into.Add(b);weight[best]=0;
+                for(int i=0;i<n;i++)
+                {
+                    if(weight[i]<=0)continue;var l=pool[i];double dx=l.X-b.X,dy=l.Y-b.Y,dz=l.Z-b.Z,reach=l.Range+b.Range;
+                    double f=Math.Min(1,Math.Sqrt(dx*dx+dy*dy+dz*dz)/reach);if(f<cover[i])cover[i]=f;
+                }
+            }
+        }
+        /// <summary>The identity of a generated map's run for the volume's key (Runtime NativeAdvancedLighting): its generator's
+        /// Version and world seed, which fix its blocks; a map id every run shares then never takes an earlier run's bake.</summary>
+        public static string RunKey(string version,uint worldSeed)=>version+"#"+worldSeed.ToString(System.Globalization.CultureInfo.InvariantCulture);
         // A trilight colour as Unity applies it: the sRGB colour times its scale, then linearised.
         private static void Tri(float[] into,int at,int hex,float scale)
         {

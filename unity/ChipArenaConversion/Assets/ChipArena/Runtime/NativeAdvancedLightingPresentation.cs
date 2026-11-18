@@ -54,15 +54,34 @@ namespace ChipArena.UnityConversion
             if(weatherFx!=null||weatherFailed)return;
             try{weatherFx=new NativeWeatherFx();weatherDraw=new NativeFxDraw();}catch(Exception e){Debug.LogWarning("Weather disabled: "+e.Message);weatherFailed=true;weatherFx=null;weatherDraw=null;}
         }
-        // The map presentation's light candidates (more than the eight slots), for the volume's bake.
+        // The map presentation's light candidates (more than the eight slots), for the volume's bake: the drawn map's own (a
+        // presentation built for an earlier map, the hub's after a split run moves on to an instance, hands nothing).
         private void VolumeCandidates(NativeArena arena)
         {
-            volumeCandidates.Clear();
-            if(townLights!=null)foreach(var c in townLights.Candidates)volumeCandidates.Add(new NativeVolumeLight(c.X,c.Y,c.Z,c.Range,c.R,c.G,c.B));
-            else if(stationLights!=null)foreach(var c in stationLights.Candidates)volumeCandidates.Add(new NativeVolumeLight(c.X,c.Y,c.Z,c.Range,c.R,c.G,c.B));
-            else if(iwLights!=null)foreach(var c in iwLights.Candidates)volumeCandidates.Add(new NativeVolumeLight(c.X,c.Y,c.Z,c.Range,c.R,c.G,c.B));
+            volumeCandidates.Clear();string run=null;var map=arena.Map;
+            if(townLights!=null&&ReferenceEquals(map,townMap)){if(townGenerated)run=GeneratedCandidates();else foreach(var c in townLights.Candidates)volumeCandidates.Add(new NativeVolumeLight(c.X,c.Y,c.Z,c.Range,c.R,c.G,c.B));}
+            else if(stationLights!=null&&ReferenceEquals(map,stationMap))foreach(var c in stationLights.Candidates)volumeCandidates.Add(new NativeVolumeLight(c.X,c.Y,c.Z,c.Range,c.R,c.G,c.B));
+            else if(iwLights!=null&&ReferenceEquals(map,iwMap))foreach(var c in iwLights.Candidates)volumeCandidates.Add(new NativeVolumeLight(c.X,c.Y,c.Z,c.Range,c.R,c.G,c.B));
             else SanctumCandidates(arena,volumeCandidates);
-            NativeAdvancedLighting.Candidates(arena.MapId,volumeCandidates);
+            NativeAdvancedLighting.Candidates(arena.MapId,volumeCandidates,run);
+        }
+        // The generated city (expedition overhaul W0): its kit's sources, by importance and spread over the whole map (Core
+        // NativeLightVolume.Pick; its own practicals, Core NativeExpeditionCityLights.GeneratedPracticals, are the look's, which the
+        // bake always takes), picked once per map; and the run's identity, made once per run, so a new roll bakes its own volume.
+        private readonly List<NativeVolumeLight> volumePool=new List<NativeVolumeLight>(),volumePicked=new List<NativeVolumeLight>();private NativeExpeditionCityLights volumePickedFor;
+        private ExpeditionRunBundle volumeRunOf;private string volumeRun;
+        private string GeneratedCandidates()
+        {
+            if(!ReferenceEquals(volumePickedFor,townLights))
+            {
+                volumePickedFor=townLights;volumePool.Clear();
+                foreach(var c in townLights.Candidates)if(c.Kind!=255)volumePool.Add(new NativeVolumeLight(c.X,c.Y,c.Z,c.Range,c.R,c.G,c.B));
+                // Its streets are its floor's top, y 0 (Core NativeExpeditionGeneratedWorld).
+                NativeLightVolume.Pick(volumePool,NativeLightVolume.MaxLights-NativeExpeditionCityLights.GeneratedPracticals.Length,volumePicked,0);
+            }
+            for(int i=0;i<volumePicked.Count;i++)volumeCandidates.Add(volumePicked[i]);
+            if(!ReferenceEquals(volumeRunOf,GeneratedRun)){volumeRunOf=GeneratedRun;volumeRun=GeneratedRun?.World?.Blueprint==null?null:NativeLightVolume.RunKey(NativeExpeditionGeneratedWorld.Version,GeneratedRun.World.Blueprint.worldSeed);}
+            return volumeRun;
         }
         private void WeatherWorld(NativeArena arena,Camera camera,float now)
         {

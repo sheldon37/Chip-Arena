@@ -11,12 +11,31 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeCityFxScene
     {
-        /// <summary>The grid over the town's blocks (x -122..122, z -122..62 since the city grew, exp-layout-7), 2 m cells.</summary>
-        public const int CellsX=122,CellsZ=92;public const float OriginX=-122,OriginZ=-122,Cell=2;
+        /// <summary>The 2 m grid over the map's bounds grown by a cell on every side (sized from the map's own bounds, expedition
+        /// overhaul W0: the town's -120..120 x -120..60 gives today's x -122..122, z -122..62; the generated map's -125..125 x
+        /// -95..95 its own, so its final court has fog too). Without bounds, the town's.</summary>
+        public readonly int CellsX,CellsZ;public readonly float OriginX,OriginZ;public const float Cell=2;
         /// <summary>Per 2 m cell: 0 inside a block, else the distance in cells to the nearest blocked cell (1..4).</summary>
-        public readonly byte[] Open=new byte[CellsX*CellsZ];
+        public readonly byte[] Open;
         /// <summary>Per 2 m cell: 1 in a wilds district of the hub record (thicker, darker fog), else 0.</summary>
-        public readonly byte[] Wild=new byte[CellsX*CellsZ];
+        public readonly byte[] Wild;
+        private NativeCityFxScene(MapBounds bounds)
+        {
+            double x0=bounds?.minX??NativeExpeditionCityKit.TownMinX,x1=bounds?.maxX??NativeExpeditionCityKit.TownMaxX,z0=bounds?.minZ??NativeExpeditionCityKit.TownMinZ,z1=bounds?.maxZ??NativeExpeditionCityKit.TownMaxZ;
+            OriginX=(float)(Math.Floor(x0/Cell)*Cell-Cell);OriginZ=(float)(Math.Floor(z0/Cell)*Cell-Cell);
+            CellsX=Math.Max(1,(int)Math.Ceiling((x1+Cell-OriginX)/Cell));CellsZ=Math.Max(1,(int)Math.Ceiling((z1+Cell-OriginZ)/Cell));
+            Open=new byte[CellsX*CellsZ];Wild=new byte[CellsX*CellsZ];
+        }
+        /// <summary>Whether a block keeps ground fog out of its cells: anything standing on the ground. A floor (its top at the
+        /// ground, as the generated map's one 250 x 190 m block "gen-floor"), the town's slabs and pavings, and anything starting
+        /// over 2 m up (lintels, signs) do not.</summary>
+        public static bool BlocksFog(ContentBlock b)
+        {
+            var stem=NativeExpeditionCityKit.Stem(b?.id);
+            return stem!=null&&!stem.StartsWith("slab-",StringComparison.Ordinal)&&!stem.EndsWith("-paving",StringComparison.Ordinal)&&b.pos.y-b.size.y/2<=2&&b.pos.y+b.size.y/2>FloorTop;
+        }
+        /// <summary>The highest top a block may have and still read as floor (m).</summary>
+        public const float FloorTop=.05f;
         public NativeCityGlow[] Fires=Array.Empty<NativeCityGlow>(),Halos=Array.Empty<NativeCityGlow>();public NativeCityBackdropFire[] Far=Array.Empty<NativeCityBackdropFire>();
         public float[] BulbX=Array.Empty<float>(),BulbY=Array.Empty<float>(),BulbZ=Array.Empty<float>(),BulbP=Array.Empty<float>();
         /// <summary>The kit's steaming manholes (x, y, z, phase per source; the city detail pass).</summary>
@@ -25,13 +44,15 @@ namespace ChipArena.UnityConversion
         public byte OpenAt(double x,double z){int i=(int)Math.Floor((x-OriginX)/Cell),j=(int)Math.Floor((z-OriginZ)/Cell);return i<0||j<0||i>=CellsX||j>=CellsZ?(byte)0:Open[j*CellsX+i];}
         public bool WildAt(double x,double z){int i=(int)Math.Floor((x-OriginX)/Cell),j=(int)Math.Floor((z-OriginZ)/Cell);return i>=0&&j>=0&&i<CellsX&&j<CellsZ&&Wild[j*CellsX+i]!=0;}
         public static NativeCityFxScene Build(ContentBlock[] blocks,NativeExpeditionCityKit kit,NativeCityBackdropFire[] far,MapLook look)=>Build(blocks,kit,far,look,null);
-        public static NativeCityFxScene Build(ContentBlock[] blocks,NativeExpeditionCityKit kit,NativeCityBackdropFire[] far,MapLook look,ExpeditionHubLayout hub)
+        public static NativeCityFxScene Build(ContentBlock[] blocks,NativeExpeditionCityKit kit,NativeCityBackdropFire[] far,MapLook look,ExpeditionHubLayout hub)=>Build(blocks,kit,far,look,hub,null);
+        /// <summary>The scene over the map's `bounds` (null: the town's).</summary>
+        public static NativeCityFxScene Build(ContentBlock[] blocks,NativeExpeditionCityKit kit,NativeCityBackdropFire[] far,MapLook look,ExpeditionHubLayout hub,MapBounds bounds)
         {
-            var s=new NativeCityFxScene{Far=far??Array.Empty<NativeCityBackdropFire>()};
+            var s=new NativeCityFxScene(bounds){Far=far??Array.Empty<NativeCityBackdropFire>()};int CellsX=s.CellsX,CellsZ=s.CellsZ;float OriginX=s.OriginX,OriginZ=s.OriginZ;
             for(int k=0;k<s.Open.Length;k++)s.Open[k]=4;
             foreach(var b in blocks??Array.Empty<ContentBlock>())
             {
-                var stem=NativeExpeditionCityKit.Stem(b?.id);if(stem==null||stem.StartsWith("slab-",StringComparison.Ordinal)||stem.EndsWith("-paving",StringComparison.Ordinal)||b.pos.y-b.size.y/2>2)continue;
+                if(!BlocksFog(b))continue;
                 double r=Math.Max(b.size.x,b.size.z)*.5*(b.rotation!=null&&Math.Abs(b.rotation.y)>.01f?1.0:0);
                 double x0=b.pos.x-(r>0?r:b.size.x/2),x1=b.pos.x+(r>0?r:b.size.x/2),z0=b.pos.z-(r>0?r:b.size.z/2),z1=b.pos.z+(r>0?r:b.size.z/2);
                 int ia=Math.Max(0,(int)Math.Floor((x0-OriginX)/Cell)),ib=Math.Min(CellsX-1,(int)Math.Ceiling((x1-OriginX)/Cell)),ja=Math.Max(0,(int)Math.Floor((z0-OriginZ)/Cell)),jb=Math.Min(CellsZ-1,(int)Math.Ceiling((z1-OriginZ)/Cell));
@@ -320,11 +341,15 @@ namespace ChipArena.UnityConversion
         private static uint Mix(uint x){unchecked{x^=x>>16;x*=0x7feb352dU;x^=x>>15;x*=0x846ca68bU;x^=x>>16;return x;}}
         private static double H(int a,int b,int c){unchecked{return Mix(Mix(Mix((uint)a+0x9E3779B9U)^(uint)b*0x85EBCA6BU)+(uint)c*0xC2B2AE35U)/4294967296.0;}}
         /// <summary>The cues due in (from, to] of the presentation clock, into `into` (at most its length); a burst is four cues.</summary>
-        public static int Between(double from,double to,NativeCityCue[] into)
+        public static int Between(double from,double to,NativeCityCue[] into)=>Between(from,to,into,true);
+        /// <summary>The same; `fires` false leaves out the crackles of the town's own brazier and burning bus (the generated map has
+        /// neither: expedition overhaul W0), keeping the distant shots, bursts and explosions.</summary>
+        public static int Between(double from,double to,NativeCityCue[] into,bool fires)
         {
             int count=0;if(into==null||!(to>from)||double.IsInfinity(to)||to-from>5)return 0;
             for(int e=0;e<Kind.Length;e++)
             {
+                if(!fires&&Kind[e]==Crackle)continue;
                 double p=Period[e],phase=H(e,0,81)*p;
                 for(double n=Math.Floor((from-phase)/p)-1;n<=Math.Floor((to-phase)/p)+1;n++)
                 {

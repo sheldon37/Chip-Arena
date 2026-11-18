@@ -368,7 +368,7 @@ namespace ChipArena.UnityConversion
                 case DriveFire:return (float)(.78+.12*Math.Sin(time*9.1+param*7)+.07*Math.Sin(time*14.3+param*3)+.05*Math.Sin(time*23.7+param));
                 case DriveBlink:return Frac(time*.9+param)<.5?1f:.06f;
                 case DriveStrobe:{double c=Math.Cos(Frac(time*.8+param)*Math.PI*2);return (float)(.12+1.3*Math.Pow(Math.Max(0,c),6));}
-                case DriveTv:{double t=Math.Floor(time*6+param*13);return (float)(.55+.45*Hash("tv",(int)t,(int)(param*100)));}
+                case DriveTv:{double t=Math.Floor(time*6+param*13);return (float)(.55+.45*Hash("tv",0,(int)t,(int)(param*100)));}
                 case DrivePolice:return Frac(time*1.6+param)<.5?1f:.04f;
                 case DriveBulbs:return (float)(.85+.15*Math.Sin(time*1.3+param*20));
                 default:return 1f;

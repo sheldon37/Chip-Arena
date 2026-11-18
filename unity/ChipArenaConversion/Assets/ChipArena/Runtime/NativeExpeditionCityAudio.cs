@@ -16,7 +16,8 @@ namespace ChipArena.UnityConversion
             double time=arena.Time;
             if(!double.IsNaN(townTime)&&time>townTime)
             {
-                int n=NativeExpeditionCityAmbience.Between(townTime,time,townCues);
+                // The generated map has no brazier or burning bus of the town's: its distant cues only.
+                int n=NativeExpeditionCityAmbience.Between(townTime,time,townCues,arena.MapId==NativeExpeditionCityKit.MapId);
                 for(int i=0;i<n;i++)
                 {
                     var c=townCues[i];var at=new Vector3(c.At.x,c.At.y,c.At.z);
