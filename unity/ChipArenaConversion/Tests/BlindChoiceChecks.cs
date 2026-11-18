@@ -97,6 +97,7 @@ internal static class BlindChoiceChecks
         // ---- the screens' sources ----
         string stage=R("Runtime/NativeDeathmatchPickStage.cs"),choice=R("Runtime/NativeBlindChoiceUI.cs"),opening=R("Runtime/NativeOpeningDraftUI.cs"),dm=R("Runtime/NativeDeathmatchRuntime.cs"),options=R("Runtime/NativeRoomOptionsUI.cs"),draft=R("Runtime/NativeDraftPresentation.cs"),game=R("Runtime/ConversionGame.cs");
         Check(draft.Contains("if(!active&&!pve&&PickStageFrame())return true;")&&game.Contains("if(arena==null&&PickStageMenuFrame())return;"),"the chip picks draw the PvP draft's stage, in a match and in the room");
+        Check(dm.Contains("var r=new Rect(22-(1-enter)*30,H-24-124-12-44,w,44);"),"the comeback prompt sits above the vitals panel, not under it");
         Check(game.Contains("if(arena!=null&&!PickStageOverReplay()&&RenderReplay())return;")&&stage.Contains("if(ReplayActive)EndReplay();return true;"),"the comeback picker stands in front of that death's killcam");
         Check(stage.Contains("presentation.RenderDraft(seat,")&&stage.Contains("DraftShades(")&&stage.Contains("DraftHeader(")&&stage.Contains("LowerTray(")&&stage.Contains("PickedTray(")&&stage.Contains("Nameplate("),"the PvP draft's screen: its stage, shades, header, tray, pick and nameplate");
         Check(opening.Contains("if(step==OpeningStep.Chip){OpeningChipStage(v,w,h,now);return true;}")&&!opening.Contains("OpeningChipStep(")&&dm.Contains("if(picking)ComebackStage(seat,w,h,now);")&&!dm.Contains("ComebackPicker("),"both chip picks moved off the old tray");

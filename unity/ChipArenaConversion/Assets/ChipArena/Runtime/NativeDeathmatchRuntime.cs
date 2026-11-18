@@ -163,7 +163,8 @@ namespace ChipArena.UnityConversion
         {
             if(Event.current.type!=EventType.Repaint)return;bool calm=prefs.reducedEffects;float age=now-deathOfferAt,enter=calm?1:M.Bezier(.16f,.8f,.22f,1,M.Clamp01(age/.4f));
             string title="COMEBACK CHIP READY",sub="Open chips";float tw=U.Measure(title,12,true,true,.18f).x,kw=NativeHudChrome.KeyWidth("C",22),w=14+26+12+tw+18+kw+14;
-            var r=new Rect(22-(1-enter)*30,H-145,w,44);var tone=NativeCyberTheme.Magenta();
+            // Above the vitals panel (NativeFightHud.HealthBox: 124 high at most over H-24), which drew over it at H-145.
+            var r=new Rect(22-(1-enter)*30,H-24-124-12-44,w,44);var tone=NativeCyberTheme.Magenta();
             NativeHudChrome.Flare(r,age,enter,calm,true);NativeHudChrome.Panel(r,enter,tone);NativeHudChrome.Flare(r,age,enter,calm,false);
             float b=calm?1:.75f+.25f*Mathf.Sin(now*3.2f);var ic=new Rect(r.x+14,r.center.y-13,26,26);U.Radial(new Rect(ic.x-12,ic.y-12,50,50),U.A(tone,.3f*b*enter));
             NativeIcons.Draw(ic,NativeIcons.Has("chip")?"chip":"shuffle",U.A(U.Mix(tone,Color.white,.35f),enter));
