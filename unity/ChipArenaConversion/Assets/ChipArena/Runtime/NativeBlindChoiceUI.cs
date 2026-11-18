@@ -93,7 +93,7 @@ namespace ChipArena.UnityConversion
                 // Over the card: YOUR CHOICE on mine; under it, its number key.
                 if(sel&&repaint){const string tag="YOUR CHOICE";float tw=U.Measure(tag,9.5f,true,true,.2f).x+18;var tr=new Rect(r.center.x-tw/2,r.y+lift-11,tw,22);NativeHudChrome.Tag(tr,acc);U.Text(tr,tag,9.5f,NativeCyberTheme.Ink(),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.2f);}
                 if(i<BlindKeys.Length&&repaint){float kw=NativeHudChrome.KeyWidth(BlindKeys[i],22);NativeHudChrome.Key(new Rect(r.center.x-kw/2,r.yMax+12,kw,22),BlindKeys[i],locked&&!sel?.35f:1,sel?U.Mix(acc,Color.white,.4f):default);}
-                if(!locked&&U.SilentButton(r)){if(chosen==null&&x.id==highlightedWeapon)nativeAudio?.UiCue("ui.loadout.select","install",.4f);openingFocus=i;blindChoseIn=v.pickSession;OpeningChoose(x.id,false);}
+                if(!locked&&U.SilentButton(r)){if(chosen==null&&x.id==highlightedWeapon)nativeAudio?.UiCue("ui.loadout.select","install",.4f);if(x.id==chosen)openingSelectAt=now;openingFocus=i;blindChoseIn=v.pickSession;OpeningChoose(x.id,false);}
             }
             NativeWeaponCard.Flourishes();
             BlindChoiceKeys(n,chosen,locked,v.pickSession);

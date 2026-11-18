@@ -1,3 +1,44 @@
+## 2026-11-18 — Claude: every weapon plays its own selection flourish on the Blind Pick screen (owner report; presentation only)
+
+Branch `claude/weapon-pick-flourish`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "Give each weapon choice a selection animation for the player (Of course, everyone is on their own screen so others wont see this) ... Kind of like if they select pistol for instance~ a pistol will eject from the icon and shoot around etc. Be creative!"
+
+- **What.** Choosing a weapon card plays that weapon's own 1.6-1.95 s flourish: all 24 roster rows, the DEV and hero classes included (one line each in `docs/BLIND-PICK-SCREENS.md`, "Weapon flourishes"). Clicking the chosen card again replays it; choosing another stops the old one and starts the new one there. Locking in plays a 0.95 s finisher on the locked-in card. Against bots that screen is skipped (lock-in goes straight to the reveal), so the finisher plays on the pilot's own card in the reveal instead, unless the locked-in screen just played it. Other pilots' cards never play one. Reduced effects: a gentle glow and ring only.
+- **How.** Drawn in the card kit's hardlight style from each weapon's own icon art, with light, trails, sparks and particles over the whole screen; the card itself shakes, squashes, cracks, splits or glitches with it. The weapon is drawn up to 1.6x its card icon from the raster the hero card already made, so nothing rasterises mid-flourish. Every particle is a closed-form function of the flourish's age: no per-frame state or garbage, and a restart is clean. Shots, bolts and arrows aim at the other cards drawn that frame. I chose this over rendering the 3D weapon models. Several classes have no separate weapon to show (the Siren's claws; the Emperor's, Ansatsuken's and Cyber Lord's fists). The icon art also matches the cards and is already rasterised.
+- **Sound.** A few short, quiet cues per move (gain 0.09-0.21): effects bank keys with today's clips as fallbacks, and Top Dog toon sounds, through NativeAudio's screen cue path, each once.
+- **Files.** Core `NativeWeaponFlourishPlan` (moves, lengths, cues, the cue clock); Runtime `NativeWeaponFlourish.cs`, `NativeWeaponFlourish.Moves.cs`, `NativeWeaponFlourishAudio.cs`; `NativeWeaponCard` is now partial (`Draw`/`Hero` queue, `Flourishes()` draws; `Look.Finish`, `Look.Quiet`); `NativeUi.Current`/`PushMatrix` (a later layer follows a card's transform); `NativeAudio` subscribes; Tests `WeaponFlourishChecks` (`--weapon-flourish`).
+- **Other agents' file (minimal).** `NativeOpeningDraftUI.cs`, owned by deathmatch-picks: `NativeWeaponCard.Flourishes()` at the end of the weapon, locked-in and reveal steps; the reveal marks the pilot's own card `Finish` and the others `Quiet`; a click on the chosen card restarts `openingSelectAt`. The N-choice screen just needs `Flourishes()` after its cards (its stub goes at merge).
+- **Merged with deathmatch-picks (coordinator, for release).** `origin/claude/deathmatch-picks` at `e7451d9f` is merged at `4af7d9a4`, keeping both sides:
+  - theirs: Blind Pick All, the dealt Blind Pick screen on Astra's PR #411 rules, and the 21:9 and layout fixes;
+  - mine: `Flourishes()` in the weapon, locked-in and reveal steps, the reveal's `Finish`/`Quiet` marks, and the replay on a second click.
+  - Conflicts were `Tests/Program.cs` (both checks registered) and DEV_LOG/PROJECT_STATE (both entries kept; the stale `claude/bomb-blast-audio` "pushed, not merged" line dropped). `NativeOpeningDraftUI.cs` and `NativeWeaponCard.cs` merged cleanly: their card change was `partial`.
+  - Their stand-in `Runtime/NativeWeaponCardFlourishStub.cs` (and `.meta`) is deleted. `BlindChoiceChecks` now checks for the real `Flourishes()` instead of the stub.
+  - Then `bdcbaf2e`: the dealt cards are hero cards, so a hero card plays the card's whole part:
+    - the icon out of its slot;
+    - the Katana's split and L33T's glitch, as bands with the reticles outside the clips;
+    - a grid card's measure (the hero's icon is far larger), while it starts and ends at the hero's own icon;
+    - its shots, bolts and arrow aimed at the other dealt cards.
+  - The greatswords keep their raised point on screen above a tall card.
+  - The reveal replays a finisher the locked-in screen showed for less than half its length: the dealt screen's own locked state lasts only until the host's next view.
+  - A second click on the chosen dealt card replays its flourish (one statement in `NativeBlindChoiceUI.cs`).
+  - The Blind Pick All grid is unchanged.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. Nothing reads or writes rules, timers or the network. The pick, the countdown, the lock and the reveal never wait on a flourish, and nothing is sent.
+- **Checks.**
+  - Full CoreTests (Release, as relgen5 runs it, in a throwaway worktree) on `dd5381ae` (deathmatch-picks and then shared `ff0b7d88` merged in): 1035 PASS lines, exit 0, including `blind pick all, blind choices and the deathmatch chip stage` (5591), `blind pick and deathmatch` (158) and `weapon flourishes` (1504). Before that merge, on `9f285a03`: 1033 PASS lines, exit 0, including the new `weapon flourishes` (1502 checks: every roster weapon has its own move of 1-2 s, every cue is a real one-shot bank key, a shipped clip or a toon sound, quiet and inside its flourish, each cue plays once at 23/30/60/144 fps, the cue clock allocates nothing, the reveal plays only the pilot's own finisher, no LINQ or string building in the draw files) and `blind pick and deathmatch` (158).
+  - The pinned 6000.3.24f1 semantic compile passes (Input System, Player, Assembly-CSharp, Editor), with no warnings in the new or changed files. `git diff --check` is clean, and no source pins are broken.
+  - The dealt screen seen in the Editor at `bdcbaf2e`, at 1600x900 with 3 cards dealt: choosing the DEV Katana (8 frames) and locking it in (8 frames). The lock was shown as the screen draws it before the host's next view: the lock time set, no confirm sent.
+  - Seen in the Editor (BoZo, a Blind Pick against 3 bots, Game view fixed at 1600x900, the flourish clock pinned for each shot), at `4d01bdf8`, before the shared merge, which brought only shared's own changes: all 24 flourishes at 8 ages each, 3 whole-screen grabs, the Katana's lock-in finisher on the reveal, and Reduced effects (Pistol, Greatsword and a Pistol lock-in). The stage banks and the motion bank were unchanged before and after each session.
+- **Not run.**
+  - No Windows build or player, so frame times were not measured. The drawing is allocation-free by construction, and the per-frame cue clock is checked.
+  - The sounds were not listened to.
+  - No host and guest online run. The locked-in screen's finisher, while another human is still choosing, was not seen on screen: bots are always ready, so the reveal path was filmed. It is the same finisher on the hero card.
+  - No controller run. The capture chose weapons through the same `OpeningChoose` that a click and the arrow keys call.
+  - No 21:9 or 4:3 layouts.
+- **Risks and next.**
+  - The strongest flashes (the Greatsword and DEV Greatsword impact frames, the Bombadier's blast, the rifle shot) are a matter of taste, for the owner to judge per weapon.
+  - A Top Dog toon sound is synthesised the first time it plays, a one-time cost of a few ms.
+  - Captures: IMGUI hover follows the real cursor. The second capture runs moved the cursor to the screen's corner and put it back afterwards. Once, Ctrl+P was sent to the Editor to stop my own hung capture job; the tool option now has a 45 s watchdog.
+  - **Next:** the owner reviews the per-weapon sheets; then merge and release.
+
 ## 2026-11-18 — Claude: the Deathmatch's chip picks on the PvP chip screen with the pilot, Blind Pick All, and the N-choice Blind Pick screen (owner report; presentation only)
 
 Branch `claude/deathmatch-picks`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6` (test channel revision 639305719837450710). Owner, 2026-11-18: "For the deathmatch mode, For the chip selection; We can bring the player model in for the chip selection like we do for the normal pvp mode. As matter of fact, we can use that exact screen. Also, change current Blind Pick Name to "Blind Pick All", and make a new blind pick where we get a customizable amount of choices (Default 3) of weapon/class to pick (we only pick 1). This will be similar to a chip screen."

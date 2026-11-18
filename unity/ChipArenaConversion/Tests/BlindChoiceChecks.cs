@@ -119,7 +119,8 @@ internal static class BlindChoiceChecks
         Check(!File.Exists(Path.Combine(root,"Assets/ChipArena/Runtime/NativeBlindChoicePreview.cs"))&&!Regex.IsMatch(stage+choice+opening,@"BlindPreview"),"no stand-in deal: the rules deal");
         int cards=choice.LastIndexOf("NativeWeaponCard.Draw(",StringComparison.Ordinal),flourish=choice.IndexOf("NativeWeaponCard.Flourishes();",StringComparison.Ordinal);
         Check(cards>0&&flourish>cards&&choice.Contains("SelectAge=sel?now-openingSelectAt:-10")&&choice.Contains("LockAge=sel&&locked?now-openingLockAt:-10")&&choice.Contains("if(chosen!=null)openingSelectAt=now"),"the dealt cards' choice and lock ages, then the flourishes");
-        Check(R("Runtime/NativeWeaponCard.cs").Contains("public static partial class NativeWeaponCard")&&R("Runtime/NativeWeaponCardFlourishStub.cs").Contains("public static void Flourishes(){}"),"the flourish stand-in");
+        // The flourishes landed (claude/weapon-pick-flourish): the stand-in is gone and the real Flourishes() draws them.
+        Check(R("Runtime/NativeWeaponCard.cs").Contains("public static partial class NativeWeaponCard")&&!File.Exists(Path.Combine(root,"Assets/ChipArena/Runtime/NativeWeaponCardFlourishStub.cs"))&&R("Runtime/NativeWeaponFlourish.cs").Contains("public static void Flourishes()"),"the flourishes, not a stand-in");
 
         // ---- Blind Pick All, as players read it ----
         foreach(var f in new[]{"Runtime/NativeOpeningDraftUI.cs","Runtime/NativeRoomOptionsUI.cs","Runtime/NativeLobbyUI.cs","Runtime/NativeLobbyRoomUI.cs","Runtime/NativeDeathmatchRuntime.cs","Runtime/ConversionGame.cs"})
