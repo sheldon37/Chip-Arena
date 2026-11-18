@@ -65,6 +65,44 @@ namespace ChipArena.UnityConversion
             Check(!history.Release(2,false,1,.9f,1.01f)&&!history.Release(2,false,1,1.4f,1.5f),"cancelled or stale release silent");
             Check(history.Hit(1,10,2,2.1f)&&!history.Hit(1,10,2,2.11f)&&!history.Hit(1,9,2,2.12f)&&history.Hit(2,9,2,2.13f),"hit cursor ordered per pilot");
             history.Clear();Check(history.Hit(1,1,0,.01f),"new arena resets hit history");
+            // Owner 2026-11-18 ("the bombadier doesnt have sounds for when their explosives blow up now?"): a new match keeps the
+            // round's Generation (every Deathmatch, a second Dev Sandbox, a match left in its first round), so NativeAudio keeps
+            // the history, while the new arena's ids and clock begin again. The last match's marks must not silence its blasts
+            // and throws (they did until the pilot's first killcam cleared them), and each still sounds once.
+            var carried=new NativeWeaponAudioHistory();
+            Check(carried.Hit(1,900,40,40.01f)&&carried.Release(1,false,39.8f,40.2f,39.85f),"the last match's blast and throw");
+            Check(carried.Hit(1,5,3,3.01f)&&!carried.Hit(1,5,3,3.02f)&&!carried.Hit(1,4,2.95f,3.03f),"a new match's first blast sounds once, its id lower");
+            Check(carried.Release(1,false,2.9f,3.3f,2.95f)&&!carried.Release(1,false,2.9f,3.3f,2.96f),"a new match's first throw sounds once, its clock earlier");
+            var later=new NativeWeaponAudioHistory();later.Hit(1,900,40,40.01f);later.Release(1,false,39.8f,40.2f,39.85f);
+            Check(later.Hit(1,300,60,60.01f)&&later.Hit(1,301,60,60.01f)&&!later.Hit(1,300,60,60.02f)&&!later.Hit(1,299,59.99f,60.03f),"a new match past the old clock: each column of one strike once");
+            Check(later.Release(1,false,59.9f,60.3f,59.95f)&&!later.Release(1,false,59.9f,60.3f,59.97f),"a new match past the old clock: its throw once");
+            // The Dev Sandbox's Preview Bombadier (NativeBombPreview) loops fixed ids, its cluster's lob (112) before its bomblets
+            // (106-111): every blast and throw of every pass sounds once, a late joiner hears nothing older than Fresh, and a
+            // clock stepped back replays nothing. BombMoments hears the kit the screen draws.
+            {
+                var expect=new Dictionary<string,int>{{NativeBombs.Pop,2},{NativeBombs.Sticky,1},{NativeBombs.Mine,2},{NativeBombs.Lob,1},{NativeBombs.Bomblet,6},{NativeBombs.Spark,8},{NativeBombs.Column,3}};
+                void PreviewPass(NativeWeaponAudioHistory heard,float t0,float from,float to,Dictionary<string,int> heardKinds,ref int throws,float back=-1)
+                {
+                    var bk=new NativeBombKit();bool stepped=false;
+                    for(int fr=0;;fr++)
+                    {
+                        float tnow=t0+from+fr/60f;if(back>0&&!stepped&&tnow>=t0+back){stepped=true;fr-=6;tnow=t0+from+fr/60f;}if(tnow>=t0+to)break;
+                        NativeBombPreview.Write(bk,System.Numerics.Vector3.Zero,0,t0,tnow);
+                        foreach(var bl in bk.Blasts)if(heard.Hit(1,bl.Id,bl.At,tnow)){Check(bl.At>=t0+from-NativeWeaponAudioHistory.Fresh,"nothing older than Fresh for a late joiner");heardKinds[bl.Kind]=heardKinds.TryGetValue(bl.Kind,out int had)?had+1:1;}
+                        bool fin=bk.CastKind==NativeBombs.GrandFinale;if(bk.CastKind!=null&&(!fin||bk.Finale!=null)&&heard.Release(1,bk.ReleasePending,fin?bk.Finale.At:bk.CastRelease,bk.CastUntil,tnow))throws++;
+                    }
+                }
+                var looped=new NativeWeaponAudioHistory();
+                for(int pass=0;pass<3;pass++)
+                {
+                    var kinds=new Dictionary<string,int>();int casts=0;PreviewPass(looped,10+pass*NativeBombPreview.Loop,0,NativeBombPreview.Loop,kinds,ref casts,pass==1?7.05f:-1);
+                    Check(kinds.Count==expect.Count&&expect.All(x=>kinds.TryGetValue(x.Key,out int c)&&c==x.Value),"preview pass "+pass+": every blast once ("+string.Join(" ",kinds.Select(x=>x.Key+" "+x.Value))+")");
+                    Check(casts==9,"preview pass "+pass+": every throw once ("+casts+")");
+                }
+                var lateKinds=new Dictionary<string,int>();int lateCasts=0;PreviewPass(new NativeWeaponAudioHistory(),10,9.6f,NativeBombPreview.Loop,lateKinds,ref lateCasts);
+                Check(!lateKinds.ContainsKey(NativeBombs.Lob)&&lateKinds.TryGetValue(NativeBombs.Bomblet,out int lateBomblets)&&lateBomblets==6&&lateKinds.TryGetValue(NativeBombs.Column,out int lateColumns)&&lateColumns==3,"a late joiner hears only what is still fresh");
+                Check(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeBombScreen.cs")).Contains("var k=NativeBombs.Source is NativeBombPreview preview?preview.Of(p.Seat.id)??p.Bomb:p.Bomb;"),"the Bombadier's sounds follow the kit drawn, the Preview Bombadier's too");
+            }
             var technique=new NativeTechnique{Kind=NativeTechniques.Tripwire,ReleasePending=true,At=0,Release=.2f,Arm=.5f,Until=2};
             Check(float.IsNaN(NativeTechniqueSounds.At(technique.ViewCopy(),NativeTechniqueSounds.Release)),"pending placement silent");
             technique.ReleasePending=false;Check(NativeTechniqueSounds.At(technique,NativeTechniqueSounds.Arm)==.5f,"confirmed trap can arm");
@@ -76,7 +114,7 @@ namespace ChipArena.UnityConversion
             Check(NativeIronworksKinds.Cue(0,"missing")==null&&NativeIronworksKinds.Cue(1,"missing")==null,"unknown enemy cues silent");
             Check(NativeStationBossCues.Keys.All(NativeSoundKeys.Known)&&NativeIronworksBossCues.Keys.All(NativeSoundKeys.Known)
                 &&NativeToonSynth.Ids.Where(id=>id.StartsWith("ring-")).All(id=>NativeSoundKeys.Known(NativeToonSynth.BankKey(id))),"optional encounter and Glaive keys");
-            passed.Add("authored entrance clocks, cast cancellation, replica confirmation, hit cursors, closest column");
+            passed.Add("authored entrance clocks, cast cancellation, replica confirmation, hit cursors (a new match's restarted ids and clock, the Preview Bombadier's loops), closest column");
             // ---------- key contract ----------
             var keys=NativeSoundKeys.All;Check(keys.Length==538&&keys.Count(k=>k.Key.StartsWith("boss.noctiel.",StringComparison.Ordinal))==NativeFallenBossCues.Keys.Length&&NativeFallenBossCues.Keys.Length==57&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==20&&keys.Count(k=>k.Key.StartsWith("pve.zombie.",StringComparison.Ordinal))==14&&keys.Count(k=>k.Key.StartsWith("pve.ironworks.",StringComparison.Ordinal))==34&&keys.Count(k=>k.Key.StartsWith(NativeStationKinds.Prefix,StringComparison.Ordinal))==22,"262 effect keys (19 of them the hazard kit's, 14 the zombies' voices and footfalls, 34 the City Ironworks enemies', 22 the Central Station enemies', 57 NOCTIEL's) and 20 entrance-music keys (the Sheldon Intro's included), unique ("+keys.Length+")");
             foreach(var k in keys)

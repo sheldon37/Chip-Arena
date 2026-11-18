@@ -38,6 +38,91 @@ Branch `claude/rifle-q-scope`, base shared `claude/sleepy-ritchie-g8ruhv` at `01
 
 **Next.** The owner plays it (Q against a moving target, both shoulders, Classic); then merge and release.
 
+## 2026-11-18 — Claude: arrows stuck in a pilot ride the drawn body, not a point off it (owner report; presentation only)
+
+- **The owner (2026-11-18):** "Can you fix bow arrows? It seems they sometimes 'attach' off of a players body. Essentially it'll look like
+  someone is running around with floating arrows around them." Branch `claude/bow-stuck-arrows` from shared `01505ad6`: `6c6cad6e` the
+  change and its checks, then this entry. Pushed, **not merged, not released**.
+- **Why "sometimes":** a pilot's arrow rode the game rig's joint (the voxel skeleton) at the replicated hit point, its depth from the voxel
+  boxes. Three things put it off the drawn model:
+  - The hit point lies on the game's capsule (radius 0.42 m), up to a quarter metre outside the model's skin at the arms, sides and head;
+    when the flight missed the joint's boxes the arrow kept that capsule point.
+  - The model does not follow that rig: the pack's clips, its stride, hand fits, rolls and hit reactions pose it differently, so the arrow
+    drifted off the body while running, rolling or jumping, and floated above or beside it.
+  - A guest draws other pilots about 0.1 s behind its newest frame but placed each hit as soon as the frame landed, on the pose of 0.1 s
+    before (about 0.7 m off a sprinting pilot).
+- **Now:**
+  - Core `NativeArrowGib.Seat`: where a flight meets the skin as posed. The entry is the first face it meets; a flight passing beside
+    the skin (the capsule's hit) is moved onto the body's nearest vertex (within 0.48 m), and a head shot looks on the head first. The far
+    side of that body gives the halfway bury. It runs on a worker, one search per body per frame, over the same skinned parts the cuts
+    and wound holes read (`Runtime/NativeArrowGibPresentation.cs` `ArrowSeatAsk`/`ArrowSeatsDone`).
+  - `NativeBowStuck` records keep that place on the model's own bone (`Model`, `ModelPoint`, `ModelDir`, `ModelDepth`), drawn nowhere
+    while it is found (`Seating`: at most a frame or two). The game joint's place stays as the fallback (voxel bodies, nothing found).
+  - Where it draws (`BowBone`): a live model body draws it on the bone it was seated on (an unseated one in the game joint's frame on the
+    model, `VisualJointFrame`); the voxel rig only for a voxel body; nothing while the body is not drawn (first person, hidden, off stage,
+    a veiled Fangs pilot to its foes). Dead: the model corpse's same bone (`ArrowOnCorpse`), on the half of a split body its point lay
+    on (the first, whole, while the cut is made), hidden with a crushed part or a hidden corpse (dissolved, down a vent), fading as it
+    dissolves. A killing arrow is seated on the pose last drawn, which the corpse wears.
+  - The hit is carried onto the body as drawn (`NativeArrowGib.OnDrawn`: its drawn offset and its run since the hit), and a guest's hit
+    on another pilot waits for the drawn pose to reach it (`NativeArrowGib.Due`; not its own predicted pilot or a dead one).
+  - The voxel fallback (`NativeArrowGib.Onto`): a capsule hit beside the joint's boxes is moved onto them.
+  - A pass-through's holes are seated the same way; its exit spray leaves from where the flight left the skin.
+- **Unchanged:** hits, damage, hitboxes, arrow flight, pierce, timing, networking (nothing for Astra). Wall arrows, horde adds and the
+  Siren as before. **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks:**
+  - Full CoreTests on `6c6cad6e` (Windows path patch in a throwaway worktree): 1,033 PASS lines, exit 0. `--gib`: 1,911 checks (new: the
+    model seat on a synthetic skin, the capsule-side and head-shot moves, an arm across the chest, the box fallback, the timing helpers,
+    no allocation, the wiring pins); `--bow`: 5,050 (seating, the model bone's frame, the body's opacity, the fallback).
+  - `tools/check_unity_compile.py`: Input System, Player, Assembly-CSharp and Editor pass, no warnings in the changed files.
+  - The Editor build gate (`PrototypeBuild.Validate`) on `6c6cad6e`: ok, 398 PASS lines (its two edit-mode `Destroy` errors are in
+    earlier gates too).
+  - `git diff --check` against shared: clean. The test pin scan finds no broken pins.
+  - The Editor checkout went back to `9319026b` with its local files after every hold; the 14 stage banks and the motion bank (6,136,627
+    bytes, `37ec44d2`) as released.
+- **Filmed** in the shared Editor (Cybercity, 1/30 s steps; before shared `01505ad6`, after `6c6cad6e`). The idle bot turned archer looses
+  real arrows through the arena's own `Fire` (a local tool option): the back of the chest, the left arm, the right thigh, a capsule-edge hit
+  beside the torso, the left thigh and the upper chest; then the pilot sprints, rolls and jumps. Views follow the body.
+  - **Default pilot (greatsword):** before, arrows hang in the air above its head and beside its hips and knees, standing, sprinting,
+    mid-roll and mid-jump; after, every shaft starts at the skin (head, shoulder, arm, thigh) and moves with it through the roll and jump.
+  - **Hot Dog:** before, one arrow stands in the air over the sausage's crown and others hang beside it; after, they go into the sausage
+    and stay there through the roll.
+  - **Corpse:** a bot shot three times, then killed by a fourth arrow; after, all four ride the falling corpse (the killing one seated
+    from the pose last drawn, one capture frame unseen).
+  - Two of the six arrows in each pilot run hit props on the way, in both builds (the scripted origins); the rest stuck.
+- **Not seen / not done:** a guest's view (the tools run one client: the guest wait and carry are covered by managed checks only); a split
+  or crushed corpse with an arrow, a vent fall, Frostbreak or Soul Drift (code path only); the Low tier; a Windows build. The Hot Dog's
+  arrows ride the bone under its sausage twins, so the sausage's jiggle does not move them.
+- **Next:** the owner looks; merge and release.
+
+## 2026-11-18 — Claude: the Bombadier's explosions and throws are heard in every match (owner report; presentation only)
+
+Branch `claude/bomb-blast-audio`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "Seems the bombadier doesnt have sounds for when their explosives blow up now?"
+
+- **Cause.** Astra's sound pass (`164da2f1`, PR #401) moved the Bombadier's blast and throw dedupe from per-record stamps (`Once(seat+"bomb"+id, At)`) to `NativeWeaponAudioHistory`: one high-water record id and one release time per seat, cleared only when `arena.Generation` changes.
+  - A new match builds a new arena: its Generation starts at 1 again, its records are numbered from 1 (`nextEvent`) and its clock starts from 0. `NativeAudio` lives on.
+  - So when the last arena also stood at Generation 1, nothing cleared, and the last match's marks refused every blast and throw of that seat. This happens after every Deathmatch, after a Dev Sandbox session, and after a match left in its first round.
+  - The silence lasted until the pilot's first killcam reset the audio's cursor (`NativeAudio.ResetCursor`), or until the new ids and clock passed the old marks.
+- **Reproduced in the Editor** (BoZo, Cyber City, a Bombadier pilot against an idle bot). Match 1 threw the whole kit. Then the match started again (`StartMatch`: a new arena at Generation 1), the kit again, a forced death and killcam, and round 2. Temporary decision logging (`PROBE bomb`, never on this branch) recorded each cue.
+  - **Before** (shared + probe): in the second match, all 17 blasts (pop, mine, lob, 6 bomblets, 5 sparks, jump, sticky, Finale column) and all 7 throws were refused by the history. After the killcam, round 2's were heard.
+  - **After** (the fix + probe): all 17 and 7 reach their cues.
+  - Match 1 and round 2 are the same before and after.
+- **Fix (Core `NativeWeaponAudioHistory`).** A pilot's mark is now the newest record id with its time; the release mark keeps its time.
+  - In one arena's clock both rise together: the authority numbers records as it makes them, and frames never run a clock back. A record newer on neither is still refused, so nothing repeats on a duplicated snapshot, a late join or a rewind.
+  - A later record with a lower id now means the numbering began again, and a clock more than 1 s behind the mark means another clock. Both start the pilot's history afresh.
+- **The Preview Bombadier** (Dev Sandbox gallery) was silent: since the sound pass, `BombMoments` read only the pilot's own kit. It now hears the kit the screen draws (`NativeBombs.Source` while the preview owns it). The preview's fixed, looping ids, with its lob numbered after its bomblets, pass the new history: each blast and throw once per pass.
+- **Kept from the sound pass.** Each blast once. A late join stays quiet. The nearest Finale column per listener. Quieter links under the `proc` gate. The `explosion` gate and the 8 gated-voice cap are unchanged.
+- **Other users.** Katana and Fangs (`BladeMoments`) and the Glaive (`GlaiveMoments`) use the same `Hit` and `Release`, so they had the same fault after a same-Generation restart. The same change fixes them; their code is unchanged. The Top Dog keeps per-record `Once` stamps and was not affected.
+- **Systems.** `Core/NativeRecordedCues.cs`, `Runtime/NativeBombScreen.cs` (`BombMoments`'s kit), `Tests/EffectsAudioChecks.cs`. No rule, hit timing, hitbox, damage, cooldown, movement, wire or network change.
+- **Checks.**
+  - Full CoreTests on `b08f7e7a`: 1032 groups, exit 0 (stage banks `banks-next`, the expedition path patch applied and reverted).
+  - `--effects-audio`: the new checks pass. They fail on the old history: a carried-over match's first blast and throw, a strike's columns past the old clock, three Preview Bombadier passes with a step back and a late joiner.
+  - Pinned semantic compile (`tools/check_unity_compile.py`): Input System, Player, Assembly-CSharp and Editor all pass. `git diff --check` is clean, and no pinned test string is broken.
+- **Not run.** No Windows player or build listening, no host plus guest, no LocalAssets bank in the Editor (it played the built-in fallback clips through the same history and gates).
+- **Risk, not changed.** The `explosion` gate's 70 ms gap drops 2 to 3 of a cluster's 6 bomblets (logged in both runs). That is the sound pass's mix; it needs a listen.
+- **Risk, edge case.** A new arena whose clock lands within about a second of the last arena's final mark could still miss a record that is older on both id and time, for at most that second.
+- **Next.** The owner listens to two matches in a row as the Bombadier (a Deathmatch, or the Dev Sandbox twice), and to the Preview Bombadier. Then merge and release.
+- **Released:** shared `42bd093e` (the builder at `42bd093e`), test channel revision `639306125701063043` (build `7989353c`); the suite at `b99ab8cd` (1,032 groups, exit 0), the Unity compile. The builder's first two attempts stopped at the sound queue (`worker.lock` held by an agent's Python test run); the third, with the lock free, built and published. The installed bank is unchanged (364 entries, 806 clips). No bank or Drive zip change.
+
 ## 2026-11-17 — Claude: Blind Pick and Deathmatch screens (Astra's 2026-11-16 handoff; presentation only)
 
 Branch `claude/opening-draft-ui`, base shared `claude/sleepy-ritchie-g8ruhv` at `c69c30c7`. Owner: "Do the UI work; We can use the same kind of screens we use for chip selection ... Kind of like chips, but animated and styled with very high quality."
@@ -20238,3 +20323,7 @@ Validation: 49 managed practice checks, 63 existing boss-battle checks, NOCTIEL 
 ## 2026-11-17 · Astra · Station phase practice builder repair
 
 Branch codex/fix-practice-station, shared base dc568f84 (PR #407). The Windows build stopped at Station bookmark P2 reporting P1. Bookmarks now enter each authored industrial or Backrooms transition directly, preserving its map and boss state. Live fights continue to select the transition from damage. The all-20 native gate now also checks the authoritative actor phase and the Station P2 barrier, with opening-state diagnostics. Managed regression coverage checks successive tide and circuit transitions. Builder publication requires a new Windows receipt.
+
+## 2026-11-18 · Astra · Dealt Blind Pick authority
+
+Branch codex/dealt-blind-pick from shared 01505ad6. NativeRoomOptions.blindChoices uses zero for the original full pool. RoomOpt.Blind values 0/1/2 select off/all/dealt; dealt defaults to 3. RoomOpt.BlindChoices takes the actual N. The host deals unique IDs using each seat's live weapon grants and keeps N at or below the smallest eligible pool in the roster. Host-only deadlines sample from each pilot's still-eligible hand. Protocol 2 is required only for dealt hands. The local weapon view carries only that seat's IDs in pickCards before reveal; ConversionGame.OpeningWeaponOffers exposes them. Screen labels and layout belong to Claude. Managed checks cover offers, protocol, timeouts, bots, disconnects, grants and privacy. No combat, animation or hit-timing changes.
