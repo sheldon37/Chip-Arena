@@ -42,6 +42,10 @@ namespace ChipArena.UnityConversion
                 // online, host or guest, for this verified dev account only, and Astra's session opt-in DevAbuseEnabled. The host never
                 // trusts it: every DEV command is checked against the verified seat (docs/DEV-ABUSE-AUTHORITY.md).
                 if(NativeDevGate.ToggleVisible(account.Developer)){bool abuse=NativeControllerPointer.Toggle(prefs.devAbuse,"DEV Abuse: DEV tools in every match (F3)");if(abuse!=prefs.devAbuse){prefs.devAbuse=abuse;DevAbuseEnabled=NativeDevGate.CommandsEnabled(abuse,account.Developer);Save();}Fine("Off by default. Turns on this session's DEV commands (DevAbuseEnabled); the match's authority still checks your verified grant for every command.");}
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (arena == null && !Online && deploymentRoom == null && expeditionSession == null &&
+                    NativeControllerPointer.Button("Walk Meridian greybox", button)) walkPicker = true;
+#endif
                 // The Siren minion kinds before their rules exist (NativeHordeKindPresentation.cs): every horde add drawn as one kind, or a
                 // mix by id. Looks only (the add's rules, timing and hit volume stay its own); this session only, never saved.
                 GUILayout.Label("Siren minion preview (looks only)",small);NativeHordeKinds.Preview=HordePreviewChoice(ChoiceGrid(HordePreviewIds,HordePreviewId(NativeHordeKinds.Preview),HordePreviewNames));
