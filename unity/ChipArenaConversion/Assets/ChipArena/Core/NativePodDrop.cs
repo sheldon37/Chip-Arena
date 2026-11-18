@@ -56,9 +56,9 @@ namespace ChipArena.UnityConversion
         /// the rest lean (radians, at most MaxLean) about LeanAxis; the door's rest turn on the sunk, leaning pod (its top on the
         /// crater).</summary>
         public float Skid,SkidSeconds,Sink,Lean,RestDoor;public Vector3 LeanAxis;
-        /// <summary>The lasting marks: the crater's shape, its turn and its scale (x, z); the furrow's length and width (behind the
-        /// pod, back along the travel).</summary>
-        public int Crater;public float CraterTurn,CraterX,CraterZ,Furrow,FurrowWidth;
+        /// <summary>The lasting mark: the crater's shape, its turn off the approach (its ploughed tail runs back down the travel)
+        /// and its scale (x across, z along); how far its furrow reaches back from the pod centre.</summary>
+        public int Crater;public float CraterTurn,CraterX,CraterZ,Furrow;
     }
 
     /// <summary>The directed drop's camera at one moment (NativePodDrop.Shot): where it looks from and at, its up, its field of
@@ -151,8 +151,8 @@ namespace ChipArena.UnityConversion
             // the rest: sunk and leaning a little, mostly along the plough
             p.Sink=Sink;var lean=Turn(p.Travel,(Hash(s,7)-.5f)*2.1f);p.LeanAxis=Vector3.Normalize(Vector3.Cross(up,lean));p.Lean=(1.4f+2.6f*Hash(s,8))*Deg;
             p.RestDoor=RestDoorTurn(p);
-            p.Crater=(int)(Hash(s,9)*NativePodModels.CraterShapes)%NativePodModels.CraterShapes;p.CraterTurn=Hash(s,10)*Tau;p.CraterX=.92f+.16f*Hash(s,11);p.CraterZ=.92f+.16f*Hash(s,12);
-            p.Furrow=3+.6f*Hash(s,13);p.FurrowWidth=1.3f+.4f*Hash(s,14);
+            p.Crater=(int)(Hash(s,9)*NativePodModels.CraterShapes)%NativePodModels.CraterShapes;p.CraterTurn=(2*Hash(s,10)-1)*10*Deg;p.CraterX=.9f+.2f*Hash(s,11);p.CraterZ=.92f+.14f*Hash(s,12);
+            p.Furrow=NativePodModels.CraterRadius*1.06f*(1+NativePodModels.Plough)*p.CraterZ;
             return p;
         }
         /// <summary>The pod's own hash: its seat, order, spot (to the centimetre) and fight start (to the millisecond).</summary>

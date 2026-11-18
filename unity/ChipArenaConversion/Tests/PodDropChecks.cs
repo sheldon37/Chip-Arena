@@ -118,7 +118,7 @@ internal static class PodDropChecks
             // it touches down at most 1.5 m short, behind its door within 40 degrees, and the furrow stays in its 2.5 m apron
             var back=-new Vector3(p.P1.X,0,p.P1.Z);Check(p.Skid<=NativePodDrop.MaxSkid+1e-5f&&p.Skid>.5f&&Math.Abs(p.P1.Y)<1e-5f,"it touches down at most 1.5 m short ("+p.Skid+")");
             Check(Vector3.Dot(Vector3.Normalize(back),p.Forward)>=(float)Math.Cos(NativePodDrop.MaxBearing)-1e-4f,"the touchdown is behind its door");
-            Check(p.Furrow>=3&&p.Furrow<=NativePodModels.Radius+2.5f&&p.FurrowWidth<=2*NativePodModels.Radius,"the furrow is 3 m or more and stays inside the skid apron ("+p.Furrow+")");
+            Check(p.Furrow>=3&&p.Furrow<=5&&Math.Abs(p.CraterTurn)<=10*Math.PI/180+1e-5f,"a 3-5 m furrow ploughed back down its line ("+p.Furrow+")");
             // the frames: the slam, the plough to the centre, then sunk and leaning at rest
             float lastDoor=0,worst=0;bool shown=false;string wrong=null;
             for(float t=p.Impact;t<.6f;t+=1/120f)
@@ -273,7 +273,7 @@ internal static class PodDropChecks
     }
     private static void Models()
     {
-        var built=new List<(string,Func<WeaponMesh>)>{("pod",NativePodModels.Pod),("door",NativePodModels.Door),("furrow",NativePodModels.Furrow)};
+        var built=new List<(string,Func<WeaponMesh>)>{("pod",NativePodModels.Pod),("door",NativePodModels.Door)};
         for(int k=0;k<NativePodModels.CraterShapes;k++){int shape=k;built.Add(("crater "+k,()=>NativePodModels.Crater(shape)));}
         foreach(var (name,build) in built)
         {
@@ -303,15 +303,16 @@ internal static class PodDropChecks
         var bar=pod.Sections.Where(s=>s.Bone==NativePodModels.Harness).SelectMany(s=>s.Positions).ToArray();var hinge=NativePodModels.HarnessHinge;
         var upBar=bar.Select(p=>Vector3.Transform(p-hinge,Matrix4x4.CreateRotationX(NativePodModels.HarnessUp))+hinge).ToArray();
         Check(bar.Any(p=>p.Y<1.45f&&p.Z>.1f)&&upBar.All(p=>p.Y>NativePodModels.Hinge.Y+NativePodModels.DoorHeight-.05f||p.Z<.3f)&&upBar.All(p=>new Vector2(p.X,p.Z).Length()<.62f),"the harness bar crosses the chest, then lifts clear of the doorway inside the hull");
-        // the marks: flat paint (at most 6 cm, off the floor), facing up, a crater about 5 m across and its furrow
-        foreach(var mark in Enumerable.Range(0,NativePodModels.CraterShapes).Select(NativePodModels.Crater).Concat(new[]{NativePodModels.Furrow()}))
+        // the marks: flat paint (at most 6 cm, off the floor), facing up, a crater about 5 m across ploughed into a 3-5 m furrow
+        foreach(var mark in Enumerable.Range(0,NativePodModels.CraterShapes).Select(NativePodModels.Crater))
         {
             var pts=mark.Sections.SelectMany(s=>s.Positions).ToArray();
             Check(pts.All(p=>p.Y<=NativePodModels.FlatHeight+1e-4f&&p.Y>=NativePodModels.FlatLift-1e-3f),mark.Spec+" is flat paint off the floor (y "+pts.Min(p=>p.Y)+".."+pts.Max(p=>p.Y)+")");
             int tris=mark.Sections.Sum(s=>s.Indices.Count/3),down=mark.Sections.Sum(s=>Enumerable.Range(0,s.Indices.Count/3).Count(i=>s.Normals[s.Indices[i*3]].Y<-.2f));
             Check(down<=tris*.15f&&mark.Sections.Sum(s=>Enumerable.Range(0,s.Indices.Count/3).Count(i=>s.Normals[s.Indices[i*3]].Y>.2f))>=tris*.6f,mark.Spec+" faces up ("+down+" of "+tris+" down)");
-            if(mark.Spec!=NativePodModels.FurrowId){float r=pts.Max(p=>new Vector2(p.X,p.Z).Length());Check(r>2.4f&&r<3.9f,mark.Spec+" is about 5 m across, scorch past it ("+r+")");}
-            else Check(pts.All(p=>p.Z<=1e-3f&&p.Z>=-1.001f&&Math.Abs(p.X)<=.56f),"the furrow is a unit long behind its origin");
+            float front=pts.Where(p=>p.Z>0).Max(p=>p.Z),side=pts.Max(p=>Math.Abs(p.X)),tail=-pts.Min(p=>p.Z);
+            Check(front>2.4f&&front<3.7f&&side>2.4f&&side<3.7f,mark.Spec+" is about 5 m across, scorch past it ("+front+", "+side+")");
+            Check(tail>=3&&tail<=4.6f&&tail>front,mark.Spec+" is ploughed out behind into a 3-5 m furrow ("+tail+")");
         }
         Check(NativePodModels.CraterIds.Length==NativePodModels.CraterShapes&&NativePodModels.CraterIds.Distinct().Count()==NativePodModels.CraterShapes,"one model id per crater shape");
     }
@@ -333,7 +334,7 @@ internal static class PodDropChecks
         Check(pods.Contains("bool reduced=WeaponEffectsQuality<.5f,shake=CameraShake&&!reduced;")&&pods.Contains("int mode=reduced?NativePodDrop.ShotStill:FirstPersonPick?NativePodDrop.ShotFirst:NativePodDrop.ShotChase;")&&game.Contains("presentation.FirstPersonPick=prefs.firstPerson;"),"the directed drop honours Camera shake, Reduced effects and the player's camera");
         Check(pods.Contains("p.Facing=new Vector3(Mathf.Sin(record.yaw*Mathf.Deg2Rad),0,Mathf.Cos(record.yaw*Mathf.Deg2Rad));")&&pods.Contains("Quaternion.Euler(0,pilot.Yaw,0)*Vector3.forward")&&!pods.Contains("Mathf.Sin(record.yaw)")&&!pods.Contains("pilot.Yaw*Mathf.Rad2Deg"),"the pods face the record's yaw in degrees");
         Check(R("Runtime/ArenaPresentation.cs").Contains("ReviveMachineTumble(rig,a);PodRideTilt(rig,a);"),"the drawn pilot leans with the pod");
-        Check(R("Runtime/NativeMachineModels.cs").Contains("Add(NativePodModels.PodId,NativePodModels.Pod());Add(NativePodModels.DoorId,NativePodModels.Door());")&&R("Runtime/NativeMachineModels.cs").Contains("Flat(NativePodModels.CraterIds[k],NativePodModels.Crater(k));")&&R("Runtime/NativeMachineModels.cs").Contains("Flat(NativePodModels.FurrowId,NativePodModels.Furrow());"),"the bank builds the pod, its door and the crash's marks");
+        Check(R("Runtime/NativeMachineModels.cs").Contains("Add(NativePodModels.PodId,NativePodModels.Pod());Add(NativePodModels.DoorId,NativePodModels.Door());")&&R("Runtime/NativeMachineModels.cs").Contains("Flat(NativePodModels.CraterIds[k],NativePodModels.Crater(k));"),"the bank builds the pod, its door and the crash's craters");
         Check(R("Runtime/NativeSourcePresentation.cs").Contains("ExpeditionPods(arena);")&&R("Runtime/ArenaPresentation.cs").Contains("SpawnInFx(arena,camera);PodFx(arena,camera);"),"the pods and their effects are drawn");
         Check(R("Runtime/NativeBlastPresentation.cs").Contains("var lit=PodFlashes!=null?PodFlashes(sim.Flashes):sim.Flashes;"),"the crash's flash lights the city through the blast lights (they survive DARKNESS)");
         Check(game.Contains("nativeAudio?.PodFrame(presentation.PodCues,cameraView!=null?cameraView.transform:null);")&&R("Runtime/NativePodAudio.cs").Contains("NativePodSounds.Samples("),"the pods are heard");

@@ -257,14 +257,13 @@ namespace ChipArena.UnityConversion
         }
         // The pod's parts' frames: the harness bar about its hinge, everything else on the pod.
         private Matrix4x4 PodBoneOf(int bone)=>bone==NativePodModels.Harness?podHarness:podRoot;
-        // The crater (its shape turned and scaled per pod, over the floor between the touchdown and the rest centre) and the furrow
-        // ploughed back down the approach, for the run; the pit's ember cracks glow with the hull while it cools.
+        // The crater on the pod centre for the run, its shape scaled per pod and its ploughed tail turned back down the approach;
+        // the pit's ember cracks glow with the hull while it cools.
         private void PodMarks(PodView pod,float land)
         {
-            var p=pod.Plan;podNow=pod;podMarkTint??=PodMarkTintOf;
-            var crater=pod.Spot+new Vector3(p.P1.X*.35f,0,p.P1.Z*.35f);
-            sourceModels.Queue(NativePodModels.CraterIds[p.Crater],Matrix4x4.TRS(crater,Quaternion.Euler(0,p.CraterTurn*Mathf.Rad2Deg,0),new Vector3(p.CraterX,1,p.CraterZ)),partTint:podMarkTint);
-            var travel=new Vector3(p.Travel.X,0,p.Travel.Z);if(travel.sqrMagnitude>1e-4f)sourceModels.Queue(NativePodModels.FurrowId,Matrix4x4.TRS(pod.Spot,Quaternion.LookRotation(travel,Vector3.up),new Vector3(p.FurrowWidth,1,p.Furrow)),partTint:podMarkTint);
+            var p=pod.Plan;var travel=new Vector3(p.Travel.X,0,p.Travel.Z);if(travel.sqrMagnitude<1e-4f)return;podNow=pod;podMarkTint??=PodMarkTintOf;
+            var turn=Quaternion.LookRotation(travel,Vector3.up)*Quaternion.Euler(0,p.CraterTurn*Mathf.Rad2Deg,0);
+            sourceModels.Queue(NativePodModels.CraterIds[p.Crater],Matrix4x4.TRS(pod.Spot,turn,new Vector3(p.CraterX,1,p.CraterZ)),partTint:podMarkTint);
             podNow=null;
         }
         private Color PodMarkTintOf(int bone)

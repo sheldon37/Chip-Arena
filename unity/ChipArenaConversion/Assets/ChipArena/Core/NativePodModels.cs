@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
     // down, warm once landed), 5 the retro nozzles' throats (the burn's colour and level), 6 the ablative tiles and the heat
     // shield (NativePodDrop.HullColor), 7 the explosive bolts (their flash), 8 the harness bar (turned about HarnessHinge); the
     // porthole's pane is the bank's see-through glass (bone -2). The LED name sign is a screen the draw lays over the marquee box
-    // (SignCentre, SignWidth x SignHeight, facing +z). The crash's lasting marks are models too: four crater shapes and the furrow,
+    // (SignCentre, SignWidth x SignHeight, facing +z). The crash's lasting mark is a model too: four crater shapes, each ploughed into its furrow,
     // flat paint at most FlatHeight over the floor (no solid, nothing to bump into). Engine-free and deterministic.
     public static class NativePodModels
     {
@@ -23,8 +23,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The same pod and door in see-through glass (the bank builds them alongside): my own pod while it stands
         /// between my third-person camera and me.</summary>
         public const string GhostId="expedition-pod-ghost",DoorGhostId="expedition-pod-door-ghost";
-        /// <summary>The crash's lasting marks: the crater (CraterShapes shapes, one per pod by its plan) and the furrow it ploughed.</summary>
-        public const string CraterId="expedition-pod-crater",FurrowId="expedition-pod-furrow";
+        /// <summary>The crash's lasting mark: the crater with the furrow it ploughed (CraterShapes shapes, one per pod by its plan).</summary>
+        public const string CraterId="expedition-pod-crater";
         public const int CraterShapes=4;
         public static readonly string[] CraterIds={CraterId+"-0",CraterId+"-1",CraterId+"-2",CraterId+"-3"};
         public const int Body=0,Lights=1,Paint=2,Trim=3,Cabin=4,Retro=5;
@@ -53,8 +53,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Astra's pod collider from A1 (two crossed 1.96 x 2.85 x 1.96 m boxes on the pod centre): the rested pod, sunk
         /// and leaning, keeps its hull inside it (NativePodDrop.RestPose).</summary>
         public const float EnvelopeHalf=.98f,EnvelopeHeight=2.85f;
-        /// <summary>The lasting marks' greatest height over the floor (flat paint), the lowest layer's lift off it (no z-fight at
-        /// 100 m), the crater's radius (it is 5 m across) and the furrow's unit length and width (the draw scales both per pod).</summary>
+        /// <summary>The crater's greatest height over the floor (flat paint), its lowest layer's lift off it (no z-fight at 100 m)
+        /// and its radius to the rim (it is 5 m across; the draw scales it a little per pod).</summary>
         public const float FlatHeight=.06f,FlatLift=.016f,CraterRadius=2.5f;
 
         private static readonly WeaponPaint Frame=WeaponPaint.Solid(0x1d222c,.05f),FrameDark=WeaponPaint.Solid(0x111419,.02f),Seam=WeaponPaint.Solid(0x07080b),
@@ -158,37 +158,51 @@ namespace ChipArena.UnityConversion
         // A triangle facing up (+y) whatever order it comes in.
         private static void Up(WeaponSculpt s,in WeaponPaint c,Vector3 a,Vector3 b,Vector3 d){if(Vector3.Cross(b-a,d-a).Y>=0)s.Tri(c,a,b,d,true);else s.Tri(c,a,d,b,true);}
         private static void UpQuad(WeaponSculpt s,in WeaponPaint c,Vector3 a,Vector3 b,Vector3 d,Vector3 e){Up(s,c,a,b,d);Up(s,c,a,d,e);}
+        /// <summary>How far the crater's back half is drawn out behind it into the furrow the pod ploughed, as a share of its
+        /// radius: a teardrop whose tail runs back down the approach (the draw turns its -z there).</summary>
+        public const float Plough=.4f;
         /// <summary>
-        /// Crater shape `shape` (0..CraterShapes-1) centred on the origin, CraterRadius across its rim: a charred pit, a ring of
-        /// cracked, burnt ground, a lip of spoil thrown up round it (its edge jagged by the shape) and scorch rays out past it, all
-        /// faceted and flat (FlatLift up to FlatHeight); a few ember cracks in the pit glow while the pod is hot (bone Heat).
+        /// Crater shape `shape` (0..CraterShapes-1) centred on the pod's rest centre, CraterRadius to its rim: a charred pit, a ring
+        /// of cracked, burnt ground, a lip of spoil thrown up round it (its edge jagged by the shape) and scorch rays out past it,
+        /// its back (-z) ploughed out by Plough into the furrow (charred down its middle, spoil banked either side), all faceted
+        /// and flat (FlatLift up to FlatHeight): one surface, so nothing of it lies on another and z-fights. A few ember cracks in
+        /// the pit glow while the pod is hot (bone Heat).
         /// </summary>
         public static WeaponMesh Crater(int shape)
         {
             shape=(shape%CraterShapes+CraterShapes)%CraterShapes;var mesh=new WeaponMesh{Spec=CraterIds[shape],Tier=0};var s=new WeaponSculpt(mesh,0);int seed=0x3c7a+shape*977;
-            const int Sides=28;float R=CraterRadius;
+            const int Sides=32;float R=CraterRadius;
             // the radii (fractions of R) and heights of the rings, and the paint between ring k and k+1
             float[] rr={0,.18f,.38f,.62f,.78f,.9f,1,1.06f},hh={.022f,.02f,.026f,.034f,.05f,.056f,.03f,FlatLift};
             var paints=new[]{Char,Char,Burnt,Ash,Spoil,Dust,Spoil};
-            Vector3 P(int k,int i){float a=i*2*Pi/Sides+.08f*(H(seed,i*13+k)-.5f),j=k==0?0:(k>=4?.16f:.07f)*(H(seed,i*7+k*3)-.5f)+(k>=5?.06f*(float)Math.Sin(a*(2+shape)+shape):0);float r=R*rr[k]*(1+j);return new Vector3(r*(float)Math.Cos(a),Math.Max(FlatLift,Math.Min(FlatHeight-.003f,hh[k]*(k==0?1:.85f+.3f*H(seed,i*5+k)))),r*(float)Math.Sin(a));}
+            // the share of the back (-z) an angle faces: 1 straight back, 0 abeam and forward
+            float Back(float a){float b=Math.Max(0,-(float)Math.Sin(a));return b*b;}
+            Vector3 P(int k,int i)
+            {
+                float a=i*2*Pi/Sides+.08f*(H(seed,i*13+k)-.5f),back=Back(a),j=k==0?0:((k>=4?.16f:.07f)*(H(seed,i*7+k*3)-.5f)+(k>=5?.06f*(float)Math.Sin(a*(2+shape)+shape):0))*(1-.7f*back);
+                float r=R*rr[k]*(1+j)*(1+Plough*back*(k<=2?.6f:1));
+                return new Vector3(r*(float)Math.Cos(a),Math.Max(FlatLift,Math.Min(FlatHeight-.003f,hh[k]*(k==0?1:.85f+.3f*H(seed,i*5+k)))),r*(float)Math.Sin(a));
+            }
             s.Into(Body);
             for(int k=0;k+1<rr.Length;k++)for(int i=0;i<Sides;i++)
             {
                 var a=P(k,i);var b=P(k,(i+1)%Sides);var d=P(k+1,(i+1)%Sides);var e=P(k+1,i);
-                if(k==0)Up(s,paints[k],a,d,e);else UpQuad(s,paints[k],a,b,d,e);
+                // down the furrow's middle the ground is charred, beside it burnt
+                float back=Back((i+.5f)*2*Pi/Sides);var paint=k>=2&&k<=4&&back>.6f?Char:k>=2&&k<=4&&back>.3f?Burnt:paints[k];
+                if(k==0)Up(s,paint,a,d,e);else UpQuad(s,paint,a,b,d,e);
             }
-            // scorch rays out past the rim: thin burnt wedges lying on the floor
+            // scorch rays out past the rim: thin burnt wedges lying on the floor (under the rim where they start)
             int rays=9+shape*2;
             for(int i=0;i<rays;i++)
             {
-                float a=(i+.6f*H(seed,500+i))*2*Pi/rays,w=.05f+.06f*H(seed,520+i),r0=R*.92f,r1=R*(1.1f+.35f*H(seed,540+i));
-                var dir=new Vector3((float)Math.Cos(a),0,(float)Math.Sin(a));var side=new Vector3(-dir.Z,0,dir.X);float y=FlatLift+.002f;
+                float a=(i+.6f*H(seed,500+i))*2*Pi/rays,w=.05f+.06f*H(seed,520+i),r0=R*.92f,r1=R*(1.1f+.35f*H(seed,540+i));if(Back(a)>.3f)continue;
+                var dir=new Vector3((float)Math.Cos(a),0,(float)Math.Sin(a));var side=new Vector3(-dir.Z,0,dir.X);float y=FlatLift+.01f;
                 Up(s,Burnt,dir*r0+side*(w*R*.5f)+Vector3.UnitY*y,dir*r0-side*(w*R*.5f)+Vector3.UnitY*y,dir*r1+Vector3.UnitY*y);
             }
-            // spoil: a few flat clods on the lip
-            for(int i=0;i<10;i++)
+            // spoil: a few flat clods on the lip, more banked along the furrow
+            for(int i=0;i<14;i++)
             {
-                float a=(i+H(seed,600+i))*2*Pi/10,r=R*(.8f+.2f*H(seed,610+i)),e=.07f+.08f*H(seed,620+i);
+                float a=i<10?(i+H(seed,600+i))*2*Pi/10:-Pi/2+(i%2==0?-1:1)*(.35f+.2f*H(seed,630+i)),r=R*(.8f+.2f*H(seed,610+i))*(1+Plough*Back(a)*.8f),e=.07f+.08f*H(seed,620+i);
                 s.Box(i%3==0?Dust:Spoil,new Vector3(r*(float)Math.Cos(a),.05f,r*(float)Math.Sin(a)),new Vector3(e*1.4f,.016f,e),0,0,a);
             }
             // ember cracks in the pit (they glow with the hull, then go dark)
@@ -196,28 +210,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<7;i++)
             {
                 float a=(i+.5f*H(seed,700+i))*2*Pi/7,r0=R*.04f,r1=R*(.22f+.18f*H(seed,710+i)),w=.03f;
-                var dir=new Vector3((float)Math.Cos(a),0,(float)Math.Sin(a));var side=new Vector3(-dir.Z,0,dir.X);float y=.027f;
+                var dir=new Vector3((float)Math.Cos(a),0,(float)Math.Sin(a));var side=new Vector3(-dir.Z,0,dir.X);float y=.034f;
                 UpQuad(s,Embers,dir*r0+side*w+Vector3.UnitY*y,dir*r0-side*w+Vector3.UnitY*y,dir*r1-side*(w*.3f)+Vector3.UnitY*y,dir*r1+side*(w*.3f)+Vector3.UnitY*y);
-            }
-            return mesh;
-        }
-        /// <summary>
-        /// The furrow a skidding pod ploughs: one unit long behind its origin (toward -z, the draw stretches it to the pod's
-        /// furrow and turns it down the approach) and one unit wide: a charred trough between two lips of spoil, torn wider and
-        /// shallower toward its far end where the pod first touched, a few clods along the lips. Flat (FlatLift up to FlatHeight).
-        /// </summary>
-        public static WeaponMesh Furrow()
-        {
-            var mesh=new WeaponMesh{Spec=FurrowId,Tier=0};var s=new WeaponSculpt(mesh,0);const int Rows=12;int seed=0x5f11;
-            // across the furrow: the edge, the lip, the trough's shoulder, its floor, mirrored (x as a share of the width)
-            float[] xs={-.5f,-.33f,-.17f,0,.17f,.33f,.5f},ys={FlatLift,.05f,.024f,.018f,.024f,.05f,FlatLift};var paints=new[]{Spoil,Burnt,Char,Char,Burnt,Spoil};
-            Vector3 P(int row,int k){float u=row/(float)Rows,wide=1-.35f*u,j=.06f*(H(seed,row*11+k)-.5f);return new Vector3((xs[k]+j)*wide*(k==3?0:1)+(k==3?.03f*(H(seed,row)-.5f):0),k==0||k==6?FlatLift:Math.Max(FlatLift+.002f,ys[k]*(1-.4f*u)),-u);}
-            s.Into(Body);
-            for(int row=0;row<Rows;row++)for(int k=0;k+1<xs.Length;k++)UpQuad(s,paints[k],P(row,k),P(row,k+1),P(row+1,k+1),P(row+1,k));
-            for(int i=0;i<8;i++)
-            {
-                float u=.1f+.8f*H(seed,300+i),x=(i%2==0?-.38f:.38f)*(1-.35f*u),e=.05f+.05f*H(seed,310+i);
-                s.Box(i%3==0?Dust:Spoil,new Vector3(x,.048f,-u),new Vector3(e,.014f,e*1.3f),0,0,H(seed,320+i)*Pi);
             }
             return mesh;
         }
