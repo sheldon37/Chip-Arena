@@ -268,7 +268,13 @@ internal static class BowChecks
         public int Total=>Glows+Streaks+Smokes+Sprites+Lines+Bands+Arrows;
         public void Reset(){Glows=Streaks=Smokes=Sprites=Lines=Bands=Arrows=0;Hash=0;}
     }
-    private static bool Bone(int target,int bone,Vector3 local,out Matrix4x4 m){m=Matrix4x4.CreateTranslation(target,bone*.1f,0);return target!=99;}
+    // The checks' bodies: pilot 99 is not drawn; a record seated on the model rides model bone `Model` (a turn and a place of its
+    // own); pilot 8's body dissolves to half.
+    private static bool Bone(in NativeBowStuck.Record r,out Matrix4x4 m,out bool model,out float opacity)
+    {
+        model=r.Model>=0;opacity=r.Target==8?.5f:1;m=model?ModelBone(r.Model):Matrix4x4.CreateTranslation(r.Target,r.Bone*.1f,0);return r.Target!=99;
+    }
+    private static Matrix4x4 ModelBone(int model)=>Matrix4x4.CreateRotationY(.5f*model)*Matrix4x4.CreateTranslation(0,model,-2);
     private static void Stuck(List<string> log)
     {
         var s=new NativeBowStuck();var sink=new ArrowSink();
@@ -281,12 +287,23 @@ internal static class BowChecks
         sink.Reset();s.Draw(sink,500,Bone);var m=Matrix4x4.CreateTranslation(7,CapturedRig.Chest*.1f,0);var hit=Vector3.Transform(new Vector3(.1f,.2f,0),m);
         Check(sink.Arrows==NativeBowStuck.PerPilot&&Vector3.Distance(sink.LastNock,hit+Vector3.UnitZ*(NativeBowStuck.Bury-NativeBow.ArrowLength))<1e-4f&&sink.LastOpacity==1,"a pilot's arrow rides its joint (the corpse's or the rig's), buried along the flight");
         s.AddPilot(300,99,CapturedRig.Head,Vector3.Zero,Vector3.UnitZ,30,1,true);sink.Reset();s.Draw(sink,30,Bone);Check(sink.Arrows==NativeBowStuck.PerPilot,"an arrow whose carrier is gone is hidden, not drawn at the origin");
+        // Seated on the drawn model (owner 2026-11-18: "they sometimes 'attach' off of a players body"): unseen while it is found,
+        // then on the model's bone; found nothing, back on its game joint.
+        s.AddPilot(301,8,CapturedRig.Chest,new Vector3(.1f,.2f,0),Vector3.UnitZ,30,1,true);Check(s.Seating(301,true)&&!s.Seating(9999,true),"a pilot's arrow is held while its place on the model is found");
+        sink.Reset();s.Draw(sink,30,Bone);Check(sink.Arrows==NativeBowStuck.PerPilot,"an arrow being seated is not drawn anywhere");
+        var seatAt=new Vector3(.02f,.05f,.1f);var seatDir=new Vector3(0,0,-2);Check(s.Seat(301,3,seatAt,seatDir,.07f)&&!s.Seat(9999,3,seatAt,seatDir,.07f),"a found place seats its arrow (none for a record gone)");
+        sink.Reset();s.Draw(sink,30,Bone);var mb=ModelBone(3);var seatWorld=Vector3.Transform(seatAt,mb);var seatAlong=Vector3.Normalize(Vector3.TransformNormal(seatDir,mb));
+        Check(sink.Arrows==NativeBowStuck.PerPilot+1&&Vector3.Distance(sink.LastNock,seatWorld+seatAlong*(.07f-NativeBow.ArrowLength))<1e-4f&&Vector3.Distance(sink.LastDir,seatAlong)<1e-4f&&Math.Abs(sink.LastOpacity-.5f)<1e-5f,"a seated arrow rides its model bone, buried its own depth along the flight, at its body's opacity");
+        int seated=-1;for(int i=0;i<s.Count;i++)if(s[i].Event==301)seated=i;var rec=s[seated];NativeBowStuck.Placed(rec,mb,true,out var placedAt,out _,out float placedDepth);NativeBowStuck.Placed(rec,Matrix4x4.Identity,false,out var jointAt,out _,out float jointDepth);
+        Check(Vector3.Distance(placedAt,seatWorld)<1e-5f&&placedDepth==.07f&&jointAt==new Vector3(.1f,.2f,0)&&jointDepth==NativeBowStuck.Bury&&rec.Model==3&&!rec.Seating,"a seated record keeps its game joint's place for a body drawn without its model");
+        s.AddPilot(302,8,CapturedRig.Chest,Vector3.Zero,Vector3.UnitZ,30,1,true);s.Seating(302,true);s.Seating(302,false);sink.Reset();s.Draw(sink,30,Bone);Check(sink.Arrows==NativeBowStuck.PerPilot+2,"an arrow whose place was not found draws on its game joint");
+        s.ClearPilot(8);
         s.ClearPilot(7);Check(s.Pilot(7)==0&&s.Count==1,"a respawn clears that pilot's arrows only");
         s.Update(29.6f);Check(s.Count==1,"a small rewind keeps the arrows");s.Update(29.4f);Check(s.Count==0,"a rewind past an arrow drops it");
         for(int i=0;i<400;i++)s.AddWall(1000+i,Vector3.Zero,Vector3.UnitZ,40,1,true);Check(s.Count==NativeBowStuck.Capacity,"the pool stays at its capacity");
         s.Clear();for(int i=0;i<400;i++)s.AddWall(2000+i,Vector3.Zero,Vector3.UnitZ,40,1,true,low:true);Check(s.Count==NativeBowStuck.LowCapacity,"the low graphics tier keeps "+NativeBowStuck.LowCapacity);
         s.Clear();Check(s.Count==0,"the round's end clears every arrow");
-        log.Add($"stuck arrows: walls {NativeBowStuck.WallLife} s with a {NativeBowStuck.FadeOut} s fade, pilots until death or the round's end riding their joint (at most {NativeBowStuck.PerPilot} each), cleared on respawn and rewind; the pool {NativeBowStuck.Capacity} ({NativeBowStuck.LowCapacity} on low)");
+        log.Add($"stuck arrows: walls {NativeBowStuck.WallLife} s with a {NativeBowStuck.FadeOut} s fade, pilots until death or the round's end riding their joint or, seated, the drawn model's bone (unseen while seated, at the body's opacity; at most {NativeBowStuck.PerPilot} each), cleared on respawn and rewind; the pool {NativeBowStuck.Capacity} ({NativeBowStuck.LowCapacity} on low)");
     }
 
     // ---- 7. effects ----

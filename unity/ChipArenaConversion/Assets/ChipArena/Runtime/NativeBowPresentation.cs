@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
     // Core NativeBowWire): the live bow on each posed rig (BowHeld: the riser, the limbs flexed by the pull, the string bent to
     // the nock, the nocked arrow or the Volley's fan, the arrow in the hand while nocking, the quiver on the back, the chip
     // modules on the arrow line and the enchant on the arrowhead), and the effects (BowFx: arrows in flight, glints, the Volley
-    // and Rain effects, the slow tint, the stuck arrows riding the struck joint of the rig or the corpse). Host, guests,
+    // and Rain effects, the slow tint, the stuck arrows riding the struck part of the body as drawn, live or dead). Host, guests,
     // spectators and the killcam replay draw the same frame from the replicated actors, shots and events. Presentation only.
     public sealed partial class ArenaPresentation
     {
@@ -146,27 +146,57 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<int,BowLast> bowLast=new Dictionary<int,BowLast>();private readonly HashSet<int> bowHandled=new HashSet<int>();
         private readonly (int owner,float at,Vector3 point)[] bowHits=new (int,float,Vector3)[32];private int bowHitNext,bowFrame;
         private NativeBowStuck.BoneOf bowBone;private Func<int,NMatrix> bowJoint;private CapturedAnimation.Player bowJointRig;
+        // A guest's hits on other pilots waiting for the drawn pose to reach them (BowWaits): the hit, its flight, draw and skin.
+        private struct BowLater{public ArenaEvent Event;public Vector3 Dir;public float Draw;public bool Standard;}
+        private readonly List<BowLater> bowLater=new List<BowLater>();
         /// <summary>The stuck arrows (the checks).</summary>
         internal NativeBowStuck BowStuck=>bowStuck;
-        private void BowClear(){ArrowClear();bowLast.Clear();bowHandled.Clear();for(int i=0;i<bowHits.Length;i++)bowHits[i]=(0,-100,Vector3.zero);bowStuck.Clear();bowShots.Clear();bowVelocity.Clear();bowSlow.Clear();bowRainSeen.Clear();bowAlive.Clear();bowCursor=0;}
+        private void BowClear(){ArrowClear();bowLast.Clear();bowHandled.Clear();for(int i=0;i<bowHits.Length;i++)bowHits[i]=(0,-100,Vector3.zero);bowStuck.Clear();bowShots.Clear();bowVelocity.Clear();bowSlow.Clear();bowRainSeen.Clear();bowAlive.Clear();bowLater.Clear();bowCursor=0;}
         private static NMatrix BowN(in Matrix4x4 m)=>new NMatrix(m.m00,m.m10,m.m20,m.m30,m.m01,m.m11,m.m21,m.m31,m.m02,m.m12,m.m22,m.m32,m.m03,m.m13,m.m23,m.m33);
         private static NVector BowN(Vector3 v)=>new NVector(v.x,v.y,v.z);
         private static Vector3 BowU(NVector v)=>new Vector3(v.X,v.Y,v.Z);
-        /// <summary>A pilot's joint for a stuck arrow: its corpse's as drawn after a death (severed parts keep their own; a split
-        /// body's arrow rides the half it sat on, NativeArrowGibPresentation.ArrowHalf; a crushed part's arrows go with it), else
-        /// its posed rig.</summary>
-        private bool BowBone(int target,int bone,NVector local,out NMatrix world)
+        /// <summary>
+        /// Where a stuck arrow in a pilot is drawn this frame (owner 2026-11-18: "they sometimes 'attach' off of a players body"):
+        /// <list type="bullet">
+        /// <item>Dead: on its corpse (NativeArrowGibPresentation.ArrowOnCorpse): the model corpse's own bone, on the half of a
+        /// split body it sat on, gone with a crushed part or a hidden body, fading as the body dissolves; else the corpse's part.</item>
+        /// <item>Alive on a model body: the body's bone it was seated on (Record.Model), else the game joint's frame on the model
+        /// (VisualJointFrame); nothing while that body is not drawn (first person, a hidden or veiled pilot).</item>
+        /// <item>Alive on the voxel body (Classic, no bake, the Siren): the posed rig's joint, as before.</item>
+        /// </list>
+        /// A horde add: its live or falling rig, then its corpse, as before.
+        /// </summary>
+        private bool BowBone(in NativeBowStuck.Record r,out NMatrix world,out bool model,out float opacity)
         {
-            world=NMatrix.Identity;
+            world=NMatrix.Identity;model=false;opacity=1;int target=r.Target,bone=r.Bone;
             NativeDeath death=bowArena==null?null:PilotOf(bowArena,target)?.Death;
             if(death==null&&bowArena!=null&&target>=10000)
                 foreach(var d in bowArena.MinionDeaths)if(d.id==target)death=d;
-            if(death!=null&&corpses.TryGetValue(DeathKey(death),out var corpse)){var half=ArrowHalf(corpse,bone,local);if(!half.ShownBone(bone))return false;world=BowN(half.PresentedBone(bone));return true;}
+            if(death!=null&&corpses.TryGetValue(DeathKey(death),out var corpse))return ArrowOnCorpse(corpse,r,out world,out model,out opacity);
             // A horde add (NativeHordeGorePresentation.cs): its live or falling rig, then its corpse; none once gibbed or gone.
             if(target>=10000)return HordeArrowBone(target,bone,out world);
             if(bowArena!=null){var p=PilotOf(bowArena,target);if(p==null||p.Hp<=0)return false;}
-            if(rigs.TryGetValue(target,out var rig)&&rig?.Bones!=null){world=BowN(rig.Bones[bone].localToWorldMatrix);return true;}
-            return false;
+            if(!rigs.TryGetValue(target,out var rig)||rig?.Bones==null||BladeHidesHud(target))return false;
+            if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&!ClassicBodies)
+            {
+                if(!body.Root.activeSelf||body.PosedFrame!=Time.frameCount)return false;
+                var bones=body.Binding?.Bones;
+                if(r.Model>=0&&bones!=null&&r.Model<bones.Length&&bones[r.Model]!=null){world=BowN(bones[r.Model].localToWorldMatrix);model=true;return true;}
+                world=BowN(VisualJointFrame(rig,bone));return true;
+            }
+            if(FirstPerson&&target==LocalId||PilotsOffStage)return false;
+            world=BowN(rig.Bones[bone].localToWorldMatrix);return true;
+        }
+        /// <summary>Whether a hit on a pilot waits for the drawn pose to reach it (Core NativeArrowGib.Due): a guest draws the other
+        /// pilots about a tenth of a second behind its newest frame, where the arrow is still in flight; not its own predicted
+        /// pilot, a dead one (its corpse wears the pose last drawn) or one more than a second ahead.</summary>
+        private bool BowWaits(NativeArena arena,in ArenaEvent e,float time)=>arena.Replica&&e.Target<10000&&e.Target!=LocalId&&e.Time-time<1&&(PilotOf(arena,e.Target)?.Hp??0)>0;
+        /// <summary>A bow hit's arrow into its pilot (or a horde add drawn with its kind's model, whose corpse keeps it): lodged
+        /// halfway into the part, or gone through it, on the body as drawn (NativeArrowGibPresentation.cs).</summary>
+        private void BowStick(NativeArena arena,in ArenaEvent e,Vector3 dir,float draw,bool std,float time)
+        {
+            if(!rigs.TryGetValue(e.Target,out var rig)||rig?.Bones==null){if(e.Target<10000||!HordeKindDrawn(e.Target)||!minionRigs.TryGetValue(e.Target,out rig)||rig?.Bones==null)return;}
+            ArrowStrike(arena,e,rig,NativeArena.Vec(e.Position),dir,draw,std,time);
         }
         private NativePilot BowSource(NativeArena arena,int id){var p=PilotOf(arena,id);return p!=null&&NativeBowWire.Is(p.Seat.spec)?p:null;}
         /// <summary>WeaponFx, after the gun kit: the frame's bow effects (on the pose clock), the stuck arrows and the slow tints.</summary>
@@ -183,13 +213,15 @@ namespace ChipArena.UnityConversion
             float q=Mathf.Clamp01(WeaponEffectsQuality);bool low=LowGraphics;
             BowVanished(arena,time);
             NativeBowFx.Draw(bowSink,bowScene,time,q,low);
-            bowStuck.Update(time);bowBone??=BowBone;bowStuck.Draw(bowSink,time,bowBone);ArrowBleeds(time);
+            bowStuck.Update(time);ArrowSeatsDone();bowBone??=BowBone;bowStuck.Draw(bowSink,time,bowBone);ArrowBleeds(time);
             // The slow tint on pilots a rain arrow hit.
             foreach(var p in arena.Pilots){if(p.Hp<=0||!bowSlow.TryGetValue(p.Seat.id,out float at))continue;float w=NativeBowFx.SlowWeight(at,time);if(w>0)NativeBowFx.SlowTint(bowSink,BowN(p.Body.position-Vector3.up*.865f),w,time,p.Seat.id,q,low);}
         }
         private void BowEvents(NativeArena arena,float time)
         {
             var events=arena.Events;int newest=0;for(int i=0;i<events.Count;i++)newest=Math.Max(newest,events[i].Id);if(newest<bowCursor)bowCursor=0;
+            // A guest's waiting hits whose moment the drawn pose has reached (or whose pilot died meanwhile).
+            for(int i=0;i<bowLater.Count;){var l=bowLater[i];if(!NativeArrowGib.Due(l.Event.Time,time,BowWaits(arena,l.Event,time))){i++;continue;}bowLater.RemoveAt(i);BowStick(arena,l.Event,l.Dir,l.Draw,l.Standard,time);}
             for(int i=0;i<events.Count;i++)
             {
                 var e=events[i];if(e.Id<=bowCursor)continue;
@@ -203,14 +235,12 @@ namespace ChipArena.UnityConversion
                 if(!NativeBowWire.Sticks(e,source.Seat.spec))continue;
                 var r=NativeBowWire.Of(source.Pose);if(NativeBowFx.RainHit(r,BowN(at),e.Time))bowSlow[e.Target]=e.Time;
                 if(e.Detail=="field")continue;
-                // A pilot's rig, or a horde add drawn with its kind's model (the arrow lodges in the zombie and stays with its corpse).
-                if(!rigs.TryGetValue(e.Target,out var rig)||rig?.Bones==null){if(e.Target<10000||!HordeKindDrawn(e.Target)||!minionRigs.TryGetValue(e.Target,out rig)||rig?.Bones==null)continue;}
-                // The struck joint (nearest the replicated hit point on the posed rig) and the arrow in its frame.
-                bowJointRig=rig;bowJoint??=b=>BowN(bowJointRig.Bones[b].localToWorldMatrix);int bone=NativeBowStuck.Nearest(bowJoint,BowN(at));
-                // Lodged halfway into the part, or gone through it (NativeArrowGibPresentation.cs).
-                ArrowStrike(arena,e,rig,bone,at,dir,draw,std);
+                // A guest's hit on another pilot waits for the drawn pose to reach it (the arrow is still in flight there).
+                if(!NativeArrowGib.Due(e.Time,time,BowWaits(arena,e,time))&&bowLater.Count<64){bowLater.Add(new BowLater{Event=e,Dir=dir,Draw=draw,Standard=std});continue;}
+                BowStick(arena,e,dir,draw,std,time);
             }
             bowCursor=Math.Max(bowCursor,newest);
+            ArrowSeatsStart();
             // Bounded maps: drop shots and velocities no longer in flight.
             if(bowShots.Count>256||bowVelocity.Count>256){bowStale.Clear();foreach(int id in bowVelocity.Keys){bool live=false;foreach(var b in arena.Bullets)if(b.Id==id){live=true;break;}if(!live)bowStale.Add(id);}foreach(int id in bowStale){bowVelocity.Remove(id);bowShots.Remove(id);}}
         }

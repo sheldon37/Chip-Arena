@@ -225,20 +225,25 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// Arrows that stick (cosmetic, from replicated hit points): in a wall or the floor for six seconds (faded over the last
-    /// .4 s), in a pilot until it respawns or the round ends, riding the struck body part's joint (the live rig, the corpse
-    /// after a death, a severed part's own joint, the half of a split body it sat on), its head buried along the flight
-    /// (a pilot's arrow about halfway into the struck part, NativeArrowGib.Lodge). A pilot's record may also be a bare hole
-    /// (an arrow that went through: its entry and exit bleed, nothing is drawn). A fixed pool (no allocation per frame): at
-    /// most PerPilot in one pilot and Capacity in all (the oldest go first); the low graphics tier keeps fewer.
+    /// .4 s), in a pilot until it respawns or the round ends, riding the struck body part (the live body, the corpse after a
+    /// death, a severed part, the half of a split body it sat on), its head buried along the flight (a pilot's arrow about
+    /// halfway into the struck part, NativeArrowGib.Lodge). On a drawn model body (owner 2026-11-18: "they sometimes 'attach'
+    /// off of a players body ... running around with floating arrows around them") it rides the model's own bone where its
+    /// flight met the skin (NativeArrowGib.Seat), not the game joint, whose pose and boxes the model does not follow; it waits
+    /// unseen (Seating) the frame or two that search takes. A pilot's record may also be a bare hole (an arrow that went
+    /// through: its entry and exit bleed, nothing is drawn). A fixed pool (no allocation per frame): at most PerPilot in one
+    /// pilot and Capacity in all (the oldest go first); the low graphics tier keeps fewer.
     /// </summary>
     public sealed class NativeBowStuck
     {
         public const int Capacity=128,PerPilot=12,LowCapacity=48;public const float WallLife=6,FadeOut=.4f,Bury=.14f;
         public enum Kind:byte{None,Wall,Pilot}
-        /// <summary>One stuck arrow or arrow hole. Point and Dir: world for a wall, the joint's frame for a pilot (Point the entry
-        /// on the part's surface). Depth: how far the head is buried past Point. Hole: an arrow went through here (nothing is
-        /// drawn). Blood: how hard the point bleeds (0 none; NativeArrowGib), Bled the drops it has dripped.</summary>
-        public struct Record{public Kind Kind;public int Event,Target,Bone,Bled;public Vector3 Point,Dir;public float Born,Draw,Depth,Blood;public bool Standard,Hole;}
+        /// <summary>One stuck arrow or arrow hole. Point and Dir: world for a wall, the game joint's frame for a pilot (Point the
+        /// entry on the part's surface). Depth: how far the head is buried past Point. Model: the drawn model's bone it rides
+        /// (the presentation's index; -1 none), ModelPoint, ModelDir and ModelDepth its place in that bone's frame; Seating: that
+        /// place is still being found (drawn nowhere meanwhile). Hole: an arrow went through here (nothing is drawn). Blood: how
+        /// hard the point bleeds (0 none; NativeArrowGib), Bled the drops it has dripped.</summary>
+        public struct Record{public Kind Kind;public int Event,Target,Bone,Bled,Model;public Vector3 Point,Dir,ModelPoint,ModelDir;public float Born,Draw,Depth,ModelDepth,Blood;public bool Standard,Hole,Seating;}
         private readonly Record[] records=new Record[Capacity];public int Count{get;private set;}
         public Record this[int i]=>records[i];
         private int Find(int evt){for(int i=0;i<Count;i++)if(records[i].Event==evt)return i;return -1;}
@@ -252,19 +257,33 @@ namespace ChipArena.UnityConversion
         /// <summary>An arrow in a wall or the floor at `point` along `dir` (world; once per event id).</summary>
         public void AddWall(int evt,Vector3 point,Vector3 dir,float time,float draw,bool standard,bool low=false)
         {
-            if(Find(evt)>=0)return;int s=Slot(0,low);records[s]=new Record{Kind=Kind.Wall,Event=evt,Point=point,Dir=Unit(dir),Born=time,Draw=draw,Standard=standard,Depth=Bury};
+            if(Find(evt)>=0)return;int s=Slot(0,low);records[s]=new Record{Kind=Kind.Wall,Event=evt,Model=-1,Point=point,Dir=Unit(dir),Born=time,Draw=draw,Standard=standard,Depth=Bury};
         }
         /// <summary>An arrow in pilot `target`'s joint `bone`: `local` the hit point (or the entry on the part's surface) and
         /// `localDir` the flight in that joint's frame, its head `depth` m past it; `blood` how hard its point bleeds.</summary>
         public void AddPilot(int evt,int target,int bone,Vector3 local,Vector3 localDir,float time,float draw,bool standard,bool low=false,float depth=Bury,float blood=0)
         {
-            if(Find(evt)>=0)return;int s=Slot(target,low);records[s]=new Record{Kind=Kind.Pilot,Event=evt,Target=target,Bone=bone,Point=local,Dir=Unit(localDir),Born=time,Draw=draw,Standard=standard,Depth=depth,Blood=blood};
+            if(Find(evt)>=0)return;int s=Slot(target,low);records[s]=new Record{Kind=Kind.Pilot,Event=evt,Target=target,Bone=bone,Model=-1,Point=local,Dir=Unit(localDir),Born=time,Draw=draw,Standard=standard,Depth=depth,Blood=blood};
         }
         /// <summary>An arrow's hole in pilot `target`'s joint `bone` (an arrow that went through: its entry or its exit), which
         /// only bleeds (`blood`); `local` and `localDir` as for <see cref="AddPilot"/>.</summary>
         public void AddHole(int evt,int target,int bone,Vector3 local,Vector3 localDir,float time,float blood,bool low=false)
         {
-            if(Find(evt)>=0)return;int s=Slot(target,low);records[s]=new Record{Kind=Kind.Pilot,Event=evt,Target=target,Bone=bone,Point=local,Dir=Unit(localDir),Born=time,Standard=true,Hole=true,Blood=blood};
+            if(Find(evt)>=0)return;int s=Slot(target,low);records[s]=new Record{Kind=Kind.Pilot,Event=evt,Target=target,Bone=bone,Model=-1,Point=local,Dir=Unit(localDir),Born=time,Standard=true,Hole=true,Blood=blood};
+        }
+        /// <summary>Holds event `evt`'s pilot record back (`on`) while where it sits on the drawn model is found, or lets it draw
+        /// again on its game joint (the search found nothing). False when there is no such record.</summary>
+        public bool Seating(int evt,bool on)
+        {
+            int i=Find(evt);if(i<0||records[i].Kind!=Kind.Pilot)return false;records[i].Seating=on;return true;
+        }
+        /// <summary>Event `evt`'s pilot record seated on the drawn model: its bone `model` (the presentation's index), the entry
+        /// `point` and the flight `dir` in that bone's frame, the head `depth` m past the entry; it draws there from now on. False
+        /// when the record is gone (a respawn, the round's end, the pool's turnover).</summary>
+        public bool Seat(int evt,int model,Vector3 point,Vector3 dir,float depth)
+        {
+            int i=Find(evt);if(i<0||records[i].Kind!=Kind.Pilot||model<0)return false;ref var r=ref records[i];
+            r.Model=model;r.ModelPoint=point;r.ModelDir=Unit(dir);r.ModelDepth=depth;r.Seating=false;return true;
         }
         /// <summary>Records that point `i` has dripped `drops` so far.</summary>
         public void Bleed(int i,int drops){if(i>=0&&i<Count)records[i].Bled=drops;}
@@ -285,18 +304,25 @@ namespace ChipArena.UnityConversion
         public int Pilot(int target){int n=0;for(int i=0;i<Count;i++)if(records[i].Kind==Kind.Pilot&&records[i].Target==target)n++;return n;}
         /// <summary>The opacity a record shows at `time` (walls fade over their last FadeOut).</summary>
         public static float Opacity(in Record r,float time)=>r.Kind==Kind.Wall?NativeBow.Clamp01((WallLife-(time-r.Born))/FadeOut):1;
-        /// <summary>Resolves a pilot's joint to its world matrix (Unity), from the live rig or its corpse (`local`: the arrow's point
-        /// in that joint, which says which half of a split body carries it); false hides the arrow.</summary>
-        public delegate bool BoneOf(int target,int bone,Vector3 local,out Matrix4x4 world);
-        /// <summary>Draws every stuck arrow: walls in the world, pilots' through `bone` (the head buried its Depth along the
-        /// flight); holes draw nothing.</summary>
+        /// <summary>Where pilot record `r` is drawn this frame: `world` the frame its place is in (Unity), `model` true when that
+        /// is its bone on the drawn model (ModelPoint, ModelDir, ModelDepth), false its game joint (Point, Dir, Depth; on a
+        /// corpse its part, the half of a split body its point says); `opacity` the body's (a corpse dissolving). False hides the
+        /// arrow (its body is not drawn, its part is gone).</summary>
+        public delegate bool BoneOf(in Record r,out Matrix4x4 world,out bool model,out float opacity);
+        /// <summary>Pilot record `r`'s entry point, flight and head depth (world) in frame `world` (its model bone's when `model`).</summary>
+        public static void Placed(in Record r,in Matrix4x4 world,bool model,out Vector3 point,out Vector3 dir,out float depth)
+        {
+            point=Vector3.Transform(model?r.ModelPoint:r.Point,world);dir=Unit(Vector3.TransformNormal(model?r.ModelDir:r.Dir,world));depth=model?r.ModelDepth:r.Depth;
+        }
+        /// <summary>Draws every stuck arrow: walls in the world, pilots' through `bone` (the head buried its depth along the
+        /// flight); holes and records still being seated draw nothing.</summary>
         public void Draw(IBowFxSink sink,float time,BoneOf bone)
         {
             for(int i=0;i<Count;i++)
             {
-                var r=records[i];if(r.Hole)continue;Vector3 point=r.Point,dir=r.Dir;
-                if(r.Kind==Kind.Pilot){if(bone==null||!bone(r.Target,r.Bone,r.Point,out var m))continue;point=Vector3.Transform(r.Point,m);dir=Unit(Vector3.TransformNormal(r.Dir,m));}
-                var head=point+dir*r.Depth;sink.Arrow(head-dir*NativeBow.ArrowLength,dir,Opacity(r,time),false,r.Standard);
+                var r=records[i];if(r.Hole)continue;Vector3 point=r.Point,dir=r.Dir;float depth=r.Depth,opacity=Opacity(r,time);
+                if(r.Kind==Kind.Pilot){if(r.Seating||bone==null||!bone(r,out var m,out bool model,out float shown))continue;Placed(r,m,model,out point,out dir,out depth);opacity*=shown;}
+                var head=point+dir*depth;sink.Arrow(head-dir*NativeBow.ArrowLength,dir,opacity,false,r.Standard);
             }
         }
         /// <summary>The joint nearest a hit point among a posed rig's joints (Unity world matrices) that can carry an arrow: the
