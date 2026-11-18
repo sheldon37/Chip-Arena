@@ -498,13 +498,34 @@ either way. Station frame: metres, x right, z away from the default camera, y up
     none.
 - **Deploy console:** "roll destinations to deploy", "waiting for the party", DEPLOY (host only; guests see "waiting for the
   host"), then deploying.
-- **Deploy sequence** (owner 2026-11-02: "we get 'ejected' down"; the gate no longer opens):
-  - the machines dim (0.6 s) and clamp (0.2–0.5 s);
+- **Deploy sequence** (owner 2026-11-02: "we get 'ejected' down"; the gate no longer opens; 2026-11-18, W3 of
+  `docs/EXPEDITION-OVERHAUL.md`: "a more realistic drop-in ... give the players an animation when they fall"; Core
+  `NativeDeployEject`, the models `NativeDeployEjectModels`):
+  - the machines dim (0.6 s) and clamp (0.2–0.5 s), the room's light bars turn red and pulse with the klaxon;
   - the occupied pads sound the alarm, flashing red (0.15–1.23 s);
-  - their hatches split open over a lit well (0.9–1.25 s);
-  - each pilot drops through its pad in turn (from 1.35 s, 0.09 s apart), with a burst of light up its shaft;
-  - the screen fades (3.4–4 s);
-  - the travel hand-off starts at 4 s, unchanged.
+  - every pilot drops into a ready crouch from 0.4 s (the pack Jump take's gather, `NativePackJumps`);
+  - their hatches split open over lit drop tubes (0.9–1.25 s): an occupied pad opens into its ring (`PadRing`) and the floor
+    leaves a hole under every pad for its tube;
+  - each pilot falls through its pad in turn (from 1.35 s, 0.09 s apart) at 9.8 m/s², only ever down: the Jump take's arm
+    throw into the Fall loop, a burst of light up its shaft;
+  - my camera cuts to my tube 0.35 s after my drop (looking straight down, the ring lights chasing up every 0.12 s, my pilot
+    below), then to my seat as my pilot lands (2.7 s on the host's pad): the Chair pose with a land compression in the seat of
+    my pod docked under the tube, the harness bar down in 0.15 s, the cabin red, the roof hatch sealing;
+  - from 3.4 s (0.09 s a pad, never before its pilot is sealed in) the clamps fire and each pod drops out of the station's
+    belly over the rolled city (the blueprint drawn as dark blocks, sodium roads and the districts' halls), my camera beside
+    my pod at its clamps and tipping down after it as it falls; the pods hang at two depths, alternating along the pad arc, so they clear each other under pads 1.53 m apart;
+  - a white rush (4.8 s), then the fade into the cradle card (5.15–5.6 s);
+  - the travel hand-off at 5.6 s (`TravelAt`; the host waits on it, so a run starts 1.6 s later than at 4 s).
+  - The 4 s variant (`NativeDeployEject.Cut.Short`, the DEV preview's "Eject: 4 s") keeps every beat but the release shot.
+  - The tube, seat, belly, clamp and city models are drawn only after Deploy and only for occupied pads (DeployPerformanceChecks);
+    the pods are the hub's own pod model from the source-model bank in each pilot's pod look; the poses are game-rig tracks, so
+    the visual, voxel and Classic bodies play them alike. The sounds are Claude's table (`NativeEjectSounds`), not
+    `NativeDeploySounds`.
+- **The cradle card** (a pod run's first load): the console's fade and then the loading screen draw the inside of my pod
+  (`NativeCradleCard`, `Runtime/NativeCradleHud.cs`): the porthole, the run's map in a night palette with each pod's streak,
+  the altimeter (12,000 m to 600 m with the load), a lamp per member (READY, LOADING n%, LOST), the mutators' lamps and PODS
+  AWAY · GOOD HUNTING. On a pod run every peer holds on the card until the hub's countdown starts (`PodCradleHold`, a game
+  hold in `StageSignals`), then it lifts away; the hub's pilots stay hidden while it waits in Lobby.
 - **Display tables:**
   - **Destinations:** Ward Zero (quarantine green), Central Station (transit cyan), City Ironworks (foundry orange). A new
     instance falls back to its theme's look, then to neutral.
@@ -572,7 +593,8 @@ Branch `claude/deployment-station`. Presentation only, built on the rules above;
     wild-card back until rolled.
   - **Stamps:** PENDING until Deploy, ACTIVE after.
   - **Deploy:** the machines dim and the party is ejected down through its pads (the Deploy sequence above), framed from
-    in front of the pads; the gate stays shut with its doors flashing red. The map freezes at Deploy. Each light burst is
+    in front of the pads, then the eject's own shots on each viewer's pad (`NativeDeployEject.ShotOf`: the tube, the seat,
+    the release; they cut in); the gate stays shut with its doors flashing red. The map freezes at Deploy. Each light burst is
     a soft ribbon with a bright core, fading upward, turned to face the camera about its pad.
   - **Each frame:** the camera eases between `ShotOf` shots. It sets the lights and floor light pools, and the
     console's host controls (`ControlsOf`).

@@ -160,10 +160,11 @@ namespace ChipArena.UnityConversion
         }
         private static Color PodLinear(int rgb){var c=new Color(((rgb>>16)&255)/255f,((rgb>>8)&255)/255f,(rgb&255)/255f,1);return QualitySettings.activeColorSpace==ColorSpace.Linear?c.linear:c;}
         // My own pod in third person once its door is open: drawn in see-through glass while it stands between my camera and my
-        // pilot (stepping out of it with the camera behind), so it never walls off my view.
+        // pilot (stepping out of it with the camera behind), so it never walls off my view. Solid while I ride in its cabin
+        // (NativePodRidePresentation.cs: the ride's camera is placed before this frame's pods are drawn).
         private float PodOpacity(PodView pod,int me)
         {
-            var f=pod.Frame;if(FirstPerson||!f.Shown)return 1;var eye=WorldEye;if(eye==null||!visualPositions.TryGetValue(me,out var pilot))return 1;
+            var f=pod.Frame;if(FirstPerson||!f.Shown||PodRideActive)return 1;var eye=WorldEye;if(eye==null||!visualPositions.TryGetValue(me,out var pilot))return 1;
             var cam=eye.transform.position;Vector2 a=new Vector2(cam.x,cam.z),b=new Vector2(pilot.x,pilot.z),c=new Vector2(pod.Spot.x,pod.Spot.z),ab=b-a;
             float t=ab.sqrMagnitude>1e-4f?Mathf.Clamp01(Vector2.Dot(c-a,ab)/ab.sqrMagnitude):0,d=Vector2.Distance(a+ab*t,c);
             float near=1-Mathf.SmoothStep(0,1,(d-.75f)/.5f);return 1-.72f*near;

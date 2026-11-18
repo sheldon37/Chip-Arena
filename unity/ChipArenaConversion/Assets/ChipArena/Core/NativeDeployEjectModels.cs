@@ -104,7 +104,9 @@ namespace ChipArena.UnityConversion
         /// feet) and the backrest's face; the harness bar's pivot (the seat's top-back).</summary>
         public const float CushionTop=NativePodModels.Floor+.33f,BackZ=-.2f;
         public static readonly Vector3 HarnessPivot=new Vector3(0,NativePodModels.Floor+1.18f,-.17f);
-        /// <summary>The harness bar's turn about x (radians) from 0 (down on the chest) to raised (Raised, behind the headrest).</summary>
+        /// <summary>The crossbar's centre from the pivot when the bar is down (in front of the seated pilot's stomach).</summary>
+        public static readonly Vector3 Bar=new Vector3(0,-.46f,.46f);
+        /// <summary>The harness bar's turn about x (radians) from 0 (down on the chest) to raised (Raised, up over the headrest).</summary>
         public const float Raised=-1.7f;
         public static float HarnessAngle(float down)=>Raised*(1-Math.Max(0,Math.Min(1,down)));
         public static WeaponMesh SeatModel()
@@ -131,17 +133,19 @@ namespace ChipArena.UnityConversion
         public static WeaponMesh HarnessModel()
         {
             var mesh=new WeaponMesh{Spec="deploy-"+Harness,Tier=0};var s=new WeaponSculpt(mesh,0);s.Into(Body);
+            // over the shoulders (the pads) and down to the crossbar in front of the stomach, where the hands take its grips
+            float by=Bar.Y,bz=Bar.Z;
             foreach(int side in new[]{-1,1})
             {
-                var path=new[]{V(side*.15f,0,0),V(side*.18f,.02f,.18f),V(side*.2f,-.12f,.36f),V(side*.2f,-.27f,.45f)};
+                var path=new[]{V(side*.15f,0,0),V(side*.19f,.03f,.2f),V(side*.21f,-.18f,.4f),V(side*.2f,by,bz)};
                 s.Tube(Steel,path,.022f,10,Vector3.UnitY,1,true);
-                s.Tube(Pad,new[]{V(side*.18f,.03f,.12f),V(side*.2f,-.06f,.32f),V(side*.2f,-.2f,.42f)},.045f,10,Vector3.UnitY,1,true);
+                s.Tube(Pad,new[]{V(side*.18f,.04f,.14f),V(side*.2f,-.04f,.33f),V(side*.21f,-.22f,.42f)},.05f,10,Vector3.UnitY,1,true);
             }
-            s.Tube(Steel,new[]{V(-.2f,-.27f,.45f),V(.2f,-.27f,.45f)},.025f,10,Vector3.UnitY,1,true);
-            s.Tube(Pad,new[]{V(-.14f,-.27f,.45f),V(.14f,-.27f,.45f)},.05f,12,Vector3.UnitY,1,true);
-            foreach(int side in new[]{-1,1})s.Box(GraphiteDark,V(side*.2f,-.27f,.45f),V(.06f,.09f,.06f),.015f);
+            s.Tube(Steel,new[]{V(-.2f,by,bz),V(.2f,by,bz)},.025f,10,Vector3.UnitY,1,true);
+            s.Tube(Pad,new[]{V(-.1f,by,bz),V(.1f,by,bz)},.05f,12,Vector3.UnitY,1,true);
+            foreach(int side in new[]{-1,1})s.Box(GraphiteDark,V(side*.17f,by,bz),V(.07f,.1f,.07f),.015f);
             s.Box(SteelDark,V(0,0,0),V(.34f,.06f,.06f),.015f);
-            s.Into(Lights);s.Box(Lamp(0xffffff),V(0,-.27f,.505f),V(.08f,.02f,.008f));
+            s.Into(Lights);s.Box(Lamp(0xffffff),V(0,by,bz+.055f),V(.08f,.02f,.008f));
             return mesh;
         }
 

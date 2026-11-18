@@ -234,7 +234,13 @@ namespace ChipArena.UnityConversion
                             var root=NativeDeployEject.PodRoot(mine,t,cut);Matrix4x4.Invert(root,out var inv);var e=Vector3.Transform(v.Eye,inv);
                             Check(e.Y>NativeDeployEject.CabinFloor+.5f&&e.Y<NativeDeployEject.PodHeight-.5f&&Math.Abs(e.X)<.4f&&e.Z>.2f&&e.Z<NativePodModels.Hinge.Z-.05f,"the seat shot is inside my pod, in its doorway (pad "+mine+" "+e+")");
                         }
-                        if(s==NativeDeployPresentation.Shot.Release)Check(v.Eye.Y<NativeDeployEjectModels.BellyBottom&&Xz(v.Eye,pad)>NativePodModels.Radius+.8f&&v.Target.Y<v.Eye.Y,"the release shot is under the belly beside my pod, looking down (pad "+mine+")");
+                        if(s==NativeDeployPresentation.Shot.Release)
+                        {
+                            Check(v.Eye.Y<NativeDeployEjectModels.BellyBottom&&Xz(v.Eye,pad)>NativePodModels.Radius+.8f,"the release shot is under the belly beside my pod (pad "+mine+")");
+                            var podAt=Vector3.Transform(new Vector3(0,NativeDeployEject.PodHeight*.5f,0),NativeDeployEject.PodRoot(mine,t,cut));
+                            if(t<NativeDeployEject.RushAt)Check(Vector3.Dot(Vector3.Normalize(podAt-v.Eye),Vector3.Normalize(v.Target-v.Eye))>Math.Cos(v.Fov*.5f*Math.PI/180),"my pod stays in the release shot until the rush (pad "+mine+" at "+t+")");
+                            if(t>NativeDeployEject.ReleaseOf(mine)+NativeDeployEject.ReleaseFollow)Check(v.Target.Y<v.Eye.Y-5,"the release shot then looks down after it to the city (pad "+mine+" at "+t+")");
+                        }
                     }
                     var want=cut==NativeDeployEject.Cut.Full?new[]{NativeDeployPresentation.Shot.Deploy,NativeDeployPresentation.Shot.Tube,NativeDeployPresentation.Shot.Seat,NativeDeployPresentation.Shot.Release}:new[]{NativeDeployPresentation.Shot.Deploy,NativeDeployPresentation.Shot.Tube,NativeDeployPresentation.Shot.Seat};
                     Check(seen.SequenceEqual(want),"pad "+mine+"'s shots in order ("+cut+": "+string.Join(",",seen)+")");

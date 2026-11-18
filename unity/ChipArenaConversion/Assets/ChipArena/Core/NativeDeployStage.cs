@@ -266,7 +266,8 @@ namespace ChipArena.UnityConversion
                 bool here=i<seats,ready=here&&f.Ready!=null&&i<f.Ready.Length&&f.Ready[i];var at=NativeDeployPresentation.Pad(i);
                 seat[i]=!here?Grey(.12f):ready?Col(0x6dffa8,2.2f):Col(0xffb02e,1.1f+.6f*pulse);
                 if(deployed&&here)seat[i]=dep.Alarm?(alarmOn?Col(0xff3a3a,2.8f):Col(0xff3a3a,.5f)):Col(0x9ff0ff,2.2f+2*dep.Hatch);
-                ref var pad=ref Add(deployed&&here?Model.PadRing:Model.Pad,T(at));pad.Light=seat[i];if(here)Pool(at,2f,2f,0,seat[i]*.16f);
+                // an open pad's pool of light drains into its opening as the hatch irises (the tube shot's eye drops through it)
+                ref var pad=ref Add(deployed&&here?Model.PadRing:Model.Pad,T(at));pad.Light=seat[i];if(here)Pool(at,2f,2f,0,seat[i]*(.16f*(deployed?1-dep.Hatch:1)));
                 if(!deployed||!here)continue;
                 float drop=NativeDeployEject.Drop(i,since,cut),open=dep.Hatch*NativeDeployModels.HatchTravel;
                 var glow=dep.Alarm?(alarmOn?Col(0xff3a3a,2.6f):Col(0xff3a3a,.5f)):Col(0x9ff0ff,1.6f+2.4f*Smooth(1-drop/2));
@@ -452,19 +453,20 @@ namespace ChipArena.UnityConversion
                 }
                 case NativeDeployPresentation.Shot.Seat:
                 {
-                    l.Clear();l.Background=Hx(0x020203,1);l.Fog=Hx(0x050306,1);l.FogNear=3;l.FogFar=16;l.Sky=Hx(0x40507a,.35f);l.Ground=Hx(0x1a0a0c,.4f);
-                    l.Directional(S(new Vector3(0,1,.3f)),Hx(0xffd0c0,.12f));
+                    l.Clear();l.Background=Hx(0x020203,1);l.Fog=Hx(0x050306,1);l.FogNear=3;l.FogFar=16;l.Sky=Hx(0x40507a,.22f);l.Ground=Hx(0x1a0a0c,.3f);
+                    l.Directional(S(new Vector3(0,1,.3f)),Hx(0xffd0c0,.1f));
                     var pod=NativeDeployEject.PodRoot(mine,since,cut);Vector3 P(float x,float y,float z)=>Vector3.Transform(new Vector3(x,y,z),pod);
                     float landed=since-NativeDeployEject.LandAt(mine),seal=NativeDeployEject.Seal(mine,since),cabin=Smooth(landed/.25f);
-                    // the cabin goes red; the white from the roof hatch dies as it seals; a cool spill through the door's porthole
-                    l.Add(S(P(0,NativeDeployEject.PodHeight-.55f,-.25f)),Hx(0xff2a1e,3+7*cabin),3.2f);
-                    l.Add(S(P(.3f,1.1f,-.35f)),Hx(0xff3a2a,1.5f+3*cabin),2.2f);
-                    l.Add(S(P(-.3f,1.1f,-.35f)),Hx(0xff3a2a,1.5f+3*cabin),2.2f);
-                    l.Add(S(P(0,NativeDeployEject.PodHeight+.2f,0)),Hx(0xe6f0ff,12*(1-seal)),3.6f);
-                    l.Add(S(P(0,1.4f,.75f)),Hx(0x7fa8ff,1.6f),2.4f);
-                    l.Add(S(P(0,.45f,.55f)),Hx(0xff6a3a,1.2f*cabin),1.6f);
-                    l.Add(S(P(.5f,1.9f,.3f)),Hx(0xffb48a,.8f),2.2f);
-                    l.Add(S(P(-.5f,1.9f,.3f)),Hx(0xffb48a,.8f),2.2f);
+                    // the cabin goes red (a deep red, the white hull only a glow at arm's length); the white from the roof
+                    // hatch dies as it seals; a cool spill through the door's porthole on my visor
+                    l.Add(S(P(0,NativeDeployEject.PodHeight-.55f,-.25f)),Hx(0xff2a1e,1+2*cabin),2.6f);
+                    l.Add(S(P(.3f,1.1f,-.35f)),Hx(0xff3a2a,.5f+1*cabin),1.8f);
+                    l.Add(S(P(-.3f,1.1f,-.35f)),Hx(0xff3a2a,.5f+1*cabin),1.8f);
+                    l.Add(S(P(0,NativeDeployEject.PodHeight+.2f,0)),Hx(0xe6f0ff,4.5f*(1-seal)),3.2f);
+                    l.Add(S(P(0,1.4f,.75f)),Hx(0x7fa8ff,1.1f),2f);
+                    l.Add(S(P(0,.45f,.55f)),Hx(0xff6a3a,.6f*cabin),1.2f);
+                    l.Add(S(P(.5f,1.9f,.3f)),Hx(0xffb48a,.3f),1.8f);
+                    l.Add(S(P(-.5f,1.9f,.3f)),Hx(0xffb48a,.3f),1.8f);
                     return;
                 }
                 case NativeDeployPresentation.Shot.Release:

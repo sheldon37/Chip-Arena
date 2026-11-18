@@ -54,13 +54,22 @@ namespace ChipArena.UnityConversion
         /// <summary>The drop tube (station frame): its inner radius and its top just under the floor plates.</summary>
         public const float TubeRadius=.46f,TubeTop=-.03f;
         /// <summary>The tube shot: the eye's height over the pad's top as it starts and the share of my pilot's drop it follows
-        /// (so my pilot falls away below it); the release shot's eye beside my pod.</summary>
-        public const float TubeEye=2.6f,TubeFollow=.74f,ReleaseOut=4.4f,ReleaseRise=1.1f;
+        /// (so my pilot falls away below it).</summary>
+        public const float TubeEye=2.6f,TubeFollow=.74f;
+        /// <summary>The seat shot (my pod's frame over its cabin floor): the eye in the doorway at my visor's height, the point it
+        /// looks at on my pilot and its lens (the cabin is 1.25 m across: a wide lens frames helmet to chest).</summary>
+        public const float SeatEyeY=1.14f,SeatEyeZ=.6f,SeatLookY=1.09f,SeatFov=68f;
+        /// <summary>The release shot: the eye outboard of my docked pod (out from the table, along the arc) and over its middle,
+        /// level with the clamps under the belly; the tilt that keeps the falling pod above the frame's middle and the seconds
+        /// the eye takes to tip down from the clamps to follow it.</summary>
+        public const float ReleaseOut=2.4f,ReleaseSide=.9f,ReleaseRise=1.3f,ReleaseTilt=.24f,ReleaseFollow=.8f,ReleaseFov=60f;
         /// <summary>The rolled city under the station (the blueprint drawn like Preview): its level and scale.</summary>
         public const float CityY=-140f,CityScale=.6f;
 
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
         private static float Smooth(float x){x=Clamp01(x);return x*x*(3-2*x);}
+        // A direction's pitch over the horizontal (radians, + up).
+        private static float Pitch(Vector3 d)=>(float)Math.Atan2(d.Y,Math.Sqrt(d.X*d.X+d.Z*d.Z));
         private static int PadIndex(int pad)=>Math.Max(0,Math.Min(NativeDeployPresentation.Pads-1,pad));
         /// <summary>A brief bump 0..1..0 over `span` s from 0 (a land, a jolt).</summary>
         public static float Bump(float t,float span)=>!(t>0)||t>=span?0:(float)Math.Sin(Math.PI*t/span);
@@ -160,21 +169,26 @@ namespace ChipArena.UnityConversion
                 }
                 case NativeDeployPresentation.Shot.Seat:
                 {
-                    // in my pod's doorway, close on the seat: my pilot lands, the bar slams down, the hatch seals overhead
-                    var root=PodRoot(mine,since,cut);float jolt=.035f*Bump(since-LandAt(mine),.22f);
-                    var eye=Vector3.Transform(new Vector3(.06f,CabinFloor+1.3f-jolt,.58f),root);var at=Vector3.Transform(new Vector3(0,CabinFloor+1.02f-jolt*.5f,-.08f),root);
-                    return new NativeDeployPresentation.View{Eye=eye,Target=at,Fov=62};
+                    // in my pod's doorway at my visor's height, close on my pilot: it lands, the bar slams down over its
+                    // shoulders, the cabin turns red and the hatch seals overhead
+                    var root=PodRoot(mine,since,cut);float jolt=.03f*Bump(since-LandAt(mine),.22f);
+                    var eye=Vector3.Transform(new Vector3(.07f,CabinFloor+SeatEyeY-jolt,SeatEyeZ),root);var at=Vector3.Transform(new Vector3(0,CabinFloor+SeatLookY-jolt*.5f,0),root);
+                    return new NativeDeployPresentation.View{Eye=eye,Target=at,Fov=SeatFov};
                 }
                 case NativeDeployPresentation.Shot.Release:
                 {
-                    // outboard of the arc beside my docked pod, under the belly, watching it drop away over the city; the eye
-                    // tips down after it and, in the rush, plunges with it
+                    // outboard of the arc beside my docked pod, under the belly and level with its clamps: they fire and it
+                    // drops away; the eye tips down after it (the pod rides above the frame's middle) until the rolled city
+                    // fills the frame below it, and in the rush plunges after it (still looking down)
                     var outward=new Vector3(pad.X-NativeDeployPresentation.Table.X,0,pad.Z-NativeDeployPresentation.Table.Z);outward=outward.LengthSquared()>1e-4f?Vector3.Normalize(outward):-Vector3.UnitZ;
                     var side=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,f));var dock=new Vector3(pad.X,PodBase(mine)+PodHeight*.5f,pad.Z);
                     float rush=Rush(since,cut),plunge=rush*rush*26;
-                    var eye=dock+outward*ReleaseOut+side*1.3f+new Vector3(0,ReleaseRise-plunge,0);
-                    var pod=dock-new Vector3(0,PodFall(mine,since,cut),0);var at=Vector3.Lerp(pod,new Vector3(pod.X,CityY,pod.Z),.18f+.25f*rush);
-                    return new NativeDeployPresentation.View{Eye=eye,Target=at,Fov=58};
+                    var eye=dock+outward*ReleaseOut+side*ReleaseSide+new Vector3(0,ReleaseRise,0);
+                    var pod=dock-new Vector3(0,PodFall(mine,since,cut),0);var upper=pod+new Vector3(0,PodHeight*.25f,0);
+                    float a=Pitch(upper-eye),b=Pitch(pod-eye)-ReleaseTilt,pitch=Math.Max(-1.48f,a+(b-a)*Smooth((since-ReleaseOf(mine))/ReleaseFollow));
+                    var flat=new Vector3(pod.X-eye.X,0,pod.Z-eye.Z);flat=flat.LengthSquared()>1e-6f?Vector3.Normalize(flat):-outward;
+                    eye.Y-=plunge;var at=eye+(flat*(float)Math.Cos(pitch)+new Vector3(0,(float)Math.Sin(pitch),0))*10;
+                    return new NativeDeployPresentation.View{Eye=eye,Target=at,Fov=ReleaseFov};
                 }
                 default:return NativeDeployPresentation.ShotOf(shot);
             }
@@ -195,7 +209,7 @@ namespace ChipArena.UnityConversion
         /// from LoopAt over LoopBlend; the seat's catch from the fall over CatchSeconds and its compression (m, rig hips).</summary>
         public const float ThrowSeconds=.34f,LoopAt=.1f,LoopBlend=.3f,CatchSeconds=.09f,Compression=.085f,CompressionSeconds=.3f;
         /// <summary>Where the seated pilot's hands grip the harness bar once it is down (chest space, +x the rig's left).</summary>
-        public static readonly Vector3 GripLeft=new Vector3(.2f,-.2f,.33f),GripRight=new Vector3(-.2f,-.2f,.33f);
+        public static readonly Vector3 GripLeft=new Vector3(.17f,-.03f,.3f),GripRight=new Vector3(-.17f,-.03f,.3f);
         /// <summary>The pack set a spec's eject plays (its jump set; the Siren and any spec without one: Unarmed).</summary>
         public static int SetFor(string spec){int s=NativeJumpRules.SetFor(spec);return s<0?NativeJumpRules.Unarmed:s;}
 
