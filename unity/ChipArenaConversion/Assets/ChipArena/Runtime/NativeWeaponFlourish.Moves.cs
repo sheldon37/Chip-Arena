@@ -649,7 +649,7 @@ namespace ChipArena.UnityConversion
             }
             else
             {
-                if(boom<.14f)Flash(.4f*(1-boom/.14f),new Color(1,.9f,.6f));float u=M.OutCubic(Seg(boom,0,.5f));
+                if(boom<.14f)Flash(.3f*(1-boom/.14f),new Color(1,.9f,.6f));float u=M.OutCubic(Seg(boom,0,.5f));
                 if(boom<.32f){Dot(b,fs*(2.2f+7*boom/.32f),new Color(1,.6f,.2f,.6f*(1-boom/.32f)));Dot(b,fs*3.2f*(1-boom/.32f),Color.white);}
                 Ring(b,fs*(.6f+4.6f*u),new Color(1,.78f,.35f,.9f*(1-u)));Thin(b,fs*(.7f+5.8f*u),new Color(1,1,1,.75f*(1-u)));
                 for(int i=0;i<8;i++){float a=i*45+Rnd(223,i)*30;var q=b+Dir(a)*fs*1.9f*u;Dot(q,fs*(.9f+1.2f*u)*(1-.5f*u),new Color(1,.45f+.3f*Rnd(224,i),.15f,.5f*(1-u)));}
@@ -848,10 +848,10 @@ namespace ChipArena.UnityConversion
         // weapon's own signature in small.
         private static void Finisher(Plan.Move m,float t)
         {
-            float u=Seg(t,0,.5f),fade=1-Seg(t,.55f,Plan.Finish);
-            Pillar(fc,fs*.9f*(1+.3f*u),(1-Seg(t,.05f,.7f))*Seg(t,0,.04f));Dot(fc,fs*2.2f*(1-u),new Color(1,1,1,.55f*(1-u)));
-            Ring(fc,fs*(.5f+1.4f*M.OutCubic(u)),U.A(fa,.85f*(1-u)));Thin(fc,fs*(.6f+1.9f*M.OutCubic(Seg(t,.04f,.45f))),new Color(1,1,1,.7f*(1-Seg(t,.04f,.45f))));
-            Rect r=fr;var c=fc;float L=fs;
+            // L: the finisher's size, at least a grid card's icon (the reveal's cards are small).
+            float u=Seg(t,0,.5f),fade=1-Seg(t,.55f,Plan.Finish);Rect r=fr;var c=fc;float L=Mathf.Max(fs,72);
+            Pillar(fc,L*.9f*(1+.3f*u),(1-Seg(t,.05f,.7f))*Seg(t,0,.04f));Dot(fc,L*2.4f*(1-u),new Color(1,1,1,.55f*(1-u)));Star(fc,L*.9f*(1-Seg(t,0,.25f)),15,8,U.A(fh,1-Seg(t,0,.25f)));
+            Ring(fc,L*(.5f+1.6f*M.OutCubic(u)),U.A(fa,.9f*(1-u)));Thin(fc,L*(.6f+2.2f*M.OutCubic(Seg(t,.04f,.45f))),new Color(1,1,1,.75f*(1-Seg(t,.04f,.45f))));
             switch(m)
             {
                 case Plan.Move.Pistol:case Plan.Move.Rifle:case Plan.Move.MachineGun:
