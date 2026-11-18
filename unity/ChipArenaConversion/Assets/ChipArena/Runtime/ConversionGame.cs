@@ -177,10 +177,12 @@ namespace ChipArena.UnityConversion
             if(arena==null)return;
             if(generation!=arena.Generation){presentation.ResetPresentation();generation=arena.Generation;visualClock.Reset(match.Time);}
             SpectatorControls();var p=arena.ViewPilot;
-            UpdateLock();if(play)
+            rifleScopeKey=false;UpdateLock();if(play)
             {
                 // Right click: aim with a ranged weapon (zoom, less spread: its aim row), guard with a melee one (owner 2026-11-09); the rifle's Q still aims.
                 var ads=content.Ads(p.Seat.spec);bool aiming=ads!=null&&p.Weapon?.@class=="ranged"&&(Input.GetMouseButton(1)||NativeRangedRules.Scope(p.Seat.spec)&&Input.GetKey(KeyCode.Q)||PadHeld(PadAction.Aim));
+                // The rifle's held Q looks through its scope from the eye in any camera (NativeScopePresentation.cs); right click keeps the chosen camera's aim.
+                rifleScopeKey=NativeViewRules.ScopeView(p.Seat.spec,Input.GetKey(KeyCode.Q),aiming);
                 // The look while a gun aims turns at the zoom's pace (AimLook).
                 float aimLook=aiming?AimLook(ads,p.Seat.spec):1;
                 // Choosing in an Expedition holds the camera (ExpeditionCameraHeld, PR #241) and takes the mouse as the chip cursor (no Alt);
@@ -343,7 +345,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>How fast the look turns while a gun aims: the aim row's own (tuned to its sight or scope) in first person, else the third
         /// person zoom's share, so the crosshair moves across the scene at the same pace as unzoomed.</summary>
-        private float AimLook(ContentAds ads,string spec)=>prefs.firstPerson?(float)ads.sens:NativeViewRules.AimZoom(spec);
+        private float AimLook(ContentAds ads,string spec)=>prefs.firstPerson||rifleScopeKey?(float)ads.sens:NativeViewRules.AimZoom(spec);
         private void UpdateCamera()
         {
             // The gameplay field of view under last frame's chooser shot comes back first (NativeChooserCameraPresentation.cs).
@@ -360,10 +362,13 @@ namespace ChipArena.UnityConversion
             // (Core NativeVisualMotion); in first person, chosen in Settings, the aim row's sight or the rifle's scope as before.
             bool aim=ads!=null&&p.Weapon?.@class=="ranged"&&pending.Aim&&alive&&!menu;
             // ArenaPresentation.Render already hides the viewed pilot's world body in first person.
-            bool first=NativeViewRules.FirstPerson(prefs.firstPerson,alive,menu);
+            // The rifle's held Q looks through its scope from the eye whichever camera is chosen (owner 2026-11-18, NativeScopePresentation.cs).
+            bool scope=RifleScopeView(p,aim);
+            bool first=NativeViewRules.FirstPerson(prefs.firstPerson||scope,alive,menu);
             // Settings · Camera (NativeShoulderCamera.cs): Classic, once settled, is the original camera below, unchanged.
             bool classic=CameraClassic(first);
             float settled=first?NativeViewRules.FirstFov:classic?NativeViewRules.ThirdFov:cameraRig.Fov(Time.unscaledTime);if(aim)settled=first?(float)ads.fov:settled*NativeViewRules.AimZoom(p.Seat.spec);
+            ScopeOutFov(scope,first,settled);
             cameraView.fieldOfView=SprintFov(first,aim,Mathf.Lerp(cameraView.fieldOfView-sprintKick,settled,1-Mathf.Exp(-16*Time.unscaledDeltaTime)));
             Quaternion rotation=Quaternion.Euler(pitch,yaw,0);Vector3 location=focus;
             if(!first&&!classic)location=ShoulderCamera(p,focus);

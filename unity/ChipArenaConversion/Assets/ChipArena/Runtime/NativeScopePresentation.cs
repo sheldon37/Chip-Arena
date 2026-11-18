@@ -4,6 +4,23 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
+        // The rifle's Q scope (owner 2026-11-18: "fix rifle Q to actually use the scope still instead of zooming in (right click
+        // working as intended)"). Since 2026-11-10 every gun aims in the chosen camera (third person: a little zoom, the tight
+        // crosshair, the aim pose), and the rifle's held Q had become that zoom too. Held Q now looks through the scope from the eye
+        // whichever camera is chosen, as it did before: the aim row's 28 degree view (3x), its look speed (AimLook), the scope mask
+        // below with the reticle and the pilot's own body hidden, all from the first-person view's existing scope (ScopeActive).
+        // Right click, the controller's Aim and the other guns are unchanged. The rules see the same held Aim either way.
+        // rifleScopeKey: this frame's input holds the rifle's Q for its aim (ConversionGame's input); rifleScopeWas: the last
+        // camera looked through the scope.
+        private bool rifleScopeKey,rifleScopeWas;
+        /// <summary>The camera looks through the rifle's scope this frame: the local pilot's own aim (no spectated pilot) on held Q.</summary>
+        private bool RifleScopeView(NativePilot p,bool aim)=>Spectator==null&&NativeViewRules.ScopeView(p.Seat.spec,rifleScopeKey,aim);
+        // Out of the scope into a third-person camera, the chosen camera's field of view comes back with the cut (no zoomed frames
+        // over the shoulder as it eases out); into the scope it still eases in, the sight closing on the target.
+        private void ScopeOutFov(bool scope,bool first,float settled)
+        {
+            if(rifleScopeWas&&!scope&&!first)cameraView.fieldOfView=settled+sprintKick;rifleScopeWas=scope;
+        }
         private Texture2D scopeMask;private GUIStyle scopeLabel;
         private void DrawScope(float width,float height)
         {
