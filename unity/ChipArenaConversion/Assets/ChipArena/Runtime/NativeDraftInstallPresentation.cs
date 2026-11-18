@@ -85,6 +85,19 @@ namespace ChipArena.UnityConversion
             r.Scaled=DogReach(r.Upper,r.Lower,hand,target,pole,w,1.03f,r.UpperBase,r.HandBase);hand.rotation=Quaternion.Slerp(hand.rotation,turn,w);
             return Hold();
         }
+        /// <summary>
+        /// The model's receiving forearm (the hand with it) rolled about its own length by the present's weight, so the device it carries
+        /// turns its bay to the stage's aim (NativeDraftInstall.ForeAim): the hand's turn barely moves a forearm-mounted device. Measured
+        /// fresh on each frame's bound pose, so nothing accumulates; the wrist stays where it is (on the axis).
+        /// </summary>
+        private void DraftForeRoll(NativeDraftStage stage)
+        {
+            var plan=stage.Plant;var body=draftBody;if(!plan.ForeAiming||plan.ForeWeight<=1e-4f||body==null)return;var r=DraftArmFor(body,stage.Left);if(r.OtherLower==null||r.OtherHand==null)return;
+            if(!VisualDraftBay(out _,out var n))return;var axis=r.OtherHand.position-r.OtherLower.position;if(axis.sqrMagnitude<1e-8f)return;axis.Normalize();
+            var a0=Vector3.ProjectOnPlane(n,axis);var a1=Vector3.ProjectOnPlane(StageDir(plan.ForeAim),axis);if(a0.sqrMagnitude<1e-6f||a1.sqrMagnitude<1e-6f)return;
+            float deg=Mathf.Clamp(Vector3.SignedAngle(a0,a1,axis),-NativeDraftInstall.RollMost*Mathf.Rad2Deg,NativeDraftInstall.RollMost*Mathf.Rad2Deg);
+            r.OtherLower.rotation=Quaternion.AngleAxis(deg*plan.ForeWeight,axis)*r.OtherLower.rotation;
+        }
         /// <summary>The contact's weight at pose age `p`: in as the cartridge flies into the fingers, held to the release, out over the flick.</summary>
         private static float ContactWeight(float p)=>NativeInstallShot.Ramp(p,NativeInstallShot.PinchStart,NativeInstallShot.Catch)*(1-NativeInstallShot.Ramp(p,NativeInstallShot.Release,1.30f));
 

@@ -126,12 +126,16 @@ namespace ChipArena.UnityConversion
             diGraspOn=model&&a>=0;if(diGraspOn){diLeftShape=NativeHandShapes.Left(p);diRightShape=NativeHandShapes.Right(p,plan.Settle,out diRightGrip,out diRightClench);}
             bool asModel=!siren&&VisualDraftPose(draftRig,seat,draftPose,(float)time,camera);VisualBodiesShown();diGraspOn=false;
             if(asModel&&dog&&draftBody!=null)DraftDogJiggle(draftBody,p);
+            if(asModel)DraftForeRoll(stage);
             // The device's bay on the model as drawn: back into the stage hand's frame (source axes) for the plan's next frame.
             diBay=asModel&&VisualDraftBayFrame(out diBayAt,out diBayN,out diBayF);draftDevice=diBay;
             if(diBay)
             {
                 var plantTo=draftRig.Bones[other].localToWorldMatrix*plantFrom.inverse;var back=plantTo.inverse;var bp=back.MultiplyPoint3x4(diBayAt);var bn=back.MultiplyVector(diBayN);var turn=System.Numerics.Quaternion.Inverse(draftPose.WorldRotation[other]);
                 plan.BayLocal=NVector.Transform(new NVector(-bp.x,bp.y-.88f,bp.z)-draftPose.WorldPosition[other],turn);plan.BayNormal=NVector.Transform(new NVector(-bn.x,bn.y,bn.z),turn);
+                // (And in the stage forearm's frame, as drawn: the device rides the model's forearm.)
+                var fore=System.Numerics.Quaternion.Inverse(draftPose.WorldRotation[other-1]);plan.ForeMeasured=true;
+                plan.BayFore=NVector.Transform(new NVector(-diBayAt.x,diBayAt.y-.88f,diBayAt.z)-draftPose.WorldPosition[other-1],fore);plan.BayForeNormal=NVector.Transform(new NVector(-diBayN.x,diBayN.y,diBayN.z),fore);
             }
             // The cartridge on its plan (on the drawn bay), the drawn taking hand onto it, the device on the install's clock, the chest core.
             if(a>=NativeInstallShot.Burst)DraftCartridgeFrame(stage);
