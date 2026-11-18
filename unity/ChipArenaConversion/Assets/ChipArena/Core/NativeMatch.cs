@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
         public bool BeginExpeditionCountdown()
         {
             if(!Cooperative||(Phase!=NativePhase.Lobby&&Phase!=NativePhase.Fight))return false;
-            Phase=NativePhase.Countdown;PhaseEnd=Time+3;FightAt=PhaseEnd;return true;
+            Phase=NativePhase.Countdown;PhaseEnd=Time+ExpeditionRules.PodOpening;FightAt=PhaseEnd;return true;
         }
         public void SynchronizeExpeditionClock(double elapsed)
         {
@@ -96,7 +96,7 @@ namespace ChipArena.UnityConversion
             {var live=Seats.Where(p=>p.connected).ToArray();if(live.Select(p=>Teams?p.team:p.id).Distinct().Count()<2){Winner=SetWinner=live.FirstOrDefault()?.id??0;if(DeathmatchTarget==0)foreach(var p in live)p.score=SetsToWin;Result=live.Length==0?"Room ended · all pilots disconnected":live[0].name+" wins by disconnect";CompletionSeconds=(int)Math.Min(604800,Time-CompletionStarted);Phase=NativePhase.Match;PhaseEnd=0;return;}}
 
             if(Phase==NativePhase.Intro&&Time>=PhaseEnd)NextIntro();
-            else if(Phase==NativePhase.Countdown&&Time>=PhaseEnd){Phase=NativePhase.Fight;FightAt=Time;}
+            else if(Phase==NativePhase.Countdown&&Time>=PhaseEnd){Phase=NativePhase.Fight;if(FightAt!=PhaseEnd)FightAt=Time;}
             else if(Phase==NativePhase.Fight)Resolve();
             else if(Phase==NativePhase.Result&&Time>=PhaseEnd)
             {

@@ -19,18 +19,18 @@ namespace ChipArena.UnityConversion
             // that collider's actual face before deciding whether it is a walkable floor.
             return hit.collider.Raycast(new Ray(hit.point+Vector3.up*.06f,Vector3.down),out var face,.12f)?face.normal:hit.normal;
         }
-        public static Ground Probe(PhysicsScene physics,Vector3 position)
+        public static Ground Probe(PhysicsScene physics,Vector3 position,float reach=Reach)
         {
-            if(physics.SphereCast(position+Vector3.up*(Lift-Pole),Radius-Skin,Vector3.down,out var hit,Lift+Reach+Skin*2,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))
+            if(physics.SphereCast(position+Vector3.up*(Lift-Pole),Radius-Skin,Vector3.down,out var hit,Lift+reach+Skin*2,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))
             {
                 var normal=SurfaceNormal(hit);float gap=hit.distance-Lift-Skin/Math.Max(NativeLocomotionRules.MinGroundY,normal.y);
-                if(Walkable(normal)&&gap>=-.06f&&gap<=Reach)return new Ground{Found=true,Gap=gap,Normal=normal,Point=hit.point};
+                if(Walkable(normal)&&gap>=-.06f&&gap<=reach)return new Ground{Found=true,Gap=gap,Normal=normal,Point=hit.point};
             }
             // A nearby riser can intercept the broad probe before the floor directly under the feet.
-            if(physics.Raycast(position,Vector3.down,out hit,Half+Reach,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)&&Walkable(hit.normal))
+            if(physics.Raycast(position,Vector3.down,out hit,Half+reach,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)&&Walkable(hit.normal))
             {
                 float gap=hit.distance-Pole-Radius/hit.normal.y;
-                if(gap>=-.06f&&gap<=Reach)return new Ground{Found=true,Gap=gap,Normal=hit.normal,Point=hit.point};
+                if(gap>=-.06f&&gap<=reach)return new Ground{Found=true,Gap=gap,Normal=hit.normal,Point=hit.point};
             }
             return default;
         }

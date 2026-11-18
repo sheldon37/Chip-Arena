@@ -55,6 +55,7 @@ namespace ChipArena.UnityConversion.Editor
                     if(roll==1)CheckExpeditionActivation(content,locked);
                     Debug.Log("PASS deployment seed acceptance: seed="+seed+", roll="+roll+", identity="+locked.Identity+", totalMs="+timer.Elapsed.TotalMilliseconds.ToString("F1")+", simulatedTicks="+(roll==1?1800:0));
                 }
+                CheckExpeditionLoadBudget();
                 if(errors.Count>0)throw new Exception("Deployment acceptance logged native errors: "+string.Join(" | ",errors));
                 if(exerciseShaderPass)Debug.Log("DEPLOYMENT_NATIVE_ACCEPTANCE_READY: eight generated layouts; four 1800-tick split runs; station shader, lobby transfers and loading guards. Automated fixture, not a human co-op or rendered acceptance test.");
                 else Debug.Log("DEPLOYMENT_BUILD_ACCEPTANCE_READY: eight generated layouts; four 1800-tick split runs; shader import, lobby transfers and loading guards. GPU passes, rendered performance and human co-op NOT exercised.");
@@ -117,18 +118,29 @@ namespace ChipArena.UnityConversion.Editor
                 if(!podRules.Start(arena.Match))throw new Exception("Generated pod countdown did not start.");
                 arena.PodRecords=podRules.Snapshot();
                 var landing=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=arena.NetworkFrame()})).frame;
-                if(landing==null||landing.pods==null||landing.seats==null||landing.seats.Length<1||landing.phase!=NativePhase.Countdown||landing.phaseEnd!=3||landing.fightAt!=3||landing.pods.Length!=1||landing.seats[0].pod!=arena.Match.Seat(1).pod)
+                if(landing==null||landing.pods==null||landing.seats==null||landing.seats.Length<1||landing.phase!=NativePhase.Countdown||landing.phaseEnd!=5||landing.fightAt!=5||landing.pods.Length!=1||landing.seats[0].pod!=arena.Match.Seat(1).pod)
                     throw new Exception("Pod countdown or seat look lost in Unity codec.");
-                arena.Match.SynchronizeExpeditionClock(4);
-                if(!podRules.Board(1,new System.Numerics.Vector3(),4,true))throw new Exception("Pod boarding refused.");
+                if(landing.snapshot.Actors.Length!=2||landing.snapshot.Actors.Any(a=>!a.Grounded))
+                    throw new Exception("Initial guest snapshot contains an airborne spawn.");
+                runtime.Ready();
+                runtime.SetOccupants(2);
+                runtime.Step(1);
+                if(arena.Match.Phase!=NativePhase.Countdown||arena.Pilots.Any(p=>!p.Grounded))
+                    throw new Exception("Host lost ground during the pod countdown.");
+                arena.Match.SynchronizeExpeditionClock(4.99);
+                runtime.Step(2);
+                if(arena.Match.Phase!=NativePhase.Fight||arena.Snapshot().Actors.Any(a=>!a.Grounded))
+                    throw new Exception("Ground contact changed at GO.");
+                arena.Match.SynchronizeExpeditionClock(6);
+                if(!podRules.Board(1,new System.Numerics.Vector3(),6,true))throw new Exception("Pod boarding refused.");
                 arena.PodRecords=podRules.Snapshot();
                 var launch=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=arena.NetworkFrame()})).frame;
-                if(launch==null||launch.pods==null||launch.pods.Length!=1||launch.seats==null||launch.seats.Length<1||launch.seats[0].pod!=arena.Match.Seat(1).pod||launch.pods[0].launchAt!=4||launch.pods[0].look!=arena.Match.Seat(1).pod||!NativePodRun.Valid(launch.pods,launch.time))
+                if(launch==null||launch.pods==null||launch.pods.Length!=1||launch.seats==null||launch.seats.Length<1||launch.seats[0].pod!=arena.Match.Seat(1).pod||launch.pods[0].launchAt!=6||launch.pods[0].look!=arena.Match.Seat(1).pod||!NativePodRun.Valid(launch.pods,launch.time))
                     throw new Exception("Late-join pod launch lost in Unity codec.");
 
                 var wire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-state",epoch=7,
                     deployment=room.Ticket,frame=arena.NetworkFrame(),expeditionPublic=new ExpeditionView(),expeditionPrivate=new ExpeditionPrivateFrame()}));
-                if(wire.frame?.pods==null||wire.frame.pods.Length!=1||wire.frame.pods[0].launchAt!=4||wire.frame.pods[0].look!=arena.Match.Seat(1).pod||wire.frame.seats==null||wire.frame.seats.Length<1||wire.frame.seats[0].pod!=arena.Match.Seat(1).pod)
+                if(wire.frame?.pods==null||wire.frame.pods.Length!=1||wire.frame.pods[0].launchAt!=6||wire.frame.pods[0].look!=arena.Match.Seat(1).pod||wire.frame.seats==null||wire.frame.seats.Length<1||wire.frame.seats[0].pod!=arena.Match.Seat(1).pod)
                     throw new Exception("Pod launch or seat look lost in Expedition Unity snapshot codec.");
                 if(wire.deployment?.station!=room.Ticket.station||wire.deployment.instanceRolls!=room.Ticket.instanceRolls)
                     throw new Exception("Generated run ticket lost in Unity snapshot codec.");
@@ -140,6 +152,10 @@ namespace ChipArena.UnityConversion.Editor
                     if(!arena.ExpeditionSupported(p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight)||
                        !arena.ExpeditionReachable(world.Area.slots[0].Position,p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight))
                         throw new Exception("Generated world native placement/route: "+p.x+", "+p.z);
+                foreach(var slot in world.Area.slots)
+                    foreach(var gate in world.Hub.Gates)
+                        if(!arena.ExpeditionReachable(slot.Position,gate.Outside.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight))
+                            throw new Exception("No Hulk route from landing field to "+gate.Id);
                 foreach(var spawn in world.Area.spawns)
                     if(!arena.ExpeditionSupported(spawn.entry.@exit.Position(),.45f,1.8f))throw new Exception("Generated spawn native collision: "+spawn.entry.id);
                 foreach(var door in world.Area.doors)for(int i=0;i<8;i++)

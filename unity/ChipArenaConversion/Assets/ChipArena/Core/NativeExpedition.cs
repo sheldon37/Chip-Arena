@@ -4,6 +4,11 @@ using System.Linq;
 
 namespace ChipArena.UnityConversion
 {
+    public static class ExpeditionRules
+    {
+        public const double PodOpening=5.0;
+    }
+
     /// <summary>Host-only Expedition authority. Transport authenticates callers and validates location/combat events;
     /// presentation reads detached snapshots. No existing PvP/Siren simulation is changed by this module.</summary>
     public sealed partial class NativeExpedition
