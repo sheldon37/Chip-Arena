@@ -1,3 +1,33 @@
+## 2026-11-18 — Claude: the rifle's Q looks through its scope again in any camera (owner report; presentation only)
+
+Branch `claude/rifle-q-scope`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "fix rifle Q to actually use the scope still instead of zooming in (right click working as intended)".
+
+- **Cause.** `0d67511d` (2026-11-10, "guns aim in third person") stopped every aim forcing first person. The rifle's held Q is the same aim input as right click, so in third person it became the aim zoom (.68 of the camera's field of view). The 3x scope only showed in first person.
+- **Fix.** Held Q on the rifle (`NativeViewRules.ScopeView`, read with the aim in `ConversionGame`'s input) takes the eye in whichever camera is chosen, as before 2026-11-10. It gets the aim row's 28 degree view (3x), its .36 look speed (`AimLook`), the existing scope mask and reticle (`NativeScopePresentation.DrawScope`, `ScopeActive`), and the pilot's own body and view model hidden. The rifle still rises to the eye for about 0.08 s before the mask, as it always did. Leaving the scope into a third-person camera cuts straight back to that camera's field of view (`ScopeOutFov`), with no zoomed frames over the shoulder.
+- **Unchanged.** Right click, the controller's Aim, the pistol's and machine gun's aims and Q kits, and first person chosen in Settings (where Q and right click already scope).
+- **Systems.** Camera and input look (`Runtime/ConversionGame.cs`, `Runtime/NativeScopePresentation.cs`, `Core/NativeAbilityRules.cs`), with checks in `Tests/GunKitChecks.cs`. The local BoZo tool gains `scopehold=T,D` (git-ignored, not committed).
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. The rules see the same held Aim (spread, settle and slower walking unchanged), and the wire is untouched. Scoped, the sent look is the eye's own (first person, no shoulder convergence), so shots go where the scope's reticle is.
+
+**Checks.**
+- Full CoreTests at `9bbbc06d` (run as relgen5 does, with its test-path patch): 1,032 groups pass, exit 0.
+- The pinned 6000.3.24f1 semantic compile (`tools/check_unity_compile.py`) passes for Input System, Player, Assembly-CSharp and Editor.
+- `git diff --check` is clean.
+- New checks in `GunKitChecks.Ads`:
+  - only the rifle's held Q scopes;
+  - the rifle's scope row (28 degrees, .36) and its third-person zoom (.68);
+  - the key is read with the aim, and only in play;
+  - scoped, the look speed, eye and field of view are set before the ease;
+  - a spectated pilot never scopes;
+  - leaving the scope cuts back to the chosen camera.
+
+**Not run.** The Editor was closed for this task, and it was not relaunched (owner's rule). No before/after captures were taken, and nothing has been seen on screen yet. The capture script is ready: `riflescope/run1.sh` in the integrating session's scratchpad. It runs the same play on `01505ad6` and on the branch: third person, Cyber City, a bot at 12 m, Q held 7.5–9.5 s, right click 10.5–12.5 s, and first person as well. No Windows build or multiplayer run either.
+
+**Risks.**
+- A scope entered from third person shows the first-person view model for about 0.08 s as the rifle rises, the same as before 2026-11-10. Its first frame after a long spell in third person has not been seen.
+- The controller's Aim keeps the third-person zoom, as right click's twin.
+
+**Next.** When the owner reopens the Editor, run the capture script and review the stills. Then merge and release.
+
 ## 2026-11-17 — Claude: Blind Pick and Deathmatch screens (Astra's 2026-11-16 handoff; presentation only)
 
 Branch `claude/opening-draft-ui`, base shared `claude/sleepy-ritchie-g8ruhv` at `c69c30c7`. Owner: "Do the UI work; We can use the same kind of screens we use for chip selection ... Kind of like chips, but animated and styled with very high quality."
