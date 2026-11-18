@@ -29,6 +29,8 @@ internal static class InstallShotChecks
         yield return Device();
         yield return Shot();
         yield return Cartridge();
+        yield return Present();
+        yield return Contact();
         yield return Shapes();
         yield return Sounds(root);
         yield return Text();
@@ -149,26 +151,82 @@ internal static class InstallShotChecks
         }
         Check(worst<.002f,"the cartridge leaves the bay by "+worst+" m through the hold");
         float core=.152f*2*NativeDraftInstall.HeldWidth/NativeDraftInstall.ModelWidth;Check(core<2*NativePilotGear.BayHalf&&NativeDraftInstall.LatchDepth<=NativePilotGear.FrameHeight+.001f,"the core ("+core*100+" cm) fits the bay ("+NativePilotGear.BayHalf*200+" cm)");
-        // The model's device rides its forearm, so the hand's frame misplaces it: with the drawn bay missing its point by a fixed offset
-        // (as the model's elbow and forearm put it, a frame behind; the default model's, measured, is about (.08, -.11, 0)), the present's
-        // eased correction lands it on the point by the line-up
-        // and holds it there through the lid's shut, at 30, 60 and 144 Hz; the face's aim is given for the draw's roll.
-        float worstAt=0,worstLine=0;int hzs=0;
-        foreach(float hz in new[]{30f,60f,144f})foreach(var miss in new[]{new Vector3(0,-.11f,0),new Vector3(.08f,-.11f,0),new Vector3(.08f,-.06f,.04f)})
+        // Every tier holds a built cartridge with the core module the clack seats (a class kit or a boss relic without its own takes the
+        // common's, never the exported generic chip: it has none, and the bay stood empty); the draw seats the device's own chip should a
+        // model without one be all there is.
+        foreach(var tier in NativeChipCartridge.Tiers.Concat(new[]{NativeChipCartridge.Rainbow}))
         {
-            var sf=new NativeDraftStage();sf.Plant.Device=true;sf.Plant.Profile=NativeInstallShot.Of("common","x");var pf=sf.Plant.Profile;float dt=1/hz;hzs++;
-            for(int f=0;f<=(int)(3.5f*hz);f++)
-            {
-                float t=f*dt,raw=t>=1?t-1:-1,a=sf.SmoothAge(raw,dt),p=a<0?-1:NativeInstallShot.PoseAge(a,pf.Hold,false);sf.Begin(dt,false,NativeDraftStage.IdleHeld(p));sf.Frame(16f/9,.72f,.92f,0,false,dt,NativeDraftStage.ModelHeadTop);sf.Shot(a,pf,3.2f,false,false,false,true);
-                sf.Step(dt*(a<0?1:NativeInstallShot.PoseRate(a,pf.Hold,false)),p,a<0?-1:0,false,cards,2,false,false);
-                if(sf.Plant.ForeWeight>1e-4f)Check(sf.Plant.ForeAiming&&Math.Abs(sf.Plant.ForeAim.Length()-1)<1e-3f,"the face's aim for the draw while the device presents");
-                var drawn=sf.Plant.At+miss;sf.Plant.BayDrawn=drawn;sf.Plant.BayDrawnValid=true;
-                if(p>=NativeInstallShot.AlignEnd&&p<=NativeInstallShot.ShutSettled)worstAt=Math.Max(worstAt,(drawn-sf.PlannedBay).Length());
-                if(p>=NativeInstallShot.AlignEnd&&p<NativeInstallShot.Seat)worstLine=Math.Max(worstLine,(drawn-sf.PlannedBay).Length());
-            }
+            string held=NativeMachineModels.HeldPickup(tier);int own=Array.IndexOf(NativeMachineModels.PickupTiers,tier);
+            Check(held==(own>=0?NativeMachineModels.PickupModel(tier):NativeMachineModels.PickupId),tier+": held as "+held);
+            var built=NativeMachineModels.Pickup(own>=0?tier:"common",out _);Check(built.Sections.Any(sc=>sc.Bone==NativeMachineModels.CoreBody)&&built.Sections.Any(sc=>sc.Bone==NativeMachineModels.CoreLights),tier+": its held cartridge carries the core module");
         }
-        Check(worstLine<.01f&&worstAt<.03f,"the model's bay lands within "+worstLine*100+" cm of its point at the line-up and "+worstAt*100+" cm through the give and the shut, for misses up to 11 cm");
-        return "Install cartridge: "+NativeDraftInstall.HeldWidth*100+" cm on the model (at most "+NativeDraftInstall.HandShare+" of the glove), "+NativeDraftInstall.VoxelWidth*100+" cm on the voxel body, its "+(core*100).ToString("0.0")+" cm core seated in the "+(NativePilotGear.BayHalf*200).ToString("0.0")+" cm bay, held on the bay (within "+(worst*1000).ToString("0.0")+" mm) through the mythic's hold";
+        return "Install cartridge: "+NativeDraftInstall.HeldWidth*100+" cm on the model (at most "+NativeDraftInstall.HandShare+" of the glove), "+NativeDraftInstall.VoxelWidth*100+" cm on the voxel body, its "+(core*100).ToString("0.0")+" cm core seated in the "+(NativePilotGear.BayHalf*200).ToString("0.0")+" cm bay, held on the bay (within "+(worst*1000).ToString("0.0")+" mm) through the mythic's hold; every one of the "+(NativeChipCartridge.Tiers.Length+1)+" tiers holds a built cartridge with the core module (the kits and boss relics the common's)";
+    }
+    // A stage driven as RenderDraft drives it, on the model's device, through a pick at `hz`; `each` sees it every frame (the age, the pose age).
+    private static void Drive(NativeDraftStage s,NativeInstallShot.Profile pr,float hz,float seconds,Action<float,float> each,float aspect=16f/9)
+    {
+        var cards=new[]{new Vector2(.4f,.8f),new Vector2(.6f,.8f)};float dt=1/hz;s.Plant.Device=true;s.Plant.Profile=pr;s.Plant.Tier=pr.Tier;
+        for(int f=0;f<=(int)((seconds+1)*hz);f++)
+        {
+            float t=f*dt,raw=t>=1?t-1:-1,a=s.SmoothAge(raw,dt),p=a<0?-1:NativeInstallShot.PoseAge(a,pr.Hold,false);s.Plant.Hero=NativeInstallShot.Hero(1,"x",1,pr);
+            s.Begin(dt,false,NativeDraftStage.IdleHeld(p));s.Frame(aspect,.72f,.92f,0,false,dt,NativeDraftStage.ModelHeadTop);s.Shot(a,pr,3.2f,false,false,false,true);
+            s.Step(dt*(a<0?1:NativeInstallShot.PoseRate(a,pr.Hold,false)),p,a<0?-1:0,false,cards,2,false,false);each(a,p);
+        }
+    }
+    private static string Present()
+    {
+        // The designed present the draw solves the model's arm onto (its device rides the forearm): from the line-up to the lid's shut the bay
+        // sits on its point (the give aside), its face within 25 degrees of the lens and its forearm square to the lens (across the body, no
+        // part of it toward the camera), at 30, 60 and 144 Hz; the stage's own bay is the designed one once risen.
+        float worstSeat=0,worstFace=1,worstSquare=0,worstGap=0;
+        foreach(float hz in new[]{30f,60f,144f})
+        {
+            var s=new NativeDraftStage();
+            Drive(s,NativeInstallShot.Of("common","x"),hz,3.5f,(a,p)=>
+            {
+                if(!(p>=NativeInstallShot.CarryEnd&&p<=NativeInstallShot.ShutSettled))return;var pl=s.Plant;Check(pl.ForeAiming&&pl.ForeWeight>.99f,"the device presents through the install ("+p+")");
+                var toLens=Vector3.Normalize(s.CameraPosition-pl.PresentAt);float face=Vector3.Dot(pl.PresentNormal,toLens),square=Math.Abs(Vector3.Dot(pl.PresentForearm,toLens));
+                worstFace=Math.Min(worstFace,face);worstSquare=Math.Max(worstSquare,square);if(p<NativeInstallShot.Seat)worstSeat=Math.Max(worstSeat,(pl.PresentAt-s.PlannedBay).Length());worstGap=Math.Max(worstGap,(pl.At-pl.PresentAt).Length());
+            });
+        }
+        Check(worstSeat<.004f,"the designed bay on its point at the line-up (off by "+worstSeat*100+" cm)");Check(worstFace>.9f,"the bay's face to the lens ("+(Math.Acos(worstFace)*57.3f).ToString("0")+" deg off)");
+        Check(worstSquare<.2f,"the forearm square to the lens (its line "+(Math.Asin(Math.Min(1,worstSquare))*57.3f).ToString("0")+" deg toward the camera)");Check(worstGap<1e-3f,"the stage's bay is the designed one once risen ("+worstGap+")");
+        // The Raise (legendary and up, by hash for rare and epic): over the look the forearm and the fist (the hand's end of the forearm and a
+        // fist past it) stay clear of the visor's box and under the frame's top, beside the head; the default hold keeps the fist at the chest.
+        float clearest=1,highest=1;var raise=new NativeDraftStage();
+        Drive(raise,NativeInstallShot.Of("legendary","x"),60,3.2f,(a,p)=>
+        {
+            if(!(p>=NativeInstallShot.LookStart&&p<=NativeInstallShot.LookEnd))return;var pl=raise.Plant;Check(pl.RaiseShare>0||p<NativeInstallShot.HoldStart+.02f,"the Raise at "+p);
+            var visor=raise.Project(raise.PlannedVisor);float halfW=.17f/(2*(raise.CameraPosition-raise.PlannedVisor).Length()*(float)Math.Tan(NativeDraftStage.Fov*Math.PI/360)*raise.Aspect),halfH=.08f/(2*(raise.CameraPosition-raise.PlannedVisor).Length()*(float)Math.Tan(NativeDraftStage.Fov*Math.PI/360));
+            for(int k=0;k<=10;k++)
+            {
+                // From the elbow (a forearm's length back) to the fist (a hand past the wrist).
+                var at=pl.PresentAt+pl.PresentForearm*(-.25f+.40f*k/10f);var sp=raise.Project(at);float dx=Math.Abs(sp.X-visor.X)/halfW,dy=Math.Abs(sp.Y-visor.Y)/halfH;
+                Check(dx>1||dy>1,"the Raise's arm over the visor at "+p.ToString("0.00")+" ("+sp+" against "+visor+")");clearest=Math.Min(clearest,Math.Max(dx,dy)-1);
+                if(k==10){highest=Math.Min(highest,sp.Y);Check(sp.Y>.02f,"the Raise's fist leaves the frame's top at "+p.ToString("0.00")+" ("+sp.Y+")");}
+            }
+        });
+        return "Install present: the designed bay on its point at the line-up (within "+(worstSeat*1000).ToString("0.0")+" mm), its face within "+(Math.Acos(worstFace)*57.3f).ToString("0")+" deg of the lens and its forearm square to it (at most "+(Math.Asin(Math.Min(1,worstSquare))*57.3f).ToString("0")+" deg toward the camera) to the lid's shut, at 30-144 Hz; the Raise beside the head (its arm clear of the visor's box by "+(clearest*100).ToString("0")+"% of it, the fist "+(highest*100).ToString("0")+"% under the top)";
+    }
+    private static string Contact()
+    {
+        // The drawn hand: easing in from .40 (already reaching as the cartridge flies in), all of it at the catch, held through the press and the
+        // lift, easing out as it goes low; never a jump a frame (120 Hz).
+        Check(NativeInstallShot.Contact01(NativeInstallShot.ContactIn)==0&&NativeInstallShot.Contact01(NativeInstallShot.Catch)>.999f&&NativeInstallShot.Contact01(NativeInstallShot.Release+.1f)>.999f&&NativeInstallShot.Contact01(NativeInstallShot.ContactGone)==0,"the contact's weight: in from .40, held to 1.26, out by 1.50");
+        float worst=0,last=0;for(int f=0;f<=240;f++){float w=NativeInstallShot.Contact01(f/120f);if(f>0)worst=Math.Max(worst,Math.Abs(w-last));last=w;}
+        Check(worst<.07f,"the contact's weight steps "+worst+" a frame at 120 Hz");Check(NativeInstallShot.ContactIn<=NativeInstallShot.Burst-.03f&&NativeInstallShot.Catch-NativeInstallShot.ContactIn>=.15f,"the hand reaches before the burst");
+        // The lift off the shell: about 4 cm up the bay's normal and back toward the hand's own shoulder, never toward the receiving elbow.
+        Check(NativeDraftInstall.Lift(NativeInstallShot.Release)==0&&NativeDraftInstall.Lift(NativeInstallShot.ReleaseEnd)>.999f,"the lift over the release");
+        float lift=(float)Math.Sqrt(NativeDraftInstall.FlickUp*NativeDraftInstall.FlickUp+NativeDraftInstall.FlickOver*NativeDraftInstall.FlickOver);Check(lift>.03f&&lift<.05f,"the lift clears the bay by "+lift*100+" cm");
+        foreach(var shoulder in new[]{new Vector3(.3f,.4f,0),new Vector3(-.3f,.4f,0),new Vector3(0,-.4f,.2f)})
+        {
+            var n=Vector3.UnitZ;var f=Vector3.UnitX;var away=NativeDraftInstall.LiftAway(Vector3.Zero,n,f,shoulder);
+            Check(Math.Abs(Vector3.Dot(away,n))<1e-4f&&Vector3.Dot(away,f)>=-1e-4f&&Math.Abs(away.Length()-1)<1e-3f,"the lift never toward the elbow ("+shoulder+": "+away+")");
+        }
+        // The hand's shapes: reaching open toward the card from .25, never splayed after the catch (the lift keeps two fingers tucked).
+        var reach=NativeHandShapes.Left(NativeInstallShot.ReachStart+.4f);Check(reach.Index>.12f&&reach.Index<.3f&&reach.Across>.25f,"the reaching hand open and soft, the thumb spread");
+        for(float p=NativeInstallShot.Catch+.01f;p<3.2f;p+=.01f){var s=NativeHandShapes.Left(p);Check(s.Ring>.3f&&s.Pinky>.3f,"the taking hand splayed at "+p);}
+        return "Install contact: the drawn hand eases onto the stage's plan from "+NativeInstallShot.ContactIn+" s (all of it by the catch, at most "+worst.ToString("0.00")+" a frame at 120 Hz), held to "+NativeInstallShot.ContactOut+" s and out by "+NativeInstallShot.ContactGone+" s; it lifts "+(lift*100).ToString("0.0")+" cm off the shell along the bay's normal and toward its own shoulder, never toward the receiving elbow; reaching open and soft, never splayed after the catch";
     }
     private static string Shapes()
     {
@@ -189,7 +247,7 @@ internal static class InstallShotChecks
         NativeHandShapes.Right(1.4f,0,out float fist,out float clench);Check(fist>=.99f&&clench>.8f,"the receiving hand a fist after the surge");
         float worst=0;var last=NativeHandShapes.Left(0);for(int f=1;f<=360;f++){var s=NativeHandShapes.Left(f/120f);if(f/120f>=NativeInstallShot.Release&&f/120f<=NativeInstallShot.ReleaseEnd+.01f){last=s;continue;}worst=Math.Max(worst,Math.Max(Math.Abs(s.Index-last.Index),Math.Max(Math.Abs(s.Thumb-last.Thumb),Math.Abs(s.Ring-last.Ring))));last=s;}
         Check(worst<.2f,"a hand's shape jumps "+worst+" of its curl in a frame (120 Hz)");
-        return "Install hands: a shape at weight 0 is the grip's curl bit for bit ("+rig.Count+" bones), the digits kept per finger bone, the taking hand open, pinching, pressing with two fingers, flicking (.04 s) and resting (else at most "+worst.ToString("0.00")+" of a curl a frame at 120 Hz), the receiving hand cupped, braced, a fist";
+        return "Install hands: a shape at weight 0 is the grip's curl bit for bit ("+rig.Count+" bones), the digits kept per finger bone, the taking hand open, reaching, pinching, pressing with two fingers, lifting off (two fingers tucked) and resting (else at most "+worst.ToString("0.00")+" of a curl a frame at 120 Hz), the receiving hand cupped, braced, a fist";
     }
     private static string Sounds(string root)
     {
@@ -234,8 +292,30 @@ internal static class InstallShotChecks
         string draft=R("Runtime/NativeDraftPresentation.cs"),install=R("Runtime/NativeDraftInstallPresentation.cs"),screen=R("Runtime/NativeDraftScreen.cs"),follow=R("Runtime/NativeDraftFollow.cs"),body=R("Runtime/NativeVisualBodyPresentation.cs");
         int frame=draft.IndexOf("stage.Frame(camera.aspect",StringComparison.Ordinal),shot=draft.IndexOf("stage.Shot(a,pr,",StringComparison.Ordinal),step=draft.IndexOf("stage.Step(dt*rate,p,",StringComparison.Ordinal);
         Check(frame>0&&shot>frame&&step>shot,"RenderDraft: the portrait, the install's shot, then the pose on the pose clock");
-        int pose=draft.IndexOf("VisualDraftPose(draftRig,seat,draftPose,(float)time,camera)",StringComparison.Ordinal),bay=draft.IndexOf("VisualDraftBayFrame(out diBayAt,out diBayN,out diBayF)",StringComparison.Ordinal),contact=draft.IndexOf("VisualDraftContact(stage.Left,p,",StringComparison.Ordinal),drawn=draft.IndexOf("DraftCartridgeDraw(stage,",StringComparison.Ordinal);
-        Check(pose>0&&bay>pose&&contact>bay&&drawn>contact,"RenderDraft: the bind, the drawn bay, the contact pass, then the draws");
+        int pose=draft.IndexOf("VisualDraftPose(draftRig,seat,draftPose,(float)time,camera)",StringComparison.Ordinal),present=draft.IndexOf("VisualDraftPresent(stage,camera);",StringComparison.Ordinal),bay=draft.IndexOf("VisualDraftBayFrame(out diBayAt,out diBayN,out diBayF)",StringComparison.Ordinal),contact=draft.IndexOf("VisualDraftContact(stage.Left,p,",StringComparison.Ordinal),drawn=draft.IndexOf("DraftCartridgeDraw(stage,",StringComparison.Ordinal);
+        Check(pose>0&&present>pose&&bay>present&&contact>bay&&drawn>contact,"RenderDraft: the bind, the drawn present, the drawn bay, the contact pass, then the draws");
+        // The suit's plates, the face gear and the cloth's accent are queued on the arms as finally posed: after the present and the last
+        // contact pass (queued in the bind, the arm plates hung where the arms had been), never in VisualDraftPose.
+        int lastContact=draft.LastIndexOf("VisualDraftContact(stage.Left,p,",StringComparison.Ordinal),suit=draft.IndexOf("DraftSuitSurge(draftBody,seat);",StringComparison.Ordinal),face=draft.IndexOf("if(!draftBody.Hood)DraftFaceGear(draftBody,seat);",StringComparison.Ordinal),flare=draft.IndexOf("DraftAccentFlare(draftBody,seat);",StringComparison.Ordinal);
+        int bodyPose=body.IndexOf("private bool VisualDraftPose(",StringComparison.Ordinal),bodyEnd=body.IndexOf("private VisualBody draftBody;",StringComparison.Ordinal);var poseBody=bodyPose>0&&bodyEnd>bodyPose?body.Substring(bodyPose,bodyEnd-bodyPose):"";
+        Check(suit>lastContact&&face>lastContact&&flare>lastContact&&suit<drawn&&poseBody.Length>0&&!poseBody.Contains("DraftSuitSurge(")&&!poseBody.Contains("DraftFaceGear(")&&!poseBody.Contains("VisualSuit("),"the suit, the face gear and the accent flare queued after the contact pass, not in the bind");
+        Check(!draft.Contains("DraftForeRoll(")&&!install.Contains("BayDrawn"),"no forearm roll or drawn-miss correction left (the present solves the drawn arm)");
+        // The cartridge flies into the drawn fingers before the catch; the held model is every tier's built cartridge, the device's chip seated
+        // where a model has no core.
+        Check(draft.Contains("if(a>=NativeInstallShot.Burst)DraftCartridgeFlight(stage,diPinch);")&&install.Contains("sourceModels.MachineModel(NativeMachineModels.HeldPickup(diTier),\"pve-pickup\")")&&install.Contains("bool hasCore=sourceModels.PickupCore(model);")&&install.Contains("sourceModels.Queue(NativeSourceModels.GearChip,gearMatrix,gearBone,"),"the flight into the drawn pinch; the held cartridge with its core, else the device's chip seated");
+        // The clack's ring is light (streaks in the bay's plane), never a solid piece darkening into a hoop; the visor flashes toward white and
+        // the trims take the chip's colour as the accent's ratio (a colour multiplied onto the baked teal read green).
+        int clack=install.IndexOf("// The clack (on `a`)",StringComparison.Ordinal),shell=install.IndexOf("// The shell breaking",StringComparison.Ordinal);
+        Check(clack>0&&shell>clack&&!install.Substring(clack,shell-clack).Contains("QueuePiece(WeaponShape.Ring")&&install.Substring(clack,shell-clack).Contains("fx.Streak(S(at+dir*r)"),"the clack's ring drawn as light");
+        Check(install.Contains("Color.Lerp(diAccent,diWhiteAccent,.9f*diProfile.Visor*flash)")&&install.Contains("Color.Lerp(diAccent,diChipAccent,Mathf.Clamp01(band*2))")&&install.Contains("NativePortraitRules.GlowAccentTint(hex)"),"the visor flashes white, the trims the chip's colour, as accent ratios");
+        // The readout's leader: from beside the pilot, gone by the look and over a sunk device.
+        Check(screen.Contains("var start=draftLeader2d;")&&screen.Contains("NativeInstallShot.LeaderFade(age)")&&NativeInstallShot.LeaderFade(NativeInstallShot.LookStart+.2f)==0&&NativeInstallShot.LeaderFade(NativeInstallShot.DetailsAt+.2f)==1,"the leader starts beside the pilot and is gone by the look");
+        // Off the stage (the Expedition's tray over the live view) the picked card flies into the hand and fades at the plant's contact, as
+        // before the install; the three stage screens hand it to the stage's 3D cartridge.
+        string exp=R("Runtime/NativeExpeditionChipScreen.cs"),dm=R("Runtime/NativeDeathmatchPickStage.cs");
+        Check(screen.Contains("PickedTray(tray,chips,index,seat.chips.TryGetValue(chosen.id,out int c)?c-1:0,age,true);")&&follow.Contains("PickedTray(tray,pveFollowChips,pveFollowIndex,pveFollowOwned,a,true);")&&dm.Contains("PickedTray(tray,pickFollowChips,pickFollowIndex,pickFollowOwned,a,true);"),"the stage's three screens pass the stage");
+        Check(exp.Split("PickedTray(t,expeditionFollowChips,expeditionFollowIndex,expeditionFollowOwned,age);").Length==3&&exp.Split("PickedTray(").Length==3&&screen.Contains("private void PickedTray(Tray tray,IList<ContentChip> chips,int index,int copies,float age,bool stage=false)")&&screen.Contains("FlyToHand(tray.Cards[index],chips[index],copies,age,tray.Size,")&&screen.Contains("float fly=NativeChipPlant.CardFly(age),fade=NativeChipPlant.CardFade(age);"),"the Expedition's tray keeps its own flight into the hand");
+        Check(NativeChipPlant.CardFade(NativeDraftPlant.Contact)>.999f&&NativeChipPlant.CardFade(NativeDraftPlant.Contact-NativeChipPlant.CardFadeSpan)<1e-4f&&NativeChipPlant.CardFly(NativeDraftPlant.Contact)>.999f&&NativeChipPlant.CardFly(NativeChipPlant.CardFrom)<1e-4f,"the Expedition's card fades into the hand at the plant's contact ("+NativeDraftPlant.Contact+" s)");
         int lights=draft.IndexOf("NativeLighting.Draft(camera,stageTint,flash);",StringComparison.Ordinal),mine=draft.IndexOf("DraftInstallLights(camera,reduced);",StringComparison.Ordinal),fx=draft.IndexOf("vfx.Begin();",StringComparison.Ordinal),submit=draft.IndexOf("vfx?.Submit(camera);",StringComparison.Ordinal);
         Check(lights>0&&mine>lights&&fx>0&&submit>fx,"the install's lights after the stage's, its effects begun and submitted on the stage");
         Check(!draft.Contains("PressOffset")&&!draft.Contains("ride=")&&!body.Contains("VisualArms.Reach,support"),"no learnt press offset, wrist ride or support bind left");
@@ -244,6 +324,6 @@ internal static class InstallShotChecks
         Check(R("Runtime/NativeBladePresentation.cs").Contains("age-NativeInstallShot.DetailsAt-")&&R("Runtime/NativeGlaivePresentation.cs").Contains("age-NativeInstallShot.DetailsAt-")&&R("Runtime/NativeTopDogScreen.cs").Contains("age-NativeInstallShot.DetailsAt-"),"the class tiers' pick cues follow the readout");
         Check(screen.Contains("InstallTitle(chosen,seat,own,age,W,H)")&&screen.Contains("installed?\" · INSTALLED\":\" · INSTALLING\""),"the heading and the pill say installing until the clack");
         Check(R("Runtime/NativeAudio.cs").Contains("InstallStage();")&&install.Contains("foreach(var c in NativeInstallShot.Cues)"),"the install's cues play on the stage's clock");
-        return "Install wiring: the shot between the portrait and the pose, the contact pass between the drawn bay and the draws, the lights after the stage's, the effects on the stage; the old press offset, ride and support gone; the hand shapes on the draft actor only; the follow-throughs on the shared cap, the class tiers' cues on the readout, the install's text and cues";
+        return "Install wiring: the shot between the portrait and the pose, the drawn present and the contact pass between the bind and the draws, the suit's plates and the face gear queued on the arms as finally posed, the lights after the stage's, the effects on the stage; the cartridge flying into the drawn fingers, every tier's held cartridge with its core; the clack's ring as light, the visor white-hot, the trims in the chip's colour; the leader beside the pilot; the Expedition's own card flight; the old press offset, ride, support and forearm roll gone; the hand shapes on the draft actor only; the follow-throughs on the shared cap, the class tiers' cues on the readout, the install's text and cues";
     }
 }

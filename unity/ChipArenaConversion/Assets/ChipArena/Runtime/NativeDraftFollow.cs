@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
             string source=rainbow?"RAINBOW · 8 MAX-RARITY CHOICES":pveFollowSource=="start"?"BEGINNING CHIP":(pveFollowSource=="wave"?"WAVE REWARD · ":"DISPENSED · ")+TierName(pveFollowTier).ToUpperInvariant();
             float a=Math.Abs(presentation.DraftAge-age)<.3f?presentation.DraftAge:age;
             DraftShades(pveTray,W,H);DraftHeader(source,rainbow?Color.white:NativeChipCard.Rarity(pveFollowTier),FollowTitle(a),"",W,H,out _);
-            var tray=pveTray;if(tray!=null&&tray.Cards.Length==pveFollowChips.Count)PickedTray(tray,pveFollowChips,pveFollowIndex,pveFollowOwned,a);InstallFlash(a);
+            var tray=pveTray;if(tray!=null&&tray.Cards.Length==pveFollowChips.Count)PickedTray(tray,pveFollowChips,pveFollowIndex,pveFollowOwned,a,true);InstallFlash(a);
             Nameplate(arena.Local.Seat,NativeInstallShot.Installed(a)?"Installed":"Installing",28,H-22-66);
             if(pveFollowIndex>=0&&pveFollowIndex<pveFollowChips.Count)InstallBloom(RarityColor(pveFollowChips[pveFollowIndex].rarity),a,W,H);
         }

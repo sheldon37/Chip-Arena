@@ -61,5 +61,14 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The sculpted model id when it was built, else the exported source id (the machine and chip draws).</summary>
         public string MachineModel(string sculpted,string source)=>models.ContainsKey(sculpted)?sculpted:source;
+        private readonly Dictionary<string,bool> pickupCores=new Dictionary<string,bool>();
+        /// <summary>Whether a chip model carries the cartridge's core module (NativeMachineModels.CoreBody), which the draft stage's install
+        /// seats alone in the bay (the exported generic chip has none); remembered per model.</summary>
+        public bool PickupCore(string model)
+        {
+            if(model==null)return false;if(pickupCores.TryGetValue(model,out bool core))return core;
+            core=false;if(models.TryGetValue(model,out var parts))foreach(var p in parts)if(p.Bone==NativeMachineModels.CoreBody){core=true;break;}
+            return pickupCores[model]=core;
+        }
     }
 }

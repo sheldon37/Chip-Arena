@@ -23,7 +23,16 @@ namespace ChipArena.UnityConversion
 
         // ---- this frame's install (RenderDraft) ----
         private NativeInstallShot.Profile diProfile=NativeInstallShot.Of("common",null);private float diA=-1,diP=-1;private bool diModel,diSiren,diDog,diReduced,diShort;
-        private Color diChip=Color.white,diAccent=Color.cyan;private string diTier="common";private float diTurn=NativeInstallShot.TurnSeconds;
+        // The chip's colour, the pilot's accent tint and the clack's rim (the chip's; a common chip's grey takes the pilot's accent instead).
+        private Color diChip=Color.white,diAccent=Color.white,diRim=Color.white;private string diTier="common";private float diTurn=NativeInstallShot.TurnSeconds;
+        // The accent trims' tints (ratios over the model's baked accent, as AccentTint is: not colours) that make them glow in the chip's
+        // colour and white-hot (the visor's beat): a colour multiplied onto the baked teal read green for gold.
+        private Color diChipAccent=Color.white,diWhiteAccent=Color.white;private int diTintsOf=-1;
+        private void DraftTints(Color chip)
+        {
+            int hex=(Mathf.RoundToInt(Mathf.Clamp01(chip.r)*255)<<16)|(Mathf.RoundToInt(Mathf.Clamp01(chip.g)*255)<<8)|Mathf.RoundToInt(Mathf.Clamp01(chip.b)*255);if(hex==diTintsOf)return;diTintsOf=hex;
+            var c=NativePortraitRules.GlowAccentTint(hex);diChipAccent=new Color(c.X,c.Y,c.Z);var w=NativePortraitRules.GlowAccentTint(0xffffff);diWhiteAccent=new Color(w.X,w.Y,w.Z);
+        }
         // The drawn bay (seat, outward normal, forearm toward the hand) and the cartridge drawn this frame (centre, turn, scale).
         private Vector3 diBayAt,diBayN,diBayF;private bool diBay;private Vector3 diCartAt,diPinch;private Quaternion diCartTurn=Quaternion.identity;private float diCartScale;
         // The grasp the draft actor wears (NativeHandShapes; VisualBodyBind takes it for draftActor while diGrasp is set).
@@ -65,14 +74,16 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// The drawn taking hand onto the cartridge by weight `w`: its pads' frame turned onto the cartridge's (the pinch: the index pad
         /// over the thumb's along the back face's normal, the index along the cartridge toward its connector; the press: the palm side
-        /// onto the back face), and the arm reaching (a two-bone solve, at most 3% stretch) so the pinch, then the two fingers' pads,
-        /// land on `pinchAt` / `pressAt`. Returns the drawn pinch (world).
+        /// onto the back face, kept through the lift off the shell), and the arm reaching (a two-bone solve, at most 3% stretch) so the
+        /// pinch, then the two fingers' pads, land on `pinchAt` / `pressAt`. Before the catch `cart` is the cartridge's turn at the catch
+        /// and the targets the stage hand's own pinch on its reach, so the drawn hand is already open and turned to take it as it flies
+        /// in. Returns the drawn pinch (world).
         /// </summary>
         private Vector3 VisualDraftContact(bool left,float p,Vector3 pinchAt,Vector3 pressAt,Quaternion cart,float w)
         {
             var body=draftBody;if(body==null)return pinchAt;var r=DraftArmFor(body,left);if(r.Upper==null||r.Lower==null||r.Hand==null||r.Index1==null||r.Index2==null||r.Index3==null||r.Thumb2==null||r.Thumb3==null||r.Pinky1==null||r.Middle1==null)return pinchAt;
             if(r.Scaled){r.Upper.localScale=r.UpperBase;r.Hand.localScale=r.HandBase;r.Scaled=false;}
-            float press=NativeInstallShot.Ramp(p,NativeInstallShot.ThumbOff,NativeInstallShot.PressShaped)*(1-NativeInstallShot.Ramp(p,NativeInstallShot.Release,NativeInstallShot.ReleaseEnd));
+            float press=NativeInstallShot.Ramp(p,NativeInstallShot.ThumbOff,NativeInstallShot.PressShaped);
             var n=cart*Vector3.up;var along=cart*Vector3.back;var hand=r.Hand;
             Vector3 Hold(){var t=Pad(r.Thumb2,r.Thumb3);var i=Pad(r.Index2,r.Index3);var m=r.Middle2!=null&&r.Middle3!=null?Pad(r.Middle2,r.Middle3):i;return Vector3.Lerp((t+i)*.5f,(i+m)*.5f,press);}
             if(w<=1e-4f)return Hold();
@@ -85,21 +96,56 @@ namespace ChipArena.UnityConversion
             r.Scaled=DogReach(r.Upper,r.Lower,hand,target,pole,w,1.03f,r.UpperBase,r.HandBase);hand.rotation=Quaternion.Slerp(hand.rotation,turn,w);
             return Hold();
         }
-        /// <summary>
-        /// The model's receiving forearm (the hand with it) rolled about its own length by the present's weight, so the device it carries
-        /// turns its bay to the stage's aim (NativeDraftInstall.ForeAim): the hand's turn barely moves a forearm-mounted device. Measured
-        /// fresh on each frame's bound pose, so nothing accumulates; the wrist stays where it is (on the axis).
-        /// </summary>
-        private void DraftForeRoll(NativeDraftStage stage)
+        /// <summary>Where the two pressing fingers lift to off the shell (world): from the press point on the drawn bay, up along its normal and
+        /// back toward the taking hand's own shoulder in the bay's plane, never along the forearm toward its elbow (NativeDraftInstall.Lift:
+        /// about 4 cm by ReleaseEnd), so the bay stays clear for the white-hot core and the lid's slam.</summary>
+        private Vector3 DraftLiftAt()
         {
-            var plan=stage.Plant;var body=draftBody;if(!plan.ForeAiming||plan.ForeWeight<=1e-4f||body==null)return;var r=DraftArmFor(body,stage.Left);if(r.OtherLower==null||r.OtherHand==null)return;
-            if(!VisualDraftBay(out _,out var n))return;var axis=r.OtherHand.position-r.OtherLower.position;if(axis.sqrMagnitude<1e-8f)return;axis.Normalize();
-            var a0=Vector3.ProjectOnPlane(n,axis);var a1=Vector3.ProjectOnPlane(StageDir(plan.ForeAim),axis);if(a0.sqrMagnitude<1e-6f||a1.sqrMagnitude<1e-6f)return;
-            float deg=Mathf.Clamp(Vector3.SignedAngle(a0,a1,axis),-NativeDraftInstall.RollMost*Mathf.Rad2Deg,NativeDraftInstall.RollMost*Mathf.Rad2Deg);
-            r.OtherLower.rotation=Quaternion.AngleAxis(deg*plan.ForeWeight,axis)*r.OtherLower.rotation;
+            float s=diCartScale;var press=diBayAt+diBayN*(NativePilotGear.FrameHeight+2*NativeDraftInstall.FaceDepth*s);
+            var shoulder=draftArm?.Upper!=null?draftArm.Upper.position:press+Vector3.up;var away=Vector3.ProjectOnPlane(shoulder-press,diBayN);away=away.sqrMagnitude>1e-8f?away.normalized:Vector3.up;
+            float along=Vector3.Dot(away,diBayF);if(along<0){var cut=away-diBayF*along;if(cut.sqrMagnitude>1e-6f)away=cut.normalized;}
+            float lift=NativeDraftInstall.Lift(diP);return press+diBayN*(NativeDraftInstall.FlickUp*lift)+away*(NativeDraftInstall.FlickOver*lift);
         }
-        /// <summary>The contact's weight at pose age `p`: in as the cartridge flies into the fingers, held to the release, out over the flick.</summary>
-        private static float ContactWeight(float p)=>NativeInstallShot.Ramp(p,NativeInstallShot.PinchStart,NativeInstallShot.Catch)*(1-NativeInstallShot.Ramp(p,NativeInstallShot.Release,1.30f));
+        /// <summary>The readout's leader starts beside the pilot at the device's height, never across the body: the device's screen point
+        /// (pixels) moved out past the pilot's side toward the readout (the taking arm's joints and the receiving hand, projected, with a
+        /// margin), or the device itself where it stands clear of them.</summary>
+        private Vector2 DraftLeaderFrom(Camera camera,Vector2 device,NativeDraftStage stage)
+        {
+            if(device==Vector2.zero)return Vector2.zero;float edge=device.x,margin=.035f*Screen.width;
+            void Out(Vector3 w){var s=camera.WorldToScreenPoint(w);if(s.z>0)edge=Mathf.Max(edge,s.x+margin);}
+            if(diModel&&draftArm?.Upper!=null&&draftArm.Lower!=null&&draftArm.Hand!=null){Out(draftArm.Upper.position);Out(draftArm.Lower.position);Out(draftArm.Hand.position);if(draftArm.OtherHand!=null)Out(draftArm.OtherHand.position);}
+            else{var pose=stage.Pose;int arm=stage.Left?CapturedRig.LArm:CapturedRig.RArm;for(int i=0;i<3;i++)Out(Stage(pose.WorldPosition[arm+i]));Out(Stage(pose.WorldPosition[stage.Left?CapturedRig.RHand:CapturedRig.LHand]));}
+            return new Vector2(edge,device.y);
+        }
+        // The present's slide along the lens's line, its miss off the designed seat and the contact's weight this frame (read by the local
+        // capture tool's log).
+        private float diPresentSlide,diPresentMiss,diContactW;
+        /// <summary>
+        /// The model's receiving arm onto the stage's designed present (NativeDraftInstall.PresentAt, its normal and its forearm) by the arm's
+        /// rise into it (ForeWeight): the device rides the model's forearm (its twist bone), which the stage hand's frame cannot place, so the
+        /// bay is solved on the drawn bones. The forearm is turned so its axis runs along the designed forearm (across the body, square to
+        /// the lens) and the bay's face along the designed normal (the device's own turn on the forearm as the bind left it, measured fresh
+        /// on each frame's bound pose, so nothing accumulates); the elbow goes where that puts the bay on its seat, slid along the lens's
+        /// line (which barely moves it on the screen) so the upper arm keeps its length, else onto the upper arm's reach; the upper arm turns
+        /// to the elbow. The hand rides the forearm. Before the suit, the gear and the effects read the arm.
+        /// </summary>
+        private void VisualDraftPresent(NativeDraftStage stage,Camera camera)
+        {
+            diPresentSlide=diPresentMiss=0;var plan=stage.Plant;var body=draftBody;float k=plan.ForeWeight;if(!plan.ForeAiming||k<=1e-4f||body?.GearDevice==null)return;
+            var r=DraftArmFor(body,stage.Left);var upper=r.OtherUpper;var lower=r.OtherLower;var hand=r.OtherHand;if(upper==null||lower==null||hand==null)return;
+            if(!VisualDraftBay(out var b0,out var n0))return;
+            var s=upper.position;var e0=lower.position;var w0=hand.position;float lu=(e0-s).magnitude,lf=(w0-e0).magnitude;if(lu<1e-3f||lf<1e-3f)return;
+            var inv=Quaternion.Inverse(lower.rotation);var axisL=inv*((w0-e0)/lf);var bayL=inv*(b0-e0);var nL=Vector3.ProjectOnPlane(inv*n0,axisL);if(nL.sqrMagnitude<1e-6f)return;
+            var bt=Stage(plan.PresentAt);var ft=StageDir(plan.PresentForearm).normalized;var nt=Vector3.ProjectOnPlane(StageDir(plan.PresentNormal),ft);if(nt.sqrMagnitude<1e-6f||ft.sqrMagnitude<.5f)return;
+            var turn=Quaternion.LookRotation(ft,nt)*Quaternion.Inverse(Quaternion.LookRotation(axisL,nL));var et=bt-turn*bayL;
+            // The upper arm's length kept: slid along the lens's line (at most PresentSlide), then onto its reach.
+            var v=(camera.transform.position-bt).normalized;var d=et-s;float bq=Vector3.Dot(v,d),disc=bq*bq-(d.sqrMagnitude-lu*lu),slide=0;
+            if(disc>=0){float q=Mathf.Sqrt(disc),s1=-bq+q,s2=-bq-q;slide=Mathf.Abs(s1)<Mathf.Abs(s2)?s1:s2;}
+            slide=Mathf.Clamp(slide,-NativeDraftInstall.PresentSlide,NativeDraftInstall.PresentSlide);et+=v*slide;var reach=et-s;if(reach.sqrMagnitude>1e-8f)et=s+reach.normalized*lu;
+            diPresentSlide=slide;diPresentMiss=(et+turn*bayL-bt).magnitude;
+            upper.rotation=Quaternion.Slerp(Quaternion.identity,Quaternion.FromToRotation(e0-s,et-s),k)*upper.rotation;
+            lower.rotation=Quaternion.Slerp(lower.rotation,turn,k);
+        }
 
         // ---- the cartridge, the core and the shell ----
         /// <summary>
@@ -123,6 +169,15 @@ namespace ChipArena.UnityConversion
             }
             diCartAt=c;diCartTurn=q;
         }
+        /// <summary>The cartridge in the air from the burst into the hand (Burst..Catch on the pose clock): from where the 2D card handed over
+        /// into the drawn thumb and index pads as they reach for it (`pinch`, this frame's, after the contact pass), slowing, its bank
+        /// settling to the catch's turn, so it visibly travels its last centimetres into the fingers.</summary>
+        private void DraftCartridgeFlight(NativeDraftStage stage,Vector3 pinch)
+        {
+            var plan=stage.Plant;diCartScale=plan.Scale;diCartTurn=StageTurn(plan.ChipRotation);var crest=diCartTurn*Vector3.forward;
+            float u=Mathf.Clamp01((diP-NativeInstallShot.Burst)/(NativeInstallShot.Catch-NativeInstallShot.Burst));
+            var to=pinch-crest*((NativeDraftInstall.CoreZ(plan.Tier)+NativeDraftInstall.CrestEdge)*diCartScale);diCartAt=Vector3.Lerp(Stage(plan.BurstAt),to,NativeInstallShot.EaseOut(u));
+        }
         /// <summary>The cartridge's drawn pinch and press points (world) on its frame this frame.</summary>
         private Vector3 CartPoint(NativeDraftStage stage,bool pinch)
         {
@@ -130,10 +185,19 @@ namespace ChipArena.UnityConversion
             return diCartAt+diCartTurn*(Vector3.forward*along+(pinch?Vector3.zero:Vector3.up*(NativeDraftInstall.FaceDepth*s)));
         }
         /// <summary>The held cartridge (the shell and, before the latch, its core), the latched core sinking into the seat, then the seated
-        /// core face out in the bay (white-hot as the shell breaks), and the shell's shards.</summary>
+        /// core face out in the bay (white-hot as the shell breaks), and the shell's shards. Every tier holds a built cartridge with the core
+        /// module (NativeMachineModels.HeldPickup: a class kit or a boss relic without its own takes the common's in its colours); should a
+        /// model without one be all there is, the device's own chip (GearChip) seats in the bay from the latch instead, as before the
+        /// install, so the bay is never empty at the clack.</summary>
         private void DraftCartridgeDraw(NativeDraftStage stage,float time,bool reduced)
         {
-            var plan=stage.Plant;string model=sourceModels.MachineModel(NativeMachineModels.PickupModel(diTier),"pve-pickup");if(!sourceModels.Has(model))return;
+            var plan=stage.Plant;string model=sourceModels.MachineModel(NativeMachineModels.HeldPickup(diTier),"pve-pickup");if(!sourceModels.Has(model))return;
+            bool hasCore=sourceModels.PickupCore(model);
+            if(!hasCore&&diBay&&diP>=NativeInstallShot.Contact&&draftBody?.GearDevice!=null)
+            {
+                gearBone??=GearBoneOf;float gr=Mathf.Round(Mathf.Clamp(draftBody.GearRadius,.02f,.08f)*1000)/1000;var seat=NativePilotGear.Seat(gr);var chip=diChip.linear*(1.6f+2*Mathf.Clamp01(1-(diA-NativeInstallShot.Release)/.25f));
+                gearMatrix=DraftDeviceMatrix(draftBody)*Matrix4x4.Translate(new Vector3(-seat.X,seat.Y,seat.Z));sourceModels.Queue(NativeSourceModels.GearChip,gearMatrix,gearBone,null,0,null,Color.white,diAccent,1,null,null,new Vector4(chip.r,chip.g,chip.b,1),null,0);
+            }
             diShell??=b=>b!=NativeMachineModels.CoreBody&&b!=NativeMachineModels.CoreLights;diCore??=b=>b==NativeMachineModels.CoreBody||b==NativeMachineModels.CoreLights;
             diCartBone??=b=>b==NativeMachineModels.Orbit?diCartOrbit:diCartM;diCartPart??=b=>b==1||b==NativeMachineModels.CoreLights||b==NativeMachineModels.Orbit?diCartTint:Color.white;
             float lights=plan.Lights;var lit=diChip.linear*lights*(.9f+.2f*NativeChipCartridge.Breath(diProfile.Look,time,reduced));var s=Vector3.one*diCartScale;
@@ -202,7 +266,7 @@ namespace ChipArena.UnityConversion
         {
             var body=draftBody;if(body?.GearCore==null||diDog||!sourceModels.PilotGear(body.GearRadius>.01f?body.GearRadius:.04f))return;
             gearBone??=GearBoneOf;float since=diA-NativeInstallShot.CoreAt,ignite=since>=0?Mathf.Exp(-since/.35f):0,held=diA>=NativeInstallShot.CoreAt&&!diShort?.3f*(1-NativeInstallShot.Ramp(diA,NativeInstallShot.SettleStart(diTurn),NativeInstallShot.SettleEnd(diTurn))):diShort&&diA>=NativeInstallShot.CoreAt?.3f:0;
-            float g=NativePilotGear.CoreGlow(time,1,-1,seat.id)*(1+2.5f*ignite+held);var accent=Color.Lerp(AccentTint(seat.accentColor),diChip,Mathf.Clamp01(ignite*1.5f+held*2));
+            float g=NativePilotGear.CoreGlow(time,1,-1,seat.id)*(1+2.5f*ignite+held);var accent=Color.Lerp(AccentTint(seat.accentColor),diChipAccent,Mathf.Clamp01(ignite*1.5f+held*2));
             gearMatrix=body.GearCore.localToWorldMatrix;sourceModels.Queue(NativeSourceModels.GearCore,gearMatrix,gearBone,null,0,null,Color.white,accent,1,null,null,new Vector4(g,g,g,1),null,0);
         }
         /// <summary>The surge's light along the receiving arm to the chest and the head at age `a` (0..1 per link: forearm, upper arm, chest,
@@ -240,17 +304,19 @@ namespace ChipArena.UnityConversion
             if(diA<NativeInstallShot.SurgeStart||diSiren){VisualSuit(body.Root,seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);return;}
             int chased=0;foreach(int b in SurgeSuit)chased|=1<<b;VisualSuit(body.Root,seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0,~chased);
             float sheen=(.1f+.1f*diProfile.Level)*NativeInstallShot.Ramp(diA,NativeInstallShot.SurgeEnd,NativeInstallShot.SurgeEnd+.3f)*(diShort?1:1-NativeInstallShot.Ramp(diA,NativeInstallShot.SettleStart(diTurn),NativeInstallShot.SettleEnd(diTurn)));
-            for(int i=0;i<SurgeSuit.Length;i++){float band=Mathf.Clamp01(SurgeBand(diA,i)+sheen);VisualSuit(body.Root,seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0,1<<SurgeSuit[i],Color.Lerp(diAccent,diChip,Mathf.Clamp01(band*2)),1+3*band);}
+            for(int i=0;i<SurgeSuit.Length;i++){float band=Mathf.Clamp01(SurgeBand(diA,i)+sheen);VisualSuit(body.Root,seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0,1<<SurgeSuit[i],Color.Lerp(diAccent,diChipAccent,Mathf.Clamp01(band*2)),1+3*band);}
         }
-        /// <summary>The face gear on the draft body: the visor's beat (VisorAt) in the chip's colour at 1 + 1.5 x the tier's visor share,
-        /// decaying over .5 s to a 15% tint held 1.5 s; a wild chip's visor flickers off and on twice.</summary>
+        /// <summary>The face gear on the draft body: the visor's beat (VisorAt) flashes white-hot by the tier's visor share (toward white, never
+        /// toward the chip's hue: the visor glows near saturation already, and gold over the teal visor read green) and decays back to the
+        /// accent over .5 s; the chip's colour rims it as light round the visor (DraftInstallFx). A wild chip's visor flickers off and on twice.</summary>
         private void DraftFaceGear(VisualBody body,NativeSeat seat)
         {
             float t=diA-NativeInstallShot.VisorAt;if(diSiren||t<0){VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);return;}
-            float flash=Mathf.Clamp01(1-t/.5f);flash*=flash;float held=.15f*(1-NativeInstallShot.Ramp(t,1.5f,2f)),glow=1+1.5f*diProfile.Visor*flash;
-            if(diProfile.Wild&&(t>=.05f&&t<.09f||t>=.16f&&t<.2f))glow=.1f;
-            VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0,Color.Lerp(diAccent,diChip,Mathf.Max(flash,held)),glow);
+            float flash=VisorFlash(t),glow=1+.5f*diProfile.Visor*flash;if(diProfile.Wild&&(t>=.05f&&t<.09f||t>=.16f&&t<.2f))glow=.1f;
+            VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0,Color.Lerp(diAccent,diWhiteAccent,.9f*diProfile.Visor*flash),glow);
         }
+        /// <summary>The visor beat's flash (0..1) `t` seconds after VisorAt: up in two frames, falling away over .5 s.</summary>
+        private static float VisorFlash(float t){if(t<0||t>=.5f)return 0;float up=Mathf.Clamp01(t/.03f),fall=1-t/.5f;return up*fall*fall;}
         /// <summary>A cloth outfit's accent trims flaring from the pilot's accent to the chip's colour at the core's light (CoreAt), settling
         /// back over 1.5 s (the next bind writes the pilot's accent again).</summary>
         private void DraftAccentFlare(VisualBody body,NativeSeat seat)
@@ -270,8 +336,11 @@ namespace ChipArena.UnityConversion
             NVector N(Vector3 v)=>new NVector(v.x,v.y,v.z);
             if(diA>=NativeInstallShot.Burst)
             {
-                float seat=diA-NativeInstallShot.Seat;bool seated=seat>=0;var at=seated&&diBay?diBayAt+diBayN*.03f:diCartAt;
-                float level=seated?(.4f+(2.5f+2.5f*L-.4f)*Mathf.Exp(-seat/.18f))*(diShort?1:1-NativeInstallShot.Ramp(diA,NativeInstallShot.SettleStart(diTurn),NativeInstallShot.SettleEnd(diTurn))):1+L;
+                // (Held a little toward the lens and under the cartridge, so it lights the camera's side of the fingers holding it and the
+                // black glove reads off the black suit, brighter as the hand lines it up and presses; the clack's at the bay.)
+                var toLens=(camera.transform.position-diCartAt).normalized;
+                float seat=diA-NativeInstallShot.Seat;bool seated=seat>=0;var at=seated&&diBay?diBayAt+diBayN*.03f+toLens*.02f:diCartAt+toLens*.045f-Vector3.up*.015f;
+                float level=seated?(.4f+(2.5f+2.5f*L-.4f)*Mathf.Exp(-seat/.18f))*(diShort?1:1-NativeInstallShot.Ramp(diA,NativeInstallShot.SettleStart(diTurn),NativeInstallShot.SettleEnd(diTurn))):(1+L)*(1+.7f*NativeInstallShot.Ramp(diP,NativeInstallShot.CarryEnd-.04f,NativeInstallShot.Contact));
                 diLights.Offer(1,N(at),new MuzzleLightLook{Color=hex,Peak=reduced?.6f:1,Range=seated?.6f:.45f},level,false);
             }
             float core=diA-NativeInstallShot.CoreAt;if(core>=0&&core<.3f&&draftBody?.GearCore!=null&&!diDog)diLights.Offer(2,N(draftBody.GearCore.position+draftBody.GearCore.forward*.06f),new MuzzleLightLook{Color=hex,Peak=1,Range=.5f},(1.5f+L)*(1-core/.3f),false);
@@ -321,18 +390,23 @@ namespace ChipArena.UnityConversion
                 }
             }
             // The clack (on `a`): the flash at the bay, white at its heart (a void with a rim in the set's colour for the boss relics), its ring
-            // in the bay's plane, the sparks off the frame.
-            float seat=a-NativeInstallShot.Seat;
+            // of light in the bay's plane (additive streaks: it thins and fades to nothing as it grows, never a solid hoop), the sparks off the
+            // frame. A common chip's grey would read dull: its light is white-hot with the pilot's accent for its rim (diRim).
+            float seat=a-NativeInstallShot.Seat;var rim=diRim.linear;
             if(seat>=0&&seat<.4f)
             {
                 float u=Mathf.Clamp01(seat/.25f),fall=(1-u)*(1-u)*(1-u),size=diProfile.Flash*(reduced?.5f:1);var at=bay+n*.012f;
                 if(diProfile.Boss){fx.Glow(S(at),new NVector(0,0,0),.85f*fall,size*.5f,1,u,7461);fx.Glow(S(at),Lin(rare,3*fall),0,size*.8f,0,u,7462);}
-                else{fx.Glow(S(at),Lin(rare,2.6f*fall),0,size,1,u,7461);fx.Glow(S(at),white*(3.5f*fall),0,size*.3f,0,u,7462);}
+                else{fx.Glow(S(at),Lin(rim,2.6f*fall),0,size,1,u,7461);fx.Glow(S(at),white*(3.5f*fall),0,size*.3f,0,u,7462);}
                 if(!reduced&&diProfile.Grade>=6&&!diProfile.Boss){fx.Glow(S(at+camera.transform.right*.006f),new NVector(1.6f*fall,0,0),0,size*.9f,1,u,7463);fx.Glow(S(at-camera.transform.right*.006f),new NVector(0,0,1.6f*fall),0,size*.9f,1,u,7464);}
                 if(wild&&!reduced)for(int k=0;k<3;k++)fx.Glow(S(at+camera.transform.right*(.006f*(k-1))),new NVector(k==0?2*fall:0,k==1?2*fall:0,k==2?2*fall:0),0,size*.6f,1,u,7465+k);
-                int rings=reduced?1:diProfile.Rings;var face=Quaternion.FromToRotation(Vector3.forward,n);
-                for(int k=0;k<rings;k++){float v=Mathf.Clamp01((seat-.04f*k)/.18f);if(v<=0||v>=1)continue;float r=.02f+.12f*NativeInstallShot.EaseOut(v);sourceModels.QueuePiece(WeaponShape.Ring,true,Matrix4x4.TRS(at,face,new Vector3(r,r,r*.25f*(1-v))),rare*(2.4f*(1-v)));}
-                if(!reduced)NativeEntranceFx.Sparks(fx,a,NativeInstallShot.Seat,S(at),S(n),.9f,diProfile.Sparks,.9f,.3f,4,.5f,Lin(accentC,2.6f),Lin(NativeUi.Hex(diProfile.Look.Inlay).linear,1.4f),.0022f,7471,quality,-10);
+                int rings=reduced?1:diProfile.Rings,segs=reduced?12:20;var f=diBay?diBayF:StageDir(plan.Forearm);var side=Vector3.Cross(n,f).normalized;f=Vector3.Cross(side,n).normalized;
+                for(int k=0;k<rings;k++)
+                {
+                    float v=Mathf.Clamp01((seat-.04f*k)/.18f);if(v<=0||v>=1)continue;float r=.02f+.12f*NativeInstallShot.EaseOut(v),fade=(1-v)*(1-v),arc=r*Mathf.PI*2/segs;var col=Lin(Color.Lerp(rim,Color.white,.35f*(1-v)),2.6f*fade);
+                    for(int j=0;j<segs;j++){float ang=(j+.5f*k)/segs*Mathf.PI*2;var dir=side*Mathf.Cos(ang)+f*Mathf.Sin(ang);var tan=Vector3.Cross(n,dir);fx.Streak(S(at+dir*r),S(tan*(arc/.05f)),col,.0022f*(1-.7f*v),arc,.05f,.2f,v,8101+k*37+j);}
+                }
+                if(!reduced)NativeEntranceFx.Sparks(fx,a,NativeInstallShot.Seat,S(at),S(n),.9f,diProfile.Sparks,.9f,.3f,4,.5f,Lin(diProfile.Grade<=1?rim:accentC,2.6f),Lin(NativeUi.Hex(diProfile.Look.Inlay).linear,1.4f),.0022f,7471,quality,-10);
             }
             // The shell breaking: three prism sparks off its crystal (the boss relics' shell burns to embers).
             if(!reduced&&a>=NativeInstallShot.Release&&a<NativeInstallShot.Release+.5f)
@@ -374,6 +448,13 @@ namespace ChipArena.UnityConversion
                     if(u<1){fx.Glow(S(head),Lin(rare,2.4f),0,.016f,1,u,7651+side);}
                     float flare=a-NativeInstallShot.CoreAt-.22f;if(flare>=0&&flare<.3f)fx.Glow(S(hd),Lin(rare,2.2f*(1-flare/.3f)),0,.07f,1,flare/.3f,7655+side);
                 }
+            }
+            // The visor beat's rim: the chip's light round the white-hot visor (DraftFaceGear flashes the visor itself toward white).
+            float visorT=a-NativeInstallShot.VisorAt;if(diModel&&visorT>=0&&visorT<.5f&&diPath[4]!=Vector3.zero)
+            {
+                float fl=VisorFlash(visorT)*diProfile.Visor;var right=camera.transform.right;var at=diPath[4]-forward*.03f;
+                for(int k=0;k<3;k++)fx.Glow(S(at+right*(.065f*(k-1))),Lin(rare,1.5f*fl),0,.05f,1,visorT/.5f,8161+k);
+                fx.Glow(S(at),Lin(rare,.7f*fl),0,.16f,1,visorT/.5f,8164);
             }
             // The chest core igniting: a soft ring of its light.
             float coreAt=a-NativeInstallShot.CoreAt;if(coreAt>=0&&coreAt<.5f&&diPath[3]!=Vector3.zero){float u=coreAt/.5f;fx.Glow(S(diPath[3]+forward*-.04f),Lin(rare,1.6f*(1-u)*(1-u)),0,.05f+.08f*u,2,u,7571);}

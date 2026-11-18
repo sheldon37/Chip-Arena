@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
         private void DraftShades(Tray tray,float W,float H)
         {
             float head=Mathf.Min(H*.24f,230);U.Fill(new Rect(0,0,W,head*.4f),U.Hex(0x06070b,.42f));U.Fade(new Rect(0,head*.4f,W,head*.6f),U.Hex(0x06070b,.42f));
-            float top=tray!=null&&tray.Cards.Length>0?tray.Top/H:NativeDraftStage.DefaultTray;presentation.DraftShade(top,out float line,out float deep);line*=H;deep*=H;var shade=U.Hex(0x06070b,NativeDraftStage.ShadeOpaque);
+            float top=tray!=null&&tray.Cards.Length>0?tray.Top/H:NativeDraftStage.DefaultTray;presentation.DraftShade(top,out float line,out float deep);line*=H;deep*=H;draftShadeY=line;var shade=U.Hex(0x06070b,NativeDraftStage.ShadeOpaque);
             U.Fade(new Rect(0,line-12,W,deep-line+12),shade,false);U.Fill(new Rect(0,deep,W,H-deep),shade);
         }
         private static void Nameplate(NativeSeat seat,string label,float x,float y)
@@ -173,7 +173,7 @@ namespace ChipArena.UnityConversion
             {
                 // The others break apart and the chosen card flies at the pilot and bursts into the 3D cartridge (NativeInstallShot); the
                 // pilot installs it (the install cue lands on the clack, NativeAudio), then the details unfold beside the pilot.
-                PickedTray(tray,chips,index,seat.chips.TryGetValue(chosen.id,out int c)?c-1:0,age);InstallFlash(age);
+                PickedTray(tray,chips,index,seat.chips.TryGetValue(chosen.id,out int c)?c-1:0,age,true);InstallFlash(age);
                 float details=age-NativeInstallShot.DetailsAt;if(details>=0)Spotlight(chosen,seat,details,DraftRevealSeconds(chosen.id)-NativeInstallShot.DetailsAt,NativeInstallShot.DetailsBeside,age);
             }
             if(chosen==null||age<NativeInstallShot.DetailsAt)Nameplate(seat,chosen!=null?(installed?"Installed":"Installing"):own?"Your pick":"Picking",H<=760?22:28,H-(H<=760?14:22));
@@ -187,18 +187,54 @@ namespace ChipArena.UnityConversion
         }
         // The clack's two-frame flash over the screen (none with Reduced effects).
         private void InstallFlash(float age){if(prefs.reducedEffects||!(age>=NativeInstallShot.Seat)||age>=NativeInstallShot.Seat+2/60f)return;U.Fill(new Rect(0,0,U.W,U.H),new Color(1,1,1,.12f));}
-        private Tray draftTray;private float draftTrayTop;private Vector2 draftTraySize;
-        // A tray after its pick, `age` seconds on: the others break apart nearest first, the chosen card (`copies` owned before it) flies
-        // at the pilot and bursts into the 3D cartridge (NativeInstallShot.Burst). It leaves from its highlight as it was at the pick (DrawTray
-        // skips it, so its level holds; a spectator's is 0).
-        private void PickedTray(Tray tray,IList<ContentChip> chips,int index,int copies,float age)
+        private Tray draftTray;private float draftTrayTop,draftShadeY=float.MaxValue;private Vector2 draftTraySize;
+        // A tray after its pick, `age` seconds on. On the draft stage (`stage`: the PvP draft, the Siren / Ward Zero pick's and the
+        // Deathmatch's follow-throughs) the others break apart nearest first and the chosen card (`copies` owned before it) flies at the
+        // pilot and bursts into the stage's 3D cartridge (NativeInstallShot.Burst). Off it (the Expedition's tray over the live view, whose
+        // plant takes the card at NativeDraftPlant.Contact: NativeChipPlant) the others shatter in turn and the card flies into the hand and
+        // fades there, as before the stage's install. It leaves from its highlight as it was at the pick (DrawTray skips it, so its level
+        // holds; a spectator's is 0).
+        private void PickedTray(Tray tray,IList<ContentChip> chips,int index,int copies,float age,bool stage=false)
         {
+            if(!stage)
+            {
+                for(int i=0;i<chips.Count&&i<tray.Cards.Length;i++)if(i!=index)ShatterPlain(tray.Cards[i],chips[i],age-i*.035f,i,tray.Size);
+                if(index>=0&&index<tray.Cards.Length)FlyToHand(tray.Cards[index],chips[index],copies,age,tray.Size,index<cardHolo.Length?cardHolo[index]:0);
+                return;
+            }
             var from=index>=0&&index<tray.Cards.Length?tray.Cards[index].center:new Vector2(U.W/2,U.H*.8f);float w=index>=0&&index<tray.Cards.Length?tray.Cards[index].width:160;
             for(int i=0;i<chips.Count&&i<tray.Cards.Length;i++)if(i!=index)
             {
                 int d=Mathf.Max(1,Mathf.RoundToInt((tray.Cards[i].center-from).magnitude/Mathf.Max(60,w+14)));Shatter(tray.Cards[i],chips[i],age,NativeInstallShot.ShatterAt(d),i,tray.Size,from);
             }
             if(index>=0&&index<tray.Cards.Length)FlyToPalm(tray.Cards[index],chips[index],copies,age,tray.Size,index<cardHolo.Length?cardHolo[index]:0);
+        }
+        // Off the stage (the Expedition's tray): chipFracture .85 s, still until 8%, a flash at 18%, then six shards of the cartridge fly
+        // apart, spin, shrink and fade (each a chamfered fragment of its body with the bezel's edge and the tier's light inside).
+        private static readonly float[] PlainXs={0,.52f,1},PlainYs={0,.38f,.71f,1};
+        private void ShatterPlain(Rect r,ContentChip chip,float t,int index,ChipSize size)
+        {
+            if(t<0){NativeChipCard.Draw(r,chip,0,size,ChipLook.Idle(Time.unscaledTime));return;}float k=t/.85f;if(k>=1)return;
+            if(k<.18f){NativeChipCard.Draw(r,chip,0,size,ChipLook.Idle(Time.unscaledTime));if(k>.08f)NativeChipArt.Package(r,size.Radius,0,new Color(1,1,1,.5f*(k-.08f)/.1f));return;}
+            float u=M.Bezier(.15f,.65f,.3f,1,(k-.18f)/.82f);Color rare=NativeChipCard.Rarity(chip.rarity),edge=U.Mix(U.Hex(NativeChipCartridge.Of(chip.rarity).MetalMid),rare,.45f);
+            for(int n=0;n<6;n++)
+            {
+                int col=n%2,row=n/2;var piece=new Rect(r.x+r.width*PlainXs[col],r.y+r.height*PlainYs[row],r.width*(PlainXs[col+1]-PlainXs[col]),r.height*(PlainYs[row+1]-PlainYs[row]));
+                float dx=(n%2==1?1:-1)*(45+index*5),dy=(n-2.5f)*44,spin=(n%2==1?1:-1)*(15+n*7);
+                U.Push(piece.center,new Vector2(dx*u,dy*u),1-.18f*u,spin*u);float a=1-u,glow=Mathf.Lerp(2.4f,.5f,u);
+                var cut=n%2==0?NativeHudChrome.Corners.TL|NativeHudChrome.Corners.BR:NativeHudChrome.Corners.TR|NativeHudChrome.Corners.BL;
+                NativeHudChrome.Cut(piece,U.Hex(0x0d1018,a),5,cut);NativeHudChrome.Cut(new Rect(piece.x+2,piece.y+2,piece.width-4,piece.height-4),U.A(rare,.12f*a*glow),4,cut);NativeHudChrome.Outline(piece,U.A(edge,a),5,cut,1.5f);U.Pop();
+            }
+        }
+        // Off the stage: the card flies straight to where the hand takes it (draftCatch, else draftPalm), shrinking and turning, and fades
+        // as the plant's hand closes on it at NativeDraftPlant.Contact (NativeChipPlant.CardFly / CardFade); it leaves from the highlight's
+        // lift at `level`, its die keeps the highlight's charge and the holo scan locks onto it. Nothing here reads the draft stage.
+        private void FlyToHand(Rect r,ContentChip chip,int copies,float age,ChipSize size,float level=0)
+        {
+            float fly=NativeChipPlant.CardFly(age),fade=NativeChipPlant.CardFade(age);if(fade>=1)return;Vector2 target=draftCatch!=Vector2.zero?draftCatch:draftPalm;if(target==Vector2.zero)target=r.center;bool calm=prefs.reducedEffects;
+            U.Push(r.center,(target-r.center)*fly+new Vector2(0,NativeHoloScan.Lift(level)*(1-fly)),1-.88f*fly,-9*fly);var rare=NativeChipCard.Rarity(chip.rarity);U.Glow(r,U.A(rare,.55f*(1-fade)),42);NativeChipArt.PackageEdge(r,size.Radius,2,U.A(rare,1-fade),2);
+            var look=ChipLook.Idle(Time.unscaledTime);look.Alpha=1-fade;look.Plain=true;look.Calm=calm;look.Charge=NativeHoloScan.DieRest*Mathf.Clamp01(level)+NativeHoloScan.LockFlare(age,calm);NativeChipCard.Draw(r,chip,copies,size,look);
+            NativeChipArt.HoloLock(r,size.Radius,chip.rarity,rare,age,calm,1-fade);U.Pop();
         }
         // The cards' fracture: eight chamfered shards about a centre a little off the middle (fractions of the card: x right, y down).
         private static readonly Vector2[][] Fracture=
@@ -302,8 +338,12 @@ namespace ChipArena.UnityConversion
             float blockH=25*1.2f+9+15+24+ch+25+16,bx=cx-bw/2,by=(H-blockH)/2;var rare=NativeChipCard.Rarity(tier);
             if(beside)
             {
-                // The leader from the device to the block's near edge, drawn as the block unfolds; the line of light the block opens from.
-                var dev=draftDevice2d;float lead=NativeInstallShot.Leader(age);if(dev!=Vector2.zero&&lead>0){var to=new Vector2(bx-14,H/2);Beam(dev,Vector2.Lerp(dev,to,lead),2,U.A(rare,.8f*env));U.Glow(new Rect(dev.x-4,dev.y-4,8,8),U.A(rare,.7f*env),10);}
+                // The leader: a link of light from the pilot's side at the device's height (draftLeader2d: the device itself when it stands
+                // clear of the body) to the block's near edge, drawn as the block unfolds and gone by the look (NativeInstallShot.Leader,
+                // LeaderFade): never across the pilot, never to a device sunk under the shade; a small glow marks the lit device meanwhile.
+                // The line of light the block opens from.
+                var dev=draftDevice2d;var start=draftLeader2d;float lead=NativeInstallShot.Leader(age),shown=NativeInstallShot.LeaderFade(age)*Mathf.Clamp01((draftShadeY-24-dev.y)/24);
+                if(dev!=Vector2.zero&&start!=Vector2.zero&&lead>0&&shown>0){var to=new Vector2(bx-14,H/2);if(to.x>start.x+8){Beam(start,Vector2.Lerp(start,to,lead),2,U.A(rare,.8f*env*shown));U.Glow(new Rect(start.x-3,start.y-3,6,6),U.A(rare,.6f*env*shown),8);}U.Glow(new Rect(dev.x-4,dev.y-4,8,8),U.A(rare,.7f*env*shown),10);}
                 if(unfold<1){U.Fill(new Rect(bx-20,H/2-1.5f,bw+40,3),U.A(U.Mix(rare,Color.white,.5f),(1-unfold)*env));U.Glow(new Rect(bx,H/2-2,bw,4),U.A(rare,(1-unfold)*.8f*env),18);}
             }
             U.Push(new Vector2(cx,H/2),new Vector2(0,dy),sc,0,sc*unfold);

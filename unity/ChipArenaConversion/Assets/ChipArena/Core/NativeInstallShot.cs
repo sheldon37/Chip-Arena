@@ -30,6 +30,11 @@ namespace ChipArena.UnityConversion
             ShortHold=1.55f,BloomAt=1.80f,ShortEnd=1.95f,ShardsGone=1.55f,TurnSeconds=3.2f;
         /// <summary>The hold's slow share (the body runs at a tenth of its pace through the hold) and the catch-up after it (s).</summary>
         public const float HoldRate=.1f,CatchUp=.12f;
+        /// <summary>The model's drawn taking hand on the stage's plan (the contact pass): easing in from ContactIn so it is already reaching
+        /// as the cartridge flies into it (all of it by the catch), held through the press and the lift off the shell, and easing out from
+        /// ContactOut to ContactGone as the hand goes low (the stage's arm takes it again).</summary>
+        public const float ContactIn=.40f,ContactOut=1.26f,ContactGone=1.50f;
+        public static float Contact01(float p)=>Smooth((p-ContactIn)/(Catch-ContactIn))*(1-Smooth((p-ContactOut)/(ContactGone-ContactOut)));
         /// <summary>The settle of a turn that holds `turn` seconds after the pick (3.2 s: 2.55-3.05).</summary>
         public static float SettleStart(float turn)=>Math.Max(HoldEnd,turn-.65f);
         public static float SettleEnd(float turn)=>Math.Max(HoldEnd+.5f,turn-.15f);
@@ -193,9 +198,12 @@ namespace ChipArena.UnityConversion
         /// keeps its place beside the pilot, sliding in and out with the camera, never over him.</summary>
         public static float Pan(float a)=>Cubic((a-PanStart)/(PanEnd-PanStart));
         public static float ReadoutShift(float aspect,float a,float turn)=>(.5f-PilotX(aspect))*(1-Pan(a)*(1-Settle(a,turn)));
-        /// <summary>The block's unfold (0..1) from a line of light over DetailsAt..+.2, and its leader line's draw (0..1).</summary>
+        /// <summary>The block's unfold (0..1) from a line of light over DetailsAt..+.2, its leader line's draw (0..1) and the leader's fade
+        /// (1 .. 0): a link drawn as the block opens and gone by the look, before the hero hold moves the device or the settle sinks it.</summary>
         public static float Unfold(float a)=>EaseOut((a-DetailsAt)/.2f);
         public static float Leader(float a)=>Smooth((a-DetailsAt-.02f)/.15f);
+        public const float LeaderOut=LookStart-.04f,LeaderSpan=.16f;
+        public static float LeaderFade(float a)=>1-Smooth((a-LeaderOut)/LeaderSpan);
 
         // ---- the short cut (the PvE pick, the Deathmatch's picks): the bloom back to the live view ----
         /// <summary>The bloom's coverage (0..1 of its reach) and alpha at age `a`: from BloomAt it grows from the device to about 70% of the

@@ -151,7 +151,7 @@ namespace ChipArena.UnityConversion
             if(!NativePickFollow.Plays(age,Input.anyKeyDown,attacked,false,false)){EndPickFollow();return false;}
             float a=Math.Abs(presentation.DraftAge-age)<.3f?presentation.DraftAge:age;
             DraftShades(pickFollowTray,W,H);DraftHeader(eyebrow,tone,FollowTitle(a),"",W,H,out _);
-            var tray=pickFollowTray;if(tray!=null&&tray.Cards.Length==pickFollowChips.Count)PickedTray(tray,pickFollowChips,pickFollowIndex,pickFollowOwned,a);InstallFlash(a);
+            var tray=pickFollowTray;if(tray!=null&&tray.Cards.Length==pickFollowChips.Count)PickedTray(tray,pickFollowChips,pickFollowIndex,pickFollowOwned,a,true);InstallFlash(a);
             Nameplate(seat,NativeInstallShot.Installed(a)?"Installed":"Installing",H<=760?22:28,H-(H<=760?14:22)-66);
             if(pickFollowIndex>=0&&pickFollowIndex<pickFollowChips.Count)InstallBloom(RarityColor(pickFollowChips[pickFollowIndex].rarity),a,W,H);return true;
         }

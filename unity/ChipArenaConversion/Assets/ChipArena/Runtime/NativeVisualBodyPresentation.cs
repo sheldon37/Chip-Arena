@@ -542,9 +542,7 @@ namespace ChipArena.UnityConversion
             {var hb=VisualHatBone(rig,seat.hat);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(VisualHatModel(seat.hat,seat.hatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
             // The Sheldon Head: the hood's void and face (the body wears the hood; without them the opening showed the model's face).
             else SheldonHoodStill(body,seat.hat,seat.hatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,seat.hat),time,seat.id,HaloReduced,0,null);
-            // The install's surge through the suit's trims and the visor's beat (NativeDraftInstallPresentation.cs), the cloth's accent flare.
-            if(!body.Hood)DraftFaceGear(body,seat);
-            DraftSuitSurge(body,seat);DraftAccentFlare(body,seat);
+            // (The suit, the face gear and the cloth's accent go on in RenderDraft, after the install's present and contact move the arms.)
             return true;
         }
         // The draft's visual body this frame (VisualDraftPose; null when the pilot draws voxel): its wrist device takes the

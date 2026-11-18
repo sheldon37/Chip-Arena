@@ -250,7 +250,7 @@ namespace ChipArena.UnityConversion
         // then eases it out to ReadoutMagnify, panned so the pilot sits at NativeInstallShot.PilotX, and the settle takes it back to the
         // portrait; the short follow-through creeps on by ShortCreep. The clack kicks it (KickPull of its distance, KickRoll of roll for
         // Unity's camera: Project ignores it) and shakes it (ShakeSize at ShakeHz); the lock punches it by Punch. Closed form in `a`.
-        public const float HeroHeight=.70f,HeroMost=1.75f,ReducedMost=1.15f,SirenMost=1.3f,ReadoutMagnify=1.12f,Orbit=3*(float)Math.PI/180,ShortCreep=1.08f,Creep=.03f,
+        public const float HeroHeight=.62f,HeroMost=1.75f,ReducedMost=1.15f,SirenMost=1.3f,ReadoutMagnify=1.12f,Orbit=3*(float)Math.PI/180,ShortCreep=1.08f,Creep=.03f,
             Punch=.02f,KickPull=.012f,KickRoll=.6f,ShakeSize=.003f,ShakeHz=22,ShakeSpan=.15f,SafeLeft=.06f,SafeTop=.08f,SafeBottom=.82f,EyesBelow=.10f,CrownEdge=.04f,BareCrop=.05f;
         /// <summary>The shot this frame: its magnification over the portrait, its weight (0 the portrait .. 1 the hero framing), the hero
         /// framing's magnification after the safe frame, and Unity's roll (degrees).</summary>
@@ -450,7 +450,7 @@ namespace ChipArena.UnityConversion
                 var up=CapturedRig.Unit(Vector3.UnitY-toCamera*Vector3.Dot(Vector3.UnitY,toCamera),Vector3.UnitY);Plant.Hand(at,CapturedRig.Basis(Vector3.Cross(toCamera,up),toCamera,up));
             }
             if(planting){Plant.PlannedChestAt=plannedChestAt;Plant.PlannedChestQ=plannedChestQ;Plant.Pose(p,Left,plantLocal,toCamera,age,reduced);}
-            else if(siren&&age>=0){p.World();Plant.SirenPose(p,Left,p.WorldPosition[CapturedRig.Head]+Vector3.Transform(new Vector3(0,.07f,.22f),p.WorldRotation[CapturedRig.Head]),age);}
+            else if(siren&&age>=0){p.World();var grin=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(new Vector3(0,.07f,.22f),p.WorldRotation[CapturedRig.Head]);Plant.SirenPose(p,Left,grin,age,CapturedRig.Unit(CameraPosition-grin,Vector3.UnitZ));}
             // The head looks from where the bow carried the eye, within the same limits, with the install's nods.
             Turn(p,CapturedRig.Neck,along,NeckShare);p.World();eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);Look(p,Aim(eye,Gaze,down,pitchDown));
             if(age>=0&&Plant.HeadPitch!=0)p.Rotation[CapturedRig.Head]=p.Rotation[CapturedRig.Head]*CapturedRig.Euler(Plant.HeadPitch);p.World();
