@@ -356,6 +356,8 @@ Claude owns the display fields (name, place, accent, emblem, board row) and crea
 | A, 420 × 340 m | 150–190 m | 558–602 | 408 / 407 |
 | B, 600 × 480 m | 250–300 m | 748–790 | 598 / 597 |
 
+**Analytical plan views.** The [Option A sheet](expedition-scale-walk/meridian-scale-a.svg) and [Option B sheet](expedition-scale-walk/meridian-scale-b.svg) show the same eight seeds at a common north-up scale. Each panel traces the actual gate-to-hall routes over the collision footprints and plots each route's elevation against walked distance. Regenerate both with CoreTests `--layered-walk-plans docs/expedition-scale-walk` from the repository root.
+
 The scale walk uses native pilot physics, grey collision massing and the existing map ramp wedges. The trace graph samples the four gate routes at 2 m or less. Run CoreTests with `--layered-walk` for the paired 8-seed sweep, including Hulk-width floor support and headroom. Counts above describe this walk prototype. M5's surface-wide navigation, chunked kit, population, performance budgets and deployment digest still require the release passes below.
 
 **Size** (option A; option B scales it): 420 × 340 m: 42 × 34 cells of 10 m; bounds ±210 × ±170; ceiling 60; killY -25.

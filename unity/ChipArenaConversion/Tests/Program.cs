@@ -27,6 +27,7 @@ internal static class Program
             if(args.Length==3&&args[0]=="--stage-layout"){StageArtLayout.Write(ProjectRoot(),args[1],args[2]);return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--layered-walk")LayeredCityWalkChecks.Run();
             if(args.Length==1&&args[0]=="--layered-walk")return 0;
+            if(args.Length==2&&args[0]=="--layered-walk-plans"){LayeredCityWalkPlans.Write(args[1]);return 0;}
             if(args.Length==2&&args[0]=="--rooftop-layout"){RooftopLayout.Write(args[1]);return 0;}
             if(args.Length==2&&args[0]=="--rooftop-slides"){RooftopLayout.Slides(ProjectRoot(),args[1]);return 0;}
             if(args.Length==1&&args[0]=="--rooftop"){RooftopChecks.Run(ProjectRoot());return 0;}
