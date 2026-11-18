@@ -365,7 +365,8 @@ namespace ChipArena.UnityConversion
             Check(atlas.Contains("Resources.Load<TextAsset>(NativeAtlasArt.Key)")&&atlas.Contains("baked.bytes.Length==NativeAtlasArt.Bytes")&&atlas.Contains("Task.Run(()=>NativeAtlasArt.Atlas())"),"the scene loads the bake, else rasterises it on a worker");
             Check(atlas.Contains("Sound?.Invoke(a.Cues[i])")&&atlas.Contains("catch(Exception e){failed=true;Debug.LogException(e);}")&&atlas.Contains("public static NativeAtlasScene Make(){try{"),"its sounds go out; a failure turns the board off, never the station");
             Check(card.Contains("board.Since>=NativeAtlasBoard.LandAt")&&card.Contains("\"ARRIVING…\"")&&!card.Contains("DeployIntent"),"the card mirrors the board and raises no intent");
-            Check(card.Contains("public const float Width=262,Height="+NativeAtlasConsoleHeight+",Top="+NativeAtlasConsoleTop+";"),"the card's place, as the board's shot is checked against it");
+            Check(card.Contains("public const float Width=284,Height="+NativeAtlasConsoleHeight+",Top="+NativeAtlasConsoleTop+";"),"the card's place, as the board's shot is checked against it");
+            Check(card.Contains("var label=new Rect(r.x+14,r.y+19,tag.x-8-(r.x+14),24);")&&card.Contains("w>label.width?Mathf.Max(11,16*label.width/w):16"),"the tileset's name stops short of the IN SERVICE tag, smaller only if it must");
             // the draw allocates nothing: no reference allocation, lambda or LINQ in Frame or Rebuild
             foreach(var name in new[]{"private void Frame(Camera camera","private void Rebuild("})
             {

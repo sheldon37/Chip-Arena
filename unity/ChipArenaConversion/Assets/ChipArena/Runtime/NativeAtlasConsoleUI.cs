@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeAtlasConsole
     {
-        public const float Width=262,Height=46,Top=18;
+        public const float Width=284,Height=46,Top=18;
         private static float titleRight=-1;
         /// <summary>The card's rect on a W-wide canvas: right of the header's title, clear of its kicker and line.</summary>
         public static Rect Place(float W)
@@ -27,8 +27,12 @@ namespace ChipArena.UnityConversion
             H.Panel(r,a,U.Hex(t.Accent),10,H.Corners.Diagonal,true,.9f);
             if(board.Flash>0)U.Glow(r,U.Hex(t.Accent,.45f*board.Flash*a),16);
             U.Text(new Rect(r.x+14,r.y+6,r.width-28,14),"TILESET · ATLAS",9.5f,tone,TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
-            U.Text(new Rect(r.x+14,r.y+19,r.width-112,24),landed?t.Label:"ARRIVING…",landed?16:13,landed?C.Ink(a):C.Muted(a),TextAnchor.MiddleLeft,bold:true,tracking:.04f);
-            if(landed){var tag=new Rect(r.xMax-98,r.y+23,86,16);H.Tag(tag,tone,a);U.Text(tag,"IN SERVICE",8.5f,tone,TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.1f);}
+            // the tileset's name clears the IN SERVICE tag: 16 when it fits, else as large as fits (a longer name later)
+            var tag=new Rect(r.xMax-98,r.y+23,86,16);var label=new Rect(r.x+14,r.y+19,tag.x-8-(r.x+14),24);
+            if(!landed){U.Text(label,"ARRIVING…",13,C.Muted(a),TextAnchor.MiddleLeft,bold:true,tracking:.04f);return;}
+            float w=U.Measure(t.Label,16,true,false,.04f).x;
+            U.Text(label,t.Label,w>label.width?Mathf.Max(11,16*label.width/w):16,C.Ink(a),TextAnchor.MiddleLeft,bold:true,tracking:.04f);
+            H.Tag(tag,tone,a);U.Text(tag,"IN SERVICE",8.5f,tone,TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.1f);
         }
     }
 }
