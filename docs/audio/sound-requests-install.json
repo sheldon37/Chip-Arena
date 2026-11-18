@@ -1,0 +1,133 @@
+{
+  "schema": "chip-arena.sound-requests/1",
+  "purpose": "The draft stage's chip install (owner, 2026-11-18: \"improve drastically\"): seven bespoke cues for the Unity Chip Arena effects bank. Until generated, each plays as layers of existing bank keys (Core/NativeInstallShot.Cues); once its key has clips it replaces those layers. Contract: docs/audio/SOUND-REQUESTS.md. Generation is a paid step, run by the owner or Astra (docs/audio/SOUND-GENERATOR.md).",
+  "file": {
+    "pattern": "<key>_<NN>.<ext>",
+    "variant": "NN = 01..count, two digits",
+    "ext": [
+      "mp3",
+      "wav"
+    ]
+  },
+  "generation": {
+    "service": "ElevenLabs Sound Effects",
+    "promptInfluence": 0.65,
+    "outputFormat": "mp3_44100_192",
+    "oneGenerationPerFile": true,
+    "promptIsComplete": true
+  },
+  "edit": {
+    "sampleRate": 44100,
+    "channels": 1,
+    "codec": "vorbis",
+    "trimSilenceDbfs": -50,
+    "fadeOutMs": 20
+  },
+  "sounds": [
+    {
+      "key": "ui.install.lock",
+      "category": "ui",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.5,
+      "targetSeconds": {
+        "min": 0.08,
+        "max": 0.3
+      },
+      "levelDb": -14,
+      "fadeOutMs": 40,
+      "prompt": "A crisp tiny digital lock-on tick, a short bright electronic click with a faint rising chirp, a sci-fi targeting confirm, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "ui.install.shatter",
+      "category": "ui",
+      "priority": 1,
+      "count": 3,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.6
+      },
+      "levelDb": -16,
+      "fadeOutMs": 120,
+      "prompt": "A small thin holographic glass panel cracking and shattering into glittering shards, light and sparkly with a soft digital crackle, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "ui.install.lid",
+      "category": "ui",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.5
+      },
+      "levelDb": -14,
+      "fadeOutMs": 60,
+      "prompt": "A tiny motorised hatch on a wrist gadget sliding open, a quick servo whir ending in a soft mechanical click, precise and expensive sounding, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "ui.install.catch",
+      "category": "ui",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.5,
+      "targetSeconds": {
+        "min": 0.1,
+        "max": 0.3
+      },
+      "levelDb": -13,
+      "fadeOutMs": 50,
+      "prompt": "Fingers snatching a small hard plastic card out of the air, a soft quick grab with a faint electronic shimmer, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "ui.install.seat",
+      "category": "ui",
+      "priority": 1,
+      "count": 3,
+      "space": "2d",
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.35,
+        "max": 0.8
+      },
+      "levelDb": -9,
+      "fadeOutMs": 150,
+      "prompt": "A heavy satisfying clack of a cartridge locking into a metal slot, a firm mechanical latch with a deep thump and a short bright electric zap as it powers on, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "ui.install.surge",
+      "category": "ui",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.6
+      },
+      "levelDb": -12,
+      "fadeOutMs": 150,
+      "prompt": "A quick rising electric energy surge racing up through a suit, a bright zipping whoosh of power climbing in pitch with a soft hum, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "ui.install.out",
+      "category": "ui",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.5
+      },
+      "levelDb": -15,
+      "fadeOutMs": 200,
+      "prompt": "A soft airy bloom of light opening out, a gentle shimmering whoosh that fades away quickly, sci-fi interface transition, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    }
+  ]
+}

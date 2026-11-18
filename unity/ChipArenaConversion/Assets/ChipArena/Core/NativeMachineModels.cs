@@ -26,6 +26,10 @@ namespace ChipArena.UnityConversion
         public const string PickupId="pve-pickup-std";
         /// <summary>Section bones: the body, the tinted lights, and the see-through parts of a moving model (glass, the pulse).</summary>
         public const int Body=0,Lights=1,Glass=-2;
+        /// <summary>The cartridge's core module on its front face (the install seats it alone in the wrist device's bay: the core's floor,
+        /// a hex plug down to the middle, the iris, the dial, the crystal on CoreBody / CoreLights; its dome and film on CoreGlass, see
+        /// through). Every other draw places them with the body (their bone matrix the body's, CoreLights tinted as Lights).</summary>
+        public const int CoreBody=3,CoreLights=4,CoreGlass=-3;
         // Model-local points (machines.ts SLOT and MachineModel's pivots): the chip slot, the flap hinge, the pod door's hinge and
         // the med pulse's centre.
         public static readonly Vector3 Slot=new Vector3(0,1.02f,.27f),FlapPivot=new Vector3(0,1.12f,.27f),DoorPivot=new Vector3(.49f,0,.22f),PulsePivot=new Vector3(0,1.55f,.2f);
@@ -230,10 +234,11 @@ namespace ChipArena.UnityConversion
             s.Into(Glass);Clear(mesh,PulseAlpha,()=>Ring(s,WeaponPaint.Glow(MintInk,1.5f,.6f),.315f,.335f,0,64));
             Clear(mesh,HaloAlpha,()=>{Ring(s,WeaponPaint.Glow(Mint,.8f,.35f),.335f,.4f,0,64);Ring(s,WeaponPaint.Glow(Mint,.8f,.35f),.26f,.315f,0,64);});
         }
-        // Writes `draw` into the see-through section with the given alpha (the bank's colour alpha, NativeSourceTransparent).
-        private static void Clear(WeaponMesh mesh,float alpha,Action draw)
+        // Writes `draw` into the see-through section (`bone`: Glass, or the core module's CoreGlass) with the given alpha (the bank's
+        // colour alpha, NativeSourceTransparent).
+        private static void Clear(WeaponMesh mesh,float alpha,Action draw,int bone=Glass)
         {
-            var section=mesh.Section(Glass,WeaponStretch.None);int from=section.Colors.Count;draw();
+            var section=mesh.Section(bone,WeaponStretch.None);int from=section.Colors.Count;draw();
             for(int i=from;i<section.Colors.Count;i++){var c=section.Colors[i];section.Colors[i]=new Vector4(c.X,c.Y,c.Z,alpha);}
         }
 
@@ -314,13 +319,17 @@ namespace ChipArena.UnityConversion
             s.Into(Body);Strip(s,metal,Hex3(hc,.25f,zf),Hex3(hc,.235f,zf+.045f));Strip(s,land,Hex3(hc,.235f,zf+.045f),Hex3(hc,.19f,zf+.045f));Strip(s,metal,Hex3(hc,.19f,zf+.045f),Hex3(hc,.166f,zf+.012f));
             // The collar's six hex bolts in its corners, the iris broken into six arcs by dark clamps.
             for(int k=0;k<6;k++){double a=Math.PI/2+k*Math.PI/3;float ca=(float)Math.Cos(a),sa=(float)Math.Sin(a);s.Cylinder(land,.012f,zf+.044f,zf+.051f,6,0,.2125f*ca,cy+.2125f*sa);s.Box(dark,V(.159f*ca,cy+.159f*sa,zf+.0135f),V(.02f,.012f,.003f),0,0,0,(float)a);}
-            s.Into(Lights);Strip(s,Light(0xffffff,2.2f,.6f),Hex3(hc,.166f,zf+.0125f),Hex3(hc,.152f,zf+.0125f));
-            s.Into(Body);Disc(s,dark,Hex3(hc,.152f,zf+.012f));
+            // The front face's core is a module of its own (CoreBody / CoreLights / CoreGlass: the install seats it alone), a hex plug under
+            // its floor down to the middle and, on the shell, a socket of light under it (hidden while the core sits on it).
+            int cb=face>0?CoreBody:Body,cl=face>0?CoreLights:Lights,cg=face>0?CoreGlass:Glass;
+            if(face>0){s.Into(Lights);Disc(s,Light(0xffffff,1.8f,.6f),Hex3(hc,.15f,zf+.011f));s.Into(CoreBody);s.Cylinder(dark,.152f,0,zf+.012f,6,0,hc.X,hc.Y);}
+            s.Into(cl);Strip(s,Light(0xffffff,2.2f,.6f),Hex3(hc,.166f,zf+.0125f),Hex3(hc,.152f,zf+.0125f));
+            s.Into(cb);Disc(s,dark,Hex3(hc,.152f,zf+.012f));
             // A dial of ticks round the crystal (every fourth longer), under the dome.
-            s.Into(Lights);for(int k=0;k<24;k++){double a=k*Math.PI/12;var u=new Vector2((float)Math.Cos(a),(float)Math.Sin(a));Etch(s,Light(0xffffff,.9f,.4f),hc+u*(k%4==0?.106f:.114f),hc+u*.126f,zf+.0128f,k%4==0?.006f:.004f);}
+            s.Into(cl);for(int k=0;k<24;k++){double a=k*Math.PI/12;var u=new Vector2((float)Math.Cos(a),(float)Math.Sin(a));Etch(s,Light(0xffffff,.9f,.4f),hc+u*(k%4==0?.106f:.114f),hc+u*.126f,zf+.0128f,k%4==0?.006f:.004f);}
             Crystal(s,l,new Vector3(0,cy,zf+.02f));
-            s.Into(Glass);var dome=new Vector3(0,cy,zf+.012f);Clear(mesh,DomeAlpha,()=>s.Sphere(WeaponPaint.Glow(0xe8f0ff,.08f,.5f),dome,new Vector3(.155f,.155f,.05f),4,12));
-            if(l.Holo)Clear(mesh,HoloAlpha,()=>s.Sphere(WeaponPaint.Glow(0xb8ffe8,.18f,.6f),dome+new Vector3(0,0,.002f),new Vector3(.148f,.148f,.046f),4,12));
+            s.Into(cg);var dome=new Vector3(0,cy,zf+.012f);Clear(mesh,DomeAlpha,()=>s.Sphere(WeaponPaint.Glow(0xe8f0ff,.08f,.5f),dome,new Vector3(.155f,.155f,.05f),4,12),cg);
+            if(l.Holo)Clear(mesh,HoloAlpha,()=>s.Sphere(WeaponPaint.Glow(0xb8ffe8,.18f,.6f),dome+new Vector3(0,0,.002f),new Vector3(.148f,.148f,.046f),4,12),cg);
             s.Into(Body);if(l.Gems)foreach(var g in GemSpots(w,h,tc,bc))s.Gem(GemPaint(l),new Vector3(g.X,g.Y,zf+.036f),.026f,.04f,8,.6f,0,.55f);
             if(l.Ring)
             {

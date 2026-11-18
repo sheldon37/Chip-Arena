@@ -11,9 +11,10 @@ namespace ChipArena.UnityConversion
     public struct DraftBackdropInput
     {
         /// <summary>Dt: the stage's frame step (the presentation clock's, NativeDraftStage.Begin: unscaled, at most .1 s). Age: the
-        /// pick's smoothed age (-1 before the pick). Pulse: the plant pulse's progress (NativeDraftPlant.Pulse, -1 outside it and
-        /// with Reduced effects).</summary>
-        public float Dt,Age,Pulse;
+        /// pick's smoothed age (-1 before the pick). Pulse: seconds since the install's clack (NativeInstallShot.Seat; -1 before it and
+        /// with Reduced effects). Level: the chip's install level (NativeInstallShot.Profile.Level); Second: a second front follows
+        /// (legendary and up).</summary>
+        public float Dt,Age,Pulse,Level;public bool Second;
         public Vector3 Tint;
         /// <summary>Entering: the first frame of a draft view (the frame before drew something else: the arena, a killcam).
         /// Ward: the PvE / Siren personal pick. Siren: the Siren drafter. Prism: the rainbow pick (eight max-rarity choices).</summary>
@@ -39,6 +40,8 @@ namespace ChipArena.UnityConversion
         /// packets / scan / streams / glyph levels (Reduced and the low tier ease them down instead of cutting).</summary>
         public Vector3 Tint;public float Presence,Boot,Time,Flow;public Vector4 Gains;public bool Started;
         public Vector4 Cam,Clock,Fwd,Up,Right,Accent,Frame,Counter,Deep,Void,Pulse,Style,Fx,Safe,Cap,Glow;
+        /// <summary>The second clack front (legendary and up): x its distance behind the pilot (-10: none), y its level.</summary>
+        public Vector4 Front=new Vector4(-10,0,0,0);
         /// <summary>The backdrop quad: its distance in front of the camera and the screen rows of its top and bottom edges.</summary>
         public float Distance,Top,Bottom;
     }
@@ -53,8 +56,9 @@ namespace ChipArena.UnityConversion
     // far end behind the pilot's head plus a soft glow behind the chest and head, so the silhouette reads. The frame (grid,
     // seams, ribs) is the cyber cyan of NativeCyberTheme; the light (trims, rails, packets, gates, glow, far haze) is the stage
     // tint (the picker's colour, the chosen chip's rarity after the pick, the PvE pick's tier), eased so a new picker's colour
-    // or the pick's rarity blend never cut. The pick draws the packets in (Inflow: the flow clock runs faster); the plant pulse
-    // sends a ring of light running away down the corridor and briefly brightens the hall. The Siren drafter gets the violet
+    // or the pick's rarity blend never cut. The pick draws the packets in (Inflow: the flow clock runs faster); the install's clack
+    // re-fires the power-on front from the pilot in the chip's colour (two for legendary and up) and briefly brightens the hall
+    // (owner 2026-11-18: the install improved drastically; the old plant ring is retired). The Siren drafter gets the violet
     // ink look, the rainbow pick a slow prism down the corridor. Reduced effects: no packets, scan, streams' fall, twinkle,
     // ring, flash or power-on front; the hall barely breathes. The low graphics tier drops the motes and streams (a shader
     // keyword) for a cheaper pass.
@@ -85,12 +89,19 @@ namespace ChipArena.UnityConversion
         public const float Motion=1,ReducedMotion=.12f,RebaseAfter=900;
         // The breathing wave's depth (Reduced: ReducedBreath), the glow's level and size (screen heights; x is aspect-corrected).
         public const float Breath=.32f,ReducedBreath=.12f,GlowLevel=.06f,GlowWide=.30f,GlowTall=.42f;
-        // The plant pulse: a ring of light runs away down the corridor from WaveStart to WaveStart + WaveReach metres behind the
-        // pilot over the pulse (NativeDraftPlant.PulseStart..PulseEnd), easing out and fading (1 - p)^2, and the whole hall
-        // brightens by Flash (1 - p)^2, NativeLighting.Draft's rim flash curve.
-        public const float WaveStart=2,WaveReach=46,Flash=.55f;
-        /// <summary>The plant ring's distance behind the pilot (m) at pulse progress p (0..1).</summary>
-        public static float WaveAt(float p)=>WaveStart+WaveReach*(1-(1-p)*(1-p));
+        // The clack's front: from the pilot (WaveStart behind it) it runs down the corridor at BootSpeed, the power-on front's pace,
+        // out to FrontReach (FrontNear + FrontFar metres at level L), fading (1 - u)^2 as it goes; for legendary and up a second
+        // follows SecondLag later. The hall brightens by Flash x FlashShare x L, falling (1 - k)^2 over FlashSpan.
+        public const float WaveStart=2,FrontNear=12,FrontFar=22,SecondLag=.15f,Flash=.55f,FlashShare=.35f,FlashSpan=.45f;
+        /// <summary>How far the clack's front runs at install level `level` (m behind the pilot).</summary>
+        public static float FrontReach(float level)=>FrontNear+FrontFar*MathUtil.Clamp(level,0,1.2f);
+        /// <summary>The front `since` seconds after it fired: its distance behind the pilot and its level (0 once it has run out; -10 m
+        /// before it fires).</summary>
+        public static void FrontAt(float since,float level,out float distance,out float fall)
+        {
+            float reach=FrontReach(level),d=WaveStart+BootSpeed*since;if(!(since>=0)||d>=reach){distance=-10;fall=0;return;}
+            float u=(d-WaveStart)/(reach-WaveStart);distance=d;fall=(1-u)*(1-u);
+        }
         // The pick's inflow: from the pick the packets rush down the corridor (the flow clock speeds up, InflowIn s), easing off as the
         // plant pulse starts (InflowOut s).
         public const float InflowIn=.3f,InflowOut=.45f,FlowBoost=1.6f;
@@ -127,7 +138,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The cap on the brightest linear channel the shader applies at a screen point (Cap: x head, y tray, z elsewhere).</summary>
         public static float CapAt(float col,float row,float aspect,Vector4 safe,Vector4 cap){Bands(col,row,aspect,safe,cap,out float hs,out float ts);return Math.Min(cap.X+(cap.Z-cap.X)*hs,cap.Y+(cap.Z-cap.Y)*ts);}
         /// <summary>The pick's inflow 0..1 at the smoothed pick age (0 before the pick).</summary>
-        public static float Inflow(float age)=>age<0?0:MathUtil.Smooth(age/InflowIn)*(1-MathUtil.Smooth((age-NativeDraftPlant.PulseStart)/InflowOut));
+        public static float Inflow(float age)=>age<0?0:MathUtil.Smooth(age/InflowIn)*(1-MathUtil.Smooth((age-NativeInstallShot.Seat)/InflowOut));
         // The glow's centre: GlowRise over the resting solar plexus (the upper chest, under the chin) and GlowBack behind it, so
         // it sits behind the chest and head whatever the gaze and the arms do (the Siren's chest is where the pilot's is).
         public const float GlowRise=.22f,GlowBack=.4f;
@@ -168,9 +179,11 @@ namespace ChipArena.UnityConversion
             float ink=i.Siren?1:0;var magenta=LinearHex(MagentaHex);var violet=LinearHex(VioletHex);var counter=magenta+(violet-magenta)*.3f*ink;var vn=violet/Max3(violet);frame+=(vn-frame)*InkFrame*ink;accent+=(vn-accent)*InkLight*ink;accent/=Math.Max(1e-3f,Max3(accent));
             var navy=LinearHex(NavyHex);var deep=navy*1.5f+accent*.004f;deep+=(violet*.014f-deep)*InkHaze*ink;var voidc=LinearHex(VoidHex);voidc+=(violet*.0035f-voidc)*.4f*ink;
             s.Accent=new Vector4(accent,s.Boot);s.Frame=new Vector4(frame,0);s.Counter=new Vector4(counter,ink);s.Deep=new Vector4(deep,reduced?ReducedBreath:Breath);s.Void=new Vector4(voidc,0);
-            // The plant pulse (never with Reduced effects: the stage passes -1) and the pick's inflow.
-            float p=reduced||!(i.Pulse>=0)?-1:Math.Min(1,i.Pulse),fall=p>=0?(1-p)*(1-p):0;
-            s.Pulse=new Vector4(p>=0?WaveAt(p):-10,fall,Flash*fall,inflow);
+            // The clack's fronts (never with Reduced effects: the stage passes -1), the hall's flash and the pick's inflow.
+            float since=reduced||!(i.Pulse>=0)?-1:i.Pulse;FrontAt(since,i.Level,out float wave,out float fall);
+            float lit=since>=0?Math.Min(1,since/FlashSpan):1,flash=Flash*FlashShare*MathUtil.Clamp(i.Level,0,1.2f)*(1-lit)*(1-lit);
+            s.Pulse=new Vector4(wave,fall,flash,inflow);
+            if(i.Second&&since>=0){FrontAt(since-SecondLag,i.Level,out float w2,out float f2);s.Front=new Vector4(w2,f2*.8f,0,0);}else s.Front=new Vector4(-10,0,0,0);
             s.Style=new Vector4(i.Ward?1:0,i.Prism?1:0,1,GlowLevel);s.Fx=s.Gains;
             // The text-safe bands (the shader's Safe and its cap) on the heading's and the tray shade's rows.
             float head=i.HeadRow>0&&MathUtil.Finite(i.HeadRow)?Math.Min(.5f,i.HeadRow):DefaultHead,tray=i.TrayRow>0&&MathUtil.Finite(i.TrayRow)?MathUtil.Clamp(i.TrayRow,head+.1f,1):NativeDraftStage.DefaultTray;

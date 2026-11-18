@@ -23,8 +23,9 @@ namespace ChipArena.UnityConversion
                 if(built==null||models.ContainsKey(id))return;var parts=new List<Part>();
                 foreach(var s in built.Sections)
                 {
-                    var mesh=BodyMesh(s,id+" / "+s.Bone);if(mesh==null)continue;bool see=s.Bone==NativeMachineModels.Glass;
-                    parts.Add(new Part{Name=id,Bone=see?-1:s.Bone,Mesh=mesh,Material=see?glass:opaque,NoShadow=see});
+                    // (The cartridge's core module glass rides its core's bone: NativeMachineModels.CoreGlass on CoreBody.)
+                    var mesh=BodyMesh(s,id+" / "+s.Bone);if(mesh==null)continue;bool core=s.Bone==NativeMachineModels.CoreGlass,see=s.Bone==NativeMachineModels.Glass||core;
+                    parts.Add(new Part{Name=id,Bone=core?NativeMachineModels.CoreBody:see?-1:s.Bone,Mesh=mesh,Material=see?glass:opaque,NoShadow=see});
                 }
                 if(parts.Count>0){models[id]=parts.ToArray();MachineModels++;}
             }

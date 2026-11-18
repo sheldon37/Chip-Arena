@@ -70,9 +70,17 @@ namespace ChipArena.UnityConversion
                 var lit=pickup.Sections.Where(s=>s.Bone==NativeMachineModels.Lights).SelectMany(s=>s.Positions).ToList();
                 Check(lit.Any(p=>p.Y>.07f)&&lit.Any(p=>p.Y<-.07f),tier+" chip lights both faces");
                 Check(pickup.Sections.Where(s=>s.Bone==NativeMachineModels.Lights||s.Bone==NativeMachineModels.Orbit).SelectMany(s=>s.Colors).All(c=>Math.Abs(c.X-c.Y)<1e-4f&&Math.Abs(c.Y-c.Z)<1e-4f),tier+" chip's lights are neutral (the tint is the rarity)");
-                var bones=pickup.Sections.Select(s=>s.Bone).Distinct().OrderBy(b=>b).ToArray();var want=look.Ring?new[]{NativeMachineModels.Glass,0,1,NativeMachineModels.Orbit}:new[]{NativeMachineModels.Glass,0,1};
+                var bones=pickup.Sections.Select(s=>s.Bone).Distinct().OrderBy(b=>b).ToArray();var want=look.Ring?new[]{NativeMachineModels.CoreGlass,NativeMachineModels.Glass,0,1,NativeMachineModels.Orbit,NativeMachineModels.CoreBody,NativeMachineModels.CoreLights}:new[]{NativeMachineModels.CoreGlass,NativeMachineModels.Glass,0,1,NativeMachineModels.CoreBody,NativeMachineModels.CoreLights};
                 Check(bones.SequenceEqual(want),tier+" chip bones "+string.Join(",",bones));
-                Check(pickup.Triangles<=(look.Ornaments>=4?6800:5600),tier+" chip budget ("+pickup.Triangles+")");
+                Check(pickup.Triangles<=(look.Ornaments>=4?6860:5660),tier+" chip budget ("+pickup.Triangles+")");
+                // The front face's core module (the install seats it alone in the wrist device's bay, NativeDraftInstall): on its own bones, all on
+                // the front face (model -y), round the core's axis within the bay at the held size (NativePilotGear.BayHalf at .06 m wide), its
+                // dome see-through; the module's lights neutral too.
+                var module=pickup.Sections.Where(s=>s.Bone==NativeMachineModels.CoreBody||s.Bone==NativeMachineModels.CoreLights||s.Bone==NativeMachineModels.CoreGlass).SelectMany(s=>s.Positions).ToList();
+                float reach=module.Max(v=>(float)Math.Sqrt(v.X*v.X+(v.Z-core.Z)*(v.Z-core.Z)))*NativeDraftInstall.HeldWidth/NativeMachineModels.PickupBodyWidth;
+                Check(module.Count>0&&module.All(v=>v.Y<=.001f)&&reach<NativePilotGear.BayHalf,tier+" core module on the front face, "+(reach*100).ToString("0.00")+" cm round its axis (the bay "+(NativePilotGear.BayHalf*100).ToString("0.00")+")");
+                Check(pickup.Sections.Where(s=>s.Bone==NativeMachineModels.CoreLights).SelectMany(s=>s.Colors).All(c=>Math.Abs(c.X-c.Y)<1e-4f&&Math.Abs(c.Y-c.Z)<1e-4f),tier+" core module's lights are neutral");
+                Check(pickup.Sections.Where(s=>s.Bone==NativeMachineModels.CoreGlass).SelectMany(s=>s.Colors).All(c=>c.W<.5f),tier+" core module's dome is see-through");
                 // The ring's pivot is the core: inside the chip, above its middle (the core sits in the upper half), on the face plane.
                 Check(Math.Abs(core.X)<1e-3f&&Math.Abs(core.Y)<1e-3f&&core.Z>.02f&&core.Z<cmax.Z,tier+" ring pivot at the core ("+core+")");
                 if(look.Ring){pickup.Bounds(NativeMachineModels.Orbit,out var omin,out var omax);var mid=(omin+omax)*.5f;Check(Math.Abs(mid.X-core.X)<.01f&&Math.Abs(mid.Z-core.Z)<.01f,tier+" ring centred on its pivot");}
@@ -86,7 +94,9 @@ namespace ChipArena.UnityConversion
             Check(bank.Contains("HordeKindModels();MachineSkins();")&&reg.Contains("NativeMachineModels.Build(kind)")&&reg.Contains("NativeMachineModels.Pickup(tier,out var core)")&&reg.Contains("foreach(var tier in NativeMachineModels.PickupTiers)")&&reg.Contains("NativeSourceTransparent"),"the bank builds the sculpted models (glass see-through), a chip per tier");
             Check(pres.Contains("MachineModel(NativeMachineModels.BodyId(m.kind),\"machine-\"+m.kind)")&&pres.Contains("MachineModel(NativeMachineModels.MovingId(m.kind),\"machine-moving-\"+m.kind)")&&pres.Contains("MachineModel(NativeMachineModels.PickupModel(k.Tier),\"pve-pickup\")"),"the machine draws prefer the sculpted models, the dispensed chip its tier's");
             Check(pres.Contains("sourceModels.PickupOrbit(model,t)")&&pres.Contains("b==NativeMachineModels.Orbit?orbit:root")&&pres.Contains("NativeChipCartridge.Breath("),"the dispensed chip's ring orbits and its core breathes");
-            Check(draft.Contains("MachineModel(NativeMachineModels.PickupModel(chipTier),\"pve-pickup\")")&&draft.Contains("chosenChip?.rarity")&&draft.Contains("b==NativeMachineModels.Orbit?draftChipOrbit:draftChip"),"the draft tray's chip is the chosen tier's cartridge, its ring orbiting");
+            var install=R("Assets/ChipArena/Runtime/NativeDraftInstallPresentation.cs");
+            Check(install.Contains("MachineModel(NativeMachineModels.PickupModel(diTier),\"pve-pickup\")")&&draft.Contains("chosenChip?.rarity")&&install.Contains("b==NativeMachineModels.Orbit?diCartOrbit:diCartM")&&install.Contains("b==1||b==NativeMachineModels.CoreLights||b==NativeMachineModels.Orbit?diCartTint:Color.white"),"the draft's cartridge is the chosen tier's, its ring orbiting, its core module's lights tinted");
+            Check(pres.Contains("partTint:b=>b==1||b==NativeMachineModels.CoreLights||b==NativeMachineModels.Orbit?lit:Color.white")&&reg.Contains("Bone=core?NativeMachineModels.CoreBody:see?-1:s.Bone"),"every other draw places the core module with the body (its glass see-through on the core's bone)");
             Check(!reg.Contains("Update(")&&!reg.Contains("LateUpdate"),"built once at load, nothing per frame");
             // The directed entrances' sculpted stage (NativeEntranceStageModels): each builds the same twice with clean geometry,
             // its body opaque and its lights neutral (the draw tints them); the pylon stands its height on a footing inside its

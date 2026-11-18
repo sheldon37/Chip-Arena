@@ -68,7 +68,7 @@ namespace ChipArena.UnityConversion
             if(pickFollowIndex>=pickFollowChips.Count||!NativePickFollow.Plays(Time.unscaledTime-pickFollowAt,false,false,respawned,gone)){EndPickFollow();return false;}
             return true;
         }
-        private void EndPickFollow(){pickFollowIndex=-1;pickFollowKind=PickStageKind.None;pickFollowChips.Clear();}
+        private void EndPickFollow(){if(pickFollowIndex>=0&&pickFollowIndex<pickFollowChips.Count)InstallBloomStart(RarityColor(pickFollowChips[pickFollowIndex].rarity),Time.unscaledTime-pickFollowAt);pickFollowIndex=-1;pickFollowKind=PickStageKind.None;pickFollowChips.Clear();}
         private void StartPickFollow(PickStageKind kind,string key,int index,int owned,int seat,bool down)
         {
             pickFollowChips.Clear();pickFollowChips.AddRange(pickStageChips);pickFollowTray=pickStageTray;pickFollowIndex=index;pickFollowKind=kind;pickFollowKey=key;
@@ -105,11 +105,13 @@ namespace ChipArena.UnityConversion
             int chosen=follow?pickFollowIndex:-1;if(turnStart!=draftHeldTurn){draftHeldTurn=turnStart;draftHeld.Reset();if(!follow)ResetHolo();}
             if(chosen>=0)draftHeld.Reset();else draftHeld.Step(draftHover,Time.unscaledDeltaTime);int focus=NativeDraftStage.Focus(chosen,draftHeld.Card,since,n,prefs.reducedEffects);bool consider=chosen<0&&draftHeld.Reaching;
             if(kind==PickStageKind.Comeback)PickStageHide();else if(arena!=null)HideLive();else{presentation.WeaponLoadout=null;presentation.LocalId=seat.id;}viewModelCamera.enabled=false;
-            // The stage lights take my colour, blending to the chip's rarity over .5 s after my pick.
-            Color chipTint=chosenChip!=null?RarityColor(chosenChip.rarity):default,tint=SeatColor(seat);if(age>=0&&chosenChip!=null)tint=Color.Lerp(tint,chipTint,Mathf.Clamp01(age/.5f));
+            // The stage lights take my colour; the install blends them to the chip's from the clack.
+            Color chipTint=chosenChip!=null?RarityColor(chosenChip.rarity):default,tint=SeatColor(seat);
             presentation.DraftHeadLine=draftHeadLine;presentation.DraftWard=false;presentation.DraftPrism=false;presentation.DraftBandTeam=-1;
-            draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,draftTrayBottom,tint,cameraView,prefs.reducedEffects,out var catchAt,chipTint,chosenChip?.rarity)/scale;draftPalm.y=height-draftPalm.y;
-            draftCatch=catchAt/scale;draftCatch.y=height-draftCatch.y;return true;
+            draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,draftTrayBottom,tint,cameraView,prefs.reducedEffects,out var catchAt,chipTint,chosenChip?.rarity,chosenChip?.id,true)/scale;draftPalm.y=height-draftPalm.y;
+            draftCatch=catchAt/scale;draftCatch.y=height-draftCatch.y;draftDevice2d=presentation.DraftDeviceScreen/scale;draftDevice2d.y=height-draftDevice2d.y;
+            if(chosenChip!=null&&nativeAudio!=null){nativeAudio.StageChip=chosenChip.id;nativeAudio.StageTier=chosenChip.rarity;nativeAudio.StageAge=presentation.DraftAge;nativeAudio.StageBody=presentation.DraftDog?2:1;nativeAudio.StageBreaks=Math.Max(0,n-1);nativeAudio.StageShort=true;nativeAudio.StageReduced=prefs.reducedEffects;nativeAudio.StageKey=pickFollowAt;}
+            return true;
         }
         // The comeback stage's hide: every renderer in the scene but the stage's own (the draft rig and the model it carries) is
         // switched off while it shows (Renderer.enabled, the hide flag of the Siren pick, the killcam and the preview; each frame, so
@@ -147,9 +149,11 @@ namespace ChipArena.UnityConversion
             if(seat==null||!PickFollowing(kind))return false;float age=Time.unscaledTime-pickFollowAt;if(Event.current.type==EventType.Repaint)draftHover=-1;
             bool attacked=kind==PickStageKind.Comeback&&seat.alive&&PveUnderAttack();
             if(!NativePickFollow.Plays(age,Input.anyKeyDown,attacked,false,false)){EndPickFollow();return false;}
-            DraftShades(pickFollowTray,W,H);DraftHeader(eyebrow,tone,"Upgrade secured","",W,H,out _);
-            var tray=pickFollowTray;if(tray!=null&&tray.Cards.Length==pickFollowChips.Count)PickedTray(tray,pickFollowChips,pickFollowIndex,pickFollowOwned,age);
-            Nameplate(seat,"Installing",H<=760?22:28,H-(H<=760?14:22)-66);return true;
+            float a=Math.Abs(presentation.DraftAge-age)<.3f?presentation.DraftAge:age;
+            DraftShades(pickFollowTray,W,H);DraftHeader(eyebrow,tone,FollowTitle(a),"",W,H,out _);
+            var tray=pickFollowTray;if(tray!=null&&tray.Cards.Length==pickFollowChips.Count)PickedTray(tray,pickFollowChips,pickFollowIndex,pickFollowOwned,a);InstallFlash(a);
+            Nameplate(seat,NativeInstallShot.Installed(a)?"Installed":"Installing",H<=760?22:28,H-(H<=760?14:22)-66);
+            if(pickFollowIndex>=0&&pickFollowIndex<pickFollowChips.Count)InstallBloom(RarityColor(pickFollowChips[pickFollowIndex].rarity),a,W,H);return true;
         }
         // The tray low in front of the pilot (the Siren pick's bounds: over the nameplate and the footer); its cards go to the stage.
         private void PickStageTray(float top,float W,float H)
