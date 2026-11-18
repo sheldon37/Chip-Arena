@@ -34,6 +34,8 @@
     model seat on a synthetic skin, the capsule-side and head-shot moves, an arm across the chest, the box fallback, the timing helpers,
     no allocation, the wiring pins); `--bow`: 5,050 (seating, the model bone's frame, the body's opacity, the fallback).
   - `tools/check_unity_compile.py`: Input System, Player, Assembly-CSharp and Editor pass, no warnings in the changed files.
+  - The Editor build gate (`PrototypeBuild.Validate`) on `6c6cad6e`: ok, 398 PASS lines (its two edit-mode `Destroy` errors are in
+    earlier gates too).
   - `git diff --check` against shared: clean. The test pin scan finds no broken pins.
   - The Editor checkout went back to `9319026b` with its local files after every hold; the 14 stage banks and the motion bank (6,136,627
     bytes, `37ec44d2`) as released.
