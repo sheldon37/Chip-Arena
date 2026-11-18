@@ -262,12 +262,16 @@ namespace ChipArena.UnityConversion
         // The pod's parts' frames: the harness bar about its hinge, everything else on the pod.
         private Matrix4x4 PodBoneOf(int bone)=>bone==NativePodModels.Harness?podHarness:podRoot;
         // The crater on the pod centre for the run, its shape scaled per pod and its ploughed tail turned back down the approach;
-        // the pit's ember cracks glow with the hull while it cools.
+        // the pit's ember cracks glow with the hull while it cools. Pods standing closer than two craters (today's 2 m row, until
+        // A0 spreads the spots) shrink theirs to fit and stack them a few millimetres apart by landing order, lower, so no two
+        // flat marks ever lie in one plane (no z-fight) and none stands over FlatHeight.
         private void PodMarks(PodView pod,float land)
         {
             var p=pod.Plan;var travel=new Vector3(p.Travel.X,0,p.Travel.Z);if(travel.sqrMagnitude<1e-4f)return;podNow=pod;podMarkTint??=PodMarkTintOf;
-            var turn=Quaternion.LookRotation(travel,Vector3.up)*Quaternion.Euler(0,p.CraterTurn*Mathf.Rad2Deg,0);
-            sourceModels.Queue(NativePodModels.CraterIds[p.Crater],Matrix4x4.TRS(pod.Spot,turn,new Vector3(p.CraterX,1,p.CraterZ)),partTint:podMarkTint);
+            float near=float.MaxValue;foreach(var other in pods.Values)if(!ReferenceEquals(other,pod)&&other.Planned){float dx=other.Spot.x-pod.Spot.x,dz=other.Spot.z-pod.Spot.z;near=Mathf.Min(near,Mathf.Sqrt(dx*dx+dz*dz));}
+            float fit=Mathf.Clamp((near-.2f)/(2*NativePodModels.CraterRadius*1.06f),.5f,1);bool crowded=fit<.999f;
+            var turn=Quaternion.LookRotation(travel,Vector3.up)*Quaternion.Euler(0,p.CraterTurn*Mathf.Rad2Deg,0);var at=pod.Spot+Vector3.up*(crowded?.005f*Mathf.Clamp(p.Order,0,3):0);
+            sourceModels.Queue(NativePodModels.CraterIds[p.Crater],Matrix4x4.TRS(at,turn,new Vector3(p.CraterX*fit,crowded?.74f:1,p.CraterZ*fit)),partTint:podMarkTint);
             podNow=null;
         }
         private Color PodMarkTintOf(int bone)
