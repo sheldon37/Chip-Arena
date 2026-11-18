@@ -33,6 +33,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The settle of a turn that holds `turn` seconds after the pick (3.2 s: 2.55-3.05).</summary>
         public static float SettleStart(float turn)=>Math.Max(HoldEnd,turn-.65f);
         public static float SettleEnd(float turn)=>Math.Max(HoldEnd+.5f,turn-.15f);
+        /// <summary>The camera's settle back to the portrait (0..1) at age `a` in a turn of `turn` s.</summary>
+        public static float Settle(float a,float turn)=>Cubic((a-SettleStart(turn))/(SettleEnd(turn)-SettleStart(turn)));
         /// <summary>The PvP turn's hold after the pick (NativeMatch: RevealSeconds) for chip `id` (the screen's copy: 3.2 s, l44t 4.6, the
         /// bomb, arcade and Mishima chips 4.8, the dog, glaive, Katana and Fangs chips 5.2).</summary>
         public static float Turn(string id)=>id==null?TurnSeconds:NativeBombChips.Is(id)?4.8f:NativeDogChips.Is(id)?(float)NativeDogChips.RevealSeconds:NativeGlaiveChips.Is(id)?(float)NativeGlaiveChips.RevealSeconds
@@ -187,9 +189,10 @@ namespace ChipArena.UnityConversion
         public static float ReadoutX(float aspect)=>aspect>=2.2f?.70f:aspect<1.29f?.72f:aspect<1.5f?.71f:.69f;
         public static float PilotX(float aspect)=>aspect>=2.2f?.40f:aspect<1.5f?.32f:.36f;
         /// <summary>The camera's pan toward PilotX at age `a` (0..1 over PanStart..PanEnd), and how far right of ReadoutX (a share of the
-        /// width) the block rides while the pan is under way: it keeps its place beside the pilot, sliding in with the camera, never over him.</summary>
+        /// width) the block rides while the pan is under way and as the settle takes the pilot back to the middle (a turn of `turn` s): it
+        /// keeps its place beside the pilot, sliding in and out with the camera, never over him.</summary>
         public static float Pan(float a)=>Cubic((a-PanStart)/(PanEnd-PanStart));
-        public static float ReadoutShift(float aspect,float a)=>(.5f-PilotX(aspect))*(1-Pan(a));
+        public static float ReadoutShift(float aspect,float a,float turn)=>(.5f-PilotX(aspect))*(1-Pan(a)*(1-Settle(a,turn)));
         /// <summary>The block's unfold (0..1) from a line of light over DetailsAt..+.2, and its leader line's draw (0..1).</summary>
         public static float Unfold(float a)=>EaseOut((a-DetailsAt)/.2f);
         public static float Leader(float a)=>Smooth((a-DetailsAt-.02f)/.15f);

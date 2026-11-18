@@ -270,7 +270,7 @@ namespace ChipArena.UnityConversion
             // The keyframes' weights: the push, the readout's pull-back and pan, the settle.
             float push=NativeInstallShot.Cubic((a-NativeInstallShot.PushStart)/(NativeInstallShot.PushEnd-NativeInstallShot.PushStart));
             float pan=!shortCut&&beside?NativeInstallShot.Pan(a):0;
-            float settle=shortCut?0:NativeInstallShot.Cubic((a-NativeInstallShot.SettleStart(turn))/(NativeInstallShot.SettleEnd(turn)-NativeInstallShot.SettleStart(turn)));
+            float settle=shortCut?0:NativeInstallShot.Settle(a,turn);
             float heroM=hero*(1+(pr.Grade>=5&&!reduced?Creep*NativeInstallShot.Ramp(a,NativeInstallShot.CarryEnd,NativeInstallShot.Seat):0))*(shortCut?1+(ShortCreep-1)*NativeInstallShot.Ramp(a,NativeInstallShot.ShortHold,NativeInstallShot.ShortEnd):1);
             float readM=Math.Min(heroM,ReadoutMagnify),readW=heroM>1.001f?(readM-1)/(heroM-1):0;var readT=Vector3.Lerp(t0,focus,readW+(1-(1-readW)*(1-readW)-readW)*MathUtil.Clamp(crownTaken/.08f,0,1));
             float panX=(.5f-NativeInstallShot.PilotX(Aspect))*2*(d0/readM)*tan*Aspect;
