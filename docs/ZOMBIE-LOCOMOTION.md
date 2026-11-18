@@ -715,8 +715,11 @@ leg lengths at its lowest and its biggest drop in a 30th of a second; shared `88
 | shambler swinging as the pilot is moved 1.5 m to its right (a 90 degree turn through the swing) | .88 (.11) | 1.01 (.05) |
 | runner, the same | .89 (.14) | .93 (.10) |
 | brute, the same | .85 (.19) | .86 (.03) |
+| runner running at a pilot 7 m ahead, a new one 5 m 120 degrees to its left | .88 (.12) | .98 (.04) |
+| brute, the same | .90 (.12) | .84 (.10) |
 
-The circle chases run in stride in both runs and look alike, and so do the runner's and the brute's running reversals. In the walking reversal the
+The circle chases run in stride in both runs and look alike, and so do the runner's and the brute's running reversals. In the brute's target
+switch the branch's brute bunches its feet under it as it turns and sinks lower than shared's ("Still open"). In the walking reversal the
 shared shambler lunges, a foot stretched far behind it as it turns, and the branch steps round under itself; in the running reversal the shared
 shambler sinks into a deep-kneed crouch for a fifth of a second and the branch's stays up. The first pass's strips compared a shared brute in the
 middle of an overhead slam with a branch brute running, and its turn into a swing never swung; these replace them.
@@ -725,8 +728,9 @@ middle of an overhead slam with a branch brute running, and its turn into a swin
 
 - **Reversals and new targets behind the body.** In a 180 the presented root reverses its velocity in about .15 s while the facing takes half a second
   to follow, so the body runs backward and sideways over its feet. At the worst moment of the stride the hips still sink about as far as on shared
-  (.77 to .87 legs), more slowly now, and the runner's worst target switch sinks a little further (.81 to .77) with its feet crossing more. This needs
-  a pivot step planned for the turn (or the pack's turn takes, which are not exported), not a reach rule.
+  (.77 to .87 legs), more slowly now, and the runner's worst target switch sinks a little further (.81 to .77) with its feet crossing more; in the
+  Editor the brute's target switch to its left sinks to .84 (shared .90), its feet bunched under it. This needs a pivot step planned for the turn
+  (or the pack's turn takes, which are not exported), not a reach rule.
 - **Walking turns dip on shared too.** 64 of 186 walking cases go under .85 legs on shared, 55 now, many to the hips' floor (.76): a foot planted
   behind while the other swings long. The shambler at .7 of its walk, turning 90 at one moment of its stride, dips to .76 here (.86 on shared), and
   on the mean of their starts the shambler's walking 180 and 90 and the linesman's 135 degree a second arc are .05 to .07 lower. Walking, the knee

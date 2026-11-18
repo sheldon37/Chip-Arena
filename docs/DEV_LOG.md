@@ -2,7 +2,7 @@
 
 - **The owner (2026-11-18):** "The issue appears to occur specifically when zombies are running and turning simultaneously. Their legs begin
   moving unnaturally, potentially twisting, shuffling, sliding, or otherwise becoming distorted during directional changes." Branch
-  `claude/zombie-run-turn` from shared `e8e8efee`, merged forward with shared `859a90c6`: `b94d39bf` and `4c64c80d` the first pass, `529c0353` the
+  `claude/zombie-run-turn` from shared `e8e8efee`, merged forward with shared `0f2aef17`: `b94d39bf` and `4c64c80d` the first pass, `529c0353` the
   review's fixes, then this entry. Pushed, **not merged, not released**. Details and tables: docs/ZOMBIE-LOCOMOTION.md "Running and turning".
 - **Root cause: two leg solvers disagreed about a foot beside the body.** The gait poses the short voxel rig on a footprint planned for the
   model's legs and draws it in toward the rig's hip by the legs' ratio. It drew it in fore and aft only (`NativeHordeLoco.Squeeze`; the model's
@@ -62,8 +62,8 @@
   cues and dust land on the gait's footprints as before, a few at different moments in sharp turns. Nothing for Astra.
 - **Checks:** full `CoreTests` in a clean checkout of `824ac272` (this branch merged with shared `859a90c6`, with the expedition path patch and the
   release banks, as the release runs it): exit 0, 1038 PASS groups, among them `ZombieRunTurnChecks` (238 checks); `529c0353` before the merge
-  likewise (1036). `--zombie-all`: all 21 groups pass. `check_unity_compile.py`: Assembly-CSharp and Assembly-CSharp-Editor pass. Pin scan over the seven changed source files: 0 broken.
-  `git diff --check` clean. Not run: a Windows build; the Editor's PrototypeBuild.Validate.
+  likewise (1036). `--zombie-all`: all 21 groups pass. `check_unity_compile.py`: Assembly-CSharp and Assembly-CSharp-Editor pass. Pin scan over the
+  seven changed source files: 0 broken. `git diff --check` clean. Not run: a Windows build; the Editor's PrototypeBuild.Validate.
 - **Seen in Unity:** the Editor (BoZo live play on the open floor beside the club's dance floor, where no stage hazard stops a DEV monster's chase; one DEV
   monster hunting the god-mode pilot; frames 1/30 s apart from a low side view and from above; every swing logged), shared `8865e817` against
   the branch at `529c0353`, the same moment of the same chase in both. The model's pelvis at its lowest and its biggest drop in a 30th of a
@@ -77,12 +77,16 @@
     into a deep-kneed crouch through the turn; runner .88 (.12), .90 (.07); brute .90 (.11), .90 (.11), alike to the eye;
   - swinging at the pilot as it is moved 1.5 m to its right (a 90 degree turn through the swing): shambler .88 (.11), 1.01 (.05); runner .89
     (.14), .93 (.10); brute .85 (.19), .86 (.03);
+  - running at a pilot 7 m ahead when a new one appears 5 m 120 degrees to its left: runner .88 (.12), .98 (.04) (its new target just past the
+    floor's west edge, reached as the window ends); brute .90 (.12), .84 (.10) on open floor, the branch's brute bunching its feet under it as it
+    turns.
   Frame strips and half-speed before/after clips: the session scratch's `zombielegs/look/` and `look/clips/` (not committed).
 - **Not verified:** a Windows build; two clients (a guest poses the same gait on the same presented root, so it is expected to match); a large
   crowd's frame time (the per-add cost is unchanged offline); real navigation round obstacles in a played Expedition; the gore change in play (no
   zombie was hurt in the captures: the compile and the source checks only).
 - **Still open:** see docs/ZOMBIE-LOCOMOTION.md "Still open". At the worst moment of a running 180 or a new target behind it the hips still sink
-  about as far as on shared (.77 to .87 legs), more slowly; the runner's worst target switch sinks further (.81 to .77) with its feet crossing more.
+  about as far as on shared (.77 to .87 legs), more slowly; the runner's worst target switch sinks further (.81 to .77) with its feet crossing more,
+  and in the Editor the brute's target switch to its left sinks to .84 (shared .90), its feet bunched under it.
   The shambler at .7 of its walk, turning 90 at one moment of its stride, dips to .76 (shared .86). Walking turns dip to the hips' floor on shared as
   well (55 of 186 walking cases under .85 legs, shared 64). **Next:** the owner looks at the clips and strips and plays it; then merge and release.
 
