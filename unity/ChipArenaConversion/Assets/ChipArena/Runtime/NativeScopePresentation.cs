@@ -4,6 +4,42 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
+        // The rifle's Q scope (owner 2026-11-18: "fix rifle Q to actually use the scope still instead of zooming in (right click
+        // working as intended)"). Since 2026-11-10 every gun aims in the chosen camera (third person: a little zoom, the tight
+        // crosshair, the aim pose), and the rifle's held Q had become that zoom too. Held Q now looks through the scope from the eye
+        // whichever camera is chosen, as it did before: the aim row's 28 degree view (3x), its look speed (AimLook), the scope mask
+        // below with the reticle and the pilot's own body hidden, all from the first-person view's existing scope (ScopeActive).
+        // Right click, the controller's Aim and the other guns are unchanged. The rules see the same held Aim either way.
+        // rifleScopeKey: this frame's input holds the rifle's Q for its aim (ConversionGame's input); rifleScopeWas: the last
+        // camera looked through the scope, rifleScopeFrame: in which frame.
+        private bool rifleScopeKey,rifleScopeWas;private int rifleScopeFrame=-10;
+        /// <summary>The camera looks through the rifle's scope this frame: the local pilot's own aim (no spectated pilot) on held Q.</summary>
+        private bool RifleScopeView(NativePilot p,bool aim)=>Spectator==null&&NativeViewRules.ScopeView(p.Seat.spec,rifleScopeKey,aim);
+        // The hand-over between a third-person camera and the scope, run once the camera is chosen and before it is placed. Seen in
+        // the Editor (2026-11-18): a shoulder camera's crosshair ray runs beside the eye's (0.62 m right, 0.25 m up), so the reticle
+        // opened that far from what the crosshair was on (a foe at 8 m some 110 px aside), and for four frames the view model rose
+        // half drawn before the mask.
+        // - Into the scope from a third-person camera: the sight is up at once (ArenaPresentation.ScopeIn); from a shoulder camera
+        //   the eye turns onto the point under its crosshair (NativeAimConvergence.Angles: the look it was already sending), so the
+        //   reticle opens on it. Classic sends the camera's own look, so it keeps it. First person chosen in Settings is unchanged.
+        // - Out of it, straight from the scope, into a third-person camera: that camera's field of view comes back with the cut (no
+        //   zoomed frames over the shoulder as it eases out), and a shoulder camera turns so its crosshair runs through the point under
+        //   the reticle (NativeCameraRig.LookAt from the rig's shoulder point, as the lock-on frames).
+        private void ScopeHandOver(NativePilot p,Vector3 focus,bool scope,bool first,float settled)
+        {
+            bool was=rifleScopeWas,straight=rifleScopeFrame==Time.frameCount-1;rifleScopeWas=scope;if(scope)rifleScopeFrame=Time.frameCount;
+            if(scope==was||!scope&&(!straight||first))return;
+            float range=Mathf.Max((float)p.Weapon.range,NativeAimConvergence.FarRange);
+            if(scope)
+            {
+                if(prefs.firstPerson)return;presentation.ScopeIn();if(!convergeAim)return;
+                var point=CrosshairPoint(range,out _);NativeAimConvergence.Angles(V(focus),V(point),yaw,pitch,out float y,out float up);
+                yaw=y;pitch=Mathf.Clamp(-up,-70,70);pending.Yaw=yaw;pending.Pitch=-pitch;return;
+            }
+            cameraView.fieldOfView=settled+sprintKick;if(!shoulderView)return;
+            var at=CrosshairPoint(range,out _);NativeCameraRig.LookAt(V(focus),V(at),cameraRig.PivotSide,lockLift,out float yawOut,out float pitchOut);
+            yaw+=Mathf.DeltaAngle(yaw,yawOut);pitch=Mathf.Clamp(pitchOut,-70,70);
+        }
         private Texture2D scopeMask;private GUIStyle scopeLabel;
         private void DrawScope(float width,float height)
         {

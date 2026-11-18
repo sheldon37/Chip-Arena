@@ -1,3 +1,43 @@
+## 2026-11-18 — Claude: the rifle's Q looks through its scope again in any camera (owner report; presentation only)
+
+Branch `claude/rifle-q-scope`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "fix rifle Q to actually use the scope still instead of zooming in (right click working as intended)".
+
+- **Cause.** `0d67511d` (2026-11-10, "guns aim in third person") stopped every aim forcing first person. The rifle's held Q is the same aim input as right click, so in third person it became the aim zoom (.68 of the camera's field of view). The 3x scope only showed in first person.
+- **Fix (`9bbbc06d`).** Held Q on the rifle (`NativeViewRules.ScopeView`, read with the aim in `ConversionGame`'s input) takes the eye in whichever camera is chosen, as before 2026-11-10. It gets the aim row's 28 degree view (3x), its .36 look speed (`AimLook`), the existing scope mask and reticle (`NativeScopePresentation.DrawScope`, `ScopeActive`), and the pilot's own body and view model hidden.
+- **Hand-over (`d05986d7`, from the Editor captures).** A shoulder camera's crosshair ray runs beside the eye's (0.62 m right, 0.25 m up), so the reticle opened that far from what the crosshair was on (a foe at 8 m some 110 px aside). For four frames the view model rose half drawn (a dark rifle, no hands) before the mask. Now (`ScopeHandOver`):
+  - Into the scope from third person, the sight is up from the first frame (`ArenaPresentation.ScopeIn`, `NativeAimMotion.Raised`). From a shoulder camera, the eye turns onto the point under the crosshair (`NativeAimConvergence.Angles`, the look it was already sending), so the reticle opens on it.
+  - Straight out of it, the chosen camera's field of view comes back with the cut. A shoulder camera turns so its crosshair runs through the point under the reticle (`NativeCameraRig.LookAt`, as the lock-on frames).
+  - Classic sends the camera's own look, so it keeps it. First person chosen in Settings keeps its own raise.
+- **Unchanged.** Right click, the controller's Aim, the pistol's and machine gun's aims and Q kits, and first person chosen in Settings (where Q and right click already scope).
+- **Systems.** Camera and input look (`Runtime/ConversionGame.cs`, `Runtime/NativeScopePresentation.cs`, `Runtime/NativeViewPresentation.cs`, `Core/NativeAimPresentation.cs`, `Core/NativeAbilityRules.cs`), with checks in `Tests/GunKitChecks.cs`. The local BoZo tool gains `scopehold=` and `rclick=`, both on the arena clock (git-ignored, not committed).
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. The rules see the same held Aim (spread, settle and slower walking unchanged), and the wire is untouched. The hand-over turns only the client's camera look, so the sent look stays the eye's aim at the same point across it.
+
+**Checks.**
+- Full CoreTests at `d05986d7` (and at `9bbbc06d`), run as relgen5 does with its test-path patch: 1,032 groups pass, exit 0.
+- The pinned 6000.3.24f1 semantic compile (`tools/check_unity_compile.py`) passes for Input System, Player, Assembly-CSharp and Editor.
+- `git diff --check` is clean.
+- New checks in `GunKitChecks.Ads`:
+  - only the rifle's held Q scopes;
+  - the rifle's scope row (28 degrees, .36) and its third-person zoom (.68);
+  - the key is read with the aim, and only in play;
+  - the scope's eye, look speed and field of view, set before the camera is placed;
+  - a spectated pilot never scopes;
+  - the hand-over: the sight up at once, the reticle on the crosshair's point and back, the field of view cut out;
+  - first person's own raise is kept.
+- **Editor captures** (the shared Editor, BoZo, under the lock; stage banks and motion bank unchanged). The same play on `01505ad6` and `d05986d7`: Cyber City, third person (the Editor's saved shoulder camera), a bot 8 m ahead, Q held 7.5–9.5 s, right click 10.5–12.5 s, frames 1/60 s apart, the entry and exit frame by frame, and first person too.
+  - Before: Q is the third-person zoom, the same as right click.
+  - After: Q's first frame is the 3x scope with the bot under the reticle. The first frame out is the shoulder view at its own field of view. Right click is the same zoom as before. In first person, Q and right click scope as before.
+  - Stills are in `riflescope/look/` in the integrating session's scratchpad.
+
+**Not run.** No Windows build and no multiplayer run. A capture's stall finishes the field of view's ease in one frame, so the stills don't show the zoom easing into the scope. The look hand-over's vertical half was held by the capture's fixed pitch, so only its horizontal half was seen.
+
+**Risks.**
+- The entry turn is clamped to 25 degrees of the look (the convergence's own clamp).
+- The exit turn uses the shoulder rig's last fitted offset, from before the scope.
+- The controller's Aim keeps the third-person zoom, as right click's twin.
+
+**Next.** The owner plays it (Q against a moving target, both shoulders, Classic); then merge and release.
+
 ## 2026-11-18 — Claude: arrows stuck in a pilot ride the drawn body, not a point off it (owner report; presentation only)
 
 - **The owner (2026-11-18):** "Can you fix bow arrows? It seems they sometimes 'attach' off of a players body. Essentially it'll look like

@@ -31,6 +31,12 @@ namespace ChipArena.UnityConversion
         /// sniper rifle a little more than the pistol and the machine gun); the look turns slower by the same share. First person keeps
         /// the aim row's own sight or scope.</summary>
         public static float AimZoom(string spec)=>spec=="rifle"?.68f:spec=="machinegun"?.84f:.86f;
+        /// <summary>The rifle's held Q (owner 2026-11-18: "fix rifle Q to actually use the scope still instead of zooming in (right
+        /// click working as intended)"): its aim looks through the 3x scope from the eye in any chosen camera, as every aim did before
+        /// 2026-11-10 (the aim row's field of view and look speed, the scope mask, the pilot's own body hidden). Right click, the
+        /// controller's Aim and every other gun keep the chosen camera's aim (AimZoom). Presentation only: the rules see the same
+        /// held Aim either way.</summary>
+        public static bool ScopeView(string spec,bool qHeld,bool aiming)=>aiming&&qHeld&&NativeRangedRules.Scope(spec);
         public static bool ViewModelBone(int bone)=>bone==CapturedRig.LElbow||bone==CapturedRig.LHand||bone==CapturedRig.RElbow||bone==CapturedRig.RHand;
     }
 }
