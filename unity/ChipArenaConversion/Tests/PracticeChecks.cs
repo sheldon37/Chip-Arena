@@ -23,6 +23,15 @@ internal static class PracticeChecks
             Check(!NativePracticeRules.Available(boss.Id,63^bit,false,false),"other boss");
         }
         Check(phases==20 && !NativePracticeRules.Available("bogus",63,true,false),"catalogue");
+        foreach(string kind in new[]{NativeHumBoss.Archetype,NativeDeepEndBoss.Archetype})
+        {
+            var actor=NativeBackroomsBossRules.Create(kind,1,0,0,0);
+            NativeBackroomsBossRules.AdvancePhase(actor,1);
+            Check(actor.phase==2 && actor.action=="phase" && actor.backrooms.tideY==.5f,"second phase opens");
+            NativeBackroomsBossRules.AdvancePhase(actor,7);
+            Check(actor.phase==3 && Math.Abs(actor.backrooms.tideFrom-.5f)<1e-6f && actor.backrooms.tideY==1.1f,"third phase keeps previous tide");
+            if(kind==NativeHumBoss.Archetype)Check(actor.backrooms.circuitAt==7 && actor.backrooms.circuitMask==255,"HUM circuit opens");
+        }
         var data=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),new JsonSerializerOptions{IncludeFields=true});
         var first=NativeContentRules.Eligible(data,"pistol",new System.Collections.Generic.Dictionary<string,int>(),"").First();
         var build=new NativeLabBuild("pistol","",new[]{first.id});

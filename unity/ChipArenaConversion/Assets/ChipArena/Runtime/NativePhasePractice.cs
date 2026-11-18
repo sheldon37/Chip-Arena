@@ -118,7 +118,14 @@ namespace ChipArena.UnityConversion
             {
                 float fraction=NativeZoneBossRules.PhaseStart(ZoneBoss.archetype,phase);
                 zoneBossActor.Hp=v.Boss.Hp=zoneBossActor.MaxHp*fraction;
-                StepZoneBoss(); // Applies barrier, armour, tide or circuit changes in sequence.
+                // Enter the requested transition directly. Combat ordinarily detects it after a hit.
+                if(ZoneBoss.backrooms!=null)
+                {
+                    NativeBackroomsBossRules.AdvancePhase(ZoneBoss,Time);
+                    v.Phase=ZoneBoss.phase;
+                }
+                else AdvanceIndustrialBossPhase();
+                SyncZoneBossArena();
                 if(phase<PracticePhase)
                 {
                     // Let the previous authored transition expire before sampling tide/arena timestamps for the next.
