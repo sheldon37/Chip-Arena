@@ -38,6 +38,8 @@ namespace ChipArena.UnityConversion
         // The hero card's weapon and icon size this frame: when it shows the flourish's weapon, the flourish draws from its larger
         // raster (already made by the hero), so a weapon drawn twice its card size stays sharp.
         private static ContentWeapon heroWeapon;private static float heroIcon;
+        // Every hero card of the frame (the dealt cards): the targets of a flourish played on a hero card.
+        private static readonly Rect[] heroes=new Rect[16];private static int heroCount;
 
         // The card's own part of a flourish: drawn moved (shake, recoil, squash), its icon out of its slot (Hide), flashed,
         // or cut into bands (the Katana's two halves, L33T's glitch slices).
@@ -52,7 +54,7 @@ namespace ChipArena.UnityConversion
         private static CardFx Track(Rect r,ContentWeapon w,in Look k,bool hero,Vector2 icon,float size)
         {
             int f=Time.frameCount;if(seenFrame!=f){seenFrame=f;seenCount=0;}
-            if(hero){heroSeen=r;heroFrame=f;heroWeapon=w;heroIcon=size;}else if(seenCount<seen.Length)seen[seenCount++]=r;
+            if(hero){if(heroFrame!=f)heroCount=0;heroSeen=r;heroFrame=f;heroWeapon=w;heroIcon=size;if(heroCount<heroes.Length)heroes[heroCount++]=r;}else if(seenCount<seen.Length)seen[seenCount++]=r;
             if(k.Quiet)return Still;var move=Plan.Of(w.id);bool locked=k.Locked>0;
             if(locked||k.Finish)
             {
@@ -60,7 +62,7 @@ namespace ChipArena.UnityConversion
                 // later (after the starting chip). The reveal's own card plays it unless the locked-in screen just did.
                 float age=!locked?k.LockAge:k.LockAge>=0&&k.SelectAge>=0?Mathf.Min(k.LockAge,k.SelectAge):k.LockAge>=0?k.LockAge:k.SelectAge;
                 if(age<0||age>Plan.Finish||finish.Frame==f)return Still;
-                if(!locked&&liveFinish.W==w&&liveFinish.Locked&&Time.unscaledTime-liveFinish.Drawn<60)return Still;
+                if(!locked&&liveFinish.W==w&&liveFinish.Locked&&liveFinish.Age>Plan.Finish*.5f&&Time.unscaledTime-liveFinish.Drawn<60)return Still;
                 finish=new Act{W=w,Move=move,Card=r,Icon=icon,Size=size,Age=age,Start=k.Time-age,Hero=hero,Calm=k.Calm,Locked=locked,Frame=f,Kit=U.Current};
                 return Live(finish,liveFinish)?FinishFx(finish):Still;
             }
@@ -95,10 +97,14 @@ namespace ChipArena.UnityConversion
 
         // ---- the flourish's frame ----------------------------------------------------------------------------------------
         // The card's icon centre and size, the card, the weapon's colours and icon, a seed, and the screen side with more room.
-        private static Vector2 fc;private static float fs,fspr,fdir;private static Rect fr;private static Color fa,fh;private static string fi;private static int fseed;private static bool fhero;
+        private static Vector2 fc;private static float fs,fslot,fspr,fdir;private static Rect fr;private static Color fa,fh;private static string fi;private static int fseed;private static bool fhero;
         private static void Begin(in Act a)
         {
-            fc=a.Icon;fs=Mathf.Max(8,a.Size);fspr=!a.Hero&&heroFrame==Time.frameCount&&heroWeapon==a.W&&heroIcon>fs?heroIcon:fs;fr=a.Card;fa=Accent(a.W);fh=U.Mix(fa,Color.white,.55f);fi=NativeIcons.Spec(a.W.id);fhero=a.Hero;
+            fc=a.Icon;fslot=Mathf.Max(8,a.Size);
+            // A hero card's icon is far larger than a grid card's: its flourish keeps a grid card's measure (fs) and starts and ends
+            // at the hero's icon (fslot). A grid card's flourish draws from the hero's raster when the hero shows the same weapon.
+            fs=a.Hero?Mathf.Clamp(fslot*.6f,72,100):fslot;
+            fspr=a.Hero?fslot:heroFrame==Time.frameCount&&heroWeapon==a.W&&heroIcon>fslot?heroIcon:fslot;fr=a.Card;fa=Accent(a.W);fh=U.Mix(fa,Color.white,.55f);fi=NativeIcons.Spec(a.W.id);fhero=a.Hero;
             unchecked{int h=17;foreach(char ch in a.W.id)h=h*31+ch;fseed=h;}
             fdir=fc.x<U.W*.5f?1:-1;
         }
@@ -121,7 +127,9 @@ namespace ChipArena.UnityConversion
         private static Vector2 Shake(float t,float amp)=>new Vector2(Mathf.Sin(t*97)+Mathf.Sin(t*151+1.3f),Mathf.Sin(t*83+.7f)+Mathf.Sin(t*137+2.1f))*.5f*amp;
         private static Vector2 Clamp(Vector2 p,float m=30)=>new Vector2(Mathf.Clamp(p.x,m,U.W-m),Mathf.Clamp(p.y,m,U.H-m));
         // A point in the icon's own frame (fractions of its size, y down) on the weapon drawn at p, scale, deg, sx.
-        private static Vector2 On(Vector2 p,float scale,float deg,float sx,float x,float y)=>p+Rot(new Vector2(x*sx,y)*fs*Big(scale),deg);
+        private static Vector2 On(Vector2 p,float scale,float deg,float sx,float x,float y)=>p+Rot(new Vector2(x*sx,y)*Size(scale),deg);
+        // The weapon's drawn size at `scale`: the card's icon in its slot (1), Big of the measure when out (a hero card's blends).
+        private static float Size(float s)=>fslot==fs?fs*Big(s):s<=1?fslot*s:Mathf.Lerp(fslot,fs*Big(s),Seg(s,1,1.2f));
         // Out of its slot a weapon is drawn larger than its card icon: 1 stays 1 (the slot), 1.2 and more are 1.6 times.
         private static float Big(float s)=>s<=1?s:s*(1+.6f*Seg(s,1,1.2f));
         // The turn and mirror that point a weapon whose icon faces `fwd` (degrees) from `from` at `to`, kept upright.
@@ -135,7 +143,7 @@ namespace ChipArena.UnityConversion
         // `used`; false when there is none.
         private static bool Target(int nth,Vector2 from,bool far,out Vector2 at,out Rect card)
         {
-            at=default;card=default;if(seenFrame!=Time.frameCount)return false;int n=seenCount;
+            at=default;card=default;int n=Others();if(n==0)return false;
             // A selection sort over at most 48 cards, by distance, skipping the own card: the nth from the near or far end.
             float last=far?float.MaxValue:-1;int pick=-1;
             for(int round=0;round<=nth;round++)
@@ -143,13 +151,16 @@ namespace ChipArena.UnityConversion
                 pick=-1;float best=far?-1:float.MaxValue;
                 for(int i=0;i<n;i++)
                 {
-                    var c=seen[i];if(c.Overlaps(fr))continue;float d=(c.center-from).sqrMagnitude+i*.001f;
+                    var c=Other(i);if(c.Overlaps(fr))continue;float d=(c.center-from).sqrMagnitude+i*.001f;
                     if(far?(d<last&&d>best):(d>last&&d<best)){best=d;pick=i;}
                 }
                 if(pick<0)return false;last=best;
             }
-            card=seen[pick];at=card.center;return true;
+            card=Other(pick);at=card.center;return true;
         }
+        // The other cards of this frame a flourish may aim at: the grid's, and for a hero card's flourish the other hero cards.
+        private static int Others(){int f=Time.frameCount;return (seenFrame==f?seenCount:0)+(fhero&&heroFrame==f?heroCount:0);}
+        private static Rect Other(int i){int g=seenFrame==Time.frameCount?seenCount:0;return i<g?seen[i]:heroes[i-g];}
         private static bool HeroCard(out Rect r){r=heroSeen;return heroFrame==Time.frameCount&&!fhero;}
 
         // ---- drawing kit -------------------------------------------------------------------------------------------------
@@ -292,7 +303,7 @@ namespace ChipArena.UnityConversion
         // chromatic split along fast motion and a drop shadow. `sx` mirrors and turns it (|sx| < 1 reads as a turn in depth).
         private static void Arm(Vector2 p,float scale,float deg,float sx,float a,Vector2 vel=default,float glow=1)
         {
-            if(a<=.003f||scale<=.01f)return;float sz=fs*Big(scale);
+            if(a<=.003f||scale<=.01f)return;float sz=Size(scale);
             Dot(p,sz*1.9f,U.A(fa,.26f*glow*a));
             float sp=vel.magnitude;if(sp>350){var d=vel/sp*Mathf.Min(5,sp/500);Glyph(p-d,scale,deg,sx,C.Magenta(.32f*a));Glyph(p+d,scale,deg,sx,C.Cyan(.32f*a));}
             Glyph(p+new Vector2(0,sz*.04f+2),scale,deg,sx,new Color(0,0,0,.42f*a));Glyph(p,scale,deg,sx,U.A(U.Mix(fa,Color.white,.5f),a));
@@ -301,7 +312,7 @@ namespace ChipArena.UnityConversion
         private static void Glyph(Vector2 p,float scale,float deg,float sx,Color c)
         {
             if(c.a<=.003f)return;if(Mathf.Abs(sx)<.04f)sx=sx<0?-.04f:.04f;
-            float k=fs/fspr*Big(scale);U.Push(p,Vector2.zero,k*sx,deg,k);NativeIcons.Draw(Square(p,fspr),fi,c);U.Pop();
+            float k=Size(scale)/fspr;U.Push(p,Vector2.zero,k*sx,deg,k);NativeIcons.Draw(Square(p,fspr),fi,c);U.Pop();
         }
         private static void Flash(float a,Color c){if(a>.003f)U.Fill(Whole,U.A(c,a));}
         private static void CardFlash(Rect r,float a,Color c){if(a>.003f){U.Glow(r,U.A(c,.5f*a),16);U.Round(r,U.A(c,.35f*a),R);}}
@@ -389,8 +400,8 @@ namespace ChipArena.UnityConversion
         // A soft ring and a slow glow from the icon; nothing moves.
         private static void Gentle(float t,bool locked)
         {
-            float a=Bell(t,0,Plan.Gentle);Dot(fc,fs*2.4f,U.A(fa,.22f*a));Thin(fc,fs*(.7f+.5f*Seg(t,0,Plan.Gentle)),U.A(fh,.6f*a));
-            if(locked)Thin(fc,fs*(.9f+.4f*Seg(t,0,Plan.Gentle)),U.A(fa,.4f*a));
+            float a=Bell(t,0,Plan.Gentle);Dot(fc,fslot*2.4f,U.A(fa,.22f*a));Thin(fc,fslot*(.7f+.5f*Seg(t,0,Plan.Gentle)),U.A(fh,.6f*a));
+            if(locked)Thin(fc,fslot*(.9f+.4f*Seg(t,0,Plan.Gentle)),U.A(fa,.4f*a));
         }
     }
 }

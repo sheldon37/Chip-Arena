@@ -77,6 +77,10 @@ internal static class WeaponFlourishChecks
         Check(Body("OpeningWeaponStep").Contains("NativeWeaponCard.Flourishes();"),"the weapon pick draws the chosen card's flourish");
         Check(Body("OpeningReadyStep").Contains("NativeWeaponCard.Flourishes();"),"the locked-in card plays its finisher");
         var reveal=Body("OpeningRevealStep");Check(reveal.Contains("look.Quiet=!you;look.Finish=you;"),"the reveal plays only the pilot's own card's finisher (each pilot sees only their own)");
+        // The dealt Blind Pick screen (NativeBlindChoiceUI) plays them on its cards too, and a second click on the chosen card replays.
+        string dealt=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeBlindChoiceUI.cs"));
+        Check(dealt.Contains("NativeWeaponCard.Flourishes();")&&dealt.Contains("if(x.id==chosen)openingSelectAt=now;"),"the dealt cards play the flourishes and replay on a second click");
+        Check(!File.Exists(Path.Combine(root,"Assets/ChipArena/Runtime/NativeWeaponCardFlourishStub.cs")),"no stand-in Flourishes() left");
         string audio=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeAudio.cs"));
         Check(audio.Contains("NativeWeaponCard.Sound+=FlourishHeard;")&&audio.Contains("NativeWeaponCard.Sound-=FlourishHeard;"),"the sounds reach the audio");
         // No per-frame garbage in the drawing: no LINQ, string building or collections made while drawing.

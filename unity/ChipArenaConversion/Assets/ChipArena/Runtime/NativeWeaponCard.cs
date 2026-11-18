@@ -133,14 +133,24 @@ namespace ChipArena.UnityConversion
         public static void Hero(Rect r,ContentWeapon w,in Look k,Bars bars,float change)
         {
             if(w==null||k.Alpha<=.002f||Event.current.type!=EventType.Repaint)return;Ensure();
-            // The flourish's part (the lock-in finisher's pop and flash), queued at the emitter's icon (its layout below).
+            // The flourish's part, queued at the emitter's icon (its layout below): moved, flashed, its icon out of the slot, or
+            // drawn as bands (the dealt cards' Katana cut, L33T's glitch) with the turning reticles drawn once outside their clips.
             float hp=Mathf.Clamp(r.width*.065f,16,26),hcw=r.width-2*hp,hem=Mathf.Min(r.height*.42f,hcw*.95f);
             var fx=Track(r,w,k,true,new Vector2(r.center.x,r.y+hp+38+hem*.47f),Mathf.Min(hem*.62f,hcw*.55f));bool moved=fx.Moves;
             if(moved)U.Push(r.center,fx.Shift,fx.Sx,0,fx.Sy);
-            HeroFace(r,w,k,bars,change,fx);
+            if(fx.Bands==0)HeroFace(r,w,k,bars,change,fx,true);
+            else{for(int b=0;b<fx.Bands;b++){Band(r,fx,b,out var clip,out var off);U.Push(r.center,off,1);U.BeginBand(clip);HeroFace(r,w,k,bars,change,fx,false);U.EndBand();U.Pop();}HeroReticles(r,w,k);}
             if(moved)U.Pop();
         }
-        private static void HeroFace(Rect r,ContentWeapon w,in Look k,Bars bars,float change,in CardFx fx)
+        // The hero's turning reticles alone (HeroFace's layout), for a card drawn in bands.
+        private static void HeroReticles(Rect r,ContentWeapon w,in Look k)
+        {
+            var acc=Accent(w);float a=k.Alpha,pad=Mathf.Clamp(r.width*.065f,16,26),cw=r.width-2*pad,y=r.y+pad+26,em=Mathf.Min(r.height*.42f,cw*.95f),size=Mathf.Min(em*.62f,cw*.55f),baseY=y+12+em*.93f;
+            var ec=new Vector2(r.center.x,y+12+em*.47f);
+            if(!k.Calm){U.Push(new Vector2(ec.x,baseY),Vector2.zero,1,0,.26f);Reticle(new Vector2(ec.x,baseY),size*.62f,k.Time*40,U.A(acc,.55f*a),12);U.Pop();}
+            Reticle(ec,size*.78f,k.Calm?0:k.Time*-14,U.A(acc,.32f*a),8);Reticle(ec,size*.9f,k.Calm?0:k.Time*9+22,U.A(acc,.16f*a),24);
+        }
+        private static void HeroFace(Rect r,ContentWeapon w,in Look k,Bars bars,float change,in CardFx fx,bool reticles)
         {
             var acc=Accent(w);float a=k.Alpha,s=Mathf.Max(k.Selected,.6f),h=k.Hover,swap=k.Calm?1:M.Clamp01(change/.42f),inA=a*M.OutCubic(swap);
             U.Glow(new Rect(r.x+10,r.y+30,r.width-20,r.height),new Color(0,0,0,.55f*a),44);U.Glow(r,U.A(acc,(.16f+.08f*Breath(k))*a),24);
@@ -162,9 +172,14 @@ namespace ChipArena.UnityConversion
             if(!k.Calm){float p=Mathf.Repeat(k.Time/2.4f,1);U.RadialStops(Square(ec,size*(1.1f+1.3f*p)),U.A(acc,.45f*(1-p)*a),PulseAt,PulseA);}
             U.EndBand();
             // Rotated layers after the clip (they stay inside the face): the floor ring's ticks in perspective, two reticles.
-            if(!k.Calm){U.Push(new Vector2(ec.x,baseY),Vector2.zero,1,0,.26f);Reticle(new Vector2(ec.x,baseY),size*.62f,k.Time*40,U.A(acc,.55f*a),12);U.Pop();}
-            Reticle(ec,size*.78f,k.Calm?0:k.Time*-14,U.A(acc,.32f*a),8);Reticle(ec,size*.9f,k.Calm?0:k.Time*9+22,U.A(acc,.16f*a),24);
-            Icon(ic,NativeIcons.Spec(w.id),acc,inA,Mathf.Max(h,.35f),s,k.Calm?-10:change,k.Calm);
+            if(reticles)
+            {
+                if(!k.Calm){U.Push(new Vector2(ec.x,baseY),Vector2.zero,1,0,.26f);Reticle(new Vector2(ec.x,baseY),size*.62f,k.Time*40,U.A(acc,.55f*a),12);U.Pop();}
+                Reticle(ec,size*.78f,k.Calm?0:k.Time*-14,U.A(acc,.32f*a),8);Reticle(ec,size*.9f,k.Calm?0:k.Time*9+22,U.A(acc,.16f*a),24);
+            }
+            // While the flourish's weapon is out of the card, its slot holds a faint ghost of the icon and a ring.
+            if(fx.Hide>0)U.RadialStops(Inset(ic,-size*.12f),U.A(acc,.45f*fx.Hide*a),RingAt,RingA);
+            Icon(ic,NativeIcons.Spec(w.id),acc,inA*(1-.85f*fx.Hide),Mathf.Max(h,.35f),s,k.Calm?-10:change,k.Calm);
             // A scan pass over the emitter as the content changes.
             if(!k.Calm&&change<.6f){U.BeginBand(new Rect(face.x,y,face.width,baseY-y+8));ScanLine(new Rect(face.x,y,face.width,baseY-y),change/.6f,.55f*a,acc,34);U.EndBand();}
             y=baseY+18;

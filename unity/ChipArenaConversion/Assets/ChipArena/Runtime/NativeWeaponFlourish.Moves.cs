@@ -44,9 +44,9 @@ namespace ChipArena.UnityConversion
         private static Vector2 Snap(Vector2 p,int salt)
         {
             p=Clamp(p,40);float best=float.MaxValue;var at=p;
-            if(seenFrame==Time.frameCount)for(int i=0;i<seenCount;i++)
+            for(int i=0,n=Others();i<n;i++)
             {
-                var c=seen[i];if(c.Overlaps(fr))continue;float d=(c.center-p).sqrMagnitude;
+                var c=Other(i);if(c.Overlaps(fr))continue;float d=(c.center-p).sqrMagnitude;
                 if(d<best){best=d;at=c.center+new Vector2(Sgn(salt,i)*c.width*.2f,Sgn(salt+1,i)*c.height*.16f-c.height*.06f);}
             }
             return best<300*300?at:p;
@@ -260,12 +260,12 @@ namespace ChipArena.UnityConversion
             for(int k=1;k<5;k++)
             {
                 float best=float.MaxValue;int pick=-1;var from=chain[k-1];
-                if(seenFrame==Time.frameCount)for(int i=0;i<seenCount;i++)
+                for(int i=0,n=Others();i<n;i++)
                 {
-                    var c=seen[i];if(c.Overlaps(fr))continue;bool used=false;for(int j=1;j<k;j++)if(chainCards[j]==c)used=true;if(used)continue;
+                    var c=Other(i);if(c.Overlaps(fr))continue;bool used=false;for(int j=1;j<k;j++)if(chainCards[j]==c)used=true;if(used)continue;
                     float d=(c.center-from).magnitude;d=Mathf.Abs(d-fs*3.2f)*(1+.8f*Rnd(50+k,i));if(d<best){best=d;pick=i;}
                 }
-                if(pick>=0){chainCards[k]=seen[pick];chain[k]=seen[pick].center+new Vector2(0,-seen[pick].height*.07f);}
+                if(pick>=0){var pc=Other(pick);chainCards[k]=pc;chain[k]=pc.center+new Vector2(0,-pc.height*.07f);}
                 else{chainCards[k]=default;chain[k]=Clamp(from+Dir(-60+Sgn(51,k)*70)*fs*3,50);}
                 chainCount++;
             }
@@ -414,7 +414,7 @@ namespace ChipArena.UnityConversion
         }
         private static void Greatsword(float t)
         {
-            float top=fr.y-fs*1.7f,tipY=fr.y+fr.height*.44f,sc=1.55f,half=fs*Big(sc)*.47f,hit=t-.66f;var x=fr.center.x;
+            float top=Mathf.Max(fr.y-fs*1.7f,fs*1.4f),tipY=fr.y+fr.height*.44f,sc=1.55f,half=fs*Big(sc)*.47f,hit=t-.66f;var x=fr.center.x;
             float sink=hit>0?9*Mathf.Exp(-hit*5):0;
             Launch(t);
             // The sword: up (point up), turned over (a flip in depth), held, dropped; stuck; wrenched out; flipped back, home.
@@ -575,7 +575,7 @@ namespace ChipArena.UnityConversion
         // races out across the whole screen, the floor erupting; it is wrenched out and glitches home.
         private static void DevGreatsword(float t)
         {
-            float floor=fr.yMax+6,sc=1.5f,half=fs*Big(sc)*.47f,hit=t-.5f;var x=fr.center.x;var dev=C.Violet();var top=new Vector2(x,fr.y-fs*1.7f);Launch(t);
+            float floor=fr.yMax+6,sc=1.5f,half=fs*Big(sc)*.47f,hit=t-.5f;var x=fr.center.x;var dev=C.Violet();var top=new Vector2(x,Mathf.Max(fr.y-fs*1.7f,fs*1.4f));Launch(t);
             Vector2 p;float d=90;
             if(t<.32f){float u=M.OutCubic(Seg(t,0,.32f));p=Vector2.Lerp(fc,top,u);d=Mathf.Lerp(0,90,InOut(Seg(t,.1f,.32f)));}
             else if(t<.5f){float u=InCubic(Seg(t,.36f,.5f));p=new Vector2(x,Mathf.Lerp(top.y,floor-half,u));}
@@ -849,7 +849,7 @@ namespace ChipArena.UnityConversion
         private static void Finisher(Plan.Move m,float t)
         {
             // L: the finisher's size, at least a grid card's icon (the reveal's cards are small).
-            float u=Seg(t,0,.5f),fade=1-Seg(t,.55f,Plan.Finish);Rect r=fr;var c=fc;float L=Mathf.Max(fs,72);
+            float u=Seg(t,0,.5f),fade=1-Seg(t,.55f,Plan.Finish);Rect r=fr;var c=fc;float L=fhero?Mathf.Max(fslot*.75f,72):Mathf.Max(fs,72);
             Pillar(fc,L*.9f*(1+.3f*u),(1-Seg(t,.05f,.7f))*Seg(t,0,.04f));Dot(fc,L*2.4f*(1-u),new Color(1,1,1,.55f*(1-u)));Star(fc,L*.9f*(1-Seg(t,0,.25f)),15,8,U.A(fh,1-Seg(t,0,.25f)));
             Ring(fc,L*(.5f+1.6f*M.OutCubic(u)),U.A(fa,.9f*(1-u)));Thin(fc,L*(.6f+2.2f*M.OutCubic(Seg(t,.04f,.45f))),new Color(1,1,1,.75f*(1-Seg(t,.04f,.45f))));
             switch(m)
