@@ -1,3 +1,98 @@
+## 2026-11-18 — Claude: the Deathmatch's chip picks on the PvP chip screen with the pilot, Blind Pick All, and the N-choice Blind Pick screen (owner report; presentation only)
+
+Branch `claude/deathmatch-picks`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6` (test channel revision 639305719837450710). Owner, 2026-11-18: "For the deathmatch mode, For the chip selection; We can bring the player model in for the chip selection like we do for the normal pvp mode. As matter of fact, we can use that exact screen. Also, change current Blind Pick Name to "Blind Pick All", and make a new blind pick where we get a customizable amount of choices (Default 3) of weapon/class to pick (we only pick 1). This will be similar to a chip screen."
+
+- **Chip picks on the PvP chip screen.** The Deathmatch's starting chip (the opening's Chip step, in the room) and its comeback chips (in the fight) now use the PvP chip draft's own screen (`Runtime/NativeDeathmatchPickStage.cs`), as the Siren personal pick does:
+  - the draft stage with the local pilot on the model, the cyber corridor, and the gaze and reach toward the highlighted card;
+  - the draft's shades, header, tray low in front of the pilot, and nameplate;
+  - a pick plays the draft's follow-through: the others shatter, the card flies to the palm, and the pilot plants it (`Core/NativePickFollow.cs`).
+  - The starting chip's top right shows the opening's locked-in count and 20 s countdown, in the draft's pills.
+  - The comeback chip shows YOU ARE VULNERABLE WHILE CHOOSING when alive, any queued picks, the respawn pill while down, Choose later (C) and the attack alarm.
+- **Kept as before.**
+  - Each pilot's offers stay private until the reveal, and the 20 s steps run unchanged.
+  - Comeback picks still queue on personal deaths 3 and 6 and survive respawn (Choose later, C).
+  - The respawn keeps the rules' 3 s. The follow-through ends the moment the pilot respawns, and the picker closes on respawn as before.
+  - The picker that opens on a rewarded death stands in front of that death's killcam, as the tray did. A running killcam ends, as Space skips it. One not yet started waits until the picker closes (Choose later plays the rest).
+  - Card clicks go through `U.SilentButton` (DrawTray).
+  - The same `opening-choice` and `dm-chip` messages are sent.
+  - The old tray versions (`OpeningChipStep`, `ComebackPicker`) are removed.
+- **Blind Pick All.** Players now read the old mode as Blind Pick All in:
+  - the room options' checkbox (versus and co-op);
+  - the room lobby's line, a hidden pilot's weapon name and the lobby's rules note;
+  - the opening's headers: `BLIND PICK ALL · WEAPON`, and the locked-in and reveal headers name the session's mode (DEATHMATCH for a starting chip alone);
+  - the update notice.
+  - Ids, fields and the wire stay `blindPick`.
+- **Blind Pick (N choices).** A screen like the chip screen (`Runtime/NativeBlindChoiceUI.cs`), on Astra's rules (PR #411, merged into this branch with shared `42bd093e`):
+  - My dealt weapons are dealt one by one from a deck under the screen. Each flips face up as its hero card (stats, role and description), or as its compact card when many are dealt (up to a whole pool, six rows; a deal of more than eight keeps to about 2 s).
+  - They use the weapon grid's highlight, choice and Lock in, with 1-9, the arrows and Enter.
+  - Nothing is marked until I choose. The rules lock a random offer at 0 s (an unconfirmed choice is not kept), so the timer reads RANDOM PICK AT 0.
+  - It reads only `NativeBlindChoiceView` (`Core/NativeBlindChoices.cs`), built from the host's private Weapon-step view (`NativeOpeningDraft.CardsFor`: my `WeaponOffers`). Blind Pick All sends no offers there and keeps its grid.
+  - Room options: Weapon pick (Off, Blind Pick All, Blind Pick) and, for Blind Pick, Weapon choices (2 up to the non-DEV pool), through `ApplyRule`'s Blind 0/1/2 and BlindChoices cases. The lobby line, its notes and the headers name the mode.
+  - My earlier gate (`RulesReady`), the DEV preview's stand-in deal (`NativeBlindChoicePreview.cs`) and a presentation-side normaliser are gone: Astra's rules cover them. Astra's code is as merged; the merge's conflicts took Astra's side.
+- **Flourishes.**
+  - The new screen restarts `Look.SelectAge` from 0 on each choice and starts `LockAge` on the lock, then calls `NativeWeaponCard.Flourishes()` after its cards.
+  - `NativeWeaponCard` is now `partial`. `Runtime/NativeWeaponCardFlourishStub.cs` stands in until `claude/pick-flourish` merges; the integrator deletes it and its .meta.
+  - Outside that, `NativeWeaponCard.cs`'s drawing is untouched.
+- **From the Editor captures** (16:9, 4:3, 21:9, 1280x720):
+  - The dealt hero cards are larger (cap 360) with Lock in right under them.
+  - At 21:9, Blind Pick All's grid and hero keep to the 16:9 safe width, centred; 16:9 and 4:3 are unchanged.
+  - A Deathmatch death's killcam drew over the new stage (fixed as above).
+  - The comeback prompt sat under the vitals panel (from 2026-11-17). It now sits above it.
+  - Nothing else in the opening's screens was broken at these sizes.
+
+**Systems.** Opening and Deathmatch presentation:
+- `NativeOpeningDraftUI`, `NativeDeathmatchRuntime`, `NativeDraftPresentation` (one line in `DraftFrame`).
+- `ConversionGame.LateFrame`: the room's stage in place of the menu backdrop, the comeback picker before the killcam, and the comeback's Install cue at the plant.
+- `NativeDamageScreenPresentation`: no damage screen over the stage.
+- `NativeRoomOptionsUI`, `NativeLobbyUI`, `NativeLobbyRoomUI`; `NativeWeaponCard` (`partial` only).
+- New files: Core `NativeBlindChoices`, `NativePickFollow`; Runtime `NativeDeathmatchPickStage`, `NativeBlindChoiceUI`, `NativeWeaponCardFlourishStub`. Check `Tests/BlindChoiceChecks.cs` (`--blind-choices`). Docs: `docs/BLIND-PICK-SCREENS.md`.
+
+**For Astra.**
+- `NativeOpeningDraft.ProtocolRefusal`'s message for the old mode still reads "the Deathmatch and Blind Pick update". Players now call that mode Blind Pick All. The string is in the rules file, so it is left to you.
+- On a dealt timeout, `Tick` locks a random offer even when the pilot had an unconfirmed choice (Blind Pick All keeps it). The screen marks nothing until the pilot chooses and says RANDOM PICK AT 0. If the choice should be kept, `chosen` in `BlindChoiceStep` can show the host's selection again in one line.
+- `NativeRoomOptions.Normalize` bounds `blindChoices` by `content.weapons.Length` (DEV weapons included). The count select offers 2 up to the non-DEV pool, and the deal clamps to each seat's eligible pool.
+
+**Checks.**
+- The pinned 6000.3.24f1 semantic compile (`tools/check_unity_compile.py`) passes for Input System, Player, Assembly-CSharp and Editor. There are no new warnings; the two in changed files were there before.
+- `pins.py`: no pin of another check is broken. The only lines it lists are `BlindChoiceChecks`' own literals for the moved code. `git diff --check` is clean.
+- CoreTests:
+  - `--blind-choices`: 5587 checks, including Astra's real deal read through the hook.
+  - `--deathmatch` (Astra's): 158 checks.
+  - Full suite, with stage banks `banks-next` and the expedition path patch applied and reverted:
+    - at `61af0407`: 1033 groups, exit 0;
+    - at the merge `6455663e`: 1033 groups, exit 0;
+    - at `689fb083` (the last code commit): 1033 groups, exit 0.
+- Python discovery: 8 failures and 1 error, all environmental on this PC (the live sound queue's tests and the publish wrapper on a path with spaces).
+  - The run touched the live sound queue. Its `import_sound_requests` child held `worker.lock` while the builder's install step ran, and new queue files appeared at 10:20.
+  - It is not to be run on this PC again; relgen5's suite is the one.
+- The local BoZo tool's play options for this task (typed `pref=`, `gvsize=`, `oact=/mact=`, `oshots=/mshots=`, `dmhold=`) compile against the Unity references. The tool is not committed.
+- Editor captures: under the lock, the Editor put back on `9319026b` each time, the stage banks and motion bank unchanged.
+  - On the merged branch:
+    - Astra's real dealt Blind Pick (3 and 5) at 16:9, 4:3, 21:9 and 1280x720;
+    - the starting chip on the stage with the pilot's reach;
+    - the reveal;
+    - Blind Pick All's grid at 21:9;
+    - the comeback chip over the killcam while down (a pick, its follow-through cut by the respawn) and alive (a full follow-through);
+    - Play vs Bots' Weapon pick and Weapon choices rows;
+    - the room lobby's Blind Pick All line and notes.
+  - Earlier on `61af0407` and `0680f1ea`: the same screens at the four sizes.
+  - One capture batch (`0680f1ea`) ran after I stopped its wrapper task. It took and released the lock normally.
+
+**Not run.**
+- A host plus a guest on two Windows clients (privacy, a guest's chip stage, a timeout).
+- A team game, a rematch from the result screen, the winning killcam, a controller.
+- A Windows player build.
+- A guest's dealt Blind Pick (its private offers over the network).
+
+**Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. The stage and the screens are presentation, and the follow-through never holds a respawn.
+
+**Risks.**
+- While the comeback picker is open, the fight is hidden. Opening it resets the arena's transient presentation (corpses, blood, wounds), as the Siren pick's screen does. Opening it on a rewarded death skips or delays that death's killcam.
+- In the opening, a pick by the last pilot goes straight to the reveal, so its follow-through shows only while others are still choosing.
+- The Ready header for a guest reads the room's copy of the rules.
+
+**Next.** The owner looks at the captures. Then integrate with `claude/pick-flourish` (delete the stub), merge and release.
+
 ## 2026-11-18 — Claude: the Bombadier's explosions and throws are heard in every match (owner report; presentation only)
 
 Branch `claude/bomb-blast-audio`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "Seems the bombadier doesnt have sounds for when their explosives blow up now?"

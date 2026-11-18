@@ -77,6 +77,8 @@ Players read the original mode (every allowed weapon, in a grid) as **Blind Pick
   - The comeback chip's top right shows YOU ARE VULNERABLE WHILE CHOOSING when alive, and any queued picks. The respawn pill
     shows top centre while the pilot is down. It also has Choose later (C) and the attack alarm.
   - In the fight the arena is hidden while the picker is open and keeps simulating.
+  - The picker that opens on a rewarded death stands in front of that death's killcam, as the tray did. A running killcam ends;
+    one not yet started waits until the picker closes.
 - **Locked in.** The pilot's own hero card, stamped LOCKED IN. The starting chip they picked sits beside it, and a row of
   pips shows who is still choosing.
 - **Reveal (2 s).** Every pilot's card, bots included, flips from a CLASSIFIED back to its face in turn. Each card has a
@@ -84,7 +86,7 @@ Players read the original mode (every allowed weapon, in a grid) as **Blind Pick
   ALL, BLIND PICK, or DEATHMATCH for a starting chip alone.
 - **Respawn.** A red edge, ELIMINATED, the seconds in a draining ring, and a bar. The ring spans `NativeDeathmatch`'s 3 s.
   While the picker is open, a compact pill replaces it.
-- **Comeback prompt.** The C keycap flares magenta when an offer arrives.
+- **Comeback prompt.** The C keycap flares magenta when an offer arrives. It sits above the vitals panel.
 - **Score panel.** FIRST TO n, and for each side: rank, colour, name, kills and a bar toward the target, with the leader
   marked. A row flashes and its count pops when that side scores.
 
