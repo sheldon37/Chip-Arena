@@ -39,12 +39,13 @@ namespace ChipArena.UnityConversion
             Func<OpeningPilot,string[]> offer, Func<NativeSeat,string,bool> allowed,
             int blindChoices=0, string[] weapons=null, Func<double> random=null)
         {
-            this.random = random; this.offer = offer; this.allowed = allowed; startingChips = chips;
+            this.offer = offer; this.allowed = allowed; startingChips = chips;
             var roster=seats.ToArray();
             Dictionary<int,string[]> pools=null;
             if(blind && blindChoices!=0)
             {
-                var ids=weapons.Distinct(StringComparer.Ordinal).ToArray();
+                this.random=random??new SourceRandom(NativeMatch.NewSeed()).Next;
+                var ids=(weapons??Array.Empty<string>()).Distinct(StringComparer.Ordinal).ToArray();
                 pools=roster.ToDictionary(s=>s.id,s=>ids.Where(id=>allowed(s,id)).ToArray());
                 int smallest=pools.Count==0?0:pools.Values.Min(pool=>pool.Length);
                 if(smallest<2){Refusal="Blind Pick needs at least two eligible weapons for each pilot.";return;}
@@ -60,13 +61,13 @@ namespace ChipArena.UnityConversion
                     int n=blindChoices;
                     for(int i=0;i<n;i++)
                     {
-                        int j=i+(int)(random()*(pool.Length-i));
+                        int j=i+(int)(this.random()*(pool.Length-i));
                         (pool[i],pool[j])=(pool[j],pool[i]);
                     }
                     p.WeaponOffers=pool.Take(n).ToArray();
                     p.Weapon=p.WeaponOffers.Contains(seat.spec)?seat.spec:p.WeaponOffers[0];
                 }
-                if (!allowed(seat,p.Weapon)) p.Weapon="pistol";
+                if (pools==null && !allowed(seat,p.Weapon)) p.Weapon="pistol";
                 if (!blind || seat.bot) LockWeapon(p,now);
                 if (seat.bot && p.Step==OpeningStep.Chip) SelectChip(p,p.Offers[0]);
             }

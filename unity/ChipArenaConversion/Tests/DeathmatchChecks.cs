@@ -71,6 +71,11 @@ internal static class DeathmatchChecks
         Check(expiring.Refusal!=null,"expiry before launch invalidates the private pick");
         Check(new NativeOpeningDraft(new[]{a},true,false,0,p=>Array.Empty<string>(),Allow,3,new[]{"pistol","dev"},rng.Next).Refusal!=null,"undersized eligible pool refuses");
         Check(NativeOpeningDraft.OfferCount(1,10)==2&&NativeOpeningDraft.OfferCount(0,10)==0&&NativeOpeningDraft.DefaultBlindChoices==3,"legacy sentinel, minimum, and dealt default");
+        var grantBot=new NativeSeat{id=9,spec="dev",bot=true};
+        bool temp=true;
+        var expiredAtDeal=new NativeOpeningDraft(new[]{grantBot},true,false,0,p=>Array.Empty<string>(),
+            (seat,id)=>id=="bow" || id=="dev"&&temp,2,new[]{"dev","bow"},()=>{temp=false;return 0;});
+        Check(expiredAtDeal.Refusal!=null && expiredAtDeal.Pilots[9].Weapon!="pistol","an expiring bot hand cannot substitute an unoffered fallback");
         string Refusal(bool teams,string map,params NativeSeat[] seats)=>NativeOpeningDraft.RoomRefusal(seats,false,teams,map);
         Check(Refusal(false,"breakwater",a)!=null,"single pilot refused before pick");
         Check(Refusal(true,"breakwater",a,c)!=null,"single team refused");
