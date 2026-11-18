@@ -1,6 +1,6 @@
 ## 2026-11-18 — Claude: ATLAS, the tileset departures board over the DEPLOY gate (owner report; presentation only)
 
-Branch `claude/exp-w2-atlas`, base shared `claude/sleepy-ritchie-g8ruhv` at `15dab150` (`docs/EXPEDITION-OVERHAUL.md` R1 and W2; owner: "Yes, use defaults"). Claude's half of the tileset machine for release 1. Pushed, not merged; it merges cleanly with shared `0f2aef17` (Astra's A4 greybox).
+Branch `claude/exp-w2-atlas`, base shared `claude/sleepy-ritchie-g8ruhv` at `15dab150` (`docs/EXPEDITION-OVERHAUL.md` R1 and W2; owner: "Yes, use defaults"). Claude's half of the tileset machine for release 1. Pushed, not merged. Against shared `4dc8c86f` (Astra's A4 greybox, the zombie legs) the code merges cleanly; DEV_LOG conflicts only where both add a top entry (keep both).
 
 - **What.** A split-flap railway board, ATLAS · DEPARTURES, 8.4 × 1.1 m, hung on two drop rods from the ceiling beam over the DEPLOY gate (`docs/EXPEDITION-DEPLOYMENT.md`, "ATLAS").
   - Four columns, TILESET · ENEMIES · INSTANCES · FINAL, kept apart by lit gold rules.
