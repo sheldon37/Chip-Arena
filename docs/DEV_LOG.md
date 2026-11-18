@@ -38,6 +38,7 @@ Branch `claude/weapon-pick-flourish`, base shared `claude/sleepy-ritchie-g8ruhv`
   - A Top Dog toon sound is synthesised the first time it plays, a one-time cost of a few ms.
   - Captures: IMGUI hover follows the real cursor. The second capture runs moved the cursor to the screen's corner and put it back afterwards. Once, Ctrl+P was sent to the Editor to stop my own hung capture job; the tool option now has a 45 s watchdog.
   - **Next:** the owner reviews the per-weapon sheets; then merge and release.
+- **Released:** shared `189e0d80` (the builder at `189e0d80`), test channel revision `639306206050856738` (build `90d0fb60`); the suite at `ffa2cbd2` (1,035 groups, exit 0), the Unity compile. Merged after `claude/deathmatch-picks` (its stub deleted; the dealt Blind Pick cards play the flourishes too, `bdcbaf2e`). No bank or Drive zip change.
 
 ## 2026-11-18 — Claude: the Deathmatch's chip picks on the PvP chip screen with the pilot, Blind Pick All, and the N-choice Blind Pick screen (owner report; presentation only)
 
