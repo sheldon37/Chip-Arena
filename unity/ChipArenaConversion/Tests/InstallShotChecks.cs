@@ -149,6 +149,25 @@ internal static class InstallShotChecks
         }
         Check(worst<.002f,"the cartridge leaves the bay by "+worst+" m through the hold");
         float core=.152f*2*NativeDraftInstall.HeldWidth/NativeDraftInstall.ModelWidth;Check(core<2*NativePilotGear.BayHalf&&NativeDraftInstall.LatchDepth<=NativePilotGear.FrameHeight+.001f,"the core ("+core*100+" cm) fits the bay ("+NativePilotGear.BayHalf*200+" cm)");
+        // The model's device rides its forearm, so the hand's frame misplaces it: with the drawn bay missing its point by a fixed offset
+        // (as the model's elbow and forearm put it, a frame behind; the default model's, measured, is about (.08, -.11, 0)), the present's
+        // eased correction lands it on the point by the line-up
+        // and holds it there through the lid's shut, at 30, 60 and 144 Hz; the face's aim is given for the draw's roll.
+        float worstAt=0,worstLine=0;int hzs=0;
+        foreach(float hz in new[]{30f,60f,144f})foreach(var miss in new[]{new Vector3(0,-.11f,0),new Vector3(.08f,-.11f,0),new Vector3(.08f,-.06f,.04f)})
+        {
+            var sf=new NativeDraftStage();sf.Plant.Device=true;sf.Plant.Profile=NativeInstallShot.Of("common","x");var pf=sf.Plant.Profile;float dt=1/hz;hzs++;
+            for(int f=0;f<=(int)(3.5f*hz);f++)
+            {
+                float t=f*dt,raw=t>=1?t-1:-1,a=sf.SmoothAge(raw,dt),p=a<0?-1:NativeInstallShot.PoseAge(a,pf.Hold,false);sf.Begin(dt,false,NativeDraftStage.IdleHeld(p));sf.Frame(16f/9,.72f,.92f,0,false,dt,NativeDraftStage.ModelHeadTop);sf.Shot(a,pf,3.2f,false,false,false,true);
+                sf.Step(dt*(a<0?1:NativeInstallShot.PoseRate(a,pf.Hold,false)),p,a<0?-1:0,false,cards,2,false,false);
+                if(sf.Plant.ForeWeight>1e-4f)Check(sf.Plant.ForeAiming&&Math.Abs(sf.Plant.ForeAim.Length()-1)<1e-3f,"the face's aim for the draw while the device presents");
+                var drawn=sf.Plant.At+miss;sf.Plant.BayDrawn=drawn;sf.Plant.BayDrawnValid=true;
+                if(p>=NativeInstallShot.AlignEnd&&p<=NativeInstallShot.ShutSettled)worstAt=Math.Max(worstAt,(drawn-sf.PlannedBay).Length());
+                if(p>=NativeInstallShot.AlignEnd&&p<NativeInstallShot.Seat)worstLine=Math.Max(worstLine,(drawn-sf.PlannedBay).Length());
+            }
+        }
+        Check(worstLine<.01f&&worstAt<.03f,"the model's bay lands within "+worstLine*100+" cm of its point at the line-up and "+worstAt*100+" cm through the give and the shut, for misses up to 11 cm");
         return "Install cartridge: "+NativeDraftInstall.HeldWidth*100+" cm on the model (at most "+NativeDraftInstall.HandShare+" of the glove), "+NativeDraftInstall.VoxelWidth*100+" cm on the voxel body, its "+(core*100).ToString("0.0")+" cm core seated in the "+(NativePilotGear.BayHalf*200).ToString("0.0")+" cm bay, held on the bay (within "+(worst*1000).ToString("0.0")+" mm) through the mythic's hold";
     }
     private static string Shapes()

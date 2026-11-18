@@ -64,11 +64,11 @@ namespace ChipArena.UnityConversion
         // the measurement move, and the two chased each other, the wrist flipping frame to frame.) At and Normal take the live bay.
         private Vector3 presentLocal=NativeDraftPlant.DefaultBay,presentNormal=-Vector3.UnitZ;private bool presentHeld;
         private Vector3 PresentBay=>presentHeld?presentLocal:BayLocal;private Vector3 PresentNormal=>presentHeld?presentNormal:BayNormal;
-        /// <summary>The drawn bay's seat and outward normal in the receiving stage forearm's frame (from its elbow joint), as the draw
-        /// measures them (ForeMeasured); held from the pick like the hand's. With them the present plans on the forearm that carries the
-        /// device (see Present), and the draw rolls the model's forearm by ForeWeight toward ForeAim (root frame) about its length.</summary>
-        public Vector3 BayFore,BayForeNormal=Vector3.UnitY;public bool ForeMeasured;
-        private Vector3 foreLocal,foreNormal=Vector3.UnitY;private bool foreHeld;
+        /// <summary>The drawn bay's seat (root frame) as the draw measured it a frame behind (BayDrawnValid). The model's device rides
+        /// its forearm, which neither the hand's frame nor the stage's forearm predicts well (the model's arm reaches with its own elbow,
+        /// and rests on the lap until it lifts), so the present eases the wrist by the bay's miss while the arm is up (see Present).</summary>
+        public Vector3 BayDrawn;public bool BayDrawnValid;
+        private Vector3 fix;private float fixAt=-1;
         /// <summary>The cartridge's tier and width (m), the profile, the hero hold, the turn's hold after the pick (s), whether the pick
         /// is a short follow-through (the PvE pick, the Deathmatch's: it ends on the power pose) and the Hot Dog's cartoon timing.</summary>
         public string Tier="common";public float Width=HeldWidth,TurnSeconds=NativeInstallShot.TurnSeconds;public int Hero;public bool Short,Toon;public NativeInstallShot.Profile Profile=NativeInstallShot.Of("common",null);
@@ -91,16 +91,17 @@ namespace ChipArena.UnityConversion
         public Vector3 PlannedAt,PlannedNormal;
         /// <summary>The settle's progress (0..1; the short follow-through never settles) and the head's added pitch (rad, + down).</summary>
         public float Settle,HeadPitch;
-        /// <summary>The forearm's roll the present planned with (rad, about its length) and the present's weight (0..1), and the normal
-        /// the bay's face is turned to (root frame), for the draw (ForeAiming: planned on the forearm this frame).</summary>
-        public float ForeRoll,ForeWeight;public Vector3 ForeAim=Vector3.UnitY;public bool ForeAiming;
-        /// <summary>The forearm's roll at most (rad either way): past it the hand would turn over.</summary>
-        public const float RollMost=1.9f;
+        /// <summary>The present's weight (0..1) and the normal the bay's face is turned to (root frame), for the draw, which rolls the
+        /// model's forearm (the hand with it) about its length toward ForeAim (ForeAiming: a device present this frame).</summary>
+        public float ForeWeight;public Vector3 ForeAim=Vector3.UnitY;public bool ForeAiming;
+        /// <summary>The forearm's roll at most (rad either way): past it the hand would turn over. The wrist's correction for the bay's
+        /// miss: eased over FixEase s of pose time from the arm's half lift, at most FixMost m.</summary>
+        public const float RollMost=1.9f,FixEase=.08f,FixMost=.18f;
         private Vector3 catchAt,catchFlight;private Quaternion catchTurn=Quaternion.Identity;private bool caught;
         private readonly Quaternion[] rest=new Quaternion[3],solved=new Quaternion[3];
 
         /// <summary>A new pick: the snapshot of the catch and the burst is cleared.</summary>
-        public void Reset(){caught=Burst=false;ChipShown=CoreSeated=false;Latch=0;Settle=0;HeadPitch=0;presentHeld=false;ForeRoll=ForeWeight=0;ForeAiming=false;}
+        public void Reset(){caught=Burst=false;ChipShown=CoreSeated=false;Latch=0;Settle=0;HeadPitch=0;presentHeld=false;ForeWeight=0;ForeAiming=false;fix=Vector3.Zero;fixAt=-1;}
         /// <summary>The scale of the cartridge model at its width.</summary>
         public float Scale=>Width/ModelWidth;
         private float CoreAlong=>CoreZ(Tier)*Scale;
@@ -155,7 +156,7 @@ namespace ChipArena.UnityConversion
         public void Pose(CapturedRig.Pose pose,bool left,Vector3 catchLocal,Vector3 toCamera,float p,bool reduced)
         {
             pose.World();if(!(p>=0)){Settle=0;return;}
-            if(!presentHeld){presentLocal=BayLocal;presentNormal=BayNormal;foreLocal=BayFore;foreNormal=BayForeNormal;foreHeld=ForeMeasured;presentHeld=true;}
+            if(!presentHeld){presentLocal=BayLocal;presentNormal=BayNormal;presentHeld=true;}
             ForeWeight=0;ForeAiming=false;
             Settle=Short?0:NativeInstallShot.Ramp(p,NativeInstallShot.SettleStart(TurnSeconds),NativeInstallShot.SettleEnd(TurnSeconds));
             var chest=pose.WorldPosition[CapturedRig.Chest];var chestQ=pose.WorldRotation[CapturedRig.Chest];var chestInv=Quaternion.Inverse(chestQ);
@@ -174,23 +175,20 @@ namespace ChipArena.UnityConversion
             var turn=PresentTurn(NativeInstallShot.Ramp(p,NativeInstallShot.HoldStart,NativeInstallShot.HoldStart+.3f)*(1-NativeInstallShot.Ramp(p,2.20f,NativeInstallShot.HoldEnd))*(Hero==NativeInstallShot.Raise&&!Short?1:0),out var goal,out var aim);
             // Planned in the seated rest's chest, held in the room: into this frame's chest.
             var held=chestInv*PlannedChestQ;turn=held*turn;goal=Vector3.Transform(PlannedChestAt+Vector3.Transform(goal,PlannedChestQ)-chest,chestInv);
-            // The model's device rides its forearm, not the hand (the hand's turn barely moves it): with the bay measured in the forearm's
-            // frame, the wrist moves until the fully presented forearm carries the bay onto its point, the forearm rolled about its length
-            // to turn the bay's face to the aim (the draw rolls the model's forearm so: ForeAim, ForeWeight).
+            // The model's device rides its forearm, not the hand, so the hand's frame misplaces it: from the arm's half lift the wrist eases
+            // by the drawn bay's miss (a frame behind; the model's wrist follows the stage's one for one), and the draw rolls the model's
+            // forearm about its length to turn the bay's face to the aim (ForeAim, ForeWeight).
             ForeWeight=k;
-            if(Device&&foreHeld&&foreNormal.LengthSquared()>.25f)
+            if(Device)
             {
-                var bayAt=goal+Vector3.Transform(PresentBay,turn);var want=CapturedRig.Unit(Vector3.Transform(aim,held),Vector3.UnitY);var full=right?PresentPole:new Vector3(-PresentPole.X,PresentPole.Y,PresentPole.Z);
-                for(int i=0;i<3;i++)
+                ForeAim=Vector3.Transform(CapturedRig.Unit(Vector3.Transform(aim,held),Vector3.UnitY),chestQ);ForeAiming=true;
+                float step=fixAt>=0?MathUtil.Clamp(p-fixAt,0,.1f):0;fixAt=p;
+                if(BayDrawnValid&&k>.5f&&step>0)
                 {
-                    CapturedRig.Arm(pose,leftArm,goal,turn,full);pose.World();
-                    var elbow=Vector3.Transform(pose.WorldPosition[h-1]-chest,chestInv);var fq=chestInv*pose.WorldRotation[h-1];var axis=CapturedRig.Unit(Vector3.Transform(pose.WorldPosition[h]-chest,chestInv)-elbow,Vector3.UnitX);
-                    var n0=Vector3.Transform(foreNormal,fq);var a0=n0-axis*Vector3.Dot(n0,axis);var a1=want-axis*Vector3.Dot(want,axis);
-                    float roll=a0.LengthSquared()>1e-6f&&a1.LengthSquared()>1e-6f?MathUtil.Clamp((float)Math.Atan2(Vector3.Dot(Vector3.Cross(a0,a1),axis),Vector3.Dot(a0,a1)),-RollMost,RollMost):0;
-                    var b=Vector3.Transform(Vector3.Transform(foreLocal,fq),CapturedRig.Rot(axis,roll));goal+=bayAt-(elbow+b);ForeRoll=roll;
+                    var miss=chest+Vector3.Transform(goal+Vector3.Transform(PresentBay,turn),chestQ)-BayDrawn;
+                    fix+=miss*(1-(float)Math.Exp(-step/FixEase));if(fix.Length()>FixMost)fix=Vector3.Normalize(fix)*FixMost;
                 }
-                for(int i=0;i<3;i++)pose.Rotation[arm+i]=rest[i];pose.World();
-                ForeAim=Vector3.Transform(want,chestQ);ForeAiming=true;
+                goal+=Vector3.Transform(fix,chestInv)*MathUtil.Smooth(k);
             }
             // The give: along the bay's inward normal and a turn at the wrist under the press; the boss relics a little more, with a tremble.
             float give=NativeInstallShot.Kick(p-NativeInstallShot.Seat,30,.4f),depth=Profile.Boss?BossGive:Give+GiveLevel*Profile.Level;
