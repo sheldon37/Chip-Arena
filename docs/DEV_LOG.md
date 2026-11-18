@@ -75,6 +75,28 @@ Branch `claude/chip-install-anim`, base shared `claude/sleepy-ritchie-g8ruhv` at
 - **For Astra.**
   - `tools/sound_queue.py` does not list `docs/audio/sound-requests-install.json`. Generating the 7 sounds is a paid step.
   - `ExpeditionEndingChecks` still needs `Path.GetFullPath` on Windows.
+## 2026-11-18 — Claude: the expedition overhaul plan (Meridian), approved; Astra's hand-off (owner request; docs only)
+
+Owner asked for the expedition overhaul: a tileset machine, a reworked City away from the box style, streets shaped by their instances, a darker lamp-lit map, modelled buildings, props and gates, a living hub with survivors, pods that crash spread around the hub, a better drop-in, chests for caches in new places, a chip and a healing machine in the hub. Follow-up: "I want the expedition area (not instances) to be much bigger with layering essentially ... Think of how big risk of rain levels are", with each instance's look bleeding into the city near it. Owner on the split: "I can divide the work 🙂 feel free to send me whats needed from astra." Approval: "Yes, use defaults".
+
+- **Plan:** `docs/EXPEDITION-OVERHAUL.md`. Meridian, a hill city stopped at 6:47, in seven playable test-channel releases. The first release is the drop: the ATLAS departures board, the animated eject and the pods crashing round the camp. Every request is covered (R1-R12), with work packages W0-W12, budgets, the gates to re-pin, and risks.
+- **Owner decisions** (the recommended defaults):
+  - city about three times today's area, greyboxed first;
+  - a 5.0 s hub opening;
+  - the Toon Harbor and VLB lamps through the private zip;
+  - instance creatures from about 60 m out under caps, none after the clear;
+  - cosmetic survivors;
+  - four locker rarities at $100/$175/$275/$400.
+- **For Astra:** `docs/EXPEDITION-OVERHAUL-ASTRA.md`, packages A0-A5b in order. Start with A0 (the landing field, the yaw fix, `PodOpening`, the grounding fix, the sim benchmark and the DEV load harness), and A4's greybox at both sizes in parallel. A0 ships with Claude's pod crash (W4).
+- **How it was made:** a mapping pass (six readers, each with a skeptic, plus captures of today's look), three independent concepts, a judge, three reviewers (39 findings, all accepted), then a revision.
+- **Release 1, now:** Claude's W0 (budgets and latent fixes), W2 (the board), W3 (the eject and the cradle) and W4 (the crash). No code change in this entry.
+
+## 2026-11-18 — Astra, A4 solo city scale walk
+
+Branch `codex/expedition-a4-greybox`, base `15dab150`. Editor and Development Builds have a solo walk at 420 × 340 m and 600 × 480 m. From the offline main menu choose Settings → Developer → Walk Meridian greybox, walk either size with the same seed, hold Tab for the relief plan, and press Escape to compare. Uses native pilots, physics and ramp wedges, three seeded districts, the northern stair, the viaduct, roof bridges and the three-deck car park. Live deployment continues to use its current map.
+
+The managed `--layered-walk` sweep passed eight seeds at each size, checking gate-to-hall distances, continuous Hulk-width support and headroom. Measurements and controls are in `docs/EXPEDITION-OVERHAUL-ASTRA.md`. The owner walk and native frame captures are pending. The full surface graph, the chunked city kit, enemy spawning and the deployment swap belong to M5. This preview has no combat or network changes.
+- **Merged and released (Claude, integrator, so the owner can walk it):** PR #413 (`codex/expedition-a4-greybox` at `35eb821f`) merged on `claude/merge-astra-greybox` into shared `859a90c6` (the builder at `859a90c6`), test channel revision `639306350457222805` (build `dc56acbc`); the suite at `35eb821f` (1,037 groups, exit 0), the Unity compile. A0 (PR #412) is held for Claude's pod crash (`claude/exp-w4-crash`), with which it ships.
 
 ## 2026-11-18 — Claude: every weapon plays its own selection flourish on the Blind Pick screen (owner report; presentation only)
 

@@ -152,6 +152,9 @@ namespace ChipArena.UnityConversion
             if(padInputCaptured){pending=new InputFrame{CancelAbilities=true};Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(openingView!=null||PracticeResult!=null){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(SplitLocalLoading){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if(LayeredCityWalkKeys())return;
+#endif
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;
             // A bound Expedition session's screen: J toggles it, Escape closes it (NativeExpeditionLiveUI.cs).
@@ -430,6 +433,9 @@ namespace ChipArena.UnityConversion
             if(SplitLocalLoading)return;
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
             // DEV ONLY: the Expedition screens preview (--ca-expedition-preview), in place of the main menu (NativeExpeditionPreviewUI.cs).
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if(LayeredCityWalkGui(width,height))return;
+#endif
             if(ExpeditionPreviewGui(width,height))return;
             // DEV ONLY: the Deployment Station preview (--ca-deploy-preview), in place of the main menu (NativeDeployPreview.cs).
             if(LiveDeploymentGui(width,height))return;
