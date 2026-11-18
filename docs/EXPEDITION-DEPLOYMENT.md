@@ -410,11 +410,11 @@ joiner sees none. `NativeDeployStage` draws them as camera-facing additive quads
 The tileset machine's board, before it has a choice. Presentation only: it shows the tileset and decides nothing (no rule,
 ticket, roll, wire or save reads it).
 
-- **Where:** a split-flap railway board, 7.7 × 1.1 m, hung on two drop rods from the ceiling beam at z 7.5 over the DEPLOY
+- **Where:** a split-flap railway board, 8.4 × 1.1 m, hung on two drop rods from the ceiling beam at z 7.5 over the DEPLOY
   gate (its face at (0, 5.35..6.45, 7.1)). The plan's wall band (centred near (0, 6.6, 8.3), 1.6 m tall) sits behind that
   beam from the Overview, so the board hangs in front of it, low enough that the whole face and the gate's DEPLOY sign read
   from the Overview (both checked by ray against the room and the gate).
-- **What:** headed ATLAS · DEPARTURES, with four columns, TILESET · ENEMIES · INSTANCES · FINAL. The selected tileset is on
+- **What:** headed ATLAS · DEPARTURES, with four columns, TILESET · ENEMIES · INSTANCES · FINAL, kept apart by lit gold rules. The selected tileset is on
   the large first line: CITY · MERIDIAN | THE INFECTED | 5 INSTANCES | THE SIREN, with its emblem flap (Meridian's skyline,
   the clock at 6:47) and an in-service lamp in its accent. The three small, dim amber lines read NOT IN SERVICE, with no
   names and no dates. Every cell comes from the registry, Core `NativeTilesets` (City's display fields; Astra adds the rules
@@ -428,7 +428,7 @@ ticket, roll, wire or save reads it).
 - **The console:** a TILESET card, the console's first, beside the station's title: ARRIVING…, then CITY · MERIDIAN IN SERVICE.
   It is display only: there is nothing to choose yet and it raises no intent.
 - **Drawn by:** Core `NativeAtlasBoard` (layout, arrival, shot, sparks, sound moments), `NativeAtlasStage` (posed in
-  `NativeDeployStage.Frame`; no per-frame allocation), `NativeAtlasModels` (the cabinet, about 6.2k triangles, and 309 flaps,
+  `NativeDeployStage.Frame`; no per-frame allocation), `NativeAtlasModels` (the cabinet, about 6.2k triangles, and 312 flaps,
   1.9k), `NativeAtlasArt` (one split-flap glyph atlas, 768 × 576, baked once per build in `Editor/NativeDeployCardBuild.cs`
   under a key that changes with its inputs, else rasterised on a worker), `NativeAtlasSounds` (Claude's synthesized clatter,
   built from the flaps' own landings, and the bell). The draw is Runtime `NativeAtlasScene`, called by `NativeDeployScene`

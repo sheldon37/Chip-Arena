@@ -162,6 +162,8 @@ namespace ChipArena.UnityConversion
             var f=Vector3.Normalize(v.Target-v.Eye);var r=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,f));var u=Vector3.Cross(f,r);var d=p-v.Eye;float z=Vector3.Dot(d,f);front=z>.1f;
             float t=(float)Math.Tan(v.Fov*Math.PI/360);return new Vector2((Vector3.Dot(d,r)/(z*t*16f/9f)+1)/2,(1-Vector3.Dot(d,u)/(z*t))/2);
         }
+        // The console's TILESET card (Runtime NativeAtlasConsole.Top and Height, mirrored here: Runtime is not compiled in the checks).
+        private const float NativeAtlasConsoleTop=18,NativeAtlasConsoleHeight=46;
         private static void Placement()
         {
             var root=A.Root;A.Footprint(out var lo,out var hi);var bmin=A.At+lo;var bmax=A.At+hi;
@@ -180,7 +182,7 @@ namespace ChipArena.UnityConversion
             var cabinet=Tris(NativeAtlasModels.Cabinet(),root).ToList();
             foreach(var x in new[]{-.6f,0f,.6f})Check(!Blocked(view.Eye,gate+new Vector3(x,4.45f+.62f+.12f,-.73f),cabinet),"the DEPLOY sign stays clear of the board at x "+x);
             // its own shot sees it whole, the gate under it, clear of the console's side panels and its TILESET card (a 1600 x 900 canvas)
-            var shot=A.Shot;float panelLeft=380f/1600,panelRight=(1600-380f)/1600,card=(24+50f)/900;
+            var shot=A.Shot;float panelLeft=380f/1600,panelRight=(1600-380f)/1600,card=(NativeAtlasConsoleTop+NativeAtlasConsoleHeight)/900;
             foreach(var c in new[]{new Vector3(-A.Width/2,0,0),new Vector3(A.Width/2,0,0),new Vector3(-A.Width/2,A.Height,0),new Vector3(A.Width/2,A.Height,0)})
             {var s=Screen(shot,Vector3.Transform(c,root),out bool front);Check(front&&s.X>panelLeft&&s.X<panelRight&&s.Y>card&&s.Y<.7f,"the board shot frames the corner "+c+" between the panels ("+s+")");}
             {var s=Screen(shot,gate+new Vector3(0,5.07f,-.73f),out bool front);Check(front&&s.Y<.9f&&!Blocked(shot.Eye,gate+new Vector3(0,5.07f,-.73f),cabinet),"the board shot shows the DEPLOY sign under the board");}
@@ -349,6 +351,7 @@ namespace ChipArena.UnityConversion
             Check(atlas.Contains("Resources.Load<TextAsset>(NativeAtlasArt.Key)")&&atlas.Contains("baked.bytes.Length==NativeAtlasArt.Bytes")&&atlas.Contains("Task.Run(()=>NativeAtlasArt.Atlas())"),"the scene loads the bake, else rasterises it on a worker");
             Check(atlas.Contains("Sound?.Invoke(a.Cues[i])")&&atlas.Contains("catch(Exception e){failed=true;Debug.LogException(e);}")&&atlas.Contains("public static NativeAtlasScene Make(){try{"),"its sounds go out; a failure turns the board off, never the station");
             Check(card.Contains("board.Since>=NativeAtlasBoard.LandAt")&&card.Contains("\"ARRIVING…\"")&&!card.Contains("DeployIntent"),"the card mirrors the board and raises no intent");
+            Check(card.Contains("public const float Width=262,Height="+NativeAtlasConsoleHeight+",Top="+NativeAtlasConsoleTop+";"),"the card's place, as the board's shot is checked against it");
             // the draw allocates nothing: no reference allocation, lambda or LINQ in Frame or Rebuild
             foreach(var name in new[]{"private void Frame(Camera camera","private void Rebuild("})
             {
