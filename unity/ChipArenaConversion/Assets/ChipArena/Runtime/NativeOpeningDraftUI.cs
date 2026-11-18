@@ -11,6 +11,9 @@ namespace ChipArena.UnityConversion
     {
         private NativeOpeningDraft openingRun;
         private NativeNetMessage openingView;
+        // Private host-issued weapon IDs for this client; the original full-pool pick has no list.
+        private string[] OpeningWeaponOffers=>openingView?.pick==(int)OpeningStep.Weapon
+            ?openingView.pickCards??Array.Empty<string>():Array.Empty<string>();
         private Action openingLaunch;
         private bool applyingOpening;
         private double openingRevealUntil;
@@ -23,9 +26,13 @@ namespace ChipArena.UnityConversion
             if(openingRun!=null)return true;
             bool chips=prefs.deathmatch&&!prefs.pve&&prefs.deathmatchChips!=1;
             if(!prefs.blindPick&&(prefs.pve||!prefs.deathmatch))return false;
-            if(peers.Any(p=>p.Seat!=null&&p.Connection?.Closed==false&&p.LoadoutProtocol<1))
+            bool dealt=prefs.blindPick && prefs.blindChoices!=0;
+            int protocol=peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)
+                .Select(p=>p.LoadoutProtocol).DefaultIfEmpty(NativeOpeningDraft.DealtProtocol).Min();
+            string refusal=NativeOpeningDraft.ProtocolRefusal(protocol,dealt);
+            if(refusal!=null)
             {
-                networkStatus="All pilots need the Deathmatch and Blind Pick update to use these rules.";
+                networkStatus=refusal;
                 if(!dedicated)Notice(networkStatus);
                 return true;
             }
@@ -36,7 +43,8 @@ namespace ChipArena.UnityConversion
             var rng=new SourceRandom(NativeMatch.NewSeed());
             openingRun=new NativeOpeningDraft(seats,prefs.blindPick,chips,Time.unscaledTimeAsDouble,
                 p=>NativeContentRules.Offers(content,p.Weapon,new Dictionary<string,int>(),rng.Next,prefs.choices,
-                    NativeArena.ImplementedChip,abilityLoadout:p.Seat.weaponTechniques??"").ToArray(),OpeningWeaponAllowed);
+                    NativeArena.ImplementedChip,abilityLoadout:p.Seat.weaponTechniques??"").ToArray(),OpeningWeaponAllowed,
+                dealt?prefs.blindChoices:0,dealt?content.weapons.Select(w=>w.id).ToArray():null,rng.Next);
             openingLaunch=launch;
             nextOpeningView=0;
             openingRevealUntil=0;
@@ -127,6 +135,12 @@ namespace ChipArena.UnityConversion
             if(openingRun==null||openingLaunch==null)return;
             var now=Time.unscaledTimeAsDouble;
             openingRun.Tick(now);
+            if(openingRun.Refusal!=null)
+            {
+                networkStatus=openingRun.Refusal;
+                if(!dedicated)Notice(networkStatus);
+                NotifyOpeningEnded(networkStatus);ClearOpening();LobbyBroadcast();return;
+            }
             if(openingRun.Ready&&openingRevealUntil==0){openingRevealUntil=now+2;nextOpeningView=0;}
             if(openingRevealUntil>0&&now>=openingRevealUntil)
             {
@@ -144,8 +158,7 @@ namespace ChipArena.UnityConversion
                 var step=openingRevealUntil>0?OpeningStep.Reveal:p.Step;
                 var view=new NativeNetMessage{type="opening-view",pickSession=openingRun.Session,pick=(int)step,
                     chip=p.Weapon,id=ready,team=openingRun.Pilots.Count,remainingSeconds=(float)Math.Max(0,p.Deadline-now),
-                    pickCards=step==OpeningStep.Chip?p.Offers:step==OpeningStep.Reveal?
-                        openingRun.Pilots.Values.Select(other=>other.Seat.name+"   ·   "+content.Weapon(other.Weapon).name).ToArray():Array.Empty<string>()};
+                    pickCards=openingRun.CardsFor(p.Seat.id,step==OpeningStep.Reveal,id=>content.Weapon(id).name)};
                 if(!dedicated&&p.Seat.id==1)AcceptOpeningView(view);
                 else peers.Find(peer=>peer.Seat?.id==p.Seat.id)?.Connection?.Send(NativeNetCodec.Encode(view));
             }
@@ -175,7 +188,7 @@ namespace ChipArena.UnityConversion
                 return true;
             }
             if(m.type!="opening-view")return false;
-            if(m.pick>=0&&m.pick<=3&&m.id>=0&&m.team<=8&&m.id<=m.team&&m.pickSession?.Length==32&&m.pickCards?.Length<=12)
+            if(m.pick>=0&&m.pick<=3&&m.id>=0&&m.team<=8&&m.id<=m.team&&m.pickSession?.Length==32&&m.pickCards?.Length<=(m.pick==(int)OpeningStep.Weapon?content.weapons.Length:12))
                 AcceptOpeningView(m);
             return true;
         }
@@ -310,7 +323,9 @@ namespace ChipArena.UnityConversion
         private void OpeningWeaponList()
         {
             if(openingListFrame==Time.frameCount)return;openingListFrame=Time.frameCount;openingWeapons.Clear();
-            for(int rank=0;rank<4;rank++)foreach(var x in content.weapons)if(x!=null&&AllowedWeapon(x)&&WeaponRank(x)==rank)openingWeapons.Add(x);
+            var offers=OpeningWeaponOffers;
+            for(int rank=0;rank<4;rank++)foreach(var x in content.weapons)
+                if(x!=null&&WeaponRank(x)==rank&&(offers.Length>0?Array.IndexOf(offers,x.id)>=0:AllowedWeapon(x)))openingWeapons.Add(x);
         }
         // The grid in `area`: the largest cards (to 168 wide) whose rows fit, centred on the area's height.
         private void OpeningGrid(Rect area)

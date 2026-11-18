@@ -139,9 +139,10 @@ namespace ChipArena.UnityConversion
     {
         private readonly NativeKitSound[] bombSounds=new NativeKitSound[4];
         // A blast's sound once, when the record first shows it; the Finale's beeps; the entrance's own cues (it has no music: see NativeIntroRules.IntroSting).
+        // The kit heard is the one drawn: the Dev Sandbox's Preview Bombadier loop while it is on (NativeBombs.Source), else the pilot's own.
         private void BombMoments(NativePilot p,Vector3 pos,float t,bool mine)
         {
-            if(p.Seat.spec!=NativeBombs.Spec)return;var k=p.Bomb;if(k==null)return;
+            if(p.Seat.spec!=NativeBombs.Spec)return;var k=NativeBombs.Source is NativeBombPreview preview?preview.Of(p.Seat.id)??p.Bomb:p.Bomb;if(k==null)return;
             if(k.Blasts!=null)foreach(var blast in k.Blasts)
             {
                 if(blast==null||!weaponAudio.Hit(p.Seat.id,blast.Id,blast.At,t))continue;
