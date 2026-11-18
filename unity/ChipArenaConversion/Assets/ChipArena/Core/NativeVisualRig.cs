@@ -243,7 +243,7 @@ namespace ChipArena.UnityConversion
             // crawl, its legs gone). Stand: how far (metres) the pelvis rises over its planted feet, as far as each planted leg
             // reaches with Room (KneeRoom unless set) to spare; Raise, how far it is raised this frame (it eases by RaiseStep a pose).
             // Follow: every foot goes to the game's ankle, a swinging one too (Foot), and every knee bends the game knee's way.
-            // Stride: how far the game's ankles sit drawn in fore and aft of their hips (NativeHordeGait.LegsNow: a stride planned for
+            // Stride: how far the game's ankles sit drawn in toward their hips across the floor (NativeHordeGait.LegsNow: a stride planned for
             // the model's legs, posed on the game's shorter ones): the game ankle's offset from its hip is spread back out by it.
             public bool Across, Level, Follow; public float Stand, Raise, Room=KneeRoom, Stride=1;
             // Hands (a zombie on all fours, the Hound): each visual wrist planted where the game's hand is (Hand); GameFloor, the game
@@ -888,11 +888,12 @@ namespace ChipArena.UnityConversion
             if(h2+dy*dy<=reach*reach||h2>=reach*reach||dy<=0) return at;
             at.Y=hip.Y-(float)Math.Sqrt(reach*reach-h2); return at;
         }
-        // The game ankle of the leg from `hip`, its offset fore and aft of its hip spread back out by State.Stride.
+        // The game ankle of the leg from `hip`, its offset across the floor from its hip spread back out by State.Stride (both ways:
+        // NativeHordeGait.Squeeze draws a footprint in fore and aft and to the side).
         private static Vector3 GameAnkle(State s,CapturedRig.Pose pose,int hip)
         {
             Vector3 a=pose.WorldPosition[hip+2]; if(s.Stride==1) return a;
-            float z=pose.WorldPosition[hip].Z; a.Z=z+(a.Z-z)*s.Stride; return a;
+            Vector3 h=pose.WorldPosition[hip]; a.X=h.X+(a.X-h.X)*s.Stride; a.Z=h.Z+(a.Z-h.Z)*s.Stride; return a;
         }
         private static float Foot(State s,CapturedRig.Pose pose,bool left)
         {
@@ -914,8 +915,13 @@ namespace ChipArena.UnityConversion
             Vector3 pole=s.Position[vk]-(s.Position[vh]+target)*.5f,fallback=pose.WorldPosition[knee]-(pose.WorldPosition[hip]+pose.WorldPosition[ankle])*.5f;
             if(s.Follow)
             {
-                Vector3 ahead=Vector3.Transform(CapturedRig.Z,pose.WorldRotation[CapturedRig.Pelvis]); ahead.Y=0;
-                pole=fallback+CapturedRig.Unit(ahead,CapturedRig.Z)*FollowAhead;
+                // (A planted foot's knee leans the way that foot faces, not the hips: a zombie turning over a planted foot keeps that foot's
+                // world facing, NativeHordeGait.FootTwist, and its knee rides over it. Owner 2026-11-18: "Rapid turns should not produce
+                // unnatural leg twisting". A swinging foot's knee leans the hips' way, as before, by its lift.)
+                Vector3 ahead=Vector3.Transform(CapturedRig.Z,pose.WorldRotation[CapturedRig.Pelvis]); ahead.Y=0; ahead=CapturedRig.Unit(ahead,CapturedRig.Z);
+                Vector3 toes=Vector3.Transform(CapturedRig.Z,pose.WorldRotation[ankle]); toes.Y=0;
+                if(weight>0&&toes.LengthSquared()>.09f&&Vector3.Dot(toes,ahead)>0) ahead=CapturedRig.Unit(Vector3.Lerp(ahead,Vector3.Normalize(toes),Math.Min(1,weight)),ahead);
+                pole=fallback+ahead*FollowAhead;
             }
             float reach=TwoBone(s,vh,vk,va,target,pole,fallback,r.LegUpper,r.LegLower);
             if(left) s.LeftLegReach=reach; else s.RightLegReach=reach;

@@ -74,9 +74,14 @@ namespace ChipArena.UnityConversion
         /// <summary>The legs this pose's stride was planned for (1: the rig's): each rig ankle sits fore or aft of its hip by the
         /// footprint's offset over this.</summary>
         public float LegsNow=>legsNow;
-        // A footprint (rig frame) drawn in fore and aft of `hip` for the rig's legs, and a rig point spread back out to the footprint.
-        private Vector3 Squeeze(Vector3 at,Vector3 hip){if(legsNow!=1)at.Z=hip.Z+(at.Z-hip.Z)/legsNow;return at;}
-        private Vector3 Spread(Vector3 at,Vector3 hip){if(legsNow!=1)at.Z=hip.Z+(at.Z-hip.Z)*legsNow;return at;}
+        // A footprint (rig frame) drawn in toward `hip` across the floor for the rig's legs, and a rig point spread back out to the footprint.
+        // (Both ways across the floor, owner 2026-11-18: "when zombies are running and turning simultaneously. Their legs begin moving
+        // unnaturally". Drawn in only fore and aft, a foot the turning body left out to its side stood at the model's metres off the
+        // rig's short leg: the rig sank its hips into a squat and peeled its heel to reach a foot the model's legs reach standing, and
+        // the model's hips dropped with it, so every running turn dipped and bent the knees. Across, the rig's leg is the model's
+        // leg drawn small in every direction, and its reach rules see the model's.)
+        private Vector3 Squeeze(Vector3 at,Vector3 hip){if(legsNow!=1){at.X=hip.X+(at.X-hip.X)/legsNow;at.Z=hip.Z+(at.Z-hip.Z)/legsNow;}return at;}
+        private Vector3 Spread(Vector3 at,Vector3 hip){if(legsNow!=1){at.X=hip.X+(at.X-hip.X)*legsNow;at.Z=hip.Z+(at.Z-hip.Z)*legsNow;}return at;}
 
         // ================================================================================================================
         // The gait speed: the presented root's speed eased, and the walk-to-run blend on it

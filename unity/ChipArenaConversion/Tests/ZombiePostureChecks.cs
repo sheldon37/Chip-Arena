@@ -109,7 +109,7 @@ namespace ChipArena.UnityConversion
                 float w=side==0?s.LeftFootWeight:s.RightFootWeight;
                 if(w>=.999f)o.Stance.Add(Between(k-h,a-k));
                 // (The game ankle spread back out to the stride it was planned for: NativeVisualRig.State.Stride.)
-                if(w>=.999f&&(air==null||!air[side])){var g=game.WorldPosition[hip+2];g.Z=game.WorldPosition[hip].Z+(g.Z-game.WorldPosition[hip].Z)*s.Stride;var mark=new Vector3(g.X,r.AlignedPosition[va].Y+g.Y-NativeVisualRig.AnkleRest(hip),g.Z);o.Foot.Add((a-mark).Length());}
+                if(w>=.999f&&(air==null||!air[side])){var g=game.WorldPosition[hip+2];g.X=game.WorldPosition[hip].X+(g.X-game.WorldPosition[hip].X)*s.Stride;g.Z=game.WorldPosition[hip].Z+(g.Z-game.WorldPosition[hip].Z)*s.Stride;var mark=new Vector3(g.X,r.AlignedPosition[va].Y+g.Y-NativeVisualRig.AnkleRest(hip),g.Z);o.Foot.Add((a-mark).Length());}
                 int arm=r.Of[side==0?CapturedRig.LArm:CapturedRig.RArm],elbow=r.Of[side==0?CapturedRig.LElbow:CapturedRig.RElbow];
                 var u=s.Position[elbow]-s.Position[arm];float outward=side==0?u.X:-u.X;o.Spread.Add((float)Math.Atan2(outward,Math.Max(1e-4f,-u.Y))*Deg);
             }

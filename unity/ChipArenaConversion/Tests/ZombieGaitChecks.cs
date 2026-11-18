@@ -128,8 +128,8 @@ namespace ChipArena.UnityConversion
                             for(int side=0;side<2;side++)
                             {
                                 int hip=side==0?CapturedRig.LHip:CapturedRig.RHip,vh=rig.Of[hip],vk=rig.Of[hip+1],va=rig.Of[hip+2];
-                                // (The gait drew the ankle in about its hip for the rig's legs, NativeHordeGait.LegsNow: spread back out.)
-                                Vector3 ga=fit.WorldPosition[hip+2],ma=s.Position[va];ga.Z=fit.WorldPosition[hip].Z+(ga.Z-fit.WorldPosition[hip].Z)*g.LegsNow;
+                                // (The gait drew the ankle in about its hip across the floor for the rig's legs, NativeHordeGait.LegsNow: spread back out.)
+                                Vector3 ga=fit.WorldPosition[hip+2],ma=s.Position[va];ga.X=fit.WorldPosition[hip].X+(ga.X-fit.WorldPosition[hip].X)*g.LegsNow;ga.Z=fit.WorldPosition[hip].Z+(ga.Z-fit.WorldPosition[hip].Z)*g.LegsNow;
                                 gap=Math.Max(gap,new Vector2(ma.X-ga.X,ma.Z-ga.Z).Length());
                                 // A planted foot stands where it landed in the world (the rig frame's +z is the travel, its +x the add's left).
                                 // (A sprint's foot rolling onto its ball moves its ankle round the ball: OwnStride measures the ball.)

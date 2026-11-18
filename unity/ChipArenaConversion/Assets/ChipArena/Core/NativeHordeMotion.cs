@@ -99,17 +99,17 @@ namespace ChipArena.UnityConversion
         private Vector2 travel;
         // The root's net motion (its velocity eased over NetHalfLife) and how far the gait reads it instead (0..1, while it reels).
         private Vector2 net;private float knockW,backAt=float.NegativeInfinity;private Vector2 jolt;
-        private struct Foot{public Vector2 W,From,To,Off;public bool Swing,Scrape;public float T0,T1,Lift;public int Cycle;public float Y,Turn,FromTurn;}
+        private struct Foot{public Vector2 W,From,To,Off;public bool Swing,Scrape;public float T0,T1,Lift;public int Cycle;public float Y,Turn,FromTurn,Lead;}
         /// <summary>A standing foot twisted this far (degrees) from the body's facing steps round (the turn in place's shuffle), and
         /// a planted one never shows more than <see cref="TwistMost"/>.</summary>
         public const float TwistStep=34,TwistMost=48;
         private bool stepFresh;
         /// <summary>Foot `i`'s turn from the body's facing (rad, the rig's +y: toward its left): a planted foot's world facing held,
-        /// a swinging one's eased from its lift's to the body's by the landing.</summary>
+        /// a swinging one's eased from its lift's to its landing's (the body's, turned on into its turn: <see cref="LeadOf"/>).</summary>
         private float FootTwist(int i,float t)
         {
             ref var ft=ref feet[i];float deg;
-            if(ft.Swing){float s=Clamp01((t-ft.T0)/Math.Max(1e-3f,ft.T1-ft.T0));deg=ft.FromTurn*(1-Sm(s));}
+            if(ft.Swing){float s=Clamp01((t-ft.T0)/Math.Max(1e-3f,ft.T1-ft.T0));deg=ft.FromTurn*(1-Sm(s))+ft.Lead*Sm(s);}
             else deg=Wrap(ft.Turn-Yaw);
             deg=Math.Max(-TwistMost,Math.Min(TwistMost,deg));return -deg*BossMath.Deg;
         }
@@ -343,9 +343,15 @@ namespace ChipArena.UnityConversion
                 // The knee goes where the capture's knee goes (zombie knock knees and splay), never backward, and never more than
                 // KneeSplay aside about the leg's own line (a guard: on the straight walks and runs measured the knees stay within
                 // about 20 degrees anyway; the capture's knee off its own leg's line could otherwise swing a leg out sideways).
+                // (The knee rides over its foot, owner 2026-11-18: "Rapid turns should not produce unnatural leg twisting". A planted foot keeps
+                // its world facing while the body turns over it (FootTwist), and the knee used to keep the body's: the knee pointed one way
+                // and the foot up to 48 degrees another, the shin twisted between them through every running turn. The capture's knee and
+                // the splay guard are turned with the foot, as a leg turns at the hip over a planted foot.)
+                float tw=f.Tier<NativeHordeModels.Impostor&&!heavy?FootTwist(i,f.Time):0;
                 var kneeDir=mocapKnee[i]-(mocapHip[i]+mocapAnkle[i])*.5f;kneeDir.Z=Math.Max(kneeDir.Z,.02f);var pole=heavy?HeavyPole(left):CapturedRig.Unit(kneeDir+new Vector3(0,0,.04f),Vector3.UnitZ);
+                if(tw!=0)pole=Vector3.Transform(pole,CapturedRig.Rot(Vector3.UnitY,tw*KneeFollow));
                 float heel=Reached(p,f,i,hip,ref local);
-                if(!heavy)pole=Splayed(pole,p.WorldPosition[hip],local);
+                if(!heavy)pole=Splayed(pole,p.WorldPosition[hip],local,new Vector3((float)Math.Sin(tw*KneeFollow),0,(float)Math.Cos(tw*KneeFollow)));
                 LegKept(p,left,local,pole,i);
                 // A swinging leg folded so far its knee would scrape the floor lifts its foot instead (eased in off the lift and out
                 // into the landing: the knee stood as low planted, and the foot jumped 10 cm in a frame as it lifted).
@@ -357,7 +363,10 @@ namespace ChipArena.UnityConversion
                 }
                 // A planted foot keeps the way it landed while the body turns over it (the foot locks in turn as well as place); a
                 // swinging one turns to the body's facing by its landing.
-                if(f.Tier<NativeHordeModels.Impostor){float tw=FootTwist(i,f.Time);if(tw!=0)p.Rotation[foot]=p.Rotation[foot]*CapturedRig.Rot(Vector3.UnitY,tw);}
+                // (A swinging foot on the capture's turn takes its twist over that turn, below: laid on first, the capture's turn took it
+                // back off within the first sixth of the swing, a foot turned 40 degrees through a turn spun straight in two frames.)
+                bool captured=feet[i].Swing&&!heavy;
+                if(f.Tier<NativeHordeModels.Impostor){if(heavy)tw=FootTwist(i,f.Time);if(tw!=0&&!captured)p.Rotation[foot]=p.Rotation[foot]*CapturedRig.Rot(Vector3.UnitY,tw);}
                 // (A peeled heel pitches the foot over its ball: the toe stays flat where it stood.)
                 if(heel>0)p.Rotation[foot]=p.Rotation[foot]*CapturedRig.Rot(Vector3.UnitX,heel);
                 // A swinging foot takes the capture's turn (the dragged toe, the sprint's toe-off); a planted one lies flat.
@@ -366,6 +375,8 @@ namespace ChipArena.UnityConversion
                 {
                     float s=Clamp01((f.Time-feet[i].T0)/Math.Max(1e-3f,feet[i].T1-feet[i].T0)),k=legsNow>1?Sm(s/.15f)*(1-Sm((s-.85f)/.15f))*moving/.8f:Sm(s/.25f)*(1-Sm((s-.75f)/.25f))*moving*Clamp01(feet[i].Y/.14f);
                     if(k>0){var parent=p.WorldRotation[CapturedRig.Pelvis]*p.Rotation[hip]*p.Rotation[hip+1];p.Rotation[foot]=Quaternion.Slerp(p.Rotation[foot],Quaternion.Inverse(parent)*mocapFoot[i],k*.8f);}
+                    // (Its twist about the floor's upright, over whatever the capture turned it to.)
+                    if(tw!=0){var parent=p.WorldRotation[CapturedRig.Pelvis]*p.Rotation[hip]*p.Rotation[hip+1];p.Rotation[foot]=Quaternion.Inverse(parent)*CapturedRig.Rot(Vector3.UnitY,tw)*parent*p.Rotation[foot];}
                 }
                 float toe=feet[i].Swing?(-.35f+(kind==NativeHordeKinds.Shambler&&(i==0)==(limpSide<0)?.5f*drag:0))*Sm(Clamp01((f.Time-feet[i].T0)/Math.Max(1e-3f,feet[i].T1-feet[i].T0))/.2f):0;
                 p.Rotation[i==0?CapturedRig.LToe:CapturedRig.RToe]=CapturedRig.Euler(-toe*.4f-heel);
@@ -645,6 +656,8 @@ namespace ChipArena.UnityConversion
                 if(ft.Swing)
                 {
                     float s=Clamp01((f.Time-ft.T0)/Math.Max(1e-3f,ft.T1-ft.T0));
+                    // (It comes down turned on into the turn, as far as the body turns over half its coming stance: Lead.)
+                    ft.Lead=heavy||quad||ft.Scrape?0:LeadOf(duty,rateHz,moving);
                     // (A foot comes down where the body will be facing as it stands on it, so through a turn its side of the body is the side it
                     // lands on, the inside foot first, rather than the legs crossing as the hips turn on over it.)
                     if(moving&&!heavy&&!quad&&!ft.Scrape)
@@ -667,7 +680,7 @@ namespace ChipArena.UnityConversion
                         if(own>0){float span=legsNow*(1-OwnTravelShort*off2),catchUp=Sm(s/(1-OwnCatchUp*off2));ft.W=Vector2.Lerp(ft.W,home+way*(z*span)+Vector2.Lerp(ft.Off,ahead-way*(OwnStrikeAhead(i)*span),catchUp),own);}
                     }
                     // (A foot on the capture's path stands where the path has brought it.)
-                    if(s>=1){bool onPath=moving&&!ft.Scrape&&!heavy&&!quad&&OwnWeight()>.999f;ft.Swing=false;ft.Scrape=false;if(!onPath)ft.W=land;ft.Y=0;ft.Turn=Yaw;Landed|=1<<i;if(heavy)lastLand=f.Time;}
+                    if(s>=1){bool onPath=moving&&!ft.Scrape&&!heavy&&!quad&&OwnWeight()>.999f;ft.Swing=false;ft.Scrape=false;if(!onPath)ft.W=land;ft.Y=0;ft.Turn=Wrap(Yaw+ft.Lead);Landed|=1<<i;if(heavy)lastLand=f.Time;}
                 }
                 else{ft.Y=0;if(!moving)ft.Cycle=cycle;}
                 // (A planted sprint foot rolls onto its ball through the stance; a foot that landed a little early stands flat till its beat.)
@@ -750,6 +763,16 @@ namespace ChipArena.UnityConversion
         /// <summary>A planted foot this far off the facing (deg) steps round while the body moves, and how long that step takes (s). The
         /// farthest ahead of its turn (deg) a landing foot is placed.</summary>
         public const float TwistMoving=40,TurnStepTime=.24f,TurnLookMost=50;
+        /// <summary>How far a landing foot is turned on into the body's turn (deg, at most <see cref="LeadMost"/>): as far as the body
+        /// turns over half its coming stance (<see cref="LeadOf"/>), so through a running turn it is planted pointing where the body
+        /// faces halfway through it, and twists half as far either side of the facing as a foot planted square to it did. Standing,
+        /// a step's stance is taken as <see cref="LeadStand"/> s. How much of the foot's twist the knee turns with (1: the knee over the foot).</summary>
+        public const float LeadMost=25,LeadStand=.3f,KneeFollow=1;
+        private float LeadOf(float duty,float rateHz,bool moving)
+        {
+            float stance=moving?duty/Math.Max(.3f,rateHz):LeadStand,deg=lifeYawRate/BossMath.Deg*.5f*stance;
+            return Math.Max(-LeadMost,Math.Min(LeadMost,deg));
+        }
         // A horizontal vector turned by `deg` (Unity yaw, clockwise from above).
         private static Vector2 Turned(Vector2 v,float deg){float r=deg*BossMath.Deg,c=(float)Math.Cos(r),s=(float)Math.Sin(r);return new Vector2(v.X*c+v.Y*s,-v.X*s+v.Y*c);}
         /// <summary>How quickly the way the body travels follows the root's velocity (s), and how much shorter a step is when it travels
@@ -778,10 +801,12 @@ namespace ChipArena.UnityConversion
         /// <summary>The farthest a walking knee turns aside of the add's forward about the leg's own line (rad, 20 degrees).</summary>
         public const float KneeSplay=.35f;
         /// <summary>A knee's pole kept within KneeSplay of forward about the leg's line from `hip` to `target` (the add's frame).</summary>
-        public static Vector3 Splayed(Vector3 pole,Vector3 hip,Vector3 target)
+        public static Vector3 Splayed(Vector3 pole,Vector3 hip,Vector3 target)=>Splayed(pole,hip,target,Vector3.UnitZ);
+        /// <summary><see cref="Splayed(Vector3,Vector3,Vector3)"/> about `forward` (the add's frame, horizontal): the way the leg's foot faces.</summary>
+        public static Vector3 Splayed(Vector3 pole,Vector3 hip,Vector3 target,Vector3 forward)
         {
             var d=target-hip;float n=d.Length();if(n<1e-4f)return pole;d/=n;
-            var ahead=Vector3.UnitZ-d*d.Z;float a=ahead.Length();if(a<.2f)return pole;ahead/=a;var side=Vector3.Cross(d,ahead);
+            var ahead=forward-d*Vector3.Dot(d,forward);float a=ahead.Length();if(a<.2f)return pole;ahead/=a;var side=Vector3.Cross(d,ahead);
             float along=Vector3.Dot(pole,ahead),aside=Vector3.Dot(pole,side);
             if(along>0&&Math.Abs(aside)<=along*(float)Math.Tan(KneeSplay))return pole;
             return ahead*(float)Math.Cos(KneeSplay)+side*(aside<0?-1:1)*(float)Math.Sin(KneeSplay);

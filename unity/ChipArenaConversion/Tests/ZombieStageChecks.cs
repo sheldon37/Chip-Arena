@@ -416,7 +416,10 @@ namespace ChipArena.UnityConversion
                 }
             }
             Check(mostTwist<=95,"through a turn no foot stays planted past about a quarter turn off the facing ("+mostTwist.ToString("0")+" deg, was 124)");
-            Check(leastCross>=-.62f,"the feet cross no further than the walk's own stride carries them ("+leastCross.ToString("0.00")+" m, was -.41 on the zigzag alone)");
+            // (A running reversal's trailing foot (the brute's, -.62 m; shared had it at -.55 m on 2026-11-18): the rig's legs, drawn in only fore and
+            // aft, used to read that foot beside the turned body as out of reach and lift it early, after sinking the hips 15 cm to try; drawn
+            // in both ways it lifts where the model's own leg runs out, the hips level: ZombieRunTurnChecks.)
+            Check(leastCross>=-.66f,"the feet cross no further than the walk's own stride carries them ("+leastCross.ToString("0.00")+" m, was -.41 on the zigzag alone)");
             Console.WriteLine("PASS Zombie source motion ("+checks+" checks: "+runs+" takes on the model's legs against the capture: at most "+worstRate.ToString("0.00")+" times the pace, "+worstStretch.ToString("0.00")+" the stride, hips within "+worstHips.ToString("0.00")+" legs, knee "+worstKnee.ToString("0")+" deg past, pelvis swing within "+worstYaw.ToString("0")+" deg; turns: planted twist "+mostTwist.ToString("0")+" deg, feet crossed "+leastCross.ToString("0.00")+" m; presentation only)");
         }
         /// <summary>Every check group that reads the gait, each to its own result (`--zombie-all`: the whole suite stops at its first failure).</summary>
@@ -424,7 +427,7 @@ namespace ChipArena.UnityConversion
         {
             int failed=0;
             void Go(string name,Action a){try{a();Console.WriteLine("ok   "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e.Message);}}
-            Go("ZombieSource",Source);Go("ZombieMotion",()=>ZombieMotionChecks.Run(root));Go("ZombieLoco",()=>ZombieLocoChecks.Run(root));Go("ZombieGait",()=>ZombieGaitChecks.Run(root));Go("ZombiePosture",()=>ZombiePostureChecks.Run(root));
+            Go("ZombieSource",Source);Go("ZombieRunTurn",()=>ZombieRunTurnChecks.Run(root));Go("ZombieMotion",()=>ZombieMotionChecks.Run(root));Go("ZombieLoco",()=>ZombieLocoChecks.Run(root));Go("ZombieGait",()=>ZombieGaitChecks.Run(root));Go("ZombiePosture",()=>ZombiePostureChecks.Run(root));
             Go("ZombieKnock",()=>ZombieKnockChecks.Run(root));Go("ZombieTwitch",()=>ZombieTwitchChecks.Run(root));Go("ZombieFlow",()=>ZombieFlowChecks.Run(root));Go("ZombieModel",()=>ZombieModelChecks.Run(root));
             Go("ZombieGore",()=>ZombieGoreChecks.Run(root));Go("HordeRoam",()=>HordeRoamChecks.Run(root));Go("HordeKind",()=>HordeKindChecks.Run(root));Go("IronworksKind",()=>IronworksKindChecks.Run(root));Go("IronworksProp",()=>IronworksPropChecks.Run(root));
             Go("StationEnemy",()=>StationEnemyChecks.Run(root));Go("HulkMotion",()=>HulkMotionChecks.Run(root));Go("HulkCharge",()=>HulkChargeChecks.Run(root));Go("HulkSpitter",()=>HulkSpitterChecks.Run(root));
