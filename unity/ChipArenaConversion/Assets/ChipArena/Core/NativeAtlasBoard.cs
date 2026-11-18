@@ -248,6 +248,8 @@ namespace ChipArena.UnityConversion
         public readonly NativeAtlasBoard.Cue[] Cues=new NativeAtlasBoard.Cue[4];public int CueCount;
         private readonly float[] start;private readonly int[] flips,from,target;private readonly int[] kinds=new int[NativeTilesets.Lines];
         private float openAt=float.NaN,last=float.NaN,heard=float.NaN;private bool moved;private int salt;
+        /// <summary>Where the selection comes from: the registry's hook (the checks put a stand-in here to run a re-flap).</summary>
+        internal Func<ExpeditionDeploymentState,NativeTilesets.Tileset> Select=NativeTilesets.Selected;
         public NativeAtlasStage()
         {
             int n=Layout.Cells.Length;Poses=new NativeAtlasBoard.Pose[n];start=new float[n];flips=new int[n];from=new int[n];target=new int[n];
@@ -282,7 +284,7 @@ namespace ChipArena.UnityConversion
         /// board is arriving or just landed).</summary>
         public bool Frame(in DeployInput f,NativeDeployPresentation.Shot shot)
         {
-            float t=f.Time;Selected=NativeTilesets.Selected(f.State);NativeTilesets.Board(Selected,Lines);
+            float t=f.Time;Selected=Select(f.State)??NativeTilesets.Of(NativeTilesets.City);NativeTilesets.Board(Selected,Lines);
             if(!(t>=last)||float.IsNaN(openAt))Open(t);
             last=t;Since=t-openAt;float since=Since;
             for(int line=0;line<NativeTilesets.Lines;line++){int k=NativeAtlasBoard.Kinds(Lines[line]);if(k!=kinds[line])Retarget(line,k,since);}

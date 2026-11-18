@@ -246,6 +246,20 @@ namespace ChipArena.UnityConversion
             for(float t=0;t<2;t+=.037f){a.Frame(Input(t),NativeDeployPresentation.Shot.Overview);b.Frame(Input(t),NativeDeployPresentation.Shot.Overview);Check(a.Poses.SequenceEqual(b.Poses),"deterministic at "+t);}
             a.Frame(Input(.5f),NativeDeployPresentation.Shot.Overview);Check(Math.Abs(a.Since)<1e-6f&&a.Poses.Take(n0).All(p=>p.Phase<0),"a clock that runs backwards reopens the board");
             var j=new NativeAtlasStage();j.Frame(Input(5),NativeDeployPresentation.Shot.Overview);j.Frame(Input(25),NativeDeployPresentation.Shot.Overview);Check(j.Landed&&j.Poses.Take(n0).Select(p=>p.Next).SequenceEqual(targets),"a frame long after the opening shows it landed");
+            // a later selection change (A3's pick) re-flaps only the cells that differ, forward through the drum, landed in the window
+            // (the stand-in is outside the registry, so line 1 flaps from City to an empty line and City moves to line 2)
+            var r=new NativeAtlasStage();var other=new T.Tileset{Id="stand-in",State=T.State.Live,Name="X",Place="Y",Accent=0x7fe9ff,Enemies="Z",Final="W",Instances=new[]{"exp-ward-zero"}};
+            for(float t=0;t<=3;t+=1/60f)r.Frame(Input(t),NativeDeployPresentation.Shot.Overview);
+            var before=r.Poses.Take(n0).Select(p=>p.Next).ToArray();var empty=L.Large[T.All.Length];r.Select=_=>other;var runs=new List<int>[n0];for(int i=0;i<n0;i++)runs[i]=new List<int>{before[i]};
+            for(float t=3+1/120f;t<=5;t+=1/120f){r.Frame(Input(t),NativeDeployPresentation.Shot.Overview);for(int i=0;i<n0;i++){int g=r.Poses[i].Next;if(runs[i][runs[i].Count-1]!=g)runs[i].Add(g);}}
+            Check(ReferenceEquals(r.Selected,other)&&ReferenceEquals(r.Lines[0],other)&&ReferenceEquals(r.Lines[1],T.All[0]),"the new selection takes line 1, City moves down");
+            for(int i=0;i<n0;i++)
+            {
+                var h=runs[i];Check(h[h.Count-1]==empty[i],"re-flapped cell "+i+" lands on line 1's new text (a stand-in outside the registry reads as an empty line)");
+                if(before[i]==empty[i]){Check(h.Count==1,"an unchanged cell stays put");continue;}
+                if(L.Cells[i].Kind==A.Kind.Glyph)for(int k=2;k<h.Count;k++)Check(h[k]==(h[k-1]+1)%A.Glyphs,"re-flap "+i+" runs forward through the drum");
+            }
+            Check(r.Poses.Take(n0).All(p=>p.Phase<0),"the re-flap has landed within its window");
         }
         private static void Framing()
         {
