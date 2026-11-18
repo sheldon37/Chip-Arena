@@ -97,7 +97,8 @@ Reduced effects stops the motion, flicker, sheen and pulses, and deals the cards
 - Rotated layers (the reticles, the stamp, the floor rails, a dealt card in flight) are drawn outside every `U.BeginBand`
   clip. IMGUI maps a clip through the matrix current at draw time (see `NativeLobbyUI`'s fold chevron).
 - The views carry ids from the host, so lookups here never throw (`OpeningWeapon` / `OpeningChip`).
-- Opening the comeback picker resets the arena's transient presentation (corpses, blood, wounds), as the Siren pick's screen
-  does.
+- The comeback picker resets nothing of the arena's presentation, so the fight's corpses, blood, wounds and gibs stay. Only the
+  stage restarts (`RestartDraftStage`). Every other renderer is hidden while it shows and put back as it was. The room's
+  starting chip keeps the PvP draft's reset.
 - Still to check in a Windows build: a host and a guest with different weapons (including a timeout), a team game, deferred
   picks, the winning killcam and a rematch.

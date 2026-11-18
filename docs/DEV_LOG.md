@@ -13,6 +13,11 @@ Branch `claude/deathmatch-picks`, base shared `claude/sleepy-ritchie-g8ruhv` at 
   - Comeback picks still queue on personal deaths 3 and 6 and survive respawn (Choose later, C).
   - The respawn keeps the rules' 3 s. The follow-through ends the moment the pilot respawns, and the picker closes on respawn as before.
   - The picker that opens on a rewarded death stands in front of that death's killcam, as the tray did. A running killcam ends, as Space skips it. One not yet started waits until the picker closes (Choose later plays the rest).
+  - **The fight's corpses, blood, wounds and gibs stay.** The comeback pick resets nothing of the arena's presentation (the coordinator's fix before release).
+    - It used to take the PvP draft's `ResetPresentation` on its entry and exit (`DraftFrame`'s). That reset cleared the corpses, model corpses, blood, wounds, gibs and debris for the picking pilot.
+    - Now only the stage restarts (`ArenaPresentation.RestartDraftStage`: the draft rig and the model it carries are made again, as after a reset).
+    - Every other renderer is hidden while the stage shows (`Renderer.enabled`, saved and put back as it was). The room's starting chip keeps the reset.
+    - Seen in the Editor with a bot's corpse and blood in front of the pilot and a comeback pick while alive. Before: 1 corpse and 49 blood splats, then 0 and 0 once the picker opened. After: 1 and 37, then 1 and 50 after the pick. The corpse then leaves at its usual time.
   - Card clicks go through `U.SilentButton` (DrawTray).
   - The same `opening-choice` and `dm-chip` messages are sent.
   - The old tray versions (`OpeningChipStep`, `ComebackPicker`) are removed.
@@ -41,7 +46,7 @@ Branch `claude/deathmatch-picks`, base shared `claude/sleepy-ritchie-g8ruhv` at 
   - Nothing else in the opening's screens was broken at these sizes.
 
 **Systems.** Opening and Deathmatch presentation:
-- `NativeOpeningDraftUI`, `NativeDeathmatchRuntime`, `NativeDraftPresentation` (one line in `DraftFrame`).
+- `NativeOpeningDraftUI`, `NativeDeathmatchRuntime`, `NativeDraftPresentation` (one line in `DraftFrame`; `RestartDraftStage` and `DraftStageRoot` on the presentation).
 - `ConversionGame.LateFrame`: the room's stage in place of the menu backdrop, the comeback picker before the killcam, and the comeback's Install cue at the plant.
 - `NativeDamageScreenPresentation`: no damage screen over the stage.
 - `NativeRoomOptionsUI`, `NativeLobbyUI`, `NativeLobbyRoomUI`; `NativeWeaponCard` (`partial` only).
@@ -56,12 +61,13 @@ Branch `claude/deathmatch-picks`, base shared `claude/sleepy-ritchie-g8ruhv` at 
 - The pinned 6000.3.24f1 semantic compile (`tools/check_unity_compile.py`) passes for Input System, Player, Assembly-CSharp and Editor. There are no new warnings; the two in changed files were there before.
 - `pins.py`: no pin of another check is broken. The only lines it lists are `BlindChoiceChecks`' own literals for the moved code. `git diff --check` is clean.
 - CoreTests:
-  - `--blind-choices`: 5587 checks, including Astra's real deal read through the hook.
+  - `--blind-choices`: 5591 checks, including Astra's real deal read through the hook and the comeback's no-reset path.
   - `--deathmatch` (Astra's): 158 checks.
   - Full suite, with stage banks `banks-next` and the expedition path patch applied and reverted:
     - at `61af0407`: 1033 groups, exit 0;
     - at the merge `6455663e`: 1033 groups, exit 0;
-    - at `689fb083` (the last code commit): 1033 groups, exit 0.
+    - at `689fb083`: 1033 groups, exit 0;
+    - at `560d08c9` (the last code commit, the comeback's no-reset fix): 1033 groups, exit 0.
 - Python discovery: 8 failures and 1 error, all environmental on this PC (the live sound queue's tests and the publish wrapper on a path with spaces).
   - The run touched the live sound queue. Its `import_sound_requests` child held `worker.lock` while the builder's install step ran, and new queue files appeared at 10:20.
   - It is not to be run on this PC again; relgen5's suite is the one.
@@ -87,7 +93,8 @@ Branch `claude/deathmatch-picks`, base shared `claude/sleepy-ritchie-g8ruhv` at 
 **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. The stage and the screens are presentation, and the follow-through never holds a respawn.
 
 **Risks.**
-- While the comeback picker is open, the fight is hidden. Opening it resets the arena's transient presentation (corpses, blood, wounds), as the Siren pick's screen does. Opening it on a rewarded death skips or delays that death's killcam.
+- While the comeback picker is open, the fight is hidden: every other renderer is off, then put back as it was. A renderer the arena itself switches off in those seconds comes back on with the rest, as the Siren pick's `HideLive` restore does.
+- Opening the picker on a rewarded death skips or delays that death's killcam. The killcam's own start and end still reset the presentation, as before.
 - In the opening, a pick by the last pilot goes straight to the reveal, so its follow-through shows only while others are still choosing.
 - The Ready header for a guest reads the room's copy of the rules.
 
