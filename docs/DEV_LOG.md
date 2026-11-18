@@ -107,6 +107,7 @@ Owner asked for the expedition overhaul: a tileset machine, a reworked City away
 Branch `codex/expedition-a4-greybox`, base `15dab150`. Editor and Development Builds have a solo walk at 420 × 340 m and 600 × 480 m. From the offline main menu choose Settings → Developer → Walk Meridian greybox, walk either size with the same seed, hold Tab for the relief plan, and press Escape to compare. Uses native pilots, physics and ramp wedges, three seeded districts, the northern stair, the viaduct, roof bridges and the three-deck car park. Live deployment continues to use its current map.
 
 The managed `--layered-walk` sweep passed eight seeds at each size, checking gate-to-hall distances, continuous Hulk-width support and headroom. Measurements and controls are in `docs/EXPEDITION-OVERHAUL-ASTRA.md`. The owner walk and native frame captures are pending. The full surface graph, the chunked city kit, enemy spawning and the deployment swap belong to M5. This preview has no combat or network changes.
+- **Merged and released (Claude, integrator, so the owner can walk it):** PR #413 (`codex/expedition-a4-greybox` at `35eb821f`) merged on `claude/merge-astra-greybox` into shared `859a90c6` (the builder at `859a90c6`), test channel revision `639306350457222805` (build `dc56acbc`); the suite at `35eb821f` (1,037 groups, exit 0), the Unity compile. A0 (PR #412) is held for Claude's pod crash (`claude/exp-w4-crash`), with which it ships.
 
 
 ## 2026-11-18 — Claude: every weapon plays its own selection flourish on the Blind Pick screen (owner report; presentation only)
