@@ -1864,7 +1864,7 @@ namespace ChipArena.UnityConversion
             Check(write!=null&&write.Contains("if(!on&&!body.SpawnOn&&flash==body.Flash)return;")&&write.Contains("if(!on)look=VisualSpawnLook.Off;")&&write.Contains("body.Block.SetFloat(HitFlashId,flash);"),"the values are written while a spawn-in runs or the flash changes, and reset after");
             int news=0;for(int i=write?.IndexOf("new ",StringComparison.Ordinal)??-1;i>=0;i=write.IndexOf("new ",i+1,StringComparison.Ordinal))news++;
             Check(news==1&&write.Contains("var look=new VisualSpawnLook();"),"VisualBodyLook builds only a value per frame (the hologram's slots are made once)");
-            Gear(body,Read("Runtime/NativeChipSelectPresentation.cs"),Read("Runtime/NativePilotGearModels.cs"),Read("Runtime/NativeVisualCloth.cs"),Read("Runtime/ConversionGame.cs"));
+            Gear(body,Read("Runtime/NativeChipSelectPresentation.cs"),Read("Runtime/NativePilotGearModels.cs"),Read("Runtime/NativeVisualCloth.cs"),Read("Runtime/ConversionGame.cs"),Read("Runtime/NativeDraftInstallPresentation.cs"));
             Check(!body.Contains("NativeSpawnIn")&&!body.Contains("SpawnInFrame"),"the visual body reads the spawn-in only through SpawnVisualLook (the spawn-in's presentation files)");
             foreach(string pack in new[]{"Bozo","BoZo","Magica","OutfitSystem","BMAC","BSMC"})
                 Check(!body.Contains(pack)&&!fx.Contains(pack)&&!toon.Contains(pack)&&!ghost.Contains(pack),"no pack types or names in the visual body's code: "+pack);
@@ -1872,7 +1872,7 @@ namespace ChipArena.UnityConversion
 
         // The pilot gear (Core NativePilotGear; Runtime NativePilotGearModels and VisualGear): its sections face outward where
         // they are seen, the lid clears the seated chip, and its states follow the pilot's health and chip select as designed.
-        private static void Gear(string body,string chip,string models,string cloth,string game)
+        private static void Gear(string body,string chip,string models,string cloth,string game,string install)
         {
             // Every triangle of a section: its centroid and face normal (source frame, as built).
             static System.Collections.Generic.List<(Vector3 c,Vector3 n)> Faces(WeaponMesh mesh)
@@ -1956,7 +1956,7 @@ namespace ChipArena.UnityConversion
             Check(cloth.Contains("public static Func<GameObject,Transform,object> Attach;")&&body.Contains("if(simulate&&id!=ViewBodyId&&NativeVisualCloth.Attach!=null)")&&body.Contains("CreateVisualBody(rig,id,simulate:false);if(body==null)return null;body.Root.name=\"Visual bust \"+id;")&&body.Contains("CreateVisualBody(holder,id,simulate:false);if(body==null)return false;body.Root.name=\"Visual ghost \"+id;")&&body.Contains("body.Binding.State.Forget();if(body.ClothSim!=null)NativeVisualCloth.Reset?.Invoke(body.ClothSim);")
                 &&body.Contains("bool sim=body.Seen&&!LowGraphics&&(VisualEye==null||(VisualEye.transform.position-body.At).sqrMagnitude<NativeVisualCloth.Far*NativeVisualCloth.Far);"),"cloth: registered locally, off in first person, on busts, ghosts and portraits, reset on a gap, held on the low tier and past Far");
             foreach(string pack in new[]{"Bozo","BoZo","Magica","BMAC","BSMC"})Check(!cloth.Contains(pack),"no pack names in the cloth hook: "+pack);
-            Check(models.Contains("GearModel(GearMask,NativePilotGear.Mask(),CapturedRig.Head);GearModel(GearVisor,NativePilotGear.Visor(),CapturedRig.Head);")&&body.Contains("if(!first&&!body.Hood)VisualFaceGear(VisualHeadOf(body),a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);")&&body.Contains("VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);")&&body.Contains("if(c.Look==0&&!c.Hood&&VisualCorpseWhole(corpse)&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)"),"the face gear rides the model's head bone: the live body, the draft's pilot and a whole corpse (or the whole body a split one draws while its cut is made)");
+            Check(models.Contains("GearModel(GearMask,NativePilotGear.Mask(),CapturedRig.Head);GearModel(GearVisor,NativePilotGear.Visor(),CapturedRig.Head);")&&body.Contains("if(!first&&!body.Hood)VisualFaceGear(VisualHeadOf(body),a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);")&&install.Contains("VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);")&&body.Contains("if(c.Look==0&&!c.Hood&&VisualCorpseWhole(corpse)&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)"),"the face gear rides the model's head bone: the live body, the draft's pilot (NativeDraftInstallPresentation.cs DraftFaceGear) and a whole corpse (or the whole body a split one draws while its cut is made)");
             Check(body.Contains("if(gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceMask)sourceModels.Queue(NativeSourceModels.GearMask,")&&body.Contains("if(gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceVisor)sourceModels.Queue(NativeSourceModels.GearVisor,"),"the face gear pick draws both, the visor alone or the mask alone");
             // The runtime: the anchors by name, the device's look read from the chip-select slot, the models on one SourceLit material,
             // and VisualGear building only values.
