@@ -28,7 +28,9 @@ namespace ChipArena.UnityConversion
                 bool account=p.kind=="chip-arena-player";
                 if(account){if(string.IsNullOrEmpty(p.accountId)||p.accountId.Length>64||p.user==null||p.exp-p.iat>900000)return Guest;}
                 else if(token.Length>1500||p.user!="Sheldon"||p.role!="dev"||p.exp>now+8*3600000)return Guest;
-                if(!NativeP256.Verify(Encoding.UTF8.GetBytes(parts[0]),signature,Base64("8phe-ghSPLnonQXfeMgAtMeLKCzFEzQNGTt27gFc1eY"),Base64("f6sN-RmLQtVJUGkovXUbb3SdjSb7D6YVJdmyagmNxmM")))return Guest;
+                byte[] signedPayload=Encoding.UTF8.GetBytes(parts[0]);
+                if(!NativeP256.Verify(signedPayload,signature,Base64("8phe-ghSPLnonQXfeMgAtMeLKCzFEzQNGTt27gFc1eY"),Base64("f6sN-RmLQtVJUGkovXUbb3SdjSb7D6YVJdmyagmNxmM")) &&
+                   !NativeP256.Verify(signedPayload,signature,Base64("urC8CU-5Kc4ai_8YmWai71JxEHcfjQ2CuP51VS_vCnU"),Base64("XyIBKO9k1gR5ROgb1oZxGFRJK_gor3s05sNluJYx4bo")))return Guest;
                 var access=new NativeAccess{Developer=!account||p.developer,AccountId=p.accountId,Expires=p.exp};if(account&&p.unlocks!=null)foreach(var grant in p.unlocks)if(grant!=null)access.grants.Add(grant);return access;
             }
             catch(Exception){return Guest;} // Untrusted token/decoder/provider failures never escape the peer boundary.

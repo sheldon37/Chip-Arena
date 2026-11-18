@@ -140,3 +140,7 @@ Official references: [D1 export/import](https://developers.cloudflare.com/d1/bes
 ### Boss practice progress
 
 Independent migration 0003 adds the per-account clear mask shared with Drizzle 0007. Apply the schema before deploying the account Worker that accepts boss-clear reports. The authenticated player's clear mask is personal practice history. It grants access to solo phase practice and has no effect on XP receipts, DEV grants or Steam entitlements. The importer copies existing clear masks and verifies that pre-practice backups restore with zero clears. An earlier staging rehearsal does not verify a deployment of this change.
+
+### November 17 signing-key transition
+
+Updated clients trust the original Sites public key and the owner's replacement production public key. The independent production Worker accepts only the replacement signer, and staging and development reject both production keys. Ship the compatible verifier to hosts and guests before switching signers. Verify a real replacement-signed claim on two Windows clients before routing player traffic. Clients with only the original pin need an update for replacement-signed claims. Continue to keep the production private key on the owner's machine or in the production secret store.

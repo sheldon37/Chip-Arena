@@ -5,7 +5,7 @@ import {accountMaintenance,accountRateRequest} from './account-routing.js';
 import type {SteamConfig} from './account-steam.js';
 import {confirmXp} from './account-xp.js';
 import {accountOrigin} from '../shared/account-origin.js';
-import {DEV_PUBLIC_KEY} from '../shared/dev-public-key.js';
+import {PRODUCTION_PUBLIC_KEYS,REPLACEMENT_PUBLIC_KEY} from '../shared/dev-public-key.js';
 
 interface Env extends AuthEnv,SteamConfig {
  ACCOUNT_BRIDGE_SECRET?:string; ACCOUNT_STATE?:string; ACCOUNT_ENV?:string; ROOM_DIRECTORY_ORIGIN?:string; XP_ISSUER_SECRET?:string;
@@ -33,9 +33,10 @@ function keyReady(env:Env){
 async function validateKey(raw:string,stage:string){
  try{
   const key=JSON.parse(raw);
-  const productionKey=key.x===DEV_PUBLIC_KEY.x&&key.y===DEV_PUBLIC_KEY.y;
+  const productionKey=PRODUCTION_PUBLIC_KEYS.some(pin=>pin.x===key.x&&pin.y===key.y);
+  const replacementKey=key.x===REPLACEMENT_PUBLIC_KEY.x&&key.y===REPLACEMENT_PUBLIC_KEY.y;
   if(!key.d||key.kty!=='EC'||key.crv!=='P-256'||
-      !(stage==='production'?productionKey:['development','staging'].includes(stage)&&!productionKey))return false;
+      !(stage==='production'?replacementKey:['development','staging'].includes(stage)&&!productionKey))return false;
   const alg={name:'ECDSA',namedCurve:'P-256'};
   const signing=await crypto.subtle.importKey('jwk',key,alg,false,['sign']);
   const verifying=await crypto.subtle.importKey('jwk',{kty:'EC',crv:'P-256',x:key.x,y:key.y},alg,false,['verify']);
