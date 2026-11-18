@@ -768,6 +768,9 @@ namespace ChipArena.UnityConversion
         /// faces halfway through it, and twists half as far either side of the facing as a foot planted square to it did. Standing,
         /// a step's stance is taken as <see cref="LeadStand"/> s. How much of the foot's twist the knee turns with (1: the knee over the foot).</summary>
         public const float LeadMost=25,LeadStand=.3f,KneeFollow=1;
+        /// <summary>The farthest across the floor (rig metres, the footprint drawn in for the rig's legs: .45 leg lengths) a planted foot
+        /// stands to the side of its hip before it steps, as one out of reach does (the takes stand a foot half that or less off its hip).</summary>
+        public const float AcrossMost=.225f;
         private float LeadOf(float duty,float rateHz,bool moving)
         {
             float stance=moving?duty/Math.Max(.3f,rateHz):LeadStand,deg=lifeYawRate/BossMath.Deg*.5f*stance;
@@ -1118,6 +1121,12 @@ namespace ChipArena.UnityConversion
                 overReach[i]=heel>=HeelMost*.95f||Vector3.DistanceSquared(hipAt,target)>LegReach*LegReach*1.0004f;
             }
             else overReach[i]=false;
+            // (A planted foot the body has run sideways off, out to its side or across under it further than a leg reaches across, steps as
+            // one out of reach does: owner 2026-11-18, "running and turning simultaneously". A leg reaches less far across the body than fore
+            // and aft; drawn in only fore and aft, the rig's short legs used to stand for that by reading such a foot as out of reach, after
+            // sinking the hips to try. Drawn in both ways, they reach it, so the hips sank to keep it while the other foot finished a long
+            // swing, and the body ran on over its feet.)
+            if(!heavy&&legsNow>1&&(Landed&(1<<i))==0&&Math.Abs(flat.X-hipAt.X)>AcrossMost)overReach[i]=true;
             heelLift[i]=heel;heelRise[i]=target-flat;return Heel[i]=heel;
         }
         // The ankle with its heel lifted `heel` rad off the floor round the ball at `ball` (`fwd` the foot's facing, rig frame).

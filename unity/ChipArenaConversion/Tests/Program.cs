@@ -45,9 +45,10 @@ internal static class Program
             if(args.Length==1&&args[0]=="--projectile-events")return 0;
             if(args.Length==1&&args[0]=="--zombie-stages"){ZombieStageChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--zombie-runturn"){ZombieRunTurnChecks.Probe();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn-sweep"){ZombieRunTurnChecks.Sweep();return 0;}
             if(args.Length==1&&args[0]=="--zombie-runturn-cost"){ZombieRunTurnChecks.Cost();return 0;}
             if(args.Length==1&&args[0]=="--zombie-runturn-checks"){ZombieRunTurnChecks.Run(ProjectRoot());return 0;}
-            if(args.Length>=3&&args[0]=="--zombie-runturn-trace"){if(args.Length>=5){ZombieRunTurnChecks.TraceFrom=float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture);ZombieRunTurnChecks.TraceFor=float.Parse(args[4],System.Globalization.CultureInfo.InvariantCulture);}ZombieRunTurnChecks.Trace(int.Parse(args[1]),args[2]);return 0;}
+            if(args.Length>=3&&args[0]=="--zombie-runturn-trace"){if(args.Length>=6)ZombieRunTurnChecks.TracePhase=int.Parse(args[5]);if(args.Length>=5){ZombieRunTurnChecks.TraceFrom=float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture);ZombieRunTurnChecks.TraceFor=float.Parse(args[4],System.Globalization.CultureInfo.InvariantCulture);}ZombieRunTurnChecks.Trace(int.Parse(args[1]),args[2]);return 0;}
             if(args.Length==1&&args[0]=="--zombie-source"){ZombieStageChecks.Source();return 0;}
             if(args.Length==1&&args[0]=="--zombie-all"){return ZombieStageChecks.All(ProjectRoot());}
             if(args.Length==5&&args[0]=="--zombie-sticks"){ZombieStageChecks.Sticks(args[1],args[2],float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture),int.Parse(args[4]));return 0;}

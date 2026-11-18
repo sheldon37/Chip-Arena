@@ -84,6 +84,8 @@ namespace ChipArena.UnityConversion
         }
         // ---- the routes (the authority's chase: StepPveHorde turns the facing and the velocity at once toward where it goes) ----
         private static Route Straight(float speed)=>(float t,Vector2 at,out Vector2 dir,out float sp,out float atk)=>{dir=new Vector2(0,1);sp=speed;atk=float.NaN;};
+        // Stands, then runs straight off at `at0` (a blow's recovery, the authority's stop and go).
+        private static Route SetOff(float speed,float at0=2)=>(float t,Vector2 at,out Vector2 dir,out float sp,out float atk)=>{dir=new Vector2(0,1);sp=t>=at0?speed:0;atk=float.NaN;};
         private static Route Turn(float speed,float deg,float at0=3)=>(float t,Vector2 at,out Vector2 dir,out float sp,out float atk)=>{float a=(t>=at0?deg:0)/Deg;dir=new Vector2((float)Math.Sin(a),(float)Math.Cos(a));sp=speed;atk=float.NaN;};
         private static Route Arc(float speed,float degPerSecond,float at0=3)=>(float t,Vector2 at,out Vector2 dir,out float sp,out float atk)=>{float a=Math.Max(0,t-at0)*degPerSecond/Deg;dir=new Vector2((float)Math.Sin(a),(float)Math.Cos(a));sp=speed;atk=float.NaN;};
         // A pilot circling (radius `radius` m about a point 6 m ahead, at `pilot` m/s), the add running at it.
@@ -102,7 +104,7 @@ namespace ChipArena.UnityConversion
         internal static (string name,Route route,float seconds,float from)[] Scenarios(int kind)
         {
             var st=NativeHordeKinds.ProposedRow(kind);float run=st.run,walk=st.walk;
-            return new[]{("run straight",Straight(run),6f,3f),("run arc 90/s",Arc(run,90),6f,3.2f),("run arc 180/s",Arc(run,180),6f,3.2f),("run turn 90",Turn(run,90),5f,2.9f),("run turn 180",Turn(run,180),5f,2.9f),
+            return new[]{("run straight",Straight(run),6f,3f),("run set off",SetOff(run),4.5f,1.9f),("run arc 90/s",Arc(run,90),6f,3.2f),("run arc 180/s",Arc(run,180),6f,3.2f),("run turn 90",Turn(run,90),5f,2.9f),("run turn 180",Turn(run,180),5f,2.9f),
                 ("run circle chase",Circle(run,2.5f,run*1.15f),9f,4f),("run target switch",Switch(run),5f,2.9f),("run turn into attack",TurnAttack(kind,run),5.5f,2.9f),("run weave",Weave(run,7),9f,3f),
                 ("walk straight",Straight(walk),6f,3f),("walk turn 90",Turn(walk,90),5f,2.9f),("walk turn 180",Turn(walk,180),5.5f,2.9f),("walk circle chase",Circle(walk,1.8f,walk*1.15f),9f,4f)};
         }
@@ -149,6 +151,16 @@ namespace ChipArena.UnityConversion
                 Check(straight.KneeFoot<=20&&straight.Cross>.05f,Name("run straight")+": running straight the knees over the feet, the feet apart ("+straight.KneeFoot.ToString("0")+" deg, "+straight.Cross.ToString("0.00")+" m)");
             }
             meanDrop/=Math.Max(1,arcs);Check(meanDrop<=.04f,"through the running turns the hips on average as high as running straight (lower by "+meanDrop.ToString("0.000")+" legs)");
+            // ---- a sharp running turn at any moment of the stride: the trailing foot steps before the body runs on over it ----
+            // (Eight starts across a stride, either way: a foot the body ran sideways off steps as one out of reach does, NativeHordeGait.AcrossMost.)
+            float worstSharp=9;
+            foreach(int kind in Kinds)foreach(float deg in new[]{90f,-90f})
+            {
+                var st=NativeHordeKinds.ProposedRow(kind);float low=9;
+                for(int k=0;k<8;k++){float at0=3+k*.071f;var r=Drive(rig,kind,Turn(st.run,deg,at0),at0+2.2f,at0-.1f);low=Math.Min(low,r.HipsLow);}
+                worstSharp=Math.Min(worstSharp,low);
+                Check(low>=.89f,NativeHordeKinds.Ids[kind]+" turning "+deg.ToString("0")+" degrees at a run: the hips stay up whenever in the stride it turns (lowest "+low.ToString("0.00")+" legs over eight starts)");
+            }
             // ---- the model's planted ankle on the gait's footprint, through a turn (both ways across the floor) ----
             {
                 float gap=0;int seen=0;
@@ -185,7 +197,7 @@ namespace ChipArena.UnityConversion
                 var vr=System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/ChipArena/Core/NativeVisualRig.cs"));
                 Check(vr.Contains("a.X=h.X+(a.X-h.X)*s.Stride; a.Z=h.Z+(a.Z-h.Z)*s.Stride;"),"the model's binding spreads the game ankle back out both ways (NativeVisualRig.GameAnkle)");
             }
-            Console.WriteLine("PASS Zombie run and turn ("+checks+" checks: 4 kinds on the model's legs; running turns' hips at most "+worstDrop.ToString("0.00")+" legs under the straight run's (mean "+meanDrop.ToString("0.000")+"), fastest "+worstHipRate.ToString("0.0")+" legs/s; knee off its planted foot at most "+worstKnee.ToString("0")+" deg; swinging foot at most "+worstSwing.ToString("0.0")+" deg a 120th; presentation only)");
+            Console.WriteLine("PASS Zombie run and turn ("+checks+" checks: 4 kinds on the model's legs; running turns' hips at most "+worstDrop.ToString("0.00")+" legs under the straight run's (mean "+meanDrop.ToString("0.000")+"), fastest "+worstHipRate.ToString("0.0")+" legs/s; sharp turns at any moment of the stride at least "+worstSharp.ToString("0.00")+" legs; knee off its planted foot at most "+worstKnee.ToString("0")+" deg; swinging foot at most "+worstSwing.ToString("0.0")+" deg a 120th; presentation only)");
         }
         /// <summary>`--zombie-runturn`: the table, every kind on the model through every route.</summary>
         public static void Probe()
@@ -195,6 +207,28 @@ namespace ChipArena.UnityConversion
             Console.WriteLine(o.ToString());
         }
         /// <summary>`--zombie-runturn-trace kind scenario`: one route frame by frame.</summary>
+        /// <summary>`--zombie-runturn-sweep`: the sharp running turns started at eight moments of the stride (the worst of them; diagnostic).</summary>
+        public static void Sweep()
+        {
+            var rig=ModelPoseChecks.Measured();var o=new StringBuilder();o.AppendLine(Header);o.AppendLine(Header2);
+            foreach(int kind in Kinds)
+            {
+                var st=NativeHordeKinds.ProposedRow(kind);
+                foreach(var (name,mk) in new (string,Func<float,Route>)[]{("run turn 90",a=>Turn(st.run,90,a)),("run turn -90",a=>Turn(st.run,-90,a)),("run turn 180",a=>Turn(st.run,180,a)),("run target switch",a=>Switch(st.run,a)),("walk turn 90",a=>Turn(st.walk,90,a)),("walk turn 180",a=>Turn(st.walk,180,a))})
+                {
+                    var w=new Result{Cross=9,HipsLow=9,HipsHigh=-9};
+                    for(int k=0;k<8;k++)
+                    {
+                        float at0=3+k*.071f;var r=Drive(rig,kind,mk(at0),at0+2.2f,at0-.1f);
+                        w.Skate=Math.Max(w.Skate,r.Skate);w.KneeFoot=Math.Max(w.KneeFoot,r.KneeFoot);w.HipFoot=Math.Max(w.HipFoot,r.HipFoot);w.SwingSnap=Math.Max(w.SwingSnap,r.SwingSnap);w.Cross=Math.Min(w.Cross,r.Cross);
+                        w.HipsLow=Math.Min(w.HipsLow,r.HipsLow);w.HipsHigh=Math.Max(w.HipsHigh,r.HipsHigh);w.HipsRate=Math.Max(w.HipsRate,r.HipsRate);w.KneeMost=Math.Max(w.KneeMost,r.KneeMost);w.Sunk=Math.Max(w.Sunk,r.Sunk);w.Off=Math.Max(w.Off,r.Off);w.Lift=Math.Max(w.Lift,r.Lift);
+                        w.Steps+=r.Steps;w.Seconds+=r.Seconds;w.SkateSum+=r.SkateSum;w.SkateN+=r.SkateN;w.Frames+=r.Frames;
+                    }
+                    o.AppendLine(w.Row(NativeHordeKinds.Ids[kind]+" "+name));
+                }
+            }
+            Console.WriteLine(o.ToString());
+        }
         /// <summary>`--zombie-runturn-cost`: the gait's and the model binding's time a frame (microseconds) through the circle chase (diagnostic).</summary>
         public static void Cost()
         {
@@ -215,14 +249,16 @@ namespace ChipArena.UnityConversion
                 Console.WriteLine(string.Format("{0,-10} gait {1:0.00} us, fit+bind {2:0.00} us a frame",NativeHordeKinds.Ids[kind],sw.Elapsed.TotalMilliseconds*1000/n,sb.Elapsed.TotalMilliseconds*1000/n));
             }
         }
-        internal static float TraceFrom=0,TraceFor=1.6f;
+        internal static float TraceFrom=0,TraceFor=1.6f;internal static int TracePhase=-1;
         public static void Trace(int kind,string scenario)
         {
             var rig=ModelPoseChecks.Measured();float leg=rig.LegUpper+rig.LegLower;
             float floor;{var s0=new NativeVisualRig.State(rig);var rest=new CapturedRig.Pose();rest.Reset();rest.World();NativeVisualRig.Pose(s0,rest,default(NativeVisualRig.Grasp),false,false);floor=s0.Position[rig.Of[CapturedRig.LHip+2]].Y-NativeVisualRig.AnkleOver;}
-            foreach(var sc in Scenarios(kind))
+            var list=Scenarios(kind);
+            if(TracePhase>=0){var st=NativeHordeKinds.ProposedRow(kind);float at0=3+TracePhase*.071f;Route r=scenario=="run turn 90"?Turn(st.run,90,at0):scenario=="run turn -90"?Turn(st.run,-90,at0):scenario=="run turn 180"?Turn(st.run,180,at0):Switch(st.run,at0);list=new[]{(scenario,r,at0+2.2f,at0-.1f)};}
+            foreach(var sc in list)
             {
-                if(sc.name!=scenario)continue;int n=0;
+                if(sc.Item1!=scenario)continue;int n=0;
                 Drive(rig,kind,sc.route,sc.seconds,sc.from,40003,(t,g,s,f)=>
                 {
                     if(t<sc.from-.1f+TraceFrom||t>sc.from+TraceFrom+TraceFor||n++%2!=0)return;

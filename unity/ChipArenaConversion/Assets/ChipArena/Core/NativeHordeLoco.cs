@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
         /// the model's ratio, NativeVisualRig.Rig.LegRatio, while the add draws on the model, owner 2026-10-30: "I think a lot of
         /// the issue is the sped up animations on the zombie"). An upright kind's cadence, stance reach and steps follow it
         /// (<see cref="StepRate"/>): the footprints are a person's. The rig's legs cannot reach them, so its legs are posed on a
-        /// copy of each footprint drawn in fore and aft of its hip by the same ratio (<see cref="LegsNow"/>; the rig is a short-
+        /// copy of each footprint drawn in toward its hip across the floor by the same ratio (<see cref="LegsNow"/>; the rig is a short-
         /// legged copy of the model's stride), and the model's binding spreads its ankles back out (NativeVisualRig.State.Stride),
         /// so the model's feet land on the footprints and nothing the rig's reach rules do changes. The Hulk keeps its own heavy
         /// stride and the crawl its own; the voxel tiers draw on 1.
@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The longest legs the stride is planned for.</summary>
         public const float LegsMost=2.2f;
         private float legsNow=1;
-        /// <summary>The legs this pose's stride was planned for (1: the rig's): each rig ankle sits fore or aft of its hip by the
+        /// <summary>The legs this pose's stride was planned for (1: the rig's): each rig ankle sits off its hip across the floor by the
         /// footprint's offset over this.</summary>
         public float LegsNow=>legsNow;
         // A footprint (rig frame) drawn in toward `hip` across the floor for the rig's legs, and a rig point spread back out to the footprint.
