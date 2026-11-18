@@ -7,8 +7,6 @@ internal static class Program
     {
         try
         {
-            if(args.Length==0||args.Length==1&&args[0]=="--layered-walk")LayeredCityWalkChecks.Run();
-            if(args.Length==1&&args[0]=="--layered-walk")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--practice")PracticeChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--practice")return 0;
             if(args.Length==1&&args[0]=="--party-benchmark"){PartyTransportBenchmark.Run().GetAwaiter().GetResult();return 0;}
@@ -27,6 +25,8 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--expedition-loading")ExpeditionLoadingHandoffChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--expedition-loading")return 0;
             if(args.Length==3&&args[0]=="--stage-layout"){StageArtLayout.Write(ProjectRoot(),args[1],args[2]);return 0;}
+            if(args.Length==0||args.Length==1&&args[0]=="--layered-walk")LayeredCityWalkChecks.Run();
+            if(args.Length==1&&args[0]=="--layered-walk")return 0;
             if(args.Length==2&&args[0]=="--rooftop-layout"){RooftopLayout.Write(args[1]);return 0;}
             if(args.Length==2&&args[0]=="--rooftop-slides"){RooftopLayout.Slides(ProjectRoot(),args[1]);return 0;}
             if(args.Length==1&&args[0]=="--rooftop"){RooftopChecks.Run(ProjectRoot());return 0;}
