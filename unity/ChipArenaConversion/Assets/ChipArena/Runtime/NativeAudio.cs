@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
         }
         public bool StageMusicPending=>stageBossMusic!=null&&stageBossMusic.loadState==AudioDataLoadState.Loading;
         public void ResetCursor(){generation=-1;}
-        private void Awake(){NativeUi.Sound+=UiHeard;NativeWeaponCard.Sound+=FlourishHeard;voices=new AudioSource[24];keyedVoices=new bool[voices.Length];for(int i=0;i<voices.Length;i++){voices[i]=gameObject.AddComponent<AudioSource>();voices[i].playOnAwake=false;voices[i].spatialBlend=0;}music=gameObject.AddComponent<AudioSource>();music.playOnAwake=false;music.priority=0;introVoice=gameObject.AddComponent<AudioSource>();introVoice.playOnAwake=false;}
+        private void Awake(){NativeUi.Sound+=UiHeard;NativeWeaponCard.Sound+=FlourishHeard;NativeAtlasScene.Sound+=AtlasHeard;voices=new AudioSource[24];keyedVoices=new bool[voices.Length];for(int i=0;i<voices.Length;i++){voices[i]=gameObject.AddComponent<AudioSource>();voices[i].playOnAwake=false;voices[i].spatialBlend=0;}music=gameObject.AddComponent<AudioSource>();music.playOnAwake=false;music.priority=0;introVoice=gameObject.AddComponent<AudioSource>();introVoice.playOnAwake=false;}
         // A free voice for an unlimited, unpanned play (beeps, death tones); Play counts the limited cue voices itself.
         private AudioSource Voice(){for(int i=0;i<voices.Length;i++)if(!voices[i].isPlaying){keyedVoices[i]=false;voices[i].loop=false;return voices[i];}return null;}
         private AudioClip Clip(string id){if(!clips.TryGetValue(id,out var c)){c=Resources.Load<AudioClip>("Audio/"+id);clips[id]=c;}return c;}
@@ -113,7 +113,7 @@ namespace ChipArena.UnityConversion
               int frequency=(int)(550+Mathf.Clamp01((at-mark.lockAt)/(mark.throwAt-mark.lockAt))*850);if(!beepClips.TryGetValue(frequency,out var clip)){float[] data=new float[2880];for(int n=0;n<data.Length;n++){float t=n/48000f;data[n]=Mathf.Sin(2*Mathf.PI*frequency*t)*.055f*Mathf.Pow(.001f/.055f,Math.Min(1,t/.055f));}clip=AudioClip.Create("Siren lock pulse",data.Length,1,48000,false);clip.SetData(data,0);beepClips[frequency]=clip;}var voice=Voice();if(voice==null)continue;voice.clip=clip;voice.volume=Effects;voice.panStereo=0;voice.pitch=1;voice.PlayDelayed(Math.Max(0,at-arena.Time));}
             }
         }
-        private void OnDestroy(){ClearDeployClips();ClearReviveClips();NativeUi.Sound-=UiHeard;NativeWeaponCard.Sound-=FlourishHeard;ClearSceneAudio();ClearSlender();ClearHoverClips();ClearQuotaMark();ClearKitSynth();ClearCreatureSynth();foreach(var c in beepClips.Values)CapturedAnimation.Release(c);}
+        private void OnDestroy(){ClearDeployClips();ClearReviveClips();NativeUi.Sound-=UiHeard;NativeWeaponCard.Sound-=FlourishHeard;NativeAtlasScene.Sound-=AtlasHeard;ClearAtlasClips();ClearSceneAudio();ClearSlender();ClearHoverClips();ClearQuotaMark();ClearKitSynth();ClearCreatureSynth();foreach(var c in beepClips.Values)CapturedAnimation.Release(c);}
         private bool Once(string key,float at){if(cues.TryGetValue(key,out float old)&&old==at)return false;cues[key]=at;return true;}
         private void Track(string id,float volume,bool pause=false,double? clock=null,object clockOwner=null,double clockEpoch=0)
         {

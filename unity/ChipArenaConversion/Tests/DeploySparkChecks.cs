@@ -25,7 +25,7 @@ internal static class DeploySparkChecks
     private static Vector3 Rgb(Vector4 c)=>new Vector3(c.X,c.Y,c.Z);
     public static void Run(string root)
     {
-        count=0;Quiet();Grinder();Landing();Cards();Sweep();Reduced();Kick();Sound();Stage();Wiring(root);
+        count=0;Quiet();Grinder();Landing();Cards();Sweep();Reduced();Kick();Sound();Stage();Board();Wiring(root);
         Console.WriteLine("PASS deploy sparks: "+count+" checks (none before, after or for a late joiner; the grinder through the brake; landing bursts in the destination's colour; "+
             "boon fountains, bane short circuits, chaos vortices and the sweep; reduced a subset without arcs or stutter; the kick; cues heard once; drawn as camera-facing quads)");
     }
@@ -196,6 +196,18 @@ internal static class DeploySparkChecks
         var reduced=new NativeDeployStage();int full=0,less=0;
         for(float t=.004f;t<NativeDeploySparks.End;t+=1/30f){st.Frame(Input(m,30,t,60+t),1/30f);reduced.Frame(Input(m,30,t,60+t,true),1/30f);full+=st.SparkCount;less+=reduced.SparkCount;}
         Check(less<.5f*full,"reduced effects thin the station's sparks");
+    }
+    // Machine 2, ATLAS (Core NativeAtlasBoard, drawn by Runtime NativeAtlasScene): nothing until its line lands, a burst off both cheeks
+    // and the lamp's flash as the bell rings, about a third with reduced effects, gone by its end; never the reels' sounds.
+    private static void Board()
+    {
+        var into=new NativeDeploySparks.Spark[NativeAtlasBoard.SparkLimit];int accent=NativeTilesets.All[0].Accent;
+        int N(float t,bool reduced=false)=>NativeAtlasBoard.Sparks(into,0,t,accent,reduced);
+        Check(N(float.NaN)==0&&N(0)==0&&N(NativeAtlasBoard.LandAt-.01f)==0&&N(NativeAtlasBoard.SparkEnd)==0,"machine 2: no sparks before its bell or after its end");
+        int full=N(NativeAtlasBoard.LandAt+.1f);var kinds=into.Take(full).Select(s=>s.Kind).ToArray();int cut=N(NativeAtlasBoard.LandAt+.1f,true);
+        Check(full>20&&full<=NativeAtlasBoard.SparkLimit&&cut>0&&cut<full*.45f,"machine 2: a burst at the bell ("+full+"), a third reduced ("+cut+")");
+        Check(kinds.Count(k=>k==NativeDeploySparks.Kind.Flash)==1&&kinds.All(k=>k==NativeDeploySparks.Kind.Burst||k==NativeDeploySparks.Kind.Flash),"machine 2 draws bursts and one flash");
+        Check(NativeDeploySounds.Of(new NativeDeploySparks.Cue{Kind=NativeDeploySparks.CueKind.Spin,Machine=NativeAtlasBoard.Machine,Reel=-1}).Key==null,"machine 2's moments are not the reels' sounds");
     }
     private static void Wiring(string root)
     {

@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
             float fade=stage.Deploy.Fade;float ui=1-fade;
             if(ui>0)
             {
-                Header(W,s,ui);Destinations(stage,s,ui);Mutators(stage,s,W,ui);
+                Header(W,s,ui);NativeAtlasConsole.Card(stage,W,ui);Destinations(stage,s,ui);Mutators(stage,s,W,ui);
                 intent=Console(stage,s,party,host,W,Hh,now,ui);
             }
             if(fade>0)NativeScreenTransitionHud.Faded(W,Hh,fade,Mathf.Clamp01(fade*1.6f-.4f),"EXPEDITION · DEPLOYING",stage.Deploy.Travel?"PREPARING DESTINATION":"DEPLOYING");

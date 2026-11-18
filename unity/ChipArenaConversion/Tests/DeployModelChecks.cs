@@ -48,7 +48,9 @@ namespace ChipArena.UnityConversion
                 ("map",NativeDeployModels.MapPlane(),400),("holo",NativeDeployModels.HoloVolume(),400),("beacon",NativeDeployModels.Beacon(),300),("door-left",NativeDeployModels.DoorLeaf(-1),4000),
                 ("door-right",NativeDeployModels.DoorLeaf(1),4000),("lift",NativeDeployModels.LiftDeck(),2500),("lamp",NativeDeployModels.Lamp(),400),("beam",NativeDeployModels.Beam(),1200),("quad",NativeDeployModels.Quad(),4)};
             foreach(var (id,m,budget) in parts){Clean(m,id);Check(m.Triangles>0&&m.Triangles<=budget,id+" budget ("+m.Triangles+")");total+=m.Triangles;}
-            Check(total<130000,"the whole station's budget ("+total+")");
+            // ATLAS over the gate (Core NativeAtlasModels; its own checks in AtlasBoardChecks): its cabinet and flaps count toward the station's
+            foreach(var m in new[]{NativeAtlasModels.Cabinet(),NativeAtlasModels.Flaps()}){Clean(m,m.Spec);total+=m.Triangles;}
+            Check(total<130000,"the whole station's budget, ATLAS included ("+total+")");
             Check(Same(NativeDeployModels.Drum(),NativeDeployModels.Drum())&&Same(NativeDeployModels.CardDial(),NativeDeployModels.CardDial())&&Same(NativeDeployModels.Lever(),NativeDeployModels.Lever()),"the moving parts build the same twice");
             // the right leaf mirrors the left about the gate's centre
             NativeDeployModels.DoorLeaf(-1).Bounds(-1,out var l0,out var l1);NativeDeployModels.DoorLeaf(1).Bounds(-1,out var r0,out var r1);

@@ -22,6 +22,13 @@ namespace ChipArena.UnityConversion.Editor
             foreach(var id in NativeExpeditionMutators.Ids)Bake(id,true);
             Bake("exp-ward-zero",false,"quarantine");Bake("exp-transit",false,"rail");Bake("exp-foundry",false,"industrial");
             Bake(NativeBackroomsGenerator.AreaId,false,"backrooms");Bake(NativePoolroomsGenerator.AreaId,false,"poolrooms");
+            // ATLAS's split-flap glyph atlas (Core NativeAtlasArt), once, under a key that changes with what it is drawn from
+            {
+                string key=NativeAtlasArt.Key,path="Assets/ChipArena/Resources/"+key+".bytes";
+                foreach(var old in Directory.GetFiles(Path.GetDirectoryName(path),"atlas-flaps-*.bytes"))if(Path.GetFileName(old)!=Path.GetFileName(path))AssetDatabase.DeleteAsset(old.Replace('\\','/'));
+                File.WriteAllBytes(path,NativeAtlasArt.Pack(NativeAtlasArt.Atlas()));AssetDatabase.ImportAsset(path,ImportAssetOptions.ForceSynchronousImport);
+                var asset=Resources.Load<TextAsset>(key);if(asset==null||asset.bytes.Length!=NativeAtlasArt.Bytes)throw new InvalidOperationException("ATLAS flap atlas failed import: "+path);
+            }
             Debug.Log("PASS deployment card bake: existing catalog art packaged before first roll");
         }
     }

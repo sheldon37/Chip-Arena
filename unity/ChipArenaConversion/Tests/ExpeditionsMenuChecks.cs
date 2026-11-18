@@ -34,6 +34,8 @@ namespace ChipArena.UnityConversion
             using(var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(res,"ExpeditionLayout.json")))){world=doc.RootElement.GetProperty("world").GetString();foreach(var a in doc.RootElement.GetProperty("areas").EnumerateArray())areas[a.GetProperty("id").GetString()]=a.GetProperty("map").GetString();}
             // One run: there is nothing to choose between (owner 2026-11-06).
             Check(K.Count==1&&ReferenceEquals(K.Run,K.All[0])&&K.Default==0&&!K.Run.Locked,"one expedition, playable");
+            // The station's ATLAS board lands it on City, the one live tileset (docs/EXPEDITION-OVERHAUL.md Q3, Q5: the id stays black-siren).
+            Check(NativeTilesets.Selected(null).Id==NativeTilesets.City&&NativeTilesets.Live==1&&NativeTilesets.MenuLine=="TILESET: CITY · MERIDIAN","the run's tileset is City, the only one in service");
             var x=K.Run;
             // The Deployment Station reads this entry (ExpeditionDeploymentRoom: the id is in the run's compatibility digest).
             Check(x.Id=="black-siren","the run keeps the id the Deployment Station and its digest use ("+x.Id+")");
@@ -191,6 +193,7 @@ namespace ChipArena.UnityConversion
             Check(!exp.Contains("WAVE DEFENSE")&&!exp.Contains("ExpWave")&&!exp.Contains("WaveLabels"),"Wave Defense is removed");
             // Nothing rolls or samples a run before the station (owner 2026-11-06: "we don't roll the machine until we start the expedition").
             Check(!exp.Contains("SpinPicks")&&!exp.Contains("ExpReel")&&!exp.Contains(".Reel(")&&!exp.Contains("MutatorAt")&&!exp.Contains("ExpMachine")&&!exp.Contains("SAMPLE")&&!R("Core/NativeExpeditionsMenu.cs").Contains("SpinPicks"),"nothing on the screen rolls or samples a run");
+            Check(exp.Contains("U.Text(new Rect(d.x,y,d.width,16),NativeTilesets.MenuLine,"),"the run's briefing names its tileset beside the kicker (TILESET: CITY · MERIDIAN)");
             Check(exp.Contains("if(expMode==X.Mode.Expedition){ExpSquad(L,party,seat,e,now);ExpSidePanel(")&&exp.Contains("else{ExpPartyStrip(L,party,seat,boss,e,now);ExpBrowser("),"START EXPEDITION is the squad and the side panel; Boss Battle the strip, roster and panel");
             Check(exp.Contains("if(expMode!=X.Mode.Expedition)foreach(var b in LobbyBots(1))")&&exp.Contains("\"1–4 SIGNED-IN PILOTS · NO BOTS IN A RUN\""),"a run's squad shows no bots");
             Check(exp.Contains("botsOk=K.BotsAllowed(boss)")&&exp.Contains("bool canAdd=edit&&botsOk&&")&&exp.Contains("if(botsOk&&ExpChipButton(")&&exp.Contains("case K.BossFight.Direct when K.BotsAllowed(boss):")&&exp.Contains("!K.BotsAllowed(boss)?\"NO BOTS · 1–4 PILOTS\""),"bots only where the boss takes them");

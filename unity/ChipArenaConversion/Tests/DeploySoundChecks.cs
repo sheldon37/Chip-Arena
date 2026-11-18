@@ -38,6 +38,9 @@ internal static class DeploySoundChecks
         string runtime=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeDeployAudio.cs")),cast=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeDeployCast.cs"));
         Check(runtime.Contains("limiter.Cue(")&&runtime.Contains("keyed>=8")&&runtime.Contains("gain*Effects")&&runtime.Contains("Muted||Effects<=0"),"shared effects controls and voice limits");
         Check(cast.Contains("deployScene.Draw(camera,input,dt);deployAudio=audio;deployAudio?.DeployFrame(deployScene.Stage)")&&cast.Contains("deployAudio?.DeployStop();deployAudio=null;"),"draw edge consumed immediately and leave stops station audio");
-        Console.WriteLine("PASS Deployment audio: "+count+" checks (cue mapping, exact-once/late join/reroll, panning, deterministic PCM, envelopes and limiter wiring)");
+        // Machine 2, ATLAS: Astra's table never plays it (its clatter and bell are Claude's NativeAtlasSounds), so nothing doubles up.
+        foreach(NativeDeploySparks.CueKind kind in Enum.GetValues(typeof(NativeDeploySparks.CueKind)))Check(NativeDeploySounds.Of(new NativeDeploySparks.Cue{Kind=kind,Machine=NativeAtlasBoard.Machine,Reel=0}).Key==null,"machine 2 is not in Astra's table");
+        foreach(var cue in NativeAtlasBoard.Schedule){var s=NativeAtlasSounds.Of(cue);Check(s.Index>=0&&s.Key!=null&&s.Gain>0&&s.Gain<=1&&!keys.Contains(s.Key),"machine 2's moments play Claude's own sounds");}
+        Console.WriteLine("PASS Deployment audio: "+count+" checks (cue mapping, exact-once/late join/reroll, panning, deterministic PCM, envelopes and limiter wiring, machine 2 apart)");
     }
 }
