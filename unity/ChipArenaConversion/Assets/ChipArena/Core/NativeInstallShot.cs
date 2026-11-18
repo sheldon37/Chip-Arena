@@ -186,6 +186,10 @@ namespace ChipArena.UnityConversion
         /// pans to.</summary>
         public static float ReadoutX(float aspect)=>aspect>=2.2f?.70f:aspect<1.29f?.72f:aspect<1.5f?.71f:.69f;
         public static float PilotX(float aspect)=>aspect>=2.2f?.40f:aspect<1.5f?.32f:.36f;
+        /// <summary>The camera's pan toward PilotX at age `a` (0..1 over PanStart..PanEnd), and how far right of ReadoutX (a share of the
+        /// width) the block rides while the pan is under way: it keeps its place beside the pilot, sliding in with the camera, never over him.</summary>
+        public static float Pan(float a)=>Cubic((a-PanStart)/(PanEnd-PanStart));
+        public static float ReadoutShift(float aspect,float a)=>(.5f-PilotX(aspect))*(1-Pan(a));
         /// <summary>The block's unfold (0..1) from a line of light over DetailsAt..+.2, and its leader line's draw (0..1).</summary>
         public static float Unfold(float a)=>EaseOut((a-DetailsAt)/.2f);
         public static float Leader(float a)=>Smooth((a-DetailsAt-.02f)/.15f);

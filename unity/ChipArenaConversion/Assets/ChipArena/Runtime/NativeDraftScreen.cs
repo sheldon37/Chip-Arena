@@ -290,10 +290,10 @@ namespace ChipArena.UnityConversion
         {
             if(duration<=0||t>duration)return;float k=t/duration,W=U.W,H=U.H,env=k<.05f?0:k<.16f?(k-.05f)/.11f:k<.82f?1:1-(k-.82f)/.18f;
             float unfold=1,aspect=W/Mathf.Max(1,H);if(beside){env=k<.82f?1:1-(k-.82f)/.18f;unfold=NativeInstallShot.Unfold(age);}
-            float cx=beside?NativeInstallShot.ReadoutX(aspect)*W:W/2;
+            float shift=beside&&age>=0?NativeInstallShot.ReadoutShift(aspect,age)*W:0,cx=beside?NativeInstallShot.ReadoutX(aspect)*W+shift:W/2;
             if(beside)
             {
-                float pilot=NativeInstallShot.PilotX(aspect)*W;U.Polygon(new Rect(pilot,0,W-pilot,H),SideShade,SideAt,SideAlpha,U.Hex(0x080b16,env));
+                float pilot=NativeInstallShot.PilotX(aspect)*W+shift;U.Polygon(new Rect(pilot,0,W-pilot,H),SideShade,SideAt,SideAlpha,U.Hex(0x080b16,env));
                 U.RadialStops(new Rect(-W*.207f,-H*.207f,W*1.414f,H*1.414f),U.Hex(0x080b16,env*.2f),VignetteAt,VignetteAlpha);
             }
             else U.RadialStops(new Rect(-W*.207f,-H*.207f,W*1.414f,H*1.414f),U.Hex(0x080b16,env),new[]{0,.4f,.78f,1},new[]{.93f,.8f,.2f,.2f});

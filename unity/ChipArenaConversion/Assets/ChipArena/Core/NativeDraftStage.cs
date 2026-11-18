@@ -269,7 +269,7 @@ namespace ChipArena.UnityConversion
             if(hero<=1.0001f&&!Fits(focus,d0,orbit)){float lo=0,hi=1;for(int i=0;i<6;i++){float mid=(lo+hi)*.5f;if(Fits(Vector3.Lerp(t0,focus,mid),d0,orbit))lo=mid;else hi=mid;}focus=Vector3.Lerp(t0,focus,lo);}
             // The keyframes' weights: the push, the readout's pull-back and pan, the settle.
             float push=NativeInstallShot.Cubic((a-NativeInstallShot.PushStart)/(NativeInstallShot.PushEnd-NativeInstallShot.PushStart));
-            float pan=!shortCut&&beside?NativeInstallShot.Cubic((a-NativeInstallShot.PanStart)/(NativeInstallShot.PanEnd-NativeInstallShot.PanStart)):0;
+            float pan=!shortCut&&beside?NativeInstallShot.Pan(a):0;
             float settle=shortCut?0:NativeInstallShot.Cubic((a-NativeInstallShot.SettleStart(turn))/(NativeInstallShot.SettleEnd(turn)-NativeInstallShot.SettleStart(turn)));
             float heroM=hero*(1+(pr.Grade>=5&&!reduced?Creep*NativeInstallShot.Ramp(a,NativeInstallShot.CarryEnd,NativeInstallShot.Seat):0))*(shortCut?1+(ShortCreep-1)*NativeInstallShot.Ramp(a,NativeInstallShot.ShortHold,NativeInstallShot.ShortEnd):1);
             float readM=Math.Min(heroM,ReadoutMagnify),readW=heroM>1.001f?(readM-1)/(heroM-1):0;var readT=Vector3.Lerp(t0,focus,readW+(1-(1-readW)*(1-readW)-readW)*MathUtil.Clamp(crownTaken/.08f,0,1));

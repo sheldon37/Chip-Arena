@@ -189,7 +189,7 @@ namespace ChipArena.UnityConversion
             var plan=stage.Plant;if(!plan.ChipShown){if(diA>=NativeInstallShot.Seat&&diA<NativeInstallShot.ShardsGone){var cam=sirenLookCamera!=null?sirenLookCamera.transform:null;DraftShards(Stage(plan.Chip),cam!=null?-cam.forward:Vector3.forward,cam!=null?cam.right:Vector3.right,NativeInstallShot.Seat,reduced);}return;}
             string model=sourceModels.MachineModel(NativeMachineModels.PickupModel(diTier),"pve-pickup");if(!sourceModels.Has(model))return;
             int h=stage.Left?CapturedRig.LHand:CapturedRig.RHand;diCartAt=Stage(plan.Chip);diCartTurn=StageTurn(plan.ChipRotation);diCartScale=plan.Scale;
-            draftChip=Matrix4x4.TRS(diCartAt,diCartTurn,Vector3.one*plan.Scale);draftChipOrbit=draftChip*sourceModels.PickupOrbit(model,reduced?0:time);draftChipTint=diChip.linear*(1+.6f*NativeInstallShot.Ramp(diA,1.0f,NativeInstallShot.Seat));
+            draftChip=Matrix4x4.TRS(diCartAt,diCartTurn,Vector3.one*plan.Scale);draftChipOrbit=draftChip*sourceModels.PickupOrbit(model,reduced?0:time);draftChipTint=diChip.linear*(1.3f+.6f*NativeInstallShot.Ramp(diA,1.0f,NativeInstallShot.Seat));
             sourceModels.Queue(model,draftChip,draftChipBone,partTint:draftChipPart);
         }
         // The Siren's devour: the light leaking between her claws, the crush's flash, the core's light streaming into her grin, the laugh's smoke.
@@ -197,7 +197,10 @@ namespace ChipArena.UnityConversion
         {
             if(diA<0)return;diFx??=new DraftFxSink();diFx.Vfx=vfx;var fx=diFx;var plan=stage.Plant;var claw=Stage(plan.Chip);var grin=Stage(stage.Pose.WorldPosition[CapturedRig.Head]+NVector.Transform(new NVector(0,.07f,.22f),stage.Pose.WorldRotation[CapturedRig.Head]));
             var rare=diChip.linear;var violet=new Color(.55f,.35f,1f);
-            if(diA>=1.0f&&diA<NativeInstallShot.Seat&&!reduced)for(int k=0;k<6;k++){float f=.5f+.5f*Mathf.Sin(diA*40+k*1.7f);var dir=Quaternion.AngleAxis(k*60+diA*90,camera.transform.forward)*camera.transform.up;fx.Streak(S(claw+dir*.06f),S(dir*1.2f),Lin(rare,1.6f*f),.004f,.05f,.05f,.8f,0,7801+k);}
+            // The held cartridge's own light from the catch to the crush, beating faster as she lifts it, so it reads in the claw even
+            // where her talons cover the model.
+            if(diA>=NativeInstallShot.Catch&&diA<NativeInstallShot.Seat){float beat=.75f+.25f*Mathf.Sin(diA*(18+20*NativeInstallShot.Ramp(diA,NativeInstallShot.Catch,NativeInstallShot.Seat)));fx.Glow(S(claw),Lin(rare,(.9f+.5f*NativeInstallShot.Ramp(diA,.8f,NativeInstallShot.Seat))*beat),0,.07f,1,0,7841);}
+            if(diA>=.8f&&diA<NativeInstallShot.Seat&&!reduced)for(int k=0;k<6;k++){float f=(.5f+.5f*Mathf.Sin(diA*40+k*1.7f))*NativeInstallShot.Ramp(diA,.8f,1.0f);var dir=Quaternion.AngleAxis(k*60+diA*90,camera.transform.forward)*camera.transform.up;fx.Streak(S(claw+dir*.06f),S(dir*1.2f),Lin(rare,1.6f*f),.004f,.05f,.05f,.8f,0,7801+k);}
             float seat=diA-NativeInstallShot.Seat;if(seat>=0&&seat<.35f){float u=seat/.25f,fall=Mathf.Pow(Mathf.Clamp01(1-u),3);fx.Glow(S(claw),Lin(rare,2.4f*fall),0,.25f,1,u,7811);fx.Glow(S(claw),new NVector(3,3,3)*fall,0,.07f,0,u,7812);}
             if(diA>=NativeInstallShot.Seat&&diA<1.34f&&!reduced)for(int k=0;k<10;k++){float u=Mathf.Repeat((diA-NativeInstallShot.Seat)*4+k/10f,1);var at=Vector3.Lerp(claw,grin,u)+Vector3.up*(.03f*Mathf.Sin(u*Mathf.PI));fx.Glow(S(at),Lin(rare,1.6f*(1-u)),0,.01f,0,u,7821+k);}
             if(diA>=1.34f&&diA<1.9f&&!reduced)for(int k=0;k<5;k++){float u=Mathf.Repeat((diA-1.34f)*1.4f+k/5f,1);fx.Smoke(S(grin+Vector3.up*(.1f*u)+camera.transform.right*(.05f*Mathf.Sin(k*1.9f))),Lin(violet,.6f),.4f*(1-u),.06f+.06f*u,u,7831+k,-10);}
