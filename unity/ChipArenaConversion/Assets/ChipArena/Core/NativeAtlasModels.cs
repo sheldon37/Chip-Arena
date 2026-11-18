@@ -70,15 +70,17 @@ namespace ChipArena.UnityConversion
             float after=hx+LettersWidth("ATLAS",.096f)+.07f;Letters(s,Lamp(Ivory,.9f),"· DEPARTURES",after,hy-.006f,-.006f,.068f,.007f);
             // the column labels over the large line's columns, and the brass rule under them
             var L=NativeAtlasBoard.Board;float ly=(NativeAtlasBoard.LabelBottom+NativeAtlasBoard.HeaderBottom)/2;
-            for(int c=0;c<NativeTilesets.Columns.Length;c++)Letters(s,Lamp(Ivory,.55f),NativeTilesets.Columns[c],L.Left[c],ly,.009f,.042f,.005f);
+            for(int c=0;c<NativeTilesets.Columns.Length;c++)Letters(s,Lamp(Ivory,.7f),NativeTilesets.Columns[c],L.Left[c],ly,.009f,.052f,.006f);
             s.Into(Body);s.Box(Brass,V((NativeAtlasBoard.EmblemX+NativeAtlasBoard.ColumnsEnd)/2,NativeAtlasBoard.LabelBottom-.004f,.005f),V(NativeAtlasBoard.ColumnsEnd-NativeAtlasBoard.EmblemX,.006f,.008f),.002f);
             // the divider under the large line, hairlines between the small ones, the columns' separators
             s.Box(Brass,V(0,(NativeAtlasBoard.LargeTop-NativeAtlasBoard.LargeFlap+NativeAtlasBoard.SmallTop)/2,-.004f),V(W-2*b-.04f,.01f,.008f),.003f);
             for(int line=2;line<NativeTilesets.Lines;line++){float y=NativeAtlasBoard.SmallTop-(line-1)*NativeAtlasBoard.SmallPitchY+.0115f;s.Box(GraphiteDark,V((NativeAtlasBoard.EmblemX+NativeAtlasBoard.ColumnsEnd)/2,y,.004f),V(NativeAtlasBoard.ColumnsEnd-NativeAtlasBoard.EmblemX,.004f,.006f));}
+            // the columns' dividers: a dark channel with a thin lit gold rule down its middle, so the columns read apart
             for(int c=1;c<NativeTilesets.Columns.Length;c++)
             {
-                float x=(L.Right[c-1]+L.Left[c])/2,top=NativeAtlasBoard.LargeTop+.006f,bottom=NativeAtlasBoard.SmallTop-(NativeTilesets.Lines-2)*NativeAtlasBoard.SmallPitchY-NativeAtlasBoard.SmallFlap-.006f;
-                s.Box(GraphiteDark,V(x,(top+bottom)/2,.0f),V(.022f,top-bottom,.02f));
+                float x=(L.Right[c-1]+L.Left[c])/2,top=NativeAtlasBoard.HeaderBottom-.004f,bottom=NativeAtlasBoard.SmallTop-(NativeTilesets.Lines-2)*NativeAtlasBoard.SmallPitchY-NativeAtlasBoard.SmallFlap-.006f;
+                s.Into(Body);s.Box(GraphiteDark,V(x,(top+bottom)/2,0),V(.06f,top-bottom,.02f));
+                s.Into(Lights);s.Box(Lamp(Gold,.4f),V(x,(top+bottom)/2,-.011f),V(.014f,top-bottom-.02f,.004f));s.Into(Body);
             }
             // each line's lamp: a chrome bezel and the lamp (line 1 in service, the others dim), and the emblem flap's frame
             for(int line=0;line<NativeTilesets.Lines;line++)

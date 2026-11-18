@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     /// (NativeTilesets) and this client's clock since the station opened, and decides nothing (no rule, ticket or wire).
     /// <list type="bullet">
     /// <item><b>Where:</b> hung from the ceiling beam over the DEPLOY gate on two drop rods, its face 2.5 m in front of the back
-    /// wall (the plan's wall band sits behind that beam from the Overview); about 7.7 x 1.1 m, so the whole face reads from every
+    /// wall (the plan's wall band sits behind that beam from the Overview); about 8.4 x 1.1 m, so the whole face reads from every
     /// station shot that sees it.</item>
     /// <item><b>What:</b> headed ATLAS · DEPARTURES, four columns (TILESET · ENEMIES · INSTANCES · FINAL) and four lines: the
     /// selected tileset's on the large first line (CITY · MERIDIAN | THE INFECTED | 5 INSTANCES | THE SIREN), the others small
@@ -28,16 +28,16 @@ namespace ChipArena.UnityConversion
         // ---- placement (station frame: metres, x right, y up, z away from the default camera) -----------------------------
         /// <summary>The face's bottom centre; the model is authored from it (x right, y up, z back), facing -z.</summary>
         public static readonly Vector3 At=new Vector3(0,5.35f,7.1f);
-        public const float Width=7.7f,Height=1.1f,Depth=.36f,Bezel=.045f;
+        public const float Width=8.4f,Height=1.1f,Depth=.36f,Bezel=.045f;
         /// <summary>The ceiling beam it hangs from (NativeDeployModels.StationRoom: the I-beam at z 7.5, its bottom flange at 6.70),
         /// and the drop rods' x.</summary>
-        public const float BeamZ=7.5f,BeamBottom=6.70f,RodX=2.7f;
+        public const float BeamZ=7.5f,BeamBottom=6.70f,RodX=3.0f;
         public static Matrix4x4 Root=>Matrix4x4.CreateTranslation(At);
         /// <summary>The model's footprint (model space): the cabinet, its drop rods and their clamps.</summary>
         public static void Footprint(out Vector3 min,out Vector3 max){min=new Vector3(-Width/2-.02f,-.02f,-.04f);max=new Vector3(Width/2+.02f,BeamBottom-At.Y+.01f,Depth+.1f);}
         /// <summary>The station shot that frames the board: the camera opens on it while the line arrives (TILESET's card), with
         /// the gate under it and the console's side panels clear of it.</summary>
-        public static readonly NativeDeployPresentation.View Shot=new NativeDeployPresentation.View{Eye=new Vector3(0,3.3f,-2.4f),Target=new Vector3(0,4.7f,7.1f),Fov=48};
+        public static readonly NativeDeployPresentation.View Shot=new NativeDeployPresentation.View{Eye=new Vector3(0,3.35f,-3.2f),Target=new Vector3(0,4.75f,7.1f),Fov=48};
 
         // ---- the drum and the glyph atlas's tiles ---------------------------------------------------------------------------
         /// <summary>The flaps on every drum, in order (blank first): the station's stroke font's capitals, digits and marks.</summary>
@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The flaps' shape: width over height for a glyph flap (the emblem's is square); flaps are spaced by Gap.</summary>
         public const float FlapAspect=.533f,LargeFlap=.25f,SmallFlap=.13f,LargePitchY=.29f,SmallPitchY=.153f;
         public const float HeaderTop=Height-Bezel,HeaderBottom=.905f,LabelBottom=.838f,LargeTop=.825f,SmallTop=.525f;
-        public const float LampX=-3.725f,EmblemX=-3.665f,ColumnsX=-3.38f,ColumnsEnd=3.72f,ColumnGap=.09f,Gap=.012f,SmallGap=.008f;
+        public const float LampX=-4.08f,EmblemX=-4.02f,ColumnsX=-3.735f,ColumnsEnd=4.075f,ColumnGap=.3f,Gap=.012f,SmallGap=.008f;
         public sealed class Layout
         {
             public Cell[] Cells;
