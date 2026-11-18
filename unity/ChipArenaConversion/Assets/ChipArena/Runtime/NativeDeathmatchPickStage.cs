@@ -43,7 +43,11 @@ namespace ChipArena.UnityConversion
             if(!PickFollowing(PickStageKind.Comeback)&&!(deathPickOpen&&local.offers.Count>0))return PickStageKind.None;
             seat=local;return PickStageKind.Comeback;
         }
-        private bool ComebackStageOpen=>!menu&&arena?.Local!=null&&match!=null&&match.DeathmatchTarget>0&&match.Phase==NativePhase.Fight&&!ReplayActive&&previewArena==null;
+        private bool ComebackStageOpen=>!menu&&arena?.Local!=null&&match!=null&&match.DeathmatchTarget>0&&match.Phase==NativePhase.Fight&&previewArena==null;
+        // The picker opens as the pilot goes down on a rewarded death (DeathmatchPickKeys) and stands in front of that death's
+        // killcam, as the tray did: a killcam already running ends (as Space skips it); one not yet started waits until the
+        // picker and its follow-through close (Choose later, C, the pick), then plays what is left before the respawn.
+        private bool PickStageOverReplay(){if(PickStageNow(out _)!=PickStageKind.Comeback)return false;if(ReplayActive)EndReplay();return true;}
         private bool PickStageShown=>PickStageNow(out _)!=PickStageKind.None;
         private NativeSeat OpeningStageSeat(NativeNetMessage v)
         {

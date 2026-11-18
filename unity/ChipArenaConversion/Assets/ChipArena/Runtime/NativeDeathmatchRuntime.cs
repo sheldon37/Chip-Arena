@@ -120,8 +120,8 @@ namespace ChipArena.UnityConversion
             if(deathWasAlive&&!seat.alive)deathDiedAt=now;deathWasAlive=seat.alive;
             if(seat.offers.Count>0&&deathOfferTicket!=seat.pickTicket){deathOfferTicket=seat.pickTicket;deathOfferAt=now;}
             // My pick's follow-through on the stage, else the open picker (each opening boots its cards again).
-            bool staged=!ReplayActive&&PickFollowGui(PickStageKind.Comeback,"DEATHMATCH  /  COMEBACK CHIP",NativeCyberTheme.Magenta(),seat,w,h);
-            bool picking=!staged&&!ReplayActive&&deathPickOpen&&seat.offers.Count>0;
+            bool staged=PickFollowGui(PickStageKind.Comeback,"DEATHMATCH  /  COMEBACK CHIP",NativeCyberTheme.Magenta(),seat,w,h);
+            bool picking=!staged&&deathPickOpen&&seat.offers.Count>0;
             if(picking&&!deathPickWasOpen)pickStageKey=null;deathPickWasOpen=picking;
             if(picking)ComebackStage(seat,w,h,now);
             if(!seat.alive&&seat.respawnAt>=0)RespawnCountdown(seat,w,h,now,picking||staged);
