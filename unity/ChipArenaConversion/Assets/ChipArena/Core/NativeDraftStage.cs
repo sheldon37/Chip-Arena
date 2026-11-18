@@ -251,7 +251,7 @@ namespace ChipArena.UnityConversion
         // portrait; the short follow-through creeps on by ShortCreep. The clack kicks it (KickPull of its distance, KickRoll of roll for
         // Unity's camera: Project ignores it) and shakes it (ShakeSize at ShakeHz); the lock punches it by Punch. Closed form in `a`.
         public const float HeroHeight=.70f,HeroMost=1.75f,ReducedMost=1.15f,SirenMost=1.3f,ReadoutMagnify=1.12f,Orbit=3*(float)Math.PI/180,ShortCreep=1.08f,Creep=.03f,
-            Punch=.02f,KickPull=.012f,KickRoll=.6f,ShakeSize=.003f,ShakeHz=22,ShakeSpan=.15f,SafeLeft=.06f,SafeTop=.08f,SafeBottom=.82f,EyesBelow=.10f,CrownEdge=.04f;
+            Punch=.02f,KickPull=.012f,KickRoll=.6f,ShakeSize=.003f,ShakeHz=22,ShakeSpan=.15f,SafeLeft=.06f,SafeTop=.08f,SafeBottom=.82f,EyesBelow=.10f,CrownEdge=.04f,BareCrop=.05f;
         /// <summary>The shot this frame: its magnification over the portrait, its weight (0 the portrait .. 1 the hero framing), the hero
         /// framing's magnification after the safe frame, and Unity's roll (degrees).</summary>
         public float Magnify=1,ShotWeight,HeroMagnify=1,Roll;
@@ -309,8 +309,9 @@ namespace ChipArena.UnityConversion
             var keepT=CameraTarget;var keepP=CameraPosition;Place(focus,distance,yaw,0,0,Tilt*(float)Math.PI/180);
             var pinch=PlannedBay+PlannedNormal*.05f+new Vector3(.04f,0,0);float shade=Math.Min(SafeBottom,Project(RestPlexus).Y+PlexusGap-.03f);
             bool In(Vector2 s)=>s.X>=SafeLeft&&s.X<=1-SafeLeft&&s.Y>=SafeTop&&s.Y<=shade;var visor=Project(PlannedVisor);
-            // (The crown too: the head's top with its crown room, as Frame keeps it, stays under the top edge.)
-            bool ok=In(visor)&&In(Project(PlannedBay))&&In(Project(pinch))&&visor.Y>=EyesBelow&&Project(new Vector3(0,crownTop,PlannedVisor.Z+.25f)).Y>=CrownEdge;
+            // (The crown too: under a hat or the halo the head's top with its crown room, as Frame keeps it, stays under the top edge; a bare
+            // head's top may leave it by BareCrop of the height, a close-up's crop, the eyes still EyesBelow under the edge.)
+            bool ok=In(visor)&&In(Project(PlannedBay))&&In(Project(pinch))&&visor.Y>=EyesBelow&&Project(new Vector3(0,crownTop,PlannedVisor.Z+.25f)).Y>=(crownTaken>0?CrownEdge:-BareCrop);
             CameraTarget=keepT;CameraPosition=keepP;return ok;
         }
         // The camera ray through a screen point (fractions: x from the left, y from the top) where it meets the plane z.
