@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
             public bool Authority;public NativeSeat AuthoritySeat;public int Seat,Order;public double End=double.NaN;public Vector3 Spot,Facing;public float Floor,Yaw,X,Z;
             public float Earliest=float.NaN;public bool Planned;public PodPlan Plan;public float PlanOpening=float.NaN;
             public string Text;public Texture2D Sign;public bool Scrolls;public float Columns;
-            public PodFrame Frame;public double LaunchAt=double.NaN;public Color Paint,Trim,Light;public string LookKey;
+            public PodFrame Frame;public double LaunchAt=double.NaN;public Color Paint,Trim,Light;public string LookKey,LookBody,LookAccent,SignName;public bool Looked;
             public bool Slammed;public readonly NativePodSounds.Cue[] Cues=new NativePodSounds.Cue[NativePodSounds.MaxCues];public int CueCount;public float CueClock=float.NaN;
         }
         /// <summary>A pod sound due this frame (NativePodAudio plays it): which, where, its gain at the source, the distance it
@@ -136,7 +136,10 @@ namespace ChipArena.UnityConversion
         /// position again.</summary>
         private Vector3 PodFeet(Actor a,SpawnView v,Vector3 position)
         {
-            if(!pods.TryGetValue(a.Id,out var pod)||!pod.Planned){v.Shown=false;return position;}
+            if(!pods.TryGetValue(a.Id,out var pod)){v.Shown=false;return position;}
+            // boarding to leave: the pilot is hidden where the authority holds it (the boarding view's front is under its feet)
+            if(!double.IsNaN(pod.LaunchAt)){v.Shown=true;v.Raise=0;return position;}
+            if(!pod.Planned){v.Shown=false;return position;}
             var f=pod.Frame;
             if(f.Age>=0)
             {
@@ -212,13 +215,14 @@ namespace ChipArena.UnityConversion
         // The pod's colours (linear) from its look and the seat's body and accent; its sign texture when the name changes.
         private void PodLook(PodView pod,NativeSeat seat,bool mine)
         {
-            string look=seat.pod??(mine?LocalPodLook??"":"");string key=look+"|"+seat.bodyColor+"|"+seat.accentColor;
-            if(pod.LookKey!=key)
+            // (compared field by field and the name only respelled when it changes: nothing allocates while the look holds)
+            string look=seat.pod??(mine?LocalPodLook??"":"");
+            if(pod.LookKey!=look||pod.LookBody!=seat.bodyColor||pod.LookAccent!=seat.accentColor||!pod.Looked)
             {
-                pod.LookKey=key;NativePodDrop.Colors(look,seat.bodyColor,seat.accentColor,out int paint,out int trim,out int light);
+                pod.LookKey=look;pod.LookBody=seat.bodyColor;pod.LookAccent=seat.accentColor;pod.Looked=true;NativePodDrop.Colors(look,seat.bodyColor,seat.accentColor,out int paint,out int trim,out int light);
                 pod.Paint=PodLinear(paint);pod.Trim=PodLinear(trim);pod.Light=PodLinear(light);
             }
-            string text=NativePodDrop.SignText(seat.name);
+            if(pod.Sign!=null&&pod.SignName==seat.name)return;pod.SignName=seat.name;string text=NativePodDrop.SignText(seat.name);
             if(pod.Text!=text||pod.Sign==null)
             {
                 if(pod.Sign!=null)CapturedAnimation.Release(pod.Sign);var px=NativePodDrop.SignPixels(text,PodDot,out int w,out int h);

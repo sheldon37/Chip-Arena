@@ -368,6 +368,58 @@ customizable too via customization."
 - **Checks:** `--pod-drop` (`Tests/PodDropChecks.cs`). Deploy changes are in `--deploy-presentation` and
   `--deploy-models`, the tab in `LockerChecks`.
 
+### Pods crash in (Claude, 2026-11-18; `docs/EXPEDITION-OVERHAUL.md` R7, W4 release 1)
+
+The drop above is now a crash. Presentation only: the pod record, the capsule, LaunchGone, the look keys and every rule are
+unchanged.
+- **The opening.** Every beat derives from the opening the drop spans: today's 3 s countdown, or Astra's 5 s
+  `PodOpening` (A0). `NativePodDrop.OpeningFor` already reads a countdown it sees as longer than 3 s as the 5 s one;
+  when A0 lands, set `NativePodDrop.Opening` to `ExpeditionRules.PodOpening`.
+  - **5 s:** the streaks appear at -5.0 s, about 200 m out and 140 m up. The director cuts to the ride at -4.1 s, the
+    cloud punch is near -3.7 s and the retros fire at -3.2 s. Each pod hits at -2.8 + 0.25·order s, and its bolts
+    blow the door 0.6 s later.
+  - **3 s (today):** the streaks appear 120 m out and 85 m up. Each pod hits at -1.75 + 0.12·order s, and its door
+    blows 0.35 s later.
+  - Every pilot stands on its capsule by GO.
+- **Each pod's own crash** (`NativePodDrop.Plan`, hashed from the record: seat, order, x, z, end, yaw in degrees):
+  - its own line, from behind its door within ±40°, coming in at 45-60°;
+  - a cloud punch and its boom;
+  - retros: two pods in four (ranked by the run's fight start, so every peer agrees) sputter and fail, and come in
+    harder;
+  - the touchdown at most 1.5 m short of its centre, a plough to rest on the centre, sunk 0.2 m and leaning 4° or less.
+    At rest its hull stays inside A1's collider envelope (two crossed 1.96 × 2.85 × 1.96 m boxes).
+- **Effects** (closed form, deterministic):
+  - in the air: an unfogged meteor streak (`NativeGlow`), the contrail, the vapour ring and the retros (or their
+    sputter);
+  - at the impact: a flash through the blast lights (it lights the city and survives DARKNESS), the destruction kit's
+    Slam chunks, a shockwave and a dust wall out to about 6 m, sparks and spoil;
+  - then steam, the bolts' flashes and the door's blow.
+- **What lasts** (from the record and the clock, so a late joiner and the killcam see the same):
+  - the crater: 5 m across and ploughed back into a 3-4 m furrow, flat paint of 6 cm or less, no shadow, one surface;
+  - the ablative tiles, cooling from white hot to black over 20 s and ticking as they cool;
+  - the smoke, thinning over 40 s.
+- **The pilot.** Hidden until the bolts blow the door. Then strapped in on the pod's full offset and lean, braced into
+  the harness bar, which lifts as the pilot unbuckles and stands up on the capsule by GO. Posed standing throughout.
+  - **The GO fallback, until A0 grounds the countdown:** after GO the drawn pilot waits on the capsule until it has
+    settled, with no footsteps and no Land take or `move.land`.
+- **My camera:** the Countdown branch of `NativeCinematicCamera` (`ArenaPresentation.PodDropDirect`).
+  - **The shots:** the sky as the streaks come in; the chase behind my pod (in first person, a braced second in the
+    red cabin first, the porthole glass); the stop 10 m up while the pod punches in below; the arc down behind my
+    pilot, or into my pilot's eyes in first person.
+  - **The hand-off:** its last 0.5-0.6 s are blended over the game's own camera, so GO has no snap.
+  - **Comfort:** its own shake, by NativeStructureShake's fall-off. Camera shake off gives the same shots, steady.
+    Reduced effects gives a still wide shot from the plaza instead.
+  - The countdown stays on screen. A capture's fixed eye (`ConversionGame.CaptureEye`) wins.
+- **Sound:** `NativePodSounds` (11 synthesized placeholders until the ElevenLabs batch, N5), played by
+  `NativePodAudio`: the roar, the boom (late by its distance), the retros or the sputter, the impact, the bolts, the
+  door, steam, the sign's blip, the harness and the cooling ticks.
+- **The model:** bones 0-5, r ≤ 1.17 m, height ≤ 3.0 m and the Locker's paint, trim and light keys are kept. Added:
+  ablative tiles and a heat shield (bone 6), four fins on the diagonals that are its legs, a glass porthole in the door,
+  four explosive bolts (bone 7) and the harness bar (bone 8).
+- **Facing.** The presentation reads the record's yaw in degrees, so A0's spots facing the fountain draw right.
+- **Contract:** `NativeExpeditionHubPlan.ExitReach` (0 until A1). The drawn pod centre is the record minus
+  forward(yaw°) × ExitReach (`NativePodDrop.Centre`).
+
 ### Slot sparks and sound cues (Claude, 2026-11-02)
 
 The owner asked for "spark effects when rolling and landing on things", with a different effect when a card helps the players
