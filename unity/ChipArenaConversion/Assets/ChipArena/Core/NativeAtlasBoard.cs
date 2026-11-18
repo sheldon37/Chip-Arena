@@ -38,6 +38,14 @@ namespace ChipArena.UnityConversion
         /// <summary>The station shot that frames the board: the camera opens on it while the line arrives (TILESET's card), with
         /// the gate under it and the console's side panels clear of it.</summary>
         public static readonly NativeDeployPresentation.View Shot=new NativeDeployPresentation.View{Eye=new Vector3(0,3.35f,-3.2f),Target=new Vector3(0,4.75f,7.1f),Fov=48};
+        /// <summary>After the hold the board hands the camera to the Overview along a smoothstep over HandOff seconds of the
+        /// station's clock, so the move starts and ends at rest (the station's own ease follows the path).</summary>
+        public const float HandOff=1.2f;
+        public static NativeDeployPresentation.View ViewAt(float since,in NativeDeployPresentation.View overview)
+        {
+            float u=(since-HoldUntil)/HandOff;if(!(u>0))return Shot;if(u>=1)return overview;float s=u*u*(3-2*u);
+            return new NativeDeployPresentation.View{Eye=Vector3.Lerp(Shot.Eye,overview.Eye,s),Target=Vector3.Lerp(Shot.Target,overview.Target,s),Fov=Shot.Fov+(overview.Fov-Shot.Fov)*s};
+        }
 
         // ---- the drum and the glyph atlas's tiles ---------------------------------------------------------------------------
         /// <summary>The flaps on every drum, in order (blank first): the station's stroke font's capitals, digits and marks.</summary>
@@ -240,6 +248,8 @@ namespace ChipArena.UnityConversion
         public float Since=float.NaN;
         /// <summary>Line 1 has landed (the bell has rung); a flap is falling this frame; the camera frames the board.</summary>
         public bool Landed,Moving,Framed;
+        /// <summary>The camera the board asks for while Frame returns true: its shot, then the eased hand-off to the Overview.</summary>
+        public NativeDeployPresentation.View View;
         /// <summary>Changes whenever a flap's pose does (the Runtime uploads the flaps only then).</summary>
         public int Version{get;private set;}
         /// <summary>This frame's levels: the header, line 1's flaps and lamp (with the bell's flash), the other lines'.</summary>
@@ -280,8 +290,8 @@ namespace ChipArena.UnityConversion
                 from[c]=p.Next;target[c]=targets[i];NativeAtlasBoard.Plan(Layout.Cells[c],since,salt,out start[c],out flips[c]);
             }
         }
-        /// <summary>Poses the board for one frame; true when the camera should frame it (the station's shot is the Overview and the
-        /// board is arriving or just landed).</summary>
+        /// <summary>Poses the board for one frame; true while the board has the camera (View), only over the Overview: its shot
+        /// while the line arrives and holds (Framed), then the eased hand-off to the Overview.</summary>
         public bool Frame(in DeployInput f,NativeDeployPresentation.Shot shot)
         {
             float t=f.Time;Selected=Select(f.State)??NativeTilesets.Of(NativeTilesets.City);NativeTilesets.Board(Selected,Lines);
@@ -304,8 +314,10 @@ namespace ChipArena.UnityConversion
             Header=1.55f+.5f*Flash;LineGlyph=1.35f+1.1f*Flash;LineLamp=since>=NativeAtlasBoard.LandAt?2.3f+2.2f*Flash:.35f+.9f*pulse;Dim=.55f;DimLamp=.32f;
             SparkCount=NativeAtlasBoard.Sparks(Sparks,0,since,Selected.Accent,f.Reduced);
             CueCount=NativeAtlasBoard.Heard(heard,since,Cues,0);heard=since;
-            Framed=shot==NativeDeployPresentation.Shot.Overview&&since>=0&&since<NativeAtlasBoard.HoldUntil;
-            return Framed;
+            bool over=shot==NativeDeployPresentation.Shot.Overview&&since>=0;
+            Framed=over&&since<NativeAtlasBoard.HoldUntil;bool handing=over&&!Framed&&since<NativeAtlasBoard.HoldUntil+NativeAtlasBoard.HandOff;
+            if(Framed||handing)View=NativeAtlasBoard.ViewAt(since,NativeDeployPresentation.ShotOf(NativeDeployPresentation.Shot.Overview));
+            return Framed||handing;
         }
     }
 }

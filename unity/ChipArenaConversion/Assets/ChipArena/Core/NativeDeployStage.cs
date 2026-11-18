@@ -198,7 +198,7 @@ namespace ChipArena.UnityConversion
 
             // the camera: the spinning machine, the gate on Deploy, else the overview
             Shot=NativeDeployPresentation.Framing(InstanceLook,MutatorLook,s);var want=NativeDeployPresentation.ShotOf(Shot);
-            if(Atlas.Frame(f,Shot))want=NativeAtlasBoard.Shot; // ATLAS: the overview opens on the board while its line arrives
+            if(Atlas.Frame(f,Shot))want=Atlas.View; // ATLAS: the overview opens on the board while its line arrives, then eases off it
             if(!cameraSet||!(dt>=0)){Camera=want;cameraSet=true;}
             else{float k=1-(float)Math.Exp(-dt/(Shot==NativeDeployPresentation.Shot.Deploy?.9f:.55f));Camera=new NativeDeployPresentation.View{Eye=Vector3.Lerp(Camera.Eye,want.Eye,k),Target=Vector3.Lerp(Camera.Target,want.Target,k),Fov=Camera.Fov+(want.Fov-Camera.Fov)*k};}
 

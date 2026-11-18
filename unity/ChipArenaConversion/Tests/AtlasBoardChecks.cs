@@ -273,6 +273,13 @@ namespace ChipArena.UnityConversion
             stage.Frame(input,-1);Check(stage.Shot==NativeDeployPresentation.Shot.Overview&&Vector3.Distance(stage.Camera.Eye,A.Shot.Eye)<1e-4f&&stage.Atlas.Framed,"the station opens on the board (the rules' shot is still the Overview)");
             for(float t=1/60f;t<A.HoldUntil+4;t+=1/60f){input.Time=t;stage.Frame(input,1/60f);}
             var over=NativeDeployPresentation.ShotOf(NativeDeployPresentation.Shot.Overview);Check(Vector3.Distance(stage.Camera.Eye,over.Eye)<.05f&&!stage.Atlas.Framed,"then eases to the Overview");
+            // the hand-off: a smoothstep on the station's clock from the board's shot to the Overview, so the camera leaves at rest
+            Check(Vector3.Distance(A.ViewAt(A.HoldUntil,over).Eye,A.Shot.Eye)<1e-5f&&Vector3.Distance(A.ViewAt(A.HoldUntil+A.HandOff,over).Eye,over.Eye)<1e-5f&&Vector3.Distance(A.ViewAt(A.HoldUntil+A.HandOff/2,over).Eye,(A.Shot.Eye+over.Eye)/2)<1e-4f,"the hand-off runs from the board's shot to the Overview");
+            {
+                var hs=new NativeDeployStage();var hi=Input(0);hs.Frame(hi,-1);float most=0,first=-1;var prev=hs.Camera.Eye;
+                for(float t=1/60f;t<A.HoldUntil+A.HandOff+3;t+=1/60f){hi.Time=t;hs.Frame(hi,1/60f);float step=Vector3.Distance(hs.Camera.Eye,prev);prev=hs.Camera.Eye;if(t>A.HoldUntil&&first<0&&step>0)first=step;most=Math.Max(most,step*60);}
+                Check(first>=0&&first<.01f&&most<6.5f,"the camera leaves the board at rest and never whips (first step "+first+" m, top speed "+most+" m/s at 60 fps)");
+            }
             Check(stage.Lights.Points==8&&stage.Lights.Directionals==1,"the station keeps its eight practicals: the flaps light nothing");
             var st2=new NativeDeployStage();var in2=input;in2.Time=0;st2.Frame(in2,-1);auth.RollInstances("host",pool);in2.State=auth.Snapshot();
             for(float t=.5f;t<1.2f;t+=1/60f){in2.Time=t;in2.SinceInstanceRoll=t-.5f;st2.Frame(in2,1/60f);}
@@ -357,7 +364,7 @@ namespace ChipArena.UnityConversion
             // the hooks: one line each in the station's scene, stage, console, audio and card bake
             Check(scene.Contains("atlas=NativeAtlasScene.Make();")&&scene.Contains("atlas?.Dispose();")&&Regex.Matches(scene,@"atlas\?\.Draw\(camera,Stage\);").Count==1,"the station's scene makes, draws and frees the board");
             int d0=scene.IndexOf("public void Draw(Camera camera",StringComparison.Ordinal),d1=scene.IndexOf("public void Dispose()",StringComparison.Ordinal);Check(scene.Substring(d0,d1-d0).Contains("atlas?.Draw(camera,Stage);"),"inside its draw");
-            Check(stage.Contains("public readonly NativeAtlasStage Atlas=new NativeAtlasStage();")&&Regex.Matches(stage,@"Atlas\.Frame\(").Count==1&&stage.Contains("if(Atlas.Frame(f,Shot))want=NativeAtlasBoard.Shot;")&&!Regex.IsMatch(stage,@"Shot=NativeAtlasBoard"),"the stage poses the board once a frame and only eases its camera to it (its Shot stays the rules')");
+            Check(stage.Contains("public readonly NativeAtlasStage Atlas=new NativeAtlasStage();")&&Regex.Matches(stage,@"Atlas\.Frame\(").Count==1&&stage.Contains("if(Atlas.Frame(f,Shot))want=Atlas.View;")&&!Regex.IsMatch(stage,@"Shot=NativeAtlasBoard"),"the stage poses the board once a frame and only eases its camera to it (its Shot stays the rules')");
             Check(console.Contains("Header(W,s,ui);NativeAtlasConsole.Card(stage,W,ui);Destinations(stage,s,ui);"),"the console's TILESET card comes first");
             Check(audio.Contains("NativeAtlasScene.Sound+=AtlasHeard;")&&audio.Contains("NativeAtlasScene.Sound-=AtlasHeard;ClearAtlasClips();"),"the audio hears the board");
             Check(play.Contains("limiter.Cue(sound.Key,Time.unscaledTime,sound.Gain)")&&play.Contains("Muted||Effects<=0")&&play.Contains("Voice()")&&play.Contains("gain*Effects")&&play.Contains("NativeAtlasSounds.Samples("),"its sounds on the shared voices, volume, mute and limiter");
