@@ -1,3 +1,9 @@
+## 2026-11-18 — Astra, A4 solo city scale walk
+
+Branch `codex/expedition-a4-greybox`, base `15dab150`. Editor and Development Builds have a solo walk at 420 × 340 m and 600 × 480 m. From the offline main menu press Ctrl+F6, walk either size with the same seed, hold Tab for the relief plan, and press Escape to compare. Uses native pilots, physics and ramp wedges, three seeded districts, the northern stair, the viaduct, roof bridges and the three-deck car park. Live deployment continues to use its current map.
+
+The managed `--layered-walk` sweep passed eight seeds at each size, checking gate-to-hall distances, continuous Hulk-width support and headroom. Measurements and controls are in `docs/EXPEDITION-OVERHAUL-ASTRA.md`. The owner walk and native frame captures are pending. The full surface graph, the chunked city kit, enemy spawning and the deployment swap belong to M5. This preview has no combat or network changes.
+
 ## 2026-11-18 — Claude: the expedition overhaul plan (Meridian), approved; Astra's hand-off (owner request; docs only)
 
 Owner asked for the expedition overhaul: a tileset machine, a reworked City away from the box style, streets shaped by their instances, a darker lamp-lit map, modelled buildings, props and gates, a living hub with survivors, pods that crash spread around the hub, a better drop-in, chests for caches in new places, a chip and a healing machine in the hub. Follow-up: "I want the expedition area (not instances) to be much bigger with layering essentially ... Think of how big risk of rain levels are", with each instance's look bleeding into the city near it. Owner on the split: "I can divide the work 🙂 feel free to send me whats needed from astra." Approval: "Yes, use defaults".
