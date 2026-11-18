@@ -2,7 +2,7 @@
 
 - **The owner (2026-11-18):** "The issue appears to occur specifically when zombies are running and turning simultaneously. Their legs begin
   moving unnaturally, potentially twisting, shuffling, sliding, or otherwise becoming distorted during directional changes." Branch
-  `claude/zombie-run-turn` from shared `e8e8efee`, merged forward with shared `8865e817`: `b94d39bf` and `4c64c80d` the first pass, `529c0353` the
+  `claude/zombie-run-turn` from shared `e8e8efee`, merged forward with shared `859a90c6`: `b94d39bf` and `4c64c80d` the first pass, `529c0353` the
   review's fixes, then this entry. Pushed, **not merged, not released**. Details and tables: docs/ZOMBIE-LOCOMOTION.md "Running and turning".
 - **Root cause: two leg solvers disagreed about a foot beside the body.** The gait poses the short voxel rig on a footprint planned for the
   model's legs and draws it in toward the rig's hip by the legs' ratio. It drew it in fore and aft only (`NativeHordeLoco.Squeeze`; the model's
@@ -60,9 +60,9 @@
   the draw-in across; `Tests/station-enemies-baseline.txt` motion lines rebased on purpose (header line added; deaths untouched).
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement speeds, pathing, the authority's facing or networking. Footfall
   cues and dust land on the gait's footprints as before, a few at different moments in sharp turns. Nothing for Astra.
-- **Checks:** full `CoreTests` in a clean checkout of `529c0353` (this branch merged with shared `8865e817`, with the expedition path patch and the
-  release banks, as the release runs it): exit 0, 1036 PASS groups, among them `ZombieRunTurnChecks` (238 checks). `--zombie-all`: all 21 groups
-  pass. `check_unity_compile.py`: Assembly-CSharp and Assembly-CSharp-Editor pass. Pin scan over the seven changed source files: 0 broken.
+- **Checks:** full `CoreTests` in a clean checkout of `824ac272` (this branch merged with shared `859a90c6`, with the expedition path patch and the
+  release banks, as the release runs it): exit 0, 1038 PASS groups, among them `ZombieRunTurnChecks` (238 checks); `529c0353` before the merge
+  likewise (1036). `--zombie-all`: all 21 groups pass. `check_unity_compile.py`: Assembly-CSharp and Assembly-CSharp-Editor pass. Pin scan over the seven changed source files: 0 broken.
   `git diff --check` clean. Not run: a Windows build; the Editor's PrototypeBuild.Validate.
 - **Seen in Unity:** the Editor (BoZo live play on the open floor beside the club's dance floor, where no stage hazard stops a DEV monster's chase; one DEV
   monster hunting the god-mode pilot; frames 1/30 s apart from a low side view and from above; every swing logged), shared `8865e817` against
