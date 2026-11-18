@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
         private bool DraftFrame()
         {
             bool pve=PvePickScreen,active=!menu&&arena!=null&&match.Phase==NativePhase.Draft;
+            // The Deathmatch's own chip picks on this stage, the local pilot on it (NativeDeathmatchPickStage.cs).
+            if(!active&&!pve&&PickStageFrame())return true;
             if(!active&&!pve){if(draftViewing){draftViewing=false;RestoreLive();presentation.ResetPresentation();}return false;}
             var seat=pve?arena.Local.Seat:match.Seat(match.DraftSeat);if(seat==null)return false;
             // A new picker: the stage restarts (its springs snap) and frames once the tray has been laid out for them.

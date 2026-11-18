@@ -104,12 +104,13 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Presentation (Claude, 2026-11-17; Astra's handoff of 2026-11-16) ------------------------------------------------
-        // The respawn countdown, the comeback chip's prompt and its picker on the chip draft's tray, and the score panel. They
-        // read the replicated seat (alive, respawnAt, offers, pickTicket, score) and send the same install as before; nothing
-        // here waits on presentation, so the respawn keeps the rules' time. The countdown's ring spans NativeDeathmatch's
-        // three seconds.
+        // The respawn countdown, the comeback chip's prompt and its picker, and the score panel. The picker is the PvP chip
+        // draft's own screen with the pilot (2026-11-18, NativeDeathmatchPickStage.cs). They read the replicated seat (alive,
+        // respawnAt, offers, pickTicket, score) and send the same install as before; nothing here waits on presentation, so
+        // the respawn keeps the rules' time (the stage hands the live view back as the pilot respawns). The countdown's ring
+        // spans NativeDeathmatch's three seconds.
         private const float DeathmatchRespawnSeconds=3;
-        private bool deathPickWasOpen,deathWasAlive=true;private float deathPickOpenedAt=-10,deathDiedAt=-10,deathOfferAt=-10;private int deathOfferTicket=-1;private Tray deathTray;
+        private bool deathPickWasOpen,deathWasAlive=true;private float deathDiedAt=-10,deathOfferAt=-10;private int deathOfferTicket=-1;
         private readonly Dictionary<int,int> dmScoreSeen=new Dictionary<int,int>();private readonly Dictionary<int,float> dmScoreAt=new Dictionary<int,float>();private NativeMatch dmScoreMatch;
 
         private bool DeathmatchPickGui(float w, float h)
@@ -118,12 +119,14 @@ namespace ChipArena.UnityConversion
             var seat = arena.Local.Seat;float now=Time.unscaledTime;
             if(deathWasAlive&&!seat.alive)deathDiedAt=now;deathWasAlive=seat.alive;
             if(seat.offers.Count>0&&deathOfferTicket!=seat.pickTicket){deathOfferTicket=seat.pickTicket;deathOfferAt=now;}
-            bool picking=deathPickOpen&&seat.offers.Count>0;
-            if(picking&&!deathPickWasOpen){deathPickOpenedAt=now;draftFocus=-1;ResetHolo();}deathPickWasOpen=picking;
-            if(picking)ComebackPicker(seat,w,h,now);
-            if(!seat.alive&&seat.respawnAt>=0)RespawnCountdown(seat,w,h,now,picking);
-            if(!picking&&seat.offers.Count>0)ComebackPrompt(w,h,now);
-            return picking;
+            // My pick's follow-through on the stage, else the open picker (each opening boots its cards again).
+            bool staged=!ReplayActive&&PickFollowGui(PickStageKind.Comeback,"DEATHMATCH  /  COMEBACK CHIP",NativeCyberTheme.Magenta(),seat,w,h);
+            bool picking=!staged&&!ReplayActive&&deathPickOpen&&seat.offers.Count>0;
+            if(picking&&!deathPickWasOpen)pickStageKey=null;deathPickWasOpen=picking;
+            if(picking)ComebackStage(seat,w,h,now);
+            if(!seat.alive&&seat.respawnAt>=0)RespawnCountdown(seat,w,h,now,picking||staged);
+            if(!picking&&!staged&&seat.offers.Count>0)ComebackPrompt(w,h,now);
+            return picking||staged;
         }
 
         // Eliminated: a red edge that fades, ELIMINATED (with the event glitch), the seconds in a draining ring and a bar. While
@@ -169,26 +172,7 @@ namespace ChipArena.UnityConversion
             NativeHudChrome.Key(new Rect(r.xMax-14-kw,r.center.y-11,kw,22),"C",enter,U.Mix(tone,Color.white,.4f));
         }
 
-        // The picker: the arena stays in view behind a deepening shade; the offers boot onto the chip tray as in the draft (the
-        // holo highlight, 1-9 and the arrows, Enter), and Choose later closes it (C again opens it).
-        private void ComebackPicker(NativeSeat seat,float W,float H,float now)
-        {
-            float m=H<=760?22:28,age=now-deathPickOpenedAt;bool calm=prefs.reducedEffects;var chips=new List<ContentChip>();foreach(var id in seat.offers){var c=OpeningChip(id);if(c!=null)chips.Add(c);}
-            float shade=calm?1:M.Clamp01(age/.25f);U.Gradient(new Rect(0,0,W,H),U.Hex(0x05070d,.35f*shade),U.Hex(0x05070d,.9f*shade));
-            DraftHeader("DEATHMATCH  ·  COMEBACK CHIP",NativeCyberTheme.Magenta(),"Choose a comeback chip","Respawn continues while you choose. The fight goes on around you.",W,H,out float top);
-            if(chips.Count==0)return;deathTray=LayoutTray(chips,top,W,H);LowerTray(deathTray,top,H-m-80);
-            int pick=DrawTray(deathTray,chips,i=>seat.chips.TryGetValue(chips[i].id,out int n)?n:0,age,true,-1,i=>false,true);int key=DraftKeys(chips.Count,true,true);if(key>=0)pick=key;
-            if(pick>=0)
-            {
-                string id=chips[pick].id;nativeAudio?.UiCue("ui.draft.pick","ui",.4f);
-                if (server == null) arena.InstallDeathmatchChip(seat.id,seat.pickTicket,id);
-                else SendServer(new NativeNetMessage{type="dm-chip",chip=id,pick=seat.pickTicket});
-                deathPickOpen=false;return;
-            }
-            string how="Press 1–"+Mathf.Clamp(chips.Count,1,9)+" or click a chip";float hw=U.Measure(how,12,false,true).x,bw=180,fw=hw+12+bw+24;var foot=new Rect(W-m-fw,H-m-56,fw,56);U.Round(foot,U.Hex(0x0d0f16,.9f),12);
-            U.Text(new Rect(foot.x+12,foot.y,hw+4,foot.height),how,12,U.Hex(0x9799a6),TextAnchor.MiddleLeft,mono:true);
-            if(U.Btn(new Rect(foot.xMax-12-bw,foot.y+8,bw,40),"Choose later  C",false,true,1,14))deathPickOpen=false;
-        }
+        // The picker: ComebackStage (NativeDeathmatchPickStage.cs), the PvP draft's screen over the fight's stage.
 
         // The score panel (top right, in MatchOverview's place): FIRST TO n; each side's colour, name and kills with a bar
         // toward the target, the leader marked; a side's row flashes and its count pops as it scores.

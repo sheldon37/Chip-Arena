@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
             if(!prefs.blindPick&&(prefs.pve||!prefs.deathmatch))return false;
             if(peers.Any(p=>p.Seat!=null&&p.Connection?.Closed==false&&p.LoadoutProtocol<1))
             {
-                networkStatus="All pilots need the Deathmatch and Blind Pick update to use these rules.";
+                networkStatus="All pilots need the Deathmatch and Blind Pick All update to use these rules.";
                 if(!dedicated)Notice(networkStatus);
                 return true;
             }
@@ -192,14 +192,17 @@ namespace ChipArena.UnityConversion
         private void SendOpeningChoice(string id,bool confirm)
         {
             var m=new NativeNetMessage{type="opening-choice",pickSession=openingView.pickSession,pick=openingView.pick,chip=id,ready=confirm};
+            if(BlindPreviewChoice(m))return;
             if(server!=null)SendServer(m);
             else if(openingRun!=null&&openingRun.Submit(1,(OpeningStep)m.pick,id,confirm,Time.unscaledTimeAsDouble))nextOpeningView=0;
         }
 
         // ---- Presentation (Claude, 2026-11-17; Astra's handoff of 2026-11-16) ------------------------------------------------
         // The opening's screens drawn with the chip draft's kit: the weapon pick as a grid of animated weapon cards beside a
-        // hero card (NativeWeaponCard), the starting chip on the chip tray itself (LayoutTray / DrawTray), the locked-in wait
-        // and the two-second group reveal, where every pilot's card flips face up in turn. They draw only the authoritative
+        // hero card (NativeWeaponCard), the starting chip on the PvP draft's own screen with the pilot (2026-11-18,
+        // NativeDeathmatchPickStage.cs), Blind Pick's N dealt weapons (NativeBlindChoiceUI.cs), the locked-in wait and the
+        // two-second group reveal, where every pilot's card flips face up in turn. Players read the grid's mode as Blind Pick
+        // All (its ids and messages stay blindPick). They draw only the authoritative
         // view the host sends (step, locked-in count, remaining time, cards) and send the same opening-choice messages: a
         // click chooses (unconfirmed, as before, so a timeout locks the last choice), Lock in or Enter confirms. Each pilot
         // sees only their own choices until the reveal. The host sends no step start, so each beat is timed from the frame
@@ -217,12 +220,21 @@ namespace ChipArena.UnityConversion
 
         private bool OpeningGui(float w,float h)
         {
-            if(openingView==null)return false;
+            BlindPreviewTick();if(openingView==null)return false;
             var v=openingView;var step=(OpeningStep)v.pick;float now=Time.unscaledTime;OpeningTrack(v,step,now);
+            // The starting chip, and my pick's follow-through, on the PvP draft's stage with my pilot (NativeDeathmatchPickStage.cs).
+            if(step==OpeningStep.Chip||PickFollowing(PickStageKind.Opening))
+            {
+                if(step==OpeningStep.Chip){OpeningChipStage(v,w,h,now);return true;}
+                if(PickFollowGui(PickStageKind.Opening,"DEATHMATCH  /  STARTING CHIP",U.Hex(0xc0c1ca),OpeningStageSeat(v),w,h))return true;
+                openingStepAt=now;
+            }
+            // Blind Pick with N choices: my dealt weapons, when the host sends them (NativeBlindChoiceUI.cs).
+            var blind=step==OpeningStep.Weapon?BlindChoiceView(v):null;
             var shown=step==OpeningStep.Weapon?OpeningWeapon(openingHero??highlightedWeapon??v.chip):OpeningWeapon(v.chip);
             OpeningBackdrop(w,h,shown!=null?NativeWeaponCard.Accent(shown):NativeCyberTheme.Cyan(),now);
-            if(step==OpeningStep.Weapon)OpeningWeaponStep(v,w,h,now);
-            else if(step==OpeningStep.Chip)OpeningChipStep(v,w,h,now);
+            if(blind!=null)BlindChoiceStep(v,blind,w,h,now);
+            else if(step==OpeningStep.Weapon)OpeningWeaponStep(v,w,h,now);
             else if(step==OpeningStep.Ready)OpeningReadyStep(v,w,h,now);
             else OpeningRevealStep(v,w,h,now);
             return true;
@@ -327,7 +339,7 @@ namespace ChipArena.UnityConversion
         private void OpeningWeaponStep(NativeNetMessage v,float W,float H,float now)
         {
             OpeningWeaponList();float m=H<=760?22:28,age=now-openingStepAt;bool calm=prefs.reducedEffects,repaint=Event.current.type==EventType.Repaint;
-            DraftHeader("BLIND PICK  ·  WEAPON",NativeCyberTheme.Cyan(),"Pick your weapon","Your pick stays hidden until every pilot locks in.",W,H,out float top);
+            DraftHeader("BLIND PICK ALL  ·  WEAPON",NativeCyberTheme.Cyan(),"Pick your weapon","Your pick stays hidden until every pilot locks in.",W,H,out float top);
             OpeningMeta(v,W,H,true,now);
             float hw=Mathf.Clamp(W*.26f,280,400),hx=W-m-hw,heroTop=Mathf.Max(top,H<=760?118:136);
             OpeningGrid(new Rect(m,top+8,hx-m-40,H-m-44-(top+8)));
@@ -404,34 +416,14 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- starting chip ----
-        // The chip tray as the draft shows it (boot in reading order, the holo highlight, 1-9 and arrows, Enter), with the
-        // locked weapon as a tag; a pick confirms at once.
-        private Tray openingTray;
-        private void OpeningChipStep(NativeNetMessage v,float W,float H,float now)
-        {
-            float m=H<=760?22:28,age=now-openingStepAt;var chips=new List<ContentChip>();foreach(var id in v.pickCards??Array.Empty<string>()){var c=OpeningChip(id);if(c!=null)chips.Add(c);}
-            DraftHeader("BLIND PICK  ·  STARTING CHIP",NativeCyberTheme.Cyan(),"Pick your starting chip","One Chip to begin the match with. Only you see these choices.",W,H,out float top);
-            OpeningMeta(v,W,H,true,now);
-            openingTray=LayoutTray(chips,top,W,H);LowerTray(openingTray,top,H-m-92);if(chips.Count==0)return;
-            int pick=DrawTray(openingTray,chips,i=>0,age,openingChipPick==null,-1,i=>false,true);int key=DraftKeys(chips.Count,openingChipPick==null,true);if(key>=0)pick=key;
-            if(pick>=0&&openingChipPick==null){openingChipPick=chips[pick].id;nativeAudio?.UiCue("ui.draft.pick","ui",.4f);SendOpeningChoice(chips[pick].id,true);}
-            OpeningWeaponTag(OpeningWeapon(v.chip),m,H-m-74,now);
-            OpeningKeys(H,"1–"+Mathf.Clamp(chips.Count,1,9),"Pick","← →","Browse","ENTER","Install");
-        }
-        // The locked weapon, as a small tag: its icon on its colour, YOUR WEAPON and its name.
-        private void OpeningWeaponTag(ContentWeapon x,float left,float y,float now)
-        {
-            if(x==null)return;var acc=NativeWeaponCard.Accent(x);string name=x.name.ToUpperInvariant();float nw=U.Measure(name,13,true).x,w=12+30+10+Mathf.Max(nw,U.Measure("YOUR WEAPON",9,true,true,.2f).x)+18;var r=new Rect(left,y,w,40);
-            NativeHudChrome.Panel(r,1,acc);var ic=new Rect(r.x+12,r.y+6,28,28);U.Radial(new Rect(ic.x-10,ic.y-10,48,48),U.A(acc,.25f));NativeIcons.Draw(ic,NativeIcons.Spec(x.id),U.Mix(acc,Color.white,.35f));
-            U.Text(new Rect(ic.xMax+10,r.y+5,w,13),"YOUR WEAPON",9,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);U.Text(new Rect(ic.xMax+10,r.y+18,w,18),name,13,NativeCyberTheme.Ink(),TextAnchor.MiddleLeft,bold:true);
-        }
+        // On the PvP draft's stage with the pilot (OpeningChipStage, NativeDeathmatchPickStage.cs).
 
         // ---- locked in ----
         // The pilot's own card, stamped, with the installed chip beside it when one was picked here, over the wait's status.
         private void OpeningReadyStep(NativeNetMessage v,float W,float H,float now)
         {
             float age=now-openingStepAt;bool calm=prefs.reducedEffects;int ready=Mathf.Clamp(v.id,0,8),total=Mathf.Clamp(v.team,1,8),waiting=Math.Max(0,total-ready);
-            DraftHeader("BLIND PICK  ·  LOCKED IN",NativeCyberTheme.Good(),waiting>0?"Locked in":"Everyone is locked in",waiting>0?"Waiting for the other pilots. Your choices stay hidden until the reveal.":"Revealing every pilot's weapon.",W,H,out float top);
+            DraftHeader(OpeningMode()+"  ·  LOCKED IN",NativeCyberTheme.Good(),waiting>0?"Locked in":"Everyone is locked in",waiting>0?"Waiting for the other pilots. Your choices stay hidden until the reveal.":"Revealing every pilot's weapon.",W,H,out float top);
             OpeningMeta(v,W,H,false,now);
             var x=OpeningWeapon(v.chip);var chip=openingChipPick!=null?OpeningChip(openingChipPick):null;
             float cw=Mathf.Clamp(W*.22f,260,340),ch=Mathf.Min(cw*1.48f,H-top-150),chipW=chip!=null?Mathf.Min(240,cw*.78f):0,gap=chip!=null?44:0,total2=cw+gap+chipW,x0=(W-total2)/2,y0=top+Mathf.Max(0,(H-top-120-ch)*.45f);
@@ -460,7 +452,7 @@ namespace ChipArena.UnityConversion
         private void OpeningRevealStep(NativeNetMessage v,float W,float H,float now)
         {
             float age=now-(openingRevealAt>=0?openingRevealAt:openingStepAt);bool calm=prefs.reducedEffects;var rows=v.pickCards??Array.Empty<string>();int n=Math.Min(rows.Length,8);
-            DraftHeader("BLIND PICK  ·  REVEAL",NativeCyberTheme.Magenta(),"Weapons revealed","",W,H,out float top);
+            DraftHeader(OpeningMode()+"  ·  REVEAL",NativeCyberTheme.Magenta(),"Weapons revealed","",W,H,out float top);
             if(n==0)return;int perRow=n<=5?n:(n+1)/2,lines=(n+perRow-1)/perRow;float gap=26,avail=H-top-70,cw=Mathf.Min(196,(W-120-(perRow-1)*gap)/perRow),ch=cw*1.26f;
             if(lines*(ch+46)>avail){float k=avail/(lines*(ch+46));cw*=k;ch*=k;}
             float blockH=lines*(ch+46)-12,y0=top+Mathf.Max(0,(avail-blockH)*.45f);

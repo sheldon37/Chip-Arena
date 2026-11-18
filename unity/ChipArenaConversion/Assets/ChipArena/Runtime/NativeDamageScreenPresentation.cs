@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         private void DamageScreen()
         {
             var local=arena?.Local;
-            bool show=local!=null&&local.Body!=null&&cameraView!=null&&!menu&&previewArena==null&&!ReplayActive&&!IntroActive&&!PvePickScreen&&!SirenRevealActive&&!cinematic.Directing
+            bool show=local!=null&&local.Body!=null&&cameraView!=null&&!menu&&previewArena==null&&!ReplayActive&&!IntroActive&&!PvePickScreen&&!PickStageShown&&!SirenRevealActive&&!cinematic.Directing
                 &&arena.Pve?.Holding!=true&&(match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result)&&prefs.damageScreen!="Off";
             if(!show){if(damageGeneration>=0){damageScreen.Clear();damageGeneration=-1;}NativeDamageScreenPass.Frame(null,false);return;}
             // Envelopes run on the unscaled frame clock (smooth on guests, whose match clock moves in network steps); the match
