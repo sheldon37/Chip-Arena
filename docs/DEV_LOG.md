@@ -1,3 +1,66 @@
+## 2026-11-18 — Claude: zombies run and turn on their own legs (owner report; presentation only)
+
+- **The owner (2026-11-18):** "The issue appears to occur specifically when zombies are running and turning simultaneously. Their legs begin
+  moving unnaturally, potentially twisting, shuffling, sliding, or otherwise becoming distorted during directional changes." Branch
+  `claude/zombie-run-turn` from shared `e8e8efee`, merged forward with shared `189e0d80`: `b94d39bf` and `4c64c80d` the change and its checks,
+  then this entry. Pushed, **not merged, not released**. Details and tables: docs/ZOMBIE-LOCOMOTION.md "Running and turning".
+- **Root cause: two leg solvers disagreed about a foot beside the body.** The gait poses the short voxel rig on a footprint planned for the
+  model's legs and draws it in toward the rig's hip by the legs' ratio. It drew it in fore and aft only (`NativeHordeLoco.Squeeze`; the model's
+  binding spread it back the same way, `NativeVisualRig.GameAnkle`). Running and turning, the body turns over its planted foot and travels off it,
+  which leaves that foot 30 to 50 cm beside the hips. Across the floor the rig read it at the model's metres, 1.7 times too far for its legs:
+  - it sank its hips to its .17 m cap and peeled the heel, and the model's hips dropped with it (10 to 15 cm in two or three frames, then climbed
+    back at `RaiseStep`);
+  - its reach rules re-planted a landing foot where its leg reached (a snap) and stepped planted ones early (a shuffle);
+  - its knee, which the model's knee follows, bent off a leg pointed too far out.
+  Two more writers twisted the leg on top: the knee kept the body's facing while a planted foot kept its own (up to 66 degrees between them),
+  and a swinging foot's twist was laid on under the capture's foot turn, which took it back off in two or three frames.
+- **Changed (Core `NativeHordeLoco`, `NativeHordeMotion`, `NativeVisualRig`):**
+  - The footprint is drawn in and spread out across the floor as well as fore and aft, so the rig's leg is the model's drawn small in every
+    direction. The model's feet land on the same footprints.
+  - A planted foot more than .45 leg lengths across from its hip steps as an out-of-reach one does (`NativeHordeGait.AcrossMost`): a leg reaches
+    less far across than fore and aft, which the short rig legs used to stand for by accident.
+  - The knee rides over its foot: the capture's knee pole and the splay guard turn with the foot's twist, and the model's planted knee leans its
+    foot's way (zombies only).
+  - A landing foot is planted turned on into the turn by half its coming stance's turn (at most 25 degrees), and a swinging foot takes its twist
+    over the capture's foot turn.
+  - Tried and dropped (worse in the probe): steps for a foot run past the body's middle or beyond a standing leg's reach, hurrying the other foot
+    down, quicker steps off the facing, a lower sink cap, and leading by the travel's own turn.
+- **Affected enemies:** every upright kind drawn on the model on the horde gait: shambler, runner, spitter and brute, and the zone kinds on the
+  model that walk on it (the Central Station's Linesman, Conductor, Undertow and Pileup; the City Ironworks' Cinderling, Stoker, Slagback,
+  Ladleman and Rigger; the Backrooms' Faceling, Drowned and Lifeguard). The knee and foot parts also reach the voxel tiers (the far crowd and the
+  bloater). Unchanged: the Hulk's heavy stride (only its planted knee now leans its foot's way), the crawler's and the Hound's four-limbed gaits,
+  the Smiler and the Tiler.
+- **Measured offline (`CoreTests --zombie-runturn`, `--zombie-runturn-sweep`; the model's legs, shared `442bcf69` to branch):**
+  - Running arcs, 90 degree turns and circle chases: the hips' lowest .86-.97 to .92-1.00 legs (straight .96-1.00); the runner's sprint was
+    hardly touched (.92-.97 either way).
+  - 90 degree running turns at the worst of eight moments of the stride: .84-.86 to .91-.98.
+  - Fastest hip drop through arcs and 90 degree turns: up to 14.1 to at most 4.4 legs/s (reversals and new targets 5.0-9.9 to 3.7-8.2).
+    Knee off its planted foot: up to 66 to at most 29 degrees.
+  - A planted ball's slip in 90 degree turns: up to 3.1 to .4 cm a frame (reversals 1.0-1.5 to .7-1.4). A swinging foot's fastest turn in
+    walking turns: 41 to 24 degrees a 120th. Straight runs, set-offs and walks unchanged.
+- **Systems touched:** the horde gait and the model binding's zombie legs (presentation). Tests: `Tests/ZombieRunTurnChecks.cs` (new, in the full
+  run and `--zombie-all`); the gait and posture checks spread the ankle both ways; `Tests/station-enemies-baseline.txt` motion lines rebased on
+  purpose (the voxel tier's knees and feet; the deaths untouched).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement speeds, pathing, the authority's facing or networking. Footfall
+  cues and dust land on the gait's footprints as before, a few at different moments in sharp turns. Nothing for Astra.
+- **Checks:** full `CoreTests` in a clean checkout of `c17be9f2` (this branch merged with shared `189e0d80`, with the
+  expedition path patch and the release banks, as the release runs it): exit 0, 1036 PASS groups, among them the new `ZombieRunTurnChecks`
+  (122 checks; 30 of its first 114 fail on shared). `--zombie-all`: all 21 groups pass. `check_unity_compile.py`: all four assemblies pass. Pin
+  scan: 3 files, 0 broken. `git diff --check` clean. Not run: a Windows build; the Editor's PrototypeBuild.Validate.
+- **Seen in Unity:** the Editor (BoZo live play on the club's dance floor, one DEV monster at a time hunting the god-mode pilot, frames
+  1/30 s apart from a low side view and from above), shared `442bcf69` against the branch at `c17be9f2`. Shambler, runner and brute each chasing a
+  pilot running a circle, then running 90 and 180 degree turns onto a pilot set down beside or behind it, a 120 degree new target (the club's floor
+  stopped that run, so it turned where it stood), and a turn into a swing; four kinds together chasing the circling pilot. The model's pelvis at
+  its lowest and its biggest drop in a 30th of a second: circle chase shambler .90 (.15) to .98 (.10), brute .85 (.11) to 1.04 (.04), runner .95
+  either way; running 180 shambler .98 (.13) to 1.01 (.05), brute .94 (.13) to 1.03 (.05); running 90 about the same (shambler .99 to 1.01,
+  runner .92 to .91, brute .97 either way). The brute's circle chase on shared folds into a squat with its feet together under it for a third of
+  a second; on the branch it runs on in stride.
+- **Not verified:** a Windows build; two clients (a guest poses the same gait on the same presented root, so it is expected to match); a large
+  crowd's frame time (the per-add cost is unchanged offline); real navigation round obstacles in a played Expedition.
+- **Risks and next:** see docs/ZOMBIE-LOCOMOTION.md "Still open". At the worst moment of a 180 or a new target behind it, the hips still sink about
+  as far as on shared, though more slowly; that needs a planned pivot step or the pack's turn takes. The shambler's slow walking reversal dips .1 legs
+  more than shared at one moment. **Next:** the owner looks at the strips and plays it; then merge and release.
+
 ## 2026-11-18 — Claude: every weapon plays its own selection flourish on the Blind Pick screen (owner report; presentation only)
 
 Branch `claude/weapon-pick-flourish`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "Give each weapon choice a selection animation for the player (Of course, everyone is on their own screen so others wont see this) ... Kind of like if they select pistol for instance~ a pistol will eject from the icon and shoot around etc. Be creative!"
