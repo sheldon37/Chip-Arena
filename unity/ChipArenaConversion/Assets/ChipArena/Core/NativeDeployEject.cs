@@ -181,7 +181,7 @@ namespace ChipArena.UnityConversion
                     // drops away; the eye tips down after it (the pod rides above the frame's middle) until the rolled city
                     // fills the frame below it, and in the rush plunges after it (still looking down)
                     var outward=new Vector3(pad.X-NativeDeployPresentation.Table.X,0,pad.Z-NativeDeployPresentation.Table.Z);outward=outward.LengthSquared()>1e-4f?Vector3.Normalize(outward):-Vector3.UnitZ;
-                    var side=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,f));var dock=new Vector3(pad.X,PodBase(mine)+PodHeight*.5f,pad.Z);
+                    var side=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,outward));var dock=new Vector3(pad.X,PodBase(mine)+PodHeight*.5f,pad.Z);
                     float rush=Rush(since,cut),plunge=rush*rush*26;
                     var eye=dock+outward*ReleaseOut+side*ReleaseSide+new Vector3(0,ReleaseRise,0);
                     var pod=dock-new Vector3(0,PodFall(mine,since,cut),0);var upper=pod+new Vector3(0,PodHeight*.25f,0);
