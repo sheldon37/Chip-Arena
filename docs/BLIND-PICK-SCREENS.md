@@ -102,6 +102,11 @@ so others wont see this) The animations should look very nice, to the give playe
   Locking in plays a short finisher (0.95 s) on the locked-in card. Against bots that screen is skipped (lock-in goes straight
   to the reveal), so the finisher plays on the pilot's own card in the reveal instead, unless the locked-in screen just played
   it. The other pilots' cards in the reveal never play anything: each pilot only sees their own.
+- **Both pick screens.** Blind Pick All's grid and Blind Pick's dealt cards play them the same way. The dealt cards are hero
+  cards: a hero card plays the card's whole part (the icon leaving its slot, the Katana's split, L33T's glitch) and keeps a
+  grid card's measure, since its icon is far larger, while starting and ending at its own icon. Its shots, bolts and arrow
+  aim at the other dealt cards. A locked dealt card plays the finisher until the next view arrives, and the locked-in screen
+  or the reveal carries it on.
 - **How.** `Runtime/NativeWeaponFlourish.cs` and `NativeWeaponFlourish.Moves.cs` (`NativeWeaponCard` is partial). `Draw` and
   `Hero` queue the flourish of the chosen card (`Look.Selected`, `SelectAge`) or the locked one (`Locked`, `LockAge`; `Finish`
   for the reveal's own card, `Quiet` for the others). `NativeWeaponCard.Flourishes()` draws them once per frame after every
