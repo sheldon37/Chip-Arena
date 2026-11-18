@@ -99,6 +99,7 @@ Branch `claude/deathmatch-picks`, base shared `claude/sleepy-ritchie-g8ruhv` at 
 - The Ready header for a guest reads the room's copy of the rules.
 
 **Next.** The owner looks at the captures. Then integrate with `claude/pick-flourish` (delete the stub), merge and release.
+- **Released:** shared `ff0b7d88` (the builder at `ff0b7d88`), test channel revision `639306184521961702` (build `6c46b967`); the suite at `64264727` (1,034 groups, exit 0), the Unity compile. The comeback pick keeps the fight's corpses and blood (`560d08c9`). The weapon flourishes replace the `NativeWeaponCardFlourishStub` when `claude/weapon-pick-flourish` merges. No bank or Drive zip change.
 
 ## 2026-11-18 — Claude: the rifle's Q looks through its scope again in any camera (owner report; presentation only)
 
