@@ -100,6 +100,102 @@ Branch `claude/deathmatch-picks`, base shared `claude/sleepy-ritchie-g8ruhv` at 
 
 **Next.** The owner looks at the captures. Then integrate with `claude/pick-flourish` (delete the stub), merge and release.
 
+## 2026-11-18 — Claude: the rifle's Q looks through its scope again in any camera (owner report; presentation only)
+
+Branch `claude/rifle-q-scope`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "fix rifle Q to actually use the scope still instead of zooming in (right click working as intended)".
+
+- **Cause.** `0d67511d` (2026-11-10, "guns aim in third person") stopped every aim forcing first person. The rifle's held Q is the same aim input as right click, so in third person it became the aim zoom (.68 of the camera's field of view). The 3x scope only showed in first person.
+- **Fix (`9bbbc06d`).** Held Q on the rifle (`NativeViewRules.ScopeView`, read with the aim in `ConversionGame`'s input) takes the eye in whichever camera is chosen, as before 2026-11-10. It gets the aim row's 28 degree view (3x), its .36 look speed (`AimLook`), the existing scope mask and reticle (`NativeScopePresentation.DrawScope`, `ScopeActive`), and the pilot's own body and view model hidden.
+- **Hand-over (`d05986d7`, from the Editor captures).** A shoulder camera's crosshair ray runs beside the eye's (0.62 m right, 0.25 m up), so the reticle opened that far from what the crosshair was on (a foe at 8 m some 110 px aside). For four frames the view model rose half drawn (a dark rifle, no hands) before the mask. Now (`ScopeHandOver`):
+  - Into the scope from third person, the sight is up from the first frame (`ArenaPresentation.ScopeIn`, `NativeAimMotion.Raised`). From a shoulder camera, the eye turns onto the point under the crosshair (`NativeAimConvergence.Angles`, the look it was already sending), so the reticle opens on it.
+  - Straight out of it, the chosen camera's field of view comes back with the cut. A shoulder camera turns so its crosshair runs through the point under the reticle (`NativeCameraRig.LookAt`, as the lock-on frames).
+  - Classic sends the camera's own look, so it keeps it. First person chosen in Settings keeps its own raise.
+- **Unchanged.** Right click, the controller's Aim, the pistol's and machine gun's aims and Q kits, and first person chosen in Settings (where Q and right click already scope).
+- **Systems.** Camera and input look (`Runtime/ConversionGame.cs`, `Runtime/NativeScopePresentation.cs`, `Runtime/NativeViewPresentation.cs`, `Core/NativeAimPresentation.cs`, `Core/NativeAbilityRules.cs`), with checks in `Tests/GunKitChecks.cs`. The local BoZo tool gains `scopehold=` and `rclick=`, both on the arena clock (git-ignored, not committed).
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. The rules see the same held Aim (spread, settle and slower walking unchanged), and the wire is untouched. The hand-over turns only the client's camera look, so the sent look stays the eye's aim at the same point across it.
+
+**Checks.**
+- Full CoreTests at `d05986d7` (and at `9bbbc06d`), run as relgen5 does with its test-path patch: 1,032 groups pass, exit 0.
+- The pinned 6000.3.24f1 semantic compile (`tools/check_unity_compile.py`) passes for Input System, Player, Assembly-CSharp and Editor.
+- `git diff --check` is clean.
+- New checks in `GunKitChecks.Ads`:
+  - only the rifle's held Q scopes;
+  - the rifle's scope row (28 degrees, .36) and its third-person zoom (.68);
+  - the key is read with the aim, and only in play;
+  - the scope's eye, look speed and field of view, set before the camera is placed;
+  - a spectated pilot never scopes;
+  - the hand-over: the sight up at once, the reticle on the crosshair's point and back, the field of view cut out;
+  - first person's own raise is kept.
+- **Editor captures** (the shared Editor, BoZo, under the lock; stage banks and motion bank unchanged). The same play on `01505ad6` and `d05986d7`: Cyber City, third person (the Editor's saved shoulder camera), a bot 8 m ahead, Q held 7.5–9.5 s, right click 10.5–12.5 s, frames 1/60 s apart, the entry and exit frame by frame, and first person too.
+  - Before: Q is the third-person zoom, the same as right click.
+  - After: Q's first frame is the 3x scope with the bot under the reticle. The first frame out is the shoulder view at its own field of view. Right click is the same zoom as before. In first person, Q and right click scope as before.
+  - Stills are in `riflescope/look/` in the integrating session's scratchpad.
+
+**Not run.** No Windows build and no multiplayer run. A capture's stall finishes the field of view's ease in one frame, so the stills don't show the zoom easing into the scope. The look hand-over's vertical half was held by the capture's fixed pitch, so only its horizontal half was seen.
+
+**Risks.**
+- The entry turn is clamped to 25 degrees of the look (the convergence's own clamp).
+- The exit turn uses the shoulder rig's last fitted offset, from before the scope.
+- The controller's Aim keeps the third-person zoom, as right click's twin.
+
+**Next.** The owner plays it (Q against a moving target, both shoulders, Classic); then merge and release.
+
+## 2026-11-18 — Claude: arrows stuck in a pilot ride the drawn body, not a point off it (owner report; presentation only)
+
+- **The owner (2026-11-18):** "Can you fix bow arrows? It seems they sometimes 'attach' off of a players body. Essentially it'll look like
+  someone is running around with floating arrows around them." Branch `claude/bow-stuck-arrows` from shared `01505ad6`: `6c6cad6e` the
+  change and its checks, then this entry. Pushed, **not merged, not released**.
+- **Why "sometimes":** a pilot's arrow rode the game rig's joint (the voxel skeleton) at the replicated hit point, its depth from the voxel
+  boxes. Three things put it off the drawn model:
+  - The hit point lies on the game's capsule (radius 0.42 m), up to a quarter metre outside the model's skin at the arms, sides and head;
+    when the flight missed the joint's boxes the arrow kept that capsule point.
+  - The model does not follow that rig: the pack's clips, its stride, hand fits, rolls and hit reactions pose it differently, so the arrow
+    drifted off the body while running, rolling or jumping, and floated above or beside it.
+  - A guest draws other pilots about 0.1 s behind its newest frame but placed each hit as soon as the frame landed, on the pose of 0.1 s
+    before (about 0.7 m off a sprinting pilot).
+- **Now:**
+  - Core `NativeArrowGib.Seat`: where a flight meets the skin as posed. The entry is the first face it meets; a flight passing beside
+    the skin (the capsule's hit) is moved onto the body's nearest vertex (within 0.48 m), and a head shot looks on the head first. The far
+    side of that body gives the halfway bury. It runs on a worker, one search per body per frame, over the same skinned parts the cuts
+    and wound holes read (`Runtime/NativeArrowGibPresentation.cs` `ArrowSeatAsk`/`ArrowSeatsDone`).
+  - `NativeBowStuck` records keep that place on the model's own bone (`Model`, `ModelPoint`, `ModelDir`, `ModelDepth`), drawn nowhere
+    while it is found (`Seating`: at most a frame or two). The game joint's place stays as the fallback (voxel bodies, nothing found).
+  - Where it draws (`BowBone`): a live model body draws it on the bone it was seated on (an unseated one in the game joint's frame on the
+    model, `VisualJointFrame`); the voxel rig only for a voxel body; nothing while the body is not drawn (first person, hidden, off stage,
+    a veiled Fangs pilot to its foes). Dead: the model corpse's same bone (`ArrowOnCorpse`), on the half of a split body its point lay
+    on (the first, whole, while the cut is made), hidden with a crushed part or a hidden corpse (dissolved, down a vent), fading as it
+    dissolves. A killing arrow is seated on the pose last drawn, which the corpse wears.
+  - The hit is carried onto the body as drawn (`NativeArrowGib.OnDrawn`: its drawn offset and its run since the hit), and a guest's hit
+    on another pilot waits for the drawn pose to reach it (`NativeArrowGib.Due`; not its own predicted pilot or a dead one).
+  - The voxel fallback (`NativeArrowGib.Onto`): a capsule hit beside the joint's boxes is moved onto them.
+  - A pass-through's holes are seated the same way; its exit spray leaves from where the flight left the skin.
+- **Unchanged:** hits, damage, hitboxes, arrow flight, pierce, timing, networking (nothing for Astra). Wall arrows, horde adds and the
+  Siren as before. **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks:**
+  - Full CoreTests on `6c6cad6e` (Windows path patch in a throwaway worktree): 1,033 PASS lines, exit 0. `--gib`: 1,911 checks (new: the
+    model seat on a synthetic skin, the capsule-side and head-shot moves, an arm across the chest, the box fallback, the timing helpers,
+    no allocation, the wiring pins); `--bow`: 5,050 (seating, the model bone's frame, the body's opacity, the fallback).
+  - `tools/check_unity_compile.py`: Input System, Player, Assembly-CSharp and Editor pass, no warnings in the changed files.
+  - The Editor build gate (`PrototypeBuild.Validate`) on `6c6cad6e`: ok, 398 PASS lines (its two edit-mode `Destroy` errors are in
+    earlier gates too).
+  - `git diff --check` against shared: clean. The test pin scan finds no broken pins.
+  - The Editor checkout went back to `9319026b` with its local files after every hold; the 14 stage banks and the motion bank (6,136,627
+    bytes, `37ec44d2`) as released.
+- **Filmed** in the shared Editor (Cybercity, 1/30 s steps; before shared `01505ad6`, after `6c6cad6e`). The idle bot turned archer looses
+  real arrows through the arena's own `Fire` (a local tool option): the back of the chest, the left arm, the right thigh, a capsule-edge hit
+  beside the torso, the left thigh and the upper chest; then the pilot sprints, rolls and jumps. Views follow the body.
+  - **Default pilot (greatsword):** before, arrows hang in the air above its head and beside its hips and knees, standing, sprinting,
+    mid-roll and mid-jump; after, every shaft starts at the skin (head, shoulder, arm, thigh) and moves with it through the roll and jump.
+  - **Hot Dog:** before, one arrow stands in the air over the sausage's crown and others hang beside it; after, they go into the sausage
+    and stay there through the roll.
+  - **Corpse:** a bot shot three times, then killed by a fourth arrow; after, all four ride the falling corpse (the killing one seated
+    from the pose last drawn, one capture frame unseen).
+  - Two of the six arrows in each pilot run hit props on the way, in both builds (the scripted origins); the rest stuck.
+- **Not seen / not done:** a guest's view (the tools run one client: the guest wait and carry are covered by managed checks only); a split
+  or crushed corpse with an arrow, a vent fall, Frostbreak or Soul Drift (code path only); the Low tier; a Windows build. The Hot Dog's
+  arrows ride the bone under its sausage twins, so the sausage's jiggle does not move them.
+- **Next:** the owner looks; merge and release.
+
 ## 2026-11-18 — Claude: the Bombadier's explosions and throws are heard in every match (owner report; presentation only)
 
 Branch `claude/bomb-blast-audio`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "Seems the bombadier doesnt have sounds for when their explosives blow up now?"
@@ -127,6 +223,7 @@ Branch `claude/bomb-blast-audio`, base shared `claude/sleepy-ritchie-g8ruhv` at 
 - **Risk, not changed.** The `explosion` gate's 70 ms gap drops 2 to 3 of a cluster's 6 bomblets (logged in both runs). That is the sound pass's mix; it needs a listen.
 - **Risk, edge case.** A new arena whose clock lands within about a second of the last arena's final mark could still miss a record that is older on both id and time, for at most that second.
 - **Next.** The owner listens to two matches in a row as the Bombadier (a Deathmatch, or the Dev Sandbox twice), and to the Preview Bombadier. Then merge and release.
+- **Released:** shared `42bd093e` (the builder at `42bd093e`), test channel revision `639306125701063043` (build `7989353c`); the suite at `b99ab8cd` (1,032 groups, exit 0), the Unity compile. The builder's first two attempts stopped at the sound queue (`worker.lock` held by an agent's Python test run); the third, with the lock free, built and published. The installed bank is unchanged (364 entries, 806 clips). No bank or Drive zip change.
 
 ## 2026-11-17 — Claude: Blind Pick and Deathmatch screens (Astra's 2026-11-16 handoff; presentation only)
 

@@ -9,6 +9,9 @@ namespace ChipArena.UnityConversion
         public bool FirstPerson,AimHeld;
         private readonly NativeAimMotion aimMotion=new NativeAimMotion();
         public bool ScopeActive=>viewRig!=null&&NativeAimPresentation.Scope(FirstPerson,AimHeld,viewRig.Weapon,aimMotion.Weight);
+        /// <summary>The rifle's held Q into its scope from a third-person camera (ConversionGame, NativeScopePresentation.cs): the sight is up
+        /// from the first frame.</summary>
+        public void ScopeIn()=>aimMotion.Raised();
         public Camera ViewCamera;
         private CapturedAnimation.Player viewRig;
         private static List<Matrix4x4>[] MakeBatches()
