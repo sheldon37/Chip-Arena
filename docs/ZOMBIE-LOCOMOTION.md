@@ -596,30 +596,46 @@ Two more writers twisted the leg on top of that:
   the capture's foot rotation within the first sixth of the swing. That rotation carries no twist, so a foot lifting 40 degrees off the facing spun
   straight in two or three frames (up to 41 degrees in a 120th of a second on a spitter's walking reversal).
 
+On the gradual running turns (arcs, the circle chase) the review measured either of the first two changes below holding the hips alone; the sharp
+turns need the second (`AcrossMost`).
+
 ### What changed
 
-- `NativeHordeLoco.Squeeze` / `Spread` and `NativeVisualRig.GameAnkle`: the footprint is drawn in and spread out **across the floor as well as fore
-  and aft**. The rig's leg is the model's leg drawn small in every direction, so its sink, heel and reach rules see the model's reach. The model's
-  feet land where they did (the same footprint), and the rig's knee geometry across the body is the capture's own.
-- **A foot the body ran sideways off steps** (`NativeHordeGait.AcrossMost`, .45 leg lengths across from its hip): it counts as out of reach, as the
-  rig's short legs used to make it by accident after sinking the hips. A leg reaches less far across the body than fore and aft. Without this, the
-  squeeze above let the rig reach such a foot, so the hips sank to keep it while the other foot finished a long swing, and the body ran on over
-  its feet.
+- `NativeHordeLoco.Squeeze` / `Spread` and `NativeVisualRig.GameAnkle`: running, the footprint is drawn in and spread out **across the floor as well
+  as fore and aft**, so the rig's leg is the model's drawn small in every direction and its sink, heel and reach rules see the model's reach. The
+  draw-in across follows the walk-to-run blend (`NativeHordeGait.LegsAcross`: `LegsNow` running, 1 walking), and the binding spreads it back by the
+  same amount (`State.StrideAcross`, from `NativeZombieModelPresentation` through `NativeZombiePosture.Stance`). Walking keeps shared's footing:
+  drawn in across at a walk too, a foot left aside through a walking turn was kept on and unpeeled, and the hips dipped in walking circle chases and
+  slow turns (the review).
+- **A foot the body ran sideways off steps** (`NativeHordeGait.AcrossMost`, .45 leg lengths across from its hip running; `AcrossWalk`, .3, walking):
+  it counts as out of reach, as the rig's short legs used to make it by accident after sinking the hips. A leg reaches less far across the body than
+  fore and aft. Without this, the draw-in above let the rig reach such a foot, so the hips sank to keep it while the other foot finished a long
+  swing, and the body ran on over its feet.
 - The knee rides over its foot: the capture's knee pole and the splay guard turn with the foot's twist (`KneeFollow` 1; `Splayed(..., forward)`),
-  and the model's planted knee leans the way its foot faces (`NativeVisualRig.Foot`, zombies only: `State.Follow`).
+  and on a biped's own stride the model's planted knee leans the way its foot faces (`NativeVisualRig.KneeLeansToToes`). The Hulk's heavy stride and
+  the Hound on all fours keep the hips' lean: leaning to the toes flipped the Hound's knees from side to side (its pelvis's forward lies across the
+  body on all fours) and moved the Hulk's up to 8 cm (the review).
 - A landing foot is planted turned on into the turn by half its coming stance's turn (`LeadOf`, at most `LeadMost` 25 degrees), so it twists half
-  as far either side of the facing through its stance. A swinging foot eases from its lift's twist to that lead.
-- A swinging foot on the capture's turn takes its twist about the floor's upright **after** the capture's turn.
+  as far either side of the facing through its stance. A swinging foot eases from its lift's twist to that lead. The lead changes how the foot is
+  drawn, not when it steps round: the twist step (`TwistMoving`, `TwistStep`) counts from the way the foot would have landed square. Counted from
+  its drawn facing, a foot led into a walking turn held on a quarter of a turn longer while the other foot fell behind it.
+- A swinging foot on the capture's turn takes its twist about the floor's upright **after** the capture's turn, and on the model's stride the
+  capture's turn comes in and out over at least `SwingTurnEase` (.05 s) and a lifting foot lets a peeled heel go over at least `HeelLetGo` (.07 s):
+  a quick step off a peeled heel, a tenth of a second long, turned its foot 33 degrees in a frame.
+- Runtime `NativeHordeGorePresentation` and `NativeHordeKindPresentation`: wounds, stumps, settled remains and thrown limbs start from the model's
+  joints (the rig's moved by the model's shift, as the Ironworks gear does), since the model's legs now stand up to a quarter metre off the rig's.
 
-Tried and dropped, because they made running turns worse: a step for a foot run past the body's middle with a short swing (with or without hurrying
-the other foot down), a step for any foot further from its hip than a standing leg reaches, quicker steps while running off the facing, a lower sink
-cap, and leading the landing by the travel's own turn.
+Tried and dropped: for running turns, a step for a foot run past the body's middle with a short swing (with or without hurrying the other foot
+down), a step for any foot further from its hip than a standing leg reaches, quicker steps while running off the facing, a lower sink cap, and
+leading the landing by the travel's own turn. For walking turns, the first pass's draw-in across at a walk with the lead counting for the twist step
+(higher hips on steady walking arcs, lower in circle chases that stop and set off), a walking sideways step that waits for the other foot to land, and
+other walking limits (.06 to .3 m).
 
-### Measured (`CoreTests --zombie-runturn` and `--zombie-runturn-sweep`)
+### Measured (`CoreTests --zombie-runturn`, `-sweep`, `-walks` and `-band`)
 
 The host's 60 Hz chase (its velocity and facing set at once toward the pilot, as `StepPveHorde` does) through the presented root, drawn at 120 frames
 a second, on the model's legs. Hips are the pelvis over the floor in leg lengths; "knee off foot" is the planted knee's bend against its foot's facing.
-Shared `442bcf69`, then this branch.
+Shared `8865e817` (its gait as at `442bcf69`), then this branch at `529c0353`.
 
 One turn moment:
 
@@ -638,8 +654,9 @@ One turn moment:
 | brute run arc 180/s | .88, 1.00 | 5.3, 1.9 | 51, 20 | .17, .04 | -.52, -.51 |
 | brute run turn 180 | .85, .99 | 5.0, 1.7 | 42, 18 | .14, .04 | -.50, -.49 |
 | brute run target switch | .87, .99 | 4.8, 2.1 | 40, 13 | .17, .04 | -.36, -.33 |
-| shambler walk turn 180 | .92, .83 | 2.2, 2.4 | 47, 25 | .12, .07 | .07, .07 |
-| spitter walk turn 180 | 1.01, .99 | 2.4, 2.7 | 61, 13 | .05, .04 | -.01, -.07 |
+| shambler walk turn 180 | .92, .90 | 2.2, 2.6 | 47, 21 | .12, .08 | .07, .07 |
+| shambler walk circle chase | .82, .82 | 2.6, 2.6 | 34, 53 | .12, .12 | .39, .39 |
+| spitter walk turn 180 | 1.01, 1.01 | 2.4, 2.4 | 61, 13 | .05, .05 | -.01, -.01 |
 
 The worst of eight turn moments spread across a stride (sharp turns land on any foot at any point of its stance):
 
@@ -652,52 +669,97 @@ The worst of eight turn moments spread across a stride (sharp turns land on any 
 | shambler / runner / spitter / brute run turn 180 | .80, .79 / .85, .85 / .79, .78 / .79, .77 | 7.2, 6.1 / 8.2, 8.2 / 5.9, 5.3 / 5.0, 4.1 | 57, 24 / 65, 12 / 66, 29 / 54, 28 | 1.5, .7 / 1.0, .7 / 1.0, 1.4 / 1.3, .7 |
 | shambler / runner / spitter / brute target switch | .85, .85 / .81, .77 / .85, .84 / .86, .87 | 7.9, 3.8 / 9.9, 6.8 / 7.5, 3.7 / 5.9, 2.8 | 47, 23 / 41, 27 / 54, 26 / 43, 22 | 2.0, .4 / .8, .9 / 1.1, .4 / 1.4, .3 |
 
-A swinging foot's fastest turn in a 120th of a second, in walking turns: up to 41 degrees on shared, at most 24 now. The straight run, the set-off from a
-stand and the straight walk are unchanged.
+Walking (`--zombie-runturn-walks`: the hips' lowest over the starts, eight across a stride for arcs and turns, four places round the pilot's circle
+for the chases; the circle chases run at a pilot circling r m away at x times the zombie's walk):
 
-In the Editor (BoZo live play captures on the club's dance floor, one DEV monster at a time hunting the god-mode pilot, the pilot set down 6 m to its
-side or behind it as it ran; the model's pelvis over its soles in leg lengths and its biggest drop in a 30th of a second; shared `442bcf69`, then the
-branch at `c17be9f2`):
+| Kind, speed | arc 45/s | arc 90/s | arc 135/s | turn 90 | turn 180 | circle 1.5 m, x1 | circle 1.8 m, x1.15 | circle 2.5 m, x1.3 | circle 4 m, x1.3 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| shambler, walk | .95, .95 | .95, 1.00 | .77, .77 | .82, .81 | .78, .76 | .77, .79 | .80, .80 | .81, .81 | .86, .86 |
+| shambler, .7 walk | .99, .99 | .90, .89 | .89, .96 | .86, .76 | .76, .81 | .83, .83 | .81, .81 | .84, .84 | .86, .86 |
+| runner, walk | .97, .97 | .97, .97 | .98, .98 | .87, .93 | .85, .89 | .98, .98 | .97, .97 | .97, .97 | .97, .97 |
+| runner, .7 walk | .97, .97 | .98, .98 | .98, .98 | .88, .97 | .97, .97 | .97, .97 | .97, .97 | .97, .97 | .89, .89 |
+| spitter, walk | .99, .99 | .88, .88 | .83, .84 | .84, .86 | .84, .84 | .92, .92 | .87, .87 | .97, .97 | .93, .93 |
+| spitter, .7 walk | 1.04, 1.04 | 1.02, 1.02 | .93, .93 | .88, .89 | .89, .89 | .96, .96 | .94, .94 | .91, .91 | .98, .98 |
+| brute, walk | 1.02, 1.02 | 1.01, 1.01 | .87, .87 | .84, .86 | .86, .87 | .92, .92 | .90, .90 | .87, .87 | .92, .92 |
+| brute, .7 walk | 1.06, 1.06 | 1.04, 1.04 | .95, .95 | .95, .93 | .92, .93 | 1.03, 1.03 | 1.00, 1.00 | .95, .95 | 1.03, 1.03 |
+| faceling, walk | .97, .97 | .82, 1.00 | .77, .77 | .76, .83 | .77, .76 | .77, .77 | .82, .82 | .81, .81 | .88, .88 |
+| faceling, .7 walk | .99, .99 | .81, .81 | .81, .97 | .76, .76 | .81, .88 | .83, .83 | .77, .77 | .77, .77 | .76, .76 |
+| linesman, walk | .98, .99 | .86, .92 | .77, .77 | .76, .85 | .77, .77 | .82, .82 | .77, .77 | .89, .92 | .76, .76 |
+| linesman, .7 walk | .92, .92 | .85, .85 | .91, .93 | .87, .87 | .77, .85 | .99, .99 | .88, .87 | .99, .99 | .85, .85 |
 
-| Kind | chasing a circling pilot | running 90 degree turn | running 180 degree turn |
-| --- | --- | --- | --- |
-| shambler | .90 (.15), .98 (.10) | .99 (.09), 1.01 (.04) | .98 (.13), 1.01 (.05) |
-| runner | .95 (.06), .95 (.07) | .92 (.07), .91 (.07) | .95 (.05), .97 (.05) |
-| brute | .85 (.11), 1.04 (.04) | .97 (.09), .97 (.08) | .94 (.13), 1.03 (.05) |
+Over all 144 walking routes (these and more circles) and the shambler's 42-cell band of walking arcs at .6 to 2 times its walk and 45 to 150
+degrees a second (`--zombie-runturn-band`): 31 higher than shared by more than .03 legs, 1 lower (the shambler at .7 of its walk turning 90: .86 to
+.76), on average .012 legs higher; 55 of the 186 under .85 legs, 64 on shared. On the mean of each route's starts 13 are higher and 3 lower by
+more than .03: the shambler's walking 180 (.87 to .80) and 90 (.90 to .85) and the linesman's 135 degree a second arc (.82 to .77). The walking
+sideways step (`AcrossWalk`) does that; without it the band's 1.8 m/s arcs (the walk-to-run blend) fall to the hips' floor (.96 to .77) and only
+8 routes gain. The review's walking numbers: the shambler's circle chase .82 to .82, its 90 degree a second arcs at 1.5 m/s .956 to .997 and at
+.9 m/s .924 to .924, its walking 180 .92 to .90.
 
-The frame strips of these captures (1/30 s apart, a low side view and one from above; not committed) show the brute's circle chase on shared folding
-into a squat with its feet together under it for a third of a second, and running on in stride on the branch.
+A swinging foot's fastest turn in a 120th of a second: walking turns 42 degrees on shared, 17 now (the worst of eight starts 42 to 21); running
+turns 15 to 14 (41 to 22 over eight starts). The straight run, the set-off from a stand, the straight walk and the steps a second on every route are
+as on shared.
+
+In the Editor (BoZo live play captures on the open floor beside the club's dance floor, where no stage hazard stops a DEV monster's chase; one DEV
+monster at a time hunting the god-mode pilot; every swing logged; the same moment of the same chase in both runs; the model's pelvis over its soles in
+leg lengths at its lowest and its biggest drop in a 30th of a second; shared `8865e817`, then the branch at `529c0353`):
+
+| Kind, route | shared | branch |
+| --- | --- | --- |
+| shambler after a pilot circling 4 m out of reach | 1.01 (.06) | 1.01 (.07) |
+| brute after a pilot circling 4 m out of reach (neither run swings) | 1.10 (.02) | 1.03 (.05) |
+| shambler at its walk after a pilot circling 3 m out of reach | .88 (.06) | .88 (.05) |
+| shambler at its walk, the pilot set down 3.5 m 170 degrees round to its right | .90 (.04) | .96 (.06) |
+| shambler running, the pilot set down 6 m 170 degrees round to its right | .92 (.17) | 1.00 (.10) |
+| runner, the same | .88 (.12) | .90 (.07) |
+| brute, the same | .90 (.11) | .90 (.11) |
+| shambler swinging as the pilot is moved 1.5 m to its right (a 90 degree turn through the swing) | .88 (.11) | 1.01 (.05) |
+| runner, the same | .89 (.14) | .93 (.10) |
+| brute, the same | .85 (.19) | .86 (.03) |
+
+The circle chases run in stride in both runs and look alike, and so do the runner's and the brute's running reversals. In the walking reversal the
+shared shambler lunges, a foot stretched far behind it as it turns, and the branch steps round under itself; in the running reversal the shared
+shambler sinks into a deep-kneed crouch for a fifth of a second and the branch's stays up. The first pass's strips compared a shared brute in the
+middle of an overhead slam with a branch brute running, and its turn into a swing never swung; these replace them.
 
 ### Still open
 
 - **Reversals and new targets behind the body.** In a 180 the presented root reverses its velocity in about .15 s while the facing takes half a second
   to follow, so the body runs backward and sideways over its feet. At the worst moment of the stride the hips still sink about as far as on shared
-  (.77 to .87 legs), more slowly now, and the runner's worst target switch sinks a little further (.81 to .77). This needs a pivot step planned for
-  the turn (or the pack's turn takes, which are not exported), not a reach rule.
-- **The shambler's slow walking reversal** at some moments ends with its feet wide and behind it, its hips .1 legs low for a moment (one moment: .92 on
-  shared, .83 now; the worst of eight .78 and .76).
-- The set-off from a stand into a run dips as it did on shared (the shambler .84, now .82).
-- The Hulk (its own heavy stride), the crawler and the Hound (four limbs) are unchanged by the squeeze and the new step. The Hulk's planted knee now
-  leans its foot's way.
+  (.77 to .87 legs), more slowly now, and the runner's worst target switch sinks a little further (.81 to .77) with its feet crossing more. This needs
+  a pivot step planned for the turn (or the pack's turn takes, which are not exported), not a reach rule.
+- **Walking turns dip on shared too.** 64 of 186 walking cases go under .85 legs on shared, 55 now, many to the hips' floor (.76): a foot planted
+  behind while the other swings long. The shambler at .7 of its walk, turning 90 at one moment of its stride, dips to .76 here (.86 on shared), and
+  on the mean of their starts the shambler's walking 180 and 90 and the linesman's 135 degree a second arc are .05 to .07 lower. Walking, the knee
+  is 18 degrees off its planted foot on average over the walking routes (47 on shared), but at single moments up to 56 (the faceling's 180; 47
+  on shared) and 53 (the shambler's circle chase at the probe's start; 34 on shared).
+- The Hulk (its own heavy stride), the crawler and the Hound (four limbs) are as on shared.
 
 ### Checks
 
-`CoreTests --zombie-runturn-checks` (also in the full run and `--zombie-all`) makes 122 checks on the shambler, runner, spitter and brute on the
-model's legs. Shared fails 30 of the first 114 of them (mutation-tested):
+`CoreTests --zombie-runturn-checks` (also in the full run and `--zombie-all`) makes 238 checks on the shambler, runner, spitter and brute on the
+model's legs:
 
 - the hips stay up through gradual and sharp running turns: each within .11 legs of the straight run, within .04 on average, never dropping or
   popping faster than 8 legs/s;
 - a 90 degree running turn either way at any of eight moments of the stride keeps the hips at .89 legs or higher;
-- the knee stays within 30 degrees of its planted foot;
-- a planted ball moves at most 1.2 cm a frame;
-- a swinging foot turns less than 30 degrees in a 120th of a second;
+- through every running turn the knee stays within 25 degrees of its planted foot, a planted ball moves at most 1.2 cm a frame, a planted foot
+  stays within 42 degrees of the hips' facing (55 in the reversal and the weave), and the steps a second stay within a tenth of the straight run's
+  (the circle chase, which stops and sets off by its pilot, 15 per cent);
+- a swinging foot turns less than 25 degrees in a 120th of a second, walking or running, at any of eight moments of a walking turn's stride;
+- walking, the hips over each of 48 routes (arcs, turns and circle chases at the walk) as high as shared's or the straight walk's, within .03 legs
+  (shared's pinned), and on average at least shared's;
+- a planted foot turned 40 degrees on the floor moves a biped's knee after it and leaves the Hulk's and the Hound's where the hips lean them;
 - the model's flat planted ankle stays on the gait's footprint in a curve;
 - a landing foot is turned on into the turn, either way;
-- the gait and the binding squeeze both ways.
+- the gait and the binding draw in and spread out both ways, across by the run blend, and the model presentation hands the binding the draw-in.
 
-Diagnostics: `--zombie-runturn` prints the table, `--zombie-runturn-sweep` the worst of eight moments, `--zombie-runturn-trace kind "route" [from for
-[moment]]` traces one route frame by frame, and `--zombie-runturn-cost` times the gait and the binding.
+Removing the knee's lean to its foot fails the 25 degree bound and the turned-foot check.
 
-**Cost:** through a circle chase the gait takes 6.3 to 6.9 microseconds an add a frame (shared 6.2 to 7.4, the same within noise), and the fit and
-binding 5.7 to 6.6 (shared 6.1 to 8.2). No allocation. The new per-frame work is a turned pole, one quaternion per swinging foot and one comparison per
-planted foot.
+Diagnostics: `--zombie-runturn` prints the table, `--zombie-runturn-sweep` the worst of eight moments, `--zombie-runturn-walks` the walking routes,
+`--zombie-runturn-band` the shambler's walking arcs over speed and rate, `--zombie-runturn-trace kind "route" [from for [moment]]` traces one route
+frame by frame (the walking routes by their `-walks` names), `--zombie-runturn-snap kind "route" [from]` the frames a swinging foot turns fast in,
+and `--zombie-runturn-cost` times the gait and the binding.
+
+**Cost:** through a circle chase the gait takes 6.2 to 6.6 microseconds an add a frame (shared 6.1 to 6.5, the same within noise), and the fit and
+binding 5.7 to 6.3 (shared 5.6 to 6.3). No allocation. The new per-frame work is a turned pole, one quaternion per swinging foot and two comparisons
+per planted foot; the gore change adds one dictionary lookup per joint per gore event or wound draw.
