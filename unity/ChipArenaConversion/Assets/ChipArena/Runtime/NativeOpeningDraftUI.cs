@@ -341,8 +341,9 @@ namespace ChipArena.UnityConversion
             OpeningWeaponList();float m=H<=760?22:28,age=now-openingStepAt;bool calm=prefs.reducedEffects,repaint=Event.current.type==EventType.Repaint;
             DraftHeader("BLIND PICK ALL  ·  WEAPON",NativeCyberTheme.Cyan(),"Pick your weapon","Your pick stays hidden until every pilot locks in.",W,H,out float top);
             OpeningMeta(v,W,H,true,now);
-            float hw=Mathf.Clamp(W*.26f,280,400),hx=W-m-hw,heroTop=Mathf.Max(top,H<=760?118:136);
-            OpeningGrid(new Rect(m,top+8,hx-m-40,H-m-44-(top+8)));
+            // At ultra-wide aspects the grid and the hero keep to the 16:9 safe width, centred (as one composition).
+            float sl=U.SafeX+m,sr=U.SafeX+U.SafeW-m,hw=Mathf.Clamp(U.SafeW*.26f,280,400),hx=sr-hw,heroTop=Mathf.Max(top,H<=760?118:136);
+            OpeningGrid(new Rect(sl,top+8,hx-sl-40,H-m-44-(top+8)));
             string chosen=highlightedWeapon??v.chip;if(openingSelectSeen!=chosen){if(openingSelectSeen!=null)openingSelectAt=now;openingSelectSeen=chosen;}
             int n=Math.Min(openingWeapons.Count,weaponHolo.Length),under=-1;
             for(int i=0;i<n;i++)if(age-i*.035f>.2f&&U.Hover(openingCards[i]))under=i;

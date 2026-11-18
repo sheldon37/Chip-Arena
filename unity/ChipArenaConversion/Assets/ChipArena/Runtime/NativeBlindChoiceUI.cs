@@ -58,7 +58,9 @@ namespace ChipArena.UnityConversion
             // The deal's area: under the header and the meta, over the keycaps, Lock in and the key hints.
             float keysY=H-m-24,lockY=keysY-18-52,areaTop=Mathf.Max(top+8,(H<=760?16:22)+32+12+58+10),areaBottom=lockY-14-34,areaW=W-2*m;
             var lay=NativeBlindChoices.Fit(n,areaW,Mathf.Max(60,areaBottom-areaTop));blindCols=Math.Max(1,lay.Cols);
-            for(int i=0;i<n;i++){NativeBlindChoices.Place(lay,i,n,m,areaTop,areaW,areaBottom-areaTop,out float cx,out float cy);blindCards[i]=new Rect(cx,cy,lay.Width,lay.Height);}
+            float blockBottom=areaTop;for(int i=0;i<n;i++){NativeBlindChoices.Place(lay,i,n,m,areaTop,areaW,areaBottom-areaTop,out float cx,out float cy);blindCards[i]=new Rect(cx,cy,lay.Width,lay.Height);blockBottom=Mathf.Max(blockBottom,cy+lay.Height);}
+            // Lock in sits under the deal (its number keys between), as the chip tray's footer does, never under the key hints.
+            lockY=Mathf.Min(lockY,blockBottom+12+22+22);
             // My choice: the unconfirmed click (the weapon grid's highlightedWeapon), else the host's, when it was dealt to me.
             string chosen=view.Offered(highlightedWeapon)?highlightedWeapon:view.Selected;
             if(openingSelectSeen!=chosen){if(chosen!=null)openingSelectAt=now;openingSelectSeen=chosen;}

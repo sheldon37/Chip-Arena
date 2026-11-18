@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
         // ---- the screen's layout -------------------------------------------------------------------------------------------
         // The dealt cards sit in rows as the chip tray's do (a short row centred), each as large as the area allows: the weapon's
         // hero card (stats, role and description) while it is at least HeroMin wide, else its compact grid card.
-        public const float HeroAspect=1.48f,CardAspect=1.24f,HeroMin=200,HeroCap=300,CardCap=176,Gap=22;
+        public const float HeroAspect=1.48f,CardAspect=1.24f,HeroMin=200,HeroCap=360,CardCap=176,Gap=22;
         public struct Layout{public int Rows,Cols;public float Width,Height;public bool Hero;}
         /// <summary>The largest cards for `n` offers in an area `width` x `height` (virtual units), over one to four rows.</summary>
         public static Layout Fit(int n,float width,float height)
