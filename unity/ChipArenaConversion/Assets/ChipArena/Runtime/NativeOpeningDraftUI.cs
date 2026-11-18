@@ -370,6 +370,7 @@ namespace ChipArena.UnityConversion
             var pick=OpeningWeapon(chosen);var btn=new Rect(hx,heroR.yMax+16,hw,52);
             if(OpeningLockButton(btn,pick,heroIn,now)||OpeningConfirmKey())OpeningLockIn(chosen,now);
             OpeningKeys(H,"← → ↑ ↓","Browse","CLICK","Choose","ENTER","Lock in");
+            NativeWeaponCard.Flourishes();
         }
         // Arrow keys move the focus through the grid (rows by the grid's columns) and choose the focused weapon; Enter locks in.
         private void OpeningGridKeys(int n)
@@ -452,6 +453,7 @@ namespace ChipArena.UnityConversion
             float py=H-(H<=760?70:86);string status=waiting>0?"WAITING FOR "+waiting+(waiting==1?" PILOT":" PILOTS"):"ALL PILOTS LOCKED IN";float sw=U.Measure(status,12,true,true,.24f).x;
             U.Text(new Rect(W/2-sw/2-20,py,sw+40,20),status,12,waiting>0?NativeCyberTheme.Ink(enter):NativeCyberTheme.Good(enter),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.24f);
             float pw=total*22-8;for(int i=0;i<total;i++){var pip=new Rect(W/2-pw/2+i*22,py+30,14,6);bool on=i<ready;if(on){U.Glow(pip,NativeCyberTheme.Cyan(.4f*enter),5);U.Fill(pip,U.A(U.Mix(NativeCyberTheme.Cyan(),Color.white,.3f),enter));}else{float b=calm?.4f:.25f+.25f*Mathf.Sin(now*4-i);U.Fill(pip,NativeCyberTheme.Edge(b*enter));}}
+            NativeWeaponCard.Flourishes();
         }
 
         // ---- reveal ----
@@ -473,7 +475,7 @@ namespace ChipArena.UnityConversion
                 float sx=Mathf.Abs(Mathf.Cos(f*Mathf.PI)),lift=Mathf.Sin(f*Mathf.PI)*-14;
                 U.Push(r.center,new Vector2(0,lift+(1-enter)*20),Mathf.Max(.02f,sx),0,1+.06f*Mathf.Sin(f*Mathf.PI));
                 if(f<.5f)NativeWeaponCard.Back(r,enter,now,you?NativeCyberTheme.Cyan():NativeCyberTheme.Violet(),calm);
-                else if(weapon!=null){var look=NativeWeaponCard.Look.Idle(now);look.Selected=1;look.SelectAge=age-flipAt-.17f;look.Index=i;look.Calm=calm;NativeWeaponCard.Draw(r,weapon,look);}
+                else if(weapon!=null){var look=NativeWeaponCard.Look.Idle(now);look.Selected=1;look.SelectAge=age-flipAt-.17f;look.Index=i;look.Calm=calm;look.Quiet=!you;look.Finish=you;look.LockAge=age-flipAt-.34f;NativeWeaponCard.Draw(r,weapon,look);}
                 U.Pop();
                 // The landing: a flash on the card and a sweep across the row.
                 float land=calm?0:1-M.Clamp01((age-flipAt-.17f)/.35f);if(land>0&&age>=flipAt+.17f){U.Glow(r,U.A(acc,.45f*land),24);U.Round(r,new Color(1,1,1,.18f*land),8);}
@@ -482,6 +484,7 @@ namespace ChipArena.UnityConversion
                 string label=pilot+(you?"  ·  YOU":"");U.Text(new Rect(dot.xMax+6,plate.y,plate.width-34,plate.height),label,12,U.A(NativeCyberTheme.Ink(),pa),TextAnchor.MiddleLeft,bold:you);
             }
             if(!calm){float s=M.Clamp01(age/1.6f);var band=new Rect(-W*.3f+W*1.6f*s,top,W*.3f,H-top);U.HGradient(new Rect(band.x,band.y,band.width/2,band.height),Color.clear,new Color(1,1,1,.03f*(1-s)));U.HGradient(new Rect(band.center.x,band.y,band.width/2,band.height),new Color(1,1,1,.03f*(1-s)),Color.clear);}
+            NativeWeaponCard.Flourishes();
             string go="DEPLOYING";float gw=U.Measure(go,11,true,true,.4f).x;U.Text(new Rect(W/2-gw/2-20,H-(H<=760?44:56),gw+40,18),go,11,NativeCyberTheme.Muted(calm?1:.6f+.4f*Mathf.Sin(now*5)),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.4f);
         }
         private void SplitReveal(string row,out string pilot,out ContentWeapon weapon)

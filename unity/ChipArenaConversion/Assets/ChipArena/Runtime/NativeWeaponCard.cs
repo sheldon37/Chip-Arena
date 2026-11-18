@@ -15,9 +15,11 @@ namespace ChipArena.UnityConversion
     //    name with the event glitch when the choice changes, the role line, relative power / rate / reach bars and the exact
     //    stat line the loadout strip shows. Its content re-scans in whenever the shown weapon changes.
     //  - Back: the face-down card the reveal flips over; Stamp: LOCKED IN, struck over a card.
+    //  - Flourishes (NativeWeaponFlourish*.cs): the chosen card plays its weapon's own selection animation and the locked card
+    //    a finisher, drawn over the screen by Flourishes() after the cards.
     // Presentation only: nothing here reads or writes rules, timers or the network. Repaint only, no transforms left pushed,
     // textures built on first use.
-    public static class NativeWeaponCard
+    public static partial class NativeWeaponCard
     {
         public struct Look
         {
@@ -25,7 +27,10 @@ namespace ChipArena.UnityConversion
             // NativeHoloScan); HoverAge seconds since it engaged. Selected 0..1: the pilot's current choice; SelectAge since it
             // was chosen. Locked 0..1 and LockAge: the lock stamp. Recede 0..1: veiled while another card is highlighted.
             // Time: the screen clock. Index: the card's place (phase offsets). Calm: Reduced effects (no motion, no flicker).
-            public float Alpha,Build,Hover,HoverAge,Selected,SelectAge,Locked,LockAge,Recede,Time;public int Index;public bool Calm;
+            // Flourishes (NativeWeaponFlourish.cs): the chosen card plays its weapon's selection flourish from SelectAge, a locked
+            // card the finisher. Finish: the finisher from LockAge on an unstamped card (the reveal's own card, when the locked-in
+            // screen did not already play it); Quiet: no flourish at all (another pilot's card).
+            public float Alpha,Build,Hover,HoverAge,Selected,SelectAge,Locked,LockAge,Recede,Time;public int Index;public bool Calm,Finish,Quiet;
             public static Look Idle(float time)=>new Look{Alpha=1,Build=1,Time=time,HoverAge=-10,SelectAge=-10,LockAge=-10};
         }
         // Relative bars, 0..1 against the weapons on offer (Measure).
@@ -70,6 +75,21 @@ namespace ChipArena.UnityConversion
         public static void Draw(Rect r,ContentWeapon w,in Look k)
         {
             if(w==null||k.Alpha<=.002f||Event.current.type!=EventType.Repaint)return;Ensure();
+            // The flourish's part of the card: moved, or drawn as bands (each half of a cut, the glitch's slices) with the
+            // turning reticle drawn once outside their clips.
+            var fx=Track(r,w,k,false,new Vector2(r.center.x,r.y+r.height*.43f-5*k.Hover-2*k.Selected),r.width*.48f);bool moved=fx.Moves;
+            if(moved)U.Push(r.center,fx.Shift,fx.Sx,0,fx.Sy);
+            if(fx.Bands==0)Face(r,w,k,fx,true);
+            else{for(int b=0;b<fx.Bands;b++){Band(r,fx,b,out var clip,out var off);U.Push(r.center,off,1);U.BeginBand(clip);Face(r,w,k,fx,false);U.EndBand();U.Pop();}FaceReticle(r,w,k);}
+            if(moved)U.Pop();
+        }
+        private static void FaceReticle(Rect r,ContentWeapon w,in Look k)
+        {
+            var acc=Accent(w);float a=k.Alpha,h=k.Hover,s=k.Selected,size=r.width*.48f,lift=-5*h-2*s,bob=k.Calm?0:Mathf.Sin(k.Time*1.7f+k.Index*.9f)*1.1f*(.35f+.65f*h);
+            var c=new Vector2(r.center.x,r.y+r.height*.43f+lift+bob);Reticle(c,size*.66f,k.Calm?0:k.Time*(18+30*h)+k.Index*23,U.A(acc,(.22f+.35f*h+.3f*s)*a),6);
+        }
+        private static void Face(Rect r,ContentWeapon w,in Look k,in CardFx fx,bool reticle)
+        {
             var acc=Accent(w);float a=k.Alpha,h=k.Hover,s=k.Selected,build=M.Clamp01(k.Build);
             float wipe=build>=1?r.yMax+40:r.y-4+(r.height+8)*M.OutCubic(build);
             // Footing and glow (outside the wipe: they grow with the boot).
@@ -99,8 +119,11 @@ namespace ChipArena.UnityConversion
             if(wiping){U.EndBand();WipeLine(r,wipe,acc,a);}
             // Unclipped: the reticle and the icon, faded in as the wipe passes them; then the veil over the whole card.
             float rad=size*.66f,shown=wiping?M.Clamp01((wipe-(ic.center.y-rad))/(2*rad)):1;
-            Reticle(ic.center,rad,k.Calm?0:k.Time*(18+30*h)+k.Index*23,U.A(acc,(.22f+.35f*h+.3f*s)*a*shown),6);
-            Icon(ic,NativeIcons.Spec(w.id),acc,a*shown,h,s,k.HoverAge,k.Calm);
+            if(reticle)Reticle(ic.center,rad,k.Calm?0:k.Time*(18+30*h)+k.Index*23,U.A(acc,(.22f+.35f*h+.3f*s)*a*shown),6);
+            // While the flourish's weapon is out of the card, its slot holds a faint ghost of the icon and a ring.
+            if(fx.Hide>0){U.RadialStops(Inset(ic,-size*.12f),U.A(acc,.45f*fx.Hide*a),RingAt,RingA);}
+            Icon(ic,NativeIcons.Spec(w.id),acc,a*shown*(1-.85f*fx.Hide),h,s,k.HoverAge,k.Calm);
+            if(fx.Flash>0){U.Glow(r,U.A(acc,.35f*fx.Flash*a),14);U.Round(r,new Color(1,1,1,.22f*fx.Flash*a),R,U.A(U.Mix(acc,Color.white,.6f),fx.Flash*a),1.5f);}
             if(k.Recede>0)U.Round(r,U.A(Void,.5f*k.Recede*a),R);
             if(k.Locked>0)Stamp(new Rect(r.x,r.y+r.height*.25f,r.width,r.height*.36f),k.Locked*a,k.LockAge,acc,k.Calm,.8f);
         }
@@ -110,6 +133,15 @@ namespace ChipArena.UnityConversion
         public static void Hero(Rect r,ContentWeapon w,in Look k,Bars bars,float change)
         {
             if(w==null||k.Alpha<=.002f||Event.current.type!=EventType.Repaint)return;Ensure();
+            // The flourish's part (the lock-in finisher's pop and flash), queued at the emitter's icon (its layout below).
+            float hp=Mathf.Clamp(r.width*.065f,16,26),hcw=r.width-2*hp,hem=Mathf.Min(r.height*.42f,hcw*.95f);
+            var fx=Track(r,w,k,true,new Vector2(r.center.x,r.y+hp+38+hem*.47f),Mathf.Min(hem*.62f,hcw*.55f));bool moved=fx.Moves;
+            if(moved)U.Push(r.center,fx.Shift,fx.Sx,0,fx.Sy);
+            HeroFace(r,w,k,bars,change,fx);
+            if(moved)U.Pop();
+        }
+        private static void HeroFace(Rect r,ContentWeapon w,in Look k,Bars bars,float change,in CardFx fx)
+        {
             var acc=Accent(w);float a=k.Alpha,s=Mathf.Max(k.Selected,.6f),h=k.Hover,swap=k.Calm?1:M.Clamp01(change/.42f),inA=a*M.OutCubic(swap);
             U.Glow(new Rect(r.x+10,r.y+30,r.width-20,r.height),new Color(0,0,0,.55f*a),44);U.Glow(r,U.A(acc,(.16f+.08f*Breath(k))*a),24);
             Plate(r,HeroR,acc,a,h,s,k);var face=Inset(r,1);float pad=Mathf.Clamp(r.width*.065f,16,26),x=r.x+pad,cw=r.width-2*pad,y=r.y+pad;
@@ -149,6 +181,7 @@ namespace ChipArena.UnityConversion
             // The description's first lines, where the card has room.
             float room=r.yMax-pad-y;if(room>=34){int max=Mathf.Min(4,Mathf.FloorToInt(room/17));foreach(var line in U.Wrap(NativeLoadoutText.Description(w),12,cw,false,max)){U.Text(new Rect(x,y,cw,17),line,12,U.A(C.Dim(),inA),TextAnchor.MiddleLeft);y+=17;}}
             Edge(r,HeroR,acc,a,Mathf.Max(h,.4f),s,k,w.devOnly);
+            if(fx.Flash>0){U.Glow(r,U.A(acc,.4f*fx.Flash*a),22);U.Round(r,new Color(1,1,1,.18f*fx.Flash*a),HeroR,U.A(U.Mix(acc,Color.white,.6f),fx.Flash*a),2);}
             if(k.Locked>0)Stamp(new Rect(r.x,ec.y-size*.32f,r.width,size*.64f),k.Locked*a,k.LockAge,acc,k.Calm,1.25f);
         }
         private static float Bar(float x,float y,float w,float h,string label,float v,Color acc,float a,float time,bool calm)
