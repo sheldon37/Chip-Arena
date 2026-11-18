@@ -1,0 +1,305 @@
+# Shared 8865e817's zombie gait walking (before claude/zombie-run-turn): the model's hips at their lowest over each walking route's starts
+# (legs; eight across a stride for arcs and turns, four places round the pilot's circle for the chases) and their starts' mean, for every
+# walking kind at its walk (1.0) and at .7 of it, one add for each walk take (ZombieRunTurnChecks.WalkIdsOf). Written by
+# CoreTests --zombie-runturn-walktable on shared; ZombieRunTurnChecks holds the branch's walking at these or the straight walk's.
+# kind|speed|id|route|lowest|mean
+shambler|1.0|40003|walk straight|0.935|0.935
+shambler|1.0|40003|walk arc 45/s|0.946|0.950
+shambler|1.0|40003|walk arc 90/s|0.955|0.956
+shambler|1.0|40003|walk arc 120/s|0.770|0.770
+shambler|1.0|40003|walk arc 135/s|0.771|0.771
+shambler|1.0|40003|walk turn 90|0.821|0.898
+shambler|1.0|40003|walk turn -90|0.768|0.844
+shambler|1.0|40003|walk turn 180|0.780|0.866
+shambler|1.0|40003|walk circle r1.5 x1|0.767|0.803
+shambler|1.0|40003|walk circle r1.5 x1.3|0.803|0.836
+shambler|1.0|40003|walk circle r1.8 x1.15|0.799|0.833
+shambler|1.0|40003|walk circle r2.5 x1|0.845|0.880
+shambler|1.0|40003|walk circle r2.5 x1.3|0.812|0.843
+shambler|1.0|40003|walk circle r4 x1|0.769|0.857
+shambler|1.0|40003|walk circle r4 x1.3|0.856|0.874
+shambler|1.0|40004|walk straight|1.006|1.006
+shambler|1.0|40004|walk arc 45/s|0.984|0.984
+shambler|1.0|40004|walk arc 90/s|0.867|0.944
+shambler|1.0|40004|walk arc 120/s|0.973|0.973
+shambler|1.0|40004|walk arc 135/s|0.815|0.818
+shambler|1.0|40004|walk turn 90|0.834|0.901
+shambler|1.0|40004|walk turn -90|0.853|0.923
+shambler|1.0|40004|walk turn 180|0.865|0.943
+shambler|1.0|40004|walk circle r1.5 x1|0.917|0.938
+shambler|1.0|40004|walk circle r1.5 x1.3|0.881|0.897
+shambler|1.0|40004|walk circle r1.8 x1.15|0.933|0.955
+shambler|1.0|40004|walk circle r2.5 x1|0.885|0.971
+shambler|1.0|40004|walk circle r2.5 x1.3|0.933|0.977
+shambler|1.0|40004|walk circle r4 x1|0.889|0.981
+shambler|1.0|40004|walk circle r4 x1.3|0.995|1.005
+shambler|0.7|40003|walk straight|0.994|0.994
+shambler|0.7|40003|walk arc 45/s|0.990|0.990
+shambler|0.7|40003|walk arc 90/s|0.899|0.904
+shambler|0.7|40003|walk arc 120/s|0.893|0.900
+shambler|0.7|40003|walk arc 135/s|0.893|0.896
+shambler|0.7|40003|walk turn 90|0.859|0.907
+shambler|0.7|40003|walk turn -90|0.872|0.931
+shambler|0.7|40003|walk turn 180|0.764|0.857
+shambler|0.7|40003|walk circle r1.5 x1|0.827|0.901
+shambler|0.7|40003|walk circle r1.5 x1.3|0.840|0.873
+shambler|0.7|40003|walk circle r1.8 x1.15|0.807|0.905
+shambler|0.7|40003|walk circle r2.5 x1|0.840|0.932
+shambler|0.7|40003|walk circle r2.5 x1.3|0.836|0.876
+shambler|0.7|40003|walk circle r4 x1|0.823|0.917
+shambler|0.7|40003|walk circle r4 x1.3|0.863|0.939
+shambler|0.7|40004|walk straight|1.054|1.054
+shambler|0.7|40004|walk arc 45/s|1.033|1.033
+shambler|0.7|40004|walk arc 90/s|1.018|1.018
+shambler|0.7|40004|walk arc 120/s|1.010|1.010
+shambler|0.7|40004|walk arc 135/s|0.873|0.974
+shambler|0.7|40004|walk turn 90|0.875|0.989
+shambler|0.7|40004|walk turn -90|0.931|0.967
+shambler|0.7|40004|walk turn 180|0.913|0.996
+shambler|0.7|40004|walk circle r1.5 x1|0.951|1.016
+shambler|0.7|40004|walk circle r1.5 x1.3|0.947|0.975
+shambler|0.7|40004|walk circle r1.8 x1.15|1.011|1.025
+shambler|0.7|40004|walk circle r2.5 x1|0.959|1.002
+shambler|0.7|40004|walk circle r2.5 x1.3|0.961|1.015
+shambler|0.7|40004|walk circle r4 x1|1.018|1.041
+shambler|0.7|40004|walk circle r4 x1.3|1.016|1.036
+runner|1.0|40003|walk straight|0.964|0.964
+runner|1.0|40003|walk arc 45/s|0.968|0.971
+runner|1.0|40003|walk arc 90/s|0.975|0.975
+runner|1.0|40003|walk arc 120/s|0.976|0.976
+runner|1.0|40003|walk arc 135/s|0.976|0.976
+runner|1.0|40003|walk turn 90|0.873|0.935
+runner|1.0|40003|walk turn -90|0.870|0.937
+runner|1.0|40003|walk turn 180|0.848|0.924
+runner|1.0|40003|walk circle r1.5 x1|0.976|0.976
+runner|1.0|40003|walk circle r1.5 x1.3|0.973|0.974
+runner|1.0|40003|walk circle r1.8 x1.15|0.973|0.973
+runner|1.0|40003|walk circle r2.5 x1|0.972|0.973
+runner|1.0|40003|walk circle r2.5 x1.3|0.974|0.974
+runner|1.0|40003|walk circle r4 x1|0.968|0.969
+runner|1.0|40003|walk circle r4 x1.3|0.972|0.972
+runner|1.0|40004|walk straight|1.003|1.003
+runner|1.0|40004|walk arc 45/s|1.011|1.011
+runner|1.0|40004|walk arc 90/s|0.932|0.932
+runner|1.0|40004|walk arc 120/s|0.892|0.892
+runner|1.0|40004|walk arc 135/s|0.886|0.886
+runner|1.0|40004|walk turn 90|0.765|0.914
+runner|1.0|40004|walk turn -90|0.859|0.920
+runner|1.0|40004|walk turn 180|0.765|0.837
+runner|1.0|40004|walk circle r1.5 x1|1.014|1.015
+runner|1.0|40004|walk circle r1.5 x1.3|0.973|0.989
+runner|1.0|40004|walk circle r1.8 x1.15|0.984|0.996
+runner|1.0|40004|walk circle r2.5 x1|1.011|1.012
+runner|1.0|40004|walk circle r2.5 x1.3|0.938|0.994
+runner|1.0|40004|walk circle r4 x1|1.007|1.008
+runner|1.0|40004|walk circle r4 x1.3|1.004|1.009
+runner|0.7|40003|walk straight|0.967|0.967
+runner|0.7|40003|walk arc 45/s|0.972|0.972
+runner|0.7|40003|walk arc 90/s|0.978|0.978
+runner|0.7|40003|walk arc 120/s|0.980|0.980
+runner|0.7|40003|walk arc 135/s|0.980|0.980
+runner|0.7|40003|walk turn 90|0.876|0.951
+runner|0.7|40003|walk turn -90|0.940|0.964
+runner|0.7|40003|walk turn 180|0.967|0.967
+runner|0.7|40003|walk circle r1.5 x1|0.972|0.973
+runner|0.7|40003|walk circle r1.5 x1.3|0.966|0.974
+runner|0.7|40003|walk circle r1.8 x1.15|0.971|0.973
+runner|0.7|40003|walk circle r2.5 x1|0.969|0.970
+runner|0.7|40003|walk circle r2.5 x1.3|0.969|0.971
+runner|0.7|40003|walk circle r4 x1|0.968|0.968
+runner|0.7|40003|walk circle r4 x1.3|0.889|0.949
+runner|0.7|40004|walk straight|1.005|1.005
+runner|0.7|40004|walk arc 45/s|1.010|1.010
+runner|0.7|40004|walk arc 90/s|1.016|1.016
+runner|0.7|40004|walk arc 120/s|1.018|1.018
+runner|0.7|40004|walk arc 135/s|1.016|1.016
+runner|0.7|40004|walk turn 90|0.877|0.979
+runner|0.7|40004|walk turn -90|0.872|0.956
+runner|0.7|40004|walk turn 180|0.765|0.901
+runner|0.7|40004|walk circle r1.5 x1|1.007|1.011
+runner|0.7|40004|walk circle r1.5 x1.3|1.006|1.012
+runner|0.7|40004|walk circle r1.8 x1.15|1.006|1.011
+runner|0.7|40004|walk circle r2.5 x1|1.008|1.009
+runner|0.7|40004|walk circle r2.5 x1.3|0.886|0.978
+runner|0.7|40004|walk circle r4 x1|0.868|0.972
+runner|0.7|40004|walk circle r4 x1.3|0.767|0.918
+spitter|1.0|40003|walk straight|1.008|1.008
+spitter|1.0|40003|walk arc 45/s|0.994|0.995
+spitter|1.0|40003|walk arc 90/s|0.877|0.880
+spitter|1.0|40003|walk arc 120/s|0.836|0.891
+spitter|1.0|40003|walk arc 135/s|0.834|0.843
+spitter|1.0|40003|walk turn 90|0.841|0.902
+spitter|1.0|40003|walk turn -90|0.880|0.906
+spitter|1.0|40003|walk turn 180|0.842|0.927
+spitter|1.0|40003|walk circle r1.5 x1|0.917|0.936
+spitter|1.0|40003|walk circle r1.5 x1.3|0.910|0.955
+spitter|1.0|40003|walk circle r1.8 x1.15|0.874|0.938
+spitter|1.0|40003|walk circle r2.5 x1|0.897|0.958
+spitter|1.0|40003|walk circle r2.5 x1.3|0.972|0.980
+spitter|1.0|40003|walk circle r4 x1|0.871|0.970
+spitter|1.0|40003|walk circle r4 x1.3|0.927|0.982
+spitter|0.7|40003|walk straight|1.045|1.045
+spitter|0.7|40003|walk arc 45/s|1.040|1.042
+spitter|0.7|40003|walk arc 90/s|1.025|1.026
+spitter|0.7|40003|walk arc 120/s|1.020|1.021
+spitter|0.7|40003|walk arc 135/s|0.925|0.997
+spitter|0.7|40003|walk turn 90|0.883|0.957
+spitter|0.7|40003|walk turn -90|0.905|0.960
+spitter|0.7|40003|walk turn 180|0.894|0.924
+spitter|0.7|40003|walk circle r1.5 x1|0.964|0.990
+spitter|0.7|40003|walk circle r1.5 x1.3|0.946|0.975
+spitter|0.7|40003|walk circle r1.8 x1.15|0.945|0.981
+spitter|0.7|40003|walk circle r2.5 x1|0.989|1.022
+spitter|0.7|40003|walk circle r2.5 x1.3|0.913|0.990
+spitter|0.7|40003|walk circle r4 x1|0.941|1.014
+spitter|0.7|40003|walk circle r4 x1.3|0.982|1.025
+brute|1.0|40003|walk straight|1.029|1.029
+brute|1.0|40003|walk arc 45/s|1.022|1.023
+brute|1.0|40003|walk arc 90/s|1.010|1.012
+brute|1.0|40003|walk arc 120/s|1.005|1.006
+brute|1.0|40003|walk arc 135/s|0.870|0.902
+brute|1.0|40003|walk turn 90|0.843|0.942
+brute|1.0|40003|walk turn -90|0.872|0.934
+brute|1.0|40003|walk turn 180|0.860|0.928
+brute|1.0|40003|walk circle r1.5 x1|0.924|0.975
+brute|1.0|40003|walk circle r1.5 x1.3|0.918|0.940
+brute|1.0|40003|walk circle r1.8 x1.15|0.903|0.942
+brute|1.0|40003|walk circle r2.5 x1|0.928|0.998
+brute|1.0|40003|walk circle r2.5 x1.3|0.867|0.950
+brute|1.0|40003|walk circle r4 x1|0.994|1.015
+brute|1.0|40003|walk circle r4 x1.3|0.917|0.996
+brute|1.0|40004|walk straight|0.942|0.942
+brute|1.0|40004|walk arc 45/s|0.975|0.977
+brute|1.0|40004|walk arc 90/s|0.816|0.819
+brute|1.0|40004|walk arc 120/s|0.767|0.796
+brute|1.0|40004|walk arc 135/s|0.768|0.769
+brute|1.0|40004|walk turn 90|0.764|0.839
+brute|1.0|40004|walk turn -90|0.764|0.809
+brute|1.0|40004|walk turn 180|0.792|0.829
+brute|1.0|40004|walk circle r1.5 x1|0.800|0.844
+brute|1.0|40004|walk circle r1.5 x1.3|0.767|0.788
+brute|1.0|40004|walk circle r1.8 x1.15|0.766|0.820
+brute|1.0|40004|walk circle r2.5 x1|0.766|0.849
+brute|1.0|40004|walk circle r2.5 x1.3|0.865|0.891
+brute|1.0|40004|walk circle r4 x1|0.775|0.854
+brute|1.0|40004|walk circle r4 x1.3|0.820|0.890
+brute|0.7|40003|walk straight|1.060|1.060
+brute|0.7|40003|walk arc 45/s|1.061|1.061
+brute|0.7|40003|walk arc 90/s|1.041|1.048
+brute|0.7|40003|walk arc 120/s|0.973|0.989
+brute|0.7|40003|walk arc 135/s|0.952|1.005
+brute|0.7|40003|walk turn 90|0.951|1.007
+brute|0.7|40003|walk turn -90|0.951|0.984
+brute|0.7|40003|walk turn 180|0.919|0.946
+brute|0.7|40003|walk circle r1.5 x1|1.032|1.047
+brute|0.7|40003|walk circle r1.5 x1.3|0.962|1.021
+brute|0.7|40003|walk circle r1.8 x1.15|0.999|1.040
+brute|0.7|40003|walk circle r2.5 x1|1.048|1.054
+brute|0.7|40003|walk circle r2.5 x1.3|0.949|1.001
+brute|0.7|40003|walk circle r4 x1|1.050|1.055
+brute|0.7|40003|walk circle r4 x1.3|1.029|1.050
+brute|0.7|40004|walk straight|0.929|0.929
+brute|0.7|40004|walk arc 45/s|0.872|0.881
+brute|0.7|40004|walk arc 90/s|0.766|0.807
+brute|0.7|40004|walk arc 120/s|0.809|0.825
+brute|0.7|40004|walk arc 135/s|0.847|0.878
+brute|0.7|40004|walk turn 90|0.881|0.913
+brute|0.7|40004|walk turn -90|0.816|0.921
+brute|0.7|40004|walk turn 180|0.771|0.808
+brute|0.7|40004|walk circle r1.5 x1|0.764|0.860
+brute|0.7|40004|walk circle r1.5 x1.3|0.784|0.829
+brute|0.7|40004|walk circle r1.8 x1.15|0.793|0.881
+brute|0.7|40004|walk circle r2.5 x1|0.884|0.913
+brute|0.7|40004|walk circle r2.5 x1.3|0.831|0.891
+brute|0.7|40004|walk circle r4 x1|0.768|0.907
+brute|0.7|40004|walk circle r4 x1.3|0.765|0.893
+faceling|1.0|40003|walk straight|0.946|0.946
+faceling|1.0|40003|walk arc 45/s|0.968|0.968
+faceling|1.0|40003|walk arc 90/s|0.823|0.828
+faceling|1.0|40003|walk arc 120/s|0.769|0.769
+faceling|1.0|40003|walk arc 135/s|0.770|0.771
+faceling|1.0|40003|walk turn 90|0.764|0.912
+faceling|1.0|40003|walk turn -90|0.773|0.852
+faceling|1.0|40003|walk turn 180|0.770|0.846
+faceling|1.0|40003|walk circle r1.5 x1|0.766|0.790
+faceling|1.0|40003|walk circle r1.5 x1.3|0.798|0.820
+faceling|1.0|40003|walk circle r1.8 x1.15|0.816|0.848
+faceling|1.0|40003|walk circle r2.5 x1|0.821|0.877
+faceling|1.0|40003|walk circle r2.5 x1.3|0.813|0.852
+faceling|1.0|40003|walk circle r4 x1|0.768|0.870
+faceling|1.0|40003|walk circle r4 x1.3|0.879|0.899
+faceling|1.0|40004|walk straight|1.019|1.019
+faceling|1.0|40004|walk arc 45/s|0.995|0.995
+faceling|1.0|40004|walk arc 90/s|0.983|0.983
+faceling|1.0|40004|walk arc 120/s|0.982|0.982
+faceling|1.0|40004|walk arc 135/s|0.823|0.825
+faceling|1.0|40004|walk turn 90|0.869|0.941
+faceling|1.0|40004|walk turn -90|0.889|0.961
+faceling|1.0|40004|walk turn 180|0.877|0.925
+faceling|1.0|40004|walk circle r1.5 x1|0.925|0.937
+faceling|1.0|40004|walk circle r1.5 x1.3|0.898|0.924
+faceling|1.0|40004|walk circle r1.8 x1.15|0.895|0.908
+faceling|1.0|40004|walk circle r2.5 x1|0.937|0.990
+faceling|1.0|40004|walk circle r2.5 x1.3|0.989|0.997
+faceling|1.0|40004|walk circle r4 x1|0.898|0.983
+faceling|1.0|40004|walk circle r4 x1.3|1.001|1.011
+faceling|0.7|40003|walk straight|0.998|0.998
+faceling|0.7|40003|walk arc 45/s|0.990|0.992
+faceling|0.7|40003|walk arc 90/s|0.805|0.863
+faceling|0.7|40003|walk arc 120/s|0.834|0.839
+faceling|0.7|40003|walk arc 135/s|0.812|0.827
+faceling|0.7|40003|walk turn 90|0.764|0.910
+faceling|0.7|40003|walk turn -90|0.764|0.894
+faceling|0.7|40003|walk turn 180|0.806|0.872
+faceling|0.7|40003|walk circle r1.5 x1|0.829|0.902
+faceling|0.7|40003|walk circle r1.5 x1.3|0.789|0.821
+faceling|0.7|40003|walk circle r1.8 x1.15|0.765|0.824
+faceling|0.7|40003|walk circle r2.5 x1|0.804|0.870
+faceling|0.7|40003|walk circle r2.5 x1.3|0.770|0.787
+faceling|0.7|40003|walk circle r4 x1|0.815|0.935
+faceling|0.7|40003|walk circle r4 x1.3|0.764|0.851
+faceling|0.7|40004|walk straight|1.059|1.059
+faceling|0.7|40004|walk arc 45/s|1.044|1.044
+faceling|0.7|40004|walk arc 90/s|1.024|1.025
+faceling|0.7|40004|walk arc 120/s|1.018|1.018
+faceling|0.7|40004|walk arc 135/s|0.885|0.918
+faceling|0.7|40004|walk turn 90|0.913|0.988
+faceling|0.7|40004|walk turn -90|0.941|0.980
+faceling|0.7|40004|walk turn 180|0.923|0.966
+faceling|0.7|40004|walk circle r1.5 x1|0.996|1.041
+faceling|0.7|40004|walk circle r1.5 x1.3|0.960|0.984
+faceling|0.7|40004|walk circle r1.8 x1.15|0.981|1.002
+faceling|0.7|40004|walk circle r2.5 x1|1.017|1.037
+faceling|0.7|40004|walk circle r2.5 x1.3|0.958|1.003
+faceling|0.7|40004|walk circle r4 x1|1.004|1.038
+faceling|0.7|40004|walk circle r4 x1.3|1.021|1.044
+linesman|1.0|40003|walk straight|0.981|0.981
+linesman|1.0|40003|walk arc 45/s|0.985|0.985
+linesman|1.0|40003|walk arc 90/s|0.856|0.893
+linesman|1.0|40003|walk arc 120/s|0.870|0.876
+linesman|1.0|40003|walk arc 135/s|0.769|0.819
+linesman|1.0|40003|walk turn 90|0.764|0.885
+linesman|1.0|40003|walk turn -90|0.860|0.899
+linesman|1.0|40003|walk turn 180|0.768|0.822
+linesman|1.0|40003|walk circle r1.5 x1|0.818|0.872
+linesman|1.0|40003|walk circle r1.5 x1.3|0.801|0.838
+linesman|1.0|40003|walk circle r1.8 x1.15|0.771|0.800
+linesman|1.0|40003|walk circle r2.5 x1|0.907|0.930
+linesman|1.0|40003|walk circle r2.5 x1.3|0.888|0.920
+linesman|1.0|40003|walk circle r4 x1|0.792|0.905
+linesman|1.0|40003|walk circle r4 x1.3|0.764|0.879
+linesman|0.7|40003|walk straight|0.995|0.995
+linesman|0.7|40003|walk arc 45/s|0.918|0.984
+linesman|0.7|40003|walk arc 90/s|0.847|0.898
+linesman|0.7|40003|walk arc 120/s|0.855|0.857
+linesman|0.7|40003|walk arc 135/s|0.906|0.927
+linesman|0.7|40003|walk turn 90|0.867|0.929
+linesman|0.7|40003|walk turn -90|0.906|0.929
+linesman|0.7|40003|walk turn 180|0.771|0.834
+linesman|0.7|40003|walk circle r1.5 x1|0.995|0.995
+linesman|0.7|40003|walk circle r1.5 x1.3|0.849|0.944
+linesman|0.7|40003|walk circle r1.8 x1.15|0.876|0.965
+linesman|0.7|40003|walk circle r2.5 x1|0.994|0.995
+linesman|0.7|40003|walk circle r2.5 x1.3|0.993|0.995
+linesman|0.7|40003|walk circle r4 x1|0.925|0.978
+linesman|0.7|40003|walk circle r4 x1.3|0.847|0.950

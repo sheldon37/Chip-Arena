@@ -294,6 +294,9 @@ namespace ChipArena.UnityConversion
             void Frame(int i){float t=i*dt;foreach(var a in adds){var st=NativeHordeKinds.ProposedRow(a.Kind);a.Step(t,dt,Rig(a.Kind,(st.walk+st.run)*.5f+(st.run-st.walk)*.5f*(float)Math.Sin(t*.7f)),i%400<200?0:30);}}
             for(int i=0;i<300;i++)Frame(i);long before=GC.GetAllocatedBytesForCurrentThread();for(int i=300;i<2100;i++)Frame(i);long used=GC.GetAllocatedBytesForCurrentThread()-before;
             Check(used==0,"the cadence, the calm and the shoulders allocate nothing per frame ("+used+" bytes over 1800 frames of seven adds)");
+            // (Every take pairing on the model's legs, running round and stopping and setting off while it turns: the gait, the fit and the
+            // binding, ZombieRunTurnChecks.TurningAllocation.)
+            long turning=ZombieRunTurnChecks.TurningAllocation();Check(turning==0,"zombies on the model's legs turning, stopping and setting off allocate nothing per frame ("+turning+" bytes over 1800 frames of ten adds)");
         }
 
         // ---- presentation only ----

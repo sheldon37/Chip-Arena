@@ -663,7 +663,7 @@ namespace ChipArena.UnityConversion
                 {
                     float s=Clamp01((f.Time-ft.T0)/Math.Max(1e-3f,ft.T1-ft.T0));
                     // (It comes down turned on into the turn, as far as the body turns over half its coming stance: Lead.)
-                    ft.Lead=heavy||quad||ft.Scrape?0:LeadOf(duty,rateHz,moving);
+                    ft.Lead=heavy||quad||ft.Scrape?0:LeadOf(duty,rateHz);
                     // (A foot comes down where the body will be facing as it stands on it, so through a turn its side of the body is the side it
                     // lands on, the inside foot first, rather than the legs crossing as the hips turn on over it.)
                     if(moving&&!heavy&&!quad&&!ft.Scrape)
@@ -772,15 +772,18 @@ namespace ChipArena.UnityConversion
         /// <summary>How far a landing foot is turned on into the body's turn (deg, at most <see cref="LeadMost"/>): as far as the body
         /// turns over half its coming stance (<see cref="LeadOf"/>), so through a running turn it is planted pointing where the body
         /// faces halfway through it, and twists half as far either side of the facing as a foot planted square to it did. Standing,
-        /// a step's stance is taken as <see cref="LeadStand"/> s. How much of the foot's twist the knee turns with (1: the knee over the foot).</summary>
+        /// a step's stance is taken as <see cref="LeadStand"/> s, eased to the cadence's by the move weight. How much of the foot's twist the
+        /// knee turns with (1: the knee over the foot).</summary>
         public const float LeadMost=25,LeadStand=.3f,KneeFollow=1;
         /// <summary>The farthest across the floor (rig metres, the footprint drawn in for the rig's legs: .45 leg lengths) a planted foot
         /// stands to the side of its hip before it steps, as one out of reach does, running (the takes stand a foot half that or less off
         /// its hip); walking, <see cref="AcrossWalk"/> (.3 leg lengths), by the walk-to-run blend.</summary>
         public const float AcrossMost=.225f,AcrossWalk=.15f;
-        private float LeadOf(float duty,float rateHz,bool moving)
+        // (The stance eased between standing's and the cadence's by the eased move weight, `moveArg`: switched on the planner's moving, it
+        // jumped as a zombie stopped or set off, and a swinging foot's landing turn flicked up to 17 degrees in a frame; the review, 2026-11-18.)
+        private float LeadOf(float duty,float rateHz)
         {
-            float stance=moving?duty/Math.Max(.3f,rateHz):LeadStand,deg=lifeYawRate/BossMath.Deg*.5f*stance;
+            float stance=Lerp(LeadStand,duty/Math.Max(.3f,rateHz),Sm(moveArg)),deg=lifeYawRate/BossMath.Deg*.5f*stance;
             return Math.Max(-LeadMost,Math.Min(LeadMost,deg));
         }
         // A horizontal vector turned by `deg` (Unity yaw, clockwise from above).
