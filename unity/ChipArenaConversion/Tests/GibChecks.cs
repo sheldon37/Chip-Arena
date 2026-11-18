@@ -181,11 +181,45 @@ namespace ChipArena.UnityConversion
             var depths=new List<float>();for(uint s=0;s<200;s++){NativeArrowGib.Lodge(CapturedRig.Head,new Vector3(0,.165f,.6f),back,s,out _,out float d);depths.Add(d);}
             Check(depths.All(d=>d/.32f>.38f&&d/.32f<.62f)&&depths.Max()-depths.Min()>.02f,"a head shot stops about halfway into the head ("+depths.Min().ToString("0.000")+" .. "+depths.Max().ToString("0.000")+" of .32 m), seeded");
             NativeArrowGib.Lodge(CapturedRig.LKnee,new Vector3(.5f,-.14f,0),-Vector3.UnitX,3,out _,out float shin);Check(shin>NativeArrowGib.MinDepth&&shin<.12f,"a shin arrow stops about its middle ("+shin.ToString("0.000")+" m)");
-            Check(!NativeArrowGib.Lodge(CapturedRig.Head,new Vector3(3,3,3),back,1,out var missed,out float bury)&&bury==NativeBowStuck.Bury&&missed==new Vector3(3,3,3),"an arrow that misses the boxes keeps the hit point and the old bury");
+            Check(!NativeArrowGib.Lodge(CapturedRig.Head,new Vector3(3,3,3),back,1,out var missed,out float bury)&&bury==NativeBowStuck.Bury&&missed==new Vector3(3,3,3),"an arrow far from the boxes keeps the hit point and the old bury");
+            // A hit on the game's capsule beside the chest (owner 2026-11-18: arrows "attach" off of the body): moved onto its boxes.
+            float side=0;while(side<1&&NativeArrowGib.Extent(CapturedRig.Chest,new Vector3(side,.1f,.6f),back,out _,out _))side+=.01f;
+            var beside=new Vector3(side+.12f,.1f,.6f);bool ontoMet=NativeArrowGib.Lodge(CapturedRig.Chest,beside,back,11,out var onto,out float ontoDepth);Check(!NativeArrowGib.Extent(CapturedRig.Chest,beside,back,out _,out _)&&ontoMet&&Math.Abs(onto.X-side)<.03f&&onto.Z<.6f&&ontoDepth>=NativeArrowGib.MinDepth,"a capsule hit "+(beside.X-side).ToString("0.00")+" m beside the chest's boxes is moved onto them (x "+onto.X.ToString("0.000")+", edge "+side.ToString("0.00")+")");
+            Check(NativeArrowGib.Through(CapturedRig.Chest,beside,back,out var ontoIn,out var ontoOut)&&ontoIn.Z>ontoOut.Z&&Math.Abs(ontoIn.X-side)<.03f,"a pass-through beside the boxes enters and leaves the chest");
+            Check(NativeArrowGib.Onto(CapturedRig.Chest,chestFront,back)==chestFront&&NativeArrowGib.Onto(CapturedRig.Chest,new Vector3(side+NativeArrowGib.BoxMiss+.1f,.1f,.6f),back).X==side+NativeArrowGib.BoxMiss+.1f,"a flight that meets the boxes, or lies past "+NativeArrowGib.BoxMiss+" m, is not moved");
             Check(NativeArrowGib.Through(CapturedRig.Chest,chestFront,back,out var tin,out var tout)&&Math.Abs(tin.Z-.169f)<.002f&&tout.Z< -.14f,"a pass-through enters at the front and leaves at the back ("+tout.Z.ToString("0.000")+")");
             foreach(var detail in new[]{"direct","secondary"})Check(NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Hit,Detail=detail},"bow")&&NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Headshot,Detail=detail},"bow"),"an arrow's "+detail+" hit sticks");
             foreach(var detail in new[]{"thorns","chain","blast","reflected","field","ability","kernel-panic-wave",null})Check(!NativeBowWire.Sticks(new ArenaEvent{Kind=EventKind.Hit,Detail=detail},"bow"),"a bow pilot's "+(detail??"null")+" hit is no arrow and sticks none");
-            report.Add($"arrow: a chest arrow {depth:0.000} m into {chestThick:0.000}, a head arrow about halfway, a miss keeps the old bury; only direct and secondary arrow hits stick");
+            report.Add($"arrow: a chest arrow {depth:0.000} m into {chestThick:0.000}, a head arrow about halfway, a capsule hit beside the boxes moved onto them, a far miss keeps the old bury; only direct and secondary arrow hits stick");
+
+            // ---- 7b. the arrow on the drawn model (owner 2026-11-18: "it'll look like someone is running around with floating arrows") ----
+            // A body of finely cut boxes on three bones: a torso (the spine's body), a head and a forearm held across the chest.
+            var mesh=new List<Vector3>();var meshTris=new List<int>();var meshBone=new List<int>();int[] regions={CapturedRig.Spine,CapturedRig.Head,CapturedRig.LElbow};
+            Slab(mesh,meshTris,meshBone,new Vector3(0,1.2f,0),new Vector3(.17f,.25f,.1f),0,8);Slab(mesh,meshTris,meshBone,new Vector3(0,1.62f,0),new Vector3(.1f,.12f,.1f),1,6);
+            var body=mesh.ToArray();var bodyTris=meshTris.ToArray();var bodyBone=meshBone.ToArray();
+            NativeArrowGib.ModelSeat Seat(Vector3 hit,Vector3 dir,bool head=false)=>NativeArrowGib.Seat(body,body.Length,bodyTris,bodyTris.Length/3,bodyBone,regions,hit,dir,head);
+            var front=Seat(new Vector3(0,1.2f,.42f),back);
+            Check(front.Found&&!front.Moved&&front.Bone==0&&Vector3.Distance(front.Entry,new Vector3(0,1.2f,.1f))<1e-3f&&Math.Abs(front.Thick-.2f)<.005f,"a flight into the torso enters its front skin and finds its back ("+front.Thick.ToString("0.000")+" m through)");
+            var capsule=Seat(new Vector3(-.3f,1.2f,.42f),back);
+            Check(capsule.Found&&capsule.Moved&&capsule.Bone==0&&Math.Abs(capsule.Entry.Z-.1f)<1e-3f&&capsule.Entry.X>-.17f&&capsule.Entry.X<-.14f,"a capsule hit .13 m beside the skin is moved onto the body's side (x "+capsule.Entry.X.ToString("0.000")+")");
+            Check(!Seat(new Vector3(-1.2f,1.2f,.42f),back).Found,"a flight past "+NativeArrowGib.SeatMiss+" m from the skin finds no place (the game joint's stands)");
+            var shoulder=new Vector3(.12f,1.47f,.42f);var asBody=Seat(shoulder,back);var asHead=Seat(shoulder,back,true);
+            Check(asBody.Found&&asBody.Bone==0&&asHead.Found&&asHead.Bone==1&&asHead.Moved,"a head shot that passes between the head and the shoulder sits in the head; a body shot there, the shoulder");
+            Slab(mesh,meshTris,meshBone,new Vector3(0,1.1f,.22f),new Vector3(.2f,.04f,.04f),2,4);body=mesh.ToArray();bodyTris=meshTris.ToArray();bodyBone=meshBone.ToArray();
+            var arm=Seat(new Vector3(0,1.1f,.42f),back);
+            Check(arm.Found&&arm.Bone==2&&Math.Abs(arm.Entry.Z-.26f)<1e-3f&&Math.Abs(arm.Thick-.08f)<.005f&&Vector3.Distance(arm.Exit,arm.Entry+back*arm.Thick)<1e-4f,"an arm across the chest takes the arrow first, its far side the arm's own ("+arm.Thick.ToString("0.000")+" m), not the chest's");
+            var coarse=new List<Vector3>();var coarseTris=new List<int>();var coarseBone=new List<int>();Slab(coarse,coarseTris,coarseBone,new Vector3(0,1.2f,0),new Vector3(.17f,.25f,.1f),0,1);
+            var corner=NativeArrowGib.Seat(coarse.ToArray(),coarse.Count,coarseTris.ToArray(),coarseTris.Count/3,coarseBone.ToArray(),regions,new Vector3(-.3f,1.2f,.42f),back,false);
+            Check(corner.Found&&corner.Entry.X>=-.171f&&corner.Entry.X<=.171f&&Math.Abs(corner.Entry.Y-1.2f)<=.251f&&Math.Abs(corner.Entry.Z)<=.101f,"a coarse body (its corners the only vertices) still gives a place on its skin");
+            var none=NativeArrowGib.Seat(body,body.Length,bodyTris,bodyTris.Length/3,Enumerable.Repeat(-1,body.Length).ToArray(),regions,new Vector3(0,1.2f,.42f),back,false);
+            Check(!none.Found&&!NativeArrowGib.Seat(null,0,null,0,null,null,Vector3.Zero,back,false).Found,"skin on no bone, or none, gives no place");
+            Check(NativeArrowGib.Bury(.2f,11)>=.2f*(NativeArrowGib.DepthShare-NativeArrowGib.DepthJitter)-1e-4f&&NativeArrowGib.Bury(.2f,11)<=.2f*(NativeArrowGib.DepthShare+NativeArrowGib.DepthJitter)+1e-4f&&NativeArrowGib.Bury(.05f,3)==NativeArrowGib.MinDepth&&NativeArrowGib.Bury(.9f,3)==NativeArrowGib.MaxDepth,"a seated arrow buries about halfway through the part as drawn, within the bounds");
+            // When and where: a guest's hit waits for the drawn pose; the hit carried onto the body as drawn.
+            Check(!NativeArrowGib.Due(10,9.9f,true)&&NativeArrowGib.Due(10,9.998f,true)&&NativeArrowGib.Due(10,10.2f,true)&&NativeArrowGib.Due(10,9.9f,false),"a guest's hit waits for its drawn pose to reach it (the host's, a replay's and a dead or own pilot's do not)");
+            var carried=NativeArrowGib.OnDrawn(new Vector3(1,1,1),new Vector3(.1f,0,0),new Vector3(6,0,0),10,10.05f);
+            Check(Vector3.Distance(carried,new Vector3(1.4f,1,1))<1e-4f,"a hit is carried by the drawn body's offset and its run since the hit ("+carried.X.ToString("0.000")+")");
+            Check(Vector3.Distance(NativeArrowGib.OnDrawn(Vector3.Zero,Vector3.Zero,new Vector3(6,0,0),10,12),new Vector3(6*NativeArrowGib.CarryMost,0,0))<1e-4f&&NativeArrowGib.OnDrawn(Vector3.One,new Vector3(float.NaN,0,0),new Vector3(0,float.NaN,0),10,10.1f)==Vector3.One,"the carry is bounded and a bad velocity or offset moves nothing");
+            report.Add($"model seat: a torso entry {front.Thick:0.000} m through, a capsule hit moved onto the side, the head preferred for a head shot, an arm across the chest takes it first, far misses keep the joint; a guest's hit waits for its pose, carried by the body's offset and run");
 
             // ---- 8. through or not ----
             var shots=new ArrowShot[4];
@@ -228,11 +262,12 @@ namespace ChipArena.UnityConversion
                     NativeSmashGib.Squash(p,t);NativeSmashGib.Overlay(p,t,out _,out _,out _,out _);NativeSmashGib.Sprawl(p,NativeSmashGib.Progress(p,t),j0,moves);NativeSmashGib.Flash(p,t,out _,out _,out _);
                     for(int k=0;k<NativeSmashGib.Gushes;k++)NativeSmashGib.Gush(p,k,out _,out _,out _,out _,out _,out _,out _);for(int k=0;k<NativeSmashGib.Pools;k++)NativeSmashGib.Pool(p,k,out _,out _,out _,out _,out _);for(int k=0;k<NativeSmashGib.Mists;k++)NativeSmashGib.Mist(p,k,t,out _,out _,out _,out _);
                 }
-                NativeArrowGib.Lodge(CapturedRig.Head,new Vector3(0,.165f,.6f),back,7,out _,out _);NativeArrowGib.Fate(0,false,7,hit1,10,holder,1,out _);NativeArrowGib.Drips(t,1,1,false);for(int i=0;i<stuck.Count;i++)NativeArrowGib.Bleeds(stuck,i,t,NativeArrowGib.MaxBleeds);
+                NativeArrowGib.Lodge(CapturedRig.Head,new Vector3(0,.165f,.6f),back,7,out _,out _);NativeArrowGib.Lodge(CapturedRig.Chest,beside,back,7,out _,out _);NativeArrowGib.Fate(0,false,7,hit1,10,holder,1,out _);
+                NativeArrowGib.Seat(body,body.Length,bodyTris,bodyTris.Length/3,bodyBone,regions,new Vector3(-.3f,1.2f,.42f),back,true);NativeArrowGib.OnDrawn(hit1,Vector3.UnitX,Vector3.UnitZ,10,t);NativeArrowGib.Drips(t,1,1,false);for(int i=0;i<stuck.Count;i++)NativeArrowGib.Bleeds(stuck,i,t,NativeArrowGib.MaxBleeds);
             }
             for(float t=0;t<1;t+=1/60f)Frame(t);long before=GC.GetAllocatedBytesForCurrentThread();for(float t=0;t<4;t+=1/60f)Frame(t);long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
             Check(bytes==0,"a frame of the smash and the arrow gib allocates "+bytes+" bytes");
-            report.Add("allocation: 240 frames of the squash, sprawl, blood, mist, flash, lodge, fate, trickle and bleed cap allocate 0 bytes");
+            report.Add("allocation: 240 frames of the squash, sprawl, blood, mist, flash, lodge, model seat, fate, trickle and bleed cap allocate 0 bytes");
 
             // ---- 11. wiring (text) and isolation ----
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f)).Replace("\r","");string C(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core",f)).Replace("\r","");
@@ -246,7 +281,13 @@ namespace ChipArena.UnityConversion
             Check(smash.Contains("NativeSmashGib.Plan(Gore,death.style,death.kept,death.model,death.damageKind,arena.MapId,hazards,death.hazardId,")&&smash.Contains("NativeSmashGib.Saw(hazards,death.hazardId,"),"the plan comes from the death record, its hazard id and the map's hazards");
             Check(R("NativeBloodPresentation.cs").Contains("BisectSparks(now);SmashMist(now);")&&R("NativeCinematicCamera.cs").Contains("presentation.HazardGibbed(arena,d)"),"the mist and flash draw with the blood; a gibbed death plays no kill-effect screen");
             Check(R("NativeCorpseWorld.cs").Contains("if(weapon!=null&&!Pinned)weapon.isKinematic=false;")&&R("NativeBisectCorpse.cs").Contains("IsCrushed(part)||standIn&&part==CapturedRig.Pelvis||Pinned"),"a pinned body never wakes into a ragdoll");
-            Check(bow.Contains("ArrowStrike(arena,e,rig,bone,at,dir,draw,std);")&&bow.Contains("bowStuck.Draw(bowSink,time,bowBone);ArrowBleeds(time);")&&bow.Contains("var half=ArrowHalf(corpse,bone,local);if(!half.ShownBone(bone))return false;world=BowN(half.PresentedBone(bone));"),"the arrow lodges or passes, bleeds, and rides the drawn body's half");
+            Check(bow.Contains("ArrowStrike(arena,e,rig,NativeArena.Vec(e.Position),dir,draw,std,time);")&&bow.Contains("ArrowSeatsDone();bowBone??=BowBone;bowStuck.Draw(bowSink,time,bowBone);ArrowBleeds(time);")&&arrow.Contains("var half=ArrowHalf(corpse,r.Bone,r.Point);if(!half.ShownBone(r.Bone))return false;")&&arrow.Contains("world=BowN(half.PresentedBone(r.Bone));return true;"),"the arrow lodges or passes, bleeds, and rides the drawn body's half");
+            // (Owner 2026-11-18: "it'll look like someone is running around with floating arrows around them".)
+            Check(bow.Contains("if(death!=null&&corpses.TryGetValue(DeathKey(death),out var corpse))return ArrowOnCorpse(corpse,r,out world,out model,out opacity);")&&bow.Contains("if(r.Model>=0&&bones!=null&&r.Model<bones.Length&&bones[r.Model]!=null){world=BowN(bones[r.Model].localToWorldMatrix);model=true;return true;}")&&bow.Contains("world=BowN(VisualJointFrame(rig,bone));return true;")&&bow.Contains("if(FirstPerson&&target==LocalId||PilotsOffStage)return false;"),"a live pilot's arrow rides the drawn model's bone (or the game joint's frame on the model), the voxel rig only for a voxel body, nothing on a body not drawn");
+            Check(bow.Contains("if(!body.Root.activeSelf||body.PosedFrame!=Time.frameCount)return false;")&&bow.Contains("BladeHidesHud(target))return false;"),"a hidden, first-person or veiled body shows no arrows");
+            Check(arrow.Contains("if(pilot)at=ArrowOnDrawn(arena,e,at,time);")&&arrow.Contains("if(pilot)ArrowSeatAsk(arena,e,rig,at,dir,false,seed);")&&arrow.Contains("bool seating=pilot&&ArrowSeatAsk(arena,e,rig,at,dir,true,seed);")&&arrow.Contains("seats[k]=NativeArrowGib.Seat(at,n,tris,t/3,bone,Region,a.Hit,a.Dir,a.Head);")&&arrow.Contains("else bowStuck.Seat(a.Event,s.Bone,entry,along,NativeArrowGib.Bury(s.Thick,a.Seed));"),"a pilot's hit is carried onto the drawn body, then seated where its flight met the skin, on a worker");
+            Check(arrow.Contains("if(NativeSplitShow.Wears(1,side,stage))on=corpse.Twin;else if(!NativeSplitShow.Wears(0,side,stage))return false;")&&arrow.Contains("world=BowN(b.localToWorldMatrix);model=true;opacity=shown.Dissolve>0?1-shown.Dissolve:1;return true;")&&arrow.Contains("!shown.Root.activeSelf||shown.Joint==null||!on.ShownBone(shown.Joint[r.Model])"),"on a model corpse the arrow rides its bone on the half it lay on, hides with a crushed part or a hidden body and fades as it dissolves");
+            Check(bow.Contains("if(!NativeArrowGib.Due(e.Time,time,BowWaits(arena,e,time))&&bowLater.Count<64)")&&bow.Contains("arena.Replica&&e.Target<10000&&e.Target!=LocalId"),"a guest's hit on another pilot waits for the drawn pose");
             Check(arrow.Contains("NativeArrowGib.Fate(e.Projectile,e.Pierced,e.Source,")&&arrow.Contains("blood.Spray(\"cavity\"")&&!arrow.Contains("\"puncture\""),"the replicated id and flag decide; the exit sprays, the wound's own spray stays the wound path's");
             Check(!R("NativeWoundPresentation.cs").Contains("Arrow"),"the wound path is untouched (its puncture or cavity spray is the arrow wound's)");
             foreach(var f in new[]{"NativeSmashGib.cs","NativeArrowGib.cs"}){var text=C(f);Check(!text.Contains("UnityEngine")&&!text.Contains("new Random(")&&!text.Contains("DateTime"),f+" stays engine free and deterministic");}
@@ -256,6 +297,16 @@ namespace ChipArena.UnityConversion
 
             foreach(var line in report)Console.WriteLine("PASS gib: "+line);
             Console.WriteLine("PASS gib: "+count+" checks");
+        }
+        // A box on body bone `b` (its six faces each cut `n` by `n`) added to a skin: its vertices, triangles and each vertex's bone.
+        private static void Slab(List<Vector3> at,List<int> tris,List<int> bone,Vector3 centre,Vector3 half,int b,int n)
+        {
+            for(int axis=0;axis<3;axis++)for(int sign=-1;sign<=1;sign+=2)
+            {
+                var normal=axis==0?Vector3.UnitX:axis==1?Vector3.UnitY:Vector3.UnitZ;var u=axis==0?Vector3.UnitY:axis==1?Vector3.UnitZ:Vector3.UnitX;var v=Vector3.Cross(normal,u);int first=at.Count;
+                for(int i=0;i<=n;i++)for(int j=0;j<=n;j++){var p=normal*sign+u*(2f*i/n-1)+v*(2f*j/n-1);at.Add(centre+p*half);bone.Add(b);}
+                for(int i=0;i<n;i++)for(int j=0;j<n;j++){int a=first+i*(n+1)+j,c=a+n+1;tris.AddRange(new[]{a,c,a+1,a+1,c,c+1});}
+            }
         }
         // A standing body's joints (the rig at rest, Unity world) with its feet at `feet`, facing `yaw`.
         private static Vector3[] Rest(Vector3 feet,float yaw)

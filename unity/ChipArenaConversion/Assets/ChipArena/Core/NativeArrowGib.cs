@@ -76,16 +76,128 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static bool Lodge(int bone,Vector3 local,Vector3 dir,uint seed,out Vector3 entry,out float depth)
         {
-            dir=Unit(dir);if(!Extent(bone,local,dir,out float enter,out float exit)){entry=local;depth=NativeBowStuck.Bury;return false;}
-            float thick=exit-enter,share=DepthShare+DepthJitter*(2*H(seed,0,1)-1);
-            depth=Math.Max(MinDepth,Math.Min(Math.Min(MaxDepth,thick-.02f),thick*share));entry=local+dir*enter;return true;
+            dir=Unit(dir);local=Onto(bone,local,dir);if(!Extent(bone,local,dir,out float enter,out float exit)){entry=local;depth=NativeBowStuck.Bury;return false;}
+            depth=Bury(exit-enter,seed);entry=local+dir*enter;return true;
+        }
+        /// <summary>How far (m) the head of an arrow that stopped is buried in a part `thick` m through along its flight: about
+        /// its middle (<see cref="DepthShare"/>, a seeded <see cref="DepthJitter"/> either side), within
+        /// <see cref="MinDepth"/> and <see cref="MaxDepth"/> and short of the far side.</summary>
+        public static float Bury(float thick,uint seed)
+        {
+            float share=DepthShare+DepthJitter*(2*H(seed,0,1)-1);return Math.Max(MinDepth,Math.Min(Math.Min(MaxDepth,thick-.02f),thick*share));
         }
         /// <summary>Where an arrow that went through entered and left the struck part (joint frame); false when the boxes miss
         /// (both at the hit point).</summary>
         public static bool Through(int bone,Vector3 local,Vector3 dir,out Vector3 entry,out Vector3 exit)
         {
-            dir=Unit(dir);if(!Extent(bone,local,dir,out float enter,out float leave)){entry=exit=local;return false;}
+            dir=Unit(dir);local=Onto(bone,local,dir);if(!Extent(bone,local,dir,out float enter,out float leave)){entry=exit=local;return false;}
             entry=local+dir*enter;exit=local+dir*leave;return true;
+        }
+        /// <summary>How far beside the struck joint's boxes (m) a flight may pass and still be moved onto them (the game's collider
+        /// is wider than the body; owner 2026-11-18: "they sometimes 'attach' off of a players body"), and how far inside the
+        /// nearest box's surface the moved flight then passes.</summary>
+        public const float BoxMiss=.48f,BoxInside=.012f;
+        /// <summary>
+        /// The flight through `local` along `dir` (joint frame), moved sideways onto joint `bone`'s boxes when it misses them: through
+        /// the point of the boxes nearest the line, <see cref="BoxInside"/> past their surface. A flight that meets them, or lies
+        /// farther than <see cref="BoxMiss"/> from all of them, is kept.
+        /// </summary>
+        public static Vector3 Onto(int bone,Vector3 local,Vector3 dir)
+        {
+            dir=Unit(dir);if(Extent(bone,local,dir,out _,out _))return local;float best=BoxMiss*BoxMiss;Vector3 moved=local;
+            foreach(var box in CapturedRig.Boxes)
+            {
+                if(box.Bone!=bone)continue;var c=CapturedRig.Mirror(box.Position);var half=box.Size*.5f;
+                // The line's point nearest the box's middle, then the box's point nearest that, then the line's nearest that (twice).
+                var p=local+dir*Vector3.Dot(c-local,dir);Vector3 q=p;
+                for(int k=0;k<3;k++){q=Vector3.Clamp(p,c-half,c+half);p=local+dir*Vector3.Dot(q-local,dir);}
+                var off=q-p;float d=off.LengthSquared();if(d>=best)continue;best=d;
+                // Into the box past its surface (towards its middle when the line already touches it).
+                var inward=d>1e-10f?off/(float)Math.Sqrt(d):Unit(c-p);moved=local+off+inward*Math.Min(BoxInside,.5f*Math.Min(half.X,Math.Min(half.Y,half.Z)));
+            }
+            return moved;
+        }
+
+        // ================================================================================================ where it sits on the model
+        /// <summary>Where a pilot's arrow met its drawn model (<see cref="Seat"/>): whether found, whether the flight was moved onto
+        /// the body (it passed beside the skin: the game's collider is wider), the entry on the skin and the struck part's far side
+        /// along the flight (world), the part's thickness there and the body bone (the caller's index) the entry's skin rides.</summary>
+        public struct ModelSeat{public bool Found,Moved;public Vector3 Entry,Exit;public int Bone;public float Thick;}
+        /// <summary>How far before and past the replicated hit point the flight is cast against the skin (m); how far beside it the
+        /// body may lie and the flight still be moved onto it (the collider's radius and some); how far inside the skin the moved
+        /// flight passes; how far past the entry the part's far side is looked for, and the thickness taken without one.</summary>
+        public const float SeatBack=.9f,SeatAhead=.9f,SeatMiss=.48f,SeatInside=.012f,SeatReach=.6f,SeatThick=.12f;
+        /// <summary>
+        /// Where an arrow that struck a pilot at `hit` along `dir` (world) sits on its drawn model, the skin as posed: `at` its
+        /// vertices (world; the first `vertices`), `tris` its triangles (the first `triangles`), `bone` each vertex's body bone
+        /// (the caller's index; -1 none) and `region` each bone's body (NativeBisect.Anchor of the game joint at or above it).
+        /// The flight is cast from <see cref="SeatBack"/> before the hit: the first face it meets is the entry, riding the bone of
+        /// that face's vertex nearest it. A flight that misses the skin (the hit lies on the game's capsule, outside the model) is
+        /// moved sideways through the body's vertex nearest the line (within <see cref="SeatMiss"/>), <see cref="SeatInside"/>
+        /// past it, and cast again. A head shot (`head`) looks on the head first. The far side: the farthest face of the entry's
+        /// body along the flight within <see cref="SeatReach"/>. Engine free, allocation free; run off the main thread.
+        /// </summary>
+        public static ModelSeat Seat(Vector3[] at,int vertices,int[] tris,int triangles,int[] bone,int[] region,Vector3 hit,Vector3 dir,bool head)
+        {
+            var s=new ModelSeat{Bone=-1};if(at==null||tris==null||bone==null||region==null)return s;dir=Unit(dir);
+            vertices=Math.Min(vertices,Math.Min(at.Length,bone.Length));triangles=Math.Min(triangles,tris.Length/3);
+            if(head&&SeatOn(at,vertices,tris,triangles,bone,region,hit,dir,CapturedRig.Head,ref s))return s;
+            SeatOn(at,vertices,tris,triangles,bone,region,hit,dir,-1,ref s);return s;
+        }
+        private static bool SeatOn(Vector3[] at,int vertices,int[] tris,int triangles,int[] bone,int[] region,Vector3 hit,Vector3 dir,int only,ref ModelSeat s)
+        {
+            var from=hit-dir*SeatBack;int tri=Cast(at,vertices,tris,triangles,bone,region,from,dir,SeatBack+SeatAhead,false,only,out float t);bool moved=false;
+            if(tri<0)
+            {
+                int q=-1;float best=SeatMiss*SeatMiss;var off=Vector3.Zero;
+                for(int v=0;v<vertices;v++)
+                {
+                    int b=bone[v];if(b<0||b>=region.Length||only>=0&&region[b]!=only)continue;var rel=at[v]-hit;float along=Vector3.Dot(rel,dir);
+                    if(along< -SeatBack||along>SeatAhead)continue;var perp=rel-dir*along;float d=perp.LengthSquared();if(d<best){best=d;q=v;off=perp;}
+                }
+                if(q<0)return false;float l=off.Length();moved=true;from=hit+(l>1e-5f?off*(1+SeatInside/l):Vector3.Zero)-dir*SeatBack;
+                tri=Cast(at,vertices,tris,triangles,bone,region,from,dir,SeatBack+SeatAhead,false,only,out t);
+                if(tri<0){s=new ModelSeat{Found=true,Moved=true,Entry=at[q],Exit=at[q]+dir*SeatThick,Bone=bone[q],Thick=SeatThick};return true;}
+            }
+            var entry=from+dir*t;int on=-1;float near=float.MaxValue;
+            for(int k=0;k<3;k++){int v=tris[tri*3+k];int b=v<vertices?bone[v]:-1;if(b<0||b>=region.Length)continue;float d=Vector3.DistanceSquared(at[v],entry);if(d<near){near=d;on=b;}}
+            if(on<0)return false;
+            float thick=Cast(at,vertices,tris,triangles,bone,region,entry+dir*.001f,dir,SeatReach,true,region[on],out float far)>=0?far+.001f:SeatThick;
+            s=new ModelSeat{Found=true,Moved=moved,Entry=entry,Exit=entry+dir*thick,Bone=on,Thick=thick};return true;
+        }
+        // The nearest (or farthest) triangle a ray from `from` along `dir` meets within `reach` (its index, -1 none; `t` how far),
+        // both sides, over the triangles with a vertex on a bone (in body `only` when it is not -1).
+        private static int Cast(Vector3[] at,int vertices,int[] tris,int triangles,int[] bone,int[] region,Vector3 from,Vector3 dir,float reach,bool farthest,int only,out float t)
+        {
+            int hit=-1;t=0;
+            for(int i=0;i<triangles;i++)
+            {
+                int ia=tris[i*3],ib=tris[i*3+1],ic=tris[i*3+2];if(ia>=vertices||ib>=vertices||ic>=vertices)continue;
+                int ba=bone[ia],bb=bone[ib],bc=bone[ic];if(ba<0&&bb<0&&bc<0)continue;
+                if(only>=0&&!(ba>=0&&ba<region.Length&&region[ba]==only||bb>=0&&bb<region.Length&&region[bb]==only||bc>=0&&bc<region.Length&&region[bc]==only))continue;
+                Vector3 a=at[ia],ab=at[ib]-a,ac=at[ic]-a;var h=Vector3.Cross(dir,ac);float det=Vector3.Dot(ab,h);if(Math.Abs(det)<1e-12f)continue;float inv=1/det;
+                var o=from-a;float u=Vector3.Dot(o,h)*inv;if(u<0||u>1)continue;var r=Vector3.Cross(o,ab);float v=Vector3.Dot(dir,r)*inv;if(v<0||u+v>1)continue;
+                float d=Vector3.Dot(ac,r)*inv;if(d<=0||d>reach)continue;if(hit<0||(farthest?d>t:d<t)){hit=i;t=d;}
+            }
+            return hit;
+        }
+
+        // ================================================================================================ when and where on the drawn body
+        /// <summary>How far ahead of the drawn pose (s) a guest's hit may be and still be placed now; and the most (s) a hit's
+        /// place is carried along its target's velocity to the drawn pose's moment.</summary>
+        public const float DueSlack=.004f,CarryMost=.25f;
+        /// <summary>Whether a hit at `hitAt` is placed on a body drawn at `poseAt` now: a guest draws others about a tenth of a second
+        /// behind its newest frame, whose hits land ahead of the drawn pose (the arrow is still in flight there), so the arrow waits
+        /// for the pose to reach its hit; `waits` false (the host, a replay, a guest's own predicted pilot, a dead target) places
+        /// it at once.</summary>
+        public static bool Due(float hitAt,float poseAt,bool waits)=>!waits||poseAt>=hitAt-DueSlack;
+        /// <summary>The replicated hit point `hit` moved onto the body as drawn: by the drawn body's offset from its replicated
+        /// place (`drawnOffset`: smoothing, a technique's or spawn's shift) and by its velocity over the time from the hit to the
+        /// drawn pose's moment (at most <see cref="CarryMost"/> either way).</summary>
+        public static Vector3 OnDrawn(Vector3 hit,Vector3 drawnOffset,Vector3 velocity,float hitAt,float poseAt)
+        {
+            float dt=poseAt-hitAt;if(!(dt>-CarryMost))dt=-CarryMost;if(!(dt<CarryMost))dt=CarryMost;
+            var v=float.IsNaN(velocity.X+velocity.Y+velocity.Z)?Vector3.Zero:velocity;var o=float.IsNaN(drawnOffset.X+drawnOffset.Y+drawnOffset.Z)?Vector3.Zero:drawnOffset;return hit+o+v*dt;
         }
 
         // ================================================================================================ through or not
