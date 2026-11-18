@@ -405,6 +405,42 @@ joiner sees none. `NativeDeployStage` draws them as camera-facing additive quads
   ready draws a dark blank. All six strips are ready about 2.6 s after the station opens.
 - **Checks:** `--deploy-sparks` (`Tests/DeploySparkChecks.cs`).
 
+### ATLAS, the tileset departures board (Claude, 2026-11-18; docs/EXPEDITION-OVERHAUL.md R1, W2)
+
+The tileset machine's board, before it has a choice. Presentation only: it shows the tileset and decides nothing (no rule,
+ticket, roll, wire or save reads it).
+
+- **Where:** a split-flap railway board, 7.7 × 1.1 m, hung on two drop rods from the ceiling beam at z 7.5 over the DEPLOY
+  gate (its face at (0, 5.35..6.45, 7.1)). The plan's wall band (centred near (0, 6.6, 8.3), 1.6 m tall) sits behind that
+  beam from the Overview, so the board hangs in front of it, low enough that the whole face and the gate's DEPLOY sign read
+  from the Overview (both checked by ray against the room and the gate).
+- **What:** headed ATLAS · DEPARTURES, with four columns, TILESET · ENEMIES · INSTANCES · FINAL. The selected tileset is on
+  the large first line: CITY · MERIDIAN | THE INFECTED | 5 INSTANCES | THE SIREN, with its emblem flap (Meridian's skyline,
+  the clock at 6:47) and an in-service lamp in its accent. The three small, dim amber lines read NOT IN SERVICE, with no
+  names and no dates. Every cell comes from the registry, Core `NativeTilesets` (City's display fields; Astra adds the rules
+  fields in A3). The INSTANCES count is checked against the Instance Machine's real pool.
+- **When the station opens** (each client's own clock): the emblem flap falls at 0.08 s, then line 1 clatters in left to
+  right from 0.2 s. Each flap runs 6-13 drum glyphs before its own, 52 ms apiece, and the line has landed by 1.4 s. Then a
+  two-note bell rings, sparks fly off both cheeks (machine 2) and the lamp flashes. It is an arrival, not a spin. The camera
+  opens on the board (`NativeAtlasBoard.Shot`, the TILESET card's shot), holds until 2.8 s, then eases to the Overview. A roll
+  or Deploy takes the camera as before: the board's shot applies only over the Overview, and the stage's `Shot` stays the
+  rules' `Framing`.
+- **The console:** a TILESET card, the console's first, beside the station's title: ARRIVING…, then CITY · MERIDIAN IN SERVICE.
+  It is display only: there is nothing to choose yet and it raises no intent.
+- **Drawn by:** Core `NativeAtlasBoard` (layout, arrival, shot, sparks, sound moments), `NativeAtlasStage` (posed in
+  `NativeDeployStage.Frame`; no per-frame allocation), `NativeAtlasModels` (the cabinet, about 6.2k triangles, and 309 flaps,
+  1.9k), `NativeAtlasArt` (one split-flap glyph atlas, 768 × 576, baked once per build in `Editor/NativeDeployCardBuild.cs`
+  under a key that changes with its inputs, else rasterised on a worker), `NativeAtlasSounds` (Claude's synthesized clatter,
+  built from the flaps' own landings, and the bell). The draw is Runtime `NativeAtlasScene`, called by `NativeDeployScene`
+  after its items. The flaps are emissive, so the station keeps its eight practicals. The sounds are `NativeAtlasAudio`
+  (`NativeAudio` subscribes to `NativeAtlasScene.Sound`); Astra's `NativeDeploySounds` plays machines 0 and 1 only and is
+  unchanged. A board failure is logged once and turns the board off, never the station.
+- **The hook for A3:** `NativeTilesets.Selected(state)` returns City until `ExpeditionDeploymentState.tileset` exists. When the
+  selection changes, the cells that differ re-flap to the new row (`NativeAtlasStage.Retarget`). The board's pick animation and
+  the reels re-skinned from the chosen pool come later (W2, Claude, M3).
+- **Checks:** `--atlas-board` (`Tests/AtlasBoardChecks.cs`), plus the board counted in `DeployModelChecks`' 130,000-triangle
+  station total (about 92,000 with it), and machine 2 in `DeploySparkChecks` and `DeploySoundChecks`.
+
 Active-run endpoint migration remains unsupported by the existing live Expedition transport (candidates remain non-capable); staging host promotion preserves the ticket. This change does not claim or enable active-run migration. The owner-authorized test update may ship with active-run migration disabled; full migration remains separate unfinished work.
 
 ## Approved gameplay shape

@@ -14,7 +14,8 @@ namespace ChipArena.UnityConversion
     ///  - the cabinet on NativeSourceLit with the stage's light block (its bones: the lit body, the lettering at the header's
     ///    level, the in-service lamp in the selected tileset's accent, the other lines' dim lamps);
     ///  - the flaps, one mesh per line on NativeDeployScreen (emissive: they light nothing), sampling the one glyph atlas
-    ///    (the build's bake under NativeAtlasArt.Key, else rasterised on a worker; until it is up the black face shows), their
+    ///    (the build's bake under NativeAtlasArt.Key, else rasterised once on a worker and kept for the session; until it is up
+    ///    the black face shows), their
     ///    vertices rewritten only when a flap's pose changes (the line arriving, a later re-flap);
     ///  - the bell's sparks (machine 2) as camera-facing additive quads, as the station draws its own;
     ///  - its sounds raised through <see cref="Sound"/> (NativeAudio plays them from Claude's NativeAtlasSounds table).
@@ -29,7 +30,9 @@ namespace ChipArena.UnityConversion
         private readonly Vector2[][] uvs=new Vector2[NativeTilesets.Lines][];private readonly Color[][] colors=new Color[NativeTilesets.Lines][];
         private readonly NVector3[] cellPos=new NVector3[NativeAtlasModels.CellVertices];private readonly NVector2[] cellUv=new NVector2[NativeAtlasModels.CellVertices];private readonly float[] cellShade=new float[NativeAtlasModels.CellVertices];
         private readonly Mesh quad;private readonly Material lit,flaps,light;private readonly MaterialPropertyBlock block=new MaterialPropertyBlock();
-        private Texture2D atlas,spark;private Task<float[]> atlasJob;private int version=int.MinValue;private bool failed;
+        private Texture2D spark;private int version=int.MinValue;private bool failed;
+        // The glyph atlas, kept for the session once made (this build's bake, else one worker raster), so a later visit draws at once.
+        private static Texture2D atlas;private static Task<float[]> atlasJob;
         private static readonly int SceneTintId=Shader.PropertyToID("_SceneTint"),BodyTintId=Shader.PropertyToID("_BodyTint"),AccentTintId=Shader.PropertyToID("_AccentTint"),GlowTintId=Shader.PropertyToID("_GlowTint"),StageLitId=Shader.PropertyToID("_StageLit");
         private static readonly int MainTexId=Shader.PropertyToID("_MainTex"),TintId=Shader.PropertyToID("_Tint"),RepId=Shader.PropertyToID("_Rep"),ScrollId=Shader.PropertyToID("_Scroll"),BlurId=Shader.PropertyToID("_Blur"),GainId=Shader.PropertyToID("_Gain");
         private static readonly int SweepId=Shader.PropertyToID("_Sweep"),ChromaId=Shader.PropertyToID("_Chroma"),HoloId=Shader.PropertyToID("_Holo");
@@ -59,9 +62,12 @@ namespace ChipArena.UnityConversion
             quad.uv=new[]{new Vector2(1,0),new Vector2(0,0),new Vector2(0,1),new Vector2(1,1)};quad.colors=new[]{Color.white,Color.white,Color.white,Color.white};quad.SetTriangles(new[]{0,1,2,0,2,3},0);quad.RecalculateBounds();
             spark=Texture(NativeDeployArt.SparkTile(),NativeDeployArt.SparkPixels,NativeDeployArt.SparkPixels,"ATLAS spark");
             // the glyph atlas: this build's bake (Editor/NativeDeployCardBuild.cs), else rasterised once on a worker
-            var baked=Resources.Load<TextAsset>(NativeAtlasArt.Key);
-            if(baked!=null&&baked.bytes.Length==NativeAtlasArt.Bytes)atlas=Texture(baked.bytes,NativeAtlasArt.Width,NativeAtlasArt.Height,"ATLAS flap atlas");
-            else atlasJob=Task.Run(()=>NativeAtlasArt.Atlas());
+            if(atlas==null)
+            {
+                var baked=Resources.Load<TextAsset>(NativeAtlasArt.Key);
+                if(baked!=null&&baked.bytes.Length==NativeAtlasArt.Bytes)atlas=Texture(baked.bytes,NativeAtlasArt.Width,NativeAtlasArt.Height,"ATLAS flap atlas");
+                else atlasJob??=Task.Run(()=>NativeAtlasArt.Atlas());
+            }
         }
         private static Material Screen(Shader shader,string name,BlendMode src,BlendMode dst,bool zwrite,int queue,bool add)
         {
@@ -164,7 +170,7 @@ namespace ChipArena.UnityConversion
         public void Dispose()
         {
             void Free(UnityEngine.Object o){if(o!=null)CapturedAnimation.Release(o);}
-            if(cabinet!=null)foreach(var m in cabinet)Free(m);foreach(var m in lines)Free(m);Free(quad);Free(lit);Free(flaps);Free(light);Free(atlas);Free(spark);atlas=null;spark=null;failed=true;
+            if(cabinet!=null)foreach(var m in cabinet)Free(m);foreach(var m in lines)Free(m);Free(quad);Free(lit);Free(flaps);Free(light);Free(spark);spark=null;failed=true;
         }
     }
 }
