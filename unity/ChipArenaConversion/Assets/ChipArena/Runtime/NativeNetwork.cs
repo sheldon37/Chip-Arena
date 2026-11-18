@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
             if(connecting?.IsCompleted==true)
             {
                 if(connecting.IsFaulted||connecting.IsCanceled)networkStatus=internetRooms?OnlineError(connecting.Exception,"Could not join. Check the code, keep the host’s room open, and make sure both games are updated."):"Could not find this local room. Check that both players are on the same network.";
-                else{server=connecting.Result;SendServer(new NativeNetMessage{type="hello",loadoutProtocol=1,deploymentProtocol=2,lobbyProtocol=1,expeditionProtocol=NativeExpeditionParty.Protocol,source=content.sourceCommit,contentRevision=content.contentRevision,room=joinCode.Trim().ToUpperInvariant(),resume=resumeToken,token=account?.Token,profile=Profile()});networkStatus="Joining room…";}connecting=null;
+                else{server=connecting.Result;SendServer(new NativeNetMessage{type="hello",loadoutProtocol=NativeOpeningDraft.DealtProtocol,deploymentProtocol=2,lobbyProtocol=1,expeditionProtocol=NativeExpeditionParty.Protocol,source=content.sourceCommit,contentRevision=content.contentRevision,room=joinCode.Trim().ToUpperInvariant(),resume=resumeToken,token=account?.Token,profile=Profile()});networkStatus="Joining room…";}connecting=null;
             }
             if(listener!=null||relayHost!=null)
             {
@@ -133,6 +133,8 @@ namespace ChipArena.UnityConversion
                     {c.Reject(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="Deployment requires an updated game and the original signed-in pilot."}));return;}
                     if(previous!=null)previous.Seat.access=access;
                 }
+                if(previous!=null&&openingRun!=null&&openingRun.Pilots.TryGetValue(previous.Seat.id,out var picking)&&picking.WeaponOffers.Length>0&&peer.LoadoutProtocol<NativeOpeningDraft.DealtProtocol)
+                {c.Reject(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="Update the game to rejoin this dealt Blind Pick."}));return;}
                 if(previous!=null&&openingRun!=null&&!openingRun.Pilots.ContainsKey(previous.Seat.id))
                 {c.Reject(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="Your opening draft seat has closed. Rejoin in the lobby."}));return;}
                 if(previous!=null&&arena!=null&&(ExpeditionSplit?SplitPilotArena(previous.Seat.access?.AccountId)==null:match.Seat(previous.Seat.id)==null)){c.Send(NativeNetCodec.Encode(new NativeNetMessage{type="error",error="This match started without your seat. Join after the host returns to the lobby."}));return;}

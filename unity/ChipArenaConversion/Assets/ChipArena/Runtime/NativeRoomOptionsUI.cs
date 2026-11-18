@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
     // (NativeLobbyLogic.cs), which re-broadcasts a host's room; the player's own team goes through ChangeTeam. UI only.
     public sealed partial class ConversionGame
     {
-        private enum RoomOpt{Blind,Deathmatch,KillTarget,DeathChips,Mode,Versus,FriendlyFire,Sets,Rounds,Map,RandomMap,Bots,Difficulty,SkipBotDrafts,SkipIntros,BothDraft,Choices,Timer,Mirror,Stationary,BotWeapon,BotTeam,HostTeam,SkipWaves,Online,Connection,BlindChoices}
+        private enum RoomOpt{Blind,BlindChoices,Deathmatch,KillTarget,DeathChips,Mode,Versus,FriendlyFire,Sets,Rounds,Map,RandomMap,Bots,Difficulty,SkipBotDrafts,SkipIntros,BothDraft,Choices,Timer,Mirror,Stationary,BotWeapon,BotTeam,HostTeam,SkipWaves,Online,Connection}
         private enum RulesPart{All,Essential,Advanced}
         private static readonly string[] KillLabels=new[]{"Default (15 solo / 30 teams)"}.Concat(Numbered(100,0)).ToArray(), DeathChipLabels={"One starting chip","Off","Comeback chips (3 / 6 deaths)"};
         private static readonly string[] ModeLabels={"Free-for-all","Teams"},VersusLabels={"Versus","Boss Test","Expedition"},ConnectionLabels={"Online","Local network (LAN)"};
@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
         private NativeRoomOptions RulesNow()
         {
             if(RulesGuest&&menuScreen==MenuScreen.Lobby)return GuestRules;var m=rulesMirror;
-            m.blindPick=prefs.blindPick;m.deathmatch=prefs.deathmatch;m.killTarget=prefs.killTarget;m.deathmatchChips=prefs.deathmatchChips;m.map=prefs.map;m.cooperative=prefs.pve;m.expedition=prefs.pve&&prefs.expedition;m.teams=prefs.teams;m.friendlyFire=prefs.friendlyFire;m.bots=prefs.bots;m.rounds=prefs.rounds;m.sets=prefs.sets;m.choices=prefs.choices;m.selectionSeconds=prefs.selectionSeconds;
+            m.blindPick=prefs.blindPick;m.blindChoices=prefs.blindChoices;m.deathmatch=prefs.deathmatch;m.killTarget=prefs.killTarget;m.deathmatchChips=prefs.deathmatchChips;m.map=prefs.map;m.cooperative=prefs.pve;m.expedition=prefs.pve&&prefs.expedition;m.teams=prefs.teams;m.friendlyFire=prefs.friendlyFire;m.bots=prefs.bots;m.rounds=prefs.rounds;m.sets=prefs.sets;m.choices=prefs.choices;m.selectionSeconds=prefs.selectionSeconds;
             m.skipBotDrafts=prefs.skipBotDrafts;m.bothDraft=prefs.bothDraft;m.skipPlayerIntros=prefs.skipPlayerIntros;m.randomizeMap=prefs.randomizeMap;m.mirrorWeapons=prefs.mirrorWeapons;m.stationary=prefs.stationary;m.skipWaves=prefs.skipWaves;
             m.botDifficulty=prefs.botDifficulty;m.botOptions=prefs.botOptions??Array.Empty<NativeBotOption>();m.hostTeam=prefs.team;return m;
         }
@@ -95,9 +95,11 @@ namespace ChipArena.UnityConversion
             var o=RoomOptions;if(o==null)return;
             switch(opt)
             {
-                // Off, Blind Pick All (the checkbox: 0 / 1) or, once its rules are in, Blind Pick with N choices (2).
-                case RoomOpt.Blind:o.blindPick=v>=1;SetBlindChoices(o,v==2?Math.Max(NativeBlindChoices.Default,BlindChoicesOf(o)):0);break;
-                case RoomOpt.BlindChoices:SetBlindChoices(o,v);break;
+                case RoomOpt.Blind:
+                    o.blindPick=v!=0;
+                    o.blindChoices=v==2?(o.blindChoices>0?o.blindChoices:NativeOpeningDraft.DefaultBlindChoices):0;
+                    break;
+                case RoomOpt.BlindChoices:o.blindChoices=Math.Max(2,v);break;
                 case RoomOpt.Deathmatch:o.deathmatch=v==1;break;
                 case RoomOpt.KillTarget:o.killTarget=v;break;
                 case RoomOpt.DeathChips:o.deathmatchChips=v;break;
@@ -331,12 +333,11 @@ namespace ChipArena.UnityConversion
             RuleFine(7748,"5–120 seconds per player. Also applies to specialization selection.",0,6);
             RuleCheck(7750,RoomOpt.SkipBotDrafts,"Skip bot chip choices",o.skipBotDrafts);RuleFine(7752,"Bots still receive a Chip instantly. Their selection screens and reveals are skipped.",0,6);
         }
-        // The weapon pick rows: the Blind Pick All checkbox (players' name for blindPick); once Astra's rules for Blind Pick with N
-        // choices are in (NativeBlindChoices.RulesReady), a select of off / Blind Pick All / Blind Pick and the choice count.
+        // The weapon pick rows (players' names: Blind Pick All for blindPick, Blind Pick for its dealt choices, the rules' blindChoices):
+        // a select of off / Blind Pick All / Blind Pick (ApplyRule's 0 / 1 / 2) and, for Blind Pick, the choice count.
         private string[] blindCountLabels;
         private void BlindPickRows(NativeRoomOptions o)
         {
-            if(!NativeBlindChoices.RulesReady){RuleCheck(18740,RoomOpt.Blind,"Blind Pick All",o.blindPick);return;}
             int choices=BlindChoicesOf(o),mode=!o.blindPick?0:choices>=NativeBlindChoices.Min?2:1;RuleSelect(18740,RoomOpt.Blind,"Weapon pick",NativeBlindChoices.ModeLabels,mode);
             if(mode!=2)return;blindCountLabels??=NativeBlindChoices.CountLabels(botWeaponIds.Length);
             RuleSelect(18756,RoomOpt.BlindChoices,"Weapon choices",blindCountLabels,Mathf.Clamp(choices-NativeBlindChoices.Min,0,blindCountLabels.Length-1),0,NativeBlindChoices.Min);
@@ -392,7 +393,7 @@ namespace ChipArena.UnityConversion
         private string LobbyRulesNote(NativeRoomOptions o,int bots)
         {
             if(o.deathmatch)return "Deathmatch · first to "+o.EffectiveTarget+" kills"+BlindNote(o);
-            int key=(((o.sets*100+o.rounds)*10+bots)*4+(o.teams?2:0)+(o.friendlyFire?1:0))*16+(o.blindPick?1+Math.Min(14,BlindChoicesOf(o)):0);
+            int key=(((o.sets*100+o.rounds)*10+bots)*4+(o.teams?2:0)+(o.friendlyFire?1:0))*64+(o.blindPick?1+Math.Min(62,BlindChoicesOf(o)):0);
             if(key!=lobbyNoteKey){lobbyNoteKey=key;lobbyNoteText="First to "+o.sets+" set"+(o.sets==1?"":"s")+" · "+o.rounds+" round"+(o.rounds==1?"":"s")+" per set · "+bots+" bot"+(bots==1?"":"s")+(o.teams?" · friendly fire "+(o.friendlyFire?"on":"off"):"")+BlindNote(o);}
             return lobbyNoteText;
         }

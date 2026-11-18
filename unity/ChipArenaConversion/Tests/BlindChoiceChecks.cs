@@ -4,7 +4,8 @@ using System.Text.RegularExpressions;
 using ChipArena.UnityConversion;
 
 // Blind Pick All, Blind Pick with N choices and the Deathmatch's chip picks on the PvP draft's stage (owner 2026-11-18;
-// presentation only). The N-choice rules are Astra's (NativeBlindChoices.RulesReady): these checks hold whichever way it reads.
+// presentation only). The N-choice rules are Astra's (PR #411, Core NativeOpeningDraft; DeathmatchChecks): here, that the screen
+// reads exactly what those rules send.
 internal static class BlindChoiceChecks
 {
     public static void Run(string root)
@@ -13,14 +14,13 @@ internal static class BlindChoiceChecks
         void Check(bool passed,string message){if(!passed)throw new Exception("Blind choices: "+message);checks++;}
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f)).Replace("\r\n","\n");
 
-        // ---- the contract's numbers ----
-        Check(NativeBlindChoices.Default==3&&NativeBlindChoices.Min==2,"the owner's default of three; two is the fewest that make a pick");
-        Check(NativeBlindChoices.Normalize(0,20)==0&&NativeBlindChoices.Normalize(-4,20)==0,"0 is Blind Pick All");
-        Check(NativeBlindChoices.Normalize(1,20)==2&&NativeBlindChoices.Normalize(3,20)==3&&NativeBlindChoices.Normalize(99,20)==NativeBlindChoices.Max,"2 up to the most a view carries");
-        Check(NativeBlindChoices.Normalize(9,5)==5,"never more than the eligible pool");
+        // ---- the screen's numbers against the rules' ----
+        Check(NativeOpeningDraft.OfferCount(1,40)==NativeBlindChoices.Min&&NativeOpeningDraft.DefaultBlindChoices==3,"the fewest the rules deal is the fewest the screen draws; the owner's default of three");
+        var content=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});
+        Check(NativeOpeningDraft.OfferCount(99,content.weapons.Length)<=NativeBlindChoices.Max,"the screen lays out a whole pool ("+content.weapons.Length+" weapons)");
         Check(NativeBlindChoices.Name(false,3)==null&&NativeBlindChoices.Name(true,0)=="Blind Pick All"&&NativeBlindChoices.Name(true,3)=="Blind Pick · 3 choices","the modes' names");
         var labels=NativeBlindChoices.CountLabels(20);
-        Check(labels.Length==NativeBlindChoices.Max-NativeBlindChoices.Min+1&&labels[0]=="2 choices"&&labels[1]=="3 choices (default)","the count select: 2 up, the default marked");
+        Check(labels.Length==20-NativeBlindChoices.Min+1&&labels[0]=="2 choices"&&labels[1]=="3 choices (default)","the count select: 2 up to the pool, the default marked");
         Check(NativeBlindChoices.CountLabels(4).Length==3,"the count select stops at the pool");
 
         // ---- the hook ----
@@ -34,6 +34,19 @@ internal static class BlindChoiceChecks
         Check(NativeBlindChoiceView.From("s",(int)OpeningStep.Weapon,new[]{"pistol"},"pistol",0,4,12)==null,"one offer is no choice");
         Check(NativeBlindChoiceView.From("s",(int)OpeningStep.Weapon,new[]{"pistol","pistol"},"pistol",0,4,12)==null,"offers are distinct");
         Check(NativeBlindChoiceView.From("s",(int)OpeningStep.Weapon,new string[NativeBlindChoices.Max+1],"pistol",0,4,12)==null,"no more than a view carries");
+
+        // ---- the hook reads the rules' private views ----
+        var weapons=new[]{"pistol","rifle","sword","fire","bow","shield"};
+        foreach(int choices in new[]{0,2,3,5})
+        {
+            var me=new NativeSeat{id=1,team=0,spec="pistol",name="A"};var other=new NativeSeat{id=2,team=1,spec="sword",name="B"};
+            var deal=new NativeOpeningDraft(new[]{me,other},true,false,0,p=>Array.Empty<string>(),(s,id)=>Array.IndexOf(weapons,id)>=0,choices,choices==0?null:weapons,new SourceRandom(7).Next);
+            var mine=deal.CardsFor(1,false,id=>id);var hook=NativeBlindChoiceView.From(deal.Session,(int)OpeningStep.Weapon,mine,deal.Pilots[1].Weapon,0,2,20);
+            if(choices==0){Check(hook==null,"Blind Pick All draws the grid");continue;}
+            Check(hook!=null&&hook.Offers.Length==choices&&hook.Selected==deal.Pilots[1].Weapon,"Blind Pick draws my "+choices+" dealt weapons");
+            var theirs=deal.CardsFor(2,false,id=>id);Check(!ReferenceEquals(theirs,mine),"each seat's own offers");
+            Check(Array.TrueForAll(hook.Offers,id=>deal.Submit(1,OpeningStep.Weapon,id,false,1)),"every card drawn is a pick the host takes");
+        }
 
         // ---- the layout ----
         foreach(var area in new[]{(1544f,577f),(1144f,577f),(2044f,577f),(1544f,380f),(1144f,300f)})
@@ -59,17 +72,18 @@ internal static class BlindChoiceChecks
         // ---- the deal ----
         for(int i=0;i<NativeBlindChoices.Max;i++)
         {
-            var before=NativeBlindChoices.At(NativeBlindChoices.DealStart+i*NativeBlindChoices.DealStagger-.01f,i,0,600,false);
+            var before=NativeBlindChoices.At(NativeBlindChoices.DealStart+i*NativeBlindChoices.Stagger(NativeBlindChoices.Max)-.01f,i,NativeBlindChoices.Max,0,600,false);
             Check(before.Alpha==0&&!before.Face,"a card waits in the deck for its turn");
-            var mid=NativeBlindChoices.At(NativeBlindChoices.DealStart+i*NativeBlindChoices.DealStagger+NativeBlindChoices.DealFly*.5f,i,0,600,false);
+            var mid=NativeBlindChoices.At(NativeBlindChoices.DealStart+i*NativeBlindChoices.Stagger(NativeBlindChoices.Max)+NativeBlindChoices.DealFly*.5f,i,NativeBlindChoices.Max,0,600,false);
             Check(!mid.Face&&mid.Dy>0&&mid.Dy<600,"in flight it is face down between the deck and its place");
-            var rest=NativeBlindChoices.At(NativeBlindChoices.DealEnd(NativeBlindChoices.Max)+1,i,0,600,false);
+            var rest=NativeBlindChoices.At(NativeBlindChoices.DealEnd(NativeBlindChoices.Max)+1,i,NativeBlindChoices.Max,0,600,false);
             Check(rest.Face&&rest.Alpha==1&&rest.Dx==0&&rest.Dy==0&&rest.Scale==1&&rest.Degrees==0&&Math.Abs(rest.Flip-1)<1e-4f&&rest.Land==0,"every card rests face up in its place");
-            var calm=NativeBlindChoices.At(0,i,0,600,true);
+            var calm=NativeBlindChoices.At(0,i,NativeBlindChoices.Max,0,600,true);
             Check(calm.Face&&calm.Alpha==1&&calm.Dy==0&&calm.Flip==1,"reduced effects deal in place");
         }
+        Check(NativeBlindChoices.DealEnd(NativeBlindChoices.Max)<2.4f&&NativeBlindChoices.DealEnd(3)<1.3f,"a deal of any size is done in under ~2 s");
         long bytes=GC.GetAllocatedBytesForCurrentThread();float sink=0;
-        for(int f=0;f<400;f++){var l=NativeBlindChoices.Fit(2+f%11,1544,577);NativeBlindChoices.Place(l,f%3,3,28,150,1544,577,out float x,out float y);sink+=x+y+NativeBlindChoices.At(f*.01f,f%12,0,600,false).Dy;}
+        for(int f=0;f<400;f++){var l=NativeBlindChoices.Fit(2+f%11,1544,577);NativeBlindChoices.Place(l,f%3,3,28,150,1544,577,out float x,out float y);sink+=x+y+NativeBlindChoices.At(f*.01f,f%12,12,0,600,false).Dy;}
         Check(GC.GetAllocatedBytesForCurrentThread()-bytes==0&&sink!=0,"the layout and the deal allocate nothing per frame");
 
         // ---- the follow-through never holds a respawn ----
@@ -81,7 +95,7 @@ internal static class BlindChoiceChecks
         Check(!NativePickFollow.Plays(NativeDraftPlant.ReturnEnd+.01f,false,false,false,false),"it ends with the draft's return");
 
         // ---- the screens' sources ----
-        string stage=R("Runtime/NativeDeathmatchPickStage.cs"),choice=R("Runtime/NativeBlindChoiceUI.cs"),preview=R("Runtime/NativeBlindChoicePreview.cs"),opening=R("Runtime/NativeOpeningDraftUI.cs"),dm=R("Runtime/NativeDeathmatchRuntime.cs"),options=R("Runtime/NativeRoomOptionsUI.cs"),draft=R("Runtime/NativeDraftPresentation.cs"),game=R("Runtime/ConversionGame.cs");
+        string stage=R("Runtime/NativeDeathmatchPickStage.cs"),choice=R("Runtime/NativeBlindChoiceUI.cs"),opening=R("Runtime/NativeOpeningDraftUI.cs"),dm=R("Runtime/NativeDeathmatchRuntime.cs"),options=R("Runtime/NativeRoomOptionsUI.cs"),draft=R("Runtime/NativeDraftPresentation.cs"),game=R("Runtime/ConversionGame.cs");
         Check(draft.Contains("if(!active&&!pve&&PickStageFrame())return true;")&&game.Contains("if(arena==null&&PickStageMenuFrame())return;"),"the chip picks draw the PvP draft's stage, in a match and in the room");
         Check(stage.Contains("presentation.RenderDraft(seat,")&&stage.Contains("DraftShades(")&&stage.Contains("DraftHeader(")&&stage.Contains("LowerTray(")&&stage.Contains("PickedTray(")&&stage.Contains("Nameplate("),"the PvP draft's screen: its stage, shades, header, tray, pick and nameplate");
         Check(opening.Contains("if(step==OpeningStep.Chip){OpeningChipStage(v,w,h,now);return true;}")&&!opening.Contains("OpeningChipStep(")&&dm.Contains("if(picking)ComebackStage(seat,w,h,now);")&&!dm.Contains("ComebackPicker("),"both chip picks moved off the old tray");
@@ -90,10 +104,10 @@ internal static class BlindChoiceChecks
         Check(Regex.Matches(stage,@"new NativeNetMessage\{type=""").Count==1&&stage.Contains("type=\"dm-chip\",chip=id,pick=seat.pickTicket")&&stage.Contains("arena.InstallDeathmatchChip(seat.id,seat.pickTicket,id)"),"the comeback sends the same install as before");
         Check(stage.Contains("SendOpeningChoice(chips[pick].id,true)")&&!Regex.IsMatch(choice,@"new NativeNetMessage|SendServer\("),"the opening sends its own opening-choice messages only");
         Check(stage.Contains("PickStageOffers(\"opening/\"+v.pickSession,v.pickCards)")&&stage.Contains("seat.offers"),"each pilot's screen shows only their own offers");
-        Check(choice.Contains("if(blindView!=null&&!NativeBlindChoices.RulesReady&&!BlindPreviewing(v))blindView=null;"),"no N-choice view from the network before the rules");
-        Check(options.Contains("if(!NativeBlindChoices.RulesReady){RuleCheck(18740,RoomOpt.Blind,\"Blind Pick All\",o.blindPick);return;}"),"the N-choice room option stays hidden before the rules");
-        Check(preview.Contains("#if UNITY_EDITOR")&&preview.IndexOf("private void StartBlindChoicePreview(",StringComparison.Ordinal)>preview.IndexOf("#if UNITY_EDITOR",StringComparison.Ordinal)&&preview.IndexOf("private void StartBlindChoicePreview(",StringComparison.Ordinal)<preview.IndexOf("#else",StringComparison.Ordinal),"the DEV preview is the Editor's only");
-        Check(!Regex.IsMatch(stage+choice+opening+dm+options,@"StartBlindChoicePreview\("),"nothing in the game starts the preview");
+        Check(choice.Contains("blindView=NativeBlindChoiceView.From(v.pickSession,v.pick,v.pickCards,v.chip,v.id,v.team,v.remainingSeconds);")&&!choice.Contains("RulesReady"),"the screen reads the host's view, ungated");
+        Check(choice.Contains("string chosen=blindChoseIn==v.pickSession&&view.Offered(highlightedWeapon)?highlightedWeapon:null;")&&choice.Contains("\"RANDOM PICK AT 0\""),"nothing is marked until I choose; the timer says the rules pick at random");
+        Check(options.Contains("RuleSelect(18740,RoomOpt.Blind,\"Weapon pick\",NativeBlindChoices.ModeLabels,mode);")&&options.Contains("RuleSelect(18756,RoomOpt.BlindChoices,\"Weapon choices\"")&&choice.Contains("o!=null&&o.blindPick?o.blindChoices:0"),"the room option sets the rules' blindPick and blindChoices");
+        Check(!File.Exists(Path.Combine(root,"Assets/ChipArena/Runtime/NativeBlindChoicePreview.cs"))&&!Regex.IsMatch(stage+choice+opening,@"BlindPreview"),"no stand-in deal: the rules deal");
         int cards=choice.LastIndexOf("NativeWeaponCard.Draw(",StringComparison.Ordinal),flourish=choice.IndexOf("NativeWeaponCard.Flourishes();",StringComparison.Ordinal);
         Check(cards>0&&flourish>cards&&choice.Contains("SelectAge=sel?now-openingSelectAt:-10")&&choice.Contains("LockAge=sel&&locked?now-openingLockAt:-10")&&choice.Contains("if(chosen!=null)openingSelectAt=now"),"the dealt cards' choice and lock ages, then the flourishes");
         Check(R("Runtime/NativeWeaponCard.cs").Contains("public static partial class NativeWeaponCard")&&R("Runtime/NativeWeaponCardFlourishStub.cs").Contains("public static void Flourishes(){}"),"the flourish stand-in");

@@ -5,31 +5,24 @@ namespace ChipArena.UnityConversion
     // amount of choices (Default 3) of weapon/class to pick (we only pick 1). This will be similar to a chip screen."). The
     // earlier mode, every allowed weapon in a grid, is now named Blind Pick All to players (its ids and wire stay `blindPick`).
     //
-    // The rules are Astra's (DEV_LOG 2026-11-18, "For Astra"): a room option counts the choices (0 = Blind Pick All), the host
-    // deals each seat that many distinct weapons from its eligible pool, takes a pick only from them, locks the last valid
-    // selection (else a random offer) on the deadline and sends each seat only its own offers until the reveal. Until those
-    // rules land RulesReady stays false: the room option stays hidden and the screen draws nothing from the network, only the
-    // Editor's DEV preview (Runtime/NativeBlindChoicePreview.cs). No rule, timer or message lives here.
+    // The rules are Astra's (PR #411, Core NativeOpeningDraft): the room's blindChoices (0 = Blind Pick All, normalised by
+    // OfferCount), the host's private deal (WeaponOffers, CardsFor), the pick checked against it, a random offer locked at 0 s
+    // and the dealt protocol's version gate. This file holds only the screen's side: the hook's view, the names and labels,
+    // the layout and the deal's motion. No rule, timer or message lives here.
     public static class NativeBlindChoices
     {
-        /// <summary>False until the host deals, validates and privately sends the offers (Astra's rules). Turn it on in the same
-        /// change as those rules: it shows the room option and lets the screen read the host's view.</summary>
-        public static readonly bool RulesReady=false;
-        /// <summary>The owner's default count, the fewest choices that make a pick, and the most one view carries (the opening
-        /// view's pickCards bound in ConversionGame.OpeningClientMessage).</summary>
-        public const int Default=3,Min=2,Max=12;
-        /// <summary>The room option's value as a count of choices: 0 (or less) is Blind Pick All, every allowed weapon; otherwise 2 up
-        /// to the eligible pool (and Max).</summary>
-        public static int Normalize(int value,int pool)=>value<=0?0:Math.Max(Min,Math.Min(Math.Min(Max,Math.Max(Min,pool)),value));
+        /// <summary>The fewest offers the screen draws as a pick (NativeOpeningDraft.OfferCount deals at least two) and the most
+        /// it lays out (a seat's whole pool fits).</summary>
+        public const int Min=2,Max=32;
         /// <summary>The mode's name as players read it (room options, the lobby line, the draft headers); null without a blind pick.</summary>
         public static string Name(bool blind,int choices)=>!blind?null:choices>=Min?"Blind Pick · "+choices+" choices":"Blind Pick All";
         /// <summary>The room options' weapon pick select: off, Blind Pick All, Blind Pick (N choices).</summary>
         public static readonly string[] ModeLabels={"Off (lobby loadouts)","Blind Pick All","Blind Pick (choices)"};
-        /// <summary>The choice count select's labels, 2 up to `pool` (and Max), the default marked.</summary>
+        /// <summary>The choice count select's labels, 2 up to `pool` (and Max), the rules' default (NativeOpeningDraft.DefaultBlindChoices) marked.</summary>
         public static string[] CountLabels(int pool)
         {
             int top=Math.Max(Min,Math.Min(Max,pool));var labels=new string[top-Min+1];
-            for(int n=Min;n<=top;n++)labels[n-Min]=n+" choices"+(n==Default?" (default)":"");return labels;
+            for(int n=Min;n<=top;n++)labels[n-Min]=n+" choices"+(n==NativeOpeningDraft.DefaultBlindChoices?" (default)":"");return labels;
         }
 
         // ---- the screen's layout -------------------------------------------------------------------------------------------
@@ -37,14 +30,14 @@ namespace ChipArena.UnityConversion
         // hero card (stats, role and description) while it is at least HeroMin wide, else its compact grid card.
         public const float HeroAspect=1.48f,CardAspect=1.24f,HeroMin=200,HeroCap=360,CardCap=176,Gap=22;
         public struct Layout{public int Rows,Cols;public float Width,Height;public bool Hero;}
-        /// <summary>The largest cards for `n` offers in an area `width` x `height` (virtual units), over one to four rows.</summary>
+        /// <summary>The largest cards for `n` offers in an area `width` x `height` (virtual units), over one to six rows.</summary>
         public static Layout Fit(int n,float width,float height)
         {
             var best=new Layout{Rows=1,Cols=Math.Max(1,n)};if(n<=0||width<=0||height<=0)return best;
             for(int pass=0;pass<2;pass++)
             {
                 bool hero=pass==0;float aspect=hero?HeroAspect:CardAspect,cap=hero?HeroCap:CardCap;bool found=false;
-                for(int rows=1;rows<=4;rows++)
+                for(int rows=1;rows<=6;rows++)
                 {
                     int cols=(n+rows-1)/rows;float w=Math.Min(cap,(width-(cols-1)*Gap)/cols),h=w*aspect;
                     if(rows*h+(rows-1)*Gap>height){h=(height-(rows-1)*Gap)/rows;w=h/aspect;}
@@ -70,12 +63,14 @@ namespace ChipArena.UnityConversion
         public const float DealStart=.12f,DealStagger=.16f,DealFly=.42f,DealFlip=.3f,DealLand=.35f;
         public struct Deal{public float Alpha,Dx,Dy,Scale,Degrees,Flip,Land;public bool Face;}
         /// <summary>When the last of `n` cards has turned face up (seconds from the step's start).</summary>
-        public static float DealEnd(int n)=>DealStart+Math.Max(0,n-1)*DealStagger+DealFly+DealFlip;
-        /// <summary>Card `i` at `t` seconds into the step; (deckX, deckY) is the deck's offset from the card's resting centre.</summary>
-        public static Deal At(float t,int i,float deckX,float deckY,bool calm)
+        public static float DealEnd(int n)=>DealStart+Math.Max(0,n-1)*Stagger(n)+DealFly+DealFlip;
+        /// <summary>The gap between cards: DealStagger, shorter for a deal of more than eight so the whole deal stays under ~2 s.</summary>
+        public static float Stagger(int n)=>n>8?1.12f/(n-1):DealStagger;
+        /// <summary>Card `i` of `n` at `t` seconds into the step; (deckX, deckY) is the deck's offset from the card's resting centre.</summary>
+        public static Deal At(float t,int i,int n,float deckX,float deckY,bool calm)
         {
             var d=new Deal{Alpha=1,Scale=1,Flip=1,Face=true};if(calm)return d;
-            float u=t-(DealStart+i*DealStagger);if(u<0){d.Alpha=0;d.Face=false;d.Dx=deckX;d.Dy=deckY;d.Scale=.6f;return d;}
+            float u=t-(DealStart+i*Stagger(n));if(u<0){d.Alpha=0;d.Face=false;d.Dx=deckX;d.Dy=deckY;d.Scale=.6f;return d;}
             float k=NativeUiMotion.Clamp01(u/DealFly),e=NativeUiMotion.Bezier(.16f,.8f,.22f,1,k),turn=(i%2==0?-1:1)*(9+2.5f*(i%4));
             d.Dx=deckX*(1-e);d.Dy=deckY*(1-e);d.Scale=.6f+.4f*e;d.Degrees=turn*(1-e);d.Alpha=NativeUiMotion.Clamp01(k*4);
             float f=NativeUiMotion.Clamp01((u-DealFly)/DealFlip);d.Flip=Math.Max(.02f,Math.Abs((float)Math.Cos(f*Math.PI)));d.Face=f>=.5f;
