@@ -70,6 +70,8 @@ namespace ChipArena.UnityConversion
             // A live guest's own pilot is predicted ahead of the snapshot clock: its drop starts when its controls unlock.
             bool predicted=arena.Replica&&!arena.ReplicaScene.IsValid()&&id==arena.LocalId;
             float age=NativeSpawnIn.Age(m.Phase,m.PhaseEnd,m.FightAt,time+(predicted?NativeSpawnIn.GuestLead:0));
+            // (a pod run's hub waiting in Lobby shows nobody on the slots: NativePodRidePresentation.cs)
+            if(m.Phase==NativePhase.Lobby&&PodRun(arena))return PodLobbyHidden(pilot);
             if(PodRun(arena))return PodSpawn(arena,pilot,feet,age,NativeSpawnIn.End(m.Phase,m.PhaseEnd,m.FightAt),out raise);
             if(float.IsNaN(age)||age>.3f+NativeSpawnIn.LandSeconds)return null;
             double end=NativeSpawnIn.End(m.Phase,m.PhaseEnd,m.FightAt);

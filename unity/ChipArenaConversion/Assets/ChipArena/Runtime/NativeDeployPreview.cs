@@ -21,6 +21,26 @@ namespace ChipArena.UnityConversion
         private bool deployPreviewClosed,deployShown,deployAsGuest;private NativeExpeditionDeployment deployAuthority;private ExpeditionDeploymentState deployState;private string deployHost;
         private readonly NativeDeployClock deployClock=new NativeDeployClock();private readonly NativeDeployConsole.Party deployParty=new NativeDeployConsole.Party();
         private readonly DeployPilot[] deployPilots=new DeployPilot[NativeDeployPresentation.Pads];private float deployStarted,deployFov,deployNear;private int deployPartySize=3;
+        // The eject's 4 s variant (NativeDeployEject.Cut.Short) for comparison, and how long the preview holds the cradle card after it.
+        private bool deployShortEject;private const float DeployCradleHold=6f;
+        private readonly NativeCradleCard deployCradle=new NativeCradleCard();
+        // The stand-ins' lamps on the card (YOU ready once loaded, one loading slowly, one lost, one loading): the card's every state.
+        private NativeCradleCard DeployPreviewCradle(float since)
+        {
+            float load=Mathf.Clamp01((since-NativeDeployEject.TravelOf(deployShortEject?NativeDeployEject.Cut.Short:NativeDeployEject.Played))/2.6f);if(!(load>=0))load=0;
+            deployCradle.Clear();deployCradle.Load=load;
+            for(int i=0;i<deployPartySize;i++)
+            {
+                if(i==0)deployCradle.Add(DeployStandInNames[0],load>=1?NativeCradleCard.Lamp.Ready:NativeCradleCard.Lamp.Loading,load,true);
+                else if(i==1)deployCradle.Add(DeployStandInNames[1],NativeCradleCard.Lamp.Loading,Mathf.Min(.64f,load*.8f),false);
+                else if(i==2)deployCradle.Add(DeployStandInNames[2],NativeCradleCard.Lamp.Lost,-1,false);
+                else deployCradle.Add(DeployStandInNames[3],load>=.8f?NativeCradleCard.Lamp.Ready:NativeCradleCard.Lamp.Loading,Mathf.Clamp01(load*1.25f),false);
+                deployCradle.Spots[i]=new System.Numerics.Vector2(i%4*2-3,i/4*3-2);
+            }
+            int waiting=0;for(int i=0;i<deployCradle.Count;i++)if(deployCradle.Lamps[i]==NativeCradleCard.Lamp.Loading)waiting++;
+            deployCradle.Hold=NativeCradleCard.WaitingFor(waiting);
+            return deployCradle;
+        }
         private bool DeployPreviewShown=>DeployPreviewRequested&&!deployPreviewClosed&&arena==null&&menu&&!InRoom;
         private float DeployNow=>Time.unscaledTime-deployStarted;
 
@@ -59,14 +79,15 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<deployPartySize;i++)
             {
                 deployParty.Names[i]=DeployStandInNames[i];
-                deployPilots[i]=i==0?new DeployPilot{Look=new RooftopPilot{Spec=prefs.weapon,BodySkin=NativeBodySkins.Index(bodySkin),Hat=prefs.hat,Body=prefs.bodyColor,Skins=RooftopSkins(bodySkin),Accent=prefs.accentColor,HatColor=prefs.hatColor},Pose=prefs.lobbyPose,Outfit=prefs.look}
+                deployPilots[i]=i==0?new DeployPilot{Look=new RooftopPilot{Spec=prefs.weapon,BodySkin=NativeBodySkins.Index(bodySkin),Hat=prefs.hat,Body=prefs.bodyColor,Skins=RooftopSkins(bodySkin),Accent=prefs.accentColor,HatColor=prefs.hatColor},Pose=prefs.lobbyPose,Outfit=prefs.look,Pod=prefs.pod}
                     :new DeployPilot{Look=new RooftopPilot{Spec=DeployStandInSpecs[i],BodySkin=NativeBodySkins.StandardIndex,Hat="none",Body=DeployStandInBodies[i],Accent=DeployStandInAccents[i]},Pose=DeployStandInPoses[i],Outfit=""};
             }
             var input=new DeployInput{State=deployState,SinceInstanceRoll=deployClock.SinceInstanceRoll(now),SinceMutatorRoll=deployClock.SinceMutatorRoll(now),SinceDeploy=deployClock.SinceDeploy(now),Time=now,
-                Host=!deployAsGuest,PartyReady=DeployPartyReady,Reduced=prefs.reducedEffects,Seats=deployPartySize,Ready=deployParty.Ready,Instances=DeployPreviewInstances,Mutators=DeployPreviewMutators};
+                Host=!deployAsGuest,PartyReady=DeployPartyReady,Reduced=prefs.reducedEffects,Seats=deployPartySize,Ready=deployParty.Ready,Instances=DeployPreviewInstances,Mutators=DeployPreviewMutators,
+                Mine=deployAsGuest&&deployPartySize>1?1:0,Short=deployShortEject};
             if(!presentation.RenderDeployStation(cameraView,input,deployPilots,deployShownFrames++==0?-1:Time.unscaledDeltaTime,prefs.reducedEffects,nativeAudio)){DeployPreviewLeave();return false;}
-            // the travel hand-off: no generated world exists yet, so the preview closes back to the menu
-            if(deployState.deployed&&deployClock.SinceDeploy(now)>NativeDeployPresentation.TravelAt+2.5f){deployPreviewClosed=true;DeployPreviewLeave();}
+            // the travel hand-off: no generated world exists yet, so the preview holds the cradle card a while, then closes to the menu
+            if(deployState.deployed&&deployClock.SinceDeploy(now)>NativeDeployEject.TravelOf(deployShortEject?NativeDeployEject.Cut.Short:NativeDeployEject.Played)+DeployCradleHold){deployPreviewClosed=true;DeployPreviewLeave();}
             return true;
         }
         private int deployShownFrames;
@@ -81,7 +102,7 @@ namespace ChipArena.UnityConversion
         {
             if(!DeployPreviewShown||!deployShown)return false;var stage=presentation?.DeployStage;if(stage==null)return false;
             for(int i=0;i<deployPartySize;i++)deployParty.Names[i]=DeployStandInNames[i];
-            var intent=NativeDeployConsole.Draw(stage,deployState,deployParty,!deployAsGuest,width,height,DeployNow);
+            var intent=NativeDeployConsole.Draw(stage,deployState,deployParty,!deployAsGuest,width,height,DeployNow,DeployPreviewCradle(deployClock.SinceDeploy(DeployNow)));
             if(intent!=DeployIntent.None)DeployPreviewIntent(intent);
             if(stage.Deploy.Fade<.5f)DeployPreviewBar(width);
             if(Input.GetKeyDown(KeyCode.Escape)){deployPreviewClosed=true;DeployPreviewLeave();}
@@ -90,10 +111,11 @@ namespace ChipArena.UnityConversion
         // The DEV bar (top right): what this is, the party's size and readiness, whose view, restart and exit.
         private void DeployPreviewBar(float W)
         {
-            var bar=new Rect(W-660,18,632,74);NativeHudChrome.Panel(bar,1,C.Warn(),10,NativeHudChrome.Corners.Diagonal,true,.94f);
+            var bar=new Rect(W-760,18,732,74);NativeHudChrome.Panel(bar,1,C.Warn(),10,NativeHudChrome.Corners.Diagonal,true,.94f);
             U.Text(new Rect(bar.x+14,bar.y+8,420,16),"DEPLOYMENT STATION PREVIEW · DEV ONLY · LOCAL AUTHORITY",10,C.Warn(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
             if(U.Btn(new Rect(bar.xMax-84,bar.y+8,72,24),"Exit",false,true,1,11)){deployPreviewClosed=true;DeployPreviewLeave();return;}
             if(U.Btn(new Rect(bar.xMax-168,bar.y+8,78,24),"Restart",false,true,1,11)){DeployPreviewStart();return;}
+            if(U.Btn(new Rect(bar.xMax-276,bar.y+8,100,24),deployShortEject?"Eject: 4 s":"Eject: 5.6 s",deployShortEject,!deployState.deployed,1,11))deployShortEject=!deployShortEject;
             float x=bar.x+14,y=bar.y+38;U.Text(new Rect(x,y,46,26),"PARTY",10,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);x+=48;
             for(int n=1;n<=4;n++){if(U.Btn(new Rect(x,y,28,26),DeployCounts[n-1],n==deployPartySize,!deployState.deployed,1,11))deployPartySize=n;x+=32;}
             x+=10;U.Text(new Rect(x,y,50,26),"READY",10,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);x+=52;

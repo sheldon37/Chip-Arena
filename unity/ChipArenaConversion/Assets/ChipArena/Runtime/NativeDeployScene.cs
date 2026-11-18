@@ -27,6 +27,8 @@ namespace ChipArena.UnityConversion
         private readonly Material lit,glass,strip,additive,alpha;private readonly MaterialPropertyBlock block=new MaterialPropertyBlock();
         private readonly Texture2D[] textures=new Texture2D[NativeDeployStage.TextureCount];private readonly Texture2D white,blank;
         private readonly Task<float[]>[] stripJobs=new Task<float[]>[6];private Task<float[]> stampJob;private Task<int[]> mapJob;
+        // The eject's rolled city (Core NativeDeployEjectModels.CityModel): built on a worker from the deployed state, once per run.
+        private Task<WeaponMesh> cityJob;private ulong cityAsked=ulong.MaxValue,cityShown=ulong.MaxValue;
         // Keep the finite station catalog cached for this scene. Serialize CPU raster jobs so cold cards do not saturate the thread pool.
         private Task tileTail=Task.CompletedTask;
         private readonly string[] stripKeys=new string[6];
@@ -135,6 +137,23 @@ namespace ChipArena.UnityConversion
                 }
                 mapJob=null;
             }
+            // the eject's city: the deployed state's blueprint (a new run's seed or rolls build it again), uploaded when ready
+            if(s!=null&&s.deployed&&s.worldRolled)
+            {
+                ulong key=((ulong)s.worldSeed<<32)|(uint)s.revision;
+                if(key!=cityAsked&&cityJob==null){cityAsked=key;var copy=s.Copy();cityJob=Task.Run(()=>NativeDeployEjectModels.CityModel(copy));}
+                if(!uploaded&&cityJob!=null&&cityJob.IsCompleted)
+                {
+                    if(cityJob.Status==TaskStatus.RanToCompletion&&cityAsked!=cityShown)
+                    {
+                        int m=(int)NativeDeployStage.Model.City;var old=meshes[m];var list=new List<Mesh>();var b=new List<int>();
+                        foreach(var sec in cityJob.Result.Sections){var mesh=Upload(sec,"eject city / "+sec.Bone);if(mesh==null)continue;list.Add(mesh);b.Add(sec.Bone);}
+                        meshes[m]=list.ToArray();bones[m]=b.ToArray();cityShown=cityAsked;if(old!=null)foreach(var o in old)if(o!=null)CapturedAnimation.Release(o);
+                    }
+                    else if(cityJob.Status!=TaskStatus.RanToCompletion)Debug.LogWarning("The eject's city did not build: "+cityJob.Exception?.GetBaseException().Message);
+                    cityJob=null;
+                }
+            }
         }
 
         // ---- per frame (allocates nothing) ----
@@ -150,6 +169,8 @@ namespace ChipArena.UnityConversion
             Stage.Frame(input,dt);Pictures(input.State);
             var view=Stage.Camera;var eye=new Vector3(view.Eye.X,view.Eye.Y,view.Eye.Z);var look=new Vector3(view.Target.X-view.Eye.X,view.Target.Y-view.Eye.Y,view.Target.Z-view.Eye.Z);
             if(look.sqrMagnitude>1e-6f)camera.transform.SetPositionAndRotation(eye,Quaternion.LookRotation(look,Vector3.up));camera.fieldOfView=view.Fov;camera.nearClipPlane=.1f;
+            // the eject's release looks down at the rolled city far below (Core NativeDeployEject.CityY)
+            if(Stage.Shot==NativeDeployPresentation.Shot.Release&&camera.farClipPlane<320)camera.farClipPlane=320;
             NativeLighting.Entrance(Stage.Lights,camera);
             for(int i=0;i<Stage.Count;i++)
             {

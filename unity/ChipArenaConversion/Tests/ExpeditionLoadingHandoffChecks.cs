@@ -76,6 +76,13 @@ namespace ChipArena.UnityConversion
             Check(stages.Contains("stageLoad.CanBuild&&stageLoad.TakeAction()")&&stages.Contains("stageLoad.ContentPresented()"),"actual scene action waits for repaint");
             var deployment=File.ReadAllText(Path.Combine(runtime,"NativeExpeditionDeploymentRoom.cs"));
             Check(deployment.Contains("deploymentTravelAt=Time.unscaledTime+NativeDeployPresentation.TravelAt")&&deployment.Contains("Time.unscaledTime>=deploymentTravelAt")&&deployment.Contains("deploymentTravelAt=-1"),"host travel waits for the existing drop timeline and can be cancelled");
+            // (re-pinned 2026-11-18, W3: the drop timeline is the 5.6 s eject, so every run starts 1.6 s later; on a pod run every peer
+            // holds on the cradle card until the hub's countdown, not only until the area barrier, and the same card draws the load)
+            Check(NativeDeployPresentation.TravelAt==NativeDeployEject.TravelOf(NativeDeployEject.Played)&&NativeDeployPresentation.Deploying(NativeDeployPresentation.TravelAt).Travel&&!NativeDeployPresentation.Deploying(NativeDeployPresentation.TravelAt-.01f).Travel,"the host travels when the eject ends");
+            var cradle=File.ReadAllText(Path.Combine(runtime,"NativeCradleUI.cs"));
+            Check(stages.Contains("ExpeditionSplit&&!deploymentInitialReady||PodCradleHold)")&&cradle.Contains("internal bool PodCradleHold=>PodCradle&&arena!=null&&match!=null&&match.Phase==NativePhase.Lobby;"),"a pod run holds every peer on the cradle card until the hub's countdown");
+            Check(stages.Contains("if(PodCradle)CradleGui(shown);")&&stages.Contains("else NativeStageLoadingHud.Draw(stageLoad,"),"a pod run's load draws the cradle card in the loading HUD's place");
+            Check(cradle.Contains("PartyLoadingRoster()"),"a pod run's load draws the cradle card from the party's loading rows and still releases the deferred build");
             Check(File.ReadAllText(Path.Combine(runtime,"NativeExpeditionAreaTransfers.cs")).Contains("accounts,NativeExpeditionLoadWindow.Seconds,"),"cohort timeout agrees with transport loading window");
             Console.WriteLine("PASS Expedition loading handoff: "+n+" checks (2/3/4 players, repaint gate, latest snapshot, all-ready barrier, stale tickets and cancellation)");
         }

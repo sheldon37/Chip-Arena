@@ -4,16 +4,18 @@ using NVector=System.Numerics.Vector3;
 namespace ChipArena.UnityConversion
 {
     /// <summary>A party member's look on the Deployment Station's pads: the rooftop's pilot look (weapon spec, hat, colours, body
-    /// skin, weapon skins), the lobby pose key (standing with weapon or arms crossed; the seated and sleeping poses stand) and
-    /// the outfit (the visual body's look).</summary>
-    public struct DeployPilot {public RooftopPilot Look;public string Pose,Outfit;}
+    /// skin, weapon skins), the lobby pose key (standing with weapon or arms crossed; the seated and sleeping poses stand), the
+    /// outfit (the visual body's look) and the pod look (paint, trim, light: the pod it drops into, as in the hub).</summary>
+    public struct DeployPilot {public RooftopPilot Look;public string Pose,Outfit,Pod;}
 
     public sealed partial class ArenaPresentation
     {
         // The Deployment Station (Runtime/NativeDeployScene.cs; docs/EXPEDITION-DEPLOYMENT.md "Presentation"): the scene, built on
         // first use, and its cast: one pilot per occupied pad, posed by the lobby poses (NativeLobbyPoses: the hero stance or arms
         // crossed, each pad's breath offset), on the visual body like the rooftop's crowd (rigs DeployIdTop and down, the seat's
-        // outfit and weapon skins) or the voxel body where the model does not draw; stage lit; lifted away at Deploy.
+        // outfit and weapon skins) or the voxel body where the model does not draw; stage lit. At Deploy the eject animates them
+        // (Core NativeDeployEject.Sample: the pack Jump take's crouch, the fall into the Fall loop, the Chair pose in the pod's
+        // seat; the same game-rig tracks on every body) and their pods hang under the floor (the hub's pod model and looks).
         private NativeAudio deployAudio;private NativeDeployScene deployScene;private bool deployFailed;private DeployCast deployCast;private Transform deployHolder;
         public const int DeployIdTop=-500;
         /// <summary>Whether the Deployment Station can draw here (its shaders run, the model bank loaded, no failure this session).</summary>
@@ -29,6 +31,9 @@ namespace ChipArena.UnityConversion
             public readonly Color[] Body=new Color[Count],Accent=new Color[Count];public readonly int[] Pose=new int[Count],BodySkin=new int[Count];
             public readonly string[] Key=new string[Count],Weapon=new string[Count],Outfit=new string[Count],Skins=new string[Count],HatColor=new string[Count];
             public readonly CapturedAnimation.Player[] Rigs=new CapturedAnimation.Player[Count];public readonly Actor[] Actors=new Actor[Count];public readonly bool[] OwnWeapon=new bool[Count];
+            public readonly NativeDeployEject.Pilot[] Eject=new NativeDeployEject.Pilot[Count];
+            /// <summary>Each pad's pod look (the key its colours were taken for) and its linear colours.</summary>
+            public readonly string[] PodKey=new string[Count],PodBody=new string[Count],PodAccent=new string[Count];public readonly Color[] PodPaint=new Color[Count],PodTrim=new Color[Count],PodLight=new Color[Count];
             public DeployCast()
             {
                 for(int i=0;i<Count;i++)
@@ -56,13 +61,13 @@ namespace ChipArena.UnityConversion
         public bool RenderDeployStation(Camera camera,in DeployInput input,DeployPilot[] party,float dt,bool reduced,NativeAudio audio=null)
         {
             if(!DeploySupported||camera==null)return false;
-            try{deployScene??=new NativeDeployScene();deployScene.Draw(camera,input,dt);deployAudio=audio;deployAudio?.DeployFrame(deployScene.Stage);DeployCastFrame(camera,input.Time,party,reduced);return true;}
-            catch(Exception e){Debug.LogException(e);deployFailed=true;deployAudio?.DeployStop();deployScene?.Dispose();deployScene=null;return false;}
+            try{deployScene??=new NativeDeployScene();deployScene.Draw(camera,input,dt);deployAudio=audio;deployAudio?.DeployFrame(deployScene.Stage);deployAudio?.EjectFrame(deployScene.Stage);DeployCastFrame(camera,input.Time,party,reduced);return true;}
+            catch(Exception e){Debug.LogException(e);deployFailed=true;deployAudio?.EjectStop();deployAudio?.DeployStop();deployScene?.Dispose();deployScene=null;return false;}
         }
         /// <summary>Leaves the station: its pilots' visual bodies hide and the scene is released (built again on the next visit).</summary>
         public void DeployLeave()
         {
-            deployAudio?.DeployStop();deployAudio=null;var cast=deployCast;if(cast!=null)foreach(var rig in cast.Rigs)if(rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.Root.activeSelf){body.Root.SetActive(false);body.Seen=false;}
+            deployAudio?.EjectStop();deployAudio?.DeployStop();deployAudio=null;var cast=deployCast;if(cast!=null)foreach(var rig in cast.Rigs)if(rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.Root.activeSelf){body.Root.SetActive(false);body.Seen=false;}
             deployScene?.Dispose();deployScene=null;
         }
         private void DeployCastFrame(Camera camera,float time,DeployPilot[] party,bool reduced)
@@ -81,8 +86,9 @@ namespace ChipArena.UnityConversion
                     if(NativeLobbyPoses.UsesIdle(spec,pose))pose=NativeLobbyPoses.Crossed;cast.Pose[i]=pose;
                 }
                 cast.Outfit[i]=p.Outfit;cast.Skins[i]=p.Look.Skins;
-                var s=cast.States[i];s.Pose.Reset();s.Offset=NVector.Zero;s.Hidden=false;s.Rig.Reset();
-                NativeLobbyPoses.Sample(s.Rig,spec,cast.Pose[i],reduced?0:time+i*1.37f,out s.Weapon,out s.Offhand);s.Rig.WritePose(s.Pose);s.Pose.World();
+                var s=cast.States[i];s.Offset=NVector.Zero;s.Hidden=false;
+                // the lobby pose, and from Deploy the eject's (the crouch, the fall, the seat): one game-rig track for every body
+                NativeDeployEject.Sample(cast.Eject[i]??=new NativeDeployEject.Pilot(),s.Pose,spec,cast.Pose[i],i,stage.EjectSince,time,reduced,out s.Weapon,out s.Offhand);
                 var f=stage.PilotFeet[i];var face=stage.PilotFacing[i];
                 var root=Matrix4x4.TRS(new Vector3(f.X,f.Y,f.Z),Quaternion.LookRotation(new Vector3(face.X,0,face.Z)),Vector3.one);var group=root*Matrix4x4.Translate(new Vector3(0,NativePortraitRules.GroupY,0));
                 var bones=cast.Bones[i];var pp=s.Pose;for(int b=0;b<bones.Length;b++)bones[b]=group*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(pp.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(pp.WorldRotation[b])),Vector3.one);
@@ -95,8 +101,39 @@ namespace ChipArena.UnityConversion
                     if(!siren&&(s.Weapon.Visible||s.Offhand.Visible))sourceModels.Queue(cast.Weapon[i],group,cast.Held[i],cast.HeldShown[i],0,camera,accent:cast.Accent[i],glow:HeldGlow);
                 }
             }
+            // the pods docked under the floor (after Deploy): the hub's own pod model in each pilot's pod look, door shut
+            for(int i=0;i<DeployCast.Count;i++)if(i<stage.Pilots&&stage.PodShown[i]&&party!=null&&i<party.Length)DeployPod(cast,i,stage.PodWorld[i],party[i]);
             sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
             VisualBodiesShown();
+        }
+        private int deployPodNow;private Func<int,Color> deployPodTint;
+        // A docked pod (Core NativePodModels from the source-model bank, as Runtime/NativePodPresentation.cs draws it in the hub) in its
+        // pilot's paint, trim and light; its cabin lamp red as it waits to drop.
+        private void DeployPod(DeployCast cast,int i,System.Numerics.Matrix4x4 world,in DeployPilot p)
+        {
+            string look=p.Pod??"";
+            if(cast.PodKey[i]!=look||cast.PodBody[i]!=p.Look.Body||cast.PodAccent[i]!=p.Look.Accent)
+            {
+                cast.PodKey[i]=look;cast.PodBody[i]=p.Look.Body;cast.PodAccent[i]=p.Look.Accent;NativePodDrop.Colors(look,p.Look.Body,p.Look.Accent,out int paint,out int trim,out int light);
+                cast.PodPaint[i]=PodLinear(paint);cast.PodTrim[i]=PodLinear(trim);cast.PodLight[i]=PodLinear(light);
+            }
+            var m=new Matrix4x4();m.m00=world.M11;m.m01=world.M21;m.m02=world.M31;m.m03=world.M41;m.m10=world.M12;m.m11=world.M22;m.m12=world.M32;m.m13=world.M42;m.m20=world.M13;m.m21=world.M23;m.m22=world.M33;m.m23=world.M43;m.m33=1;
+            deployPodNow=i;deployCastNow=cast;deployPodTint??=DeployPodTintOf;var hinge=new Vector3(NativePodModels.Hinge.X,NativePodModels.Hinge.Y,NativePodModels.Hinge.Z);
+            sourceModels.Queue(NativePodModels.PodId,m,partTint:deployPodTint);sourceModels.Queue(NativePodModels.DoorId,m*Matrix4x4.Translate(hinge),partTint:deployPodTint);
+        }
+        private DeployCast deployCastNow;
+        private Color DeployPodTintOf(int bone)
+        {
+            var c=deployCastNow;int i=deployPodNow;if(c==null)return Color.white;
+            switch(bone)
+            {
+                case NativePodModels.Paint:return c.PodPaint[i];
+                case NativePodModels.Trim:return c.PodTrim[i];
+                case NativePodModels.Lights:{var l=c.PodLight[i]*1.2f;l.a=1;return l;}
+                case NativePodModels.Cabin:return new Color(2.2f,.25f,.2f,1)*.5f;
+                case NativePodModels.Retro:return new Color(1.6f,2.6f,3.4f,1)*.05f;
+                default:return Color.white;
+            }
         }
         // A pad's pilot on the visual body (RooftopModel's path: its own rig, the pose written onto it, the body bound in the
         // seat's outfit, its hat, gear and held weapon); false where the model does not draw (Classic, no bake, a viewer).
