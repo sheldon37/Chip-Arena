@@ -82,11 +82,20 @@ namespace ChipArena.UnityConversion
             var room=Room(b);for(int i=0;i<8;i++){room.Partition(i,(b.shiftMask>>i)&1,out var c,out bool along);float half=NativeHumArena.PartitionCells*BackroomsLayout.Cell/2-1;
                 if(along&&Math.Abs(b.handZ-c.Z)<.2f)b.handX=Math.Max(c.X-half,Math.Min(c.X+half,b.handX));if(!along&&Math.Abs(b.handX-c.X)<.2f)b.handZ=Math.Max(c.Z-half,Math.Min(c.Z+half,b.handZ));}
         }
+        public static void AdvancePhase(NativeZoneBossFrame z,float now)
+        {
+            var b=z.backrooms;
+            z.phase++;z.phaseAt=now;z.holdTarget=-1;
+            NativeZoneBossRules.Start(z,"phase",now,-1,b.x,b.z,b.yaw);
+            b.next=now+3.5f;b.hits=Array.Empty<int>();
+            b.tideFrom=Tide(z,now);b.tideY=z.phase==2?.5f:1.1f;b.tideAt=now;b.tideUntil=now+3.5f;
+            if(z.archetype==NativeHumBoss.Archetype){b.circuitMask=255;b.circuitAt=now;}
+        }
         public static void Step(NativeZoneBossFrame z,float hp,float maxHp,float now,float dt,BackroomsBossPilot[] pilots,List<BackroomsBossContact> output,DeepEndBossRig rig=null)
         {
             output.Clear();if(z.deathAt>=0||hp<=0||pilots.Length==0)return;var b=z.backrooms;bool hum=z.archetype==NativeHumBoss.Archetype;
             int phase=NativeZoneBossRules.Phase(z.archetype,hp,maxHp);
-            if(phase>z.phase){z.phase++;z.phaseAt=now;z.holdTarget=-1;NativeZoneBossRules.Start(z,"phase",now,-1,b.x,b.z,b.yaw);b.next=now+3.5f;b.hits=Array.Empty<int>();b.tideFrom=Tide(z,now);b.tideY=z.phase==2?.5f:1.1f;b.tideAt=now;b.tideUntil=now+3.5f;if(hum){b.circuitMask=255;b.circuitAt=now;}return;}
+            if(phase>z.phase){AdvancePhase(z,now);return;}
             if(z.action=="phase"&&now<z.actionAt+3.5f)return;
             if(hum&&z.action=="lunge"&&z.cancelAt<0&&now<z.hitAt-NativeHumBoss.LungeLock)AimLunge(z,pilots);
             if(now>=b.checkedAt){b.checkedAt=now+1;if(hum&&z.phase==3)foreach(var p in pilots)for(int i=0;i<b.torn.Length;i+=3)if(Dist(p.Feet.X,p.Feet.Z,b.torn[i],b.torn[i+1])<=2.4f&&now>b.torn[i+2]+.5f){output.Add(new BackroomsBossContact{Seat=p.Seat,Damage=12,Return=true,Stun=.6f,Point=new Vector3(b.x,2,b.z)});break;}foreach(var p in pilots)if(!Inside(z,p.Feet,.3f))output.Add(new BackroomsBossContact{Seat=p.Seat,Damage=12,Return=true,Stun=.6f,Point=new Vector3(b.cx,hum?2:0,b.cz+(hum?0:14))});}

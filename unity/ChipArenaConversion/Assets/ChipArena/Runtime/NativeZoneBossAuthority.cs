@@ -109,6 +109,16 @@ namespace ChipArena.UnityConversion
             NativeZoneBossRules.Action(z.archetype,id,out var a);bossReady[id]=Time+a.Cooldown;bossGap=Time+z.duration+(z.phase==3?.5f:.8f);bossHits.Clear();bossActionFired=false;bossChokeDamage=0;
         }
         private bool BossAvailable(string id)=>!bossReady.TryGetValue(id,out float at)||Time>=at;
+        private void AdvanceIndustrialBossPhase()
+        {
+            var z=ZoneBoss;var m=zoneBossActor;
+            z.phase++;z.phaseAt=Time;Pve.Phase=z.phase;BossRelease();BossStagger("phase",z.archetype==NativeZoneBossRules.Station?3.5f:z.phase==2?3.2f:3.6f);
+            NativeZoneBossRules.Start(z,z.archetype==NativeZoneBossRules.Station?"phase":z.phase==2?"shed":"break",Time,-1,m.Body.position.x,m.Body.position.z,m.Yaw);
+            bossGap=Time+z.duration;bossActionFired=true;stationRoute.Clear();stationRouteAt=0;
+            if(z.archetype==NativeZoneBossRules.Station){if(z.phase==2){z.barrierDownAt=Time;if(ZoneHazards!=null)ZoneHazards.trainAt=Time+40;}else{z.boardDownAt=z.roofOpenAt=Time;}}
+            else if(z.phase==2){for(int i=0;i<4;i++)if((z.parts&(1<<i))!=0){z.partAt[i]=Time;z.parts&=~(1<<i);}bossShedAdds=Time+6;}
+            else{z.parts&=15;z.partAt[4]=Time;if(ZoneHazards!=null)ZoneHazards.overflowAt=ZoneHazards.clock;}
+        }
         private void StepZoneBoss()
         {
             var z=ZoneBoss;var m=zoneBossActor;if(z==null||m==null||Pve.Holding)return;
@@ -117,15 +127,7 @@ namespace ChipArena.UnityConversion
             foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time&&d.Next<=d.Until){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)d.Dps*.25f,Vector3.zero,0,kind:"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}
             if(NativeBackroomsBossRules.Is(z.archetype)){StepBackroomBoss();return;}
             int phase=NativeZoneBossRules.Phase(z.archetype,m.Hp,m.MaxHp);
-            if(phase>z.phase)
-            {
-                z.phase++;z.phaseAt=Time;Pve.Phase=z.phase;BossRelease();BossStagger("phase",z.archetype==NativeZoneBossRules.Station?3.5f:z.phase==2?3.2f:3.6f);
-                NativeZoneBossRules.Start(z,z.archetype==NativeZoneBossRules.Station?"phase":z.phase==2?"shed":"break",Time,-1,m.Body.position.x,m.Body.position.z,m.Yaw);
-                bossGap=Time+z.duration;bossActionFired=true;stationRoute.Clear();stationRouteAt=0;
-                if(z.archetype==NativeZoneBossRules.Station){if(z.phase==2){z.barrierDownAt=Time;if(ZoneHazards!=null)ZoneHazards.trainAt=Time+40;}else{z.boardDownAt=z.roofOpenAt=Time;}}
-                else if(z.phase==2){for(int i=0;i<4;i++)if((z.parts&(1<<i))!=0){z.partAt[i]=Time;z.parts&=~(1<<i);}bossShedAdds=Time+6;}
-                else{z.parts&=15;z.partAt[4]=Time;if(ZoneHazards!=null)ZoneHazards.overflowAt=ZoneHazards.clock;}
-            }
+            if(phase>z.phase)AdvanceIndustrialBossPhase();
             SyncZoneBossArena();StepBossPools();
             if(bossShedAdds>=0&&Time>=bossShedAdds){bossShedAdds=-100;SpawnPveAddAt("slagback",BossWorld(-4,-2));SpawnPveAddAt("slagback",BossWorld(4,-2));}
             if(z.holdTarget>=0)

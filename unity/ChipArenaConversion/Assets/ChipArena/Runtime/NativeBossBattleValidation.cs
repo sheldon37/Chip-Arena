@@ -11,10 +11,16 @@ namespace ChipArena.UnityConversion
             if(Pve.Holding && Pve.Cinematic=="reveal")PveHoldTick(Pve.HoldLeft+.01f);
             if(Pve.Phase!=PracticePhase || Match.CanEarnProgression(LocalId) || BossOpening ||
                 Pve.Rows.Values.Any(r=>r.Picks.Any(p=>p.Source==NativeBossPicks.Source)))
-                throw new Exception("Practice opening mismatch "+PracticeBoss+" phase "+PracticePhase+" actual "+Pve.Phase);
+                throw new Exception("Practice opening mismatch "+PracticeBoss+" phase "+PracticePhase+" actual "+Pve.Phase+
+                    " actor phase "+ZoneBoss?.phase+" stage "+Pve.Stage+" match "+Match.Phase+" hold "+Pve.Cinematic+
+                    " hp "+zoneBossActor?.Hp+"/"+zoneBossActor?.MaxHp+" progression "+Match.CanEarnProgression(LocalId));
             if(PracticeBoss=="siren" && PracticePhase==2 && (!Pve.Hidden || Pve.Possessed==0))
                 throw new Exception("Siren practice missing possessed add");
-            if(PracticeBoss=="station" && PracticePhase==3 && (ZoneBoss.barrierDownAt<0 || ZoneBoss.roofOpenAt<0))
+            if(ZoneBoss!=null && ZoneBoss.phase!=PracticePhase)
+                throw new Exception("Practice actor phase mismatch "+PracticeBoss+" phase "+PracticePhase+" actual "+ZoneBoss.phase);
+            if(PracticeBoss=="station" && PracticePhase>=2 && ZoneBoss.barrierDownAt<0)
+                throw new Exception("Station practice missing barrier transition");
+            if(PracticeBoss=="station" && PracticePhase==3 && (ZoneBoss.boardDownAt<0 || ZoneBoss.roofOpenAt<0))
                 throw new Exception("Station phase three missing arena changes");
             if(PracticeBoss=="noctiel" && PracticePhase>1 && (ZoneBoss.fallen.draftAt<0 || ZoneBoss.fallen.chipOffer.Length!=3))
                 throw new Exception("NOCTIEL practice missing phase draft");
