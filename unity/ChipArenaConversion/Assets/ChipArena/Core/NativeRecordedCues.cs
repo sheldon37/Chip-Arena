@@ -110,22 +110,36 @@ namespace ChipArena.UnityConversion
             !pending && release <= until && now >= release && now - release < .25f;
     }
 
-    // Hits are published in authority ID order. Keep one high-water mark per pilot in an arena.
+    // Each weapon record (a blast, a cut, a ring's hit) sounds once, when a record first shows it fresh, and each cast once at
+    // its confirmed release. One mark per pilot: the newest record id and time played, and the last release time.
+    // In one arena's clock both rise together (the authority numbers its records as it makes them, and frames never run a
+    // clock back), so a record newer on neither was played already or is older than one that was (a duplicated or late
+    // snapshot, a late join, a rewind). A record later in time with a lower id means the numbering began again, and a clock
+    // more than ClockBack behind the mark is another clock. A new match keeps the round's Generation (every Deathmatch, a
+    // second Dev Sandbox, a match left in its first round) while its ids and clock restart, and the Preview Bombadier loops
+    // its own ids: neither may silence what follows (owner 2026-11-18: the Bombadier's explosions had gone quiet).
     public sealed class NativeWeaponAudioHistory
     {
-        private readonly Dictionary<int,int> lastHit = new Dictionary<int,int>();
+        public const float Fresh = .25f, ClockBack = 1;
+        private struct Mark { public int Id; public float At; }
+        private readonly Dictionary<int,Mark> lastHit = new Dictionary<int,Mark>();
         private readonly Dictionary<int,float> lastRelease = new Dictionary<int,float>();
 
         public bool Hit(int seat, int id, float at, float now)
         {
-            if(!(now >= at && now-at < .25f) || lastHit.TryGetValue(seat, out int last) && last >= id)return false;
-            lastHit[seat] = id;
+            if(!(now >= at && now-at < Fresh))return false;
+            if(lastHit.TryGetValue(seat, out var last) && now >= last.At-ClockBack)
+            {
+                if(id <= last.Id && at <= last.At)return false;
+                lastHit[seat] = id > last.Id ? new Mark{Id=id,At=at > last.At ? at : last.At} : new Mark{Id=id,At=at};
+            }
+            else lastHit[seat] = new Mark{Id=id,At=at};
             return true;
         }
 
         public bool Release(int seat, bool pending, float at, float until, float now)
         {
-            if(!NativeRecordedCues.Released(pending,at,until,now) || lastRelease.TryGetValue(seat,out float last) && last >= at)return false;
+            if(!NativeRecordedCues.Released(pending,at,until,now) || lastRelease.TryGetValue(seat,out float last) && last >= at && now >= last-ClockBack)return false;
             lastRelease[seat] = at;
             return true;
         }
