@@ -49,6 +49,15 @@ namespace ChipArena.UnityConversion
                 if(parts.Count>0){models[id]=parts.ToArray();MachineModels++;}
             }
             Ghost(NativePodModels.GhostId,NativePodModels.Pod());Ghost(NativePodModels.DoorGhostId,NativePodModels.Door());
+            // the crash's lasting marks: flat paint over the floor, lit but casting no shadow (a crater per shape, the furrow)
+            void Flat(string id,WeaponMesh built)
+            {
+                if(built==null||models.ContainsKey(id))return;var parts=new List<Part>();
+                foreach(var s in built.Sections){var mesh=BodyMesh(s,id+" / "+s.Bone);if(mesh!=null)parts.Add(new Part{Name=id,Bone=s.Bone,Mesh=mesh,Material=opaque,NoShadow=true});}
+                if(parts.Count>0){models[id]=parts.ToArray();MachineModels++;}
+            }
+            for(int k=0;k<NativePodModels.CraterShapes;k++)Flat(NativePodModels.CraterIds[k],NativePodModels.Crater(k));
+            Flat(NativePodModels.FurrowId,NativePodModels.Furrow());
         }
         private readonly Dictionary<string,Vector3> pickupAxes=new Dictionary<string,Vector3>();
         /// <summary>The ring's turn (Epic and up, bone NativeMachineModels.Orbit) of a chip model at `t`: about its core's axis

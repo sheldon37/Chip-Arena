@@ -107,6 +107,8 @@ namespace ChipArena.UnityConversion
         {
             var arena=WeaponLoadout;if(arena==null||a==null||!a.Alive)return position;
             var v=SpawnEvaluate(arena,SpawnPilotOf(arena,a.Id),position,time,out float raise);if(v==null)return position;
+            // A generated run's hub: the drawn pilot rides its pod's full offset and lean (NativePodPresentation.cs PodFeet).
+            if(v.Pod){position=PodFeet(a,v,position);return position;}
             v.Shown=true;v.Raise=raise;position.y+=raise;return position;
         }
         /// <summary>The contact flag actor `id`'s rig is posed with: on the ground while the beam holds it, in the air for the
@@ -241,14 +243,14 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// ConversionGame.LateFrame (camera shake on): in first person my view rides the beam's hold, bob and drop with my body;
         /// the touchdown kicks the camera in first or third person (Reduced .4). Applied after the aim point is taken, as the
-        /// other camera kicks are, and rebuilt from the look angles next frame.
+        /// other camera kicks are, and rebuilt from the look angles next frame. A pod run's drop directs the camera instead.
         /// </summary>
         public void SpawnCamera(Transform camera,NativeArena arena,float time,bool shake,bool reduced)
         {
             if(camera==null||arena?.Local?.Body==null||!shake)return;var p=arena.Local;
             var v=SpawnEvaluate(arena,p,p.Body.transform.position-Vector3.up*NativeSpawnIn.FeetOffset,time,out float raise);if(v==null)return;
-            // A generated run's hub: my view rides my pod down (NativePodPresentation.cs PodCamera).
-            if(v.Pod){PodCamera(camera,p.Seat.id,reduced);return;}
+            // A generated run's hub: my pod's drop is the directed camera's (NativeCinematicCamera, NativePodPresentation.cs PodDropDirect).
+            if(v.Pod)return;
             float kick=NativeSpawnIn.Kick(v.Frame,v.Place.Mode,out float pitch)*(reduced?.4f:1);
             camera.position+=Vector3.up*((FirstPerson?raise:0)-kick);if(pitch>0)camera.rotation*=Quaternion.Euler(pitch*(reduced?.4f:1),0,0);
         }
