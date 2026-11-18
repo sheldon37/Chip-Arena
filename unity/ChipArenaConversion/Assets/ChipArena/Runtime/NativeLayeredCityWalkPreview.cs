@@ -56,8 +56,6 @@ namespace ChipArena.UnityConversion
                 return false;
             }
             if (arena != null || !menu || previewArena != null) return false;
-            if (Input.GetKeyDown(KeyCode.F6) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)))
-                walkPicker = !walkPicker;
             if (!walkPicker) return false;
             if (Input.GetKeyDown(KeyCode.Escape) || PadBack) walkPicker = false;
             Cursor.lockState = CursorLockMode.None;
