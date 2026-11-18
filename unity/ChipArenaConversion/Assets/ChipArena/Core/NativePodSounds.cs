@@ -27,6 +27,8 @@ namespace ChipArena.UnityConversion
         {
             int n=0;
             o[n++]=new Cue(p.Appear+.05f,Roar,.8f,420,.96f+.08f*H(p.Seed,1),true);
+            // the near pass, quicker: loud only to an ear riding with it (my own pod's chase) or under its last stretch
+            o[n++]=new Cue(p.Ride,Roar,.9f,140,1.5f+.1f*H(p.Seed,6),true);
             o[n++]=new Cue(p.Punch,Boom,1,650,.94f+.12f*H(p.Seed,2),true);
             o[n++]=new Cue(p.RetroAt,p.Fails?Sputter:Retro,.75f,220,.95f+.1f*H(p.Seed,3),true);
             o[n++]=new Cue(p.Impact,Impact,1,180,(p.Fails?.9f:1)+.06f*H(p.Seed,4));

@@ -237,7 +237,7 @@ internal static class PodDropChecks
         Check(n>12&&n<=NativePodSounds.MaxCues,"a pod plans its sounds ("+n+")");
         for(int i=1;i<n;i++)Check(cues[i].At>=cues[i-1].At,"in time order");
         bool Has(int sound,float at)=>cues.Take(n).Any(c=>c.Sound==sound&&Math.Abs(c.At-at)<1e-4f);
-        Check(Has(NativePodSounds.Roar,p.Appear+.05f)&&Has(NativePodSounds.Boom,p.Punch)&&Has(p.Fails?NativePodSounds.Sputter:NativePodSounds.Retro,p.RetroAt)&&Has(NativePodSounds.Impact,p.Impact)&&Has(NativePodSounds.Bolts,p.DoorAt-NativePodDrop.BoltLead)&&Has(NativePodSounds.Door,p.DoorAt+p.DoorSeconds),"the roar, the boom, the retros, the impact, the bolts, the door, each on its beat");
+        Check(Has(NativePodSounds.Roar,p.Appear+.05f)&&Has(NativePodSounds.Roar,p.Ride)&&Has(NativePodSounds.Boom,p.Punch)&&Has(p.Fails?NativePodSounds.Sputter:NativePodSounds.Retro,p.RetroAt)&&Has(NativePodSounds.Impact,p.Impact)&&Has(NativePodSounds.Bolts,p.DoorAt-NativePodDrop.BoltLead)&&Has(NativePodSounds.Door,p.DoorAt+p.DoorSeconds),"the roar, the boom, the retros, the impact, the bolts, the door, each on its beat");
         Check(cues.Take(n).Count(c=>c.Sound==NativePodSounds.Tick)>=6&&cues.Take(n).Where(c=>c.Sound==NativePodSounds.Tick).All(c=>c.At>p.Impact&&c.At<p.Impact+NativePodDrop.CoolSeconds),"the hull ticks as it cools");
         Check(NativePodSounds.Keys.Length==NativePodSounds.Count&&NativePodSounds.Keys.Distinct().Count()==NativePodSounds.Count,"one key per sound");
         for(int i=0;i<NativePodSounds.Count;i++)

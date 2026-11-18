@@ -516,14 +516,14 @@ namespace ChipArena.UnityConversion
             if(age<p.Ride)
             {
                 // the sky: high over the camp in front of my landing, looking back up the line my pod comes in on
-                var pod=centre+FlightAt(p,Math.Max(p.Appear,age),out _);shot.Eye=centre+p.Travel*26+p.Side*12+up*48;shot.Look=Vector3.Lerp(centre+up*4,pod,.3f);shot.Fov=58;return shot;
+                var pod=centre+FlightAt(p,Math.Max(p.Appear,age),out _);shot.Eye=centre+p.Travel*26+p.Side*12+up*48;shot.Look=Vector3.Lerp(centre+up*4,pod,.62f);shot.Fov=62;return shot;
             }
             var f=Evaluate(age,p);
             if(mode==ShotFirst&&age<p.CabinEnd&&age<p.Stop)
             {
                 // braced in the cabin: my eye over the cabin floor, looking at the door's porthole, turning with the pod
                 var rot=Quaternion.Multiply(f.Tilt,Facing(p));shot.Eye=centre+PodPoint(f,p,new Vector3(0,NativePodModels.Floor+CabinEye,-.05f));
-                shot.Look=shot.Eye+Vector3.Transform(Vector3.Normalize(new Vector3(0,-.3f,1)),rot)*4;shot.Up=Vector3.Transform(up,rot);shot.Fov=72;shot.Cabin=true;return shot;
+                shot.Look=shot.Eye+Vector3.Transform(Vector3.Normalize(new Vector3(0,-.3f,1)),rot)*4;shot.Up=Vector3.Normalize(up+Vector3.Transform(up,rot));shot.Fov=72;shot.Cabin=true;return shot;
             }
             var touch=centre+p.P1;var stop=touch-p.Travel*6+up*10;
             if(age<p.Stop)
