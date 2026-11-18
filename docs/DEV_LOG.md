@@ -1,3 +1,57 @@
+## 2026-11-18 — Claude: arrows stuck in a pilot ride the drawn body, not a point off it (owner report; presentation only)
+
+- **The owner (2026-11-18):** "Can you fix bow arrows? It seems they sometimes 'attach' off of a players body. Essentially it'll look like
+  someone is running around with floating arrows around them." Branch `claude/bow-stuck-arrows` from shared `01505ad6`: `6c6cad6e` the
+  change and its checks, then this entry. Pushed, **not merged, not released**.
+- **Why "sometimes":** a pilot's arrow rode the game rig's joint (the voxel skeleton) at the replicated hit point, its depth from the voxel
+  boxes. Three things put it off the drawn model:
+  - The hit point lies on the game's capsule (radius 0.42 m), up to a quarter metre outside the model's skin at the arms, sides and head;
+    when the flight missed the joint's boxes the arrow kept that capsule point.
+  - The model does not follow that rig: the pack's clips, its stride, hand fits, rolls and hit reactions pose it differently, so the arrow
+    drifted off the body while running, rolling or jumping, and floated above or beside it.
+  - A guest draws other pilots about 0.1 s behind its newest frame but placed each hit as soon as the frame landed, on the pose of 0.1 s
+    before (about 0.7 m off a sprinting pilot).
+- **Now:**
+  - Core `NativeArrowGib.Seat`: where a flight meets the skin as posed. The entry is the first face it meets; a flight passing beside
+    the skin (the capsule's hit) is moved onto the body's nearest vertex (within 0.48 m), and a head shot looks on the head first. The far
+    side of that body gives the halfway bury. It runs on a worker, one search per body per frame, over the same skinned parts the cuts
+    and wound holes read (`Runtime/NativeArrowGibPresentation.cs` `ArrowSeatAsk`/`ArrowSeatsDone`).
+  - `NativeBowStuck` records keep that place on the model's own bone (`Model`, `ModelPoint`, `ModelDir`, `ModelDepth`), drawn nowhere
+    while it is found (`Seating`: at most a frame or two). The game joint's place stays as the fallback (voxel bodies, nothing found).
+  - Where it draws (`BowBone`): a live model body draws it on the bone it was seated on (an unseated one in the game joint's frame on the
+    model, `VisualJointFrame`); the voxel rig only for a voxel body; nothing while the body is not drawn (first person, hidden, off stage,
+    a veiled Fangs pilot to its foes). Dead: the model corpse's same bone (`ArrowOnCorpse`), on the half of a split body its point lay
+    on (the first, whole, while the cut is made), hidden with a crushed part or a hidden corpse (dissolved, down a vent), fading as it
+    dissolves. A killing arrow is seated on the pose last drawn, which the corpse wears.
+  - The hit is carried onto the body as drawn (`NativeArrowGib.OnDrawn`: its drawn offset and its run since the hit), and a guest's hit
+    on another pilot waits for the drawn pose to reach it (`NativeArrowGib.Due`; not its own predicted pilot or a dead one).
+  - The voxel fallback (`NativeArrowGib.Onto`): a capsule hit beside the joint's boxes is moved onto them.
+  - A pass-through's holes are seated the same way; its exit spray leaves from where the flight left the skin.
+- **Unchanged:** hits, damage, hitboxes, arrow flight, pierce, timing, networking (nothing for Astra). Wall arrows, horde adds and the
+  Siren as before. **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks:**
+  - Full CoreTests on `6c6cad6e` (Windows path patch in a throwaway worktree): 1,033 PASS lines, exit 0. `--gib`: 1,911 checks (new: the
+    model seat on a synthetic skin, the capsule-side and head-shot moves, an arm across the chest, the box fallback, the timing helpers,
+    no allocation, the wiring pins); `--bow`: 5,050 (seating, the model bone's frame, the body's opacity, the fallback).
+  - `tools/check_unity_compile.py`: Input System, Player, Assembly-CSharp and Editor pass, no warnings in the changed files.
+  - `git diff --check` against shared: clean. The test pin scan finds no broken pins.
+  - The Editor checkout went back to `9319026b` with its local files after every hold; the 14 stage banks and the motion bank (6,136,627
+    bytes, `37ec44d2`) as released.
+- **Filmed** in the shared Editor (Cybercity, 1/30 s steps; before shared `01505ad6`, after `6c6cad6e`). The idle bot turned archer looses
+  real arrows through the arena's own `Fire` (a local tool option): the back of the chest, the left arm, the right thigh, a capsule-edge hit
+  beside the torso, the left thigh and the upper chest; then the pilot sprints, rolls and jumps. Views follow the body.
+  - **Default pilot (greatsword):** before, arrows hang in the air above its head and beside its hips and knees, standing, sprinting,
+    mid-roll and mid-jump; after, every shaft starts at the skin (head, shoulder, arm, thigh) and moves with it through the roll and jump.
+  - **Hot Dog:** before, one arrow stands in the air over the sausage's crown and others hang beside it; after, they go into the sausage
+    and stay there through the roll.
+  - **Corpse:** a bot shot three times, then killed by a fourth arrow; after, all four ride the falling corpse (the killing one seated
+    from the pose last drawn, one capture frame unseen).
+  - Two of the six arrows in each pilot run hit props on the way, in both builds (the scripted origins); the rest stuck.
+- **Not seen / not done:** a guest's view (the tools run one client: the guest wait and carry are covered by managed checks only); a split
+  or crushed corpse with an arrow, a vent fall, Frostbreak or Soul Drift (code path only); the Low tier; a Windows build. The Hot Dog's
+  arrows ride the bone under its sausage twins, so the sausage's jiggle does not move them.
+- **Next:** the owner looks; merge and release.
+
 ## 2026-11-17 — Claude: Blind Pick and Deathmatch screens (Astra's 2026-11-16 handoff; presentation only)
 
 Branch `claude/opening-draft-ui`, base shared `claude/sleepy-ritchie-g8ruhv` at `c69c30c7`. Owner: "Do the UI work; We can use the same kind of screens we use for chip selection ... Kind of like chips, but animated and styled with very high quality."
