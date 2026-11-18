@@ -422,11 +422,13 @@ ticket, roll, wire or save reads it).
 - **When the station opens** (each client's own clock): the emblem flap falls at 0.08 s, then line 1 clatters in left to
   right from 0.2 s. Each flap runs 6-13 drum glyphs before its own, 52 ms apiece, and the line has landed by 1.4 s. Then a
   two-note bell rings, sparks fly off both cheeks (machine 2) and the lamp flashes. It is an arrival, not a spin. The camera
-  opens on the board (`NativeAtlasBoard.Shot`, the TILESET card's shot), holds until 2.8 s, then eases to the Overview. A roll
-  or Deploy takes the camera as before: the board's shot applies only over the Overview, and the stage's `Shot` stays the
-  rules' `Framing`.
+  opens on the board (`NativeAtlasBoard.Shot`, the TILESET card's shot) and holds until 2.8 s. Then the board hands it to the
+  Overview along a smoothstep over 1.2 s of the station's clock (`NativeAtlasBoard.ViewAt`), which the station's own ease
+  follows, so it leaves the board at rest. A roll or Deploy takes the camera as before: the board's shot and hand-off apply
+  only over the Overview, and the stage's `Shot` stays the rules' `Framing`.
 - **The console:** a TILESET card, the console's first, beside the station's title: ARRIVING…, then CITY · MERIDIAN IN SERVICE.
-  It is display only: there is nothing to choose yet and it raises no intent.
+  The name stops short of the tag (a longer name later is drawn as large as fits). It is display only: there is nothing to
+  choose yet and it raises no intent.
 - **Drawn by:** Core `NativeAtlasBoard` (layout, arrival, shot, sparks, sound moments), `NativeAtlasStage` (posed in
   `NativeDeployStage.Frame`; no per-frame allocation), `NativeAtlasModels` (the cabinet, about 6.2k triangles, and 312 flaps,
   1.9k), `NativeAtlasArt` (one split-flap glyph atlas, 768 × 576, baked once per build in `Editor/NativeDeployCardBuild.cs`
