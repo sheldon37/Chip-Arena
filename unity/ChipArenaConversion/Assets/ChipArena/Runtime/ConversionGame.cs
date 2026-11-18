@@ -368,7 +368,7 @@ namespace ChipArena.UnityConversion
             // Settings · Camera (NativeShoulderCamera.cs): Classic, once settled, is the original camera below, unchanged.
             bool classic=CameraClassic(first);
             float settled=first?NativeViewRules.FirstFov:classic?NativeViewRules.ThirdFov:cameraRig.Fov(Time.unscaledTime);if(aim)settled=first?(float)ads.fov:settled*NativeViewRules.AimZoom(p.Seat.spec);
-            ScopeOutFov(scope,first,settled);
+            ScopeHandOver(p,focus,scope,first,settled);
             cameraView.fieldOfView=SprintFov(first,aim,Mathf.Lerp(cameraView.fieldOfView-sprintKick,settled,1-Mathf.Exp(-16*Time.unscaledDeltaTime)));
             Quaternion rotation=Quaternion.Euler(pitch,yaw,0);Vector3 location=focus;
             if(!first&&!classic)location=ShoulderCamera(p,focus);

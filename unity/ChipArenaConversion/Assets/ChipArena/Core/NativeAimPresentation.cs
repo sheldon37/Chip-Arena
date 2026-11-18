@@ -8,6 +8,9 @@ namespace ChipArena.UnityConversion
     {
         private float at=-100,velocity;public float Weight {get;private set;}
         public void Reset(){at=-100;velocity=0;Weight=0;}
+        /// <summary>Already raised: the rifle's scope entered from a third-person camera opens at once (no view model rising
+        /// through its first frames); the next sample, a long gap later, keeps it raised while the aim is held.</summary>
+        public void Raised(){at=-100;velocity=0;Weight=1;}
         public float Sample(float time,bool aiming)
         {
             float dt=time-at,target=aiming?1:0,value=Weight;
