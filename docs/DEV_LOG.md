@@ -139,6 +139,7 @@ Branch `claude/rifle-q-scope`, base shared `claude/sleepy-ritchie-g8ruhv` at `01
 - The controller's Aim keeps the third-person zoom, as right click's twin.
 
 **Next.** The owner plays it (Q against a moving target, both shoulders, Classic); then merge and release.
+- **Released:** shared `ea563356` (the builder at `ea563356`), test channel revision `639306167183583878` (build `504fc0c7`); the suite at `2bd8cffc` (1,033 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-18 — Claude: arrows stuck in a pilot ride the drawn body, not a point off it (owner report; presentation only)
 
@@ -195,6 +196,7 @@ Branch `claude/rifle-q-scope`, base shared `claude/sleepy-ritchie-g8ruhv` at `01
   or crushed corpse with an arrow, a vent fall, Frostbreak or Soul Drift (code path only); the Low tier; a Windows build. The Hot Dog's
   arrows ride the bone under its sausage twins, so the sausage's jiggle does not move them.
 - **Next:** the owner looks; merge and release.
+- **Released:** shared `442bcf69` (the builder at `442bcf69`), test channel revision `639306150151016477` (build `f9f0c8a9`); the suite at `08c2fd16` (1,033 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-18 — Claude: the Bombadier's explosions and throws are heard in every match (owner report; presentation only)
 
