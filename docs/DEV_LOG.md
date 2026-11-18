@@ -140,6 +140,7 @@ Branch `claude/deathmatch-picks`, base shared `claude/sleepy-ritchie-g8ruhv` at 
 - The Ready header for a guest reads the room's copy of the rules.
 
 **Next.** The owner looks at the captures. Then integrate with `claude/pick-flourish` (delete the stub), merge and release.
+- **Released:** shared `ff0b7d88` (the builder at `ff0b7d88`), test channel revision `639306184521961702` (build `6c46b967`); the suite at `64264727` (1,034 groups, exit 0), the Unity compile. The comeback pick keeps the fight's corpses and blood (`560d08c9`). The weapon flourishes replace the `NativeWeaponCardFlourishStub` when `claude/weapon-pick-flourish` merges. No bank or Drive zip change.
 
 ## 2026-11-18 — Claude: the rifle's Q looks through its scope again in any camera (owner report; presentation only)
 
@@ -180,6 +181,7 @@ Branch `claude/rifle-q-scope`, base shared `claude/sleepy-ritchie-g8ruhv` at `01
 - The controller's Aim keeps the third-person zoom, as right click's twin.
 
 **Next.** The owner plays it (Q against a moving target, both shoulders, Classic); then merge and release.
+- **Released:** shared `ea563356` (the builder at `ea563356`), test channel revision `639306167183583878` (build `504fc0c7`); the suite at `2bd8cffc` (1,033 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-18 — Claude: arrows stuck in a pilot ride the drawn body, not a point off it (owner report; presentation only)
 
@@ -236,6 +238,7 @@ Branch `claude/rifle-q-scope`, base shared `claude/sleepy-ritchie-g8ruhv` at `01
   or crushed corpse with an arrow, a vent fall, Frostbreak or Soul Drift (code path only); the Low tier; a Windows build. The Hot Dog's
   arrows ride the bone under its sausage twins, so the sausage's jiggle does not move them.
 - **Next:** the owner looks; merge and release.
+- **Released:** shared `442bcf69` (the builder at `442bcf69`), test channel revision `639306150151016477` (build `f9f0c8a9`); the suite at `08c2fd16` (1,033 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-18 — Claude: the Bombadier's explosions and throws are heard in every match (owner report; presentation only)
 
