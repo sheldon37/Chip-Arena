@@ -56,6 +56,15 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(s.count(self.dest,'player_sessions'),0)
         self.assertFalse(set(s.ROOMS) & s.names(self.dest))
 
+    def test_sites_migration_metadata_is_source_only(self):
+        ddl = 'CREATE TABLE __appgarden_migrations (id INTEGER PRIMARY KEY)'
+        self.source.execute(ddl)
+        self.copy()
+        self.assertTrue(s.verify(self.source, self.dest)['ok'])
+        self.dest.execute(ddl)
+        with self.assertRaisesRegex(s.Stop, 'Unexpected or missing tables'):
+            s.verify(self.source, self.dest)
+
     def test_earned_bosses_survive_copy(self):
         self.source.execute("UPDATE player_accounts SET boss_clears=33 WHERE id='id-1'")
         self.copy()

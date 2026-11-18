@@ -117,7 +117,10 @@ def layout(db, table):
 
 def validate(db, destination, *, legacy_source=False):
     expected = schema(destination)
-    if names(db) != names(expected):
+    actual = names(db)
+    if not destination:
+        actual.discard('__appgarden_migrations')
+    if actual != names(expected):
         raise Stop('Unexpected or missing tables. Reconcile the schema before continuing.')
     for t in sorted(names(expected)):
         actual_layout, expected_layout = layout(db, t), layout(expected, t)
