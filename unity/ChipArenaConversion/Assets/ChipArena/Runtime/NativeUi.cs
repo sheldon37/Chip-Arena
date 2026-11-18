@@ -115,6 +115,10 @@ namespace ChipArena.UnityConversion
             current=current*Matrix4x4.TRS(p+(Vector3)(translate*S),Quaternion.Euler(0,0,degrees),new Vector3(scale,sy,1))*Matrix4x4.Translate(-p);
         }
         public static void Pop(){current=stack.Count>0?stack.Pop():Matrix4x4.identity;}
+        /// <summary>The kit's transform now, and a layer drawn later in the frame under one kept from earlier (NativeWeaponCard's
+        /// flourishes follow their card's transform). Pop ends it.</summary>
+        public static Matrix4x4 Current=>current;
+        public static void PushMatrix(Matrix4x4 m){stack.Push(current);current=m;}
         /// <summary>Draws what follows through an affine map of the virtual canvas, point (x, y) to origin + axisU x + axisV y (virtual
         /// units; IMGUI maps the pointer back through it too): a HUD drawn onto a projected world screen. Pop ends it.</summary>
         public static void PushAffine(Vector2 origin,Vector2 axisU,Vector2 axisV)

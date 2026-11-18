@@ -1,3 +1,188 @@
+## 2026-11-18 — Claude: every weapon plays its own selection flourish on the Blind Pick screen (owner report; presentation only)
+
+Branch `claude/weapon-pick-flourish`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "Give each weapon choice a selection animation for the player (Of course, everyone is on their own screen so others wont see this) ... Kind of like if they select pistol for instance~ a pistol will eject from the icon and shoot around etc. Be creative!"
+
+- **What.** Choosing a weapon card plays that weapon's own 1.6-1.95 s flourish: all 24 roster rows, the DEV and hero classes included (one line each in `docs/BLIND-PICK-SCREENS.md`, "Weapon flourishes"). Clicking the chosen card again replays it; choosing another stops the old one and starts the new one there. Locking in plays a 0.95 s finisher on the locked-in card. Against bots that screen is skipped (lock-in goes straight to the reveal), so the finisher plays on the pilot's own card in the reveal instead, unless the locked-in screen just played it. Other pilots' cards never play one. Reduced effects: a gentle glow and ring only.
+- **How.** Drawn in the card kit's hardlight style from each weapon's own icon art, with light, trails, sparks and particles over the whole screen; the card itself shakes, squashes, cracks, splits or glitches with it. The weapon is drawn up to 1.6x its card icon from the raster the hero card already made, so nothing rasterises mid-flourish. Every particle is a closed-form function of the flourish's age: no per-frame state or garbage, and a restart is clean. Shots, bolts and arrows aim at the other cards drawn that frame. I chose this over rendering the 3D weapon models. Several classes have no separate weapon to show (the Siren's claws; the Emperor's, Ansatsuken's and Cyber Lord's fists). The icon art also matches the cards and is already rasterised.
+- **Sound.** A few short, quiet cues per move (gain 0.09-0.21): effects bank keys with today's clips as fallbacks, and Top Dog toon sounds, through NativeAudio's screen cue path, each once.
+- **Files.** Core `NativeWeaponFlourishPlan` (moves, lengths, cues, the cue clock); Runtime `NativeWeaponFlourish.cs`, `NativeWeaponFlourish.Moves.cs`, `NativeWeaponFlourishAudio.cs`; `NativeWeaponCard` is now partial (`Draw`/`Hero` queue, `Flourishes()` draws; `Look.Finish`, `Look.Quiet`); `NativeUi.Current`/`PushMatrix` (a later layer follows a card's transform); `NativeAudio` subscribes; Tests `WeaponFlourishChecks` (`--weapon-flourish`).
+- **Other agents' file (minimal).** `NativeOpeningDraftUI.cs`, owned by deathmatch-picks: `NativeWeaponCard.Flourishes()` at the end of the weapon, locked-in and reveal steps; the reveal marks the pilot's own card `Finish` and the others `Quiet`; a click on the chosen card restarts `openingSelectAt`. The N-choice screen just needs `Flourishes()` after its cards (its stub goes at merge).
+- **Merged with deathmatch-picks (coordinator, for release).** `origin/claude/deathmatch-picks` at `e7451d9f` is merged at `4af7d9a4`, keeping both sides:
+  - theirs: Blind Pick All, the dealt Blind Pick screen on Astra's PR #411 rules, and the 21:9 and layout fixes;
+  - mine: `Flourishes()` in the weapon, locked-in and reveal steps, the reveal's `Finish`/`Quiet` marks, and the replay on a second click.
+  - Conflicts were `Tests/Program.cs` (both checks registered) and DEV_LOG/PROJECT_STATE (both entries kept; the stale `claude/bomb-blast-audio` "pushed, not merged" line dropped). `NativeOpeningDraftUI.cs` and `NativeWeaponCard.cs` merged cleanly: their card change was `partial`.
+  - Their stand-in `Runtime/NativeWeaponCardFlourishStub.cs` (and `.meta`) is deleted. `BlindChoiceChecks` now checks for the real `Flourishes()` instead of the stub.
+  - Then `bdcbaf2e`: the dealt cards are hero cards, so a hero card plays the card's whole part:
+    - the icon out of its slot;
+    - the Katana's split and L33T's glitch, as bands with the reticles outside the clips;
+    - a grid card's measure (the hero's icon is far larger), while it starts and ends at the hero's own icon;
+    - its shots, bolts and arrow aimed at the other dealt cards.
+  - The greatswords keep their raised point on screen above a tall card.
+  - The reveal replays a finisher the locked-in screen showed for less than half its length: the dealt screen's own locked state lasts only until the host's next view.
+  - A second click on the chosen dealt card replays its flourish (one statement in `NativeBlindChoiceUI.cs`).
+  - The Blind Pick All grid is unchanged.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. Nothing reads or writes rules, timers or the network. The pick, the countdown, the lock and the reveal never wait on a flourish, and nothing is sent.
+- **Checks.**
+  - Full CoreTests (Release, as relgen5 runs it, in a throwaway worktree) on `dd5381ae` (deathmatch-picks and then shared `ff0b7d88` merged in): 1035 PASS lines, exit 0, including `blind pick all, blind choices and the deathmatch chip stage` (5591), `blind pick and deathmatch` (158) and `weapon flourishes` (1504). Before that merge, on `9f285a03`: 1033 PASS lines, exit 0, including the new `weapon flourishes` (1502 checks: every roster weapon has its own move of 1-2 s, every cue is a real one-shot bank key, a shipped clip or a toon sound, quiet and inside its flourish, each cue plays once at 23/30/60/144 fps, the cue clock allocates nothing, the reveal plays only the pilot's own finisher, no LINQ or string building in the draw files) and `blind pick and deathmatch` (158).
+  - The pinned 6000.3.24f1 semantic compile passes (Input System, Player, Assembly-CSharp, Editor), with no warnings in the new or changed files. `git diff --check` is clean, and no source pins are broken.
+  - The dealt screen seen in the Editor at `bdcbaf2e`, at 1600x900 with 3 cards dealt: choosing the DEV Katana (8 frames) and locking it in (8 frames). The lock was shown as the screen draws it before the host's next view: the lock time set, no confirm sent.
+  - Seen in the Editor (BoZo, a Blind Pick against 3 bots, Game view fixed at 1600x900, the flourish clock pinned for each shot), at `4d01bdf8`, before the shared merge, which brought only shared's own changes: all 24 flourishes at 8 ages each, 3 whole-screen grabs, the Katana's lock-in finisher on the reveal, and Reduced effects (Pistol, Greatsword and a Pistol lock-in). The stage banks and the motion bank were unchanged before and after each session.
+- **Not run.**
+  - No Windows build or player, so frame times were not measured. The drawing is allocation-free by construction, and the per-frame cue clock is checked.
+  - The sounds were not listened to.
+  - No host and guest online run. The locked-in screen's finisher, while another human is still choosing, was not seen on screen: bots are always ready, so the reveal path was filmed. It is the same finisher on the hero card.
+  - No controller run. The capture chose weapons through the same `OpeningChoose` that a click and the arrow keys call.
+  - No 21:9 or 4:3 layouts.
+- **Risks and next.**
+  - The strongest flashes (the Greatsword and DEV Greatsword impact frames, the Bombadier's blast, the rifle shot) are a matter of taste, for the owner to judge per weapon.
+  - A Top Dog toon sound is synthesised the first time it plays, a one-time cost of a few ms.
+  - Captures: IMGUI hover follows the real cursor. The second capture runs moved the cursor to the screen's corner and put it back afterwards. Once, Ctrl+P was sent to the Editor to stop my own hung capture job; the tool option now has a 45 s watchdog.
+  - **Next:** the owner reviews the per-weapon sheets; then merge and release.
+
+## 2026-11-18 — Claude: the Deathmatch's chip picks on the PvP chip screen with the pilot, Blind Pick All, and the N-choice Blind Pick screen (owner report; presentation only)
+
+Branch `claude/deathmatch-picks`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6` (test channel revision 639305719837450710). Owner, 2026-11-18: "For the deathmatch mode, For the chip selection; We can bring the player model in for the chip selection like we do for the normal pvp mode. As matter of fact, we can use that exact screen. Also, change current Blind Pick Name to "Blind Pick All", and make a new blind pick where we get a customizable amount of choices (Default 3) of weapon/class to pick (we only pick 1). This will be similar to a chip screen."
+
+- **Chip picks on the PvP chip screen.** The Deathmatch's starting chip (the opening's Chip step, in the room) and its comeback chips (in the fight) now use the PvP chip draft's own screen (`Runtime/NativeDeathmatchPickStage.cs`), as the Siren personal pick does:
+  - the draft stage with the local pilot on the model, the cyber corridor, and the gaze and reach toward the highlighted card;
+  - the draft's shades, header, tray low in front of the pilot, and nameplate;
+  - a pick plays the draft's follow-through: the others shatter, the card flies to the palm, and the pilot plants it (`Core/NativePickFollow.cs`).
+  - The starting chip's top right shows the opening's locked-in count and 20 s countdown, in the draft's pills.
+  - The comeback chip shows YOU ARE VULNERABLE WHILE CHOOSING when alive, any queued picks, the respawn pill while down, Choose later (C) and the attack alarm.
+- **Kept as before.**
+  - Each pilot's offers stay private until the reveal, and the 20 s steps run unchanged.
+  - Comeback picks still queue on personal deaths 3 and 6 and survive respawn (Choose later, C).
+  - The respawn keeps the rules' 3 s. The follow-through ends the moment the pilot respawns, and the picker closes on respawn as before.
+  - The picker that opens on a rewarded death stands in front of that death's killcam, as the tray did. A running killcam ends, as Space skips it. One not yet started waits until the picker closes (Choose later plays the rest).
+  - **The fight's corpses, blood, wounds and gibs stay.** The comeback pick resets nothing of the arena's presentation (the coordinator's fix before release).
+    - It used to take the PvP draft's `ResetPresentation` on its entry and exit (`DraftFrame`'s). That reset cleared the corpses, model corpses, blood, wounds, gibs and debris for the picking pilot.
+    - Now only the stage restarts (`ArenaPresentation.RestartDraftStage`: the draft rig and the model it carries are made again, as after a reset).
+    - Every other renderer is hidden while the stage shows (`Renderer.enabled`, saved and put back as it was). The room's starting chip keeps the reset.
+    - Seen in the Editor with a bot's corpse and blood in front of the pilot and a comeback pick while alive. Before: 1 corpse and 49 blood splats, then 0 and 0 once the picker opened. After: 1 and 37, then 1 and 50 after the pick. The corpse then leaves at its usual time.
+  - Card clicks go through `U.SilentButton` (DrawTray).
+  - The same `opening-choice` and `dm-chip` messages are sent.
+  - The old tray versions (`OpeningChipStep`, `ComebackPicker`) are removed.
+- **Blind Pick All.** Players now read the old mode as Blind Pick All in:
+  - the room options' checkbox (versus and co-op);
+  - the room lobby's line, a hidden pilot's weapon name and the lobby's rules note;
+  - the opening's headers: `BLIND PICK ALL · WEAPON`, and the locked-in and reveal headers name the session's mode (DEATHMATCH for a starting chip alone);
+  - the update notice.
+  - Ids, fields and the wire stay `blindPick`.
+- **Blind Pick (N choices).** A screen like the chip screen (`Runtime/NativeBlindChoiceUI.cs`), on Astra's rules (PR #411, merged into this branch with shared `42bd093e`):
+  - My dealt weapons are dealt one by one from a deck under the screen. Each flips face up as its hero card (stats, role and description), or as its compact card when many are dealt (up to a whole pool, six rows; a deal of more than eight keeps to about 2 s).
+  - They use the weapon grid's highlight, choice and Lock in, with 1-9, the arrows and Enter.
+  - Nothing is marked until I choose. The rules lock a random offer at 0 s (an unconfirmed choice is not kept), so the timer reads RANDOM PICK AT 0.
+  - It reads only `NativeBlindChoiceView` (`Core/NativeBlindChoices.cs`), built from the host's private Weapon-step view (`NativeOpeningDraft.CardsFor`: my `WeaponOffers`). Blind Pick All sends no offers there and keeps its grid.
+  - Room options: Weapon pick (Off, Blind Pick All, Blind Pick) and, for Blind Pick, Weapon choices (2 up to the non-DEV pool), through `ApplyRule`'s Blind 0/1/2 and BlindChoices cases. The lobby line, its notes and the headers name the mode.
+  - My earlier gate (`RulesReady`), the DEV preview's stand-in deal (`NativeBlindChoicePreview.cs`) and a presentation-side normaliser are gone: Astra's rules cover them. Astra's code is as merged; the merge's conflicts took Astra's side.
+- **Flourishes.**
+  - The new screen restarts `Look.SelectAge` from 0 on each choice and starts `LockAge` on the lock, then calls `NativeWeaponCard.Flourishes()` after its cards.
+  - `NativeWeaponCard` is now `partial`. `Runtime/NativeWeaponCardFlourishStub.cs` stands in until `claude/pick-flourish` merges; the integrator deletes it and its .meta.
+  - Outside that, `NativeWeaponCard.cs`'s drawing is untouched.
+- **From the Editor captures** (16:9, 4:3, 21:9, 1280x720):
+  - The dealt hero cards are larger (cap 360) with Lock in right under them.
+  - At 21:9, Blind Pick All's grid and hero keep to the 16:9 safe width, centred; 16:9 and 4:3 are unchanged.
+  - A Deathmatch death's killcam drew over the new stage (fixed as above).
+  - The comeback prompt sat under the vitals panel (from 2026-11-17). It now sits above it.
+  - Nothing else in the opening's screens was broken at these sizes.
+
+**Systems.** Opening and Deathmatch presentation:
+- `NativeOpeningDraftUI`, `NativeDeathmatchRuntime`, `NativeDraftPresentation` (one line in `DraftFrame`; `RestartDraftStage` and `DraftStageRoot` on the presentation).
+- `ConversionGame.LateFrame`: the room's stage in place of the menu backdrop, the comeback picker before the killcam, and the comeback's Install cue at the plant.
+- `NativeDamageScreenPresentation`: no damage screen over the stage.
+- `NativeRoomOptionsUI`, `NativeLobbyUI`, `NativeLobbyRoomUI`; `NativeWeaponCard` (`partial` only).
+- New files: Core `NativeBlindChoices`, `NativePickFollow`; Runtime `NativeDeathmatchPickStage`, `NativeBlindChoiceUI`, `NativeWeaponCardFlourishStub`. Check `Tests/BlindChoiceChecks.cs` (`--blind-choices`). Docs: `docs/BLIND-PICK-SCREENS.md`.
+
+**For Astra.**
+- `NativeOpeningDraft.ProtocolRefusal`'s message for the old mode still reads "the Deathmatch and Blind Pick update". Players now call that mode Blind Pick All. The string is in the rules file, so it is left to you.
+- On a dealt timeout, `Tick` locks a random offer even when the pilot had an unconfirmed choice (Blind Pick All keeps it). The screen marks nothing until the pilot chooses and says RANDOM PICK AT 0. If the choice should be kept, `chosen` in `BlindChoiceStep` can show the host's selection again in one line.
+- `NativeRoomOptions.Normalize` bounds `blindChoices` by `content.weapons.Length` (DEV weapons included). The count select offers 2 up to the non-DEV pool, and the deal clamps to each seat's eligible pool.
+
+**Checks.**
+- The pinned 6000.3.24f1 semantic compile (`tools/check_unity_compile.py`) passes for Input System, Player, Assembly-CSharp and Editor. There are no new warnings; the two in changed files were there before.
+- `pins.py`: no pin of another check is broken. The only lines it lists are `BlindChoiceChecks`' own literals for the moved code. `git diff --check` is clean.
+- CoreTests:
+  - `--blind-choices`: 5591 checks, including Astra's real deal read through the hook and the comeback's no-reset path.
+  - `--deathmatch` (Astra's): 158 checks.
+  - Full suite, with stage banks `banks-next` and the expedition path patch applied and reverted:
+    - at `61af0407`: 1033 groups, exit 0;
+    - at the merge `6455663e`: 1033 groups, exit 0;
+    - at `689fb083`: 1033 groups, exit 0;
+    - at `560d08c9` (the last code commit, the comeback's no-reset fix): 1033 groups, exit 0.
+- Python discovery: 8 failures and 1 error, all environmental on this PC (the live sound queue's tests and the publish wrapper on a path with spaces).
+  - The run touched the live sound queue. Its `import_sound_requests` child held `worker.lock` while the builder's install step ran, and new queue files appeared at 10:20.
+  - It is not to be run on this PC again; relgen5's suite is the one.
+- The local BoZo tool's play options for this task (typed `pref=`, `gvsize=`, `oact=/mact=`, `oshots=/mshots=`, `dmhold=`) compile against the Unity references. The tool is not committed.
+- Editor captures: under the lock, the Editor put back on `9319026b` each time, the stage banks and motion bank unchanged.
+  - On the merged branch:
+    - Astra's real dealt Blind Pick (3 and 5) at 16:9, 4:3, 21:9 and 1280x720;
+    - the starting chip on the stage with the pilot's reach;
+    - the reveal;
+    - Blind Pick All's grid at 21:9;
+    - the comeback chip over the killcam while down (a pick, its follow-through cut by the respawn) and alive (a full follow-through);
+    - Play vs Bots' Weapon pick and Weapon choices rows;
+    - the room lobby's Blind Pick All line and notes.
+  - Earlier on `61af0407` and `0680f1ea`: the same screens at the four sizes.
+  - One capture batch (`0680f1ea`) ran after I stopped its wrapper task. It took and released the lock normally.
+
+**Not run.**
+- A host plus a guest on two Windows clients (privacy, a guest's chip stage, a timeout).
+- A team game, a rematch from the result screen, the winning killcam, a controller.
+- A Windows player build.
+- A guest's dealt Blind Pick (its private offers over the network).
+
+**Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. The stage and the screens are presentation, and the follow-through never holds a respawn.
+
+**Risks.**
+- While the comeback picker is open, the fight is hidden: every other renderer is off, then put back as it was. A renderer the arena itself switches off in those seconds comes back on with the rest, as the Siren pick's `HideLive` restore does.
+- Opening the picker on a rewarded death skips or delays that death's killcam. The killcam's own start and end still reset the presentation, as before.
+- In the opening, a pick by the last pilot goes straight to the reveal, so its follow-through shows only while others are still choosing.
+- The Ready header for a guest reads the room's copy of the rules.
+
+**Next.** The owner looks at the captures. Then integrate with `claude/pick-flourish` (delete the stub), merge and release.
+- **Released:** shared `ff0b7d88` (the builder at `ff0b7d88`), test channel revision `639306184521961702` (build `6c46b967`); the suite at `64264727` (1,034 groups, exit 0), the Unity compile. The comeback pick keeps the fight's corpses and blood (`560d08c9`). The weapon flourishes replace the `NativeWeaponCardFlourishStub` when `claude/weapon-pick-flourish` merges. No bank or Drive zip change.
+
+## 2026-11-18 — Claude: the rifle's Q looks through its scope again in any camera (owner report; presentation only)
+
+Branch `claude/rifle-q-scope`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "fix rifle Q to actually use the scope still instead of zooming in (right click working as intended)".
+
+- **Cause.** `0d67511d` (2026-11-10, "guns aim in third person") stopped every aim forcing first person. The rifle's held Q is the same aim input as right click, so in third person it became the aim zoom (.68 of the camera's field of view). The 3x scope only showed in first person.
+- **Fix (`9bbbc06d`).** Held Q on the rifle (`NativeViewRules.ScopeView`, read with the aim in `ConversionGame`'s input) takes the eye in whichever camera is chosen, as before 2026-11-10. It gets the aim row's 28 degree view (3x), its .36 look speed (`AimLook`), the existing scope mask and reticle (`NativeScopePresentation.DrawScope`, `ScopeActive`), and the pilot's own body and view model hidden.
+- **Hand-over (`d05986d7`, from the Editor captures).** A shoulder camera's crosshair ray runs beside the eye's (0.62 m right, 0.25 m up), so the reticle opened that far from what the crosshair was on (a foe at 8 m some 110 px aside). For four frames the view model rose half drawn (a dark rifle, no hands) before the mask. Now (`ScopeHandOver`):
+  - Into the scope from third person, the sight is up from the first frame (`ArenaPresentation.ScopeIn`, `NativeAimMotion.Raised`). From a shoulder camera, the eye turns onto the point under the crosshair (`NativeAimConvergence.Angles`, the look it was already sending), so the reticle opens on it.
+  - Straight out of it, the chosen camera's field of view comes back with the cut. A shoulder camera turns so its crosshair runs through the point under the reticle (`NativeCameraRig.LookAt`, as the lock-on frames).
+  - Classic sends the camera's own look, so it keeps it. First person chosen in Settings keeps its own raise.
+- **Unchanged.** Right click, the controller's Aim, the pistol's and machine gun's aims and Q kits, and first person chosen in Settings (where Q and right click already scope).
+- **Systems.** Camera and input look (`Runtime/ConversionGame.cs`, `Runtime/NativeScopePresentation.cs`, `Runtime/NativeViewPresentation.cs`, `Core/NativeAimPresentation.cs`, `Core/NativeAbilityRules.cs`), with checks in `Tests/GunKitChecks.cs`. The local BoZo tool gains `scopehold=` and `rclick=`, both on the arena clock (git-ignored, not committed).
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. The rules see the same held Aim (spread, settle and slower walking unchanged), and the wire is untouched. The hand-over turns only the client's camera look, so the sent look stays the eye's aim at the same point across it.
+
+**Checks.**
+- Full CoreTests at `d05986d7` (and at `9bbbc06d`), run as relgen5 does with its test-path patch: 1,032 groups pass, exit 0.
+- The pinned 6000.3.24f1 semantic compile (`tools/check_unity_compile.py`) passes for Input System, Player, Assembly-CSharp and Editor.
+- `git diff --check` is clean.
+- New checks in `GunKitChecks.Ads`:
+  - only the rifle's held Q scopes;
+  - the rifle's scope row (28 degrees, .36) and its third-person zoom (.68);
+  - the key is read with the aim, and only in play;
+  - the scope's eye, look speed and field of view, set before the camera is placed;
+  - a spectated pilot never scopes;
+  - the hand-over: the sight up at once, the reticle on the crosshair's point and back, the field of view cut out;
+  - first person's own raise is kept.
+- **Editor captures** (the shared Editor, BoZo, under the lock; stage banks and motion bank unchanged). The same play on `01505ad6` and `d05986d7`: Cyber City, third person (the Editor's saved shoulder camera), a bot 8 m ahead, Q held 7.5–9.5 s, right click 10.5–12.5 s, frames 1/60 s apart, the entry and exit frame by frame, and first person too.
+  - Before: Q is the third-person zoom, the same as right click.
+  - After: Q's first frame is the 3x scope with the bot under the reticle. The first frame out is the shoulder view at its own field of view. Right click is the same zoom as before. In first person, Q and right click scope as before.
+  - Stills are in `riflescope/look/` in the integrating session's scratchpad.
+
+**Not run.** No Windows build and no multiplayer run. A capture's stall finishes the field of view's ease in one frame, so the stills don't show the zoom easing into the scope. The look hand-over's vertical half was held by the capture's fixed pitch, so only its horizontal half was seen.
+
+**Risks.**
+- The entry turn is clamped to 25 degrees of the look (the convergence's own clamp).
+- The exit turn uses the shoulder rig's last fitted offset, from before the scope.
+- The controller's Aim keeps the third-person zoom, as right click's twin.
+
+**Next.** The owner plays it (Q against a moving target, both shoulders, Classic); then merge and release.
+- **Released:** shared `ea563356` (the builder at `ea563356`), test channel revision `639306167183583878` (build `504fc0c7`); the suite at `2bd8cffc` (1,033 groups, exit 0), the Unity compile. No bank or Drive zip change.
+
 ## 2026-11-18 — Claude: arrows stuck in a pilot ride the drawn body, not a point off it (owner report; presentation only)
 
 - **The owner (2026-11-18):** "Can you fix bow arrows? It seems they sometimes 'attach' off of a players body. Essentially it'll look like
@@ -53,6 +238,7 @@
   or crushed corpse with an arrow, a vent fall, Frostbreak or Soul Drift (code path only); the Low tier; a Windows build. The Hot Dog's
   arrows ride the bone under its sausage twins, so the sausage's jiggle does not move them.
 - **Next:** the owner looks; merge and release.
+- **Released:** shared `442bcf69` (the builder at `442bcf69`), test channel revision `639306150151016477` (build `f9f0c8a9`); the suite at `08c2fd16` (1,033 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-18 — Claude: the Bombadier's explosions and throws are heard in every match (owner report; presentation only)
 

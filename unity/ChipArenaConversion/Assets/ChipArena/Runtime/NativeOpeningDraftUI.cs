@@ -211,8 +211,10 @@ namespace ChipArena.UnityConversion
 
         // ---- Presentation (Claude, 2026-11-17; Astra's handoff of 2026-11-16) ------------------------------------------------
         // The opening's screens drawn with the chip draft's kit: the weapon pick as a grid of animated weapon cards beside a
-        // hero card (NativeWeaponCard), the starting chip on the chip tray itself (LayoutTray / DrawTray), the locked-in wait
-        // and the two-second group reveal, where every pilot's card flips face up in turn. They draw only the authoritative
+        // hero card (NativeWeaponCard), the starting chip on the PvP draft's own screen with the pilot (2026-11-18,
+        // NativeDeathmatchPickStage.cs), Blind Pick's N dealt weapons (NativeBlindChoiceUI.cs), the locked-in wait and the
+        // two-second group reveal, where every pilot's card flips face up in turn. Players read the grid's mode as Blind Pick
+        // All (its ids and messages stay blindPick). They draw only the authoritative
         // view the host sends (step, locked-in count, remaining time, cards) and send the same opening-choice messages: a
         // click chooses (unconfirmed, as before, so a timeout locks the last choice), Lock in or Enter confirms. Each pilot
         // sees only their own choices until the reveal. The host sends no step start, so each beat is timed from the frame
@@ -232,10 +234,19 @@ namespace ChipArena.UnityConversion
         {
             if(openingView==null)return false;
             var v=openingView;var step=(OpeningStep)v.pick;float now=Time.unscaledTime;OpeningTrack(v,step,now);
+            // The starting chip, and my pick's follow-through, on the PvP draft's stage with my pilot (NativeDeathmatchPickStage.cs).
+            if(step==OpeningStep.Chip||PickFollowing(PickStageKind.Opening))
+            {
+                if(step==OpeningStep.Chip){OpeningChipStage(v,w,h,now);return true;}
+                if(PickFollowGui(PickStageKind.Opening,"DEATHMATCH  /  STARTING CHIP",U.Hex(0xc0c1ca),OpeningStageSeat(v),w,h))return true;
+                openingStepAt=now;
+            }
+            // Blind Pick with N choices: my dealt weapons, when the host sends them (NativeBlindChoiceUI.cs).
+            var blind=step==OpeningStep.Weapon?BlindChoiceView(v):null;
             var shown=step==OpeningStep.Weapon?OpeningWeapon(openingHero??highlightedWeapon??v.chip):OpeningWeapon(v.chip);
             OpeningBackdrop(w,h,shown!=null?NativeWeaponCard.Accent(shown):NativeCyberTheme.Cyan(),now);
-            if(step==OpeningStep.Weapon)OpeningWeaponStep(v,w,h,now);
-            else if(step==OpeningStep.Chip)OpeningChipStep(v,w,h,now);
+            if(blind!=null)BlindChoiceStep(v,blind,w,h,now);
+            else if(step==OpeningStep.Weapon)OpeningWeaponStep(v,w,h,now);
             else if(step==OpeningStep.Ready)OpeningReadyStep(v,w,h,now);
             else OpeningRevealStep(v,w,h,now);
             return true;
@@ -284,7 +295,7 @@ namespace ChipArena.UnityConversion
 
         // Top right: the locked-in pips and count; under them the step's countdown (a ring that empties, red in the last five
         // seconds).
-        private void OpeningMeta(NativeNetMessage v,float W,float H,bool timer,float now)
+        private void OpeningMeta(NativeNetMessage v,float W,float H,bool timer,float now,string urgentHint="LOCKS AUTOMATICALLY")
         {
             float m=H<=760?22:28,y=H<=760?16:22;int ready=Mathf.Clamp(v.id,0,8),total=Mathf.Clamp(v.team,1,8);
             string label="LOCKED IN",count=ready+" / "+total;float lw=U.Measure(label,10,true,true,.2f).x,cw=U.Measure(count,13,true,true).x,pw=total*14,bw=16+lw+12+pw+12+cw+16;
@@ -303,7 +314,7 @@ namespace ChipArena.UnityConversion
             U.Disc(new Rect(dial.x+8,dial.y+8,dial.width-16,dial.height-16),U.Hex(0x070b18));
             U.Text(new Rect(dial.x,dial.y-2,dial.width,dial.height-8),secs.ToString(),20,U.Mix(NativeCyberTheme.Ink(),tone,.35f+.4f*pulse),TextAnchor.MiddleCenter,bold:true,mono:true);
             U.Text(new Rect(dial.x,dial.y+dial.height*.56f,dial.width,14),"SEC",8.5f,NativeCyberTheme.Muted(),TextAnchor.MiddleCenter,mono:true,tracking:.2f);
-            string hint=urgent?"LOCKS AUTOMATICALLY":"TIME TO CHOOSE";float hw=U.Measure(hint,9.5f,true,true,.16f).x;
+            string hint=urgent?urgentHint:"TIME TO CHOOSE";float hw=U.Measure(hint,9.5f,true,true,.16f).x;
             U.Text(new Rect(dial.x-hw-12,dial.y,hw+4,dial.height),hint,9.5f,U.A(tone,.9f),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);
         }
         // Bottom left: the key hints, as keycaps.
@@ -342,10 +353,11 @@ namespace ChipArena.UnityConversion
         private void OpeningWeaponStep(NativeNetMessage v,float W,float H,float now)
         {
             OpeningWeaponList();float m=H<=760?22:28,age=now-openingStepAt;bool calm=prefs.reducedEffects,repaint=Event.current.type==EventType.Repaint;
-            DraftHeader("BLIND PICK  ·  WEAPON",NativeCyberTheme.Cyan(),"Pick your weapon","Your pick stays hidden until every pilot locks in.",W,H,out float top);
+            DraftHeader("BLIND PICK ALL  ·  WEAPON",NativeCyberTheme.Cyan(),"Pick your weapon","Your pick stays hidden until every pilot locks in.",W,H,out float top);
             OpeningMeta(v,W,H,true,now);
-            float hw=Mathf.Clamp(W*.26f,280,400),hx=W-m-hw,heroTop=Mathf.Max(top,H<=760?118:136);
-            OpeningGrid(new Rect(m,top+8,hx-m-40,H-m-44-(top+8)));
+            // At ultra-wide aspects the grid and the hero keep to the 16:9 safe width, centred (as one composition).
+            float sl=U.SafeX+m,sr=U.SafeX+U.SafeW-m,hw=Mathf.Clamp(U.SafeW*.26f,280,400),hx=sr-hw,heroTop=Mathf.Max(top,H<=760?118:136);
+            OpeningGrid(new Rect(sl,top+8,hx-sl-40,H-m-44-(top+8)));
             string chosen=highlightedWeapon??v.chip;if(openingSelectSeen!=chosen){if(openingSelectSeen!=null)openingSelectAt=now;openingSelectSeen=chosen;}
             int n=Math.Min(openingWeapons.Count,weaponHolo.Length),under=-1;
             for(int i=0;i<n;i++)if(age-i*.035f>.2f&&U.Hover(openingCards[i]))under=i;
@@ -367,7 +379,7 @@ namespace ChipArena.UnityConversion
                 var look=new NativeWeaponCard.Look{Alpha=calm?1:M.Clamp01(build*3),Build=build,Hover=lv,HoverAge=now-weaponHoloAt[i],Selected=sel?1:0,SelectAge=sel?now-openingSelectAt:-10,
                     Recede=NativeHoloScan.Recede(lv,i==top1?second:first)*.8f,Time=now,Index=i,Calm=calm,LockAge=-10};
                 var r=openingCards[i];NativeWeaponCard.Draw(new Rect(r.x,r.y+NativeHoloScan.Lift(lv)*.6f+(1-build)*12,r.width,r.height),x,look);
-                if(build>.5f&&U.SilentButton(r)){openingFocus=i;OpeningChoose(x.id,false);}
+                if(build>.5f&&U.SilentButton(r)){openingFocus=i;if(x.id==chosen)openingSelectAt=now;OpeningChoose(x.id,false);}
             }
             OpeningGridKeys(n);
             // The hero card and Lock in.
@@ -385,6 +397,7 @@ namespace ChipArena.UnityConversion
             var pick=OpeningWeapon(chosen);var btn=new Rect(hx,heroR.yMax+16,hw,52);
             if(OpeningLockButton(btn,pick,heroIn,now)||OpeningConfirmKey())OpeningLockIn(chosen,now);
             OpeningKeys(H,"← → ↑ ↓","Browse","CLICK","Choose","ENTER","Lock in");
+            NativeWeaponCard.Flourishes();
         }
         // Arrow keys move the focus through the grid (rows by the grid's columns) and choose the focused weapon; Enter locks in.
         private void OpeningGridKeys(int n)
@@ -419,34 +432,14 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- starting chip ----
-        // The chip tray as the draft shows it (boot in reading order, the holo highlight, 1-9 and arrows, Enter), with the
-        // locked weapon as a tag; a pick confirms at once.
-        private Tray openingTray;
-        private void OpeningChipStep(NativeNetMessage v,float W,float H,float now)
-        {
-            float m=H<=760?22:28,age=now-openingStepAt;var chips=new List<ContentChip>();foreach(var id in v.pickCards??Array.Empty<string>()){var c=OpeningChip(id);if(c!=null)chips.Add(c);}
-            DraftHeader("BLIND PICK  ·  STARTING CHIP",NativeCyberTheme.Cyan(),"Pick your starting chip","One Chip to begin the match with. Only you see these choices.",W,H,out float top);
-            OpeningMeta(v,W,H,true,now);
-            openingTray=LayoutTray(chips,top,W,H);LowerTray(openingTray,top,H-m-92);if(chips.Count==0)return;
-            int pick=DrawTray(openingTray,chips,i=>0,age,openingChipPick==null,-1,i=>false,true);int key=DraftKeys(chips.Count,openingChipPick==null,true);if(key>=0)pick=key;
-            if(pick>=0&&openingChipPick==null){openingChipPick=chips[pick].id;nativeAudio?.UiCue("ui.draft.pick","ui",.4f);SendOpeningChoice(chips[pick].id,true);}
-            OpeningWeaponTag(OpeningWeapon(v.chip),m,H-m-74,now);
-            OpeningKeys(H,"1–"+Mathf.Clamp(chips.Count,1,9),"Pick","← →","Browse","ENTER","Install");
-        }
-        // The locked weapon, as a small tag: its icon on its colour, YOUR WEAPON and its name.
-        private void OpeningWeaponTag(ContentWeapon x,float left,float y,float now)
-        {
-            if(x==null)return;var acc=NativeWeaponCard.Accent(x);string name=x.name.ToUpperInvariant();float nw=U.Measure(name,13,true).x,w=12+30+10+Mathf.Max(nw,U.Measure("YOUR WEAPON",9,true,true,.2f).x)+18;var r=new Rect(left,y,w,40);
-            NativeHudChrome.Panel(r,1,acc);var ic=new Rect(r.x+12,r.y+6,28,28);U.Radial(new Rect(ic.x-10,ic.y-10,48,48),U.A(acc,.25f));NativeIcons.Draw(ic,NativeIcons.Spec(x.id),U.Mix(acc,Color.white,.35f));
-            U.Text(new Rect(ic.xMax+10,r.y+5,w,13),"YOUR WEAPON",9,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);U.Text(new Rect(ic.xMax+10,r.y+18,w,18),name,13,NativeCyberTheme.Ink(),TextAnchor.MiddleLeft,bold:true);
-        }
+        // On the PvP draft's stage with the pilot (OpeningChipStage, NativeDeathmatchPickStage.cs).
 
         // ---- locked in ----
         // The pilot's own card, stamped, with the installed chip beside it when one was picked here, over the wait's status.
         private void OpeningReadyStep(NativeNetMessage v,float W,float H,float now)
         {
             float age=now-openingStepAt;bool calm=prefs.reducedEffects;int ready=Mathf.Clamp(v.id,0,8),total=Mathf.Clamp(v.team,1,8),waiting=Math.Max(0,total-ready);
-            DraftHeader("BLIND PICK  ·  LOCKED IN",NativeCyberTheme.Good(),waiting>0?"Locked in":"Everyone is locked in",waiting>0?"Waiting for the other pilots. Your choices stay hidden until the reveal.":"Revealing every pilot's weapon.",W,H,out float top);
+            DraftHeader(OpeningMode()+"  ·  LOCKED IN",NativeCyberTheme.Good(),waiting>0?"Locked in":"Everyone is locked in",waiting>0?"Waiting for the other pilots. Your choices stay hidden until the reveal.":"Revealing every pilot's weapon.",W,H,out float top);
             OpeningMeta(v,W,H,false,now);
             var x=OpeningWeapon(v.chip);var chip=openingChipPick!=null?OpeningChip(openingChipPick):null;
             float cw=Mathf.Clamp(W*.22f,260,340),ch=Mathf.Min(cw*1.48f,H-top-150),chipW=chip!=null?Mathf.Min(240,cw*.78f):0,gap=chip!=null?44:0,total2=cw+gap+chipW,x0=(W-total2)/2,y0=top+Mathf.Max(0,(H-top-120-ch)*.45f);
@@ -467,6 +460,7 @@ namespace ChipArena.UnityConversion
             float py=H-(H<=760?70:86);string status=waiting>0?"WAITING FOR "+waiting+(waiting==1?" PILOT":" PILOTS"):"ALL PILOTS LOCKED IN";float sw=U.Measure(status,12,true,true,.24f).x;
             U.Text(new Rect(W/2-sw/2-20,py,sw+40,20),status,12,waiting>0?NativeCyberTheme.Ink(enter):NativeCyberTheme.Good(enter),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.24f);
             float pw=total*22-8;for(int i=0;i<total;i++){var pip=new Rect(W/2-pw/2+i*22,py+30,14,6);bool on=i<ready;if(on){U.Glow(pip,NativeCyberTheme.Cyan(.4f*enter),5);U.Fill(pip,U.A(U.Mix(NativeCyberTheme.Cyan(),Color.white,.3f),enter));}else{float b=calm?.4f:.25f+.25f*Mathf.Sin(now*4-i);U.Fill(pip,NativeCyberTheme.Edge(b*enter));}}
+            NativeWeaponCard.Flourishes();
         }
 
         // ---- reveal ----
@@ -475,7 +469,7 @@ namespace ChipArena.UnityConversion
         private void OpeningRevealStep(NativeNetMessage v,float W,float H,float now)
         {
             float age=now-(openingRevealAt>=0?openingRevealAt:openingStepAt);bool calm=prefs.reducedEffects;var rows=v.pickCards??Array.Empty<string>();int n=Math.Min(rows.Length,8);
-            DraftHeader("BLIND PICK  ·  REVEAL",NativeCyberTheme.Magenta(),"Weapons revealed","",W,H,out float top);
+            DraftHeader(OpeningMode()+"  ·  REVEAL",NativeCyberTheme.Magenta(),"Weapons revealed","",W,H,out float top);
             if(n==0)return;int perRow=n<=5?n:(n+1)/2,lines=(n+perRow-1)/perRow;float gap=26,avail=H-top-70,cw=Mathf.Min(196,(W-120-(perRow-1)*gap)/perRow),ch=cw*1.26f;
             if(lines*(ch+46)>avail){float k=avail/(lines*(ch+46));cw*=k;ch*=k;}
             float blockH=lines*(ch+46)-12,y0=top+Mathf.Max(0,(avail-blockH)*.45f);
@@ -488,7 +482,7 @@ namespace ChipArena.UnityConversion
                 float sx=Mathf.Abs(Mathf.Cos(f*Mathf.PI)),lift=Mathf.Sin(f*Mathf.PI)*-14;
                 U.Push(r.center,new Vector2(0,lift+(1-enter)*20),Mathf.Max(.02f,sx),0,1+.06f*Mathf.Sin(f*Mathf.PI));
                 if(f<.5f)NativeWeaponCard.Back(r,enter,now,you?NativeCyberTheme.Cyan():NativeCyberTheme.Violet(),calm);
-                else if(weapon!=null){var look=NativeWeaponCard.Look.Idle(now);look.Selected=1;look.SelectAge=age-flipAt-.17f;look.Index=i;look.Calm=calm;NativeWeaponCard.Draw(r,weapon,look);}
+                else if(weapon!=null){var look=NativeWeaponCard.Look.Idle(now);look.Selected=1;look.SelectAge=age-flipAt-.17f;look.Index=i;look.Calm=calm;look.Quiet=!you;look.Finish=you;look.LockAge=age-flipAt-.34f;NativeWeaponCard.Draw(r,weapon,look);}
                 U.Pop();
                 // The landing: a flash on the card and a sweep across the row.
                 float land=calm?0:1-M.Clamp01((age-flipAt-.17f)/.35f);if(land>0&&age>=flipAt+.17f){U.Glow(r,U.A(acc,.45f*land),24);U.Round(r,new Color(1,1,1,.18f*land),8);}
@@ -497,6 +491,7 @@ namespace ChipArena.UnityConversion
                 string label=pilot+(you?"  ·  YOU":"");U.Text(new Rect(dot.xMax+6,plate.y,plate.width-34,plate.height),label,12,U.A(NativeCyberTheme.Ink(),pa),TextAnchor.MiddleLeft,bold:you);
             }
             if(!calm){float s=M.Clamp01(age/1.6f);var band=new Rect(-W*.3f+W*1.6f*s,top,W*.3f,H-top);U.HGradient(new Rect(band.x,band.y,band.width/2,band.height),Color.clear,new Color(1,1,1,.03f*(1-s)));U.HGradient(new Rect(band.center.x,band.y,band.width/2,band.height),new Color(1,1,1,.03f*(1-s)),Color.clear);}
+            NativeWeaponCard.Flourishes();
             string go="DEPLOYING";float gw=U.Measure(go,11,true,true,.4f).x;U.Text(new Rect(W/2-gw/2-20,H-(H<=760?44:56),gw+40,18),go,11,NativeCyberTheme.Muted(calm?1:.6f+.4f*Mathf.Sin(now*5)),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.4f);
         }
         private void SplitReveal(string row,out string pilot,out ContentWeapon weapon)

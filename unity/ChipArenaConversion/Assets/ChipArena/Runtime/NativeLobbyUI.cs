@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
                 LbRoster(main,roster,e,teams);
                 U.Fill(new Rect(col.x-gap/2f,col.y,1,col.height),C.Edge(.5f*e));
                 float loadoutHeight=RoomBlind?52:LbLoadoutH;
-                if(RoomBlind)U.Text(new Rect(col.x,col.y,col.width,loadoutHeight),"Blind pick · Choose your weapon at match start",15,C.Ink(e),TextAnchor.MiddleLeft);
+                if(RoomBlind)U.Text(new Rect(col.x,col.y,col.width,loadoutHeight),RoomBlindLine,15,C.Ink(e),TextAnchor.MiddleLeft);
                 else LbLoadoutPanel(new Rect(col.x,col.y,col.width,loadoutHeight),e);
                 LobbyRoomColumn(new Rect(col.x,col.y+loadoutHeight+14,col.width,col.height-loadoutHeight-14),e);
                 LobbyBar(new Rect(b.x,b.yMax-barH,b.width,barH),roster,e,blocked);
