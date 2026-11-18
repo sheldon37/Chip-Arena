@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
     //  - Back: the face-down card the reveal flips over; Stamp: LOCKED IN, struck over a card.
     // Presentation only: nothing here reads or writes rules, timers or the network. Repaint only, no transforms left pushed,
     // textures built on first use.
-    public static class NativeWeaponCard
+    public static partial class NativeWeaponCard
     {
         public struct Look
         {
