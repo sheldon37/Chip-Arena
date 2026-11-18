@@ -35,6 +35,9 @@ namespace ChipArena.UnityConversion
         private static readonly Plan.CueClock selectClock=new Plan.CueClock(),finishClock=new Plan.CueClock();
         // This frame's cards (targets for the shots, the chain lightning, the glaive's loop) and the hero card (the arrow's).
         private static readonly Rect[] seen=new Rect[48];private static int seenCount,seenFrame=-10,heroFrame=-10;private static Rect heroSeen;
+        // The hero card's weapon and icon size this frame: when it shows the flourish's weapon, the flourish draws from its larger
+        // raster (already made by the hero), so a weapon drawn twice its card size stays sharp.
+        private static ContentWeapon heroWeapon;private static float heroIcon;
 
         // The card's own part of a flourish: drawn moved (shake, recoil, squash), its icon out of its slot (Hide), flashed,
         // or cut into bands (the Katana's two halves, L33T's glitch slices).
@@ -49,7 +52,7 @@ namespace ChipArena.UnityConversion
         private static CardFx Track(Rect r,ContentWeapon w,in Look k,bool hero,Vector2 icon,float size)
         {
             int f=Time.frameCount;if(seenFrame!=f){seenFrame=f;seenCount=0;}
-            if(hero){heroSeen=r;heroFrame=f;}else if(seenCount<seen.Length)seen[seenCount++]=r;
+            if(hero){heroSeen=r;heroFrame=f;heroWeapon=w;heroIcon=size;}else if(seenCount<seen.Length)seen[seenCount++]=r;
             if(k.Quiet)return Still;var move=Plan.Of(w.id);bool locked=k.Locked>0;
             if(locked||k.Finish)
             {
@@ -92,10 +95,10 @@ namespace ChipArena.UnityConversion
 
         // ---- the flourish's frame ----------------------------------------------------------------------------------------
         // The card's icon centre and size, the card, the weapon's colours and icon, a seed, and the screen side with more room.
-        private static Vector2 fc;private static float fs,fdir;private static Rect fr;private static Color fa,fh;private static string fi;private static int fseed;private static bool fhero;
+        private static Vector2 fc;private static float fs,fspr,fdir;private static Rect fr;private static Color fa,fh;private static string fi;private static int fseed;private static bool fhero;
         private static void Begin(in Act a)
         {
-            fc=a.Icon;fs=Mathf.Max(8,a.Size);fr=a.Card;fa=Accent(a.W);fh=U.Mix(fa,Color.white,.55f);fi=NativeIcons.Spec(a.W.id);fhero=a.Hero;
+            fc=a.Icon;fs=Mathf.Max(8,a.Size);fspr=!a.Hero&&heroFrame==Time.frameCount&&heroWeapon==a.W&&heroIcon>fs?heroIcon:fs;fr=a.Card;fa=Accent(a.W);fh=U.Mix(fa,Color.white,.55f);fi=NativeIcons.Spec(a.W.id);fhero=a.Hero;
             unchecked{int h=17;foreach(char ch in a.W.id)h=h*31+ch;fseed=h;}
             fdir=fc.x<U.W*.5f?1:-1;
         }
@@ -118,7 +121,9 @@ namespace ChipArena.UnityConversion
         private static Vector2 Shake(float t,float amp)=>new Vector2(Mathf.Sin(t*97)+Mathf.Sin(t*151+1.3f),Mathf.Sin(t*83+.7f)+Mathf.Sin(t*137+2.1f))*.5f*amp;
         private static Vector2 Clamp(Vector2 p,float m=30)=>new Vector2(Mathf.Clamp(p.x,m,U.W-m),Mathf.Clamp(p.y,m,U.H-m));
         // A point in the icon's own frame (fractions of its size, y down) on the weapon drawn at p, scale, deg, sx.
-        private static Vector2 On(Vector2 p,float scale,float deg,float sx,float x,float y)=>p+Rot(new Vector2(x*sx,y)*fs*scale,deg);
+        private static Vector2 On(Vector2 p,float scale,float deg,float sx,float x,float y)=>p+Rot(new Vector2(x*sx,y)*fs*Big(scale),deg);
+        // Out of its slot a weapon is drawn larger than its card icon: 1 stays 1 (the slot), 1.2 and more are 1.6 times.
+        private static float Big(float s)=>s<=1?s:s*(1+.6f*Seg(s,1,1.2f));
         // The turn and mirror that point a weapon whose icon faces `fwd` (degrees) from `from` at `to`, kept upright.
         private static void Aim(Vector2 from,Vector2 to,float fwd,out float deg,out float sx)
         {
@@ -159,11 +164,11 @@ namespace ChipArena.UnityConversion
         {var d=b-a;float len=d.magnitude;if(len<.05f||c.a<=.003f)return;U.Push(a,Vector2.zero,1,Deg(d));U.HGradient(new Rect(a.x,a.y-w*.5f,len,w),U.A(c,0),c);U.Pop();}
         // A lit line: its glow, its colour and a white core.
         private static void Beam(Vector2 a,Vector2 b,float w,Color c,float glow=1)
-        {if(c.a<=.003f)return;GlowLine(a,b,w*2,U.A(c,.32f*glow*c.a),w*3);Line(a,b,w,c);Line(a,b,Mathf.Max(.8f,w*.4f),new Color(1,1,1,c.a));}
+        {if(c.a<=.003f)return;GlowLine(a,b,w*2.2f,U.A(c,.42f*glow*c.a),w*4);Line(a,b,w,c);Line(a,b,Mathf.Max(1,w*.45f),new Color(1,1,1,c.a));}
         // A cut: a lit line tapered at both ends.
         private static void Cut(Vector2 a,Vector2 b,float w,Color c)
         {
-            if(c.a<=.003f)return;var m=(a+b)*.5f;GlowLine(a,b,w*1.6f,U.A(c,.3f*c.a),w*4);
+            if(c.a<=.003f)return;var m=(a+b)*.5f;GlowLine(a,b,w*1.8f,U.A(c,.42f*c.a),w*5);
             Streak(a,m,w,c);Streak(b,m,w,c);Streak(a,m,w*.4f,new Color(1,1,1,c.a));Streak(b,m,w*.4f,new Color(1,1,1,c.a));
         }
         private static void Dot(Vector2 p,float d,Color c)=>U.Radial(Square(p,d),c);
@@ -176,7 +181,7 @@ namespace ChipArena.UnityConversion
         private static void Star(Vector2 p,float size,float deg,int rays,Color c)
         {
             if(c.a<=.003f)return;Dot(p,size*1.5f,U.A(c,.5f*c.a));
-            for(int i=0;i<rays;i++){float len=size*(i%2==0?1:.5f)*(.8f+.4f*Rnd(91,i));Ray(p,deg+i*360f/rays,len,Mathf.Max(1.5f,size*.12f),c);}
+            for(int i=0;i<rays;i++){float len=size*(i%2==0?1:.5f)*(.8f+.4f*Rnd(91,i));Ray(p,deg+i*360f/rays,len,Mathf.Max(2,size*.14f),c);}
             Dot(p,size*.55f,new Color(1,1,1,c.a));
         }
         private static void Ray(Vector2 p,float deg,float len,float w,Color c){if(len<.5f||c.a<=.003f)return;U.Push(p,Vector2.zero,1,deg);U.HGradient(new Rect(p.x,p.y-w*.5f,len,w),c,U.A(c,0));U.Pop();}
@@ -197,7 +202,7 @@ namespace ChipArena.UnityConversion
             for(int i=1;i<=seg;i++)
             {
                 float u=i/(float)seg;var p=a+d*u+(i<seg?n*(Sgn(salt,i)*jag*(.4f+.6f*Mathf.Sin(u*Mathf.PI))):Vector2.zero);
-                GlowLine(prev,p,w*2.2f,U.A(c,.3f*c.a),w*3.5f);Line(prev,p,w,c);Line(prev,p,Mathf.Max(.8f,w*.45f),new Color(1,1,1,c.a));prev=p;
+                GlowLine(prev,p,w*2.4f,U.A(c,.4f*c.a),w*4.5f);Line(prev,p,w,c);Line(prev,p,Mathf.Max(1,w*.45f),new Color(1,1,1,c.a));prev=p;
             }
         }
         // A blade's sweep along the arc of radius `rad` about `o`, angles a0 to a1: drawn from p0 (tail) to p1 (head) of the
@@ -208,11 +213,11 @@ namespace ChipArena.UnityConversion
             for(int i=1;i<=n;i++)
             {
                 float k=i/(float)n,u=Mathf.Lerp(p0,p1,k);var p=o+Dir(Mathf.Lerp(a0,a1,u))*rad;float ww=w*(.12f+.88f*k);
-                GlowLine(prev,p,ww,U.A(fa,.22f*alpha*k),ww*1.6f);Line(prev,p,ww,U.A(fa,.7f*alpha*k));Line(prev,p,Mathf.Max(.8f,ww*.36f),new Color(1,1,1,.95f*alpha*k));prev=p;
+                GlowLine(prev,p,ww,U.A(fa,.36f*alpha*k),ww*2.2f);Line(prev,p,ww,U.A(fa,.8f*alpha*k));Line(prev,p,Mathf.Max(1,ww*.38f),new Color(1,1,1,.95f*alpha*k));prev=p;
             }
         }
         // `n` sparks from `o`, `t` s after they burst: hot streaks thrown about `deg` within `spread`, slowed and falling.
-        private static void Sparks(Vector2 o,float t,int n,int salt,float deg,float spread,float speed,float life,Color c,float grav=700,float width=2)
+        private static void Sparks(Vector2 o,float t,int n,int salt,float deg,float spread,float speed,float life,Color c,float grav=700,float width=2.6f)
         {
             if(t<0||t>life)return;
             for(int i=0;i<n;i++)
@@ -220,7 +225,7 @@ namespace ChipArena.UnityConversion
                 float li=life*(.55f+.45f*Rnd(salt,i));if(t>li)continue;float u=t/li;
                 var v=Dir(deg+Sgn(salt+1,i)*spread*.5f)*speed*(.4f+.6f*Rnd(salt+2,i));const float drag=3.4f;float e=Mathf.Exp(-drag*t);
                 var p=o+v*((1-e)/drag)+new Vector2(0,.5f*grav*t*t);var vel=v*e+new Vector2(0,grav*t);float sp=vel.magnitude;if(sp<1)continue;
-                float len=Mathf.Clamp(sp*.035f,2,20);Streak(p-vel/sp*len,p,width*(1-.5f*u),U.A(U.Mix(c,Color.white,.4f*(1-u)),(1-u)*(1-u)*c.a));
+                float len=Mathf.Clamp(sp*.05f,3,30);Streak(p-vel/sp*len,p,width*(1-.5f*u),U.A(U.Mix(c,Color.white,.4f*(1-u)),(1-u)*(1-u)*c.a));
             }
         }
         // `n` motes (soft dots) thrown from `o`: embers, droplets, dust; `rise` lifts them (negative gravity).
@@ -254,7 +259,7 @@ namespace ChipArena.UnityConversion
             // The bounce: from the floor at its first contact, a third of the speed.
             float tc=(-vy+Mathf.Sqrt(Mathf.Max(0,vy*vy+2*g*(floor-o.y))))/g;
             if(t>tc){float u=t-tc,v2=-(vy+g*tc)*.32f;x=o.x+vx*tc+vx*.5f*u;y=Mathf.Min(floor,floor+v2*u+.5f*g*u*u);deg=tc*(900+500*Rnd(43,i))*Mathf.Sign(back)+u*400*Mathf.Sign(back);}
-            float a=alpha*(1-Seg(t,.75f,1.1f));var p=new Vector2(x,y);float L=Mathf.Max(4,fs*.09f);
+            float a=alpha*(1-Seg(t,.75f,1.1f));var p=new Vector2(x,y);float L=Mathf.Max(6,fs*.13f);
             Dot(p,L*2.2f,new Color(1,.8f,.35f,.22f*a));Box(p,L,L*.45f,deg,new Color(.95f,.74f,.32f,a));Box(p+Rot(new Vector2(0,-L*.12f),deg),L*.8f,L*.12f,deg,new Color(1,.95f,.75f,.8f*a));
         }
         // A bullet hole where a shot landed: a dark pit with a hot rim, fading.
@@ -287,7 +292,7 @@ namespace ChipArena.UnityConversion
         // chromatic split along fast motion and a drop shadow. `sx` mirrors and turns it (|sx| < 1 reads as a turn in depth).
         private static void Arm(Vector2 p,float scale,float deg,float sx,float a,Vector2 vel=default,float glow=1)
         {
-            if(a<=.003f||scale<=.01f)return;float sz=fs*scale;
+            if(a<=.003f||scale<=.01f)return;float sz=fs*Big(scale);
             Dot(p,sz*1.9f,U.A(fa,.26f*glow*a));
             float sp=vel.magnitude;if(sp>350){var d=vel/sp*Mathf.Min(5,sp/500);Glyph(p-d,scale,deg,sx,C.Magenta(.32f*a));Glyph(p+d,scale,deg,sx,C.Cyan(.32f*a));}
             Glyph(p+new Vector2(0,sz*.04f+2),scale,deg,sx,new Color(0,0,0,.42f*a));Glyph(p,scale,deg,sx,U.A(U.Mix(fa,Color.white,.5f),a));
@@ -296,7 +301,7 @@ namespace ChipArena.UnityConversion
         private static void Glyph(Vector2 p,float scale,float deg,float sx,Color c)
         {
             if(c.a<=.003f)return;if(Mathf.Abs(sx)<.04f)sx=sx<0?-.04f:.04f;
-            U.Push(p,Vector2.zero,scale*sx,deg,scale);NativeIcons.Draw(Square(p,fs),fi,c);U.Pop();
+            float k=fs/fspr*Big(scale);U.Push(p,Vector2.zero,k*sx,deg,k);NativeIcons.Draw(Square(p,fspr),fi,c);U.Pop();
         }
         private static void Flash(float a,Color c){if(a>.003f)U.Fill(Whole,U.A(c,a));}
         private static void CardFlash(Rect r,float a,Color c){if(a>.003f){U.Glow(r,U.A(c,.5f*a),16);U.Round(r,U.A(c,.35f*a),R);}}

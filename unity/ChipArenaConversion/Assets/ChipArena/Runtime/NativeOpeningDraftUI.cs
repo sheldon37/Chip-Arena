@@ -352,7 +352,7 @@ namespace ChipArena.UnityConversion
                 var look=new NativeWeaponCard.Look{Alpha=calm?1:M.Clamp01(build*3),Build=build,Hover=lv,HoverAge=now-weaponHoloAt[i],Selected=sel?1:0,SelectAge=sel?now-openingSelectAt:-10,
                     Recede=NativeHoloScan.Recede(lv,i==top1?second:first)*.8f,Time=now,Index=i,Calm=calm,LockAge=-10};
                 var r=openingCards[i];NativeWeaponCard.Draw(new Rect(r.x,r.y+NativeHoloScan.Lift(lv)*.6f+(1-build)*12,r.width,r.height),x,look);
-                if(build>.5f&&U.SilentButton(r)){openingFocus=i;OpeningChoose(x.id,false);}
+                if(build>.5f&&U.SilentButton(r)){openingFocus=i;if(x.id==chosen)openingSelectAt=now;OpeningChoose(x.id,false);}
             }
             OpeningGridKeys(n);
             // The hero card and Lock in.
