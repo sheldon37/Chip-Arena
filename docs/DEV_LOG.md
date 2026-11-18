@@ -89,6 +89,7 @@
   and in the Editor the brute's target switch to its left sinks to .84 (shared .90), its feet bunched under it.
   The shambler at .7 of its walk, turning 90 at one moment of its stride, dips to .76 (shared .86). Walking turns dip to the hips' floor on shared as
   well (55 of 186 walking cases under .85 legs, shared 64). **Next:** the owner looks at the clips and strips and plays it; then merge and release.
+- **Released:** shared `eed764b5` (the builder at `eed764b5`), test channel revision `639306412006993663` (build `3506294d`); the suite at `42f5d3fb` (1,038 groups, exit 0), the Unity compile. Two independent reviews (code, tests, visual): ship on code and visual; the tests' coverage items (more zombie ids per kind, ZombieSource's walking pose, AcrossWalk pins) and the landing-lead flick and gore guards follow on `claude/zombie-run-turn-tests`. No bank or Drive zip change.
 
 ## 2026-11-18 — Claude: the expedition overhaul plan (Meridian), approved; Astra's hand-off (owner request; docs only)
 
