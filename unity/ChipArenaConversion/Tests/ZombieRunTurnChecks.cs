@@ -27,9 +27,13 @@ namespace ChipArena.UnityConversion
         internal const string Header="                                skate slide  spin kneeF  hipF swing  cross  hips  bob  hipV  knee  sunk steps  off  lift";
         internal const string Header2="                                 cm   cm/s deg/f  deg   deg  deg/f    m    legs  legs  l/s   deg   rig   /s   deg  legs";
         /// <summary>Runs `route` for `seconds` on kind `kind` (id 40003's takes unless `id`), measuring from `from` s.</summary>
+        internal static CapturedRig.Pose DrivePose;
         internal static Result Drive(NativeVisualRig.Rig rig,int kind,Route route,float seconds,float from,int id=40003,Action<float,NativeHordeGait,NativeVisualRig.State,HordeMotionInput> each=null)
         {
             NativeZombieMotion.Warm();var g=new NativeHordeGait{Legs=rig.LegRatio};var p=new CapturedRig.Pose();var fit=new CapturedRig.Pose();var s=new NativeVisualRig.State(rig);var flow=new HordeFlow();flow.Configure(kind);
+            // (As the runtime draws it: the root at the kind's height, the gait in its own units (the Hulk is drawn 1.8 times its rig), the
+            // Hound fitted on all fours.)
+            float scale=NativeHordeKinds.Scale[NativeHordeKinds.Index(kind)],rootY=NativeHordeKinds.DrawRoot(kind,false);bool quad=NativeBackroomsMotion.Quad(kind);
             var st=NativeHordeKinds.ProposedRow(kind);float leg=rig.LegUpper+rig.LegLower;
             var f=new HordeMotionInput{Kind=kind,Id=id,Seed=NativeHordeKinds.Seed(id),Health=1,AttackAge=float.NaN,Flow=true,Tier=NativeHordeModels.Full,Strike=NativeHordeKinds.Strike(st,false,0),Recover=NativeHordeKinds.Recover(st,false,0),Attack=NativeHordeKinds.AttackOf(kind,st.attack,false),Side=1};
             float floor;{var s0=new NativeVisualRig.State(rig);var rest=new CapturedRig.Pose();rest.Reset();rest.World();NativeVisualRig.Pose(s0,rest,default(NativeVisualRig.Grasp),false,false);floor=s0.Position[rig.Of[CapturedRig.LHip+2]].Y-NativeVisualRig.AnkleOver;}
@@ -46,11 +50,11 @@ namespace ChipArena.UnityConversion
                     if(dir.LengthSquared()>1e-6f){dir=Vector2.Normalize(dir);yaw=YawOf(dir);}vel=dir*speed;body+=vel*Sim;simT+=Sim;
                 }
                 float simAt=simT-Sim;bool winding=!float.IsNaN(attack)&&attack>=0&&attack<f.Strike;
-                flow.Host(t,simAt,new Vector3(body.X,.85f,body.Y),new Vector3(vel.X,0,vel.Y),true,yaw,Frame,winding);
-                f.Time=t;f.Root=flow.Position;f.Velocity=flow.Velocity;f.Yaw=flow.Yaw;f.YawRate=flow.YawRate;f.Bank=flow.Bank;f.Pitch=flow.Pitch;f.Ground=0;f.AttackAge=float.IsNaN(attack)?float.NaN:attack+(t-simAt);
+                flow.Host(t,simAt,new Vector3(body.X,rootY,body.Y),new Vector3(vel.X,0,vel.Y),true,yaw,Frame,winding);
+                f.Time=t;f.Root=flow.Position/scale;f.Velocity=flow.Velocity/scale;f.Yaw=flow.Yaw;f.YawRate=flow.YawRate;f.Bank=flow.Bank;f.Pitch=flow.Pitch;f.Ground=0;f.AttackAge=float.IsNaN(attack)?float.NaN:attack+(t-simAt);
                 g.Pose(f,p,null);p.World();
-                NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);s.Dt=Frame;NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
-                each?.Invoke(t,g,s,f);
+                NativeZombiePosture.Fit(p,fit,!quad);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);s.Dt=Frame;NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                DrivePose=p;each?.Invoke(t,g,s,f);
                 if(t<from){for(int a=0;a<2;a++){lastPlanted[a]=false;}have=false;continue;}
                 r.Frames++;r.Seconds+=Frame;r.Off=Math.Max(r.Off,Math.Abs(Wrap(g.Yaw-YawOf(new Vector2(f.Velocity.X,f.Velocity.Z))))*(g.Speed>1?1:0));
                 Vector2 W(Vector3 l){var w=g.ToWorld(l,f.Root);return new Vector2(w.X,w.Z);}
@@ -121,32 +125,44 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Run(string root)
         {
-            checks=0;var rig=ModelPoseChecks.Measured();float worstDrop=0,meanDrop=0,worstKnee=0,worstSwing=0,worstHipRate=0;int arcs=0;
+            checks=0;var rig=ModelPoseChecks.Measured();float worstDrop=0,meanDrop=0,worstKnee=0,worstSwing=0,worstHipRate=0,worstHipFoot=0,worstRate=0;int arcs=0;
             foreach(int kind in Kinds)
             {
-                var sc=Scenarios(kind);string Name(string n)=>NativeHordeKinds.Ids[kind]+" "+n;
-                Result Of(string n){foreach(var x in sc)if(x.name==n)return Drive(rig,kind,x.route,x.seconds,x.from);throw new Exception(n);}
-                var straight=Of("run straight");
-                // (Running on a curve or at a pilot circling, the hips as high as running straight: the rig no longer sinks its hips to reach
-                // a foot the turn left beside it, NativeHordeLoco.Squeeze, which the model's hips used to drop with.)
+                var sc=Scenarios(kind);string Name(string n)=>NativeHordeKinds.Ids[kind]+" "+n;var seen=new System.Collections.Generic.Dictionary<string,Result>();
+                Result Of(string n){if(seen.TryGetValue(n,out var had))return had;foreach(var x in sc)if(x.name==n)return seen[n]=Drive(rig,kind,x.route,x.seconds,x.from);throw new Exception(n);}
+                var straight=Of("run straight");float rate0=straight.Steps/Math.Max(1e-3f,straight.Seconds);
+                // (Running on a curve or at a pilot circling, the hips as high as running straight. The review measured either of two changes
+                // holding these gradual turns alone: the footprint drawn in across the floor while it runs (NativeHordeLoco.Squeeze), so the rig
+                // no longer sinks its hips to reach a foot the turn left beside it, which the model's hips dropped with; or a foot left that
+                // far aside stepping as one out of reach does (NativeHordeGait.AcrossMost). The sharp turns, below, need the second.)
                 foreach(var n in new[]{"run arc 90/s","run arc 180/s","run circle chase","run turn 90"})
                 {
                     var r=Of(n);float drop=straight.HipsLow-r.HipsLow;worstDrop=Math.Max(worstDrop,drop);meanDrop+=drop;arcs++;worstHipRate=Math.Max(worstHipRate,r.HipsRate);
                     if(n!="run turn 90")Check(drop<=.11f,Name(n)+": the hips stay up through the turn (lowest "+r.HipsLow.ToString("0.00")+" legs, running straight "+straight.HipsLow.ToString("0.00")+")");
                     Check(r.HipsRate<=8,Name(n)+": the hips never drop or pop (fastest "+r.HipsRate.ToString("0.0")+" legs/s)");
                 }
-                // (The knee over its planted foot, and a planted foot's ball kept where it stands, through every running turn.)
-                foreach(var n in new[]{"run arc 90/s","run arc 180/s","run turn 90","run turn 180","run circle chase","run target switch","run turn into attack"})
+                // (The knee over its planted foot, a planted foot's ball kept where it stands and the foot turned no further from the hips than
+                // a planted foot shows, NativeHordeGait.TwistMost; and no more steps than running straight, through every running turn.)
+                foreach(var n in new[]{"run arc 90/s","run arc 180/s","run turn 90","run turn 180","run circle chase","run target switch","run turn into attack","run weave"})
                 {
                     var r=Of(n);worstKnee=Math.Max(worstKnee,r.KneeFoot);
-                    Check(r.KneeFoot<=30,Name(n)+": the knee rides over its planted foot (at most "+r.KneeFoot.ToString("0")+" deg off it)");
+                    Check(r.KneeFoot<=25,Name(n)+": the knee rides over its planted foot (at most "+r.KneeFoot.ToString("0")+" deg off it)");
                     Check(r.Skate<=1.2f,Name(n)+": a planted foot's ball stays put ("+r.Skate.ToString("0.0")+" cm a frame at most)");
+                    if(n=="run turn into attack")continue;
+                    // (A reversal, or the weave's sudden shoves, turns the hips past a planted foot until it steps round: TwistMoving and the
+                    // stance's turn on top.)
+                    float hipMost=n=="run turn 180"||n=="run weave"?55:42;worstHipFoot=Math.Max(worstHipFoot,r.HipFoot);
+                    Check(r.HipFoot<=hipMost,Name(n)+": a planted foot stays turned with the hips (at most "+r.HipFoot.ToString("0")+" deg off their facing, "+hipMost+" allowed)");
+                    // (The circle chase stops and sets off again by its pilot: a step or two more.)
+                    float rate=r.Steps/Math.Max(1e-3f,r.Seconds),allowed=rate0*(n=="run circle chase"?1.15f:1.1f)+.05f;worstRate=Math.Max(worstRate,rate/Math.Max(1e-3f,rate0));
+                    Check(rate<=allowed,Name(n)+": no more steps than running straight ("+rate.ToString("0.00")+" a second, running straight "+rate0.ToString("0.00")+")");
                 }
-                // (A swinging foot takes its twist over the capture's turn, so it never spins straight as it lifts.)
+                // (A swinging foot takes its twist over the capture's turn, so it never spins straight as it lifts; a quick step off a peeled
+                // heel takes the capture's turn over SwingTurnEase at least.)
                 foreach(var n in new[]{"walk turn 90","walk turn 180","walk circle chase","run turn 180","run target switch"})
                 {
                     var r=Of(n);worstSwing=Math.Max(worstSwing,r.SwingSnap);
-                    Check(r.SwingSnap<=30,Name(n)+": a swinging foot turns smoothly ("+r.SwingSnap.ToString("0.0")+" deg in a 120th of a second at most)");
+                    Check(r.SwingSnap<=25,Name(n)+": a swinging foot turns smoothly ("+r.SwingSnap.ToString("0.0")+" deg in a 120th of a second at most)");
                 }
                 Check(straight.KneeFoot<=20&&straight.Cross>.05f,Name("run straight")+": running straight the knees over the feet, the feet apart ("+straight.KneeFoot.ToString("0")+" deg, "+straight.Cross.ToString("0.00")+" m)");
             }
@@ -189,15 +205,56 @@ namespace ChipArena.UnityConversion
                 }
                 Check(most>3&&most<=NativeHordeGait.LeadMost+.01f&&least<-3&&least>=-NativeHordeGait.LeadMost-.01f,"a landing foot is turned on into the turn, either way (right "+most.ToString("0.0")+", left "+least.ToString("0.0")+" deg, at most "+NativeHordeGait.LeadMost+")");
             }
+            // ---- walking turns: the hips held as high as shared's (8865e817, before this branch) or the straight walk's ----
+            // (The review, 2026-11-18: drawn in across the floor at a walk too, walking turns dipped where shared's had not. Walking keeps
+            // shared's footing, NativeHordeGait.LegsAcross; the lead counts for drawing, not for stepping round; a walking foot steps nearer
+            // its hip, AcrossWalk. Shared's lowest hips over each route's starts, the four kinds at their walk, from `--zombie-runturn-walks`.)
+            float walkWorst=9,walkGain=0,worstWalkSwing=0;int walkN=0;
+            {
+                var shared=new System.Collections.Generic.Dictionary<string,float>{{"shambler walk arc 45/s",0.946f},{"shambler walk arc 90/s",0.955f},{"shambler walk arc 135/s",0.771f},{"shambler walk turn 90",0.821f},{"shambler walk turn 180",0.78f},{"shambler walk circle r1.5 x1",0.767f},{"shambler walk circle r1.5 x1.3",0.803f},{"shambler walk circle r1.8 x1.15",0.799f},{"shambler walk circle r2.5 x1",0.845f},{"shambler walk circle r2.5 x1.3",0.812f},{"shambler walk circle r4 x1",0.769f},{"shambler walk circle r4 x1.3",0.856f},{"runner walk arc 45/s",0.968f},{"runner walk arc 90/s",0.975f},{"runner walk arc 135/s",0.976f},{"runner walk turn 90",0.873f},{"runner walk turn 180",0.848f},{"runner walk circle r1.5 x1",0.976f},{"runner walk circle r1.5 x1.3",0.973f},{"runner walk circle r1.8 x1.15",0.973f},{"runner walk circle r2.5 x1",0.972f},{"runner walk circle r2.5 x1.3",0.974f},{"runner walk circle r4 x1",0.968f},{"runner walk circle r4 x1.3",0.972f},{"spitter walk arc 45/s",0.994f},{"spitter walk arc 90/s",0.877f},{"spitter walk arc 135/s",0.834f},{"spitter walk turn 90",0.841f},{"spitter walk turn 180",0.842f},{"spitter walk circle r1.5 x1",0.917f},{"spitter walk circle r1.5 x1.3",0.91f},{"spitter walk circle r1.8 x1.15",0.874f},{"spitter walk circle r2.5 x1",0.897f},{"spitter walk circle r2.5 x1.3",0.972f},{"spitter walk circle r4 x1",0.871f},{"spitter walk circle r4 x1.3",0.927f},{"brute walk arc 45/s",1.022f},{"brute walk arc 90/s",1.01f},{"brute walk arc 135/s",0.87f},{"brute walk turn 90",0.843f},{"brute walk turn 180",0.86f},{"brute walk circle r1.5 x1",0.924f},{"brute walk circle r1.5 x1.3",0.918f},{"brute walk circle r1.8 x1.15",0.903f},{"brute walk circle r2.5 x1",0.928f},{"brute walk circle r2.5 x1.3",0.867f},{"brute walk circle r4 x1",0.994f},{"brute walk circle r4 x1.3",0.917f}};
+                foreach(int kind in Kinds)
+                {
+                    string id=NativeHordeKinds.Ids[kind];var straight=Drive(rig,kind,Straight(NativeHordeKinds.ProposedRow(kind).walk),6f,3f);
+                    foreach(var (name,n,at) in WalkRoutes(kind))
+                    {
+                        float low=9;for(int j=0;j<n;j++){var (route,seconds,from)=at(j);var r=Drive(rig,kind,route,seconds,from);low=Math.Min(low,r.HipsLow);if(name.StartsWith("walk turn"))worstWalkSwing=Math.Max(worstWalkSwing,r.SwingSnap);}
+                        float pin=shared[id+" "+name];walkWorst=Math.Min(walkWorst,low-Math.Min(pin,straight.HipsLow));walkGain+=low-pin;walkN++;
+                        Check(low>=Math.Min(pin,straight.HipsLow)-.03f,id+" "+name+": walking, the hips as high as shared's or the straight walk's (lowest "+low.ToString("0.000")+" legs over its starts; shared "+pin.ToString("0.000")+", walking straight "+straight.HipsLow.ToString("0.000")+")");
+                    }
+                }
+                Check(walkGain/Math.Max(1,walkN)>=0,"through the walking turns the hips on average at least shared's (by "+(walkGain/Math.Max(1,walkN)).ToString("0.000")+" legs)");
+                Check(worstWalkSwing<=25,"a swinging foot turns smoothly through the walking turns at any moment of the stride ("+worstWalkSwing.ToString("0.0")+" deg in a 120th of a second at most)");
+            }
+            // ---- the Hulk's and the Hound's knees lean the hips' way, as before: the lean to the toes is a biped's own stride's ----
+            // (The review, 2026-11-18: leaning to the toes, the Hound's knees flipped from side to side, its pelvis's forward lying across
+            // the body on all fours, and the Hulk's moved up to 8 cm. NativeVisualRig.KneeLeansToToes. A planted foot turned 40 degrees on
+            // the floor moves a biped's knee on its own stride after it, and the Hulk's and the Hound's not at all.)
+            float kneeBiped,kneeHulk,kneeHound;
+            {
+                Vector3 KneeWith(int kind,float stride,float footYaw)
+                {
+                    var s=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();pose.Reset();int foot=CapturedRig.LHip+2;
+                    pose.Rotation[foot]=CapturedRig.Rot(Vector3.UnitY,footYaw/Deg)*pose.Rotation[foot];pose.World();
+                    NativeZombiePosture.Stance(s,kind,false,0,0,0,stride,0,stride);s.Dt=Frame;NativeVisualRig.Pose(s,pose,default(NativeVisualRig.Grasp),true,false);
+                    return s.Position[rig.Of[CapturedRig.LHip+1]];
+                }
+                float Moved(int kind,float stride)=>(KneeWith(kind,stride,40)-KneeWith(kind,stride,0)).Length();
+                kneeBiped=Moved(NativeHordeKinds.Shambler,rig.LegRatio);kneeHulk=Moved(NativeHordeKinds.Hulk,1);kneeHound=Moved(NativeBackroomsMotion.HoundKind,rig.LegRatio);
+                var st0=new NativeVisualRig.State(rig);NativeZombiePosture.Stance(st0,NativeHordeKinds.Hulk,false,0,0,0,1,0,1);bool hulkLeans=NativeVisualRig.KneeLeansToToes(st0);
+                NativeZombiePosture.Stance(st0,NativeBackroomsMotion.HoundKind,false,0,0,0,rig.LegRatio,0,rig.LegRatio);bool houndLeans=NativeVisualRig.KneeLeansToToes(st0);
+                Check(!hulkLeans&&!houndLeans&&kneeHulk<1e-5f&&kneeHound<1e-5f&&kneeBiped>.01f,"a planted foot turned on the floor leaves the Hulk's and the Hound's knees where the hips lean them and turns a biped's after it ("+(kneeHulk*100).ToString("0.00")+", "+(kneeHound*100).ToString("0.00")+" and "+(kneeBiped*100).ToString("0.0")+" cm)");
+            }
             // ---- the rig and the binding agree: a footprint drawn in for the rig's legs and spread back out is where it was ----
             {
                 Check(Math.Abs(NativeHordeGait.KneeFollow-1)<1e-6f,"the knee follows its foot's whole twist");
                 var src=System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/ChipArena/Core/NativeHordeLoco.cs"));
-                Check(src.Contains("at.X=hip.X+(at.X-hip.X)/legsNow")&&src.Contains("at.X=hip.X+(at.X-hip.X)*legsNow"),"the gait draws a footprint in and spreads it out across the floor as well as fore and aft");
+                Check(src.Contains("at.X=hip.X+(at.X-hip.X)/LegsAcross")&&src.Contains("at.X=hip.X+(at.X-hip.X)*LegsAcross")&&src.Contains("public float LegsAcross=>legsNow==1?1:1+(legsNow-1)*runNow;"),"the gait draws a footprint in and spreads it out across the floor as well as fore and aft, across by the walk-to-run blend");
                 var vr=System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/ChipArena/Core/NativeVisualRig.cs"));
-                Check(vr.Contains("a.X=h.X+(a.X-h.X)*s.Stride; a.Z=h.Z+(a.Z-h.Z)*s.Stride;"),"the model's binding spreads the game ankle back out both ways (NativeVisualRig.GameAnkle)");
+                Check(vr.Contains("a.X=h.X+(a.X-h.X)*s.StrideAcross; a.Z=h.Z+(a.Z-h.Z)*s.Stride;"),"the model's binding spreads the game ankle back out both ways (NativeVisualRig.GameAnkle)");
+                var zp=System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/ChipArena/Runtime/NativeZombieModelPresentation.cs"));
+                Check(zp.Contains("z.Across=gait?.LegsAcross??1;")&&zp.Contains("z.Stride,z.Reach,z.Across);"),"the model presentation hands the binding the gait's draw-in across the floor");
             }
-            Console.WriteLine("PASS Zombie run and turn ("+checks+" checks: 4 kinds on the model's legs; running turns' hips at most "+worstDrop.ToString("0.00")+" legs under the straight run's (mean "+meanDrop.ToString("0.000")+"), fastest "+worstHipRate.ToString("0.0")+" legs/s; sharp turns at any moment of the stride at least "+worstSharp.ToString("0.00")+" legs; knee off its planted foot at most "+worstKnee.ToString("0")+" deg; swinging foot at most "+worstSwing.ToString("0.0")+" deg a 120th; presentation only)");
+            Console.WriteLine("PASS Zombie run and turn ("+checks+" checks: 4 kinds on the model's legs; running turns' hips at most "+worstDrop.ToString("0.00")+" legs under the straight run's (mean "+meanDrop.ToString("0.000")+"), fastest "+worstHipRate.ToString("0.0")+" legs/s; sharp turns at any moment of the stride at least "+worstSharp.ToString("0.00")+" legs; knee off its planted foot at most "+worstKnee.ToString("0")+" deg, the foot off the hips at most "+worstHipFoot.ToString("0")+" deg, steps at most "+worstRate.ToString("0.00")+" of the straight run's; swinging foot at most "+Math.Max(worstSwing,worstWalkSwing).ToString("0.0")+" deg a 120th; walking turns' hips at worst "+walkWorst.ToString("+0.000;-0.000")+" legs off shared's or the straight walk's, on average "+(walkGain/Math.Max(1,walkN)).ToString("+0.000;-0.000")+" over shared's over "+walkN+" routes; a planted foot turned 40 degrees moves the Hulk's and Hound's knees "+(Math.Max(kneeHulk,kneeHound)*100).ToString("0.00")+" cm, a biped's "+(kneeBiped*100).ToString("0.0")+"; presentation only)");
         }
         /// <summary>`--zombie-runturn`: the table, every kind on the model through every route.</summary>
         public static void Probe()
@@ -229,6 +286,53 @@ namespace ChipArena.UnityConversion
             }
             Console.WriteLine(o.ToString());
         }
+        // ---- walking turns: arcs, turns and circle chases at walk speed (a zombie walks while its pilot is more than 7 m off) ----
+        internal static Route WalkCircle(float speed,float radius,float k,float a0=0)=>(float t,Vector2 at,out Vector2 dir,out float sp,out float atk)=>{float a=a0+t*speed*k/radius;var c=new Vector2(0,6);var target=c+new Vector2((float)Math.Cos(a),(float)Math.Sin(a))*radius;dir=target-at;sp=dir.Length()>1.1f?speed:0;atk=float.NaN;};
+        /// <summary>The walking routes for kind `kind` at `k` of its walk: each a name and, for start `j` of its count, the route, its
+        /// length and when it is measured from (arcs and turns started at eight moments of the stride, circle chases with the pilot
+        /// starting at four places round its circle).</summary>
+        internal static (string name,int count,Func<int,(Route route,float seconds,float from)> at)[] WalkRoutes(int kind,float k=1)
+        {
+            float walk=NativeHordeKinds.ProposedRow(kind).walk*k;
+            var l=new System.Collections.Generic.List<(string,int,Func<int,(Route,float,float)>)>();
+            foreach(float rate in new[]{45f,90f,135f})l.Add(("walk arc "+rate+"/s",8,j=>{float at0=3+j*.071f;return (Arc(walk,rate,at0),at0+5,at0+1);}));
+            foreach(float deg in new[]{90f,180f})l.Add(("walk turn "+deg,8,j=>{float at0=3+j*.071f;return (Turn(walk,deg,at0),at0+2.5f,at0-.1f);}));
+            foreach(var (radius,x) in new[]{(1.5f,1f),(1.5f,1.3f),(1.8f,1.15f),(2.5f,1f),(2.5f,1.3f),(4f,1f),(4f,1.3f)})
+                l.Add(("walk circle r"+radius+" x"+x,4,j=>(WalkCircle(walk,radius,x,j*1.57f),9f,3.5f)));
+            return l.ToArray();
+        }
+        /// <summary>The upright kinds the walking routes are measured on (the Backrooms' faceling and linesman walk the same gait).</summary>
+        internal static int[] WalkKinds=>new[]{NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Spitter,NativeHordeKinds.Brute,NativeHordeKinds.Resolve("faceling"),NativeHordeKinds.Resolve("linesman")};
+        /// <summary>`--zombie-runturn-walks`: every walking route, at the walk and at .7 of it, the worst and the mean of its starts' lowest
+        /// hips (legs), and its steps a second (diagnostic).</summary>
+        public static void Walks()
+        {
+            var rig=ModelPoseChecks.Measured();
+            foreach(int kind in WalkKinds)foreach(float k in new[]{1f,.7f})
+            {
+                var straight=Drive(rig,kind,Straight(NativeHordeKinds.ProposedRow(kind).walk*k),6f,3f);
+                Console.WriteLine(string.Format(System.Globalization.CultureInfo.InvariantCulture,"{0,-9} x{1:0.0} {2,-21} hipsLow {3:0.000} mean {3:0.000} steps/s {4:0.00}",NativeHordeKinds.Ids[kind],k,"walk straight",straight.HipsLow,straight.Steps/Math.Max(1e-3f,straight.Seconds)));
+                foreach(var (name,n,at) in WalkRoutes(kind,k))
+                {
+                    float low=9,sum=0,steps=0,secs=0,kneeF=0;
+                    for(int j=0;j<n;j++){var (route,seconds,from)=at(j);var r=Drive(rig,kind,route,seconds,from);low=Math.Min(low,r.HipsLow);sum+=r.HipsLow;kneeF=Math.Max(kneeF,r.KneeFoot);steps+=r.Steps;secs+=r.Seconds;}
+                    Console.WriteLine(string.Format(System.Globalization.CultureInfo.InvariantCulture,"{0,-9} x{1:0.0} {2,-21} hipsLow {3:0.000} mean {4:0.000} steps/s {5:0.00} kneeF {6:0}",NativeHordeKinds.Ids[kind],k,name,low,sum/n,steps/Math.Max(1e-3f,secs),kneeF));
+                }
+            }
+        }
+        /// <summary>`--zombie-runturn-band`: the shambler's walking arcs over speed (.6 to 2 of its walk) and turn rate, the mean of four
+        /// starts' lowest hips (legs; diagnostic).</summary>
+        public static void Band()
+        {
+            var rig=ModelPoseChecks.Measured();int kind=NativeHordeKinds.Shambler;var st=NativeHordeKinds.ProposedRow(kind);var inv=System.Globalization.CultureInfo.InvariantCulture;
+            var rates=new[]{45f,60f,75f,90f,105f,120f,150f};var sb=new StringBuilder();
+            foreach(float k in new[]{.6f,.8f,1f,1.2f,1.5f,2f})
+            {
+                sb.Clear();sb.Append(string.Format(inv,"band {0:0.00} m/s",st.walk*k));
+                foreach(float rate in rates){float mean=0;for(int j=0;j<4;j++){float at0=3+j*.13f;mean+=Drive(rig,kind,Arc(st.walk*k,rate,at0),at0+5,at0+1).HipsLow/4;}sb.Append(string.Format(inv," {0:0}/s {1:0.000}",rate,mean));}
+                Console.WriteLine(sb.ToString());
+            }
+        }
         /// <summary>`--zombie-runturn-cost`: the gait's and the model binding's time a frame (microseconds) through the circle chase (diagnostic).</summary>
         public static void Cost()
         {
@@ -244,9 +348,32 @@ namespace ChipArena.UnityConversion
                     flow.Host(t,t,new Vector3(body.X,.85f,body.Y),new Vector3(vel.X,0,vel.Y),true,YawOf(dir),Frame,false);
                     f.Time=t;f.Root=flow.Position;f.Velocity=flow.Velocity;f.Yaw=flow.Yaw;f.YawRate=flow.YawRate;f.Bank=flow.Bank;f.Pitch=flow.Pitch;f.Ground=0;
                     bool timed=i>=4000;if(timed)sw.Start();g.Pose(f,p,null);if(timed)sw.Stop();
-                    p.World();if(timed)sb.Start();NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);s.Dt=Frame;NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);if(timed){sb.Stop();n++;}
+                    p.World();if(timed)sb.Start();NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);s.Dt=Frame;NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);if(timed){sb.Stop();n++;}
                 }
                 Console.WriteLine(string.Format("{0,-10} gait {1:0.00} us, fit+bind {2:0.00} us a frame",NativeHordeKinds.Ids[kind],sw.Elapsed.TotalMilliseconds*1000/n,sb.Elapsed.TotalMilliseconds*1000/n));
+            }
+        }
+        /// <summary>`--zombie-runturn-snap kind scenario`: the frames a swinging foot turns more than 15 degrees in (diagnostic).</summary>
+        internal static bool SnapAll;internal static float SnapFrom;
+        public static void Snap(int kind,string scenario)
+        {
+            var rig=ModelPoseChecks.Measured();
+            foreach(var sc in Scenarios(kind))
+            {
+                if(sc.name!=scenario)continue;var lastF=new Vector3[2];var lastU=new Vector3[2];var was=new bool[2];
+                Drive(rig,kind,sc.route,sc.seconds,sc.from,40003,(t,g,s,f)=>
+                {
+                    for(int a=0;a<2;a++)
+                    {
+                        int hip=a==0?CapturedRig.LHip:CapturedRig.RHip;var q=DrivePose.WorldRotation[hip+2];
+                        Vector3 W3(Vector3 d){var w=g.ToWorld(d,f.Root)-g.ToWorld(Vector3.Zero,f.Root);return Vector3.Normalize(w);}
+                        var fw=W3(Vector3.Transform(Vector3.UnitZ,q));var up=W3(Vector3.Transform(Vector3.UnitY,q));
+                        if(SnapAll&&t>=sc.from+SnapFrom&&t<=sc.from+SnapFrom+.08f)Console.WriteLine(string.Format("  {0:0.000} {1} air {2} heel {3:0.00} fwd ({4:0.00},{5:0.00},{6:0.00}) up ({7:0.00},{8:0.00},{9:0.00})",t-sc.from,a==0?"L":"R",g.FootAir[a],g.Heel[a],fw.X,fw.Y,fw.Z,up.X,up.Y,up.Z));
+                        if(g.FootAir[a]&&was[a]&&t>=sc.from&&!SnapAll){float A(Vector3 x,Vector3 y)=>(float)Math.Acos(Math.Max(-1,Math.Min(1,Vector3.Dot(x,y))))*Deg;float d=Math.Max(A(fw,lastF[a]),A(up,lastU[a]));
+                            if(d>15||SnapAll)Console.WriteLine(string.Format("{0:0.000} foot {1} snap {2:0.0} deg tw {3:0} heel {4:0.00} yaw {5:0} speed {6:0.00} run {7:0.00}",t-sc.from,a==0?"L":"R",d,Wrap(g.FootTurn(a)-g.Yaw),g.Heel[a],g.Yaw,g.Speed,g.RunNow));}
+                        lastF[a]=fw;lastU[a]=up;was[a]=g.FootAir[a];
+                    }
+                });
             }
         }
         internal static float TraceFrom=0,TraceFor=1.6f;internal static int TracePhase=-1;
@@ -256,6 +383,12 @@ namespace ChipArena.UnityConversion
             float floor;{var s0=new NativeVisualRig.State(rig);var rest=new CapturedRig.Pose();rest.Reset();rest.World();NativeVisualRig.Pose(s0,rest,default(NativeVisualRig.Grasp),false,false);floor=s0.Position[rig.Of[CapturedRig.LHip+2]].Y-NativeVisualRig.AnkleOver;}
             var list=Scenarios(kind);
             if(TracePhase>=0){var st=NativeHordeKinds.ProposedRow(kind);float at0=3+TracePhase*.071f;Route r=scenario=="run turn 90"?Turn(st.run,90,at0):scenario=="run turn -90"?Turn(st.run,-90,at0):scenario=="run turn 180"?Turn(st.run,180,at0):Switch(st.run,at0);list=new[]{(scenario,r,at0+2.2f,at0-.1f)};}
+            // (A walking route by its `--zombie-runturn-walks` name, "x0.7 " in front for the slower walk; the phase picks its start.)
+            if(scenario.StartsWith("walk arc ")||scenario.StartsWith("walk circle ")||scenario.StartsWith("x0.7 ")||TracePhase>=0&&scenario.StartsWith("walk turn "))
+            {
+                float k=scenario.StartsWith("x0.7 ")?.7f:1;string nm=k<1?scenario.Substring(5):scenario;int j=Math.Max(0,TracePhase);
+                foreach(var (name,n,at) in WalkRoutes(kind,k))if(name==nm){var (route,seconds,from)=at(Math.Min(j,n-1));list=new[]{(scenario,route,seconds,from)};}
+            }
             foreach(var sc in list)
             {
                 if(sc.Item1!=scenario)continue;int n=0;

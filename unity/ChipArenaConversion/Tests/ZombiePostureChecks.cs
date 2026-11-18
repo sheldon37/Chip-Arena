@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
                         {
                             d.Step(i*Dt,speed);var p=d.P;p.World();dm.Step(i*Dt,speed);var pm=dm.P;pm.World();
                             NativeVisualRig.Pose(sb,p,default(NativeVisualRig.Grasp),true,false);
-                            NativeZombiePosture.Fit(pm,fit);NativeZombiePosture.Stance(sa,kind,false,dm.G.Sunk,dm.G.Crouch,dm.G.Busy,dm.G.LegsNow);NativeVisualRig.Pose(sa,fit,default(NativeVisualRig.Grasp),true,false);
+                            NativeZombiePosture.Fit(pm,fit);NativeZombiePosture.Stance(sa,kind,false,dm.G.Sunk,dm.G.Crouch,dm.G.Busy,dm.G.LegsNow,dm.G.Outreach,dm.G.LegsAcross);NativeVisualRig.Pose(sa,fit,default(NativeVisualRig.Grasp),true,false);
                             if(i<90){lastB=sb.Position[pelvis].Y;lastA=sa.Position[pelvis].Y;continue;}
                             Measure(rig,sb,p,before,ref lastB);Measure(rig,sa,fit,after,ref lastA,dm.G.FootAir);
                             before.GameHead.Add(new Vector2(p.WorldPosition[CapturedRig.Head].X,p.WorldPosition[CapturedRig.Head].Z).Length());after.GameHead.Add(new Vector2(pm.WorldPosition[CapturedRig.Head].X,pm.WorldPosition[CapturedRig.Head].Z).Length());
@@ -108,8 +108,8 @@ namespace ChipArena.UnityConversion
                 Vector3 h=s.Position[vh],k=s.Position[vk],a=s.Position[va];o.Knee.Add(Between(k-h,a-k));mid+=a*.5f;
                 float w=side==0?s.LeftFootWeight:s.RightFootWeight;
                 if(w>=.999f)o.Stance.Add(Between(k-h,a-k));
-                // (The game ankle spread back out to the stride it was planned for: NativeVisualRig.State.Stride.)
-                if(w>=.999f&&(air==null||!air[side])){var g=game.WorldPosition[hip+2];g.X=game.WorldPosition[hip].X+(g.X-game.WorldPosition[hip].X)*s.Stride;g.Z=game.WorldPosition[hip].Z+(g.Z-game.WorldPosition[hip].Z)*s.Stride;var mark=new Vector3(g.X,r.AlignedPosition[va].Y+g.Y-NativeVisualRig.AnkleRest(hip),g.Z);o.Foot.Add((a-mark).Length());}
+                // (The game ankle spread back out to the stride it was planned for: NativeVisualRig.State.Stride, and StrideAcross across the floor.)
+                if(w>=.999f&&(air==null||!air[side])){var g=game.WorldPosition[hip+2];g.X=game.WorldPosition[hip].X+(g.X-game.WorldPosition[hip].X)*s.StrideAcross;g.Z=game.WorldPosition[hip].Z+(g.Z-game.WorldPosition[hip].Z)*s.Stride;var mark=new Vector3(g.X,r.AlignedPosition[va].Y+g.Y-NativeVisualRig.AnkleRest(hip),g.Z);o.Foot.Add((a-mark).Length());}
                 int arm=r.Of[side==0?CapturedRig.LArm:CapturedRig.RArm],elbow=r.Of[side==0?CapturedRig.LElbow:CapturedRig.RElbow];
                 var u=s.Position[elbow]-s.Position[arm];float outward=side==0?u.X:-u.X;o.Spread.Add((float)Math.Atan2(outward,Math.Max(1e-4f,-u.Y))*Deg);
             }
@@ -185,7 +185,7 @@ namespace ChipArena.UnityConversion
                     var d=new Drive(NativeHordeKinds.Hulk,40000+NativeHordeKinds.Hulk*101,0);d.G.Legs=rig.LegRatio;var s=new NativeVisualRig.State(rig);var ys=new List<float>();
                     for(int i=0;i<330;i++)
                     {
-                        d.Step(i*Dt,speed);var p=d.P;p.World();NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,NativeHordeKinds.Hulk,false,d.G.Sunk,d.G.Crouch,d.G.Busy,d.G.LegsNow);if(carried==0)s.Ease=0;
+                        d.Step(i*Dt,speed);var p=d.P;p.World();NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,NativeHordeKinds.Hulk,false,d.G.Sunk,d.G.Crouch,d.G.Busy,d.G.LegsNow,d.G.Outreach,d.G.LegsAcross);if(carried==0)s.Ease=0;
                         NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);if(i>=90)ys.Add(s.Position[pelvis].Y);
                     }
                     var dy=ys.Zip(ys.Skip(1),(a,b)=>b-a).ToList();var ddy=dy.Zip(dy.Skip(1),(a,b)=>Math.Abs(b-a)).ToList();
@@ -200,7 +200,7 @@ namespace ChipArena.UnityConversion
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
             string zm=R("Runtime/NativeZombieModelPresentation.cs"),rig=R("Core/NativeVisualRig.cs"),fit=R("Core/NativeZombiePosture.cs");
-            Check(zm.Contains("minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose,!NativeBackroomsMotion.Quad(z.Kind));NativeZombiePosture.Upright(pose,z.Variant.Upright*(1-z.Busy));")&&zm.Contains("NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride,z.Reach);")
+            Check(zm.Contains("minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose,!NativeBackroomsMotion.Quad(z.Kind));NativeZombiePosture.Upright(pose,z.Variant.Upright*(1-z.Busy));")&&zm.Contains("NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride,z.Reach,z.Across);")
                 &&zm.Contains("z.Body.Binding.Apply(pose,ZombieGrasp(z),planted,airborne);"),"the model binds the fitted copy (the rig, its voxel tiers and gore keep the gait's pose)");
             Check(zm.Contains("z.Body.Binding.State.Dt=(float)Math.Max(1e-4,Math.Min(.1,now-z.PoseTime));z.PoseTime=now;"),"the carried hips step by the time since the body's last pose (the crowd's clock poses far adds less often)");
             Check(R("Runtime/NativeHordeKindPresentation.cs").Contains("ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,")&&zm.Contains("z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;"),"the add's crawl reaches the model");

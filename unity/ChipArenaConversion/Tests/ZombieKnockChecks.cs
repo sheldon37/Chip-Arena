@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
             {
                 float t=i*Dt;while(next<hits.Length&&hits[next]<=t)react.Add(hits[next++],new Vector2(0,-1),StaggerWeight.Flinch,23,false,false,true,.45f);
                 var v=vel(t);at+=v*Dt;f.Time=t;f.Root=at;f.Velocity=v;f.Yaw=0;f.YawRate=0;f.Ground=0;g.Pose(f,p,react);p.World();
-                NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
                 if(i<60)continue;Vector3 mid=Vector3.Zero;float knee=0,low=float.MaxValue;
                 for(int side=0;side<2;side++){int hip=side==0?CapturedRig.LHip:CapturedRig.RHip;Vector3 h=s.Position[rig.Of[hip]],k=s.Position[rig.Of[hip+1]],a=s.Position[rig.Of[hip+2]];knee=Math.Max(knee,Between(k-h,a-k));mid+=a*.5f;low=Math.Min(low,a.Y);}
                 r.Pelvis.Add(s.Position[pelvis].Y-low);r.Trail.Add(Math.Abs(mid.Z-s.Position[pelvis].Z));r.Knee.Add(knee);

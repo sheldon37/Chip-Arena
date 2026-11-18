@@ -570,7 +570,7 @@ namespace ChipArena.UnityConversion
         private void HordeLaunch(CapturedAnimation.Player rig,string model,int kind,int id,int joint,float at,NVector2 push,float kick,float floor)
         {
             var p=hordeParts[hordePartNext++%hordeParts.Length];p.Live=true;p.Model=model;p.Kind=kind;p.Joint=joint;p.Id=id;p.At=at;p.Bled=0;p.Push=push;p.Kick=kick;p.Floor=floor;p.Seed=NativeHordeKinds.Seed(id)^(uint)(joint*2654435761u);
-            p.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22;b++)p.Bones[b]=rig.Bones[b].localToWorldMatrix;
+            p.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22;b++)p.Bones[b]=GoreModelShift(rig,id,b,out var w)?Matrix4x4.Translate(w)*rig.Bones[b].localToWorldMatrix:rig.Bones[b].localToWorldMatrix;
             p.Pieces=ZombiePartPieces(id,joint,p.Pieces);
         }
         // The authority's severed limbs (new LIMB bits on a living add): each root limb's part flies off along the newest blow.

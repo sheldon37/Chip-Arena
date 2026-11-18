@@ -49,6 +49,9 @@ internal static class Program
             if(args.Length==1&&args[0]=="--projectile-events")return 0;
             if(args.Length==1&&args[0]=="--zombie-stages"){ZombieStageChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--zombie-runturn"){ZombieRunTurnChecks.Probe();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn-walks"){ZombieRunTurnChecks.Walks();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn-band"){ZombieRunTurnChecks.Band();return 0;}
+            if(args.Length>=3&&args[0]=="--zombie-runturn-snap"){if(args.Length>=4){ZombieRunTurnChecks.SnapAll=true;ZombieRunTurnChecks.SnapFrom=float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture);}ZombieRunTurnChecks.Snap(int.Parse(args[1]),args[2]);return 0;}
             if(args.Length==1&&args[0]=="--zombie-runturn-sweep"){ZombieRunTurnChecks.Sweep();return 0;}
             if(args.Length==1&&args[0]=="--zombie-runturn-cost"){ZombieRunTurnChecks.Cost();return 0;}
             if(args.Length==1&&args[0]=="--zombie-runturn-checks"){ZombieRunTurnChecks.Run(ProjectRoot());return 0;}
