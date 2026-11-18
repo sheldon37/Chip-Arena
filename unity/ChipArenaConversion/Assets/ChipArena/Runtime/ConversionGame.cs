@@ -149,12 +149,12 @@ namespace ChipArena.UnityConversion
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();DeploymentBundleTick();AccountXpTick();
             // The logo intro holds the game (no input) while it loads under it (NativeBootLoad.cs).
             if(BootIntroHolds())return;
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if(LayeredCityWalkKeys())return;
-#endif
             if(padInputCaptured){pending=new InputFrame{CancelAbilities=true};Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(openingView!=null||PracticeResult!=null){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(SplitLocalLoading){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if(LayeredCityWalkKeys())return;
+#endif
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;
             // A bound Expedition session's screen: J toggles it, Escape closes it (NativeExpeditionLiveUI.cs).
