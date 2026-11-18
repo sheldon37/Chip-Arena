@@ -1,3 +1,31 @@
+## 2026-11-18 — Claude: the Bombadier's explosions and throws are heard in every match (owner report; presentation only)
+
+Branch `claude/bomb-blast-audio`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "Seems the bombadier doesnt have sounds for when their explosives blow up now?"
+
+- **Cause.** Astra's sound pass (`164da2f1`, PR #401) moved the Bombadier's blast and throw dedupe from per-record stamps (`Once(seat+"bomb"+id, At)`) to `NativeWeaponAudioHistory`: one high-water record id and one release time per seat, cleared only when `arena.Generation` changes.
+  - A new match builds a new arena: its Generation starts at 1 again, its records are numbered from 1 (`nextEvent`) and its clock starts from 0. `NativeAudio` lives on.
+  - So when the last arena also stood at Generation 1, nothing cleared, and the last match's marks refused every blast and throw of that seat. This happens after every Deathmatch, after a Dev Sandbox session, and after a match left in its first round.
+  - The silence lasted until the pilot's first killcam reset the audio's cursor (`NativeAudio.ResetCursor`), or until the new ids and clock passed the old marks.
+- **Reproduced in the Editor** (BoZo, Cyber City, a Bombadier pilot against an idle bot). Match 1 threw the whole kit. Then the match started again (`StartMatch`: a new arena at Generation 1), the kit again, a forced death and killcam, and round 2. Temporary decision logging (`PROBE bomb`, never on this branch) recorded each cue.
+  - **Before** (shared + probe): in the second match, all 17 blasts (pop, mine, lob, 6 bomblets, 5 sparks, jump, sticky, Finale column) and all 7 throws were refused by the history. After the killcam, round 2's were heard.
+  - **After** (the fix + probe): all 17 and 7 reach their cues.
+  - Match 1 and round 2 are the same before and after.
+- **Fix (Core `NativeWeaponAudioHistory`).** A pilot's mark is now the newest record id with its time; the release mark keeps its time.
+  - In one arena's clock both rise together: the authority numbers records as it makes them, and frames never run a clock back. A record newer on neither is still refused, so nothing repeats on a duplicated snapshot, a late join or a rewind.
+  - A later record with a lower id now means the numbering began again, and a clock more than 1 s behind the mark means another clock. Both start the pilot's history afresh.
+- **The Preview Bombadier** (Dev Sandbox gallery) was silent: since the sound pass, `BombMoments` read only the pilot's own kit. It now hears the kit the screen draws (`NativeBombs.Source` while the preview owns it). The preview's fixed, looping ids, with its lob numbered after its bomblets, pass the new history: each blast and throw once per pass.
+- **Kept from the sound pass.** Each blast once. A late join stays quiet. The nearest Finale column per listener. Quieter links under the `proc` gate. The `explosion` gate and the 8 gated-voice cap are unchanged.
+- **Other users.** Katana and Fangs (`BladeMoments`) and the Glaive (`GlaiveMoments`) use the same `Hit` and `Release`, so they had the same fault after a same-Generation restart. The same change fixes them; their code is unchanged. The Top Dog keeps per-record `Once` stamps and was not affected.
+- **Systems.** `Core/NativeRecordedCues.cs`, `Runtime/NativeBombScreen.cs` (`BombMoments`'s kit), `Tests/EffectsAudioChecks.cs`. No rule, hit timing, hitbox, damage, cooldown, movement, wire or network change.
+- **Checks.**
+  - Full CoreTests on `b08f7e7a`: 1032 groups, exit 0 (stage banks `banks-next`, the expedition path patch applied and reverted).
+  - `--effects-audio`: the new checks pass. They fail on the old history: a carried-over match's first blast and throw, a strike's columns past the old clock, three Preview Bombadier passes with a step back and a late joiner.
+  - Pinned semantic compile (`tools/check_unity_compile.py`): Input System, Player, Assembly-CSharp and Editor all pass. `git diff --check` is clean, and no pinned test string is broken.
+- **Not run.** No Windows player or build listening, no host plus guest, no LocalAssets bank in the Editor (it played the built-in fallback clips through the same history and gates).
+- **Risk, not changed.** The `explosion` gate's 70 ms gap drops 2 to 3 of a cluster's 6 bomblets (logged in both runs). That is the sound pass's mix; it needs a listen.
+- **Risk, edge case.** A new arena whose clock lands within about a second of the last arena's final mark could still miss a record that is older on both id and time, for at most that second.
+- **Next.** The owner listens to two matches in a row as the Bombadier (a Deathmatch, or the Dev Sandbox twice), and to the Preview Bombadier. Then merge and release.
+
 ## 2026-11-17 — Claude: Blind Pick and Deathmatch screens (Astra's 2026-11-16 handoff; presentation only)
 
 Branch `claude/opening-draft-ui`, base shared `claude/sleepy-ritchie-g8ruhv` at `c69c30c7`. Owner: "Do the UI work; We can use the same kind of screens we use for chip selection ... Kind of like chips, but animated and styled with very high quality."
