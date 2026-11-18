@@ -1,3 +1,81 @@
+## 2026-11-18 — Claude: the chip install redrawn as a hands-on install on the wrist device (owner report; presentation only)
+
+Branch `claude/chip-install-anim`, base shared `claude/sleepy-ritchie-g8ruhv` at `8865e817`, code final at `1e698b39`. Owner: "we need to improve the animation when the player model "installs" the chip. Please review, improve drastically, and update." Status: implemented on the branch and pushed; not merged, not released.
+
+- **What.** After a pick, the draft stage plays the install as one shot, as long as the turn's own hold (3.2 s; up to 5.2 s for the long tiers). It runs on two clocks:
+  - the smoothed pick age drives the camera, the 2D screen and the effects;
+  - a pose clock (`NativeInstallShot.PoseAge`) adds a zero-sum hit-stop at the clack.
+- **The beats.**
+  - At the click the pilot takes a breath, nods, cocks the taking hand, and the card pops.
+  - The other cards shatter as a ripple of lit shards, nearest first.
+  - The card flies to the hand and bursts into the 3D cartridge at the catch. The thumb and index pinch its crest edge (new hand shapes, and a contact pass on the model's finger pads).
+  - The right forearm rises like a watch check. The device's lid opens with a puff and the bay glows ready.
+  - The carry, a line-up inside brackets, and a two-finger press.
+  - The clack at 1.14 s, on the install cue's existing time: a hit-stop, a camera kick and shake, the stage lit in the chip's colour, and the corridor's power-on fronts.
+  - The shell bursts out of the fingers and the lid slams with a bounce. The surge runs up the arm and the suit into the chest core, and the visor flashes.
+  - The power-up rise.
+  - The readout unfolds beside the pilot and rides in and out with the camera's pan. Then eye contact, and the settle back to the portrait.
+- **Who gets what.**
+  - Tiers: common to mythic, the kits, rainbow, ability and wild chips, and the boss relics with their set's motif at the seat.
+  - The Hot Dog: a 1.3x device, squash and stretch, and toon sounds.
+  - The Siren drafter strikes, lifts the chip to her grin and crushes it. Her held cartridge now glows so it reads behind her talons.
+  - The PvE and Deathmatch picks take the short cut: the power pose at 1.55 s, then a bloom back to play by 1.95 s.
+- **Camera.**
+  - A dolly push-in. The 24° lens and the tilt are kept.
+  - The hero framing has a safe frame: the planned visor, bay and pinch stay inside it, and the eyes stay 10% under the top edge. A bare head's top may crop by up to 5%; a hat or the halo keeps its brim.
+  - Where no push fits (a tall hat at 4:3), the target moves only as far as keeps the crown in frame.
+- **Fixed after the first captures (all on this branch).**
+  - The bow hid the device. The install point is lower and further out: (0, .16, .32) in the chest frame, not the spec's (0, .28, .27). The look down is capped at .32 rad during the install.
+  - The receiving wrist flipped from frame to frame (46 bay jumps of over 5 cm in 3 s). Its turn had been planned on each frame's measurement of the drawn bay, which moved with that turn. It now plans on the bay as it was at the pick.
+  - The model's device rides its forearm, which neither the hand's frame nor the stage's forearm predicts. The drawn bay sat 11 cm under its point, facing away from the lens.
+    - From the arm's half lift, the wrist now eases (.08 s of pose time, at most 18 cm) by the drawn bay's miss, measured a frame behind.
+    - The draw rolls the model's forearm about its length, at most 110°, to turn the bay's face up toward the lens.
+  - The readout unfolded over the helmet before the camera's pan; it now rides with the pan and the settle.
+- **Files.**
+  - New Core: `NativeInstallShot` (timeline, curves, profiles, device states, text, readout, bloom, sounds), `NativeDraftInstall` (the install's arms, cartridge and torso layers), `NativeHandShapes`.
+  - New Runtime: `NativeDraftInstallPresentation` (the contact pass, the forearm roll, the cartridge, the device, the core and surge, lights, effects and the install's audio).
+  - Changed:
+    - `NativeDraftStage` (the shot, the gaze and the arms through the install);
+    - `NativeVisualRig` (`HandShape`, identical at weight 0);
+    - `NativeMachineModels` (the cartridge's core module on new bones 3, 4 and -3);
+    - `NativeDraftBackdrop` and its shader (`_BackFront`);
+    - `NativeSoundBank` (7 `ui.install.*` keys);
+    - the draft, screen, follow, Deathmatch-pick, body, suit and backdrop presentations.
+  - New `docs/audio/sound-requests-install.json` (7 sounds).
+  - New `Tests/InstallShotChecks.cs` (10 groups).
+  - Re-pinned: DraftStage, DraftBackdrop, EffectsAudio, MachineModel, VisualRig, ModelPose and RobotSuit. Minimal edit to another task's check: `MenuStyleChecks` now counts 17 corridor frame uniforms.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. Unchanged:
+  - the pick, the turn's hold (`NativeMatch.RevealSeconds`), the Install event and its 1.14 s cue;
+  - the PvE pick authority and the Deathmatch respawn;
+  - `NativeDraftPlant`, `NativeChipPlant` and `NativePilotGear.Device`.
+
+  Nothing is sent and nothing is baked. The motion bank and the 14 stage banks are unchanged.
+- **Checks.**
+  - Full CoreTests on `1e698b39`: 1045 PASS lines, exit 0. Release build, as relgen5 runs it, in a throwaway LF worktree with the Windows-only `Path.GetFullPath` patch to `ExpeditionEndingChecks`.
+  - `--draft-stage`: 62 PASS.
+  - The pinned 6000.3.24f1 semantic compile passes (Input System, Player, Assembly-CSharp, Editor).
+  - `git diff --check` is clean, files are LF, and the new metas' GUIDs are unique.
+  - A C# tokenizer pin scan finds only the three intended moves.
+- **Seen in the Editor.** BoZo paced captures at 1/30 s, 1920x1080:
+  - BEFORE on `8865e817`: common, legendary, Hot Dog, the Siren drafter, the Ward Zero pick, the Katana.
+  - AFTER on `1e698b39`: the same, plus a boss relic (THE 6:47), Reduced effects, and 21:9.
+  - On AFTER: bay jumps of over 5 cm in 3 s are 3-7, and 13 with the Raise hero hold (BEFORE 6-7), with no normal flips. Magnification at the clack is 1.37-1.62, 1.15 with Reduced effects and 1.28 for the Siren. The bay sits at about .82 of the height at the clack (an earlier commit had it at 0.91).
+  - After each run the stage banks (14) and the motion bank (6,136,627 bytes, sha 37ec44d2) were unchanged.
+  - Sheets and an index mapped to the spec's checklist are kept outside the repo.
+- **Not run.**
+  - No Windows build or player, so frame times were not measured. The stage paths are allocation-free by check; the draw's were not profiled.
+  - The sounds were not listened to. The 7 bespoke `ui.install.*` keys are not generated, and their cues fall back to the existing bank keys.
+  - Not captured: 5:4 and 32:9, a spectated pick, a two-row tray, the halo or the Sheldon hood, ability and wild chips, a Classic voxel pilot, and an early key press on the short cut.
+  - PvE timing: in the paced capture the follow's real-time clock ran about .12 s ahead of the drawn age, so the cut showed at 1.83 s. At a steady frame rate the two agree.
+- **Risks and next.**
+  - The forearm roll and the eased wrist are tuned on the default pilot model and the Hot Dog. Other model bodies should be looked at.
+  - The bay's face turns up more than toward the lens (dot about .7 with the aim).
+  - The Raise hero hold (legendary and up) moves the arm fast: 12-14 bay jumps of over 5 cm.
+  - **Next:** the owner reviews the sheets; then merge and release.
+- **For Astra.**
+  - `tools/sound_queue.py` does not list `docs/audio/sound-requests-install.json`. Generating the 7 sounds is a paid step.
+  - `ExpeditionEndingChecks` still needs `Path.GetFullPath` on Windows.
+
 ## 2026-11-18 — Claude: every weapon plays its own selection flourish on the Blind Pick screen (owner report; presentation only)
 
 Branch `claude/weapon-pick-flourish`, base shared `claude/sleepy-ritchie-g8ruhv` at `01505ad6`. Owner: "Give each weapon choice a selection animation for the player (Of course, everyone is on their own screen so others wont see this) ... Kind of like if they select pistol for instance~ a pistol will eject from the icon and shoot around etc. Be creative!"
