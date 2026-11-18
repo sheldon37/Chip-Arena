@@ -25,6 +25,7 @@ Branch `claude/bomb-blast-audio`, base shared `claude/sleepy-ritchie-g8ruhv` at 
 - **Risk, not changed.** The `explosion` gate's 70 ms gap drops 2 to 3 of a cluster's 6 bomblets (logged in both runs). That is the sound pass's mix; it needs a listen.
 - **Risk, edge case.** A new arena whose clock lands within about a second of the last arena's final mark could still miss a record that is older on both id and time, for at most that second.
 - **Next.** The owner listens to two matches in a row as the Bombadier (a Deathmatch, or the Dev Sandbox twice), and to the Preview Bombadier. Then merge and release.
+- **Released:** shared `42bd093e` (the builder at `42bd093e`), test channel revision `639306125701063043` (build `7989353c`); the suite at `b99ab8cd` (1,032 groups, exit 0), the Unity compile. The builder's first two attempts stopped at the sound queue (`worker.lock` held by an agent's Python test run); the third, with the lock free, built and published. The installed bank is unchanged (364 entries, 806 clips). No bank or Drive zip change.
 
 ## 2026-11-17 — Claude: Blind Pick and Deathmatch screens (Astra's 2026-11-16 handoff; presentation only)
 
