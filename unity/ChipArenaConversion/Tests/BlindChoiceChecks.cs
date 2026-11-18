@@ -97,6 +97,13 @@ internal static class BlindChoiceChecks
         // ---- the screens' sources ----
         string stage=R("Runtime/NativeDeathmatchPickStage.cs"),choice=R("Runtime/NativeBlindChoiceUI.cs"),opening=R("Runtime/NativeOpeningDraftUI.cs"),dm=R("Runtime/NativeDeathmatchRuntime.cs"),options=R("Runtime/NativeRoomOptionsUI.cs"),draft=R("Runtime/NativeDraftPresentation.cs"),game=R("Runtime/ConversionGame.cs");
         Check(draft.Contains("if(!active&&!pve&&PickStageFrame())return true;")&&game.Contains("if(arena==null&&PickStageMenuFrame())return;"),"the chip picks draw the PvP draft's stage, in a match and in the room");
+        // The comeback pick, mid-fight, resets nothing of the arena's presentation (its corpses, blood, wounds and gibs stay): the
+        // stage restarts alone and the rest of the scene is hidden while it shows, put back as it was.
+        string Body(string src,string head){int s=src.IndexOf(head,StringComparison.Ordinal),e=s<0?-1:src.IndexOf("\n        }",s,StringComparison.Ordinal);return s>=0&&e>s?src.Substring(s,e-s):"";}
+        Check(stage.Contains("if(kind==PickStageKind.Comeback)presentation.RestartDraftStage();else presentation.ResetPresentation();")&&Regex.Matches(stage,@"ResetPresentation\(").Count==2,"the comeback stage's entry restarts the stage alone");
+        Check(stage.Contains("private void PickStageLeave(){if(draftViewing&&draftViewSeat==ComebackStageView){draftViewing=false;RestoreLive();}PickStageUnhide();}")&&!Body(stage,"private void PickStageHide()").Contains("Reset")&&Body(stage,"private void PickStageHide()").Contains("r.enabled=false"),"its exit puts the hidden renderers back and resets nothing");
+        Check(Body(stage,"private bool PickStageMenuFrame()").Contains("ResetPresentation")&&!Body(stage,"private bool PickStageFrame()").Contains("PickStageKind.Comeback)presentation.ResetPresentation"),"only the room's starting chip keeps the PvP draft's reset");
+        Check(draft.Contains("public void RestartDraftStage(){draftRig?.Dispose();draftRig=null;}"),"RestartDraftStage drops only the stage's own rig and model");
         Check(dm.Contains("var r=new Rect(22-(1-enter)*30,H-24-124-12-44,w,44);"),"the comeback prompt sits above the vitals panel, not under it");
         Check(game.Contains("if(arena!=null&&!PickStageOverReplay()&&RenderReplay())return;")&&stage.Contains("if(ReplayActive)EndReplay();return true;"),"the comeback picker stands in front of that death's killcam");
         Check(stage.Contains("presentation.RenderDraft(seat,")&&stage.Contains("DraftShades(")&&stage.Contains("DraftHeader(")&&stage.Contains("LowerTray(")&&stage.Contains("PickedTray(")&&stage.Contains("Nameplate("),"the PvP draft's screen: its stage, shades, header, tray, pick and nameplate");

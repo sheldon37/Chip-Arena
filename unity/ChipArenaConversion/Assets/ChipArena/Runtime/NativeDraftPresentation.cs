@@ -59,6 +59,11 @@ namespace ChipArena.UnityConversion
         private Func<int,Matrix4x4> draftBone,draftChipBone;private Func<int,Color> draftChipPart;
         // The pick's age on the stage's smooth clock (-1 before the pick), for the tray's fly, shatter and spotlight.
         public float DraftAge=>draftStage.Age;
+        // A new picker on the stage without the rest of ResetPresentation (the Deathmatch's comeback pick, mid-fight): the draft rig
+        // and the model it carries go (RenderDraft makes them again and restarts the stage, as after a reset); the arena's
+        // corpses, blood, wounds and gibs are left as they are. DraftStageRoot: the stage's own scene objects, kept in view.
+        public void RestartDraftStage(){draftRig?.Dispose();draftRig=null;}
+        public Transform DraftStageRoot=>draftRig?.Root!=null?draftRig.Root.transform:null;
         // The tray's lower shade on the stage's framing (fractions from the top): its line for a tray whose first row's top is
         // `trayTop` and where it turns opaque (NativeDraftStage.ShadeLine / ShadeDeep).
         public void DraftShade(float trayTop,out float line,out float deep){line=draftStage.ShadeLine(trayTop);deep=draftStage.ShadeDeep(line);}

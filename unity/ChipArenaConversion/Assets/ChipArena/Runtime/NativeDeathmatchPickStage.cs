@@ -47,7 +47,8 @@ namespace ChipArena.UnityConversion
         // The picker opens as the pilot goes down on a rewarded death (DeathmatchPickKeys) and stands in front of that death's
         // killcam, as the tray did: a killcam already running ends (as Space skips it); one not yet started waits until the
         // picker and its follow-through close (Choose later, C, the pick), then plays what is left before the respawn.
-        private bool PickStageOverReplay(){if(PickStageNow(out _)!=PickStageKind.Comeback)return false;if(ReplayActive)EndReplay();return true;}
+        // (Every LateFrame with an arena, before the killcam: so the comeback stage also closes here when the match leaves it.)
+        private bool PickStageOverReplay(){if(PickStageNow(out _)!=PickStageKind.Comeback){PickStageLeave();return false;}if(ReplayActive)EndReplay();return true;}
         private bool PickStageShown=>PickStageNow(out _)!=PickStageKind.None;
         private NativeSeat OpeningStageSeat(NativeNetMessage v)
         {
@@ -82,13 +83,20 @@ namespace ChipArena.UnityConversion
 
         // ---- the stage (LateFrame) ----
         // DraftFrame's stage for the local pilot, with the PvP draft's look (no ward, no prism, no band on your own pilot). In the
-        // fight the live renderers are hidden while the arena keeps simulating (the Siren pick's HideLive); in the room there is
-        // no arena, so the stage stands in for the menu backdrop (PickStageMenuFrame). Returns false when no pick screen is up.
+        // room there is no arena, so the stage stands in for the menu backdrop (PickStageMenuFrame) and starts, as the PvP draft
+        // does, on a reset presentation. The comeback pick opens mid-fight: the arena's presentation is not reset (its corpses,
+        // blood, wounds and gibs stay for the fight, as the owner's coordinator asked); only the stage restarts (its rig and model
+        // made again, RestartDraftStage), and everything else in the scene is hidden while it shows and put back as it was when it
+        // closes (PickStageHide / PickStageLeave), the arena simulating on. Returns false when no pick screen is up.
         private bool PickStageFrame()
         {
-            if(presentation==null||cameraView==null)return false;var kind=PickStageNow(out var seat);if(kind==PickStageKind.None||seat==null)return false;
+            if(presentation==null||cameraView==null)return false;var kind=PickStageNow(out var seat);if(kind==PickStageKind.None||seat==null){PickStageLeave();return false;}
             int view=kind==PickStageKind.Opening?OpeningStageView:ComebackStageView;
-            if(!draftViewing||draftViewSeat!=view){RestoreLive();presentation.ResetPresentation();draftHover=-1;draftFocus=-1;draftHeld.Reset();ResetHolo();draftViewSeat=view;draftViewing=true;draftCards=Array.Empty<Rect>();draftTrayLine=draftTrayBottom=-1;}
+            if(!draftViewing||draftViewSeat!=view)
+            {
+                PickStageUnhide();RestoreLive();if(kind==PickStageKind.Comeback)presentation.RestartDraftStage();else presentation.ResetPresentation();
+                draftHover=-1;draftFocus=-1;draftHeld.Reset();ResetHolo();draftViewSeat=view;draftViewing=true;draftCards=Array.Empty<Rect>();draftTrayLine=draftTrayBottom=-1;
+            }
             float scale=NativeUiMotion.Measure(Screen.width,Screen.height,prefs.uiScale).Scale,width=Screen.width/scale,height=Screen.height/scale;
             bool follow=PickFollowing(kind);int count=follow?pickFollowChips.Count:pickStageChips.Count;
             float age=follow?Time.unscaledTime-pickFollowAt:-1;var chosenChip=follow?pickFollowChips[pickFollowIndex]:null;
@@ -96,13 +104,26 @@ namespace ChipArena.UnityConversion
             if(draftPoints.Length<n)draftPoints=new NVector2[Math.Max(n,draftPoints.Length*2)];for(int i=0;i<n;i++)draftPoints[i]=new NVector2(draftCards[i].center.x/width,draftCards[i].center.y/height);
             int chosen=follow?pickFollowIndex:-1;if(turnStart!=draftHeldTurn){draftHeldTurn=turnStart;draftHeld.Reset();if(!follow)ResetHolo();}
             if(chosen>=0)draftHeld.Reset();else draftHeld.Step(draftHover,Time.unscaledDeltaTime);int focus=NativeDraftStage.Focus(chosen,draftHeld.Card,since,n,prefs.reducedEffects);bool consider=chosen<0&&draftHeld.Reaching;
-            if(arena!=null)HideLive();else{presentation.WeaponLoadout=null;presentation.LocalId=seat.id;}viewModelCamera.enabled=false;
+            if(kind==PickStageKind.Comeback)PickStageHide();else if(arena!=null)HideLive();else{presentation.WeaponLoadout=null;presentation.LocalId=seat.id;}viewModelCamera.enabled=false;
             // The stage lights take my colour, blending to the chip's rarity over .5 s after my pick.
             Color chipTint=chosenChip!=null?RarityColor(chosenChip.rarity):default,tint=SeatColor(seat);if(age>=0&&chosenChip!=null)tint=Color.Lerp(tint,chipTint,Mathf.Clamp01(age/.5f));
             presentation.DraftHeadLine=draftHeadLine;presentation.DraftWard=false;presentation.DraftPrism=false;presentation.DraftBandTeam=-1;
             draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,draftTrayBottom,tint,cameraView,prefs.reducedEffects,out var catchAt,chipTint,chosenChip?.rarity)/scale;draftPalm.y=height-draftPalm.y;
             draftCatch=catchAt/scale;draftCatch.y=height-draftCatch.y;return true;
         }
+        // The comeback stage's hide: every renderer in the scene but the stage's own (the draft rig and the model it carries) is
+        // switched off while it shows (Renderer.enabled, the hide flag of the Siren pick, the killcam and the preview; each frame, so
+        // what the fight spawns meanwhile stays hidden too) and put back as it was when the stage closes. Nothing is destroyed.
+        private readonly Dictionary<Renderer,bool> pickStageHidden=new Dictionary<Renderer,bool>();
+        private void PickStageHide()
+        {
+            var own=presentation.DraftStageRoot;
+            foreach(var r in FindObjectsByType<Renderer>(FindObjectsInactive.Exclude,FindObjectsSortMode.None))
+                if(r!=null&&r.enabled&&(own==null||!r.transform.IsChildOf(own))){pickStageHidden[r]=true;r.enabled=false;}
+        }
+        private void PickStageUnhide(){foreach(var pair in pickStageHidden)if(pair.Key!=null)pair.Key.enabled=pair.Value;pickStageHidden.Clear();}
+        // Leaving the comeback stage: what it hid comes back; nothing is reset (DraftFrame's own exit, which resets, is not taken).
+        private void PickStageLeave(){if(draftViewing&&draftViewSeat==ComebackStageView){draftViewing=false;RestoreLive();}PickStageUnhide();}
         // LateFrame without an arena (the room's opening): the stage in place of the menu backdrop, the rooftop put away and the
         // map's look applied again once it leaves.
         private bool PickStageMenuFrame()
