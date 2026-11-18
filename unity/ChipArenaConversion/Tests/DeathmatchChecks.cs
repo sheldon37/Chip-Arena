@@ -38,6 +38,39 @@ internal static class DeathmatchChecks
         Check(interrupted.Ready&&interrupted.Pilots.Count==2&&!interrupted.Pilots.ContainsKey(missing.id),"reveal immediately includes only the remaining pilots");
         Check(!interrupted.Submit(missing.id,OpeningStep.Weapon,"sword",true,2),"late pick cannot restore a removed seat");
         Check(!interrupted.Disconnect(missing.id),"repeated disconnect is harmless");
+        Check(NativeOpeningDraft.ProtocolRefusal(1,false)==null&&NativeOpeningDraft.ProtocolRefusal(1,true)!=null&&
+            NativeOpeningDraft.ProtocolRefusal(0,false)!=null&&NativeOpeningDraft.ProtocolRefusal(2,true)==null,"mode-specific version gate");
+        var legacy=new NativeOpeningDraft(new[]{a,b},true,false,0,p=>Array.Empty<string>(),(seat,id)=>true);
+        Check(legacy.CardsFor(1,false,id=>id).Length==0,"original weapon step still sends an empty cards array");
+        var ids=new[]{"pistol","sword","bow","bow","dev"};
+        bool granted=true;
+        bool Allow(NativeSeat seat,string id)=>id!="dev"||seat.id==1&&granted;
+        var rng=new SourceRandom(123);
+        var dealt=new NativeOpeningDraft(new[]{a,b,c},true,true,5,p=>new[]{"vital"},Allow,99,ids,rng.Next);
+        Check(dealt.Pilots.Values.All(p=>p.WeaponOffers.Length==3 && p.WeaponOffers.Distinct().Count()==3),"uniform room deal capped at smallest personal pool");
+        var hand=dealt.Pilots[2].WeaponOffers;
+        Check(!hand.Contains("dev")&&!dealt.Pilots[c.id].WeaponOffers.Contains("dev"),"grant and bot eligibility");
+        Check(dealt.Pilots[c.id].Step==OpeningStep.Ready&&dealt.Pilots[c.id].WeaponOffers.Contains(dealt.Pilots[c.id].Weapon),"bot finishes with offered weapon");
+        var limited=new NativeOpeningDraft(new[]{a,b},true,false,0,p=>Array.Empty<string>(),Allow,2,ids,()=>.99);
+        var mine=limited.Pilots[1];
+        Check(limited.CardsFor(1,true,id=>id).SequenceEqual(mine.WeaponOffers)&&
+            limited.CardsFor(2,false,id=>id).SequenceEqual(limited.Pilots[2].WeaponOffers)&&
+            !limited.CardsFor(2,false,id=>id).Contains("dev"),"each seat gets only its own cards before reveal");
+        Check(draft.CardsFor(1,false,id=>id).Length==0,"ready view does not leak a hand");
+        string outside=ids.First(id=>!mine.WeaponOffers.Contains(id));
+        Check(!limited.Submit(1,OpeningStep.Weapon,outside,false,1)&&!limited.Submit(1,OpeningStep.Weapon,outside,true,1),"reject unoffered highlight and lock");
+        Check(limited.Submit(1,OpeningStep.Weapon,mine.WeaponOffers[0],false,19.9),"offered highlight allowed");
+        limited.Tick(20);
+        Check(limited.Ready&&mine.Weapon==mine.WeaponOffers[1],"deadline makes a fresh random choice ignoring highlight");
+        Check(limited.CardsFor(2,true,id=>id).SequenceEqual(new[]{"A   ·   "+mine.Weapon,"B   ·   "+limited.Pilots[2].Weapon}),"public reveal contains locked choices only");
+        Check(!limited.Submit(2,OpeningStep.Weapon,"pistol",true,20),"expired input refused");
+        Check(dealt.Disconnect(2)&&!dealt.Submit(2,OpeningStep.Weapon,hand[0],true,6),"disconnected hand invalidated");
+        var expiring=new NativeOpeningDraft(new[]{a},true,false,0,p=>Array.Empty<string>(),Allow,3,ids,()=>.99);
+        Check(expiring.Submit(1,OpeningStep.Weapon,"dev",true,1),"entitled offer accepted");
+        granted=false;expiring.Tick(2);
+        Check(expiring.Refusal!=null,"expiry before launch invalidates the private pick");
+        Check(new NativeOpeningDraft(new[]{a},true,false,0,p=>Array.Empty<string>(),Allow,3,new[]{"pistol","dev"},rng.Next).Refusal!=null,"undersized eligible pool refuses");
+        Check(NativeOpeningDraft.OfferCount(1,10)==2&&NativeOpeningDraft.OfferCount(0,10)==0&&NativeOpeningDraft.DefaultBlindChoices==3,"legacy sentinel, minimum, and dealt default");
         string Refusal(bool teams,string map,params NativeSeat[] seats)=>NativeOpeningDraft.RoomRefusal(seats,false,teams,map);
         Check(Refusal(false,"breakwater",a)!=null,"single pilot refused before pick");
         Check(Refusal(true,"breakwater",a,c)!=null,"single team refused");

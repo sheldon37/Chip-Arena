@@ -20198,3 +20198,7 @@ Validation: 49 managed practice checks, 63 existing boss-battle checks, NOCTIEL 
 ## 2026-11-17 · Astra · Station phase practice builder repair
 
 Branch codex/fix-practice-station, shared base dc568f84 (PR #407). The Windows build stopped at Station bookmark P2 reporting P1. Bookmarks now enter each authored industrial or Backrooms transition directly, preserving its map and boss state. Live fights continue to select the transition from damage. The all-20 native gate now also checks the authoritative actor phase and the Station P2 barrier, with opening-state diagnostics. Managed regression coverage checks successive tide and circuit transitions. Builder publication requires a new Windows receipt.
+
+## 2026-11-18 · Astra · Dealt Blind Pick authority
+
+Branch codex/dealt-blind-pick from shared 01505ad6. NativeRoomOptions.blindChoices uses zero for the original full pool. RoomOpt.Blind values 0/1/2 select off/all/dealt; dealt defaults to 3. RoomOpt.BlindChoices takes the actual N. The host deals unique IDs using each seat's live weapon grants and keeps N at or below the smallest eligible pool in the roster. Host-only deadlines sample from each pilot's still-eligible hand. Protocol 2 is required only for dealt hands. The local weapon view carries only that seat's IDs in pickCards before reveal; ConversionGame.OpeningWeaponOffers exposes them. Screen labels and layout belong to Claude. Managed checks cover offers, protocol, timeouts, bots, disconnects, grants and privacy. No combat, animation or hit-timing changes.
