@@ -95,12 +95,13 @@ namespace ChipArena.UnityConversion
                 default:return "";
             }
         }
-        /// <summary>The tileset on each board line for a selection: the selected one on the large first line, then the other live
-        /// tilesets in registry order, then empty lines (null). Dev tilesets never show. Fills `into` (Lines long) and returns it.</summary>
+        /// <summary>The tileset on each board line for a selection: the selected one on the large first line (whatever its state:
+        /// the board shows the state, so A3's DEV proof tileset shows when a DEV run selects it), then the other live tilesets in
+        /// registry order, then empty lines (null); a dev tileset is never one of the other lines. Fills `into` (Lines long).</summary>
         public static Tileset[] Board(Tileset selected,Tileset[] into)
         {
             if(into==null||into.Length<Lines)into=new Tileset[Lines];
-            selected=selected!=null&&selected.State==State.Live?selected:Of(City);into[0]=selected;int n=1;
+            selected=selected??Of(City);into[0]=selected;int n=1;
             foreach(var t in All)if(n<Lines&&t.State==State.Live&&!ReferenceEquals(t,selected))into[n++]=t;
             while(n<Lines)into[n++]=null;
             return into;

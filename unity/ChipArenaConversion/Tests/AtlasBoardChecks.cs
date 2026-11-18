@@ -59,7 +59,8 @@ namespace ChipArena.UnityConversion
             foreach(var s in states)Check(ReferenceEquals(T.Selected(s),city),"the selection hook reads City for every state until A3");
             var lines=T.Board(city,new T.Tileset[T.Lines]);Check(ReferenceEquals(lines[0],city)&&lines.Skip(1).All(x=>x==null),"the board: City on line 1, three empty lines");
             var dev=new T.Tileset{Id="dev-proof",State=T.State.Dev,Name="PROOF",Place="DEV",Accent=0xffffff,Enemies="X",Final="Y",Instances=new[]{"exp-ward-zero"}};
-            Check(ReferenceEquals(T.Board(dev,null)[0],city),"a dev tileset never takes a player's board");
+            var withDev=T.Board(dev,null);Check(ReferenceEquals(withDev[0],dev)&&ReferenceEquals(withDev[1],city)&&withDev.Skip(2).All(x=>x==null),"a selected tileset shows on line 1 whatever its state (A3's DEV proof); the live ones follow");
+            Check(ReferenceEquals(T.Board(null,null)[0],city),"no selection reads as City");
         }
         // The board's instance list equals the Instance Machine's pool: the station's real room (the shipped layout and maps)
         // rolled until every destination has come up, and the live station's reel list.
