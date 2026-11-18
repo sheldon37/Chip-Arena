@@ -15,6 +15,9 @@ namespace ChipArena.UnityConversion
         /// with Reduced effects). Level: the chip's install level (NativeInstallShot.Profile.Level); Second: a second front follows
         /// (legendary and up).</summary>
         public float Dt,Age,Pulse,Level;public bool Second;
+        /// <summary>Dim: how far the hall's light dips (0..1; legendary and up hold their breath over the line-up, a boss relic's hall dips
+        /// after its clack).</summary>
+        public float Dim;
         public Vector3 Tint;
         /// <summary>Entering: the first frame of a draft view (the frame before drew something else: the arena, a killcam).
         /// Ward: the PvE / Siren personal pick. Siren: the Siren drafter. Prism: the rainbow pick (eight max-rarity choices).</summary>
@@ -182,7 +185,7 @@ namespace ChipArena.UnityConversion
             // The clack's fronts (never with Reduced effects: the stage passes -1), the hall's flash and the pick's inflow.
             float since=reduced||!(i.Pulse>=0)?-1:i.Pulse;FrontAt(since,i.Level,out float wave,out float fall);
             float lit=since>=0?Math.Min(1,since/FlashSpan):1,flash=Flash*FlashShare*MathUtil.Clamp(i.Level,0,1.2f)*(1-lit)*(1-lit);
-            s.Pulse=new Vector4(wave,fall,flash,inflow);
+            s.Pulse=new Vector4(wave,fall,flash-(reduced?0:MathUtil.Clamp(i.Dim,0,.6f)),inflow);
             if(i.Second&&since>=0){FrontAt(since-SecondLag,i.Level,out float w2,out float f2);s.Front=new Vector4(w2,f2*.8f,0,0);}else s.Front=new Vector4(-10,0,0,0);
             s.Style=new Vector4(i.Ward?1:0,i.Prism?1:0,1,GlowLevel);s.Fx=s.Gains;
             // The text-safe bands (the shader's Safe and its cap) on the heading's and the tray shade's rows.

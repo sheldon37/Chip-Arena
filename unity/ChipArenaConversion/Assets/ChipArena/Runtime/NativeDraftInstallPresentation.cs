@@ -126,7 +126,7 @@ namespace ChipArena.UnityConversion
             float lights=plan.Lights;var lit=diChip.linear*lights*(.9f+.2f*NativeChipCartridge.Breath(diProfile.Look,time,reduced));var s=Vector3.one*diCartScale;
             if(plan.ChipShown)
             {
-                diCartM=Matrix4x4.TRS(diCartAt,diCartTurn,s);diCartOrbit=diCartM*sourceModels.PickupOrbit(model,reduced?0:time);
+                diCartM=Matrix4x4.TRS(diCartAt,diCartTurn,s);diCartOrbit=diCartM*sourceModels.PickupOrbit(model,reduced?0:time);draftChip=diCartM;
                 // The shell cracks under the fingers at the latch (its lights flare), the core snaps down into the seat.
                 float crack=plan.Latch;diCartTint=lit*(1+1.2f*crack);sourceModels.Queue(model,diCartM,diCartBone,diShell,partTint:diCartPart);
                 var coreM=Matrix4x4.TRS(diCartAt-(diBay?diBayN:diCartTurn*Vector3.up)*(NativeDraftInstall.LatchDepth*crack),diCartTurn,s);var keep=diCartM;diCartM=coreM;
@@ -140,7 +140,16 @@ namespace ChipArena.UnityConversion
                 diCartM=Matrix4x4.TRS(at-n*.002f-turn*new Vector3(0,0,z),turn,s);sourceModels.Queue(model,diCartM,diCartBone,diCore,partTint:diCartPart);
             }
             {var n=diBay?diBayN:StageDir(plan.Normal);DraftShards(diBay?diBayAt+n*.009f:Stage(plan.At),n,diBay?diBayF:StageDir(plan.Forearm),NativeInstallShot.Release,reduced);}
+            // Epic and up: the ring and its satellites leave the shell as it breaks, circle the forearm once (6 cm out) and shrink into the device.
+            if(diProfile.Look.Ring&&diBay&&diA>=NativeInstallShot.Release&&diA<1.45f)
+            {
+                float u=(diA-NativeInstallShot.Release)/(1.45f-NativeInstallShot.Release),ang=u*Mathf.PI*2;var side=Vector3.Cross(diBayN,diBayF).normalized;
+                var at=diBayAt+(diBayN*Mathf.Cos(ang)+side*Mathf.Sin(ang))*(.06f*(1-u*u))+diBayF*(-.03f*Mathf.Sin(ang*.5f));var turn=Quaternion.LookRotation(diBayF,diBayN*Mathf.Cos(ang)+side*Mathf.Sin(ang));
+                diOrbitOnly??=b=>b==NativeMachineModels.Orbit;var m=Matrix4x4.TRS(at,turn,Vector3.one*diCartScale*(1-.85f*u*u))*Matrix4x4.Translate(-new Vector3(0,0,NativeDraftInstall.CoreZ(diTier)));
+                diCartOrbit=m*sourceModels.PickupOrbit(model,reduced?0:time*3);diCartTint=lit*(1.6f-.6f*u);sourceModels.Queue(model,m,diCartBone,diOrbitOnly,partTint:diCartPart);
+            }
         }
+        private Func<int,bool> diOrbitOnly;
         // The shell's shards: thin slabs of the cartridge's metal with lit edges, flung out in its plane and toward the lens from under the
         // fingers at the release, spinning and slowing, gone by ShardsGone (the boss relics' burn to embers instead: DraftInstallFx).
         private void DraftShards(Vector3 origin,Vector3 n,Vector3 f,float born,bool reduced)
@@ -244,7 +253,7 @@ namespace ChipArena.UnityConversion
         /// the bay's flash at the clack held as a glow, the chest core's at its ignite, the face's at the visor beat.</summary>
         private void DraftInstallLights(Camera camera,bool reduced)
         {
-            diLights.Begin();if(diA<0){NativeMuzzleLights.Upload(diLights);return;}float L=diProfile.Level;int hex=diProfile.Look.Core;
+            diLights.Begin();if(diA<0){diLights.Resolve(System.Numerics.Vector3.Zero,0,1);NativeMuzzleLights.Upload(diLights);return;}float L=diProfile.Level;int hex=diProfile.Look.Core;
             NVector N(Vector3 v)=>new NVector(v.x,v.y,v.z);
             if(diA>=NativeInstallShot.Burst)
             {
@@ -318,6 +327,12 @@ namespace ChipArena.UnityConversion
                 if(diProfile.Boss)NativeEntranceFx.Embers(fx,a,NativeInstallShot.Release,NativeInstallShot.Release+.25f,S(bay+n*.01f),.03f,40,.25f,.5f,Lin(rare,1.6f),.006f,7481,quality,.6f);
                 else NativeEntranceFx.Sparks(fx,a,NativeInstallShot.Release,S(bay+n*.012f),S(n+forward*-.3f),1.1f,3,.7f,.35f,2,.5f,white*2.5f,Lin(rare,2),.003f,7483,quality,-10);
             }
+            // Legendary and up: the shell's corner gems pop as gold sparks as it breaks.
+            if(!reduced&&diProfile.Look.Gems&&diBay&&a>=NativeInstallShot.Release&&a<NativeInstallShot.Release+.45f)
+            {
+                var across=Vector3.Cross(diBayN,diBayF).normalized;
+                for(int k=0;k<4;k++){var corner=diBayAt+diBayN*.01f+across*((k&1)==0?-.3f:.3f)*diCartScale+diBayF*((k&2)==0?-.4f:.4f)*diCartScale;NativeEntranceFx.Sparks(fx,a,NativeInstallShot.Release,S(corner),S(diBayN),1.2f,4,.8f,.35f,3,.5f,new NVector(2.6f,1.9f,.6f),new NVector(1.2f,.6f,.1f),.0022f,7491+k*7,quality,-10);}
+            }
             // The lid's sheet of light squeezed out of the closing gap.
             if(p>=NativeInstallShot.ShutStart&&p<NativeInstallShot.ShutSettled&&diBay){float u=(p-NativeInstallShot.ShutStart)/(NativeInstallShot.ShutSettled-NativeInstallShot.ShutStart);var across=Vector3.Cross(diBayN,diBayF).normalized;fx.Streak(S(bay+n*.006f+across*.02f),S(-across*.04f/.05f),Lin(rare,2.2f*(1-u)),.0025f*(1-u)+.0005f,.04f,.05f,.2f,u,7491);}
             // The surge: a packet of the chip's light running up the arm to the chest core and the visor (a fainter one behind it for rare and
@@ -335,9 +350,22 @@ namespace ChipArena.UnityConversion
                     if(diProfile.Crest==NativeChipCartridge.Crest.Fuse&&!reduced)NativeEntranceFx.Embers(fx,p,NativeInstallShot.SurgeStart,NativeInstallShot.SurgeEnd,S(head),.01f,60,.2f,.4f,Lin(new Color(1,.5f,.1f),1.6f),.004f,7561,quality);
                 }
             }
+            // An ability chip: the light forks at the core and runs down both arms into the hands, which flare in its colour for .3 s.
+            if(diProfile.Ability&&diModel&&draftArm?.Hand!=null&&draftArm.OtherHand!=null&&draftArm.Upper!=null&&draftArm.OtherUpper!=null&&diPath[3]!=Vector3.zero&&a>=NativeInstallShot.CoreAt&&a<NativeInstallShot.CoreAt+.5f)
+            {
+                float u=NativeInstallShot.Smooth((a-NativeInstallShot.CoreAt)/.22f);
+                for(int side=0;side<2;side++)
+                {
+                    var sh=side==0?draftArm.Upper.position:draftArm.OtherUpper.position;var el=side==0?draftArm.Lower.position:draftArm.OtherLower.position;var hd=side==0?draftArm.Hand.position:draftArm.OtherHand.position;
+                    var head=u<.33f?Vector3.Lerp(diPath[3],sh,u*3):u<.66f?Vector3.Lerp(sh,el,(u-.33f)*3):Vector3.Lerp(el,hd,Mathf.Clamp01((u-.66f)*3));
+                    if(u<1){fx.Glow(S(head),Lin(rare,2.4f),0,.016f,1,u,7651+side);}
+                    float flare=a-NativeInstallShot.CoreAt-.22f;if(flare>=0&&flare<.3f)fx.Glow(S(hd),Lin(rare,2.2f*(1-flare/.3f)),0,.07f,1,flare/.3f,7655+side);
+                }
+            }
             // The chest core igniting: a soft ring of its light.
             float coreAt=a-NativeInstallShot.CoreAt;if(coreAt>=0&&coreAt<.5f&&diPath[3]!=Vector3.zero){float u=coreAt/.5f;fx.Glow(S(diPath[3]+forward*-.04f),Lin(rare,1.6f*(1-u)*(1-u)),0,.05f+.08f*u,2,u,7571);}
             if(reduced)return;
+            if(diProfile.Boss&&a>=NativeInstallShot.Seat&&a<NativeInstallShot.Seat+1.2f)DraftBossMotif(fx,camera,a,quality);
             // The power-up: motes rising off the device (epic and up); the nova at the chest core with its rays and gold motes (legendary and up).
             if(diProfile.Grade>=4&&p>=NativeInstallShot.PowerStart&&p<NativeInstallShot.PowerEnd+.5f)NativeEntranceFx.Embers(fx,p,NativeInstallShot.PowerStart,NativeInstallShot.PowerEnd,S(bay),.04f,30,.35f,.8f,Lin(rare,1.4f),.005f,7581,quality,.4f);
             if(diProfile.Grade>=5&&a>=NativeInstallShot.PowerStart&&a<NativeInstallShot.PowerStart+.6f&&diPath[3]!=Vector3.zero)
@@ -349,6 +377,24 @@ namespace ChipArena.UnityConversion
             }
             // The crest's flourish over the power-up.
             if(p>=NativeInstallShot.PowerStart&&p<NativeInstallShot.PowerEnd+.4f)DraftCrestFx(fx,camera,p,quality);
+        }
+        // A boss relic's motif at its clack (NativeBossChips' sets in order): the Siren's violet smoke from the closing lid, 6:47's clock hand
+        // sweeping round the bay, the Converter's molten sparks, THE HUM's flicker of light, THE DEEP END's droplets and ripple, NOCTIEL's
+        // drifting feather and a halo's flash over the visor.
+        private void DraftBossMotif(INativeEntranceFx fx,Camera camera,float a,float quality)
+        {
+            int set=NativeBossChips.SetOf(diTier);float t=a-NativeInstallShot.Seat;var bay=diBay?diBayAt:diPath[0];var n=diBay?diBayN:Vector3.up;var rare=diChip.linear;var right=camera.transform.right;
+            switch(set)
+            {
+                case 0:for(int k=0;k<6;k++){float u=Mathf.Repeat(t*1.2f+k/6f,1);if(t<.06f)break;fx.Smoke(S(bay+n*(.02f+.1f*u)+right*(.03f*Mathf.Sin(k*2.3f+t))),new NVector(.4f,.2f,.7f),.5f*(1-u),.03f+.05f*u,u,7901+k,-10);}break;
+                case 1:if(t<.5f){float ang=t/.5f*Mathf.PI*2;var dir=Quaternion.AngleAxis(-ang*Mathf.Rad2Deg,n)*Vector3.ProjectOnPlane(camera.transform.up,n).normalized;fx.Streak(S(bay+n*.008f+dir*.035f),S(dir*.7f),Lin(rare,2.2f*(1-t/.5f)),.002f,.035f,.05f,0,t/.5f,7911);}break;
+                case 2:NativeEntranceFx.Sparks(fx,a,NativeInstallShot.Seat,S(bay+n*.01f),S(n),1.3f,16,1.1f,.5f,6,.4f,new NVector(3,1.4f,.3f),new NVector(1.2f,.2f,.02f),.0025f,7921,quality,-10);break;
+                case 3:if(t<.35f&&Mathf.Repeat(t*28,1)<.5f)fx.Glow(S(bay+n*.05f),Lin(rare,1.4f),0,.35f,1,t/.35f,7931);break;
+                case 4:{float u=Mathf.Clamp01(t/.5f);var face=Quaternion.FromToRotation(Vector3.forward,n);if(u<1){float r=.03f+.16f*NativeInstallShot.EaseOut(u);sourceModels.QueuePiece(WeaponShape.Ring,true,Matrix4x4.TRS(bay+n*.006f,face,new Vector3(r,r,r*.1f)),rare*(1.6f*(1-u)));}
+                    for(int k=0;k<5;k++){float d=t-.04f*k;if(d<0||d>.6f)continue;var at=bay+n*(.03f+.25f*d-1.2f*d*d)+right*(.03f*(k-2));fx.Glow(S(at),Lin(rare,1.6f*(1-d/.6f)),0,.006f,0,d/.6f,7941+k);}}break;
+                case 5:{float u=Mathf.Clamp01(t/1.2f);var at=diPath[4]+Vector3.up*(.12f-.35f*u)+right*(.06f*Mathf.Sin(u*9));fx.Streak(S(at),S(new Vector3(Mathf.Cos(u*9),-.5f,0)*.3f),new NVector(1.6f,1.6f,1.8f)*(1-u),.006f,.03f,.05f,.6f,u,7951);
+                    if(t<.3f)fx.Glow(S(diPath[4]+Vector3.up*.16f),new NVector(2.2f,2.1f,1.8f)*(1-t/.3f),0,.12f,2,t/.3f,7952);}break;
+            }
         }
         // The crest's flourish (NativeChipCartridge.Look.Crest) at the power-up: the crown's gold rising off the shoulders and a crown of
         // glints over the visor, the shards' crystal rubble, the bolts' arcs between the knuckles, the knot's and the flames' ink fire, the

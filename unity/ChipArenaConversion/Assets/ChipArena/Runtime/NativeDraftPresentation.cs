@@ -119,7 +119,7 @@ namespace ChipArena.UnityConversion
             NativeLighting.Draft(camera,stageTint,flash);
             // The animated cyber corridor behind the pilot (NativeDraftBackdropPresentation.cs), on the stage's frame step; the clack re-fires
             // its power-on front in the chip's colour.
-            DraftBackdrop(camera,stageTint,a,a>=NativeInstallShot.Seat&&!reduced?a-NativeInstallShot.Seat:-1,trayLine,reduced,siren,dt,pr.Level,pr.Grade>=5);
+            DraftBackdrop(camera,stageTint,a,a>=NativeInstallShot.Seat&&!reduced?a-NativeInstallShot.Seat:-1,trayLine,reduced,siren,dt,pr.Level,pr.Grade>=5,DraftHallDim(pr,a));
             int hand=stage.Left?9:13,other=hand==CapturedRig.LHand?CapturedRig.RHand:CapturedRig.LHand;Matrix4x4 plantFrom=draftRig.Bones[other].localToWorldMatrix;
             // The pilot on its visual body (NativeVisualBodyPresentation.cs VisualDraftPose) wearing the install's hand shapes, else the
             // voxel body and hat; the Siren drafter animated on the match clock (its idle look, eye halos lit).
@@ -157,6 +157,12 @@ namespace ChipArena.UnityConversion
             sourceModels.Flush(UsesInstancing);vfx?.Submit(camera);
             catchAt=camera.WorldToScreenPoint(Stage(stage.CatchPalm));DraftDeviceScreen=camera.WorldToScreenPoint(diBay?diBayAt:Stage(plan.At));
             return camera.WorldToScreenPoint(diPinch);
+        }
+        // The hall's dip: legendary and up dim it a quarter over the line-up (released at the clack); a boss relic's dips 40% for .3 s after it.
+        private static float DraftHallDim(in NativeInstallShot.Profile pr,float a)
+        {
+            float dim=pr.Grade>=5?.25f*NativeInstallShot.Ramp(a,NativeInstallShot.CarryEnd,NativeInstallShot.Seat)*(1-NativeInstallShot.Ramp(a,NativeInstallShot.Seat,NativeInstallShot.Seat+.06f)):0;
+            if(pr.Boss)dim=Mathf.Max(dim,.4f*NativeInstallShot.Bump((a-NativeInstallShot.Seat)/.3f));return dim;
         }
         /// <summary>The bay on screen this frame (pixels, Unity's y up): the readout's leader and the short cut's bloom start there.</summary>
         public Vector2 DraftDeviceScreen;

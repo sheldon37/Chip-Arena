@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         private const string BackLowKeyword="DRAFT_BACKDROP_LOW";
         // The backdrop for this draft frame: `tint` the stage tint (sRGB), `age` the smoothed pick age, `pulse` the plant pulse
         // (-1 outside it and with Reduced effects), `trayLine` the tray's top row (negative before the layout), `dt` the stage's step.
-        private void DraftBackdrop(Camera camera,Color tint,float age,float pulse,float trayLine,bool reduced,bool siren,float dt,float level=0,bool second=false)
+        private void DraftBackdrop(Camera camera,Color tint,float age,float pulse,float trayLine,bool reduced,bool siren,float dt,float level=0,bool second=false,float dim=0)
         {
             if(draftBackFailed||camera==null)return;
             if(draftBackMaterial==null)
@@ -44,7 +44,7 @@ namespace ChipArena.UnityConversion
             // A cold start (the frame before drew the arena, a killcam or a menu) fades the hall in and runs the power-on front.
             bool entering=Time.frameCount!=draftBackFrame+1;draftBackFrame=Time.frameCount;
             var stage=draftStage;var eye=camera.transform;float line=stage.ShadeLine(trayLine>=0?trayLine:NativeDraftStage.DefaultTray),tanY=Mathf.Tan(camera.fieldOfView*.5f*Mathf.Deg2Rad);
-            var input=new DraftBackdropInput{Dt=dt,Age=age,Pulse=pulse,Level=level,Second=second,Tint=new NVector(tint.r,tint.g,tint.b),Entering=entering,Reduced=reduced,Low=LowGraphics,Ward=DraftWard,Siren=siren,Prism=DraftPrism,
+            var input=new DraftBackdropInput{Dt=dt,Age=age,Pulse=pulse,Level=level,Second=second,Dim=dim,Tint=new NVector(tint.r,tint.g,tint.b),Entering=entering,Reduced=reduced,Low=LowGraphics,Ward=DraftWard,Siren=siren,Prism=DraftPrism,
                 HeadRow=DraftHeadLine,TrayRow=line,DeepRow=stage.ShadeDeep(line),CamPos=BackN(eye.position),CamForward=BackN(eye.forward),CamUp=BackN(eye.up),CamRight=BackN(eye.right),TanY=tanY,Aspect=camera.aspect,Near=camera.nearClipPlane,Far=camera.farClipPlane,
                 Glow=BackN(Stage(NativeDraftBackdrop.GlowPoint(stage)))};
             var s=draftBack;NativeDraftBackdrop.Step(s,input);var m=draftBackMaterial;

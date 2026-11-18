@@ -133,7 +133,7 @@ namespace ChipArena.UnityConversion
         {
             foreach(var s in mesh.Sections)
             {
-                if(s.Bone==NativeMachineModels.Glass)Check(s.Colors.All(c=>c.W>0&&c.W<1),what+" glass is see-through");
+                if(s.Bone==NativeMachineModels.Glass||s.Bone==NativeMachineModels.CoreGlass)Check(s.Colors.All(c=>c.W>0&&c.W<1),what+" glass is see-through");
                 else Check(s.Colors.All(c=>c.W==1),what+" solid parts are opaque");
             }
         }

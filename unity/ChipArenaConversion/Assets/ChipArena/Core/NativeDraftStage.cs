@@ -64,6 +64,8 @@ namespace ChipArena.UnityConversion
         public const float GazeOmega=13,PickGazeOmega=10,FrameOmega=6,TurnSpeed=6;
         // The lock-in: for LockSpan after the pick the gaze's spring runs at LockGazeOmega, so the visor snaps onto the card.
         public const float LockGazeOmega=18,LockSpan=.15f;
+        // The install's look down at most (rad): the head bows onto the bay, its face still to the camera.
+        public const float InstallPitch=.32f;
         // The idle breathes at .75 of the source draft pose's pace (a 5 s breath).
         public const float IdlePace=.75f;
         // The bow: the share of the turn toward the gaze direction taken by the spine, chest and neck in turn (the head takes
@@ -262,6 +264,9 @@ namespace ChipArena.UnityConversion
             var focus=PlannedBay+(PlannedVisor-PlannedBay)*.4f;
             float most=reduced?ReducedMost:siren?SirenMost:HeroMost,hero=MathUtil.Clamp(2*d0*tan/HeroHeight,1,most),orbit=reduced?0:Orbit;
             hero=HeroMagnify=Safe(focus,d0,hero,orbit);
+            // (Where even the portrait's distance cannot hold the planned frame, under a tall crown on a narrow screen, the target moves only
+            // as far toward the focus as still keeps it, so the crown never rises out of the top.)
+            if(hero<=1.0001f&&!Fits(focus,d0,orbit)){float lo=0,hi=1;for(int i=0;i<6;i++){float mid=(lo+hi)*.5f;if(Fits(Vector3.Lerp(t0,focus,mid),d0,orbit))lo=mid;else hi=mid;}focus=Vector3.Lerp(t0,focus,lo);}
             // The keyframes' weights: the push, the readout's pull-back and pan, the settle.
             float push=NativeInstallShot.Cubic((a-NativeInstallShot.PushStart)/(NativeInstallShot.PushEnd-NativeInstallShot.PushStart));
             float pan=!shortCut&&beside?NativeInstallShot.Cubic((a-NativeInstallShot.PanStart)/(NativeInstallShot.PanEnd-NativeInstallShot.PanStart)):0;
@@ -390,7 +395,9 @@ namespace ChipArena.UnityConversion
             lastAge=age;
             // The bow: spine and chest take their share of the look first (the arms ride on the chest), then the install's torso
             // layers, then the arms, then the neck and head finish the look, so the catch and the bay land where they are solved.
-            float down=siren?SirenDown:LookDown;var eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);var aim=Aim(eye,Gaze,down);var along=Vector3.Normalize(aim-eye);
+            // (Through the install the look down is held to InstallPitch, so the visor and the face stay toward the lens over the bay.)
+            float down=siren?SirenDown:LookDown,pitchDown=age>=0&&!siren?PitchDown+(InstallPitch-PitchDown)*NativeInstallShot.Ramp(age,0,.3f)*(1-Plant.Settle):PitchDown;
+            var eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);var aim=Aim(eye,Gaze,down,pitchDown);var along=Vector3.Normalize(aim-eye);
             if(!siren){Turn(p,CapturedRig.Spine,along,SpineShare);Turn(p,CapturedRig.Chest,along,ChestShare);}p.World();
             if(planting)Plant.Torso(p,Left,age,reduced);
             // The arms: each rests in the lap (wrist, palm down; the Siren's claws too) unless it considers or catches a card: then it
@@ -444,7 +451,7 @@ namespace ChipArena.UnityConversion
             if(planting){Plant.PlannedChestAt=plannedChestAt;Plant.PlannedChestQ=plannedChestQ;Plant.Pose(p,Left,plantLocal,toCamera,age,reduced);}
             else if(siren&&age>=0){p.World();Plant.SirenPose(p,Left,p.WorldPosition[CapturedRig.Head]+Vector3.Transform(new Vector3(0,.07f,.22f),p.WorldRotation[CapturedRig.Head]),age);}
             // The head looks from where the bow carried the eye, within the same limits, with the install's nods.
-            Turn(p,CapturedRig.Neck,along,NeckShare);p.World();eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);Look(p,Aim(eye,Gaze,down));
+            Turn(p,CapturedRig.Neck,along,NeckShare);p.World();eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);Look(p,Aim(eye,Gaze,down,pitchDown));
             if(age>=0&&Plant.HeadPitch!=0)p.Rotation[CapturedRig.Head]=p.Rotation[CapturedRig.Head]*CapturedRig.Euler(Plant.HeadPitch);p.World();
             if(planting)Plant.Place(p,Left,age,toCamera);
             int h=Left?CapturedRig.LHand:CapturedRig.RHand;Palm=p.WorldPosition[h]+Vector3.Transform(siren?NativeDraftPlant.PalmLocal:NativeDraftInstall.PinchLocal,p.WorldRotation[h]);if(!caught)CatchPalm=Palm;
@@ -454,10 +461,10 @@ namespace ChipArena.UnityConversion
         // LookUp), the pitch taken over the depth and a quarter of the sideways distance (an outer card still gets a bow, as on
         // a display in front), the turn limited to YawLimit and the pitch to PitchDown / PitchUp (draft-stage.ts lookAt limits,
         // the turn widened).
-        private static Vector3 Aim(Vector3 eye,Vector3 gaze,float down)
+        private static Vector3 Aim(Vector3 eye,Vector3 gaze,float down,float pitchDown=PitchDown)
         {
             var d=gaze-eye;d.Y*=d.Y>0?LookUp:down;float flat=(float)Math.Sqrt(SideReach*d.X*d.X+d.Z*d.Z),distance=Math.Max(.3f,d.Length());
-            float yaw=MathUtil.Clamp((float)Math.Atan2(d.X,Math.Max(.05f,d.Z)),-YawLimit,YawLimit),pitch=MathUtil.Clamp((float)Math.Atan2(d.Y,flat),-PitchDown,PitchUp);
+            float yaw=MathUtil.Clamp((float)Math.Atan2(d.X,Math.Max(.05f,d.Z)),-YawLimit,YawLimit),pitch=MathUtil.Clamp((float)Math.Atan2(d.Y,flat),-pitchDown,PitchUp);
             return eye+new Vector3((float)(Math.Sin(yaw)*Math.Cos(pitch)),(float)Math.Sin(pitch),(float)(Math.Cos(yaw)*Math.Cos(pitch)))*distance;
         }
         // Move `point` toward `target` by at most `step` radians of turn seen from `pivot` (yaw and pitch, the distance in
