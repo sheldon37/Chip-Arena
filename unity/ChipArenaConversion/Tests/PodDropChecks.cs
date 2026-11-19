@@ -278,7 +278,7 @@ internal static class PodDropChecks
     private static void Field()
     {
         var hull=NativePodModels.Pod().Sections.SelectMany(s=>s.Positions).ToArray();
-        NativeReviveMachine.Spot(NativeExpeditionGeneratedWorld.MapId,out var at,out float turn);var keep=NativePodDrop.ReviveKeepOut(at,turn);int runs=0,fitted=0;float closest=180;
+        NativeReviveMachine.Spot(NativeExpeditionGeneratedWorld.MapId,out var at,out float turn);var keep=NativePodDrop.ReviveKeepOut(at,turn);int runs=0,fitted=0;float closest=180,stillClosest=99;
         Check(keep.Length==NativeReviveMachine.Solids.Length+2,"the REVIVE-O-MATIC's keep-out: its solids, mat and use point");
         for(uint i=1;i<=240;i++)
         {
@@ -304,12 +304,20 @@ internal static class PodDropChecks
                 }
             }
             // four lines, fanning in on the camp from round it (not one direction)
+            // Reduced effects' still shot keeps its view of each crash clear of the REVIVE-O-MATIC's solids
+            var solids=keep.Take(NativeReviveMachine.Solids.Length).ToArray();
+            for(int seat=0;seat<4;seat++)
+            {
+                var sp=slots[seat];var q=P(seat+1,seat,sp.x,sp.z,50+i*1.37,sp.yaw,NativePodDrop.Opening);var cc=new Vector3(sp.x,0,sp.z);var sh=NativePodDrop.Shot(q,cc,q.Stop,NativePodDrop.ShotStill,cc+new Vector3(0,1.4f,0),false,solids);
+                float clear=NativePodDrop.ViewClear(sh.Eye,sh.Look,solids);stillClosest=Math.Min(stillClosest,clear);
+                Check(clear>.3f,"run "+i+" pod "+seat+": the still shot's view keeps off the REVIVE-O-MATIC ("+clear+" m)");
+            }
             for(int a=0;a<4;a++)for(int b=a+1;b<4;b++){float apart=(float)(Math.Acos(Math.Clamp(Vector3.Dot(lines[a],lines[b]),-1,1))*180/Math.PI);closest=Math.Min(closest,apart);Check(apart>4,"run "+i+": the four pods come in on four lines ("+apart+" degrees)");}
             Check((lines[0]+lines[1]+lines[2]+lines[3]).Length()/4<.75f,"run "+i+": the four lines come from round the camp, not one side");
             runs++;
         }
         Check(runs==240&&fitted>0,"240 runs on A0's landing field ("+fitted+" craters fitted off the REVIVE-O-MATIC, the closest two lines "+closest+" degrees apart)");
-        field=" (A0's landing field, 240 runs: "+fitted+" of 960 craters fitted off the REVIVE-O-MATIC, the four lines at least "+closest.ToString("0.0")+" degrees apart)";
+        field=" (A0's landing field, 240 runs: "+fitted+" of 960 craters fitted off the REVIVE-O-MATIC, the four lines at least "+closest.ToString("0.0")+" degrees apart, the still shot's view at least "+stillClosest.ToString("0.0")+" m off the REVIVE-O-MATIC)";
     }
     // Whether crater outline samples of pod `p` at (x, z) scaled `fit` all lie outside every keep-out rectangle (grown .1 m).
     private static bool Outside(PodPlan p,float x,float z,float fit,(float x,float z,float hx,float hz,float yaw)[] keep)

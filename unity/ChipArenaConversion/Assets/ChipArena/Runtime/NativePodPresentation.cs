@@ -331,6 +331,14 @@ namespace ChipArena.UnityConversion
         {
             var p=podNow;if(p==null||bone!=NativePodModels.Heat)return Color.white;var c=NativePodModels.HeatTint(NativePodDrop.HullColor(NativePodDrop.Cool(p.Frame.Land>=0?p.Frame.Land:NativePodDrop.ParkedSince)*.8f));return new Color(c.X,c.Y,c.Z,1);
         }
+        // What the still shot keeps its view clear of on this map: the REVIVE-O-MATIC's solids (null: nothing).
+        private string podAvoidMap;private (float x,float z,float hx,float hz,float yaw)[] podAvoid;
+        private (float x,float z,float hx,float hz,float yaw)[] PodAvoid(string map)
+        {
+            if(podAvoidMap==map)return podAvoid;podAvoidMap=map;podAvoid=null;
+            if(map!=null&&NativeReviveMachine.Spot(map,out var at,out float turn)){var o=NativePodDrop.ReviveKeepOut(at,turn);podAvoid=new (float x,float z,float hx,float hz,float yaw)[NativeReviveMachine.Solids.Length];Array.Copy(o,podAvoid,podAvoid.Length);}
+            return podAvoid;
+        }
         // What the crater keeps off on this map (its soot and cracks are flat paint): the REVIVE-O-MATIC's mat, its solids and the
         // spot its user stands on (Core NativeReviveMachine), as centre, half extents and yaw; made once per map.
         private string podKeepMap;private (float x,float z,float hx,float hz,float yaw)[] podKeep;
@@ -464,7 +472,7 @@ namespace ChipArena.UnityConversion
             bool reduced=WeaponEffectsQuality<.5f,shake=CameraShake&&!reduced;
             int mode=reduced?NativePodDrop.ShotStill:FirstPersonPick?NativePodDrop.ShotFirst:NativePodDrop.ShotChase;
             var body=arena.Local.Body!=null?arena.Local.Body.transform.position:pod.Spot+Vector3.up*NativeSpawnIn.RestCentre;
-            var s=NativePodDrop.Shot(p,PodN(pod.Spot),age,mode,PodN(body+Vector3.up*NativeViewRules.EyeHeight),FirstPersonPick);
+            var s=NativePodDrop.Shot(p,PodN(pod.Spot),age,mode,PodN(body+Vector3.up*NativeViewRules.EyeHeight),FirstPersonPick,PodAvoid(podMap));
             Vector3 eye=PodV(s.Eye),look=PodV(s.Look),up=PodV(s.Up);
             if(shake)
             {

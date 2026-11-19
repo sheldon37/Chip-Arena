@@ -594,6 +594,25 @@ namespace ChipArena.UnityConversion
         /// <summary>The still shot stands on the plaza: within this of the hub's centre on both axes (the sanctuary's fence is at
         /// 24.8 m).</summary>
         public const float PlazaHalf=21;
+        /// <summary>How far the still shot's line of sight keeps off the rectangles it is asked to avoid (the REVIVE-O-MATIC's solids)
+        /// when it can.</summary>
+        public const float StillClear=.8f;
+        /// <summary>How far the view from `eye` to `look` (its first 85 %: the subject's own end aside) keeps outside every rectangle
+        /// of `keep` (centre x, z, half extents and yaw in radians; negative: through one).</summary>
+        public static float ViewClear(Vector3 eye,Vector3 look,(float x,float z,float hx,float hz,float yaw)[] keep)
+        {
+            float clear=99;if(keep==null)return clear;
+            for(int i=0;i<=24;i++)
+            {
+                float u=.85f*i/24;float x=eye.X+(look.X-eye.X)*u,z=eye.Z+(look.Z-eye.Z)*u;
+                foreach(var k in keep)
+                {
+                    float dx=x-k.x,dz=z-k.z,kc=(float)Math.Cos(k.yaw),ks=(float)Math.Sin(k.yaw),ax=Math.Abs(dx*kc-dz*ks)-k.hx,az=Math.Abs(dx*ks+dz*kc)-k.hz;
+                    float d=ax>0||az>0?new Vector2(Math.Max(ax,0),Math.Max(az,0)).Length():Math.Max(ax,az);clear=Math.Min(clear,d);
+                }
+            }
+            return clear;
+        }
         /// <summary>
         /// My camera `age` s from GO over my pod `p` (its rest `centre`): the sky shot high over the camp, looking down past it
         /// toward my pod's streak as it comes burning in (the tilt follows it down to the camp); a cut to the chase behind my pod
@@ -605,7 +624,7 @@ namespace ChipArena.UnityConversion
         /// holds a wide view from the plaza beside the approach and glides behind my pilot at the end (in first person, `first`,
         /// it holds and cuts into my eyes). Shake on top is Shake's; Judder is the cabin's buffeting for the director to turn by.
         /// </summary>
-        public static PodShot Shot(in PodPlan p,Vector3 centre,float age,int mode,Vector3 gameEye,bool first=false)
+        public static PodShot Shot(in PodPlan p,Vector3 centre,float age,int mode,Vector3 gameEye,bool first=false,(float x,float z,float hx,float hz,float yaw)[] avoid=null)
         {
             var up=Vector3.UnitY;var shot=new PodShot{Up=up,Fov=60,Directed=1-Smooth((age+p.HandOff)/p.HandOff)};
             bool fp=mode==ShotFirst||mode==ShotStill&&first;
@@ -614,9 +633,20 @@ namespace ChipArena.UnityConversion
             if(fp&&age>=p.CutAt){shot.Eye=gameEye;shot.Look=eyeLook;shot.Fov=75;shot.Inside=true;return shot;}
             if(mode==ShotStill)
             {
-                // beside the approach on the plaza (the other side when this one stands past the fence, never past PlazaHalf)
-                float side=Hash(p.Seed,30)<.5f?-1:1;var eye=centre+p.Side*(13*side)-p.Travel*4+up*2.4f;var look=centre-p.Travel*2.5f+up*3.2f;
-                if(Math.Max(Math.Abs(eye.X),Math.Abs(eye.Z))>PlazaHalf)eye=centre-p.Side*(13*side)-p.Travel*4+up*2.4f;
+                // beside the approach on the plaza, at the stand whose view of the crash stays clear of `avoid` (the REVIVE-O-MATIC's
+                // solids) and inside the fence (never past PlazaHalf); the plan's own side first
+                float side=Hash(p.Seed,30)<.5f?-1:1;var look=centre-p.Travel*2.5f+up*3.2f;var c=centre;var pl=p;
+                float Score(Vector3 at)
+                {
+                    float s=Math.Max(Math.Abs(at.X),Math.Abs(at.Z))>PlazaHalf?-10:0;if(avoid==null)return s+99;return s+ViewClear(at,look,avoid);
+                }
+                // the stands, in order: beside it on its own side, then the other, then further back or forward on either side
+                Vector3 eye=Vector3.Zero;float best=float.MinValue;
+                for(int k=0;k<6;k++)
+                {
+                    float sd=k%2==0?side:-side,lat=k<2?13:k<4?11:12,lon=k<2?-4:k<4?-9:4;var stand=c+pl.Side*(lat*sd)+pl.Travel*lon+up*2.4f;float sc=Score(stand);
+                    if(sc>=StillClear){eye=stand;break;}if(sc>best){best=sc;eye=stand;}
+                }
                 eye.X=Math.Max(-PlazaHalf,Math.Min(PlazaHalf,eye.X));eye.Z=Math.Max(-PlazaHalf,Math.Min(PlazaHalf,eye.Z));
                 float g=fp?0:Smooth((age-p.ArcFrom)/Math.Max(.3f,p.ArcTo-p.ArcFrom));shot.Eye=Vector3.Lerp(eye,endEye,g);shot.Look=Vector3.Lerp(look,endLook,g);shot.Fov=L(62,60,g);return shot;
             }
