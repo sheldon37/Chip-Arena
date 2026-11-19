@@ -147,7 +147,7 @@ internal static class VoxelRatchetChecks
         var after=Evaluate(pasted,tokens.ToDictionary(p=>p.Key,p=>p.Value.Select(x=>x.Sum()).ToArray()),out _,out _,out _,out _,out _,out _);
         bool repin=over==2&&paste.Length==2&&paste[0].StartsWith(Line("Core/A.cs",new[]{0,0,2,0,0}),StringComparison.Ordinal)&&paste[1].StartsWith(Line("Core/New.cs",new[]{2,0,0,0,0}),StringComparison.Ordinal)
             &&text.Contains("Core/A.cs: replaces line 2 (pinned 0 0 1 0 0)")&&text.Contains("read 1 -> 2: rig.Bones[ x2.")&&text.Contains("Core/New.cs: add (not listed")&&text.Contains("gate 0 -> 2: ClassicBodies x2.")
-            &&text.Contains("- `Core/New.cs` gate 0 -> 2: <why")&&!text.Contains("Core/Style.cs")&&!text.Contains("Core/Low.cs")&&!text.Contains("Core/Clean.cs")&&after.Count==0
+            &&text.Contains("- `Core/New.cs` gate 0 -> 2: <why")&&!text.Contains("Core/Style.cs")&&text.Contains(Line("Core/Low.cs",new[]{1,0,0,0,0})+"   # replaces line 3 (pinned 2 0 0 0 0)")&&!text.Contains("Core/Clean.cs")&&after.Count==0
             &&Repin(pasted,tokens,new StringWriter())==0;
         if(!repin)throw new Exception("Voxel ratchet: the re-pin's lines failed on the made-up tree ("+over+" over; "+string.Join(" | ",after)+")\n"+text);
     }
@@ -163,14 +163,22 @@ internal static class VoxelRatchetChecks
     public static int Repin(string root,TextWriter o)=>Repin(Read(root),Scan(root,TokenCounts),o);
     private static int Repin(Table table,IDictionary<string,int[][]> scan,TextWriter o)
     {
-        var over=new List<(string path,int[] now,int[] pin,int line,int[][] tokens)>();
+        var over=new List<(string path,int[] now,int[] pin,int line,int[][] tokens)>();var under=new List<(string path,int[] now,int[] pin,int line)>();
         foreach(var pair in scan)
         {
             if(table.Style.Contains(pair.Key))continue;
             var now=pair.Value.Select(x=>x.Sum()).ToArray();bool listed=table.Pins.TryGetValue(pair.Key,out var pin);pin??=new int[Families.Length];
             if(now.Where((n,f)=>n>pin[f]).Any())over.Add((pair.Key,now,pin,listed?table.Lines[pair.Key]:0,pair.Value));
+            else if(listed&&now.Where((n,f)=>n<pin[f]).Any())under.Add((pair.Key,now,pin,table.Lines[pair.Key]));
         }
-        if(over.Count==0){o.WriteLine("Voxel ratchet re-pin: every Core and Runtime file is at or under its pin in "+Fixture+"; nothing to paste.");return 0;}
+        // Files the merge took under their pins: lowering them on purpose keeps the ratchet tight (nothing fails if they stay).
+        void Lower(string head)
+        {
+            if(under.Count==0)return;
+            o.WriteLine();o.WriteLine(head);o.WriteLine();
+            foreach(var x in under)o.WriteLine(Line(x.path,x.now)+"   # replaces line "+x.line+" (pinned "+string.Join(" ",x.pin)+")");
+        }
+        if(over.Count==0){o.WriteLine("Voxel ratchet re-pin: every Core and Runtime file is at or under its pin in "+Fixture+"; nothing to paste.");Lower("Optional: "+under.Count+" file(s) now under their pins; lower them on purpose with these lines:");return 0;}
         const string Slot="<why it still reads the voxel layer; the package that moves it onto the model>";
         o.WriteLine("Voxel ratchet re-pin: "+over.Count+" file(s) over their pins in "+Fixture+" (docs/VOXEL-STYLE.md \"Re-pinning\").");
         o.WriteLine("Move a dependency onto the model where you can (each family's route is below). Raise a pin only for one kept on purpose, its note filled in.");
@@ -190,6 +198,7 @@ internal static class VoxelRatchetChecks
         o.WriteLine();
         foreach(var x in over)
             o.WriteLine("- `"+x.path+"` "+string.Join(", ",Enumerable.Range(0,Families.Length).Where(f=>x.now[f]>x.pin[f]).Select(f=>Families[f]+" "+x.pin[f]+" -> "+x.now[f]))+": "+Slot+".");
+        Lower("3. Optional: "+under.Count+" file(s) now under their pins; lower them on purpose with these lines (nothing fails if they stay):");
         return over.Count;
     }
     /// <summary>--voxel-ratchet-table: every file with a count, in the table's format (style files marked), for re-pinning on purpose.</summary>
