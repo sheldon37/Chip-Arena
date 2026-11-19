@@ -152,6 +152,7 @@ Branch `claude/budget-baselines` from shared. Owner, verbatim: "Accept the basel
     sights stay clear in the captures. A smaller first-person hand is one constant if the owner wants it.
   - A pilot that appears in its first frame (no lobby before it) is fitted on the main thread once a session (16-17 ms in the Editor).
   - Next: the owner reviews the sheet; Astra's VA1 (and its schema 3); O3's low-end run decides the Classic row; V3 Stage 2.
+- **Merged and released (Claude, integrator; owner: "These look good!"):** `claude/voxel-costume` (release 1 merged in at `8e2c3603`) merged into shared `86b76231` (the builder at `86b76231`), test channel revision `639307080291369667` (build `b93e5473`). The suite ran at `2897129e`: 1,066 groups, exit 0, and the pinned Unity compile passed. After the release 1 merge the integrator made two fixes. First, RobotSuitChecks keeps both edits on its suit line. Second, the voxel ratchet takes NativeVisualBodyPresentation's one new rig read, a fallback behind the drawn model's bone; the V1 gates take its gate count from 26 to 10. BodyStyleChecks also allows A0's load preview, which only writes Classic off. The pin scan flagged 7 test-pinned lines the costume re-pinned on purpose (the V1 gates); the suite passes. Astra's VA1 (PR #415) is not merged: the login merge keeps this PC's costume until the service reports `profileSchema` 3.
 
 ## 2026-11-19 — Claude: release 1 of the expedition overhaul (the drop), merged and released (integrator)
 
