@@ -1,3 +1,111 @@
+## 2026-11-18 — Claude: the voxel costume, one body predicate, the first voxel leftovers off model pilots (owner report; presentation only)
+
+- **The owner (2026-11-18):** "The voxel player model + weapons can be selected as skins or costumes instead. All the new things ive been
+  making, I want to remove the voxel dependency", then "Yes, use defaults". Stage 1 of `docs/VOXEL-RETIREMENT.md`, Claude's part: V1, V2 and
+  V3's first part, on every default (O1: the voxel blocks fitted onto the new body; O2: free for every player, Sheldon Clothes DEV only, the
+  Katana, Fangs, Glaive, Top Dog and Bombadier keep their weapons). Branch `claude/voxel-costume` from shared `ac69455e`. Pushed, **not
+  merged, not released**. The Classic setting stays until O3's low-end run.
+- **The costume (V2):**
+  - **One look key,** `costume:voxel` (Core `NativeLook`: after the five slots, before `skin:`; never a sixth slot, so `Slots` stays five).
+    It travels per seat as the look already does: lobbies, seat frames, killcams, replays, spectators and late joiners. No new field, no
+    frame-limit or protocol change. Its variant is the skin map's existing `body` entry, behind the Sheldon Clothes' existing DEV gate.
+    `SameOutfit` compares it (the body is dressed again); `KeepSkin` keeps this PC's costume at a login whose saved look lacks it.
+  - **The fit** (Core `NativeVoxelCostume`, fit 1 of the plan): the voxel pilot's 48 parts rebuilt once per variant and tier on the bake's
+    rest skeleton, every vertex rigid on one bone. Long segments stretch in their core to the model's bones, their ends kept. The torso sits
+    on the model's hip line, shoulder line, neck and head, narrowed to its hips and shoulders (the chest a little wider than the hips, as
+    the voxel's). Limbs are slimmer, the head block is .8 of the voxel's on the head bone, and joints, hands, feet and shoulder caps stay
+    rigid round the model's joints, the soles on the floor.
+  - **Its look:** two skinned renderers in the model's toon, so the outline, hit flash, spawn-in, dissolve, cuts and wound pits are the body's.
+    The blocks draw from a palette texture, the vertex colour picking a toon layer: as painted, body-tinted or accent-tinted, as
+    NativeSourceLit's tags. The glowing paints (trims, strips, visor, the Standard's LEDs) glow at their own levels through the accent glow,
+    pulsing with the block cooldown. No shader edit and no new keyword.
+  - **Worn** (Runtime `NativeVoxelCostumePresentation`) in `VisualDress` like the Hot Dog, so every route that dresses a model body wears it.
+    Hidden: the outfit, cloth, skin, face gear and helmet, robot plates, the cloth hood and the back emblem. Kept: hats on a costume hat fit
+    on the head block, the chest core and wrist device at its anchors, weapons, saya and belt. Precedence: the Top Dog's Hot Dog, then the
+    costume (over the DEV Hot Dog top), then the outfit. Without the bake the pilot draws the voxel style in the same variant.
+  - **The Locker** (Appearance, on the model): COSTUME (your outfit, or the voxel pilot); under it the variant cards with the voxel figures,
+    BODY COLOUR, and the Voxel set: every weapon with a Prototype Series switched to it, the picks it replaced (Arsenal ones too)
+    remembered on this PC only and put back when it is turned off. The Locker's slot table grows from 24 to 28.
+- **One body predicate and the resolver (V1):** Core `NativeBodyStyle` (the plan's 2.2 table) and `ArenaPresentation.ModelBody(a)`: 19
+  scattered Classic, bake and Siren gates in 9 Runtime files now ask it. `ClassicBodies` is read in 7 places (25 before): its declaration,
+  setter and header, the predicate, the zombie predicate, the draft's test (beside the chip install branch's lines) and the deploy cast's
+  (W3's file, left for one writer). `JointFrame(a, j)`: the model's joint while it is drawn, else the rig's.
+- **Leftovers on model pilots (V3, first part):** the Shadow Step decoy's daggers now sit in the model ghost's hands (they hung at the
+  decoy rig's voxel hands), and the Orbital Mark's reticle brackets the model's own head through the resolver (it sat at the voxel
+  head's height). Not done here: the Sheldon hood on the Hot Dog, the Halo, the lobby chair, the Sentry Drop's gun, the cube-built props,
+  revive cells and wound cubes (V3's second part and V6, as the plan stages them).
+- **Systems touched:** Core NativeLook, NativeHotDog (the costume hides it), NativeRobotSuit, NativeStatusVisuals (HeadLift), new
+  NativeVoxelCostume and NativeBodyStyle. Runtime NativeVisualBodyPresentation (predicate, resolver, dressing, hats, lift, anchors, glow),
+  the new costume presentation and Locker section, NativeLockerUI and NativeLockerSkinsUI, NativeRobotHelmPresentation (no face gear on the
+  costume), NativeSheldonHoodPresentation, NativeTopDogPresentation, NativeMeleeKitPresentation, NativeStatusPresentation, and the gates in
+  ArrowGib, Bow, CorpseDress, DeathBroadcast, Rooftop, Source, VisualPortrait and ZombieModel. In `Editor/NativeNetworkBuildChecks.cs`
+  (Astra's build checks) one test constant: the outfit round trip carries the costume key, as the plan's V2 re-pin asks.
+- **Tests:** new `CostumeChecks` (the key, its round trips and an older client's drop; precedence; the voxel set; the hide-and-keep table;
+  each variant and tier on the synthetic mannequin: every part, rigid, deterministic, in budget, the voxel colours within 0.1%, the core
+  and emblem within 1 cm of the surface, the device's band on the forearm, hats within 1 cm of the head block, the capsule check) and
+  `BodyStyleChecks` (every 2.2 case, the gates asking the predicate, the resolver). Re-pinned on purpose: VisualRigChecks (live ghosts,
+  the bust, first person, portraits, the rooftop, the Classic switch, the decoy), ModelPoseChecks, LockerChecks, BodySkinChecks (the motion
+  scan knows the builder), BodyChipModelChecks, ZombieModelChecks, HotDogChecks, RobotHelmChecks and RobotSuitChecks. Kept exactly:
+  WeaponSkinChecks' SourceModels SHA, the frame bounds and the five slots (RobotSuitChecks, ZombieModelChecks).
+  - Also re-pinned, as shared left them red at `ac69455e` (Thunderheart Carillon, `b13940ce`): TransitionLoadingChecks' map count (21)
+    and VisualRigChecks' saved-preferences line (`musicReaction`). Shared has since fixed all three (`afa19c6e`,
+    claude/fix-suite-thunderheart): merging shared in, take shared's TransitionLoadingChecks line (a dry-run merge's only conflict);
+    the musicReaction line is the same.
+- **Checks:**
+  - The full CoreTests the relgen5 way (Release, the stage banks, the Windows path patch) on the branch: every group passes but
+    AdvancedLightingChecks ("carillon-storm has no an advanced block"), which fails on shared `ac69455e` too. Counted with a keep-going
+    copy of the runner (diagnosis only, not committed): the branch 1 failure (1045 groups passed), shared 3.
+  - `python tools/check_unity_compile.py` (the pinned compile): Assembly-CSharp, Assembly-CSharp-Editor, ChipArena.Player and
+    Unity.InputSystem pass. `git diff --check`: clean.
+  - In the Editor on `6b1b3f15` (the pushed code's Unity tree): the costume fits the bake ("Standard tier 0 fitted on the bake (7246 +
+    536 triangles, 13 paints)", Prototype 2172 + 444, Sheldon 3802 + 540), no exception in the log. The Editor's build checks
+    (PrototypeBuild.Validate): ok, 399 passes, among them the outfit round trip through profile, lobby, guest and replay frames, which
+    now carries `costume:voxel`. Every capture left the 14 stage banks and the motion bank unchanged.
+  - Not run: a Windows player build, a host and guest pair (the look already travels per seat; its round trip is checked in the
+    Editor's network build checks), the low-end run (O3, V0's harness), V0's voxel draw counter (not built yet).
+- **Captures and clips** (the integrating session's scratchpad, `costume/look/`; BoZo in the owner's Editor on `6b1b3f15`):
+  - The owner's review sheet: `1-costume-on-the-body.png` (Standard, Prototype and the DEV Sheldon Clothes, and the model, front,
+    three-quarter, side and back), `2-voxel-style-costume-model.png` (the same moment from the game camera: today's voxel pilot, the
+    costume, the model), `3-weapons-and-hats.png` (a Standard rifle, the Prototype body and rifle, a cap on the head block),
+    `4-moves.png` (a sprint and a Katana combo on the same inputs: the costume plays the model's pack clips; the voxel style shows the
+    rig's generic moves, as M11 says), `5-death.png` (a costumed pilot beheaded by a blade cut, beside the model's).
+  - `6-locker.png` (the COSTUME section and its live preview), `7-killcam.png` (a costumed bot in its own colours, live and in the
+    final killcam), `8-decoy.png` (the Shadow Step decoy before and after, and in the costume).
+  - Clips (half speed): `clips/1-moves-half-speed.mp4` (the model, the costume, the voxel style), `clips/2-death-half-speed.mp4`,
+    `clips/3-decoy-half-speed.mp4` (before, after, after in the costume).
+  - Not captured: the Orbital Mark on the model (no capture option stages one; its lift is pinned by a check), the first-person
+    forearms, the deploy pads, the pod seat and the rooftop in the costume (each is the same VisualDress route), a corpse orbit (the
+    capture tool framed a pooled instance).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The costume rides the drawn model's bones
+  (no pose of its own); the capsule and head box are unchanged and the costume's chest, hip and head blocks stay inside the capsule's
+  radius. No rule, frame, wire or save change.
+- **Voxel dependency:** the costume is voxel by choice: it reads the voxel pilot's kept parts (the bank's Prototype arrays and its load-time
+  Standard and Sheldon sculpts). The decoy fix writes the decoy rig's hands from the model ghost's weapon frames (`holder.Bones[`), as
+  VisualBodyBind does for live bodies. The deploy cast and the draft keep their own Classic test until W3 and the chip install merge.
+- **For Astra (VA1, before Stage 1 merges):** approve and mirror the key: `costume`, ids `none` (the default, never written) and `voxel`,
+  written after the five slots and before `skin:` (Core `NativeLook` Normalize and Join; e.g. `upper:hard-jacket,costume:voxel,skin:c48a62`);
+  not DEV-gated (O2); kept in `cosmetics.look`; unknown keys and ids still dropped. The variant stays the skin map's `body` entry
+  (`standard`, `prototype`, `sheldon` for DEV accounts) and the voxel set writes only existing `spec:prototype` entries. The deploy waits for
+  the owner.
+- **Release-note lines:** an older client drops the costume key and draws the outfit; an older host strips it for its whole room until it
+  updates; until VA1 deploys the pick lives on this PC (a login elsewhere shows the outfit).
+- **Risks and next:**
+  - The fit is the owner's call (O1's sheet). Its proportions were tuned on the synthetic mannequin and one look in the Editor; fits
+    2 and 3 (stacked blocks, the wide voxel chest) were not prototyped. The arm blocks overlap the narrowed chest at the shoulder (the
+    model's shoulder joints are .265 m apart); the shoulder caps cover the join.
+  - The dissolve takes the costume block by block (each block reads one noise value), not as a smooth front.
+  - A variant is fitted on the main thread the first time it is worn (about 4 ms on .NET 8 for the Standard, 1 ms for the Prototype,
+    plus the mesh upload); a prewarm at map load, or a worker build, is the follow-up the plan asks for.
+  - Until VA1 deploys, the pick lives on this PC; an older host strips the key for its whole room.
+  - Merging: the chip install branch moves the draft's face gear and suit into its own file; FaceGearOf and the suit's Shown keep
+    them off the costume there too. The draft's and W3's deploy cast's own Classic tests stay until V4. With V0
+    (`claude/voxel-v0-guard` `8ac1532c`, not merged) a dry-run merge conflicts only in TransitionLoadingChecks, and V0's voxel ratchet
+    passes on the merged tree: the new costume and predicate files count zero, and the gate counts fall in ten files
+    (NativeVisualBodyPresentation 26 to 10), so those pins can come down on purpose.
+  - CI on this branch stays red on AdvancedLightingChecks (`carillon-storm`) until shared (which fixed it in `afa19c6e`) is merged in.
+  - Next: the owner reviews the sheet; Astra approves VA1's key; O3's low-end run decides the Classic row; then V3's second part
+    (the cube-built props, wound chips and embers, the crushed head's hat) and V6 (revive cells).
+
 ## 2026-11-18 — Claude: the voxel retirement plan, approved; Astra's part (owner request; docs only)
 
 Owner: "I want to essentially remove voxel entirely BUT keep its data incase I use it for a map or game mode. The voxel player model + weapons can be selected as skins or costumes instead. All the new things ive been making, I want to remove the voxel dependency and move forward with a more detailed framing." Approval: "Yes, use defaults".

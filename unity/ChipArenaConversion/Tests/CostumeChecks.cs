@@ -138,7 +138,7 @@ namespace ChipArena.UnityConversion
             {
                 if(skin==NativeBodySkins.PrototypeIndex&&tier>0)continue;
                 string tag=NativeBodySkins.Labels[skin]+" tier "+tier;var parts=Parts(bank,skin,tier);
-                var a=NativeVoxelCostume.Build(parts,joints,skin,tier);var b=NativeVoxelCostume.Build(Parts(bank,skin,tier),joints,skin,tier);
+                var a=NativeVoxelCostume.Build(parts,joints,skin,tier);var watch=System.Diagnostics.Stopwatch.StartNew();var b=NativeVoxelCostume.Build(Parts(bank,skin,tier),joints,skin,tier);double buildMs=watch.Elapsed.TotalMilliseconds;
                 Check(a!=null,tag+" builds");
                 // Every part kept (all 48), every vertex rigid on one bone the model has, every array whole.
                 var seen=new HashSet<int>(a.Main.Part.Concat(a.Glow.Part));int drawn=parts.Count(p=>p.Mesh.Vertices>0);
@@ -203,7 +203,7 @@ namespace ChipArena.UnityConversion
                 // Its proportions on the model: as tall as the model's frame, feet on the floor.
                 float top=a.Main.Positions.Concat(a.Glow.Positions).Max(p=>p.Y),bottom=a.Main.Positions.Concat(a.Glow.Positions).Min(p=>p.Y);
                 Check(Math.Abs(bottom)<.005f,tag+": its soles on the floor ("+bottom.ToString("0.000")+")");
-                if(tier==0)report.Add(tag+": "+a.Triangles+" triangles in two renderers ("+a.Main.Triangles+" + "+a.Glow.Triangles+" glowing), "+a.Cells+" palette cells, "+a.Main.Bones.Count+" bones; "+top.ToString("0.00")+" m tall on the mannequin (the voxel pilot "+NativeVoxelCostume.VoxelHeight+"); worst colour "+(worstAlbedo*100).ToString("0.0")+"%, glow "+(worstGlow*100).ToString("0.0")+"%; capsule reach "+worstCapsule.ToString("0.00")+" m");
+                if(tier==0)report.Add(tag+": "+a.Triangles+" triangles in two renderers ("+a.Main.Triangles+" + "+a.Glow.Triangles+" glowing), "+a.Cells+" palette cells, "+a.Main.Bones.Count+" bones; "+top.ToString("0.00")+" m tall on the mannequin (the voxel pilot "+NativeVoxelCostume.VoxelHeight+"); worst colour "+(worstAlbedo*100).ToString("0.0")+"%, glow "+(worstGlow*100).ToString("0.0")+"%; capsule reach "+worstCapsule.ToString("0.00")+" m; built in "+buildMs.ToString("0.0")+" ms (.NET 8, once a variant and tier)");
             }
         }
         private static bool Same(CostumeMesh a,CostumeMesh b)=>a.Positions.SequenceEqual(b.Positions)&&a.Normals.SequenceEqual(b.Normals)&&a.Uv.SequenceEqual(b.Uv)&&a.Colors.SequenceEqual(b.Colors)&&a.Indices.SequenceEqual(b.Indices)&&a.Bone.SequenceEqual(b.Bone)&&a.Bones.SequenceEqual(b.Bones);
