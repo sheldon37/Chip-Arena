@@ -125,7 +125,9 @@ internal static class BlindChoiceChecks
         // ---- Blind Pick All, as players read it ----
         foreach(var f in new[]{"Runtime/NativeOpeningDraftUI.cs","Runtime/NativeRoomOptionsUI.cs","Runtime/NativeLobbyUI.cs","Runtime/NativeLobbyRoomUI.cs","Runtime/NativeDeathmatchRuntime.cs","Runtime/ConversionGame.cs"})
         {var s=R(f);Check(!s.Contains("\"Blind weapon pick\"")&&!s.Contains("\"Blind pick")&&!s.Contains("\"BLIND PICK  ·  ")&&!s.Contains("and Blind Pick update"),f+": the old mode is Blind Pick All");}
-        Check(opening.Contains("\"BLIND PICK ALL  ·  WEAPON\"")&&choice.Contains("\"BLIND PICK ALL\"")&&choice.Contains("Blind Pick All · Choose your weapon at match start")&&options.Contains("\"Blind Pick All\",rules.blindPick"),"the headers, the lobby line and both rule rows say Blind Pick All");
+        Check(opening.Contains("\"BLIND PICK ALL  ·  WEAPON\"")&&choice.Contains("\"BLIND PICK ALL\"")&&choice.Contains("Blind Pick All · Choose your weapon at match start")&&options.Contains("RuleSelect(18740,RoomOpt.Blind,\"Weapon pick\",NativeBlindChoices.ModeLabels,mode);")&&NativeBlindChoices.ModeLabels[1]=="Blind Pick All","the headers, the lobby line and the Weapon pick row say Blind Pick All");
+        // (A co-op room's own Blind Pick All box is gone, 2026-11-19: it wrote the Play vs Bots pick; an expedition is always Blind
+        // Pick with its own count and a boss battle keeps the loadouts. ExpeditionWeaponPickChecks holds that.)
         Check(R("Core/NativeRoomOptions.cs").Contains("public bool blindPick,deathmatch;"),"its id stays blindPick");
 
         Console.WriteLine("PASS blind pick all, blind choices and the deathmatch chip stage: "+checks+" checks");

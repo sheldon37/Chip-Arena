@@ -49,7 +49,9 @@ namespace ChipArena.UnityConversion
             float m=H<=760?22:28,age=now-openingStepAt;bool calm=prefs.reducedEffects,repaint=Event.current.type==EventType.Repaint,locked=openingLockAt>=0;
             blindWeapons.Clear();foreach(var id in view.Offers){var x=OpeningWeapon(id);if(x!=null&&blindWeapons.Count<NativeBlindChoices.Max)blindWeapons.Add(x);}
             int n=Math.Min(blindWeapons.Count,NativeBlindChoices.Max);if(blindCards.Length!=n)blindCards=new Rect[n];
-            DraftHeader("BLIND PICK  ·  "+n+" CHOICES",NativeCyberTheme.Cyan(),"Pick your weapon","Choose one of the "+n+" weapons dealt to you. Only you see them until every pilot locks in.",W,H,out float top);
+            // (An expedition's pick, at the station's Deploy, names the run: NativeExpeditionWeaponPick.cs.)
+            bool run=prefs.pve&&prefs.expedition;
+            DraftHeader((run?"EXPEDITION  ·  ":"")+"BLIND PICK  ·  "+n+" CHOICES",NativeCyberTheme.Cyan(),run?"Pick your weapon for the run":"Pick your weapon","Choose one of the "+n+" weapons dealt to you. Only you see them until every pilot locks in.",W,H,out float top);
             OpeningMeta(v,W,H,true,now,"RANDOM PICK AT 0");if(n==0)return;
             // The deal's area: under the header and the meta, over the keycaps, Lock in and the key hints.
             float keysY=H-m-24,lockY=keysY-18-52,areaTop=Mathf.Max(top+8,(H<=760?16:22)+32+12+58+10),areaBottom=lockY-14-34,areaW=W-2*m;

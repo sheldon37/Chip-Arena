@@ -46,8 +46,9 @@ content, toward the right for Boss Battle and the left for the run (Reduced effe
      217×584 and its portrait 215×475, four times the strip's.
      - **A pilot:** its live 3D portrait standing in a shaft of its own light, the accent pooled at its feet with a ring,
        motes rising. The seat number and role (HOST with a crown, YOU, PILOT) sit at the top. At the foot the plate rises out
-       of the dark: the name, the weapon and class with the class line, then the ready pill (a room) or LOADOUT (offline).
-       Your card is bracketed and lifts on hover; a click opens the loadout.
+       of the dark: the name, then BLIND PICK · N · AT DEPLOY (a run has no loadout weapon: each pilot picks at the
+       station's Deploy, `docs/BLIND-PICK-SCREENS.md`, "Each mode's own pick"), then the ready pill (a room) or CUSTOMIZE
+       (offline). Your card is bracketed and lifts on hover; a click opens Customize (look and outfit).
      - **An open seat:** an empty pad, a ring pulsing outward on the floor under a faint shaft. The first offers COPY INVITE
        or COPY CODE in a room, or HOST ROOM offline.
      - The cards rise in one after another. A portrait keeps one size while it shows (the renderer keeps one texture per
@@ -56,8 +57,9 @@ content, toward the right for Boss Battle and the left for the run (Reduced effe
      ROLLED WHEN YOU DEPLOY. Below that: PVE · CO-OP RUN, with TILESET: CITY · MERIDIAN on its right in the tileset's accent
      (Core `NativeTilesets.MenuLine`, the tileset the station's ATLAS board lands on), the title EXPEDITION, the tag line, the party, length and NEW
      CITY EVERY RUN, and HOW A RUN GOES: 01 Deployment Station, 02 The City, 03 Three Areas, 04 The Last Fight. A light runs
-     down the steps' spine, resting at each step. A short canvas uses the tight briefing (`BriefFor`). The LOADOUT row
-     reads NO BOTS IN A RUN.
+     down the steps' spine, resting at each step. A short canvas uses the tight briefing (`BriefFor`). Step 01 says the pick
+     comes at Deploy. In place of the LOADOUT row, the WEAPON PICK row: WEAPON PICK · DEALT AT DEPLOY over BLIND PICK · 5
+     CHOICES (the room's count), and EDIT (DETAILS for a guest) with L.
 3. **BOSS BATTLE: the party strip, the roster and the fight.**
    - **Party strip**, PARTY n / 4. There is one card per member: the live 3D portrait, the seat number, the role, the name,
      and the weapon and class. A room shows each member's ready pill and the READY meter. Bots are for the Siren only
@@ -90,9 +92,10 @@ content, toward the right for Boss Battle and the left for the run (Reduced effe
    - In a room: the room code, the LAN line, CODE, INVITE (LAN host) and LEAVE ROOM.
    - Then a status line: an error, the launch's reason, or who the room is waiting for.
    - Then the launch button: START EXPEDITION, or FIGHT and the boss's name, with its detail line (BOTS FILL SEATS for the
-     Siren, 1–4 PILOTS for a zone boss) and ENTER. A guest gets READY (or CANCEL READY) and SEND LOADOUT instead.
-6. **LOADOUT drawer.** Party bots (0–3) and "Party bots use my weapon" for the Siren; for a zone boss or the run, a line
-   saying they take no bots. Then the class and weapon pickers.
+     Siren, 1–4 PILOTS for a zone boss) and ENTER. A guest gets READY (or CANCEL READY) and SEND LOADOUT (SEND LOOK in a run) instead.
+6. **LOADOUT drawer.** Party bots (0–3) and "Party bots use my weapon" for the Siren; for a zone boss, a line saying it
+   takes no bots. Then the class and weapon pickers. START EXPEDITION's drawer is WEAPON PICK instead: no class or weapon
+   picker, the Weapon choices row (the host's; read-only for a guest), the note, and where the look is changed.
 
 Fit: the layout is laid out in a design space at least 1240×720 and scales the canvas down below that. At ultrawide the
 content is capped at 1760 units and centred. Short canvases use a compact card, squad plate, briefing, rail, mode panel and

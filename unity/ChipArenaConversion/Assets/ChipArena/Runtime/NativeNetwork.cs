@@ -196,7 +196,7 @@ namespace ChipArena.UnityConversion
             list.AddRange(peers.Where(p=>p.Seat!=null&&p.Seat.connected).Select(p=>LobbySeat(p.Seat,p.Ready)));
             if(arena==null)list.AddRange(LobbyBots(list.Count(s=>s.connected)).Select(s=>LobbySeat(s,true)));
             BroadcastDeployment();
-            if(prefs.blindPick&&!trainingRoom)foreach(var row in list){row.spec="pistol";row.motion=row.weaponTechniques=row.weaponSkins="";row.lobbyPose="idle";}
+            if(prefs.blindPick&&!prefs.pve&&!trainingRoom)foreach(var row in list){row.spec="pistol";row.motion=row.weaponTechniques=row.weaponSkins="";row.lobbyPose="idle";}
             lobbySeats=list.ToArray();string json=NativeNetCodec.Encode(new NativeNetMessage{type="lobby",deployment=deploymentRoom?.Ticket,seats=lobbySeats,options=CaptureRoomOptions(),epoch=networkEpoch});
             foreach(var p in peers)if(p.Seat!=null&&p.Connection?.Closed==false){if(arena==null)p.Connection.ClearSnapshot();p.Connection.Send(json);}
 
