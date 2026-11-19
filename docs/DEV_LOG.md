@@ -36,10 +36,18 @@
   (the pack's weapons beyond the arena), WeaponSkinChecks:244 and 257 (the DEV alias; the rooftop and the pads through the skins), RooftopChecks
   (new pins), the ratchet's rooftop draw pin 3 to 0, and `NativeHordeKindPresentation` 19 to 18 after shared's zombie follow-ups. VisualRigChecks:1809 (the preference line) follows shared's `musicReaction` default: it has
   been red on shared since `b13940ce` (for Astra: shared's full CoreTests failed there).
-- **Checks:** the full CoreTests the relgen5 way (an LF worktree, the expedition path patch, the stage banks) at `14c8c347`: 1043 groups
+- **Checks:** the full CoreTests the relgen5 way (an LF worktree, the expedition path patch, the stage banks) at `8ac1532c`: 1044 groups
   PASS, exit 0 (the three `--voxel` lines among them). `python tools/check_unity_compile.py`: PASS (all four assemblies). `git diff --check`: clean. `--voxel`: the three PASS lines.
-- **Captures:** queued behind the shared Editor lock when this entry was written; see the next entry or the report.
-- **Baselines:** the Editor runs are queued with the captures; the player and low-end runs are the owner's (`docs/VOXEL-STYLE.md`).
+- **Captures: not made.** The shared Editor's lock was held by other sessions without a break from 23:05 to past 05:15 (13 capture scripts
+  queued), so no BoZo capture ran. Ready to run under the lock, in `scratchpad/voxel-v0/`: `runA.sh` (about 12 minutes: the pads before P9 on
+  `beff4461` and after on `2f4b89a2` with the counter on, the DEV Greatsword and every pack weapon; the voxel style on the same pads; the
+  counter in a match on the model and with Classic, and on the expedition city with model and voxel zombies), `runB.sh` (the Editor
+  baseline below), then `make_look.sh` (the sheets in `look/`, three clips in `look/clips/`). The tool's options (`vcount=1`, `dspecs=`)
+  patch in place from `py/toolpatch.py`, compile-checked.
+- **Baselines: not measured here.** The Editor run is `runB.sh` (8 pilots in PvP on the model and with Classic at High, Balanced and Low;
+  the live hub at High with model and voxel zombies). The Development Mono player and the low-end runs are the owner's: running the
+  shipped player here would use the owner's saved settings and signed-in session (`docs/VOXEL-STYLE.md` "Baselines" has the steps, and
+  `tools/perf_baseline.py` turns Player.log into the table's rows). W0's Editor numbers for the hub already sit over the targets.
 - **Not run:** the Development Mono player and the low-end runs (see "Baselines"); a Windows host/guest run; the DEV panel's toggle clicked by hand
   (the captures turn the counter on as the switch does).
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking: the change is which model a menu body holds, a DEV

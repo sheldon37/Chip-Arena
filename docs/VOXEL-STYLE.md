@@ -81,5 +81,5 @@ The shipped player is a Development Mono build, so its `PERF_SAMPLE` lines (ever
 
 ### Measured
 - **The hub, in the Editor** (W0, 2026-11-18, `docs/EXPEDITION-DEPLOYMENT.md` "Frame budget" on `claude/exp-w0-groundwork`): one pilot with the hub's own zombies, p95 17-20 ms at High and Balanced and 14-20 ms at Low, against targets of 12, 10 and 8 ms. The Editor numbers are already over the targets before any overhaul code, so the owner hears of it (OVH:937).
-- **The 8-pilot PvP and the voxel-zombie runs, in the Editor:** see the DEV_LOG entry of 2026-11-18 (V0) for the table, the machine and the commit.
+- **The 8-pilot PvP and the voxel-zombie runs, in the Editor:** not run yet (the shared Editor was busy); the BoZo jobs are ready (`perf=10,14` on Cybercity with 7 bots, model and `voxel=1`, at each tier; W0's live hub run with `zvoxel=1`).
 - **The Development Mono player and the low-end run:** not run on this PC (the player shares the owner's saved settings and session, and the low-end machine is the owner's to name). The steps above make them.
