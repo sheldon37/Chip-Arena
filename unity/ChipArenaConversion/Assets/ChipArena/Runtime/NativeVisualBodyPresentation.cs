@@ -14,7 +14,9 @@ namespace ChipArena.UnityConversion
     // model of draws that model instead, with the right hand's frame fitted to it (NativeVisualWeaponPresentation.cs). It takes the hit flash and the
     // match-start spawn-in in its own shader (VisualBodyLook), and wears the pilot gear (VisualGear: the chest core and the
     // right-wrist chip device, Core NativePilotGear) at anchors its bake measured. First person wears its forearms and hands
-    // (VisualViewPose). Still voxel: intros, portraits, the draft, corpses and kill effects; hats are not drawn on it yet.
+    // (VisualViewPose). What still reads the voxel layer (the 22-joint rig's poses for the moves the motion bank lacks, the voxel
+    // boxes under corpses, cuts and wounds, the builds without the bake) is listed in docs/VOXEL-RETIREMENT.md section 1; new
+    // work is authored on the model (docs/VOXEL-STYLE.md).
     public sealed partial class ArenaPresentation
     {
         private sealed class VisualBody
@@ -80,8 +82,8 @@ namespace ChipArena.UnityConversion
         public const float DissolveGlow=3f;
         /// <summary>Settings · Player model is Classic (set each frame from the preferences): every pilot draws its voxel body.</summary>
         public bool ClassicBodies;
-        // This client's own outfit (prefs.look, set every frame): its pilot's bodies wear it; every other pilot the default
-        // until the look contract carries a seat's (Astra).
+        // This client's own outfit (prefs.look, set every frame): its pilot's bodies wear it; every other pilot wears its seat's
+        // look, which the seat frames replicate (VisualOutfitOf).
         public string LocalLook="";
         // The arena's camera this frame (the cloth's distance hold).
         public Camera VisualEye;
