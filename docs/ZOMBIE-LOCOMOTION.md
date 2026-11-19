@@ -626,9 +626,10 @@ turns need the second (`AcrossMost`).
   joints (the rig's moved by the model's shift, as the Ironworks gear does), since the model's legs now stand up to a quarter metre off the rig's.
   The shift is taken only for the add's own kind (`GoreModelShift`); a thrown part with no model pieces is drawn as its voxel part on the rig's
   own joints (`HordePart.RigBones`), and wounds, drawn on the voxel model only, on its joints (`claude/zombie-run-turn-tests`).
-- The landing lead's stance eases between standing's and the cadence's by the eased move weight (`LeadOf`, `moveArg`): switched on the planner's
-  moving, it jumped as a zombie stopped or set off, and a landing foot turned up to 17 degrees in its landing frame (the second review). The model
-  stance's draw-in across defaults to 1 (`NativeZombiePosture.Stance`, `across`): a caller that gives none gets the walking footing.
+- The landing lead's stance eases between standing's and the cadence's by the eased move weight (`LeadOf`, `moveArg`), toward the cadence the add
+  steps at (`cadenceHz`): switched on the planner's moving, it jumped as a zombie stopped or set off (the second review); eased toward a cadence
+  already zeroed as it stopped, a landing foot turned up to 16 degrees in its landing frame (the third review, of `a6d756fb`). The model stance's
+  draw-in across defaults to 1 (`NativeZombiePosture.Stance`, `across`): a caller that gives none gets the walking footing.
 
 Tried and dropped: for running turns, a step for a foot run past the body's middle with a short swing (with or without hurrying the other foot
 down), a step for any foot further from its hip than a standing leg reaches, quicker steps while running off the facing, a lower sink cap, and
@@ -708,15 +709,18 @@ worst start or on average are held at their values on 2026-11-18 as the accepted
 degree a second arc (.82 to .77), the linesman's 120 degree a second arc (.87 to .77) and turn to its left (.86 to .76), the runner's sprint-2 take
 chasing a pilot circling 2.5 m off (.94 to .81), and the shambler at .7 of its walk turning either way (.86 to .76, .87 to .77).
 
-Over every take pairing (`--zombie-runturn-checks`): running arcs, 90 degree turns and the circle chase within .04 legs of the straight run, and
+Over every take pairing (`--zombie-runturn-checks`; one add of each pairing, from one start or the worst of the eight or four named: sampled
+points, not a population's worst): running arcs, 90 degree turns and the circle chase within .04 legs of the straight run, and
 the 90 degree turn at least .90 at any of eight moments of the stride; at the worst of eight moments a reversal .77 (shared .78) and a switch to a
 target behind .77 (shared .81); the circle chase from four places round the pilot's circle .78 (shared .87). The knee at most 28 degrees off its
 planted foot (shared 56), the foot at most 59 off the hips (shared 76).
 
 A swinging foot's fastest turn in a 120th of a second, its lift and landing frames counted: walking turns 42 degrees on shared, 17 now (the worst of
 eight starts over every walk take 42 to 31); running turns 15 to 14 (41 to 22 over eight starts). Stopping and setting off every .35 s while turning
-(`StopGo`): 40 on shared, 30 now; in its landing frame 11 on shared, 17 with the lead switched on the planner's moving, 16 eased. The straight run, the set-off from a stand, the straight walk and the steps a second on every route are
-as on shared.
+(`StopGo`, that period only): 40 on shared, 30 now; in its landing frame 11.2 on shared before the lead (`8865e817`), 11.5 with the lead switched on
+the planner's moving (shared now), 15.6 eased toward a cadence already zeroed (`a6d756fb`) and 7.1 now (the third review measured 8.5 over a wider
+sweep of periods and turn rates). The straight run, the set-off from a stand, the straight walk and the steps a second on every route are as on
+shared.
 
 In the Editor (BoZo live play captures on the open floor beside the club's dance floor, where no stage hazard stops a DEV monster's chase; one DEV
 monster at a time hunting the god-mode pilot; every swing logged; the same moment of the same chase in both runs; the model's pelvis over its soles in
@@ -757,7 +761,11 @@ middle of an overhead slam with a branch brute running, and its turn into a swin
   (`WalkFloors`), with sixteen more walking routes (above).
 - **The circle chase from one place round the pilot's circle:** as it settles into the chase, running 30 degrees off its facing, one stride sinks
   to .78 (shared .87 from every start; the branch's other starts 1.00).
-- **A landing foot stopping or setting off mid-turn** still turns up to 16 degrees in its landing frame (shared 11).
+- **What the checks sample** (deferred): the run-turn bounds hold one add of each take pairing, from one start (the sharp turns, reversals and
+  switches from eight, the circle chase from four), and stopping and setting off at one period (.35 s); not full sweeps over the moments of the
+  stride, several ids per pairing, or population figures. Two floors sit at the hips' clamp (.764 legs, the gait's deepest crouch) and cannot
+  fail: the runner #40003's switch to a target behind and the brute #40003's reversal are unguarded. The owner has decided to retire voxel: the
+  gait will be rebuilt to solve once on the model's own skeleton, and its tests rebuilt then.
 - **Walking turns dip on shared too.** 64 of 186 walking cases go under .85 legs on shared, 55 now, many to the hips' floor (.76): a foot planted
   behind while the other swings long. The shambler at .7 of its walk, turning 90 at one moment of its stride, dips to .76 here (.86 on shared), and
   on the mean of their starts the shambler's walking 180 and 90 and the linesman's 135 degree a second arc are .05 to .07 lower. Walking, the knee
@@ -767,32 +775,38 @@ middle of an overhead slam with a branch brute running, and its turn into a swin
 
 ### Checks
 
-`CoreTests --zombie-runturn-checks` (also in the full run and `--zombie-all`) makes 1153 checks on the shambler, runner, spitter and brute on the
-model's legs, every pairing of their walk and run takes (10), the bounds from the worst of them:
+`CoreTests --zombie-runturn-checks` (also in the full run and `--zombie-all`) makes 1496 checks on the shambler, runner, spitter and brute on the
+model's legs, every pairing of their walk and run takes (10), one add of each from one start unless more are named (sampled points, not a
+population's worst); the bounds from the worst of them, and each pairing held at its own values (Tests/zombie-runturn-bounds.txt):
 
 - the hips stay up through gradual and sharp running turns: each within .11 legs of the straight run, within .04 on average, never dropping or
   popping faster than 8 legs/s; the circle chase from four places round the pilot's circle at least .77 (the accepted floor);
-- a 90 degree running turn either way at any of eight moments of the stride keeps the hips at .89 legs or higher; a reversal and a switch to a target
-  behind at least .76 at their worst moment (the accepted floors, about shared's);
+- a 90 degree running turn either way at any of eight moments of the stride keeps the hips at .89 legs or higher; a reversal's and a switch to a
+  target behind's worst moment over eight starts no lower than each pairing's own less .005 legs (about shared's); two of the twenty floors sit at
+  the hips' clamp (.764) and cannot fail: the runner #40003's switch and the brute #40003's reversal are unguarded;
 - through every running turn the knee stays within 30 degrees of its planted foot, a planted ball moves at most 1.2 cm a frame, a planted foot
   stays within 42 degrees of the hips' facing (60 in the reversal and the weave), and the steps a second stay within a tenth of the straight run's
-  (the circle chase, which stops and sets off by its pilot, 15 per cent);
-- a swinging foot, its lift and landing frames counted, turns less than 25 degrees in a 120th of a second on the routes and 32 at any of eight moments
-  of a walking turn's stride; stopping and setting off while turning, less than 30, and 16 in its landing frame;
+  (the circle chase, which stops and sets off by its pilot, 15 per cent); on eleven running and walking routes each pairing's knee and planted
+  foot within 3 degrees of its own and a swinging foot within 2;
+- a swinging foot, its lift and landing frames counted, turns less than 19 degrees in a 120th of a second on the routes and 32 at any of eight moments
+  of a walking turn's stride; stopping and setting off every .35 s while turning (that period only), less than 30, and 9 in its landing frame (7.1
+  now; shared before the lead 11.2, shared now 11.5 and `a6d756fb` 15.6 fail it);
 - walking, the hips over 280 routes (arcs, turns either way and circle chases at the walk and at .7 of it, every walking kind and walk take) as high
   as shared's or the straight walk's within .03 legs (Tests/zombie-runturn-walks-shared.txt), the 17 accepted ones at today's, and on average at
   least shared's; the shambler round 105 to 150 degree a second arcs at 1.2 times its walk at .9 or higher (the walking sideways step's pay);
 - a planted foot turned 40 degrees on the floor moves a biped's knee after it and leaves the Hulk's and the Hound's where the hips lean them;
 - the model's flat planted ankle stays on the gait's footprint running round a curve, walking round one and setting off from a stand;
 - a landing foot is turned on into the turn, either way;
-- the model presentation hands the binding the gait's draw-in across the floor; and the model's legs turning, stopping and setting off allocate
-  nothing (ZombieLocoChecks).
+- the model presentation hands the binding the gait's draw-in across the floor; the gore's source takes the model's shift for the add's own kind
+  only, draws a thrown part's voxel fallback, cap and trail on the rig's own joints and the voxel model's wounds on its own (source pins: no check
+  drives them); and the model's legs turning, stopping and setting off allocate nothing (ZombieLocoChecks).
 
-Removing the knee's lean to its foot fails the turned-foot check (the knee bound, from the worst take, no longer catches it alone).
+Removing the knee's lean to its foot fails the per-pairing knee bound (the shambler #40003's 180 degree a second running arc, 9 to 18 degrees);
+`a6d756fb`'s landing lead fails the per-pairing foot bound (the brute #40003's walking circle chase, 29 to 35) as well as the landing bound.
 
 Diagnostics: `--zombie-runturn` prints the table, `--zombie-runturn-sweep` the worst of eight moments, `--zombie-runturn-walks` the walking routes,
-`--zombie-runturn-walktable` the walking table for every walk take (what the pins hold), `--zombie-runturn-ids` each kind's takes and the ids that
-draw every pairing,
+`--zombie-runturn-walktable` the walking table for every walk take (what the pins hold), `--zombie-runturn-bounds` each pairing's values (what
+the per-pairing bounds hold), `--zombie-runturn-ids` each kind's takes and the ids that draw every pairing,
 `--zombie-runturn-band` the shambler's walking arcs over speed and rate, `--zombie-runturn-trace kind "route" [from for [moment]]` traces one route
 frame by frame (the walking routes by their `-walks` names), `--zombie-runturn-snap kind "route" [from]` the frames a swinging foot turns fast in,
 and `--zombie-runturn-cost` times the gait and the binding.
