@@ -1,6 +1,7 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
 using UnityEngine;
+using Unity.Profiling;
 
 namespace ChipArena.UnityConversion
 {
@@ -15,6 +16,10 @@ namespace ChipArena.UnityConversion
         private float walkFarClip;
         private string walkError;
         private Texture2D walkPlan;
+        private ProfilerRecorder walkTriangles;
+        private float walkMeasureAfter, walkFrameMs, walkSampleTime;
+        private int walkFrames;
+        private long walkPeakTriangles;
 
         private uint NextSurveySeed()
         {
@@ -59,6 +64,19 @@ namespace ChipArena.UnityConversion
                     CloseCityWalk();
                     return true;
                 }
+                if (Time.unscaledTime >= walkMeasureAfter)
+                {
+                    walkSampleTime += Time.unscaledDeltaTime;
+                    walkFrames++;
+                    if (walkTriangles.Valid)
+                        walkPeakTriangles = Math.Max(walkPeakTriangles, walkTriangles.LastValue);
+                    if (walkSampleTime >= 1)
+                    {
+                        walkFrameMs = walkSampleTime * 1000 / walkFrames;
+                        walkFrames = 0;
+                        walkSampleTime = 0;
+                    }
+                }
                 if (arena?.Local?.Hp <= 0) arena.Reset();
                 return false;
             }
@@ -102,6 +120,11 @@ namespace ChipArena.UnityConversion
                 lastSurveyLayout = index;
                 NativeLighting.Apply(cityWalk.Map, cameraView);
                 cameraView.farClipPlane = 800;
+                walkTriangles = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
+                walkMeasureAfter = Time.unscaledTime + 1;
+                walkPeakTriangles = 0;
+                walkFrames = 0;
+                walkFrameMs = walkSampleTime = 0;
             }
             catch (Exception ex)
             {
@@ -113,6 +136,11 @@ namespace ChipArena.UnityConversion
 
         private void CloseCityWalk()
         {
+            if (walkTriangles.Valid)
+            {
+                Debug.Log($"Meridian walk {cityWalk?.Map.name}: peak rendered triangles {walkPeakTriangles}; last sampled frame mean {walkFrameMs:F2} ms");
+                walkTriangles.Dispose();
+            }
             arena?.Dispose();
             arena = null;
             match = null;
@@ -147,6 +175,8 @@ namespace ChipArena.UnityConversion
                     GUILayout.Label(gates[i] + "   " + surveySlots[i] + "   " + route.Length.ToString("0") + " m from gate");
                 }
                 GUILayout.Label(string.Format("East {0:0}   North {1:0}   Elevation {2:0.0} m", pos.x, pos.z, pos.y - NativeLocomotionRules.HalfHeight));
+                if (walkFrameMs > 0)
+                    GUILayout.Label(walkFrameMs.ToString("F1") + " ms/frame" + (walkTriangles.Valid ? "   Peak triangles " + walkPeakTriangles.ToString("N0") : ""));
                 GUILayout.Label("Hold Tab   Street plan     Esc   Choose another layout");
                 GUILayout.EndArea();
                 if (walkPlan != null && Input.GetKey(KeyCode.Tab))
@@ -155,7 +185,9 @@ namespace ChipArena.UnityConversion
                     var r = new Rect((width - walkPlan.width * scale) / 2, (height - walkPlan.height * scale) / 2,
                         walkPlan.width * scale, walkPlan.height * scale);
                     GUI.DrawTexture(r, walkPlan);
-                    float x = r.center.x + pos.x * scale, z = r.center.y - pos.z * scale;
+                    var bounds = cityWalk.Map.bounds;
+                    float x = r.xMin + (pos.x - bounds.minX) * scale;
+                    float z = r.yMin + (bounds.maxZ - pos.z) * scale;
                     NativeUi.Fill(new Rect(x - 4, z - 4, 8, 8), Color.yellow);
                     GUI.Label(new Rect(r.x, r.yMax + 4, r.width, 30), "North up   ·   Yellow pilot   ·   Gate routes in green   ·   Brighter = higher");
                 }

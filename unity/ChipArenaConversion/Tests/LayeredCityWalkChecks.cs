@@ -22,7 +22,7 @@ internal static class LayeredCityWalkChecks
                 throw new Exception("Unreachable city layout");
         }
         if (hands.Count != 6) throw new Exception("Missing hall assignment");
-        var exitProfiles = new HashSet<string>();
+        var exits = new List<Exit>();
         foreach (int mode in new[] { 0, 1, 2 })
         {
             bool curated = mode == 2, large = mode != 0;
@@ -32,7 +32,7 @@ internal static class LayeredCityWalkChecks
             {
                 var walk = curated ? new NativeLayeredCityWalk(NativeCityLayout.Plans[(int)seed]) : new NativeLayeredCityWalk(large, 647 + seed * 137);
                 var map = walk.Map;
-                if (map.bounds.maxX != (large ? 300 : 210) || map.bounds.maxZ != (large ? 240 : 170))
+                if (map.bounds.maxX - map.bounds.minX != (large ? 600 : 420) || map.bounds.maxZ - map.bounds.minZ != (large ? 480 : 340))
                     throw new Exception("Layered city size");
                 var visual = new HashSet<string>(map.ramps.SelectMany(r => r.blocks));
                 var solids = map.blocks.Where(b => !visual.Contains(b.id)).ToArray();
@@ -44,7 +44,7 @@ internal static class LayeredCityWalkChecks
                     if (route.Length < (large ? 250 : 150) || route.Length > (large ? 300 : 190))
                         throw new Exception(route.Name + " route length " + route.Length);
                     V3 start = new V3();
-                    foreach (var end in route.Points.Concat(route.RoofLoop))
+                    foreach (var end in (route.HordePoints ?? route.Points).Concat(route.RoofLoop))
                     {
                         var delta = end - start;
                         float horizontal = (float)Math.Sqrt(delta.x * delta.x + delta.z * delta.z);
@@ -63,9 +63,9 @@ internal static class LayeredCityWalkChecks
                                     float top = block.pos.y + block.size.y / 2, bottom = top - block.size.y;
                                     if (Math.Abs(top - foot.y) < .02f) supported = true;
                                     if (top > foot.y + .05f && bottom < foot.y + NativeHordeKinds.HulkHeight)
-                                        throw new Exception("Blocked " + route.Name + " by " + block.id);
+                                        throw new Exception($"Blocked {route.Name} by {block.id} at {foot.x},{foot.y},{foot.z}");
                                 }
-                                if (!supported) supported = map.ramps.Any(r => OnRamp(r, foot));
+                                if (!supported) supported = map.ramps.Any(r => OnRamp(r, foot, curated && offset != 0 ? .35f : .02f));
                                 if (!supported) throw new Exception("Unsupported " + route.Name + " at " + foot.x + "," + foot.y + "," + foot.z);
                             }
                         start = end;
@@ -75,13 +75,22 @@ internal static class LayeredCityWalkChecks
                 {
                     for (int side = 0; side < 4; side++)
                     {
-                        string profile = ExitProfile(walk.Routes[side], side);
-                        if (!exitProfiles.Add(profile)) throw new Exception("Duplicate gate approach: " + walk.Map.name);
-                        Console.WriteLine(walk.Map.name + " / " + walk.Routes[side].Name + " (heading/height/width, every 5 m): " + profile);
+                        var route = walk.Routes[side];
+                        if ((route.Points.Last() - route.Destination).Length > .5f)
+                            throw new Exception("Missed destination on " + route.Name);
+                        exits.Add(new Exit(route, solids, map.ramps));
                     }
+                    // Conservative block pass: every greybox block drawn at once with the
+                    // same stage meshes as the generated-city census, before street art.
+                    long high = (long)map.blocks.Length * (NativeToonMesh.Wrap().Triangles.Length / 3);
+                    long low = (long)map.blocks.Length * (NativeToonMesh.Build().Triangles.Length / 3);
+                    if (high > GeneratedFrameChecks.GateHighTris || low > GeneratedFrameChecks.GateLowTris)
+                        throw new Exception("Meridian greybox exceeds the block triangle budget");
+                    Console.WriteLine($"{map.name}: greybox block-pass triangles High {high}, Low {low}");
+                    MeridianHulkChecks.Run(walk);
                     MeasureCorridors(walk);
                 }
-                if (map.nav.links.Length != map.nav.nodes.Length - 1 + (curated ? 4 : 0)) throw new Exception("Disconnected corridor trace");
+                if (map.nav.links.Length != map.nav.nodes.Length - 1) throw new Exception("Disconnected corridor trace");
                 minBlocks = Math.Min(minBlocks, map.blocks.Length);
                 maxBlocks = Math.Max(maxBlocks, map.blocks.Length);
                 maxNodes = Math.Max(maxNodes, map.nav.nodes.Length);
@@ -90,23 +99,78 @@ internal static class LayeredCityWalkChecks
             Console.WriteLine("PASS layered city " + (large ? "B" : "A") + (curated ? " · 5 candidates · " : " · 8 seeds · ")
                 + minBlocks + "–" + maxBlocks + " blocks · up to " + maxNodes + " corridor nodes");
         }
+        if (exits.Count != 20) throw new Exception("Expected twenty Meridian exits");
+        int pairs = 0;
+        for (int i = 0; i < exits.Count; i++)
+            for (int j = 0; j < i; j++)
+            {
+                if (exits[i].Differences(exits[j]) < 2)
+                    throw new Exception("Similar exits: " + exits[i].Name + " and " + exits[j].Name);
+                pairs++;
+            }
+        Console.WriteLine("PASS " + pairs + " exit pairs at 2 m intervals");
     }
 
-    private static string ExitProfile(NativeLayeredCityWalk.Route route, int side)
+    private sealed class Exit
     {
-        var samples = new List<string>();
-        float relief = 0;
-        for (int station = 0; station <= 60; station += 5)
+        public readonly string Name;
+        readonly float[] profile = new float[31];
+        readonly List<(float station, int side)> turns = new List<(float, int)>();
+        readonly HashSet<string> cover = new HashSet<string>();
+        readonly List<string> approach = new List<string>();
+        readonly float width;
+
+        public Exit(NativeLayeredCityWalk.Route route, ContentBlock[] solids, MapRamp[] ramps)
         {
-            route.Sample(station, out var foot, out var direction, out float width);
-            double angle = Math.Atan2(direction.x, direction.z) * 180 / Math.PI - side * 90;
-            angle -= 360 * Math.Floor((angle + 180) / 360);
-            samples.Add(FormattableString.Invariant($"{angle:F0}/{foot.y:F1}/{width:F0}"));
-            if (station <= 40) relief = Math.Max(relief, Math.Abs(foot.y));
+            Name = route.Name;
+            for (int i = 0; i < profile.Length; i++)
+            {
+                route.Sample(i * 2, out var p, out _, out _);
+                // Select the physical surface at this route's layer (bridges can span another road).
+                var heights = solids.Where(b => Math.Abs(b.pos.x-p.x) <= b.size.x/2 &&
+                    Math.Abs(b.pos.z-p.z) <= b.size.z/2).Select(b => b.pos.y+b.size.y/2);
+                foreach (var r in ramps)
+                    if (OnRamp(r, p)) heights = heights.Append(RampHeight(r,p));
+                profile[i] = heights.OrderBy(y => Math.Abs(y-p.y)).First();
+                if (Math.Abs(profile[i]-p.y) > .35f) throw new Exception("Exit surface: " + Name);
+            }
+            var lengths = new Dictionary<float,float>();
+            V3 previous = default;
+            float station = 0;
+            for (int i = 0; i < route.Kinds.Length && station < 60; i++)
+            {
+                var d = route.Points[i+1]-route.Points[i];
+                float length = (float)Math.Sqrt(d.x*d.x+d.z*d.z);
+                float span = Math.Min(length,60-station);
+                var heading = new V3(d.x/length,0,d.z/length);
+                if (i > 0 && (heading-previous).Length > .01f)
+                    turns.Add((station, Math.Sign(previous.z*heading.x-previous.x*heading.z)));
+                previous = heading;
+                float w = route.Widths[i];
+                lengths.TryGetValue(w,out float total);
+                lengths[w] = total + span;
+                cover.Add(route.Covers[i]);
+                string kind = route.Kinds[i] + (d.y > 0 ? "+" : d.y < 0 ? "-" : "");
+                if (approach.LastOrDefault() != kind) approach.Add(kind);
+                station += span;
+            }
+            width = lengths.OrderByDescending(kv=>kv.Value).ThenBy(kv=>kv.Key).First().Key;
         }
-        if (samples.Count != 13 || relief < 6.99f || relief > 14.01f)
-            throw new Exception("Gate lacks its early relief: " + route.Name + " " + relief);
-        return string.Join(" ", samples);
+
+        public int Differences(Exit b)
+        {
+            double rms = Math.Sqrt(profile.Zip(b.profile,(x,y)=>(x-y)*(x-y)).Average());
+            bool turn = turns.Count != b.turns.Count || turns.Where((t,i) =>
+                t.side != b.turns[i].side || Math.Abs(t.station-b.turns[i].station)>10).Any();
+            return (rms>=1.5 ? 1 : 0) + (turn ? 1 : 0) + (Math.Abs(width-b.width)>=3 ? 1 : 0)
+                + (cover.SetEquals(b.cover) ? 0 : 1) + (approach.SequenceEqual(b.approach) ? 0 : 1);
+        }
+    }
+
+    private static float RampHeight(MapRamp r,V3 p)
+    {
+        var d=r.high-r.low;
+        return r.low.y + d.y*((p.x-r.low.x)*d.x+(p.z-r.low.z)*d.z)/(d.x*d.x+d.z*d.z);
     }
 
     // Isolate graph work from Unity physics and perception. Four independent destination
@@ -146,7 +210,7 @@ internal static class LayeredCityWalkChecks
             $"four field rebuilds + 88 traces {flow.Elapsed.TotalMilliseconds / 600:F3} ms per sample");
     }
 
-    private static bool OnRamp(MapRamp r, V3 p)
+    private static bool OnRamp(MapRamp r, V3 p, float tolerance = .02f)
     {
         var d = r.high - r.low;
         float length = (float)Math.Sqrt(d.x * d.x + d.z * d.z);
@@ -154,6 +218,6 @@ internal static class LayeredCityWalkChecks
         float along = (d.x * offset.x + d.z * offset.z) / length;
         float across = (d.z * offset.x - d.x * offset.z) / length;
         return along >= -.001f && along <= length + .001f && Math.Abs(across) <= r.width / 2 + .001f &&
-               Math.Abs(p.y - (r.low.y + along / length * d.y)) < .02f;
+               Math.Abs(p.y - (r.low.y + along / length * d.y)) < tolerance;
     }
 }

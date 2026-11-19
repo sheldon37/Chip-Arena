@@ -1,3 +1,7 @@
+## 2026-11-19 — Astra: Meridian’s five approved street plans
+
+Task branch `codex/meridian-approved-streets` from shared `e0473dca`. Candidate 3 bakes the five JSON plans into the Developer walk. The 190 exit pairs pass at 2 m stations. The independent 2 m Hulk-radius surface graph reaches the north court and all three doors in every city. The shipped survey traces follow clear lines around posts and grade junctions. See `docs/MERIDIAN-B-WALK.md` for measured counts. The Windows acceptance path profiles changed geometry, and the Developer walk records rendered frame time and triangles. The art freeze awaits real per-tier view measurements and the owner walk.
+
 ## 2026-11-19 — Claude: Meridian's five street plans, drawn and approved by the owner (design only)
 
 The owner walked Astra's size-B candidates twice and said they read as one map: "These all look like the same pathing (Same exact stairs, elevations, etc) and this still generates I think the exact same map? I dont mind starting on floor level on some instances as well". Asked whether Claude should draw plans: "go ahead and draw plans". On the plans: "Approve all five".
