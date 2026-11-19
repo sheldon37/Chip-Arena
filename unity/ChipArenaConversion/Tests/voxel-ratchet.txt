@@ -187,4 +187,4 @@ Runtime/NativeZombieComparePresentation.cs                 0   0   0   1   3
 Runtime/NativeZombieModelPresentation.cs                   2   0   2   1   0
 
 # In flight (not on this branch yet): named so their merge stays green; the package that moves them lowers the pin.
-Core/NativeDeployEject.cs                                  0   0   0  13   0   # W3's eject states (claude/exp-w3-eject at 048adc30): rig-authored (M12); V4 moves the crouch, fall and seat onto the model
+Core/NativeDeployEject.cs                                  0   0   0  17   0   # W3's eject states (claude/exp-w3-eject at 8ca81329; 13 at 048adc30): rig-authored (M12); V4 moves the crouch, fall and seat onto the model

@@ -5,14 +5,15 @@ namespace ChipArena.UnityConversion
 {
     // The pack weapons on the visual body (Core/NativePackWeapons.cs; docs/BOZO-INTEGRATION.md "Pack weapons"). Where the
     // local bake carries no life-size model of a weapon (VisualWeapons: the pistol, rifle, machine gun, sword and greatsword),
-    // an arena pilot's visual body draws the weapons pack bank's (Resources/ChipArenaPackWeapons, the licensed-assets zip):
-    // the daggers on both hands, the shield on the right, the bow and the caster staffs on the left. Each is one mesh in its
+    // a visual body that holds its weapon in hand draws the weapons pack bank's (Resources/ChipArenaPackWeapons, the
+    // licensed-assets zip): the daggers on both hands, the shield on the right, the bow and the caster staffs on the left. Each is one mesh in its
     // weapon frame, built once from the bank for every body (Core NativePackWeapons.Shape: the grip on the game's grip point,
     // the tip on the game's sockets), on the visual body's toon with the pack's texture as drawn (the staffs' crystal in the
     // school's colour, glowing); each body makes its GameObjects once per weapon and shows or hides them as the bake's models
     // (VisualWeaponDrawn, VisualWeaponShown), so nothing is allocated per frame once warm. The rules for when it draws are the
-    // bake's: the Standard skin in hand on an arena pilot's visual body or the first-person view body (the Prototype Series,
-    // the Classic voxel body, the entrances, the menus and the portraits keep the game's model), hidden with the weapon put
+    // bake's: the Standard skin in hand on an arena pilot's visual body, the first-person view body, and (voxel retirement P9)
+    // the model portraits', the rooftop's and the Deployment Station's bodies (PackHolder); the Prototype Series, the Classic
+    // voxel body and the entrances keep the game's model (V5 moves the entrances), hidden with the weapon put
     // away or thrown (the main dagger alone hides its copy). Without the bank, its prop or the shader, every pilot draws
     // today's model.
     public sealed partial class ArenaPresentation

@@ -61,6 +61,17 @@ internal static class VoxelDrawChecks
         Check(flush>0&&bank.IndexOf("if(NativeVoxelDraws.On)foreach(var d in lists.Values)VoxelCount(d.Part,d.Matrices.Count);",flush,StringComparison.Ordinal)>flush,"the bank counts every list it flushes, only while the counter is on");
         Check(R("Runtime/NativeHordeBreachPresentation.cs").Contains("if(NativeVoxelDraws.On)NativeVoxelDraws.Add(NativeVoxelDraws.Kind.BreachCube,1,Time.frameCount);")&&R("Runtime/NativeGorePresentation.cs").Contains("if(NativeVoxelDraws.On)NativeVoxelDraws.Add(NativeVoxelDraws.Kind.GoreCube,count,Time.frameCount);")
             &&R("Runtime/NativeStatusPresentation.cs").Contains("if(NativeVoxelDraws.On&&(list==statusWorld||list==statusView))"),"the breach, gore and status cubes count at their own draws");
+        // Off costs nothing: every count call in Core and Runtime (but the counter's own two files, where Add and VoxelCount are made)
+        // sits behind a test of On on its own line, so a frame with the counter off pays one static read per draw site and no call.
+        int sites=0;
+        foreach(var dir in new[]{"Core","Runtime"})foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena",dir),"*.cs",SearchOption.AllDirectories))
+        {
+            string name=Path.GetFileName(f);if(name=="NativeVoxelDraws.cs"||name=="NativeVoxelDrawCount.cs")continue;
+            foreach(var l in File.ReadAllLines(f))foreach(var call in new[]{"NativeVoxelDraws.Add(","VoxelCount("})
+                for(int at=l.IndexOf(call,StringComparison.Ordinal);at>=0;at=l.IndexOf(call,at+call.Length,StringComparison.Ordinal))
+                {sites++;Check(l.LastIndexOf("if(NativeVoxelDraws.On",at,StringComparison.Ordinal)>=0,dir+"/"+name+" counts voxel draws without testing NativeVoxelDraws.On first: "+l.Trim());}
+        }
+        Check(sites==4,"the bank's flush and the breach, gore and status draws are the counter's only call sites ("+sites+"; a new one belongs in this check)");
         var count=R("Runtime/NativeVoxelDrawCount.cs");Check(count.Contains("if(voxelKindsFrame!=Time.frameCount){voxelKindsFrame=Time.frameCount;VoxelKindsFill();}")&&count.Contains("NativeVoxelDraws.Merge(was,k)"),"the part map fills at most once a frame, an alias merged");
         Check(R("Runtime/ConversionGame.cs").Contains("ControllerCursor();VoxelDrawsGui();}finally")&&R("Runtime/NativeVoxelOverlay.cs").Contains("Debug.isDebugBuild&&Array.IndexOf(Environment.GetCommandLineArgs(),\"--ca-voxel-counter\")>=0"),"the panel draws over every screen; --ca-voxel-counter only in the Editor and Development builds");
         Check(NativeDevActions.Find("overlay-voxel")!=null&&R("Runtime/NativeDevPanel.cs").Contains("case \"overlay-voxel\":VoxelCounterToggle();break;")&&R("Runtime/NativeDevPanel.cs").Contains("DevToggleAct(new Rect(x,y,w,32),\"overlay-voxel\",NativeVoxelDraws.Shown);"),"the DEV panel's Camera tab toggles it (a read-only view tool)");
