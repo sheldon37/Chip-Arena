@@ -196,29 +196,34 @@ namespace ChipArena.UnityConversion
             l==Launch.Ready?"DEPLOY":l==Launch.HostOnly?"WAITING FOR THE HOST":"DEPLOYING";
 
         // ---- the deploy sequence ------------------------------------------------------------------------------------------------
-        public const float TravelAt=4f;
-        /// <summary>The deploy (owner 2026-11-02: "After we start from slot machines, we get 'ejected' down"): the machines dim
-        /// and clamp, the pads sound the alarm (Alarm), their hatches split open (Hatch), each pilot drops through its pad
-        /// (PadDrop; Drop runs over the whole drop), the screen fades and the travel hand-off follows. The gate stays shut.</summary>
-        public struct DeployPose{public float Dim,Clamp,Hatch,Drop,Fade;public bool Alarm,Travel;}
+        /// <summary>The eject's end (NativeDeployEject: 5.6 s for the full eject, 4 s for its short variant): the host waits on it
+        /// before it loads the run (Runtime/NativeExpeditionDeploymentRoom.cs), so every run starts 1.6 s later than at 4 s.</summary>
+        public const float TravelAt=NativeDeployEject.Played==NativeDeployEject.Cut.Short?NativeDeployEject.ShortTravel:NativeDeployEject.FullTravel;
+        /// <summary>The deploy (owner 2026-11-02: "After we start from slot machines, we get 'ejected' down"; 2026-11-18: "a more
+        /// realistic drop-in"): the machines dim and clamp, the room turns red (Red), the pads sound the alarm (Alarm), the party
+        /// crouches (NativeDeployEject.CrouchAt), their hatches split open (Hatch), each pilot drops through its pad into its
+        /// pod's seat (PadDrop; Drop runs over the whole party's drop), the console's panels step aside for the eject's shots
+        /// (Hud), the pods release, a white rush (Rush), the fade (Fade) and the travel hand-off. The gate stays shut.</summary>
+        public struct DeployPose{public float Dim,Clamp,Hatch,Drop,Fade,Red,Hud,Rush;public bool Alarm,Travel;}
         /// <summary>The pads' hatches open over HatchAt..+HatchSeconds; pilot on pad i drops from DropAt + i x DropStagger,
-        /// falling at DropGravity (gone below the floor by DropGone).</summary>
-        public const float HatchAt=.9f,HatchSeconds=.35f,DropAt=1.35f,DropStagger=.09f,DropGravity=16,DropGone=2.2f;
-        /// <summary>After Deploy: the machines dim (.6 s) and clamp (.2–.5 s), the pads' alarm (.15–1.23 s), the hatches open
-        /// (.9–1.25 s), the party drops through them (1.35 s on, a pad at a time), the screen fades (3.4–4 s) and the travel
-        /// hand-off begins at 4 s. Before Deploy, all zero.</summary>
-        public static DeployPose Deploying(float since)
+        /// falling at DropGravity (out of the room's sight below the floor by DropGone).</summary>
+        public const float HatchAt=.9f,HatchSeconds=.35f,DropAt=1.35f,DropStagger=.09f,DropGravity=9.8f,DropGone=2.2f;
+        /// <summary>After Deploy (the played cut): the machines dim (.6 s) and clamp (.2–.5 s), the room reddens (.6 s), the pads'
+        /// alarm (.15–1.23 s), the hatches open (.9–1.25 s), the party drops through them (1.35 s on, a pad at a time) into its
+        /// pods, the panels fade (1.05–1.5 s), the rush (4.8 s) and the fade (5.15–5.6 s), and the travel hand-off at TravelAt.
+        /// Before Deploy, all zero (the panels shown).</summary>
+        public static DeployPose Deploying(float since)=>Deploying(since,NativeDeployEject.Played);
+        public static DeployPose Deploying(float since,NativeDeployEject.Cut cut)
         {
-            if(!(since>=0))return default;
-            float last=DropAt+DropStagger*(Pads-1)+(float)Math.Sqrt(2*DropGone/DropGravity);
+            if(!(since>=0))return new DeployPose{Hud=1};
+            float last=NativeDeployEject.LastLanding;
             return new DeployPose{Dim=Smooth(since/.6f),Clamp=Smooth((since-.2f)/.3f),Alarm=since>=.15f&&since<HatchAt+HatchSeconds-.02f,Hatch=Smooth((since-HatchAt)/HatchSeconds),
-                Drop=Smooth((since-DropAt)/(last-DropAt)),Fade=Smooth((since-3.4f)/.6f),Travel=since>=TravelAt};
+                Drop=Smooth((since-DropAt)/(last-DropAt)),Fade=NativeDeployEject.Fade(since,cut),Red=NativeDeployEject.Red(since),Hud=NativeDeployEject.Hud(since),
+                Rush=NativeDeployEject.Rush(since,cut),Travel=since>=NativeDeployEject.TravelOf(cut)};
         }
-        /// <summary>How far the pilot on pad `pad` has dropped (m below the pad's top) `since` s after Deploy (0 before its turn).</summary>
-        public static float PadDrop(int pad,float since)
-        {
-            if(!(since>=0))return 0;float t=since-(DropAt+DropStagger*Math.Max(0,Math.Min(Pads-1,pad)));return t<=0?0:Math.Min(4,.5f*DropGravity*t*t);
-        }
+        /// <summary>How far the pilot on pad `pad` has dropped (m below the pad's top) `since` s after Deploy (0 before its turn):
+        /// the fall into its pod's seat, then with its pod (NativeDeployEject.Drop).</summary>
+        public static float PadDrop(int pad,float since)=>NativeDeployEject.Drop(pad,since,NativeDeployEject.Played);
 
         // ---- the blueprint: theme weights and the holo map ------------------------------------------------------------------------
         public const float CellMetres=NativeExpeditionDeployment.CellMetres;
@@ -309,12 +314,18 @@ namespace ChipArena.UnityConversion
             double a=side*step*(140.0/(Pads-1))*Math.PI/180;
             return Table+new Vector3((float)(PadArc*Math.Sin(a)),0,(float)(-PadArc*Math.Cos(a)));
         }
-        public enum Shot{Overview,InstanceMachine,MutatorMachine,Map,Deploy}
+        public enum Shot{Overview,InstanceMachine,MutatorMachine,Map,Deploy,
+            // the eject's own shots, keyed by the viewer's pad (NativeDeployEject.ShotOf and ViewOf): down my tube, my seat, the release
+            Tube,Seat,Release}
         public struct View{public Vector3 Eye,Target;public float Fov;}
         public static View ShotOf(Shot shot)
         {
             switch(shot)
             {
+                // the eject's shots move with the viewer's pilot: here, the host pad's at a moment of each
+                case Shot.Tube:return NativeDeployEject.ViewOf(shot,0,NativeDeployEject.DropStart(0)+NativeDeployEject.TubeLead+.3f,NativeDeployEject.Played);
+                case Shot.Seat:return NativeDeployEject.ViewOf(shot,0,NativeDeployEject.LandAt(0)+.3f,NativeDeployEject.Played);
+                case Shot.Release:return NativeDeployEject.ViewOf(shot,0,NativeDeployEject.ReleaseOf(0)+.4f,NativeDeployEject.Played);
                 case Shot.InstanceMachine:return new View{Eye=new Vector3(-2.4f,2.3f,.6f),Target=InstanceMachineAt+new Vector3(0,1.5f,0),Fov=42};
                 case Shot.MutatorMachine:return new View{Eye=new Vector3(2.4f,2.3f,.6f),Target=MutatorMachineAt+new Vector3(0,1.5f,0),Fov=42};
                 case Shot.Map:return new View{Eye=new Vector3(0,4.6f,-1.2f),Target=Table+new Vector3(0,1,0),Fov=46};

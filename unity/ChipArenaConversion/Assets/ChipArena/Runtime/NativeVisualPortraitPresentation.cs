@@ -147,9 +147,9 @@ namespace ChipArena.UnityConversion
                 }
                 if(pose==NativeLobbyPoses.Sleep)ModelPortraitLaidDown(body,s.Player);
                 VisualHandFit(body,s.Player,held);
-                // The held weapons where the lobby pose holds them (on the hands, now on the model's wrists): the model's own (the
-                // daggers' second blade on the off hand); what it has none of (the shield, the staffs, the bow, the fighters' gloves) draws
-                // the game's below, in the pilot's skin as in a match.
+                // The held weapons where the lobby pose holds them (on the hands, now on the model's wrists): the model's own, the bake's
+                // or the pack's (the daggers' second blade on the off hand, the shield, the staffs, the bow: PackHolder); what it has none of
+                // (the fighters' gloves, the one-finish classes) draws the game's below, in the pilot's skin as in a match.
                 s.OwnWeapon=weapon.Visible&&VisualWeaponDrawn(s.Player,s.Player.Bones[weapon.Bone].localToWorldMatrix*RooftopCast.Offset(weapon),offhand.Visible&&spec=="daggers"?s.Player.Bones[offhand.Bone].localToWorldMatrix*RooftopCast.Offset(offhand):(Matrix4x4?)null);
                 if(body.Shown!=null&&body.ShownFrame!=Time.frameCount){if(body.Shown.Model!=null)body.Shown.Model.SetActive(false);body.Shown=null;}
                 // The scene: the podium, the chair when seated, the hat, the gear (core, device, face gear, emblem).
@@ -170,8 +170,8 @@ namespace ChipArena.UnityConversion
                 }
                 else if(hat==NativeSheldonHead.Hat)SheldonHoodStill(body,hat,look.HatColor,s.Player.Root.transform.localToWorldMatrix,VisualHatBone(s.Player,hat),time,id,ModelPortraitReduced,PortraitLayer,view);
                 VisualGear(body,a,time,null,null,1,false);
-                string heldModel=!s.OwnWeapon&&(weapon.Visible||offhand.Visible)?NativeWeaponSkins.Model(NativeWeaponSkins.PrototypeHeld(spec),WeaponSkin(a)):null;
-                if(heldModel!=null&&!sourceModels.Has(heldModel))heldModel=NativeWeaponSkins.PrototypeHeld(spec);
+                string heldModel=!s.OwnWeapon&&(weapon.Visible||offhand.Visible)?NativeWeaponSkins.Model(NativeWeaponSkins.PrototypeHeld(HeldSpec(a)),WeaponSkin(a)):null;
+                if(heldModel!=null&&!sourceModels.Has(heldModel))heldModel=NativeWeaponSkins.PrototypeHeld(HeldSpec(a));
                 if(heldModel!=null&&sourceModels.Has(heldModel))
                 {
                     s.HeldBone??=b=>{var m=s.Player.Bones[b].localToWorldMatrix;return s.Weapon.Visible&&b==s.Weapon.Bone?m*RooftopCast.Offset(s.Weapon):s.Offhand.Visible&&b==s.Offhand.Bone?m*RooftopCast.Offset(s.Offhand):m;};
@@ -220,6 +220,8 @@ namespace ChipArena.UnityConversion
         }
         private static void VisualArmedAs(Actor a,string spec)
         {
+            // a DEV animation class is armed as its base class (its grip, its weapon set: voxel retirement P9)
+            spec=NativeDevMotions.Base(spec)??spec;
             a.Weapon=spec=="pistol"?WeaponId.Pistol:spec=="rifle"?WeaponId.Rifle:spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;
             a.VisualSet=spec=="daggers"?1:spec=="greatsword"?2:spec=="shield"?3:0;
         }

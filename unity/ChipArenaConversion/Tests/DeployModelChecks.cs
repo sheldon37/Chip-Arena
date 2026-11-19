@@ -48,7 +48,9 @@ namespace ChipArena.UnityConversion
                 ("map",NativeDeployModels.MapPlane(),400),("holo",NativeDeployModels.HoloVolume(),400),("beacon",NativeDeployModels.Beacon(),300),("door-left",NativeDeployModels.DoorLeaf(-1),4000),
                 ("door-right",NativeDeployModels.DoorLeaf(1),4000),("lift",NativeDeployModels.LiftDeck(),2500),("lamp",NativeDeployModels.Lamp(),400),("beam",NativeDeployModels.Beam(),1200),("quad",NativeDeployModels.Quad(),4)};
             foreach(var (id,m,budget) in parts){Clean(m,id);Check(m.Triangles>0&&m.Triangles<=budget,id+" budget ("+m.Triangles+")");total+=m.Triangles;}
-            Check(total<130000,"the whole station's budget ("+total+")");
+            // ATLAS over the gate (Core NativeAtlasModels; its own checks in AtlasBoardChecks): its cabinet and flaps count toward the station's
+            foreach(var m in new[]{NativeAtlasModels.Cabinet(),NativeAtlasModels.Flaps()}){Clean(m,m.Spec);total+=m.Triangles;}
+            Check(total<130000,"the whole station's budget, ATLAS included ("+total+")");
             Check(Same(NativeDeployModels.Drum(),NativeDeployModels.Drum())&&Same(NativeDeployModels.CardDial(),NativeDeployModels.CardDial())&&Same(NativeDeployModels.Lever(),NativeDeployModels.Lever()),"the moving parts build the same twice");
             // the right leaf mirrors the left about the gate's centre
             NativeDeployModels.DoorLeaf(-1).Bounds(-1,out var l0,out var l1);NativeDeployModels.DoorLeaf(1).Bounds(-1,out var r0,out var r1);
@@ -171,7 +173,8 @@ namespace ChipArena.UnityConversion
                 Check(Of(st,NativeDeployStage.Model.Well).Count()==(dep.Hatch>0?4:0),"the lit wells show as the hatches open");
                 for(int i=0;i<4;i++){float drop=NativeDeployPresentation.PadDrop(i,t);Check(Math.Abs(st.PilotFeet[i].Y-(NativeDeployModels.PadTop-drop))<1e-4f&&(drop>0)==(t>NativeDeployPresentation.DropAt+NativeDeployPresentation.DropStagger*i),"pilot "+i+" drops through its pad in turn");
                     Check(drop==0||dep.Hatch>.99f,"nobody drops through a shut hatch");}
-                Check(st.Shot==NativeDeployPresentation.Shot.Deploy&&!st.Controls.Roll&&st.MapRevision==mapBefore,"deploying frames the pads, locks the console and freezes the map");
+                // (re-pinned 2026-11-18, W3: the room's Deploy shot holds until my pilot's tube shot, then the eject's own shots on my pad)
+                Check(st.Shot==NativeDeployEject.ShotOf(0,t,NativeDeployEject.Played)&&!st.Controls.Roll&&st.MapRevision==mapBefore,"deploying frames the pads then my eject's shots, locks the console and freezes the map");
                 var ph=st.MutatorLook.Phase;var stamp=Of(st,NativeDeployStage.Model.Quad).Where(q=>q.Texture==NativeDeployStage.TexStamp).ToArray();Check(ph==NativeDeployPresentation.Phase.Active&&stamp.Length==3&&stamp.All(q=>q.Scroll==.5f),"ACTIVE after Deploy");
             }
             Check(st.Deploy.Travel&&st.PilotShown.Take(4).All(x=>x<.01f),"the party has dropped out before travel");
@@ -247,7 +250,9 @@ namespace ChipArena.UnityConversion
             // the draw path allocates nothing: Draw's body has no reference allocation, LINQ or lambda
             int a0=scene.IndexOf("public void Draw(Camera camera",StringComparison.Ordinal),a1=scene.IndexOf("public void Dispose()",StringComparison.Ordinal);var draw=scene.Substring(a0,a1-a0);
             Check(!Regex.IsMatch(draw,@"new (?!Vector[234]\(|Matrix4x4\()[A-Z]")&&!draw.Contains("=>")&&!Regex.IsMatch(draw,@"\.(Select|Where|ToArray|ToList)\("),"the scene's draw allocates nothing");
-            Check(cast.Contains("cast.Weapon[i]=\"weapon-\"+spec")&&!Regex.IsMatch(cast.Substring(cast.IndexOf("private void DeployCastFrame",StringComparison.Ordinal)),@"""weapon-""\+look"),"the cast caches its weapon ids");
+            // voxel retirement P9 (docs/VOXEL-RETIREMENT.md V0): the pads hold the seats' own weapons, never an unpicked Prototype id
+            Check(cast.Contains("cast.Weapon[i]=MenuHeldModel(spec,p.Look.Skins,NativeWeaponSkins.Tier(LowGraphics,1,0,false));")&&cast.Contains("||cast.Skins[i]!=p.Look.Skins||cast.Weapon[i]==null)")&&!cast.Contains("\"weapon-\"+")&&!Regex.IsMatch(cast.Substring(cast.IndexOf("private void DeployCastFrame",StringComparison.Ordinal)),@"""weapon-""\+look"),"the cast caches its held models through the seats' weapon skins (a DEV class its base's), refreshed when the skins change");
+            Check(cast.Contains("ModelHeldShown[i]=b=>!OwnWeapon[k]&&(s.Weapon.Visible&&b==s.Weapon.Bone||s.Offhand.Visible&&b==s.Offhand.Bone);")&&cast.Contains("s.Offhand.Visible&&HeldSpec(a)==\"daggers\"?cast.ModelHeld[i](s.Offhand.Bone):(Matrix4x4?)null);"),"a pad's model holds its own weapon in both hands (the bake's or the pack's; the daggers' second blade on the off hand), the game's model only where neither drew");
             Check(R(Rt+"NativeVisualBodyPresentation.cs").Contains("if(DeployOutfit(id,out var deploy))return deploy;")&&R(Rt+"NativeWeaponSkinPresentation.cs").Contains("if(DeploySkins(id,out var deploy))return deploy;"),"the deploy pilots wear their seats' outfits and skins");
             // the shader and every new file are registered with Unity
             var shader=Path.Combine(root,"Assets/ChipArena/Resources/NativeDeployScreen.shader");Check(File.Exists(shader)&&File.Exists(shader+".meta")&&File.ReadAllText(shader).Contains("Shader \"ChipArena/NativeDeployScreen\""),"the screen shader and its meta");

@@ -506,7 +506,8 @@ namespace ChipArena.UnityConversion
             bool covered=NativeVisualMotion.Choose(m.Set,a,time,m.Memory,VisualMotionBank,moving,out var pick);
             // The captured rig already carries the selecting wrist and install gesture. Fade the
             // full-body weapon layer off that pose for this pilot only.
-            float chipLook=body.Arena&&ExpeditionChoosing!=null?ChipLookOf(a.Id):0;
+            // (A drop pod's jump seat likewise: the pilot braced in it, rising out of it, NativePodPresentation.cs PodSeatOf.)
+            float chipLook=Mathf.Max(body.Arena&&ExpeditionChoosing!=null?ChipLookOf(a.Id):0,body.Arena?PodSeatOf(a.Id):0);
             if(chipLook>=1)covered=false;
             // Held in a paired move (owner 2026-11-13: "Give one to everyone"): a body whose set does not list the victim's clip the host
             // names (before, only the Katana's, the DEV Katana's and the Fangs' sets listed any) takes it on now and plays the reaction.

@@ -214,7 +214,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A blade class chip's pick: its animation's cues (Core NativeKatanaChips/NativeFangsChips.Picks) on the spotlight's clock.</summary>
         public void BladePick(string chip,float age)
         {
-            bool katana=NativeKatanaChips.Is(chip);int i=katana?NativeKatanaChips.Index(chip):NativeFangsChips.Index(chip);if(i<0)return;float s=age-NativeDraftPlant.DetailsAt-NativeBladeChipArt.Start;
+            bool katana=NativeKatanaChips.Is(chip);int i=katana?NativeKatanaChips.Index(chip):NativeFangsChips.Index(chip);if(i<0)return;float s=age-NativeInstallShot.DetailsAt-NativeBladeChipArt.Start;
             if(chip!=bladePickId||age<bladePickLast-.2f){bladePickId=chip;bladePickCue=0;}bladePickLast=age;var list=katana?NativeKatanaChips.Picks[i]:NativeFangsChips.Picks[i];
             while(bladePickCue<list.Length&&s>=list[bladePickCue].At){var c=list[bladePickCue++];if(s-c.At<.25f)Toon(c.Id,null,c.Gain,true,c.Rate);}
         }

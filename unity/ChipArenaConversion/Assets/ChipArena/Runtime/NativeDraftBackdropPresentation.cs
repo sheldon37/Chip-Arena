@@ -23,12 +23,12 @@ namespace ChipArena.UnityConversion
         private readonly DraftBackdropState draftBack=new DraftBackdropState();
         private static readonly int BackCamId=Shader.PropertyToID("_BackCam"),BackClockId=Shader.PropertyToID("_BackClock"),BackFwdId=Shader.PropertyToID("_BackFwd"),BackUpId=Shader.PropertyToID("_BackUp"),BackRightId=Shader.PropertyToID("_BackRight");
         private static readonly int BackAccentId=Shader.PropertyToID("_BackAccent"),BackFrameId=Shader.PropertyToID("_BackFrame"),BackCounterId=Shader.PropertyToID("_BackCounter"),BackDeepId=Shader.PropertyToID("_BackDeep"),BackVoidId=Shader.PropertyToID("_BackVoid");
-        private static readonly int BackPulseId=Shader.PropertyToID("_BackPulse"),BackStyleId=Shader.PropertyToID("_BackStyle"),BackFxId=Shader.PropertyToID("_BackFx"),BackSafeId=Shader.PropertyToID("_BackSafe"),BackCapId=Shader.PropertyToID("_BackCap"),BackGlowId=Shader.PropertyToID("_BackGlow");
+        private static readonly int BackFrontId=Shader.PropertyToID("_BackFront"),BackPulseId=Shader.PropertyToID("_BackPulse"),BackStyleId=Shader.PropertyToID("_BackStyle"),BackFxId=Shader.PropertyToID("_BackFx"),BackSafeId=Shader.PropertyToID("_BackSafe"),BackCapId=Shader.PropertyToID("_BackCap"),BackGlowId=Shader.PropertyToID("_BackGlow");
         private static readonly int BackToonId=Shader.PropertyToID("_BackToon");
         private const string BackLowKeyword="DRAFT_BACKDROP_LOW";
         // The backdrop for this draft frame: `tint` the stage tint (sRGB), `age` the smoothed pick age, `pulse` the plant pulse
         // (-1 outside it and with Reduced effects), `trayLine` the tray's top row (negative before the layout), `dt` the stage's step.
-        private void DraftBackdrop(Camera camera,Color tint,float age,float pulse,float trayLine,bool reduced,bool siren,float dt)
+        private void DraftBackdrop(Camera camera,Color tint,float age,float pulse,float trayLine,bool reduced,bool siren,float dt,float level=0,bool second=false,float dim=0)
         {
             if(draftBackFailed||camera==null)return;
             if(draftBackMaterial==null)
@@ -44,13 +44,13 @@ namespace ChipArena.UnityConversion
             // A cold start (the frame before drew the arena, a killcam or a menu) fades the hall in and runs the power-on front.
             bool entering=Time.frameCount!=draftBackFrame+1;draftBackFrame=Time.frameCount;
             var stage=draftStage;var eye=camera.transform;float line=stage.ShadeLine(trayLine>=0?trayLine:NativeDraftStage.DefaultTray),tanY=Mathf.Tan(camera.fieldOfView*.5f*Mathf.Deg2Rad);
-            var input=new DraftBackdropInput{Dt=dt,Age=age,Pulse=pulse,Tint=new NVector(tint.r,tint.g,tint.b),Entering=entering,Reduced=reduced,Low=LowGraphics,Ward=DraftWard,Siren=siren,Prism=DraftPrism,
+            var input=new DraftBackdropInput{Dt=dt,Age=age,Pulse=pulse,Level=level,Second=second,Dim=dim,Tint=new NVector(tint.r,tint.g,tint.b),Entering=entering,Reduced=reduced,Low=LowGraphics,Ward=DraftWard,Siren=siren,Prism=DraftPrism,
                 HeadRow=DraftHeadLine,TrayRow=line,DeepRow=stage.ShadeDeep(line),CamPos=BackN(eye.position),CamForward=BackN(eye.forward),CamUp=BackN(eye.up),CamRight=BackN(eye.right),TanY=tanY,Aspect=camera.aspect,Near=camera.nearClipPlane,Far=camera.farClipPlane,
                 Glow=BackN(Stage(NativeDraftBackdrop.GlowPoint(stage)))};
             var s=draftBack;NativeDraftBackdrop.Step(s,input);var m=draftBackMaterial;
             m.SetVector(BackCamId,BackV(s.Cam));m.SetVector(BackClockId,BackV(s.Clock));m.SetVector(BackFwdId,BackV(s.Fwd));m.SetVector(BackUpId,BackV(s.Up));m.SetVector(BackRightId,BackV(s.Right));
             m.SetVector(BackAccentId,BackV(s.Accent));m.SetVector(BackFrameId,BackV(s.Frame));m.SetVector(BackCounterId,BackV(s.Counter));m.SetVector(BackDeepId,BackV(s.Deep));m.SetVector(BackVoidId,BackV(s.Void));
-            m.SetVector(BackPulseId,BackV(s.Pulse));m.SetVector(BackStyleId,BackV(s.Style));m.SetVector(BackFxId,BackV(s.Fx));m.SetVector(BackSafeId,BackV(s.Safe));m.SetVector(BackCapId,BackV(s.Cap));m.SetVector(BackGlowId,BackV(s.Glow));
+            m.SetVector(BackPulseId,BackV(s.Pulse));m.SetVector(BackFrontId,BackV(s.Front));m.SetVector(BackStyleId,BackV(s.Style));m.SetVector(BackFxId,BackV(s.Fx));m.SetVector(BackSafeId,BackV(s.Safe));m.SetVector(BackCapId,BackV(s.Cap));m.SetVector(BackGlowId,BackV(s.Glow));
             // The unit quad stretched over the view at the quad's distance, from just above the top to under the opaque shade.
             var frame=NativeDraftBackdrop.QuadFrame(s,tanY,camera.aspect);
             var matrix=eye.localToWorldMatrix*Matrix4x4.TRS(new Vector3(0,frame.Y,s.Distance),Quaternion.identity,new Vector3(frame.X,frame.Z,1));

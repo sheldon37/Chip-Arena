@@ -73,6 +73,8 @@ namespace ChipArena.UnityConversion
         {
             if(dedicated||cameraView==null||error.Length>0){action();return;}
             stageLoad.Request(kind,prefs.reducedEffects);stageAction=action;stageActed=false;StageBegan();
+            // (the load that leaves the station after its eject is the one the cradle card covers: NativeCradleUI.cs)
+            cradleLatch.Requested(stageLoad.Serial,LiveDeployment&&liveDeployClock.SinceDeploy(Time.unscaledTime)>=0);
         }
         private StageLoadKind StageKindOf(NativeArena a)
         {
@@ -152,7 +154,8 @@ namespace ChipArena.UnityConversion
             var s=new StageLoadSignals{Stage=StageInPlace,Ready=stagePlan.Done};
             s.Failed=stageFailed||error.Length>0||expeditionError!=null&&(k==StageLoadKind.Expedition||k==StageLoadKind.Area);
             if(stageActed)s.Failed|=back?arena!=null:arena==null||ReferenceEquals(arena,stageFrom);
-            s.Waiting=!back&&(StageGate.Waiting||LiveExpedition?.areaBarrier?.active==true||ExpeditionSplit&&!deploymentInitialReady);
+            // (a pod run's first load holds every peer on the cradle card until the hub's countdown starts: NativeCradleUI.cs)
+            s.Waiting=!back&&(StageGate.Waiting||LiveExpedition?.areaBarrier?.active==true||ExpeditionSplit&&!deploymentInitialReady||PodCradleHold);
             if(k==StageLoadKind.Expedition||k==StageLoadKind.Area)s.WaitBudget=NativeStageLoading.ExpeditionWaitTimeout;
             // A boss's intro hold (a zone boss's or NOCTIEL's cinematic, which IntroActive leaves to the boss's own presenter) is an
             // intro too: the screen keeps the entrance intro's budget for it rather than the fight's none.
@@ -222,7 +225,9 @@ namespace ChipArena.UnityConversion
             string party=gate?NativeStageLabels.PilotsReady:barrier?expeditionTransfer.Ready:null,count=gate?NativeStageLabels.Count(StageGate.Ready,StageGate.Required):null;
             int ready=gate?StageGate.Ready:barrier?expeditionTransfer.ReadyCount:0,required=gate?StageGate.Required:barrier?expeditionTransfer.Required:0;
             float shown=stageLoad.Shown;
-            NativeStageLoadingHud.Draw(stageLoad,stageView,step,NativeStageLabels.Percent(shown),shown,U.W,U.H,Time.unscaledTime,party,count,ready,required,waiting,PartyLoadingRoster());
+            // a pod run's first load: the inside of my pod (the cradle card, NativeCradleUI.cs) in place of the loading screen
+            if(PodCradle)CradleGui(shown);
+            else NativeStageLoadingHud.Draw(stageLoad,stageView,step,NativeStageLabels.Percent(shown),shown,U.W,U.H,Time.unscaledTime,party,count,ready,required,waiting,PartyLoadingRoster());
             stageLoad.ContentPresented();
             NoticeToast();BuildCorner();
         }

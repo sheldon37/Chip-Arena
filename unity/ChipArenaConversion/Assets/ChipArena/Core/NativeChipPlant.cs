@@ -46,6 +46,12 @@ namespace ChipArena.UnityConversion
         public const float Settle=.5f;
         public static bool Active(float age)=>MathUtil.Finite(age)&&age>=0&&age<Span;
         public static float Reach(float age)=>MathUtil.Smooth((age-ReachStart)/(NativeDraftPlant.Contact-ReachStart));
+        /// <summary>The tray's picked card on its way into the hand (NativeDraftScreen's FlyToPalm off the draft stage, as before the stage's
+        /// install): it leaves its slot at CardFrom and flies straight at the hand, fading over CardFade before the plant's contact
+        /// (NativeDraftPlant.Contact), where the hand takes it.</summary>
+        public const float CardFrom=.12f,CardFadeSpan=.1f;
+        public static float CardFly(float age)=>MathUtil.Smooth((age-CardFrom)/(NativeDraftPlant.Contact-CardFrom));
+        public static float CardFade(float age)=>MathUtil.Smooth((age-(NativeDraftPlant.Contact-CardFadeSpan))/CardFadeSpan);
         public static float Lift(float age)=>MathUtil.Smooth(age/LiftSpan);
         public static float Hush(float age)=>MathUtil.Smooth(age/HushSpan);
         public static float Fade(float age)=>1-MathUtil.Smooth(age/FadeTo);

@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeExpeditionGeneratedWorld
     {
-        public const string Version="deployment-world-blockout-3";
+        public const string Version="deployment-world-landing-4";
         /// <summary>Each instance's building behind its entrance frame, and the walls closing any street at the floor's edge.</summary>
         public const float HallHeight=18,EdgeHeight=6;
         public const string MapId="expedition-generated-city";
@@ -96,7 +96,8 @@ namespace ChipArena.UnityConversion
             blocks.Add(Block("final-west",-25,70,.4f,30,6));blocks.Add(Block("final-east",25,70,.4f,30,6));
             blocks.Add(Block("final-back",0,85,50,.4f,6));
             blocks.Add(Block("final-front-west",-15,55,20,.4f,6));blocks.Add(Block("final-front-east",15,55,20,.4f,6));
-            var slots=Enumerable.Range(0,8).Select(i=>Point(i%4*2-3,i/4*3-2)).ToArray();
+            var slots=NativeExpeditionHubPlan.LandingField(state.worldSeed);
+            var pvpSpawns=Enumerable.Range(0,8).Select(i=>Point(i%4*2-3,i/4*3-2)).ToArray();
             var spawns=new List<ExpeditionSpawnLayout>();var zones=new List<ExpeditionHubZone>();var interactions=new List<ExpeditionInteractionLayout>();
             // Use the seeded trunks (not the courts/apron) for encounters. Reserve door and final approaches.
             foreach(var c in state.cells.Where(c=>c.road&&!c.sanctuary).OrderBy(c=>c.x).ThenBy(c=>c.z))
@@ -116,8 +117,8 @@ namespace ChipArena.UnityConversion
             }
             var map=new ContentMap{id=MapId,name="Generated Expedition",tag="Expedition",theme="expedition",ambience="",look="expedition-city",sky=2761800,floor=2894384,accent=16747084,unity=true,
                 bounds=new MapBounds{minX=-125,maxX=125,minZ=-95,maxZ=95,ceiling=40,killY=-8},blocks=blocks.ToArray(),
-                spawns=new MapSpawns{ffa=slots.Select(p=>new MapSpawn{pos=p.Position+new V3(0,1.1f,0),yaw=p.yaw}).ToArray(),
-                    teams=new[]{0,1}.Select(side=>new MapTeamSpawns{side=side,points=slots.Skip(side*4).Take(4).Select(p=>new MapSpawn{pos=p.Position+new V3(0,1.1f,0)}).ToArray()}).ToArray()},
+                spawns=new MapSpawns{ffa=pvpSpawns.Select(p=>new MapSpawn{pos=p.Position+new V3(0,1.1f,0),yaw=p.yaw}).ToArray(),
+                    teams=new[]{0,1}.Select(side=>new MapTeamSpawns{side=side,points=pvpSpawns.Skip(side*4).Take(4).Select(p=>new MapSpawn{pos=p.Position+new V3(0,1.1f,0)}).ToArray()}).ToArray()},
                 hazards=Array.Empty<MapHazard>(),ramps=Array.Empty<MapRamp>(),segments=Array.Empty<StructureDefinition>(),
                 pilotBlocks=blocks.Where(b=>b.id.Contains("-building-")||b.id.Contains("-hall-")||b.id.Contains("-edge-")).Select(b=>new MapPilotBlock{id=b.id+"-column",center=b.pos,size=new V3(b.size.x,40,b.size.z),bottom=0}).ToArray()};
             var area=new ExpeditionAreaLayout{id="exp-city",role="world",map=MapId,anchors=anchors.ToArray(),doors=doors.ToArray(),interactions=interactions.ToArray(),

@@ -29,6 +29,15 @@ namespace ChipArena.UnityConversion
             public double replayPlaybackMs,replayPrepareMs,replayApplyMs;public bool replayActive;
             public int fixedTicks,gc0,gc1,gc2,pilots,minions,projectiles,props,events,particles,drawnParts,replayFrames,width,height,hitches,corpses,slashes;
             public long managedBytes;
+            // The body style the frame drew (the voxel retirement's baselines, docs/VOXEL-STYLE.md "Baselines"): Settings · Player
+            // model, the --ca-voxel-bodies and --ca-voxel-zombies switches, and the DEV voxel draw counter's unexpected draws (-1: off).
+            public string playerModel;public bool voxelBodiesSwitch,voxelZombiesSwitch;public int voxelUnexpected=-1;
+        }
+        private static int hitchVoxelSwitches=-1;
+        private void HitchStyle(HitchReport r)
+        {
+            if(hitchVoxelSwitches<0){var args=Environment.GetCommandLineArgs();hitchVoxelSwitches=(Array.IndexOf(args,ArenaPresentation.VoxelBodiesArgument)>=0?1:0)|(Array.IndexOf(args,ArenaPresentation.VoxelZombiesArgument)>=0?2:0);}
+            r.playerModel=prefs?.playerModel;r.voxelBodiesSwitch=(hitchVoxelSwitches&1)!=0;r.voxelZombiesSwitch=(hitchVoxelSwitches&2)!=0;r.voxelUnexpected=NativeVoxelDraws.On?NativeVoxelDraws.Unexpected:-1;
         }
         private void FinishHitchFrame(double viewMs)
         {
@@ -68,7 +77,7 @@ namespace ChipArena.UnityConversion
                         projectiles=arena.Bullets.Count,props=arena.Props.Count,events=arena.Events.Count,
                         particles=presentation?.ParticleCount??0,drawnParts=presentation?.DrawnParts??0,
                         replayFrames=this.replayFrames.Count,width=Screen.width,height=Screen.height,hitches=hitchWindow.Hitches};
-                    string json=JsonUtility.ToJson(r);
+                    HitchStyle(r);string json=JsonUtility.ToJson(r);
                     if(summary){nextPerformanceSummary=now/(double)Stopwatch.Frequency+30;Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"PERF_SAMPLE {0}",json);}
                     if(activeWorst){worstActiveFrameMs=dt;worstActiveHitchReport=json;}
                     if(report){lastHitchReport=json;Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"PERF_HITCH {0}",json);}

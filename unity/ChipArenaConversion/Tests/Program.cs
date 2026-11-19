@@ -7,10 +7,20 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--landing-world-sweep"){LandingFieldChecks.WorldSweep(ProjectRoot());return 0;}
+            if(args.Length==0||args.Length==1&&args[0]=="--landing-field")LandingFieldChecks.Fields();
+            if(args.Length==1&&args[0]=="--landing-field")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--thunderheart")ThunderheartChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--thunderheart")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--practice")PracticeChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--practice")return 0;
+            // The voxel retirement's guards (docs/VOXEL-STYLE.md, V0): the ratchet, the kept voxel style, the DEV draw counter.
+            if(args.Length==0||args.Length==1&&args[0]=="--voxel"){VoxelRatchetChecks.Run(ProjectRoot());VoxelStyleChecks.Run(ProjectRoot());VoxelDrawChecks.Run(ProjectRoot());}
+            if(args.Length==1&&args[0]=="--voxel")return 0;
+            if(args.Length==1&&args[0]=="--voxel-ratchet-table"){VoxelRatchetChecks.Print(ProjectRoot());return 0;}
+            // A merged head's re-pin: the table line to paste for every file over its pin, a "Voxel dependency" note slot on each (docs/VOXEL-STYLE.md).
+            if(args.Length==1&&args[0]=="--voxel-ratchet-repin"){VoxelRatchetChecks.Repin(ProjectRoot(),Console.Out);return 0;}
+            if(args.Length==1&&args[0]=="--weapon-skins"){var wsRoot=ProjectRoot();WeaponSkinChecks.Run(wsRoot,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(wsRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--party-benchmark"){PartyTransportBenchmark.Run().GetAwaiter().GetResult();return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--deathmatch")DeathmatchChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--deathmatch")return 0;
@@ -20,6 +30,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--blind-choices")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--weapon-chip-odds")WeaponChipOddsChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--weapon-chip-odds")return 0;
+            if(args.Length==0||args.Length==1&&args[0]=="--atlas-board")AtlasBoardChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--atlas-board")return 0;
             if(args.Length==1&&args[0]=="--fangs-intro"){FangsIntroChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--melee-bisect-sweep"){MeleeBisectChecks.Run(ProjectRoot(),true);return 0;}
             if(args.Length==1&&args[0]=="--dev-grants-only"){DevGrantsChecks.Run(ProjectRoot());return 0;}
@@ -140,6 +152,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition-layout"){ExpeditionLayoutChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-dressing"){ExpeditionDressingChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--generated-districts"){GeneratedDistrictChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--generated-frame"){GeneratedFrameChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-hub"){ExpeditionHubChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-city"){ExpeditionCityChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--map-style"){MapStyleChecks.Run(ProjectRoot());return 0;}
@@ -203,7 +216,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--chooser-camera"){var root1=ProjectRoot();ChooserCameraChecks.Run(root1,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root1,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--chip-select"){var chipData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});foreach(var result in ChipSelectChecks.Run(chipData))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--chip-screen"){ChipScreenChecks.Run(ProjectRoot());return 0;}
-            if(args.Length==1&&args[0]=="--draft-stage"){foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);foreach(var result in DraftStageChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);DraftBackdropChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--draft-stage"){foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);foreach(var result in DraftStageChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);DraftBackdropChecks.Run(ProjectRoot());foreach(var result in InstallShotChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
             StationBossBodyChecks.Run(ProjectRoot());ZoneBossRulesChecks.Run();ZoneCombatChecks.Run(ProjectRoot());BackroomsEntityChecks.Run();DevAbuseChecks.Run();ExpeditionMutatorChecks.Run(ProjectRoot());ExpeditionDeploymentChecks.Run(ProjectRoot());DeployPresentationChecks.Run();DeployModelChecks.Run(ProjectRoot());DeploySparkChecks.Run(ProjectRoot());PodRunChecks.Run(ProjectRoot());PodDropChecks.Run(ProjectRoot());MutatorFxChecks.Run(ProjectRoot());BackroomsChecks.Run(ProjectRoot());PoolroomsChecks.Run(ProjectRoot());PoolroomsRulesChecks.Run();BackroomsGeneratorChecks.Run(ProjectRoot());DeploySoundChecks.Run(ProjectRoot());DeployPerformanceChecks.Run(ProjectRoot());ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionHandoffChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
             if(args.Length==1&&args[0]=="--navigation"){NavSearchChecks.Run(ProjectRoot());return 0;}
@@ -341,6 +354,7 @@ internal static class Program
             StructureFxChecks.Run(root);DebrisChecks.Run(root);
             IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);IronworksBossPresentationChecks.Run(root);BossVfxRealismChecks.Run(root);
             CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);TechniqueChecks.Run(root);TechniqueRulesChecks.Run(root);BombadierChecks.Run(root);TopDogChecks.Run(root);GlaiveChecks.Run(root);GlaiveChipChecks.Run(root);BladeChecks.Run(root);FangsIntroChecks.Run(root);ReviveMachineChecks.Run(root);InstanceMachineChecks.Run();ExpeditionDressingChecks.Run(root);GeneratedDistrictChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionCityChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
+            GeneratedFrameChecks.Run(root);
             PartyLoadingChecks.Run(root);
             AccountXpChecks.Run(root);AccountXpProgressionChecks.RunChecks(root);
             MoveVisualChecks.Run(root);
@@ -415,6 +429,7 @@ internal static class Program
             foreach(var result in DraftStageChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in DraftHoverChecks.Run())Console.WriteLine("PASS "+result);
             DraftBackdropChecks.Run(root);
+            foreach(var result in InstallShotChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CinematicCameraChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in IntroPresentationChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in SirenIntroChecks.Run(root))Console.WriteLine("PASS "+result);

@@ -23,8 +23,9 @@ namespace ChipArena.UnityConversion
                 if(built==null||models.ContainsKey(id))return;var parts=new List<Part>();
                 foreach(var s in built.Sections)
                 {
-                    var mesh=BodyMesh(s,id+" / "+s.Bone);if(mesh==null)continue;bool see=s.Bone==NativeMachineModels.Glass;
-                    parts.Add(new Part{Name=id,Bone=see?-1:s.Bone,Mesh=mesh,Material=see?glass:opaque,NoShadow=see});
+                    // (The cartridge's core module glass rides its core's bone: NativeMachineModels.CoreGlass on CoreBody.)
+                    var mesh=BodyMesh(s,id+" / "+s.Bone);if(mesh==null)continue;bool core=s.Bone==NativeMachineModels.CoreGlass,see=s.Bone==NativeMachineModels.Glass||core;
+                    parts.Add(new Part{Name=id,Bone=core?NativeMachineModels.CoreBody:see?-1:s.Bone,Mesh=mesh,Material=see?glass:opaque,NoShadow=see});
                 }
                 if(parts.Count>0){models[id]=parts.ToArray();MachineModels++;}
             }
@@ -41,6 +42,8 @@ namespace ChipArena.UnityConversion
             foreach(var (id,build,_) in NativeInstanceMachineDress.All)Add(id,build());
             // The Expedition drop pod and its door (Core/NativePodModels.cs; NativePodPresentation.cs tints its parts).
             Add(NativePodModels.PodId,NativePodModels.Pod());Add(NativePodModels.DoorId,NativePodModels.Door());
+            // the cabin's jump seat and its harness bar (the hub's pod draws them; the station's dock has its own)
+            Add(NativePodModels.SeatId,NativePodModels.Seat());Add(NativePodModels.HarnessId,NativePodModels.HarnessBarModel());
             // and their see-through copies (every part in the glass, its bone kept for the pod's tints, unshadowed)
             void Ghost(string id,WeaponMesh built)
             {
@@ -49,6 +52,15 @@ namespace ChipArena.UnityConversion
                 if(parts.Count>0){models[id]=parts.ToArray();MachineModels++;}
             }
             Ghost(NativePodModels.GhostId,NativePodModels.Pod());Ghost(NativePodModels.DoorGhostId,NativePodModels.Door());
+            // the crash's lasting mark: flat paint over the floor, lit but casting no shadow (a crater per shape, its furrow in it;
+            // its see-through part, the soot fading into the plaza and the cracks, in the glass by its vertex alpha)
+            void Flat(string id,WeaponMesh built)
+            {
+                if(built==null||models.ContainsKey(id))return;var parts=new List<Part>();
+                foreach(var s in built.Sections){var mesh=BodyMesh(s,id+" / "+s.Bone);bool see=s.Bone==NativeMachineModels.Glass;if(mesh!=null)parts.Add(new Part{Name=id,Bone=see?-1:s.Bone,Mesh=mesh,Material=see?glass:opaque,NoShadow=true});}
+                if(parts.Count>0){models[id]=parts.ToArray();MachineModels++;}
+            }
+            for(int k=0;k<NativePodModels.CraterShapes;k++)Flat(NativePodModels.CraterIds[k],NativePodModels.Crater(k));
         }
         private readonly Dictionary<string,Vector3> pickupAxes=new Dictionary<string,Vector3>();
         /// <summary>The ring's turn (Epic and up, bone NativeMachineModels.Orbit) of a chip model at `t`: about its core's axis
@@ -60,5 +72,14 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The sculpted model id when it was built, else the exported source id (the machine and chip draws).</summary>
         public string MachineModel(string sculpted,string source)=>models.ContainsKey(sculpted)?sculpted:source;
+        private readonly Dictionary<string,bool> pickupCores=new Dictionary<string,bool>();
+        /// <summary>Whether a chip model carries the cartridge's core module (NativeMachineModels.CoreBody), which the draft stage's install
+        /// seats alone in the bay (the exported generic chip has none); remembered per model.</summary>
+        public bool PickupCore(string model)
+        {
+            if(model==null)return false;if(pickupCores.TryGetValue(model,out bool core))return core;
+            core=false;if(models.TryGetValue(model,out var parts))foreach(var p in parts)if(p.Bone==NativeMachineModels.CoreBody){core=true;break;}
+            return pickupCores[model]=core;
+        }
     }
 }

@@ -99,6 +99,10 @@ namespace ChipArena.UnityConversion
             j.LastAt=at;j.LastVelocity=velocity;
         }
 
+        /// <summary>A kick to the sausage's spring (m/s, its velocity): the draft install squashes it at the clack and stretches it as the
+        /// core's light reaches it (presentation only).</summary>
+        public static void Impulse(ref Jiggle j,Vector3 dv){if(!j.Primed)return;j.Velocity+=dv;}
+
         // The offset held within its lean and squash (the velocity into a limit stopped).
         private static void Clamp(ref Jiggle j)
         {

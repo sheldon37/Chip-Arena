@@ -14,7 +14,9 @@ namespace ChipArena.UnityConversion
     // model of draws that model instead, with the right hand's frame fitted to it (NativeVisualWeaponPresentation.cs). It takes the hit flash and the
     // match-start spawn-in in its own shader (VisualBodyLook), and wears the pilot gear (VisualGear: the chest core and the
     // right-wrist chip device, Core NativePilotGear) at anchors its bake measured. First person wears its forearms and hands
-    // (VisualViewPose). Still voxel: intros, portraits, the draft, corpses and kill effects; hats are not drawn on it yet.
+    // (VisualViewPose). What still reads the voxel layer (the 22-joint rig's poses for the moves the motion bank lacks, the voxel
+    // boxes under corpses, cuts and wounds, the builds without the bake) is listed in docs/VOXEL-RETIREMENT.md section 1; new
+    // work is authored on the model (docs/VOXEL-STYLE.md).
     public sealed partial class ArenaPresentation
     {
         private sealed class VisualBody
@@ -80,8 +82,8 @@ namespace ChipArena.UnityConversion
         public const float DissolveGlow=3f;
         /// <summary>Settings · Player model is Classic (set each frame from the preferences): every pilot draws its voxel body.</summary>
         public bool ClassicBodies;
-        // This client's own outfit (prefs.look, set every frame): its pilot's bodies wear it; every other pilot the default
-        // until the look contract carries a seat's (Astra).
+        // This client's own outfit (prefs.look, set every frame): its pilot's bodies wear it; every other pilot wears its seat's
+        // look, which the seat frames replicate (VisualOutfitOf).
         public string LocalLook="";
         // The arena's camera this frame (the cloth's distance hold).
         public Camera VisualEye;
@@ -271,6 +273,8 @@ namespace ChipArena.UnityConversion
             body.Helm=!body.Hood&&WearsHelm(a.Id);
             // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
+            // The draft's install: the stage's hand shapes on the draft pilot (NativeDraftInstallPresentation.cs DraftGrasp).
+            if(a==draftActor)DraftGrasp(ref grasp);
             // A rifle or machine gun at rest stays off the shoulder (the game pose's low carry has its butt by the shoulder).
             if(a.Weapon==WeaponId.Rifle||a.Weapon==WeaponId.MachineGun)grasp.Unshoulder=1-Mathf.Clamp01(rig.GunAimWeight);
             VisualLeftSeat(ref grasp,a,ChipLookOf(a.Id));
@@ -559,7 +563,7 @@ namespace ChipArena.UnityConversion
         private readonly Actor draftActor=new Actor();
         // Whether the drafting seat draws on its visual body (VisualDraftPose's own test; the stage frames the model's head).
         private bool VisualDraftModel(NativeSeat seat)=>!Viewer&&sourceModels!=null&&!ClassicBodies&&seat!=null&&seat.spec!="siren"&&VisualBodiesOn;
-        private bool VisualDraftPose(CapturedAnimation.Player rig,NativeSeat seat,CapturedRig.Pose pose,float time,Camera camera,float support=0)
+        private bool VisualDraftPose(CapturedAnimation.Player rig,NativeSeat seat,CapturedRig.Pose pose,float time,Camera camera)
         {
             draftBody=null;if(rig==null||pose==null||!VisualDraftModel(seat))return false;
             var a=draftActor;a.Id=seat.id;a.SourceSpec=seat.spec;a.AccentColor=seat.accentColor;a.BodyColor=seat.bodyColor;a.Hat=seat.hat;a.HatColor=seat.hatColor;a.WeaponAway=true;a.Grounded=true;
@@ -567,7 +571,7 @@ namespace ChipArena.UnityConversion
             // The drafting pose stands lower than the arena's: the body's hips go onto the pose's pelvis, and the rig's hands (on
             // the body's wrists after the bind) with them.
             body.Root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);
-            pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,VisualArms.Reach,support);
+            pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,VisualArms.Reach);
             int hips=CapturedRig.Pelvis<body.Binding.Rig.Of.Length?body.Binding.Rig.Of[CapturedRig.Pelvis]:-1;
             if(hips>=0&&body.Binding.Bones[hips]!=null){var shift=rig.Bones[CapturedRig.Pelvis].position-body.Binding.Bones[hips].position;body.Root.transform.position+=shift;for(int side=0;side<2;side++){var hand=rig.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand];hand.position+=shift;}}
             VisualHandFit(body,rig,held);
@@ -577,8 +581,7 @@ namespace ChipArena.UnityConversion
             {var hb=VisualHatBone(rig,seat.hat);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(VisualHatModel(seat.hat,seat.hatColor,rig),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
             // The Sheldon Head: the hood's void and face (the body wears the hood; without them the opening showed the model's face).
             else SheldonHoodStill(body,seat.hat,seat.hatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,seat.hat),time,seat.id,HaloReduced,0,null);
-            if(!body.Hood)VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);
-            VisualSuit(body.Root,seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);
+            // (The suit, the face gear and the cloth's accent go on in RenderDraft, after the install's present and contact move the arms.)
             return true;
         }
         // The draft's visual body this frame (VisualDraftPose; null when the pilot draws voxel): its wrist device takes the
@@ -589,24 +592,9 @@ namespace ChipArena.UnityConversion
         private bool VisualDraftBay(out Vector3 at,out Vector3 outward)
         {
             at=outward=default;var body=draftBody;if(body?.GearDevice==null)return false;var s=NativePilotGear.Seat(Mathf.Clamp(body.GearRadius,.02f,.08f));
-            at=body.GearDevice.TransformPoint(new Vector3(-s.X,s.Y,s.Z));outward=body.GearDevice.TransformDirection(Vector3.right).normalized;return true;
+            var m=DraftDeviceMatrix(body);at=m.MultiplyPoint3x4(new Vector3(-s.X,s.Y,s.Z));outward=body.GearDevice.TransformDirection(Vector3.right).normalized;return true;
         }
-        // The device on the draft body through the pick, as VisualGear draws it in the arena but on the plant's clock: the lid
-        // opens as the receiving arm rises and shuts on the return, the bay glows ready in the accent, shows the chip from the
-        // carry's end and pulses in its colour, the lens keeps the colour after; the band's strips flare with the pulse.
-        private void VisualDraftDevice(NativeSeat seat,float age,float time,Color chip,float flash)
-        {
-            var body=draftBody;if(body?.GearDevice==null||!sourceModels.PilotGear(body.GearRadius>.01f?body.GearRadius:.04f))return;
-            gearBone??=GearBoneOf;var accent=AccentTint(seat.accentColor);
-            var dev=NativePilotGear.Device(age>=0?NativeDraftPlant.Raise(age):0,age,age>=NativeDraftPlant.CarryEnd?age-NativeDraftPlant.CarryEnd:float.NaN,time);
-            var m=body.GearDevice.localToWorldMatrix;float r=Mathf.Round(Mathf.Clamp(body.GearRadius,.02f,.08f)*1000)/1000,strips=dev.Strips*(1+2*flash);
-            gearMatrix=m;sourceModels.Queue(sourceModels.GearDeviceFor(body.GearRadius),m,gearBone,null,0,null,Color.white,accent,1,null,null,new Vector4(strips,strips,strips,1),null,0);
-            if(dev.Lid>.02f){var bay=(dev.BayChip?chip:body.AccentLinear)*dev.Bay;sourceModels.Queue(sourceModels.GearBayFor(body.GearRadius),m,gearBone,null,0,null,Color.white,accent,1,null,null,new Vector4(bay.r,bay.g,bay.b,1),null,0);}
-            var h=NativePilotGear.Hinge(r);var lens=(dev.LensChip?chip:body.AccentLinear)*dev.Lens;
-            gearMatrix=m*Matrix4x4.TRS(new Vector3(-h.X,h.Y,h.Z),Quaternion.AngleAxis(dev.Lid*NativePilotGear.LidOpenDegrees,Vector3.forward),Vector3.one);
-            sourceModels.Queue(NativeSourceModels.GearLid,gearMatrix,gearBone,null,0,null,Color.white,accent,1,null,null,new Vector4(lens.r,lens.g,lens.b,1),null,0);
-            if(dev.Chip){var s=NativePilotGear.Seat(r);var c=chip*1.6f;gearMatrix=m*Matrix4x4.Translate(new Vector3(-s.X,s.Y,s.Z));sourceModels.Queue(NativeSourceModels.GearChip,gearMatrix,gearBone,null,0,null,Color.white,accent,1,null,null,new Vector4(c.r,c.g,c.b,1),null,0);}
-        }
+        // (The device on the draft body runs on the install's clock: NativeDraftInstallPresentation.cs VisualDraftDevice.)
         private VisualBody CreateVisualBody(CapturedAnimation.Player rig,int id,bool hood=false,bool simulate=true)
         {
             var root=VisualCorpseInstance();root.transform.SetParent(rig.Root.transform,false);root.SetActive(true);root.name="Visual body "+id;
@@ -948,11 +936,12 @@ namespace ChipArena.UnityConversion
         // helmet (the default) or half mask (Core NativeRobotHelm) in its body colour, the concept's mask and visor (Core
         // NativePilotGear) both or either alone, or none (the model's own face): the live body (VisualGear), the draft's pilot, a
         // whole corpse, a death scene; the helmet also on the half of a split corpse that holds the head.
-        private void VisualFaceGear(Transform head,int id,string bodyColor,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash)
+        // `accentOverride` and `glowGain`: the draft's install lights the visor in the chip's colour (DraftFaceGear).
+        private void VisualFaceGear(Transform head,int id,string bodyColor,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash,Color? accentOverride=null,float glowGain=1)
         {
             if(NativeHotDog.Worn(VisualOutfitOf(id)))return; // (None on the Hot Dog: the sausage's face is its own.)
             int gear=FaceGearOf(id);if(head==null||gear==NativeWeaponSkins.FaceNone||!sourceModels.PilotFace())return;
-            gearBone??=GearBoneOf;gearMatrix=head.localToWorldMatrix;var accent=AccentTint(accentColor);var lit=new Vector4(1,1,1,1);
+            gearBone??=GearBoneOf;gearMatrix=head.localToWorldMatrix;var accent=accentOverride??AccentTint(accentColor);var lit=new Vector4(glowGain,glowGain,glowGain,1);
             bool helm=gear==NativeWeaponSkins.FaceHelm;
             if(helm||gear==NativeWeaponSkins.FaceHalf)
             {

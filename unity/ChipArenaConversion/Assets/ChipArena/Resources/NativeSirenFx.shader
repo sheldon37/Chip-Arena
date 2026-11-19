@@ -49,7 +49,11 @@ Shader "ChipArena/NativeSirenFx"
             }
             float4 frag(v2f i):SV_Target
             {
-                float mode=i.uv.z,flags=i.uv.w;bool additive=fmod(flags,2)>.5,authored=flags>1.5;
+                // The mode and flags are whole numbers on every vertex, but the interpolator hands them back within a rounding error
+                // (the perspective divide); an authored premultiplied piece's flags of 2 then came out 1.9999998 on about half its
+                // pixels, fmod read that as additive, and the piece vanished there in a pattern that crawled as it moved (the flat
+                // ground-fog sheets at street level: expedition overhaul W0's review). Rounded first, every piece decodes as sent.
+                float mode=round(i.uv.z),flags=round(i.uv.w);bool additive=fmod(flags,2)>.5,authored=flags>1.5;
                 float3 c=i.color.rgb,e=i.q.rgb;float a=i.color.a;
                 // Authored colours work in linear light (three's built-in materials); raw ones in display values.
                 if(authored){c=GammaToLinearSpace(c);e=GammaToLinearSpace(e);}

@@ -80,6 +80,8 @@ namespace ChipArena.UnityConversion
             K("structure.land.timber",P,1.5f,N),K("structure.rebar",P,1.5f,N),K("structure.rumble",P,3f,N),K("structure.snap",P,.6f,N),K("structure.thud",P,1.2f,N),K("structure.whoosh",P,2f,N),
             K("ui.back",F,.4f,H),K("ui.click",F,.25f,H),K("ui.confirm",F,1f,H),K("ui.countdown",F,.5f,H),K("ui.draft.hover",F,.3f,H),K("ui.draft.pick",F,.8f,H),K("ui.draft.plant",F,1f,H),K("ui.error",F,.7f,H),
             K("ui.go",F,1.5f,H),K("ui.hover",F,.15f,H),K("ui.loadout.select",F,1f,H),K("ui.notice",F,1f,H),K("ui.round-lost",F,3f,H),K("ui.round-won",F,3f,H),K("ui.toggle",F,.4f,H),
+            // The draft stage's install (NativeInstallShot.Bespoke; docs/audio/sound-requests-install.json): each replaces the layers it stands for once generated.
+            K("ui.install.lock",F,.3f,H),K("ui.install.shatter",F,.6f,H),K("ui.install.lid",F,.5f,H),K("ui.install.catch",F,.3f,H),K("ui.install.seat",F,.8f,H),K("ui.install.surge",F,.6f,H),K("ui.install.out",F,.5f,H),
             // Entrance music (NativeIntroRules.Entrances without the DEV ones): the 12 weapon signatures, then the 7 procedural entrances.
             K("intro.weapon-sword",F,4.8f,H),K("intro.weapon-daggers",F,4.8f,H),K("intro.weapon-shield",F,4.8f,H),K("intro.weapon-greatsword",F,4.8f,H),K("intro.weapon-pistol",F,4.8f,H),K("intro.weapon-rifle",F,4.8f,H),
             K("intro.weapon-machinegun",F,4.8f,H),K("intro.weapon-bow",F,4.8f,H),K("intro.weapon-fire",F,4.8f,H),K("intro.weapon-water",F,4.8f,H),K("intro.weapon-lightning",F,4.8f,H),K("intro.weapon-darkness",F,4.8f,H),

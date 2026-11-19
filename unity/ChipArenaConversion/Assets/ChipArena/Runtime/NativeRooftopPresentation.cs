@@ -360,7 +360,8 @@ namespace ChipArena.UnityConversion
                     HeldShown[i]=b=>s.Weapon.Visible&&b==s.Weapon.Bone||s.Offhand.Visible&&b==s.Offhand.Bone;
                     int k=i;Actors[i]=new Actor();
                     ModelHeld[i]=b=>{var m=Rigs[k].Bones[b].localToWorldMatrix;return s.Weapon.Visible&&b==s.Weapon.Bone?m*Offset(s.Weapon):s.Offhand.Visible&&b==s.Offhand.Bone?m*Offset(s.Offhand):m;};
-                    ModelHeldShown[i]=b=>s.Weapon.Visible&&b==s.Weapon.Bone&&!OwnWeapon[k]||s.Offhand.Visible&&b==s.Offhand.Bone;
+                    // the game's model only where the model's own weapon did not draw (it holds both hands' blades: voxel retirement P9)
+                    ModelHeldShown[i]=b=>!OwnWeapon[k]&&(s.Weapon.Visible&&b==s.Weapon.Bone||s.Offhand.Visible&&b==s.Offhand.Bone);
                 }
                 PropMatrix=_=>Prop;PropPart=b=>b==PropBone;
             }
@@ -407,14 +408,14 @@ namespace ChipArena.UnityConversion
                     sourceModels.Queue(body,group,cast.Bone[i],null,0,camera,cast.Body[i],cast.Accent[i],look:siren?SirenStill(reduced?0:time):null);
                     // Your pilot's hat in its colour, the Sheldon Head animated (NativeHatPresentation.cs); the crowd keeps Auto.
                     if(!siren&&look.Hat!="none"&&!AuditorHalo(look.Hat,bones[CapturedRig.Head],time,1,reduced,0,camera,camera,hatColor)&&!SheldonStill(look.Hat,hatColor,group,cast.Bone[i],bones[CapturedRig.Head],time,i,reduced,0,camera))sourceModels.Queue(HatModel(look.Hat,hatColor),group,cast.Bone[i],null,0,camera,body:HatBody(look.Hat,hatColor));
-                    if(i>0&&!siren&&(s.Weapon.Visible||s.Offhand.Visible))sourceModels.Queue("weapon-"+look.Spec,group,cast.Held[i],cast.HeldShown[i],0,camera,accent:cast.Accent[i],glow:HeldGlow);
+                    if(i>0&&!siren&&(s.Weapon.Visible||s.Offhand.Visible))sourceModels.Queue(RooftopHeld(look.Spec,null,camera,group),group,cast.Held[i],cast.HeldShown[i],0,camera,accent:cast.Accent[i],glow:HeldGlow);
                 }
                 // The seated pilot's weapon lies flat on the lip at its right, pointing along it (fists stay on the hands).
                 if(i==0&&!siren&&!NativeLobbyPoses.Fighter(look.Spec))
                 {
                     cast.PropBone=NativeLobbyPoses.Magic(look.Spec)?CapturedRig.LHand:CapturedRig.RHand;
                     cast.Prop=root*Matrix4x4.TRS(new Vector3(.40f,.37f-cast.SeatY,-.02f),Quaternion.Euler(0,(Mathf.PI/2-.06f)*Mathf.Rad2Deg,0),Vector3.one);
-                    sourceModels.Queue("weapon-"+look.Spec,root,cast.PropMatrix,cast.PropPart,0,camera,accent:cast.Accent[i],glow:HeldGlow);
+                    sourceModels.Queue(RooftopHeld(look.Spec,pilot.Skins,camera,root),root,cast.PropMatrix,cast.PropPart,0,camera,accent:cast.Accent[i],glow:HeldGlow);
                 }
             }
             sourceModels.Flush(UsesInstancing);
@@ -462,11 +463,15 @@ namespace ChipArena.UnityConversion
             VisualGear(body,a,time,null,null,1,false);
             if(i>0&&(s.Weapon.Visible||s.Offhand.Visible))
             {
-                cast.OwnWeapon[i]=s.Weapon.Visible&&VisualWeaponDrawn(rig,rig.Bones[s.Weapon.Bone].localToWorldMatrix*RooftopCast.Offset(s.Weapon));
-                sourceModels.Queue("weapon-"+look.Spec,rig.Root.transform.localToWorldMatrix,cast.ModelHeld[i],cast.ModelHeldShown[i],0,camera,accent:cast.Accent[i],glow:HeldGlow);
+                // the model's own weapon (the bake's, else the pack's: the daggers' second blade on the off hand), else the game's
+                cast.OwnWeapon[i]=s.Weapon.Visible&&VisualWeaponDrawn(rig,rig.Bones[s.Weapon.Bone].localToWorldMatrix*RooftopCast.Offset(s.Weapon),s.Offhand.Visible&&HeldSpec(a)=="daggers"?cast.ModelHeld[i](s.Offhand.Bone):(Matrix4x4?)null);
+                sourceModels.Queue(RooftopHeld(look.Spec,null,camera,rig.Root.transform.localToWorldMatrix),rig.Root.transform.localToWorldMatrix,cast.ModelHeld[i],cast.ModelHeldShown[i],0,camera,accent:cast.Accent[i],glow:HeldGlow);
             }
             return true;
         }
+        // The game's held model for a rooftop pilot (voxel retirement P9: through the skins, never an unpicked Prototype id): the
+        // crowd's in the Standard skin (null), the seated pilot's in your skins (its weapon on the lip), at the distance's tier.
+        private string RooftopHeld(string spec,string skins,Camera camera,Matrix4x4 at)=>MenuHeldModel(spec,skins,NativeWeaponSkins.Tier(LowGraphics,1,camera!=null?Vector3.Distance(camera.transform.position,at.GetColumn(3)):0,false));
         /// <summary>The rooftop's pilots' visual bodies hide (the home screen left the rooftop: ConversionGame.RooftopLeave).</summary>
         public void RooftopHide()
         {

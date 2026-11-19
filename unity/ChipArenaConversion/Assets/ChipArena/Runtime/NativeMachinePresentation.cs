@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
                 // The tier's cartridge (NativeChipCartridge): its lights breathing in the tint, its ring (Epic and up) orbiting the core.
                 var root=Matrix4x4.TRS(NativeArena.Vec(pose.position),Quaternion.Euler(0,pose.spin*Mathf.Rad2Deg,0)*Quaternion.Euler(-1.25f*Mathf.Rad2Deg,0,0),Vector3.one*.62f);string model=sourceModels.MachineModel(NativeMachineModels.PickupModel(k.Tier),"pve-pickup");
                 var orbit=root*sourceModels.PickupOrbit(model,t);var lit=tint*(.85f+.3f*NativeChipCartridge.Breath(NativeChipCartridge.Of(k.Tier),t,false));
-                sourceModels.Queue(model,root,b=>b==NativeMachineModels.Orbit?orbit:root,partTint:b=>b==1||b==NativeMachineModels.Orbit?lit:Color.white);
+                sourceModels.Queue(model,root,b=>b==NativeMachineModels.Orbit?orbit:root,partTint:b=>b==1||b==NativeMachineModels.CoreLights||b==NativeMachineModels.Orbit?lit:Color.white);
                 if(glow==null)continue;bool mine=k.Owner!=null&&k.Owner.Seat.id==arena.LocalId;Vector3 at=NativeArena.Vec(pose.position);
                 glow.Glow(at+Vector3.up*NativePickupFx.GlowLift,new Color(shown.r,shown.g,shown.b,NativePickupFx.GlowOpacity(mine,t)),mine);
                 if(NativePickupFx.BeamShown(k.Tier,pose.progress))glow.Beam(new Vector3(at.x,0,at.z),new Color(shown.r,shown.g,shown.b,NativePickupFx.BeamOpacity(mine,t)));

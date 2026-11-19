@@ -37,13 +37,14 @@ namespace ChipArena.UnityConversion
             public string Name; public int Parent; public Vector3 Position; public Quaternion Rotation;
             public int Joint; public float Share; public Align Align; public int TwistJoint; public float TwistShare;
             public int Finger, Side; // finger segment 1-3 (proximal to tip), thumb 11-13, 0 none; side 0 left, 1 right
+            public int Digit; // the finger it is on (a finger bone's): 0 thumb, 1 index, 2 middle, 3 ring, 4 pinky
         }
 
         public sealed class Rig
         {
             public readonly int Count;
             public readonly string[] Names;
-            public readonly int[] Parent, Joint, TwistJoint, Finger, Side;
+            public readonly int[] Parent, Joint, TwistJoint, Finger, Side, Digit; // Digit: a finger bone's finger (0 thumb .. 4 pinky), -1 none
             public readonly Vector3[] FingerAxis; // each finger chain's curl axis in the aligned rest (from its own rest curl)
             public readonly float[] Share, TwistShare, Contact;
             public readonly bool[] ChainStart;
@@ -71,12 +72,15 @@ namespace ChipArena.UnityConversion
             // The palm's facing per side in the aligned rest, square to FistAxis and FistAhead on the side the fingers curl to.
             public readonly Vector3[] FistPalm=new Vector3[2];
             public readonly bool[] HasFist=new bool[2];
+            // The thumb base's turn across the palm toward the index (HandShape.Across) per side: the axis that turns the thumb's first
+            // segment toward the index knuckle, in the aligned rest (zero without both).
+            public readonly Vector3[] ThumbAcross=new Vector3[2];
 
             public Rig(BoneSpec[] bones)
             {
                 Count=bones.Length; Names=new string[Count]; Parent=new int[Count]; Joint=new int[Count]; TwistJoint=new int[Count];
                 Share=new float[Count]; TwistShare=new float[Count]; Contact=new float[Count]; ChainStart=new bool[Count];
-                Finger=new int[Count]; Side=new int[Count]; FingerAxis=new Vector3[Count];
+                Finger=new int[Count]; Side=new int[Count]; Digit=new int[Count]; FingerAxis=new Vector3[Count];
                 RestPosition=new Vector3[Count]; AlignedPosition=new Vector3[Count]; LimbRest=new Vector3[Count]; RestRotation=new Quaternion[Count]; AlignedWorld=new Quaternion[Count];
                 for(int j=0;j<Of.Length;j++) Of[j]=-1;
                 var restWorld=new Quaternion[Count]; var restPos=new Vector3[Count]; var turn=new Quaternion[Count];
@@ -85,7 +89,7 @@ namespace ChipArena.UnityConversion
                     var b=bones[v]; int p=b.Parent;
                     if(p>=v) throw new ArgumentException("visual bones must follow their parents: "+b.Name);
                     Names[v]=b.Name; Parent[v]=p; Joint[v]=b.Joint; Share[v]=b.Joint<0?0:b.Share; TwistJoint[v]=b.TwistJoint; TwistShare[v]=b.TwistShare;
-                    Finger[v]=b.Finger; Side[v]=b.Finger==0?-1:b.Side;
+                    Finger[v]=b.Finger; Side[v]=b.Finger==0?-1:b.Side; Digit[v]=b.Finger==0?-1:b.Digit;
                     RestPosition[v]=b.Position; RestRotation[v]=Quaternion.Normalize(b.Rotation);
                     restWorld[v]=p<0?RestRotation[v]:restWorld[p]*RestRotation[v];
                     restPos[v]=p<0?b.Position:restPos[p]+Vector3.Transform(b.Position,restWorld[p]);
@@ -112,6 +116,7 @@ namespace ChipArena.UnityConversion
                 }
                 FingerAxes();
                 Fists();
+                ThumbAxes();
                 // Floor-fit radii: a bone's rest height over the floor, capped (soles and toes touch at rest, the rest clear it).
                 for(int v=0;v<Count;v++) Contact[v]=Math.Max(0,Math.Min(.12f,AlignedPosition[v].Y-Floor));
                 int pelvis=Of[CapturedRig.Pelvis];
@@ -187,6 +192,17 @@ namespace ChipArena.UnityConversion
                     if(ahead.LengthSquared()<1e-10f) continue;
                     FistCenter[side]=centres-AlignedPosition[hand]; FistAxis[side]=axis; FistAhead[side]=Vector3.Normalize(ahead); HasFist[side]=true;
                     Vector3 palm=Vector3.Cross(axis,FistAhead[side]); FistPalm[side]=Vector3.Dot(palm,centres-knuckles)<0?-palm:palm;
+                }
+            }
+            // ThumbAcross: per side, the thumb's first segment turned toward the index finger's knuckle.
+            private void ThumbAxes()
+            {
+                for(int side=0;side<2;side++)
+                {
+                    int thumb=-1,index=-1;for(int v=0;v<Count;v++){if(Side[v]!=side)continue;if(Finger[v]==11)thumb=v;else if(Finger[v]==1&&Digit[v]==1)index=v;}
+                    int next=thumb<0?-1:Next(thumb);if(next<0||index<0)continue;
+                    Vector3 t=AlignedPosition[next]-AlignedPosition[thumb],i=AlignedPosition[index]-AlignedPosition[thumb],axis=Vector3.Cross(t,i);
+                    if(axis.LengthSquared()>1e-12f)ThumbAcross[side]=Vector3.Normalize(axis);
                 }
             }
             private static Vector3 Circumcentre(Vector3 a,Vector3 b,Vector3 c)
@@ -304,7 +320,18 @@ namespace ChipArena.UnityConversion
         // Clench: 0..1, closed hands drawn on past a handle's grip into a tight fist with nothing in it (a Hulk's punch).
         // Unshoulder: 0..1, a long gun kept off the shoulder whatever the game pose's butt (a rifle or machine gun at rest: the low
         // carry's butt sits near the game shoulder; owner 2026-11-10).
-        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock, Relax, Still, Clench, Unshoulder; public bool LeftCarries, RightCarries, Bound; public Hold Right, Left, SupportHold; }
+        // LeftShape, RightShape: a hand's own shape (HandShape, the draft stage's install: NativeHandShapes) over its grip's curl, by its
+        // Weight (0: today's curl, bit for bit).
+        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock, Relax, Still, Clench, Unshoulder; public bool LeftCarries, RightCarries, Bound; public Hold Right, Left, SupportHold; public HandShape LeftShape, RightShape; }
+        // A hand shape: each finger's curl as a share of its Closed curl (Thumb .. Pinky), the thumb base's turn toward the index
+        // (Across, rad, on its first joint about Rig.ThumbAcross) and how much of it the hand takes (Weight 0..1 over the grip's curl).
+        public struct HandShape
+        {
+            public float Thumb, Index, Middle, Ring, Pinky, Across, Weight;
+            public HandShape(float thumb,float across,float index,float middle,float ring,float pinky,float weight=1) { Thumb=thumb; Across=across; Index=index; Middle=middle; Ring=ring; Pinky=pinky; Weight=weight; }
+            public float Of(int digit)=>digit==0?Thumb:digit==1?Index:digit==2?Middle:digit==3?Ring:Pinky;
+            public static HandShape Lerp(in HandShape a,in HandShape b,float t)=>new HandShape(a.Thumb+(b.Thumb-a.Thumb)*t,a.Across+(b.Across-a.Across)*t,a.Index+(b.Index-a.Index)*t,a.Middle+(b.Middle-a.Middle)*t,a.Ring+(b.Ring-a.Ring)*t,a.Pinky+(b.Pinky-a.Pinky)*t,a.Weight+(b.Weight-a.Weight)*t);
+        }
 
         // The Standard weapons' handles (NativeWeaponModels). The sword family draws at the hand turned by
         // NativeSpecialPose.HeldRotation (`held`) with its grip along +z through the wrist; the shield's grip bar stands up behind
@@ -402,7 +429,7 @@ namespace ChipArena.UnityConversion
                     s.Turn[v]=Quaternion.Normalize(start*(r.Share[v]>=.9999f?local:Quaternion.Slerp(Quaternion.Identity,local,r.Share[v])));
                 }
                 else if(r.TwistJoint[v]>=0) s.Turn[v]=Quaternion.Normalize(parentTurn*CapturedRig.Rot(CapturedRig.Y,r.TwistShare[v]*Twist(pose.Rotation[r.TwistJoint[v]])));
-                else if(r.Finger[v]!=0) s.Turn[v]=Quaternion.Normalize(parentTurn*CapturedRig.Rot(r.FingerAxis[v],Curl(r.Finger[v],r.Side[v]==1?s.RightGrip:s.LeftGrip,s.Clench)));
+                else if(r.Finger[v]!=0) s.Turn[v]=Quaternion.Normalize(parentTurn*FingerTurn(r,v,s,r.Side[v]==1?grasp.RightShape:grasp.LeftShape));
                 else s.Turn[v]=parentTurn;
                 s.World[v]=Quaternion.Normalize(s.Turn[v]*r.AlignedWorld[v]);
             }
@@ -973,6 +1000,18 @@ namespace ChipArena.UnityConversion
             int i=finger>=11?finger-8:finger-1; if(i<0||i>5) return 0;
             return Curl(finger,grip)+(Clenched[i]-Closed[i])*clench*grip;
         }
+        // A finger joint's turn: its grip's curl, or (a HandShape with weight) toward its finger's share of the Closed curl, the thumb's
+        // base also turned across the palm by the shape's Across. Weight 0 is the grip's curl exactly.
+        private static Quaternion FingerTurn(Rig r,int v,State s,in HandShape shape)
+        {
+            float curl=Curl(r.Finger[v],r.Side[v]==1?s.RightGrip:s.LeftGrip,s.Clench);
+            if(!(shape.Weight>0)||r.Digit[v]<0) return CapturedRig.Rot(r.FingerAxis[v],curl);
+            int i=r.Finger[v]>=11?r.Finger[v]-8:r.Finger[v]-1; float w=Math.Min(1,shape.Weight);
+            if(i>=0&&i<=5) curl+=(shape.Of(r.Digit[v])*Closed[i]-curl)*w;
+            var turn=CapturedRig.Rot(r.FingerAxis[v],curl);
+            if(r.Finger[v]==11&&shape.Across!=0&&r.ThumbAcross[r.Side[v]].LengthSquared()>.5f) turn=CapturedRig.Rot(r.ThumbAcross[r.Side[v]],shape.Across*w)*turn;
+            return turn;
+        }
 
         // How firmly the game's own hands hold together: 1 while its wrists are within the support grips' reach of each other
         // (RangedPose and the greatsword put them .11-.12 m apart), 0 once a run or roll swings the left hand free.
@@ -1512,7 +1551,7 @@ namespace ChipArena.UnityConversion
                 string name=names[v]; int side=name.EndsWith("_l")?0:name.EndsWith("_r")?1:-1; if(side<0) continue;
                 foreach(string f in Digits)
                     for(int k=1;k<=3;k++)
-                        if(name==f+"_0"+k+(side==0?"_l":"_r")) { specs[v].Finger=(f=="thumb"?10:0)+k; specs[v].Side=side; }
+                        if(name==f+"_0"+k+(side==0?"_l":"_r")) { specs[v].Finger=(f=="thumb"?10:0)+k; specs[v].Side=side; specs[v].Digit=Array.IndexOf(Digits,f); }
             }
             // Twist helpers: roll shares by their place along the limb. Upper arm and thigh helpers counter the limb's own
             // roll (none at the far end, all of it at the root); forearm and calf helpers take the hand's and foot's roll.

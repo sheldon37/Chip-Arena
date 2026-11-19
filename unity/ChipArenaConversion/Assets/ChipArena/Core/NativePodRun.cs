@@ -31,7 +31,8 @@ namespace ChipArena.UnityConversion
         {
             if(r==null||r.departed||r.launchAt>=0||!Finite(feet.X)||!Finite(feet.Y)||!Finite(feet.Z))return false;
             float dx=feet.X-r.x,dz=feet.Z-r.z;
-            return Math.Abs(feet.Y-r.y)<=1.7f&&dx*dx+dz*dz<=UseRadius*UseRadius&&dx*Math.Sin(r.yaw)+dz*Math.Cos(r.yaw)>=-.2f;
+            double radians=r.yaw*Math.PI/180;
+            return Math.Abs(feet.Y-r.y)<=1.7f&&dx*dx+dz*dz<=UseRadius*UseRadius&&dx*Math.Sin(radians)+dz*Math.Cos(radians)>=-.2f;
         }
         public bool Board(int seat,Vector3 feet,double now,bool eligible)
         {

@@ -45,7 +45,7 @@ Shader "ChipArena/NativeDraftBackdrop"
             #include "UnityCG.cginc"
             // [unroll] for the derivatives in the motes' loop (the offline GLSL build defines BACK_UNROLL empty).
             #define BACK_UNROLL [unroll]
-            float4 _BackCam,_BackClock,_BackFwd,_BackUp,_BackRight,_BackAccent,_BackFrame,_BackCounter,_BackDeep,_BackVoid,_BackPulse,_BackStyle,_BackFx,_BackSafe,_BackCap,_BackGlow;
+            float4 _BackCam,_BackClock,_BackFwd,_BackUp,_BackRight,_BackAccent,_BackFrame,_BackCounter,_BackDeep,_BackVoid,_BackPulse,_BackStyle,_BackFx,_BackSafe,_BackCap,_BackGlow,_BackFront;
             // The anime style's switch (x 1 on, 0 the legacy look), set once with the material.
             float4 _BackToon;
             // ---- DRAFT BACKDROP SHARED BEGIN
@@ -133,7 +133,7 @@ Shader "ChipArena/NativeDraftBackdrop"
                 // ---- gates: two frames of light running away down the corridor (the scan), the plant's ring, the power-on front.
                 float gwid=.12+th*.005;float gate=0.0;
                 BACK_UNROLL for(int n=0;n<2;n++){float zg=frac(f/7.5+float(n)*.5)*46.0+1.0;gate+=exp(-BackSq((depth-zg)/gwid))*(1.0-zg/48.0);}
-                float wave=exp(-BackSq((depth-_BackPulse.x)/(.5+th*.012)))*_BackPulse.y;
+                float wave=exp(-BackSq((depth-_BackPulse.x)/(.5+th*.012)))*_BackPulse.y+exp(-BackSq((depth-_BackFront.x)/(.5+th*.012)))*_BackFront.y;
                 float boot=saturate((_BackAccent.w-depth)/2.0),front=exp(-BackSq((depth-_BackAccent.w)/(.4+th*.006)))*(1.0-_BackRight.w);
                 detail=detail*boot+A*(gate*_BackFx.y*(.03+.10*lines)+wave*(.10+.35*lines)+front*(.05+.15*lines));
                 // ---- haze: the corridor fades into a navy haze that brightens toward its far end, behind the pilot's head.

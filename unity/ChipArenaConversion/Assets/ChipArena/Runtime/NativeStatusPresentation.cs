@@ -150,6 +150,8 @@ namespace ChipArena.UnityConversion
         }
         private void FlushStatus(StatusBatch[] list,int layer,Camera camera)
         {
+            // The DEV voxel draw counter: the slow, shackle and mark cubes at the rig's heights (P13; V3 moves them onto the model).
+            if(NativeVoxelDraws.On&&(list==statusWorld||list==statusView))for(int s=(int)NativeStatusVisuals.Surface.Slow;s<=(int)NativeStatusVisuals.Surface.Mark;s++)if(list[s]!=null)NativeVoxelDraws.Add(NativeVoxelDraws.Kind.StatusMarker,list[s].Count,Time.frameCount);
             foreach(var b in list)
             {
                 if(b==null||b.Count==0)continue;bool drawn=false;

@@ -134,6 +134,16 @@ namespace ChipArena.UnityConversion
             Check(NativePortraitRules.TextureSize(390,700,1.6f,1024,out tw,out th)&&th==1024&&tw==Math.Round(390*1.6*1024/1120.0),"texture capped");
             Check(!NativePortraitRules.TextureSize(200,30,1,1280,out _,out _),"too small for a portrait");
             NativePortraitRules.SleepMark(0,0,false,out var off0,out float sc0,out float op0);Check(off0==new Vector2(0,8)&&Math.Abs(sc0-.7f)<1e-6&&op0==0,"sleep mark start");
+            // A DEV animation class stands, in every lobby pose and both entries, exactly as its base class (voxel retirement P9: it
+            // holds its base's weapon, so its stance is its base's too; the DEV Greatsword no longer points the greatsword at the camera).
+            foreach(var dev in NativeDevMotions.All)for(int p=0;p<NativeLobbyPoses.Keys.Length;p++)foreach(float t in new[]{0f,1.3f})
+            {
+                string b=NativeDevMotions.Base(dev);var rd=new MeleeRig();var rb=new MeleeRig();var pd=new CapturedRig.Pose();var pb=new CapturedRig.Pose();
+                rd.Reset();rb.Reset();NativeLobbyPoses.Sample(rd,dev,p,t,"none",false,3,out var wd,out var od,out _);NativeLobbyPoses.Sample(rb,b,p,t,"none",false,3,out var wb,out var ob,out _);rd.WritePose(pd);rb.WritePose(pb);
+                bool same=wd.Visible==wb.Visible&&wd.Bone==wb.Bone&&wd.Position==wb.Position&&wd.Rotation==wb.Rotation&&od.Visible==ob.Visible&&od.Bone==ob.Bone;
+                for(int j=0;j<pd.Rotation.Length;j++)same&=pd.Rotation[j]==pb.Rotation[j]&&pd.Position[j]==pb.Position[j];
+                Check(same,dev+" stands as "+b+" in the lobby pose "+NativeLobbyPoses.Keys[p]+" at "+t+" s");
+            }
             NativePortraitRules.SleepMark(0,3.3f*.2f,false,out _,out _,out float op1);Near(op1,.8,1e-5,"sleep mark peak");NativePortraitRules.SleepMark(2,0,true,out var off2,out _,out float op2);Check(off2==new Vector2(27,-27)&&op2==.6f,"reduced sleep marks");
             Console.WriteLine("PASS lobby poses and portrait scene vs the original (lobby-poses.ts, menu-portraits.ts, auditor-halo.ts, character-rig.ts): "+poses+" poses ("+idle+" idle-held), worst joint "+(worstP*1000).ToString("0.0000")+" mm / "+worstQ.ToString("0.000000")+" rad, "+frames+" framings, "+tops+" hat tops (worst "+(worstTop*1000).ToString("0.0")+" mm), "+parts+" part classes, "+vertices+" primitive vertices; "+count+" assertions");
             BowStance();

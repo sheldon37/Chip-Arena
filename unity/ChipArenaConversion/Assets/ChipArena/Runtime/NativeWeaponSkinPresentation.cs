@@ -23,17 +23,28 @@ namespace ChipArena.UnityConversion
             if(Viewer)return ViewerWeaponSkins;var seats=WeaponLoadout?.Match?.Seats;if(seats==null)return null;
             for(int i=0;i<seats.Count;i++)if(seats[i]!=null&&seats[i].id==id)return seats[i].weaponSkins;return null;
         }
-        private int WeaponSkin(Actor a)=>a==null?NativeWeaponSkins.StandardIndex:NativeWeaponSkins.Index(SeatWeaponSkins(a.Id),a.SourceSpec);
+        /// <summary>The weapon spec `a` holds: a DEV animation class's base class (Core NativeDevMotions: it plays, and holds, exactly
+        /// what its base does; a menu's pilot carries the DEV spec it picked, an arena seat already plays the base), else its own.</summary>
+        private static string HeldSpec(Actor a)=>a==null?null:NativeDevMotions.Base(a.SourceSpec)??a.SourceSpec;
+        private int WeaponSkin(Actor a)=>a==null?NativeWeaponSkins.StandardIndex:NativeWeaponSkins.Index(SeatWeaponSkins(a.Id),HeldSpec(a));
         /// <summary>A Prototype model id ("weapon-"/"loose-" + spec) in `a`'s skin, Full detail (ghosts, deaths, drops).</summary>
         private string Skinned(Actor a,string prototypeId)
         {
             if(sourceModels==null||prototypeId==null||a==null)return prototypeId;var id=NativeWeaponSkins.Model(prototypeId,WeaponSkin(a));return sourceModels.Has(id)?id:prototypeId;
         }
-        private string SkinnedHeld(Actor a)=>a==null?null:Skinned(a,NativeWeaponSkins.PrototypeHeld(a.SourceSpec));
+        private string SkinnedHeld(Actor a)=>a==null?null:Skinned(a,NativeWeaponSkins.PrototypeHeld(HeldSpec(a)));
+        /// <summary>The held model a menu pilot's hands draw for `spec` under its skin map at `tier` (the rooftop's crowd and seat, the
+        /// Deployment Station's pads; voxel retirement P9): the pick's own (the Standard model unless it chose the Prototype Series), a
+        /// DEV class's base class's, the Prototype id only where nothing else is banked. Cached strings: allocation free.</summary>
+        private string MenuHeldModel(string spec,string skins,int tier)
+        {
+            string held=NativeDevMotions.Base(spec)??spec;var id=NativeWeaponSkins.Held(held,skins,tier);
+            return id!=null&&sourceModels!=null&&sourceModels.Has(id)?id:NativeWeaponSkins.PrototypeHeld(held);
+        }
         /// <summary>The held weapon model of a posed rig, at the detail tier its view calls for.</summary>
         private string HeldWeaponModel(CapturedAnimation.Player rig,Actor a,bool first)
         {
-            string prototype=NativeWeaponSkins.PrototypeHeld(a.SourceSpec);int skin=WeaponSkin(a);if(skin==NativeWeaponSkins.PrototypeIndex||sourceModels==null)return prototype;
+            string prototype=NativeWeaponSkins.PrototypeHeld(HeldSpec(a));int skin=WeaponSkin(a);if(skin==NativeWeaponSkins.PrototypeIndex||sourceModels==null)return prototype;
             float distance=0;var eye=WorldEye;if(!first&&eye!=null&&rig?.Root!=null)distance=Vector3.Distance(eye.transform.position,rig.Root.transform.position);
             var id=NativeWeaponSkins.Model(prototype,skin,NativeWeaponSkins.Tier(LowGraphics,WeaponEffectsQuality,distance,first));
             return sourceModels.Has(id)?id:prototype;

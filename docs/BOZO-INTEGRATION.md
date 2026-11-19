@@ -1312,6 +1312,11 @@ models, review and revise." Both the draft's cards and the 3D chip get the detai
   lens keeps the colour (`NativePilotGear.Device`'s states on the plant's clock). The model's arms are its own proportions,
   so its left hand is placed by the visual rig's support grip (`Grasp.Bound`) with an offset learnt from where its palm lands
   (kept between picks). The voxel pilot keeps the palm-side cuff and the big rings. Timing unchanged (the plant at 1.14 s).
+  *Superseded 2026-11-18 by the chip install (`Core/NativeInstallShot.cs`, `NativeDraftInstall.cs`, `NativeHandShapes.cs`,
+  `Runtime/NativeDraftInstallPresentation.cs`):* the camera pushes in to the visor and the wrist, the left hand takes the
+  tier's cartridge by its edge and presses it onto the bay with two fingers (the drawn arm solved onto the cartridge's plan
+  relative to the drawn bay: no learnt offset, no support grip), the core latches into the seat on the same 1.14 s, the shell
+  bursts and the light runs up the arm to the chest core and the visor; the details unfold beside the pilot.
 - **The intros:** the model took only the key light and the ambient in the entrances (its toon shader never read the stage's
   point lights), so it stood as a dark silhouette. It now takes the stage block's rim, fill, flash and set lights while an
   entrance lights the screen (`Resources/NativeVisualStageLight.cginc`, `_VisualStageLit` set by `NativeLighting.Intro` and
