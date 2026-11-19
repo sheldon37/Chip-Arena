@@ -20,6 +20,9 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>Playback rate (ArenaPresentation.ClockRate: below 1 only in the final killcam's slow motion).</summary>
         public float Rate=1;
+        /// <summary>The flashes the lights take this frame given the sim's own (the drop pods' crashes take the dimmest they
+        /// outshine: NativePodPresentation.cs); null: the sim's.</summary>
+        public Func<NativeBlastFlash[],NativeBlastFlash[]> PodFlashes;
         private struct Marker{public Vector3 Position;public string Tag;public float Reach;}
         private readonly NativeBlastSim sim=new NativeBlastSim();
         private readonly NativeVfxDraw vfx;private readonly bool ownsVfx;private readonly GameObject root;private readonly Light[] lights=new Light[NativeBlastSim.LightCapacity];
@@ -287,13 +290,15 @@ namespace ChipArena.UnityConversion
             Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);SpikeRises(arena,q);Globes(arena,now,q);Fields(fields,q);sim.Update(dt);
             // Every particle as its role's primitive and every front as one shell (NativeVfxDraw); no cube per voxel.
             if(ownsVfx)vfx.Begin();vfx.Blasts(sim);if(ownsVfx)vfx.Submit(camera);
+            // The blast lights with the drop pods' crash flashes in them (NativePodPresentation.cs PodFlashMerge: presentation only).
+            var lit=PodFlashes!=null?PodFlashes(sim.Flashes):sim.Flashes;
             for(int i=0;i<lights.Length;i++)
             {
-                var f=sim.Flashes[i];var light=lights[i];float intensity=NativeBlastSim.UnityLightIntensity(f.Intensity);light.enabled=intensity>.001f;if(!light.enabled)continue;
+                var f=lit[i];var light=lights[i];float intensity=NativeBlastSim.UnityLightIntensity(f.Intensity);light.enabled=intensity>.001f;if(!light.enabled)continue;
                 light.transform.position=new Vector3((float)f.X,(float)f.Y,(float)f.Z);light.color=NativeArena.ColorOf(f.Color);light.intensity=intensity;light.range=(float)f.Distance;
             }
             // NativeBlockLit has no add pass, so these point lights never reach dressed arena blocks; they take the flashes through its feed.
-            NativeArenaDressing.Flashes(sim.Flashes);
+            NativeArenaDressing.Flashes(lit);
         }
         public void Dispose(){Clear();if(ownsVfx)vfx.Dispose();CapturedAnimation.Release(root);}
     }

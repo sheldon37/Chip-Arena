@@ -90,6 +90,10 @@ namespace ChipArena.UnityConversion
             float floor=feet.y-NativeSpawnIn.RestFeet,top=float.NaN;
             if(query&&physics.Raycast(feet+Vector3.up*1.2f,Vector3.down,out var ground,4,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))floor=ground.point.y;
             else if(NativeSpawnIn.AuthoredFloor(map,feet.x,feet.z,centre,out float authoredFloor))floor=authoredFloor;
+            // The authority seats supported spawns on the floor. Use that contact on hosts and replicas,
+            // so the authored 1.1 m marker cannot replay an airborne pose on a grounded pilot at GO.
+            if(arena.Replica?pilot.Pose.Grounded:pilot.Grounded)
+                centre=floor+NativeLocomotionRules.HalfHeight+NativeLocomotionRules.Skin;
             if(query&&physics.Raycast(new Vector3(feet.x,floor+2.2f,feet.z),Vector3.up,out var roof,14,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))top=roof.point.y-.05f;
             if(float.IsNaN(top))top=floor+16;
             // The team colour (the bands' rule: none outside a teams match, never on my own pilot), else the pilot's accent.
@@ -107,6 +111,8 @@ namespace ChipArena.UnityConversion
         {
             var arena=WeaponLoadout;if(arena==null||a==null||!a.Alive)return position;
             var v=SpawnEvaluate(arena,SpawnPilotOf(arena,a.Id),position,time,out float raise);if(v==null)return position;
+            // A generated run's hub: the drawn pilot rides its pod's full offset and lean (NativePodPresentation.cs PodFeet).
+            if(v.Pod){position=PodFeet(a,v,position);return position;}
             v.Shown=true;v.Raise=raise;position.y+=raise;return position;
         }
         /// <summary>The contact flag actor `id`'s rig is posed with: on the ground while the beam holds it, in the air for the
@@ -241,14 +247,14 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// ConversionGame.LateFrame (camera shake on): in first person my view rides the beam's hold, bob and drop with my body;
         /// the touchdown kicks the camera in first or third person (Reduced .4). Applied after the aim point is taken, as the
-        /// other camera kicks are, and rebuilt from the look angles next frame.
+        /// other camera kicks are, and rebuilt from the look angles next frame. A pod run's drop directs the camera instead.
         /// </summary>
         public void SpawnCamera(Transform camera,NativeArena arena,float time,bool shake,bool reduced)
         {
             if(camera==null||arena?.Local?.Body==null||!shake)return;var p=arena.Local;
             var v=SpawnEvaluate(arena,p,p.Body.transform.position-Vector3.up*NativeSpawnIn.FeetOffset,time,out float raise);if(v==null)return;
-            // A generated run's hub: my view rides my pod down (NativePodPresentation.cs PodCamera).
-            if(v.Pod){PodCamera(camera,p.Seat.id,reduced);return;}
+            // A generated run's hub: my pod's drop is the directed camera's (NativeCinematicCamera, NativePodPresentation.cs PodDropDirect).
+            if(v.Pod)return;
             float kick=NativeSpawnIn.Kick(v.Frame,v.Place.Mode,out float pitch)*(reduced?.4f:1);
             camera.position+=Vector3.up*((FirstPerson?raise:0)-kick);if(pitch>0)camera.rotation*=Quaternion.Euler(pitch*(reduced?.4f:1),0,0);
         }

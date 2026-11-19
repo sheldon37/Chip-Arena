@@ -92,6 +92,7 @@ namespace ChipArena.UnityConversion
             if(!surfaces.ContainsKey("pilot"))surfaces["pilot"]=new PhysicsMaterial("Pilot friction"){dynamicFriction=0,staticFriction=0,bounciness=0,frictionCombine=PhysicsMaterialCombine.Minimum};
             Structures=new NativeStructureState(map);foreach(var block in map.blocks)AddProp(block);
             BuildCutExitCollision();NameWardPanels();PrepareNavigation();
+            Physics.SyncTransforms(); // Spawn queries need the new map colliders before the first physics tick.
             for(int i=0;i<Match.Seats.Count;i++)SpawnPilot(Match.Seats[i],i);
             TrainingInitialize();Physics.SyncTransforms();
             addonMap=NativePrivateAddons.Built(map,root);
@@ -101,7 +102,10 @@ namespace ChipArena.UnityConversion
                 // A DEV animation class plays its base class, kept as the seat's motion (Core NativeDevMotions).
                 NativeDevMotions.Normalize(seat);
                 var stats=NativeContentRules.Stats(Content,seat.spec,seat.chips);if(!seat.AuthorityBoss)NativeExpeditionMutators.PilotStats(ActiveMutators,stats,seat.spec);var weapon=Content.Weapon(seat.spec);
-                var obj=new GameObject(seat.name);obj.layer=ActorLayer;obj.transform.SetParent(root.transform);var spawn=NativeMapRules.Spawn(Content,Map,Match.Seats,index,Match.Teams);obj.transform.position=Vec(spawn.pos);
+                var obj=new GameObject(seat.name);obj.layer=ActorLayer;obj.transform.SetParent(root.transform);var spawn=NativeMapRules.Spawn(Content,Map,Match.Seats,index,Match.Teams);var centre=Vec(spawn.pos);
+                var support=NativeGroundMotor.Probe(root.scene.GetPhysicsScene(),centre,NativeLocomotionRules.StepHeight);
+                if(support.Found)centre.y+=NativeLocomotionRules.Skin-support.Gap;
+                obj.transform.position=centre;
                 var capsule=obj.AddComponent<CapsuleCollider>();capsule.radius=NativeLocomotionRules.Radius;capsule.height=2*NativeLocomotionRules.HalfHeight;capsule.sharedMaterial=surfaces["pilot"];
                 var body=obj.AddComponent<Rigidbody>();body.mass=65;body.constraints=RigidbodyConstraints.FreezeRotation;body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;body.interpolation=RigidbodyInterpolation.Interpolate;
                 var p=new NativePilot{Seat=seat,Weapon=weapon,Stats=stats,Body=body,Collider=capsule,Hp=(float)stats["hp"],Mana=(float)stats["maxMana"],Stamina=(float)stats["maxStamina"],Ammo=(int)Math.Ceiling(weapon.ammo*stats["ammoCapacity"]),Yaw=spawn.yaw};
@@ -109,12 +113,22 @@ namespace ChipArena.UnityConversion
                 p.Pose.VisualSet=seat.spec=="daggers"?1:seat.spec=="greatsword"||seat.spec==NativeTopDog.Spec?2:seat.spec=="shield"?3:0;
                 p.Pose.MagicVisual=seat.spec=="fire"?1:seat.spec=="water"?2:seat.spec=="lightning"?3:seat.spec=="darkness"?4:0;
                 p.ECharges=NativeAbilityRules.Charges(stats);obj.AddComponent<NativePilotBody>().Pilot=p;Pilots.Add(p);if(!seat.connected){p.Hp=0;seat.alive=false;capsule.enabled=false;body.isKinematic=true;}
+            if(seat.connected)ProbePilotGround(p);
             return p;
         }
         public NativePilot Local=>Pilots.Find(p=>p.Seat.id==LocalId);
         public void Step(InputFrame input)
         {
-            if(Match.Phase!=NativePhase.Fight)DevClearMonsters();if(BossVictoryTick(input)){DevClearMonsters();return;}CancelInvalidKernel();StepCutsceneSkip();if(BossOpeningTick()||PveHoldTick(1f/60))return;foreach(var p in Pilots)if(Expedition==null&&!p.Seat.connected&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12){p.Hp=0;p.Seat.alive=false;}DevStep();TrainingStep();SandboxStep();Match.Tick(1d/60);if(Match.DeathmatchTarget>0&&Match.Phase==NativePhase.Fight)RespawnDeathmatchPilots();if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();if(BossOpeningTick())return;StepHazards();StepAuthoredHazards();StepSirenStage();StepStructures();StepKernelWorld();if(Match.ResultMovement){StepResultMovement(input);StepResultProjectiles();return;}if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
+            if(Match.Phase!=NativePhase.Fight)DevClearMonsters();if(BossVictoryTick(input)){DevClearMonsters();return;}CancelInvalidKernel();StepCutsceneSkip();if(BossOpeningTick()||PveHoldTick(1f/60))return;foreach(var p in Pilots)if(Expedition==null&&!p.Seat.connected&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12){p.Hp=0;p.Seat.alive=false;}DevStep();TrainingStep();SandboxStep();Match.Tick(1d/60);if(Match.DeathmatchTarget>0&&Match.Phase==NativePhase.Fight)RespawnDeathmatchPilots();if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();if(BossOpeningTick())return;StepHazards();StepAuthoredHazards();StepSirenStage();StepStructures();StepKernelWorld();if(Match.ResultMovement){StepResultMovement(input);StepResultProjectiles();return;}if(Match.Phase!=NativePhase.Fight)
+            {
+                foreach(var p in Pilots)
+                {
+                    if(p.Body==null||p.Body.isKinematic)continue;
+                    p.Body.linearVelocity=Vector3.zero;
+                    if(Match.Phase==NativePhase.Intro||Match.Phase==NativePhase.Countdown)ProbePilotGround(p);
+                }
+                return;
+            }
             Events.RemoveAll(e=>Time-e.Time>1); // Preserve the full burst for its natural glow lifetime.
             // Establish every defense before resolving attacks.
             foreach(var p in Pilots)

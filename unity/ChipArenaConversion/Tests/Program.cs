@@ -7,6 +7,9 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--landing-world-sweep"){LandingFieldChecks.WorldSweep(ProjectRoot());return 0;}
+            if(args.Length==0||args.Length==1&&args[0]=="--landing-field")LandingFieldChecks.Fields();
+            if(args.Length==1&&args[0]=="--landing-field")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--thunderheart")ThunderheartChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--thunderheart")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--practice")PracticeChecks.Run(ProjectRoot());

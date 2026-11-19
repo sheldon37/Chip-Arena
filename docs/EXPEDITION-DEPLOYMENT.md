@@ -1,5 +1,15 @@
 # Expedition Deployment Station: two machines and a generated destination
 
+## Generated Expedition performance budget
+
+| Fixture | Machine and settings | Samples | Navigation ms/tick | Crowd flow ms/tick | Perception ms/tick | Physics ms/tick |
+| --- | --- | --- | --- | --- | --- | --- |
+| A0 City, seed 17, four walking pilots, 88 hub zombies | Native Unity builder, headless, fixed 60 Hz | 120 warm-up + 600 measured | Pending native run | Pending native run | Pending native run | Pending native run |
+
+The deployment acceptance gate runs the budget fixture. To measure it alone in Unity, choose **Chip Arena → Benchmark Expedition hub (4 pilots, 88 zombies)** or run `-batchmode -nographics -quit -executeMethod ChipArena.UnityConversion.Editor.NativeBuildChecks.CheckExpeditionLoadBudget`. Copy the `EXPEDITION_SIM_BUDGET` line from that machine's log into this table after a blockout change. Each value is a mean in milliseconds per tick. Navigation includes crowd flow. Crowd flow measures shared field construction and maintenance, perception measures scheduled sight and hearing checks, and physics includes the native before/after simulation hooks. The fixture rejects samples if a pilot dies or the live population changes.
+
+For a visual capture, launch an Editor play session or Development player with `-expedition-load 4`. Use counts 1–4 for the camera pilot plus up to three stand-ins. Every configuration holds the lobby cap at four. The isolated session drives ordinary pilot movement, the BoZo presentation and the hub brains. The camera follows the first pilot outside the south gate. Capture High (default), `-load-balanced` and `-load-low` at the same resolution. The live HUD and account/network services are absent in this harness. Human co-op frame captures are tracked separately.
+
 ## Live mutator activation — owner requested 2026-11-02
 
 The owner requests enabling and publishing #305's mutator rules to the **test** Update channel now, superseding the earlier draft hold. `codex/mutator-activation` integrates those rules with shared `3ab56c4` (slot sparks and sound). The live host can roll three compatible mutators once destination reels settle; guests cannot roll; deployment locks both machines. The selected IDs persist for the run. See the activation PR / newest DEV_LOG entry for actual validation and publication status.
@@ -367,6 +377,89 @@ customizable too via customization."
   - Collision remains disabled. Diameter 2.24 m exceeds the 2 m slot pitch; adding solid pod cylinders would overlap and obstruct the ramp. The existing hub navigation/clearance remains unchanged. Claude's timing constants and geometry are untouched. Claude should review boarding camera/ramp presentation in a Windows host/guest play session.
 - **Checks:** `--pod-drop` (`Tests/PodDropChecks.cs`). Deploy changes are in `--deploy-presentation` and
   `--deploy-models`, the tab in `LockerChecks`.
+
+### Pods crash in (Claude, 2026-11-18; `docs/EXPEDITION-OVERHAUL.md` R7, W4 release 1)
+
+The drop above is now a crash. Presentation only: the pod record, the capsule, LaunchGone, the look keys and every rule are
+unchanged. It ships with Astra's A0 (the branch is stacked on `codex/expedition-a0`), never on today's row.
+- **The opening.** Every beat derives from the opening the drop spans: A0's `ExpeditionRules.PodOpening`
+  (`NativePodDrop.Opening`, 5 s on generated hubs). The 3 s fallback (Q22) is planned too, if the owner chooses it.
+  - **5 s:** the streaks appear at -5.0 s, about 200 m out and 140 m up. The director cuts to the ride at -4.1 s, the
+    cloud punch is near -3.7 s and the retros fire at -3.2 s. Each pod hits at -2.8 + 0.25·order s, and its bolts
+    blow the door 0.6 s later.
+  - **3 s:** the streaks appear 120 m out and 85 m up. Each pod hits at -1.75 + 0.12·order s, and its door blows
+    0.35 s later.
+  - Every pilot stands on its capsule by GO.
+- **Each pod's own crash** (`NativePodDrop.Plan`, hashed from the record: seat, order, x, z, end, yaw in degrees):
+  - its own line, from behind its door within ±40°, leaning a little toward the camp's centre so the four fan in
+    from round the camp; coming in at 45-60°;
+  - door down on the way in (its porthole on the city), rolling door forward as the retros light;
+  - a cloud deck round its line that it punches through: a vapour ring torn open in it, a boom;
+  - retros: two pods in four (ranked by the run's fight start, so every peer agrees) sputter and fail, and come in
+    harder;
+  - the touchdown at most 1.5 m short of its centre, inside the skid apron A0 cleared behind it; a plough to rest on
+    the centre, sunk 0.2 m and leaning 4° or less. At rest its hull stays inside A1's collider envelope (two crossed
+    1.96 × 2.85 × 1.96 m boxes).
+- **Effects** (closed form, deterministic; puffs and flashes near the camera thin away, so the chase never flies into a
+  white screen):
+  - in the air: an unfogged meteor ribbon (`NativeGlow`), hot and wide at range from its first frame and a continuous
+    sheath close up; overlapping trail streaks, the contrail, the deck and the vapour ring, the retros (or their
+    sputter);
+  - at the impact: a small hot flash at its base for 0.1 s, while the blast lights carry the flash over the city (they
+    survive DARKNESS); the destruction kit's Slam chunks; a shockwave racing out low and a dust wall rolling out to
+    about 6 m; sparks and spoil;
+  - then steam, the bolts' flashes and the door's blow.
+- **What lasts** (from the record and the clock, so a late joiner and the killcam see the same):
+  - the crater: a soot pit, char and ash, a lip of broken paving slabs, its ash fading out into the plaza and dark
+    cracks running out (see-through by vertex alpha); about 5 m across, ploughed back into a 4-4.6 m furrow, flat paint
+    of 6 cm or less, no shadow. It is scaled down where it would reach the REVIVE-O-MATIC's mat, solids or use point
+    (`NativePodDrop.CraterFit`);
+  - the ablative tiles, cooling from white hot to black over 20 s and ticking as they cool;
+  - the smoke, thinning over 40 s.
+- **The pilot.** Hidden until the bolts blow the door. Then braced in the cabin's jump seat (the lobby Chair pose laid
+  over the game's pose: a game-rig track, so every body plays it) on the pod's full offset and lean, hunched into the
+  harness bar. The bar lifts, the pilot stands up out of the seat (its cushion folds up behind them) and stands on the
+  capsule by GO.
+  - **GO:** with A0's grounding the capsule is on the floor through the countdown. If it still floats, the drawn pilot
+    waits on its rest after GO only while it settles (`NativePodDrop.GoHold`: never once it rises, so a jump at GO
+    lets go on its first frame), with no footsteps and no Land take or `move.land`.
+- **My camera:** the Countdown branch of `NativeCinematicCamera` (`ArenaPresentation.PodDropDirect`). It owns the
+  drop's camera, the in-pod beat included (W3's ride steps aside for a directed camera).
+  - **The shots:** the sky, 140 m up and 80 m back past the camp from my pod's line, looking at least 30° down past
+    the camp at my streak (the view tilts down after it); the chase behind my pod; in first person first one braced second in
+    my red-lit cabin, in the seat, looking at the porthole (the city in it, then the roll), buffeting with camera shake
+    on; the stop 10 m up while the pod punches in below; then the arc down behind my pilot (third person), or in first
+    person up and over my pod round to its doorway, watching my pilot unbuckle and stand, and a cut into my own eyes
+    looking out of the door.
+  - **My own body** is hidden only while the eye is in my pod or my head (the cabin, after the cut).
+  - **My pod in glass:** it eases into see-through glass over 0.3 s only while my third-person camera is low behind or
+    beside it with the pod on the line to me (never during the stop or the high arc, never before its doorway); the
+    hot tiles glow through the glass.
+  - **The hand-off:** its last 0.5-0.6 s are blended over the game's own camera, so GO has no snap.
+  - **Comfort:** its own shake, by NativeStructureShake's fall-off. Camera shake off gives the same shots, steady.
+    Reduced effects gives a still wide shot from the plaza instead, from one of six stands beside the approach whose
+    view keeps off the REVIVE-O-MATIC (in first person it cuts into my eyes at the end).
+  - The countdown sits small at the top of the screen while the drop directs (and through its hand-off), clear of my
+    pod. A capture's fixed eye (`ConversionGame.CaptureEye`) wins.
+  - The camera runs before Render sets the frame's clock, so the shot is posed again after Render
+    (`PodDropLate`) on the clock the pods were drawn with: at 80 m/s a frame is over a metre, and the cabin's eye
+    stays in its pod.
+- **Sound:** `NativePodSounds` (11 synthesized placeholders until the ElevenLabs batch, N5), played by
+  `NativePodAudio`: the roar, the boom (late by its distance), the retros or the sputter, the impact, the bolts, the
+  door, steam, the sign's blip, the harness and the cooling ticks.
+- **The model:** bones 0-5, r ≤ 1.17 m, height ≤ 3.0 m and the Locker's paint, trim and light keys are kept. Added:
+  ablative tiles and a heat shield (bone 6), four fins on the diagonals that are its legs, a glass porthole in the
+  door, four explosive bolts (bone 7), and a cabin lined in grey panels (a little self-lit, so they read in the dark)
+  with red strips down the doorway, a red wash at their feet, an instrument panel and a ceiling. Bones 6 and 7 are built char black and all but unlit
+  (`NativePodModels.HeatBase`): a drawer that leaves them untinted (the station's dock) shows cold char; the hub lights
+  them through their tint (`HeatTint`). The jump seat (`SeatId`, its cushion bone 9 folding) and the harness bar
+  (`HarnessId`, bone 8) are models of their own, built as the station's (W3's) seat and bar, so a drawer of the pod
+  alone never shows two.
+- **Facing.** The presentation reads the record's yaw in degrees, so A0's spots facing the fountain draw right.
+- **Contract:** A0's `NativeExpeditionHubPlan.ExitReach` (0 until A1). The drawn pod centre is the record minus
+  forward(yaw°) × ExitReach (`NativePodDrop.Centre`). For the station's ride (W3) the drop keeps the plan's names:
+  `NativePodDrop.Appear` (-PodOpening), `ImpactOf(order)` (and `ImpactOf(order, opening)`), `Evaluate(age, order,
+  seed)`, `PodFrame.Lean` and `PodView.Seed`; a pod's own frame is `Evaluate(age, plan)`, its tilt `PodFrame.Tilt`.
 
 ### Slot sparks and sound cues (Claude, 2026-11-02)
 

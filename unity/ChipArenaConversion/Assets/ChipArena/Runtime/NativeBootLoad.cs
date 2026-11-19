@@ -42,6 +42,10 @@ namespace ChipArena.UnityConversion
         /// </summary>
         private static bool BootCurtain()
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // The isolated load scene owns startup when explicitly selected.
+            if(NativeExpeditionLoadPreview.TryLaunch())return true;
+#endif
             NativeBootPrefetch.Decide();if(!NativeBootPrefetch.Wanted||NativeBootIntro.Current!=null)return false;
             NativeBootIntro.Curtain();new GameObject("Boot defer").AddComponent<NativeBootDefer>();return true;
         }

@@ -272,7 +272,7 @@ namespace ChipArena.UnityConversion
             // A PvE revive's first-person view (NativeReviveHoloPresentation.ReviveView): a gentle rise, none with reduced effects or
             // camera shake off, in a scanline vignette; after the aim above, so the aim and the authority eye never move.
             if(!menu&&Spectator==null&&!cinematic.Directing)presentation.ReviveView(cameraView,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects||!prefs.cameraShake);
-            NativeTechniques.Source=new NativeTechniqueSnapshotSource(frame);presentation.Render(frame,renderTime,false);ShoulderSprint(renderTime);if(presentation.ReviveMachineStands)nativeAudio?.ReviveMachineFrame(presentation.ReviveMachineSeq,presentation.ReviveMachineAt,cameraView!=null?cameraView.transform:null);
+            NativeTechniques.Source=new NativeTechniqueSnapshotSource(frame);presentation.Render(frame,renderTime,false);if(!devFly.On)presentation.PodDropLate(cameraView);nativeAudio?.PodFrame(presentation.PodCues,cameraView!=null?cameraView.transform:null);ShoulderSprint(renderTime);if(presentation.ReviveMachineStands)nativeAudio?.ReviveMachineFrame(presentation.ReviveMachineSeq,presentation.ReviveMachineAt,cameraView!=null?cameraView.transform:null);
             Vector3? preview=null;bool previewClamped=false;
             // previewOn: E held .2 s and casting, or ready (a charge or no cooldown left) and, for magic, affordable. Casting is
             // read from the pose (PressAbility sets it, CancelWindup clears it), which guests also receive.
@@ -355,6 +355,7 @@ namespace ChipArena.UnityConversion
             // The gameplay field of view under last frame's chooser shot comes back first (NativeChooserCameraPresentation.cs).
             ChooserCameraRestore();
             // C16: the Last Laugh cutscene directs this camera for the pilots in it (the demon victim screen has its own).
+            presentation.FirstPersonPick=prefs.firstPerson;
             if(cinematic.Direct(arena,presentation,cameraView,match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result)){viewModelCamera.enabled=false;sprintKick=0;shoulderView=convergeAim=false;aimSkip=0;return;}
             var p=Spectator??arena.ViewPilot;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
             // Camera intent survives stagger/knockdown. The simulation independently gates ADS benefits and shots.
@@ -384,6 +385,8 @@ namespace ChipArena.UnityConversion
             }
             cameraView.transform.SetPositionAndRotation(location,rotation);CameraAim(p);
             presentation.FirstPerson=first;presentation.AimHeld=aim;viewModelCamera.enabled=first;viewModelCamera.fieldOfView=cameraView.fieldOfView-sprintKick;
+            // The drop pods' directed drop hands back over this pose in its last moments before GO (NativeCinematicCamera.PodHandOff).
+            cinematic.PodHandOff(cameraView);
             // The local capture tools' fixed eye in third person (a look at an effect from the side). Nothing in the game sets it.
             if(CaptureEye.HasValue&&!first)cameraView.transform.SetPositionAndRotation(CaptureEye.Value.position,CaptureEye.Value.rotation);
         }
@@ -462,7 +465,7 @@ namespace ChipArena.UnityConversion
             BossPicksWaitReset();if(previewArena==null&&BossPicksWaiting){BossPicksWaitScreen(width,height);BossPicksClock();return;}
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             // The Last Laugh cutscene hides the HUD behind its letterbox (style.css data-cutscene); the board and pause menu stay.
-            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(cinematic.ZoneArrival)ZoneBossArrivalHud(width,height);else KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu){if(labPanel&&arena.Training&&!Online)ChipLabPanel();else{PauseMenu();TrainingControls();}}return;}
+            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(cinematic.PodDrop){if(!menu){PodCabinScreen();CountdownOverlay(true);}}else if(cinematic.ZoneArrival)ZoneBossArrivalHud(width,height);else KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu){if(labPanel&&arena.Training&&!Online)ChipLabPanel();else{PauseMenu();TrainingControls();}}return;}
             if(!cinematic.Private)CombatWorldHud(scale,width,height);
             PveBeaconHud();
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
@@ -483,7 +486,7 @@ namespace ChipArena.UnityConversion
                     float marked=0;foreach(var q in arena.Pilots)marked=Math.Max(marked,NativeMeleeKitHud.MarkLeft(q.MeleeKit,p.Seat.id,arena.Time));
                     if(marked>0&&p.Hp>0)Prompt(U.H/2+120,"MARKED  ·  "+marked.ToString("0.0")+"s",15,NativeCyberTheme.Danger());
                 }
-                if(!menu&&match.Phase==NativePhase.Countdown)CountdownOverlay();
+                if(!menu&&match.Phase==NativePhase.Countdown)CountdownOverlay(cinematic.PodHanding>0);
                 if(!menu&&match.Phase==NativePhase.Result)ResultOverlay();
                 if(!menu&&match.Phase==NativePhase.Match&&arena.Pve==null)MatchEndPanel();
                 else if(!menu&&match.Phase==NativePhase.Match)PveResultsPanel();
