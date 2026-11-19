@@ -184,8 +184,25 @@ namespace ChipArena.UnityConversion
             Check(lo.Casters==0&&lo.Rain==0&&lo.Beams==0,"the low tier casts no shadows and draws no advanced weather or beams");
             var again=Census(city,set.Backdrop,EyesOf(city.World)[0],false,new NativeExpeditionCityFx(),new NativeBeamList(),new NativeWeatherFx(),Sun(),set.Adv);var once=views[0][0][0];
             Check(again.Draws==once.Draws&&again.Tris==once.Tris&&again.Instances==once.Instances&&again.Quads==once.Quads&&again.Lights==once.Lights,"the census is the same every time");
-            Fog(city);Practicals(set,city);Variety(set);Volume(set,city);
-            Console.WriteLine("PASS generated frame: "+count+" checks ("+seeds.Length+" rolls x "+Eyes+" eyes, High and Low; the ground fog, the generated map's own practicals, the kit's variety and the light volume's candidates)");
+            Fog(city);FxFlags(root);Practicals(set,city);Variety(set);Volume(set,city);
+            Console.WriteLine("PASS generated frame: "+count+" checks ("+seeds.Length+" rolls x "+Eyes+" eyes, High and Low; the ground fog, the effects' flags, the generated map's own practicals, the kit's variety and the light volume's candidates)");
+        }
+
+        // ---- W0 (its review): the effects shader decodes each piece's mode and flags as sent. They are whole numbers on every vertex,
+        // but the interpolator returns them within a rounding error; an authored premultiplied piece's 2 came back 1.9999998 on about
+        // half the pixels of a flat fog sheet at street level, read as additive there, so the sheet vanished in a crawling pattern ----
+        private static void FxFlags(string root)
+        {
+            var shader=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativeSirenFx.shader"));
+            Check(shader.Contains("float mode=round(i.uv.z),flags=round(i.uv.w);bool additive=fmod(flags,2)>.5,authored=flags>1.5;"),"NativeSirenFx rounds the mode and flags before it decodes them");
+            // The decode as the shader writes it (fmod keeps the dividend's sign, as HLSL's), raw and rounded, a float32 step off.
+            static (bool add,bool authored) Decode(float f,bool round){if(round)f=MathF.Round(f);return (f%2>.5f,f>1.5f);}
+            int wrong=0,raw=0;
+            foreach(float sent in new[]{0f,1f,2f,3f})foreach(float off in new[]{-2.4e-7f,0f,2.4e-7f})
+            {
+                float got=sent+off*Math.Max(1,sent);var want=Decode(sent,false);if(Decode(got,true)!=want)wrong++;if(Decode(got,false)!=want)raw++;
+            }
+            Check(wrong==0&&raw>0,"every piece decodes as sent within a rounding error ("+raw+" of 12 raw decodes would flip, the authored premultiplied 2 among them)");
         }
 
         // ---- W0: the ground fog on the generated streets (Core NativeCityFxScene: the grid from the map's bounds, the floor
