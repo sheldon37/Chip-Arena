@@ -162,7 +162,7 @@ Branch `claude/exp-w0-groundwork`, base shared `claude/sleepy-ritchie-g8ruhv` at
   - 6 eyes by role (the hub, the south apron, the east and west entrances' join circles, the final court, the hub overview) over 20 rolls, at High and Low;
   - pinned at the shared head's numbers plus 15% (the review made the triangles a no-growth gate: see its entry above);
   - plus checks of each fix above (45 in all).
-  - The budget table is in `docs/EXPEDITION-DEPLOYMENT.md` "Frame budget".
+  - The budget table is in `docs/EXPEDITION-DEPLOYMENT.md`, at its top.
 - **Re-pinned on purpose:**
   - the effect quads are pinned on W0's own numbers (1,243 at High and 860 at Low, +12% each), because the fog now lies on the generated streets;
   - `WardLightingChecks:256` and `WardZeroChecks:265` follow `NativeLighting.Look`, now wrapped in `ForMap`;

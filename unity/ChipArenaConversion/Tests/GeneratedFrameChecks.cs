@@ -6,10 +6,11 @@ using System.Text.Json;
 namespace ChipArena.UnityConversion
 {
     // The generated Expedition map's frame budget (docs/EXPEDITION-OVERHAUL.md W0 and section 6; the budget table in
-    // docs/EXPEDITION-DEPLOYMENT.md "Frame budget"): what the city's own presentation submits for one view, counted the way the
-    // runtime selects and batches it, from six fixed eyes over twenty rolls, on the High and Low tiers. Pinned at the shared
-    // head's numbers with 15% headroom, so a change that adds draws, triangles, instances, casters, effect quads or lights shows
-    // here first, and its package raises the pin on purpose.
+    // docs/EXPEDITION-DEPLOYMENT.md "The expedition overhaul's budget table"): what the city's own presentation submits for one
+    // view, counted the way the runtime selects and batches it, from six fixed eyes over twenty rolls, on the High and Low tiers.
+    // Pinned at the shared head's numbers with 15% headroom (the triangles, already over their targets, at no growth), so a
+    // change that adds draws, triangles, instances, casters, effect quads or lights shows here first, and its package raises the
+    // pin on purpose.
     //
     // A view's census (Runtime NativeExpeditionCityPresentation, NativeArenaDressing, NativeAdvancedLightingPresentation):
     //  - the kit: DrawTownKit's selection (the low tier leaves the detail parts out; a part past NativeExpeditionCityKit.Range of
@@ -193,9 +194,9 @@ namespace ChipArena.UnityConversion
             Check(hi.MaxPerDraw<=NativeBlockLooks.Chunk&&lo.MaxPerDraw<=NativeBlockLooks.Chunk,"no draw holds more than "+NativeBlockLooks.Chunk+" instances");
             Check(hi.Lights<=NativeExpeditionCityLights.Slots&&lo.Lights<=NativeExpeditionCityLights.Slots,"at most "+NativeExpeditionCityLights.Slots+" practical slots lit");
             Check(hi.Quads<=NativeExpeditionCityFx.Capacity&&lo.Quads<=NativeExpeditionCityFx.Capacity,"the atmosphere fits its buffer");
-            void Under(string what,long now,long pin,long baseline){Check(now<=pin,what+": "+now.ToString("N0")+" (pin "+pin.ToString("N0")+", the shared head's "+baseline.ToString("N0")+"); a package that needs more raises the pin on purpose (docs/EXPEDITION-DEPLOYMENT.md \"Frame budget\")");}
+            void Under(string what,long now,long pin,long baseline){Check(now<=pin,what+": "+now.ToString("N0")+" (pin "+pin.ToString("N0")+", the shared head's "+baseline.ToString("N0")+"); a package that needs more raises the pin on purpose (docs/EXPEDITION-DEPLOYMENT.md, its budget table)");}
             // The triangles: a no-growth gate (no headroom under the section 6 targets), the gap to the target in the message.
-            void Gate(string what,long now,long gate,long target){Check(now<=gate,what+": "+now.ToString("N0")+" (no-growth gate "+gate.ToString("N0")+": today's worst view is already "+(gate-target).ToString("N0")+" over the plan's "+target.ToString("N0")+", so no package may add any until the owner decides; docs/EXPEDITION-DEPLOYMENT.md \"Frame budget\")");}
+            void Gate(string what,long now,long gate,long target){Check(now<=gate,what+": "+now.ToString("N0")+" (no-growth gate "+gate.ToString("N0")+": today's worst view is already "+(gate-target).ToString("N0")+" over the plan's "+target.ToString("N0")+", so no package may add any until the owner decides; docs/EXPEDITION-DEPLOYMENT.md, its budget table)");}
             Console.WriteLine("   over target before any overhaul code: High triangles "+hi.Tris.ToString("N0")+" against "+TargetHighTris.ToString("N0")+" ("+((hi.Tris-TargetHighTris)*100.0/TargetHighTris).ToString("+0.0")+"%), Low "+lo.Tris.ToString("N0")+" against "+TargetLowTris.ToString("N0")+" ("+((lo.Tris-TargetLowTris)*100.0/TargetLowTris).ToString("+0.0")+"%); Low lights "+lo.Lights+" practical slots against 3");
             Gate("High triangles",hi.Tris,GateHighTris,TargetHighTris);Gate("Low triangles",lo.Tris,GateLowTris,TargetLowTris);
             Check(BaseHighTris>TargetHighTris&&BaseLowTris>TargetLowTris&&GateHighTris==Math.Max(BaseHighTris,2173532)&&GateLowTris<=BaseLowTris*1.01,"the triangle gates hold today's worst view (no headroom under the targets)");
