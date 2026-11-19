@@ -228,9 +228,9 @@ namespace ChipArena.UnityConversion
             // the camera: the spinning machine, the pads on Deploy, then the eject's shots on my pad (they cut in), else the overview
             // (camera shake off: steady eject shots; reduced effects: the room's shot, then a still wide one, no cabin close-up)
             Shot=NativeDeployPresentation.Framing(InstanceLook,MutatorLook,s);if(deployed&&Shot==NativeDeployPresentation.Shot.Deploy)Shot=NativeDeployEject.ShotOf(mine,since,cut,f.Reduced);
-            bool cuts=NativeDeployEject.Cuts(Shot);var want=cuts?NativeDeployEject.ViewOf(Shot,mine,since,cut,Shake,f.Reduced):NativeDeployPresentation.ShotOf(Shot);
-            // ATLAS: the overview opens on the board while its line arrives, then eases off it (never over the eject's cut-in shots)
-            bool atlas=Atlas.Frame(f,Shot);if(atlas&&!cuts)want=Atlas.View;
+            bool cuts=NativeDeployEject.Cuts(Shot);var want=NativeDeployPresentation.ShotOf(Shot);
+            if(Atlas.Frame(f,Shot))want=Atlas.View; // ATLAS: the overview opens on the board while its line arrives, then eases off it
+            if(cuts)want=NativeDeployEject.ViewOf(Shot,mine,since,cut,Shake,f.Reduced); // the eject's shots cut in over everything
             if(!cameraSet||!(dt>=0)||cuts){Camera=want;cameraSet=true;}
             else{float k=1-(float)Math.Exp(-dt/(Shot==NativeDeployPresentation.Shot.Deploy?.9f:.55f));Camera=new NativeDeployPresentation.View{Eye=Vector3.Lerp(Camera.Eye,want.Eye,k),Target=Vector3.Lerp(Camera.Target,want.Target,k),Fov=Camera.Fov+(want.Fov-Camera.Fov)*k};}
 
