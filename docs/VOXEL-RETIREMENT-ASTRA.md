@@ -89,6 +89,18 @@ Claude's crowd work (V15 in Stage 2, the LODs in Stage 4) is sized by your count
 
 Pinned zone kinds take Full slots, and Claude lowers the Full counts with the LODs in Stage 4 (expected about 16, 12 and 8), so tell Claude before raising any of these. Also: will the crawler and the bloater ever ship? Today they have only voxel bodies; Claude would model them first.
 
+### Confirmed crowd budget · 2026-11-18
+
+| Scenario | Budget for Claude | Evidence and status |
+| --- | --- | --- |
+| A0 load fixture | 4 scripted pilots and 88 living hub zombies | Implemented for Editor/Development in [A0 PR #412](https://github.com/sheldon37/Chip-Arena/pull/412). Native player timings still pending. |
+| Occupied hub | 40 / 56 / 72 / 88 for 1–4 lobby seats, then 96 for 5–8. Zero with no living pilot in the city. | `NativeExpeditionHubRules.Cap`, before mutators. |
+| Hidden phase-two Siren | 72 / 120 / 168 / 192 for 1–4 pilots, with a ceiling of 192 thereafter | `NativePve.PveFlow` computes `min(192, 12 × (6 + 4 × (partySize − 1)))` during possession. Authored zone bosses use their own cap. |
+| HULKAMANIA | Up to `min(6, base cap)` Hulks on eligible maps. Level 0 and Poolrooms substitute Brutes within the same cap. | `NativeExpeditionMutators.Cap`, `NativePveHorde.SpawnPveAddCore` and `NativeBackroomsKinds.SpawnKind`. |
+| W11a district spawns | Up to 6 living instance-origin minions total per district. At most 25% of spawns in warp, 40% at threshold, zero from a cleared instance. | Approved A5a/Q13 limits for the upcoming implementation. Six counts individuals across all kinds. |
+
+Pinned zone minions consume Full-detail slots. Stage 4's 16 / 12 / 8 High / Medium / Low counts are targets for Claude to measure. This handoff changes no cap. Crawler and Bloater stay in DEV with their voxel bodies. Either needs a detailed model before it enters a shipped spawn pool.
+
 ## VA4. The skinning setting
 - Today the project skins on the CPU. The committed `ProjectSettings/ProjectSettings.asset` is a stub without the skinning keys, and the Editor expands it to `gpuSkinning: 0` and `meshDeformation: 0`.
 - Claude's V15 (Stage 2) measures CPU, GPU and GPU batched skinning in the Development Mono player at each tier, and reports the numbers.
