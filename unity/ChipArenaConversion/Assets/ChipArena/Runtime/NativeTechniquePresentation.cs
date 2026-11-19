@@ -40,6 +40,7 @@ namespace ChipArena.UnityConversion
         /// <summary>End of Render: the techniques' models.</summary>
         private void RenderTechnique(Snapshot s,float time)
         {
+            SentryGunsShown();
             if(s?.Actors==null||NativeTechniques.Source==null||sourceModels==null)return;
             foreach(var a in s.Actors)
             {
@@ -86,13 +87,42 @@ namespace ChipArena.UnityConversion
             else{q=Quaternion.AngleAxis(time*1500,side)*Quaternion.LookRotation(dir,Vector3.up);grip=.8f;pos-=(q*Vector3.forward)*grip;}
             WeaponAt(a,Matrix4x4.TRS(pos,q,Vector3.one));
         }
+        // The Sentry Drop's gun on the model (docs/VOXEL-RETIREMENT.md V3 Stage 1, 1H): the planted shield and the thrown blade move the
+        // pilot's own model out of its hand (WeaponAt), but the sentry's gun is a second one beside the gun still in hand, so it is a
+        // copy of the bake's life-size model (the pilot's Arsenal Series where it picked one), one per pilot, shown while the sentry
+        // stands and hidden once a frame passes without it. False where the pilot draws voxel, holds a Prototype pick or the bake
+        // carries none (the game's model draws, QueueHeld).
+        private sealed class SentryGun{public Transform Mount;public string Entry;public float Scale=1;public Vector3 Centre;public int Frame;}
+        private readonly System.Collections.Generic.Dictionary<int,SentryGun> sentryGuns=new System.Collections.Generic.Dictionary<int,SentryGun>();
+        private bool SentryModelGun(Actor a,Matrix4x4 m)
+        {
+            if(visualBodyPrefab==null||!ModelBody(a)||WeaponSkin(a)!=NativeWeaponSkins.StandardIndex)return false;
+            var holder=visualBodyPrefab.transform.Find("VisualWeapons");if(holder==null)return false;
+            int series=NativeWeaponSkins.Series(SeatWeaponSkins(a.Id),a.SourceSpec);string entry=series>0?NativeWeaponSkins.SeriesEntry(a.SourceSpec,series):a.SourceSpec;
+            var e=entry!=null?holder.Find(entry):null;if(e?.Find("Model")==null){entry=a.SourceSpec;e=holder.Find(entry);}
+            var model=e!=null?e.Find("Model"):null;if(model==null)return false;
+            if(!sentryGuns.TryGetValue(a.Id,out var g)||g.Mount==null||g.Entry!=entry)
+            {
+                if(g?.Mount!=null)Destroy(g.Mount.gameObject);
+                var mount=new GameObject("Sentry gun "+a.Id).transform;mount.SetParent(transform,false);
+                var copy=Instantiate(model.gameObject,mount,false);copy.name="Model";copy.transform.localPosition=model.localPosition;copy.transform.localRotation=model.localRotation;copy.transform.localScale=model.localScale;
+                foreach(var r in copy.GetComponentsInChildren<Renderer>(true)){r.gameObject.layer=0;r.enabled=true;}copy.SetActive(true);
+                g=new SentryGun{Mount=mount,Entry=entry};var fit=e.Find("Fit");if(fit!=null&&fit.localScale.x>.05f&&Mathf.Abs(fit.localScale.x-1)>1e-4f){g.Centre=fit.localPosition;g.Scale=fit.localScale.x;}
+                sentryGuns[a.Id]=g;
+            }
+            if(g.Scale!=1)m=m*Matrix4x4.Translate(g.Centre)*Matrix4x4.Scale(Vector3.one/g.Scale)*Matrix4x4.Translate(-g.Centre);
+            if(!VisualWeaponMount(g.Mount,m))return false;
+            if(!g.Mount.gameObject.activeSelf)g.Mount.gameObject.SetActive(true);g.Frame=Time.frameCount;return true;
+        }
+        // RenderTechnique's start: a sentry gun not drawn last frame hides.
+        private void SentryGunsShown(){foreach(var g in sentryGuns.Values)if(g.Mount!=null&&g.Frame<Time.frameCount-1&&g.Mount.gameObject.activeSelf)g.Mount.gameObject.SetActive(false);}
         // The pilot's machine gun on a little tripod: the legs fold out as it arms, the gun swings to its aim and kicks with each round.
         private void SentryModel(Actor a,NativeTechnique k,float time)
         {
             float age=time-k.Release,arm=Mathf.Clamp01(age/Mathf.Max(.05f,k.Arm-k.Release)),open=arm*arm*(3-2*arm),gone=Mathf.Clamp01((time-k.Until)/.25f);var f=Flat(k.Dir);var feet=U(k.Point);
             float armed=time-k.Arm;var aim=armed>0?(U(k.To)-(feet+Vector3.up*.62f)).normalized:(f+Vector3.down*.25f*(1-open)).normalized;aim=Vector3.Slerp(f,aim,Mathf.Clamp01(armed/.3f));
             float kick=0;if(armed>=0&&time<k.Until){float since=armed%NativeTechniqueFx.SentryInterval;kick=Mathf.Exp(-since*26)*.045f;}
-            float h=Mathf.Lerp(.2f,.82f,open)-gone*.3f;var head=feet+Vector3.up*h;var q=Quaternion.LookRotation(aim,Vector3.up);var m=Matrix4x4.TRS(head-aim*(.2f+kick),q,Vector3.one*1.05f);if(gone<1)QueueHeld(a,m);
+            float h=Mathf.Lerp(.2f,.82f,open)-gone*.3f;var head=feet+Vector3.up*h;var q=Quaternion.LookRotation(aim,Vector3.up);var m=Matrix4x4.TRS(head-aim*(.2f+kick),q,Vector3.one*1.05f);if(gone<1&&!SentryModelGun(a,m))QueueHeld(a,m);
             // The tripod: three legs and a hub, in cubes on the shared solid layer.
             var color=new Color(.09f,.1f,.12f);var edge=new Color(.2f,.22f,.25f);
             for(int i=0;i<3;i++)

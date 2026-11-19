@@ -435,7 +435,7 @@ namespace ChipArena.UnityConversion
         private Transform rooftopHolder;private string rooftopSkins;
         private bool RooftopModel(RooftopCast cast,int i,Matrix4x4 root,Matrix4x4 group,float time,Camera camera,bool reduced,string hatColor)
         {
-            if(Viewer||ClassicBodies||!VisualBodiesOn)return false;
+            if(Viewer||!ModelLook(null))return false;
             var look=cast.Looks[i];var s=cast.States[i];int id=RooftopIdTop-i;
             if(rooftopHolder==null){var go=new GameObject("Rooftop pilots");go.transform.SetParent(transform,false);rooftopHolder=go.transform;}
             var rig=cast.Rigs[i]??=captured.Create(rooftopHolder,id);
@@ -457,7 +457,7 @@ namespace ChipArena.UnityConversion
             if(look.Hat!="none"&&look.Hat!=NativeSheldonHead.Hat)
             {
                 var hb=VisualHatBone(rig,look.Hat);
-                if(!AuditorHalo(look.Hat,hb(CapturedRig.Head),time,1,reduced,0,camera,camera,hatColor))sourceModels.Queue(VisualHatModel(look.Hat,hatColor),rig.Root.transform.localToWorldMatrix,hb,null,0,camera,body:HatBody(look.Hat,hatColor));
+                if(!AuditorHalo(look.Hat,hb(CapturedRig.Head),time,1,reduced,0,camera,camera,hatColor))sourceModels.Queue(VisualHatModel(look.Hat,hatColor,rig),rig.Root.transform.localToWorldMatrix,hb,null,0,camera,body:HatBody(look.Hat,hatColor));
             }
             else SheldonHoodStill(body,look.Hat,hatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,look.Hat),time,i,reduced,0,camera);
             VisualGear(body,a,time,null,null,1,false);

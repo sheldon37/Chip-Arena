@@ -42,7 +42,8 @@ namespace ChipArena.UnityConversion
         // is made) and a hat sits on the helmet's shell (VisualHatFit: Core NativeRobotHelm.HatFit). Either one takes the place of
         // the robot armour's ear modules (VisualSuit).
         // The face gear pilot `id` wears on the model (NativeWeaponSkins.FaceHelm, the default, .. FaceNone), whatever its body skin.
-        private int FaceGearOf(int id)=>NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);
+        // (None on the voxel costume: its head block is the face, Core NativeVoxelCostume.)
+        private int FaceGearOf(int id)=>NativeVoxelCostume.Worn(VisualOutfitOf(id))&&!NativeVoxelCostume.Keeps(NativeVoxelCostume.Piece.FaceGear)?NativeWeaponSkins.FaceNone:NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);
         // The face gear it shows: none in the Hot Dog (Core NativeHotDog: the sausage's face is its own), else its pick.
         private int FaceGearWorn(int id)=>NativeHotDog.Worn(VisualOutfitOf(id))?NativeWeaponSkins.FaceNone:FaceGearOf(id);
         private bool WearsHelm(int id)=>FaceGearWorn(id)==NativeWeaponSkins.FaceHelm;

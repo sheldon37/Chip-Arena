@@ -176,7 +176,8 @@ namespace ChipArena.UnityConversion
             // ---- 7. Hit geometry never reads a body: source scans and identical results for every skin ----
             string[] simulation={"Core/NativeBodyDamage.cs","Core/NativeCombatRules.cs","Core/NativeMeleeRules.cs","Core/NativeMeleeFeel.cs","Core/NativeMeleeSlice.cs","Core/NativeCorpseRules.cs","Core/NativeWoundCarve.cs","Core/NativeLocomotionRules.cs","Core/NativeKillBoxes.Generated.cs","Core/NativeKillEffectRules.cs","Core/MeleeClearance.cs","Core/CapturedRig.cs","Core/ArenaWorld.cs","Core/NativeHitReact.cs","Core/NativeStagger.cs","Core/NativeWhirlwindRules.cs","Core/NativeSprintAttack.cs","Core/NativeAirAttackSimulation.cs",
                 "Runtime/NativeArena.cs","Runtime/NativeProjectiles.cs","Runtime/NativeMelee.cs","Runtime/NativeMeleeSpecials.cs","Runtime/NativeMeleeAbilities.cs","Runtime/NativeAbilities.cs","Runtime/NativeRangedAbilities.cs","Runtime/NativeDeaths.cs","Runtime/NativeCorpseWorld.cs","Runtime/NativeSummons.cs","Runtime/NativeNetworkFrame.cs"};
-            string[] visual={"NativeBodySkins","NativeBodyModels","pilot-std","pilot-sheldon","WoundedPilot","sourceModels","SourceModels","BodySkin"};
+            // (The voxel costume and the one body predicate too: a rules file never reads what a pilot wears or draws as; docs/VOXEL-RETIREMENT.md V2.)
+            string[] visual={"NativeBodySkins","NativeBodyModels","pilot-std","pilot-sheldon","WoundedPilot","sourceModels","SourceModels","BodySkin","NativeVoxelCostume","NativeBodyStyle","costume:"};
             foreach(var f in simulation){var text=File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));foreach(var token in visual)Check(!text.Contains(token),f+" (hit volumes, damage, melee contact, wounds, corpses) never reads the visual body ("+token+")");}
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
             Check(R("NativeArena.cs").Contains("capsule.radius=NativeLocomotionRules.Radius;capsule.height=2*NativeLocomotionRules.HalfHeight;")&&R("NativeDeathPresentation.cs").Contains("foreach(var shape in CapturedRig.Boxes)"),"the host capsule and the ragdoll colliders are sized from the rules and the rig boxes");
@@ -198,7 +199,7 @@ namespace ChipArena.UnityConversion
             report.Add("hit geometry: no simulation file references a body ("+simulation.Length+" files scanned); hit parts, headshots and wounds over "+(21*11*8)+" probes identical for all three skins (digest "+digests[0]+")");
 
             // ---- 8. The rig: the same joints for every body over animation; each body's joint-local extent past the Prototype ----
-            string[] motion=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Core"),"*.cs").Where(f=>{var n=Path.GetFileName(f);return n!="NativeBodySkins.cs"&&n!="NativeBodyModels.cs"&&n!="NativeWeaponSkins.cs"&&n!="NativeHatLooks.cs";}).ToArray();
+            string[] motion=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Core"),"*.cs").Where(f=>{var n=Path.GetFileName(f);return n!="NativeBodySkins.cs"&&n!="NativeBodyModels.cs"&&n!="NativeWeaponSkins.cs"&&n!="NativeHatLooks.cs"&&n!="NativeVoxelCostume.cs";}).ToArray(); // (the costume builds its blocks from the body skins: a look, not a pose or rule)
             foreach(var f in motion){var text=File.ReadAllText(f);Check(!text.Contains("NativeBodySkins")&&!text.Contains("NativeBodyModels"),Path.GetFileName(f)+": no pose, clip or rule reads the body skin");}
             var scenes=Scenes();float jointError=0;int frames=0;
             var clip=new Clip(built[(2,0)],proto);

@@ -60,8 +60,13 @@ namespace ChipArena.UnityConversion
         public static readonly System.Numerics.Vector3 SheldonScale=new System.Numerics.Vector3(.62f,.65f,.83f),SheldonOffset=new System.Numerics.Vector3(0,-.03f,.023f);
         /// <summary>A hat's point (the voxel head joint's frame) on the model's head bone: scaled by `scale`, then moved by `offset`
         /// (the head bone's frame).</summary>
+        /// <summary>The Auditor halo on the model's own head (docs/VOXEL-RETIREMENT.md V3 Stage 1, P11: no longer measured on the voxel
+        /// head's crown): its draw at this size in the head bone's frame, its middle 11 cm over the bone (its ring about 8 cm over
+        /// the model's crown, ModelCrownY) and ModelCrownZ ahead, where it stood.</summary>
+        public const float AuditorHaloSize=.45f;public static readonly System.Numerics.Vector3 AuditorHaloAt=new System.Numerics.Vector3(0,.11f,ModelCrownZ);
         public static void Fit(string hat,out float scale,out System.Numerics.Vector3 offset)
         {
+            if(hat==NativeAuditorHalo.Hat){scale=AuditorHaloSize;offset=AuditorHaloAt;return;}
             scale=ScaleOf(hat);offset=new System.Numerics.Vector3(0,ModelCrownY-Sink(hat)-scale*VoxelCrown,ModelCrownZ);
         }
     }

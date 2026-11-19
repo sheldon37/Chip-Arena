@@ -112,7 +112,7 @@ internal static class LockerChecks
         // The OUTFIT section (Runtime/NativeLockerOutfitUI.cs): Appearance, while the model draws; a click wears the piece through
         // NativeLook.With; Revert and the unsaved-changes baseline cover prefs.look.
         string outfit=R("NativeLockerOutfitUI.cs");
-        Check(appearanceLayout.Contains("if(LkOnModel){LkHead();LkReserve(LkOutfitH());}")&&appearance.Contains("if(LkOnModel){LkHeading(lockerSlots[k++],\"OUTFIT\",\"Your pilot's clothes on the model\");LkOutfit(lockerSlots[k++]);}")
+        Check(appearanceLayout.Contains("if(LkOnModel){LkHead();LkReserve(LkOutfitH());}")&&appearance.Contains("LkHeading(lockerSlots[k++],\"OUTFIT\",lockerCostume?LkHiddenHint:\"Your pilot's clothes on the model\");")&&appearance.Contains("LkOutfit(lockerSlots[k++]);GUI.color=shown;}")
             &&outfit.Contains("prefs.look=NativeLook.Gate(NativeLook.With(prefs.look,slot,ids[k]),lockerBodySheldon);Click();")&&ui.Contains("BackColor=prefs.backColor,Look=prefs.look};")&&ui.Contains("||b.Look!=prefs.look;}")&&ui.Contains("prefs.look=b.Look;"),"the OUTFIT section wears a piece per click and is saved and reverted with the look");
         // Owner 2026-10-28 ("It clutters a bit much with the buttons for clothing pieces", "Just want a very clean looking UI"):
         // one fixed-height row a slot however many pieces it lists, its icon and name, and arrows that wrap round the worn piece.
@@ -128,7 +128,7 @@ internal static class LockerChecks
         // section"): Appearance's MASKS row picks no mask (Standard) or a face gear (the Prototype body), the Skins tab lists only
         // weapons, and the thumbnails are the model's (Tests/SkinToneChecks.cs pins the section itself).
         Check(skinsFile.Contains("private bool LkOnModel=>ArenaPresentation.VisualBodyInstalled&&prefs.playerModel!=\"Classic\";")&&skinsFile.Contains("private void SetFaceGear(string key){prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,NativeWeaponSkins.FaceEntry,key);}")
-            &&!skinsFile.Contains("LkFaceCard")&&!skinsFile.Contains("LkFaceRow")&&!ui.Contains("NativeWeaponSkins.FaceEntry")&&skinsFile.Contains("if(LkOnModel||skin>=LkFaceThumb)LkModelThumb(")
+            &&!skinsFile.Contains("LkFaceCard")&&!skinsFile.Contains("LkFaceRow")&&!ui.Contains("NativeWeaponSkins.FaceEntry")&&skinsFile.Contains("if(LkOnModel&&!voxel||skin>=LkFaceThumb)LkModelThumb(")
             &&Body(skinsFile,"private void LkMasks(").Contains(",null,out bool hot,LkFaceThumb+k);"),"on the model the face gear is picked in MASKS, with the model's thumbnails");
         {
             // The setter's rule, run engine-free on Core (NativeCosmeticRules.Allowed is NativeCosmeticGate.Allowed, section 2):

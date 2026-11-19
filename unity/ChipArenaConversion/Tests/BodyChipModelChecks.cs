@@ -151,13 +151,14 @@ namespace ChipArena.UnityConversion
             Check(dress.Contains("sourceModels.Queue(p.Id,matrix,null,null,layer,camera,body:NativeArena.ColorOf(p.Color).linear);"),"each part in its Chip's colour");
             Check(dress.Contains("?VisualShoulderFrame(body,rig,LimbOf(p.Anchor)):")&&dress.Contains("Quaternion.Slerp(c.rotation,a.rotation,NativeBodyChipGear.PauldronArm)")&&NativeBodyChipGear.PauldronArm>0&&NativeBodyChipGear.PauldronArm<.5f,"the pauldrons ride the shoulder girdle more than the arm (a raised arm tips them, not lifts them off)");
             Check(skins.Contains("ChipModules();BodyChipParts();")&&models.Contains("foreach(var id in NativeBodyChipGear.Ids)")&&models.Contains("NoShadow=NativeBodyChipGear.Light(id)"),"the bank builds every part once, the lights without shadows");
-            Check(status.Contains("var body=VisualPosedBody(rig);if(body!=null){var ring=teamArmbands[team];ring.Add(VisualLimbFrame(body,rig,CapturedRig.LArm)*armbandLocal);ring.Add(VisualLimbFrame(body,rig,CapturedRig.RArm)*armbandLocal);return;}")
+            // (On the voxel costume the same rings round its upper-arm blocks: NativeVoxelCostume's band measure.)
+            Check(status.Contains("var body=VisualPosedBody(rig);")&&status.Contains(":armbandLocal;")&&status.Contains("var ring=teamArmbands[team];ring.Add(VisualLimbFrame(body,rig,CapturedRig.LArm)*local);ring.Add(VisualLimbFrame(body,rig,CapturedRig.RArm)*local);return;")
                 &&status.Contains("FlushStatus(teamBands,0,null);FlushStatus(teamArmbands,0,null);"),"a model pilot's team shows as armbands, not the voxel bands");
             Check(src.Contains("if(add==null&&m.Kind==\"zombie\"&&ZombieModelPose(rig,m.Id,NativeHordeKinds.Shambler,NativeHordeModels.Full,true,false,false,null,0,0,HitFlashCode(m.Id,arena.Time),1,0))continue;")
                 &&summon.Contains("if(summon&&!toy&&ZombieModelDeath(rig,death.id,NativeHordeKinds.Shambler,death.lost,0))return true;")&&summon.Contains("if(!toy&&ZombieModelDrawn(e.Target))GoreInk(")
                 &&zm.Contains("arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)")&&zm.Contains("chips.TryGetValue(\"necronomicon\",out int n)&&n>0"),"a summoned zombie lives, falls and bleeds on the zombie model; bodies are made ahead for its summoner");
             Check(src.Contains("sourceModels.Queue(m.Pve==null?SummonModelOf(\"summon-\"+m.Kind):\"horde-\"+variant,")&&summon.Contains("sourceModels.Queue(SummonModelOf(death.model),")
-                &&src.Contains("model==\"summon-toy\"&&!ClassicBodies&&VisualBodiesOn&&sourceModels.Has(NativeToySoldier.Model)?NativeToySoldier.Model:model")&&models.Contains("models[NativeToySoldier.Model]=figure.ToArray();"),
+                &&src.Contains("model==\"summon-toy\"&&ModelLook(null)&&sourceModels.Has(NativeToySoldier.Model)?NativeToySoldier.Model:model")&&models.Contains("models[NativeToySoldier.Model]=figure.ToArray();"),
                 "the Toy Soldier draws its figure, alive and falling, once the player's model is on (the Classic look keeps its blocks)");
             foreach(string w in new[]{"Bozo","BoZo","Synty","Polygon","NativeArena.","Authority"})Check(!gear.Contains(w)&&!R("Core/NativeToySoldier.cs").Contains(w),"no pack names or rules in the parts: "+w);
         }

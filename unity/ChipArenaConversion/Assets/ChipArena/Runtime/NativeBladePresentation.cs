@@ -40,7 +40,8 @@ namespace ChipArena.UnityConversion
             {
                 // On the model: on its pelvis bone where the pack's katana set wears it (owner 2026-11-11: "sheathe is still not on body"), and
                 // in the left hand as far as the pack's clips carry it there (the stance-three draws, the sheathing; Core NativeKatanaSaya).
-                frame=SayaRigid(pelvis)*Matrix4x4.TRS(SayaVec(NativeKatanaSaya.RestAt),SayaRot(NativeKatanaSaya.RestTurn),Vector3.one);
+                // (On the voxel costume, moved onto its hip block's surface: NativeVoxelCostumePresentation.cs CostumeSayaShift.)
+                frame=SayaRigid(pelvis)*Matrix4x4.TRS(SayaVec(NativeKatanaSaya.RestAt)+CostumeSayaShift(body.Root),SayaRot(NativeKatanaSaya.RestTurn),Vector3.one);
                 var hand=body.Motion?.LeftHand;
                 if(hand!=null&&body.SayaFrame==Time.frameCount&&body.SayaCarry>0)
                 {

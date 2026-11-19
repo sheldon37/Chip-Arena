@@ -25,6 +25,15 @@ namespace ChipArena.UnityConversion
         private readonly Matrix4x4[] bandLocal=new Matrix4x4[4];private Matrix4x4 coreLocal,rimLocal,glintLocal;private bool statusReady,statusFailed;
         // The slow marker as beads (the bubble's sphere at .6 of the cube's edge); false draws the cubes.
         private bool slowDrops;private readonly Matrix4x4 dropLocal=Matrix4x4.Scale(new Vector3(.6f,.6f,.6f));
+        // On the model (docs/VOXEL-RETIREMENT.md V3 Stage 1, P13): the shackles' cuffs and beads and the Orbital Mark's ring and
+        // beads on its own ankles and head (NativeStatusVisuals.ModelBuild through the joint-frame resolver), in the shackles' and
+        // the Mark's colours; the cubes stay the voxel body's.
+        private readonly NativeStatusVisuals.ModelPiece[] statusModelPieces=new NativeStatusVisuals.ModelPiece[NativeStatusVisuals.MaxModelPieces];
+        private readonly StatusBatch[] statusModel=new StatusBatch[4];
+        /// <summary>The model's ankle reach (m) for the cuffs: round its shoe, or round the voxel costume's boot.</summary>
+        private const float ModelAnkleReach=.06f;
+        /// <summary>The model's head middle above its head joint (m: the skull's, NativeVoxelCostume.SkullTop's half).</summary>
+        private const float ModelHeadMiddle=.1f;
         // Team for the draft stage's pilot (draft-stage.ts:164 teamArmor), or -1; set by the draft screen each frame.
         public int DraftBandTeam=-1;
 
@@ -46,7 +55,10 @@ namespace ChipArena.UnityConversion
                 if(!own&&rig!=null&&SpawnShowsFor(p.Seat.id,CapturedRig.Chest))Bands(rig,NativeStatusVisuals.PilotBand(teams,arena.Match.Cooperative,p.Seat.AuthorityBoss,p.Seat.team,p.Seat.id==arena.LocalId));
                 if(own||!fight)continue;
                 Vector3 at=rig!=null?rig.Root.transform.position:p.Body.position;var status=PilotStatus(arena,p,now,quality);
-                status.Root=new NVector(-at.x,at.y,at.z);status.Camera=sourceEye;status.CameraRotation=sourceLook;QueueStatus(status,time,Matrix4x4.Translate(at),statusWorld);
+                status.Root=new NVector(-at.x,at.y,at.z);status.Camera=sourceEye;status.CameraRotation=sourceLook;
+                // On the model its shackles and Mark ride its own joints (the joint-frame resolver), not the voxel pilot's heights.
+                if(rig!=null&&VisualBodyPosed(rig)){status.ModelBody=true;StatusOnModel(status,time,p.Seat.id,rig,eye);}
+                QueueStatus(status,time,Matrix4x4.Translate(at),statusWorld);
             }
             // pve/horde-view.ts:116-123: burning, poisoned or slowed adds, nearest to the camera first, at most AddRigs.
             int adds=0;
@@ -67,20 +79,42 @@ namespace ChipArena.UnityConversion
                 var status=new NativeStatusVisuals.Rig{Active=true,Quality=quality,Fire=(flags&1)!=0,Poison=(flags&2)!=0,Slowed=(flags&4)!=0,SlowUntil=time+1,Root=new NVector(-at.x,at.y,at.z),Camera=sourceEye,CameraRotation=sourceLook};
                 QueueStatus(status,time,Matrix4x4.Translate(at),statusWorld);
             }
-            FlushStatus(statusWorld,0,null);FlushStatus(teamBands,0,null);FlushStatus(teamArmbands,0,null);
+            FlushStatus(statusWorld,0,null);FlushStatus(statusModel,0,null);FlushStatus(teamBands,0,null);FlushStatus(teamArmbands,0,null);
             // The hands rig (StatusRig(true)) rides the view model: three flames and three bubbles, no slow or mark parts.
             if(!view||!FirstPerson||!fight||viewRig==null||ViewCamera==null||ScopeActive)return;
             NativePilot self=null;foreach(var p in arena.Pilots)if(p.Seat.id==LocalId){self=p;break;}
             if(self==null||self.Hp<=0)return;var hands=PilotStatus(arena,self,now,quality);hands.FirstPerson=true;
             QueueStatus(hands,time,viewRig.Root.transform.localToWorldMatrix,statusView);FlushStatus(statusView,10,ViewCamera);
         }
+        // A model pilot's shackles and Mark (NativeStatusVisuals.ModelBuild) on its ankles and head joints, round the voxel costume's
+        // boots where it wears them.
+        private void StatusOnModel(in NativeStatusVisuals.Rig status,float time,int id,CapturedAnimation.Player rig,Vector3 eye)
+        {
+            var costume=visualBodies.TryGetValue(rig,out var body)?CostumeOf(body.Root):null;
+            float ankle=costume!=null?Mathf.Max(ModelAnkleReach,costume.Build.BootHalf):ModelAnkleReach;
+            // (The model's own bones: JointAt, not JointFrame, whose head frame keeps the voxel head joint's place 20 cm under the model's.)
+            Vector3 mid=JointAt(id,CapturedRig.Head)+Vector3.up*ModelHeadMiddle;
+            int n=NativeStatusVisuals.ModelBuild(status,time,StatusV(JointAt(id,CapturedRig.LFoot)),StatusV(JointAt(id,CapturedRig.RFoot)),ankle,StatusV(mid),StatusV(eye),statusModelPieces);
+            for(int i=0;i<n;i++)
+            {
+                var p=statusModelPieces[i];
+                statusModel[(int)p.Kind].Add(Matrix4x4.TRS(new Vector3(p.Position.X,p.Position.Y,p.Position.Z),new Quaternion(p.Rotation.X,p.Rotation.Y,p.Rotation.Z,p.Rotation.W),new Vector3(p.Scale.X,p.Scale.Y,p.Scale.Z)));
+            }
+        }
+        private static NVector StatusV(Vector3 v)=>new NVector(v.x,v.y,v.z);
         // Team bands on a single presentation rig (draft stage, entrance), drawn at once.
         private void TeamBands(CapturedAnimation.Player rig,int team){if(rig==null||team<0||!StatusReady())return;Bands(rig,team);FlushStatus(teamBands,0,null);FlushStatus(teamArmbands,0,null);}
         private void Bands(CapturedAnimation.Player rig,int team)
         {
             if(team<0||team>=teamBands.Length)return;
             // On the player's model: a band round each upper arm (the voxel bands' boxes sit at the voxel body's joints).
-            var body=VisualPosedBody(rig);if(body!=null){var ring=teamArmbands[team];ring.Add(VisualLimbFrame(body,rig,CapturedRig.LArm)*armbandLocal);ring.Add(VisualLimbFrame(body,rig,CapturedRig.RArm)*armbandLocal);return;}
+            var body=VisualPosedBody(rig);
+            if(body!=null)
+            {
+                // (On the voxel costume, under its shoulder caps round its upper-arm blocks: NativeVoxelCostume's band measure.)
+                var costume=CostumeOf(body.Root);var local=costume!=null&&costume.Build.BandRadius>.01f?Matrix4x4.TRS(new Vector3(0,-costume.Build.BandDrop,0),Quaternion.identity,new Vector3(costume.Build.BandRadius,NativeStatusVisuals.ArmbandHeight,costume.Build.BandRadius)):armbandLocal;
+                var ring=teamArmbands[team];ring.Add(VisualLimbFrame(body,rig,CapturedRig.LArm)*local);ring.Add(VisualLimbFrame(body,rig,CapturedRig.RArm)*local);return;
+            }
             var batch=teamBands[team];for(int i=0;i<bandLocal.Length;i++)batch.Add(rig.Bones[NativeStatusVisuals.BandBones[i]].localToWorldMatrix*bandLocal[i]);
         }
         private static NativeStatusVisuals.Rig PilotStatus(NativeArena arena,NativePilot p,double now,float quality)
@@ -151,6 +185,10 @@ namespace ChipArena.UnityConversion
                 var mesh=s<=(int)NativeStatusVisuals.Surface.Core?statusMeshes[0]:s<=(int)NativeStatusVisuals.Surface.Glint?statusMeshes[s-1]:cube;
                 statusWorld[s]=new StatusBatch(256){Mesh=mesh,Material=material};statusView[s]=new StatusBatch(16){Mesh=mesh,Material=material};
             }
+            // The model's shackles (the armband's ring and the bubble's bead in the shackle colour) and Mark (the bubble's rim ring and beads).
+            var shackle=statusMaterials[(int)NativeStatusVisuals.Surface.Shackle];var mark=statusMaterials[(int)NativeStatusVisuals.Surface.Mark];
+            statusModel[(int)NativeStatusVisuals.ModelKind.ShackleRing]=new StatusBatch(64){Mesh=statusMeshes[5],Material=shackle};statusModel[(int)NativeStatusVisuals.ModelKind.ShackleBead]=new StatusBatch(128){Mesh=statusMeshes[2],Material=shackle};
+            statusModel[(int)NativeStatusVisuals.ModelKind.MarkRing]=new StatusBatch(32){Mesh=statusMeshes[3],Material=mark};statusModel[(int)NativeStatusVisuals.ModelKind.MarkBead]=new StatusBatch(128){Mesh=statusMeshes[2],Material=mark};
             for(int t=0;t<teamBands.Length;t++){var material=StatusMaterial(shader,NativeStatusVisuals.TeamColors[t],1,false);statusMaterials[StatusSurfaces+t]=material;teamBands[t]=new StatusBatch(64){Mesh=cube,Material=material};teamArmbands[t]=new StatusBatch(32){Mesh=statusMeshes[5],Material=material};}
             Vector3 Mirror(NVector v)=>new Vector3(-v.X,v.Y,v.Z);Vector3 Size(NVector v)=>new Vector3(v.X,v.Y,v.Z);
             coreLocal=Matrix4x4.TRS(Mirror(NativeStatusVisuals.CorePosition),Quaternion.identity,Size(NativeStatusVisuals.CoreScale));rimLocal=Matrix4x4.Translate(Mirror(NativeStatusVisuals.RimPosition));

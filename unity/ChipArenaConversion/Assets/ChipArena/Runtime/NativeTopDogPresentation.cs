@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
         }
         private string TopDogLook(string look)
         {
-            look??="";if(!dogLooks.TryGetValue(look,out var dog)){if(dogLooks.Count>32)dogLooks.Clear();dogLooks[look]=dog=NativeLook.With(look,NativeLook.Upper,NativeHotDog.Id);}return dog;
+            look??="";if(!dogLooks.TryGetValue(look,out var dog)){if(dogLooks.Count>32)dogLooks.Clear();dogLooks[look]=dog=NativeVoxelCostume.With(NativeLook.With(look,NativeLook.Upper,NativeHotDog.Id),false);}return dog;
         }
 
         // ---- the intro (Core NativeTopDogIntro, staged by NativeIntros.DirectedIntro) ----

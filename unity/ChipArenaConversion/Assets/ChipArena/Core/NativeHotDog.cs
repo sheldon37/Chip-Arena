@@ -41,7 +41,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The sprigs: the parts of the mesh wholly within this far of its top (m), each smaller than SprigMost vertices.</summary>
         public const float SprigDepth=.08f;public const int SprigMost=200;
         /// <summary>Whether a look wears it. Allocation free.</summary>
-        public static bool Worn(string look)=>NativeLook.Of(look,NativeLook.Upper)==Id;
+        /// (A costumed look hides it, as it hides every outfit piece: Core/NativeVoxelCostume.cs; the Top Dog's class body takes
+        /// the costume off instead, Runtime/NativeTopDogPresentation.cs TopDogLook.)
+        public static bool Worn(string look)=>NativeLook.Of(look,NativeLook.Upper)==Id&&NativeLook.CostumeOf(look)==NativeLook.CostumeNone;
 
         // ---- The sausage's jiggle ----
         // A damped spring on the sausage's top (its offset from where the pose puts it, m, world): it lags behind the body's

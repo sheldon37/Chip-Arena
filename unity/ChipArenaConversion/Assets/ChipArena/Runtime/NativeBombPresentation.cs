@@ -138,6 +138,9 @@ namespace ChipArena.UnityConversion
             for(int s=-1;s<=1;s+=2){BombPiece(WeaponShape.Cube,Up(h+.03f)+q*new Vector3(s*.14f,0,-.1f),q,new Vector3(.03f,.03f,.03f),BombBrass);BombPiece(WeaponShape.Sphere,Up(h-.03f)+q*new Vector3(s*.14f,.02f,.17f),q,Vector3.one*.016f,(time<f.Strike&&Mathf.Sin(time*26+s)>0)?BombLed:new Color(.1f,.01f,.01f),true);}
         }
         // The belt: a strap across the chest with a row of sticks in its loops, a satchel on the hip with more showing out of the top. On the rig's chest and pelvis, so it follows every pose.
+        // (On the voxel costume the satchel moves onto its hip block's side: NativeVoxelCostumePresentation.cs CostumeSatchelShift, measured
+        // from the satchel's middle, BombSatchelAt.)
+        private static readonly Vector3 BombSatchelAt=new Vector3(.25f,-.1f,.03f);
         private void BombGear(Actor a){if(rigs.TryGetValue(a.Id,out var rig))BombGear(rig);}
         private void BombGear(CapturedAnimation.Player rig)
         {
@@ -146,7 +149,7 @@ namespace ChipArena.UnityConversion
             var cq=Quaternion.LookRotation(core.GetColumn(2),core.GetColumn(1));Vector3 chest=core.GetColumn(3);Vector3 C(float x,float y,float z)=>chest+cq*new Vector3(x,y,z);var strapQ=cq*Quaternion.Euler(0,0,-38);
             BombPiece(WeaponShape.Cube,C(0,-.01f,.02f),strapQ,new Vector3(.05f,.46f,.014f),BombLeather);
             for(int i=0;i<5;i++){float w=(i-2)*.082f;var at=C(-w*.62f,-.01f+w*.8f,.05f);BombTnt(NativeTnt.Small,at,cq,.13f);BombPiece(WeaponShape.Cube,at-cq*new Vector3(0,.018f,.012f),strapQ,new Vector3(.062f,.012f,.01f),BombBlack);}
-            var pq=Quaternion.LookRotation(hips.GetColumn(2),hips.GetColumn(1));Vector3 pelvis=hips.GetColumn(3);Vector3 P(float x,float y,float z)=>pelvis+pq*new Vector3(x,y,z);BombPiece(WeaponShape.Cube,P(.25f,-.1f,.03f),pq,new Vector3(.1f,.17f,.17f),BombLeather);BombPiece(WeaponShape.Cube,P(.25f,-.01f,.03f),pq,new Vector3(.11f,.03f,.18f),BombBlack);BombPiece(WeaponShape.Cube,P(.302f,-.1f,.03f),pq,new Vector3(.004f,.05f,.1f),BombHazard);
+            var pq=Quaternion.LookRotation(hips.GetColumn(2),hips.GetColumn(1));Vector3 pelvis=hips.GetColumn(3);var seat=CostumeSatchelShift(body.Root);Vector3 P(float x,float y,float z)=>pelvis+pq*(new Vector3(x,y,z)+seat);BombPiece(WeaponShape.Cube,P(.25f,-.1f,.03f),pq,new Vector3(.1f,.17f,.17f),BombLeather);BombPiece(WeaponShape.Cube,P(.25f,-.01f,.03f),pq,new Vector3(.11f,.03f,.18f),BombBlack);BombPiece(WeaponShape.Cube,P(.302f,-.1f,.03f),pq,new Vector3(.004f,.05f,.1f),BombHazard);
             for(int i=-1;i<=1;i++)BombTnt(NativeTnt.Small,P(.25f+.012f*i,.05f,.03f+.046f*i),pq,.15f);
         }
         // First person: the arms are the kit's own (NativeBombView), not the game rig's gun hold.
