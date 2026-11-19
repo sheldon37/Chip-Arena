@@ -42,6 +42,12 @@ namespace ChipArena.UnityConversion
         internal const int BaseLowDraws=22,BaseLowInstances=8878,BaseLowQuads=765,BaseLowParts=6951;internal const long BaseLowTris=817302;
         internal const int FogHighQuads=1243,FogLowQuads=860;
         internal static long Pin(long baseline)=>(long)Math.Ceiling(baseline*1.15);
+        // ---- the triangles (W0's review): already over the plan's targets (section 6: 2.0 M a view at High, 0.8 M at Low) before
+        // any overhaul code, so there is no headroom (the target minus the baseline) to share out by milestone. Until the owner
+        // decides (accept the baseline, or cut the skyline: docs/EXPEDITION-DEPLOYMENT.md), they are a no-growth gate at today's
+        // worst view, not a budget: High at the shared head's 2,177,224 (W0's 2,173,532 is under it), Low at W0's 821,492 (the
+        // shared head's 817,302 plus 0.5%: the seeded dressing puts 45 more low-tier parts in the worst of the 120 views).
+        internal const long TargetHighTris=2000000,TargetLowTris=800000,GateHighTris=2177224,GateLowTris=821492;
 
         /// <summary>The six eyes for a roll, by role so they stay comparable across rolls (and later layouts): the sanctuary's
         /// centre, the apron outside its south gate, the east and west entrances' join circles, the final court, and the hub's
@@ -62,12 +68,16 @@ namespace ChipArena.UnityConversion
         {
             public ExpeditionGeneratedWorld World;public NativeExpeditionCityKit Kit;public NativeCityFxScene Scene;public NativeExpeditionCityLights Lights;public MapLook Look;
             public float Far;public float[] Spots;public int[] Order;public int WrapParts;public NativeWeatherCover Cover;
+            /// <summary>The skyline round this roll's footprint and its backdrop fires, from the map's own bounds as the runtime builds
+            /// them (NativeExpeditionCityScenery.Around over map.bounds), so a larger map's skyline is counted as drawn.</summary>
+            public NativeCityBackdropBox[] Backdrop;public NativeCityBackdropFire[] Fires;
         }
         /// <summary>A roll's city from the shared look as the runtime draws it (NativeLighting.Look: the generated map's own
-        /// practicals, NativeExpeditionCityLights.ForMap; Runtime NativeExpeditionCityPresentation.ExpeditionCityBuild).</summary>
-        internal static City Build(ExpeditionGeneratedWorld world,MapLook look,NativeCityBackdropFire[] fires)
+        /// practicals, NativeExpeditionCityLights.ForMap; Runtime NativeExpeditionCityPresentation.ExpeditionCityBuild), its skyline
+        /// from `backdrop` and `fires` (Setup.Skyline over its bounds).</summary>
+        internal static City Build(ExpeditionGeneratedWorld world,MapLook look,NativeCityBackdropBox[] backdrop,NativeCityBackdropFire[] fires)
         {
-            var map=world.Map;var blocks=map.blocks;look=NativeExpeditionCityLights.ForMap(look,map.id);var c=new City{World=world,Look=look};
+            var map=world.Map;var blocks=map.blocks;look=NativeExpeditionCityLights.ForMap(look,map.id);var c=new City{World=world,Look=look,Backdrop=backdrop,Fires=fires};
             c.Kit=NativeExpeditionCityKit.Build(blocks,world.Area,world.Hub,map.bounds,true,world.Blueprint);
             c.Scene=NativeCityFxScene.Build(blocks,c.Kit,fires,look,world.Hub,map.bounds);c.Scene.KeepNearest=true;
             c.Lights=NativeExpeditionCityLights.Build(c.Kit,look);c.Far=NativeExpeditionCityKit.FarRange(look);c.Cover=NativeWeatherCover.Build(blocks,map.bounds);
@@ -121,7 +131,14 @@ namespace ChipArena.UnityConversion
         internal sealed class Setup
         {
             public ConversionContent Content;public ExpeditionLayout Layout;public string LayoutJson;public MapLook Look;public AdvancedLightState Adv=new AdvancedLightState();
-            public NativeCityBackdropBox[] Backdrop;public NativeCityBackdropFire[] Fires;
+            private readonly Dictionary<(double,double,double,double),(NativeCityBackdropBox[] boxes,NativeCityBackdropFire[] fires)> skylines=new Dictionary<(double,double,double,double),(NativeCityBackdropBox[],NativeCityBackdropFire[])>();
+            /// <summary>The skyline and backdrop fires round a map's own bounds (W0's review: not a fixed footprint, so the census
+            /// follows the map when it grows; the owner chose size B), built once per distinct bounds as the runtime builds it.</summary>
+            public (NativeCityBackdropBox[] boxes,NativeCityBackdropFire[] fires) Skyline(MapBounds b)
+            {
+                var key=(b.minX,b.maxX,b.minZ,b.maxZ);if(skylines.TryGetValue(key,out var s))return s;
+                var boxes=NativeExpeditionCityScenery.Around(out var fires,b.minX,b.maxX,b.minZ,b.maxZ);s=(boxes,fires);skylines[key]=s;return s;
+            }
             public Setup(string root)
             {
                 var o=new JsonSerializerOptions{IncludeFields=true};string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources",f));
@@ -129,8 +146,9 @@ namespace ChipArena.UnityConversion
                 Content=new ConversionContent{maps=JsonSerializer.Deserialize<UnityMapContent>(mapsJson,o).maps,contentRevision=NativeMapRules.Revision(mapsJson)};
                 Layout=NativeExpeditionLayout.Parse(LayoutJson);Layout.compatibility=NativeExpeditionLayout.Compatibility(LayoutJson,Content);
                 Look=NativeMapStyle.Styled(NativeMapLooks.ByLook(MapLookChecks.Load(root),"expedition-city"),false);NativeAdvancedLooks.Resolve(Look,NativeGraphicsTier.High,false,Adv);
-                Backdrop=NativeExpeditionCityScenery.Around(out Fires,-125,125,-95,95);
             }
+            /// <summary>A rolled world's city, its skyline from its own map's bounds.</summary>
+            public City CityOf(ExpeditionGeneratedWorld world){var s=Skyline(world.Map.bounds);return GeneratedFrameChecks.Build(world,Look,s.boxes,s.fires);}
             /// <summary>The world a seed rolls (null when the station refuses the roll).</summary>
             public ExpeditionGeneratedWorld World(uint seed)
             {
@@ -143,12 +161,12 @@ namespace ChipArena.UnityConversion
         {
             var watch=System.Diagnostics.Stopwatch.StartNew();
             var fx=new NativeExpeditionCityFx();var beams=new NativeBeamList();var weather=new NativeWeatherFx();var sun=Sun();
-            var list=new List<uint>();var all=new List<View[][]>();build=new int[5];build[4]=set.Backdrop.Length;first=null;
+            var list=new List<uint>();var all=new List<View[][]>();build=new int[5];first=null;
             for(uint seed=1;list.Count<Seeds&&seed<200;seed++)
             {
-                var world=set.World(seed);if(world==null)continue;var city=Build(world,set.Look,set.Fires);first??=city;var eyes=EyesOf(world);var per=new View[eyes.Length][];
-                var kp=city.Kit.Parts;build[0]=Math.Max(build[0],kp.Length);build[1]=Math.Max(build[1],kp.Count(x=>!x.Detail));build[2]=Math.Max(build[2],kp.Count(x=>x.Shadow));build[3]=Math.Max(build[3],city.Kit.Glows.Length);
-                for(int i=0;i<eyes.Length;i++)per[i]=new[]{Census(city,set.Backdrop,eyes[i],false,fx,beams,weather,sun,set.Adv),Census(city,set.Backdrop,eyes[i],true,fx,beams,weather,sun,set.Adv)};
+                var world=set.World(seed);if(world==null)continue;var city=set.CityOf(world);first??=city;var eyes=EyesOf(world);var per=new View[eyes.Length][];
+                var kp=city.Kit.Parts;build[0]=Math.Max(build[0],kp.Length);build[1]=Math.Max(build[1],kp.Count(x=>!x.Detail));build[2]=Math.Max(build[2],kp.Count(x=>x.Shadow));build[3]=Math.Max(build[3],city.Kit.Glows.Length);build[4]=Math.Max(build[4],city.Backdrop.Length);
+                for(int i=0;i<eyes.Length;i++)per[i]=new[]{Census(city,city.Backdrop,eyes[i],false,fx,beams,weather,sun,set.Adv),Census(city,city.Backdrop,eyes[i],true,fx,beams,weather,sun,set.Adv)};
                 list.Add(seed);all.Add(per);
             }
             seeds=list.ToArray();ms=watch.Elapsed.TotalMilliseconds;return all.ToArray();
@@ -176,16 +194,46 @@ namespace ChipArena.UnityConversion
             Check(hi.Lights<=NativeExpeditionCityLights.Slots&&lo.Lights<=NativeExpeditionCityLights.Slots,"at most "+NativeExpeditionCityLights.Slots+" practical slots lit");
             Check(hi.Quads<=NativeExpeditionCityFx.Capacity&&lo.Quads<=NativeExpeditionCityFx.Capacity,"the atmosphere fits its buffer");
             void Under(string what,long now,long pin,long baseline){Check(now<=pin,what+": "+now.ToString("N0")+" (pin "+pin.ToString("N0")+", the shared head's "+baseline.ToString("N0")+"); a package that needs more raises the pin on purpose (docs/EXPEDITION-DEPLOYMENT.md \"Frame budget\")");}
-            Under("High draws",hi.Draws,Pin(BaseHighDraws),BaseHighDraws);Under("High triangles",hi.Tris,Pin(BaseHighTris),BaseHighTris);Under("High instances",hi.Instances,Pin(BaseHighInstances),BaseHighInstances);
+            // The triangles: a no-growth gate (no headroom under the section 6 targets), the gap to the target in the message.
+            void Gate(string what,long now,long gate,long target){Check(now<=gate,what+": "+now.ToString("N0")+" (no-growth gate "+gate.ToString("N0")+": today's worst view is already "+(gate-target).ToString("N0")+" over the plan's "+target.ToString("N0")+", so no package may add any until the owner decides; docs/EXPEDITION-DEPLOYMENT.md \"Frame budget\")");}
+            Console.WriteLine("   over target before any overhaul code: High triangles "+hi.Tris.ToString("N0")+" against "+TargetHighTris.ToString("N0")+" ("+((hi.Tris-TargetHighTris)*100.0/TargetHighTris).ToString("+0.0")+"%), Low "+lo.Tris.ToString("N0")+" against "+TargetLowTris.ToString("N0")+" ("+((lo.Tris-TargetLowTris)*100.0/TargetLowTris).ToString("+0.0")+"%); Low lights "+lo.Lights+" practical slots against 3");
+            Gate("High triangles",hi.Tris,GateHighTris,TargetHighTris);Gate("Low triangles",lo.Tris,GateLowTris,TargetLowTris);
+            Check(BaseHighTris>TargetHighTris&&BaseLowTris>TargetLowTris&&GateHighTris==Math.Max(BaseHighTris,2173532)&&GateLowTris<=BaseLowTris*1.01,"the triangle gates hold today's worst view (no headroom under the targets)");
+            Under("High draws",hi.Draws,Pin(BaseHighDraws),BaseHighDraws);Under("High instances",hi.Instances,Pin(BaseHighInstances),BaseHighInstances);
             Under("High casters",hi.Casters,Pin(BaseHighCasters),BaseHighCasters);Under("High effect quads",hi.Quads,Pin(FogHighQuads),BaseHighQuads);Under("High rain quads",hi.Rain,Pin(BaseHighRain),BaseHighRain);
             Under("High beams",hi.Beams,Pin(BaseHighBeams),BaseHighBeams);Under("High kit parts",hi.KitParts,Pin(BaseHighKit),BaseHighKit);
-            Under("Low draws",lo.Draws,Pin(BaseLowDraws),BaseLowDraws);Under("Low triangles",lo.Tris,Pin(BaseLowTris),BaseLowTris);Under("Low instances",lo.Instances,Pin(BaseLowInstances),BaseLowInstances);
+            Under("Low draws",lo.Draws,Pin(BaseLowDraws),BaseLowDraws);Under("Low instances",lo.Instances,Pin(BaseLowInstances),BaseLowInstances);
             Under("Low effect quads",lo.Quads,Pin(FogLowQuads),BaseLowQuads);Under("Low low-tier parts",lo.LowParts,Pin(BaseLowParts),BaseLowParts);
             Check(lo.Casters==0&&lo.Rain==0&&lo.Beams==0,"the low tier casts no shadows and draws no advanced weather or beams");
-            var again=Census(city,set.Backdrop,EyesOf(city.World)[0],false,new NativeExpeditionCityFx(),new NativeBeamList(),new NativeWeatherFx(),Sun(),set.Adv);var once=views[0][0][0];
+            var again=Census(city,city.Backdrop,EyesOf(city.World)[0],false,new NativeExpeditionCityFx(),new NativeBeamList(),new NativeWeatherFx(),Sun(),set.Adv);var once=views[0][0][0];
             Check(again.Draws==once.Draws&&again.Tris==once.Tris&&again.Instances==once.Instances&&again.Quads==once.Quads&&again.Lights==once.Lights,"the census is the same every time");
-            Fog(city);FxFlags(root);Practicals(set,city);Variety(set);Volume(set,city);
-            Console.WriteLine("PASS generated frame: "+count+" checks ("+seeds.Length+" rolls x "+Eyes+" eyes, High and Low; the ground fog, the effects' flags, the generated map's own practicals, the kit's variety and the light volume's candidates)");
+            Skyline(set,city);Fog(city);FxFlags(root);Practicals(set,city);Variety(set);Volume(set,city);RuntimeSites(root);
+            Console.WriteLine("PASS generated frame: "+count+" checks ("+seeds.Length+" rolls x "+Eyes+" eyes, High and Low; the skyline from the map's bounds, the ground fog, the effects' flags, the generated map's own practicals, the kit's variety, the light volume's candidates and the runtime's call sites)");
+        }
+
+        // ---- W0's review: the census builds each roll's skyline from its own map's bounds, as the runtime does, so it follows
+        // the map when it grows (the owner chose size B, 600 x 480 m) ----
+        private static void Skyline(Setup set,City c)
+        {
+            var b=c.World.Map.bounds;var own=NativeExpeditionCityScenery.Around(out var fires,b.minX,b.maxX,b.minZ,b.maxZ);
+            Check(c.Backdrop.Length==own.Length&&c.Fires.Length==fires.Length&&c.Backdrop.Length>0,"the census counts the skyline round the map's own bounds ("+c.Backdrop.Length+" boxes round "+b.minX+".."+b.maxX+" x "+b.minZ+".."+b.maxZ+")");
+            // A larger map's skyline is its own (a size-B footprint, 600 x 480 m): the census would count that one, not today's.
+            var big=set.Skyline(new MapBounds{minX=-300,maxX=300,minZ=-240,maxZ=240});
+            Check(big.boxes.Length>0&&!ReferenceEquals(big.boxes,c.Backdrop)&&(big.boxes.Length!=c.Backdrop.Length||big.boxes.Min(x=>x.X)<c.Backdrop.Min(x=>x.X)),"a larger map's census takes its own skyline ("+big.boxes.Length+" boxes round 600 x 480 m)");
+        }
+
+        // ---- W0's review: the runtime's call sites for the fixes, pinned (the checks above build their scenes themselves, so
+        // reverting one of these lines would otherwise still pass) ----
+        private static void RuntimeSites(string root)
+        {
+            string Src(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f)).Replace("\r\n","\n");
+            var city=Src("NativeExpeditionCityPresentation.cs");var audio=Src("NativeExpeditionCityAudio.cs");var lit=Src("NativeLighting.cs");var adv=Src("NativeAdvancedLighting.cs");
+            Check(city.Contains("townScene=NativeCityFxScene.Build(blocks,townKit,townGenerated?townGenFires??Array.Empty<NativeCityBackdropFire>():townFires,look,townHub,map.bounds);townScene.KeepNearest=townGenerated;"),"the city's presentation sizes the fog's grid from the map's bounds and keeps the nearest sheets on the generated map");
+            Check(city.Contains("NativeExpeditionCityScenery.Around(out townGenFires,map.bounds.minX,map.bounds.maxX,map.bounds.minZ,map.bounds.maxZ)"),"the runtime's skyline is round the map's own bounds (as the census counts it)");
+            Check(audio.Contains("NativeExpeditionCityAmbience.Between(townTime,time,townCues,arena.MapId==NativeExpeditionCityKit.MapId)"),"the city's audio leaves the town's brazier and bus crackle off the generated map");
+            Check(lit.Contains("public static MapLook Look(ContentMap map)=>NativeExpeditionCityLights.ForMap("),"the lighting draws the generated map's look with its own practicals");
+            // The volume's candidates are taken once per map and run, even when a map hands none, so its key is not built every frame.
+            Check(adv.Contains("if(map==null||map.id!=mapId||candidatesMap==mapId&&candidatesRun==run&&(candidates.Count>0||lights==null||lights.Count==0))return;"),"the light volume takes a map's candidates once per map and run, an empty hand included (no key built per frame)");
         }
 
         // ---- W0 (its review): the effects shader decodes each piece's mode and flags as sent. They are whole numbers on every vertex,
@@ -326,6 +374,9 @@ namespace ChipArena.UnityConversion
             Func<double,double,bool> east=(x,z)=>x>40,south=(x,z)=>z<-35,west=(x,z)=>x<-40;
             Console.WriteLine("   the light volume's kit lights (before W0 / now): "+old.Count+" / "+fresh.Count+"; streets within a baked lamp's reach: east "+Reached(old,east).ToString("P0")+" / "+Reached(fresh,east).ToString("P0")+", south "+Reached(old,south).ToString("P0")+" / "+Reached(fresh,south).ToString("P0")+", west "+Reached(old,west).ToString("P0")+" / "+Reached(fresh,west).ToString("P0")
                 +"; their bounce at 0.6 m: east "+Lit(before,east).ToString("0.0000")+" / "+Lit(after,east).ToString("0.0000")+", south "+Lit(before,south).ToString("0.0000")+" / "+Lit(after,south).ToString("0.0000")+", west "+Lit(before,west).ToString("0.0000")+" / "+Lit(after,west).ToString("0.0000"));
+            // Where the 64 go (W0's review, for W1 and W10: the pick weighs a light by its range squared, so the halls' floods and
+            // the final court's ring take many, and the south arm's middle stays unbaked; noted, not changed in W0).
+            Console.WriteLine("   the light volume's 64 by area: hub "+fresh.Count(l=>Math.Abs(l.X)<25&&Math.Abs(l.Z)<25)+", final court "+fresh.Count(l=>l.Z>50)+", east "+fresh.Count(l=>l.X>40&&l.Z<=50)+", west "+fresh.Count(l=>l.X<-40&&l.Z<=50)+", south "+fresh.Count(l=>l.Z<-35&&Math.Abs(l.X)<=40)+", elsewhere "+fresh.Count(l=>!(Math.Abs(l.X)<25&&Math.Abs(l.Z)<25)&&!(l.Z>50)&&!(l.X>40&&l.Z<=50)&&!(l.X<-40&&l.Z<=50)&&!(l.Z<-35&&Math.Abs(l.X)<=40)));
             Check(Reached(fresh,east)>Reached(old,east)+.2&&Reached(fresh,south)>Reached(old,south)+.2&&Lit(after,east)>Lit(before,east)*2&&Lit(after,south)>Lit(before,south)*2,"the east and south streets take the lamps' bounce now");
             Check(after.Lights==NativeLightVolume.MaxLights,"the bake takes the most lights");
         }

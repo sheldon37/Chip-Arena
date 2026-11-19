@@ -48,10 +48,12 @@ namespace ChipArena.UnityConversion
         /// than the eight slots), handed by its presentation before the bake starts; the look's own are always in, the candidates
         /// fill the rest. `run`: the identity of a map whose id every run shares (the generated Expedition city: its world seed and
         /// generator Version, Core NativeLightVolume.RunKey; null elsewhere), part of the volume's key, so each run bakes its own
-        /// volume and never takes an earlier run's (expedition overhaul W0).</summary>
+        /// volume and never takes an earlier run's (expedition overhaul W0). Taken once per map and run: a map whose presentation
+        /// hands none (an advanced-lit PvP map, the Expedition's Ward instance) has nothing to take, so its key stands and is not
+        /// built again every frame (W0's review).</summary>
         public static void Candidates(string mapId,IList<NativeVolumeLight> lights,string run)
         {
-            if(map==null||map.id!=mapId||candidatesMap==mapId&&candidatesRun==run&&candidates.Count>0)return;candidatesMap=mapId;candidatesRun=run;candidates.Clear();keyStale=true;
+            if(map==null||map.id!=mapId||candidatesMap==mapId&&candidatesRun==run&&(candidates.Count>0||lights==null||lights.Count==0))return;candidatesMap=mapId;candidatesRun=run;candidates.Clear();keyStale=true;
             int room=NativeLightVolume.MaxLights-Math.Min(NativeMapLooks.MaxLights,look?.lights?.Length??0);
             if(lights!=null)for(int i=0;i<lights.Count&&candidates.Count<room;i++)candidates.Add(lights[i]);
         }
