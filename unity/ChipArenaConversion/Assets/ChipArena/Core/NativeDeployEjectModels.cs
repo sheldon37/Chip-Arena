@@ -35,10 +35,10 @@ namespace ChipArena.UnityConversion
         private static Vector3 V(float x,float y,float z)=>new Vector3(x,y,z);
         private const float Up=-(float)(Math.PI/2),Pi=(float)Math.PI;
         // A vertical cylinder (axis +y) of radius r from y0 to y1 at (x, z), outward or seen from inside.
-        private static void Column(WeaponSculpt s,in WeaponPaint c,float r,float x,float z,float y0,float y1,int sides,bool inward=false)
+        private static void Column(WeaponSculpt s,in WeaponPaint c,float r,float x,float z,float y0,float y1,int sides,bool inward=false,bool caps=true)
         {
-            s.Push(WeaponSculpt.Rx(Up)*WeaponSculpt.T(x,0,z));var p=c;
-            s.Loft(new[]{WeaponSculpt.Circle(sides,r,r,y0),WeaponSculpt.Circle(sides,r,r,y1)},(i,k)=>p,0,!inward,!inward,null,false,inward);s.Pop();
+            s.Push(WeaponSculpt.Rx(Up)*WeaponSculpt.T(x,0,z));var p=c;bool cap=caps&&!inward;
+            s.Loft(new[]{WeaponSculpt.Circle(sides,r,r,y0),WeaponSculpt.Circle(sides,r,r,y1)},(i,k)=>p,0,cap,cap,null,false,inward);s.Pop();
         }
         // A flat ring facing +y (or -y) at height y about (x, z).
         private static void FlatRing(WeaponSculpt s,in WeaponPaint c,float r0,float r1,float y,int segments,bool down=false,float x=0,float z=0)
@@ -75,8 +75,9 @@ namespace ChipArena.UnityConversion
                 float a=k*Pi/2;var at=V((r-.03f)*(float)Math.Cos(a),-length/2,(r-.03f)*(float)Math.Sin(a));
                 s.Box(Steel,at,V(.03f,length,.05f),.006f,0,-a,0);
             }
-            // the outer skin (seen under the belly for a deep pod's tube) and its rim under the floor
-            Column(s,GraphiteDark,r+.06f,0,0,-length,0,sides);FlatRing(s,Graphite,r,r+.07f,-.005f,sides);
+            // the outer skin (seen under the belly for a deep pod's tube; a sleeve, open at both ends, so the tube shot looks down
+            // into it) and its rim under the floor
+            Column(s,GraphiteDark,r+.06f,0,0,-length,0,sides,false,false);FlatRing(s,Graphite,r,r+.07f,-.005f,sides);
             // the ring lights (bone 1): a lit band inside each joint, a little proud of the wall
             for(int k=0;k<rings;k++){float top=-(.3f+k*RingPitch);s.Into(Lights+k%3);Column(s,Lamp(Ice),r-.008f,0,0,top-RingHeight,top,sides,true);}
             return mesh;
