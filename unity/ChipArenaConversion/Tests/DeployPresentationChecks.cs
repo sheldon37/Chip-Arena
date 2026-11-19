@@ -233,6 +233,9 @@ namespace ChipArena.UnityConversion
                             float top=NativeDeployModels.PadTop-NativeDeployEject.Drop(mine,t,cut)+NativePortraitRules.GroupY+Top(mine,t)+.17f;
                             Check(v.Eye.Y>top+.45f&&v.Eye.Y>NativeDeployEject.PodRoof(mine)+1,"my pilot falls below the tube shot's eye (pad "+mine+" at "+t+": eye "+v.Eye.Y+", top "+top+")");
                             Check(v.Eye.Y<NativeDeployModels.PadTop+1.25f,"the tube shot's eye no higher than 1.2 m over the pad (pad "+mine+")");
+                            // (W3 review: following the pilot down, the rings passed the lens at 8-14 Hz and the frame flickered) the eye stays
+                            // over the tube's mouth, so no ring ever passes it
+                            Check(v.Eye.Y>NativeDeployEject.TubeTop+.3f,"the tube shot's eye stays over the tube's mouth (pad "+mine+")");
                         }
                         if(s==NativeDeployPresentation.Shot.Seat)
                         {

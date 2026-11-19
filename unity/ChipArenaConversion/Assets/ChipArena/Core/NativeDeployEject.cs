@@ -53,10 +53,11 @@ namespace ChipArena.UnityConversion
         public const float CabinFloor=NativePodModels.Floor,PodHeight=NativePodModels.Height;
         /// <summary>The drop tube (station frame): its inner radius and its top just under the floor plates.</summary>
         public const float TubeRadius=.46f,TubeTop=-.03f;
-        /// <summary>The tube shot: the eye's height over the pad's top, less TubeFollow of my pilot's drop (1.2 m over the pad as the
-        /// shot starts, so the neighbouring pads stay out of the frame and my pilot's head .9 m below the lens), and the share of
-        /// my pilot's drop it follows (so my pilot falls away below it). Camera shake off: the eye holds where the shot starts.</summary>
-        public const float TubeEye=1.64f,TubeFollow=.74f;
+        /// <summary>The tube shot: the eye's height over the pad's top as the shot starts (the neighbouring pads out of the frame, my
+        /// pilot's head .9 m below the lens) and its push-in toward the hatch over TubePushSeconds; then it holds over the tube's
+        /// mouth while my pilot falls away down the bore. It never follows down the tube: rings passing the lens at 8-14 Hz made the
+        /// whole frame flicker (W3 review). Camera shake off: no push-in.</summary>
+        public const float TubeEye=1.2f,TubePush=.45f,TubePushSeconds=.6f;
         /// <summary>The seat shot (my pod's frame over its cabin floor): the eye just outside my pod's doorway (its door out of the
         /// way for the shot) at my visor's height, the point it looks at between my visor and chest, and a 52° lens that frames
         /// the whole helmet to the hands on the harness bar between the doorway's posts.</summary>
@@ -180,10 +181,10 @@ namespace ChipArena.UnityConversion
             {
                 case NativeDeployPresentation.Shot.Tube:
                 {
-                    // straight down my tube from a little behind its axis, following my pilot at TubeFollow of its drop (held still
-                    // where the shot starts with camera shake off: my pilot falls away down the bore)
-                    float drop=shake?Drop(mine,since,cut):Drop(mine,DropStart(mine)+TubeLead,cut);
-                    float y=NativeDeployModels.PadTop+TubeEye-TubeFollow*drop;var eye=new Vector3(pad.X,y,pad.Z)-f*.12f;
+                    // straight down my tube from a little behind its axis over the hatch, a short push-in (none with camera shake off),
+                    // then held while my pilot falls away below it down the bore and the ring lights streak up
+                    float push=shake?TubePush*Smooth((since-DropStart(mine)-TubeLead)/TubePushSeconds):0;
+                    float y=NativeDeployModels.PadTop+TubeEye-push;var eye=new Vector3(pad.X,y,pad.Z)-f*.12f;
                     return new NativeDeployPresentation.View{Eye=eye,Target=eye+new Vector3(0,-4,0)+f*.62f,Fov=64};
                 }
                 case NativeDeployPresentation.Shot.Seat:
