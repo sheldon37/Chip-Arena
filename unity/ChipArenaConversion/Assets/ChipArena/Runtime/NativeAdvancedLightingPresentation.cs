@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
             NativeAdvancedLighting.Materials(arena.Content.materials);VolumeCandidates(arena);float now=PresentationClock(arena);NativeAdvancedLighting.Frame(now);
             var eye=WorldEye;
             if(beams)beamDraw.Draw(beamList,eye,s.BeamSoft,s.BeamSamples,now,0);else beamList.Clear();
-            if(weather)WeatherWorld(arena,eye,now);
+            if(weather&&!(arena.MapId==NativeThunderheart.Id&&CarillonWeatherOwned))WeatherWorld(arena,eye,now);
         }
         private bool EnsureBeams()
         {
@@ -70,7 +70,8 @@ namespace ChipArena.UnityConversion
             if(!ReferenceEquals(map,weatherMap)){weatherMap=map;weatherCover=NativeWeatherCover.Build(map?.blocks,map?.bounds);}
             NativeAdvancedLighting.Cover(weatherCover);
             ReadSceneLight(weatherLight);var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
-            weatherFx.Build(s.Weather,s.Amount,s.Wind,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,weatherLight,weatherCover);
+            float storm=arena.MapId==NativeThunderheart.Id?carillonWind:1;
+            weatherFx.Build(s.Weather,Mathf.Clamp01(s.Amount*storm),s.Wind*storm,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,weatherLight,weatherCover);
             var q=weatherFx.Quads;weatherDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {

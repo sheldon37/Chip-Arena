@@ -44,6 +44,7 @@ namespace ChipArena.UnityConversion
             if(PrewarmDeepwell(arena))built++;
             if(PrewarmSkyframe(arena))built++;
             if(PrewarmBreakwater(arena))built++;
+            if(PrepareCarillon(arena))built++;
             if(PrewarmSanctum(arena))built++;
             if(PrewarmPolar(arena))built++;
             // The kit bank's plan and the map's harbour yards (NativePackStage.cs; nothing without the bank or an entry).

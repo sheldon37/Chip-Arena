@@ -20592,3 +20592,7 @@ Branch codex/fix-practice-station, shared base dc568f84 (PR #407). The Windows b
 ## 2026-11-18 · Astra · Dealt Blind Pick authority
 
 Branch codex/dealt-blind-pick from shared 01505ad6. NativeRoomOptions.blindChoices uses zero for the original full pool. RoomOpt.Blind values 0/1/2 select off/all/dealt; dealt defaults to 3. RoomOpt.BlindChoices takes the actual N. The host deals unique IDs using each seat's live weapon grants and keeps N at or below the smallest eligible pool in the roster. Host-only deadlines sample from each pilot's still-eligible hand. Protocol 2 is required only for dealt hands. The local weapon view carries only that seat's IDs in pickCards before reveal; ConversionGame.OpeningWeaponOffers exposes them. Screen labels and layout belong to Claude. Managed checks cover offers, protocol, timeouts, bots, disconnects, grants and privacy. No combat, animation or hit-timing changes.
+
+## 2026-11-18 · Astra · Thunderheart Carillon
+
+Recovered the arena from the interrupted showcase run and integrated it on shared base 15dab150. The map, soundtrack, reactive mesh presentation, two tuning-stop routes and timed gates are covered in docs/THUNDERHEART-CARILLON.md alongside the art renders, CPU measurements and private lighting setup. Original targeted tests and pinned assembly compile passed. Windows multiplayer, GPU timing and licensed lighting remain unverified.

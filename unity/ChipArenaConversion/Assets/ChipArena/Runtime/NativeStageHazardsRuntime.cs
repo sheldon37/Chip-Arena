@@ -24,6 +24,7 @@ namespace ChipArena.UnityConversion
         {
             if(!stageLoads.TryGetValue(h.id,out var box))
             {var go=new GameObject(h.id+"-collision");go.layer=PropLayer;go.transform.SetParent(root.transform);box=go.AddComponent<BoxCollider>();box.size=Vec(h.size);box.transform.position=Vec(h.center);stageLoads.Add(h.id,box);}
+            if(MapId==NativeThunderheart.Id){PoseCarillonGate(h,box,now);return;}
             var s=NativeWardZeroHazards.At(h,Match.Phase,StageRound,Match.FightAt,now);
             bool shut=s.Phase==NativeHazardPhase.Danger||s.Phase==NativeHazardPhase.Active||s.Phase==NativeHazardPhase.Clear;
             box.enabled=false;if(!shut)return;
@@ -58,6 +59,7 @@ namespace ChipArena.UnityConversion
             PoseWardBreaches();PoseStageLoads(Match.Time,true);if(Replica||Match.Phase!=NativePhase.Fight)return;
             foreach(var h in Map.hazards??Array.Empty<MapHazard>())
             {
+                if(MapId==NativeThunderheart.Id && h.pushMode=="launch" && !CarillonWellFed(h))continue;
                 V3 center=default,size=default;bool lethal=h.lethal,active=false;int ticks=0;float impulse=0;string kind=NativeStageHazards.City(h)||NativeStageHazards.Ward(h)?h.kind:"hazard";Vector3 velocity=Vector3.zero;
                 if(h.kind=="maglev")
                 {active=NativeStageHazards.TrainSweep(h,StageRound,Match.FightAt,Match.Time-1d/60,Match.Time,out center,out size);velocity=new Vector3(NativeCyberCityHazards.Evaluate(h,StageRound,Match.FightAt,Match.Time).Direction*30,6,0);}
@@ -81,6 +83,18 @@ namespace ChipArena.UnityConversion
                     if(m.Hp<=0){if(!m.Body.isKinematic)m.Body.linearVelocity+=velocity;var at=m.Body.position;bool possessed=m.Pve?.Possessed==true;var credit=Pve!=null&&m.Pve?.LastHit!=null&&NativeStageHazards.RecentDamage(Time-m.Pve.LastDamage)?m.Pve.LastHit:null;if(credit!=null)PveAddKilled(m,credit);else Emit(EventKind.Death,null,m.Id,at,0,h.id,damageKind:kind);RemoveMinion(m,false);var death=MinionDeaths.LastOrDefault(d=>d.id==m.Id);if(death!=null)death.damageKind=kind;if(possessed)FoundPveBoss(at);}
                 }
             }
+        }
+        // Queries the same surviving prop IDs sent by the regular destruction snapshot.
+        public bool CarillonWellFed(MapHazard h)
+        {
+            bool amber=false,jade=false;
+            for(int i=0;i<Props.Count;i++)
+            {
+                var p=Props[i];if(p.Health<=0)continue;
+                amber|=p.Definition.id==NativeThunderheart.WestStop;jade|=p.Definition.id==NativeThunderheart.EastStop;
+                if(amber&&jade)break;
+            }
+            return NativeThunderheart.Fed(h.a.x<0?NativeThunderheart.WestWell:NativeThunderheart.EastWell,amber,jade);
         }
         private bool StageLinkOpen(MapNavLink link)
         {
