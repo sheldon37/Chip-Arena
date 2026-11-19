@@ -20,7 +20,7 @@ using ChipArena.UnityConversion;
 // wiring, including that no presentation field initializer makes a Unity object (it broke the component).
 internal static class PodDropChecks
 {
-    private static int count;
+    private static int count;private static string field="";
     private static void Check(bool ok,string what){if(!ok)throw new Exception("Pod drop: "+what);count++;}
     private sealed class Recorder:INativeEntranceFx
     {
@@ -42,7 +42,7 @@ internal static class PodDropChecks
             "the impact in its turn, the plough to its centre, sunk and leaning inside the envelope, the bolts and the door, the pilot braced in the seat then standing on the capsule by GO; the crater, "+
             "furrow, cooling hull and smoke from the record and the clock; A0's landing field (the apron, the REVIVE-O-MATIC, the fence); the directed camera (my body hidden only inside, the eye never in "+
             "the hull or the head), its shake and the still shot; GO's hold; the sounds; parked, then leaving; the look map; the LED sign; the models, safe untinted; W3's contract names; the wiring and no "+
-            "Unity object made in a field initializer)");
+            "Unity object made in a field initializer)"+field);
     }
     private static float Deg(float r)=>r*180/(float)Math.PI;
     private static PodPlan P(int seat,int order,float x,float z,double end,float yaw,float opening)=>NativePodDrop.Plan(seat,order,x,z,end,yaw,opening);
@@ -309,6 +309,7 @@ internal static class PodDropChecks
             runs++;
         }
         Check(runs==240&&fitted>0,"240 runs on A0's landing field ("+fitted+" craters fitted off the REVIVE-O-MATIC, the closest two lines "+closest+" degrees apart)");
+        field=" (A0's landing field, 240 runs: "+fitted+" of 960 craters fitted off the REVIVE-O-MATIC, the four lines at least "+closest.ToString("0.0")+" degrees apart)";
     }
     // Whether crater outline samples of pod `p` at (x, z) scaled `fit` all lie outside every keep-out rectangle (grown .1 m).
     private static bool Outside(PodPlan p,float x,float z,float fit,(float x,float z,float hx,float hz,float yaw)[] keep)
