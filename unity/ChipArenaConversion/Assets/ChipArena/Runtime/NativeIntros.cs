@@ -104,7 +104,7 @@ namespace ChipArena.UnityConversion
             if(script is NativeBladeIntro held)BladeIntroHeld(held,t,style,solid||script.Solid(t,CapturedRig.RHand)>.5f);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
             if(script is NativeBombadierIntro last){if(solid)BombGear(introRig);var palm=introRig.Bones[CapturedRig.LHand];var at=palm.position+palm.rotation*new Vector3(0,-.06f,0);last.PalmNow=new System.Numerics.Vector3(-at.x,at.y,at.z);var fist=introRig.Bones[CapturedRig.RHand];var tip=fist.position+fist.rotation*CapturedAnimation.Vec(CapturedRig.Mirror(NativeWeaponModels.TntFuseTip));last.FuseNow=new System.Numerics.Vector3(-tip.x,tip.y,tip.z);}
-            EntranceGhosts(script,style,t);
+            entranceGhostActor=actor;EntranceGhosts(script,style,t);
             entranceProps??=new EntranceProps(sourceModels);script.Props(t,entranceProps,quality);if(script is NativeTopDogIntro dogIntro)DogIntroToons(dogIntro,t);if(script is NativeGlaiveIntro ring)GlaiveIntroRing(ring,t);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
             VisualBodiesShown();actor.AccentColor=keepAccent;actor.SourceSpec=keepSpec;dogIntroActor=-1;glaiveIntroActor=-1;bladeIntroActor=-1;bladeIntro=null;
@@ -129,6 +129,8 @@ namespace ChipArena.UnityConversion
                 entranceSim.Update(dt);
             }
         }
+        // The entrance's actor while its ghosts draw (their model weapon is the one its visual body holds: VisualLiveGhostWeapon).
+        private Actor entranceGhostActor;
         private void EntranceGhosts(NativeEntranceScript script,string style,float t)
         {
             // The entrance's afterimages and hologram are the pilot's own body (the Sheldon Intro's: its Sheldon Clothes).
@@ -147,10 +149,18 @@ namespace ChipArena.UnityConversion
                 if(VisualBodyPosed(introRig)&&i<entranceGhostHolders.Length)
                 {
                     var holder=entranceGhostHolders[i]??=captured.Create(transform,-900-i);holder.Root.transform.SetPositionAndRotation(rootM.GetColumn(3),rootM.rotation);
-                    asModel=VisualLiveGhostDraw(2L<<40|(uint)i,holder,introActor,entranceGhostPose,Vector3.zero,"NativeEntranceGhost",tint,g.Opacity,new Vector4(scan.r,scan.g,0,0));
+                    // (Its hands onto the ghost's weapon frames, so the model's own weapon sits in them: VisualLiveGhostWeapon.)
+                    asModel=VisualLiveGhostDraw(2L<<40|(uint)i,holder,introActor,entranceGhostPose,Vector3.zero,"NativeEntranceGhost",tint,g.Opacity,new Vector4(scan.r,scan.g,0,0),entranceGhostActor);
                 }
                 if(!asModel)sourceModels.Queue(model,rootM,entranceGhostBone,null,0,null,tint,scan,g.Opacity);
-                if(weaponGhost!=null&&!isHolo){introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));sourceModels.Queue(weaponGhost,rootM,entranceGhostWeapon,null,0,null,tint,scan,g.Opacity);}
+                if(weaponGhost!=null&&!isHolo)
+                {
+                    introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
+                    // The model's own weapon on the model's ghost where the live entrance holds it (docs/VOXEL-RETIREMENT.md V3), else the game's.
+                    var hands=asModel?entranceGhostHolders[i]:null;
+                    if(!(hands!=null&&VisualLiveGhostWeapon(2L<<40|(uint)i,entranceGhostActor,hands.Bones[CapturedRig.RHand].localToWorldMatrix*introGrip,entranceGhostActor?.SourceSpec=="daggers"?hands.Bones[CapturedRig.LHand].localToWorldMatrix*introGrip:(Matrix4x4?)null)))
+                        sourceModels.Queue(weaponGhost,rootM,entranceGhostWeapon,null,0,null,tint,scan,g.Opacity);
+                }
             }
         }
         /// <summary>A directed entrance's set pieces into the source-model piece batches (stage lit; mirrored into Unity's frame).</summary>

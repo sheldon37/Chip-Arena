@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             // face in the opening (SheldonHoodFace; the voxel hood over the model's head where the body has none).
             if(visual&&!first)VisualHatHair(rig,headShown&&a.SourceSpec!="siren"?a.Hat:null);
             if(headShown&&visual&&!first&&!string.IsNullOrEmpty(a.Hat)&&a.Hat!="none"&&a.SourceSpec!="siren"&&a.Hat!=NativeSheldonHead.Hat)
-            {var hb=VisualHatBone(rig,a.Hat);if(!AuditorHalo(a.Hat,hb(CapturedRig.Head),float.IsNaN(halo)?time:halo,1,HaloReduced,layer,camera,color:a.HatColor))sourceModels.Queue(VisualHatModel(a.Hat,a.HatColor),rig.Root.transform.localToWorldMatrix,hb,null,layer,camera,body:HatBody(a.Hat,a.HatColor),partTint:dressed?tint:null,hitFlash:flash);}
+            {var hb=VisualHatBone(rig,a.Hat);if(!AuditorHalo(a.Hat,hb(CapturedRig.Head),float.IsNaN(halo)?time:halo,1,HaloReduced,layer,camera,color:a.HatColor))sourceModels.Queue(VisualHatModel(a.Hat,a.HatColor,rig),rig.Root.transform.localToWorldMatrix,hb,null,layer,camera,body:HatBody(a.Hat,a.HatColor),partTint:dressed?tint:null,hitFlash:flash);}
             if(headShown&&visual&&!first&&a.Hat==NativeSheldonHead.Hat&&a.SourceSpec!="siren"&&!SheldonHoodFace(rig,a,VisualHatBone(rig,a.Hat),float.IsNaN(halo)?time:halo,layer,camera,dressed?tint:null,flash))SheldonHead(a,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,a.Hat),float.IsNaN(halo)?time:halo,layer,camera,dressed?tint:null,flash,SheldonHood);
             if(headShown&&!visual)if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren"&&!AuditorHalo(a.Hat,rig.Bones[CapturedRig.Head].localToWorldMatrix,float.IsNaN(halo)?time:halo,1,HaloReduced,layer,camera,color:a.HatColor)&&!SheldonHead(a,rig.Root.transform.localToWorldMatrix,Bone,float.IsNaN(halo)?time:halo,layer,camera,dressed?tint:null,flash))sourceModels.Queue(HatModel(a.Hat,a.HatColor),rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera,body:HatBody(a.Hat,a.HatColor),partTint:dressed?tint:null,hitFlash:flash);
             if(dressed&&SpawnShows(CapturedRig.Chest))BodyDressing(rig,a,time,first,layer,camera);
@@ -169,7 +169,7 @@ namespace ChipArena.UnityConversion
         }
         // A summon's model: the Toy Soldier's sculpted figure once the player's model is on (Core/NativeToySoldier.cs; the Classic
         // look and an install without the bake keep its blocks).
-        private string SummonModelOf(string model)=>model=="summon-toy"&&!ClassicBodies&&VisualBodiesOn&&sourceModels.Has(NativeToySoldier.Model)?NativeToySoldier.Model:model;
+        private string SummonModelOf(string model)=>model=="summon-toy"&&ModelLook(null)&&sourceModels.Has(NativeToySoldier.Model)?NativeToySoldier.Model:model;
         private void ClearSourceActors(){ClearRevives();ClearRigDressing();ClearWardZero();ClearSirenLooks();ClearDevEffects();draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();ClearHordeKinds(null);ClearHordeGallery();sourceModels?.Begin();}
         public void FinishSourceFrame(){long at=System.Diagnostics.Stopwatch.GetTimestamp();sourceModels?.Flush(UsesInstancing);DiagnosticSourceFlushMs+=PresentationElapsed(at);}
     }

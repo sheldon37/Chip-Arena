@@ -174,7 +174,7 @@ namespace ChipArena.UnityConversion
         // PresentDeath, each frame once the corpse is drawn: each half's gear and the dropped weapon, where its model shows this frame.
         private void VisualCorpseCarried(NativeCorpse corpse,NativeDeath death,float alpha,float clock)
         {
-            if(corpse==null||death==null||sourceModels==null||ClassicBodies||!corpseCarries.ContainsKey(corpse))return;
+            if(corpse==null||death==null||sourceModels==null||!ModelLook(death.actor?.SourceSpec)||!corpseCarries.ContainsKey(corpse))return;
             float glow=NativeCorpseDress.DeadGlow(clock-death.at,death.id);
             CarryShow(corpse,death,alpha,glow);if(corpse.Twin!=null)CarryShow(corpse.Twin,death,alpha,glow);
         }

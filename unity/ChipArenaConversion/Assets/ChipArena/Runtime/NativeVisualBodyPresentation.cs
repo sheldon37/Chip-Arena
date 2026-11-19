@@ -92,9 +92,10 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,string> robotDressed=new Dictionary<string,string>(StringComparer.Ordinal);
         private string VisualLookOf(int id)
         {
-            var look=HotDogOrTop(VisualOutfitOf(id)??"");
+            var look=HotDogOrTop(VisualOutfitOf(id)??"");costumeBank=sourceModels;
             if(!robotDressed.TryGetValue(look,out var dressed)){if(robotDressed.Count>64)robotDressed.Clear();robotDressed[look]=dressed=NativeRobotSuit.Dress(look);}
-            return dressed;
+            // The voxel costume in its variant (the skin map's body entry: NativeVoxelCostumePresentation.cs).
+            if(!NativeVoxelCostume.Worn(dressed))return dressed;int skin=CostumeSkinOf(id);return CostumeLook(dressed,skin,CostumeTierOf(id,skin));
         }
         private string VisualOutfitOf(int id)
         {
@@ -140,6 +141,38 @@ namespace ChipArena.UnityConversion
         {
             public Vector4 Front, Tint, Glitch, Holo; public bool Ghost;
             public static readonly VisualSpawnLook Off=new VisualSpawnLook{Front=new Vector4(1e5f,1,1,0),Tint=new Vector4(1,1,1,0),Glitch=Vector4.zero,Holo=new Vector4(1,1,1,0)};
+        }
+        // ---- the one body predicate and the joint-frame resolver (docs/VOXEL-RETIREMENT.md 2.2, V1; Core NativeBodyStyle) ----
+        // The only question a draw path asks about a pilot's body: whether it draws on the model here (the bake loaded, which
+        // --ca-voxel-bodies turns off; Settings · Player model not Classic, until the owner's low-end check; not the Siren's own
+        // body; not the lab's Viewer). Its costume and class body are what it wears there (VisualLookOf).
+        public bool ModelBody(Actor a)=>a!=null&&ModelBody(a.SourceSpec);
+        private bool ModelBody(string spec)=>!Viewer&&sourceModels!=null&&ModelLook(spec);
+        private bool ModelLook(string spec)=>NativeBodyStyle.ModelBody(VisualBodiesOn,ClassicBodies,spec);
+        /// <summary>Whether pilots draw on the model here at all (any class but the Siren's own).</summary>
+        private bool ModelBodies=>ModelBody((string)null);
+        /// <summary>Whether zombies and the zone kinds may draw on the model (the bake, not Classic; --ca-voxel-zombies is the
+        /// crowd's own switch, NativeZombieModelPresentation.cs).</summary>
+        private bool ModelZombies=>NativeBodyStyle.ZombieModel(VisualBodiesOn,ClassicBodies,false);
+        /// <summary>Joint `j`'s frame where actor `a` draws this frame (M6): on its model (the bone it maps to, following the
+        /// pack's clips, stride and hand fits) while the model is drawn, else the rig's joint. New effect anchors read joints
+        /// only through this (the voxel ratchet, V0).</summary>
+        public Matrix4x4 JointFrame(Actor a,int j)=>a==null?Matrix4x4.identity:JointFrame(a.Id,j);
+        /// <summary>Where joint `j` of the pilot whose seat is `id` is drawn (M6): its model bone's place while the model is drawn, else
+        /// the rig's joint. (JointFrame is the game joint's frame riding that bone, at the voxel joint's offset from it: the head's
+        /// sits about 20 cm under the model's head bone, so what marks the model's own head or ankles asks this; the status markers.)</summary>
+        public Vector3 JointAt(int id,int j)
+        {
+            if(j<0||j>=CapturedRig.Bones.Length||!rigs.TryGetValue(id,out var rig)||rig==null)return Vector3.zero;
+            if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.JointFrom!=null&&body.PosedFrame==Time.frameCount&&j<body.JointBone.Length&&body.JointBone[j]>=0)
+                return body.Binding.Bones[body.JointBone[j]].position;
+            return rig.Bones[j].position;
+        }
+        /// <summary>JointFrame for the pilot whose seat is `id`.</summary>
+        public Matrix4x4 JointFrame(int id,int j)
+        {
+            if(j<0||j>=CapturedRig.Bones.Length)return Matrix4x4.identity;
+            return rigs.TryGetValue(id,out var rig)?VisualJointFrame(rig,j):Matrix4x4.identity;
         }
         private static bool VisualBodiesOn
         {
@@ -198,7 +231,7 @@ namespace ChipArena.UnityConversion
         // After a living arena pilot's rig is posed: pose its visual body from the same game pose, with its weapon's grasp.
         private void VisualBodyPose(Actor a,float time)
         {
-            if(Viewer||sourceModels==null||ClassicBodies||a.SourceSpec=="siren"||FirstPerson&&a.Id==LocalId||!rigs.TryGetValue(a.Id,out var rig)||!VisualBodiesOn)return;
+            if(!ModelBody(a)||FirstPerson&&a.Id==LocalId||!rigs.TryGetValue(a.Id,out var rig))return;
             var body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return;
             var pose=rig.Pose;pose.World();
             bool roll=a.Rolling(time),juggle=NativeJugglePose.Active(a.JuggleUntil,time);
@@ -253,6 +286,8 @@ namespace ChipArena.UnityConversion
             VisualFacePilot(body,a,time,fresh);
             if(body.Accent!=a.AccentColor)VisualAccent(body,a.AccentColor);
             if(body.Sheldon.Length>0)VisualSheldonGlow(body,NativeBodySkins.SheldonGlow(a.Hat,a.HatColor,a.AccentColor));
+            // The voxel costume in the pilot's body and accent tints (NativeVoxelCostumePresentation.cs).
+            CostumeTint(body.Root,a.BodyColor,a.AccentColor,CostumeSkinIn(body.Look),a.Hat,a.HatColor);
             // The rig's hands onto the visual weapon frames (the right's weapon, the left's off-hand blade or bare wrist).
             var origin=body.Root.transform;
             body.Binding.WeaponFrame(pose,out var rp,out var rq);body.Binding.LeftWeaponFrame(pose,out var lp,out var lq);
@@ -303,7 +338,7 @@ namespace ChipArena.UnityConversion
         private bool VisualRigFromDrawn(CapturedAnimation.Player rig,NativeDeath death)
         {
             visualDeathDrawn=null;
-            if(rig==null||death==null||ClassicBodies||!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.Binding==null||body.JointFrom==null
+            if(rig==null||death==null||!ModelLook(death.actor?.SourceSpec)||!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.Binding==null||body.JointFrom==null
                 ||!NativeCorpseDress.Drawn(body.PosedFrame,Time.frameCount))return false;
             int n=Mathf.Min(body.JointBone.Length,rig.Bones.Length);var bones=body.Binding.Bones;var frames=new Matrix4x4[n];
             for(int j=0;j<n;j++){int v=body.JointBone[j];frames[j]=v>=0&&v<bones.Length&&bones[v]!=null?bones[v].localToWorldMatrix*body.JointFrom[j]:rig.Bones[j].localToWorldMatrix;}
@@ -347,7 +382,7 @@ namespace ChipArena.UnityConversion
         private Matrix4x4 VisualHatFrame(CapturedAnimation.Player rig,string hat,int b)
         {
             if(b==CapturedRig.Head&&rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.PosedFrame==Time.frameCount)
-            {var head=HotDogHatOn(hat,VisualHeadOf(body));if(head!=null)return VisualHatFit(head,hat,body.Helm);}
+            {var head=CostumeHatOn(hat,HotDogHatOn(hat,VisualHeadOf(body)));if(head!=null)return VisualHatFit(head,hat,body.Helm);}
             return VisualJointFrame(rig,b);
         }
         // Hat `hat` fitted to the model's head bone `head` (the Sheldon Head's face on its own fit), on the robot's helmet when
@@ -355,6 +390,8 @@ namespace ChipArena.UnityConversion
         // (In the Hot Dog `head` is its hat anchor on the sausage's crown: HotDogHatOn.)
         private static Matrix4x4 VisualHatFit(Transform head,string hat,bool helm=false)
         {
+            // On the voxel costume the hat is the voxel sculpt made for this head, on the head map's anchor as it is (no model fit).
+            if(CostumeHatAnchor(head))return head.localToWorldMatrix;
             if(hat==NativeSheldonHead.Hat){var k=NativeModelHats.SheldonScale;var o=NativeModelHats.SheldonOffset;return head.localToWorldMatrix*Matrix4x4.TRS(new Vector3(o.X,o.Y,o.Z),Quaternion.identity,new Vector3(k.X,k.Y,k.Z));}
             var frame=helm?head.localToWorldMatrix*HelmHatFit(hat):head.localToWorldMatrix;
             // (A hat made for the model is authored in its head bone's frame.)
@@ -479,7 +516,7 @@ namespace ChipArena.UnityConversion
         // weapon in hand (else the hands hold nothing: VisualArms.Unarmed).
         private void VisualIntroPose(CapturedAnimation.Player rig,Actor a,float time,CapturedRig.Pose pose,Func<int,float> reveal,bool armed=true)
         {
-            if(Viewer||sourceModels==null||ClassicBodies||rig==null||a==null||pose==null||a.SourceSpec=="siren"||!VisualBodiesOn)return;
+            if(!ModelBody(a)||rig==null||pose==null)return;
             var body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return;
             pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,armed?VisualArms.Live:VisualArms.Unarmed);
             // Order Up!'s slam keyed by hand, both fists on the mallet (Runtime NativeDogMalletPresentation.cs).
@@ -541,7 +578,7 @@ namespace ChipArena.UnityConversion
             body.Moved=true;body.Seen=true;
             VisualHatHair(body,seat.hat);
             if(!string.IsNullOrEmpty(seat.hat)&&seat.hat!="none"&&seat.hat!=NativeSheldonHead.Hat)
-            {var hb=VisualHatBone(rig,seat.hat);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(VisualHatModel(seat.hat,seat.hatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
+            {var hb=VisualHatBone(rig,seat.hat);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(VisualHatModel(seat.hat,seat.hatColor,rig),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
             // The Sheldon Head: the hood's void and face (the body wears the hood; without them the opening showed the model's face).
             else SheldonHoodStill(body,seat.hat,seat.hatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,seat.hat),time,seat.id,HaloReduced,0,null);
             // (The suit, the face gear and the cloth's accent go on in RenderDraft, after the install's present and contact move the arms.)
@@ -570,7 +607,7 @@ namespace ChipArena.UnityConversion
             var look=VisualLookOf(id);var sheldon=new List<Renderer>();VisualDress(root,look,sheldon);float lift=VisualLiftOf(look);if(lift!=0)skeleton.localPosition+=new Vector3(0,lift,0);
             // The Hot Dog simulates nothing (no hair or cloth on it) and has no skeleton inside: it is sausage through, its wounds'
             // pits of flesh with no human bones in them or out past its noodle limbs.
-            if(NativeHotDog.Worn(look))simulate=false;
+            if(NativeHotDog.Worn(look)||NativeVoxelCostume.Worn(look))simulate=false;
             // The Sheldon hood, when its pilot wears the Sheldon Head (its piping in the Sheldon glow with the Sheldon pieces').
             var hoodRenderer=hood?VisualHoodMake(root,skeleton):null;if(hoodRenderer!=null)sheldon.Add(hoodRenderer);
             // Under it the hair, the head and the face are hidden (VisualUnderHood: the void covers the opening).
@@ -712,7 +749,7 @@ namespace ChipArena.UnityConversion
             if(!first&&!body.Hood)VisualFaceGear(VisualHeadOf(body),a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);
             if(!first)VisualSuit(body.Root,a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);
             // The back emblem on the chest's model bone, glowing as the core does (under the robot armour's back plate: none).
-            if(!first&&!WearsArmour(a.Id))
+            if(!first&&!WearsArmour(a.Id)&&!(CostumeOn(body.Root)&&!NativeVoxelCostume.Keeps(NativeVoxelCostume.Piece.Emblem)))
             {
                 var of=body.Binding.Rig.Of;int cv=CapturedRig.Chest<of.Length?of[CapturedRig.Chest]:-1;var chest=cv>=0&&cv<body.Binding.Bones.Length?body.Binding.Bones[cv]:null;
                 if(chest!=null){gearMatrix=chest.localToWorldMatrix*body.Emblem;var e=NativePilotGear.CoreGlow(time,1,time-body.LitAt,a.Id);sourceModels.Queue(NativeSourceModels.GearEmblem,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(e,e,e,1),null,flash);}
@@ -801,6 +838,7 @@ namespace ChipArena.UnityConversion
             if(tone>=0){foreach(var r in lookNamed.Values)if(VisualSkinPart(r))VisualBaseSkin(r.sharedMaterial);foreach(var r in lookNamed.Values)VisualSkinToneOne(r,tone);}
             lookNamed.Clear();
             if(NativeHotDog.Worn(look))HotDogWear(root);
+            if(NativeVoxelCostume.Worn(look))CostumeWear(root,look);
         }
         // The pilot's skin tone (Core NativeLook's skin entry; owner 2026-10-28: "Give skin color customization"): written on the
         // skin parts when a body is dressed, and again in place when only the tone changes (VisualRetone), never per frame. A
@@ -848,6 +886,7 @@ namespace ChipArena.UnityConversion
         {
             if(string.Equals(body.Look,look,StringComparison.Ordinal))return true;
             if(!NativeLook.SameOutfit(body.Look,look))return false;
+            if(NativeVoxelCostume.Worn(look)&&(CostumeSkinIn(body.Look)!=CostumeSkinIn(look)||CostumeTierIn(body.Look)!=CostumeTierIn(look)))return false; // (another costume variant or tier)
             int tone=NativeLook.SkinOf(look);if(body.All!=null)foreach(var r in body.All)VisualSkinToneOne(r,tone);body.Look=look;return true;
         }
         // Sheldon's clothes (Core NativeSheldonWear): a piece's renderer in the Sheldon palette (the cloth and trim colours of each
@@ -868,6 +907,7 @@ namespace ChipArena.UnityConversion
         // NativeLook.Concept): bare feet set down onto the floor.
         private static float VisualLiftOf(string look)
         {
+            if(NativeVoxelCostume.Worn(look))return 0; // (The costume's soles are on the floor at the bake's rest: NativeVoxelCostume's fit.)
             var d=VisualLookData();if(d==null)return 0;string feet=NativeHotDog.Worn(look)?null:NativeLook.Of(look,NativeLook.Feet),first=NativeLook.Of(NativeLook.Concept,NativeLook.Feet);float worn=0,rest=0;
             foreach(var p in d.pieces){if(p==null||p.slot!=NativeLook.Feet)continue;if(p.id==feet)worn=p.lift;if(p.id==first)rest=p.lift;}
             return Mathf.Clamp(worn-rest,-.05f,.05f);
@@ -882,6 +922,7 @@ namespace ChipArena.UnityConversion
         // frame; the bake's own (the default outfit's) when the data has none for it.
         private static void VisualAnchorsFor(VisualBody body)
         {
+            if(CostumeOn(body.Root))return; // (The costume set its own: NativeVoxelCostumePresentation.cs CostumeAnchors.)
             var d=VisualLookData();if(d?.anchors==null)return;string upper=NativeLook.Of(body.Look,NativeLook.Upper),hands=NativeLook.Of(body.Look,NativeLook.Hands);LookAnchor best=null;
             foreach(var a in d.anchors)if(a!=null&&a.upper==upper&&(best==null||a.hands==hands))best=a;
             if(best==null)return;
@@ -940,7 +981,7 @@ namespace ChipArena.UnityConversion
             var p=LoadoutPilot(id);float pulse=p!=null?NativeGlowRules.ArmorPulse(time,p.BlockReady-time,time<p.BlockEnd):1;
             float glow=Mathf.Round(AccentGlow*(EffectsQuality<.5f?AccentGlowReduced:1)*pulse*200)/200;
             if(glow==body.Glow)return;
-            body.Glow=glow;
+            body.Glow=glow;CostumeGlowPulse(body.Root,glow/AccentGlow);
             foreach(var r in body.Cloth){if(r==null)continue;r.GetPropertyBlock(body.Block);body.Block.SetFloat(AccentGlowId,glow);r.SetPropertyBlock(body.Block);}
         }
         /// <summary>NativeCombatGlow: whether pilot `id` is drawn with its visual body this frame and, if so, where its armour light
@@ -972,9 +1013,11 @@ namespace ChipArena.UnityConversion
         // (and hidden) when the voxel arms draw instead (Classic, no bake, the Siren, a scope up).
         private bool VisualViewPose(CapturedAnimation.Player view,Actor a,float time,bool scoped)
         {
-            bool on=!Viewer&&sourceModels!=null&&!ClassicBodies&&!scoped&&view!=null&&a.SourceSpec!="siren"&&VisualBodiesOn;
+            bool on=ModelBody(a)&&!scoped&&view!=null;
             if(!on){if(viewBody?.Root!=null&&viewBody.Root.activeSelf)viewBody.Root.SetActive(false);return false;}
-            if(viewBody?.Root!=null&&!VisualRetone(viewBody,LocalLook??"")){viewBody.Root.SetActive(false);Destroy(viewBody.Root);viewBody=null;}
+            // (The dressed look, as the body was made in: the raw look never matched a dressed robot or costumed body, which was
+            // made again every frame; review 2026-11-19.)
+            if(viewBody?.Root!=null&&!VisualRetone(viewBody,VisualLookOf(ViewBodyId))){viewBody.Root.SetActive(false);Destroy(viewBody.Root);viewBody=null;}
             if(viewBody==null||viewBody.Root==null){viewBody=CreateViewBody(view);if(viewBody==null)return false;}
             var pose=view.Pose;pose.World();
             if(viewBody.PosedFrame<Time.frameCount-1||viewBody.Spec!=a.SourceSpec)viewBody.Binding.State.Forget();
@@ -984,6 +1027,7 @@ namespace ChipArena.UnityConversion
             var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
             viewBody.Binding.Apply(pose,grasp,false,false);
             if(viewBody.Accent!=a.AccentColor)VisualAccent(viewBody,a.AccentColor);
+            CostumeTint(viewBody.Root,a.BodyColor,a.AccentColor,CostumeSkinIn(viewBody.Look),a.Hat,a.HatColor);
             if(!viewBody.Root.activeSelf)viewBody.Root.SetActive(true);
             // The body moves (rigidly) so its right weapon frame lands on the view rig's right hand, where the weapon draws; with a
             // life-size model in hand, the body, both hands and what draws on them are larger about that frame (ModelView).
@@ -1083,6 +1127,8 @@ namespace ChipArena.UnityConversion
             // scenes draw its face).
             var hood=VisualHooded(death.actor)?VisualHoodMake(root,skeleton):null;
             if(hood!=null){sheldon.Add(hood);VisualUnderHood(root);}
+            // The voxel costume in the pilot's tints (NativeVoxelCostumePresentation.cs).
+            CostumeTint(root,death.actor?.BodyColor,death.actor?.AccentColor,CostumeSkinIn(look),death.actor?.Hat,death.actor?.HatColor);
             // The skeleton inside (a cut or wound shows it).
             VisualSkeletonMake(root,skeleton);
             var at=rig.Root.transform;root.transform.SetPositionAndRotation(at.TransformPoint(new Vector3(0,NativeVisualRig.Floor,0))+offset,at.rotation);
@@ -1107,7 +1153,7 @@ namespace ChipArena.UnityConversion
             }
             root.SetActive(false);return root;
         }
-        private bool VisualDeathFor(NativeDeath death)=>!ClassicBodies&&VisualBodiesOn&&(death.model??"pilot")=="pilot"&&death.actor?.SourceSpec!="siren";
+        private bool VisualDeathFor(NativeDeath death)=>(death.model??"pilot")=="pilot"&&ModelLook(death.actor?.SourceSpec);
         // Model bodies made ahead (owner 2026-10-28: "prevent fps drops during enemy kill"): a kill (its corpse, two for a split
         // body; the death broadcast's bust) and a new pilot's body take a ready instance of the bake (made off the main thread,
         // InstantiateAsync, under an inactive holder) instead of making one then (about 8 ms each); the next is started once one
@@ -1133,8 +1179,8 @@ namespace ChipArena.UnityConversion
                 // Its last piece (a worn or spare part, the skeleton), out of the body so the next one is reached this frame.
                 var piece=t.GetChild(t.childCount-1).gameObject;piece.SetActive(false);piece.transform.SetParent(null,false);Destroy(piece);left--;
             }
-            if(visualBodyPrefab==null||ClassicBodies||!VisualBodiesOn)return;
-            VisualCutWarmStep();
+            if(visualBodyPrefab==null||!ModelLook(null))return;
+            VisualCutWarmStep();CostumeWarmStep();
             if(corpseFill!=null){if(!corpseFill.isDone)return;var ready=corpseFill.Result;if(ready!=null)foreach(var made in ready)if(made!=null){made.SetActive(false);made.name="Visual corpse (ready)";corpsePool.Push(made);}corpseFill=null;}
             if(corpsePool.Count>=CorpsePoolSize)return;
             if(corpseHolder==null){corpseHolder=new GameObject("Visual corpse pool");corpseHolder.SetActive(false);DontDestroyOnLoad(corpseHolder);}
@@ -1352,7 +1398,7 @@ namespace ChipArena.UnityConversion
         private Material bustMaterial;
         private VisualBody VisualBust(CapturedAnimation.Player rig,int id,ref List<Mesh> owned)
         {
-            if(Viewer||sourceModels==null||ClassicBodies||!VisualBodiesOn)return null;
+            if(!ModelBodies)return null;
             if(bustMaterial==null){var shader=Resources.Load<Shader>("NativeWeaponGhost");if(shader==null||!shader.isSupported)return null;bustMaterial=new Material(shader){name="Visual body bust"};}
             var body=CreateVisualBody(rig,id,simulate:false);if(body==null)return null;body.Root.name="Visual bust "+id;
             var joint=VisualJoints(body.Binding);var piece=new int[joint.Length];for(int v=0;v<piece.Length;v++)piece[v]=BustBone(joint[v])?0:-1;
@@ -1483,7 +1529,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<long,VisualScene> visualRevives=new Dictionary<long,VisualScene>();private readonly List<long> visualRevivesGone=new List<long>();
         private bool VisualReviveBody(long key,CapturedAnimation.Player rig,NativeDeath death,Func<int,Matrix4x4> joint,Func<int,float> grow,float alpha)
         {
-            if(Viewer||sourceModels==null||ClassicBodies||!VisualBodiesOn||rig==null||death==null||!VisualDeathFor(death))return false;
+            if(!ModelBodies||rig==null||death==null||!VisualDeathFor(death))return false;
             if(!visualRevives.TryGetValue(key,out var s)||s.Root==null)
             {
                 var root=VisualDeathBody(rig,death,Vector3.zero,out var bones,out var joints);if(root==null)return false;root.name="Visual revive "+death.id;
@@ -1534,7 +1580,7 @@ namespace ChipArena.UnityConversion
         private readonly CapturedRig.Pose standPose=new CapturedRig.Pose();
         private bool VisualStandPose(CapturedAnimation.Player rig,Actor a,float time,bool make=false)
         {
-            if(Viewer||sourceModels==null||ClassicBodies||!VisualBodiesOn||rig==null||a==null||a.SourceSpec=="siren")return false;
+            if(!ModelBody(a)||rig==null)return false;
             VisualBody body;
             if(make){body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return false;}
             else if(!visualBodies.TryGetValue(rig,out body)||body.Root==null||body.PosedFrame!=Time.frameCount)return false;
@@ -1550,7 +1596,7 @@ namespace ChipArena.UnityConversion
         {
             if(!visualBodies.TryGetValue(rig,out var body)||body.Root==null||string.IsNullOrEmpty(a.Hat)||a.Hat=="none")return;
             VisualHatHair(body,a.Hat);
-            if(a.Hat!=NativeSheldonHead.Hat){var hb=VisualHatBone(rig,a.Hat);if(!AuditorHalo(a.Hat,hb(CapturedRig.Head),time,1,HaloReduced,0,null,color:a.HatColor))sourceModels.Queue(VisualHatModel(a.Hat,a.HatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(a.Hat,a.HatColor));}
+            if(a.Hat!=NativeSheldonHead.Hat){var hb=VisualHatBone(rig,a.Hat);if(!AuditorHalo(a.Hat,hb(CapturedRig.Head),time,1,HaloReduced,0,null,color:a.HatColor))sourceModels.Queue(VisualHatModel(a.Hat,a.HatColor,rig),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(a.Hat,a.HatColor));}
             else SheldonHoodStill(body,a.Hat,a.HatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,a.Hat),time,a.Id,HaloReduced,0,null);
         }
         // The authored death scenes (NativeSceneMotion.cs SourceDeathScene) move the victim's 22 joints from where they were at
@@ -1598,10 +1644,12 @@ namespace ChipArena.UnityConversion
             var a=death.actor;if(a==null)return;sceneFade=alpha;
             int keep=0;for(int b=0;b<SuitJoints.Length;b++)if(visible(SuitJoints[b]))keep|=1<<b;
             if(keep!=0)VisualSuit(s.Root,death.id,a.BodyColor,a.AccentColor,0,null,alpha<1?sceneFadeOf??=_=>sceneFade:null,null,0,keep);
-            string hat=a.Hat;if(s.Hood||s.Head<0||!visible(CapturedRig.Head)||string.IsNullOrEmpty(hat)||hat=="none"||hat==NativeSheldonHead.Hat||a.SourceSpec=="siren")return;
-            sceneHat=VisualHatFit(s.Bones[s.Head],hat,WearsHelm(death.id));var dogHat=HotDogHatOn(hat,s.Bones[s.Head]);if(dogHat!=s.Bones[s.Head])sceneHat=VisualHatFit(dogHat,hat);sceneHatBone??=_=>sceneHat;
-            var model=VisualHatModel(hat,a.HatColor)??NativeHatLooks.Model(hat,a.HatColor);
-            if(model!=null&&!AuditorHalo(hat,sceneHat,Time.time,alpha,HaloReduced,0,null,color:a.HatColor))sourceModels.QueueShadowless(model,Matrix4x4.identity,sceneHatBone,null,HatBody(hat,a.HatColor),null,alpha);
+            string hat=a.Hat;if(s.Hood||s.Head<0||!visible(CapturedRig.Head)||string.IsNullOrEmpty(hat)||hat=="none"||a.SourceSpec=="siren")return;
+            // On the voxel costume: the voxel hat (the Sheldon Head's voxel head too) on the head map's anchor (review 2026-11-19).
+            var costumeHat=CostumeHatOn(hat,s.Bones[s.Head]);bool costumed=CostumeHatAnchor(costumeHat);if(hat==NativeSheldonHead.Hat&&!costumed)return;
+            sceneHat=VisualHatFit(costumed?costumeHat:s.Bones[s.Head],hat,!costumed&&WearsHelm(death.id));var dogHat=HotDogHatOn(hat,s.Bones[s.Head]);if(!costumed&&dogHat!=s.Bones[s.Head])sceneHat=VisualHatFit(dogHat,hat);sceneHatBone??=_=>sceneHat;
+            var model=costumed?HatModel(hat,a.HatColor):VisualHatModel(hat,a.HatColor)??NativeHatLooks.Model(hat,a.HatColor);
+            if(model!=null&&!AuditorHalo(hat,sceneHat,Time.time,alpha,HaloReduced,0,null,color:a.HatColor))sourceModels.QueueShadowless(model,Matrix4x4.identity,sceneHatBone,hat==NativeSheldonHead.Hat?SheldonHood:null,HatBody(hat,a.HatColor),null,alpha);
         }
         // PresentDeath, where the body draws: pose the corpse's visual body; true when it stands in for the voxel body this frame
         // (also while hidden for a fade under half opacity).
@@ -1693,9 +1741,13 @@ namespace ChipArena.UnityConversion
             if(corpse.Twin!=null&&corpse.Bisect is BisectFx fx&&fx.Request!=null&&NativeSplitShow.Wears(1,fx.Request.HalfOf(CapturedRig.Head,CutNum(corpse.Bind[CapturedRig.Head].GetColumn(3)))==1?1:0,VisualSplitStage(corpse)))on=corpse.Twin;
             if(!visualCorpses.TryGetValue(on,out var c)||c.Root==null||!c.Root.activeSelf||c.Look!=0)return false;
             if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");if(c.Head<0)return false;
-            corpseHat=VisualHatFit(c.Bones[c.Head],hat,!c.Hood&&WearsHelm(death.id));var dogHat=HotDogHatOn(hat,c.Bones[c.Head]);if(dogHat!=c.Bones[c.Head])corpseHat=VisualHatFit(dogHat,hat);corpseHatBone??=_=>corpseHat;
-            if(hat==NativeSheldonHead.Hat)return c.Hood&&VisualDeadHood(corpseHat,death,alpha);
-            if(!AuditorHalo(hat,corpseHat,clock,alpha,HaloReduced,0,null,color:a.HatColor)&&corpse.HatModel!=null)sourceModels.QueueShadowless(VisualHatModel(hat,a.HatColor)??corpse.HatModel,Matrix4x4.identity,corpseHatBone,null,HatBody(hat,a.HatColor),null,alpha);
+            // On the voxel costume: the voxel hat (the Sheldon Head's voxel head too) on the head map's anchor, as the live body wore
+            // it (review 2026-11-19: the corpse's sat on the model's skull, inside the head block).
+            var costumeHat=CostumeHatOn(hat,c.Bones[c.Head]);bool costumed=CostumeHatAnchor(costumeHat);
+            corpseHat=VisualHatFit(costumed?costumeHat:c.Bones[c.Head],hat,!costumed&&!c.Hood&&WearsHelm(death.id));var dogHat=HotDogHatOn(hat,c.Bones[c.Head]);if(!costumed&&dogHat!=c.Bones[c.Head])corpseHat=VisualHatFit(dogHat,hat);corpseHatBone??=_=>corpseHat;
+            if(hat==NativeSheldonHead.Hat&&!costumed)return c.Hood&&VisualDeadHood(corpseHat,death,alpha);
+            string worn=costumed?HatModel(hat,a.HatColor)??corpse.HatModel:VisualHatModel(hat,a.HatColor)??corpse.HatModel;
+            if(!AuditorHalo(hat,corpseHat,clock,alpha,HaloReduced,0,null,color:a.HatColor)&&worn!=null)sourceModels.QueueShadowless(worn,Matrix4x4.identity,corpseHatBone,hat==NativeSheldonHead.Hat?SheldonHood:null,HatBody(hat,a.HatColor),null,alpha);
             return true;
         }
         // A kill look on the corpse's visual body (owner 2026-10-24: "Model everywhere"): 1 Soul Drift, the body through the ghost
@@ -1704,7 +1756,7 @@ namespace ChipArena.UnityConversion
         private MaterialPropertyBlock lookBlock;
         private bool VisualCorpseLook(NativeCorpse corpse,int look,Color colour,float opacity)
         {
-            if(ClassicBodies||!visualCorpses.TryGetValue(corpse,out var c)||c.Root==null)return false;
+            if(!ModelLook(null)||!visualCorpses.TryGetValue(corpse,out var c)||c.Root==null)return false;
             lookBlock??=new MaterialPropertyBlock();
             if(look==1)
             {
@@ -1834,14 +1886,17 @@ namespace ChipArena.UnityConversion
         // Live ghosts of the model (owner 2026-10-24: "Model everywhere"): a see-through copy of a pilot posed every frame from a
         // pose (the Shadow Step decoy, the entrance's afterimages and hologram, the Cyber Lord's glitch copies), one visual body
         // per key on its holder rig (moved by `shift`), through that ghost's own shader in its tint, opacity and `accent` (the
-        // entrance ghost's scanlines). Body only: the ghost weapons stay the voxel ones. It hides once a frame passes without it
+        // entrance ghost's scanlines). Body only: the ghost weapons are the game's models; given the holder's actor (`held`: a rig
+        // of its own, the Shadow Step decoy's) its fists close on its weapon and the holder's hands go onto the ghost's weapon
+        // frames, so the weapon the caller draws there sits in the model's hands (docs/VOXEL-RETIREMENT.md V3, P12: they hung at
+        // the voxel rig's hands, off the model's). It hides once a frame passes without it
         // (VisualLiveGhostsShown) and goes with its holder. False under Classic or without a bake: the caller draws voxel.
-        private sealed class VisualLiveGhost{public VisualBody Body;public int Frame;public CapturedAnimation.Player Holder;public string Shader;}
+        private sealed class VisualLiveGhost{public VisualBody Body;public int Frame;public CapturedAnimation.Player Holder;public string Shader;public Color Tint;public float Opacity;public Vector4 Accent;public HashSet<VisualWeapon> Ghosted;}
         private readonly Dictionary<long,VisualLiveGhost> visualLiveGhosts=new Dictionary<long,VisualLiveGhost>();private readonly List<long> visualLiveGhostsGone=new List<long>();
         private static readonly int VisualGhostAccent=Shader.PropertyToID("_AccentTint");
-        private bool VisualLiveGhostDraw(long key,CapturedAnimation.Player holder,int id,CapturedRig.Pose pose,Vector3 shift,string shader,Color tint,float opacity,Vector4 accent=default)
+        private bool VisualLiveGhostDraw(long key,CapturedAnimation.Player holder,int id,CapturedRig.Pose pose,Vector3 shift,string shader,Color tint,float opacity,Vector4 accent=default,Actor held=null)
         {
-            if(Viewer||sourceModels==null||ClassicBodies||!VisualBodiesOn||holder==null||pose==null)return false;
+            if(!ModelBodies||holder==null||pose==null)return false;
             if(!visualLiveGhosts.TryGetValue(key,out var g)||g.Body?.Root==null||g.Holder!=holder||g.Shader!=shader)
             {
                 if(g?.Body?.Root!=null)Destroy(g.Body.Root);
@@ -1852,14 +1907,47 @@ namespace ChipArena.UnityConversion
                     if(r==null)continue;var mats=new Material[r.sharedMaterials.Length];for(int k=0;k<mats.Length;k++)mats[k]=material;
                     r.sharedMaterials=mats;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
                 }
-                visualLiveGhosts[key]=g=new VisualLiveGhost{Body=body,Holder=holder,Shader=shader};
+                // (A ghost holds the pack's weapons too: VisualLiveGhostWeapon.)
+                body.Arena=true;visualLiveGhosts[key]=g=new VisualLiveGhost{Body=body,Holder=holder,Shader=shader};
             }
-            var b=g.Body;pose.World();b.Binding.Apply(pose,VisualGrasp(new Actor(),pose,0,0),false,false);
+            g.Tint=tint;g.Opacity=opacity;g.Accent=accent;
+            // Its weapon hides once a frame passes without VisualLiveGhostWeapon placing it.
+            if(g.Body.Shown!=null&&g.Body.ShownFrame<Time.frameCount-1){g.Body.Shown.Hide();g.Body.Shown=null;}
+            var b=g.Body;pose.World();b.Binding.Apply(pose,VisualGrasp(held??new Actor(),pose,0,0),false,false);
             var root=b.Root.transform;root.localPosition=new Vector3(0,NativeVisualRig.Floor,0);if(shift!=Vector3.zero)root.position+=shift;
+            if(held!=null&&holder.Bones.Length>CapturedRig.RHand)
+            {
+                b.Binding.WeaponFrame(pose,out var rp,out var rq);b.Binding.LeftWeaponFrame(pose,out var lp,out var lq);
+                holder.Bones[CapturedRig.RHand].SetPositionAndRotation(root.TransformPoint(rp),root.rotation*rq);holder.Bones[CapturedRig.LHand].SetPositionAndRotation(root.TransformPoint(lp),root.rotation*lq);
+            }
             if(!b.Root.activeSelf)b.Root.SetActive(true);g.Frame=Time.frameCount;
             foreach(var r in b.All)
             {
                 if(r==null)continue;r.GetPropertyBlock(b.Block);b.Block.SetVector(VisualEchoTint,new Vector4(tint.r,tint.g,tint.b,opacity*VisualEchoShare));b.Block.SetVector(VisualGhostAccent,accent);r.SetPropertyBlock(b.Block);
+            }
+            return true;
+        }
+        // A live ghost's weapon (docs/VOXEL-RETIREMENT.md V3 Stage 1, P12; review 2026-11-19: the Shadow Step decoy and the entrance
+        // ghosts still held the voxel-era sculpt, the decoy's daggers pointing down while the pilot held the pack's in reverse grip):
+        // the model `held` holds where its pilot wears the model (the bake's life-size weapon or the pack's, both blades for the
+        // daggers), on ghost `key`'s own body at `right` (and the off hand's at `left`), through the ghost's shader in its tint as its
+        // body is. False where the model holds none of it (the caller draws the game's ghost weapon).
+        private bool VisualLiveGhostWeapon(long key,Actor held,Matrix4x4 right,Matrix4x4? left)
+        {
+            if(held==null||!visualLiveGhosts.TryGetValue(key,out var g)||g.Body?.Root==null||g.Frame!=Time.frameCount)return false;
+            var b=g.Body;var w=VisualWeaponFor(b,held);if(w==null)return false;
+            if(w.LeftMount!=null&&(!left.HasValue||!VisualWeaponMount(w.LeftMount,left.Value)))return false;
+            if(w.Scale!=1)right=right*Matrix4x4.Translate(w.Centre)*Matrix4x4.Scale(Vector3.one/w.Scale)*Matrix4x4.Translate(-w.Centre);
+            if(!VisualWeaponMount(w.Mount,right))return false;
+            if(b.Shown!=w){if(b.Shown!=null)b.Shown.Hide();b.Shown=w;}
+            bool main=!(w.LeftMount!=null&&b.MainAway);if(w.Model.activeSelf!=main)w.Model.SetActive(main);if(w.LeftModel!=null&&!w.LeftModel.activeSelf)w.LeftModel.SetActive(true);
+            b.ShownFrame=Time.frameCount;
+            // Its renderers in the ghost's shader (once), and the ghost's tint this frame.
+            g.Ghosted??=new HashSet<VisualWeapon>();var material=VisualEchoMaterial(g.Shader);if(material==null)return false;
+            foreach(var mount in new[]{w.Mount,w.LeftMount})if(mount!=null)foreach(var r in mount.GetComponentsInChildren<Renderer>(true))
+            {
+                if(g.Ghosted.Add(w)||r.sharedMaterial!=material){var mats=new Material[r.sharedMaterials.Length];for(int k=0;k<mats.Length;k++)mats[k]=material;r.sharedMaterials=mats;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;}
+                r.GetPropertyBlock(b.Block);b.Block.SetVector(VisualEchoTint,new Vector4(g.Tint.r,g.Tint.g,g.Tint.b,g.Opacity*VisualEchoShare));b.Block.SetVector(VisualGhostAccent,g.Accent);r.SetPropertyBlock(b.Block);
             }
             return true;
         }

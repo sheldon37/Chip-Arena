@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         /// <summary>Whether a vent death is the model's ragdoll (a pilot on the model, its skin included) rather than vent-fall.ts's
-        /// scripted victim (NativeVentDeathPresentation.cs), which is the voxel body's: Settings · Player model Classic (ClassicBodies),
+        /// scripted victim (NativeVentDeathPresentation.cs), which is the voxel body's: Settings · Player model Classic (the body predicate),
         /// the --ca-voxel-bodies launch or a client without the bake keep it, and a voxel map could choose it the same way.</summary>
         private bool VentModel(NativeDeath death,bool pilot)=>pilot&&VisualDeathFor(death);
         /// <summary>Drops a vent death's body made for an earlier record of it (a kept fall's record turns into its splat in place).</summary>

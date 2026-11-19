@@ -132,7 +132,7 @@ namespace ChipArena.UnityConversion
         /// joint's place stands).</summary>
         private bool ArrowSeatAsk(NativeArena arena,in ArenaEvent e,CapturedAnimation.Player rig,Vector3 at,Vector3 dir,bool pass,uint seed)
         {
-            if(ClassicBodies||!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.Binding?.Bones==null||body.All==null)return false;
+            if(!ModelLook(null)||!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.Binding?.Bones==null||body.All==null)return false;
             var victim=PilotOf(arena,e.Target);bool alive=victim!=null&&victim.Hp>0;
             if(alive?!(body.Root.activeSelf&&body.PosedFrame==Time.frameCount):!NativeCorpseDress.Drawn(body.PosedFrame,Time.frameCount))return false;
             ArrowSeatJob job=null;foreach(var j in arrowSeats)if(j.Target==e.Target&&j.Frame==Time.frameCount&&!j.Launched){job=j;break;}

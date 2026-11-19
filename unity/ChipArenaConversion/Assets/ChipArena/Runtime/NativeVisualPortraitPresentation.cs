@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The portraits' Reduced effects (the menu sets it with each request).</summary>
         public bool ModelPortraitReduced;
         /// <summary>Whether a look's portrait draws on the model (else the voxel portrait).</summary>
-        public bool ModelPortraitFor(in PortraitLook look)=>!modelPortraitFailed&&!ClassicBodies&&VisualBodiesOn&&look.Spec!="siren"&&SystemInfo.graphicsDeviceType!=UnityEngine.Rendering.GraphicsDeviceType.Null;
+        public bool ModelPortraitFor(in PortraitLook look)=>!modelPortraitFailed&&ModelLook(look.Spec)&&SystemInfo.graphicsDeviceType!=UnityEngine.Rendering.GraphicsDeviceType.Null;
         // A portrait body's outfit and skin map, by its id (VisualLookOf, SeatWeaponSkins); false for any other id.
         private bool ModelPortraitOf(int id,out ModelPortraitSlot slot)
         {
@@ -124,7 +124,8 @@ namespace ChipArena.UnityConversion
             if(s.Accent!=look.Accent||s.AccentHex==null){s.Accent=look.Accent;s.AccentHex="#"+look.Accent.ToString("x6");}
             a.BodyColor=s.BodyHex;a.AccentColor=s.AccentHex;
             // The body in its outfit (made again when the outfit changes), on the portrait layer, casting no shadow.
-            if(s.Model!=null&&(s.Model.Root==null||s.Model.Hood!=(hat==NativeSheldonHead.Hat)||!VisualRetone(s.Model,s.Outfit))){VisualStrideRelease(s.Model);VisualMotionRelease(s.Model);if(s.Model.Root!=null){s.Model.Root.SetActive(false);Destroy(s.Model.Root);}s.Model=null;}
+            // (The dressed look, as the body was made in: a raw look never matched a dressed robot or costumed body; review 2026-11-19.)
+            if(s.Model!=null&&(s.Model.Root==null||s.Model.Hood!=(hat==NativeSheldonHead.Hat)||!VisualRetone(s.Model,VisualLookOf(id)))){VisualStrideRelease(s.Model);VisualMotionRelease(s.Model);if(s.Model.Root!=null){s.Model.Root.SetActive(false);Destroy(s.Model.Root);}s.Model=null;}
             if(s.Model==null)
             {
                 s.Model=CreateVisualBody(s.Player,id,hat==NativeSheldonHead.Hat,simulate:false);if(s.Model==null){modelPortraitFailed=true;return;}
@@ -154,7 +155,9 @@ namespace ChipArena.UnityConversion
                 // The scene: the podium, the chair when seated, the hat, the gear (core, device, face gear, emblem).
                 sourceModels.Begin();gearLayer=PortraitLayer;gearCamera=view;
                 sourceModels.QueuePiece(WeaponShape.Sphere,false,Matrix4x4.TRS(origin+Vector3.up*NativePortraitRules.PodiumY,Quaternion.identity,new Vector3(NativePortraitRules.PodiumTop+NativePortraitRules.PodiumBottom,NativePortraitRules.PodiumHeight,NativePortraitRules.PodiumTop+NativePortraitRules.PodiumBottom)),PortraitPodium,PortraitLayer,view);
-                if(pose==NativeLobbyPoses.Chair)foreach(var piece in NativePortraitRules.Chair)
+                // The modelled armchair (Core/NativeLobbyChair.cs; voxel retirement V3, U5); its boxes only where the bank lacks it.
+                if(pose==NativeLobbyPoses.Chair&&sourceModels.Has(NativeLobbyChair.Model))sourceModels.Queue(NativeLobbyChair.Model,Matrix4x4.TRS(origin,spin,Vector3.one),null,null,PortraitLayer,view);
+                else if(pose==NativeLobbyPoses.Chair)foreach(var piece in NativePortraitRules.Chair)
                 {
                     int c=piece.Color;var at=origin+spin*CapturedAnimation.Vec(CapturedRig.Mirror(piece.Position));
                     sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(at,spin,CapturedAnimation.Vec(piece.Size)),new Color((c>>16&255)/255f,(c>>8&255)/255f,(c&255)/255f).linear,PortraitLayer,view);
@@ -163,7 +166,7 @@ namespace ChipArena.UnityConversion
                 if(hat!="none"&&hat!=NativeSheldonHead.Hat)
                 {
                     var hb=VisualHatBone(s.Player,hat);
-                    if(!AuditorHalo(hat,hb(CapturedRig.Head),time,1,ModelPortraitReduced,PortraitLayer,null,view,look.HatColor))sourceModels.Queue(VisualHatModel(hat,look.HatColor),s.Player.Root.transform.localToWorldMatrix,hb,null,PortraitLayer,view,body:HatBody(hat,look.HatColor));
+                    if(!AuditorHalo(hat,hb(CapturedRig.Head),time,1,ModelPortraitReduced,PortraitLayer,null,view,look.HatColor))sourceModels.Queue(VisualHatModel(hat,look.HatColor,s.Player),s.Player.Root.transform.localToWorldMatrix,hb,null,PortraitLayer,view,body:HatBody(hat,look.HatColor));
                 }
                 else if(hat==NativeSheldonHead.Hat)SheldonHoodStill(body,hat,look.HatColor,s.Player.Root.transform.localToWorldMatrix,VisualHatBone(s.Player,hat),time,id,ModelPortraitReduced,PortraitLayer,view);
                 VisualGear(body,a,time,null,null,1,false);

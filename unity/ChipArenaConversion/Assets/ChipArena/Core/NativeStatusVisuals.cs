@@ -22,6 +22,10 @@ namespace ChipArena.UnityConversion
         {
             public bool Active,FirstPerson,Fire,Poison,Slowed,Shackled,Marked;
             public float SlowUntil,MarkBorn,MarkLock,MarkUntil,Quality;
+            /// <summary>The pilot draws on the model (docs/VOXEL-RETIREMENT.md V3 Stage 1, P13; owner 2026-10-29: "NO VOXEL
+            /// appearances"): its shackles and Orbital Mark are ModelPieces on its own ankles and head (through the joint-frame
+            /// resolver), not the cubes at the voxel pilot's heights.</summary>
+            public bool ModelBody;
             public Vector3 Root,Camera;public Quaternion CameraRotation;
         }
         // status-effects.ts:25 flame core and :27 bubble rim/glint, relative to their parent part.
@@ -68,18 +72,70 @@ namespace ChipArena.UnityConversion
                 for(int n=0;n<SlowCubes;n++)
                 {
                     double a=n*Math.PI/5+t*(shackled?1.2:2.4);int cuff=n%2==1?1:-1;var piece=new Piece{Kind=shackled?Kind.Shackle:Kind.Slow,Rotation=Euler(t+n,a,0)};
+                    if(shackled&&rig.ModelBody)continue; // (ModelPieces: cuffs on the model's ankles)
                     if(shackled){piece.Position=new Vector3((float)(cuff*.14+Math.Cos(a)*.13),(float)(-.8+Math.Sin(t*3+n)*.015),(float)(Math.Sin(a)*.13));piece.Scale=new Vector3(.1f,.08f,.1f);}
                     else{double u=Frac(t*.9+n*.1);piece.Position=new Vector3((float)(Math.Cos(a)*.42),(float)(-.25-u*.6),(float)(Math.Sin(a)*.42));piece.Scale=new Vector3((float)(.11*(1-u*.5)));}
                     output[count++]=piece;
                 }
             }
-            if(rig.Active&&!fp&&rig.Marked&&rig.MarkUntil>time)
+            if(rig.Active&&!fp&&rig.Marked&&rig.MarkUntil>time&&!rig.ModelBody)
             {
                 double lockAt=rig.MarkLock,u=Math.Max(0,Math.Min(1,(lockAt-t)/Math.Max(.01,lockAt-rig.MarkBorn))),r=.32+u*.35;bool locked=time>=rig.MarkLock;
                 if(!locked||Math.Sin(t*40)>-.4)for(int n=0;n<MarkCubes;n++)
                 {
                     int k=n>>1;bool odd=n%2==1;double a=k*Math.PI/2+t*(locked?0:1.6),side=odd?.12:0;
                     output[count++]=new Piece{Kind=Kind.Mark,Position=new Vector3((float)(Math.Cos(a)*r-Math.Sin(a)*side),(float)(.62+(odd?0:.12)),(float)(Math.Sin(a)*r+Math.Cos(a)*side)),Rotation=Euler(0,-a,0),Scale=new Vector3(odd?.2f:.06f,odd?.06f:.2f,.06f)};
+                }
+            }
+            return count;
+        }
+
+        // ---- on the model (docs/VOXEL-RETIREMENT.md V3 Stage 1, P13): the shackles and the Orbital Mark as light, not cubes ----
+        /// <summary>A model status piece (Unity frame, world): a cuff ring round an ankle, a chain bead circling it, the Mark's ring
+        /// round the head and its four sighting beads.</summary>
+        public enum ModelKind:byte {ShackleRing,ShackleBead,MarkRing,MarkBead}
+        public struct ModelPiece {public ModelKind Kind;public Vector3 Position;public Quaternion Rotation;public Vector3 Scale;}
+        /// <summary>Beads circling each shackle, the Mark's beads.</summary>
+        public const int ShackleBeads=3,MarkBeads=4,MaxModelPieces=2*(1+ShackleBeads)+1+MarkBeads;
+        /// <summary>The cuff's height, the bead's size, the room round the ankle's own reach (m).</summary>
+        public const float CuffHeight=.03f,CuffBead=.024f,CuffRoom=.012f;
+        /// <summary>The model's shackles and Mark for `rig` at `time` (Unity frame, world): a cuff on each ankle (`leftAnkle`,
+        /// `rightAnkle`: the model's ankle joints, `ankle` the boot's or shoe's reach round them) with beads circling it as the
+        /// cubes did (1.2 rad/s, bobbing), and the Mark's reticle round the model's head (`head`: its middle): a ring facing the
+        /// eye (`eye`, so it reads as a sight from any camera; a level ring is edge-on to the camera behind the pilot), closing from
+        /// .67 to .32 m as it locks, its four beads turning on it until the lock, the whole flickering once locked as the cubes did.</summary>
+        public static int ModelBuild(in Rig rig,float time,Vector3 leftAnkle,Vector3 rightAnkle,float ankle,Vector3 head,Vector3 eye,ModelPiece[] output)
+        {
+            int count=0;double t=time;
+            if(rig.Active&&!rig.FirstPerson&&rig.Slowed&&rig.Shackled&&rig.SlowUntil>time)
+            {
+                float r=ankle+CuffRoom;
+                for(int side=0;side<2;side++)
+                {
+                    var at=side==0?leftAnkle:rightAnkle;float bob=(float)Math.Sin(t*3+side)*.006f;
+                    output[count++]=new ModelPiece{Kind=ModelKind.ShackleRing,Position=at+new Vector3(0,bob,0),Rotation=Quaternion.Identity,Scale=new Vector3(r,CuffHeight,r)};
+                    for(int n=0;n<ShackleBeads;n++)
+                    {
+                        double a=n*Math.PI*2/ShackleBeads+t*1.2*(side==0?1:-1);
+                        output[count++]=new ModelPiece{Kind=ModelKind.ShackleBead,Position=at+new Vector3((float)Math.Cos(a)*(r+.004f),bob+(float)Math.Sin(t*3+n)*.008f,(float)Math.Sin(a)*(r+.004f)),Rotation=Quaternion.Identity,Scale=new Vector3(CuffBead)};
+                    }
+                }
+            }
+            if(rig.Active&&!rig.FirstPerson&&rig.Marked&&rig.MarkUntil>time)
+            {
+                double u=Math.Max(0,Math.Min(1,(rig.MarkLock-t)/Math.Max(.01,rig.MarkLock-rig.MarkBorn))),r=.32+u*.35;bool locked=time>=rig.MarkLock;
+                if(!locked||Math.Sin(t*40)>-.4)
+                {
+                    // The ring's plane square to the eye (its mesh's +z toward it), the beads on its rim in that plane.
+                    var toward=eye-head;toward=toward.LengthSquared()>1e-8f?Vector3.Normalize(toward):Vector3.UnitZ;
+                    var across=Vector3.Cross(Vector3.UnitY,toward);across=across.LengthSquared()>1e-8f?Vector3.Normalize(across):Vector3.UnitX;var upward=Vector3.Cross(toward,across);
+                    var face=Quaternion.CreateFromRotationMatrix(new Matrix4x4(across.X,across.Y,across.Z,0,upward.X,upward.Y,upward.Z,0,toward.X,toward.Y,toward.Z,0,0,0,0,1));
+                    output[count++]=new ModelPiece{Kind=ModelKind.MarkRing,Position=head,Rotation=face,Scale=new Vector3((float)r,(float)r,1)};
+                    for(int n=0;n<MarkBeads;n++)
+                    {
+                        double a=n*Math.PI/2+Math.PI/4+t*(locked?0:1.6);
+                        output[count++]=new ModelPiece{Kind=ModelKind.MarkBead,Position=head+(across*(float)Math.Cos(a)+upward*(float)Math.Sin(a))*(float)r,Rotation=Quaternion.Identity,Scale=new Vector3(locked?.05f:.04f)};
+                    }
                 }
             }
             return count;

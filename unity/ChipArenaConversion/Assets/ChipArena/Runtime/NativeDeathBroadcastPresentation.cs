@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
                 stage.Rig.Root.transform.SetPositionAndRotation(H(ox,oy,oz),Quaternion.identity);stage.Rig.Root.transform.localScale=new Vector3(k*fit,k*fit*s.ScaleY,k*fit);
                 var root=stage.Rig.Root.transform.localToWorldMatrix;
                 // The model's bust (it wears no hat), else the voxel hologram and its hat.
-                bool model=stage.Bust?.Root!=null&&!ClassicBodies;
+                bool model=stage.Bust?.Root!=null&&ModelLook(null);
                 if(model){VisualBustPose(stage.Bust,stage.Pose,s.HologramAlpha);stage.Frame=Time.frameCount;}
                 else{sourceModels.Queue(stage.Pilot,root,stage.Bone,PortraitBone,opacity:s.HologramAlpha);if(stage.Hat!=null)sourceModels.Queue(stage.Hat,root,stage.Bone,opacity:s.HologramAlpha);}
                 if(fx==null)continue;

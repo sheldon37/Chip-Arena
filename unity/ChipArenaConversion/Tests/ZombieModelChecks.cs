@@ -421,7 +421,7 @@ internal static class ZombieModelChecks
         Check(kp.Contains("ClearHordeGore();ClearZombieModels();"),"cleared with the horde");
         Check(gp.Contains("if(ZombieCorpseDrawn(r,sink,alpha)||HordeNoVoxel(r.Kind))continue;")&&gp.Contains("ZombieCorpsesKept();")&&gp.Contains("if(ZombieModelDrawn(id))return;"),"corpses from the baked model, sinking with the voxel timeline; no voxel-fitted wounds on the model");
         Check(dp.Contains("ZombieModelsShown();")&&dp.IndexOf("ZombieModelsShown();",StringComparison.Ordinal)>dp.IndexOf("finally{DiagnosticDeathWoundMs",StringComparison.Ordinal),"bodies posed this frame show, the rest hide, after the deaths");
-        Check(zr.Contains("tier==NativeHordeModels.Full&&NativeZombieLooks.Modelled(kind)&&ZombieModelsOn")&&zr.Contains("VoxelZombiesArgument=\"--ca-voxel-zombies\"")&&zr.Contains("!ClassicBodies&&VisualBodiesOn"),"the model only on the full tier, for modelled kinds, with the bake, not Classic, not --ca-voxel-zombies");
+        Check(zr.Contains("tier==NativeHordeModels.Full&&NativeZombieLooks.Modelled(kind)&&ZombieModelsOn")&&zr.Contains("VoxelZombiesArgument=\"--ca-voxel-zombies\"")&&zr.Contains("&&ModelZombies;"),"the model only on the full tier, for modelled kinds, with the bake, not Classic, not --ca-voxel-zombies");
         int build=zr.IndexOf("ZombieBuild(skeleton,v.Build);",StringComparison.Ordinal),binding=zr.IndexOf("Binding=new NativeVisualRigBinding(root.transform,skeleton)",StringComparison.Ordinal);
         Check(build>0&&binding>build,"the build set before the binding reads the rest pose");
         Check(zr.Contains("if(t.childCount==0&&n.IndexOf(\"twist\",StringComparison.OrdinalIgnoreCase)>=0)"),"girth only on the twist leaves (no child moves)");
