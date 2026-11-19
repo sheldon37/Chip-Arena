@@ -353,6 +353,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
+            ClearCarillon();carillon?.Dispose();
             rooftop?.Dispose();rooftop=null;ClearSourceActors();DisposeSpawnIn();DisposeDevEffects();DisposeEventWorldFx();DisposeStructureFx();DisposeRoundsFx();DisposeHalos();DisposeBrickfall();DisposeCyberCity();DisposeAdvancedLighting();DisposeExpeditionCity();DisposeWardZero();DisposeHazardKit();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();meleeFlash?.Dispose();fieldTelegraphs?.Dispose();shots?.Dispose();DisposeMagicFx();vfx?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) CapturedAnimation.Release(m);
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);

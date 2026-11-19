@@ -7,7 +7,7 @@ using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
-    { public bool blindPick,deathmatch;public int blindChoices,killTarget,deathmatchChips;public string[] roundsPacks=Array.Empty<string>();public bool roundsCardsPlus;public int modRules;public string[] chipPacks=Array.Empty<string>();public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>(),pendingIntros=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro=NativeIntroRules.Default,introText="Ready to make an impact",accountOrigin=NativeAccount.DefaultOrigin;public int accountServiceVersion;public bool overrideIntro;public string name="Pilot",map=NativeMapRules.DefaultArena,weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full",damageScreen="Full",alarmLights="Full",playerModel="New";public bool pve,expedition,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson;
+    { public bool blindPick,deathmatch;public int blindChoices,killTarget,deathmatchChips;public string[] roundsPacks=Array.Empty<string>();public bool roundsCardsPlus;public int modRules;public string[] chipPacks=Array.Empty<string>();public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>(),pendingIntros=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro=NativeIntroRules.Default,introText="Ready to make an impact",accountOrigin=NativeAccount.DefaultOrigin;public int accountServiceVersion;public bool overrideIntro;public string name="Pilot",map=NativeMapRules.DefaultArena,weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full",damageScreen="Full",alarmLights="Full",musicReaction="Full",playerModel="New";public bool pve,expedition,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson;
         // Older Unity installs shipped an unconfigured account URL. Upgrade it once;
         // thereafter an empty URL is the player's explicit offline choice.
         public bool MigrateAccountService()
@@ -152,6 +152,9 @@ namespace ChipArena.UnityConversion
             if(padInputCaptured){pending=new InputFrame{CancelAbilities=true};Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(openingView!=null||PracticeResult!=null){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(SplitLocalLoading){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if(LayeredCityWalkKeys())return;
+#endif
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;
             // A bound Expedition session's screen: J toggles it, Escape closes it (NativeExpeditionLiveUI.cs).
@@ -284,6 +287,7 @@ namespace ChipArena.UnityConversion
                 if(held.kind!="throw"&&arena.PhysicsWorld.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
                 preview=point;
             }
+            presentation.MusicReaction=prefs.musicReaction=="Off"?0:prefs.musicReaction=="Reduced"||prefs.reducedEffects?.35f:1;
             presentation.EffectsQuality=prefs.reducedEffects?.3f:1;presentation.KitFlash=prefs.alarmLights=="Calm"?NativeKitFlash.Calm:prefs.alarmLights=="Reduced"||prefs.reducedEffects?NativeKitFlash.Reduced:NativeKitFlash.Full;
             long effectsAt=System.Diagnostics.Stopwatch.GetTimestamp();presentation.RenderAbilities(arena,preview,previewClamped);hitchAbilities+=HitchMs(effectsAt);
             long statusAt=System.Diagnostics.Stopwatch.GetTimestamp();presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);hitchStatus+=HitchMs(statusAt);
@@ -433,6 +437,9 @@ namespace ChipArena.UnityConversion
             if(SplitLocalLoading)return;
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
             // DEV ONLY: the Expedition screens preview (--ca-expedition-preview), in place of the main menu (NativeExpeditionPreviewUI.cs).
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if(LayeredCityWalkGui(width,height))return;
+#endif
             if(ExpeditionPreviewGui(width,height))return;
             // DEV ONLY: the Deployment Station preview (--ca-deploy-preview), in place of the main menu (NativeDeployPreview.cs).
             if(LiveDeploymentGui(width,height))return;

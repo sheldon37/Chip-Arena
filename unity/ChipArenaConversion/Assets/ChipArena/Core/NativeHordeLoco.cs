@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
         /// the model's ratio, NativeVisualRig.Rig.LegRatio, while the add draws on the model, owner 2026-10-30: "I think a lot of
         /// the issue is the sped up animations on the zombie"). An upright kind's cadence, stance reach and steps follow it
         /// (<see cref="StepRate"/>): the footprints are a person's. The rig's legs cannot reach them, so its legs are posed on a
-        /// copy of each footprint drawn in fore and aft of its hip by the same ratio (<see cref="LegsNow"/>; the rig is a short-
+        /// copy of each footprint drawn in toward its hip by the same ratio (<see cref="LegsNow"/>, and across the floor by <see cref="LegsAcross"/>; the rig is a short-
         /// legged copy of the model's stride), and the model's binding spreads its ankles back out (NativeVisualRig.State.Stride),
         /// so the model's feet land on the footprints and nothing the rig's reach rules do changes. The Hulk keeps its own heavy
         /// stride and the crawl its own; the voxel tiers draw on 1.
@@ -74,9 +74,19 @@ namespace ChipArena.UnityConversion
         /// <summary>The legs this pose's stride was planned for (1: the rig's): each rig ankle sits fore or aft of its hip by the
         /// footprint's offset over this.</summary>
         public float LegsNow=>legsNow;
-        // A footprint (rig frame) drawn in fore and aft of `hip` for the rig's legs, and a rig point spread back out to the footprint.
-        private Vector3 Squeeze(Vector3 at,Vector3 hip){if(legsNow!=1)at.Z=hip.Z+(at.Z-hip.Z)/legsNow;return at;}
-        private Vector3 Spread(Vector3 at,Vector3 hip){if(legsNow!=1)at.Z=hip.Z+(at.Z-hip.Z)*legsNow;return at;}
+        /// <summary>How far a footprint is drawn in toward its hip across the floor (1: not at all): <see cref="LegsNow"/> running, 1
+        /// walking, by the walk-to-run blend. The model's binding spreads the ankle back out by it (NativeVisualRig.State.StrideAcross).</summary>
+        public float LegsAcross=>legsNow==1?1:1+(legsNow-1)*runNow;
+        // A footprint (rig frame) drawn in toward `hip` for the rig's legs, and a rig point spread back out to the footprint.
+        // (Across the floor too while it runs, owner 2026-11-18: "when zombies are running and turning simultaneously. Their legs begin
+        // moving unnaturally". Drawn in only fore and aft, a foot the turning body left out to its side stood at the model's metres off
+        // the rig's short leg: the rig sank its hips into a squat and peeled its heel to reach a foot the model's legs reach standing,
+        // and the model's hips dropped with it, so every running turn dipped and bent the knees. Running, the rig's leg is the model's
+        // leg drawn small in every direction, and its reach rules see the model's. Walking keeps reading a foot to its side at the
+        // model's metres, as before: drawn in across at a walk too, a foot left aside through a walking turn was kept on, unpeeled, and
+        // the hips dipped in the circle chases and slow turns, LegsAcross.)
+        private Vector3 Squeeze(Vector3 at,Vector3 hip){if(legsNow!=1){at.X=hip.X+(at.X-hip.X)/LegsAcross;at.Z=hip.Z+(at.Z-hip.Z)/legsNow;}return at;}
+        private Vector3 Spread(Vector3 at,Vector3 hip){if(legsNow!=1){at.X=hip.X+(at.X-hip.X)*LegsAcross;at.Z=hip.Z+(at.Z-hip.Z)*legsNow;}return at;}
 
         // ================================================================================================================
         // The gait speed: the presented root's speed eased, and the walk-to-run blend on it

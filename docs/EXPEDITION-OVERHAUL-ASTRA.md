@@ -349,6 +349,17 @@ Claude owns the display fields (name, place, accent, emblem, board row) and crea
 ## A4. Blockout-4: the layered city and the City Layout Contract (greybox from M1; release M5)
 **First:** a DEV-only greybox switch, solo, with Claude's kit fallback, at both N2 sizes, so the owner can walk them before any layered art. The generator takes the size as a parameter.
 
+**Solo scale walk (M1 preview):** In the Unity Editor in Play mode or a Development Build, open **Settings → Developer → Walk Meridian greybox** from the offline main menu with your DEV account. The launch argument `--ca-layered-city-walk` opens the same picker. Enter a seed and select A or B. Use normal pilot movement, sprint and jump. Hold Tab for the north-up relief map and gate routes. Escape returns to the picker so the same seed can be walked at the other size. The four gates lead to City Hall and three dealt districts. The viaduct, outer streets, hall roofs and three-deck car park can also be explored. The western haul ramp returns from the Cut to the camp route.
+
+| Preview size | Gate-to-hall acceptance | Collision blocks in 8 checked rolls | Maximum corridor nodes / links |
+| --- | --- | --- | --- |
+| A, 420 × 340 m | 150–190 m | 558–602 | 408 / 407 |
+| B, 600 × 480 m | 250–300 m | 748–790 | 598 / 597 |
+
+**Analytical plan views.** The [Option A sheet](expedition-scale-walk/meridian-scale-a.svg) and [Option B sheet](expedition-scale-walk/meridian-scale-b.svg) show the same eight seeds at a common north-up scale. Each panel traces the actual gate-to-hall routes over the collision footprints and plots each route's elevation against walked distance. Regenerate both with CoreTests `--layered-walk-plans docs/expedition-scale-walk` from the repository root.
+
+The scale walk uses native pilot physics, grey collision massing and the existing map ramp wedges. The trace graph samples the four gate routes at 2 m or less. Run CoreTests with `--layered-walk` for the paired 8-seed sweep, including Hulk-width floor support and headroom. Counts above describe this walk prototype. M5's surface-wide navigation, chunked kit, population, performance budgets and deployment digest still require the release passes below.
+
 **Size** (option A; option B scales it): 420 × 340 m: 42 × 34 cells of 10 m; bounds ±210 × ±170; ceiling 60; killY -25.
 
 **Tiers** (TerraceStep 7 m):
@@ -578,3 +589,15 @@ CityLayout {
 
 ---
 
+## A4 update after the owner's walk (2026-11-18)
+The owner walked the greybox and chose size B (600 × 480 m, 250-300 m routes), correcting an earlier reading of A ("Sorry I mean B is a good size"). They also asked for "just like 5 unique set of paths" instead of fully random layouts. That changes A4:
+
+1. **Choose the five.** Propose five layouts from the greybox generator, at size B, with clearly different route shapes, elevation and landmark spots. For example, take the most distinct of the walk seeds and hand-tune them. Each needs four or more gate/hall slots and its rooftop and terrace routes.
+2. **Freeze them as data** in the City Layout Contract, versioned, so the host and guests load the same layout by index. A run picks one layout, seeded or rotated so a party doesn't repeat it back to back, and the run's instances fill its slots.
+3. **Keep varying per run:** which instance takes which slot, caches (A2), survivors' spots, and enemy spawns and district kinds (A5a).
+4. **Developer walk:** extend "Walk Meridian greybox" to list the five frozen layouts by name, so the owner can walk each before any art.
+5. **No mirroring.**
+
+Claude then dresses each layout by hand (W8 and W10).
+
+**Size B also changes the budgets.** Rerun the native sim benchmark (4 pilots, 88 zombies) and nav/crowd-flow timing on the B layouts. Report any budget the larger map breaks before the layouts are frozen.

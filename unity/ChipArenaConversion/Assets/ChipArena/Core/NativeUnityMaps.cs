@@ -36,11 +36,11 @@ namespace ChipArena.UnityConversion
         // includes the five M1 arenas and Training Room; generated run maps are added later.
         public static void ValidateShippedCatalog(ConversionContent content)
         {
-            var expected=new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","causeway","club","cybercity","emporium","expedition-city","expedition-foundry","expedition-transit","expedition-ward-zero","factory","harbor","polar","rig","sanctum","siren","skyframe","training"};
+            var expected=new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","causeway","club","cybercity","emporium","expedition-city","expedition-foundry","expedition-transit","expedition-ward-zero","factory","harbor","polar","rig","sanctum","siren","skyframe","thunderheart","training"};
             var maps=content?.maps;
             if(maps==null||maps.Any(m=>m==null||!m.unity)||!maps.Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(expected))
                 throw new InvalidOperationException("Shipped Unity catalogue must contain the authored maps plus fixed-seed Level 0 (including M1 arenas and Training Room).");
-            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","causeway","club","cybercity","emporium","factory","harbor","polar","rig","sanctum","skyframe"}))
+            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"backrooms-level-0","backrooms-poolrooms","breakwater","brickfall","causeway","club","cybercity","emporium","factory","harbor","polar","rig","sanctum","skyframe","thunderheart"}))
                 throw new InvalidOperationException("Shipped Unity random rotation differs.");
         }
         public static string Selection(ConversionContent c,string id)=>id=="random"||c.maps.Any(m=>m.id==id&&ArenaSelectable(m))?id:DefaultArena;
@@ -66,7 +66,7 @@ namespace ChipArena.UnityConversion
             // Normalize at the shared load boundary so every runtime/build-check consumer agrees.
             // Authored UnityMaps below still require their own validated tables and bounds.
             foreach(var m in c.maps){m.bounds=null;m.spawns=null;m.nav=null;m.segments=null;m.pilotBlocks=null;m.hazards=null;m.ramps=null;m.navHints=null;}
-            c.contentRevision=Revision(CatalogPolicy+"/"+NativeBackroomsGenerator.Version+"/"+NativePoolroomsGenerator.Version+"/"+NativeProjectileRules.ContentKey(c.weapons)+"\n"+text);c.materials=c.materials.Concat(u.materials).ToArray();
+            c.contentRevision=Revision(CatalogPolicy+"/"+NativeThunderheart.Revision+"/"+NativeBackroomsGenerator.Version+"/"+NativePoolroomsGenerator.Version+"/"+NativeProjectileRules.ContentKey(c.weapons)+"\n"+text);c.materials=c.materials.Concat(u.materials).ToArray();
             if(c.materials.Select(m=>m.id).Distinct().Count()!=c.materials.Length)throw new InvalidOperationException("Duplicate material");
             // The Expedition instance shares Ward Zero's authored hazards, including their IDs
             // (used by lights/alarms), so boss-test tuning cannot drift between the two modes.
@@ -78,7 +78,8 @@ namespace ChipArena.UnityConversion
             if(u.maps.GroupBy(m=>m.id).Any(g=>g.Count()>1)||u.maps.Any(m=>m.id!="siren"&&c.maps.Any(old=>old.id==m.id)))throw new InvalidOperationException("Duplicate Unity map");
             var backrooms=NativeBackroomsGenerator.Build(NativeBackroomsGenerator.ArenaSeed,false).Map;Validate(backrooms);
             var poolrooms=NativePoolroomsGenerator.Build(NativePoolroomsGenerator.ArenaSeed,false).Map;Validate(poolrooms);
-            c.maps=u.maps.Concat(new[]{backrooms,poolrooms}).ToArray();c.Validate();
+            var carillon=NativeThunderheart.Build();Validate(carillon);
+            c.maps=u.maps.Concat(new[]{backrooms,poolrooms,carillon}).ToArray();c.Validate();
             if(!c.maps.Any(m=>m.id==DefaultArena&&ArenaSelectable(m)))throw new InvalidOperationException("Missing default Unity arena");
         }
         public static V3 Clamp(ContentMap m,V3 p,bool bot=false)
