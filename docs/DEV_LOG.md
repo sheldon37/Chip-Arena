@@ -58,7 +58,11 @@ Branch `claude/exp-w0-groundwork`: W0's first entry below, plus the review round
   - Not touched: rules, spawns, generation, collision, wire and save. The pod yaw fix (W4), the Lobby hide (W3) and the slot keep-out re-pin (with A0) are still left alone.
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
 - **Voxel dependency:** none.
-- **Checks:** the full CoreTests as relgen5 runs them, the pinned Unity compile and `git diff --check`, on the pushed head (see the next docs commit for the results).
+- **Checks:**
+  - the full CoreTests as relgen5 runs them (a throwaway LF worktree, Release, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS=int/banks-next`) at `dc306212`: 1,042 PASS lines, no exception, the closing `35 managed-core checks passed`, and **exit 0**, recorded (`generated frame`: 68 checks);
+  - the pinned 6000.3.24f1 semantic compile passes (Input System, Player, Assembly-CSharp, Editor). It caught a class-name clash that CoreTests could not see (the summary is now `NativeFrameTimes`);
+  - `git diff --check` against shared: clean;
+  - on the trial merge onto A0: `--generated-frame`, `--generated-districts` and `--landing-field` pass (exit 0).
 - **Not run:** no Windows build or player; no 4-pilot run (it needs A0's harness merged and the Editor relaunched with its flag); no host and guest run; Balanced is not in the managed census; the town's own fog sheets were not captured (the shader fix covers them the same way).
 - **Captures** (`scratchpad/exp-w0/look2/`): 17 stills (01-14 in game, 15-17 the computed top-downs) and three clips in `look2/clips/`:
   - `1-hub-ground-still-eye-halfspeed.mp4`: shared, the first pass (the crawl) and W0 now, with each one's frame-to-frame change below;
