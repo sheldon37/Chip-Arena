@@ -375,7 +375,8 @@ namespace ChipArena.UnityConversion
             // (NativeExpeditionWeaponPick.cs), so the plate names the pick; the portrait keeps the pilot's own look.
             string pk=NativeRoomPick.CardLine(ExpPickChoices);Color pt=C.Cyan();NativeIcons.Draw(new Rect(plate.x,y+1,16,16),"shuffle",U.A(pt,al));
             float wx=plate.x+22,ww=Mathf.Min(U.Measure(pk,11,true,false,.08f).x,plate.xMax-wx);U.Text(new Rect(wx,y,ww+2,18),Fit(pk,11,plate.xMax-wx,true,.08f),11,U.A(U.Mix(pt,Color.white,.4f),al),TextAnchor.MiddleLeft,bold:true,tracking:.08f);
-            if(wx+ww+12<plate.xMax-20)U.Text(new Rect(wx+ww+8,y,plate.xMax-wx-ww-8,18),Fit("· AT DEPLOY",10,plate.xMax-wx-ww-8,true,.12f),10,C.Muted(.9f*al),TextAnchor.MiddleLeft,bold:true,tracking:.12f);
+            // (· AT DEPLOY only where it fits whole: a cut "AT DE..." reads as nothing)
+            if(wx+ww+8+U.Measure("· AT DEPLOY",10,true,false,.12f).x<=plate.xMax)U.Text(new Rect(wx+ww+8,y,plate.xMax-wx-ww-8,18),"· AT DEPLOY",10,C.Muted(.9f*al),TextAnchor.MiddleLeft,bold:true,tracking:.12f);
             if(!compact)ClassUnderline(new Rect(plate.x,y+21,Mathf.Min(plate.width,ww+22),2),null,pt,al,now+index*.9f);
             float fy=plate.yMax-24;
             if(room){if(CanPromote(p.id))PromotionButton(new Rect(plate.x,fy,plate.width,24),p,al);else ReadyPill(new Rect(plate.x,fy,Mathf.Min(plate.width,PillWidth(p)),24),p,al,out _);}

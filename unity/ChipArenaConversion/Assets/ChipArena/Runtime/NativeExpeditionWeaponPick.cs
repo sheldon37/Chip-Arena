@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ChipArena.UnityConversion
@@ -11,9 +12,10 @@ namespace ChipArena.UnityConversion
     //
     // How: the opening's own Blind Pick, exactly as a versus room deals it (BeginOpening, NativeOpeningDraft): the host deals each
     // pilot's private offers from its own random stream, every client draws only its own view and sends opening-choice, the host checks
-    // and locks, a random offer at 0 s, the 2 s reveal. When it ends the host keeps each pilot's pick on its seat (ApplyOpeningWeapon,
-    // as StartMatch and StartExpeditionM1 apply it; the reveal already set each client's own prefs.weapon) and deploys as the button
-    // did (DeployExpedition). The run then starts from those seats, its Restart keeps them, and the hub's load is not interrupted.
+    // and locks, a random offer at 0 s, the 2 s reveal. When it ends the host keeps each pilot's pick for this station (keptPicks) and on
+    // its seat, and deploys as the button did (DeployExpedition). StartExpeditionM1's own ApplyOpeningWeapon puts the kept picks on the
+    // run's seats (whatever a seat was rebuilt from in between: a guest's profile, my preferences), so the run starts with them, its
+    // Restart keeps them, and the hub's load is not interrupted.
     //
     // The count: the host's expeditionChoices, carried to guests in the room options' own blindPick / blindChoices fields
     // (NativeRoomPick.Apply in CaptureRoomOptions and RulesNow), changed through the room options' Weapon choices row, stored for the
@@ -35,22 +37,33 @@ namespace ChipArena.UnityConversion
             if(BeginOpening(()=>WithOpening(()=>{KeepExpeditionPicks();DeployExpedition(revision);}),true))return;
             DeployExpedition(revision);
         }
-        // Under WithOpening: each guest's pick on its seat (the seat the run is built from) and mine in my preferences (Profile, which
-        // builds my seat; the reveal's view set it already), and the lobby told, so the station's pads and its eject show the picks.
+        // Under WithOpening: every pilot's pick kept for this station's run (by seat; a new station, or none, keeps nothing), each guest's
+        // on its seat and mine in my preferences (Profile; the reveal's view set it already), and the lobby told, so the station's pads
+        // and its eject show the picks.
+        private ExpeditionDeploymentRoom keptPickRoom;private readonly Dictionary<int,string> keptPicks=new Dictionary<int,string>();
         private void KeepExpeditionPicks()
         {
+            keptPicks.Clear();keptPickRoom=deploymentRoom;foreach(var p in openingRun.Pilots.Values)keptPicks[p.Seat.id]=p.Weapon;
             foreach(var peer in peers)if(peer.Seat!=null)ApplyOpeningWeapon(peer.Seat);
             if(!dedicated&&openingRun.Pilots.TryGetValue(1,out var me)&&me.Weapon!=prefs.weapon&&System.Array.Exists(content.weapons,w=>w.id==me.Weapon&&AllowedWeapon(w))){prefs.weapon=me.Weapon;Save();}
             LobbyBroadcast();
         }
 
+        /// <summary>The weapon this seat picked at this station's Deploy (ApplyOpeningWeapon puts it on the run's seat), if still allowed.</summary>
+        private bool KeptExpeditionPick(NativeSeat seat,out string id)
+        {
+            id=null;return deploymentRoom!=null&&ReferenceEquals(keptPickRoom,deploymentRoom)&&keptPicks.TryGetValue(seat.id,out id)&&OpeningWeaponAllowed(seat,id);
+        }
+
         // The room options' rows for an expedition (in place of the co-op room's old Blind Pick All box, which wrote the Play vs Bots
         // preference): the count select, 2 up to the ordinary pool, its default marked, and the note. A guest's rows are read-only.
+        // The count shown is the expedition's own (ExpPickChoices: mine, or a guest's copy of the host's), whatever mode `o` was
+        // captured in.
         private string[] expCountLabels;
         private void ExpeditionPickRows(NativeRoomOptions o)
         {
             expCountLabels??=NativeBlindChoices.CountLabels(botWeaponIds.Length,NativeRoomPick.ExpeditionDefault);
-            int n=NativeRoomPick.Count(o.blindChoices);
+            int n=ExpPickChoices;
             RuleSelect(18764,RoomOpt.BlindChoices,"Weapon choices",expCountLabels,Mathf.Clamp(n-NativeBlindChoices.Min,0,expCountLabels.Length-1),0,NativeBlindChoices.Min);
             RuleFine(18768,NativeRoomPick.Note(n),0,8);
         }

@@ -128,6 +128,8 @@ namespace ChipArena.UnityConversion
         {
             if(applyingOpening && openingRun.Pilots.TryGetValue(seat.id,out var p) && OpeningWeaponAllowed(seat,p.Weapon))
                 seat.spec=p.Weapon;
+            // An expedition's pick, made at its station's Deploy before the run starts (NativeExpeditionWeaponPick.cs).
+            else if(!applyingOpening && KeptExpeditionPick(seat,out var kept))seat.spec=kept;
         }
 
         private void ApplyOpeningChip(NativeSeat seat)
