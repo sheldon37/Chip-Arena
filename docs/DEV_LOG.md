@@ -49,6 +49,7 @@
   several ids per pairing and population figures; the owner has decided to retire voxel, and the gait will be rebuilt to solve once on the
   model's own skeleton, its tests with it. Shared `b13940ce` fails three full-suite checks of its own (Checks, above): its author's to update.
   **Next:** review of the landing fix; then merge.
+- **Released:** shared `1b356c0c` (the builder at `1b356c0c`), test channel revision `639306602307778517` (build `3e6ba858`); the suite at `86a37fce` (1,040 groups, exit 0), the Unity compile. No bank or Drive zip change.
 
 ## 2026-11-18 — Claude: shared's full suite passes again after the Thunderheart Carillon (three stale checks; tests only)
 
@@ -59,6 +60,7 @@ Branch `claude/fix-suite-thunderheart`, base shared `ac69455e`. Astra's Thunderh
 - `AdvancedLightingChecks` (Looks): `carillon-storm` has its advanced block on purpose, so it joins the list of looks that must have one.
 
 Checks: `--transitions` (4276), `--visual-rig` and `--advanced-lighting` pass. The full suite runs in the release merge. For Astra: run the full CoreTests before pushing straight to shared.
+- **Merged:** shared `afa19c6e` (no build: tests only); the suite at `be3a5bff` (1,040 groups, exit 0).
 
 ## 2026-11-18 — Claude: the voxel retirement plan, approved; Astra's part (owner request; docs only)
 
