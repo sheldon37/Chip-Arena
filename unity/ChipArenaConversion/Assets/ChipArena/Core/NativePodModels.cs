@@ -125,6 +125,8 @@ namespace ChipArena.UnityConversion
             // strip on the back wall, two harness straps
             s.Into(Body);s.Push(WeaponSculpt.Rx(-Pi/2));s.Cylinder(FrameDark,.6f,.17f,.19f,8);s.Pop();
             for(int i=1;i<8;i++){float a=i*Pi/4;s.Push(WeaponSculpt.Ry(a)*WeaponSculpt.T(.6f*(float)Math.Sin(a),0,.6f*(float)Math.Cos(a)));s.Box(Liner,V(0,1.1f,0),V(.5f,1.82f,.02f));s.Pop();}
+            // the cabin's ceiling, on the liner's top under the nose (whose shell faces only outward), so the cabin is closed overhead
+            s.Push(WeaponSculpt.Rx(-Pi/2));s.Cylinder(Liner,.64f,2.0f,2.03f,8);s.Pop();
             s.Box(Frame,V(0,1.15f,-.56f),V(.5f,1.7f,.04f),.01f);s.Box(Pad,V(0,1.22f,-.52f),V(.34f,1.0f,.05f),.02f);
             s.Into(Trim);foreach(int x in new[]{-1,1})s.Box(Band,V(x*.14f,1.2f,-.49f),V(.05f,1.1f,.02f),.004f);
             s.Into(Cabin);s.Box(Light(1),V(0,1.82f,-.53f),V(.36f,.05f,.03f));s.Box(Light(.6f),V(0,.62f,-.53f),V(.3f,.03f,.03f));foreach(int x in new[]{-1,1})s.Box(Light(.8f),V(x*.27f,1.3f,-.5f),V(.02f,.5f,.02f));
