@@ -1807,7 +1807,7 @@ namespace ChipArena.UnityConversion
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
             string game=R("Runtime/ConversionGame.cs"),settings=R("Runtime/NativeSettings.cs"),body=R("Runtime/NativeVisualBodyPresentation.cs"),source=R("Runtime/NativeSourcePresentation.cs");
-            Check(game.Contains("alarmLights=\"Full\",playerModel=\"New\";"),"the preference is saved with the others, New by default");
+            Check(game.Contains("alarmLights=\"Full\",musicReaction=\"Full\",playerModel=\"New\";"),"the preference is saved with the others, New by default");
             int set=game.IndexOf("presentation.ClassicBodies=prefs.playerModel==\"Classic\";",StringComparison.Ordinal),render=game.IndexOf("presentation.Render(frame,renderTime,false);",StringComparison.Ordinal);
             Check(set>0&&render>set,"the game sets ClassicBodies from the preference every frame, before the arena renders");
             Check(settings.Contains("if(ArenaPresentation.VisualBodyInstalled){Field(\"Player model\");prefs.playerModel=ChoiceGrid(PlayerModels,prefs.playerModel==\"Classic\"?\"Classic\":\"New\",PlayerModelLabels);"),"Settings shows the choice only where the visual body is installed, anything but Classic reading as New");
