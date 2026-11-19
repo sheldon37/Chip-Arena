@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     /// `-expedition-load N`, High by default, `-load-balanced` or `-load-low`). It reads the same flags and nothing else: launched
     /// without `-expedition-load` it does nothing. It waits out the harness's load and warm-up (<see cref="Settle"/> s of real time
     /// after its first frame), records the next <see cref="Frames"/> rendered frames' unscaled times (and, in the Editor, its
-    /// render stats), and logs one EXPEDITION_FRAME_BUDGET line (Core NativeFrameBudget, as BoZo's xperf windows report the
+    /// render stats), and logs one EXPEDITION_FRAME_BUDGET line (Core NativeFrameTimes, as BoZo's xperf windows report the
     /// 1-pilot rows). Editor and Development builds only. Presentation measurement only: nothing here is a rule.
     /// </summary>
     public sealed class NativeExpeditionLoadFrameTimes : MonoBehaviour
@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
 #endif
             if(n<Frames)return;
             string extra=stats>0?"; batches mean "+(batches/stats)+", triangles mean "+(tris/stats):"";
-            Debug.Log(NativeFrameBudget.Line(label,NativeFrameBudget.Of(ms,n))+extra+"; screen "+Screen.width+"x"+Screen.height+"; gpu "+SystemInfo.graphicsDeviceName+"; cpu "+SystemInfo.processorType+" ("+SystemInfo.processorCount+" threads); memory "+SystemInfo.systemMemorySize+" MB");
+            Debug.Log(NativeFrameTimes.Line(label,NativeFrameTimes.Of(ms,n))+extra+"; screen "+Screen.width+"x"+Screen.height+"; gpu "+SystemInfo.graphicsDeviceName+"; cpu "+SystemInfo.processorType+" ("+SystemInfo.processorCount+" threads); memory "+SystemInfo.systemMemorySize+" MB");
         }
     }
 }

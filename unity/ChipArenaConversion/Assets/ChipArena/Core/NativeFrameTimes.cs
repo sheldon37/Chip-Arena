@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
     /// them (the q-th of the sorted times is the one at floor(n x q)), so the Editor's 1-pilot rows and the 4-pilot rows from
     /// Astra's DEV load harness (Runtime NativeExpeditionLoadFrameTimes) read alike. Presentation measurement only; engine-free.
     /// </summary>
-    public static class NativeFrameBudget
+    public static class NativeFrameTimes
     {
         public struct Summary {public int Frames;public double Mean,P50,P95,P99,Worst;public int Over20,Over50;}
 

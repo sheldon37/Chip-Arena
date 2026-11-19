@@ -215,13 +215,13 @@ namespace ChipArena.UnityConversion
         // launched with -expedition-load N, -load-balanced, -load-low), summarised as BoZo's xperf windows summarise the 1-pilot rows ----
         private static void FrameTimes(string root)
         {
-            var ms=new float[120];for(int i=0;i<100;i++)ms[i]=100-i;var s=NativeFrameBudget.Of(ms,100);
+            var ms=new float[120];for(int i=0;i<100;i++)ms[i]=100-i;var s=NativeFrameTimes.Of(ms,100);
             Check(s.Frames==100&&Math.Abs(s.Mean-50.5)<1e-9&&s.P50==51&&s.P95==96&&s.P99==100&&s.Worst==100&&s.Over20==80&&s.Over50==50,"the frame-time summary reads as xperf's (the q-th of the sorted times at floor(n x q): p50 "+s.P50+", p95 "+s.P95+", p99 "+s.P99+")");
-            Check(NativeFrameBudget.Of(ms,0).Frames==0&&NativeFrameBudget.Of(null,5).Frames==0&&NativeFrameBudget.Line("x",s)=="x: 100 frames; ms mean 50.50 p50 51.00 p95 96.00 p99 100.00 worst 100.00; over 20 ms 80, over 50 ms 50","an empty window is none; the line is the budget table's");
+            Check(NativeFrameTimes.Of(ms,0).Frames==0&&NativeFrameTimes.Of(null,5).Frames==0&&NativeFrameTimes.Line("x",s)=="x: 100 frames; ms mean 50.50 p50 51.00 p95 96.00 p99 100.00 worst 100.00; over 20 ms 80, over 50 ms 50","an empty window is none; the line is the budget table's");
             var src=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionLoadFrameTimes.cs")).Replace("\r\n","\n");
             Check(src.StartsWith("#if UNITY_EDITOR || DEVELOPMENT_BUILD\n",StringComparison.Ordinal)&&src.TrimEnd().EndsWith("#endif",StringComparison.Ordinal),"the frame-time hook is in Editor and Development builds only");
-            Check(src.Contains("public const string Flag=\"-expedition-load\",Balanced=\"-load-balanced\",Low=\"-load-low\";")&&src.Contains("int at=Array.IndexOf(args,Flag);if(at<0)return;")&&src.Contains("NativeFrameBudget.Line(label,NativeFrameBudget.Of(ms,n))"),"it reads A0's harness flags and nothing else, and does nothing without them");
-            Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionLoadFrameTimes.cs.meta"))&&File.Exists(Path.Combine(root,"Assets/ChipArena/Core/NativeFrameBudget.cs.meta")),"Unity metas for the hook");
+            Check(src.Contains("public const string Flag=\"-expedition-load\",Balanced=\"-load-balanced\",Low=\"-load-low\";")&&src.Contains("int at=Array.IndexOf(args,Flag);if(at<0)return;")&&src.Contains("NativeFrameTimes.Line(label,NativeFrameTimes.Of(ms,n))"),"it reads A0's harness flags and nothing else, and does nothing without them");
+            Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionLoadFrameTimes.cs.meta"))&&File.Exists(Path.Combine(root,"Assets/ChipArena/Core/NativeFrameTimes.cs.meta")),"Unity metas for the hook");
         }
 
         // ---- W0's review: the census builds each roll's skyline from its own map's bounds, as the runtime does, so it follows
