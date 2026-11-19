@@ -90,7 +90,9 @@ namespace ChipArena.UnityConversion
             {
                 case 0:return t.Label;
                 case 1:return t.Enemies??"";
-                case 2:{int n=t.Instances?.Length??0;return n==1?"1 INSTANCE":n+" INSTANCES";}
+                // A run rolls InstanceCount destinations from the tileset's pool (owner, 2026-11-19: "Dont we only roll 3 instances + 1
+                // final boss?"), so the cell says what a run holds, not the pool's size.
+                case 2:{int n=(t.Instances?.Length??0)==0?0:Math.Min(t.Instances.Length,NativeExpeditionDeployment.InstanceCount);return n==1?"1 INSTANCE":n+" INSTANCES";}
                 case 3:return t.Final??"";
                 default:return "";
             }

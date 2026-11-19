@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     /// (the light bar in front of its top, the DEPLOY sign under its bottom), so the whole face reads from every station shot
     /// that sees it, its headings included.</item>
     /// <item><b>What:</b> headed ATLAS · DEPARTURES, four columns (TILESET · ENEMIES · INSTANCES · FINAL) and four lines: the
-    /// selected tileset's on the large first line (CITY · MERIDIAN | THE INFECTED | 5 INSTANCES | THE SIREN), the others small
+    /// selected tileset's on the large first line (CITY · MERIDIAN | THE INFECTED | 3 INSTANCES | THE SIREN), the others small
     /// and dim amber, NOT IN SERVICE where no tileset is (no invented names, no dates).</item>
     /// <item><b>When the station opens:</b> the emblem flap falls, then line 1 clatters into place left to right (each flap runs
     /// through the drum's glyphs before its own), lands within 1.2 s, and a bell rings with a spark off each cheek: an arrival,
