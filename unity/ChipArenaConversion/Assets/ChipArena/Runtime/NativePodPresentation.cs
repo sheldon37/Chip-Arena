@@ -258,11 +258,12 @@ namespace ChipArena.UnityConversion
         private const float PodGlass=.28f,PodGlassSeconds=.3f;
         // My own pod in third person once its door is open: eased into see-through glass while it really walls my pilot off from my
         // camera (the camera low, behind or beside it, the pod on the line to me: stepping out of it with the camera behind), so it
-        // stays solid while the directed drop holds over the crash or arcs high, and before its doorway. 0 solid .. 1 glass.
+        // stays solid while the directed drop holds over the crash or arcs high, and before its doorway, and while I ride in its cabin
+        // (W3's NativePodRidePresentation; its ride is off and W4's directed drop owns the cabin beat). 0 solid .. 1 glass.
         private float PodGhost(PodView pod,int me,float time)
         {
             var f=pod.Frame;float target=0;var eye=WorldEye;
-            if(!FirstPerson&&f.Shown&&eye!=null&&visualPositions.TryGetValue(me,out var pilot))
+            if(!FirstPerson&&f.Shown&&!PodRideActive&&eye!=null&&visualPositions.TryGetValue(me,out var pilot))
             {
                 var cam=eye.transform.position;float low=1-Mathf.SmoothStep(0,1,(cam.y-(pod.Floor+3.4f))/1.6f);
                 var flat=new Vector2(cam.x-pod.Spot.x,cam.z-pod.Spot.z);float front=flat.sqrMagnitude>1e-4f?Vector2.Dot(flat.normalized,new Vector2(pod.Facing.x,pod.Facing.z)):0;

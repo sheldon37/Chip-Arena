@@ -33,6 +33,9 @@ namespace ChipArena.UnityConversion
             public NativeArena Arena;public double End=double.NaN;public SpawnInPlace Place;public SpawnInFrame Frame;public bool Shown,Built;public float Raise;
             /// <summary>A generated run's hub: the pilot rides its drop pod (NativePodPresentation.cs) instead of the beam.</summary>
             public bool Pod;
+            /// <summary>A pod run's hub waiting in Lobby: the pilot is drawn hidden where it is presented (no pod exists yet, so no pod
+            /// path may place it: SpawnPlace returns before any).</summary>
+            public bool Lobby;
             public Color Holo,Tint,Display;
             public readonly float[] Solid=new float[CapturedRig.Bones.Length],Ghost=new float[CapturedRig.Bones.Length],Heat=new float[CapturedRig.Bones.Length];
         }
@@ -70,6 +73,9 @@ namespace ChipArena.UnityConversion
             // A live guest's own pilot is predicted ahead of the snapshot clock: its drop starts when its controls unlock.
             bool predicted=arena.Replica&&!arena.ReplicaScene.IsValid()&&id==arena.LocalId;
             float age=NativeSpawnIn.Age(m.Phase,m.PhaseEnd,m.FightAt,time+(predicted?NativeSpawnIn.GuestLead:0));
+            // (a pod run's hub waiting in Lobby shows nobody on the slots: NativePodRidePresentation.cs)
+            if(m.Phase==NativePhase.Lobby&&PodRun(arena))return PodLobbyHidden(pilot);
+            if(spawnViews.TryGetValue(id,out var was))was.Lobby=false;
             if(PodRun(arena))return PodSpawn(arena,pilot,feet,age,NativeSpawnIn.End(m.Phase,m.PhaseEnd,m.FightAt),out raise);
             if(float.IsNaN(age)||age>.3f+NativeSpawnIn.LandSeconds)return null;
             double end=NativeSpawnIn.End(m.Phase,m.PhaseEnd,m.FightAt);
@@ -111,6 +117,8 @@ namespace ChipArena.UnityConversion
         {
             var arena=WeaponLoadout;if(arena==null||a==null||!a.Alive)return position;
             var v=SpawnEvaluate(arena,SpawnPilotOf(arena,a.Id),position,time,out float raise);if(v==null)return position;
+            // a pod run's Lobby: shown hidden where it stands, before any pod path (none has a pod record to place it by yet)
+            if(v.Lobby){v.Shown=true;v.Raise=0;return position;}
             // A generated run's hub: the drawn pilot rides its pod's full offset and lean (NativePodPresentation.cs PodFeet).
             if(v.Pod){position=PodFeet(a,v,position);return position;}
             v.Shown=true;v.Raise=raise;position.y+=raise;return position;

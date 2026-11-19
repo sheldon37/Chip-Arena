@@ -484,6 +484,22 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<12;k++){float a=k*Pi/6;s.Box(Lamp(0xffffff,.8f),V(.43f*(float)Math.Cos(a),.0865f,.43f*(float)Math.Sin(a)),V(.06f,.002f,.02f),0,-a,0);}
             return mesh;
         }
+        /// <summary>An occupied pad once Deploy opens it (the stage swaps PartyPad for it): the same rim round the eject's opening
+        /// (HatchRadius) and a throat down through the floor into its drop tube (NativeDeployEjectModels.TubeOf), lights as PartyPad.</summary>
+        public static WeaponMesh PadRing()
+        {
+            var mesh=new WeaponMesh{Spec="deploy-pad-ring",Tier=0};var s=new WeaponSculpt(mesh,0);s.Into(Body);
+            void Wall(in WeaponPaint p,float r,float y0,float y1,int n,bool inward)
+            {var q=p;s.Push(WeaponSculpt.Rx(Up));s.Loft(new[]{WeaponSculpt.Circle(n,r,r,y0),WeaponSculpt.Circle(n,r,r,y1)},(i,k)=>q,0,false,false,null,false,inward);s.Pop();}
+            Wall(GraphiteDark,.58f,0,.05f,48,false);FlatRing(s,GraphiteDark,.5f,.58f,.05f,48);Wall(Graphite,.5f,.05f,.085f,48,false);FlatRing(s,Graphite,HatchRadius,.5f,.085f,48);
+            FlatRing(s,BrassDark,.385f,.405f,.0855f,40);Wall(SteelDark,HatchRadius,-.06f,.085f,40,true);
+            for(int k=0;k<3;k++){float a=k*2*Pi/3+Pi/6;s.Box(SteelDark,V(.54f*(float)Math.Cos(a),.06f,.54f*(float)Math.Sin(a)),V(.08f,.04f,.08f),.01f,0,-a,0);}
+            s.Into(Lights);FlatRing(s,Lamp(0xffffff),.515f,.545f,.054f,48);
+            for(int k=0;k<12;k++){float a=k*Pi/6;s.Box(Lamp(0xffffff,.8f),V(.43f*(float)Math.Cos(a),.0865f,.43f*(float)Math.Sin(a)),V(.06f,.002f,.02f),0,-a,0);}
+            return mesh;
+        }
+        /// <summary>The square opening the floor leaves under every pad (half its side; covered by the pad's .58 m disc).</summary>
+        public const float FloorHole=.4f;
 
         // ---- the DEPLOY GATE: a portal frame on the back wall, two blast-door leaves, a lift platform in the bay behind ---------
         public static WeaponMesh GateFrame()=>Faced(Gate,(s,mesh)=>
@@ -580,14 +596,13 @@ namespace ChipArena.UnityConversion
             s.Into(Lights);s.Box(Lamp(0xffffff),V(.015f,.1072f,0),V(.008f,.002f,2*r-.06f));
             return mesh;
         }
-        /// <summary>The well under the hatch (pad local): a black disc just over the pad's top and inlay (what a pilot drops into: the
-        /// floor hides it below) with a lit rim and fainter rings inside it (bone 1, the stage's drop light), read as a lit shaft.</summary>
+        /// <summary>The well's rim over the open hatch (pad local): a lit ring just inside the opening (bone 1, the stage's drop light).
+        /// Through it each pilot drops into its lit drop tube (NativeDeployEjectModels.TubeOf), which the floor's hole shows.</summary>
         public static WeaponMesh Well()
         {
             var mesh=new WeaponMesh{Spec="deploy-well",Tier=0};var s=new WeaponSculpt(mesh,0);s.Into(Body);
-            Column(s,Black,HatchRadius,0,0,.0855f,.0915f,40);
+            FlatRing(s,GraphiteDark,HatchRadius-.002f,HatchRadius+.012f,.0912f,40);
             s.Into(Lights);FlatRing(s,Lamp(0xffffff),HatchRadius-.025f,HatchRadius,.0916f,40);
-            foreach(var (r,l) in new[]{(.29f,.45f),(.21f,.25f),(.13f,.12f)})FlatRing(s,Lamp(0xffffff,l),r-.012f,r,.0916f,32);
             return mesh;
         }
         /// <summary>The lift platform (gate local, at LiftAt when down): a ribbed deck with rails, guard posts and edge lights.</summary>
@@ -634,12 +649,13 @@ namespace ChipArena.UnityConversion
         {
             var mesh=new WeaponMesh{Spec="deploy-room",Tier=0};var s=new WeaponSculpt(mesh,0);s.Into(Body);
             const float x0=-11,x1=11,z0=-12,z1=9.6f,ceil=7.4f;
-            // the floor: a dark bed and 2 m plates on it (seams between), checkered in two tones, tread plates on the walkway
-            s.Box(Seam,V(0,-.04f,(z0+z1)/2),V(x1-x0+1,.04f,z1-z0+1));
+            // the floor: a dark bed and 2 m plates on it (seams between), checkered in two tones, tread plates on the walkway; both
+            // leave a square hole under every pad (FloorHole: the pad's disc covers it) for the eject's drop tubes
+            NativeDeployEjectModels.Holed(s,Seam,V(0,-.04f,(z0+z1)/2),V(x1-x0+1,.04f,z1-z0+1),0,FloorHole);
             for(float x=x0;x<x1-.01f;x+=2)for(float z=z0;z<z1-.01f;z+=2)
             {
                 float cx=x+1,cz=z+1;bool walk=Math.Abs(cx)<1.6f&&cz>3.4f;var paint=walk?SteelDark:(((int)(x/2)+(int)(z/2))&1)==0?Plate:PlateDark;
-                s.Box(paint,V(cx,-.012f,cz),V(1.96f,.024f,Math.Min(1.96f,z1-z-.04f)),.006f);
+                NativeDeployEjectModels.Holed(s,paint,V(cx,-.012f,cz),V(1.96f,.024f,Math.Min(1.96f,z1-z-.04f)),.006f,FloorHole);
                 if(walk)for(int k=0;k<6;k++)s.Box(Steel,V(cx-.7f+k*.28f,.002f,cz),V(.05f,.006f,1.7f),.002f);
                 else{s.Box(SteelDark,V(cx-.86f,.001f,cz-.86f),V(.05f,.004f,.05f));s.Box(SteelDark,V(cx+.86f,.001f,cz+.86f),V(.05f,.004f,.05f));}
             }

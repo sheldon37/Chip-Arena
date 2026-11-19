@@ -25,15 +25,16 @@ namespace ChipArena.UnityConversion
             var state=DeploymentState;float now=Time.unscaledTime;liveDeployClock.Observe(state,now);
             var seats=server!=null?lobbySeats.Where(s=>!s.bot&&s.connected).ToArray():
                 new[]{LobbySeat(SanitizedSeat(1,Profile(),account?.Token),true)}.Concat(peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).Select(p=>LobbySeat(p.Seat,p.Ready))).ToArray();
-            liveDeployParty.Count=Math.Min(seats.Length,liveDeployPilots.Length);
+            liveDeployParty.Count=Math.Min(seats.Length,liveDeployPilots.Length);int mine=0;
             for(int i=0;i<liveDeployParty.Count;i++)
             {
-                var s=seats[i];liveDeployParty.Names[i]=s.name;liveDeployParty.Ready[i]=s.ready;
-                liveDeployPilots[i]=new DeployPilot{Look=new RooftopPilot{Spec=s.spec,BodySkin=NativeBodySkins.Of(s.weaponSkins),Hat=s.hat,Body=s.bodyColor,Accent=s.accentColor,HatColor=s.hatColor,Skins=s.weaponSkins},Pose=s.lobbyPose,Outfit=s.look};
+                var s=seats[i];liveDeployParty.Names[i]=s.name;liveDeployParty.Ready[i]=s.ready;if(server!=null&&s.id==networkId)mine=i;
+                liveDeployPilots[i]=new DeployPilot{Look=new RooftopPilot{Spec=s.spec,BodySkin=NativeBodySkins.Of(s.weaponSkins),Hat=s.hat,Body=s.bodyColor,Accent=s.accentColor,HatColor=s.hatColor,Skins=s.weaponSkins},Pose=s.lobbyPose,Outfit=s.look,Pod=s.pod};
             }
             viewModelCamera.enabled=false;
+            // (Mine: the eject's shots follow my own pad: the host's is 0, a guest's its seat's place on the arc)
             var input=new DeployInput{State=state,SinceInstanceRoll=liveDeployClock.SinceInstanceRoll(now),SinceMutatorRoll=liveDeployClock.SinceMutatorRoll(now),SinceDeploy=liveDeployClock.SinceDeploy(now),Time=now,
-                Host=server==null&&!PromotionBusy,PartyReady=server==null&&GuestsReady,Reduced=prefs.reducedEffects,Seats=liveDeployParty.Count,Ready=liveDeployParty.Ready,Instances=LiveDeployInstances,Mutators=LiveDeployMutators};
+                Host=server==null&&!PromotionBusy,PartyReady=server==null&&GuestsReady,Reduced=prefs.reducedEffects,NoShake=!prefs.cameraShake,Seats=liveDeployParty.Count,Mine=mine,Ready=liveDeployParty.Ready,Instances=LiveDeployInstances,Mutators=LiveDeployMutators};
             presentation.RenderDeployStation(cameraView,input,liveDeployPilots,Time.unscaledDeltaTime,prefs.reducedEffects,nativeAudio);
             return true;
         }
@@ -48,7 +49,7 @@ namespace ChipArena.UnityConversion
         {
             if(!LiveDeployment)return false;
             var state=DeploymentState;
-            var action=NativeDeployConsole.Draw(presentation?.DeployStage,state,liveDeployParty,server==null&&!PromotionBusy,width,height,Time.unscaledTime);
+            var action=NativeDeployConsole.Draw(presentation?.DeployStage,state,liveDeployParty,server==null&&!PromotionBusy,width,height,Time.unscaledTime,LiveCradle());
             if(action==DeployIntent.RollDestinations)RollDeploymentInstances(state.revision);
             else if(action==DeployIntent.RollMutators)RollDeploymentMutators(state.revision);
             else if(action==DeployIntent.SkipMutators)SkipDeploymentMutators(state.revision);

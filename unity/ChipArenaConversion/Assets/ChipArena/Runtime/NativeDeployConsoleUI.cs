@@ -21,18 +21,33 @@ namespace ChipArena.UnityConversion
         private static Color Hex(int rgb,float a=1)=>U.Hex(rgb,a);
         private static readonly string[] ReelLabels={"EAST REEL","WEST REEL","SOUTH REEL"};
 
-        /// <summary>One console frame over a W x H canvas; returns the intent pressed (None for guests and while nothing is).</summary>
-        public static DeployIntent Draw(NativeDeployStage stage,ExpeditionDeploymentState s,Party party,bool host,float W,float Hh,float now)
+        /// <summary>One console frame over a W x H canvas; returns the intent pressed (None for guests and while nothing is). The
+        /// panels step aside for the eject's shots (DeployPose.Hud); its white rush, then the fade into `cradle` (the pod's cabin
+        /// card, Runtime/NativeCradleHud.cs; without one the plain travel screen).</summary>
+        public static DeployIntent Draw(NativeDeployStage stage,ExpeditionDeploymentState s,Party party,bool host,float W,float Hh,float now,NativeCradleCard cradle=null)
         {
             if(stage==null)return DeployIntent.None;var intent=DeployIntent.None;
-            float fade=stage.Deploy.Fade;float ui=1-fade;
+            float fade=stage.Deploy.Fade;float ui=Mathf.Min(1-fade,stage.Deploy.Hud);
             if(ui>0)
             {
                 Header(W,s,ui);Destinations(stage,s,ui);Mutators(stage,s,W,ui);
                 intent=Console(stage,s,party,host,W,Hh,now,ui);
             }
-            if(fade>0)NativeScreenTransitionHud.Faded(W,Hh,fade,Mathf.Clamp01(fade*1.6f-.4f),"EXPEDITION · DEPLOYING",stage.Deploy.Travel?"PREPARING DESTINATION":"DEPLOYING");
+            float rush=stage.Deploy.Rush*(1-fade);if(rush>0)Rush(W,Hh,rush,stage.Reduced);
+            if(fade>0)
+            {
+                string step=stage.Deploy.Travel?"PREPARING DESTINATION":"DEPLOYING";
+                if(cradle!=null)NativeCradleHud.Draw(cradle,s,null,step,W,Hh,fade,0,now,stage.Reduced);
+                else NativeScreenTransitionHud.Faded(W,Hh,fade,Mathf.Clamp01(fade*1.6f-.4f),"EXPEDITION · DEPLOYING",step);
+            }
             return intent;
+        }
+        private static readonly float[] RushAt={0f,.55f,1f},RushAlpha={1f,.7f,0f};
+        // The eject's white rush (the pod plunging into the cloud deck): a white wash brightest at the middle (softer with reduced effects).
+        private static void Rush(float W,float Hh,float k,bool reduced)
+        {
+            float a=reduced?k*.6f:k;U.Fill(new Rect(0,0,W,Hh),new Color(.92f,.95f,1f,.82f*a));
+            U.RadialStops(new Rect(-W*.1f,-Hh*.2f,W*1.2f,Hh*1.4f),new Color(1,1,1,a),RushAt,RushAlpha);
         }
         private static void Header(float W,ExpeditionDeploymentState s,float a)
         {

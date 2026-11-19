@@ -171,7 +171,8 @@ namespace ChipArena.UnityConversion
                 Check(Of(st,NativeDeployStage.Model.Well).Count()==(dep.Hatch>0?4:0),"the lit wells show as the hatches open");
                 for(int i=0;i<4;i++){float drop=NativeDeployPresentation.PadDrop(i,t);Check(Math.Abs(st.PilotFeet[i].Y-(NativeDeployModels.PadTop-drop))<1e-4f&&(drop>0)==(t>NativeDeployPresentation.DropAt+NativeDeployPresentation.DropStagger*i),"pilot "+i+" drops through its pad in turn");
                     Check(drop==0||dep.Hatch>.99f,"nobody drops through a shut hatch");}
-                Check(st.Shot==NativeDeployPresentation.Shot.Deploy&&!st.Controls.Roll&&st.MapRevision==mapBefore,"deploying frames the pads, locks the console and freezes the map");
+                // (re-pinned 2026-11-18, W3: the room's Deploy shot holds until my pilot's tube shot, then the eject's own shots on my pad)
+                Check(st.Shot==NativeDeployEject.ShotOf(0,t,NativeDeployEject.Played)&&!st.Controls.Roll&&st.MapRevision==mapBefore,"deploying frames the pads then my eject's shots, locks the console and freezes the map");
                 var ph=st.MutatorLook.Phase;var stamp=Of(st,NativeDeployStage.Model.Quad).Where(q=>q.Texture==NativeDeployStage.TexStamp).ToArray();Check(ph==NativeDeployPresentation.Phase.Active&&stamp.Length==3&&stamp.All(q=>q.Scroll==.5f),"ACTIVE after Deploy");
             }
             Check(st.Deploy.Travel&&st.PilotShown.Take(4).All(x=>x<.01f),"the party has dropped out before travel");
