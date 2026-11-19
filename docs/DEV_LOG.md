@@ -123,6 +123,113 @@ Branch `claude/chip-install-anim`, base shared `claude/sleepy-ritchie-g8ruhv` at
   - `tools/sound_queue.py` does not list `docs/audio/sound-requests-install.json`. Generating the 7 sounds is a paid step.
   - `ExpeditionEndingChecks` still needs `Path.GetFullPath` on Windows.
 
+## 2026-11-18/19 — Claude: voxel retirement V0, no new voxel: the ratchet, the kept voxel style's checks, the DEV voxel draw counter, no voxel weapons on the pads (owner report; presentation only)
+
+- **The owner (2026-11-18):** "I want to essentially remove voxel entirely BUT keep its data incase I use it for a map or game mode ... All the new
+  things ive been making, I want to remove the voxel dependency". Package V0 of `docs/VOXEL-RETIREMENT.md` (Stage 0, ships with release 1).
+  Branch `claude/voxel-v0-guard` from shared `ac69455e`, merged forward with shared `9056fc04`: `beff4461` the guards, `2f4b89a2` P9,
+  `e55eb5df` the baselines' harness, `8ee749b6` and `14c8c347` two test fixes, then the docs and this entry. Pushed, **not
+  merged, not released**. The rule and the guards: `docs/VOXEL-STYLE.md`.
+- **2026-11-19, the review (two lenses: the look and the owner's intent; safety and regressions) and the captures.** Commits `9c926e66`,
+  `460ad933`, `e4d4f6e7`, `b72f8302` and the docs on top of `fabf8f54`. Code: tests, a Runtime comment, and the DEV classes' lobby stance
+  (Core `NativeLobbyPoses`, `b72f8302`). What it found and did:
+  - **The integrator's re-pin path (new):** `--voxel-ratchet-repin` prints, for a merged head, every file over its pin with the table line to
+    paste (a `# Voxel dependency:` note slot on it), the line it replaces or "add", the tokens behind each raised family, the DEV_LOG lines, and
+    the files a merge took under their pins. It writes nothing. Its self-test proves the printed lines parse and turn a made-up tree green.
+    Shown on a local, unpushed trial merge with `origin/claude/chip-install-anim` (`359a0f6a`): it prints exactly the three lines (NativeDraftInstall
+    author 0 -> 6, NativeDraftStage 6 -> 8, NativeDraftInstallPresentation draw 0 -> 2); with them pasted, `--voxel` passes and the command says
+    "nothing to paste". The whole release 1, merged locally in order, adds one more: `Runtime/NativeExpeditionLoadPreview.cs` gate 0 -> 1 (A0's load
+    harness sets `view.ClassicBodies=false`, a token that forces the model, not a voxel read). `docs/VOXEL-STYLE.md` "Re-pinning a merged head".
+  - **Stale pin:** W3's eject is at 17 rig-authoring uses on `8ca81329` (13 at `048adc30`); the in-flight pin follows it.
+  - **Blind spot:** the ratchet counted only the top of Core and Runtime; it now counts subfolders too (none today).
+  - **"Off costs nothing" was only pinned at four lines:** VoxelDrawChecks now holds every `NativeVoxelDraws.Add` and `VoxelCount` call in Core
+    and Runtime behind a test of `On` on its own line, and requires exactly the four known sites.
+  - **DEV gating:** the DEV panel's toggle needs a verified developer in a match. `--ca-voxel-counter` needs a Development build, and the test
+    channel's player is one, so any player can show it, as with the other `--ca-` preview switches; it only shows counts. Left as is; the doc says so.
+  - **The DEV Greatsword's lobby stance (found by the captures, fixed in `b72f8302`):** with P9 the Locker's DEV Greatsword holds the model
+    greatsword, but in the default stance's grip, its blade pointing at the camera (it held the voxel one sideways before). A DEV class has no
+    lobby stance of its own, so `NativeLobbyPoses.Sample` now stands it as its base class; LobbyPoseChecks holds every DEV class to its base in
+    every lobby pose (the check fails without the change). Captured in a second, 3-minute hold.
+  - **Still voxel on a menu, not V0's:** in the Locker's Preview Intro, the DEV Greatsword's own entrance drew the voxel pilot and the voxel
+    greatsword on the bake, before and after alike. The cause is not traced (the entrance should play on the model, NativeDevIntros). For the
+    integrator and the plan's entrances package (V5): a capture of a released head would say whether it is new.
+  - **No rule, wire or save change; nothing voxel deleted:** no file deleted or renamed; the code touches presentation files, one DEV action of
+    the Presentation kind and `PERF_SAMPLE`/`PERF_HITCH`'s JSON (Player.log and the clipboard's connection report only). None of the seven
+    in-flight branches touches the 23 kept data files, so the digests hold through release 1.
+  - **Other packages' files:** V0 merges with each of `claude/chip-install-anim`, A0, W4, W3, W2, W0 and `claude/voxel-costume` with only
+    DEV_LOG/PROJECT_STATE conflicts. Their code conflicts (A0 and W4: `NativeExpeditionLoadFixture.cs`, `Tests/Program.cs`; the costume:
+    `TransitionLoadingChecks.cs`) are with shared, not with V0. Merged last on the release-1 stack, V0 conflicts only in the docs.
+  - **Left, with reasons:** the pads cache their held model's detail tier when a look changes, so a graphics change while at the station keeps the
+    old tier until the next look change (cosmetic; before P9 the cache held the Prototype id). The P9 checks are source pins, as the project's
+    are: they hold the lines, and the captures show the look. `NativePackWeaponPresentation.cs`'s header said the menus keep the game's model: fixed.
+  - **Captures (2026-11-19):** one hold, 11:17 to 11:29 (12 minutes; captures ran at the compiled tool's version, so none paid a recompile),
+    after the relaunched Editor sat at its "Recovering Scene Backups" dialog from 09:49 to 11:00 (a first try at 10:07 took the lock while it
+    could not compile and was stopped at 10:10: lock released, tool put back, checkout untouched). Then a 3-minute hold for the stance fix.
+    The Editor went back to `9319026b` each time, the 14 stage banks and the motion bank unchanged. With the counter on:
+    - **the Deployment Station's pads:** 2 voxel weapons before P9 (`beff4461`), **0 after** (`9c926e66`), no voxel pilot body: the shield and
+      the lightning and darkness staffs are the pack's models now (the other pads stand arms crossed in their pad poses);
+    - **the rooftop:** 4 voxel weapons before, 0 after; the seated DEV Greatsword's weapon on the lip is the Standard model, not the voxel one;
+    - **the Locker's portraits:** the daggers, shield, bow and staffs were already the pack's before P9; only the DEV Greatsword changes (above);
+    - **the voxel style still draws:** the same pads with voxel bodies; 8 pilots with voxel bodies read 98 voxel body parts, by choice;
+    - **the live run with model zombies:** 357 voxel enemy parts, the far crowd (V7).
+    - The expedition-city pair (DEV shamblers close) did not isolate anything (no shambler spawned and a bot ended the round): left out.
+    - Sheets: `F:/Chip Arena Development/scratch/voxel-v0/look/`; clips (8.4 s, real time, pads cropped for a phone):
+      `look/clips/pads-a_shield_before-after.mp4`, `look/clips/pads-b_staffs_before-after.mp4`. Captures: `cap/`; scripts `runAB.sh`, `runC.sh`,
+      `make_look2.sh`, `py/toolpatch*.py` (the tool's options, patched in place under the lock and put back after).
+  - **The Editor baseline:** in `docs/VOXEL-STYLE.md` "Measured". Every row is over its target in the Editor: 8 pilots in PvP on the model p95
+    19.8, 21.1 and 15.4 ms at High, Balanced and Low (voxel bodies 14.4, 13.9 and 12.1); the live run at High 18.1 ms with model zombies.
+    For the owner, per OVH:937, before any overhaul code merges.
+- **The voxel ratchet** (`Tests/VoxelRatchetChecks.cs`, `Tests/voxel-ratchet.txt`): per Core and Runtime file outside the voxel style, the plan's
+  five token families (voxel gates, voxel measures, rig reads, rig authoring, voxel-frame draws), pinned at shared `ac69455e`. The counts match the
+  plan's exactly (`ClassicBodies` 25, `VisualBodiesOn` 18, `CapturedRig.Boxes` 23, `rig.Bones[` 163 in 59 files, `new CapturedRig.Pose(` 44 in 29,
+  `.Rotation[CapturedRig.` 220, `WeaponShape.Cube` 228 in 25, ...). A count above its pin fails, a new file starts at zero, and the message names
+  the file, the family, the count, the model-native route and the line to paste if the dependency is kept on purpose. The voxel style's own files
+  (29: CapturedRig, CapturedAnimation, the voxel sculpts and skins, the horde kits and gore surface, the bisect and carve, NativePortraits, the
+  box scenery, the unused M1 kit, the generated rig tables) are counted, never failed. A made-up tree tests the rule itself.
+  - **In flight:** W3's eject (`Core/NativeDeployEject.cs`, 17 rig-authoring uses at `8ca81329`) is pinned and named (plan M12; V4 owns it).
+  - **Not pre-pinned, so its merge will fail the ratchet on purpose:** `claude/chip-install-anim` (`359a0f6a`) adds `Core/NativeDraftInstall.cs`
+    (6 rig-authoring uses), 2 more in `Core/NativeDraftStage.cs` (6 to 8) and 2 voxel-frame draws in `Runtime/NativeDraftInstallPresentation.cs`:
+    the draft's stage pose (plan M9), which V4 moves onto the model in Stage 2. The integrator runs `--voxel-ratchet-repin` on the merged head and
+    pastes its lines with their notes (above).
+- **The kept voxel style** (`Tests/VoxelStyleChecks.cs`, the plan's first half): the 23 kept data files and generated tables match pinned SHA-256
+  digests (CRLF read as LF); the 150 Electron models load as the bank loads them; 219 motion clips are whole and finite; 51 voxel sculpts build
+  within budget; the 34 rig clips pose.
+- **The DEV voxel draw counter** (Core `NativeVoxelDraws`, Runtime `NativeVoxelDrawCount`, `NativeVoxelOverlay`): the last whole frame's voxel
+  draws by kind (pilot bodies, voxel weapons, voxel hats, voxel enemies, kill cubes, box-sized gibs, wound cubes, revive cells, breach cubes, gore
+  cubes, status markers, primitive pieces and the Siren (allowed), voxel scene props, frame sculpts (information)). The bank counts each flushed
+  list by its part's model id; the breach, gore and status cubes count at their draws. Shown by the DEV panel's Camera tab ("Voxel draws
+  (counter)"), `--ca-voxel-counter` (Editor and Development builds) and BoZo `vcount=1`; off by default. `PERF_SAMPLE`/`PERF_HITCH` now name the
+  body style (Player model, the voxel switches, the counter's unexpected draws), and `tools/perf_baseline.py` turns Player.log into table rows.
+- **P9, no voxel weapons on the pads** (`NativeDeployCast`, `NativeRooftopPresentation`, `NativeVisualWeaponPresentation`,
+  `NativeWeaponSkinPresentation`, `NativeVisualPortraitPresentation`): the pads and the rooftop queue their held models through the seat's skins
+  (no unpicked Prototype id); the pack bank's weapons (daggers, shield, bow, staffs) draw on the portraits', the rooftop's and the pads' model
+  bodies as in the arena (`PackHolder`; the entrances keep the game's model until V5); a DEV class holds and is armed as its base class.
+- **Docs:** `docs/VOXEL-STYLE.md` (new: the rule, the style, the guards, how the owner runs the player and low-end baselines); two dated lines in
+  `AGENTS.md`; pointers in `docs/DEVELOPMENT.md`; `docs/DESIGN_INTENT.md` "Identity"; the stale header of `NativeVisualBodyPresentation.cs`.
+  The overhaul amendments (plan 4.2) were already appended with the plan.
+- **Re-pinned on purpose:** DeployModelChecks:250 (the cast's held ids), VisualRigChecks:1755 (the rooftop crowd's off hand), PackWeaponChecks:171
+  (the pack's weapons beyond the arena), WeaponSkinChecks:244 and 257 (the DEV alias; the rooftop and the pads through the skins), RooftopChecks
+  (new pins), the ratchet's rooftop draw pin 3 to 0, and `NativeHordeKindPresentation` 19 to 18 after shared's zombie follow-ups. VisualRigChecks:1809 (the preference line) follows shared's `musicReaction` default: it has
+  been red on shared since `b13940ce` (for Astra: shared's full CoreTests failed there).
+- **Checks:** the full CoreTests the relgen5 way (an LF worktree, the expedition path patch, the 14 stage banks) at `b72f8302` (2026-11-19, the
+  last code commit): 1044 groups PASS, **exit 0**; at `460ad933` and at `8ac1532c` likewise. `python tools/check_unity_compile.py` at `b72f8302`:
+  PASS, all four assemblies, exit 0. `git diff --check` against shared: clean. `--voxel` and `--voxel-ratchet-repin`: as above. The later
+  commit changes docs only.
+- **Not run:** the Development Mono player and the low-end runs (see "Baselines"; they use the owner's settings, session and machine); the
+  4-pilot, 88-zombie hub; a Windows host/guest run; the DEV panel's toggle clicked by hand (the captures turn the counter on as the switch does).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking: the change is which model a menu body holds, the
+  DEV classes' lobby stance (menus, the rooftop and the pads only), a DEV counter that is off by default, and checks. The arena's pilots draw
+  exactly as before (their seats never carry a DEV spec).
+- **Voxel dependency:** none added. The off-hand dagger frame reuses the cast's held matrix (no new rig read); the counter's classifier names voxel
+  ids by design (it is the voxel style's tooling, in no ratchet family); the hitch report reads the voxel switches only to label its samples.
+- **Risks:** the room lobby's and the results' pilot cards (model portraits) were not captured; the Locker's were, and showed the pack weapons
+  before P9 already. The Editor's frame times are over every target (above); the shipped player's decide. The release-1 merge must paste the
+  four re-pin lines (`--voxel-ratchet-repin`), or the full suite fails at the ratchet.
+- **Next:** the integrator reviews the sheets and clips, merges V0 last in release 1 (running `--voxel-ratchet-repin` on the merged head) and
+  releases. Then V1 and V2. For the owner: the Editor numbers are over the targets; the player and low-end baselines (`docs/VOXEL-STYLE.md`).
+  For the plan: the DEV Greatsword's Locker Preview Intro drew voxel (V5, cause not traced), and the far zombie crowd draws 357 voxel parts in
+  a live run (V7).
+
 ## 2026-11-18 — Astra: Meridian size B walk candidates
 
 Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientation layouts in the Developer walk. All 20 primary streets and 20 roof circuits passed sampled support and clearance. See [the five layouts, route distances and timing table](MERIDIAN-B-WALK.md). The same-machine A0 and five-candidate Unity benchmark is available from the Editor. Native results, contract freeze, party ticket integration and art handoff remain pending.

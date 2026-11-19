@@ -196,6 +196,7 @@ namespace ChipArena.UnityConversion
                     NativeBreach.PieceAt(b.Hole,k,phase,into,sinceBreak,out var at,out var spin,out float holo,out float solid);if(holo>0&&solid<.02f)continue;
                     var m=frame*Matrix4x4.Translate(new Vector3(at.X,at.Y,at.Z))*Matrix4x4.Rotate(Quaternion.Euler(spin.X*Mathf.Rad2Deg,spin.Y*Mathf.Rad2Deg,spin.Z*Mathf.Rad2Deg))*Matrix4x4.Scale(new Vector3(b.Hole.Size[k].X,b.Hole.Size[k].Y,b.Hole.Size[k].Z));
                     Graphics.DrawMesh(hordeBreachCube,m,b.Material,b.Layer);
+                    if(NativeVoxelDraws.On)NativeVoxelDraws.Add(NativeVoxelDraws.Kind.BreachCube,1,Time.frameCount);
                 }
             }
         }

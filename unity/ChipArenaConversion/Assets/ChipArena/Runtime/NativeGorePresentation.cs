@@ -131,6 +131,7 @@ namespace ChipArena.UnityConversion
         private void DrawGore(Matrix4x4[] buffer,int count,int material)
         {
             if(count==0)return;
+            if(NativeVoxelDraws.On)NativeVoxelDraws.Add(NativeVoxelDraws.Kind.GoreCube,count,Time.frameCount);
             if(UsesInstancing)
             {
                 try{Graphics.DrawMeshInstanced(cube,0,goreMaterials[material],buffer,count,null,ShadowCastingMode.Off,false,0,null);return;}

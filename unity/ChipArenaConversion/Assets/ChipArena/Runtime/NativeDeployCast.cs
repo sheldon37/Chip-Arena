@@ -44,7 +44,8 @@ namespace ChipArena.UnityConversion
                     Held[i]=b=>s.Weapon.Visible&&b==s.Weapon.Bone?bones[b]*RooftopCast.Offset(s.Weapon):s.Offhand.Visible&&b==s.Offhand.Bone?bones[b]*RooftopCast.Offset(s.Offhand):bones[b];
                     HeldShown[i]=b=>s.Weapon.Visible&&b==s.Weapon.Bone||s.Offhand.Visible&&b==s.Offhand.Bone;
                     ModelHeld[i]=b=>{var m=Rigs[k].Bones[b].localToWorldMatrix;return s.Weapon.Visible&&b==s.Weapon.Bone?m*RooftopCast.Offset(s.Weapon):s.Offhand.Visible&&b==s.Offhand.Bone?m*RooftopCast.Offset(s.Offhand):m;};
-                    ModelHeldShown[i]=b=>s.Weapon.Visible&&b==s.Weapon.Bone&&!OwnWeapon[k]||s.Offhand.Visible&&b==s.Offhand.Bone;
+                    // the game's model only where the model's own weapon did not draw (it holds both hands' blades: voxel retirement P9)
+                    ModelHeldShown[i]=b=>!OwnWeapon[k]&&(s.Weapon.Visible&&b==s.Weapon.Bone||s.Offhand.Visible&&b==s.Offhand.Bone);
                 }
             }
         }
@@ -77,9 +78,10 @@ namespace ChipArena.UnityConversion
             {
                 if(i>=stage.Pilots||party==null||i>=party.Length||stage.PilotShown[i]<.5f)continue;
                 var p=party[i];var look=cast.Looks[i];string spec=string.IsNullOrEmpty(p.Look.Spec)?"pistol":p.Look.Spec,hat=string.IsNullOrEmpty(p.Look.Hat)?"none":p.Look.Hat;
-                if(look.Spec!=spec||look.Hat!=hat||look.Body!=p.Look.Body||look.Accent!=p.Look.Accent||cast.BodySkin[i]!=p.Look.BodySkin||cast.HatColor[i]!=p.Look.HatColor||cast.Key[i]!=p.Pose||cast.Weapon[i]==null)
+                if(look.Spec!=spec||look.Hat!=hat||look.Body!=p.Look.Body||look.Accent!=p.Look.Accent||cast.BodySkin[i]!=p.Look.BodySkin||cast.HatColor[i]!=p.Look.HatColor||cast.Key[i]!=p.Pose||cast.Skins[i]!=p.Look.Skins||cast.Weapon[i]==null)
                 {
-                    look.Spec=spec;look.Hat=hat;look.Body=p.Look.Body;look.Accent=p.Look.Accent;cast.BodySkin[i]=p.Look.BodySkin;cast.HatColor[i]=p.Look.HatColor;cast.Key[i]=p.Pose;cast.Weapon[i]="weapon-"+spec;
+                    // the held model through the seat's weapon skins, a DEV class's its base's (voxel retirement P9: no Prototype id unpicked)
+                    look.Spec=spec;look.Hat=hat;look.Body=p.Look.Body;look.Accent=p.Look.Accent;cast.BodySkin[i]=p.Look.BodySkin;cast.HatColor[i]=p.Look.HatColor;cast.Key[i]=p.Pose;cast.Weapon[i]=MenuHeldModel(spec,p.Look.Skins,NativeWeaponSkins.Tier(LowGraphics,1,0,false));
                     cast.Body[i]=BodyTint(p.Look.Body);cast.Accent[i]=BodyAccent(p.Look.BodySkin,p.Look.Accent,hat,p.Look.HatColor);
                     // the lobby pose: the chair and sleep need a set of their own, so they stand; idles the lobby samples elsewhere fold their arms
                     int pose=NativeLobbyPoses.Index(p.Pose);if(pose==NativeLobbyPoses.Chair||pose==NativeLobbyPoses.Sleep||pose==NativeLobbyPoses.SheldonIdle)pose=NativeLobbyPoses.Weapon;
@@ -168,7 +170,8 @@ namespace ChipArena.UnityConversion
             VisualGear(body,a,time,null,null,1,false);
             if(s.Weapon.Visible||s.Offhand.Visible)
             {
-                cast.OwnWeapon[i]=s.Weapon.Visible&&VisualWeaponDrawn(rig,rig.Bones[s.Weapon.Bone].localToWorldMatrix*RooftopCast.Offset(s.Weapon));
+                // the model's own weapon (the bake's, else the pack's: the daggers' second blade on the off hand), else the game's
+                cast.OwnWeapon[i]=s.Weapon.Visible&&VisualWeaponDrawn(rig,rig.Bones[s.Weapon.Bone].localToWorldMatrix*RooftopCast.Offset(s.Weapon),s.Offhand.Visible&&HeldSpec(a)=="daggers"?cast.ModelHeld[i](s.Offhand.Bone):(Matrix4x4?)null);
                 sourceModels.Queue(cast.Weapon[i],rig.Root.transform.localToWorldMatrix,cast.ModelHeld[i],cast.ModelHeldShown[i],0,camera,accent:cast.Accent[i],glow:HeldGlow);
             }
             return true;
