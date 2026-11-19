@@ -249,8 +249,10 @@ namespace ChipArena.UnityConversion
                     // In Classic, the voxel body skin (the Skins tab's choices, equipped body and setter) and its colour.
                     if(LkOnModel)
                     {
-                        LkHeading(lockerSlots[k++],"MASKS","Hover one to try it on");LkMasks(lockerSlots[k++]);
-                        LkHeading(lockerSlots[k++],"SKIN TONE",LkToneHint());LkSkinTone(lockerSlots[k++]);
+                        // (Under the voxel costume the masks and the skin tone do not show: dimmed, and saying so.)
+                        var shown=GUI.color;var dim=lockerCostume?new Color(shown.r,shown.g,shown.b,shown.a*LkHiddenAlpha):shown;
+                        LkHeading(lockerSlots[k++],"MASKS",lockerCostume?LkHiddenHint:"Hover one to try it on");GUI.color=dim;LkMasks(lockerSlots[k++]);GUI.color=shown;
+                        LkHeading(lockerSlots[k++],"SKIN TONE",lockerCostume?LkHiddenHint:LkToneHint());GUI.color=dim;LkSkinTone(lockerSlots[k++]);GUI.color=shown;
                     }
                     else
                     {
@@ -260,7 +262,7 @@ namespace ChipArena.UnityConversion
                     if(LkOnModel){LkHeading(lockerSlots[k++],"COSTUME","Wear the voxel pilot on your model");LkCostume(lockerSlots[k++]);if(lockerCostume){LkHeading(lockerSlots[k++],"BODY COLOUR","The voxel blocks' colour");LkSwatchDraw(lockerSlots[k++],true);}}
                     LkHeading(lockerSlots[k++],"ACCENT COLOUR","Trims, visor and glow");LkSwatchDraw(lockerSlots[k++],false);
                     // The model's outfit (Runtime/NativeLockerOutfitUI.cs), while the model draws.
-                    if(LkOnModel){LkHeading(lockerSlots[k++],"OUTFIT","Your pilot's clothes on the model");LkOutfit(lockerSlots[k++]);}
+                    if(LkOnModel){var shown=GUI.color;LkHeading(lockerSlots[k++],"OUTFIT",lockerCostume?LkHiddenHint:"Your pilot's clothes on the model");if(lockerCostume)GUI.color=new Color(shown.r,shown.g,shown.b,shown.a*LkHiddenAlpha);LkOutfit(lockerSlots[k++]);GUI.color=shown;}
                     LkHeading(lockerSlots[k++],"HEADWEAR",null);var grid=lockerSlots[k++];Color body=LkColor(prefs.bodyColor,0xe5e7eb),accent=LkColor(prefs.accentColor,0x70e1d0);
                     int hatTint=NativeHatLooks.Rgb(lockerHatColor??prefs.hatColor);
                     for(int i=0;i<lockerHats.Count;i++)

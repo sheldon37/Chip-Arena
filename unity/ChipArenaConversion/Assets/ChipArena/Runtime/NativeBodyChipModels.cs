@@ -26,6 +26,13 @@ namespace ChipArena.UnityConversion
                 foreach(var s in NativeToySoldier.Build().Sections){var mesh=WeaponMeshOf(s,NativeToySoldier.Model+" / joint "+s.Bone);if(mesh!=null)figure.Add(new Part{Name=NativeToySoldier.Model,Bone=s.Bone,Mesh=mesh,Material=toy});}
                 if(figure.Count>0)models[NativeToySoldier.Model]=figure.ToArray();
             }
+            // The lobby chair under the seated model portraits (Core/NativeLobbyChair.cs; voxel retirement V3, U5).
+            if(!models.ContainsKey(NativeLobbyChair.Model))
+            {
+                var chairMaterial=new Material(shader){name="Native lobby chair",enableInstancing=true};chairMaterial.SetInt("_Cull",2);chairMaterial.SetFloat("_Ink",0);materials.Add(chairMaterial);var chair=new List<Part>();
+                foreach(var s in NativeLobbyChair.Build().Sections){var mesh=WeaponMeshOf(s,NativeLobbyChair.Model);if(mesh!=null)chair.Add(new Part{Name=NativeLobbyChair.Model,Bone=-1,Mesh=mesh,Material=chairMaterial});}
+                if(chair.Count>0)models[NativeLobbyChair.Model]=chair.ToArray();
+            }
         }
     }
 }

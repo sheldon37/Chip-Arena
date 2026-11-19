@@ -39,12 +39,14 @@ namespace ChipArena.UnityConversion
             int total=users.Values.Sum();
             Check(total<=7&&users.Keys.All(k=>k=="NativeVisualBodyPresentation.cs"||k=="ConversionGame.cs"||k=="NativeDeployCast.cs"),"Classic read in "+total+" places ("+string.Join(", ",users.Select(kv=>kv.Key+" "+kv.Value))+"; 25 before)");
             // The joint-frame resolver.
-            Check(vbp.Contains("public Matrix4x4 JointFrame(Actor a,int j)")&&vbp.Contains("return rigs.TryGetValue(a.Id,out var rig)?VisualJointFrame(rig,j):Matrix4x4.identity;"),"JointFrame: the model's joint when drawn, the rig's otherwise (VisualJointFrame per actor)");
+            Check(vbp.Contains("public Matrix4x4 JointFrame(Actor a,int j)=>a==null?Matrix4x4.identity:JointFrame(a.Id,j);")&&vbp.Contains("return rigs.TryGetValue(id,out var rig)?VisualJointFrame(rig,j):Matrix4x4.identity;"),"JointFrame: the model's joint when drawn, the rig's otherwise (VisualJointFrame per actor)");
+            // Its first users: the status markers on the model (V3 Stage 1, P13).
+            Check(A("Runtime/NativeStatusPresentation.cs").Contains("Vector3 J(int j)=>JointFrame(id,j).GetColumn(3);")&&A("Runtime/NativeStatusPresentation.cs").Contains("var head=JointFrame(id,CapturedRig.Head);"),"the status markers read the model's joints through it");
             Check(vbp.Contains("if(rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.JointFrom!=null&&body.PosedFrame==Time.frameCount&&j>=0&&j<body.JointBone.Length&&body.JointBone[j]>=0)"),"drawn this frame: the model's");
             // The model needs no voxel pilot built: the costume's and the model's paths read the voxel bank only for its drawer
             // (gear, hats, weapons, effects), never for the voxel pilot's models (BodyModel, WoundedPilot) to exist.
             var wear=A("Runtime/NativeVoxelCostumePresentation.cs");
-            Check(!vbp.Contains("sourceModels.Has(NativeBodySkins")&&!Regex.IsMatch(vbp,@"BodyModel\(")&&wear.Contains("if(!costumeBank.CostumeParts(skin,tier,parts))return null;"),"the model draws with the voxel pilot set unbuilt (only the costume reads the voxel parts: the bank's kept arrays and load-time sculpts)");
+            Check(!vbp.Contains("sourceModels.Has(NativeBodySkins")&&!Regex.IsMatch(vbp,@"BodyModel\(")&&wear.Contains("if(!costumeBank.CostumeParts(skin,tier,parts)){CostumeFailed(key,\"the bank has no parts for it yet\");return null;}"),"the model draws with the voxel pilot set unbuilt (only the costume reads the voxel parts: the bank's kept arrays and load-time sculpts)");
             Console.WriteLine("PASS body style: the one predicate's table (outfit, costume, costume map, classic map, class bodies, Classic, no bake; zombies), the draw paths asking it, Classic read in "+total+" places (25 before), and the joint-frame resolver ("+count+" checks)");
         }
     }

@@ -98,12 +98,14 @@ namespace ChipArena.UnityConversion
         private readonly Matrix4x4[] bodyChipAnchors=new Matrix4x4[5];
         private void BodyChipModel(VisualBody body,CapturedAnimation.Player rig,int count,int layer,Camera camera)
         {
-            if(count==0)return;int done=0;
+            if(count==0)return;int done=0;var costume=CostumeOf(body.Root);
             for(int i=0;i<count;i++)
             {
                 var p=bodyChipParts[i];int k=(int)p.Anchor;
                 if((done&(1<<k))==0){bodyChipAnchors[k]=p.Anchor==NativeBodyChipGear.Anchor.Core?VisualCoreFrame(body,rig):p.Anchor==NativeBodyChipGear.Anchor.LeftArm||p.Anchor==NativeBodyChipGear.Anchor.RightArm?VisualShoulderFrame(body,rig,LimbOf(p.Anchor)):VisualLimbFrame(body,rig,LimbOf(p.Anchor));done|=1<<k;}
-                var matrix=bodyChipAnchors[k]*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(p.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(p.Rotation)),Vector3.one);
+                // (On the voxel costume, on its blocks: NativeVoxelCostume.ChipPlace.)
+                var at=p.Position;var turn=p.Rotation;float size=1;if(costume!=null)NativeVoxelCostume.ChipPlace(costume.Build,p,out at,out turn,out size);
+                var matrix=bodyChipAnchors[k]*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(at)),CapturedAnimation.Quat(CapturedRig.Mirror(turn)),Vector3.one*size);
                 sourceModels.Queue(p.Id,matrix,null,null,layer,camera,body:NativeArena.ColorOf(p.Color).linear);
             }
         }

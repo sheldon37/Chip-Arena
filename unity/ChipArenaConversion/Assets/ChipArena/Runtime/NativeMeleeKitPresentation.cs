@@ -52,10 +52,16 @@ namespace ChipArena.UnityConversion
                 d.Rig.ActorPose(d.Pose,feet,at);
                 var tint=NativeWeaponFxShapes.Fx(NativeMeleeKitFx.DecoyTint());var root=d.Rig.Root.transform.localToWorldMatrix;
                 // The model's live ghost where the caster wears the model (NativeVisualBodyPresentation.cs), else the voxel one.
-                if(!(VisualBodyPosed(rigs.TryGetValue(a.Id,out var own)?own:null)&&VisualLiveGhostDraw(1L<<40|(uint)a.Id,d.Rig,a.Id,d.Rig.Pose,Vector3.zero,"NativeWeaponGhost",tint,opacity,default,d.Pose)))
-                    sourceModels.Queue(pilot,root,b=>b>=0&&b<d.Rig.Bones.Length?d.Rig.Bones[b].localToWorldMatrix:root,null,0,null,tint,null,opacity);
+                long key=1L<<40|(uint)a.Id;bool model=VisualBodyPosed(rigs.TryGetValue(a.Id,out var own)?own:null)&&VisualLiveGhostDraw(key,d.Rig,a.Id,d.Rig.Pose,Vector3.zero,"NativeWeaponGhost",tint,opacity,default,d.Pose);
+                if(!model)sourceModels.Queue(pilot,root,b=>b>=0&&b<d.Rig.Bones.Length?d.Rig.Bones[b].localToWorldMatrix:root,null,0,null,tint,null,opacity);
+                // Its weapon: the model's own on the model's ghost (the pack's daggers in both hands, as the pilot holds them), else the game's.
                 string weapon=Ghost(SkinnedHeld(a));
-                if(weapon!=null){float reach=WeaponReach(d.Rig,d.Pose,at);sourceModels.Queue(weapon,root,b=>SourceWeaponBone(d.Rig,d.Pose,at,false,b,reach),null,0,null,tint,null,opacity);}
+                if(weapon!=null)
+                {
+                    float reach=WeaponReach(d.Rig,d.Pose,at);
+                    if(!(model&&VisualLiveGhostWeapon(key,d.Pose,SourceWeaponBone(d.Rig,d.Pose,at,false,CapturedRig.RHand,reach),d.Pose.SourceSpec=="daggers"?SourceWeaponBone(d.Rig,d.Pose,at,false,CapturedRig.LHand,reach):(Matrix4x4?)null)))
+                        sourceModels.Queue(weapon,root,b=>SourceWeaponBone(d.Rig,d.Pose,at,false,b,reach),null,0,null,tint,null,opacity);
+                }
             }
             staleDecoys.Clear();foreach(var pair in decoys){var a=System.Array.Find(s.Actors,x=>x!=null&&x.Id==pair.Key);if(a?.MeleeKit==null||NativeMeleeKitFx.DecoyOpacity(a.MeleeKit,time)<=0)staleDecoys.Add(pair.Key);}
             foreach(int id in staleDecoys){decoys[id].Rig.Dispose();decoys.Remove(id);}

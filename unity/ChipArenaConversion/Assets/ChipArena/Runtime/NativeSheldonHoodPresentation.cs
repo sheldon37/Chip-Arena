@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -32,7 +33,9 @@ namespace ChipArena.UnityConversion
         // voxel hood shows then).
         private static SkinnedMeshRenderer VisualHoodMake(GameObject root,Transform skeleton)
         {
-            if(hoodFailed||HotDogOn(root))return null; // (No hood on the Hot Dog: NativeHotDogPresentation.cs.)
+            if(hoodFailed)return null;
+            // (On the Hot Dog the hood made for it: the cloth hood's head on the sausage's crown. docs/VOXEL-RETIREMENT.md V3 Stage 1, P11.)
+            if(HotDogOn(root))return VisualHotDogHood(root,skeleton);
             if(CostumeOn(root))return null; // (Nor on the voxel costume: it wears the voxel hood the Sheldon Head was made for.)
             var bones=new Transform[NativeSheldonHood.Bones.Length];
             foreach(var t in skeleton.GetComponentsInChildren<Transform>(true)){int i=Array.IndexOf(NativeSheldonHood.Bones,t.name);if(i>=0&&bones[i]==null)bones[i]=t;}
@@ -48,6 +51,32 @@ namespace ChipArena.UnityConversion
             return r;
         }
 
+        // The Sheldon hood on the Hot Dog (docs/VOXEL-RETIREMENT.md V3 Stage 1, P11: it wore the voxel Sheldon Head, a voxel bit on a
+        // model pilot): the cloth hood's head (its triangles riding the head bone, the drape that hangs on a neck and shoulders the
+        // sausage has none of left out) rigid on the Hot Dog's hat anchor, which sets every hat made for the pilot's skull on the
+        // sausage's crown (NativeHotDog.HatFit: the Sheldon Head's fit, so the face's void and eyes over it, SheldonHoodFace, sit
+        // in its opening as on the pilot). The cloth and lining are the hood's; the sausage simulates no cloth. Null without the
+        // anchor (the voxel hood shows then).
+        private static Mesh hotDogHoodMesh;
+        private static SkinnedMeshRenderer VisualHotDogHood(GameObject root,Transform skeleton)
+        {
+            Transform head=null;foreach(var t in skeleton.GetComponentsInChildren<Transform>(true))if(t.name==NativeSheldonHood.Bones[NativeSheldonHood.HeadBone]){head=t;break;}
+            var anchor=head!=null?head.Find(HotDogTwin+"head/"+HotDogHat):null;if(anchor==null||!VisualHoodAssets(root))return null;
+            if(hotDogHoodMesh==null)
+            {
+                var built=NativeSheldonHood.Build();int n=built.Positions.Length;var keep=new bool[n];
+                for(int i=0;i<n;i++){float w=0;for(int k=0;k<4;k++)if(built.Bones[i*4+k]==NativeSheldonHood.HeadBone)w+=built.Weights[i*4+k];keep[i]=w>=.5f;}
+                int[] Kept(int[] tris){var o=new List<int>(tris.Length);for(int t=0;t+2<tris.Length;t+=3)if(keep[tris[t]]&&keep[tris[t+1]]&&keep[tris[t+2]]){o.Add(tris[t]);o.Add(tris[t+1]);o.Add(tris[t+2]);}return o.ToArray();}
+                var vertices=new Vector3[n];var normals=new Vector3[n];var colors=new Color[n];var uv=new Vector2[n];var weights=new BoneWeight[n];
+                for(int i=0;i<n;i++){var p=built.Positions[i];var q=built.Normals[i];var c=built.Colors[i];vertices[i]=new Vector3(p.X,p.Y,p.Z);normals[i]=new Vector3(q.X,q.Y,q.Z);colors[i]=new Color(c.X,c.Y,c.Z,c.W);uv[i]=new Vector2(built.Uv[i].X,built.Uv[i].Y);weights[i]=new BoneWeight{boneIndex0=0,weight0=1};}
+                var mesh=new Mesh{name=NativeSheldonHood.Renderer+" (Hot Dog)",indexFormat=n>65535?IndexFormat.UInt32:IndexFormat.UInt16};
+                mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=uv;mesh.boneWeights=weights;mesh.bindposes=new[]{Matrix4x4.identity};mesh.subMeshCount=2;
+                mesh.SetTriangles(Kept(built.Outer),0);mesh.SetTriangles(Kept(built.Inner),1);mesh.RecalculateBounds();hotDogHoodMesh=mesh;
+            }
+            var go=new GameObject(NativeSheldonHood.Renderer);go.transform.SetParent(anchor,false);
+            var r=go.AddComponent<SkinnedMeshRenderer>();r.sharedMesh=hotDogHoodMesh;r.bones=new[]{anchor};r.rootBone=anchor;r.sharedMaterials=new[]{hoodCloth,hoodLining};
+            r.localBounds=hotDogHoodMesh.bounds;r.updateWhenOffscreen=false;r.skinnedMotionVectors=false;return r;
+        }
         // The shared mesh, materials and maps (made once, from the body's own toon material).
         private static bool VisualHoodAssets(GameObject root)
         {
@@ -95,6 +124,12 @@ namespace ChipArena.UnityConversion
         // gallery): its void and the idle face and ring on `time`.
         private bool SheldonHoodStill(VisualBody body,string hat,string color,Matrix4x4 root,Func<int,Matrix4x4> bone,float time,int seed,bool reduced,int layer,Camera camera)
         {
+            // On the voxel costume the Sheldon Head is the voxel hood it was made for, on the head block (the head map: VisualHatBone).
+            if(hat==NativeSheldonHead.Hat&&CostumeOn(body?.Root)&&sourceModels!=null&&sourceModels.Has(NativeSourceModels.SheldonLive))
+            {
+                var shell=HatBody(hat,color)??Color.white;sourceModels.Queue(NativeSourceModels.SheldonLive,root,bone,SheldonHood,layer,camera,body:shell);
+                sourceModels.QueueSheldonPieces(bone(CapturedRig.Head),NativeSheldonHead.Evaluate(time,seed,-1,-1,reduced),shell,layer,camera,1,1,Color.white);return true;
+            }
             if(hat!=NativeSheldonHead.Hat||body?.HoodRenderer==null||sourceModels==null||!sourceModels.Has(NativeSourceModels.SheldonHoodVoid))return false;
             var glow=HatBody(hat,color)??Color.white;sourceModels.Queue(NativeSourceModels.SheldonHoodVoid,root,bone,null,layer,camera,body:glow);
             sourceModels.QueueSheldonPieces(bone(CapturedRig.Head),NativeSheldonHead.Evaluate(time,seed,-1,-1,reduced),glow,layer,camera,1,1,Color.white);return true;

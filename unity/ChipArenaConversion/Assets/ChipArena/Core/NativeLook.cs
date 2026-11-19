@@ -167,16 +167,28 @@ namespace ChipArena.UnityConversion
             for(int s=0;s<Slots.Length;s++)if(Index(a,Slots[s])!=Index(b,Slots[s]))return false;
             return CostumeOf(a)==CostumeOf(b);
         }
+        /// <summary>The account service's profile schema from which it keeps the Unity look whole (the costume key and the Unity
+        /// wardrobe's ids: Astra's VA1, docs/VOXEL-RETIREMENT-ASTRA.md). Below it the deployed Worker drops what it does not list,
+        /// so a login keeps this PC's pick (KeepSkin); from it the account's look is the truth (taking the costume off on another
+        /// PC sticks).</summary>
+        public const int ServiceKeepsLook=3;
         /// <summary>An account's map `saved` with this PC's skin tone when it carries none. Until the account Worker keeps the
         /// skin entry (Astra's part: src/relay/accounts.ts drops keys it does not know) a signed-in pilot would otherwise lose
         /// the tone on every load. Once it does, a saved map without one means DEFAULT and this can go.</summary>
-        public static string KeepSkin(string saved,string local)
+        public static string KeepSkin(string saved,string local)=>KeepSkin(saved,local,false);
+        /// <summary>KeepSkin for a service that does (`serviceKeeps`: its schema is ServiceKeepsLook or later) or does not keep the
+        /// whole Unity look: the Hot Dog top and the costume this PC picked come back only while the service drops them.</summary>
+        public static string KeepSkin(string saved,string local,bool serviceKeeps)
         {
-            // (The Hot Dog likewise: the Worker drops an id it does not list, until it lists this one.)
-            if(NativeHotDog.Worn(local)&&!NativeHotDog.Worn(saved))saved=With(saved,Upper,NativeHotDog.Id);
-            // (And the costume: this PC's pick while the account's saved look lacks the key, until the Worker keeps it: Astra's
-            // VA1, docs/VOXEL-RETIREMENT-ASTRA.md.)
-            if(CostumeOf(local)!=CostumeNone&&CostumeOf(saved)==CostumeNone)saved=WithCostume(saved,Costumes[CostumeOf(local)]);
+            if(!serviceKeeps)
+            {
+                // (The Hot Dog likewise: the Worker drops an id it does not list, until it lists this one. The slot's pick, not
+                // NativeHotDog.Worn: that is false under the costume, which would lose the top at every login; review 2026-11-19.)
+                if(Of(local,Upper)==NativeHotDog.Id&&Of(saved,Upper)!=NativeHotDog.Id)saved=With(saved,Upper,NativeHotDog.Id);
+                // (And the costume: this PC's pick while the account's saved look lacks the key, until the Worker keeps it: Astra's
+                // VA1, docs/VOXEL-RETIREMENT-ASTRA.md.)
+                if(CostumeOf(local)!=CostumeNone&&CostumeOf(saved)==CostumeNone)saved=WithCostume(saved,Costumes[CostumeOf(local)]);
+            }
             if(SkinOf(saved)>=0)return saved??"";int tone=SkinOf(local);return tone<0?saved??"":WithSkin(saved,tone);
         }
         /// <summary>The map's skin tone as "#rrggbb", or "" without one (the Locker's hex label).</summary>

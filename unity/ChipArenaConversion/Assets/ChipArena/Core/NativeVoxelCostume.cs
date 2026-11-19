@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         public Vector3 At,Out,Up;public string Bone;public float Size;public bool Found;
     }
     /// <summary>One built costume (a variant at a tier): the two renderers' meshes, the palette their uvs point into, the head
-    /// block for the hat fit and the gear's anchors.</summary>
+    /// map for the hats and the gear's anchors.</summary>
     public sealed class CostumeBuild
     {
         public int Skin,Tier;public CostumeMesh Main=new CostumeMesh(),Glow=new CostumeMesh();
@@ -33,9 +33,23 @@ namespace ChipArena.UnityConversion
         /// colour, a glow cell a level split (x the lit share, z the glowing share; NativeVoxelCostume.Glow).</summary>
         public readonly Vector3[] Palette=new Vector3[NativeVoxelCostume.PaletteCells*NativeVoxelCostume.PaletteCells];
         public int Cells;
-        /// <summary>The head block at rest: its top's centre (root space), its half width, its front's centre.</summary>
-        public Vector3 HeadTop,HeadFront;public float HeadHalf;public string HeadBone;
+        /// <summary>The head map (the voxel head joint's frame on the costume at rest): a point p of anything made for the voxel
+        /// head (the head block's parts, the voxel hats, the Sheldon Head, the Auditor halo) sits at HeadOrigin + p * HeadSize
+        /// (root space), so a voxel hat sits on the costume's head block exactly as it sits on the voxel pilot's head.</summary>
+        public Vector3 HeadOrigin;public float HeadSize=1;public string HeadBone;
+        /// <summary>The head block at rest (root space): its box, and its top's and front's centres.</summary>
+        public Vector3 HeadMin,HeadMax,HeadTop,HeadFront;
         public CostumeAnchor Core,Device,Emblem;
+        /// <summary>The team bands round the upper arms: their drop below the model's shoulder joint (m) and the upper-arm blocks'
+        /// surface there (their mean radius round the arm's axis).</summary>
+        public float BandDrop,BandRadius;
+        /// <summary>The boots: the model's ankle height (m over the floor), the boots' top over the floor and their half width
+        /// round the ankle (the body chips' sabaton and thruster sit on them).</summary>
+        public float AnkleY,BootTop,BootHalf,BootBack;
+        /// <summary>The shoulder caps' reach out from the model's shoulder joints and their top over them (m; a pauldron sits on them).</summary>
+        public float CapReach,CapTop;
+        /// <summary>How long the fit took (ms; the Runtime's log).</summary>
+        public double BuildMs;
         public int Triangles=>Main.Triangles+Glow.Triangles;
     }
     /// <summary>A voxel part as the bank holds it: the exported part's index (NativeBodySkins.Parts), its joint and its mesh in
@@ -109,20 +123,27 @@ namespace ChipArena.UnityConversion
             foreach(var w in NativeWeaponSkins.Weapons)if(InSet(w)&&NativeWeaponSkins.Pick(skins,w)!=NativeWeaponSkins.PrototypeIndex)return false;
             return true;
         }
-        /// <summary>The voxel set put on: every weapon in the set on the Prototype Series; `kept` gets the picks it replaced
-        /// ("spec:key" for every weapon not already Prototype, Arsenal picks included), which stay on this PC (never sent).</summary>
-        public static string SetPut(string skins,out string kept)
+        /// <summary>The voxel set put on: every weapon in the set on the Prototype Series; `kept` gets the pick each one had
+        /// ("spec:key" for every weapon in the set, Arsenal picks included, and "prototype" for one already on it), which stays on
+        /// this PC (never sent). A weapon already on the Prototype that `remembered` (the list an earlier put left) names keeps
+        /// that entry, so a second tap after one weapon was picked again merges into the list instead of losing the rest
+        /// (review 2026-11-19).</summary>
+        public static string SetPut(string skins,string remembered,out string kept)
         {
             var sb=new System.Text.StringBuilder();string map=NativeWeaponSkins.Normalize(skins);
             foreach(var w in NativeWeaponSkins.Weapons)
             {
-                if(!InSet(w))continue;int k=NativeWeaponSkins.Pick(map,w);if(k==NativeWeaponSkins.PrototypeIndex)continue;
-                if(sb.Length>0)sb.Append(',');sb.Append(w).Append(':').Append(NativeWeaponSkins.KeysFor(w)[k]);map=NativeWeaponSkins.With(map,w,NativeWeaponSkins.Prototype);
+                if(!InSet(w))continue;int k=NativeWeaponSkins.Pick(map,w);
+                string key=k!=NativeWeaponSkins.PrototypeIndex?NativeWeaponSkins.KeysFor(w)[k]:Remembered(remembered,w)??NativeWeaponSkins.Prototype;
+                if(sb.Length>0)sb.Append(',');sb.Append(w).Append(':').Append(key);map=NativeWeaponSkins.With(map,w,NativeWeaponSkins.Prototype);
             }
             kept=sb.ToString();return map;
         }
-        /// <summary>The voxel set taken off: each weapon the set switched back to the pick `kept` remembers (Standard where it
-        /// remembers none; a weapon picked again since, off the Prototype, keeps its new pick).</summary>
+        /// <summary>The voxel set put on with nothing remembered.</summary>
+        public static string SetPut(string skins,out string kept)=>SetPut(skins,null,out kept);
+        /// <summary>The voxel set taken off: each weapon the set switched back to the pick `kept` remembers (a weapon that was on
+        /// the Prototype before stays on it; Standard where it remembers none; a weapon picked again since, off the Prototype,
+        /// keeps its new pick).</summary>
         public static string SetTake(string skins,string kept)
         {
             string map=NativeWeaponSkins.Normalize(skins);
@@ -135,26 +156,37 @@ namespace ChipArena.UnityConversion
         }
         private static string Remembered(string kept,string spec)
         {
-            if(string.IsNullOrEmpty(kept))return null;
+            if(string.IsNullOrEmpty(kept))return null;string found=null;
             foreach(var e in kept.Split(','))
             {
                 int c=e.IndexOf(':');if(c<=0||e.Substring(0,c)!=spec)continue;var key=e.Substring(c+1);
-                if(Array.IndexOf(NativeWeaponSkins.KeysFor(spec),key)>=0&&key!=NativeWeaponSkins.Prototype)return key;
+                if(Array.IndexOf(NativeWeaponSkins.KeysFor(spec),key)>=0)found=key;
             }
-            return null;
+            return found;
         }
 
         // ---- the fit ----
         /// <summary>The limbs' girth on the model's frame (a share of the voxel limb's thickness), the hands' and feet's size,
-        /// the head block's size (the voxel head is 34 cm; the model's skull about 24), and the torso's depth.</summary>
-        public const float ArmGirth=.72f,LegGirth=.76f,HandScale=.82f,FootScale=.92f,HeadScale=.8f,TorsoDepth=.82f;
+        /// the head block's size (the voxel head is 34 cm across and 40 tall; the model's skull with its hair about 24 by 24),
+        /// and the torso's depth.</summary>
+        public const float ArmGirth=.72f,LegGirth=.76f,HandScale=.82f,FootScale=.92f,HeadScale=.74f,TorsoDepth=.82f;
+        /// <summary>The head block on the model's skull (review 2026-11-19: at .8 and on the bone its top stood 8 cm over the
+        /// model's crown, so the clips made for the model's head put the Katana's overhead guard, its hands and its handle inside
+        /// the block): its top this far over the head bone (the model skull's top, 21.2 cm, NativeModelHatMeshes, and HeadClear
+        /// of room), its middle this far ahead of the bone (the skull's, NativeModelHatMeshes.BandZ).</summary>
+        public const float SkullTop=.212f,HeadClear=.013f,SkullMid=.025f;
+        /// <summary>The boots on the model's ankles (review 2026-11-19: the boots kept the voxel's heights, 2-4 cm under the
+        /// model's ankle, so a flexed ankle opened a gap of floor between the shin and its boot): a boot's height up to the
+        /// voxel's ankle stretched to the model's ankle, the collar above it BootCollar as tall, and the shin reaching ShinTuck
+        /// past the model's ankle into the boot.</summary>
+        public const float BootCollar=1.6f,ShinTuck=.03f;
+        /// <summary>The team band's drop below the model's shoulder joint (under the costume's shoulder cap) and its clearance.</summary>
+        public const float BandDropOnCostume=.13f,BandClear=.004f;
         /// <summary>How far past the model's shoulder joints the chest block reaches, and past its hip joints the hip block (m): the
         /// chest a little wider than the hips, as the voxel pilot's is (.272 against .225).</summary>
         public const float ShoulderReach=.045f,HipReach=.06f;
         /// <summary>The end of a block kept at its size when it stretches (its bevels and end trims; m), at most a third of it.</summary>
         public const float Keep=.022f;
-        /// <summary>The head block sits this far ahead of the head bone (m; the model's skull is centred ahead of it).</summary>
-        public const float HeadAhead=.012f;
         /// <summary>The palette: cells across and down, texels a cell side (the texture is Cells x Texels square).</summary>
         public const int PaletteCells=16,PaletteTexels=8;
         /// <summary>The glow renderer's accent glow (the toon's _AccentGlow): the strongest paint's level; each glowing paint's cell
@@ -208,7 +240,12 @@ namespace ChipArena.UnityConversion
             if(parts==null||joints==null||joints.Length<CapturedRig.Bones.Length)return null;
             foreach(int j in Needs)if(!joints[j].Found)return null;
             var fit=new Fit(joints);var build=new CostumeBuild{Skin=skin,Tier=tier,HeadBone=joints[CapturedRig.Head].Bone};
-            var palette=new Dictionary<(int,int,int),int>();var head=new List<WeaponSection>();
+            // The head map first: the head's parts scaled as one block about their common middle, on the model's skull.
+            var headMin=new Vector3(float.MaxValue);var headMax=new Vector3(float.MinValue);
+            foreach(var part in parts)if(part.Mesh!=null&&part.Bone==CapturedRig.Head)foreach(var p in part.Mesh.Positions){headMin=Vector3.Min(headMin,p);headMax=Vector3.Max(headMax,p);}
+            if(headMin.X>headMax.X)headMin=headMax=Vector3.Zero; // (a build of other parts alone: the map round the bone)
+            fit.Head(headMin,headMax,out build.HeadOrigin,out build.HeadSize);
+            var palette=new Dictionary<(int,int,int),int>();
             foreach(var part in parts)
             {
                 if(part.Mesh==null||part.Bone<0||part.Bone>=joints.Length)continue;
@@ -238,7 +275,6 @@ namespace ChipArena.UnityConversion
                         target.Indices.Add(map[v]);
                     }
                 }
-                if(kind==Kind.Head)head.Add(m);
                 // The chest core on the sternum plate's face; the wrist device round the right forearm's cuff end.
                 if(spec.Name=="sternum")
                 {
@@ -260,33 +296,92 @@ namespace ChipArena.UnityConversion
                     build.Device=new CostumeAnchor{At=at,Out=Vector3.UnitZ,Up=SafeUnit(at-below,Vector3.UnitY),Bone=joints[part.Bone].Bone,Size=r,Found=true};
                 }
             }
-            build.Cells=palette.Count;HeadBlock(build,fit,head);
+            build.Cells=palette.Count;
+            // The head block's box at rest.
+            build.HeadMin=build.HeadOrigin+headMin*build.HeadSize;build.HeadMax=build.HeadOrigin+headMax*build.HeadSize;
+            build.HeadTop=new Vector3((build.HeadMin.X+build.HeadMax.X)*.5f,build.HeadMax.Y,(build.HeadMin.Z+build.HeadMax.Z)*.5f);
+            build.HeadFront=new Vector3(build.HeadTop.X,(build.HeadMin.Y+build.HeadMax.Y)*.5f,build.HeadMax.Z);
+            Bands(build,joints);Boots(build,joints);
             return build;
         }
-        /// <summary>The head block for the hat fit: its top's centre (the crown's flat top, where the voxel hats sat), its front, and
-        /// its half width where a hat's band wraps it (the outermost side face at the band's height: not the ear pods below it).</summary>
-        private static void HeadBlock(CostumeBuild build,Fit fit,List<WeaponSection> head)
+        /// <summary>The team bands' place round the upper-arm blocks: BandDropOnCostume below each shoulder joint, at the blocks'
+        /// mean surface round the arm's axis (both arms' mean).</summary>
+        private static void Bands(CostumeBuild build,CostumeJoint[] j)
         {
-            var min=new Vector3(float.MaxValue);var max=new Vector3(float.MinValue);
-            foreach(var m in head)foreach(var p in m.Positions){min=Vector3.Min(min,p);max=Vector3.Max(max,p);}
-            if(head.Count==0||min.X>max.X)return;
-            float cx=(min.X+max.X)*.5f,cz=(min.Z+max.Z)*.5f,half=(max.X-min.X)*.5f;
-            fit.Place(Kind.Head,CapturedRig.Head,new Vector3(cx,max.Y,cz),Vector3.UnitY,min,max,out build.HeadTop,out _);
-            fit.Place(Kind.Head,CapturedRig.Head,new Vector3(cx,(min.Y+max.Y)*.5f,max.Z),Vector3.UnitZ,min,max,out build.HeadFront,out _);
-            for(int pass=0;pass<2;pass++)
+            build.BandDrop=BandDropOnCostume;float sum=0;int n=0;
+            foreach(var (arm,elbow) in new[]{(CapturedRig.LArm,CapturedRig.LElbow),(CapturedRig.RArm,CapturedRig.RElbow)})
             {
-                HatFit(Vector3.Zero,Vector3.Zero,half*HeadScale,out float scale,out _);
-                float band=max.Y-(NativeModelHatMeshes.CrownTop-NativeModelHatMeshes.BandY)*scale/HeadScale,side=0;
-                foreach(var m in head)for(int t=0;t+2<m.Indices.Count;t+=3)
-                {
-                    Vector3 a=m.Positions[m.Indices[t]],b=m.Positions[m.Indices[t+1]],c=m.Positions[m.Indices[t+2]];
-                    var n=Vector3.Cross(b-a,c-a);if(n.LengthSquared()<1e-14f||Math.Abs(Vector3.Normalize(n).X)<.9f)continue;
-                    if(Math.Min(a.Y,Math.Min(b.Y,c.Y))>band||Math.Max(a.Y,Math.Max(b.Y,c.Y))<band)continue;
-                    side=Math.Max(side,Math.Abs((a.X+b.X+c.X)/3-cx));
-                }
-                if(side>.01f)half=side;
+                var axis=SafeUnit(j[elbow].At-j[arm].At,-Vector3.UnitY);var at=j[arm].At+axis*BandDropOnCostume;
+                float r=Ring(build,at,axis,j[arm].Bone);if(r>0){sum+=r;n++;}
             }
-            build.HeadHalf=half*HeadScale;
+            build.BandRadius=n>0?sum/n+BandClear:0;
+        }
+        /// <summary>The boots' top over the floor, their half width round the ankle and the heel's reach behind it (m; the left
+        /// boot's, mirrored on the right).</summary>
+        private static void Boots(CostumeBuild build,CostumeJoint[] j)
+        {
+            build.AnkleY=(j[CapturedRig.LFoot].At.Y+j[CapturedRig.RFoot].At.Y)*.5f;string heel=j[CapturedRig.LFoot].Bone,toe=j[CapturedRig.LToe].Bone;
+            float top=0,half=0,back=0;var ankle=j[CapturedRig.LFoot].At;
+            foreach(var m in new[]{build.Main,build.Glow})for(int i=0;i<m.Positions.Count;i++)
+            {
+                var b=m.Bones[m.Bone[i]];if(b!=heel&&b!=toe)continue;var p=m.Positions[i];
+                top=Math.Max(top,p.Y);if(b==heel){half=Math.Max(half,Math.Abs(p.X-ankle.X));back=Math.Max(back,ankle.Z-p.Z);}
+            }
+            build.BootTop=top;build.BootHalf=half;build.BootBack=back;
+            // The shoulder caps round the model's shoulder joints.
+            float reach=0,capTop=0;
+            foreach(var (clav,arm) in new[]{(CapturedRig.LClav,CapturedRig.LArm),(CapturedRig.RClav,CapturedRig.RArm)})
+            {
+                var at=j[arm].At;float outward=Math.Sign(at.X-j[CapturedRig.Chest].At.X);
+                foreach(var m in new[]{build.Main,build.Glow})for(int i=0;i<m.Positions.Count;i++)
+                {
+                    int part=m.Part[i];if(part<0||part>=NativeBodySkins.Parts.Length||NativeBodySkins.Parts[part].Bone!=clav)continue;var p=m.Positions[i];
+                    reach=Math.Max(reach,(p.X-at.X)*outward);capTop=Math.Max(capTop,p.Y-at.Y);
+                }
+            }
+            build.CapReach=reach;build.CapTop=capTop;
+        }
+        /// <summary>The mean distance from the axis point `at` (direction `axis`) out to the costume's surface, over eight
+        /// directions round it, on the triangles riding bone `bone` (0 where none is hit within 30 cm).</summary>
+        public static float Ring(CostumeBuild build,Vector3 at,Vector3 axis,string bone)
+        {
+            var up=SafeUnit(axis,Vector3.UnitY);var u=SafeUnit(Vector3.Cross(up,Math.Abs(up.Y)<.9f?Vector3.UnitY:Vector3.UnitX),Vector3.UnitX);var w=Vector3.Cross(up,u);float sum=0;int n=0;
+            for(int k=0;k<8;k++)
+            {
+                float ang=k*(float)Math.PI/4;var dir=u*(float)Math.Cos(ang)+w*(float)Math.Sin(ang);
+                if(Surface(build,at,dir,bone,out float hit)&&hit<.3f){sum+=hit;n++;}
+            }
+            return n>0?sum/n:0;
+        }
+        /// <summary>How far from `from` along the unit direction `dir` the costume's surface lies (its farthest crossing on the
+        /// triangles riding `bone`, any bone for null): where the ray leaves the blocks. False when it crosses none.</summary>
+        public static bool Surface(CostumeBuild build,Vector3 from,Vector3 dir,string bone,out float distance)
+        {
+            distance=0;bool hit=false;
+            foreach(var m in new[]{build.Main,build.Glow})
+            {
+                int bi=bone==null?-1:m.Bones.IndexOf(bone);if(bone!=null&&bi<0)continue;
+                for(int t=0;t+2<m.Indices.Count;t+=3)
+                {
+                    int a=m.Indices[t],b=m.Indices[t+1],c=m.Indices[t+2];if(bi>=0&&(m.Bone[a]!=bi||m.Bone[b]!=bi||m.Bone[c]!=bi))continue;
+                    if(Ray(from,dir,m.Positions[a],m.Positions[b],m.Positions[c],out float h)&&h>distance){distance=h;hit=true;}
+                }
+            }
+            return hit;
+        }
+        /// <summary>A point seated on the costume: `at` moved along the level line from `centre` through it until it lies
+        /// `clear` outside the surface of the blocks riding `bone` (pushed out of a block it was in, or pulled in to one it
+        /// floated off); `at` itself where that line meets no block.</summary>
+        public static Vector3 Seat(CostumeBuild build,Vector3 at,Vector3 centre,float clear,string bone)
+        {
+            var d=at-centre;d.Y=0;float l=d.Length();if(l<1e-5f)return at;var dir=d/l;
+            var from=new Vector3(centre.X,at.Y,centre.Z);if(!Surface(build,from,dir,bone,out float surface))return at;
+            return from+dir*(surface+clear);
+        }
+        private static bool Ray(Vector3 o,Vector3 d,Vector3 a,Vector3 b,Vector3 c,out float t)
+        {
+            t=0;var e1=b-a;var e2=c-a;var p=Vector3.Cross(d,e2);float det=Vector3.Dot(e1,p);if(Math.Abs(det)<1e-9f)return false;float inv=1/det;var s=o-a;float u=Vector3.Dot(s,p)*inv;if(u<0||u>1)return false;
+            var q=Vector3.Cross(s,e1);float v=Vector3.Dot(d,q)*inv;if(v<0||u+v>1)return false;t=Vector3.Dot(e2,q)*inv;return t>0;
         }
         private static int BoneIndex(CostumeMesh m,string bone){int i=m.Bones.IndexOf(bone);if(i<0){i=m.Bones.Count;m.Bones.Add(bone);}return i;}
         private static Vector3 SafeUnit(Vector3 v,Vector3 fallback){float l=v.Length();return l>1e-7f?v/l:fallback;}
@@ -376,6 +471,8 @@ namespace ChipArena.UnityConversion
             private readonly float vHip,mHip,vShoulder,mShoulder,vNeck,mNeck,vHead,mHead;
             // The torso's widths: the hip block's and chest block's half widths on the voxel and the model.
             private readonly float vHipHalf,mHipHalf,vChestHalf,mChestHalf;
+            // The ankles' height on the voxel and the model; the head map.
+            private readonly float vAnkle,mAnkle;private Vector3 headOrigin;private float headSize=HeadScale;
             public Fit(CostumeJoint[] joints)
             {
                 j=joints;for(int k=0;k<v.Length;k++)v[k]=VoxelJoint(k);
@@ -386,6 +483,14 @@ namespace ChipArena.UnityConversion
                 // The voxel's blocks reach .095 past its hip joints and .0... its chest block's edge sits .073 inside its shoulder joints.
                 vHipHalf=.225f;mHipHalf=Math.Abs(j[CapturedRig.LHip].At.X-j[CapturedRig.RHip].At.X)*.5f+HipReach;
                 vChestHalf=.272f;mChestHalf=Math.Abs(j[CapturedRig.LArm].At.X-j[CapturedRig.RArm].At.X)*.5f+ShoulderReach;
+                vAnkle=Math.Max(.01f,(v[CapturedRig.LFoot].Y+v[CapturedRig.RFoot].Y)*.5f);mAnkle=Math.Max(.01f,(j[CapturedRig.LFoot].At.Y+j[CapturedRig.RFoot].At.Y)*.5f);
+            }
+            /// <summary>The head map for head parts spanning [min, max] (the head joint's frame): scaled HeadScale about their
+            /// middle across and ahead, its top SkullTop + HeadClear over the model's head bone, its middle SkullMid ahead of it.</summary>
+            public void Head(Vector3 min,Vector3 max,out Vector3 origin,out float size)
+            {
+                float cx=(min.X+max.X)*.5f,cz=(min.Z+max.Z)*.5f;size=headSize=HeadScale;var at=j[CapturedRig.Head].At;
+                origin=headOrigin=new Vector3(at.X-cx*size,at.Y+SkullTop+HeadClear-max.Y*size,at.Z+SkullMid-cz*size);
             }
             /// <summary>The torso's height map: the voxel's rest height to the model's (piecewise through the hip line, shoulder
             /// line, neck and head; rigid below the hips and above the head).</summary>
@@ -437,9 +542,8 @@ namespace ChipArena.UnityConversion
                     }
                     case Kind.Head:
                     {
-                        // Smaller, on the head bone, a little ahead (the skull's middle).
-                        var c=new Vector3((min.X+max.X)*.5f,0,(min.Z+max.Z)*.5f);var q=c+(p-c)*HeadScale;
-                        at=j[bone].At+new Vector3(q.X,q.Y,q.Z+HeadAhead);normal=n;return;
+                        // The head map: one block (every head part with the others), on the model's skull (Head).
+                        at=headOrigin+p*headSize;normal=n;return;
                     }
                     case Kind.Cap:
                     {
@@ -449,9 +553,12 @@ namespace ChipArena.UnityConversion
                     }
                     case Kind.Foot:
                     {
-                        // Upright under the model's ankle or toe, its sole on the floor (at the voxel's own heights).
+                        // Upright under the model's ankle or toe, its sole on the floor: up to the voxel's ankle stretched to the
+                        // model's, its collar above that BootCollar as tall (so the shin's end, tucked ShinTuck past the ankle, stays
+                        // inside it as the ankle flexes).
                         var c=new Vector3(0,0,(min.Z+max.Z)*.5f);var q=new Vector3(p.X*FootScale,p.Y,c.Z+(p.Z-c.Z)*FootScale);
-                        at=new Vector3(j[bone].At.X+q.X,v[bone].Y+q.Y,j[bone].At.Z+q.Z);normal=n;if(at.Y<0)at.Y=0;return;
+                        float h=v[bone].Y+q.Y,k=h<=vAnkle?mAnkle/vAnkle:BootCollar,y=h<=vAnkle?h*k:mAnkle+(h-vAnkle)*k;
+                        at=new Vector3(j[bone].At.X+q.X,Math.Max(0,y),j[bone].At.Z+q.Z);normal=SafeUnit(new Vector3(n.X/FootScale,n.Y/k,n.Z/FootScale),n);return;
                     }
                     default:
                     {
@@ -465,6 +572,8 @@ namespace ChipArena.UnityConversion
                         float s=Vector3.Dot(p,vu),t=-Vector3.Dot(p,-va),r=Vector3.Dot(p,vw);
                         float s0=Ext(min,max,vu,false),s1=Ext(min,max,vu,true),t0=Ext(min,max,va,false),t1=Ext(min,max,va,true),r0=Ext(min,max,vw,false),r1=Ext(min,max,vw,true);
                         float sa=1,ta=1,ra=1;float ss=Span(s,s0,s1,s0*girth,s1*girth,out sa),rr=Span(r,r0,r1,r0*girth,r1*girth,out ra),tt;
+                        // (The shin's segment reaches ShinTuck past the model's ankle, into the boot.)
+                        if(bone==CapturedRig.LKnee||bone==CapturedRig.RKnee)lm+=ShinTuck;
                         if(kind==Kind.Limb)tt=Span(t,t0,t1,Along(t0,lv,lm),Along(t1,lv,lm),out ta);
                         else if(hand){tt=t*HandScale;ta=HandScale;}
                         else tt=t;
@@ -493,14 +602,37 @@ namespace ChipArena.UnityConversion
             }
         }
 
-        // ---- hats on the head block (the plan's "costume hat fit", as NativeHotDog.HatFit is the Hot Dog's) ----
-        /// <summary>A model hat's fit on the head block, in the head bone's frame (the block's top `top` and front `front` given in
-        /// that frame, its half width `half`): a hat point p goes to p * scale + move, its band round the block (scaled from the
-        /// model skull's band, NativeModelHatMeshes.BandX) and its crown on the block's top.</summary>
-        public static void HatFit(Vector3 top,Vector3 front,float half,out float scale,out Vector3 move)
+        // ---- the body chips on the costume (2.3: kept, at the costume's anchors; the parts are made for the model's body) ----
+        /// <summary>Where the model's parts reach (m, NativeBodyChipGear): the pauldron's side lame out from the shoulder joint, the
+        /// sabaton's cuff round the ankle, the heel thruster's mount behind it, the pectoral plates' middle across.</summary>
+        public const float ModelPauldronReach=.068f,ModelCuffRadius=.058f,ModelThrusterBack=.06f,ModelPlateAcross=.117f;
+        /// <summary>A body chip part's place on the costume (its anchor frame, source axes): the chest's lights and plates brought
+        /// forward onto the sternum plate's flat face (the model's chest curves back x²/2R: NativeBodyChipGear.ChestCurve), the
+        /// pauldrons scaled out to the shoulder caps, the sabaton scaled round the boot and the heel thruster moved onto the
+        /// boot's heel (review 2026-11-19: they were the model's, inside the blocks).</summary>
+        public static void ChipPlace(CostumeBuild b,in NativeBodyChipGear.Part p,out Vector3 position,out Quaternion rotation,out float scale)
         {
-            scale=Math.Max(.8f,Math.Min(1.6f,(half+.006f)/NativeModelHatMeshes.BandX));
-            move=new Vector3(top.X,top.Y-NativeModelHatMeshes.CrownTop*scale,(top.Z+front.Z)*.5f-NativeModelHatMeshes.BandZ*scale);
+            position=p.Position;rotation=p.Rotation;scale=1;
+            switch(p.Anchor)
+            {
+                case NativeBodyChipGear.Anchor.Core:
+                {
+                    bool plate=p.Id==NativeBodyChipGear.PlateL||p.Id==NativeBodyChipGear.PlateR;float x=plate?ModelPlateAcross:p.Position.X;
+                    position.Z+=x*x/(2*NativeBodyChipGear.ChestCurve);if(p.Id==NativeBodyChipGear.Pip||p.Id==NativeBodyChipGear.Node||p.Id==NativeBodyChipGear.Strip)rotation=Quaternion.Identity;return;
+                }
+                case NativeBodyChipGear.Anchor.LeftArm:case NativeBodyChipGear.Anchor.RightArm:scale=ChipScale(b,true);return;
+                default:
+                    scale=ChipScale(b,false);
+                    if(p.Id==NativeBodyChipGear.Nozzle||p.Id==NativeBodyChipGear.Flame)position.Z-=Math.Max(0,(b.BootBack+.005f)/scale-ModelThrusterBack);
+                    return;
+            }
         }
+        /// <summary>The scale an arm's (the shoulder caps') or a foot's (the boots') parts take on the costume.</summary>
+        public static float ChipScale(CostumeBuild b,bool arm)=>arm?Math.Max(1,Math.Min(1.6f,(b.CapReach+.006f)/ModelPauldronReach)):Math.Max(1,Math.Min(1.8f,(b.BootHalf+.004f)/ModelCuffRadius));
+
+        // ---- hats on the head block (the plan's costume hat fit, 2.3: the costume wears the voxel hat-* sculpts made for this
+        // head, through the head map; review 2026-11-19: the model hats fitted onto the block sat inside it, unseen from behind) ----
+        /// <summary>A voxel head-frame point (a voxel hat's, the Sheldon Head's) on the costume at rest (root space).</summary>
+        public static Vector3 OnHead(CostumeBuild build,Vector3 p)=>build.HeadOrigin+p*build.HeadSize;
     }
 }
