@@ -1,3 +1,79 @@
+## 2026-11-18 — Claude: the eject animated from the pad to the pod, and the cradle card on a pod run's load (owner report; presentation only)
+
+Branch `claude/exp-w3-eject`, base shared `15dab150` (the approved overhaul plan). This is W3 of `docs/EXPEDITION-OVERHAUL.md` (R8), with the plan's defaults ("Yes, use defaults"). Owner: "a more realistic drop-in ... give the players an animation when they fall".
+
+Code commits: `e74b0f66` (the eject and the cradle), then `8b16a367`, `e7d40d26`, `c958e54a`, `3cf33650`, `3ba32460`, `74af1831` and `02a66a38`, which fix what the captures showed.
+
+- **The eject, 5.6 s.** `TravelAt` goes from 4.0 to 5.6 s. Core `NativeDeployEject` keys each beat to the viewer's own pad:
+  - 0-0.6 s: the room turns red and the klaxon sounds. From 0.4 s each pilot sinks into the Jump take's gather.
+  - 0.9-1.25 s: the hatches iris open. From 1.35 + 0.09·pad s each pilot falls through at 9.8 m/s², only ever down: the take's arm throw, then the Fall loop.
+  - My tube shot starts 0.35 s after my drop. It looks straight down into my lit tube, with the ring lights chasing up every 0.12 s.
+  - My seat shot starts as I land (2.7 s on pad 0). The camera is in the doorway at visor height: the Chair pose with a land compression, the harness bar down in 0.15 s with the hands on its crossbar, the cabin red, the roof hatch sealing.
+  - The release starts at 3.4 s, 0.09 s later per pad, and never before that pod's pilot is sealed in. The camera sits beside the pod at its clamps. The clamps fire and the pod drops out of the belly; the camera tips down after it until the rolled city fills the frame.
+  - A white rush at 4.8 s, then the fade into the cradle card (5.15-5.6 s).
+  - New `Shot` values `Tube`, `Seat` and `Release` cut in. The 4 s variant (`Cut.Short`, the DEV preview's "Eject: 4 s") keeps every beat except the release; `NativeDeployEject.Played` sets the cut that `TravelAt` reads.
+- **The set** (`NativeDeployEjectModels`). It is drawn only after Deploy and only for occupied pads:
+  - the drop tube (an open sleeve), the collar and iris on each pod's roof, the seat, the harness bar, the clamps, and the belly with a hole per pad;
+  - the city, built from the blueprint on a worker once per seed and revision, and drawn only in the release shot.
+  - Occupied pads open into a ring (`PadRing`), and the pad's floor glow drains into the opening as the hatch opens.
+  - The pods are the hub's pod model, from the source bank, in each pilot's pod look. My hull is shaded to 0.28 in the seat shot, so a white pod's cabin reads dark red.
+  - The pods hang at two depths, alternating along the arc: the pads are 1.53 m apart and the pods 2.24 m across.
+- **Bodies.** Every pose is a game-rig track, so the visual, voxel and Classic bodies all play it:
+  - `NativePackJumps`: the gather, the throw and the fall;
+  - `NativeLobbyPoses`: the Chair, with the compression and the grip through `MeleeRig.Hand`.
+  - There is no rigid pose anywhere in the drop. The held weapon hides at the seat cut. `CapturedRig.Sample` no longer allocates on each call.
+- **Sound.** `NativeEjectSounds` (`eject.*` keys) through `Runtime/NativeEjectAudio.cs`, each moment heard once: klaxon, hatch, whoosh, tube, seat, harness, seal, release and rush.
+- **The cradle card** (`NativeCradleCard`, `Runtime/NativeCradleHud.cs`). On a pod run, the console's fade and the load draw the inside of my pod:
+  - the porthole;
+  - the run's map in a night palette, with each pod's streak;
+  - the altimeter, falling from 12,000 to 600 m with the load;
+  - a lamp per member: READY, LOADING n% or LOST;
+  - a lamp per mutator;
+  - PODS AWAY · GOOD HUNTING.
+  - It uses `PartyLoadingRoster`'s data in `NativeStageLoadingHud`'s place, with nothing new on the wire.
+- **The hold.** On a pod run every peer holds on the card until the hub's Countdown (`PodCradleHold`, inside the Expedition's 65 s wait). The readiness ack is not held. The hub's pilots stay hidden in Lobby (W0's item: one line in `NativeSpawnInPresentation.cs`, `PodLobbyHidden`).
+- **The ride is in but off** (`NativePodRide.Enabled = false`). The braced first-person second in my falling pod is built (`NativePodRide`, `Runtime/NativePodRidePresentation.cs`):
+  - 0.8 s with a 3 s opening, 1 s with a 5 s opening, read from `-NativePodDrop.Appear`;
+  - the judder, the red edge, my pod drawn solid while I ride, and a step aside for any directed camera.
+  - The live runs showed only a flat fogged sky between the door's two light strips, because the hub's pod model is drawn for the outside. It stays off until the cabin draws from inside.
+- **Other agents' files** (minimal changes):
+  - Astra's `NativeDeploymentLive.cs`: Mine, Pod and the card;
+  - W4's `NativeSpawnInPresentation.cs`: the Lobby line;
+  - `NativePodPresentation.cs`: PodOpacity's early return;
+  - `NativeStageLoadingUI.cs`: the wait, and the card on pod runs;
+  - `ConversionGame.cs`: the ride's frame and screen.
+  - NativeCinematicCamera's Countdown branch is not edited.
+- **Re-pinned on purpose:**
+  - DeployPresentationChecks: the deploy loop runs to TravelAt + 0.5. :130-132 still checks that pilots only move down; :176 now checks that the fade ends at 5.6 s. My pod stays in the release shot until the rush.
+  - ExpeditionLoadingHandoffChecks:78 checks `TravelAt == TravelOf(Played)`, plus the hold.
+  - DeployPerformanceChecks: budgets per new model; items only after Deploy and on occupied pads; the city only in the release; no allocation; under 60k triangles.
+  - SpawnInChecks:366-375: `NativePodRidePresentation.cs` added to the whitelist.
+  - PartyLoadingChecks: `NativeCradle.cs` allowed.
+  - DeployModelChecks: the ShotOf line.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns or movement. Networking: no wire change. The host's travel waits on `TravelAt`, so **an Expedition run now starts 1.6 s later**. On a pod run, a peer's screen shows the card until the Countdown.
+- **Checks:**
+  - Full CoreTests, the relgen5 way (Release, a throwaway worktree, the stage banks): 1035 PASS, exit 0, at `3ba32460` and again at the last code commit `02a66a38`.
+  - The pinned 6000.3.24f1 compile (Input System, Player, Assembly-CSharp, Editor) passes at `3ba32460`, and again at `02a66a38`, with no warnings in the changed files. `git diff --check` is clean.
+  - Seen in the Editor (BoZo, 1920x1080), with each DEV preview capture's clock held at its shot's exact moment (within 0.0004 s):
+    - before at `15dab150`: solo and 4 pilots, every 1/30 s;
+    - after at `3ba32460`: solo and 4 pilots every 1/30 s; the guest's view (pad 1, a deep pod) and the 4 s variant every 0.1 s; the card with READY, LOADING 64% and LOST.
+    - Live solo runs: `e74b0f66`, `c958e54a` and `74af1831`. The cradle card holds through Lobby and lifts at the Countdown.
+- **Not run:**
+  - No Windows build, so frame times were not measured. The eject's per-frame stage is allocation-free and checked.
+  - No host-and-guest online run: one Editor cannot be both. The hold's wiring is source-checked in ExpeditionLoadingHandoffChecks, the hold itself was seen on the host in the live runs, and the guest's eject and card were seen in the preview.
+  - The sounds were not listened to.
+  - Astra's 5.0 s opening has not landed; it is covered by checks only.
+  - Neither the voxel nor the Classic body was captured.
+  - No 21:9 or 4:3 layout for the card.
+- **Risks and next:**
+  - For Astra: runs start 1.6 s later. A0's `PodOpening` flows into the ride through `NativePodDrop.Appear`.
+  - For W4: W4's local branch (not pushed) replaces `NativePodDrop.Appear` and `Evaluate(age, order, seed)` with a `PodPlan`, and directs its own cabin ride. At the merge, either keep W4's ride and drop mine, or move mine onto the PodPlan and turn it on.
+  - For W2: W2 edits the same NativeDeployStage camera lines and the first lines of NativeDeployConsoleUI. Keep W2's Atlas override after my eject camera.
+  - The seat close-up crops the helmet's top after the compression.
+  - In the captures, the room shots' camera ease ran on the Editor's frame time, before and after alike.
+  - The stuck guest capture: the preview refuses a guest's Deploy, so I sent Ctrl+P to the Editor to stop my own job. The capture option now switches to the guest's view after Deploy, and stops itself after 60 s without a Deploy or 600 frames without a shot.
+  - **Next:** the owner reviews the strips and clips; then merge with W2 and W4.
+
 ## 2026-11-18 — Claude: the expedition overhaul plan (Meridian), approved; Astra's hand-off (owner request; docs only)
 
 Owner asked for the expedition overhaul: a tileset machine, a reworked City away from the box style, streets shaped by their instances, a darker lamp-lit map, modelled buildings, props and gates, a living hub with survivors, pods that crash spread around the hub, a better drop-in, chests for caches in new places, a chip and a healing machine in the hub. Follow-up: "I want the expedition area (not instances) to be much bigger with layering essentially ... Think of how big risk of rain levels are", with each instance's look bleeding into the city near it. Owner on the split: "I can divide the work 🙂 feel free to send me whats needed from astra." Approval: "Yes, use defaults".
