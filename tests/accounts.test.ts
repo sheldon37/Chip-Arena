@@ -171,11 +171,66 @@ test('outfits and face gear persist; DEV clothes cannot be forged or retained af
   }
   let revision=1;
   for(const [look,expected] of [[' upper:hard-jacket ,feet:work-boots,hair:wild','hair:wild,upper:hard-jacket,feet:work-boots'],['hair:wild,hair:spiky',''],['upper:tee,upper:invalid','upper:tee'],['__proto__:x,constructor:x',''],['skin:FFaa00,upper:tee','upper:tee,skin:ffaa00'],['skin:000000,skin:123456','skin:123456'],['skin:123456,skin:bad','skin:123456'],['skin:#112233,skin:abcdef0',''],['skin:000000','skin:000000'],[null,''],[42,''],['x'.repeat(513),''],['','']] as const){
-   const r=await f.request('profile',{revision:revision++,profile:{cosmetics:{look,weaponSkins:'face:mask,face:mask-visor'}}},user.session);assert.equal(r.status,200);const v:any=await r.json();assert.equal(v.account.profile.cosmetics.look,expected);assert.equal(v.account.profile.cosmetics.weaponSkins,'');
+   const r=await f.request('profile',{revision:revision++,profile:{cosmetics:{look,weaponSkins:'face:mask,face:helm'}}},user.session);assert.equal(r.status,200);const v:any=await r.json();assert.equal(v.account.profile.cosmetics.look,expected);assert.equal(v.account.profile.cosmetics.weaponSkins,'');
   }
   // Re-read sanitizes stored selections with current account authority, not the original save's status.
   f.db.sql.prepare('UPDATE player_accounts SET developer=0 WHERE id=?').run(dev.account.id);
   const revoked:any=await(await f.request('me',undefined,dev.session)).json();assert.equal(revoked.account.profile.cosmetics.look,'hair:wild,hands:gloves,skin:aa12ff');
+ }finally{f.db.close();}
+});
+
+test('Unity wardrobe and skin catalogs round-trip through saved profiles in native order',async()=>{
+ const slots=[
+  ['hair','spiky','wild','side-swept','tied-back','fringe-tail'],
+  ['upper','robot-armour','open-hoodie','hard-jacket','hoodie','tee','tank','sweater','hot-dog','sheldon-robe'],
+  ['lower','robot-legs','belted-pants','baggy-pants','skinny-jeans','cuffed-shorts','khakis','sheldon-pants'],
+  ['hands','robot-gauntlets','fingerless','gloves','arm-bands','sweat-bands','bare'],
+  ['feet','robot-boots','mid-tops','work-boots','sneakers','lace-ups','sheldon-boots','barefoot'],
+ ];
+ const weapons='pistol rifle machinegun fire water lightning darkness sword daggers shield greatsword emperor ansatsuken leet bow cyberlord'.split(' ');
+ const f=await fixture();try{
+  const dev=await(await f.request('login',{username:'Sheldon',password})).json();
+  let revision=0;
+  async function roundTrip(look:string,weaponSkins:string,expectedLook:string,expectedSkins:string){
+   const save=await f.request('profile',{revision:revision++,profile:{cosmetics:{look,weaponSkins}}},dev.session);
+   assert.equal(save.status,200);
+   for(const response of [save,await f.request('me',undefined,dev.session)]){
+    const {account}=await response.json();
+    assert.equal(account.profile.cosmetics.look,expectedLook);
+    assert.equal(account.profile.cosmetics.weaponSkins,expectedSkins);
+   }
+  }
+  const faces=['helm','half','both','visor','mask','none'];
+  const guns=['standard','prototype','arsenal','arsenal2'];
+  for(let i=0;i<9;i++){
+   const look:string[]=[],expectedLook:string[]=[],skins:string[]=[],expectedSkins:string[]=[];
+   for(const [slot,...ids] of slots){
+    const id=ids[i%ids.length],pair=slot+':'+id;
+    look.push(pair);if(id!==ids[0])expectedLook.push(pair);
+   }
+   for(const weapon of weapons){
+    const id=weapons.indexOf(weapon)<3?guns[i%4]:i%2?'prototype':'standard';
+    skins.push(weapon+':'+id);if(id!=='standard')expectedSkins.push(weapon+':'+id);
+   }
+   const body=['standard','prototype','sheldon'][i%3],face=faces[i%6];
+   skins.push('body:'+body,'face:'+face);
+   if(body!=='standard')expectedSkins.push('body:'+body);
+   if(face!=='helm')expectedSkins.push('face:'+face);
+   await roundTrip(['skin:Ff0088','costume:voxel',...look.reverse(),'unknown:voxel','costume:bogus','upper:unknown'].join(','),
+    [...skins.reverse(),'sword:arsenal','bow:arsenal2','face:mask-visor','other:prototype'].join(','),
+    [...expectedLook,'costume:voxel','skin:ff0088'].join(','),expectedSkins.join(','));
+  }
+  await roundTrip('costume:voxel,costume:none','', '', '');
+  const user=await(await f.request('register',{username:'costumepilot',password})).json();
+  const look='upper:open-hoodie,lower:belted-pants,hands:fingerless,feet:mid-tops,costume:voxel,skin:abc123';
+  const weaponSkins='pistol:arsenal2,rifle:arsenal,face:both';
+  const saved=await f.request('profile',{revision:0,profile:{cosmetics:{look:'upper:hot-dog,'+look,weaponSkins}}},user.session);
+  assert.equal(saved.status,200);
+  const login=await(await f.request('login',{username:'costumepilot',password})).json();
+  assert.equal(login.account.profile.cosmetics.look,look);
+  assert.equal(login.account.profile.cosmetics.weaponSkins,weaponSkins);
+  const hotDog=await(await f.request('profile',{revision:1,profile:{cosmetics:{look:'upper:hot-dog,costume:voxel'}}},user.session)).json();
+  assert.equal(hotDog.account.profile.cosmetics.look,'costume:voxel');
  }finally{f.db.close();}
 });
 

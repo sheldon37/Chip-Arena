@@ -20681,3 +20681,9 @@ Branch codex/dealt-blind-pick from shared 01505ad6. NativeRoomOptions.blindChoic
 ## 2026-11-18 · Astra · Thunderheart Carillon
 
 Recovered the arena from the interrupted showcase run and integrated it on shared base 15dab150. The map, soundtrack, reactive mesh presentation, two tuning-stop routes and timed gates are covered in docs/THUNDERHEART-CARILLON.md alongside the art renders, CPU measurements and private lighting setup. Original targeted tests and pinned assembly compile passed. Windows multiplayer, GPU timing and licensed lighting remain unverified.
+
+## 2026-11-18 · Astra · VA1 account cosmetic contract
+
+Branch `codex/unity-voxel-va1-account`, rebased on shared `1b356c0c`. The account Worker accepts the five Unity wardrobe slots, the free `costume:voxel` key after feet and before skin tone, all six face choices, and both Arsenal finishes for the three firearms. Hot Dog and Sheldon pieces still require live DEV access. The default costume is omitted. This approves the key and ordering for Claude's Stage 1. The existing seat, replay and profile look fields carry it once the client recognizes it.
+
+TypeScript and the production-format Worker bundle built locally. All 34 account, XP, desktop account and relay tests passed, including persistence, fresh login, order, invalid IDs and DEV gates. Independent instances of the built Worker passed a register/save/fresh-login smoke test against a synthetic database. The same VA1 change applied cleanly to PR #400 at `10754e3`; its independent Worker also bundled and passed the smoke test locally. Worker production deployment awaits explicit owner approval. Claude's Stage 1 host and viewer are required for the visual multiplayer check.

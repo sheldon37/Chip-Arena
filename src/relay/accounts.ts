@@ -24,32 +24,55 @@ function access(row:any):Access{return {accountId:row.id,developer:row.developer
 // Native profile ids are stored by the shared service without adding them to Electron's rendering catalog.
 const NATIVE_INTROS=new Set(['orbital-drop','grid-rez','holo-projection','blackout','skyline-zip','hero-landing','overclock']);
 const LOBBY_BACKS=new Set(['tick-ring','clean-glow','sunburst','hex-field','circuit','equalizer','warp','embers','orbitals','glitch','crown-halo','neon-diamond']);
-// Unity weapon skins (unity/.../Core/NativeWeaponSkins.cs Normalize): "spec:skin" picks, comma separated, strictly allowlisted;
-// only non-default picks are kept, once per entry (the last wins), in entry order: the weapons, then the pilot's body (Core/
-// NativeBodySkins.cs: standard, prototype, or the DEV-only "sheldon" Sheldon Clothes, kept only on DEV accounts like the
-// Sheldon Head). Anything else is the Standard skin ('').
+// NativeWeaponSkins.Entries order, with the default for each entry omitted.
 const SKIN_WEAPONS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','emperor','ansatsuken','leet','bow','cyberlord','body','face'];
-const WEAPON_SKINS=new Set(['standard','prototype']);
-const FACE_SKINS=new Set(['mask-visor','visor','mask']);
-const BODY_SKINS=new Set(['standard','prototype','sheldon']);
-function weaponSkinMap(raw:unknown,developer=false){
- if(typeof raw!=='string'||!raw)return '';const picks=new Map<string,string>();
- for(const entry of raw.slice(0,4096).split(',')){const i=entry.indexOf(':');if(i<=0)continue;const spec=entry.slice(0,i).trim(),skin=entry.slice(i+1).trim();if(SKIN_WEAPONS.includes(spec)&&(spec==='body'?BODY_SKINS:spec==='face'?FACE_SKINS:WEAPON_SKINS).has(skin))picks.set(spec,skin);}
- if(picks.get('body')==='sheldon'&&!developer)picks.delete('body');
- return SKIN_WEAPONS.filter(s=>picks.has(s)&&picks.get(s)!==(s==='face'?'mask-visor':'standard')).map(s=>s+':'+picks.get(s)).join(',');
+const WEAPON_SKINS=['standard','prototype'];
+const GUN_SKINS=[...WEAPON_SKINS,'arsenal','arsenal2'];
+const FACE_SKINS=['helm','half','both','visor','mask','none'];
+const BODY_SKINS=['standard','prototype','sheldon'];
+function skinsFor(entry:string){
+ if(entry==='body')return BODY_SKINS;
+ if(entry==='face')return FACE_SKINS;
+ if(entry==='pistol'||entry==='rifle'||entry==='machinegun')return GUN_SKINS;
+ return WEAPON_SKINS;
 }
-// Mirrors NativeLook's canonical order and defaults. Outfit selections never affect gameplay.
+function weaponSkinMap(raw:unknown,developer=false){
+ if(typeof raw!=='string'||!raw)return '';
+ const picks=new Map<string,string>();
+ for(const entry of raw.slice(0,4096).split(',')){
+  const colon=entry.indexOf(':');if(colon<=0)continue;
+  const spec=entry.slice(0,colon).trim(),skin=entry.slice(colon+1).trim();
+  if(SKIN_WEAPONS.includes(spec)&&skinsFor(spec).includes(skin))picks.set(spec,skin);
+ }
+ if(picks.get('body')==='sheldon'&&!developer)picks.delete('body');
+ return SKIN_WEAPONS.filter(s=>picks.has(s)&&picks.get(s)!==skinsFor(s)[0]).map(s=>s+':'+picks.get(s)).join(',');
+}
+// NativeLook dresses exactly five slots. Costume and skin tone follow the outfit in the same map.
 const LOOK_SLOTS:Record<string,string[]>={
  hair:['spiky','wild','side-swept','tied-back','fringe-tail'],
- upper:['open-hoodie','hard-jacket','hoodie','tee','tank','sweater','sheldon-robe'],
- lower:['belted-pants','baggy-pants','skinny-jeans','cuffed-shorts','khakis','sheldon-pants'],
- hands:['fingerless','gloves','arm-bands','sweat-bands','bare'],
- feet:['mid-tops','work-boots','sneakers','lace-ups','sheldon-boots','barefoot']};
-const DEV_LOOK=new Set(['sheldon-robe','sheldon-pants','sheldon-boots','barefoot']);
+ upper:['robot-armour','open-hoodie','hard-jacket','hoodie','tee','tank','sweater','hot-dog','sheldon-robe'],
+ lower:['robot-legs','belted-pants','baggy-pants','skinny-jeans','cuffed-shorts','khakis','sheldon-pants'],
+ hands:['robot-gauntlets','fingerless','gloves','arm-bands','sweat-bands','bare'],
+ feet:['robot-boots','mid-tops','work-boots','sneakers','lace-ups','sheldon-boots','barefoot']};
+const DEV_LOOK=new Set(['hot-dog','sheldon-robe','sheldon-pants','sheldon-boots','barefoot']);
 function lookMap(raw:unknown,developer=false){
- if(typeof raw!=='string'||raw.length>512)return '';const picks=new Map<string,string>();let skin='';
- for(const entry of raw.split(',')){const i=entry.indexOf(':');if(i<=0)continue;const slot=entry.slice(0,i).trim(),id=entry.slice(i+1).trim();if(slot==='skin'&&/^[0-9a-f]{6}$/i.test(id))skin=id.toLowerCase();else if(Object.hasOwn(LOOK_SLOTS,slot)&&LOOK_SLOTS[slot].includes(id))picks.set(slot,id);}
- return Object.keys(LOOK_SLOTS).filter(s=>picks.has(s)&&picks.get(s)!==LOOK_SLOTS[s][0]&&(developer||!DEV_LOOK.has(picks.get(s)!))).map(s=>s+':'+picks.get(s)).concat(skin?['skin:'+skin]:[]).join(',');
+ if(typeof raw!=='string'||raw.length>512)return '';
+ const picks=new Map<string,string>();let costume='none',skin='';
+ for(const entry of raw.split(',')){
+  const colon=entry.indexOf(':');if(colon<=0)continue;
+  const key=entry.slice(0,colon).trim(),value=entry.slice(colon+1).trim();
+  if(key==='costume'&&(value==='voxel'||value==='none'))costume=value;
+  else if(key==='skin'&&/^[0-9a-f]{6}$/i.test(value))skin=value.toLowerCase();
+  else if(Object.hasOwn(LOOK_SLOTS,key)&&LOOK_SLOTS[key].includes(value))picks.set(key,value);
+ }
+ const look:string[]=[];
+ for(const [slot,ids] of Object.entries(LOOK_SLOTS)){
+  const pick=picks.get(slot);
+  if(pick&&pick!==ids[0]&&(developer||!DEV_LOOK.has(pick)))look.push(slot+':'+pick);
+ }
+ if(costume!=='none')look.push('costume:'+costume);
+ if(skin)look.push('skin:'+skin);
+ return look.join(',');
 }
 function podLook(raw:unknown){
  if(typeof raw!=='string'||raw.length>256)return '';const picks=new Map<string,string>();const keys=['paint','trim','light'];
