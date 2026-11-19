@@ -2485,3 +2485,14 @@ My recommendation comes first in each.
 6. **Locker rarity.** Four rarities, at $100, $175, $275 and $400, found 60%, 28%, 10% and 2% of the time. Or keep one price and only make the text clearer.
 
 Also from you, when the time comes: approve the night-look board, run one sound batch on your ElevenLabs account as for the Backrooms bosses, and pass Astra's hand-off on whole.
+
+## Decisions after the greybox walk (2026-11-18)
+Owner, verbatim: "Completed walking around the grey area 🙂 I like the size. Will the area be randomly generated? (Like different paths) Honestly maybe just like 5 unique set of paths would be fine. Afterwards, we can go ahead and add the design + polish :)"
+
+- **Size:** A, about 420 × 340 m, with 150-190 m gate-to-hall routes. This is the approved default and matches what the owner walked.
+- **Layouts:** five curated layouts instead of a fully random city.
+  - Each run picks one of the five. The run's instances fill that layout's gate and hall slots, so the bleed districts move with them.
+  - Caches, survivors and enemy spawns stay seeded per run.
+  - No mirroring, so signs and hand-placed art read correctly.
+- **Art:** each layout is dressed by hand on top of the module kit (W8 and W10): landmarks, roofs, sightlines and lamp placement made for that street plan. This is the "more detailed framing" the owner asked for; see the voxel retirement direction.
+- **Order:** Astra freezes the five layouts as data (A4 below), the owner walks them, then the design and polish start.
