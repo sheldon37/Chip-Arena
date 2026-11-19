@@ -1,5 +1,71 @@
 # Expedition Deployment Station: two machines and a generated destination
 
+## Frame budget (expedition overhaul W0, 2026-11-18)
+
+The one budget table of `docs/EXPEDITION-OVERHAUL.md` (section 6). Whoever changes a number updates its row, with the machine, the tier and the settings.
+
+**Managed census** (`Tests/GeneratedFrameChecks.cs`, in the full CoreTests; `--generated-frame` alone). It counts what the generated city's own presentation submits for one view, the way the runtime selects and batches it:
+- the kit's parts (range and back-face rule, casting and trim batches of 500);
+- the skyline round the footprint;
+- the dressed blocks;
+- the atmosphere's effect quads, the volumetric beams and the advanced rain (High only);
+- the practical slots the picker fills.
+
+It covers 6 eyes (the hub's centre, the south apron, the east and west entrances' join circles, the final court, the hub from 46 m up) over 20 rolls (seeds 1-20). Pilots, zombies, pods, machines, the hub gates, the sky, the HUD and the shadow cascades' repeats are left out. The pins are the shared head's numbers plus 15%, except the effect quads, pinned on W0's own fog.
+
+| Per view, the most over 120 views | Shared head `15dab150` | W0 | Pin | Plan target (section 6) |
+| --- | --- | --- | --- | --- |
+| High draws | 31 | 31 | 36 | 1,500 (all draws) |
+| High triangles | **2,177,224** | 2,173,532 | 2,503,808 | **2.0 M: over** |
+| High instances (at most 500 a draw) | 11,835 | 11,662 | 13,611 | 500 a draw |
+| High shadow casters | 1,004 | 1,024 | 1,155 | 1,200 |
+| High effect quads (+ rain) | 1,105 (+222) | 1,243 (+222) | 1,430 (256) | 2,800 |
+| High practical slots lit | 8 | 8 | 8 | 9 pixel lights |
+| Low draws | 22 | 22 | 26 | 800 |
+| Low triangles | **817,302** | 821,588 | 939,898 | **0.8 M: over** |
+| Low instances | 8,878 | 8,923 | 10,210 | 500 a draw |
+| Low effect quads | 765 | 860 | 989 | 2,800 |
+| Low-tier kit parts in view | 6,951 | 6,996 | 7,994 | 11,500 built |
+
+- **Over target before any overhaul code.** The triangle counts already exceed the plan's targets at High (2.18 M against 2.0 M at the worst view; 2.02 M on average at the hub) and at Low (0.82 M against 0.8 M).
+  - About 685,000 of the High triangles are the skyline's 1,544 boxes, each drawn with the style's 444-triangle wrap mesh.
+  - The rest are the kit's parts: about 9,900 in view at High, each drawn with the wrap mesh (444 triangles) or the rounded box (92).
+  - The cheapest cut would draw the skyline with the rounded box (about 540,000 fewer triangles at High), but that changes the look, so it was not made here.
+- **The meshes:** the style's wrap mesh has 444 triangles, its rounded box 92, and the legacy box 188.
+- **The kit build:** a roll builds at most 19,254 parts, of which 9,041 are on the low tier and 610 cast shadows; there are 179 light sources and 1,544 skyline boxes. All are inside the kit's budget of 25,000 parts, 11,500 low-tier parts, 1,200 casters and 3,000 backdrop parts.
+- **The light volume on the generated city:** about 1.7 m cells, 64 lights, and a bake of about 0.1 s (40 rays, managed, on the owner's PC).
+
+**Frame time** (BoZo `xperf` windows on live 1-pilot runs: the station, the roll, Deploy, the eject, the hub; the script is `scratchpad/exp-w0/jobs.sh`). They were measured in the owner's Unity Editor (play mode, Game view 1920x1080) on an NVIDIA GeForce RTX 4090 with an Intel i9-13900K (32 threads) and 64 GB.
+- "Run 1" puts the pilot just outside the south gate, at (0, -38), with health held, and measures 15 s from 20 s after GO.
+- Each run is a new station seed, so before and after are different cities.
+- Batches, triangles, casters and skinned meshes are Unity's own frame statistics (UnityStats), so they include every pass: the shadow cascades, the outline, the zombies, pods, the sky and the HUD.
+
+| Run | Tier | Zombies | Living | Frames | Mean ms | p50 | p95 | p99 | Worst | >20 / >50 ms | Batches mean (most) | Triangles mean | Casters | Skinned |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Run 1, shared 15dab150 | High (High) | the hub's own | 6 -> 11 | 976 | 15.4 | 15.2 | 17.1 | 20.0 | 38.5 | 10 / 0 | 1984 (2149) | 19.84 M | 728 | 109 |
+| Run 1, shared 15dab150 | High (High) | none left | 0 -> 0 | 1041 | 11.5 | 11.4 | 12.7 | 14.6 | 34.7 | 2 / 0 | 1194 (1200) | 18.82 M | 345 | 13 |
+| Run 1, shared 15dab150 | Balanced (Medium) | the hub's own | 6 -> 8 | 1021 | 14.7 | 14.2 | 17.7 | 25.7 | 69.6 | 34 / 2 | 1410 (1433) | 18.04 M | 570 | 74 |
+| Run 1, shared 15dab150 | Balanced (Medium) | none left | 0 -> 0 | 1023 | 11.7 | 11.7 | 13.0 | 14.7 | 33.9 | 2 / 0 | 1187 (1193) | 17.67 M | 329 | 13 |
+| Run 1, shared 15dab150 | Low (Low) | the hub's own | 15 -> 17 | 1001 | 15.0 | 14.3 | 20.3 | 22.6 | 39.2 | 68 / 0 | 993 (1012) | 2.00 M | 0 | 70 |
+| Run 1, shared 15dab150 | Low (Low) | none left | 0 -> 0 | 1154 | 10.4 | 10.3 | 11.6 | 13.5 | 32.1 | 2 / 0 | 710 (710) | 1.76 M | 0 | 13 |
+| Run 1, W0 753c3033 | High (High) | the hub's own | 19 -> 23 | 856 | 17.5 | 17.3 | 18.9 | 20.1 | 61.4 | 12 / 1 | 2078 (2226) | 17.70 M | 708 | 98 |
+| Run 1, W0 753c3033 | High (High) | none left | 0 -> 0 | 988 | 12.2 | 12.1 | 13.3 | 15.6 | 36.3 | 2 / 0 | 1176 (1181) | 16.56 M | 329 | 13 |
+| Run 1, W0 753c3033 | Balanced (Medium) | the hub's own | 17 -> 20 | 862 | 17.4 | 17.1 | 19.2 | 22.6 | 41.9 | 27 / 0 | 2373 (2467) | 19.79 M | 824 | 119 |
+| Run 1, W0 753c3033 | Balanced (Medium) | none left | 0 -> 0 | 977 | 12.3 | 12.2 | 13.4 | 15.5 | 37.3 | 1 / 0 | 1207 (1213) | 18.35 M | 345 | 13 |
+| Run 1, W0 753c3033 | Low (Low) | the hub's own | 6 -> 7 | 1192 | 12.6 | 12.4 | 13.9 | 16.6 | 43.5 | 6 / 0 | 839 (920) | 1.84 M | 0 | 42 |
+| Run 1, W0 753c3033 | Low (Low) | none left | 0 -> 0 | 1163 | 10.3 | 10.2 | 11.5 | 13.8 | 33.8 | 2 / 0 | 708 (708) | 1.68 M | 0 | 13 |
+
+"None left": in run 1, the DEV god-mode command (sent with a DEV spawn that the room refused, at most 8 a command) cleared the hub's own zombies within 5 s. Those windows are the city with no zombies.
+
+- **Over the targets, in the Editor.** Each tier's build target is a p95 of 12, 10 and 8 ms, at 4 pilots and 88 zombies on Windows.
+  - The Editor's p95 is already 17-20 ms at High and Balanced, and 14-20 ms at Low, with one pilot and 6-23 zombies.
+  - The frame is CPU-bound: the tiers barely differ, and with no zombies left it falls to 10-12 ms at every tier.
+  - Each zombie costs about 0.3 ms. The local Editor checkout skins on the CPU (`gpuSkinning: 0`), and the tracked settings do not say what the builder uses.
+  - The frame totals are also over the per-view targets: 1,400-2,400 batches at High and Balanced (target 1,500), 840-1,000 at Low (target 800), and 1.8-2.0 M triangles at Low (target 0.8 M).
+  - The High triangles (17-20 M) count four shadow cascades and the outline pass, while the 2.0 M target reads as one view. Section 6 should say which one it means before M2.
+  - These are Editor numbers. The Windows build with test accounts decides; that run is due at M3 and M7.
+- **The 4-pilot hook.** Astra's DEV load harness (A0: a DEV lobby-count override for the hub cap, and up to three stand-in members that BoZo walks along scripted routes) is not on shared yet. When it lands, the same `xperf` windows run with its lobby at 4 (the hub's own cap is then 88) and its stand-ins on the apron, with no DEV top-up. The commented `jobs_perf4` in `jobs.sh` is that run. Its rows go here, and the headroom (target minus baseline) is then shared out by milestone (section 6).
+
 ## Live mutator activation — owner requested 2026-11-02
 
 The owner requests enabling and publishing #305's mutator rules to the **test** Update channel now, superseding the earlier draft hold. `codex/mutator-activation` integrates those rules with shared `3ab56c4` (slot sparks and sound). The live host can roll three compatible mutators once destination reels settle; guests cannot roll; deployment locks both machines. The selected IDs persist for the run. See the activation PR / newest DEV_LOG entry for actual validation and publication status.
