@@ -2489,7 +2489,7 @@ Also from you, when the time comes: approve the night-look board, run one sound 
 ## Decisions after the greybox walk (2026-11-18)
 Owner, verbatim: "Completed walking around the grey area 🙂 I like the size. Will the area be randomly generated? (Like different paths) Honestly maybe just like 5 unique set of paths would be fine. Afterwards, we can go ahead and add the design + polish :)"
 
-- **Size:** A, about 420 × 340 m, with 150-190 m gate-to-hall routes. This is the approved default and matches what the owner walked.
+- **Size:** B, about 600 × 480 m, with 250-300 m gate-to-hall routes (owner, correcting: "Sorry I mean B is a good size"). This replaces the earlier default A. Re-measure the budgets in section 6 for B, with draw distance, LOD and culling over the larger area, before any art.
 - **Layouts:** five curated layouts instead of a fully random city.
   - Each run picks one of the five. The run's instances fill that layout's gate and hall slots, so the bleed districts move with them.
   - Caches, survivors and enemy spawns stay seeded per run.
