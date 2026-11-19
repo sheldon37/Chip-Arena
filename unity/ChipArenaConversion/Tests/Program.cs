@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--thunderheart")ThunderheartChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--thunderheart")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--practice")PracticeChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--practice")return 0;
             if(args.Length==1&&args[0]=="--party-benchmark"){PartyTransportBenchmark.Run().GetAwaiter().GetResult();return 0;}
@@ -25,6 +27,9 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--expedition-loading")ExpeditionLoadingHandoffChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--expedition-loading")return 0;
             if(args.Length==3&&args[0]=="--stage-layout"){StageArtLayout.Write(ProjectRoot(),args[1],args[2]);return 0;}
+            if(args.Length==0||args.Length==1&&args[0]=="--layered-walk")LayeredCityWalkChecks.Run();
+            if(args.Length==1&&args[0]=="--layered-walk")return 0;
+            if(args.Length==2&&args[0]=="--layered-walk-plans"){LayeredCityWalkPlans.Write(args[1]);return 0;}
             if(args.Length==2&&args[0]=="--rooftop-layout"){RooftopLayout.Write(args[1]);return 0;}
             if(args.Length==2&&args[0]=="--rooftop-slides"){RooftopLayout.Slides(ProjectRoot(),args[1]);return 0;}
             if(args.Length==1&&args[0]=="--rooftop"){RooftopChecks.Run(ProjectRoot());return 0;}
@@ -48,6 +53,14 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--projectile-events")ProjectileEventChecks.Run();
             if(args.Length==1&&args[0]=="--projectile-events")return 0;
             if(args.Length==1&&args[0]=="--zombie-stages"){ZombieStageChecks.Run();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn"){ZombieRunTurnChecks.Probe();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn-walks"){ZombieRunTurnChecks.Walks();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn-band"){ZombieRunTurnChecks.Band();return 0;}
+            if(args.Length>=3&&args[0]=="--zombie-runturn-snap"){if(args.Length>=4){ZombieRunTurnChecks.SnapAll=true;ZombieRunTurnChecks.SnapFrom=float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture);}ZombieRunTurnChecks.Snap(int.Parse(args[1]),args[2]);return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn-sweep"){ZombieRunTurnChecks.Sweep();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn-cost"){ZombieRunTurnChecks.Cost();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn-checks"){ZombieRunTurnChecks.Run(ProjectRoot());return 0;}
+            if(args.Length>=3&&args[0]=="--zombie-runturn-trace"){if(args.Length>=6)ZombieRunTurnChecks.TracePhase=int.Parse(args[5]);if(args.Length>=5){ZombieRunTurnChecks.TraceFrom=float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture);ZombieRunTurnChecks.TraceFor=float.Parse(args[4],System.Globalization.CultureInfo.InvariantCulture);}ZombieRunTurnChecks.Trace(int.Parse(args[1]),args[2]);return 0;}
             if(args.Length==1&&args[0]=="--zombie-source"){ZombieStageChecks.Source();return 0;}
             if(args.Length==1&&args[0]=="--zombie-all"){return ZombieStageChecks.All(ProjectRoot());}
             if(args.Length==5&&args[0]=="--zombie-sticks"){ZombieStageChecks.Sticks(args[1],args[2],float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture),int.Parse(args[4]));return 0;}
@@ -309,7 +322,7 @@ internal static class Program
             BootIntroChecks.Run(root);
             FinalKillcamChecks.Run(root);ReplayShotChecks.Run(data);
             HatLookChecks.Run(root);ModelHatChecks.Run(root);RobotSuitChecks.Run(root);RobotHelmChecks.Run(root);
-            LookContractChecks.Run(root);HotDogChecks.Run(root);GuardChecks.Run(root);HotdogFriendsChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);TilerLookChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);ZombieStageChecks.Source();ZombieKnockChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);
+            LookContractChecks.Run(root);HotDogChecks.Run(root);GuardChecks.Run(root);HotdogFriendsChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);TilerLookChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);ZombieStageChecks.Source();ZombieRunTurnChecks.Run(root);ZombieKnockChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);
             MovementModsChecks.Run(root);RoundsCardsChecks.Run(root);NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);WoundSkinChecks.Run(root);BisectChecks.Run(root);MeleeBisectChecks.Run(root);GibChecks.Run(root);ReviveHoloChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
             StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();KillEffectChecks.Run(root);SirenFxChecks.Run(root);SirenMarkChecks.Run(root);SirenLookChecks.Run(root);DevFxChecks.Run(root);

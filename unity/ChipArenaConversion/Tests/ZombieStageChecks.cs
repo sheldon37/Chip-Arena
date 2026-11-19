@@ -424,7 +424,7 @@ namespace ChipArena.UnityConversion
         {
             int failed=0;
             void Go(string name,Action a){try{a();Console.WriteLine("ok   "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e.Message);}}
-            Go("ZombieSource",Source);Go("ZombieMotion",()=>ZombieMotionChecks.Run(root));Go("ZombieLoco",()=>ZombieLocoChecks.Run(root));Go("ZombieGait",()=>ZombieGaitChecks.Run(root));Go("ZombiePosture",()=>ZombiePostureChecks.Run(root));
+            Go("ZombieSource",Source);Go("ZombieRunTurn",()=>ZombieRunTurnChecks.Run(root));Go("ZombieMotion",()=>ZombieMotionChecks.Run(root));Go("ZombieLoco",()=>ZombieLocoChecks.Run(root));Go("ZombieGait",()=>ZombieGaitChecks.Run(root));Go("ZombiePosture",()=>ZombiePostureChecks.Run(root));
             Go("ZombieKnock",()=>ZombieKnockChecks.Run(root));Go("ZombieTwitch",()=>ZombieTwitchChecks.Run(root));Go("ZombieFlow",()=>ZombieFlowChecks.Run(root));Go("ZombieModel",()=>ZombieModelChecks.Run(root));
             Go("ZombieGore",()=>ZombieGoreChecks.Run(root));Go("HordeRoam",()=>HordeRoamChecks.Run(root));Go("HordeKind",()=>HordeKindChecks.Run(root));Go("IronworksKind",()=>IronworksKindChecks.Run(root));Go("IronworksProp",()=>IronworksPropChecks.Run(root));
             Go("StationEnemy",()=>StationEnemyChecks.Run(root));Go("HulkMotion",()=>HulkMotionChecks.Run(root));Go("HulkCharge",()=>HulkChargeChecks.Run(root));Go("HulkSpitter",()=>HulkSpitterChecks.Run(root));

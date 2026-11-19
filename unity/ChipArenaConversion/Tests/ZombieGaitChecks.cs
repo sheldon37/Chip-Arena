@@ -121,15 +121,15 @@ namespace ChipArena.UnityConversion
                         for(int i=0;i<390;i++)
                         {
                             var v=new Vector3(0,0,speed);at+=v*Dt;f.Time=i*Dt;f.Root=at;f.Velocity=v;f.Yaw=0;f.Ground=0;g.Pose(f,p);p.World();
-                            NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                            NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
                             if(i<90)continue;
                             if(i==90)from=g.Phase;if((g.Landed&3)!=0)steps+=((g.Landed&1)!=0?1:0)+((g.Landed&2)!=0?1:0);
                             int c=g.RunNow>.5f?r:w;NativeZombieClips.SamplePhase(c,NativeZombieMotion.Warp(c,g.Phase),row);NativeZombieClips.Pose(row,take,false);take.World();
                             for(int side=0;side<2;side++)
                             {
                                 int hip=side==0?CapturedRig.LHip:CapturedRig.RHip,vh=rig.Of[hip],vk=rig.Of[hip+1],va=rig.Of[hip+2];
-                                // (The gait drew the ankle in about its hip for the rig's legs, NativeHordeGait.LegsNow: spread back out.)
-                                Vector3 ga=fit.WorldPosition[hip+2],ma=s.Position[va];ga.Z=fit.WorldPosition[hip].Z+(ga.Z-fit.WorldPosition[hip].Z)*g.LegsNow;
+                                // (The gait drew the ankle in about its hip for the rig's legs, NativeHordeGait.LegsNow, and across by LegsAcross: spread back out.)
+                                Vector3 ga=fit.WorldPosition[hip+2],ma=s.Position[va];ga.X=fit.WorldPosition[hip].X+(ga.X-fit.WorldPosition[hip].X)*g.LegsAcross;ga.Z=fit.WorldPosition[hip].Z+(ga.Z-fit.WorldPosition[hip].Z)*g.LegsNow;
                                 gap=Math.Max(gap,new Vector2(ma.X-ga.X,ma.Z-ga.Z).Length());
                                 // A planted foot stands where it landed in the world (the rig frame's +z is the travel, its +x the add's left).
                                 // (A sprint's foot rolling onto its ball moves its ankle round the ball: OwnStride measures the ball.)
@@ -207,7 +207,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<720;i++)
                 {
                     const float dt=1/120f;var v=new Vector3(0,0,speed);at+=v*dt;f.Time=i*dt;f.Root=at;f.Velocity=v;f.Yaw=0;f.Ground=0;g.Pose(f,p);p.World();
-                    NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                    NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
                     if(i<240)continue;frames++;if(!g.FootAir[0]&&!g.FootAir[1])both++;
                     for(int side=0;side<2;side++)
                     {
