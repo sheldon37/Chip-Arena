@@ -28,10 +28,11 @@ namespace ChipArena.UnityConversion
         private static void Column(WeaponSculpt s,in WeaponPaint c,float r,float x,float z,float y0,float y1,int sides,float bevel=0)
         {s.Push(WeaponSculpt.Rx(Up)*WeaponSculpt.T(x,0,z));s.Cylinder(c,r,y0,y1,sides,bevel);s.Pop();}
         // The station's lettering (NativeDeployArt's strokes, each a bar) on the face plane at depth z (proud toward -z by `depth`),
-        // `height` tall, its left edge at x0 (or centred on it), its middle at cy.
-        private static void Letters(WeaponSculpt s,in WeaponPaint p,string text,float x0,float cy,float z,float height,float depth,bool centred=false)
+        // `height` tall, its left edge at x0 (or centred on it), its middle at cy, its strokes `weight` of its height (the
+        // station's own lettering is a tenth; the board's headings are bolder so they hold a pixel and a half from the Overview).
+        private static void Letters(WeaponSculpt s,in WeaponPaint p,string text,float x0,float cy,float z,float height,float depth,bool centred=false,float weight=.1f)
         {
-            float k=height/NativeDeployArt.GlyphHeight,x=centred?x0-NativeDeployArt.TextWidth(text)*k/2:x0,top=cy+height/2,w=height*.1f;var paint=p;
+            float k=height/NativeDeployArt.GlyphHeight,x=centred?x0-NativeDeployArt.TextWidth(text)*k/2:x0,top=cy+height/2,w=height*weight;var paint=p;
             foreach(char c in text)
             {
                 foreach(var (a0,b0,a1,b1) in NativeDeployArt.Strokes(c))
@@ -62,15 +63,17 @@ namespace ChipArena.UnityConversion
                 s.Box(Brass,V(0,side<0?b-.004f:H-b+.004f,-.022f),V(W-2*b+.008f,.008f,.012f));s.Box(Brass,V(side*(hw-b+.004f),H/2,-.022f),V(.008f,H-2*b+.008f,.012f));
                 foreach(int v in new[]{-1,1})s.Box(BrassDark,V(side*(hw-.07f),v<0?.07f:H-.07f,-.028f),V(.1f,.1f,.012f),0,0,0,(float)(Math.PI/4));
             }
-            // the header plate and its lettering: ATLAS in gold, then · DEPARTURES in ivory
-            float hy=(NativeAtlasBoard.HeaderTop+NativeAtlasBoard.HeaderBottom)/2,hx=NativeAtlasBoard.EmblemX;
-            s.Box(GraphiteDark,V(0,hy,.002f),V(W-2*b,NativeAtlasBoard.HeaderTop-NativeAtlasBoard.HeaderBottom,.016f));
+            // the header plate and its lettering, centred over the plate's brass rule: ATLAS in gold, then · DEPARTURES in ivory on
+            // the same baseline
+            float hy=(NativeAtlasBoard.HeaderTop+NativeAtlasBoard.HeaderBottom+.006f)/2,hx=NativeAtlasBoard.EmblemX;
+            const float th=NativeAtlasBoard.TitleHeight,sh=NativeAtlasBoard.SubtitleHeight,lh=NativeAtlasBoard.LabelHeight;
+            s.Box(GraphiteDark,V(0,(NativeAtlasBoard.HeaderTop+NativeAtlasBoard.HeaderBottom)/2,.002f),V(W-2*b,NativeAtlasBoard.HeaderTop-NativeAtlasBoard.HeaderBottom,.016f));
             s.Box(BrassDark,V(0,NativeAtlasBoard.HeaderBottom+.003f,-.008f),V(W-2*b-.06f,.006f,.008f));
-            s.Into(Lights);Letters(s,Lamp(Gold),"ATLAS",hx,hy,-.006f,.096f,.008f);
-            float after=hx+LettersWidth("ATLAS",.096f)+.07f;Letters(s,Lamp(Ivory,.9f),"· DEPARTURES",after,hy-.006f,-.006f,.068f,.007f);
+            s.Into(Lights);Letters(s,Lamp(Gold),"ATLAS",hx,hy,-.006f,th,.008f,weight:NativeAtlasBoard.TitleWeight);
+            float after=hx+LettersWidth("ATLAS",th)+.08f;Letters(s,Lamp(Ivory,.9f),"· DEPARTURES",after,hy-(th-sh)/2,-.006f,sh,.007f,weight:NativeAtlasBoard.LabelWeight);
             // the column labels over the large line's columns, and the brass rule under them
             var L=NativeAtlasBoard.Board;float ly=(NativeAtlasBoard.LabelBottom+NativeAtlasBoard.HeaderBottom)/2;
-            for(int c=0;c<NativeTilesets.Columns.Length;c++)Letters(s,Lamp(Ivory,.7f),NativeTilesets.Columns[c],L.Left[c],ly,.009f,.052f,.006f);
+            for(int c=0;c<NativeTilesets.Columns.Length;c++)Letters(s,Lamp(Ivory,.75f),NativeTilesets.Columns[c],L.Left[c],ly,.009f,lh,.006f,weight:NativeAtlasBoard.LabelWeight);
             s.Into(Body);s.Box(Brass,V((NativeAtlasBoard.EmblemX+NativeAtlasBoard.ColumnsEnd)/2,NativeAtlasBoard.LabelBottom-.004f,.005f),V(NativeAtlasBoard.ColumnsEnd-NativeAtlasBoard.EmblemX,.006f,.008f),.002f);
             // the divider under the large line, hairlines between the small ones, the columns' separators
             s.Box(Brass,V(0,(NativeAtlasBoard.LargeTop-NativeAtlasBoard.LargeFlap+NativeAtlasBoard.SmallTop)/2,-.004f),V(W-2*b-.04f,.01f,.008f),.003f);

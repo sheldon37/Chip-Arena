@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
         }
         public bool StageMusicPending=>stageBossMusic!=null&&stageBossMusic.loadState==AudioDataLoadState.Loading;
         public void ResetCursor(){generation=-1;}
-        private void Awake(){NativeUi.Sound+=UiHeard;NativeWeaponCard.Sound+=FlourishHeard;NativeAtlasScene.Sound+=AtlasHeard;voices=new AudioSource[24];keyedVoices=new bool[voices.Length];for(int i=0;i<voices.Length;i++){voices[i]=gameObject.AddComponent<AudioSource>();voices[i].playOnAwake=false;voices[i].spatialBlend=0;}music=gameObject.AddComponent<AudioSource>();music.playOnAwake=false;music.priority=0;introVoice=gameObject.AddComponent<AudioSource>();introVoice.playOnAwake=false;}
+        private void Awake(){NativeUi.Sound+=UiHeard;NativeWeaponCard.Sound+=FlourishHeard;AtlasAwake();voices=new AudioSource[24];keyedVoices=new bool[voices.Length];for(int i=0;i<voices.Length;i++){voices[i]=gameObject.AddComponent<AudioSource>();voices[i].playOnAwake=false;voices[i].spatialBlend=0;}music=gameObject.AddComponent<AudioSource>();music.playOnAwake=false;music.priority=0;introVoice=gameObject.AddComponent<AudioSource>();introVoice.playOnAwake=false;}
         // A free voice for an unlimited, unpanned play (beeps, death tones); Play counts the limited cue voices itself.
         private AudioSource Voice(){for(int i=0;i<voices.Length;i++)if(!voices[i].isPlaying){keyedVoices[i]=false;voices[i].loop=false;return voices[i];}return null;}
         private AudioClip Clip(string id){if(!clips.TryGetValue(id,out var c)){c=Resources.Load<AudioClip>("Audio/"+id);clips[id]=c;}return c;}

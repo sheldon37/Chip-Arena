@@ -12,7 +12,9 @@ namespace ChipArena.UnityConversion
     /// little thump, each a touch different, over a faint mechanical rattle.</item>
     /// <item><b>The bell:</b> a two-note chime as the line lands (E5 then C5, bell partials, a soft strike).</item>
     /// </list>
-    /// Placeholders until the owner's ElevenLabs pass (docs/EXPEDITION-OVERHAUL.md N5): the keys stay the same.
+    /// Samples is engine-free and costs tens of milliseconds, so Runtime NativeAtlasAudio runs it on workers when the audio
+    /// starts, never at a cue. Placeholders until the owner's ElevenLabs pass (docs/EXPEDITION-OVERHAUL.md N5): the keys stay
+    /// the same.
     /// </summary>
     public static class NativeAtlasSounds
     {
@@ -32,6 +34,16 @@ namespace ChipArena.UnityConversion
         {
             if(index==Clatter){var c=Clicks();return (c.Count>0?c[c.Count-1]:0)+.14;}
             return 2.4;
+        }
+        /// <summary>How late (s) the bell may be heard and still ring from its strike (the quarter second a late first frame hears).</summary>
+        public const double BellSlack=.25;
+        /// <summary>Where a clip starts (s into it) when its moment is heard `late` s after its time: the clatter that far in, so
+        /// each click stays on the flap it was timed to; the bell from its strike, unless more than BellSlack late, when it too is
+        /// seeked (a strike that late would ring against a board long landed). Never past the clip's end.</summary>
+        public static double StartAt(int index,double late)
+        {
+            if(!(late>0)||index==Bell&&late<BellSlack)return 0;
+            return Math.Min(late,Duration(index));
         }
         // A hash in [0,1) (the board's mixer), for each click's small differences.
         private static double H(int a,int b)=>NativeAtlasBoard.H(a,b,77);

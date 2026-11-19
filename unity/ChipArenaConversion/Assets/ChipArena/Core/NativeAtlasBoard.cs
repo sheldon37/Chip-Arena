@@ -10,8 +10,9 @@ namespace ChipArena.UnityConversion
     /// (NativeTilesets) and this client's clock since the station opened, and decides nothing (no rule, ticket or wire).
     /// <list type="bullet">
     /// <item><b>Where:</b> hung from the ceiling beam over the DEPLOY gate on two drop rods, its face 2.5 m in front of the back
-    /// wall (the plan's wall band sits behind that beam from the Overview); about 8.4 x 1.1 m, so the whole face reads from every
-    /// station shot that sees it.</item>
+    /// wall (the plan's wall band sits behind that beam from the Overview); about 8.4 x 1.2 m, as tall as the Overview lets it be
+    /// (the light bar in front of its top, the DEPLOY sign under its bottom), so the whole face reads from every station shot
+    /// that sees it, its headings included.</item>
     /// <item><b>What:</b> headed ATLAS · DEPARTURES, four columns (TILESET · ENEMIES · INSTANCES · FINAL) and four lines: the
     /// selected tileset's on the large first line (CITY · MERIDIAN | THE INFECTED | 5 INSTANCES | THE SIREN), the others small
     /// and dim amber, NOT IN SERVICE where no tileset is (no invented names, no dates).</item>
@@ -26,9 +27,10 @@ namespace ChipArena.UnityConversion
     public static class NativeAtlasBoard
     {
         // ---- placement (station frame: metres, x right, y up, z away from the default camera) -----------------------------
-        /// <summary>The face's bottom centre; the model is authored from it (x right, y up, z back), facing -z.</summary>
-        public static readonly Vector3 At=new Vector3(0,5.35f,7.1f);
-        public const float Width=8.4f,Height=1.1f,Depth=.36f,Bezel=.045f;
+        /// <summary>The face's bottom centre; the model is authored from it (x right, y up, z back), facing -z. From the Overview
+        /// its bottom stays over the gate's DEPLOY sign and its top under the light bar at z 6 (both checked by ray).</summary>
+        public static readonly Vector3 At=new Vector3(0,5.28f,7.1f);
+        public const float Width=8.4f,Height=1.195f,Depth=.36f,Bezel=.045f;
         /// <summary>The ceiling beam it hangs from (NativeDeployModels.StationRoom: the I-beam at z 7.5, its bottom flange at 6.70),
         /// and the drop rods' x.</summary>
         public const float BeamZ=7.5f,BeamBottom=6.70f,RodX=3.0f;
@@ -36,11 +38,15 @@ namespace ChipArena.UnityConversion
         /// <summary>The model's footprint (model space): the cabinet, its drop rods and their clamps.</summary>
         public static void Footprint(out Vector3 min,out Vector3 max){min=new Vector3(-Width/2-.02f,-.02f,-.04f);max=new Vector3(Width/2+.02f,BeamBottom-At.Y+.01f,Depth+.1f);}
         /// <summary>The station shot that frames the board: the camera opens on it while the line arrives (TILESET's card), with
-        /// the gate under it and the console's side panels clear of it.</summary>
+        /// the gate under it, between the console's title and its controls; the console's side panels step aside while it
+        /// holds (<see cref="NativeAtlasStage.Panels"/>), so no aspect or Interface scale puts them over the board.</summary>
         public static readonly NativeDeployPresentation.View Shot=new NativeDeployPresentation.View{Eye=new Vector3(0,3.35f,-3.2f),Target=new Vector3(0,4.75f,7.1f),Fov=48};
         /// <summary>After the hold the board hands the camera to the Overview along a smoothstep over HandOff seconds of the
-        /// station's clock, so the move starts and ends at rest (the station's own ease follows the path).</summary>
-        public const float HandOff=1.2f;
+        /// station's clock, so the move starts and ends at rest (the station's own ease follows the path); the console's side
+        /// panels ease back in along the same curve, or within PanelsIn seconds when a roll takes the camera sooner.</summary>
+        public const float HandOff=1.2f,PanelsIn=.35f;
+        /// <summary>The longest the opening's clock waits for the flaps to be drawable (NativeAtlasStage.Waiting).</summary>
+        public const float MaxWait=1.5f;
         public static NativeDeployPresentation.View ViewAt(float since,in NativeDeployPresentation.View overview)
         {
             float u=(since-HoldUntil)/HandOff;if(!(u>0))return Shot;if(u>=1)return overview;float s=u*u*(3-2*u);
@@ -62,8 +68,12 @@ namespace ChipArena.UnityConversion
         public enum Kind:byte{Glyph,Emblem}
         public struct Cell{public int Line,Column,Index;public Kind Kind;public bool Large;public float X0,Y0,X1,Y1;}
         /// <summary>The flaps' shape: width over height for a glyph flap (the emblem's is square); flaps are spaced by Gap.</summary>
-        public const float FlapAspect=.533f,LargeFlap=.25f,SmallFlap=.13f,LargePitchY=.29f,SmallPitchY=.153f;
-        public const float HeaderTop=Height-Bezel,HeaderBottom=.905f,LabelBottom=.838f,LargeTop=.825f,SmallTop=.525f;
+        public const float FlapAspect=.533f,LargeFlap=.25f,SmallFlap=.14f,LargePitchY=.29f,SmallPitchY=.162f;
+        public const float HeaderTop=Height-Bezel,HeaderBottom=.982f,LabelBottom=.84f,LargeTop=.83f,SmallTop=.538f;
+        /// <summary>The header's and the column labels' lettering: ATLAS, then · DEPARTURES, then the labels (heights in metres and
+        /// their strokes as a share of the height): large and bold enough to read from the Overview at 1080p (about 8.5 px tall,
+        /// 1.5 px strokes; checked), where the station's own thin lettering (a tenth) would not.</summary>
+        public const float TitleHeight=.13f,TitleWeight=.15f,SubtitleHeight=.11f,LabelHeight=.11f,LabelWeight=.175f;
         public const float LampX=-4.08f,EmblemX=-4.02f,ColumnsX=-3.735f,ColumnsEnd=4.075f,ColumnGap=.3f,Gap=.012f,SmallGap=.008f;
         public sealed class Layout
         {
@@ -204,17 +214,19 @@ namespace ChipArena.UnityConversion
 
         // ---- sound moments (Claude's table: NativeAtlasSounds) ----------------------------------------------------------------
         public enum CueKind:byte{Clatter,Bell}
-        /// <summary>A moment of the arrival for sound, at `At` s after the station opened. Machine 2: Astra's NativeDeploySounds
-        /// plays machines 0 and 1 only, so these never double up with the reels' sounds.</summary>
-        public struct Cue{public CueKind Kind;public float At;}
+        /// <summary>A moment of the arrival for sound, at `At` s after the station opened, and how late this frame hears it (`Late`,
+        /// s: the frame's lag, or a stall), so its clip can start that far in and stay on the picture (NativeAtlasSounds.StartAt).
+        /// Machine 2: Astra's NativeDeploySounds plays machines 0 and 1 only, so these never double up with the reels' sounds.</summary>
+        public struct Cue{public CueKind Kind;public float At,Late;}
         public const int Machine=2;
         public static readonly Cue[] Schedule={new Cue{Kind=CueKind.Clatter,At=EmblemAt},new Cue{Kind=CueKind.Bell,At=LandAt}};
-        /// <summary>The moments heard between two frames' clocks (`before` exclusive, `now` inclusive), added to `into` from `count`:
-        /// a reopened board (now before `before`) starts again; an unknown `before` hears only the last quarter second.</summary>
+        /// <summary>The moments heard between two frames' clocks (`before` exclusive, `now` inclusive), added to `into` from `count`
+        /// with their lateness: a reopened board (now before `before`) starts again; an unknown `before` hears only the last
+        /// quarter second.</summary>
         public static int Heard(float before,float now,Cue[] into,int count)
         {
             if(!(now>=0)||into==null)return count;if(!(before>=0))before=now-.25f;else if(before>now)before=-1e-4f;
-            foreach(var c in Schedule)if(c.At>before&&c.At<=now&&count<into.Length)into[count++]=c;
+            foreach(var c in Schedule)if(c.At>before&&c.At<=now&&count<into.Length)into[count++]=new Cue{Kind=c.Kind,At=c.At,Late=now-c.At};
             return count;
         }
         /// <summary>Line 1's flaps landing, as the clatter's clicks: each flap's fall end (the emblem's first), seconds after
@@ -236,7 +248,9 @@ namespace ChipArena.UnityConversion
     /// ATLAS posed for a frame (owned by NativeDeployStage, which frames the camera on it; Runtime NativeAtlasScene draws it):
     /// the tileset on each line from the registry and the selection hook, every flap's pose from this client's clock since the
     /// station opened (a clock that runs backwards, as the DEV preview's restart does, opens it again), the lamps' levels, the
-    /// bell's sparks and the moments heard for sound. Frame allocates nothing.
+    /// bell's sparks, the moments heard for sound and how much the console's side panels show. The opening's clock starts on
+    /// the station's second frame: the first one's time is read before the station's scene is built (a first visit's build
+    /// and first draw take a tenth of a second or more), so none of that runs the arrival. Frame allocates nothing.
     /// </summary>
     public sealed class NativeAtlasStage
     {
@@ -250,6 +264,14 @@ namespace ChipArena.UnityConversion
         public bool Landed,Moving,Framed;
         /// <summary>The camera the board asks for while Frame returns true: its shot, then the eased hand-off to the Overview.</summary>
         public NativeDeployPresentation.View View;
+        /// <summary>How much the console's side panels (the machines' cards, display only) show, 0..1: none while the board holds
+        /// its shot, so they never cover it whatever the window's aspect or the Interface scale; back along the hand-off's curve,
+        /// or within NativeAtlasBoard.PanelsIn s once a roll takes the camera; 1 when the station opens on another shot.</summary>
+        public float Panels=1;
+        /// <summary>Set by the Runtime while it cannot draw the flaps yet (no bake: the glyph atlas rasterising on a worker, a
+        /// first visit's tenth of a second or so): the opening's clock waits for it, at most NativeAtlasBoard.MaxWait s, so the
+        /// arrival never plays to a blank board.</summary>
+        public bool Waiting;
         /// <summary>Changes whenever a flap's pose does (the Runtime uploads the flaps only then).</summary>
         public int Version{get;private set;}
         /// <summary>This frame's levels: the header, line 1's flaps and lamp (with the bell's flash), the other lines'.</summary>
@@ -257,7 +279,7 @@ namespace ChipArena.UnityConversion
         public readonly NativeDeploySparks.Spark[] Sparks=new NativeDeploySparks.Spark[NativeAtlasBoard.SparkLimit];public int SparkCount;
         public readonly NativeAtlasBoard.Cue[] Cues=new NativeAtlasBoard.Cue[4];public int CueCount;
         private readonly float[] start;private readonly int[] flips,from,target;private readonly int[] kinds=new int[NativeTilesets.Lines];
-        private float openAt=float.NaN,last=float.NaN,heard=float.NaN;private bool moved;private int salt;
+        private float openAt=float.NaN,last=float.NaN,heard=float.NaN,waitFrom;private bool moved,anchored;private int salt;
         /// <summary>Where the selection comes from: the registry's hook (the checks put a stand-in here to run a re-flap).</summary>
         internal Func<ExpeditionDeploymentState,NativeTilesets.Tileset> Select=NativeTilesets.Selected;
         public NativeAtlasStage()
@@ -295,7 +317,11 @@ namespace ChipArena.UnityConversion
         public bool Frame(in DeployInput f,NativeDeployPresentation.Shot shot)
         {
             float t=f.Time;Selected=Select(f.State)??NativeTilesets.Of(NativeTilesets.City);NativeTilesets.Board(Selected,Lines);
-            if(!(t>=last)||float.IsNaN(openAt))Open(t);
+            bool opening=!(t>=last)||float.IsNaN(openAt);float dt=opening?0:t-last;
+            if(opening){Open(t);anchored=false;waitFrom=t;}
+            // the opening's second frame: its clock starts now (the first frame's time was read before the scene was built), or
+            // once the flaps can draw
+            else if(!anchored){openAt=t;anchored=!Waiting||t-waitFrom>=NativeAtlasBoard.MaxWait;}
             last=t;Since=t-openAt;float since=Since;
             for(int line=0;line<NativeTilesets.Lines;line++){int k=NativeAtlasBoard.Kinds(Lines[line]);if(k!=kinds[line])Retarget(line,k,since);}
             bool moving=false;
@@ -317,6 +343,9 @@ namespace ChipArena.UnityConversion
             bool over=shot==NativeDeployPresentation.Shot.Overview&&since>=0;
             Framed=over&&since<NativeAtlasBoard.HoldUntil;bool handing=over&&!Framed&&since<NativeAtlasBoard.HoldUntil+NativeAtlasBoard.HandOff;
             if(Framed||handing)View=NativeAtlasBoard.ViewAt(since,NativeDeployPresentation.ShotOf(NativeDeployPresentation.Shot.Overview));
+            // the console's side panels: out while the board holds, back with the hand-off (or soon after a roll takes the camera)
+            float u=(since-NativeAtlasBoard.HoldUntil)/NativeAtlasBoard.HandOff,panels=Framed?0:handing?u*u*(3-2*u):1;
+            Panels=opening||panels<=Panels?panels:Math.Min(panels,Panels+dt/NativeAtlasBoard.PanelsIn);
             return Framed||handing;
         }
     }

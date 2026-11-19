@@ -15,8 +15,8 @@ namespace ChipArena.UnityConversion
     ///    level, the in-service lamp in the selected tileset's accent, the other lines' dim lamps);
     ///  - the flaps, one mesh per line on NativeDeployScreen (emissive: they light nothing), sampling the one glyph atlas
     ///    (the build's bake under NativeAtlasArt.Key, else rasterised once on a worker and kept for the session; until it is up
-    ///    the black face shows), their
-    ///    vertices rewritten only when a flap's pose changes (the line arriving, a later re-flap);
+    ///    the black face shows and the opening's clock waits, NativeAtlasStage.Waiting), their vertices rewritten only when a
+    ///    flap's pose changes (the line arriving, a later re-flap);
     ///  - the bell's sparks (machine 2) as camera-facing additive quads, as the station draws its own;
     ///  - its sounds raised through <see cref="Sound"/> (NativeAudio plays them from Claude's NativeAtlasSounds table).
     /// A failure is logged once and turns the board off; it never takes the station down. The draw allocates nothing.
@@ -149,6 +149,8 @@ namespace ChipArena.UnityConversion
             }
             // the arrival's sounds
             for(int i=0;i<a.CueCount;i++)Sound?.Invoke(a.Cues[i]);
+            // until the flaps can draw, the opening's clock waits (the next frame's NativeAtlasStage.Frame reads it)
+            a.Waiting=atlas==null&&atlasJob!=null;
         }
         // Every line's flaps from the poses: each cell's three faces (Core NativeAtlasModels.Cell), tinted per line.
         private void Rebuild(NativeAtlasStage a,Color accent)
