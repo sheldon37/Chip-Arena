@@ -1,6 +1,6 @@
 # Thunderheart Carillon
 
-Select **Thunderheart Carillon** in the standard match map selector. The bell's bronze crown overlooks two terraced galleries. The high ground has four ramp approaches. Breaking the amber or jade tuning stop sacrifices cover and powers the opposite updraft. Its two-second warning gives an opponent time to contest the landing. The north iris warns at 33 seconds in the opening round and starts closing at 36. The south iris follows 14 seconds later. A leaf holds above a pilot or minion in its sweep.
+Thunderheart Carillon is retired from stage selection and random rotation. The bell's bronze crown overlooks two terraced galleries. The high ground has four ramp approaches. Breaking the amber or jade tuning stop sacrifices cover and powers the opposite updraft. Its two-second warning gives an opponent time to contest the landing. The north iris warns at 33 seconds in the opening round and starts closing at 36. The south iris follows 14 seconds later. A leaf holds above a pilot or minion in its sweep.
 
 The two iris gates, breakable stops, launch wells, crosswind bellows, charged grate, breakable votive screens, movable drums and proximity bells respond to match state. Prop destruction and launch decisions use the existing arena authority. Gate warnings and the crown read the match clock. Muting music leaves those cues visible. Settings → Music-reactive scenery scales cosmetic motion and lighting.
 
