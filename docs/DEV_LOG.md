@@ -1,3 +1,13 @@
+## 2026-11-19 — Claude: the owner accepts the city's triangle baselines as the budget (docs and tests only)
+
+Branch `claude/budget-baselines` from shared. Owner, verbatim: "Accept the baselines" (asked: accept today's triangle counts as the city's budget, or cut the skyline).
+
+- **The budget:** today's worst views, High 2,177,224 and Low 821,492 triangles a view. The plan's first targets were 2.0 M and 0.8 M (section 6 of `docs/EXPEDITION-OVERHAUL.md`, and the budget table in `docs/EXPEDITION-DEPLOYMENT.md`, both updated).
+- **The gate:** `GeneratedFrameChecks` holds the city at that budget. A package that adds triangles cuts as many elsewhere, or asks the owner to raise it. The messages say so; the plan's first numbers stay as `PlanHighTris` and `PlanLowTris`.
+- **Unchanged:** the skyline cut (the rounded box, about 540,000 fewer at High) stays available if headroom is wanted later. The Low tier's 3 practical slots still come with W1's night look.
+- **Checks:** `--generated-frame` passes (68 checks); the full suite runs at the merge.
+- **Animation impact:** none; no runtime code changed.
+
 ## 2026-11-19 — Claude: release 1 of the expedition overhaul (the drop), merged and released (integrator)
 
 Branch `claude/release-1` (from shared `a0cd68e5`) merged into shared `9f60571f` (the builder at `9f60571f`), test channel revision `639307063943100212` (build `42561245`). Owner-approved plan `docs/EXPEDITION-OVERHAUL.md`; status: merged and released to the test channel.

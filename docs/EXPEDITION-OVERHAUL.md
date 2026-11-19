@@ -1769,7 +1769,7 @@ If a baseline is already over its target, Claude reports it to the owner before 
 | Item | Target |
 | --- | --- |
 | Draws per view | 1,500 or fewer at High; 800 at Low |
-| Triangles per view | 2.0 M or fewer at High; 0.8 M at Low |
+| Triangles per view | 2,177,224 or fewer at High; 821,492 at Low (the owner accepted the measured baselines on 2026-11-19 over the first 2.0 M and 0.8 M) |
 | Shadow casters | 1,200 or fewer (the moon only, cascades to 60 m) |
 | FX quads | 2,800 or fewer, the wet-street streaks included |
 | Instances per draw | 500 or fewer |

@@ -43,12 +43,12 @@ namespace ChipArena.UnityConversion
         internal const int BaseLowDraws=22,BaseLowInstances=8878,BaseLowQuads=765,BaseLowParts=6951;internal const long BaseLowTris=817302;
         internal const int FogHighQuads=1243,FogLowQuads=860;
         internal static long Pin(long baseline)=>(long)Math.Ceiling(baseline*1.15);
-        // ---- the triangles (W0's review): already over the plan's targets (section 6: 2.0 M a view at High, 0.8 M at Low) before
-        // any overhaul code, so there is no headroom (the target minus the baseline) to share out by milestone. Until the owner
-        // decides (accept the baseline, or cut the skyline: docs/EXPEDITION-DEPLOYMENT.md), they are a no-growth gate at today's
-        // worst view, not a budget: High at the shared head's 2,177,224 (W0's 2,173,532 is under it), Low at W0's 821,492 (the
-        // shared head's 817,302 plus 0.5%: the seeded dressing puts 45 more low-tier parts in the worst of the 120 views).
-        internal const long TargetHighTris=2000000,TargetLowTris=800000,GateHighTris=2177224,GateLowTris=821492;
+        // ---- the triangles (W0's review): already over the plan's first targets (section 6: 2.0 M a view at High, 0.8 M at Low)
+        // before any overhaul code. The owner chose, 2026-11-19: "Accept the baselines". So today's worst view is the budget: High
+        // at the shared head's 2,177,224 (W0's 2,173,532 is under it), Low at W0's 821,492 (the shared head's 817,302 plus 0.5%: the
+        // seeded dressing puts 45 more low-tier parts in the worst of the 120 views). A package that adds triangles to the city cuts
+        // as many elsewhere, or asks the owner to raise the budget.
+        internal const long PlanHighTris=2000000,PlanLowTris=800000,TargetHighTris=2177224,TargetLowTris=821492,GateHighTris=TargetHighTris,GateLowTris=TargetLowTris;
 
         /// <summary>The six eyes for a roll, by role so they stay comparable across rolls (and later layouts): the sanctuary's
         /// centre, the apron outside its south gate, the east and west entrances' join circles, the final court, and the hub's
@@ -195,11 +195,11 @@ namespace ChipArena.UnityConversion
             Check(hi.Lights<=NativeExpeditionCityLights.Slots&&lo.Lights<=NativeExpeditionCityLights.Slots,"at most "+NativeExpeditionCityLights.Slots+" practical slots lit");
             Check(hi.Quads<=NativeExpeditionCityFx.Capacity&&lo.Quads<=NativeExpeditionCityFx.Capacity,"the atmosphere fits its buffer");
             void Under(string what,long now,long pin,long baseline){Check(now<=pin,what+": "+now.ToString("N0")+" (pin "+pin.ToString("N0")+", the shared head's "+baseline.ToString("N0")+"); a package that needs more raises the pin on purpose (docs/EXPEDITION-DEPLOYMENT.md, its budget table)");}
-            // The triangles: a no-growth gate (no headroom under the section 6 targets), the gap to the target in the message.
-            void Gate(string what,long now,long gate,long target){Check(now<=gate,what+": "+now.ToString("N0")+" (no-growth gate "+gate.ToString("N0")+": today's worst view is already "+(gate-target).ToString("N0")+" over the plan's "+target.ToString("N0")+", so no package may add any until the owner decides; docs/EXPEDITION-DEPLOYMENT.md, its budget table)");}
-            Console.WriteLine("   over target before any overhaul code: High triangles "+hi.Tris.ToString("N0")+" against "+TargetHighTris.ToString("N0")+" ("+((hi.Tris-TargetHighTris)*100.0/TargetHighTris).ToString("+0.0")+"%), Low "+lo.Tris.ToString("N0")+" against "+TargetLowTris.ToString("N0")+" ("+((lo.Tris-TargetLowTris)*100.0/TargetLowTris).ToString("+0.0")+"%); Low lights "+lo.Lights+" practical slots against 3");
+            // The triangles: the owner's budget (today's worst view, accepted 2026-11-19), with the room left in the message.
+            void Gate(string what,long now,long gate,long target){Check(now<=gate,what+": "+now.ToString("N0")+" (the owner's budget "+gate.ToString("N0")+", today's worst view accepted 2026-11-19; cut as many elsewhere, or ask the owner to raise it; docs/EXPEDITION-DEPLOYMENT.md, its budget table)");}
+            Console.WriteLine("   the triangle budget (the owner accepted the baselines, 2026-11-19): High "+hi.Tris.ToString("N0")+" of "+TargetHighTris.ToString("N0")+" (the plan's first "+PlanHighTris.ToString("N0")+"), Low "+lo.Tris.ToString("N0")+" of "+TargetLowTris.ToString("N0")+" (the plan's first "+PlanLowTris.ToString("N0")+"); Low lights "+lo.Lights+" practical slots against 3");
             Gate("High triangles",hi.Tris,GateHighTris,TargetHighTris);Gate("Low triangles",lo.Tris,GateLowTris,TargetLowTris);
-            Check(BaseHighTris>TargetHighTris&&BaseLowTris>TargetLowTris&&GateHighTris==Math.Max(BaseHighTris,2173532)&&GateLowTris<=BaseLowTris*1.01,"the triangle gates hold today's worst view (no headroom under the targets)");
+            Check(BaseHighTris>PlanHighTris&&BaseLowTris>PlanLowTris&&GateHighTris==Math.Max(BaseHighTris,2173532)&&GateLowTris<=BaseLowTris*1.01,"the triangle budget is today's worst view (the owner's choice over the plan's first targets)");
             Under("High draws",hi.Draws,Pin(BaseHighDraws),BaseHighDraws);Under("High instances",hi.Instances,Pin(BaseHighInstances),BaseHighInstances);
             Under("High casters",hi.Casters,Pin(BaseHighCasters),BaseHighCasters);Under("High effect quads",hi.Quads,Pin(FogHighQuads),BaseHighQuads);Under("High rain quads",hi.Rain,Pin(BaseHighRain),BaseHighRain);
             Under("High beams",hi.Beams,Pin(BaseHighBeams),BaseHighBeams);Under("High kit parts",hi.KitParts,Pin(BaseHighKit),BaseHighKit);
