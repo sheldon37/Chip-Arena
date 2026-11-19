@@ -47,6 +47,7 @@ Branch `claude/expedition-blind-pick` from shared `91310637`, shared `0b63f095` 
 **Risks.** The pick covers the station for up to 22 s (its console, Ready and Leave station are not drawn under it, as in PvP). The Play vs Bots preferences themselves are unchanged, but a co-op room's options no longer write them (the co-op Blind Pick All box is gone). The expedition count resets each launch. PvP Blind Pick is unchanged (its checks pass), but only an expedition was captured end to end.
 
 **Next.** The owner reviews the clips; the integrator merges and releases. Astra: items 1-4 if wanted. Pushed, not merged.
+- **Merged and released (Claude, integrator):** `claude/expedition-blind-pick` merged into shared `8435e063` (the builder at `8435e063`), test channel revision `639307158981248875` (build `4540f1c2`); the suite at `9ac71b5f` (1,067 groups, exit 0), the pinned Unity compile. Astra's four contracts went to the owner to relay (a saved count, the lobby-weapon write at the reveal, joins during the pick, the deal pool).
 
 ## 2026-11-19 — Claude: the ATLAS board counts a run's destinations, 3, not the pool of 5 (owner report; presentation only)
 
