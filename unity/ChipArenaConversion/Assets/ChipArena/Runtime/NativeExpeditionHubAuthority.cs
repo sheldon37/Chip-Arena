@@ -104,6 +104,9 @@ namespace ChipArena.UnityConversion
             hubLiving.Clear();foreach(var member in state.members)if(member.alive&&member.connected&&!member.extracted)
             {var p=Pilots.Find(pilot=>pilot.Seat.id==Expedition.Session.Sources.Seat?.Invoke(member.account));if(p!=null&&p.Hp>0)hubLiving.Add(p);}
             int lobby=Expedition.Session.Run.PartySnapshot().members.Count(m=>m.connected&&!m.extracted);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if(DevLoadLobbyCount>0)lobby=DevLoadLobbyCount;
+#endif
             Pve.Cap=NativeExpeditionMutators.Cap(ActiveMutators,ExpeditionHubRules.Cap(lobby,hubLiving.Count));Pve.Rate=0;
             if(Time>=hubMaintainAt)
             {
@@ -151,10 +154,17 @@ namespace ChipArena.UnityConversion
             foreach(string candidate in kinds){kindRoll-=candidate=="brute"?.15:1;if(kindRoll<0){kind=candidate;break;}}
             var mob=SpawnPveAdd(kind,true,selected.entry.e);
             if(mob==null)break;
-            {mob.Pve.HubRing=chosen.Ring;var home=Vec(selected.entry.@exit.Position(.85f));var brain=new HubZombieBrain(mob.Id,Time,Vec(home),mob.Yaw);
-                var points=(Map.nav?.nodes??Array.Empty<MapNavNode>()).Where(n=>chosen.Volume.Contains(new V3(n.pos.x,chosen.Volume.y,n.pos.z))&&!HubInside(Vec(n.pos))).Select(n=>Vec(n.pos)).ToArray();
-                mob.Pve.Hub=brain.View;hubMobs[mob.Id]=new HubMob{Ring=chosen.Ring,Zone=chosen,Points=points,Brain=brain,Home=home,IdleAt=Time,SenseAt=Time+(mob.Id%5)*.04f};}
+            RegisterHubMob(mob,chosen,Vec(selected.entry.@exit.Position(.85f)));
+
             }
+        }
+        private void RegisterHubMob(NativeMinion mob,ExpeditionHubZone zone,Vector3 home)
+        {
+            var brain=new HubZombieBrain(mob.Id,Time,Vec(home),mob.Yaw);
+            var points=(Map.nav?.nodes??Array.Empty<MapNavNode>()).Where(n=>zone.Volume.Contains(new V3(n.pos.x,zone.Volume.y,n.pos.z))&&!HubInside(Vec(n.pos))).Select(n=>Vec(n.pos)).ToArray();
+            mob.Pve.HubRing=zone.Ring;
+            mob.Pve.Hub=brain.View;
+            hubMobs[mob.Id]=new HubMob{Ring=zone.Ring,Zone=zone,Points=points,Brain=brain,Home=home,IdleAt=Time,SenseAt=Time+(mob.Id%5)*.04f};
         }
     }
 }

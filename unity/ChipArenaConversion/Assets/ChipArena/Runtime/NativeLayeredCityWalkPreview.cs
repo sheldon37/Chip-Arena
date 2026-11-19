@@ -1,6 +1,5 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
-using System.Globalization;
 using UnityEngine;
 
 namespace ChipArena.UnityConversion
@@ -8,12 +7,20 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private bool walkPicker = Array.IndexOf(Environment.GetCommandLineArgs(), "--ca-layered-city-walk") >= 0;
-        private string walkSeed = "647";
+        private int lastSurveyLayout = -1;
+        private uint surveyRunSeed;
+        private string[] surveySlots;
         private ConversionContent walkOriginalContent;
         private NativeLayeredCityWalk cityWalk;
         private float walkFarClip;
         private string walkError;
         private Texture2D walkPlan;
+
+        private uint NextSurveySeed()
+        {
+            surveyRunSeed = unchecked(surveyRunSeed * 1664525u + 1013904223u);
+            return surveyRunSeed;
+        }
 
         private Texture2D BuildWalkPlan(ContentMap map)
         {
@@ -63,12 +70,14 @@ namespace ChipArena.UnityConversion
             return true;
         }
 
-        private void OpenCityWalk(bool large, uint seed)
+        private void OpenCityWalk(int index, uint seed)
         {
             if (arena != null || Online || dedicated || deploymentRoom != null || expeditionSession != null) return;
             try
             {
-                cityWalk = new NativeLayeredCityWalk(large, seed);
+                var plan = NativeCityLayout.Plans[index];
+                cityWalk = new NativeLayeredCityWalk(plan);
+                surveySlots = NativeCityLayout.DealHalls(seed, new[] { "Ward Zero", "Central Station", "City Ironworks" });
                 walkOriginalContent = content;
                 walkFarClip = cameraView.farClipPlane;
                 content = content.WithGeneratedMap(cityWalk.Map);
@@ -76,7 +85,7 @@ namespace ChipArena.UnityConversion
                 EndPreview();
                 ClearReplay();
                 endFlow.Reset();
-                match = new NativeMatch(content, seed) { Practice = true };
+                match = new NativeMatch(content, plan.Seed) { Practice = true };
                 match.Seats.Add(new NativeSeat { id = 1, name = "Survey pilot", spec = "pistol" });
                 match.ApplyNetwork(new NativeMatchFrame { phase = NativePhase.Fight, cooperative = true, round = 1, set = 1 });
                 arena = new NativeArena(content, match, cityWalk.Map.id) { LocalId = 1 };
@@ -90,6 +99,7 @@ namespace ChipArena.UnityConversion
                 sprint = false;
                 menu = false;
                 walkError = null;
+                lastSurveyLayout = index;
                 NativeLighting.Apply(cityWalk.Map, cameraView);
                 cameraView.farClipPlane = 800;
             }
@@ -129,15 +139,15 @@ namespace ChipArena.UnityConversion
             {
                 var pos = arena.Local.Body.position;
                 GUILayout.BeginArea(new Rect(20, 20, 410, 225), GUI.skin.box);
-                GUILayout.Label(cityWalk.Map.name + "   |   seed " + walkSeed);
+                GUILayout.Label(cityWalk.Map.name + "   |   600 × 480 m");
                 string[] gates = { "North", "East", "South", "West" };
                 for (int i = 0; i < cityWalk.Routes.Count; i++)
                 {
                     var route = cityWalk.Routes[i];
-                    GUILayout.Label(gates[i] + "   " + route.Name + "   " + route.Length.ToString("0") + " m from gate");
+                    GUILayout.Label(gates[i] + "   " + surveySlots[i] + "   " + route.Length.ToString("0") + " m from gate");
                 }
                 GUILayout.Label(string.Format("East {0:0}   North {1:0}   Elevation {2:0.0} m", pos.x, pos.z, pos.y - NativeLocomotionRules.HalfHeight));
-                GUILayout.Label("Hold Tab   Street plan     Esc   Switch size or seed");
+                GUILayout.Label("Hold Tab   Street plan     Esc   Choose another layout");
                 GUILayout.EndArea();
                 if (walkPlan != null && Input.GetKey(KeyCode.Tab))
                 {
@@ -152,17 +162,16 @@ namespace ChipArena.UnityConversion
                 return true;
             }
             if (!walkPicker || !menu || arena != null || previewArena != null) return false;
-            GUILayout.BeginArea(new Rect(width / 2 - 200, height / 2 - 140, 400, 280), GUI.skin.box);
-            GUILayout.Label("Meridian   /   solo scale walk", heading);
-            GUILayout.Label("World seed");
-            walkSeed = GUILayout.TextField(walkSeed, 10);
-            bool valid = uint.TryParse(walkSeed, NumberStyles.None, CultureInfo.InvariantCulture, out uint seed);
-            bool enabled = GUI.enabled;
-            GUI.enabled = enabled && valid;
-            if (GUILayout.Button("Walk A   ·   420 × 340 m", button)) OpenCityWalk(false, seed);
-            if (GUILayout.Button("Walk B   ·   600 × 480 m", button)) OpenCityWalk(true, seed);
-            GUI.enabled = enabled;
-            if (!valid) GUILayout.Label("Enter a whole number from 0 to 4294967295.");
+            GUILayout.BeginArea(new Rect(width / 2 - 200, height / 2 - 180, 400, 360), GUI.skin.box);
+            GUILayout.Label("Meridian   /   600 × 480 m", heading);
+            for (int index = 0; index < NativeCityLayout.Plans.Count; index++)
+                if (GUILayout.Button(NativeCityLayout.Plans[index].Name, button))
+                    OpenCityWalk(index, NextSurveySeed());
+            if (GUILayout.Button("Walk a run deal", button))
+            {
+                uint seed = NextSurveySeed();
+                OpenCityWalk(NativeCityLayout.Choose(seed, lastSurveyLayout), seed);
+            }
             if (walkError != null) GUILayout.Label(walkError);
             if (GUILayout.Button("Back to menu")) walkPicker = false;
             GUILayout.EndArea();

@@ -1,3 +1,7 @@
+## 2026-11-18 — Astra: Meridian size B walk candidates
+
+Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientation layouts in the Developer walk. All 20 primary streets and 20 roof circuits passed sampled support and clearance. See [the five layouts, route distances and timing table](MERIDIAN-B-WALK.md). The same-machine A0 and five-candidate Unity benchmark is available from the Editor. Native results, contract freeze, party ticket integration and art handoff remain pending.
+
 ## 2026-11-18 — Claude: zombies run and turn on their own legs (owner report; presentation only)
 
 - **The owner (2026-11-18):** "The issue appears to occur specifically when zombies are running and turning simultaneously. Their legs begin
