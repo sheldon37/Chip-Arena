@@ -585,7 +585,7 @@ namespace ChipArena.UnityConversion
             // ---- the cycle: the body's cadence at this speed, the takes' feet's strikes and lifts ----
             // (Core/NativeHordeLoco: the cadence and the take blend read a gait speed eased off the root's; it sets off and stands
             // on two thresholds, so a jostled add does not flicker between stepping and standing.)
-            GaitSpeedStep(fresh,dt);bool moving=heavy||quad?Speed>.2f:movingNow;float rateHz,stride;
+            GaitSpeedStep(fresh,dt);bool moving=heavy||quad?Speed>.2f:movingNow;float rateHz,stride,cadenceHz=0;
             // The Hulk walks its own heavy stride (long, slow, both feet down long; flying between a charge's quick steps).
             if(heavy){stride=HeavyStride(Speed);rateHz=moving?Math.Max(.2f,Speed)/stride*cadence:0;duty0=duty1=HeavyDuty(Speed);off1=.5f;}
             else if(!quad)
@@ -604,7 +604,9 @@ namespace ChipArena.UnityConversion
                 // (The right foot strikes half a cycle after the left on every take: the takes are warped to it, NativeZombieMotion.Warp.
                 // On the model's legs each take's feet keep their own strikes, a limp's uneven steps among them: NativeHordeGait.OwnStrikes.)
                 off0=0;off1=NativeZombieMotion.Offset(runClip,1);rightNow=.5f;if(NativeZombieMotion.OwnStride(runClip,legsNow)||NativeZombieMotion.OwnStride(walkClip,legsNow))OwnStrikes(run);
-                if(!moving)rateHz=0;
+                // (The landing lead eases to the cadence the add steps at, cadenceHz, not to the stopped one: eased toward a rate already
+                // zeroed, its stance still jumped as a zombie stopped mid-turn; the third review, 2026-11-18.)
+                cadenceHz=rateHz;if(!moving)rateHz=0;
             }
             else if(hound){float hr=RunBlendOf(HoundDef,Speed);stride=Lerp(HoundDef.WalkStride,HoundDef.RunStride,hr)*(.75f+.25f*Clamp01(Speed/HoundDef.WalkSpeed));duty0=duty1=Lerp(HoundDef.Duty,HoundDef.RunDuty,hr);off1=.5f;gallop=hr;rateHz=moving?Speed/Math.Max(.2f,stride)*cadence:0;}
             else{stride=ProceduralStride(gk,Speed);duty0=duty1=Duty(gk,Speed);off1=.5f;rateHz=moving?Speed/Math.Max(.2f,stride)*cadence:0;}
@@ -663,7 +665,7 @@ namespace ChipArena.UnityConversion
                 {
                     float s=Clamp01((f.Time-ft.T0)/Math.Max(1e-3f,ft.T1-ft.T0));
                     // (It comes down turned on into the turn, as far as the body turns over half its coming stance: Lead.)
-                    ft.Lead=heavy||quad||ft.Scrape?0:LeadOf(duty,rateHz);
+                    ft.Lead=heavy||quad||ft.Scrape?0:LeadOf(duty,cadenceHz);
                     // (A foot comes down where the body will be facing as it stands on it, so through a turn its side of the body is the side it
                     // lands on, the inside foot first, rather than the legs crossing as the hips turn on over it.)
                     if(moving&&!heavy&&!quad&&!ft.Scrape)
@@ -780,7 +782,8 @@ namespace ChipArena.UnityConversion
         /// its hip); walking, <see cref="AcrossWalk"/> (.3 leg lengths), by the walk-to-run blend.</summary>
         public const float AcrossMost=.225f,AcrossWalk=.15f;
         // (The stance eased between standing's and the cadence's by the eased move weight, `moveArg`: switched on the planner's moving, it
-        // jumped as a zombie stopped or set off, and a swinging foot's landing turn flicked up to 17 degrees in a frame; the review, 2026-11-18.)
+        // jumped as a zombie stopped or set off (the second review, 2026-11-18); eased toward a cadence already zeroed as it stopped, a
+        // landing foot turned up to 16 degrees in its landing frame (the third). `rateHz`: the cadence the add steps at.)
         private float LeadOf(float duty,float rateHz)
         {
             float stance=Lerp(LeadStand,duty/Math.Max(.3f,rateHz),Sm(moveArg)),deg=lifeYawRate/BossMath.Deg*.5f*stance;

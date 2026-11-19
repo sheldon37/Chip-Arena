@@ -128,7 +128,17 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Run(string root)
         {
-            checks=0;var rig=ModelPoseChecks.Measured();float worstDrop=0,meanDrop=0,worstKnee=0,worstSwing=0,worstHipRate=0,worstHipFoot=0,worstRate=0,worstCircle=9;int arcs=0,pairs=0;
+            checks=0;var rig=ModelPoseChecks.Measured();
+            // (Each pairing's own values on 2026-11-18, Tests/zombie-runturn-bounds.txt: sampled points, one add of each pairing from one start,
+            // not a population's worst; held within a few degrees and .005 legs, so a change to one pairing shows.)
+            var pins=new System.Collections.Generic.Dictionary<string,float[]>();var floors=new System.Collections.Generic.Dictionary<string,float[]>();var inv0=System.Globalization.CultureInfo.InvariantCulture;
+            foreach(var line in System.IO.File.ReadAllLines(System.IO.Path.Combine(root,"Tests/zombie-runturn-bounds.txt")))
+            {
+                if(line.Length==0||line[0]=='#')continue;
+                if(line.StartsWith("FLOORS ")){var c=line.Substring(7).Split('|');floors[c[0]+"|"+c[1]]=new[]{float.Parse(c[2],inv0),float.Parse(c[3],inv0)};}
+                else{var c=line.Split('|');pins[c[0]+"|"+c[1]+"|"+c[2]]=new[]{float.Parse(c[3],inv0),float.Parse(c[4],inv0),float.Parse(c[5],inv0)};}
+            }
+            float worstDrop=0,meanDrop=0,worstKnee=0,worstSwing=0,worstHipRate=0,worstHipFoot=0,worstRate=0,worstCircle=9;int arcs=0,pairs=0;
             // (Every pairing of a kind's walk and run takes, IdsOf: the bounds hold for the worst of them.)
             foreach(int kind in Kinds)foreach(int id in IdsOf(kind))
             {
@@ -157,13 +167,13 @@ namespace ChipArena.UnityConversion
                 foreach(var n in new[]{"run arc 90/s","run arc 180/s","run turn 90","run turn 180","run circle chase","run target switch","run turn into attack","run weave"})
                 {
                     var r=Of(n);worstKnee=Math.Max(worstKnee,r.KneeFoot);
-                    Check(r.KneeFoot<=KneeMost,Name(n)+": the knee rides over its planted foot (at most "+r.KneeFoot.ToString("0")+" deg off it)");
+                    Check(r.KneeFoot<=KneeMost,Name(n)+": the knee rides over its planted foot (at most "+r.KneeFoot.ToString("0")+" deg off it; one add, one start)");
                     Check(r.Skate<=1.2f,Name(n)+": a planted foot's ball stays put ("+r.Skate.ToString("0.0")+" cm a frame at most)");
                     if(n=="run turn into attack")continue;
                     // (A reversal, or the weave's sudden shoves, turns the hips past a planted foot until it steps round: TwistMoving and the
                     // stance's turn on top.)
                     float hipMost=n=="run turn 180"||n=="run weave"?HipFootReverse:HipFootMost;worstHipFoot=Math.Max(worstHipFoot,r.HipFoot);
-                    Check(r.HipFoot<=hipMost,Name(n)+": a planted foot stays turned with the hips (at most "+r.HipFoot.ToString("0")+" deg off their facing, "+hipMost+" allowed)");
+                    Check(r.HipFoot<=hipMost,Name(n)+": a planted foot stays turned with the hips (at most "+r.HipFoot.ToString("0")+" deg off their facing, "+hipMost+" allowed; one add, one start)");
                     // (The circle chase stops and sets off again by its pilot: a step or two more.)
                     float rate=r.Steps/Math.Max(1e-3f,r.Seconds),allowed=rate0*(n=="run circle chase"?1.15f:1.1f)+.05f;worstRate=Math.Max(worstRate,rate/Math.Max(1e-3f,rate0));
                     Check(rate<=allowed,Name(n)+": no more steps than running straight ("+rate.ToString("0.00")+" a second, running straight "+rate0.ToString("0.00")+")");
@@ -173,16 +183,24 @@ namespace ChipArena.UnityConversion
                 foreach(var n in new[]{"walk turn 90","walk turn 180","walk circle chase","run turn 180","run target switch"})
                 {
                     var r=Of(n);worstSwing=Math.Max(worstSwing,r.SwingSnap);
-                    Check(r.SwingSnap<=SwingMost,Name(n)+": a swinging foot turns smoothly ("+r.SwingSnap.ToString("0.0")+" deg in a 120th of a second at most)");
+                    Check(r.SwingSnap<=SwingMost,Name(n)+": a swinging foot turns smoothly ("+r.SwingSnap.ToString("0.0")+" deg in a 120th of a second at most; one add, one start)");
                 }
                 Check(straight.KneeFoot<=20&&straight.Cross>.05f,Name("run straight")+": running straight the knees over the feet, the feet apart ("+straight.KneeFoot.ToString("0")+" deg, "+straight.Cross.ToString("0.00")+" m)");
+                // (Each bounded route against this pairing's own sampled values: the knee and the foot within PinDegrees, a swinging foot within
+                // PinSwing and never past SwingMost.)
+                foreach(var n in BoundRoutes)
+                {
+                    var r=Of(n);Check(pins.TryGetValue(NativeHordeKinds.Ids[kind]+"|"+id+"|"+n,out var pin),Name(n)+": its sampled values are pinned");
+                    Check(r.KneeFoot<=pin[0]+PinDegrees&&r.HipFoot<=pin[1]+PinDegrees,Name(n)+": the knee and the planted foot as they were sampled (knee "+r.KneeFoot.ToString("0.0")+", pinned "+pin[0].ToString("0.0")+"; foot off the hips "+r.HipFoot.ToString("0.0")+", pinned "+pin[1].ToString("0.0")+" deg; one add, one start)");
+                    Check(r.SwingSnap<=Math.Min(SwingMost,pin[2]+PinSwing),Name(n)+": a swinging foot as it was sampled ("+r.SwingSnap.ToString("0.0")+" deg a 120th, pinned "+pin[2].ToString("0.0")+", "+SwingMost+" at most; one add, one start)");
+                }
             }
             meanDrop/=Math.Max(1,arcs);Check(meanDrop<=.04f,"through the running turns the hips on average as high as running straight (lower by "+meanDrop.ToString("0.000")+" legs)");
             // ---- a sharp running turn at any moment of the stride: the trailing foot steps before the body runs on over it ----
             // (Eight starts across a stride, either way, every take pairing: a foot the body ran sideways off steps as one out of reach does,
-            // NativeHordeGait.AcrossMost. A reversal and a new target behind sink about as far as on shared at their worst moment, the
-            // accepted floors RevFloor and SwitchFloor: "Still open".)
-            float worstSharp=9,worstRev=9,worstSwitch=9;
+            // NativeHordeGait.AcrossMost. A reversal and a new target behind sink about as far as on shared at their worst moment, each
+            // pairing held at its own sampled worst: "Still open".)
+            float worstSharp=9,worstRev=9,worstSwitch=9;int unguarded=0;
             foreach(int kind in Kinds)foreach(int id in IdsOf(kind))
             {
                 var st=NativeHordeKinds.ProposedRow(kind);
@@ -193,19 +211,25 @@ namespace ChipArena.UnityConversion
                     Check(low>=.89f,NativeHordeKinds.Ids[kind]+" #"+id+" turning "+deg.ToString("0")+" degrees at a run: the hips stay up whenever in the stride it turns (lowest "+low.ToString("0.00")+" legs over eight starts)");
                 }
                 float rev=Low(a0=>Turn(st.run,180,a0)),sw=Low(a0=>Switch(st.run,a0));worstRev=Math.Min(worstRev,rev);worstSwitch=Math.Min(worstSwitch,sw);
-                Check(rev>=RevFloor,NativeHordeKinds.Ids[kind]+" #"+id+" reversing at a run: at its worst moment the hips no lower than the accepted floor (lowest "+rev.ToString("0.00")+" legs over eight starts, floor "+RevFloor+")");
-                Check(sw>=SwitchFloor,NativeHordeKinds.Ids[kind]+" #"+id+" switching to a target behind and to its right at a run: at its worst moment the hips no lower than the accepted floor (lowest "+sw.ToString("0.00")+" legs over eight starts, floor "+SwitchFloor+")");
+                // (Floored at this pairing's own sampled worst less .005 legs; a floor at the hips' clamp, HipsClamp, cannot fail: that pairing's
+                // route is unguarded at its worst moment, and says so.)
+                Check(floors.TryGetValue(NativeHordeKinds.Ids[kind]+"|"+id,out var fl),NativeHordeKinds.Ids[kind]+" #"+id+": its sampled floors are pinned");
+                float revFloor=fl[0]-.005f,swFloor=fl[1]-.005f;if(revFloor<=HipsClamp+.001f)unguarded++;if(swFloor<=HipsClamp+.001f)unguarded++;
+                Check(rev>=revFloor,NativeHordeKinds.Ids[kind]+" #"+id+" reversing at a run: at its worst sampled moment the hips no lower than accepted (lowest "+rev.ToString("0.000")+" legs over eight starts, floor "+revFloor.ToString("0.000")+(revFloor<=HipsClamp+.001f?", at the hips' clamp: unguarded":"")+")");
+                Check(sw>=swFloor,NativeHordeKinds.Ids[kind]+" #"+id+" switching to a target behind and to its right at a run: at its worst sampled moment the hips no lower than accepted (lowest "+sw.ToString("0.000")+" legs over eight starts, floor "+swFloor.ToString("0.000")+(swFloor<=HipsClamp+.001f?", at the hips' clamp: unguarded":"")+")");
             }
             // ---- stopping and setting off while it turns: the landing foot's turn never flicks ----
-            // (The review, 2026-11-18: the landing lead's stance switched with the planner's moving, so a swinging foot flicked up to 17
-            // degrees in a frame as a zombie stopped or set off; it now eases by the move weight, NativeHordeGait.LeadOf.)
+            // (The second review, 2026-11-18: the landing lead's stance switched with the planner's moving, so it jumped as a zombie stopped
+            // or set off; eased by the move weight toward a cadence already zeroed, a landing foot turned 16 degrees in its landing frame (the
+            // third review); toward the cadence it steps at, 7: NativeHordeGait.LeadOf. Shared 11, before the lead and with it switched.
+            // Stopping and setting off every .35 s only.)
             float worstStopGo=0,worstStopGoSwing=0;
             foreach(int kind in Kinds)foreach(int id in IdsOf(kind))foreach(float rate in new[]{90f,-150f})
             {
                 var st=NativeHordeKinds.ProposedRow(kind);
                 foreach(float speed in new[]{st.walk,st.run}){var r=Drive(rig,kind,StopGo(speed,rate,.35f),7f,3f,id);worstStopGo=Math.Max(worstStopGo,r.SnapLand);worstStopGoSwing=Math.Max(worstStopGoSwing,r.SwingSnap);
-                    Check(r.SnapLand<=LandMost,NativeHordeKinds.Ids[kind]+" #"+id+" stopping and setting off at "+speed.ToString("0.0")+" m/s while turning "+rate+" deg/s: a landing foot never flicks round ("+r.SnapLand.ToString("0.0")+" deg in its landing 120th of a second at most)");
-                    Check(r.SwingSnap<=StopGoMost,NativeHordeKinds.Ids[kind]+" #"+id+" stopping and setting off at "+speed.ToString("0.0")+" m/s while turning "+rate+" deg/s: a swinging foot turns no faster than shared's worst ("+r.SwingSnap.ToString("0.0")+" deg in a 120th of a second at most)");}
+                    Check(r.SnapLand<=LandMost,NativeHordeKinds.Ids[kind]+" #"+id+" stopping and setting off every .35 s at "+speed.ToString("0.0")+" m/s while turning "+rate+" deg/s: a landing foot never flicks round ("+r.SnapLand.ToString("0.0")+" deg in its landing 120th of a second at most; this period only)");
+                    Check(r.SwingSnap<=StopGoMost,NativeHordeKinds.Ids[kind]+" #"+id+" stopping and setting off every .35 s at "+speed.ToString("0.0")+" m/s while turning "+rate+" deg/s: a swinging foot turns no faster than shared's worst ("+r.SwingSnap.ToString("0.0")+" deg in a 120th of a second at most; this period only)");}
             }
             // ---- the model's planted ankle on the gait's footprint: running round a curve, walking round one, setting off from a stand ----
             {
@@ -305,15 +329,25 @@ namespace ChipArena.UnityConversion
                 Check(Math.Abs(NativeHordeGait.KneeFollow-1)<1e-6f,"the knee follows its foot's whole twist");
                 var zp=System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/ChipArena/Runtime/NativeZombieModelPresentation.cs"));
                 Check(zp.Contains("z.Across=gait?.LegsAcross??1;")&&zp.Contains("z.Stride,z.Reach,z.Across);"),"the model presentation hands the binding the gait's draw-in across the floor");
+                // (The gore's joints, which no check drives: the model's shift for the add's own kind only, a thrown part's voxel fallback on the
+                // rig's own joints, and the voxel model's wounds on its own.)
+                var gp=System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/ChipArena/Runtime/NativeHordeGorePresentation.cs"));
+                var kp=System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/ChipArena/Runtime/NativeHordeKindPresentation.cs"));
+                Check(gp.Contains("if(!zombieBodies.TryGetValue(id,out var z)||z.Kind!=kind||z.Body.Root==null||z.PosedFrame<Time.frameCount-1)return false;"),"the gore's model shift is taken only for the add's own kind");
+                Check(kp.Contains("hordePartBone??=b=>{var p=hordeDrawPart;var m=HordePartTurn(p,hordeDrawAge,out _,true)*p.RigBones[b];")&&kp.Contains("var j=(rigJoints?p.RigBones:p.Bones)[p.Joint].GetColumn(3);")
+                    &&kp.Contains("var turn=HordePartTurn(p,age,out var stump,!modelPart);var m=turn*(modelPart?p.Bones:p.RigBones)[p.Joint];"),"a thrown part's voxel fallback, its cap and its trail on the rig's own joints");
+                Check(gp.Contains("var bones=GoreBones(j.Rig);"),"the voxel model's wounds on its own joints");
             }
-            Console.WriteLine("PASS Zombie run and turn ("+checks+" checks: 4 kinds, "+pairs+" take pairings, on the model's legs; running turns' hips at most "+worstDrop.ToString("0.00")+" legs under the straight run's (mean "+meanDrop.ToString("0.000")+"), fastest "+worstHipRate.ToString("0.0")+" legs/s; sharp turns at any moment of the stride at least "+worstSharp.ToString("0.00")+" legs, reversals "+worstRev.ToString("0.00")+", targets behind "+worstSwitch.ToString("0.00")+", circle chases from any start "+worstCircle.ToString("0.00")+"; knee off its planted foot at most "+worstKnee.ToString("0")+" deg, the foot off the hips at most "+worstHipFoot.ToString("0")+" deg, steps at most "+worstRate.ToString("0.00")+" of the straight run's; swinging foot at most "+Math.Max(worstSwing,worstWalkSwing).ToString("0.0")+" deg a 120th, stopping and setting off "+worstStopGoSwing.ToString("0.0")+" (landing "+worstStopGo.ToString("0.0")+")"+"; walking turns' hips at worst "+walkWorst.ToString("+0.000;-0.000")+" legs off shared's or the straight walk's, on average "+(walkGain/Math.Max(1,walkN)).ToString("+0.000;-0.000")+" over shared's over "+walkN+" routes; the blend's arcs at least "+worstBand.ToString("0.000")+"; a planted foot turned 40 degrees moves the Hulk's and Hound's knees "+(Math.Max(kneeHulk,kneeHound)*100).ToString("0.00")+" cm, a biped's "+(kneeBiped*100).ToString("0.0")+"; presentation only)");
+            Console.WriteLine("PASS Zombie run and turn ("+checks+" checks: 4 kinds, "+pairs+" take pairings (one add each, sampled starts: not a population's worst), on the model's legs; running turns' hips at most "+worstDrop.ToString("0.00")+" legs under the straight run's (mean "+meanDrop.ToString("0.000")+"), fastest "+worstHipRate.ToString("0.0")+" legs/s; sharp turns at any moment of the stride at least "+worstSharp.ToString("0.00")+" legs, reversals "+worstRev.ToString("0.00")+", targets behind "+worstSwitch.ToString("0.00")+" ("+unguarded+" of their floors at the hips' clamp, unguarded), circle chases from any start "+worstCircle.ToString("0.00")+"; knee off its planted foot at most "+worstKnee.ToString("0")+" deg, the foot off the hips at most "+worstHipFoot.ToString("0")+" deg, steps at most "+worstRate.ToString("0.00")+" of the straight run's; swinging foot at most "+Math.Max(worstSwing,worstWalkSwing).ToString("0.0")+" deg a 120th, stopping and setting off "+worstStopGoSwing.ToString("0.0")+" (landing "+worstStopGo.ToString("0.0")+")"+"; walking turns' hips at worst "+walkWorst.ToString("+0.000;-0.000")+" legs off shared's or the straight walk's, on average "+(walkGain/Math.Max(1,walkN)).ToString("+0.000;-0.000")+" over shared's over "+walkN+" routes; the blend's arcs at least "+worstBand.ToString("0.000")+"; a planted foot turned 40 degrees moves the Hulk's and Hound's knees "+(Math.Max(kneeHulk,kneeHound)*100).ToString("0.00")+" cm, a biped's "+(kneeBiped*100).ToString("0.0")+"; presentation only)");
         }
-        /// <summary>The bounds, from the worst take pairing (IdsOf): the planted knee off its foot and the planted foot off the hips' facing on
-        /// a running route (deg; a reversal's and the weave's apart); a swinging foot's fastest turn (deg a 120th of a second) on the routes,
-        /// over every start of the walking turns, and stopping and setting off (its landing frame apart); the accepted floors (legs) of the
-        /// hips' worst moment over eight starts of a running reversal and a switch to a target behind, and of the circle chase from four
-        /// starts. Shared on the same: knee 56, foot 76, swing 42, stop-and-go 40 (landing 11), floors .78, .81 and .87.</summary>
-        internal const float KneeMost=30,HipFootMost=42,HipFootReverse=60,SwingMost=25,WalkSwingMost=32,StopGoMost=30,LandMost=16,RevFloor=.76f,SwitchFloor=.76f,CircleFloor=.77f;
+        /// <summary>The bounds, from the worst sampled take pairing (IdsOf; one add each, one start: not a population's worst): the planted knee
+        /// off its foot and the planted foot off the hips' facing on a running route (deg; a reversal's and the weave's apart); a swinging foot's
+        /// fastest turn (deg a 120th of a second) on the routes, over every start of the walking turns, and stopping and setting off every .35 s
+        /// (its landing frame apart); the accepted floor (legs) of the circle chase from four starts; each pairing's own values held within
+        /// PinDegrees and PinSwing (Tests/zombie-runturn-bounds.txt); the hips' clamp, at which a floor cannot fail (legs: the lowest anywhere
+        /// on the walking table, the gait's sink cap, its deepest crouch, on the model). Shared on the same: knee 56, foot 76, swing 42,
+        /// stop-and-go 40 (landing 11), circle .87.</summary>
+        internal const float KneeMost=30,HipFootMost=42,HipFootReverse=60,SwingMost=19,WalkSwingMost=32,StopGoMost=30,LandMost=9,CircleFloor=.77f,PinDegrees=3,PinSwing=2,HipsClamp=.7643f;
         /// <summary>The walking turns' accepted cost: the routes (kind|speed|id|route) lower than shared's by more than .03 legs at their worst
         /// start or on average over their starts, held at their values on 2026-11-18 (the lowest and the mean of the starts' lowest hips, less
         /// .005). Seventeen of 280; 22 others higher at their worst (Tests/zombie-runturn-walks-shared.txt, docs/ZOMBIE-LOCOMOTION.md).</summary>
@@ -462,6 +496,30 @@ namespace ChipArena.UnityConversion
                 }
             }
             for(int i=0;i<600;i++)Tick(i);long before=GC.GetAllocatedBytesForCurrentThread();for(int i=600;i<2400;i++)Tick(i);return GC.GetAllocatedBytesForCurrentThread()-before;
+        }
+        /// <summary>The routes whose values Run holds for each take pairing (Tests/zombie-runturn-bounds.txt).</summary>
+        internal static readonly string[] BoundRoutes={"run arc 90/s","run arc 180/s","run turn 90","run turn 180","run circle chase","run target switch","run turn into attack","run weave","walk turn 90","walk turn 180","walk circle chase"};
+        /// <summary>`--zombie-runturn-bounds`: Tests/zombie-runturn-bounds.txt, each take pairing's knee off its foot, foot off the hips and
+        /// swinging foot's fastest turn on the bounded routes (`kind|id|route|knee|foot|swing`), and its running reversal's and switch's
+        /// worst hips over eight starts (`FLOORS kind|id|reverse|switch`): what Run holds, less its margins.</summary>
+        public static void Bounds()
+        {
+            var rig=ModelPoseChecks.Measured();var inv=System.Globalization.CultureInfo.InvariantCulture;
+            foreach(var h in new[]{
+                "# The zombie run-turn checks' per-pairing values on 2026-11-18 (claude/zombie-run-turn-tests): for one add of each pairing of a kind's walk and",
+                "# run takes (ZombieRunTurnChecks.IdsOf) on each bounded route, from one start, the planted knee off its foot and the planted foot off the hips'",
+                "# facing (deg) and a swinging foot's fastest turn (deg a 120th of a second); and its worst hips (legs) over eight starts of a running reversal",
+                "# and a switch to a target behind. Sampled points, not a population's worst. ZombieRunTurnChecks holds each at its own value: the angles",
+                "# within a few degrees, the floors within .005 legs. Written by CoreTests --zombie-runturn-bounds.",
+                "# kind|id|route|knee|foot|swing, or FLOORS kind|id|reverse|switch"})Console.WriteLine(h);
+            foreach(int kind in Kinds)foreach(int id in IdsOf(kind))
+            {
+                var sc=Scenarios(kind);
+                foreach(var n in BoundRoutes)foreach(var x in sc)if(x.name==n){var r=Drive(rig,kind,x.route,x.seconds,x.from,id);Console.WriteLine(string.Format(inv,"{0}|{1}|{2}|{3:0.0}|{4:0.0}|{5:0.0}",NativeHordeKinds.Ids[kind],id,n,r.KneeFoot,r.HipFoot,r.SwingSnap));}
+                var st=NativeHordeKinds.ProposedRow(kind);
+                float Low(Func<float,Route> mk){float low=9;for(int k=0;k<8;k++){float at0=3+k*.071f;low=Math.Min(low,Drive(rig,kind,mk(at0),at0+2.2f,at0-.1f,id).HipsLow);}return low;}
+                Console.WriteLine(string.Format(inv,"FLOORS {0}|{1}|{2:0.0000}|{3:0.0000}",NativeHordeKinds.Ids[kind],id,Low(a0=>Turn(st.run,180,a0)),Low(a0=>Switch(st.run,a0))));
+            }
         }
         /// <summary>`--zombie-runturn-cost`: the gait's and the model binding's time a frame (microseconds) through the circle chase (diagnostic).</summary>
         public static void Cost()
