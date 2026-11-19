@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
         // ---- the beats (seconds after Deploy) ----
         /// <summary>The room's red over the first RedSeconds; the crouch from CrouchAt over CrouchSeconds; the console's panels
         /// fade from HudAt over HudSeconds (before the tube shot cuts in).</summary>
-        public const float RedSeconds=.6f,CrouchAt=.4f,CrouchSeconds=.45f,HudAt=1.05f,HudSeconds=.45f;
+        public const float RedSeconds=.6f,CrouchAt=.4f,CrouchSeconds=.5f,HudAt=1.05f,HudSeconds=.45f;
         /// <summary>The fall: each pilot lands SeatSeconds after its drop starts on a shallow pod (2.7 s on pad 0), SeatDrop below
         /// its pad's top; a deep pod hangs DeepStep lower.</summary>
         public const float SeatSeconds=1.35f,SeatDrop=.5f*NativeDeployPresentation.DropGravity*SeatSeconds*SeatSeconds,DeepStep=3.4f;
@@ -53,12 +53,18 @@ namespace ChipArena.UnityConversion
         public const float CabinFloor=NativePodModels.Floor,PodHeight=NativePodModels.Height;
         /// <summary>The drop tube (station frame): its inner radius and its top just under the floor plates.</summary>
         public const float TubeRadius=.46f,TubeTop=-.03f;
-        /// <summary>The tube shot: the eye's height over the pad's top as it starts and the share of my pilot's drop it follows
-        /// (so my pilot falls away below it).</summary>
-        public const float TubeEye=2.6f,TubeFollow=.74f;
-        /// <summary>The seat shot (my pod's frame over its cabin floor): the eye in the doorway at my visor's height, the point it
-        /// looks at on my pilot and its lens (the cabin is 1.25 m across: a wide lens frames helmet to chest).</summary>
-        public const float SeatEyeY=1.14f,SeatEyeZ=.6f,SeatLookY=1.09f,SeatFov=68f;
+        /// <summary>The tube shot: the eye's height over the pad's top, less TubeFollow of my pilot's drop (1.2 m over the pad as the
+        /// shot starts, so the neighbouring pads stay out of the frame and my pilot's head .9 m below the lens), and the share of
+        /// my pilot's drop it follows (so my pilot falls away below it). Camera shake off: the eye holds where the shot starts.</summary>
+        public const float TubeEye=1.64f,TubeFollow=.74f;
+        /// <summary>The seat shot (my pod's frame over its cabin floor): the eye just outside my pod's doorway (its door out of the
+        /// way for the shot), a little over my visor, the point it looks at between my visor and chest, and a 46° lens that frames
+        /// the helmet to the hands on the harness bar inside the doorway's posts.</summary>
+        public const float SeatEyeY=1.16f,SeatEyeZ=1.12f,SeatLookY=1.0f,SeatFov=46f;
+        /// <summary>Reduced effects: a still wide shot under the belly after my pilot has dropped from the room (no tube, no cabin
+        /// close-up, no plunge): WideOut out from my pod along the pad arc's outward line, WideDrop under its middle, looking back
+        /// in and a little down (the docked pods across the top of the frame, the city below), held still while they drop away.</summary>
+        public const float WideOut=7.5f,WideDrop=1f,WidePitch=-.25f,WideFov=55f;
         /// <summary>The release shot: the eye outboard of my docked pod (out from the table, along the arc) and over its middle,
         /// level with the clamps under the belly; the tilt that keeps the falling pod above the frame's middle and the seconds
         /// the eye takes to tip down from the clamps to follow it.</summary>
@@ -134,20 +140,27 @@ namespace ChipArena.UnityConversion
         public static float Fade(float since,Cut cut){if(!(since>=0))return 0;float len=cut==Cut.Short?ShortFadeSeconds:FadeSeconds;return Smooth((since-(TravelOf(cut)-len))/len);}
         /// <summary>The tube's ring-light chase: the rings are three banks lit in turn (NativeDeployEjectModels.TubeOf: ring k is
         /// bank k mod 3), so a pulse leaves the tube's foot every ChasePeriod s and runs up it a ring at a time; bank `bank`'s
-        /// brightness (0..1) `since` s after Deploy.</summary>
-        public const float ChasePeriod=.12f;
-        public static float RingChase(int bank,float since)
+        /// brightness (0..1) `since` s after Deploy. Each bank is a squared raised cosine a third of a turn from the next, so the
+        /// three always sum to ChaseSum: the light runs up the tube without the frame strobing. Reduced effects: steady rings at
+        /// the chase's mean.</summary>
+        public const float ChasePeriod=.12f,ChaseSum=1.125f,ChaseMean=ChaseSum/3;
+        public static float RingChase(int bank,float since)=>RingChase(bank,since,false);
+        public static float RingChase(int bank,float since,bool reduced)
         {
-            if(!(since>=NativeDeployPresentation.HatchAt))return 0;float x=((bank+since/ChasePeriod*3)%3+3)%3;x=x>1.5f?3-x:x*1.6f;
-            float g=1-x;return g<=0?0:g*g;
+            if(!(since>=NativeDeployPresentation.HatchAt))return 0;if(reduced)return ChaseMean;
+            double a=2*Math.PI*(bank+since/ChasePeriod*3)/3;float g=.5f+.5f*(float)Math.Cos(a);return g*g;
         }
 
         // ---- the camera ----
         /// <summary>The shot `since` s after Deploy for the viewer on pad `mine`: the party (the room's Deploy shot) through the
         /// crouch, the hatches and the first drops; my tube from my drop + TubeLead; my seat from my landing; the release from my
         /// clamps (Full; Short holds the seat).</summary>
-        public static NativeDeployPresentation.Shot ShotOf(int mine,float since,Cut cut)
+        public static NativeDeployPresentation.Shot ShotOf(int mine,float since,Cut cut)=>ShotOf(mine,since,cut,false);
+        /// <summary>Reduced effects (plan risk 11: "a still, wide shot with no cabin"): no tube shot and no cabin close-up; the room's
+        /// shot holds until my landing, then (Full) the still wide shot under the belly as the pods release.</summary>
+        public static NativeDeployPresentation.Shot ShotOf(int mine,float since,Cut cut,bool reduced)
         {
+            if(reduced)return cut==Cut.Full&&since>=LandAt(mine)?NativeDeployPresentation.Shot.Release:NativeDeployPresentation.Shot.Deploy;
             if(!(since>=0)||since<DropStart(mine)+TubeLead)return NativeDeployPresentation.Shot.Deploy;
             if(since<LandAt(mine))return NativeDeployPresentation.Shot.Tube;
             if(cut==Cut.Full&&since>=ReleaseOf(mine)-.06f)return NativeDeployPresentation.Shot.Release;
@@ -155,34 +168,47 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Whether the shot cuts in (no ease from the last one): every eject shot but the room's.</summary>
         public static bool Cuts(NativeDeployPresentation.Shot s)=>s==NativeDeployPresentation.Shot.Tube||s==NativeDeployPresentation.Shot.Seat||s==NativeDeployPresentation.Shot.Release;
-        /// <summary>The view for an eject shot on pad `mine` at `since` (the room's shots: NativeDeployPresentation.ShotOf).</summary>
-        public static NativeDeployPresentation.View ViewOf(NativeDeployPresentation.Shot shot,int mine,float since,Cut cut)
+        /// <summary>The view for an eject shot on pad `mine` at `since` (the room's shots: NativeDeployPresentation.ShotOf), with
+        /// camera shake on and full effects.</summary>
+        public static NativeDeployPresentation.View ViewOf(NativeDeployPresentation.Shot shot,int mine,float since,Cut cut)=>ViewOf(shot,mine,since,cut,true,false);
+        /// <summary>The view for an eject shot. Camera shake off (`shake` false): steady shots, the tube's eye held where the shot
+        /// starts, no jolt as I land and no plunge in the rush. Reduced effects: the release is the still wide shot (WideOut).</summary>
+        public static NativeDeployPresentation.View ViewOf(NativeDeployPresentation.Shot shot,int mine,float since,Cut cut,bool shake,bool reduced)
         {
             var pad=NativeDeployPresentation.Pad(mine);var f=Facing(mine);
             switch(shot)
             {
                 case NativeDeployPresentation.Shot.Tube:
                 {
-                    // straight down my tube from a little behind its axis, following my pilot at TubeFollow of its drop
-                    float y=NativeDeployModels.PadTop+TubeEye-TubeFollow*Drop(mine,since,cut);var eye=new Vector3(pad.X,y,pad.Z)-f*.12f;
+                    // straight down my tube from a little behind its axis, following my pilot at TubeFollow of its drop (held still
+                    // where the shot starts with camera shake off: my pilot falls away down the bore)
+                    float drop=shake?Drop(mine,since,cut):Drop(mine,DropStart(mine)+TubeLead,cut);
+                    float y=NativeDeployModels.PadTop+TubeEye-TubeFollow*drop;var eye=new Vector3(pad.X,y,pad.Z)-f*.12f;
                     return new NativeDeployPresentation.View{Eye=eye,Target=eye+new Vector3(0,-4,0)+f*.62f,Fov=64};
                 }
                 case NativeDeployPresentation.Shot.Seat:
                 {
-                    // in my pod's doorway at my visor's height, close on my pilot: it lands, the bar slams down over its
-                    // shoulders, the cabin turns red and the hatch seals overhead
-                    var root=PodRoot(mine,since,cut);float jolt=.03f*Bump(since-LandAt(mine),.22f);
-                    var eye=Vector3.Transform(new Vector3(.07f,CabinFloor+SeatEyeY-jolt,SeatEyeZ),root);var at=Vector3.Transform(new Vector3(0,CabinFloor+SeatLookY-jolt*.5f,0),root);
+                    // just outside my pod's doorway, a little over my visor, framed by the doorway's posts: my pilot lands, the
+                    // bar slams down over its shoulders, the hands take it, the cabin turns red and the hatch seals overhead
+                    var root=PodRoot(mine,since,cut);float jolt=shake?.03f*Bump(since-LandAt(mine),.22f):0;
+                    var eye=Vector3.Transform(new Vector3(.05f,CabinFloor+SeatEyeY-jolt,SeatEyeZ),root);var at=Vector3.Transform(new Vector3(0,CabinFloor+SeatLookY-jolt*.5f,0),root);
                     return new NativeDeployPresentation.View{Eye=eye,Target=at,Fov=SeatFov};
                 }
                 case NativeDeployPresentation.Shot.Release:
                 {
-                    // outboard of the arc beside my docked pod, under the belly and level with its clamps: they fire and it
-                    // drops away; the eye tips down after it (the pod rides above the frame's middle) until the rolled city
-                    // fills the frame below it, and in the rush plunges after it (still looking down)
                     var outward=new Vector3(pad.X-NativeDeployPresentation.Table.X,0,pad.Z-NativeDeployPresentation.Table.Z);outward=outward.LengthSquared()>1e-4f?Vector3.Normalize(outward):-Vector3.UnitZ;
                     var side=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,outward));var dock=new Vector3(pad.X,PodBase(mine)+PodHeight*.5f,pad.Z);
-                    float rush=Rush(since,cut),plunge=rush*rush*26;
+                    if(reduced)
+                    {
+                        // still and wide: out from the arc under the pods, looking down past them at the city (they drop away
+                        // through the frame; nothing moves the camera)
+                        var weye=dock+outward*WideOut+new Vector3(0,-WideDrop,0);var wflat=-outward;
+                        return new NativeDeployPresentation.View{Eye=weye,Target=weye+(wflat*(float)Math.Cos(WidePitch)+new Vector3(0,(float)Math.Sin(WidePitch),0))*10,Fov=WideFov};
+                    }
+                    // outboard of the arc beside my docked pod, under the belly and level with its clamps: they fire and it
+                    // drops away; the eye tips down after it (the pod rides above the frame's middle) until the rolled city
+                    // fills the frame below it, and in the rush plunges after it (still looking down; held with camera shake off)
+                    float rush=Rush(since,cut),plunge=shake?rush*rush*26:0;
                     var eye=dock+outward*ReleaseOut+side*ReleaseSide+new Vector3(0,ReleaseRise,0);
                     var pod=dock-new Vector3(0,PodFall(mine,since,cut),0);var upper=pod+new Vector3(0,PodHeight*.25f,0);
                     float a=Pitch(upper-eye),b=Pitch(pod-eye)-ReleaseTilt,pitch=Math.Max(-1.48f,a+(b-a)*Smooth((since-ReleaseOf(mine))/ReleaseFollow));
@@ -205,9 +231,12 @@ namespace ChipArena.UnityConversion
             if(since<land){age=since-drop;return Act.Fall;}
             age=since-land;return Act.Seat;
         }
-        /// <summary>The fall's arm throw: the Jump take from its takeoff to its fall entry over ThrowSeconds, into the Fall loop
-        /// from LoopAt over LoopBlend; the seat's catch from the fall over CatchSeconds and its compression (m, rig hips).</summary>
-        public const float ThrowSeconds=.34f,LoopAt=.1f,LoopBlend=.3f,CatchSeconds=.09f,Compression=.085f,CompressionSeconds=.3f;
+        /// <summary>The fall, as the floor opens under the crouch: the gather blends into the Jump take's fall-entry pose over
+        /// ThrowSeconds (the startled arm throw, the legs dropping; the take's push-off is never played), into the Fall loop from
+        /// LoopAt over LoopBlend; SeatTuck before the landing the pilot folds into the Chair and lands in it, its compression (m,
+        /// rig hips) over CompressionSeconds. All through the fall the hips hold the gather's height over the falling root, lowered
+        /// by any rise of the head over the gather's: nothing of the pilot moves up.</summary>
+        public const float ThrowSeconds=.5f,LoopAt=.25f,LoopBlend=.4f,SeatTuck=.32f,Compression=.085f,CompressionSeconds=.3f;
         /// <summary>Where the seated pilot's hands grip the harness bar once it is down (chest space, +x the rig's left).</summary>
         public static readonly Vector3 GripLeft=new Vector3(.17f,-.03f,.3f),GripRight=new Vector3(-.17f,-.03f,.3f);
         /// <summary>The pack set a spec's eject plays (its jump set; the Siren and any spec without one: Unarmed).</summary>
@@ -223,8 +252,9 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// Pad `pad`'s pilot (`spec`, lobby pose index `lobby` as the cast resolved it) `since` s after Deploy (NaN: not deployed)
         /// at portrait time `time` into `pose` (local; World() run): the lobby pose until the crouch; the Jump take's gather;
-        /// the fall (the take's arm throw into the Fall loop); the Chair pose with a land compression, the hands taking the
-        /// harness bar once it is down. The held weapon shows as in the lobby until the seat (a cut hides it holstering).
+        /// the fall (the gather into the take's fall entry, the arms thrown up, into the Fall loop; hips held, nothing rising);
+        /// SeatTuck before the landing the fold into the Chair; in the seat the Chair with a land compression, the hands taking
+        /// the harness bar once it is down. The held weapon shows as in the lobby until the seat (a cut hides it holstering).
         /// </summary>
         public static void Sample(Pilot e,CapturedRig.Pose pose,string spec,int lobby,int pad,float since,float time,bool reduced,out LobbyHeld weapon,out LobbyHeld offhand)
         {
@@ -234,14 +264,26 @@ namespace ChipArena.UnityConversion
             if(act==Act.Stand){Copy(e.Lobby,pose);return;}
             int set=SetFor(spec);var jump=NativeJumpRules.Clip(set,NativeJumpRules.Jump);var loop=NativeJumpRules.Clip(set,NativeJumpRules.Fall);
             if(jump==null||loop==null||jump.Marks.Length<4){Copy(e.Lobby,pose);return;}
-            float g=GatherAt(e,set,jump),m3=jump.Marks[3];
+            Gather(e,set,jump);
             if(act==Act.Crouch)
             {
-                float u=Smooth(age/CrouchSeconds);jump.Sample(g,e.Row);CapturedRig.Sample(e.Row,set,e.Pack);Blend(e.Lobby,e.Pack,u,pose);return;
+                float u=Smooth(age/CrouchSeconds);jump.Sample(gather[set],e.Row);CapturedRig.Sample(e.Row,set,e.Pack);Blend(e.Lobby,e.Pack,u,pose);return;
             }
-            if(act==Act.Fall){FallPose(e,jump,loop,set,g,m3,age);Copy(e.Pack,pose);return;}
-            // the seat: the fall as it was at the landing, caught into the Chair over CatchSeconds
-            FallPose(e,jump,loop,set,g,m3,LandAt(pad)-DropStart(pad));
+            if(act==Act.Fall)
+            {
+                FallPose(e,jump,loop,set,age);
+                // the fold into the seat: the last SeatTuck of the fall blends into the Chair it lands in
+                float tuck=Smooth(1-(LandAt(pad)-since)/SeatTuck);
+                if(tuck<=1e-4f){Copy(e.Pack,pose);return;}
+                SeatPose(e,spec,breath,0);Blend(e.Pack,e.Seat,tuck,pose);return;
+            }
+            // the seat: the Chair it folded into, pressed into the cushion as it lands, the hands taking the bar once it is down
+            SeatPose(e,spec,breath,age);Copy(e.Seat,pose);
+            weapon.Visible=false;offhand.Visible=false;
+        }
+        // The Chair pose `age` s after the landing into e.Seat (local): its land compression and the hands on the harness bar.
+        private static void SeatPose(Pilot e,string spec,float breath,float age)
+        {
             e.Rig.Reset();NativeLobbyPoses.Sample(e.Rig,spec,NativeLobbyPoses.Chair,breath,out _,out _);
             float press=Compression*Bump(age,CompressionSeconds),grip=Smooth((age-HarnessAt-HarnessSeconds*.4f)/.16f);
             var b=e.Rig.P[CapturedRig.Body];e.Rig.P[CapturedRig.Body]=new Vector3(b.X,b.Y-press,b.Z);
@@ -251,24 +293,28 @@ namespace ChipArena.UnityConversion
                 var q=NativeLobbyPoses.Aim(0,-.35f,1);
                 e.Rig.Hand(true,GripLeft,q,grip,new Vector3(1,-.6f,-.4f));e.Rig.Hand(false,GripRight,q,grip,new Vector3(-1,-.6f,-.4f));
             }
-            e.Rig.WritePose(e.Seat);Blend(e.Pack,e.Seat,Smooth(age/CatchSeconds),pose);
-            weapon.Visible=false;offhand.Visible=false;
+            e.Rig.WritePose(e.Seat);
         }
-        // The Jump take's gather: its deepest crouch before the push-off (its hips' lowest up to the takeoff mark), once per set.
-        private static readonly float[] gather=new float[16];private static readonly bool[] gathered=new bool[16];
-        private static float GatherAt(Pilot e,int set,CapturedClip jump)
+        // The Jump take's gather, once per set: its deepest crouch before the push-off (its hips' lowest up to the takeoff mark), and
+        // that pose's hips (the body's height) and head (rig frame) the fall holds to.
+        private static readonly float[] gather=new float[16],gatherBody=new float[16],gatherHead=new float[16];private static readonly bool[] gathered=new bool[16];
+        private static void Gather(Pilot e,int set,CapturedClip jump)
         {
-            if(set<0||set>=gather.Length)return 0;if(gathered[set])return gather[set];
+            if(set<0||set>=gather.Length||gathered[set])return;
             float best=0,low=float.MaxValue,end=Math.Max(jump.Marks[1],1/30f);
             for(int k=0;k<=16;k++){float t=end*k/16;jump.Sample(t,e.Row);CapturedRig.Sample(e.Row,set,e.Pack);float y=e.Pack.WorldPosition[CapturedRig.Pelvis].Y;if(y<low){low=y;best=t;}}
-            gather[set]=best;gathered[set]=true;return best;
+            jump.Sample(best,e.Row);CapturedRig.Sample(e.Row,set,e.Pack);
+            gather[set]=best;gatherBody[set]=e.Pack.Position[CapturedRig.Body].Y;gatherHead[set]=e.Pack.WorldPosition[CapturedRig.Head].Y;gathered[set]=true;
         }
-        // The fall at `age` s into it: the Jump take's arm throw (its gather through the push-off to the fall entry), into the Fall loop.
-        private static void FallPose(Pilot e,CapturedClip jump,CapturedClip loop,int set,float m1,float m3,float age)
+        // The fall at `age` s into it into e.Pack (local): the gather blended into the take's fall-entry pose (its push-off and rise
+        // never played), into the Fall loop; the hips held at the gather's height and lowered by any rise of the head over the
+        // gather's, so on the falling root nothing of the pilot moves up.
+        private static void FallPose(Pilot e,CapturedClip jump,CapturedClip loop,int set,float age)
         {
-            jump.Sample(m1+(m3-m1)*Smooth(age/ThrowSeconds),e.Row);float w=Smooth((age-LoopAt)/LoopBlend);
-            if(w>1e-4f){loop.Sample(age,e.Row2);MeleeCapture.BlendRowsTurning(e.Row,e.Row2,w,e.Row);}
-            CapturedRig.Sample(e.Row,set,e.Pack);
+            jump.Sample(gather[set],e.Row);jump.Sample(jump.Marks[3],e.Row2);MeleeCapture.BlendRowsTurning(e.Row,e.Row2,Smooth(age/ThrowSeconds),e.Row);
+            float w=Smooth((age-LoopAt)/LoopBlend);if(w>1e-4f){loop.Sample(age,e.Row2);MeleeCapture.BlendRowsTurning(e.Row,e.Row2,w,e.Row);}
+            var p=e.Pack;CapturedRig.Sample(e.Row,set,p);p.Position[CapturedRig.Body].Y=gatherBody[set];p.World();
+            float rise=p.WorldPosition[CapturedRig.Head].Y-gatherHead[set];if(rise>0){p.Position[CapturedRig.Body].Y-=rise;p.World();}
         }
         private static void Copy(CapturedRig.Pose a,CapturedRig.Pose o)
         {

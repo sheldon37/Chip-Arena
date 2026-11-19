@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>
     /// The cradle card's wiring (Core NativeCradleCard, Runtime NativeCradleHud; docs/EXPEDITION-OVERHAUL.md R8 and W3). A pod run's
-    /// first load (the generated run's hub, after the station's eject) shows the inside of my pod in place of the stage loading
+    /// first load (the generated run's hub, the load requested from the station after this client saw its eject) shows the inside of my pod in place of the stage loading
     /// screen: the station's console draws it under its fade as the eject ends (LiveCradle: the station's party, all loading),
     /// then the loading screen carries it on (CradleGui: the party loading model's lamps and my load), from the host's own
     /// cover or a guest's first frame alike. On a pod run every peer holds on the card until the hub's countdown starts
@@ -27,8 +27,11 @@ namespace ChipArena.UnityConversion
             var slots=deploymentBundle?.World?.Area?.slots;
             for(int i=0;i<card.Count;i++)card.Spots[i]=slots!=null&&i<slots.Length&&slots[i]!=null?new System.Numerics.Vector2(slots[i].x,slots[i].z):new System.Numerics.Vector2(float.NaN,float.NaN);
         }
-        /// <summary>This load is a pod run's first: the generated run's hub (or the arena not in place yet) on an Expedition start.</summary>
-        private bool PodCradle=>deploymentBundle?.World?.Map!=null&&stageLoad.Kind==StageLoadKind.Expedition&&(arena==null||arena.MapId==deploymentBundle.World.Map.id);
+        private readonly NativeCradleLatch cradleLatch=new NativeCradleLatch();
+        /// <summary>This load is a pod run's first: the one that left the station after this client saw its eject (latched by its
+        /// serial, Core NativeCradleLatch), into the generated run's hub (or the arena not in place yet). A later load into the hub
+        /// (a return, a reprint, a reconnect, an area load) keeps the normal loading screen.</summary>
+        private bool PodCradle=>deploymentBundle?.World?.Map!=null&&cradleLatch.Covers(stageLoad.Serial)&&(arena==null||arena.MapId==deploymentBundle.World.Map.id);
         /// <summary>The hold: on a pod run the card stays until the hub's countdown (the hub waits in Lobby for the whole party).</summary>
         internal bool PodCradleHold=>PodCradle&&arena!=null&&match!=null&&match.Phase==NativePhase.Lobby;
         /// <summary>StageLoadingGui on a pod run's first load: the card, at full strength while the screen covers or holds (it continues

@@ -73,6 +73,8 @@ namespace ChipArena.UnityConversion
         {
             if(dedicated||cameraView==null||error.Length>0){action();return;}
             stageLoad.Request(kind,prefs.reducedEffects);stageAction=action;stageActed=false;StageBegan();
+            // (the load that leaves the station after its eject is the one the cradle card covers: NativeCradleUI.cs)
+            cradleLatch.Requested(stageLoad.Serial,LiveDeployment&&liveDeployClock.SinceDeploy(Time.unscaledTime)>=0);
         }
         private StageLoadKind StageKindOf(NativeArena a)
         {

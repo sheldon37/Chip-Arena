@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
             viewModelCamera.enabled=false;
             // (Mine: the eject's shots follow my own pad: the host's is 0, a guest's its seat's place on the arc)
             var input=new DeployInput{State=state,SinceInstanceRoll=liveDeployClock.SinceInstanceRoll(now),SinceMutatorRoll=liveDeployClock.SinceMutatorRoll(now),SinceDeploy=liveDeployClock.SinceDeploy(now),Time=now,
-                Host=server==null&&!PromotionBusy,PartyReady=server==null&&GuestsReady,Reduced=prefs.reducedEffects,Seats=liveDeployParty.Count,Mine=mine,Ready=liveDeployParty.Ready,Instances=LiveDeployInstances,Mutators=LiveDeployMutators};
+                Host=server==null&&!PromotionBusy,PartyReady=server==null&&GuestsReady,Reduced=prefs.reducedEffects,NoShake=!prefs.cameraShake,Seats=liveDeployParty.Count,Mine=mine,Ready=liveDeployParty.Ready,Instances=LiveDeployInstances,Mutators=LiveDeployMutators};
             presentation.RenderDeployStation(cameraView,input,liveDeployPilots,Time.unscaledDeltaTime,prefs.reducedEffects,nativeAudio);
             return true;
         }

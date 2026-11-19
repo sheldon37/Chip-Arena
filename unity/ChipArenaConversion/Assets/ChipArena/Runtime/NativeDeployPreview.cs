@@ -84,7 +84,7 @@ namespace ChipArena.UnityConversion
             }
             var input=new DeployInput{State=deployState,SinceInstanceRoll=deployClock.SinceInstanceRoll(now),SinceMutatorRoll=deployClock.SinceMutatorRoll(now),SinceDeploy=deployClock.SinceDeploy(now),Time=now,
                 Host=!deployAsGuest,PartyReady=DeployPartyReady,Reduced=prefs.reducedEffects,Seats=deployPartySize,Ready=deployParty.Ready,Instances=DeployPreviewInstances,Mutators=DeployPreviewMutators,
-                Mine=deployAsGuest&&deployPartySize>1?1:0,Short=deployShortEject};
+                Mine=deployAsGuest&&deployPartySize>1?1:0,Short=deployShortEject,NoShake=!prefs.cameraShake};
             if(!presentation.RenderDeployStation(cameraView,input,deployPilots,deployShownFrames++==0?-1:Time.unscaledDeltaTime,prefs.reducedEffects,nativeAudio)){DeployPreviewLeave();return false;}
             // the travel hand-off: no generated world exists yet, so the preview holds the cradle card a while, then closes to the menu
             if(deployState.deployed&&deployClock.SinceDeploy(now)>NativeDeployEject.TravelOf(deployShortEject?NativeDeployEject.Cut.Short:NativeDeployEject.Played)+DeployCradleHold){deployPreviewClosed=true;DeployPreviewLeave();}

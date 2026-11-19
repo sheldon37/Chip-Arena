@@ -21,6 +21,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The viewer's own pad (the eject's shots follow its pilot: NativeDeployEject.ShotOf) and the eject's 4 s variant
         /// (DEV preview only; the live station plays NativeDeployEject.Played, which TravelAt follows).</summary>
         public int Mine;public bool Short;
+        /// <summary>Camera shake (the player's setting; false: the eject's shots are steady: no follow down the tube, no jolt, no
+        /// plunge). Reduced effects (Reduced) also give the still wide shot with no cabin close-up (NativeDeployEject.ShotOf).</summary>
+        public bool NoShake;
     }
     /// <summary>
     /// The times this client first saw each roll and the deploy (docs/EXPEDITION-DEPLOYMENT.md "Needs from Astra": roll times
@@ -56,8 +59,9 @@ namespace ChipArena.UnityConversion
         public enum Model{Room,Table,Map,Holo,Beacon,Pad,Instance,Lever,DrumBand,DrumRims,Mutator,Card,Quad,Gate,DoorLeft,DoorRight,Lift,Console,Lamp,Beam,Hatch,Well,
             // the eject's set under the floor (NativeDeployEjectModels; items only after Deploy): an opened pad, the drop tubes (a
             // shallow and a deep pod's), the roof collar, the seat and its harness bar, a docking clamp, the belly and the rolled
-            // city (built per run by the scene from the frozen state: an empty model here)
-            PadRing,Iris,Tube,TubeDeep,Collar,Seat,Harness,Clamp,Belly,City}
+            // city (built per run by the scene from the frozen state: an empty model here); my pod's cabin lining (the seat shot),
+            // the cloud deck and the rain (the release shot)
+            PadRing,Iris,Tube,TubeDeep,Collar,Seat,Harness,Clamp,Belly,City,Cabin,Clouds,Rain}
         public static readonly int ModelCount=Enum.GetValues(typeof(Model)).Length;
         public enum Blend{Opaque,Additive,Alpha}
         /// <summary>Texture slots: white, the holo map, the stamps, the soft glow (NativeDeployArt.GlowTile), the spark
@@ -100,7 +104,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The eject this frame (NativeDeployEject): the clock it reads (NaN before Deploy), its cut and the viewer's pad;
         /// each pad's pod frame (station; base at the origin, doorway +z) and whether it shows (the deploy cast draws the pods from
         /// the source-model bank); the eject's moments heard this frame (NativeEjectSounds; Runtime/NativeEjectAudio.cs plays them).</summary>
-        public float EjectSince=float.NaN;public NativeDeployEject.Cut EjectCut;public int Mine;public bool Reduced;
+        public float EjectSince=float.NaN;public NativeDeployEject.Cut EjectCut;public int Mine;public bool Reduced,Shake;
         public readonly Matrix4x4[] PodWorld=new Matrix4x4[NativeDeployPresentation.Pads];public readonly bool[] PodShown=new bool[NativeDeployPresentation.Pads];
         public readonly NativeEjectSounds.Cue[] EjectCues=new NativeEjectSounds.Cue[NativeEjectSounds.Limit];public int EjectCueCount;
         private float ejectHeard=float.NaN;
@@ -127,6 +131,7 @@ namespace ChipArena.UnityConversion
             Models[(int)Model.Collar]=NativeDeployEjectModels.CollarModel();Models[(int)Model.Seat]=NativeDeployEjectModels.SeatModel();Models[(int)Model.Harness]=NativeDeployEjectModels.HarnessModel();
             Models[(int)Model.Clamp]=NativeDeployEjectModels.ClampModel();Models[(int)Model.Belly]=NativeDeployEjectModels.BellyModel();
             Models[(int)Model.City]=new WeaponMesh{Spec="deploy-"+NativeDeployEjectModels.City,Tier=0};
+            Models[(int)Model.Cabin]=NativeDeployEjectModels.CabinModel();Models[(int)Model.Clouds]=NativeDeployEjectModels.CloudModel();Models[(int)Model.Rain]=NativeDeployEjectModels.RainModel();
         }
 
         // ---- the strips (allocate only when the catalog or a result changes) ----
@@ -206,7 +211,7 @@ namespace ChipArena.UnityConversion
             var P=NativeDeployPresentation.Phase.Spinning;bool deployed=s!=null&&s.deployed;var dep=Deploy;
             // the eject's clock (an unknown deploy time reads as over: a late joiner sees it done) and the viewer's pad
             float since=deployed?(f.SinceDeploy>=0?f.SinceDeploy:travel):float.NaN;int mine=Math.Max(0,Math.Min(NativeDeployPresentation.Pads-1,f.Mine));
-            EjectSince=since;EjectCut=cut;Mine=mine;Reduced=f.Reduced;
+            EjectSince=since;EjectCut=cut;Mine=mine;Reduced=f.Reduced;Shake=!f.NoShake;
             // what each machine's reels landed on (the sparks' colours and polarities) and the cabinets' kick as they land
             int destinations=s!=null&&s.instanceRolls>0?Math.Min(3,s.districts.Length):0,cards=s!=null&&s.mutatorRolls>0?Math.Min(3,s.mutators.Length):0;
             for(int r=0;r<3;r++)
@@ -219,8 +224,9 @@ namespace ChipArena.UnityConversion
             float pulse=.5f+.5f*(float)Math.Sin(t*3.1f),breath=.5f+.5f*(float)Math.Sin(t*1.6f);
 
             // the camera: the spinning machine, the pads on Deploy, then the eject's shots on my pad (they cut in), else the overview
-            Shot=NativeDeployPresentation.Framing(InstanceLook,MutatorLook,s);if(deployed&&Shot==NativeDeployPresentation.Shot.Deploy)Shot=NativeDeployEject.ShotOf(mine,since,cut);
-            bool cuts=NativeDeployEject.Cuts(Shot);var want=cuts?NativeDeployEject.ViewOf(Shot,mine,since,cut):NativeDeployPresentation.ShotOf(Shot);
+            // (camera shake off: steady eject shots; reduced effects: the room's shot, then a still wide one, no cabin close-up)
+            Shot=NativeDeployPresentation.Framing(InstanceLook,MutatorLook,s);if(deployed&&Shot==NativeDeployPresentation.Shot.Deploy)Shot=NativeDeployEject.ShotOf(mine,since,cut,f.Reduced);
+            bool cuts=NativeDeployEject.Cuts(Shot);var want=cuts?NativeDeployEject.ViewOf(Shot,mine,since,cut,Shake,f.Reduced):NativeDeployPresentation.ShotOf(Shot);
             if(!cameraSet||!(dt>=0)||cuts){Camera=want;cameraSet=true;}
             else{float k=1-(float)Math.Exp(-dt/(Shot==NativeDeployPresentation.Shot.Deploy?.9f:.55f));Camera=new NativeDeployPresentation.View{Eye=Vector3.Lerp(Camera.Eye,want.Eye,k),Target=Vector3.Lerp(Camera.Target,want.Target,k),Fov=Camera.Fov+(want.Fov-Camera.Fov)*k};}
 
@@ -395,8 +401,8 @@ namespace ChipArena.UnityConversion
                 // the tube: its rings cool and dim, mine chasing up as I fall (three ring banks lit in turn)
                 ref var tb=ref Add(NativeDeployEject.Deep(i)?Model.TubeDeep:Model.Tube,Matrix4x4.CreateRotationY(NativeDeployEject.Yaw(i))*T(new Vector3(pad.X,NativeDeployEject.TubeTop,pad.Z)));
                 float level=.35f+.85f*hatch;
-                if(i==mine&&tube){for(int b=0;b<3;b++){var c=Col(0xd4f2ff,level*(.4f+3.6f*NativeDeployEject.RingChase(b,since)));if(b==0)tb.Light=c;else if(b==1)tb.Extra0=c;else tb.Extra1=c;}}
-                else{var c=Col(0xb8e6ff,level*(1.1f+.5f*NativeDeployEject.RingChase(i%3,since)));tb.Light=c;tb.Extra0=c;tb.Extra1=c;}
+                if(i==mine&&tube){for(int b=0;b<3;b++){var c=Col(0xd4f2ff,level*(.9f+2.6f*NativeDeployEject.RingChase(b,since,Reduced)));if(b==0)tb.Light=c;else if(b==1)tb.Extra0=c;else tb.Extra1=c;}}
+                else{var c=Col(0xb8e6ff,level*(1.1f+.5f*NativeDeployEject.RingChase(i%3,since,Reduced)));tb.Light=c;tb.Extra0=c;tb.Extra1=c;}
                 // the dock: the collar on its pod's roof (amber, red once sealed) and the roof hatch's iris leaves sliding shut
                 var dock=NativeDeployEject.DockRoot(i);float seal=NativeDeployEject.Seal(i,since);
                 ref var collar=ref Add(Model.Collar,T(new Vector3(0,NativeDeployEject.PodHeight,0))*dock);collar.Light=Vector4.Lerp(Col(0xff9a2e,1.7f),Col(0xff3a3a,2.4f),seal);
@@ -418,8 +424,27 @@ namespace ChipArena.UnityConversion
                 if(flash>0)Glow(Vector3.Transform(new Vector3(0,NativeDeployEject.PodHeight,0),dock),2.2f,Col(0xfff0d8,2.4f*flash));
             }
             if(Count<Capacity-1){ref var belly=ref Add(Model.Belly,Matrix4x4.Identity);belly.Light=Col(0xbfe6ff,1.3f);}
-            if(release&&Count<Capacity-1){ref var city=ref Add(Model.City,T(new Vector3(0,NativeDeployEject.CityY,0)));city.Light=Col(0xffffff,1.7f+.25f*(float)Math.Sin(t*1.7f));}
+            // my pod's cabin lining in the seat shot: the red lamps (the cabin's), the porthole's night, the status lamps
+            if(Shot==NativeDeployPresentation.Shot.Seat&&mine<seats&&Count<Capacity-1)
+            {
+                float landed=since-NativeDeployEject.LandAt(mine),cabin=Smooth(landed/.25f);
+                ref var lining=ref Add(Model.Cabin,NativeDeployEject.PodRoot(mine,since,cut));lining.Light=Col(0xff2a1e,.9f+1.6f*cabin);lining.Extra0=Col(0x5a7cc8,.9f);lining.Extra1=Col(0xffffff,1.1f);
+            }
+            if(release)
+            {
+                // the rolled city far below (its glows the glow texture, additive), the broken cloud deck over it (alpha) and, with
+                // full effects, the rain streaming up past the falling eye (two stacked boxes scrolled and wrapped)
+                if(Count<Capacity-1){ref var city=ref Add(Model.City,T(new Vector3(0,NativeDeployEject.CityY,0)));city.Light=Col(0xffffff,1.7f+.25f*(float)Math.Sin(t*1.7f));city.Texture=TexGlow;city.Blend=Blend.Additive;city.Screen=Vector4.One;}
+                if(Count<Capacity-1){ref var deck=ref Add(Model.Clouds,Matrix4x4.Identity);deck.Texture=TexGlow;deck.Blend=Blend.Alpha;deck.Screen=new Vector4(1,1,1,1);}
+                if(!Reduced)
+                {
+                    float h=NativeDeployEjectModels.RainHeight,off=Frac(since*RainRise/h)*h;var at=Camera.Eye;
+                    for(int b=0;b<2&&Count<Capacity-1;b++){ref var rain=ref Add(Model.Rain,T(new Vector3(at.X,at.Y-h*b+off,at.Z)));rain.Texture=TexGlow;rain.Blend=Blend.Additive;rain.Screen=new Vector4(.55f,.6f,.7f,1);}
+                }
+            }
         }
+        /// <summary>How fast the rain streams up past the falling eye in the release shot (m/s).</summary>
+        public const float RainRise=12f;
         // A soft camera-facing glow (the release's flash at the clamps).
         private void Glow(Vector3 at,float size,Vector4 tint)
         {
@@ -440,11 +465,14 @@ namespace ChipArena.UnityConversion
                     l.Clear();l.Background=Hx(0x020308,1);l.Fog=Hx(0x04060c,1);l.FogNear=5;l.FogFar=26;l.Sky=Hx(0x5a7ab0,.55f);l.Ground=Hx(0x140c1a,.45f);
                     l.Directional(S(new Vector3(0,1,.2f)),Hx(0x9fc0ff,.25f));
                     // the lit rings round my pilot (their chase), the collar's glow below, the room's spill above
-                    float depth=NativeDeployEject.Drop(mine,since,cut);int at=(int)Math.Floor((depth+.6f)/NativeDeployEjectModels.RingPitch);
-                    for(int k=at-2;k<=at+2;k++)
+                    // the rings' light round my pilot: a tent of four rings that slides down with it (its weights always sum to the same,
+                    // so no light pops on or off and the shot's light holds steady); the chase itself runs in the rings' own bands
+                    float depth=NativeDeployEject.Drop(mine,since,cut),mid=(depth+.6f-.3f)/NativeDeployEjectModels.RingPitch;int at=(int)Math.Floor(mid);
+                    for(int k=at-1;k<=at+2;k++)
                     {
                         if(k<0)continue;float y=NativeDeployEject.TubeTop-(.3f+k*NativeDeployEjectModels.RingPitch);if(y<NativeDeployEject.PodRoof(mine))continue;
-                        l.Add(S(new Vector3(pad.X,y,pad.Z)),Hx(0xd4f2ff,1.2f+9*NativeDeployEject.RingChase(k%3,since)),2.6f);
+                        float w=1-Math.Abs(k-mid)/2;if(w<=0)continue;
+                        l.Add(S(new Vector3(pad.X,y,pad.Z)),Hx(0xd4f2ff,3.8f*w),2.6f);
                     }
                     l.Add(S(new Vector3(pad.X,NativeDeployEject.PodRoof(mine)+.5f,pad.Z)),Hx(0xff6a2a,9),4.5f);
                     l.Add(S(new Vector3(pad.X,1.2f,pad.Z)),Hx(0xff4a3a,26*(.6f+.4f*red)),6);
@@ -466,12 +494,14 @@ namespace ChipArena.UnityConversion
                     l.Add(S(P(0,1.4f,.75f)),Hx(0x7fa8ff,1.1f),2f);
                     l.Add(S(P(0,.45f,.55f)),Hx(0xff6a3a,.6f*cabin),1.2f);
                     l.Add(S(P(.5f,1.9f,.3f)),Hx(0xffb48a,.3f),1.8f);
-                    l.Add(S(P(-.5f,1.9f,.3f)),Hx(0xffb48a,.3f),1.8f);
+                    // the key from outside the doorway, over the camera: helmet, chest, the bar and the hands read on any livery
+                    l.Add(S(P(-.25f,1.75f,1.25f)),Hx(0xc8dcff,2.4f),3.2f);
                     return;
                 }
                 case NativeDeployPresentation.Shot.Release:
                 {
-                    l.Clear();l.Background=Hx(0x03050c,1);l.Fog=Hx(0x070b18,1);l.FogNear=70;l.FogFar=260;l.Sky=Hx(0x6078b8,.7f);l.Ground=Hx(0x2a1c20,.6f);
+                    // the night air: a blue haze that deepens with distance (the city far below reads through it)
+                    l.Clear();l.Background=Hx(0x04070f,1);l.Fog=Hx(0x101828,1);l.FogNear=50;l.FogFar=300;l.Sky=Hx(0x6078b8,.7f);l.Ground=Hx(0x2a1c20,.6f);
                     l.Directional(S(new Vector3(-.4f,1,-.5f)),Hx(0xb8c8ff,.55f));
                     float flash=NativeDeployEject.ReleaseFlash(mine,since,cut);var dock=new Vector3(pad.X,NativeDeployEject.PodRoof(mine),pad.Z);
                     l.Add(S(dock+new Vector3(0,.4f,0)),Hx(0xfff0d8,4+140*flash),9);

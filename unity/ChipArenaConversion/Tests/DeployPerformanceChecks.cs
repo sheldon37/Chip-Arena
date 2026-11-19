@@ -41,12 +41,15 @@ internal static class DeployPerformanceChecks
     // only after Deploy and only for occupied pads, counted against their own budgets, the city only in the release shot (built on a
     // worker once per run); every frame of the eject allocates nothing.
     private static readonly NativeDeployStage.Model[] EjectModels={NativeDeployStage.Model.PadRing,NativeDeployStage.Model.Iris,NativeDeployStage.Model.Tube,NativeDeployStage.Model.TubeDeep,
-        NativeDeployStage.Model.Collar,NativeDeployStage.Model.Seat,NativeDeployStage.Model.Harness,NativeDeployStage.Model.Clamp,NativeDeployStage.Model.Belly,NativeDeployStage.Model.City};
+        NativeDeployStage.Model.Collar,NativeDeployStage.Model.Seat,NativeDeployStage.Model.Harness,NativeDeployStage.Model.Clamp,NativeDeployStage.Model.Belly,NativeDeployStage.Model.City,
+        NativeDeployStage.Model.Cabin,NativeDeployStage.Model.Clouds,NativeDeployStage.Model.Rain};
     private static void Eject(string scene)
     {
         var budgets=new (string id,WeaponMesh mesh,int budget)[]{("pad ring",NativeDeployModels.PadRing(),1200),("tube",NativeDeployEjectModels.TubeOf(NativeDeployEject.TubeLength(0)),2000),
             ("deep tube",NativeDeployEjectModels.TubeOf(NativeDeployEject.TubeLength(1)),2600),("collar",NativeDeployEjectModels.CollarModel(),1000),("seat",NativeDeployEjectModels.SeatModel(),1200),
-            ("harness",NativeDeployEjectModels.HarnessModel(),800),("clamp",NativeDeployEjectModels.ClampModel(),400),("belly",NativeDeployEjectModels.BellyModel(),8000)};
+            ("harness",NativeDeployEjectModels.HarnessModel(),1000),("clamp",NativeDeployEjectModels.ClampModel(),400),("belly",NativeDeployEjectModels.BellyModel(),8000),
+            // (re-pinned 2026-11-18, W3 review: the harness's webbing and buckles; my pod's cabin lining in the seat shot)
+            ("cabin",NativeDeployEjectModels.CabinModel(),2000)};
         foreach(var (id,mesh,budget) in budgets)
         {
             Check(mesh.Triangles>0&&mesh.Triangles<=budget,id+" budget ("+mesh.Triangles+")");
@@ -60,7 +63,15 @@ internal static class DeployPerformanceChecks
         var pool=new[]{new ExpeditionInstanceTheme{id="exp-ward-zero",theme="quarantine"},new ExpeditionInstanceTheme{id="exp-transit",theme="rail"},new ExpeditionInstanceTheme{id="exp-foundry",theme="industrial"}};
         var a=new NativeExpeditionDeployment("eject","host",4242);a.RollInstances("host",pool);var rolled=a.Snapshot();a.Deploy("host",true);var dep=a.Snapshot();
         var timer=new Stopwatch();timer.Start();var city=NativeDeployEjectModels.CityModel(dep);timer.Stop();
-        Check(city.Triangles>2000&&city.Triangles<=20000&&timer.Elapsed.TotalMilliseconds<250,"the rolled city builds in its budget ("+city.Triangles+" triangles, "+timer.Elapsed.TotalMilliseconds.ToString("F1")+" ms)");
+        // (re-pinned 2026-11-18, W3 review: the city lit from altitude: massed blocks, window speckle, kerb lamps and glows, 40k at most)
+        Check(city.Triangles>2000&&city.Triangles<=40000&&timer.Elapsed.TotalMilliseconds<250,"the rolled city builds in its budget ("+city.Triangles+" triangles, "+timer.Elapsed.TotalMilliseconds.ToString("F1")+" ms)");
+        // the sky's soft layers (Screen sections: the glow texture's quads) and the city's glows: finite, uv'd, inside their budgets
+        foreach(var (id,mesh,budget) in new (string,WeaponMesh,int)[]{("clouds",NativeDeployEjectModels.CloudModel(),1200),("rain",NativeDeployEjectModels.RainModel(),800),("city glows",city,40000)})
+        {
+            var g=mesh.Sections.FirstOrDefault(s=>s.Bone==NativeDeployModels.Screen);
+            Check(g!=null&&g.Triangles>0&&mesh.Triangles<=budget&&g.Data.Count==g.Positions.Count&&g.Indices.Count%3==0&&g.Positions.All(p=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&float.IsFinite(p.Z))&&g.Colors.All(c=>c.W>0&&c.W<=1),id+": soft quads in budget ("+mesh.Triangles+")");
+        }
+        Check(NativeDeployEjectModels.DeckY<NativeDeployEjectModels.BellyBottom-20&&NativeDeployEjectModels.DeckY>NativeDeployEject.CityY+40,"the cloud deck lies between the pods and the city");
         Check(scene.Contains("cityJob=Task.Run(()=>NativeDeployEjectModels.CityModel(copy))")&&scene.Contains("if(!uploaded&&cityJob!=null&&cityJob.IsCompleted)"),"the city builds on a worker, uploaded on a frame without another upload");
         foreach(var cut in new[]{false,true})for(int seats=1;seats<=4;seats++)
         {
@@ -74,6 +85,8 @@ internal static class DeployPerformanceChecks
                 most=Math.Max(most,n);worst=Math.Max(worst,tris);
                 Check(Items(st).Count(m=>m==NativeDeployStage.Model.Tube||m==NativeDeployStage.Model.TubeDeep)==seats&&Items(st).Count(m=>m==NativeDeployStage.Model.Seat)==seats,"a tube and a seat for each occupied pad only");
                 Check(Items(st).Contains(NativeDeployStage.Model.City)==(st.Shot==NativeDeployPresentation.Shot.Release),"the city only in the release shot");
+                Check(Items(st).Contains(NativeDeployStage.Model.Clouds)==(st.Shot==NativeDeployPresentation.Shot.Release)&&Items(st).Count(m=>m==NativeDeployStage.Model.Rain)==(st.Shot==NativeDeployPresentation.Shot.Release?2:0),"the cloud deck and the rain only in the release shot");
+                Check(Items(st).Count(m=>m==NativeDeployStage.Model.Cabin)==(st.Shot==NativeDeployPresentation.Shot.Seat?1:0),"my pod's cabin lining only in my seat shot");
                 Check(st.Count<=NativeDeployStage.Capacity&&st.PodShown.Take(seats).All(x=>x)&&!st.PodShown.Skip(seats).Any(x=>x),"the occupied pads' pods and none other");
             }
             // the same frames again, measured: the stage's eject allocates nothing per frame

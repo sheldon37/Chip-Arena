@@ -120,4 +120,19 @@ namespace ChipArena.UnityConversion
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
         private static float Hash(int a,int b){unchecked{uint h=(uint)(a*374761393)^(uint)(b*668265263);h=(h^(h>>13))*1274126177u;h^=h>>16;return (h&0xffffff)/(float)0x1000000;}}
     }
+
+    /// <summary>
+    /// Which stage load the cradle card covers: only the load that leaves the station after this client saw its eject (a pod run's
+    /// first load, on host and guests alike), never a later load into the same hub (a return from an instance, a reprint to camp,
+    /// a reconnect, an area load): those keep the normal loading screen and its party barrier lines. Runtime/NativeStageLoadingUI.cs
+    /// latches the load's serial when a load is requested from the live station whose Deploy this client watched.
+    /// </summary>
+    public sealed class NativeCradleLatch
+    {
+        private int serial=-1;
+        /// <summary>A stage load (`serial`) was requested; `fromEject`: from the live station, after this client saw its Deploy.</summary>
+        public void Requested(int serial,bool fromEject){if(fromEject&&serial>=0)this.serial=serial;}
+        /// <summary>Whether load `serial` is the one that left the station.</summary>
+        public bool Covers(int serial)=>serial>=0&&serial==this.serial;
+    }
 }

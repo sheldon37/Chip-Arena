@@ -44,11 +44,12 @@ namespace ChipArena.UnityConversion
         }
         // ---- a pod run's Lobby: nobody stands on the slots before the drop ----
         /// <summary>SpawnEvaluate in a pod run's hub while it waits in Lobby: the pilot hidden (as it rides in its pod: no beam, no
-        /// hologram, no HUD), so the slots stand empty until the countdown's drop.</summary>
+        /// hologram, no HUD), so the slots stand empty until the countdown's drop. Lobby marks the view so SpawnPlace shows it hidden
+        /// before any pod path (no pod record exists in Lobby: a path that needs one would draw the pilot whole).</summary>
         private SpawnView PodLobbyHidden(NativePilot pilot)
         {
             int id=pilot.Seat.id;if(!spawnViews.TryGetValue(id,out var v)){v=new SpawnView();spawnViews.Add(id,v);}
-            v.Pod=true;v.End=double.NaN;v.Built=false;v.Frame=new SpawnInFrame{Active=true,Front=-1e4f,Held=true,Land=-1};return v;
+            v.Pod=true;v.Lobby=true;v.End=double.NaN;v.Built=false;v.Frame=new SpawnInFrame{Active=true,Front=-1e4f,Held=true,Land=-1};return v;
         }
     }
 

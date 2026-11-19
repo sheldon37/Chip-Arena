@@ -26,12 +26,13 @@ namespace ChipArena.UnityConversion
         public static void Run()
         {
             count=0;
-            Reels();Machines();Blend();Map();Set();Tables();Catalog();Eject();EjectPoses();EjectSounds();Cradle();Ride();
+            Reels();Machines();Blend();Map();Set();Tables();Catalog();Eject();EjectPoses();EjectComfort();EjectBore();EjectSounds();Cradle();Ride();
             Console.WriteLine("PASS Deployment presentation: "+count+" checks (reels land on the authority's result from any start, no jumps, "+
                 "overshoot then settle; machine phases host and guest; mutators PENDING until Deploy, ACTIVE only after; the deploy timeline; "+
                 "seamless theme weights equal to the cells at their centres; the holo map; the party pads and the shots; the 5.6 s eject and its 4 s variant: falls at 9.8 m/s² "+
                 "only down into each pod's seat, the harness and seal before the release, the pods clear of each other and the tubes, each viewer's shots on its own pad, animated poses on "+
-                "every pack set, its sounds once each; the cradle card's lamps, altimeter and map; the pod ride's window at 3 s and 5 s)");
+                "every pack set with nothing of the pilot rising and no part faster than .17 m a frame, its sounds once each; steady shots with camera shake off and a still wide one "+
+                "with reduced effects, the ring chase without a strobe; the bores open to the collar; the cradle card's lamps, altimeter, map and its latch to the station's load; the pod ride's window at 3 s and 5 s)");
         }
         // The owner's 30 mutator cards: unique ids the roll authority accepts, unique names its card font can letter, a short
         // line each, all three polarities with the presentation's own colours, the reel carrying every card.
@@ -227,12 +228,19 @@ namespace ChipArena.UnityConversion
                         if(s==NativeDeployPresentation.Shot.Tube)
                         {
                             Check(Xz(v.Eye,pad)<NativeDeployEject.TubeRadius-.2f&&v.Target.Y<v.Eye.Y-3&&Xz(v.Target,pad)<.8f,"the tube shot looks straight down my tube (pad "+mine+")");
-                            float head=NativeDeployModels.PadTop-NativeDeployEject.Drop(mine,t,cut)+1.75f;Check(v.Eye.Y>head+.6f&&v.Eye.Y>NativeDeployEject.PodRoof(mine)+1,"my pilot falls below the tube shot's eye (pad "+mine+")");
+                            // (re-pinned 2026-11-18, W3 review: the eye starts 1.2 m over the pad, so the neighbouring pads stay out of frame:
+                            // it clears the posed pilot's highest part, its helmet included, by .45 m, not a standing pilot's head)
+                            float top=NativeDeployModels.PadTop-NativeDeployEject.Drop(mine,t,cut)+NativePortraitRules.GroupY+Top(mine,t)+.17f;
+                            Check(v.Eye.Y>top+.45f&&v.Eye.Y>NativeDeployEject.PodRoof(mine)+1,"my pilot falls below the tube shot's eye (pad "+mine+" at "+t+": eye "+v.Eye.Y+", top "+top+")");
+                            Check(v.Eye.Y<NativeDeployModels.PadTop+1.25f,"the tube shot's eye no higher than 1.2 m over the pad (pad "+mine+")");
                         }
                         if(s==NativeDeployPresentation.Shot.Seat)
                         {
                             var root=NativeDeployEject.PodRoot(mine,t,cut);Matrix4x4.Invert(root,out var inv);var e=Vector3.Transform(v.Eye,inv);
-                            Check(e.Y>NativeDeployEject.CabinFloor+.5f&&e.Y<NativeDeployEject.PodHeight-.5f&&Math.Abs(e.X)<.4f&&e.Z>.2f&&e.Z<NativePodModels.Hinge.Z-.05f,"the seat shot is inside my pod, in its doorway (pad "+mine+" "+e+")");
+                            // (re-pinned 2026-11-18, W3 review: from just outside the doorway, 1.1 m from the pilot, a 46° lens framing the helmet,
+                            // the bar and the hands, not a cropped torso from inside the 1.25 m cabin)
+                            Check(e.Y>NativeDeployEject.CabinFloor+.5f&&e.Y<NativeDeployEject.PodHeight-.5f&&Math.Abs(e.X)<.2f&&e.Z>NativePodModels.Hinge.Z+.2f&&e.Z<1.6f&&v.Fov<=50,"the seat shot looks in from just outside my pod's doorway (pad "+mine+" "+e+")");
+                            if(t>NativeDeployEject.LandAt(mine)+.45f)SeatFrames(v,mine,t,cut);
                         }
                         if(s==NativeDeployPresentation.Shot.Release)
                         {
@@ -265,6 +273,13 @@ namespace ChipArena.UnityConversion
             Check(NativeDeployEject.TubeLength(0)>4&&NativeDeployEject.TubeLength(1)>NativeDeployEject.TubeLength(0)+3&&NativeDeployEject.PodRoof(0)<NativeDeployEjectModels.BellyBottom,"the tubes run from the floor to their pods under the belly");
             for(int b=0;b<3;b++){float on=0;for(float t=1;t<1.12f;t+=.004f)on=Math.Max(on,NativeDeployEject.RingChase(b,t));Check(on>.9f,"ring bank "+b+" lights once every .12 s");}
             Check(NativeDeployEject.RingChase(0,.5f)==0,"no chase before the hatches open");
+            // (W3 review: the chase ran the whole frame's light up and down at 8 Hz) the three banks always sum to the same light, so the
+            // pulse runs up the tube without a strobe; reduced effects: steady rings
+            for(float t=NativeDeployPresentation.HatchAt;t<4;t+=.003f)
+            {
+                float sum=0;for(int b=0;b<3;b++){sum+=NativeDeployEject.RingChase(b,t);Check(NativeDeployEject.RingChase(b,t,true)==NativeDeployEject.ChaseMean,"steady rings with reduced effects");}
+                Check(Math.Abs(sum-NativeDeployEject.ChaseSum)<1e-4f,"the ring banks sum to a steady light ("+sum+" at "+t+")");
+            }
         }
         // The eject's poses (the deploy cast; NativePackJumps and NativeLobbyPoses on every body): no rigid pose anywhere in the drop.
         private static void EjectPoses()
@@ -286,11 +301,138 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i<CapturedRig.Bones.Length;i++){prev.Position[i]=pose.Position[i];prev.Rotation[i]=pose.Rotation[i];}prev.World();
                 }
                 Check(minMove>.002f,spec+": the fall is animated every tenth of a second ("+minMove+")");Check(low>.02f,spec+": the crouch gathers ("+low+")");
+                // (W3 review: the fall began with a hop, the take's push-off rising a metre over the open hatch) on the falling root nothing
+                // of the pilot moves up: the drawn pelvis and head only fall from the drop to the landing (deep pods too); in the seat
+                // they never rise over their height at the landing (the compression dips and returns); no part moves more than .17 m in
+                // any 1/30 s from the crouch to the seat (the old hop moved a metre in one)
+                var at=new CapturedRig.Pose();
+                foreach(int pad in new[]{0,1,2,3})
+                {
+                    float d0=NativeDeployEject.DropStart(pad),land=NativeDeployEject.LandAt(pad),lastP=float.MaxValue,lastH=float.MaxValue,landP=float.NaN,landH=float.NaN,fastest=0;
+                    for(float t=NativeDeployEject.CrouchAt;t<land+.6f;t+=1/240f)
+                    {
+                        NativeDeployEject.Sample(e,pose,spec,NativeLobbyPoses.Weapon,pad,t,3,true,out _,out _);float root=-NativeDeployEject.Drop(pad,t,NativeDeployEject.Played);
+                        float py=root+pose.WorldPosition[CapturedRig.Pelvis].Y,hy=root+pose.WorldPosition[CapturedRig.Head].Y;
+                        if(t>=d0&&t<=land){Check(py<=lastP+1e-4f&&hy<=lastH+1e-4f,spec+" pad "+pad+": nothing rises in the fall (at "+t+": pelvis "+(py-lastP)+", head "+(hy-lastH)+")");lastP=py;lastH=hy;}
+                        if(t>=land){if(float.IsNaN(landP)){landP=py;landH=hy;}Check(py<=landP+.02f&&hy<=landH+.02f,spec+" pad "+pad+": the seated pilot never rises over its landing ("+t+")");}
+                        NativeDeployEject.Sample(e,at,spec,NativeLobbyPoses.Weapon,pad,t+1/30f,3+1/30f,true,out _,out _);
+                        for(int b=0;b<CapturedRig.Bones.Length;b++)fastest=Math.Max(fastest,Vector3.Distance(pose.WorldPosition[b],at.WorldPosition[b]));
+                    }
+                    Check(fastest<=.17f,spec+" pad "+pad+": no part moves more than .17 m in a 1/30 s ("+fastest+")");
+                }
             }
             // nothing allocates per frame once a pilot's buffers are made
             NativeDeployEject.Sample(e,pose,"sword",NativeLobbyPoses.Weapon,1,2f,1,false,out _,out _);long before=GC.GetAllocatedBytesForCurrentThread();
             for(int f=0;f<240;f++)NativeDeployEject.Sample(e,pose,"sword",NativeLobbyPoses.Weapon,1,f/48f,f/60f,false,out _,out _);
             Check(GC.GetAllocatedBytesForCurrentThread()-before==0,"the eject's poses allocate nothing per frame");
+        }
+        // The posed pilot's highest part over its feet (rig frame + GroupY: metres over the pad's top before the drop), the host's sword.
+        private static readonly NativeDeployEject.Pilot topPilot=new NativeDeployEject.Pilot();private static readonly CapturedRig.Pose topPose=new CapturedRig.Pose();
+        private static float Top(int pad,float t){NativeDeployEject.Sample(topPilot,topPose,"sword",NativeLobbyPoses.Weapon,pad,t,3,true,out _,out _);float y=float.MinValue;foreach(var w in topPose.WorldPosition)y=Math.Max(y,w.Y);return y;}
+        // Whether a point is inside a view's frame (16:9) with a margin (a share of the half extent).
+        private static bool InFrame(NativeDeployPresentation.View v,Vector3 p,float margin=.04f)
+        {
+            var f=Vector3.Normalize(v.Target-v.Eye);var r=Vector3.Normalize(Vector3.Cross(f,Vector3.UnitY));var u=Vector3.Cross(r,f);var d=p-v.Eye;float z=Vector3.Dot(d,f);if(z<=.05f)return false;
+            float th=(float)Math.Tan(v.Fov*Math.PI/360),x=Vector3.Dot(d,r)/z/(th*16/9f),y=Vector3.Dot(d,u)/z/th;return Math.Abs(x)<1-margin&&Math.Abs(y)<1-margin;
+        }
+        // The seat shot (W3 review: it cropped the helmet and left the bar, the hands and the cabin out): with the bar down and the hands
+        // on it, the helmet's top, the visor, the crossbar and both hands in frame, the doorway's posts at its edges, on every pad.
+        private static void SeatFrames(NativeDeployPresentation.View v,int mine,float t,NativeDeployEject.Cut cut)
+        {
+            NativeDeployEject.Sample(topPilot,topPose,"sword",NativeLobbyPoses.Weapon,mine,t,3,true,out _,out _);var pod=NativeDeployEject.PodRoot(mine,t,cut);
+            Vector3 P(Vector3 w)=>Vector3.Transform(new Vector3(-w.X,NativeDeployEject.CabinFloor+NativePortraitRules.GroupY+w.Y,w.Z),pod);var wp=topPose.WorldPosition;
+            var helmet=P(wp[CapturedRig.Head]+new Vector3(0,.2f,0));var chest=P(wp[CapturedRig.Chest]);var lh=P(wp[CapturedRig.LHand]);var rh=P(wp[CapturedRig.RHand]);
+            var bar=Vector3.Transform(NativeDeployEjectModels.HarnessPivot+NativeDeployEjectModels.Bar,pod);
+            Check(InFrame(v,helmet)&&InFrame(v,chest)&&InFrame(v,bar)&&InFrame(v,lh)&&InFrame(v,rh),"the seat shot frames the helmet, the chest, the bar and both hands (pad "+mine+" at "+t+")");
+        }
+        // Comfort (plan risk 11; W3 review: the eject's camera and chase ignored the settings): camera shake off gives steady shots (the
+        // tube's eye held, no jolt as I land, no plunge in the rush); reduced effects give no tube shot and no cabin close-up, the room's
+        // shot until my landing and then one still wide shot under the belly (Full); the stage passes both through and its rings are steady.
+        private static void EjectComfort()
+        {
+            foreach(var cut in new[]{NativeDeployEject.Cut.Full,NativeDeployEject.Cut.Short})for(int mine=0;mine<4;mine++)
+            {
+                float travel=NativeDeployEject.TravelOf(cut),tube0=NativeDeployEject.DropStart(mine)+NativeDeployEject.TubeLead,land=NativeDeployEject.LandAt(mine);
+                var held=NativeDeployEject.ViewOf(NativeDeployPresentation.Shot.Tube,mine,tube0,cut,false,false);Matrix4x4.Invert(NativeDeployEject.PodRoot(mine,land,cut),out var inv0);
+                var seat0=Vector3.Transform(NativeDeployEject.ViewOf(NativeDeployPresentation.Shot.Seat,mine,land,cut,false,false).Eye,inv0);float relY=float.NaN;
+                NativeDeployPresentation.View wide=default;bool wideSeen=false;
+                for(float t=0;t<travel+.2f;t+=.01f)
+                {
+                    var s=NativeDeployEject.ShotOf(mine,t,cut,false);
+                    if(s==NativeDeployPresentation.Shot.Tube)Check(Vector3.Distance(NativeDeployEject.ViewOf(s,mine,t,cut,false,false).Eye,held.Eye)<1e-4f,"camera shake off: the tube's eye holds (pad "+mine+")");
+                    if(s==NativeDeployPresentation.Shot.Seat){Matrix4x4.Invert(NativeDeployEject.PodRoot(mine,t,cut),out var inv);Check(Vector3.Distance(Vector3.Transform(NativeDeployEject.ViewOf(s,mine,t,cut,false,false).Eye,inv),seat0)<1e-4f,"camera shake off: no jolt in the seat (pad "+mine+")");}
+                    if(s==NativeDeployPresentation.Shot.Release){float y=NativeDeployEject.ViewOf(s,mine,t,cut,false,false).Eye.Y;if(float.IsNaN(relY))relY=y;Check(Math.Abs(y-relY)<1e-4f,"camera shake off: no plunge in the rush (pad "+mine+")");}
+                    var r=NativeDeployEject.ShotOf(mine,t,cut,true);
+                    Check(r!=NativeDeployPresentation.Shot.Tube&&r!=NativeDeployPresentation.Shot.Seat,"reduced effects: no tube shot and no cabin close-up");
+                    Check(r==(cut==NativeDeployEject.Cut.Full&&t>=land?NativeDeployPresentation.Shot.Release:NativeDeployPresentation.Shot.Deploy),"reduced effects: the room's shot, then the wide one after my landing (pad "+mine+" "+cut+" "+t+")");
+                    if(r==NativeDeployPresentation.Shot.Release)
+                    {
+                        var v=NativeDeployEject.ViewOf(r,mine,t,cut,true,true);if(!wideSeen){wide=v;wideSeen=true;}
+                        Check(Vector3.Distance(v.Eye,wide.Eye)<1e-4f&&Vector3.Distance(v.Target,wide.Target)<1e-4f,"reduced effects: the wide shot is still (pad "+mine+")");
+                        var podAt=Vector3.Transform(new Vector3(0,NativeDeployEject.PodHeight*.5f,0),NativeDeployEject.PodRoot(mine,land,cut));
+                        Check(InFrame(v,podAt)&&v.Eye.Y<NativeDeployEjectModels.BellyBottom,"reduced effects: the wide shot holds my docked pod under the belly (pad "+mine+")");
+                    }
+                }
+                Check(wideSeen==(cut==NativeDeployEject.Cut.Full),"reduced effects: the wide shot plays in the full eject only");
+            }
+            // the stage: the settings reach the shots, the rings and the rain
+            var a=new NativeExpeditionDeployment("comfort","host",4242);a.RollInstances("host",Pool);a.Deploy("host",true);var dep=a.Snapshot();
+            foreach(var reduced in new[]{false,true})foreach(var still in new[]{false,true})
+            {
+                var st=new NativeDeployStage();var input=new DeployInput{State=dep,Instances=Pool,Mutators=Mutators,Host=true,PartyReady=true,SinceInstanceRoll=9,SinceMutatorRoll=float.NaN,SinceDeploy=0,Time=1,Seats=4,Ready=new bool[8],Mine=0,Reduced=reduced,NoShake=still};
+                st.Frame(input,-1);float lastLight=float.NaN,worstJump=0;bool tubeSeen=false,rain=false;
+                for(float t=0;t<NativeDeployPresentation.TravelAt;t+=1/30f)
+                {
+                    input.SinceDeploy=t;input.Time=1+t;st.Frame(input,1/30f);
+                    Check(st.Shot==NativeDeployEject.ShotOf(0,t,NativeDeployEject.Played,reduced)&&st.Shake==!still,"the stage frames the shot the settings ask for");
+                    for(int i=0;i<st.Count;i++)rain|=st.Items[i].Model==NativeDeployStage.Model.Rain;
+                    if(st.Shot!=NativeDeployPresentation.Shot.Tube&&!(reduced&&t>NativeDeployPresentation.HatchAt+NativeDeployPresentation.HatchSeconds+.02f&&t<NativeDeployEject.LandAt(0))){lastLight=float.NaN;continue;}
+                    // the tube's light: my tube's ring tints and the shot's practicals, frame to frame
+                    float light=0;for(int i=0;i<st.Count;i++){var it=st.Items[i];if(it.Model==NativeDeployStage.Model.Tube&&Vector3.Distance(new Vector3(it.World.M41,0,it.World.M43),NativeDeployPresentation.Pad(0)*new Vector3(1,0,1))<.01f)light+=it.Light.X+it.Extra0.X+it.Extra1.X;}
+                    if(!reduced){tubeSeen=true;for(int i=0;i<st.Lights.Points;i++){var p=st.Lights.Point[i];light+=(float)(p.R+p.G+p.B);}}
+                    if(!float.IsNaN(lastLight)&&lastLight>0)worstJump=Math.Max(worstJump,Math.Abs(light-lastLight)/lastLight);lastLight=light;
+                }
+                if(reduced)Check(worstJump<1e-4f,"reduced effects: my tube's rings hold steady ("+worstJump+")");
+                else Check(tubeSeen&&worstJump<.12f,"the tube shot's light changes under 12% a frame: no strobe ("+worstJump+", camera shake "+(!still)+")");
+                Check(rain==!reduced,"rain streams past the release only with full effects");
+            }
+        }
+        // The bores (W3 review: a deep pod's tube shot died on a cap across its bore at the belly's docking ring): straight down each tube
+        // from the floor, nothing of the eject's set crosses the bore above its pod's collar's dark disc (the cabin's dark).
+        private static void EjectBore()
+        {
+            var a=new NativeExpeditionDeployment("bore","host",4242);a.RollInstances("host",Pool);a.Deploy("host",true);var dep=a.Snapshot();
+            var st=new NativeDeployStage();var input=new DeployInput{State=dep,Instances=Pool,Mutators=Mutators,Host=true,PartyReady=true,SinceInstanceRoll=9,SinceMutatorRoll=float.NaN,SinceDeploy=2.2f,Time=3,Seats=8,Ready=new bool[8],Mine=1};
+            st.Frame(input,-1);
+            for(int pad=0;pad<NativeDeployPresentation.Pads;pad++)
+            {
+                var p=NativeDeployPresentation.Pad(pad);var from=new Vector3(p.X,NativeDeployEject.TubeTop-.05f,p.Z);float floor=NativeDeployEject.PodRoof(pad)+.19f;
+                foreach(var off in new[]{Vector3.Zero,new Vector3(.25f,0,0),new Vector3(0,0,-.25f),new Vector3(-.18f,0,.18f)})
+                {
+                    float best=float.MaxValue;string what="";
+                    for(int i=0;i<st.Count;i++)
+                    {
+                        var it=st.Items[i];var m=st.Models[(int)it.Model];if(m==null||it.Model==NativeDeployStage.Model.Quad||it.Model==NativeDeployStage.Model.Beam)continue;
+                        foreach(var sec in m.Sections)
+                        {
+                            if(sec.Bone==NativeDeployModels.Screen)continue;var ps=sec.Positions;var ix=sec.Indices;
+                            for(int k=0;k+2<ix.Count;k+=3)
+                            {
+                                var A=Vector3.Transform(ps[ix[k]],it.World);var B=Vector3.Transform(ps[ix[k+1]],it.World);var C=Vector3.Transform(ps[ix[k+2]],it.World);
+                                if(Down(from+off,A,B,C,out float y)&&from.Y-y<best&&y>floor-.3f){best=from.Y-y;what=it.Model+"/"+sec.Bone+" at y "+y;}
+                            }
+                        }
+                    }
+                    Check(best==float.MaxValue||from.Y-best<=floor+.005f,"pad "+pad+"'s bore is open down to its collar's dark ("+what+", the disc at "+floor+")");
+                }
+            }
+        }
+        // A vertical ray down from o: the height where it crosses triangle abc.
+        private static bool Down(Vector3 o,Vector3 a,Vector3 b,Vector3 c,out float y)
+        {
+            y=0;float d=(b.Z-c.Z)*(a.X-c.X)+(c.X-b.X)*(a.Z-c.Z);if(Math.Abs(d)<1e-9f)return false;
+            float l1=((b.Z-c.Z)*(o.X-c.X)+(c.X-b.X)*(o.Z-c.Z))/d,l2=((c.Z-a.Z)*(o.X-c.X)+(a.X-c.X)*(o.Z-c.Z))/d,l3=1-l1-l2;if(l1<0||l2<0||l3<0)return false;
+            y=l1*a.Y+l2*b.Y+l3*c.Y;return y<o.Y;
         }
         private static bool Same(CapturedRig.Pose a,CapturedRig.Pose b){for(int i=0;i<CapturedRig.Bones.Length;i++)if(Vector3.Distance(a.WorldPosition[i],b.WorldPosition[i])>1e-5f)return false;return true;}
         private static float Diff(CapturedRig.Pose a,CapturedRig.Pose b){float m=0;for(int i=0;i<CapturedRig.Bones.Length;i++)m=Math.Max(m,Vector3.Distance(a.WorldPosition[i],b.WorldPosition[i]));return m;}
@@ -333,6 +475,13 @@ namespace ChipArena.UnityConversion
             var uv=NativeCradleCard.MapUv(0,0);Check(Math.Abs(uv.X-.5f)<1e-4f&&Math.Abs(uv.Y-.5f)<1e-4f&&NativeCradleCard.MapUv(-NativeDeployPresentation.WorldHalfX,NativeDeployPresentation.WorldHalfZ)==Vector2.Zero,"the map's square: the plaza in the middle, north-west at the top left");
             for(int k=0;k<4;k++)Check(Math.Abs(NativeCradleCard.StreakFrom(k).Length()-1)<1e-4f,"each pod's streak has a bearing");
             Check(NativeCradleCard.Lightning(3.3f,true)==0,"no lightning with reduced effects");
+            // (W3 review: the card showed on every load into the hub) the card covers only the load requested from the station after this
+            // client saw its eject: not a later return, reprint, reconnect or area load into the same hub, nor a late joiner's first load
+            var latch=new NativeCradleLatch();Check(!latch.Covers(0)&&!latch.Covers(-1),"no load before the eject");
+            latch.Requested(7,false);Check(!latch.Covers(7),"a late joiner's or a return's load keeps the loading screen");
+            latch.Requested(8,true);Check(latch.Covers(8),"the load that leaves the station is the pod's");
+            Check(!latch.Covers(9)&&!latch.Covers(12),"every later load into the hub keeps the loading screen");
+            latch.Requested(9,false);Check(!latch.Covers(9)&&latch.Covers(8),"a later load never takes the card");
         }
         // The pod ride (NativePodRide): one braced second in my cabin at -4.1 s of a 5 s opening, an earlier shorter one in today's 3 s
         // that ends before the first pod lands; none outside its window; steady with camera shake off.
