@@ -61,7 +61,8 @@ namespace ChipArena.UnityConversion
             if(RulesGuest&&menuScreen==MenuScreen.Lobby)return GuestRules;var m=rulesMirror;
             m.blindPick=prefs.blindPick;m.blindChoices=prefs.blindChoices;m.deathmatch=prefs.deathmatch;m.killTarget=prefs.killTarget;m.deathmatchChips=prefs.deathmatchChips;m.map=prefs.map;m.cooperative=prefs.pve;m.expedition=prefs.pve&&prefs.expedition;m.teams=prefs.teams;m.friendlyFire=prefs.friendlyFire;m.bots=prefs.bots;m.rounds=prefs.rounds;m.sets=prefs.sets;m.choices=prefs.choices;m.selectionSeconds=prefs.selectionSeconds;
             m.skipBotDrafts=prefs.skipBotDrafts;m.bothDraft=prefs.bothDraft;m.skipPlayerIntros=prefs.skipPlayerIntros;m.randomizeMap=prefs.randomizeMap;m.mirrorWeapons=prefs.mirrorWeapons;m.stationary=prefs.stationary;m.skipWaves=prefs.skipWaves;
-            m.botDifficulty=prefs.botDifficulty;m.botOptions=prefs.botOptions??Array.Empty<NativeBotOption>();m.hostTeam=prefs.team;return m;
+            m.botDifficulty=prefs.botDifficulty;m.botOptions=prefs.botOptions??Array.Empty<NativeBotOption>();m.hostTeam=prefs.team;
+            NativeRoomPick.Apply(m,expeditionChoices);return m;
         }
         // Starts a body's rows. `narrow` is the 300 px room column, where labels stack over their selects (lobby.css narrow
         // .settings-row); `estimate` is the row width before a repaint has measured it; `inset` matches the form's 4 px margins.
@@ -346,7 +347,9 @@ namespace ChipArena.UnityConversion
         // " · Blind Pick All" (or " · Blind Pick · N choices") after the lobby's rules note.
         private static string BlindNote(NativeRoomOptions o)=>o.blindPick?" · "+NativeBlindChoices.Name(true,BlindChoicesOf(o)):"";
         // main.ts introOptions.
-        private void IntroOptions(){if(rules.cooperative)RuleCheck(18740,RoomOpt.Blind,"Blind Pick All",rules.blindPick);RuleCheck(7754,RoomOpt.SkipIntros,"Skip player intros",rules.skipPlayerIntros);RuleFine(7756,"Intros play once per match, before the opening countdown.",0,6);}
+        // A co-op room: an expedition's own choice count (it is always Blind Pick: NativeExpeditionWeaponPick.cs); a boss battle keeps the
+        // lobby loadouts. (Its Blind Pick All box wrote the Play vs Bots Weapon pick: owner 2026-11-19, the pick no longer crosses modes.)
+        private void IntroOptions(){if(rules.cooperative&&rules.expedition)ExpeditionPickRows(rules);RuleCheck(7754,RoomOpt.SkipIntros,"Skip player intros",rules.skipPlayerIntros);RuleFine(7756,"Intros play once per match, before the opening countdown.",0,6);}
         // "Chip selection timer" with its 84 px number field and "seconds" at the right (an IMGUI text field, so it sits
         // under the deferred labels in GUILayout order); 5-120 is applied as typed, the field returns to the value on blur.
         private string timerText,timerShown;private int timerValue=-1;private GUIStyle timerStyle;

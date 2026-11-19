@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
         /// <summary>How a run goes, in order (the screen's numbered steps).</summary>
         public static readonly Step[] Steps=
         {
-            new Step{Num="01",Name="DEPLOYMENT STATION",Line="Pull the Instance Machine for three destinations. Mutators are optional.",Short="Roll three destinations"},
+            new Step{Num="01",Name="DEPLOYMENT STATION",Line="Roll three destinations. At Deploy, each pilot picks one of their dealt weapons.",Short="Roll, then pick a weapon"},
             new Step{Num="02",Name="THE CITY",Line="Generated around your roll: the hub, its machines and the revive.",Short="Built around your roll"},
             new Step{Num="03",Name="THREE AREAS",Line="Fill each area's kill quota, then beat the boss waiting at its end.",Short="Quota, then its boss"},
             new Step{Num="04",Name="THE LAST FIGHT",Line="Every area cleared, the final boss is all that stands.",Short="The final boss"},

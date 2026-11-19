@@ -12,9 +12,10 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// The Expeditions screen. Start Expedition opens it, and it is the co-op room's lobby as well (LobbyScreen hands a PvE room
     /// here), so the host and guests meet on the same screen. Full-canvas cyber layout (Core/NativeExpeditionsMenu Measure): the
-    /// header, the party, the mode's content, the MODE tiles with the loadout row, and the action bar (Solo, Host Room, Join Room
-    /// or the room's code and invite; the launch, or a guest's Ready and Send Loadout). The LOADOUT drawer holds the party bots,
-    /// mirror weapons and the class and weapon pickers. Each mode lays the screen out its own way:
+    /// header, the party, the mode's content, the MODE tiles with the loadout row (START EXPEDITION: the WEAPON PICK row, a run's
+    /// weapon is picked at Deploy), and the action bar (Solo, Host Room, Join Room or the room's code and invite; the launch, or a
+    /// guest's Ready and Send Loadout). The LOADOUT drawer holds the party bots, mirror weapons and the class and weapon pickers
+    /// (START EXPEDITION's: the run's Blind Pick and its choice count, NativeExpeditionWeaponPick.cs). Each mode lays the screen out its own way:
     /// <list type="bullet">
     /// <item>START EXPEDITION (owner 2026-11-06: one all-in-one run rolled by the slot machines; then "we don't roll the
     /// machine until we start the expedition ... make player lobby portraits bigger ... make the screen very appealing"):
@@ -370,14 +371,17 @@ namespace ChipArena.UnityConversion
             string role=host?(p.you?"HOST · YOU":"HOST"):p.you?"YOU":"PILOT";U.Text(new Rect(tx,ty,r.xMax-tx-10,16),role,10,U.A(host?C.Warn():p.you?C.CyanSoft():C.Muted(),al),TextAnchor.MiddleLeft,bold:true,tracking:.18f);
             // the plate
             float y=plate.y+(compact?2:4),nsz=compact?17:21;U.Text(new Rect(plate.x,y,plate.width,nsz*1.3f),Fit(p.name,nsz,plate.width,true,-.01f),nsz,C.Ink(al),TextAnchor.MiddleLeft,bold:true,tracking:-.01f,shadow:C.Void(.6f*al));y+=nsz*1.3f+(compact?2:4);
-            string cls=w!=null?ClassName(w.@class).ToUpperInvariant():"MIXED",wn=w!=null?w.name.ToUpperInvariant():"RANDOM";NativeIcons.Draw(new Rect(plate.x,y+1,16,16),w!=null?NativeIcons.Spec(w.id):"shuffle",U.A(tone,al));
-            float wx=plate.x+22,ww=Mathf.Min(U.Measure(wn,11,true,false,.08f).x,plate.xMax-wx);U.Text(new Rect(wx,y,ww+2,18),Fit(wn,11,plate.xMax-wx,true,.08f),11,U.A(U.Mix(tone,Color.white,.4f),al),TextAnchor.MiddleLeft,bold:true,tracking:.08f);
-            if(wx+ww+12<plate.xMax-20)U.Text(new Rect(wx+ww+8,y,plate.xMax-wx-ww-8,18),Fit("· "+cls,10,plate.xMax-wx-ww-8,true,.12f),10,C.Muted(.9f*al),TextAnchor.MiddleLeft,bold:true,tracking:.12f);
-            if(!compact)ClassUnderline(new Rect(plate.x,y+21,Mathf.Min(plate.width,ww+22),2),w?.id,tone,al,now+index*.9f);
+            // A run has no loadout weapon (owner 2026-11-19): every pilot picks one of their dealt choices at Deploy
+            // (NativeExpeditionWeaponPick.cs), so the plate names the pick; the portrait keeps the pilot's own look.
+            string pk=NativeRoomPick.CardLine(ExpPickChoices);Color pt=C.Cyan();NativeIcons.Draw(new Rect(plate.x,y+1,16,16),"shuffle",U.A(pt,al));
+            float wx=plate.x+22,ww=Mathf.Min(U.Measure(pk,11,true,false,.08f).x,plate.xMax-wx);U.Text(new Rect(wx,y,ww+2,18),Fit(pk,11,plate.xMax-wx,true,.08f),11,U.A(U.Mix(pt,Color.white,.4f),al),TextAnchor.MiddleLeft,bold:true,tracking:.08f);
+            if(wx+ww+12<plate.xMax-20)U.Text(new Rect(wx+ww+8,y,plate.xMax-wx-ww-8,18),Fit("· AT DEPLOY",10,plate.xMax-wx-ww-8,true,.12f),10,C.Muted(.9f*al),TextAnchor.MiddleLeft,bold:true,tracking:.12f);
+            if(!compact)ClassUnderline(new Rect(plate.x,y+21,Mathf.Min(plate.width,ww+22),2),null,pt,al,now+index*.9f);
             float fy=plate.yMax-24;
             if(room){if(CanPromote(p.id))PromotionButton(new Rect(plate.x,fy,plate.width,24),p,al);else ReadyPill(new Rect(plate.x,fy,Mathf.Min(plate.width,PillWidth(p)),24),p,al,out _);}
-            else if(p.you){if(ExpChipButton(new Rect(plate.x,fy,Mathf.Min(plate.width,128),24),"palette","LOADOUT",9420,al,live,false,true,9.5f))ExpToggleDrawer();}
-            if(p.you&&live&&U.Button(r)){Click();ExpToggleDrawer();}
+            else if(p.you){if(ExpChipButton(new Rect(plate.x,fy,Mathf.Min(plate.width,128),24),"palette","CUSTOMIZE",9420,al,live,false,true,9.5f))Go(MenuScreen.Customize);}
+            // my card opens my look and outfit (Customize); the pick's count is the WEAPON PICK row's (ExpPickRow)
+            if(p.you&&live&&U.Button(r)){Click();Go(MenuScreen.Customize);}
         }
         // An open seat: an empty pad (a ring on the floor pulsing outward, a faint shaft of light) under the hexagon; the first
         // offers the invite (a room) or Host Room (offline).
@@ -411,11 +415,11 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- THE RUN: the briefing in the side panel -------------------------------------------------------------------------
-        // START EXPEDITION's side panel: the mode tiles, the run's briefing and the loadout row, the squad's full height.
+        // START EXPEDITION's side panel: the mode tiles, the run's briefing and the weapon pick row, the squad's full height.
         private void ExpSidePanel(X.Layout L,X.Seat seat,K.Boss boss,X.Launch go,float a,float now)
         {
             if(a<=.01f)return;var m=X.Panel(L.Side,L.Compact);ExpModeHead(m,seat,a);ExpModeTiles(m,seat,a,now,L.Compact);
-            ExpRunBrief(ExpRect(m.Detail),a,now,L.Compact);ExpLoadoutRow(ExpRect(m.Loadout),seat,boss,a,now,ExpLive(a),L.Compact);
+            ExpRunBrief(ExpRect(m.Detail),a,now,L.Compact);ExpPickRow(ExpRect(m.Loadout),seat,a,now,ExpLive(a),L.Compact);
         }
         // What a run is and how it goes, top to bottom. A light runs down the steps' spine, resting at each step (still with
         // Reduced effects). Nothing here rolls or samples a run: the machines roll at the station when you deploy.
@@ -688,6 +692,20 @@ namespace ChipArena.UnityConversion
             bool click=ExpChipButton(btn,"palette",expDrawer?"CLOSE":"EDIT",9541,a,live,false,true,10);float kw=H.KeyWidth("L",16);H.Key(new Rect(btn.xMax-kw-6,btn.center.y-8,kw,16),"L",.8f*a);
             if(click||live&&U.Button(r)){if(!click)Click();ExpToggleDrawer();}
         }
+        // WEAPON PICK, START EXPEDITION's row in place of the loadout (owner 2026-11-19: "in the lobby it still shows we select a
+        // loadout ... I want Blind Pick choice with 5 options by default for expedition"): the run's pick and its choices, dealt at the
+        // station's Deploy (NativeExpeditionWeaponPick.cs). Its button (L) opens the drawer, where the host sets the count; a guest reads it.
+        private void ExpPickRow(Rect r,X.Seat seat,float a,float now,bool live,bool compact)
+        {
+            Color tone=C.Cyan();float h=U.HoverAmount(9540,r,live);
+            H.Cut(r,U.A(U.Mix(C.Navy(.85f),U.Hex(0x131c40,.92f),h),a),8);H.Outline(r,U.A(U.Mix(C.Edge(),C.Cyan(),h*.8f),a),8);U.Fill(new Rect(r.x+1,r.y+8,H.Snap(2),r.height-16),U.A(tone,.8f*a));
+            float ic=compact?24:30;NativeIcons.Draw(new Rect(r.x+14,r.center.y-ic/2,ic,ic),"shuffle",U.A(tone,a));float tx=r.x+14+ic+12;
+            var btn=new Rect(r.xMax-(compact?118:134),r.y+(r.height-(compact?28:32))/2,compact?108:124,compact?28:32);
+            U.Text(new Rect(tx,compact?r.y+4:r.y+8,btn.x-tx-8,16),Fit(NativeRoomPick.RowLabel,9,btn.x-tx-8,true,.2f),9,C.CyanSoft(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
+            U.Text(new Rect(tx,compact?r.y+18:r.y+24,btn.x-tx-8,20),Fit(NativeRoomPick.RowLine(ExpPickChoices),compact?12:13,btn.x-tx-8,true,.08f),compact?12:13,U.A(U.Mix(tone,Color.white,.5f),a),TextAnchor.MiddleLeft,bold:true,tracking:.08f);
+            bool click=ExpChipButton(btn,"shuffle",expDrawer?"CLOSE":X.Editable(seat)?"EDIT":"DETAILS",9541,a,live,false,true,10);float kw=H.KeyWidth("L",16);H.Key(new Rect(btn.xMax-kw-6,btn.center.y-8,kw,16),"L",.8f*a);
+            if(click||live&&U.Button(r)){if(!click)Click();ExpToggleDrawer();}
+        }
 
         // ---- The action bar --------------------------------------------------------------------------------------------------
         private void ExpBar(X.Layout L,X.Seat seat,List<LobbyPilot> party,X.Launch go,float a,float now)
@@ -702,7 +720,7 @@ namespace ChipArena.UnityConversion
             {
                 if(ExpLaunchButton(btn,networkReady?"CANCEL READY":"READY",networkReady?"YOU ARE READY":"THE HOST STARTS",go.Enabled,!networkReady,a,now,live))ExpLaunch(go);
                 if(networkReady)H.Outline(btn,U.A(ReadyGreen,.8f*a),10);
-                float sw=compact?140:164;var send=new Rect(btn.x-10-sw,by,sw,bh);if(ExpChipButton(send,"download","SEND LOADOUT",9560,a,live,false,server!=null,10.5f))SendServer(new NativeNetMessage{type="profile",profile=Profile(),token=account?.Token});btn=new Rect(send.x,by,btn.xMax-send.x,bh);
+                float sw=compact?140:164;var send=new Rect(btn.x-10-sw,by,sw,bh);if(ExpChipButton(send,"download",expMode==X.Mode.Expedition?"SEND LOOK":"SEND LOADOUT",9560,a,live,false,server!=null,10.5f))SendServer(new NativeNetMessage{type="profile",profile=Profile(),token=account?.Token});btn=new Rect(send.x,by,btn.xMax-send.x,bh);
             }
             else if(ExpLaunchButton(btn,go.Label,go.Detail,go.Enabled,true,a,now,live))ExpLaunch(go);
             ExpStatus(new Rect(x+16,r.y,Mathf.Max(0,btn.x-16-x-16),r.height),seat,party,go,a);
@@ -760,8 +778,8 @@ namespace ChipArena.UnityConversion
             NativeSeatFrame mine=null;if(seat==X.Seat.Guest)foreach(var s in RoomSeats)if(s!=null&&s.id==networkId)mine=s;
             if(seat==X.Seat.Solo&&!string.IsNullOrEmpty(expeditionError)){lead="Expedition could not start.";rest=expeditionError;tone=C.Danger();}
             else if(!string.IsNullOrEmpty(networkStatus)&&NetworkError){lead=networkStatus;rest="";tone=C.Danger();}
-            else if(mine!=null&&mine.spec!=prefs.weapon){lead="Room loadout";rest="Waiting for the host to confirm "+(LobbyWeapon(prefs.weapon)?.name??prefs.weapon)+".";tone=C.CyanSoft();}
-            else if(seat==X.Seat.Guest){lead=networkReady?"You are ready.":"Ready up";rest=networkReady?"Waiting for the host to start.":"when your loadout is set. The host picks the fight.";tone=networkReady?C.Good():C.CyanSoft();}
+            else if(expMode!=X.Mode.Expedition&&mine!=null&&mine.spec!=prefs.weapon){lead="Room loadout";rest="Waiting for the host to confirm "+(LobbyWeapon(prefs.weapon)?.name??prefs.weapon)+".";tone=C.CyanSoft();}
+            else if(seat==X.Seat.Guest){lead=networkReady?"You are ready.":"Ready up";rest=networkReady?"Waiting for the host to start.":expMode==X.Mode.Expedition?"when you are set. Your weapon is dealt at Deploy.":"when your loadout is set. The host picks the fight.";tone=networkReady?C.Good():C.CyanSoft();}
             else if(!go.Enabled&&!string.IsNullOrEmpty(go.Reason)){lead=go.Reason;rest="";tone=C.Warn();}
             else if(seat==X.Seat.Host&&waiting>0){lead="Waiting for "+waiting+" pilot"+(waiting==1?"":"s");rest="· start when every pilot is ready.";tone=C.CyanSoft();}
             else if(seat==X.Seat.Host){lead="Everyone is ready.";rest=n>1?"Launch when you are.":"Share the code, add a bot, or launch.";tone=C.Good();}
@@ -774,16 +792,17 @@ namespace ChipArena.UnityConversion
 
         // ---- LOADOUT drawer ----------------------------------------------------------------------------------------------------
         // A sheet from the right over the screen (canvas units, outside the design scale, as the GUILayout forms need): party bots
-        // and mirror weapons (a guest sees the host's, read-only), then the class and weapon pickers. A click outside, L, B or
-        // Escape closes it.
+        // and mirror weapons (a guest sees the host's, read-only), then the class and weapon pickers. START EXPEDITION's is the
+        // WEAPON PICK sheet instead: the run's Blind Pick and its choice count, no weapon to pick (NativeExpeditionWeaponPick.cs). A click
+        // outside, L, B or Escape closes it.
         private void ExpDrawer(X.Layout L,X.Seat seat,float e,float now)
         {
             float k=expDrawer?Mathf.Clamp01((now-expDrawerAt)/.22f):1-Mathf.Clamp01((now-expDrawerAt)/.16f);if(k<=0||e<=0)return;float q=M.Bezier(.2f,.8f,.2f,1,k)*e,s=L.Scale,W=U.W;
             float top=L.Party.Y*s,bottom=L.Bar.Bottom*s,dw=Mathf.Min(640,Mathf.Max(420,W*.42f)),x=L.Content.Right*s-dw+(1-q)*48;var r=new Rect(x,top,dw,bottom-top);
             var ev=Event.current;if(expDrawer&&ev.type==EventType.MouseDown&&!U.Hover(r)&&!MenuBlocked()){ev.Use();ExpToggleDrawer();return;}
             U.Fill(new Rect(0,0,W,U.H),C.Void(.45f*q));U.Glow(new Rect(r.x,r.y+30,r.width,r.height),new Color(0,0,0,.5f*q),50);U.Backdrop(r,0,16,q);H.Panel(r,q,C.Cyan(),14,H.Corners.Diagonal,true,.96f);
-            U.Text(new Rect(r.x+24,r.y+20,300,16),"LOADOUT",12,C.CyanSoft(.95f*q),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);
-            U.Text(new Rect(r.x+24,r.y+38,r.width-100,30),seat==X.Seat.Guest?"Your pilot":"Your pilot and the party",22,C.Ink(q),TextAnchor.MiddleLeft,bold:true,tracking:-.02f);
+            bool run=expMode==X.Mode.Expedition;U.Text(new Rect(r.x+24,r.y+20,300,16),run?"WEAPON PICK":"LOADOUT",12,C.CyanSoft(.95f*q),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);
+            U.Text(new Rect(r.x+24,r.y+38,r.width-100,30),run?"The run's weapon pick":seat==X.Seat.Guest?"Your pilot":"Your pilot and the party",22,C.Ink(q),TextAnchor.MiddleLeft,bold:true,tracking:-.02f);
             if(expDrawer&&ExpClose(new Rect(r.xMax-24-40,r.y+18,40,40),q,!MenuBlocked()&&q>.5f)){ExpToggleDrawer();return;}
             var body=new Rect(r.x+24,r.y+82,r.width-48,r.height-82-18);if(!expDrawer)return;
             var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*q);GUILayout.BeginArea(body);U.BeginDeferred();expDrawerScroll=GUILayout.BeginScrollView(expDrawerScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);
@@ -793,8 +812,8 @@ namespace ChipArena.UnityConversion
         private void ExpDrawerBody(X.Seat seat,float width)
         {
             BeginRules(false,width);var o=rules;
-            if(expMode==X.Mode.Expedition)Fine("Expedition supports 1–4 signed-in players. Bots are available in Boss Battle, against the Siren.");
-            else if(!K.BotsAllowed(K.BossAt(expBoss)))Fine(K.BossAt(expBoss).Name+" is fought by 1–4 pilots, without bots. Pick the Siren to fight with bots.");
+            if(expMode==X.Mode.Expedition){ExpPickDrawer(seat,o);return;}
+            if(!K.BotsAllowed(K.BossAt(expBoss)))Fine(K.BossAt(expBoss).Name+" is fought by 1–4 pilots, without bots. Pick the Siren to fight with bots.");
             else if(o==null)Fine("The host sets the party bots. Ready up when your loadout is set.");
             else
             {
@@ -803,7 +822,16 @@ namespace ChipArena.UnityConversion
                 RuleCheck(7586,RoomOpt.Mirror,rulesLocked?"Party bots use the host's weapon":"Party bots use my weapon (otherwise mixed loadouts)",o.mirrorWeapons);
             }
             ClassRow("Your class",ClassCardStyle.Stacked);WeaponCards("Your weapon");
-            Fine(seat==X.Seat.Guest?"Weapon changes are sent to the host automatically.":expMode==X.Mode.Boss?"Boss Battle drops the party straight into the fight. Intros play as normal.":"Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
+            Fine(seat==X.Seat.Guest?"Weapon changes are sent to the host automatically.":"Boss Battle drops the party straight into the fight. Intros play as normal.");
+        }
+        // START EXPEDITION's sheet: no class or weapon to pick (each pilot picks at Deploy, from their dealt choices), the count for
+        // whoever sets the room (a guest's row is read-only), then where the look is changed and how a run plays.
+        private void ExpPickDrawer(X.Seat seat,NativeRoomOptions o)
+        {
+            Fine("Expedition supports 1–4 signed-in players. Bots are available in Boss Battle, against the Siren.");
+            if(o!=null)ExpeditionPickRows(o);else Fine(NativeRoomPick.Note(ExpPickChoices));
+            Fine(seat==X.Seat.Guest?"The host sets the number of choices. Your look and outfit are yours: Customize, top right.":"Your look and outfit: Customize, top right, or your card.");
+            Fine("Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
         }
     }
 }

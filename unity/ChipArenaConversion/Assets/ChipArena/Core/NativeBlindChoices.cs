@@ -19,10 +19,12 @@ namespace ChipArena.UnityConversion
         /// <summary>The room options' weapon pick select: off, Blind Pick All, Blind Pick (N choices).</summary>
         public static readonly string[] ModeLabels={"Off (lobby loadouts)","Blind Pick All","Blind Pick (choices)"};
         /// <summary>The choice count select's labels, 2 up to `pool` (and Max), the rules' default (NativeOpeningDraft.DefaultBlindChoices) marked.</summary>
-        public static string[] CountLabels(int pool)
+        public static string[] CountLabels(int pool)=>CountLabels(pool,NativeOpeningDraft.DefaultBlindChoices);
+        /// <summary>The same with `standard` marked as the default (an expedition's: NativeRoomPick.ExpeditionDefault).</summary>
+        public static string[] CountLabels(int pool,int standard)
         {
             int top=Math.Max(Min,Math.Min(Max,pool));var labels=new string[top-Min+1];
-            for(int n=Min;n<=top;n++)labels[n-Min]=n+" choices"+(n==NativeOpeningDraft.DefaultBlindChoices?" (default)":"");return labels;
+            for(int n=Min;n<=top;n++)labels[n-Min]=n+" choices"+(n==standard?" (default)":"");return labels;
         }
 
         // ---- the screen's layout -------------------------------------------------------------------------------------------
