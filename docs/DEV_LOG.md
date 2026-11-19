@@ -106,6 +106,7 @@ Owner asked for the expedition overhaul: a tileset machine, a reworked City away
 - **For Astra:** `docs/EXPEDITION-OVERHAUL-ASTRA.md`, packages A0-A5b in order. Start with A0 (the landing field, the yaw fix, `PodOpening`, the grounding fix, the sim benchmark and the DEV load harness), and A4's greybox at both sizes in parallel. A0 ships with Claude's pod crash (W4).
 - **How it was made:** a mapping pass (six readers, each with a skeptic, plus captures of today's look), three independent concepts, a judge, three reviewers (39 findings, all accepted), then a revision.
 - **Release 1, now:** Claude's W0 (budgets and latent fixes), W2 (the board), W3 (the eject and the cradle) and W4 (the crash). No code change in this entry.
+- **After the greybox walk (owner):** size A is kept, and the city becomes **five curated layouts** in place of fully random ones ("maybe just like 5 unique set of paths would be fine"), each dressed by hand. Astra freezes the five as data (A4 update in `docs/EXPEDITION-OVERHAUL-ASTRA.md`). Then the design and polish.
 
 ## 2026-11-18 — Astra, A4 solo city scale walk
 
