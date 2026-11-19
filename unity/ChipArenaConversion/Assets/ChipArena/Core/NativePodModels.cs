@@ -135,8 +135,8 @@ namespace ChipArena.UnityConversion
             {
                 // four swept fins on the diagonals, root on the hull and tip out at the footprint, each ending in a landing pad
                 float a=i*Pi/2+Pi/4;s.Push(WeaponSculpt.Ry(a-Pi/2));
-                s.Into(Trim);s.Slab(_=>Band,Band,Band,WeaponSculpt.Outline(0,.7f,.07f,1.05f,.07f,1.02f,.6f,.7f,1.46f),-.032f,.032f,.008f);
-                s.Into(Body);s.Box(Frame,V(.96f,.05f,0),V(.22f,.06f,.2f),.012f);s.Box(Rubber,V(.96f,.012f,0),V(.21f,.024f,.19f));s.Box(FrameDark,V(.86f,.42f,0),V(.04f,.62f,.075f),.006f);
+                s.Into(Trim);s.Slab(_=>Band,Band,Band,WeaponSculpt.Outline(0,.7f,.07f,1.02f,.07f,.98f,.6f,.7f,1.46f),-.032f,.032f,.008f);
+                s.Into(Body);s.Box(Frame,V(.93f,.05f,0),V(.22f,.06f,.2f),.012f);s.Box(Rubber,V(.93f,.012f,0),V(.21f,.024f,.19f));s.Box(FrameDark,V(.86f,.42f,0),V(.04f,.62f,.075f),.006f);
                 s.Pop();
                 // a retro nozzle under the hull on each axis, pointing down and out (its throat the burn's glow)
                 float b=i*Pi/2;s.Push(WeaponSculpt.Rx(Pi/2)*WeaponSculpt.Rx(-.35f)*WeaponSculpt.Ry(b)*WeaponSculpt.T(.42f*(float)Math.Sin(b),.16f,.42f*(float)Math.Cos(b)));
