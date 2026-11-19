@@ -28,10 +28,29 @@ The kept voxel data plus the legacy rig path, as one optional style (plan 2.4). 
   - **draw:** `WeaponShape.Cube`, `QueueHeld(`, and `Queue("weapon-`, `"loose-`, `"hat-`, `"pilot`, `"horde-`, `"summon-`.
 - **Tokens, not types:** the text is counted as it stands, comments included. A comment that names `rig.Bones[` counts.
 - **How it fails:** a count above its pin fails, and a file the table does not list starts at zero. The message names the file, the family, the count and the model-native route, and prints the table lines to paste if the dependency is kept on purpose.
-- **Re-pinning:** lower a pin when a package removes a dependency; raise one only with a "Voxel dependency" line in DEV_LOG. `dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -c Release -- --voxel-ratchet-table` prints today's counts in the table's format.
+- **Re-pinning:** lower a pin when a package removes a dependency; raise one only with a "Voxel dependency" line in DEV_LOG (next section). `--voxel-ratchet-table` prints every file's counts in the table's format.
+- **Folders:** every `.cs` file under `Core/` and `Runtime/` is counted, subfolders included (none today), so a file cannot sit outside the ratchet.
 - **Baseline:** shared at `ac69455e`, the plan's counts (`ClassicBodies` 25, `VisualBodiesOn` 18, `CapturedRig.Boxes` 23, `rig.Bones[` 163 in 59 files, `WeaponShape.Cube` 228 in 25 files ...). P9 lowered the rooftop's draw pin from 3 to 0.
-- **In flight:** W3's eject (`Core/NativeDeployEject.cs`, 13 rig-authoring uses on `claude/exp-w3-eject` at `048adc30`) is pinned and named; V4 moves it onto the model (plan M12).
+- **In flight:** W3's eject (`Core/NativeDeployEject.cs`, 17 rig-authoring uses on `claude/exp-w3-eject` at `8ca81329`; 13 at `048adc30`) is pinned and named; V4 moves it onto the model (plan M12).
 - `--voxel` runs the ratchet, the style checks and the counter's checks alone.
+
+### Re-pinning a merged head (for the integrator)
+V0 merges last in its release, so the branches merged before it can add rig or voxel uses the ratchet then flags. On the merged head, before the full suite:
+
+    dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -c Release -- --voxel-ratchet-repin
+
+It prints, and writes nothing:
+1. for every file over its pin, the table line to paste, with a `# Voxel dependency: <...>` note slot on it. Each line carries today's counts, so the file's other families come down with it;
+2. under that, for each file: the table line it replaces (or "add" for a file the table does not list, which goes in the "In flight" block at the end), each raised family with the tokens behind it, and the family's model-native route;
+3. the lines for the merge's DEV_LOG entry, under "Voxel dependency";
+4. optionally, the lines for files the merge took under their pins, to lower on purpose.
+
+Fill in each note (why it still reads the voxel layer, and the package that moves it onto the model), paste, and run `--voxel` again: the command then prints "nothing to paste". Where a dependency can move onto the model instead, move it.
+
+**Release 1, as previewed on 2026-11-19** (shared `9056fc04` with the chip install `359a0f6a`, A0 `ac4b6b39`, W4 `1c3b0c12`, W3 `8ca81329`, W2 `ef674d15`, W0 `5c97cc3b`, then V0, merged locally in that order; the other branches' conflicts with shared were taken from the branch for the count only):
+- `Core/NativeDraftInstall.cs` author 0 -> 6, `Core/NativeDraftStage.cs` author 6 -> 8, `Runtime/NativeDraftInstallPresentation.cs` draw 0 -> 2: the chip install's stage pose on the 22-joint rig (plan M9), which V4 moves onto the model in Stage 2. The trial merge of V0 with `claude/chip-install-anim` alone gives the same three lines, and with them pasted the ratchet passes.
+- `Runtime/NativeExpeditionLoadPreview.cs` gate 0 -> 1 (A0, and W4 on it): the load harness sets `view.ClassicBodies=false`, which forces the model. It is a token, not a voxel read; its note can say so.
+- Under their pins after the merge: `Runtime/NativeDeployCast.cs` (author 1 -> 0, W3) and `Runtime/NativeDraftPresentation.cs` (read 20 -> 19, draw 3 -> 0, the chip install).
 
 ### The voxel style stays loadable (`Tests/VoxelStyleChecks.cs`, the plan's first half)
 - The 23 kept data files and generated tables match pinned SHA-256 digests (carriage returns taken out, so a CRLF checkout hashes as the repository does).
@@ -49,7 +68,7 @@ The kept voxel data plus the legacy rig path, as one optional style (plan 2.4). 
 - **The target:** with the bake, no costume and no Prototype picks, every row but the allowed ones reads 0. The header reads "N UNEXPECTED".
 - **How to show it:**
   - the DEV panel's Camera tab, "Voxel draws (counter)" (a read-only view tool);
-  - `--ca-voxel-counter` on the command line, in the Editor and Development builds only;
+  - `--ca-voxel-counter` on the command line, in the Editor and Development builds only. The test channel's player is a Development build, so it works there too, like the other `--ca-` preview switches; it only shows counts;
   - BoZo captures: `vcount=1` (each shot logs a `voxel draws:` line).
 - It draws over every screen: a match, an expedition, the menus and the Deployment Station. It is off by default, and play pays nothing for it.
 
