@@ -75,8 +75,10 @@ Fill in each note (why it still reads the voxel layer, and the package that move
 ## P9: no voxel weapons outside the arena (V0's fix)
 - The Deployment Station's pads and the rooftop draw their held models through the seat's weapon skins, never an unpicked Prototype id.
 - The weapons pack bank's models (daggers, shield, bow, caster staffs) draw on every model body that holds a weapon in hand: the arena's, the portraits', the rooftop's and the Deployment Station's. The entrances keep the game's model until V5.
-- A DEV animation class (the DEV Greatsword, the DEV Katana) holds, and is armed as, its base class.
+- A DEV animation class (the DEV Greatsword, the DEV Katana) holds, and is armed as, its base class, and stands in the lobby poses as its base does (it has no lobby stance of its own: the DEV Greatsword pointed the model greatsword at the camera until `b72f8302`).
 - A Prototype pick still draws its voxel weapon: that is the player's choice.
+- **Seen on 2026-11-19 (Editor captures, counter on):** the pads read 2 voxel weapons before P9 and 0 after, with no voxel pilot body; the rooftop 4 and 0. The shield and the staffs on the pads are the pack's models now. The Locker's portrait already drew the pack's daggers, shield, bow and staffs before P9; there only the DEV Greatsword changes.
+- **Still voxel on a menu, found then (not P9's):** in the Locker's Preview Intro, the DEV Greatsword's own entrance drew the voxel pilot and the voxel greatsword on the bake, before and after alike; the cause is not traced. It belongs with the entrances (V5).
 
 ## Baselines (V0's measurements)
 See "Measured" below for what was run on 2026-11-18 and how the remaining runs are made.
@@ -100,5 +102,22 @@ The shipped player is a Development Mono build, so its `PERF_SAMPLE` lines (ever
 
 ### Measured
 - **The hub, in the Editor** (W0, 2026-11-18, `docs/EXPEDITION-DEPLOYMENT.md` "Frame budget" on `claude/exp-w0-groundwork`): one pilot with the hub's own zombies, p95 17-20 ms at High and Balanced and 14-20 ms at Low, against targets of 12, 10 and 8 ms. The Editor numbers are already over the targets before any overhaul code, so the owner hears of it (OVH:937).
-- **The 8-pilot PvP and the voxel-zombie runs, in the Editor:** not run yet (the shared Editor was busy); the BoZo jobs are ready (`perf=10,14` on Cybercity with 7 bots, model and `voxel=1`, at each tier; W0's live hub run with `zvoxel=1`).
+- **The 8-pilot PvP and the live run, in the Editor (V0, 2026-11-19):** shared `9056fc04` with V0 (`9c926e66`), BoZo, the Game view at 1920x1080, an NVIDIA GeForce RTX 4090, an Intel i9-13900K (32 threads) and 64 GB. Each PvP run is one match on Cybercity with 7 bots: High, then Balanced, then Low, set through the Settings menu's own ApplySettings 4 s before each 10 s window. The live run is the expedition after its deploy (the generated city, its own zombies) at High, 14 s. The DEV voxel draw counter was off during every window and on for one shot after it. Other sessions may have been using this PC; the Editor's own overhead is in every number.
+
+  | Scene | Bodies | Tier | Frames | Mean ms | p95 ms | p99 ms | Worst ms | Unexpected voxel draws (the counter, after) |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | PvP, 8 pilots, Cybercity | model | High | 635 | 15.79 | 19.80 | 25.87 | 35.34 | 0 (primitive pieces 3, allowed) |
+  | PvP, 8 pilots, Cybercity | model | Balanced | 671 | 14.92 | 21.09 | 28.13 | 103.13 | 0 |
+  | PvP, 8 pilots, Cybercity | model | Low | 861 | 11.63 | 15.41 | 16.41 | 39.62 | 0 |
+  | PvP, 8 pilots, Cybercity | voxel bodies (`voxel=1`) | High | 839 | 11.93 | 14.39 | 16.62 | 27.11 | 99 (pilot body parts 98, voxel hats 1: the switch's, by choice) |
+  | PvP, 8 pilots, Cybercity | voxel bodies | Balanced | 922 | 10.86 | 13.94 | 14.98 | 23.34 | 99 |
+  | PvP, 8 pilots, Cybercity | voxel bodies | Low | 1080 | 9.27 | 12.07 | 13.76 | 27.61 | 99 |
+  | Live run after deploy, 2 pilots, 23-28 zombies | model zombies | High | 836 | 16.73 | 18.10 | 20.33 | 49.99 | 357 (voxel enemy parts: the far crowd) |
+  | Live run after deploy, 2 pilots, 12-17 zombies | voxel zombies (`zvoxel=1`) | High | 1042 | 13.44 | 14.79 | 16.44 | 27.50 | 378 |
+
+  - **Over the targets in the Editor** (12, 10 and 8 ms p95 at High, Balanced and Low): every row. The model's 8-pilot PvP costs about 5 ms of p95 over the voxel bodies at High, 7 at Balanced and 3 at Low. As W0's hub numbers, this goes to the owner before any overhaul code merges (OVH:937); the shipped player's numbers decide.
+  - **The live run with model zombies still draws 357 voxel enemy parts:** the far crowd beyond the model's near band is the voxel horde kit today (plan 1E, V7). The two live rows are not like for like: the voxel-zombie run had fewer zombies alive, and the generated cities differ.
+  - The 103 ms frame in the model's Balanced window is one stall (the next worst 36 ms); the other windows' worst frames are 24-50 ms.
+  - Scripts and logs: `F:/Chip Arena Development/scratch/voxel-v0/` (`runAB.sh`, `cap/pvp8-*`, `cap/hub-high-*`, `py/perfrows.py`).
+- **Not run in the Editor:** the 4-pilot, 88-zombie hub (it needs the party; Astra's A0 load harness) and the live run at Balanced and Low (W0 measured the hub at all three).
 - **The Development Mono player and the low-end run:** not run on this PC (the player shares the owner's saved settings and session, and the low-end machine is the owner's to name). The steps above make them.
