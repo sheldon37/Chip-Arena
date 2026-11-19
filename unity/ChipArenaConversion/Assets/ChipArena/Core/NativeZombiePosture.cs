@@ -100,14 +100,15 @@ namespace ChipArena.UnityConversion
         public const float HulkCarry=.07f;
 
         /// <summary>The model's stance for an add of `kind` (crawling: its legs are gone) from its gait this pose (NativeHordeGait
-        /// Sunk, Crouch, Busy and LegsNow, `stride`, and Outreach, `reach`; none for a pose the gait did not make) on its binding's state.</summary>
-        public static void Stance(NativeVisualRig.State s,int kind,bool crawl,float sunk,float crouch,float busy,float stride=1,float reach=0)
+        /// Sunk, Crouch, Busy and LegsNow, `stride`, Outreach, `reach`, and LegsAcross, `across`; none for a pose the gait did not make)
+        /// on its binding's state. (`across` 1 unless given: a stride's footprint drawn in fore and aft only, as the gait walks.)</summary>
+        public static void Stance(NativeVisualRig.State s,int kind,bool crawl,float sunk,float crouch,float busy,float stride=1,float reach=0,float across=1)
         {
             // The Hound on all fours: its hips at the gait's height times the legs' ratio (not raised over its planted feet), its
             // feet and hands planted where the gait has them (NativeVisualRig.State.Hands).
             s.Hands=NativeBackroomsMotion.Quad(kind);s.GameFloor=-NativeHordeKinds.Root[NativeHordeKinds.Index(kind)];s.HandReach=s.Hands?reach:0;
-            if(s.Hands){s.Across=true;s.Level=false;s.Follow=true;s.Ease=0;s.Stride=1;s.Room=NativeVisualRig.KneeRoom;s.Stand=0;return;}
-            s.Across=true;s.Level=crawl;s.Follow=!crawl;s.Ease=kind==NativeHordeKinds.Hulk?HulkCarry:0;s.Stride=crawl||!(stride>1)?1:stride;s.Room=kind==NativeHordeKinds.Hulk?HulkRoom:NativeVisualRig.KneeRoom;
+            if(s.Hands){s.Across=true;s.Level=false;s.Follow=true;s.Ease=0;s.Stride=1;s.StrideAcross=1;s.Room=NativeVisualRig.KneeRoom;s.Stand=0;return;}
+            s.Across=true;s.Level=crawl;s.Follow=!crawl;s.Ease=kind==NativeHordeKinds.Hulk?HulkCarry:0;s.Stride=crawl||!(stride>1)?1:stride;s.StrideAcross=s.Stride==1?1:Math.Max(1,Math.Min(across,s.Stride));s.Room=kind==NativeHordeKinds.Hulk?HulkRoom:NativeVisualRig.KneeRoom;
             // (The gait's floor sits Root under the rig root; the model's soles NativeVisualRig.Floor under it.)
             float gap=Math.Max(0,-NativeVisualRig.Floor-NativeHordeKinds.Root[NativeHordeKinds.Index(kind)]);
             // (On the model's own stride, LegsNow past 1, the hips stand where the capture's feet reach the floor, its own crouch kept:

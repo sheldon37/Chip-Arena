@@ -2485,3 +2485,28 @@ My recommendation comes first in each.
 6. **Locker rarity.** Four rarities, at $100, $175, $275 and $400, found 60%, 28%, 10% and 2% of the time. Or keep one price and only make the text clearer.
 
 Also from you, when the time comes: approve the night-look board, run one sound batch on your ElevenLabs account as for the Backrooms bosses, and pass Astra's hand-off on whole.
+
+## Decisions after the greybox walk (2026-11-18)
+Owner, verbatim: "Completed walking around the grey area 🙂 I like the size. Will the area be randomly generated? (Like different paths) Honestly maybe just like 5 unique set of paths would be fine. Afterwards, we can go ahead and add the design + polish :)"
+
+- **Size:** B, about 600 × 480 m, with 250-300 m gate-to-hall routes (owner, correcting: "Sorry I mean B is a good size"). This replaces the earlier default A. Re-measure the budgets in section 6 for B, with draw distance, LOD and culling over the larger area, before any art.
+- **Layouts:** five curated layouts instead of a fully random city.
+  - Each run picks one of the five. The run's instances fill that layout's gate and hall slots, so the bleed districts move with them.
+  - Caches, survivors and enemy spawns stay seeded per run.
+  - No mirroring, so signs and hand-placed art read correctly.
+- **Art:** each layout is dressed by hand on top of the module kit (W8 and W10): landmarks, roofs, sightlines and lamp placement made for that street plan. This is the "more detailed framing" the owner asked for; see the voxel retirement direction.
+- **Order:** Astra freezes the five layouts as data (A4 below), the owner walks them, then the design and polish start.
+
+## Amendments from the voxel retirement (owner-approved 2026-11-18; see docs/VOXEL-RETIREMENT.md)
+These go to the owner with this plan, are logged in the DEV_LOG with V0, and are amended in `docs/EXPEDITION-OVERHAUL.md` and `docs/EXPEDITION-OVERHAUL-ASTRA.md`:
+1. **R8 and W3** (:608, :1068): "so the visual, voxel and Classic bodies all play them" becomes: the model plays the eject. W3's crouch, fall and seat move onto the model's own clips and hand IK in V4 (Stage 2), and the voxel style plays the rig versions without the bake. The cast gains no Classic branch; its voxel branch is chosen by the body predicate (U4, M12, P9).
+2. **R6 and W5** (:505, :1167): "a voxel fallback" for survivors is dropped. Without the bake, survivors are not drawn.
+3. **W0** (:911): the frame capture adds the 8-pilot PvP pass and the Classic on-and-off pass. It runs in a Development Mono player with `PERF_SAMPLE` and `PERF_HITCH`, beside one Editor run, and adds a low-end run. The checks gain the ratchet, VoxelStyleChecks' first half and the counter (V0).
+4. **R2 and W8b** (:190, :1383): modelled dressers in M3 wherever the bank has the stem; the box "kit dressers" only as the public fallback.
+5. **W7 and W8** (:156): the Central Station and City Ironworks stage banks do not exist yet. V13 builds them in Stage 4, before W7's M4 set pieces for those zones; until then W7 uses the kits' looks.
+6. **W7 in M2** (:1671-1676): the district outfits ship with V7 part 1 (a pool miss hides the add; prewarm by district), so they never pop in as voxel.
+7. **W11a** (M4): district kinds in the city need V7 parts 2 and 3 (pinning, prewarm, the LODs) and V15's numbers. Otherwise far Hounds draw as voxel shamblers on all fours, and unprewarmed pinned adds draw nothing for frames. Pinned kinds take Full slots, so Astra's district caps and Claude's tiers are sized together (VA3).
+8. **W11b** (M6): perches and drops are authored on the model's gait (V8).
+9. **Section 6** (:1755-1790): add the crowd and pilot rows above (3, Budgets). Stages 3 and 4's absolute crowd gates replace the headroom share for the crowd, and the crowd is measured in the player.
+10. **M7:** the final court keyed by its boss brings the Siren's own model (O5).
+11. **Superseded owner decisions:** add "2026-10-17 'Keep voxel style, just improve it' (zombies)". The Prototype Series' "Keep it voxel" (2026-10-29) and "Model everywhere, classic will be stored as backup" (2026-10-25) stand: this plan fulfils them.

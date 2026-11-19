@@ -589,3 +589,29 @@ CityLayout {
 
 ---
 
+## A4 update after the owner's walk (2026-11-18)
+The owner walked the greybox and chose size B (600 × 480 m, 250-300 m routes), correcting an earlier reading of A ("Sorry I mean B is a good size"). They also asked for "just like 5 unique set of paths" instead of fully random layouts. That changes A4:
+
+1. **Choose the five.** Propose five layouts from the greybox generator, at size B, with clearly different route shapes, elevation and landmark spots. For example, take the most distinct of the walk seeds and hand-tune them. Each needs four or more gate/hall slots and its rooftop and terrace routes.
+2. **Freeze them as data** in the City Layout Contract, versioned, so the host and guests load the same layout by index. A run picks one layout, seeded or rotated so a party doesn't repeat it back to back, and the run's instances fill its slots.
+3. **Keep varying per run:** which instance takes which slot, caches (A2), survivors' spots, and enemy spawns and district kinds (A5a).
+4. **Developer walk:** extend "Walk Meridian greybox" to list the five frozen layouts by name, so the owner can walk each before any art.
+5. **No mirroring.**
+
+Claude then dresses each layout by hand (W8 and W10).
+
+**Size B also changes the budgets.** Rerun the native sim benchmark (4 pilots, 88 zombies) and nav/crowd-flow timing on the B layouts. Report any budget the larger map breaks before the layouts are frozen.
+
+## Amendments from the voxel retirement (owner-approved 2026-11-18; see docs/VOXEL-RETIREMENT.md)
+These go to the owner with this plan, are logged in the DEV_LOG with V0, and are amended in `docs/EXPEDITION-OVERHAUL.md` and `docs/EXPEDITION-OVERHAUL-ASTRA.md`:
+1. **R8 and W3** (:608, :1068): "so the visual, voxel and Classic bodies all play them" becomes: the model plays the eject. W3's crouch, fall and seat move onto the model's own clips and hand IK in V4 (Stage 2), and the voxel style plays the rig versions without the bake. The cast gains no Classic branch; its voxel branch is chosen by the body predicate (U4, M12, P9).
+2. **R6 and W5** (:505, :1167): "a voxel fallback" for survivors is dropped. Without the bake, survivors are not drawn.
+3. **W0** (:911): the frame capture adds the 8-pilot PvP pass and the Classic on-and-off pass. It runs in a Development Mono player with `PERF_SAMPLE` and `PERF_HITCH`, beside one Editor run, and adds a low-end run. The checks gain the ratchet, VoxelStyleChecks' first half and the counter (V0).
+4. **R2 and W8b** (:190, :1383): modelled dressers in M3 wherever the bank has the stem; the box "kit dressers" only as the public fallback.
+5. **W7 and W8** (:156): the Central Station and City Ironworks stage banks do not exist yet. V13 builds them in Stage 4, before W7's M4 set pieces for those zones; until then W7 uses the kits' looks.
+6. **W7 in M2** (:1671-1676): the district outfits ship with V7 part 1 (a pool miss hides the add; prewarm by district), so they never pop in as voxel.
+7. **W11a** (M4): district kinds in the city need V7 parts 2 and 3 (pinning, prewarm, the LODs) and V15's numbers. Otherwise far Hounds draw as voxel shamblers on all fours, and unprewarmed pinned adds draw nothing for frames. Pinned kinds take Full slots, so Astra's district caps and Claude's tiers are sized together (VA3).
+8. **W11b** (M6): perches and drops are authored on the model's gait (V8).
+9. **Section 6** (:1755-1790): add the crowd and pilot rows above (3, Budgets). Stages 3 and 4's absolute crowd gates replace the headroom share for the crowd, and the crowd is measured in the player.
+10. **M7:** the final court keyed by its boss brings the Siren's own model (O5).
+11. **Superseded owner decisions:** add "2026-10-17 'Keep voxel style, just improve it' (zombies)". The Prototype Series' "Keep it voxel" (2026-10-29) and "Model everywhere, classic will be stored as backup" (2026-10-25) stand: this plan fulfils them.

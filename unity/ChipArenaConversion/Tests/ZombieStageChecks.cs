@@ -119,7 +119,7 @@ namespace ChipArena.UnityConversion
                         for(int i=0;i<total;i++)
                         {
                             var v=new Vector3(0,0,speed);at+=v*Dt;f.Time=i*Dt;f.Root=at;f.Velocity=v;f.Yaw=0;f.Ground=0;g.Pose(f,p);p.World();
-                            NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                            NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
                             if(i<warm)continue;if(i==warm){ph0=g.Phase;t0=f.Time;}
                             Rig(p,rb,RigFloor,legRig,g.LegsNow);Model(s,mb,modelFloor,legModel);
                             if((g.Landed&1)!=0)steps++;if((g.Landed&2)!=0)steps++;
@@ -147,7 +147,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<1200;i++)
                 {
                     var v=new Vector3(0,0,speed);at+=v*Dt;f.Time=i*Dt;f.Root=at;f.Velocity=v;f.Yaw=0;f.Ground=0;g.Pose(f,p);p.World();
-                    NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,f.Kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                    NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,f.Kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
                     if(i<360)continue;Model(s,m,modelFloor,legModel);
                     for(int a=0;a<2;a++)
                     {
@@ -190,7 +190,7 @@ namespace ChipArena.UnityConversion
                         float r=dir/Deg;var d=new Vector3((float)Math.Sin(r),0,(float)Math.Cos(r));var v=d*speed;body+=v*dt;yawNow=speed>0?dir:(t>=t0?turn:0);
                         flow.Host(t,t,body,v,true,yawNow,dt,false);
                         f.Time=t;f.Root=flow.Position;f.Velocity=flow.Velocity;f.Yaw=flow.Yaw;f.YawRate=flow.YawRate;f.Bank=flow.Bank;f.Pitch=flow.Pitch;f.Ground=0;g.Pose(f,p,null);p.World();
-                        NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                        NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
                         if(t<t0-.1f){for(int a=0;a<2;a++){last[a]=g.FootWorld[a];had[a]=!g.FootAir[a];}lastYaw=g.Yaw;continue;}
                         float want=yawNow,oy=Math.Abs(Wrap(g.Yaw-want));
                         if(spin==0&&t>=t0){if(oy<15){if(float.IsNaN(align))align=t-t0;}else align=float.NaN;off=Math.Max(off,oy);}
@@ -266,7 +266,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<1400;i++)
             {
                 const float dt=1/120f;var v=new Vector3(0,0,speed);at+=v*dt;f.Time=i*dt;f.Root=at;f.Velocity=v;f.Yaw=0;f.Ground=0;g.Pose(f,p);p.World();
-                NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
                 RawPose(c,g.Phase,row,raw);RawModel(so,raw,fit);
                 if(i<600||i%2!=0)continue;
                 var l=g.ToLocal(g.FootWorld[0],f.Root);var r=g.ToLocal(g.FootWorld[1],f.Root);
@@ -302,7 +302,7 @@ namespace ChipArena.UnityConversion
             {
                 float t=i*dt;if(t>=3)dir=turn;float r=dir/Deg;var v=new Vector3((float)Math.Sin(r),0,(float)Math.Cos(r))*speed;body+=v*dt;
                 flow.Host(t,t,body,v,true,dir,dt,false);f.Time=t;f.Root=flow.Position;f.Velocity=flow.Velocity;f.Yaw=flow.Yaw;f.YawRate=flow.YawRate;f.Bank=flow.Bank;f.Pitch=flow.Pitch;f.Ground=0;g.Pose(f,p,null);p.World();
-                NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
                 if(t<2.95f||t>4.4f||i%2!=0)continue;
                 var l=g.ToLocal(g.FootWorld[0],f.Root);var rr=g.ToLocal(g.FootWorld[1],f.Root);float y0=(s.Position[rig.Of[CapturedRig.LHip+2]].Y-floor)/leg,y1=(s.Position[rig.Of[CapturedRig.RHip+2]].Y-floor)/leg,pel=(s.Position[rig.Of[CapturedRig.Pelvis]].Y-floor)/leg;
                 Console.WriteLine(string.Format("TT {0:0.00} yaw {1,5:0} sp {2:0.0} hz {3:0.00} L {4} {5,5:0.00},{6,5:0.00} y{7:0.00} | R {8} {9,5:0.00},{10,5:0.00} y{11:0.00} | hips {12:0.00} sunk {13:0.00} stand {14:0.00} raise {15:0.00}",t-3,g.Yaw,g.Speed,g.CycleRate,g.FootAir[0]?"air":"pln",l.X/leg,l.Z/leg,y0,g.FootAir[1]?"air":"pln",rr.X/leg,rr.Z/leg,y1,pel,g.Sunk,s.Stand,s.Raise));
@@ -317,7 +317,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<760;i++)
             {
                 const float dt=1/120f;var v=new Vector3(0,0,speed);at+=v*dt;f.Time=i*dt;f.Root=at;f.Velocity=v;f.Yaw=0;f.Ground=0;g.Pose(f,p);p.World();
-                NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,f.Kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,f.Kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
                 float top=0;var w=new Vector3[2];for(int a=0;a<2;a++){int hip=a==0?CapturedRig.LHip:CapturedRig.RHip;w[a]=s.Position[rig.Of[hip+2]]+new Vector3(0,0,at.Z);top=Math.Max(top,(w[a]-last[a]).Length()/dt);last[a]=w[a];}
                 if(i<600||i%3!=0&&top<7)continue;
                 Vector3 h0=s.Position[rig.Of[CapturedRig.LHip]],a0=s.Position[rig.Of[CapturedRig.LHip+2]];
@@ -351,7 +351,7 @@ namespace ChipArena.UnityConversion
                         for(int i=0;i<1080;i++)
                         {
                             var v=new Vector3(0,0,speed);at+=v*Dt;f.Time=i*Dt;f.Root=at;f.Velocity=v;f.Yaw=0;f.Ground=0;g.Pose(f,p);p.World();
-                            NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                            NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow,g.Outreach,g.LegsAcross);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
                             if(i>=360)Model(s,m,modelFloor,legModel);
                         }
                         int c=g.RunNow>.5f?g.RunClip:g.WalkClip;if(c!=take&&gait=="walk"&&g.RunNow<=.5f)continue;
@@ -424,7 +424,7 @@ namespace ChipArena.UnityConversion
         {
             int failed=0;
             void Go(string name,Action a){try{a();Console.WriteLine("ok   "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e.Message);}}
-            Go("ZombieSource",Source);Go("ZombieMotion",()=>ZombieMotionChecks.Run(root));Go("ZombieLoco",()=>ZombieLocoChecks.Run(root));Go("ZombieGait",()=>ZombieGaitChecks.Run(root));Go("ZombiePosture",()=>ZombiePostureChecks.Run(root));
+            Go("ZombieSource",Source);Go("ZombieRunTurn",()=>ZombieRunTurnChecks.Run(root));Go("ZombieMotion",()=>ZombieMotionChecks.Run(root));Go("ZombieLoco",()=>ZombieLocoChecks.Run(root));Go("ZombieGait",()=>ZombieGaitChecks.Run(root));Go("ZombiePosture",()=>ZombiePostureChecks.Run(root));
             Go("ZombieKnock",()=>ZombieKnockChecks.Run(root));Go("ZombieTwitch",()=>ZombieTwitchChecks.Run(root));Go("ZombieFlow",()=>ZombieFlowChecks.Run(root));Go("ZombieModel",()=>ZombieModelChecks.Run(root));
             Go("ZombieGore",()=>ZombieGoreChecks.Run(root));Go("HordeRoam",()=>HordeRoamChecks.Run(root));Go("HordeKind",()=>HordeKindChecks.Run(root));Go("IronworksKind",()=>IronworksKindChecks.Run(root));Go("IronworksProp",()=>IronworksPropChecks.Run(root));
             Go("StationEnemy",()=>StationEnemyChecks.Run(root));Go("HulkMotion",()=>HulkMotionChecks.Run(root));Go("HulkCharge",()=>HulkChargeChecks.Run(root));Go("HulkSpitter",()=>HulkSpitterChecks.Run(root));

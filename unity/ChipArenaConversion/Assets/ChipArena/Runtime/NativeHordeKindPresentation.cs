@@ -560,7 +560,8 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         // Severed, sliced and gibbed parts (the model's own parts, tumbling, bouncing, bleeding, then lying with the corpses)
         // ================================================================================================================
-        private sealed class HordePart{public bool Live;public string Model;public int Kind,Joint,Id,Bled;public uint Seed;public float At,Kick,Floor;public NVector2 Push;public readonly Matrix4x4[] Bones=new Matrix4x4[22];public Matrix4x4 Root;
+        private sealed class HordePart{public bool Live;public string Model;public int Kind,Joint,Id,Bled;public uint Seed;public float At,Kick,Floor;public NVector2 Push;public readonly Matrix4x4[] Bones=new Matrix4x4[22],RigBones=new Matrix4x4[22];public Matrix4x4 Root;
+            // (Bones: the joints where the add drew, its model's on the model; RigBones the rig's own, which the voxel part is drawn on.)
             // A modelled zombie's part: its pieces cut from the model (NativeZombieModelPresentation.cs), drawn in place of the voxel part.
             public List<ZombiePiece> Pieces;}
         private readonly HordePart[] hordeParts=MakeHordeParts();private int hordePartNext;
@@ -570,7 +571,7 @@ namespace ChipArena.UnityConversion
         private void HordeLaunch(CapturedAnimation.Player rig,string model,int kind,int id,int joint,float at,NVector2 push,float kick,float floor)
         {
             var p=hordeParts[hordePartNext++%hordeParts.Length];p.Live=true;p.Model=model;p.Kind=kind;p.Joint=joint;p.Id=id;p.At=at;p.Bled=0;p.Push=push;p.Kick=kick;p.Floor=floor;p.Seed=NativeHordeKinds.Seed(id)^(uint)(joint*2654435761u);
-            p.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22;b++)p.Bones[b]=rig.Bones[b].localToWorldMatrix;
+            p.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22;b++){var m=rig.Bones[b].localToWorldMatrix;p.RigBones[b]=m;p.Bones[b]=GoreModelShift(rig,id,kind,b,out var w)?Matrix4x4.Translate(w)*m:m;}
             p.Pieces=ZombiePartPieces(id,joint,p.Pieces);
         }
         // The authority's severed limbs (new LIMB bits on a living add): each root limb's part flies off along the newest blow.
@@ -581,9 +582,9 @@ namespace ChipArena.UnityConversion
         }
         private HordePart hordeDrawPart;private float hordeDrawAge,hordeDrawSink;private Func<int,Matrix4x4> hordePartBone;private Func<int,bool> hordePartVisible;
         /// <summary>A part's joint matrix at `age`: thrown along its push, bouncing to rest (NativeHordeFx.Gib), whole.</summary>
-        private Matrix4x4 HordePartTurn(HordePart p,float age,out Vector3 joint)
+        private Matrix4x4 HordePartTurn(HordePart p,float age,out Vector3 joint,bool rigJoints=false)
         {
-            var j=p.Bones[p.Joint].GetColumn(3);joint=new Vector3(j.x,j.y,j.z);
+            var j=(rigJoints?p.RigBones:p.Bones)[p.Joint].GetColumn(3);joint=new Vector3(j.x,j.y,j.z);
             NativeHordeFx.Gib(p.Seed,p.Joint,age,p.Push,p.Kick,p.Floor,out var off,out var axis,out float angle,NativeHordeFx.Weight(p.Joint));
             var to=joint+new Vector3(off.X,off.Y,off.Z);var turn=Matrix4x4.Translate(to)*Matrix4x4.Rotate(Quaternion.AngleAxis(angle*Mathf.Rad2Deg,new Vector3(axis.X,axis.Y,axis.Z)))*Matrix4x4.Translate(-joint);joint=to;return turn;
         }
@@ -591,19 +592,20 @@ namespace ChipArena.UnityConversion
         /// and a raw cap on it, then lying where they came to rest until the corpses' life on the tier ends and they sink away.</summary>
         private void HordePartsDraw(float now)
         {
-            hordePartBone??=b=>{var p=hordeDrawPart;var m=HordePartTurn(p,hordeDrawAge,out _)*p.Bones[b];m.m13-=hordeDrawSink;return m;};
+            hordePartBone??=b=>{var p=hordeDrawPart;var m=HordePartTurn(p,hordeDrawAge,out _,true)*p.RigBones[b];m.m13-=hordeDrawSink;return m;};
             hordePartVisible??=b=>BoneWithin(b,hordeDrawPart.Joint);
             int tier=hordeGore.Tier<0?0:hordeGore.Tier>2?2:hordeGore.Tier;float life=NativeHordeGore.CorpseLife[tier];
             for(int i=0;i<hordeParts.Length;i++)
             {
                 var p=hordeParts[i];if(!p.Live)continue;float age=now-p.At;if(age<-.5f||NativeHordeGore.Gone(age,life)){p.Live=false;ZombiePiecesFree(p.Pieces);continue;}if(age<0)continue;
                 NativeHordeGore.Sink(age,life,out float sink,out float alpha);hordeDrawPart=p;hordeDrawAge=age;hordeDrawSink=sink;var body=HordeVariation(p.Model,p.Id);body.a=alpha;
-                if(!ZombiePartDrawn(p,age,sink)&&!HordeNoVoxel(p.Kind))sourceModels.Queue(p.Model,p.Root,hordePartBone,hordePartVisible,body:body,glow:HordeGlow(p.Id));
+                // (The model's own pieces on the model's joints; the voxel part, where there are none, on the rig's.)
+                bool modelPart=ZombiePartDrawn(p,age,sink);if(!modelPart&&!HordeNoVoxel(p.Kind))sourceModels.Queue(p.Model,p.Root,hordePartBone,hordePartVisible,body:body,glow:HordeGlow(p.Id));
                 // The cut: a raw cap on the part's root (its parent's side), and blood trailing off it while it flies.
-                var turn=HordePartTurn(p,age,out var stump);var m=turn*p.Bones[p.Joint];var cut=NativeHordeGore.CutOut(p.Joint);var along=m.MultiplyVector(new Vector3(cut.X,cut.Y,cut.Z)).normalized;stump.y-=sink;
+                var turn=HordePartTurn(p,age,out var stump,!modelPart);var m=turn*(modelPart?p.Bones:p.RigBones)[p.Joint];var cut=NativeHordeGore.CutOut(p.Joint);var along=m.MultiplyVector(new Vector3(cut.X,cut.Y,cut.Z)).normalized;stump.y-=sink;
                 float scale=m.MultiplyVector(Vector3.right).magnitude;hordeGore.Cap(GoreV(stump),GoreV(along),NativeHordeGore.PartCut(p.Kind,p.Joint)*scale,age,p.Seed,sink);
                 if(!Gore||age>NativeHordeGore.TrailSeconds+.1f)continue;int due=NativeHordeGore.TrailDue(age,tier);
-                if(p.Bled<due){HordePartTurn(p,Mathf.Max(0,age-.03f),out var was);var carry=(stump-was)/.03f;
+                if(p.Bled<due){HordePartTurn(p,Mathf.Max(0,age-.03f),out var was,!modelPart);var carry=(stump-was)/.03f;
                     for(;p.Bled<due;p.Bled++){long key=((long)(p.Id&0xffffff)<<36)^((long)p.Joint<<30)^((long)(p.Bled+1)<<20)^(BitConverter.SingleToInt32Bits(p.At)&0xfffff)^(1L<<57);bool stain=stainedWounds.Add(key);
                         blood.Spray("drip",1,p.Seed^unchecked((uint)(p.Bled+1)*0x9e3779b1u),key,GoreV(stump),GoreV(along),GoreV(-Vector3.up),hordeClock,BloodQuality,LowGraphics,stain,0,p.Id,true,false,GoreV(carry*.8f));}}
             }
@@ -688,7 +690,7 @@ namespace ChipArena.UnityConversion
             {
                 // The lost and sliced joints left out through the cached visibility test (no closure per frame).
                 hordeQueueLost=death.lost;hordeQueueHidden=d.Slice;hordeQueueVisible??=b=>HordeJointShown(hordeQueueLost,b)&&(hordeQueueHidden==0||!HordeHiddenJoint(hordeQueueHidden,b));
-                if(burn||HordeGoreSettle(death.id,death.at,fall,rig,death.lost,d.Slice,floorY)){if(burn&&HordeNoVoxel(d.Kind)){if(ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice))IronworksBurn(death.id,d.Kind,fx);}else if(burn||!ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice)&&!HordeNoVoxel(d.Kind)){HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible,burn);HordeDeathJaw(rig,d.Kind,d.Look,death.id,hordeQueueVisible);}GoreWoundsJob(death.id,rig);}
+                if(burn||HordeGoreSettle(death.id,d.Kind,death.at,fall,rig,death.lost,d.Slice,floorY)){if(burn&&HordeNoVoxel(d.Kind)){if(ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice))IronworksBurn(death.id,d.Kind,fx);}else if(burn||!ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice)&&!HordeNoVoxel(d.Kind)){HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible,burn);HordeDeathJaw(rig,d.Kind,d.Look,death.id,hordeQueueVisible);}GoreWoundsJob(death.id,rig);}
             }
             if(d.Fate==NativeHordeGore.Fate.HeadGib){int f=d.Fountain;HordeGoreFountain(death.id,death.at,hordeClock,rig,ref f);if(f!=d.Fountain){d.Fountain=f;hordeDead[death.id]=d;}}
             HordeAdd(rig,death.id,float.NaN,Mathf.Max(0,fx),floorY,floorY,float.NaN,Vector3.zero,death.lost,body,d.Kind*8+d.Look);IronworksDeath(death,d.Kind,d.Melee,rig,fx,floorY);StationDeathFx(death,d.Kind,d.Seed,fx,rig,floorY);

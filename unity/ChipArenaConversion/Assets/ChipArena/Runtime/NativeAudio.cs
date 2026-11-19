@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         public void PreloadStageMusic(string map)
         {
             // NOCTIEL's arena plays its own song (NativeFallenSong), not a zone track or the Siren's: load that one behind the cover.
-            string id=map==NativeFallenRules.Map?NativeFallenSong.Id:NativeZoneMusic.BossTrack(map,key=>Clip(key)!=null);stageBossMusic=Clip(id);
+            string id=map==NativeThunderheart.Id?NativeThunderheart.Song:map==NativeFallenRules.Map?NativeFallenSong.Id:NativeZoneMusic.BossTrack(map,key=>Clip(key)!=null);stageBossMusic=Clip(id);
             if(stageBossMusic!=null&&stageBossMusic.loadState==AudioDataLoadState.Unloaded)stageBossMusic.LoadAudioData();
             // The beat map must also be ready before the boss's first frame.
             _=NativeZoneBossSongs.Music;
@@ -155,6 +155,7 @@ namespace ChipArena.UnityConversion
             if(generation!=arena.Generation){generation=arena.Generation;cursor=0;weaponAudio.Clear();deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();installCue.Clear();phase="";countdown=-1;foreach(var v in voices){v.Stop();v.loop=false;}}
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             CyberCityCues(arena,menu);
+            CarillonCues(arena,menu);
             if(menu)Track("music/menu-afterglow",Menu*MenuTrackGain);
             else if(arena.ZoneBoss?.fallen!=null&&!arena.BossOpening){var fs=arena.FallenSongClock();Track(NativeFallenSong.Id,Music*.55f,StageCovered,fs.clip,arena,fs.epoch);}
             else if(arena.BossSongTime>=0)
@@ -179,6 +180,9 @@ namespace ChipArena.UnityConversion
             else if(NativeExpeditionCityKit.Active(arena.MapId))Track("music/safe-hub-under-siege",Music*.55f);
             else if(arena.MapId=="expedition-foundry"||arena.MapId=="expedition-ironworks")Track("music/foundry-of-the-dead",Music*.55f);
             else if(arena.MapId=="expedition-transit")Track("music/subway-arrival-chime",Music*.55f);
+            else if(arena.MapId==NativeThunderheart.Id)
+                Track(NativeThunderheart.Song,Music*.55f,StageCovered||match.Phase!=NativePhase.Fight&&match.Phase!=NativePhase.Result,
+                    NativeThunderheart.Clock(match.Phase,match.FightAt,match.Time)%NativeThunderheart.Length,arena,match.FightAt);
             else if(arena.Pve!=null)Track("music/"+NativeStageMusic.Theme(arena.MapId,"restricted-zone-pulse"),Music*.55f*NativeStageMusic.Dip(match.Phase,true),!NativeStageMusic.Plays(match.Phase,true,false));
             else
             {
