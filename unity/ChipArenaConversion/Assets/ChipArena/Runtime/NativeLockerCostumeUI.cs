@@ -59,7 +59,8 @@ namespace ChipArena.UnityConversion
             if(LkRowCard(set,8299,setOn,"boxes",U.Hex(0x9fb4ff),"Voxel set",setOn?"On: tap to put your own weapon picks back":"Every weapon's Prototype Series; the newer classes keep theirs",null,out _))
             {
                 string kept="";try{kept=PlayerPrefs.GetString(VoxelSetKept,"");}catch(System.Exception){}
-                if(setOn)prefs.weaponSkins=NativeVoxelCostume.SetTake(prefs.weaponSkins,kept);
+                // (Taken off, the list is done with: a later put remembers the picks as they are then.)
+                if(setOn){prefs.weaponSkins=NativeVoxelCostume.SetTake(prefs.weaponSkins,kept);try{PlayerPrefs.SetString(VoxelSetKept,"");PlayerPrefs.Save();}catch(System.Exception){}}
                 else{prefs.weaponSkins=NativeVoxelCostume.SetPut(prefs.weaponSkins,kept,out var now);try{PlayerPrefs.SetString(VoxelSetKept,now);PlayerPrefs.Save();}catch(System.Exception){}}
             }
         }
