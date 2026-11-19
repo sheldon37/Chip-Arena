@@ -73,6 +73,9 @@ namespace ChipArena.UnityConversion
         // weapons. For UsesIdle the caller has sampled the weapon's idle into `r`; it is kept. Otherwise `r` starts at rest.
         public static void Sample(MeleeRig r,string spec,int pose,float time,out LobbyHeld weapon,out LobbyHeld offhand)
         {
+            // A DEV animation class stands as its base class, as it holds its base's weapon (voxel retirement P9): it has no lobby
+            // stance of its own, so the DEV Greatsword rested the greatsword on the default stance's grip, pointing at the camera.
+            spec=NativeDevMotions.Base(spec)??spec;
             if(pose==SheldonIdle){Sheldon(r,spec,time,0,false,out weapon,out offhand);return;}
             bool magic=Magic(spec),idle=UsesIdle(spec,pose);
             // lobby-poses.ts:15: the weapon shows only in the standing pose; the off hand only for daggers and the fighters.
@@ -116,7 +119,7 @@ namespace ChipArena.UnityConversion
         // Lord's only, zero for anyone else.
         public static void Sample(MeleeRig r,string spec,int pose,float time,string hat,bool reduced,int seed,out LobbyHeld weapon,out LobbyHeld offhand,out CyberIdleGlitch glitch)
         {
-            glitch=default;
+            glitch=default;spec=NativeDevMotions.Base(spec)??spec;
             if(pose==SheldonIdle||pose==Weapon&&CyberLordIdlePose.Handles(spec)){glitch=Sheldon(r,spec,time,seed,reduced,out weapon,out offhand);return;}
             Sample(r,spec,pose,time,out weapon,out offhand);
         }
