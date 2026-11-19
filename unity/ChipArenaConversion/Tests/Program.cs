@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--thunderheart")ThunderheartChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--thunderheart")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--practice")PracticeChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--practice")return 0;
             if(args.Length==1&&args[0]=="--party-benchmark"){PartyTransportBenchmark.Run().GetAwaiter().GetResult();return 0;}
@@ -54,6 +56,9 @@ internal static class Program
             if(args.Length==1&&args[0]=="--zombie-runturn"){ZombieRunTurnChecks.Probe();return 0;}
             if(args.Length==1&&args[0]=="--zombie-runturn-walks"){ZombieRunTurnChecks.Walks();return 0;}
             if(args.Length==1&&args[0]=="--zombie-runturn-band"){ZombieRunTurnChecks.Band();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn-ids"){ZombieRunTurnChecks.Ids();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn-bounds"){ZombieRunTurnChecks.Bounds();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-runturn-walktable"){ZombieRunTurnChecks.WalkTableAll();return 0;}
             if(args.Length>=3&&args[0]=="--zombie-runturn-snap"){if(args.Length>=4){ZombieRunTurnChecks.SnapAll=true;ZombieRunTurnChecks.SnapFrom=float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture);}ZombieRunTurnChecks.Snap(int.Parse(args[1]),args[2]);return 0;}
             if(args.Length==1&&args[0]=="--zombie-runturn-sweep"){ZombieRunTurnChecks.Sweep();return 0;}
             if(args.Length==1&&args[0]=="--zombie-runturn-cost"){ZombieRunTurnChecks.Cost();return 0;}

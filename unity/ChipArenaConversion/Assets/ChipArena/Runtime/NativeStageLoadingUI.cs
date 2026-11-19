@@ -176,7 +176,7 @@ namespace ChipArena.UnityConversion
                 case StagePreloadStep.Kit:
                 {
                     long at=System.Diagnostics.Stopwatch.GetTimestamp();int kits=0;
-                    try{kits=presentation.PrewarmStage(arena);if(arena?.Pve!=null)nativeAudio?.PreloadStageMusic(arena.MapId);}catch(Exception e){Debug.LogWarning("Stage prewarm skipped: "+e.Message);}
+                    try{kits=presentation.PrewarmStage(arena);if(arena?.Pve!=null||arena?.MapId==NativeThunderheart.Id)nativeAudio?.PreloadStageMusic(arena.MapId);}catch(Exception e){Debug.LogWarning("Stage prewarm skipped: "+e.Message);}
                     Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"STAGE_PRELOAD kit map={0} kits={1} ms={2:F1}",arena?.MapId,kits,HitchMs(at));
                     stagePlan.Next();stageFrames=0;return;
                 }

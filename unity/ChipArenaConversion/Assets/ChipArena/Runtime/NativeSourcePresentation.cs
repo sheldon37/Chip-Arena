@@ -112,6 +112,7 @@ namespace ChipArena.UnityConversion
             DeepwellScenery(arena);
             SkyframeScenery(arena);
             BreakwaterScenery(arena);
+            DrawCarillon(arena);
             SanctumScenery(arena);
             PolarScenery(arena);
             TrainingScenery(arena);

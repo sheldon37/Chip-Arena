@@ -2,6 +2,91 @@
 
 Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientation layouts in the Developer walk. All 20 primary streets and 20 roof circuits passed sampled support and clearance. See [the five layouts, route distances and timing table](MERIDIAN-B-WALK.md). The same-machine A0 and five-candidate Unity benchmark is available from the Editor. Native results, contract freeze, party ticket integration and art handoff remain pending.
 
+## 2026-11-18 — Claude: the zombie run-turn checks on every take, each pairing held at its own values, the landing lead fixed (review follow-ups; presentation only)
+
+- **The second and third reviews of the zombie run-turn fix** (released in shared `eed764b5`): on `claude/zombie-run-turn-tests`, cut from shared
+  `eed764b5` and merged forward with shared (`ac69455e`); `7bc96297` the second review's items, `ce5e0bd9` the third's (of `a6d756fb`, which found
+  the landing lead easing toward a zeroed cadence), the docs, `d4eeb0fe` the walking table's line endings. Pushed, **not merged, not released**.
+  Details: docs/ZOMBIE-LOCOMOTION.md "Running and turning".
+- **Code:**
+  - `NativeHordeGait.LeadOf`: a landing foot's lead into the turn eases by the move weight toward the cadence the add steps at (`cadenceHz`).
+    Switched on the planner's moving it jumped as a zombie stopped or set off; eased toward the cadence already zeroed as it stopped
+    (`a6d756fb`), it still did. A landing foot's turn in its landing frame, stopping and setting off every .35 s while turning: 11.2 degrees on
+    shared before the lead (`8865e817`), 11.5 on shared now (the lead switched), 15.6 at `a6d756fb`, 7.1 now (the review's wider sweep: 8.5).
+  - `GoreModelShift` takes the add's kind; a thrown part's voxel fallback is drawn on the rig's own joints (`HordePart.RigBones`); wounds, drawn
+    on the voxel model only, on its joints.
+- **Tests** (`ZombieRunTurnChecks`, 1496 checks; sampled: one add of each take pairing from one start unless more are named, not a population's
+  worst):
+  - Every pairing of a kind's walk and run takes (`IdsOf`: the shambler 4, the runner, spitter and brute 2), each held at its own values on eleven
+    routes (Tests/zombie-runturn-bounds.txt, `--zombie-runturn-bounds`): the knee and the planted foot within 3 degrees, a swinging foot within 2
+    and never past 19 (was 25). Removing the knee's lean to its foot now fails the knee bound; `a6d756fb`'s lead fails a foot bound.
+  - A reversal's and a switch to a target behind's worst over eight starts: each pairing's own less .005 legs. Two of the twenty floors sit at
+    the hips' clamp (.764, the gait's deepest crouch) and cannot fail: the runner #40003's switch and the brute #40003's reversal are unguarded.
+  - Stopping and setting off every .35 s (that period only): a landing foot at most 9 degrees in its landing frame (shared before the lead,
+    shared now and `a6d756fb` fail it), a swinging foot 30 (shared 40).
+  - Shared `8865e817`'s walking pinned for every walk take, both speeds, turns either way, the linesman and the faceling (280 routes,
+    Tests/zombie-runturn-walks-shared.txt): 22 higher than shared by more than .03 at their worst start, 12 lower; 17 held at today's as the
+    accepted cost (`WalkFloors`). The shambler's 105 to 150 degree a second arcs at 1.2 times its walk at .9 or higher (.995; .77 without the
+    walking sideways step). The circle chase from four pilot starts at least .77 (today .78, shared .87).
+  - Source pins for the gore's kind guard, the thrown part's rig-joint fallback and the voxel wounds' joints (no check drives them).
+  - Also: `SwingSnap` counts lift and landing frames; the footprint check on a walking arc and a walk-to-run set-off; ZombieLocoChecks drives
+    the model's legs turning, stopping and setting off for allocations (0 bytes); ZombieStageChecks passes the gait's `Outreach` and
+    `LegsAcross` to the stance, whose `across` defaults to 1.
+  - Station baseline: every motion line written exactly from the branch (the runner's had moved within the check's tolerance). The `.death`
+    lines differ in their last digits on this runtime on shared too and are left as they were.
+- **Affected enemies:** the upright kinds on the model; no rule, hitbox, timing, damage, cooldown, movement or network change. Nothing for Astra.
+- **Checks:** full `CoreTests` the release's way (the expedition path patch, the release banks): `1a3af2fa` (the fix on shared `4dc8c86f`) exit 0,
+  1038 PASS groups. The merges with shared (`6596d33a`, `e04dc74c`) stop on three checks shared `b13940ce` broke itself, unchanged at `ac69455e`:
+  TransitionLoadingChecks counts 20 maps (Thunderheart is the 21st), VisualRigChecks pins the preferences line (it gained `musicReaction`), and
+  AdvancedLightingChecks' list lacks `carillon-storm` (which has an advanced block). With those three patched in the scratch checkout only,
+  `e04dc74c`: exit 0, 1040 PASS groups; `ZombieRunTurnChecks` 1496 checks. At `e04dc74c`: `--zombie-all` all 21 groups pass;
+  `check_unity_compile.py` Unity.InputSystem, ChipArena.Player, Assembly-CSharp and Assembly-CSharp-Editor pass; the pin scan over the branch's
+  source changes 0 broken; `git diff --check` against shared clean (after `d4eeb0fe`: it flagged the walking table's 300 CRLF lines). The landing
+  bound (9) against `a6d756fb`'s gait, shared's and shared's before the lead: fails on each (15.6, 11.5, 11.2); 7.1 now. Not run: a Windows build;
+  the Editor's PrototypeBuild.Validate.
+- **Seen in Unity** (BoZo live play, the game view, shared `8865e817` against `7bc96297`): a running shambler shot in its right thigh until the
+  leg gibs. The bullet bursts, the thigh's gush and the thrown leg come off the model's own right leg; at a straight run shared's looks alike (the
+  model's and the rig's legs nearly coincide there). The subject views isolate the model and show no gore. The landing fix was not captured.
+- **Still open** (docs/ZOMBIE-LOCOMOTION.md "Still open"): targets switched 120 to 150 degrees round sink deeper at their worst moment (the
+  shambler, runner, faceling and spitter, .02 to .06 legs), the brute's walk-6 take round a 90 degree a second walking arc (.82 to .77) and
+  sixteen more walking routes held at today's, the circle chase from one pilot start (.78). Deferred: full sweeps over the moments of the stride,
+  several ids per pairing and population figures; the owner has decided to retire voxel, and the gait will be rebuilt to solve once on the
+  model's own skeleton, its tests with it. Shared `b13940ce` fails three full-suite checks of its own (Checks, above): its author's to update.
+  **Next:** review of the landing fix; then merge.
+
+## 2026-11-18 — Claude: shared's full suite passes again after the Thunderheart Carillon (three stale checks; tests only)
+
+Branch `claude/fix-suite-thunderheart`, base shared `ac69455e`. Astra's Thunderheart Carillon (`b13940ce`; retired from selection and rotation in `fdb6568a`) left three CoreTests groups failing on shared. Every release merge stops on them, as the zombie follow-up's merge found. The arena itself is unchanged; the checks were only updated to match it:
+
+- `TransitionLoadingChecks`: the content has 21 maps, including `NativeThunderheart.Id`.
+- `VisualRigChecks` (ModelSetting): the preferences line now includes `musicReaction="Full"` between `alarmLights` and `playerModel`.
+- `AdvancedLightingChecks` (Looks): `carillon-storm` has its advanced block on purpose, so it joins the list of looks that must have one.
+
+Checks: `--transitions` (4276), `--visual-rig` and `--advanced-lighting` pass. The full suite runs in the release merge. For Astra: run the full CoreTests before pushing straight to shared.
+
+## 2026-11-18 — Claude: the voxel retirement plan, approved; Astra's part (owner request; docs only)
+
+Owner: "I want to essentially remove voxel entirely BUT keep its data incase I use it for a map or game mode. The voxel player model + weapons can be selected as skins or costumes instead. All the new things ive been making, I want to remove the voxel dependency and move forward with a more detailed framing." Approval: "Yes, use defaults".
+
+- **Plan:** `docs/VOXEL-RETIREMENT.md`.
+  - **Inventory:** every remaining voxel dependency, from six sweeps, each verified by a skeptic.
+  - **Target:** model-first. The voxel pilot is a costume every player sees, the voxel weapons are each weapon's Prototype skin, Voxel breakup stays as a kill style, and the voxel style is kept as checked, loadable data for a future map or mode.
+  - **Delivery:** 16 packages (V0-V16) in eight stages riding the expedition milestones. The minimum done is the costume, no voxel on model pilots, and the zombie crowd on models.
+- **Owner decisions** (the defaults):
+  - O1: voxel blocks fitted onto the new body.
+  - O2: free for every player; Sheldon Clothes stays DEV-only; Katana, Fangs, Glaive, Top Dog and Bombadier keep their normal weapons.
+  - O3: test a low-end PC first, then drop the Classic setting (keeping a DEV switch) or rename it "Low-end bodies".
+  - O4: builds without the licensed body keep drawing voxel, and the builder refuses to publish them.
+  - O5: the Siren stays voxel until her own model is ready for the final court.
+- **For Astra:** `docs/VOXEL-RETIREMENT-ASTRA.md`.
+  - VA1: account resync and the costume key. Going live needs the owner.
+  - VA2: the builder refuses a test build without the bake.
+  - VA3: crowd numbers.
+  - VA4: the skinning setting.
+  - VA5: later, only on the owner's word.
+- **Overhaul amendments:** appended to `docs/EXPEDITION-OVERHAUL.md` and its Astra part (plan section 4.2): the eject on the model in Stage 2, no voxel fallback for survivors, the Station and Ironworks banks in Stage 4, district outfits with the crowd work, and more.
+- **Next:** Stage 0 ships with release 1 (V0: no new voxel, a DEV voxel counter, player-build baselines, no voxel weapons on the pads). Then Stage 1, the costume, as its own release. No code change in this entry.
+
 ## 2026-11-18 — Claude: zombies run and turn on their own legs (owner report; presentation only)
 
 - **The owner (2026-11-18):** "The issue appears to occur specifically when zombies are running and turning simultaneously. Their legs begin
@@ -20596,3 +20681,7 @@ Branch codex/fix-practice-station, shared base dc568f84 (PR #407). The Windows b
 ## 2026-11-18 · Astra · Dealt Blind Pick authority
 
 Branch codex/dealt-blind-pick from shared 01505ad6. NativeRoomOptions.blindChoices uses zero for the original full pool. RoomOpt.Blind values 0/1/2 select off/all/dealt; dealt defaults to 3. RoomOpt.BlindChoices takes the actual N. The host deals unique IDs using each seat's live weapon grants and keeps N at or below the smallest eligible pool in the roster. Host-only deadlines sample from each pilot's still-eligible hand. Protocol 2 is required only for dealt hands. The local weapon view carries only that seat's IDs in pickCards before reveal; ConversionGame.OpeningWeaponOffers exposes them. Screen labels and layout belong to Claude. Managed checks cover offers, protocol, timeouts, bots, disconnects, grants and privacy. No combat, animation or hit-timing changes.
+
+## 2026-11-18 · Astra · Thunderheart Carillon
+
+Recovered the arena from the interrupted showcase run and integrated it on shared base 15dab150. The map, soundtrack, reactive mesh presentation, two tuning-stop routes and timed gates are covered in docs/THUNDERHEART-CARILLON.md alongside the art renders, CPU measurements and private lighting setup. Original targeted tests and pinned assembly compile passed. Windows multiplayer, GPU timing and licensed lighting remain unverified.
