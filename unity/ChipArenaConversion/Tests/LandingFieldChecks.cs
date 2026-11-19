@@ -1,0 +1,115 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+namespace ChipArena.UnityConversion
+{
+    internal static class LandingFieldChecks
+    {
+        private const int Seeds=2000;
+
+        private static void Check(bool ok,uint seed,string message)
+        {
+            if(!ok)throw new Exception("Landing field "+seed+": "+message);
+        }
+
+        public static void Fields()
+        {
+            bool Clear(float x,float z,float yaw)=>NativeExpeditionHubPlan.Clear(new ExpeditionPoint{x=x,z=z,yaw=yaw});
+            Check(!Clear(13.5f,13.5f,225),0,"reject a hull on the chip machine");
+            Check(!Clear(-13.5f,13.5f,135),0,"reject a hull on the revive machine");
+            Check(Clear(13.5f,8.5f,0)&&!Clear(13.5f,8.5f,180),0,"skid behind a clear centre must miss the camp machines");
+            var figures=new HashSet<(float,float,float,float,float,float,float,float)>();
+            for(uint i=0;i<Seeds;i++)
+            {
+                uint seed=unchecked(i*2654435761u);
+                var spots=NativeExpeditionHubPlan.LandingField(seed);
+                var replay=NativeExpeditionHubPlan.LandingField(seed);
+                Check(spots.Length==8,seed,"eight slots");
+                var quadrants=new HashSet<(bool,bool)>();
+                for(int seat=0;seat<spots.Length;seat++)
+                {
+                    var p=spots[seat];
+                    Check(p.x==replay[seat].x&&p.z==replay[seat].z&&p.yaw==replay[seat].yaw,seed,"reconstruction");
+                    Check(NativeExpeditionHubPlan.Clear(p),seed,"camp and skid apron clearance at "+seat);
+                    Check(Math.Min(Math.Abs(p.x),Math.Abs(p.z))>=4.2f,seed,"gate axis clearance");
+                    double r=Math.Sqrt(p.x*p.x+p.z*p.z);
+                    double yaw=p.yaw*Math.PI/180;
+                    Check((-p.x*Math.Sin(yaw)-p.z*Math.Cos(yaw))/r>=Math.Cos(Math.PI/6)-.000001,seed,"towards the fountain");
+                    if(seat<4)
+                    {
+                        Check(r>=11&&r<=15,seed,"active seat radius");
+                        quadrants.Add((p.x>0,p.z>0));
+                    }
+                    for(int j=0;j<seat;j++)
+                        Check((p.Position-spots[j].Position).Length>=12,seed,"separation "+seat+"/"+j);
+                }
+                Check(quadrants.Count==4,seed,"non-collinear active pods");
+                Check(figures.Add((spots[0].x,spots[0].z,spots[1].x,spots[1].z,spots[2].x,spots[2].z,spots[3].x,spots[3].z)),seed,"repeated landing figure");
+            }
+            Console.WriteLine("PASS 2,000 deterministic landing fields, eight seats each");
+        }
+
+        public static void WorldSweep(string root)
+        {
+            Fields();
+            string Read(string name)=>File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources",name));
+            string mapsJson=Read("UnityMaps.json"),layoutJson=Read("ExpeditionLayout.json");
+            var maps=JsonSerializer.Deserialize<UnityMapContent>(mapsJson,new JsonSerializerOptions{IncludeFields=true});
+            var content=new ConversionContent{maps=maps.maps,contentRevision=NativeMapRules.Revision(mapsJson)};
+            var layout=NativeExpeditionLayout.Parse(layoutJson);
+            layout.compatibility=NativeExpeditionLayout.Compatibility(layoutJson,content);
+            int completed=0;
+            var clock=System.Diagnostics.Stopwatch.StartNew();
+            Parallel.For(0,Seeds,new ParallelOptions{MaxDegreeOfParallelism=Math.Min(6,Environment.ProcessorCount)},i=>
+            {
+                uint seed=unchecked((uint)i*2654435761u);
+                try
+                {
+                    var room=new ExpeditionDeploymentRoom("landing-sweep","pilot",seed,"black-siren",layout,content);
+                    Check(room.Execute("pilot",0,ExpeditionDeploymentIntent.RollInstances),seed,"roll");
+                    // Build runs NativeExpeditionGeneratedWorld.Validate, which floods from
+                    // slot zero and proves the entire Hulk-clear nav graph is connected.
+                    var world=NativeExpeditionGeneratedWorld.Build(room);
+                    var map=world.Map;
+                    bool Supported(string id,V3 p,float r,float h)=>NativeExpeditionGeneratedWorld.Supported(map,p,r,h);
+                    var nodes=map.nav.nodes.ToDictionary(n=>((int)n.pos.x,(int)n.pos.z));
+                    bool Attached(V3 p,float r,float h)
+                    {
+                        int x=(int)Math.Round(p.x/2)*2,z=(int)Math.Round(p.z/2)*2;
+                        for(int dx=-2;dx<=2;dx+=2)
+                        for(int dz=-2;dz<=2;dz+=2)
+                        {
+                            if(!nodes.TryGetValue((x+dx,z+dz),out var n))continue;
+                            var delta=n.pos-new V3(0,.9f,0)-p;
+                            if(delta.Length>3)continue;
+                            int steps=Math.Max(1,(int)Math.Ceiling(delta.Length/.25));
+                            bool clear=true;
+                            for(int k=0;k<=steps&&clear;k++)clear=Supported(map.id,p+delta*(k/(float)steps),r,h);
+                            if(clear)return true;
+                        }
+                        return false;
+                    }
+                    bool Reach(string id,V3 from,V3 to,float r,float h)=>Attached(from,r,h)&&Attached(to,r,h);
+                    NativeExpeditionLayout.ValidateGeometry(new ExpeditionLayout{areas=new[]{world.Area}},new ConversionContent{maps=new[]{map}},null,Supported,Reach);
+                    var expected=NativeExpeditionHubPlan.LandingField(world.Blueprint.worldSeed);
+                    for(int j=0;j<8;j++)
+                    {
+                        var slot=world.Area.slots[j];
+                        Check((slot.Position-expected[j].Position).Length==0&&slot.yaw==expected[j].yaw,seed,"expedition spawn "+j);
+                        var old=new V3(j%4*2-3,1.1f,j/4*3-2);
+                        var ffa=map.spawns.ffa[j];var team=map.spawns.teams[j/4].points[j%4];
+                        Check((ffa.pos-old).Length==0&&ffa.yaw==0&&(team.pos-old).Length==0&&team.yaw==0,seed,"PvP row "+j);
+                    }
+                }
+                catch(Exception e){throw new Exception("World sweep run seed "+seed,e);}
+                int done=System.Threading.Interlocked.Increment(ref completed);
+                if(done==1||done%100==0)Console.WriteLine("Generated world sweep "+done+"/"+Seeds+" at "+clock.Elapsed);
+            });
+            Console.WriteLine("PASS 2,000 generated maps through Validate and ValidateGeometry, Hulk nav and unchanged PvP spawn rows");
+        }
+    }
+}

@@ -1,5 +1,15 @@
 # Expedition Deployment Station: two machines and a generated destination
 
+## Generated Expedition performance budget
+
+| Fixture | Machine and settings | Samples | Navigation ms/tick | Crowd flow ms/tick | Perception ms/tick | Physics ms/tick |
+| --- | --- | --- | --- | --- | --- | --- |
+| A0 City, seed 17, four walking pilots, 88 hub zombies | Native Unity builder, headless, fixed 60 Hz | 120 warm-up + 600 measured | Pending native run | Pending native run | Pending native run | Pending native run |
+
+The deployment acceptance gate runs the budget fixture. To measure it alone in Unity, choose **Chip Arena → Benchmark Expedition hub (4 pilots, 88 zombies)** or run `-batchmode -nographics -quit -executeMethod ChipArena.UnityConversion.Editor.NativeBuildChecks.CheckExpeditionLoadBudget`. Copy the `EXPEDITION_SIM_BUDGET` line from that machine's log into this table after a blockout change. Each value is a mean in milliseconds per tick. Navigation includes crowd flow. Crowd flow measures shared field construction and maintenance, perception measures scheduled sight and hearing checks, and physics includes the native before/after simulation hooks. The fixture rejects samples if a pilot dies or the live population changes.
+
+For a visual capture, launch an Editor play session or Development player with `-expedition-load 4`. Use counts 1–4 for the camera pilot plus up to three stand-ins. Every configuration holds the lobby cap at four. The isolated session drives ordinary pilot movement, the BoZo presentation and the hub brains. The camera follows the first pilot outside the south gate. Capture High (default), `-load-balanced` and `-load-low` at the same resolution. The live HUD and account/network services are absent in this harness. Human co-op frame captures are tracked separately.
+
 ## Live mutator activation — owner requested 2026-11-02
 
 The owner requests enabling and publishing #305's mutator rules to the **test** Update channel now, superseding the earlier draft hold. `codex/mutator-activation` integrates those rules with shared `3ab56c4` (slot sparks and sound). The live host can roll three compatible mutators once destination reels settle; guests cannot roll; deployment locks both machines. The selected IDs persist for the run. See the activation PR / newest DEV_LOG entry for actual validation and publication status.

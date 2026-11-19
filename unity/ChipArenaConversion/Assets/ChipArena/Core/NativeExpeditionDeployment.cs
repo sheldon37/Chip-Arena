@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
             unchecked {x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;x^=x>>16;}
             return x==0?0x9e3779b9u:x;
         }
-        private struct Roller
+        internal struct Roller
         {
             private uint x;
             public Roller(uint seed){x=Mix(seed);}

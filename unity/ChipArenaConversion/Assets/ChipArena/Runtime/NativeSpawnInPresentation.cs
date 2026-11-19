@@ -90,6 +90,10 @@ namespace ChipArena.UnityConversion
             float floor=feet.y-NativeSpawnIn.RestFeet,top=float.NaN;
             if(query&&physics.Raycast(feet+Vector3.up*1.2f,Vector3.down,out var ground,4,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))floor=ground.point.y;
             else if(NativeSpawnIn.AuthoredFloor(map,feet.x,feet.z,centre,out float authoredFloor))floor=authoredFloor;
+            // The authority seats supported spawns on the floor. Use that contact on hosts and replicas,
+            // so the authored 1.1 m marker cannot replay an airborne pose on a grounded pilot at GO.
+            if(arena.Replica?pilot.Pose.Grounded:pilot.Grounded)
+                centre=floor+NativeLocomotionRules.HalfHeight+NativeLocomotionRules.Skin;
             if(query&&physics.Raycast(new Vector3(feet.x,floor+2.2f,feet.z),Vector3.up,out var roof,14,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))top=roof.point.y-.05f;
             if(float.IsNaN(top))top=floor+16;
             // The team colour (the bands' rule: none outside a teams match, never on my own pilot), else the pilot's accent.

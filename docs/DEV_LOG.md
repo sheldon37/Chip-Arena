@@ -35,6 +35,12 @@ Branch `claude/exp-w4-crash`, base shared `claude/sleepy-ritchie-g8ruhv` at `15d
   - Optional (A1): crash noise for the horde.
 - **Risks and next.** It should ship with A0: on today's 3 s countdown in today's row it is right but short, and until A0's grounding fix the capsule can float through the countdown, so the first-person view, which follows it, can settle at GO (the drawn pilot waits for it). W3 has its own in-pod braced second, which steps aside for a directed camera (W3's `c958e54a`), so with both merged the cabin second is this one's. Merges: clean with shared `3458b67b`, W0 and W3; W2 conflicts on one line, `NativeAudio.OnDestroy`: keep both (W2's atlas calls and `ClearPodClips()`). The sounds are placeholders (ElevenLabs batch N5). Next: the owner reviews the clips; M3 (the climb-out down the ramp, the F prompt at the door) after A1.
 
+## 2026-11-18 — Astra: Expedition A0 landing field and native load fixture
+
+Branch `codex/expedition-a0`, based on shared `15dab150`. Generated Expedition has four seeded inner landing sectors, four overflow berths, five-second pod clocks and degree-based boarding. The compatibility receipt changes with the landing slots. The original map spawn rows still serve PvP. Spawn placement and held countdowns probe real ground. Editor and Development builds gain an isolated four-pilot, 88-zombie fixture with native navigation, crowd-flow, perception and physics counters.
+
+The 2,000-seed managed sweep passed both geometry validators and the legacy PvP rows. Native timings, host/guest GO playback and the coupled W4 crash release await the Unity builder and Claude’s presentation branch. The two-size A4 walkthrough is on its own task branch. Do not publish A0 alone.
+
 ## 2026-11-18 — Claude: the expedition overhaul plan (Meridian), approved; Astra's hand-off (owner request; docs only)
 
 Owner asked for the expedition overhaul: a tileset machine, a reworked City away from the box style, streets shaped by their instances, a darker lamp-lit map, modelled buildings, props and gates, a living hub with survivors, pods that crash spread around the hub, a better drop-in, chests for caches in new places, a chip and a healing machine in the hub. Follow-up: "I want the expedition area (not instances) to be much bigger with layering essentially ... Think of how big risk of rain levels are", with each instance's look bleeding into the city near it. Owner on the split: "I can divide the work 🙂 feel free to send me whats needed from astra." Approval: "Yes, use defaults".

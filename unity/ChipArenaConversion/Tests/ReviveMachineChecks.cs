@@ -193,6 +193,7 @@ namespace ChipArena.UnityConversion
             bool Inside(Vector3 w){foreach(var v in area.sanctuary)if(Math.Abs(w.X-v.x)<=v.sx/2&&Math.Abs(w.Z-v.z)<=v.sz/2)return true;return false;}
             foreach(var (centre,size,_) in NativeReviveMachine.Solids){for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2){var w=Vector3.Transform(centre+new Vector3(sx*size.X/2,0,sz*size.Z/2),frame);Check(Inside(w),name+": the machine is inside the sanctuary "+w);}}
             float half=NativeReviveMachineModels.MatSize/2;var mat=NativeReviveMachineModels.MatAt;for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2){var w=Vector3.Transform(mat+new Vector3(sx*half,0,sz*half),frame);Check(Inside(w),name+": the mat is inside the sanctuary "+w);}
+            if(map==NativeExpeditionGeneratedWorld.MapId)foreach(var slot in area.slots)Check(NativeExpeditionHubPlan.Clear(slot),name+": pod hull and full skid clear the revive solids, use and mat");
             foreach(var s in area.slots)Check(!InSolid(new Vector3(s.x,0,s.z),.6f),name+": clear of a party slot "+s.x+","+s.z);
             foreach(var g in hub.Gates){Check(!InSolid(new Vector3(g.X,0,g.Z),3),name+": clear of a gate "+g.Id);Check(!InSolid(g.Inside.Position.ToVector(),1.2f),name+": clear of a gate's way in "+g.Id);}
             foreach(var i in area.interactions)if(i.anchor!=null&&!i.anchor.Contains(":machine:"))Check(!InSolid(new Vector3(i.x,0,i.z),.8f),name+": clear of "+i.anchor);

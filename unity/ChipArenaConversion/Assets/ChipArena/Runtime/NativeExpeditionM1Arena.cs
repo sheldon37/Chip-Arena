@@ -127,8 +127,8 @@ namespace ChipArena.UnityConversion
         {
             var p=ExpeditionPilotFor(account);
             if(p==null||!ExpeditionSupported(slot.Position,NativeLocomotionRules.Radius,2*NativeLocomotionRules.HalfHeight))return false;
-            p.Body.position=Vec(slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);p.Yaw=slot.yaw;
-            p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;Physics.SyncTransforms();return true;
+            p.Body.position=Vec(slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+NativeLocomotionRules.Skin);p.Yaw=slot.yaw;
+            p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;Physics.SyncTransforms();ProbePilotGround(p);return true;
         }
         private ExpeditionMember ExpeditionMemberFor(NativePilot pilot)
             =>Expedition?.Session.Run.Snapshot().members.FirstOrDefault(m=>Expedition.Session.Sources.Seat?.Invoke(m.account)==pilot.Seat.id);
