@@ -110,6 +110,7 @@ namespace ChipArena.UnityConversion.Editor
         [MenuItem("Chip Arena/Build Windows TEST ZIP")]
         public static void BuildWindows()
         {
+            if(NativeBuildChecks.VisualBodyRequired) NativeBuildChecks.RequireVisualBody();
             Validate();
             if(!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Standalone,BuildTarget.StandaloneWindows64))
                 throw new Exception("Install Windows Build Support for this Unity Editor version via Unity Hub.");
@@ -120,6 +121,8 @@ namespace ChipArena.UnityConversion.Editor
             var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes=new[] { ScenePath }, locationPathName=exe,
                 target=BuildTarget.StandaloneWindows64,options=BuildOptions.Development });
             if(report.summary.result!=BuildResult.Succeeded||!File.Exists(exe)) throw new Exception("Unity Windows build failed: "+report.summary.result);
+            if(NativeBuildChecks.VisualBodyRequired && !File.Exists(Path.Combine(folder,NativeBuildChecks.VisualBodyReceipt)))
+                throw new BuildFailedException("Test-channel player did not pack the licensed ChipArenaVisualBody prefab.");
             PackageWindows(root,folder);
         }
 
@@ -148,6 +151,7 @@ namespace ChipArena.UnityConversion.Editor
         public int callbackOrder => -1000;
         public void OnPreprocessBuild(BuildReport report)
         {
+            if(NativeBuildChecks.VisualBodyRequired) NativeBuildChecks.RequireVisualBody();
             PrototypeBuild.ConfigureRendering();
             AssetDatabase.SaveAssets();
             Debug.Log("UNITY_INSTANCING_VARIANTS: Keep All (runtime actor/projectile rendering)");
@@ -155,7 +159,11 @@ namespace ChipArena.UnityConversion.Editor
         public void OnPostprocessBuild(BuildReport report)
         {
             if(report.summary.platform==BuildTarget.StandaloneWindows64)
+            {
+                NativeBuildChecks.RecordPackedVisualBody(report);
                 NativeTunnelBuild.Stage(Path.GetFullPath(Path.Combine(Application.dataPath,"..")),Path.GetDirectoryName(report.summary.outputPath));
+            }
+            else if(NativeBuildChecks.VisualBodyRequired) NativeBuildChecks.RecordPackedVisualBody(report);
         }
     }
 }

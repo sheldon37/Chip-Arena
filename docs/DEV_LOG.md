@@ -1,3 +1,9 @@
+## 2026-11-18 · Astra · VA2 licensed body build gate
+
+Branch `codex/unity-voxel-va2-builder`, rebased on shared `1b356c0c`. The Windows test builder requests `-requireVisualBody`. The build-log check also protects installed desktop agents that call Unity directly without the flag. It checks the imported licensed prefab, skeleton and skinned mesh, then requires evidence that Unity actually packed the prefab into this player. The native publisher and cloud delivery verify the receipt inside the exact player archive. Editor/local fallback builds remain available.
+
+The pinned Unity Player, runtime and Editor compiles passed. The full native Python suite passed (209 passed, one Windows command-shell test skipped on Linux), including archive and cloud delivery refusal before Git and publication to a disposable local Git remote. Shared commit `be3a5bf` corrected both earlier baseline failures in the loading and model-preference checks. The builder branch uses shared’s versions of those tests. A licensed Windows run is still required to verify a real player build.
+
 ## 2026-11-18 — Claude: the zombie run-turn checks on every take, each pairing held at its own values, the landing lead fixed (review follow-ups; presentation only)
 
 - **The second and third reviews of the zombie run-turn fix** (released in shared `eed764b5`): on `claude/zombie-run-turn-tests`, cut from shared

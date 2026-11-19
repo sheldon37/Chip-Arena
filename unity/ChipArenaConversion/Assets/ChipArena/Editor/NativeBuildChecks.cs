@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Build;
+using UnityEditor.Build.Reporting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEditor.SceneManagement;
@@ -10,6 +12,41 @@ namespace ChipArena.UnityConversion.Editor
 {
     public static partial class NativeBuildChecks
     {
+        internal static bool VisualBodyRequired => Array.IndexOf(Environment.GetCommandLineArgs(), "-requireVisualBody") >= 0;
+        internal const string VisualBodyReceipt = "native-visual-body.txt";
+
+        private static string LicensedBodyPath()
+        {
+            var prefab = Resources.Load<GameObject>(ArenaPresentation.VisualBodyResource);
+            if (prefab == null || prefab.transform.Find("VisualSkeleton") == null ||
+                !prefab.GetComponentsInChildren<SkinnedMeshRenderer>(true).Any(r => r.sharedMesh != null))
+                return null;
+            string path = AssetDatabase.GetAssetPath(prefab);
+            return path.StartsWith("Assets/LocalAssets/", StringComparison.Ordinal) &&
+                   path.EndsWith("/Resources/" + ArenaPresentation.VisualBodyResource + ".prefab", StringComparison.Ordinal) ? path : null;
+        }
+
+        internal static void RequireVisualBody()
+        {
+            if (LicensedBodyPath() == null)
+                throw new BuildFailedException("Test-channel build requires the licensed ChipArenaVisualBody prefab, skeleton and mesh. Install the body bake from LocalAssets.zip and rebuild.");
+        }
+
+        internal static void RecordPackedVisualBody(BuildReport report)
+        {
+            string receipt = Path.Combine(Path.GetDirectoryName(report.summary.outputPath), VisualBodyReceipt);
+            File.Delete(receipt); // An incremental export may reuse an older player directory.
+            string path = LicensedBodyPath();
+            if (path != null && report.packedAssets.Any(group => group.contents.Any(asset =>
+                    asset.sourceAssetPath == path && asset.type == typeof(GameObject) && asset.packedSize > 0)))
+            {
+                File.WriteAllText(receipt, ArenaPresentation.VisualBodyResource);
+                Debug.Log("NATIVE_VISUAL_BODY_PACKED: " + path);
+            }
+            else if (VisualBodyRequired)
+                throw new BuildFailedException("The player build report is missing the licensed ChipArenaVisualBody prefab.");
+        }
+
         private static void CheckPresentation(NativeArena arena)
         {
             // Exercise the component creation/startup path that pure combat checks never instantiate.
