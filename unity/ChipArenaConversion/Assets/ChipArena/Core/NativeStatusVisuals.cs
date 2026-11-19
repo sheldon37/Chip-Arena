@@ -101,9 +101,10 @@ namespace ChipArena.UnityConversion
         public const float CuffHeight=.03f,CuffBead=.024f,CuffRoom=.012f;
         /// <summary>The model's shackles and Mark for `rig` at `time` (Unity frame, world): a cuff on each ankle (`leftAnkle`,
         /// `rightAnkle`: the model's ankle joints, `ankle` the boot's or shoe's reach round them) with beads circling it as the
-        /// cubes did (1.2 rad/s, bobbing), and the Mark's ring round the model's head (`head`: its middle) closing from .67 to
-        /// .32 m as it locks, its four beads turning until the lock, the whole flickering once locked as the cubes did.</summary>
-        public static int ModelBuild(in Rig rig,float time,Vector3 leftAnkle,Vector3 rightAnkle,float ankle,Vector3 head,ModelPiece[] output)
+        /// cubes did (1.2 rad/s, bobbing), and the Mark's reticle round the model's head (`head`: its middle): a ring facing the
+        /// eye (`eye`, so it reads as a sight from any camera; a level ring is edge-on to the camera behind the pilot), closing from
+        /// .67 to .32 m as it locks, its four beads turning on it until the lock, the whole flickering once locked as the cubes did.</summary>
+        public static int ModelBuild(in Rig rig,float time,Vector3 leftAnkle,Vector3 rightAnkle,float ankle,Vector3 head,Vector3 eye,ModelPiece[] output)
         {
             int count=0;double t=time;
             if(rig.Active&&!rig.FirstPerson&&rig.Slowed&&rig.Shackled&&rig.SlowUntil>time)
@@ -125,11 +126,15 @@ namespace ChipArena.UnityConversion
                 double u=Math.Max(0,Math.Min(1,(rig.MarkLock-t)/Math.Max(.01,rig.MarkLock-rig.MarkBorn))),r=.32+u*.35;bool locked=time>=rig.MarkLock;
                 if(!locked||Math.Sin(t*40)>-.4)
                 {
-                    output[count++]=new ModelPiece{Kind=ModelKind.MarkRing,Position=head,Rotation=Quaternion.CreateFromAxisAngle(Vector3.UnitX,(float)(-Math.PI/2)),Scale=new Vector3((float)r,(float)r,1)};
+                    // The ring's plane square to the eye (its mesh's +z toward it), the beads on its rim in that plane.
+                    var toward=eye-head;toward=toward.LengthSquared()>1e-8f?Vector3.Normalize(toward):Vector3.UnitZ;
+                    var across=Vector3.Cross(Vector3.UnitY,toward);across=across.LengthSquared()>1e-8f?Vector3.Normalize(across):Vector3.UnitX;var upward=Vector3.Cross(toward,across);
+                    var face=Quaternion.CreateFromRotationMatrix(new Matrix4x4(across.X,across.Y,across.Z,0,upward.X,upward.Y,upward.Z,0,toward.X,toward.Y,toward.Z,0,0,0,0,1));
+                    output[count++]=new ModelPiece{Kind=ModelKind.MarkRing,Position=head,Rotation=face,Scale=new Vector3((float)r,(float)r,1)};
                     for(int n=0;n<MarkBeads;n++)
                     {
-                        double a=n*Math.PI/2+t*(locked?0:1.6);
-                        output[count++]=new ModelPiece{Kind=ModelKind.MarkBead,Position=head+new Vector3((float)(Math.Cos(a)*r),0,(float)(Math.Sin(a)*r)),Rotation=Quaternion.Identity,Scale=new Vector3(locked?.05f:.04f)};
+                        double a=n*Math.PI/2+Math.PI/4+t*(locked?0:1.6);
+                        output[count++]=new ModelPiece{Kind=ModelKind.MarkBead,Position=head+(across*(float)Math.Cos(a)+upward*(float)Math.Sin(a))*(float)r,Rotation=Quaternion.Identity,Scale=new Vector3(locked?.05f:.04f)};
                     }
                 }
             }

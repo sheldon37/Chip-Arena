@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
             // The joint-frame resolver.
             Check(vbp.Contains("public Matrix4x4 JointFrame(Actor a,int j)=>a==null?Matrix4x4.identity:JointFrame(a.Id,j);")&&vbp.Contains("return rigs.TryGetValue(id,out var rig)?VisualJointFrame(rig,j):Matrix4x4.identity;"),"JointFrame: the model's joint when drawn, the rig's otherwise (VisualJointFrame per actor)");
             // Its first users: the status markers on the model (V3 Stage 1, P13).
-            Check(A("Runtime/NativeStatusPresentation.cs").Contains("Vector3 J(int j)=>JointFrame(id,j).GetColumn(3);")&&A("Runtime/NativeStatusPresentation.cs").Contains("var head=JointFrame(id,CapturedRig.Head);"),"the status markers read the model's joints through it");
+            Check(A("Runtime/NativeStatusPresentation.cs").Contains("Vector3 mid=JointAt(id,CapturedRig.Head)+Vector3.up*ModelHeadMiddle;")&&A("Runtime/NativeStatusPresentation.cs").Contains("StatusV(JointAt(id,CapturedRig.LFoot))")&&vbp.Contains("return body.Binding.Bones[body.JointBone[j]].position;"),"the status markers read the model's own bones through the resolver (JointAt)");
             Check(vbp.Contains("if(rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.JointFrom!=null&&body.PosedFrame==Time.frameCount&&j>=0&&j<body.JointBone.Length&&body.JointBone[j]>=0)"),"drawn this frame: the model's");
             // The model needs no voxel pilot built: the costume's and the model's paths read the voxel bank only for its drawer
             // (gear, hats, weapons, effects), never for the voxel pilot's models (BodyModel, WoundedPilot) to exist.

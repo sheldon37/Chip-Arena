@@ -156,7 +156,17 @@ namespace ChipArena.UnityConversion
         /// pack's clips, stride and hand fits) while the model is drawn, else the rig's joint. New effect anchors read joints
         /// only through this (the voxel ratchet, V0).</summary>
         public Matrix4x4 JointFrame(Actor a,int j)=>a==null?Matrix4x4.identity:JointFrame(a.Id,j);
-        /// <summary>JointFrame for the pilot whose seat is `id` (the status markers' resolver).</summary>
+        /// <summary>Where joint `j` of the pilot whose seat is `id` is drawn (M6): its model bone's place while the model is drawn, else
+        /// the rig's joint. (JointFrame is the game joint's frame riding that bone, at the voxel joint's offset from it: the head's
+        /// sits about 20 cm under the model's head bone, so what marks the model's own head or ankles asks this; the status markers.)</summary>
+        public Vector3 JointAt(int id,int j)
+        {
+            if(j<0||j>=CapturedRig.Bones.Length||!rigs.TryGetValue(id,out var rig)||rig==null)return Vector3.zero;
+            if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.JointFrom!=null&&body.PosedFrame==Time.frameCount&&j<body.JointBone.Length&&body.JointBone[j]>=0)
+                return body.Binding.Bones[body.JointBone[j]].position;
+            return rig.Bones[j].position;
+        }
+        /// <summary>JointFrame for the pilot whose seat is `id`.</summary>
         public Matrix4x4 JointFrame(int id,int j)
         {
             if(j<0||j>=CapturedRig.Bones.Length)return Matrix4x4.identity;

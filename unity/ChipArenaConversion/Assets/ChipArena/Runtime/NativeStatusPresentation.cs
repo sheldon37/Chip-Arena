@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
                 Vector3 at=rig!=null?rig.Root.transform.position:p.Body.position;var status=PilotStatus(arena,p,now,quality);
                 status.Root=new NVector(-at.x,at.y,at.z);status.Camera=sourceEye;status.CameraRotation=sourceLook;
                 // On the model its shackles and Mark ride its own joints (the joint-frame resolver), not the voxel pilot's heights.
-                if(rig!=null&&VisualBodyPosed(rig)){status.ModelBody=true;StatusOnModel(status,time,p.Seat.id,rig);}
+                if(rig!=null&&VisualBodyPosed(rig)){status.ModelBody=true;StatusOnModel(status,time,p.Seat.id,rig,eye);}
                 QueueStatus(status,time,Matrix4x4.Translate(at),statusWorld);
             }
             // pve/horde-view.ts:116-123: burning, poisoned or slowed adds, nearest to the camera first, at most AddRigs.
@@ -88,12 +88,13 @@ namespace ChipArena.UnityConversion
         }
         // A model pilot's shackles and Mark (NativeStatusVisuals.ModelBuild) on its ankles and head joints, round the voxel costume's
         // boots where it wears them.
-        private void StatusOnModel(in NativeStatusVisuals.Rig status,float time,int id,CapturedAnimation.Player rig)
+        private void StatusOnModel(in NativeStatusVisuals.Rig status,float time,int id,CapturedAnimation.Player rig,Vector3 eye)
         {
-            Vector3 J(int j)=>JointFrame(id,j).GetColumn(3);var costume=visualBodies.TryGetValue(rig,out var body)?CostumeOf(body.Root):null;
+            var costume=visualBodies.TryGetValue(rig,out var body)?CostumeOf(body.Root):null;
             float ankle=costume!=null?Mathf.Max(ModelAnkleReach,costume.Build.BootHalf):ModelAnkleReach;
-            var head=JointFrame(id,CapturedRig.Head);Vector3 mid=head.MultiplyPoint3x4(Vector3.up*ModelHeadMiddle);
-            int n=NativeStatusVisuals.ModelBuild(status,time,StatusV(J(CapturedRig.LFoot)),StatusV(J(CapturedRig.RFoot)),ankle,StatusV(mid),statusModelPieces);
+            // (The model's own bones: JointAt, not JointFrame, whose head frame keeps the voxel head joint's place 20 cm under the model's.)
+            Vector3 mid=JointAt(id,CapturedRig.Head)+Vector3.up*ModelHeadMiddle;
+            int n=NativeStatusVisuals.ModelBuild(status,time,StatusV(JointAt(id,CapturedRig.LFoot)),StatusV(JointAt(id,CapturedRig.RFoot)),ankle,StatusV(mid),StatusV(eye),statusModelPieces);
             for(int i=0;i<n;i++)
             {
                 var p=statusModelPieces[i];

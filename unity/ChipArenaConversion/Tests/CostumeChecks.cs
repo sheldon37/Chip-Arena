@@ -144,14 +144,16 @@ namespace ChipArena.UnityConversion
             Check(!cubes.Take(n).Any(p=>p.Kind==NativeStatusVisuals.Kind.Shackle||p.Kind==NativeStatusVisuals.Kind.Mark),"no shackle or Mark cubes on a model pilot");
             rig.ModelBody=false;n=NativeStatusVisuals.Build(rig,1,cubes);Check(cubes.Take(n).Count(p=>p.Kind==NativeStatusVisuals.Kind.Shackle)==NativeStatusVisuals.SlowCubes&&cubes.Take(n).Count(p=>p.Kind==NativeStatusVisuals.Kind.Mark)==NativeStatusVisuals.MarkCubes,"the voxel style keeps its cubes");
             rig.ModelBody=true;var pieces=new NativeStatusVisuals.ModelPiece[NativeStatusVisuals.MaxModelPieces];Vector3 la=new Vector3(-.12f,.1f,0),ra=new Vector3(.12f,.1f,0),head=new Vector3(0,1.67f,.02f);
-            n=NativeStatusVisuals.ModelBuild(rig,1,la,ra,.06f,head,pieces);
+            var eye=new Vector3(.4f,2.4f,-3f);n=NativeStatusVisuals.ModelBuild(rig,1,la,ra,.06f,head,eye,pieces);
             var rings=pieces.Take(n).Where(p=>p.Kind==NativeStatusVisuals.ModelKind.ShackleRing).ToList();
             Check(rings.Count==2&&rings.All(r=>Math.Min((new Vector2(r.Position.X,r.Position.Z)-new Vector2(la.X,la.Z)).Length(),(new Vector2(r.Position.X,r.Position.Z)-new Vector2(ra.X,ra.Z)).Length())<1e-4f&&Math.Abs(r.Position.Y-.1f)<.01f&&r.Scale.X>=.06f),"a cuff on each of the model's ankles, round its reach");
             Check(pieces.Take(n).Count(p=>p.Kind==NativeStatusVisuals.ModelKind.ShackleBead)==2*NativeStatusVisuals.ShackleBeads&&pieces.Take(n).Where(p=>p.Kind==NativeStatusVisuals.ModelKind.ShackleBead).All(p=>Math.Min((p.Position-la).Length(),(p.Position-ra).Length())<.1f),"beads circling each cuff");
             var mark=pieces.Take(n).Where(p=>p.Kind==NativeStatusVisuals.ModelKind.MarkRing).ToList();
             Check(mark.Count==1&&(mark[0].Position-head).Length()<1e-4f&&mark[0].Scale.X>.32f&&mark[0].Scale.X<.68f&&pieces.Take(n).Count(p=>p.Kind==NativeStatusVisuals.ModelKind.MarkBead)==NativeStatusVisuals.MarkBeads,"the Mark's ring round the model's head, closing as it locks, its four beads");
-            // The Mark's ring faces up (the camera looks down on it): the ring mesh's +z normal turned to +y.
-            var up=Vector3.Transform(Vector3.UnitZ,mark[0].Rotation);Check(up.Y>.99f,"the Mark's ring lies flat, facing up");
+            // The Mark's ring faces the eye (a level ring is edge-on to the camera behind the pilot): its mesh's +z toward the eye,
+            // its beads on its rim in that plane.
+            var facing=Vector3.Transform(Vector3.UnitZ,mark[0].Rotation);Check(Vector3.Dot(facing,Vector3.Normalize(eye-head))>.999f,"the Mark's ring faces the eye");
+            Check(pieces.Take(n).Where(p=>p.Kind==NativeStatusVisuals.ModelKind.MarkBead).All(p=>Math.Abs(Vector3.Dot(p.Position-head,Vector3.Normalize(eye-head)))<1e-3f&&Math.Abs((p.Position-head).Length()-mark[0].Scale.X)<1e-3f),"its beads on its rim");
             // The lobby chair: a modelled armchair the boxes' size, no bare box.
             var chair=NativeLobbyChair.Build();var all=chair.Sections.SelectMany(x=>x.Positions).ToList();
             var lo=new Vector3(float.MaxValue);var hi=new Vector3(float.MinValue);foreach(var p in all){lo=Vector3.Min(lo,p);hi=Vector3.Max(hi,p);}
