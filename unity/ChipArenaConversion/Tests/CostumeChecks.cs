@@ -30,6 +30,7 @@ namespace ChipArena.UnityConversion
             foreach(var line in report)Console.WriteLine("INFO costume: "+line);report.Clear();
             Precedence(root);Console.WriteLine("PASS costume: the Top Dog keeps its Hot Dog, the costume hides the DEV Hot Dog top and every outfit piece ("+count+" checks)");
             Table(root);Console.WriteLine("PASS costume: the hide-and-keep table and the runtime's routes for every row ("+count+" checks)");
+            Leftovers(root);Console.WriteLine("PASS costume: V3 Stage 1 on model pilots: the shackles and the Orbital Mark on the model's joints (no cubes), the modelled lobby chair, the Auditor halo's model fit, the ghosts' and the Sentry's model weapons ("+count+" checks)");
             foreach(var line in report)Console.WriteLine("INFO costume: "+line);
         }
 
@@ -57,6 +58,9 @@ namespace ChipArena.UnityConversion
             // the costume (or the Hot Dog) off on another PC sticks; the tone still comes back as before.
             Check(NativeLook.KeepSkin("hair:wild","upper:tee,costume:voxel",true)=="hair:wild"&&NativeLook.KeepSkin("","upper:hot-dog",true)==""&&NativeLook.KeepSkin("hair:wild","skin:c48a62",true)=="hair:wild,skin:c48a62"&&NativeLook.KeepSkin("hair:wild,costume:voxel","",true)=="hair:wild,costume:voxel","after VA1 a login takes the account's costume as it is");
             Check(NativeLook.ServiceKeepsLook==3,"the account schema that keeps the look is VA1's (3; the deployed Worker says 2)");
+            // Blind pick: the host blanks the skin map in the lobby (NativeNetwork's lobby seats), so the lobby shows the costume in the
+            // Standard variant without Prototype weapons and the match the real picks; the look's key is untouched by it.
+            Check(NativeBodySkins.Of("")==NativeBodySkins.StandardIndex&&NativeBodySkins.Of("body:prototype")==NativeBodySkins.PrototypeIndex&&NativeVoxelCostume.Worn(a)&&!NativeVoxelCostume.SetOn(""),"blind pick: a blank skin map is the Standard costume without the voxel set");
             // The longest map stays far under the contract's limit.
             var longest=string.Join(",",NativeLook.Slots.Select((s,i)=>s+":"+NativeLook.Ids[i].OrderByDescending(x=>x.Length).First()))+",costume:voxel,skin:ffffff";
             Check(NativeLook.Normalize(longest).Length<=NativeLook.MaxLength&&NativeLook.Normalize(longest).Contains("costume:voxel"),"the longest map fits ("+NativeLook.Normalize(longest).Length+" / "+NativeLook.MaxLength+")");
@@ -129,6 +133,38 @@ namespace ChipArena.UnityConversion
             // Built ahead, retried, by the setting's tier.
             Check(vbp.Contains("VisualCutWarmStep();CostumeWarmStep();")&&wear.Contains("Time.realtimeSinceStartup-failed<CostumeRetry")&&wear.Contains("NativeBodySkins.Tier(LowGraphics,WeaponEffectsQuality,0,id==ViewBodyId)"),"prewarmed, a failure retried, drawn at the graphics setting's tier");
             Check(wear.Contains("CostumeAnchors(root,asset);"),"the gear at the costume's anchors");
+        }
+
+        // ---- V3 Stage 1: the voxel leftovers off model pilots (docs/VOXEL-RETIREMENT.md V3) ----
+        private static void Leftovers(string root)
+        {
+            // The status markers on the model: the voxel style's cubes skipped, the model's rings and beads on the joints it is given.
+            var rig=new NativeStatusVisuals.Rig{Active=true,Quality=1,Slowed=true,Shackled=true,SlowUntil=10,Marked=true,MarkBorn=0,MarkLock=2,MarkUntil=4,ModelBody=true};
+            var cubes=new NativeStatusVisuals.Piece[NativeStatusVisuals.MaxPieces];int n=NativeStatusVisuals.Build(rig,1,cubes);
+            Check(!cubes.Take(n).Any(p=>p.Kind==NativeStatusVisuals.Kind.Shackle||p.Kind==NativeStatusVisuals.Kind.Mark),"no shackle or Mark cubes on a model pilot");
+            rig.ModelBody=false;n=NativeStatusVisuals.Build(rig,1,cubes);Check(cubes.Take(n).Count(p=>p.Kind==NativeStatusVisuals.Kind.Shackle)==NativeStatusVisuals.SlowCubes&&cubes.Take(n).Count(p=>p.Kind==NativeStatusVisuals.Kind.Mark)==NativeStatusVisuals.MarkCubes,"the voxel style keeps its cubes");
+            rig.ModelBody=true;var pieces=new NativeStatusVisuals.ModelPiece[NativeStatusVisuals.MaxModelPieces];Vector3 la=new Vector3(-.12f,.1f,0),ra=new Vector3(.12f,.1f,0),head=new Vector3(0,1.67f,.02f);
+            n=NativeStatusVisuals.ModelBuild(rig,1,la,ra,.06f,head,pieces);
+            var rings=pieces.Take(n).Where(p=>p.Kind==NativeStatusVisuals.ModelKind.ShackleRing).ToList();
+            Check(rings.Count==2&&rings.All(r=>Math.Min((new Vector2(r.Position.X,r.Position.Z)-new Vector2(la.X,la.Z)).Length(),(new Vector2(r.Position.X,r.Position.Z)-new Vector2(ra.X,ra.Z)).Length())<1e-4f&&Math.Abs(r.Position.Y-.1f)<.01f&&r.Scale.X>=.06f),"a cuff on each of the model's ankles, round its reach");
+            Check(pieces.Take(n).Count(p=>p.Kind==NativeStatusVisuals.ModelKind.ShackleBead)==2*NativeStatusVisuals.ShackleBeads&&pieces.Take(n).Where(p=>p.Kind==NativeStatusVisuals.ModelKind.ShackleBead).All(p=>Math.Min((p.Position-la).Length(),(p.Position-ra).Length())<.1f),"beads circling each cuff");
+            var mark=pieces.Take(n).Where(p=>p.Kind==NativeStatusVisuals.ModelKind.MarkRing).ToList();
+            Check(mark.Count==1&&(mark[0].Position-head).Length()<1e-4f&&mark[0].Scale.X>.32f&&mark[0].Scale.X<.68f&&pieces.Take(n).Count(p=>p.Kind==NativeStatusVisuals.ModelKind.MarkBead)==NativeStatusVisuals.MarkBeads,"the Mark's ring round the model's head, closing as it locks, its four beads");
+            // The Mark's ring faces up (the camera looks down on it): the ring mesh's +z normal turned to +y.
+            var up=Vector3.Transform(Vector3.UnitZ,mark[0].Rotation);Check(up.Y>.99f,"the Mark's ring lies flat, facing up");
+            // The lobby chair: a modelled armchair the boxes' size, no bare box.
+            var chair=NativeLobbyChair.Build();var all=chair.Sections.SelectMany(x=>x.Positions).ToList();
+            var lo=new Vector3(float.MaxValue);var hi=new Vector3(float.MinValue);foreach(var p in all){lo=Vector3.Min(lo,p);hi=Vector3.Max(hi,p);}
+            Check(chair.Triangles>400&&chair.Triangles<12000&&all.All(p=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&float.IsFinite(p.Z)),"the lobby chair builds ("+chair.Triangles+" triangles)");
+            Check(Math.Abs(lo.Y)<.005f&&Math.Abs(hi.Y-1.215f)<.02f&&Math.Abs(hi.X-.415f)<.02f&&Math.Abs(lo.Z+.315f)<.02f&&hi.Z<.33f,"it stands where the eight boxes stood ("+lo+" to "+hi+")");
+            Check(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeVisualPortraitPresentation.cs")).Contains("if(pose==NativeLobbyPoses.Chair&&sourceModels.Has(NativeLobbyChair.Model))sourceModels.Queue(NativeLobbyChair.Model,"),"the portraits seat the model on it");
+            // The Auditor halo on its own model-head fit, where the voxel crown's fit put it (no move).
+            NativeModelHats.Fit(NativeAuditorHalo.Hat,out float hs,out var ho);float old=NativeModelHats.ModelCrownY+NativeModelHats.Raise-NativeModelHats.HaloScale*NativeModelHats.VoxelCrown;
+            Check(Math.Abs(hs-NativeModelHats.HaloScale)<1e-6f&&Math.Abs(ho.Y-old)<1e-4f&&Math.Abs(ho.Z-NativeModelHats.ModelCrownZ)<1e-6f,"the Auditor halo's model fit keeps its place");
+            // The ghosts' and the Sentry's weapons: the model's own where the model holds one (the game's voxel model only as a fallback).
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f)).Replace("\r\n","\n");
+            Check(R("NativeMeleeKitPresentation.cs").Contains("if(!(model&&VisualLiveGhostWeapon(key,d.Pose,")&&R("NativeIntros.cs").Contains("if(!(hands!=null&&VisualLiveGhostWeapon(2L<<40|(uint)i,entranceGhostActor,"),"the decoy and the entrance ghosts hold the model's weapon");
+            Check(R("NativeTechniquePresentation.cs").Contains("if(gone<1&&!SentryModelGun(a,m))QueueHeld(a,m);"),"the Sentry's gun is the model's");
         }
 
         // ---- the builds ----
