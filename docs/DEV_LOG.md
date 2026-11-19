@@ -1,6 +1,7 @@
 ## 2026-11-18 — Astra: Meridian size B walk candidates
 
 Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientation layouts in the Developer walk. All 20 primary streets and 20 roof circuits passed sampled support and clearance. See [the five layouts, route distances and timing table](MERIDIAN-B-WALK.md). The same-machine A0 and five-candidate Unity benchmark is available from the Editor. Native results, contract freeze, party ticket integration and art handoff remain pending.
+- **Merged and released (Claude, integrator, for the owner's walk):** PR #414 (`codex/meridian-b-candidates` at `bfbfa98c`) merged on `claude/merge-astra-meridian-b` into shared `9bed7356` (the builder at `9bed7356`), test channel revision `639306641563801583` (build `6b35a49b`); the suite at `0f520da2` (1,041 groups, exit 0), the Unity compile. The pin scan flagged one changed line that a test literal pins (`NativeLayeredCityWalkPreview.cs`, `route.Name`); the suite still passes. The five walks are in Settings > Developer > Walk Meridian greybox.
 
 ## 2026-11-18 — Claude: the zombie run-turn checks on every take, each pairing held at its own values, the landing lead fixed (review follow-ups; presentation only)
 
