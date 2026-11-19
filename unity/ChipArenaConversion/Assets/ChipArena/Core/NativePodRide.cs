@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         public static bool Long(float opening)=>opening>=4.5f;
         /// <summary>When the ride starts (s from the fight start, negative: in the countdown) and how long it lasts.</summary>
         public static float RideAt(float opening)=>-opening+(Long(opening)?.9f:.4f);
-        public static float RideSeconds(float opening)=>Long(opening)?1f:.8f;
+        public static float RideSeconds(float opening)=>Long(opening)?1f:.6f;
         /// <summary>The ride holds at drop age `age` (s from the fight start) for an opening of `opening` s; `u` its share (0..1).</summary>
         public static bool Active(float age,float opening,out float u)
         {

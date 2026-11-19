@@ -490,11 +490,11 @@ namespace ChipArena.UnityConversion
         // that ends before the first pod lands; none outside its window; steady with camera shake off.
         private static void Ride()
         {
-            Check(NativePodRide.Opening==3&&Math.Abs(NativePodRide.RideAt(5)+4.1f)<1e-4f&&NativePodRide.RideSeconds(5)==1f,"the ride at -4.1 s for a second of a 5 s opening");
+            Check(NativePodRide.Opening==(float)ExpeditionRules.PodOpening&&Math.Abs(NativePodRide.RideAt(5)+4.1f)<1e-4f&&NativePodRide.RideSeconds(5)==1f,"the ride at -4.1 s for a second of a 5 s opening");
             foreach(float opening in new[]{3f,5f})
             {
                 float at=NativePodRide.RideAt(opening),len=NativePodRide.RideSeconds(opening);
-                Check(at>-opening&&at+len<NativePodDrop.ImpactOf(0)-.2f,"the ride ends before the first pod lands ("+opening+" s)");
+                Check(at>-opening&&at+len<NativePodDrop.ImpactOf(0,opening)-.2f,"the ride ends before the first pod lands ("+opening+" s)");
                 Check(!NativePodRide.Active(at-.01f,opening,out _)&&NativePodRide.Active(at+.01f,opening,out float u)&&u<.05f&&!NativePodRide.Active(at+len+.01f,opening,out _),"the ride's window ("+opening+" s)");
                 NativePodRide.Judder(at+.3f,.3f,false,out var o,out float p,out float r);Check(o==Vector3.Zero&&p==0&&r==0,"steady with camera shake off");
                 NativePodRide.Judder(at+.3f,.3f,true,out o,out p,out r);Check(o.Length()>0&&o.Length()<.02f&&Math.Abs(p)<1.5f&&Math.Abs(r)<2,"a braced judder with camera shake on");
