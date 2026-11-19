@@ -127,6 +127,8 @@ namespace ChipArena.UnityConversion
         public void Flush(bool instancing){FlushAll(draws,instancing);FlushAll(cameraDraws,instancing);}
         private void FlushAll<K>(Dictionary<K,Draws> lists,bool instancing)
         {
+            // The DEV voxel draw counter (NativeVoxelDrawCount.cs): off unless the overlay, its switch or a capture turned it on.
+            if(NativeVoxelDraws.On)foreach(var d in lists.Values)VoxelCount(d.Part,d.Matrices.Count);
             foreach(var d in lists.Values)for(int start=0;start<d.Matrices.Count;start+=512)
             {
                 int count=Math.Min(512,d.Matrices.Count-start);d.Matrices.CopyTo(start,buffer,0,count);d.Bodies.CopyTo(start,bodies,0,count);d.Accents.CopyTo(start,accents,0,count);d.Tints.CopyTo(start,tints,0,count);d.Glows.CopyTo(start,glows,0,count);

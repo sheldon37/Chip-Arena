@@ -11,6 +11,10 @@ internal static class Program
             if(args.Length==1&&args[0]=="--thunderheart")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--practice")PracticeChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--practice")return 0;
+            // The voxel retirement's guards (docs/VOXEL-STYLE.md, V0): the ratchet, the kept voxel style, the DEV draw counter.
+            if(args.Length==0||args.Length==1&&args[0]=="--voxel"){VoxelRatchetChecks.Run(ProjectRoot());VoxelStyleChecks.Run(ProjectRoot());VoxelDrawChecks.Run(ProjectRoot());}
+            if(args.Length==1&&args[0]=="--voxel")return 0;
+            if(args.Length==1&&args[0]=="--voxel-ratchet-table"){VoxelRatchetChecks.Print(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--party-benchmark"){PartyTransportBenchmark.Run().GetAwaiter().GetResult();return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--deathmatch")DeathmatchChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--deathmatch")return 0;
