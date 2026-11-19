@@ -37,7 +37,9 @@ namespace ChipArena.UnityConversion
             // writer a branch) and the draft's test sits beside the chip install's lines (V4 moves both).
             var users=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs").Select(f=>(Path.GetFileName(f),Regex.Matches(File.ReadAllText(f),@"\bClassicBodies\b").Count)).Where(x=>x.Item2>0).ToDictionary(x=>x.Item1,x=>x.Item2);
             int total=users.Values.Sum();
-            Check(total<=7&&users.Keys.All(k=>k=="NativeVisualBodyPresentation.cs"||k=="ConversionGame.cs"||k=="NativeDeployCast.cs"),"Classic read in "+total+" places ("+string.Join(", ",users.Select(kv=>kv.Key+" "+kv.Value))+"; 25 before)");
+            // (A0's native hub load preview, merged with release 1, only writes Classic off to force the model for its frame budget.)
+            bool previewForces=!users.ContainsKey("NativeExpeditionLoadPreview.cs")||users["NativeExpeditionLoadPreview.cs"]==1&&File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeExpeditionLoadPreview.cs")).Contains("view.ClassicBodies=false;");
+            Check(total<=8&&previewForces&&users.Keys.All(k=>k=="NativeVisualBodyPresentation.cs"||k=="ConversionGame.cs"||k=="NativeDeployCast.cs"||k=="NativeExpeditionLoadPreview.cs"),"Classic read in "+total+" places ("+string.Join(", ",users.Select(kv=>kv.Key+" "+kv.Value))+"; 25 before; A0's load preview only writes it off)");
             // The joint-frame resolver.
             Check(vbp.Contains("public Matrix4x4 JointFrame(Actor a,int j)=>a==null?Matrix4x4.identity:JointFrame(a.Id,j);")&&vbp.Contains("return rigs.TryGetValue(id,out var rig)?VisualJointFrame(rig,j):Matrix4x4.identity;"),"JointFrame: the model's joint when drawn, the rig's otherwise (VisualJointFrame per actor)");
             // Its first users: the status markers on the model (V3 Stage 1, P13).
