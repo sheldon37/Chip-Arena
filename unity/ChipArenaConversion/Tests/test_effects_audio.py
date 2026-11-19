@@ -129,7 +129,9 @@ class EffectsAudioTests(unittest.TestCase):
 
     def test_contract_matches_the_core_bank(self):
         keys, schema, clips, budget = installer.contract()
-        self.assertEqual((len(keys), schema, clips, budget), (538, 1, 16, 18000000))  # incl. the 57 NOCTIEL keys and 81 Backrooms boss keys, the 14 zombie voice and footfall keys (docs/audio/SOUND-REQUESTS.md), the 34 City Ironworks enemy keys and the 22 Central Station enemy cues
+        self.assertEqual((len(keys), schema, clips, budget), (545, 1, 16, 18000000))
+        self.assertEqual({key for key in keys if key.startswith('ui.install.')},
+                         {'ui.install.' + cue for cue in ('lock', 'shatter', 'lid', 'catch', 'seat', 'surge', 'out')})
         self.assertEqual(keys['boss.ironworks.idle.burn'], ('loop', 5))
         self.assertEqual(keys['boss.station.announce'][0], '2d')
         self.assertEqual(keys['topdog.ring-cut'][0], '3d')
