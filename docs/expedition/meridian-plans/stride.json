@@ -1,0 +1,7667 @@
+{
+ "format": "meridian-street-plan/1",
+ "id": "meridian-b-stride",
+ "name": "The Stride",
+ "title": "A viaduct spine across the city, streets beneath it",
+ "size": "B",
+ "axes": "x east, z north, y up; metres; the camp at the origin on y 0",
+ "bounds": {
+  "minX": -330,
+  "maxX": 270,
+  "minZ": -230,
+  "maxZ": 250,
+  "ceiling": 60.0,
+  "killY": -20.0
+ },
+ "tiers": {
+  "-14": "the Goods Cut",
+  "-7": "the Vale and Arch Valley",
+  "0": "the Arch Yard level",
+  "7": "the upper town and the deck",
+  "14": "the Crag"
+ },
+ "description": "One structure organises the whole map: the Stride, a 600 m railway viaduct on brick arches, 7 m up, running edge to edge just north of the camp. The deck is a long open fighting line with a stalled train for cover, and the streets pass under it through the arches. North, you go straight under Arch Nought and up Crag Road and Crag Street to City Hall on the Crag. East, you climb a short stair onto the deck itself and run it to the Terminus, a raised door where the line lands on the upper town. South, a steep haul ramp drops you into the Vale and a cutting takes you down again to a sunk door in the Goods Cut. West, the yard runs out flat to the Valley Steps, then a sunken lane turns north under the viaduct into Arch Valley, where the piers stand 14 m tall, to the Arches Market hall, a door on the lowest street. The horde moves under the deck while you fight on it; the Signal Bridge and four stairs tie the deck, the valley and the upper town together.",
+ "hub": {
+  "name": "Arch Yard: a yard tucked under the viaduct, the Vale dropping away south",
+  "y": 0.0,
+  "camp": {
+   "x0": -25,
+   "z0": -25,
+   "x1": 25,
+   "z1": 25,
+   "fence": 24.8,
+   "gate_width": 10
+  },
+  "precinct": [
+   {
+    "x0": -50,
+    "z0": -45,
+    "x1": 70,
+    "z1": 40
+   }
+  ],
+  "gates": [
+   {
+    "id": "N",
+    "x": 0.0,
+    "z": 25.0,
+    "route": "n"
+   },
+   {
+    "id": "E",
+    "x": 25.0,
+    "z": 0.0,
+    "route": "e"
+   },
+   {
+    "id": "S",
+    "x": 0.0,
+    "z": -25.0,
+    "route": "s"
+   },
+   {
+    "id": "W",
+    "x": -25.0,
+    "z": 0.0,
+    "route": "w"
+   }
+  ]
+ },
+ "routes": [
+  {
+   "id": "n",
+   "label": "FINAL COURT",
+   "gate": "N",
+   "to": "court",
+   "color": "#ffc83d",
+   "length": 261.0,
+   "points": [
+    [
+     0.0,
+     0.0,
+     25.0
+    ],
+    [
+     0.0,
+     0.0,
+     39.0
+    ],
+    [
+     0.0,
+     0.0,
+     63.0
+    ],
+    [
+     0.0,
+     7.0,
+     119.0
+    ],
+    [
+     100.0,
+     7.0,
+     119.0
+    ],
+    [
+     100.0,
+     14.0,
+     161.0
+    ],
+    [
+     100.0,
+     14.0,
+     186.0
+    ]
+   ],
+   "segments": [
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 14,
+     "width": 8,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 24,
+     "width": 8,
+     "cover": "under the arch",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "ramp",
+     "heading": "N",
+     "length": 56,
+     "width": 8,
+     "cover": "walled",
+     "y0": 0.0,
+     "y1": 7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "E",
+     "length": 100,
+     "width": 12,
+     "cover": "open",
+     "y0": 7.0,
+     "y1": 7.0
+    },
+    {
+     "kind": "ramp",
+     "heading": "N",
+     "length": 42,
+     "width": 10,
+     "cover": "walled",
+     "y0": 7.0,
+     "y1": 14.0
+    },
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 25,
+     "width": 12,
+     "cover": "open",
+     "y0": 14.0,
+     "y1": 14.0
+    }
+   ],
+   "exit60": {
+    "turns": [],
+    "width_min": 8,
+    "width_max": 8,
+    "covers": [
+     "open",
+     "under the arch",
+     "walled"
+    ],
+    "kinds": [
+     "flat",
+     "ramp"
+    ],
+    "dy60": 2.75,
+    "ymin": 0.0,
+    "ymax": 2.75,
+    "heading_first": "N",
+    "profile": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.25,
+     0.5,
+     0.75,
+     1.0,
+     1.25,
+     1.5,
+     1.75,
+     2.0,
+     2.25,
+     2.5,
+     2.75
+    ]
+   }
+  },
+  {
+   "id": "e",
+   "label": "DOOR A",
+   "gate": "E",
+   "to": "door-a",
+   "color": "#ff5a5f",
+   "length": 266.0,
+   "points": [
+    [
+     25.0,
+     0.0,
+     0.0
+    ],
+    [
+     40.0,
+     0.0,
+     0.0
+    ],
+    [
+     40.0,
+     3.5,
+     7.0
+    ],
+    [
+     40.0,
+     3.5,
+     10.0
+    ],
+    [
+     40.0,
+     7.0,
+     17.0
+    ],
+    [
+     40.0,
+     7.0,
+     51.0
+    ],
+    [
+     240.0,
+     7.0,
+     51.0
+    ]
+   ],
+   "segments": [
+    {
+     "kind": "flat",
+     "heading": "E",
+     "length": 15,
+     "width": 10,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "stair",
+     "heading": "N",
+     "length": 7.0,
+     "width": 6,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 3.5
+    },
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 3.0,
+     "width": 6,
+     "cover": "open",
+     "y0": 3.5,
+     "y1": 3.5
+    },
+    {
+     "kind": "stair",
+     "heading": "N",
+     "length": 7.0,
+     "width": 6,
+     "cover": "open",
+     "y0": 3.5,
+     "y1": 7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 34,
+     "width": 6,
+     "cover": "open",
+     "y0": 7.0,
+     "y1": 7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "E",
+     "length": 200,
+     "width": 12,
+     "cover": "deck",
+     "y0": 7.0,
+     "y1": 7.0
+    }
+   ],
+   "exit60": {
+    "turns": [
+     [
+      15,
+      "L"
+     ]
+    ],
+    "width_min": 6,
+    "width_max": 10,
+    "covers": [
+     "open"
+    ],
+    "kinds": [
+     "flat",
+     "stair",
+     "flat",
+     "stair",
+     "flat"
+    ],
+    "dy60": 7.0,
+    "ymin": 0.0,
+    "ymax": 7.0,
+    "heading_first": "E",
+    "profile": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.88,
+     1.75,
+     2.62,
+     3.5,
+     3.5,
+     3.5,
+     4.38,
+     5.25,
+     6.12,
+     7.0,
+     7.0,
+     7.0,
+     7.0,
+     7.0,
+     7.0,
+     7.0,
+     7.0,
+     7.0,
+     7.0,
+     7.0,
+     7.0,
+     7.0,
+     7.0,
+     7.0
+    ]
+   }
+  },
+  {
+   "id": "s",
+   "label": "DOOR B",
+   "gate": "S",
+   "to": "door-b",
+   "color": "#38d0e8",
+   "length": 274.0,
+   "points": [
+    [
+     0.0,
+     0.0,
+     -25.0
+    ],
+    [
+     0.0,
+     -7.0,
+     -53.0
+    ],
+    [
+     0.0,
+     -7.0,
+     -93.0
+    ],
+    [
+     40.0,
+     -7.0,
+     -93.0
+    ],
+    [
+     96.0,
+     -14.0,
+     -93.0
+    ],
+    [
+     206.0,
+     -14.0,
+     -93.0
+    ]
+   ],
+   "segments": [
+    {
+     "kind": "ramp",
+     "heading": "S",
+     "length": 28,
+     "width": 10,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": -7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "S",
+     "length": 40,
+     "width": 10,
+     "cover": "open",
+     "y0": -7.0,
+     "y1": -7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "E",
+     "length": 40,
+     "width": 10,
+     "cover": "open",
+     "y0": -7.0,
+     "y1": -7.0
+    },
+    {
+     "kind": "ramp",
+     "heading": "E",
+     "length": 56,
+     "width": 10,
+     "cover": "cutting",
+     "y0": -7.0,
+     "y1": -14.0
+    },
+    {
+     "kind": "flat",
+     "heading": "E",
+     "length": 110,
+     "width": 10,
+     "cover": "cutting",
+     "y0": -14.0,
+     "y1": -14.0
+    }
+   ],
+   "exit60": {
+    "turns": [],
+    "width_min": 10,
+    "width_max": 10,
+    "covers": [
+     "open"
+    ],
+    "kinds": [
+     "ramp",
+     "flat"
+    ],
+    "dy60": -7.0,
+    "ymin": -7.0,
+    "ymax": 0.0,
+    "heading_first": "S",
+    "profile": [
+     0.0,
+     -0.5,
+     -1.0,
+     -1.5,
+     -2.0,
+     -2.5,
+     -3.0,
+     -3.5,
+     -4.0,
+     -4.5,
+     -5.0,
+     -5.5,
+     -6.0,
+     -6.5,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "id": "w",
+   "label": "DOOR C",
+   "gate": "W",
+   "to": "door-c",
+   "color": "#b98cff",
+   "length": 290.0,
+   "points": [
+    [
+     -25.0,
+     0.0,
+     0.0
+    ],
+    [
+     -65.0,
+     0.0,
+     0.0
+    ],
+    [
+     -72.0,
+     -3.5,
+     0.0
+    ],
+    [
+     -75.0,
+     -3.5,
+     0.0
+    ],
+    [
+     -82.0,
+     -7.0,
+     0.0
+    ],
+    [
+     -120.0,
+     -7.0,
+     0.0
+    ],
+    [
+     -120.0,
+     -7.0,
+     80.0
+    ],
+    [
+     -235.0,
+     -7.0,
+     80.0
+    ]
+   ],
+   "segments": [
+    {
+     "kind": "flat",
+     "heading": "W",
+     "length": 40,
+     "width": 12,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "stair",
+     "heading": "W",
+     "length": 7.0,
+     "width": 12,
+     "cover": "walled",
+     "y0": 0.0,
+     "y1": -3.5
+    },
+    {
+     "kind": "flat",
+     "heading": "W",
+     "length": 3.0,
+     "width": 12,
+     "cover": "walled",
+     "y0": -3.5,
+     "y1": -3.5
+    },
+    {
+     "kind": "stair",
+     "heading": "W",
+     "length": 7.0,
+     "width": 12,
+     "cover": "walled",
+     "y0": -3.5,
+     "y1": -7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "W",
+     "length": 38,
+     "width": 12,
+     "cover": "open",
+     "y0": -7.0,
+     "y1": -7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 80,
+     "width": 8,
+     "cover": "under the arch",
+     "y0": -7.0,
+     "y1": -7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "W",
+     "length": 115,
+     "width": 12,
+     "cover": "open",
+     "y0": -7.0,
+     "y1": -7.0
+    }
+   ],
+   "exit60": {
+    "turns": [],
+    "width_min": 12,
+    "width_max": 12,
+    "covers": [
+     "open",
+     "walled"
+    ],
+    "kinds": [
+     "flat",
+     "stair",
+     "flat",
+     "stair",
+     "flat"
+    ],
+    "dy60": -7.0,
+    "ymin": -7.0,
+    "ymax": 0.0,
+    "heading_first": "W",
+    "profile": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     -0.88,
+     -1.75,
+     -2.62,
+     -3.5,
+     -3.5,
+     -3.5,
+     -4.38,
+     -5.25,
+     -6.12,
+     -7.0,
+     -7.0
+    ]
+   }
+  }
+ ],
+ "doors": [
+  {
+   "id": "a",
+   "name": "The Terminus",
+   "x": 240,
+   "y": 7,
+   "z": 51,
+   "facing": "W",
+   "level": "raised",
+   "width": 10.0,
+   "height": 9.0,
+   "hall": "hall-a",
+   "plaza": {
+    "x0": 210.0,
+    "z0": 28.0,
+    "x1": 240,
+    "z1": 74.0
+   },
+   "note": "",
+   "bleed": {
+    "threshold": 30,
+    "warp": 60,
+    "drift": 110,
+    "rumour": 160
+   }
+  },
+  {
+   "id": "b",
+   "name": "The Goods Cut sheds",
+   "x": 206,
+   "y": -14,
+   "z": -93,
+   "facing": "W",
+   "level": "sunk",
+   "width": 10.0,
+   "height": 9.0,
+   "hall": "hall-b",
+   "plaza": {
+    "x0": 176.0,
+    "z0": -113.0,
+    "x1": 206,
+    "z1": -73.0
+   },
+   "note": "",
+   "bleed": {
+    "threshold": 30,
+    "warp": 60,
+    "drift": 110,
+    "rumour": 160
+   }
+  },
+  {
+   "id": "c",
+   "name": "Arches Market hall",
+   "x": -235,
+   "y": -7,
+   "z": 80,
+   "facing": "E",
+   "level": "ground",
+   "width": 10.0,
+   "height": 9.0,
+   "hall": "hall-c",
+   "plaza": {
+    "x0": -235,
+    "z0": 55.0,
+    "x1": -205.0,
+    "z1": 105.0
+   },
+   "note": "",
+   "bleed": {
+    "threshold": 30,
+    "warp": 60,
+    "drift": 110,
+    "rumour": 160
+   }
+  }
+ ],
+ "court": {
+  "name": "City Hall court",
+  "x": 100,
+  "y": 14,
+  "z": 218,
+  "x0": 63.0,
+  "z0": 186.0,
+  "x1": 137.0,
+  "z1": 250.0,
+  "gate": "S",
+  "gateway": {
+   "x": 100,
+   "y": 14,
+   "z": 186.0,
+   "width": 12.0
+  },
+  "wall_height": 7.0,
+  "hall": "city-hall",
+  "tower": {
+   "x": 100.0,
+   "z": 236.5,
+   "top": 76
+  }
+ },
+ "ground": [
+  {
+   "x0": -330,
+   "x1": 270,
+   "z0": -230,
+   "z1": -127,
+   "top": -7.0,
+   "id": "terrace-0",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 177,
+   "x1": 183,
+   "z0": -127,
+   "z1": -117,
+   "top": -10.5,
+   "id": "terrace-1",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": 177,
+   "z0": -127,
+   "z1": -113,
+   "top": -7.0,
+   "id": "terrace-2",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 183,
+   "x1": 270,
+   "z0": -127,
+   "z1": -113,
+   "top": -7.0,
+   "id": "terrace-3",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 177,
+   "x1": 183,
+   "z0": -117,
+   "z1": -113,
+   "top": -14.0,
+   "id": "terrace-4",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": 176,
+   "z0": -113,
+   "z1": -110,
+   "top": -7.0,
+   "id": "terrace-5",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 176,
+   "x1": 206,
+   "z0": -113,
+   "z1": -110,
+   "top": -14.0,
+   "id": "terrace-6",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 206,
+   "x1": 270,
+   "z0": -113,
+   "z1": -110,
+   "top": -7.0,
+   "id": "terrace-7",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": 96,
+   "z0": -110,
+   "z1": -98,
+   "top": -7.0,
+   "id": "terrace-8",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 96,
+   "x1": 270,
+   "z0": -110,
+   "z1": -98,
+   "top": -14.0,
+   "id": "terrace-9",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": 40,
+   "z0": -98,
+   "z1": -88,
+   "top": -7.0,
+   "id": "terrace-10",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 40,
+   "x1": 270,
+   "z0": -98,
+   "z1": -88,
+   "top": -14.0,
+   "id": "terrace-11",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": 96,
+   "z0": -88,
+   "z1": -76,
+   "top": -7.0,
+   "id": "terrace-12",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 96,
+   "x1": 270,
+   "z0": -88,
+   "z1": -76,
+   "top": -14.0,
+   "id": "terrace-13",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": 176,
+   "z0": -76,
+   "z1": -73,
+   "top": -7.0,
+   "id": "terrace-14",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 176,
+   "x1": 206,
+   "z0": -76,
+   "z1": -73,
+   "top": -14.0,
+   "id": "terrace-15",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 206,
+   "x1": 270,
+   "z0": -76,
+   "z1": -73,
+   "top": -7.0,
+   "id": "terrace-16",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": 270,
+   "z0": -73,
+   "z1": -70,
+   "top": -7.0,
+   "id": "terrace-17",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": -123,
+   "z0": -70,
+   "z1": -60,
+   "top": -7.0,
+   "id": "terrace-18",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -123,
+   "x1": -117,
+   "z0": -70,
+   "z1": -60,
+   "top": -3.5,
+   "id": "terrace-19",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -117,
+   "x1": 270,
+   "z0": -70,
+   "z1": -60,
+   "top": -7.0,
+   "id": "terrace-20",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -150,
+   "x1": -5,
+   "z0": -60,
+   "z1": -25,
+   "top": 0.0,
+   "id": "terrace-21",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -5,
+   "x1": 5,
+   "z0": -60,
+   "z1": -25,
+   "top": -7.0,
+   "id": "terrace-22",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 5,
+   "x1": 150,
+   "z0": -60,
+   "z1": -25,
+   "top": 0.0,
+   "id": "terrace-23",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -150,
+   "x1": 150,
+   "z0": -25,
+   "z1": -6,
+   "top": 0.0,
+   "id": "terrace-24",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -150,
+   "x1": -126,
+   "z0": -6,
+   "z1": 6,
+   "top": 0.0,
+   "id": "terrace-25",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -126,
+   "x1": -75,
+   "z0": -6,
+   "z1": 6,
+   "top": -7.0,
+   "id": "terrace-26",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -75,
+   "x1": -65,
+   "z0": -6,
+   "z1": 6,
+   "top": -3.5,
+   "id": "terrace-27",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -65,
+   "x1": 150,
+   "z0": -6,
+   "z1": 6,
+   "top": 0.0,
+   "id": "terrace-28",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -116,
+   "x1": 150,
+   "z0": 6,
+   "z1": 7,
+   "top": 0.0,
+   "id": "terrace-29",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 37,
+   "x1": 43,
+   "z0": 7,
+   "z1": 17,
+   "top": 3.5,
+   "id": "terrace-30",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": -150,
+   "z0": -60,
+   "z1": 37,
+   "top": -7.0,
+   "id": "terrace-31",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": -233,
+   "z0": 37,
+   "z1": 43,
+   "top": -7.0,
+   "id": "terrace-32",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -233,
+   "x1": -223,
+   "z0": 37,
+   "z1": 43,
+   "top": -3.5,
+   "id": "terrace-33",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -223,
+   "x1": -213,
+   "z0": 37,
+   "z1": 43,
+   "top": 0.0,
+   "id": "terrace-34",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -213,
+   "x1": -203,
+   "z0": 37,
+   "z1": 43,
+   "top": 3.5,
+   "id": "terrace-35",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -203,
+   "x1": -195,
+   "z0": 37,
+   "z1": 45,
+   "top": 7.0,
+   "id": "terrace-36",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -195,
+   "x1": -150,
+   "z0": 37,
+   "z1": 45,
+   "top": -7.0,
+   "id": "terrace-37",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": -203,
+   "z0": 43,
+   "z1": 45,
+   "top": -7.0,
+   "id": "terrace-38",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -116,
+   "x1": 37,
+   "z0": 7,
+   "z1": 54,
+   "top": 0.0,
+   "id": "terrace-39",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 43,
+   "x1": 150,
+   "z0": 7,
+   "z1": 54,
+   "top": 0.0,
+   "id": "terrace-40",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 37,
+   "x1": 43,
+   "z0": 17,
+   "z1": 54,
+   "top": 7.0,
+   "id": "terrace-41",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -150,
+   "x1": -124,
+   "z0": 6,
+   "z1": 74,
+   "top": 0.0,
+   "id": "terrace-42",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -124,
+   "x1": -116,
+   "z0": 6,
+   "z1": 74,
+   "top": -7.0,
+   "id": "terrace-43",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": -150,
+   "z0": 45,
+   "z1": 74,
+   "top": -7.0,
+   "id": "terrace-44",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -116,
+   "x1": 150,
+   "z0": 54,
+   "z1": 74,
+   "top": 0.0,
+   "id": "terrace-45",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -114,
+   "x1": 150,
+   "z0": 74,
+   "z1": 80,
+   "top": 0.0,
+   "id": "terrace-46",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": -114,
+   "z0": 74,
+   "z1": 86,
+   "top": -7.0,
+   "id": "terrace-47",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -114,
+   "x1": 117,
+   "z0": 80,
+   "z1": 86,
+   "top": 0.0,
+   "id": "terrace-48",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 150,
+   "x1": 270,
+   "z0": -60,
+   "z1": 90,
+   "top": 7.0,
+   "id": "terrace-49",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 117,
+   "x1": 123,
+   "z0": 80,
+   "z1": 90,
+   "top": 3.5,
+   "id": "terrace-50",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 123,
+   "x1": 150,
+   "z0": 80,
+   "z1": 90,
+   "top": 0.0,
+   "id": "terrace-51",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -150,
+   "x1": 117,
+   "z0": 86,
+   "z1": 90,
+   "top": 0.0,
+   "id": "terrace-52",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": -150,
+   "z0": 86,
+   "z1": 100,
+   "top": -7.0,
+   "id": "terrace-53",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -253,
+   "x1": -247,
+   "z0": 100,
+   "z1": 110,
+   "top": -3.5,
+   "id": "terrace-54",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -150,
+   "x1": -4,
+   "z0": 90,
+   "z1": 119,
+   "top": 7.0,
+   "id": "terrace-55",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -4,
+   "x1": 4,
+   "z0": 90,
+   "z1": 119,
+   "top": 0.0,
+   "id": "terrace-56",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 4,
+   "x1": 270,
+   "z0": 90,
+   "z1": 119,
+   "top": 7.0,
+   "id": "terrace-57",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -253,
+   "x1": -247,
+   "z0": 110,
+   "z1": 120,
+   "top": 0.0,
+   "id": "terrace-58",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": -253,
+   "z0": 100,
+   "z1": 130,
+   "top": -7.0,
+   "id": "terrace-59",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -247,
+   "x1": -150,
+   "z0": 100,
+   "z1": 130,
+   "top": -7.0,
+   "id": "terrace-60",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -150,
+   "x1": 270,
+   "z0": 119,
+   "z1": 130,
+   "top": 7.0,
+   "id": "terrace-61",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -253,
+   "x1": -247,
+   "z0": 120,
+   "z1": 130,
+   "top": 3.5,
+   "id": "terrace-62",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": 270,
+   "z0": 130,
+   "z1": 140,
+   "top": 7.0,
+   "id": "terrace-63",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": 177,
+   "z0": 140,
+   "z1": 150,
+   "top": 7.0,
+   "id": "terrace-64",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 177,
+   "x1": 183,
+   "z0": 140,
+   "z1": 150,
+   "top": 10.5,
+   "id": "terrace-65",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 183,
+   "x1": 270,
+   "z0": 140,
+   "z1": 150,
+   "top": 7.0,
+   "id": "terrace-66",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 30,
+   "x1": 95,
+   "z0": 150,
+   "z1": 161,
+   "top": 14.0,
+   "id": "terrace-67",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 95,
+   "x1": 105,
+   "z0": 150,
+   "z1": 161,
+   "top": 7.0,
+   "id": "terrace-68",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 105,
+   "x1": 200,
+   "z0": 150,
+   "z1": 161,
+   "top": 14.0,
+   "id": "terrace-69",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -330,
+   "x1": 30,
+   "z0": 150,
+   "z1": 250,
+   "top": 7.0,
+   "id": "terrace-70",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 200,
+   "x1": 270,
+   "z0": 150,
+   "z1": 250,
+   "top": 7.0,
+   "id": "terrace-71",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 30,
+   "x1": 200,
+   "z0": 161,
+   "z1": 250,
+   "top": 14.0,
+   "id": "terrace-72",
+   "role": "ground",
+   "bottom": -16.0
+  }
+ ],
+ "ramps": [
+  {
+   "id": "n-ramp-2",
+   "kind": "ramp",
+   "toward": "N",
+   "x0": -4.0,
+   "z0": 63.0,
+   "x1": 4.0,
+   "z1": 119.0,
+   "ylo": 0.0,
+   "yhi": 7.0,
+   "low": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 63.0
+   },
+   "high": {
+    "x": 0.0,
+    "y": 7.0,
+    "z": 119.0
+   },
+   "width": 8.0,
+   "run": 56.0,
+   "bottom": -0.25,
+   "grade": 0.125,
+   "horde": true,
+   "route": "n"
+  },
+  {
+   "id": "n-ramp-4",
+   "kind": "ramp",
+   "toward": "N",
+   "x0": 95.0,
+   "z0": 119.0,
+   "x1": 105.0,
+   "z1": 161.0,
+   "ylo": 7.0,
+   "yhi": 14.0,
+   "low": {
+    "x": 100.0,
+    "y": 7.0,
+    "z": 119.0
+   },
+   "high": {
+    "x": 100.0,
+    "y": 14.0,
+    "z": 161.0
+   },
+   "width": 10.0,
+   "run": 42.0,
+   "bottom": 6.75,
+   "grade": 0.167,
+   "horde": true,
+   "route": "n"
+  },
+  {
+   "id": "e-stair-1",
+   "kind": "stair",
+   "toward": "N",
+   "x0": 37.0,
+   "z0": 0.0,
+   "x1": 43.0,
+   "z1": 7.0,
+   "ylo": 0.0,
+   "yhi": 3.5,
+   "low": {
+    "x": 40.0,
+    "y": 0.0,
+    "z": 0.0
+   },
+   "high": {
+    "x": 40.0,
+    "y": 3.5,
+    "z": 7.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -0.25,
+   "grade": 0.5,
+   "horde": true,
+   "route": "e"
+  },
+  {
+   "id": "e-stair-3",
+   "kind": "stair",
+   "toward": "N",
+   "x0": 37.0,
+   "z0": 10.0,
+   "x1": 43.0,
+   "z1": 17.0,
+   "ylo": 3.5,
+   "yhi": 7.0,
+   "low": {
+    "x": 40.0,
+    "y": 3.5,
+    "z": 10.0
+   },
+   "high": {
+    "x": 40.0,
+    "y": 7.0,
+    "z": 17.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": 3.25,
+   "grade": 0.5,
+   "horde": true,
+   "route": "e"
+  },
+  {
+   "id": "s-ramp-0",
+   "kind": "ramp",
+   "toward": "N",
+   "x0": -5.0,
+   "z0": -53.0,
+   "x1": 5.0,
+   "z1": -25.0,
+   "ylo": -7.0,
+   "yhi": 0.0,
+   "low": {
+    "x": 0.0,
+    "y": -7.0,
+    "z": -53.0
+   },
+   "high": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -25.0
+   },
+   "width": 10.0,
+   "run": 28.0,
+   "bottom": -7.25,
+   "grade": 0.25,
+   "horde": true,
+   "route": "s"
+  },
+  {
+   "id": "s-ramp-3",
+   "kind": "ramp",
+   "toward": "W",
+   "x0": 40.0,
+   "z0": -98.0,
+   "x1": 96.0,
+   "z1": -88.0,
+   "ylo": -14.0,
+   "yhi": -7.0,
+   "low": {
+    "x": 96.0,
+    "y": -14.0,
+    "z": -93.0
+   },
+   "high": {
+    "x": 40.0,
+    "y": -7.0,
+    "z": -93.0
+   },
+   "width": 10.0,
+   "run": 56.0,
+   "bottom": -14.25,
+   "grade": 0.125,
+   "horde": true,
+   "route": "s"
+  },
+  {
+   "id": "w-stair-1",
+   "kind": "stair",
+   "toward": "E",
+   "x0": -72.0,
+   "z0": -6.0,
+   "x1": -65.0,
+   "z1": 6.0,
+   "ylo": -3.5,
+   "yhi": 0.0,
+   "low": {
+    "x": -72.0,
+    "y": -3.5,
+    "z": 0.0
+   },
+   "high": {
+    "x": -65.0,
+    "y": 0.0,
+    "z": 0.0
+   },
+   "width": 12.0,
+   "run": 7.0,
+   "bottom": -3.75,
+   "grade": 0.5,
+   "horde": true,
+   "route": "w"
+  },
+  {
+   "id": "w-stair-3",
+   "kind": "stair",
+   "toward": "E",
+   "x0": -82.0,
+   "z0": -6.0,
+   "x1": -75.0,
+   "z1": 6.0,
+   "ylo": -7.0,
+   "yhi": -3.5,
+   "low": {
+    "x": -82.0,
+    "y": -7.0,
+    "z": 0.0
+   },
+   "high": {
+    "x": -75.0,
+    "y": -3.5,
+    "z": 0.0
+   },
+   "width": 12.0,
+   "run": 7.0,
+   "bottom": -7.25,
+   "grade": 0.5,
+   "horde": true,
+   "route": "w"
+  },
+  {
+   "id": "valley-deck-stair-0",
+   "kind": "stair",
+   "toward": "E",
+   "x0": -240,
+   "z0": 37.0,
+   "x1": -233.0,
+   "z1": 43.0,
+   "ylo": -7.0,
+   "yhi": -3.5,
+   "low": {
+    "x": -240,
+    "y": -7,
+    "z": 40.0
+   },
+   "high": {
+    "x": -233.0,
+    "y": -3.5,
+    "z": 40.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -7.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "valley-deck-stair-1",
+   "kind": "stair",
+   "toward": "E",
+   "x0": -230.0,
+   "z0": 37.0,
+   "x1": -223.0,
+   "z1": 43.0,
+   "ylo": -3.5,
+   "yhi": 0.0,
+   "low": {
+    "x": -230.0,
+    "y": -3.5,
+    "z": 40.0
+   },
+   "high": {
+    "x": -223.0,
+    "y": 0.0,
+    "z": 40.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -3.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "valley-deck-stair-2",
+   "kind": "stair",
+   "toward": "E",
+   "x0": -220.0,
+   "z0": 37.0,
+   "x1": -213.0,
+   "z1": 43.0,
+   "ylo": 0.0,
+   "yhi": 3.5,
+   "low": {
+    "x": -220.0,
+    "y": 0.0,
+    "z": 40.0
+   },
+   "high": {
+    "x": -213.0,
+    "y": 3.5,
+    "z": 40.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -0.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "valley-deck-stair-3",
+   "kind": "stair",
+   "toward": "E",
+   "x0": -210.0,
+   "z0": 37.0,
+   "x1": -203.0,
+   "z1": 43.0,
+   "ylo": 3.5,
+   "yhi": 7.0,
+   "low": {
+    "x": -210.0,
+    "y": 3.5,
+    "z": 40.0
+   },
+   "high": {
+    "x": -203.0,
+    "y": 7.0,
+    "z": 40.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": 3.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "valley-north-stair-0",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -253.0,
+   "z0": 93,
+   "x1": -247.0,
+   "z1": 100.0,
+   "ylo": -7.0,
+   "yhi": -3.5,
+   "low": {
+    "x": -250.0,
+    "y": -7,
+    "z": 93
+   },
+   "high": {
+    "x": -250.0,
+    "y": -3.5,
+    "z": 100.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -7.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "valley-north-stair-1",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -253.0,
+   "z0": 103.0,
+   "x1": -247.0,
+   "z1": 110.0,
+   "ylo": -3.5,
+   "yhi": 0.0,
+   "low": {
+    "x": -250.0,
+    "y": -3.5,
+    "z": 103.0
+   },
+   "high": {
+    "x": -250.0,
+    "y": 0.0,
+    "z": 110.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -3.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "valley-north-stair-2",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -253.0,
+   "z0": 113.0,
+   "x1": -247.0,
+   "z1": 120.0,
+   "ylo": 0.0,
+   "yhi": 3.5,
+   "low": {
+    "x": -250.0,
+    "y": 0.0,
+    "z": 113.0
+   },
+   "high": {
+    "x": -250.0,
+    "y": 3.5,
+    "z": 120.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -0.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "valley-north-stair-3",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -253.0,
+   "z0": 123.0,
+   "x1": -247.0,
+   "z1": 130.0,
+   "ylo": 3.5,
+   "yhi": 7.0,
+   "low": {
+    "x": -250.0,
+    "y": 3.5,
+    "z": 123.0
+   },
+   "high": {
+    "x": -250.0,
+    "y": 7.0,
+    "z": 130.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": 3.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "vale-stair-0",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -123.0,
+   "z0": -77,
+   "x1": -117.0,
+   "z1": -70.0,
+   "ylo": -7.0,
+   "yhi": -3.5,
+   "low": {
+    "x": -120.0,
+    "y": -7,
+    "z": -77
+   },
+   "high": {
+    "x": -120.0,
+    "y": -3.5,
+    "z": -70.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -7.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "vale-stair-1",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -123.0,
+   "z0": -67.0,
+   "x1": -117.0,
+   "z1": -60.0,
+   "ylo": -3.5,
+   "yhi": 0.0,
+   "low": {
+    "x": -120.0,
+    "y": -3.5,
+    "z": -67.0
+   },
+   "high": {
+    "x": -120.0,
+    "y": 0.0,
+    "z": -60.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -3.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "vale-ramp",
+   "kind": "ramp",
+   "toward": "N",
+   "x0": -46,
+   "z0": -116,
+   "x1": -34,
+   "z1": -60,
+   "ylo": -7.0,
+   "yhi": 0.0,
+   "low": {
+    "x": -40.0,
+    "y": -7,
+    "z": -116
+   },
+   "high": {
+    "x": -40.0,
+    "y": 0,
+    "z": -60
+   },
+   "width": 12,
+   "run": 56,
+   "bottom": -7.25,
+   "grade": 0.125,
+   "horde": true
+  },
+  {
+   "id": "upper-stair-0",
+   "kind": "stair",
+   "toward": "N",
+   "x0": 117.0,
+   "z0": 73,
+   "x1": 123.0,
+   "z1": 80.0,
+   "ylo": 0.0,
+   "yhi": 3.5,
+   "low": {
+    "x": 120.0,
+    "y": 0,
+    "z": 73
+   },
+   "high": {
+    "x": 120.0,
+    "y": 3.5,
+    "z": 80.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -0.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "upper-stair-1",
+   "kind": "stair",
+   "toward": "N",
+   "x0": 117.0,
+   "z0": 83.0,
+   "x1": 123.0,
+   "z1": 90.0,
+   "ylo": 3.5,
+   "yhi": 7.0,
+   "low": {
+    "x": 120.0,
+    "y": 3.5,
+    "z": 83.0
+   },
+   "high": {
+    "x": 120.0,
+    "y": 7.0,
+    "z": 90.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": 3.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "east-rise-ramp",
+   "kind": "ramp",
+   "toward": "E",
+   "x0": 94,
+   "z0": 4,
+   "x1": 150,
+   "z1": 16,
+   "ylo": 0.0,
+   "yhi": 7.0,
+   "low": {
+    "x": 94,
+    "y": 0,
+    "z": 10.0
+   },
+   "high": {
+    "x": 150,
+    "y": 7,
+    "z": 10.0
+   },
+   "width": 12,
+   "run": 56,
+   "bottom": -0.25,
+   "grade": 0.125,
+   "horde": true
+  },
+  {
+   "id": "cut-stair-0",
+   "kind": "stair",
+   "toward": "S",
+   "x0": 177.0,
+   "z0": -117.0,
+   "x1": 183.0,
+   "z1": -110,
+   "ylo": -14.0,
+   "yhi": -10.5,
+   "low": {
+    "x": 180.0,
+    "y": -14,
+    "z": -110
+   },
+   "high": {
+    "x": 180.0,
+    "y": -10.5,
+    "z": -117.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -14.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "cut-stair-1",
+   "kind": "stair",
+   "toward": "S",
+   "x0": 177.0,
+   "z0": -127.0,
+   "x1": 183.0,
+   "z1": -120.0,
+   "ylo": -10.5,
+   "yhi": -7.0,
+   "low": {
+    "x": 180.0,
+    "y": -10.5,
+    "z": -120.0
+   },
+   "high": {
+    "x": 180.0,
+    "y": -7.0,
+    "z": -127.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -10.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "crag-stair-0",
+   "kind": "stair",
+   "toward": "N",
+   "x0": 177.0,
+   "z0": 133,
+   "x1": 183.0,
+   "z1": 140.0,
+   "ylo": 7.0,
+   "yhi": 10.5,
+   "low": {
+    "x": 180.0,
+    "y": 7,
+    "z": 133
+   },
+   "high": {
+    "x": 180.0,
+    "y": 10.5,
+    "z": 140.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": 6.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "crag-stair-1",
+   "kind": "stair",
+   "toward": "N",
+   "x0": 177.0,
+   "z0": 143.0,
+   "x1": 183.0,
+   "z1": 150.0,
+   "ylo": 10.5,
+   "yhi": 14.0,
+   "low": {
+    "x": 180.0,
+    "y": 10.5,
+    "z": 143.0
+   },
+   "high": {
+    "x": 180.0,
+    "y": 14.0,
+    "z": 150.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": 10.25,
+   "grade": 0.5,
+   "horde": true
+  }
+ ],
+ "blocks": [
+  {
+   "id": "court-wall-S-a",
+   "role": "court-wall",
+   "x0": 63.0,
+   "z0": 186.0,
+   "x1": 94.0,
+   "z1": 187.5,
+   "bottom": 14.0,
+   "top": 21.0
+  },
+  {
+   "id": "court-wall-S-b",
+   "role": "court-wall",
+   "x0": 106.0,
+   "z0": 186.0,
+   "x1": 137.0,
+   "z1": 187.5,
+   "bottom": 14.0,
+   "top": 21.0
+  },
+  {
+   "id": "court-gate-lintel",
+   "role": "court-gate",
+   "x0": 94.0,
+   "z0": 185.0,
+   "x1": 106.0,
+   "z1": 188.5,
+   "bottom": 24.0,
+   "top": 26.5
+  },
+  {
+   "id": "court-gate-pier-a",
+   "role": "court-gate",
+   "x0": 92.0,
+   "z0": 185.0,
+   "x1": 94.0,
+   "z1": 188.5,
+   "bottom": 14.0,
+   "top": 26.5
+  },
+  {
+   "id": "court-gate-pier-b",
+   "role": "court-gate",
+   "x0": 106.0,
+   "z0": 185.0,
+   "x1": 108.0,
+   "z1": 188.5,
+   "bottom": 14.0,
+   "top": 26.5
+  },
+  {
+   "id": "court-wall-N",
+   "role": "court-wall",
+   "x0": 63.0,
+   "z0": 248.5,
+   "x1": 137.0,
+   "z1": 250.0,
+   "bottom": 14.0,
+   "top": 21.0
+  },
+  {
+   "id": "court-wall-W",
+   "role": "court-wall",
+   "x0": 63.0,
+   "z0": 186.0,
+   "x1": 64.5,
+   "z1": 250.0,
+   "bottom": 14.0,
+   "top": 21.0
+  },
+  {
+   "id": "court-wall-E",
+   "role": "court-wall",
+   "x0": 135.5,
+   "z0": 186.0,
+   "x1": 137.0,
+   "z1": 250.0,
+   "bottom": 14.0,
+   "top": 21.0
+  },
+  {
+   "id": "city-hall",
+   "role": "city-hall",
+   "x0": 73.0,
+   "z0": 224.5,
+   "x1": 127.0,
+   "z1": 248.5,
+   "bottom": 14.0,
+   "top": 33.0,
+   "roof": "walkable",
+   "hatch": true
+  },
+  {
+   "id": "city-hall-tower",
+   "role": "tower",
+   "x0": 94.0,
+   "z0": 230.5,
+   "x1": 106.0,
+   "z1": 242.5,
+   "bottom": 33.0,
+   "top": 76.0
+  },
+  {
+   "id": "hall-a",
+   "role": "hall",
+   "x0": 240,
+   "z0": 33.0,
+   "x1": 262.0,
+   "z1": 69.0,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "hatch": true
+  },
+  {
+   "id": "hall-b",
+   "role": "hall",
+   "x0": 206,
+   "z0": -108.0,
+   "x1": 228.0,
+   "z1": -78.0,
+   "bottom": -14.0,
+   "top": 2.0,
+   "roof": "walkable",
+   "hatch": true
+  },
+  {
+   "id": "hall-c",
+   "role": "hall",
+   "x0": -257.0,
+   "z0": 60.0,
+   "x1": -235,
+   "z1": 100.0,
+   "bottom": -7.0,
+   "top": 9.0,
+   "roof": "walkable",
+   "hatch": true
+  },
+  {
+   "id": "viaduct-deck",
+   "role": "viaduct",
+   "x0": -330,
+   "z0": 45,
+   "x1": 270,
+   "z1": 57,
+   "bottom": 6.0,
+   "top": 7.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "viaduct-parapet-s--330",
+   "role": "parapet",
+   "x0": -330.0,
+   "z0": 45,
+   "x1": -205,
+   "z1": 45.5,
+   "bottom": 7.0,
+   "top": 8.1
+  },
+  {
+   "id": "viaduct-parapet-s--195",
+   "role": "parapet",
+   "x0": -195,
+   "z0": 45,
+   "x1": 36,
+   "z1": 45.5,
+   "bottom": 7.0,
+   "top": 8.1
+  },
+  {
+   "id": "viaduct-parapet-s-44",
+   "role": "parapet",
+   "x0": 44,
+   "z0": 45,
+   "x1": 270,
+   "z1": 45.5,
+   "bottom": 7.0,
+   "top": 8.1
+  },
+  {
+   "id": "viaduct-parapet-n--330",
+   "role": "parapet",
+   "x0": -330.0,
+   "z0": 56.5,
+   "x1": -62,
+   "z1": 57,
+   "bottom": 7.0,
+   "top": 8.1
+  },
+  {
+   "id": "viaduct-parapet-n--58",
+   "role": "parapet",
+   "x0": -58,
+   "z0": 56.5,
+   "x1": 270,
+   "z1": 57,
+   "bottom": 7.0,
+   "top": 8.1
+  },
+  {
+   "id": "viaduct-pier--325",
+   "role": "pier",
+   "x0": -326.0,
+   "z0": 45,
+   "x1": -324.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--315",
+   "role": "pier",
+   "x0": -316.0,
+   "z0": 45,
+   "x1": -314.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--305",
+   "role": "pier",
+   "x0": -306.0,
+   "z0": 45,
+   "x1": -304.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--295",
+   "role": "pier",
+   "x0": -296.0,
+   "z0": 45,
+   "x1": -294.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--285",
+   "role": "pier",
+   "x0": -286.0,
+   "z0": 45,
+   "x1": -284.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--275",
+   "role": "pier",
+   "x0": -276.0,
+   "z0": 45,
+   "x1": -274.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--265",
+   "role": "pier",
+   "x0": -266.0,
+   "z0": 45,
+   "x1": -264.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--255",
+   "role": "pier",
+   "x0": -256.0,
+   "z0": 45,
+   "x1": -254.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--245",
+   "role": "pier",
+   "x0": -246.0,
+   "z0": 45,
+   "x1": -244.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--235",
+   "role": "pier",
+   "x0": -236.0,
+   "z0": 45,
+   "x1": -234.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--225",
+   "role": "pier",
+   "x0": -226.0,
+   "z0": 45,
+   "x1": -224.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--215",
+   "role": "pier",
+   "x0": -216.0,
+   "z0": 45,
+   "x1": -214.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--205",
+   "role": "pier",
+   "x0": -206.0,
+   "z0": 45,
+   "x1": -204.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--195",
+   "role": "pier",
+   "x0": -196.0,
+   "z0": 45,
+   "x1": -194.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--185",
+   "role": "pier",
+   "x0": -186.0,
+   "z0": 45,
+   "x1": -184.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--175",
+   "role": "pier",
+   "x0": -176.0,
+   "z0": 45,
+   "x1": -174.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--165",
+   "role": "pier",
+   "x0": -166.0,
+   "z0": 45,
+   "x1": -164.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--155",
+   "role": "pier",
+   "x0": -156.0,
+   "z0": 45,
+   "x1": -154.0,
+   "z1": 57,
+   "bottom": -7.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--145",
+   "role": "pier",
+   "x0": -146.0,
+   "z0": 45,
+   "x1": -144.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--135",
+   "role": "pier",
+   "x0": -136.0,
+   "z0": 45,
+   "x1": -134.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--125",
+   "role": "pier",
+   "x0": -126.0,
+   "z0": 45,
+   "x1": -124.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--115",
+   "role": "pier",
+   "x0": -116.0,
+   "z0": 45,
+   "x1": -114.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--105",
+   "role": "pier",
+   "x0": -106.0,
+   "z0": 45,
+   "x1": -104.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--95",
+   "role": "pier",
+   "x0": -96.0,
+   "z0": 45,
+   "x1": -94.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--85",
+   "role": "pier",
+   "x0": -86.0,
+   "z0": 45,
+   "x1": -84.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--75",
+   "role": "pier",
+   "x0": -76.0,
+   "z0": 45,
+   "x1": -74.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--65",
+   "role": "pier",
+   "x0": -66.0,
+   "z0": 45,
+   "x1": -64.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--55",
+   "role": "pier",
+   "x0": -56.0,
+   "z0": 45,
+   "x1": -54.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--45",
+   "role": "pier",
+   "x0": -46.0,
+   "z0": 45,
+   "x1": -44.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--35",
+   "role": "pier",
+   "x0": -36.0,
+   "z0": 45,
+   "x1": -34.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--25",
+   "role": "pier",
+   "x0": -26.0,
+   "z0": 45,
+   "x1": -24.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier--15",
+   "role": "pier",
+   "x0": -16.0,
+   "z0": 45,
+   "x1": -14.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-15",
+   "role": "pier",
+   "x0": 14.0,
+   "z0": 45,
+   "x1": 16.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-25",
+   "role": "pier",
+   "x0": 24.0,
+   "z0": 45,
+   "x1": 26.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-35",
+   "role": "pier",
+   "x0": 34.0,
+   "z0": 45,
+   "x1": 36.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-45",
+   "role": "pier",
+   "x0": 44.0,
+   "z0": 45,
+   "x1": 46.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-55",
+   "role": "pier",
+   "x0": 54.0,
+   "z0": 45,
+   "x1": 56.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-65",
+   "role": "pier",
+   "x0": 64.0,
+   "z0": 45,
+   "x1": 66.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-75",
+   "role": "pier",
+   "x0": 74.0,
+   "z0": 45,
+   "x1": 76.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-85",
+   "role": "pier",
+   "x0": 84.0,
+   "z0": 45,
+   "x1": 86.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-95",
+   "role": "pier",
+   "x0": 94.0,
+   "z0": 45,
+   "x1": 96.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-105",
+   "role": "pier",
+   "x0": 104.0,
+   "z0": 45,
+   "x1": 106.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-115",
+   "role": "pier",
+   "x0": 114.0,
+   "z0": 45,
+   "x1": 116.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-125",
+   "role": "pier",
+   "x0": 124.0,
+   "z0": 45,
+   "x1": 126.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-135",
+   "role": "pier",
+   "x0": 134.0,
+   "z0": 45,
+   "x1": 136.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "viaduct-pier-145",
+   "role": "pier",
+   "x0": 144.0,
+   "z0": 45,
+   "x1": 146.0,
+   "z1": 57,
+   "bottom": 0.0,
+   "top": 6.0
+  },
+  {
+   "id": "train-car-0",
+   "role": "wagon",
+   "x0": -150.0,
+   "z0": 52.5,
+   "x1": -130.0,
+   "z1": 55.5,
+   "bottom": 7.0,
+   "top": 11.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "train-car-1",
+   "role": "wagon",
+   "x0": -128.5,
+   "z0": 52.5,
+   "x1": -108.5,
+   "z1": 55.5,
+   "bottom": 7.0,
+   "top": 11.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "train-car-2",
+   "role": "wagon",
+   "x0": -107.0,
+   "z0": 52.5,
+   "x1": -87.0,
+   "z1": 55.5,
+   "bottom": 7.0,
+   "top": 11.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "train-car-3",
+   "role": "wagon",
+   "x0": -85.5,
+   "z0": 52.5,
+   "x1": -65.5,
+   "z1": 55.5,
+   "bottom": 7.0,
+   "top": 11.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "train-car-4",
+   "role": "wagon",
+   "x0": -64.0,
+   "z0": 52.5,
+   "x1": -44.0,
+   "z1": 55.5,
+   "bottom": 7.0,
+   "top": 11.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "train-car-5",
+   "role": "wagon",
+   "x0": -42.5,
+   "z0": 52.5,
+   "x1": -22.5,
+   "z1": 55.5,
+   "bottom": 7.0,
+   "top": 11.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "train-car-6",
+   "role": "wagon",
+   "x0": -21.0,
+   "z0": 52.5,
+   "x1": -1.0,
+   "z1": 55.5,
+   "bottom": 7.0,
+   "top": 11.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "signal-bridge",
+   "role": "bridge",
+   "x0": -62,
+   "z0": 57,
+   "x1": -58,
+   "z1": 90,
+   "bottom": 6.0,
+   "top": 7.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "signal-bridge-parapet-w",
+   "role": "parapet",
+   "x0": -62,
+   "z0": 57,
+   "x1": -61.5,
+   "z1": 90,
+   "bottom": 7.0,
+   "top": 8.1
+  },
+  {
+   "id": "signal-bridge-parapet-e",
+   "role": "parapet",
+   "x0": -58.5,
+   "z0": 57,
+   "x1": -58,
+   "z1": 90,
+   "bottom": 7.0,
+   "top": 8.1
+  },
+  {
+   "id": "lot-vale-w-0",
+   "role": "lot",
+   "x0": -325,
+   "z0": -203,
+   "x1": -305,
+   "z1": -193,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-1",
+   "role": "lot",
+   "x0": -305,
+   "z0": -203,
+   "x1": -290,
+   "z1": -193,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-2",
+   "role": "lot",
+   "x0": -290,
+   "z0": -203,
+   "x1": -275,
+   "z1": -193,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-3",
+   "role": "lot",
+   "x0": -325,
+   "z0": -225,
+   "x1": -305,
+   "z1": -215,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-4",
+   "role": "lot",
+   "x0": -285,
+   "z0": -215,
+   "x1": -275,
+   "z1": -203,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-5",
+   "role": "lot",
+   "x0": -265,
+   "z0": -205,
+   "x1": -250,
+   "z1": -195,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-6",
+   "role": "lot",
+   "x0": -250,
+   "z0": -205,
+   "x1": -230,
+   "z1": -195,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-7",
+   "role": "lot",
+   "x0": -230,
+   "z0": -205,
+   "x1": -205,
+   "z1": -195,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-8",
+   "role": "lot",
+   "x0": -265,
+   "z0": -225,
+   "x1": -245,
+   "z1": -215,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-9",
+   "role": "lot",
+   "x0": -215,
+   "z0": -225,
+   "x1": -205,
+   "z1": -215,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-10",
+   "role": "lot",
+   "x0": -265,
+   "z0": -215,
+   "x1": -255,
+   "z1": -205,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-11",
+   "role": "lot",
+   "x0": -215,
+   "z0": -215,
+   "x1": -205,
+   "z1": -205,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-12",
+   "role": "lot",
+   "x0": -165,
+   "z0": -203,
+   "x1": -145,
+   "z1": -193,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-13",
+   "role": "lot",
+   "x0": -195,
+   "z0": -225,
+   "x1": -175,
+   "z1": -215,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-14",
+   "role": "lot",
+   "x0": -175,
+   "z0": -225,
+   "x1": -145,
+   "z1": -215,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-15",
+   "role": "lot",
+   "x0": -195,
+   "z0": -215,
+   "x1": -185,
+   "z1": -203,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-16",
+   "role": "lot",
+   "x0": -155,
+   "z0": -215,
+   "x1": -145,
+   "z1": -203,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-17",
+   "role": "lot",
+   "x0": -135,
+   "z0": -205,
+   "x1": -115,
+   "z1": -195,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-18",
+   "role": "lot",
+   "x0": -100,
+   "z0": -205,
+   "x1": -75,
+   "z1": -195,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-19",
+   "role": "lot",
+   "x0": -135,
+   "z0": -225,
+   "x1": -105,
+   "z1": -215,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-20",
+   "role": "lot",
+   "x0": -105,
+   "z0": -225,
+   "x1": -75,
+   "z1": -215,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-21",
+   "role": "lot",
+   "x0": -135,
+   "z0": -215,
+   "x1": -125,
+   "z1": -205,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-22",
+   "role": "lot",
+   "x0": -85,
+   "z0": -215,
+   "x1": -75,
+   "z1": -205,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-23",
+   "role": "lot",
+   "x0": -65,
+   "z0": -205,
+   "x1": -45,
+   "z1": -195,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-24",
+   "role": "lot",
+   "x0": -45,
+   "z0": -205,
+   "x1": -30,
+   "z1": -195,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-25",
+   "role": "lot",
+   "x0": -65,
+   "z0": -225,
+   "x1": -40,
+   "z1": -215,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-26",
+   "role": "lot",
+   "x0": -40,
+   "z0": -225,
+   "x1": -30,
+   "z1": -215,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-27",
+   "role": "lot",
+   "x0": -65,
+   "z0": -215,
+   "x1": -55,
+   "z1": -205,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-28",
+   "role": "lot",
+   "x0": -325,
+   "z0": -165,
+   "x1": -310,
+   "z1": -155,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-29",
+   "role": "lot",
+   "x0": -310,
+   "z0": -165,
+   "x1": -285,
+   "z1": -155,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-30",
+   "role": "lot",
+   "x0": -325,
+   "z0": -185,
+   "x1": -310,
+   "z1": -175,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-31",
+   "role": "lot",
+   "x0": -310,
+   "z0": -185,
+   "x1": -295,
+   "z1": -175,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-32",
+   "role": "lot",
+   "x0": -325,
+   "z0": -175,
+   "x1": -315,
+   "z1": -165,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-33",
+   "role": "lot",
+   "x0": -275,
+   "z0": -165,
+   "x1": -250,
+   "z1": -155,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-34",
+   "role": "lot",
+   "x0": -275,
+   "z0": -185,
+   "x1": -245,
+   "z1": -175,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-35",
+   "role": "lot",
+   "x0": -245,
+   "z0": -185,
+   "x1": -235,
+   "z1": -175,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-36",
+   "role": "lot",
+   "x0": -225,
+   "z0": -165,
+   "x1": -195,
+   "z1": -155,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-37",
+   "role": "lot",
+   "x0": -195,
+   "z0": -165,
+   "x1": -180,
+   "z1": -155,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-38",
+   "role": "lot",
+   "x0": -180,
+   "z0": -165,
+   "x1": -165,
+   "z1": -155,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-39",
+   "role": "lot",
+   "x0": -225,
+   "z0": -185,
+   "x1": -205,
+   "z1": -175,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-40",
+   "role": "lot",
+   "x0": -205,
+   "z0": -185,
+   "x1": -175,
+   "z1": -175,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-41",
+   "role": "lot",
+   "x0": -175,
+   "z0": -185,
+   "x1": -165,
+   "z1": -175,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-42",
+   "role": "lot",
+   "x0": -225,
+   "z0": -175,
+   "x1": -215,
+   "z1": -165,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-43",
+   "role": "lot",
+   "x0": -130,
+   "z0": -165,
+   "x1": -115,
+   "z1": -155,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-44",
+   "role": "lot",
+   "x0": -135,
+   "z0": -185,
+   "x1": -115,
+   "z1": -175,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-45",
+   "role": "lot",
+   "x0": -125,
+   "z0": -175,
+   "x1": -115,
+   "z1": -165,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-46",
+   "role": "lot",
+   "x0": -105,
+   "z0": -165,
+   "x1": -90,
+   "z1": -155,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-47",
+   "role": "lot",
+   "x0": -90,
+   "z0": -165,
+   "x1": -70,
+   "z1": -155,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-48",
+   "role": "lot",
+   "x0": -70,
+   "z0": -165,
+   "x1": -45,
+   "z1": -155,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-49",
+   "role": "lot",
+   "x0": -105,
+   "z0": -185,
+   "x1": -75,
+   "z1": -175,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-50",
+   "role": "lot",
+   "x0": -105,
+   "z0": -175,
+   "x1": -95,
+   "z1": -165,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-51",
+   "role": "lot",
+   "x0": -55,
+   "z0": -175,
+   "x1": -45,
+   "z1": -165,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-52",
+   "role": "lot",
+   "x0": -320,
+   "z0": -121,
+   "x1": -300,
+   "z1": -111,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-53",
+   "role": "lot",
+   "x0": -320,
+   "z0": -143,
+   "x1": -290,
+   "z1": -133,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-54",
+   "role": "lot",
+   "x0": -290,
+   "z0": -143,
+   "x1": -270,
+   "z1": -133,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-55",
+   "role": "lot",
+   "x0": -280,
+   "z0": -133,
+   "x1": -270,
+   "z1": -121,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-56",
+   "role": "lot",
+   "x0": -260,
+   "z0": -123,
+   "x1": -240,
+   "z1": -113,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-57",
+   "role": "lot",
+   "x0": -260,
+   "z0": -143,
+   "x1": -230,
+   "z1": -133,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-58",
+   "role": "lot",
+   "x0": -230,
+   "z0": -143,
+   "x1": -200,
+   "z1": -133,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-59",
+   "role": "lot",
+   "x0": -210,
+   "z0": -133,
+   "x1": -200,
+   "z1": -123,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-60",
+   "role": "lot",
+   "x0": -190,
+   "z0": -123,
+   "x1": -170,
+   "z1": -113,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-61",
+   "role": "lot",
+   "x0": -170,
+   "z0": -123,
+   "x1": -150,
+   "z1": -113,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-62",
+   "role": "lot",
+   "x0": -190,
+   "z0": -143,
+   "x1": -170,
+   "z1": -133,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-63",
+   "role": "lot",
+   "x0": -190,
+   "z0": -133,
+   "x1": -180,
+   "z1": -123,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-64",
+   "role": "lot",
+   "x0": -160,
+   "z0": -133,
+   "x1": -150,
+   "z1": -123,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-65",
+   "role": "lot",
+   "x0": -140,
+   "z0": -121,
+   "x1": -115,
+   "z1": -111,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-66",
+   "role": "lot",
+   "x0": -100,
+   "z0": -121,
+   "x1": -90,
+   "z1": -111,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-67",
+   "role": "lot",
+   "x0": -140,
+   "z0": -143,
+   "x1": -115,
+   "z1": -133,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-68",
+   "role": "lot",
+   "x0": -100,
+   "z0": -133,
+   "x1": -90,
+   "z1": -121,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-69",
+   "role": "lot",
+   "x0": -80,
+   "z0": -123,
+   "x1": -50,
+   "z1": -113,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-70",
+   "role": "lot",
+   "x0": -80,
+   "z0": -143,
+   "x1": -60,
+   "z1": -133,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-71",
+   "role": "lot",
+   "x0": -60,
+   "z0": -143,
+   "x1": -40,
+   "z1": -133,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-72",
+   "role": "lot",
+   "x0": -50,
+   "z0": -133,
+   "x1": -40,
+   "z1": -123,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-73",
+   "role": "lot",
+   "x0": -300,
+   "z0": -83,
+   "x1": -280,
+   "z1": -73,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-74",
+   "role": "lot",
+   "x0": -280,
+   "z0": -83,
+   "x1": -265,
+   "z1": -73,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-75",
+   "role": "lot",
+   "x0": -325,
+   "z0": -103,
+   "x1": -305,
+   "z1": -93,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-76",
+   "role": "lot",
+   "x0": -285,
+   "z0": -103,
+   "x1": -265,
+   "z1": -93,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-77",
+   "role": "lot",
+   "x0": -325,
+   "z0": -93,
+   "x1": -315,
+   "z1": -83,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-78",
+   "role": "lot",
+   "x0": -235,
+   "z0": -83,
+   "x1": -215,
+   "z1": -73,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-79",
+   "role": "lot",
+   "x0": -255,
+   "z0": -103,
+   "x1": -230,
+   "z1": -93,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-80",
+   "role": "lot",
+   "x0": -230,
+   "z0": -103,
+   "x1": -215,
+   "z1": -93,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-81",
+   "role": "lot",
+   "x0": -225,
+   "z0": -93,
+   "x1": -215,
+   "z1": -83,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-82",
+   "role": "lot",
+   "x0": -205,
+   "z0": -83,
+   "x1": -175,
+   "z1": -73,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-83",
+   "role": "lot",
+   "x0": -175,
+   "z0": -83,
+   "x1": -145,
+   "z1": -73,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-84",
+   "role": "lot",
+   "x0": -205,
+   "z0": -103,
+   "x1": -190,
+   "z1": -93,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-85",
+   "role": "lot",
+   "x0": -170,
+   "z0": -103,
+   "x1": -145,
+   "z1": -93,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-86",
+   "role": "lot",
+   "x0": -205,
+   "z0": -93,
+   "x1": -195,
+   "z1": -83,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-87",
+   "role": "lot",
+   "x0": -110,
+   "z0": -83,
+   "x1": -95,
+   "z1": -73,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-88",
+   "role": "lot",
+   "x0": -95,
+   "z0": -83,
+   "x1": -75,
+   "z1": -73,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-89",
+   "role": "lot",
+   "x0": -135,
+   "z0": -103,
+   "x1": -120,
+   "z1": -93,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-90",
+   "role": "lot",
+   "x0": -120,
+   "z0": -103,
+   "x1": -90,
+   "z1": -93,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-91",
+   "role": "lot",
+   "x0": -90,
+   "z0": -103,
+   "x1": -75,
+   "z1": -93,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-92",
+   "role": "lot",
+   "x0": -85,
+   "z0": -93,
+   "x1": -75,
+   "z1": -83,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-w-93",
+   "role": "lot",
+   "x0": -65,
+   "z0": -93,
+   "x1": -55,
+   "z1": -83,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "vale-w"
+  },
+  {
+   "id": "lot-vale-c-94",
+   "role": "lot",
+   "x0": -20,
+   "z0": -195,
+   "x1": 5,
+   "z1": -180,
+   "bottom": -7.0,
+   "top": 12.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-95",
+   "role": "lot",
+   "x0": 5,
+   "z0": -195,
+   "x1": 25,
+   "z1": -180,
+   "bottom": -7.0,
+   "top": 12.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-96",
+   "role": "lot",
+   "x0": -20,
+   "z0": -215,
+   "x1": -5,
+   "z1": -195,
+   "bottom": -7.0,
+   "top": 15.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-97",
+   "role": "lot",
+   "x0": 81,
+   "z0": -215,
+   "x1": 96,
+   "z1": -195,
+   "bottom": -7.0,
+   "top": 9.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-98",
+   "role": "lot",
+   "x0": -25,
+   "z0": -133,
+   "x1": 0,
+   "z1": -118,
+   "bottom": -7.0,
+   "top": 9.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-99",
+   "role": "lot",
+   "x0": -25,
+   "z0": -168,
+   "x1": -5,
+   "z1": -153,
+   "bottom": -7.0,
+   "top": 12.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-100",
+   "role": "lot",
+   "x0": -5,
+   "z0": -168,
+   "x1": 20,
+   "z1": -153,
+   "bottom": -7.0,
+   "top": 9.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-101",
+   "role": "lot",
+   "x0": 20,
+   "z0": -168,
+   "x1": 30,
+   "z1": -153,
+   "bottom": -7.0,
+   "top": 9.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-102",
+   "role": "lot",
+   "x0": -25,
+   "z0": -153,
+   "x1": -10,
+   "z1": -133,
+   "bottom": -7.0,
+   "top": 9.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-103",
+   "role": "lot",
+   "x0": 15,
+   "z0": -153,
+   "x1": 30,
+   "z1": -133,
+   "bottom": -7.0,
+   "top": 9.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-104",
+   "role": "lot",
+   "x0": 42,
+   "z0": -138,
+   "x1": 72,
+   "z1": -123,
+   "bottom": -7.0,
+   "top": 12.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-105",
+   "role": "lot",
+   "x0": 72,
+   "z0": -138,
+   "x1": 96,
+   "z1": -123,
+   "bottom": -7.0,
+   "top": 12.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-106",
+   "role": "lot",
+   "x0": 42,
+   "z0": -168,
+   "x1": 67,
+   "z1": -153,
+   "bottom": -7.0,
+   "top": 12.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-107",
+   "role": "lot",
+   "x0": 87,
+   "z0": -168,
+   "x1": 96,
+   "z1": -153,
+   "bottom": -7.0,
+   "top": 9.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-108",
+   "role": "lot",
+   "x0": 42,
+   "z0": -153,
+   "x1": 57,
+   "z1": -138,
+   "bottom": -7.0,
+   "top": 9.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-109",
+   "role": "lot",
+   "x0": -30,
+   "z0": -75,
+   "x1": -10,
+   "z1": -60,
+   "bottom": -7.0,
+   "top": 9.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-c-110",
+   "role": "lot",
+   "x0": 37,
+   "z0": -76,
+   "x1": 62,
+   "z1": -61,
+   "bottom": -7.0,
+   "top": 12.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "vale-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-e-111",
+   "role": "lot",
+   "x0": 133.5,
+   "z0": -197.5,
+   "x1": 183.5,
+   "z1": -177.5,
+   "bottom": -7.0,
+   "top": 6.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "vale-e",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-e-112",
+   "role": "lot",
+   "x0": 191.0,
+   "z0": -197.5,
+   "x1": 241.0,
+   "z1": -177.5,
+   "bottom": -7.0,
+   "top": 9.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "vale-e"
+  },
+  {
+   "id": "lot-vale-e-113",
+   "role": "lot",
+   "x0": 153.5,
+   "z0": -170.0,
+   "x1": 183.5,
+   "z1": -150.0,
+   "bottom": -7.0,
+   "top": 6.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "vale-e",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-vale-e-114",
+   "role": "lot",
+   "x0": 191.0,
+   "z0": -170.0,
+   "x1": 221.0,
+   "z1": -150.0,
+   "bottom": -7.0,
+   "top": 6.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "vale-e",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mid-115",
+   "role": "lot",
+   "x0": -140,
+   "z0": -40,
+   "x1": -125,
+   "z1": -25,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "mid",
+   "hatch": true
+  },
+  {
+   "id": "lot-mid-116",
+   "role": "lot",
+   "x0": -125,
+   "z0": -40,
+   "x1": -113,
+   "z1": -25,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "mid",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-mid-117",
+   "role": "lot",
+   "x0": -113,
+   "z0": -40,
+   "x1": -95,
+   "z1": -25,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "mid"
+  },
+  {
+   "id": "lot-mid-118",
+   "role": "lot",
+   "x0": -85,
+   "z0": -40,
+   "x1": -70,
+   "z1": -25,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "mid",
+   "hatch": true
+  },
+  {
+   "id": "lot-mid-119",
+   "role": "lot",
+   "x0": -73,
+   "z0": -60,
+   "x1": -58,
+   "z1": -45,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "mid"
+  },
+  {
+   "id": "lot-mid-120",
+   "role": "lot",
+   "x0": -30,
+   "z0": -60,
+   "x1": -18,
+   "z1": -48,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "mid"
+  },
+  {
+   "id": "lot-mid-121",
+   "role": "lot",
+   "x0": 95,
+   "z0": -37,
+   "x1": 107,
+   "z1": -25,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "mid",
+   "hatch": true
+  },
+  {
+   "id": "lot-mid-122",
+   "role": "lot",
+   "x0": 107,
+   "z0": -37,
+   "x1": 120,
+   "z1": -25,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "mid"
+  },
+  {
+   "id": "lot-mid-123",
+   "role": "lot",
+   "x0": 75,
+   "z0": -60,
+   "x1": 87,
+   "z1": -48,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "mid"
+  },
+  {
+   "id": "lot-mid-124",
+   "role": "lot",
+   "x0": 87,
+   "z0": -60,
+   "x1": 107,
+   "z1": -48,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "mid",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mid-125",
+   "role": "lot",
+   "x0": 107,
+   "z0": -60,
+   "x1": 120,
+   "z1": -48,
+   "bottom": 0.0,
+   "top": 16.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "mid",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mid-126",
+   "role": "lot",
+   "x0": 130,
+   "z0": -40,
+   "x1": 150,
+   "z1": -25,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "mid",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-mid-127",
+   "role": "lot",
+   "x0": 130,
+   "z0": -60,
+   "x1": 142,
+   "z1": -45,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "mid",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-mid-128",
+   "role": "lot",
+   "x0": 142,
+   "z0": -60,
+   "x1": 150,
+   "z1": -45,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "mid",
+   "hatch": true
+  },
+  {
+   "id": "lot-mid-129",
+   "role": "lot",
+   "x0": -140,
+   "z0": 18,
+   "x1": -128,
+   "z1": 30,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "mid"
+  },
+  {
+   "id": "lot-mid-130",
+   "role": "lot",
+   "x0": -113,
+   "z0": 18,
+   "x1": -100,
+   "z1": 30,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "mid"
+  },
+  {
+   "id": "lot-mid-131",
+   "role": "lot",
+   "x0": -90,
+   "z0": 13,
+   "x1": -78,
+   "z1": 25,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "mid"
+  },
+  {
+   "id": "lot-mid-132",
+   "role": "lot",
+   "x0": 75,
+   "z0": 13,
+   "x1": 90,
+   "z1": 25,
+   "bottom": 0.0,
+   "top": 16.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "mid"
+  },
+  {
+   "id": "lot-mid-133",
+   "role": "lot",
+   "x0": 78,
+   "z0": 2,
+   "x1": 90,
+   "z1": 13,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "mid"
+  },
+  {
+   "id": "lot-under-134",
+   "role": "lot",
+   "x0": -110,
+   "z0": 80,
+   "x1": -90,
+   "z1": 90,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "walkable",
+   "style": "rows",
+   "district": "under",
+   "roof_link": "step-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-under-135",
+   "role": "lot",
+   "x0": -110,
+   "z0": 63,
+   "x1": -90,
+   "z1": 73,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "under"
+  },
+  {
+   "id": "lot-under-136",
+   "role": "lot",
+   "x0": -50,
+   "z0": 80,
+   "x1": -40,
+   "z1": 90,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "walkable",
+   "style": "rows",
+   "district": "under",
+   "roof_link": "step-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-under-137",
+   "role": "lot",
+   "x0": -30,
+   "z0": 63,
+   "x1": -15,
+   "z1": 73,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "under"
+  },
+  {
+   "id": "lot-under-138",
+   "role": "lot",
+   "x0": 20,
+   "z0": 80,
+   "x1": 45,
+   "z1": 90,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "walkable",
+   "style": "rows",
+   "district": "under",
+   "roof_link": "step-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-under-139",
+   "role": "lot",
+   "x0": 60,
+   "z0": 80,
+   "x1": 70,
+   "z1": 90,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "walkable",
+   "style": "rows",
+   "district": "under",
+   "roof_link": "step-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-under-140",
+   "role": "lot",
+   "x0": 20,
+   "z0": 63,
+   "x1": 35,
+   "z1": 73,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "under"
+  },
+  {
+   "id": "lot-under-141",
+   "role": "lot",
+   "x0": 35,
+   "z0": 63,
+   "x1": 60,
+   "z1": 73,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "under"
+  },
+  {
+   "id": "lot-under-142",
+   "role": "lot",
+   "x0": 60,
+   "z0": 63,
+   "x1": 70,
+   "z1": 73,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "under"
+  },
+  {
+   "id": "lot-under-143",
+   "role": "lot",
+   "x0": 80,
+   "z0": 80,
+   "x1": 100,
+   "z1": 90,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "walkable",
+   "style": "rows",
+   "district": "under",
+   "roof_link": "step-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-under-144",
+   "role": "lot",
+   "x0": 80,
+   "z0": 63,
+   "x1": 105,
+   "z1": 73,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "under"
+  },
+  {
+   "id": "lot-rise-145",
+   "role": "lot",
+   "x0": 207.5,
+   "z0": -60,
+   "x1": 247.5,
+   "z1": -30,
+   "bottom": 7.0,
+   "top": 20.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "rise",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-rise-n-146",
+   "role": "lot",
+   "x0": 160,
+   "z0": 80,
+   "x1": 190,
+   "z1": 90,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "rise-n"
+  },
+  {
+   "id": "lot-rise-n-147",
+   "role": "lot",
+   "x0": 190,
+   "z0": 80,
+   "x1": 210,
+   "z1": 90,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "rise-n"
+  },
+  {
+   "id": "lot-rise-n-148",
+   "role": "lot",
+   "x0": 160,
+   "z0": 63,
+   "x1": 190,
+   "z1": 73,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "rise-n"
+  },
+  {
+   "id": "lot-rise-n-149",
+   "role": "lot",
+   "x0": 220,
+   "z0": 80,
+   "x1": 240,
+   "z1": 90,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "rise-n"
+  },
+  {
+   "id": "lot-upper-150",
+   "role": "lot",
+   "x0": -145,
+   "z0": 120,
+   "x1": -125,
+   "z1": 135,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-151",
+   "role": "lot",
+   "x0": -125,
+   "z0": 120,
+   "x1": -95,
+   "z1": 135,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-152",
+   "role": "lot",
+   "x0": -145,
+   "z0": 90,
+   "x1": -115,
+   "z1": 105,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-153",
+   "role": "lot",
+   "x0": -115,
+   "z0": 90,
+   "x1": -95,
+   "z1": 105,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-154",
+   "role": "lot",
+   "x0": -83,
+   "z0": 120,
+   "x1": -58,
+   "z1": 135,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-155",
+   "role": "lot",
+   "x0": -58,
+   "z0": 120,
+   "x1": -33,
+   "z1": 135,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-156",
+   "role": "lot",
+   "x0": -83,
+   "z0": 90,
+   "x1": -63,
+   "z1": 105,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-157",
+   "role": "lot",
+   "x0": -83,
+   "z0": 105,
+   "x1": -68,
+   "z1": 120,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-158",
+   "role": "lot",
+   "x0": -48,
+   "z0": 105,
+   "x1": -33,
+   "z1": 120,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-159",
+   "role": "lot",
+   "x0": 9,
+   "z0": 90,
+   "x1": 39,
+   "z1": 105,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-160",
+   "role": "lot",
+   "x0": 51,
+   "z0": 90,
+   "x1": 71,
+   "z1": 105,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-161",
+   "role": "lot",
+   "x0": 118,
+   "z0": 120,
+   "x1": 143,
+   "z1": 135,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-162",
+   "role": "lot",
+   "x0": 143,
+   "z0": 90,
+   "x1": 168,
+   "z1": 105,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-163",
+   "role": "lot",
+   "x0": 168,
+   "z0": 90,
+   "x1": 178,
+   "z1": 105,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-164",
+   "role": "lot",
+   "x0": 118,
+   "z0": 105,
+   "x1": 133,
+   "z1": 120,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-165",
+   "role": "lot",
+   "x0": 190,
+   "z0": 120,
+   "x1": 220,
+   "z1": 135,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-166",
+   "role": "lot",
+   "x0": 220,
+   "z0": 120,
+   "x1": 240,
+   "z1": 135,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-167",
+   "role": "lot",
+   "x0": 220,
+   "z0": 90,
+   "x1": 240,
+   "z1": 105,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-168",
+   "role": "lot",
+   "x0": 225,
+   "z0": 105,
+   "x1": 240,
+   "z1": 120,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-169",
+   "role": "lot",
+   "x0": -145,
+   "z0": 187,
+   "x1": -120,
+   "z1": 202,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-170",
+   "role": "lot",
+   "x0": -120,
+   "z0": 187,
+   "x1": -100,
+   "z1": 202,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-171",
+   "role": "lot",
+   "x0": -100,
+   "z0": 187,
+   "x1": -90,
+   "z1": 202,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-172",
+   "role": "lot",
+   "x0": -145,
+   "z0": 152,
+   "x1": -125,
+   "z1": 167,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-173",
+   "role": "lot",
+   "x0": -38,
+   "z0": 187,
+   "x1": -23,
+   "z1": 202,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-174",
+   "role": "lot",
+   "x0": -78,
+   "z0": 152,
+   "x1": -58,
+   "z1": 167,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-175",
+   "role": "lot",
+   "x0": -33,
+   "z0": 152,
+   "x1": -23,
+   "z1": 167,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-176",
+   "role": "lot",
+   "x0": -78,
+   "z0": 167,
+   "x1": -63,
+   "z1": 187,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-177",
+   "role": "lot",
+   "x0": -38,
+   "z0": 167,
+   "x1": -23,
+   "z1": 187,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-178",
+   "role": "lot",
+   "x0": -11,
+   "z0": 182,
+   "x1": 19,
+   "z1": 197,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-179",
+   "role": "lot",
+   "x0": 51,
+   "z0": 152,
+   "x1": 76,
+   "z1": 167,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-180",
+   "role": "lot",
+   "x0": 133,
+   "z0": 152,
+   "x1": 153,
+   "z1": 167,
+   "bottom": 14.0,
+   "top": 36.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-181",
+   "role": "lot",
+   "x0": 210,
+   "z0": 182,
+   "x1": 240,
+   "z1": 197,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-182",
+   "role": "lot",
+   "x0": 225,
+   "z0": 167,
+   "x1": 240,
+   "z1": 182,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-183",
+   "role": "lot",
+   "x0": -150,
+   "z0": 214,
+   "x1": -120,
+   "z1": 229,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-184",
+   "role": "lot",
+   "x0": -53,
+   "z0": 214,
+   "x1": -28,
+   "z1": 229,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-upper-185",
+   "role": "lot",
+   "x0": 163,
+   "z0": 214,
+   "x1": 173,
+   "z1": 229,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "upper",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-valley-186",
+   "role": "lot",
+   "x0": -272.5,
+   "z0": -60,
+   "x1": -242.5,
+   "z1": -30,
+   "bottom": -7.0,
+   "top": 6.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "valley"
+  },
+  {
+   "id": "lot-valley-187",
+   "role": "lot",
+   "x0": -197.5,
+   "z0": -60,
+   "x1": -157.5,
+   "z1": -30,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "valley",
+   "hatch": true
+  },
+  {
+   "id": "lot-valley-188",
+   "role": "lot",
+   "x0": -272.5,
+   "z0": -22.5,
+   "x1": -242.5,
+   "z1": -2.5,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "valley",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-valley-189",
+   "role": "lot",
+   "x0": -177.5,
+   "z0": -22.5,
+   "x1": -150.0,
+   "z1": -2.5,
+   "bottom": -7.0,
+   "top": 6.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "valley"
+  },
+  {
+   "id": "lot-valley-190",
+   "role": "lot",
+   "x0": -282.5,
+   "z0": 5.0,
+   "x1": -242.5,
+   "z1": 35.0,
+   "bottom": -7.0,
+   "top": 6.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "valley"
+  },
+  {
+   "id": "lot-valley-191",
+   "role": "lot",
+   "x0": -235.0,
+   "z0": 5.0,
+   "x1": -205.0,
+   "z1": 35.0,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "valley",
+   "hatch": true
+  },
+  {
+   "id": "lot-valley-192",
+   "role": "lot",
+   "x0": -197.5,
+   "z0": 5.0,
+   "x1": -157.5,
+   "z1": 35.0,
+   "bottom": -7.0,
+   "top": 6.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "valley"
+  },
+  {
+   "id": "lot-valley-n-193",
+   "role": "lot",
+   "x0": -320,
+   "z0": 83,
+   "x1": -290,
+   "z1": 93,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-194",
+   "role": "lot",
+   "x0": -290,
+   "z0": 83,
+   "x1": -275,
+   "z1": 93,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-195",
+   "role": "lot",
+   "x0": -275,
+   "z0": 83,
+   "x1": -260,
+   "z1": 93,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-196",
+   "role": "lot",
+   "x0": -320,
+   "z0": 63,
+   "x1": -295,
+   "z1": 73,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-197",
+   "role": "lot",
+   "x0": -320,
+   "z0": 73,
+   "x1": -310,
+   "z1": 83,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-198",
+   "role": "lot",
+   "x0": -325,
+   "z0": 103,
+   "x1": -305,
+   "z1": 113,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-199",
+   "role": "lot",
+   "x0": -305,
+   "z0": 103,
+   "x1": -275,
+   "z1": 113,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-200",
+   "role": "lot",
+   "x0": -275,
+   "z0": 103,
+   "x1": -265,
+   "z1": 113,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-201",
+   "role": "lot",
+   "x0": -275,
+   "z0": 113,
+   "x1": -265,
+   "z1": 123,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-202",
+   "role": "lot",
+   "x0": -205,
+   "z0": 113,
+   "x1": -195,
+   "z1": 123,
+   "bottom": -7.0,
+   "top": 0.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-203",
+   "role": "lot",
+   "x0": -185,
+   "z0": 103,
+   "x1": -160,
+   "z1": 113,
+   "bottom": -7.0,
+   "top": 3.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-204",
+   "role": "lot",
+   "x0": -325,
+   "z0": 167,
+   "x1": -305,
+   "z1": 177,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-205",
+   "role": "lot",
+   "x0": -285,
+   "z0": 167,
+   "x1": -275,
+   "z1": 177,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-206",
+   "role": "lot",
+   "x0": -325,
+   "z0": 145,
+   "x1": -300,
+   "z1": 155,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-207",
+   "role": "lot",
+   "x0": -300,
+   "z0": 145,
+   "x1": -285,
+   "z1": 155,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-208",
+   "role": "lot",
+   "x0": -325,
+   "z0": 155,
+   "x1": -315,
+   "z1": 167,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-209",
+   "role": "lot",
+   "x0": -285,
+   "z0": 155,
+   "x1": -275,
+   "z1": 167,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-210",
+   "role": "lot",
+   "x0": -265,
+   "z0": 167,
+   "x1": -240,
+   "z1": 177,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-211",
+   "role": "lot",
+   "x0": -240,
+   "z0": 167,
+   "x1": -215,
+   "z1": 177,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-212",
+   "role": "lot",
+   "x0": -205,
+   "z0": 165,
+   "x1": -190,
+   "z1": 175,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-213",
+   "role": "lot",
+   "x0": -190,
+   "z0": 165,
+   "x1": -160,
+   "z1": 175,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-214",
+   "role": "lot",
+   "x0": -160,
+   "z0": 165,
+   "x1": -150,
+   "z1": 175,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-215",
+   "role": "lot",
+   "x0": -205,
+   "z0": 145,
+   "x1": -185,
+   "z1": 155,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-216",
+   "role": "lot",
+   "x0": -185,
+   "z0": 145,
+   "x1": -165,
+   "z1": 155,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-217",
+   "role": "lot",
+   "x0": -165,
+   "z0": 145,
+   "x1": -150,
+   "z1": 155,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-218",
+   "role": "lot",
+   "x0": -160,
+   "z0": 155,
+   "x1": -150,
+   "z1": 165,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-219",
+   "role": "lot",
+   "x0": -310,
+   "z0": 209,
+   "x1": -280,
+   "z1": 219,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-220",
+   "role": "lot",
+   "x0": -300,
+   "z0": 187,
+   "x1": -280,
+   "z1": 197,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-221",
+   "role": "lot",
+   "x0": -290,
+   "z0": 197,
+   "x1": -280,
+   "z1": 209,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-222",
+   "role": "lot",
+   "x0": -240,
+   "z0": 209,
+   "x1": -220,
+   "z1": 219,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-223",
+   "role": "lot",
+   "x0": -270,
+   "z0": 187,
+   "x1": -255,
+   "z1": 197,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-224",
+   "role": "lot",
+   "x0": -255,
+   "z0": 187,
+   "x1": -235,
+   "z1": 197,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-225",
+   "role": "lot",
+   "x0": -235,
+   "z0": 187,
+   "x1": -220,
+   "z1": 197,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-226",
+   "role": "lot",
+   "x0": -270,
+   "z0": 197,
+   "x1": -260,
+   "z1": 209,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-227",
+   "role": "lot",
+   "x0": -210,
+   "z0": 207,
+   "x1": -195,
+   "z1": 217,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-228",
+   "role": "lot",
+   "x0": -210,
+   "z0": 187,
+   "x1": -190,
+   "z1": 197,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-229",
+   "role": "lot",
+   "x0": -190,
+   "z0": 187,
+   "x1": -175,
+   "z1": 197,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-230",
+   "role": "lot",
+   "x0": -160,
+   "z0": 187,
+   "x1": -150,
+   "z1": 197,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-231",
+   "role": "lot",
+   "x0": -210,
+   "z0": 197,
+   "x1": -200,
+   "z1": 207,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-232",
+   "role": "lot",
+   "x0": -270,
+   "z0": 229,
+   "x1": -255,
+   "z1": 239,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-233",
+   "role": "lot",
+   "x0": -255,
+   "z0": 229,
+   "x1": -220,
+   "z1": 239,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-234",
+   "role": "lot",
+   "x0": -210,
+   "z0": 229,
+   "x1": -195,
+   "z1": 239,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-235",
+   "role": "lot",
+   "x0": -195,
+   "z0": 229,
+   "x1": -175,
+   "z1": 239,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "lot-valley-n-236",
+   "role": "lot",
+   "x0": -175,
+   "z0": 229,
+   "x1": -150,
+   "z1": 239,
+   "bottom": 7.0,
+   "top": 14.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "valley-n"
+  },
+  {
+   "id": "cordon-s",
+   "role": "cordon",
+   "x0": -330,
+   "z0": -230,
+   "x1": 270,
+   "z1": -229,
+   "bottom": -16.0,
+   "top": 7.0
+  },
+  {
+   "id": "cordon-n",
+   "role": "cordon",
+   "x0": -330,
+   "z0": 249,
+   "x1": 270,
+   "z1": 250,
+   "bottom": -16.0,
+   "top": 28.0
+  },
+  {
+   "id": "cordon-w",
+   "role": "cordon",
+   "x0": -330,
+   "z0": -230,
+   "x1": -329,
+   "z1": 250,
+   "bottom": -16.0,
+   "top": 21.0
+  },
+  {
+   "id": "cordon-e",
+   "role": "cordon",
+   "x0": 269,
+   "z0": -230,
+   "x1": 270,
+   "z1": 250,
+   "bottom": -16.0,
+   "top": 21.0
+  }
+ ],
+ "links": [
+  {
+   "id": "fire-escape-0",
+   "kind": "fire-escape",
+   "a": {
+    "x": 243,
+    "y": 7,
+    "z": 70.5
+   },
+   "b": {
+    "x": 259.0,
+    "y": 23.0,
+    "z": 70.5
+   },
+   "width": 3,
+   "horde": false,
+   "note": "hall roof"
+  },
+  {
+   "id": "fire-escape-1",
+   "kind": "fire-escape",
+   "a": {
+    "x": 209,
+    "y": -14,
+    "z": -76.5
+   },
+   "b": {
+    "x": 225.0,
+    "y": 2.0,
+    "z": -76.5
+   },
+   "width": 3,
+   "horde": false,
+   "note": "hall roof"
+  },
+  {
+   "id": "fire-escape-2",
+   "kind": "fire-escape",
+   "a": {
+    "x": -238,
+    "y": -7,
+    "z": 101.5
+   },
+   "b": {
+    "x": -254.0,
+    "y": 9.0,
+    "z": 101.5
+   },
+   "width": 3,
+   "horde": false,
+   "note": "hall roof"
+  },
+  {
+   "id": "fire-escape-3",
+   "kind": "fire-escape",
+   "a": {
+    "x": 7,
+    "y": -7.0,
+    "z": -178.5
+   },
+   "b": {
+    "x": 23,
+    "y": 12.0,
+    "z": -178.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-vale-c-95"
+  },
+  {
+   "id": "fire-escape-4",
+   "kind": "fire-escape",
+   "a": {
+    "x": -21.5,
+    "y": -7.0,
+    "z": -213
+   },
+   "b": {
+    "x": -21.5,
+    "y": 15.0,
+    "z": -197
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-vale-c-96"
+  },
+  {
+   "id": "fire-escape-5",
+   "kind": "fire-escape",
+   "a": {
+    "x": -23,
+    "y": -7.0,
+    "z": -116.5
+   },
+   "b": {
+    "x": -2,
+    "y": 9.0,
+    "z": -116.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-vale-c-98"
+  },
+  {
+   "id": "fire-escape-6",
+   "kind": "fire-escape",
+   "a": {
+    "x": -23,
+    "y": -7.0,
+    "z": -169.5
+   },
+   "b": {
+    "x": -7,
+    "y": 12.0,
+    "z": -169.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-vale-c-99"
+  },
+  {
+   "id": "fire-escape-7",
+   "kind": "fire-escape",
+   "a": {
+    "x": -8.5,
+    "y": -7.0,
+    "z": -151
+   },
+   "b": {
+    "x": -8.5,
+    "y": 9.0,
+    "z": -135
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-vale-c-102"
+  },
+  {
+   "id": "fire-escape-8",
+   "kind": "fire-escape",
+   "a": {
+    "x": 44,
+    "y": -7.0,
+    "z": -169.5
+   },
+   "b": {
+    "x": 65,
+    "y": 12.0,
+    "z": -169.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-vale-c-106"
+  },
+  {
+   "id": "fire-escape-9",
+   "kind": "fire-escape",
+   "a": {
+    "x": 155.5,
+    "y": -7.0,
+    "z": -148.5
+   },
+   "b": {
+    "x": 181.5,
+    "y": 6.0,
+    "z": -148.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-vale-e-113"
+  },
+  {
+   "id": "fire-escape-10",
+   "kind": "fire-escape",
+   "a": {
+    "x": 193.0,
+    "y": -7.0,
+    "z": -148.5
+   },
+   "b": {
+    "x": 219.0,
+    "y": 6.0,
+    "z": -148.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-vale-e-114"
+  },
+  {
+   "id": "fire-escape-11",
+   "kind": "fire-escape",
+   "a": {
+    "x": -123,
+    "y": 0.0,
+    "z": -41.5
+   },
+   "b": {
+    "x": -115,
+    "y": 13.0,
+    "z": -41.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mid-116"
+  },
+  {
+   "id": "fire-escape-12",
+   "kind": "fire-escape",
+   "a": {
+    "x": 89,
+    "y": 0.0,
+    "z": -46.5
+   },
+   "b": {
+    "x": 105,
+    "y": 13.0,
+    "z": -46.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mid-124"
+  },
+  {
+   "id": "fire-escape-13",
+   "kind": "fire-escape",
+   "a": {
+    "x": 109,
+    "y": 0.0,
+    "z": -46.5
+   },
+   "b": {
+    "x": 118,
+    "y": 16.0,
+    "z": -46.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mid-125"
+  },
+  {
+   "id": "fire-escape-14",
+   "kind": "fire-escape",
+   "a": {
+    "x": 132,
+    "y": 0.0,
+    "z": -41.5
+   },
+   "b": {
+    "x": 148,
+    "y": 10.0,
+    "z": -41.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mid-126"
+  },
+  {
+   "id": "fire-escape-15",
+   "kind": "fire-escape",
+   "a": {
+    "x": 128.5,
+    "y": 0.0,
+    "z": -58
+   },
+   "b": {
+    "x": 128.5,
+    "y": 13.0,
+    "z": -47
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mid-127"
+  },
+  {
+   "id": "fire-escape-16",
+   "kind": "fire-escape",
+   "a": {
+    "x": 209.5,
+    "y": 7.0,
+    "z": -28.5
+   },
+   "b": {
+    "x": 245.5,
+    "y": 20.0,
+    "z": -28.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-rise-145"
+  },
+  {
+   "id": "fire-escape-17",
+   "kind": "fire-escape",
+   "a": {
+    "x": -49.5,
+    "y": 7.0,
+    "z": 107
+   },
+   "b": {
+    "x": -49.5,
+    "y": 23.0,
+    "z": 118
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-158"
+  },
+  {
+   "id": "fire-escape-18",
+   "kind": "fire-escape",
+   "a": {
+    "x": 116.5,
+    "y": 7.0,
+    "z": 122
+   },
+   "b": {
+    "x": 116.5,
+    "y": 29.0,
+    "z": 133
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-161"
+  },
+  {
+   "id": "fire-escape-19",
+   "kind": "fire-escape",
+   "a": {
+    "x": 116.5,
+    "y": 7.0,
+    "z": 107
+   },
+   "b": {
+    "x": 116.5,
+    "y": 23.0,
+    "z": 118
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-164"
+  },
+  {
+   "id": "fire-escape-20",
+   "kind": "fire-escape",
+   "a": {
+    "x": 192,
+    "y": 7.0,
+    "z": 118.5
+   },
+   "b": {
+    "x": 218,
+    "y": 23.0,
+    "z": 118.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-165"
+  },
+  {
+   "id": "fire-escape-21",
+   "kind": "fire-escape",
+   "a": {
+    "x": 241.5,
+    "y": 7.0,
+    "z": 92
+   },
+   "b": {
+    "x": 241.5,
+    "y": 26.0,
+    "z": 103
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-167"
+  },
+  {
+   "id": "fire-escape-22",
+   "kind": "fire-escape",
+   "a": {
+    "x": 241.5,
+    "y": 7.0,
+    "z": 107
+   },
+   "b": {
+    "x": 241.5,
+    "y": 23.0,
+    "z": 118
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-168"
+  },
+  {
+   "id": "fire-escape-23",
+   "kind": "fire-escape",
+   "a": {
+    "x": -143,
+    "y": 7.0,
+    "z": 203.5
+   },
+   "b": {
+    "x": -122,
+    "y": 29.0,
+    "z": 203.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-169"
+  },
+  {
+   "id": "fire-escape-24",
+   "kind": "fire-escape",
+   "a": {
+    "x": -88.5,
+    "y": 7.0,
+    "z": 189
+   },
+   "b": {
+    "x": -88.5,
+    "y": 26.0,
+    "z": 200
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-171"
+  },
+  {
+   "id": "fire-escape-25",
+   "kind": "fire-escape",
+   "a": {
+    "x": -76,
+    "y": 7.0,
+    "z": 150.5
+   },
+   "b": {
+    "x": -60,
+    "y": 23.0,
+    "z": 150.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-174"
+  },
+  {
+   "id": "fire-escape-26",
+   "kind": "fire-escape",
+   "a": {
+    "x": -31,
+    "y": 7.0,
+    "z": 150.5
+   },
+   "b": {
+    "x": -25,
+    "y": 29.0,
+    "z": 150.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-175"
+  },
+  {
+   "id": "fire-escape-27",
+   "kind": "fire-escape",
+   "a": {
+    "x": -9,
+    "y": 7.0,
+    "z": 180.5
+   },
+   "b": {
+    "x": 17,
+    "y": 26.0,
+    "z": 180.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-178"
+  },
+  {
+   "id": "fire-escape-28",
+   "kind": "fire-escape",
+   "a": {
+    "x": 53,
+    "y": 14.0,
+    "z": 150.5
+   },
+   "b": {
+    "x": 74,
+    "y": 30.0,
+    "z": 150.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-179"
+  },
+  {
+   "id": "fire-escape-29",
+   "kind": "fire-escape",
+   "a": {
+    "x": 135,
+    "y": 14.0,
+    "z": 150.5
+   },
+   "b": {
+    "x": 151,
+    "y": 36.0,
+    "z": 150.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-180"
+  },
+  {
+   "id": "fire-escape-30",
+   "kind": "fire-escape",
+   "a": {
+    "x": 241.5,
+    "y": 7.0,
+    "z": 184
+   },
+   "b": {
+    "x": 241.5,
+    "y": 23.0,
+    "z": 195
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-181"
+  },
+  {
+   "id": "fire-escape-31",
+   "kind": "fire-escape",
+   "a": {
+    "x": -51,
+    "y": 7.0,
+    "z": 212.5
+   },
+   "b": {
+    "x": -30,
+    "y": 26.0,
+    "z": 212.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-184"
+  },
+  {
+   "id": "fire-escape-32",
+   "kind": "fire-escape",
+   "a": {
+    "x": 165,
+    "y": 14.0,
+    "z": 212.5
+   },
+   "b": {
+    "x": 171,
+    "y": 30.0,
+    "z": 212.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-upper-185"
+  },
+  {
+   "id": "fire-escape-33",
+   "kind": "fire-escape",
+   "a": {
+    "x": -270.5,
+    "y": -7.0,
+    "z": -1.0
+   },
+   "b": {
+    "x": -244.5,
+    "y": 3.0,
+    "z": -1.0
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-valley-188"
+  }
+ ],
+ "landmarks": [
+  {
+   "id": "city-hall",
+   "name": "City Hall clock tower (6:47)",
+   "x": 100.0,
+   "z": 236.5,
+   "y": 76,
+   "kind": "tower",
+   "note": "reads from the camp"
+  },
+  {
+   "id": "stride",
+   "name": "The Stride: a 600 m viaduct deck at +7",
+   "x": -100,
+   "z": 51,
+   "y": 7,
+   "kind": "viaduct",
+   "note": ""
+  },
+  {
+   "id": "train",
+   "name": "The stalled 6:47 train on the deck",
+   "x": -80,
+   "z": 54,
+   "y": 7,
+   "kind": "cover",
+   "note": ""
+  },
+  {
+   "id": "arch",
+   "name": "Arch Nought, the camp's north arch",
+   "x": 0,
+   "z": 51,
+   "y": 0,
+   "kind": "arch",
+   "note": ""
+  },
+  {
+   "id": "signal",
+   "name": "The Signal Bridge, deck to upper town",
+   "x": -60,
+   "z": 73,
+   "y": 7,
+   "kind": "bridge",
+   "note": ""
+  },
+  {
+   "id": "valley",
+   "name": "Arch Valley, piers 14 m tall",
+   "x": -250,
+   "z": 51,
+   "y": -7,
+   "kind": "viaduct",
+   "note": ""
+  },
+  {
+   "id": "crag-road",
+   "name": "Crag Road and Crag Street",
+   "x": 50,
+   "z": 119,
+   "y": 7,
+   "kind": "street",
+   "note": ""
+  },
+  {
+   "id": "haul",
+   "name": "The Vale haul ramp",
+   "x": 0,
+   "z": -40,
+   "y": -3.5,
+   "kind": "ramp",
+   "note": ""
+  }
+ ],
+ "lamps": [
+  [
+   3.4,
+   0.0,
+   39.0
+  ],
+  [
+   -3.4,
+   0.0,
+   51.0
+  ],
+  [
+   3.4,
+   0.0,
+   63.0
+  ],
+  [
+   -3.4,
+   1.4,
+   74.2
+  ],
+  [
+   3.4,
+   2.8,
+   85.4
+  ],
+  [
+   -3.4,
+   4.2,
+   96.6
+  ],
+  [
+   3.4,
+   5.6,
+   107.8
+  ],
+  [
+   -3.4,
+   7.0,
+   119.0
+  ],
+  [
+   12.5,
+   7.0,
+   113.6
+  ],
+  [
+   25.0,
+   7.0,
+   124.4
+  ],
+  [
+   37.5,
+   7.0,
+   113.6
+  ],
+  [
+   50.0,
+   7.0,
+   124.4
+  ],
+  [
+   62.5,
+   7.0,
+   113.6
+  ],
+  [
+   75.0,
+   7.0,
+   124.4
+  ],
+  [
+   87.5,
+   7.0,
+   113.6
+  ],
+  [
+   100.0,
+   7.0,
+   124.4
+  ],
+  [
+   104.4,
+   8.75,
+   129.5
+  ],
+  [
+   95.6,
+   10.5,
+   140.0
+  ],
+  [
+   104.4,
+   12.25,
+   150.5
+  ],
+  [
+   95.6,
+   14.0,
+   161.0
+  ],
+  [
+   105.4,
+   14.0,
+   173.5
+  ],
+  [
+   94.6,
+   14.0,
+   186.0
+  ],
+  [
+   40.0,
+   0.0,
+   -4.4
+  ],
+  [
+   37.6,
+   3.5,
+   7.0
+  ],
+  [
+   42.4,
+   3.5,
+   10.0
+  ],
+  [
+   37.6,
+   7.0,
+   17.0
+  ],
+  [
+   42.4,
+   7.0,
+   28.33
+  ],
+  [
+   37.6,
+   7.0,
+   39.67
+  ],
+  [
+   42.4,
+   7.0,
+   51.0
+  ],
+  [
+   51.76,
+   7.0,
+   56.4
+  ],
+  [
+   63.53,
+   7.0,
+   45.6
+  ],
+  [
+   75.29,
+   7.0,
+   56.4
+  ],
+  [
+   87.06,
+   7.0,
+   45.6
+  ],
+  [
+   98.82,
+   7.0,
+   56.4
+  ],
+  [
+   110.59,
+   7.0,
+   45.6
+  ],
+  [
+   122.35,
+   7.0,
+   56.4
+  ],
+  [
+   134.12,
+   7.0,
+   45.6
+  ],
+  [
+   145.88,
+   7.0,
+   56.4
+  ],
+  [
+   157.65,
+   7.0,
+   45.6
+  ],
+  [
+   169.41,
+   7.0,
+   56.4
+  ],
+  [
+   181.18,
+   7.0,
+   45.6
+  ],
+  [
+   192.94,
+   7.0,
+   56.4
+  ],
+  [
+   204.71,
+   7.0,
+   45.6
+  ],
+  [
+   216.47,
+   7.0,
+   56.4
+  ],
+  [
+   228.24,
+   7.0,
+   45.6
+  ],
+  [
+   240.0,
+   7.0,
+   56.4
+  ],
+  [
+   -4.4,
+   -3.5,
+   -39.0
+  ],
+  [
+   4.4,
+   -7.0,
+   -53.0
+  ],
+  [
+   -4.4,
+   -7.0,
+   -66.33
+  ],
+  [
+   4.4,
+   -7.0,
+   -79.67
+  ],
+  [
+   -4.4,
+   -7.0,
+   -93.0
+  ],
+  [
+   13.33,
+   -7.0,
+   -88.6
+  ],
+  [
+   26.67,
+   -7.0,
+   -97.4
+  ],
+  [
+   40.0,
+   -7.0,
+   -88.6
+  ],
+  [
+   51.2,
+   -8.4,
+   -97.4
+  ],
+  [
+   62.4,
+   -9.8,
+   -88.6
+  ],
+  [
+   73.6,
+   -11.2,
+   -97.4
+  ],
+  [
+   84.8,
+   -12.6,
+   -88.6
+  ],
+  [
+   96.0,
+   -14.0,
+   -97.4
+  ],
+  [
+   108.22,
+   -14.0,
+   -88.6
+  ],
+  [
+   120.44,
+   -14.0,
+   -97.4
+  ],
+  [
+   132.67,
+   -14.0,
+   -88.6
+  ],
+  [
+   144.89,
+   -14.0,
+   -97.4
+  ],
+  [
+   157.11,
+   -14.0,
+   -88.6
+  ],
+  [
+   169.33,
+   -14.0,
+   -97.4
+  ],
+  [
+   181.56,
+   -14.0,
+   -88.6
+  ],
+  [
+   193.78,
+   -14.0,
+   -97.4
+  ],
+  [
+   206.0,
+   -14.0,
+   -88.6
+  ],
+  [
+   -38.33,
+   0.0,
+   5.4
+  ],
+  [
+   -51.67,
+   0.0,
+   -5.4
+  ],
+  [
+   -65.0,
+   0.0,
+   5.4
+  ],
+  [
+   -72.0,
+   -3.5,
+   -5.4
+  ],
+  [
+   -75.0,
+   -3.5,
+   5.4
+  ],
+  [
+   -82.0,
+   -7.0,
+   -5.4
+  ],
+  [
+   -94.67,
+   -7.0,
+   5.4
+  ],
+  [
+   -107.33,
+   -7.0,
+   -5.4
+  ],
+  [
+   -120.0,
+   -7.0,
+   5.4
+  ],
+  [
+   -123.4,
+   -7.0,
+   11.43
+  ],
+  [
+   -116.6,
+   -7.0,
+   22.86
+  ],
+  [
+   -123.4,
+   -7.0,
+   34.29
+  ],
+  [
+   -116.6,
+   -7.0,
+   45.71
+  ],
+  [
+   -123.4,
+   -7.0,
+   57.14
+  ],
+  [
+   -116.6,
+   -7.0,
+   68.57
+  ],
+  [
+   -123.4,
+   -7.0,
+   80.0
+  ],
+  [
+   -131.5,
+   -7.0,
+   85.4
+  ],
+  [
+   -143.0,
+   -7.0,
+   74.6
+  ],
+  [
+   -154.5,
+   -7.0,
+   85.4
+  ],
+  [
+   -166.0,
+   -7.0,
+   74.6
+  ],
+  [
+   -177.5,
+   -7.0,
+   85.4
+  ],
+  [
+   -189.0,
+   -7.0,
+   74.6
+  ],
+  [
+   -200.5,
+   -7.0,
+   85.4
+  ],
+  [
+   -212.0,
+   -7.0,
+   74.6
+  ],
+  [
+   -223.5,
+   -7.0,
+   85.4
+  ],
+  [
+   -235.0,
+   -7.0,
+   74.6
+  ]
+ ],
+ "fill": {
+  "rule": "explicit lots from the zones below (deterministic, seed 1868); build the lots in blocks[] as listed",
+  "zones": [
+   {
+    "id": "vale-w",
+    "style": "rows",
+    "density": 0.8,
+    "rect": {
+     "x0": -330,
+     "z0": -230,
+     "x1": -30,
+     "z1": -60
+    }
+   },
+   {
+    "id": "vale-c",
+    "style": "tenements",
+    "density": 0.65,
+    "rect": {
+     "x0": -30,
+     "z0": -230,
+     "x1": 96,
+     "z1": -60
+    }
+   },
+   {
+    "id": "vale-e",
+    "style": "warehouses",
+    "density": 0.75,
+    "rect": {
+     "x0": 96,
+     "z0": -230,
+     "x1": 270,
+     "z1": -110
+    }
+   },
+   {
+    "id": "mid",
+    "style": "shops",
+    "density": 0.75,
+    "rect": {
+     "x0": -150,
+     "z0": -60,
+     "x1": 150,
+     "z1": 44
+    }
+   },
+   {
+    "id": "under",
+    "style": "rows",
+    "density": 0.85,
+    "rect": {
+     "x0": -150,
+     "z0": 58,
+     "x1": 150,
+     "z1": 90
+    }
+   },
+   {
+    "id": "rise",
+    "style": "warehouses",
+    "density": 0.7,
+    "rect": {
+     "x0": 150,
+     "z0": -60,
+     "x1": 270,
+     "z1": 44
+    }
+   },
+   {
+    "id": "rise-n",
+    "style": "rows",
+    "density": 0.8,
+    "rect": {
+     "x0": 150,
+     "z0": 58,
+     "x1": 270,
+     "z1": 90
+    }
+   },
+   {
+    "id": "upper",
+    "style": "tenements",
+    "density": 0.65,
+    "rect": {
+     "x0": -150,
+     "z0": 90,
+     "x1": 270,
+     "z1": 250
+    }
+   },
+   {
+    "id": "valley",
+    "style": "warehouses",
+    "density": 0.7,
+    "rect": {
+     "x0": -330,
+     "z0": -60,
+     "x1": -150,
+     "z1": 44
+    }
+   },
+   {
+    "id": "valley-n",
+    "style": "rows",
+    "density": 0.75,
+    "rect": {
+     "x0": -330,
+     "z0": 58,
+     "x1": -150,
+     "z1": 250
+    }
+   }
+  ],
+  "styles": {
+   "rows": {
+    "depth": [
+     10,
+     12
+    ],
+    "width": [
+     20,
+     25,
+     30,
+     35,
+     40
+    ],
+    "heights": [
+     [
+      7,
+      5
+     ],
+     [
+      10,
+      3
+     ]
+    ],
+    "roof": "pitched",
+    "alley": 5
+   },
+   "shops": {
+    "depth": [
+     15,
+     20
+    ],
+    "width": [
+     15,
+     20
+    ],
+    "heights": [
+     [
+      10,
+      2
+     ],
+     [
+      13,
+      5
+     ],
+     [
+      16,
+      1
+     ]
+    ],
+    "roof": "mixed",
+    "alley": 5
+   },
+   "tenements": {
+    "depth": [
+     15,
+     20
+    ],
+    "width": [
+     20,
+     25,
+     30
+    ],
+    "heights": [
+     [
+      16,
+      3
+     ],
+     [
+      19,
+      3
+     ],
+     [
+      22,
+      2
+     ]
+    ],
+    "roof": "walkable",
+    "alley": 7.5
+   },
+   "warehouses": {
+    "depth": [
+     20,
+     25,
+     30
+    ],
+    "width": [
+     30,
+     40,
+     50
+    ],
+    "heights": [
+     [
+      10,
+      3
+     ],
+     [
+      13,
+      3
+     ],
+     [
+      16,
+      1
+     ]
+    ],
+    "roof": "mixed",
+    "alley": 7.5
+   },
+   "market": {
+    "depth": [
+     15,
+     20
+    ],
+    "width": [
+     15,
+     20,
+     25
+    ],
+    "heights": [
+     [
+      7,
+      6
+     ],
+     [
+      10,
+      2
+     ]
+    ],
+    "roof": "walkable",
+    "alley": 5
+   },
+   "sheds": {
+    "depth": [
+     20,
+     25
+    ],
+    "width": [
+     50,
+     60,
+     80
+    ],
+    "heights": [
+     [
+      10,
+      2
+     ],
+     [
+      13,
+      1
+     ]
+    ],
+    "roof": "pitched",
+    "alley": 10
+   },
+   "civic": {
+    "depth": [
+     20,
+     25
+    ],
+    "width": [
+     25,
+     30
+    ],
+    "heights": [
+     [
+      13,
+      2
+     ],
+     [
+      16,
+      2
+     ],
+     [
+      19,
+      1
+     ]
+    ],
+    "roof": "walkable",
+    "alley": 7.5
+   },
+   "villas": {
+    "depth": [
+     12,
+     15
+    ],
+    "width": [
+     12,
+     15
+    ],
+    "heights": [
+     [
+      7,
+      3
+     ],
+     [
+      10,
+      2
+     ]
+    ],
+    "roof": "pitched",
+    "alley": 7.5
+   }
+  }
+ },
+ "notes": [],
+ "checks": {
+  "reach": {
+   "cells": 73342,
+   "trapped": 0,
+   "trapped_sample": [],
+   "unreached_from_hub": 12371,
+   "walkable_roofs": 87,
+   "roofs_on_foot": 52,
+   "link_failures": []
+  },
+  "lots": 237,
+  "blocks": 389,
+  "ramps": 26,
+  "route_floor_problems": 0
+ }
+}

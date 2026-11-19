@@ -1,0 +1,7001 @@
+{
+ "format": "meridian-street-plan/1",
+ "id": "meridian-b-navigation",
+ "name": "The Navigation",
+ "title": "A canal city split by a sunken channel, crossed by bridges",
+ "size": "B",
+ "axes": "x east, z north, y up; metres; the camp at the origin on y 0",
+ "bounds": {
+  "minX": -280,
+  "maxX": 320,
+  "minZ": -220,
+  "maxZ": 260,
+  "ceiling": 60.0,
+  "killY": -20.0
+ },
+ "tiers": {
+  "-14": "the Navigation (drained bed)",
+  "0": "the banks and Mill Island",
+  "7": "the Mall terrace and the Wharf",
+  "14": "Wharf Heights"
+ },
+ "description": "The camp stands on Mill Island, ringed by a drained canal 14 m deep, so every exit is a crossing and the bed below is a second city of stranded barges and stairs. North, the open Iron Bridge leads straight over the moat, then along Canal Parade and up the Mall, a ramped avenue, to City Hall on the +7 terrace. East, the Lock ramp drops you 14 m into the bed itself and you run the channel to the Navigation Tunnel, a sunk door where the canal goes under the Cordon. South, a stair takes you down to the Low Causeway on arches halfway down the moat and up the far side to the Canal Exchange, a ground door on the south bank. West, a dog-leg climbs to the Mill, a covered bridge-house at +7, and on up to a raised hall on Wharf Heights. Zombies pour along the bed under the bridges; five bridges and five stairs out of the bed keep every fight one decision from a crossing.",
+ "hub": {
+  "name": "Mill Island: a long island inside a square moat, every gate a crossing",
+  "y": 0.0,
+  "camp": {
+   "x0": -25,
+   "z0": -25,
+   "x1": 25,
+   "z1": 25,
+   "fence": 24.8,
+   "gate_width": 10
+  },
+  "precinct": [
+   {
+    "x0": -85,
+    "z0": -45,
+    "x1": 85,
+    "z1": 45
+   }
+  ],
+  "gates": [
+   {
+    "id": "N",
+    "x": 0.0,
+    "z": 25.0,
+    "route": "n"
+   },
+   {
+    "id": "E",
+    "x": 25.0,
+    "z": 0.0,
+    "route": "e"
+   },
+   {
+    "id": "S",
+    "x": 0.0,
+    "z": -25.0,
+    "route": "s"
+   },
+   {
+    "id": "W",
+    "x": -25.0,
+    "z": 0.0,
+    "route": "w"
+   }
+  ]
+ },
+ "routes": [
+  {
+   "id": "n",
+   "label": "FINAL COURT",
+   "gate": "N",
+   "to": "court",
+   "color": "#ffc83d",
+   "length": 271.0,
+   "points": [
+    [
+     0.0,
+     0.0,
+     25.0
+    ],
+    [
+     0.0,
+     0.0,
+     45.0
+    ],
+    [
+     0.0,
+     0.0,
+     85.0
+    ],
+    [
+     0.0,
+     0.0,
+     100.0
+    ],
+    [
+     110.0,
+     0.0,
+     100.0
+    ],
+    [
+     110.0,
+     7.0,
+     156.0
+    ],
+    [
+     110.0,
+     7.0,
+     186.0
+    ]
+   ],
+   "segments": [
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 20,
+     "width": 10,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "bridge",
+     "heading": "N",
+     "length": 40,
+     "width": 8,
+     "cover": "bridge",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 15,
+     "width": 12,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "flat",
+     "heading": "E",
+     "length": 110,
+     "width": 12,
+     "cover": "edge",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "ramp",
+     "heading": "N",
+     "length": 56,
+     "width": 16,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 30,
+     "width": 16,
+     "cover": "open",
+     "y0": 7.0,
+     "y1": 7.0
+    }
+   ],
+   "exit60": {
+    "turns": [],
+    "width_min": 8,
+    "width_max": 10,
+    "covers": [
+     "bridge",
+     "open"
+    ],
+    "kinds": [
+     "flat",
+     "bridge"
+    ],
+    "dy60": 0.0,
+    "ymin": 0.0,
+    "ymax": 0.0,
+    "heading_first": "N",
+    "profile": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "e",
+   "label": "DOOR A",
+   "gate": "E",
+   "to": "door-a",
+   "color": "#ff5a5f",
+   "length": 273.0,
+   "points": [
+    [
+     25.0,
+     0.0,
+     0.0
+    ],
+    [
+     47.0,
+     0.0,
+     0.0
+    ],
+    [
+     103.0,
+     -14.0,
+     0.0
+    ],
+    [
+     298.0,
+     -14.0,
+     0.0
+    ]
+   ],
+   "segments": [
+    {
+     "kind": "flat",
+     "heading": "E",
+     "length": 22,
+     "width": 12,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "ramp",
+     "heading": "E",
+     "length": 56,
+     "width": 12,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": -14.0
+    },
+    {
+     "kind": "flat",
+     "heading": "E",
+     "length": 195,
+     "width": 12,
+     "cover": "channel",
+     "y0": -14.0,
+     "y1": -14.0
+    }
+   ],
+   "exit60": {
+    "turns": [],
+    "width_min": 12,
+    "width_max": 12,
+    "covers": [
+     "open"
+    ],
+    "kinds": [
+     "flat",
+     "ramp"
+    ],
+    "dy60": -9.5,
+    "ymin": -9.5,
+    "ymax": 0.0,
+    "heading_first": "E",
+    "profile": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     -0.5,
+     -1.0,
+     -1.5,
+     -2.0,
+     -2.5,
+     -3.0,
+     -3.5,
+     -4.0,
+     -4.5,
+     -5.0,
+     -5.5,
+     -6.0,
+     -6.5,
+     -7.0,
+     -7.5,
+     -8.0,
+     -8.5,
+     -9.0,
+     -9.5
+    ]
+   }
+  },
+  {
+   "id": "s",
+   "label": "DOOR B",
+   "gate": "S",
+   "to": "door-b",
+   "color": "#38d0e8",
+   "length": 257.0,
+   "points": [
+    [
+     0.0,
+     0.0,
+     -25.0
+    ],
+    [
+     0.0,
+     0.0,
+     -31.0
+    ],
+    [
+     0.0,
+     -3.5,
+     -38.0
+    ],
+    [
+     0.0,
+     -3.5,
+     -41.0
+    ],
+    [
+     0.0,
+     -7.0,
+     -48.0
+    ],
+    [
+     0.0,
+     -7.0,
+     -85.0
+    ],
+    [
+     0.0,
+     -3.5,
+     -92.0
+    ],
+    [
+     0.0,
+     -3.5,
+     -95.0
+    ],
+    [
+     0.0,
+     0.0,
+     -102.0
+    ],
+    [
+     0.0,
+     0.0,
+     -142.0
+    ],
+    [
+     -140.0,
+     0.0,
+     -142.0
+    ]
+   ],
+   "segments": [
+    {
+     "kind": "flat",
+     "heading": "S",
+     "length": 6,
+     "width": 8,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "stair",
+     "heading": "S",
+     "length": 7.0,
+     "width": 6,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": -3.5
+    },
+    {
+     "kind": "flat",
+     "heading": "S",
+     "length": 3.0,
+     "width": 6,
+     "cover": "open",
+     "y0": -3.5,
+     "y1": -3.5
+    },
+    {
+     "kind": "stair",
+     "heading": "S",
+     "length": 7.0,
+     "width": 6,
+     "cover": "open",
+     "y0": -3.5,
+     "y1": -7.0
+    },
+    {
+     "kind": "bridge",
+     "heading": "S",
+     "length": 37,
+     "width": 6,
+     "cover": "causeway",
+     "y0": -7.0,
+     "y1": -7.0
+    },
+    {
+     "kind": "stair",
+     "heading": "S",
+     "length": 7.0,
+     "width": 6,
+     "cover": "walled",
+     "y0": -7.0,
+     "y1": -3.5
+    },
+    {
+     "kind": "flat",
+     "heading": "S",
+     "length": 3.0,
+     "width": 6,
+     "cover": "walled",
+     "y0": -3.5,
+     "y1": -3.5
+    },
+    {
+     "kind": "stair",
+     "heading": "S",
+     "length": 7.0,
+     "width": 6,
+     "cover": "walled",
+     "y0": -3.5,
+     "y1": 0.0
+    },
+    {
+     "kind": "flat",
+     "heading": "S",
+     "length": 40,
+     "width": 10,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "flat",
+     "heading": "W",
+     "length": 140,
+     "width": 12,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    }
+   ],
+   "exit60": {
+    "turns": [],
+    "width_min": 6,
+    "width_max": 8,
+    "covers": [
+     "causeway",
+     "open"
+    ],
+    "kinds": [
+     "flat",
+     "stair",
+     "flat",
+     "stair",
+     "bridge"
+    ],
+    "dy60": -7.0,
+    "ymin": -7.0,
+    "ymax": 0.0,
+    "heading_first": "S",
+    "profile": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     -0.88,
+     -1.75,
+     -2.62,
+     -3.5,
+     -3.5,
+     -3.5,
+     -4.38,
+     -5.25,
+     -6.12,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "id": "w",
+   "label": "DOOR C",
+   "gate": "W",
+   "to": "door-c",
+   "color": "#b98cff",
+   "length": 286.0,
+   "points": [
+    [
+     -25.0,
+     0.0,
+     0.0
+    ],
+    [
+     -31.0,
+     0.0,
+     0.0
+    ],
+    [
+     -31.0,
+     0.0,
+     30.0
+    ],
+    [
+     -39.0,
+     0.0,
+     30.0
+    ],
+    [
+     -46.0,
+     3.5,
+     30.0
+    ],
+    [
+     -49.0,
+     3.5,
+     30.0
+    ],
+    [
+     -56.0,
+     7.0,
+     30.0
+    ],
+    [
+     -91.0,
+     7.0,
+     30.0
+    ],
+    [
+     -131.0,
+     7.0,
+     30.0
+    ],
+    [
+     -171.0,
+     7.0,
+     30.0
+    ],
+    [
+     -171.0,
+     7.0,
+     58.0
+    ],
+    [
+     -171.0,
+     14.0,
+     100.0
+    ],
+    [
+     -171.0,
+     14.0,
+     140.0
+    ]
+   ],
+   "segments": [
+    {
+     "kind": "flat",
+     "heading": "W",
+     "length": 6,
+     "width": 10,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 30,
+     "width": 10,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "flat",
+     "heading": "W",
+     "length": 8,
+     "width": 10,
+     "cover": "open",
+     "y0": 0.0,
+     "y1": 0.0
+    },
+    {
+     "kind": "stair",
+     "heading": "W",
+     "length": 7.0,
+     "width": 8,
+     "cover": "walled",
+     "y0": 0.0,
+     "y1": 3.5
+    },
+    {
+     "kind": "flat",
+     "heading": "W",
+     "length": 3.0,
+     "width": 8,
+     "cover": "walled",
+     "y0": 3.5,
+     "y1": 3.5
+    },
+    {
+     "kind": "stair",
+     "heading": "W",
+     "length": 7.0,
+     "width": 8,
+     "cover": "walled",
+     "y0": 3.5,
+     "y1": 7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "W",
+     "length": 35,
+     "width": 10,
+     "cover": "open",
+     "y0": 7.0,
+     "y1": 7.0
+    },
+    {
+     "kind": "bridge",
+     "heading": "W",
+     "length": 40,
+     "width": 10,
+     "cover": "covered bridge",
+     "y0": 7.0,
+     "y1": 7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "W",
+     "length": 40,
+     "width": 10,
+     "cover": "open",
+     "y0": 7.0,
+     "y1": 7.0
+    },
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 28,
+     "width": 10,
+     "cover": "open",
+     "y0": 7.0,
+     "y1": 7.0
+    },
+    {
+     "kind": "ramp",
+     "heading": "N",
+     "length": 42,
+     "width": 8,
+     "cover": "walled",
+     "y0": 7.0,
+     "y1": 14.0
+    },
+    {
+     "kind": "flat",
+     "heading": "N",
+     "length": 40,
+     "width": 10,
+     "cover": "open",
+     "y0": 14.0,
+     "y1": 14.0
+    }
+   ],
+   "exit60": {
+    "turns": [
+     [
+      6,
+      "R"
+     ],
+     [
+      36,
+      "L"
+     ]
+    ],
+    "width_min": 8,
+    "width_max": 10,
+    "covers": [
+     "open",
+     "walled"
+    ],
+    "kinds": [
+     "flat",
+     "stair",
+     "flat",
+     "stair"
+    ],
+    "dy60": 6.12,
+    "ymin": 0.0,
+    "ymax": 6.12,
+    "heading_first": "W",
+    "profile": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.88,
+     1.75,
+     2.62,
+     3.5,
+     3.5,
+     3.5,
+     4.38,
+     5.25,
+     6.12
+    ]
+   }
+  }
+ ],
+ "doors": [
+  {
+   "id": "a",
+   "name": "Navigation Tunnel portal",
+   "x": 298,
+   "y": -14,
+   "z": 0,
+   "facing": "W",
+   "level": "sunk",
+   "width": 10.0,
+   "height": 9.0,
+   "hall": "hall-a",
+   "plaza": {
+    "x0": 268.0,
+    "z0": -23.0,
+    "x1": 298,
+    "z1": 23.0
+   },
+   "note": "",
+   "bleed": {
+    "threshold": 30,
+    "warp": 60,
+    "drift": 110,
+    "rumour": 160
+   }
+  },
+  {
+   "id": "b",
+   "name": "The Canal Exchange",
+   "x": -140,
+   "y": 0,
+   "z": -142,
+   "facing": "E",
+   "level": "ground",
+   "width": 10.0,
+   "height": 9.0,
+   "hall": "hall-b",
+   "plaza": {
+    "x0": -140,
+    "z0": -167.0,
+    "x1": -110.0,
+    "z1": -117.0
+   },
+   "note": "",
+   "bleed": {
+    "threshold": 30,
+    "warp": 60,
+    "drift": 110,
+    "rumour": 160
+   }
+  },
+  {
+   "id": "c",
+   "name": "Wharf Heights hall",
+   "x": -171,
+   "y": 14,
+   "z": 140,
+   "facing": "S",
+   "level": "raised",
+   "width": 10.0,
+   "height": 9.0,
+   "hall": "hall-c",
+   "plaza": {
+    "x0": -196.0,
+    "z0": 110.0,
+    "x1": -146.0,
+    "z1": 140
+   },
+   "note": "",
+   "bleed": {
+    "threshold": 30,
+    "warp": 60,
+    "drift": 110,
+    "rumour": 160
+   }
+  }
+ ],
+ "court": {
+  "name": "City Hall court",
+  "x": 110,
+  "y": 7,
+  "z": 218,
+  "x0": 73.0,
+  "z0": 186.0,
+  "x1": 147.0,
+  "z1": 250.0,
+  "gate": "S",
+  "gateway": {
+   "x": 110,
+   "y": 7,
+   "z": 186.0,
+   "width": 12.0
+  },
+  "wall_height": 7.0,
+  "hall": "city-hall",
+  "tower": {
+   "x": 110.0,
+   "z": 236.5,
+   "top": 69
+  }
+ },
+ "ground": [
+  {
+   "x0": -280,
+   "x1": 320,
+   "z0": -220,
+   "z1": -122,
+   "top": 0.0,
+   "id": "terrace-0",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 57,
+   "x1": 63,
+   "z0": -122,
+   "z1": -112,
+   "top": -3.5,
+   "id": "terrace-1",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -280,
+   "x1": 57,
+   "z0": -122,
+   "z1": -102,
+   "top": 0.0,
+   "id": "terrace-2",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 57,
+   "x1": 63,
+   "z0": -112,
+   "z1": -102,
+   "top": -7.0,
+   "id": "terrace-3",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -3,
+   "x1": 3,
+   "z0": -102,
+   "z1": -92,
+   "top": -3.5,
+   "id": "terrace-4",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 57,
+   "x1": 63,
+   "z0": -102,
+   "z1": -92,
+   "top": -10.5,
+   "id": "terrace-5",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 63,
+   "x1": 320,
+   "z0": -122,
+   "z1": -85,
+   "top": 0.0,
+   "id": "terrace-6",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -280,
+   "x1": -3,
+   "z0": -102,
+   "z1": -85,
+   "top": 0.0,
+   "id": "terrace-7",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 3,
+   "x1": 57,
+   "z0": -102,
+   "z1": -85,
+   "top": 0.0,
+   "id": "terrace-8",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -3,
+   "x1": 3,
+   "z0": -92,
+   "z1": -85,
+   "top": -7.0,
+   "id": "terrace-9",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 57,
+   "x1": 63,
+   "z0": -92,
+   "z1": -85,
+   "top": -14.0,
+   "id": "terrace-10",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -280,
+   "x1": -125,
+   "z0": -85,
+   "z1": -57,
+   "top": 0.0,
+   "id": "terrace-11",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 125,
+   "x1": 320,
+   "z0": -85,
+   "z1": -57,
+   "top": 0.0,
+   "id": "terrace-12",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": 125,
+   "z0": -85,
+   "z1": -48,
+   "top": -14.0,
+   "id": "terrace-13",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -163,
+   "x1": -157,
+   "z0": -57,
+   "z1": -47,
+   "top": -3.5,
+   "id": "terrace-14",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 237,
+   "x1": 243,
+   "z0": -57,
+   "z1": -47,
+   "top": -3.5,
+   "id": "terrace-15",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": -3,
+   "z0": -48,
+   "z1": -45,
+   "top": -14.0,
+   "id": "terrace-16",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 3,
+   "x1": 125,
+   "z0": -48,
+   "z1": -45,
+   "top": -14.0,
+   "id": "terrace-17",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -3,
+   "x1": 3,
+   "z0": -48,
+   "z1": -41,
+   "top": -7.0,
+   "id": "terrace-18",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -163,
+   "x1": -157,
+   "z0": -47,
+   "z1": -37,
+   "top": -7.0,
+   "id": "terrace-19",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 237,
+   "x1": 243,
+   "z0": -47,
+   "z1": -37,
+   "top": -7.0,
+   "id": "terrace-20",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -85,
+   "x1": -3,
+   "z0": -45,
+   "z1": -31,
+   "top": 0.0,
+   "id": "terrace-21",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 3,
+   "x1": 85,
+   "z0": -45,
+   "z1": -31,
+   "top": 0.0,
+   "id": "terrace-22",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -3,
+   "x1": 3,
+   "z0": -41,
+   "z1": -31,
+   "top": -3.5,
+   "id": "terrace-23",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -163,
+   "x1": -157,
+   "z0": -37,
+   "z1": -27,
+   "top": -10.5,
+   "id": "terrace-24",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 237,
+   "x1": 243,
+   "z0": -37,
+   "z1": -27,
+   "top": -10.5,
+   "id": "terrace-25",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 243,
+   "x1": 320,
+   "z0": -57,
+   "z1": -23,
+   "top": 0.0,
+   "id": "terrace-26",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -280,
+   "x1": -163,
+   "z0": -57,
+   "z1": -20,
+   "top": 0.0,
+   "id": "terrace-27",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -157,
+   "x1": -125,
+   "z0": -57,
+   "z1": -20,
+   "top": 0.0,
+   "id": "terrace-28",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 125,
+   "x1": 237,
+   "z0": -57,
+   "z1": -20,
+   "top": 0.0,
+   "id": "terrace-29",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": -85,
+   "z0": -45,
+   "z1": -20,
+   "top": -14.0,
+   "id": "terrace-30",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 85,
+   "x1": 125,
+   "z0": -45,
+   "z1": -20,
+   "top": -14.0,
+   "id": "terrace-31",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -163,
+   "x1": -157,
+   "z0": -27,
+   "z1": -20,
+   "top": -14.0,
+   "id": "terrace-32",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 237,
+   "x1": 243,
+   "z0": -27,
+   "z1": -20,
+   "top": -14.0,
+   "id": "terrace-33",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 243,
+   "x1": 268,
+   "z0": -23,
+   "z1": -20,
+   "top": 0.0,
+   "id": "terrace-34",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 268,
+   "x1": 298,
+   "z0": -23,
+   "z1": -20,
+   "top": -14.0,
+   "id": "terrace-35",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 298,
+   "x1": 320,
+   "z0": -23,
+   "z1": -20,
+   "top": 0.0,
+   "id": "terrace-36",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -85,
+   "x1": 85,
+   "z0": -31,
+   "z1": -6,
+   "top": 0.0,
+   "id": "terrace-37",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 85,
+   "x1": 320,
+   "z0": -20,
+   "z1": -6,
+   "top": -14.0,
+   "id": "terrace-38",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -85,
+   "x1": 47,
+   "z0": -6,
+   "z1": 6,
+   "top": 0.0,
+   "id": "terrace-39",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 47,
+   "x1": 320,
+   "z0": -6,
+   "z1": 6,
+   "top": -14.0,
+   "id": "terrace-40",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -280,
+   "x1": -85,
+   "z0": -20,
+   "z1": 20,
+   "top": -14.0,
+   "id": "terrace-41",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 85,
+   "x1": 320,
+   "z0": 6,
+   "z1": 20,
+   "top": -14.0,
+   "id": "terrace-42",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 125,
+   "x1": 268,
+   "z0": 20,
+   "z1": 23,
+   "top": 0.0,
+   "id": "terrace-43",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 268,
+   "x1": 298,
+   "z0": 20,
+   "z1": 23,
+   "top": -14.0,
+   "id": "terrace-44",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 298,
+   "x1": 320,
+   "z0": 20,
+   "z1": 23,
+   "top": 0.0,
+   "id": "terrace-45",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -85,
+   "x1": 85,
+   "z0": 6,
+   "z1": 25,
+   "top": 0.0,
+   "id": "terrace-46",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": -85,
+   "z0": 20,
+   "z1": 25,
+   "top": -14.0,
+   "id": "terrace-47",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -56,
+   "x1": 85,
+   "z0": 25,
+   "z1": 26,
+   "top": 0.0,
+   "id": "terrace-48",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -224,
+   "x1": -216,
+   "z0": 20,
+   "z1": 27,
+   "top": 0.0,
+   "id": "terrace-49",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -56,
+   "x1": -46,
+   "z0": 26,
+   "z1": 34,
+   "top": 3.5,
+   "id": "terrace-50",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -46,
+   "x1": 85,
+   "z0": 26,
+   "z1": 34,
+   "top": 0.0,
+   "id": "terrace-51",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": -96,
+   "z0": 25,
+   "z1": 35,
+   "top": -14.0,
+   "id": "terrace-52",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -96,
+   "x1": -56,
+   "z0": 25,
+   "z1": 35,
+   "top": 7.0,
+   "id": "terrace-53",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -56,
+   "x1": 85,
+   "z0": 34,
+   "z1": 35,
+   "top": 0.0,
+   "id": "terrace-54",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -280,
+   "x1": -224,
+   "z0": 20,
+   "z1": 37,
+   "top": 7.0,
+   "id": "terrace-55",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -216,
+   "x1": -125,
+   "z0": 20,
+   "z1": 37,
+   "top": 7.0,
+   "id": "terrace-56",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -224,
+   "x1": -216,
+   "z0": 27,
+   "z1": 37,
+   "top": 3.5,
+   "id": "terrace-57",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 85,
+   "x1": 125,
+   "z0": 20,
+   "z1": 45,
+   "top": -14.0,
+   "id": "terrace-58",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": -85,
+   "z0": 35,
+   "z1": 45,
+   "top": -14.0,
+   "id": "terrace-59",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -85,
+   "x1": 85,
+   "z0": 35,
+   "z1": 45,
+   "top": 0.0,
+   "id": "terrace-60",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": -5,
+   "z0": 45,
+   "z1": 50,
+   "top": -14.0,
+   "id": "terrace-61",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -5,
+   "x1": 5,
+   "z0": 45,
+   "z1": 50,
+   "top": 0.0,
+   "id": "terrace-62",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 5,
+   "x1": 125,
+   "z0": 45,
+   "z1": 50,
+   "top": -14.0,
+   "id": "terrace-63",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": 125,
+   "z0": 50,
+   "z1": 79,
+   "top": -14.0,
+   "id": "terrace-64",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 125,
+   "x1": 320,
+   "z0": 23,
+   "z1": 85,
+   "top": 0.0,
+   "id": "terrace-65",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": -6,
+   "z0": 79,
+   "z1": 85,
+   "top": -14.0,
+   "id": "terrace-66",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -6,
+   "x1": 6,
+   "z0": 79,
+   "z1": 85,
+   "top": 0.0,
+   "id": "terrace-67",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 6,
+   "x1": 125,
+   "z0": 79,
+   "z1": 85,
+   "top": -14.0,
+   "id": "terrace-68",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -280,
+   "x1": -125,
+   "z0": 37,
+   "z1": 90,
+   "top": 7.0,
+   "id": "terrace-69",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -63,
+   "x1": -57,
+   "z0": 85,
+   "z1": 92,
+   "top": -14.0,
+   "id": "terrace-70",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -280,
+   "x1": -233,
+   "z0": 90,
+   "z1": 100,
+   "top": 7.0,
+   "id": "terrace-71",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -233,
+   "x1": -227,
+   "z0": 90,
+   "z1": 100,
+   "top": 10.5,
+   "id": "terrace-72",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -227,
+   "x1": -125,
+   "z0": 90,
+   "z1": 100,
+   "top": 7.0,
+   "id": "terrace-73",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -63,
+   "x1": -57,
+   "z0": 92,
+   "z1": 102,
+   "top": -10.5,
+   "id": "terrace-74",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -57,
+   "x1": 320,
+   "z0": 85,
+   "z1": 110,
+   "top": 0.0,
+   "id": "terrace-75",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -63,
+   "x1": -57,
+   "z0": 102,
+   "z1": 112,
+   "top": -7.0,
+   "id": "terrace-76",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": -63,
+   "z0": 85,
+   "z1": 120,
+   "top": 0.0,
+   "id": "terrace-77",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -57,
+   "x1": 227,
+   "z0": 110,
+   "z1": 120,
+   "top": 0.0,
+   "id": "terrace-78",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 227,
+   "x1": 233,
+   "z0": 110,
+   "z1": 120,
+   "top": 3.5,
+   "id": "terrace-79",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 233,
+   "x1": 320,
+   "z0": 110,
+   "z1": 120,
+   "top": 0.0,
+   "id": "terrace-80",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -63,
+   "x1": -57,
+   "z0": 112,
+   "z1": 122,
+   "top": -3.5,
+   "id": "terrace-81",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": -63,
+   "z0": 120,
+   "z1": 122,
+   "top": 7.0,
+   "id": "terrace-82",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -57,
+   "x1": 102,
+   "z0": 120,
+   "z1": 122,
+   "top": 7.0,
+   "id": "terrace-83",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 102,
+   "x1": 118,
+   "z0": 120,
+   "z1": 156,
+   "top": 0.0,
+   "id": "terrace-84",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": 118,
+   "x1": 320,
+   "z0": 120,
+   "z1": 156,
+   "top": 7.0,
+   "id": "terrace-85",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": 102,
+   "z0": 122,
+   "z1": 156,
+   "top": 7.0,
+   "id": "terrace-86",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -280,
+   "x1": -125,
+   "z0": 100,
+   "z1": 260,
+   "top": 14.0,
+   "id": "terrace-87",
+   "role": "ground",
+   "bottom": -16.0
+  },
+  {
+   "x0": -125,
+   "x1": 320,
+   "z0": 156,
+   "z1": 260,
+   "top": 7.0,
+   "id": "terrace-88",
+   "role": "ground",
+   "bottom": -16.0
+  }
+ ],
+ "ramps": [
+  {
+   "id": "n-ramp-4",
+   "kind": "ramp",
+   "toward": "N",
+   "x0": 102.0,
+   "z0": 100.0,
+   "x1": 118.0,
+   "z1": 156.0,
+   "ylo": 0.0,
+   "yhi": 7.0,
+   "low": {
+    "x": 110.0,
+    "y": 0.0,
+    "z": 100.0
+   },
+   "high": {
+    "x": 110.0,
+    "y": 7.0,
+    "z": 156.0
+   },
+   "width": 16.0,
+   "run": 56.0,
+   "bottom": -0.25,
+   "grade": 0.125,
+   "horde": true,
+   "route": "n"
+  },
+  {
+   "id": "e-ramp-1",
+   "kind": "ramp",
+   "toward": "W",
+   "x0": 47.0,
+   "z0": -6.0,
+   "x1": 103.0,
+   "z1": 6.0,
+   "ylo": -14.0,
+   "yhi": 0.0,
+   "low": {
+    "x": 103.0,
+    "y": -14.0,
+    "z": 0.0
+   },
+   "high": {
+    "x": 47.0,
+    "y": 0.0,
+    "z": 0.0
+   },
+   "width": 12.0,
+   "run": 56.0,
+   "bottom": -14.25,
+   "grade": 0.25,
+   "horde": true,
+   "route": "e"
+  },
+  {
+   "id": "s-stair-1",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -3.0,
+   "z0": -38.0,
+   "x1": 3.0,
+   "z1": -31.0,
+   "ylo": -3.5,
+   "yhi": 0.0,
+   "low": {
+    "x": 0.0,
+    "y": -3.5,
+    "z": -38.0
+   },
+   "high": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -31.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -3.75,
+   "grade": 0.5,
+   "horde": true,
+   "route": "s"
+  },
+  {
+   "id": "s-stair-3",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -3.0,
+   "z0": -48.0,
+   "x1": 3.0,
+   "z1": -41.0,
+   "ylo": -7.0,
+   "yhi": -3.5,
+   "low": {
+    "x": 0.0,
+    "y": -7.0,
+    "z": -48.0
+   },
+   "high": {
+    "x": 0.0,
+    "y": -3.5,
+    "z": -41.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -7.25,
+   "grade": 0.5,
+   "horde": true,
+   "route": "s"
+  },
+  {
+   "id": "s-stair-5",
+   "kind": "stair",
+   "toward": "S",
+   "x0": -3.0,
+   "z0": -92.0,
+   "x1": 3.0,
+   "z1": -85.0,
+   "ylo": -7.0,
+   "yhi": -3.5,
+   "low": {
+    "x": 0.0,
+    "y": -7.0,
+    "z": -85.0
+   },
+   "high": {
+    "x": 0.0,
+    "y": -3.5,
+    "z": -92.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -7.25,
+   "grade": 0.5,
+   "horde": true,
+   "route": "s"
+  },
+  {
+   "id": "s-stair-7",
+   "kind": "stair",
+   "toward": "S",
+   "x0": -3.0,
+   "z0": -102.0,
+   "x1": 3.0,
+   "z1": -95.0,
+   "ylo": -3.5,
+   "yhi": 0.0,
+   "low": {
+    "x": 0.0,
+    "y": -3.5,
+    "z": -95.0
+   },
+   "high": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -102.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -3.75,
+   "grade": 0.5,
+   "horde": true,
+   "route": "s"
+  },
+  {
+   "id": "w-stair-3",
+   "kind": "stair",
+   "toward": "W",
+   "x0": -46.0,
+   "z0": 26.0,
+   "x1": -39.0,
+   "z1": 34.0,
+   "ylo": 0.0,
+   "yhi": 3.5,
+   "low": {
+    "x": -39.0,
+    "y": 0.0,
+    "z": 30.0
+   },
+   "high": {
+    "x": -46.0,
+    "y": 3.5,
+    "z": 30.0
+   },
+   "width": 8.0,
+   "run": 7.0,
+   "bottom": -0.25,
+   "grade": 0.5,
+   "horde": true,
+   "route": "w"
+  },
+  {
+   "id": "w-stair-5",
+   "kind": "stair",
+   "toward": "W",
+   "x0": -56.0,
+   "z0": 26.0,
+   "x1": -49.0,
+   "z1": 34.0,
+   "ylo": 3.5,
+   "yhi": 7.0,
+   "low": {
+    "x": -49.0,
+    "y": 3.5,
+    "z": 30.0
+   },
+   "high": {
+    "x": -56.0,
+    "y": 7.0,
+    "z": 30.0
+   },
+   "width": 8.0,
+   "run": 7.0,
+   "bottom": 3.25,
+   "grade": 0.5,
+   "horde": true,
+   "route": "w"
+  },
+  {
+   "id": "w-ramp-10",
+   "kind": "ramp",
+   "toward": "N",
+   "x0": -175.0,
+   "z0": 58.0,
+   "x1": -167.0,
+   "z1": 100.0,
+   "ylo": 7.0,
+   "yhi": 14.0,
+   "low": {
+    "x": -171.0,
+    "y": 7.0,
+    "z": 58.0
+   },
+   "high": {
+    "x": -171.0,
+    "y": 14.0,
+    "z": 100.0
+   },
+   "width": 8.0,
+   "run": 42.0,
+   "bottom": 6.75,
+   "grade": 0.167,
+   "horde": true,
+   "route": "w"
+  },
+  {
+   "id": "west-bridge-stair-0",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -224.0,
+   "z0": 20,
+   "x1": -216.0,
+   "z1": 27.0,
+   "ylo": 0.0,
+   "yhi": 3.5,
+   "low": {
+    "x": -220.0,
+    "y": 0,
+    "z": 20
+   },
+   "high": {
+    "x": -220.0,
+    "y": 3.5,
+    "z": 27.0
+   },
+   "width": 8.0,
+   "run": 7.0,
+   "bottom": -0.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "west-bridge-stair-1",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -224.0,
+   "z0": 30.0,
+   "x1": -216.0,
+   "z1": 37.0,
+   "ylo": 3.5,
+   "yhi": 7.0,
+   "low": {
+    "x": -220.0,
+    "y": 3.5,
+    "z": 30.0
+   },
+   "high": {
+    "x": -220.0,
+    "y": 7.0,
+    "z": 37.0
+   },
+   "width": 8.0,
+   "run": 7.0,
+   "bottom": 3.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "east-bed-stair-0",
+   "kind": "stair",
+   "toward": "S",
+   "x0": 237.0,
+   "z0": -27.0,
+   "x1": 243.0,
+   "z1": -20,
+   "ylo": -14.0,
+   "yhi": -10.5,
+   "low": {
+    "x": 240.0,
+    "y": -14,
+    "z": -20
+   },
+   "high": {
+    "x": 240.0,
+    "y": -10.5,
+    "z": -27.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -14.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "east-bed-stair-1",
+   "kind": "stair",
+   "toward": "S",
+   "x0": 237.0,
+   "z0": -37.0,
+   "x1": 243.0,
+   "z1": -30.0,
+   "ylo": -10.5,
+   "yhi": -7.0,
+   "low": {
+    "x": 240.0,
+    "y": -10.5,
+    "z": -30.0
+   },
+   "high": {
+    "x": 240.0,
+    "y": -7.0,
+    "z": -37.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -10.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "east-bed-stair-2",
+   "kind": "stair",
+   "toward": "S",
+   "x0": 237.0,
+   "z0": -47.0,
+   "x1": 243.0,
+   "z1": -40.0,
+   "ylo": -7.0,
+   "yhi": -3.5,
+   "low": {
+    "x": 240.0,
+    "y": -7.0,
+    "z": -40.0
+   },
+   "high": {
+    "x": 240.0,
+    "y": -3.5,
+    "z": -47.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -7.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "east-bed-stair-3",
+   "kind": "stair",
+   "toward": "S",
+   "x0": 237.0,
+   "z0": -57.0,
+   "x1": 243.0,
+   "z1": -50.0,
+   "ylo": -3.5,
+   "yhi": 0.0,
+   "low": {
+    "x": 240.0,
+    "y": -3.5,
+    "z": -50.0
+   },
+   "high": {
+    "x": 240.0,
+    "y": 0.0,
+    "z": -57.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -3.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "north-arm-stair-0",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -63.0,
+   "z0": 85,
+   "x1": -57.0,
+   "z1": 92.0,
+   "ylo": -14.0,
+   "yhi": -10.5,
+   "low": {
+    "x": -60.0,
+    "y": -14,
+    "z": 85
+   },
+   "high": {
+    "x": -60.0,
+    "y": -10.5,
+    "z": 92.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -14.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "north-arm-stair-1",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -63.0,
+   "z0": 95.0,
+   "x1": -57.0,
+   "z1": 102.0,
+   "ylo": -10.5,
+   "yhi": -7.0,
+   "low": {
+    "x": -60.0,
+    "y": -10.5,
+    "z": 95.0
+   },
+   "high": {
+    "x": -60.0,
+    "y": -7.0,
+    "z": 102.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -10.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "north-arm-stair-2",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -63.0,
+   "z0": 105.0,
+   "x1": -57.0,
+   "z1": 112.0,
+   "ylo": -7.0,
+   "yhi": -3.5,
+   "low": {
+    "x": -60.0,
+    "y": -7.0,
+    "z": 105.0
+   },
+   "high": {
+    "x": -60.0,
+    "y": -3.5,
+    "z": 112.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -7.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "north-arm-stair-3",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -63.0,
+   "z0": 115.0,
+   "x1": -57.0,
+   "z1": 122.0,
+   "ylo": -3.5,
+   "yhi": 0.0,
+   "low": {
+    "x": -60.0,
+    "y": -3.5,
+    "z": 115.0
+   },
+   "high": {
+    "x": -60.0,
+    "y": 0.0,
+    "z": 122.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -3.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "south-arm-stair-0",
+   "kind": "stair",
+   "toward": "S",
+   "x0": 57.0,
+   "z0": -92.0,
+   "x1": 63.0,
+   "z1": -85,
+   "ylo": -14.0,
+   "yhi": -10.5,
+   "low": {
+    "x": 60.0,
+    "y": -14,
+    "z": -85
+   },
+   "high": {
+    "x": 60.0,
+    "y": -10.5,
+    "z": -92.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -14.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "south-arm-stair-1",
+   "kind": "stair",
+   "toward": "S",
+   "x0": 57.0,
+   "z0": -102.0,
+   "x1": 63.0,
+   "z1": -95.0,
+   "ylo": -10.5,
+   "yhi": -7.0,
+   "low": {
+    "x": 60.0,
+    "y": -10.5,
+    "z": -95.0
+   },
+   "high": {
+    "x": 60.0,
+    "y": -7.0,
+    "z": -102.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -10.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "south-arm-stair-2",
+   "kind": "stair",
+   "toward": "S",
+   "x0": 57.0,
+   "z0": -112.0,
+   "x1": 63.0,
+   "z1": -105.0,
+   "ylo": -7.0,
+   "yhi": -3.5,
+   "low": {
+    "x": 60.0,
+    "y": -7.0,
+    "z": -105.0
+   },
+   "high": {
+    "x": 60.0,
+    "y": -3.5,
+    "z": -112.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -7.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "south-arm-stair-3",
+   "kind": "stair",
+   "toward": "S",
+   "x0": 57.0,
+   "z0": -122.0,
+   "x1": 63.0,
+   "z1": -115.0,
+   "ylo": -3.5,
+   "yhi": 0.0,
+   "low": {
+    "x": 60.0,
+    "y": -3.5,
+    "z": -115.0
+   },
+   "high": {
+    "x": 60.0,
+    "y": 0.0,
+    "z": -122.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -3.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "west-bed-stair-0",
+   "kind": "stair",
+   "toward": "S",
+   "x0": -163.0,
+   "z0": -27.0,
+   "x1": -157.0,
+   "z1": -20,
+   "ylo": -14.0,
+   "yhi": -10.5,
+   "low": {
+    "x": -160.0,
+    "y": -14,
+    "z": -20
+   },
+   "high": {
+    "x": -160.0,
+    "y": -10.5,
+    "z": -27.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -14.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "west-bed-stair-1",
+   "kind": "stair",
+   "toward": "S",
+   "x0": -163.0,
+   "z0": -37.0,
+   "x1": -157.0,
+   "z1": -30.0,
+   "ylo": -10.5,
+   "yhi": -7.0,
+   "low": {
+    "x": -160.0,
+    "y": -10.5,
+    "z": -30.0
+   },
+   "high": {
+    "x": -160.0,
+    "y": -7.0,
+    "z": -37.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -10.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "west-bed-stair-2",
+   "kind": "stair",
+   "toward": "S",
+   "x0": -163.0,
+   "z0": -47.0,
+   "x1": -157.0,
+   "z1": -40.0,
+   "ylo": -7.0,
+   "yhi": -3.5,
+   "low": {
+    "x": -160.0,
+    "y": -7.0,
+    "z": -40.0
+   },
+   "high": {
+    "x": -160.0,
+    "y": -3.5,
+    "z": -47.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -7.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "west-bed-stair-3",
+   "kind": "stair",
+   "toward": "S",
+   "x0": -163.0,
+   "z0": -57.0,
+   "x1": -157.0,
+   "z1": -50.0,
+   "ylo": -3.5,
+   "yhi": 0.0,
+   "low": {
+    "x": -160.0,
+    "y": -3.5,
+    "z": -50.0
+   },
+   "high": {
+    "x": -160.0,
+    "y": 0.0,
+    "z": -57.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -3.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "mall-east-stair-0",
+   "kind": "stair",
+   "toward": "N",
+   "x0": 227.0,
+   "z0": 103,
+   "x1": 233.0,
+   "z1": 110.0,
+   "ylo": 0.0,
+   "yhi": 3.5,
+   "low": {
+    "x": 230.0,
+    "y": 0,
+    "z": 103
+   },
+   "high": {
+    "x": 230.0,
+    "y": 3.5,
+    "z": 110.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": -0.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "mall-east-stair-1",
+   "kind": "stair",
+   "toward": "N",
+   "x0": 227.0,
+   "z0": 113.0,
+   "x1": 233.0,
+   "z1": 120.0,
+   "ylo": 3.5,
+   "yhi": 7.0,
+   "low": {
+    "x": 230.0,
+    "y": 3.5,
+    "z": 113.0
+   },
+   "high": {
+    "x": 230.0,
+    "y": 7.0,
+    "z": 120.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": 3.25,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "heights-stair-0",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -233.0,
+   "z0": 83,
+   "x1": -227.0,
+   "z1": 90.0,
+   "ylo": 7.0,
+   "yhi": 10.5,
+   "low": {
+    "x": -230.0,
+    "y": 7,
+    "z": 83
+   },
+   "high": {
+    "x": -230.0,
+    "y": 10.5,
+    "z": 90.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": 6.75,
+   "grade": 0.5,
+   "horde": true
+  },
+  {
+   "id": "heights-stair-1",
+   "kind": "stair",
+   "toward": "N",
+   "x0": -233.0,
+   "z0": 93.0,
+   "x1": -227.0,
+   "z1": 100.0,
+   "ylo": 10.5,
+   "yhi": 14.0,
+   "low": {
+    "x": -230.0,
+    "y": 10.5,
+    "z": 93.0
+   },
+   "high": {
+    "x": -230.0,
+    "y": 14.0,
+    "z": 100.0
+   },
+   "width": 6.0,
+   "run": 7.0,
+   "bottom": 10.25,
+   "grade": 0.5,
+   "horde": true
+  }
+ ],
+ "blocks": [
+  {
+   "id": "iron-bridge",
+   "role": "bridge",
+   "x0": -4.0,
+   "z0": 45.0,
+   "x1": 4.0,
+   "z1": 85.0,
+   "bottom": -1.0,
+   "top": 0.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "iron-bridge-parapet-w",
+   "role": "parapet",
+   "x0": -4.0,
+   "z0": 45.0,
+   "x1": -3.5,
+   "z1": 85.0,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "iron-bridge-parapet-e",
+   "role": "parapet",
+   "x0": 3.5,
+   "z0": 45.0,
+   "x1": 4.0,
+   "z1": 85.0,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "court-wall-S-a",
+   "role": "court-wall",
+   "x0": 73.0,
+   "z0": 186.0,
+   "x1": 104.0,
+   "z1": 187.5,
+   "bottom": 7.0,
+   "top": 14.0
+  },
+  {
+   "id": "court-wall-S-b",
+   "role": "court-wall",
+   "x0": 116.0,
+   "z0": 186.0,
+   "x1": 147.0,
+   "z1": 187.5,
+   "bottom": 7.0,
+   "top": 14.0
+  },
+  {
+   "id": "court-gate-lintel",
+   "role": "court-gate",
+   "x0": 104.0,
+   "z0": 185.0,
+   "x1": 116.0,
+   "z1": 188.5,
+   "bottom": 17.0,
+   "top": 19.5
+  },
+  {
+   "id": "court-gate-pier-a",
+   "role": "court-gate",
+   "x0": 102.0,
+   "z0": 185.0,
+   "x1": 104.0,
+   "z1": 188.5,
+   "bottom": 7.0,
+   "top": 19.5
+  },
+  {
+   "id": "court-gate-pier-b",
+   "role": "court-gate",
+   "x0": 116.0,
+   "z0": 185.0,
+   "x1": 118.0,
+   "z1": 188.5,
+   "bottom": 7.0,
+   "top": 19.5
+  },
+  {
+   "id": "court-wall-N",
+   "role": "court-wall",
+   "x0": 73.0,
+   "z0": 248.5,
+   "x1": 147.0,
+   "z1": 250.0,
+   "bottom": 7.0,
+   "top": 14.0
+  },
+  {
+   "id": "court-wall-W",
+   "role": "court-wall",
+   "x0": 73.0,
+   "z0": 186.0,
+   "x1": 74.5,
+   "z1": 250.0,
+   "bottom": 7.0,
+   "top": 14.0
+  },
+  {
+   "id": "court-wall-E",
+   "role": "court-wall",
+   "x0": 145.5,
+   "z0": 186.0,
+   "x1": 147.0,
+   "z1": 250.0,
+   "bottom": 7.0,
+   "top": 14.0
+  },
+  {
+   "id": "city-hall",
+   "role": "city-hall",
+   "x0": 83.0,
+   "z0": 224.5,
+   "x1": 137.0,
+   "z1": 248.5,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "hatch": true
+  },
+  {
+   "id": "city-hall-tower",
+   "role": "tower",
+   "x0": 104.0,
+   "z0": 230.5,
+   "x1": 116.0,
+   "z1": 242.5,
+   "bottom": 26.0,
+   "top": 69.0
+  },
+  {
+   "id": "hall-a",
+   "role": "hall",
+   "x0": 298,
+   "z0": -18.0,
+   "x1": 318,
+   "z1": 18.0,
+   "bottom": -14.0,
+   "top": 2.0,
+   "roof": "walkable",
+   "hatch": true
+  },
+  {
+   "id": "low-causeway",
+   "role": "bridge",
+   "x0": -3.0,
+   "z0": -85.0,
+   "x1": 3.0,
+   "z1": -48.0,
+   "bottom": -8.0,
+   "top": -7.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "low-causeway-parapet-w",
+   "role": "parapet",
+   "x0": -3.0,
+   "z0": -85.0,
+   "x1": -2.5,
+   "z1": -48.0,
+   "bottom": -7.0,
+   "top": -5.9
+  },
+  {
+   "id": "low-causeway-parapet-e",
+   "role": "parapet",
+   "x0": 2.5,
+   "z0": -85.0,
+   "x1": 3.0,
+   "z1": -48.0,
+   "bottom": -7.0,
+   "top": -5.9
+  },
+  {
+   "id": "hall-b",
+   "role": "hall",
+   "x0": -162.0,
+   "z0": -162.0,
+   "x1": -140,
+   "z1": -122.0,
+   "bottom": 0.0,
+   "top": 16.0,
+   "roof": "walkable",
+   "hatch": true
+  },
+  {
+   "id": "w-lid-7",
+   "role": "lid",
+   "x0": -131.0,
+   "z0": 24.0,
+   "x1": -91.0,
+   "z1": 36.0,
+   "bottom": 12.0,
+   "top": 19.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "mill-bridge-house",
+   "role": "bridge",
+   "x0": -131.0,
+   "z0": 25.0,
+   "x1": -91.0,
+   "z1": 35.0,
+   "bottom": 6.0,
+   "top": 7.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "mill-bridge-house-parapet-s",
+   "role": "parapet",
+   "x0": -131.0,
+   "z0": 25.0,
+   "x1": -91.0,
+   "z1": 25.5,
+   "bottom": 7.0,
+   "top": 8.1
+  },
+  {
+   "id": "mill-bridge-house-parapet-n",
+   "role": "parapet",
+   "x0": -131.0,
+   "z0": 34.5,
+   "x1": -91.0,
+   "z1": 35.0,
+   "bottom": 7.0,
+   "top": 8.1
+  },
+  {
+   "id": "hall-c",
+   "role": "hall",
+   "x0": -191.0,
+   "z0": 140,
+   "x1": -151.0,
+   "z1": 162.0,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "hatch": true
+  },
+  {
+   "id": "navigation-road-bridge",
+   "role": "bridge",
+   "x0": 194,
+   "z0": -26,
+   "x1": 206,
+   "z1": 26,
+   "bottom": -1.0,
+   "top": 0.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "navigation-road-bridge-parapet-w",
+   "role": "parapet",
+   "x0": 194,
+   "z0": -26,
+   "x1": 194.5,
+   "z1": 26,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "navigation-road-bridge-parapet-e",
+   "role": "parapet",
+   "x0": 205.5,
+   "z0": -26,
+   "x1": 206,
+   "z1": 26,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "east-footbridge",
+   "role": "bridge",
+   "x0": 263,
+   "z0": -24,
+   "x1": 267,
+   "z1": 24,
+   "bottom": -1.0,
+   "top": 0.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "east-footbridge-parapet-w",
+   "role": "parapet",
+   "x0": 263,
+   "z0": -24,
+   "x1": 263.5,
+   "z1": 24,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "east-footbridge-parapet-e",
+   "role": "parapet",
+   "x0": 266.5,
+   "z0": -24,
+   "x1": 267,
+   "z1": 24,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "north-arm-footbridge",
+   "role": "bridge",
+   "x0": 58,
+   "z0": 41,
+   "x1": 62,
+   "z1": 89,
+   "bottom": -1.0,
+   "top": 0.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "north-arm-footbridge-parapet-w",
+   "role": "parapet",
+   "x0": 58,
+   "z0": 41,
+   "x1": 58.5,
+   "z1": 89,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "north-arm-footbridge-parapet-e",
+   "role": "parapet",
+   "x0": 61.5,
+   "z0": 41,
+   "x1": 62,
+   "z1": 89,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "south-arm-footbridge",
+   "role": "bridge",
+   "x0": -52,
+   "z0": -89,
+   "x1": -48,
+   "z1": -41,
+   "bottom": -1.0,
+   "top": 0.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "south-arm-footbridge-parapet-w",
+   "role": "parapet",
+   "x0": -52,
+   "z0": -89,
+   "x1": -51.5,
+   "z1": -41,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "south-arm-footbridge-parapet-e",
+   "role": "parapet",
+   "x0": -48.5,
+   "z0": -89,
+   "x1": -48,
+   "z1": -41,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "west-channel-bridge",
+   "role": "bridge",
+   "x0": -224,
+   "z0": -24,
+   "x1": -216,
+   "z1": 20,
+   "bottom": -1.0,
+   "top": 0.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "west-channel-bridge-parapet-w",
+   "role": "parapet",
+   "x0": -224,
+   "z0": -24,
+   "x1": -223.5,
+   "z1": 20,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "west-channel-bridge-parapet-e",
+   "role": "parapet",
+   "x0": -216.5,
+   "z0": -24,
+   "x1": -216,
+   "z1": 20,
+   "bottom": 0.0,
+   "top": 1.1
+  },
+  {
+   "id": "barge-0",
+   "role": "landmark",
+   "x0": 150,
+   "z0": -8,
+   "x1": 176,
+   "z1": -1,
+   "bottom": -14.0,
+   "top": -11.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "barge-1",
+   "role": "landmark",
+   "x0": -205,
+   "z0": 5,
+   "x1": -180,
+   "z1": 12,
+   "bottom": -14.0,
+   "top": -11.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "barge-2",
+   "role": "landmark",
+   "x0": -25,
+   "z0": 57,
+   "x1": 2,
+   "z1": 64,
+   "bottom": -14.0,
+   "top": -11.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "barge-3",
+   "role": "landmark",
+   "x0": 25,
+   "z0": -74,
+   "x1": 52,
+   "z1": -67,
+   "bottom": -14.0,
+   "top": -11.0,
+   "roof": "walkable"
+  },
+  {
+   "id": "mill",
+   "role": "lot",
+   "x0": -80,
+   "z0": -40,
+   "x1": -52,
+   "z1": -10,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "island",
+   "hatch": true
+  },
+  {
+   "id": "lock-cottage",
+   "role": "lot",
+   "x0": 52,
+   "z0": -40,
+   "x1": 76,
+   "z1": -26,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "island"
+  },
+  {
+   "id": "lot-south-w-0",
+   "role": "lot",
+   "x0": -252.5,
+   "z0": -162.5,
+   "x1": -227.5,
+   "z1": -122.5,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "south-w"
+  },
+  {
+   "id": "lot-south-w-1",
+   "role": "lot",
+   "x0": -252.5,
+   "z0": -115.0,
+   "x1": -227.5,
+   "z1": -65.0,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "south-w"
+  },
+  {
+   "id": "lot-south-w-2",
+   "role": "lot",
+   "x0": -252.5,
+   "z0": -57.5,
+   "x1": -227.5,
+   "z1": -20.0,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "south-w"
+  },
+  {
+   "id": "lot-south-w-3",
+   "role": "lot",
+   "x0": -220.0,
+   "z0": -182.5,
+   "x1": -190.0,
+   "z1": -132.5,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "south-w",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-w-4",
+   "role": "lot",
+   "x0": -220.0,
+   "z0": -125.0,
+   "x1": -190.0,
+   "z1": -85.0,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "south-w"
+  },
+  {
+   "id": "lot-south-w-5",
+   "role": "lot",
+   "x0": -220.0,
+   "z0": -77.5,
+   "x1": -190.0,
+   "z1": -27.5,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "south-w",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-6",
+   "role": "lot",
+   "x0": -125,
+   "z0": -200,
+   "x1": -113,
+   "z1": -185,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-7",
+   "role": "lot",
+   "x0": -113,
+   "z0": -200,
+   "x1": -93,
+   "z1": -185,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-8",
+   "role": "lot",
+   "x0": -93,
+   "z0": -200,
+   "x1": -80,
+   "z1": -185,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-9",
+   "role": "lot",
+   "x0": -70,
+   "z0": -197,
+   "x1": -55,
+   "z1": -185,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-10",
+   "role": "lot",
+   "x0": -70,
+   "z0": -208,
+   "x1": -58,
+   "z1": -197,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-11",
+   "role": "lot",
+   "x0": -15,
+   "z0": -200,
+   "x1": 5,
+   "z1": -185,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-12",
+   "role": "lot",
+   "x0": 60,
+   "z0": -197,
+   "x1": 75,
+   "z1": -185,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-13",
+   "role": "lot",
+   "x0": 75,
+   "z0": -197,
+   "x1": 85,
+   "z1": -185,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-14",
+   "role": "lot",
+   "x0": 40,
+   "z0": -208,
+   "x1": 52,
+   "z1": -197,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-15",
+   "role": "lot",
+   "x0": 95,
+   "z0": -205,
+   "x1": 110,
+   "z1": -195,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-16",
+   "role": "lot",
+   "x0": 110,
+   "z0": -205,
+   "x1": 125,
+   "z1": -195,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-17",
+   "role": "lot",
+   "x0": -105,
+   "z0": -175,
+   "x1": -93,
+   "z1": -163,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-18",
+   "role": "lot",
+   "x0": -92,
+   "z0": -163,
+   "x1": -80,
+   "z1": -152,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-19",
+   "role": "lot",
+   "x0": -50,
+   "z0": -175,
+   "x1": -35,
+   "z1": -163,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-20",
+   "role": "lot",
+   "x0": -70,
+   "z0": -163,
+   "x1": -58,
+   "z1": -152,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-21",
+   "role": "lot",
+   "x0": -47,
+   "z0": -163,
+   "x1": -35,
+   "z1": -152,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-22",
+   "role": "lot",
+   "x0": -25,
+   "z0": -175,
+   "x1": -5,
+   "z1": -160,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-23",
+   "role": "lot",
+   "x0": -5,
+   "z0": -175,
+   "x1": 15,
+   "z1": -160,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-24",
+   "role": "lot",
+   "x0": 25,
+   "z0": -147,
+   "x1": 40,
+   "z1": -135,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-25",
+   "role": "lot",
+   "x0": 25,
+   "z0": -175,
+   "x1": 37,
+   "z1": -163,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-26",
+   "role": "lot",
+   "x0": 37,
+   "z0": -175,
+   "x1": 57,
+   "z1": -163,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-27",
+   "role": "lot",
+   "x0": 57,
+   "z0": -175,
+   "x1": 65,
+   "z1": -163,
+   "bottom": 0.0,
+   "top": 16.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-28",
+   "role": "lot",
+   "x0": 25,
+   "z0": -163,
+   "x1": 37,
+   "z1": -147,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-29",
+   "role": "lot",
+   "x0": 90,
+   "z0": -155,
+   "x1": 105,
+   "z1": -140,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-30",
+   "role": "lot",
+   "x0": 105,
+   "z0": -155,
+   "x1": 120,
+   "z1": -140,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-31",
+   "role": "lot",
+   "x0": 75,
+   "z0": -175,
+   "x1": 95,
+   "z1": -160,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-32",
+   "role": "lot",
+   "x0": 95,
+   "z0": -175,
+   "x1": 107,
+   "z1": -160,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-33",
+   "role": "lot",
+   "x0": 107,
+   "z0": -175,
+   "x1": 120,
+   "z1": -160,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-34",
+   "role": "lot",
+   "x0": -120,
+   "z0": -110,
+   "x1": -108,
+   "z1": -95,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-35",
+   "role": "lot",
+   "x0": -108,
+   "z0": -110,
+   "x1": -93,
+   "z1": -95,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-36",
+   "role": "lot",
+   "x0": -105,
+   "z0": -130,
+   "x1": -93,
+   "z1": -115,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-37",
+   "role": "lot",
+   "x0": -93,
+   "z0": -130,
+   "x1": -85,
+   "z1": -115,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-38",
+   "role": "lot",
+   "x0": -48,
+   "z0": -105,
+   "x1": -35,
+   "z1": -90,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-39",
+   "role": "lot",
+   "x0": -75,
+   "z0": -130,
+   "x1": -63,
+   "z1": -115,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-40",
+   "role": "lot",
+   "x0": -63,
+   "z0": -130,
+   "x1": -51,
+   "z1": -115,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-41",
+   "role": "lot",
+   "x0": -51,
+   "z0": -130,
+   "x1": -35,
+   "z1": -115,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-42",
+   "role": "lot",
+   "x0": -75,
+   "z0": -115,
+   "x1": -60,
+   "z1": -105,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-43",
+   "role": "lot",
+   "x0": -50,
+   "z0": -115,
+   "x1": -35,
+   "z1": -105,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-44",
+   "role": "lot",
+   "x0": 30,
+   "z0": -130,
+   "x1": 45,
+   "z1": -118,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-45",
+   "role": "lot",
+   "x0": 30,
+   "z0": -118,
+   "x1": 42,
+   "z1": -102,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-46",
+   "role": "lot",
+   "x0": 80,
+   "z0": -110,
+   "x1": 92,
+   "z1": -95,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-47",
+   "role": "lot",
+   "x0": 92,
+   "z0": -110,
+   "x1": 104,
+   "z1": -95,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-c-48",
+   "role": "lot",
+   "x0": 104,
+   "z0": -110,
+   "x1": 115,
+   "z1": -95,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "shops",
+   "district": "south-c"
+  },
+  {
+   "id": "lot-south-c-49",
+   "role": "lot",
+   "x0": 95,
+   "z0": -130,
+   "x1": 115,
+   "z1": -115,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "shops",
+   "district": "south-c",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-e-50",
+   "role": "lot",
+   "x0": 125,
+   "z0": -182.5,
+   "x1": 150,
+   "z1": -142.5,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "south-e",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-e-51",
+   "role": "lot",
+   "x0": 125,
+   "z0": -77.5,
+   "x1": 150,
+   "z1": -27.5,
+   "bottom": 0.0,
+   "top": 16.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "south-e"
+  },
+  {
+   "id": "lot-south-e-52",
+   "role": "lot",
+   "x0": 157.5,
+   "z0": -182.5,
+   "x1": 182.5,
+   "z1": -132.5,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "south-e",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-e-53",
+   "role": "lot",
+   "x0": 190.0,
+   "z0": -172.5,
+   "x1": 220.0,
+   "z1": -132.5,
+   "bottom": 0.0,
+   "top": 16.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "south-e",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-e-54",
+   "role": "lot",
+   "x0": 190.0,
+   "z0": -125.0,
+   "x1": 220.0,
+   "z1": -95.0,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "south-e"
+  },
+  {
+   "id": "lot-south-e-55",
+   "role": "lot",
+   "x0": 190.0,
+   "z0": -87.5,
+   "x1": 220.0,
+   "z1": -57.5,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "south-e"
+  },
+  {
+   "id": "lot-south-e-56",
+   "role": "lot",
+   "x0": 227.5,
+   "z0": -162.5,
+   "x1": 252.5,
+   "z1": -112.5,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "south-e"
+  },
+  {
+   "id": "lot-south-e-57",
+   "role": "lot",
+   "x0": 227.5,
+   "z0": -105.0,
+   "x1": 252.5,
+   "z1": -75.0,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "south-e",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-e-58",
+   "role": "lot",
+   "x0": 260.0,
+   "z0": -162.5,
+   "x1": 285.0,
+   "z1": -122.5,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "south-e"
+  },
+  {
+   "id": "lot-south-e-59",
+   "role": "lot",
+   "x0": 260.0,
+   "z0": -57.5,
+   "x1": 285.0,
+   "z1": -27.5,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "south-e",
+   "hatch": true
+  },
+  {
+   "id": "lot-south-e-60",
+   "role": "lot",
+   "x0": 292.5,
+   "z0": -162.5,
+   "x1": 312.5,
+   "z1": -112.5,
+   "bottom": 0.0,
+   "top": 16.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "south-e"
+  },
+  {
+   "id": "lot-south-e-61",
+   "role": "lot",
+   "x0": 292.5,
+   "z0": -105.0,
+   "x1": 312.5,
+   "z1": -65.0,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "south-e",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-north-strip-62",
+   "role": "lot",
+   "x0": -115,
+   "z0": 105,
+   "x1": -85,
+   "z1": 115,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-63",
+   "role": "lot",
+   "x0": -85,
+   "z0": 105,
+   "x1": -65,
+   "z1": 115,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-64",
+   "role": "lot",
+   "x0": -115,
+   "z0": 85,
+   "x1": -85,
+   "z1": 95,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-65",
+   "role": "lot",
+   "x0": -85,
+   "z0": 85,
+   "x1": -70,
+   "z1": 95,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-66",
+   "role": "lot",
+   "x0": -115,
+   "z0": 95,
+   "x1": -105,
+   "z1": 105,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-67",
+   "role": "lot",
+   "x0": -45,
+   "z0": 107,
+   "x1": -30,
+   "z1": 117,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-68",
+   "role": "lot",
+   "x0": -45,
+   "z0": 85,
+   "x1": -15,
+   "z1": 95,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-69",
+   "role": "lot",
+   "x0": 135,
+   "z0": 105,
+   "x1": 160,
+   "z1": 115,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-70",
+   "role": "lot",
+   "x0": 160,
+   "z0": 105,
+   "x1": 195,
+   "z1": 115,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-71",
+   "role": "lot",
+   "x0": 135,
+   "z0": 85,
+   "x1": 165,
+   "z1": 95,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-72",
+   "role": "lot",
+   "x0": 165,
+   "z0": 85,
+   "x1": 185,
+   "z1": 95,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-73",
+   "role": "lot",
+   "x0": 185,
+   "z0": 85,
+   "x1": 195,
+   "z1": 95,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-74",
+   "role": "lot",
+   "x0": 185,
+   "z0": 95,
+   "x1": 195,
+   "z1": 105,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-75",
+   "role": "lot",
+   "x0": 245,
+   "z0": 105,
+   "x1": 265,
+   "z1": 115,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-76",
+   "role": "lot",
+   "x0": 205,
+   "z0": 85,
+   "x1": 230,
+   "z1": 95,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-77",
+   "role": "lot",
+   "x0": 230,
+   "z0": 85,
+   "x1": 255,
+   "z1": 95,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-78",
+   "role": "lot",
+   "x0": 275,
+   "z0": 105,
+   "x1": 295,
+   "z1": 115,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-79",
+   "role": "lot",
+   "x0": 275,
+   "z0": 85,
+   "x1": 295,
+   "z1": 95,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-strip-80",
+   "role": "lot",
+   "x0": 275,
+   "z0": 95,
+   "x1": 285,
+   "z1": 105,
+   "bottom": 0.0,
+   "top": 7.0,
+   "roof": "pitched",
+   "style": "rows",
+   "district": "north-strip"
+  },
+  {
+   "id": "lot-north-e-81",
+   "role": "lot",
+   "x0": 125,
+   "z0": 20,
+   "x1": 175,
+   "z1": 40,
+   "bottom": 0.0,
+   "top": 16.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "north-e",
+   "hatch": true
+  },
+  {
+   "id": "lot-north-e-82",
+   "role": "lot",
+   "x0": 125,
+   "z0": 47.5,
+   "x1": 155,
+   "z1": 77.5,
+   "bottom": 0.0,
+   "top": 10.0,
+   "roof": "walkable",
+   "style": "warehouses",
+   "district": "north-e",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-north-e-83",
+   "role": "lot",
+   "x0": 257.5,
+   "z0": 47.5,
+   "x1": 307.5,
+   "z1": 77.5,
+   "bottom": 0.0,
+   "top": 13.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "north-e"
+  },
+  {
+   "id": "lot-mall-84",
+   "role": "lot",
+   "x0": -120,
+   "z0": 155,
+   "x1": -100,
+   "z1": 170,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-85",
+   "role": "lot",
+   "x0": -120,
+   "z0": 120,
+   "x1": -95,
+   "z1": 135,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-86",
+   "role": "lot",
+   "x0": -120,
+   "z0": 135,
+   "x1": -105,
+   "z1": 155,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-87",
+   "role": "lot",
+   "x0": -80,
+   "z0": 135,
+   "x1": -65,
+   "z1": 155,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-88",
+   "role": "lot",
+   "x0": -53,
+   "z0": 150,
+   "x1": -28,
+   "z1": 165,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-89",
+   "role": "lot",
+   "x0": -53,
+   "z0": 135,
+   "x1": -38,
+   "z1": 150,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-90",
+   "role": "lot",
+   "x0": -8,
+   "z0": 135,
+   "x1": 7,
+   "z1": 150,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-91",
+   "role": "lot",
+   "x0": 19,
+   "z0": 155,
+   "x1": 39,
+   "z1": 170,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-92",
+   "role": "lot",
+   "x0": 19,
+   "z0": 135,
+   "x1": 34,
+   "z1": 155,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-93",
+   "role": "lot",
+   "x0": 59,
+   "z0": 135,
+   "x1": 74,
+   "z1": 155,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-94",
+   "role": "lot",
+   "x0": 131,
+   "z0": 155,
+   "x1": 141,
+   "z1": 170,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-95",
+   "role": "lot",
+   "x0": 126,
+   "z0": 135,
+   "x1": 141,
+   "z1": 155,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-96",
+   "role": "lot",
+   "x0": 153,
+   "z0": 150,
+   "x1": 183,
+   "z1": 165,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-97",
+   "role": "lot",
+   "x0": 183,
+   "z0": 150,
+   "x1": 203,
+   "z1": 165,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-98",
+   "role": "lot",
+   "x0": 153,
+   "z0": 120,
+   "x1": 173,
+   "z1": 135,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-99",
+   "role": "lot",
+   "x0": 193,
+   "z0": 120,
+   "x1": 203,
+   "z1": 135,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-100",
+   "role": "lot",
+   "x0": 188,
+   "z0": 135,
+   "x1": 203,
+   "z1": 150,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-101",
+   "role": "lot",
+   "x0": 215,
+   "z0": 150,
+   "x1": 245,
+   "z1": 165,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-102",
+   "role": "lot",
+   "x0": 245,
+   "z0": 150,
+   "x1": 265,
+   "z1": 165,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-103",
+   "role": "lot",
+   "x0": 235,
+   "z0": 120,
+   "x1": 265,
+   "z1": 135,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-104",
+   "role": "lot",
+   "x0": 277,
+   "z0": 135,
+   "x1": 292,
+   "z1": 150,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-105",
+   "role": "lot",
+   "x0": -120,
+   "z0": 207,
+   "x1": -100,
+   "z1": 222,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-106",
+   "role": "lot",
+   "x0": -100,
+   "z0": 207,
+   "x1": -75,
+   "z1": 222,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-107",
+   "role": "lot",
+   "x0": -75,
+   "z0": 207,
+   "x1": -60,
+   "z1": 222,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-108",
+   "role": "lot",
+   "x0": -95,
+   "z0": 177,
+   "x1": -75,
+   "z1": 192,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-109",
+   "role": "lot",
+   "x0": -120,
+   "z0": 192,
+   "x1": -105,
+   "z1": 207,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-110",
+   "role": "lot",
+   "x0": -48,
+   "z0": 207,
+   "x1": -28,
+   "z1": 222,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-111",
+   "role": "lot",
+   "x0": -28,
+   "z0": 207,
+   "x1": 2,
+   "z1": 222,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-112",
+   "role": "lot",
+   "x0": -48,
+   "z0": 177,
+   "x1": -23,
+   "z1": 192,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-113",
+   "role": "lot",
+   "x0": -48,
+   "z0": 192,
+   "x1": -33,
+   "z1": 207,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-114",
+   "role": "lot",
+   "x0": -13,
+   "z0": 192,
+   "x1": 2,
+   "z1": 207,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-115",
+   "role": "lot",
+   "x0": 14,
+   "z0": 177,
+   "x1": 44,
+   "z1": 192,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-116",
+   "role": "lot",
+   "x0": 44,
+   "z0": 177,
+   "x1": 64,
+   "z1": 192,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-117",
+   "role": "lot",
+   "x0": 49,
+   "z0": 192,
+   "x1": 64,
+   "z1": 207,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-118",
+   "role": "lot",
+   "x0": 168,
+   "z0": 207,
+   "x1": 193,
+   "z1": 222,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-119",
+   "role": "lot",
+   "x0": 178,
+   "z0": 192,
+   "x1": 193,
+   "z1": 207,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-120",
+   "role": "lot",
+   "x0": 230,
+   "z0": 207,
+   "x1": 250,
+   "z1": 222,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-121",
+   "role": "lot",
+   "x0": 250,
+   "z0": 207,
+   "x1": 265,
+   "z1": 222,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-122",
+   "role": "lot",
+   "x0": 255,
+   "z0": 177,
+   "x1": 265,
+   "z1": 192,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-123",
+   "role": "lot",
+   "x0": 205,
+   "z0": 192,
+   "x1": 220,
+   "z1": 207,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-124",
+   "role": "lot",
+   "x0": 250,
+   "z0": 192,
+   "x1": 265,
+   "z1": 207,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-125",
+   "role": "lot",
+   "x0": 277,
+   "z0": 207,
+   "x1": 302,
+   "z1": 222,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-126",
+   "role": "lot",
+   "x0": 277,
+   "z0": 177,
+   "x1": 302,
+   "z1": 192,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-127",
+   "role": "lot",
+   "x0": -115,
+   "z0": 239,
+   "x1": -85,
+   "z1": 254,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-128",
+   "role": "lot",
+   "x0": -85,
+   "z0": 239,
+   "x1": -60,
+   "z1": 254,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-129",
+   "role": "lot",
+   "x0": -48,
+   "z0": 239,
+   "x1": -23,
+   "z1": 254,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-130",
+   "role": "lot",
+   "x0": -23,
+   "z0": 239,
+   "x1": 7,
+   "z1": 254,
+   "bottom": 7.0,
+   "top": 23.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-131",
+   "role": "lot",
+   "x0": 158,
+   "z0": 239,
+   "x1": 183,
+   "z1": 254,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-132",
+   "role": "lot",
+   "x0": 220,
+   "z0": 239,
+   "x1": 240,
+   "z1": 254,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-133",
+   "role": "lot",
+   "x0": 260,
+   "z0": 239,
+   "x1": 275,
+   "z1": 254,
+   "bottom": 7.0,
+   "top": 29.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "hatch": true
+  },
+  {
+   "id": "lot-mall-134",
+   "role": "lot",
+   "x0": 287,
+   "z0": 239,
+   "x1": 307,
+   "z1": 254,
+   "bottom": 7.0,
+   "top": 26.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "mall",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-wharf-135",
+   "role": "lot",
+   "x0": -222.5,
+   "z0": 80.0,
+   "x1": -182.5,
+   "z1": 100.0,
+   "bottom": 7.0,
+   "top": 17.0,
+   "roof": "pitched",
+   "style": "warehouses",
+   "district": "wharf"
+  },
+  {
+   "id": "lot-heights-136",
+   "role": "lot",
+   "x0": -275,
+   "z0": 140,
+   "x1": -255,
+   "z1": 155,
+   "bottom": 14.0,
+   "top": 33.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-137",
+   "role": "lot",
+   "x0": -255,
+   "z0": 140,
+   "x1": -230,
+   "z1": 155,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-138",
+   "role": "lot",
+   "x0": -230,
+   "z0": 140,
+   "x1": -220,
+   "z1": 155,
+   "bottom": 14.0,
+   "top": 33.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "roof_link": "fire-escape-E",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-139",
+   "role": "lot",
+   "x0": -275,
+   "z0": 105,
+   "x1": -245,
+   "z1": 120,
+   "bottom": 14.0,
+   "top": 33.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-140",
+   "role": "lot",
+   "x0": -275,
+   "z0": 120,
+   "x1": -260,
+   "z1": 140,
+   "bottom": 14.0,
+   "top": 33.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-141",
+   "role": "lot",
+   "x0": -240,
+   "z0": 162,
+   "x1": -220,
+   "z1": 177,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-142",
+   "role": "lot",
+   "x0": -270,
+   "z0": 177,
+   "x1": -255,
+   "z1": 192,
+   "bottom": 14.0,
+   "top": 36.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-143",
+   "role": "lot",
+   "x0": -235,
+   "z0": 177,
+   "x1": -220,
+   "z1": 192,
+   "bottom": 14.0,
+   "top": 36.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-144",
+   "role": "lot",
+   "x0": -208,
+   "z0": 192,
+   "x1": -188,
+   "z1": 207,
+   "bottom": 14.0,
+   "top": 36.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-145",
+   "role": "lot",
+   "x0": -188,
+   "z0": 192,
+   "x1": -158,
+   "z1": 207,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-146",
+   "role": "lot",
+   "x0": -208,
+   "z0": 177,
+   "x1": -193,
+   "z1": 192,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-147",
+   "role": "lot",
+   "x0": -146,
+   "z0": 162,
+   "x1": -125,
+   "z1": 177,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "roof_link": "fire-escape-S",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-148",
+   "role": "lot",
+   "x0": -146,
+   "z0": 177,
+   "x1": -131,
+   "z1": 192,
+   "bottom": 14.0,
+   "top": 33.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-149",
+   "role": "lot",
+   "x0": -270,
+   "z0": 219,
+   "x1": -250,
+   "z1": 234,
+   "bottom": 14.0,
+   "top": 33.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "roof_link": "fire-escape-W",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-150",
+   "role": "lot",
+   "x0": -250,
+   "z0": 219,
+   "x1": -225,
+   "z1": 234,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "roof_link": "fire-escape-N",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-151",
+   "role": "lot",
+   "x0": -225,
+   "z0": 219,
+   "x1": -210,
+   "z1": 234,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-152",
+   "role": "lot",
+   "x0": -270,
+   "z0": 234,
+   "x1": -255,
+   "z1": 245,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-153",
+   "role": "lot",
+   "x0": -225,
+   "z0": 234,
+   "x1": -210,
+   "z1": 245,
+   "bottom": 14.0,
+   "top": 30.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "hatch": true
+  },
+  {
+   "id": "lot-heights-154",
+   "role": "lot",
+   "x0": -198,
+   "z0": 219,
+   "x1": -173,
+   "z1": 234,
+   "bottom": 14.0,
+   "top": 36.0,
+   "roof": "walkable",
+   "style": "tenements",
+   "district": "heights",
+   "hatch": true
+  },
+  {
+   "id": "cordon-s",
+   "role": "cordon",
+   "x0": -280,
+   "z0": -220,
+   "x1": 320,
+   "z1": -219,
+   "bottom": -16.0,
+   "top": 14.0
+  },
+  {
+   "id": "cordon-n",
+   "role": "cordon",
+   "x0": -280,
+   "z0": 259,
+   "x1": 320,
+   "z1": 260,
+   "bottom": -16.0,
+   "top": 28.0
+  },
+  {
+   "id": "cordon-w",
+   "role": "cordon",
+   "x0": -280,
+   "z0": -220,
+   "x1": -279,
+   "z1": 260,
+   "bottom": -16.0,
+   "top": 28.0
+  },
+  {
+   "id": "cordon-e",
+   "role": "cordon",
+   "x0": 319,
+   "z0": -220,
+   "x1": 320,
+   "z1": 260,
+   "bottom": -16.0,
+   "top": 21.0
+  }
+ ],
+ "links": [
+  {
+   "id": "fire-escape-0",
+   "kind": "fire-escape",
+   "a": {
+    "x": 301,
+    "y": -14,
+    "z": 19.5
+   },
+   "b": {
+    "x": 315,
+    "y": 2.0,
+    "z": 19.5
+   },
+   "width": 3,
+   "horde": false,
+   "note": "hall roof"
+  },
+  {
+   "id": "fire-escape-1",
+   "kind": "fire-escape",
+   "a": {
+    "x": -143,
+    "y": 0,
+    "z": -120.5
+   },
+   "b": {
+    "x": -159.0,
+    "y": 16.0,
+    "z": -120.5
+   },
+   "width": 3,
+   "horde": false,
+   "note": "hall roof"
+  },
+  {
+   "id": "fire-escape-2",
+   "kind": "fire-escape",
+   "a": {
+    "x": -149.5,
+    "y": 14,
+    "z": 143
+   },
+   "b": {
+    "x": -149.5,
+    "y": 30.0,
+    "z": 159.0
+   },
+   "width": 3,
+   "horde": false,
+   "note": "hall roof"
+  },
+  {
+   "id": "fire-escape-3",
+   "kind": "fire-escape",
+   "a": {
+    "x": -188.5,
+    "y": 0.0,
+    "z": -180.5
+   },
+   "b": {
+    "x": -188.5,
+    "y": 10.0,
+    "z": -134.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-w-3"
+  },
+  {
+   "id": "fire-escape-4",
+   "kind": "fire-escape",
+   "a": {
+    "x": -188.5,
+    "y": 0.0,
+    "z": -75.5
+   },
+   "b": {
+    "x": -188.5,
+    "y": 10.0,
+    "z": -29.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-w-5"
+  },
+  {
+   "id": "fire-escape-5",
+   "kind": "fire-escape",
+   "a": {
+    "x": -123,
+    "y": 0.0,
+    "z": -201.5
+   },
+   "b": {
+    "x": -115,
+    "y": 13.0,
+    "z": -201.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-c-6"
+  },
+  {
+   "id": "fire-escape-6",
+   "kind": "fire-escape",
+   "a": {
+    "x": -68,
+    "y": 0.0,
+    "z": -209.5
+   },
+   "b": {
+    "x": -60,
+    "y": 13.0,
+    "z": -209.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-c-10"
+  },
+  {
+   "id": "fire-escape-7",
+   "kind": "fire-escape",
+   "a": {
+    "x": -51.5,
+    "y": 0.0,
+    "z": -173
+   },
+   "b": {
+    "x": -51.5,
+    "y": 10.0,
+    "z": -165
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-c-19"
+  },
+  {
+   "id": "fire-escape-8",
+   "kind": "fire-escape",
+   "a": {
+    "x": -3,
+    "y": 0.0,
+    "z": -158.5
+   },
+   "b": {
+    "x": 13,
+    "y": 13.0,
+    "z": -158.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-c-23"
+  },
+  {
+   "id": "fire-escape-9",
+   "kind": "fire-escape",
+   "a": {
+    "x": 41.5,
+    "y": 0.0,
+    "z": -145
+   },
+   "b": {
+    "x": 41.5,
+    "y": 13.0,
+    "z": -137
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-c-24"
+  },
+  {
+   "id": "fire-escape-10",
+   "kind": "fire-escape",
+   "a": {
+    "x": -73,
+    "y": 0.0,
+    "z": -131.5
+   },
+   "b": {
+    "x": -65,
+    "y": 13.0,
+    "z": -131.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-c-39"
+  },
+  {
+   "id": "fire-escape-11",
+   "kind": "fire-escape",
+   "a": {
+    "x": 32,
+    "y": 0.0,
+    "z": -131.5
+   },
+   "b": {
+    "x": 43,
+    "y": 10.0,
+    "z": -131.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-c-44"
+  },
+  {
+   "id": "fire-escape-12",
+   "kind": "fire-escape",
+   "a": {
+    "x": 151.5,
+    "y": 0.0,
+    "z": -180.5
+   },
+   "b": {
+    "x": 151.5,
+    "y": 13.0,
+    "z": -144.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-e-50"
+  },
+  {
+   "id": "fire-escape-13",
+   "kind": "fire-escape",
+   "a": {
+    "x": 184.0,
+    "y": 0.0,
+    "z": -180.5
+   },
+   "b": {
+    "x": 184.0,
+    "y": 10.0,
+    "z": -134.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-e-52"
+  },
+  {
+   "id": "fire-escape-14",
+   "kind": "fire-escape",
+   "a": {
+    "x": 254.0,
+    "y": 0.0,
+    "z": -103.0
+   },
+   "b": {
+    "x": 254.0,
+    "y": 13.0,
+    "z": -77.0
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-e-57"
+  },
+  {
+   "id": "fire-escape-15",
+   "kind": "fire-escape",
+   "a": {
+    "x": 314.0,
+    "y": 0.0,
+    "z": -103.0
+   },
+   "b": {
+    "x": 314.0,
+    "y": 13.0,
+    "z": -67.0
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-south-e-61"
+  },
+  {
+   "id": "fire-escape-16",
+   "kind": "fire-escape",
+   "a": {
+    "x": 127,
+    "y": 0.0,
+    "z": 79.0
+   },
+   "b": {
+    "x": 153,
+    "y": 10.0,
+    "z": 79.0
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-north-e-82"
+  },
+  {
+   "id": "fire-escape-17",
+   "kind": "fire-escape",
+   "a": {
+    "x": -118,
+    "y": 7.0,
+    "z": 171.5
+   },
+   "b": {
+    "x": -102,
+    "y": 26.0,
+    "z": 171.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-84"
+  },
+  {
+   "id": "fire-escape-18",
+   "kind": "fire-escape",
+   "a": {
+    "x": -26.5,
+    "y": 7.0,
+    "z": 152
+   },
+   "b": {
+    "x": -26.5,
+    "y": 23.0,
+    "z": 163
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-88"
+  },
+  {
+   "id": "fire-escape-19",
+   "kind": "fire-escape",
+   "a": {
+    "x": -36.5,
+    "y": 7.0,
+    "z": 137
+   },
+   "b": {
+    "x": -36.5,
+    "y": 29.0,
+    "z": 148
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-89"
+  },
+  {
+   "id": "fire-escape-20",
+   "kind": "fire-escape",
+   "a": {
+    "x": -6,
+    "y": 7.0,
+    "z": 151.5
+   },
+   "b": {
+    "x": 5,
+    "y": 23.0,
+    "z": 151.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-90"
+  },
+  {
+   "id": "fire-escape-21",
+   "kind": "fire-escape",
+   "a": {
+    "x": 21,
+    "y": 7.0,
+    "z": 171.5
+   },
+   "b": {
+    "x": 37,
+    "y": 29.0,
+    "z": 171.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-91"
+  },
+  {
+   "id": "fire-escape-22",
+   "kind": "fire-escape",
+   "a": {
+    "x": 35.5,
+    "y": 7.0,
+    "z": 137
+   },
+   "b": {
+    "x": 35.5,
+    "y": 26.0,
+    "z": 153
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-92"
+  },
+  {
+   "id": "fire-escape-23",
+   "kind": "fire-escape",
+   "a": {
+    "x": 75.5,
+    "y": 7.0,
+    "z": 137
+   },
+   "b": {
+    "x": 75.5,
+    "y": 23.0,
+    "z": 153
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-93"
+  },
+  {
+   "id": "fire-escape-24",
+   "kind": "fire-escape",
+   "a": {
+    "x": 124.5,
+    "y": 7.0,
+    "z": 137
+   },
+   "b": {
+    "x": 124.5,
+    "y": 23.0,
+    "z": 153
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-95"
+  },
+  {
+   "id": "fire-escape-25",
+   "kind": "fire-escape",
+   "a": {
+    "x": 155,
+    "y": 7.0,
+    "z": 148.5
+   },
+   "b": {
+    "x": 181,
+    "y": 29.0,
+    "z": 148.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-96"
+  },
+  {
+   "id": "fire-escape-26",
+   "kind": "fire-escape",
+   "a": {
+    "x": 186.5,
+    "y": 7.0,
+    "z": 137
+   },
+   "b": {
+    "x": 186.5,
+    "y": 29.0,
+    "z": 148
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-100"
+  },
+  {
+   "id": "fire-escape-27",
+   "kind": "fire-escape",
+   "a": {
+    "x": 279,
+    "y": 7.0,
+    "z": 151.5
+   },
+   "b": {
+    "x": 290,
+    "y": 26.0,
+    "z": 151.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-104"
+  },
+  {
+   "id": "fire-escape-28",
+   "kind": "fire-escape",
+   "a": {
+    "x": -98,
+    "y": 7.0,
+    "z": 223.5
+   },
+   "b": {
+    "x": -77,
+    "y": 26.0,
+    "z": 223.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-106"
+  },
+  {
+   "id": "fire-escape-29",
+   "kind": "fire-escape",
+   "a": {
+    "x": -93,
+    "y": 7.0,
+    "z": 193.5
+   },
+   "b": {
+    "x": -77,
+    "y": 26.0,
+    "z": 193.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-108"
+  },
+  {
+   "id": "fire-escape-30",
+   "kind": "fire-escape",
+   "a": {
+    "x": -26,
+    "y": 7.0,
+    "z": 223.5
+   },
+   "b": {
+    "x": 0,
+    "y": 29.0,
+    "z": 223.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-111"
+  },
+  {
+   "id": "fire-escape-31",
+   "kind": "fire-escape",
+   "a": {
+    "x": -49.5,
+    "y": 7.0,
+    "z": 194
+   },
+   "b": {
+    "x": -49.5,
+    "y": 26.0,
+    "z": 205
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-113"
+  },
+  {
+   "id": "fire-escape-32",
+   "kind": "fire-escape",
+   "a": {
+    "x": -11,
+    "y": 7.0,
+    "z": 190.5
+   },
+   "b": {
+    "x": 0,
+    "y": 29.0,
+    "z": 190.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-114"
+  },
+  {
+   "id": "fire-escape-33",
+   "kind": "fire-escape",
+   "a": {
+    "x": 16,
+    "y": 7.0,
+    "z": 193.5
+   },
+   "b": {
+    "x": 42,
+    "y": 29.0,
+    "z": 193.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-115"
+  },
+  {
+   "id": "fire-escape-34",
+   "kind": "fire-escape",
+   "a": {
+    "x": 65.5,
+    "y": 7.0,
+    "z": 179
+   },
+   "b": {
+    "x": 65.5,
+    "y": 29.0,
+    "z": 190
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-116"
+  },
+  {
+   "id": "fire-escape-35",
+   "kind": "fire-escape",
+   "a": {
+    "x": 65.5,
+    "y": 7.0,
+    "z": 194
+   },
+   "b": {
+    "x": 65.5,
+    "y": 23.0,
+    "z": 205
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-117"
+  },
+  {
+   "id": "fire-escape-36",
+   "kind": "fire-escape",
+   "a": {
+    "x": 170,
+    "y": 7.0,
+    "z": 223.5
+   },
+   "b": {
+    "x": 191,
+    "y": 29.0,
+    "z": 223.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-118"
+  },
+  {
+   "id": "fire-escape-37",
+   "kind": "fire-escape",
+   "a": {
+    "x": 180,
+    "y": 7.0,
+    "z": 190.5
+   },
+   "b": {
+    "x": 191,
+    "y": 26.0,
+    "z": 190.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-119"
+  },
+  {
+   "id": "fire-escape-38",
+   "kind": "fire-escape",
+   "a": {
+    "x": 232,
+    "y": 7.0,
+    "z": 223.5
+   },
+   "b": {
+    "x": 248,
+    "y": 23.0,
+    "z": 223.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-120"
+  },
+  {
+   "id": "fire-escape-39",
+   "kind": "fire-escape",
+   "a": {
+    "x": 252,
+    "y": 7.0,
+    "z": 223.5
+   },
+   "b": {
+    "x": 263,
+    "y": 26.0,
+    "z": 223.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-121"
+  },
+  {
+   "id": "fire-escape-40",
+   "kind": "fire-escape",
+   "a": {
+    "x": 279,
+    "y": 7.0,
+    "z": 223.5
+   },
+   "b": {
+    "x": 300,
+    "y": 26.0,
+    "z": 223.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-125"
+  },
+  {
+   "id": "fire-escape-41",
+   "kind": "fire-escape",
+   "a": {
+    "x": 289,
+    "y": 7.0,
+    "z": 255.5
+   },
+   "b": {
+    "x": 305,
+    "y": 26.0,
+    "z": 255.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-mall-134"
+  },
+  {
+   "id": "fire-escape-42",
+   "kind": "fire-escape",
+   "a": {
+    "x": -253,
+    "y": 14.0,
+    "z": 138.5
+   },
+   "b": {
+    "x": -232,
+    "y": 30.0,
+    "z": 138.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-heights-137"
+  },
+  {
+   "id": "fire-escape-43",
+   "kind": "fire-escape",
+   "a": {
+    "x": -218.5,
+    "y": 14.0,
+    "z": 142
+   },
+   "b": {
+    "x": -218.5,
+    "y": 33.0,
+    "z": 153
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-heights-138"
+  },
+  {
+   "id": "fire-escape-44",
+   "kind": "fire-escape",
+   "a": {
+    "x": -268,
+    "y": 14.0,
+    "z": 193.5
+   },
+   "b": {
+    "x": -257,
+    "y": 36.0,
+    "z": 193.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-heights-142"
+  },
+  {
+   "id": "fire-escape-45",
+   "kind": "fire-escape",
+   "a": {
+    "x": -209.5,
+    "y": 14.0,
+    "z": 194
+   },
+   "b": {
+    "x": -209.5,
+    "y": 36.0,
+    "z": 205
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-heights-144"
+  },
+  {
+   "id": "fire-escape-46",
+   "kind": "fire-escape",
+   "a": {
+    "x": -186,
+    "y": 14.0,
+    "z": 190.5
+   },
+   "b": {
+    "x": -160,
+    "y": 30.0,
+    "z": 190.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-heights-145"
+  },
+  {
+   "id": "fire-escape-47",
+   "kind": "fire-escape",
+   "a": {
+    "x": -209.5,
+    "y": 14.0,
+    "z": 179
+   },
+   "b": {
+    "x": -209.5,
+    "y": 30.0,
+    "z": 190
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-heights-146"
+  },
+  {
+   "id": "fire-escape-48",
+   "kind": "fire-escape",
+   "a": {
+    "x": -144,
+    "y": 14.0,
+    "z": 160.5
+   },
+   "b": {
+    "x": -127,
+    "y": 30.0,
+    "z": 160.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-heights-147"
+  },
+  {
+   "id": "fire-escape-49",
+   "kind": "fire-escape",
+   "a": {
+    "x": -271.5,
+    "y": 14.0,
+    "z": 221
+   },
+   "b": {
+    "x": -271.5,
+    "y": 33.0,
+    "z": 232
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-heights-149"
+  },
+  {
+   "id": "fire-escape-50",
+   "kind": "fire-escape",
+   "a": {
+    "x": -248,
+    "y": 14.0,
+    "z": 235.5
+   },
+   "b": {
+    "x": -227,
+    "y": 30.0,
+    "z": 235.5
+   },
+   "width": 1.5,
+   "horde": false,
+   "note": "lot-heights-150"
+  }
+ ],
+ "landmarks": [
+  {
+   "id": "city-hall",
+   "name": "City Hall clock tower (6:47)",
+   "x": 110.0,
+   "z": 236.5,
+   "y": 69,
+   "kind": "tower",
+   "note": "reads from the camp"
+  },
+  {
+   "id": "iron-bridge",
+   "name": "The Iron Bridge",
+   "x": 0,
+   "z": 65,
+   "y": 0,
+   "kind": "bridge",
+   "note": ""
+  },
+  {
+   "id": "causeway",
+   "name": "The Low Causeway, 7 m under the banks",
+   "x": 0,
+   "z": -66,
+   "y": -7,
+   "kind": "bridge",
+   "note": ""
+  },
+  {
+   "id": "mill",
+   "name": "The Mill bridge-house, a covered bridge at +7",
+   "x": -108,
+   "z": 30,
+   "y": 7,
+   "kind": "bridge",
+   "note": ""
+  },
+  {
+   "id": "lock",
+   "name": "The East Lock ramp into the bed",
+   "x": 75,
+   "z": 0,
+   "y": -7,
+   "kind": "ramp",
+   "note": ""
+  },
+  {
+   "id": "barges",
+   "name": "Stranded barges in the drained bed",
+   "x": 163,
+   "z": -4,
+   "y": -14,
+   "kind": "cover",
+   "note": ""
+  },
+  {
+   "id": "road-bridge",
+   "name": "Navigation Road bridge",
+   "x": 200,
+   "z": 0,
+   "y": 0,
+   "kind": "bridge",
+   "note": ""
+  },
+  {
+   "id": "mall",
+   "name": "The Mall, a ramped avenue",
+   "x": 110,
+   "z": 128,
+   "y": 3.5,
+   "kind": "ramp",
+   "note": ""
+  }
+ ],
+ "lamps": [
+  [
+   4.4,
+   0.0,
+   35.0
+  ],
+  [
+   -4.4,
+   0.0,
+   45.0
+  ],
+  [
+   3.4,
+   0.0,
+   58.33
+  ],
+  [
+   -3.4,
+   0.0,
+   71.67
+  ],
+  [
+   3.4,
+   0.0,
+   85.0
+  ],
+  [
+   -5.4,
+   0.0,
+   100.0
+  ],
+  [
+   12.22,
+   0.0,
+   94.6
+  ],
+  [
+   24.44,
+   0.0,
+   105.4
+  ],
+  [
+   36.67,
+   0.0,
+   94.6
+  ],
+  [
+   48.89,
+   0.0,
+   105.4
+  ],
+  [
+   61.11,
+   0.0,
+   94.6
+  ],
+  [
+   73.33,
+   0.0,
+   105.4
+  ],
+  [
+   85.56,
+   0.0,
+   94.6
+  ],
+  [
+   97.78,
+   0.0,
+   105.4
+  ],
+  [
+   110.0,
+   0.0,
+   94.6
+  ],
+  [
+   102.6,
+   1.4,
+   111.2
+  ],
+  [
+   117.4,
+   2.8,
+   122.4
+  ],
+  [
+   102.6,
+   4.2,
+   133.6
+  ],
+  [
+   117.4,
+   5.6,
+   144.8
+  ],
+  [
+   102.6,
+   7.0,
+   156.0
+  ],
+  [
+   117.4,
+   7.0,
+   171.0
+  ],
+  [
+   102.6,
+   7.0,
+   186.0
+  ],
+  [
+   36.0,
+   0.0,
+   -5.4
+  ],
+  [
+   47.0,
+   0.0,
+   5.4
+  ],
+  [
+   58.2,
+   -2.8,
+   -5.4
+  ],
+  [
+   69.4,
+   -5.6,
+   5.4
+  ],
+  [
+   80.6,
+   -8.4,
+   -5.4
+  ],
+  [
+   91.8,
+   -11.2,
+   5.4
+  ],
+  [
+   103.0,
+   -14.0,
+   -5.4
+  ],
+  [
+   115.19,
+   -14.0,
+   5.4
+  ],
+  [
+   127.38,
+   -14.0,
+   -5.4
+  ],
+  [
+   139.56,
+   -14.0,
+   5.4
+  ],
+  [
+   151.75,
+   -14.0,
+   -5.4
+  ],
+  [
+   163.94,
+   -14.0,
+   5.4
+  ],
+  [
+   176.12,
+   -14.0,
+   -5.4
+  ],
+  [
+   188.31,
+   -14.0,
+   5.4
+  ],
+  [
+   200.5,
+   -14.0,
+   -5.4
+  ],
+  [
+   212.69,
+   -14.0,
+   5.4
+  ],
+  [
+   224.88,
+   -14.0,
+   -5.4
+  ],
+  [
+   237.06,
+   -14.0,
+   5.4
+  ],
+  [
+   249.25,
+   -14.0,
+   -5.4
+  ],
+  [
+   261.44,
+   -14.0,
+   5.4
+  ],
+  [
+   273.62,
+   -14.0,
+   -5.4
+  ],
+  [
+   285.81,
+   -14.0,
+   5.4
+  ],
+  [
+   298.0,
+   -14.0,
+   -5.4
+  ],
+  [
+   -3.4,
+   0.0,
+   -31.0
+  ],
+  [
+   2.4,
+   -3.5,
+   -38.0
+  ],
+  [
+   -2.4,
+   -3.5,
+   -41.0
+  ],
+  [
+   2.4,
+   -7.0,
+   -48.0
+  ],
+  [
+   -2.4,
+   -7.0,
+   -60.33
+  ],
+  [
+   2.4,
+   -7.0,
+   -72.67
+  ],
+  [
+   -2.4,
+   -7.0,
+   -85.0
+  ],
+  [
+   2.4,
+   -3.5,
+   -92.0
+  ],
+  [
+   -2.4,
+   -3.5,
+   -95.0
+  ],
+  [
+   2.4,
+   0.0,
+   -102.0
+  ],
+  [
+   -4.4,
+   0.0,
+   -115.33
+  ],
+  [
+   4.4,
+   0.0,
+   -128.67
+  ],
+  [
+   -4.4,
+   0.0,
+   -142.0
+  ],
+  [
+   -11.67,
+   0.0,
+   -147.4
+  ],
+  [
+   -23.33,
+   0.0,
+   -136.6
+  ],
+  [
+   -35.0,
+   0.0,
+   -147.4
+  ],
+  [
+   -46.67,
+   0.0,
+   -136.6
+  ],
+  [
+   -58.33,
+   0.0,
+   -147.4
+  ],
+  [
+   -70.0,
+   0.0,
+   -136.6
+  ],
+  [
+   -81.67,
+   0.0,
+   -147.4
+  ],
+  [
+   -93.33,
+   0.0,
+   -136.6
+  ],
+  [
+   -105.0,
+   0.0,
+   -147.4
+  ],
+  [
+   -116.67,
+   0.0,
+   -136.6
+  ],
+  [
+   -128.33,
+   0.0,
+   -147.4
+  ],
+  [
+   -140.0,
+   0.0,
+   -136.6
+  ],
+  [
+   -31.0,
+   0.0,
+   4.4
+  ],
+  [
+   -35.4,
+   0.0,
+   15.0
+  ],
+  [
+   -26.6,
+   0.0,
+   30.0
+  ],
+  [
+   -39.0,
+   0.0,
+   25.6
+  ],
+  [
+   -46.0,
+   3.5,
+   33.4
+  ],
+  [
+   -49.0,
+   3.5,
+   26.6
+  ],
+  [
+   -56.0,
+   7.0,
+   33.4
+  ],
+  [
+   -67.67,
+   7.0,
+   25.6
+  ],
+  [
+   -79.33,
+   7.0,
+   34.4
+  ],
+  [
+   -91.0,
+   7.0,
+   25.6
+  ],
+  [
+   -104.33,
+   7.0,
+   34.4
+  ],
+  [
+   -117.67,
+   7.0,
+   25.6
+  ],
+  [
+   -131.0,
+   7.0,
+   34.4
+  ],
+  [
+   -144.33,
+   7.0,
+   25.6
+  ],
+  [
+   -157.67,
+   7.0,
+   34.4
+  ],
+  [
+   -171.0,
+   7.0,
+   25.6
+  ],
+  [
+   -166.6,
+   7.0,
+   44.0
+  ],
+  [
+   -175.4,
+   7.0,
+   58.0
+  ],
+  [
+   -167.6,
+   8.75,
+   68.5
+  ],
+  [
+   -174.4,
+   10.5,
+   79.0
+  ],
+  [
+   -167.6,
+   12.25,
+   89.5
+  ],
+  [
+   -174.4,
+   14.0,
+   100.0
+  ],
+  [
+   -166.6,
+   14.0,
+   113.33
+  ],
+  [
+   -175.4,
+   14.0,
+   126.67
+  ],
+  [
+   -166.6,
+   14.0,
+   140.0
+  ]
+ ],
+ "fill": {
+  "rule": "explicit lots from the zones below (deterministic, seed 1874); build the lots in blocks[] as listed",
+  "zones": [
+   {
+    "id": "south-w",
+    "style": "warehouses",
+    "density": 0.8,
+    "rect": {
+     "x0": -280,
+     "z0": -220,
+     "x1": -125,
+     "z1": -20
+    }
+   },
+   {
+    "id": "south-c",
+    "style": "shops",
+    "density": 0.8,
+    "rect": {
+     "x0": -125,
+     "z0": -220,
+     "x1": 125,
+     "z1": -85
+    }
+   },
+   {
+    "id": "south-e",
+    "style": "warehouses",
+    "density": 0.8,
+    "rect": {
+     "x0": 125,
+     "z0": -220,
+     "x1": 320,
+     "z1": -20
+    }
+   },
+   {
+    "id": "north-strip",
+    "style": "rows",
+    "density": 0.85,
+    "rect": {
+     "x0": -125,
+     "z0": 85,
+     "x1": 320,
+     "z1": 120
+    }
+   },
+   {
+    "id": "north-e",
+    "style": "warehouses",
+    "density": 0.75,
+    "rect": {
+     "x0": 125,
+     "z0": 20,
+     "x1": 320,
+     "z1": 85
+    }
+   },
+   {
+    "id": "mall",
+    "style": "tenements",
+    "density": 0.7,
+    "rect": {
+     "x0": -125,
+     "z0": 120,
+     "x1": 320,
+     "z1": 260
+    }
+   },
+   {
+    "id": "wharf",
+    "style": "warehouses",
+    "density": 0.75,
+    "rect": {
+     "x0": -280,
+     "z0": 20,
+     "x1": -125,
+     "z1": 100
+    }
+   },
+   {
+    "id": "heights",
+    "style": "tenements",
+    "density": 0.65,
+    "rect": {
+     "x0": -280,
+     "z0": 100,
+     "x1": -125,
+     "z1": 260
+    }
+   }
+  ],
+  "styles": {
+   "rows": {
+    "depth": [
+     10,
+     12
+    ],
+    "width": [
+     20,
+     25,
+     30,
+     35,
+     40
+    ],
+    "heights": [
+     [
+      7,
+      5
+     ],
+     [
+      10,
+      3
+     ]
+    ],
+    "roof": "pitched",
+    "alley": 5
+   },
+   "shops": {
+    "depth": [
+     15,
+     20
+    ],
+    "width": [
+     15,
+     20
+    ],
+    "heights": [
+     [
+      10,
+      2
+     ],
+     [
+      13,
+      5
+     ],
+     [
+      16,
+      1
+     ]
+    ],
+    "roof": "mixed",
+    "alley": 5
+   },
+   "tenements": {
+    "depth": [
+     15,
+     20
+    ],
+    "width": [
+     20,
+     25,
+     30
+    ],
+    "heights": [
+     [
+      16,
+      3
+     ],
+     [
+      19,
+      3
+     ],
+     [
+      22,
+      2
+     ]
+    ],
+    "roof": "walkable",
+    "alley": 7.5
+   },
+   "warehouses": {
+    "depth": [
+     20,
+     25,
+     30
+    ],
+    "width": [
+     30,
+     40,
+     50
+    ],
+    "heights": [
+     [
+      10,
+      3
+     ],
+     [
+      13,
+      3
+     ],
+     [
+      16,
+      1
+     ]
+    ],
+    "roof": "mixed",
+    "alley": 7.5
+   },
+   "market": {
+    "depth": [
+     15,
+     20
+    ],
+    "width": [
+     15,
+     20,
+     25
+    ],
+    "heights": [
+     [
+      7,
+      6
+     ],
+     [
+      10,
+      2
+     ]
+    ],
+    "roof": "walkable",
+    "alley": 5
+   },
+   "sheds": {
+    "depth": [
+     20,
+     25
+    ],
+    "width": [
+     50,
+     60,
+     80
+    ],
+    "heights": [
+     [
+      10,
+      2
+     ],
+     [
+      13,
+      1
+     ]
+    ],
+    "roof": "pitched",
+    "alley": 10
+   },
+   "civic": {
+    "depth": [
+     20,
+     25
+    ],
+    "width": [
+     25,
+     30
+    ],
+    "heights": [
+     [
+      13,
+      2
+     ],
+     [
+      16,
+      2
+     ],
+     [
+      19,
+      1
+     ]
+    ],
+    "roof": "walkable",
+    "alley": 7.5
+   },
+   "villas": {
+    "depth": [
+     12,
+     15
+    ],
+    "width": [
+     12,
+     15
+    ],
+    "heights": [
+     [
+      7,
+      3
+     ],
+     [
+      10,
+      2
+     ]
+    ],
+    "roof": "pitched",
+    "alley": 7.5
+   }
+  }
+ },
+ "notes": [],
+ "checks": {
+  "reach": {
+   "cells": 72650,
+   "trapped": 0,
+   "trapped_sample": [],
+   "unreached_from_hub": 8882,
+   "walkable_roofs": 117,
+   "roofs_on_foot": 78,
+   "link_failures": []
+  },
+  "lots": 155,
+  "blocks": 292,
+  "ramps": 31,
+  "route_floor_problems": 0
+ }
+}

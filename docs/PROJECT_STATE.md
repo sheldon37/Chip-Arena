@@ -1,3 +1,5 @@
+2026-11-19 Claude: Meridian's five street plans are drawn and owner-approved (`docs/expedition/meridian-plans/`); next, Astra builds them as the size-B candidates (`meridian-b-candidate-3`) with the 20-exit check.
+
 2026-11-19 Claude (`claude/expedition-blind-pick`, owner report "I want Blind Pick choice with 5 options by default for expedition"; pushed, not merged): an expedition always deals Blind Pick (5 choices by default, the host's to change) at the Deployment Station's Deploy, before the eject, through the opening's own host-dealt Blind Pick; the Play vs Bots Weapon pick no longer reaches an expedition or a Boss Battle (loadouts), and a co-op room no longer writes it; the Expeditions lobby shows WEAPON PICK · BLIND PICK · 5 CHOICES in place of the loadout (`docs/BLIND-PICK-SCREENS.md`, "Each mode's own pick"). **Next:** the owner reviews the clips; Astra's optional items in the DEV_LOG entry.
 
 2026-11-19 Claude: the owner accepted the city's triangle baselines as the budget (High 2,177,224, Low 821,492 a view; `GeneratedFrameChecks` holds it).

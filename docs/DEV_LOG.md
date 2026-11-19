@@ -1,3 +1,18 @@
+## 2026-11-19 — Claude: Meridian's five street plans, drawn and approved by the owner (design only)
+
+The owner walked Astra's size-B candidates twice and said they read as one map: "These all look like the same pathing (Same exact stairs, elevations, etc) and this still generates I think the exact same map? I dont mind starting on floor level on some instances as well". Asked whether Claude should draw plans: "go ahead and draw plans". On the plans: "Approve all five".
+
+- **The cause in `meridian-b-candidate-2`:** one square hub, one exit template (a ~10 m jog, a walled ramp, a landing, the same two-bend lane) and one 25 m grid of box lots (`BuildLots`) for all five.
+- **The plans** are in `docs/expedition/meridian-plans/`: Crown Hill, The Navigation, The Arcades, The Stride and The Yards. Each has:
+  - a top-down plan PNG;
+  - an exact JSON spec: the hub's surroundings, routes as polylines with widths and heights, ramps, blocks, walkable roofs and their links, doors and the court.
+  - The folder also holds the comparison sheet, `exit-check.json` (the 20-exit test), `README.md` for Astra (format, exact versus rule, the checks) and `OWNER.md` (decisions; all defaults approved). The generator is in `src/`.
+- **What differs:**
+  - All 190 pairs of the 20 exits differ in at least two of: height profile, turn pattern, width, cover and approach sequence.
+  - Every layout has one ground, one raised and one sunk instance door, and its own court height and approach.
+- **Checks:** every route is 255-297 m on real surfaces with 3.2 m headroom, and the reach sweep finds no trapped surface. These were checked in Python only; nothing is built or walked in Unity.
+- **For Astra:** build the five plans as `meridian-b-candidate-3` with today's boxes and axis-aligned ramps; no new primitive is needed. The camp stays at the origin, and the map bounds move around it. Add the 20-exit difference check, then republish the Developer walk.
+
 ## 2026-11-19 — Astra: NOCTIEL at the end of the generated run and Meridian walk candidate 2
 
 Branch `codex/meridian-exits-noctiel`, from shared `0b63f095`. Claude presentation handoff: all three clears unlock the north final court. Crossing its trigger takes the world party into Still Water for NOCTIEL's existing arrival, phases and death sequence. Show NOCTIEL and Still Water on THE LAST FIGHT. After the death sequence the party returns to the court with the final rewards there and its usual continue/extract choices. The world cohort keeps its ticket and the authoritative map generation changes. The direct Boss Battle and Ward Zero retain their own encounters.
