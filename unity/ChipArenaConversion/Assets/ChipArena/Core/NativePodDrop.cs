@@ -363,7 +363,7 @@ namespace ChipArena.UnityConversion
                     float ang=i*Tau/count+.2f*Hash(s+60,i),rad=1.5f+9*(1-(1-u)*(1-u))*(.85f+.3f*Hash(s+61,i));var r=a*(float)Math.Cos(ang)+c*(float)Math.Sin(ang);
                     fx.Smoke(at+r*rad-n*(2*u),vapour,.6f*(1-u)*(1-u)*Smooth(punch*12),2.2f+2.8f*u,u,s+62+i,floor);
                 }
-                if(punch<.18f)fx.Glow(at,white*((soft?3:6)*(1-punch/.18f)),0,soft?6:11,1,0,s+59);
+                if(punch<.18f)fx.Glow(at,white*((soft?2.5f:4.5f)*(1-punch/.18f)),0,soft?5:8,1,0,s+59);
             }
             if(land<0)return;
             var touch=centre+p.P1;
@@ -515,8 +515,9 @@ namespace ChipArena.UnityConversion
             }
             if(age<p.Ride)
             {
-                // the sky: high over the camp in front of my landing, looking back up the line my pod comes in on
-                var pod=centre+FlightAt(p,Math.Max(p.Appear,age),out _);shot.Eye=centre+p.Travel*26+p.Side*12+up*48;shot.Look=Vector3.Lerp(centre+up*4,pod,.62f);shot.Fov=62;return shot;
+                // the sky: high over the camp beside my pod's line, looking up it as my streak comes burning in (seen from the side,
+                // its whole trail shows)
+                var pod=centre+FlightAt(p,Math.Max(p.Appear,age),out _);shot.Eye=centre+p.Travel*12+p.Side*(Hash(p.Seed,31)<.5f?-58:58)+up*42;shot.Look=Vector3.Lerp(centre+up*4,pod,.6f);shot.Fov=62;return shot;
             }
             var f=Evaluate(age,p);
             if(mode==ShotFirst&&age<p.CabinEnd&&age<p.Stop)
