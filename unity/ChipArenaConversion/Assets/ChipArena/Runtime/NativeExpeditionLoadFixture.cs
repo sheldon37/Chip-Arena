@@ -33,7 +33,9 @@ namespace ChipArena.UnityConversion
                         .Select(k => Vec(foot) + right * (2 * k));
                 }));
                 // Use all four approaches. A six-metre alley cannot hold the old boulevard's crowd.
-                feet = feet.Where(p => !HubInside(p) && p.sqrMagnitude < 95 * 95);
+                var pilots = Pilots.Where(p => !p.Seat.AuthorityBoss).Select(p => p.Body.position).ToArray();
+                feet = feet.Where(p => !HubInside(p) && Mathf.Max(Mathf.Abs(p.x),Mathf.Abs(p.z)) >= 30 &&
+                    pilots.Any(pilot => (p-pilot).sqrMagnitude < 44*44));
             }
             else
             {
@@ -75,6 +77,8 @@ namespace ChipArena.UnityConversion
         private readonly float[] maxTravel;
         private readonly double[] sum=new double[4];
         private int measured;
+        private int minPopulation = int.MaxValue, maxPopulation;
+        public bool FullPopulation => minPopulation == 88 && maxPopulation == 88;
         private readonly bool pilotHorde,hordeHorde;
         private readonly bool[] wardLayers=new bool[32];
         public NativeArena Arena=>Runtime.Arena;
@@ -136,7 +140,7 @@ namespace ChipArena.UnityConversion
                     var slot=new ExpeditionPoint{x=seat*2-5,z=-27.5f-seat*1.5f};
                     if (walk != null)
                     {
-                        walk.Routes[2].Sample(3 + seat * 2, out var foot, out _, out _);
+                        walk.Routes[seat-1].Sample(12, out var foot, out _, out _);
                         slot.x = foot.x; slot.y = foot.y; slot.z = foot.z;
                     }
                     if(!Arena.ExpeditionPlace("p"+seat,slot))throw new InvalidOperationException("Load fixture start blocked for seat "+seat);
@@ -249,6 +253,13 @@ namespace ChipArena.UnityConversion
                 float extent=Bundle.World.Map.id==NativeExpeditionGeneratedWorld.MapId?7:6;
                 float end=((Tick/150+seat)%2==0)?extent:-extent;
                 var delta=new Vector3(end-p.Body.position.x,0,-27.5f-seat*1.5f-p.Body.position.z);
+                if (Survey != null)
+                {
+                    Survey.Routes[seat-1].Sample((Tick/150+seat)%2==0 ? 8 : 18,
+                        out var foot,out _,out _);
+                    delta=NativeArena.Vec(foot)-p.Body.position;
+                    delta.y=0;
+                }
                 var dir=Vector3.ClampMagnitude(delta,1);
                 var input=new InputFrame{Sequence=Tick,X=dir.x,Z=dir.z,Yaw=Mathf.Atan2(dir.x,dir.z)*Mathf.Rad2Deg};
                 if(seat==Arena.LocalId)Runtime.Input=input;else Arena.AcceptInput(seat,input);
@@ -262,8 +273,11 @@ namespace ChipArena.UnityConversion
                 maxTravel[i]=Math.Max(maxTravel[i],(members[i].Body.position-firstPositions[i]).sqrMagnitude);
             if(Tick>Warmup&&Tick<=Warmup+Samples)
             {
-                if(members.Any(p=>p.Hp<=0)||Arena.Minions.Count(m=>m.Pve?.Hub!=null&&m.Hp>0)!=88||Arena.Pve.Cap!=88)
-                    throw new InvalidOperationException("Load changed during the budget sample at tick "+Tick);
+                int population = Arena.Minions.Count(m=>m.Pve?.Hub!=null&&m.Hp>0);
+                minPopulation = Math.Min(minPopulation,population);
+                maxPopulation = Math.Max(maxPopulation,population);
+                if(members.Any(p=>p.Hp<=0) || Arena.Pve.Cap!=88 || Survey==null && population!=88)
+                    throw new InvalidOperationException($"Invalid load at {Bundle.World.Map.name} tick {Tick}: {population} zombies, cap {Arena.Pve.Cap}, {members.Count(p=>p.Hp>0)} living pilots");
                 sum[0]+=Runtime.NavigationMs;
                 sum[1]+=Arena.DevCrowdFlowMs-crowd;
                 sum[2]+=Arena.DevPerceptionMs-sense;
@@ -275,7 +289,7 @@ namespace ChipArena.UnityConversion
         {
             if(measured!=Samples||maxTravel.Any(distance=>distance<1)||sum.Any(ms=>ms<=0))
                 throw new InvalidOperationException("Incomplete load benchmark: verify patrol movement and all four native counters.");
-            return FormattableString.Invariant($"EXPEDITION_SIM_BUDGET world={Bundle.World.Map.id} seed=17 unity={Application.unityVersion} cpu={SystemInfo.processorType} pilots={Pilots} zombies=88 ticks={measured} navMs={sum[0]/measured:F4} crowdFlowMs={sum[1]/measured:F4} perceptionMs={sum[2]/measured:F4} physicsMs={sum[3]/measured:F4}");
+            return FormattableString.Invariant($"EXPEDITION_SIM_BUDGET world={Bundle.World.Map.id} seed=17 unity={Application.unityVersion} cpu={SystemInfo.processorType} pilots={Pilots} zombies={maxPopulation} minimumZombies={minPopulation} ticks={measured} navMs={sum[0]/measured:F4} crowdFlowMs={sum[1]/measured:F4} perceptionMs={sum[2]/measured:F4} physicsMs={sum[3]/measured:F4}");
         }
         public void Dispose()
         {

@@ -134,6 +134,8 @@ namespace ChipArena.UnityConversion
             var enemies=hordeEnemies;enemies.Clear();foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss)enemies.Add(p);
             var adds=hordeAdds;adds.Clear();hordeTargets.Clear();hordeGrid.Clear();
             foreach(var m in Minions)if(m.Pve!=null&&!m.DevMonster){adds.Add(m);if(m.Pve.Target!=null){int id=m.Pve.Target.Seat.id;hordeTargets.TryGetValue(id,out int count);hordeTargets[id]=count+1;}if(m.Hp>0&&Time>=m.Pve.ActiveAt)hordeGrid.Add(adds.Count-1,m.Body.position.x,m.Body.position.z);}
+            // Survey streets include occupied levels down to -14 m.
+            float hordeKillY = MapId.StartsWith("expedition-city-walk-",StringComparison.Ordinal) ? Map.bounds.killY : -6f;
             foreach(var m in adds)
             {
                 if(m.Hp<=0)continue;var a=m.Pve;
@@ -143,7 +145,7 @@ namespace ChipArena.UnityConversion
                 if(!bruteDrop&&Time<a.ActiveAt)
                 {WardEntryPose(m);continue;}
                 if(m.Body.isKinematic){m.Body.isKinematic=false;m.Collider.enabled=true;m.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;}
-                if(m.Body.position.y<-6){if(a.Possessed)FoundPveBoss(BossRescue);RemoveMinion(m,false);continue;}
+                if(m.Body.position.y < hordeKillY){if(a.Possessed)FoundPveBoss(BossRescue);RemoveMinion(m,false);continue;}
                 foreach(var pair in m.Dots.ToArray()){if(a.Stats.id=="cinderling"&&pair.Key.EndsWith(":fire",StringComparison.Ordinal)){m.Dots.Remove(pair.Key);continue;}var dot=pair.Value;while(m.Hp>0&&dot.Next<=Time+1e-8&&dot.Next<=dot.Until+1e-8){if(!dot.HubNoReward)HitMinion(m,Pilots.Find(p=>p.Seat.id==dot.Source),(float)(dot.Dps*.25),Vector3.zero,0,kind:"field",from:m.Body.position);dot.Next+=.25;}if(Time>dot.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0)continue;
                 // Landed drops can take hits/DoTs and be shoved during recovery, but cannot move voluntarily or attack.
                 if(Time<a.ActiveAt){a.External*=Mathf.Exp(-6*dt);m.Body.linearVelocity=new Vector3(a.External.x,m.Body.linearVelocity.y,a.External.z);continue;}
