@@ -197,7 +197,7 @@ namespace ChipArena.UnityConversion
         }
         private static void Schematics(List<ContentMap> maps)
         {
-            Check(maps.Count==20&&maps.Any(m=>m.id==NativePoolroomsGenerator.ArenaId)&&maps.Any(m=>m.id==NativeBackroomsGenerator.ArenaId)&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
+            Check(maps.Count==21&&maps.Any(m=>m.id==NativeThunderheart.Id)&&maps.Any(m=>m.id==NativePoolroomsGenerator.ArenaId)&&maps.Any(m=>m.id==NativeBackroomsGenerator.ArenaId)&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
             foreach(var m in maps)
             {
                 var s=NativeStageSchematic.Build(m);Check(s!=null&&s.Count>0&&s.Count<=NativeStageSchematic.Max,m.id+" scans ("+(s?.Count??0)+")");
