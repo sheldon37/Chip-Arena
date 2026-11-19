@@ -8,12 +8,12 @@ This is the one budget table of `docs/EXPEDITION-OVERHAUL.md` (section 6). Each 
 - **The Low tier lights 8 practical slots, against 3.** `NativeLighting.PickedLights` uploads the picker's 8 on every tier, and the shaders loop over all 8.
 - **Frame time in the Editor, 1 pilot** (the frame-time table below): p95 17-20 ms at High and Balanced with the hub's own 6-23 zombies, and 14-20 ms at Low. With no zombies, 11.5-13.4 ms. The targets are build numbers at 4 pilots and 88 zombies: p95 12, 10 and 8 ms.
 - **Unity's own frame totals in the Editor** (every pass): 1,400-2,400 batches at High and Balanced, against 1,500; 840-1,000 batches and 1.8-2.0 M triangles at Low, against 800 and 0.8 M.
-- **What it needs: a decision.** With the baseline over its target there is no headroom (target minus baseline) to share out by milestone. So CoreTests holds the triangle rows at today's worst view (a no-growth gate, not a budget) until the owner chooses: accept the baselines as the targets, or cut. The cheapest cut draws the skyline with the rounded box (about 540,000 fewer triangles at High), but that changes the look. The Low tier's 3 slots come with the night look (W1). The High totals in the Editor (17-20 M triangles) count 4 shadow cascades and the outline pass, while the 2.0 M target reads as one view; section 6 should say which one it means before M2.
+- **The owner's decision (2026-11-19): "Accept the baselines".** Today's worst views are the city's triangle budget: High 2,177,224 and Low 821,492 a view (the plan's first targets were 2.0 M and 0.8 M). CoreTests holds the city there (`GeneratedFrameChecks`): a package that adds triangles cuts as many elsewhere, or asks the owner to raise the budget. The skyline cut (the rounded box, about 540,000 fewer at High) stays available if headroom is wanted later. The Low tier's 3 practical slots still come with the night look (W1).
 
 | Budget (section 6) | Target | Shared head `15dab150` | W0 | CoreTests gate | Measured by |
 | --- | --- | --- | --- | --- | --- |
 | The city's draws per view, High; Low | 1,500; 800 | 31; 22 | 31; 22 | 36; 26 (+15%) | census |
-| The city's triangles per view, High; Low | 2.0 M; 0.8 M | **2,177,224; 817,302: over** | 2,173,532; 821,492 | **2,177,224; 821,492 (no growth)** | census |
+| The city's triangles per view, High; Low | 2,177,224; 821,492 (owner, 2026-11-19; the plan's first 2.0 M; 0.8 M) | 2,177,224; 817,302 | 2,173,532; 821,492 | 2,177,224; 821,492 (the budget) | census |
 | Instances per draw | 500 | 500 | 500 | 500 | census |
 | The city's instances per view, High; Low | none | 11,835; 8,878 | 11,662; 8,923 | 13,611; 10,210 | census |
 | Shadow casters (High; none on Low) | 1,200 | 1,004 | 1,024 | 1,155 | census |
@@ -34,7 +34,7 @@ This is the one budget table of `docs/EXPEDITION-OVERHAUL.md` (section 6). Each 
 - the practical slots the picker fills.
 
 It covers 6 eyes (the hub's centre, the south apron, the east and west entrances' join circles, the final court, the hub from 46 m up) over 20 rolls (seeds 1-20), the most over the 120 views. Pilots, zombies, pods, machines, the hub gates, the sky, the HUD and the shadow cascades' repeats are left out. The pins are the shared head's numbers plus 15%, except:
-- the triangles, a no-growth gate (above);
+- the triangles, the owner's budget (above);
 - the effect quads, pinned on W0's first fog count (1,243 and 860; the review's nearest-sheets rule then lowered Low's to 848).
 
 The meshes: the style's wrap mesh has 444 triangles, its rounded box 92, and the legacy box 188. About 685,000 of the High triangles are the skyline's 1,544 boxes, each drawn with the wrap mesh. The rest are the kit's parts, about 9,900 in view at High, each the wrap mesh or the rounded box.
