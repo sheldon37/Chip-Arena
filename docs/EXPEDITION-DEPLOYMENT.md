@@ -425,8 +425,8 @@ unchanged. It ships with Astra's A0 (the branch is stacked on `codex/expedition-
     lets go on its first frame), with no footsteps and no Land take or `move.land`.
 - **My camera:** the Countdown branch of `NativeCinematicCamera` (`ArenaPresentation.PodDropDirect`). It owns the
   drop's camera, the in-pod beat included (W3's ride steps aside for a directed camera).
-  - **The shots:** the sky, about 120 m over the camp and back past it from my pod's line, looking down past the camp
-    at my streak (the view tilts down after it); the chase behind my pod; in first person first one braced second in
+  - **The shots:** the sky, 140 m up and 80 m back past the camp from my pod's line, looking at least 30° down past
+    the camp at my streak (the view tilts down after it); the chase behind my pod; in first person first one braced second in
     my red-lit cabin, in the seat, looking at the porthole (the city in it, then the roll), buffeting with camera shake
     on; the stop 10 m up while the pod punches in below; then the arc down behind my pilot (third person), or in first
     person up and over my pod round to its doorway, watching my pilot unbuckle and stand, and a cut into my own eyes
@@ -437,7 +437,8 @@ unchanged. It ships with Astra's A0 (the branch is stacked on `codex/expedition-
     hot tiles glow through the glass.
   - **The hand-off:** its last 0.5-0.6 s are blended over the game's own camera, so GO has no snap.
   - **Comfort:** its own shake, by NativeStructureShake's fall-off. Camera shake off gives the same shots, steady.
-    Reduced effects gives a still wide shot from the plaza instead (in first person it cuts into my eyes at the end).
+    Reduced effects gives a still wide shot from the plaza instead, from one of six stands beside the approach whose
+    view keeps off the REVIVE-O-MATIC (in first person it cuts into my eyes at the end).
   - The countdown sits small at the top of the screen while the drop directs (and through its hand-off), clear of my
     pod. A capture's fixed eye (`ConversionGame.CaptureEye`) wins.
   - The camera runs before Render sets the frame's clock, so the shot is posed again after Render
@@ -448,8 +449,8 @@ unchanged. It ships with Astra's A0 (the branch is stacked on `codex/expedition-
   door, steam, the sign's blip, the harness and the cooling ticks.
 - **The model:** bones 0-5, r ≤ 1.17 m, height ≤ 3.0 m and the Locker's paint, trim and light keys are kept. Added:
   ablative tiles and a heat shield (bone 6), four fins on the diagonals that are its legs, a glass porthole in the
-  door, four explosive bolts (bone 7), and a cabin lined in dark grey panels with red strips down the doorway, a red
-  wash at their feet, an instrument panel and a ceiling. Bones 6 and 7 are built char black and all but unlit
+  door, four explosive bolts (bone 7), and a cabin lined in grey panels (a little self-lit, so they read in the dark)
+  with red strips down the doorway, a red wash at their feet, an instrument panel and a ceiling. Bones 6 and 7 are built char black and all but unlit
   (`NativePodModels.HeatBase`): a drawer that leaves them untinted (the station's dock) shows cold char; the hub lights
   them through their tint (`HeatTint`). The jump seat (`SeatId`, its cushion bone 9 folding) and the harness bar
   (`HarnessId`, bone 8) are models of their own, built as the station's (W3's) seat and bar, so a drawer of the pod
