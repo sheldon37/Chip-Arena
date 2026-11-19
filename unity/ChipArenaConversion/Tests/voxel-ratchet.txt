@@ -73,7 +73,7 @@ Core/NativeCyberLordLook.cs                                0   3   0   0  23
 Core/NativeCyberLordPlasmaFx.cs                            0   0   0   0   4
 Core/NativeCyberLordRangedFx.cs                            0   0   0   0  15
 Core/NativeDevIntros.cs                                    0   0   0   0   1
-Core/NativeDraftStage.cs                                   0   1   0   6   0
+Core/NativeDraftStage.cs                                   0   1   0   8   0   # Voxel dependency: the chip install's stage pose (claude/chip-install-anim, shared 77e0a606) is authored on the 22-joint stage rig like the rest of the draft (plan M9); V4 moves the draft onto the model in Stage 2
 Core/NativeEntranceDirector.cs                             0   0   0   1   1
 Core/NativeEntrancePack.cs                                 0   4   0   8   0
 Core/NativeEntrancePose.cs                                 0   0   0  11   0
@@ -188,3 +188,7 @@ Runtime/NativeZombieModelPresentation.cs                   2   0   2   1   0
 
 # In flight (not on this branch yet): named so their merge stays green; the package that moves them lowers the pin.
 Core/NativeDeployEject.cs                                  0   0   0  17   0   # W3's eject states (claude/exp-w3-eject at 8ca81329; 13 at 048adc30): rig-authored (M12); V4 moves the crouch, fall and seat onto the model
+Core/NativeDraftInstall.cs                                 0   0   0   6   0   # Voxel dependency: the chip install's present, lift and Raise are authored on the draft's 22-joint stage rig (plan M9; shared 77e0a606); V4 moves the draft onto the model in Stage 2
+Runtime/NativeDraftInstallPresentation.cs                  0   0   0   0   2   # Voxel dependency: the cartridge shell's flung shards (shared 77e0a606) are thin WeaponShape.Cube slabs, primitive pieces rather than voxel art; a modelled shard mesh can replace them
+Runtime/NativeExpeditionLoadPreview.cs                     1   0   0   0   0   # Voxel dependency: none in fact: A0's load preview sets ClassicBodies=false to force the model (PR #412); V1's ModelBody predicate replaces the gate
+Runtime/NativePodPresentation.cs                           0   0   0   3   0   # Voxel dependency: W4's pod-cabin seated pose (claude/exp-w4-crash) is written through MeleeRig onto the rig, like W3's eject (M12); V4 moves it onto the model's own clips with the eject
