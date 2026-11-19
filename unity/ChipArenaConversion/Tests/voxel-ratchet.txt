@@ -160,7 +160,7 @@ Runtime/NativeMinionFxPresentation.cs                      0   0   2   0   0
 Runtime/NativeMutatorPresentation.cs                       0   0   2   0   0
 Runtime/NativeReviveHoloPresentation.cs                    0   1   1   0   0
 Runtime/NativeRobotSuitPresentation.cs                     0   0   7   0   0
-Runtime/NativeRooftopPresentation.cs                       2   0   5   0   3
+Runtime/NativeRooftopPresentation.cs                       2   0   5   0   0
 Runtime/NativeSceneMotion.cs                               0   1   1   0   0
 Runtime/NativeSirenDropPresentation.cs                     0   1   1   0   0
 Runtime/NativeSirenLookPresentation.cs                     0   0   3   2   0

@@ -16,8 +16,9 @@ namespace ChipArena.UnityConversion
     // grasp. Blades need no fit: their models reach the game's blade tip, so trails, blood and enchants keep their place.
     // A gun's Sight (optional) is its rear sight in the weapon frame, which first person's sights line up; without one the
     // Standard gun's rear sight is taken through the fit.
-    // A spec the bake carries none of (the daggers, shield, bow and caster staffs) draws the weapons pack bank's model on an
-    // arena pilot's body instead (NativePackWeaponPresentation.cs): the daggers on both hands, the staffs on the left.
+    // A spec the bake carries none of (the daggers, shield, bow and caster staffs) draws the weapons pack bank's model instead
+    // (NativePackWeaponPresentation.cs): the daggers on both hands, the staffs on the left; on the arena's bodies, the portraits',
+    // the rooftop's and the Deployment Station's (PackHolder), so no menu body holds a voxel weapon (voxel retirement P9).
     // The Arsenal Series (owner 2026-11-10; Core/NativeWeaponSkins.cs Series): a gun's other models are entries of their own
     // beside its Standard one ("pistol@arsenal", "rifle@arsenal2"), fitted, supported, stocked and sighted the same way. A
     // pilot who picked one holds it wherever the Standard model would draw; a bake without that entry draws the Standard one.
@@ -54,17 +55,22 @@ namespace ChipArena.UnityConversion
         }
 
         // The entry pilot `a` shows on its visual body this frame: a weapon in hand on the Standard skin that the bake carries,
-        // else (an arena pilot's body) the pack bank's (PackWeaponOf); the main dagger thrown hides its copy (MainAway).
+        // else the pack bank's (PackWeaponOf) on a body that holds its weapon in hand (PackHolder); the main dagger thrown hides
+        // its copy (MainAway). A DEV animation class holds its base class's weapon (HeldSpec; the menus pick the DEV spec itself).
         private VisualWeapon VisualWeaponFor(VisualBody body,Actor a)
         {
-            body.MainAway=a.MainWeaponAway;
-            if(a.WeaponAway||string.IsNullOrEmpty(a.SourceSpec)||WeaponSkin(a)!=NativeWeaponSkins.StandardIndex)return null;
+            body.MainAway=a.MainWeaponAway;string spec=HeldSpec(a);
+            if(a.WeaponAway||string.IsNullOrEmpty(spec)||WeaponSkin(a)!=NativeWeaponSkins.StandardIndex)return null;
             // A gun's Arsenal Series model, where the bake carries it (else its Standard model below).
-            int series=NativeWeaponSkins.Series(SeatWeaponSkins(a.Id),a.SourceSpec);
-            if(series>0&&body.Weapons!=null&&body.Weapons.TryGetValue(NativeWeaponSkins.SeriesEntry(a.SourceSpec,series),out var picked))return picked;
-            if(body.Weapons!=null&&body.Weapons.TryGetValue(a.SourceSpec,out var w))return w;
-            return body.Arena?PackWeaponOf(body,a.SourceSpec):null;
+            int series=NativeWeaponSkins.Series(SeatWeaponSkins(a.Id),spec);
+            if(series>0&&body.Weapons!=null&&body.Weapons.TryGetValue(NativeWeaponSkins.SeriesEntry(spec,series),out var picked))return picked;
+            if(body.Weapons!=null&&body.Weapons.TryGetValue(spec,out var w))return w;
+            return PackHolder(body,a.Id)?PackWeaponOf(body,spec):null;
         }
+        // The bodies the pack's weapons draw on (voxel retirement P9, docs/VOXEL-RETIREMENT.md: no voxel weapons outside the arena):
+        // the arena's and the first-person view body, the model portraits', the rooftop's and the Deployment Station's pilots. The
+        // entrances keep the game's model, which their tracks hold (V5 moves the entrances onto the model).
+        private bool PackHolder(VisualBody body,int id)=>body.Arena||id<=RooftopIdTop&&id>RooftopIdTop-8||id<=DeployIdTop&&id>DeployIdTop-DeployCast.Count||ModelPortraitOf(id,out _);
 
         /// <summary>Whether this install's bake carries a gun's Arsenal Series model (the Locker offers it only then).</summary>
         public static bool VisualSeriesInstalled(string spec,int series)
