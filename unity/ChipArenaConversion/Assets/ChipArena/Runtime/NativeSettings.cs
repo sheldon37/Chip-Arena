@@ -24,6 +24,7 @@ namespace ChipArena.UnityConversion
             Field("Audio");prefs.sound=!NativeControllerPointer.Toggle(!prefs.sound,"Mute audio");SoundTestRow();prefs.menuMusic=Slider("Menu Music",prefs.menuMusic,0,1);prefs.music=Slider("Stage Music",prefs.music,0,1);prefs.audio=Slider("Sounds",prefs.audio,0,1);
             if(nativeAudio!=null){nativeAudio.Effects=Mathf.Clamp01(prefs.audio);nativeAudio.Music=Mathf.Clamp01(prefs.music);nativeAudio.Menu=Mathf.Clamp01(prefs.menuMusic);}
             Field("Effects");prefs.trails=NativeControllerPointer.Toggle(prefs.trails,"Projectile trails");prefs.reducedEffects=NativeControllerPointer.Toggle(prefs.reducedEffects,"Reduced effects");prefs.cameraShake=NativeControllerPointer.Toggle(prefs.cameraShake,"Camera shake");
+            GUILayout.Label("Music-reactive scenery",small);int reaction=prefs.musicReaction=="Off"?0:prefs.musicReaction=="Reduced"?1:2;prefs.musicReaction=new[]{"Off","Reduced","Full"}[ChoiceRow(new[]{"Off","Reduced","Full"},reaction)];
             GUILayout.Label("Combat glow",small);int glow=prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?1:2;prefs.combatGlow=new[]{"Off","Low","Full"}[ChoiceRow(new[]{"Off","Low","Full"},glow)];
             // The damage screen (NativeDamageScreenPresentation): Off, Subtle (60%, no colour split) or Full; Reduced effects also stills it.
             GUILayout.Label("Damage screen effect",small);int hurt=prefs.damageScreen=="Off"?0:prefs.damageScreen=="Subtle"?1:2;prefs.damageScreen=new[]{"Off","Subtle","Full"}[ChoiceRow(new[]{"Off","Subtle","Full"},hurt)];

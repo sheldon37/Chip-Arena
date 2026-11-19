@@ -106,6 +106,7 @@ Owner asked for the expedition overhaul: a tileset machine, a reworked City away
 - **For Astra:** `docs/EXPEDITION-OVERHAUL-ASTRA.md`, packages A0-A5b in order. Start with A0 (the landing field, the yaw fix, `PodOpening`, the grounding fix, the sim benchmark and the DEV load harness), and A4's greybox at both sizes in parallel. A0 ships with Claude's pod crash (W4).
 - **How it was made:** a mapping pass (six readers, each with a skeptic, plus captures of today's look), three independent concepts, a judge, three reviewers (39 findings, all accepted), then a revision.
 - **Release 1, now:** Claude's W0 (budgets and latent fixes), W2 (the board), W3 (the eject and the cradle) and W4 (the crash). No code change in this entry.
+- **After the greybox walk (owner):** size B is chosen (600 × 480 m, 250-300 m routes: "Sorry I mean B is a good size"), and the city becomes **five curated layouts** in place of fully random ones ("maybe just like 5 unique set of paths would be fine"), each dressed by hand. Astra freezes the five as data (A4 update in `docs/EXPEDITION-OVERHAUL-ASTRA.md`). Then the design and polish.
 
 ## 2026-11-18 — Astra, A4 solo city scale walk
 
@@ -20591,3 +20592,7 @@ Branch codex/fix-practice-station, shared base dc568f84 (PR #407). The Windows b
 ## 2026-11-18 · Astra · Dealt Blind Pick authority
 
 Branch codex/dealt-blind-pick from shared 01505ad6. NativeRoomOptions.blindChoices uses zero for the original full pool. RoomOpt.Blind values 0/1/2 select off/all/dealt; dealt defaults to 3. RoomOpt.BlindChoices takes the actual N. The host deals unique IDs using each seat's live weapon grants and keeps N at or below the smallest eligible pool in the roster. Host-only deadlines sample from each pilot's still-eligible hand. Protocol 2 is required only for dealt hands. The local weapon view carries only that seat's IDs in pickCards before reveal; ConversionGame.OpeningWeaponOffers exposes them. Screen labels and layout belong to Claude. Managed checks cover offers, protocol, timeouts, bots, disconnects, grants and privacy. No combat, animation or hit-timing changes.
+
+## 2026-11-18 · Astra · Thunderheart Carillon
+
+Recovered the arena from the interrupted showcase run and integrated it on shared base 15dab150. The map, soundtrack, reactive mesh presentation, two tuning-stop routes and timed gates are covered in docs/THUNDERHEART-CARILLON.md alongside the art renders, CPU measurements and private lighting setup. Original targeted tests and pinned assembly compile passed. Windows multiplayer, GPU timing and licensed lighting remain unverified.
