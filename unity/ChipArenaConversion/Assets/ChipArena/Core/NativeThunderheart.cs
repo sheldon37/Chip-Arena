@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
             }
             MapSpawn Spawn(float x,float z)=>new MapSpawn{pos=new V3(x,1.05f,z),yaw=(float)(Math.Atan2(-x,-z)*180/Math.PI)};
             var ffa=new[]{Spawn(-22,-12),Spawn(22,12),Spawn(-22,12),Spawn(22,-12),Spawn(-21,1),Spawn(21,-1),Spawn(-15,-16),Spawn(15,16)};
-            return new ContentMap{id=Id,unity=true,rotation=true,name="Thunderheart Carillon",theme=Id,look="carillon-storm",music="thunderheart",tag="Break a tuning stop to power the opposite updraft. Watch the crown for closing gates.",
+            return new ContentMap{id=Id,unity=true,rotation=false,name="Thunderheart Carillon",theme=Id,look="carillon-storm",music="thunderheart",tag="Break a tuning stop to power the opposite updraft. Watch the crown for closing gates.",
                 sky=0x253f55,floor=0x47636a,accent=0xf5bd62,bounds=new MapBounds{minX=-25,maxX=25,minZ=-18,maxZ=18,ceiling=28,killY=-12},
                 blocks=blocks.ToArray(),spawns=new MapSpawns{ffa=ffa,teams=new[]{new MapTeamSpawns{side=0,points=ffa.Where(p=>p.pos.x<0).ToArray()},new MapTeamSpawns{side=1,points=ffa.Where(p=>p.pos.x>0).ToArray()}}},
                 hazards=hazards,segments=Array.Empty<StructureDefinition>(),pilotBlocks=Array.Empty<MapPilotBlock>(),nav=new MapNav{nodes=nodes.ToArray(),links=links.ToArray()}};

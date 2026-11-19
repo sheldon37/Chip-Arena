@@ -12,14 +12,14 @@ internal static class ThunderheartChecks
         void Need(bool value,string reason){if(!value)throw new Exception("Thunderheart: "+reason);}
         var map=NativeThunderheart.Build();NativeMapRules.Validate(map);
         var catalog=new ConversionContent{maps=new[]{map}};
-        Need(NativeMapRules.Selection(catalog,map.id)==map.id,"room selection");
+        Need(NativeMapRules.Selection(catalog,map.id)==NativeMapRules.DefaultArena,"retired stage selection falls back to the default arena");
         foreach(int count in new[]{1,2,4,6,8})
         foreach(bool teams in new[]{false,true})
         {
             var seats=Enumerable.Range(0,count).Select(i=>new NativeSeat{id=i+1,team=i%2}).ToArray();
             var positions=seats.Select((p,i)=>NativeMapRules.Spawn(catalog,map,seats,i,teams).pos).ToArray();
             Need(positions.Distinct().Count()==count,"unique spawn per seat");
-            Need(NativeMapRules.RandomEligible(map,seats,teams),"rotation and Deathmatch room fit");
+            Need(!NativeMapRules.RandomEligible(map,seats,teams),"retired stage excluded from rotation");
         }
         var path=Path.Combine(root,"Assets/ChipArena/Resources");
         var score=new NativeMusicEnvelope(File.ReadAllBytes(Path.Combine(path,"ThunderheartScore.bytes")));
