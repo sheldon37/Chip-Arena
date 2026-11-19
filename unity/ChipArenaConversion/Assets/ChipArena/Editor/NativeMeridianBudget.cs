@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion.Editor
                 string log = System.IO.Path.Combine(buildRoot,"meridian-candidate-"+i+".log");
                 var start = new System.Diagnostics.ProcessStartInfo {
                     FileName = exe, UseShellExecute = false, WorkingDirectory = System.IO.Path.GetDirectoryName(exe),
-                    Arguments = "-batchmode -force-d3d11 -noaudio -screen-fullscreen 0 -screen-width 1600 -screen-height 900 "
+                    Arguments = "-force-d3d11 -noaudio -screen-fullscreen 0 -screen-width 1600 -screen-height 900 "
                         + "-expedition-load 4 -meridian-candidate "+i+" -logFile \""+log+"\""
                 };
                 using var player = System.Diagnostics.Process.Start(start);
@@ -51,21 +51,27 @@ namespace ChipArena.UnityConversion.Editor
                     return;
                 }
                 int views = 0;
+                var diagnostics = new List<string>();
                 if (!System.IO.File.Exists(log))
                 {
                     Debug.LogWarning("Meridian player produced no graphics log for "+NativeCityLayout.Plans[i].Name);
                     return;
                 }
                 foreach (var line in System.IO.File.ReadLines(log))
+                {
                     if (line.StartsWith("MERIDIAN_VIEW ",StringComparison.Ordinal))
                     {
                         Debug.Log(line);
                         views++;
                     }
+                    else if (diagnostics.Count < 12 && (line.Contains("Exception") || line.Contains("Meridian player")
+                        || line.Contains("Direct3D") || line.Contains("Renderer:") || line.StartsWith("EXPEDITION_LOAD_PREVIEW")))
+                        diagnostics.Add(line);
+                }
                 if (player.ExitCode != 0 || views != 12)
                 {
                     complete = false;
-                    Debug.LogWarning($"Meridian renderer could not complete {NativeCityLayout.Plans[i].Name}: exit {player.ExitCode}, {views}/12 views. See {log}");
+                    Debug.LogWarning($"Meridian renderer could not complete {NativeCityLayout.Plans[i].Name}: exit {player.ExitCode}, {views}/12 views. See {log}\n{string.Join(Environment.NewLine, diagnostics)}");
                     continue;
                 }
             }
