@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         public bool PodRideView(Transform camera,NativeArena arena,float time,bool shake,bool reduced)
         {
             PodRideActive=false;PodRideShare=0;
-            if(camera==null||arena==null||reduced||!PodRun(arena)||arena.Match==null||arena.Match.Phase!=NativePhase.Countdown)return false;
+            if(!NativePodRide.Enabled||camera==null||arena==null||reduced||!PodRun(arena)||arena.Match==null||arena.Match.Phase!=NativePhase.Countdown)return false;
             var me=arena.Local;if(me?.Seat==null||!pods.TryGetValue(me.Seat.id,out var pod)||double.IsNaN(pod.End)||!double.IsNaN(pod.LaunchAt))return false;
             float age=(float)(PresentationClock(arena)-pod.End);if(!NativePodRide.Active(age,NativePodRide.Opening,out float u))return false;
             var f=NativePodDrop.Evaluate(age,pod.Order,pod.Seed);if(!f.Dropping)return false;

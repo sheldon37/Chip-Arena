@@ -10,11 +10,14 @@ namespace ChipArena.UnityConversion
     /// pose in the pod's own frame (Unity's: base at the origin, doorway toward +z), with the brace's judder. It keeps today's 3 s
     /// opening and Astra's 5 s one alike (the opening is read from the drop's own Appear; the plan's -4.1 s beat at 5 s, -2.6 s at
     /// 3 s, ending before any pod lands). Camera shake off: the same beat held steady; Reduced effects: no cabin moment at all.
-    /// Runtime/NativePodRidePresentation.cs places my camera; the pod countdown's directed camera (NativeCinematicCamera) yields to
-    /// it while Active.
+    /// Runtime/NativePodRidePresentation.cs places my camera, and steps aside for any directed camera (NativeCinematicCamera).
     /// </summary>
     public static class NativePodRide
     {
+        /// <summary>Off until the pod's cabin is closed from inside: the hub's pod model is drawn for the outside, so from the seat
+        /// the live captures saw only a flat fogged sky between the door's two light strips (W4's directed drop closes the cabin and
+        /// rides it; turn this on once that cabin draws).</summary>
+        public static readonly bool Enabled=false;
         /// <summary>The opening the pods' drop plays (s): -NativePodDrop.Appear (3 today; Astra's ExpeditionRules.PodOpening, 5 for a
         /// generated hub, once the drop reads it).</summary>
         public static float Opening=>-NativePodDrop.Appear;
