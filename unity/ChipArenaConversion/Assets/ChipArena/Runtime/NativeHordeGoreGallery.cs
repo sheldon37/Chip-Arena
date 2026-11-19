@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
                 if(!gib)
                 {
                     hordeQueueLost=0;hordeQueueHidden=goreGallerySlice[k];hordeQueueVisible??=b=>HordeJointShown(hordeQueueLost,b)&&(hordeQueueHidden==0||!HordeHiddenJoint(hordeQueueHidden,b));
-                    if(HordeGoreSettle(id,loopAt+killAt,fall,rig,0,goreGallerySlice[k],ground)){HordeDeathBody(rig,model,id,0,fall,hordeQueueVisible);HordeDeathJaw(rig,kind,look,id,hordeQueueVisible);GoreWoundsJob(id,rig);}
+                    if(HordeGoreSettle(id,kind,loopAt+killAt,fall,rig,0,goreGallerySlice[k],ground)){HordeDeathBody(rig,model,id,0,fall,hordeQueueVisible);HordeDeathJaw(rig,kind,look,id,hordeQueueVisible);GoreWoundsJob(id,rig);}
                 }
                 if(goreGalleryFate[k]==NativeHordeGore.Fate.HeadGib){int fo=goreGalleryFountain[k];HordeGoreFountain(id,loopAt+killAt,now,rig,ref fo);goreGalleryFountain[k]=fo;}
             }

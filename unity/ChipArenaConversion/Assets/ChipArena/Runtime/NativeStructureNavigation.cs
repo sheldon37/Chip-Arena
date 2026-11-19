@@ -70,6 +70,18 @@ namespace ChipArena.UnityConversion
         }
         private CrowdRoute AdvanceCrowdRoute(int goal,Vector3 target)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if(DevLoadLobbyCount>0)
+            {
+                long start=System.Diagnostics.Stopwatch.GetTimestamp();
+                try{return AdvanceCrowdRouteCore(goal,target);}
+                finally{DevCrowdFlowMs+=LoadElapsed(start);}
+            }
+#endif
+            return AdvanceCrowdRouteCore(goal,target);
+        }
+        private CrowdRoute AdvanceCrowdRouteCore(int goal,Vector3 target)
+        {
             if(!crowdRoutes.TryGetValue(goal,out var flow))
             {
                 flow=new CrowdRoute{search=new NativeNavSearch(Map.nav),building=new NativeNavSearch(Map.nav),at=float.NegativeInfinity};

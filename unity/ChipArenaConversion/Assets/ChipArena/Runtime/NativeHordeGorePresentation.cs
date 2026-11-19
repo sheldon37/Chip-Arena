@@ -45,11 +45,11 @@ namespace ChipArena.UnityConversion
         // Add `id`'s bones where its model draws them while it draws one: each joint moved by its model's shift (ZombieModelShift's), so
         // wounds, stumps and thrown limbs sit on the model's legs, which stand off the rig's by up to a quarter metre (claude/zombie-run-turn:
         // the stride's footprints are the model's, the rig's legs a short copy of them).
-        private NMatrix[] GoreBones(CapturedAnimation.Player rig,int id){GoreBones(rig);for(int b=0;b<22;b++)if(GoreModelShift(rig,id,b,out var w))goreBones[b]=GoreN(Matrix4x4.Translate(w)*rig.Bones[b].localToWorldMatrix);return goreBones;}
-        // Joint `b` of add `id` from the rig's to its model's (world), while its model draws (posed this frame or the last).
-        private bool GoreModelShift(CapturedAnimation.Player rig,int id,int b,out Vector3 w)
+        private NMatrix[] GoreBones(CapturedAnimation.Player rig,int id,int kind){GoreBones(rig);for(int b=0;b<22;b++)if(GoreModelShift(rig,id,kind,b,out var w))goreBones[b]=GoreN(Matrix4x4.Translate(w)*rig.Bones[b].localToWorldMatrix);return goreBones;}
+        // Joint `b` of add `id` (of `kind`) from the rig's to its model's (world), while its model draws (posed this frame or the last).
+        private bool GoreModelShift(CapturedAnimation.Player rig,int id,int kind,int b,out Vector3 w)
         {
-            w=Vector3.zero;if(!zombieBodies.TryGetValue(id,out var z)||z.Body.Root==null||z.PosedFrame<Time.frameCount-1)return false;
+            w=Vector3.zero;if(!zombieBodies.TryGetValue(id,out var z)||z.Kind!=kind||z.Body.Root==null||z.PosedFrame<Time.frameCount-1)return false;
             var sh=z.Shift[b];if(sh.X==0&&sh.Y==0&&sh.Z==0)return false;w=rig.Root.transform.TransformVector(new Vector3(-sh.X,sh.Y,sh.Z));return true;
         }
 
@@ -106,12 +106,12 @@ namespace ChipArena.UnityConversion
             var travel=NativeArena.Vec(e.Normal);bool projectile=cause==NativeHordeGore.Cause.Bullet||cause==NativeHordeGore.Cause.Heavy||cause==NativeHordeGore.Cause.Arrow;
             var shot=projectile&&travel.sqrMagnitude>.5f?travel.normalized:Vector3.zero;int look=s!=null&&s.Kind==kind?s.Look:NativeHordeKinds.Look(kind,id);
             var h=new GoreHit{Id=id,Kind=kind,Look=look,Index=goreHitIndex,Time=e.Time,Amount=e.Amount,MaxHp=maxHp,Cause=cause,Kill=m==null,Head=known?e.Head:e.Kind==EventKind.Headshot,Known=known,Raw=e.Raw,HasPart=e.HasPart,Part=e.Part,Lost=lost,Point=GoreV(point),Dir=GoreV(dir),Sweep=GoreV(sweep),Shot=GoreV(shot)};
-            hordeGore.Hit(h,GoreBones(rig,id),floor,out bool head);if(s!=null)s.GoreHead=known?e.Head:head;
+            hordeGore.Hit(h,GoreBones(rig,id,kind),floor,out bool head);if(s!=null)s.GoreHead=known?e.Head:head;
         }
         /// <summary>HordeSever: the authority severed a living add's limb (PveGib): a raw stump on the joint it hung from, a gush.</summary>
         private void HordeGoreSever(CapturedAnimation.Player rig,int id,int kind,int joint,float now,NVector2 push)
         {
-            if(rig?.Bones==null)return;hordeGore.Stump(id,GoreBones(rig,id),joint,now,new NVector(push.X,.3f,push.Y),kind);
+            if(rig?.Bones==null)return;hordeGore.Stump(id,GoreBones(rig,id,kind),joint,now,new NVector(push.X,.3f,push.Y),kind);
         }
 
         // ================================================================================================================
@@ -134,7 +134,7 @@ namespace ChipArena.UnityConversion
             r.PoolMost=hordeGore.Enabled?NativeHordeGore.PoolMost(kind,fate,hordeGore.Wounds(id),sc):0;
             r.PoolAt=fate==NativeHordeGore.Fate.Burst?at+NativeHordeGait.BurstAt+.1f:NativeHordeGore.Gibs(fate)&&fate!=NativeHordeGore.Fate.HeadGib?at+.18f:at+NativeHordeGait.DownAt;
             r.ChunkDelay=fate==NativeHordeGore.Fate.Burst?NativeHordeGait.BurstAt:0;
-            var bones=GoreBones(rig,id);var np=new NVector2(push.x,push.z);
+            var bones=GoreBones(rig,id,kind);var np=new NVector2(push.x,push.z);
             switch(fate)
             {
                 case NativeHordeGore.Fate.Gib:case NativeHordeGore.Fate.Crush:
@@ -158,12 +158,12 @@ namespace ChipArena.UnityConversion
         /// (`fall` past NativeMinionFx.DeathSeconds, the take's end) the corpse keeps this pose. True while the rig still draws it;
         /// false once its remains are gone (a horde past the tier's cap sank them), so the body never pops back. Remains the cap
         /// starts sinking while they still fall keep the pose they have, and sink from there.</summary>
-        private bool HordeGoreSettle(int id,float at,float fall,CapturedAnimation.Player rig,int lost,int hidden,float floorY)
+        private bool HordeGoreSettle(int id,int kind,float at,float fall,CapturedAnimation.Player rig,int lost,int hidden,float floorY)
         {
             var r=hordeGore.RemainsOf(id);if(r==null)return false;if(Mathf.Abs(r.At-at)>.05f)return true;if(r.Posed)return r.Frame>=hordeKindFrame;
             var chest=rig.Bones[CapturedRig.Chest].position;r.PoolCentre=new NVector(chest.x,floorY+.014f,chest.z);if(!r.Body)return true;
             if(fall<(float)NativeMinionFx.DeathSeconds&&!NativeHordeGoreState.Fading(r,hordeClock))return true;
-            r.Root=GoreN(rig.Root.transform.localToWorldMatrix);var settled=GoreBones(rig,id);for(int b=0;b<22;b++)r.Bones[b]=settled[b];r.Lost=lost;r.Hidden=hidden<0?0:hidden;
+            r.Root=GoreN(rig.Root.transform.localToWorldMatrix);var settled=GoreBones(rig,id,kind);for(int b=0;b<22;b++)r.Bones[b]=settled[b];r.Lost=lost;r.Hidden=hidden<0?0:hidden;
             hordeGore.Pose(r,hordeKindFrame);return true;
         }
         /// <summary>A head burst's neck fountains (HordeKindDeath while it falls): pulsing drops out of the stump along the neck.</summary>
@@ -234,7 +234,7 @@ namespace ChipArena.UnityConversion
             Array.Sort(goreRank,goreOrder,0,goreJobCount);
             for(int r=0;r<goreJobCount&&r<NativeHordeGore.WoundAdds[t];r++)
             {
-                if(goreRank[r]>NativeHordeGore.WoundRange)break;var j=goreJobs[goreOrder[r]];if(j.Rig?.Bones==null)continue;var bones=GoreBones(j.Rig,j.Id);
+                if(goreRank[r]>NativeHordeGore.WoundRange)break;var j=goreJobs[goreOrder[r]];if(j.Rig?.Bones==null)continue;var bones=GoreBones(j.Rig);
                 hordeGore.DrawWounds(j.Id,bones,now);hordeGore.Drip(j.Id,bones,now);
             }
             hordeGore.Collect(now,GoreV(eye));

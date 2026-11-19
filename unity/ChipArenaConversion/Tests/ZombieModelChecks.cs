@@ -444,7 +444,7 @@ internal static class ZombieModelChecks
         Check(zr.Contains("go.transform.SetParent(bone,false);")&&zr.Contains("go.AddComponent<MeshFilter>().sharedMesh=mesh;var mr=go.AddComponent<MeshRenderer>();mr.sharedMaterials=use;")&&!zr.Contains("skin.bones=new[]{bone}"),
             "the gear rides its bone as a rigid renderer (the project skins on the CPU)");
         // Flying parts from the model, not the voxel parts; their meshes pooled.
-        Check(kp.Contains("p.Pieces=ZombiePartPieces(id,joint,p.Pieces);")&&kp.Contains("if(!ZombiePartDrawn(p,age,sink)&&!HordeNoVoxel(p.Kind))sourceModels.Queue(p.Model,")&&kp.Contains("p.Live=false;ZombiePiecesFree(p.Pieces);continue;"),"a modelled zombie's severed, sliced and gibbed parts are its own model's");
+        Check(kp.Contains("p.Pieces=ZombiePartPieces(id,joint,p.Pieces);")&&kp.Contains("bool modelPart=ZombiePartDrawn(p,age,sink);if(!modelPart&&!HordeNoVoxel(p.Kind))sourceModels.Queue(p.Model,")&&kp.Contains("p.Live=false;ZombiePiecesFree(p.Pieces);continue;"),"a modelled zombie's severed, sliced and gibbed parts are its own model's");
         Check(zr.Contains("if((mine[t[i]]?1:0)+(mine[t[i+1]]?1:0)+(mine[t[i+2]]?1:0)<2)continue;")&&zr.Contains("skin.BakeMesh(baked,true);zombieBakedNow[skin]=baked;"),"a part keeps the triangles skinned mostly to its bones, each renderer baked once a frame");
         Check(zr.Contains("if(c.Meshes[i]!=null&&c.Baked[i])zombieCorpseMeshes.Push(c.Meshes[i]);"),"a corpse's pits drawn from their own meshes, never pooled for bakes");
         foreach(var ban in new[]{".Hp=","StrikeAt","LastAttack=","Struck","Damage(","NativeNetwork","PveAddStats",".radius=",".height="})Check(!zr.Contains(ban)&&!core.Contains(ban),"presentation only: never "+ban);
