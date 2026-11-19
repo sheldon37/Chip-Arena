@@ -43,7 +43,15 @@ namespace ChipArena.UnityConversion
         // bay's face can turn to the lens), rising a little toward the hand as one checks a watch; the bay's normal points at the lens
         // and a little up (about 25 degrees above level: within 20 degrees of the camera's line to it).
         public static readonly Vector3 InstallPoint=new Vector3(-.04f,.24f,.30f);
-        public static readonly Vector3 NormalWant=Vector3.Normalize(new Vector3(0,.42f,.91f)),ForearmWant=Vector3.Normalize(new Vector3(1,.30f,0));
+        public static readonly Vector3 NormalWant=Vector3.Normalize(new Vector3(0,.42f,.91f)),ForearmWant=Vector3.Normalize(new Vector3(1,.22f,0));
+        /// <summary>The pilot's visor's height in the planned chest's frame (NativeDraftStage: the stage rig's eyes until the drawn body's is
+        /// measured). The install's heights follow it: the bay at most BayUnderVisor under it (so the shot holds the visor high and the device
+        /// low together; the player's model wears its visor low, about 35 cm over the chest), the Raise's at most RaiseOverVisor over it (the
+        /// ear line), so the fist stays under the crown.</summary>
+        public float VisorChestY=.57f;
+        public const float BayUnderVisor=.21f,RaiseOverVisor=-.02f;
+        public Vector3 InstallAt=>new Vector3(InstallPoint.X,Math.Min(InstallPoint.Y,VisorChestY-BayUnderVisor),InstallPoint.Z);
+        public Vector3 RaiseAt=>new Vector3(RaisePoint.X,Math.Min(RaisePoint.Y,VisorChestY+RaiseOverVisor),RaisePoint.Z);
         // The Raise (the hero hold of the rare and up): the fist up beside the head on the receiving side, the bay at the ear line a
         // helmet's half width and more off the visor, its forearm leaning about 45 degrees outward (never upright across the face), the
         // fist under the crown; the bay's face still to the lens.
@@ -196,7 +204,7 @@ namespace ChipArena.UnityConversion
             // and only then does the forearm turn up beside the head (RaiseTurn); back down in the reverse order.
             float outward=NativeInstallShot.Smooth(raise/RaiseOut),upward=NativeInstallShot.Smooth((raise-RaiseUp)/(1-RaiseUp)),turned=NativeInstallShot.Smooth((raise-RaiseTurn)/(1-RaiseTurn));
             var n=Vector3.Normalize(Vector3.Lerp(NormalWant,RaiseNormal,turned));var f0=Vector3.Lerp(ForearmWant,RaiseForearm,turned);var f=CapturedRig.Unit(f0-n*Vector3.Dot(f0,n),Vector3.UnitX);
-            at=new Vector3(InstallPoint.X+(RaisePoint.X-InstallPoint.X)*outward,InstallPoint.Y+(RaisePoint.Y-InstallPoint.Y)*upward,InstallPoint.Z+(RaisePoint.Z-InstallPoint.Z)*outward);
+            var from=InstallAt;var to=RaiseAt;at=new Vector3(from.X+(to.X-from.X)*outward,from.Y+(to.Y-from.Y)*upward,from.Z+(to.Z-from.Z)*outward);
             // The power-up: the fist turned a little about its forearm, as if testing it (the bay's face turning with it, still to the lens).
             n=Vector3.Transform(n,CapturedRig.Rot(f,PowerTurn*NativeInstallShot.Ramp(p,NativeInstallShot.PowerStart,NativeInstallShot.PowerEnd)*(1-raise)));
             // The give: back along the bay's inward normal under the press, the boss relics further, with a tremble.
@@ -284,7 +292,7 @@ namespace ChipArena.UnityConversion
                 float k=ForeWeight;At=Vector3.Lerp(At,PresentAt,k);Normal=CapturedRig.Unit(Vector3.Lerp(Normal,PresentNormal,k),PresentNormal);
                 var pf=Vector3.Lerp(Forearm,PresentForearm,k);Forearm=CapturedRig.Unit(pf-Normal*Vector3.Dot(pf,Normal),PresentForearm);
             }
-            PlannedAt=PlannedChestAt+Vector3.Transform(InstallPoint,PlannedChestQ);PlannedNormal=Vector3.Transform(NormalWant,PlannedChestQ);
+            PlannedAt=PlannedChestAt+Vector3.Transform(InstallAt,PlannedChestQ);PlannedNormal=Vector3.Transform(NormalWant,PlannedChestQ);
             var handAt=pose.WorldPosition[hand];var handQ=pose.WorldRotation[hand];var pinchNow=handAt+Vector3.Transform(PinchLocal,handQ);HandPinch=pinchNow;
             ChipShown=p>=NativeInstallShot.Burst&&p<NativeInstallShot.Release;CoreSeated=p>=NativeInstallShot.Release;Latch=NativeInstallShot.EaseIn((p-NativeInstallShot.Contact)/(NativeInstallShot.Seat-NativeInstallShot.Contact));
             Lights=1+.6f*(1-NativeInstallShot.Smooth((p-NativeInstallShot.Burst)/(.80f-NativeInstallShot.Burst)));
@@ -330,7 +338,7 @@ namespace ChipArena.UnityConversion
         // ---- the Siren drafter ----
         /// <summary>The Siren's hold on the cartridge: at the tips of her claws (hand frame: down the claw), pushed out toward the lens so the
         /// talons never cover it; and how far her claw stops short of the grin (to its side and a little under it, so the grin stays readable).</summary>
-        public static readonly Vector3 SirenTips=new Vector3(0,-.11f,.02f),SirenGrinSide=new Vector3(.11f,-.05f,.04f);
+        public static readonly Vector3 SirenTips=new Vector3(0,-.11f,.02f),SirenGrinSide=new Vector3(.13f,.01f,.05f);
         public const float SirenToLens=.05f;
         /// <summary>
         /// The Siren's devour on the same keys (her reaching claw on the card's side): the claw strikes at the card with an overshoot,

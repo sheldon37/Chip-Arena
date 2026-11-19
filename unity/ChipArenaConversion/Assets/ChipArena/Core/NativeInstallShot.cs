@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The model's drawn taking hand on the stage's plan (the contact pass): easing in from ContactIn so it is already reaching
         /// as the cartridge flies into it (all of it by the catch), held through the press and the lift off the shell, and easing out from
         /// ContactOut to ContactGone as the hand goes low (the stage's arm takes it again).</summary>
-        public const float ContactIn=.40f,ContactOut=1.26f,ContactGone=1.50f;
+        public const float ContactIn=.40f,ContactOut=1.30f,ContactGone=1.54f;
         public static float Contact01(float p)=>Smooth((p-ContactIn)/(Catch-ContactIn))*(1-Smooth((p-ContactOut)/(ContactGone-ContactOut)));
         /// <summary>The settle of a turn that holds `turn` seconds after the pick (3.2 s: 2.55-3.05).</summary>
         public static float SettleStart(float turn)=>Math.Max(HoldEnd,turn-.65f);

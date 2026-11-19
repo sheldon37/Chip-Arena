@@ -166,8 +166,26 @@ namespace ChipArena.UnityConversion
         public float ShadeDeep(float line)=>Math.Max(line+ShadeRamp,framed?Project(RestPlexus-new Vector3(0,ShadeDrop,0)).Y:line+DefaultRamp);
         private readonly float restHead;private readonly Quaternion[] restQ=new Quaternion[2];private float lookNear=LookZ;
         private float frameHeight,frameCentre,frameHeightV,frameCentreV,lastAge=-1;private Vector3 gazeV,lead;private bool framed,gazed,picked,carry;private int cardCount;
-        // The install's plan from the seated rest (the shot's focus): the bay's seat at the install point, its normal, the visor.
-        public readonly Vector3 PlannedBay,PlannedNormal,PlannedVisor;private readonly Vector3 plannedChestAt;private readonly Quaternion plannedChestQ;private float crownTop,crownTaken;
+        // The install's plan from the seated rest (the shot's focus): the bay's seat at the install point (the plan's, which follows the
+        // pilot's visor), its normal, the visor (the rest head's, VisorOffset over it: the stage rig's eyes, or the drawn body's visor as
+        // measured, MeasureVisor: the player's model wears its visor about 20 cm under the rig's eyes, so the shot framed the helmet's top).
+        public Vector3 PlannedBay=>plannedChestAt+Vector3.Transform(Plant.InstallAt,plannedChestQ);
+        public Vector3 PlannedVisor=>restHeadAt+VisorOffset;
+        public readonly Vector3 PlannedNormal;private readonly Vector3 plannedChestAt,restHeadAt;private readonly Quaternion plannedChestQ,restHeadQ;private float crownTop,crownTaken;
+        /// <summary>The stage rig's visor over its rest head (root frame), and the pilot's as drawn (MeasureVisor; the rig's until measured).</summary>
+        public static readonly Vector3 RigVisor=new Vector3(0,EyeUp-.015f,.02f);
+        public Vector3 VisorOffset=RigVisor;
+        /// <summary>The drawn body's visor (root frame, this frame's pose): its place on the head carried to the rest head, eased in (a body's
+        /// visor rides its head, so the offset holds per body); the shot frames it and the install's heights follow it (NativeDraftInstall.VisorChestY).</summary>
+        public void MeasureVisor(Vector3 visor)
+        {
+            var head=Pose.WorldPosition[CapturedRig.Head];var local=Vector3.Transform(visor-head,Quaternion.Inverse(Pose.WorldRotation[CapturedRig.Head]));
+            var offset=Vector3.Transform(local,restHeadQ);VisorOffset=MathUtil.Finite(offset.X+offset.Y+offset.Z)?Vector3.Lerp(VisorOffset,offset,.35f):VisorOffset;
+        }
+        // How far under the rig's eyes the pilot's visor sits: the crown (the head's top and a hat over it) rides down with it.
+        private float VisorDrop=>Math.Max(0,RigVisor.Y-VisorOffset.Y);
+        // The visor's height in the planned chest's frame (the install's heights follow it).
+        private float VisorChestY=>Vector3.Transform(PlannedVisor-plannedChestAt,Quaternion.Inverse(plannedChestQ)).Y;
         // The burst: where the 2D card hands over to the 3D cartridge (screen fractions) and the cartridge's width there (a share of the
         // screen's width); valid while Bursting.
         public Vector2 BurstScreen;public float BurstWidth;public bool Bursting;
@@ -178,8 +196,8 @@ namespace ChipArena.UnityConversion
         {
             NativeDraftRules.Pose(Pose,0);Pose.World();restHead=Pose.WorldPosition[CapturedRig.Head].Y;restQ[0]=RestWrist(true);restQ[1]=RestWrist(false);
             Pose.Rotation[CapturedRig.Spine]=Pose.Rotation[CapturedRig.Spine]*CapturedRig.Euler(Lean);Pose.World();RestPlexus=Plexus(Pose);
-            var cq=Pose.WorldRotation[CapturedRig.Chest];PlannedBay=Pose.WorldPosition[CapturedRig.Chest]+Vector3.Transform(NativeDraftInstall.InstallPoint,cq);PlannedNormal=Vector3.Transform(NativeDraftInstall.NormalWant,cq);
-            PlannedVisor=Pose.WorldPosition[CapturedRig.Head]+new Vector3(0,EyeUp-.015f,.02f);plannedChestAt=Pose.WorldPosition[CapturedRig.Chest];plannedChestQ=cq;
+            var cq=Pose.WorldRotation[CapturedRig.Chest];PlannedNormal=Vector3.Transform(NativeDraftInstall.NormalWant,cq);
+            restHeadAt=Pose.WorldPosition[CapturedRig.Head];restHeadQ=Pose.WorldRotation[CapturedRig.Head];plannedChestAt=Pose.WorldPosition[CapturedRig.Chest];plannedChestQ=cq;Plant.VisorChestY=VisorChestY;
         }
         // A new turn or pilot: the springs restart at their targets on the next frame and the arms start at rest in the lap.
         public void Reset(){framed=gazed=picked=carry=false;Age=lastAge=-1;Bursting=false;TrayFade=0;Plant.Reset();for(int i=0;i<2;i++){armW[i]=armV[i]=armGoal[i]=0;armAimV[i]=Vector3.Zero;armAimed[i]=false;}}
@@ -311,7 +329,7 @@ namespace ChipArena.UnityConversion
             bool In(Vector2 s)=>s.X>=SafeLeft&&s.X<=1-SafeLeft&&s.Y>=SafeTop&&s.Y<=shade;var visor=Project(PlannedVisor);
             // (The crown too: under a hat or the halo the head's top with its crown room, as Frame keeps it, stays under the top edge; a bare
             // head's top may leave it by BareCrop of the height, a close-up's crop, the eyes still EyesBelow under the edge.)
-            bool ok=In(visor)&&In(Project(PlannedBay))&&In(Project(pinch))&&visor.Y>=EyesBelow&&Project(new Vector3(0,crownTop,PlannedVisor.Z+.25f)).Y>=(crownTaken>0?CrownEdge:-BareCrop);
+            bool ok=In(visor)&&In(Project(PlannedBay))&&In(Project(pinch))&&visor.Y>=EyesBelow&&Project(new Vector3(0,crownTop-VisorDrop,PlannedVisor.Z+.25f)).Y>=(crownTaken>0?CrownEdge:-BareCrop);
             CameraTarget=keepT;CameraPosition=keepP;return ok;
         }
         // The camera ray through a screen point (fractions: x from the left, y from the top) where it meets the plane z.
@@ -449,7 +467,7 @@ namespace ChipArena.UnityConversion
                 BurstScreen=sc;Basis(out var f,out _,out _,out float t);float depth=Math.Max(.05f,Vector3.Dot(at-CameraPosition,f));BurstWidth=Plant.Width/(2*depth*t*Aspect);Bursting=true;
                 var up=CapturedRig.Unit(Vector3.UnitY-toCamera*Vector3.Dot(Vector3.UnitY,toCamera),Vector3.UnitY);Plant.Hand(at,CapturedRig.Basis(Vector3.Cross(toCamera,up),toCamera,up));
             }
-            if(planting){Plant.PlannedChestAt=plannedChestAt;Plant.PlannedChestQ=plannedChestQ;Plant.Pose(p,Left,plantLocal,toCamera,age,reduced);}
+            if(planting){Plant.PlannedChestAt=plannedChestAt;Plant.PlannedChestQ=plannedChestQ;Plant.VisorChestY=VisorChestY;Plant.Pose(p,Left,plantLocal,toCamera,age,reduced);}
             else if(siren&&age>=0){p.World();var grin=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(new Vector3(0,.07f,.22f),p.WorldRotation[CapturedRig.Head]);Plant.SirenPose(p,Left,grin,age,CapturedRig.Unit(CameraPosition-grin,Vector3.UnitZ));}
             // The head looks from where the bow carried the eye, within the same limits, with the install's nods.
             Turn(p,CapturedRig.Neck,along,NeckShare);p.World();eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);Look(p,Aim(eye,Gaze,down,pitchDown));

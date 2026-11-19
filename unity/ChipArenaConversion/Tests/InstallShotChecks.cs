@@ -206,7 +206,29 @@ internal static class InstallShotChecks
                 if(k==10){highest=Math.Min(highest,sp.Y);Check(sp.Y>.02f,"the Raise's fist leaves the frame's top at "+p.ToString("0.00")+" ("+sp.Y+")");}
             }
         });
-        return "Install present: the designed bay on its point at the line-up (within "+(worstSeat*1000).ToString("0.0")+" mm), its face within "+(Math.Acos(worstFace)*57.3f).ToString("0")+" deg of the lens and its forearm square to it (at most "+(Math.Asin(Math.Min(1,worstSquare))*57.3f).ToString("0")+" deg toward the camera) to the lid's shut, at 30-144 Hz; the Raise beside the head (its arm clear of the visor's box by "+(clearest*100).ToString("0")+"% of it, the fist "+(highest*100).ToString("0")+"% under the top)";
+        // The player's model wears its visor about 21 cm under the stage rig's eyes (measured in the Editor; MeasureVisor carries the drawn
+        // visor to the rest head): the shot frames that visor, so on every screen it sits in the upper third at 1.5x and more with the bay
+        // low in the frame; the bay drops with it (BayUnderVisor) and the Raise's fist stays clear of the visor and under the crown.
+        float leastModel=9,highVisor=0,lowBay=1,highBay=0,clearModel=1;int screens=0;
+        foreach(float aspect in new[]{1.25f,4f/3,16f/9,21f/9})
+        {
+            var m=Portrait(aspect,.72f);m.VisorOffset=NativeDraftStage.RigVisor-new Vector3(0,.21f,0);var lp=NativeInstallShot.Of("legendary","x");
+            float hero=0;Vector2 visorAt=default,bayAt=default;
+            Drive(m,lp,60,3.2f,(a,p)=>
+            {
+                var pl=m.Plant;if(Math.Abs(a-NativeInstallShot.Seat)<.009f){hero=m.Magnify;visorAt=m.Project(m.PlannedVisor);bayAt=m.Project(pl.PresentAt);}
+                if(p>=NativeInstallShot.LookStart&&p<=NativeInstallShot.LookEnd)
+                {
+                    var v=m.Project(m.PlannedVisor);float d=(m.CameraPosition-m.PlannedVisor).Length(),t=(float)Math.Tan(NativeDraftStage.Fov*Math.PI/360),hw=.15f/(2*d*t*m.Aspect),hh=.06f/(2*d*t);
+                    for(int k=0;k<=10;k++){var sp=m.Project(pl.PresentAt+pl.PresentForearm*(-.25f+.40f*k/10f));float dx=Math.Abs(sp.X-v.X)/hw,dy=Math.Abs(sp.Y-v.Y)/hh;Check(dx>1||dy>1,aspect+": the model's Raise over its visor at "+p.ToString("0.00"));clearModel=Math.Min(clearModel,Math.Max(dx,dy)-1);}
+                    var fist=pl.PresentAt+pl.PresentForearm*.15f;Check(fist.Y<m.PlannedVisor.Y+.14f,aspect+": the model's fist over its crown ("+(fist.Y-m.PlannedVisor.Y)+" m over the visor)");
+                }
+            },aspect);
+            screens++;leastModel=Math.Min(leastModel,hero);highVisor=Math.Max(highVisor,visorAt.Y);lowBay=Math.Min(lowBay,bayAt.Y);highBay=Math.Max(highBay,bayAt.Y);
+            Check(m.Plant.InstallAt.Y<NativeDraftInstall.InstallPoint.Y-.05f,"the model's bay follows its low visor");
+            Check(hero>=1.5f&&visorAt.Y>=NativeDraftStage.EyesBelow&&visorAt.Y<.36f&&bayAt.Y>.55f&&bayAt.Y<.8f,aspect+": the model's hero framing ("+hero+"x, the visor at "+visorAt.Y+", the bay at "+bayAt.Y+")");
+        }
+        return "Install present: the designed bay on its point at the line-up (within "+(worstSeat*1000).ToString("0.0")+" mm), its face within "+(Math.Acos(worstFace)*57.3f).ToString("0")+" deg of the lens and its forearm square to it (at most "+(Math.Asin(Math.Min(1,worstSquare))*57.3f).ToString("0")+" deg toward the camera) to the lid's shut, at 30-144 Hz; the Raise beside the head (its arm clear of the visor's box by "+(clearest*100).ToString("0")+"% of it, the fist "+(highest*100).ToString("0")+"% under the top); a model's low visor (21 cm under the rig's eyes) framed at the clack on "+screens+" screens at "+leastModel.ToString("0.00")+"x and more, its visor at most "+(highVisor*100).ToString("0")+"% down and the bay at "+(lowBay*100).ToString("0")+"-"+(highBay*100).ToString("0")+"%, its Raise clear of the visor (by "+(clearModel*100).ToString("0")+"% of its box) and under the crown";
     }
     private static string Contact()
     {
@@ -307,7 +329,7 @@ internal static class InstallShotChecks
         // the trims take the chip's colour as the accent's ratio (a colour multiplied onto the baked teal read green).
         int clack=install.IndexOf("// The clack (on `a`)",StringComparison.Ordinal),shell=install.IndexOf("// The shell breaking",StringComparison.Ordinal);
         Check(clack>0&&shell>clack&&!install.Substring(clack,shell-clack).Contains("QueuePiece(WeaponShape.Ring")&&install.Substring(clack,shell-clack).Contains("fx.Streak(S(at+dir*r)"),"the clack's ring drawn as light");
-        Check(install.Contains("Color.Lerp(diAccent,diWhiteAccent,.9f*diProfile.Visor*flash)")&&install.Contains("Color.Lerp(diAccent,diChipAccent,Mathf.Clamp01(band*2))")&&install.Contains("NativePortraitRules.GlowAccentTint(hex)"),"the visor flashes white, the trims the chip's colour, as accent ratios");
+        Check(install.Contains("Color.Lerp(diAccent,diWhiteAccent,.95f*flash)")&&install.Contains("Color.Lerp(diAccent,diChipAccent,Mathf.Clamp01(band*2))")&&install.Contains("NativePortraitRules.GlowAccentTint(hex)"),"the visor flashes white, the trims the chip's colour, as accent ratios");
         // The readout's leader: from beside the pilot, gone by the look and over a sunk device.
         Check(screen.Contains("var start=draftLeader2d;")&&screen.Contains("NativeInstallShot.LeaderFade(age)")&&NativeInstallShot.LeaderFade(NativeInstallShot.LookStart+.2f)==0&&NativeInstallShot.LeaderFade(NativeInstallShot.DetailsAt+.2f)==1,"the leader starts beside the pilot and is gone by the look");
         // Off the stage (the Expedition's tray over the live view) the picked card flies into the hand and fades at the plant's contact, as

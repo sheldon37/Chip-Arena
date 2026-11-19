@@ -129,6 +129,8 @@ namespace ChipArena.UnityConversion
             diGraspOn=model&&a>=0;if(diGraspOn){diLeftShape=NativeHandShapes.Left(p);diRightShape=NativeHandShapes.Right(p,plan.Settle,out diRightGrip,out diRightClench);}
             bool asModel=!siren&&VisualDraftPose(draftRig,seat,draftPose,(float)time,camera);VisualBodiesShown();diGraspOn=false;
             if(asModel&&dog&&draftBody!=null)DraftDogJiggle(draftBody,p);
+            // (The drawn arms' and head's bones, found once per body: the present, the contact, the visor's measure and the effects read them.)
+            if(asModel&&draftBody!=null)DraftArmFor(draftBody,true);
             // The model's receiving arm onto the designed present (its device rides the forearm: the bay is solved on the drawn arm), then
             // the bay as drawn, back into the stage hand's frame (source axes) for the stage arm's next frame.
             if(asModel)VisualDraftPresent(stage,camera);
@@ -145,7 +147,7 @@ namespace ChipArena.UnityConversion
             if(a<0)diPinch=Stage(stage.Palm);
             else if(p<NativeInstallShot.Catch)
             {
-                var reach=Stage(plan.HandPinch);diPinch=contact>0?VisualDraftContact(stage.Left,p,reach,reach,StageTurn(plan.CatchRotation),contact):a>=NativeInstallShot.Burst?reach:Stage(stage.Palm);
+                var reach=Stage(plan.HandPinch);diPinch=asModel?VisualDraftContact(stage.Left,p,reach,reach,StageTurn(plan.CatchRotation),contact):a>=NativeInstallShot.Burst?reach:Stage(stage.Palm);
                 if(a>=NativeInstallShot.Burst)DraftCartridgeFlight(stage,diPinch);
             }
             else if(p<NativeInstallShot.Release)
@@ -163,6 +165,8 @@ namespace ChipArena.UnityConversion
             // (the present and the contact moved them after the bind: queued before, the arm plates hung where the arms had been).
             if(asModel&&draftBody!=null){if(!draftBody.Hood)DraftFaceGear(draftBody,seat);DraftSuitSurge(draftBody,seat);DraftAccentFlare(draftBody,seat);}
             if(diBay)VisualDraftDevice(seat,p,(float)time,diChip.linear);if(asModel)DraftCore(seat,(float)time);DraftSurgePath(stage);
+            // The drawn visor for the shot and the install's heights (the model wears it about 20 cm under the stage rig's eyes).
+            if(asModel&&draftArm?.Head!=null&&draftArm.Body==draftBody)stage.MeasureVisor(FromStage(diPath[4]));
             // The voxel pilot's surge: its tint running up the receiving arm into the chest and the head.
             diVoxelPart??=b=>DraftVoxelTint(b);var voxelPart=siren||a<NativeInstallShot.SurgeStart?null:diVoxelPart;
             var root=draftRig.Root.transform.localToWorldMatrix;var sirenFace=siren?SirenStill(reduced?0:(float)time):null;int bodySkin=NativeBodySkins.Of(seat.weaponSkins);if(!asModel){sourceModels.Queue(siren?"siren":BodyModel(bodySkin,BodyCloseTier),root,draftBone,body:BodyTint(seat.bodyColor),accent:BodyAccent(bodySkin,seat.accentColor,seat.hat,seat.hatColor),look:sirenFace,partTint:voxelPart);

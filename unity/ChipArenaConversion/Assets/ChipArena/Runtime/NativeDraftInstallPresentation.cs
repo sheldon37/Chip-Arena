@@ -312,8 +312,8 @@ namespace ChipArena.UnityConversion
         private void DraftFaceGear(VisualBody body,NativeSeat seat)
         {
             float t=diA-NativeInstallShot.VisorAt;if(diSiren||t<0){VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);return;}
-            float flash=VisorFlash(t),glow=1+.5f*diProfile.Visor*flash;if(diProfile.Wild&&(t>=.05f&&t<.09f||t>=.16f&&t<.2f))glow=.1f;
-            VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0,Color.Lerp(diAccent,diWhiteAccent,.9f*diProfile.Visor*flash),glow);
+            float flash=VisorFlash(t)*(.65f+.35f*diProfile.Visor),glow=1+.6f*flash;if(diProfile.Wild&&(t>=.05f&&t<.09f||t>=.16f&&t<.2f))glow=.1f;
+            VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0,Color.Lerp(diAccent,diWhiteAccent,.95f*flash),glow);
         }
         /// <summary>The visor beat's flash (0..1) `t` seconds after VisorAt: up in two frames, falling away over .5 s.</summary>
         private static float VisorFlash(float t){if(t<0||t>=.5f)return 0;float up=Mathf.Clamp01(t/.03f),fall=1-t/.5f;return up*fall*fall;}
@@ -389,6 +389,9 @@ namespace ChipArena.UnityConversion
                     fx.Streak(S(c),S(-across*sx*leg/.05f),Lin(col),.0018f,leg,.05f,0,0,7441+k);fx.Streak(S(c),S(-diBayF*sy*leg/.05f),Lin(col),.0018f,leg,.05f,0,0,7451+k);
                 }
             }
+            // The line-up's backlight: a soft glow of the chip's light just behind the fingers that line the cartridge up and press it, so the
+            // black glove reads off the black under-suit (the cartridge's own light, held toward the lens, lights their front).
+            if(diModel&&p>=NativeInstallShot.CarryEnd-.06f&&p<NativeInstallShot.Release+.02f){float w=NativeInstallShot.Ramp(p,NativeInstallShot.CarryEnd-.06f,NativeInstallShot.CarryEnd+.04f)*(1-NativeInstallShot.Ramp(p,NativeInstallShot.Seat,NativeInstallShot.Release+.02f));fx.Glow(S(diPinch+forward*.03f),Lin(rare,.9f*w),0,.05f,1,0,8171);}
             // The clack (on `a`): the flash at the bay, white at its heart (a void with a rim in the set's colour for the boss relics), its ring
             // of light in the bay's plane (additive streaks: it thins and fades to nothing as it grows, never a solid hoop), the sparks off the
             // frame. A common chip's grey would read dull: its light is white-hot with the pilot's accent for its rim (diRim).
@@ -449,12 +452,13 @@ namespace ChipArena.UnityConversion
                     float flare=a-NativeInstallShot.CoreAt-.22f;if(flare>=0&&flare<.3f)fx.Glow(S(hd),Lin(rare,2.2f*(1-flare/.3f)),0,.07f,1,flare/.3f,7655+side);
                 }
             }
-            // The visor beat's rim: the chip's light round the white-hot visor (DraftFaceGear flashes the visor itself toward white).
+            // The visor beat's rim: the chip's light along the white-hot band's top and bottom edges, never over the band (laid on it, a gold
+            // glow tinted the white visor pink; DraftFaceGear flashes the band itself toward white). The visor point is the band's top edge.
             float visorT=a-NativeInstallShot.VisorAt;if(diModel&&visorT>=0&&visorT<.5f&&diPath[4]!=Vector3.zero)
             {
-                float fl=VisorFlash(visorT)*diProfile.Visor;var right=camera.transform.right;var at=diPath[4]-forward*.03f;
-                for(int k=0;k<3;k++)fx.Glow(S(at+right*(.065f*(k-1))),Lin(rare,1.5f*fl),0,.05f,1,visorT/.5f,8161+k);
-                fx.Glow(S(at),Lin(rare,.7f*fl),0,.16f,1,visorT/.5f,8164);
+                float fl=VisorFlash(visorT)*(.65f+.35f*diProfile.Visor);var right=camera.transform.right;var up=camera.transform.up;var edge=Lin(rim,2.2f*fl);
+                for(int k=0;k<2;k++){var head=diPath[4]-forward*.035f+up*(k==0?.006f:-.07f)-right*.12f;fx.Streak(S(head),S(right*(-.24f/.05f)),edge,.0035f,.24f,.05f,.35f,visorT/.5f,8161+k);}
+                fx.Glow(S(diPath[4]-forward*.035f+right*.125f-up*.032f),Lin(rim,1.2f*fl),0,.03f,1,visorT/.5f,8163);fx.Glow(S(diPath[4]-forward*.035f-right*.125f-up*.032f),Lin(rim,1.2f*fl),0,.03f,1,visorT/.5f,8164);
             }
             // The chest core igniting: a soft ring of its light.
             float coreAt=a-NativeInstallShot.CoreAt;if(coreAt>=0&&coreAt<.5f&&diPath[3]!=Vector3.zero){float u=coreAt/.5f;fx.Glow(S(diPath[3]+forward*-.04f),Lin(rare,1.6f*(1-u)*(1-u)),0,.05f+.08f*u,2,u,7571);}
