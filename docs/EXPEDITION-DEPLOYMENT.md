@@ -60,7 +60,9 @@ Run 1 (2026-11-18) was a live run: the station, the roll, Deploy, the eject and 
 
 - The frame is CPU-bound: the tiers barely differ, and with no zombies left it falls to 10-12 ms at every tier. Each zombie costs about 0.3 ms. The local Editor checkout skins on the CPU (`gpuSkinning: 0`), and the tracked settings do not say what the builder uses.
 - These are Editor numbers. The Windows build with test accounts decides; that run is due at M3 and M7.
-- **Like for like (W0's review).** One fixed city (generated seed 4242 as a PvP match, no bots, so no zombies), the same eye and window on both commits, at High and Low: not run yet. The owner's Editor was closed during the review; the capture is queued for when it reopens.
+- **Like for like (W0's review, 2026-11-19).** One fixed city (generated seed 4242 as a PvP match, an idle bot, no zombies), the camera fixed outside the south gate, two 15 s windows per row, p95 ms (Editor, RTX 4090):
+  - run8, shared `9056fc04` against W0 `954ce0ec`: High 14.6 / 11.6 against 10.8 / 10.7; Balanced 10.6 / 11.0 against 10.8 / 11.0; Low 9.5 / 9.4 against 12.5 / 13.5 (Low's p50 the same or lower; batches High 1,735 / 1,738, Low 728 / 724).
+  - run9, the Low tail bisected on W0's local probe `e9f60ec0` (each W0 change switched in place): every change off 9.1 / 9.0; all on 9.4 / 9.5; the fog grid off 11.1 / 11.2; the kit's seed off 12.7 / 9.1. So W0 costs about 0.4 ms at Low's p95; run8's 3-4 ms tail did not reproduce, and single windows swing by that much with nothing changed (Editor noise).
 
 **Frame time, 4 pilots and 88 zombies: the steps, with A0's DEV load harness as pushed** (`codex/expedition-a0`; Editor and Development builds only):
 1. Launch a Development player, or the Unity Editor and then play mode, with `-expedition-load 4` on the command line (1-4: the camera pilot plus up to three stand-ins; the lobby cap is held at four, so the hub's own 88 zombies come). Add `-load-balanced` or `-load-low` for those tiers; High is the default. Use 1920x1080.
