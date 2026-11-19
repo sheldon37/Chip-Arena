@@ -83,8 +83,9 @@ namespace ChipArena.UnityConversion
         private static readonly WeaponPaint Frame=WeaponPaint.Solid(0x1d222c,.05f),FrameDark=WeaponPaint.Solid(0x111419,.02f),Seam=WeaponPaint.Solid(0x07080b),
             Shell=WeaponPaint.Solid(0xeceef2,.1f),Band=WeaponPaint.Solid(0xd4d8e0,.14f),Rubber=WeaponPaint.Solid(0x0c0d10,.01f),Glass0=WeaponPaint.Solid(0x0a0e16,.2f),
             Scorch=WeaponPaint.Solid(0x16120f),Grab=WeaponPaint.Solid(0xd9a521,.08f),Pad=WeaponPaint.Solid(0x1b1d22,.02f),Pane=WeaponPaint.Solid(0x9fb6c8,.05f),
-            // the cabin: a dark grey liner with its panel seams and ribs (it reads by the cabin's own lamps and the ambient)
-            Liner=WeaponPaint.Solid(0x3a3f4a,.05f),LinerDark=WeaponPaint.Solid(0x232730,.03f),LinerRib=WeaponPaint.Solid(0x505663,.06f),Hazard=WeaponPaint.Solid(0xc9961f,.06f),
+            // the cabin: a dark grey liner with its panel seams and ribs, a little self-lit so it reads grey in the dark (no light
+            // reaches inside the hull at night but the ambient and the cabin's own lamps)
+            Liner=WeaponPaint.Solid(0x6b7282,.3f),LinerDark=WeaponPaint.Solid(0x4d5361,.25f),LinerRib=WeaponPaint.Solid(0x8a90a0,.22f),Hazard=WeaponPaint.Solid(0xc9961f,.06f),
             // the seat (the station's build)
             Steel=WeaponPaint.Solid(0xa3aab6,.06f),SteelDark=WeaponPaint.Solid(0x4a505c,.04f),Graphite=WeaponPaint.Solid(0x2a2d35,.03f),GraphiteDark=WeaponPaint.Solid(0x15171c,.02f),
             Cushion=WeaponPaint.Solid(0x3a1c1f,.03f),CushionDark=WeaponPaint.Solid(0x22100f,.02f),

@@ -260,7 +260,7 @@ internal static class PodDropChecks
         {
             var s=NativePodDrop.Shot(p,centre,t,NativePodDrop.ShotChase,gameEye);var look=Vector3.Normalize(s.Look-s.Eye);var pod=Vector3.Normalize(centre+NativePodDrop.FlightAt(p,t,out _)-s.Eye);
             float down=(float)(Math.Asin(-look.Y)*180/Math.PI),apart=(float)(Math.Acos(Math.Clamp(Vector3.Dot(look,pod),-1,1))*180/Math.PI);
-            Check(s.Eye.Y>100&&down>=11.9f&&apart<s.Fov*.5f,"the sky shot looks down over the camp at my streak ("+t+": "+down+" down, the pod "+apart+" off)");
+            Check(s.Eye.Y>100&&down>=29.9f&&apart<s.Fov*.5f,"the sky shot looks down over the camp at my streak ("+t+": "+down+" down, the pod "+apart+" off)");
         }
         // the cabin's red at my screen's edges: in with the cut, out at its end, none outside it
         Check(NativePodDrop.CabinRed(p,p.Ride-.01f)==0&&NativePodDrop.CabinRed(p,(p.Ride+p.CabinEnd)*.5f)>.99f&&NativePodDrop.CabinRed(p,p.CabinEnd+.01f)==0,"the cabin's red at my screen's edges while I ride in it");

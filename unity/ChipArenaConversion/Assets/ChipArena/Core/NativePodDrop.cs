@@ -138,7 +138,7 @@ namespace ChipArena.UnityConversion
         public static readonly Vector3 CabinFeet=new Vector3(0,NativePodModels.Floor,0);
         /// <summary>The cloud deck's height over the floor on the long and short openings (the punch), and the sky shot's eye: this
         /// far up over the camp, this far back past it from my pod's line.</summary>
-        public const float DeckLong=50,DeckShort=45,SkyUp=118,SkyBack=48;
+        public const float DeckLong=50,DeckShort=45,SkyUp=140,SkyBack=80;
         private const float Deg=(float)(Math.PI/180),Pi=(float)Math.PI,Tau=(float)(Math.PI*2);
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
         private static float Smooth(float x){x=Clamp01(x);return x*x*(3-2*x);}
@@ -575,12 +575,12 @@ namespace ChipArena.UnityConversion
             {
                 float back=Math.Max(p.Appear,t-MeteorSeconds*i/N);var at=centre+FlightAt(p,back,out var v);var tangent=v.LengthSquared()>1e-6f?Vector3.Normalize(v):-Vector3.UnitY;
                 var side=Vector3.Cross(tangent,eye-at);float sl=side.Length();if(sl<1e-4f)continue;float d=Vector3.Distance(at,eye),k=i/(float)N,fade=Smooth((d-3.5f)/6);
-                float width=Math.Max(.9f+1.5f*k,d*.0075f*(1+.8f*k));side*=width*.5f/sl;var col=new Vector4(Vector3.Lerp(hot,ember,Smooth(k*1.3f)),level*(float)Math.Pow(1-k,1.4)*fade);
+                float width=Math.Max(.9f+1.5f*k,d*.014f*(1+.8f*k));side*=width*.5f/sl;var col=new Vector4(Vector3.Lerp(hot,ember,Smooth(k*1.3f)),level*(float)Math.Pow(1-k,1.4)*fade);
                 int va=sink.Vertex(at-side,new Vector3(-1,0,1),col),vb=sink.Vertex(at+side,new Vector3(1,0,1),col);written+=2;
                 if(pa>=0){sink.Triangle(pa,pb,vb);sink.Triangle(pa,vb,va);}pa=va;pb=vb;
             }
             var view=eye-head;float vl=view.Length();if(vl<1e-3f)return written;view/=vl;var right=Vector3.Cross(Vector3.UnitY,view);right=right.LengthSquared()>1e-6f?Vector3.Normalize(right):Vector3.UnitX;var upv=Vector3.Cross(view,right);
-            float size=Math.Max(1.6f,vl*.02f),near=Smooth((vl-3)/7);if(near<=0)return written;var c=new Vector4(hot,.9f*level*near);
+            float size=Math.Max(1.6f,vl*.032f),near=Smooth((vl-3)/7);if(near<=0)return written;var c=new Vector4(hot,.9f*level*near);
             int a0=sink.Vertex(head-right*size-upv*size,new Vector3(-1,-1,0),c),a1=sink.Vertex(head+right*size-upv*size,new Vector3(1,-1,0),c),a2=sink.Vertex(head+right*size+upv*size,new Vector3(1,1,0),c),a3=sink.Vertex(head-right*size+upv*size,new Vector3(-1,1,0),c);
             sink.Triangle(a0,a1,a2);sink.Triangle(a0,a2,a3);return written+4;
         }
@@ -625,8 +625,8 @@ namespace ChipArena.UnityConversion
                 // the sky: high over the camp, back past it from my pod's line, looking down past the camp toward my pod's streak;
                 // the view tilts down after it (it rides high in the frame) until the camp fills the lower half
                 var pod=centre+FlightAt(p,Math.Max(p.Appear,age),out _);var back=new Vector3(p.Travel.X,0,p.Travel.Z);back=back.LengthSquared()>1e-6f?Vector3.Normalize(back):Vector3.UnitZ;
-                shot.Eye=centre+back*SkyBack+up*SkyUp;var to=pod-shot.Eye;float h=new Vector2(to.X,to.Z).Length(),el=(float)Math.Atan2(to.Y,h)-20*Deg;
-                el=Math.Min(el,-12*Deg);var flat=h>1e-3f?new Vector3(to.X,0,to.Z)/h:-back;
+                shot.Eye=centre+back*SkyBack+up*SkyUp;var to=pod-shot.Eye;float h=new Vector2(to.X,to.Z).Length(),el=(float)Math.Atan2(to.Y,h)-26*Deg;
+                el=Math.Min(el,-30*Deg);var flat=h>1e-3f?new Vector3(to.X,0,to.Z)/h:-back;
                 shot.Look=shot.Eye+(flat*(float)Math.Cos(el)+up*(float)Math.Sin(el))*40;shot.Fov=68;return shot;
             }
             var f=Evaluate(age,p);
