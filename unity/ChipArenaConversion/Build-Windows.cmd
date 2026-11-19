@@ -19,7 +19,7 @@ echo Close this project in the Unity Editor before running this build.
 echo Unity must be activated in Hub and Windows Build Support must be installed.
 echo This replaces Builds\Windows and the starter ZIP. Keep your installed test copy outside this project.
 echo Building isolated Unity TEST package. Logs: "%~dp0Builds\build.log"
-start "" /wait "%UNITY_EDITOR%" -batchmode -nographics -projectPath "%~dp0." -buildTarget Win64 -executeMethod ChipArena.UnityConversion.Editor.PrototypeBuild.BuildWindows -quit -logFile "%~dp0Builds\build.log"
+start "" /wait "%UNITY_EDITOR%" -batchmode -nographics -projectPath "%~dp0." -buildTarget Win64 -requireVisualBody -executeMethod ChipArena.UnityConversion.Editor.PrototypeBuild.BuildWindows -quit -logFile "%~dp0Builds\build.log"
 if errorlevel 1 (
   echo Build failed. See Builds\build.log. No verified EXE was produced by this invocation.
   pause

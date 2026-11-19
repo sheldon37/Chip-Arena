@@ -13,6 +13,8 @@ whole project in a new folder; the repaired native build still needs to run.
 3. For Windows, close this project in the Editor and run **Build-Windows.cmd**.
 4. Wait for **UNITY_TEST_BUILD_READY**. Run `Builds/Windows/Chip Arena.exe`.
 
+For test-channel builds, install the licensed body from the owner's `LocalAssets.zip` with `python tools/install_local_assets.py PATH_TO_ZIP` first. The batch builder requires the imported prefab and checks that Unity packed it. A private voxel-fallback build remains available from the Editor's **Chip Arena → Build Windows TEST ZIP** menu. Publishing and cloud channel delivery require the packed body's receipt inside the player archive.
+
 The builder runs the import, content, animation, shader and native physics gates before packaging `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep the top-level launcher and `app` folder together. The EXE retains the voxel CA icon. This source archive contains no precompiled executable; an activated Windows Editor is required.
 
 This version adds **Check for updates / Update and restart** to the menu. Install

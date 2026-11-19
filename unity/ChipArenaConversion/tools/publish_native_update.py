@@ -18,6 +18,8 @@ HEX = re.compile(r'^[0-9a-f]{64}$')
 MAX_PART = 32 * 1024 * 1024
 FEED_URL = 'https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/native/windows-x64/latest.json'
 PROJECT = Path(__file__).resolve().parents[1]
+VISUAL_BODY_RECEIPT = 'native-visual-body.txt'
+VISUAL_BODY_RESOURCE = b'ChipArenaVisualBody'
 
 
 def read_manifest(data):
@@ -73,6 +75,10 @@ def validate_build_log(feed, log):
     identity = log.parent / 'Windows/app/native-build.json'
     if not identity.is_file() or json.loads(identity.read_text(encoding='utf-8-sig')) != read_manifest((feed / 'latest.json').read_bytes())['build']:
         raise ValueError('The feed does not match the packaged Windows player. Run Build-Windows.cmd again.')
+    # Installed desktop kits call this gate even when their Unity command predates -requireVisualBody.
+    receipt = identity.with_name(VISUAL_BODY_RECEIPT)
+    if not receipt.is_file() or receipt.stat().st_size != len(VISUAL_BODY_RESOURCE) or receipt.read_bytes() != VISUAL_BODY_RESOURCE:
+        raise ValueError('Test-channel player has no packed ChipArenaVisualBody. Install LocalAssets.zip and rebuild.')
 
 
 def git(channel, *parts):
@@ -99,7 +105,7 @@ def prepare_channel(channel):
     return read_manifest(current.read_bytes()) if current.exists() else None
 
 
-def validate(feed, extract_to=None):
+def validate(feed, extract_to=None, *, require_visual_body=False):
     metadata = feed / 'latest.json'
     if metadata.stat().st_size > 128 * 1024:
         raise ValueError('Manifest too large')
@@ -146,6 +152,11 @@ def validate(feed, extract_to=None):
                 raise ValueError('Incomplete player')
             if json.loads(archive.read('native-build.json')) != b:
                 raise ValueError('Embedded build differs from manifest')
+            if require_visual_body:
+                if (VISUAL_BODY_RECEIPT not in archive.namelist()
+                        or archive.getinfo(VISUAL_BODY_RECEIPT).file_size != len(VISUAL_BODY_RESOURCE)
+                        or archive.read(VISUAL_BODY_RECEIPT) != VISUAL_BODY_RESOURCE):
+                    raise ValueError('Test-channel player lacks the packed ChipArenaVisualBody receipt. Install LocalAssets.zip and rebuild.')
             if archive.testzip() is not None:
                 raise ValueError('Corrupt ZIP entry')
             if extract_to is not None:
@@ -153,8 +164,8 @@ def validate(feed, extract_to=None):
     return m
 
 
-def stage(feed, channel):
-    m = validate(feed)
+def stage(feed, channel, *, require_visual_body=False):
+    m = validate(feed, require_visual_body=require_visual_body)
     destination = channel / 'native' / 'windows-x64'
     current = destination / 'latest.json'
     problem = publication_problem(m, read_manifest(current.read_bytes()) if current.exists() else None)
@@ -191,7 +202,7 @@ def main(argv=None):
         raise ValueError('No compiled native update package was found. Run Build-Windows.cmd first; a source ZIP cannot update the game.')
     if args.build_log is not None:
         validate_build_log(args.feed, args.build_log)
-    local = validate(args.feed)
+    local = validate(args.feed, require_visual_body=args.publish)
     if args.status:
         show_status(local, remote_manifest())
         return 0
@@ -207,7 +218,7 @@ def main(argv=None):
         raise ValueError(problem)
     # Verify the exact staging path before asking the owner to publish this build.
     with tempfile.TemporaryDirectory(prefix='chip-native-preview-') as scratch:
-        stage(args.feed, Path(scratch))
+        stage(args.feed, Path(scratch), require_visual_body=True)
     if args.confirm:
         phrase = 'PUBLISH ' + local['build']['version'][:12]
         print('Publish the compiled player to ' + CHANNEL_REPO)
@@ -224,7 +235,7 @@ def main(argv=None):
     problem = publication_problem(local, current)
     if problem:
         raise ValueError(problem)
-    result = stage(args.feed, args.channel_checkout)
+    result = stage(args.feed, args.channel_checkout, require_visual_body=True)
     if result != local:
         raise ValueError('The feed changed during publication. Nothing committed or pushed; inspect the channel checkout.')
     git(args.channel_checkout, 'add', '--', 'native/windows-x64')

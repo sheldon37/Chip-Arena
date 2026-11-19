@@ -27,11 +27,13 @@ class NativePublisherTests(unittest.TestCase):
         (self.feed / 'objects').mkdir(parents=True)
         self.channel = self.root / 'channel'
 
-    def payload(self, char='b', revision=2, extra=None, embedded=None):
+    def payload(self, char='b', revision=2, extra=None, embedded=None, with_body=True):
         build = dict(schema=1, product='chip-arena-unity', channel='native-test', platform='windows-x64', version=char * 64, revision=revision, bootstrap=2)
         files = {'native-build.json': json.dumps(embedded or build).encode(),
                  'Chip Arena.exe': b'fixture', 'UnityPlayer.dll': b'fixture',
                  'Chip Arena_Data/globalgamemanagers': b'fixture'}
+        if with_body:
+            files['native-visual-body.txt'] = b'ChipArenaVisualBody'
         if extra:
             files.update(extra)
         stream = io.BytesIO()
@@ -62,7 +64,7 @@ class NativePublisherTests(unittest.TestCase):
         dest = self.root / 'steam'
         self.assertEqual(steam.stage(self.feed, dest), 'Chip Arena.exe')
         self.assertEqual({p.name for p in (dest / 'content').iterdir()},
-                         {'Chip Arena.exe', 'Chip Arena_Data', 'UnityPlayer.dll', 'native-build.json', 'steam-playtest.txt'})
+                         {'Chip Arena.exe', 'Chip Arena_Data', 'UnityPlayer.dll', 'native-build.json', 'native-visual-body.txt', 'steam-playtest.txt'})
         vdf = (dest / 'app_build.vdf').read_text()
         self.assertIn('"PLAYTEST_APP_ID"', vdf)
         self.assertIn('"WINDOWS_DEPOT_ID"', vdf)
@@ -172,6 +174,7 @@ class NativePublisherTests(unittest.TestCase):
         folder = self.root / 'Builds'
         (folder / 'Windows/app').mkdir(parents=True)
         (folder / 'Windows/app/native-build.json').write_text(json.dumps(build))
+        (folder / 'Windows/app/native-visual-body.txt').write_bytes(b'ChipArenaVisualBody')
         log = folder / 'build.log'
         log.write_text('NATIVE_UPDATE_FEED_READY: fixture\nUNITY_TEST_BUILD_READY: fixture\n')
         return log
@@ -187,12 +190,25 @@ class NativePublisherTests(unittest.TestCase):
                     publisher.main(['--feed', str(self.feed), '--publish', '--build-log', str(log)])
                 prepare.assert_not_called()
         log.write_text('NATIVE_UPDATE_FEED_READY: fixture\nUNITY_TEST_BUILD_READY: fixture\n')
+        (log.parent / 'Windows/app/native-visual-body.txt').unlink()
+        with self.assertRaisesRegex(ValueError, 'ChipArenaVisualBody'):
+            publisher.validate_build_log(self.feed, log)
         self.payload('c', 3)
         with self.assertRaisesRegex(ValueError, 'does not match'):
             publisher.validate_build_log(self.feed, log)
         log.unlink()
         with self.assertRaisesRegex(ValueError, 'missing'):
             publisher.validate_build_log(self.feed, log)
+
+    def test_publication_requires_packed_body_even_without_build_log(self):
+        for extra in ({}, {'native-visual-body.txt': b'wrong'}, {'build.log': b'NATIVE_VISUAL_BODY_PACKED'}):
+            with self.subTest(extra=extra):
+                self.payload(with_body=False, extra=extra)
+                publisher.validate(self.feed)  # Private candidates are still usable.
+                with patch.object(publisher, 'prepare_channel') as git:
+                    with self.assertRaisesRegex(ValueError, 'ChipArenaVisualBody'):
+                        publisher.main(['--feed', str(self.feed), '--publish'])
+                    git.assert_not_called()
 
     def test_confirmation_cancel_and_eof_do_not_stage_or_push(self):
         self.payload()

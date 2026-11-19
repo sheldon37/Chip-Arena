@@ -117,6 +117,13 @@ class CloudBuildTests(unittest.TestCase):
         self.assertNotIn('NATIVE_CLOUD_DELIVERY_READY:', failure.stdout)
         self.assertFalse(output.exists())
 
+    def test_cloud_delivery_rejects_player_without_body(self):
+        self.fixture.feed = self.builds / 'NativeUpdateFeed'
+        self.fixture.payload(with_body=False)
+        with self.assertRaisesRegex(ValueError, 'ChipArenaVisualBody'):
+            self.run_package()
+        self.assertFalse((self.player.parent / cloud.DELIVERY).exists())
+
     def test_delivery_is_portable_publishable_and_excludes_old_objects(self):
         (self.builds / 'NativeUpdateFeed/objects/old.part').write_bytes(b'old')
         with patch.object(cloud.publisher, 'urlopen', side_effect=AssertionError('Cloud packaging must not access feed')):

@@ -77,7 +77,7 @@ def package(project, player, environment):
     if not player.is_file() or player.suffix.lower() != '.exe':
         raise ValueError('UNITY_PLAYER_PATH must identify the exported Windows executable')
     feed = builds / 'NativeUpdateFeed'
-    manifest = publisher.validate(feed)
+    manifest = publisher.validate(feed, require_visual_body=True)
     if receipt.get('build') != manifest['build']:
         raise ValueError('Cloud receipt differs from the native feed')
     identity = builds / 'Windows/app/native-build.json'
@@ -110,6 +110,8 @@ def package(project, player, environment):
             for part in manifest['parts']:
                 archive.write(feed / 'objects' / part['name'], 'NativeUpdateFeed/objects/' + part['name'])
             archive.write(identity, 'Windows/app/native-build.json')
+            # validate() already checked these bytes inside the exact player ZIP.
+            archive.writestr('Windows/app/' + publisher.VISUAL_BODY_RECEIPT, publisher.VISUAL_BODY_RESOURCE)
             archive.writestr('build.log', log_data)
             archive.writestr('cloud-build-receipt.json', json.dumps(receipt, indent=2) + '\n')
         temporary.replace(output)
