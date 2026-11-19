@@ -1,3 +1,13 @@
+## 2026-11-18 — Claude: shared's full suite passes again after the Thunderheart Carillon (three stale checks; tests only)
+
+Branch `claude/fix-suite-thunderheart`, base shared `ac69455e`. Astra's Thunderheart Carillon (`b13940ce`; retired from selection and rotation in `fdb6568a`) left three CoreTests groups failing on shared. Every release merge stops on them, as the zombie follow-up's merge found. The arena itself is unchanged; the checks were only updated to match it:
+
+- `TransitionLoadingChecks`: the content has 21 maps, including `NativeThunderheart.Id`.
+- `VisualRigChecks` (ModelSetting): the preferences line now includes `musicReaction="Full"` between `alarmLights` and `playerModel`.
+- `AdvancedLightingChecks` (Looks): `carillon-storm` has its advanced block on purpose, so it joins the list of looks that must have one.
+
+Checks: `--transitions` (4276), `--visual-rig` and `--advanced-lighting` pass. The full suite runs in the release merge. For Astra: run the full CoreTests before pushing straight to shared.
+
 ## 2026-11-18 — Claude: the voxel retirement plan, approved; Astra's part (owner request; docs only)
 
 Owner: "I want to essentially remove voxel entirely BUT keep its data incase I use it for a map or game mode. The voxel player model + weapons can be selected as skins or costumes instead. All the new things ive been making, I want to remove the voxel dependency and move forward with a more detailed framing." Approval: "Yes, use defaults".
