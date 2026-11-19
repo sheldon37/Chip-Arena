@@ -688,9 +688,9 @@ namespace ChipArena.UnityConversion
             float g2=Clamp01((age-p.ArcFrom)/Math.Max(.05f,p.ArcTo-p.ArcFrom)),e=g2*g2*g2*(g2*(g2*6-15)+10);
             if(mode==ShotFirst)
             {
-                // first person: up and over my pod and round to its doorway, a few metres out to one side, looking in at my pilot as
-                // the door blows into a ramp and they unbuckle and stand (outside the hull all the way); the cut comes at CutAt
-                var front=centre+p.Forward*3.5f+p.Side*(1.6f*p.FrontSide)+up*1.8f;var over=centre+up*7.5f+p.Side*(4.5f*p.FrontSide)-p.Travel*1.5f;
+                // first person: up and over my pod and round to its doorway, a few metres out, nearly square to it, looking in at my
+                // pilot as the door blows into a ramp and they unbuckle and stand (outside the hull all the way); the cut comes at CutAt
+                var front=centre+p.Forward*3.3f+p.Side*(.65f*p.FrontSide)+up*1.65f;var over=centre+up*7.5f+p.Side*(4.5f*p.FrontSide)-p.Travel*1.5f;
                 shot.Eye=(1-e)*(1-e)*stop+2*(1-e)*e*over+e*e*front;shot.Look=Vector3.Lerp(pod2,centre+up*1.15f+p.Forward*.15f,Smooth(g2*1.4f));shot.Fov=L(58,62,e);
                 return shot;
             }
