@@ -102,14 +102,17 @@ namespace ChipArena.UnityConversion
                 }
             }
             // the pods docked under the floor (after Deploy): the hub's own pod model in each pilot's pod look, door shut
-            for(int i=0;i<DeployCast.Count;i++)if(i<stage.Pilots&&stage.PodShown[i]&&party!=null&&i<party.Length)DeployPod(cast,i,stage.PodWorld[i],party[i]);
+            for(int i=0;i<DeployCast.Count;i++)if(i<stage.Pilots&&stage.PodShown[i]&&party!=null&&i<party.Length)DeployPod(cast,i,stage.PodWorld[i],party[i],stage.Shot==NativeDeployPresentation.Shot.Seat&&i==stage.Mine?CabinShade:1);
             sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
             VisualBodiesShown();
         }
-        private int deployPodNow;private Func<int,Color> deployPodTint;
+        private int deployPodNow;private float deployPodShade=1;private Func<int,Color> deployPodTint;
+        // My pod seen from inside (the seat shot): its hull's paint and trim in the cabin's shadow, so a white pod's walls read as a
+        // dark cabin under its red lamp (the hull's inner faces are its paint).
+        private const float CabinShade=.28f;
         // A docked pod (Core NativePodModels from the source-model bank, as Runtime/NativePodPresentation.cs draws it in the hub) in its
         // pilot's paint, trim and light; its cabin lamp red as it waits to drop.
-        private void DeployPod(DeployCast cast,int i,System.Numerics.Matrix4x4 world,in DeployPilot p)
+        private void DeployPod(DeployCast cast,int i,System.Numerics.Matrix4x4 world,in DeployPilot p,float shade)
         {
             string look=p.Pod??"";
             if(cast.PodKey[i]!=look||cast.PodBody[i]!=p.Look.Body||cast.PodAccent[i]!=p.Look.Accent)
@@ -118,17 +121,18 @@ namespace ChipArena.UnityConversion
                 cast.PodPaint[i]=PodLinear(paint);cast.PodTrim[i]=PodLinear(trim);cast.PodLight[i]=PodLinear(light);
             }
             var m=new Matrix4x4();m.m00=world.M11;m.m01=world.M21;m.m02=world.M31;m.m03=world.M41;m.m10=world.M12;m.m11=world.M22;m.m12=world.M32;m.m13=world.M42;m.m20=world.M13;m.m21=world.M23;m.m22=world.M33;m.m23=world.M43;m.m33=1;
-            deployPodNow=i;deployCastNow=cast;deployPodTint??=DeployPodTintOf;var hinge=new Vector3(NativePodModels.Hinge.X,NativePodModels.Hinge.Y,NativePodModels.Hinge.Z);
+            deployPodNow=i;deployPodShade=shade;deployCastNow=cast;deployPodTint??=DeployPodTintOf;var hinge=new Vector3(NativePodModels.Hinge.X,NativePodModels.Hinge.Y,NativePodModels.Hinge.Z);
             sourceModels.Queue(NativePodModels.PodId,m,partTint:deployPodTint);sourceModels.Queue(NativePodModels.DoorId,m*Matrix4x4.Translate(hinge),partTint:deployPodTint);
         }
         private DeployCast deployCastNow;
+        private static Color PodShade(Color c,float k)=>k>=1?c:new Color(c.r*k,c.g*k,c.b*k,c.a);
         private Color DeployPodTintOf(int bone)
         {
             var c=deployCastNow;int i=deployPodNow;if(c==null)return Color.white;
             switch(bone)
             {
-                case NativePodModels.Paint:return c.PodPaint[i];
-                case NativePodModels.Trim:return c.PodTrim[i];
+                case NativePodModels.Paint:return PodShade(c.PodPaint[i],deployPodShade);
+                case NativePodModels.Trim:return PodShade(c.PodTrim[i],deployPodShade);
                 case NativePodModels.Lights:{var l=c.PodLight[i]*1.2f;l.a=1;return l;}
                 case NativePodModels.Cabin:return new Color(2.2f,.25f,.2f,1)*.5f;
                 case NativePodModels.Retro:return new Color(1.6f,2.6f,3.4f,1)*.05f;
