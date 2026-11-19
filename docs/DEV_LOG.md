@@ -1,3 +1,26 @@
+## 2026-11-18 — Claude: the voxel retirement plan, approved; Astra's part (owner request; docs only)
+
+Owner: "I want to essentially remove voxel entirely BUT keep its data incase I use it for a map or game mode. The voxel player model + weapons can be selected as skins or costumes instead. All the new things ive been making, I want to remove the voxel dependency and move forward with a more detailed framing." Approval: "Yes, use defaults".
+
+- **Plan:** `docs/VOXEL-RETIREMENT.md`.
+  - **Inventory:** every remaining voxel dependency, from six sweeps, each verified by a skeptic.
+  - **Target:** model-first. The voxel pilot is a costume every player sees, the voxel weapons are each weapon's Prototype skin, Voxel breakup stays as a kill style, and the voxel style is kept as checked, loadable data for a future map or mode.
+  - **Delivery:** 16 packages (V0-V16) in eight stages riding the expedition milestones. The minimum done is the costume, no voxel on model pilots, and the zombie crowd on models.
+- **Owner decisions** (the defaults):
+  - O1: voxel blocks fitted onto the new body.
+  - O2: free for every player; Sheldon Clothes stays DEV-only; Katana, Fangs, Glaive, Top Dog and Bombadier keep their normal weapons.
+  - O3: test a low-end PC first, then drop the Classic setting (keeping a DEV switch) or rename it "Low-end bodies".
+  - O4: builds without the licensed body keep drawing voxel, and the builder refuses to publish them.
+  - O5: the Siren stays voxel until her own model is ready for the final court.
+- **For Astra:** `docs/VOXEL-RETIREMENT-ASTRA.md`.
+  - VA1: account resync and the costume key. Going live needs the owner.
+  - VA2: the builder refuses a test build without the bake.
+  - VA3: crowd numbers.
+  - VA4: the skinning setting.
+  - VA5: later, only on the owner's word.
+- **Overhaul amendments:** appended to `docs/EXPEDITION-OVERHAUL.md` and its Astra part (plan section 4.2): the eject on the model in Stage 2, no voxel fallback for survivors, the Station and Ironworks banks in Stage 4, district outfits with the crowd work, and more.
+- **Next:** Stage 0 ships with release 1 (V0: no new voxel, a DEV voxel counter, player-build baselines, no voxel weapons on the pads). Then Stage 1, the costume, as its own release. No code change in this entry.
+
 ## 2026-11-18 — Claude: zombies run and turn on their own legs (owner report; presentation only)
 
 - **The owner (2026-11-18):** "The issue appears to occur specifically when zombies are running and turning simultaneously. Their legs begin
