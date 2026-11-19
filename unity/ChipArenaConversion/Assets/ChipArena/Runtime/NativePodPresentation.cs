@@ -350,7 +350,7 @@ namespace ChipArena.UnityConversion
                 case NativePodModels.Trim:return p.Trim;
                 case NativePodModels.Lights:{float level=f.Dropping&&f.Land<0?1.4f:1.1f+.4f*f.Seam;var c=p.Light*level;var hot=new Color(3f,2.1f,1.3f,1);c=Color.Lerp(c,hot,f.Heat*.75f);
                     if(f.Beacon<.5f&&f.Land>=0)c*=.9f;c.a=1;return c;}
-                case NativePodModels.Cabin:{float k=f.Dropping&&f.Land<0?.35f:f.Cabin;var c=f.Dropping&&f.Land<0?new Color(2.2f,.25f,.2f,1):new Color(2.4f,1.9f,1.3f,1);c*=k;c.a=1;return c;}
+                case NativePodModels.Cabin:{float k=f.Dropping&&f.Land<0?.85f:f.Cabin;var c=f.Dropping&&f.Land<0?new Color(2.2f,.25f,.2f,1):new Color(2.4f,1.9f,1.3f,1);c*=k;c.a=1;return c;}
                 case NativePodModels.Retro:{var c=p.Plan.Fails?new Color(3.2f,1.9f,1.1f,1):new Color(1.6f,2.6f,3.4f,1);c*=.05f+3*f.Retro;c.a=1;return c;}
                 case NativePodModels.Heat:{var c=NativePodModels.HeatTint(NativePodDrop.HullColor(f.Hull));return new Color(c.X,c.Y,c.Z,1);}
                 case NativePodModels.Bolts:{float k=f.Bolts;var c=k>0?new Color(6,4.2f,2.2f,1)*k:f.Age>p.Plan.DoorAt?new Color(.07f,.065f,.06f,1):new Color(.2f,.2f,.22f,1);c*=1/NativePodModels.HeatBase;c.a=1;return c;}
