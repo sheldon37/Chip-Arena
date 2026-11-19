@@ -270,7 +270,8 @@ namespace ChipArena.UnityConversion
             {
                 var toBone=all[a.RootBone].worldToLocalMatrix*root.localToWorldMatrix;var bounds=new Bounds(toBone.MultiplyPoint3x4(a.Main.bounds.center),Vector3.zero);
                 foreach(var mesh2 in new[]{a.Main,a.Glow})if(mesh2!=null){var b=mesh2.bounds;for(int c=0;c<8;c++)bounds.Encapsulate(toBone.MultiplyPoint3x4(b.center+Vector3.Scale(b.extents,new Vector3((c&1)!=0?1:-1,(c&2)!=0?1:-1,(c&4)!=0?1:-1))));}
-                bounds.Expand(.8f);a.Bounds=bounds;
+                // (.8 m of room for the pose, in the root bone's own units.)
+                bounds.Expand(.8f/Mathf.Max(1e-4f,all[a.RootBone].lossyScale.x/Mathf.Max(1e-4f,root.lossyScale.x)));a.Bounds=bounds;
             }
             // The saya and the satchel seated on the hip block (Core NativeVoxelCostume.Seat): the saya's rest place on the pelvis
             // bone (Core NativeKatanaSaya.RestAt) and the satchel's in the pelvis joint's upright frame (NativeBombPresentation.cs BombGear).
