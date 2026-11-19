@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
         private static readonly WeaponPaint Frame=WeaponPaint.Solid(0x1d222c,.05f),FrameDark=WeaponPaint.Solid(0x111419,.02f),Seam=WeaponPaint.Solid(0x07080b),
             Shell=WeaponPaint.Solid(0xeceef2,.1f),Band=WeaponPaint.Solid(0xd4d8e0,.14f),Rubber=WeaponPaint.Solid(0x0c0d10,.01f),Glass0=WeaponPaint.Solid(0x0a0e16,.2f),
             Scorch=WeaponPaint.Solid(0x16120f),Grab=WeaponPaint.Solid(0xd9a521,.08f),Pad=WeaponPaint.Solid(0x1b1d22,.02f),Pane=WeaponPaint.Solid(0x9fb6c8,.05f),
-            Tile=WeaponPaint.Glow(0xffffff,1,1);
+            Tile=WeaponPaint.Glow(0xffffff,1,1),Liner=WeaponPaint.Solid(0x0b0c10);
         private static WeaponPaint Light(float strength)=>WeaponPaint.Glow(0xffffff,strength,.35f);
         private static Vector3 V(float x,float y,float z)=>new Vector3(x,y,z);
         private const float Pi=(float)Math.PI;
@@ -121,8 +121,10 @@ namespace ChipArena.UnityConversion
             s.Into(Body);s.Box(FrameDark,V(0,2.07f,.79f),V(1.0f,.21f,.1f),.015f);s.Box(Glass0,V(0,2.07f,.842f),V(.94f,.16f,.006f));
             s.Into(Trim);s.Box(Band,V(0,2.185f,.8f),V(1.02f,.025f,.11f),.006f);s.Box(Band,V(0,1.955f,.8f),V(1.02f,.025f,.11f),.006f);
             foreach(int x in new[]{-1,1})s.Box(Band,V(x*.5f,2.07f,.8f),V(.025f,.23f,.11f),.006f);
-            // the cabin: the floor, the lamp and an emergency strip on the back wall, two harness straps
+            // the cabin: the floor, a dark liner inside the hull (so the cabin reads by its own red lamps), the lamp and an emergency
+            // strip on the back wall, two harness straps
             s.Into(Body);s.Push(WeaponSculpt.Rx(-Pi/2));s.Cylinder(FrameDark,.6f,.17f,.19f,8);s.Pop();
+            for(int i=1;i<8;i++){float a=i*Pi/4;s.Push(WeaponSculpt.Ry(a)*WeaponSculpt.T(.6f*(float)Math.Sin(a),0,.6f*(float)Math.Cos(a)));s.Box(Liner,V(0,1.1f,0),V(.5f,1.82f,.02f));s.Pop();}
             s.Box(Frame,V(0,1.15f,-.56f),V(.5f,1.7f,.04f),.01f);s.Box(Pad,V(0,1.22f,-.52f),V(.34f,1.0f,.05f),.02f);
             s.Into(Trim);foreach(int x in new[]{-1,1})s.Box(Band,V(x*.14f,1.2f,-.49f),V(.05f,1.1f,.02f),.004f);
             s.Into(Cabin);s.Box(Light(1),V(0,1.82f,-.53f),V(.36f,.05f,.03f));s.Box(Light(.6f),V(0,.62f,-.53f),V(.3f,.03f,.03f));foreach(int x in new[]{-1,1})s.Box(Light(.8f),V(x*.27f,1.3f,-.5f),V(.02f,.5f,.02f));

@@ -248,7 +248,8 @@ namespace ChipArena.UnityConversion
             var hh=NativePodModels.HarnessHinge;var hinge=new Vector3(hh.X,hh.Y,hh.Z);podHarness=root*Matrix4x4.Translate(hinge)*Matrix4x4.Rotate(Quaternion.Euler(f.Harness*NativePodModels.HarnessUp*Mathf.Rad2Deg,0,0))*Matrix4x4.Translate(-hinge);
             bool ghost=opacity<.99f;var dh=NativePodModels.Hinge;var doorHinge=new Vector3(dh.X,dh.Y,dh.Z);
             sourceModels.Queue(ghost?NativePodModels.GhostId:NativePodModels.PodId,root,podBone,opacity:ghost?opacity:1,partTint:podTint);
-            sourceModels.Queue(ghost?NativePodModels.DoorGhostId:NativePodModels.DoorId,root*Matrix4x4.TRS(doorHinge,Quaternion.Euler(f.Door*Mathf.Rad2Deg,0,0),Vector3.one),opacity:ghost?opacity:1,partTint:podTint);
+            // (the porthole's pane, the door's one see-through part, is mostly clear: the city rushes up in it from the cabin)
+            podPane??=PodPaneOf;sourceModels.Queue(ghost?NativePodModels.DoorGhostId:NativePodModels.DoorId,root*Matrix4x4.TRS(doorHinge,Quaternion.Euler(f.Door*Mathf.Rad2Deg,0,0),Vector3.one),opacity:ghost?opacity:1,partOpacity:podPane,partTint:podTint);
             podNow=null;
             // the LED name over the door (dark until the landing powers it; long names scroll)
             if(f.Sign<=.01f||pod.Sign==null||opacity<.99f||!EnsurePodSign())return;
@@ -259,6 +260,7 @@ namespace ChipArena.UnityConversion
             podBlock.SetFloat(PodRepId,rep);podBlock.SetFloat(PodScrollId,scroll);podBlock.SetFloat(PodBlurId,0);podBlock.SetFloat(PodGainId,1);podBlock.SetFloat(PodSweepId,-1);podBlock.SetFloat(PodChromaId,1);podBlock.SetFloat(PodHoloId,0);
             Graphics.DrawMesh(podQuad,sign,podSignMaterial,0,null,0,podBlock,ShadowCastingMode.Off,false);
         }
+        private Func<int,float> podPane;private static float PodPaneOf(int bone)=>bone<0?.28f:1;
         // The pod's parts' frames: the harness bar about its hinge, everything else on the pod.
         private Matrix4x4 PodBoneOf(int bone)=>bone==NativePodModels.Harness?podHarness:podRoot;
         // The crater on the pod centre for the run, its shape scaled per pod and its ploughed tail turned back down the approach;
