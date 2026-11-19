@@ -83,6 +83,10 @@ Owner: "I want to essentially remove voxel entirely BUT keep its data incase I u
 - **Overhaul amendments:** appended to `docs/EXPEDITION-OVERHAUL.md` and its Astra part (plan section 4.2): the eject on the model in Stage 2, no voxel fallback for survivors, the Station and Ironworks banks in Stage 4, district outfits with the crowd work, and more.
 - **Next:** Stage 0 ships with release 1 (V0: no new voxel, a DEV voxel counter, player-build baselines, no voxel weapons on the pads). Then Stage 1, the costume, as its own release. No code change in this entry.
 
+## 2026-11-18 · Astra · VA3 crowd budget
+
+Branch `codex/voxel-va3-crowd-budget`, rebased on shared `1b356c0c`. Confirmed the occupied hub, hidden Siren and HULKAMANIA caps against the authority. The VA3 table in `docs/VOXEL-RETIREMENT-ASTRA.md` records lobby scaling, the planned district spawn limits, pinned Full slots and the DEV-only Crawler/Bloater decision. A0's four-pilot/88-zombie fixture is in PR #412 and still awaits native timings. VA4 awaits Claude's V15 Mono player measurements.
+
 ## 2026-11-18 — Claude: zombies run and turn on their own legs (owner report; presentation only)
 
 - **The owner (2026-11-18):** "The issue appears to occur specifically when zombies are running and turning simultaneously. Their legs begin
