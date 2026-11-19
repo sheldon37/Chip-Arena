@@ -1,0 +1,126 @@
+# The zombie run-turn checks' per-pairing values on 2026-11-18 (claude/zombie-run-turn-tests): for one add of each pairing of a kind's walk and
+# run takes (ZombieRunTurnChecks.IdsOf) on each bounded route, from one start, the planted knee off its foot and the planted foot off the hips'
+# facing (deg) and a swinging foot's fastest turn (deg a 120th of a second); and its worst hips (legs) over eight starts of a running reversal
+# and a switch to a target behind. Sampled points, not a population's worst. ZombieRunTurnChecks holds each at its own value: the angles
+# within a few degrees, the floors within .005 legs. Written by CoreTests --zombie-runturn-bounds.
+# kind|id|route|knee|foot|swing, or FLOORS kind|id|reverse|switch
+shambler|40003|run arc 90/s|16.8|27.5|11.3
+shambler|40003|run arc 180/s|9.1|37.1|10.1
+shambler|40003|run turn 90|15.9|28.2|11.4
+shambler|40003|run turn 180|21.5|52.6|13.6
+shambler|40003|run circle chase|13.6|35.2|11.9
+shambler|40003|run target switch|16.6|31.1|11.3
+shambler|40003|run turn into attack|15.5|31.5|13.4
+shambler|40003|run weave|15.5|33.0|12.5
+shambler|40003|walk turn 90|26.3|19.1|12.4
+shambler|40003|walk turn 180|21.4|40.6|15.5
+shambler|40003|walk circle chase|52.1|41.1|10.4
+FLOORS shambler|40003|0.7877|0.8452
+shambler|40004|run arc 90/s|16.7|28.0|11.1
+shambler|40004|run arc 180/s|8.3|37.3|10.0
+shambler|40004|run turn 90|15.1|33.3|11.0
+shambler|40004|run turn 180|15.2|43.1|12.2
+shambler|40004|run circle chase|13.4|35.1|11.9
+shambler|40004|run target switch|15.0|36.5|11.6
+shambler|40004|run turn into attack|13.8|38.7|17.8
+shambler|40004|run weave|15.5|44.3|11.9
+shambler|40004|walk turn 90|10.7|24.7|6.9
+shambler|40004|walk turn 180|7.6|49.5|8.1
+shambler|40004|walk circle chase|7.9|35.7|9.8
+FLOORS shambler|40004|0.7755|0.8483
+shambler|40007|run arc 90/s|6.7|16.6|8.5
+shambler|40007|run arc 180/s|8.6|22.2|8.9
+shambler|40007|run turn 90|6.5|21.1|8.5
+shambler|40007|run turn 180|6.6|29.2|8.6
+shambler|40007|run circle chase|5.1|25.5|8.6
+shambler|40007|run target switch|7.2|22.0|8.6
+shambler|40007|run turn into attack|16.8|26.7|8.9
+shambler|40007|run weave|11.8|27.5|10.1
+shambler|40007|walk turn 90|20.8|36.8|9.8
+shambler|40007|walk turn 180|25.6|42.1|13.8
+shambler|40007|walk circle chase|22.7|52.6|6.8
+FLOORS shambler|40007|0.9499|0.7731
+shambler|40011|run arc 90/s|6.7|16.5|8.1
+shambler|40011|run arc 180/s|8.4|22.6|8.3
+shambler|40011|run turn 90|17.1|17.8|9.1
+shambler|40011|run turn 180|8.0|43.3|9.9
+shambler|40011|run circle chase|5.4|25.2|8.1
+shambler|40011|run target switch|27.7|20.1|9.4
+shambler|40011|run turn into attack|17.1|36.5|9.9
+shambler|40011|run weave|11.2|31.3|9.1
+shambler|40011|walk turn 90|10.5|38.1|8.0
+shambler|40011|walk turn 180|12.1|46.8|9.4
+shambler|40011|walk circle chase|10.1|32.9|8.5
+FLOORS shambler|40011|0.9220|0.7785
+runner|40003|run arc 90/s|6.5|16.6|10.9
+runner|40003|run arc 180/s|8.0|19.3|11.2
+runner|40003|run turn 90|6.7|17.4|11.0
+runner|40003|run turn 180|6.6|39.7|11.0
+runner|40003|run circle chase|5.1|24.2|11.1
+runner|40003|run target switch|7.2|26.7|10.9
+runner|40003|run turn into attack|13.6|26.1|11.9
+runner|40003|run weave|13.0|23.2|11.5
+runner|40003|walk turn 90|14.1|23.8|8.2
+runner|40003|walk turn 180|10.6|58.8|17.3
+runner|40003|walk circle chase|7.3|25.8|8.3
+FLOORS runner|40003|0.8539|0.7693
+runner|40004|run arc 90/s|20.1|26.6|13.7
+runner|40004|run arc 180/s|6.8|34.2|11.6
+runner|40004|run turn 90|17.3|33.2|14.1
+runner|40004|run turn 180|16.0|58.6|15.9
+runner|40004|run circle chase|9.7|35.8|14.7
+runner|40004|run target switch|16.9|37.8|14.0
+runner|40004|run turn into attack|16.7|33.2|12.9
+runner|40004|run weave|17.9|36.3|14.3
+runner|40004|walk turn 90|15.3|35.1|9.1
+runner|40004|walk turn 180|39.4|27.9|14.2
+runner|40004|walk circle chase|11.6|39.8|9.5
+FLOORS runner|40004|0.7709|0.7908
+spitter|40003|run arc 90/s|16.0|29.8|9.2
+spitter|40003|run arc 180/s|15.8|40.4|9.0
+spitter|40003|run turn 90|14.5|33.1|9.6
+spitter|40003|run turn 180|14.5|45.1|10.1
+spitter|40003|run circle chase|13.3|36.5|10.0
+spitter|40003|run target switch|14.8|36.4|9.7
+spitter|40003|run turn into attack|14.8|39.0|8.9
+spitter|40003|run weave|12.9|46.8|10.7
+spitter|40003|walk turn 90|16.5|38.3|6.9
+spitter|40003|walk turn 180|12.8|40.3|10.6
+spitter|40003|walk circle chase|10.5|36.2|8.8
+FLOORS spitter|40003|0.7838|0.8413
+spitter|40007|run arc 90/s|6.9|16.5|8.3
+spitter|40007|run arc 180/s|8.5|23.3|8.3
+spitter|40007|run turn 90|9.5|23.2|8.3
+spitter|40007|run turn 180|7.2|37.8|8.4
+spitter|40007|run circle chase|5.5|24.0|8.3
+spitter|40007|run target switch|13.8|24.6|8.3
+spitter|40007|run turn into attack|15.2|35.4|8.2
+spitter|40007|run weave|13.2|34.9|8.4
+spitter|40007|walk turn 90|12.5|25.4|7.1
+spitter|40007|walk turn 180|8.0|30.8|8.9
+spitter|40007|walk circle chase|13.3|55.2|11.0
+FLOORS spitter|40007|0.9372|0.8233
+brute|40003|run arc 90/s|11.6|30.0|8.8
+brute|40003|run arc 180/s|19.9|38.5|8.0
+brute|40003|run turn 90|12.9|34.3|9.1
+brute|40003|run turn 180|18.4|46.9|9.8
+brute|40003|run circle chase|11.4|34.8|11.2
+brute|40003|run target switch|12.8|35.9|9.2
+brute|40003|run turn into attack|11.4|35.7|9.3
+brute|40003|run weave|12.7|44.0|9.3
+brute|40003|walk turn 90|11.9|33.0|8.5
+brute|40003|walk turn 180|10.5|35.3|9.2
+brute|40003|walk circle chase|11.6|28.8|8.9
+FLOORS brute|40003|0.7700|0.8653
+brute|40004|run arc 90/s|11.7|30.3|8.6
+brute|40004|run arc 180/s|22.6|38.6|8.1
+brute|40004|run turn 90|13.3|36.5|9.0
+brute|40004|run turn 180|20.0|44.4|9.3
+brute|40004|run circle chase|11.2|34.4|9.4
+brute|40004|run target switch|17.7|36.5|9.0
+brute|40004|run turn into attack|15.1|39.0|8.8
+brute|40004|run weave|18.9|52.8|9.2
+brute|40004|walk turn 90|46.2|32.5|14.4
+brute|40004|walk turn 180|28.2|43.3|15.4
+brute|40004|walk circle chase|32.2|41.7|7.3
+FLOORS brute|40004|0.7740|0.8101

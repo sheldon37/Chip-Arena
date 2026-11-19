@@ -52,6 +52,19 @@ namespace ChipArena.UnityConversion
         {foreach(var p in enemies)if(p.Seat.id==id)return p;return null;}
         private void HubSense(NativeMinion m,HubMob info,List<NativePilot> enemies)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if(DevLoadLobbyCount>0)
+            {
+                long start=System.Diagnostics.Stopwatch.GetTimestamp();
+                try{HubSenseCore(m,info,enemies);}
+                finally{DevPerceptionMs+=LoadElapsed(start);}
+                return;
+            }
+#endif
+            HubSenseCore(m,info,enemies);
+        }
+        private void HubSenseCore(NativeMinion m,HubMob info,List<NativePilot> enemies)
+        {
             var brain=info.Brain;NativePilot seen=null;float best=float.PositiveInfinity;
             foreach(var p in enemies)
             {
