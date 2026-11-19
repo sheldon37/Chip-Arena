@@ -456,7 +456,7 @@ namespace ChipArena.UnityConversion
             BossPicksWaitReset();if(previewArena==null&&BossPicksWaiting){BossPicksWaitScreen(width,height);BossPicksClock();return;}
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             // The Last Laugh cutscene hides the HUD behind its letterbox (style.css data-cutscene); the board and pause menu stay.
-            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(cinematic.PodDrop){if(!menu)CountdownOverlay(true);}else if(cinematic.ZoneArrival)ZoneBossArrivalHud(width,height);else KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu){if(labPanel&&arena.Training&&!Online)ChipLabPanel();else{PauseMenu();TrainingControls();}}return;}
+            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(cinematic.PodDrop){if(!menu){PodCabinScreen();CountdownOverlay(true);}}else if(cinematic.ZoneArrival)ZoneBossArrivalHud(width,height);else KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu){if(labPanel&&arena.Training&&!Online)ChipLabPanel();else{PauseMenu();TrainingControls();}}return;}
             if(!cinematic.Private)CombatWorldHud(scale,width,height);
             PveBeaconHud();
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);

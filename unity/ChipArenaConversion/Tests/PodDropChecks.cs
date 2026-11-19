@@ -262,6 +262,8 @@ internal static class PodDropChecks
             float down=(float)(Math.Asin(-look.Y)*180/Math.PI),apart=(float)(Math.Acos(Math.Clamp(Vector3.Dot(look,pod),-1,1))*180/Math.PI);
             Check(s.Eye.Y>100&&down>=11.9f&&apart<s.Fov*.5f,"the sky shot looks down over the camp at my streak ("+t+": "+down+" down, the pod "+apart+" off)");
         }
+        // the cabin's red at my screen's edges: in with the cut, out at its end, none outside it
+        Check(NativePodDrop.CabinRed(p,p.Ride-.01f)==0&&NativePodDrop.CabinRed(p,(p.Ride+p.CabinEnd)*.5f)>.99f&&NativePodDrop.CabinRed(p,p.CabinEnd+.01f)==0,"the cabin's red at my screen's edges while I ride in it");
         // the cabin buffets; nothing else does
         Check(NativePodDrop.Shot(p,centre,p.Ride+.3f,NativePodDrop.ShotFirst,gameEye).Judder>.2f&&NativePodDrop.Shot(p,centre,p.Ride+.3f,NativePodDrop.ShotChase,gameEye).Judder==0,"the cabin buffets my view");
         NativePodDrop.Judder(3,1.2f,1,out float jp,out float jr);NativePodDrop.Judder(3,1.2f,0,out float jp0,out float jr0);Check(Math.Abs(jp)<2&&Math.Abs(jr)<2.5f&&jp0==0&&jr0==0,"the buffeting is a degree or two, none at zero");
@@ -499,7 +501,7 @@ internal static class PodDropChecks
         Check(cine.Contains("if(presentation.PodDropDirect(arena,view,out var podHand)){Directing=PodDrop=true;siren.Stop();return true;}")&&cine.Contains("public void PodHandOff(Camera view)")&&pods.Contains("if(m.Phase!=NativePhase.Countdown"),"the directed drop is a Countdown branch of the cinematic camera, handing back at GO");
         Check(cine.IndexOf("presentation.PodDropDirect(",StringComparison.Ordinal)<cine.IndexOf("presentation.BackroomsBossPreviewShot(",StringComparison.Ordinal),"it directs before the fight-only shots (the countdown is not their phase)");
         Check(pods.Contains("ConversionGame.CaptureEye.HasValue)return false;"),"a capture's fixed eye wins over the directed drop");
-        Check(game.Contains("cinematic.PodHandOff(cameraView);")&&game.Contains("if(cinematic.PodDrop){if(!menu)CountdownOverlay(true);}")&&game.Contains("CountdownOverlay(cinematic.PodHanding>0);")&&R("Runtime/NativeMatchOverlays.cs").Contains("private void CountdownOverlay(bool compact=false)"),"the hand-off, and the countdown small at the top over the directed drop (clear of my pod)");
+        Check(game.Contains("cinematic.PodHandOff(cameraView);")&&game.Contains("if(cinematic.PodDrop){if(!menu){PodCabinScreen();CountdownOverlay(true);}}")&&game.Contains("CountdownOverlay(cinematic.PodHanding>0);")&&R("Runtime/NativeMatchOverlays.cs").Contains("private void CountdownOverlay(bool compact=false)"),"the hand-off, and the countdown small at the top over the directed drop (clear of my pod)");
         Check(pods.Contains("bool reduced=WeaponEffectsQuality<.5f,shake=CameraShake&&!reduced;")&&pods.Contains("int mode=reduced?NativePodDrop.ShotStill:FirstPersonPick?NativePodDrop.ShotFirst:NativePodDrop.ShotChase;")&&game.Contains("presentation.FirstPersonPick=prefs.firstPerson;"),"the directed drop honours Camera shake, Reduced effects and the player's camera");
         Check(pods.Contains("p.Facing=new Vector3(Mathf.Sin(record.yaw*Mathf.Deg2Rad),0,Mathf.Cos(record.yaw*Mathf.Deg2Rad));")&&pods.Contains("Quaternion.Euler(0,pilot.Yaw,0)*Vector3.forward")&&!pods.Contains("Mathf.Sin(record.yaw)")&&!pods.Contains("pilot.Yaw*Mathf.Rad2Deg"),"the pods face the record's yaw in degrees");
         Check(R("Runtime/ArenaPresentation.cs").Contains("ReviveMachineTumble(rig,a);PodRideTilt(rig,a);"),"the drawn pilot leans with the pod");

@@ -453,7 +453,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public bool PodDropDirect(NativeArena arena,Camera view,out float hand)
         {
-            hand=0;if(view==null||!PodRun(arena)||arena.Match==null||arena.Local==null||Viewer||ConversionGame.CaptureEye.HasValue)return false;
+            hand=0;PodCabinRed=0;if(view==null||!PodRun(arena)||arena.Match==null||arena.Local==null||Viewer||ConversionGame.CaptureEye.HasValue)return false;
             var m=arena.Match;if(m.Phase!=NativePhase.Countdown)return false;SyncAuthorityPods(arena);
             if(!pods.TryGetValue(arena.Local.Seat.id,out var pod)||double.IsNaN(pod.End)||!double.IsNaN(pod.LaunchAt))return false;
             float age=(float)(PresentationClock(arena)-pod.End);if(pod.Authority&&!(age>=pod.Earliest))pod.Earliest=age;if(!pod.Planned&&!pod.Authority)return false;
@@ -479,10 +479,12 @@ namespace ChipArena.UnityConversion
             if(hand<.999f){podHandEye=eye;podHandTurn=turn;podHandFov=s.Fov;return false;}
             view.transform.SetPositionAndRotation(eye,turn);view.fieldOfView=s.Fov;
             // in my cabin and from the cut into my eyes my own body stays hidden; everywhere else (outside my pod) it is drawn
-            FirstPerson=s.Inside;AimHeld=false;podDirectFrame=UnityEngine.Time.frameCount;podDirectArena=arena;
+            PodCabinRed=s.Cabin?NativePodDrop.CabinRed(p,age):0;FirstPerson=s.Inside;AimHeld=false;podDirectFrame=UnityEngine.Time.frameCount;podDirectArena=arena;
             return true;
         }
         private int podDirectFrame=-1;private NativeArena podDirectArena;
+        /// <summary>The red of my cabin's lamps at the edges of my screen while the directed drop holds me braced in it (0..1).</summary>
+        public float PodCabinRed{get;private set;}
         /// <summary>The directed shot posed again after Render, on the clock the pods were just drawn with: the camera runs before
         /// Render sets this frame's clock, so its first pose can be a frame behind the drawn pod (at 80 m/s over a metre, the cabin's
         /// eye outside its pod). Only in a frame the drop directed (so never over the capture eye); ConversionGame skips it under the
@@ -497,6 +499,17 @@ namespace ChipArena.UnityConversion
         {
             if(view==null||!(share>0))return;var t=view.transform;
             t.SetPositionAndRotation(Vector3.Lerp(t.position,podHandEye,share),Quaternion.Slerp(t.rotation,podHandTurn,share));view.fieldOfView=Mathf.Lerp(view.fieldOfView,podHandFov,share);
+        }
+    }
+
+    public sealed partial class ConversionGame
+    {
+        private static readonly float[] PodRedAt={0f,.55f,.85f,1f},PodRedAlpha={0f,0f,.6f,1f};
+        /// <summary>The directed drop's braced second in my cabin, under the countdown: the cabin's red lamps at the edges of my screen.</summary>
+        private void PodCabinScreen()
+        {
+            float k=presentation!=null?presentation.PodCabinRed:0;if(k<=0)return;
+            NativeUi.RadialStops(new Rect(-NativeUi.W*.1f,-NativeUi.H*.12f,NativeUi.W*1.2f,NativeUi.H*1.24f),new Color(.55f,.05f,.04f,.85f*k),PodRedAt,PodRedAlpha);
         }
     }
 }

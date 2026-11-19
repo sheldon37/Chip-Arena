@@ -685,6 +685,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The shake's smooth noise on channel `ch` (-1..1), keyed by `seed` and the clock (NativeStructureFx's).</summary>
         public static float ShakeNoise(int seed,int ch,float x){int i=(int)Math.Floor(x);float f=x-i,u=f*f*(3-2*f),a=Hash(seed+ch*7919,i)*2-1,b=Hash(seed+ch*7919,i+1)*2-1;return a+(b-a)*u;}
+        /// <summary>The cabin's red at the edges of my screen while the braced second holds (0..1): in with the cut, out at its end.</summary>
+        public static float CabinRed(in PodPlan p,float age){float u=(age-p.Ride)/Math.Max(.05f,p.CabinEnd-p.Ride);return u<0||u>1?0:Clamp01(Math.Min(u/.12f,(1-u)/.18f));}
         /// <summary>The cabin's buffeting as a turn of my view (degrees of pitch and roll) at `age` for judder `k` (0..1).</summary>
         public static void Judder(int seed,float age,float k,out float pitch,out float roll)
         {
