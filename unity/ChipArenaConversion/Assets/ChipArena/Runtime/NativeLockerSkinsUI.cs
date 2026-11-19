@@ -163,11 +163,12 @@ namespace ChipArena.UnityConversion
         private const int LkFaceThumb=10;
         private void LkBodyThumb(Rect well,int skin,float e,float hover)
         {
+            bool voxel=skin>=LkVoxelThumb;if(voxel)skin-=LkVoxelThumb; // (the costume's variants: the voxel figures on the model too)
             int bodyRgb=NativePortraitRules.Parse(prefs.bodyColor,0xe5e7eb),accentRgb=NativePortraitRules.Parse(prefs.accentColor,0x70e1d0);
             Color body=U.Hex(bodyRgb),accent=U.Hex(accentRgb),glow=skin==NativeBodySkins.SheldonIndex?U.Hex(NativeBodySkins.SheldonGlowRgb(prefs.hat,prefs.hatColor,accentRgb)):accent;
             U.RadialStops(new Rect(well.x+2,well.y+1,well.width-4,well.height-2),U.A(glow,(.26f+.18f*hover)*e),LkGlowAt,LkGlowA);
             var f=new Vector2(well.center.x,well.yMax-4);
-            if(LkOnModel||skin>=LkFaceThumb)LkModelThumb(f,skin>=LkFaceThumb?skin-LkFaceThumb:FaceGearEquipped(),accent,e);
+            if(LkOnModel&&!voxel||skin>=LkFaceThumb)LkModelThumb(f,skin>=LkFaceThumb?skin-LkFaceThumb:FaceGearEquipped(),accent,e);
             else if(skin==NativeBodySkins.StandardIndex)
             {
                 Color under=U.Mix(U.Hex(0x1b242b),body,.12f),plate=body,lit=accent,cyan=U.Hex(NativeBodySkins.CyberCyan);

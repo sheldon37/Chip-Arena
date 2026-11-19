@@ -25,6 +25,10 @@ namespace ChipArena.UnityConversion
         private readonly Matrix4x4[] bandLocal=new Matrix4x4[4];private Matrix4x4 coreLocal,rimLocal,glintLocal;private bool statusReady,statusFailed;
         // The slow marker as beads (the bubble's sphere at .6 of the cube's edge); false draws the cubes.
         private bool slowDrops;private readonly Matrix4x4 dropLocal=Matrix4x4.Scale(new Vector3(.6f,.6f,.6f));
+        // The voxel pilot's head joint over its rig's root at rest (m): where the Orbital Mark's reticle was measured.
+        private static readonly float VoxelHeadRise=NativeVoxelCostume.VoxelJoint(CapturedRig.Head).Y+NativeVisualRig.Floor;
+        // The model's head is shorter than the voxel's 34 cm block: the reticle's middle on its middle (m lower than the same rise).
+        private const float MarkHeadDrop=.09f;
         // Team for the draft stage's pilot (draft-stage.ts:164 teamArmor), or -1; set by the draft screen each frame.
         public int DraftBandTeam=-1;
 
@@ -46,6 +50,8 @@ namespace ChipArena.UnityConversion
                 if(!own&&rig!=null&&SpawnShowsFor(p.Seat.id,CapturedRig.Chest))Bands(rig,NativeStatusVisuals.PilotBand(teams,arena.Match.Cooperative,p.Seat.AuthorityBoss,p.Seat.team,p.Seat.id==arena.LocalId));
                 if(own||!fight)continue;
                 Vector3 at=rig!=null?rig.Root.transform.position:p.Body.position;var status=PilotStatus(arena,p,now,quality);
+                // On the model the reticle brackets the model's own head (the joint-frame resolver), not the voxel head's height.
+                if(rig!=null&&VisualBodyPosed(rig))status.HeadLift=VisualJointFrame(rig,CapturedRig.Head).m13-(at.y+VoxelHeadRise)-MarkHeadDrop;
                 status.Root=new NVector(-at.x,at.y,at.z);status.Camera=sourceEye;status.CameraRotation=sourceLook;QueueStatus(status,time,Matrix4x4.Translate(at),statusWorld);
             }
             // pve/horde-view.ts:116-123: burning, poisoned or slowed adds, nearest to the camera first, at most AddRigs.

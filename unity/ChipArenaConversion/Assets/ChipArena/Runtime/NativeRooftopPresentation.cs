@@ -434,7 +434,7 @@ namespace ChipArena.UnityConversion
         private Transform rooftopHolder;private string rooftopSkins;
         private bool RooftopModel(RooftopCast cast,int i,Matrix4x4 root,Matrix4x4 group,float time,Camera camera,bool reduced,string hatColor)
         {
-            if(Viewer||ClassicBodies||!VisualBodiesOn)return false;
+            if(Viewer||!ModelLook(null))return false;
             var look=cast.Looks[i];var s=cast.States[i];int id=RooftopIdTop-i;
             if(rooftopHolder==null){var go=new GameObject("Rooftop pilots");go.transform.SetParent(transform,false);rooftopHolder=go.transform;}
             var rig=cast.Rigs[i]??=captured.Create(rooftopHolder,id);

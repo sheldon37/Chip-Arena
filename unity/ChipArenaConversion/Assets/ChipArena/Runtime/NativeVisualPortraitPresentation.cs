@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The portraits' Reduced effects (the menu sets it with each request).</summary>
         public bool ModelPortraitReduced;
         /// <summary>Whether a look's portrait draws on the model (else the voxel portrait).</summary>
-        public bool ModelPortraitFor(in PortraitLook look)=>!modelPortraitFailed&&!ClassicBodies&&VisualBodiesOn&&look.Spec!="siren"&&SystemInfo.graphicsDeviceType!=UnityEngine.Rendering.GraphicsDeviceType.Null;
+        public bool ModelPortraitFor(in PortraitLook look)=>!modelPortraitFailed&&ModelLook(look.Spec)&&SystemInfo.graphicsDeviceType!=UnityEngine.Rendering.GraphicsDeviceType.Null;
         // A portrait body's outfit and skin map, by its id (VisualLookOf, SeatWeaponSkins); false for any other id.
         private bool ModelPortraitOf(int id,out ModelPortraitSlot slot)
         {

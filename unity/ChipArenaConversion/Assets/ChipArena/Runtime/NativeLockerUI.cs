@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
     {
         private int lockerTab,lockerTabNext=-1,lockerN;private bool lockerConfirm,lockerBlocked,lockerViewHot,lockerTurned,lockerSavedAccount;
         private float lockerFade=1,lockerW=500,lockerYaw,lockerTurnAt=-9,lockerDragX,lockerSavedAt=-9,lockerListsAt=-9,lockerKillAt;private bool lockerListsModel;
-        private readonly Vector2[] lockerScroll=new Vector2[NativeLocker.Count];private readonly Rect[] lockerSlots=new Rect[24];private Action lockerDraw;
+        private readonly Vector2[] lockerScroll=new Vector2[NativeLocker.Count];private readonly Rect[] lockerSlots=new Rect[28];private Action lockerDraw;
         // This repaint's hovered item, shown on the pilot (null: the equipped one).
         private string lockerHat,lockerPose,lockerBody,lockerAccent,lockerWeapon,lockerKill,lockerBack;
         private readonly List<string> lockerHats=new List<string>(16),lockerKills=new List<string>(32),lockerIntros=new List<string>(32),lockerSkins=new List<string>(16);
@@ -211,6 +211,8 @@ namespace ChipArena.UnityConversion
                     LkHead(true);prefs.name=GUILayout.TextField(prefs.name??"",20,lockerField);
                     if(LkOnModel){LkHead();LkReserve(LkMasksH());LkHead();LkReserve(LkToneH());}
                     else{LkHead();LkReserve(LkBodyRowH());LkHead();LkSwatches(ref prefs.bodyColor,"#e5e7eb");}
+                    // The voxel costume on the model (Runtime/NativeLockerCostumeUI.cs), and its body colour while it is worn.
+                    if(LkOnModel){lockerCostume=NativeVoxelCostume.Worn(prefs.look);LkHead();LkReserve(LkCostumeH());if(lockerCostume){LkHead();LkSwatches(ref prefs.bodyColor,"#e5e7eb");}}
                     LkHead();LkSwatches(ref prefs.accentColor,"#70e1d0");if(LkOnModel){LkHead();LkReserve(LkOutfitH());}
                     LkHead();LkReserve(LkGrid(lockerW,lockerHats.Count,LkItemMin,LkItemH));LkHead();LkReserve(LkPickerH());LkHead();LkReserve(LkGrid(lockerW,lockerPoses,LkRowMin,LkRowH));
                     LkHead();LkReserve(LkGrid(lockerW,NativePortraitBacks.Count,LkItemMin,LkItemH));LkHead();LkReserve(LkPickerH());break;
@@ -255,6 +257,7 @@ namespace ChipArena.UnityConversion
                         LkHeading(lockerSlots[k++],"BODY SKIN","Hover a body to try it on");LkBodyRow(lockerSlots[k++]);
                         LkHeading(lockerSlots[k++],"BODY COLOUR","Hover a swatch to try it");LkSwatchDraw(lockerSlots[k++],true);
                     }
+                    if(LkOnModel){LkHeading(lockerSlots[k++],"COSTUME","Wear the voxel pilot on your model");LkCostume(lockerSlots[k++]);if(lockerCostume){LkHeading(lockerSlots[k++],"BODY COLOUR","The voxel blocks' colour");LkSwatchDraw(lockerSlots[k++],true);}}
                     LkHeading(lockerSlots[k++],"ACCENT COLOUR","Trims, visor and glow");LkSwatchDraw(lockerSlots[k++],false);
                     // The model's outfit (Runtime/NativeLockerOutfitUI.cs), while the model draws.
                     if(LkOnModel){LkHeading(lockerSlots[k++],"OUTFIT","Your pilot's clothes on the model");LkOutfit(lockerSlots[k++]);}

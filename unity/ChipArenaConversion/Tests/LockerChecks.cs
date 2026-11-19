@@ -128,7 +128,7 @@ internal static class LockerChecks
         // section"): Appearance's MASKS row picks no mask (Standard) or a face gear (the Prototype body), the Skins tab lists only
         // weapons, and the thumbnails are the model's (Tests/SkinToneChecks.cs pins the section itself).
         Check(skinsFile.Contains("private bool LkOnModel=>ArenaPresentation.VisualBodyInstalled&&prefs.playerModel!=\"Classic\";")&&skinsFile.Contains("private void SetFaceGear(string key){prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,NativeWeaponSkins.FaceEntry,key);}")
-            &&!skinsFile.Contains("LkFaceCard")&&!skinsFile.Contains("LkFaceRow")&&!ui.Contains("NativeWeaponSkins.FaceEntry")&&skinsFile.Contains("if(LkOnModel||skin>=LkFaceThumb)LkModelThumb(")
+            &&!skinsFile.Contains("LkFaceCard")&&!skinsFile.Contains("LkFaceRow")&&!ui.Contains("NativeWeaponSkins.FaceEntry")&&skinsFile.Contains("if(LkOnModel&&!voxel||skin>=LkFaceThumb)LkModelThumb(")
             &&Body(skinsFile,"private void LkMasks(").Contains(",null,out bool hot,LkFaceThumb+k);"),"on the model the face gear is picked in MASKS, with the model's thumbnails");
         {
             // The setter's rule, run engine-free on Core (NativeCosmeticRules.Allowed is NativeCosmeticGate.Allowed, section 2):

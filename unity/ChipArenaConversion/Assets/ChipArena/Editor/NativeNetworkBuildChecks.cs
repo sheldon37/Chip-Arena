@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion.Editor
             if(skinPrefs.weaponSkins!="sword:prototype"||skinReady.profile.cosmetics.weaponSkins!="pistol:prototype,sword:prototype"||NativeWeaponSkins.Index(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").weaponSkins,"sword")!=NativeWeaponSkins.StandardIndex)
                 throw new Exception("Saved pilot/ready DTO lost the weapon skins, or an old save did not load as Standard");
             if(NativeBodySkins.Of(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").weaponSkins)!=NativeBodySkins.StandardIndex||NativeBodySkins.Gate("body:sheldon",false)!="")throw new Exception("An old save did not load the Standard body, or the Sheldon Clothes passed the gate");
-            const string outfit="hair:wild,upper:hard-jacket,feet:work-boots";
+            const string outfit="hair:wild,upper:hard-jacket,feet:work-boots,costume:voxel"; // (the voxel costume rides the look: docs/VOXEL-RETIREMENT.md 2.3)
             var outfitReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{look=outfit}}}));
             var outfitLobby=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="lobby",seats=new[]{new NativeSeatFrame{id=1,look=outfit}}}));
             if(outfitReady.profile.cosmetics.look!=outfit||outfitLobby.seats[0].look!=outfit||JsonUtility.FromJson<NativeCosmetics>("{}").look!=null)

@@ -177,7 +177,7 @@ namespace ChipArena.UnityConversion
             if(target>=10000)return HordeArrowBone(target,bone,out world);
             if(bowArena!=null){var p=PilotOf(bowArena,target);if(p==null||p.Hp<=0)return false;}
             if(!rigs.TryGetValue(target,out var rig)||rig?.Bones==null||BladeHidesHud(target))return false;
-            if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&!ClassicBodies)
+            if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&ModelLook(null))
             {
                 if(!body.Root.activeSelf||body.PosedFrame!=Time.frameCount)return false;
                 var bones=body.Binding?.Bones;

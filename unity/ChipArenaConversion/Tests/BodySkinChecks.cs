@@ -198,7 +198,7 @@ namespace ChipArena.UnityConversion
             report.Add("hit geometry: no simulation file references a body ("+simulation.Length+" files scanned); hit parts, headshots and wounds over "+(21*11*8)+" probes identical for all three skins (digest "+digests[0]+")");
 
             // ---- 8. The rig: the same joints for every body over animation; each body's joint-local extent past the Prototype ----
-            string[] motion=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Core"),"*.cs").Where(f=>{var n=Path.GetFileName(f);return n!="NativeBodySkins.cs"&&n!="NativeBodyModels.cs"&&n!="NativeWeaponSkins.cs"&&n!="NativeHatLooks.cs";}).ToArray();
+            string[] motion=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Core"),"*.cs").Where(f=>{var n=Path.GetFileName(f);return n!="NativeBodySkins.cs"&&n!="NativeBodyModels.cs"&&n!="NativeWeaponSkins.cs"&&n!="NativeHatLooks.cs"&&n!="NativeVoxelCostume.cs";}).ToArray(); // (the costume builds its blocks from the body skins: a look, not a pose or rule)
             foreach(var f in motion){var text=File.ReadAllText(f);Check(!text.Contains("NativeBodySkins")&&!text.Contains("NativeBodyModels"),Path.GetFileName(f)+": no pose, clip or rule reads the body skin");}
             var scenes=Scenes();float jointError=0;int frames=0;
             var clip=new Clip(built[(2,0)],proto);

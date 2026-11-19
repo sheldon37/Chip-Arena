@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             get
             {
                 if(zombieArgs==0){var args=Environment.GetCommandLineArgs();zombieArgs=Array.IndexOf(args,VoxelZombiesArgument)>=0?-1:1;if(Array.IndexOf(args,ZombieDraftsArgument)>=0)NativeZombieLooks.Drafts=true;}
-                return zombieArgs>0&&!zombieModelsFailed&&!Viewer&&sourceModels!=null&&!ClassicBodies&&VisualBodiesOn;
+                return zombieArgs>0&&!zombieModelsFailed&&!Viewer&&sourceModels!=null&&ModelZombies;
             }
         }
         /// <summary>Whether add `id` of `kind` draws on the model on `tier` (its wounds then go with the model's, not the voxel surface).</summary>

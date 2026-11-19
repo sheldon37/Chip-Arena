@@ -22,6 +22,10 @@ namespace ChipArena.UnityConversion
         {
             public bool Active,FirstPerson,Fire,Poison,Slowed,Shackled,Marked;
             public float SlowUntil,MarkBorn,MarkLock,MarkUntil,Quality;
+            /// <summary>How far the head the Orbital Mark brackets stands over the voxel pilot's (m): a pilot drawn on the model
+            /// (taller, its head where its own clips put it) has the reticle round its own head (docs/VOXEL-RETIREMENT.md V3, P13:
+            /// read through the joint-frame resolver); 0 on the voxel body.</summary>
+            public float HeadLift;
             public Vector3 Root,Camera;public Quaternion CameraRotation;
         }
         // status-effects.ts:25 flame core and :27 bubble rim/glint, relative to their parent part.
@@ -79,7 +83,7 @@ namespace ChipArena.UnityConversion
                 if(!locked||Math.Sin(t*40)>-.4)for(int n=0;n<MarkCubes;n++)
                 {
                     int k=n>>1;bool odd=n%2==1;double a=k*Math.PI/2+t*(locked?0:1.6),side=odd?.12:0;
-                    output[count++]=new Piece{Kind=Kind.Mark,Position=new Vector3((float)(Math.Cos(a)*r-Math.Sin(a)*side),(float)(.62+(odd?0:.12)),(float)(Math.Sin(a)*r+Math.Cos(a)*side)),Rotation=Euler(0,-a,0),Scale=new Vector3(odd?.2f:.06f,odd?.06f:.2f,.06f)};
+                    output[count++]=new Piece{Kind=Kind.Mark,Position=new Vector3((float)(Math.Cos(a)*r-Math.Sin(a)*side),(float)(.62+(odd?0:.12)+rig.HeadLift),(float)(Math.Sin(a)*r+Math.Cos(a)*side)),Rotation=Euler(0,-a,0),Scale=new Vector3(odd?.2f:.06f,odd?.06f:.2f,.06f)};
                 }
             }
             return count;
