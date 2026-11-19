@@ -148,7 +148,7 @@ Runtime/NativeGunKitPresentation.cs                        0   0   1   0   0
 Runtime/NativeHordeGoreGallery.cs                          0   0   9   0   0
 Runtime/NativeHordeGorePresentation.cs                     0   0  10   0   0
 Runtime/NativeHordeHulkGallery.cs                          0   0   4   0   0
-Runtime/NativeHordeKindPresentation.cs                     0   0  19   0   0
+Runtime/NativeHordeKindPresentation.cs                     0   0  18   0   0
 Runtime/NativeInteractionPresentation.cs                   0   0   4   1   0
 Runtime/NativeInteractionValidation.cs                     0   0   2   0   0
 Runtime/NativeIntros.cs                                    0   0  27   2   0

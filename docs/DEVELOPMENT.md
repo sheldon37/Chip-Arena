@@ -75,6 +75,11 @@ identity, persistence, dependency manifests, launcher, packaging, or CI require
 Full verification attempts every stage and reports failures, never substitutes a
 passing narrower test for a failed stage. Logs go to ignored `test-results/`.
 
+Voxel retirement (owner 2026-11-18): new Unity work is authored and socketed on the model, never deletes voxel
+data or code, and names any voxel read it keeps. The full CoreTests run the voxel ratchet, the kept voxel style's
+checks and the DEV voxel draw counter's checks (`--voxel` alone); see `docs/VOXEL-STYLE.md` for the rule, the
+re-pinning and the counter (`--ca-voxel-counter`).
+
 Mocap clips: the sword, daggers, shield and greatsword animations come from the owner's Explosive "RPG Character
 Mecanim Animation Pack" (Unity asset; its FBX and .meta files are never committed), retargeted offline to the voxel rig.
 To regenerate after changing the converter or clip choices, extract the pack outside the repository and run

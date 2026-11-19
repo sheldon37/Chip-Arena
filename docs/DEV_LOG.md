@@ -1,3 +1,56 @@
+## 2026-11-18 — Claude: voxel retirement V0, no new voxel: the ratchet, the kept voxel style's checks, the DEV voxel draw counter, no voxel weapons on the pads (owner report; presentation only)
+
+- **The owner (2026-11-18):** "I want to essentially remove voxel entirely BUT keep its data incase I use it for a map or game mode ... All the new
+  things ive been making, I want to remove the voxel dependency". Package V0 of `docs/VOXEL-RETIREMENT.md` (Stage 0, ships with release 1).
+  Branch `claude/voxel-v0-guard` from shared `ac69455e`, merged forward with shared `9056fc04`: `beff4461` the guards, `2f4b89a2` P9,
+  `e55eb5df` the baselines' harness, `8ee749b6` and `14c8c347` two test fixes, then the docs and this entry. Pushed, **not
+  merged, not released**. The rule and the guards: `docs/VOXEL-STYLE.md`.
+- **The voxel ratchet** (`Tests/VoxelRatchetChecks.cs`, `Tests/voxel-ratchet.txt`): per Core and Runtime file outside the voxel style, the plan's
+  five token families (voxel gates, voxel measures, rig reads, rig authoring, voxel-frame draws), pinned at shared `ac69455e`. The counts match the
+  plan's exactly (`ClassicBodies` 25, `VisualBodiesOn` 18, `CapturedRig.Boxes` 23, `rig.Bones[` 163 in 59 files, `new CapturedRig.Pose(` 44 in 29,
+  `.Rotation[CapturedRig.` 220, `WeaponShape.Cube` 228 in 25, ...). A count above its pin fails, a new file starts at zero, and the message names
+  the file, the family, the count, the model-native route and the line to paste if the dependency is kept on purpose. The voxel style's own files
+  (29: CapturedRig, CapturedAnimation, the voxel sculpts and skins, the horde kits and gore surface, the bisect and carve, NativePortraits, the
+  box scenery, the unused M1 kit, the generated rig tables) are counted, never failed. A made-up tree tests the rule itself.
+  - **In flight:** W3's eject (`Core/NativeDeployEject.cs`, 13 rig-authoring uses at `048adc30`) is pinned and named (plan M12; V4 owns it).
+  - **Not pre-pinned, so its merge will fail the ratchet on purpose:** `claude/chip-install-anim` at `e3f25260` adds `Core/NativeDraftInstall.cs`
+    (6 rig-authoring uses), 2 more in `Core/NativeDraftStage.cs` (6 to 8) and 2 voxel-frame draws in `Runtime/NativeDraftInstallPresentation.cs`.
+    Whoever merges it moves them onto the model or raises those three pins with a "Voxel dependency" line (the failure prints the lines).
+- **The kept voxel style** (`Tests/VoxelStyleChecks.cs`, the plan's first half): the 23 kept data files and generated tables match pinned SHA-256
+  digests (CRLF read as LF); the 150 Electron models load as the bank loads them; 219 motion clips are whole and finite; 51 voxel sculpts build
+  within budget; the 34 rig clips pose.
+- **The DEV voxel draw counter** (Core `NativeVoxelDraws`, Runtime `NativeVoxelDrawCount`, `NativeVoxelOverlay`): the last whole frame's voxel
+  draws by kind (pilot bodies, voxel weapons, voxel hats, voxel enemies, kill cubes, box-sized gibs, wound cubes, revive cells, breach cubes, gore
+  cubes, status markers, primitive pieces and the Siren (allowed), voxel scene props, frame sculpts (information)). The bank counts each flushed
+  list by its part's model id; the breach, gore and status cubes count at their draws. Shown by the DEV panel's Camera tab ("Voxel draws
+  (counter)"), `--ca-voxel-counter` (Editor and Development builds) and BoZo `vcount=1`; off by default. `PERF_SAMPLE`/`PERF_HITCH` now name the
+  body style (Player model, the voxel switches, the counter's unexpected draws), and `tools/perf_baseline.py` turns Player.log into table rows.
+- **P9, no voxel weapons on the pads** (`NativeDeployCast`, `NativeRooftopPresentation`, `NativeVisualWeaponPresentation`,
+  `NativeWeaponSkinPresentation`, `NativeVisualPortraitPresentation`): the pads and the rooftop queue their held models through the seat's skins
+  (no unpicked Prototype id); the pack bank's weapons (daggers, shield, bow, staffs) draw on the portraits', the rooftop's and the pads' model
+  bodies as in the arena (`PackHolder`; the entrances keep the game's model until V5); a DEV class holds and is armed as its base class.
+- **Docs:** `docs/VOXEL-STYLE.md` (new: the rule, the style, the guards, how the owner runs the player and low-end baselines); two dated lines in
+  `AGENTS.md`; pointers in `docs/DEVELOPMENT.md`; `docs/DESIGN_INTENT.md` "Identity"; the stale header of `NativeVisualBodyPresentation.cs`.
+  The overhaul amendments (plan 4.2) were already appended with the plan.
+- **Re-pinned on purpose:** DeployModelChecks:250 (the cast's held ids), VisualRigChecks:1755 (the rooftop crowd's off hand), PackWeaponChecks:171
+  (the pack's weapons beyond the arena), WeaponSkinChecks:244 and 257 (the DEV alias; the rooftop and the pads through the skins), RooftopChecks
+  (new pins), the ratchet's rooftop draw pin 3 to 0, and `NativeHordeKindPresentation` 19 to 18 after shared's zombie follow-ups. VisualRigChecks:1809 (the preference line) follows shared's `musicReaction` default: it has
+  been red on shared since `b13940ce` (for Astra: shared's full CoreTests failed there).
+- **Checks:** the full CoreTests the relgen5 way (an LF worktree, the expedition path patch, the stage banks) at `14c8c347`: 1043 groups
+  PASS, exit 0 (the three `--voxel` lines among them). `python tools/check_unity_compile.py`: PASS (all four assemblies). `git diff --check`: clean. `--voxel`: the three PASS lines.
+- **Captures:** queued behind the shared Editor lock when this entry was written; see the next entry or the report.
+- **Baselines:** the Editor runs are queued with the captures; the player and low-end runs are the owner's (`docs/VOXEL-STYLE.md`).
+- **Not run:** the Development Mono player and the low-end runs (see "Baselines"); a Windows host/guest run; the DEV panel's toggle clicked by hand
+  (the captures turn the counter on as the switch does).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking: the change is which model a menu body holds, a DEV
+  counter that is off by default, and checks. The arena's pilots draw exactly as before (their seats never carry a DEV spec).
+- **Voxel dependency:** none added. The off-hand dagger frame reuses the cast's held matrix (no new rig read); the counter's classifier names voxel
+  ids by design (it is the voxel style's tooling, in no ratchet family); the hitch report reads the voxel switches only to label its samples.
+- **Risks:** the pack weapons now draw on portraits (the Locker, the lobby), where staffs seat the left fist on their shaft as in the arena: a
+  visible change on those cards for the staffs, shield, bow and daggers. Five suites ran at once on this PC, so timings in this entry are loaded.
+- **Next:** the integrating session reviews the captures, merges and releases with release 1. Then V1 (the body predicate and the joint-frame
+  resolver) and V2 (the costume, after Astra approves VA1's key). For the owner: the player and low-end baselines (`docs/VOXEL-STYLE.md`).
+
 ## 2026-11-18 — Astra: Meridian size B walk candidates
 
 Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientation layouts in the Developer walk. All 20 primary streets and 20 roof circuits passed sampled support and clearance. See [the five layouts, route distances and timing table](MERIDIAN-B-WALK.md). The same-machine A0 and five-candidate Unity benchmark is available from the Editor. Native results, contract freeze, party ticket integration and art handoff remain pending.

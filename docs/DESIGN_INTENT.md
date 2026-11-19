@@ -6,7 +6,11 @@ unfinished requests during migration. Inspect code and test before assigning
 working/partial/missing status. Current explicit owner instructions take priority.
 
 ## Identity
-A 3D voxel arena game inspired by round-based modifier drafting. Players select
+A 3D arena game inspired by round-based modifier drafting, built on detailed models
+rather than its original voxel look (owner 2026-11-18: "All the new things ive been
+making, I want to remove the voxel dependency and move forward with a more detailed
+framing"). Voxel stays as a costume, the Prototype weapons and a kept style for a
+possible map or mode (docs/VOXEL-STYLE.md). Players select
 computer Chips rather than cards. Ranged, Magic, and Melee are the requested core
 class categories with weapon/element specialties. Preserve existing multiplayer
 and bot support and the current match flow.

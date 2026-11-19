@@ -96,3 +96,5 @@ specified otherwise. Completed task PRs may be merged into the shared developmen
 branch and synced to the existing builder branch without per-merge confirmation.
 Preserve verification requirements and other agents' work. Existing live-release,
 production, and infrastructure boundaries still apply.
+Owner direction (2026-11-18): "remove voxel entirely BUT keep its data". New work is authored on the model, deletes no
+voxel data or code, and names any voxel read it keeps; the ratchet enforces it. Rules: docs/VOXEL-STYLE.md.
