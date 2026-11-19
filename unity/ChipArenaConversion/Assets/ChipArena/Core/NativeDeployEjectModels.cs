@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<4;k++)
             {
                 float a=k*Pi/2;var at=V((r-.03f)*(float)Math.Cos(a),-length/2,(r-.03f)*(float)Math.Sin(a));
-                s.Box(Steel,at,V(.03f,length,.05f),.006f,0,-a,0);
+                s.Box(SteelDark,at,V(.03f,length,.05f),.006f,0,-a,0);
             }
             // the outer skin (seen under the belly for a deep pod's tube; a sleeve, open at both ends, so the tube shot looks down
             // into it) and its rim under the floor

@@ -237,9 +237,9 @@ namespace ChipArena.UnityConversion
                         if(s==NativeDeployPresentation.Shot.Seat)
                         {
                             var root=NativeDeployEject.PodRoot(mine,t,cut);Matrix4x4.Invert(root,out var inv);var e=Vector3.Transform(v.Eye,inv);
-                            // (re-pinned 2026-11-18, W3 review: from just outside the doorway, 1.1 m from the pilot, a 46° lens framing the helmet,
+                            // (re-pinned 2026-11-18, W3 review: from just outside the doorway, 1.1 m from the pilot, a 52° lens framing the helmet,
                             // the bar and the hands, not a cropped torso from inside the 1.25 m cabin)
-                            Check(e.Y>NativeDeployEject.CabinFloor+.5f&&e.Y<NativeDeployEject.PodHeight-.5f&&Math.Abs(e.X)<.2f&&e.Z>NativePodModels.Hinge.Z+.2f&&e.Z<1.6f&&v.Fov<=50,"the seat shot looks in from just outside my pod's doorway (pad "+mine+" "+e+")");
+                            Check(e.Y>NativeDeployEject.CabinFloor+.5f&&e.Y<NativeDeployEject.PodHeight-.5f&&Math.Abs(e.X)<.2f&&e.Z>NativePodModels.Hinge.Z+.2f&&e.Z<1.6f&&v.Fov<=52,"the seat shot looks in from just outside my pod's doorway (pad "+mine+" "+e+")");
                             if(t>NativeDeployEject.LandAt(mine)+.45f)SeatFrames(v,mine,t,cut);
                         }
                         if(s==NativeDeployPresentation.Shot.Release)
@@ -341,7 +341,7 @@ namespace ChipArena.UnityConversion
         {
             NativeDeployEject.Sample(topPilot,topPose,"sword",NativeLobbyPoses.Weapon,mine,t,3,true,out _,out _);var pod=NativeDeployEject.PodRoot(mine,t,cut);
             Vector3 P(Vector3 w)=>Vector3.Transform(new Vector3(-w.X,NativeDeployEject.CabinFloor+NativePortraitRules.GroupY+w.Y,w.Z),pod);var wp=topPose.WorldPosition;
-            var helmet=P(wp[CapturedRig.Head]+new Vector3(0,.2f,0));var chest=P(wp[CapturedRig.Chest]);var lh=P(wp[CapturedRig.LHand]);var rh=P(wp[CapturedRig.RHand]);
+            var helmet=P(wp[CapturedRig.Head]+new Vector3(0,.34f,0));var chest=P(wp[CapturedRig.Chest]);var lh=P(wp[CapturedRig.LHand]);var rh=P(wp[CapturedRig.RHand]);
             var bar=Vector3.Transform(NativeDeployEjectModels.HarnessPivot+NativeDeployEjectModels.Bar,pod);
             Check(InFrame(v,helmet)&&InFrame(v,chest)&&InFrame(v,bar)&&InFrame(v,lh)&&InFrame(v,rh),"the seat shot frames the helmet, the chest, the bar and both hands (pad "+mine+" at "+t+")");
         }

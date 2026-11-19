@@ -89,6 +89,8 @@ namespace ChipArena.UnityConversion
                 var s=cast.States[i];s.Offset=NVector.Zero;s.Hidden=false;
                 // the lobby pose, and from Deploy the eject's (the crouch, the fall, the seat): one game-rig track for every body
                 NativeDeployEject.Sample(cast.Eject[i]??=new NativeDeployEject.Pilot(),s.Pose,spec,cast.Pose[i],i,stage.EjectSince,time,reduced,out s.Weapon,out s.Offhand);
+                // my tube shot looks straight down on my pilot: its held weapon is away from the cut on (it would point at the lens)
+                if(stage.Shot==NativeDeployPresentation.Shot.Tube&&i==stage.Mine){s.Weapon.Visible=false;s.Offhand.Visible=false;}
                 var f=stage.PilotFeet[i];var face=stage.PilotFacing[i];
                 var root=Matrix4x4.TRS(new Vector3(f.X,f.Y,f.Z),Quaternion.LookRotation(new Vector3(face.X,0,face.Z)),Vector3.one);var group=root*Matrix4x4.Translate(new Vector3(0,NativePortraitRules.GroupY,0));
                 var bones=cast.Bones[i];var pp=s.Pose;for(int b=0;b<bones.Length;b++)bones[b]=group*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(pp.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(pp.WorldRotation[b])),Vector3.one);
@@ -108,8 +110,8 @@ namespace ChipArena.UnityConversion
             VisualBodiesShown();
         }
         private int deployPodNow;private float deployPodShade=1;private Func<int,Color> deployPodTint;
-        // My pod seen from inside (the seat shot): its hull's paint and trim in the cabin's shadow, so a white pod's walls read as a
-        // dark cabin under its red lamp (the hull's inner faces are its paint).
+        // My pod in the seat shot (the camera just outside its doorway): its hull's paint and trim in the cabin's shadow, and its
+        // light strips (the doorway's, at the frame's edges) dimmed, so the lined cabin and the pilot carry the shot.
         private const float CabinShade=.28f;
         // A docked pod (Core NativePodModels from the source-model bank, as Runtime/NativePodPresentation.cs draws it in the hub) in its
         // pilot's paint, trim and light; its cabin lamp red as it waits to drop.
@@ -134,7 +136,7 @@ namespace ChipArena.UnityConversion
             {
                 case NativePodModels.Paint:return PodShade(c.PodPaint[i],deployPodShade);
                 case NativePodModels.Trim:return PodShade(c.PodTrim[i],deployPodShade);
-                case NativePodModels.Lights:{var l=c.PodLight[i]*1.2f;l.a=1;return l;}
+                case NativePodModels.Lights:{var l=c.PodLight[i]*(deployPodShade<1?.35f:1.2f);l.a=1;return l;}
                 case NativePodModels.Cabin:return new Color(2.2f,.25f,.2f,1)*.5f;
                 case NativePodModels.Retro:return new Color(1.6f,2.6f,3.4f,1)*.05f;
                 default:return Color.white;

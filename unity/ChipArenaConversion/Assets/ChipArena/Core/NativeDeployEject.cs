@@ -58,9 +58,9 @@ namespace ChipArena.UnityConversion
         /// my pilot's drop it follows (so my pilot falls away below it). Camera shake off: the eye holds where the shot starts.</summary>
         public const float TubeEye=1.64f,TubeFollow=.74f;
         /// <summary>The seat shot (my pod's frame over its cabin floor): the eye just outside my pod's doorway (its door out of the
-        /// way for the shot), a little over my visor, the point it looks at between my visor and chest, and a 46° lens that frames
-        /// the helmet to the hands on the harness bar inside the doorway's posts.</summary>
-        public const float SeatEyeY=1.16f,SeatEyeZ=1.12f,SeatLookY=1.0f,SeatFov=46f;
+        /// way for the shot) at my visor's height, the point it looks at between my visor and chest, and a 52° lens that frames
+        /// the whole helmet to the hands on the harness bar between the doorway's posts.</summary>
+        public const float SeatEyeY=1.18f,SeatEyeZ=1.12f,SeatLookY=1.04f,SeatFov=52f;
         /// <summary>Reduced effects: a still wide shot under the belly after my pilot has dropped from the room (no tube, no cabin
         /// close-up, no plunge): WideOut out from my pod along the pad arc's outward line, WideDrop under its middle, looking back
         /// in and a little down (the docked pods across the top of the frame, the city below), held still while they drop away.</summary>
