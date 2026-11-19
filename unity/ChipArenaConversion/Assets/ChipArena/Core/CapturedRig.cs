@@ -114,11 +114,13 @@ namespace ChipArena.UnityConversion
         }
         private static Vector3 Row(float[] f,int i) => V(f[i],f[i+1],f[i+2]);
         private static Quaternion Rotation(float[] f,int i) { Vector3 v=Row(f,i); float a=v.Length(); return a<1e-8f?Quaternion.Identity:Rot(v/a,a); }
+        // The joints a row's rotation channels drive, in order (one array: Sample runs per frame for the deploy cast and the rooftop).
+        private static readonly int[] SampledBones={Spine,Chest,Neck,Head,LClav,RClav,LHip,RHip,LFoot,RFoot};
         public static void Sample(float[] f,int set,Pose p)
         {
             p.Reset(); p.Position[Body]=V(0,f[2]-.025f,0); // Horizontal capture travel stripped: gameplay owns root motion.
             p.Rotation[Pelvis]=Rot(Y,f[0])*Rotation(f,4);
-            int[] bones={Spine,Chest,Neck,Head,LClav,RClav,LHip,RHip,LFoot,RFoot};
+            var bones=SampledBones;
             for(int i=0;i<bones.Length;i++) p.Rotation[bones[i]]=Rotation(f,7+i*3);
             p.Rotation[LKnee]=Rot(X,Math.Max(0,f[37])); p.Rotation[RKnee]=Rot(X,Math.Max(0,f[38]));
             Vector3 blade=Unit(Row(f,42),Z),edge=Row(f,45); edge=Unit(edge-blade*Vector3.Dot(blade,edge),X);

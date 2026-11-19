@@ -226,8 +226,9 @@ namespace ChipArena.UnityConversion
             return looks;
         }
         /// <summary>The map's look: the entry its `look` names (UnityMaps maps carry one), else its id's entry, else today's look worked
-        /// out from the map (NativeMapLooks.Fallback). The old maps name none, so they resolve by id as before.</summary>
-        public static MapLook Look(ContentMap map)=>(string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??NativeMapLooks.Resolve(LookSet(),map.id,map.theme,map.sky,map.accent);
+        /// out from the map (NativeMapLooks.Fallback). The old maps name none, so they resolve by id as before. The generated
+        /// Expedition map draws the town's look with practical lights of its own (Core NativeExpeditionCityLights.ForMap).</summary>
+        public static MapLook Look(ContentMap map)=>NativeExpeditionCityLights.ForMap((string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??NativeMapLooks.Resolve(LookSet(),map.id,map.theme,map.sky,map.accent),map.id);
         // ---- the anime map style (Core NativeMapStyle, Resources/NativeToon.cginc; docs/MAP-STYLE-ANIME.md) ----
         /// <summary>The legacy switch: `--ca-map-style legacy` on the command line draws every map in its legacy look.</summary>
         public static readonly bool LegacyStyle=NativeMapStyle.LegacyArgument(Environment.GetCommandLineArgs());

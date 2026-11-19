@@ -112,7 +112,7 @@ namespace ChipArena.UnityConversion
             townArea=run?.Area??townAuthoredArea;townHub=run!=null?run.Hub:townAuthoredHub;NativeExpeditionHubLive.Sanctuary=townArea?.sanctuary??Array.Empty<ExpeditionVolume>();
             if(townGenerated&&townGenFires==null&&map.bounds!=null){TownBackdropBatches(NativeExpeditionCityScenery.Around(out townGenFires,map.bounds.minX,map.bounds.maxX,map.bounds.minZ,map.bounds.maxZ),townGenBack);}
             townMap=map;var blocks=map.blocks??Array.Empty<ContentBlock>();townKit=NativeExpeditionCityKit.Build(blocks,townArea,townHub,map.bounds,true,run?.Blueprint);var look=NativeLighting.Look(map);
-            townScene=NativeCityFxScene.Build(blocks,townKit,townGenerated?townGenFires??Array.Empty<NativeCityBackdropFire>():townFires,look,townHub);townLights=NativeExpeditionCityLights.Build(townKit,look);HubWardSegments(map);
+            townScene=NativeCityFxScene.Build(blocks,townKit,townGenerated?townGenFires??Array.Empty<NativeCityBackdropFire>():townFires,look,townHub,map.bounds);townScene.KeepNearest=townGenerated;townLights=NativeExpeditionCityLights.Build(townKit,look);HubWardSegments(map);
             townParents=new NativePropBody[blocks.Length];townOut=new bool[blocks.Length];townNudge=new Vector3[blocks.Length];townIndex.Clear();for(int i=0;i<blocks.Length;i++)if(blocks[i]?.id!=null)townIndex[blocks[i].id]=i;
             townSeeds=new float[townKit.Parts.Length];for(int i=0;i<townSeeds.Length;i++)townSeeds[i]=NativeBlockLooks.Seed(blocks[townKit.Parts[i].Parent].id+"#"+i);
             townOrder=new int[townKit.Parts.Length];int w=0;for(int i=0;i<townOrder.Length;i++)if(TownNeedsWrap(i))townOrder[w++]=i;townWrapParts=w;for(int i=0;i<townOrder.Length;i++)if(!TownNeedsWrap(i))townOrder[w++]=i;

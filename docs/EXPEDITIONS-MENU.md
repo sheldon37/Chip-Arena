@@ -53,7 +53,8 @@ content, toward the right for Boss Battle and the left for the run (Reduced effe
      - The cards rise in one after another. A portrait keeps one size while it shows (the renderer keeps one texture per
        pilot), so the squad fades in rather than growing out of the strip.
    - **The side panel** takes the mode panel's place at the squad's full height: MODE and its tiles, then THE RUN, tagged
-     ROLLED WHEN YOU DEPLOY. Below that: PVE · CO-OP RUN, the title EXPEDITION, the tag line, the party, length and NEW
+     ROLLED WHEN YOU DEPLOY. Below that: PVE · CO-OP RUN, with TILESET: CITY · MERIDIAN on its right in the tileset's accent
+     (Core `NativeTilesets.MenuLine`, the tileset the station's ATLAS board lands on), the title EXPEDITION, the tag line, the party, length and NEW
      CITY EVERY RUN, and HOW A RUN GOES: 01 Deployment Station, 02 The City, 03 Three Areas, 04 The Last Fight. A light runs
      down the steps' spine, resting at each step. A short canvas uses the tight briefing (`BriefFor`). The LOADOUT row
      reads NO BOTS IN A RUN.

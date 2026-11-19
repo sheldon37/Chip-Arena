@@ -28,14 +28,21 @@ namespace ChipArena.UnityConversion
         /// <summary>The Raging Demon victim screen covers the arena this frame (no world-anchored HUD).</summary>
         public bool Private{get;private set;}
         public bool ZoneArrival{get;private set;}
-        private Camera arrivalCamera;private float arrivalFov;
-        public void BeginFrame(){if(arrivalCamera!=null){arrivalCamera.fieldOfView=arrivalFov;arrivalCamera=null;}ZoneArrival=Directing=Private=false;bars=0;if(screen!=null)screen.enabled=false;}
+        /// <summary>The drop pods' directed drop owns the arena camera this frame (a pod run's countdown; the countdown stays on screen).</summary>
+        public bool PodDrop{get;private set;}
+        private Camera arrivalCamera;private float arrivalFov;private float handOff;private ArenaPresentation handFrom;
+        public void BeginFrame(){if(arrivalCamera!=null){arrivalCamera.fieldOfView=arrivalFov;arrivalCamera=null;}ZoneArrival=Directing=Private=PodDrop=false;handOff=0;handFrom=null;bars=0;if(screen!=null)screen.enabled=false;}
         /// <summary>Called first in UpdateCamera; true when the Last Laugh cutscene placed the arena camera.</summary>
         public bool Direct(NativeArena arena,ArenaPresentation presentation,Camera view,bool phaseOk)
         {
             int frame=Time.frameCount;bool continuous=lastFrame==frame-1;lastFrame=frame;
             if(arena==null||presentation==null||view==null){siren.Stop();return false;}
             if(!continuous||arena.Generation!=generation){generation=arena.Generation;siren.Stop();}
+            // The drop pods (a generated run's hub over its countdown, NativePodPresentation.cs PodDropDirect): my pod's directed ride
+            // and crash with its own ride and shake (honouring Camera shake and Reduced effects); its last moments before GO are
+            // blended over the game's own camera instead (PodHandOff, after UpdateCamera's pose), so control comes back with no snap.
+            if(presentation.PodDropDirect(arena,view,out var podHand)){Directing=PodDrop=true;siren.Stop();return true;}
+            handOff=podHand;handFrom=presentation;
             if((phaseOk||NativeFallenBossPreview.On)&&presentation.BackroomsBossPreviewShot(out var previewEye,out var previewLook,out float previewFov)){arrivalCamera=view;arrivalFov=view.fieldOfView;view.fieldOfView=previewFov;view.transform.SetPositionAndRotation(previewEye,Quaternion.LookRotation(previewLook-previewEye));presentation.FirstPerson=false;presentation.AimHeld=false;ZoneArrival=Directing=true;siren.Stop();return true;}
             if(phaseOk&&ZoneBossArrival(arena,presentation,view)){siren.Stop();return true;}
             // arena.ViewPilot without its per-call lambda: the local pilot, or the one it controls (renderer.ts viewId).
@@ -112,6 +119,10 @@ namespace ChipArena.UnityConversion
             view.transform.SetPositionAndRotation(position+new Vector3(-dx,dy,0),Quaternion.LookRotation(forward,Vector3.up)*Quaternion.AngleAxis(-roll*Mathf.Rad2Deg,Vector3.forward));
             view.fieldOfView=shot.Fov;presentation.FirstPerson=false;presentation.AimHeld=false;bars=siren.Letterbox(time);Directing=true;return true;
         }
+        /// <summary>The directed drop's share left in this frame's hand-off (0: none).</summary>
+        public float PodHanding=>handOff;
+        /// <summary>UpdateCamera's last step: the directed drop's hand-off blended over the game's own pose this frame (none when it is not handing off).</summary>
+        public void PodHandOff(Camera view){if(handOff>0&&handFrom!=null)handFrom.PodHandOff(view,handOff);}
         /// <summary>The cutscene's letterbox (two black bars sliding in at the catch and out at the end), on the GUI canvas.</summary>
         public void Letterbox(float width,float height)
         {

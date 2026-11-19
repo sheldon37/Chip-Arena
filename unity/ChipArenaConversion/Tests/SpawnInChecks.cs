@@ -363,10 +363,23 @@ namespace ChipArena.UnityConversion
             Check(view.Contains("Resources.Load<Shader>(\"NativeGlow\")")&&File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeGlow.shader")),"the beam draws with NativeGlow");
             // The constants the drop is derived from are the authority's.
             Check(sim.Contains("Physics.gravity=new Vector3(0,-23,0)")&&sim.Contains("a.Position=Vec(p.Body.position-Vector3.up*.865f)"),"the authority's gravity and the presented feet offset");
+            // (W3 review) A pod run's hub waiting in Lobby draws its pilots hidden on their slots, host and replica alike: SpawnEvaluate hands
+            // them PodLobbyHidden (a pod view marked Lobby, its build front under its feet) before the pod path, clears the mark for every
+            // other path, and SpawnPlace shows a Lobby view before any pod path (none has a pod record in Lobby to place it by: a path that
+            // needs one would hide the view and so draw the pilot whole).
+            {
+                var ride=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativePodRidePresentation.cs"));var place=Body(view,"private Vector3 SpawnPlace(");
+                int lobby=eval.IndexOf("if(m.Phase==NativePhase.Lobby&&PodRun(arena))return PodLobbyHidden(pilot);",StringComparison.Ordinal),clear=eval.IndexOf("if(spawnViews.TryGetValue(id,out var was))was.Lobby=false;",StringComparison.Ordinal),pod=eval.IndexOf("PodSpawn(",StringComparison.Ordinal);
+                Check(lobby>0&&clear>lobby&&pod>clear,"a pod run's Lobby hides its pilots before the pod path, and the mark clears for every other");
+                int shown=place.IndexOf("if(v.Lobby){v.Shown=true;v.Raise=0;return position;}",StringComparison.Ordinal),feet=place.IndexOf("PodFeet(",StringComparison.Ordinal),rest=place.IndexOf("v.Shown=true;v.Raise=raise;",StringComparison.Ordinal);
+                Check(shown>0&&(feet<0||shown<feet)&&shown<rest,"SpawnPlace shows a Lobby view hidden before any pod path places it");
+                var hidden=Body(ride,"private SpawnView PodLobbyHidden(");Check(hidden.Contains("v.Pod=true;v.Lobby=true;")&&hidden.Contains("Front=-1e4f"),"the Lobby view is a pod view, built from below its feet: drawn hidden, no beam");
+            }
             // Presentation only: the Core module and the hooks are referenced by presentation files alone.
             var names=new[]{"NativeSpawnIn","SpawnInFrame","SpawnPlace(","SpawnContact(","SpawnCamera(","SpawnHidesHud(","SpawnInScreen("};
-            // (the Expedition drop pods ride its clock in a generated run's hub: Core/NativePodDrop.cs, Runtime/NativePodPresentation.cs)
-            var allowed=new HashSet<string>{"Core/NativeSpawnIn.cs","Runtime/NativeSpawnInPresentation.cs","Runtime/ArenaPresentation.cs","Runtime/NativeSourcePresentation.cs","Runtime/NativeViewPresentation.cs","Runtime/NativeCombatHud.cs","Runtime/ConversionGame.cs","Core/NativePodDrop.cs","Runtime/NativePodPresentation.cs"};
+            // (the Expedition drop pods ride its clock in a generated run's hub: Core/NativePodDrop.cs, Runtime/NativePodPresentation.cs;
+            // re-pinned 2026-11-18, W3: the pod ride and a pod run's Lobby hide, Runtime/NativePodRidePresentation.cs, hold a pilot hidden as its pod does)
+            var allowed=new HashSet<string>{"Core/NativeSpawnIn.cs","Runtime/NativeSpawnInPresentation.cs","Runtime/ArenaPresentation.cs","Runtime/NativeSourcePresentation.cs","Runtime/NativeViewPresentation.cs","Runtime/NativeCombatHud.cs","Runtime/ConversionGame.cs","Core/NativePodDrop.cs","Runtime/NativePodPresentation.cs","Runtime/NativePodRidePresentation.cs"};
             foreach(var file in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories))
             {
                 string rel=Path.GetRelativePath(Path.Combine(root,"Assets/ChipArena"),file).Replace('\\','/');string text=File.ReadAllText(file);

@@ -19,6 +19,8 @@ namespace ChipArena.UnityConversion
         {
             if(Viewer)return;
             if(!a.Alive){stepTrackers.Remove(a.Id);return;}
+            // A pod holds its pilot (the drop, and GO while its capsule settles): no steps, and a fresh tracker after, so no landing.
+            if(PodHoldsSteps(a.Id)){stepTrackers.Remove(a.Id);return;}
             int contacts=posed&&rigs.TryGetValue(a.Id,out var rig)?rig.FootContacts:-1;
             // A visual body running on the pack's clips steps when its drawn feet plant (NativeVisualStridePresentation.cs).
             if(contacts>=0&&VisualStrideContacts(a.Id,out int drawn))contacts=drawn;

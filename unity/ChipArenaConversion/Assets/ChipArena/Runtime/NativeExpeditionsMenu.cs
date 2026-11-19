@@ -423,7 +423,9 @@ namespace ChipArena.UnityConversion
         {
             var x=K.Run;var b=X.BriefFor(ExpBox(d),compact);Color acc=U.Hex(x.Accent),lifted=U.Mix(acc,Color.white,.4f);float y=d.y,lh=b.Tight?18:22;
             var lr=new Rect(d.x,y,d.width,lh+8);float lx=ExpLabel(lr,"THE RUN",a),tx=ExpLabelTag(lr,lr.xMax,K.Generated,C.Violet(),a);U.Fill(new Rect(lx,y+lh/2,Mathf.Max(0,tx-12-lx),H.Px),C.Edge(.7f*a));y+=lh;
-            U.Text(new Rect(d.x,y,d.width,16),x.Kicker,b.Tight?9.5f:10.5f,U.A(lifted,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);y+=b.Tight?14:18;
+            U.Text(new Rect(d.x,y,d.width,16),x.Kicker,b.Tight?9.5f:10.5f,U.A(lifted,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);
+            // the tileset the station's ATLAS board lands on (Core NativeTilesets: City alone for now)
+            U.Text(new Rect(d.x,y,d.width,16),NativeTilesets.MenuLine,b.Tight?9.5f:10.5f,U.Hex(NativeTilesets.Selected(null).Accent,a),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.18f);y+=b.Tight?14:18;
             U.Text(new Rect(d.x-1,y,d.width+2,b.Title*1.2f),x.Title,b.Title,C.Ink(a),TextAnchor.MiddleLeft,bold:true,tracking:.05f,glow:U.A(acc,.45f*a),shadow:C.Void(.6f*a));y+=b.Title*1.2f;
             var lines=U.Wrap(x.Tagline,b.Tagline,d.width,false,b.TaglineLines);foreach(var line in lines){U.Text(new Rect(d.x,y,d.width,b.Tagline*1.4f),line,b.Tagline,C.Muted(.95f*a),TextAnchor.MiddleLeft);y+=b.Tagline*1.4f;}
             y+=(b.TaglineLines-lines.Count)*b.Tagline*1.4f+(b.Tight?4:8);

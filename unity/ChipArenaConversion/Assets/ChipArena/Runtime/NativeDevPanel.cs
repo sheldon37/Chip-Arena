@@ -188,6 +188,7 @@ namespace ChipArena.UnityConversion
                 case "preview-zombie-gore":ZombieGorePreviewToggle();break;
                 case "preview-zombie-compare":if(presentation!=null){presentation.ZombieCompareOn=!presentation.ZombieCompareOn;presentation.ZombieCompareRestart();}break;
                 case "overlay-shots":devOverlayShots=!devOverlayShots;break;
+                case "overlay-voxel":VoxelCounterToggle();break;
                 case "log":devLogOn=!devLogOn;break;
                 case "graph":devGraphOn=!devGraphOn;break;
                 case "hide-hud":devHideHud=!devHideHud;devHideAt=Time.unscaledTime;break;
@@ -636,6 +637,8 @@ namespace ChipArena.UnityConversion
             if(arena.Replica)y=DevNote(x,y,w,"Melee volumes come from the host's swing state: none on a guest.",C.Muted());
             DevToggleAct(new Rect(x,y,w,32),"overlay-hazards",devOverlayHazards);y+=38;DevToggleAct(new Rect(x,y,w,32),"overlay-nav",devOverlayNav);y+=38;
             DevToggleAct(new Rect(x,y,w,32),"overlay-anchors",devOverlayAnchors);y+=38;DevToggleAct(new Rect(x,y,w,32),"overlay-shots",devOverlayShots);y+=38;
+            DevToggleAct(new Rect(x,y,w,32),"overlay-voxel",NativeVoxelDraws.Shown);y+=38;
+            y=DevNote(x,y,w,"Voxel draws: the voxel bodies, weapons, hats, enemies, cubes and pieces the last frame drew, by kind (docs/VOXEL-STYLE.md). With the bake, no costume and no Prototype picks, all but the allowed rows read 0.",C.Muted());
             y=DevHead(x,y,w,"EXPEDITION HUB (DEV PREVIEW)");DevToggleAct(new Rect(x,y,w,32),"preview-hub-gates",NativeExpeditionHubPreview.On);y+=38;
             y=DevNote(x,y,w,"On the town map: every sanctuary gate opens and closes on its own cycle, the ward shimmers and the holster tag shows inside. Presentation only: the gates have no collider or input until the director's gate state exists.",C.Muted());
             y=DevHead(x,y,w,"CENTRAL STATION (DEV PREVIEW)");DevToggleAct(new Rect(x,y,w,32),"preview-station",NativeStationPreview.On);y+=38;y=DevNote(x,y,w,"On the station map: the express warns and passes, the levers cut the rails, the flood conducts, the board changes, the cabinets spark, the steam main bursts and glass falls on a 96 s cycle. Presentation only: no damage, collider or network until Astra's station fields exist.",C.Muted());

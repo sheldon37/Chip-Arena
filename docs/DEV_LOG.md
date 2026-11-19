@@ -123,6 +123,190 @@ Branch `claude/chip-install-anim`, base shared `claude/sleepy-ritchie-g8ruhv` at
   - `tools/sound_queue.py` does not list `docs/audio/sound-requests-install.json`. Generating the 7 sounds is a paid step.
   - `ExpeditionEndingChecks` still needs `Path.GetFullPath` on Windows.
 
+## 2026-11-18/19 — Claude: voxel retirement V0, no new voxel: the ratchet, the kept voxel style's checks, the DEV voxel draw counter, no voxel weapons on the pads (owner report; presentation only)
+
+- **The owner (2026-11-18):** "I want to essentially remove voxel entirely BUT keep its data incase I use it for a map or game mode ... All the new
+  things ive been making, I want to remove the voxel dependency". Package V0 of `docs/VOXEL-RETIREMENT.md` (Stage 0, ships with release 1).
+  Branch `claude/voxel-v0-guard` from shared `ac69455e`, merged forward with shared `9056fc04`: `beff4461` the guards, `2f4b89a2` P9,
+  `e55eb5df` the baselines' harness, `8ee749b6` and `14c8c347` two test fixes, then the docs and this entry. Pushed, **not
+  merged, not released**. The rule and the guards: `docs/VOXEL-STYLE.md`.
+- **2026-11-19, the review (two lenses: the look and the owner's intent; safety and regressions) and the captures.** Commits `9c926e66`,
+  `460ad933`, `e4d4f6e7`, `b72f8302` and the docs on top of `fabf8f54`. Code: tests, a Runtime comment, and the DEV classes' lobby stance
+  (Core `NativeLobbyPoses`, `b72f8302`). What it found and did:
+  - **The integrator's re-pin path (new):** `--voxel-ratchet-repin` prints, for a merged head, every file over its pin with the table line to
+    paste (a `# Voxel dependency:` note slot on it), the line it replaces or "add", the tokens behind each raised family, the DEV_LOG lines, and
+    the files a merge took under their pins. It writes nothing. Its self-test proves the printed lines parse and turn a made-up tree green.
+    Shown on a local, unpushed trial merge with `origin/claude/chip-install-anim` (`359a0f6a`): it prints exactly the three lines (NativeDraftInstall
+    author 0 -> 6, NativeDraftStage 6 -> 8, NativeDraftInstallPresentation draw 0 -> 2); with them pasted, `--voxel` passes and the command says
+    "nothing to paste". The whole release 1, merged locally in order, adds one more: `Runtime/NativeExpeditionLoadPreview.cs` gate 0 -> 1 (A0's load
+    harness sets `view.ClassicBodies=false`, a token that forces the model, not a voxel read). `docs/VOXEL-STYLE.md` "Re-pinning a merged head".
+  - **Stale pin:** W3's eject is at 17 rig-authoring uses on `8ca81329` (13 at `048adc30`); the in-flight pin follows it.
+  - **Blind spot:** the ratchet counted only the top of Core and Runtime; it now counts subfolders too (none today).
+  - **"Off costs nothing" was only pinned at four lines:** VoxelDrawChecks now holds every `NativeVoxelDraws.Add` and `VoxelCount` call in Core
+    and Runtime behind a test of `On` on its own line, and requires exactly the four known sites.
+  - **DEV gating:** the DEV panel's toggle needs a verified developer in a match. `--ca-voxel-counter` needs a Development build, and the test
+    channel's player is one, so any player can show it, as with the other `--ca-` preview switches; it only shows counts. Left as is; the doc says so.
+  - **The DEV Greatsword's lobby stance (found by the captures, fixed in `b72f8302`):** with P9 the Locker's DEV Greatsword holds the model
+    greatsword, but in the default stance's grip, its blade pointing at the camera (it held the voxel one sideways before). A DEV class has no
+    lobby stance of its own, so `NativeLobbyPoses.Sample` now stands it as its base class; LobbyPoseChecks holds every DEV class to its base in
+    every lobby pose (the check fails without the change). Captured in a second, 3-minute hold.
+  - **Still voxel on a menu, not V0's:** in the Locker's Preview Intro, the DEV Greatsword's own entrance drew the voxel pilot and the voxel
+    greatsword on the bake, before and after alike. The cause is not traced (the entrance should play on the model, NativeDevIntros). For the
+    integrator and the plan's entrances package (V5): a capture of a released head would say whether it is new.
+  - **No rule, wire or save change; nothing voxel deleted:** no file deleted or renamed; the code touches presentation files, one DEV action of
+    the Presentation kind and `PERF_SAMPLE`/`PERF_HITCH`'s JSON (Player.log and the clipboard's connection report only). None of the seven
+    in-flight branches touches the 23 kept data files, so the digests hold through release 1.
+  - **Other packages' files:** V0 merges with each of `claude/chip-install-anim`, A0, W4, W3, W2, W0 and `claude/voxel-costume` with only
+    DEV_LOG/PROJECT_STATE conflicts. Their code conflicts (A0 and W4: `NativeExpeditionLoadFixture.cs`, `Tests/Program.cs`; the costume:
+    `TransitionLoadingChecks.cs`) are with shared, not with V0. Merged last on the release-1 stack, V0 conflicts only in the docs.
+  - **Left, with reasons:** the pads cache their held model's detail tier when a look changes, so a graphics change while at the station keeps the
+    old tier until the next look change (cosmetic; before P9 the cache held the Prototype id). The P9 checks are source pins, as the project's
+    are: they hold the lines, and the captures show the look. `NativePackWeaponPresentation.cs`'s header said the menus keep the game's model: fixed.
+  - **Captures (2026-11-19):** one hold, 11:17 to 11:29 (12 minutes; captures ran at the compiled tool's version, so none paid a recompile),
+    after the relaunched Editor sat at its "Recovering Scene Backups" dialog from 09:49 to 11:00 (a first try at 10:07 took the lock while it
+    could not compile and was stopped at 10:10: lock released, tool put back, checkout untouched). Then a 3-minute hold for the stance fix.
+    The Editor went back to `9319026b` each time, the 14 stage banks and the motion bank unchanged. With the counter on:
+    - **the Deployment Station's pads:** 2 voxel weapons before P9 (`beff4461`), **0 after** (`9c926e66`), no voxel pilot body: the shield and
+      the lightning and darkness staffs are the pack's models now (the other pads stand arms crossed in their pad poses);
+    - **the rooftop:** 4 voxel weapons before, 0 after; the seated DEV Greatsword's weapon on the lip is the Standard model, not the voxel one;
+    - **the Locker's portraits:** the daggers, shield, bow and staffs were already the pack's before P9; only the DEV Greatsword changes (above);
+    - **the voxel style still draws:** the same pads with voxel bodies; 8 pilots with voxel bodies read 98 voxel body parts, by choice;
+    - **the live run with model zombies:** 357 voxel enemy parts, the far crowd (V7).
+    - The expedition-city pair (DEV shamblers close) did not isolate anything (no shambler spawned and a bot ended the round): left out.
+    - Sheets: `F:/Chip Arena Development/scratch/voxel-v0/look/`; clips (8.4 s, real time, pads cropped for a phone):
+      `look/clips/pads-a_shield_before-after.mp4`, `look/clips/pads-b_staffs_before-after.mp4`. Captures: `cap/`; scripts `runAB.sh`, `runC.sh`,
+      `make_look2.sh`, `py/toolpatch*.py` (the tool's options, patched in place under the lock and put back after).
+  - **The Editor baseline:** in `docs/VOXEL-STYLE.md` "Measured". Every row is over its target in the Editor: 8 pilots in PvP on the model p95
+    19.8, 21.1 and 15.4 ms at High, Balanced and Low (voxel bodies 14.4, 13.9 and 12.1); the live run at High 18.1 ms with model zombies.
+    For the owner, per OVH:937, before any overhaul code merges.
+- **The voxel ratchet** (`Tests/VoxelRatchetChecks.cs`, `Tests/voxel-ratchet.txt`): per Core and Runtime file outside the voxel style, the plan's
+  five token families (voxel gates, voxel measures, rig reads, rig authoring, voxel-frame draws), pinned at shared `ac69455e`. The counts match the
+  plan's exactly (`ClassicBodies` 25, `VisualBodiesOn` 18, `CapturedRig.Boxes` 23, `rig.Bones[` 163 in 59 files, `new CapturedRig.Pose(` 44 in 29,
+  `.Rotation[CapturedRig.` 220, `WeaponShape.Cube` 228 in 25, ...). A count above its pin fails, a new file starts at zero, and the message names
+  the file, the family, the count, the model-native route and the line to paste if the dependency is kept on purpose. The voxel style's own files
+  (29: CapturedRig, CapturedAnimation, the voxel sculpts and skins, the horde kits and gore surface, the bisect and carve, NativePortraits, the
+  box scenery, the unused M1 kit, the generated rig tables) are counted, never failed. A made-up tree tests the rule itself.
+  - **In flight:** W3's eject (`Core/NativeDeployEject.cs`, 17 rig-authoring uses at `8ca81329`) is pinned and named (plan M12; V4 owns it).
+  - **Not pre-pinned, so its merge will fail the ratchet on purpose:** `claude/chip-install-anim` (`359a0f6a`) adds `Core/NativeDraftInstall.cs`
+    (6 rig-authoring uses), 2 more in `Core/NativeDraftStage.cs` (6 to 8) and 2 voxel-frame draws in `Runtime/NativeDraftInstallPresentation.cs`:
+    the draft's stage pose (plan M9), which V4 moves onto the model in Stage 2. The integrator runs `--voxel-ratchet-repin` on the merged head and
+    pastes its lines with their notes (above).
+- **The kept voxel style** (`Tests/VoxelStyleChecks.cs`, the plan's first half): the 23 kept data files and generated tables match pinned SHA-256
+  digests (CRLF read as LF); the 150 Electron models load as the bank loads them; 219 motion clips are whole and finite; 51 voxel sculpts build
+  within budget; the 34 rig clips pose.
+- **The DEV voxel draw counter** (Core `NativeVoxelDraws`, Runtime `NativeVoxelDrawCount`, `NativeVoxelOverlay`): the last whole frame's voxel
+  draws by kind (pilot bodies, voxel weapons, voxel hats, voxel enemies, kill cubes, box-sized gibs, wound cubes, revive cells, breach cubes, gore
+  cubes, status markers, primitive pieces and the Siren (allowed), voxel scene props, frame sculpts (information)). The bank counts each flushed
+  list by its part's model id; the breach, gore and status cubes count at their draws. Shown by the DEV panel's Camera tab ("Voxel draws
+  (counter)"), `--ca-voxel-counter` (Editor and Development builds) and BoZo `vcount=1`; off by default. `PERF_SAMPLE`/`PERF_HITCH` now name the
+  body style (Player model, the voxel switches, the counter's unexpected draws), and `tools/perf_baseline.py` turns Player.log into table rows.
+- **P9, no voxel weapons on the pads** (`NativeDeployCast`, `NativeRooftopPresentation`, `NativeVisualWeaponPresentation`,
+  `NativeWeaponSkinPresentation`, `NativeVisualPortraitPresentation`): the pads and the rooftop queue their held models through the seat's skins
+  (no unpicked Prototype id); the pack bank's weapons (daggers, shield, bow, staffs) draw on the portraits', the rooftop's and the pads' model
+  bodies as in the arena (`PackHolder`; the entrances keep the game's model until V5); a DEV class holds and is armed as its base class.
+- **Docs:** `docs/VOXEL-STYLE.md` (new: the rule, the style, the guards, how the owner runs the player and low-end baselines); two dated lines in
+  `AGENTS.md`; pointers in `docs/DEVELOPMENT.md`; `docs/DESIGN_INTENT.md` "Identity"; the stale header of `NativeVisualBodyPresentation.cs`.
+  The overhaul amendments (plan 4.2) were already appended with the plan.
+- **Re-pinned on purpose:** DeployModelChecks:250 (the cast's held ids), VisualRigChecks:1755 (the rooftop crowd's off hand), PackWeaponChecks:171
+  (the pack's weapons beyond the arena), WeaponSkinChecks:244 and 257 (the DEV alias; the rooftop and the pads through the skins), RooftopChecks
+  (new pins), the ratchet's rooftop draw pin 3 to 0, and `NativeHordeKindPresentation` 19 to 18 after shared's zombie follow-ups. VisualRigChecks:1809 (the preference line) follows shared's `musicReaction` default: it has
+  been red on shared since `b13940ce` (for Astra: shared's full CoreTests failed there).
+- **Checks:** the full CoreTests the relgen5 way (an LF worktree, the expedition path patch, the 14 stage banks) at `b72f8302` (2026-11-19, the
+  last code commit): 1044 groups PASS, **exit 0**; at `460ad933` and at `8ac1532c` likewise. `python tools/check_unity_compile.py` at `b72f8302`:
+  PASS, all four assemblies, exit 0. `git diff --check` against shared: clean. `--voxel` and `--voxel-ratchet-repin`: as above. The later
+  commit changes docs only.
+- **Not run:** the Development Mono player and the low-end runs (see "Baselines"; they use the owner's settings, session and machine); the
+  4-pilot, 88-zombie hub; a Windows host/guest run; the DEV panel's toggle clicked by hand (the captures turn the counter on as the switch does).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking: the change is which model a menu body holds, the
+  DEV classes' lobby stance (menus, the rooftop and the pads only), a DEV counter that is off by default, and checks. The arena's pilots draw
+  exactly as before (their seats never carry a DEV spec).
+- **Voxel dependency:** none added. The off-hand dagger frame reuses the cast's held matrix (no new rig read); the counter's classifier names voxel
+  ids by design (it is the voxel style's tooling, in no ratchet family); the hitch report reads the voxel switches only to label its samples.
+- **Risks:** the room lobby's and the results' pilot cards (model portraits) were not captured; the Locker's were, and showed the pack weapons
+  before P9 already. The Editor's frame times are over every target (above); the shipped player's decide. The release-1 merge must paste the
+  four re-pin lines (`--voxel-ratchet-repin`), or the full suite fails at the ratchet.
+- **Next:** the integrator reviews the sheets and clips, merges V0 last in release 1 (running `--voxel-ratchet-repin` on the merged head) and
+  releases. Then V1 and V2. For the owner: the Editor numbers are over the targets; the player and low-end baselines (`docs/VOXEL-STYLE.md`).
+  For the plan: the DEV Greatsword's Locker Preview Intro drew voxel (V5, cause not traced), and the far zombie crowd draws 357 voxel parts in
+  a live run (V7).
+
+## 2026-11-19 — Claude: Expedition W0's review: the ground's crawl, the low tier's fog cut, like-for-like captures, one budget table on A0's harness (owner report; presentation only)
+
+Branch `claude/exp-w0-groundwork`: W0's first entry below, plus the review round. Shared `9056fc04` is merged in. Two critics reviewed W0 and both said "fix first". Each finding is fixed or answered below.
+
+**Over target before any overhaul code (for the owner; the plan asks for these before any overhaul code merges):**
+- the city's triangles per view: High 2,177,224 at the worst of 120 views, against 2.0 M (8.9% over); Low 821,492, against 0.8 M (2.7% over);
+- the Low tier lights 8 practical slots, against 3;
+- the Editor's frame time with 1 pilot: p95 17-20 ms at High and Balanced with the hub's own 6-23 zombies, 14-20 ms at Low, against the build targets of 12, 10 and 8 ms at 4 pilots and 88 zombies;
+- Unity's own totals in the Editor: 1,400-2,400 batches at High and Balanced (target 1,500); 840-1,000 batches and 1.8-2.0 M triangles at Low (targets 800 and 0.8 M).
+- There is no headroom to share out, so CoreTests now holds the triangle rows at today's worst view (no growth) until the owner decides: accept the baselines, or cut. The skyline drawn with the rounded box saves about 540,000 triangles at High, but it changes the look.
+
+**The findings:**
+- **The crawl on the ground (high): fixed, and measured gone.**
+  - **Bisected in the Editor.** A local probe build (never pushed) made each W0 change switchable, with the hub's eye held still and the bot idle. With every change on, 13.5% of the hub's ground band changed by more than 6 levels between 1/30 s frames. With W0's fog grid off it was 1.4%. Switching off the practicals, the volume's pick or the kit's seed changed nothing. So the critic's guess (the kit lamps' wet glints in the freed slots) was not the cause.
+  - **Cause:** `Resources/NativeSirenFx.shader` read each piece's mode and flags from an interpolated texcoord. An authored premultiplied piece sends flags 2, which came back 1.9999998 on about half the pixels of a flat fog sheet at street level. `fmod` read that as additive, so the sheet vanished there, in a pattern that moved every frame. The sheets themselves were steady.
+  - **Fix (`3337d863`):** the shader rounds the mode and flags before decoding them, so every piece decodes as sent. It was a latent bug in every authored premultiplied effect drawn with that shader (the town's own fog sheets among them); W0's fog on the generated streets exposed it.
+  - **The critic's own measures, on the PNG frames.** The eye is held at (9, 1.8, -12), the hub clip is arena 6-9 s at 1/30 s, and only frame pairs with no overall brightness change count (the camera's frames; the Game view's in brackets).
+    - Ground pixels changing by more than 6 levels per frame: shared 1.5% (1.1%), the first pass 14.6% (8.4%), W0 now 1.3% (1.0%).
+    - More than 3 levels: shared 3.1% (2.4%), first pass 22.9%, now 1.9% (1.6%).
+    - The mean change per pixel: shared 0.30, first pass 2.42, now 0.17.
+  - **The ground's high-frequency energy at the six eyes** (the mean absolute Laplacian over the image's lower 40%, Game view, shared against W0): hub 3.15 / 3.07, hub from 9 m 2.49 / 2.46, east street 3.35 / 3.37, south road 4.35 / 4.32, final court 2.77 / 2.79, west road 3.53 / 3.48. On the first pass's stills the same measure was 27-46% higher at every eye (those stills also differ by the variety and the bot's fight). The Low tier's eyes match too.
+- **Like-for-like captures (high): remade.** Generated seed 4242 as a PvP match, its one bot idle, health held, the Game view at 1920x1080 (the look players see), every eye and clip on the arena clock. BEFORE is shared `15dab150`. AFTER is W0 with its kit variety held off by a capture switch, so the dressing matches shared and each fix shows alone. The variety has its own pair.
+  - **The light volume, in game:** W0 against W0 with its new pick switched off (the bake's first kit lights in build order, as before). The east street changes by 1.4 levels on average and the south road by 1.5 (the ground about +0.5 to +0.75 brighter), against 0.2-0.5 at the west road, the final court and the hub from 9 m up. That is the east and south now lit, as planned, but faint in today's dusk look; the stills show where with a x20 difference pane. The computed top-down is kept beside them.
+- **The fog clip (medium): remade from Game-view frames.** Variety is held off, so the slab shadows (a varied part's) are gone from it, with a still that shows them. The fog is faint in today's look, a few levels on the street, so the clip carries a x10 difference pane and says so in its title.
+- **Low's ground fog (medium): culled by distance (`b296eb07`).** On a reduced budget (the low tier, or reduced effects) the generated map's fog and its pockets keep the sheets nearest the eye, in a smaller disc of the same density. Before, the cap cut the lattice in scan order: at the sanctuary on roll 4242, Low drew 30 sheets north of the eye and 55 south; now 19 and 18. High keeps the full disc; the town keeps its cut (frozen). The pins: no Low eye on a 5 m grid reaches either cap, the sheets lie within the smaller disc, High is the full disc, and the sanctuary's Low fog lies all round the eye. Captured at Low too.
+- **Over-target baselines (medium): all reported,** at the top of this entry, in the budget table and in PROJECT_STATE, the Low tier's 8 slots against 3 included.
+- **The uneven light pick (low): measured, noted for W1 and W10, not changed.** Of the 64 picks on roll 1, the hub has 7, the final court 19, the east 13, the west 18 and the south 6.
+  - Weighting by range instead of range squared (tried in a scratch run) moves the south from 6 to 7 picks and its bounce from 0.0013 to 0.0014, so it is no fix.
+  - The cause is the kit: the south has 13 of the city's 122 sources, mostly round its hall, and its arm's own lamps reach only 5 m. The unbaked streets of the south arm are more than 5 m from any source.
+  - W1's street lamps, or W10's reserving picks by arm, are the fix. `GeneratedFrameChecks` now prints the picks by area.
+- **The clip text (low): sized for a phone** (`exp-w0/py/clip2.py`, a copy of `int/clip.py`; the integrator's own is untouched). At 1920 px the titles are 41 px and the labels 32 px, and long notes wrap.
+- **The text and number slips (low): fixed.** The practicals top-down's labels no longer overlap and stay inside the pane. The kit-build line has the shared head's numbers (18,704 parts, 8,677 low-tier, 618 casting, 191 light sources) and W0's (18,908, 8,684, 641, 182); the old 19,254 came from an intermediate run. The table says that run 1's before and after frame rows are different cities and cannot be compared.
+- **The hub reads colder and flatter in releases 1 and 2 (low), for the owner.** Without the town's practicals, the warm brazier pool and the lamp halos are gone from the plaza; clip 1's BEFORE pane shows the pool. The volume has nothing inside the fence but the ring of gate-post lamps. The camp's own brazier comes with W5 (M3). If a cold hub for two releases is not acceptable, W5's camp light could come earlier; that is the owner's call.
+- **Safety:**
+  - **No capture job is left behind.** The prior capture jobs (`run2.sh`, PID 97480; `run5.sh`, PID 133604) are gone: no bash, python or Unity process was running at the start of this pass (about 09:50), and no lock was held. This round's one hold (`exp-w0/run6.sh`, the like-for-like frame rows) waits for the owner's Editor, then the lock; its result is recorded here when it ends.
+  - **The light volume's key is no longer built every frame** (`9b645eeb`). `NativeAdvancedLighting.Candidates` takes a map's candidates once per map and run, an empty hand included. Before, a map whose presentation hands none (an advanced-lit PvP map after an expedition, the Ward instance) set the key stale every frame and rebuilt the string.
+  - **Pins on both runtime call sites, and more:** the fog scene built with the map's bounds and the nearest-sheets switch (`NativeExpeditionCityPresentation`), the crackle switch (`NativeExpeditionCityAudio`), the look's `ForMap` (`NativeLighting`), the skyline's bounds, and the candidates guard.
+  - **The triangle gates against section 6:** a no-growth gate at today's worst view (High 2,177,224, Low 821,492), with the gap to the target in the check's message. The other pins keep +15%, all far under their targets.
+  - **"Each map bakes its own lights", checked on the maps it touches.** Before W0, the hub's lamps stayed in every later bake of the session: townLights is never cleared, and the presentation lives for the whole session. A managed measure (scratch) baked each advanced-lit map with the hub's first 56 candidates added, as before W0, against its look's own lights only. The hub's lamps added to each map's mean GI at 1 m:
+    - Club +109%, Ironworks instance +74%, Central Station instance +33%, Polar +23%, Sanctum +20%, Harbor +18%, Rig +17%;
+    - Causeway +16%, Cyber City +16%, Brickfall +13%, Factory +11%, Emporium +8%, Skyframe +8%, Breakwater +6%;
+    - in each case 18-39% of the floor took more than +10%.
+    - W0 removes this. Every map now looks as it does when it is played first in a session, which is how every BoZo capture has seen it (each capture is its own session), so no in-game before and after was made.
+  - **The suite's exit code is recorded:** see Checks.
+  - **The frame-time rows, like for like:** the table now says run 1's rows are not comparable; the like-for-like rows (seed 4242, no zombies, both commits, three tiers) come from the queued hold.
+  - **The skyline census uses the map's own bounds** (`Setup.Skyline` over `world.Map.bounds`, built once per bounds, as the runtime builds it), with a check that a 600 x 480 m footprint (size B) takes its own skyline.
+- **A0's table and harness.** The deployment doc's W0 section is now the one budget table: target, shared head, W0, the CoreTests gate, and how measured. It sits right under the title, so it merges beside A0's "Generated Expedition performance budget" without a conflict (tested). The 4-pilot steps use A0's flags as pushed (`ac4b6b39`): launch with `-expedition-load 4`, and `-load-balanced` or `-load-low`. W0's `Runtime/NativeExpeditionLoadFrameTimes.cs` (Editor and Development builds only) reads those flags and nothing else. It logs one `EXPEDITION_FRAME_BUDGET` line over 600 frames, summarised by `Core/NativeFrameTimes.cs` the way BoZo's `xperf` windows are. No A0 file is touched. The 4-pilot row is not measured yet: it needs the Editor relaunched with the flag, or a Development player.
+
+**Merge check (release 1).** Merging W0 onto `origin/codex/expedition-a0` (`ac4b6b39`), not pushed:
+- W0's own changes merge cleanly: `EXPEDITION-DEPLOYMENT.md` too, with W0's table and then A0's section.
+- The code conflicts are A0's against today's shared, not W0's. They come the same from merging shared alone onto A0:
+  - `Runtime/NativeExpeditionLoadFixture.cs` is added by both A0 and Astra's Meridian size-B walks (`bfbfa98c`);
+  - `Tests/Program.cs`: A0's landing-field lines and the Thunderheart lines sit at the same spot.
+- On that trial merge, with those resolved for the test only, `--generated-frame` (the same numbers as W0 alone), `--generated-districts` and `--landing-field` pass.
+- Onto W2, W3 and W4, only DEV_LOG and PROJECT_STATE conflict, plus W4's inherited A0 file; V0 merges cleanly.
+
+- **Systems touched in the review:** the effects shader's flag decode (every map's effects drawn with `NativeSirenFx`), the generated city's fog budget, the light volume's candidate guard, a DEV-only frame-time logger, the tests and the budget docs.
+  - Not touched: rules, spawns, generation, collision, wire and save. The pod yaw fix (W4), the Lobby hide (W3) and the slot keep-out re-pin (with A0) are still left alone.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Voxel dependency:** none.
+- **Checks:**
+  - the full CoreTests as relgen5 runs them (a throwaway LF worktree, Release, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS=int/banks-next`) at `dc306212`: 1,042 PASS lines, no exception, the closing `35 managed-core checks passed`, and **exit 0**, recorded (`generated frame`: 68 checks);
+  - the pinned 6000.3.24f1 semantic compile passes (Input System, Player, Assembly-CSharp, Editor). It caught a class-name clash that CoreTests could not see (the summary is now `NativeFrameTimes`);
+  - `git diff --check` against shared: clean;
+  - on the trial merge onto A0: `--generated-frame`, `--generated-districts` and `--landing-field` pass (exit 0).
+- **Not run:** no Windows build or player; no 4-pilot run (it needs A0's harness merged and the Editor relaunched with its flag); no host and guest run; Balanced is not in the managed census; the town's own fog sheets were not captured (the shader fix covers them the same way).
+- **Captures** (`scratchpad/exp-w0/look2/`): 17 stills (01-14 in game, 15-17 the computed top-downs) and three clips in `look2/clips/`:
+  - `1-hub-ground-still-eye-halfspeed.mp4`: shared, the first pass (the crawl) and W0 now, with each one's frame-to-frame change below;
+  - `2-fog-east-street-dolly-halfspeed.mp4`: before, after and a x10 difference;
+  - `3-low-tier-hub-halfspeed.mp4`: the Low tier, before, after and a x10 difference.
+- **Risks:**
+  - The shader change reaches every effect drawn with `NativeSirenFx` (the Siren, Cyber City, Brickfall, the town and the rest). It changes only the pixels whose flags came back a rounding error off; every intended decode is the same.
+  - The triangle gate fails any package that adds triangles to the generated city until the owner decides.
+  - The hub is colder until W5.
+- **For Astra:** nothing in your files. A0 and today's shared conflict in `NativeExpeditionLoadFixture.cs` (your two branches both add it) and in `Tests/Program.cs`. Possible bug, still open from W0's first round: in a live hub run, DEV god mode on the local pilot removed all the hub's zombies within about 5 s.
+- **Next:** the integrator reviews the remade captures and merges W0 with release 1.
+
 ## 2026-11-18 — Astra: Meridian size B walk candidates
 
 Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientation layouts in the Developer walk. All 20 primary streets and 20 roof circuits passed sampled support and clearance. See [the five layouts, route distances and timing table](MERIDIAN-B-WALK.md). The same-machine A0 and five-candidate Unity benchmark is available from the Editor. Native results, contract freeze, party ticket integration and art handoff remain pending.
@@ -180,6 +364,70 @@ Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientati
   model's own skeleton, its tests with it. Shared `b13940ce` fails three full-suite checks of its own (Checks, above): its author's to update.
   **Next:** review of the landing fix; then merge.
 - **Released:** shared `1b356c0c` (the builder at `1b356c0c`), test channel revision `639306602307778517` (build `3e6ba858`); the suite at `86a37fce` (1,040 groups, exit 0), the Unity compile. No bank or Drive zip change.
+## 2026-11-18 — Claude: Expedition W0, the generated city's latent fixes and its frame budget (owner report; presentation only)
+
+Branch `claude/exp-w0-groundwork`, base shared `claude/sleepy-ritchie-g8ruhv` at `15dab150`. The overhaul's first package for Claude (`docs/EXPEDITION-OVERHAUL.md` W0, release 1), approved with every default ("Yes, use defaults").
+
+- **Over target before any overhaul code (for the owner).** On the shared head the generated city's own triangles per view are already over the plan's section 6 targets:
+  - High: 2.18 M at the worst of 120 views, and 2.02 M on average at the hub, against 2.0 M;
+  - Low: 0.82 M against 0.8 M.
+  - About 685,000 of the High triangles are the skyline's 1,544 boxes, each drawn with the style's 444-triangle wrap mesh.
+  - Every other census number is well inside its target: draws 31 against 1,500, casters 1,004 against 1,200, effect quads 1,105 against 2,800.
+  - **Frame time is over target in the Editor** (owner's PC, RTX 4090 and i9-13900K, 1 pilot): the p95 is 17-20 ms at High and Balanced with 6-23 zombies, and 14-20 ms at Low. With no zombies it is 11.6-13.4 ms. Every tier's build target (p95 12, 10 and 8 ms at 4 pilots and 88 zombies) is exceeded already, with a fifth of the zombies. The frame is CPU-bound (CPU skinning in the Editor checkout). The Windows build decides (M3). Unity's own frame counts are also over the per-view targets: 1,400-2,400 batches at High and Balanced (target 1,500), and 840-1,000 batches with 1.8-2.0 M triangles at Low (targets 800 and 0.8 M).
+- **The light volume** (`Runtime/NativeAdvancedLighting.cs`, `Runtime/NativeAdvancedLightingPresentation.cs`, `Core/NativeLightVolume.cs`):
+  - **The key.** It now carries the run (the generated map's world seed and generator Version, `NativeLightVolume.RunKey`). Every run shares the map id, so a later run took the first run's bake, or none.
+  - **The candidates.** The generated city's are its kit's sources, picked by importance and spread (`NativeLightVolume.Pick`: luminance x range² x the share that reaches the street, and each pick discounts the lights inside its reach). Before, the bake took the look's 8 twice and then the kit's first 48 sources in build order, all in the west.
+  - **Roll 1:** the streets within a baked lamp's reach went from 8% to 83% in the east, 8% to 62% in the south, and 60% to 73% in the west. The lamps' bounce at 0.6 m went from 0.0001 to 0.0060 in the east, 0.0002 to 0.0013 in the south, and 0.0013 to 0.0034 in the west.
+  - **Each presentation now hands only its own map's candidates.** Before, the hub's lamps went on feeding the bake of every advanced-lit map drawn after the town or the hub in the same session (the review's entry above has the reach).
+  - The station, the Ironworks and the authored town keep their candidates as they were.
+- **The generated map's own practicals** (`Core/NativeExpeditionCityLights.cs` `GeneratedPracticals` and `ForMap`, read through `NativeLighting.Look`):
+  - It draws the town's look with an empty practicals list of its own.
+  - Before, the town's 8 practicals sat on fixtures the generated map lacks: a flickering brazier light at the plaza's centre among the pods; halos hung over the empty plaza at (±9.5, 4.2, ±9.5); a gate lamp, a bus fire, sodium lamps and the portico elsewhere.
+  - The generated map's ambience also no longer plays the town's brazier and bus crackle (`NativeExpeditionCityAmbience.Between(..., fires)`).
+  - Its slots now come from its own kit: the fence's gate-post lamps, wall lamps, floods, beacons and neon.
+- **The ground fog** (`Core/NativeExpeditionCityFx.cs`):
+  - The 2 m grid is sized from the map's bounds (the town's grid comes out as today's, x -122..122, z -122..62).
+  - A floor block (top at the ground) no longer keeps fog out.
+  - Fog now lies on every generated street (except under the halls), in the sanctuary and in the final court. Before, the one floor block blanked the whole grid.
+- **The kit's variety** (`Core/NativeExpeditionCityKit.cs`): the dressing hash mixes in the run's world seed on the generated map (`Seed`, `SeedOf`).
+  - Of the buildings that recur at one height between two rolls, a sixth used to dress exactly alike. Now all of them dress anew (342 of 342 for rolls 4242 and 4243).
+  - The town's hash is unchanged (seed 0, pinned to the shared head's values).
+  - The district pick stays seed-free, so the blend's statistics in GeneratedDistrictChecks hold.
+- **GeneratedFrameChecks** (`Tests/GeneratedFrameChecks.cs`, in the full CoreTests; `--generated-frame` alone):
+  - the city's own draws, triangles, instances (at most 500 a draw), shadow casters, effect quads (and rain and beams), practical slots and low-tier parts per view;
+  - 6 eyes by role (the hub, the south apron, the east and west entrances' join circles, the final court, the hub overview) over 20 rolls, at High and Low;
+  - pinned at the shared head's numbers plus 15% (the review made the triangles a no-growth gate: see its entry above);
+  - plus checks of each fix above (45 in all).
+  - The budget table is in `docs/EXPEDITION-DEPLOYMENT.md`, at its top.
+- **Re-pinned on purpose:**
+  - the effect quads are pinned on W0's own numbers (1,243 at High and 860 at Low, +12% each), because the fog now lies on the generated streets;
+  - `WardLightingChecks:256` and `WardZeroChecks:265` follow `NativeLighting.Look`, now wrapped in `ForMap`;
+  - `AdvancedLightingChecks` follows the `Candidates(mapId, lights, run)` signature, and gains source pins for the run key, the pick and the own-map hand-over.
+- **The frame-time capture path** (BoZo, git-ignored; `scratchpad/exp-w0/py/perfblock.cs` patched in after the exp-map options):
+  - `xperf=o,D,label[,KIND:N];...` windows on a live run log the frame times (mean, p50, p95, p99, worst) and the Editor's render stats;
+  - `xdolly` flies the game camera on the arena clock, so that before and after clips match;
+  - the 1-pilot runs at High, Balanced and Low are in the budget table.
+  - **The 4-pilot row** runs on Astra's A0 DEV load harness as pushed (`-expedition-load 4`; the review's entry above).
+- **Systems touched:** lighting (the light volume's key and candidates, the look's practicals on the generated map), the city's atmosphere (the fog grid), its ambience (the crackles), the kit's hash, and the tests.
+  - Not touched: rules, generation, collision, spawns, wire and save.
+  - Not done here: the pod yaw fix (W4), the Lobby hide (W3) and the slot keep-out re-pin (with A0).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Nothing here is read by the simulation, and nothing is sent.
+- **Checks:**
+  - the full CoreTests, as relgen5 runs them (Release, `expedition_path.patch`, the next banks), in a throwaway worktree at `753c3033`: 1,036 PASS lines (shared's 1,035 plus `generated frame`, 45 checks), no exception, and the closing `35 managed-core checks passed` line. It was run at idle priority and finished before the frame-time runs started;
+  - the pinned 6000.3.24f1 semantic compile (Input System, Player, Assembly-CSharp, Editor) passes;
+  - `git diff --check` is clean;
+  - seen in the Editor (BoZo, generated seed 4242 as a PvP match, High, 1920x1080), before on `15dab150` and after on `753c3033`: the hub at eye level and from 9 m up, the east and west streets, the south road and the final court; a 3 s hub clip, cropped to the ground beside the pods so the fight stays out (the town's brazier light flickers on the wet ground before, and is gone after); and a 4 s dolly up the east street, flown on the arena clock so both runs take the same path. In run 1 the PvP map's one bot was not idle, so its hits show as the red vignette in the Game-view stills. The per-run dressing also differs between before and after, because the kit's variety is one of the fixes. In today's dusk look the ground fog reads faintly. The light volume's new key is checked by source pins only: each capture is its own play session, so no stale bake can show there. Also managed top-down maps for seed 4242 of the light volume's lamp bounce, the ground fog and the practicals, and the frame-time runs (1 pilot at High, Balanced and Low, before and after).
+- **Not run:**
+  - no Windows build or player, so no build frame times; the Editor's are in the table;
+  - no 4-pilot run (it needs A0's harness);
+  - no host and guest run (nothing here is networked);
+  - the Balanced tier is not in the managed census, which counts High and Low only.
+- **Risks:**
+  - The hub's plaza is darker now: the town's brazier and two lamps no longer light the pods. The camp's own brazier comes with W5 (M3). The night look (W1) relights the city.
+  - The light pick assumes the generated streets lie at y 0. Blockout-4 needs W10's volume rebuild.
+  - The effect-quad pins leave 15% for W1's wet-street streaks. W1 re-pins them on purpose.
+- **For Astra:** nothing changes in your files. A0's DEV load harness is what the 4-pilot frame row waits for. The slot keep-out re-pin (`GeneratedDistrictChecks:99`) goes with A0's landing field.
+- **Next:** the integrating session reviews the captures and merges with release 1's other packages.
 
 ## 2026-11-18 — Claude: shared's full suite passes again after the Thunderheart Carillon (three stale checks; tests only)
 
@@ -214,6 +462,54 @@ Owner: "I want to essentially remove voxel entirely BUT keep its data incase I u
   - VA5: later, only on the owner's word.
 - **Overhaul amendments:** appended to `docs/EXPEDITION-OVERHAUL.md` and its Astra part (plan section 4.2): the eject on the model in Stage 2, no voxel fallback for survivors, the Station and Ironworks banks in Stage 4, district outfits with the crowd work, and more.
 - **Next:** Stage 0 ships with release 1 (V0: no new voxel, a DEV voxel counter, player-build baselines, no voxel weapons on the pads). Then Stage 1, the costume, as its own release. No code change in this entry.
+
+## 2026-11-18 — Claude: the drop pods crash in round the camp on A0's landing field, the overhaul's W4 release-1 half, with the critics' round (owner report; presentation only)
+
+Branch `claude/exp-w4-crash`, base shared `claude/sleepy-ritchie-g8ruhv` at `15dab150`, **stacked on Astra's A0** (`codex/expedition-a0` `ac4b6b39` merged in, so the crash ships with A0's landing field, `PodOpening` and grounding, never in today's row: A0's own entry says not to publish A0 alone). Plan `docs/EXPEDITION-OVERHAUL.md` R7 and W4, Claude's M1. Owner: the pods should crash into the hub, spread round it; the plan's defaults approved ("Yes, use defaults"), the 5 s hub opening among them. Current shared (`b13940ce`) merged in too (its `Tests/Program.cs` conflict with A0 resolved: A0's landing-field lines, then shared's Thunderheart lines). Implemented on the branch and pushed; not merged, not released. The first round (`d0668565`) was reviewed by critics; this entry replaces its own and covers both rounds.
+
+- **What** (`docs/EXPEDITION-DEPLOYMENT.md`, "Pods crash in"):
+  - each pod's own line, hashed from its record (seat, order, x, z, end), from behind its door (±40°, leaning toward the camp so the four fan in from round it), from about 200 m out and 140 m up: a meteor ribbon drawn through the fog, hot and wide from its first frame and a continuous sheath close up; door down on the way in, rolling door forward as the retros light; a cloud deck it punches through (the vapour ring torn open in it, a boom);
+  - the retros flare; two pods in four (ranked by the run's fight start) sputter and come in harder;
+  - the impact at -2.8 + 0.25·order s (5 s; the 3 s fallback planned too): a small hot flash at its base for 0.1 s while the blast lights carry the flash over the city; the shockwave racing out low and a dust wall to about 6 m; Slam chunks, sparks and spoil; a plough of at most 1.5 m (inside A0's skid apron) to rest on the pod centre, sunk 0.2 m and leaning 4° or less, inside A1's collider envelope;
+  - the bolts blow the door into a ramp; the pilot, braced in the cabin's jump seat (the lobby Chair pose over the game's pose) on the pod's full offset and lean, lifts the harness bar and stands up out of the seat (its cushion folds away) onto the capsule by GO;
+  - what lasts, from the records and the clock: a crater per pod (a soot pit, char and ash, a lip of broken slabs, the ash fading into the plaza and dark cracks running out; flat paint, scaled down where it would reach the REVIVE-O-MATIC), the tiles cooling from white hot to black over 20 s, the smoke thinning over 40 s;
+  - my camera, a Countdown branch of `NativeCinematicCamera` that owns the whole drop's camera: the sky 140 m up and 80 m back past the camp, looking at least 30° down past it at my streak; the chase; in first person one braced second in my red-lit cabin (red strips, an instrument panel, a self-lit grey liner, the seat; the city in the porthole; buffeting with camera shake on; the red at my screen's edges); the stop 10 m up as it punches in; the arc down behind my pilot, or in first person round to the doorway and a cut into my own eyes; blended back to the game's camera before GO; with Reduced effects a still wide shot from a stand on the plaza whose view keeps off the REVIVE-O-MATIC. My body is hidden only while the eye is in my pod or my head. My pod eases into glass over 0.3 s only while my third-person camera is low behind it (the hot tiles glow through). The countdown sits small at the top while the drop directs;
+  - 11 synthesized placeholder sounds (`Core/NativePodSounds.cs`), the boom late by its distance.
+- **The critics' findings** (all 18 taken; how each was answered):
+  - 1 first-person arc through the roof and my head: the arc now goes up and over my pod round to its doorway (outside the hull all the way, ending a few metres out nearly square to the door, so my pilot unbuckling and standing reads through it) and cuts into my eyes; the body hides only inside (`PodShot.Inside`); pinned: while my body is drawn the eye is never in the hull or within 0.9 m of the drawn head (2 openings × 24 yaws × 3 modes × both camera picks, every frame);
+  - 2, 14 W3's ride and the W3 + W4 build: the plan's names are kept (`NativePodDrop.Appear`, `ImpactOf(order)` and `ImpactOf(order, opening)`, `Evaluate(age, order, seed)`, `PodFrame.Lean`, `PodView.Seed`), so W3 + W4 + A0 compiles (the pinned compile passes on the test merge). The cabin: W3 has since switched its ride off and asked the merge to keep W4's (W3's `02a66a38`, its DEV_LOG), so the directed drop owns the cabin beat, built on W3's seat, harness pivot and red edges. The test merge's CoreTests fail on two W3 pins and one 3 s beat until W3 re-pins them (below);
+  - 3 the glass pop: eased over 0.3 s, only with the camera low behind or beside my pod, never during the stop or the high arc; the tiles' heat glows through the glass;
+  - 4 the white bloom: the impact's own flash is 3.2 m and 0.1 s at the base; the shockwave ring and the dust wall are the read; the blast lights carry the flash (0.32 s);
+  - 5 the cloud punch: a cloud deck round each line that the pod tears through, the ring starting 3 m out, and puffs and flashes near the camera thinning away;
+  - 6 the black cabin: a self-lit grey liner with seams and ribs (the doorway's view at GO is grey walls, not black), red strips down the doorway and a red wash, an instrument panel, the door lined inside, the judder, the porthole on the city (door down), the red screen edges;
+  - 7 the sky shot: 140 m up and 80 m back past the camp, looking at least 30° down past it at my streak, the meteors bolder at range (pinned: my streak in frame every 0.05 s). Four streaks cannot all be in one frame on A0's field: they come from four sides, and holding all four takes an eye about 320 m up, past the hub look's 420 m far plane; the four lines now fan in on the camp;
+  - 8 the climb-out: the seated brace, the bar lifting, the stand-up out of the folding seat, on the game-rig pose (every body);
+  - 9 the dotted trail: one continuous ribbon near the eye, the trail streaks overlapping;
+  - 10 the countdown over my pod: small at the top while the drop directs and through its hand-off;
+  - 11 the brown rug: soot, char and ash, broken slabs, cracks, the rim fading into the plaza (see-through by vertex alpha), the rays gone;
+  - also from the first captures: Reduced effects' still shot stood behind the REVIVE-O-MATIC; it now picks one of six stands on the plaza whose view keeps off the machine's solids (pinned over A0's field: at least 0.9 m);
+  - 12 like-for-like: every round-2 capture is the same generated run (4242) on A0's own landing field (its area slots moved onto the capture match's spawns: capture only) with the countdown's end pinned, so every pane plans the same crash; BEFORE is A0's tip; the clips name their commits;
+  - 13 the row: stacked on A0, and marked in PROJECT_STATE as merge with or after A0;
+  - 15 `NativeExpeditionHubPlan`: A0's file wins (this branch's stand-in is gone); a PodDropChecks pass over A0's `LandingField` for 240 runs (the touchdown in the apron, the hull in its envelope, the crater off the REVIVE-O-MATIC, my camera inside the fence from the stop on, four lines);
+  - 16 the GO hold: `NativePodDrop.GoHold` holds only while a floating capsule settles (not rising, under 0.3 m), latches its release, and lets a jump go on its first frame (pinned);
+  - 17 untinted white-hot parts: the tiles, shield and bolts are built char black and all but unlit and glow only through their tint; the seat and the bar are models of their own, so the station's dock never shows two (pinned);
+  - 18 host and guest at GO, late joiner and killcam: not runnable here (one PC, no guest); listed in PROJECT_STATE as M1 blockers.
+- **Files.** Core `NativePodDrop.cs`, `NativePodModels.cs`, `NativePodSounds.cs` (new); Runtime `NativePodPresentation.cs` (rewritten; also the cabin's red edges in a small `ConversionGame` partial), `NativePodAudio.cs` (new), `NativeSpawnInPresentation.cs`, `NativeCinematicCamera.cs`, `ConversionGame.cs` (six hooks), `NativeMatchOverlays.cs` (the compact countdown), `ArenaPresentation.cs`, `NativeFootfallPresentation.cs`, `NativeBlastPresentation.cs`, `NativeMachineModels.cs` (the seat, the bar, the craters' see-through rims), `NativeAudio.cs`; Tests `PodDropChecks.cs`, `VfxRuntimeChecks.cs`. A0's files as A0 pushed them.
+- **Re-pinned on purpose** (old `PodDropChecks` lines; a crash, not a landing): :33 Appear = -Countdown, :34 the last impact before -0.9 s, :40 the 0.06 s stagger (now A0's `PodOpening` and the impacts above, both openings); :36 parked offset zero and :54 no XZ offset (now parked sunk 0.2 m, leaning 4° or less, after a plough to the centre); :48 kept along each curve; :67/:68 kept for working retros (failing ones land at about 44 m/s); :77 parked pods emit nothing (now the crater, hull and smoke last, quiet after 40 s); :133 the ramp's top on the sunk, leaning pod; :144-159 the wiring and the model limits (r 1.17 m, 3.0 m; bones 0-7 and the glass on the pod, 8 the bar, 9 the seat's fold). `VfxRuntimeChecks`: the blast block feed is `NativeArenaDressing.Flashes(lit)`.
+- **For W3 (at the merge):** two pins and one beat. `DeployPresentationChecks:341` `NativePodRide.Opening==3` (A0 makes it 5: `==(float)ExpeditionRules.PodOpening`); `:345` `ImpactOf(0)` (`ImpactOf(0,opening)`); the 3 s ride window (-2.6 to -1.8 s) ends 0.05 s before this drop's 3 s first impact (-1.75 s), under the pin's 0.2 s, so `RideSeconds(3)` 0.6. With those (patch in the scratch notes) the W3 + W4 + A0 test merge's CoreTests pass. The pod's fins came in 3 cm (r 1.05) so the station's deep tubes clear a docked pod (`DeployPresentationChecks:263`). In `NativePodPresentation.PodGhost` keep W3's "solid while I ride" (`!PodRideActive`).
+- **Voxel dependency.** The seated brace lays the lobby Chair pose (`NativeLobbyPoses`, the game rig's `CapturedRig.Pose`) over the actor's pose through `CapturedAnimation.Player.Overlay`; the visual body binds that pose. A class whose visual body plays its own motion set over the game pose may keep its idle while seated.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. The capsule never moves; only the drawn pilot rides the pod and sits. No rule, timer, wire field, spawn or save is read or written; LaunchGone and the look keys are unchanged.
+- **Checks.** Full CoreTests the relgen5 way (Release, the stage banks of `int/banks-next`, the local uncommitted `expedition_path.patch` for ExpeditionEndingChecks) on the final code `b91e2de9`: 1036 PASS lines, exit 0, with shared `b13940ce`'s merge reverted in the scratch worktree (`58372403` after it only moves first person's doorway shot; `--pod-drop` and the pinned compile pass on it). Shared `b13940ce` (the Thunderheart Carillon commit) fails three of its own pins, so on the branch as pushed (shared merged in) the suite stops there: TransitionLoadingChecks:200 "every map" (21 maps, pinned 20), VisualRigChecks:1810 (the settings line now carries `musicReaction`), AdvancedLightingChecks ("carillon-storm has no an advanced block"); with local patches for the first two it passes 800 groups up to the third (shared needs those three re-pinned). The W3 + W4 + A0 test merge (W3 `048adc30`; W3's "solid while I ride" kept in `PodGhost`) with W3's three re-pins: `check_unity_compile.py` exit 0, CoreTests 1036 PASS, exit 0 (shared's merge reverted the same way). `python tools/check_unity_compile.py` (pinned 6000.3.24f1) on the tip: exit 0, 4 assemblies. `git diff --check` against shared: clean. `--pod-drop`: 326,089 checks; over A0's field (240 runs, 960 pods) 175 craters fitted off the REVIVE-O-MATIC, the four lines at least 12.4° apart, the still shot's view at least 0.9 m off the machine.
+- **Captures** (scratch, cleared on reboot): every strip is the same generated run (4242) with the pods on A0's own landing field (its area slots moved onto the capture match's spawns, in the git-ignored capture tool only) and the countdown's end pinned (GO at match time 7.00 in every run), so every pane plans the same crash; 1/30 s frames, staged by countdown age. BEFORE is A0's tip `ac4b6b39` (today's sinking drop on A0's spots); AFTER is `58372403` (fixed eye, both with camera shake off; third person; first person; camera shake off; Reduced effects) and `10ea981b` for the lasting marks (+0, +20 and +40 s: wide, at eye level, 10 m up) and the landing sites of three runs from above (no change to the marks since). Stills in `C:\Users\sheld\AppData\Local\Temp\claude\85aaa2949ca459c1\1123469f-dfb4-4392-b330-5a0d65163d60\scratchpad\w4crash\look2\`, clips (MP4, half speed, before and after side by side, the commits in their titles) in `...\look2\clips\`.
+- **Not run.** A guest, a late joiner or a reconnect over LAN, and the killcam and spectator views (M1 blockers); the sounds heard in game (rendered offline only); frame time on a low-end PC; a Windows build; controller-only play; other expedition hubs than the generated city.
+- **For Astra.** Nothing to change for this: `NativePodDrop.Opening` reads `ExpeditionRules.PodOpening`, the pod centre reads `NativeExpeditionHubPlan.ExitReach`. The crash's footprint for A1: from behind the door (±40°), touchdown at most 1.5 m behind the centre inside A0's apron; the crater is flat paint (no collider) about 2.6-3.4 m round the centre and 4-4.6 m behind, kept off the REVIVE-O-MATIC; the ramp lies in front. Optional (A1): crash noise for the horde.
+- **Risks and next.** M1 waits on the guest, late-joiner and killcam checks above and W3's re-pins. The placeholder sounds stay until the ElevenLabs batch (N5). Next: the owner reviews the clips; M3 (the climb-out down the ramp, the F prompt at the door) after A1.
+
+## 2026-11-18 — Astra: Expedition A0 landing field and native load fixture
+
+Branch `codex/expedition-a0`, based on shared `15dab150`. Generated Expedition has four seeded inner landing sectors, four overflow berths, five-second pod clocks and degree-based boarding. The compatibility receipt changes with the landing slots. The original map spawn rows still serve PvP. Spawn placement and held countdowns probe real ground. Editor and Development builds gain an isolated four-pilot, 88-zombie fixture with native navigation, crowd-flow, perception and physics counters.
+
+The 2,000-seed managed sweep passed both geometry validators and the legacy PvP rows. Native timings, host/guest GO playback and the coupled W4 crash release await the Unity builder and Claude’s presentation branch. The two-size A4 walkthrough is on its own task branch. Do not publish A0 alone.
 
 ## 2026-11-18 — Claude: zombies run and turn on their own legs (owner report; presentation only)
 
@@ -307,6 +603,247 @@ Owner: "I want to essentially remove voxel entirely BUT keep its data incase I u
   The shambler at .7 of its walk, turning 90 at one moment of its stride, dips to .76 (shared .86). Walking turns dip to the hips' floor on shared as
   well (55 of 186 walking cases under .85 legs, shared 64). **Next:** the owner looks at the clips and strips and plays it; then merge and release.
 - **Released:** shared `eed764b5` (the builder at `eed764b5`), test channel revision `639306412006993663` (build `3506294d`); the suite at `42f5d3fb` (1,038 groups, exit 0), the Unity compile. Two independent reviews (code, tests, visual): ship on code and visual; the tests' coverage items (more zombie ids per kind, ZombieSource's walking pose, AcrossWalk pins) and the landing-lead flick and gore guards follow on `claude/zombie-run-turn-tests`. No bank or Drive zip change.
+
+## 2026-11-18 — Claude: W3's eject after the critics' review: a fall with nothing rising, a framed seat in a lined cabin, open bores, a night city under cloud, comfort settings, the card latched to the station's load (owner report; presentation only)
+
+Branch `claude/exp-w3-eject`, on the W3 branch at `048adc30` (base shared `15dab150`). Code commits: `c1c048dd`, then `592eb5ad`, `794c25a8` and `3c146163`, which fix what the captures showed. The review found nine problems; eight are fixed, and the ride is left to W4 (last item).
+
+- **The fall's hop (high).** Each pilot used to snap from the crouch to the Jump take's full extension and rise about a metre over its hatch. Now (Core `NativeDeployEject`):
+  - the crouch blends into the take's fall entry over 0.5 s, and the take's push-off is never played; then the Fall loop;
+  - the hips hold the crouch's height over the falling root and drop by any rise of the head, so nothing of the pilot moves up;
+  - 0.32 s before the landing the pilot folds into the Chair it lands in, so no catch slides past the seat camera;
+  - checks: the pelvis and head never rise from the drop to the landing (pads 0-3, nine specs, every 1/240 s); seated, they never rise more than 2 cm over their landing height (the breath); no part moves more than 0.17 m in any 1/30 s (the hop moved 0.9-1.0 m; the worst now is the greatsword's off hand in the fold, 0.166 m).
+- **The tube shot** starts 1.2 m over the pad (was 2.2 m), so the neighbours' pads stay out of frame. It pushes in 0.45 m, then holds over the tube's mouth while my pilot falls away and the rings streak up. My held weapon is put away at the cut, because it pointed at the lens. The eye no longer follows the pilot down the bore: in the first captures the rings passing the lens made the frame flicker at 8-14 Hz. A check keeps the eye over the mouth.
+- **The seat shot (high).** It now looks in from just outside my pod's doorway (pod frame z 1.12; the door is out of the way for the shot) with a 52° lens. The whole helmet, the bar and both hands are in frame on every pad (checked). The cabin is lined (`NativeDeployEjectModels.CabinModel`: seven panels with seams and rivets, red lamp strips, status lamps, the porthole, grab rails, a floor grille and the ceiling ring). The lining has its own finish, so a dark livery still reads. The harness has orange webbing and steel buckles, a cool key light from the doorway lights the pilot, and the doorway's light strips are dimmed. The roof hatch's seal stays out of frame, 1.6 m over the helmet: it reads as the white light from above going out, with the bass thump.
+- **The deep pads' bore (medium).** The belly's docking ring and the collar's walls were capped cylinders, which put a solid puck across a deep pod's bore. Both are open collars now. A check casts rays down every pad's bore from the floor and finds nothing above its collar's dark disc.
+- **The release (medium).** The city is lit as a city seen from altitude at night:
+  - massed blocks (podiums, setback towers, crowns with red air lights) and about 7,600 lit windows;
+  - sodium lamps along continuous dark streets, and a glow over each district's hall and the sanctuary;
+  - blue haze (fog 50-300 m) and a broken moonlit cloud deck 38 m under the station, which the rush plunges into;
+  - rain streaming past the falling pod.
+  - The city builds in 29k triangles in about 20 ms on a worker (budget 40k).
+  - The height story: the station hangs over a cloud deck with the city far below, and the card's altimeter then falls from 12,000 m.
+- **Comfort (two medium findings).**
+  - Camera shake off: no push-in, no jolt as I land, no plunge in the rush.
+  - Reduced effects: no tube shot and no cabin close-up. The room's shot holds until my landing, then one still wide shot holds the docked pods while they drop away. The rings are steady and there is no rain.
+  - The ring chase's three banks always sum to the same light.
+  - `DeployInput.NoShake` carries the setting from the live station and the DEV preview.
+  - Measured on the captures (mean frame brightness every 1/30 s through the tube shot, the DEV bar left out):
+    - full effects: 16-104 before, swinging every frame with changes of up to 113%; 73-101 after, at most 8% a frame;
+    - camera shake off: 16-104 before (113%); 63-68 after (2%);
+    - reduced effects: 16-97 before (98%); a constant 25 after (the room's shot).
+- **The card's scope (medium).** The cradle card used to cover every Expedition-kind load into the hub. It is now latched to one load (Core `NativeCradleLatch`): the load requested from the live station after this client saw its eject (`QueueStage`, host and guests). Hub returns, reprints, reconnects, area loads and a late joiner's first load keep `NativeStageLoadingHud` and its barrier lines. `PodCradleHold` works through the latch, and the live run shows the card from the station's load, held through Lobby, lifting into the countdown.
+- **The Lobby hide (medium).** The Lobby view is now its own mark (`SpawnView.Lobby`), and `SpawnPlace` shows it hidden before any pod path. SpawnInChecks pins that order. **For W4 and the integrator:** in `SpawnPlace`, W4's `if(v.Pod){position=PodFeet(a,v,position);...}` must come after `if(v.Lobby){...}`. `PodFeet` hides a view that has no pod record, and none exists in Lobby. The two branches now conflict on that line, so whoever merges them must choose the order.
+- **The ride (medium): not fixed here.** `NativePodRide.Enabled` stays false. W4's pushed branch already plays the braced second in first person, in its remodelled closed cabin, in its directed Countdown camera, and it honours Camera shake and Reduced effects. My ride steps aside for a directed camera, so with both merged W4's plays. **For the owner:** confirm that W4's cabin second is the plan's ride beat, and merge W3 with W4 for M1. If W3 ships without W4, there is no ride beat, and the eject's seat shot is the cabin moment.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. No wire change. Runs still start 1.6 s later (TravelAt 5.6 s).
+- **Voxel dependency.** The eject's poses are game-rig (`CapturedRig`) poses from the pack and lobby tracks, mapped onto the visual body as the rooftop's crowd and the lobby do (the plan's W3). Nothing new reads voxel models, kits or debris. The voxel retirement's amendment (shared `ac69455e`) moves the crouch, fall and seat onto the model's own clips and hand IK in V4 (Stage 2); that is not done here.
+- **Checks:**
+  - Full CoreTests the relgen5 way (Release, a throwaway worktree, the stage banks) at `3c146163`: 1035 PASS lines, exit 0.
+  - The pinned 6000.3.24f1 compile passes all four assemblies at `3c146163`, with no warnings in the changed files. `git diff --check` is clean.
+  - Targeted: `--deploy-presentation` (557,203 checks), `--deploy-performance`, `--deploy-models`, `--expedition-loading`, `--spawn-in`, `--deploy-sounds`, `--deploy-sparks`.
+- **Captures** (BoZo, 1920x1080, the DEV preview's clock pinned to each shot, 1/30 s):
+  - at `af8176d5`, which holds `c1c048dd`'s W3 code merged with shared `b13940ce`: solo, 4 pilots, the guest (pad 1, deep, dark), the 4 s variant, camera shake off, reduced effects, and a live solo run;
+  - at `02a66a38` (before the review): camera shake off and reduced effects;
+  - at the final `3c146163`: solo, 4 pilots, the guest, reduced effects and camera shake off.
+  - The before captures for the eject are run3's at `3ba32460`.
+- **Not run:**
+  - a Windows build, and frame times;
+  - a host and guest online run (one Editor);
+  - a hub return after an instance, to see the loading screen come back (covered by the latch's checks);
+  - the 4 s variant at the final commit (it uses the same seat shot);
+  - the sounds, which were not listened to;
+  - voxel and Classic bodies;
+  - a tube with arms spread: the takes' fall spreads the hands up to 0.8 m from the axis in a 0.46 m bore, so they pass into the walls. It is hard to see in the held tube shot; arms raised overhead would fit.
+- **Shared:** shared `b13940ce` (Thunderheart Carillon) failed three of its own pins (21 maps, the `musicReaction` prefs line, carillon-storm's advanced block); shared fixed them since in `afa19c6e`. This branch is not merged with shared, so its suite ran on `15dab150`. It merges into shared `1b356c0c` with conflicts only in DEV_LOG and PROJECT_STATE.
+
+## 2026-11-18 — Claude: the eject animated from the pad to the pod, and the cradle card on a pod run's load (owner report; presentation only)
+
+Branch `claude/exp-w3-eject`, base shared `15dab150` (the approved overhaul plan). This is W3 of `docs/EXPEDITION-OVERHAUL.md` (R8), with the plan's defaults ("Yes, use defaults"). Owner: "a more realistic drop-in ... give the players an animation when they fall".
+
+Code commits: `e74b0f66` (the eject and the cradle), then `8b16a367`, `e7d40d26`, `c958e54a`, `3cf33650`, `3ba32460`, `74af1831` and `02a66a38`, which fix what the captures showed.
+
+- **The eject, 5.6 s.** `TravelAt` goes from 4.0 to 5.6 s. Core `NativeDeployEject` keys each beat to the viewer's own pad:
+  - 0-0.6 s: the room turns red and the klaxon sounds. From 0.4 s each pilot sinks into the Jump take's gather.
+  - 0.9-1.25 s: the hatches iris open. From 1.35 + 0.09·pad s each pilot falls through at 9.8 m/s², only ever down: the take's arm throw, then the Fall loop.
+  - My tube shot starts 0.35 s after my drop. It looks straight down into my lit tube, with the ring lights chasing up every 0.12 s.
+  - My seat shot starts as I land (2.7 s on pad 0). The camera is in the doorway at visor height: the Chair pose with a land compression, the harness bar down in 0.15 s with the hands on its crossbar, the cabin red, the roof hatch sealing.
+  - The release starts at 3.4 s, 0.09 s later per pad, and never before that pod's pilot is sealed in. The camera sits beside the pod at its clamps. The clamps fire and the pod drops out of the belly; the camera tips down after it until the rolled city fills the frame.
+  - A white rush at 4.8 s, then the fade into the cradle card (5.15-5.6 s).
+  - New `Shot` values `Tube`, `Seat` and `Release` cut in. The 4 s variant (`Cut.Short`, the DEV preview's "Eject: 4 s") keeps every beat except the release; `NativeDeployEject.Played` sets the cut that `TravelAt` reads.
+- **The set** (`NativeDeployEjectModels`). It is drawn only after Deploy and only for occupied pads:
+  - the drop tube (an open sleeve), the collar and iris on each pod's roof, the seat, the harness bar, the clamps, and the belly with a hole per pad;
+  - the city, built from the blueprint on a worker once per seed and revision, and drawn only in the release shot.
+  - Occupied pads open into a ring (`PadRing`), and the pad's floor glow drains into the opening as the hatch opens.
+  - The pods are the hub's pod model, from the source bank, in each pilot's pod look. My hull is shaded to 0.28 in the seat shot, so a white pod's cabin reads dark red.
+  - The pods hang at two depths, alternating along the arc: the pads are 1.53 m apart and the pods 2.24 m across.
+- **Bodies.** Every pose is a game-rig track, so the visual, voxel and Classic bodies all play it:
+  - `NativePackJumps`: the gather, the throw and the fall;
+  - `NativeLobbyPoses`: the Chair, with the compression and the grip through `MeleeRig.Hand`.
+  - There is no rigid pose anywhere in the drop. The held weapon hides at the seat cut. `CapturedRig.Sample` no longer allocates on each call.
+- **Sound.** `NativeEjectSounds` (`eject.*` keys) through `Runtime/NativeEjectAudio.cs`, each moment heard once: klaxon, hatch, whoosh, tube, seat, harness, seal, release and rush.
+- **The cradle card** (`NativeCradleCard`, `Runtime/NativeCradleHud.cs`). On a pod run, the console's fade and the load draw the inside of my pod:
+  - the porthole;
+  - the run's map in a night palette, with each pod's streak;
+  - the altimeter, falling from 12,000 to 600 m with the load;
+  - a lamp per member: READY, LOADING n% or LOST;
+  - a lamp per mutator;
+  - PODS AWAY · GOOD HUNTING.
+  - It uses `PartyLoadingRoster`'s data in `NativeStageLoadingHud`'s place, with nothing new on the wire.
+- **The hold.** On a pod run every peer holds on the card until the hub's Countdown (`PodCradleHold`, inside the Expedition's 65 s wait). The readiness ack is not held. The hub's pilots stay hidden in Lobby (W0's item: one line in `NativeSpawnInPresentation.cs`, `PodLobbyHidden`).
+- **The ride is in but off** (`NativePodRide.Enabled = false`). The braced first-person second in my falling pod is built (`NativePodRide`, `Runtime/NativePodRidePresentation.cs`):
+  - 0.8 s with a 3 s opening, 1 s with a 5 s opening, read from `-NativePodDrop.Appear`;
+  - the judder, the red edge, my pod drawn solid while I ride, and a step aside for any directed camera.
+  - The live runs showed only a flat fogged sky between the door's two light strips, because the hub's pod model is drawn for the outside. It stays off until the cabin draws from inside.
+- **Other agents' files** (minimal changes):
+  - Astra's `NativeDeploymentLive.cs`: Mine, Pod and the card;
+  - W4's `NativeSpawnInPresentation.cs`: the Lobby line;
+  - `NativePodPresentation.cs`: PodOpacity's early return;
+  - `NativeStageLoadingUI.cs`: the wait, and the card on pod runs;
+  - `ConversionGame.cs`: the ride's frame and screen.
+  - NativeCinematicCamera's Countdown branch is not edited.
+- **Re-pinned on purpose:**
+  - DeployPresentationChecks: the deploy loop runs to TravelAt + 0.5. :130-132 still checks that pilots only move down; :176 now checks that the fade ends at 5.6 s. My pod stays in the release shot until the rush.
+  - ExpeditionLoadingHandoffChecks:78 checks `TravelAt == TravelOf(Played)`, plus the hold.
+  - DeployPerformanceChecks: budgets per new model; items only after Deploy and on occupied pads; the city only in the release; no allocation; under 60k triangles.
+  - SpawnInChecks:366-375: `NativePodRidePresentation.cs` added to the whitelist.
+  - PartyLoadingChecks: `NativeCradle.cs` allowed.
+  - DeployModelChecks: the ShotOf line.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns or movement. Networking: no wire change. The host's travel waits on `TravelAt`, so **an Expedition run now starts 1.6 s later**. On a pod run, a peer's screen shows the card until the Countdown.
+- **Checks:**
+  - Full CoreTests, the relgen5 way (Release, a throwaway worktree, the stage banks): 1035 PASS, exit 0, at `3ba32460` and again at the last code commit `02a66a38`.
+  - The pinned 6000.3.24f1 compile (Input System, Player, Assembly-CSharp, Editor) passes at `3ba32460`, and again at `02a66a38`, with no warnings in the changed files. `git diff --check` is clean.
+  - Seen in the Editor (BoZo, 1920x1080), with each DEV preview capture's clock held at its shot's exact moment (within 0.0004 s):
+    - before at `15dab150`: solo and 4 pilots, every 1/30 s;
+    - after at `3ba32460`: solo and 4 pilots every 1/30 s; the guest's view (pad 1, a deep pod) and the 4 s variant every 0.1 s; the card with READY, LOADING 64% and LOST.
+    - Live solo runs: `e74b0f66`, `c958e54a` and `74af1831`. The cradle card holds through Lobby and lifts at the Countdown.
+- **Not run:**
+  - No Windows build, so frame times were not measured. The eject's per-frame stage is allocation-free and checked.
+  - No host-and-guest online run: one Editor cannot be both. The hold's wiring is source-checked in ExpeditionLoadingHandoffChecks, the hold itself was seen on the host in the live runs, and the guest's eject and card were seen in the preview.
+  - The sounds were not listened to.
+  - Astra's 5.0 s opening has not landed; it is covered by checks only.
+  - Neither the voxel nor the Classic body was captured.
+  - No 21:9 or 4:3 layout for the card.
+- **Risks and next:**
+  - For Astra: runs start 1.6 s later. A0's `PodOpening` flows into the ride through `NativePodDrop.Appear`.
+  - For W4: W4's local branch (not pushed) replaces `NativePodDrop.Appear` and `Evaluate(age, order, seed)` with a `PodPlan`, and directs its own cabin ride. At the merge, either keep W4's ride and drop mine, or move mine onto the PodPlan and turn it on.
+  - For W2: W2 edits the same NativeDeployStage camera lines and the first lines of NativeDeployConsoleUI. Keep W2's Atlas override after my eject camera.
+  - The seat close-up crops the helmet's top after the compression.
+  - In the captures, the room shots' camera ease ran on the Editor's frame time, before and after alike.
+  - The stuck guest capture: the preview refuses a guest's Deploy, so I sent Ctrl+P to the Editor to stop my own job. The capture option now switches to the guest's view after Deploy, and stops itself after 60 s without a Deploy or 600 frames without a shot.
+  - **Next:** the owner reviews the strips and clips; then merge with W2 and W4.
+
+## 2026-11-18 — Claude: ATLAS review fixes: legible headings, its opening shot clear of the console, the sounds off the frame (owner report; presentation only)
+
+Branch `claude/exp-w2-atlas`, base shared `claude/sleepy-ritchie-g8ruhv` at `15dab150`. This entry fixes the critics' four findings on `1ca6b394` (`docs/EXPEDITION-OVERHAUL.md` W2; owner: "Yes, use defaults"). The fixes are `78dff108` and `51081c56` (the one-flap rule, from the first cold run below); this entry is a docs commit after them. Pushed, not merged.
+
+- **The headings read from the station's views** (finding 1). From the Overview at 1080p the column labels were about 4 px tall with strokes under half a pixel, and "· DEPARTURES" about 6 px.
+  - The board is now 8.4 × 1.195 m, at (0, 5.28..6.475, 7.1). That is as tall as the Overview allows: the light bar at z 6 is just over its top, and the gate's DEPLOY sign just under its bottom. Both are checked by ray.
+  - ATLAS is 0.13 m tall. "· DEPARTURES" and the column labels are 0.11 m, with strokes 0.175 of their height (the station's own lettering uses a tenth). The dim lines' flaps are 0.14 m (were 0.13).
+  - At 1080p, from the Overview, the labels are about 9.2 px tall with 1.6 px strokes, and ATLAS 10.9 px. From the board's shot they are 12.3 px with 2.2 px strokes. The checks pin at least 8.4 px and 1.45 px from the Overview.
+- **The board's opening shot is clear of the console at any layout** (finding 2).
+  - While the board holds its shot, the console's two side panels (the machines' cards, display only) step aside. They ease back in with the hand-off, or within 0.35 s when a roll takes the camera (`NativeAtlasStage.Panels`).
+  - The title, the TILESET card and the controls stay, and the buttons stay live (they keep the console's own level).
+  - A new check holds the board's shot clear of everything that stays, at 48 windows and Interface scales (4:3 to 32:9, 720p to 5K, 0.75 to 1.5).
+  - The TILESET card is now a slim chip (26 units tall) on the title's kicker line. From the Overview it stays above the board's top at every Interface scale up to 1.5; the old card covered the board's header from 1.1 up.
+- **The first visit's opening, and its sounds** (findings 3 and 4).
+  - `NativeAudio.Awake` now calls `AtlasAwake`, which subscribes and starts both clips synthesizing on workers (once a session). A cue never synthesizes. The first cue makes both AudioClips, so the bell's frame only plays; a clip not ready by its cue is skipped.
+  - A cue now carries how late its frame heard it (`NativeAtlasBoard.Cue.Late`). The clatter starts that far into its clip (`NativeAtlasSounds.StartAt`), so each click stays on its flap. The bell rings from its strike unless it is more than 0.25 s late.
+  - The board's clock starts on the station's second frame. The first frame's time is read before the station's scene is built, so a first visit's build no longer runs the arrival (the emblem's fall was skipped past about 0.12 s).
+  - Without a bake (the Editor), the clock also waits while the glyph atlas rasterises on a worker (`NativeAtlasStage.Waiting`, at most 1.5 s), so the arrival never plays to a blank board.
+  - Measured in the owner's Editor on a cold first station: a fresh domain, real time, every frame logged by the tool's `alog` and no screenshots.
+    - **Before** (`1ca6b394`): the scene's build and first draw took 510 ms, and the board's clock ran through it. The clatter's cue was heard 430 ms late and its clip started from the top, so the clicks trailed their flaps by about half a second (median 502 ms) for the whole clatter. The emblem's fall was skipped. The bell's frame lasted 36 ms against a median of 8 ms (its synthesis).
+    - **After** (one run on `78dff108`, two on `51081c56`): the clock started after the build (465-536 ms) and one frame of atlas raster. The station's own first-use frames that follow (35-94 ms, the same in every run, before and after) put the clatter's cue 46-60 ms late, and its clip started that far in. The clip's reported position then trailed the board's clock by a median 48-67 ms: the mixer's 1,024-sample blocks and its start latency, which every sound shares. The bell's frame lasted 7-9 ms.
+    - The first `78dff108` run still lost the emblem's 44 ms fall to a 94 ms frame. `51081c56` holds a one-flap run (the emblem) mid-fall for one frame when a frame jumps over its whole fall; both `51081c56` runs show it.
+- **Files.** Core `NativeAtlasBoard`, `NativeAtlasModels` and `NativeAtlasSounds`; Runtime `NativeAtlasAudio`, `NativeAtlasConsoleUI` and `NativeAtlasScene`; `Tests/AtlasBoardChecks.cs`. Two hook lines change, still one line each:
+  - `NativeAudio.Awake` calls `AtlasAwake();` in place of the subscription.
+  - `NativeDeployConsoleUI.Draw` draws `Destinations` and `Mutators` at `ui*NativeAtlasConsole.Side(stage)`; `Console` keeps `ui`.
+  - Not touched: `NativeDeployPresentation.cs`, the deploy cast and `NativeDeploySounds` (W3's and Astra's).
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. Nothing reads or writes a rule, the ticket, a roll, the wire or a save. The side panels are display only; the buttons are untouched.
+- **Voxel dependency.** None.
+- **Checks.**
+  - Full CoreTests the release way (a detached checkout, the expedition path patch, the next stage banks): `78dff108` 1,036 groups, exit 0; `51081c56` 1,036 groups, exit 0.
+  - `--atlas-board`: 9,627 checks. New: the headings' pixel sizes from the Overview and the board's shot, the board's shot against the console at the 48 layouts, the side panels (out while the board holds, back with the hand-off and within 0.35 s of a roll), the second-frame clock, the atlas wait and the one-flap rule (a 94 ms frame over the emblem's fall), the cues' lateness and `StartAt`, and that no cue synthesizes (`AtlasHeard` never calls `Samples`; the only call is `AtlasAwake`'s worker).
+  - `--deploy-models`, `--deploy-sparks`, `--deploy-sounds`, `--deploy-presentation`, `--deploy-performance` and `--expeditions-menu` pass.
+  - `python tools/check_unity_compile.py` (6000.3.24f1) on `78dff108` and `51081c56`: the four assemblies PASS, with no warnings from the board's files. `git diff --check` against shared: clean.
+  - Unity 6000.3.24f1, the owner's Editor under the lock (23:50-01:21, after waiting from 19:54): BoZo's DEV Deployment Station preview, the station clock pinned to 1/30 s a frame, except the real-time cold runs. The tool gained `alog` (atlas-w2f, git-ignored, patched in place, idempotent): it logs every frame's length, the board's clock, the emblem's phase, the cues' lateness and the ATLAS voices' sample positions, with no screenshot.
+    - After: `78dff108` (a cold run and the 1080p opening) and `51081c56` (two cold runs; Interface scale 1.25 and 1.5; 16:10; 4 pilots with a roll at 1.6 s; the board square on; 4 pilots on the Overview; the live station at 1.25). At 1/30 s steps the two commits draw the same frames, because no step can jump the emblem's fall.
+    - Before: `1ca6b394`, like for like (no 4-pilot Overview or live run).
+    - Mid-run, at 00:03, the shared `scratchpad/tools/bz.sh` and `run255.sh` vanished (not removed by this session), and every queued capture failed at once. Both were restored from the runner bz.sh had just generated, and the failed captures were rerun in the same hold.
+    - The Editor log showed no board errors. The Editor went back to `9319026b` with its checkout as it was, and the 14 stage banks and the motion bank were unchanged.
+    - Nine stills and three half-speed clips (`look/` in the session's `atlas` scratch folder; round 1's in `look/round1/`).
+- **Not run.**
+  - A Windows player build or package (the atlas bake runs only in a build).
+  - A real multiplayer station.
+  - Listening by a person: the cold runs log the voices' sample positions against the board's clock instead.
+- **Risks.**
+  - From the Overview at Interface scale 1.25, the end of the console's own subtitle ("…then deploy together.") covers the board's left end: ATLAS · DEPARTURES, the lamp, the emblem and line 1's first letters. Larger scales cover more. The board's own shot is clear. That header is the console's, outside this branch's hook lines; ending or wrapping the subtitle short of the board is a small follow-up.
+  - In the Editor's cold first station, the station's own first-use frames (35-94 ms in every run, with or without the board) still drop frames of the arrival. The emblem is held for one frame, and the glyph flaps skip a flip or two.
+  - After a hitch, the clatter's reported position trails the board's clock by about 50-70 ms, the mixer's blocks and latency. Nothing re-seeks a playing clip.
+  - At 1.25 and above in the DEV preview, the DEV bar covers the TILESET chip. This is DEV only; the live station has its Leave button there instead.
+  - The station's camera ease runs on the Editor's frame time. In the shot-only captures (1.5 and 16:10 at 3.4 and 4.6 s) the camera is still easing to the Overview. The every-frame captures (1080p and 1.25) reach it.
+  - W3 touches the same shared lines as before (`NativeDeployStage`'s camera, `NativeDeployScene`, `NativeAudio`'s Awake and OnDestroy). `NativeDeployConsoleUI`'s draw line now carries the side panels' level; W3's change to that method is on other lines.
+- **Next:** the owner reviews the stills and clips; the integrating session merges; Astra's A3 fills the selection.
+
+## 2026-11-18 — Claude: ATLAS, the tileset departures board over the DEPLOY gate (owner report; presentation only)
+
+Branch `claude/exp-w2-atlas`, base shared `claude/sleepy-ritchie-g8ruhv` at `15dab150` (`docs/EXPEDITION-OVERHAUL.md` R1 and W2; owner: "Yes, use defaults"). Claude's half of the tileset machine for release 1. Pushed, not merged. Against shared `4dc8c86f` (Astra's A4 greybox, the zombie legs) the code merges cleanly; DEV_LOG conflicts only where both add a top entry (keep both).
+
+- **What.** A split-flap railway board, ATLAS · DEPARTURES, 8.4 × 1.1 m, hung on two drop rods from the ceiling beam over the DEPLOY gate (`docs/EXPEDITION-DEPLOYMENT.md`, "ATLAS").
+  - Four columns, TILESET · ENEMIES · INSTANCES · FINAL, kept apart by lit gold rules.
+  - The large first line reads CITY · MERIDIAN | THE INFECTED | 5 INSTANCES | THE SIREN, with Meridian's emblem flap (the skyline, its clock at 6:47) and an in-service lamp in City's accent.
+  - The three small, dim amber lines read NOT IN SERVICE, with no names and no dates, so nothing suggests a choice exists.
+- **When the station opens** (each client's own clock): the emblem flap falls, then line 1 clatters in left to right, each flap running 6-13 drum glyphs before its own. It lands by 1.4 s. Then a two-note bell rings, sparks fly off both cheeks (machine 2) and the lamp flashes. It is an arrival, not a spin.
+- **The camera** opens on the board and holds to 2.8 s. Then the board hands it to the Overview along a 1.2 s smoothstep on the station's clock, which the station's own ease follows, so it leaves the board at rest. A roll or Deploy takes the camera as before.
+- **The console** gains a TILESET card, its first, beside the title: ARRIVING…, then CITY · MERIDIAN and an IN SERVICE tag. The name stops short of the tag (a longer name is drawn as large as fits). It is display only and raises no intent. **The Expeditions screen** shows TILESET: CITY · MERIDIAN on the run briefing's kicker line.
+- **The registry**, Core `NativeTilesets` (a shared contract file): City (`id=city`, live) with its display fields. `NativeTilesets.Selected(state)` is the presentation's one hook for the choice and returns City until `ExpeditionDeploymentState.tileset` exists. A new tileset's row needs only its registry entry, and optionally an emblem (markup): every cell is drawn through one split-flap glyph atlas.
+- **Files.**
+  - New Core: `NativeTilesets`, `NativeAtlasBoard` (placement, layout, the arrival, the shot and its hand-off, the sparks, the sound moments, and `NativeAtlasStage`, the per-frame pose), `NativeAtlasModels` (the cabinet and the flaps), `NativeAtlasArt` (the glyph atlas) and `NativeAtlasSounds` (the clatter, built from the flaps' own landings, and the bell).
+  - New Runtime: `NativeAtlasScene` (the draw), `NativeAtlasAudio` and `NativeAtlasConsoleUI`.
+  - Hooks, one line each: `NativeDeployStage` (the field, and `if(Atlas.Frame(f,Shot))want=Atlas.View;`), `NativeDeployScene` (make, draw, dispose), `NativeDeployConsoleUI` (the card), `NativeAudio` (subscribe, unsubscribe), `NativeExpeditionsMenu` (the line) and `Editor/NativeDeployCardBuild.cs` (the atlas bake, under a key that changes with its inputs).
+  - Untouched: `NativeDeployPresentation.cs` and the deploy cast (W3's), and Astra's `NativeDeploySounds`, which still plays machines 0 and 1 only.
+- **Deviations from the plan.**
+  - The board hangs at (0, 5.35..6.45, 7.1), 8.4 × 1.1 m, in front of the beam at z 7.5. The plan put it near (0, 6.6, 8.3) at 6.4 × 1.6 m, but that wall band sits behind the beam from the Overview: about 40% of a 1.6 m board would be hidden. A ray check pins that the whole face and the DEPLOY sign read.
+  - Its model, footprint and shot are in its own files (`NativeAtlasModels`, `NativeAtlasBoard`), not `NativeDeployModels.cs` and `NativeDeployPresentation.cs`, so W3's files stay untouched.
+  - The sparks are drawn by the board's own scene, not added to `NativeDeploySparks`.
+  - The board has the camera only while its line arrives and hands off; the card does not move the camera.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. Nothing reads or writes a rule, the ticket, a roll, the wire or a save. The opening camera move is presentation: a roll or Deploy takes the camera as before, and the stage's `Shot` stays the rules' `Framing`.
+- **Checks.**
+  - Full CoreTests the release way (a detached checkout of `1b883903`, the expedition path patch, the next stage banks): 1,036 groups, exit 0.
+  - `--atlas-board` (new, `Tests/AtlasBoardChecks.cs`), 8,614 checks:
+    - the registry's rows and empty lines, and the INSTANCES count against 240 rolls of the Instance Machine's real pool;
+    - the layout, and clean models in budget;
+    - placement under the beam, with the whole face and the DEPLOY sign seen by ray from the Overview;
+    - the arrival landed by the bell, each flap running forward through the drum, and a re-flap to a stand-in selection;
+    - the shot and hand-off only over the Overview, leaving the board at rest;
+    - machine 2's sparks (a third with reduced effects), each sound heard once, and the glyph atlas;
+    - no per-frame allocation, and the hooks' wiring and metas.
+  - Re-pinned, none loosened: `DeployModelChecks` counts the board in the station's 130,000-triangle total; `DeploySparkChecks` gains machine 2's burst; `DeploySoundChecks` pins that Astra's table never plays machine 2 and that the board's moments play Claude's own sounds; `ExpeditionsMenuChecks` pins City as the run's tileset and the briefing line.
+  - `python tools/check_unity_compile.py` (the 6000.3.24f1 install): the four assemblies PASS, with no warnings from the new files. `git diff --check` against shared: clean.
+  - Unity 6000.3.24f1, the owner's Editor under the lock (17:52-18:42): BoZo's DEV Deployment Station preview (local authority), with the station clock pinned to 1/30 s a frame (1/15 s with 4 pilots). The Editor log showed no board errors or exceptions.
+    - After: `1b883903` (the opening, 4 pilots with a roll, the side view, reduced effects, the live station, the Expeditions screen) and `c9b3b95a` (the close-up and the macro: the same board, outside the card and the hand-off).
+    - Before: `15dab150`.
+    - Eight stills and four clips (half, quarter or real speed). The Editor went back to `9319026b` with its checkout as it was.
+  - The Editor captures caught two faults: the card's name ran into its tag, and the camera left the board at full speed. Both are fixed (`f24dca92`, `1b883903`), and the captures that show them were retaken.
+- **Not run.**
+  - A Windows player build or package. The atlas bake in `NativeDeployCardBuild` runs only in a build; the Editor rasterises the atlas on a worker.
+  - A real multiplayer station. The 4-pilot run is the local preview; the board reads no wire state and is posed on each client's clock.
+  - Listening by a person. The managed checks pin the sounds' levels, timing and once-only playback.
+  - The card at other aspect ratios (captured at 1080p only).
+  - The Expeditions screen's later tool steps: BoZo's `expmenu` is stale for today's menu. `exp_1` shows the briefing.
+- **For Astra (A3).**
+  - Fill `NativeTilesets.Selected` from `ExpeditionDeploymentState.tileset` (the host's `SelectTileset` pick), and add the rules fields beside the display ones.
+  - When a tileset's pool changes, update its `Instances` list: `--atlas-board` pins City's against the Instance Machine's real roll.
+  - A selection change re-flaps only the cells that differ, on each client's clock (`NativeAtlasStage.Retarget`, checked with a stand-in).
+  - The board's cues and sparks are machine 2; `NativeDeploySounds` should keep ignoring it.
+- **Risks.**
+  - W3 touches the same shared files (`NativeDeployStage`'s camera line, `NativeDeployScene`, `NativeAudio`'s Awake and OnDestroy): expect small merge conflicts.
+  - The board hides the back wall's DEPLOYMENT STATION lettering from the Overview (the plan's wall band was that place). The console header still names the station.
+  - In the opening shot (0-4 s) the console header's subtitle sits over a bright ceiling bar and is hard to read. It reads on the Overview. The header is not this branch's; a backing for that line is a small follow-up.
+  - In the Editor, the first station of a session shows the board's black face until the worker's raster is up. Builds bake the atlas.
+  - From the Overview, line 1's glyphs are about 11-12 px tall at 1080p, and the NOT IN SERVICE lines about 6 px (dim by design).
+  - The camera spends about 4 s on the board and its hand-off before the Overview settles. A roll takes it at any moment.
+  - In the captures the station's own ease runs on the Editor's frame time (its dt is `Time.unscaledDeltaTime`, which the tool does not pin), so it follows the hand-off a little more tightly than at 60 fps.
+- **Next:** the owner reviews the stills and clips; the integrating session merges; Astra's A3 fills the selection.
 
 ## 2026-11-18 — Claude: the expedition overhaul plan (Meridian), approved; Astra's hand-off (owner request; docs only)
 

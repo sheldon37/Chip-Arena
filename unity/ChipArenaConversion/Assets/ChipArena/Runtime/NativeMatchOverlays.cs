@@ -86,14 +86,16 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Countdown (.countdown, count-tick) ----
-        private void CountdownOverlay()
+        // `compact`: the drop pods' directed drop (NativeCinematicCamera.PodDrop, and its hand-off) frames my pod at the screen's
+        // centre, so the count sits small near the top instead, clear of it.
+        private void CountdownOverlay(bool compact=false)
         {
             float remaining=(float)(match.PhaseEnd-match.Time);int tick=Mathf.CeilToInt(remaining);if(tick<=0)return;
             // count-tick 1 s: transparent at 1.5x, opaque at 1x by 18%, settling to .93x (cubic-bezier(.2,.9,.25,1) per segment).
             float t=Mathf.Clamp01(tick-remaining),a,s,blur=0;if(t<.18f){float u=M.Bezier(.2f,.9f,.25f,1,t/.18f);a=u;s=1.5f-.5f*u;blur=6*(1-u);}else{a=1;s=1-.07f*M.Bezier(.2f,.9f,.25f,1,(t-.18f)/.82f);}
-            float W=U.W,top=U.H*.38f-65;U.Push(new Vector2(W/2,top+52),Vector2.zero,s);
-            U.Text(new Rect(0,top,W,104),tick.ToString(),104,NativeCyberTheme.Ink(a),TextAnchor.MiddleCenter,bold:true,tracking:-.04f,glow:NativeCyberTheme.Cyan(.5f*a),shadow:new Color(0,0,0,.6f*a),blur:blur);U.Pop();
-            U.Text(new Rect(0,top+114,W,17),"GET READY",13,NativeCyberTheme.CyanSoft(),TextAnchor.UpperCenter,bold:true,tracking:.32f,shadow:new Color(0,0,0,.8f));
+            float W=U.W,size=compact?56:104,top=compact?U.H*.055f:U.H*.38f-65;U.Push(new Vector2(W/2,top+size*.5f),Vector2.zero,s);
+            U.Text(new Rect(0,top,W,size),tick.ToString(),(int)size,NativeCyberTheme.Ink(a),TextAnchor.MiddleCenter,bold:true,tracking:-.04f,glow:NativeCyberTheme.Cyan(.5f*a),shadow:new Color(0,0,0,.6f*a),blur:blur);U.Pop();
+            U.Text(new Rect(0,top+size+(compact?4:10),W,17),"GET READY",compact?11:13,NativeCyberTheme.CyanSoft(),TextAnchor.UpperCenter,bold:true,tracking:.32f,shadow:new Color(0,0,0,.8f));
         }
 
         // ---- Round result (.result-sequence) and the set-score overview it shows ----

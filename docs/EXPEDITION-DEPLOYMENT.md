@@ -1,4 +1,86 @@
 # Expedition Deployment Station: two machines and a generated destination
+## The expedition overhaul's budget table (W0, 2026-11-18; its review, 2026-11-19)
+
+This is the one budget table of `docs/EXPEDITION-OVERHAUL.md` (section 6). Each row gives the target, today's baseline, W0's number, the gate CoreTests holds, and how it was measured (the machine, the tier, the settings). Whoever changes a number updates its row. Astra's native simulation benchmark and DEV load harness (A0, `codex/expedition-a0`, merged with release 1) come in their own section, "Generated Expedition performance budget", right after this one; their numbers go in the last row here.
+
+**Over target before any overhaul code (for the owner).** The plan asks for these to reach the owner before any overhaul code merges:
+- **The city's triangles per view** (the managed census below): High 2,177,224 at the worst of 120 views, against 2.0 M (8.9% over; 2.02 M on average at the hub). Low 821,492, against 0.8 M (2.7% over).
+- **The Low tier lights 8 practical slots, against 3.** `NativeLighting.PickedLights` uploads the picker's 8 on every tier, and the shaders loop over all 8.
+- **Frame time in the Editor, 1 pilot** (the frame-time table below): p95 17-20 ms at High and Balanced with the hub's own 6-23 zombies, and 14-20 ms at Low. With no zombies, 11.5-13.4 ms. The targets are build numbers at 4 pilots and 88 zombies: p95 12, 10 and 8 ms.
+- **Unity's own frame totals in the Editor** (every pass): 1,400-2,400 batches at High and Balanced, against 1,500; 840-1,000 batches and 1.8-2.0 M triangles at Low, against 800 and 0.8 M.
+- **What it needs: a decision.** With the baseline over its target there is no headroom (target minus baseline) to share out by milestone. So CoreTests holds the triangle rows at today's worst view (a no-growth gate, not a budget) until the owner chooses: accept the baselines as the targets, or cut. The cheapest cut draws the skyline with the rounded box (about 540,000 fewer triangles at High), but that changes the look. The Low tier's 3 slots come with the night look (W1). The High totals in the Editor (17-20 M triangles) count 4 shadow cascades and the outline pass, while the 2.0 M target reads as one view; section 6 should say which one it means before M2.
+
+| Budget (section 6) | Target | Shared head `15dab150` | W0 | CoreTests gate | Measured by |
+| --- | --- | --- | --- | --- | --- |
+| The city's draws per view, High; Low | 1,500; 800 | 31; 22 | 31; 22 | 36; 26 (+15%) | census |
+| The city's triangles per view, High; Low | 2.0 M; 0.8 M | **2,177,224; 817,302: over** | 2,173,532; 821,492 | **2,177,224; 821,492 (no growth)** | census |
+| Instances per draw | 500 | 500 | 500 | 500 | census |
+| The city's instances per view, High; Low | none | 11,835; 8,878 | 11,662; 8,923 | 13,611; 10,210 | census |
+| Shadow casters (High; none on Low) | 1,200 | 1,004 | 1,024 | 1,155 | census |
+| FX quads, High (+ advanced rain); Low | 2,800 | 1,105 (+222); 765 | 1,243 (+222); 848 | 1,430 (256); 989 | census |
+| Practical slots lit (live pixel lights), High; Low | 9; 3 | 8; **8: over** | 8; **8** | 8 | census |
+| Low-tier kit parts in view | 11,500 built | 6,951 | 6,996 | 7,994 | census |
+| Kit build, a roll at most: parts, low-tier, casters; skyline boxes | 25,000, 11,500, 1,200; 3,000 | 18,704, 8,677, 618; 1,544 | 18,908, 8,684, 641; 1,544 | GeneratedDistrictChecks | census |
+| Light volume | about 2 MB | 64 lights, about 1.7 m cells, a bake of about 0.1 s (40 rays, managed) | the same | | census |
+| Frame time p95 / p99 (ms), 4 pilots, 88 zombies | High 12 / 20, Balanced 10 / 17, Low 8 / 14 (Windows build) | not yet measured: A0's harness (below) | | | A0's harness and `NativeExpeditionLoadFrameTimes` |
+| Frame time p95 (ms), Editor, 1 pilot, no zombies | (the targets above) | High 12.7, Balanced 13.0, Low 11.6 | High 13.3, Balanced 13.4, Low 11.5 (not like for like) | | BoZo `xperf` |
+| Navigation, crowd flow, perception, physics per tick | the A0 baseline + 25% | A0's fixture (next section) | | | A0 |
+
+**Managed census** (`Tests/GeneratedFrameChecks.cs`, in the full CoreTests; `--generated-frame` alone). It counts what the generated city's own presentation submits for one view, the way the runtime selects and batches it:
+- the kit's parts (range and back-face rule, casting and trim batches of 500);
+- the skyline round the map's own bounds (as the runtime builds it, so a larger map's is counted);
+- the dressed blocks;
+- the atmosphere's effect quads, the volumetric beams and the advanced rain (High only);
+- the practical slots the picker fills.
+
+It covers 6 eyes (the hub's centre, the south apron, the east and west entrances' join circles, the final court, the hub from 46 m up) over 20 rolls (seeds 1-20), the most over the 120 views. Pilots, zombies, pods, machines, the hub gates, the sky, the HUD and the shadow cascades' repeats are left out. The pins are the shared head's numbers plus 15%, except:
+- the triangles, a no-growth gate (above);
+- the effect quads, pinned on W0's first fog count (1,243 and 860; the review's nearest-sheets rule then lowered Low's to 848).
+
+The meshes: the style's wrap mesh has 444 triangles, its rounded box 92, and the legacy box 188. About 685,000 of the High triangles are the skyline's 1,544 boxes, each drawn with the wrap mesh. The rest are the kit's parts, about 9,900 in view at High, each the wrap mesh or the rounded box.
+
+**Frame time, 1 pilot** (BoZo `xperf` windows in the owner's Unity Editor: play mode, Game view 1920x1080, NVIDIA GeForce RTX 4090, Intel i9-13900K with 32 threads, 64 GB). Batches, triangles, casters and skinned meshes are Unity's own frame statistics (UnityStats), so they include every pass: the shadow cascades, the outline, the zombies, the pods, the sky and the HUD.
+
+Run 1 (2026-11-18) was a live run: the station, the roll, Deploy, the eject and the hub, with the pilot just outside the south gate at (0, -38), health held, measured for 15 s from 20 s after GO. **Its before and after rows cannot be compared.** Each run is a new station seed, so they are different cities, with different zombie counts (6-11 against 19-23 at High). Even the rows with no zombies differ by about 0.6 ms without a cause found. They neither show nor rule out a W0 cost. The managed census shows that W0 adds no draws and no triangles at High, and the extra fog work is small. "None left": in run 1 the DEV god-mode command (sent with a DEV spawn the room refused) cleared the hub's own zombies within 5 s, so those windows are the city with no zombies.
+
+| Run | Tier | Zombies | Living | Frames | Mean ms | p50 | p95 | p99 | Worst | >20 / >50 ms | Batches mean (most) | Triangles mean | Casters | Skinned |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Run 1, shared 15dab150 | High (High) | the hub's own | 6 -> 11 | 976 | 15.4 | 15.2 | 17.1 | 20.0 | 38.5 | 10 / 0 | 1984 (2149) | 19.84 M | 728 | 109 |
+| Run 1, shared 15dab150 | High (High) | none left | 0 -> 0 | 1041 | 11.5 | 11.4 | 12.7 | 14.6 | 34.7 | 2 / 0 | 1194 (1200) | 18.82 M | 345 | 13 |
+| Run 1, shared 15dab150 | Balanced (Medium) | the hub's own | 6 -> 8 | 1021 | 14.7 | 14.2 | 17.7 | 25.7 | 69.6 | 34 / 2 | 1410 (1433) | 18.04 M | 570 | 74 |
+| Run 1, shared 15dab150 | Balanced (Medium) | none left | 0 -> 0 | 1023 | 11.7 | 11.7 | 13.0 | 14.7 | 33.9 | 2 / 0 | 1187 (1193) | 17.67 M | 329 | 13 |
+| Run 1, shared 15dab150 | Low (Low) | the hub's own | 15 -> 17 | 1001 | 15.0 | 14.3 | 20.3 | 22.6 | 39.2 | 68 / 0 | 993 (1012) | 2.00 M | 0 | 70 |
+| Run 1, shared 15dab150 | Low (Low) | none left | 0 -> 0 | 1154 | 10.4 | 10.3 | 11.6 | 13.5 | 32.1 | 2 / 0 | 710 (710) | 1.76 M | 0 | 13 |
+| Run 1, W0 753c3033 | High (High) | the hub's own | 19 -> 23 | 856 | 17.5 | 17.3 | 18.9 | 20.1 | 61.4 | 12 / 1 | 2078 (2226) | 17.70 M | 708 | 98 |
+| Run 1, W0 753c3033 | High (High) | none left | 0 -> 0 | 988 | 12.2 | 12.1 | 13.3 | 15.6 | 36.3 | 2 / 0 | 1176 (1181) | 16.56 M | 329 | 13 |
+| Run 1, W0 753c3033 | Balanced (Medium) | the hub's own | 17 -> 20 | 862 | 17.4 | 17.1 | 19.2 | 22.6 | 41.9 | 27 / 0 | 2373 (2467) | 19.79 M | 824 | 119 |
+| Run 1, W0 753c3033 | Balanced (Medium) | none left | 0 -> 0 | 977 | 12.3 | 12.2 | 13.4 | 15.5 | 37.3 | 1 / 0 | 1207 (1213) | 18.35 M | 345 | 13 |
+| Run 1, W0 753c3033 | Low (Low) | the hub's own | 6 -> 7 | 1192 | 12.6 | 12.4 | 13.9 | 16.6 | 43.5 | 6 / 0 | 839 (920) | 1.84 M | 0 | 42 |
+| Run 1, W0 753c3033 | Low (Low) | none left | 0 -> 0 | 1163 | 10.3 | 10.2 | 11.5 | 13.8 | 33.8 | 2 / 0 | 708 (708) | 1.68 M | 0 | 13 |
+
+- The frame is CPU-bound: the tiers barely differ, and with no zombies left it falls to 10-12 ms at every tier. Each zombie costs about 0.3 ms. The local Editor checkout skins on the CPU (`gpuSkinning: 0`), and the tracked settings do not say what the builder uses.
+- These are Editor numbers. The Windows build with test accounts decides; that run is due at M3 and M7.
+- **Like for like (W0's review, 2026-11-19).** One fixed city (generated seed 4242 as a PvP match, an idle bot, no zombies), the camera fixed outside the south gate, two 15 s windows per row, p95 ms (Editor, RTX 4090):
+  - run8, shared `9056fc04` against W0 `954ce0ec`: High 14.6 / 11.6 against 10.8 / 10.7; Balanced 10.6 / 11.0 against 10.8 / 11.0; Low 9.5 / 9.4 against 12.5 / 13.5 (Low's p50 the same or lower; batches High 1,735 / 1,738, Low 728 / 724).
+  - run9, the Low tail bisected on W0's local probe `e9f60ec0` (each W0 change switched in place): every change off 9.1 / 9.0; all on 9.4 / 9.5; the fog grid off 11.1 / 11.2; the kit's seed off 12.7 / 9.1. So W0 costs about 0.4 ms at Low's p95; run8's 3-4 ms tail did not reproduce, and single windows swing by that much with nothing changed (Editor noise).
+
+**Frame time, 4 pilots and 88 zombies: the steps, with A0's DEV load harness as pushed** (`codex/expedition-a0`; Editor and Development builds only):
+1. Launch a Development player, or the Unity Editor and then play mode, with `-expedition-load 4` on the command line (1-4: the camera pilot plus up to three stand-ins; the lobby cap is held at four, so the hub's own 88 zombies come). Add `-load-balanced` or `-load-low` for those tiers; High is the default. Use 1920x1080.
+2. A0's isolated session walks the pilots and runs the hub's brains, and its camera follows the first pilot outside the south gate. It logs `EXPEDITION_LOAD_PREVIEW` at the start, and A0's `EXPEDITION_SIM_BUDGET` line after 120 + 600 ticks.
+3. W0's `Runtime/NativeExpeditionLoadFrameTimes.cs` reads the same flags (and does nothing without them). After 12 s it records 600 rendered frames and logs one `EXPEDITION_FRAME_BUDGET pilots=4 zombies=88 graphics=<tier>` line: mean, p50, p95, p99, worst, the frames over 20 and 50 ms, the screen, the GPU, the CPU and the memory, and in the Editor the mean batches and triangles. Its summary is `Core/NativeFrameTimes.cs`, the same as BoZo's `xperf` windows.
+4. Copy each tier's line into the "4 pilots, 88 zombies" row above, with the machine, the tier and the settings. Then share out the headroom (the target minus the baseline) by milestone, as section 6 says.
+
+BoZo's `xperf` windows cannot run inside the isolated session (it has no match or BoZo job), so BoZo does not script this row. The owner's open Editor would need relaunching with the flag, and the owner approves every relaunch.
+
+## Generated Expedition performance budget
+
+| Fixture | Machine and settings | Samples | Navigation ms/tick | Crowd flow ms/tick | Perception ms/tick | Physics ms/tick |
+| --- | --- | --- | --- | --- | --- | --- |
+| A0 City, seed 17, four walking pilots, 88 hub zombies | Native Unity builder, headless, fixed 60 Hz | 120 warm-up + 600 measured | Pending native run | Pending native run | Pending native run | Pending native run |
+
+The deployment acceptance gate runs the budget fixture. To measure it alone in Unity, choose **Chip Arena → Benchmark Expedition hub (4 pilots, 88 zombies)** or run `-batchmode -nographics -quit -executeMethod ChipArena.UnityConversion.Editor.NativeBuildChecks.CheckExpeditionLoadBudget`. Copy the `EXPEDITION_SIM_BUDGET` line from that machine's log into this table after a blockout change. Each value is a mean in milliseconds per tick. Navigation includes crowd flow. Crowd flow measures shared field construction and maintenance, perception measures scheduled sight and hearing checks, and physics includes the native before/after simulation hooks. The fixture rejects samples if a pilot dies or the live population changes.
+
+For a visual capture, launch an Editor play session or Development player with `-expedition-load 4`. Use counts 1–4 for the camera pilot plus up to three stand-ins. Every configuration holds the lobby cap at four. The isolated session drives ordinary pilot movement, the BoZo presentation and the hub brains. The camera follows the first pilot outside the south gate. Capture High (default), `-load-balanced` and `-load-low` at the same resolution. The live HUD and account/network services are absent in this harness. Human co-op frame captures are tracked separately.
 
 ## Live mutator activation — owner requested 2026-11-02
 
@@ -368,6 +450,89 @@ customizable too via customization."
 - **Checks:** `--pod-drop` (`Tests/PodDropChecks.cs`). Deploy changes are in `--deploy-presentation` and
   `--deploy-models`, the tab in `LockerChecks`.
 
+### Pods crash in (Claude, 2026-11-18; `docs/EXPEDITION-OVERHAUL.md` R7, W4 release 1)
+
+The drop above is now a crash. Presentation only: the pod record, the capsule, LaunchGone, the look keys and every rule are
+unchanged. It ships with Astra's A0 (the branch is stacked on `codex/expedition-a0`), never on today's row.
+- **The opening.** Every beat derives from the opening the drop spans: A0's `ExpeditionRules.PodOpening`
+  (`NativePodDrop.Opening`, 5 s on generated hubs). The 3 s fallback (Q22) is planned too, if the owner chooses it.
+  - **5 s:** the streaks appear at -5.0 s, about 200 m out and 140 m up. The director cuts to the ride at -4.1 s, the
+    cloud punch is near -3.7 s and the retros fire at -3.2 s. Each pod hits at -2.8 + 0.25·order s, and its bolts
+    blow the door 0.6 s later.
+  - **3 s:** the streaks appear 120 m out and 85 m up. Each pod hits at -1.75 + 0.12·order s, and its door blows
+    0.35 s later.
+  - Every pilot stands on its capsule by GO.
+- **Each pod's own crash** (`NativePodDrop.Plan`, hashed from the record: seat, order, x, z, end, yaw in degrees):
+  - its own line, from behind its door within ±40°, leaning a little toward the camp's centre so the four fan in
+    from round the camp; coming in at 45-60°;
+  - door down on the way in (its porthole on the city), rolling door forward as the retros light;
+  - a cloud deck round its line that it punches through: a vapour ring torn open in it, a boom;
+  - retros: two pods in four (ranked by the run's fight start, so every peer agrees) sputter and fail, and come in
+    harder;
+  - the touchdown at most 1.5 m short of its centre, inside the skid apron A0 cleared behind it; a plough to rest on
+    the centre, sunk 0.2 m and leaning 4° or less. At rest its hull stays inside A1's collider envelope (two crossed
+    1.96 × 2.85 × 1.96 m boxes).
+- **Effects** (closed form, deterministic; puffs and flashes near the camera thin away, so the chase never flies into a
+  white screen):
+  - in the air: an unfogged meteor ribbon (`NativeGlow`), hot and wide at range from its first frame and a continuous
+    sheath close up; overlapping trail streaks, the contrail, the deck and the vapour ring, the retros (or their
+    sputter);
+  - at the impact: a small hot flash at its base for 0.1 s, while the blast lights carry the flash over the city (they
+    survive DARKNESS); the destruction kit's Slam chunks; a shockwave racing out low and a dust wall rolling out to
+    about 6 m; sparks and spoil;
+  - then steam, the bolts' flashes and the door's blow.
+- **What lasts** (from the record and the clock, so a late joiner and the killcam see the same):
+  - the crater: a soot pit, char and ash, a lip of broken paving slabs, its ash fading out into the plaza and dark
+    cracks running out (see-through by vertex alpha); about 5 m across, ploughed back into a 4-4.6 m furrow, flat paint
+    of 6 cm or less, no shadow. It is scaled down where it would reach the REVIVE-O-MATIC's mat, solids or use point
+    (`NativePodDrop.CraterFit`);
+  - the ablative tiles, cooling from white hot to black over 20 s and ticking as they cool;
+  - the smoke, thinning over 40 s.
+- **The pilot.** Hidden until the bolts blow the door. Then braced in the cabin's jump seat (the lobby Chair pose laid
+  over the game's pose: a game-rig track, so every body plays it) on the pod's full offset and lean, hunched into the
+  harness bar. The bar lifts, the pilot stands up out of the seat (its cushion folds up behind them) and stands on the
+  capsule by GO.
+  - **GO:** with A0's grounding the capsule is on the floor through the countdown. If it still floats, the drawn pilot
+    waits on its rest after GO only while it settles (`NativePodDrop.GoHold`: never once it rises, so a jump at GO
+    lets go on its first frame), with no footsteps and no Land take or `move.land`.
+- **My camera:** the Countdown branch of `NativeCinematicCamera` (`ArenaPresentation.PodDropDirect`). It owns the
+  drop's camera, the in-pod beat included (W3's ride steps aside for a directed camera).
+  - **The shots:** the sky, 140 m up and 80 m back past the camp from my pod's line, looking at least 30° down past
+    the camp at my streak (the view tilts down after it); the chase behind my pod; in first person first one braced second in
+    my red-lit cabin, in the seat, looking at the porthole (the city in it, then the roll), buffeting with camera shake
+    on; the stop 10 m up while the pod punches in below; then the arc down behind my pilot (third person), or in first
+    person up and over my pod round to its doorway, watching my pilot unbuckle and stand, and a cut into my own eyes
+    looking out of the door.
+  - **My own body** is hidden only while the eye is in my pod or my head (the cabin, after the cut).
+  - **My pod in glass:** it eases into see-through glass over 0.3 s only while my third-person camera is low behind or
+    beside it with the pod on the line to me (never during the stop or the high arc, never before its doorway); the
+    hot tiles glow through the glass.
+  - **The hand-off:** its last 0.5-0.6 s are blended over the game's own camera, so GO has no snap.
+  - **Comfort:** its own shake, by NativeStructureShake's fall-off. Camera shake off gives the same shots, steady.
+    Reduced effects gives a still wide shot from the plaza instead, from one of six stands beside the approach whose
+    view keeps off the REVIVE-O-MATIC (in first person it cuts into my eyes at the end).
+  - The countdown sits small at the top of the screen while the drop directs (and through its hand-off), clear of my
+    pod. A capture's fixed eye (`ConversionGame.CaptureEye`) wins.
+  - The camera runs before Render sets the frame's clock, so the shot is posed again after Render
+    (`PodDropLate`) on the clock the pods were drawn with: at 80 m/s a frame is over a metre, and the cabin's eye
+    stays in its pod.
+- **Sound:** `NativePodSounds` (11 synthesized placeholders until the ElevenLabs batch, N5), played by
+  `NativePodAudio`: the roar, the boom (late by its distance), the retros or the sputter, the impact, the bolts, the
+  door, steam, the sign's blip, the harness and the cooling ticks.
+- **The model:** bones 0-5, r ≤ 1.17 m, height ≤ 3.0 m and the Locker's paint, trim and light keys are kept. Added:
+  ablative tiles and a heat shield (bone 6), four fins on the diagonals that are its legs, a glass porthole in the
+  door, four explosive bolts (bone 7), and a cabin lined in grey panels (a little self-lit, so they read in the dark)
+  with red strips down the doorway, a red wash at their feet, an instrument panel and a ceiling. Bones 6 and 7 are built char black and all but unlit
+  (`NativePodModels.HeatBase`): a drawer that leaves them untinted (the station's dock) shows cold char; the hub lights
+  them through their tint (`HeatTint`). The jump seat (`SeatId`, its cushion bone 9 folding) and the harness bar
+  (`HarnessId`, bone 8) are models of their own, built as the station's (W3's) seat and bar, so a drawer of the pod
+  alone never shows two.
+- **Facing.** The presentation reads the record's yaw in degrees, so A0's spots facing the fountain draw right.
+- **Contract:** A0's `NativeExpeditionHubPlan.ExitReach` (0 until A1). The drawn pod centre is the record minus
+  forward(yaw°) × ExitReach (`NativePodDrop.Centre`). For the station's ride (W3) the drop keeps the plan's names:
+  `NativePodDrop.Appear` (-PodOpening), `ImpactOf(order)` (and `ImpactOf(order, opening)`), `Evaluate(age, order,
+  seed)`, `PodFrame.Lean` and `PodView.Seed`; a pod's own frame is `Evaluate(age, plan)`, its tilt `PodFrame.Tilt`.
+
 ### Slot sparks and sound cues (Claude, 2026-11-02)
 
 The owner asked for "spark effects when rolling and landing on things", with a different effect when a card helps the players
@@ -404,6 +569,69 @@ joiner sees none. `NativeDeployStage` draws them as camera-facing additive quads
   then. `NativeDeployScene` now rasterises each tile once, in parallel. The dials share the jobs, and a strip that isn't
   ready draws a dark blank. All six strips are ready about 2.6 s after the station opens.
 - **Checks:** `--deploy-sparks` (`Tests/DeploySparkChecks.cs`).
+
+### ATLAS, the tileset departures board (Claude, 2026-11-18; docs/EXPEDITION-OVERHAUL.md R1, W2)
+
+The tileset machine's board, before it has a choice. Presentation only: it shows the tileset and decides nothing (no rule,
+ticket, roll, wire or save reads it).
+
+- **Where:** a split-flap railway board, 8.4 × 1.195 m, hung on two drop rods from the ceiling beam at z 7.5 over the DEPLOY
+  gate (its face at (0, 5.28..6.475, 7.1)). The plan's wall band (centred near (0, 6.6, 8.3), 1.6 m tall) sits behind that
+  beam from the Overview, so the board hangs in front of it. It is as tall as the Overview allows: its top stays under the
+  light bar at z 6 and its bottom over the gate's DEPLOY sign, so the whole face and the sign read from the Overview (both
+  checked by ray against the room and the gate).
+- **What:** headed ATLAS · DEPARTURES, with four columns, TILESET · ENEMIES · INSTANCES · FINAL, kept apart by lit gold rules. The selected tileset is on
+  the large first line: CITY · MERIDIAN | THE INFECTED | 5 INSTANCES | THE SIREN, with its emblem flap (Meridian's skyline,
+  the clock at 6:47) and an in-service lamp in its accent. The three small, dim amber lines read NOT IN SERVICE, with no
+  names and no dates. Every cell comes from the registry, Core `NativeTilesets` (City's display fields; Astra adds the rules
+  fields in A3). The INSTANCES count is checked against the Instance Machine's real pool.
+- **The headings** are sized to read from the Overview. ATLAS is 0.13 m tall; · DEPARTURES and the column labels are 0.11 m,
+  with strokes 0.175 of their height (the station's own lettering uses a tenth). At 1080p the labels are about 9 px tall with
+  1.6 px strokes from the Overview, and 12 px with 2.2 px strokes from the board's shot. The checks pin at least 8.4 px and
+  1.45 px from the Overview.
+- **When the station opens** (each client's own clock): the emblem flap falls at 0.08 s, then line 1 clatters in left to
+  right from 0.2 s. Each flap runs 6-13 drum glyphs before its own, 52 ms apiece, and the line has landed by 1.4 s. Then a
+  two-note bell rings, sparks fly off both cheeks (machine 2) and the lamp flashes. It is an arrival, not a spin. The camera
+  opens on the board (`NativeAtlasBoard.Shot`, the TILESET card's shot) and holds until 2.8 s. Then the board hands it to the
+  Overview along a smoothstep over 1.2 s of the station's clock (`NativeAtlasBoard.ViewAt`), which the station's own ease
+  follows, so it leaves the board at rest. A roll or Deploy takes the camera as before: the board's shot and hand-off apply
+  only over the Overview, and the stage's `Shot` stays the rules' `Framing`.
+  - **The board's clock** starts on the station's second frame. The first frame's time is read before the station's scene
+    is built, and a first visit's build and first draw take a tenth of a second or more, so the arrival would otherwise
+    start part-way through (the emblem's fall skipped). Without a bake (the Editor), the clock also waits while the glyph
+    atlas rasterises on a worker (`NativeAtlasStage.Waiting`, at most 1.5 s), so the arrival never plays to a blank board.
+    A frame that jumps over a one-flap run's whole fall (the emblem's 44 ms; a first visit's station has 35-94 ms frames
+    just after it opens) shows that flap mid-fall, and the next frame shows it landed.
+- **The console:** a TILESET card, the console's first: a slim chip beside the station's title, on its kicker's line.
+  It reads ARRIVING…, then CITY · MERIDIAN and an IN SERVICE tag. The name stops short of the tag (a longer name later is
+  drawn as large as fits). The chip stays above the board's top from the Overview at every Interface scale up to 1.5. It is
+  display only: there is nothing to choose yet and it raises no intent.
+  - **The side panels step aside.** While the board holds its shot, the console's two side panels (the machines' cards,
+    display only) are not drawn. They ease back in along the hand-off, or within 0.35 s when a roll takes the camera
+    (`NativeAtlasStage.Panels`). The title, the TILESET chip and the controls stay, and the buttons stay live. At larger
+    Interface scales, 16:10 or 4:3, the panels would otherwise cover the board's left or right end in its only framed view.
+    The checks hold the board's shot clear of everything that stays, at 48 windows and Interface scales (4:3 to 32:9,
+    720p to 5K, 0.75 to 1.5).
+- **Drawn by:** Core `NativeAtlasBoard` (layout, arrival, shot, sparks, sound moments), `NativeAtlasStage` (posed in
+  `NativeDeployStage.Frame`; no per-frame allocation), `NativeAtlasModels` (the cabinet, about 6.2k triangles, and 297 flaps,
+  1.8k), `NativeAtlasArt` (one split-flap glyph atlas, 768 × 576, baked once per build in `Editor/NativeDeployCardBuild.cs`
+  under a key that changes with its inputs, else rasterised on a worker), `NativeAtlasSounds` (Claude's synthesized clatter,
+  built from the flaps' own landings, and the bell). The draw is Runtime `NativeAtlasScene`, called by `NativeDeployScene`
+  after its items. The flaps are emissive, so the station keeps its eight practicals. The sounds are `NativeAtlasAudio`:
+  `NativeAudio.Awake` calls `AtlasAwake`, which subscribes to `NativeAtlasScene.Sound` and starts both clips synthesizing on
+  workers (about 30-40 ms and 13 ms of work). A cue never synthesizes; the first cue makes both AudioClips. A cue heard late
+  (a frame's lag, a stall) starts the clatter that far in (`NativeAtlasSounds.StartAt`), so each click stays on its flap. The
+  bell rings from its strike unless it is more than a quarter second late. Astra's `NativeDeploySounds` plays machines 0
+  and 1 only and is unchanged. A board failure is logged once and turns the board off, never the station.
+- **The hook for A3:** `NativeTilesets.Selected(state)` returns City until `ExpeditionDeploymentState.tileset` exists. When the
+  selection changes, the cells that differ re-flap to the new row (`NativeAtlasStage.Retarget`). The board's pick animation and
+  the reels re-skinned from the chosen pool come later (W2, Claude, M3).
+- **Checks:** `--atlas-board` (`Tests/AtlasBoardChecks.cs`), plus the board counted in `DeployModelChecks`' 130,000-triangle
+  station total (about 92,000 with it), and machine 2 in `DeploySparkChecks` and `DeploySoundChecks`.
+- **Known limit:** from the Overview at Interface scale 1.25, the end of the console's own subtitle line ("…then deploy
+  together.") covers the board's left end: ATLAS · DEPARTURES, the lamp, the emblem and the first letters of line 1. Larger
+  scales cover more. The board's own shot is clear at every scale. Ending or wrapping that subtitle short of the board is a
+  small follow-up for the console's header.
 
 Active-run endpoint migration remains unsupported by the existing live Expedition transport (candidates remain non-capable); staging host promotion preserves the ticket. This change does not claim or enable active-run migration. The owner-authorized test update may ship with active-run migration disabled; full migration remains separate unfinished work.
 
@@ -498,13 +726,50 @@ either way. Station frame: metres, x right, z away from the default camera, y up
     none.
 - **Deploy console:** "roll destinations to deploy", "waiting for the party", DEPLOY (host only; guests see "waiting for the
   host"), then deploying.
-- **Deploy sequence** (owner 2026-11-02: "we get 'ejected' down"; the gate no longer opens):
-  - the machines dim (0.6 s) and clamp (0.2–0.5 s);
+- **Deploy sequence** (owner 2026-11-02: "we get 'ejected' down"; the gate no longer opens; 2026-11-18, W3 of
+  `docs/EXPEDITION-OVERHAUL.md`: "a more realistic drop-in ... give the players an animation when they fall"; Core
+  `NativeDeployEject`, the models `NativeDeployEjectModels`):
+  - the machines dim (0.6 s) and clamp (0.2–0.5 s), the room's light bars turn red and pulse with the klaxon;
   - the occupied pads sound the alarm, flashing red (0.15–1.23 s);
-  - their hatches split open over a lit well (0.9–1.25 s);
-  - each pilot drops through its pad in turn (from 1.35 s, 0.09 s apart), with a burst of light up its shaft;
-  - the screen fades (3.4–4 s);
-  - the travel hand-off starts at 4 s, unchanged.
+  - every pilot drops into a ready crouch from 0.4 s (the pack Jump take's gather, `NativePackJumps`);
+  - their hatches split open over lit drop tubes (0.9–1.25 s): an occupied pad opens into its ring (`PadRing`) and the floor
+    leaves a hole under every pad for its tube;
+  - each pilot falls through its pad in turn (from 1.35 s, 0.09 s apart) at 9.8 m/s², only ever down: the crouch blends into
+    the Jump take's fall entry over 0.5 s (the arms thrown out, the legs dropping; the take's push-off is never played), the
+    hips held at the crouch's height and lowered by any rise of the head, into the Fall loop; 0.32 s before the landing it
+    folds into the Chair. Nothing of the pilot rises in the fall and no part moves more than 0.17 m a frame. A burst of light
+    runs up its shaft;
+  - my camera cuts to my tube 0.35 s after my drop (1.2 m over the pad, looking straight down; a 0.45 m push-in, then held
+    over the tube's mouth, never following down the bore, so no ring passes the lens; my pilot falls away below, the ring lights
+    chasing up every 0.12 s: the three ring banks always sum to the same light, so the pulse runs without a strobe; my held
+    weapon away from the cut, as it would point at the lens), then to
+    my seat as my pilot lands (2.7 s on the host's pad): from just outside my pod's doorway with a 52° lens (its door out of
+    the way, its light strips dimmed), the whole helmet to the hands: the Chair pose with a land compression in the seat of my pod docked under the tube,
+    the harness bar (webbing, buckles) down in 0.15 s and the hands on it, the lined cabin (panels, red lamps, the porthole,
+    grab rails) going red, the roof hatch sealing;
+  - from 3.4 s (0.09 s a pad, never before its pilot is sealed in) the clamps fire and each pod drops out of the station's
+    belly, my camera beside my pod at its clamps and tipping down after it as it falls: through blue haze and rain, over a
+    broken moonlit cloud deck, the rolled city far below (the blueprint as massed blocks with lit windows, sodium lamps along
+    continuous streets, a glow over each district's hall); the pods hang at two depths, alternating along the pad arc, so they
+    clear each other under pads 1.53 m apart; every tube and collar is an open bore down to its pod's dark roof hatch;
+  - a white rush (4.8 s; the eye plunges into the cloud deck), then the fade into the cradle card (5.15–5.6 s);
+  - **Comfort:** camera shake off holds the tube's eye where its shot starts and drops the landing's jolt and the rush's
+    plunge; reduced effects keep the room's shot until my landing, then one still wide shot under the belly as the pods drop
+    away (no tube shot, no cabin close-up), the rings steady and no rain.
+  - the travel hand-off at 5.6 s (`TravelAt`; the host waits on it, so a run starts 1.6 s later than at 4 s).
+  - The 4 s variant (`NativeDeployEject.Cut.Short`, the DEV preview's "Eject: 4 s") keeps every beat but the release shot.
+  - The tube, seat, belly, clamp and city models are drawn only after Deploy and only for occupied pads (DeployPerformanceChecks);
+    the pods are the hub's own pod model from the source-model bank in each pilot's pod look; the poses are game-rig tracks, so
+    the visual, voxel and Classic bodies play them alike. The sounds are Claude's table (`NativeEjectSounds`), not
+    `NativeDeploySounds`.
+- **The cradle card** (a pod run's first load: the load requested from the live station after this client saw its eject,
+  latched by its serial, `NativeCradleLatch`; a later load into the hub, a return, a reprint, a reconnect or an area load
+  keeps the normal loading screen): the console's fade and then the loading screen draw the inside of my pod
+  (`NativeCradleCard`, `Runtime/NativeCradleHud.cs`): the porthole, the run's map in a night palette with each pod's streak,
+  the altimeter (12,000 m to 600 m with the load), a lamp per member (READY, LOADING n%, LOST), the mutators' lamps and PODS
+  AWAY · GOOD HUNTING. On a pod run every peer holds on the card until the hub's countdown starts (`PodCradleHold`, a game
+  hold in `StageSignals`), then it lifts away; the hub's pilots stay hidden while it waits in Lobby (a Lobby-marked view that
+  `SpawnPlace` shows hidden before any pod path places it).
 - **Display tables:**
   - **Destinations:** Ward Zero (quarantine green), Central Station (transit cyan), City Ironworks (foundry orange). A new
     instance falls back to its theme's look, then to neutral.
@@ -572,7 +837,8 @@ Branch `claude/deployment-station`. Presentation only, built on the rules above;
     wild-card back until rolled.
   - **Stamps:** PENDING until Deploy, ACTIVE after.
   - **Deploy:** the machines dim and the party is ejected down through its pads (the Deploy sequence above), framed from
-    in front of the pads; the gate stays shut with its doors flashing red. The map freezes at Deploy. Each light burst is
+    in front of the pads, then the eject's own shots on each viewer's pad (`NativeDeployEject.ShotOf`: the tube, the seat,
+    the release; they cut in); the gate stays shut with its doors flashing red. The map freezes at Deploy. Each light burst is
     a soft ribbon with a bright core, fading upward, turned to face the camera about its pad.
   - **Each frame:** the camera eases between `ShotOf` shots. It sets the lights and floor light pools, and the
     console's host controls (`ControlsOf`).
