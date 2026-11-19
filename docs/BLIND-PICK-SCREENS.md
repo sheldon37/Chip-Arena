@@ -30,6 +30,7 @@ Players read the original mode (every allowed weapon, in a grid) as **Blind Pick
 | Starting chip and comeback chip, on the PvP draft's stage | `Runtime/NativeDeathmatchPickStage.cs`; follow-through rule `Core/NativePickFollow.cs` |
 | Respawn countdown, comeback prompt, score panel | `Runtime/NativeDeathmatchRuntime.cs`, from `DeathmatchPickGui` down |
 | Room options and lobby lines | `Runtime/NativeRoomOptionsUI.cs` (`BlindPickRows`), `NativeLobbyUI.cs`, `NativeLobbyRoomUI.cs` |
+| Each mode's pick; an expedition's pick at Deploy | `Core/NativeRoomPick.cs`; `Runtime/NativeExpeditionWeaponPick.cs` |
 
 ## The screens
 
@@ -151,6 +152,37 @@ so others wont see this) The animations should look very nice, to the give playe
 Each finisher is a light pillar, a flash and two rings on the locked card, with the weapon's signature in small (casings for
 the guns, a slash for the blades, embers, droplets, arcs, a hex dome, an arrow up the beam, petals, confetti, dizzy stars,
 claws, a bolt, a ki ring, binary, packets).
+
+## Each mode's own pick (2026-11-19)
+
+Owner, 2026-11-19: "Its pulling chip selection logic from play vs bots (So if people select Blind pick all or anything else,
+its changing expedition pick logic.) I want Blind Pick choice with 5 options by default for expedition."
+
+The Weapon pick (`blindPick`, `blindChoices`) is the Play vs Bots and versus rooms' setting. `Core/NativeRoomPick` decides which
+pick each mode's opening asks the rules for:
+
+| Mode | Pick | Where its setting lives |
+| --- | --- | --- |
+| Versus (Play vs Bots, a versus room) | Off, Blind Pick All or Blind Pick, as set | the player's preferences, as before |
+| Expedition | always Blind Pick, 5 choices by default | the host's `expeditionChoices` (this session), sent to guests in the room options' own `blindPick` / `blindChoices` |
+| Boss Battle | the lobby loadouts (no opening) | none |
+
+- A rules change is stored for its own mode only (`NativeRoomPick.Store` in `SetRoomOptions`). Switching modes stores nothing,
+  so Blind Pick All in Play vs Bots never reaches an expedition, and an expedition's count never reaches Play vs Bots.
+- The co-op room's old Blind Pick All box wrote the Play vs Bots setting. It is gone. An expedition room has a Weapon choices row
+  in its place (2 up to the ordinary pool, 5 marked default); a Boss Battle room has none.
+- **Where an expedition picks:** at the Deployment Station, when the host presses Deploy, before the eject
+  (`Runtime/NativeExpeditionWeaponPick.cs`, `DeployWithPick`). The eject, the cradle card and the drop then run unbroken, and
+  the pods carry the picks. A run started without a station (a direct start) picks as it loads, as a versus match does. A
+  run's Restart keeps the weapons.
+- **How:** exactly the versus Blind Pick. The host deals each pilot's private offers from its own random stream (not per
+  client), each client draws only its own view and sends `opening-choice`, the host checks and locks, a random offer at 0 s,
+  then the 2 s reveal. Then the host keeps every pick for that station (by seat) and deploys; as the run starts,
+  `StartExpeditionM1`'s own `ApplyOpeningWeapon` puts each kept pick on its run seat (checked again), so a seat rebuilt in
+  between (a guest's profile, the host's preferences) cannot undo it.
+- The screen is Blind Pick's dealt cards with the weapon flourishes, headed EXPEDITION · BLIND PICK · N CHOICES. Like the
+  versus weapon pick, it has no 3D pilot (the pilot model is on the Deathmatch chip stage only).
+- A co-op room's lobby shows every pilot's own look: the lobby rows are no longer swapped to the pistol and idle pose there.
 
 ## Notes
 

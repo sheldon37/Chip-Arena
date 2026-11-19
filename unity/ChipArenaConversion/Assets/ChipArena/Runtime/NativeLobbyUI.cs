@@ -42,7 +42,8 @@ namespace ChipArena.UnityConversion
         private ContentWeapon LobbyWeapon(string id){if(id!=null)foreach(var w in content.weapons)if(w.id==id)return w;return null;}
         // A teams room as the viewer knows it: the host's own setting, or the guest's copy of the host's rules once this
         // connection has received them.
-        private bool RoomBlind=>!trainingRoom&&(Hosting?prefs.blindPick:GuestRules?.blindPick==true);
+        // (A versus room's: a co-op room's pilots keep their looks; an expedition picks at Deploy, NativeExpeditionWeaponPick.cs.)
+        private bool RoomBlind=>!trainingRoom&&!prefs.pve&&(Hosting?prefs.blindPick:GuestRules?.blindPick==true);
         private bool RoomTeams=>!prefs.pve&&(RulesGuest?GuestRules?.teams==true:prefs.teams);
         // main.ts:156 teamsBlocked: every pilot on one team.
         private static bool TeamsBlocked(List<LobbyPilot> roster){int mask=0,n=0;foreach(var p in roster){int bit=1<<TeamIndex(p.team);if((mask&bit)==0){mask|=bit;n++;}}return n<2;}

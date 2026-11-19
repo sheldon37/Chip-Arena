@@ -20,13 +20,19 @@ namespace ChipArena.UnityConversion
         private float nextOpeningView;
         private string highlightedWeapon;
         private Vector2 openingScroll;
-        private bool BeginOpening(Action launch)
+        // `deploy`: the Deployment Station's Deploy (DeployWithPick, NativeExpeditionWeaponPick.cs), where an expedition's pilots pick.
+        private bool BeginOpening(Action launch,bool deploy=false)
         {
             if(applyingOpening || server!=null || trainingRoom || trainingWanted || sandboxWanted)return false;
             if(openingRun!=null)return true;
+            // Each mode's own pick (Core NativeRoomPick, owner 2026-11-19): an expedition always deals Blind Pick with its own count,
+            // at the station's Deploy (a run started without a station picks here); a boss battle keeps the lobby loadouts; only a
+            // versus room reads the Play vs Bots Weapon pick (the blindPick and blindChoices preferences).
+            var pick=RoomPick;
+            if(pick.Mode==NativeRoomPick.Mode.Expedition&&deploymentRoom!=null&&!deploy)return false;
             bool chips=prefs.deathmatch&&!prefs.pve&&prefs.deathmatchChips!=1;
-            if(!prefs.blindPick&&(prefs.pve||!prefs.deathmatch))return false;
-            bool dealt=prefs.blindPick && prefs.blindChoices!=0;
+            if(!pick.Blind&&(prefs.pve||!prefs.deathmatch))return false;
+            bool dealt=pick.Dealt;
             int protocol=peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)
                 .Select(p=>p.LoadoutProtocol).DefaultIfEmpty(NativeOpeningDraft.DealtProtocol).Min();
             string refusal=NativeOpeningDraft.ProtocolRefusal(protocol,dealt);
@@ -36,15 +42,15 @@ namespace ChipArena.UnityConversion
                 if(!dedicated)Notice(networkStatus);
                 return true;
             }
-            if(!prefs.blindPick&&!chips)return false;
+            if(!pick.Blind&&!chips)return false;
             if(Hosting&&!GuestsReady)return true;
             var seats=MatchRoster();
             if(RefuseOpening(seats))return true;
             var rng=new SourceRandom(NativeMatch.NewSeed());
-            openingRun=new NativeOpeningDraft(seats,prefs.blindPick,chips,Time.unscaledTimeAsDouble,
+            openingRun=new NativeOpeningDraft(seats,pick.Blind,chips,Time.unscaledTimeAsDouble,
                 p=>NativeContentRules.Offers(content,p.Weapon,new Dictionary<string,int>(),rng.Next,prefs.choices,
                     NativeArena.ImplementedChip,abilityLoadout:p.Seat.weaponTechniques??"").ToArray(),OpeningWeaponAllowed,
-                dealt?prefs.blindChoices:0,dealt?content.weapons.Select(w=>w.id).ToArray():null,rng.Next);
+                dealt?pick.Choices:0,dealt?content.weapons.Select(w=>w.id).ToArray():null,rng.Next);
             openingLaunch=launch;
             nextOpeningView=0;
             openingRevealUntil=0;
@@ -122,6 +128,8 @@ namespace ChipArena.UnityConversion
         {
             if(applyingOpening && openingRun.Pilots.TryGetValue(seat.id,out var p) && OpeningWeaponAllowed(seat,p.Weapon))
                 seat.spec=p.Weapon;
+            // An expedition's pick, made at its station's Deploy before the run starts (NativeExpeditionWeaponPick.cs).
+            else if(!applyingOpening && KeptExpeditionPick(seat,out var kept))seat.spec=kept;
         }
 
         private void ApplyOpeningChip(NativeSeat seat)
