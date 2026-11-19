@@ -176,6 +176,9 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<pose.Rotation.Length;i++){pose.Rotation[i]=NQuat.Slerp(pose.Rotation[i],podChairPose.Rotation[i],e);pose.Position[i]=NVector.Lerp(pose.Position[i],podChairPose.Position[i],e);}
             return true;
         }
+        /// <summary>How seated pilot `id` is in its pod's jump seat (1 braced .. 0 standing; 0 with no pod): the visual body's own
+        /// motion set steps aside by it, so the body sits and rises on the game pose (NativeVisualMotionPresentation).</summary>
+        private float PodSeatOf(int id)=>pods.Count>0&&pods.TryGetValue(id,out var p)&&p.Planned&&double.IsNaN(p.LaunchAt)&&spawnViews.TryGetValue(id,out var v)&&v.Pod&&v.Shown?p.Frame.Sit:0;
         /// <summary>The footfalls wait while a pod holds its pilot: no steps while it rides, no landing thud at GO.</summary>
         private bool PodHoldsSteps(int id)=>pods.Count>0&&spawnViews.TryGetValue(id,out var v)&&v.Pod&&v.Shown;
         private static Vector3 PodV(NVector v)=>new Vector3(v.X,v.Y,v.Z);
