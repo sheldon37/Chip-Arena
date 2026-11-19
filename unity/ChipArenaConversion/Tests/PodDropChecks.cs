@@ -320,6 +320,11 @@ internal static class PodDropChecks
     {
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
         var spawn=R("Runtime/NativeSpawnInPresentation.cs");var pods=R("Runtime/NativePodPresentation.cs");var cine=R("Runtime/NativeCinematicCamera.cs");var game=R("Runtime/ConversionGame.cs");
+        // the draw and camera limits for the high approach: no cut by height (today's 2x Altitude ones are gone: the pod draws from
+        // Appear to Gone), and the farthest start, seen from anywhere in the plaza, is inside the hub look's far plane
+        var town=NativeMapLooks.ByLook(MapLookChecks.Load(root),"expedition-city");float start=0;var rnd=new Random(11);
+        foreach(float opening in new[]{3f,5f})for(int i=0;i<200;i++)start=Math.Max(start,P(1+i%8,i%4,(float)(rnd.NextDouble()*30-15),(float)(rnd.NextDouble()*30-15),40+i*5.3,(float)(rnd.NextDouble()*360),opening).P0.Length());
+        Check(town!=null&&start>150&&start+2*NativePodDrop.PlazaHalf*1.415f<town.farClip&&!pods.Contains("Altitude")&&!R("Core/NativePodDrop.cs").Contains("Altitude"),"the approach draws from its start, inside the hub's far plane (no cut by height)");
         Check(spawn.Contains("if(PodRun(arena))return PodSpawn(arena,pilot,feet,age,NativeSpawnIn.End(m.Phase,m.PhaseEnd,m.FightAt),out raise);"),"a pod run's pilots take the pod path");
         Check(spawn.Contains("||v.Pod)return;var f=v.Frame;bool slice")&&spawn.Contains("if(!v.Shown||v.Arena!=arena||v.Pod)continue;")&&spawn.Contains("||!v.Shown||v.Pod)return false;")&&spawn.Contains("look.Ghost=holo&&!v.Pod"),"no beam, hologram or veil for a pod");
         Check(spawn.Contains("if(v.Pod)return;"),"the pod's ride is the directed camera's, not the spawn-in's kick");
