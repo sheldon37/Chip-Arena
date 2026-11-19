@@ -506,26 +506,42 @@ either way. Station frame: metres, x right, z away from the default camera, y up
   - every pilot drops into a ready crouch from 0.4 s (the pack Jump take's gather, `NativePackJumps`);
   - their hatches split open over lit drop tubes (0.9–1.25 s): an occupied pad opens into its ring (`PadRing`) and the floor
     leaves a hole under every pad for its tube;
-  - each pilot falls through its pad in turn (from 1.35 s, 0.09 s apart) at 9.8 m/s², only ever down: the Jump take's arm
-    throw into the Fall loop, a burst of light up its shaft;
-  - my camera cuts to my tube 0.35 s after my drop (looking straight down, the ring lights chasing up every 0.12 s, my pilot
-    below), then to my seat as my pilot lands (2.7 s on the host's pad): the Chair pose with a land compression in the seat of
-    my pod docked under the tube, the harness bar down in 0.15 s, the cabin red, the roof hatch sealing;
+  - each pilot falls through its pad in turn (from 1.35 s, 0.09 s apart) at 9.8 m/s², only ever down: the crouch blends into
+    the Jump take's fall entry over 0.5 s (the arms thrown out, the legs dropping; the take's push-off is never played), the
+    hips held at the crouch's height and lowered by any rise of the head, into the Fall loop; 0.32 s before the landing it
+    folds into the Chair. Nothing of the pilot rises in the fall and no part moves more than 0.17 m a frame. A burst of light
+    runs up its shaft;
+  - my camera cuts to my tube 0.35 s after my drop (1.2 m over the pad, looking straight down; a 0.45 m push-in, then held
+    over the tube's mouth, never following down the bore, so no ring passes the lens; my pilot falls away below, the ring lights
+    chasing up every 0.12 s: the three ring banks always sum to the same light, so the pulse runs without a strobe; my held
+    weapon away from the cut, as it would point at the lens), then to
+    my seat as my pilot lands (2.7 s on the host's pad): from just outside my pod's doorway with a 52° lens (its door out of
+    the way, its light strips dimmed), the whole helmet to the hands: the Chair pose with a land compression in the seat of my pod docked under the tube,
+    the harness bar (webbing, buckles) down in 0.15 s and the hands on it, the lined cabin (panels, red lamps, the porthole,
+    grab rails) going red, the roof hatch sealing;
   - from 3.4 s (0.09 s a pad, never before its pilot is sealed in) the clamps fire and each pod drops out of the station's
-    belly over the rolled city (the blueprint drawn as dark blocks, sodium roads and the districts' halls), my camera beside
-    my pod at its clamps and tipping down after it as it falls; the pods hang at two depths, alternating along the pad arc, so they clear each other under pads 1.53 m apart;
-  - a white rush (4.8 s), then the fade into the cradle card (5.15–5.6 s);
+    belly, my camera beside my pod at its clamps and tipping down after it as it falls: through blue haze and rain, over a
+    broken moonlit cloud deck, the rolled city far below (the blueprint as massed blocks with lit windows, sodium lamps along
+    continuous streets, a glow over each district's hall); the pods hang at two depths, alternating along the pad arc, so they
+    clear each other under pads 1.53 m apart; every tube and collar is an open bore down to its pod's dark roof hatch;
+  - a white rush (4.8 s; the eye plunges into the cloud deck), then the fade into the cradle card (5.15–5.6 s);
+  - **Comfort:** camera shake off holds the tube's eye where its shot starts and drops the landing's jolt and the rush's
+    plunge; reduced effects keep the room's shot until my landing, then one still wide shot under the belly as the pods drop
+    away (no tube shot, no cabin close-up), the rings steady and no rain.
   - the travel hand-off at 5.6 s (`TravelAt`; the host waits on it, so a run starts 1.6 s later than at 4 s).
   - The 4 s variant (`NativeDeployEject.Cut.Short`, the DEV preview's "Eject: 4 s") keeps every beat but the release shot.
   - The tube, seat, belly, clamp and city models are drawn only after Deploy and only for occupied pads (DeployPerformanceChecks);
     the pods are the hub's own pod model from the source-model bank in each pilot's pod look; the poses are game-rig tracks, so
     the visual, voxel and Classic bodies play them alike. The sounds are Claude's table (`NativeEjectSounds`), not
     `NativeDeploySounds`.
-- **The cradle card** (a pod run's first load): the console's fade and then the loading screen draw the inside of my pod
+- **The cradle card** (a pod run's first load: the load requested from the live station after this client saw its eject,
+  latched by its serial, `NativeCradleLatch`; a later load into the hub, a return, a reprint, a reconnect or an area load
+  keeps the normal loading screen): the console's fade and then the loading screen draw the inside of my pod
   (`NativeCradleCard`, `Runtime/NativeCradleHud.cs`): the porthole, the run's map in a night palette with each pod's streak,
   the altimeter (12,000 m to 600 m with the load), a lamp per member (READY, LOADING n%, LOST), the mutators' lamps and PODS
   AWAY · GOOD HUNTING. On a pod run every peer holds on the card until the hub's countdown starts (`PodCradleHold`, a game
-  hold in `StageSignals`), then it lifts away; the hub's pilots stay hidden while it waits in Lobby.
+  hold in `StageSignals`), then it lifts away; the hub's pilots stay hidden while it waits in Lobby (a Lobby-marked view that
+  `SpawnPlace` shows hidden before any pod path places it).
 - **Display tables:**
   - **Destinations:** Ward Zero (quarantine green), Central Station (transit cyan), City Ironworks (foundry orange). A new
     instance falls back to its theme's look, then to neutral.

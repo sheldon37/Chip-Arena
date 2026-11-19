@@ -1,3 +1,59 @@
+## 2026-11-18 — Claude: W3's eject after the critics' review: a fall with nothing rising, a framed seat in a lined cabin, open bores, a night city under cloud, comfort settings, the card latched to the station's load (owner report; presentation only)
+
+Branch `claude/exp-w3-eject`, on the W3 branch at `048adc30` (base shared `15dab150`). Code commits: `c1c048dd`, then `592eb5ad`, `794c25a8` and `3c146163`, which fix what the captures showed. The review found nine problems; eight are fixed, and the ride is left to W4 (last item).
+
+- **The fall's hop (high).** Each pilot used to snap from the crouch to the Jump take's full extension and rise about a metre over its hatch. Now (Core `NativeDeployEject`):
+  - the crouch blends into the take's fall entry over 0.5 s, and the take's push-off is never played; then the Fall loop;
+  - the hips hold the crouch's height over the falling root and drop by any rise of the head, so nothing of the pilot moves up;
+  - 0.32 s before the landing the pilot folds into the Chair it lands in, so no catch slides past the seat camera;
+  - checks: the pelvis and head never rise from the drop to the landing (pads 0-3, nine specs, every 1/240 s); seated, they never rise more than 2 cm over their landing height (the breath); no part moves more than 0.17 m in any 1/30 s (the hop moved 0.9-1.0 m; the worst now is the greatsword's off hand in the fold, 0.166 m).
+- **The tube shot** starts 1.2 m over the pad (was 2.2 m), so the neighbours' pads stay out of frame. It pushes in 0.45 m, then holds over the tube's mouth while my pilot falls away and the rings streak up. My held weapon is put away at the cut, because it pointed at the lens. The eye no longer follows the pilot down the bore: in the first captures the rings passing the lens made the frame flicker at 8-14 Hz. A check keeps the eye over the mouth.
+- **The seat shot (high).** It now looks in from just outside my pod's doorway (pod frame z 1.12; the door is out of the way for the shot) with a 52° lens. The whole helmet, the bar and both hands are in frame on every pad (checked). The cabin is lined (`NativeDeployEjectModels.CabinModel`: seven panels with seams and rivets, red lamp strips, status lamps, the porthole, grab rails, a floor grille and the ceiling ring). The lining has its own finish, so a dark livery still reads. The harness has orange webbing and steel buckles, a cool key light from the doorway lights the pilot, and the doorway's light strips are dimmed. The roof hatch's seal stays out of frame, 1.6 m over the helmet: it reads as the white light from above going out, with the bass thump.
+- **The deep pads' bore (medium).** The belly's docking ring and the collar's walls were capped cylinders, which put a solid puck across a deep pod's bore. Both are open collars now. A check casts rays down every pad's bore from the floor and finds nothing above its collar's dark disc.
+- **The release (medium).** The city is lit as a city seen from altitude at night:
+  - massed blocks (podiums, setback towers, crowns with red air lights) and about 7,600 lit windows;
+  - sodium lamps along continuous dark streets, and a glow over each district's hall and the sanctuary;
+  - blue haze (fog 50-300 m) and a broken moonlit cloud deck 38 m under the station, which the rush plunges into;
+  - rain streaming past the falling pod.
+  - The city builds in 29k triangles in about 20 ms on a worker (budget 40k).
+  - The height story: the station hangs over a cloud deck with the city far below, and the card's altimeter then falls from 12,000 m.
+- **Comfort (two medium findings).**
+  - Camera shake off: no push-in, no jolt as I land, no plunge in the rush.
+  - Reduced effects: no tube shot and no cabin close-up. The room's shot holds until my landing, then one still wide shot holds the docked pods while they drop away. The rings are steady and there is no rain.
+  - The ring chase's three banks always sum to the same light.
+  - `DeployInput.NoShake` carries the setting from the live station and the DEV preview.
+  - Measured on the captures (mean frame brightness every 1/30 s through the tube shot, the DEV bar left out):
+    - full effects: 16-104 before, swinging every frame with changes of up to 113%; 73-101 after, at most 8% a frame;
+    - camera shake off: 16-104 before (113%); 63-68 after (2%);
+    - reduced effects: 16-97 before (98%); a constant 25 after (the room's shot).
+- **The card's scope (medium).** The cradle card used to cover every Expedition-kind load into the hub. It is now latched to one load (Core `NativeCradleLatch`): the load requested from the live station after this client saw its eject (`QueueStage`, host and guests). Hub returns, reprints, reconnects, area loads and a late joiner's first load keep `NativeStageLoadingHud` and its barrier lines. `PodCradleHold` works through the latch, and the live run shows the card from the station's load, held through Lobby, lifting into the countdown.
+- **The Lobby hide (medium).** The Lobby view is now its own mark (`SpawnView.Lobby`), and `SpawnPlace` shows it hidden before any pod path. SpawnInChecks pins that order. **For W4 and the integrator:** in `SpawnPlace`, W4's `if(v.Pod){position=PodFeet(a,v,position);...}` must come after `if(v.Lobby){...}`. `PodFeet` hides a view that has no pod record, and none exists in Lobby. The two branches now conflict on that line, so whoever merges them must choose the order.
+- **The ride (medium): not fixed here.** `NativePodRide.Enabled` stays false. W4's pushed branch already plays the braced second in first person, in its remodelled closed cabin, in its directed Countdown camera, and it honours Camera shake and Reduced effects. My ride steps aside for a directed camera, so with both merged W4's plays. **For the owner:** confirm that W4's cabin second is the plan's ride beat, and merge W3 with W4 for M1. If W3 ships without W4, there is no ride beat, and the eject's seat shot is the cabin moment.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. No wire change. Runs still start 1.6 s later (TravelAt 5.6 s).
+- **Voxel dependency.** The eject's poses are game-rig (`CapturedRig`) poses from the pack and lobby tracks, mapped onto the visual body as the rooftop's crowd and the lobby do (the plan's W3). Nothing new reads voxel models, kits or debris.
+- **Checks:**
+  - Full CoreTests the relgen5 way (Release, a throwaway worktree, the stage banks) at `3c146163`: 1035 PASS lines, exit 0.
+  - The pinned 6000.3.24f1 compile passes all four assemblies at `3c146163`, with no warnings in the changed files. `git diff --check` is clean.
+  - Targeted: `--deploy-presentation` (557,203 checks), `--deploy-performance`, `--deploy-models`, `--expedition-loading`, `--spawn-in`, `--deploy-sounds`, `--deploy-sparks`.
+- **Captures** (BoZo, 1920x1080, the DEV preview's clock pinned to each shot, 1/30 s):
+  - at `af8176d5`, which holds `c1c048dd`'s W3 code merged with shared `b13940ce`: solo, 4 pilots, the guest (pad 1, deep, dark), the 4 s variant, camera shake off, reduced effects, and a live solo run;
+  - at `02a66a38` (before the review): camera shake off and reduced effects;
+  - at the final `3c146163`: solo, 4 pilots, the guest, reduced effects and camera shake off.
+  - The before captures for the eject are run3's at `3ba32460`.
+- **Not run:**
+  - a Windows build, and frame times;
+  - a host and guest online run (one Editor);
+  - a hub return after an instance, to see the loading screen come back (covered by the latch's checks);
+  - the 4 s variant at the final commit (it uses the same seat shot);
+  - the sounds, which were not listened to;
+  - voxel and Classic bodies;
+  - a tube with arms spread: the takes' fall spreads the hands up to 0.8 m from the axis in a 0.46 m bore, so they pass into the walls. It is hard to see in the held tube shot; arms raised overhead would fit.
+- **Shared, for Astra:** shared `b13940ce` (Thunderheart Carillon) fails its own suite in three pins:
+  - `TransitionLoadingChecks.cs:200` pins 20 maps, but there are now 21;
+  - `VisualRigChecks.cs:1810` pins the prefs' defaults line, which `musicReaction="Full"` now splits;
+  - AdvancedLightingChecks: "carillon-storm has no an advanced block".
+  - This branch does not carry that merge, so its suite runs on `15dab150`.
+
 ## 2026-11-18 — Claude: the eject animated from the pad to the pod, and the cradle card on a pod run's load (owner report; presentation only)
 
 Branch `claude/exp-w3-eject`, base shared `15dab150` (the approved overhaul plan). This is W3 of `docs/EXPEDITION-OVERHAUL.md` (R8), with the plan's defaults ("Yes, use defaults"). Owner: "a more realistic drop-in ... give the players an animation when they fall".
