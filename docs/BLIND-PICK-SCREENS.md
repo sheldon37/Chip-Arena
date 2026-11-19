@@ -177,7 +177,9 @@ pick each mode's opening asks the rules for:
   run's Restart keeps the weapons.
 - **How:** exactly the versus Blind Pick. The host deals each pilot's private offers from its own random stream (not per
   client), each client draws only its own view and sends `opening-choice`, the host checks and locks, a random offer at 0 s,
-  then the 2 s reveal. Then the host keeps each pick on its seat (`ApplyOpeningWeapon`) and deploys.
+  then the 2 s reveal. Then the host keeps every pick for that station (by seat) and deploys; as the run starts,
+  `StartExpeditionM1`'s own `ApplyOpeningWeapon` puts each kept pick on its run seat (checked again), so a seat rebuilt in
+  between (a guest's profile, the host's preferences) cannot undo it.
 - The screen is Blind Pick's dealt cards with the weapon flourishes, headed EXPEDITION · BLIND PICK · N CHOICES. Like the
   versus weapon pick, it has no 3D pilot (the pilot model is on the Deathmatch chip stage only).
 - A co-op room's lobby shows every pilot's own look: the lobby rows are no longer swapped to the pistol and idle pose there.
