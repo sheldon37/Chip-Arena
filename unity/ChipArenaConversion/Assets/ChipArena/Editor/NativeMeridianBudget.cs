@@ -32,7 +32,9 @@ namespace ChipArena.UnityConversion.Editor
             if (Application.platform != RuntimePlatform.WindowsEditor) return;
             string key = "ChipArena.MeridianRendered." + Application.unityVersion;
             string revision = AssetDatabase.GetAssetDependencyHash("Assets/ChipArena/Core/NativeMeridianStreetPlans.cs").ToString()
-                + AssetDatabase.GetAssetDependencyHash("Assets/ChipArena/Runtime/NativeExpeditionLoadPreview.cs");
+                + AssetDatabase.GetAssetDependencyHash("Assets/ChipArena/Runtime/NativeExpeditionLoadPreview.cs")
+                + AssetDatabase.GetAssetDependencyHash("Assets/ChipArena/Runtime/NativeArenaDressing.cs")
+                + AssetDatabase.GetAssetDependencyHash("Assets/ChipArena/Core/NativeBlockLooks.cs");
             if (EditorPrefs.GetString(key) == revision) return;
             bool complete = true;
             for (int i = 0; i < NativeCityLayout.Plans.Count; i++)
