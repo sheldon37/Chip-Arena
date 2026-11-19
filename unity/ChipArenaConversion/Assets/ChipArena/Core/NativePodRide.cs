@@ -29,9 +29,9 @@ namespace ChipArena.UnityConversion
             u=0;if(!(age>=-60)||!(opening>0))return false;float at=RideAt(opening),len=RideSeconds(opening);if(age<at||age>=at+len)return false;
             u=(age-at)/len;return true;
         }
-        /// <summary>The seated eye in the pod (strapped in at the back of the cabin, facing the door) and where it looks (the door's
-        /// porthole, a little down at the city coming up).</summary>
-        public static readonly Vector3 Eye=new Vector3(0,NativePodModels.Floor+1.12f,-.12f),Look=new Vector3(0,-.2f,1);
+        /// <summary>The seated eye in the pod (strapped in at the back of the cabin, facing the door) and where it looks: out through
+        /// the doorway and down at the city rushing up (from in here the hub's pod model shows the outside through its door).</summary>
+        public static readonly Vector3 Eye=new Vector3(0,NativePodModels.Floor+1.12f,-.12f),Look=new Vector3(0,-.5f,1);
         /// <summary>The brace's judder at drop age `age` (`u` the ride's share): an offset in the pod's frame (m) and a pitch and roll
         /// (degrees): a hard shudder as the cabin buffets, easing as it starts and ends. None with camera shake off.</summary>
         public static void Judder(float age,float u,bool shake,out Vector3 offset,out float pitch,out float roll)
