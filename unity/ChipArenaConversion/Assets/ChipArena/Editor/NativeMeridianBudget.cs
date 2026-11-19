@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion.Editor
 
         // Run the new blockout on the Windows builder once per geometry revision.
         // Relative timing is recorded for the owner walk and enforced by the existing
-        // freeze benchmark. Incomplete or broken native fixtures still fail acceptance.
+        // freeze benchmark. Incomplete samples are reported for their individual layouts.
         internal static void MeasureChangedMeridianCandidates()
         {
             const string asset = "Assets/ChipArena/Core/NativeMeridianStreetPlans.cs";
@@ -34,6 +34,7 @@ namespace ChipArena.UnityConversion.Editor
             string revision = AssetDatabase.GetAssetDependencyHash("Assets/ChipArena/Core/NativeMeridianStreetPlans.cs").ToString()
                 + AssetDatabase.GetAssetDependencyHash("Assets/ChipArena/Runtime/NativeExpeditionLoadPreview.cs");
             if (EditorPrefs.GetString(key) == revision) return;
+            bool complete = true;
             for (int i = 0; i < NativeCityLayout.Plans.Count; i++)
             {
                 string log = System.IO.Path.Combine(buildRoot,"meridian-candidate-"+i+".log");
@@ -63,11 +64,12 @@ namespace ChipArena.UnityConversion.Editor
                     }
                 if (player.ExitCode != 0 || views != 12)
                 {
+                    complete = false;
                     Debug.LogWarning($"Meridian renderer could not complete {NativeCityLayout.Plans[i].Name}: exit {player.ExitCode}, {views}/12 views. See {log}");
-                    return;
+                    continue;
                 }
             }
-            EditorPrefs.SetString(key,revision);
+            if (complete) EditorPrefs.SetString(key,revision);
         }
 
         private static void MeasureMeridianCandidates(bool freeze)
@@ -91,6 +93,7 @@ namespace ChipArena.UnityConversion.Editor
                 }
                 string name = candidate?.Name ?? "A0";
                 Debug.Log($"{fixture.Report()} layout={name} peakWireBytes={maxWireBytes} candidateGenerationMs={fixture.CandidateGenerationMs:F2}");
+                if (!fixture.FullPopulation) failures.Add(name+" did not retain 88 live zombies on every measured tick; exclude this timing from freeze acceptance");
                 if (maxWireBytes >= 1048576) failures.Add($"{name} peak area frame {maxWireBytes} bytes");
                 if (fixture.CandidateGenerationMs > 1500) failures.Add($"{name} candidate generation {fixture.CandidateGenerationMs:F2} ms");
                 return fixture.Means();
@@ -104,7 +107,13 @@ namespace ChipArena.UnityConversion.Editor
                 string[] metrics = { "navigation", "crowd flow", "perception", "physics" };
                 foreach (var candidate in NativeCityLayout.Plans)
                 {
-                    var measured = Measure(candidate);
+                    double[] measured;
+                    try { measured = Measure(candidate); }
+                    catch (InvalidOperationException e) when (!freeze)
+                    {
+                        failures.Add(candidate.Name+" native benchmark incomplete: "+e.Message);
+                        continue;
+                    }
                     for (int i = 0; i < metrics.Length; i++)
                         if (measured[i] > baseline[i] * 1.25)
                             failures.Add($"{candidate.Name} {metrics[i]} {measured[i]:F4} ms/tick exceeds {baseline[i]*1.25:F4}");
