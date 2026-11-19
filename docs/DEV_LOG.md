@@ -69,7 +69,7 @@ Branch `claude/exp-w0-groundwork`, base shared `claude/sleepy-ritchie-g8ruhv` at
   - **The key.** It now carries the run (the generated map's world seed and generator Version, `NativeLightVolume.RunKey`). Every run shares the map id, so a later run took the first run's bake, or none.
   - **The candidates.** The generated city's are its kit's sources, picked by importance and spread (`NativeLightVolume.Pick`: luminance x range² x the share that reaches the street, and each pick discounts the lights inside its reach). Before, the bake took the look's 8 twice and then the kit's first 48 sources in build order, all in the west.
   - **Roll 1:** the streets within a baked lamp's reach went from 8% to 83% in the east, 8% to 62% in the south, and 60% to 73% in the west. The lamps' bounce at 0.6 m went from 0.0001 to 0.0060 in the east, 0.0002 to 0.0013 in the south, and 0.0013 to 0.0034 in the west.
-  - **Each presentation now hands only its own map's candidates.** Before, the hub's lamps went on feeding an instance's bake after a split run moved there.
+  - **Each presentation now hands only its own map's candidates.** Before, the hub's lamps went on feeding the bake of every advanced-lit map drawn after the town or the hub in the same session (the review's entry above has the reach).
   - The station, the Ironworks and the authored town keep their candidates as they were.
 - **The generated map's own practicals** (`Core/NativeExpeditionCityLights.cs` `GeneratedPracticals` and `ForMap`, read through `NativeLighting.Look`):
   - It draws the town's look with an empty practicals list of its own.
@@ -87,7 +87,7 @@ Branch `claude/exp-w0-groundwork`, base shared `claude/sleepy-ritchie-g8ruhv` at
 - **GeneratedFrameChecks** (`Tests/GeneratedFrameChecks.cs`, in the full CoreTests; `--generated-frame` alone):
   - the city's own draws, triangles, instances (at most 500 a draw), shadow casters, effect quads (and rain and beams), practical slots and low-tier parts per view;
   - 6 eyes by role (the hub, the south apron, the east and west entrances' join circles, the final court, the hub overview) over 20 rolls, at High and Low;
-  - pinned at the shared head's numbers plus 15%;
+  - pinned at the shared head's numbers plus 15% (the review made the triangles a no-growth gate: see its entry above);
   - plus checks of each fix above (45 in all).
   - The budget table is in `docs/EXPEDITION-DEPLOYMENT.md` "Frame budget".
 - **Re-pinned on purpose:**
@@ -98,7 +98,7 @@ Branch `claude/exp-w0-groundwork`, base shared `claude/sleepy-ritchie-g8ruhv` at
   - `xperf=o,D,label[,KIND:N];...` windows on a live run log the frame times (mean, p50, p95, p99, worst) and the Editor's render stats;
   - `xdolly` flies the game camera on the arena clock, so that before and after clips match;
   - the 1-pilot runs at High, Balanced and Low are in the budget table.
-  - **The 4-pilot hook waits for Astra's A0 DEV load harness:** the same windows, with its lobby at 4 and its stand-ins on the apron.
+  - **The 4-pilot row** runs on Astra's A0 DEV load harness as pushed (`-expedition-load 4`; the review's entry above).
 - **Systems touched:** lighting (the light volume's key and candidates, the look's practicals on the generated map), the city's atmosphere (the fog grid), its ambience (the crackles), the kit's hash, and the tests.
   - Not touched: rules, generation, collision, spawns, wire and save.
   - Not done here: the pod yaw fix (W4), the Lobby hide (W3) and the slot keep-out re-pin (with A0).

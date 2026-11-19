@@ -86,7 +86,9 @@ The town's storm is optional: set its `weather.kind` to "" to turn it off.
    a ray (each voxel keeps the first block that fills it, for its colour).
 2. Per open cell: a shadow ray to the key, one to each practical light in range (a visibility bit each, up to 64 lights: the
    look's 8 and the map presentation's candidates, the town's, the station's and the Ironworks' lamps), and 10 rays up for a
-   first sky share (a ray that meets nothing within 40 m sees the sky). Each presentation hands only its own map's candidates.
+   first sky share (a ray that meets nothing within 40 m sees the sky). Each presentation hands only its own map's candidates
+   (before W0, every advanced-lit map drawn after the town or the hub in the same session baked the hub's lamps at the hub's
+   places), and they are taken once per map and run, an empty hand included, so the volume's key is not rebuilt every frame.
    The generated Expedition city (expedition overhaul W0, 2026-11-18) has no practicals of its own yet
    (`NativeExpeditionCityLights.GeneratedPracticals`), so its 64 are its kit's sources picked by importance and spread
    (`NativeLightVolume.Pick`: luminance x range² x the share that reaches the street, each pick discounting the lights inside its
