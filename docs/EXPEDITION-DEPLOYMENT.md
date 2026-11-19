@@ -403,19 +403,22 @@ unchanged.
   - **The GO fallback, until A0 grounds the countdown:** after GO the drawn pilot waits on the capsule until it has
     settled, with no footsteps and no Land take or `move.land`.
 - **My camera:** the Countdown branch of `NativeCinematicCamera` (`ArenaPresentation.PodDropDirect`).
-  - **The shots:** the sky as the streaks come in; the chase behind my pod (in first person, a braced second in the
-    red cabin first, the porthole glass); the stop 10 m up while the pod punches in below; the arc down behind my
+  - **The shots:** the sky, from beside my pod's line, as the streaks come in; the chase behind my pod (in first
+    person, a braced second in the dark, red-lit cabin first, the porthole glass); the stop 10 m up while the pod punches in below; the arc down behind my
     pilot, or into my pilot's eyes in first person.
   - **The hand-off:** its last 0.5-0.6 s are blended over the game's own camera, so GO has no snap.
   - **Comfort:** its own shake, by NativeStructureShake's fall-off. Camera shake off gives the same shots, steady.
     Reduced effects gives a still wide shot from the plaza instead.
   - The countdown stays on screen. A capture's fixed eye (`ConversionGame.CaptureEye`) wins.
+  - The camera runs before Render sets the frame's clock, so the shot is posed again after Render
+    (`PodDropLate`) on the clock the pods were drawn with: at 80 m/s a frame is over a metre, and the cabin's eye
+    stays in its pod.
 - **Sound:** `NativePodSounds` (11 synthesized placeholders until the ElevenLabs batch, N5), played by
   `NativePodAudio`: the roar, the boom (late by its distance), the retros or the sputter, the impact, the bolts, the
   door, steam, the sign's blip, the harness and the cooling ticks.
 - **The model:** bones 0-5, r ≤ 1.17 m, height ≤ 3.0 m and the Locker's paint, trim and light keys are kept. Added:
   ablative tiles and a heat shield (bone 6), four fins on the diagonals that are its legs, a glass porthole in the door,
-  four explosive bolts (bone 7) and the harness bar (bone 8).
+  four explosive bolts (bone 7), the harness bar (bone 8) and a dark cabin (liner and ceiling).
 - **Facing.** The presentation reads the record's yaw in degrees, so A0's spots facing the fountain draw right.
 - **Contract:** `NativeExpeditionHubPlan.ExitReach` (0 until A1). The drawn pod centre is the record minus
   forward(yaw°) × ExitReach (`NativePodDrop.Centre`).
