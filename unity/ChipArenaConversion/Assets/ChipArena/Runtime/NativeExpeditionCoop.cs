@@ -16,6 +16,7 @@ namespace ChipArena.UnityConversion
             if(expeditionReplicaLayout==null){expeditionReplicaJson=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;expeditionReplicaLayout=deploymentBundle?.Layout??NativeExpeditionLayout.Parse(expeditionReplicaJson);expeditionReplicaIdentity=deploymentBundle?.Identity??NativeExpeditionLayout.Compatibility(expeditionReplicaJson,content);}
             string json=expeditionReplicaJson;
             var view=ExpeditionView;var area=expeditionReplicaLayout.Area(view.area);
+            if(view.area==expeditionReplicaLayout.world&&arena.MapId==NativeFallenRules.Map)area=NativeFallenRules.Layout();
             if(area==null||arena.MapId!=area.map)return;
             arena.ApplyExpeditionCollision(view,area,json);
             if(!view.loading||!StagePresentationReady||StagePresentation.Generation!=arena.Generation||StagePresentation.Map!=area.map)return;
@@ -57,6 +58,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in Expedition.Session.Run.Snapshot().members)
             {
                 var p=ExpeditionPilotFor(m.account);
+                if(p!=null&&ZoneBoss?.fallen?.hush.Any(h=>h.id==p.Seat.id&&h.lives>0)==true)continue;
                 if(p!=null&&p.Hp<=0&&!expeditionDown.Contains(m.account)&&m.alive&&m.connected&&!m.extracted&&Expedition.Session.Run.Defeat(m.account)){expeditionDown.Add(m.account);RecordMachineDeath(p,m.account);}
             }
         }
@@ -66,6 +68,11 @@ namespace ChipArena.UnityConversion
             var member=ExpeditionMemberFor(p);
             if(MachineHeld(p)||p.ExpeditionTransferHeld||member==null||!member.alive||member.extracted||ExpeditionChoosing(p))
             {p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};return;}
+            if(MapId==NativeFallenRules.Map)
+            {
+                if(FallenPaused)p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};
+                return;
+            }
             if(!p.Input.Interact)return;
             bool used=TryExpeditionInteract(p,out string notice);
             if(!used&&!Expedition.Session.Run.SplitAreas)foreach(var door in expeditionArea.doors)if(Expedition.EnterDoor(member.account,door.anchor)){used=true;break;}
@@ -124,7 +131,7 @@ namespace ChipArena.UnityConversion
             if(expeditionCollisionGeneration!=Generation)
             {
                 expeditionCollisionGeneration=Generation;
-                foreach(var door in area.doors)expeditionClosures[door.anchor]=Box("Expedition closure "+door.anchor,door.closure,door.closure.y,door.closure.sy);
+                foreach(var door in area.doors.Where(d=>d.closure!=null))expeditionClosures[door.anchor]=Box("Expedition closure "+door.anchor,door.closure,door.closure.y,door.closure.sy);
                 foreach(var gate in area.gates)expeditionClosures[gate.id]=Box("Expedition closure "+gate.id,gate.closure,gate.closure.y,gate.closure.sy);
                 if(area.role=="world")
                 {

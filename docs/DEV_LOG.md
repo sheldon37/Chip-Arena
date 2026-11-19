@@ -1,3 +1,11 @@
+## 2026-11-19 — Astra: NOCTIEL at the end of the generated run and Meridian walk candidate 2
+
+Branch `codex/meridian-exits-noctiel`, from shared `0b63f095`. Claude presentation handoff: all three clears unlock the north final court. Crossing its trigger takes the world party into Still Water for NOCTIEL's existing arrival, phases and death sequence. Show NOCTIEL and Still Water on THE LAST FIGHT. After the death sequence the party returns to the court with the final rewards there and its usual continue/extract choices. The world cohort keeps its ticket and the authoritative map generation changes. The direct Boss Battle and Ward Zero retain their own encounters.
+
+The five size-B Developer walks have separate gate approaches, including stepped boulevards, alleys and covered arcades. North still ends at the court. `--layered-walk` prints signed heading, height and width at 5 m intervals for each of the 20 exits and checks corridor clearance, gate-to-hall length and roof access. Dress the exits after the owner's walk. Claude's separate five-choice Expedition Blind Pick is integrated from shared 8435e063.
+
+Checks on the feature head: 1,066 managed PASS groups, all four pinned assembly compilations, 20 unique walk profiles, 256.3–296.4 m routes. Windows publication is verified separately by its build receipt.
+
 ## 2026-11-19 — Claude: Expeditions get their own weapon pick, Blind Pick with 5 dealt choices at the station's Deploy, never the Play vs Bots setting (owner report; presentation and wiring)
 
 Branch `claude/expedition-blind-pick` from shared `91310637`, shared `0b63f095` merged in. Owner, verbatim: "One more thing, lets do the same thing we do for blind pick choices, give players ... 5 options." Then, with screenshots of the Expeditions lobby ("LOADOUT · NO BOTS IN A RUN · DEV GREATSWORD · MELEE · EDIT", circled) and the Play vs Bots room on Blind Pick All: "Currently, in the lobby it still shows we select a loadout. I think for some reason; Its pulling chip selection logic from play vs bots (So if people select Blind pick all or anything else, its changing expedition pick logic.) I want Blind Pick choice with 5 options by default for expedition."

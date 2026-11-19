@@ -19,7 +19,8 @@ namespace ChipArena.UnityConversion
             if(Array.IndexOf(room.Snapshot().instances,NativePoolroomsGenerator.AreaId)>=0)Poolrooms=NativePoolroomsGenerator.Build(unchecked((int)(room.Snapshot().worldSeed^0xbac00002u)),true);
             Layout=NativeExpeditionGeneratedWorld.ComposeLayout(World,authored,Backrooms==null?null:NativeBackroomsExpedition.Area(Backrooms),Poolrooms==null?null:NativePoolroomsExpedition.Area(Poolrooms));
             Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+NativeExpeditionMutators.Version+"\n"+string.Join("\n",Mutators));
-            Content=content.WithGeneratedMap(World.Map);
+            Content=content.WithGeneratedMap(World.Map).WithGeneratedMap(NativeFallenRules.Arena());
+            Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\nfinal:"+NativeFallenBoss.Archetype);
             if(Backrooms!=null){Content=Content.WithGeneratedMap(Backrooms.Map);Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+Backrooms.Identity);}
             if(Poolrooms!=null){Content=Content.WithGeneratedMap(Poolrooms.Map);Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+Poolrooms.Identity);}
             if(Ticket.deployed&&Ticket.generatedCompatibility!=Identity)

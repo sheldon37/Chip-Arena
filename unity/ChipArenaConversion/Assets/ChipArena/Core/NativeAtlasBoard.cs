@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     /// (the light bar in front of its top, the DEPLOY sign under its bottom), so the whole face reads from every station shot
     /// that sees it, its headings included.</item>
     /// <item><b>What:</b> headed ATLAS · DEPARTURES, four columns (TILESET · ENEMIES · INSTANCES · FINAL) and four lines: the
-    /// selected tileset's on the large first line (CITY · MERIDIAN | THE INFECTED | 3 INSTANCES | THE SIREN), the others small
+    /// selected tileset's on the large first line (CITY · MERIDIAN | THE INFECTED | 3 INSTANCES | NOCTIEL), the others small
     /// and dim amber, NOT IN SERVICE where no tileset is (no invented names, no dates).</item>
     /// <item><b>When the station opens:</b> the emblem flap falls, then line 1 clatters into place left to right (each flap runs
     /// through the drum's glyphs before its own), lands within 1.2 s, and a bell rings with a spark off each cheek: an arrival,
@@ -103,7 +103,7 @@ namespace ChipArena.UnityConversion
                 cells.Add(new Cell{Line=line,Column=-1,Index=index++,Kind=Kind.Emblem,Large=large,X0=EmblemX,Y0=top-h,X1=EmblemX+h,Y1=top});
                 for(int c=0;c<n;c++)
                 {
-                    float pitch=large?L.Pitch:L.SmallPitch,fw=large?L.Pitch-Gap:L.SmallPitch-SmallGap;int k=large?L.Count[c]:(int)Math.Floor((L.Right[c]-L.Left[c]+1e-4f)/pitch);
+                    float pitch=large?L.Pitch:L.SmallPitch,fw=large?Math.Min(L.Pitch-Gap,LargeFlap*FlapAspect):L.SmallPitch-SmallGap;int k=large?L.Count[c]:(int)Math.Floor((L.Right[c]-L.Left[c]+1e-4f)/pitch);
                     for(int i=0;i<k;i++){float x0=L.Left[c]+i*pitch;cells.Add(new Cell{Line=line,Column=c,Index=index++,Kind=Kind.Glyph,Large=large,X0=x0,Y0=top-h,X1=x0+fw,Y1=top});}
                 }
                 L.LineCount[line]=cells.Count-L.LineStart[line];

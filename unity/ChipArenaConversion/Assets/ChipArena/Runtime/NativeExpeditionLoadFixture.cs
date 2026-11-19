@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
         internal double DevPerceptionMs {get;private set;}
         private static double LoadElapsed(long start)=>(Stopwatch.GetTimestamp()-start)*1000d/Stopwatch.Frequency;
 
-        internal void PrimeDevLoad(int lobby, bool layered = false)
+        internal void PrimeDevLoad(int lobby, NativeLayeredCityWalk survey = null)
         {
             DevLoadLobbyCount=lobby;
             Pve.Cap=ExpeditionHubRules.Cap(lobby,1);
@@ -23,14 +23,23 @@ namespace ChipArena.UnityConversion
             // Choose distinct, supported street nodes. Avoid the entry volumes so the regular
             // spawn path can allocate and initialize every body before warm-up begins.
             var feet = Map.nav.nodes.Select(n => Vec(n.pos) - Vector3.up * clearance);
-            if (layered)
+            if (survey != null)
             {
-                // The walk's sampled centre lines have a 15 m wide road under them.
-                // Give the same near-gate cohort a supported 2 m lattice across that road.
-                feet = feet.Where(p => p.z < -25 && Mathf.Abs(p.x) < .01f)
-                    .SelectMany(p => new[] { -6, -4, -2, 0, 2, 4, 6 }.Select(x => p + Vector3.right * x));
+                feet = survey.Routes.SelectMany(route => Enumerable.Range(1, 50).SelectMany(i =>
+                {
+                    route.Sample(i * 2, out var foot, out var direction, out float width);
+                    var right = new Vector3(direction.z, 0, -direction.x);
+                    return Enumerable.Range(-4, 9).Where(k => Math.Abs(k * 2) < width / 2 - .5f)
+                        .Select(k => Vec(foot) + right * (2 * k));
+                }));
+                // Use all four approaches. A six-metre alley cannot hold the old boulevard's crowd.
+                feet = feet.Where(p => !HubInside(p) && p.sqrMagnitude < 95 * 95);
             }
-            var points = feet.Where(p => !HubInside(p) && (p-centre).sqrMagnitude < 42*42 && (p-centre).sqrMagnitude > 10*10)
+            else
+            {
+                feet = feet.Where(p => (p-centre).sqrMagnitude < 42*42);
+            }
+            var points = feet.Where(p => !HubInside(p) && (p-centre).sqrMagnitude > 10*10)
                 .OrderBy(p => (p-centre).sqrMagnitude).ThenBy(p => p.x).ThenBy(p => p.z);
             int count=0;
             foreach(var point in points)
@@ -126,14 +135,14 @@ namespace ChipArena.UnityConversion
                     var slot=new ExpeditionPoint{x=seat*2-5,z=-27.5f-seat*1.5f};
                     if (walk != null)
                     {
-                        var road = walk.Routes[2].Points;
-                        slot.y = Mathf.Lerp(road[0].y, road[1].y, (slot.z-road[0].z)/(road[1].z-road[0].z));
+                        walk.Routes[2].Sample(3 + seat * 2, out var foot, out _, out _);
+                        slot.x = foot.x; slot.y = foot.y; slot.z = foot.z;
                     }
                     if(!Arena.ExpeditionPlace("p"+seat,slot))throw new InvalidOperationException("Load fixture start blocked for seat "+seat);
                 }
                 firstPositions=members.Select(p=>p.Body.position).ToArray();
                 maxTravel=new float[members.Length];
-                Arena.PrimeDevLoad(4, walk != null);
+                Arena.PrimeDevLoad(4, walk);
             }
             catch{Dispose();throw;}
         }

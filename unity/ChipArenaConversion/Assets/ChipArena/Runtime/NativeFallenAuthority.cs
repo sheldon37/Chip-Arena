@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private void ConfigureFallenBattle()
         {
             fallenApproach.Reset();
-            var z=ZoneBoss;z.fallen=new NativeFallenRecord{seed=NativeBossBattle.Seed,started=Time,phaseStarted=Time,hush=Members().Select(p=>new NativeFallenSeat{id=p.Seat.id,x=p.Body.position.x,z=p.Body.position.z,hushAt=Time}).ToArray()};
+            var z=ZoneBoss;z.fallen=new NativeFallenRecord{seed=Expedition==null?NativeBossBattle.Seed:unchecked((int)Expedition.Session.Run.Snapshot().seed+Expedition.Session.Run.Snapshot().loop),started=Time,phaseStarted=Time,hush=Members().Select(p=>new NativeFallenSeat{id=p.Seat.id,lives=Expedition!=null&&ExpeditionMemberFor(p)?.alive!=true?0:NativeFallenBoss.Lives,x=p.Body.position.x,z=p.Body.position.z,hushAt=Time}).ToArray()};
             z.action="arrive";z.duration=NativeFallenPilots.CutsceneEnd;z.hitAt=z.actionAt+z.duration;Pve.HoldDuration=Pve.HoldLeft=z.duration;Pve.Rate=0;Pve.SpawnBudget=0;bossGap=Time+1;
         }
         private void FallenDied(NativePilot p)
@@ -46,7 +46,8 @@ namespace ChipArena.UnityConversion
                 if(giver==null){s.reviver=-1;s.reviveAt=-100;continue;}
                 if(s.reviver!=giver.Seat.id||giver.LastDamage>=s.reviveAt){s.reviver=giver.Seat.id;s.reviveAt=Time;}
                 if(Time-s.reviveAt>=4+(NativeFallenRules.Chip(f,"unforgiven")?2:0))
-                {f.hush.First(h=>h.id==giver.Seat.id).lives--;s.lives=1;RevivePve(p,null,true);s.reviver=-1;s.reviveAt=-100;s.hushAt=Time;}
+                {if(Expedition!=null){var member=ExpeditionMemberFor(p);if(member==null||!member.alive&&!Expedition.Session.Run.Revive(ExpeditionMemberFor(giver).account,member.account,0))continue;expeditionDown.Remove(member.account);}
+                    f.hush.First(h=>h.id==giver.Seat.id).lives--;s.lives=1;RevivePve(p,null,true);s.reviver=-1;s.reviveAt=-100;s.hushAt=Time;}
             }
         }
         private float HitFallenBoss(NativeMinion m,NativePilot source,float damage,Vector3? point,string kind)
@@ -118,11 +119,15 @@ namespace ChipArena.UnityConversion
         private void StepFallenBattle()
         {
             var z=ZoneBoss;var f=z.fallen;var m=zoneBossActor;Pve.Rate=0;Pve.SpawnBudget=0;Pve.Boss.Hp=m.Hp;Pve.Boss.Body.position=m.Body.position+Vector3.up;
-            if(m.Hp<=0){if(z.deathAt<0){if(Expedition==null)AwardBossClear("noctiel");z.deathAt=Time;z.action=null;z.actionAt=z.hitAt=-100;z.duration=0;foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;foreach(var add in Minions.Where(a=>a.Kind.StartsWith("fallen-",StringComparison.Ordinal)).ToArray())RemoveMinion(add,false);Bullets.Clear();}if(Time-z.deathAt>=NativeFallenRules.DeathSeconds){Pve.Outcome="victory";Pve.Stage="ended";Match.FinishCooperative(true);}return;}
+            if(m.Hp<=0){if(z.deathAt<0){if(Expedition==null)AwardBossClear("noctiel");z.deathAt=Time;z.action=null;z.actionAt=z.hitAt=-100;z.duration=0;foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;foreach(var add in Minions.Where(a=>a.Kind.StartsWith("fallen-",StringComparison.Ordinal)).ToArray())RemoveMinion(add,false);Bullets.Clear();}if(Expedition==null&&Time-z.deathAt>=NativeFallenRules.DeathSeconds){Pve.Outcome="victory";Pve.Stage="ended";Match.FinishCooperative(true);}return;}
             foreach(var d in m.Dots.Values.ToArray())while(m.Hp>0&&d.Next<=Time&&d.Next<=d.Until){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)d.Dps*.25f,Vector3.zero,0,kind:"field");d.Next+=.25;}
+            if(Expedition!=null)
+                foreach(var pilot in Members().Where(p=>p.Seat.connected&&!f.hush.Any(h=>h.id==p.Seat.id)))
+                    f.hush=f.hush.Concat(new[]{new NativeFallenSeat{id=pilot.Seat.id,lives=ExpeditionMemberFor(pilot)?.alive==true?NativeFallenBoss.Lives:0,
+                        x=pilot.Body.position.x,z=pilot.Body.position.z,hushAt=Time}}).ToArray();
             FallenLives();if(!Members().Any(p=>p.Seat.connected&&f.hush.Any(s=>s.id==p.Seat.id&&s.lives>0))){BeginPveHold("defeat");return;}
             FallenPhase();if(FallenPaused){fallenApproach.Pause();return;}
-            if(Time-f.started>=720){bossHits.Clear();foreach(var p in Members()){p.ShieldUntil=0;FallenHurt(p,0,true);var s=f.hush.First(x=>x.id==p.Seat.id);s.lives=0;s.respawnAt=-100;}BeginPveHold("defeat");return;}
+            if(Time-f.started>=720){bossHits.Clear();foreach(var p in Members().Where(p=>p.Seat.connected)){p.ShieldUntil=0;FallenHurt(p,0,true);var s=f.hush.First(x=>x.id==p.Seat.id);s.lives=0;s.respawnAt=-100;}BeginPveHold("defeat");return;}
             foreach(var s in f.hush)
             {
                 var p=Pilots.Find(p=>p.Seat.id==s.id);if(p==null||p.Hp<=0||!p.Seat.connected)continue;var q=Flat(p.Body.position);float radius=q.Length();

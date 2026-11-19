@@ -251,6 +251,17 @@ namespace ChipArena.UnityConversion
                 }
                 var reply=splitRouters[member.Area].Execute(who,message.expeditionCommand);peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-reply",expeditionReply=reply}));return true;
             }
+            if(message.type=="pve-pick")
+            {
+                if(member==null||peer.Seat.access.Expires<=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()||
+                    message.epoch!=networkEpoch||!splitCohorts.Accepts(who,message.areaIdentity)||
+                    !peer.Changes.Allow(Time.unscaledTime)||SplitCommandBlock!=null||!ExpeditionValidation.Id(message.chip))return true;
+                var sim=SplitPilotArena(who);
+                var pilot=sim?.Pilots.Find(p=>p.Seat.id==peer.Seat.id);
+                if(sim?.MapId==NativeFallenRules.Map&&sim.Generation==message.generation&&sim.ZoneBoss?.fallen?.draftAt>=0&&pilot!=null&&pilot.Hp>0)
+                    sim.ChoosePve(pilot,message.pick,message.chip);
+                return true;
+            }
             // A vote to skip the cutscene in the voter's own area (Core NativeCutsceneSkip), never the host's displayed one.
             if(message.type=="skip-vote")
             {
@@ -259,7 +270,7 @@ namespace ChipArena.UnityConversion
             }
             // The area protocol owns readiness and combat commands. Legacy PvE / stage
             // commands cannot address the host's displayed arena on behalf of another area.
-            return message.type=="dev-command"||message.type=="stage-ready"||message.type=="pve-pick"||message.type=="pve-open"||message.type=="pve-close"||message.type=="chip";
+            return message.type=="dev-command"||message.type=="stage-ready"||message.type=="pve-open"||message.type=="pve-close"||message.type=="chip";
         }
         private sealed class SplitLocalCommands:IExpeditionCommands
         {

@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         };
         private void PveHud(float width,float height)
         {
-            var v=arena.Pve;if(v==null||prefs.expedition||ExpeditionView!=null||ExpeditionM1)return;var p=arena.Local;if(arena.ZoneBoss?.fallen!=null){FallenBattleHud(width,height);return;}PveBanner();
+            var v=arena.Pve;if(v==null)return;if(arena.ZoneBoss?.fallen!=null){FallenBattleHud(width,height);return;}if(prefs.expedition||ExpeditionView!=null||ExpeditionM1)return;var p=arena.Local;PveBanner();
             float W=NativeUi.W,H=NativeUi.H;var zone=arena.ZoneBoss;int phases=zone==null?4:3,phase=zone?.phase??v.Phase;
             float[] edges=zone==null?SirenHealthEdges:zone.archetype==NativeZoneBossRules.Ironworks?ConverterHealthEdges:ZoneHealthEdges;
             // Standalone fights bind their heading and thresholds to the replicated encounter.

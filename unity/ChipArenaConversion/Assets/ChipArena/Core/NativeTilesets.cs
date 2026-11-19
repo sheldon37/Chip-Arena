@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
         {
             new Tileset
             {
-                Id=City,State=State.Live,Name="CITY",Place="MERIDIAN",Accent=0xffc65a,Enemies="THE INFECTED",Final="THE SIREN",
+                Id=City,State=State.Live,Name="CITY",Place="MERIDIAN",Accent=0xffc65a,Enemies="THE INFECTED",Final=NativeFallenBoss.Name,
                 Instances=new[]{"exp-ward-zero","exp-transit","exp-foundry",NativeBackroomsGenerator.AreaId,NativePoolroomsGenerator.AreaId},
                 // Meridian's skyline round City Hall's tower, its clock stopped at 6:47 (docs/EXPEDITION-OVERHAUL.md N1).
                 Emblem="<rect x=\"6\" y=\"60\" width=\"17\" height=\"33\" fill=\"#fff\"/><rect x=\"21\" y=\"46\" width=\"15\" height=\"47\" fill=\"#fff\"/>"

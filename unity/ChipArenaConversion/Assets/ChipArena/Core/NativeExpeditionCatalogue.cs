@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
                     new Area{Name="WARD ZERO",Place="Meridian Biocontainment",Map="expedition-ward-zero",LayoutArea="exp-ward-zero",State=AreaState.Live},
                     new Area{Name="CENTRAL STATION",Place="Central Station",Map="expedition-transit",LayoutArea="exp-transit",State=AreaState.Live},
                     new Area{Name="CITY IRONWORKS",Place="City Ironworks",Map="expedition-foundry",LayoutArea="exp-foundry",State=AreaState.Live},
-                    new Area{Name="THE SIREN",Place="City Hall · the clock stopped at 6:47",State=AreaState.InDevelopment,Boss=true,Note="M1 fights her at the hub checkpoint"},
+                    new Area{Name=NativeFallenBoss.Name,Place="Still Water",Map=NativeFallenRules.Map,State=AreaState.Live,Boss=true,Note="Through the final court after all three clears"},
                 },
             },
         };

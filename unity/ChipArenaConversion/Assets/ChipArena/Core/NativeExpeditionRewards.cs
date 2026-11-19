@@ -85,6 +85,21 @@ namespace ChipArena.UnityConversion
             p.choosingUntil=0;if(p.choosing!=open){p.choosing=open;Changed();}return true;
         }
 
+        // Called only after the authority validates the open Fallen phase offer. Journal the
+        // phase per member so consuming a repeated pick cannot install a second copy.
+        internal bool InstallFinalDraft(string account,int phase,string chip,int max)
+        {
+            var p=Member(account);
+            if(!Mutable||Phase!=ExpeditionPhase.FinalBoss||!Live(p)||phase<2||phase>4||!ExpeditionValidation.Id(chip))return false;
+            var held=p.chips.FirstOrDefault(c=>c.id==chip);
+            if((held?.count??0)>=max||held==null&&p.chips.Length>=2048)return false;
+            string key=EventKey("fallen-draft:"+phase+":"+account);
+            if(!CanRecord(key))return false;
+            Record(key);
+            if(held==null)p.chips=Add(p.chips,new ChipCount{id=chip,count=1});else held.count++;
+            Changed();return true;
+        }
+
         /// <summary>Authority supplies catalog eligibility at selection time; pending selections may change exclusions.</summary>
         public bool Select(string account,string rewardId,string chip,Func<string,bool> eligible)
         {

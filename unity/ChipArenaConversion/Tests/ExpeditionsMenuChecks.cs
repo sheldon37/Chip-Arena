@@ -43,7 +43,8 @@ namespace ChipArena.UnityConversion
             Check(x.Areas.Length==4&&x.Areas.Take(3).All(a=>!a.Boss)&&x.Areas[3].Boss,"the authored areas, then the final boss");
             foreach(var a in x.Areas)
             {
-                if(a.State==K.AreaState.Live)Check(a.LayoutArea!=null&&areas.TryGetValue(a.LayoutArea,out var m)&&m==a.Map&&maps.Contains(a.Map),a.Name+": a live area is a layout area with its map");
+                if(a.Boss)Check(a.Name==NativeFallenBoss.Name&&a.State==K.AreaState.Live&&a.Map==NativeFallenRules.Arena().id,"generated finale in Still Water");
+                else if(a.State==K.AreaState.Live)Check(a.LayoutArea!=null&&areas.TryGetValue(a.LayoutArea,out var m)&&m==a.Map&&maps.Contains(a.Map),a.Name+": a live area is a layout area with its map");
                 else Check(a.LayoutArea==null&&a.Map==null&&a.State==K.AreaState.InDevelopment,a.Name+": an area not built yet has no layout id or map");
             }
             Check(x.Areas.Take(3).Select(a=>a.LayoutArea).SequenceEqual(new[]{"exp-ward-zero","exp-transit","exp-foundry"}),"the station's authored pool: Ward Zero, Central Station, City Ironworks");
