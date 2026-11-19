@@ -15,6 +15,7 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--voxel"){VoxelRatchetChecks.Run(ProjectRoot());VoxelStyleChecks.Run(ProjectRoot());VoxelDrawChecks.Run(ProjectRoot());}
             if(args.Length==1&&args[0]=="--voxel")return 0;
             if(args.Length==1&&args[0]=="--voxel-ratchet-table"){VoxelRatchetChecks.Print(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--weapon-skins"){var wsRoot=ProjectRoot();WeaponSkinChecks.Run(wsRoot,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(wsRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--party-benchmark"){PartyTransportBenchmark.Run().GetAwaiter().GetResult();return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--deathmatch")DeathmatchChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--deathmatch")return 0;
