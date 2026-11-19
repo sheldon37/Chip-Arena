@@ -17,3 +17,16 @@ The triangle columns count drawing every greybox block once using the actual Hig
 On the Windows builder, deployment acceptance runs the four-pilot, 88-zombie native simulation on a changed geometry revision and logs the layout name and counters. The Editor menu **Chip Arena → Benchmark Meridian candidates against A0** reruns the comparison and enforces the freeze thresholds. These are Developer walk candidates. The live expedition ticket continues to use its existing world contract.
 
 For changed geometry, the local Windows build also opens its packaged Development player in the isolated load harness, at 1600 × 900. It measures six views per layout on each graphics tier with four pilots and 88 zombies. Each `MERIDIAN_VIEW` line carries peak triangles and mean and 95th-percentile frame time after a 24-frame camera warm-up. The editor build log copies the samples, and the per-layout player logs remain in `Builds/meridian-candidate-*.log`. A missing graphics device or missing render counter leaves that measurement open.
+
+## Windows simulation, 19 November 2026
+
+Unity 6000.3.24f1 on an i9-13900K, source `24c894d12079`. Each row retained four pilots and 88 zombies for all 600 measured ticks after 120 warm-up ticks. All four per-tick costs cleared the A0 × 1.25 threshold. Generation measures the construction of the candidate inside this fixture.
+
+| Layout | Navigation ms/tick | Crowd ms/tick | Perception ms/tick | Physics ms/tick | Generation ms | Peak frame bytes on wire |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| A0 | 0.4371 | 0.1803 | 0.0177 | 0.1980 | — | 258894 |
+| Crown Hill | 0.1505 | 0.0087 | 0.0129 | 0.1899 | 21.95 | 260636 |
+| The Navigation | 0.1360 | 0.0119 | 0.0151 | 0.2021 | 21.50 | 272190 |
+| The Arcades | 0.1397 | 0.0071 | 0.0141 | 0.1869 | 28.05 | 266635 |
+| The Stride | 0.1319 | 0.0120 | 0.0155 | 0.1873 | 17.55 | 270385 |
+| The Yards | 0.1341 | 0.0088 | 0.0129 | 0.1609 | 22.92 | 263491 |
