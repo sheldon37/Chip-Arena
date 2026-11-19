@@ -30,7 +30,7 @@ Branch `claude/exp-w3-eject`, on the W3 branch at `048adc30` (base shared `15dab
 - **The Lobby hide (medium).** The Lobby view is now its own mark (`SpawnView.Lobby`), and `SpawnPlace` shows it hidden before any pod path. SpawnInChecks pins that order. **For W4 and the integrator:** in `SpawnPlace`, W4's `if(v.Pod){position=PodFeet(a,v,position);...}` must come after `if(v.Lobby){...}`. `PodFeet` hides a view that has no pod record, and none exists in Lobby. The two branches now conflict on that line, so whoever merges them must choose the order.
 - **The ride (medium): not fixed here.** `NativePodRide.Enabled` stays false. W4's pushed branch already plays the braced second in first person, in its remodelled closed cabin, in its directed Countdown camera, and it honours Camera shake and Reduced effects. My ride steps aside for a directed camera, so with both merged W4's plays. **For the owner:** confirm that W4's cabin second is the plan's ride beat, and merge W3 with W4 for M1. If W3 ships without W4, there is no ride beat, and the eject's seat shot is the cabin moment.
 - **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. No wire change. Runs still start 1.6 s later (TravelAt 5.6 s).
-- **Voxel dependency.** The eject's poses are game-rig (`CapturedRig`) poses from the pack and lobby tracks, mapped onto the visual body as the rooftop's crowd and the lobby do (the plan's W3). Nothing new reads voxel models, kits or debris.
+- **Voxel dependency.** The eject's poses are game-rig (`CapturedRig`) poses from the pack and lobby tracks, mapped onto the visual body as the rooftop's crowd and the lobby do (the plan's W3). Nothing new reads voxel models, kits or debris. The voxel retirement's amendment (shared `ac69455e`) moves the crouch, fall and seat onto the model's own clips and hand IK in V4 (Stage 2); that is not done here.
 - **Checks:**
   - Full CoreTests the relgen5 way (Release, a throwaway worktree, the stage banks) at `3c146163`: 1035 PASS lines, exit 0.
   - The pinned 6000.3.24f1 compile passes all four assemblies at `3c146163`, with no warnings in the changed files. `git diff --check` is clean.
@@ -48,11 +48,7 @@ Branch `claude/exp-w3-eject`, on the W3 branch at `048adc30` (base shared `15dab
   - the sounds, which were not listened to;
   - voxel and Classic bodies;
   - a tube with arms spread: the takes' fall spreads the hands up to 0.8 m from the axis in a 0.46 m bore, so they pass into the walls. It is hard to see in the held tube shot; arms raised overhead would fit.
-- **Shared, for Astra:** shared `b13940ce` (Thunderheart Carillon) fails its own suite in three pins:
-  - `TransitionLoadingChecks.cs:200` pins 20 maps, but there are now 21;
-  - `VisualRigChecks.cs:1810` pins the prefs' defaults line, which `musicReaction="Full"` now splits;
-  - AdvancedLightingChecks: "carillon-storm has no an advanced block".
-  - This branch does not carry that merge, so its suite runs on `15dab150`.
+- **Shared:** shared `b13940ce` (Thunderheart Carillon) failed three of its own pins (21 maps, the `musicReaction` prefs line, carillon-storm's advanced block); shared fixed them since in `afa19c6e`. This branch is not merged with shared, so its suite ran on `15dab150`. It merges into shared `1b356c0c` with conflicts only in DEV_LOG and PROJECT_STATE.
 
 ## 2026-11-18 — Claude: the eject animated from the pad to the pod, and the cradle card on a pod run's load (owner report; presentation only)
 
