@@ -163,7 +163,7 @@ namespace ChipArena.UnityConversion
             }
             // The suit's trims (the surge's chase), the face gear (the visor's beat) and the cloth's accent, queued on the arms as now posed
             // (the present and the contact moved them after the bind: queued before, the arm plates hung where the arms had been).
-            if(asModel&&draftBody!=null){if(!draftBody.Hood)DraftFaceGear(draftBody,seat);DraftSuitSurge(draftBody,seat);DraftAccentFlare(draftBody,seat);}
+            diVisorBand=asModel&&VisorBand(draftBody,seat);if(asModel&&draftBody!=null){if(!draftBody.Hood)DraftFaceGear(draftBody,seat);DraftSuitSurge(draftBody,seat);DraftAccentFlare(draftBody,seat);}
             if(diBay)VisualDraftDevice(seat,p,(float)time,diChip.linear);if(asModel)DraftCore(seat,(float)time);DraftSurgePath(stage);
             // The drawn visor for the shot and the install's heights (the model wears it about 20 cm under the stage rig's eyes).
             if(asModel&&draftArm?.Head!=null&&draftArm.Body==draftBody)stage.MeasureVisor(FromStage(diPath[4]));

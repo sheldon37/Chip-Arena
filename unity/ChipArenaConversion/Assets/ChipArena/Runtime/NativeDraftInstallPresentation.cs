@@ -25,13 +25,13 @@ namespace ChipArena.UnityConversion
         private NativeInstallShot.Profile diProfile=NativeInstallShot.Of("common",null);private float diA=-1,diP=-1;private bool diModel,diSiren,diDog,diReduced,diShort;
         // The chip's colour, the pilot's accent tint and the clack's rim (the chip's; a common chip's grey takes the pilot's accent instead).
         private Color diChip=Color.white,diAccent=Color.white,diRim=Color.white;private string diTier="common";private float diTurn=NativeInstallShot.TurnSeconds;
-        // The accent trims' tints (ratios over the model's baked accent, as AccentTint is: not colours) that make them glow in the chip's
-        // colour and white-hot (the visor's beat): a colour multiplied onto the baked teal read green for gold.
-        private Color diChipAccent=Color.white,diWhiteAccent=Color.white;private int diTintsOf=-1;
+        // The accent trims' tint (a ratio over the model's baked accent, as AccentTint is: not a colour) that makes them glow in the chip's
+        // colour (the surge's chase, the chest core): the chip's colour multiplied onto the baked teal read green for gold.
+        private Color diChipAccent=Color.white;private int diTintsOf=-1;
         private void DraftTints(Color chip)
         {
             int hex=(Mathf.RoundToInt(Mathf.Clamp01(chip.r)*255)<<16)|(Mathf.RoundToInt(Mathf.Clamp01(chip.g)*255)<<8)|Mathf.RoundToInt(Mathf.Clamp01(chip.b)*255);if(hex==diTintsOf)return;diTintsOf=hex;
-            var c=NativePortraitRules.GlowAccentTint(hex);diChipAccent=new Color(c.X,c.Y,c.Z);var w=NativePortraitRules.GlowAccentTint(0xffffff);diWhiteAccent=new Color(w.X,w.Y,w.Z);
+            var c=NativePortraitRules.GlowAccentTint(hex);diChipAccent=new Color(c.X,c.Y,c.Z);
         }
         // The drawn bay (seat, outward normal, forearm toward the hand) and the cartridge drawn this frame (centre, turn, scale).
         private Vector3 diBayAt,diBayN,diBayF;private bool diBay;private Vector3 diCartAt,diPinch;private Quaternion diCartTurn=Quaternion.identity;private float diCartScale;
@@ -306,16 +306,20 @@ namespace ChipArena.UnityConversion
             float sheen=(.1f+.1f*diProfile.Level)*NativeInstallShot.Ramp(diA,NativeInstallShot.SurgeEnd,NativeInstallShot.SurgeEnd+.3f)*(diShort?1:1-NativeInstallShot.Ramp(diA,NativeInstallShot.SettleStart(diTurn),NativeInstallShot.SettleEnd(diTurn)));
             for(int i=0;i<SurgeSuit.Length;i++){float band=Mathf.Clamp01(SurgeBand(diA,i)+sheen);VisualSuit(body.Root,seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0,1<<SurgeSuit[i],Color.Lerp(diAccent,diChipAccent,Mathf.Clamp01(band*2)),1+3*band);}
         }
-        /// <summary>The face gear on the draft body: the visor's beat (VisorAt) flashes white-hot by the tier's visor share (toward white, never
-        /// toward the chip's hue: the visor glows near saturation already, and gold over the teal visor read green) and decays back to the
-        /// accent over .5 s; the chip's colour rims it as light round the visor (DraftInstallFx). A wild chip's visor flickers off and on twice.</summary>
+        /// <summary>The face gear on the draft body: the visor's beat (VisorAt) keeps the visor's own hue and brightens it (a colour or even a
+        /// white ratio over the baked teal shifted its hue: gold read green, white read peach), and the white heat is light laid over the band
+        /// with the chip's colour along its edges (DraftInstallFx); back to the accent over .5 s. A wild chip's visor flickers off and on twice.</summary>
         private void DraftFaceGear(VisualBody body,NativeSeat seat)
         {
             float t=diA-NativeInstallShot.VisorAt;if(diSiren||t<0){VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);return;}
-            float flash=VisorFlash(t)*(.65f+.35f*diProfile.Visor),glow=1+.6f*flash;if(diProfile.Wild&&(t>=.05f&&t<.09f||t>=.16f&&t<.2f))glow=.1f;
-            VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0,Color.Lerp(diAccent,diWhiteAccent,.95f*flash),glow);
+            float flash=VisorFlash(t)*(.65f+.35f*diProfile.Visor),glow=1+1.2f*flash;if(diProfile.Wild&&(t>=.05f&&t<.09f||t>=.16f&&t<.2f))glow=.1f;
+            VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0,diAccent,glow);
         }
         /// <summary>The visor beat's flash (0..1) `t` seconds after VisorAt: up in two frames, falling away over .5 s.</summary>
+        // Whether the drafting pilot wears a visor band (the helmet, the visor, the mask and visor): its beat's light is laid over it; the Hot
+        // Dog, a bare face, the half mask, the mask alone and the Sheldon hood have none.
+        private bool diVisorBand;
+        private bool VisorBand(VisualBody body,NativeSeat seat){if(body==null||diDog||diSiren||body.Hood)return false;int gear=FaceGearOf(seat.id);return gear==NativeWeaponSkins.FaceHelm||gear==NativeWeaponSkins.FaceVisor||gear==NativeWeaponSkins.FaceBoth;}
         private static float VisorFlash(float t){if(t<0||t>=.5f)return 0;float up=Mathf.Clamp01(t/.03f),fall=1-t/.5f;return up*fall*fall;}
         /// <summary>A cloth outfit's accent trims flaring from the pilot's accent to the chip's colour at the core's light (CoreAt), settling
         /// back over 1.5 s (the next bind writes the pilot's accent again).</summary>
@@ -454,9 +458,11 @@ namespace ChipArena.UnityConversion
             }
             // The visor beat's rim: the chip's light along the white-hot band's top and bottom edges, never over the band (laid on it, a gold
             // glow tinted the white visor pink; DraftFaceGear flashes the band itself toward white). The visor point is the band's top edge.
-            float visorT=a-NativeInstallShot.VisorAt;if(diModel&&visorT>=0&&visorT<.5f&&diPath[4]!=Vector3.zero)
+            float visorT=a-NativeInstallShot.VisorAt;if(diVisorBand&&visorT>=0&&visorT<.5f&&diPath[4]!=Vector3.zero)
             {
                 float fl=VisorFlash(visorT)*(.65f+.35f*diProfile.Visor);var right=camera.transform.right;var up=camera.transform.up;var edge=Lin(rim,2.2f*fl);
+                // The white heat over the band itself (additive, so the visor's own hue never shifts), its middle hottest.
+                fx.Streak(S(diPath[4]-forward*.04f-up*.032f-right*.115f),S(right*(-.23f/.05f)),white*(1.5f*fl),.042f,.23f,.05f,.25f,visorT/.5f,8165);
                 for(int k=0;k<2;k++){var head=diPath[4]-forward*.035f+up*(k==0?.006f:-.07f)-right*.12f;fx.Streak(S(head),S(right*(-.24f/.05f)),edge,.0035f,.24f,.05f,.35f,visorT/.5f,8161+k);}
                 fx.Glow(S(diPath[4]-forward*.035f+right*.125f-up*.032f),Lin(rim,1.2f*fl),0,.03f,1,visorT/.5f,8163);fx.Glow(S(diPath[4]-forward*.035f-right*.125f-up*.032f),Lin(rim,1.2f*fl),0,.03f,1,visorT/.5f,8164);
             }
