@@ -62,6 +62,10 @@ namespace ChipArena.UnityConversion
         // The gaze's target itself turns at most TurnSpeed rad/s (seen from the eye), so a glance across the whole display takes
         // its time instead of whipping the head through the middle.
         public const float GazeOmega=13,PickGazeOmega=10,FrameOmega=6,TurnSpeed=6;
+        // The lock-in: for LockSpan after the pick the gaze's spring runs at LockGazeOmega, so the visor snaps onto the card.
+        public const float LockGazeOmega=18,LockSpan=.15f;
+        // The install's look down at most (rad): the head bows onto the bay, its face still to the camera.
+        public const float InstallPitch=.32f;
         // The idle breathes at .75 of the source draft pose's pace (a 5 s breath).
         public const float IdlePace=.75f;
         // The bow: the share of the turn toward the gaze direction taken by the spine, chest and neck in turn (the head takes
@@ -86,7 +90,7 @@ namespace ChipArena.UnityConversion
         // resting plexus and CatchOut in front of it, out from the midline by CatchSpread of the card's sideways offset (between
         // Beside and CatchWide), at most ArmReach from the shoulder. A pilot's left hand takes every card (the chip goes into the
         // right wrist's device): for a card on the right it reaches across to CrossBeside from the midline, just short of it.
-        public const float ArmReach=.5f,ConsiderReach=.85f,ConsiderSlide=.06f,ConsiderTurn=.3f,Beside=.16f,Arc=.08f,CatchUp=.12f,CatchOut=.26f,CatchSpread=.35f,CatchWide=.3f,CrossBeside=.04f,CrossBlend=.12f;
+        public const float ArmReach=.5f,ConsiderReach=.85f,ConsiderSlide=.06f,ConsiderTurn=.3f,Beside=.16f,Arc=.08f,CatchUp=.18f,CatchOut=.26f,CatchSpread=.35f,CatchWide=.3f,CrossBeside=.04f,CrossBlend=.12f;
         /// <summary>How far a hand's card is on its own side, 0..1 (1 on its side, 0 across the body), blended over CrossBlend of the
         /// card's sideways offset either side of the middle, so a highlight crossing the middle never jumps the hand.</summary>
         public static float Own(bool left,Vector3 aim)=>MathUtil.Smooth(((left?aim.X:-aim.X)+CrossBlend)/(2*CrossBlend));
@@ -97,14 +101,19 @@ namespace ChipArena.UnityConversion
         public const float LiftOmega=7,LowerOmega=9,AimOmega=9;
         // The share of the squared sideways distance that flattens a look's pitch (Aim).
         public const float SideReach=.25f;
-        // The pick's timeline (seconds after the authoritative pick, with NativeDraftPlant's slowed plant): the hand starts rising
-        // at ReachStart and catches the card at NativeDraftPlant.Contact; the card starts flying to the catch at FlyStart and
-        // fades in the hand over the FadeSpan before the contact; the gaze passes from the card to the hand over the HandOver
-        // before it.
-        public const float ReachStart=.16f,FlyStart=.12f,FadeSpan=.1f,HandOver=.2f;
-        public static float Reach(float age)=>MathUtil.Smooth((age-ReachStart)/(NativeDraftPlant.Contact-ReachStart));
-        public static float Fly(float age)=>MathUtil.Smooth((age-FlyStart)/(NativeDraftPlant.Contact-FlyStart));
-        public static float Fade(float age)=>MathUtil.Smooth((age-(NativeDraftPlant.Contact-FadeSpan))/FadeSpan);
+        // The pick's timeline (seconds after the authoritative pick: the install, NativeInstallShot): the hand cocks at the lock and
+        // leaves for the card at ReachStart on an easing arc that overshoots the catch by Overshoot toward the card and comes back to
+        // it at NativeInstallShot.Catch, where the cartridge flies into its pinch; the card leaves its slot at FlyStart (the 3D
+        // cartridge takes over at NativeInstallShot.Burst); the gaze passes from the card to the cartridge about the burst.
+        public const float ReachStart=NativeInstallShot.ReachStart,FlyStart=NativeInstallShot.FlyStart,FadeSpan=.1f,HandOver=.2f,Overshoot=.02f,SirenLunge=.03f,Cock=.02f,CockTurn=.35f;
+        // (An ease out that starts from rest: its first .15 eased in, so the hand never jumps to its top speed.)
+        public static float Reach(float age){float u=(age-ReachStart)/(NativeInstallShot.Catch-ReachStart);u=MathUtil.Clamp(u,0,1);float i=1-u;return (1-i*i*i*Math.Max(0,1-.4f*u))*MathUtil.Smooth(u/.1f);}
+        public static float Fly(float age)=>NativeInstallShot.Fly(age);
+        public static float Fade(float age)=>MathUtil.Smooth((age-(NativeInstallShot.Burst-FadeSpan))/FadeSpan);
+        /// <summary>The reach's overshoot past its line toward the card (0..1 of Overshoot): out and back by the catch.</summary>
+        public static float Over(float age)=>NativeInstallShot.Bump((((age-ReachStart)/(NativeInstallShot.Catch-ReachStart))-.55f)/.45f);
+        /// <summary>The cock at the lock (0..1): the hand draws back and its wrist extends, then the reach takes it.</summary>
+        public static float Cocked(float age)=>NativeInstallShot.Ramp(age,0,.08f)*(1-NativeInstallShot.Ramp(age,.10f,.26f));
         // The card the pilot considers: the chosen one, else the local picker's hover or keyboard focus, else the boot scan
         // (following the entrance, .22 s a card) and then a slow cycle (1.8 s a card); reduced motion holds the first card.
         public const float BootStep=.22f,ScanStep=1.8f;
@@ -141,7 +150,7 @@ namespace ChipArena.UnityConversion
             local.Z=ChestFront;return chest+Vector3.Transform(local,q);
         }
 
-        public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();public readonly NativeDraftPlant Plant=new NativeDraftPlant();
+        public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();public readonly NativeDraftInstall Plant=new NativeDraftInstall();
         // Outputs: the camera (root frame), the smoothed gaze point, the reaching side, the palm of that hand and, from the pick,
         // where that palm meets the card at the contact (CatchPalm: the solved catch with the palm turned up; the palm before the
         // pick), the presentation clock (seconds), the smoothed pick age (-1 before the pick); the seated pilot's resting solar
@@ -150,10 +159,36 @@ namespace ChipArena.UnityConversion
         // The resting plexus's screen row under the eased camera; -1 until the first framing. The lower shade's line for a tray
         // whose first row's top is `trayTop`, and the row where it turns opaque (ShadeDrop).
         public float PlexusRow=>framed?Project(RestPlexus).Y:-1;
-        public float ShadeLine(float trayTop)=>framed?Math.Max(trayTop,PlexusRow+PlexusGap):trayTop;
+        // Under the install's shot, once the tray's last shard has gone, the line lets go of the tray (over .2 s) and follows the plexus
+        // on the shot's camera; it comes back with the camera (TrayFade).
+        public float ShadeLine(float trayTop){if(!framed)return trayTop;float plexus=PlexusRow+PlexusGap;return Math.Max(trayTop+(plexus-trayTop)*TrayFade,plexus);}
+        public float TrayFade;
         public float ShadeDeep(float line)=>Math.Max(line+ShadeRamp,framed?Project(RestPlexus-new Vector3(0,ShadeDrop,0)).Y:line+DefaultRamp);
         private readonly float restHead;private readonly Quaternion[] restQ=new Quaternion[2];private float lookNear=LookZ;
-        private float frameHeight,frameCentre,frameHeightV,frameCentreV,lastAge=-1;private Vector3 gazeV,lead;private bool framed,gazed,picked,carry;
+        private float frameHeight,frameCentre,frameHeightV,frameCentreV,lastAge=-1;private Vector3 gazeV,lead;private bool framed,gazed,picked,carry;private int cardCount;
+        // The install's plan from the seated rest (the shot's focus): the bay's seat at the install point (the plan's, which follows the
+        // pilot's visor), its normal, the visor (the rest head's, VisorOffset over it: the stage rig's eyes, or the drawn body's visor as
+        // measured, MeasureVisor: the player's model wears its visor about 20 cm under the rig's eyes, so the shot framed the helmet's top).
+        public Vector3 PlannedBay=>plannedChestAt+Vector3.Transform(Plant.InstallAt,plannedChestQ);
+        public Vector3 PlannedVisor=>restHeadAt+VisorOffset;
+        public readonly Vector3 PlannedNormal;private readonly Vector3 plannedChestAt,restHeadAt;private readonly Quaternion plannedChestQ,restHeadQ;private float crownTop,crownTaken;
+        /// <summary>The stage rig's visor over its rest head (root frame), and the pilot's as drawn (MeasureVisor; the rig's until measured).</summary>
+        public static readonly Vector3 RigVisor=new Vector3(0,EyeUp-.015f,.02f);
+        public Vector3 VisorOffset=RigVisor;
+        /// <summary>The drawn body's visor (root frame, this frame's pose): its place on the head carried to the rest head, eased in (a body's
+        /// visor rides its head, so the offset holds per body); the shot frames it and the install's heights follow it (NativeDraftInstall.VisorChestY).</summary>
+        public void MeasureVisor(Vector3 visor)
+        {
+            var head=Pose.WorldPosition[CapturedRig.Head];var local=Vector3.Transform(visor-head,Quaternion.Inverse(Pose.WorldRotation[CapturedRig.Head]));
+            var offset=Vector3.Transform(local,restHeadQ);VisorOffset=MathUtil.Finite(offset.X+offset.Y+offset.Z)?Vector3.Lerp(VisorOffset,offset,.35f):VisorOffset;
+        }
+        // How far under the rig's eyes the pilot's visor sits: the crown (the head's top and a hat over it) rides down with it.
+        private float VisorDrop=>Math.Max(0,RigVisor.Y-VisorOffset.Y);
+        // The visor's height in the planned chest's frame (the install's heights follow it).
+        private float VisorChestY=>Vector3.Transform(PlannedVisor-plannedChestAt,Quaternion.Inverse(plannedChestQ)).Y;
+        // The burst: where the 2D card hands over to the 3D cartridge (screen fractions) and the cartridge's width there (a share of the
+        // screen's width); valid while Bursting.
+        public Vector2 BurstScreen;public float BurstWidth;public bool Bursting;
         // Per arm (0 the left, 1 the right): the considering weight, its velocity and last target, and the aim point's spring.
         private readonly float[] armW=new float[2],armV=new float[2],armGoal=new float[2];private readonly Vector3[] armAim=new Vector3[2],armAimV=new Vector3[2];private readonly bool[] armAimed=new bool[2];
         public float Weight(bool left)=>armW[left?0:1];
@@ -161,9 +196,11 @@ namespace ChipArena.UnityConversion
         {
             NativeDraftRules.Pose(Pose,0);Pose.World();restHead=Pose.WorldPosition[CapturedRig.Head].Y;restQ[0]=RestWrist(true);restQ[1]=RestWrist(false);
             Pose.Rotation[CapturedRig.Spine]=Pose.Rotation[CapturedRig.Spine]*CapturedRig.Euler(Lean);Pose.World();RestPlexus=Plexus(Pose);
+            var cq=Pose.WorldRotation[CapturedRig.Chest];PlannedNormal=Vector3.Transform(NativeDraftInstall.NormalWant,cq);
+            restHeadAt=Pose.WorldPosition[CapturedRig.Head];restHeadQ=Pose.WorldRotation[CapturedRig.Head];plannedChestAt=Pose.WorldPosition[CapturedRig.Chest];plannedChestQ=cq;Plant.VisorChestY=VisorChestY;
         }
         // A new turn or pilot: the springs restart at their targets on the next frame and the arms start at rest in the lap.
-        public void Reset(){framed=gazed=picked=carry=false;Age=lastAge=-1;for(int i=0;i<2;i++){armW[i]=armV[i]=armGoal[i]=0;armAimV[i]=Vector3.Zero;armAimed[i]=false;}}
+        public void Reset(){framed=gazed=picked=carry=false;Age=lastAge=-1;Bursting=false;TrayFade=0;Plant.Reset();for(int i=0;i<2;i++){armW[i]=armV[i]=armGoal[i]=0;armAimV[i]=Vector3.Zero;armAimed[i]=false;}}
 
         // The pick's age on a smooth clock: the authoritative age (`raw`, -1 before the pick) steps with the simulation tick or
         // the network frames, so the stage runs its own copy on the frame time and eases it onto the authority; it snaps on a
@@ -174,7 +211,10 @@ namespace ChipArena.UnityConversion
             float next=Age+dt;next+=(raw-next)*(1-(float)Math.Exp(-4*dt));return Age=Math.Max(Age,next);
         }
         // The idle (the source draft pose at IdlePace) for this frame; the runtime may replace it (the Siren's own idle) before Step.
-        public void Begin(float dt,bool reduced){Clock+=Math.Max(0,Math.Min(.1f,dt));NativeDraftRules.Pose(Pose,reduced?0:Clock*IdlePace);}
+        // `pace`: the idle's breath held (0) through the install's line-up and its hold (NativeInstallShot).
+        public void Begin(float dt,bool reduced,float pace=1){Clock+=Math.Max(0,Math.Min(.1f,dt))*MathUtil.Clamp(pace,0,1);NativeDraftRules.Pose(Pose,reduced?0:Clock*IdlePace);}
+        /// <summary>The idle's pace through the install at pose age `p`: held from the line-up to just after the clack.</summary>
+        public static float IdleHeld(float p)=>p<0?1:1-NativeInstallShot.Ramp(p,NativeInstallShot.CarryEnd-.04f,NativeInstallShot.AlignEnd)*(1-NativeInstallShot.Ramp(p,NativeInstallShot.Release,1.30f));
 
         // Framing: `aspect` the screen's, `trayTop` / `trayBottom` the first card row's top edge and the last row's bottom edge
         // (fractions of the screen height from the top; negative while the tray is not laid out yet: a default, and the framing
@@ -187,7 +227,7 @@ namespace ChipArena.UnityConversion
         public void Frame(float aspect,float trayTop,float trayBottom,float crown,bool boss,float dt,float headTop=HeadTop)
         {
             bool known=trayTop>=0&&MathUtil.Finite(trayTop)&&MathUtil.Finite(trayBottom)&&trayBottom>trayTop;if(!known){trayTop=DefaultTray;framed=false;}
-            Aspect=Math.Max(.2f,aspect);float top=restHead+headTop+CrownTaken(crown,headTop)+(boss?BossTop:0),py=RestPlexus.Y,pz=RestPlexus.Z;
+            Aspect=Math.Max(.2f,aspect);float top=restHead+headTop+CrownTaken(crown,headTop)+(boss?BossTop:0),py=RestPlexus.Y,pz=RestPlexus.Z;crownTop=top;crownTaken=CrownTaken(crown,headTop);
             TrayLine=MathUtil.Clamp(trayTop,.3f,.95f);float plexusRow=TrayLine-PlexusGap,headRow=Headroom;
             // The camera's height and centre (on the plane z = 0) that put the head's top and the plexus on their rows.
             float height=(top-py)/Math.Max(.05f,plexusRow-headRow),centre=top-(.5f-headRow)*height;
@@ -221,6 +261,77 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<5;i++){const float e=1e-3f;float r=Row(y,z,centre,height)-row,d=(Row(y,z,centre+e,height)-row-r)/e;if(Math.Abs(d)<1e-7f)break;centre-=r/d;}
             return centre;
         }
+        // ---- the install's shot (NativeInstallShot), applied after Frame: Project, OnPlane, the shade and the backdrop see one camera ----
+        // A dolly, not a zoom (the lens and its tilt kept): from the portrait to the hero framing (HeroHeight metres tall at the focus,
+        // between the planned bay and the visor, at most HeroMost times the portrait; Reduced effects ReducedMost, the Siren SirenMost;
+        // lowered until the visor, the bay and the pinch sit inside the safe frame), orbiting Orbit toward the device; the PvP readout
+        // then eases it out to ReadoutMagnify, panned so the pilot sits at NativeInstallShot.PilotX, and the settle takes it back to the
+        // portrait; the short follow-through creeps on by ShortCreep. The clack kicks it (KickPull of its distance, KickRoll of roll for
+        // Unity's camera: Project ignores it) and shakes it (ShakeSize at ShakeHz); the lock punches it by Punch. Closed form in `a`.
+        public const float HeroHeight=.62f,HeroMost=1.75f,ReducedMost=1.15f,SirenMost=1.3f,ReadoutMagnify=1.12f,Orbit=3*(float)Math.PI/180,ShortCreep=1.08f,Creep=.03f,
+            Punch=.02f,KickPull=.012f,KickRoll=.6f,ShakeSize=.003f,ShakeHz=22,ShakeSpan=.15f,SafeLeft=.06f,SafeTop=.08f,SafeBottom=.82f,EyesBelow=.10f,CrownEdge=.04f,BareCrop=.05f;
+        /// <summary>The shot this frame: its magnification over the portrait, its weight (0 the portrait .. 1 the hero framing), the hero
+        /// framing's magnification after the safe frame, and Unity's roll (degrees).</summary>
+        public float Magnify=1,ShotWeight,HeroMagnify=1,Roll;
+        /// <summary>The shot for the smoothed pick age `a` (before the pick: the portrait). `turn` the PvP turn's hold after the pick,
+        /// `shortCut` the PvE / Deathmatch follow-through, `beside` the readout beside the pilot (else the centred card: no pan).</summary>
+        public void Shot(float a,in NativeInstallShot.Profile pr,float turn,bool shortCut,bool siren,bool reduced,bool beside)
+        {
+            Magnify=1;ShotWeight=0;Roll=0;if(!(a>=0)||!framed)return;
+            var t0=CameraTarget;var p0=CameraPosition;float d0=(p0-t0).Length();if(d0<1e-3f)return;float tan=(float)Math.Tan(Fov*Math.PI/360),tilt=Tilt*(float)Math.PI/180;
+            var focus=PlannedBay+(PlannedVisor-PlannedBay)*.4f;
+            float most=reduced?ReducedMost:siren?SirenMost:HeroMost,hero=MathUtil.Clamp(2*d0*tan/HeroHeight,1,most),orbit=reduced?0:Orbit;
+            hero=HeroMagnify=Safe(focus,d0,hero,orbit);
+            // (Where even the portrait's distance cannot hold the planned frame, under a tall crown on a narrow screen, the target moves only
+            // as far toward the focus as still keeps it, so the crown never rises out of the top.)
+            if(hero<=1.0001f&&!Fits(focus,d0,orbit)){float lo=0,hi=1;for(int i=0;i<6;i++){float mid=(lo+hi)*.5f;if(Fits(Vector3.Lerp(t0,focus,mid),d0,orbit))lo=mid;else hi=mid;}focus=Vector3.Lerp(t0,focus,lo);}
+            // The keyframes' weights: the push, the readout's pull-back and pan, the settle.
+            float push=NativeInstallShot.Cubic((a-NativeInstallShot.PushStart)/(NativeInstallShot.PushEnd-NativeInstallShot.PushStart));
+            float pan=!shortCut&&beside?NativeInstallShot.Pan(a):0;
+            float settle=shortCut?0:NativeInstallShot.Settle(a,turn);
+            float heroM=hero*(1+(pr.Grade>=5&&!reduced?Creep*NativeInstallShot.Ramp(a,NativeInstallShot.CarryEnd,NativeInstallShot.Seat):0))*(shortCut?1+(ShortCreep-1)*NativeInstallShot.Ramp(a,NativeInstallShot.ShortHold,NativeInstallShot.ShortEnd):1);
+            float readM=Math.Min(heroM,ReadoutMagnify),readW=heroM>1.001f?(readM-1)/(heroM-1):0;var readT=Vector3.Lerp(t0,focus,readW+(1-(1-readW)*(1-readW)-readW)*MathUtil.Clamp(crownTaken/.08f,0,1));
+            float panX=(.5f-NativeInstallShot.PilotX(Aspect))*2*(d0/readM)*tan*Aspect;
+            // (Under a crown the target leads the dolly, so a hat's brim never leaves the frame on the way in: it rises first, then the distance
+            // closes; bare-headed it keeps pace, so the catch stays over the tray.)
+            float lead=MathUtil.Clamp(crownTaken/.08f,0,1),m=1+(heroM-1)*push;var target=Vector3.Lerp(t0,focus,push+(1-(1-push)*(1-push)-push)*lead);float yaw=orbit*push,side=0;
+            if(pan>0){m+=(readM-m)*pan;target=Vector3.Lerp(target,readT,pan);yaw*=1-.7f*pan;side=panX*pan;}
+            if(settle>0){m+=(1-m)*settle;target=Vector3.Lerp(target,t0,settle);yaw*=1-settle;side*=1-settle;}
+            ShotWeight=MathUtil.Clamp(push*(1-settle),0,1);
+            // The lock's punch, the clack's kick and shake (none with Reduced effects).
+            float kick=0,shake=0;
+            if(!reduced)
+            {
+                m*=1+Punch*NativeInstallShot.Ramp(a,0,.06f)*(1-NativeInstallShot.Ramp(a,.06f,.24f));
+                kick=NativeInstallShot.Kick(a-NativeInstallShot.Seat,34,.38f)*pr.Kick;m*=1+KickPull*kick;Roll=KickRoll*kick;
+                float u=(a-NativeInstallShot.Seat)/ShakeSpan;if(u>0&&u<1)shake=ShakeSize*pr.Kick*(float)Math.Sin(2*Math.PI*ShakeHz*(a-NativeInstallShot.Seat))*(1-u)*(1-u);
+            }
+            Magnify=m;Place(target,d0/m,yaw,side,shake,tilt);
+        }
+        // The camera at `target` (moved `side` along x), `distance` back along the portrait's view turned `yaw` about the vertical.
+        private void Place(Vector3 target,float distance,float yaw,float side,float shake,float tilt)
+        {
+            var back=new Vector3((float)Math.Sin(yaw)*(float)Math.Cos(tilt),(float)Math.Sin(tilt),(float)Math.Cos(yaw)*(float)Math.Cos(tilt));
+            CameraTarget=target+new Vector3(side,0,0);CameraPosition=CameraTarget+back*distance+new Vector3(shake,shake*.6f,0);
+        }
+        // The hero framing's magnification (at most `most`) lowered by bisection until the planned visor, bay and pinch sit inside the
+        // safe frame (x .06-.94, y .08 to .82 and above the shot's shade) with the eyes at least .10 below the top edge.
+        private float Safe(Vector3 focus,float d0,float most,float yaw)
+        {
+            if(Fits(focus,d0/most,yaw))return most;float lo=1,hi=most;
+            for(int i=0;i<6;i++){float mid=(lo+hi)*.5f;if(Fits(focus,d0/mid,yaw))lo=mid;else hi=mid;}
+            return lo;
+        }
+        private bool Fits(Vector3 focus,float distance,float yaw)
+        {
+            var keepT=CameraTarget;var keepP=CameraPosition;Place(focus,distance,yaw,0,0,Tilt*(float)Math.PI/180);
+            var pinch=PlannedBay+PlannedNormal*.05f+new Vector3(.04f,0,0);float shade=Math.Min(SafeBottom,Project(RestPlexus).Y+PlexusGap-.03f);
+            bool In(Vector2 s)=>s.X>=SafeLeft&&s.X<=1-SafeLeft&&s.Y>=SafeTop&&s.Y<=shade;var visor=Project(PlannedVisor);
+            // (The crown too: under a hat or the halo the head's top with its crown room, as Frame keeps it, stays under the top edge; a bare
+            // head's top may leave it by BareCrop of the height, a close-up's crop, the eyes still EyesBelow under the edge.)
+            bool ok=In(visor)&&In(Project(PlannedBay))&&In(Project(pinch))&&visor.Y>=EyesBelow&&Project(new Vector3(0,crownTop-VisorDrop,PlannedVisor.Z+.25f)).Y>=(crownTaken>0?CrownEdge:-BareCrop);
+            CameraTarget=keepT;CameraPosition=keepP;return ok;
+        }
         // The camera ray through a screen point (fractions: x from the left, y from the top) where it meets the plane z.
         public Vector3 OnPlane(float sx,float sy,float z)
         {
@@ -244,14 +355,15 @@ namespace ChipArena.UnityConversion
             var d=at-shoulder;float len=d.Length();return len>ArmReach?shoulder+d*(ArmReach/len):at;
         }
 
-        // One frame over the idle in Pose (after Begin and Frame). `dt` presentation seconds, `age` the smoothed pick age (-1
-        // before the pick), `focus` the considered card (Focus), `consider` whether that card is the local picker's highlighted
-        // one (the arm on its side lifts toward it; never for the scan), `cards` the card centres as screen fractions (first
-        // `count`). The Siren drafter keeps her claws in her lap until the pick, then raises the reaching one to catch the card
-        // and holds the chip as it sinks into her palm before lowering it (no considering lift, no plant). World() is current on return.
+        // One frame over the idle in Pose (after Begin, Frame and Shot). `dt` presentation seconds (scaled by the install's pose rate),
+        // `age` the pick's pose age (NativeInstallShot.PoseAge of the smoothed age; -1 before the pick), `focus` the considered card
+        // (Focus), `consider` whether that card is the local picker's highlighted one (the arm on its side lifts toward it; never for
+        // the scan), `cards` the card centres as screen fractions (first `count`). The Siren drafter keeps her claws in her lap until
+        // the pick, then strikes at the card with the claw on its side and devours the cartridge (NativeDraftInstall.SirenPose); a
+        // pilot installs it (NativeDraftInstall). World() is current on return.
         public void Step(float dt,float age,int focus,bool consider,Vector2[] cards,int count,bool siren,bool reduced)
         {
-            dt=Math.Max(0,Math.Min(.1f,dt));var p=Pose;count=cards==null?0:Math.Min(count,cards.Length);focus=count>0?Math.Max(0,Math.Min(count-1,focus)):-1;
+            dt=Math.Max(0,Math.Min(.1f,dt));var p=Pose;count=cards==null?0:Math.Min(count,cards.Length);focus=count>0?Math.Max(0,Math.Min(count-1,focus)):-1;cardCount=count;
             // Seated: leaning a little toward the cards (the Siren, hunched in her idle, sits lower instead).
             if(siren)p.Position[CapturedRig.Body].Y-=SirenSink;else p.Rotation[CapturedRig.Spine]=p.Rotation[CapturedRig.Spine]*CapturedRig.Euler(Lean);p.World();
             lookNear=LookZ;for(int i=0;i<count;i++)lookNear=Math.Max(lookNear,EyeZ+Math.Abs(OnPlane(cards[i].X,cards[i].Y,LookZ).X)/OuterTurn);
@@ -266,74 +378,112 @@ namespace ChipArena.UnityConversion
             // The reaching hand is the left for a pilot (owner 2026-10-22: the chip goes into the device on the right wrist), the
             // one on the chosen card's side for the Siren drafter, chosen once per pick; if that arm was already lifting toward a
             // card it keeps lifting (no dip before the pick's catch takes over).
-            if(age<0)picked=false;else if(!picked){picked=true;Left=!siren||card.X>=0;carry=armGoal[Left?0:1]>0;}
-            bool planting=age>=0&&!siren,caught=false;float contact=NativeDraftPlant.Contact,lower=siren&&age>=0?NativeDraftPlant.Return(age):0;
+            if(age<0){if(picked)Plant.Reset();picked=false;Bursting=false;}else if(!picked){picked=true;Left=!siren||card.X>=0;carry=armGoal[Left?0:1]>0;Plant.Reset();Bursting=false;}
+            bool planting=age>=0&&!siren,caught=false;float contact=NativeInstallShot.Catch,lower=age>=0?Plant.Settle:0;
             // The arms' considering springs: before the pick the left arm toward the local picker's highlighted card (never the
             // Siren drafter's), from the pick the reaching side.
             int lifting=age>=0?(Left?0:1):!siren&&consider&&focus>=0?0:-1;
             for(int i=0;i<2;i++)
             {
-                bool mine=i==lifting;float goal=mine&&(age<0||carry)?1:0;armGoal[i]=goal;
+                bool mine=i==lifting;float goal=mine&&(age<0||carry&&lower<=0)?1:0;armGoal[i]=goal;
                 Spring(ref armW[i],ref armV[i],goal,goal>armW[i]?LiftOmega:LowerOmega,dt);armW[i]=MathUtil.Clamp(armW[i],0,1);
                 if(mine){if(armAimed[i])Spring(ref armAim[i],ref armAimV[i],card,card,AimOmega,dt);else{armAim[i]=card;armAimV[i]=Vector3.Zero;armAimed[i]=true;}}
             }
-            // The gaze: the card; over the last .2 s before the contact it passes to the hand catching it, then follows the chip in
-            // the hand (last frame's) to the plant, and as the arms settle it eases back to the display straight ahead. Every
-            // hand-over blends, so no target jumps.
+            // The gaze: the card, then (about the burst) the cartridge in the air and in the hand, the bay from GazeToBay (fully bowed
+            // onto it through the line-up), level as the pilot rises into the power, the lens for the look (the short follow-through
+            // holds it), the readout on a long turn, and back to the display ahead with the settle. The Siren: the card, the cartridge
+            // in her claw, then her laugh at the lens. Every hand-over blends, so no target jumps.
             var target=card;
             if(age>=0)
             {
-                var held=siren||lastAge<contact?Palm:Plant.ChipShown?Plant.Chip:Plant.At;target=Vector3.Lerp(card,held,MathUtil.Smooth((age-(contact-HandOver))/HandOver));
-                target=Vector3.Lerp(target,rest,MathUtil.Smooth((age-NativeDraftPlant.ReturnStart)/(NativeDraftPlant.ReturnEnd-NativeDraftPlant.ReturnStart)));
+                var held=Plant.ChipShown?Plant.Chip:Plant.At;
+                if(siren){target=Vector3.Lerp(card,lastAge<contact?Palm:held,MathUtil.Smooth((age-(contact-HandOver))/HandOver));target=Vector3.Lerp(target,CameraPosition,NativeInstallShot.Ramp(age,1.34f,1.5f)*(1-NativeInstallShot.Ramp(age,1.75f,2.0f)));}
+                else
+                {
+                    target=Vector3.Lerp(card,held,NativeInstallShot.Ramp(age,NativeInstallShot.Burst-.12f,NativeInstallShot.Burst+.04f));
+                    target=Vector3.Lerp(target,Plant.At,NativeInstallShot.Ramp(age,NativeInstallShot.GazeToBay,NativeInstallShot.GazeToBay+.16f));
+                    target=Vector3.Lerp(target,new Vector3(0,restHead+EyeUp-.02f,lookNear),NativeInstallShot.Ramp(age,NativeInstallShot.PowerStart,NativeInstallShot.PowerEnd));
+                    float look=Plant.Short?NativeInstallShot.Ramp(age,NativeInstallShot.PowerEnd,NativeInstallShot.PowerEnd+.2f):NativeInstallShot.Ramp(age,NativeInstallShot.LookStart,NativeInstallShot.LookStart+.12f)*(1-NativeInstallShot.Ramp(age,NativeInstallShot.LookEnd,NativeInstallShot.LookEnd+.2f));
+                    target=Vector3.Lerp(target,CameraPosition,look);
+                    if(!Plant.Short&&Plant.TurnSeconds>NativeInstallShot.TurnSeconds+.1f)target=Vector3.Lerp(target,OnDisplay(NativeInstallShot.ReadoutX(Aspect),.45f),NativeInstallShot.Ramp(age,NativeInstallShot.ReadAt,NativeInstallShot.ReadAt+.3f));
+                }
+                target=Vector3.Lerp(target,rest,Plant.Settle);
             }
-            if(!gazed){Gaze=lead=target;gazeV=Vector3.Zero;gazed=true;}else{var from=lead;Turn(ref lead,target,new Vector3(0,restHead+EyeUp,0),TurnSpeed*dt);Spring(ref Gaze,ref gazeV,from,lead,age>=0?PickGazeOmega:GazeOmega,dt);}
+            float gazeOmega=age>=0&&age<LockSpan?LockGazeOmega:age>=0?PickGazeOmega:GazeOmega;
+            if(!gazed){Gaze=lead=target;gazeV=Vector3.Zero;gazed=true;}else{var from=lead;Turn(ref lead,target,new Vector3(0,restHead+EyeUp,0),TurnSpeed*dt);Spring(ref Gaze,ref gazeV,from,lead,gazeOmega,dt);}
             lastAge=age;
-            // The bow: spine and chest take their share of the look first (the arms ride on the chest), then the arms, then the
-            // neck and head finish the look, so the catch and the plant land where they are solved.
-            float down=siren?SirenDown:LookDown;var eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);var aim=Aim(eye,Gaze,down);var along=Vector3.Normalize(aim-eye);
+            // The bow: spine and chest take their share of the look first (the arms ride on the chest), then the install's torso
+            // layers, then the arms, then the neck and head finish the look, so the catch and the bay land where they are solved.
+            // (Through the install the look down is held to InstallPitch, so the visor and the face stay toward the lens over the bay.)
+            float down=siren?SirenDown:LookDown,pitchDown=age>=0&&!siren?PitchDown+(InstallPitch-PitchDown)*NativeInstallShot.Ramp(age,0,.3f)*(1-Plant.Settle):PitchDown;
+            var eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);var aim=Aim(eye,Gaze,down,pitchDown);var along=Vector3.Normalize(aim-eye);
             if(!siren){Turn(p,CapturedRig.Spine,along,SpineShare);Turn(p,CapturedRig.Chest,along,ChestShare);}p.World();
-            // The arms: each rests in the lap (wrist, palm down; the Siren's claws too) unless it considers or catches a card: then
-            // it lifts along an arch toward its aim (ConsiderReach of the way to the catch, slid toward the card, while
-            // considering; on to the catch in front of the chest with the pick's reach, turning the palm up to receive the card).
-            // The reaching arm takes the larger of its considering weight and the pick's reach, and from the contact the plant
-            // carries it from the catch, blending back to the rest in the lap over the return (the other arm is raised for the
-            // plant from its rest); the Siren's lowers over the return.
-            var plantLocal=Vector3.Zero;
+            if(planting)Plant.Torso(p,Left,age,reduced);
+            // The arms: each rests in the lap (wrist, palm down; the Siren's claws too) unless it considers or catches a card: then it
+            // lifts along an arch toward its aim (ConsiderReach of the way to the catch, slid toward the card, while considering; from
+            // the pick, cocked back at the lock, on to the catch in front of the chest on an easing arc that overshoots toward the card
+            // and comes back, turning to take the cartridge by its edge). The reaching arm takes the larger of its considering weight
+            // and the pick's reach; from the catch the install carries it (the receiving arm is raised from its rest from RiseStart).
+            var plantLocal=Vector3.Zero;var toCamera=Vector3.UnitZ;
             for(int s=0;s<2;s++)
             {
                 bool left=s==0,reaching=age>=0&&left==Left;float reach=reaching?Reach(age)*(1-lower):0,w=reaching?Math.Max(armW[s],reach):armW[s];
-                int a=(left?CapturedRig.LClav:CapturedRig.RClav)+1;var chest=p.WorldPosition[CapturedRig.Chest];var chestInv=Quaternion.Inverse(p.WorldRotation[CapturedRig.Chest]);
-                var restHand=RestHand(left);var point=restHand;float turn=0;
+                int a=(left?CapturedRig.LClav:CapturedRig.RClav)+1;var chest=p.WorldPosition[CapturedRig.Chest];var chestQ=p.WorldRotation[CapturedRig.Chest];var chestInv=Quaternion.Inverse(chestQ);
+                var restHand=RestHand(left);var point=restHand;float turn=0;var wrist=NativeDraftPlant.Roll(chestInv*restQ[s],NativeDraftPlant.ContactWrist,left,0);
                 if(armAimed[s]&&(w>1e-4f||reaching))
                 {
                     var full=Catch(left,armAim[s],p.WorldPosition[a]);
                     var slide=armAim[s]-restHand;slide.Y=0;slide=slide.LengthSquared()>1e-6f?Vector3.Normalize(slide)*ConsiderSlide:Vector3.Zero;
                     float inner=CrossBeside+(Beside-CrossBeside)*Own(left,armAim[s]);var hover=Vector3.Lerp(restHand,full,ConsiderReach)+slide;hover.X=left?Math.Max(inner,hover.X):Math.Min(-inner,hover.X);var aimAt=reaching?Vector3.Lerp(hover,full,reach):hover;
-                    // The palm at the contact: the wrist on the catch, turned palm up (NativeDraftPlant.ContactWrist in the chest frame).
-                    if(reaching){plantLocal=Vector3.Transform(full-chest,chestInv);CatchPalm=full+Vector3.Transform(NativeDraftPlant.PalmLocal,p.WorldRotation[CapturedRig.Chest]*NativeDraftPlant.ContactWrist);caught=true;}
-                    if(!planting||age<contact)
+                    // The cartridge's turn at the catch (its back face to the camera, its crest up) and the hand on it; the catch's
+                    // pinch where that hand's wrist lands on the catch.
+                    var catchHand=Quaternion.Identity;
+                    if(reaching)
+                    {
+                        toCamera=CapturedRig.Unit(CameraPosition-full,Vector3.UnitZ);var up=CapturedRig.Unit(Vector3.UnitY-toCamera*Vector3.Dot(Vector3.UnitY,toCamera),Vector3.UnitY);
+                        catchHand=siren?chestQ*NativeDraftPlant.ContactWrist:NativeDraftInstall.CatchTurn(toCamera,left)*NativeDraftInstall.HandOnCartridge;
+                        var pinch=full+Vector3.Transform(siren?NativeDraftPlant.PalmLocal:NativeDraftInstall.PinchLocal,catchHand);plantLocal=Vector3.Transform(pinch-chest,chestInv);CatchPalm=pinch;caught=true;
+                        // The overshoot toward the card and the cock at the lock (back toward the body).
+                        aimAt+=CapturedRig.Unit(full-restHand,Vector3.UnitY)*((siren?SirenLunge:Overshoot)*Over(age)*(Plant.Toon?1.3f:1));
+                        if(!siren)aimAt+=Vector3.Transform(new Vector3(0,0,-Cock),chestQ)*Cocked(age);
+                    }
+                    // (Past the catch the install carries the hand on from here.)
                     {
                         var control=(restHand+aimAt)*.5f+new Vector3(0,Arc,0);point=restHand*((1-w)*(1-w))+control*(2*w*(1-w))+aimAt*(w*w);
                         turn=reaching?Math.Max(ConsiderTurn*armW[s],reach):ConsiderTurn*w;
+                        wrist=NativeDraftPlant.Roll(chestInv*restQ[s],NativeDraftPlant.ContactWrist,left,reaching?ConsiderTurn*armW[s]:turn);
+                        if(reaching){wrist=Quaternion.Slerp(wrist,chestInv*catchHand,reach);if(!siren)wrist=wrist*CapturedRig.Rot(Vector3.UnitX,-CockTurn*Cocked(age));}
                     }
                 }
-                float k=planting&&reaching&&age>=contact?0:w;var pole=Vector3.Lerp(RestPole,ReachPole,k);if(!left)pole.X=-pole.X;
-                CapturedRig.Arm(p,left,Vector3.Transform(point-chest,chestInv),NativeDraftPlant.Roll(chestInv*restQ[s],NativeDraftPlant.ContactWrist,left,turn),pole);
+                var pole=Vector3.Lerp(RestPole,ReachPole,w);if(!left)pole.X=-pole.X;
+                CapturedRig.Arm(p,left,Vector3.Transform(point-chest,chestInv),wrist,pole);
             }
-            if(planting)Plant.Pose(p,Left,plantLocal,age);
-            // The head looks from where the bow carried the eye, within the same limits.
-            Turn(p,CapturedRig.Neck,along,NeckShare);p.World();eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);Look(p,Aim(eye,Gaze,down));p.World();
-            if(planting)Plant.Place(p,Left,age);
-            int h=Left?CapturedRig.LHand:CapturedRig.RHand;Palm=p.WorldPosition[h]+Vector3.Transform(NativeDraftPlant.PalmLocal,p.WorldRotation[h]);if(!caught)CatchPalm=Palm;
+            p.World();
+            // The burst: the first frame past it, where the 2D card hands over (its centre on its flight at Burst, on the camera ray at
+            // the catch's depth) and the cartridge's width there.
+            if(age>=NativeInstallShot.Burst&&!Bursting&&focus>=0&&caught)
+            {
+                var c=CatchPalm;var sc=NativeInstallShot.CardAt(cards[focus],Project(c),NativeInstallShot.Burst);var at=OnPlane(sc.X,sc.Y,c.Z);
+                BurstScreen=sc;Basis(out var f,out _,out _,out float t);float depth=Math.Max(.05f,Vector3.Dot(at-CameraPosition,f));BurstWidth=Plant.Width/(2*depth*t*Aspect);Bursting=true;
+                var up=CapturedRig.Unit(Vector3.UnitY-toCamera*Vector3.Dot(Vector3.UnitY,toCamera),Vector3.UnitY);Plant.Hand(at,CapturedRig.Basis(Vector3.Cross(toCamera,up),toCamera,up));
+            }
+            if(planting){Plant.PlannedChestAt=plannedChestAt;Plant.PlannedChestQ=plannedChestQ;Plant.VisorChestY=VisorChestY;Plant.Pose(p,Left,plantLocal,toCamera,age,reduced);}
+            else if(siren&&age>=0){p.World();var grin=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(new Vector3(0,.07f,.22f),p.WorldRotation[CapturedRig.Head]);Plant.SirenPose(p,Left,grin,age,CapturedRig.Unit(CameraPosition-grin,Vector3.UnitZ));}
+            // The head looks from where the bow carried the eye, within the same limits, with the install's nods.
+            Turn(p,CapturedRig.Neck,along,NeckShare);p.World();eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);Look(p,Aim(eye,Gaze,down,pitchDown));
+            if(age>=0&&Plant.HeadPitch!=0)p.Rotation[CapturedRig.Head]=p.Rotation[CapturedRig.Head]*CapturedRig.Euler(Plant.HeadPitch);p.World();
+            if(planting)Plant.Place(p,Left,age,toCamera);
+            int h=Left?CapturedRig.LHand:CapturedRig.RHand;Palm=p.WorldPosition[h]+Vector3.Transform(siren?NativeDraftPlant.PalmLocal:NativeDraftInstall.PinchLocal,p.WorldRotation[h]);if(!caught)CatchPalm=Palm;
+            TrayFade=age>=0?NativeInstallShot.Ramp(Age,NativeInstallShot.TrayGone(cardCount),NativeInstallShot.TrayGone(cardCount)+.2f)*Math.Min(1,ShotWeight*4):0;
         }
         // The look point the chain turns to: the gaze seen from the eye with the downward part followed by `down` (upward by
         // LookUp), the pitch taken over the depth and a quarter of the sideways distance (an outer card still gets a bow, as on
         // a display in front), the turn limited to YawLimit and the pitch to PitchDown / PitchUp (draft-stage.ts lookAt limits,
         // the turn widened).
-        private static Vector3 Aim(Vector3 eye,Vector3 gaze,float down)
+        private static Vector3 Aim(Vector3 eye,Vector3 gaze,float down,float pitchDown=PitchDown)
         {
             var d=gaze-eye;d.Y*=d.Y>0?LookUp:down;float flat=(float)Math.Sqrt(SideReach*d.X*d.X+d.Z*d.Z),distance=Math.Max(.3f,d.Length());
-            float yaw=MathUtil.Clamp((float)Math.Atan2(d.X,Math.Max(.05f,d.Z)),-YawLimit,YawLimit),pitch=MathUtil.Clamp((float)Math.Atan2(d.Y,flat),-PitchDown,PitchUp);
+            float yaw=MathUtil.Clamp((float)Math.Atan2(d.X,Math.Max(.05f,d.Z)),-YawLimit,YawLimit),pitch=MathUtil.Clamp((float)Math.Atan2(d.Y,flat),-pitchDown,PitchUp);
             return eye+new Vector3((float)(Math.Sin(yaw)*Math.Cos(pitch)),(float)Math.Sin(pitch),(float)(Math.Cos(yaw)*Math.Cos(pitch)))*distance;
         }
         // Move `point` toward `target` by at most `step` radians of turn seen from `pivot` (yaw and pitch, the distance in

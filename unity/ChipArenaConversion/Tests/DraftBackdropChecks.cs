@@ -81,26 +81,36 @@ namespace ChipArena.UnityConversion
             Check(prism.Style.Y==1&&prism.Style.X==1&&Xyz(prism.Accent)==Vector3.One,"the rainbow pick: white light, the shader's prism, the ward");
             var bad=new DraftBackdropState();var bv=Default();bv.Entering=true;NativeDraftBackdrop.Step(bad,bv);bv.Entering=false;bv.Tint=new Vector3(float.NaN,0,0);NativeDraftBackdrop.Step(bad,bv);Check(bad.Tint==Teal,"a broken tint keeps the last one");
         }
-        // The pick's inflow (packets rush to the core, the flow clock runs faster) only between the pick and the plant; the plant
-        // ring runs out and fades over the pulse and the flash is NativeLighting.Draft's (1 - p)^2, only during the pulse.
+        // The pick's inflow (packets rush to the core, the flow clock runs faster) only between the pick and the install's clack; the clack
+        // re-fires the power-on front from the pilot (NativeDraftBackdrop.FrontAt: at BootSpeed out to FrontReach for the chip's level,
+        // fading as it goes; a second one SecondLag behind for legendary and up) and the hall flashes Flash x FlashShare x L, falling over
+        // FlashSpan; nothing before the clack.
         private static void Reaction()
         {
             var s=new DraftBackdropState();var i=Default();i.Entering=true;NativeDraftBackdrop.Step(s,i);i.Entering=false;
             for(int f=0;f<60;f++)NativeDraftBackdrop.Step(s,i);
-            Check(s.Pulse.W==0&&s.Pulse.Y==0&&s.Pulse.Z==0&&s.Pulse.X<0,"no inflow, ring or flash before the pick");
-            float lastWave=-1,lastFlow=s.Flow;bool grow=true,fade=true;float lastFall=2,flowRest=0,flowRush=0,peakFlash=0;
-            for(float age=0;age<3;age+=Dt)
+            Check(s.Pulse.W==0&&s.Pulse.Y==0&&s.Pulse.Z==0&&s.Pulse.X<0&&s.Front.X<0&&s.Front.Y==0,"no inflow, front or flash before the pick");
+            foreach(float level in new[]{.55f,1f,1.15f})foreach(bool second in new[]{false,true})
             {
-                i.Age=age;i.Pulse=NativeDraftPlant.Pulse(age);NativeDraftBackdrop.Step(s,i);float step=s.Flow-lastFlow;lastFlow=s.Flow;
-                bool inPulse=age>=NativeDraftPlant.PulseStart&&age<NativeDraftPlant.PulseEnd;
-                if(inPulse){grow&=s.Pulse.X>=lastWave;lastWave=s.Pulse.X;fade&=s.Pulse.Y<=lastFall+1e-6f;lastFall=s.Pulse.Y;peakFlash=Math.Max(peakFlash,s.Pulse.Z);Near(s.Pulse.Z,NativeDraftBackdrop.Flash*s.Pulse.Y,1e-6,"flash follows the ring's fall");}
-                else Check(s.Pulse.Y==0&&s.Pulse.Z==0,"no ring or flash outside the plant pulse (age "+age+")");
-                if(age>=NativeDraftBackdrop.InflowIn&&age<NativeDraftPlant.PulseStart){Near(s.Pulse.W,1,1e-5,"full inflow from the pick to the plant");flowRush=Math.Max(flowRush,step);}
-                if(age>NativeDraftPlant.PulseStart+NativeDraftBackdrop.InflowOut){Check(s.Pulse.W==0,"the inflow eases off after the plant");flowRest=step;}
+                var t=new DraftBackdropState();var j=Default();j.Entering=true;NativeDraftBackdrop.Step(t,j);j.Entering=false;j.Level=level;j.Second=second;
+                float lastWave=-1,lastFall=2,lastFlow=t.Flow,flowRest=0,flowRush=0,peakFlash=0,far=0;bool grow=true,fade=true,seenSecond=false;
+                for(float age=0;age<3;age+=Dt)
+                {
+                    j.Age=age;j.Pulse=age>=NativeInstallShot.Seat?age-NativeInstallShot.Seat:-1;NativeDraftBackdrop.Step(t,j);float step=t.Flow-lastFlow;lastFlow=t.Flow;
+                    if(age<NativeInstallShot.Seat)Check(t.Pulse.Y==0&&t.Pulse.Z==0&&t.Pulse.X<0,"no front or flash before the clack (age "+age+")");
+                    else if(t.Pulse.X>0){grow&=t.Pulse.X>=lastWave;lastWave=t.Pulse.X;fade&=t.Pulse.Y<=lastFall+1e-6f;lastFall=t.Pulse.Y;far=Math.Max(far,t.Pulse.X);}
+                    if(age>=NativeInstallShot.Seat)peakFlash=Math.Max(peakFlash,t.Pulse.Z);
+                    if(t.Front.X>0){seenSecond=true;Check(second,"a second front only for legendary and up");Check(t.Front.X<t.Pulse.X||t.Pulse.X<0,"the second front runs behind the first");}
+                    if(age>=NativeDraftBackdrop.InflowIn&&age<NativeInstallShot.Seat){Near(t.Pulse.W,1,1e-5,"full inflow from the pick to the clack");flowRush=Math.Max(flowRush,step);}
+                    if(age>NativeInstallShot.Seat+NativeDraftBackdrop.InflowOut){Check(t.Pulse.W==0,"the inflow eases off after the clack");flowRest=step;}
+                    if(age>NativeInstallShot.Seat+NativeDraftBackdrop.FlashSpan+Dt)Check(t.Pulse.Z<1e-6f,"the flash is over after its span");
+                }
+                Check(grow&&fade,"the front runs out and fades");Check(seenSecond==second,"the second front (level "+level+")");
+                Near(far,NativeDraftBackdrop.FrontReach(level),.8f,"the front runs out to its reach for level "+level);Near(peakFlash,NativeDraftBackdrop.Flash*NativeDraftBackdrop.FlashShare*level,.02,"the flash peaks at the clack for level "+level);
+                Near(flowRush/flowRest,1+NativeDraftBackdrop.FlowBoost,.02,"packets run faster during the inflow");
             }
-            Check(grow&&fade,"the ring runs out and fades over the pulse");Near(peakFlash,NativeDraftBackdrop.Flash,.05,"the flash peaks at the plant");
-            Near(NativeDraftBackdrop.WaveAt(0),NativeDraftBackdrop.WaveStart,1e-6,"ring starts behind the pilot");Near(NativeDraftBackdrop.WaveAt(1),NativeDraftBackdrop.WaveStart+NativeDraftBackdrop.WaveReach,1e-4,"ring reaches down the corridor");
-            Near(flowRush/flowRest,1+NativeDraftBackdrop.FlowBoost,.02,"packets run faster during the inflow");
+            NativeDraftBackdrop.FrontAt(0,1,out float d0,out float f0);Near(d0,NativeDraftBackdrop.WaveStart,1e-6,"the front starts behind the pilot");Near(f0,1,1e-6,"at full strength");
+            Check(NativeDraftBackdrop.FrontReach(1.1f)>NativeDraftBackdrop.FrontReach(.55f)+10,"a higher level runs further");
         }
         // Reduced effects: no packets, scan, streams' fall or twinkle (the flow clock stops), no ring, flash or inflow, no power-on
         // front, a shallower breath on a slower calm clock; with a still camera and tint nothing but that clock changes.
@@ -110,7 +120,7 @@ namespace ChipArena.UnityConversion
             Check(s.Gains.X==0&&s.Gains.Y==0&&s.Gains.Z<=.45f&&s.Gains.W<=.5f,"reduced: no packets or scan, dim still streams and motes");Check(s.Boot==NativeDraftBackdrop.BootReach,"reduced: no power-on front");
             Check(s.Deep.W==NativeDraftBackdrop.ReducedBreath&&NativeDraftBackdrop.ReducedBreath<NativeDraftBackdrop.Breath*.5f,"reduced: a shallow breath");
             float flow=s.Flow,time=s.Time;int frames=0;
-            for(float age=-1;age<3;age+=Dt){frames++;i.Age=age<0?-1:age;i.Pulse=age<0?-1:NativeDraftPlant.Pulse(age);NativeDraftBackdrop.Step(s,i);Check(s.Pulse.Y==0&&s.Pulse.Z==0&&s.Pulse.W==0,"reduced: no ring, flash or inflow at "+age);}
+            for(float age=-1;age<3;age+=Dt){frames++;i.Age=age<0?-1:age;i.Pulse=-1;NativeDraftBackdrop.Step(s,i);Check(s.Pulse.Y==0&&s.Pulse.Z==0&&s.Pulse.W==0,"reduced: no front, flash or inflow at "+age);}
             Check(s.Flow==flow,"reduced: the flow clock (packets, scan, the streams' fall, twinkle) stands still");Near(s.Time-time,frames*Dt*NativeDraftBackdrop.ReducedMotion,1e-4,"reduced: the calm clock runs slowly");
             for(int f=0;f<60;f++)NativeDraftBackdrop.Step(s,i);
             var a=Pack(s);NativeDraftBackdrop.Step(s,i);var b=Pack(s);for(int k=0;k<a.Length;k++)if(k!=0)Check(a[k]==b[k],"reduced: uniform "+k+" holds still");Near(b[0].W-a[0].W,Dt*NativeDraftBackdrop.ReducedMotion,1e-6,"reduced: only the slow calm clock moves");
@@ -139,7 +149,7 @@ namespace ChipArena.UnityConversion
             foreach(int state in new[]{0,1,2,3,4,5,6})
             {
                 var st=Stage(aspect,tray);var s=new DraftBackdropState();var i=Input(st,aspect,tray,head);i.Ward=state==4;i.Siren=state==5;i.Prism=state==6;i.Reduced=state==3;i.Entering=true;NativeDraftBackdrop.Step(s,i);i.Entering=false;
-                if(state==1){i.Age=.4f;}if(state==2){i.Age=NativeDraftPlant.PulseStart+.01f;i.Pulse=NativeDraftPlant.Pulse(i.Age);}
+                if(state==1){i.Age=.4f;}if(state==2){i.Age=NativeInstallShot.Seat+.01f;i.Pulse=.01f;i.Level=1;}
                 for(int f=0;f<40;f++)NativeDraftBackdrop.Step(s,i);
                 Near(s.Safe.X,head,1e-6,"the heading band sits on the heading's row");Near(s.Safe.Y,Math.Max(i.TrayRow,head+.1f),1e-6,"the tray band sits on the shade's line");
                 // The heading's text ends .47 screen heights in from either edge (its widest line plus the margin).
@@ -180,7 +190,7 @@ namespace ChipArena.UnityConversion
             var s=new DraftBackdropState();var i=Default();i.Entering=true;NativeDraftBackdrop.Step(s,i);i.Entering=false;float lt=s.Time,lf=s.Flow;bool ok=true;
             for(int picker=0;picker<3;picker++)for(float age=-2;age<2.5f;age+=Dt)
             {
-                i.Age=age<0?-1:age;i.Pulse=age<0?-1:NativeDraftPlant.Pulse(age);i.Tint=picker%2==0?Teal:Orange;NativeDraftBackdrop.Step(s,i);
+                i.Age=age<0?-1:age;i.Pulse=age<NativeInstallShot.Seat?-1:age-NativeInstallShot.Seat;i.Level=1;i.Tint=picker%2==0?Teal:Orange;NativeDraftBackdrop.Step(s,i);
                 float dtc=s.Time-lt,dfc=s.Flow-lf;ok&=dtc>0&&dtc<=Dt*1.0001f&&dfc>=0&&dfc<=Dt*(1+NativeDraftBackdrop.FlowBoost)*1.0001f;lt=s.Time;lf=s.Flow;
                 if(picker>0)Check(s.Presence==1&&s.Boot==NativeDraftBackdrop.BootReach,"a new picker never restarts the fade or the power-on");
             }
@@ -197,7 +207,7 @@ namespace ChipArena.UnityConversion
         {
             var s=new DraftBackdropState();var i=Default();i.Entering=true;NativeDraftBackdrop.Step(s,i);i.Entering=false;for(int f=0;f<200;f++)NativeDraftBackdrop.Step(s,i);
             long before=GC.GetAllocatedBytesForCurrentThread();
-            for(int f=0;f<10000;f++){i.Age=f%600<300?-1:(f%300)*Dt;i.Pulse=i.Age<0?-1:NativeDraftPlant.Pulse(i.Age);i.Reduced=f%997==0;i.Tint=f%400<200?Teal:Orange;i.Entering=f%2500==0;NativeDraftBackdrop.Step(s,i);NativeDraftBackdrop.QuadFrame(s,i.TanY,i.Aspect);}
+            for(int f=0;f<10000;f++){i.Age=f%600<300?-1:(f%300)*Dt;i.Pulse=i.Age<NativeInstallShot.Seat?-1:i.Age-NativeInstallShot.Seat;i.Level=1;i.Reduced=f%997==0;i.Tint=f%400<200?Teal:Orange;i.Entering=f%2500==0;NativeDraftBackdrop.Step(s,i);NativeDraftBackdrop.QuadFrame(s,i.TanY,i.Aspect);}
             long used=GC.GetAllocatedBytesForCurrentThread()-before;Check(used==0,"no allocation per frame ("+used+" bytes over 10000 frames)");
         }
         // The Runtime drawer, the draft's wiring, the shader and the build check.
@@ -212,11 +222,11 @@ namespace ChipArena.UnityConversion
             Check(frame.Contains("Graphics.DrawMesh(draftBackQuad,matrix,m,0,camera,0,null,ShadowCastingMode.Off,false);"),"drawn for the draft camera only, no shadows");
             Check(drawer.Contains("if(draftBackLow!=LowGraphics){draftBackLow=LowGraphics;if(draftBackLow)draftBackMaterial.EnableKeyword(BackLowKeyword);else draftBackMaterial.DisableKeyword(BackLowKeyword);}")&&drawer.Contains("BackLowKeyword=\"DRAFT_BACKDROP_LOW\""),"the low tier's keyword switches only when the tier changes");
             string code=Regex.Replace(drawer,@"//[^\n]*","");foreach(var word in new[]{@"\bRenderSettings\b",@"\bQualitySettings\b",@"\bLight\b",@"\.intensity\b",@"(?i)\bfog",@"(?i)\bambient",@"\bshadowStrength\b"})Check(!Regex.IsMatch(code,word),"the drawer leaves the stage's lighting state alone ("+word+")");
-            Check(draft.Contains("NativeLighting.Draft(camera,tint,flash);\n            // The animated cyber corridor behind the pilot (NativeDraftBackdropPresentation.cs), on the stage's frame step.\n            DraftBackdrop(camera,tint,age,pulse,trayLine,reduced,siren,dt);"),"RenderDraft draws the backdrop on the stage's tint, age, pulse and step, after the stage lights");
+            Check(draft.Contains("NativeLighting.Draft(camera,stageTint,flash);\n            // The animated cyber corridor behind the pilot (NativeDraftBackdropPresentation.cs), on the stage's frame step; the clack re-fires\n            // its power-on front in the chip's colour.\n            DraftBackdrop(camera,stageTint,a,a>=NativeInstallShot.Seat&&!reduced?a-NativeInstallShot.Seat:-1,trayLine,reduced,siren,dt,pr.Level,pr.Grade>=5,DraftHallDim(pr,a));"),"RenderDraft draws the backdrop on the stage's tint, age, the clack's front (its level, a second front for legendary and up, the hall's dim before a legendary's) and step, after the stage lights");
             Check(draft.Contains("presentation.DraftHeadLine=draftHeadLine;presentation.DraftWard=pve;presentation.DraftPrism=pve&&tier==\"rainbow\";"),"DraftFrame passes the heading's row, the PvE / Siren pick's ward and the rainbow prism");
             Check(screen.Contains("bottom=y+Mathf.Clamp(H*.024f,4,30);draftHeadLine=bottom/H;"),"every draft heading records its bottom row");
             string shaderPath=Path.Combine(root,"Assets/ChipArena/Resources/NativeDraftBackdrop.shader");Check(File.Exists(shaderPath)&&File.Exists(shaderPath+".meta"),"shader and meta under Resources");string shader=File.ReadAllText(shaderPath);
-            var names=Regex.Match(shader,@"float4 (_Back[^;]*);").Groups[1].Value.Split(',').Select(x=>x.Trim()).ToArray();Check(names.Length==16,"the shader's uniforms ("+names.Length+")");
+            var names=Regex.Match(shader,@"float4 (_Back[^;]*);").Groups[1].Value.Split(',').Select(x=>x.Trim()).ToArray();Check(names.Length==17&&names.Contains("_BackFront"),"the shader's uniforms ("+names.Length+"; the clack's second front)");
             foreach(var n in names)Check(drawer.Contains("Shader.PropertyToID(\""+n+"\")")&&Regex.IsMatch(drawer,@"m\.SetVector\(Back"+n.Substring(5)+@"Id,BackV\(s\."),"the drawer sets "+n);
             Check(shader.Contains("\"Queue\"=\"Background\"")&&shader.Contains("ZWrite Off")&&shader.Contains("#pragma multi_compile_local __ DRAFT_BACKDROP_LOW")&&!shader.Contains("multi_compile_fog")&&!shader.Contains("UNITY_APPLY_FOG"),"drawn first, no depth write, a low variant, no fog");
             int a=shader.IndexOf("// ---- DRAFT BACKDROP SHARED BEGIN",StringComparison.Ordinal),z=shader.IndexOf("// ---- DRAFT BACKDROP SHARED END",StringComparison.Ordinal);Check(a>0&&z>a,"shared block markers (the offline GLSL renders compile it)");

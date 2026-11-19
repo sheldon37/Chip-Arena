@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A Glaive chip's pick: its animation's cues (Core NativeGlaiveChips.Picks) on the spotlight's clock, `age` s after the pick.</summary>
         public void GlaivePick(string chip,float age)
         {
-            int i=NativeGlaiveChips.Index(chip);if(i<0)return;float s=age-NativeDraftPlant.DetailsAt-NativeGlaiveChipArt.Start;
+            int i=NativeGlaiveChips.Index(chip);if(i<0)return;float s=age-NativeInstallShot.DetailsAt-NativeGlaiveChipArt.Start;
             if(chip!=glaivePickId||age<glaivePickLast-.2f){glaivePickId=chip;glaivePickCue=0;}glaivePickLast=age;var list=NativeGlaiveChips.Picks[i];
             while(glaivePickCue<list.Length&&s>=list[glaivePickCue].At){var c=list[glaivePickCue++];if(s-c.At<.25f)Toon(c.Id,null,c.Gain,true,c.Rate);}
         }

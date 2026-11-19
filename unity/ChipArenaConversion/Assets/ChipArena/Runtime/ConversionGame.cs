@@ -456,6 +456,8 @@ namespace ChipArena.UnityConversion
             if(arena!=null&&!menu&&previewArena==null&&match.Phase==NativePhase.Draft){DraftScreen();return;}
             // The Boss Battle opening's countdown sits over both of its screens, top centre (NativeBossPicksClock.cs).
             if(previewArena==null&&PvePickScreen){PveChipScreen();BossPicksClock();return;}
+            // The install's bloom fading over the live view after a pick's follow-through (NativeDraftFollow.cs).
+            InstallBloomOut();
             // The Boss Battle's opening: five chips in, waiting for the others (NativeBossPicksScreen.cs).
             BossPicksWaitReset();if(previewArena==null&&BossPicksWaiting){BossPicksWaitScreen(width,height);BossPicksClock();return;}
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}

@@ -202,7 +202,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--chooser-camera"){var root1=ProjectRoot();ChooserCameraChecks.Run(root1,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root1,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--chip-select"){var chipData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});foreach(var result in ChipSelectChecks.Run(chipData))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--chip-screen"){ChipScreenChecks.Run(ProjectRoot());return 0;}
-            if(args.Length==1&&args[0]=="--draft-stage"){foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);foreach(var result in DraftStageChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);DraftBackdropChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--draft-stage"){foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);foreach(var result in DraftStageChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);DraftBackdropChecks.Run(ProjectRoot());foreach(var result in InstallShotChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);return 0;}
             if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
             StationBossBodyChecks.Run(ProjectRoot());ZoneBossRulesChecks.Run();ZoneCombatChecks.Run(ProjectRoot());BackroomsEntityChecks.Run();DevAbuseChecks.Run();ExpeditionMutatorChecks.Run(ProjectRoot());ExpeditionDeploymentChecks.Run(ProjectRoot());DeployPresentationChecks.Run();DeployModelChecks.Run(ProjectRoot());DeploySparkChecks.Run(ProjectRoot());PodRunChecks.Run(ProjectRoot());PodDropChecks.Run(ProjectRoot());MutatorFxChecks.Run(ProjectRoot());BackroomsChecks.Run(ProjectRoot());PoolroomsChecks.Run(ProjectRoot());PoolroomsRulesChecks.Run();BackroomsGeneratorChecks.Run(ProjectRoot());DeploySoundChecks.Run(ProjectRoot());DeployPerformanceChecks.Run(ProjectRoot());ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionHandoffChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
             if(args.Length==1&&args[0]=="--navigation"){NavSearchChecks.Run(ProjectRoot());return 0;}
@@ -413,6 +413,7 @@ internal static class Program
             foreach(var result in DraftStageChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in DraftHoverChecks.Run())Console.WriteLine("PASS "+result);
             DraftBackdropChecks.Run(root);
+            foreach(var result in InstallShotChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CinematicCameraChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in IntroPresentationChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in SirenIntroChecks.Run(root))Console.WriteLine("PASS "+result);

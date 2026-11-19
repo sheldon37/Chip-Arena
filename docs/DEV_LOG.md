@@ -1,3 +1,127 @@
+## 2026-11-18 — Claude: the chip install's fix pass, the reviewers' eleven findings (owner report; presentation only)
+
+Branch `claude/chip-install-anim`, shared merged in at `0f2aef17`; code at `e3f25260`. The owner's request is the same: "we need to improve the animation when the player model "installs" the chip. Please review, improve drastically, and update." Status: implemented on the branch and pushed; not merged, not released.
+
+Eleven findings (seven high, four medium) from the reviewers of the first build (`1e698b39`), each fixed in code; two are not seen in the Editor (the visor's last change and the Expedition's tray, below):
+- **The present is solved on the drawn device.** The model's device rides its forearm, so the stage hand's frame could not place it: the bay faced up and sideways (about 75° off the lens), the forearm pointed at the camera, and the black glove pressed edge-on. The stage now designs the bay's frame (`NativeDraftInstall.PresentAt`, its normal and its forearm): in front of the upper chest, the forearm across the body and square to the lens, rising a little toward the hand, and the bay's face to the lens. The draw (`VisualDraftPresent`) turns the model's forearm onto it and puts the elbow where the bay lands on its seat. The forearm roll and the eased wrist of the first build are gone. The camera frames the planned bay, which is now where the drawn one is (HeroHeight .62 m, so the hero framing reaches 1.5x and more). The cartridge's light sits toward the lens and under it, brighter through the line-up, so the black glove reads off the black suit.
+- **The catch is a take.** The drawn hand eases onto the stage's plan from .36 s (`NativeInstallShot.Contact01`), open and soft (the new `Reach` shape, the thumb spread) and turned for the pinch. The 3D cartridge flies from the burst into the drawn thumb and index pads (`DraftCartridgeFlight`).
+- **The release lifts clear.** The two pressing fingers lift about 4 cm up the drawn bay's normal and back toward the hand's own shoulder, never across the forearm (`DraftLiftAt`, `NativeDraftInstall.LiftAway`). The contact holds them there until 1.30 s, then hands them to the stage's arm as it goes low. The splayed Flick is replaced by a short `Lift` shape, two fingers tucked, then Rest by 1.24 s.
+- **The Raise stands beside the head.** The bay goes to the ear line on the receiving side, 31 cm off the visor's centre, the forearm leaning about 45° outward, the fist under the crown. It goes out, then up, then turns, so the arm never sweeps across the face.
+- **The shot frames the model's own visor.** The player's model wears its visor about 21 cm under the stage rig's eyes, so the shot framed the helmet's top (the visor at .51-.61 of the height). The stage measures the drawn visor (`NativeDraftStage.MeasureVisor`, carried to the rest head) and frames it; the crown's check rides down with it. The install's heights follow it too (`NativeDraftInstall.VisorChestY`): the bay at most 21 cm under the visor, the Raise at the ear line, so neither fist nor the taking hand comes up over the visor.
+- **The suit's arm plates stay on.** The suit, the face gear and the cloth's accent flare are queued in `RenderDraft` after the present and the last contact pass, not in `VisualDraftPose`. Queued in the bind, the vambraces and the gauntlet plates hung where the arms had been (the empty hoops and the spike on the Raise's fist).
+- **The Expedition's tray keeps its own card flight.** `PickedTray` takes a `stage` flag. The three stage screens pass `true`. The Expedition's two calls keep the default, which plays the pre-install shatter and flight into the hand (fading at `NativeDraftPlant.Contact`), the same code as `8865e817` (`ShatterPlain`, `FlyToHand`, `NativeChipPlant.CardFly`/`CardFade`).
+- **Every tier seats a core.** `NativeMachineModels.HeldPickup`: a tier without its own built cartridge (Top Dog, Glaive, Katana, Fangs and the six boss relics) holds the common's, which has the core module, never the exported generic chip. If a model without a core is all there is, the device's own chip seats from the latch, as before.
+- **The visor flashes white.** `AccentTint` is a ratio over the model's baked teal, not a colour, so lerping it toward the chip's colour multiplied gold onto teal (green); a white ratio read peach and salmon in the captures. The visor now keeps its own hue and brightens, white light is laid over the band and the chip's colour runs along its top and bottom edges. Bodies without a visor band (the Hot Dog, a bare face, a half or plain mask, the Sheldon hood) take none. The suit's chase and the chest core take the chip's own ratio (`NativePortraitRules.GlowAccentTint`). The install's colour is the tier's (`Look.Rarity`), so the boss relics flash their set colour, not white.
+- **The clack's ring is light.** It is drawn as additive streaks in the bay's plane, thinning and fading as it grows, not a solid piece darkening into a hoop. A common chip's flash, ring and sparks are white-hot with the pilot's accent for their rim.
+- **The readout's leader ends on the pilot.** It starts beside the pilot at the device's height (`DraftLeaderFrom`), never across the body, and fades out by the look (`LeaderFade`, 1.86-2.02 s) and over a device under the shade.
+- **The Siren's cartridge shows.** She holds it at her claw tips, pushed toward the lens and brighter. Her claw stops beside the grin, not over it. Her eye halos flare in the chip's colour at 1.34 s.
+
+- **Files.** Core: `NativeDraftInstall` (the designed present, `PresentFrame`, `InstallAt`/`RaiseAt` on the visor, the lift, the Siren's hold), `NativeDraftStage` (`MeasureVisor`, the planned visor and bay as properties, HeroHeight .62), `NativeInstallShot` (`Contact01`, `LeaderFade`), `NativeHandShapes` (`Reach`, `Lift`), `NativeMachineModels` (`HeldPickup`), `NativeChipPlant` (`CardFly`, `CardFade`). Runtime: `NativeDraftInstallPresentation` (`VisualDraftPresent`, `DraftCartridgeFlight`, `DraftLiftAt`, `DraftLeaderFrom`, the visor, ring and backlight), `NativeDraftPresentation` (`RenderDraft`'s order), `NativeDraftScreen` (`PickedTray`'s stage flag, `ShatterPlain`, `FlyToHand`, the leader), `NativeDraftFollow` and `NativeDeathmatchPickStage` (pass the stage), `NativeVisualBodyPresentation` (the suit's calls out of `VisualDraftPose`), `NativeMachineModels` (`PickupCore`). Tests: `InstallShotChecks` (new groups Present and Contact; Cartridge, Shapes and Wiring extended), `VisualRigChecks` and `MachineModelChecks` re-pinned.
+- **Checks.**
+  - Full CoreTests on `e3f25260` as relgen5 runs it (a throwaway LF worktree with the Windows-only `Path.GetFullPath` patch to `ExpeditionEndingChecks`): 1049 PASS lines, exit 0. Also 1049 PASS on `1a57e92b` and `4caf9c58`.
+  - New and extended in `InstallShotChecks`: the designed bay on its point with its face within 10° of the lens and the forearm square to it at 30-144 Hz; the Raise clear of the visor's box and under the top, and for a model whose visor sits 21 cm under the rig's eyes framed at 1.5x and more with its visor in the upper third and the bay at about .67; the contact's weight and the lift; every tier holding a built cartridge with a core; the wiring (the suit queued after the contact, the flight, the held model, the ring as light, the visor, the leader, the Expedition's own flight and its fade at the plant's contact).
+  - The pinned 6000.3.24f1 semantic compile passes on `e3f25260` (Input System, Player, Assembly-CSharp, Editor). `git diff --check` is clean.
+- **Seen in the Editor.** BoZo paced captures in the owner's Editor under the lock (a frame every 1/30 s, 1920x1080, 21:9 at 2560x1080) on `4caf9c58`. That is the final code but for the visor's beat and the reach starting at .40 s (now .36 s). Ten cases: common, rare, legendary, the Hot Dog, the Siren drafter, the PvE beginning pick, the Katana, THE 6:47's relic, Reduced effects and 21:9. Logged, every 16:9 and 21:9 case:
+  - the cartridge in the drawn fingers from .50 s (its centre 3.2-4.0 cm from the pinch, its own crest offset 3.1-3.7 cm; the Hot Dog's glove 4.8 against 4.8);
+  - the drawn pinch's peak 1.44-1.74 m/s (2.4-2.9 cm per 1/60 s);
+  - after the release, the pinch at most 4.8-5.0 cm off the bay through 1.30 s;
+  - at the clack, the bay 19-22° off the lens, its row .66-.67, the visor's top at .32, magnification 1.67-1.82;
+  - at the line-up, the cartridge 103-107 px wide, its core 38-40 px, the lid 71-73 px;
+  - in the Raise, the wrist at the visor's row 226-255 px beside it;
+  - Reduced effects keeps its 1.15x push (cartridge 72 px, core 27 px); the PvE beginning pick's base shot is 22 cm farther back (cartridge 90 px, core 34 px, bay row .64).
+
+  The sheets and the clips show the forearm across the body with the bay to the lens, the catch into the fingers, the lift clear, the Raise beside the head, the plates on, the ring as light, the cores seated for the boss relic and the Katana, and the Siren's lit cartridge and eye flare. **The final visor beat (`e3f25260`) is not captured.** Its run waited for the Editor lock from 22:00 to 01:40 behind other agents' captures. Run 7's band read peach, the reason for the last change. The captures, sheets, clips and the review index are in the session's scratch (`chipinstall/build/look/`), not committed.
+- **Not run.** The final visor beat's capture (above). No Windows build or player, so no frame timing. The sounds were not listened to (the bespoke `ui.install.*` keys are still not generated). Not captured: an Expedition tray pick (it needs a live run with a chip reward; the code is the pre-install code, checked), a spectated pick, a two-row tray, 5:4 and 32:9, hats, the halo and the Sheldon hood, ability and wild chips, a Classic voxel pilot, an early key press on the short cut.
+- **Risks.**
+  - The visor's last change is seen only in code; check it first (common, rare, legendary, a boss relic, the Hot Dog).
+  - The drawn present is solved on the default model and seen on it and the Hot Dog; other bodies (outfits with other arm lengths) are not seen. Its elbow slides at most 12 cm along the lens's line to keep the upper arm's length (4-5 cm on the default model).
+  - The readout's leader has no room beside the pilot in the pushed-in framing, so it is not drawn there.
+  - The PvE beginning pick frames the device a little smaller than the others (its base shot is farther back).
+  - Shared has moved on (20 commits past `0f2aef17`); none touch the install's files.
+  - The visor's band light assumes the visor point (the band's top edge) and a 7 cm band; a face gear of another shape would need its own.
+- **Next:** capture the final visor beat; the owner reviews the clips and sheets; then merge (keep both docs entries) and release. The 7 bespoke sounds still await generation (paid).
+- **For Astra:** nothing new. `tools/sound_queue.py` still does not list `docs/audio/sound-requests-install.json`.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking: presentation only. The pick, `RevealSeconds`, the Install event and its 1.14 s cue, the PvE authority, the Deathmatch respawn, `NativeDraftPlant`, `NativeChipPlant`'s plant and `NativePilotGear.Device` are unchanged. Nothing is sent or baked. The motion bank and the 14 stage banks are unchanged.
+- **Other tasks' files, minimally:** `NativeDeathmatchPickStage.cs` (its `PickedTray` call passes `true`); `NativeChipPlant.cs` (two card-flight helpers, the plant untouched); `NativeExpeditionChipScreen.cs` is untouched.
+
+## 2026-11-18 — Claude: the chip install redrawn as a hands-on install on the wrist device (owner report; presentation only)
+
+Branch `claude/chip-install-anim`, base shared `claude/sleepy-ritchie-g8ruhv` at `8865e817`, code final at `1e698b39`. Owner: "we need to improve the animation when the player model "installs" the chip. Please review, improve drastically, and update." Status: implemented on the branch and pushed; not merged, not released. The present, the catch, the release, the Raise, the suit's order, the visor and the framing were reworked by the fix pass in the entry above, which supersedes the forearm roll and the eased wrist described here.
+
+- **What.** After a pick, the draft stage plays the install as one shot, as long as the turn's own hold (3.2 s; up to 5.2 s for the long tiers). It runs on two clocks:
+  - the smoothed pick age drives the camera, the 2D screen and the effects;
+  - a pose clock (`NativeInstallShot.PoseAge`) adds a zero-sum hit-stop at the clack.
+- **The beats.**
+  - At the click the pilot takes a breath, nods, cocks the taking hand, and the card pops.
+  - The other cards shatter as a ripple of lit shards, nearest first.
+  - The card flies to the hand and bursts into the 3D cartridge at the catch. The thumb and index pinch its crest edge (new hand shapes, and a contact pass on the model's finger pads).
+  - The right forearm rises like a watch check. The device's lid opens with a puff and the bay glows ready.
+  - The carry, a line-up inside brackets, and a two-finger press.
+  - The clack at 1.14 s, on the install cue's existing time: a hit-stop, a camera kick and shake, the stage lit in the chip's colour, and the corridor's power-on fronts.
+  - The shell bursts out of the fingers and the lid slams with a bounce. The surge runs up the arm and the suit into the chest core, and the visor flashes.
+  - The power-up rise.
+  - The readout unfolds beside the pilot and rides in and out with the camera's pan. Then eye contact, and the settle back to the portrait.
+- **Who gets what.**
+  - Tiers: common to mythic, the kits, rainbow, ability and wild chips, and the boss relics with their set's motif at the seat.
+  - The Hot Dog: a 1.3x device, squash and stretch, and toon sounds.
+  - The Siren drafter strikes, lifts the chip to her grin and crushes it. Her held cartridge now glows so it reads behind her talons.
+  - The PvE and Deathmatch picks take the short cut: the power pose at 1.55 s, then a bloom back to play by 1.95 s.
+- **Camera.**
+  - A dolly push-in. The 24° lens and the tilt are kept.
+  - The hero framing has a safe frame: the planned visor, bay and pinch stay inside it, and the eyes stay 10% under the top edge. A bare head's top may crop by up to 5%; a hat or the halo keeps its brim.
+  - Where no push fits (a tall hat at 4:3), the target moves only as far as keeps the crown in frame.
+- **Fixed after the first captures (all on this branch).**
+  - The bow hid the device. The install point is lower and further out: (0, .16, .32) in the chest frame, not the spec's (0, .28, .27). The look down is capped at .32 rad during the install.
+  - The receiving wrist flipped from frame to frame (46 bay jumps of over 5 cm in 3 s). Its turn had been planned on each frame's measurement of the drawn bay, which moved with that turn. It now plans on the bay as it was at the pick.
+  - The model's device rides its forearm, which neither the hand's frame nor the stage's forearm predicts. The drawn bay sat 11 cm under its point, facing away from the lens.
+    - From the arm's half lift, the wrist now eases (.08 s of pose time, at most 18 cm) by the drawn bay's miss, measured a frame behind.
+    - The draw rolls the model's forearm about its length, at most 110°, to turn the bay's face up toward the lens.
+  - The readout unfolded over the helmet before the camera's pan; it now rides with the pan and the settle.
+- **Files.**
+  - New Core: `NativeInstallShot` (timeline, curves, profiles, device states, text, readout, bloom, sounds), `NativeDraftInstall` (the install's arms, cartridge and torso layers), `NativeHandShapes`.
+  - New Runtime: `NativeDraftInstallPresentation` (the contact pass, the forearm roll, the cartridge, the device, the core and surge, lights, effects and the install's audio).
+  - Changed:
+    - `NativeDraftStage` (the shot, the gaze and the arms through the install);
+    - `NativeVisualRig` (`HandShape`, identical at weight 0);
+    - `NativeMachineModels` (the cartridge's core module on new bones 3, 4 and -3);
+    - `NativeDraftBackdrop` and its shader (`_BackFront`);
+    - `NativeSoundBank` (7 `ui.install.*` keys);
+    - the draft, screen, follow, Deathmatch-pick, body, suit and backdrop presentations.
+  - New `docs/audio/sound-requests-install.json` (7 sounds).
+  - New `Tests/InstallShotChecks.cs` (10 groups).
+  - Re-pinned: DraftStage, DraftBackdrop, EffectsAudio, MachineModel, VisualRig, ModelPose and RobotSuit. Minimal edit to another task's check: `MenuStyleChecks` now counts 17 corridor frame uniforms.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. Unchanged:
+  - the pick, the turn's hold (`NativeMatch.RevealSeconds`), the Install event and its 1.14 s cue;
+  - the PvE pick authority and the Deathmatch respawn;
+  - `NativeDraftPlant`, `NativeChipPlant` and `NativePilotGear.Device`.
+
+  Nothing is sent and nothing is baked. The motion bank and the 14 stage banks are unchanged.
+- **Checks.**
+  - Full CoreTests on `1e698b39`: 1045 PASS lines, exit 0. Release build, as relgen5 runs it, in a throwaway LF worktree with the Windows-only `Path.GetFullPath` patch to `ExpeditionEndingChecks`.
+  - `--draft-stage`: 62 PASS.
+  - The pinned 6000.3.24f1 semantic compile passes (Input System, Player, Assembly-CSharp, Editor).
+  - `git diff --check` is clean, files are LF, and the new metas' GUIDs are unique.
+  - A C# tokenizer pin scan finds only the three intended moves.
+- **Seen in the Editor.** BoZo paced captures at 1/30 s, 1920x1080:
+  - BEFORE on `8865e817`: common, legendary, Hot Dog, the Siren drafter, the Ward Zero pick, the Katana.
+  - AFTER on `1e698b39`: the same, plus a boss relic (THE 6:47), Reduced effects, and 21:9.
+  - On AFTER: bay jumps of over 5 cm in 3 s are 3-7, and 13 with the Raise hero hold (BEFORE 6-7), with no normal flips. Magnification at the clack is 1.37-1.62, 1.15 with Reduced effects and 1.28 for the Siren. The bay sits at about .82 of the height at the clack (an earlier commit had it at 0.91).
+  - After each run the stage banks (14) and the motion bank (6,136,627 bytes, sha 37ec44d2) were unchanged.
+  - Sheets and an index mapped to the spec's checklist are kept outside the repo.
+- **Not run.**
+  - No Windows build or player, so frame times were not measured. The stage paths are allocation-free by check; the draw's were not profiled.
+  - The sounds were not listened to. The 7 bespoke `ui.install.*` keys are not generated, and their cues fall back to the existing bank keys.
+  - Not captured: 5:4 and 32:9, a spectated pick, a two-row tray, the halo or the Sheldon hood, ability and wild chips, a Classic voxel pilot, and an early key press on the short cut.
+  - PvE timing: in the paced capture the follow's real-time clock ran about .12 s ahead of the drawn age, so the cut showed at 1.83 s. At a steady frame rate the two agree.
+- **Risks and next.**
+  - The forearm roll and the eased wrist are tuned on the default pilot model and the Hot Dog. Other model bodies should be looked at.
+  - The bay's face turns up more than toward the lens (dot about .7 with the aim).
+  - The Raise hero hold (legendary and up) moves the arm fast: 12-14 bay jumps of over 5 cm.
+  - **Next:** the owner reviews the sheets; then merge and release.
+- **For Astra.**
+  - `tools/sound_queue.py` does not list `docs/audio/sound-requests-install.json`. Generating the 7 sounds is a paid step.
+  - `ExpeditionEndingChecks` still needs `Path.GetFullPath` on Windows.
+
 ## 2026-11-18 — Astra: Meridian size B walk candidates
 
 Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientation layouts in the Developer walk. All 20 primary streets and 20 roof circuits passed sampled support and clearance. See [the five layouts, route distances and timing table](MERIDIAN-B-WALK.md). The same-machine A0 and five-candidate Unity benchmark is available from the Editor. Native results, contract freeze, party ticket integration and art handoff remain pending.

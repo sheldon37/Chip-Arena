@@ -205,7 +205,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A Top Dog chip's pick: its gag's toon cues (Core NativeTopDogSounds.Picks) on the spotlight's clock, `age` s after the pick.</summary>
         public void DogPick(string chip,float age)
         {
-            int i=NativeDogChips.Index(chip);if(i<0)return;float s=age-NativeDraftPlant.DetailsAt-NativeDogChipArt.Start;
+            int i=NativeDogChips.Index(chip);if(i<0)return;float s=age-NativeInstallShot.DetailsAt-NativeDogChipArt.Start;
             if(chip!=dogPickId||age<dogPickLast-.2f){dogPickId=chip;dogPickCue=0;}dogPickLast=age;var list=NativeTopDogSounds.Picks[i];
             while(dogPickCue<list.Length&&s>=list[dogPickCue].At){var c=list[dogPickCue++];if(s-c.At<.25f)Toon(c.Id,null,c.Gain,true,c.Rate);}
         }

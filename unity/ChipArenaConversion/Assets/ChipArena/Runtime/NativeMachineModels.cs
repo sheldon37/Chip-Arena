@@ -23,8 +23,9 @@ namespace ChipArena.UnityConversion
                 if(built==null||models.ContainsKey(id))return;var parts=new List<Part>();
                 foreach(var s in built.Sections)
                 {
-                    var mesh=BodyMesh(s,id+" / "+s.Bone);if(mesh==null)continue;bool see=s.Bone==NativeMachineModels.Glass;
-                    parts.Add(new Part{Name=id,Bone=see?-1:s.Bone,Mesh=mesh,Material=see?glass:opaque,NoShadow=see});
+                    // (The cartridge's core module glass rides its core's bone: NativeMachineModels.CoreGlass on CoreBody.)
+                    var mesh=BodyMesh(s,id+" / "+s.Bone);if(mesh==null)continue;bool core=s.Bone==NativeMachineModels.CoreGlass,see=s.Bone==NativeMachineModels.Glass||core;
+                    parts.Add(new Part{Name=id,Bone=core?NativeMachineModels.CoreBody:see?-1:s.Bone,Mesh=mesh,Material=see?glass:opaque,NoShadow=see});
                 }
                 if(parts.Count>0){models[id]=parts.ToArray();MachineModels++;}
             }
@@ -60,5 +61,14 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The sculpted model id when it was built, else the exported source id (the machine and chip draws).</summary>
         public string MachineModel(string sculpted,string source)=>models.ContainsKey(sculpted)?sculpted:source;
+        private readonly Dictionary<string,bool> pickupCores=new Dictionary<string,bool>();
+        /// <summary>Whether a chip model carries the cartridge's core module (NativeMachineModels.CoreBody), which the draft stage's install
+        /// seats alone in the bay (the exported generic chip has none); remembered per model.</summary>
+        public bool PickupCore(string model)
+        {
+            if(model==null)return false;if(pickupCores.TryGetValue(model,out bool core))return core;
+            core=false;if(models.TryGetValue(model,out var parts))foreach(var p in parts)if(p.Bone==NativeMachineModels.CoreBody){core=true;break;}
+            return pickupCores[model]=core;
+        }
     }
 }

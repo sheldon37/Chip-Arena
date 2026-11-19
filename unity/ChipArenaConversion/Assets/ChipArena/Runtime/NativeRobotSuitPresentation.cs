@@ -75,13 +75,14 @@ namespace ChipArena.UnityConversion
         private readonly Matrix4x4[] suitMatrices=new Matrix4x4[NativeRobotSuit.Bones.Length];private Func<int,Matrix4x4> suitBone;
         private Func<int,float> suitReveal,suitRevealOf;private Func<int,Color> suitTint,suitTintOf;
         private int suitShown;private Func<int,bool> suitVisible;
-        private void VisualSuit(GameObject root,int id,string bodyColor,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash,int keep=-1)
+        // `accentOverride` and `glowGain`: the draft's install runs its light through the trims bone by bone (DraftSuitSurge).
+        private void VisualSuit(GameObject root,int id,string bodyColor,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash,int keep=-1,Color? accentOverride=null,float glowGain=1)
         {
             int shown=SuitShown(id)&keep;if(shown==0||sourceModels==null||!sourceModels.Has(NativeSourceModels.Suit))return;var rig=SuitRigOf(root);if(rig==null||(shown&=rig.Found)==0)return;
             for(int i=0;i<suitMatrices.Length;i++)suitMatrices[i]=rig.Bones[i]!=null?rig.Bones[i].localToWorldMatrix*rig.Bind[i]:Matrix4x4.identity;
             suitBone??=i=>suitMatrices[i];suitReveal=reveal;suitTint=tint;suitShown=shown;suitVisible??=b=>(suitShown>>b&1)!=0;
-            sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,suitBone,suitVisible,layer,camera,BodyTint(bodyColor),AccentTint(accentColor),1,
-                reveal==null?null:suitRevealOf??=i=>suitReveal(SuitJoints[i]),tint==null?null:suitTintOf??=i=>suitTint(SuitJoints[i]),new Vector4(1,1,1,1),null,flash);
+            sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,suitBone,suitVisible,layer,camera,BodyTint(bodyColor),accentOverride??AccentTint(accentColor),1,
+                reveal==null?null:suitRevealOf??=i=>suitReveal(SuitJoints[i]),tint==null?null:suitTintOf??=i=>suitTint(SuitJoints[i]),new Vector4(glowGain,glowGain,glowGain,1),null,flash);
         }
     }
 }
