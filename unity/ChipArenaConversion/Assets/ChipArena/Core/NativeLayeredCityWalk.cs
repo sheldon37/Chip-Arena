@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
 {
     // The A4 scale walk. Geometry uses the same ContentBlock/MapRamp collision path as shipped arenas.
     // This map never enters deployment tickets, the PvP rotation, or the shared map catalogue.
-    public sealed class NativeLayeredCityWalk
+    public sealed partial class NativeLayeredCityWalk
     {
         public readonly ContentMap Map;
         public readonly List<Route> Routes = new List<Route>();
@@ -17,6 +17,9 @@ namespace ChipArena.UnityConversion
             public string Name;
             public V3[] Points;
             public float[] Widths;
+            public string[] Kinds, Covers;
+            public V3 Destination;
+            public V3[] HordePoints;
             public V3[] RoofLoop = Array.Empty<V3>();
             // Horizontal station measured from the gate, in the route's own frame.
             public void Sample(float station, out V3 foot, out V3 direction, out float width)
@@ -46,35 +49,32 @@ namespace ChipArena.UnityConversion
         private readonly float halfX, halfZ;
         private const float Cut = -21;
 
-        private readonly Plan plan;
+        public readonly List<V3> RoofHatches = new List<V3>();
 
         public NativeLayeredCityWalk(Plan plan) : this(true, plan.Seed, plan) { }
         public NativeLayeredCityWalk(bool large, uint seed) : this(large, seed, null) { }
         private NativeLayeredCityWalk(bool large, uint seed, Plan plan)
         {
-            this.plan = plan;
+
             halfX = large ? 300 : 210;
             halfZ = large ? 240 : 170;
             random = new SourceRandom(seed);
-            Box("cut-ground", 0, 0, halfX * 2, halfZ * 2, Cut - 2, Cut, "foundation");
-            Box("terrace-sanctuary", 0, 0, 50, 50, Cut, 0);
             // The gate openings and ring stay the same dimensions in both options.
             for (int side = 0; side < 4; side++)
                 foreach (int sign in new[] { -1, 1 })
                     Slab(side, "camp-fence-" + side + "-" + sign, 24.8f, 25, sign * 15, 20, 0, 3.2f);
 
-            var districts = new List<(string name, float level)> {
-                ("Ward Zero", -7), ("Central Station", Cut), ("City Ironworks", -14),
-                ("The Poolrooms", -17.5f), ("Level 0", -14)
-            };
+            MapBounds bounds;
             if (plan != null)
-            {
-                string[] slots = { "North court", "East hall", "South hall", "West hall" };
-                for (int side = 0; side < slots.Length; side++)
-                    BuildRoute(side, slots[side], plan.Lanes[side].Court, true);
-            }
+                bounds = BuildStreetPlan(plan.Seed);
             else
             {
+                Box("cut-ground", 0, 0, halfX * 2, halfZ * 2, Cut - 2, Cut, "foundation");
+                Box("terrace-sanctuary", 0, 0, 50, 50, Cut, 0);
+                var districts = new List<(string name, float level)> {
+                    ("Ward Zero", -7), ("Central Station", Cut), ("City Ironworks", -14),
+                    ("The Poolrooms", -17.5f), ("Level 0", -14)
+                };
                 BuildRoute(0, "City Hall", 14, large);
                 for (int side = 1; side < 4; side++)
                 {
@@ -82,11 +82,12 @@ namespace ChipArena.UnityConversion
                     BuildRoute(side, districts[pick].name, districts[pick].level, large);
                     districts.RemoveAt(pick);
                 }
+                BuildCarPark();
+                BuildViaduct();
+                BuildLots();
+                Cordon();
+                bounds = new MapBounds { minX = -halfX, maxX = halfX, minZ = -halfZ, maxZ = halfZ, ceiling = 60, killY = -25 };
             }
-            BuildCarPark();
-            BuildViaduct();
-            BuildLots();
-            Cordon();
             var spawns = Enumerable.Range(0, 8).Select(i => new MapSpawn {
                 pos = new V3(-6 + 4 * (i % 4), .9f, -4 + 4 * (i / 4))
             }).ToArray();
@@ -94,12 +95,15 @@ namespace ChipArena.UnityConversion
                 id = "expedition-city-walk-" + (plan == null ? (large ? "b" : "a") : plan.Seed.ToString(System.Globalization.CultureInfo.InvariantCulture)), name = plan?.Name ?? "Meridian scale walk",
                 theme = "expedition", look = "expedition-city", unity = true, sky = 0x617488,
                 floor = 0x555a62, accent = 0xc3a572, blocks = blocks.ToArray(), ramps = ramps.ToArray(),
-                bounds = new MapBounds { minX = -halfX, maxX = halfX, minZ = -halfZ, maxZ = halfZ, ceiling = 60, killY = -25 },
+                bounds = bounds,
                 spawns = new MapSpawns { ffa = spawns, teams = new[] { 0, 1 }.Select(i => new MapTeamSpawns {
                     side = i, points = spawns.Skip(4 * i).Take(4).ToArray()
                 }).ToArray() },
                 segments = Array.Empty<StructureDefinition>(), hazards = Array.Empty<MapHazard>(),
-                pilotBlocks = Array.Empty<MapPilotBlock>(),
+                pilotBlocks = plan == null ? Array.Empty<MapPilotBlock>() : blocks
+                    .Where(b => b.id == "cordon-n" || b.id == "cordon-e" || b.id == "cordon-s" || b.id == "cordon-w")
+                    .Select(b => new MapPilotBlock { id = b.id + "-edge", center = b.pos, size = b.size,
+                        bottom = b.pos.y + b.size.y / 2, bots = true }).ToArray(),
                 nav = RouteNavigation()
             };
             NativeMapRules.Validate(Map);
@@ -131,12 +135,17 @@ namespace ChipArena.UnityConversion
                     }
                     start = end;
                 }
-                foreach (var end in Routes[side].Points)
-                    Sample(end, side == 0 && (plan == null || plan.Lanes[0].Terrace == 14) ? "stair" : "ramp");
-                var hall = previous;
-                foreach (var end in Routes[side].RoofLoop) Sample(end, "stair");
-                if (previous != hall)
-                    links.Add(new MapNavLink { id = "link-" + links.Count, a = previous.id, b = hall.id, kind = "walk" });
+                var route = Routes[side];
+                var path = route.HordePoints ?? route.Points;
+                foreach (var end in path)
+                {
+                    string grade = route.Kinds == null && side == 0 ? "stair" : "ramp";
+                    if (end.y != start.y && ramps.Any(r => r.kind == "stair" &&
+                        Math.Min(start.y,end.y) == r.low.y && Math.Max(start.y,end.y) == r.high.y &&
+                        (end-r.high).Length + (start-r.low).Length < .01f))
+                        grade = "stair";
+                    Sample(end, grade);
+                }
             }
             return new MapNav { nodes = nodes.ToArray(), links = links.ToArray() };
         }
@@ -193,67 +202,10 @@ namespace ChipArena.UnityConversion
             float offset = (side % 2 == 0 ? (large ? 57 : 30) : (large ? 12 : 10)) * (random.Next() < .5 ? -1 : 1);
             float firstLevel = side == 0 ? 14 : -7;
             float start = 25, bend = side == 0 ? 65 : 74;
-            if (plan != null)
-            {
-                var lane = plan.Lanes[side];
-                end = lane.End; offset = lane.Turn; bend = lane.Bend; firstLevel = lane.Terrace;
-            }
             var path = new List<V3> { Point(side, start, 0, 0) };
             float exitOffset = 0;
             var widths = new List<float>();
-            if (plan != null)
-            {
-                var lane = plan.Lanes[side];
-                // A flush apron clears the camp fence before the street turns.
-                float throat = start + 3;
-                Slab(side, id + "-apron", start, throat, 0, lane.Approach, -1, 0);
-                path.Add(Point(side, throat, 0, 0)); widths.Add(lane.Approach);
-                int slices = lane.Covered ? 7 : lane.Width >= 14 ? 11 : 10;
-                float slope = (float)Math.Tan(lane.Angle * Math.PI / 180);
-                exitOffset = slices * slope;
-                // One-metre courses form the angled street. Width is measured across its heading.
-                float courseWidth = lane.Width * (float)Math.Sqrt(1 + slope * slope) + Math.Abs(slope);
-                for (int j = 0; j < slices; j++)
-                    Slab(side, id + "-turn-" + j, throat + j, throat + j + 1, (j + .5f) * slope, courseWidth, -1, 0);
-                float corner = throat + slices, foot = corner + 2, lip = foot + lane.Run + 5 - slices;
-                Slab(side, id + "-turn-pad", corner, foot, exitOffset, lane.Width, -1, 0);
-                path.Add(Point(side, corner, exitOffset, 0)); widths.Add(lane.Width);
-                path.Add(Point(side, foot, exitOffset, 0)); widths.Add(lane.Width);
-                Ramp(id + "-gate-grade", path.Last(), Point(side, lip, exitOffset, lane.Rise), lane.Width, lane.Width >= 14);
-                path.Add(Point(side, lip, exitOffset, lane.Rise)); widths.Add(lane.Width);
-                if (lane.Covered || lane.Width <= 8)
-                {
-                    // The arcade carries a lintel. Open alleys instead get two retaining walls.
-                    foreach (int sign in new[] { -1, 1 })
-                    {
-                        float outside = exitOffset + sign * (lane.Width / 2f + 1);
-                        if (lane.Covered)
-                            foreach (float station in new[] { foot + 2, lip - 2 })
-                                Slab(side, id + "-post-" + sign + "-" + (int)station, station - 1, station + 1,
-                                    outside, 1.5f, Math.Min(0, lane.Rise) - 1, Math.Max(0, lane.Rise) + 6);
-                        else Slab(side, id + "-wall-" + sign, foot, lip, outside, 1.5f,
-                            Math.Min(0, lane.Rise) - 1, Math.Max(0, lane.Rise) + 2);
-                    }
-                }
-                if (lane.Covered)
-                    Slab(side, id + "-arcade", foot + 1, lip - 1, exitOffset, lane.Width + 4,
-                        Math.Max(0, lane.Rise) + 6, Math.Max(0, lane.Rise) + 8);
-                // A cross landing turns the pilot at the top or bottom of the grade.
-                float shift = Math.Sign(lane.Angle) * (lane.Covered ? -6 : lane.Width >= 14 ? 10 : 5);
-                Slab(side, id + "-cross-landing", lip, lip + 6, exitOffset + shift / 2,
-                    lane.Width + Math.Abs(shift), lane.Rise - 1, lane.Rise);
-                path.Add(Point(side, lip + 3, exitOffset, lane.Rise)); widths.Add(lane.Width);
-                exitOffset += shift;
-                path.Add(Point(side, lip + 3, exitOffset, lane.Rise)); widths.Add(6);
-                path.Add(Point(side, lip + 6, exitOffset, lane.Rise)); widths.Add(lane.Width);
-                bend = Math.Max(bend, lip + 6 + Math.Abs(firstLevel - lane.Rise) * 3 + 2);
-                var atBend = Point(side, bend, exitOffset, firstLevel);
-                if (firstLevel == lane.Rise)
-                    Slab(side, id + "-upper-street", lip + 6, bend, exitOffset, lane.Width, lane.Rise - 1, lane.Rise);
-                else Ramp(id + "-upper-grade", path.Last(), atBend, lane.Width);
-                path.Add(atBend); widths.Add(lane.Width);
-            }
-            else if (side == 0 && firstLevel == 14 && bend == 65)
+            if (side == 0 && firstLevel == 14 && bend == 65)
             {
                 float u = start;
                 for (int i = 0; i < 4; i++)
@@ -282,22 +234,10 @@ namespace ChipArena.UnityConversion
             path.Add(Point(side, bend + 8, offset, firstLevel)); widths.Add(16);
             float next = bend + 16;
             path.Add(Point(side, next, offset, firstLevel));
-            if (plan != null && plan.Lanes[side].Jog != 0)
-            {
-                float cross = next + 32;
-                float jog = plan.Lanes[side].Jog;
-                Slab(side, id + "-middle", next, cross, offset, 15, firstLevel - 2, firstLevel);
-                Slab(side, id + "-cross", cross, cross + 16, offset + jog / 2, Math.Abs(jog) + 16, firstLevel - 2, firstLevel);
-                path.Add(Point(side, cross + 8, offset, firstLevel));
-                offset += jog;
-                path.Add(Point(side, cross + 8, offset, firstLevel));
-                next = cross + 16;
-                path.Add(Point(side, next, offset, firstLevel));
-            }
             if (firstLevel != level)
             {
                 // A turn in the descent makes room for the rail cut at the end of the short axis.
-                float run = Math.Min(Math.Abs(firstLevel - level) * 6, end - next - (plan == null ? 12 : 30));
+                float run = Math.Min(Math.Abs(firstLevel - level) * 6, end - next - 12);
                 Ramp(id + "-descent", path[path.Count - 1], Point(side, next + run, offset, level), 15);
                 next += run;
                 path.Add(Point(side, next, offset, level));
@@ -339,24 +279,12 @@ namespace ChipArena.UnityConversion
                 Slab(side, "landmark-" + side + "-pier-" + sign, end - 2, end + 3, offset + 6 * sign, 3, level, level + 9);
             Slab(side, "landmark-" + side + "-lintel", end - 2, end + 3, offset, 15, level + 9, level + 12);
             var route = new Route { Name = district, Points = path.ToArray(), Widths = widths.ToArray() };
-            if (plan != null)
-            {
-                Ramp("roof-return-" + side, Point(side, end - 23, offset - 23, level),
-                    Point(side, end - 9, offset - 23, roof), 3, true);
-                route.RoofLoop = new[] {
-                    Point(side, end - 23, offset, level), Point(side, end - 23, offset + 23, level),
-                    Point(side, end - 9, offset + 23, roof), Point(side, end - 6, offset + 23, roof),
-                    Point(side, end - 6, offset - 23, roof), Point(side, end - 9, offset - 23, roof),
-                    Point(side, end - 23, offset - 23, level), Point(side, end - 23, offset, level),
-                    Point(side, end - 2, offset, level)
-                };
-            }
             Routes.Add(route);
         }
 
         private void BuildCarPark()
         {
-            float x = plan?.ParkX ?? 57, z = plan?.ParkZ ?? -47;
+            float x = 57, z = -47;
             const float width = 20;
             for (int i = 0; i < 3; i++)
             {
@@ -374,8 +302,8 @@ namespace ChipArena.UnityConversion
         {
             // The viaduct crosses the station tracks, or passes under the Crag if the station was not dealt.
             int station = Routes.FindIndex(r => r.Name == "Central Station");
-            int side = plan?.ViaductSide ?? (station < 0 ? 0 : station);
-            float u = plan != null ? plan.Lanes[side].End - 38 : station < 0 ? 105 : (side % 2 == 0 ? halfZ : halfX) - 43;
+            int side = station < 0 ? 0 : station;
+            float u = station < 0 ? 105 : (side % 2 == 0 ? halfZ : halfX) - 43;
             Slab(side, "viaduct-deck", u - 4, u + 4, 0, 196, -8, -7);
             foreach (int v in new[] { -94, -73, 73, 94 })
                 Slab(side, "viaduct-pier-" + v, u - 3, u + 3, v, 3, Cut, -8);
@@ -386,7 +314,7 @@ namespace ChipArena.UnityConversion
         private void BuildLots()
         {
             // Index the footprint of the reserved structures, ramps and hall routes before filling lots.
-            var reserved = blocks.Skip(1).ToArray();
+            var reserved = blocks.Where(b => b.id != "cut-ground").ToArray();
             for (float z = -halfZ + 20; z < halfZ - 10; z += 25)
                 for (float x = -halfX + 20; x < halfX - 10; x += 25)
                 {

@@ -56,6 +56,7 @@ namespace ChipArena.UnityConversion.Editor
                     Debug.Log("PASS deployment seed acceptance: seed="+seed+", roll="+roll+", identity="+locked.Identity+", totalMs="+timer.Elapsed.TotalMilliseconds.ToString("F1")+", simulatedTicks="+(roll==1?1800:0));
                 }
                 CheckExpeditionLoadBudget();
+                MeasureChangedMeridianCandidates();
                 if(errors.Count>0)throw new Exception("Deployment acceptance logged native errors: "+string.Join(" | ",errors));
                 if(exerciseShaderPass)Debug.Log("DEPLOYMENT_NATIVE_ACCEPTANCE_READY: eight generated layouts; four 1800-tick split runs; station shader, lobby transfers and loading guards. Automated fixture, not a human co-op or rendered acceptance test.");
                 else Debug.Log("DEPLOYMENT_BUILD_ACCEPTANCE_READY: eight generated layouts; four 1800-tick split runs; shader import, lobby transfers and loading guards. GPU passes, rendered performance and human co-op NOT exercised.");

@@ -67,6 +67,7 @@ namespace ChipArena.UnityConversion
         public readonly ExpeditionRunBundle Bundle;
         public readonly int Pilots;
         public double CandidateGenerationMs { get; private set; }
+        public NativeLayeredCityWalk Survey { get; private set; }
         public int Tick {get;private set;}
         private readonly ExpeditionSession session;
         private readonly NativePilot[] members;
@@ -95,7 +96,7 @@ namespace ChipArena.UnityConversion
             if (candidate != null)
             {
                 var generation = Stopwatch.StartNew();
-                walk = new NativeLayeredCityWalk(candidate);
+                walk = Survey = new NativeLayeredCityWalk(candidate);
                 PrepareSurveyWorld(Bundle.World, walk);
                 simulationContent = simulationContent.WithGeneratedMap(walk.Map);
                 CandidateGenerationMs = generation.Elapsed.TotalMilliseconds;
@@ -164,18 +165,21 @@ namespace ChipArena.UnityConversion
             {
                 string instance = assigned[side], id = "exp-city:door:" + instance;
                 var mouth = walk.Routes[side].Points.Last();
-                var forward = new[] { new V3(0,0,1), new V3(1,0,0), new V3(0,0,-1), new V3(-1,0,0) }[side];
+                var points = walk.Routes[side].Points;
+                var leg = mouth - points[points.Length - 2];
+                var forward = leg / leg.Length;
+                var yaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
                 var right = new V3(forward.z,0,-forward.x);
                 ExpeditionPoint Spot(float inward, float across)
                 {
                     var at = mouth - forward * inward + right * across;
-                    return new ExpeditionPoint { x=at.x, y=at.y, z=at.z, yaw=side*90 };
+                    return new ExpeditionPoint { x=at.x, y=at.y, z=at.z, yaw=yaw };
                 }
                 ExpeditionVolume Volume(ExpeditionPoint centre, float width, float depth) => new ExpeditionVolume {
-                    x=centre.x, y=centre.y+2, z=centre.z, sx=width, sy=4, sz=depth, yaw=side*90 };
+                    x=centre.x, y=centre.y+2, z=centre.z, sx=width, sy=4, sz=depth, yaw=yaw };
                 var join = Spot(8,0);
                 anchors.Add(new ExpeditionWorldAnchor { id=id, area=area.id, kind="door", building=instance,
-                    x=mouth.x, y=mouth.y, z=mouth.z, yaw=side*90 });
+                    x=mouth.x, y=mouth.y, z=mouth.z, yaw=yaw });
                 doors.Add(new ExpeditionDoorLayout { anchor=id, approach=Spot(4,0), closure=Volume(Spot(0,0),8,.5f),
                     interact=Volume(Spot(2,0),5,5), join=new ExpeditionJoinCylinder { x=join.x,y=join.y,z=join.z,r=3,h=3 },
                     entries=Array.Empty<ExpeditionPoint>(), returns=Enumerable.Range(0,8).Select(i => Spot(6+i/4*2,i%4*2-3)).ToArray() });
@@ -213,6 +217,15 @@ namespace ChipArena.UnityConversion
                         break;
                     }
                 }
+            }
+            foreach (var roof in walk.RoofHatches)
+            {
+                var zone = zones.OrderBy(z => (new V3(z.Volume.x,z.Volume.y,z.Volume.z)-roof).Length).First();
+                int id = spawnRows.Count;
+                zone.Spawns = zone.Spawns.Concat(new[] { id }).ToArray();
+                var point = new PvePoint { x=roof.x, y=roof.y, z=roof.z };
+                spawnRows.Add(new ExpeditionSpawnLayout { allow=kinds, entry=new PveEntry {
+                    e=id, id="survey-hatch-"+id, kind="hatch", from=point, @exit=point, clear=3, allowed=kinds } });
             }
             world.Hub.Zones = zones.ToArray();
             var court = walk.Routes[0].Points.Last();

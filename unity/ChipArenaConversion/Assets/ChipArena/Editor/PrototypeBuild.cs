@@ -120,6 +120,7 @@ namespace ChipArena.UnityConversion.Editor
             var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes=new[] { ScenePath }, locationPathName=exe,
                 target=BuildTarget.StandaloneWindows64,options=BuildOptions.Development });
             if(report.summary.result!=BuildResult.Succeeded||!File.Exists(exe)) throw new Exception("Unity Windows build failed: "+report.summary.result);
+            NativeBuildChecks.ProfileMeridianPlayer(exe,Path.Combine(root,"Builds"));
             PackageWindows(root,folder);
         }
 

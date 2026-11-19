@@ -9,7 +9,68 @@ namespace ChipArena.UnityConversion.Editor
     public static partial class NativeBuildChecks
     {
         [MenuItem("Chip Arena/Benchmark Meridian candidates against A0")]
-        public static void CheckMeridianCandidateBudgets()
+        public static void CheckMeridianCandidateBudgets() => MeasureMeridianCandidates(true);
+
+        // Run the new blockout on the Windows builder once per geometry revision.
+        // Relative timing is recorded for the owner walk and enforced by the existing
+        // freeze benchmark. Incomplete or broken native fixtures still fail acceptance.
+        internal static void MeasureChangedMeridianCandidates()
+        {
+            const string asset = "Assets/ChipArena/Core/NativeMeridianStreetPlans.cs";
+            string key = "ChipArena.MeridianWalkBenchmark." + Application.unityVersion;
+            string revision = AssetDatabase.GetAssetDependencyHash(asset).ToString()
+                + AssetDatabase.GetAssetDependencyHash("Assets/ChipArena/Core/NativeLayeredCityWalk.cs");
+            if (EditorPrefs.GetString(key) == revision) return;
+            MeasureMeridianCandidates(false);
+            EditorPrefs.SetString(key, revision);
+        }
+
+        // The editor build normally uses -nographics. Run the actual Development
+        // player separately so it can submit frames to the Windows graphics driver.
+        internal static void ProfileMeridianPlayer(string exe,string buildRoot)
+        {
+            if (Application.platform != RuntimePlatform.WindowsEditor) return;
+            string key = "ChipArena.MeridianRendered." + Application.unityVersion;
+            string revision = AssetDatabase.GetAssetDependencyHash("Assets/ChipArena/Core/NativeMeridianStreetPlans.cs").ToString()
+                + AssetDatabase.GetAssetDependencyHash("Assets/ChipArena/Runtime/NativeExpeditionLoadPreview.cs");
+            if (EditorPrefs.GetString(key) == revision) return;
+            for (int i = 0; i < NativeCityLayout.Plans.Count; i++)
+            {
+                string log = System.IO.Path.Combine(buildRoot,"meridian-candidate-"+i+".log");
+                var start = new System.Diagnostics.ProcessStartInfo {
+                    FileName = exe, UseShellExecute = false, WorkingDirectory = System.IO.Path.GetDirectoryName(exe),
+                    Arguments = "-batchmode -force-d3d11 -noaudio -screen-fullscreen 0 -screen-width 1600 -screen-height 900 "
+                        + "-expedition-load 4 -meridian-candidate "+i+" -logFile \""+log+"\""
+                };
+                using var player = System.Diagnostics.Process.Start(start);
+                if (!player.WaitForExit(180000))
+                {
+                    player.Kill();
+                    Debug.LogWarning("Meridian render sample timed out: "+log);
+                    return;
+                }
+                int views = 0;
+                if (!System.IO.File.Exists(log))
+                {
+                    Debug.LogWarning("Meridian player produced no graphics log for "+NativeCityLayout.Plans[i].Name);
+                    return;
+                }
+                foreach (var line in System.IO.File.ReadLines(log))
+                    if (line.StartsWith("MERIDIAN_VIEW ",StringComparison.Ordinal))
+                    {
+                        Debug.Log(line);
+                        views++;
+                    }
+                if (player.ExitCode != 0 || views != 12)
+                {
+                    Debug.LogWarning($"Meridian renderer could not complete {NativeCityLayout.Plans[i].Name}: exit {player.ExitCode}, {views}/12 views. See {log}");
+                    return;
+                }
+            }
+            EditorPrefs.SetString(key,revision);
+        }
+
+        private static void MeasureMeridianCandidates(bool freeze)
         {
             var mode = Physics.simulationMode;
             var gravity = Physics.gravity;
@@ -49,7 +110,11 @@ namespace ChipArena.UnityConversion.Editor
                             failures.Add($"{candidate.Name} {metrics[i]} {measured[i]:F4} ms/tick exceeds {baseline[i]*1.25:F4}");
                 }
                 if (failures.Count > 0)
-                    throw new InvalidOperationException(string.Join(Environment.NewLine, failures));
+                {
+                    string report = string.Join(Environment.NewLine, failures);
+                    if (freeze) throw new InvalidOperationException(report);
+                    Debug.LogWarning("Meridian walk exceeds freeze benchmark: " + report);
+                }
             }
             finally
             {

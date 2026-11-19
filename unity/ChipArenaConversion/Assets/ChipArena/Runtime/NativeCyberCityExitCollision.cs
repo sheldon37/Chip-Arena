@@ -11,10 +11,13 @@ namespace ChipArena.UnityConversion
         private void BuildCutExitCollision()
         {
             foreach(var id in Map.navHints?.collisionOff??Array.Empty<string>())StaticBlocks.Single(p=>p.Definition.id==id).GetComponent<Collider>().enabled=false;
-            foreach(var flight in NativeCyberCityStairs.Flights(Map).Concat(NativeMapRamps.Flights(Map)))
+            var flights = NativeCyberCityStairs.Flights(Map).Concat(NativeMapRamps.Flights(Map)).ToArray();
+            if (flights.Length == 0) return;
+            var propsById = StaticBlocks.ToLookup(p=>p.Definition.id);
+            foreach(var flight in flights)
             {
                 // Keep every original prop/renderer/id. Only their tread collision is replaced.
-                foreach(var step in flight.Steps)StaticBlocks.Single(p=>p.Definition.id==step.id).GetComponent<Collider>().enabled=false;
+                foreach(var step in flight.Steps)propsById[step.id].Single().GetComponent<Collider>().enabled=false;
                 var go=new GameObject(flight.Id+"-collision-ramp");go.layer=PropLayer;go.transform.SetParent(root.transform);
                 var low=Vec(flight.Low);var high=Vec(flight.High);
                 var across=Vector3.Cross(Vec(flight.Direction),Vector3.up)*flight.Width*.5f;
