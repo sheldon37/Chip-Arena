@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
         {
             var map=world.Map;var blocks=map.blocks;look=NativeExpeditionCityLights.ForMap(look,map.id);var c=new City{World=world,Look=look};
             c.Kit=NativeExpeditionCityKit.Build(blocks,world.Area,world.Hub,map.bounds,true,world.Blueprint);
-            c.Scene=NativeCityFxScene.Build(blocks,c.Kit,fires,look,world.Hub,map.bounds);
+            c.Scene=NativeCityFxScene.Build(blocks,c.Kit,fires,look,world.Hub,map.bounds);c.Scene.KeepNearest=true;
             c.Lights=NativeExpeditionCityLights.Build(c.Kit,look);c.Far=NativeExpeditionCityKit.FarRange(look);c.Cover=NativeWeatherCover.Build(blocks,map.bounds);
             var parts=c.Kit.Parts;c.Spots=new float[parts.Length*3];
             for(int i=0;i<parts.Length;i++){var p=parts[i];var b=blocks[p.Parent];c.Spots[i*3]=b.pos.x+p.X;c.Spots[i*3+1]=b.pos.y+p.Y;c.Spots[i*3+2]=b.pos.z+p.Z;}
@@ -208,6 +208,39 @@ namespace ChipArena.UnityConversion
             var town=NativeCityFxScene.Build(Array.Empty<ContentBlock>(),null,null,null,null,new MapBounds{minX=NativeExpeditionCityKit.TownMinX,maxX=NativeExpeditionCityKit.TownMaxX,minZ=NativeExpeditionCityKit.TownMinZ,maxZ=NativeExpeditionCityKit.TownMaxZ});
             var none=NativeCityFxScene.Build(Array.Empty<ContentBlock>(),null,null,null,null,null);
             Check(town.OriginX==-122&&town.OriginZ==-122&&town.CellsX==122&&town.CellsZ==92&&none.OriginX==-122&&none.CellsX==122&&none.CellsZ==92,"the town's grid is today's (x -122..122, z -122..62)");
+            FogBudget(c);
+        }
+        // ---- W0 (its review): a reduced budget (the low tier, the reduced effects) keeps the sheets nearest the eye, never a cut in
+        // the lattice's scan order, which on the open hub dropped the far rows of the eye's disc (and swapped them as it moved) ----
+        private static void FogBudget(City c)
+        {
+            var s=c.Scene;var fx=new NativeExpeditionCityFx();var sun=Sun();Check(s.KeepNearest,"the generated map's scene keeps the nearest sheets");
+            int lowFog=NativeExpeditionCityFx.Count(NativeExpeditionCityFx.FogMax,1,true),lowPockets=NativeExpeditionCityFx.Count(NativeExpeditionCityFx.PocketMax,1,true);
+            int redFog=NativeExpeditionCityFx.Count(NativeExpeditionCityFx.FogMax,.3,false),redPockets=NativeExpeditionCityFx.Count(NativeExpeditionCityFx.PocketMax,.3,false);
+            double reach=Math.Max(NativeExpeditionCityFx.NearRadius(NativeExpeditionCityFx.FogRadius,lowFog,NativeExpeditionCityFx.FogMax,NativeExpeditionCityFx.FogSpare),NativeExpeditionCityFx.NearRadius(NativeExpeditionCityFx.PocketRadius,lowPockets,NativeExpeditionCityFx.PocketMax,NativeExpeditionCityFx.PocketSpare))+2;
+            // The fog's sheets and pockets: the batch's flat premultiplied quads (the pools and the searchlight's spot are additive).
+            List<(double x,double z)> Sheets(){var l=new List<(double,double)>();var q=fx.Quads;for(int i=0;i<q.Count;i++){int o=i*12;if(q.Modes[i]!=1||q.Additive[i]!=0||q.Layers[i]!=1||Math.Abs(q.Corners[o+1]-q.Corners[o+4])>1e-4f||Math.Abs(q.Corners[o+1]-q.Corners[o+7])>1e-4f)continue;
+                l.Add(((q.Corners[o]+q.Corners[o+3]+q.Corners[o+6]+q.Corners[o+9])/4.0,(q.Corners[o+2]+q.Corners[o+5]+q.Corners[o+8]+q.Corners[o+11])/4.0));}return l;}
+            int eyes=0,mostFog=0,mostPockets=0,mostRed=0;double far=0;
+            for(int z=-90;z<=90;z+=5)for(int x=-120;x<=120;x+=5)
+            {
+                if(s.OpenAt(x,z)==0)continue;eyes++;
+                fx.Build(s,Time,x,1.7,z,1,0,0,0,1,0,sun,1,true);mostFog=Math.Max(mostFog,fx.Fog);mostPockets=Math.Max(mostPockets,fx.Pockets);
+                foreach(var p in Sheets())far=Math.Max(far,Math.Sqrt((p.x-x)*(p.x-x)+(p.z-z)*(p.z-z)));
+                fx.Build(s,Time,x,1.7,z,1,0,0,0,1,0,sun,.3,false);mostRed=Math.Max(mostRed,Math.Max(fx.Fog*100/redFog,fx.Pockets*100/redPockets));
+            }
+            Check(eyes>250&&mostFog<lowFog&&mostPockets<lowPockets,"on the low tier no eye's fog reaches its cap ("+eyes+" eyes: at most "+mostFog+" sheets of "+lowFog+", "+mostPockets+" pockets of "+lowPockets+")");
+            Check(far<=reach,"the low tier's sheets are the nearest ("+far.ToString("0.0")+" m out at most, its disc "+reach.ToString("0.0")+" m)");
+            Check(mostRed<100,"nor with the reduced effects (at most "+mostRed+"% of the cap)");
+            // The full budget draws the full disc as before.
+            foreach(var e in new[]{(0.0,0.0),(0.0,-30.0),(0.0,70.0)})
+            {
+                fx.Build(s,Time,e.Item1,1.7,e.Item2,1,0,0,0,1,0,sun,1,false);int keep=fx.Fog+fx.Pockets;s.KeepNearest=false;fx.Build(s,Time,e.Item1,1.7,e.Item2,1,0,0,0,1,0,sun,1,false);int was=fx.Fog+fx.Pockets;s.KeepNearest=true;
+                Check(keep==was&&keep>0,"the High tier's fog at "+e.Item1+", "+e.Item2+" is the full disc ("+keep+" sheets)");
+            }
+            // At the sanctuary's centre on the low tier the sheets lie all round the eye (the cut kept a third north of it, two thirds south).
+            fx.Build(s,Time,0,1.7,0,1,0,0,0,1,0,sun,1,true);var all=Sheets();int north=all.Count(p=>p.z>0),south=all.Count-north;
+            Check(all.Count>=20&&north>=all.Count*.4&&south>=all.Count*.4,"the low tier's fog at the sanctuary lies all round the eye ("+north+" north, "+south+" south)");
         }
         // ---- W0: the generated map's own practicals (no brazier among the pods) ----
         private static void Practicals(Setup set,City c)
