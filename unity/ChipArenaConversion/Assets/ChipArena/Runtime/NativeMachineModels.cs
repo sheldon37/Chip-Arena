@@ -41,6 +41,8 @@ namespace ChipArena.UnityConversion
             foreach(var (id,build,_) in NativeInstanceMachineDress.All)Add(id,build());
             // The Expedition drop pod and its door (Core/NativePodModels.cs; NativePodPresentation.cs tints its parts).
             Add(NativePodModels.PodId,NativePodModels.Pod());Add(NativePodModels.DoorId,NativePodModels.Door());
+            // the cabin's jump seat and its harness bar (the hub's pod draws them; the station's dock has its own)
+            Add(NativePodModels.SeatId,NativePodModels.Seat());Add(NativePodModels.HarnessId,NativePodModels.HarnessBarModel());
             // and their see-through copies (every part in the glass, its bone kept for the pod's tints, unshadowed)
             void Ghost(string id,WeaponMesh built)
             {
@@ -49,11 +51,12 @@ namespace ChipArena.UnityConversion
                 if(parts.Count>0){models[id]=parts.ToArray();MachineModels++;}
             }
             Ghost(NativePodModels.GhostId,NativePodModels.Pod());Ghost(NativePodModels.DoorGhostId,NativePodModels.Door());
-            // the crash's lasting mark: flat paint over the floor, lit but casting no shadow (a crater per shape, its furrow in it)
+            // the crash's lasting mark: flat paint over the floor, lit but casting no shadow (a crater per shape, its furrow in it;
+            // its see-through part, the soot fading into the plaza and the cracks, in the glass by its vertex alpha)
             void Flat(string id,WeaponMesh built)
             {
                 if(built==null||models.ContainsKey(id))return;var parts=new List<Part>();
-                foreach(var s in built.Sections){var mesh=BodyMesh(s,id+" / "+s.Bone);if(mesh!=null)parts.Add(new Part{Name=id,Bone=s.Bone,Mesh=mesh,Material=opaque,NoShadow=true});}
+                foreach(var s in built.Sections){var mesh=BodyMesh(s,id+" / "+s.Bone);bool see=s.Bone==NativeMachineModels.Glass;if(mesh!=null)parts.Add(new Part{Name=id,Bone=see?-1:s.Bone,Mesh=mesh,Material=see?glass:opaque,NoShadow=true});}
                 if(parts.Count>0){models[id]=parts.ToArray();MachineModels++;}
             }
             for(int k=0;k<NativePodModels.CraterShapes;k++)Flat(NativePodModels.CraterIds[k],NativePodModels.Crater(k));

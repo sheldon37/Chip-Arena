@@ -119,6 +119,8 @@ namespace ChipArena.UnityConversion
             view.transform.SetPositionAndRotation(position+new Vector3(-dx,dy,0),Quaternion.LookRotation(forward,Vector3.up)*Quaternion.AngleAxis(-roll*Mathf.Rad2Deg,Vector3.forward));
             view.fieldOfView=shot.Fov;presentation.FirstPerson=false;presentation.AimHeld=false;bars=siren.Letterbox(time);Directing=true;return true;
         }
+        /// <summary>The directed drop's share left in this frame's hand-off (0: none).</summary>
+        public float PodHanding=>handOff;
         /// <summary>UpdateCamera's last step: the directed drop's hand-off blended over the game's own pose this frame (none when it is not handing off).</summary>
         public void PodHandOff(Camera view){if(handOff>0&&handFrom!=null)handFrom.PodHandOff(view,handOff);}
         /// <summary>The cutscene's letterbox (two black bars sliding in at the catch and out at the end), on the GUI canvas.</summary>

@@ -456,7 +456,7 @@ namespace ChipArena.UnityConversion
             BossPicksWaitReset();if(previewArena==null&&BossPicksWaiting){BossPicksWaitScreen(width,height);BossPicksClock();return;}
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             // The Last Laugh cutscene hides the HUD behind its letterbox (style.css data-cutscene); the board and pause menu stay.
-            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(cinematic.PodDrop){if(!menu)CountdownOverlay();}else if(cinematic.ZoneArrival)ZoneBossArrivalHud(width,height);else KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu){if(labPanel&&arena.Training&&!Online)ChipLabPanel();else{PauseMenu();TrainingControls();}}return;}
+            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(cinematic.PodDrop){if(!menu)CountdownOverlay(true);}else if(cinematic.ZoneArrival)ZoneBossArrivalHud(width,height);else KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu){if(labPanel&&arena.Training&&!Online)ChipLabPanel();else{PauseMenu();TrainingControls();}}return;}
             if(!cinematic.Private)CombatWorldHud(scale,width,height);
             PveBeaconHud();
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
@@ -477,7 +477,7 @@ namespace ChipArena.UnityConversion
                     float marked=0;foreach(var q in arena.Pilots)marked=Math.Max(marked,NativeMeleeKitHud.MarkLeft(q.MeleeKit,p.Seat.id,arena.Time));
                     if(marked>0&&p.Hp>0)Prompt(U.H/2+120,"MARKED  ·  "+marked.ToString("0.0")+"s",15,NativeCyberTheme.Danger());
                 }
-                if(!menu&&match.Phase==NativePhase.Countdown)CountdownOverlay();
+                if(!menu&&match.Phase==NativePhase.Countdown)CountdownOverlay(cinematic.PodHanding>0);
                 if(!menu&&match.Phase==NativePhase.Result)ResultOverlay();
                 if(!menu&&match.Phase==NativePhase.Match&&arena.Pve==null)MatchEndPanel();
                 else if(!menu&&match.Phase==NativePhase.Match)PveResultsPanel();

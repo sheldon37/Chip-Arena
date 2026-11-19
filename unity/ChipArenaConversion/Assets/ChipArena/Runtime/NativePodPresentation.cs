@@ -11,13 +11,16 @@ namespace ChipArena.UnityConversion
     /// The Expedition drop pods crash in (Core NativePodDrop, NativePodModels, NativePodSounds; docs/EXPEDITION-OVERHAUL.md R7,
     /// W4) in a generated run's hub, in place of the spawn-in beam:
     ///  - NativeSpawnInPresentation.SpawnEvaluate hands a pod run's pilots here (PodSpawn): each pilot rides hidden in its pod
-    ///    (no hologram, no beam, no HUD) until the bolts blow the door, then is drawn strapped in on the pod's full offset and lean
-    ///    (PodFeet, PodRideTilt), unbuckles and stands up on its capsule by GO; posed standing throughout and held standing through
-    ///    GO (no Fall loop in the doorway, no Land take or landing thud at GO: the GO fallback until A0 grounds the countdown).
-    ///  - ExpeditionPods (NativeSourcePresentation, beside the PvE machines) queues each pod, its door and its harness bar from the
-    ///    source-model bank in its look (paint, trim, lights; the cabin lamp, the retro throats, the ablative tiles cooling from
-    ///    white hot to char, the bolts' flash), lays the LED name sign over the marquee, and draws its crater and furrow for the
-    ///    run (flat, from the record: a late joiner and the killcam see the same marks and the same cooling hull).
+    ///    (no hologram, no beam, no HUD) until the bolts blow the door, then is drawn braced in the jump seat on the pod's full
+    ///    offset and lean (PodFeet, PodRideTilt: the lobby Chair pose over the game's pose), lifts the harness bar and stands up out
+    ///    of the seat (it folds away) onto its capsule by GO; held on its capsule after GO only while a floating capsule settles
+    ///    (NativePodDrop.GoHold: never once it rises), no Fall loop in the doorway, no Land take or landing thud at GO.
+    ///  - ExpeditionPods (NativeSourcePresentation, beside the PvE machines) queues each pod, its door, its jump seat and harness
+    ///    bar from the source-model bank in its look (paint, trim, lights; the cabin lamps, the retro throats, the ablative tiles
+    ///    cooling from white hot to char, the bolts' flash), lays the LED name sign over the marquee, and draws its crater and
+    ///    furrow for the run (flat, from the record: a late joiner and the killcam see the same marks and the same cooling hull;
+    ///    kept off the REVIVE-O-MATIC's mat). My own pod eases into see-through glass (its hot tiles still glowing) only while my
+    ///    third-person camera is low behind or beside it, never while the directed drop holds over it.
     ///  - PodFx (RenderGlow) emits the crash's effects into the shared effects renderer, its burning streak as an unfogged
     ///    meteor ribbon (NativeGlow), the impact's chunks through the destruction kit (Slam) and its flash through the blast
     ///    lights (PodFlashes: they light the city and survive DARKNESS); PodCues are the sounds NativeAudio plays (NativePodAudio).
@@ -39,13 +42,16 @@ namespace ChipArena.UnityConversion
             public string Text;public Texture2D Sign;public bool Scrolls;public float Columns;
             public PodFrame Frame;public double LaunchAt=double.NaN;public Color Paint,Trim,Light;public string LookKey,LookBody,LookAccent,SignName;public bool Looked;
             public bool Slammed;public readonly NativePodSounds.Cue[] Cues=new NativePodSounds.Cue[NativePodSounds.MaxCues];public int CueCount;public float CueClock=float.NaN;
+            /// <summary>The plan's seed (the station's ride, W3, asks for it); GO's hold (released, the capsule's last presented
+            /// height and age); the glass's share and when it was last eased; the crater's keep-out scale (NaN: not yet worked out).</summary>
+            public int Seed;public bool GoReleased;public float GoY,GoAge=float.NaN,Ghost,GhostAt=float.NaN,KeepFit=float.NaN;
         }
         /// <summary>A pod sound due this frame (NativePodAudio plays it): which, where, its gain at the source, the distance it
         /// carries to, its rate, and whether it travels at the speed of sound (the cloud punch's boom).</summary>
         public struct PodSound{public int Sound;public Vector3 At;public float Gain,Range,Rate;public bool Travels;}
         private readonly Dictionary<int,PodView> pods=new Dictionary<int,PodView>();private object podRun;
         private Material podSignMaterial;private Mesh podQuad;private bool podFailed;private MaterialPropertyBlock podBlock;
-        private PodEntranceFx podFx;private PodView podNow;private Func<int,Color> podTint,podMarkTint;private Func<int,Matrix4x4> podBone;private Matrix4x4 podRoot,podHarness;
+        private PodEntranceFx podFx;private PodView podNow;private Func<int,Color> podTint,podMarkTint;private Func<int,Matrix4x4> podBone;private Matrix4x4 podRoot,podHarness,podFold;private string podMap;
         private readonly List<int> podGone=new List<int>();
         private readonly SpawnGeometry podGlow=new SpawnGeometry();private Mesh podGlowMesh;private Material podGlowMaterial;private bool podGlowFailed;
         private readonly List<PodSound> podCues=new List<PodSound>(32);
@@ -59,8 +65,8 @@ namespace ChipArena.UnityConversion
         /// every frame: FirstPerson itself is the director's while it directs).</summary>
         public bool FirstPersonPick;
         /// <summary>The LED dot size in texture pixels; how long after a countdown-less start a pilot's pod is still parked where
-        /// the pilot stands; how long after GO the drawn pilot is held standing on its capsule while the capsule settles.</summary>
-        private const int PodDot=8;private const float ParkWindow=1.5f,PodSettle=.45f;
+        /// the pilot stands; how long after GO the drawn pilot may wait on its capsule while the capsule settles.</summary>
+        private const int PodDot=8;private const float ParkWindow=1.5f,PodSettle=NativePodDrop.GoSettle;
 
         /// <summary>Pods fall in this arena: a generated run's hub (its world's map).</summary>
         private bool PodRun(NativeArena arena)=>arena?.Map!=null&&GeneratedRun?.World?.Map!=null&&arena.Map.id==GeneratedRun.World.Map.id;
@@ -101,7 +107,7 @@ namespace ChipArena.UnityConversion
         // (the pilot's yaw, in degrees), its place in the landing order; and the earliest countdown seen for it (its opening).
         private PodView PodPlace(NativeArena arena,NativePilot pilot,SpawnView v,double end,float age)
         {
-            PodSync();int id=pilot.Seat.id;if(!pods.TryGetValue(id,out var pod)){pod=new PodView();pods.Add(id,pod);}
+            PodSync();podMap=arena.Map?.id;int id=pilot.Seat.id;if(!pods.TryGetValue(id,out var pod)){pod=new PodView();pods.Add(id,pod);}
             if(!pod.Authority&&(double.IsNaN(pod.End)||Math.Abs(pod.End-end)>=.25))
             {
                 int order=0;foreach(var s in arena.Match.Seats)if(s.connected&&!s.AuthorityBoss&&s.id<id)order++;
@@ -118,8 +124,8 @@ namespace ChipArena.UnityConversion
             float opening=NativePodDrop.OpeningFor(pod.Earliest);
             if(!pod.Planned||pod.PlanOpening!=opening)
             {
-                pod.Plan=NativePodDrop.Plan(pod.Seat,pod.Order,pod.X,pod.Z,pod.End,pod.Yaw,opening);pod.PlanOpening=opening;pod.Planned=true;
-                pod.CueCount=NativePodSounds.Plan(pod.Plan,pod.Cues);
+                pod.Plan=NativePodDrop.Plan(pod.Seat,pod.Order,pod.X,pod.Z,pod.End,pod.Yaw,opening);pod.PlanOpening=opening;pod.Planned=true;pod.Seed=pod.Plan.Seed;
+                pod.CueCount=NativePodSounds.Plan(pod.Plan,pod.Cues);pod.GoReleased=false;pod.GoAge=float.NaN;pod.KeepFit=float.NaN;
             }
             return pod.Plan;
         }
@@ -140,21 +146,35 @@ namespace ChipArena.UnityConversion
             // boarding to leave: the pilot is hidden where the authority holds it (the boarding view's front is under its feet)
             if(!double.IsNaN(pod.LaunchAt)){v.Shown=true;v.Raise=0;return position;}
             if(!pod.Planned){v.Shown=false;return position;}
-            var f=pod.Frame;
+            var f=pod.Frame;float rise=!float.IsNaN(pod.GoAge)&&f.Age>pod.GoAge+1e-4f?(position.y-pod.GoY)/(f.Age-pod.GoAge):0;pod.GoY=position.y;pod.GoAge=f.Age;
             if(f.Age>=0)
             {
-                // GO: the capsule falls to the floor's rest (today it floats .23 m through the countdown); the drawn pilot waits on it
-                var rest=pod.Spot+PodV(NativePodDrop.Capsule(pod.Plan));if(f.Age>=PodSettle||a.Grounded&&Mathf.Abs(position.y-rest.y)<.015f){v.Shown=false;return position;}
+                // GO: a capsule still floating settles onto the floor's rest and the drawn pilot waits on it; one on its rest, or
+                // rising (a jump at GO), lets go at once and for good (NativePodDrop.GoHold), so nothing is held down then snapped up
+                var rest=pod.Spot+PodV(NativePodDrop.Capsule(pod.Plan));if(!NativePodDrop.GoHold(f.Age,position.y-rest.y,rise,a.Grounded,ref pod.GoReleased)){v.Shown=false;return position;}
                 v.Shown=true;v.Raise=0;return new Vector3(position.x,rest.y,position.z);
             }
             v.Shown=true;v.Raise=0;return pod.Spot+PodV(f.Pilot);
         }
-        /// <summary>PrepareCapturedPose: the drawn pilot leans with its pod while strapped in, upright once it stands (about its feet).</summary>
+        /// <summary>PrepareCapturedPose: the drawn pilot sits braced in the jump seat (the lobby Chair pose laid over the game's pose,
+        /// the same game-rig track every body plays) and rises out of it as the harness lifts; it leans with its pod while strapped
+        /// in, upright once it stands (about its feet).</summary>
         private void PodRideTilt(CapturedAnimation.Player rig,Actor a)
         {
             if(pods.Count==0||!spawnViews.TryGetValue(a.Id,out var v)||!v.Pod||!v.Shown||!pods.TryGetValue(a.Id,out var pod)||!visualPositions.TryGetValue(a.Id,out var feet))return;
+            if(pod.Frame.Sit>.001f&&double.IsNaN(pod.LaunchAt)){podSit=pod.Frame.Sit;podSitSpec=a.SourceSpec;podSitLayer??=PodSitLayer;rig.Overlay(podSitLayer);}
             var q=pod.Frame.PilotTilt;if(Mathf.Abs(q.W)>.99999f)return;var turn=new Quaternion(q.X,q.Y,q.Z,q.W);var root=rig.Root.transform;
             root.SetPositionAndRotation(feet+turn*(root.position-feet),turn*root.rotation);
+        }
+        private float podSit;private string podSitSpec;private Func<CapturedRig.Pose,bool> podSitLayer;private MeleeRig podChair;private CapturedRig.Pose podChairPose;
+        // The seated share of the lobby Chair pose over the rig's own pose (its arms and legs folding into the seat, the hips down).
+        private bool PodSitLayer(CapturedRig.Pose pose)
+        {
+            podChair??=new MeleeRig();podChairPose??=new CapturedRig.Pose();
+            NativeLobbyPoses.Sample(podChair,podSitSpec??"pistol",NativeLobbyPoses.Chair,0,out _,out _);podChair.WritePose(podChairPose);
+            float w=Mathf.Clamp01(podSit),e=w*w*(3-2*w);
+            for(int i=0;i<pose.Rotation.Length;i++){pose.Rotation[i]=NQuat.Slerp(pose.Rotation[i],podChairPose.Rotation[i],e);pose.Position[i]=NVector.Lerp(pose.Position[i],podChairPose.Position[i],e);}
+            return true;
         }
         /// <summary>The footfalls wait while a pod holds its pilot: no steps while it rides, no landing thud at GO.</summary>
         private bool PodHoldsSteps(int id)=>pods.Count>0&&spawnViews.TryGetValue(id,out var v)&&v.Pod&&v.Shown;
@@ -167,7 +187,7 @@ namespace ChipArena.UnityConversion
         // Bind authoritative anchors/timestamps to the existing presentation. Late joins and area returns do not replay a drop.
         private void SyncAuthorityPods(NativeArena arena)
         {
-            if(!PodRun(arena))return;PodSync();
+            if(!PodRun(arena))return;PodSync();podMap=arena.Map?.id;
             foreach(var record in arena.PodRecords)
             {
                 if(!pods.TryGetValue(record.seat,out var p)){p=new PodView();pods.Add(record.seat,p);}
@@ -208,7 +228,7 @@ namespace ChipArena.UnityConversion
                 if(land>=0)PodMarks(pod,land);
                 PodSounds(pod,since);
                 if(pod.Frame.Gone)continue;
-                bool mine=seat.id==arena.LocalId;PodLook(pod,seat,mine);PodDraw(pod,time,mine?PodOpacity(pod,arena.LocalId):1);
+                bool mine=seat.id==arena.LocalId;PodLook(pod,seat,mine);PodDraw(pod,time,mine?PodGhost(pod,arena.LocalId,time):0);
             }
             foreach(int id in podGone){if(pods[id].Sign!=null)CapturedAnimation.Release(pods[id].Sign);pods.Remove(id);}
         }
@@ -231,28 +251,48 @@ namespace ChipArena.UnityConversion
             }
         }
         private static Color PodLinear(int rgb){var c=new Color(((rgb>>16)&255)/255f,((rgb>>8)&255)/255f,(rgb&255)/255f,1);return QualitySettings.activeColorSpace==ColorSpace.Linear?c.linear:c;}
-        // My own pod in third person once its door is open: drawn in see-through glass while it stands between my camera and my
-        // pilot (stepping out of it with the camera behind), so it never walls off my view.
-        private float PodOpacity(PodView pod,int me)
+        /// <summary>The glass's full opacity (my pod seen through), and how long it takes to ease in or out.</summary>
+        private const float PodGlass=.28f,PodGlassSeconds=.3f;
+        // My own pod in third person once its door is open: eased into see-through glass while it really walls my pilot off from my
+        // camera (the camera low, behind or beside it, the pod on the line to me: stepping out of it with the camera behind), so it
+        // stays solid while the directed drop holds over the crash or arcs high, and before its doorway. 0 solid .. 1 glass.
+        private float PodGhost(PodView pod,int me,float time)
         {
-            var f=pod.Frame;if(FirstPerson||!f.Shown)return 1;var eye=WorldEye;if(eye==null||!visualPositions.TryGetValue(me,out var pilot))return 1;
-            var cam=eye.transform.position;Vector2 a=new Vector2(cam.x,cam.z),b=new Vector2(pilot.x,pilot.z),c=new Vector2(pod.Spot.x,pod.Spot.z),ab=b-a;
-            float t=ab.sqrMagnitude>1e-4f?Mathf.Clamp01(Vector2.Dot(c-a,ab)/ab.sqrMagnitude):0,d=Vector2.Distance(a+ab*t,c);
-            float near=1-Mathf.SmoothStep(0,1,(d-.75f)/.5f);return 1-.72f*near;
+            var f=pod.Frame;float target=0;var eye=WorldEye;
+            if(!FirstPerson&&f.Shown&&eye!=null&&visualPositions.TryGetValue(me,out var pilot))
+            {
+                var cam=eye.transform.position;float low=1-Mathf.SmoothStep(0,1,(cam.y-(pod.Floor+3.4f))/1.6f);
+                var flat=new Vector2(cam.x-pod.Spot.x,cam.z-pod.Spot.z);float front=flat.sqrMagnitude>1e-4f?Vector2.Dot(flat.normalized,new Vector2(pod.Facing.x,pod.Facing.z)):0;
+                float behind=1-Mathf.SmoothStep(0,1,(front-.35f)/.3f);
+                Vector2 a=new Vector2(cam.x,cam.z),b=new Vector2(pilot.x,pilot.z),c=new Vector2(pod.Spot.x,pod.Spot.z),ab=b-a;
+                float t=ab.sqrMagnitude>1e-4f?Mathf.Clamp01(Vector2.Dot(c-a,ab)/ab.sqrMagnitude):0,d=Vector2.Distance(a+ab*t,c);
+                target=low*behind*(1-Mathf.SmoothStep(0,1,(d-.75f)/.5f));
+            }
+            float dt=float.IsNaN(pod.GhostAt)?1:Mathf.Clamp(time-pod.GhostAt,0,.1f);pod.GhostAt=time;
+            return pod.Ghost=Mathf.MoveTowards(pod.Ghost,target,dt/PodGlassSeconds);
         }
-        private void PodDraw(PodView pod,float time,float opacity)
+        private void PodDraw(PodView pod,float time,float ghost)
         {
             var f=pod.Frame;var at=pod.Spot+PodV(f.Offset);var tilt=new Quaternion(f.Tilt.X,f.Tilt.Y,f.Tilt.Z,f.Tilt.W);
             var rot=tilt*Quaternion.LookRotation(pod.Facing,Vector3.up);var root=Matrix4x4.TRS(at,rot,Vector3.one);
-            podNow=pod;podTint??=PodTintOf;podBone??=PodBoneOf;podRoot=root;
+            podNow=pod;podTint??=PodTintOf;podBone??=PodBoneOf;podRoot=root;podGhost=ghost;
             var hh=NativePodModels.HarnessHinge;var hinge=new Vector3(hh.X,hh.Y,hh.Z);podHarness=root*Matrix4x4.Translate(hinge)*Matrix4x4.Rotate(Quaternion.Euler(f.Harness*NativePodModels.HarnessUp*Mathf.Rad2Deg,0,0))*Matrix4x4.Translate(-hinge);
-            bool ghost=opacity<.99f;var dh=NativePodModels.Hinge;var doorHinge=new Vector3(dh.X,dh.Y,dh.Z);
-            sourceModels.Queue(ghost?NativePodModels.GhostId:NativePodModels.PodId,root,podBone,opacity:ghost?opacity:1,partTint:podTint);
-            // (the porthole's pane, the door's one see-through part, is mostly clear: the city rushes up in it from the cabin)
-            podPane??=PodPaneOf;sourceModels.Queue(ghost?NativePodModels.DoorGhostId:NativePodModels.DoorId,root*Matrix4x4.TRS(doorHinge,Quaternion.Euler(f.Door*Mathf.Rad2Deg,0,0),Vector3.one),opacity:ghost?opacity:1,partOpacity:podPane,partTint:podTint);
+            var fh=NativePodModels.FoldHinge;var fold=new Vector3(fh.X,fh.Y,fh.Z);podFold=root*Matrix4x4.Translate(fold)*Matrix4x4.Rotate(Quaternion.Euler(f.Fold*NativePodModels.FoldUp*Mathf.Rad2Deg,0,0))*Matrix4x4.Translate(-fold);
+            var dh=NativePodModels.Hinge;var door=root*Matrix4x4.TRS(new Vector3(dh.X,dh.Y,dh.Z),Quaternion.Euler(f.Door*Mathf.Rad2Deg,0,0),Vector3.one);
+            // the solid pod (screen-door faded out while the glass comes in, never popped), then the glass over it
+            podPane??=PodPaneOf;podGlassPart??=PodGlassPartOf;
+            if(ghost<.99f)
+            {
+                sourceModels.Queue(NativePodModels.PodId,root,podBone,opacity:1-ghost,partTint:podTint);
+                // (the porthole's pane, the door's one see-through part, is mostly clear: the city rushes up in it from the cabin)
+                sourceModels.Queue(NativePodModels.DoorId,door,opacity:1-ghost,partOpacity:podPane,partTint:podTint);
+            }
+            if(ghost>.01f){sourceModels.Queue(NativePodModels.GhostId,root,podBone,partOpacity:podGlassPart,partTint:podTint);sourceModels.Queue(NativePodModels.DoorGhostId,door,partOpacity:podGlassPart,partTint:podTint);}
+            // the cabin's jump seat (its cushion folding up as the pilot stands) and the harness bar over it
+            sourceModels.Queue(NativePodModels.SeatId,root,podBone,partTint:podTint);sourceModels.Queue(NativePodModels.HarnessId,root,podBone,partTint:podTint);
             podNow=null;
             // the LED name over the door (dark until the landing powers it; long names scroll)
-            if(f.Sign<=.01f||pod.Sign==null||opacity<.99f||!EnsurePodSign())return;
+            if(f.Sign<=.01f||pod.Sign==null||ghost>.01f||!EnsurePodSign())return;
             var c=new NVector(NativePodModels.SignCentre.X,NativePodModels.SignCentre.Y,NativePodModels.SignCentre.Z);
             var sign=root*Matrix4x4.TRS(new Vector3(c.X,c.Y,c.Z),Quaternion.identity,new Vector3(NativePodModels.SignWidth,NativePodModels.SignHeight,1));
             float rep=pod.Scrolls?NativePodDrop.SignColumns/pod.Columns:1,scroll=pod.Scrolls?Mathf.Repeat(time*14/pod.Columns,1):0;
@@ -260,9 +300,16 @@ namespace ChipArena.UnityConversion
             podBlock.SetFloat(PodRepId,rep);podBlock.SetFloat(PodScrollId,scroll);podBlock.SetFloat(PodBlurId,0);podBlock.SetFloat(PodGainId,1);podBlock.SetFloat(PodSweepId,-1);podBlock.SetFloat(PodChromaId,1);podBlock.SetFloat(PodHoloId,0);
             Graphics.DrawMesh(podQuad,sign,podSignMaterial,0,null,0,podBlock,ShadowCastingMode.Off,false);
         }
-        private Func<int,float> podPane;private static float PodPaneOf(int bone)=>bone<0?.28f:1;
-        // The pod's parts' frames: the harness bar about its hinge, everything else on the pod.
-        private Matrix4x4 PodBoneOf(int bone)=>bone==NativePodModels.Harness?podHarness:podRoot;
+        private Func<int,float> podPane,podGlassPart;private float podGhost;private static float PodPaneOf(int bone)=>bone<0?.28f:1;
+        // The glass copy's parts at the glass's share: the porthole clearer still, the ablative tiles keeping their heat (they glow
+        // through the glass while they are hot, so the hull's heat never vanishes with the switch).
+        private float PodGlassPartOf(int bone)
+        {
+            float g=podGhost,glass=PodGlass*g;if(bone==NativePodModels.Glass)return glass*.6f;if(bone!=NativePodModels.Heat||podNow==null)return glass;
+            return Mathf.Max(glass,(.3f+.6f*Mathf.Clamp01(podNow.Frame.Hull/.6f))*g);
+        }
+        // The pod's parts' frames: the harness bar about its hinge, the seat's cushion about its fold, everything else on the pod.
+        private Matrix4x4 PodBoneOf(int bone)=>bone==NativePodModels.Harness?podHarness:bone==NativePodModels.Fold?podFold:podRoot;
         // The crater on the pod centre for the run, its shape scaled per pod and its ploughed tail turned back down the approach;
         // the pit's ember cracks glow with the hull while it cools. Pods standing closer than two craters (today's 2 m row, until
         // A0 spreads the spots) shrink theirs to fit and stack them a few millimetres apart by landing order, lower, so no two
@@ -272,13 +319,22 @@ namespace ChipArena.UnityConversion
             var p=pod.Plan;var travel=new Vector3(p.Travel.X,0,p.Travel.Z);if(travel.sqrMagnitude<1e-4f)return;podNow=pod;podMarkTint??=PodMarkTintOf;
             float near=float.MaxValue;foreach(var other in pods.Values)if(!ReferenceEquals(other,pod)&&other.Planned){float dx=other.Spot.x-pod.Spot.x,dz=other.Spot.z-pod.Spot.z;near=Mathf.Min(near,Mathf.Sqrt(dx*dx+dz*dz));}
             float fit=Mathf.Clamp((near-.2f)/(2*NativePodModels.CraterRadius*1.06f),.5f,1);bool crowded=fit<.999f;
+            if(float.IsNaN(pod.KeepFit))pod.KeepFit=NativePodDrop.CraterFit(p,pod.Spot.x,pod.Spot.z,PodKeepOut(podMap));fit=Mathf.Min(fit,pod.KeepFit);
             var turn=Quaternion.LookRotation(travel,Vector3.up)*Quaternion.Euler(0,p.CraterTurn*Mathf.Rad2Deg,0);var at=pod.Spot+Vector3.up*(crowded?.005f*Mathf.Clamp(p.Order,0,3):0);
             sourceModels.Queue(NativePodModels.CraterIds[p.Crater],Matrix4x4.TRS(at,turn,new Vector3(p.CraterX*fit,crowded?.74f:1,p.CraterZ*fit)),partTint:podMarkTint);
             podNow=null;
         }
         private Color PodMarkTintOf(int bone)
         {
-            var p=podNow;if(p==null||bone!=NativePodModels.Heat)return Color.white;var c=NativePodDrop.HullColor(NativePodDrop.Cool(p.Frame.Land>=0?p.Frame.Land:NativePodDrop.ParkedSince)*.8f);return new Color(c.X,c.Y,c.Z,1);
+            var p=podNow;if(p==null||bone!=NativePodModels.Heat)return Color.white;var c=NativePodModels.HeatTint(NativePodDrop.HullColor(NativePodDrop.Cool(p.Frame.Land>=0?p.Frame.Land:NativePodDrop.ParkedSince)*.8f));return new Color(c.X,c.Y,c.Z,1);
+        }
+        // What the crater keeps off on this map (its soot and cracks are flat paint): the REVIVE-O-MATIC's mat, its solids and the
+        // spot its user stands on (Core NativeReviveMachine), as centre, half extents and yaw; made once per map.
+        private string podKeepMap;private (float x,float z,float hx,float hz,float yaw)[] podKeep;
+        private (float x,float z,float hx,float hz,float yaw)[] PodKeepOut(string map)
+        {
+            if(podKeep!=null&&podKeepMap==map)return podKeep;podKeepMap=map;
+            podKeep=map!=null&&NativeReviveMachine.Spot(map,out var at,out float turn)?NativePodDrop.ReviveKeepOut(at,turn):Array.Empty<(float,float,float,float,float)>();return podKeep;
         }
         // The pod's parts: its paint and trim, the lights in its colour (white-hot while it burns in), the cabin lamp (red on the
         // way down, warm once landed), the retro throats, the ablative tiles' heat, the bolts' flash.
@@ -293,8 +349,8 @@ namespace ChipArena.UnityConversion
                     if(f.Beacon<.5f&&f.Land>=0)c*=.9f;c.a=1;return c;}
                 case NativePodModels.Cabin:{float k=f.Dropping&&f.Land<0?.35f:f.Cabin;var c=f.Dropping&&f.Land<0?new Color(2.2f,.25f,.2f,1):new Color(2.4f,1.9f,1.3f,1);c*=k;c.a=1;return c;}
                 case NativePodModels.Retro:{var c=p.Plan.Fails?new Color(3.2f,1.9f,1.1f,1):new Color(1.6f,2.6f,3.4f,1);c*=.05f+3*f.Retro;c.a=1;return c;}
-                case NativePodModels.Heat:{var c=NativePodDrop.HullColor(f.Hull);return new Color(c.X,c.Y,c.Z,1);}
-                case NativePodModels.Bolts:{float k=f.Bolts;var c=k>0?new Color(6,4.2f,2.2f,1)*k:f.Age>p.Plan.DoorAt?new Color(.07f,.065f,.06f,1):new Color(.2f,.2f,.22f,1);c.a=1;return c;}
+                case NativePodModels.Heat:{var c=NativePodModels.HeatTint(NativePodDrop.HullColor(f.Hull));return new Color(c.X,c.Y,c.Z,1);}
+                case NativePodModels.Bolts:{float k=f.Bolts;var c=k>0?new Color(6,4.2f,2.2f,1)*k:f.Age>p.Plan.DoorAt?new Color(.07f,.065f,.06f,1):new Color(.2f,.2f,.22f,1);c*=1/NativePodModels.HeatBase;c.a=1;return c;}
                 default:return Color.white;
             }
         }
@@ -337,7 +393,7 @@ namespace ChipArena.UnityConversion
             foreach(var pod in pods.Values)
             {
                 if(!pod.Planned||pod.Frame.Gone&&pod.Frame.Land<0)continue;var f=pod.Frame;var p=pod.Plan;var centre=PodN(pod.Spot);
-                if(vfx!=null){podFx??=new PodEntranceFx(vfx);NativePodDrop.Effects(podFx,f,p,centre,q,pod.Floor);}
+                if(vfx!=null){podFx??=new PodEntranceFx(vfx);NativePodDrop.Effects(podFx,f,p,centre,q,pod.Floor,eye);}
                 if(camera!=null)NativePodDrop.Meteor(podGlow,f,p,centre,eye,q<.5f?.6f:1);
                 // the impact's chunks of the floor, thrown along the plough (once, on the kit's clock; no kit marks: the crater is ours)
                 if(!pod.Slammed&&f.Dropping&&f.Land>=0&&f.Land<.3f&&kit!=null)
@@ -369,7 +425,7 @@ namespace ChipArena.UnityConversion
             foreach(var pod in pods.Values)
             {
                 if(!pod.Planned)continue;var f=pod.Frame;float land=f.Land,intensity=0;int color=0xffc890;float range=16;
-                if(f.Dropping&&land>=0&&land<.4f){float u=land/.4f;intensity=(pod.Plan.Fails?6:4.5f)*(1-u)*(1-u)*soft;}
+                if(f.Dropping&&land>=0&&land<.32f){float u=land/.32f;intensity=(pod.Plan.Fails?6:4.5f)*(1-u)*(1-u)*soft;}
                 else if(f.Bolts>0){intensity=1.6f*f.Bolts*soft;color=0xfff1d6;range=7;}
                 if(!(intensity>.01f))continue;
                 int dim=0;for(int i=1;i<podLit.Length;i++)if(podLit[i].Intensity<podLit[dim].Intensity)dim=i;if(podLit[dim].Intensity>=intensity)continue;
@@ -405,7 +461,7 @@ namespace ChipArena.UnityConversion
             bool reduced=WeaponEffectsQuality<.5f,shake=CameraShake&&!reduced;
             int mode=reduced?NativePodDrop.ShotStill:FirstPersonPick?NativePodDrop.ShotFirst:NativePodDrop.ShotChase;
             var body=arena.Local.Body!=null?arena.Local.Body.transform.position:pod.Spot+Vector3.up*NativeSpawnIn.RestCentre;
-            var s=NativePodDrop.Shot(p,PodN(pod.Spot),age,mode,PodN(body+Vector3.up*NativeViewRules.EyeHeight));
+            var s=NativePodDrop.Shot(p,PodN(pod.Spot),age,mode,PodN(body+Vector3.up*NativeViewRules.EyeHeight),FirstPersonPick);
             Vector3 eye=PodV(s.Eye),look=PodV(s.Look),up=PodV(s.Up);
             if(shake)
             {
@@ -415,13 +471,15 @@ namespace ChipArena.UnityConversion
                 if(amp>0){float t=age;int seed=p.Seed&0xffff;eye+=new Vector3(NativePodDrop.ShakeNoise(seed,0,t*21),.75f*NativePodDrop.ShakeNoise(seed,1,t*27),.5f*NativePodDrop.ShakeNoise(seed,2,t*17))*amp;}
             }
             var forward=look-eye;if(forward.sqrMagnitude<1e-6f)forward=view.transform.forward;var turn=Quaternion.LookRotation(forward,up.sqrMagnitude>1e-4f?up:Vector3.up);
+            // the cabin buffeting: a turn of the view (none with camera shake off)
+            if(shake&&s.Judder>0){NativePodDrop.Judder(p.Seed&0xffff,age,s.Judder,out float jp,out float jr);turn*=Quaternion.Euler(jp,0,jr);}
             // out of walls: a solid between the subject and the eye pulls the eye in (the fence, a machine), as the cutscene's
             if(!s.Cabin&&arena.Root!=null){var ray=eye-look;float dist=ray.magnitude;if(dist>.3f&&arena.Root.scene.GetPhysicsScene().Raycast(look,ray/dist,out var hit,dist,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))eye=look+ray/dist*Mathf.Max(.3f,hit.distance-.25f);}
             hand=s.Directed;
             if(hand<.999f){podHandEye=eye;podHandTurn=turn;podHandFov=s.Fov;return false;}
             view.transform.SetPositionAndRotation(eye,turn);view.fieldOfView=s.Fov;
-            // in the cabin and once the arc has brought the eye home in first person my own body stays hidden; otherwise it is drawn
-            FirstPerson=s.Cabin||mode==NativePodDrop.ShotFirst&&age>=p.ArcTo-.05f;AimHeld=false;podDirectFrame=UnityEngine.Time.frameCount;podDirectArena=arena;
+            // in my cabin and from the cut into my eyes my own body stays hidden; everywhere else (outside my pod) it is drawn
+            FirstPerson=s.Inside;AimHeld=false;podDirectFrame=UnityEngine.Time.frameCount;podDirectArena=arena;
             return true;
         }
         private int podDirectFrame=-1;private NativeArena podDirectArena;
