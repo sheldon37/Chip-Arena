@@ -67,6 +67,7 @@ namespace ChipArena.UnityConversion
         public readonly ExpeditionRunBundle Bundle;
         public readonly int Pilots;
         public double CandidateGenerationMs { get; private set; }
+        public NativeLayeredCityWalk Survey { get; private set; }
         public int Tick {get;private set;}
         private readonly ExpeditionSession session;
         private readonly NativePilot[] members;
@@ -95,7 +96,7 @@ namespace ChipArena.UnityConversion
             if (candidate != null)
             {
                 var generation = Stopwatch.StartNew();
-                walk = new NativeLayeredCityWalk(candidate);
+                walk = Survey = new NativeLayeredCityWalk(candidate);
                 PrepareSurveyWorld(Bundle.World, walk);
                 simulationContent = simulationContent.WithGeneratedMap(walk.Map);
                 CandidateGenerationMs = generation.Elapsed.TotalMilliseconds;
