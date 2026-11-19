@@ -279,7 +279,7 @@ namespace ChipArena.UnityConversion
         public readonly NativeDeploySparks.Spark[] Sparks=new NativeDeploySparks.Spark[NativeAtlasBoard.SparkLimit];public int SparkCount;
         public readonly NativeAtlasBoard.Cue[] Cues=new NativeAtlasBoard.Cue[4];public int CueCount;
         private readonly float[] start;private readonly int[] flips,from,target;private readonly int[] kinds=new int[NativeTilesets.Lines];
-        private float openAt=float.NaN,last=float.NaN,heard=float.NaN,waitFrom;private bool moved,anchored;private int salt;
+        private float openAt=float.NaN,last=float.NaN,heard=float.NaN,waitFrom,prevSince=float.NaN;private bool moved,anchored;private int salt;
         /// <summary>Where the selection comes from: the registry's hook (the checks put a stand-in here to run a re-flap).</summary>
         internal Func<ExpeditionDeploymentState,NativeTilesets.Tileset> Select=NativeTilesets.Selected;
         public NativeAtlasStage()
@@ -322,12 +322,15 @@ namespace ChipArena.UnityConversion
             // the opening's second frame: its clock starts now (the first frame's time was read before the scene was built), or
             // once the flaps can draw
             else if(!anchored){openAt=t;anchored=!Waiting||t-waitFrom>=NativeAtlasBoard.MaxWait;}
-            last=t;Since=t-openAt;float since=Since;
+            last=t;Since=t-openAt;float since=Since,before=opening?float.NaN:prevSince;prevSince=since;
             for(int line=0;line<NativeTilesets.Lines;line++){int k=NativeAtlasBoard.Kinds(Lines[line]);if(k!=kinds[line])Retarget(line,k,since);}
             bool moving=false;
             for(int c=0;c<Poses.Length;c++)
             {
                 var p=NativeAtlasBoard.PoseOf(since,start[c],flips[c],from[c],target[c]);
+                // a one-flap run (an emblem) is never skipped: a frame that jumps from before its fall to past it (a long frame,
+                // as a first visit's station has) shows it mid-fall, and the next shows it landed
+                if(flips[c]==1&&p.Phase<0&&before<start[c]&&since>=start[c])p=new NativeAtlasBoard.Pose{Prev=from[c],Next=target[c],Phase=.5f};
                 if(p.Phase>=0)moving=true;
                 if(p.Prev!=Poses[c].Prev||p.Next!=Poses[c].Next||p.Phase!=Poses[c].Phase){Poses[c]=p;moved=true;}
             }

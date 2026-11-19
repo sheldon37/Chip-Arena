@@ -307,6 +307,13 @@ namespace ChipArena.UnityConversion
                 Check(Math.Abs(cold.Since)<1e-6f&&cold.Framed&&cold.Poses[0].Phase<0,"after a 0.45 s first frame the arrival's clock starts on the second");
                 int fall=0;bool flapped=false;for(int f=1;f<=40;f++){cold.Frame(Input(50.45f+f/60f),NativeDeployPresentation.Shot.Overview);if(cold.Poses[0].Phase>=0)fall++;if(cold.Poses[0].Next==L.Large[0][0])flapped=true;}
                 Check(fall>=2&&flapped,"and the emblem's fall is seen ("+fall+" frames at 60 fps)");
+                // a long frame right over the emblem's whole fall (the Editor's cold first station had 47-94 ms frames there) still
+                // shows it falling, for that one frame, then landed
+                var hitch=new NativeAtlasStage();hitch.Frame(Input(90),NativeDeployPresentation.Shot.Overview);hitch.Frame(Input(90.02f),NativeDeployPresentation.Shot.Overview);
+                hitch.Frame(Input(90.067f),NativeDeployPresentation.Shot.Overview);Check(hitch.Poses[0].Phase<0&&hitch.Poses[0].Next==A.BlankEmblem,"before the emblem's fall ("+hitch.Since+" s)");
+                hitch.Frame(Input(90.1605f),NativeDeployPresentation.Shot.Overview);Check(hitch.Poses[0].Phase>0&&hitch.Poses[0].Phase<1&&hitch.Poses[0].Next==L.Large[0][0]&&hitch.Moving,"a 94 ms frame over the emblem's whole fall shows it mid-fall ("+hitch.Since+" s)");
+                hitch.Frame(Input(90.172f),NativeDeployPresentation.Shot.Overview);Check(hitch.Poses[0].Phase<0&&hitch.Poses[0].Next==L.Large[0][0],"and the next frame shows it landed");
+                for(int i=1;i<L.LineCount[0];i++)Check(hitch.Poses[i].Phase<0||L.Cells[i].Kind==A.Kind.Glyph,"only the one-flap run is held for a frame");
                 // while the Runtime cannot draw the flaps yet (the glyph atlas rasterising), the clock waits for them, at most MaxWait
                 var wait=new NativeAtlasStage();wait.Frame(Input(70),NativeDeployPresentation.Shot.Overview);wait.Waiting=true;
                 for(int f=1;f<=12;f++){wait.Frame(Input(70+f/60f),NativeDeployPresentation.Shot.Overview);Check(wait.Since==0&&wait.Framed&&wait.Poses[0].Phase<0&&wait.CueCount==0,"the arrival waits for the flaps to draw");}
