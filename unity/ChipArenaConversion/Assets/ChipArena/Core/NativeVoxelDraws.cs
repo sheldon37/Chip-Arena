@@ -78,7 +78,8 @@ namespace ChipArena.UnityConversion
             foreach(var w in Wrappers)if(id.StartsWith(w,StringComparison.Ordinal)&&id.Length>w.Length)return Of(id.Substring(w.Length),part);
             if(id.StartsWith("native-weapon-piece-",StringComparison.Ordinal))return Kind.Piece;
             if(id=="siren")return Kind.Siren;
-            if(id==NativeBodySkins.PrototypeModel||id.StartsWith("pilot-std",StringComparison.Ordinal)||id.StartsWith("pilot-sheldon",StringComparison.Ordinal)||id.StartsWith("wounded-",StringComparison.Ordinal))return Kind.PilotBody;
+            // the voxel bodies' bank ids ("pilot", the Prototype; "pilot-std*", "pilot-sheldon*" the skins; their wound carves), not "pilot-gear-"
+            if(id=="pilot"||id.StartsWith("pilot-std",StringComparison.Ordinal)||id.StartsWith("pilot-sheldon",StringComparison.Ordinal)||id.StartsWith("wounded-",StringComparison.Ordinal))return Kind.PilotBody;
             if(id.StartsWith("weapon-std-",StringComparison.Ordinal)||id.StartsWith("loose-std-",StringComparison.Ordinal)||id=="katana-saya")return Kind.FrameSculpt;
             if(id.StartsWith("weapon-",StringComparison.Ordinal)||id.StartsWith("loose-",StringComparison.Ordinal))
                 // the five one-finish classes' plain ids are their Standard sculpt's parts ("std-<spec>"); a DEV class's is its base's
