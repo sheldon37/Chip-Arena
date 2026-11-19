@@ -7,13 +7,29 @@ internal static class LayeredCityWalkChecks
 {
     public static void Run()
     {
-        foreach (bool large in new[] { false, true })
+        var hands = new HashSet<string>();
+        for (int previous = -1; previous < NativeCityLayout.Plans.Count; previous++)
         {
+            var picks = new HashSet<int>();
+            for (uint seed = 0; seed < 2000; seed++)
+            {
+                int pick = NativeCityLayout.Choose(seed, previous);
+                if (pick == previous) throw new Exception("Repeated city layout");
+                picks.Add(pick);
+                hands.Add(string.Join("/", NativeCityLayout.DealHalls(seed, new[] { "a", "b", "c" })));
+            }
+            if (picks.Count != NativeCityLayout.Plans.Count - (previous < 0 ? 0 : 1))
+                throw new Exception("Unreachable city layout");
+        }
+        if (hands.Count != 6) throw new Exception("Missing hall assignment");
+        foreach (int mode in new[] { 0, 1, 2 })
+        {
+            bool curated = mode == 2, large = mode != 0;
             int minBlocks = int.MaxValue, maxBlocks = 0, maxNodes = 0;
             var assignments = new HashSet<string>();
-            for (uint seed = 0; seed < 8; seed++)
+            for (uint seed = 0; seed < (curated ? NativeCityLayout.Plans.Count : 8); seed++)
             {
-                var walk = new NativeLayeredCityWalk(large, 647 + seed * 137);
+                var walk = curated ? new NativeLayeredCityWalk(NativeCityLayout.Plans[(int)seed]) : new NativeLayeredCityWalk(large, 647 + seed * 137);
                 var map = walk.Map;
                 if (map.bounds.maxX != (large ? 300 : 210) || map.bounds.maxZ != (large ? 240 : 170))
                     throw new Exception("Layered city size");
@@ -27,7 +43,7 @@ internal static class LayeredCityWalkChecks
                     if (route.Length < (large ? 250 : 150) || route.Length > (large ? 300 : 190))
                         throw new Exception(route.Name + " route length " + route.Length);
                     V3 start = new V3();
-                    foreach (var end in route.Points)
+                    foreach (var end in route.Points.Concat(route.RoofLoop))
                     {
                         var delta = end - start;
                         float horizontal = (float)Math.Sqrt(delta.x * delta.x + delta.z * delta.z);
@@ -54,15 +70,53 @@ internal static class LayeredCityWalkChecks
                         start = end;
                     }
                 }
-                if (map.nav.links.Length != map.nav.nodes.Length - 1) throw new Exception("Disconnected corridor trace");
+                if (curated) MeasureCorridors(walk);
+                if (map.nav.links.Length != map.nav.nodes.Length - 1 + (curated ? 4 : 0)) throw new Exception("Disconnected corridor trace");
                 minBlocks = Math.Min(minBlocks, map.blocks.Length);
                 maxBlocks = Math.Max(maxBlocks, map.blocks.Length);
                 maxNodes = Math.Max(maxNodes, map.nav.nodes.Length);
             }
-            if (assignments.Count < 2) throw new Exception("District deals did not vary");
-            Console.WriteLine("PASS layered city " + (large ? "B" : "A") + " · 8 seeds · "
+            if (!curated && assignments.Count < 2) throw new Exception("District deals did not vary");
+            Console.WriteLine("PASS layered city " + (large ? "B" : "A") + (curated ? " · 5 candidates · " : " · 8 seeds · ")
                 + minBlocks + "–" + maxBlocks + " blocks · up to " + maxNodes + " corridor nodes");
         }
+    }
+
+    // Isolate graph work from Unity physics and perception. Four independent destination
+    // fields and 22 start nodes per field, warmed before sampling on this machine.
+    private static void MeasureCorridors(NativeLayeredCityWalk walk)
+    {
+        var nav = walk.Map.nav;
+        var search = new NativeNavSearch(nav);
+        var path = new List<string>();
+        var cells = nav.nodes;
+        var flow = new System.Diagnostics.Stopwatch();
+        var attach = new System.Diagnostics.Stopwatch();
+        for (int tick = 0; tick < 720; tick++)
+        {
+            for (int pilot = 0; pilot < 4; pilot++)
+            {
+                var target = cells[(tick + pilot * cells.Length / 4) % cells.Length];
+                if (tick >= 120) flow.Start();
+                search.BuildFlow(target.id, _ => true);
+                if (tick >= 120) flow.Stop();
+                for (int mob = 0; mob < 22; mob++)
+                {
+                    var origin = cells[(tick + (pilot * 22 + mob) * 23) % cells.Length];
+                    if (tick >= 120) attach.Start();
+                    var start = search.NearestLocal(origin.pos, _ => true);
+                    if (tick >= 120) attach.Stop();
+                    if (tick >= 120) flow.Start();
+                    search.TraceFlow(start.id, path);
+                    if (tick >= 120) flow.Stop();
+                    if (path.Count == 0 || path[path.Count - 1] != target.id)
+                        throw new Exception("Unreachable corridor target on " + walk.Map.name);
+                }
+            }
+        }
+        Console.WriteLine($"{walk.Map.name}: routes {string.Join("/", walk.Routes.Select(r => r.Length.ToString("F1")))} m; " +
+            $"{walk.Map.blocks.Length} blocks, {cells.Length} nodes; local attachment {attach.Elapsed.TotalMilliseconds / 600:F3} ms, " +
+            $"four field rebuilds + 88 traces {flow.Elapsed.TotalMilliseconds / 600:F3} ms per sample");
     }
 
     private static bool OnRamp(MapRamp r, V3 p)

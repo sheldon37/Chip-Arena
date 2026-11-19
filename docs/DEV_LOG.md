@@ -1,3 +1,7 @@
+## 2026-11-18 — Astra: Meridian size B walk candidates
+
+Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientation layouts in the Developer walk. All 20 primary streets and 20 roof circuits passed sampled support and clearance. See [the five layouts, route distances and timing table](MERIDIAN-B-WALK.md). The same-machine A0 and five-candidate Unity benchmark is available from the Editor. Native results, contract freeze, party ticket integration and art handoff remain pending.
+
 ## 2026-11-18 — Claude: the zombie run-turn checks on every take, each pairing held at its own values, the landing lead fixed (review follow-ups; presentation only)
 
 - **The second and third reviews of the zombie run-turn fix** (released in shared `eed764b5`): on `claude/zombie-run-turn-tests`, cut from shared
