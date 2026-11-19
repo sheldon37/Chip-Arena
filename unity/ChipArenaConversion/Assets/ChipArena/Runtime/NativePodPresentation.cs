@@ -421,8 +421,17 @@ namespace ChipArena.UnityConversion
             if(hand<.999f){podHandEye=eye;podHandTurn=turn;podHandFov=s.Fov;return false;}
             view.transform.SetPositionAndRotation(eye,turn);view.fieldOfView=s.Fov;
             // in the cabin and once the arc has brought the eye home in first person my own body stays hidden; otherwise it is drawn
-            FirstPerson=s.Cabin||mode==NativePodDrop.ShotFirst&&age>=p.ArcTo-.05f;AimHeld=false;
+            FirstPerson=s.Cabin||mode==NativePodDrop.ShotFirst&&age>=p.ArcTo-.05f;AimHeld=false;podDirectFrame=UnityEngine.Time.frameCount;podDirectArena=arena;
             return true;
+        }
+        private int podDirectFrame=-1;private NativeArena podDirectArena;
+        /// <summary>The directed shot posed again after Render, on the clock the pods were just drawn with: the camera runs before
+        /// Render sets this frame's clock, so its first pose can be a frame behind the drawn pod (at 80 m/s over a metre, the cabin's
+        /// eye outside its pod). Only in a frame the drop directed (so never over the capture eye); ConversionGame skips it under the
+        /// DEV fly camera.</summary>
+        public void PodDropLate(Camera view)
+        {
+            if(podDirectFrame!=UnityEngine.Time.frameCount||podDirectArena==null||view==null)return;var arena=podDirectArena;podDirectArena=null;PodDropDirect(arena,view,out _);podDirectFrame=-1;
         }
         /// <summary>The hand-off at GO: the last of the directed shot blended over the game's own camera this frame (`share` the
         /// directed part, falling to 0 at GO), so control comes back with no snap.</summary>

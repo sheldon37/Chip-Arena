@@ -303,6 +303,15 @@ internal static class PodDropChecks
         var bar=pod.Sections.Where(s=>s.Bone==NativePodModels.Harness).SelectMany(s=>s.Positions).ToArray();var hinge=NativePodModels.HarnessHinge;
         var upBar=bar.Select(p=>Vector3.Transform(p-hinge,Matrix4x4.CreateRotationX(NativePodModels.HarnessUp))+hinge).ToArray();
         Check(bar.Any(p=>p.Y<1.45f&&p.Z>.1f)&&upBar.All(p=>p.Y>NativePodModels.Hinge.Y+NativePodModels.DoorHeight-.05f||p.Z<.3f)&&upBar.All(p=>new Vector2(p.X,p.Z).Length()<.62f),"the harness bar crosses the chest, then lifts clear of the doorway inside the hull");
+        // the cabin is closed overhead: from the strapped-in eye (the cabin shot's), every ray 45 degrees up or more meets a face
+        // turned toward it within a metre (the dark ceiling under the nose)
+        var cabinEye=new Vector3(0,NativePodModels.Floor+NativePodDrop.CabinEye,-.05f);int open=0;
+        for(int e=45;e<=90;e+=15)for(int az=0;az<(e==90?1:24);az++)
+        {
+            double el=e*Math.PI/180,th=az*Math.PI/12;var dir=new Vector3((float)(Math.Cos(el)*Math.Sin(th)),(float)Math.Sin(el),(float)(Math.Cos(el)*Math.Cos(th)));
+            if(!Faces(pod,cabinEye,dir,1))open++;
+        }
+        Check(open==0,"the cabin is closed overhead from the pilot's eye ("+open+" open rays)");
         // the marks: flat paint (at most 6 cm, off the floor), facing up, a crater about 5 m across ploughed into a 3-5 m furrow
         foreach(var mark in Enumerable.Range(0,NativePodModels.CraterShapes).Select(NativePodModels.Crater))
         {
@@ -315,6 +324,23 @@ internal static class PodDropChecks
             Check(tail>=3&&tail<=4.6f&&tail>front,mark.Spec+" is ploughed out behind into a 3-5 m furrow ("+tail+")");
         }
         Check(NativePodModels.CraterIds.Length==NativePodModels.CraterShapes&&NativePodModels.CraterIds.Distinct().Count()==NativePodModels.CraterShapes,"one model id per crater shape");
+    }
+    // whether a ray from o along d meets, within reach, a triangle turned toward it (drawn with back faces culled; glass and the
+    // moving harness bar aside)
+    private static bool Faces(WeaponMesh mesh,Vector3 o,Vector3 d,float reach)
+    {
+        foreach(var s in mesh.Sections)
+        {
+            if(s.Bone==NativePodModels.Glass||s.Bone==NativePodModels.Harness)continue;
+            for(int i=0;i+2<s.Indices.Count;i+=3)
+            {
+                Vector3 a=s.Positions[s.Indices[i]],e1=s.Positions[s.Indices[i+1]]-a,e2=s.Positions[s.Indices[i+2]]-a,p=Vector3.Cross(d,e2);
+                float det=Vector3.Dot(e1,p);if(Math.Abs(det)<1e-9f)continue;float inv=1/det;var t0=o-a;
+                float u=Vector3.Dot(t0,p)*inv;if(u<0||u>1)continue;var q=Vector3.Cross(t0,e1);float v=Vector3.Dot(d,q)*inv;if(v<0||u+v>1)continue;
+                float t=Vector3.Dot(e2,q)*inv;if(t>1e-4f&&t<=reach&&Vector3.Dot(s.Normals[s.Indices[i]],d)<0)return true;
+            }
+        }
+        return false;
     }
     private static void Wiring(string root)
     {
@@ -343,6 +369,8 @@ internal static class PodDropChecks
         Check(R("Runtime/NativeSourcePresentation.cs").Contains("ExpeditionPods(arena);")&&R("Runtime/ArenaPresentation.cs").Contains("SpawnInFx(arena,camera);PodFx(arena,camera);"),"the pods and their effects are drawn");
         Check(R("Runtime/NativeBlastPresentation.cs").Contains("var lit=PodFlashes!=null?PodFlashes(sim.Flashes):sim.Flashes;"),"the crash's flash lights the city through the blast lights (they survive DARKNESS)");
         Check(game.Contains("nativeAudio?.PodFrame(presentation.PodCues,cameraView!=null?cameraView.transform:null);")&&R("Runtime/NativePodAudio.cs").Contains("NativePodSounds.Samples("),"the pods are heard");
+        // the camera runs before Render sets this frame's clock: the directed drop is posed again after it, on the pods' own clock
+        Check(game.Contains("presentation.Render(frame,renderTime,false);if(!devFly.On)presentation.PodDropLate(cameraView);")&&pods.Contains("public void PodDropLate(Camera view)")&&pods.Contains("podDirectFrame=UnityEngine.Time.frameCount;podDirectArena=arena;"),"the directed drop is posed again after Render, on the clock the pods are drawn with (the cabin eye stays in its pod)");
         Check(game.Contains("presentation.LocalPodLook=prefs.pod;")&&game.Contains("public string pod=\"\";"),"my pod wears the Locker's look (prefs.pod)");
         Check(pods.Contains("podBlock??=new MaterialPropertyBlock();")&&pods.Contains("if(f.Sign<=.01f||pod.Sign==null||opacity<.99f||!EnsurePodSign())return;")&&pods.Contains("ghost?NativePodModels.GhostId:NativePodModels.PodId")&&R("Runtime/NativeMachineModels.cs").Contains("Ghost(NativePodModels.GhostId,NativePodModels.Pod());"),"the sign.s property block is made on first use; my faded pod is the glass copy and hides its sign");
         Check(R("Runtime/NativeLockerUI.cs").Contains("case NativeLocker.Pod:LkPodLayout();break;")&&R("Runtime/NativeLockerUI.cs").Contains("case NativeLocker.Pod:LkPod(k,e);break;"),"the Locker lays out and draws the Pod tab");

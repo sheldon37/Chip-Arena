@@ -269,7 +269,7 @@ namespace ChipArena.UnityConversion
             // A PvE revive's first-person view (NativeReviveHoloPresentation.ReviveView): a gentle rise, none with reduced effects or
             // camera shake off, in a scanline vignette; after the aim above, so the aim and the authority eye never move.
             if(!menu&&Spectator==null&&!cinematic.Directing)presentation.ReviveView(cameraView,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects||!prefs.cameraShake);
-            NativeTechniques.Source=new NativeTechniqueSnapshotSource(frame);presentation.Render(frame,renderTime,false);nativeAudio?.PodFrame(presentation.PodCues,cameraView!=null?cameraView.transform:null);ShoulderSprint(renderTime);if(presentation.ReviveMachineStands)nativeAudio?.ReviveMachineFrame(presentation.ReviveMachineSeq,presentation.ReviveMachineAt,cameraView!=null?cameraView.transform:null);
+            NativeTechniques.Source=new NativeTechniqueSnapshotSource(frame);presentation.Render(frame,renderTime,false);if(!devFly.On)presentation.PodDropLate(cameraView);nativeAudio?.PodFrame(presentation.PodCues,cameraView!=null?cameraView.transform:null);ShoulderSprint(renderTime);if(presentation.ReviveMachineStands)nativeAudio?.ReviveMachineFrame(presentation.ReviveMachineSeq,presentation.ReviveMachineAt,cameraView!=null?cameraView.transform:null);
             Vector3? preview=null;bool previewClamped=false;
             // previewOn: E held .2 s and casting, or ready (a charge or no cooldown left) and, for magic, affordable. Casting is
             // read from the pose (PressAbility sets it, CancelWindup clears it), which guests also receive.
