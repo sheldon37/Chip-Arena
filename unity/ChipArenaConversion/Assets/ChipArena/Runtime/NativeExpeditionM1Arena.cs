@@ -149,6 +149,7 @@ namespace ChipArena.UnityConversion
             notice=null;if(Expedition==null||Replica||Pve==null||Pve.Holding||pilot==null||pilot.Hp<=0||!pilot.Seat.connected)return false;
             var session=Expedition.Session;var run=session.Run;var state=run.Snapshot();var member=ExpeditionMemberFor(pilot);
             if(pilot.ExpeditionTransferHeld||ExpeditionChoosing(pilot)||state.loading||member==null||!member.alive||member.extracted)return false;
+            if(MapId==NativeFallenRules.Map)return false;
             if(Match.Phase==NativePhase.Fight&&PodInteraction(pilot,out notice))return true;
             // Match the existing F-revive beacon, using the run wallet and durable alive state.
             var fallen=Pilots.Where(q=>q!=pilot&&q.Hp<=0&&q.Seat.connected&&!InShaft(q)&&!q.ExpeditionTransferHeld)
@@ -231,6 +232,29 @@ namespace ChipArena.UnityConversion
         private void StepExpeditionCombat()
         {
             var run=Expedition.Session.Run;var s=run.Snapshot();if(s.loading||s.phase==ExpeditionPhase.Ended)return;
+            if(s.phase==ExpeditionPhase.FinalBoss&&GeneratedRun?.World!=null&&s.area==s.world)
+            {
+                if(MapId!=NativeFallenRules.Map)
+                {
+                    ChangeFinalMap(NativeFallenRules.Layout());
+                    SpawnExpeditionBoss(NativeFallenBoss.Archetype);
+                    ConfigureFallenBattle();
+                    return;
+                }
+                StepFallenBattle();
+                Expedition.UpdateBossHealth(s.area,expeditionBoss,Pve.Boss.Hp,Pve.MaxHp);
+                RecordExpeditionDeaths();
+                if(ZoneBoss.deathAt>=0&&Time-ZoneBoss.deathAt>=NativeFallenRules.DeathSeconds)
+                {
+                    var world=GeneratedRun.World.Area;
+                    if(Expedition.FinalDefeated(world.bossPoints[0].Position))
+                    {
+                        AwardBossClear("noctiel");
+                        ChangeFinalMap(world);
+                    }
+                }
+                return;
+            }
             RecordExpeditionDeaths();StepReviveMachine();s=run.Snapshot();if(!s.members.Any(m=>m.alive&&m.connected&&!m.extracted))return;
             StepExpeditionReprints();StepHubPopulation();
             if(s.phase==ExpeditionPhase.Instance)
@@ -274,12 +298,34 @@ namespace ChipArena.UnityConversion
             }
             StepZoneHazards();StepZoneEvents();StepPveServices();StepPveHorde();StepPveAcid();
         }
+        // The cohort and reward ledger stay in the world area. Its authoritative map and
+        // frame generation change together, so returning and reconnecting use the normal map load.
+        private void ChangeFinalMap(ExpeditionAreaLayout area)
+        {
+            var vitals=Members().ToDictionary(p=>p.Seat.id,p=>(p.Hp,p.Mana,p.Stamina,p.Ammo));
+            var director=Expedition;
+            ExpeditionMap(area.map);
+            BindExpeditionCombat(director,area,JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
+            RestoreExpeditionMembers();
+            int index=0;
+            foreach(var p in Members())
+            {
+                if(vitals.TryGetValue(p.Seat.id,out var v))
+                {p.Hp=area.map!=NativeFallenRules.Map&&v.Hp<=0&&ExpeditionMemberFor(p)?.alive==true?(float)p.Stats["hp"]:v.Hp;p.Mana=v.Mana;p.Stamina=v.Stamina;p.Ammo=v.Ammo;}
+                var point=area.map==NativeFallenRules.Map?area.doors[0].entries[index]:area.bossPoints[0];
+                var offset=area.map==NativeFallenRules.Map?Vector3.zero:new Vector3((index%4-1.5f)*1.8f,0,-3-index/4*1.8f);
+                p.Body.position=Vec(point.Position)+offset+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);
+                p.Yaw=point.yaw;index++;
+            }
+            Physics.SyncTransforms();
+            SyncExpeditionInventory();
+        }
         private void SpawnExpeditionBoss(string id)
         {
             foreach(var mob in Minions.Where(m=>hubMobs.ContainsKey(m.Id)).ToArray())RemoveMinion(mob,false);hubMobs.Clear();Pve.Cap=NativeExpeditionMutators.Cap(ActiveMutators,8);
             var s=Expedition.Session.Run.Snapshot();var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)),s.loop,s.phase==ExpeditionPhase.Instance);
             var point=expeditionArea.bossPoints[0];var boss=Pve.Boss;Pve.MaxHp=NativePveRules.BossHp(Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.health;
-            if(MapId==NativeBackroomsGenerator.InstanceMap)Pve.MaxHp*=1.1f;else if(MapId==NativePoolroomsGenerator.InstanceMap)Pve.MaxHp*=1.25f;
+            if(MapId==NativeFallenRules.Map)Pve.MaxHp*=NativeFallenBoss.HealthScale;else if(MapId==NativeBackroomsGenerator.InstanceMap)Pve.MaxHp*=1.1f;else if(MapId==NativePoolroomsGenerator.InstanceMap)Pve.MaxHp*=1.25f;
             boss.Stats["hp"]=Pve.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.damage;boss.Hp=Pve.MaxHp;boss.Seat.alive=true;
             SetBossHidden(false);boss.Body.position=Vec(point.Position)+Vector3.up*NativeLocomotionRules.HalfHeight;boss.Yaw=point.yaw;Pve.Stage="boss";Pve.Phase=1;Pve.Floor=Pve.MaxHp*.75f;
             string archetype=NativeZoneBossRules.RuntimeEnabled?NativeZoneBossRules.Archetype(MapId)??"siren":"siren";if(archetype!="siren"){var position=archetype==NativeZoneBossRules.Station?new Vector3(0,0,1.5f):Vec(point.Position);SpawnZoneBoss(archetype,position,archetype==NativeZoneBossRules.Station?0:90);}

@@ -6,6 +6,55 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
+        public void ValidateGeneratedFinal(ExpeditionRunBundle bundle)
+        {
+            void Check(bool ok,string what){if(!ok)throw new InvalidOperationException("Generated NOCTIEL: "+what);}
+            var world=bundle.World.Area;
+            var run=NativeExpedition.Create("final-fixture",world.id,"host","pistol",17,
+                bundle.Layout.instances.Select(id=>new ExpeditionInstance{id=id,target=1}).ToArray());
+            Check(run.Join("guest","pistol"),"guest joins");
+            run.DisableAccountXp();
+            run.EnableAreas();
+            foreach(var id in bundle.Layout.instances)
+            {
+                var area=run.ForArea(id);
+                Check(run.MoveMembers(world.id,id,new[]{"host","guest"}),"enter rolled area");
+                Check(area.Progress("quota",1)&&area.StartBosses(new[]{"fixture"})&&area.DefeatBoss("fixture"),"clear rolled area");
+                Check(run.MoveMembers(id,world.id,new[]{"host","guest"}),"return to city");
+            }
+            Match.Seats.Add(new NativeSeat{id=900,name="Hidden boss",spec="siren",bot=true,team=1,AuthorityBoss=true});
+            ExpeditionMap(world.map);
+            var session=new ExpeditionSession(run,Content);
+            session.Sources.Seat=id=>id=="host"?1:2;
+            var director=new ExpeditionDirector(session,bundle.Layout,id=>Vec(Pilots.Single(p=>p.Seat.id==session.Sources.Seat(id)).Body.position-Vector3.up*NativeLocomotionRules.HalfHeight),ExpeditionVisible,100,100,60);
+            BindExpeditionCombat(director,world,JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
+            LocalId=1;
+            var gate=world.bossTrigger;
+            Local.Body.position=new Vector3(gate.x,gate.y+NativeLocomotionRules.HalfHeight,gate.z);
+            Check(director.TryBeginFinal(),"unlocked north court starts final");
+            StepExpeditionCombat();
+            Check(MapId==NativeFallenRules.Map&&ZoneBoss?.fallen?.hush.Length==2&&Pve.Holding,"party enters Still Water");
+            var late=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=NetworkFrame()})).frame;
+            Check(late.map==NativeFallenRules.Map&&late.pve.zoneBoss.fallen.hush.All(h=>h.lives==5)&&late.Valid(Content),"fresh replica snapshot");
+            PveHoldTick(Pve.HoldDuration+1);
+            var local=Local;
+            FallenDied(local);local.Hp=0;
+            RecordExpeditionDeaths();
+            Check(run.Snapshot().members.All(p=>p.alive),"remaining life keeps run active");
+            Match.SynchronizeExpeditionClock(Time+3.1f);FallenLives();
+            Check(local.Hp>0,"life returns pilot");
+            zoneBossActor.Hp=0;
+            StepExpeditionCombat();
+            Check(run.Snapshot().phase==ExpeditionPhase.FinalBoss,"death scene finishes before victory");
+            Match.SynchronizeExpeditionClock(Time+NativeFallenRules.DeathSeconds+.1f);
+            StepExpeditionCombat();StepExpeditionCombat();
+            var result=run.Snapshot();
+            string key="0:"+world.id+":final:boss";
+            Check(MapId==world.map&&result.phase==ExpeditionPhase.Victory&&result.dice.Count(d=>d.boss==key)==1&&
+                result.rewards.Count(r=>r.id.StartsWith(key+":",StringComparison.Ordinal))==2,"one final payout, back in the court");
+            Check(run.VoteContinue("host",true)&&run.VoteContinue("guest",true)&&run.AdvanceWhenReady()&&run.Snapshot().loop==1,"both votes start a fresh loop");
+        }
+
         public void ValidateExpeditionM1Combat()
         {
             void Check(bool ok,string why){if(!ok)throw new Exception("Expedition M1 combat: "+why);}

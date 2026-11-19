@@ -300,7 +300,7 @@ namespace ChipArena.UnityConversion
         private void ChooseChip(int seat,string chip){if(server!=null)SendServer(new NativeNetMessage{type="chip",chip=chip});else match.Choose(seat,chip);}
         // Vote to skip the cutscene playing (Core NativeCutsceneSkip): a guest asks the host; the host and a solo pilot vote at once.
         private void VoteSkipCutscene(){if(server!=null)SendServer(new NativeNetMessage{type="skip-vote"});else if(arena?.Local!=null)arena.VoteSkip(arena.Local.Seat.id);}
-        private void ChoosePveChip(int pick,string chip){if(server!=null)SendServer(new NativeNetMessage{type="pve-pick",pick=pick,chip=chip});else arena.ChoosePve(arena.Local,pick,chip);}
+        private void ChoosePveChip(int pick,string chip){if(server!=null)SendServer(new NativeNetMessage{type="pve-pick",pick=pick,chip=chip,epoch=networkEpoch,generation=arena.Generation,areaIdentity=ExpeditionView?.areaIdentity});else arena.ChoosePve(arena.Local,pick,chip);}
         private void PveOpen(bool open){if(server!=null)SendServer(new NativeNetMessage{type=open?"pve-open":"pve-close"});else if(open)arena.OpenPvePick(arena.Local);else arena.ClosePvePick(arena.Local);}
     }
 }

@@ -71,7 +71,9 @@ namespace ChipArena.UnityConversion
         public static string RewardBoss(string rewardId,ExpeditionLayout layout)
         {
             if(string.IsNullOrEmpty(rewardId)||layout?.areas==null)return null;var parts=rewardId.Split(':');if(parts.Length<4)return null;
-            var area=layout.Area(parts[1]);if(area==null)return null;return NativeZoneBossRules.Archetype(area.map)??"siren";
+            var area=layout.Area(parts[1]);if(area==null)return null;
+            if(area.id==layout.world&&area.map==NativeExpeditionGeneratedWorld.MapId&&parts[2]=="final"&&parts[3]=="boss")return NativeFallenBoss.Archetype;
+            return NativeZoneBossRules.Archetype(area.map)??"siren";
         }
         /// <summary>The rare drop: with <see cref="DropChance"/> one of the boss's relics the pilot may take (`eligible`), else null. The chance is drawn first, always.</summary>
         public static string Drop(string boss,Func<string,bool> eligible,Func<double> random)

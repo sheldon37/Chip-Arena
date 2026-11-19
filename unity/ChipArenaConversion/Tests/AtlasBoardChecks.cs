@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
             Check(T.Live==1&&T.All.Select(t=>t.Id).Distinct().Count()==T.All.Length,"City alone is live (Q3); ids are distinct");
             Check(city.Label=="CITY · MERIDIAN"&&T.MenuLine=="TILESET: CITY · MERIDIAN","the label and the Expeditions screen's line");
             var row=Enumerable.Range(0,4).Select(c=>T.Cell(city,c)).ToArray();
-            Check(row.SequenceEqual(new[]{"CITY · MERIDIAN","THE INFECTED","3 INSTANCES","THE SIREN"}),"line 1 reads the plan's row ("+string.Join(" | ",row)+")");
+            Check(row.SequenceEqual(new[]{"CITY · MERIDIAN","THE INFECTED","3 INSTANCES",NativeFallenBoss.Name}),"line 1 reads the plan's row ("+string.Join(" | ",row)+")");
             Check(T.Columns.SequenceEqual(new[]{"TILESET","ENEMIES","INSTANCES","FINAL"})&&T.Lines==4,"four columns and four lines");
             Check(T.Cell(null,0)==T.NotInService&&T.Cell(null,1)==""&&T.Cell(null,2)==""&&T.Cell(null,3)==""&&T.NotInService=="NOT IN SERVICE","an empty line: NOT IN SERVICE, no invented names or dates");
             foreach(var t in T.All)

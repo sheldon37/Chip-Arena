@@ -157,7 +157,7 @@ namespace ChipArena.UnityConversion
                 if(!NativeMapRules.ArenaSelectable(Map))
                 {
                     var layout=GeneratedRun?.Layout??NativeExpeditionLayout.Parse(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text);
-                    var area=layout.areas.Single(a=>a.map==MapId);
+                    var area=MapId==NativeFallenRules.Map?NativeFallenRules.Layout():layout.areas.Single(a=>a.map==MapId);
                     NativeExpeditionLayout.BindContent(area,data);
                     if(f.areaIdentity==null&&f.pve.zoneBoss!=null){data.machines=Array.Empty<PveMachine>();data.machineBlocks=Array.Empty<ContentBlock>();}
                 }

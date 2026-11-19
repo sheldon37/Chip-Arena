@@ -166,6 +166,7 @@ namespace ChipArena.UnityConversion.Editor
                 var loaded=arena.LoadExpeditionM1Layout(authored,JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
                 if(loaded.compatibility!=bundle.Identity||loaded.Area(loaded.world).map!=world.Map.id)
                     throw new Exception("Generated startup validated a different layout.");
+                arena.ValidateGeneratedFinal(bundle);
             }
             Debug.Log("PASS generated deployment blockout: seed="+room.Ticket.seed+", roll="+room.Ticket.instanceRolls+", identity="+bundle.Identity+"; native collision, Hulk routes, join circles and run/lobby ticket codec");
             return bundle;

@@ -1,3 +1,9 @@
+## 2026-11-19 — Astra: NOCTIEL at the end of the generated run and Meridian walk candidate 2
+
+Branch `codex/meridian-exits-noctiel`, from shared `0b63f095`. Claude presentation handoff: all three clears unlock the north final court. Crossing its trigger takes the world party into Still Water for NOCTIEL's existing arrival, phases and death sequence. Show NOCTIEL and Still Water on THE LAST FIGHT. After the death sequence the party returns to the court with the final rewards there and its usual continue/extract choices. The world cohort keeps its ticket and the authoritative map generation changes. The direct Boss Battle and Ward Zero retain their own encounters.
+
+The five size-B Developer walks have separate gate approaches, including stepped boulevards, alleys and covered arcades. North still ends at the court. `--layered-walk` prints signed heading, height and width at 5 m intervals for each of the 20 exits and checks corridor clearance, gate-to-hall length and roof access. Dress the exits after the owner's walk. Expedition Blind Pick remains Claude's separate change.
+
 ## 2026-11-19 — Claude: the ATLAS board counts a run's destinations, 3, not the pool of 5 (owner report; presentation only)
 
 Branch `claude/atlas-instance-count` from shared. Owner, on the station's board reading "5 INSTANCES": "Dont we only roll 3 instances + 1 final boss?"

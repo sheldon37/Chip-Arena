@@ -104,8 +104,11 @@ namespace ChipArena.UnityConversion
             var originalMaps=content.maps;
             var bundle=ExpeditionRunBundle.Build(room.Ticket,content,layoutJson);
             Check(ReferenceEquals(content.maps,originalMaps)&&!content.maps.Any(m=>m.id==NativeExpeditionGeneratedWorld.MapId),"bundle leaves shipped map catalogue unchanged");
-            Check(!ReferenceEquals(bundle.Content,content)&&bundle.Content.maps.Length==content.maps.Length+1+(bundle.Backrooms==null?0:1)+(bundle.Poolrooms==null?0:1),"run owns a detached map catalogue");
+            Check(!ReferenceEquals(bundle.Content,content)&&bundle.Content.maps.Length==content.maps.Length+2+(bundle.Backrooms==null?0:1)+(bundle.Poolrooms==null?0:1),"run owns a detached map catalogue");
             Check(bundle.Identity==ExpeditionRunBundle.Build(room.Ticket,content,layoutJson).Identity,"host and guest reconstruct identical full run identity");
+            Check(bundle.Content.Map(NativeFallenRules.Map).id==NativeFallenRules.Layout().map&&
+                NativeBossChips.RewardBoss("0:"+bundle.Layout.world+":final:boss:0",bundle.Layout)==NativeFallenBoss.Archetype,
+                "the generated finale reconstructs Still Water and awards NOCTIEL relics");
             var lockRoom=ExpeditionDeploymentRoom.Restore(room.Ticket,"host",layout,content);
             Check(lockRoom.Execute("host",lockRoom.Snapshot().revision,ExpeditionDeploymentIntent.Deploy,true,bundle.Identity),"deploy binds actual generated bundle identity");
             var locked=ExpeditionRunBundle.Build(lockRoom.Ticket,content,layoutJson);

@@ -22,6 +22,7 @@ internal static class LayeredCityWalkChecks
                 throw new Exception("Unreachable city layout");
         }
         if (hands.Count != 6) throw new Exception("Missing hall assignment");
+        var exitProfiles = new HashSet<string>();
         foreach (int mode in new[] { 0, 1, 2 })
         {
             bool curated = mode == 2, large = mode != 0;
@@ -70,7 +71,16 @@ internal static class LayeredCityWalkChecks
                         start = end;
                     }
                 }
-                if (curated) MeasureCorridors(walk);
+                if (curated)
+                {
+                    for (int side = 0; side < 4; side++)
+                    {
+                        string profile = ExitProfile(walk.Routes[side], side);
+                        if (!exitProfiles.Add(profile)) throw new Exception("Duplicate gate approach: " + walk.Map.name);
+                        Console.WriteLine(walk.Map.name + " / " + walk.Routes[side].Name + " (heading/height/width, every 5 m): " + profile);
+                    }
+                    MeasureCorridors(walk);
+                }
                 if (map.nav.links.Length != map.nav.nodes.Length - 1 + (curated ? 4 : 0)) throw new Exception("Disconnected corridor trace");
                 minBlocks = Math.Min(minBlocks, map.blocks.Length);
                 maxBlocks = Math.Max(maxBlocks, map.blocks.Length);
@@ -80,6 +90,23 @@ internal static class LayeredCityWalkChecks
             Console.WriteLine("PASS layered city " + (large ? "B" : "A") + (curated ? " · 5 candidates · " : " · 8 seeds · ")
                 + minBlocks + "–" + maxBlocks + " blocks · up to " + maxNodes + " corridor nodes");
         }
+    }
+
+    private static string ExitProfile(NativeLayeredCityWalk.Route route, int side)
+    {
+        var samples = new List<string>();
+        float relief = 0;
+        for (int station = 0; station <= 60; station += 5)
+        {
+            route.Sample(station, out var foot, out var direction, out float width);
+            double angle = Math.Atan2(direction.x, direction.z) * 180 / Math.PI - side * 90;
+            angle -= 360 * Math.Floor((angle + 180) / 360);
+            samples.Add(FormattableString.Invariant($"{angle:F0}/{foot.y:F1}/{width:F0}"));
+            if (station <= 40) relief = Math.Max(relief, Math.Abs(foot.y));
+        }
+        if (samples.Count != 13 || relief < 6.99f || relief > 14.01f)
+            throw new Exception("Gate lacks its early relief: " + route.Name + " " + relief);
+        return string.Join(" ", samples);
     }
 
     // Isolate graph work from Unity physics and perception. Four independent destination

@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
             if(Pve==null||Pve.Holding||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return false;var pick=id==0?row.Picks.FirstOrDefault():row.Picks.Find(x=>x.Id==id);if(pick==null)return false;
             if(pick.Offers==null)RollPveOffers(p,pick);row.Open=pick;row.ThinkAt=Time+2+(float)Pve.EconomyRandom.Next()*4;return true;
         }
-        public void ClosePvePick(NativePilot p){if(Pve!=null&&Pve.Rows.TryGetValue(p.Seat.id,out var row))row.Open=null;}
+        public void ClosePvePick(NativePilot p){if(!(Expedition!=null&&ZoneBoss?.fallen?.draftAt>=0)&&Pve!=null&&Pve.Rows.TryGetValue(p.Seat.id,out var row))row.Open=null;}
         private void RollPveOffers(NativePilot p,NativePvePick pick)
         {
             bool rainbow=pick.Tier=="rainbow";var weights=Pve.Content.offerWeights.First(x=>x.id==pick.Tier).weights.ToDictionary(x=>x.name,x=>x.value);
@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
             // A boss's own pick (NOCTIEL's draft): rarely, one of that boss's relics.
             if(pick.Source=="boss"&&ZoneBoss?.archetype!=null){var offered=pick.Offers;var eligible=NativeContentRules.Eligible(Content,p.Seat.spec,p.Seat.chips,p.Seat.bot?"":p.Seat.weaponTechniques??"");
                 pick.Offers=NativeBossChips.Place(offered.ToArray(),NativeBossChips.Drop(ZoneBoss.archetype,chip=>!offered.Contains(chip)&&ImplementedChip(Content.Chip(chip))&&eligible.Any(c=>c.id==chip),Pve.EconomyRandom.Next),count).ToList();}
-            if(!p.Seat.bot&&!rainbow&&!BossOpening&&pick.Source!=NativeBossPicks.Source&&Pve.EconomyRandom.Next()<.3){var available=Pve.Content.moneyChips.Where(c=>!p.Seat.chips.TryGetValue(c.id,out int n)||n<c.max).ToArray();if(available.Length>0){var tiers=Content.rarities.Where(r=>weights.TryGetValue(r.id,out double w)&&w>0&&available.Any(c=>c.rarity==r.id)).Select(r=>new NumberValue{name=r.id,value=weights[r.id]}).ToArray();string tier=tiers.Length>0?NativePveRules.Weighted(tiers,Pve.EconomyRandom.Next):null;var pool=tier!=null?available.Where(c=>c.rarity==tier).ToArray():available;if(pool.Length==0)pool=available;var chosen=pool[Math.Min(pool.Length-1,(int)(Pve.EconomyRandom.Next()*pool.Length))];if(pick.Offers.Count>=count)pick.Offers.RemoveAt(pick.Offers.Count-1);pick.Offers.Add(chosen.id);}}
+            if(Expedition==null&&!p.Seat.bot&&!rainbow&&!BossOpening&&pick.Source!=NativeBossPicks.Source&&Pve.EconomyRandom.Next()<.3){var available=Pve.Content.moneyChips.Where(c=>!p.Seat.chips.TryGetValue(c.id,out int n)||n<c.max).ToArray();if(available.Length>0){var tiers=Content.rarities.Where(r=>weights.TryGetValue(r.id,out double w)&&w>0&&available.Any(c=>c.rarity==r.id)).Select(r=>new NumberValue{name=r.id,value=weights[r.id]}).ToArray();string tier=tiers.Length>0?NativePveRules.Weighted(tiers,Pve.EconomyRandom.Next):null;var pool=tier!=null?available.Where(c=>c.rarity==tier).ToArray():available;if(pool.Length==0)pool=available;var chosen=pool[Math.Min(pool.Length-1,(int)(Pve.EconomyRandom.Next()*pool.Length))];if(pick.Offers.Count>=count)pick.Offers.RemoveAt(pick.Offers.Count-1);pick.Offers.Add(chosen.id);}}
         }
         public ContentChip PveChip(string id)=>Content.chips.FirstOrDefault(c=>c.id==id)??Pve?.Content.moneyChips.FirstOrDefault(c=>c.id==id);
         public bool ChoosePve(NativePilot p,int pickId,string chip)
@@ -62,6 +62,7 @@ namespace ChipArena.UnityConversion
             if(Pve==null||Pve.Holding||!Pve.Rows.TryGetValue(p.Seat.id,out var row)||row.Open?.Id!=pickId||row.Open.Offers==null||!row.Open.Offers.Contains(chip))return false;var definition=PveChip(chip);if(definition==null||definition.rarity=="siren")return false;
             if(chip.StartsWith("mishima-")&&!Dev(p,"emperor")||chip.StartsWith("arcade-")&&!Dev(p,"ansatsuken")||chip.StartsWith("l44t-")&&!Dev(p,"leet")||chip.StartsWith("bomb-")&&!Dev(p,NativeBombs.Spec))return false;
             bool money=definition.mechanic=="pve-money";p.Seat.chips.TryGetValue(chip,out int count);if(count>=definition.max||!money&&!NativeContentRules.Eligible(Content,p.Seat.spec,p.Seat.chips,p.Seat.bot?"":p.Seat.weaponTechniques??"").Any(c=>c.id==chip)){RollPveOffers(p,row.Open);return false;}
+            if(Expedition!=null&&(row.Open.Source!="boss"||!Expedition.Session.Run.InstallFinalDraft(ExpeditionMemberFor(p)?.account,ZoneBoss.phase,chip,definition.max)))return false;
             Emit(EventKind.Install,p,p.Seat.id,p.Body.position,count+1,chip);p.Seat.chips[chip]=count+1;RefreshLiveStats(p);row.Picks.Remove(row.Open);row.Open=null;if(row.Picks.Count>0)OpenPvePick(p);return true;
         }
         private void RefreshLiveStats(NativePilot p)
