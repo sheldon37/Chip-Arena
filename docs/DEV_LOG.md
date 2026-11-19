@@ -1,3 +1,31 @@
+## 2026-11-19 — Claude: release 1 of the expedition overhaul (the drop), merged and released (integrator)
+
+Branch `claude/release-1` (from shared `a0cd68e5`) merged into shared `9f60571f` (the builder at `9f60571f`), test channel revision `639307063943100212` (build `42561245`). Owner-approved plan `docs/EXPEDITION-OVERHAUL.md`; status: merged and released to the test channel.
+
+- **In it:**
+  - Astra's A0 (PR #412, `codex/expedition-a0` `ac4b6b39`), through W4;
+  - W4 `claude/exp-w4-crash` `1c3b0c12`;
+  - W3 `claude/exp-w3-eject` `8ca81329`;
+  - W2 `claude/exp-w2-atlas` `ef674d15`;
+  - W0 `claude/exp-w0-groundwork` `954ce0ec`;
+  - V0 `claude/voxel-v0-guard` `43000d58`.
+- **Integration choices:**
+  - `NativeExpeditionLoadFixture.cs` (added by both A0 and Astra's size-B walks) is shared's extended copy.
+  - `PodGhost` keeps W3's `!PodRideActive` guard. W3's own ride stays off, and W4's braced cabin second is the drop's ride beat (owner to confirm).
+  - `SpawnPlace` takes W3's lobby case before W4's pod.
+  - The deploy camera keeps ATLAS's pinned board line, with the eject's cut-in shots overriding it.
+  - W3's ride pins follow A0's opening (W4's suggested re-pins: `PodOpening`, `ImpactOf(0,opening)`, the short ride 0.6 s).
+  - The voxel ratchet takes five new pins with their notes (`--voxel-ratchet-repin`): the chip install's two draft files and its shards, A0's load preview (a model-forcing gate), and W4's cabin seat pose.
+- **Checks:**
+  - Full CoreTests as relgen5 runs them: 1,058 groups, exit 0, without W0 at `f6663437`; 1,059 groups, exit 0, at `22024192`.
+  - The pinned Unity compile passes.
+  - The pin scan flagged 6 test-pinned lines the branches changed on purpose (for example the rooftop's weapon queue under V0's P9); the suite passes.
+- **W0's Low-tier frame tail, bisected before the merge** (run9 on its probe `e9f60ec0`, Editor): every W0 change off, p95 9.1 / 9.0 ms; all on, 9.4 / 9.5. The 3–4 ms tail seen in run8 did not reproduce; the rows are in `docs/EXPEDITION-DEPLOYMENT.md`.
+- **Not run:** host and guest at GO, a late joiner, the killcam and a spectator (the M1 rows in PROJECT_STATE); a Windows player run; the sounds heard in game.
+- **Owner decisions open:**
+  - the city's triangle budget: accept the baselines, or cut the skyline mesh (about -540k triangles at High). CoreTests holds no growth meanwhile;
+  - W4's cabin second as the ride beat.
+
 ## 2026-11-18 — Claude: the chip install's fix pass, the reviewers' eleven findings (owner report; presentation only)
 
 Branch `claude/chip-install-anim`, shared merged in at `0f2aef17`; code at `e3f25260`. The owner's request is the same: "we need to improve the animation when the player model "installs" the chip. Please review, improve drastically, and update." Status: implemented on the branch and pushed; not merged, not released.
