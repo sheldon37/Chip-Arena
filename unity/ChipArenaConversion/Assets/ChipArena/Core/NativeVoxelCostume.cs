@@ -258,7 +258,7 @@ namespace ChipArena.UnityConversion
                 // Each triangle goes to the main renderer or, when its paint glows, the glow renderer; its vertices with it.
                 var into=new int[m.Positions.Count];for(int i=0;i<into.Length;i++)into[i]=-1;
                 var glowInto=new int[m.Positions.Count];for(int i=0;i<glowInto.Length;i++)glowInto[i]=-1;
-                uint seed=Hash((uint)(part.Index*7919+part.Bone*104729+skin*31+tier));
+                uint seed=Hash((uint)(part.Index*7919+part.Bone*104729+skin*31+tier));int mainBone=-1,glowBone=-1;
                 for(int t=0;t+2<m.Indices.Count;t+=3)
                 {
                     bool glows=Glows(m,m.Indices[t]);var target=glows?build.Glow:build.Main;var map=glows?glowInto:into;
@@ -269,7 +269,9 @@ namespace ChipArena.UnityConversion
                         {
                             fit.Place(kind,part.Bone,m.Positions[v],m.Normals.Count>v?m.Normals[v]:Vector3.UnitY,min,max,out var at,out var normal);
                             map[v]=target.Positions.Count;target.Positions.Add(at);target.Normals.Add(normal);target.Part.Add(part.Index);
-                            target.Bone.Add(BoneIndex(target,joints[part.Bone].Bone));
+                            // (The part's bone found once a renderer, in first-use order: the lists come out as before.)
+                            int bi=glows?glowBone>=0?glowBone:glowBone=BoneIndex(target,joints[part.Bone].Bone):mainBone>=0?mainBone:mainBone=BoneIndex(target,joints[part.Bone].Bone);
+                            target.Bone.Add(bi);
                             Paint(build,palette,m,v,glows,seed,out var uv,out var layer);target.Uv.Add(uv);target.Colors.Add(layer);
                         }
                         target.Indices.Add(map[v]);
@@ -312,7 +314,7 @@ namespace ChipArena.UnityConversion
             foreach(var (arm,elbow) in new[]{(CapturedRig.LArm,CapturedRig.LElbow),(CapturedRig.RArm,CapturedRig.RElbow)})
             {
                 var axis=SafeUnit(j[elbow].At-j[arm].At,-Vector3.UnitY);var at=j[arm].At+axis*BandDropOnCostume;
-                float r=Ring(build,at,axis,j[arm].Bone);if(r>0){sum+=r;n++;}
+                float r=Ring(Triangles(build,j[arm].Bone),at,axis);if(r>0){sum+=r;n++;}
             }
             build.BandRadius=n>0?sum/n+BandClear:0;
         }
@@ -343,30 +345,39 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The mean distance from the axis point `at` (direction `axis`) out to the costume's surface, over eight
         /// directions round it, on the triangles riding bone `bone` (0 where none is hit within 30 cm).</summary>
-        public static float Ring(CostumeBuild build,Vector3 at,Vector3 axis,string bone)
+        public static float Ring(CostumeBuild build,Vector3 at,Vector3 axis,string bone)=>Ring(Triangles(build,bone),at,axis);
+        /// <summary>The triangles riding bone `bone` (any for null), corner by corner.</summary>
+        public static List<Vector3> Triangles(CostumeBuild build,string bone)
         {
-            var up=SafeUnit(axis,Vector3.UnitY);var u=SafeUnit(Vector3.Cross(up,Math.Abs(up.Y)<.9f?Vector3.UnitY:Vector3.UnitX),Vector3.UnitX);var w=Vector3.Cross(up,u);float sum=0;int n=0;
-            for(int k=0;k<8;k++)
-            {
-                float ang=k*(float)Math.PI/4;var dir=u*(float)Math.Cos(ang)+w*(float)Math.Sin(ang);
-                if(Surface(build,at,dir,bone,out float hit)&&hit<.3f){sum+=hit;n++;}
-            }
-            return n>0?sum/n:0;
-        }
-        /// <summary>How far from `from` along the unit direction `dir` the costume's surface lies (its farthest crossing on the
-        /// triangles riding `bone`, any bone for null): where the ray leaves the blocks. False when it crosses none.</summary>
-        public static bool Surface(CostumeBuild build,Vector3 from,Vector3 dir,string bone,out float distance)
-        {
-            distance=0;bool hit=false;
+            var o=new List<Vector3>();
             foreach(var m in new[]{build.Main,build.Glow})
             {
                 int bi=bone==null?-1:m.Bones.IndexOf(bone);if(bone!=null&&bi<0)continue;
                 for(int t=0;t+2<m.Indices.Count;t+=3)
                 {
                     int a=m.Indices[t],b=m.Indices[t+1],c=m.Indices[t+2];if(bi>=0&&(m.Bone[a]!=bi||m.Bone[b]!=bi||m.Bone[c]!=bi))continue;
-                    if(Ray(from,dir,m.Positions[a],m.Positions[b],m.Positions[c],out float h)&&h>distance){distance=h;hit=true;}
+                    o.Add(m.Positions[a]);o.Add(m.Positions[b]);o.Add(m.Positions[c]);
                 }
             }
+            return o;
+        }
+        private static float Ring(List<Vector3> tris,Vector3 at,Vector3 axis)
+        {
+            var up=SafeUnit(axis,Vector3.UnitY);var u=SafeUnit(Vector3.Cross(up,Math.Abs(up.Y)<.9f?Vector3.UnitY:Vector3.UnitX),Vector3.UnitX);var w=Vector3.Cross(up,u);float sum=0;int n=0;
+            for(int k=0;k<8;k++)
+            {
+                float ang=k*(float)Math.PI/4;var dir=u*(float)Math.Cos(ang)+w*(float)Math.Sin(ang);
+                if(Surface(tris,at,dir,out float hit)&&hit<.3f){sum+=hit;n++;}
+            }
+            return n>0?sum/n:0;
+        }
+        /// <summary>How far from `from` along the unit direction `dir` the costume's surface lies (its farthest crossing on the
+        /// triangles riding `bone`, any bone for null): where the ray leaves the blocks. False when it crosses none.</summary>
+        public static bool Surface(CostumeBuild build,Vector3 from,Vector3 dir,string bone,out float distance)=>Surface(Triangles(build,bone),from,dir,out distance);
+        private static bool Surface(List<Vector3> tris,Vector3 from,Vector3 dir,out float distance)
+        {
+            distance=0;bool hit=false;
+            for(int t=0;t+2<tris.Count;t+=3)if(Ray(from,dir,tris[t],tris[t+1],tris[t+2],out float h)&&h>distance){distance=h;hit=true;}
             return hit;
         }
         /// <summary>A point seated on the costume: `at` moved along the level line from `centre` through it until it lies
@@ -473,6 +484,8 @@ namespace ChipArena.UnityConversion
             private readonly float vHipHalf,mHipHalf,vChestHalf,mChestHalf;
             // The ankles' height on the voxel and the model; the head map.
             private readonly float vAnkle,mAnkle;private Vector3 headOrigin;private float headSize=HeadScale;
+            // The last limb part's frames and extents (Place's cache).
+            private bool limbKnown;private int limbBone;private Kind limbKind;private Vector3 limbMin,limbMax,lva,lma,lvu,lvw,lmu,lmw;private float llv,llm,ls0,ls1,lt0,lt1,lr0,lr1;
             public Fit(CostumeJoint[] joints)
             {
                 j=joints;for(int k=0;k<v.Length;k++)v[k]=VoxelJoint(k);
@@ -564,13 +577,22 @@ namespace ChipArena.UnityConversion
                     {
                         // A limb: its segment frame on the voxel (down the limb, its side, its front) to the model's, stretched
                         // along, slimmer across; a joint block and a hand rigid on their joint.
-                        bool hand=kind==Kind.Hand;int seg=hand?bone-1:bone;int end=Segment[seg];
-                        var va=SafeUnit(v[end]-v[seg],-Vector3.UnitY);var ma=SafeUnit(j[end].At-j[seg].At,-Vector3.UnitY);
-                        Frame(va,out var vu,out var vw);Frame(ma,out var mu,out var mw);
+                        bool hand=kind==Kind.Hand;
+                        // (The part's frames and extents, the same for each of its vertices: worked out once a part, as the
+                        // Editor's Mono runs this ten times slower than .NET; review 2026-11-19 measured the first wear's fit.)
+                        if(!limbKnown||limbBone!=bone||limbKind!=kind||limbMin!=min||limbMax!=max)
+                        {
+                            limbKnown=true;limbBone=bone;limbKind=kind;limbMin=min;limbMax=max;int seg=hand?bone-1:bone;int end=Segment[seg];
+                            lva=SafeUnit(v[end]-v[seg],-Vector3.UnitY);lma=SafeUnit(j[end].At-j[seg].At,-Vector3.UnitY);
+                            Frame(lva,out lvu,out lvw);Frame(lma,out lmu,out lmw);
+                            llv=(v[end]-v[seg]).Length();llm=(j[end].At-j[seg].At).Length();
+                            ls0=Ext(min,max,lvu,false);ls1=Ext(min,max,lvu,true);lt0=Ext(min,max,lva,false);lt1=Ext(min,max,lva,true);lr0=Ext(min,max,lvw,false);lr1=Ext(min,max,lvw,true);
+                        }
+                        Vector3 va=lva,ma=lma,vu=lvu,vw=lvw,mu=lmu,mw=lmw;
                         float girth=bone>=CapturedRig.LHip?LegGirth:ArmGirth;if(hand)girth=HandScale;
-                        float lv=(v[end]-v[seg]).Length(),lm=(j[end].At-j[seg].At).Length();
+                        float lv=llv,lm=llm;
                         float s=Vector3.Dot(p,vu),t=-Vector3.Dot(p,-va),r=Vector3.Dot(p,vw);
-                        float s0=Ext(min,max,vu,false),s1=Ext(min,max,vu,true),t0=Ext(min,max,va,false),t1=Ext(min,max,va,true),r0=Ext(min,max,vw,false),r1=Ext(min,max,vw,true);
+                        float s0=ls0,s1=ls1,t0=lt0,t1=lt1,r0=lr0,r1=lr1;
                         float sa=1,ta=1,ra=1;float ss=Span(s,s0,s1,s0*girth,s1*girth,out sa),rr=Span(r,r0,r1,r0*girth,r1*girth,out ra),tt;
                         // (The shin's segment reaches ShinTuck past the model's ankle, into the boot.)
                         if(bone==CapturedRig.LKnee||bone==CapturedRig.RKnee)lm+=ShinTuck;
