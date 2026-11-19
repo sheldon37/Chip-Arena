@@ -219,7 +219,9 @@ namespace ChipArena.UnityConversion
             }
             foreach (var roof in walk.RoofHatches)
             {
+                var zone = zones.OrderBy(z => (new V3(z.Volume.x,z.Volume.y,z.Volume.z)-roof).Length).First();
                 int id = spawnRows.Count;
+                zone.Spawns = zone.Spawns.Concat(new[] { id }).ToArray();
                 var point = new PvePoint { x=roof.x, y=roof.y, z=roof.z };
                 spawnRows.Add(new ExpeditionSpawnLayout { allow=kinds, entry=new PveEntry {
                     e=id, id="survey-hatch-"+id, kind="hatch", from=point, @exit=point, clear=3, allowed=kinds } });

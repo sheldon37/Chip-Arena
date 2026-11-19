@@ -87,6 +87,7 @@ internal static class LayeredCityWalkChecks
                     if (high > GeneratedFrameChecks.GateHighTris || low > GeneratedFrameChecks.GateLowTris)
                         throw new Exception("Meridian greybox exceeds the block triangle budget");
                     Console.WriteLine($"{map.name}: greybox block-pass triangles High {high}, Low {low}");
+                    CheckEscapeClearance(map,solids);
                     MeridianHulkChecks.Run(walk);
                     MeasureCorridors(walk);
                 }
@@ -109,6 +110,35 @@ internal static class LayeredCityWalkChecks
                 pairs++;
             }
         Console.WriteLine("PASS " + pairs + " exit pairs at 2 m intervals");
+    }
+
+    private static void CheckEscapeClearance(ContentMap map, ContentBlock[] solids)
+    {
+        var flights = map.ramps.Where(r => r.id.StartsWith("fire-escape-", StringComparison.Ordinal));
+        var escapes = new HashSet<string>();
+        foreach (var r in flights)
+        {
+            string escape = r.id.Substring(0,r.id.LastIndexOf('-')) + "-";
+            escapes.Add(escape);
+            var delta = r.high-r.low;
+            int samples = (int)Math.Ceiling(delta.Length*2);
+            for (int i=0;i<=samples;i++)
+            {
+                var foot = r.low + delta*((float)i/samples);
+                foreach (var block in solids)
+                {
+                    float top = block.pos.y+block.size.y/2;
+                    if (top<=foot.y+NativeLocomotionRules.StepHeight ||
+                        top-block.size.y>=foot.y+2*NativeLocomotionRules.HalfHeight) continue;
+                    float dx=Math.Max(0,Math.Abs(block.pos.x-foot.x)-block.size.x/2);
+                    float dz=Math.Max(0,Math.Abs(block.pos.z-foot.z)-block.size.z/2);
+                    if (dx*dx+dz*dz<NativeLocomotionRules.Radius*NativeLocomotionRules.Radius &&
+                        !block.id.StartsWith(escape,StringComparison.Ordinal))
+                        throw new Exception($"{map.name} {r.id} blocked by {block.id}");
+                }
+            }
+        }
+        Console.WriteLine($"{map.name}: pilot clearance on {escapes.Count} built fire escapes");
     }
 
     private sealed class Exit

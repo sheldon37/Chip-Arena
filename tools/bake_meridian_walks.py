@@ -33,7 +33,14 @@ def bake(spec, seed):
     for b in spec["ground"] + spec["blocks"]:
         key = b["id"]
         x, z, X, Z, y, Y = [b[k] for k in ("x0", "z0", "x1", "z1", "bottom", "top")]
-        if key in doors:
+        if seed == 1058 and key == "n-lid-1":
+            # The Galleria stair passes through its lid on the way to the Leads.
+            # Keep the deck connected around a 1.5 m wide staircase opening.
+            box(key, x,z,X,90,y,Y)
+            box(key+"-north",x,96.5,X,Z,y,Y)
+            box(key+"-west",x,90,4.25,96.5,y,Y)
+            box(key+"-east",5.75,90,X,96.5,y,Y)
+        elif key in doors:
             d = doors[key]
             # Leave an actual passage below the roof at the exact mouth.
             h, w = d["height"], d["width"]/2
@@ -104,12 +111,31 @@ def bake(spec, seed):
         length = abs(b[axis]-a[axis])
         flights = max(1, math.ceil((b["y"]-a["y"])/(length*.65)))
         flights += (flights+1)%2  # finish at the specified end on the building side
+        if seed == 784 and link["id"] == "fire-escape-0":
+            # At the Navigation portal the return lane is the upper terrace itself.
+            # Climb out of the canal, walk across the terrace, then turn onto the roof.
+            emit('Ramp("fire-escape-0-0", new V3(301,-14,19.5f), new V3(316.5f,0,19.5f), 3, true);')
+            box("fire-escape-0-0-landing",316.5,18,318.5,23,-.2,0)
+            emit('Ramp("fire-escape-0-1", new V3(310,0,22), new V3(315,2,22), 3, true);')
+            box("fire-escape-0-1-landing",315,face,316.5,23.5,1.8,2)
+            continue
+        if seed == 1058 and link["id"] == "fire-escape-18":
+            flights = 3
         for i in range(flights):
             low = a.copy(); high = b.copy()
             low["y"] = a["y"]+(b["y"]-a["y"])*i/flights
             high["y"] = a["y"]+(b["y"]-a["y"])*(i+1)/flights
             if i%2: low[axis],high[axis] = b[axis],a[axis]
             low[normal] = high[normal] = a[normal]+outward*w*(i%2)
+            if seed == 1332 and link["id"] in ("fire-escape-1","fire-escape-2"):
+                # Gain the adjacent terrace height before turning onto the outside flight.
+                levels = [0,8,12,16]
+                low["y"],high["y"] = a["y"]+levels[i],a["y"]+levels[i+1]
+            if seed == 1058 and link["id"] == "fire-escape-18":
+                # Return east of the neighbouring wing in this narrow market alley.
+                stations,levels = [17,30,23,25], [0,10,14.5,16]
+                low[axis],high[axis] = stations[i:i+2]
+                low["y"],high["y"] = levels[i:i+2]
             key = link["id"]+"-"+str(i)
             emit(f'Ramp("{key}", {vec(low)}, {vec(high)}, {num(w)}, true);')
             end=high[axis]; direction=1 if end>low[axis] else -1
