@@ -372,8 +372,8 @@ namespace ChipArena.UnityConversion
                     {
                         var v=NativeDeployEject.ViewOf(r,mine,t,cut,true,true);if(!wideSeen){wide=v;wideSeen=true;}
                         Check(Vector3.Distance(v.Eye,wide.Eye)<1e-4f&&Vector3.Distance(v.Target,wide.Target)<1e-4f,"reduced effects: the wide shot is still (pad "+mine+")");
-                        var podAt=Vector3.Transform(new Vector3(0,NativeDeployEject.PodHeight*.5f,0),NativeDeployEject.PodRoot(mine,land,cut));
-                        Check(InFrame(v,podAt)&&v.Eye.Y<NativeDeployEjectModels.BellyBottom,"reduced effects: the wide shot holds my docked pod under the belly (pad "+mine+")");
+                        var dock=NativeDeployEject.PodRoot(mine,land,cut);var podTop=Vector3.Transform(new Vector3(0,NativeDeployEject.PodHeight,0),dock);var podFoot=Vector3.Transform(Vector3.Zero,dock);
+                        Check(InFrame(v,podTop)&&InFrame(v,podFoot)&&v.Eye.Y<NativeDeployEjectModels.BellyBottom,"reduced effects: the wide shot holds my whole docked pod under the belly (pad "+mine+")");
                     }
                 }
                 Check(wideSeen==(cut==NativeDeployEject.Cut.Full),"reduced effects: the wide shot plays in the full eject only");

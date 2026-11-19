@@ -64,8 +64,8 @@ namespace ChipArena.UnityConversion
         public const float SeatEyeY=1.18f,SeatEyeZ=1.12f,SeatLookY=1.04f,SeatFov=52f;
         /// <summary>Reduced effects: a still wide shot under the belly after my pilot has dropped from the room (no tube, no cabin
         /// close-up, no plunge): WideOut out from my pod along the pad arc's outward line, WideDrop under its middle, looking back
-        /// in and a little down (the docked pods across the top of the frame, the city below), held still while they drop away.</summary>
-        public const float WideOut=7.5f,WideDrop=1f,WidePitch=-.25f,WideFov=55f;
+        /// in and a little down (the docked pods whole in the upper frame, the cloud deck below), held still while they drop away.</summary>
+        public const float WideOut=7.5f,WideDrop=.3f,WidePitch=-.1f,WideFov=55f;
         /// <summary>The release shot: the eye outboard of my docked pod (out from the table, along the arc) and over its middle,
         /// level with the clamps under the belly; the tilt that keeps the falling pod above the frame's middle and the seconds
         /// the eye takes to tip down from the clamps to follow it.</summary>
