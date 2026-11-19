@@ -498,6 +498,69 @@ joiner sees none. `NativeDeployStage` draws them as camera-facing additive quads
   ready draws a dark blank. All six strips are ready about 2.6 s after the station opens.
 - **Checks:** `--deploy-sparks` (`Tests/DeploySparkChecks.cs`).
 
+### ATLAS, the tileset departures board (Claude, 2026-11-18; docs/EXPEDITION-OVERHAUL.md R1, W2)
+
+The tileset machine's board, before it has a choice. Presentation only: it shows the tileset and decides nothing (no rule,
+ticket, roll, wire or save reads it).
+
+- **Where:** a split-flap railway board, 8.4 × 1.195 m, hung on two drop rods from the ceiling beam at z 7.5 over the DEPLOY
+  gate (its face at (0, 5.28..6.475, 7.1)). The plan's wall band (centred near (0, 6.6, 8.3), 1.6 m tall) sits behind that
+  beam from the Overview, so the board hangs in front of it. It is as tall as the Overview allows: its top stays under the
+  light bar at z 6 and its bottom over the gate's DEPLOY sign, so the whole face and the sign read from the Overview (both
+  checked by ray against the room and the gate).
+- **What:** headed ATLAS · DEPARTURES, with four columns, TILESET · ENEMIES · INSTANCES · FINAL, kept apart by lit gold rules. The selected tileset is on
+  the large first line: CITY · MERIDIAN | THE INFECTED | 5 INSTANCES | THE SIREN, with its emblem flap (Meridian's skyline,
+  the clock at 6:47) and an in-service lamp in its accent. The three small, dim amber lines read NOT IN SERVICE, with no
+  names and no dates. Every cell comes from the registry, Core `NativeTilesets` (City's display fields; Astra adds the rules
+  fields in A3). The INSTANCES count is checked against the Instance Machine's real pool.
+- **The headings** are sized to read from the Overview. ATLAS is 0.13 m tall; · DEPARTURES and the column labels are 0.11 m,
+  with strokes 0.175 of their height (the station's own lettering uses a tenth). At 1080p the labels are about 9 px tall with
+  1.6 px strokes from the Overview, and 12 px with 2.2 px strokes from the board's shot. The checks pin at least 8.4 px and
+  1.45 px from the Overview.
+- **When the station opens** (each client's own clock): the emblem flap falls at 0.08 s, then line 1 clatters in left to
+  right from 0.2 s. Each flap runs 6-13 drum glyphs before its own, 52 ms apiece, and the line has landed by 1.4 s. Then a
+  two-note bell rings, sparks fly off both cheeks (machine 2) and the lamp flashes. It is an arrival, not a spin. The camera
+  opens on the board (`NativeAtlasBoard.Shot`, the TILESET card's shot) and holds until 2.8 s. Then the board hands it to the
+  Overview along a smoothstep over 1.2 s of the station's clock (`NativeAtlasBoard.ViewAt`), which the station's own ease
+  follows, so it leaves the board at rest. A roll or Deploy takes the camera as before: the board's shot and hand-off apply
+  only over the Overview, and the stage's `Shot` stays the rules' `Framing`.
+  - **The board's clock** starts on the station's second frame. The first frame's time is read before the station's scene
+    is built, and a first visit's build and first draw take a tenth of a second or more, so the arrival would otherwise
+    start part-way through (the emblem's fall skipped). Without a bake (the Editor), the clock also waits while the glyph
+    atlas rasterises on a worker (`NativeAtlasStage.Waiting`, at most 1.5 s), so the arrival never plays to a blank board.
+    A frame that jumps over a one-flap run's whole fall (the emblem's 44 ms; a first visit's station has 35-94 ms frames
+    just after it opens) shows that flap mid-fall, and the next frame shows it landed.
+- **The console:** a TILESET card, the console's first: a slim chip beside the station's title, on its kicker's line.
+  It reads ARRIVING…, then CITY · MERIDIAN and an IN SERVICE tag. The name stops short of the tag (a longer name later is
+  drawn as large as fits). The chip stays above the board's top from the Overview at every Interface scale up to 1.5. It is
+  display only: there is nothing to choose yet and it raises no intent.
+  - **The side panels step aside.** While the board holds its shot, the console's two side panels (the machines' cards,
+    display only) are not drawn. They ease back in along the hand-off, or within 0.35 s when a roll takes the camera
+    (`NativeAtlasStage.Panels`). The title, the TILESET chip and the controls stay, and the buttons stay live. At larger
+    Interface scales, 16:10 or 4:3, the panels would otherwise cover the board's left or right end in its only framed view.
+    The checks hold the board's shot clear of everything that stays, at 48 windows and Interface scales (4:3 to 32:9,
+    720p to 5K, 0.75 to 1.5).
+- **Drawn by:** Core `NativeAtlasBoard` (layout, arrival, shot, sparks, sound moments), `NativeAtlasStage` (posed in
+  `NativeDeployStage.Frame`; no per-frame allocation), `NativeAtlasModels` (the cabinet, about 6.2k triangles, and 297 flaps,
+  1.8k), `NativeAtlasArt` (one split-flap glyph atlas, 768 × 576, baked once per build in `Editor/NativeDeployCardBuild.cs`
+  under a key that changes with its inputs, else rasterised on a worker), `NativeAtlasSounds` (Claude's synthesized clatter,
+  built from the flaps' own landings, and the bell). The draw is Runtime `NativeAtlasScene`, called by `NativeDeployScene`
+  after its items. The flaps are emissive, so the station keeps its eight practicals. The sounds are `NativeAtlasAudio`:
+  `NativeAudio.Awake` calls `AtlasAwake`, which subscribes to `NativeAtlasScene.Sound` and starts both clips synthesizing on
+  workers (about 30-40 ms and 13 ms of work). A cue never synthesizes; the first cue makes both AudioClips. A cue heard late
+  (a frame's lag, a stall) starts the clatter that far in (`NativeAtlasSounds.StartAt`), so each click stays on its flap. The
+  bell rings from its strike unless it is more than a quarter second late. Astra's `NativeDeploySounds` plays machines 0
+  and 1 only and is unchanged. A board failure is logged once and turns the board off, never the station.
+- **The hook for A3:** `NativeTilesets.Selected(state)` returns City until `ExpeditionDeploymentState.tileset` exists. When the
+  selection changes, the cells that differ re-flap to the new row (`NativeAtlasStage.Retarget`). The board's pick animation and
+  the reels re-skinned from the chosen pool come later (W2, Claude, M3).
+- **Checks:** `--atlas-board` (`Tests/AtlasBoardChecks.cs`), plus the board counted in `DeployModelChecks`' 130,000-triangle
+  station total (about 92,000 with it), and machine 2 in `DeploySparkChecks` and `DeploySoundChecks`.
+- **Known limit:** from the Overview at Interface scale 1.25, the end of the console's own subtitle line ("…then deploy
+  together.") covers the board's left end: ATLAS · DEPARTURES, the lamp, the emblem and the first letters of line 1. Larger
+  scales cover more. The board's own shot is clear at every scale. Ending or wrapping that subtitle short of the board is a
+  small follow-up for the console's header.
+
 Active-run endpoint migration remains unsupported by the existing live Expedition transport (candidates remain non-capable); staging host promotion preserves the ticket. This change does not claim or enable active-run migration. The owner-authorized test update may ship with active-run migration disabled; full migration remains separate unfinished work.
 
 ## Approved gameplay shape

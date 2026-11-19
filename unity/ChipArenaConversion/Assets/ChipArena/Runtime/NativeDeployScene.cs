@@ -34,6 +34,8 @@ namespace ChipArena.UnityConversion
         private readonly string[] stripKeys=new string[6];
         private readonly Dictionary<string,Task<float[]>> tileJobs=new Dictionary<string,Task<float[]>>(StringComparer.Ordinal);
         private int stripsBuilt=-1,mapAsked=-1,mapShown=-1;
+        // ATLAS, the tileset departures board over the gate (NativeAtlasScene; null when it cannot draw here).
+        private readonly NativeAtlasScene atlas;
         private static readonly int SceneTintId=Shader.PropertyToID("_SceneTint"),BodyTintId=Shader.PropertyToID("_BodyTint"),AccentTintId=Shader.PropertyToID("_AccentTint"),GlowTintId=Shader.PropertyToID("_GlowTint"),StageLitId=Shader.PropertyToID("_StageLit");
         private static readonly int MainTexId=Shader.PropertyToID("_MainTex"),TintId=Shader.PropertyToID("_Tint"),RepId=Shader.PropertyToID("_Rep"),ScrollId=Shader.PropertyToID("_Scroll"),BlurId=Shader.PropertyToID("_Blur"),GainId=Shader.PropertyToID("_Gain");
         private static readonly int SweepId=Shader.PropertyToID("_Sweep"),ChromaId=Shader.PropertyToID("_Chroma"),HoloId=Shader.PropertyToID("_Holo"),TexelId=Shader.PropertyToID("_Texel");
@@ -67,6 +69,7 @@ namespace ChipArena.UnityConversion
             textures[NativeDeployStage.TexGlow]=Texture(NativeDeployArt.GlowTile(),NativeDeployArt.GlowPixels,NativeDeployArt.GlowPixels,"Deploy glow",false);
             textures[NativeDeployStage.TexSpark]=Texture(NativeDeployArt.SparkTile(),NativeDeployArt.SparkPixels,NativeDeployArt.SparkPixels,"Deploy spark",false);
             stampJob=Task.Run(()=>NativeDeployArt.Stack(new[]{NativeDeployArt.StampTile(false),NativeDeployArt.StampTile(true)}));
+            atlas=NativeAtlasScene.Make();
         }
         private static Material Screen(Shader shader,string name,BlendMode src,BlendMode dst,bool zwrite,int queue,int cull,bool add)
         {
@@ -189,9 +192,11 @@ namespace ChipArena.UnityConversion
                     Graphics.DrawMesh(parts[k],world,mat,0,camera,0,block,shadows?ShadowCastingMode.On:ShadowCastingMode.Off,shadows);
                 }
             }
+            atlas?.Draw(camera,Stage);
         }
         public void Dispose()
         {
+            atlas?.Dispose();
             foreach(var list in meshes)if(list!=null)foreach(var m in list)if(m!=null)CapturedAnimation.Release(m);
             foreach(var m in new[]{lit,glass,strip,additive,alpha})if(m!=null)CapturedAnimation.Release(m);
             for(int i=0;i<textures.Length;i++){if(textures[i]!=null&&textures[i]!=white)CapturedAnimation.Release(textures[i]);textures[i]=null;}if(white!=null)CapturedAnimation.Release(white);if(blank!=null)CapturedAnimation.Release(blank);

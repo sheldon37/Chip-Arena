@@ -88,6 +88,8 @@ namespace ChipArena.UnityConversion
         public NativeDeployPresentation.View Camera;public NativeDeployPresentation.Shot Shot;private bool cameraSet;
         public NativeDeployPresentation.MachineLook InstanceLook,MutatorLook;public NativeDeployPresentation.Launch Launch;public NativeDeployPresentation.DeployPose Deploy;
         public DeployControls Controls;
+        /// <summary>ATLAS, the tileset departures board (Core NativeAtlasBoard), posed each frame; the camera opens on it.</summary>
+        public readonly NativeAtlasStage Atlas=new NativeAtlasStage();
         /// <summary>The party on the pads: feet (station frame), facing (unit, xz), how much of each is shown (0 lifted away).</summary>
         public readonly Vector3[] PilotFeet=new Vector3[NativeDeployPresentation.Pads],PilotFacing=new Vector3[NativeDeployPresentation.Pads];public readonly float[] PilotShown=new float[NativeDeployPresentation.Pads];public int Pilots;
         /// <summary>The reel and dial strips (ids; the dials' textures carry NativeDeployArt.Back after them) and a version that
@@ -227,6 +229,8 @@ namespace ChipArena.UnityConversion
             // (camera shake off: steady eject shots; reduced effects: the room's shot, then a still wide one, no cabin close-up)
             Shot=NativeDeployPresentation.Framing(InstanceLook,MutatorLook,s);if(deployed&&Shot==NativeDeployPresentation.Shot.Deploy)Shot=NativeDeployEject.ShotOf(mine,since,cut,f.Reduced);
             bool cuts=NativeDeployEject.Cuts(Shot);var want=cuts?NativeDeployEject.ViewOf(Shot,mine,since,cut,Shake,f.Reduced):NativeDeployPresentation.ShotOf(Shot);
+            // ATLAS: the overview opens on the board while its line arrives, then eases off it (never over the eject's cut-in shots)
+            bool atlas=Atlas.Frame(f,Shot);if(atlas&&!cuts)want=Atlas.View;
             if(!cameraSet||!(dt>=0)||cuts){Camera=want;cameraSet=true;}
             else{float k=1-(float)Math.Exp(-dt/(Shot==NativeDeployPresentation.Shot.Deploy?.9f:.55f));Camera=new NativeDeployPresentation.View{Eye=Vector3.Lerp(Camera.Eye,want.Eye,k),Target=Vector3.Lerp(Camera.Target,want.Target,k),Fov=Camera.Fov+(want.Fov-Camera.Fov)*k};}
 

@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
             float fade=stage.Deploy.Fade;float ui=Mathf.Min(1-fade,stage.Deploy.Hud);
             if(ui>0)
             {
-                Header(W,s,ui);Destinations(stage,s,ui);Mutators(stage,s,W,ui);
+                Header(W,s,ui);NativeAtlasConsole.Card(stage,W,ui);float side=ui*NativeAtlasConsole.Side(stage);if(side>.004f){Destinations(stage,s,side);Mutators(stage,s,W,side);}
                 intent=Console(stage,s,party,host,W,Hh,now,ui);
             }
             float rush=stage.Deploy.Rush*(1-fade);if(rush>0)Rush(W,Hh,rush,stage.Reduced);

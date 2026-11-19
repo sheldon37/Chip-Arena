@@ -484,6 +484,119 @@ Code commits: `e74b0f66` (the eject and the cradle), then `8b16a367`, `e7d40d26`
   - The stuck guest capture: the preview refuses a guest's Deploy, so I sent Ctrl+P to the Editor to stop my own job. The capture option now switches to the guest's view after Deploy, and stops itself after 60 s without a Deploy or 600 frames without a shot.
   - **Next:** the owner reviews the strips and clips; then merge with W2 and W4.
 
+## 2026-11-18 — Claude: ATLAS review fixes: legible headings, its opening shot clear of the console, the sounds off the frame (owner report; presentation only)
+
+Branch `claude/exp-w2-atlas`, base shared `claude/sleepy-ritchie-g8ruhv` at `15dab150`. This entry fixes the critics' four findings on `1ca6b394` (`docs/EXPEDITION-OVERHAUL.md` W2; owner: "Yes, use defaults"). The fixes are `78dff108` and `51081c56` (the one-flap rule, from the first cold run below); this entry is a docs commit after them. Pushed, not merged.
+
+- **The headings read from the station's views** (finding 1). From the Overview at 1080p the column labels were about 4 px tall with strokes under half a pixel, and "· DEPARTURES" about 6 px.
+  - The board is now 8.4 × 1.195 m, at (0, 5.28..6.475, 7.1). That is as tall as the Overview allows: the light bar at z 6 is just over its top, and the gate's DEPLOY sign just under its bottom. Both are checked by ray.
+  - ATLAS is 0.13 m tall. "· DEPARTURES" and the column labels are 0.11 m, with strokes 0.175 of their height (the station's own lettering uses a tenth). The dim lines' flaps are 0.14 m (were 0.13).
+  - At 1080p, from the Overview, the labels are about 9.2 px tall with 1.6 px strokes, and ATLAS 10.9 px. From the board's shot they are 12.3 px with 2.2 px strokes. The checks pin at least 8.4 px and 1.45 px from the Overview.
+- **The board's opening shot is clear of the console at any layout** (finding 2).
+  - While the board holds its shot, the console's two side panels (the machines' cards, display only) step aside. They ease back in with the hand-off, or within 0.35 s when a roll takes the camera (`NativeAtlasStage.Panels`).
+  - The title, the TILESET card and the controls stay, and the buttons stay live (they keep the console's own level).
+  - A new check holds the board's shot clear of everything that stays, at 48 windows and Interface scales (4:3 to 32:9, 720p to 5K, 0.75 to 1.5).
+  - The TILESET card is now a slim chip (26 units tall) on the title's kicker line. From the Overview it stays above the board's top at every Interface scale up to 1.5; the old card covered the board's header from 1.1 up.
+- **The first visit's opening, and its sounds** (findings 3 and 4).
+  - `NativeAudio.Awake` now calls `AtlasAwake`, which subscribes and starts both clips synthesizing on workers (once a session). A cue never synthesizes. The first cue makes both AudioClips, so the bell's frame only plays; a clip not ready by its cue is skipped.
+  - A cue now carries how late its frame heard it (`NativeAtlasBoard.Cue.Late`). The clatter starts that far into its clip (`NativeAtlasSounds.StartAt`), so each click stays on its flap. The bell rings from its strike unless it is more than 0.25 s late.
+  - The board's clock starts on the station's second frame. The first frame's time is read before the station's scene is built, so a first visit's build no longer runs the arrival (the emblem's fall was skipped past about 0.12 s).
+  - Without a bake (the Editor), the clock also waits while the glyph atlas rasterises on a worker (`NativeAtlasStage.Waiting`, at most 1.5 s), so the arrival never plays to a blank board.
+  - Measured in the owner's Editor on a cold first station: a fresh domain, real time, every frame logged by the tool's `alog` and no screenshots.
+    - **Before** (`1ca6b394`): the scene's build and first draw took 510 ms, and the board's clock ran through it. The clatter's cue was heard 430 ms late and its clip started from the top, so the clicks trailed their flaps by about half a second (median 502 ms) for the whole clatter. The emblem's fall was skipped. The bell's frame lasted 36 ms against a median of 8 ms (its synthesis).
+    - **After** (one run on `78dff108`, two on `51081c56`): the clock started after the build (465-536 ms) and one frame of atlas raster. The station's own first-use frames that follow (35-94 ms, the same in every run, before and after) put the clatter's cue 46-60 ms late, and its clip started that far in. The clip's reported position then trailed the board's clock by a median 48-67 ms: the mixer's 1,024-sample blocks and its start latency, which every sound shares. The bell's frame lasted 7-9 ms.
+    - The first `78dff108` run still lost the emblem's 44 ms fall to a 94 ms frame. `51081c56` holds a one-flap run (the emblem) mid-fall for one frame when a frame jumps over its whole fall; both `51081c56` runs show it.
+- **Files.** Core `NativeAtlasBoard`, `NativeAtlasModels` and `NativeAtlasSounds`; Runtime `NativeAtlasAudio`, `NativeAtlasConsoleUI` and `NativeAtlasScene`; `Tests/AtlasBoardChecks.cs`. Two hook lines change, still one line each:
+  - `NativeAudio.Awake` calls `AtlasAwake();` in place of the subscription.
+  - `NativeDeployConsoleUI.Draw` draws `Destinations` and `Mutators` at `ui*NativeAtlasConsole.Side(stage)`; `Console` keeps `ui`.
+  - Not touched: `NativeDeployPresentation.cs`, the deploy cast and `NativeDeploySounds` (W3's and Astra's).
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. Nothing reads or writes a rule, the ticket, a roll, the wire or a save. The side panels are display only; the buttons are untouched.
+- **Voxel dependency.** None.
+- **Checks.**
+  - Full CoreTests the release way (a detached checkout, the expedition path patch, the next stage banks): `78dff108` 1,036 groups, exit 0; `51081c56` 1,036 groups, exit 0.
+  - `--atlas-board`: 9,627 checks. New: the headings' pixel sizes from the Overview and the board's shot, the board's shot against the console at the 48 layouts, the side panels (out while the board holds, back with the hand-off and within 0.35 s of a roll), the second-frame clock, the atlas wait and the one-flap rule (a 94 ms frame over the emblem's fall), the cues' lateness and `StartAt`, and that no cue synthesizes (`AtlasHeard` never calls `Samples`; the only call is `AtlasAwake`'s worker).
+  - `--deploy-models`, `--deploy-sparks`, `--deploy-sounds`, `--deploy-presentation`, `--deploy-performance` and `--expeditions-menu` pass.
+  - `python tools/check_unity_compile.py` (6000.3.24f1) on `78dff108` and `51081c56`: the four assemblies PASS, with no warnings from the board's files. `git diff --check` against shared: clean.
+  - Unity 6000.3.24f1, the owner's Editor under the lock (23:50-01:21, after waiting from 19:54): BoZo's DEV Deployment Station preview, the station clock pinned to 1/30 s a frame, except the real-time cold runs. The tool gained `alog` (atlas-w2f, git-ignored, patched in place, idempotent): it logs every frame's length, the board's clock, the emblem's phase, the cues' lateness and the ATLAS voices' sample positions, with no screenshot.
+    - After: `78dff108` (a cold run and the 1080p opening) and `51081c56` (two cold runs; Interface scale 1.25 and 1.5; 16:10; 4 pilots with a roll at 1.6 s; the board square on; 4 pilots on the Overview; the live station at 1.25). At 1/30 s steps the two commits draw the same frames, because no step can jump the emblem's fall.
+    - Before: `1ca6b394`, like for like (no 4-pilot Overview or live run).
+    - Mid-run, at 00:03, the shared `scratchpad/tools/bz.sh` and `run255.sh` vanished (not removed by this session), and every queued capture failed at once. Both were restored from the runner bz.sh had just generated, and the failed captures were rerun in the same hold.
+    - The Editor log showed no board errors. The Editor went back to `9319026b` with its checkout as it was, and the 14 stage banks and the motion bank were unchanged.
+    - Nine stills and three half-speed clips (`look/` in the session's `atlas` scratch folder; round 1's in `look/round1/`).
+- **Not run.**
+  - A Windows player build or package (the atlas bake runs only in a build).
+  - A real multiplayer station.
+  - Listening by a person: the cold runs log the voices' sample positions against the board's clock instead.
+- **Risks.**
+  - From the Overview at Interface scale 1.25, the end of the console's own subtitle ("…then deploy together.") covers the board's left end: ATLAS · DEPARTURES, the lamp, the emblem and line 1's first letters. Larger scales cover more. The board's own shot is clear. That header is the console's, outside this branch's hook lines; ending or wrapping the subtitle short of the board is a small follow-up.
+  - In the Editor's cold first station, the station's own first-use frames (35-94 ms in every run, with or without the board) still drop frames of the arrival. The emblem is held for one frame, and the glyph flaps skip a flip or two.
+  - After a hitch, the clatter's reported position trails the board's clock by about 50-70 ms, the mixer's blocks and latency. Nothing re-seeks a playing clip.
+  - At 1.25 and above in the DEV preview, the DEV bar covers the TILESET chip. This is DEV only; the live station has its Leave button there instead.
+  - The station's camera ease runs on the Editor's frame time. In the shot-only captures (1.5 and 16:10 at 3.4 and 4.6 s) the camera is still easing to the Overview. The every-frame captures (1080p and 1.25) reach it.
+  - W3 touches the same shared lines as before (`NativeDeployStage`'s camera, `NativeDeployScene`, `NativeAudio`'s Awake and OnDestroy). `NativeDeployConsoleUI`'s draw line now carries the side panels' level; W3's change to that method is on other lines.
+- **Next:** the owner reviews the stills and clips; the integrating session merges; Astra's A3 fills the selection.
+
+## 2026-11-18 — Claude: ATLAS, the tileset departures board over the DEPLOY gate (owner report; presentation only)
+
+Branch `claude/exp-w2-atlas`, base shared `claude/sleepy-ritchie-g8ruhv` at `15dab150` (`docs/EXPEDITION-OVERHAUL.md` R1 and W2; owner: "Yes, use defaults"). Claude's half of the tileset machine for release 1. Pushed, not merged. Against shared `4dc8c86f` (Astra's A4 greybox, the zombie legs) the code merges cleanly; DEV_LOG conflicts only where both add a top entry (keep both).
+
+- **What.** A split-flap railway board, ATLAS · DEPARTURES, 8.4 × 1.1 m, hung on two drop rods from the ceiling beam over the DEPLOY gate (`docs/EXPEDITION-DEPLOYMENT.md`, "ATLAS").
+  - Four columns, TILESET · ENEMIES · INSTANCES · FINAL, kept apart by lit gold rules.
+  - The large first line reads CITY · MERIDIAN | THE INFECTED | 5 INSTANCES | THE SIREN, with Meridian's emblem flap (the skyline, its clock at 6:47) and an in-service lamp in City's accent.
+  - The three small, dim amber lines read NOT IN SERVICE, with no names and no dates, so nothing suggests a choice exists.
+- **When the station opens** (each client's own clock): the emblem flap falls, then line 1 clatters in left to right, each flap running 6-13 drum glyphs before its own. It lands by 1.4 s. Then a two-note bell rings, sparks fly off both cheeks (machine 2) and the lamp flashes. It is an arrival, not a spin.
+- **The camera** opens on the board and holds to 2.8 s. Then the board hands it to the Overview along a 1.2 s smoothstep on the station's clock, which the station's own ease follows, so it leaves the board at rest. A roll or Deploy takes the camera as before.
+- **The console** gains a TILESET card, its first, beside the title: ARRIVING…, then CITY · MERIDIAN and an IN SERVICE tag. The name stops short of the tag (a longer name is drawn as large as fits). It is display only and raises no intent. **The Expeditions screen** shows TILESET: CITY · MERIDIAN on the run briefing's kicker line.
+- **The registry**, Core `NativeTilesets` (a shared contract file): City (`id=city`, live) with its display fields. `NativeTilesets.Selected(state)` is the presentation's one hook for the choice and returns City until `ExpeditionDeploymentState.tileset` exists. A new tileset's row needs only its registry entry, and optionally an emblem (markup): every cell is drawn through one split-flap glyph atlas.
+- **Files.**
+  - New Core: `NativeTilesets`, `NativeAtlasBoard` (placement, layout, the arrival, the shot and its hand-off, the sparks, the sound moments, and `NativeAtlasStage`, the per-frame pose), `NativeAtlasModels` (the cabinet and the flaps), `NativeAtlasArt` (the glyph atlas) and `NativeAtlasSounds` (the clatter, built from the flaps' own landings, and the bell).
+  - New Runtime: `NativeAtlasScene` (the draw), `NativeAtlasAudio` and `NativeAtlasConsoleUI`.
+  - Hooks, one line each: `NativeDeployStage` (the field, and `if(Atlas.Frame(f,Shot))want=Atlas.View;`), `NativeDeployScene` (make, draw, dispose), `NativeDeployConsoleUI` (the card), `NativeAudio` (subscribe, unsubscribe), `NativeExpeditionsMenu` (the line) and `Editor/NativeDeployCardBuild.cs` (the atlas bake, under a key that changes with its inputs).
+  - Untouched: `NativeDeployPresentation.cs` and the deploy cast (W3's), and Astra's `NativeDeploySounds`, which still plays machines 0 and 1 only.
+- **Deviations from the plan.**
+  - The board hangs at (0, 5.35..6.45, 7.1), 8.4 × 1.1 m, in front of the beam at z 7.5. The plan put it near (0, 6.6, 8.3) at 6.4 × 1.6 m, but that wall band sits behind the beam from the Overview: about 40% of a 1.6 m board would be hidden. A ray check pins that the whole face and the DEPLOY sign read.
+  - Its model, footprint and shot are in its own files (`NativeAtlasModels`, `NativeAtlasBoard`), not `NativeDeployModels.cs` and `NativeDeployPresentation.cs`, so W3's files stay untouched.
+  - The sparks are drawn by the board's own scene, not added to `NativeDeploySparks`.
+  - The board has the camera only while its line arrives and hands off; the card does not move the camera.
+- **Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking. Nothing reads or writes a rule, the ticket, a roll, the wire or a save. The opening camera move is presentation: a roll or Deploy takes the camera as before, and the stage's `Shot` stays the rules' `Framing`.
+- **Checks.**
+  - Full CoreTests the release way (a detached checkout of `1b883903`, the expedition path patch, the next stage banks): 1,036 groups, exit 0.
+  - `--atlas-board` (new, `Tests/AtlasBoardChecks.cs`), 8,614 checks:
+    - the registry's rows and empty lines, and the INSTANCES count against 240 rolls of the Instance Machine's real pool;
+    - the layout, and clean models in budget;
+    - placement under the beam, with the whole face and the DEPLOY sign seen by ray from the Overview;
+    - the arrival landed by the bell, each flap running forward through the drum, and a re-flap to a stand-in selection;
+    - the shot and hand-off only over the Overview, leaving the board at rest;
+    - machine 2's sparks (a third with reduced effects), each sound heard once, and the glyph atlas;
+    - no per-frame allocation, and the hooks' wiring and metas.
+  - Re-pinned, none loosened: `DeployModelChecks` counts the board in the station's 130,000-triangle total; `DeploySparkChecks` gains machine 2's burst; `DeploySoundChecks` pins that Astra's table never plays machine 2 and that the board's moments play Claude's own sounds; `ExpeditionsMenuChecks` pins City as the run's tileset and the briefing line.
+  - `python tools/check_unity_compile.py` (the 6000.3.24f1 install): the four assemblies PASS, with no warnings from the new files. `git diff --check` against shared: clean.
+  - Unity 6000.3.24f1, the owner's Editor under the lock (17:52-18:42): BoZo's DEV Deployment Station preview (local authority), with the station clock pinned to 1/30 s a frame (1/15 s with 4 pilots). The Editor log showed no board errors or exceptions.
+    - After: `1b883903` (the opening, 4 pilots with a roll, the side view, reduced effects, the live station, the Expeditions screen) and `c9b3b95a` (the close-up and the macro: the same board, outside the card and the hand-off).
+    - Before: `15dab150`.
+    - Eight stills and four clips (half, quarter or real speed). The Editor went back to `9319026b` with its checkout as it was.
+  - The Editor captures caught two faults: the card's name ran into its tag, and the camera left the board at full speed. Both are fixed (`f24dca92`, `1b883903`), and the captures that show them were retaken.
+- **Not run.**
+  - A Windows player build or package. The atlas bake in `NativeDeployCardBuild` runs only in a build; the Editor rasterises the atlas on a worker.
+  - A real multiplayer station. The 4-pilot run is the local preview; the board reads no wire state and is posed on each client's clock.
+  - Listening by a person. The managed checks pin the sounds' levels, timing and once-only playback.
+  - The card at other aspect ratios (captured at 1080p only).
+  - The Expeditions screen's later tool steps: BoZo's `expmenu` is stale for today's menu. `exp_1` shows the briefing.
+- **For Astra (A3).**
+  - Fill `NativeTilesets.Selected` from `ExpeditionDeploymentState.tileset` (the host's `SelectTileset` pick), and add the rules fields beside the display ones.
+  - When a tileset's pool changes, update its `Instances` list: `--atlas-board` pins City's against the Instance Machine's real roll.
+  - A selection change re-flaps only the cells that differ, on each client's clock (`NativeAtlasStage.Retarget`, checked with a stand-in).
+  - The board's cues and sparks are machine 2; `NativeDeploySounds` should keep ignoring it.
+- **Risks.**
+  - W3 touches the same shared files (`NativeDeployStage`'s camera line, `NativeDeployScene`, `NativeAudio`'s Awake and OnDestroy): expect small merge conflicts.
+  - The board hides the back wall's DEPLOYMENT STATION lettering from the Overview (the plan's wall band was that place). The console header still names the station.
+  - In the opening shot (0-4 s) the console header's subtitle sits over a bright ceiling bar and is hard to read. It reads on the Overview. The header is not this branch's; a backing for that line is a small follow-up.
+  - In the Editor, the first station of a session shows the board's black face until the worker's raster is up. Builds bake the atlas.
+  - From the Overview, line 1's glyphs are about 11-12 px tall at 1080p, and the NOT IN SERVICE lines about 6 px (dim by design).
+  - The camera spends about 4 s on the board and its hand-off before the Overview settles. A roll takes it at any moment.
+  - In the captures the station's own ease runs on the Editor's frame time (its dt is `Time.unscaledDeltaTime`, which the tool does not pin), so it follows the hand-off a little more tightly than at 60 fps.
+- **Next:** the owner reviews the stills and clips; the integrating session merges; Astra's A3 fills the selection.
+
 ## 2026-11-18 — Claude: the expedition overhaul plan (Meridian), approved; Astra's hand-off (owner request; docs only)
 
 Owner asked for the expedition overhaul: a tileset machine, a reworked City away from the box style, streets shaped by their instances, a darker lamp-lit map, modelled buildings, props and gates, a living hub with survivors, pods that crash spread around the hub, a better drop-in, chests for caches in new places, a chip and a healing machine in the hub. Follow-up: "I want the expedition area (not instances) to be much bigger with layering essentially ... Think of how big risk of rain levels are", with each instance's look bleeding into the city near it. Owner on the split: "I can divide the work 🙂 feel free to send me whats needed from astra." Approval: "Yes, use defaults".
