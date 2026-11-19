@@ -6,6 +6,7 @@ Branch `claude/atlas-instance-count` from shared. Owner, on the station's board 
 - **Checks:** `AtlasBoardChecks` now pins line 1 to `3 INSTANCES` and checks that every one of 240 rolls deals 3 from a pool of more; `--atlas-board` passes (9,867 checks).
 - **The FINAL column still reads THE SIREN.** That is true today: the live final court spawns `m1-final-siren` (`NativeExpeditionM1Arena.cs`). The owner wants NOCTIEL as the final, which is a rules and spawn change for Astra (hand-off through the owner). When it lands, `NativeTilesets` City's `Final` and AtlasBoardChecks' row change with it.
 - **Animation impact:** none.
+- **Merged and released (Claude, integrator):** `claude/atlas-instance-count` merged into shared `b8301e62` (the builder at `b8301e62`), test channel revision `639307113208175977` (build `c931db31`); the suite at `e2169dfd` (1,066 groups, exit 0), the pinned Unity compile.
 
 ## 2026-11-19 — Claude: the owner accepts the city's triangle baselines as the budget (docs and tests only)
 
