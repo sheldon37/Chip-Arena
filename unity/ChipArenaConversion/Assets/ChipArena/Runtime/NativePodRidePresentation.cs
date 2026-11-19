@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         public bool PodRideView(Transform camera,NativeArena arena,float time,bool shake,bool reduced)
         {
             PodRideActive=false;PodRideShare=0;
-            if(camera==null||reduced||!PodRun(arena)||arena.Match==null||arena.Match.Phase!=NativePhase.Countdown)return false;
+            if(camera==null||arena==null||reduced||!PodRun(arena)||arena.Match==null||arena.Match.Phase!=NativePhase.Countdown)return false;
             var me=arena.Local;if(me?.Seat==null||!pods.TryGetValue(me.Seat.id,out var pod)||double.IsNaN(pod.End)||!double.IsNaN(pod.LaunchAt))return false;
             float age=(float)(PresentationClock(arena)-pod.End);if(!NativePodRide.Active(age,NativePodRide.Opening,out float u))return false;
             var f=NativePodDrop.Evaluate(age,pod.Order,pod.Seed);if(!f.Dropping)return false;
@@ -55,11 +55,12 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private static readonly float[] RideRedAt={0f,.55f,.85f,1f},RideRedAlpha={0f,0f,.6f,1f};
-        /// <summary>LateFrame, after SpawnCamera: my pod ride's camera (ArenaPresentation.PodRideView), the view model hidden while it holds.</summary>
+        /// <summary>LateFrame, after SpawnCamera: my pod ride's camera (ArenaPresentation.PodRideView), the view model hidden while it
+        /// holds. A directed camera (NativeCinematicCamera: a cutscene, or a directed drop of my pod) owns the view: the ride steps aside.</summary>
         private void PodRideFrame(float renderTime)
         {
-            if(menu||Spectator!=null||arena==null)return;
-            if(presentation.PodRideView(cameraView.transform,arena,renderTime,prefs.cameraShake,prefs.reducedEffects))viewModelCamera.enabled=false;
+            bool off=menu||Spectator!=null||arena==null||cinematic.Directing;
+            if(presentation.PodRideView(cameraView.transform,off?null:arena,renderTime,prefs.cameraShake,prefs.reducedEffects))viewModelCamera.enabled=false;
         }
         /// <summary>My screen during the ride, under the HUD: the cabin's red lamp at its edges.</summary>
         private void PodRideScreen()
