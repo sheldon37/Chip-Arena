@@ -1,4 +1,74 @@
 # Expedition Deployment Station: two machines and a generated destination
+## The expedition overhaul's budget table (W0, 2026-11-18; its review, 2026-11-19)
+
+This is the one budget table of `docs/EXPEDITION-OVERHAUL.md` (section 6). Each row gives the target, today's baseline, W0's number, the gate CoreTests holds, and how it was measured (the machine, the tier, the settings). Whoever changes a number updates its row. Astra's native simulation benchmark and DEV load harness (A0, `codex/expedition-a0`, merged with release 1) come in their own section, "Generated Expedition performance budget", right after this one; their numbers go in the last row here.
+
+**Over target before any overhaul code (for the owner).** The plan asks for these to reach the owner before any overhaul code merges:
+- **The city's triangles per view** (the managed census below): High 2,177,224 at the worst of 120 views, against 2.0 M (8.9% over; 2.02 M on average at the hub). Low 821,492, against 0.8 M (2.7% over).
+- **The Low tier lights 8 practical slots, against 3.** `NativeLighting.PickedLights` uploads the picker's 8 on every tier, and the shaders loop over all 8.
+- **Frame time in the Editor, 1 pilot** (the frame-time table below): p95 17-20 ms at High and Balanced with the hub's own 6-23 zombies, and 14-20 ms at Low. With no zombies, 11.5-13.4 ms. The targets are build numbers at 4 pilots and 88 zombies: p95 12, 10 and 8 ms.
+- **Unity's own frame totals in the Editor** (every pass): 1,400-2,400 batches at High and Balanced, against 1,500; 840-1,000 batches and 1.8-2.0 M triangles at Low, against 800 and 0.8 M.
+- **What it needs: a decision.** With the baseline over its target there is no headroom (target minus baseline) to share out by milestone. So CoreTests holds the triangle rows at today's worst view (a no-growth gate, not a budget) until the owner chooses: accept the baselines as the targets, or cut. The cheapest cut draws the skyline with the rounded box (about 540,000 fewer triangles at High), but that changes the look. The Low tier's 3 slots come with the night look (W1). The High totals in the Editor (17-20 M triangles) count 4 shadow cascades and the outline pass, while the 2.0 M target reads as one view; section 6 should say which one it means before M2.
+
+| Budget (section 6) | Target | Shared head `15dab150` | W0 | CoreTests gate | Measured by |
+| --- | --- | --- | --- | --- | --- |
+| The city's draws per view, High; Low | 1,500; 800 | 31; 22 | 31; 22 | 36; 26 (+15%) | census |
+| The city's triangles per view, High; Low | 2.0 M; 0.8 M | **2,177,224; 817,302: over** | 2,173,532; 821,492 | **2,177,224; 821,492 (no growth)** | census |
+| Instances per draw | 500 | 500 | 500 | 500 | census |
+| The city's instances per view, High; Low | none | 11,835; 8,878 | 11,662; 8,923 | 13,611; 10,210 | census |
+| Shadow casters (High; none on Low) | 1,200 | 1,004 | 1,024 | 1,155 | census |
+| FX quads, High (+ advanced rain); Low | 2,800 | 1,105 (+222); 765 | 1,243 (+222); 848 | 1,430 (256); 989 | census |
+| Practical slots lit (live pixel lights), High; Low | 9; 3 | 8; **8: over** | 8; **8** | 8 | census |
+| Low-tier kit parts in view | 11,500 built | 6,951 | 6,996 | 7,994 | census |
+| Kit build, a roll at most: parts, low-tier, casters; skyline boxes | 25,000, 11,500, 1,200; 3,000 | 18,704, 8,677, 618; 1,544 | 18,908, 8,684, 641; 1,544 | GeneratedDistrictChecks | census |
+| Light volume | about 2 MB | 64 lights, about 1.7 m cells, a bake of about 0.1 s (40 rays, managed) | the same | | census |
+| Frame time p95 / p99 (ms), 4 pilots, 88 zombies | High 12 / 20, Balanced 10 / 17, Low 8 / 14 (Windows build) | not yet measured: A0's harness (below) | | | A0's harness and `NativeExpeditionLoadFrameTimes` |
+| Frame time p95 (ms), Editor, 1 pilot, no zombies | (the targets above) | High 12.7, Balanced 13.0, Low 11.6 | High 13.3, Balanced 13.4, Low 11.5 (not like for like) | | BoZo `xperf` |
+| Navigation, crowd flow, perception, physics per tick | the A0 baseline + 25% | A0's fixture (next section) | | | A0 |
+
+**Managed census** (`Tests/GeneratedFrameChecks.cs`, in the full CoreTests; `--generated-frame` alone). It counts what the generated city's own presentation submits for one view, the way the runtime selects and batches it:
+- the kit's parts (range and back-face rule, casting and trim batches of 500);
+- the skyline round the map's own bounds (as the runtime builds it, so a larger map's is counted);
+- the dressed blocks;
+- the atmosphere's effect quads, the volumetric beams and the advanced rain (High only);
+- the practical slots the picker fills.
+
+It covers 6 eyes (the hub's centre, the south apron, the east and west entrances' join circles, the final court, the hub from 46 m up) over 20 rolls (seeds 1-20), the most over the 120 views. Pilots, zombies, pods, machines, the hub gates, the sky, the HUD and the shadow cascades' repeats are left out. The pins are the shared head's numbers plus 15%, except:
+- the triangles, a no-growth gate (above);
+- the effect quads, pinned on W0's first fog count (1,243 and 860; the review's nearest-sheets rule then lowered Low's to 848).
+
+The meshes: the style's wrap mesh has 444 triangles, its rounded box 92, and the legacy box 188. About 685,000 of the High triangles are the skyline's 1,544 boxes, each drawn with the wrap mesh. The rest are the kit's parts, about 9,900 in view at High, each the wrap mesh or the rounded box.
+
+**Frame time, 1 pilot** (BoZo `xperf` windows in the owner's Unity Editor: play mode, Game view 1920x1080, NVIDIA GeForce RTX 4090, Intel i9-13900K with 32 threads, 64 GB). Batches, triangles, casters and skinned meshes are Unity's own frame statistics (UnityStats), so they include every pass: the shadow cascades, the outline, the zombies, the pods, the sky and the HUD.
+
+Run 1 (2026-11-18) was a live run: the station, the roll, Deploy, the eject and the hub, with the pilot just outside the south gate at (0, -38), health held, measured for 15 s from 20 s after GO. **Its before and after rows cannot be compared.** Each run is a new station seed, so they are different cities, with different zombie counts (6-11 against 19-23 at High). Even the rows with no zombies differ by about 0.6 ms without a cause found. They neither show nor rule out a W0 cost. The managed census shows that W0 adds no draws and no triangles at High, and the extra fog work is small. "None left": in run 1 the DEV god-mode command (sent with a DEV spawn the room refused) cleared the hub's own zombies within 5 s, so those windows are the city with no zombies.
+
+| Run | Tier | Zombies | Living | Frames | Mean ms | p50 | p95 | p99 | Worst | >20 / >50 ms | Batches mean (most) | Triangles mean | Casters | Skinned |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Run 1, shared 15dab150 | High (High) | the hub's own | 6 -> 11 | 976 | 15.4 | 15.2 | 17.1 | 20.0 | 38.5 | 10 / 0 | 1984 (2149) | 19.84 M | 728 | 109 |
+| Run 1, shared 15dab150 | High (High) | none left | 0 -> 0 | 1041 | 11.5 | 11.4 | 12.7 | 14.6 | 34.7 | 2 / 0 | 1194 (1200) | 18.82 M | 345 | 13 |
+| Run 1, shared 15dab150 | Balanced (Medium) | the hub's own | 6 -> 8 | 1021 | 14.7 | 14.2 | 17.7 | 25.7 | 69.6 | 34 / 2 | 1410 (1433) | 18.04 M | 570 | 74 |
+| Run 1, shared 15dab150 | Balanced (Medium) | none left | 0 -> 0 | 1023 | 11.7 | 11.7 | 13.0 | 14.7 | 33.9 | 2 / 0 | 1187 (1193) | 17.67 M | 329 | 13 |
+| Run 1, shared 15dab150 | Low (Low) | the hub's own | 15 -> 17 | 1001 | 15.0 | 14.3 | 20.3 | 22.6 | 39.2 | 68 / 0 | 993 (1012) | 2.00 M | 0 | 70 |
+| Run 1, shared 15dab150 | Low (Low) | none left | 0 -> 0 | 1154 | 10.4 | 10.3 | 11.6 | 13.5 | 32.1 | 2 / 0 | 710 (710) | 1.76 M | 0 | 13 |
+| Run 1, W0 753c3033 | High (High) | the hub's own | 19 -> 23 | 856 | 17.5 | 17.3 | 18.9 | 20.1 | 61.4 | 12 / 1 | 2078 (2226) | 17.70 M | 708 | 98 |
+| Run 1, W0 753c3033 | High (High) | none left | 0 -> 0 | 988 | 12.2 | 12.1 | 13.3 | 15.6 | 36.3 | 2 / 0 | 1176 (1181) | 16.56 M | 329 | 13 |
+| Run 1, W0 753c3033 | Balanced (Medium) | the hub's own | 17 -> 20 | 862 | 17.4 | 17.1 | 19.2 | 22.6 | 41.9 | 27 / 0 | 2373 (2467) | 19.79 M | 824 | 119 |
+| Run 1, W0 753c3033 | Balanced (Medium) | none left | 0 -> 0 | 977 | 12.3 | 12.2 | 13.4 | 15.5 | 37.3 | 1 / 0 | 1207 (1213) | 18.35 M | 345 | 13 |
+| Run 1, W0 753c3033 | Low (Low) | the hub's own | 6 -> 7 | 1192 | 12.6 | 12.4 | 13.9 | 16.6 | 43.5 | 6 / 0 | 839 (920) | 1.84 M | 0 | 42 |
+| Run 1, W0 753c3033 | Low (Low) | none left | 0 -> 0 | 1163 | 10.3 | 10.2 | 11.5 | 13.8 | 33.8 | 2 / 0 | 708 (708) | 1.68 M | 0 | 13 |
+
+- The frame is CPU-bound: the tiers barely differ, and with no zombies left it falls to 10-12 ms at every tier. Each zombie costs about 0.3 ms. The local Editor checkout skins on the CPU (`gpuSkinning: 0`), and the tracked settings do not say what the builder uses.
+- These are Editor numbers. The Windows build with test accounts decides; that run is due at M3 and M7.
+- **Like for like (W0's review).** One fixed city (generated seed 4242 as a PvP match, no bots, so no zombies), the same eye and window on both commits, at High and Low: not run yet. The owner's Editor was closed during the review; the capture is queued for when it reopens.
+
+**Frame time, 4 pilots and 88 zombies: the steps, with A0's DEV load harness as pushed** (`codex/expedition-a0`; Editor and Development builds only):
+1. Launch a Development player, or the Unity Editor and then play mode, with `-expedition-load 4` on the command line (1-4: the camera pilot plus up to three stand-ins; the lobby cap is held at four, so the hub's own 88 zombies come). Add `-load-balanced` or `-load-low` for those tiers; High is the default. Use 1920x1080.
+2. A0's isolated session walks the pilots and runs the hub's brains, and its camera follows the first pilot outside the south gate. It logs `EXPEDITION_LOAD_PREVIEW` at the start, and A0's `EXPEDITION_SIM_BUDGET` line after 120 + 600 ticks.
+3. W0's `Runtime/NativeExpeditionLoadFrameTimes.cs` reads the same flags (and does nothing without them). After 12 s it records 600 rendered frames and logs one `EXPEDITION_FRAME_BUDGET pilots=4 zombies=88 graphics=<tier>` line: mean, p50, p95, p99, worst, the frames over 20 and 50 ms, the screen, the GPU, the CPU and the memory, and in the Editor the mean batches and triangles. Its summary is `Core/NativeFrameTimes.cs`, the same as BoZo's `xperf` windows.
+4. Copy each tier's line into the "4 pilots, 88 zombies" row above, with the machine, the tier and the settings. Then share out the headroom (the target minus the baseline) by milestone, as section 6 says.
+
+BoZo's `xperf` windows cannot run inside the isolated session (it has no match or BoZo job), so BoZo does not script this row. The owner's open Editor would need relaunching with the flag, and the owner approves every relaunch.
 
 ## Generated Expedition performance budget
 

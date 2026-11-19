@@ -139,8 +139,17 @@ namespace ChipArena.UnityConversion
         // ---------------- hashing (stable across machines) ----------------
         private static uint Mix(uint x){unchecked{x^=x>>16;x*=0x7feb352dU;x^=x>>15;x*=0x846ca68bU;x^=x>>16;return x;}}
         private static uint Fnv(string s){unchecked{uint h=2166136261;if(s!=null)foreach(char c in s)h=(h^c)*16777619;return h;}}
-        /// <summary>A stable hash in [0, 1) of a block id and two integers.</summary>
-        public static double Hash(string s,int a=0,int c=0){unchecked{return Mix(Fnv(s)^Mix((uint)a*0x9E3779B9U+(uint)c*0x85EBCA6BU))/4294967296.0;}}
+        /// <summary>A stable hash in [0, 1) of a block id and two integers, with `seed` mixed in (0: none, the town's hash).</summary>
+        public static double Hash(string s,uint seed,int a,int c){unchecked{return Mix(Fnv(s)^seed^Mix((uint)a*0x9E3779B9U+(uint)c*0x85EBCA6BU))/4294967296.0;}}
+        /// <summary>The kit's hash of a block id and two integers, with its <see cref="Seed"/> mixed in. The generated map's block ids
+        /// recur from roll to roll (a cell's building, a hall, an edge), so its seed is the run's world seed (<see cref="SeedOf"/>)
+        /// and a cell's windows, lamps and dressing differ from run to run (expedition overhaul W0); the town's is 0, its hash as before.</summary>
+        private double Hash(string s,int a=0,int c=0)=>Hash(s,Seed,a,c);
+        /// <summary>The seed this kit's hash mixes in: 0 for the town and any map built without a blueprint.</summary>
+        public uint Seed{get;private set;}
+        /// <summary>The kit seed for a generated run's blueprint (its world seed, mixed; 0 without one). Host and guests build the
+        /// same blueprint from the ticket, so they dress the same city.</summary>
+        public static uint SeedOf(ExpeditionDeploymentState blueprint){unchecked{return blueprint==null?0:Mix(blueprint.worldSeed^0x6A09E667U)|1U;}}
         private static bool Starts(string s,string p)=>s.StartsWith(p,StringComparison.Ordinal);
         /// <summary>The id with the town prefix removed, or null for other maps' ids. The generated map's ids in the town's terms
         /// (NativeExpeditionCityKit.Generated.cs): a building "bldg-g:x:z", an instance's hall "bldg-hall:instance", a fence section

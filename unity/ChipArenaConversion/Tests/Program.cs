@@ -151,6 +151,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition-layout"){ExpeditionLayoutChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-dressing"){ExpeditionDressingChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--generated-districts"){GeneratedDistrictChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--generated-frame"){GeneratedFrameChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-hub"){ExpeditionHubChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-city"){ExpeditionCityChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--map-style"){MapStyleChecks.Run(ProjectRoot());return 0;}
@@ -351,6 +352,7 @@ internal static class Program
             StructureFxChecks.Run(root);DebrisChecks.Run(root);
             IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);IronworksBossPresentationChecks.Run(root);BossVfxRealismChecks.Run(root);
             CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);TechniqueChecks.Run(root);TechniqueRulesChecks.Run(root);BombadierChecks.Run(root);TopDogChecks.Run(root);GlaiveChecks.Run(root);GlaiveChipChecks.Run(root);BladeChecks.Run(root);FangsIntroChecks.Run(root);ReviveMachineChecks.Run(root);InstanceMachineChecks.Run();ExpeditionDressingChecks.Run(root);GeneratedDistrictChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionCityChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
+            GeneratedFrameChecks.Run(root);
             PartyLoadingChecks.Run(root);
             AccountXpChecks.Run(root);AccountXpProgressionChecks.RunChecks(root);
             MoveVisualChecks.Run(root);

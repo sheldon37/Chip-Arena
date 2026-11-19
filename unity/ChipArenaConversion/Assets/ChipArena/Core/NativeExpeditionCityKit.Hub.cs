@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
         /// map, its blueprint (the district blend, NativeExpeditionCityKit.Generated.cs).</summary>
         public static NativeExpeditionCityKit Build(ContentBlock[] blocks,ExpeditionAreaLayout area,ExpeditionHubLayout hub,MapBounds bounds,bool layers=true,ExpeditionDeploymentState blueprint=null)
         {
-            var k=new NativeExpeditionCityKit{blocks=blocks??Array.Empty<ContentBlock>(),area=area,hub=hub,blueprint=blueprint};
+            var k=new NativeExpeditionCityKit{blocks=blocks??Array.Empty<ContentBlock>(),area=area,hub=hub,blueprint=blueprint,Seed=SeedOf(blueprint)};
             if(bounds!=null){k.bx0=bounds.minX;k.bx1=bounds.maxX;k.bz0=bounds.minZ;k.bz1=bounds.maxZ;}
             return k.Make(layers);
         }

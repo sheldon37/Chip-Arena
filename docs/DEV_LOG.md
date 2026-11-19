@@ -230,6 +230,83 @@ Branch `claude/chip-install-anim`, base shared `claude/sleepy-ritchie-g8ruhv` at
   For the plan: the DEV Greatsword's Locker Preview Intro drew voxel (V5, cause not traced), and the far zombie crowd draws 357 voxel parts in
   a live run (V7).
 
+## 2026-11-19 — Claude: Expedition W0's review: the ground's crawl, the low tier's fog cut, like-for-like captures, one budget table on A0's harness (owner report; presentation only)
+
+Branch `claude/exp-w0-groundwork`: W0's first entry below, plus the review round. Shared `9056fc04` is merged in. Two critics reviewed W0 and both said "fix first". Each finding is fixed or answered below.
+
+**Over target before any overhaul code (for the owner; the plan asks for these before any overhaul code merges):**
+- the city's triangles per view: High 2,177,224 at the worst of 120 views, against 2.0 M (8.9% over); Low 821,492, against 0.8 M (2.7% over);
+- the Low tier lights 8 practical slots, against 3;
+- the Editor's frame time with 1 pilot: p95 17-20 ms at High and Balanced with the hub's own 6-23 zombies, 14-20 ms at Low, against the build targets of 12, 10 and 8 ms at 4 pilots and 88 zombies;
+- Unity's own totals in the Editor: 1,400-2,400 batches at High and Balanced (target 1,500); 840-1,000 batches and 1.8-2.0 M triangles at Low (targets 800 and 0.8 M).
+- There is no headroom to share out, so CoreTests now holds the triangle rows at today's worst view (no growth) until the owner decides: accept the baselines, or cut. The skyline drawn with the rounded box saves about 540,000 triangles at High, but it changes the look.
+
+**The findings:**
+- **The crawl on the ground (high): fixed, and measured gone.**
+  - **Bisected in the Editor.** A local probe build (never pushed) made each W0 change switchable, with the hub's eye held still and the bot idle. With every change on, 13.5% of the hub's ground band changed by more than 6 levels between 1/30 s frames. With W0's fog grid off it was 1.4%. Switching off the practicals, the volume's pick or the kit's seed changed nothing. So the critic's guess (the kit lamps' wet glints in the freed slots) was not the cause.
+  - **Cause:** `Resources/NativeSirenFx.shader` read each piece's mode and flags from an interpolated texcoord. An authored premultiplied piece sends flags 2, which came back 1.9999998 on about half the pixels of a flat fog sheet at street level. `fmod` read that as additive, so the sheet vanished there, in a pattern that moved every frame. The sheets themselves were steady.
+  - **Fix (`3337d863`):** the shader rounds the mode and flags before decoding them, so every piece decodes as sent. It was a latent bug in every authored premultiplied effect drawn with that shader (the town's own fog sheets among them); W0's fog on the generated streets exposed it.
+  - **The critic's own measures, on the PNG frames.** The eye is held at (9, 1.8, -12), the hub clip is arena 6-9 s at 1/30 s, and only frame pairs with no overall brightness change count (the camera's frames; the Game view's in brackets).
+    - Ground pixels changing by more than 6 levels per frame: shared 1.5% (1.1%), the first pass 14.6% (8.4%), W0 now 1.3% (1.0%).
+    - More than 3 levels: shared 3.1% (2.4%), first pass 22.9%, now 1.9% (1.6%).
+    - The mean change per pixel: shared 0.30, first pass 2.42, now 0.17.
+  - **The ground's high-frequency energy at the six eyes** (the mean absolute Laplacian over the image's lower 40%, Game view, shared against W0): hub 3.15 / 3.07, hub from 9 m 2.49 / 2.46, east street 3.35 / 3.37, south road 4.35 / 4.32, final court 2.77 / 2.79, west road 3.53 / 3.48. On the first pass's stills the same measure was 27-46% higher at every eye (those stills also differ by the variety and the bot's fight). The Low tier's eyes match too.
+- **Like-for-like captures (high): remade.** Generated seed 4242 as a PvP match, its one bot idle, health held, the Game view at 1920x1080 (the look players see), every eye and clip on the arena clock. BEFORE is shared `15dab150`. AFTER is W0 with its kit variety held off by a capture switch, so the dressing matches shared and each fix shows alone. The variety has its own pair.
+  - **The light volume, in game:** W0 against W0 with its new pick switched off (the bake's first kit lights in build order, as before). The east street changes by 1.4 levels on average and the south road by 1.5 (the ground about +0.5 to +0.75 brighter), against 0.2-0.5 at the west road, the final court and the hub from 9 m up. That is the east and south now lit, as planned, but faint in today's dusk look; the stills show where with a x20 difference pane. The computed top-down is kept beside them.
+- **The fog clip (medium): remade from Game-view frames.** Variety is held off, so the slab shadows (a varied part's) are gone from it, with a still that shows them. The fog is faint in today's look, a few levels on the street, so the clip carries a x10 difference pane and says so in its title.
+- **Low's ground fog (medium): culled by distance (`b296eb07`).** On a reduced budget (the low tier, or reduced effects) the generated map's fog and its pockets keep the sheets nearest the eye, in a smaller disc of the same density. Before, the cap cut the lattice in scan order: at the sanctuary on roll 4242, Low drew 30 sheets north of the eye and 55 south; now 19 and 18. High keeps the full disc; the town keeps its cut (frozen). The pins: no Low eye on a 5 m grid reaches either cap, the sheets lie within the smaller disc, High is the full disc, and the sanctuary's Low fog lies all round the eye. Captured at Low too.
+- **Over-target baselines (medium): all reported,** at the top of this entry, in the budget table and in PROJECT_STATE, the Low tier's 8 slots against 3 included.
+- **The uneven light pick (low): measured, noted for W1 and W10, not changed.** Of the 64 picks on roll 1, the hub has 7, the final court 19, the east 13, the west 18 and the south 6.
+  - Weighting by range instead of range squared (tried in a scratch run) moves the south from 6 to 7 picks and its bounce from 0.0013 to 0.0014, so it is no fix.
+  - The cause is the kit: the south has 13 of the city's 122 sources, mostly round its hall, and its arm's own lamps reach only 5 m. The unbaked streets of the south arm are more than 5 m from any source.
+  - W1's street lamps, or W10's reserving picks by arm, are the fix. `GeneratedFrameChecks` now prints the picks by area.
+- **The clip text (low): sized for a phone** (`exp-w0/py/clip2.py`, a copy of `int/clip.py`; the integrator's own is untouched). At 1920 px the titles are 41 px and the labels 32 px, and long notes wrap.
+- **The text and number slips (low): fixed.** The practicals top-down's labels no longer overlap and stay inside the pane. The kit-build line has the shared head's numbers (18,704 parts, 8,677 low-tier, 618 casting, 191 light sources) and W0's (18,908, 8,684, 641, 182); the old 19,254 came from an intermediate run. The table says that run 1's before and after frame rows are different cities and cannot be compared.
+- **The hub reads colder and flatter in releases 1 and 2 (low), for the owner.** Without the town's practicals, the warm brazier pool and the lamp halos are gone from the plaza; clip 1's BEFORE pane shows the pool. The volume has nothing inside the fence but the ring of gate-post lamps. The camp's own brazier comes with W5 (M3). If a cold hub for two releases is not acceptable, W5's camp light could come earlier; that is the owner's call.
+- **Safety:**
+  - **No capture job is left behind.** The prior capture jobs (`run2.sh`, PID 97480; `run5.sh`, PID 133604) are gone: no bash, python or Unity process was running at the start of this pass (about 09:50), and no lock was held. This round's one hold (`exp-w0/run6.sh`, the like-for-like frame rows) waits for the owner's Editor, then the lock; its result is recorded here when it ends.
+  - **The light volume's key is no longer built every frame** (`9b645eeb`). `NativeAdvancedLighting.Candidates` takes a map's candidates once per map and run, an empty hand included. Before, a map whose presentation hands none (an advanced-lit PvP map after an expedition, the Ward instance) set the key stale every frame and rebuilt the string.
+  - **Pins on both runtime call sites, and more:** the fog scene built with the map's bounds and the nearest-sheets switch (`NativeExpeditionCityPresentation`), the crackle switch (`NativeExpeditionCityAudio`), the look's `ForMap` (`NativeLighting`), the skyline's bounds, and the candidates guard.
+  - **The triangle gates against section 6:** a no-growth gate at today's worst view (High 2,177,224, Low 821,492), with the gap to the target in the check's message. The other pins keep +15%, all far under their targets.
+  - **"Each map bakes its own lights", checked on the maps it touches.** Before W0, the hub's lamps stayed in every later bake of the session: townLights is never cleared, and the presentation lives for the whole session. A managed measure (scratch) baked each advanced-lit map with the hub's first 56 candidates added, as before W0, against its look's own lights only. The hub's lamps added to each map's mean GI at 1 m:
+    - Club +109%, Ironworks instance +74%, Central Station instance +33%, Polar +23%, Sanctum +20%, Harbor +18%, Rig +17%;
+    - Causeway +16%, Cyber City +16%, Brickfall +13%, Factory +11%, Emporium +8%, Skyframe +8%, Breakwater +6%;
+    - in each case 18-39% of the floor took more than +10%.
+    - W0 removes this. Every map now looks as it does when it is played first in a session, which is how every BoZo capture has seen it (each capture is its own session), so no in-game before and after was made.
+  - **The suite's exit code is recorded:** see Checks.
+  - **The frame-time rows, like for like:** the table now says run 1's rows are not comparable; the like-for-like rows (seed 4242, no zombies, both commits, three tiers) come from the queued hold.
+  - **The skyline census uses the map's own bounds** (`Setup.Skyline` over `world.Map.bounds`, built once per bounds, as the runtime builds it), with a check that a 600 x 480 m footprint (size B) takes its own skyline.
+- **A0's table and harness.** The deployment doc's W0 section is now the one budget table: target, shared head, W0, the CoreTests gate, and how measured. It sits right under the title, so it merges beside A0's "Generated Expedition performance budget" without a conflict (tested). The 4-pilot steps use A0's flags as pushed (`ac4b6b39`): launch with `-expedition-load 4`, and `-load-balanced` or `-load-low`. W0's `Runtime/NativeExpeditionLoadFrameTimes.cs` (Editor and Development builds only) reads those flags and nothing else. It logs one `EXPEDITION_FRAME_BUDGET` line over 600 frames, summarised by `Core/NativeFrameTimes.cs` the way BoZo's `xperf` windows are. No A0 file is touched. The 4-pilot row is not measured yet: it needs the Editor relaunched with the flag, or a Development player.
+
+**Merge check (release 1).** Merging W0 onto `origin/codex/expedition-a0` (`ac4b6b39`), not pushed:
+- W0's own changes merge cleanly: `EXPEDITION-DEPLOYMENT.md` too, with W0's table and then A0's section.
+- The code conflicts are A0's against today's shared, not W0's. They come the same from merging shared alone onto A0:
+  - `Runtime/NativeExpeditionLoadFixture.cs` is added by both A0 and Astra's Meridian size-B walks (`bfbfa98c`);
+  - `Tests/Program.cs`: A0's landing-field lines and the Thunderheart lines sit at the same spot.
+- On that trial merge, with those resolved for the test only, `--generated-frame` (the same numbers as W0 alone), `--generated-districts` and `--landing-field` pass.
+- Onto W2, W3 and W4, only DEV_LOG and PROJECT_STATE conflict, plus W4's inherited A0 file; V0 merges cleanly.
+
+- **Systems touched in the review:** the effects shader's flag decode (every map's effects drawn with `NativeSirenFx`), the generated city's fog budget, the light volume's candidate guard, a DEV-only frame-time logger, the tests and the budget docs.
+  - Not touched: rules, spawns, generation, collision, wire and save. The pod yaw fix (W4), the Lobby hide (W3) and the slot keep-out re-pin (with A0) are still left alone.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Voxel dependency:** none.
+- **Checks:**
+  - the full CoreTests as relgen5 runs them (a throwaway LF worktree, Release, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS=int/banks-next`) at `dc306212`: 1,042 PASS lines, no exception, the closing `35 managed-core checks passed`, and **exit 0**, recorded (`generated frame`: 68 checks);
+  - the pinned 6000.3.24f1 semantic compile passes (Input System, Player, Assembly-CSharp, Editor). It caught a class-name clash that CoreTests could not see (the summary is now `NativeFrameTimes`);
+  - `git diff --check` against shared: clean;
+  - on the trial merge onto A0: `--generated-frame`, `--generated-districts` and `--landing-field` pass (exit 0).
+- **Not run:** no Windows build or player; no 4-pilot run (it needs A0's harness merged and the Editor relaunched with its flag); no host and guest run; Balanced is not in the managed census; the town's own fog sheets were not captured (the shader fix covers them the same way).
+- **Captures** (`scratchpad/exp-w0/look2/`): 17 stills (01-14 in game, 15-17 the computed top-downs) and three clips in `look2/clips/`:
+  - `1-hub-ground-still-eye-halfspeed.mp4`: shared, the first pass (the crawl) and W0 now, with each one's frame-to-frame change below;
+  - `2-fog-east-street-dolly-halfspeed.mp4`: before, after and a x10 difference;
+  - `3-low-tier-hub-halfspeed.mp4`: the Low tier, before, after and a x10 difference.
+- **Risks:**
+  - The shader change reaches every effect drawn with `NativeSirenFx` (the Siren, Cyber City, Brickfall, the town and the rest). It changes only the pixels whose flags came back a rounding error off; every intended decode is the same.
+  - The triangle gate fails any package that adds triangles to the generated city until the owner decides.
+  - The hub is colder until W5.
+- **For Astra:** nothing in your files. A0 and today's shared conflict in `NativeExpeditionLoadFixture.cs` (your two branches both add it) and in `Tests/Program.cs`. Possible bug, still open from W0's first round: in a live hub run, DEV god mode on the local pilot removed all the hub's zombies within about 5 s.
+- **Next:** the integrator reviews the remade captures and merges W0 with release 1.
+
 ## 2026-11-18 — Astra: Meridian size B walk candidates
 
 Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientation layouts in the Developer walk. All 20 primary streets and 20 roof circuits passed sampled support and clearance. See [the five layouts, route distances and timing table](MERIDIAN-B-WALK.md). The same-machine A0 and five-candidate Unity benchmark is available from the Editor. Native results, contract freeze, party ticket integration and art handoff remain pending.
@@ -287,6 +364,70 @@ Branch `codex/meridian-b-candidates` from shared `741e703`. Five fixed-orientati
   model's own skeleton, its tests with it. Shared `b13940ce` fails three full-suite checks of its own (Checks, above): its author's to update.
   **Next:** review of the landing fix; then merge.
 - **Released:** shared `1b356c0c` (the builder at `1b356c0c`), test channel revision `639306602307778517` (build `3e6ba858`); the suite at `86a37fce` (1,040 groups, exit 0), the Unity compile. No bank or Drive zip change.
+## 2026-11-18 — Claude: Expedition W0, the generated city's latent fixes and its frame budget (owner report; presentation only)
+
+Branch `claude/exp-w0-groundwork`, base shared `claude/sleepy-ritchie-g8ruhv` at `15dab150`. The overhaul's first package for Claude (`docs/EXPEDITION-OVERHAUL.md` W0, release 1), approved with every default ("Yes, use defaults").
+
+- **Over target before any overhaul code (for the owner).** On the shared head the generated city's own triangles per view are already over the plan's section 6 targets:
+  - High: 2.18 M at the worst of 120 views, and 2.02 M on average at the hub, against 2.0 M;
+  - Low: 0.82 M against 0.8 M.
+  - About 685,000 of the High triangles are the skyline's 1,544 boxes, each drawn with the style's 444-triangle wrap mesh.
+  - Every other census number is well inside its target: draws 31 against 1,500, casters 1,004 against 1,200, effect quads 1,105 against 2,800.
+  - **Frame time is over target in the Editor** (owner's PC, RTX 4090 and i9-13900K, 1 pilot): the p95 is 17-20 ms at High and Balanced with 6-23 zombies, and 14-20 ms at Low. With no zombies it is 11.6-13.4 ms. Every tier's build target (p95 12, 10 and 8 ms at 4 pilots and 88 zombies) is exceeded already, with a fifth of the zombies. The frame is CPU-bound (CPU skinning in the Editor checkout). The Windows build decides (M3). Unity's own frame counts are also over the per-view targets: 1,400-2,400 batches at High and Balanced (target 1,500), and 840-1,000 batches with 1.8-2.0 M triangles at Low (targets 800 and 0.8 M).
+- **The light volume** (`Runtime/NativeAdvancedLighting.cs`, `Runtime/NativeAdvancedLightingPresentation.cs`, `Core/NativeLightVolume.cs`):
+  - **The key.** It now carries the run (the generated map's world seed and generator Version, `NativeLightVolume.RunKey`). Every run shares the map id, so a later run took the first run's bake, or none.
+  - **The candidates.** The generated city's are its kit's sources, picked by importance and spread (`NativeLightVolume.Pick`: luminance x range² x the share that reaches the street, and each pick discounts the lights inside its reach). Before, the bake took the look's 8 twice and then the kit's first 48 sources in build order, all in the west.
+  - **Roll 1:** the streets within a baked lamp's reach went from 8% to 83% in the east, 8% to 62% in the south, and 60% to 73% in the west. The lamps' bounce at 0.6 m went from 0.0001 to 0.0060 in the east, 0.0002 to 0.0013 in the south, and 0.0013 to 0.0034 in the west.
+  - **Each presentation now hands only its own map's candidates.** Before, the hub's lamps went on feeding the bake of every advanced-lit map drawn after the town or the hub in the same session (the review's entry above has the reach).
+  - The station, the Ironworks and the authored town keep their candidates as they were.
+- **The generated map's own practicals** (`Core/NativeExpeditionCityLights.cs` `GeneratedPracticals` and `ForMap`, read through `NativeLighting.Look`):
+  - It draws the town's look with an empty practicals list of its own.
+  - Before, the town's 8 practicals sat on fixtures the generated map lacks: a flickering brazier light at the plaza's centre among the pods; halos hung over the empty plaza at (±9.5, 4.2, ±9.5); a gate lamp, a bus fire, sodium lamps and the portico elsewhere.
+  - The generated map's ambience also no longer plays the town's brazier and bus crackle (`NativeExpeditionCityAmbience.Between(..., fires)`).
+  - Its slots now come from its own kit: the fence's gate-post lamps, wall lamps, floods, beacons and neon.
+- **The ground fog** (`Core/NativeExpeditionCityFx.cs`):
+  - The 2 m grid is sized from the map's bounds (the town's grid comes out as today's, x -122..122, z -122..62).
+  - A floor block (top at the ground) no longer keeps fog out.
+  - Fog now lies on every generated street (except under the halls), in the sanctuary and in the final court. Before, the one floor block blanked the whole grid.
+- **The kit's variety** (`Core/NativeExpeditionCityKit.cs`): the dressing hash mixes in the run's world seed on the generated map (`Seed`, `SeedOf`).
+  - Of the buildings that recur at one height between two rolls, a sixth used to dress exactly alike. Now all of them dress anew (342 of 342 for rolls 4242 and 4243).
+  - The town's hash is unchanged (seed 0, pinned to the shared head's values).
+  - The district pick stays seed-free, so the blend's statistics in GeneratedDistrictChecks hold.
+- **GeneratedFrameChecks** (`Tests/GeneratedFrameChecks.cs`, in the full CoreTests; `--generated-frame` alone):
+  - the city's own draws, triangles, instances (at most 500 a draw), shadow casters, effect quads (and rain and beams), practical slots and low-tier parts per view;
+  - 6 eyes by role (the hub, the south apron, the east and west entrances' join circles, the final court, the hub overview) over 20 rolls, at High and Low;
+  - pinned at the shared head's numbers plus 15% (the review made the triangles a no-growth gate: see its entry above);
+  - plus checks of each fix above (45 in all).
+  - The budget table is in `docs/EXPEDITION-DEPLOYMENT.md`, at its top.
+- **Re-pinned on purpose:**
+  - the effect quads are pinned on W0's own numbers (1,243 at High and 860 at Low, +12% each), because the fog now lies on the generated streets;
+  - `WardLightingChecks:256` and `WardZeroChecks:265` follow `NativeLighting.Look`, now wrapped in `ForMap`;
+  - `AdvancedLightingChecks` follows the `Candidates(mapId, lights, run)` signature, and gains source pins for the run key, the pick and the own-map hand-over.
+- **The frame-time capture path** (BoZo, git-ignored; `scratchpad/exp-w0/py/perfblock.cs` patched in after the exp-map options):
+  - `xperf=o,D,label[,KIND:N];...` windows on a live run log the frame times (mean, p50, p95, p99, worst) and the Editor's render stats;
+  - `xdolly` flies the game camera on the arena clock, so that before and after clips match;
+  - the 1-pilot runs at High, Balanced and Low are in the budget table.
+  - **The 4-pilot row** runs on Astra's A0 DEV load harness as pushed (`-expedition-load 4`; the review's entry above).
+- **Systems touched:** lighting (the light volume's key and candidates, the look's practicals on the generated map), the city's atmosphere (the fog grid), its ambience (the crackles), the kit's hash, and the tests.
+  - Not touched: rules, generation, collision, spawns, wire and save.
+  - Not done here: the pod yaw fix (W4), the Lobby hide (W3) and the slot keep-out re-pin (with A0).
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Nothing here is read by the simulation, and nothing is sent.
+- **Checks:**
+  - the full CoreTests, as relgen5 runs them (Release, `expedition_path.patch`, the next banks), in a throwaway worktree at `753c3033`: 1,036 PASS lines (shared's 1,035 plus `generated frame`, 45 checks), no exception, and the closing `35 managed-core checks passed` line. It was run at idle priority and finished before the frame-time runs started;
+  - the pinned 6000.3.24f1 semantic compile (Input System, Player, Assembly-CSharp, Editor) passes;
+  - `git diff --check` is clean;
+  - seen in the Editor (BoZo, generated seed 4242 as a PvP match, High, 1920x1080), before on `15dab150` and after on `753c3033`: the hub at eye level and from 9 m up, the east and west streets, the south road and the final court; a 3 s hub clip, cropped to the ground beside the pods so the fight stays out (the town's brazier light flickers on the wet ground before, and is gone after); and a 4 s dolly up the east street, flown on the arena clock so both runs take the same path. In run 1 the PvP map's one bot was not idle, so its hits show as the red vignette in the Game-view stills. The per-run dressing also differs between before and after, because the kit's variety is one of the fixes. In today's dusk look the ground fog reads faintly. The light volume's new key is checked by source pins only: each capture is its own play session, so no stale bake can show there. Also managed top-down maps for seed 4242 of the light volume's lamp bounce, the ground fog and the practicals, and the frame-time runs (1 pilot at High, Balanced and Low, before and after).
+- **Not run:**
+  - no Windows build or player, so no build frame times; the Editor's are in the table;
+  - no 4-pilot run (it needs A0's harness);
+  - no host and guest run (nothing here is networked);
+  - the Balanced tier is not in the managed census, which counts High and Low only.
+- **Risks:**
+  - The hub's plaza is darker now: the town's brazier and two lamps no longer light the pods. The camp's own brazier comes with W5 (M3). The night look (W1) relights the city.
+  - The light pick assumes the generated streets lie at y 0. Blockout-4 needs W10's volume rebuild.
+  - The effect-quad pins leave 15% for W1's wet-street streaks. W1 re-pins them on purpose.
+- **For Astra:** nothing changes in your files. A0's DEV load harness is what the 4-pilot frame row waits for. The slot keep-out re-pin (`GeneratedDistrictChecks:99`) goes with A0's landing field.
+- **Next:** the integrating session reviews the captures and merges with release 1's other packages.
 
 ## 2026-11-18 — Claude: shared's full suite passes again after the Thunderheart Carillon (three stale checks; tests only)
 

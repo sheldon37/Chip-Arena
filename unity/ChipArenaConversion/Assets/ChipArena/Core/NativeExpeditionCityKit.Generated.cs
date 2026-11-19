@@ -47,11 +47,12 @@ namespace ChipArena.UnityConversion
 
         /// <summary>The district (0 neutral, 1 + district index) a generated building at (x, z) dresses as: the blend's shares,
         /// squared and renormalised (each district reads as its own near its entrance, still with no seam), stacked against a
-        /// stable hash of its id.</summary>
+        /// stable hash of its id (seed-free: the blend's shares already move with each roll's districts, and the district checks'
+        /// statistics hold on it; the dressing's own hash mixes in the run's seed).</summary>
         public static int DistrictAt(ExpeditionDeploymentState s,string id,double x,double z)
         {
             if(s==null)return 0;var w=NativeDeployPresentation.Weights(s,(float)x,(float)z);double sum=0;for(int k=0;k<4;k++)sum+=w[k]*w[k];if(!(sum>0))return 0;
-            double r=Hash(id,7,3)*sum,acc=0;for(int k=0;k<4;k++){acc+=w[k]*w[k];if(r<acc)return k;}return 0;
+            double r=Hash(id,0,7,3)*sum,acc=0;for(int k=0;k<4;k++){acc+=w[k]*w[k];if(r<acc)return k;}return 0;
         }
         private int LookOfDistrict(int d)=>d<=0||blueprint?.districts==null||d>blueprint.districts.Length?LookTown:LookOf(blueprint.districts[d-1].theme);
         private string ZoneOf(int d)=>d<=0||blueprint?.districts==null||d>blueprint.districts.Length?null:blueprint.districts[d-1].instance;

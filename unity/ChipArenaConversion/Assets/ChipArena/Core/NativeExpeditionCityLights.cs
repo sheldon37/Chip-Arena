@@ -24,6 +24,23 @@ namespace ChipArena.UnityConversion
         private MapLookPractical[] looks=Array.Empty<MapLookPractical>();private float[] score=Array.Empty<float>();private readonly int[] want=new int[Slots];
 
         public NativeExpeditionCityLights(){for(int i=0;i<Slots;i++)Slot[i]=-1;}
+        /// <summary>The generated map's own practical lights (expedition overhaul W0): none yet. The look it shares with the town
+        /// (`expedition-city`) puts its eight on the town's own fixtures (the brazier at the sanctuary's centre, where the
+        /// generated hub's pods land, its two lamps, the portico, the gate lamp, the burning bus and the ring's sodium lamps), none
+        /// of which the generated map has; there they lit the pods with a fire that was not there and hung halos over the empty
+        /// plaza. The generated map's light is its kit's (wall lamps, the fence's gate posts, the halls' floods, beacons, neon),
+        /// which the picker and the light volume take. A practical the generated map gains (the camp's brazier, a burning pod, the
+        /// searchlight) goes here.</summary>
+        public static readonly MapLookPractical[] GeneratedPracticals=Array.Empty<MapLookPractical>();
+        private static MapLook forMapFrom,forMapCopy;
+        /// <summary>The look map `mapId` draws with (NativeLighting.Look): on the generated map the shared look with
+        /// <see cref="GeneratedPracticals"/> in place of the town's (one copy, made once per look); on every other map the look itself.</summary>
+        public static MapLook ForMap(MapLook look,string mapId)
+        {
+            if(look==null||mapId!=NativeExpeditionGeneratedWorld.MapId)return look;
+            var from=forMapFrom;var copy=forMapCopy;if(ReferenceEquals(from,look)&&copy!=null)return copy;
+            copy=look.Copy();copy.lights=GeneratedPracticals;forMapCopy=copy;forMapFrom=look;return copy;
+        }
         public static NativeExpeditionCityLights Build(NativeExpeditionCityKit kit,MapLook look)
         {
             var l=new NativeExpeditionCityLights();var list=new List<NativeCityLight>();l.looks=look?.lights??Array.Empty<MapLookPractical>();
