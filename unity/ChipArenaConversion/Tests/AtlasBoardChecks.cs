@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
             Check(T.Live==1&&T.All.Select(t=>t.Id).Distinct().Count()==T.All.Length,"City alone is live (Q3); ids are distinct");
             Check(city.Label=="CITY · MERIDIAN"&&T.MenuLine=="TILESET: CITY · MERIDIAN","the label and the Expeditions screen's line");
             var row=Enumerable.Range(0,4).Select(c=>T.Cell(city,c)).ToArray();
-            Check(row.SequenceEqual(new[]{"CITY · MERIDIAN","THE INFECTED","5 INSTANCES","THE SIREN"}),"line 1 reads the plan's row ("+string.Join(" | ",row)+")");
+            Check(row.SequenceEqual(new[]{"CITY · MERIDIAN","THE INFECTED","3 INSTANCES","THE SIREN"}),"line 1 reads the plan's row ("+string.Join(" | ",row)+")");
             Check(T.Columns.SequenceEqual(new[]{"TILESET","ENEMIES","INSTANCES","FINAL"})&&T.Lines==4,"four columns and four lines");
             Check(T.Cell(null,0)==T.NotInService&&T.Cell(null,1)==""&&T.Cell(null,2)==""&&T.Cell(null,3)==""&&T.NotInService=="NOT IN SERVICE","an empty line: NOT IN SERVICE, no invented names or dates");
             foreach(var t in T.All)
@@ -76,9 +76,9 @@ namespace ChipArena.UnityConversion
             var maps=JsonSerializer.Deserialize<UnityMapContent>(mapsJson,options);var content=new ConversionContent{maps=maps.maps,contentRevision=NativeMapRules.Revision(mapsJson)};
             var layout=NativeExpeditionLayout.Parse(layoutJson);layout.compatibility=NativeExpeditionLayout.Compatibility(layoutJson,content);
             var room=new ExpeditionDeploymentRoom("atlas","host",4242,NativeExpeditionCatalogue.Run.Id,layout,content);var seen=new HashSet<string>();
-            for(int roll=0;roll<240;roll++){Check(room.Execute("host",room.Snapshot().revision,ExpeditionDeploymentIntent.RollInstances),"roll "+roll);foreach(var d in room.Snapshot().districts)seen.Add(d.instance);}
+            for(int roll=0;roll<240;roll++){Check(room.Execute("host",room.Snapshot().revision,ExpeditionDeploymentIntent.RollInstances),"roll "+roll);Check(room.Snapshot().districts.Length==NativeExpeditionDeployment.InstanceCount,"roll "+roll+" deals "+NativeExpeditionDeployment.InstanceCount+" destinations");foreach(var d in room.Snapshot().districts)seen.Add(d.instance);}
             Check(seen.SetEquals(city.Instances),"ATLAS's instances are the Instance Machine's pool ("+string.Join(",",seen.OrderBy(x=>x))+")");
-            Check(T.Cell(city,2)==seen.Count+" INSTANCES","the INSTANCES cell counts the pool");
+            Check(T.Cell(city,2)==NativeExpeditionDeployment.InstanceCount+" INSTANCES"&&seen.Count>NativeExpeditionDeployment.InstanceCount,"the INSTANCES cell counts a run's destinations ("+NativeExpeditionDeployment.InstanceCount+"), not the pool of "+seen.Count);
             var live=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeDeploymentLive.cs"));var block=live.Substring(live.IndexOf("LiveDeployInstances={",StringComparison.Ordinal));block=block.Substring(0,block.IndexOf("};",StringComparison.Ordinal));
             var reels=Regex.Matches(block,@"id=(""[^""]+""|NativeBackroomsGenerator\.AreaId|NativePoolroomsGenerator\.AreaId)").Select(m=>m.Groups[1].Value=="NativeBackroomsGenerator.AreaId"?NativeBackroomsGenerator.AreaId:m.Groups[1].Value=="NativePoolroomsGenerator.AreaId"?NativePoolroomsGenerator.AreaId:m.Groups[1].Value.Trim('"')).ToArray();
             Check(reels.Length==city.Instances.Length&&new HashSet<string>(reels).SetEquals(city.Instances),"and the live station's reels ("+string.Join(",",reels)+")");

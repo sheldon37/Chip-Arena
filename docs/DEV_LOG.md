@@ -1,3 +1,13 @@
+## 2026-11-19 — Claude: the ATLAS board counts a run's destinations, 3, not the pool of 5 (owner report; presentation only)
+
+Branch `claude/atlas-instance-count` from shared. Owner, on the station's board reading "5 INSTANCES": "Dont we only roll 3 instances + 1 final boss?"
+
+- **What changed:** `NativeTilesets.Cell`'s INSTANCES column says how many destinations a run rolls (`NativeExpeditionDeployment.InstanceCount`, 3), not the size of the tileset's pool (5: Ward Zero, Transit, Foundry, the Backrooms and the Poolrooms).
+- **Checks:** `AtlasBoardChecks` now pins line 1 to `3 INSTANCES` and checks that every one of 240 rolls deals 3 from a pool of more; `--atlas-board` passes (9,867 checks).
+- **The FINAL column still reads THE SIREN.** That is true today: the live final court spawns `m1-final-siren` (`NativeExpeditionM1Arena.cs`). The owner wants NOCTIEL as the final, which is a rules and spawn change for Astra (hand-off through the owner). When it lands, `NativeTilesets` City's `Final` and AtlasBoardChecks' row change with it.
+- **Animation impact:** none.
+- **Merged and released (Claude, integrator):** `claude/atlas-instance-count` merged into shared `b8301e62` (the builder at `b8301e62`), test channel revision `639307113208175977` (build `c931db31`); the suite at `e2169dfd` (1,066 groups, exit 0), the pinned Unity compile.
+
 ## 2026-11-19 — Claude: the owner accepts the city's triangle baselines as the budget (docs and tests only)
 
 Branch `claude/budget-baselines` from shared. Owner, verbatim: "Accept the baselines" (asked: accept today's triangle counts as the city's budget, or cut the skyline).
