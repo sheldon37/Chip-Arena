@@ -1,3 +1,54 @@
+## 2026-11-18 — Claude: the zombie run-turn checks on every take, each pairing held at its own values, the landing lead fixed (review follow-ups; presentation only)
+
+- **The second and third reviews of the zombie run-turn fix** (released in shared `eed764b5`): on `claude/zombie-run-turn-tests`, cut from shared
+  `eed764b5` and merged forward with shared (`b13940ce`); `7bc96297` the second review's items, `ce5e0bd9` the third's (of `a6d756fb`, which found
+  the landing lead easing toward a zeroed cadence), the docs, `d4eeb0fe` the walking table's line endings. Pushed, **not merged, not released**.
+  Details: docs/ZOMBIE-LOCOMOTION.md "Running and turning".
+- **Code:**
+  - `NativeHordeGait.LeadOf`: a landing foot's lead into the turn eases by the move weight toward the cadence the add steps at (`cadenceHz`).
+    Switched on the planner's moving it jumped as a zombie stopped or set off; eased toward the cadence already zeroed as it stopped
+    (`a6d756fb`), it still did. A landing foot's turn in its landing frame, stopping and setting off every .35 s while turning: 11.2 degrees on
+    shared before the lead (`8865e817`), 11.5 on shared now (the lead switched), 15.6 at `a6d756fb`, 7.1 now (the review's wider sweep: 8.5).
+  - `GoreModelShift` takes the add's kind; a thrown part's voxel fallback is drawn on the rig's own joints (`HordePart.RigBones`); wounds, drawn
+    on the voxel model only, on its joints.
+- **Tests** (`ZombieRunTurnChecks`, 1496 checks; sampled: one add of each take pairing from one start unless more are named, not a population's
+  worst):
+  - Every pairing of a kind's walk and run takes (`IdsOf`: the shambler 4, the runner, spitter and brute 2), each held at its own values on eleven
+    routes (Tests/zombie-runturn-bounds.txt, `--zombie-runturn-bounds`): the knee and the planted foot within 3 degrees, a swinging foot within 2
+    and never past 19 (was 25). Removing the knee's lean to its foot now fails the knee bound; `a6d756fb`'s lead fails a foot bound.
+  - A reversal's and a switch to a target behind's worst over eight starts: each pairing's own less .005 legs. Two of the twenty floors sit at
+    the hips' clamp (.764, the gait's deepest crouch) and cannot fail: the runner #40003's switch and the brute #40003's reversal are unguarded.
+  - Stopping and setting off every .35 s (that period only): a landing foot at most 9 degrees in its landing frame (shared before the lead,
+    shared now and `a6d756fb` fail it), a swinging foot 30 (shared 40).
+  - Shared `8865e817`'s walking pinned for every walk take, both speeds, turns either way, the linesman and the faceling (280 routes,
+    Tests/zombie-runturn-walks-shared.txt): 22 higher than shared by more than .03 at their worst start, 12 lower; 17 held at today's as the
+    accepted cost (`WalkFloors`). The shambler's 105 to 150 degree a second arcs at 1.2 times its walk at .9 or higher (.995; .77 without the
+    walking sideways step). The circle chase from four pilot starts at least .77 (today .78, shared .87).
+  - Source pins for the gore's kind guard, the thrown part's rig-joint fallback and the voxel wounds' joints (no check drives them).
+  - Also: `SwingSnap` counts lift and landing frames; the footprint check on a walking arc and a walk-to-run set-off; ZombieLocoChecks drives
+    the model's legs turning, stopping and setting off for allocations (0 bytes); ZombieStageChecks passes the gait's `Outreach` and
+    `LegsAcross` to the stance, whose `across` defaults to 1.
+  - Station baseline: every motion line written exactly from the branch (the runner's had moved within the check's tolerance). The `.death`
+    lines differ in their last digits on this runtime on shared too and are left as they were.
+- **Affected enemies:** the upright kinds on the model; no rule, hitbox, timing, damage, cooldown, movement or network change. Nothing for Astra.
+- **Checks:** full `CoreTests` the release's way (the expedition path patch, the release banks): `1a3af2fa` (the fix on shared `4dc8c86f`) exit 0,
+  1038 PASS groups. The merge with shared `b13940ce` (`6596d33a`) stops on three checks shared `b13940ce` broke itself: TransitionLoadingChecks
+  counts 20 maps (Thunderheart is the 21st), VisualRigChecks pins the preferences line (it gained `musicReaction`), and AdvancedLightingChecks' list
+  lacks `carillon-storm` (which has an advanced block). With those three patched in the scratch checkout only: exit 0, 1040 PASS groups;
+  `ZombieRunTurnChecks` 1496 checks. `--zombie-all` on the merged tip: all 21 groups pass. `check_unity_compile.py`: Assembly-CSharp and
+  Assembly-CSharp-Editor pass. Pin scan over the branch's source changes: 0 broken. `git diff --check` against shared clean after `d4eeb0fe` (it
+  flagged the walking table's 300 CRLF lines). The landing bound (9) against `a6d756fb`'s gait, shared's and shared's before the lead: fails on each
+  (15.6, 11.5, 11.2); 7.1 now. Not run: a Windows build; the Editor's PrototypeBuild.Validate.
+- **Seen in Unity** (BoZo live play, the game view, shared `8865e817` against `7bc96297`): a running shambler shot in its right thigh until the
+  leg gibs. The bullet bursts, the thigh's gush and the thrown leg come off the model's own right leg; at a straight run shared's looks alike (the
+  model's and the rig's legs nearly coincide there). The subject views isolate the model and show no gore. The landing fix was not captured.
+- **Still open** (docs/ZOMBIE-LOCOMOTION.md "Still open"): targets switched 120 to 150 degrees round sink deeper at their worst moment (the
+  shambler, runner, faceling and spitter, .02 to .06 legs), the brute's walk-6 take round a 90 degree a second walking arc (.82 to .77) and
+  sixteen more walking routes held at today's, the circle chase from one pilot start (.78). Deferred: full sweeps over the moments of the stride,
+  several ids per pairing and population figures; the owner has decided to retire voxel, and the gait will be rebuilt to solve once on the
+  model's own skeleton, its tests with it. Shared `b13940ce` fails three full-suite checks of its own (Checks, above): its author's to update.
+  **Next:** review of the landing fix; then merge.
+
 ## 2026-11-18 — Claude: zombies run and turn on their own legs (owner report; presentation only)
 
 - **The owner (2026-11-18):** "The issue appears to occur specifically when zombies are running and turning simultaneously. Their legs begin
