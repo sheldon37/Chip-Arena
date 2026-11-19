@@ -160,12 +160,14 @@ namespace ChipArena.UnityConversion
             }
             NativeLighting.ArenaRim();var k=look?.blocks;Color haze=k!=null?Linear(NativeArena.ColorOf(k.hazeColor)):Color.black;
             Shader.SetGlobalVector(HazeId,new Vector4(haze.r,haze.g,haze.b,k!=null?k.haze:0));Shader.SetGlobalFloat(HazeTopId,k!=null&&k.hazeTop>0?k.hazeTop:1);Shader.SetGlobalFloat(DustId,k!=null?k.dust:0);
-            for(int s=0;s<counts.Length;s++)for(int start=0,i=0;start<counts[s];start+=NativeBlockLooks.Chunk,i++){int n=Math.Min(NativeBlockLooks.Chunk,counts[s]-start);Draw(NativeLighting.StyleActive?ToonStage(s):meshes[s],batches[s][i],n);Draws++;Instances+=n;}
+            for(int s=0;s<counts.Length;s++)for(int start=0,i=0;start<counts[s];start+=NativeBlockLooks.Chunk,i++){int n=Math.Min(NativeBlockLooks.Chunk,counts[s]-start);Draw(StageForMap(s),batches[s][i],n);Draws++;Instances+=n;}
             pack.Flush(instancing);Draws+=pack.Draws;Instances+=pack.Instances;
         }
         private void Rebind(NativeArena arena,NativeDustCoat coat)
         {
             foreach(var e in entries.Values)spare.Push(e);entries.Clear();drawn=arena;generation=arena.Generation;mapId=arena.MapId;
+            surveyBlocks = mapId != null && mapId.StartsWith("expedition-city-walk-", StringComparison.Ordinal)
+                && uint.TryParse(mapId.Substring("expedition-city-walk-".Length), out _);
             var map=arena.Content.Map(mapId);look=NativeLighting.Look(map);preview=NativeLighting.LookSet().preview;dressed=NativeBlockLooks.Dressed(look,Preview);floor=map.floor;
             var source=map.blocks;if(dressed&&!ReferenceEquals(source,liftBlocks)){liftBlocks=source;lifts=NativeSurfaceLayers.Blocks(source);liftIndex.Clear();if(source!=null)for(int i=0;i<source.Length;i++)if(source[i]?.id!=null&&!liftIndex.ContainsKey(source[i].id))liftIndex[source[i].id]=i;}
             materials.Clear();foreach(var m in arena.Content.materials)if(m!=null&&m.id!=null)materials[m.id]=m;
@@ -263,7 +265,15 @@ namespace ChipArena.UnityConversion
         // The anime map style's stage meshes, each made on first use: the wraps (Core NativeToonMesh.WrapMesh: intact, S1, S2,
         // the stub, S2 unwaisted, the toothed intact wrap) on the normal tiers; the rounded box (NativeToonMesh.Build) for the
         // intact stage and the legacy meshes for the others on the low tier.
+        private bool surveyBlocks;
+        private Mesh surveyMesh;
         private Mesh toonMesh;private readonly Mesh[] wrapMeshes=new Mesh[NativeToonMesh.WrapMeshes];
+        private Mesh StageForMap(int stage)
+        {
+            if (surveyBlocks && (stage == 0 || stage == NativeToonMesh.ToothedMesh))
+                return surveyMesh ??= MeshOf(NativeBlockLooks.SurveyBox(), 0);
+            return NativeLighting.StyleActive ? ToonStage(stage) : meshes[stage];
+        }
         private Mesh ToonStage(int s)=>NativeLighting.StyleWrap?(wrapMeshes[s]??=MeshOf(NativeToonMesh.WrapMesh(s),s)):s==0?(toonMesh??=MeshOf(NativeToonMesh.Build(),0)):meshes[Math.Min(s,meshes.Length-1)];
         // A map block that draws a toothed end where it is free: a brick wall by its resolved look (NativeMapStyle.ToothCandidate).
         private bool ToothCandidate(int i)
@@ -272,7 +282,7 @@ namespace ChipArena.UnityConversion
             var c=NativeBlockLooks.Resolve(look?.blockLooks,Preview?preview:null,b.id,b.material,content);
             return (c.Flags&NativeCyberCityLooks.Bank)==0&&NativeMapStyle.ToothCandidate(b.size.x*.5f,b.size.y*.5f,b.size.z*.5f,c.Look);
         }
-        private void OnDestroy(){if(meshes!=null)foreach(var m in meshes)if(m!=null)CapturedAnimation.Release(m);if(toonMesh!=null)CapturedAnimation.Release(toonMesh);toonMesh=null;for(int w=0;w<wrapMeshes.Length;w++){if(wrapMeshes[w]!=null)CapturedAnimation.Release(wrapMeshes[w]);wrapMeshes[w]=null;}if(material!=null)CapturedAnimation.Release(material);meshes=null;material=null;}
+        private void OnDestroy(){if(surveyMesh!=null)CapturedAnimation.Release(surveyMesh);if(meshes!=null)foreach(var m in meshes)if(m!=null)CapturedAnimation.Release(m);if(toonMesh!=null)CapturedAnimation.Release(toonMesh);toonMesh=null;for(int w=0;w<wrapMeshes.Length;w++){if(wrapMeshes[w]!=null)CapturedAnimation.Release(wrapMeshes[w]);wrapMeshes[w]=null;}if(material!=null)CapturedAnimation.Release(material);meshes=null;material=null;}
     }
     public sealed partial class ArenaPresentation
     {

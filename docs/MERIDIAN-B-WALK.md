@@ -4,15 +4,15 @@ Settings → Developer → Walk Meridian greybox opens the five `meridian-b-cand
 
 | Walk | North / east / south / west, metres along grade | Blocks including treads | Survey nodes | Camp-connected Hulk cells | High / Low greybox block triangles |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Crown Hill | 299.2 / 299.2 / 291.7 / 255.4 | 2,735 | 633 | 55,929 | 1,214,340 / 251,620 |
-| The Navigation | 271.4 / 274.7 / 260.3 / 288.2 | 4,456 | 606 | 53,540 | 1,978,464 / 409,952 |
-| The Arcades | 255.0 / 262.0 / 263.6 / 264.7 | 4,360 | 583 | 51,088 | 1,935,840 / 401,120 |
-| The Stride | 262.0 / 267.7 / 275.3 / 291.7 | 3,215 | 609 | 54,387 | 1,427,460 / 295,780 |
-| The Yards | 262.0 / 284.0 / 259.3 / 259.3 | 1,978 | 595 | 57,205 | 878,232 / 181,976 |
+| Crown Hill | 299.2 / 299.2 / 291.7 / 255.4 | 2,735 | 633 | 55,929 | 32,820 / 32,820 |
+| The Navigation | 271.4 / 274.7 / 260.3 / 288.2 | 4,456 | 606 | 53,540 | 53,472 / 53,472 |
+| The Arcades | 255.0 / 262.0 / 263.6 / 264.7 | 4,360 | 583 | 51,088 | 52,320 / 52,320 |
+| The Stride | 262.0 / 267.7 / 275.3 / 291.7 | 3,215 | 609 | 54,387 | 38,580 / 38,580 |
+| The Yards | 262.0 / 284.0 / 259.3 / 259.3 | 1,978 | 595 | 57,205 | 23,736 / 23,736 |
 
 The managed Release harness (`--layered-walk`) samples built exit heights every 2 m over 60 m, compares all 190 pairs, checks destinations and traces each horde corridor at full Hulk width and height. A separate 2 m layered graph checks reachability from camp over the built boxes and wedges. All 192 specified pilot fire escapes have built flights and pass the pilot-width and headroom sweep against the surrounding solids. The Navigation uses the upper terrace for a return landing. The Galleria stair has a narrow opening through its roof lid. Pilot fire escapes stay out of the horde graph. Direction changes round three arcade posts and two grade transitions use offsets inside the authored streets.
 
-The triangle columns count drawing every greybox block once using the actual High and Low styled meshes. Rendered frames also include the pilot, shadows, effects and presentation. The owner’s complete-view caps are 2,177,224 High and 821,492 Low. The Developer walk shows mean frame time and peak rendered triangles when the Unity render counter is available. Compare the same views on both tiers before the art freeze.
+The triangle columns count drawing every greybox block once using the flat 12-triangle survey mesh on both tiers. Rendered frames also include the pilot, shadows, effects and presentation. The owner’s complete-view caps are 2,177,224 High and 821,492 Low. The Developer walk shows mean frame time and peak rendered triangles when the Unity render counter is available. Compare the same views on both tiers before the art freeze.
 
 On the Windows builder, deployment acceptance runs the four-pilot, 88-zombie native simulation on a changed geometry revision and logs the layout name and counters. The Editor menu **Chip Arena → Benchmark Meridian candidates against A0** reruns the comparison and enforces the freeze thresholds. These are Developer walk candidates. The live expedition ticket continues to use its existing world contract.
 

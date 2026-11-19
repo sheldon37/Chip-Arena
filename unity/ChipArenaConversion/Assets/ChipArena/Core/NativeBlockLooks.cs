@@ -181,6 +181,38 @@ namespace ChipArena.UnityConversion
         /// over the S2 waist; for bounds, the shadow normal offset and the shader's orientation hint), lattice A and inset B
         /// (xyz each, w 0), and shade (rgb x ShadeStore, a fresh break); triangles wind outward (Unity: clockwise).</summary>
         public sealed class StageMesh {public float[] Preview,Normal,Lattice,Inset,Shade;public int[] Triangles;public int Vertices=>Preview.Length/3;}
+        // Six flat faces for the Meridian survey. The existing block shader scales the
+        // signed lattice coordinates by each instance's actual half extents.
+        public static StageMesh SurveyBox()
+        {
+            var box = new StageMesh { Preview = new float[72], Normal = new float[72],
+                Lattice = new float[96], Inset = new float[96], Shade = new float[96], Triangles = new int[36] };
+            int face = 0;
+            for (int axis = 0; axis < 3; axis++)
+            for (int sign = -1; sign <= 1; sign += 2, face++)
+            {
+                int u = (axis + 1) % 3, v = (axis + 2) % 3, first = face * 4;
+                for (int corner = 0; corner < 4; corner++)
+                {
+                    int i = first + corner;
+                    box.Lattice[i*4+axis] = sign;
+                    box.Lattice[i*4+u] = (corner == 1 || corner == 2 ? 1 : -1) * sign;
+                    box.Lattice[i*4+v] = corner >= 2 ? 1 : -1;
+                    box.Normal[i*3+axis] = sign;
+                    for (int k = 0; k < 3; k++)
+                    {
+                        box.Preview[i*3+k] = box.Lattice[i*4+k];
+                        box.Shade[i*4+k] = ShadeStore;
+                    }
+                }
+                int t = face * 6;
+                box.Triangles[t] = box.Triangles[t+3] = first;
+                box.Triangles[t+1] = first+1;
+                box.Triangles[t+2] = box.Triangles[t+4] = first+2;
+                box.Triangles[t+5] = first+3;
+            }
+            return box;
+        }
         // An axis coordinate code: -1 the minus face plane, Lines the plus face plane, else a lattice line index.
         private struct Line {public float A,B;public bool Outer;}
         private static Line[] Lines(bool mid)

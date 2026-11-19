@@ -81,9 +81,9 @@ internal static class LayeredCityWalkChecks
                         exits.Add(new Exit(route, solids, map.ramps));
                     }
                     // Conservative block pass: every greybox block drawn at once with the
-                    // same stage meshes as the generated-city census, before street art.
-                    long high = (long)map.blocks.Length * (NativeToonMesh.Wrap().Triangles.Length / 3);
-                    long low = (long)map.blocks.Length * (NativeToonMesh.Build().Triangles.Length / 3);
+                    // flat survey block mesh, before lights and repeated render passes.
+                    long high = (long)map.blocks.Length * (NativeBlockLooks.SurveyBox().Triangles.Length / 3);
+                    long low = high;
                     if (high > GeneratedFrameChecks.GateHighTris || low > GeneratedFrameChecks.GateLowTris)
                         throw new Exception("Meridian greybox exceeds the block triangle budget");
                     Console.WriteLine($"{map.name}: greybox block-pass triangles High {high}, Low {low}");
