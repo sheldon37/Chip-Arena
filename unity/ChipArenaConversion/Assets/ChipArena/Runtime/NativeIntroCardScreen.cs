@@ -61,6 +61,12 @@ namespace ChipArena.UnityConversion
             float width=cardWidth,fit=W*.88f,shrink=width>fit?fit/width:1;CardScale(shrink);size*=shrink;width*=shrink;
             float cx=(card.X>0?card.X:.5f)*W,cy=(card.Y>0?card.Y:.8f)*H-6*exit;float left=cx-width*.5f;var box=new Rect(left,cy-size*.6f,width,size*1.2f);
             var ink=Lin(card.Ink,alpha);var glow=Lin(card.Glow,.65f*alpha);
+            // The backing (Core NativeIntroCardInk): a soft dark ellipse behind the card's lines, easing in with the name, so the card
+            // reads on a bright set (white snow, a sunlit floor); dark on a dark set, where the card looks as it did. No ring; it
+            // follows the card's alpha, so nothing flashes. The lines' outline is the same black, and it scales with their size.
+            float back=NativeIntroCardInk.Backing*alpha*M.EaseOut(M.Progress(card.Age,0,.35f));
+            if(back>.002f){float top_=box.y-(team?56:34),bottom=box.yMax+30,bw=Mathf.Max(width+size*2.2f,W*.34f)*1.5f,bh=(bottom-top_)*2.1f;U.RadialStops(new Rect(cx-bw*.5f,(top_+bottom)*.5f-bh*.5f,bw,bh),new Color(0,0,0,back),NativeIntroCardInk.BackingAt,NativeIntroCardInk.BackingAlpha);}
+            cardEdge=new Color(0,0,0,NativeIntroCardInk.Outline);
             var frame=new NativeIntroCardFrame(name,cardLetters,cardX,cardW,size,box,card,W,H,alpha,reduced);var effect=NativeIntroCardEffects.Find(card.Effect);
             bool replaced=effect!=null&&effect.Draw(frame,true);
             if(!replaced)CardName(card,box,size,ink,glow,alpha,reduced);
@@ -68,12 +74,15 @@ namespace ChipArena.UnityConversion
             // The kicker above (the weapon) and the line below (the intro text), each easing in after the name.
             float k=M.Bezier(.16f,.84f,.24f,1,M.Progress(card.Age,.18f,.55f))*alpha;string kicker=card.Kicker??Kicker(seat.spec);
             // (the kicker, the team and the line centre on the card's own x, so a card set beside the pilot keeps its lines with it)
-            U.Text(new Rect(cx-W*.5f,box.y-24+10*(1-k),W,16),kicker,12,U.A(Lin(card.Glow,1),k),TextAnchor.UpperCenter,bold:true,tracking:.34f,shadow:new Color(0,0,0,.7f*k));
-            if(team){float tk=M.Bezier(.16f,.84f,.24f,1,M.Progress(card.Age,.24f,.55f))*alpha;U.Text(new Rect(cx-W*.5f,box.y-46+10*(1-tk),W,16),NativeMatch.TeamNames[TeamIndex(seat.team)].ToUpperInvariant()+" TEAM",12,U.A(TeamColor(seat.team),tk),TextAnchor.UpperCenter,bold:true,tracking:.14f);}
+            U.Text(new Rect(cx-W*.5f,box.y-24+10*(1-k),W,16),kicker,12,U.A(Legible(Lin(card.Glow,1)),k),TextAnchor.UpperCenter,bold:true,tracking:.34f,shadow:new Color(0,0,0,.7f*k),outline:U.A(cardEdge,k));
+            if(team){float tk=M.Bezier(.16f,.84f,.24f,1,M.Progress(card.Age,.24f,.55f))*alpha;U.Text(new Rect(cx-W*.5f,box.y-46+10*(1-tk),W,16),NativeMatch.TeamNames[TeamIndex(seat.team)].ToUpperInvariant()+" TEAM",12,U.A(Legible(TeamColor(seat.team)),tk),TextAnchor.UpperCenter,bold:true,tracking:.14f,outline:U.A(cardEdge,tk));}
             float l=M.Bezier(.16f,.84f,.24f,1,M.Progress(card.Age,.32f,.6f))*alpha;
-            U.Text(new Rect(cx-W*.5f,box.yMax+6-8*(1-l),W,16),card.Line??IntroLine(seat.introText),12,U.A(U.Hex(0xb9bac4),l),TextAnchor.UpperCenter,tracking:.3f,blur:5*(1-l));
+            U.Text(new Rect(cx-W*.5f,box.yMax+6-8*(1-l),W,16),card.Line??IntroLine(seat.introText),12,U.A(Legible(U.Hex(NativeIntroCardInk.LineHex)),l),TextAnchor.UpperCenter,tracking:.3f,blur:5*(1-l),outline:U.A(cardEdge,l));
             return true;
         }
+        private Color cardEdge;
+        /// <summary>A small line's colour lifted toward white as far as it needs to read on the backing (NativeIntroCardInk.Legible).</summary>
+        private static Color Legible(Color c){var v=NativeIntroCardInk.Legible(new System.Numerics.Vector3(c.r,c.g,c.b));return new Color(v.X,v.Y,v.Z,c.a);}
         private static Color Lin(System.Numerics.Vector3 c,float a)=>new Color(Mathf.LinearToGammaSpace(Mathf.Clamp01(c.X)),Mathf.LinearToGammaSpace(Mathf.Clamp01(c.Y)),Mathf.LinearToGammaSpace(Mathf.Clamp01(c.Z)),a);
         private readonly string[] toplines=new string[64];
         private string IntroTopline(int index,int total){int k=Mathf.Clamp(index,0,7)*8+Mathf.Clamp(total-1,0,7);return toplines[k]??=("MATCH INTRO · "+(index+1).ToString("00")+" / "+total.ToString("00"));}
@@ -98,7 +107,7 @@ namespace ChipArena.UnityConversion
                 {
                     // From 1.6x down to 1 in .22 s with a hard settle (a small overshoot), then a light sweep across the letters.
                     float u=M.Progress(a,0,.22f),s=u<1?1.6f-.6f*u*u:1-.03f*Mathf.Exp(-(a-.22f)*14)*Mathf.Cos((a-.22f)*40);float o=Mathf.Clamp01(a/.08f)*alpha;
-                    U.Push(box.center,Vector2.zero,s);for(int i=0;i<cardLetters.Length;i++)U.Text(new Rect(box.x+cardX[i],box.y,cardW[i]+4,box.height),cardLetters[i],size,U.A(ink,o),TextAnchor.MiddleLeft,bold:true,glow:U.A(glow,o),shadow:U.A(shadow,o));U.Pop();
+                    U.Push(box.center,Vector2.zero,s);for(int i=0;i<cardLetters.Length;i++)U.Text(new Rect(box.x+cardX[i],box.y,cardW[i]+4,box.height),cardLetters[i],size,U.A(ink,o),TextAnchor.MiddleLeft,bold:true,glow:U.A(glow,o),shadow:U.A(shadow,o),outline:U.A(cardEdge,o));U.Pop();
                     float sweep=M.Progress(a,.3f,.5f);if(sweep>0&&sweep<1){float sx=box.x+box.width*sweep;U.HGradient(new Rect(sx-60,box.y,60,box.height),new Color(1,1,1,0),new Color(1,1,1,.35f*alpha*(1-sweep)));}
                     break;
                 }
@@ -106,7 +115,7 @@ namespace ChipArena.UnityConversion
                 {
                     // Typed on at 22 letters a second behind a caret that blinks (slower in Reduced effects).
                     int shown=Mathf.Min(cardLetters.Length,Mathf.FloorToInt(a*22));
-                    for(int i=0;i<shown;i++)U.Text(new Rect(box.x+cardX[i],box.y,cardW[i]+4,box.height),cardLetters[i],size,ink,TextAnchor.MiddleLeft,bold:true,mono:false,glow:glow,shadow:shadow);
+                    for(int i=0;i<shown;i++)U.Text(new Rect(box.x+cardX[i],box.y,cardW[i]+4,box.height),cardLetters[i],size,ink,TextAnchor.MiddleLeft,bold:true,mono:false,glow:glow,shadow:shadow,outline:U.A(cardEdge,alpha));
                     float caretX=shown>0?box.x+cardX[shown-1]+cardW[shown-1]+4:box.x;float blink=reduced?1:(Mathf.Repeat(a,.8f)<.5f?1:0);
                     if(a<cardLetters.Length/22f+1.2f)U.Fill(new Rect(caretX,box.y+box.height*.18f,Mathf.Max(3,size*.06f),box.height*.64f),U.A(glow,blink*alpha));
                     break;
@@ -118,7 +127,7 @@ namespace ChipArena.UnityConversion
                     {
                         float u=M.Bezier(.2f,.9f,.25f,1,M.Progress(a,i*.03f,.6f));if(u<=0)continue;float h=Mathf.Sin(i*12.9898f)*43758.5453f;h-=Mathf.Floor(h);float g=Mathf.Sin(i*78.233f)*12543.1f;g-=Mathf.Floor(g);
                         var off=new Vector2((h-.5f)*size*3,(g-.5f)*size*2.2f)*(1-u);var r=new Rect(box.x+cardX[i],box.y,cardW[i]+4,box.height);
-                        U.Push(r.center,off,.6f+.4f*u,(1-u)*(h-.5f)*120);U.Text(r,cardLetters[i],size,U.A(ink,u),TextAnchor.MiddleLeft,bold:true,glow:U.A(glow,u),shadow:U.A(shadow,u),blur:6*(1-u));U.Pop();
+                        U.Push(r.center,off,.6f+.4f*u,(1-u)*(h-.5f)*120);U.Text(r,cardLetters[i],size,U.A(ink,u),TextAnchor.MiddleLeft,bold:true,glow:U.A(glow,u),shadow:U.A(shadow,u),blur:6*(1-u),outline:U.A(cardEdge,u*alpha));U.Pop();
                     }
                     break;
                 }
@@ -127,7 +136,7 @@ namespace ChipArena.UnityConversion
                     // A bright line draws across in .3 s, then the name is revealed from it, letter by letter, left to right.
                     float line=M.EaseOut(M.Progress(a,0,.3f));float fade=1-M.Progress(a,.55f,.4f);
                     U.HGradient(new Rect(box.x-20,box.center.y-1,(box.width+40)*line*.5f,2),new Color(glow.r,glow.g,glow.b,0),U.A(glow,fade*alpha*1.5f));U.HGradient(new Rect(box.x-20+(box.width+40)*line*.5f,box.center.y-1,(box.width+40)*line*.5f,2),U.A(glow,fade*alpha*1.5f),new Color(glow.r,glow.g,glow.b,0));
-                    for(int i=0;i<cardLetters.Length;i++){float u=M.Bezier(.16f,.84f,.24f,1,M.Progress(a,.18f+cardX[i]/Mathf.Max(1,box.width)*.35f,.4f));if(u<=0)continue;var r=new Rect(box.x+cardX[i],box.y,cardW[i]+4,box.height);U.Push(r.center,new Vector2(0,(1-u)*size*.15f),1,0,u);U.Text(r,cardLetters[i],size,U.A(ink,u),TextAnchor.MiddleLeft,bold:true,glow:U.A(glow,u),shadow:U.A(shadow,u));U.Pop();}
+                    for(int i=0;i<cardLetters.Length;i++){float u=M.Bezier(.16f,.84f,.24f,1,M.Progress(a,.18f+cardX[i]/Mathf.Max(1,box.width)*.35f,.4f));if(u<=0)continue;var r=new Rect(box.x+cardX[i],box.y,cardW[i]+4,box.height);U.Push(r.center,new Vector2(0,(1-u)*size*.15f),1,0,u);U.Text(r,cardLetters[i],size,U.A(ink,u),TextAnchor.MiddleLeft,bold:true,glow:U.A(glow,u),shadow:U.A(shadow,u),outline:U.A(cardEdge,u*alpha));U.Pop();}
                     break;
                 }
                 default:
@@ -135,7 +144,7 @@ namespace ChipArena.UnityConversion
                     // Rise: up 22 px from scale .96 while the tracking closes and a 10 px blur clears.
                     float n=M.Bezier(.16f,.84f,.24f,1,M.Progress(a,0,.72f)),nb=10*(1-M.Bezier(.16f,.84f,.24f,1,M.Progress(a,0,.72f*.6f)));
                     U.Push(box.center,new Vector2(0,22*(1-n)),.96f+.04f*n);float spread=(1-n)*size*.14f;
-                    for(int i=0;i<cardLetters.Length;i++){float dx=(i-(cardLetters.Length-1)*.5f)*spread;U.Text(new Rect(box.x+cardX[i]+dx,box.y,cardW[i]+4,box.height),cardLetters[i],size,U.A(ink,n),TextAnchor.MiddleLeft,bold:true,glow:U.A(glow,n),shadow:U.A(shadow,n),blur:nb);}
+                    for(int i=0;i<cardLetters.Length;i++){float dx=(i-(cardLetters.Length-1)*.5f)*spread;U.Text(new Rect(box.x+cardX[i]+dx,box.y,cardW[i]+4,box.height),cardLetters[i],size,U.A(ink,n),TextAnchor.MiddleLeft,bold:true,glow:U.A(glow,n),shadow:U.A(shadow,n),blur:nb,outline:U.A(cardEdge,n*alpha));}
                     U.Pop();break;
                 }
             }
