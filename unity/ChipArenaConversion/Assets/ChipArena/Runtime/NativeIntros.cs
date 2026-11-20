@@ -33,7 +33,8 @@ namespace ChipArena.UnityConversion
             if(introClockArena!=arena||introClockStarted!=started||introClockSeat!=seat){introClock.Reset();introClockArena=arena;introClockStarted=started;introClockSeat=seat;}
             float age=IntroAge;
             // Intros v2: an intro with its own bed is drawn on that bed as this machine plays it (as the Siren's song), else on its age.
-            if(NativeIntroCatalog.Registered(IntroStyle)){double bed=nativeAudio.IntroBedPlayback();return (float)introClock.Sample(NativeIntroClock.Target(age,bed,bed>=0),Time.unscaledDeltaTime);}
+            if(NativeIntroCatalog.Registered(IntroStyle)){double bed=Time.captureDeltaTime>0?-1:nativeAudio.IntroBedPlayback();// (a fixed-step capture runs on its own clock, not the audio's)
+                return (float)introClock.Sample(NativeIntroClock.Target(age,bed,bed>=0),Time.unscaledDeltaTime);}
             return (float)introClock.Sample(NativeIntroClock.Target(age,nativeAudio.SongPlayback(NativeIntroRules.IntroSong(IntroStyle)),arena.IntroStartsBossSong),Time.unscaledDeltaTime);
         }
     }
