@@ -51,6 +51,7 @@ namespace ChipArena.UnityConversion
         {
             var map=arena.Map;if(!NativeExpeditionCityKit.Active(arena.MapId)||map==null||!EnsureExpeditionCity())return;
             if(!ReferenceEquals(map,townMap))ExpeditionCityBuild(map);
+            if(GeneratedRun?.World?.City!=null&&map.id==GeneratedRun.World.Map.id){ExpeditionHubFrame(WorldEye,PresentationClock(arena));return;}
             if(!ReferenceEquals(arena,townArena)||arena.Generation!=townGeneration){townArena=arena;townGeneration=arena.Generation;townLast=-1;}
             float now=PresentationClock(arena);
             Array.Clear(townParents,0,townParents.Length);foreach(var p in arena.AllBlocks){if(p==null||p.Definition?.id==null)continue;if(townIndex.TryGetValue(p.Definition.id,out int i))townParents[i]=p;}
@@ -110,6 +111,7 @@ namespace ChipArena.UnityConversion
             // Each generated run brings its own records; the town keeps the authored ones.
             var run=GeneratedRun!=null&&map.id==GeneratedRun.World.Map.id?GeneratedRun.World:null;townGenerated=run!=null;
             townArea=run?.Area??townAuthoredArea;townHub=run!=null?run.Hub:townAuthoredHub;NativeExpeditionHubLive.Sanctuary=townArea?.sanctuary??Array.Empty<ExpeditionVolume>();
+            if(run?.City!=null){townMap=map;HubWardSegments(map);return;}
             if(townGenerated&&townGenFires==null&&map.bounds!=null){TownBackdropBatches(NativeExpeditionCityScenery.Around(out townGenFires,map.bounds.minX,map.bounds.maxX,map.bounds.minZ,map.bounds.maxZ),townGenBack);}
             townMap=map;var blocks=map.blocks??Array.Empty<ContentBlock>();townKit=NativeExpeditionCityKit.Build(blocks,townArea,townHub,map.bounds,true,run?.Blueprint);var look=NativeLighting.Look(map);
             townScene=NativeCityFxScene.Build(blocks,townKit,townGenerated?townGenFires??Array.Empty<NativeCityBackdropFire>():townFires,look,townHub,map.bounds);townScene.KeepNearest=townGenerated;townLights=NativeExpeditionCityLights.Build(townKit,look);HubWardSegments(map);

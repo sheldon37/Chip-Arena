@@ -74,25 +74,39 @@ namespace ChipArena.UnityConversion
                 {
                     var room=new ExpeditionDeploymentRoom("landing-sweep","pilot",seed,"black-siren",layout,content);
                     Check(room.Execute("pilot",0,ExpeditionDeploymentIntent.RollInstances),seed,"roll");
-                    // Build runs NativeExpeditionGeneratedWorld.Validate, which floods from
-                    // slot zero and proves the entire Hulk-clear nav graph is connected.
+                    // The live graph floods camp-connected surfaces. Check independently that each gameplay point attaches.
                     var world=NativeExpeditionGeneratedWorld.Build(room);
                     var map=world.Map;
-                    bool Supported(string id,V3 p,float r,float h)=>NativeExpeditionGeneratedWorld.Supported(map,p,r,h);
-                    var nodes=map.nav.nodes.ToDictionary(n=>((int)n.pos.x,(int)n.pos.z));
+                    var cabin=NativeCradleCard.CityNightMap(world,200,152);
+                    int CabinPixel(V3 p)
+                    {
+                        int x=(int)Math.Round((p.x-map.bounds.minX)/(map.bounds.maxX-map.bounds.minX)*199);
+                        int y=(int)Math.Round((map.bounds.maxZ-p.z)/(map.bounds.maxZ-map.bounds.minZ)*151);
+                        return cabin[y*200+x]&0xffffff;
+                    }
+                    foreach(var door in world.Area.anchors.Where(a=>a.kind=="door"))
+                    {
+                        var district=world.Blueprint.districts.Single(d=>d.instance==door.building);
+                        Check(CabinPixel(new V3(door.x,door.y,door.z))==NativeDeployPresentation.DestinationOf(district.instance,district.theme).Color,seed,"cabin entrance "+door.building);
+                    }
+                    Check(CabinPixel(map.nav.nodes[map.nav.nodes.Length/2].pos)!=0x091323,seed,"cabin street");
+                    bool Supported(string id,V3 p,float r,float h)=>ExpeditionLayoutChecks.Supported(map,p,r,h);
+                    var nodes=map.nav.nodes.ToLookup(n=>((int)n.pos.x,(int)n.pos.z));
                     bool Attached(V3 p,float r,float h)
                     {
                         int x=(int)Math.Round(p.x/2)*2,z=(int)Math.Round(p.z/2)*2;
                         for(int dx=-2;dx<=2;dx+=2)
                         for(int dz=-2;dz<=2;dz+=2)
                         {
-                            if(!nodes.TryGetValue((x+dx,z+dz),out var n))continue;
+                            foreach(var n in nodes[(x+dx,z+dz)])
+                            {
                             var delta=n.pos-new V3(0,.9f,0)-p;
                             if(delta.Length>3)continue;
                             int steps=Math.Max(1,(int)Math.Ceiling(delta.Length/.25));
                             bool clear=true;
                             for(int k=0;k<=steps&&clear;k++)clear=Supported(map.id,p+delta*(k/(float)steps),r,h);
                             if(clear)return true;
+                            }
                         }
                         return false;
                     }
@@ -105,7 +119,7 @@ namespace ChipArena.UnityConversion
                             routed.Add(to);
                         return Attached(from,r,h)&&Attached(to,r,h);
                     }
-                    Check(caches.Length==4,seed,"four grid caches");
+                    Check(caches.Length==5,seed,"five Meridian caches");
                     foreach(var cache in caches)
                         Check(!Supported(map.id,new V3(cache.x,cache.y,cache.z),.45f,1.8f),seed,"solid locker obstructs its centre");
                     NativeExpeditionLayout.ValidateGeometry(new ExpeditionLayout{revision=NativeExpeditionGeneratedWorld.Version,areas=new[]{world.Area}},

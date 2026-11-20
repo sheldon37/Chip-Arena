@@ -947,13 +947,11 @@ namespace ChipArena.UnityConversion
             throw new InvalidOperationException("No run seed deals "+string.Join(", ",eastSouthWest));
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD || ARENA_TESTS
         /// <summary>The Developer walk's plan: its map, the bleed of its deal (NativeCityBleed.ForWalk) and its routes' records.</summary>
         public static Plan ForWalk(NativeLayeredCityWalk walk,NativeCityBleed bleed,uint seed)
         {
             var streets=new List<Street>();foreach(var r in walk.Routes)streets.Add(new Street{Widths=r.Widths,Kinds=r.Kinds});
             return Build(walk.Map,bleed,streets,seed,CacheKeepOuts(walk.Caches,walk.Map));
         }
-#endif
     }
 }

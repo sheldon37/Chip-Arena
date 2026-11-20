@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using ChipArena.UnityConversion;
 
 internal static class Program
@@ -7,10 +8,19 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--intro-architect"){IntroArchitectChecks.Run(ProjectRoot());if(args.Length==1)return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--instance-cache-routes")InstanceCacheRouteChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--instance-cache-routes")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--cache-startup")LandingFieldChecks.WorldSweep(ProjectRoot(),1817385654u,1971730609u);
             if(args.Length==1&&args[0]=="--cache-startup")return 0;
+            if(args.Length==0||args.Length==1&&args[0]=="--live-meridian")
+            {
+                var liveSeeds=Enumerable.Range(0,64).Select(i=>unchecked((uint)i*2654435761u))
+                    .GroupBy(seed=>NativeCityLayout.Choose(seed,-1)).Select(group=>group.First()).ToArray();
+                if(liveSeeds.Length!=NativeCityLayout.Plans.Count)throw new Exception("Missing Meridian layout coverage.");
+                LandingFieldChecks.WorldSweep(ProjectRoot(),liveSeeds);
+                if(args.Length==1)return 0;
+            }
             if(args.Length==1&&args[0]=="--landing-world-sweep"){LandingFieldChecks.WorldSweep(ProjectRoot());return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--landing-field")LandingFieldChecks.Fields();
             if(args.Length==1&&args[0]=="--landing-field")return 0;
@@ -29,6 +39,7 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--deathmatch")DeathmatchChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--deathmatch")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--weapon-flourish")WeaponFlourishChecks.Run(ProjectRoot());
+            if(args.Length==0||args.Length==1&&args[0]=="--intro-generic"){IntroGenericChecks.Run(ProjectRoot());if(args.Length==1)return 0;}
             if(args.Length==1&&args[0]=="--weapon-flourish")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--blind-choices")BlindChoiceChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--blind-choices")return 0;
@@ -49,6 +60,15 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--layered-walk")LayeredCityWalkChecks.Run();
             if(args.Length==1&&args[0]=="--layered-walk")return 0;
             if(args.Length==1&&args[0]=="--meridian-dress"){MeridianDressChecks.Run(ProjectRoot());return 0;}
+            // The live Meridian hub draws each surface once (owner 2026-11-20, the hub's z-fighting): every street plan's live deal.
+            if(args.Length==0||args.Length==1&&args[0]=="--hub-zfight")HubZFightChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--hub-zfight")return 0;
+            if(args.Length==1&&args[0]=="--hub-zfight-probe"){HubZFightChecks.Probe(ProjectRoot());return 0;}
+            // The dress's seams: no T-junction pinholes at any LOD pair, the floor under the camp fence (the hub's follow-up).
+            if(args.Length==0||args.Length==1&&args[0]=="--dress-seams")DressSeamChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--dress-seams")return 0;
+            if(args.Length==1&&args[0]=="--dress-seams-load"){DressSeamChecks.Load(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--dress-seams-probe"){DressSeamChecks.Probe(ProjectRoot());return 0;}
             if((args.Length==3||args.Length==4)&&args[0]=="--meridian-zfight"){MeridianDressChecks.ZFightExport(int.Parse(args[1]),args[2],args.Length==4&&args[3]=="parts");return 0;}
             if(args.Length==6&&args[0]=="--meridian-export"){MeridianDressChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[4],System.Globalization.CultureInfo.InvariantCulture),args[5]);return 0;}
             if(args.Length==2&&args[0]=="--layered-walk-plans"){LayeredCityWalkPlans.Write(args[1]);return 0;}
@@ -61,6 +81,10 @@ internal static class Program
             if(args.Length==4&&args[0]=="--bleed-cachewall"){BleedChecks.CacheWall(int.Parse(args[1]),args[2],uint.Parse(args[3]));return 0;}
             if(args.Length==5&&args[0]=="--bleed-zfight"){BleedChecks.ZCombined(int.Parse(args[1]),args[2],uint.Parse(args[3]),args[4]);return 0;}
             if(args.Length==2&&args[0]=="--meridian-landmarks-dump"){LandmarkReadChecks.Dump(args[1]);return 0;}
+            if(args.Length==2&&args[0]=="--camp-dump"){CampChecks.Dump(args[1]);return 0;}
+            if(args.Length==2&&args[0]=="--camp-motion-probe"){CampChecks.MotionProbe(args[1]);return 0;}
+            if(args.Length==0||args.Length==1&&args[0]=="--camp")CampChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--camp")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--landmark-reads")LandmarkReadChecks.Run();
             if(args.Length==1&&args[0]=="--landmark-reads")return 0;
             if(args.Length==2&&args[0]=="--rooftop-layout"){RooftopLayout.Write(args[1]);return 0;}
@@ -299,6 +323,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--bombadier"){BombadierChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--top-dog"){TopDogChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--intros-v2"){IntroV2Checks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--intro-limits"){IntroPoseChecks.Run(true,true);return 0;}
+            if(args.Length==1&&args[0]=="--intro-pack"){IntroPackChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--glaive"){GlaiveChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--glaive-chips"){GlaiveChipChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--blades"){BladeChecks.Run(ProjectRoot());return 0;}

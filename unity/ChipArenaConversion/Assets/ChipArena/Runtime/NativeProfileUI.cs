@@ -51,8 +51,44 @@ namespace ChipArena.UnityConversion
         private bool AllowedWeapon(ContentWeapon w)=>(!prefs.pve||w.id!="siren")&&(!w.devOnly||(account?.Access??NativeAccess.Guest).Allows("weapon:"+w.id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
         private void InitializeAccount()
         {
-            account=gameObject.AddComponent<NativeAccount>();account.Accepted=(data,load)=>{if(arena?.Local!=null)arena.Local.Seat.access=account.Access;if(server!=null)SendServer(new NativeNetMessage{type="auth-refresh",token=account.Token});if(!load)return;if(!data.hasProfile){account.Save(Profile());return;}var p=data.profile;if(p==null)return;prefs.name=NativeCosmeticRules.Name(p.name);prefs.accentColor=NativeCosmeticRules.Color(p.color,"#70e1d0");var c=p.cosmetics??new NativeCosmetics();prefs.bodyColor=NativeCosmeticRules.Color(c.bodyColor,"#e5e7eb");prefs.hat=NativeCosmeticRules.Hat(c.hat,account.Access);prefs.lobbyPose=NativeCosmeticRules.Pose(c.lobbyPose,account.Access);if(!string.IsNullOrEmpty(c.lobbyBack))prefs.lobbyBack=NativePortraitBacks.Normalize(c.lobbyBack);if(!string.IsNullOrEmpty(c.hatColor))prefs.hatColor=NativeHatLooks.Normalize(c.hatColor);if(!string.IsNullOrEmpty(c.backColor))prefs.backColor=NativeHatLooks.Normalize(c.backColor);if(c.weaponTechniques!=null)prefs.weaponTechniques=NativeTechniqueLoadout.Normalize(c.weaponTechniques);if(c.weaponSkins!=null)prefs.weaponSkins=NativeBodySkins.Gate(c.weaponSkins,NativeCosmeticRules.Allowed(account.Access,"body",NativeBodySkins.SheldonClothes));if(c.pod!=null)prefs.pod=NativePodRun.Look(c.pod);if(c.look!=null)prefs.look=NativeLook.KeepSkin(NativeLook.Gate(c.look,NativeCosmeticRules.Allowed(account.Access,"body",NativeBodySkins.SheldonClothes)),prefs.look,data.profileSchema>=NativeLook.ServiceKeepsLook);prefs.killEffect=NativeCosmeticRules.Kill(NativePendingEffect.Restore(prefs.pendingEffects,data.id,c.killEffect,e=>NativeCosmeticRules.Allowed(account.Access,"effect",e)),account.Access);string pick=NativePendingEffect.Restore(prefs.pendingIntros,data.id,c.intro,i=>NativeCosmeticRules.PickableIntro(i,account.Access));prefs.overrideIntro=NativeCosmeticRules.OverrideIntro(pick,c.overrideWeaponIntro,account.Access);prefs.intro=NativeCosmeticRules.Intro(pick,account.Access);prefs.introText=c.introText;if(content.weapons.Any(w=>w.id==c.preferredSpec&&AllowedWeapon(w)))prefs.weapon=c.preferredSpec;accountPassword=accountRecovery="";Save();LockerRebase();};
+            account=gameObject.AddComponent<NativeAccount>();account.ProfileStored=AcknowledgePilot;account.Accepted=(data,load)=>{if(arena?.Local!=null)arena.Local.Seat.access=account.Access;if(server!=null)SendServer(new NativeNetMessage{type="auth-refresh",token=account.Token});if(!load)return;if(!data.hasProfile){account.Save(Profile());return;}var p=data.profile;if(p==null)return;prefs.name=NativeCosmeticRules.Name(p.name);prefs.accentColor=NativeCosmeticRules.Color(p.color,"#70e1d0");var c=p.cosmetics??new NativeCosmetics();prefs.bodyColor=NativeCosmeticRules.Color(c.bodyColor,"#e5e7eb");prefs.hat=NativeCosmeticRules.Hat(c.hat,account.Access);prefs.lobbyPose=NativeCosmeticRules.Pose(c.lobbyPose,account.Access);if(!string.IsNullOrEmpty(c.lobbyBack))prefs.lobbyBack=NativePortraitBacks.Normalize(c.lobbyBack);if(!string.IsNullOrEmpty(c.hatColor))prefs.hatColor=NativeHatLooks.Normalize(c.hatColor);if(!string.IsNullOrEmpty(c.backColor))prefs.backColor=NativeHatLooks.Normalize(c.backColor);if(c.weaponTechniques!=null)prefs.weaponTechniques=NativeTechniqueLoadout.Normalize(c.weaponTechniques);if(c.weaponSkins!=null)prefs.weaponSkins=NativeBodySkins.Gate(c.weaponSkins,NativeCosmeticRules.Allowed(account.Access,"body",NativeBodySkins.SheldonClothes));RestorePendingFace(data.id,c);if(c.pod!=null)prefs.pod=NativePodRun.Look(c.pod);if(c.look!=null)prefs.look=NativeLook.KeepSkin(NativeLook.Gate(c.look,NativeCosmeticRules.Allowed(account.Access,"body",NativeBodySkins.SheldonClothes)),prefs.look,data.profileSchema>=NativeLook.ServiceKeepsLook);prefs.killEffect=NativeCosmeticRules.Kill(NativePendingEffect.Restore(prefs.pendingEffects,data.id,c.killEffect,e=>NativeCosmeticRules.Allowed(account.Access,"effect",e)),account.Access);string pick=NativePendingEffect.Restore(prefs.pendingIntros,data.id,c.intro,i=>NativeCosmeticRules.PickableIntro(i,account.Access));prefs.overrideIntro=NativeCosmeticRules.OverrideIntro(pick,NativePendingEffect.Restore(prefs.pendingIntroModes,data.id,IntroMode(c),ValidIntroMode)=="picked",account.Access);prefs.intro=NativeCosmeticRules.Intro(pick,account.Access);prefs.introText=c.introText;if(content.weapons.Any(w=>w.id==c.preferredSpec&&AllowedWeapon(w)))prefs.weapon=c.preferredSpec;accountPassword=accountRecovery="";Save();RetryPendingAppearance(data);LockerRebase();};
             try{account.Configure(prefs.accountOrigin,true);}catch(ArgumentException){prefs.accountOrigin="";}
+        }
+        private static string FacePick(NativeCosmetics cosmetics)=>NativeWeaponSkins.Of(cosmetics?.weaponSkins,NativeWeaponSkins.FaceEntry);
+        private static bool ValidFace(string face)=>Array.IndexOf(NativeWeaponSkins.FaceKeys,face)>=0;
+        private static string IntroMode(NativeCosmetics cosmetics)=>cosmetics?.overrideWeaponIntro==true?"picked":"signature";
+        private static bool ValidIntroMode(string mode)=>mode=="picked"||mode=="signature";
+        private void RestorePendingFace(string id,NativeCosmetics remote)
+        {
+            string face=FacePick(remote);
+            string restored=NativePendingEffect.Restore(prefs.pendingFaces,id,face,ValidFace);
+            if(restored!=face)prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,NativeWeaponSkins.FaceEntry,restored);
+        }
+        private void RetryPendingAppearance(NativeAccountData data)
+        {
+            var stored=data.profile?.cosmetics;
+            if(stored==null)return;
+            string face=NativeWeaponSkins.Of(prefs.weaponSkins,NativeWeaponSkins.FaceEntry);
+            bool retryFace=(prefs.pendingFaces?.Any(x=>x?.account==data.id)??false)&&face!=FacePick(stored);
+            bool retryIntro=(prefs.pendingIntros?.Any(x=>x?.account==data.id)??false)&&prefs.intro!=stored.intro;
+            bool retryMode=(prefs.pendingIntroModes?.Any(x=>x?.account==data.id)??false)&&prefs.overrideIntro!=stored.overrideWeaponIntro;
+            if(!retryFace&&!retryIntro&&!retryMode)return;
+            // Start with the latest remote profile to keep the other device's unrelated edits.
+            var merged=JsonUtility.FromJson<NativeProfile>(JsonUtility.ToJson(data.profile));
+            if(retryFace)merged.cosmetics.weaponSkins=NativeWeaponSkins.With(stored.weaponSkins,NativeWeaponSkins.FaceEntry,face);
+            if(retryIntro)merged.cosmetics.intro=prefs.intro;
+            if(retryMode)merged.cosmetics.overrideWeaponIntro=prefs.overrideIntro;
+            account.Save(merged);
+        }
+        private void AcknowledgePilot(string id,NativeCosmetics stored)
+        {
+            // A successful response retires confirmed picks before another device can change them back.
+            // A newer queued save still owns its markers.
+            if(stored==null)return;
+            NativePendingEffect.Acknowledge(prefs.pendingFaces,id,FacePick(stored));
+            NativePendingEffect.Acknowledge(prefs.pendingIntroModes,id,IntroMode(stored));
+            NativePendingEffect.Acknowledge(prefs.pendingIntros,id,stored.intro);
+            Save();
         }
         // The Customize screen is the Locker (NativeLockerUI.cs). Its colour rows offer these presets beside the #rrggbb field
         // (the source's colour picker, input type=color).
@@ -62,9 +98,15 @@ namespace ChipArena.UnityConversion
         private void SavePilot()
         {
             prefs.name=NativeCosmeticRules.Name(prefs.name);prefs.introText=NativeCosmeticRules.IntroText(prefs.introText);prefs.weaponTechniques=NativeTechniqueLoadout.Normalize(prefs.weaponTechniques);prefs.weaponSkins=GatedSkins();prefs.look=GatedLook();prefs.pod=NativePodRun.Look(prefs.pod);prefs.bodyColor=NativeCosmeticRules.Color(prefs.bodyColor,"#e5e7eb");prefs.accentColor=NativeCosmeticRules.Color(prefs.accentColor,"#70e1d0");
-            if(account.Account!=null)prefs.pendingEffects=NativePendingEffect.Remember(prefs.pendingEffects,account.Account.id,prefs.killEffect,account.Account.profile?.cosmetics?.killEffect,e=>NativeCosmeticRules.Allowed(account.Access,"effect",e));
+            if(account.Account!=null)prefs.pendingEffects=NativePendingEffect.Remember(prefs.pendingEffects,account.Account.id,prefs.killEffect,account.LoadedPilot.profile?.cosmetics?.killEffect,e=>NativeCosmeticRules.Allowed(account.Access,"effect",e));
             // Remember the actual pre-save value on the native-aware service; only an acknowledged or changed remote choice clears a pending pick.
-            if(account.Account!=null)prefs.pendingIntros=NativePendingEffect.Remember(prefs.pendingIntros,account.Account.id,prefs.intro,account.Account.profileSchema>=2?account.Account.profile?.cosmetics?.intro:NativeIntroRules.ServiceIntro(prefs.intro),i=>NativeCosmeticRules.PickableIntro(i,account.Access));
+            if(account.Account!=null)prefs.pendingIntros=NativePendingEffect.Remember(prefs.pendingIntros,account.Account.id,prefs.intro,account.Account.profileSchema>=2?account.LoadedPilot.profile?.cosmetics?.intro:NativeIntroRules.ServiceIntro(prefs.intro),i=>NativeCosmeticRules.PickableIntro(i,account.Access));
+            if(account.Account!=null)
+            {
+                var remote=account.LoadedPilot.profile?.cosmetics;
+                prefs.pendingFaces=NativePendingEffect.Remember(prefs.pendingFaces,account.Account.id,NativeWeaponSkins.Of(prefs.weaponSkins,NativeWeaponSkins.FaceEntry),FacePick(remote),ValidFace);
+                prefs.pendingIntroModes=NativePendingEffect.Remember(prefs.pendingIntroModes,account.Account.id,prefs.overrideIntro?"picked":"signature",IntroMode(remote),ValidIntroMode);
+            }
             Save();if(account.Account!=null)account.Save(Profile());
         }
         // Account: the Log in / Register / Recovery form, or the signed-in account and

@@ -6,6 +6,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
+        private int previousCityPlan=-1;
         private ExpeditionDeploymentRoom deploymentRoom;
         private ExpeditionDeploymentReceiver deploymentReceiver;
         private ExpeditionLayout deploymentLayout;
@@ -20,12 +21,12 @@ namespace ChipArena.UnityConversion
         private int deploymentPendingDeploy=-1;
         private string deploymentBuildError;
         private static bool SameDeploymentTicket(ExpeditionDeploymentTicket a,ExpeditionDeploymentTicket b)=>a!=null&&b!=null&&
-            a.schema==b.schema&&a.station==b.station&&a.originHost==b.originHost&&a.expedition==b.expedition&&a.seed==b.seed&&a.revision==b.revision&&
+            a.cityPlan==b.cityPlan&&a.schema==b.schema&&a.station==b.station&&a.originHost==b.originHost&&a.expedition==b.expedition&&a.seed==b.seed&&a.revision==b.revision&&
             a.instanceRolls==b.instanceRolls&&a.mutatorRolls==b.mutatorRolls&&a.mutatorSkips==b.mutatorSkips&&a.mutatorsSkipped==b.mutatorsSkipped&&
             a.compatibility==b.compatibility&&a.deployed==b.deployed&&a.generatedCompatibility==b.generatedCompatibility;
         private bool PrepareDeploymentBundle(ExpeditionDeploymentTicket ticket)
         {
-            if(deploymentBundle?.Matches(ticket)==true){deploymentLocked|=ticket.deployed;return true;}
+            if(deploymentBundle?.Matches(ticket)==true){deploymentLocked|=ticket.deployed;if(ticket.deployed)previousCityPlan=ticket.cityPlan;return true;}
             if(deploymentLocked)throw new InvalidOperationException("Cannot replace a deployed world.");
             if(ticket==null)throw new ArgumentException("Missing deployment ticket.");
             if(!SameDeploymentTicket(deploymentRequested,ticket))
@@ -54,7 +55,7 @@ namespace ChipArena.UnityConversion
             {
                 if(error!=null){deploymentBuildError=error.Message;networkStatus="Destination generation failed: "+error.Message;deploymentPendingDeploy=-1;deploymentPendingState=null;}
                 else if(bundle!=null&&bundle.Matches(deploymentRequested))
-                {deploymentBaseContent??=content;deploymentBundle=bundle;content=bundle.Content;deploymentLocked=deploymentRequested.deployed;if(networkStatus=="Preparing destinations…")networkStatus="Destinations ready.";}
+                {deploymentBaseContent??=content;deploymentBundle=bundle;content=bundle.Content;deploymentLocked=deploymentRequested.deployed;if(deploymentLocked)previousCityPlan=deploymentRequested.cityPlan;if(networkStatus=="Preparing destinations…")networkStatus="Destinations ready.";}
             }
             if(deploymentBundle==null)return;
             if(deploymentPendingState!=null&&deploymentBundle.Matches(deploymentPendingState.deployment))
@@ -69,6 +70,7 @@ namespace ChipArena.UnityConversion
             {
                 if(!PrepareDeploymentBundle(deploymentRoom.Ticket)){deploymentPendingDeploy=revision;networkStatus="Preparing destinations…";return true;}
                 if(!deploymentRoom.Execute(account?.Access?.AccountId,revision,ExpeditionDeploymentIntent.Deploy,true,deploymentBundle.Identity))return false;
+                previousCityPlan=deploymentRoom.Ticket.cityPlan;
                 PrepareDeploymentBundle(deploymentRoom.Ticket);BroadcastDeployment();deploymentLaunch=true;
                 liveDeployClock.Observe(deploymentRoom.Snapshot(),Time.unscaledTime);
                 deploymentTravelAt=Time.unscaledTime+NativeDeployPresentation.TravelAt;return true;
@@ -90,7 +92,7 @@ namespace ChipArena.UnityConversion
             try
             {
                 deploymentLayout=LoadDeploymentLayout();
-                deploymentRoom=new ExpeditionDeploymentRoom("deploy-"+Guid.NewGuid().ToString("N"),host.AccountId,NativeMatch.NewSeed(),expedition,deploymentLayout,content);
+                deploymentRoom=new ExpeditionDeploymentRoom("deploy-"+Guid.NewGuid().ToString("N"),host.AccountId,NativeMatch.NewSeed(),expedition,deploymentLayout,content,previousCityPlan);
                 LobbyBroadcast();return true;
             }
             catch(ArgumentException e){networkStatus=e.Message;return false;}
@@ -148,7 +150,7 @@ namespace ChipArena.UnityConversion
         private void ResetDeploymentRoom()
         {
             deploymentWork.Reset();deploymentRequested=null;deploymentPendingState=null;deploymentPendingDeploy=-1;deploymentBuildError=null;deploymentTravelAt=-1;
-            LeaveLiveDeployment();deploymentRoom=null;deploymentReceiver=null;deploymentLayout=null;deploymentBundle=null;deploymentLaunch=deploymentLocked=false;expeditionLayoutRead=false;expeditionLayout=null;
+            LeaveLiveDeployment();liveCradle.Clear();loadCradle.Clear();deploymentRoom=null;deploymentReceiver=null;deploymentLayout=null;deploymentBundle=null;deploymentLaunch=deploymentLocked=false;expeditionLayoutRead=false;expeditionLayout=null;
             if(deploymentBaseContent!=null){content=deploymentBaseContent;deploymentBaseContent=null;if(prefs.map==NativeExpeditionGeneratedWorld.MapId)prefs.map=content.maps.First(NativeMapRules.ArenaSelectable).id;}
         }
     }

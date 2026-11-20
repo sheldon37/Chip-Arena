@@ -229,7 +229,7 @@ internal static class ZombieModelChecks
             "smashed helmet 1: the face open from the brow to the chin");
         // The runtime: the area each frame, the dressed look by it, the suit and helmet on the model's bones with the bank's models.
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));string zm=R("NativeZombieModelPresentation.cs"),kp=R("NativeHordeKindPresentation.cs"),hp=R("NativeRobotHelmPresentation.cs");
-        Check(zm.Contains("var v=NativeZombieLooks.Of(kind,id,zombieTheme);")&&kp.Contains("ZombieThemeOf(arena);ZombieModelsPrewarm(arena);")&&zm.Contains("ZombieCarry(z,t,flash);ZombieSuit(z,flash);return;}")
+        Check(zm.Contains("var v=NativeZombieLooks.Of(kind,id,theme);")&&zm.Contains("string theme=zombieTheme;")&&zm.Contains("zombieCityBleed.At(spawn.@exit.Position())")&&zm.Contains("at.Band>=NativeCityBleed.Bands.Drift")&&kp.Contains("ZombieThemeOf(arena);ZombieModelsPrewarm(arena);")&&zm.Contains("ZombieCarry(z,t,flash);ZombieSuit(z,flash);return;}")
             &&zm.Contains("ZombieCarry(z,t,flash);ZombieSuit(z,flash);\n            DiagnosticZombiePoseMs")&&zm.Contains("sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,zombieSuitBone,zombieSuitVisible,")&&hp.Contains("models[BrokenHelm+b]=HelmParts(NativeBootSculpts.Take(NativeBootSculpts.BrokenHelm(b),()=>NativeRobotHelm.Broken(b)),"),
             "wired: the area each frame, the look by it, the suit's plates and the smashed helmet from the bank on the model's bones");
     }
@@ -415,7 +415,7 @@ internal static class ZombieModelChecks
             "the tape: rings in the rest space, silver over the piece's colour under its wear; other callers untaped");
         Check(look.Contains("edge=1.0-0.45*_ZombieWear.y")&&look.Contains("ZombieNoise(uv*30.0+s*1.7)*0.7+ZombieNoise(uv*90.0+s.yx)*0.3"),"torn patches on the part's own texture coordinates (they stay on the cloth), a few at the table's tears");
         // The horde: the model in place of the voxel model on the full tier; the voxel draw kept as the fallback.
-        Check(kp.Contains("if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,0,flash,glow.x,swell,s.Jaw)){if(!HordeNoVoxel(kind)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}}"),"a living add: its model (its face's jaw the voxel jaw's), else its voxel model and jaw");
+        Check(kp.Contains("if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,0,flash,glow.x,swell,s.Jaw,m.Pve?.Entry)){if(!HordeNoVoxel(kind)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}}"),"a living add: its model (its face's jaw the voxel jaw's), else its voxel model and jaw");
         Check(kp.Contains("bool planted=(mode==0||mode==4||mode==5)&&!a.Crawl,airborne=mode==1||mode==3;"),"feet planted on the gait, a door's wake and a landing; airborne in a dive and a jump-down's fall");
         Check(kp.Contains("if(burn||!ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice)&&!HordeNoVoxel(d.Kind)){HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible,burn);"),"a death: its model falls, else the voxel body");
         Check(kp.Contains("ClearHordeGore();ClearZombieModels();"),"cleared with the horde");

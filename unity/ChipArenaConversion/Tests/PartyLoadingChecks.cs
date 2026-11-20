@@ -352,7 +352,8 @@ namespace ChipArena.UnityConversion
                 Check(!text.Contains("PartyLoad")&&!text.Contains("NativePartyLayout")&&(samplesLoad||!text.Contains("StageLoadProgress")),f+" cannot reach into the party panel");
             }
             // (re-pinned 2026-11-18, W3: the cradle card, a pod run's loading screen, reads the panel's rows in Core/NativeCradle.cs)
-            Check(!Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories).Where(f=>!f.Contains("NativePartyLoading")&&!f.EndsWith("NativeStageLoading.cs")&&!f.EndsWith("NativeStageLoadingHud.cs")&&!f.EndsWith("NativeStageLoadingUI.cs")&&!f.EndsWith("NativeCradle.cs")).Any(f=>File.ReadAllText(f).Contains("NativePartyLoad")),"only the loading screen's files use the panel");
+            // (re-pinned 2026-11-20 for #437: the cabin's cradle UI takes the party's load model for its seats, Runtime/NativeCradleUI.cs)
+            Check(!Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories).Where(f=>!f.Contains("NativePartyLoading")&&!f.EndsWith("NativeStageLoading.cs")&&!f.EndsWith("NativeStageLoadingHud.cs")&&!f.EndsWith("NativeStageLoadingUI.cs")&&!f.EndsWith("NativeCradle.cs")&&!f.EndsWith("NativeCradleUI.cs")).Any(f=>File.ReadAllText(f).Contains("NativePartyLoad")),"only the loading screen's files use the panel");
             // Draw paths: constants only (no concatenation, formatting, arrays or lists per frame).
             foreach(var f in new[]{"NativePartyLoadingHud.cs","NativePartyLoadingUI.cs"})
             {

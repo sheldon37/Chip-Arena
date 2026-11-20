@@ -102,6 +102,7 @@ namespace ChipArena.UnityConversion
         {
             int n=(int)(Length*AnchorRate)+2,k=(int)NativeEntranceAnchor.Count,c=CarrierJoints.Length;var a=new Vector3[n*k];var q=new Quaternion[n*c];
             string spec=WeaponSpec;var leftMuzzle=NativeIntroWeapon.Muzzle(spec,true,out var lm)?lm:new Vector3(0,0,TipLength(true));var rightMuzzle=NativeIntroWeapon.Muzzle(spec,false,out var rm)?rm:new Vector3(0,0,TipLength(false));
+            NativeIntroWeapon.Grip(spec,true,out var leftGrip);NativeIntroWeapon.Grip(spec,false,out var rightGrip);
             for(int i=0;i<n;i++)
             {
                 float t=i/(float)AnchorRate;Pose(t,anchorPose,out var root,out var rot);anchorPose.World();int o=i*k;
@@ -119,8 +120,8 @@ namespace ChipArena.UnityConversion
                 // frame's origin, the keyed wrist) and its muzzle there.
                 a[o+(int)NativeEntranceAnchor.Eyes]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.Head,KeyedEyes);a[o+(int)NativeEntranceAnchor.Visor]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.Head,KeyedVisor);
                 a[o+(int)NativeEntranceAnchor.LeftToe]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.LToe,Vector3.Zero);a[o+(int)NativeEntranceAnchor.RightToe]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.RToe,Vector3.Zero);
-                a[o+(int)NativeEntranceAnchor.LeftWrist]=a[o+(int)NativeEntranceAnchor.LeftGrip]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.LHand,Vector3.Zero);
-                a[o+(int)NativeEntranceAnchor.RightWrist]=a[o+(int)NativeEntranceAnchor.RightGrip]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.RHand,Vector3.Zero);
+                a[o+(int)NativeEntranceAnchor.LeftWrist]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.LHand,Vector3.Zero);a[o+(int)NativeEntranceAnchor.LeftGrip]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.LHand,leftGrip);
+                a[o+(int)NativeEntranceAnchor.RightWrist]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.RHand,Vector3.Zero);a[o+(int)NativeEntranceAnchor.RightGrip]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.RHand,rightGrip);
                 a[o+(int)NativeEntranceAnchor.LeftMuzzle]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.LHand,leftMuzzle);a[o+(int)NativeEntranceAnchor.RightMuzzle]=NativeEntrancePose.Point(anchorPose,root,rot,CapturedRig.RHand,rightMuzzle);
                 for(int j=0;j<c;j++)q[i*c+j]=NativeEntrancePose.WorldRotation(anchorPose,rot,CarrierJoints[j]);
             }

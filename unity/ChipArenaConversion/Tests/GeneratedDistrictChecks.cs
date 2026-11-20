@@ -28,19 +28,19 @@ namespace ChipArena.UnityConversion
             // Besides the fixed rolls, the first roll that brings each of the Backrooms' districts (the office park, the baths), so
             // their looks always go through the placement rules below.
             var seeds=new List<uint>{123,17,0x80000000u};var themesSeen=new HashSet<string>();
-            foreach(uint seed in seeds.ToArray()){var r0=new ExpeditionDeploymentRoom("room","host",seed,"black-siren",layout,content);r0.Execute("host",0,ExpeditionDeploymentIntent.RollInstances);foreach(var d in ExpeditionRunBundle.Build(r0.Ticket,content,layoutJson).World.Blueprint.districts)themesSeen.Add(d.theme);}
+            foreach(uint seed in seeds.ToArray()){var r0=new ExpeditionDeploymentRoom("room","host",seed,"black-siren",layout,content);r0.Execute("host",0,ExpeditionDeploymentIntent.RollInstances);foreach(var d in NativeExpeditionGeneratedWorld.BuildGridFixture(r0).Blueprint.districts)themesSeen.Add(d.theme);}
             foreach(string want in new[]{"backrooms","poolrooms"})
                 for(uint seed=1;seed<200&&!themesSeen.Contains(want);seed++)
                 {
                     var r0=new ExpeditionDeploymentRoom("room","host",seed,"black-siren",layout,content);if(!r0.Execute("host",0,ExpeditionDeploymentIntent.RollInstances))continue;
-                    var ds=ExpeditionRunBundle.Build(r0.Ticket,content,layoutJson).World.Blueprint.districts;if(!ds.Any(d=>d.theme==want))continue;
+                    var ds=NativeExpeditionGeneratedWorld.BuildGridFixture(r0).Blueprint.districts;if(!ds.Any(d=>d.theme==want))continue;
                     seeds.Add(seed);foreach(var d in ds)themesSeen.Add(d.theme);
                 }
             Check(themesSeen.Contains("backrooms")&&themesSeen.Contains("poolrooms"),"some roll brings the office park and some the baths");
             foreach(uint seed in seeds)
             {
                 var room=new ExpeditionDeploymentRoom("room","host",seed,"black-siren",layout,content);Check(room.Execute("host",0,ExpeditionDeploymentIntent.RollInstances),"seed "+seed+" rolls");
-                var world=ExpeditionRunBundle.Build(room.Ticket,content,layoutJson).World;var s=world.Blueprint;var map=world.Map;var blocks=map.blocks;var area=world.Area;rolls++;
+                var world=NativeExpeditionGeneratedWorld.BuildGridFixture(room);var s=world.Blueprint;var map=world.Map;var blocks=map.blocks;var area=world.Area;rolls++;
                 var sw=System.Diagnostics.Stopwatch.StartNew();var kit=NativeExpeditionCityKit.Build(blocks,area,world.Hub,map.bounds,true,s);long ms=sw.ElapsedMilliseconds;
                 var again=NativeExpeditionCityKit.Build(blocks,area,world.Hub,map.bounds,true,s);
                 Check(kit.Parts.Length>0&&kit.Parts.SequenceEqual(again.Parts)&&kit.Glows.SequenceEqual(again.Glows),"seed "+seed+": two builds give the same dressing ("+kit.Parts.Length+" parts, "+kit.Glows.Length+" lights, "+ms+" ms)");

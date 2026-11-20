@@ -330,6 +330,138 @@
       ],
       "maxRequests": 5,
       "maxSeconds": 5.3
+    },
+    {
+      "id": "intros-v2-2026-11-20-v1a",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-intros.json",
+      "manifestSha256": "68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784",
+      "keys": [
+        "intro2.cloudbreak.wind",
+        "intro2.cloudbreak.flip",
+        "intro2.cloudbreak.cool",
+        "intro2.cloudbreak.sun",
+        "intro2.cloudbreak.puff",
+        "intro2.whiteout.rise",
+        "intro2.whiteout.calm",
+        "intro2.threshold.rumble",
+        "intro2.threshold.step",
+        "intro2.flashbulb.bulbs",
+        "intro2.flashbulb.doors",
+        "intro2.flashbulb.confetti"
+      ],
+      "variants": [
+        1
+      ],
+      "maxRequests": 12,
+      "maxSeconds": 18.7
+    },
+    {
+      "id": "intros-v2-2026-11-20-v1d",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-intros.json",
+      "manifestSha256": "68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784",
+      "keys": [
+        "intro2.architect.strike",
+        "intro2.architect.glitch",
+        "intro2.architect.crack",
+        "intro2.architect.dissolve",
+        "intro2.architect.tear",
+        "intro2.architect.presence",
+        "intro2.architect.pulse",
+        "intro2.architect.draft",
+        "intro2.architect.condense",
+        "intro2.architect.form",
+        "intro2.architect.blueprint",
+        "intro2.architect.gather",
+        "intro2.architect.inhale",
+        "intro2.architect.lock",
+        "intro2.architect.forge",
+        "intro2.cloudbreak.boom",
+        "intro2.cloudbreak.fall",
+        "intro2.cloudbreak.ignite",
+        "intro2.cloudbreak.thrust",
+        "intro2.cloudbreak.touch",
+        "intro2.cloudbreak.gust",
+        "intro2.cloudbreak.name",
+        "intro2.whiteout.storm",
+        "intro2.whiteout.visor",
+        "intro2.whiteout.heat",
+        "intro2.whiteout.crack",
+        "intro2.whiteout.steam",
+        "intro2.whiteout.pulse",
+        "intro2.whiteout.name",
+        "intro2.threshold.charge",
+        "intro2.threshold.split",
+        "intro2.threshold.through",
+        "intro2.threshold.seal",
+        "intro2.threshold.name",
+        "intro2.flashbulb.crowd",
+        "intro2.flashbulb.cheer",
+        "intro2.flashbulb.photo",
+        "intro2.flashbulb.burst",
+        "intro2.flashbulb.name",
+        "intro2.flashbulb.shutter"
+      ],
+      "variants": [
+        1,
+        2
+      ],
+      "maxRequests": 80,
+      "maxSeconds": 128.8
+    },
+    {
+      "id": "intros-v2-2026-11-20-v1c",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-intros.json",
+      "manifestSha256": "68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784",
+      "keys": [
+        "intro2.threshold.crack"
+      ],
+      "variants": [
+        1,
+        2,
+        3
+      ],
+      "maxRequests": 3,
+      "maxSeconds": 3.0
+    },
+    {
+      "id": "intros-v2-2026-11-20-v2a",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-intros.json",
+      "manifestSha256": "68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784",
+      "keys": [
+        "intro2.slipstream.stop",
+        "intro2.slipstream.chime",
+        "intro2.slipstream.board"
+      ],
+      "variants": [
+        1
+      ],
+      "maxRequests": 3,
+      "maxSeconds": 3.3
+    },
+    {
+      "id": "intros-v2-2026-11-20-v2b",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-intros.json",
+      "manifestSha256": "68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784",
+      "keys": [
+        "intro2.slipstream.rush",
+        "intro2.slipstream.burst",
+        "intro2.slipstream.run",
+        "intro2.slipstream.leap",
+        "intro2.slipstream.slide",
+        "intro2.slipstream.pass",
+        "intro2.slipstream.name"
+      ],
+      "variants": [
+        1,
+        2
+      ],
+      "maxRequests": 14,
+      "maxSeconds": 20.6
     }
   ]
 }

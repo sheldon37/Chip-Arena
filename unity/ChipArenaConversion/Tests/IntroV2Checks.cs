@@ -62,7 +62,9 @@ namespace ChipArena.UnityConversion
             count=0;worstFacing=0;worstFacingAt="";
             Framework(root);
             Anchors(root);
+            IntroCardChecks.Run();
             int intros=0;foreach(var e in NativeIntroCatalog.Entries){Intro(e);Faithful(e);intros++;}
+            IntroPoseChecks.Run(false,false);IntroAnchorChecks.Run(root);IntroPackChecks.Run(root);
             Console.WriteLine("PASS intros v2: "+count+" checks (the archive and its fallback, the registry, the rig and the ramps, the void, the wiring, the model-aware anchors, the weapon sockets, the intro's own light; "+intros+" registered intro"+(intros==1?"":"s")+": entry, determinism, allocation, budgets, Reduced effects, streaks, cues, the keyed pose drawn faithfully on the model (worst head, chest or pelvis facing "+worstFacing.ToString("0.00")+" deg"+worstFacingAt+"))");
         }
 
@@ -139,7 +141,9 @@ namespace ChipArena.UnityConversion
                     var head=s.KeyedAnchor(NativeEntranceAnchor.Head,t);
                     Check((s.KeyedAnchor(NativeEntranceAnchor.Eyes,t)-head).Length()<.15f&&(s.KeyedAnchor(NativeEntranceAnchor.Visor,t)-head).Length()<.2f,entry.Id+": the keyed eyes and visor are on the head at "+t);
                     Check((s.KeyedAnchor(NativeEntranceAnchor.LeftToe,t)-s.KeyedAnchor(NativeEntranceAnchor.LeftFoot,t)).Length()<.12f&&(s.KeyedAnchor(NativeEntranceAnchor.RightToe,t)-s.KeyedAnchor(NativeEntranceAnchor.RightFoot,t)).Length()<.12f,entry.Id+": the keyed toes are by the ankles at "+t);
-                    Check(s.KeyedAnchor(NativeEntranceAnchor.RightGrip,t)==s.KeyedAnchor(NativeEntranceAnchor.RightWrist,t)&&(s.KeyedAnchor(NativeEntranceAnchor.RightHand,t)-s.KeyedAnchor(NativeEntranceAnchor.RightWrist,t)).Length()<.06f,entry.Id+": the keyed grip is the wrist, the hand beside it, at "+t);
+                    // (the keyed grip is the wrist, or its weapon's grip socket on it: the shield's bar, the bow's arrow line)
+                    var gripOff=NativeIntroWeapon.Grip(entry.Spec,false,out var gs)?gs.Length():0;
+                    Check(Math.Abs((s.KeyedAnchor(NativeEntranceAnchor.RightGrip,t)-s.KeyedAnchor(NativeEntranceAnchor.RightWrist,t)).Length()-gripOff)<1e-3f&&(s.KeyedAnchor(NativeEntranceAnchor.RightHand,t)-s.KeyedAnchor(NativeEntranceAnchor.RightWrist,t)).Length()<.06f,entry.Id+": the keyed grip is the wrist (or its grip socket on it), the hand beside it, at "+t);
                 }
                 if(entry.Spec=="pistol")Check(Math.Abs((s.KeyedAnchor(NativeEntranceAnchor.RightMuzzle,1)-s.KeyedAnchor(NativeEntranceAnchor.RightWrist,1)).Length()-NativeWeaponDressing.MuzzleZ("pistol"))<1e-3f,entry.Id+": the keyed muzzle is the pistol's MuzzleZ out along the wrist");
             }
@@ -153,7 +157,8 @@ namespace ChipArena.UnityConversion
                 {
                     if(!NativeIntroWeapon.Holds(spec,side)){Check(!NativeIntroWeapon.Tip(spec,side,out _)&&!NativeIntroWeapon.Muzzle(spec,side,out _),spec+": no tip in the empty hand");continue;}
                     bool tipped=NativeIntroWeapon.Tip(spec,side,out var tip),muzzled=NativeIntroWeapon.Muzzle(spec,side,out var muzzle);
-                    Check(tipped&&muzzled&&tip.Length()>.1f&&tip.Length()<2f&&muzzle.Length()>.1f&&muzzle.Length()<2f,spec+": a tip and a muzzle within reach ("+(side?"left":"right")+")");
+                    // (the bow's muzzle is its arrow rest, 7 cm out on the riser; on the drawn weapon: Tests/IntroAnchorChecks)
+                    Check(tipped&&muzzled&&tip.Length()>.1f&&tip.Length()<2f&&muzzle.Length()>.05f&&muzzle.Length()<2f,spec+": a tip and a muzzle within reach ("+(side?"left":"right")+")");
                     if(NativeWeaponDressing.Gun(spec))Check(muzzle==new Vector3(0,0,NativeWeaponDressing.MuzzleZ(spec)),spec+": the muzzle at its MuzzleZ socket");
                 }
             }

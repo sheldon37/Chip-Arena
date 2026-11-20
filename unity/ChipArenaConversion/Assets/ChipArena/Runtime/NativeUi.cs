@@ -387,11 +387,14 @@ namespace ChipArena.UnityConversion
         }
         // Text in a virtual rect. `tracking` is CSS letter-spacing in em; `glow` draws a soft halo in that colour; `blur` is
         // CSS filter: blur(px) (entrance animations): the glyphs spread over a ring of dim copies that closes as it eases to 0.
-        public static void Text(Rect r,string str,float size,Color c,TextAnchor align=TextAnchor.MiddleCenter,bool bold=false,bool mono=false,float tracking=0,Color glow=default,bool wrap=false,Color shadow=default,bool italic=false,float blur=0)
+        // `outline` draws a thin edge in that colour round the glyphs (eight copies, each at .35 of its alpha, OutlineReach of the
+        // size out, at least a pixel): a light line kept readable on a bright backdrop (the intros' name card, NativeIntroCardInk).
+        public static void Text(Rect r,string str,float size,Color c,TextAnchor align=TextAnchor.MiddleCenter,bool bold=false,bool mono=false,float tracking=0,Color glow=default,bool wrap=false,Color shadow=default,bool italic=false,float blur=0,Color outline=default)
         {
             if(string.IsNullOrEmpty(str)||c.a<=0)return;var m=Enter();var s=Style(size,bold,mono,align,wrap&&tracking==0,italic);var pr=P(r);var o=GUI.contentColor;
-            if(tracking!=0){TrackedText(pr,str,s,size,c,tracking,glow,shadow,blur);GUI.contentColor=o;GUI.matrix=m;return;}
+            if(tracking!=0){TrackedText(pr,str,s,size,c,tracking,glow,shadow,blur,outline);GUI.contentColor=o;GUI.matrix=m;return;}
             content.text=str;
+            if(outline.a>0)Outlined(pr,s,size,outline);
             if(shadow.a>0){GUI.contentColor=Tone(shadow);GUI.Label(new Rect(pr.x+S,pr.y+S*1.5f,pr.width,pr.height),content,s);}
             if(glow.a>0){float g=Mathf.Max(1,size*S*.06f);GUI.contentColor=Tone(new Color(glow.r,glow.g,glow.b,glow.a*.35f));foreach(var d in Halo)GUI.Label(new Rect(pr.x+d.x*g,pr.y+d.y*g,pr.width,pr.height),content,s);}
             Blurred(pr,s,size,c,blur);GUI.contentColor=o;GUI.matrix=m;
@@ -434,7 +437,7 @@ namespace ChipArena.UnityConversion
         // Tracked text draws a glyph at a time; the per-glyph strings and the width buffer are reused across frames.
         private static float[] trackWidths=new float[64];private static readonly Dictionary<char,string> glyphs=new Dictionary<char,string>();
         private static string Glyph(char c){if(!glyphs.TryGetValue(c,out var g)){g=c.ToString();glyphs[c]=g;}return g;}
-        private static void TrackedText(Rect pr,string str,GUIStyle s,float size,Color c,float tracking,Color glow,Color shadow,float blur)
+        private static void TrackedText(Rect pr,string str,GUIStyle s,float size,Color c,float tracking,Color glow,Color shadow,float blur,Color outline=default)
         {
             var align=s.alignment;s.alignment=TextAnchor.UpperLeft;s.wordWrap=false;float gap=tracking*size*S,total=0;if(trackWidths.Length<str.Length)trackWidths=new float[Math.Max(str.Length,trackWidths.Length*2)];var widths=trackWidths;
             for(int i=0;i<str.Length;i++){content.text=Glyph(str[i]);widths[i]=s.CalcSize(content).x;total+=widths[i]+(i>0?gap:0);}
@@ -444,11 +447,18 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<str.Length;i++)
             {
                 content.text=Glyph(str[i]);var q=new Rect(x,y,widths[i]+2,h);
+                if(outline.a>0)Outlined(q,s,size,outline);
                 if(shadow.a>0){GUI.contentColor=Tone(shadow);GUI.Label(new Rect(q.x+S,q.y+S*1.5f,q.width,q.height),content,s);}
                 if(glow.a>0){float g=Mathf.Max(1,size*S*.06f);GUI.contentColor=Tone(new Color(glow.r,glow.g,glow.b,glow.a*.35f));foreach(var d in Halo)GUI.Label(new Rect(q.x+d.x*g,q.y+d.y*g,q.width,q.height),content,s);}
                 Blurred(q,s,size,c,blur);x+=widths[i]+gap;
             }
             s.alignment=align;
+        }
+        // The outline under `content`'s glyphs (Text's `outline`): eight copies OutlineReach of the size out, each at HaloShare.
+        private static void Outlined(Rect q,GUIStyle s,float size,Color outline)
+        {
+            float g=Mathf.Max(1,size*S*NativeIntroCardInk.OutlineReach);GUI.contentColor=Tone(new Color(outline.r,outline.g,outline.b,outline.a*NativeIntroCardInk.HaloShare));
+            foreach(var d in Halo)GUI.Label(new Rect(q.x+d.x*g,q.y+d.y*g,q.width,q.height),content,s);
         }
         // A clickable region in virtual space (respects the current transform for hit testing through GUI.matrix).
         public static bool Button(Rect r,bool enabled=true)=>Pressed(r,enabled,NativeUiSounds.Click);

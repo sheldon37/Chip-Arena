@@ -279,6 +279,9 @@ namespace ChipArena.UnityConversion
             if(a.Weapon==WeaponId.Rifle||a.Weapon==WeaponId.MachineGun)grasp.Unshoulder=1-Mathf.Clamp01(rig.GunAimWeight);
             VisualLeftSeat(ref grasp,a,ChipLookOf(a.Id));
             VisualArmsOf(ref grasp,a,arms,ChipLookOf(a.Id));
+            // A v2 intro's body takes its keyed arms as keyed unless the intro asks for the relax (NativeIntroV2Presentation.cs IntroV2BodyBegin).
+            // (and its grip IK: the drawn off fist on the drawn weapon, Core NativeIntroGrip.Grasp, when the intro has it on)
+            if(body==introKeyedBody&&introKeyedBody!=null){grasp.Relax=introKeyedRelax;grasp.Still=0;IntroV2Grip(ref grasp,pose,held);}
             // The draft's plant on the device (`support`): the left hand keeps the stage's offset from the right wrist on the
             // model's (the stage's palm is on the bay), so the model's palm meets its own bay whatever its arms' proportions.
             if(support>0){grasp.Support=support;grasp.SupportHold=default;grasp.Bound=true;}
@@ -518,7 +521,9 @@ namespace ChipArena.UnityConversion
         {
             if(!ModelBody(a)||rig==null||pose==null)return;
             var body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return;
+            introKeyedBody=a.Id==introV2Actor&&introV2Actor>=0?body:null;
             pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,armed?VisualArms.Live:VisualArms.Unarmed);
+            introKeyedBody=null;
             // Order Up!'s slam keyed by hand, both fists on the mallet (Runtime NativeDogMalletPresentation.cs).
             if(a.Id==dogIntroActor&&dogIntroActor>=0)DogMalletIntro(body,rig,dogIntroClock);
             // Crescent Return's ring arm keyed by hand (Core NativeGlaiveMotion.Intro).

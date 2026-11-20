@@ -16,9 +16,17 @@ namespace ChipArena.UnityConversion
         /// <summary>Sets a v2 intro's context for this frame (Reduced effects: the effects quality the game sets for it, .3).</summary>
         private void IntroV2Begin(NativeEntranceScript script,NativePilot pilot,float quality)
         {
-            if(!(script is INativeIntroV2 v2))return;string raw=pilot?.Seat?.name;
+            if(!(script is INativeIntroV2 v2))return;string raw=pilot?.Seat?.name;IntroPackLoad();
             if(!ReferenceEquals(raw,introNameRaw)){introNameRaw=raw;introName=NativeCosmeticRules.Name(raw);}
             v2.Context=new NativeIntroContext{Reduced=WeaponEffectsQuality<.5f,Low=LowGraphics,Quality=quality,Name=introName};
+        }
+        // The intros' own motion bank (Core NativeIntroPack: pack clips as keys; the local assets' Resources, never the match's motion
+        // bank), read once. Without one an intro's pack segments leave its keys as keyed.
+        private static bool introPackRead;
+        private static void IntroPackLoad()
+        {
+            if(introPackRead)return;introPackRead=true;var bytes=Resources.Load<TextAsset>(NativeIntroPack.Resource);if(bytes==null)return;
+            try{NativeIntroPack.Local=NativeIntroPack.Read(bytes.bytes);}catch(System.Exception e){Debug.LogWarning("Intro motion bank: "+e.Message);}
         }
         /// <summary>A v2 intro's set at presentation time `t` (after its Props).</summary>
         private void IntroV2Set(NativeEntranceScript script,float t,Camera camera)
@@ -28,12 +36,32 @@ namespace ChipArena.UnityConversion
         }
         // ---- the model's clip (INativeIntroBody) and the hands (INativeIntroHands) ----
         // (Model-native: the hands are the drawn model's joints, VisualJointFrame; without a model the keyed pose's anchors. No rig reads.)
+        /// <summary>The v2 intro's body being bound this frame (VisualIntroPose) and how far its free arms relax (0: as keyed).</summary>
+        private VisualBody introKeyedBody;private float introKeyedRelax;
+        /// <summary>This frame's grip IK of the v2 weapon intro being bound (Core NativeIntroGrip: docs/INTROS-V2.md 9a).</summary>
+        private bool introGripOn;private NativeIntroGripAt introGripAt;private string introGripSpec;
+        /// <summary>This frame's share of the v2 intro's arms played from a pack clip (Core NativeIntroPack): drawn exactly as keyed.</summary>
+        private float introPackArms;
+        /// <summary>From VisualBodyBind, on the v2 intro's body: the drawn off fist on the drawn weapon's support point (the main hand's hold
+        /// from the intro's weapon, the support bound whatever the hands' distance), when the intro has its grip on this frame.</summary>
+        private void IntroV2Grip(ref NativeVisualRig.Grasp grasp,CapturedRig.Pose pose,VisualWeapon held)
+        {
+            grasp.Exact=introPackArms;if(!introGripOn)return;NativeIntroGrip.Grasp(introGripSpec,introGripAt,pose,ref grasp);
+            // (the drawn weapon's own measured support point and stock, as the match takes them: VisualWeaponGrasp)
+            if(held!=null)VisualWeaponGrasp(ref grasp,held);
+        }
         private INativeIntroBody introBody;private int introBodyActor=-1,introV2Actor=-1,introModelFrame=-1;private float introBodyClock;private CapturedAnimation.Player introModel;
         /// <summary>Before the intro body is posed: a v2 intro's model clip for this frame, and a weapon intro's weapon in the model's hands.</summary>
         private void IntroV2BodyBegin(NativeEntranceScript script,Actor actor,string style,float t)
         {
-            introModel=null;introV2Actor=-1;if(!(script is INativeIntroV2)||actor==null)return;introV2Actor=actor.Id;
+            introModel=null;introV2Actor=-1;introGripOn=false;introPackArms=0;if(!(script is INativeIntroV2)||actor==null)return;introV2Actor=actor.Id;
+            // (the arms a pack clip plays are the model's own: drawn exactly as keyed, Core NativeIntroPack)
+            introPackArms=script is NativeProceduralEntrance packed?packed.PackWeight(t,NativeIntroPack.Arms):0;
+            // (the model's free arms as keyed, unless the intro asks for the match's relax: Core NativeIntroV2Script.ArmsRelax)
+            introKeyedRelax=script is NativeIntroV2Script keyed?Mathf.Clamp01(keyed.ArmsRelax(t)):0;
             var spec=NativeIntroCatalog.Find(style)?.Spec;if(spec!=null)actor.SourceSpec=spec;
+            // (its grip IK, when it has one: Core NativeIntroGrip; read in VisualBodyBind through IntroV2Grip)
+            if(spec!=null&&script is INativeIntroGrip grip&&grip.GripAt(t,out introGripAt)&&introGripAt.Weight>.001f){introGripOn=true;introGripSpec=spec;}
             if(script is INativeIntroBody body&&!(script is NativeBladeIntro)){introBody=body;introBodyActor=actor.Id;introBodyClock=t;}
         }
         /// <summary>From VisualIntroPose, on the drawn model: notes the v2 intro's model for its hands, and plays the intro's clip on it
@@ -126,14 +154,14 @@ namespace ChipArena.UnityConversion
                     bool standard=NativeWeaponSkins.Index(introSkins,spec)!=NativeWeaponSkins.PrototypeIndex;
                     for(int side=0;side<2;side++)
                     {
-                        bool left=side==0;if(!NativeIntroWeapon.Tip(spec,left,out var tip))continue;NativeIntroWeapon.Muzzle(spec,left,out var muzzle);
+                        bool left=side==0;if(!NativeIntroWeapon.Tip(spec,left,out var tip))continue;NativeIntroWeapon.Muzzle(spec,left,out var muzzle);NativeIntroWeapon.Grip(spec,left,out var grip);
                         int hb=left?CapturedRig.LHand:CapturedRig.RHand;Matrix4x4 w;
                         if(introWeaponBow){if(!left)continue;w=bowHand;}
                         else if(bladeIntro!=null)w=BladeIntroFrame(hb,introGrip);
                         else if(introHand!=null)w=introHand(hb);else continue;
                         // (a gun's flash leaves the drawn skin's crown, as the match's does)
                         if(NativeWeaponDressing.Gun(spec))muzzle=new System.Numerics.Vector3(0,0,NativeMuzzleFx.Crown(spec,standard));
-                        Put(left?NativeEntranceAnchor.LeftGrip:NativeEntranceAnchor.RightGrip,w.MultiplyPoint3x4(Vector3.zero));
+                        Put(left?NativeEntranceAnchor.LeftGrip:NativeEntranceAnchor.RightGrip,w.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(grip))));
                         Put(left?NativeEntranceAnchor.LeftTip:NativeEntranceAnchor.RightTip,w.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(tip))));
                         Put(left?NativeEntranceAnchor.LeftMuzzle:NativeEntranceAnchor.RightMuzzle,w.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(muzzle))));
                         if(!left){var bore=w.MultiplyVector(Vector3.forward);if(bore.sqrMagnitude>1e-8f)introDrawnBore=bore.normalized;}
@@ -165,10 +193,10 @@ namespace ChipArena.UnityConversion
             int id=introActor;bool dog=NativeHotDog.Worn(VisualOutfitOf(id));introGhostGearBone??=_=>introGhostGear;
             void Part(string model,Matrix4x4 at){if(model==null)return;var ghost=sourceModels.EntranceGhost(model);if(ghost==null)return;introGhostGear=at;sourceModels.Queue(ghost,at,introGhostGearBone,null,0,null,tint,scan,opacity);}
             // the armour's plates on the ghost's own suit bones
-            int shown=SuitShown(id);var suit=shown!=0&&sourceModels.Has(NativeSourceModels.Suit)?sourceModels.EntranceGhost(NativeSourceModels.Suit):null;var rig=suit!=null?SuitRigOf(gb.Root):null;
-            if(rig!=null&&(shown&=rig.Found)!=0)
+            int shown=SuitShown(id);var suit=shown!=0&&sourceModels.Has(NativeSourceModels.Suit)?sourceModels.EntranceGhost(NativeSourceModels.Suit):null;var plates=suit!=null?SuitRigOf(gb.Root):null;
+            if(plates!=null&&(shown&=plates.Found)!=0)
             {
-                for(int i=0;i<suitMatrices.Length;i++)suitMatrices[i]=rig.Bones[i]!=null?rig.Bones[i].localToWorldMatrix*rig.Bind[i]:Matrix4x4.identity;
+                for(int i=0;i<suitMatrices.Length;i++)suitMatrices[i]=plates.Bones[i]!=null?plates.Bones[i].localToWorldMatrix*plates.Bind[i]:Matrix4x4.identity;
                 suitBone??=i=>suitMatrices[i];suitShown=shown;suitVisible??=b=>(suitShown>>b&1)!=0;sourceModels.Queue(suit,Matrix4x4.identity,suitBone,suitVisible,0,null,tint,scan,opacity);
             }
             // the face gear and the hat on the ghost's head

@@ -751,10 +751,12 @@ namespace ChipArena.UnityConversion
             string title,sub;Color tc;
             if(dirty){float pulse=.5f+.5f*Mathf.Sin(now*4);U.Radial(new Rect(bar.x-6,cy-12,24,24),U.Hex(0xff6b35,.35f*pulse*e));U.RadialStops(new Rect(bar.x+1,cy-5,10,10),U.Hex(0xff6b35,e),LkDiscAt,LkDiscA);
                 title="Unsaved changes";sub=InRoom?"Save to update your look in this room.":"Save to keep them, or revert.";tc=U.Hex(0xffc590,e);}
+            else if(signedIn&&account.ProfileSaving){title="Saving pilot…";sub="Waiting for your account.";tc=U.Hex(0xffc590,e);}
+            else if(account?.ProfileError!=null){title="Account save unconfirmed";sub=account.ProfileError;tc=U.Hex(0xffc590,e);}
             else if(now-lockerSavedAt<3.5f){NativeIcons.Draw(new Rect(bar.x-1,cy-8,16,16),"check",U.Hex(0x7ed78a,e));title="Saved";sub=lockerSavedAccount?"Your look is stored on your account.":"Your look is stored on this PC.";tc=U.Hex(0xb9f0c1,e);}
             else{NativeIcons.Draw(new Rect(bar.x-1,cy-8,16,16),"shield-check",U.Hex(0x8f909a,e));title="All changes saved";sub=signedIn?"Changes apply live; Save Pilot stores them.":"Log in to keep your pilot across computers.";tc=U.Hex(0xc0c1ca,e);}
             if(sw>60){U.Text(new Rect(bar.x+22,cy-18,sw-22,18),title,14,tc,TextAnchor.MiddleLeft,bold:true);var s=U.Wrap(sub,12,sw-22,false,1);if(s.Count>0)U.Text(new Rect(bar.x+22,cy+1,sw-22,16),s[0],12,U.Hex(0x8f909a,e),TextAnchor.MiddleLeft);}
-            if(MenuButton(save,"check","Save Pilot",null,true,dirty,e,15,true))LockerSave();
+            if(MenuButton(save,"check","Save Pilot",null,true,dirty||signedIn&&account.ProfileError!=null,e,15,true))LockerSave();
             if(MenuButton(revert,"undo-2","Revert",null,false,dirty,e,15,true))LockerRevert();
             if(entrance&&MenuButton(preview,"play","Preview Intro",null,false,true,e,15,true))StartPreview();
         }
