@@ -34,6 +34,10 @@ name card in the band under the pilot's feet in a full-length hero frame (`HeroF
     the hold is the match's. Where a capture of the clip exists (the cuts, the block, the walk), the keyed rig follows it all through,
     which gives the effects the blade's tip (`Anchor RightTip`, `TipLength` the weapon's) and gives Afterimage its echoes (the keyed
     rig's ghosts are the model, posed a moment behind).
+  - The effects on a blade take the blade as drawn (`DrawnBlade`, `BladeSweep` in `NativeIntroMelee.cs`): the runtime hands in the
+    drawn hand joint's frame (`INativeIntroHands`), which is the frame the model's hand carries its weapon on, so the tip lies
+    `TipLength` along its +z. The keyed capture holds the blade its own way (in the sword's idle some 40 degrees off the drawn one), so
+    its anchors serve only where no model is drawn. Afterimage's echoes are the keyed rig's ghosts, so their trails stay on its tips.
   - Limit: a viewer whose first frame of the intro comes in the middle of a clip with no capture (a late joiner during the greatsword's
     plunge) takes a hold from mismatched poses.
 - **Sets:** `tools/intros/melee_set.py` builds the bank from `melee_<set>.py` on `melee_kit.py` (the stage kit's finishes, tiers, AO

@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         public const string Title="Faultline";
         public const float Total=8.0f,CardAt=6.4f;
         /// <summary>The beats (presentation s): the leap, the blow, the cracks reaching the walls, the rise, the stance.</summary>
-        public const float LeapAt=2.2f,SlamAt=LeapAt+PlungeHit,SpreadAt=SlamAt+.15f,RiseAt=LeapAt+PlungeEnd,StandAt=RiseAt+.25f;
+        public const float LeapAt=2.2f,SlamAt=LeapAt+PlungeHit,SpreadAt=SlamAt+.5f,RiseAt=LeapAt+PlungeEnd,StandAt=RiseAt+.25f;
         private const float PlungeHit=.63f,PlungeEnd=1.833f;
         private static readonly Vector3 Ember=NativeEntranceFx.Hex(0xff8a3c),Molten=NativeEntranceFx.Hex(0xff5a14),Gold=NativeEntranceFx.Hex(0xffcb87),Night=NativeEntranceFx.Hex(0x0a0806),
             Dust=NativeEntranceFx.Hex(0x6e655c),Stone=NativeEntranceFx.Hex(0x3a3d42),Moon=NativeEntranceFx.Hex(0x9aaccc);
@@ -105,7 +105,7 @@ namespace ChipArena.UnityConversion
         // ---- the light ----
         public override void Lights(float t,NativeEntranceLights l)
         {
-            l.Clear();l.Background=Night;l.Fog=NativeEntranceFx.Hex(0x120b07);l.FogNear=8;l.FogFar=42;l.DriveProbe=true;
+            WarmAnchors(t);l.Clear();l.Background=Night;l.Fog=NativeEntranceFx.Hex(0x120b07);l.FogNear=8;l.FogFar=42;l.DriveProbe=true;
             float heat=Heat(t),blow=Flash(t,SlamAt,.02f,.35f),after=NativeEntranceMath.Ramp(t,SlamAt,SlamAt+.5f);
             l.Sky=NativeEntranceFx.Hex(0x3a2a22,.24f+.1f*after);l.Ground=NativeEntranceFx.Hex(0x1a0e08,.3f+.4f*after);
             l.Directional(new Vector3(-.5f,1,-.4f),Moon*.32f);
@@ -162,7 +162,7 @@ namespace ChipArena.UnityConversion
             // Smoke climbing off the broken ring.
             if(after<4){int m=low?4:9;for(int i=0;i<m;i++){float u=((after*.32f+i/(float)m)%1f);float ang=i*2.4f;var p=new Vector3((float)Math.Cos(ang)*(1.5f+1.5f*NativeEntranceMath.Rand(37001,i)),floor+.2f+2.6f*u,(float)Math.Sin(ang)*(1.5f+1.5f*NativeEntranceMath.Rand(37003,i)));fx.Smoke(p,new Vector3(.16f,.13f,.12f),.25f*(1-u)*NativeEntranceMath.Ramp(after,0,.4f),.6f+1.4f*u,u,37010+i,floor);}}
             // Grit falling off the quarry walls after the blow.
-            if(after<2.5f){int m=low?6:14;for(int i=0;i<m;i++){float born=.2f+1.2f*NativeEntranceMath.Rand(37101,i),a=after-born;if(a<0||a>1.2f)continue;var o=U(NativeEntranceMath.Signed(37103,i)*9.5f,5+5*NativeEntranceMath.Rand(37105,i),-9.4f+.2f*NativeEntranceMath.Rand(37107,i));fx.Streak(o-new Vector3(0,4.9f*a*a,0),new Vector3(0,-9.8f*a,0),Dust*1.1f,.02f,.03f,.02f,.2f,a/1.2f,37110+i);}}
+            if(after<2.5f){int m=low?6:14;for(int i=0;i<m;i++){float born=.2f+1.2f*NativeEntranceMath.Rand(37101,i),a=after-born;if(a<0||a>1.2f)continue;var o=U(-9.5f+13.6f*NativeEntranceMath.Rand(37103,i),1.4f+1.1f*NativeEntranceMath.Rand(37105,i),-9.5f+.1f*NativeEntranceMath.Rand(37107,i));fx.Streak(o-new Vector3(0,4.9f*a*a,0),new Vector3(0,-9.8f*a,0),Dust*1.1f,.02f,.03f,.02f,.2f,a/1.2f,37110+i);}}
         }
         // ---- the sound ----
         public override NativeIntroCue[] Cues=>cues;
@@ -173,8 +173,8 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(SlamAt,"intro2.faultline.slam","blast.quake","explosion",1f,.8f),
             new NativeIntroCue(SlamAt+.05f,"intro2.faultline.crack","structure.crack","stone",.9f),
             new NativeIntroCue(SpreadAt+.25f,"intro2.faultline.rumble","structure.debris","stone",.7f,.7f),
-            new NativeIntroCue(SpreadAt+.8f,"intro2.faultline.hiss","magic.fire.hit","fire",.4f,.7f),
             new NativeIntroCue(RiseAt,"intro2.faultline.lift","melee.greatsword.hit","metal",.4f,.8f),
+            new NativeIntroCue(SpreadAt+.8f,"intro2.faultline.hiss","magic.fire.hit","fire",.4f,.7f),
             new NativeIntroCue(CardAt,"intro2.faultline.name","structure.thud","greatsword",.45f,.9f),
         };
         public override void Card(float t,ref NativeIntroCardState card)

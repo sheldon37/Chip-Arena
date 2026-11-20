@@ -57,16 +57,17 @@ namespace ChipArena.UnityConversion
             k.Key(DrawAt,stand).Root(0,.88f,0,Facing).Planted(1).J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.2f,0,-.15f);
             k.Key(GrabAt,stand).Root(0,.8f,.05f,Facing+.2f).Planted(1).Drop(-.08f).J(B,.12f).J(LA,-.35f,0,.3f).J(LE,-1.0f).J(RA,-.9f,0,.4f).J(RE,-1.2f);
             k.Key(CutAt,stand).Root(0,.8f,.12f,Facing-.15f).Planted(1).Drop(-.1f).J(B,.1f).J(RA,-1.45f,0,-.7f).J(LA,-.4f,0,.45f).ImpactKey();
+            k.Key(ResumeAt,stand).Root(0,.8f,.12f,Facing-.15f).Planted(1).Drop(-.1f).J(B,.1f).J(RA,-1.45f,0,-.7f).J(LA,-.4f,0,.45f);
             k.Key(SheatheAt,stand).Root(0,.84f,.12f,Facing).Planted(1).Drop(-.05f).J(RA,-.9f,0,-.4f).J(LA,-.3f,0,.3f);
             k.Key(StillAt,stand).Root(0,.88f,.12f,Facing).Planted(1).J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.25f,0,-.15f);
             k.Key(Total,stand).Root(0,.88f,.12f,Facing).Planted(1).J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.25f,0,-.15f);Keys=k;
             // The camera: locked off in the rain; low in front of its left for the stance; close on the saya's mouth; the cut seen wide;
             // the frozen moment ridden along the cut's line; time back, wide on the stalks; the sheathing; the click low; the hero.
             // (the glide ends short of the bamboo clump behind on the left, looking on to the stalks the cut takes)
-            var a=LineAt(-1.4f)+Side*.8f+new Vector3(0,.22f,0);var b=LineAt(.8f)+Side*.85f+new Vector3(0,.2f,0);var c=LineAt(2.6f)+Side*.9f+new Vector3(0,.16f,0);var d=LineAt(3.6f)+Side*.95f+new Vector3(0,.12f,0);
+            var a=LineAt(-1.4f)+Side*1.3f+new Vector3(0,.3f,0);var b=LineAt(.8f)+Side*1.4f+new Vector3(0,.28f,0);var c=LineAt(2.6f)+Side*1.35f+new Vector3(0,.2f,0);var d=LineAt(3.6f)+Side*1.3f+new Vector3(0,.15f,0);
             Rig.Dolly(0,V(-.55f,1.45f,6.2f),V(-.5f,1.42f,5.75f),V(.1f,1.15f,-1.5f),V(.1f,1.12f,-1.4f),40,38).Ease(NativeIntroEase.Linear)
-               .Dolly(DrawAt-.05f,V(1.75f,.72f,2.45f),V(1.3f,.8f,1.85f),V(.15f,.95f,0),V(.2f,1.0f,0),42,37).Ease(NativeIntroEase.Out)
-               .Dolly(GrabAt-.08f,V(.92f,1.02f,.98f),V(.78f,1.0f,.82f),V(.2f,.92f,.12f),V(.22f,.95f,.12f),26,24).Focus(0,0,.55f)
+               .Dolly(DrawAt-.05f,V(-1.2f,.75f,3.1f),V(-1.0f,.8f,2.6f),V(0,1.0f,0),V(.05f,1.0f,0),40,36).Ease(NativeIntroEase.Out)
+               .Dolly(GrabAt-.08f,V(-2.25f,.82f,.2f),V(-2.0f,.86f,.15f),V(.05f,.92f,.2f),V(.25f,.95f,.2f),38,34).Focus(0,0,.4f)
                .Hold(CutAt-.04f,V(-2.7f,.95f,1.9f),V(.35f,1.15f,-.25f),46)
                .Spline(FreezeAt,new[]{a,b,c,d},LineAt(1.4f)+new Vector3(0,.05f,0),LineAt(6.4f),36,31).Ease(NativeIntroEase.InOut)
                .Dolly(ResumeAt,V(-1.65f,1.25f,3.95f),V(-1.75f,1.3f,4.15f),V(1.3f,1.75f,-2.5f),V(1.5f,1.6f,-2.7f),45,44)
@@ -154,7 +155,7 @@ namespace ChipArena.UnityConversion
         // ---- the light ----
         public override void Lights(float t,NativeEntranceLights l)
         {
-            l.Clear();l.Background=Night;l.Fog=NativeEntranceFx.Hex(0x0b1019);l.FogNear=7;l.FogFar=34;l.DriveProbe=true;
+            WarmAnchors(t);l.Clear();l.Background=Night;l.Fog=NativeEntranceFx.Hex(0x0b1019);l.FogNear=7;l.FogFar=34;l.DriveProbe=true;
             float bolt=Flash(t,LightningAt,.02f,.12f)+(Context.Reduced?0:.55f*NativeEntranceMath.Pulse(t,LightningAt+.13f,.015f,.08f));
             l.Sky=NativeEntranceFx.Hex(0x2a3550,.34f+.5f*bolt);l.Ground=NativeEntranceFx.Hex(0x0e0f14,.3f);
             // Moonlight from behind and above the gate, cold; the veranda's paper behind the lens, warm and low.
@@ -178,7 +179,7 @@ namespace ChipArena.UnityConversion
         public override void Effects(float t,INativeEntranceFx fx,float q)
         {
             Look(t);bool low=q<.5f||Context.Low;float r=RainTime(t),still=Frozen(t);
-            float bolt=Flash(t,LightningAt,.02f,.12f);var rain=Rain*(.34f+.9f*bolt);
+            float bolt=Flash(t,LightningAt,.02f,.12f);var rain=Rain*(.7f+.9f*bolt);
             // The rain: drops falling with the wind, splashing where they land; in the freeze each hangs where it was, and every drop on the
             // cut's plane (near its line) is split in two; just after, those halves fall apart.
             int n=Thin(Drops,q,60);float after=t-ResumeAt;
@@ -187,7 +188,9 @@ namespace ChipArena.UnityConversion
                 int idx=i*Drops/n;bool falling=Drop(idx,r,out var at,out float s,out int cycle);
                 if(falling)
                 {
-                    float d=at.Y-PlaneY(at.X,at.Z);var toLine=at-LineFrom;float along=Vector3.Dot(toLine,LineDir);float off=(toLine-LineDir*along).Length();
+                    // (judged where the drop hung in the freeze: after it, the drops that were split fall apart as they fall)
+                    var at0=after>0?at-new Vector3(Wind.X,-Fall,Wind.Z)*after:at;
+                    float d=at0.Y-PlaneY(at0.X,at0.Z);var toLine=at0-LineFrom;float along=Vector3.Dot(toLine,LineDir);float off=(toLine-LineDir*along).Length();
                     bool onCut=Math.Abs(d)<.05f&&along>-.5f&&along<LineLength&&off<1.1f&&cycle==CycleAtFreeze(idx);
                     if(still>0)
                     {
@@ -208,9 +211,9 @@ namespace ChipArena.UnityConversion
                 }
             }
             // Drips off the gate's front eave.
-            for(int i=0;i<(low?5:10);i++)
+            for(int i=0,nd=low?5:10;i<nd;i++)
             {
-                float x=-2.5f+5f*(i+.5f)/10f,per=.55f+.2f*NativeEntranceMath.Rand(30041,i),u=(r/per+NativeEntranceMath.Rand(30043,i))%1f,fall=3.0f/8.2f;
+                float x=-2.5f+5f*(i+.5f)/nd,per=.55f+.2f*NativeEntranceMath.Rand(30041,i),u=(r/per+NativeEntranceMath.Rand(30043,i))%1f,fall=3.0f/8.2f;
                 var top=U(x,3.0f,-6.05f);float tl=u*per;if(tl<fall&&still<=0)fx.Streak(top-new Vector3(0,8.2f*tl,0),new Vector3(0,-8.2f,0),rain,.004f,.06f,.022f,.4f,0,32600+i);
                 else if(still>0&&tl<fall)fx.Streak(top-new Vector3(0,8.2f*tl,0),new Vector3(0,-.04f,0),rain*1.2f,.004f,.03f,1,.4f,0,32600+i);
             }
@@ -227,7 +230,8 @@ namespace ChipArena.UnityConversion
             // The draw: a glint at the saya's mouth as the blade leaves it.
             if(t>=GrabAt-.05f&&t<GrabAt+.25f){Hand(t,1,out var hip);float g=NativeEntranceMath.Bump(t,GrabAt-.05f,GrabAt+.25f);NativeEntranceFx.Glint(fx,hip+new Vector3(.02f,.02f,.12f),(White+Steel)*(1.6f*g),.14f*g,Vector3.UnitX,Vector3.UnitY,32820);}
             // The cut: the blade's sweep (a razor's line, crimson fringe) from the blade as the model holds it.
-            if(t>=GrabAt&&t<FreezeAt+.3f)Trail(fx,t<FreezeAt?t:FreezeAt,0,.2f,Crimson,White,.012f,1.2f,32900,true);
+            // (the sweep fades on its own through the freeze's first moment; the frozen line is the hairline below)
+            if(t>=GrabAt&&t<FreezeAt+.25f)Trail(fx,t,0,.2f,Crimson,White,.012f,1.2f,32900,true);
             if(t>=CutAt-.02f&&t<CutAt+.2f&&Held(t,0,out _,out var tip)){float g=Flash(t,CutAt,.01f,.06f);fx.Glow(tip,(White*2+Crimson)*(1.4f*g),0,.18f,1,0,32990);}
             // The line the cut leaves: drawn out along its length in a breath, held through the freeze, then broken into falling light.
             if(t>=CutAt&&t<ResumeAt+1.2f)
@@ -275,7 +279,7 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(ResumeAt,"intro2.stillrain.resume","boss.noctiel.rain.lines","water",.6f),
             new NativeIntroCue(SlideAt+.05f,"intro2.stillrain.bamboo","break.wood","wood",.75f),
             new NativeIntroCue(SheatheAt+.05f,"intro2.stillrain.slide","boss.noctiel.sword.pull","sword",.35f,1.2f),
-            new NativeIntroCue(SlideAt+1.05f,"intro2.stillrain.fall","structure.land.timber","wood",.6f),
+            new NativeIntroCue(SlideAt+1.23f,"intro2.stillrain.fall","structure.land.timber","wood",.6f),
             new NativeIntroCue(ClickAt,"intro2.stillrain.click","melee.block","metal",.6f,1.3f),
             new NativeIntroCue(CardAt,"intro2.stillrain.name","boss.noctiel.hush.open","install",.4f),
         };

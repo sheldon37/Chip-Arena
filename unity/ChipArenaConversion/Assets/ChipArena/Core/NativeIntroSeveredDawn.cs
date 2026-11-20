@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
             // from the side (begun and ended, nothing between), slowed; round the severed light; the backhand from the front; the hero.
             Rig.Crane(0,V(.5f,7.6f,3.2f),V(.95f,1.5f,3.65f),0,V(0,4.2f,.6f),V(0,1.15f,.2f),46,40).Ease(NativeIntroEase.InOut)
                .Dolly(GripAt,V(-.95f,1.1f,1.05f),V(-.8f,1.05f,.9f),V(-.3f,.95f,.15f),V(-.28f,.95f,.15f),26,24).Focus(0,0,.55f)
-               .Dolly(VisorAt,V(.18f,1.62f,.98f),V(.14f,1.6f,.86f),V(0,1.6f,0),V(0,1.6f,0),28,26).Focus(0,0,.5f)
+               .Dolly(VisorAt,V(.1f,1.4f,1.3f),V(.06f,1.42f,1.12f),V(0,.15f,.06f),V(0,.16f,.06f),28,26).Follow(NativeEntranceAnchor.Head).Focus(0,0,.5f)
                .Dolly(CutAt-.03f,V(3.2f,1.3f,1.3f),V(3.25f,1.32f,1.45f),V(0,1.3f,.45f),V(0,1.28f,.45f),44,42)
                .Orbit(FollowEnd-.05f,new Vector3(0,0,.5f),70,22,3.1f,2.7f,1.45f,1.3f,V(0,1.3f,.5f),V(0,1.2f,.4f),40,38).Ease(NativeIntroEase.InOut)
                .Dolly(RibbonAt-.1f,V(-.95f,.72f,2.65f),V(-.75f,.78f,2.35f),V(0,1.2f,0),V(0,1.25f,0),42,40);
@@ -77,7 +77,7 @@ namespace ChipArena.UnityConversion
         protected override void Fallback(float t,INativeIntroSet set)=>Plain(set,NativeEntranceFx.Hex(0x1c1712),Dawn,ShaftLevel(t),NativeEntranceFx.Hex(0x3b2d22));
         public override void Lights(float t,NativeEntranceLights l)
         {
-            l.Clear();l.Background=Night;l.Fog=NativeEntranceFx.Hex(0x140f0b);l.FogNear=6;l.FogFar=32;l.DriveProbe=true;
+            WarmAnchors(t);l.Clear();l.Background=Night;l.Fog=NativeEntranceFx.Hex(0x140f0b);l.FogNear=6;l.FogFar=32;l.DriveProbe=true;
             float lvl=ShaftLevel(t),cut=Flash(t,CutAt,.01f,.3f),blade=BladeLight(t);
             l.Sky=NativeEntranceFx.Hex(0x3a2c22,.18f+.1f*lvl);l.Ground=NativeEntranceFx.Hex(0x120c08,.25f);
             // The dawn: a sun straight down through the cleft (the vault's shadow makes the shaft on the floor), its bounce off the lit stones.
@@ -86,11 +86,10 @@ namespace ChipArena.UnityConversion
             l.Add(new Vector3(-5,3.2f,-2),Cool*1.0f,10);
             l.Add(new Vector3(0,4.2f,-10),Cool*2.0f,14);
             if(cut>.01f)l.Add(CutPoint,(White*2+Gold)*(6*cut),6);
-            if(blade>.01f)l.Add(Anchor(NativeEntranceAnchor.RightHand,t)+new Vector3(0,.15f,.2f),Gold*(1.3f*blade),3.2f);
+            if(blade>.01f){DrawnBlade(t,0,out var root,out var tip,.1f);l.Add(Vector3.Lerp(root,tip,.45f),Gold*(1.3f*blade),3.2f);}
         }
 
-        // ---- the effects ----
-        private readonly Vector3[] ribbon=new Vector3[14];
+        // ---- the effects (on the blade as drawn: DrawnBlade) ----
         public override void Effects(float t,INativeEntranceFx fx,float q)
         {
             Look(t);bool low=q<.5f||Context.Low;float lvl=ShaftLevel(t),after=t-CutAt;
@@ -111,37 +110,28 @@ namespace ChipArena.UnityConversion
                     var o=CutPoint+Fall*(slide*.6f)+new Vector3(NativeEntranceMath.Signed(37603,i)*.7f,-.9f*NativeEntranceMath.Rand(37605,i),NativeEntranceMath.Signed(37607,i)*.6f);
                     var p=o+new Vector3((float)Math.Sin(a*2.1f+i)*.12f,-.22f*a,(float)Math.Cos(a*1.7f+i)*.12f);
                     // The backhand pulls them in toward the blade.
-                    float pull=NativeEntranceMath.Ramp(t,RibbonAt+.1f,RibbonHit+.2f);if(pull>0)p=Vector3.Lerp(p,Anchor(NativeEntranceAnchor.RightTip,t),pull*.7f*NativeEntranceMath.Rand(37609,i));
+                    float pull=NativeEntranceMath.Ramp(t,RibbonAt+.1f,RibbonHit+.2f);if(pull>0)p=Vector3.Lerp(p,DrawnTip(t,0),pull*.7f*NativeEntranceMath.Rand(37609,i));
                     float tw=.6f+.4f*(float)Math.Sin(a*5+i*1.3f);fx.Glow(p,Gold*(1.1f*(1-u)*tw),0,.022f+.012f*NativeEntranceMath.Rand(37611,i),0,u,37620+i);
                 }
             }
             // Dust turning in the hall's dark.
             for(int i=0,n=low?6:14;i<n;i++){var p=new Vector3(NativeEntranceMath.Signed(37701,i)*4,.4f+3.5f*NativeEntranceMath.Rand(37703,i),NativeEntranceMath.Signed(37705,i)*5)+new Vector3((float)Math.Sin(t*.2f+i)*.2f,(float)Math.Sin(t*.15f+i*2)*.1f,0);fx.Glow(p,Dawn*.04f,0,.025f,0,0,37710+i);}
-            // The cut: the blade's sweep, a white-teal line along the captured tip's path, too fast to see but for its trail.
-            if(after>-.05f&&after<.35f)Sweep(fx,t,CutAt-.12f,.22f,White*1.6f+Teal,Gold,.016f,37800,low);
-            if(after>=0&&after<.25f){var tip=Anchor(NativeEntranceAnchor.RightTip,t);float g=Flash(t,CutAt,.01f,.08f);fx.Glow(tip,(White*2+Gold)*(1.4f*g),0,.25f,1,0,37850);}
+            // The cut: the blade's sweep, a white-teal arc along the tip's path, too fast to see but for its trail.
+            if(after>-.05f&&after<.35f)BladeSweep(fx,t,0,CutAt-.12f,.22f,White*1.6f+Teal,Gold,.016f,.45f,37800,low,FollowEnd);
+            if(after>=0&&after<.25f){var tip=DrawnTip(t,0);float g=Flash(t,CutAt,.01f,.08f);fx.Glow(tip,(White*2+Gold)*(1.4f*g),0,.25f,1,0,37850);}
             // The blade holds the light: a glow running up its edge, a ribbon of gold behind the backhand.
             float blade=BladeLight(t);
             if(blade>.01f)
             {
-                var hand=Anchor(NativeEntranceAnchor.RightHand,t);var tip=Anchor(NativeEntranceAnchor.RightTip,t);float run=(t*.9f)%1f;
+                DrawnBlade(t,0,out var hand,out var tip);float run=(t*.9f)%1f;
                 fx.Glow(Vector3.Lerp(hand,tip,.15f+.8f*run),Gold*(1.2f*blade),0,.09f,1,0,37900);fx.Glow(tip,Gold*(.8f*blade),0,.07f,1,0,37901);
                 Line(fx,tip,tip-hand,Gold*(.5f*blade),.018f,.5f,0,37902);
             }
-            if(t>=RibbonAt&&t<StanceAt+.5f)Sweep(fx,t,RibbonAt,.45f,Gold*1.6f,White,.03f,38000,low);
+            if(t>=RibbonAt&&t<StanceAt+.5f)BladeSweep(fx,t,0,RibbonAt,.45f,White*.8f+Gold*1.2f,Gold*1.3f,.028f,.7f,38000,low,StanceAt);
             // Under the name: a glint along the blade.
-            if(t>=CardAt-.1f&&t<CardAt+.6f){var hand=Anchor(NativeEntranceAnchor.RightHand,t);var tip=Anchor(NativeEntranceAnchor.RightTip,t);float g=NativeEntranceMath.Bump(t,CardAt-.1f,CardAt+.6f);
+            if(t>=CardAt-.1f&&t<CardAt+.6f){DrawnBlade(t,0,out var hand,out var tip);float g=NativeEntranceMath.Bump(t,CardAt-.1f,CardAt+.6f);
                 NativeEntranceFx.Glint(fx,Vector3.Lerp(hand,tip,NativeEntranceMath.Smooth((t-CardAt+.1f)/.7f)),(White+Gold)*(1.5f*g),.12f*g,Vector3.UnitX,Vector3.UnitY,38100);}
         }
-        /// <summary>The captured blade tip's path over the last `life` s (from `from` on) as a tapering line of streaks: the sweep behind a cut.</summary>
-        private void Sweep(INativeEntranceFx fx,float t,float from,float life,Vector3 head,Vector3 tail,float width,int seed,bool low)
-        {
-            int n=low?8:ribbon.Length;int c=0;
-            for(int i=0;i<n;i++){float s=t-life*i/(n-1);if(s<from)break;ribbon[c++]=Anchor(NativeEntranceAnchor.RightTip,s);}
-            // (each segment laid onto its head's camera plane: a fast cut's step can pass a metre)
-            for(int i=1;i<c;i++){float u=(float)i/c;var a=ribbon[i-1];var b=ribbon[i];if((a-b).LengthSquared()<1e-8f)continue;Line(fx,a,a-b,Vector3.Lerp(head,tail,u)*(1-u),width*(1-.7f*u),.2f,u,seed+i);}
-        }
-
         // ---- the sound ----
         public override NativeIntroCue[] Cues=>cues;
         private static readonly NativeIntroCue[] cues=

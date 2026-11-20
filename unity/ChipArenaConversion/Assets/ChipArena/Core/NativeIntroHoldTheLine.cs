@@ -28,11 +28,13 @@ namespace ChipArena.UnityConversion
         /// <summary>Where each bolt comes from (the ridge, source frame) and where it strikes the shield's face (in front of the chest).</summary>
         private static readonly Vector3 Face=new Vector3(0,1.2f,.62f);
         private static Vector3 Origin(int i)=>new Vector3(-14+9*i+3*NativeEntranceMath.Signed(39001,i),9,72);
-        private const float Flight=1.1f;
+        private const float Flight=.72f;
         /// <summary>Near misses: earth and fire thrown up round the pilot (source frame) and when.</summary>
         private static readonly Vector3[] Misses={new Vector3(2.3f,0,1.6f),new Vector3(-2.6f,0,.9f),new Vector3(.9f,0,3.2f)};
         private static readonly float[] MissAt={3.0f,3.72f,4.12f};
         private static readonly string[] debrisProps={"breach/debris-0","breach/debris-1","breach/debris-2","breach/debris-3"};
+        /// <summary>Which near miss throws each rock (the nearest).</summary>
+        private static readonly int[] DebrisMiss={0,1,2,1};
         private static readonly Vector2[] DebrisRest={new Vector2(-1.2f,1.55f),new Vector2(1.25f,1.85f),new Vector2(-1.15f,2.45f),new Vector2(1.2f,2.3f)};
 
         public NativeIntroHoldTheLine():base(NativeIntroCatalog.WeaponPrefix+"shield",Total,CardAt,Hits[0],0x8cceff)
@@ -49,6 +51,7 @@ namespace ChipArena.UnityConversion
                .Dolly(SilenceAt,V(.42f,1.3f,3.45f),V(.32f,1.3f,2.85f),V(0,1.25f,0),V(0,1.25f,0),36,34)
                .Dolly(BashAt-.05f,V(-1.0f,.6f,4.2f),V(-1.1f,.62f,4.5f),V(0,1.0f,.5f),V(0,1.0f,.6f),44,44);
             HeroFull(StanceAt-.25f,-1,4.6f,32,.3f);
+            MakeBlasts();
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
         }
         public override string SetBank=>Bank;
@@ -87,16 +90,15 @@ namespace ChipArena.UnityConversion
         /// <summary>Debris rock `k` at `t`: at rest, then thrown by its near miss.</summary>
         private static void Debris(int k,float t,out Vector3 at,out Quaternion turn)
         {
-            var r=DebrisRest[k];at=U(r.X,.1f,r.Y);turn=Quaternion.Identity;int m=k%Misses.Length;float s=t-MissAt[m];if(s<=0)return;
+            var r=DebrisRest[k];at=U(r.X,.1f,r.Y);turn=Quaternion.Identity;int m=DebrisMiss[k];float s=t-MissAt[m];if(s<=0)return;
             var away=at-Misses[m];away.Y=0;away=away.LengthSquared()>1e-4f?Vector3.Normalize(away):Vector3.UnitZ;var v=away*(2.5f+NativeEntranceMath.Rand(39101,k))+new Vector3(0,3.2f+NativeEntranceMath.Rand(39103,k),0);
             float land=2*v.Y/9.8f;if(s>land)s=land+(s-land)*0;at+=v*s+new Vector3(0,-4.9f*s*s,0);if(at.Y<NativeEntranceStage.FloorY+.1f)at.Y=NativeEntranceStage.FloorY+.1f;
             turn=Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(.3f,.8f,.5f)),Math.Min(s,land)*9);
         }
-        protected override void Plan()
-        {
-            // The near misses through the game's own blast (fire, smoke, flash and the world light), in front and to the sides of the pilot.
-            var list=new NativeEntranceBlast[Misses.Length];for(int i=0;i<Misses.Length;i++)list[i]=new NativeEntranceBlast{At=MissAt[i],Radius=2.6f,Size=1.3f,Style=NativeBlastStyle.Fire,Position=Misses[i]+new Vector3(0,.4f,0)};Blasts=list;
-        }
+        /// <summary>The near misses through the game's own blast (fire, smoke, flash and the world light), in front and to the sides of the
+        /// pilot: built with the script (the runtime reads Blasts every frame; Plan runs only when the anchors are first built).</summary>
+        private void MakeBlasts(){var list=new NativeEntranceBlast[Misses.Length];for(int i=0;i<Misses.Length;i++)list[i]=new NativeEntranceBlast{At=MissAt[i],Radius=2.6f,Size=1.3f,Style=NativeBlastStyle.Fire,Position=Misses[i]+new Vector3(0,.4f,0)};Blasts=list;}
+        protected override void Plan()=>MakeBlasts();
 
         // ---- the set ----
         protected override bool Scene(float t,INativeIntroSet set)
@@ -113,7 +115,7 @@ namespace ChipArena.UnityConversion
         private static float Heat(float t){float h=0;for(int i=0;i<Hits.Length;i++)h+=NativeEntranceMath.Pulse(t,Hits[i],.02f,1.6f)*.45f;return Math.Min(1.2f,h);}
         public override void Lights(float t,NativeEntranceLights l)
         {
-            l.Clear();l.Background=Sky;l.Fog=NativeEntranceFx.Hex(0x3a2422);l.FogNear=10;l.FogFar=75;l.DriveProbe=true;
+            WarmAnchors(t);l.Clear();l.Background=Sky;l.Fog=NativeEntranceFx.Hex(0x3a2422);l.FogNear=10;l.FogFar=75;l.DriveProbe=true;
             l.Sky=NativeEntranceFx.Hex(0x6a4a5a,.34f);l.Ground=NativeEntranceFx.Hex(0x2a1a14,.3f);
             // The low sun behind the far ridge (the pilot faces it), a cool sky fill from behind the wall, the braziers either side.
             l.Directional(new Vector3(.3f,.28f,1),Dusk*.95f);

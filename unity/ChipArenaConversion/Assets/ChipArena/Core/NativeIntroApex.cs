@@ -25,16 +25,18 @@ namespace ChipArena.UnityConversion
             Night=NativeEntranceFx.Hex(0x040705),Mist=new Vector3(.2f,.26f,.24f),Firefly=NativeEntranceFx.Hex(0xd8ff7a),Earth=NativeEntranceFx.Hex(0x3a2c1c),Leaf=NativeEntranceFx.Hex(0x3f5a26);
         public override string Spec=>NativeFangs.Spec;
         /// <summary>Where it crouches on the lintel (the canopy set's flat top, 3.2 m) and where it lands (source frame, on the floor).</summary>
-        public static readonly Vector3 Perch=new Vector3(.6f,3.2f,-3.0f),Landing=new Vector3(0,0,.12f);
-        private const float LeapRise=.55f;
+        public static readonly Vector3 Perch=new Vector3(.6f,3.2f,-3.0f),Landing=new Vector3(0,0,0);
+        /// <summary>How high the leap's arc stands over the line from the lintel to the landing (m at its middle): enough that it rises
+        /// first (its top a quarter of the way, about 0.26 m over the lintel).</summary>
+        private const float LeapRise=1.4f;
 
         public NativeIntroApex():base(NativeIntroCatalog.WeaponPrefix+NativeFangs.Spec,Total,CardAt,LandAt,0x7dff3a)
         {
             RootPath=(t,r)=>r+Way(t);
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            k.Key(0,stand).Root(0,.62f,0,Facing).Planted(1).Drop(-.24f).J(B,.35f).J(LA,-.5f,0,.4f).J(RA,-.5f,0,-.4f);
-            k.Key(CoilAt,stand).Root(0,.6f,0,Facing).Planted(1).Drop(-.26f).J(B,.4f).J(LA,-.6f,0,.5f).J(RA,-.6f,0,-.5f);
-            k.Key(LeapAt,stand).Root(0,.56f,0,Facing).Planted(1).Drop(-.3f).J(B,.45f).J(LA,-.9f,0,.6f).J(RA,-.9f,0,-.6f);
+            k.Key(0,stand).Root(0,.62f,0,Facing).Planted(0).Drop(-.24f).J(B,.35f).J(LA,-.5f,0,.4f).J(RA,-.5f,0,-.4f);
+            k.Key(CoilAt,stand).Root(0,.6f,0,Facing).Planted(0).Drop(-.26f).J(B,.4f).J(LA,-.6f,0,.5f).J(RA,-.6f,0,-.5f);
+            k.Key(LeapAt,stand).Root(0,.56f,0,Facing).Planted(0).Drop(-.3f).J(B,.45f).J(LA,-.9f,0,.6f).J(RA,-.9f,0,-.6f);
             k.Key(ApexAt,stand).Root(0,.86f,0,Facing).Planted(0).J(B,.2f).J(LA,-1.6f,0,.5f).J(RA,-1.6f,0,-.5f).J(LL,-.8f).J(LK,1.2f).J(RL,-.4f).J(RK,1.0f).PassKey();
             k.Key(LandAt,stand).Root(0,.6f,0,Facing).Planted(1).Drop(-.28f).J(B,.55f).J(LA,-1.2f,0,.3f).J(RA,-1.2f,0,-.3f).ImpactKey();
             k.Key(RiseAt+.2f,stand).Root(0,.8f,0,Facing).Planted(1).Drop(-.08f).J(B,.15f).J(LA,-.4f,0,.35f).J(RA,-.4f,0,-.35f);
@@ -58,7 +60,7 @@ namespace ChipArena.UnityConversion
             var perch=Perch;
             if(t<LeapAt)return perch;
             if(t<LandAt){float u=(t-LeapAt)/(LandAt-LeapAt);var p=Vector3.Lerp(perch,Landing,u);p.Y=perch.Y*(1-u)+Landing.Y*u+LeapRise*4*u*(1-u);return p;}
-            return Landing*(1-NativeEntranceMath.Smooth((t-LandAt)/.6f));
+            return Landing;
         }
 
         // ---- the model's clips (the Fangs' set: NativeBladeMotion.FangsExtra) ----
@@ -96,7 +98,7 @@ namespace ChipArena.UnityConversion
         // ---- the light ----
         public override void Lights(float t,NativeEntranceLights l)
         {
-            l.Clear();l.Background=Night;l.Fog=NativeEntranceFx.Hex(0x07100b);l.FogNear=5;l.FogFar=27;l.DriveProbe=true;
+            WarmAnchors(t);l.Clear();l.Background=Night;l.Fog=NativeEntranceFx.Hex(0x07100b);l.FogNear=5;l.FogFar=27;l.DriveProbe=true;
             l.Sky=NativeEntranceFx.Hex(0x1b2a24,.32f);l.Ground=NativeEntranceFx.Hex(0x0a0c08,.28f);
             // No sky through the canopy: a shaft of moonlight onto the lintel and the floor, a cold rim from behind the gate, the venom's glow.
             l.Add(new Vector3(.4f,6.5f,-.8f),Moon*4.2f,10);

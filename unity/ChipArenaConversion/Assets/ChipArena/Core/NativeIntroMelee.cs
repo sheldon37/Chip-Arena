@@ -88,6 +88,9 @@ namespace ChipArena.UnityConversion
             if(view.Eye.Y<NativeEntranceStage.FloorY+.06f)view.Eye.Y=NativeEntranceStage.FloorY+.06f;
         }
         public override Vector3 CameraJolt(float t)=>Vector3.Zero;
+        /// <summary>Builds the anchor table on the first frame, under the opening black, rather than at the first beat that reads an anchor
+        /// (it poses the whole intro once: a hitch mid-intro on a session's first play otherwise). Call from Lights.</summary>
+        protected void WarmAnchors(float t){if(t<.2f)Anchor(NativeEntranceAnchor.Root,0);}
         public override int Boxes(float t,Span<Vector4> into)=>0;
         public override void Props(float t,INativeEntranceProps props,float quality){}
         public virtual string SetBank=>NativeIntroMelee.Bank;
@@ -134,13 +137,84 @@ namespace ChipArena.UnityConversion
 
         // ---- the hands as drawn (handed in before Props, Set and Effects; a checker never hands them in) ----
         private NativeIntroHand handR,handL;private float handsAt=-100;
-        public void Hands(float t,in NativeIntroHand right,in NativeIntroHand left){handR=right;handL=left;handsAt=t;}
+        public void Hands(float t,in NativeIntroHand right,in NativeIntroHand left){handR=right;handL=left;handsAt=t;Record(t,0,right);Record(t,1,left);}
         /// <summary>The drawn wrist (0 the right, 1 the left) this frame: false when none was handed in for `t` (then the keyed anchor).</summary>
         protected bool Hand(float t,int hand,out Vector3 at)
         {
             if(Math.Abs(handsAt-t)<1e-4f){at=(hand==0?handR:handL).At;return true;}
             at=Anchor(hand==0?NativeEntranceAnchor.RightHand:NativeEntranceAnchor.LeftHand,t);return false;
         }
+
+        // ---- the blades as drawn ----
+        // The model's hand carries its weapon on the hand joint's frame as the runtime hands it in (Runtime NativeVisualBodyPresentation:
+        // VisualJointsOf takes each joint's frame on its bone once the hands are on the weapon frames, and the motion keeps the game pose's
+        // hold from its first frame), so a blade lies along that frame's +z, its tip TipLength out. The keyed rig's capture holds the
+        // blade its own way: in the sword's idle some 40 degrees off the drawn one. So the effects on a blade take the drawn one, and its
+        // last frames for the trails; the keyed anchors only where no model is drawn (the Classic body, a checker).
+        private const int DrawnMax=64;
+        private readonly Vector3[] drawnRoot=new Vector3[2*DrawnMax],drawnTip=new Vector3[2*DrawnMax];private readonly float[] drawnAt=new float[2*DrawnMax];
+        private readonly int[] drawnCount=new int[2],drawnHead=new int[2];private float drawnClock=-1;
+        private void Record(float t,int hand,in NativeIntroHand h)
+        {
+            if(t<drawnClock-1e-4f)drawnCount[0]=drawnCount[1]=0;// (a clock that runs back, a replay, starts the trails over)
+            drawnClock=t;
+            if(!h.Model||!float.IsFinite(h.At.X)||!float.IsFinite(h.Turn.W)){drawnCount[hand]=0;return;}
+            float len=TipLength(hand==1);var axis=Vector3.Transform(Vector3.UnitZ,h.Turn);var root=h.At+axis*Math.Min(.18f,len*.2f);var tip=h.At+axis*len;
+            int c=drawnCount[hand],k=drawnHead[hand],o=hand*DrawnMax;
+            if(c>0&&t-drawnAt[o+k]<1/240f){drawnRoot[o+k]=root;drawnTip[o+k]=tip;return;}
+            k=(k+1)%DrawnMax;drawnRoot[o+k]=root;drawnTip[o+k]=tip;drawnAt[o+k]=t;drawnHead[hand]=k;drawnCount[hand]=Math.Min(DrawnMax,c+1);
+        }
+        /// <summary>The blade in `hand` (0 the right) as drawn at `t`: where it leaves the hilt and its tip. False: no model this frame,
+        /// the keyed rig's instead (its hand and tip anchors).</summary>
+        protected bool DrawnBlade(float t,int hand,out Vector3 root,out Vector3 tip,float within=1e-4f)
+        {
+            // (`within`: the latest frame's as near as that, for a light set before this frame's hands are handed in)
+            int o=hand*DrawnMax+drawnHead[hand];
+            if(drawnCount[hand]>0&&Math.Abs(drawnAt[o]-t)<within){root=drawnRoot[o];tip=drawnTip[o];return true;}
+            var at=Anchor(hand==0?NativeEntranceAnchor.RightHand:NativeEntranceAnchor.LeftHand,t);tip=Anchor(hand==0?NativeEntranceAnchor.RightTip:NativeEntranceAnchor.LeftTip,t);
+            root=Vector3.Lerp(at,tip,.14f);return false;
+        }
+        protected Vector3 DrawnTip(float t,int hand){DrawnBlade(t,hand,out _,out var tip);return tip;}
+        /// <summary>
+        /// The sweep behind the drawn blade over the last `life` s (from `from` on): its tip's path as a chain of lines (Catmull-Rom between
+        /// the frames, so a fast cut's few frames still draw an arc), hot at the head, with the blade's afterimages between root and tip
+        /// filling it as a sheet. Without a model the keyed tip's path (`until`: no keyed sample past it, where the model only fades into
+        /// the next clip).
+        /// </summary>
+        protected void BladeSweep(INativeEntranceFx fx,float t,int hand,float from,float life,Vector3 head,Vector3 tail,float width,float sheet,int seed,bool low,float until=1e6f)
+        {
+            int n=0;
+            if(drawnCount[hand]>1&&Math.Abs(drawnAt[hand*DrawnMax+drawnHead[hand]]-t)<1e-4f)
+            {
+                // (the frames within `life`, at most 16 of them evenly: a fast display's many frames draw no more lines)
+                int c=0;for(;c<drawnCount[hand];c++){int i=hand*DrawnMax+((drawnHead[hand]-c)%DrawnMax+DrawnMax)%DrawnMax;if(t-drawnAt[i]>life||drawnAt[i]<from)break;}
+                int stride=Math.Max(1,(c+14)/15);
+                for(int j=0;j<c&&n<sweepTip.Length;j+=stride)
+                {
+                    int i=hand*DrawnMax+((drawnHead[hand]-j)%DrawnMax+DrawnMax)%DrawnMax;sweepTip[n]=drawnTip[i];sweepRoot[n]=drawnRoot[i];sweepAge[n]=t-drawnAt[i];n++;
+                }
+            }
+            else
+            {
+                int m=low?8:14;var hold=hand==0?NativeEntranceAnchor.RightHand:NativeEntranceAnchor.LeftHand;var end=hand==0?NativeEntranceAnchor.RightTip:NativeEntranceAnchor.LeftTip;
+                for(int i=0;i<m&&n<sweepTip.Length;i++){float s=t-life*i/(m-1);if(s<from)break;s=Math.Min(s,until-1e-3f);sweepTip[n]=Anchor(end,s);sweepRoot[n]=Vector3.Lerp(Anchor(hold,s),sweepTip[n],.14f);sweepAge[n]=t-s;n++;}
+            }
+            if(n<2)return;int steps=low?1:3;
+            for(int j=0;j<n-1;j++)
+            {
+                var p0=sweepTip[Math.Max(0,j-1)];var p1=sweepTip[j];var p2=sweepTip[j+1];var p3=sweepTip[Math.Min(n-1,j+2)];
+                for(int k=0;k<steps;k++)
+                {
+                    float u0=(float)k/steps,u1=(float)(k+1)/steps;var a=CatmullRom(p0,p1,p2,p3,u0);var b=CatmullRom(p0,p1,p2,p3,u1);if((a-b).LengthSquared()<1e-8f)continue;
+                    float age=NativeEntranceMath.Lerp(sweepAge[j],sweepAge[j+1],u0),f=1-NativeEntranceMath.Clamp01(age/life),k2=f*f;
+                    Line(fx,a,a-b,Vector3.Lerp(tail,head,f)*k2,width*(.35f+.65f*f),.2f,1-f,seed+j*8+k);
+                    // The sheet: the blade's afterimage from a third of the way up to the tip, faint and soft.
+                    if(sheet>0&&!low){var r=Vector3.Lerp(sweepRoot[j],sweepRoot[j+1],u0);var from3=Vector3.Lerp(r,a,.33f);var ax=a-from3;if(ax.LengthSquared()>1e-6f)Line(fx,a,ax,tail*(sheet*k2),width*2.6f,.1f,1-f,seed+j*8+4+k);}
+                }
+            }
+        }
+        private readonly Vector3[] sweepTip=new Vector3[16],sweepRoot=new Vector3[16];private readonly float[] sweepAge=new float[16];
+        private static Vector3 CatmullRom(Vector3 p0,Vector3 p1,Vector3 p2,Vector3 p3,float u){float u2=u*u,u3=u2*u;return .5f*(2*p1+(p2-p0)*u+(2*p0-5*p1+4*p2-p3)*u2+(3*p1-p0-3*p2+p3)*u3);}
 
         // ---- the game rig in the game's own capture of a pack clip ----
         private readonly float[] captureRow=new float[CapturedClip.Channels];
@@ -152,7 +226,8 @@ namespace ChipArena.UnityConversion
         /// </summary>
         protected void Captured(int set,int clip,float time,CapturedRig.Pose pose)
         {
-            var c=CapturedClips.Sets[set][clip];float d=Math.Max(1e-3f,c.Duration);time%=d;if(time<0)time+=d;c.Sample(time,captureRow);CapturedRig.Sample(captureRow,set,pose);
+            // (the capture loops its idle and clamps a cut to its ends itself)
+            var c=CapturedClips.Sets[set][clip];c.Sample(Math.Max(0,time),captureRow);CapturedRig.Sample(captureRow,set,pose);
         }
 
         // ---- this frame's camera (the rig at `t`, as Camera draws it), for streaks laid onto their head's camera plane ----
