@@ -149,8 +149,23 @@ namespace ChipArena.UnityConversion
                 Check(s.Solid(NativeIntroArchitect.Condense+.08f,CapturedRig.Chest)>s.Solid(NativeIntroArchitect.Condense+.08f,CapturedRig.LHand),"the chest before the hands");
                 s.Pose(NativeIntroArchitect.Still,pose,out var r0,out _);Check(r0.Y>1.2f,"floating through the stillness");
                 for(float t=NativeIntroArchitect.Drop+.5f;t<=NativeIntroArchitect.Total;t+=.1f){s.Pose(t,pose,out var r1,out _);Check(Math.Abs(r1.Y-(.88f+NativeIntroArchitect.Reign))<.06f,"hovering over the dais at "+t.ToString("0.0")+" ("+r1.Y.ToString("0.00")+")");}
+                // the palms up to the ceiling once the arms reach the sides, and steady to the end (owner 2026-11-20: the hands from 13 to
+                // 15 s read as random rotation): each palm (the hand frame's +z, Core NativeDraftPlant.PalmIn) within 8 degrees of straight up
+                // as the arms lower and 3 from the open pose on, turning under 60 degrees a second, the fingers out level
+                {
+                    Vector3 pl=default,pr=default;double up8=Math.Cos(8*Math.PI/180),up3=Math.Cos(3*Math.PI/180),turn=Math.Cos(60*.02*Math.PI/180);
+                    for(float t=NativeIntroArchitect.Lower+.1f;t<=NativeIntroArchitect.Total+1e-4f;t+=.02f)
+                    {
+                        s.Pose(t,pose,out _,out _);pose.World();var l=Vector3.Transform(Vector3.UnitZ,pose.WorldRotation[CapturedRig.LHand]);var r=Vector3.Transform(Vector3.UnitZ,pose.WorldRotation[CapturedRig.RHand]);
+                        double need=t>=NativeIntroArchitect.Open?up3:up8;Check(l.Y>need&&r.Y>need,"both palms up at "+t.ToString("0.00")+" (L "+l.Y.ToString("0.000")+", R "+r.Y.ToString("0.000")+")");
+                        if(t>NativeIntroArchitect.Lower+.11f)Check(Vector3.Dot(l,pl)>turn&&Vector3.Dot(r,pr)>turn,"the palms steady at "+t.ToString("0.00"));
+                        var fl=Vector3.Transform(-Vector3.UnitY,pose.WorldRotation[CapturedRig.LHand]);var fr=Vector3.Transform(-Vector3.UnitY,pose.WorldRotation[CapturedRig.RHand]);
+                        Check(Math.Abs(fl.Y)<.15f&&Math.Abs(fr.Y)<.15f&&fl.X*fr.X<0,"the fingers out level either side at "+t.ToString("0.00"));
+                        pl=l;pr=r;
+                    }
+                }
                 // the head's frame agrees with the body's facing; the visor sits up the head's axis from the skull-base anchor, in front
-                foreach(float t in new[]{NativeIntroArchitect.Body+.5f,NativeIntroArchitect.Inhale+.3f,NativeIntroArchitect.Command+1f})
+                foreach(float t in new[]{NativeIntroArchitect.Body+.5f,NativeIntroArchitect.Inhale+.3f,NativeIntroArchitect.Open+1.45f})
                 {
                     s.HeadFrame(t,out var hu,out var hf);var fwd=s.Anchor(NativeEntranceAnchor.Forward,t);fwd=Vector3.Normalize(new Vector3(fwd.X,0,fwd.Z));var head=s.Anchor(NativeEntranceAnchor.Head,t);
                     Check(Vector3.Dot(hf,fwd)>.5f&&hu.Y>.6f,"the head's frame faces the body's way at "+t);

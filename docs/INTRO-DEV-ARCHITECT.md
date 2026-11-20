@@ -34,7 +34,7 @@ The beats below are the song's transients as measured from the file (5 ms envelo
 | 1.97 | the drop-out | It lets go | The arena comes apart from the centre out: every plate, wedge, pylon and tower lifts and turns; its stone falls in on itself to its wireframe of light; the wire breaks into code glyphs that rise and fade to light. Beneath: the void and its grid. | A crane up and back over the whole unmaking. |
 | 2.97 | a soft hit | A tear | A rift of light runs across the world. | (the crane) |
 | 3.505 | the sub returns | The presence | Before any body: a point of light, chest-high over the centre, its flare and halo; glyphs pour into it on spirals; the old world's shards orbit it. 3.74 and 3.90 pulse it. | Orbiting the light. |
-| 5.035 | the sub cuts | The draft | A body of light: the model's own silhouette in cyan, its edges bright and a soft glow inside it (an entrance ghost at no lag, no scanlines); pens of light trace its edges (each limb's two silhouette edges as the lens sees them) out from the chest; a scan sweeps up it and back down; the core of light in its chest swells. | The whole figure, a slow push. |
+| 5.035 | the sub cuts | The draft | A body of light: the dressed pilot's own silhouette in cyan, armour and helmet and all, its edges bright and a soft glow inside it (the framework's entrance ghost at no lag, no scanlines); pens of light trace its edges (each limb's two silhouette edges as the lens sees them) out from the chest; a scan sweeps up it and back down; the core of light in its chest swells. | The whole figure, a slow push. |
 | 6.38–6.66 | the sub ramps to a hit | The body | It fills solid from the core out (chest, then limbs, hands and feet last), light pouring into every part; at 6.66 a white flash in the chest throws rays of light out all round and the shards back, and the visor ignites. It floats, head bowed, rim lit cyan and ice from behind, the visor glowing, an aura round it (glyph-light circling, a soft glow behind, motes rising). | Low, the figure rising over the lens. |
 | 8.03 | the sub cuts: the long riser | Stillness | It hangs perfectly still while pens of light draw the new world's plan in the void: the floor's seams from the centre out, eight monoliths' edges up out of the dark, their capstones, the axis to where the crown will hang. Time stops for the glyphs: they hang where they are. The arms open, slowly. | Far out: a tiny figure in the void. |
 | 10.50–11.69 | the riser, its five stutters | The gathering | The arms rise and the new world comes in from the void as wireframes, light streaming behind: the floor up out of the abyss, the monoliths in from the horizon, the crown down out of the sky, a step nearer on each stutter. | Low, looking up, pushing in. |
@@ -42,7 +42,7 @@ The beats below are the song's transients as measured from the file (5 ms envelo
 | 12.27, 12.50 | the dips | The hands close | The world trembles; the hands close and come down beside the helmet, into the frame; the visor brightens on each. | (the close-up) |
 | 12.62 | **the drop** | **The world obeys** | Everything snaps into place at once, solid: a floating platform of black glass (sixteen wedges round a sixteen-sided dais, its seams lit cyan at the dais to gold at the rim), eight monoliths with gold capstones, the crown's eight gold spires leaning in overhead, far spires rising. Light floods out along every seam, erupts up every monolith and on into the sky as beams, runs up the spires; the sky wells up deep blue; dust shakes off the world; sparks. The hands fling open into a V and the architect sinks to hover over the dais (it never lands), the visor white. | The hero frame from just over the floor, looking up: a slow push and orbit to the front. |
 | 12.72–13.3 | the drop's sustain | The name | The live name is forged in the sky above the architect: for each letter code glyphs fly up out of the floor's seams to its strokes and its pen writes it white-hot (an ember glow, a gold body, a white-gold core, all bold); as the name completes it pulses and settles to a slow molten shimmer, light rays fanned behind it. The card is its small caption ("THE ARCHITECT" over the live name), its letters decoding with the sky's pens. | (the push) |
-| 13.0–15.3 | | Authority | The arms lower from the V out through the sides, light pouring from the hands into the dais and running out along the seams; the visor blazing white-gold; gold embers rise from the seams; at 14.0 the command: the right palm out over the world, rising to the chest's height and settling there, the head bowed to look down the lens. A light sweeps the name; the crown turns. | Settling to still: the architect hovering half the frame tall between the two monoliths behind it, the sky's name above, the card low in the black glass under its feet. |
+| 13.0–15.3 | | Authority | The arms lower from the V out through the sides into an open pose and hold it, both palms up to the ceiling (they come up as the arms reach the sides and stay there, steady), light pouring from the hands into the dais and running out along the seams; the visor blazing white-gold; gold embers rise from the seams; the head bows a little to look down the lens. A light sweeps the name; the crown turns. | Settling to still: the architect hovering half the frame tall between the two monoliths behind it, the sky's name above, the card low in the black glass under its feet. |
 | 15.30–15.70 | the fade | | The song fades; the picture goes to black with it. | |
 
 ## The set (`ChipArenaIntroDev.bytes`, 4.8 MB; never committed)
@@ -74,14 +74,19 @@ dropped), every flash widened and dimmed (`Flash`), the tremble slow and small, 
 the drop), the song in the build, the beats in order, a cue on every beat and stutter (each with a key, an existing sound and a
 clip), every frame finite on High and Low with and without the bank, the peaks, every streak over 1 m on its head's camera
 plane, determinism under a scrub, no allocation per frame, Reduced effects (the same camera twice; no light or glow flash
-faster than 3 Hz), the body's build, the hover from the drop to the end, the head's frame and the visor (up the head's axis
-from the skull-base anchor, in front), the inhale's close-up (low and frontal on the visor, the lens clear of the head, chest,
+faster than 3 Hz), the body's build, the hover from the drop to the end, the palms up from the arms' reaching the sides to the
+end (within 8 degrees of straight up as the arms lower and 3 from the open pose on, turning under 60 degrees a second, the
+fingers out level), the head's frame and the visor (the drawn glass ahead of the head; the camera's framing of it up the keyed
+head's axis and ahead), the inhale's close-up (low and frontal on the visor, the lens clear of the head, chest,
 shoulders, elbows and hands), the hero frame (low and looking up, the architect between .36 and .62 of the frame tall, the
 sky's name above the head and in frame), the card as a small caption, no ring-shaped prop in the set, and the stroke font
 (every letter, digit and mark inside its cell; accents fold; other scripts are left to the card; a 20-letter name fits).
 
-## The model and the keyed rig (measured on the first version's frames)
-The architect is keyed on the rig and the drawn model follows it, but the model is taller and places its own arms. On the
-hero frames the keyed head anchor sits on the model's skull base (the visor is .2 m up the head's axis: `EyeUp`, `VisorFront`),
-the shoulders, pelvis, knees and feet sit on the model's, the keyed chest anchor sits at the model's waist (+.2 m is its
-chest), and the model's hands are its own: the hands' light uses the drawn wrists the runtime hands in (`INativeIntroHands`).
+## The model and the keyed rig
+The architect is keyed on the rig and the drawn model follows it (the keyed pose drawn faithfully on the model). The effects
+read the drawn body through the model-aware anchors (docs/INTROS-V2.md 2a): the visor's light is the drawn glass, the hands'
+light and columns the drawn palms, the draft's lines the drawn joints. The camera stays keyed: it frames the drawn visor
+`EyeUp` (.18 m) up the keyed head's axis and `VisorFront` (.13 m) ahead (`FramedVisor`), as measured on the first version's frames.
+The palms-up hands are keyed: each upper arm turned about its own line (where it points unchanged) and the wrist bent back, so the
+palm (the hand frame's +z, as Core `NativeDraftPlant.PalmIn` has it) faces straight up with the fingers out along the forearm;
+the angles were solved on the keyed rig at the keys' times and a check holds them.

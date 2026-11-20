@@ -32,9 +32,9 @@ namespace ChipArena.UnityConversion
         public const float Total=15.7f,CardAt=12.63f;
         public const float Strike=0f,Break=1.97f,Tear=2.97f,Presence=3.505f,PulseA=3.74f,PulseB=3.895f,Draft=5.035f,Condense=6.38f,Body=6.66f,
             Still=8.03f,Gather=10.5f,Inhale=11.82f,DipA=12.27f,DipB=12.5f,Drop=12.62f,FadeFrom=15.3f;
-        /// <summary>After the drop: the arms lower from the V, pouring light into the seams (Lower); the command, the right palm out over
-        /// the world, settling (Command).</summary>
-        public const float Lower=13.0f,Command=14.0f;
+        /// <summary>After the drop: the arms lower from the V out through the sides, pouring light into the seams (Lower), into the open
+        /// pose they hold to the end, both palms up to the ceiling (Open).</summary>
+        public const float Lower=13.0f,Open=13.55f;
         /// <summary>The riser's five stutters: each pulls the new world a step nearer.</summary>
         public static readonly float[] Stutters={11.19f,11.31f,11.44f,11.565f,11.69f};
         /// <summary>The glitch stutters before the break (the song's high-band gates and onsets).</summary>
@@ -117,16 +117,16 @@ namespace ChipArena.UnityConversion
                 NativeEntranceKeys.Set(v,CapturedRig.LFoot,.42f,0,0);NativeEntranceKeys.Set(v,CapturedRig.RFoot,.36f,0,0);});
             k.Key(Drop,reign).Root(0,HoverY-.04f,0,f).ImpactKey();
             k.Key(Drop+.2f,reign).Root(0,ReignY+.05f,0,f).J(Hd,-.14f).J(C,-.22f).J(LA,-2.62f,0,.98f).J(RA,-2.62f,0,-.98f);
-            // The arms lower from the V out through the sides, the light pouring from the hands into the seams.
-            k.Key(Lower,reign).J(Hd,.0f).J(C,-.14f).J(LA,-1.55f,0,1.3f).J(RA,-1.55f,0,-1.3f).J(LE,-.12f).J(RE,-.12f);
-            k.Key(Lower+.55f,reign).J(Hd,.12f).J(C,-.12f).J(LA,-.5f,0,.95f).J(RA,-.5f,0,-.95f).J(LE,-.14f).J(RE,-.14f);
-            k.Key(Command-.06f,reign).J(Hd,.2f).J(C,-.12f).J(LA,-.3f,0,.74f).J(RA,-.3f,0,-.74f).J(LE,-.16f).J(RE,-.16f);
-            // The command: the right arm sweeps out over the world to the shoulder's height, the open palm a touch past and settling
-            // there, lit; the left hand low, still pouring; the head bowed a little to look down the lens. (Out to the side: the model
-            // places its own arms and took a forward lift as a hand raised beside the helmet, hold 1's frames.)
-            k.Key(Command+.42f,reign).J(Hd,.26f).J(C,-.14f).J(LA,-.28f,0,.68f).J(RA,-.34f,0,-1.62f).J(LE,-.18f).J(RE,-.08f);
-            k.Key(Command+.9f,reign).J(Hd,.3f).J(C,-.14f).J(LA,-.27f,0,.66f).J(RA,-.3f,0,-1.42f).J(LE,-.18f).J(RE,-.1f);
-            k.Key(Total,reign).J(Hd,.3f).J(C,-.14f).J(LA,-.26f,0,.65f).J(RA,-.3f,0,-1.45f).J(LE,-.18f).J(RE,-.1f);
+            // The arms lower from the V out through the sides into an open pose and hold it to the end, the light pouring from the
+            // hands into the seams; the palms come up to the ceiling as the arms open and stay there, steady (owner 2026-11-20: the hands
+            // from 13 to 15 s read as random rotation). Each upper arm turned about its own line (no change to where it points) so its
+            // palm faces up, the wrist lifting the hand the rest of the way, the fingers out along the forearm: solved on the keyed rig
+            // (the palm the hand frame's +z, Core NativeDraftPlant.PalmIn), the open pose's arms (-.5, .95) turned 47.5 degrees, the
+            // wrists 20 degrees back. A check holds each palm within a few degrees of straight up from Open to the end.
+            k.Key(Lower,reign).J(Hd,.0f).J(C,-.14f).J(LA,-1.411f,-.038f,1.303f).J(RA,-1.411f,.038f,-1.303f).J(LE,-.12f).J(RE,-.12f).J(LH,.155f).J(RH,.155f);
+            k.Key(Open,reign).J(Hd,.12f).J(C,-.12f).J(LA,-1.226f,.443f,1.121f).J(RA,-1.226f,-.443f,-1.121f).J(LE,-.14f).J(RE,-.14f).J(LH,-.346f).J(RH,-.346f);
+            k.Key(Open+.75f,reign).J(Hd,.22f).J(C,-.13f).J(LA,-1.189f,.444f,1.107f).J(RA,-1.189f,-.444f,-1.107f).J(LE,-.15f).J(RE,-.15f).J(LH,-.34f).J(RH,-.34f);
+            k.Key(Total,reign).J(Hd,.28f).J(C,-.14f).J(LA,-1.192f,.462f,1.11f).J(RA,-1.192f,-.462f,-1.11f).J(LE,-.16f).J(RE,-.16f).J(LH,-.348f).J(RH,-.348f);
             Keys=k;
         }
         /// <summary>The body is built from the core out as it condenses (6.38-6.66): the chest first, the hands and feet last.</summary>
@@ -534,7 +534,6 @@ namespace ChipArena.UnityConversion
             var axis=head-tail;float len=axis.Length();if(len<1e-4f)return;int n=Math.Max(1,(int)Math.Ceiling(len/.9f));
             for(int i=0;i<n;i++){var a=tail+axis*((float)i/n);var b=tail+axis*((float)(i+1)/n);fx.Streak(b,b-a,color,width,.001f,1,0,0,seed*16+i);}
         }
-        private Vector3 CamRightOf()=>CamRight;private Vector3 CamUpOf()=>CamUp(CamRight);
         private Vector3 CamRight{get{var f=view.Look-view.Eye;if(f.LengthSquared()<1e-8f)return Vector3.UnitX;var r=Vector3.Cross(Vector3.Normalize(f),Up);return r.LengthSquared()<1e-8f?Vector3.UnitX:Vector3.Normalize(r);}}
         private Vector3 CamUp(Vector3 right){var f=view.Look-view.Eye;if(f.LengthSquared()<1e-8f)return Up;return Vector3.Normalize(Vector3.Cross(right,Vector3.Normalize(f)));}
 
@@ -886,28 +885,21 @@ namespace ChipArena.UnityConversion
             // embers of gold rising from the seams for the rest of it
             NativeEntranceFx.Embers(fx,t,Drop+.2f,Total+.5f,new Vector3(0,floor+.05f,0),7.2f,thin<1?14:34,.7f,2.4f,Gold*1.1f,.03f,8400,1,.25f);
         }
-        // The light the hands pour as the arms lower (from just after the drop): a shaft from each palm down to the dais, motes falling
-        // in it, a pool where it lands, and pulses running out along the seams from under the architect, one after another round the
-        // floor (the world fed from the hands); the right hand stops pouring as it rises in the command.
+        // The light the hands pour as the arms lower (from just after the drop) and on to the end, the palms turned up: a shaft from each
+        // palm down to the dais, motes falling in it, a pool where it lands, and pulses running out along the seams from under the
+        // architect, one after another round the floor (the world fed from the hands).
         private void HandsFx(INativeEntranceFx fx,float t,float thin,float floor)
         {
             float pour=NativeEntranceMath.Ramp(t,Drop+.25f,Lower+.3f)*(1-NativeEntranceMath.Ramp(t,FadeFrom,Total));if(pour<.01f)return;
             for(int side=0;side<2;side++)
             {
-                bool left=side==0;float lvl=pour*(left?1:1-.85f*NativeEntranceMath.Ramp(t,Command,Command+.45f));if(lvl<.01f)continue;
+                bool left=side==0;float lvl=pour;
                 var h=HandAt(left,t);var land=new Vector3(h.X,floor+.02f,h.Z);if(h.Y-land.Y<.1f)continue;
                 fx.Glow(h,Molten*(1.5f*lvl),0,.16f,1,0,12200+side);fx.Glow(h,Ice*(.4f*lvl),0,.5f,0,0,12202+side);
                 Line(fx,land,h,Cyan*(.42f*lvl),.16f,.35f,12210+side);Line(fx,land,h,Ice*(1.3f*lvl),.014f,.3f,12290+side);
                 int drops=thin<1?3:7;float fall=h.Y-land.Y;
                 for(int d=0;d<drops;d++){float ph=((t-Drop)*1.6f+d/(float)drops+.13f*side)%1f;var p=Vector3.Lerp(h,land,ph*ph);fx.Glow(p,Ice*(1.2f*lvl*(float)Math.Sin(Math.PI*ph)),0,.05f,0,0,12220+side*16+d);}
                 fx.Glow(land,Cyan*(1.2f*lvl),0,.55f,1,0,12300+side);
-            }
-            // the command's open palm: lit as the arm sweeps out, a flare and short rays as it settles, then a steady light in it
-            float palm=NativeEntranceMath.Ramp(t,Command+.15f,Command+.5f)*(1-NativeEntranceMath.Ramp(t,FadeFrom,Total));
-            if(palm>.01f)
-            {
-                var h=HandAt(false,t);float set=Flash(t,Command+.45f,.04f,.5f);fx.Glow(h,Molten*(1.8f*palm+2.4f*set),0,.2f+.25f*set,1,0,12320);fx.Glow(h,Gold*(.4f*palm+.8f*set),0,.7f+.6f*set,0,0,12321);
-                if(thin>=1)for(int r=0;r<8;r++){float ang=(r+.5f)/8*6.2831853f+.3f;var d=CamRightOf()*(float)Math.Cos(ang)+CamUpOf()*(float)Math.Sin(ang);float len=.18f+.32f*set+.08f*R(12330,r);Line(fx,h+d*len,h+d*.06f,Molten*(1.2f*(.35f*palm+set)),.01f,.8f,12331+r);}
             }
             if(t<Drop+.6f)return;
             for(int i=0;i<Wedges;i++)
