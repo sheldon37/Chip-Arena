@@ -20,6 +20,7 @@ namespace ChipArena.UnityConversion
     /// Without the bank (CI, cloud and public builds, `--ca-no-pack-banks`) nothing is made and the greybox draws as before.
     /// Presentation only. Allocation free per frame once prepared, but for a chunk's LOD0 build (on a worker) and upload.
     /// </summary>
+    [DefaultExecutionOrder(1000)]
     public sealed class NativeMeridianDressDraw : MonoBehaviour
     {
         private static string activeMap;private static HashSet<string> activeCovers;private static int activeFrame=-10;

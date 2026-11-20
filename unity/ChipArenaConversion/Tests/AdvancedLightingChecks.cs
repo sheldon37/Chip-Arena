@@ -37,7 +37,8 @@ namespace ChipArena.UnityConversion
         private static void Looks(string root,JsonSerializerOptions o)
         {
             var set=MapLookChecks.Load(root);NativeMapLooks.Validate(set);
-            string[] advanced={"factory-first-shift","golden-demolition","neon-rain","quarantine","expedition-city","central-station","ironworks","breakwater-blue-hour","harbor-pier-lights","skyframe-golden-hour","rig-abyss","polar-aurora","club-substation","emporium-golden-hour","causeway-starfall","sanctum-midnight","carillon-storm"};
+            // (re-pinned on purpose, plan W1: the Meridian walk's expedition-night carries the town's advanced block, darkened)
+            string[] advanced={"factory-first-shift","golden-demolition","neon-rain","quarantine","expedition-city","expedition-night","central-station","ironworks","breakwater-blue-hour","harbor-pier-lights","skyframe-golden-hour","rig-abyss","polar-aurora","club-substation","emporium-golden-hour","causeway-starfall","sanctum-midnight","carillon-storm"};
             foreach(var m in set.maps)
             {
                 bool want=advanced.Contains(m.look);Check((m.advanced!=null)==want,m.look+(want?" has":" has no")+" an advanced block");

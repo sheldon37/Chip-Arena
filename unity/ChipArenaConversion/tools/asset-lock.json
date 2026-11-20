@@ -663,9 +663,9 @@
     },
     {
       "path": "Assets/Conversion/Resources/MapLooks.json",
-      "bytes": 180961,
-      "gitBlob": "4724831498d5b8fd66bf8c7cc359ac346756365b",
-      "source": "Stage looks including Thunderheart Carillon"
+      "bytes": 190068,
+      "gitBlob": "a728bedc319cc9878dad2ca17d9ddd59ceec13a0",
+      "source": "Stage looks including Thunderheart Carillon and the Meridian walk's expedition-night (docs/arenas/scripts/expedition_city.py --maplooks)"
     },
     {
       "path": "Assets/ChipArena/Resources/Audio/music/foundry-of-the-dead.mp3",

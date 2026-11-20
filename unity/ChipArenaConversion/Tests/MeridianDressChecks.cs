@@ -123,7 +123,7 @@ internal static class MeridianDressChecks
             for(int i=0;i<I.Count;i+=3){w.Write((byte)3);w.Write(I[i]);w.Write(I[i+1]);w.Write(I[i+2]);}
         }
         Console.WriteLine("wrote "+path+": "+P.Count/3+" vertices, "+I.Count/3+" triangles; lamps "+plan.Lamps.Count);
-        foreach(var l in plan.Lamps)if((l.Bowl.x-x)*(l.Bowl.x-x)+(l.Bowl.z-z)*(l.Bowl.z-z)<radius*radius)Console.WriteLine(FormattableString.Invariant($"LAMP {l.Bowl.x:F2} {l.Bowl.y:F2} {l.Bowl.z:F2} {l.State} {l.Kind}"));
+        foreach(var l in plan.Lamps)if((l.Bowl.x-x)*(l.Bowl.x-x)+(l.Bowl.z-z)*(l.Bowl.z-z)<radius*radius)Console.WriteLine(FormattableString.Invariant($"LAMP {l.Bowl.x:F2} {l.Bowl.y:F2} {l.Bowl.z:F2} {l.State} {l.Kind} {l.Pool.y:F2} {(l.Protected?1:0)} {l.Mount.x:F2} {l.Mount.z:F2}"));
     }
 
     /// <summary>zfight.py's input for a layout (--meridian-zfight LAYOUT DIR, CHIPARENA_MERIDIAN_BANK set): the combined chunks at
@@ -183,7 +183,13 @@ internal static class MeridianDressChecks
         // rectangle or on a generated surface of that face (so no collision without a surface you can see)
         var byFace=new Dictionary<(int,int),List<(float,float,float,float)>>();
         foreach(var p in plan.Placements)if(p.Block>=0&&p.Face>=0){if(!byFace.TryGetValue((p.Block,p.Face),out var l))byFace[(p.Block,p.Face)]=l=new List<(float,float,float,float)>();l.Add((p.U0,p.U1,p.V0,p.V1));}
-        var quads=new Dictionary<int,List<NativeMeridianDress.Quad>>();foreach(var q in plan.Quads)if(q.Block>=0){if(!quads.TryGetValue(q.Block,out var l))quads[q.Block]=l=new List<NativeMeridianDress.Quad>();l.Add(q);}
+        // the generated surfaces by the plane they lie on (a face two overlapping blocks share is drawn once, by the first)
+        var quads=new Dictionary<(int,int),List<NativeMeridianDress.Quad>>();
+        foreach(var q in plan.Quads)
+        {
+            int ax=Math.Abs(q.N.x)>.5f?0:Math.Abs(q.N.y)>.5f?1:2;float plane=ax==0?q.O.x:ax==1?q.O.y:q.O.z;int key=ax*2+((ax==0?q.N.x:ax==1?q.N.y:q.N.z)>0?0:1);
+            var k=(key,(int)Math.Round(plane*100));if(!quads.TryGetValue(k,out var l))quads[k]=l=new List<NativeMeridianDress.Quad>();l.Add(q);
+        }
         int sampled=0,missed=0;var covered=new HashSet<string>(plan.Covers);
         for(int bi=0;bi<map.blocks.Length;bi++)
         {
@@ -192,15 +198,17 @@ internal static class MeridianDressChecks
             if(role==NativeMeridianDress.RTread)continue;   // a sloped street's treads: its surface is the wedge's
             foreach(int f in new[]{0,1,4,5})
             {
+                // (a face on the map's bounds turned out of it is never seen: beyond the Cordon)
+                var mb=map.bounds;int ob=bi*6;if(f==0&&B[ob+1]>=mb.maxX-.05f||f==1&&B[ob]<=mb.minX+.05f||f==4&&B[ob+5]>=mb.maxZ-.05f||f==5&&B[ob+4]<=mb.minZ+.05f)continue;
                 NativeMeridianDress.FaceFrame(B,bi*6,f,out var o,out var u,out var v);float lu=u.Length,lv=v.Length;if(lu<.5f||lv<.5f)continue;var n=NativeMeridianDress.NormalOf(f);
                 for(float a=.5f;a<lu;a+=1.7f)for(float c=.5f;c<lv;c+=1.3f)
                 {
                     var p=o+u*(a/lu)+v*(c/lv)+n*.05f;if(solids.Inside(p.x,p.y,p.z,bi))continue;sampled++;
                     bool hit=false;
                     if(byFace.TryGetValue((bi,f),out var rects))foreach(var r in rects)if(a>=r.Item1-.01f&&a<=r.Item2+.01f&&p.y>=r.Item3-.01f&&p.y<=r.Item4+.01f){hit=true;break;}
-                    if(!hit&&quads.TryGetValue(bi,out var ql))foreach(var q in ql)
+                    float pl=f==0||f==1?p.x-n.x*.05f:p.z-n.z*.05f;
+                    if(!hit&&quads.TryGetValue((f,(int)Math.Round(pl*100)),out var ql))foreach(var q in ql)
                     {
-                        if(Math.Abs(q.N.x-n.x)>.01f||Math.Abs(q.N.z-n.z)>.01f||Math.Abs(q.N.y)>.01f)continue;
                         var d=p-n*.05f-q.O;float s=V3.Dot(d,q.U)/V3.Dot(q.U,q.U),t=V3.Dot(d,q.V)/V3.Dot(q.V,q.V);if(s>=-.01f&&s<=1.01f&&t>=-.01f&&t<=1.01f){hit=true;break;}
                     }
                     if(!hit){missed++;if(Environment.GetEnvironmentVariable("MERIDIAN_DEBUG")!=null&&missed%25==1)Console.WriteLine("bare "+blk.id+" "+role+" f"+f+" a="+a.ToString("0.0")+" y="+p.y.ToString("0.0")+" b="+blk.pos.y+"/"+blk.size.y);}
