@@ -106,7 +106,8 @@ namespace ChipArena.UnityConversion
             VisualIntroPose(introRig,actor,introNow,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);
             try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,introNow,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             // Crimson Moon: the saya at the hip, and the blade in it while the script has it sheathed (NativeBladePresentation.cs).
-            if(script is NativeKatanaIntro)KatanaSaya(introRig,actor,introNow,false,0,null,null,1);
+            // (and any v2 Katana intro's: Core NativeIntroCatalog; a NativeBladeIntro-based one sheathes by its Sheathed)
+            if(script is NativeKatanaIntro||script is INativeIntroV2&&NativeIntroCatalog.Find(style)?.Spec==NativeKatana.Spec)KatanaSaya(introRig,actor,introNow,false,0,null,null,1);
             // The blade classes' entrances: the blades where the model holds them, for their trails, drips and flung venom (Core NativeBladeIntro.Blade).
             if(script is NativeBladeIntro held)BladeIntroHeld(held,t,style,solid||script.Solid(t,CapturedRig.RHand)>.5f);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
