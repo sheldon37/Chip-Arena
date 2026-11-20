@@ -1,3 +1,7 @@
+## 2026-11-19 — Astra: integrate Claude’s A2 cache-block test fix
+
+Branch `codex/cache-frame-checks` from shared `d2108df1` takes Claude’s four null-safe city-kit checks from `00f1789`. The generated frame, district and hub checks can inspect non-kit cache blocks. No game code, collision or presentation changes. The M3 integrator retains the Windows launch and publication checks.
+
 ## 2026-11-19 — Astra: generated Expedition cache startup regression
 
 From shared `821d75c4` on `codex/cache-startup-fix`. Reproduced both reported seeds with the generated map's collision and navigation probes. The 0.45 m player capsule failed at (110, 0, -10) and (110, 0, 20.5), inside the lockers. ValidateGeometry now checks placed caches at their standing approach and checks their interaction point separately. Seeded interior holograms also use the approach because their anchors can back onto a wall. Legacy free-standing cache anchors keep their player clearance test. Collision, layout generation, economy and wire format are unchanged.
