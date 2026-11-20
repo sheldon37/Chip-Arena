@@ -15,7 +15,10 @@ namespace ChipArena.UnityConversion
     {
         public const string Id=NativeIntroCatalog.Prefix+"flashbulb";
         public const float Total=7.8f,CardAt=6.0f;
-        public const float BulbsAt=.05f,DoorsAt=.5f,WalkAt=.75f,MarkAt=3.15f,StormAt=5.25f;
+        public const float BulbsAt=.05f,DoorsAt=.5f,CutAt=.8f,WalkAt=.95f,MarkAt=3.15f,StormAt=5.25f;
+        // The walk: from the doorway shot the edit cuts (CutAt) to the pilot halfway down the carpet (OnCarpet), so the strut keeps a
+        // stride the keyed legs can reach (6 steps of .55 m: the rig's legs reach about .3 m either side of the hips).
+        public const float OnCarpet=-3.3f,Stride=.55f,Cadence=.367f;
         public static readonly float[] Photos={3.32f,3.95f,4.58f};
         public const float Hold=.38f;
         public override string Title=>"Flashbulb";
@@ -46,26 +49,33 @@ namespace ChipArena.UnityConversion
         }
         public NativeIntroFlashbulb():base(Id,Total,CardAt,Photos[0],0xff5aa8)
         {
-            Start=Stance(.13f,-6.3f,.1f,-.13f,-6.5f,-.12f);
+            // The walk's stance and steps are in the world's frame (facing 0: the carpet runs straight down +z). Stance and Step turn
+            // their x and z by the hero facing about the mark, which 6 m up the carpet put the feet 1.4 m to the side of the body.
+            Start=Stance(.13f,-6.3f,.1f,-.13f,-6.5f,-.12f,0);
             var steps=new System.Collections.Generic.List<NativeEntrancePose.Step>();
-            for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*.39f;bool l=i%2==1;steps.Add(Step(l,lift,lift+.36f,l?.12f:-.12f,-6.4f+1.05f*(i+1),l?.1f:-.1f,.12f));}
-            steps.Add(Step(true,MarkAt-.05f,MarkAt+.2f,.17f,.06f,.12f,.06f));
+            // On the cut both feet are put down halfway along the carpet (an instant step each), then the strut: left, right, ...
+            steps.Add(Step(true,CutAt,CutAt+.001f,.12f,OnCarpet+.1f,.1f,0,0));steps.Add(Step(false,CutAt,CutAt+.001f,-.12f,OnCarpet-.1f,-.1f,0,0));
+            for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*Cadence;bool l=i%2==1;steps.Add(Step(l,lift,lift+Cadence-.03f,l?.12f:-.12f,OnCarpet+Stride*(i+1),l?.1f:-.1f,.1f,0));}
+            // Onto the mark: the left foot squared up, then the right brought beside it (the hero stance), stepping into the first pose.
+            steps.Add(Step(true,MarkAt+.06f,MarkAt+.26f,.17f,.06f,.12f,.05f));
+            steps.Add(Step(false,MarkAt+.2f,MarkAt+.42f,-.18f,-.1f,-.42f,.05f));
             Steps=steps.ToArray();
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             // The silhouette in the doorway, then the stride: arms swinging, chin up, a little swagger in the shoulders.
             k.Key(0,stand).Root(0,.88f,-6.4f,Facing+.22f).Planted(1).J(Hd,-.08f).J(LA,-.12f,0,.2f).J(LE,-.3f).J(RA,-.12f,0,-.2f).J(RE,-.3f);
-            k.Key(WalkAt,stand).Root(0,.88f,-6.4f,Facing+.22f).Planted(1).Drop(-.02f).J(Hd,-.1f).J(LA,-.12f,0,.2f).J(LE,-.3f).J(RA,-.12f,0,-.2f).J(RE,-.3f);
+            k.Key(CutAt,stand).Root(0,.88f,-6.4f,Facing+.22f).Planted(1).Drop(-.02f).J(Hd,-.1f).J(LA,-.12f,0,.2f).J(LE,-.3f).J(RA,-.12f,0,-.2f).J(RE,-.3f);
+            k.Key(WalkAt,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.03f).J(Hd,-.11f).J(LA,-.1f,0,.18f).J(LE,-.3f).J(RA,-.1f,0,-.18f).J(RE,-.3f);
             // The strut down the carpet, two keys a step (the feet are the planned steps above): at the swing's passing the body rides
             // highest, the swinging side's hip dips and the arms cross; at the heel's contact the body settles low, the hips turn with
             // the leg landing in front, the shoulders counter them and the arm opposite that leg swings forward (the elbow bent, the
             // other arm long behind). Chin up throughout. (s: +1 when the left foot swings; the source frame's left is +x.)
             for(int i=0;i<6;i++)
             {
-                float lift=WalkAt+.02f+i*.39f;float s=i%2==1?1:-1;
-                k.Key(lift+.18f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.012f)
+                float lift=WalkAt+.02f+i*Cadence;float s=i%2==1?1:-1;
+                k.Key(lift+.17f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.012f)
                     .J(P,0,0,-s*.055f).J(Sp,0,0,s*.025f).J(C,-.02f,0,0).J(Hd,-.12f,0,0)
                     .J(LA,s*.05f,0,.15f).J(LE,-.32f).J(RA,-s*.05f,0,-.15f).J(RE,-.32f).PassKey();
-                k.Key(lift+.36f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.05f)
+                k.Key(lift+Cadence-.03f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.05f)
                     .J(P,0,-s*.11f,0).J(Sp,0,s*.06f,0).J(C,0,s*.13f,0).J(Hd,-.1f,-s*.05f,0)
                     .J(LA,s*.34f,0,.17f).J(LE,s>0?-.16f:-.52f).J(RA,-s*.36f,0,-.17f).J(RE,s>0?-.52f:-.16f).PassKey();
             }
@@ -86,7 +96,7 @@ namespace ChipArena.UnityConversion
             RootPath=(t,r)=>t<MarkAt+.15f?new Vector3(0,r.Y,Walk(t)):new Vector3(0,r.Y,0);
             // The camera: the street, wide; dollying back low ahead of the stride; three photographs; the storm; the cover.
             Rig.Dolly(0,new Vector3(0,1.5f,9.2f),new Vector3(0,1.7f,8.1f),new Vector3(0,3.2f,-6),new Vector3(0,2.6f,-6),50,46)
-               .Dolly(WalkAt-.15f,new Vector3(.42f,.62f,-3.0f),new Vector3(.32f,.7f,3.25f),new Vector3(0,.15f,.3f),new Vector3(0,.12f,.2f),40,40).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.4f)
+               .Dolly(CutAt,new Vector3(.42f,.62f,.05f),new Vector3(.32f,.7f,3.25f),new Vector3(0,.15f,.3f),new Vector3(0,.12f,.2f),40,40).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.4f)
                .Dolly(Photos[0]-.04f,new Vector3(2.5f,1.05f,2.5f),new Vector3(2.38f,1.04f,2.36f),new Vector3(0,1.2f,0),new Vector3(0,1.22f,0),30,28)
                .Dolly(Photos[1]-.04f,new Vector3(-2.35f,1.3f,2.75f),new Vector3(-2.22f,1.28f,2.6f),new Vector3(0,1.15f,0),new Vector3(0,1.17f,0),30,28)
                .Dolly(Photos[2]-.04f,new Vector3(0,.82f,3.0f),new Vector3(0,.84f,2.82f),new Vector3(0,1.32f,0),new Vector3(0,1.34f,0),32,30)
@@ -95,7 +105,7 @@ namespace ChipArena.UnityConversion
                .Bars(0,.8f).Bars(CardAt-.5f,.35f).Black(0,1).Black(.05f,0);
         }
         /// <summary>The stride down the carpet (the root's z): out of the doors, to the mark.</summary>
-        public static float Walk(float t)=>-6.4f+6.4f*(NativeEntranceMath.Clamp01((t-WalkAt)/(MarkAt-WalkAt))*.9f+.1f*NativeEntranceMath.Smooth((t-WalkAt)/(MarkAt-WalkAt)));
+        public static float Walk(float t)=>t<CutAt?-6.4f:OnCarpet-OnCarpet*(NativeEntranceMath.Clamp01((t-WalkAt)/(MarkAt-WalkAt))*.9f+.1f*NativeEntranceMath.Smooth((t-WalkAt)/(MarkAt-WalkAt)));
         /// <summary>The doors' swing (radians open).</summary>
         public static float Doors(float t)=>1.35f*NativeEntranceMath.EaseOut((t-DoorsAt)/.5f)*(t>DoorsAt?1:0)-.08f*(float)(Math.Exp(-6*Math.Max(0,t-DoorsAt-.5f))*Math.Sin(Math.Max(0,t-DoorsAt-.5f)*14))*(t>DoorsAt+.5f?1:0);
         // The stride is the keyed rig's own (planned steps on the carpet): the motion bank's Armed-Walk is the sword's guarded combat

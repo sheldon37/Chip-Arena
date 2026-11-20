@@ -16,19 +16,24 @@ namespace ChipArena.UnityConversion
         public const string Id=NativeIntroCatalog.Prefix+"threshold";
         public const float Total=8.2f,CardAt=6.4f;
         public static readonly float[] Cracks={.6f,1.2f,1.75f};
-        public const float ChargeAt=2.4f,OpenAt=3.0f,ThroughAt=3.4f,WalkAt=3.5f,CloseAt=4.9f,ArriveAt=5.85f;
+        public const float ChargeAt=2.4f,OpenAt=3.0f,ThroughAt=3.4f,WalkAt=3.5f,CloseAt=4.9f,ArriveAt=6.1f;
         public override string Title=>"Threshold";
         // The set (Unity space, generic_threshold.py): the seam's plane, the stones' gap at their feet at rest, the seam's height, how
         // far each stone slides out when they part, and where the walk out begins (in the slit).
-        public const float SlitZ=-4.5f,Gap=.25f,SeamH=6.3f,PartBy=.45f,From=-5.0f;
+        public const float SlitZ=-3.2f,Gap=.25f,SeamH=6.3f,PartBy=.45f,From=-3.7f,Stride=.53f,Cadence=.37f;
+        public const int Paces=7;
         private static readonly Vector3 Light=NativeEntranceFx.Hex(0xfff1d0),Gold=NativeEntranceFx.Hex(0xffc878),Amber=NativeEntranceFx.Hex(0xff9a4a),
             Dusk=NativeEntranceFx.Hex(0xff9a5a),Sand=NativeEntranceFx.Hex(0xc9a074),Rune=NativeEntranceFx.Hex(0xffd79a);
         public NativeIntroThreshold():base(Id,Total,CardAt,ThroughAt,0xffd79a)
         {
-            Start=Stance(.13f,From,.1f,-.13f,From-.2f,-.12f);
+            // The walk's stance and steps are in the world's frame (facing 0: the walk runs straight down +z; Stance and Step otherwise
+            // turn their x and z by the hero facing about the mark, which 5 m back put the feet a metre to the side of the body).
+            Start=Stance(.13f,From,.1f,-.13f,From-.2f,-.12f,0);
             var steps=new System.Collections.Generic.List<NativeEntrancePose.Step>();
-            for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*.39f;bool l=i%2==1;steps.Add(Step(l,lift,lift+.36f,l?.12f:-.12f,From+.82f*(i+1),l?.1f:-.1f,.1f));}
+            for(int i=0;i<Paces;i++){float lift=WalkAt+.02f+i*Cadence;bool l=i%2==1;steps.Add(Step(l,lift,lift+Cadence-.03f,l?.12f:-.12f,From+Stride*(i+1),l?.1f:-.1f,.1f,0));}
+            // Onto the mark: the left foot, then the right brought up beside it (the hero stance).
             steps.Add(Step(true,ArriveAt+.02f,ArriveAt+.26f,.17f,.06f,.12f,.06f));
+            steps.Add(Step(false,ArriveAt+.2f,ArriveAt+.44f,-.18f,-.1f,-.42f,.06f));
             Steps=steps.ToArray();
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             // In the light: upright, arms loose, chin a little down; then the walk out, arms swinging, chin coming up.
@@ -38,17 +43,17 @@ namespace ChipArena.UnityConversion
             // swing's passing, the arms crossing; settling at the heel's contact, the hips turning gently with the leg in front, the
             // shoulders countering and the arm opposite that leg swinging forward. The chin rises step by step out of the light.
             // (s: +1 when the left foot swings; the source frame's left is +x.)
-            for(int i=0;i<6;i++)
+            for(int i=0;i<Paces;i++)
             {
-                float lift=WalkAt+.02f+i*.39f;float s=i%2==1?1:-1,chin=.04f-.03f*i;
+                float lift=WalkAt+.02f+i*Cadence;float s=i%2==1?1:-1,chin=.04f-.025f*i;
                 k.Key(lift+.18f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.015f)
                     .J(P,0,0,-s*.03f).J(C,-.02f,0,0).J(Hd,chin,0,0).J(LA,s*.03f,0,.14f).J(LE,-.3f).J(RA,-s*.03f,0,-.14f).J(RE,-.3f).PassKey();
-                k.Key(lift+.36f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.045f)
+                k.Key(lift+Cadence-.03f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.045f)
                     .J(P,0,-s*.08f,0).J(Sp,0,s*.04f,0).J(C,0,s*.08f,0).J(Hd,chin+.02f,-s*.03f,0)
                     .J(LA,s*.26f,0,.15f).J(LE,s>0?-.2f:-.45f).J(RA,-s*.28f,0,-.15f).J(RE,s>0?-.45f:-.2f).PassKey();
             }
-            k.Key(ArriveAt+.15f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.05f).J(C,-.04f).J(Hd,-.08f).J(LA,-.12f,0,.3f).J(LE,-.32f).J(RA,-.12f,0,-.3f).J(RE,-.32f).ImpactKey();
-            k.Key(CardAt-.3f,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.12f,0,0).J(C,-.06f,0,0);
+            k.Key(ArriveAt+.12f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.05f).J(C,-.04f).J(Hd,-.08f).J(LA,-.12f,0,.3f).J(LE,-.32f).J(RA,-.12f,0,-.3f).J(RE,-.32f).ImpactKey();
+            k.Key(CardAt+.05f,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.12f,0,0).J(C,-.06f,0,0);
             k.Key(Total,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.14f,.06f,0).J(C,-.06f,-.08f,0);Keys=k;
             RootPath=(t,r)=>t<ArriveAt+.1f?new Vector3(0,r.Y,Walk(t)):new Vector3(0,r.Y,0);
             // The camera: centred and formal, pushing in on the cleft; an arc in front as it steps out; low and centred as it comes
@@ -63,7 +68,7 @@ namespace ChipArena.UnityConversion
         /// lowering (the look follows the pilot; the eye never takes the body's own sway).</summary>
         private static Vector3[] Arc()
         {
-            var p=new Vector3[6];var pivot=new Vector3(0,0,-2.4f);
+            var p=new Vector3[6];var pivot=new Vector3(0,0,-1.2f);
             for(int i=0;i<p.Length;i++){float u=i/(p.Length-1f),deg=78-66*u,r=5.6f-1.0f*u,h=2.4f-.9f*u;double a=deg*Math.PI/180+Facing;p[i]=pivot+new Vector3((float)Math.Sin(a)*r,h,(float)Math.Cos(a)*r);}
             return p;
         }
@@ -194,7 +199,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<n;i++){float u=((t*1.6f+i/(float)n)%1f);var p=chest+new Vector3(NativeEntranceMath.Signed(24400,i)*.45f,NativeEntranceMath.Signed(24401,i)*.7f+.3f*u,-.3f-1.0f*u);fx.Glow(p,Gold*(.8f*lv*(1-u)),0,.05f,0,u,24400+i);}
             }
             // Footfalls: a little sand off each step on the plaza.
-            for(int i=0;i<6;i++){float at=WalkAt+.38f+i*.39f;NativeEntranceFx.GroundDust(fx,t,at,new Vector3(i%2==1?.13f:-.13f,floor+.02f,From+.82f*(i+1)),low?2:4,.08f,.5f,.6f,Sand,.25f,.25f,24450+i*8,q,floor);}
+            for(int i=0;i<Paces;i++){float at=WalkAt+.02f+i*Cadence+Cadence-.03f;NativeEntranceFx.GroundDust(fx,t,at,new Vector3(i%2==1?.12f:-.12f,floor+.02f,From+Stride*(i+1)),low?2:4,.08f,.5f,.6f,Sand,.25f,.25f,24450+i*8,q,floor);}
             // The close: dust squeezed out of the seam as the stones grind shut, a last flare up the line.
             NativeEntranceFx.GroundDust(fx,t,CloseAt+.55f,foot+new Vector3(0,.03f,.5f),low?8:18,.4f,2.6f,1.2f,Sand,.45f,.5f,24500,q,floor);
             float seal=Flash(t,CloseAt+.58f,.02f,.3f);if(seal>.01f)Line(fx,new Vector3(0,floor+SeamH,SlitZ+.1f),new Vector3(0,SeamH,0),Light*(1.4f*seal),.05f,.3f,0,24550);
@@ -227,10 +232,10 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(ChargeAt,"intro2.threshold.charge","chip.delayed.charge","install",.55f),
             new NativeIntroCue(OpenAt,"intro2.threshold.split","structure.boom","stone",.85f),
             new NativeIntroCue(ThroughAt,"intro2.threshold.through","magic.blink-strike","dash",.55f),
-            new NativeIntroCue(WalkAt+.38f,"intro2.threshold.step","move.step.stone","stone",.4f),
-            new NativeIntroCue(WalkAt+1.16f,"intro2.threshold.step","move.step.stone","stone",.42f,.96f),
+            new NativeIntroCue(WalkAt+.36f,"intro2.threshold.step","move.step.stone","stone",.4f),
+            new NativeIntroCue(WalkAt+.36f+2*Cadence,"intro2.threshold.step","move.step.stone","stone",.42f,.96f),
             new NativeIntroCue(CloseAt,"intro2.threshold.seal","blast.implosion","darkness",.7f),
-            new NativeIntroCue(WalkAt+1.94f,"intro2.threshold.step","move.step.stone","stone",.44f,1.04f),
+            new NativeIntroCue(WalkAt+.36f+4*Cadence,"intro2.threshold.step","move.step.stone","stone",.44f,1.04f),
             new NativeIntroCue(CardAt,"intro2.threshold.name","chip.critical","install",.75f),
         };
         public override NativeIntroCue[] Cues=>cues;

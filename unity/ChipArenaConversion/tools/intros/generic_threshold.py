@@ -17,7 +17,7 @@ from stagekit import Geo, _add, _sub, _norm
 from generic_kit import (PI, TAU, V, mul, M, place, noise2, heightfield, polar_field, rockball, mound, dome, disc, flipped, sky_fn,
                          mix_hex, Piece, smoothstep, hash01)
 
-TH_SLIT_Z = -4.5                # the seam's plane (z) between the standing stones
+TH_SLIT_Z = -3.2                # the seam's plane (z) between the standing stones
 TH_GAP = .25                    # the seam's width at the stones' feet at rest (their tops lean in to touch)
 TH_LEAN = .125                  # how far each stone's inner face leans in over its height
 TH_SUN = (-.86, -.5)            # the set sun's azimuth (Unity x, z)
@@ -125,8 +125,8 @@ def build(T):
         return sg
     stoneL, stoneR = standing(-1, 3), standing(1, 7)
     # rubble at the stones' feet (clear of the seam and the walk out of it)
-    for k, (x, z, s_) in enumerate(((-2.9, -4.1, .5), (-2.4, -5.3, .35), (3.0, -4.3, .45), (2.6, -5.4, .6), (-3.6, -3.4, .3),
-                                    (3.7, -3.6, .32))):
+    for k, (x, z, s_) in enumerate(((-2.9, -2.8, .5), (-2.4, -4.0, .35), (3.0, -3.0, .45), (2.6, -4.1, .6), (-3.6, -2.1, .3),
+                                    (3.7, -2.3, .32))):
         rockball(g, V(x, s_ * .25, z), (s_ * 1.2, s_ * .8, s_), F['stone2'], 170 + k, 4 if fine else 3, 7 if fine else 5, .25, .45)
 
     # ---- columns: broken, fluted, in two rows; a fallen drum ----
