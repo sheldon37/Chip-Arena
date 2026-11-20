@@ -56,9 +56,11 @@ namespace ChipArena.UnityConversion
             // On the cut both feet are put down halfway along the carpet (an instant step each), then the strut: left, right, ...
             steps.Add(Step(true,CutAt,CutAt+.001f,.12f,OnCarpet+.1f,.1f,0,0));steps.Add(Step(false,CutAt,CutAt+.001f,-.12f,OnCarpet-.1f,-.1f,0,0));
             for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*Cadence;bool l=i%2==1;steps.Add(Step(l,lift,lift+Cadence-.03f,l?.12f:-.12f,OnCarpet+Stride*(i+1),l?.1f:-.1f,.1f,0));}
-            // Onto the mark: the left foot squared up, then the right brought beside it (the hero stance), stepping into the first pose.
-            steps.Add(Step(true,MarkAt+.06f,MarkAt+.26f,.17f,.06f,.12f,.05f));
-            steps.Add(Step(false,MarkAt+.2f,MarkAt+.42f,-.18f,-.1f,-.42f,.05f));
+            // Onto the mark and through the three poses, the feet stepping and pivoting with the body each time (the hips never twist
+            // over planted feet): turned to its left for the look back, square with the weight on one hip, then the hero stance.
+            steps.Add(Step(true,MarkAt+.06f,MarkAt+.26f,.17f,.06f,.55f,.05f));steps.Add(Step(false,MarkAt+.18f,MarkAt+.38f,-.14f,-.2f,.3f,.05f));
+            steps.Add(Step(true,Photos[1]-.3f,Photos[1]-.1f,.2f,.1f,-.15f,.05f));steps.Add(Step(false,Photos[1]-.22f,Photos[1]-.02f,-.18f,-.05f,-.6f,.05f));
+            steps.Add(Step(true,Photos[2]-.3f,Photos[2]-.1f,.17f,.06f,.12f,.05f));steps.Add(Step(false,Photos[2]-.22f,Photos[2]-.02f,-.18f,-.1f,-.42f,.05f));
             Steps=steps.ToArray();
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             // The silhouette in the doorway, then the stride: arms swinging, chin up, a little swagger in the shoulders.
