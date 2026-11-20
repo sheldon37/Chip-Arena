@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
     /// once per name), thinned by quality and Low; Reduced effects keeps every beat without shake or fast flashes. No rings
     /// anywhere (owner): the floor's seams, the crown's spires and the name's light are rays.
     /// </summary>
-    public sealed class NativeIntroArchitect:NativeIntroV2Script,INativeIntroHands
+    public sealed class NativeIntroArchitect:NativeIntroV2Script
     {
         // ---- length and the song's beats (intro s; measured from the owner's track, intro = song - 5.17 s) ----
         public const float Total=15.7f,CardAt=12.63f;
@@ -45,8 +45,9 @@ namespace ChipArena.UnityConversion
         /// <summary>How high the architect hovers over the dais from the drop to the end (the rig's root over its standing height): it
         /// never lands.</summary>
         public const float Reign=.26f;
-        /// <summary>The drawn model's eyes over the head anchor (the skull-base pivot) along the head's own up axis, and the visor's face
-        /// in front of them (integrator 2026-11-20; the first version's hero frames put the visor .2 m over the anchor).</summary>
+        /// <summary>Where the camera expects the drawn visor from the keyed head (the camera stays keyed: docs/INTROS-V2.md 2a): along the
+        /// head's own up axis and ahead of it (the first version's frames put the visor .2 m over the keyed anchor). The effects read the
+        /// drawn visor itself (Anchor Visor).</summary>
         public const float EyeUp=.18f,VisorFront=.13f;
 
         private static readonly Vector3 Cyan=NativeEntranceFx.Hex(0x8ff0ff),Ice=NativeEntranceFx.Hex(0xd8fbff),Gold=NativeEntranceFx.Hex(0xffd690),
@@ -158,17 +159,8 @@ namespace ChipArena.UnityConversion
         private const string AccentDark="#05080c",AccentIce="#bff6ff",AccentFlash="#ffffff",AccentDim="#3f8a9c",AccentKindle="#9fe8f6",AccentHot="#e8fbff",AccentBlaze="#fff2d2";
         public override string AccentAt(float t)=>t<Body-.02f?AccentDark:t<Body+.12f?AccentFlash:t<Inhale+.05f?AccentIce:t<DipA?AccentDim:t<DipB?AccentKindle:t<Drop?AccentHot:t<Drop+.12f?AccentFlash:AccentBlaze;
 
-        // ---- the hands as drawn (INativeIntroHands): the model's wrists this frame, for the light poured from them ----
-        private Vector3 drawnLeft,drawnRight;private float handsAt=-100;private bool handsModel;
-        public void Hands(float t,in NativeIntroHand right,in NativeIntroHand left){drawnRight=right.At;drawnLeft=left.At;handsModel=right.Model&&left.Model;handsAt=t;}
-        /// <summary>A hand at `t`: the drawn model's wrist when the runtime handed it in this frame (the model re-places its own arms, so its
-        /// hands sit off the keyed rig's), else the keyed hand anchor.</summary>
-        private Vector3 HandAt(bool left,float t)
-        {
-            var keyed=Anchor(left?NativeEntranceAnchor.LeftHand:NativeEntranceAnchor.RightHand,t);
-            if(handsModel&&Math.Abs(handsAt-t)<1e-4f){var p=left?drawnLeft:drawnRight;if((p-keyed).LengthSquared()<.81f)return p;}
-            return keyed;
-        }
+        /// <summary>A palm at `t` (the anchors follow the drawn model: docs/INTROS-V2.md 2a).</summary>
+        private Vector3 HandAt(bool left,float t)=>Anchor(left?NativeEntranceAnchor.LeftHand:NativeEntranceAnchor.RightHand,t);
         // ---- the head's frame, from the anchors (no rig pose of its own: the voxel ratchet): its up the neck's line from between
         // the shoulders to the head anchor (it tilts with the chest and the head), its forward the body's facing square to that ----
         /// <summary>The head's up and forward at `t`.</summary>
@@ -178,8 +170,15 @@ namespace ChipArena.UnityConversion
             up=neck.LengthSquared()>1e-6f?Vector3.Normalize(neck):Up;
             var f=Anchor(NativeEntranceAnchor.Forward,t);f-=up*Vector3.Dot(f,up);forward=f.LengthSquared()>1e-6f?Vector3.Normalize(f):Vector3.UnitZ;
         }
-        /// <summary>The visor's face at `t`: EyeUp along the head's up from the head anchor (the skull-base pivot), VisorFront ahead.</summary>
-        public Vector3 VisorAt(float t){HeadFrame(t,out var up,out var fwd);return Anchor(NativeEntranceAnchor.Head,t)+up*EyeUp+fwd*VisorFront;}
+        /// <summary>The visor's glass at `t`, as drawn (the keyed face without the model).</summary>
+        public Vector3 VisorAt(float t)=>Anchor(NativeEntranceAnchor.Visor,t);
+        /// <summary>Where the keyed camera frames the drawn visor: EyeUp up the head's axis from the keyed head, VisorFront ahead.</summary>
+        public Vector3 FramedVisor(float t)
+        {
+            var neck=KeyedAnchor(NativeEntranceAnchor.Head,t)-(KeyedAnchor(NativeEntranceAnchor.LeftShoulder,t)+KeyedAnchor(NativeEntranceAnchor.RightShoulder,t))*.5f;var up=neck.LengthSquared()>1e-6f?Vector3.Normalize(neck):Up;
+            var f=KeyedAnchor(NativeEntranceAnchor.Forward,t);f-=up*Vector3.Dot(f,up);var fwd=f.LengthSquared()>1e-6f?Vector3.Normalize(f):Vector3.UnitZ;
+            return KeyedAnchor(NativeEntranceAnchor.Head,t)+up*EyeUp+fwd*VisorFront;
+        }
 
         // =====================================================================================================================
         // The camera: cut on the song's transients.
@@ -466,8 +465,7 @@ namespace ChipArena.UnityConversion
         public override void Lights(float t,NativeEntranceLights l)
         {
             l.Clear();l.DriveProbe=true;
-            // (the drawn model's chest sits about .2 m over the keyed chest anchor: hold 3's frames)
-            var chest=Anchor(NativeEntranceAnchor.Chest,t)+new Vector3(0,.2f,0);
+            var chest=Anchor(NativeEntranceAnchor.Chest,t);
             float arena=1-NativeEntranceMath.Ramp(t,Break,Break+.9f),drop=NativeEntranceMath.Ramp(t,Drop-.02f,Drop+.15f);
             // the sky: near black; at the drop it wells up deep blue and settles a shade over black
             float well=Flash(t,Drop+.12f,.08f,.9f);
@@ -496,7 +494,7 @@ namespace ChipArena.UnityConversion
             // The body's rims from the ignition (cyan from behind its left, ice from behind its right), so it stands out of the void.
             if(t>=Body-.1f){float rim=NativeEntranceMath.Ramp(t,Body-.1f,Body+.2f)*(1+.6f*bodyMoment);l.Add(chest+new Vector3(.95f,.75f,-1.35f),Cyan*(13*rim*(1-.35f*drop)),5);l.Add(chest+new Vector3(-1.05f,.45f,-1.2f),Ice*(10*rim*(1-.3f*drop)),5);}
             // The visor's own light on the helmet and the shoulders.
-            float visor=VisorLevel(t);if(visor>.02f)l.Add(VisorAt(t)+ForwardOf(t)*.3f,Molten*(1.1f*visor),1.6f);
+            float visor=VisorLevel(t);if(visor>.02f)l.Add(VisorAt(t)+ForwardOf(t)*.22f,Molten*(1.1f*visor),1.6f);
             // The gathering's wires lighting the void; the inhale dims everything.
             if(t>=Gather&&t<Drop+.1f){float g=NativeEntranceMath.Ramp(t,Gather,Inhale)*(1-.6f*NativeEntranceMath.Bump(t,Inhale-.05f,DipB+.1f));l.Add(new Vector3(0,3,0),Cyan*(3.2f*g),16);}
             // THE DROP: the flash; the poured light low under the architect (the seams' glow lifting the black glass's gloss); the crown's
@@ -596,7 +594,7 @@ namespace ChipArena.UnityConversion
         // (the aura); after the drop a soft gold glow behind the head.
         private void Aura(INativeEntranceFx fx,float t,float thin,Vector3 right,Vector3 up,float q)
         {
-            var chest=Anchor(NativeEntranceAnchor.Chest,t)+new Vector3(0,.2f,0);float on=NativeEntranceMath.Ramp(t,Body,Body+.6f)*(1-NativeEntranceMath.Ramp(t,Drop-.05f,Drop+.25f));
+            var chest=Anchor(NativeEntranceAnchor.Chest,t);float on=NativeEntranceMath.Ramp(t,Body,Body+.6f)*(1-NativeEntranceMath.Ramp(t,Drop-.05f,Drop+.25f));
             if(on>.01f)
             {
                 int n=(int)(12*thin+.5f);
@@ -705,11 +703,11 @@ namespace ChipArena.UnityConversion
         // The body of light is the model's own silhouette (Ghosts: cyan, its edges bright, a soft fill). Over it: pens of light trace its
         // outline in wire from the chest out (each limb's two silhouette edges as the lens sees them, and its centre line), a scan
         // sweeps up it and back down, light falls into it as it condenses, and at the ignition a burst throws rays, sparks and the
-        // shards out. (The keyed shoulders, pelvis, knees and feet sit on the model's; its hands are its own, handed in each frame.)
+        // shards out. (On the drawn joints: the anchors follow the model, docs/INTROS-V2.md 2a.)
         private enum Pt:byte{Pelvis,Neck,Crown,Skull,LShoulder,LElbow,LHand,RShoulder,RElbow,RHand,LHip,LKnee,LFoot,RHip,RKnee,RFoot,Count}
         private static readonly byte[] LimbA={(byte)Pt.Pelvis,(byte)Pt.Skull,(byte)Pt.LShoulder,(byte)Pt.LElbow,(byte)Pt.RShoulder,(byte)Pt.RElbow,(byte)Pt.LHip,(byte)Pt.LKnee,(byte)Pt.RHip,(byte)Pt.RKnee};
         private static readonly byte[] LimbB={(byte)Pt.Neck,(byte)Pt.Crown,(byte)Pt.LElbow,(byte)Pt.LHand,(byte)Pt.RElbow,(byte)Pt.RHand,(byte)Pt.LKnee,(byte)Pt.LFoot,(byte)Pt.RKnee,(byte)Pt.RFoot};
-        private static readonly float[] LimbRA={.17f,.13f,.075f,.062f,.075f,.062f,.095f,.072f,.095f,.072f},LimbRB={.2f,.12f,.062f,.05f,.062f,.05f,.072f,.058f,.072f,.058f};
+        private static readonly float[] LimbRA={.17f,.14f,.075f,.062f,.075f,.062f,.095f,.072f,.095f,.072f},LimbRB={.2f,.13f,.062f,.05f,.062f,.05f,.072f,.058f,.072f,.058f};
         private static readonly float[] LimbOrder={0,.5f,1,2,1,2,1,2,1,2};
         private readonly Vector3[] pts=new Vector3[(int)Pt.Count];
         /// <summary>The body's points at `t` as the model stands (see the draft's note), into `pts`.</summary>
@@ -717,10 +715,10 @@ namespace ChipArena.UnityConversion
         {
             var pelvis=Anchor(NativeEntranceAnchor.Pelvis,t);var ls=Anchor(NativeEntranceAnchor.LeftShoulder,t);var rs=Anchor(NativeEntranceAnchor.RightShoulder,t);var skull=Anchor(NativeEntranceAnchor.Head,t);
             HeadFrame(t,out var hu,out _);
-            pts[(int)Pt.Pelvis]=pelvis;pts[(int)Pt.Neck]=(ls+rs)*.5f;pts[(int)Pt.Skull]=skull;pts[(int)Pt.Crown]=skull+hu*.36f;pts[(int)Pt.LShoulder]=ls;pts[(int)Pt.RShoulder]=rs;
-            var lh=HandAt(true,t);var rh=HandAt(false,t);pts[(int)Pt.LHand]=lh;pts[(int)Pt.RHand]=rh;
-            // the elbows where the model bends them: the keyed elbow carried half the way the drawn hand moved from the keyed one
-            pts[(int)Pt.LElbow]=Anchor(NativeEntranceAnchor.LeftElbow,t)+(lh-Anchor(NativeEntranceAnchor.LeftHand,t))*.5f;pts[(int)Pt.RElbow]=Anchor(NativeEntranceAnchor.RightElbow,t)+(rh-Anchor(NativeEntranceAnchor.RightHand,t))*.5f;
+            // (the head anchor is the head's centre: the capsule from the chin to the crown)
+            pts[(int)Pt.Pelvis]=pelvis;pts[(int)Pt.Neck]=(ls+rs)*.5f;pts[(int)Pt.Skull]=skull-hu*.11f;pts[(int)Pt.Crown]=skull+hu*.17f;pts[(int)Pt.LShoulder]=ls;pts[(int)Pt.RShoulder]=rs;
+            pts[(int)Pt.LHand]=HandAt(true,t);pts[(int)Pt.RHand]=HandAt(false,t);
+            pts[(int)Pt.LElbow]=Anchor(NativeEntranceAnchor.LeftElbow,t);pts[(int)Pt.RElbow]=Anchor(NativeEntranceAnchor.RightElbow,t);
             var side=(ls-rs)*.24f;pts[(int)Pt.LHip]=pelvis+side;pts[(int)Pt.RHip]=pelvis-side;
             pts[(int)Pt.LKnee]=Anchor(NativeEntranceAnchor.LeftKnee,t);pts[(int)Pt.RKnee]=Anchor(NativeEntranceAnchor.RightKnee,t);pts[(int)Pt.LFoot]=Anchor(NativeEntranceAnchor.LeftFoot,t);pts[(int)Pt.RFoot]=Anchor(NativeEntranceAnchor.RightFoot,t);
         }
@@ -830,7 +828,7 @@ namespace ChipArena.UnityConversion
                 Line(fx,c,cb,Cyan*(.9f*Math.Min(1.4f,wire)),.03f+.012f*p.Size,.7f,8000+i);
             }
             // the inhale: a breath of light drawn in to the architect's chest
-            float inh=NativeEntranceMath.Bump(t,Inhale-.05f,DipA);if(inh>.01f){var chest=Anchor(NativeEntranceAnchor.Chest,t)+new Vector3(0,.2f,0);fx.Glow(chest,Ice*(1.6f*inh),0,.25f,1,0,8090);}
+            float inh=NativeEntranceMath.Bump(t,Inhale-.05f,DipA);if(inh>.01f){var chest=Anchor(NativeEntranceAnchor.Chest,t);fx.Glow(chest,Ice*(1.6f*inh),0,.25f,1,0,8090);}
         }
         // THE DROP: light floods out along the dais's rays and the floor's sixteen seams; it erupts up every monolith and on into the sky as
         // a beam; it runs up the crown's spires; the sky wells up behind the name; dust and sparks off the landing world; gold embers rise

@@ -152,13 +152,17 @@ namespace ChipArena.UnityConversion
                 // the head's frame agrees with the body's facing; the visor sits up the head's axis from the skull-base anchor, in front
                 foreach(float t in new[]{NativeIntroArchitect.Body+.5f,NativeIntroArchitect.Inhale+.3f,NativeIntroArchitect.Command+1f})
                 {
-                    s.HeadFrame(t,out var hu,out var hf);var fwd=s.Anchor(NativeEntranceAnchor.Forward,t);fwd=Vector3.Normalize(new Vector3(fwd.X,0,fwd.Z));var head=s.Anchor(NativeEntranceAnchor.Head,t);var visor=s.VisorAt(t);
-                    Check(Vector3.Dot(hf,fwd)>.5f&&hu.Y>.6f,"the head's frame faces the body's way at "+t);Check(visor.Y-head.Y>.1f&&Vector3.Dot(visor-head,fwd)>.05f,"the visor above and in front of the head anchor at "+t);
+                    s.HeadFrame(t,out var hu,out var hf);var fwd=s.Anchor(NativeEntranceAnchor.Forward,t);fwd=Vector3.Normalize(new Vector3(fwd.X,0,fwd.Z));var head=s.Anchor(NativeEntranceAnchor.Head,t);
+                    Check(Vector3.Dot(hf,fwd)>.5f&&hu.Y>.6f,"the head's frame faces the body's way at "+t);
+                    // the effects' visor is the anchor (the drawn glass; keyed here, the voxel face): ahead of the head and on it
+                    var visor=s.VisorAt(t);Check(Vector3.Dot(visor-head,fwd)>.05f&&Vector3.Distance(visor,head)<.3f,"the visor ahead of the head at "+t);
+                    // the camera's framing of the drawn visor: up the head's axis from the keyed head, ahead of it
+                    var framed=s.FramedVisor(t);var kh=s.KeyedAnchor(NativeEntranceAnchor.Head,t);Check(framed.Y-kh.Y>.1f&&Vector3.Dot(framed-kh,fwd)>.05f,"the framed visor above and ahead of the keyed head at "+t);
                 }
                 // the inhale's close-up: frontal on the visor, and the lens outside the body and the raised arms (nothing passes through it)
                 for(float t=NativeIntroArchitect.Inhale+.02f;t<NativeIntroArchitect.Drop;t+=.05f)
                 {
-                    s.Camera(t,out var v);var visor=s.VisorAt(t);s.HeadFrame(t,out _,out var hf);var toEye=v.Eye-visor;
+                    s.Camera(t,out var v);var visor=s.FramedVisor(t);s.HeadFrame(t,out _,out var hf);var toEye=v.Eye-visor;
                     // (a little under the visor's line, never far under it: from well below, the view climbs into the helmet's open bottom)
                     float under=(visor.Y-v.Eye.Y)/toEye.Length();
                     Check(Vector3.Dot(Vector3.Normalize(toEye),hf)>.6f&&toEye.Length()>.9f&&under>0&&under<.2f,"the close-up is frontal on the visor, a little under its line, at "+t.ToString("0.00"));
@@ -169,7 +173,7 @@ namespace ChipArena.UnityConversion
                 foreach(float t in new[]{NativeIntroArchitect.Drop+1.2f,NativeIntroArchitect.Total})
                 {
                     s.Camera(t,out var v);float Ny(Vector3 p){var f=Vector3.Normalize(v.Look-v.Eye);var r=Vector3.Normalize(Vector3.Cross(f,Vector3.UnitY));var u=Vector3.Cross(r,f);var d=p-v.Eye;return Vector3.Dot(d,u)/Vector3.Dot(d,f)/(float)Math.Tan(v.Fov*Math.PI/360);}
-                    var feet=(s.Anchor(NativeEntranceAnchor.LeftFoot,t)+s.Anchor(NativeEntranceAnchor.RightFoot,t))*.5f;var top=s.VisorAt(t)+new Vector3(0,.16f,0);var name=NativeIntroArchitect.NameCentre-new Vector3(0,NativeIntroArchitect.LetterHeight*.5f,0);
+                    var feet=(s.Anchor(NativeEntranceAnchor.LeftFoot,t)+s.Anchor(NativeEntranceAnchor.RightFoot,t))*.5f;var top=s.FramedVisor(t)+new Vector3(0,.16f,0);var name=NativeIntroArchitect.NameCentre-new Vector3(0,NativeIntroArchitect.LetterHeight*.5f,0);
                     Check(v.Eye.Y<.5f&&v.Look.Y>v.Eye.Y+1,"the hero frame is low, looking up, at "+t);float tall=(Ny(top)-Ny(feet))*.5f;
                     Check(tall>.36f&&tall<.62f,"the architect about half the hero frame tall at "+t+" ("+tall.ToString("0.00")+")");Check(Ny(feet)>-.98f&&Ny(name)>Ny(top)+.05f&&Ny(NativeIntroArchitect.NameCentre)<.92f,"the sky's name above the head and in frame at "+t+" (feet "+Ny(feet).ToString("0.00")+", head "+Ny(top).ToString("0.00")+", name's foot "+Ny(name).ToString("0.00")+", its middle "+Ny(NativeIntroArchitect.NameCentre).ToString("0.00")+")");
                 }
