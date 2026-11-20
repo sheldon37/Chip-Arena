@@ -44,6 +44,7 @@ the story, the set, the camera's language, the beats, the motion, the effects an
 | Registry | `Core/NativeIntroCatalog.cs`: Cloudbreak on the default's slot (`intro2-default`), the other four on generic slots 1-4 (`intro2-whiteout`, `intro2-slipstream`, `intro2-waygate`, `intro2-flashbulb`) |
 | Sets | `tools/intros/generic_sets.py` and its modules; the bank's master copy in `F:/Chip Arena Development/scratch/intro-generic/bank/` |
 | Sound | `docs/audio/intros/I2.json`, `Core/NativeIntroSoundKeys.cs` (the I2 slot) |
+| Framing preview | `tools/intros/generic_preview.py` (Blender Workbench, no Editor): renders each intro's camera, set pieces, a mannequin on the keyed anchors and its effects marked, from the views `CoreTests --intro-generic` writes with `INTRO_GENERIC_VIEWS` set |
 | Checks | `Tests/IntroGenericChecks.cs` (`CoreTests --intro-generic`), and the framework's `Tests/IntroV2Checks.cs` (`--intros-v2`) |
 
 To rebuild the bank: `blender --background --factory-startup --python unity/ChipArenaConversion/tools/intros/generic_sets.py --
