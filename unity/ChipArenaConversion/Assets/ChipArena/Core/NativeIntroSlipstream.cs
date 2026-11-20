@@ -172,16 +172,19 @@ namespace ChipArena.UnityConversion
             // (the slide's right hand is the keys', in line with its forearm, its fingertips dragging: the clip's, bent back flat on the
             // floor, draws further off its keyed turn than the binding allows a hand: IntroPoseChecks)
             Pack(k,new NativeIntroPack.Segment(SlideClip,LandAt-.05f,StopAt,SlideDown-.05f,1,false,NativeIntroPack.RootMode.Path,SlideMask,.05f,0,hold:false));
-            k.FromPack(SlideClip,StopAt,StopAt+.42f,SlideDown+StopAt-LandAt,1,false,NativeIntroPack.RootMode.Path,SlideMask,0,.12f);
+            // (the rise plays until the body is up over the left foot, then holds that frame as it eases into the keyed stand: the clip
+            // runs on into a stride, which mixed with the stand would jolt the body and the camera following it)
+            k.FromPack(SlideClip,StopAt,StopAt+.3f,SlideDown+StopAt-LandAt,1,false,NativeIntroPack.RootMode.Path,SlideMask,0,0);
+            k.FromPack(SlideClip,StopAt+.3f,StopAt+.45f,SlideDown+StopAt-LandAt+.3f,0,false,NativeIntroPack.RootMode.Path,SlideMask,0,.15f);
             Keys=k;
             RootPath=(t,r)=>(t<StopAt?Ride(t):Vector3.Lerp(new Vector3(SlideTo.X,r.Y,SlideTo.Z),new Vector3(0,r.Y,Mark),NativeEntranceMath.Smooth((t-StopAt)/Rise)))+new Vector3(0,SlideLift(t),0);
             // The camera: low on the roof behind it in the tunnel, beside the train keeping pace into the hall, a whip to the platform
             // for the leap (slowed), low on the platform as it slides in, the glance, the hero frame.
             Rig.Dolly(0,Ride(0)+new Vector3(-2.5f,.12f,.05f),Ride(.8f)+new Vector3(-2.3f,.14f,.05f),new Vector3(2.8f,-.2f,0),new Vector3(3.0f,-.25f,0),58,60).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.5f)
-               .Spline(.8f,Beside(.8f,LeapAt-.02f),new Vector3(.6f,-.1f,0),new Vector3(1.2f,-.15f,0),62,52).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.4f)
+               .Spline(.8f,Beside(.8f,LeapAt-.02f),new Vector3(.3f,.05f,0),new Vector3(.9f,-.08f,0),62,52).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear).Handheld(.4f)
                .Dolly(LeapAt-.02f,new Vector3(-5.6f,1.35f,4.4f),new Vector3(-5.9f,1.25f,4.0f),new Vector3(-13,2.6f,-1.6f),new Vector3(-9.5f,1.6f,-.6f),50,46)
                .Dolly(LandAt-.03f,new Vector3(2.7f,.32f,1.0f),new Vector3(2.55f,.36f,.95f),new Vector3(-.2f,0,0),new Vector3(0,.15f,0),40,38).Follow(NativeEntranceAnchor.Chest,.06f)
-               .Orbit(StopAt+.1f,Vector3.Zero,55,28,3.0f,3.15f,.55f,.9f,new Vector3(0,0,0),new Vector3(0,.12f,0),38,35).Follow(NativeEntranceAnchor.Chest,.05f).In(NativeIntroCut.Blend,.35f);
+               .Orbit(StopAt+.1f,Vector3.Zero,55,28,3.0f,3.15f,.55f,.9f,new Vector3(0,0,0),new Vector3(0,.12f,0),38,35).Follow(NativeEntranceAnchor.Chest).In(NativeIntroCut.Blend,.35f);
             Closing(CardAt-.5f,-1,5.2f,.5f,.78f,37,.5f);
             Rig.Bars(0,1).Bars(CardAt-.5f,.45f).Black(0,1).Black(.04f,0);
             // The leap hangs at its take-off and apex, then snaps back to speed for the landing.
@@ -197,7 +200,7 @@ namespace ChipArena.UnityConversion
                 // (it swings out and up only once it is out of the tunnel's mouth: the pilot on the middle car leaves the tunnel well
                 // after the train's nose bursts into the hall; until then it keeps low and in from the curved wall)
                 float t=from+(to-from)*i/(p.Length-1f),out_=NativeEntranceMath.Ramp(Ride(t).X+1.7f,MouthX+.5f,MouthX+6);
-                p[i]=Ride(t)+new Vector3(1.7f+1.2f*out_,-.2f+1.1f*out_,EdgeZ+.1f-RideZ+1.4f*out_);
+                p[i]=Ride(t)+new Vector3(2.5f+.6f*out_,.05f+.85f*out_,EdgeZ+.1f-RideZ+1.4f*out_);
                 if(p[i].X<MouthX+1){p[i].Z=Math.Min(p[i].Z,-1.3f);p[i].Y=Math.Min(p[i].Y,4.2f);}
             }
             return p;

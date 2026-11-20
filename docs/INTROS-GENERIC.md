@@ -176,7 +176,9 @@ like, can we make this more realistic? Could use the running pack I have"), keye
 motion bank (`docs/INTROS-V2.md` 9d; `ChipArenaIntroMotion.bytes`, never committed): `Mvm_Dash` for the sprint (its root moving along
 the roof at the clip's 9.12 m/s, so the drawn feet hold), `Jmp_FrontAir_A_Start` for the take-off (held on its airborne frame into the
 keyed leap), and `Esc_Slide_All` for the slide (the right foot down on the landing, the leg folding under, the left leg out in front,
-its feet sliding with it until it stops) and the rise (held feet, the body forward over the left foot onto the mark).
+its feet sliding with it until it stops) and the rise (held feet, the body forward over the left foot onto the mark, held on its
+upright frame as it eases into the keyed stand: the clip runs on into a stride, which mixed with the stand jolted the body and the
+camera following it).
 - **Keyed:** a surfer's crouch on the moving roof, the spring up off the front (left) foot as the right swings through, the split leap
   in the air, and the hero beats: it glances after the train, brushes the slide's dust off its left shoulder and settles loose and
   cocked (the weight on one leg, the shoulders tilted), the head tilting to the lens on the name.
