@@ -124,9 +124,11 @@ table's time; `--dress-seams-load` (with `CHIPARENA_MERIDIAN_BANK`) times the lo
 it, and on each of its flights: no side's corner over the flight's line; every point just under the line where a side is seen
 drawn; every wall beside a sloped street drawn just over the street; a fire escape's treads only iron, nothing solid on them taller
 than the stringer, every seen point of its wedge under the stringer within half a step of a bar, and the floor under its cage;
-every trapezoid planar and wound as its face. It fails on the dress before 2026-11-20 (the stepped sides, the brick wedges, the
-bare floors). `--meridian-stairs-probe` counts the flights and what hangs on them; `--meridian-stairs-export PLAN X Z RADIUS OUT.ply
-[roles]` writes the live deal's dress for a Blender check render (with `roles`, a colour per role).
+every trapezoid planar and wound as its face; nothing of a flight in one plane with another surface turned the same way on one
+layer (a band at a first tread dipped into the terrace face it continues). It fails on the dress before 2026-11-20 (the stepped
+sides, the brick wedges, the bare floors). `--meridian-stairs-probe` counts the flights and what hangs on them;
+`--meridian-stairs-zfight PLAN` lists coplanar pairs touching a flight; `--meridian-stairs-export PLAN X Z RADIUS OUT.ply [roles]`
+writes the live deal's dress for a Blender check render (with `roles`, a colour per role).
 
 `HubZFightChecks` (`--hub-zfight`, in the full suite): each street plan's live deal built as the station builds it, the dress
 planned as the live run plans it, and everything drawn in the hub (64 m square at the camp) gathered: the greybox boxes the arena

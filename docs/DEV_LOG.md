@@ -1,3 +1,139 @@
+## 2026-11-20 — Claude (M1): Meridian's flights on their lines: no staircasing; the fire escapes iron and caged (owner report; presentation only)
+
+**Branch and status:** `claude/meridian-stairs` from shared `7115bad3`. The work is `3113c4e0` and `1a30006f`; shared `d4ee788c`
+is merged in (`6bc300fa`), and this entry follows it. Pushed, not merged.
+
+### The owner's words (2026-11-20)
+"Two things I noticed going around the map; a lot of unnatural staircasing (reference right of picture)". The screenshot shows
+the live sanctuary at night. On its right, building edges seem to step down in a sawtooth, and dark zigzag wedges climb the
+middle building. (The second point, empty streets, is M2's.)
+
+### What the stepped shapes were
+Every flight on the live map is Astra's MapRamp. A pilot stands on a closed wedge from the flight's bottom up to its slope
+(Runtime `NativeCyberCityExitCollision`). Its treads are boxes drawn from that bottom up to flat tops (0.25 m steps on a stair,
+0.5 m on a sloped street), and the dress drew each tread's sides on its own. Found offline: role-coloured Blender renders of the
+five live deals with the city bank (`--meridian-stairs-export`), and the counts below.
+- **Fire escapes** (the owner's right and middle buildings). There are 192 of them, with 527 flights (32 to 57 a plan). Each
+  flight drew as a solid stepped wedge in its host lot's brick under a stepped black stringer, 6,000-19,000 m² of brick a plan.
+  Every flight above the first hangs from its landing with a flat underside, up to 5.6 m deep. Seen along a facade, the wedges'
+  sawtooth tops read as the building's own edges stepping; seen end on, as dark zigzags.
+- **Sloped streets.** 2 to 9 a plan. Their sides stepped every 3-4 m, each step with its own coping. Where a street runs between
+  terrace walls, the walls stopped at the treads' flat tops. That left notches open above the setts, as on Crown Hill's west street
+  just outside the gate.
+- **Stairs.** 10 to 28 a plan, with stone sides stepped tread by tread.
+- **Not the cause:**
+  - terraces: 7 m steps with 3.5 m stair landings, a raster of whole boxes;
+  - lots: one box each, with a straight cornice.
+
+### What changed (`3113c4e0`)
+- **Each tread side is cut on its flight's line (`Core/NativeMeridianDressStairs.cs`).** The line is a sloped street's surface,
+  or a stair's nosings, which its treads already reach. The side's body runs up to a 0.3 m band whose top is the line. The pieces
+  are trapezoids (`Quad.Taper`).
+  - **Sloped streets:** engineering brick under a sloped stone coping whose top is the street's own edge, exactly the collider's
+    side.
+  - **Stairs:** a stone cheek under a sloped coping along the nosings (a closed string). It stands at most 0.125 m over the
+    collider, as the nosings already do.
+  - **Fire escapes:** iron.
+    - A black stringer runs along the nosings.
+    - The wedge below it is solid to a pilot, so it cannot be drawn open (no invisible walls). It is caged instead, by flat bars
+      0.3 m apart: one pattern down the run, 4 cm wide, 3 cm behind the face, with a foot rail. A pilot cannot pass the 0.26 m
+      gap; the eye can.
+    - A grating runs under the flight, and the stair's own sloped soffit sits behind the bars.
+    - The floor runs on under the cage, seen through the grille.
+    - The treads and landings keep their iron grating.
+  - **Walls beside a sloped street** run down under the street (`Exposed` no longer lets the street's treads hide a wall), so no
+    notch opens over the setts.
+- **The planner (`Core/NativeMeridianDressPlan.cs`):** the tread case calls `DressTread`. The fire escapes' brick sides and their
+  `EscapeHost` are gone.
+- **The surfaces (`Core/NativeMeridianDress.cs`, `NativeMeridianChunks.cs`):**
+  - A surface may be a trapezoid. `V1` is the far side, so its cells, seams, corners and triangle counts follow it.
+  - A grille's bars stay out of the seam table (`Quad.Free`: a bar meets no surface edge to edge), so the load cost stays flat.
+  - The seam table is otherwise unchanged.
+- **The cache walls (`Tests/BleedChecks.cs`).** A fire escape behind a cache is checked as its cage: bars within half a step, or
+  the stringer. The black-wall test is kept for everything else, since a grille is no slab.
+- **Untouched:** colliders, blocks, ramps, rules, navigation and generation. The city bank needs no rebuild.
+
+### The check
+`Tests/MeridianStairsChecks.cs` (`--meridian-stairs`, in the full suite) runs on every street plan's live deal, dressed as the
+live run dresses it. On each flight it checks:
+- no side's corner over its line;
+- every point just under the line where a side is seen is drawn;
+- every wall beside a sloped street is drawn just over the street;
+- a fire escape's treads carry only iron, and nothing solid on them is taller than the stringer;
+- every seen point of the wedge under the stringer has a bar within half a step;
+- the floor under the cage is drawn;
+- every trapezoid is planar and wound as its face.
+
+It covers 7,000-18,000 side points, 335-1,304 wall points and 81,000-264,000 caged points a plan. With the old tread case put
+back, it fails at once: 196 corners over the line on Crown Hill, plus the brick wedges and the bare floors. Two diagnostics come
+with it: `--meridian-stairs-probe` and `--meridian-stairs-export PLAN X Z RADIUS OUT.ply [roles]`.
+
+### Cost (with the bank, `--meridian-dress`)
+- **The dress's worst views (shared → branch):**
+
+  | Plan | High | Low |
+  | --- | --- | --- |
+  | Crown Hill | 371,689 → 377,544 | 161,838 → 165,726 |
+  | The Navigation | 467,614 → 440,293 | 157,358 → 176,724 |
+  | The Arcades | 508,799 → 514,794 | 208,494 → 230,415 |
+  | The Stride | 435,726 → 457,794 | 192,629 → 197,294 |
+  | The Yards | 240,698 → 222,355 | 104,181 → 122,180 |
+
+  - All are under the budgets (High 0.9 M and 900 draws, Low 0.33 M and 450).
+  - Draws are up to 324 on High and 194 on Low.
+- **Surfaces:** 1.6-1.8 times as many (the bars), for example The Arcades 45,818 → 76,299.
+- **The load in the Editor** (Mono, the drawer's own line, `plan` + `LOD1 combine`, the same session, while the builder built a
+  release beside it):
+  - The Navigation: 668 + 102 → 686 + 153 ms (+0.07 s).
+  - Crown Hill: 424 + 131 → 423 + 166 ms (+0.03 s).
+
+### Captured (one Editor hold, 17:54-18:17, 23 min)
+The same posed eyes ran on two live deals: The Navigation (xseed 1013904226) and Crown Hill (xseed 2027808452). Each was taken on
+shared `7115bad3` (BEFORE) and on `3113c4e0` (AFTER), at night, High.
+- **Sheets** in `F:/Chip Arena Development/scratch/meridian-stairs/clips/`:
+  - `sheet-navigation-before-after.jpg`: the sanctuary looking north-east, the east sloped street from top and bottom, five
+    fire-escape views near and far, and the west stone stair;
+  - `sheet-crown-hill-before-after.jpg`: the west sloped street from below, three fire-escape views and the north stone stair.
+- **Clips** in the same folder: `clip-navigation-before-after.mp4` (14 s) and `clip-crown-hill-before-after.mp4` (10 s), the
+  stills side by side, 1.25 s each.
+- **Offline checks** in the same folder: `offline-fire-escapes.jpg`, `offline-ramps.jpg` and `offline-stairs.jpg`, Blender renders
+  of the live deals with the city bank.
+- **After the hold:** `1a30006f` stops a band at the foot of the part of its side that is seen. That moves a band's foot by up to
+  0.3 m at a flight's first tread, where the band met a terrace face in the same plane. It is checked offline and not captured.
+- **Clean-up:** the xseed tool patch was put back (no marker left). The Editor went back to `9319026b`, compiled, with its banks
+  unchanged (the 3 city banks, the 14 stage banks and the motion bank), and the lock was given back.
+
+### Checks
+- `--meridian-stairs`, `--meridian-dress` (with `CHIPARENA_MERIDIAN_BANK`), `--dress-seams`, `--hub-zfight`, `--bleed`,
+  `--landmark-reads` and `--layered-walk`: pass.
+- `tools/check_unity_compile.py` (6000.3.24f1, local Unity root) at `1a30006f`: Input System, Player, Assembly-CSharp and
+  Editor pass.
+- `git diff --check`: clean. The integrator's pin scan: 0 broken.
+- Full CoreTests the relgen5 way (`expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = banks-next) at `6bc300fa`: pass, 1088 groups,
+  0 failures, exit 0.
+- `zfight.py` on The Arcades' combined LOD0 chunks, shared against `3113c4e0`: static pairs 1,859 → 1,885, exact 0.607 →
+  0.821 m², near 2.965 m² both. The extra 0.21 m² were the first-tread bands. `--meridian-stairs-zfight` found 7 such spots a
+  plan, which `1a30006f` removes (0 on all five), and `--meridian-stairs` now checks it.
+- Not run: a Windows player build, multiplayer, Low tier in the Editor.
+
+### Animation, rules and network impact
+None: no hit timing, hitbox, damage, cooldown, movement or network change. The flights' colliders are Astra's, unchanged.
+
+### Risks
+- **The cage.** It reads as iron, but it is still a cage, because each flight's wedge is solid. Truly open fire escapes (open
+  under the flights, with railings) need Astra's thin flights; see For Astra. The grille is drawn on the treads' own seen faces,
+  so on thin treads it would shrink to their depth by itself. Railings would still wait for rail blocks.
+- **Far away**, the thin bars may shimmer or thicken under the toon outline. This is seen only in the hold's stills.
+- **Lamps:** two route lamps hang on a fire escape's side (one swan-neck on The Navigation's `fire-escape-10`, one flush on The
+  Arcades' `fire-escape-8`), now on its cage. Placing lamps is the lamps' code (`NativeMeridianDressLots.cs`), not changed here.
+
+### For Astra
+`meridian-staircasing-astra.md` (the notes) asks for fire-escape flights as thin sloped slabs, about 0.35 m under their slope,
+with treads stepped on them and rails on the open sides. Pilots could then pass under the flights at the street, and the dress
+could draw them open. Stairs and sloped streets stay solid; they are honest as cheeks and retaining walls.
+
+**Next:** the integrator reviews the stills and merges.
+
 ## 2026-11-20 — Claude: intros v2 batch 1 released, with the hub z-fight fix and the floor seams (integrator)
 Owner: "Ship five now" (the dev intro and four generic intros; Slipstream follows on its Runner Action pack run). Shared `076ae3fc`; the builder at `076ae3fc`, test channel revision `639308124444299384` (build `a24d67a4`, 380.9 MiB). Earlier today: the hub z-fight fix alone, shared `5d54766c`, revision `639308000396336573`.
 - **Merged:** `claude/intro-v2` (framework `claude/intro-framework` to `de6c5207`, generic `claude/intro-generic` `1525dfc6`, dev `claude/intro-dev-architect` `8783ab51`) as `139b40e4`, then five fix merges; `claude/dress-seams` (`72ab4d28`) as `7115bad3`; `claude/hub-zfight` (`f279813f`, plus the PartyLoadingChecks re-pin for #437) as `5d54766c`.
