@@ -46,9 +46,9 @@ namespace ChipArena.UnityConversion
         }
         public NativeIntroFlashbulb():base(Id,Total,CardAt,Photos[0],0xff5aa8)
         {
-            Start=Stance(.13f,-6.3f,.1f,-.13f,-6.5f,-.35f);
+            Start=Stance(.13f,-6.3f,.1f,-.13f,-6.5f,-.12f);
             var steps=new System.Collections.Generic.List<NativeEntrancePose.Step>();
-            for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*.39f;bool l=i%2==1;steps.Add(Step(l,lift,lift+.36f,l?.12f:-.12f,-6.4f+1.05f*(i+1),l?.06f:-.18f,.12f));}
+            for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*.39f;bool l=i%2==1;steps.Add(Step(l,lift,lift+.36f,l?.12f:-.12f,-6.4f+1.05f*(i+1),l?.1f:-.1f,.12f));}
             steps.Add(Step(true,MarkAt-.05f,MarkAt+.2f,.17f,.06f,.12f,.06f));
             Steps=steps.ToArray();
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();

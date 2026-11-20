@@ -25,19 +25,27 @@ namespace ChipArena.UnityConversion
             Dusk=NativeEntranceFx.Hex(0xff9a5a),Sand=NativeEntranceFx.Hex(0xc9a074),Rune=NativeEntranceFx.Hex(0xffd79a);
         public NativeIntroThreshold():base(Id,Total,CardAt,ThroughAt,0xffd79a)
         {
-            Start=Stance(.13f,From,.1f,-.13f,From-.2f,-.35f);
+            Start=Stance(.13f,From,.1f,-.13f,From-.2f,-.12f);
             var steps=new System.Collections.Generic.List<NativeEntrancePose.Step>();
-            for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*.39f;bool l=i%2==1;steps.Add(Step(l,lift,lift+.36f,l?.13f:-.13f,From+.82f*(i+1),l?.1f:-.35f,.1f));}
+            for(int i=0;i<6;i++){float lift=WalkAt+.02f+i*.39f;bool l=i%2==1;steps.Add(Step(l,lift,lift+.36f,l?.12f:-.12f,From+.82f*(i+1),l?.1f:-.1f,.1f));}
             steps.Add(Step(true,ArriveAt+.02f,ArriveAt+.26f,.17f,.06f,.12f,.06f));
             Steps=steps.ToArray();
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
             // In the light: upright, arms loose, chin a little down; then the walk out, arms swinging, chin coming up.
             k.Key(0,stand).Root(0,.88f,From,Facing+.22f).Planted(1).J(Hd,.1f).J(LA,-.12f,0,.18f).J(LE,-.3f).J(RA,-.12f,0,-.18f).J(RE,-.3f);
             k.Key(WalkAt,stand).Root(0,.88f,From,Facing+.22f).Planted(1).Drop(-.02f).J(Hd,.06f).J(LA,-.12f,0,.2f).J(LE,-.3f).J(RA,-.12f,0,-.2f).J(RE,-.3f);
+            // The walk out, measured and upright, two keys a step (the feet are the planned steps above): riding a little higher at the
+            // swing's passing, the arms crossing; settling at the heel's contact, the hips turning gently with the leg in front, the
+            // shoulders countering and the arm opposite that leg swinging forward. The chin rises step by step out of the light.
+            // (s: +1 when the left foot swings; the source frame's left is +x.)
             for(int i=0;i<6;i++)
             {
-                float at=WalkAt+.2f+i*.39f;bool l=i%2==1;
-                k.Key(at,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.03f).J(C,0,l?.1f:-.1f,0).J(Hd,-.04f-.02f*i,l?-.05f:.05f,0).J(LA,l?-.34f:.28f,0,.2f).J(LE,-.45f).J(RA,l?.28f:-.34f,0,-.2f).J(RE,-.45f).PassKey();
+                float lift=WalkAt+.02f+i*.39f;float s=i%2==1?1:-1,chin=.04f-.03f*i;
+                k.Key(lift+.18f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.015f)
+                    .J(P,0,0,-s*.03f).J(C,-.02f,0,0).J(Hd,chin,0,0).J(LA,s*.03f,0,.14f).J(LE,-.3f).J(RA,-s*.03f,0,-.14f).J(RE,-.3f).PassKey();
+                k.Key(lift+.36f,stand).Root(0,.88f,0,Facing+.22f).Planted(1).Drop(-.045f)
+                    .J(P,0,-s*.08f,0).J(Sp,0,s*.04f,0).J(C,0,s*.08f,0).J(Hd,chin+.02f,-s*.03f,0)
+                    .J(LA,s*.26f,0,.15f).J(LE,s>0?-.2f:-.45f).J(RA,-s*.28f,0,-.15f).J(RE,s>0?-.45f:-.2f).PassKey();
             }
             k.Key(ArriveAt+.15f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.05f).J(C,-.04f).J(Hd,-.08f).J(LA,-.12f,0,.3f).J(LE,-.32f).J(RA,-.12f,0,-.3f).J(RE,-.32f).ImpactKey();
             k.Key(CardAt-.3f,NativeEntranceKeys.Hero()).Planted(1).J(Hd,-.12f,0,0).J(C,-.06f,0,0);
