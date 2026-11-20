@@ -3,7 +3,7 @@
 Owner, 2026-11-20: "I want to move the intros to a much higher quality standard, great animations and effects, non-block based
 background and designs, etc. With great camera work as well! Lets generate... 5 new intros". These five replace the archived
 generic entrances (Hero Landing, Orbital Drop, Grid Rez, Holo Projection, Blackout, Skyline Zip, Overclock). Any pilot can pick
-them: they are weapon-agnostic, the hands stay empty and the body plays the model's motion bank, layered in code.
+them: they are weapon-agnostic, the hands stay empty and every move is the intro's own keyed animation.
 
 The contract they are built on is `docs/INTROS-V2.md` (agent I0, `claude/intro-framework`). This page is the authored design:
 the story, the set, the camera's language, the beats, the motion, the effects and the sound of each.
@@ -24,17 +24,17 @@ the story, the set, the camera's language, the beats, the motion, the effects an
   never on the legs: each closing shot shows the whole figure above it (the crown near 0.2 of the height, the soles near 0.71,
   settled before the card arrives; `NativeIntroGenericScript.Closing`, a slow push in from a low front three-quarter). The
   name, its kicker and its line stay centred (`card.X` unset), on the floor in front of the pilot.
-- **The head:** the framework's head anchor is the head joint's pivot at the skull's base; anything placed at the eyes lifts
-  `HeadLift` (0.16 m) along the neck. Whiteout's visor is the model's own (its accent colour) and only its light rides the head
-  as drawn (`INativeIntroHead`): the model's kneel and bow part from the keyed head (a glow sphere there floated off the visor in
-  the captures, so there is none); its insert is framed by the chest for the same reason.
+- **On the body as drawn:** effects and lights sit on the framework's model-aware anchors (`Anchor`, docs/INTROS-V2.md 2a: the
+  drawn feet, hands, chest and `Visor`); no hand-tuned head offsets. Whiteout's visor is the model's own (its accent colour) and
+  its light sits at `Anchor(Visor)`. Its kneel bows the head gently and its close-up is near frontal: a deep bow seen from above
+  the shoulder read as a head turned aside (the framework measured the mapping exact).
 - **Weapon-agnostic:** no weapon in the hands (the registry gives them no weapon spec, so nothing is drawn in them).
-- **Body:** keyed on the intro rig (`NativeEntranceKeys` and planned steps, as Top Dog and Last Warning are) and drawn on the model;
-  where a pack clip fits the beat the model plays it from the motion bank, retimed in code (`Clip`, docs/INTROS-V2.md section 2):
-  Slipstream's run along the roof is `Unarmed-Sprint` at 1.45x. Flashbulb's and Threshold's walks are the keyed rig's own (planned
-  steps): the bank's `Armed-Walk` is the sword's guarded combat walk, its hips side-on to the chest, and walking at the lens its legs
-  read as kicking and crossing sideways (the owner's report). The keyed rig stays the camera's and the effects' anchors and the
-  Classic body's pose. No new pack clips were needed.
+- **Body:** the intro's own keyed animation (`NativeEntranceKeys` and planned steps, as Top Dog and Last Warning are; owner:
+  "think like the top dog and Bombardier ones"), drawn on the model; no motion-bank clips. Walks and runs key two poses a step
+  (the passing and the contact: the body's rise and settle, the hips turning with the leg in front, the shoulders countering, the
+  arms swinging opposite the legs). Their stances and steps are in the world's frame (`Stance`/`Step` with facing 0: the helpers
+  otherwise turn x and z by the hero facing about the mark, which far up a walk put the feet a metre or more to the side), and
+  their strides are about half a metre (the keyed legs reach about .3 m either side of the hips).
 - **Sets:** each modelled in Blender 5.2.3 (headless) by its own script (`tools/intros/generic_<set>.py`, run by
   `tools/intros/generic_sets.py`, shapes from `generic_kit.py` on stagekit), two tiers (Fine, `/low`), into the local bank
   `ChipArenaIntroGeneric.bytes` (7.7 MB; never committed). Nothing in them is a placeholder shape: the sun has a limb, the pad is
@@ -138,15 +138,16 @@ middle car the pilot rides, a nose at the tail), its windows lit.
 | 0.00 | The tunnel: the pilot crouched on the roof, the strips streaking past | low on the roof behind it |
 | 0.80 | (the ride) | beside the train, keeping pace |
 | 1.55 | It stands; the train bursts into the hall (1.66) | (rising out of the tunnel with it) |
-| 1.78 | It sprints along the roof (the motion bank's sprint) | (keeps pace) |
+| 1.78 | It sprints along the roof: leaning in, knees driving, arms pumping | (keeps pace) |
 | 2.70 | The leap: it hangs at the take-off (0.3x) and snaps back to speed | a cut to the platform, wide, the train behind |
 | 3.30 | It lands in a slide: sparks off the boots and the dragging hand, a scorch on the floor, the train's wake | low on the platform as it slides at the lens |
 | 4.30 | It stops on the mark and stands; a glance after the train (4.45); the tail lights fade into the tunnel | a low orbit |
 | 5.00 | The station chime | (holds) |
 | 5.60 | **The name** (typed). The departure board clatters over | the closing from its right, the hall receding behind it |
 
-**Motion:** keyed: the crouch on the moving roof (the feet planted in the car's frame), the leap, the slide (the feet moving with
-it), the glance and the hero hold; the run along the roof is the motion bank's `Unarmed-Sprint` at 1.45x on the model.
+**Motion:** keyed: the crouch on the moving roof (the feet planted in the car's frame), the sprint (two keys a stride, the steps
+lifted high for the knee drive), a loaded gather before the launch, the leap and its tuck, the legs reaching forward into the slide
+(the feet moving with it), the glance and the hero hold.
 
 ## Threshold (8.2 s, the name at 6.4 s)
 Dusk in a canyon. At the end of a ruined plaza two leaning standing stones meet in a cleft. A crack of light runs up the seam between
@@ -190,7 +191,7 @@ blade sign with neon stars and stripes; two lit poster cases; four lamp posts; t
 | --- | --- | --- |
 | 0.00 | The dark street; the marquee's bulbs chase on, the searchlights sweep up | wide from the street |
 | 0.50 | The doors swing open, light spills down the carpet; a silhouette in the doorway | (holds) |
-| 0.75 | It strides down the carpet (the motion bank's walk), flashes popping from both sides | low, dollying back ahead of it |
+| 0.80 | It strides down the carpet, flashes popping from both sides | a cut to it halfway down the carpet, low, dollying back ahead of it |
 | 3.32 | On the mark: pose one, a look back over the shoulder, held; a flash floods the lens | photograph one, from its left |
 | 3.95 | Pose two, a hand on the hip, chin up, held | photograph two, from its right |
 | 4.58 | Pose three, two fingers to the brow, then flicked out | photograph three, centred and low |
