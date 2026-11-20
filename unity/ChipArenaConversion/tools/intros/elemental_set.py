@@ -238,6 +238,7 @@ def disc_sector(g, y, r0, r1, a0, a1, f, steps, centre=(0.0, 0.0), normal=(0, 1,
 FIRE_VENT = (0.2837, -1.2687)  # 1.3 m behind the hero mark on the hero facing's line (Facing -.22)
 FIRE_DAIS_R = 3.45                   # the raised dais's radius round the vent (its top is FLOOR)
 FIRE_FORGE_Z = -11.5                 # the forge arch's centre line
+FIRE_HEARTH = (-12.58, -11.92)       # the firebox's back wall and its mouth (z): Core lights and fires between them
 FIRE_FLOOR_Y = -.1                   # the caldera's plates around the dais
 FIRE_RINGS = (6.5, 9.5, 13.0, 17.5, 25.0)  # the lava sheet's rings round the origin (rig/lava/k+1; lava/0 is under the dais)
 FIRE_RIVERS = (-2.45, -1.0, .55, 2.2)  # the four rivers' bearings (radians from +x toward +z), meandering inward
@@ -270,6 +271,9 @@ def fire_finishes():
     F['lava-hot'] = sk.fin('fire-lava-hot', 0xffb040, sk.DETAIL_GLOW, glow=3.4)
     F['lava-deep'] = sk.fin('fire-lava-deep', 0xd83410, sk.DETAIL_GLOW, glow=1.9)
     F['rune'] = sk.fin('fire-rune', 0xff8a30, sk.DETAIL_GLOW, glow=2.2)
+    F['lava-white'] = sk.fin('fire-lava-white', 0xfff2c8, sk.DETAIL_GLOW, glow=4.6)
+    F['heat'] = sk.fin('fire-heat', 0xff8a30, sk.DETAIL_GLOW, glow=2.6)
+    F['coal'] = sk.fin('fire-coal', 0x1c1311, sk.DETAIL_CARVED, smooth=.15, dirt=.3)
     return F
 
 
@@ -440,24 +444,68 @@ def fire_set(T):
     piece = Geo()
     sk.box(piece, -1.4, 1.4, -.6, .6, -.75, .75, F['forge'], T, bevel=.08)
     mid.extend(piece.transformed(sk.affine(sk.quat_axis(0, 0, 1, 1.05), (1.25, FIRE_FLOOR_Y + 1.25, fz + .4))))
-    # the hearth: a stepped back wall with an arched mouth framed by voussoirs, its fire inside (rig/hearth)
+    # the hearth: a stepped back wall, and before it a firebox whose arched mouth is framed by voussoirs. Inside (rig/hearth): a
+    # lining of heat graded from a white-yellow core on the back wall through orange to a deep red at the lip (hearth_colours),
+    # on a bed of coals, white-hot to dull red, a few gone black.
     sk.box(mid, -2.3, 2.3, FIRE_FLOOR_Y - .3, FIRE_FLOOR_Y + 4.6, fz - 1.9, fz - 1.1, F['forge-dark'], T, bevel=.04)
-    sk.box(mid, -2.6, 2.6, FIRE_FLOOR_Y - .3, FIRE_FLOOR_Y + .35, fz - 2.0, fz - .7, F['forge-dark'], T, bevel=.04)
+    sk.box(mid, -2.6, 2.6, FIRE_FLOOR_Y - .3, FIRE_FLOOR_Y + .35, fz - 2.0, fz + .05, F['forge-dark'], T, bevel=.04)
     n = (13, 9, 5)[T.i]
     cxm, cym, rx, ry = 0.0, FIRE_FLOOR_Y + 1.25, 1.05, 1.15
+    sill = FIRE_FLOOR_Y + .36
+    zb, zf = FIRE_HEARTH
+    ytop = cym + ry + .95
+    # its stone: two jambs, the block over the arch, and the front wall round the opening
+    sk.box(mid, -1.75, -rx - .012, sill - .02, ytop, fz - 1.1, zf, F['forge'], T, bevel=.03)
+    sk.box(mid, rx + .012, 1.75, sill - .02, ytop, fz - 1.1, zf, F['forge'], T, bevel=.03)
+    sk.box(mid, -rx - .02, rx + .02, cym + ry + .012, ytop, fz - 1.1, zf, F['forge'], T, bevel=.03)
+    ext = [(math.cos(math.pi / 2 + math.pi / 2 * i / n) * (rx + .42), cym + math.sin(math.pi / 2 + math.pi / 2 * i / n) * (ry + .42)) for i in range(n + 1)]
+    half_wall = [(-1.75, FIRE_FLOOR_Y + .35), (-1.75, ytop), (0.0, ytop)] + ext + [(-rx, cym), (-rx, sill), (0.0, sill)]
+    for sgn in (1, -1):
+        poly = [(x * sgn, y) for x, y in half_wall]
+        for tri in ear_clip(poly):
+            mid.face([(poly[k][0], poly[k][1], zf + .005) for k in tri], F['forge'], normal=(0, 0, 1))
     for i in range(n):
         a0, a1 = math.pi * i / n, math.pi * (i + 1) / n
         pts = [(cxm + math.cos(a0) * rx, cym + math.sin(a0) * ry), (cxm + math.cos(a0) * (rx + .42), cym + math.sin(a0) * (ry + .42)),
                (cxm + math.cos(a1) * (rx + .42), cym + math.sin(a1) * (ry + .42)), (cxm + math.cos(a1) * rx, cym + math.sin(a1) * ry)]
-        z0, z1 = fz - 1.12, fz - .95
+        z0, z1 = zf, zf + .17
         mid.face([(p[0], p[1], z1) for p in pts], F['forge'], normal=(0, 0, 1))
         cx_, cy_ = sum(p[0] for p in pts) / 4, sum(p[1] for p in pts) / 4
         for (p, q) in ((pts[0], pts[1]), (pts[1], pts[2]), (pts[2], pts[3]), (pts[3], pts[0])):
             mx, my = (p[0] + q[0]) / 2 - cx_, (p[1] + q[1]) / 2 - cy_
             mid.face([(p[0], p[1], z0), (q[0], q[1], z0), (q[0], q[1], z1), (p[0], p[1], z1)], F['forge'], normal=(mx, my, 0))
-    mouth = [(cxm - rx, FIRE_FLOOR_Y + .36)] + [(cxm + math.cos(math.pi - math.pi * i / n) * rx, cym + math.sin(math.pi - math.pi * i / n) * ry) for i in range(n + 1)] + [(cxm + rx, FIRE_FLOOR_Y + .36)]
+    mouth = [(cxm - rx, sill)] + [(cxm + math.cos(math.pi - math.pi * i / n) * rx, cym + math.sin(math.pi - math.pi * i / n) * ry) for i in range(n + 1)] + [(cxm + rx, sill)]
     hearth = Geo()
-    hearth.face([(x, y, fz - 1.09) for x, y in mouth], F['lava-hot'], normal=(0, 0, 1))
+    # the back wall: rings from a core low in the middle out to the mouth's outline (the gradient is per corner)
+    core = (0.0, sill + .5)
+    rings = (0.0, .2, .42, .66, .86, 1.0)
+    for k in range(len(rings) - 1):
+        s0, s1 = rings[k], rings[k + 1]
+        for j in range(len(mouth)):
+            a, b = mouth[j], mouth[(j + 1) % len(mouth)]
+            pa0 = (core[0] + (a[0] - core[0]) * s0, core[1] + (a[1] - core[1]) * s0)
+            pb0 = (core[0] + (b[0] - core[0]) * s0, core[1] + (b[1] - core[1]) * s0)
+            pa1 = (core[0] + (a[0] - core[0]) * s1, core[1] + (a[1] - core[1]) * s1)
+            pb1 = (core[0] + (b[0] - core[0]) * s1, core[1] + (b[1] - core[1]) * s1)
+            quad = [(pa0[0], pa0[1], zb), (pa1[0], pa1[1], zb), (pb1[0], pb1[1], zb), (pb0[0], pb0[1], zb)] if s0 > 0 else [(core[0], core[1], zb), (pa1[0], pa1[1], zb), (pb1[0], pb1[1], zb)]
+            hearth.face(quad, F['heat'], normal=(0, 0, 1))
+    # the lining: the outline carried from the back wall to the mouth, facing in (the floor of it under the coals)
+    steps = (4, 3, 2)[T.i]
+    for j in range(len(mouth)):
+        a, b = mouth[j], mouth[(j + 1) % len(mouth)]
+        mx, my = (a[0] + b[0]) / 2 - core[0], (a[1] + b[1]) / 2 - core[1]
+        for k in range(steps):
+            za, zb_ = zb + (zf - zb) * k / steps, zb + (zf - zb) * (k + 1) / steps
+            hearth.face([(a[0], a[1], za), (b[0], b[1], za), (b[0], b[1], zb_), (a[0], a[1], zb_)], F['heat'], normal=(-mx, -my, 0))
+    # the coals: lumps over the firebox's floor, hottest at the back
+    for i in range((40, 26, 14)[T.i]):
+        x = (S(i, 401) * .92) * rx
+        zz = zb + .08 + (zf - zb - .14) * H(i, 402)
+        rad = .07 + .09 * H(i, 403)
+        back = 1 - (zz - zb) / (zf - zb)
+        roll = H(i, 404) + .35 * back
+        f = F['lava-white'] if roll > 1.05 else F['lava-hot'] if roll > .78 else F['lava'] if roll > .45 else F['lava-deep'] if roll > .18 else F['coal']
+        rock(hearth, (x, sill + rad * .45, zz), rad, f, T, 410 + i, squash=.62, sub=(2, 1, 1)[T.i])
     rigs['hearth'] = hearth
     # ---- the crater rim: a ring of crags, two lava falls down its inner face (rig/falls) ----
     m = (96, 56, 32)[T.i]
@@ -563,11 +611,13 @@ def water_finishes():
     F['wave'] = sk.fin('water-wave', 0x1d7fa3, sk.DETAIL_NONE, smooth=.3, dirt=0.0)
     F['wave-deep'] = sk.fin('water-wave-deep', 0x0e4664, sk.DETAIL_NONE, smooth=.3, dirt=0.0)
     F['wave-light'] = sk.fin('water-wave-light', 0x3fb6e2, sk.DETAIL_NONE, smooth=.3, dirt=0.0)
+    F['wave-glow'] = sk.fin('water-wave-glow', 0x5fe0ff, sk.DETAIL_GLOW, glow=1.1)
     F['foam'] = sk.fin('water-foam', 0xdff6ff, sk.DETAIL_NONE, smooth=.2, dirt=0.0)
-    F['ice'] = sk.fin('water-ice', 0x9fd8ec, sk.DETAIL_NONE, smooth=.34, dirt=0.0)
-    F['ice-deep'] = sk.fin('water-ice-deep', 0x5aa9cc, sk.DETAIL_NONE, smooth=.34, dirt=0.0)
-    F['ice-glow'] = sk.fin('water-ice-glow', 0x7fe6ff, sk.DETAIL_GLOW, glow=1.6)
-    F['frost'] = sk.fin('water-frost', 0xd8f2fa, sk.DETAIL_PLASTER, smooth=.25, dirt=0.0)
+    F['ice'] = sk.fin('water-ice', 0xc4f2fc, sk.DETAIL_NONE, smooth=.34, dirt=0.0)
+    F['ice-deep'] = sk.fin('water-ice-deep', 0x5cc6e6, sk.DETAIL_NONE, smooth=.34, dirt=0.0)
+    F['ice-glow'] = sk.fin('water-ice-glow', 0x8ff4ff, sk.DETAIL_GLOW, glow=1.7)
+    F['ice-rim'] = sk.fin('water-ice-rim', 0xdcfdff, sk.DETAIL_GLOW, glow=2.3)
+    F['frost'] = sk.fin('water-frost', 0xeafcff, sk.DETAIL_PLASTER, smooth=.25, dirt=0.0)
     F['frost-glow'] = sk.fin('water-frost-glow', 0xbff2ff, sk.DETAIL_GLOW, glow=.9)
     F['window'] = sk.fin('water-window', 0xa9c8ff, sk.DETAIL_GLOW, glow=2.2)
     F['lead'] = sk.fin('water-lead', 0x1c2224, sk.DETAIL_IRON, smooth=.4, metal=.6, dirt=.6)
@@ -728,10 +778,12 @@ def ear_clip(poly):
 
 
 def wave_colours(bk, g):
-    """A liquid wall's colour as a gradient: deep at its foot, lighter up its face and under its lip (the light through it),
-    foam white along its crest (smooth, where finishes alone would band)."""
+    """A liquid wall's colour as a gradient: deep at its foot, lighter up its face and under its lip, foam white along its crest
+    (smooth, where finishes alone would band). The thin crest and the curl's inside glow, lit through: a dark teal low in the
+    curl up to a bright cyan and white at the lip. The body takes less of the arena's probe (its occlusion), so the trough is dark."""
     P, N, S_, F_ = g.arrays()
     y = P[:, 1].astype(np.float64)
+    glow = bk.glow.copy()
     deep, mid, light, foam = np.array(sk.srgb(0x0b3a58)), np.array(sk.srgb(0x1a78a0)), np.array(sk.srgb(0x52c4ea)), np.array(sk.srgb(0xe2f8ff))
     u = np.clip((y + .2) / 4.4, 0, 1)
     col = np.where(u[:, None] < .55, deep + (mid - deep) * (u[:, None] / .55), mid + (light - mid) * ((u[:, None] - .55) / .45))
@@ -739,7 +791,64 @@ def wave_colours(bk, g):
     col = col + (light - col) * np.clip(-up, 0, 1)[:, None] * .6 * (y > 2.4)[:, None]
     f = np.clip((y - 4.3) / .35, 0, 1)
     col = col + (foam - col) * f[:, None]
-    bk.colour[:, :3] = np.round(np.clip(col, 0, 1) * 255).astype(np.uint8)
+    lit = ~glow
+    bk.colour[lit, :3] = np.round(np.clip(col[lit], 0, 1) * 255).astype(np.uint8)
+    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.62 * 255))
+    if glow.any():
+        teal, cyan, white = np.array(sk.srgb(0x0a4e6c)), np.array(sk.srgb(0x6ee6ff)), np.array(sk.srgb(0xdffcff))
+        u = np.clip((y - 2.55) / 1.75, 0, 1)
+        c = teal + (cyan - teal) * u[:, None]
+        c = c + (white - c) * np.clip((y - 4.3) / .3, 0, 1)[:, None]
+        bk.colour[glow, :3] = np.round(np.clip(c[glow], 0, 1) * 255).astype(np.uint8)
+        bk.uv1[glow, 1] = (.45 + 1.35 * u[glow] ** 1.4).astype(np.float32)
+
+
+def ice_colours(bk, g):
+    """A frozen wall as faceted ice: each facet a little lighter or deeper, cyan to white, and less of the arena's probe (its
+    occlusion), so it reads cold and clear rather than taking the arena's colour."""
+    P, N, S_, F_ = g.arrays()
+    nf = len(S_)
+    face = np.repeat(np.arange(nf), S_)
+    rnd = np.array([H(k, 977) for k in range(nf)])[face]
+    rnd2 = np.array([H(k, 978) for k in range(nf)])[face]
+    lit = ~bk.glow
+    c = bk.colour[:, :3].astype(np.float64) / 255
+    c = c * (.88 + .24 * rnd)[:, None]
+    white = np.array(sk.srgb(0xf2feff))
+    c = c + (white - c) * (np.clip(rnd2 - .78, 0, 1) * 1.4)[:, None]
+    bk.colour[lit, :3] = np.round(np.clip(c[lit], 0, 1) * 255).astype(np.uint8)
+    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.58 * 255))
+
+
+def hearth_colours(bk, g):
+    """The firebox's heat as a gradient over its lining: a white-yellow core on the back wall through yellow and orange to a deep
+    red at the wall's rim; along the lining toward the mouth, from that rim's orange down to a dull red (the glow's gain with it)."""
+    P, N, S_, F_ = g.arrays()
+    fc = np.repeat(F_, S_)
+    heat = np.array([sk.FINS[i].name == 'fire-heat' for i in fc], dtype=bool)
+    if not heat.any():
+        return
+    zb, zf = FIRE_HEARTH
+    x, y, z = (P[:, k].astype(np.float64) for k in range(3))
+    w = np.clip((z - zb) / (zf - zb), 0, 1)
+    r = np.clip(np.sqrt((x / 1.05) ** 2 + ((y - (FIRE_FLOOR_Y + .86)) / 1.05) ** 2), 0, 1.25)
+    stops = ((0.0, 0xfff6d2, 5.4), (.3, 0xffd468, 4.4), (.6, 0xff8f2a, 3.2), (.88, 0xe84a1a, 2.3), (1.25, 0xa8280c, 1.8))
+    col = np.zeros((len(P), 3))
+    gain = np.zeros(len(P))
+    for (r0, c0, g0), (r1, c1, g1) in zip(stops[:-1], stops[1:]):
+        m = (r >= r0) & (r <= r1)
+        u = ((r - r0) / (r1 - r0))[m][:, None]
+        col[m] = np.array(sk.srgb(c0)) * (1 - u) + np.array(sk.srgb(c1)) * u
+        gain[m] = g0 * (1 - u[:, 0]) + g1 * u[:, 0]
+    # along the lining: from the back's colour at its rim to a dull red at the mouth
+    t = (w ** .75)[:, None]
+    rim = np.array(sk.srgb(0xff7a24))
+    lip = np.array(sk.srgb(0x6a1406))
+    along = w > .02
+    col[along] = (rim * (1 - t[along]) + lip * t[along])
+    gain[along] = 2.8 * (1 - w[along] ** .75) + .9 * w[along] ** .75
+    bk.colour[heat, :3] = np.round(np.clip(col[heat], 0, 1) * 255).astype(np.uint8)
+    bk.uv1[heat, 1] = gain[heat].astype(np.float32)
 
 
 def wave_env(u):
@@ -753,8 +862,8 @@ def water_half(T, frozen):
     the left is its mirror). Liquid: smooth water with a foam crest; frozen: faceted ice, icicles off the lip, a lit vein."""
     F = water_finishes()
     g = Geo()
-    prof = [(-1.6, -.4), (-1.35, .5), (-1.0, 1.6), (-.62, 2.7), (-.25, 3.6), (.08, 4.25), (.5, 4.62), (.95, 4.68), (1.45, 4.48), (1.85, 4.05),
-            (2.02, 3.5), (1.92, 3.0), (1.62, 2.82), (1.25, 3.05), (.92, 3.25), (.66, 3.1), (.5, 2.7), (.48, 2.0), (.58, 1.2), (.8, .5), (1.05, -.4)]
+    prof = [(-1.45, -.4), (-1.2, .55), (-.9, 1.6), (-.55, 2.65), (-.18, 3.55), (.25, 4.25), (.72, 4.66), (1.25, 4.76), (1.78, 4.56), (2.2, 4.12),
+            (2.45, 3.5), (2.42, 2.85), (2.2, 3.05), (1.95, 3.7), (1.5, 4.05), (1.0, 4.0), (.62, 3.55), (.42, 2.75), (.38, 1.85), (.55, .9), (.95, -.4)]
     nz = (22, 12, 7)[T.i]
     P = np.zeros((nz + 1, len(prof), 3))
     for i in range(nz + 1):
@@ -769,15 +878,26 @@ def water_half(T, frozen):
     for tri in ear_clip([(q[0], q[1]) for q in end]):
         g.face([end[k] for k in tri], F['ice-deep'] if frozen else F['wave-deep'], normal=(0, 0, -1))
     if frozen:
-        pick = lambda nn, cc: F['frost'] if cc[1] > 4.2 else (F['ice'] if nn[0] < .2 else F['ice-deep'])
+        pick = lambda nn, cc: F['frost'] if (cc[1] > 4.2 or cc[1] < .45) else (F['ice'] if nn[0] < .2 else F['ice-deep'])
         grid(g, P, F['ice'], flat=True, inside=(-.1, 2.0, 2.5), wrap_j=True, pick=pick)
+        # a bright rim along the crest and down the curl's edge, proud of the ice
+        rim = Geo()
+        for i in range(nz):
+            for j0, j1, nrm in ((5, 6, (0, 1, 0)), (6, 7, (0, 1, 0)), (8, 9, (1, .4, 0)), (9, 10, (1, 0, 0))):
+                a0, a1, b0, b1 = P[i, j0], P[i + 1, j0], P[i + 1, j1], P[i, j1]
+                lift = np.array(nrm, dtype=np.float64) * .012
+                mid_ = [(a0[c] + b1[c]) / 2 for c in range(3)]
+                mid1 = [(a1[c] + b0[c]) / 2 for c in range(3)]
+                q = [tuple(a0 + lift), tuple(a1 + lift), tuple(np.array(mid1) + lift), tuple(np.array(mid_) + lift)]
+                rim.face(q, F['ice-rim'], normal=nrm)
+        g.extend(rim)
         # icicles off the lip, a vein of light inside the curl
         for i in range(1, nz):
             if H(i, 3) < (.35 if T.i == 0 else .6):
                 continue
             u = i / nz
             sy = wave_env(u)
-            base = (1.92 * (.75 + .25 * sy), 3.0 * sy, WATER_HALF * u)
+            base = (2.3 * (.75 + .25 * sy), 2.95 * sy, WATER_HALF * u)
             L = (.25 + .45 * H(i, 4)) * sy
             if L > .08:
                 cone = Geo()
@@ -786,12 +906,18 @@ def water_half(T, frozen):
         vein = Geo()
         for i in range(nz):
             u0, u1 = i / nz, (i + 1) / nz
-            a = [(1.55 * (.75 + .25 * wave_env(u)), 2.88 * wave_env(u), WATER_HALF * u) for u in (u0, u1)]
-            b = [(.95 * (.75 + .25 * wave_env(u)), 3.2 * wave_env(u), WATER_HALF * u) for u in (u0, u1)]
-            vein.face([a[0], a[1], b[1], b[0]], F['ice-glow'], normal=(1, -.6, 0))
+            a = [(1.9 * (.75 + .25 * wave_env(u)), 3.62 * wave_env(u) - .012, WATER_HALF * u) for u in (u0, u1)]
+            b = [(1.05 * (.75 + .25 * wave_env(u)), 3.95 * wave_env(u) - .012, WATER_HALF * u) for u in (u0, u1)]
+            vein.face([a[0], a[1], b[1], b[0]], F['ice-glow'], normal=(.3, -1, 0))
         g.extend(vein)
     else:
-        pick = lambda nn, cc: F['foam'] if cc[1] > 4.5 else F['wave']
+        def pick(nn, cc):
+            if cc[1] > 4.5:
+                return F['foam']
+            # the curl's inside and the lip, thin enough to be lit through
+            if cc[1] > 2.55 and cc[0] > .35 * (.75 + .25 * wave_env(cc[2] / WATER_HALF)):
+                return F['wave-glow']
+            return F['wave']
         grid(g, P, F['wave'], inside=(-.1, 2.0, 2.5), wrap_j=True, pick=pick)
     return g
 
@@ -849,14 +975,17 @@ def spire_at(i, y=0.0):
 
 def storm_finishes():
     F = {}
-    F['slate'] = sk.fin('storm-slate', 0x2c3238, sk.DETAIL_FLAG, smooth=.35, dirt=.8, moss=.2, wear=.35)
-    F['slate-top'] = sk.fin('storm-slate-top', 0x363d46, sk.DETAIL_FLAG, smooth=.55, dirt=.6, wear=.2)
+    F['slate'] = sk.fin('storm-slate', 0x1b1f25, sk.DETAIL_CARVED, smooth=.3, dirt=.8, moss=.15, wear=.3)
+    F['slate-top'] = sk.fin('storm-slate-top', 0x181c22, sk.DETAIL_CARVED, smooth=.35, dirt=.5, wear=.25)
     F['rock'] = sk.fin('storm-rock', 0x2c3138, sk.DETAIL_CARVED, smooth=.2, dirt=1.0, moss=.3)
     F['obelisk'] = sk.fin('storm-obelisk', 0x2e3036, sk.DETAIL_CARVED, smooth=.3, dirt=.8, wear=.5)
     F['copper'] = sk.fin('storm-copper', 0x4f8a78, sk.DETAIL_BRASS, smooth=.5, metal=.7, dirt=.6, wear=.6)
     F['iron'] = sk.fin('storm-iron', 0x2a2c30, sk.DETAIL_IRON, smooth=.55, metal=.85, dirt=.5, wear=.4)
     F['glass'] = sk.fin('storm-fulgurite', 0x0f1614, sk.DETAIL_NONE, smooth=.35, dirt=.2)
-    F['scorch'] = sk.fin('storm-scorch', 0x1a1b1f, sk.DETAIL_FLAG, smooth=.3, dirt=.8)
+    F['scorch'] = sk.fin('storm-scorch', 0x121315, sk.DETAIL_CARVED, smooth=.3, dirt=.8)
+    F['puddle'] = sk.fin('storm-puddle', 0xb4bcff, sk.DETAIL_GLOW, glow=1.0)
+    F['burn'] = sk.fin('storm-burn', 0x070708, sk.DETAIL_CARVED, smooth=.1, dirt=.2)
+    F['burn-hot'] = sk.fin('storm-burn-hot', 0xffb682, sk.DETAIL_GLOW, glow=2.0)
     F['cloud'] = sk.fin('storm-cloud', 0x5a6478, sk.DETAIL_NONE, smooth=0.0, dirt=0.0)
     F['peak'] = sk.fin('storm-peak', 0x3a4250, sk.DETAIL_CARVED, smooth=.1, dirt=.6)
     F['snow'] = sk.fin('storm-snow', 0x8c97a8, sk.DETAIL_PLASTER, smooth=.3, dirt=.2)
@@ -868,8 +997,20 @@ def storm_finishes():
 def lightning_set(T):
     F = storm_finishes()
     plateau, spires, far = Geo(), Geo(), Geo()
-    crater = Geo()
-    # the plateau: fractured slate slabs, stacked in places; the crater's ring left open
+    crater, puddles, scorch = Geo(), Geo(), Geo()
+
+    def on_top(p, lift, tilt, inset, rough, seed):
+        # an inset over a slab's top, conforming to it: the outline pulled in, its corners roughened
+        cxp = sum(q[0] for q in p) / len(p)
+        czp = sum(q[1] for q in p) / len(p)
+        pts = []
+        for k, (x, z) in enumerate(p):
+            f = (1 - inset) * (1 + rough * S(seed, k, 1))
+            pts.append((cxp + (x - cxp) * f, czp + (z - czp) * f))
+        y1 = FLOOR + lift
+        return [(x, y1 + (x - cxp) * tilt[0] + (z - czp) * tilt[1] + .006, z) for x, z in pts], (cxp, czp)
+    # the plateau: fractured slabs of wet dark rock, stacked in places, pooled with rain; the crater's ring left open; scorched
+    # round it once the bolt lands (rig lightning/scorch), the pools catching every flash (rig lightning/puddles)
     for i, ((cx, cz), poly) in enumerate(hex_cells(15.0, (1.15, 1.15, 1.15)[T.i], 41, jitter=.4)):
         r = math.hypot(cx, cz)
         if r < 2.1 or r > 14.6:
@@ -878,6 +1019,28 @@ def lightning_set(T):
         lift = .05 * S(i, 3) + (.1 if H(i, 4) > .88 else 0) - .02 * max(0.0, r - 10)
         tilt = (S(i, 5) * .05, S(i, 6) * .05)
         prism(plateau, p, -.6, FLOOR + lift, F['slate'], F['slate-top'] if H(i, 7) > .2 else F['scorch'], tilt, chamfer=.025 if (T.bevel and r < 8) else 0)
+        if 2.6 < r < 12.5 and H(i, 90) > .7:
+            pts, c = on_top(p, lift, tilt, .3 + .2 * H(i, 91), .16, 900 + i)
+            for k in range(len(pts)):
+                puddles.face([(c[0], FLOOR + lift + .006, c[1]), pts[k], pts[(k + 1) % len(pts)]], F['puddle'], normal=(0, 1, 0))
+        if r < 5.4:
+            pts, c = on_top(p, lift, tilt, .08 + .1 * H(i, 92), .1, 950 + i)
+            for k in range(len(pts)):
+                scorch.face([(c[0], FLOOR + lift + .006, c[1]), pts[k], pts[(k + 1) % len(pts)]], F['burn'], normal=(0, 1, 0))
+            # a crack burnt hot across most of them, running out from the strike at its own angle
+            if H(i, 94) > .7:
+                continue
+            ang = math.atan2(cz, cx) + .45 * S(i, 95)
+            d = (math.cos(ang), math.sin(ang))
+            nn = (-d[1], d[0])
+            half_len = .18 + .2 * H(i, 96)
+            pa = (c[0] - d[0] * half_len, c[1] - d[1] * half_len)
+            pb = (c[0] + d[0] * half_len, c[1] + d[1] * half_len)
+            w = .022 + .012 * H(i, 93)
+            ya = FLOOR + lift + (pa[0] - c[0]) * tilt[0] + (pa[1] - c[1]) * tilt[1] + .011
+            yb = FLOOR + lift + (pb[0] - c[0]) * tilt[0] + (pb[1] - c[1]) * tilt[1] + .011
+            scorch.face([(pa[0] + nn[0] * w, ya, pa[1] + nn[1] * w), (pb[0] + nn[0] * w, yb, pb[1] + nn[1] * w),
+                         (pb[0] - nn[0] * w, yb, pb[1] - nn[1] * w), (pa[0] - nn[0] * w, ya, pa[1] - nn[1] * w)], F['burn-hot'], normal=(0, 1, 0))
         if H(i, 8) > .9 and r > 4:
             prism(plateau, shrink(p, .3), FLOOR + lift, FLOOR + lift + .12, F['slate'], F['slate-top'], (S(i, 9) * .08, S(i, 10) * .08), chamfer=.02 if T.bevel else 0)
     # the edge: a cliff of broken rock falling away into the cloud sea
@@ -994,7 +1157,8 @@ def lightning_set(T):
             y = -13.0 + 2.2 * n1(math.cos(a) * r * .05, 0, math.sin(a) * r * .05, .7, 81, 3) + .8 * S(i, j, 82)
             P[i, j] = (math.cos(a) * r, y, math.sin(a) * r)
     surf(far, P, F['cloud'], wrap_j=True, facing=(0, 1, 0))
-    props = {'lightning/plateau': plateau, 'lightning/spires': spires, 'lightning/far': far, 'lightning/crater': crater}
+    props = {'lightning/plateau': plateau, 'lightning/spires': spires, 'lightning/far': far, 'lightning/crater': crater,
+             'lightning/puddles': puddles, 'lightning/scorch': scorch}
     for i, g in enumerate(seams):
         props['lightning/seams/%d' % i] = g
     return props
@@ -1009,10 +1173,10 @@ DARK_RING, DARK_GATE_Z, DARK_MOON_R = 11.5, -14.0, 5.4
 
 def dark_finishes():
     F = {}
-    F['obsidian'] = sk.fin('dark-obsidian', 0x0e0c14, sk.DETAIL_NONE, smooth=.35, dirt=.15, wear=.5)
-    F['obsidian-edge'] = sk.fin('dark-obsidian-edge', 0x1c1828, sk.DETAIL_NONE, smooth=.3, dirt=.3)
-    F['ash'] = sk.fin('dark-ash', 0x5d5866, sk.DETAIL_PLASTER, smooth=.05, dirt=.4)
-    F['ash-dark'] = sk.fin('dark-ash-dark', 0x3a3642, sk.DETAIL_PLASTER, smooth=.05, dirt=.5)
+    F['obsidian'] = sk.fin('dark-obsidian', 0x070609, sk.DETAIL_NONE, smooth=.35, dirt=.1, wear=.25)
+    F['obsidian-edge'] = sk.fin('dark-obsidian-edge', 0x110e18, sk.DETAIL_NONE, smooth=.3, dirt=.3)
+    F['ash'] = sk.fin('dark-ash', 0x24202a, sk.DETAIL_PLASTER, smooth=.05, dirt=.4)
+    F['ash-dark'] = sk.fin('dark-ash-dark', 0x18151d, sk.DETAIL_PLASTER, smooth=.05, dirt=.5)
     F['basalt'] = sk.fin('dark-basalt', 0x1f1c26, sk.DETAIL_CARVED, smooth=.35, dirt=.7, wear=.55)
     F['gate'] = sk.fin('dark-gate', 0x2a2632, sk.DETAIL_ASHLAR, smooth=.3, dirt=.8, wear=.6)
     F['mesa'] = sk.fin('dark-mesa', 0x2c2834, sk.DETAIL_CARVED, smooth=.05, dirt=.5)
@@ -1154,19 +1318,39 @@ def fire_props(T):
 
 
 BUILDERS = {'fire': fire_props, 'water': water_set, 'lightning': lightning_set, 'darkness': darkness_set}
-TIERS = ((0, ''), (2, '/low'))   # docs/INTROS-V2.md: "<prop>" the Fine tier, "<prop>/low" the Low tier
+TIERS = ((0, ''), (2, '/low'))
+NO_AO = {'lightning/puddles', 'lightning/scorch'}  # insets a few mm over the slabs: kept out of the occlusion bake   # docs/INTROS-V2.md: "<prop>" the Fine tier, "<prop>/low" the Low tier
 
 
 def bake(geos, ao, floors):
     """Bake (colours, channels) per Geo; AO over the set's whole scene when `ao` (the moving parts each by itself)."""
     keys = [k for k, g in geos.items() if g.faces]
-    statics = [k for k in keys if k.count('/') == 1]
+    statics = [k for k in keys if k.count('/') == 1 and k not in NO_AO]
     aos = dict(zip(statics, sk.bake_ao([geos[k] for k in statics], distance=1.4, samples=16))) if ao and statics else {}
     out = {k: sk.Bake(geos[k], aos.get(k), floors=floors, seed=sum(map(ord, k)) & 1023) for k in keys}
     for k in keys:
         if k.startswith('water/wave/'):
             wave_colours(out[k], geos[k])
+        if k.startswith('water/frozen/'):
+            ice_colours(out[k], geos[k])
+        if k == 'fire/hearth':
+            hearth_colours(out[k], geos[k])
+        if k in DARKENED:
+            darken(out[k], geos[k], *DARKENED[k])
     return out
+
+
+# The sets whose ground takes less of the arena's reflection probe and ambient (both scale by the baked occlusion in
+# NativeStageLit): the storm's wet dark rock and the black obsidian. (finishes, occlusion at most)
+DARKENED = {'lightning/plateau': (('storm-slate', 'storm-slate-top', 'storm-scorch', 'storm-rock'), .42),
+            'darkness/plain': (('dark-obsidian', 'dark-obsidian-edge', 'dark-ash', 'dark-ash-dark'), .2)}
+
+
+def darken(bk, g, names, occ):
+    P, N, S_, F_ = g.arrays()
+    fc = np.repeat(F_, S_)
+    m = np.array([sk.FINS[i].name in names for i in fc], dtype=bool) & ~bk.glow
+    bk.colour[m, 3] = np.minimum(bk.colour[m, 3], int(occ * 255))
 
 
 def build(sets, ao, preview_dir=None, out=None, stats=False):

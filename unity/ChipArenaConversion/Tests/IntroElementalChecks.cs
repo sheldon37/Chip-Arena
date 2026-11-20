@@ -91,6 +91,7 @@ namespace ChipArena.UnityConversion
             var vent=Tuple("FIRE_VENT");Check(Math.Abs(vent[0]-NativeIntroForgeborn.Vent.X)<.002f&&Math.Abs(vent[1]-NativeIntroForgeborn.Vent.Z)<.002f,"FIRE_VENT is Forgeborn's vent");
             var rings=Tuple("FIRE_RINGS");Check(rings.Length==NativeIntroForgeborn.Rings.Length,"FIRE_RINGS count");for(int i=0;i<rings.Length;i++)Check(Math.Abs(rings[i]-NativeIntroForgeborn.Rings[i])<1e-4f,"FIRE_RINGS "+i);
             var rivers=Tuple("FIRE_RIVERS");for(int i=0;i<rivers.Length;i++)Check(Math.Abs(rivers[i]-NativeIntroForgeborn.Rivers[i])<1e-4f,"FIRE_RIVERS "+i);
+            var hearth=Tuple("FIRE_HEARTH");Check(hearth.Length==2&&Math.Abs(hearth[0]-NativeIntroForgeborn.HearthBack)<1e-4f&&Math.Abs(hearth[1]-NativeIntroForgeborn.HearthFront)<1e-4f,"FIRE_HEARTH is Forgeborn's firebox");
             // "A, B = 1, 2" lines
             float Named(string name){var m=Regex.Match(text,@"^([A-Z_, ]+)=\s*([-0-9., ]+)$",RegexOptions.Multiline);foreach(Match l in Regex.Matches(text,@"^([A-Z0-9_, ]+?)\s*=\s*([-0-9.]+(?:\s*,\s*[-0-9.]+)*)\s*(?:#.*)?$",RegexOptions.Multiline)){var names=l.Groups[1].Value.Split(',');var vals=l.Groups[2].Value.Split(',');for(int i=0;i<names.Length&&i<vals.Length;i++)if(names[i].Trim()==name)return float.Parse(vals[i].Trim(),CultureInfo.InvariantCulture);}Check(false,"set script "+name);return 0;}
             void Same(float[] a,float[] b,string what){Check(a.Length==b.Length,what+" count");for(int i=0;i<a.Length;i++)Check(Math.Abs(a[i]-b[i])<1e-4f,what+" "+i);}
@@ -116,12 +117,19 @@ namespace ChipArena.UnityConversion
             foreach(var s in Scripts())
             {
                 if(args.Length>1&&!s.Style.Contains(args[1]))continue;Console.WriteLine(s.Style);
-                for(float t=0;t<=s.IntroTotal+.01f;t+=.25f)
+                var times=new List<float>();for(int i=2;i<args.Length;i++)if(float.TryParse(args[i],NumberStyles.Float,CultureInfo.InvariantCulture,out float at))times.Add(at);
+                if(times.Count==0)for(float t=0;t<=s.IntroTotal+.01f;t+=.25f)times.Add(t);
+                foreach(float t in times)
                 {
                     s.Pose(t,pose,out var root,out var rot);string F(Vector3 v)=>"("+v.X.ToString("0.00",CultureInfo.InvariantCulture)+","+v.Y.ToString("0.00",CultureInfo.InvariantCulture)+","+v.Z.ToString("0.00",CultureInfo.InvariantCulture)+")";
                     var lh=s.Anchor(NativeEntranceAnchor.LeftHand,t);var tip=s.Anchor(NativeEntranceAnchor.LeftTip,t);var d=Vector3.Normalize(tip-lh);
                     s.Camera(t,out var v);
-                    Console.WriteLine($"  t {t:0.00} root {F(root)} head {F(s.Anchor(NativeEntranceAnchor.Head,t))} lhand {F(lh)} tip {F(tip)} axis {F(d)} rhand {F(s.Anchor(NativeEntranceAnchor.RightHand,t))} feet {F(s.Anchor(NativeEntranceAnchor.LeftFoot,t))}{F(s.Anchor(NativeEntranceAnchor.RightFoot,t))} eye {F(v.Eye)} look {F(v.Look)} fov {v.Fov:0}");
+                    // where the model's feet, chest and head top land on a 2.04:1 screen (0,0 the top left; the model's head top is about
+                    // .24 m over the keyed head anchor)
+                    string Screen(Vector3 p){var f=Vector3.Normalize(v.Look-v.Eye);var r=Vector3.Normalize(Vector3.Cross(f,v.Up.LengthSquared()>1e-6f?v.Up:Vector3.UnitY));var u=Vector3.Cross(r,f);var q=p-v.Eye;float z=Vector3.Dot(q,f);if(z<.05f)return "(behind)";float k=(float)Math.Tan(v.Fov*Math.PI/360);return "("+(.5f+Vector3.Dot(q,r)/z/(k*2.04f)/2).ToString("0.00",CultureInfo.InvariantCulture)+","+(.5f-Vector3.Dot(q,u)/z/k/2).ToString("0.00",CultureInfo.InvariantCulture)+")";}
+                    var feet=(s.Anchor(NativeEntranceAnchor.LeftFoot,t)+s.Anchor(NativeEntranceAnchor.RightFoot,t))*.5f;feet.Y=NativeEntranceStage.FloorY;
+                    Console.WriteLine($"  t {t:0.00} root {F(root)} head {F(s.Anchor(NativeEntranceAnchor.Head,t))} lhand {F(lh)} tip {F(tip)} axis {F(d)} rhand {F(s.Anchor(NativeEntranceAnchor.RightHand,t))} feet {F(s.Anchor(NativeEntranceAnchor.LeftFoot,t))}{F(s.Anchor(NativeEntranceAnchor.RightFoot,t))} eye {F(v.Eye)} look {F(v.Look)} fov {v.Fov:0}"
+                        +$" screen feet {Screen(feet)} chest {Screen(s.Anchor(NativeEntranceAnchor.Chest,t))} top {Screen(s.Anchor(NativeEntranceAnchor.Head,t)+new Vector3(0,.24f,0))}");
                 }
             }
         }
