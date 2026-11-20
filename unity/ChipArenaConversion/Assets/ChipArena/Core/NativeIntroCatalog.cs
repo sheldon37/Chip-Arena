@@ -52,16 +52,17 @@ namespace ChipArena.UnityConversion
             NativeIntroEntry.Dev("intro2-showcase","DEV · Pipeline Proof",NativeIntroShowcase.Total,NativeIntroShowcase.CardAt,()=>new NativeIntroShowcase(),"I0","The v2 pipeline end to end: a crane out of the dark, a column of light, the hero frame."),
             //
             // ---- the new default (I2) ----
+            NativeIntroEntry.Default("Cloudbreak",NativeIntroCloudbreak.Total,NativeIntroCloudbreak.CardAt,()=>new NativeIntroCloudbreak(),"I2"),
             //
             // ---- generic intros (I2: five) ----
             //
-            // generic slot 1
+            NativeIntroEntry.Generic("whiteout","Whiteout",NativeIntroWhiteout.Total,NativeIntroWhiteout.CardAt,()=>new NativeIntroWhiteout(),"I2"),
             //
-            // generic slot 2
+            NativeIntroEntry.Generic("slipstream","Slipstream",NativeIntroSlipstream.Total,NativeIntroSlipstream.CardAt,()=>new NativeIntroSlipstream(),"I2"),
             //
-            // generic slot 3
+            NativeIntroEntry.Generic("threshold","Threshold",NativeIntroThreshold.Total,NativeIntroThreshold.CardAt,()=>new NativeIntroThreshold(),"I2"),
             //
-            // generic slot 4
+            NativeIntroEntry.Generic("flashbulb","Flashbulb",NativeIntroFlashbulb.Total,NativeIntroFlashbulb.CardAt,()=>new NativeIntroFlashbulb(),"I2"),
             //
             // generic slot 5
             //
