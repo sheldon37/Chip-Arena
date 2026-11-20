@@ -28,8 +28,10 @@ namespace ChipArena.UnityConversion
         {var p=NativeEntranceMath.RotateY(new Vector3(x,0,z),facing);return new NativeEntrancePose.Step(left,lift,land,p.X+ox,p.Z+oz,yaw+facing,h);}
         public override void Pose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
         {
-            NativeEntrancePose.Feet(t,Start,Steps,feet);NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,feet,HeroAt,RootPath);Arms(t,pose,root,rotation);
+            NativeEntrancePose.Feet(t,Start,Steps,feet);NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,feet,HeroAt,RootPath,HingedLegs);Arms(t,pose,root,rotation);
         }
+        /// <summary>Planted legs as true hinges (NativeEntrancePose.HingedLeg): the v2 intros; the older entrances keep their shortest-turn legs.</summary>
+        protected virtual bool HingedLegs=>false;
         /// <summary>When the pilot settles into its idle under the name card.</summary>
         protected virtual float HeroAt=>NameAt;
         /// <summary>Hand IK over the keyed arms (grips, a palm on the floor, a chip to the chest).</summary>

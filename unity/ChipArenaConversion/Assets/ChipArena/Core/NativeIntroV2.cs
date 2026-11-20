@@ -258,6 +258,11 @@ namespace ChipArena.UnityConversion
         public virtual bool Clip(float t,out string clip,out float time){clip=null;time=0;return false;}
         /// <summary>The fade into the clip at `t` (s).</summary>
         public virtual float Fade(float t)=>.12f;
+        /// <summary>How far the model's free arms are re-placed by its own body at `t` (Core NativeVisualRig Grasp.Relax, the match's idles'
+        /// hang): 0, the default, draws your keyed arms as keyed (docs/INTROS-V2.md 2b); 1 relaxes a free arm hanging below the shoulder line.</summary>
+        public virtual float ArmsRelax(float t)=>0;
+        /// <summary>Planted legs bend as true hinges (NativeEntrancePose.HingedLeg), so the model's knees bend forward, never sideways.</summary>
+        protected override bool HingedLegs=>true;
         /// <summary>The intro's length and its name beat (presentation s; the registry repeats them for the match).</summary>
         public readonly float IntroTotal,IntroNameAt;
         public NativeIntroContext Context{get;set;}

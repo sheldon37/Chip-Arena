@@ -28,11 +28,15 @@ namespace ChipArena.UnityConversion
         }
         // ---- the model's clip (INativeIntroBody) and the hands (INativeIntroHands) ----
         // (Model-native: the hands are the drawn model's joints, VisualJointFrame; without a model the keyed pose's anchors. No rig reads.)
+        /// <summary>The v2 intro's body being bound this frame (VisualIntroPose) and how far its free arms relax (0: as keyed).</summary>
+        private VisualBody introKeyedBody;private float introKeyedRelax;
         private INativeIntroBody introBody;private int introBodyActor=-1,introV2Actor=-1,introModelFrame=-1;private float introBodyClock;private CapturedAnimation.Player introModel;
         /// <summary>Before the intro body is posed: a v2 intro's model clip for this frame, and a weapon intro's weapon in the model's hands.</summary>
         private void IntroV2BodyBegin(NativeEntranceScript script,Actor actor,string style,float t)
         {
             introModel=null;introV2Actor=-1;if(!(script is INativeIntroV2)||actor==null)return;introV2Actor=actor.Id;
+            // (the model's free arms as keyed, unless the intro asks for the match's relax: Core NativeIntroV2Script.ArmsRelax)
+            introKeyedRelax=script is NativeIntroV2Script keyed?Mathf.Clamp01(keyed.ArmsRelax(t)):0;
             var spec=NativeIntroCatalog.Find(style)?.Spec;if(spec!=null)actor.SourceSpec=spec;
             if(script is INativeIntroBody body&&!(script is NativeBladeIntro)){introBody=body;introBodyActor=actor.Id;introBodyClock=t;}
         }
