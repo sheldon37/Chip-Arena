@@ -58,7 +58,9 @@ namespace ChipArena.UnityConversion
         {
             private sealed class SetPiece{public Mesh Mesh;public Matrix4x4 Place;public int Subs;}
             private string bankName;private NativePackBank.Bank bank;private bool failed;private bool low;
-            private readonly Dictionary<string,SetPiece> pieces=new Dictionary<string,SetPiece>(StringComparer.Ordinal);
+            private readonly Dictionary<string,SetPiece> pieces=new Dictionary<string,SetPiece>(StringComparer.Ordinal);private readonly Dictionary<string,string> lowNames=new Dictionary<string,string>(StringComparer.Ordinal);
+            // (each prop's "<prop>/low" name made once, so the Low tier allocates nothing per frame)
+            private string Low(string prop){if(!lowNames.TryGetValue(prop,out var n)){n=prop+"/low";lowNames[prop]=n;}return n;}
             private Material solid,glow;private MaterialPropertyBlock block;private INativeEntranceProps props;
             private static readonly int GlowId=Shader.PropertyToID("_StageGlow"),TintId=Shader.PropertyToID("_StageTint"),GlowFlag=Shader.PropertyToID("_Glow");
             public bool Ready=>bank!=null&&solid!=null;
@@ -86,7 +88,7 @@ namespace ChipArena.UnityConversion
             public bool Has(string prop)=>Find(prop)!=null;
             public void Piece(string prop,System.Numerics.Vector3 at,System.Numerics.Quaternion rotation,float scale,System.Numerics.Vector3 tint,System.Numerics.Vector3 glowTint)
             {
-                if(!Ready)return;SetPiece p=null;if(low)p=Find(prop+"/low");p??=Find(prop);if(p==null)return;
+                if(!Ready||prop==null)return;SetPiece p=null;if(low)p=Find(Low(prop));p??=Find(prop);if(p==null)return;
                 var m=Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(at)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)),Vector3.one*scale)*p.Place;
                 block.Clear();bool tinted=tint.X!=1||tint.Y!=1||tint.Z!=1;if(tinted)block.SetVector(TintId,new Vector4(tint.X,tint.Y,tint.Z,0));block.SetVector(GlowId,new Vector4(glowTint.X,glowTint.Y,glowTint.Z,1));
                 for(int s=0;s<p.Subs;s++)Graphics.DrawMesh(p.Mesh,m,s==0?solid:glow,0,null,s,block,s==0?ShadowCastingMode.TwoSided:ShadowCastingMode.Off,true);
@@ -94,7 +96,7 @@ namespace ChipArena.UnityConversion
             private readonly Matrix4x4[] batch=new Matrix4x4[NativeIntroSetLimits.Batch];private int batched,batchFrame=-1;
             public void Batch(string prop,ReadOnlySpan<System.Numerics.Vector3> at,ReadOnlySpan<System.Numerics.Quaternion> rotation,float scale,System.Numerics.Vector3 tint)
             {
-                if(!Ready)return;if(batchFrame!=Time.frameCount){batchFrame=Time.frameCount;batched=0;}SetPiece p=null;if(low)p=Find(prop+"/low");p??=Find(prop);if(p==null)return;
+                if(!Ready)return;if(batchFrame!=Time.frameCount){batchFrame=Time.frameCount;batched=0;}if(prop==null)return;SetPiece p=null;if(low)p=Find(Low(prop));p??=Find(prop);if(p==null)return;
                 int n=Math.Min(Math.Min(at.Length,rotation.Length),NativeIntroSetLimits.Batch-batched);if(n<=0)return;
                 for(int i=0;i<n;i++)batch[i]=Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(at[i])),CapturedAnimation.Quat(CapturedRig.Mirror(rotation[i])),Vector3.one*scale)*p.Place;
                 batched+=n;block.Clear();bool tinted=tint.X!=1||tint.Y!=1||tint.Z!=1;if(tinted)block.SetVector(TintId,new Vector4(tint.X,tint.Y,tint.Z,0));
