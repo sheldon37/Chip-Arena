@@ -212,6 +212,42 @@ def rockball(g, centre, radii, f, seed, lat=6, lon=9, rough=.22, flatten=0.0):
                 g.face(tri, f, normal=n)
 
 
+def mound(g, centre, radii, f, seed, lat=6, lon=12, rough=.12, flatten=.55, smooth=True):
+    """A soft lump (a snow drift, a cloud's puff): a lat-long ball, noise-displaced, its underside cut flat, smooth shaded."""
+    cx, cy, cz = centre
+    P, Nn = [], []
+    for i in range(lat + 1):
+        phi = -PI / 2 + PI * i / lat
+        row, nrow = [], []
+        for j in range(lon):
+            th = TAU * j / lon + seed
+            d = (math.cos(phi) * math.cos(th), math.sin(phi), math.cos(phi) * math.sin(th))
+            k = 1 + rough * (2 * hash01(seed, i, j % lon) - 1) * (1 if 0 < i < lat else 0)
+            y = d[1] * radii[1] * k
+            lo = -radii[1] * (1 - flatten)
+            y = max(y, lo)
+            row.append(V(cx + d[0] * radii[0] * k, cy + y, cz + d[2] * radii[2] * k))
+            nrow.append(_norm((d[0] / radii[0], d[1] / radii[1], d[2] / radii[2])))
+        row.append(row[0])
+        nrow.append(nrow[0])
+        P.append(row)
+        Nn.append(nrow)
+    for i in range(lat):
+        for j in range(lon):
+            a, b, c, d = P[i][j], P[i][j + 1], P[i + 1][j + 1], P[i + 1][j]
+            na, nb, nc, nd = Nn[i][j], Nn[i][j + 1], Nn[i + 1][j + 1], Nn[i + 1][j]
+            if smooth:
+                if i == lat - 1:
+                    g.face((a, b, c), f, normals=(na, nb, nc))
+                elif i == 0:
+                    g.face((a, c, d), f, normals=(na, nc, nd))
+                else:
+                    g.face((a, b, c, d), f, normals=(na, nb, nc, nd))
+            else:
+                mid = mul(_add(_add(a, b), _add(c, d)), .25)
+                g.face((a, b, c, d), f, normal=_sub(mid, centre))
+
+
 def dome(g, r, f, rings=10, segs=32, lo=-12.0, hi=90.0, centre=(0, 0, 0)):
     """A sky dome seen from inside (normals inward), from `lo` to `hi` degrees of elevation."""
     P = []

@@ -29,6 +29,7 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--deathmatch")DeathmatchChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--deathmatch")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--weapon-flourish")WeaponFlourishChecks.Run(ProjectRoot());
+            if(args.Length==0||args.Length==1&&args[0]=="--intro-generic"){IntroGenericChecks.Run(ProjectRoot());if(args.Length==1)return 0;}
             if(args.Length==1&&args[0]=="--weapon-flourish")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--blind-choices")BlindChoiceChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--blind-choices")return 0;
