@@ -23,7 +23,6 @@ namespace ChipArena.UnityConversion
         /// freeze and its end, the stalks' slide, the sheathing, its click, the stillness under the name.</summary>
         public const float LightningAt=1.35f,DrawAt=2.2f,GrabAt=2.85f,CutAt=3.3f,FreezeAt=3.36f,ResumeAt=4.45f,SlideAt=4.5f,SheatheAt=4.95f,ClickAt=6.05f,StillAt=6.3f;
         // The iai's clip times (Frank_RPG_Katana_S3_Skill01): the blade out of the saya, the cut, held a little past it, its end.
-        private const float IaiCut=1.3f,IaiHeld=1.38f,IaiEnd=2.05f,SheatheFrom=.35f,SheatheEnd=2.3f;
         private static readonly Vector3 Crimson=NativeEntranceFx.Hex(0xff3d6e),Rain=new Vector3(.52f,.6f,.74f),Night=NativeEntranceFx.Hex(0x070a12),Lamp=NativeEntranceFx.Hex(0xffb35c),
             Moon=NativeEntranceFx.Hex(0x9fb4e0),Paper=NativeEntranceFx.Hex(0xffd7a0),Steel=NativeEntranceFx.Hex(0xcfe2ff),Mist=new Vector3(.3f,.34f,.42f);
         public override string Spec=>NativeKatana.Spec;
@@ -51,16 +50,46 @@ namespace ChipArena.UnityConversion
 
         public NativeIntroStillRain():base(NativeIntroCatalog.WeaponPrefix+NativeKatana.Spec,Total,CardAt,CutAt,0xff3d6e)
         {
-            // The keyed rig (the anchors and the Classic body): standing, then the iai's crouch, then standing.
+            // ---- the body (bespoke keys, owner 2026-11-20: no match clips) ----
+            // Feet: together in the rain; the right foot slides forward into the stance and stamps with the cut; drawn back for the stillness.
+            Start=Stance(.13f,.0f,.12f,-.13f,-.04f,-.2f);
+            Steps=new[]{Step(false,DrawAt,DrawAt+.35f,-.17f,.3f,-.15f,.04f),Step(false,CutAt-.06f,CutAt+.02f,-.2f,.55f,-.1f,.06f),Step(false,SheatheAt+.2f,SheatheAt+.6f,-.14f,.05f,-.2f,.04f)};
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            k.Key(0,stand).Root(0,.88f,0,Facing).Planted(1).J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.2f,0,-.15f);
-            k.Key(DrawAt,stand).Root(0,.88f,0,Facing).Planted(1).J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.2f,0,-.15f);
-            k.Key(GrabAt,stand).Root(0,.8f,.05f,Facing+.2f).Planted(1).Drop(-.08f).J(B,.12f).J(LA,-.35f,0,.3f).J(LE,-1.0f).J(RA,-.9f,0,.4f).J(RE,-1.2f);
-            k.Key(CutAt,stand).Root(0,.8f,.12f,Facing-.15f).Planted(1).Drop(-.1f).J(B,.1f).J(RA,-1.45f,0,-.7f).J(LA,-.4f,0,.45f).ImpactKey();
-            k.Key(ResumeAt,stand).Root(0,.8f,.12f,Facing-.15f).Planted(1).Drop(-.1f).J(B,.1f).J(RA,-1.45f,0,-.7f).J(LA,-.4f,0,.45f);
-            k.Key(SheatheAt,stand).Root(0,.84f,.12f,Facing).Planted(1).Drop(-.05f).J(RA,-.9f,0,-.4f).J(LA,-.3f,0,.3f);
-            k.Key(StillAt,stand).Root(0,.88f,.12f,Facing).Planted(1).J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.25f,0,-.15f);
-            k.Key(Total,stand).Root(0,.88f,.12f,Facing).Planted(1).J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.25f,0,-.15f);Keys=k;
+            // Still in the rain, head bowed, the left hand resting on the saya, the right arm loose.
+            k.Key(0,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.02f).J(B,.02f).J(Hd,.24f,0,0).J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.08f,0,-.12f).J(RE,-.25f);
+            // The lightning: the head comes up slowly.
+            k.Key(LightningAt+.55f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.03f).J(B,.03f).J(Hd,.02f,0,0).J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.08f,0,-.12f).J(RE,-.25f);
+            // Into the stance: down onto bent knees, the right foot forward, the right hand across to the hilt, the eyes on the stalks' line.
+            k.Key(DrawAt+.45f,stand).Root(0,.88f,.06f,Facing+.12f).Planted(1).Drop(-.17f).J(B,.14f).J(Sp,.04f).J(C,.04f,.18f,0).J(Hd,-.02f,-.2f,0).J(LL,.1f,0,.12f).J(LK,.55f).J(RL,-.5f,0,-.12f).J(RK,.65f)
+             .J(LA,-.3f,0,.3f).J(LE,-1.0f).J(RA,-.9f,0,.45f).J(RE,-1.3f);
+            k.Key(CutAt-.06f,stand).Root(0,.88f,.06f,Facing+.14f).Planted(1).Drop(-.2f).J(B,.16f).J(Sp,.05f).J(C,.05f,.22f,0).J(Hd,-.02f,-.22f,0).J(LL,.12f,0,.12f).J(LK,.62f).J(RL,-.55f,0,-.12f).J(RK,.72f)
+             .J(LA,-.3f,0,.3f).J(LE,-1.0f).J(RA,-.95f,0,.5f).J(RE,-1.35f);
+            // The draw-cut: the hips snap round, the right foot stamps, the arm out long to the right; the left hand draws the saya back.
+            k.Key(CutAt+.04f,stand).Root(0,.88f,.12f,Facing-.1f).Planted(1).Drop(-.24f).J(B,.18f).J(Sp,.04f).J(C,.02f,-.3f,0).J(Hd,-.04f,.05f,0).J(LL,.25f,0,.12f).J(LK,.45f).J(RL,-.75f,0,-.12f).J(RK,.95f)
+             .J(LA,.25f,0,.35f).J(LE,-1.1f).J(RA,-1.4f,0,-.8f).J(RE,-.1f).ImpactKey();
+            // Held through the freeze, as still as the rain.
+            k.Key(ResumeAt,stand).Root(0,.88f,.12f,Facing-.1f).Planted(1).Drop(-.25f).J(B,.18f).J(Sp,.04f).J(C,.02f,-.31f,0).J(Hd,-.04f,.06f,0).J(LL,.25f,0,.12f).J(LK,.46f).J(RL,-.76f,0,-.12f).J(RK,.96f)
+             .J(LA,.25f,0,.35f).J(LE,-1.1f).J(RA,-1.4f,0,-.8f).J(RE,-.1f);
+            // The chiburi: a sharp flick of the blade down to the right.
+            k.Key(ResumeAt+.16f,stand).Root(0,.88f,.12f,Facing-.1f).Planted(1).Drop(-.27f).J(B,.2f).J(C,.04f,-.25f,0).J(Hd,.02f,.04f,0).J(LL,.25f,0,.12f).J(LK,.5f).J(RL,-.78f,0,-.12f).J(RK,1.0f)
+             .J(LA,.25f,0,.35f).J(LE,-1.1f).J(RA,-.9f,0,-.7f).J(RE,-.2f).ImpactKey();
+            // The sheathing: the hilt raised across the front, the tip set in the saya's mouth, the blade slid home along it.
+            k.Key(SheatheAt+.35f,stand).Root(0,.88f,.06f,Facing+.1f).Planted(1).Drop(-.14f).J(B,.08f).J(C,0,.25f,0).J(Hd,.1f,-.12f,0).J(LL,.1f,0,.12f).J(LK,.4f).J(RL,-.35f,0,-.12f).J(RK,.45f)
+             .J(LA,-.3f,0,.3f).J(LE,-1.0f).J(RA,-1.5f,0,.4f).J(RE,-1.4f);
+            k.Key(ClickAt,stand).Root(0,.88f,.06f,Facing+.1f).Planted(1).Drop(-.1f).J(B,.06f).J(C,0,.2f,0).J(Hd,.14f,-.1f,0).J(LL,.12f,0,.12f).J(LK,.3f).J(RL,-.25f,0,-.12f).J(RK,.35f)
+             .J(LA,-.3f,0,.3f).J(LE,-1.0f).J(RA,-.9f,0,.45f).J(RE,-1.3f).ImpactKey();
+            // Stillness: upright, the hand resting on the hilt, chin level.
+            k.Key(StillAt+.5f,stand).Root(0,.88f,.03f,Facing).Planted(1).Drop(-.04f).J(B,.02f).J(C,-.04f,.12f,0).J(Hd,-.04f,-.04f,0).J(LL,0,0,.12f).J(LK,.15f).J(RL,-.08f,0,-.12f).J(RK,.18f)
+             .J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.9f,0,.45f).J(RE,-1.3f);
+            k.Key(Total,stand).Root(0,.88f,.03f,Facing).Planted(1).Drop(-.04f).J(B,.02f).J(C,-.05f,.12f,0).J(Hd,-.05f,-.04f,0).J(LL,0,0,.12f).J(LK,.15f).J(RL,-.08f,0,-.12f).J(RK,.18f)
+             .J(LA,-.25f,0,.25f).J(LE,-.9f).J(RA,-.9f,0,.45f).J(RE,-1.3f);Keys=k;
+            // ---- the drawn blade's way, from the draw to the end of the chiburi (the right hand's grip and the blade, the pilot's frame) ----
+            DrawCut.Key(CutAt-.04f,V(.06f,.8f,.32f),V(.2f,-.6f,-.77f))
+                 .Key(CutAt-.01f,V(-.05f,.92f,.5f),V(-.2f,.05f,.98f)).Pass()
+                 .Key(CutAt+.04f,V(-.5f,1.0f,.42f),V(-.82f,.12f,.56f)).Impact()
+                 .Key(ResumeAt,V(-.5f,1.0f,.42f),V(-.82f,.12f,.56f))
+                 .Key(ResumeAt+.16f,V(-.42f,.82f,.4f),V(-.55f,-.55f,.62f)).Impact()
+                 .Key(SheatheAt,V(-.36f,.86f,.42f),V(-.5f,-.5f,.7f));
             // The camera: locked off in the rain; low in front of its left for the stance; close on the saya's mouth; the cut seen wide;
             // the frozen moment ridden along the cut's line; time back, wide on the stalks; the sheathing; the click low; the hero.
             // (the glide ends short of the bamboo clump behind on the left, looking on to the stalks the cut takes)
@@ -87,26 +116,37 @@ namespace ChipArena.UnityConversion
             var d=hand-Grip;view.Eye+=d;view.Look+=d;
         }
 
-        // ---- the model's clips (the Katana's set: NativeBladeMotion.KatanaExtra) ----
-        public override bool Clip(float t,out string clip,out float time)
+        // ---- the body: keyed (no match clips): the hands on the saya and the hilt, the drawn blade on its way ----
+        private readonly NativeIntroWield DrawCut=new NativeIntroWield();
+        // The saya's mouth on the pelvis and its axis (mouth to end): the model's rest (NativeKatanaSaya: 11 cm left, 13 up, 15 ahead of the
+        // pelvis, 48 degrees under level, down and out along the left thigh), put on the keyed pelvis.
+        private static readonly Vector3 SayaMouth=new Vector3(.11f,.13f,.15f),SayaAxis=Vector3.Normalize(new Vector3(.25f,-.74f,-.62f));
+        private const float BladeLong=1.0f,Hilt=.12f;
+        private static void Saya(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,out Vector3 mouth,out Vector3 axis)
         {
-            const string K="Frank_RPG_Katana_";
-            if(t<DrawAt){clip=K+"Unequip_Idle";time=.5f+t;return true;}
-            if(t<SheatheAt)
-            {
-                clip=NativeBladeMotion.KatanaIai;
-                // The stance and the hand on the hilt at the clip's pace, the cut fast, held just past it through the freeze, then on to its end.
-                if(t<GrabAt)time=NativeKatanaSaya.IaiDraw*NativeEntranceMath.Clamp01((t-DrawAt)/(GrabAt-DrawAt));
-                else if(t<CutAt)time=NativeEntranceMath.Lerp(NativeKatanaSaya.IaiDraw,IaiCut,NativeEntranceMath.EaseIn(NativeEntranceMath.Clamp01((t-GrabAt)/(CutAt-GrabAt)))*.35f+.65f*NativeEntranceMath.Clamp01((t-GrabAt)/(CutAt-GrabAt)));
-                else if(t<ResumeAt)time=IaiCut+(IaiHeld-IaiCut)*NativeEntranceMath.Smooth((t-CutAt)/(FreezeAt-CutAt));
-                else time=NativeEntranceMath.Lerp(IaiHeld,IaiEnd,NativeEntranceMath.Clamp01((t-ResumeAt)/(SheatheAt-ResumeAt)));
-                return true;
-            }
-            if(t<StillAt){clip=NativeBladeMotion.KatanaSheathe;time=Fit(t,SheatheAt,ClickAt,StillAt,SheatheFrom,NativeKatanaSaya.SheatheClick,SheatheEnd);return true;}
-            clip=K+"Unequip_Idle";time=1.2f+(t-StillAt);return true;
+            pose.World();var turn=NativeEntrancePose.WorldRotation(pose,rotation,CapturedRig.Pelvis);
+            mouth=NativeEntrancePose.Point(pose,root,rotation,CapturedRig.Pelvis,Vector3.Zero)+Vector3.Transform(SayaMouth,turn);axis=Vector3.Transform(SayaAxis,turn);
         }
-        public override bool Sheathed(float t)=>t<GrabAt||t>=ClickAt-.02f;
-        public override float Fade(float t)=>t>=DrawAt-.02f&&t<DrawAt+.45f?.3f:t>=SheatheAt-.02f&&t<SheatheAt+.3f?.22f:t>=StillAt-.02f&&t<StillAt+.4f?.3f:.12f;
+        protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
+        {
+            Saya(pose,root,rotation,out var mouth,out var axis);
+            // The left hand keeps the saya just under its mouth, fingers along it.
+            WieldAt(pose,root,rotation,true,mouth+axis*.1f,axis,1);
+            // The right hand: across to the hilt for the stance; out on the blade's way through the draw, the freeze and the chiburi; back
+            // along the saya's axis for the sheathing (the tip in the mouth, slid home to the click); on the hilt after.
+            float onHilt=NativeEntranceMath.Smooth((t-DrawAt-.05f)/.4f);
+            if(t<CutAt-.04f){if(onHilt>.001f)WieldAt(pose,root,rotation,false,mouth-axis*Hilt,axis,onHilt);return;}
+            if(t<SheatheAt){Wield(DrawCut,t,pose,root,rotation,false);return;}
+            // (the slide: from the tip at the mouth to the hilt at it, slowing as it seats)
+            float slide=NativeEntranceMath.Smooth((t-SheatheAt-.35f)/(ClickAt-SheatheAt-.35f)),h=Hilt+(BladeLong)*(1-slide);
+            var seat=mouth-axis*h;float reach=NativeEntranceMath.Smooth((t-SheatheAt)/.35f);
+            if(reach<.999f){DrawCut.At(SheatheAt,out var g,out var b,out _);var f=Vector3.Transform(Vector3.UnitZ,rotation);float yaw=(float)Math.Atan2(f.X,f.Z);
+                var from=new Vector3(root.X,root.Y-.88f+NativeEntranceStage.FloorY,root.Z)+NativeEntranceMath.RotateY(g,yaw);var fromDir=NativeEntranceMath.RotateY(b,yaw);
+                WieldAt(pose,root,rotation,false,Vector3.Lerp(from,seat,reach),Vector3.Normalize(Vector3.Lerp(fromDir,axis,reach)),1);}
+            else WieldAt(pose,root,rotation,false,seat,axis,1);
+        }
+        protected override float TipLength(bool left)=>left?.15f:BladeLong;
+        public override bool Sheathed(float t)=>t<CutAt-.04f||t>=ClickAt-.02f;
 
         // ---- the rain's own clock: it stops in the freeze ----
         /// <summary>The rain's time at `t`: the clock, stopped from the freeze to the resume (and carried on from there).</summary>

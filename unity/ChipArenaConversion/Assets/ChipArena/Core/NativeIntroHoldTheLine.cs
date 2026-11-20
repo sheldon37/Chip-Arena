@@ -21,7 +21,6 @@ namespace ChipArena.UnityConversion
         /// <summary>The beats (presentation s): the plant, the launch on the ridge, the guard raised, the barrage's hits, the silence, the bash, the stance.</summary>
         public const float PlantAt=1.2f,LaunchAt=2.0f,GuardAt=2.35f,SilenceAt=4.65f,BashAt=5.3f,StanceAt=6.15f;
         public static readonly float[] Hits={2.75f,3.15f,3.5f,3.9f,4.3f};
-        private const float HitWindow=.34f,BashLength=1.067f;
         private static readonly Vector3 Fire=NativeEntranceFx.Hex(0xff8a2c),Hot=NativeEntranceFx.Hex(0xffd27a),Dusk=NativeEntranceFx.Hex(0xff9a5c),Steel=NativeEntranceFx.Hex(0x8cceff),
             Smoke=new Vector3(.12f,.1f,.1f),Earth=NativeEntranceFx.Hex(0x4a3a2c),Sky=NativeEntranceFx.Hex(0x2a1c22);
         public override string Spec=>"shield";

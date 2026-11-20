@@ -276,18 +276,15 @@ namespace ChipArena.UnityConversion
             NativeEntrancePose.Reach(pose,root,rotation,left,at,CapturedRig.Basis(x,y,z),weight);
         }
 
-        // ---- the game rig in the game's own capture of a pack clip ----
-        private readonly float[] captureRow=new float[CapturedClip.Channels];
-        /// <summary>
-        /// Poses the keyed rig (the anchors, the Classic body) as the game's own capture of a pack clip (Core CapturedClips: a melee set's
-        /// idle, walk, cuts, block; `set` 0 sword, 1 daggers, 2 greatsword, 3 shield), the weapon hand on its captured grip. The model holds
-        /// its weapon the way it is held on the first frame its clip plays (the visual body's hold: the game hand against the model's), so an
-        /// intro whose model opens on the same pack clip as this capture holds it as the match does, where the two rigs play one clip too.
-        /// </summary>
-        protected void Captured(int set,int clip,float time,CapturedRig.Pose pose)
+        /// <summary>Solves arm `left` so its wrist is at `at` (world, source frame) with the blade along `blade`, rolled toward the shoulder.</summary>
+        protected static void WieldAt(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,Vector3 at,Vector3 blade,float weight)
         {
-            // (the capture loops its idle and clamps a cut to its ends itself)
-            var c=CapturedClips.Sets[set][clip];c.Sample(Math.Max(0,time),captureRow);CapturedRig.Sample(captureRow,set,pose);
+            if(weight<=.001f)return;var z=Vector3.Normalize(blade);
+            pose.World();var shoulder=NativeEntrancePose.Point(pose,root,rotation,left?CapturedRig.LArm:CapturedRig.RArm,Vector3.Zero);
+            var y=shoulder-at;y-=z*Vector3.Dot(y,z);
+            if(y.LengthSquared()<1e-4f){y=Vector3.UnitY-z*z.Y;if(y.LengthSquared()<1e-4f)y=Vector3.UnitZ;}
+            y=Vector3.Normalize(y);var x=Vector3.Cross(y,z);
+            NativeEntrancePose.Reach(pose,root,rotation,left,at,CapturedRig.Basis(x,y,z),weight);
         }
 
         // ---- this frame's camera (the rig at `t`, as Camera draws it), for streaks laid onto their head's camera plane ----

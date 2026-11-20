@@ -19,8 +19,6 @@ namespace ChipArena.UnityConversion
         public const float Total=7.4f,CardAt=5.9f;
         /// <summary>The beats (presentation s): the eyes, the reveal, the coil, the leap, its top, the landing strike, the rise.</summary>
         public const float EyesAt=1.05f,RevealAt=1.45f,CoilAt=2.75f,LeapAt=3.25f,ApexAt=3.55f,LandAt=3.95f,RiseAt=4.55f,StandAt=4.75f;
-        // The pounce's clip times (Frank_Rogue_Combination_05_2: the long low lunge with both blades out): the coil, the lunge, the blow, its end.
-        private const float PounceCoil=.3f,PounceLunge=.95f,PounceHit=1.28f,PounceEnd=1.85f;
         private static readonly Vector3 Venom=NativeEntranceFx.Hex(0x7dff3a),Bile=NativeEntranceFx.Hex(0xd9ff8a),Fumes=NativeEntranceFx.Hex(0x4dd22e),Moon=NativeEntranceFx.Hex(0xa9c4e8),
             Night=NativeEntranceFx.Hex(0x040705),Mist=new Vector3(.2f,.26f,.24f),Firefly=NativeEntranceFx.Hex(0xd8ff7a),Earth=NativeEntranceFx.Hex(0x3a2c1c),Leaf=NativeEntranceFx.Hex(0x3f5a26);
         public override string Spec=>NativeFangs.Spec;
@@ -33,14 +31,65 @@ namespace ChipArena.UnityConversion
         public NativeIntroApex():base(NativeIntroCatalog.WeaponPrefix+NativeFangs.Spec,Total,CardAt,LandAt,0x7dff3a)
         {
             RootPath=(t,r)=>r+Way(t);
+            // ---- the body (bespoke keys, owner 2026-11-20: no match clips): the root stands at .88 over the surface under it (the lintel's
+            // top, then the floor: Way carries it), the crouch is the body's drop; on the lintel the feet are planted on its top (Arms) ----
+            Start=Stance(.2f,.18f,.2f,-.22f,-.2f,-.5f);
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            k.Key(0,stand).Root(0,.62f,0,Facing).Planted(0).Drop(-.24f).J(B,.35f).J(LA,-.5f,0,.4f).J(RA,-.5f,0,-.4f);
-            k.Key(CoilAt,stand).Root(0,.6f,0,Facing).Planted(0).Drop(-.26f).J(B,.4f).J(LA,-.6f,0,.5f).J(RA,-.6f,0,-.5f);
-            k.Key(LeapAt,stand).Root(0,.56f,0,Facing).Planted(0).Drop(-.3f).J(B,.45f).J(LA,-.9f,0,.6f).J(RA,-.9f,0,-.6f);
-            k.Key(ApexAt,stand).Root(0,.86f,0,Facing).Planted(0).J(B,.2f).J(LA,-1.6f,0,.5f).J(RA,-1.6f,0,-.5f).J(LL,-.8f).J(LK,1.2f).J(RL,-.4f).J(RK,1.0f).PassKey();
-            k.Key(LandAt,stand).Root(0,.6f,0,Facing).Planted(1).Drop(-.28f).J(B,.55f).J(LA,-1.2f,0,.3f).J(RA,-1.2f,0,-.3f).ImpactKey();
-            k.Key(RiseAt+.2f,stand).Root(0,.8f,0,Facing).Planted(1).Drop(-.08f).J(B,.15f).J(LA,-.4f,0,.35f).J(RA,-.4f,0,-.35f);
-            k.Key(Total,stand).Root(0,.84f,0,Facing).Planted(1).Drop(-.05f).J(B,.1f).J(LA,-.35f,0,.3f).J(RA,-.35f,0,-.3f);Keys=k;
+            // On the lintel: a low predator's crouch, leaning out over the edge, head up, one fang down at the stone, the other back.
+            k.Key(0,stand).Root(0,.88f,0,Facing).Planted(0).Drop(-.44f).J(B,.55f).J(Sp,.12f).J(C,.08f,.05f,0).J(Hd,-.5f,.05f,0).J(LL,-1.3f,0,.22f).J(LK,2.0f).J(RL,-.9f,0,-.2f).J(RK,2.1f)
+             .J(RA,-.8f,0,-.3f).J(RE,-.4f).J(LA,.3f,0,.4f).J(LE,-.6f);
+            k.Key(EyesAt,stand).Root(0,.88f,0,Facing).Planted(0).Drop(-.45f).J(B,.56f).J(Sp,.12f).J(C,.08f,.05f,0).J(Hd,-.58f,.05f,0).J(LL,-1.3f,0,.22f).J(LK,2.0f).J(RL,-.9f,0,-.2f).J(RK,2.1f)
+             .J(RA,-.8f,0,-.3f).J(RE,-.4f).J(LA,.3f,0,.4f).J(LE,-.6f);
+            // It turns its head down to the prey below and shifts its weight onto the forward foot.
+            k.Key(RevealAt+.35f,stand).Root(0,.88f,0,Facing).Planted(0).Drop(-.46f).J(B,.6f).J(Sp,.12f).J(C,.1f,-.08f,0).J(Hd,-.3f,-.25f,0).J(LL,-1.35f,0,.22f).J(LK,2.05f).J(RL,-.85f,0,-.2f).J(RK,2.05f)
+             .J(RA,-.85f,0,-.3f).J(RE,-.45f).J(LA,.25f,0,.4f).J(LE,-.65f);
+            k.Key(CoilAt-.2f,stand).Root(0,.88f,0,Facing).Planted(0).Drop(-.46f).J(B,.6f).J(Sp,.12f).J(C,.1f,-.06f,0).J(Hd,-.3f,-.2f,0).J(LL,-1.35f,0,.22f).J(LK,2.05f).J(RL,-.85f,0,-.2f).J(RK,2.05f)
+             .J(RA,-.85f,0,-.3f).J(RE,-.45f).J(LA,.25f,0,.4f).J(LE,-.65f);
+            // The coil: lower still, both fangs drawn back along the body, the haunches loaded.
+            k.Key(LeapAt-.06f,stand).Root(0,.88f,0,Facing).Planted(0).Drop(-.52f).J(B,.7f).J(Sp,.14f).J(C,.12f,0,0).J(Hd,-.45f,0,0).J(LL,-1.45f,0,.22f).J(LK,2.2f).J(RL,-1.0f,0,-.2f).J(RK,2.2f)
+             .J(RA,.6f,0,-.35f).J(RE,-.5f).J(LA,.6f,0,.35f).J(LE,-.5f);
+            // The leap: the legs drive it out long, the arms swinging forward.
+            k.Key(LeapAt+.12f,stand).Root(0,.88f,0,Facing).Planted(0).Drop(-.05f).J(B,.35f).J(Sp,.05f).J(C,-.05f,0,0).J(Hd,-.2f,0,0).J(LL,-.2f,0,.14f).J(LK,.2f).J(RL,.25f,0,-.14f).J(RK,.35f)
+             .J(RA,-1.4f,0,-.25f).J(RE,-.3f).J(LA,-1.4f,0,.25f).J(LE,-.3f).PassKey();
+            // The top: stretched out over the lens, the fangs raised, the legs trailing.
+            k.Key(ApexAt,stand).Root(0,.88f,0,Facing).Planted(0).Drop(0).J(B,.3f).J(Sp,0).J(C,-.12f,0,0).J(Hd,-.1f,0,0).J(LL,-.35f,0,.14f).J(LK,1.1f).J(RL,.15f,0,-.14f).J(RK,1.35f)
+             .J(RA,-2.3f,0,-.3f).J(RE,-.6f).J(LA,-2.3f,0,.3f).J(LE,-.6f).PassKey();
+            // Falling into the strike: the knees come through, the fangs high.
+            k.Key(LandAt-.1f,stand).Root(0,.88f,0,Facing).Planted(0).Drop(-.05f).J(B,.25f).J(C,-.1f,0,0).J(Hd,-.15f,0,0).J(LL,-.9f,0,.16f).J(LK,1.0f).J(RL,-.6f,0,-.16f).J(RK,1.1f)
+             .J(RA,-2.6f,0,-.35f).J(RE,-.5f).J(LA,-2.6f,0,.35f).J(LE,-.5f);
+            // The strike: both fangs driven into the earth, a deep crouch, the head up at the lens.
+            k.Key(LandAt,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.42f).J(B,.6f).J(Sp,.12f).J(C,.12f,0,0).J(Hd,-.45f,0,0).J(LL,-1.25f,0,.2f).J(LK,1.9f).J(RL,-.75f,0,-.2f).J(RK,1.95f)
+             .J(RA,-.9f,0,-.25f).J(RE,-.2f).J(LA,-.9f,0,.25f).J(LE,-.2f).ImpactKey();
+            k.Key(LandAt+.35f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.45f).J(B,.62f).J(Sp,.12f).J(C,.12f,0,0).J(Hd,-.5f,0,0).J(LL,-1.28f,0,.2f).J(LK,1.95f).J(RL,-.78f,0,-.2f).J(RK,2.0f)
+             .J(RA,-.9f,0,-.25f).J(RE,-.2f).J(LA,-.9f,0,.25f).J(LE,-.2f);
+            // It rises slowly, the fangs drawn out of the earth and spread low, into a hunter's stance.
+            k.Key(RiseAt+.15f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.26f).J(B,.35f).J(Sp,.06f).J(C,.04f,0,0).J(Hd,-.2f,0,0).J(LL,-.8f,0,.2f).J(LK,1.2f).J(RL,-.45f,0,-.2f).J(RK,1.25f)
+             .J(RA,-.6f,0,-.7f).J(RE,-.3f).J(LA,-.6f,0,.7f).J(LE,-.3f);
+            k.Key(StandAt+.5f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.17f).J(B,.18f).J(Sp,.04f).J(C,0,0,0).J(Hd,-.06f,0,0).J(LL,-.45f,0,.2f).J(LK,.7f).J(RL,-.2f,0,-.2f).J(RK,.75f)
+             .J(RA,-.45f,0,-.75f).J(RE,-.35f).J(LA,-.45f,0,.75f).J(LE,-.35f);
+            k.Key(Total,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.17f).J(B,.16f).J(Sp,.04f).J(C,0,.04f,0).J(Hd,-.08f,.04f,0).J(LL,-.45f,0,.2f).J(LK,.7f).J(RL,-.2f,0,-.2f).J(RK,.75f)
+             .J(RA,-.45f,0,-.75f).J(RE,-.35f).J(LA,-.45f,0,.75f).J(LE,-.35f);Keys=k;
+            // ---- the fangs' ways (each hand's grip and its blade, in the pilot's frame over the surface it stands on) ----
+            RightFang.Key(0,V(-.2f,.32f,.48f),V(0,-.65f,.76f)).Key(CoilAt-.2f,V(-.22f,.3f,.5f),V(0,-.7f,.71f))
+                .Key(LeapAt-.06f,V(-.28f,.55f,-.12f),V(0,.15f,-.99f))
+                .Key(LeapAt+.12f,V(-.22f,1.1f,.42f),V(0,.35f,.94f)).Pass()
+                .Key(ApexAt,V(-.24f,1.5f,.42f),V(0,-.45f,.89f)).Pass()
+                .Key(LandAt-.1f,V(-.22f,1.62f,.22f),V(0,-.1f,.99f))
+                .Key(LandAt,V(-.2f,.3f,.62f),V(0,-.95f,.3f)).Impact()
+                .Key(LandAt+.35f,V(-.2f,.28f,.6f),V(0,-.96f,.28f))
+                .Key(RiseAt+.15f,V(-.34f,.66f,.48f),V(-.4f,-.6f,.69f))
+                .Key(StandAt+.5f,V(-.42f,.8f,.26f),V(-.6f,-.55f,.58f))
+                .Key(Total,V(-.42f,.8f,.26f),V(-.6f,-.55f,.58f));
+            LeftFang.Key(0,V(.26f,.5f,-.08f),V(.15f,-.45f,-.88f)).Key(CoilAt-.2f,V(.26f,.5f,-.06f),V(.15f,-.45f,-.88f))
+                .Key(LeapAt-.06f,V(.28f,.55f,-.12f),V(0,.15f,-.99f))
+                .Key(LeapAt+.12f,V(.22f,1.1f,.42f),V(0,.35f,.94f)).Pass()
+                .Key(ApexAt,V(.24f,1.5f,.42f),V(0,-.45f,.89f)).Pass()
+                .Key(LandAt-.1f,V(.22f,1.62f,.22f),V(0,-.1f,.99f))
+                .Key(LandAt,V(.2f,.3f,.62f),V(0,-.95f,.3f)).Impact()
+                .Key(LandAt+.35f,V(.2f,.28f,.6f),V(0,-.96f,.28f))
+                .Key(RiseAt+.15f,V(.34f,.66f,.48f),V(.4f,-.6f,.69f))
+                .Key(StandAt+.5f,V(.42f,.8f,.26f),V(.6f,-.55f,.58f))
+                .Key(Total,V(.42f,.8f,.26f),V(.6f,-.55f,.58f));
             // The camera: low through the ferns (a little handheld), up to the lintel as the eyes open, close on the head, the prey's eye on the
             // floor as it leaps at the lens (slowed at the top), low and wide on the strike, the hero.
             var perchHead=Perch+new Vector3(0,.8f+NativeEntranceStage.FloorY,0);
@@ -63,21 +112,19 @@ namespace ChipArena.UnityConversion
             return Landing;
         }
 
-        // ---- the model's clips (the Fangs' set: NativeBladeMotion.FangsExtra) ----
-        public override bool Clip(float t,out string clip,out float time)
+        // ---- the body: keyed (no match clips): both arms solved onto the fangs' ways, the feet planted on the lintel's top until the leap ----
+        private readonly NativeIntroWield RightFang=new NativeIntroWield(),LeftFang=new NativeIntroWield();
+        protected override float TipLength(bool left)=>.42f;
+        protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
         {
-            if(t<CoilAt){clip="Frank_Stealth_Kill_Sneak_Idle";time=t;return true;}
-            if(t<RiseAt)
+            if(t<LeapAt+.06f)
             {
-                clip=NativeBladeMotion.FangsPounce;
-                time=t<LeapAt?NativeEntranceMath.Lerp(PounceCoil,PounceLunge,NativeEntranceMath.Clamp01((t-CoilAt)/(LeapAt-CoilAt)))
-                    :t<LandAt?NativeEntranceMath.Lerp(PounceLunge,PounceHit,NativeEntranceMath.Clamp01((t-LeapAt)/(LandAt-LeapAt)))
-                    :NativeEntranceMath.Lerp(PounceHit,PounceEnd,NativeEntranceMath.Clamp01((t-LandAt)/(RiseAt-LandAt)));
-                return true;
+                // (the lintel is no floor: the feet stand on its top by leg IK, lifted to it, until they push off)
+                float on=1-NativeEntranceMath.Ramp(t,LeapAt-.02f,LeapAt+.06f);var l=Perch+Local(.18f,0,.12f);var r=Perch+Local(-.2f,0,-.16f);
+                NativeEntrancePose.PlantFoot(pose,root,rotation,true,l.X,l.Z,Facing+.2f,on,Perch.Y);NativeEntrancePose.PlantFoot(pose,root,rotation,false,r.X,r.Z,Facing-.4f,on,Perch.Y);
             }
-            clip=NativeBladeMotion.FangsIdle;time=t-RiseAt;return true;
+            Wield(RightFang,t,pose,root,rotation,false);Wield(LeftFang,t,pose,root,rotation,true);
         }
-        public override float Fade(float t)=>t>=CoilAt-.02f&&t<CoilAt+.3f?.25f:t>=RiseAt-.02f&&t<RiseAt+.45f?.35f:.12f;
 
         // ---- the head as drawn (for the eyes: the base's Eyes) ----
         private Vector3 HeadAt(float t){Eyes(t,1e-4f,out var at);return at;}

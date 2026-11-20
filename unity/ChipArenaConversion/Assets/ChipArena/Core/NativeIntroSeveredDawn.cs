@@ -20,7 +20,6 @@ namespace ChipArena.UnityConversion
         public const float Total=7.4f,CardAt=5.9f;
         /// <summary>The beats (presentation s): the grip, the visor, the cut's wind, the cut, the second cut, the stance.</summary>
         public const float GripAt=1.6f,VisorAt=2.32f,WindAt=2.45f,CutAt=2.62f,FollowEnd=3.35f,RibbonAt=4.35f,RibbonHit=4.35f+.307f*1.15f,StanceAt=5.3f;
-        private const float CutHit=.32f,CutLength=.8f,RibbonLength=.8f;
         private static readonly Vector3 Dawn=new Vector3(1,.86f,.62f),Gold=NativeEntranceFx.Hex(0xffd08a),Night=NativeEntranceFx.Hex(0x0b0806),Cool=NativeEntranceFx.Hex(0x7f95c4),Teal=NativeEntranceFx.Hex(0xb6fff0);
         public override string Spec=>"sword";
         protected override float TipLength(bool left)=>left?.15f:1.28f;

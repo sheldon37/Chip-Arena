@@ -34,8 +34,88 @@ namespace ChipArena.UnityConversion
         public NativeIntroAfterimage():base(NativeIntroCatalog.WeaponPrefix+"daggers",Total,CardAt,CutAAt+HitA,0x87ffd5)
         {
             RootPath=(t,r)=>r+Way(t);
+            // ---- the body (bespoke keys, owner 2026-11-20: no match clips) ----
+            // The walk up the lane on planted steps (the root goes up the lane at an even pace, Way), the stop, the lunge's step, back.
+            Start=Stance(.11f,-2.32f,.08f,-.11f,-2.72f,-.12f);
+            Steps=new[]
+            {
+                Step(false,0,.4f,-.11f,-1.74f,-.1f,.09f),Step(true,.38f,.78f,.11f,-1.14f,.08f,.09f),Step(false,.76f,1.16f,-.11f,-.56f,-.1f,.09f),
+                Step(true,1.12f,1.5f,.15f,.04f,.15f,.08f),Step(false,1.42f,1.72f,-.19f,-.18f,-.45f,.06f),
+                Step(true,CutCAt+.2f,CutCAt+.45f,.2f,.42f,.15f,.08f),Step(true,ConvergeAt,ConvergeAt+.3f,.15f,.05f,.15f,.06f),
+            };
             var stand=NativeEntranceKeys.Stand();var k=new NativeEntranceKeys();
-            k.Key(0,stand).Root(0,.88f,0,Facing).Planted(1);k.Key(Total,stand).Root(0,.88f,0,Facing).Planted(1);Keys=k;
+            // Walking: the body rides up over each planted foot, the arms swing against the legs, the head steady.
+            for(int i=0;i<4;i++)
+            {
+                float t0=i*.38f;bool right=i%2==0;// (the right foot steps first)
+                k.Key(t0,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.035f).J(B,.08f).J(C,0,right?.06f:-.06f,0).J(Hd,.02f,right?-.05f:.05f,0)
+                 .J(RA,right?.28f:-.32f,0,-.18f).J(RE,-.45f).J(LA,right?-.32f:.28f,0,.18f).J(LE,-.45f);
+                k.Key(t0+.19f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(.0f).J(B,.07f).J(C,0,0,0).J(Hd,.02f,0,0)
+                 .J(RA,-.02f,0,-.18f).J(RE,-.4f).J(LA,-.02f,0,.18f).J(LE,-.4f).PassKey();
+            }
+            // The stop: weight settles onto both feet; the head comes up.
+            k.Key(1.52f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.06f).J(B,.1f).J(C,0,.04f,0).J(Hd,-.02f,0,0).J(RA,.15f,0,-.2f).J(RE,-.5f).J(LA,-.2f,0,.2f).J(LE,-.5f);
+            k.Key(StopAt+.18f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.1f).J(B,.12f).J(C,0,0,0).J(Hd,-.04f,0,0).J(LL,-.15f,0,.14f).J(LK,.3f).J(RL,.1f,0,-.14f).J(RK,.3f)
+             .J(RA,-.3f,0,-.25f).J(RE,-.8f).J(LA,-.3f,0,.25f).J(LE,-.8f);
+            // Ready as the echoes peel away: low, the right dagger forward, the left drawn back.
+            k.Key(SplitAt+.1f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.2f).J(B,.18f).J(Sp,.05f).J(C,.05f,-.2f,0).J(Hd,-.02f,.15f,0).J(LL,-.4f,0,.16f).J(LK,.65f).J(RL,.15f,0,-.16f).J(RK,.55f)
+             .J(RA,-1.0f,0,-.3f).J(RE,-.9f).J(LA,-.4f,0,.35f).J(LE,-1.2f);
+            // Cut A: wound to the left, the right dagger over the left shoulder; a backhand down across the front, the left following through.
+            k.Key(CutAAt+.35f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.22f).J(B,.12f).J(Sp,0,.18f,0).J(C,0,.4f,0).J(Hd,0,-.2f,0).J(LL,-.42f,0,.16f).J(LK,.7f).J(RL,.18f,0,-.16f).J(RK,.6f)
+             .J(RA,-1.6f,0,.4f).J(RE,-1.6f).J(LA,-.5f,0,.4f).J(LE,-1.1f);
+            k.Key(CutAAt+HitA,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.28f).J(B,.25f).J(Sp,0,-.12f,0).J(C,.05f,-.3f,0).J(Hd,.04f,.15f,0).J(LL,-.5f,0,.16f).J(LK,.85f).J(RL,.2f,0,-.16f).J(RK,.7f)
+             .J(RA,-1.0f,0,-.6f).J(RE,-.3f).J(LA,-1.4f,0,.6f).J(LE,-.8f).ImpactKey();
+            k.Key(CutAAt+HitA+.18f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.28f).J(B,.22f).J(Sp,0,.05f,0).J(C,.05f,.25f,0).J(Hd,.04f,-.1f,0).J(LL,-.5f,0,.16f).J(LK,.85f).J(RL,.2f,0,-.16f).J(RK,.7f)
+             .J(RA,-.6f,0,-.5f).J(RE,-.4f).J(LA,-1.2f,0,.1f).J(LE,-.4f).PassKey();
+            k.Key(CutAAt+CutLength,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.2f).J(B,.16f).J(C,.03f,0,0).J(Hd,0,0,0).J(LL,-.4f,0,.16f).J(LK,.65f).J(RL,.15f,0,-.16f).J(RK,.55f)
+             .J(RA,-.9f,0,-.3f).J(RE,-.9f).J(LA,-.6f,0,.35f).J(LE,-1.0f);
+            // Cut C: drawn back, then a lunge onto the left foot driving both daggers straight out.
+            k.Key(CutCAt+.2f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.24f).J(B,.08f).J(C,-.04f,0,0).J(Hd,-.04f,0,0).J(LL,-.35f,0,.16f).J(LK,.6f).J(RL,.2f,0,-.16f).J(RK,.7f)
+             .J(RA,-.4f,0,-.35f).J(RE,-1.7f).J(LA,-.4f,0,.35f).J(LE,-1.7f);
+            k.Key(CutCAt+HitC,stand).Root(0,.88f,.22f,Facing).Planted(1).Drop(-.3f).J(B,.35f).J(Sp,.05f).J(C,.05f,0,0).J(Hd,-.12f,0,0).J(LL,-.95f,0,.16f).J(LK,1.05f).J(RL,.4f,0,-.16f).J(RK,.3f)
+             .J(RA,-1.5f,0,-.15f).J(RE,-.1f).J(LA,-1.3f,0,.15f).J(LE,-.15f).ImpactKey();
+            k.Key(CutCAt+HitC+.3f,stand).Root(0,.88f,.22f,Facing).Planted(1).Drop(-.28f).J(B,.3f).J(Sp,.05f).J(C,.04f,0,0).J(Hd,-.1f,0,0).J(LL,-.9f,0,.16f).J(LK,1.0f).J(RL,.38f,0,-.16f).J(RK,.32f)
+             .J(RA,-1.45f,0,-.15f).J(RE,-.15f).J(LA,-1.25f,0,.15f).J(LE,-.2f);
+            // The echoes fold back in: it draws back to the spot and crosses the daggers before its chest.
+            k.Key(ConvergeAt+.35f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.14f).J(B,.08f).J(C,-.04f,0,0).J(Hd,-.06f,0,0).J(LL,-.2f,0,.14f).J(LK,.35f).J(RL,.12f,0,-.14f).J(RK,.35f)
+             .J(RA,-1.3f,0,.2f).J(RE,-1.5f).J(LA,-1.3f,0,-.2f).J(LE,-1.5f).ImpactKey();
+            // The stance under the name: low and easy, daggers out at the sides.
+            k.Key(StanceAt+.3f,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.12f).J(B,.1f).J(C,0,.06f,0).J(Hd,-.04f,0,0).J(LL,-.2f,0,.16f).J(LK,.35f).J(RL,.12f,0,-.16f).J(RK,.38f)
+             .J(RA,-.5f,0,-.4f).J(RE,-.7f).J(LA,-.45f,0,.4f).J(LE,-.8f).PassKey();
+            k.Key(Total,stand).Root(0,.88f,0,Facing).Planted(1).Drop(-.12f).J(B,.08f).J(C,0,.08f,0).J(Hd,-.05f,.04f,0).J(LL,-.2f,0,.16f).J(LK,.35f).J(RL,.12f,0,-.16f).J(RK,.38f)
+             .J(RA,-.5f,0,-.4f).J(RE,-.7f).J(LA,-.45f,0,.4f).J(LE,-.8f);Keys=k;
+            // ---- the daggers' ways (each hand's grip and blade, in the pilot's frame: it walks with the root) ----
+            for(int i=0;i<4;i++)
+            {
+                float t0=i*.38f;bool right=i%2==0;
+                RightDagger.Key(t0,V(-.25f,.76f,right?-.12f:.18f),V(0,-.3f,.95f)).Key(t0+.19f,V(-.25f,.74f,.03f),V(0,-.32f,.95f)).Pass();
+                LeftDagger.Key(t0,V(.25f,.76f,right?.18f:-.12f),V(0,-.3f,.95f)).Key(t0+.19f,V(.25f,.74f,.03f),V(0,-.32f,.95f)).Pass();
+            }
+            RightDagger.Key(1.52f,V(-.24f,.78f,.05f),V(0,-.25f,.97f)).Key(StopAt+.18f,V(-.22f,.86f,.16f),V(0,-.1f,.99f))
+                .Key(SplitAt+.1f,V(-.15f,1.05f,.4f),V(0,.15f,.99f))
+                .Key(CutAAt+.35f,V(.14f,1.3f,.12f),V(.35f,.6f,-.72f))
+                .Key(CutAAt+HitA-.06f,V(.02f,1.18f,.45f),V(-.3f,.2f,.93f)).Pass()
+                .Key(CutAAt+HitA,V(-.14f,.98f,.48f),V(-.65f,-.4f,.65f)).Impact()
+                .Key(CutAAt+HitA+.18f,V(-.38f,.76f,.24f),V(-.7f,-.6f,-.4f))
+                .Key(CutAAt+CutLength,V(-.18f,.98f,.36f),V(0,.1f,1))
+                .Key(CutCAt+.2f,V(-.2f,1.0f,-.04f),V(0,0,1))
+                .Key(CutCAt+HitC,V(-.12f,1.08f,.72f),V(0,-.04f,1)).Impact()
+                .Key(CutCAt+HitC+.3f,V(-.12f,1.06f,.68f),V(0,-.04f,1))
+                .Key(ConvergeAt+.35f,V(.06f,1.14f,.32f),V(.5f,.75f,.4f)).Impact()
+                .Key(StanceAt+.3f,V(-.26f,.9f,.3f),V(-.3f,-.2f,.93f))
+                .Key(Total,V(-.26f,.9f,.3f),V(-.3f,-.2f,.93f));
+            LeftDagger.Key(1.52f,V(.24f,.78f,.05f),V(0,-.25f,.97f)).Key(StopAt+.18f,V(.22f,.86f,.12f),V(0,-.1f,.99f))
+                .Key(SplitAt+.1f,V(.2f,.9f,0),V(.1f,.3f,.95f))
+                .Key(CutAAt+.35f,V(.26f,.86f,-.04f),V(0,.2f,.98f))
+                .Key(CutAAt+HitA,V(.26f,1.1f,.3f),V(.5f,.5f,.7f)).Pass()
+                .Key(CutAAt+HitA+.18f,V(-.04f,.96f,.46f),V(-.7f,-.3f,.65f)).Impact()
+                .Key(CutAAt+CutLength,V(.2f,.92f,.22f),V(0,.2f,.98f))
+                .Key(CutCAt+.2f,V(.18f,.82f,-.04f),V(0,.1f,1))
+                .Key(CutCAt+HitC,V(.12f,.84f,.64f),V(0,.15f,.99f)).Impact()
+                .Key(CutCAt+HitC+.3f,V(.12f,.84f,.6f),V(0,.15f,.99f))
+                .Key(ConvergeAt+.35f,V(-.06f,1.12f,.32f),V(-.5f,.75f,.4f)).Impact()
+                .Key(StanceAt+.3f,V(.26f,.88f,.16f),V(.35f,0,.94f))
+                .Key(Total,V(.26f,.88f,.16f),V(.35f,0,.94f));
             // The camera: low in front as it walks up; close as the echoes peel off; down from a balcony on the three cutting and the
             // lanterns dropping; low at the side for the second exchange; in front as they converge; the hero.
             Rig.Dolly(0,V(-.6f,1.0f,4.6f),V(-.5f,1.05f,3.65f),V(0,1.3f,-1.8f),V(0,1.25f,-.3f),42,40)
@@ -50,24 +130,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The walk up the lane (source frame, from the keyed root): from Start to the mark by the stop.</summary>
         public static Vector3 Way(float t)=>WalkFrom*(1-NativeEntranceMath.Clamp01(t/StopAt));
 
-        // ---- the body: the daggers' clips on the model, the game's captures on the keyed rig ----
-        private const int Idle=0,Walk=1,CutA=3,CutC=5,Block=7;
-        private static void Moves(float t,out int capture,out string clip,out float time)
-        {
-            if(t<StopAt){capture=Walk;clip="Armed-Walk";time=t;return;}
-            if(t<CutAAt){capture=Idle;clip="Armed-Idle";time=t-StopAt;return;}
-            if(t<CutAAt+CutLength){capture=CutA;clip="Dagger-Attack-R1";time=t-CutAAt;return;}
-            if(t<CutCAt){capture=Idle;clip="Armed-Idle";time=.5f+t-CutAAt-CutLength;return;}
-            if(t<CutCAt+CutLength-.05f){capture=CutC;clip="Dagger-Attack-R2";time=t-CutCAt;return;}
-            if(t<StanceAt){capture=Block;clip="Armed-Block-Dual";time=t-ConvergeAt+.3f;return;}
-            capture=Idle;clip="Armed-Idle";time=1.0f+t-StanceAt;
-        }
-        public override bool Clip(float t,out string clip,out float time){Moves(t,out _,out clip,out time);return true;}
-        public override float Fade(float t)=>t>=StopAt-.02f&&t<StopAt+.3f?.25f:t>=StanceAt-.02f&&t<StanceAt+.4f?.4f:.1f;
-        public override void Pose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
-        {
-            base.Pose(t,pose,out root,out rotation);Moves(t,out int capture,out _,out float time);Captured(1,capture,time,pose);
-        }
+        // ---- the body: keyed (no match clips), both arms solved onto the daggers' ways ----
+        private readonly NativeIntroWield RightDagger=new NativeIntroWield(),LeftDagger=new NativeIntroWield();
+        protected override void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation){Wield(RightDagger,t,pose,root,rotation,false);Wield(LeftDagger,t,pose,root,rotation,true);}
 
         // ---- the echoes: the keyed rig's ghosts a moment behind, peeling out to either side and folding back in ----
         /// <summary>How far out the echoes stand (0..1) at `t`.</summary>
