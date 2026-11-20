@@ -299,6 +299,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--bombadier"){BombadierChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--top-dog"){TopDogChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--intros-v2"){IntroV2Checks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--intro-limits"){IntroPoseChecks.Run(true,true);return 0;}
             if(args.Length==1&&args[0]=="--glaive"){GlaiveChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--glaive-chips"){GlaiveChipChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--blades"){BladeChecks.Run(ProjectRoot());return 0;}
