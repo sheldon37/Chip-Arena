@@ -142,8 +142,8 @@ namespace ChipArena.UnityConversion
                .Crane(Still,V(11.0f,4.2f,17.0f),V(9.6f,4.4f,14.6f),1.4f,V(0,2.3f,0),V(0,2.9f,0),42,38).Ease(NativeIntroEase.InOut)
                .Dolly(Gather,V(2.7f,.42f,5.1f),V(1.85f,.5f,3.45f),V(0,3.3f,-1.1f),V(0,2.8f,-.5f),52,44).Ease(NativeIntroEase.In)
                .Dolly(Inhale,V(.36f,1.52f,1.36f),V(.33f,1.54f,1.24f),V(0,2.1f,0),V(0,2.14f,0),39,36)
-               .Dolly(Drop,V(2.6f,.75f,8.6f),V(.38f,.72f,4.3f),V(0,3.3f,-.6f),V(0,2.25f,-.6f),58,45).Ease(NativeIntroEase.Out)
-               .Bars(0,.85f).Bars(Drop,.55f).Black(0,0).Black(FadeFrom+.12f,1);
+               .Dolly(Drop,V(2.6f,.78f,8.6f),V(.36f,.9f,5.2f),V(0,3.3f,-.6f),V(0,1.21f,-.6f),58,46).Ease(NativeIntroEase.Out)
+               .Bars(0,.85f).Bars(Drop,.55f).Bars(Drop+.9f,.2f).Black(0,0).Black(FadeFrom+.12f,1);
         }
 
         // =====================================================================================================================
@@ -663,7 +663,7 @@ namespace ChipArena.UnityConversion
         // The name, written into the world in light (NameFx) and on the card (the "architect" effect, Runtime NativeIntroArchitectCard)
         // =====================================================================================================================
         /// <summary>Where the name hangs: above and behind the architect, facing the hero camera; its letters' height.</summary>
-        public static readonly Vector3 NameCentre=new Vector3(0,4.3f,-3.6f);
+        public static readonly Vector3 NameCentre=new Vector3(0,3.75f,-3.2f);
         public const float LetterHeight=.8f,NameMaxWidth=11f;
         /// <summary>When letter `i` of `n` starts and how long one takes to write.</summary>
         public const float LetterStep=.05f,LetterTime=.24f,NameStart=CardAt+.04f;
@@ -720,7 +720,7 @@ namespace ChipArena.UnityConversion
         }
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            card=NativeIntroCardState.Default(t-CardAt,new Vector3(1,.97f,.9f),Gold);card.Style=NativeIntroCardStyle.Assemble;card.Effect=CardEffect;card.Kicker="THE ARCHITECT";card.Size=.084f;card.Y=.885f;
+            card=NativeIntroCardState.Default(t-CardAt,new Vector3(1,.97f,.9f),Gold);card.Style=NativeIntroCardStyle.Assemble;card.Effect=CardEffect;card.Kicker="THE ARCHITECT";card.Size=.075f;card.Y=.885f;card.X=.5f;
             // EffectA: how far the build has run (s since the name beat); EffectB: the distortion left (1 at the beat .. 0 settled)
             card.EffectA=Math.Max(0,t-CardAt);card.EffectB=(float)Math.Exp(-Math.Max(0,t-CardAt-.3f)*2.2f);card.Exit=NativeEntranceMath.Ramp(t,FadeFrom,Total-.05f);
         }

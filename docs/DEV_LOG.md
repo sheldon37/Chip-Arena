@@ -5,8 +5,8 @@ something 'bad-ass, godlike' really show the authority of the dev"; theme "Archi
 for dev intro; maybe start around 5-6 secs. It drops at about 18 seconds (allow the intro to be slightly longer if this is
 normally a constraint)".
 
-- **Branch:** `claude/intro-dev-architect` from shared `8d56f015`, the framework `claude/intro-framework` merged in (at
-  `5fd20700`). Pushed, not merged. Doc: `docs/INTRO-DEV-ARCHITECT.md`.
+- **Branch:** `claude/intro-dev-architect` from shared `8d56f015`, the framework `claude/intro-framework` merged in (its
+  final, `2da9c7fc`). Pushed, not merged. Doc: `docs/INTRO-DEV-ARCHITECT.md`.
 - **What:** `dev-architect` ("DEV · Architect of Reality", the framework's Dev kind: live DEV access only), 15.7 s, the name at
   12.63 s on the song's drop. The old arena (the entrance stage, modelled) is struck by a column of light and glitches with the
   music, then comes apart into wireframe, code glyphs and light over a void; a presence of light; the body drafted in lines of
@@ -30,7 +30,7 @@ normally a constraint)".
   the bank, the peaks: 460 effects and 129 set pieces on High, 205 and 80 on Low, 8 lights; the streak rule; determinism under a
   scrub; no allocation per frame; Reduced effects; the body's build; the stroke font); `--intros-v2` passes (1,660); the Unity
   compile passes; `git diff --check` clean; `package_source.py --check` passes; the full CoreTests the relgen5 way at
-  `797ebca0`, exit 0 (1,080 groups). Two Editor holds, a review pass and the final, with captures in
+  `ed77ec08` (the final merge), exit 0 (1,080 groups). Two Editor holds, a review pass and the final, with captures in
   `F:/Chip Arena Development/scratch/intro-dev/cap/`.
 - **Not run:** a Windows player build; two clients (a guest's and a late joiner's view of the bed clock); the sound by ear (the
   captures are silent; the review clip carries the song on the capture's clock).
