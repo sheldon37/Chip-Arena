@@ -14,7 +14,7 @@ Ownership (one writer per file):
 | Owner | Files |
 | --- | --- |
 | I0 (framework) | `Core/NativeIntroRules.cs`, `Core/NativeIntroCatalog.cs` (except your one registry line), `Core/NativeIntroV2.cs`, `Core/NativeIntroCamera.cs`, `Core/NativeIntroVoid.cs`, `Core/NativeIntroShowcase.cs`, `Runtime/NativeIntros.cs`, `Runtime/NativeIntroV2Presentation.cs`, `Runtime/NativeIntroCardScreen.cs`, `Runtime/NativeIntroAudio.cs`, the Locker's intro list, `Tests/IntroV2Checks.cs`, this file |
-| Each author | one Core file per intro or family (`Core/NativeIntro<Name>.cs`), its set script (`tools/intros/<name>_set.py`), its sound list (`docs/audio/intros/<id>.md` + its rows in the request queue), its own extra checks (`Tests/Intro<Name>Checks.cs`), and ONE line per intro in the registry |
+| Each author | one Core file per intro or family (`Core/NativeIntro<Name>.cs`), its set script (`tools/intros/<name>_set.py`), its sound rows (`docs/audio/intros/<author>.json`) and their contract lines on its slot in `Core/NativeIntroSoundKeys.cs`, its own extra checks (`Tests/Intro<Name>Checks.cs`), and ONE line per intro in the registry |
 
 ## 1. Registering an intro
 
@@ -25,7 +25,7 @@ comment lines between slots, so that two authors' lines never touch and merges s
 NativeIntroEntry.Weapon("sword","Edge of Dawn",8.2f,6.1f,()=>new NativeIntroSwordDawn(),"I3"),
 NativeIntroEntry.Generic("eclipse","Eclipse",7.6f,5.8f,()=>new NativeIntroEclipse(),"I2"),
 NativeIntroEntry.Default("Arrival",7.2f,5.4f,()=>new NativeIntroArrival(),"I2"),
-NativeIntroEntry.Dev("architect","DEV · Architect of Reality",9.4f,7.2f,()=>new NativeIntroArchitect(),"I5"),
+NativeIntroEntry.Dev("architect","DEV · Architect of Reality",9.4f,7.2f,()=>new NativeIntroArchitect(),"I1"),
 ```
 
 | Factory | Id | Who sees it | When it plays without a pick |
@@ -227,6 +227,7 @@ Every registered intro runs through the same checks automatically. You don't nee
 | Reduced effects | the camera never wobbles: outside cuts, the eye stays within 6 mm of a quadratic fit over ±4 frames, so no shake survives; and the summed light and glow never flash more than 3 times in any second |
 | streaks | every streak longer than 1 m lies on its head's camera plane (within 2°) |
 | cues | sorted, inside [0, Duration], each with a key, alt or clip, and each heard exactly once through `NativeEntranceCueClock` at 60 Hz and at a guest's 20 Hz steps |
+| sets | without a bank something is still drawn (the void or your primitives); with a fake bank that has every prop, your `Scene` stays inside the piece and batch budgets and allocates nothing |
 
 Put your own extra checks in your own `Tests/Intro<Name>Checks.cs`, and add one call in `Program.cs` on its own line.
 
@@ -242,9 +243,19 @@ adds the shorthand:
 Example, with the head-gib helpers (`take`, `on <sha>`, `cap`, `back`, `give`):
 
 ```bash
-cap sword-high "$(dense 0 8.5)" 4 weapon=sword map=arena bots=0 introcap=intro2-weapon-sword introq=high capdt=0,0.0333333
-cap sword-low  "$(dense 0 8.5 0.5)" 4 weapon=sword map=arena bots=0 introcap=intro2-weapon-sword introq=low capdt=0,0.0333333
+cap sword-high "$(dense 0 8.6)" 300 map=cybercity weapon=sword bots=0 idlebots=0 orbit=0 introcap=intro2-weapon-sword introq=high capdt=0,0.0333333
+cap sword-low  "$(dense 0 8.5 0.5)" 120 map=cybercity weapon=sword bots=0 idlebots=0 orbit=0 introcap=intro2-weapon-sword introq=low capdt=0,0.0333333
 ```
+
+The third argument is the run's limit in seconds of play: about 0.6 s of real time per captured frame, plus start-up.
+The frames are `t<N>_screen.png`, so a clip is
+`python -I <int>/clip.py OUT.mp4 --fps 30 --to <last frame> --pane "LABEL=DIR:_screen.png"`.
+
+- **Timing:** the intro starts at arena time 0, and at its `Duration` the next pilot's intro follows (even with
+  `bots=0` the match has a second seat).
+- **What it took:** the framework's own hold filmed the showcase in about 6 minutes at High (1/30 s) and 2 minutes at Low.
+- **The Locker:** add `dmhold=14` and `"locker=3:2;7:2"` (tab 2 is the Entrance tab). Without `dmhold` the panel can
+  miss the shot.
 
 **Editor relaunch** (owner: "Yes, relaunch it", for overnight only):
 - `F:/Chip Arena Development/scratch/intro-framework/tools/editor_relaunch.sh` starts the owner's Editor on its own
