@@ -30,7 +30,6 @@ namespace ChipArena.UnityConversion
         // the volley: where each arrow lands (source frame), its fall direction and when (presentation)
         private readonly Vector3[] spot=new Vector3[Volley],fall=new Vector3[Volley];private readonly float[] land=new float[Volley];private readonly int[] lights=new int[6];
         private readonly Vector3[] at=new Vector3[40];private readonly Quaternion[] turn=new Quaternion[40];
-        private readonly CapturedRig.Pose scratch=new CapturedRig.Pose();private NativeBowPose.Frame last;private float lastT=-100;
         private Vector3 releaseNock,releaseDir;private bool planned;
 
         public NativeIntroLightfall():base(Id,Total,CardAt,Release,0xffd88a)
@@ -101,18 +100,17 @@ namespace ChipArena.UnityConversion
         {
             var v=ViewAt(t);pose.World();for(int i=0;i<3;i++)keyed[i]=pose.Rotation[RightArm[i]];
             var aim=AimAt(t);NativeBowPose.Torso(pose,aim,v.Raised,0,0);
-            var f=NativeBowPose.Arms(pose,Read,v,t,aim,NativeBowPose.ChestAnchor(pose),NativeBowPose.Start,v.Raised,NativeBowPose.CarryWrist,0,false);
+            NativeBowPose.Arms(pose,Read,v,t,aim,NativeBowPose.ChestAnchor(pose),NativeBowPose.Start,v.Raised,NativeBowPose.CarryWrist,0,false);
             float reach=NativeEntranceMath.Ramp(t,NockFrom-.02f,NockFrom+.14f);
             if(t<RaiseFrom&&reach<1){for(int i=0;i<3;i++)pose.Rotation[RightArm[i]]=Quaternion.Slerp(keyed[i],pose.Rotation[RightArm[i]],reach);pose.World();}
-            last=f;lastT=t;
         }
         private void Planned()
         {
-            if(planned)return;Pose(Release-.001f,scratch,out var r0,out var q0);
-            releaseNock=r0+Vector3.Transform(last.Nock,q0);releaseDir=Vector3.Normalize(Vector3.Transform(Vector3.Transform(Vector3.UnitZ,last.BowRotation),q0));planned=true;lastT=-100;
+            // the arrow's line at the release, from the anchors (the keyed rig's draw hand to its bow hand)
+            if(planned)return;releaseNock=Anchor(NativeEntranceAnchor.RightHand,Release-.01f);releaseDir=Vector3.Normalize(Anchor(NativeEntranceAnchor.LeftHand,Release-.01f)-releaseNock);planned=true;
         }
         /// <summary>The nocked arrowhead (world) at `t` while drawn.</summary>
-        private Vector3 Head(float t,out Vector3 dir){Pose(t,scratch,out var r,out var q);var nock=r+Vector3.Transform(last.Nock,q);dir=Vector3.Normalize(Vector3.Transform(Vector3.Transform(Vector3.UnitZ,last.BowRotation),q));return nock+dir*NativeBow.ArrowLength;}
+        private Vector3 Head(float t,out Vector3 dir){var nock=Anchor(NativeEntranceAnchor.RightHand,t);var bow=Anchor(NativeEntranceAnchor.LeftHand,t);var d=bow-nock;dir=d.LengthSquared()>1e-6f?Vector3.Normalize(d):Vector3.UnitY;return nock+dir*NativeBow.ArrowLength;}
         private Vector3 SkyArrow(float t){Planned();return releaseNock+releaseDir*(SkySpeed*Math.Max(0,Math.Min(t,Bloom)-Release));}
         private Vector3 BloomAt{get{Planned();return releaseNock+releaseDir*(SkySpeed*(Bloom-Release));}}
         /// <summary>Volley arrow `i`'s head at `t` while it flies (false before the bloom or once it has landed).</summary>
