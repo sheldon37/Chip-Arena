@@ -72,6 +72,8 @@ namespace ChipArena.UnityConversion
             lockerHats.Clear();foreach(var id in NativeCosmeticRules.Hats)if(NativeCosmeticRules.Allowed(access,"hat",id))lockerHats.Add(id);
             lockerKills.Clear();foreach(var id in NativeCosmeticRules.Kills)if(NativeCosmeticRules.Allowed(access,"effect",id))lockerKills.Add(id);
             lockerIntros.Clear();foreach(var id in NativeCosmeticRules.Intros)if(NativeCosmeticRules.Allowed(access,"intro",id))lockerIntros.Add(id);
+            // Intros v2 (Runtime NativeIntroLockerList.cs): the archived intros hidden, the registered v2 intros listed.
+            LockerIntrosV2(lockerIntros,access);
             // The idle poses: the source's four, then the DEV Sheldon Idle with live DEV access (Core/NativeLobbyPoses.cs).
             lockerPoses=NativeLobbyPoses.Count(NativeCosmeticRules.Allowed(access,"pose",NativeLobbyPoses.SheldonKey));
             foreach(var id in lockerIntros)if(!lockerIntroWeapon.ContainsKey(id)&&id.StartsWith("weapon-",StringComparison.Ordinal)){var w=LockerWeaponById(id.Substring(7));if(w!=null)lockerIntroWeapon[id]=w;}
@@ -114,7 +116,9 @@ namespace ChipArena.UnityConversion
         // #rrggbb to a colour without allocating (HexColor cuts a substring).
         private static Color LkColor(string value,int fallback)=>U.Hex(NativePortraitRules.Parse(value,fallback));
         // The entrance NativeIntroRules.Style plays without an override: the weapon's own (the DEV kits' and the Siren's).
-        private static string LockerSignature(string spec)=>spec=="siren"?"dev-siren":spec=="emperor"?"dev-emperor":spec=="ansatsuken"?"dev-ansatsuken":spec=="leet"?"dev-matrix":spec==CyberLordSpec.Id?CyberLordSpec.Entrance:spec==NativeBombs.Spec?NativeBombs.Entrance:spec==NativeTopDog.Spec?NativeTopDog.Entrance:spec==NativeGlaive.Spec?NativeGlaiveIntro.Id:spec==NativeKatana.Spec?NativeKatana.Entrance:spec==NativeFangs.Spec?NativeFangs.Entrance:NativeDevMotions.Is(spec)?NativeDevMotions.Entrance(spec):"weapon-"+spec;
+        // Intros v2: the weapon's registered intro first (Core NativeIntroCatalog.Signature), else its old signature until one registers.
+        private static string LockerSignature(string spec)=>NativeIntroCatalog.Signature(spec)??LockerOldSignature(spec);
+        private static string LockerOldSignature(string spec)=>spec=="siren"?"dev-siren":spec=="emperor"?"dev-emperor":spec=="ansatsuken"?"dev-ansatsuken":spec=="leet"?"dev-matrix":spec==CyberLordSpec.Id?CyberLordSpec.Entrance:spec==NativeBombs.Spec?NativeBombs.Entrance:spec==NativeTopDog.Spec?NativeTopDog.Entrance:spec==NativeGlaive.Spec?NativeGlaiveIntro.Id:spec==NativeKatana.Spec?NativeKatana.Entrance:spec==NativeFangs.Spec?NativeFangs.Entrance:NativeDevMotions.Is(spec)?NativeDevMotions.Entrance(spec):"weapon-"+spec;
         private void LockerStyles()
         {
             if(lockerField!=null)return;lockerField=new GUIStyle(GUI.skin.textField){fontSize=16,alignment=TextAnchor.MiddleLeft,fixedHeight=40};lockerField.padding=new RectOffset(12,12,9,9);lockerField.margin=new RectOffset(0,0,4,4);

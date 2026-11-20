@@ -127,7 +127,7 @@ namespace ChipArena.UnityConversion
             int k=0;for(int i=1;i<shots.Count;i++)if(shots[i].At<=t)k=i;
             ShotView(script,k,t,reduced,out view,out focus,out aperture);
             var s=shots[k];if(k==0||s.In==NativeIntroCut.Cut)return;float e=(t-s.At)/s.InTime;if(e>=1)return;
-            ShotView(script,k-1,t,reduced,out var from,out float ff,out float fa);float w=s.In==NativeIntroCut.Whip?NativeEntranceMath.Smoother(e):NativeEntranceMath.Smooth(e);
+            ShotView(script,k-1,t,reduced,out var from,out float ff,out float fa);float w=NativeEntranceMath.Smoother(e);if(s.In==NativeIntroCut.Whip)w=NativeEntranceMath.Smoother(w);// (C2 at both ends: no jolt as a blend lands)
             view=NativeEntranceCamera.Mix(from,view,w,script.Anchor(NativeEntranceAnchor.Chest,t));focus=NativeEntranceMath.Lerp(ff,focus,w);aperture=NativeEntranceMath.Lerp(fa,aperture,w);
         }
         private static float Keyed(List<(float at,float amount)> keys,float t,float ease)

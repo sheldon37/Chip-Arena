@@ -19,17 +19,17 @@ namespace ChipArena.UnityConversion
     /// <summary>One registered v2 intro: its id, display name, kind (and weapon spec), length, name beat and maker.</summary>
     public sealed class NativeIntroEntry
     {
-        public readonly string Id,Name,Spec,Author;public readonly NativeIntroKind Kind;public readonly float Duration,NameAt;public readonly Func<NativeEntranceScript> Make;
-        private NativeIntroEntry(string id,string name,NativeIntroKind kind,string spec,float duration,float nameAt,Func<NativeEntranceScript> make,string author)
-        {Id=id;Name=name;Kind=kind;Spec=spec;Duration=duration;NameAt=nameAt;Make=make;Author=author;}
+        public readonly string Id,Name,Spec,Author,Blurb;public readonly NativeIntroKind Kind;public readonly float Duration,NameAt;public readonly Func<NativeEntranceScript> Make;
+        private NativeIntroEntry(string id,string name,NativeIntroKind kind,string spec,float duration,float nameAt,Func<NativeEntranceScript> make,string author,string blurb)
+        {Id=id;Name=name;Kind=kind;Spec=spec;Duration=duration;NameAt=nameAt;Make=make;Author=author;Blurb=blurb;}
         /// <summary>A generic intro "intro2-&lt;slug&gt;".</summary>
-        public static NativeIntroEntry Generic(string slug,string name,float duration,float nameAt,Func<NativeEntranceScript> make,string author)=>new NativeIntroEntry(NativeIntroCatalog.Prefix+slug,name,NativeIntroKind.Generic,null,duration,nameAt,make,author);
+        public static NativeIntroEntry Generic(string slug,string name,float duration,float nameAt,Func<NativeEntranceScript> make,string author,string blurb=null)=>new NativeIntroEntry(NativeIntroCatalog.Prefix+slug,name,NativeIntroKind.Generic,null,duration,nameAt,make,author,blurb);
         /// <summary>Weapon `spec`'s intro "intro2-weapon-&lt;spec&gt;".</summary>
-        public static NativeIntroEntry Weapon(string spec,string name,float duration,float nameAt,Func<NativeEntranceScript> make,string author)=>new NativeIntroEntry(NativeIntroCatalog.WeaponPrefix+spec,name,NativeIntroKind.Weapon,spec,duration,nameAt,make,author);
+        public static NativeIntroEntry Weapon(string spec,string name,float duration,float nameAt,Func<NativeEntranceScript> make,string author,string blurb=null)=>new NativeIntroEntry(NativeIntroCatalog.WeaponPrefix+spec,name,NativeIntroKind.Weapon,spec,duration,nameAt,make,author,blurb);
         /// <summary>The new default "intro2-default".</summary>
-        public static NativeIntroEntry Default(string name,float duration,float nameAt,Func<NativeEntranceScript> make,string author)=>new NativeIntroEntry(NativeIntroCatalog.DefaultId,name,NativeIntroKind.Default,null,duration,nameAt,make,author);
+        public static NativeIntroEntry Default(string name,float duration,float nameAt,Func<NativeEntranceScript> make,string author,string blurb=null)=>new NativeIntroEntry(NativeIntroCatalog.DefaultId,name,NativeIntroKind.Default,null,duration,nameAt,make,author,blurb);
         /// <summary>A DEV-only intro "dev-&lt;slug&gt;" (the owner's live DEV access).</summary>
-        public static NativeIntroEntry Dev(string slug,string name,float duration,float nameAt,Func<NativeEntranceScript> make,string author)=>new NativeIntroEntry("dev-"+slug,name,NativeIntroKind.Dev,null,duration,nameAt,make,author);
+        public static NativeIntroEntry Dev(string slug,string name,float duration,float nameAt,Func<NativeEntranceScript> make,string author,string blurb=null)=>new NativeIntroEntry("dev-"+slug,name,NativeIntroKind.Dev,null,duration,nameAt,make,author,blurb);
     }
 
     /// <summary>
@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
         private static readonly NativeIntroEntry[] All=
         {
             // ---- I0 (framework): the showcase that proves the pipeline (DEV only; may be removed later) ----
-            NativeIntroEntry.Dev("intro2-showcase","DEV · Pipeline Proof",8f,5.9f,()=>new NativeIntroShowcase(),"I0"),
+            NativeIntroEntry.Dev("intro2-showcase","DEV · Pipeline Proof",NativeIntroShowcase.Total,NativeIntroShowcase.CardAt,()=>new NativeIntroShowcase(),"I0","The v2 pipeline end to end: a crane out of the dark, a column of light, the hero frame."),
             //
             // ---- the new default (I2) ----
             NativeIntroEntry.Default("Cloudbreak",NativeIntroCloudbreak.Total,NativeIntroCloudbreak.CardAt,()=>new NativeIntroCloudbreak(),"I2"),

@@ -32,9 +32,10 @@ internal static class SheldonIntroChecks
         Check(NativeCosmeticGate.Allowed(dev,"intro",S,now)&&!NativeCosmeticGate.Allowed(granted,"intro",S,now)&&!NativeCosmeticGate.Allowed(expired,"intro",S,now)&&!NativeCosmeticGate.Allowed(NativeAccess.Guest,"intro",S,now)&&!NativeCosmeticGate.Allowed(null,"intro",S,now),"only live DEV access may pick it");
         foreach(var (a,ok) in new[]{(dev,true),(granted,false),(expired,false),(NativeAccess.Guest,false)})
         {
-            var seat=new NativeSeat{spec="sword",intro=S,overrideIntro=true,access=a};Check(NativeIntroRules.Style(seat)==(ok?S:"weapon-sword"),"the host stages it for "+(ok?"DEV":"a non-DEV seat")+" ("+NativeIntroRules.Style(seat)+")");
+            // Intros v2 (owner 2026-11-20): archived, so a pick plays the weapon's intro for everyone (its code and its stage are kept).
+            var seat=new NativeSeat{spec="sword",intro=S,overrideIntro=true,access=a};Check(NativeIntroRules.Style(seat)==NativeIntroRules.Signature("sword")&&NativeIntroCatalog.Archived(S),"archived: the host stages the weapon's intro for "+(ok?"DEV":"a non-DEV seat")+" ("+NativeIntroRules.Style(seat)+")");
         }
-        {string intro=S;bool on=true;NativeIntroRules.Migrate(ref intro,ref on);Check(intro==S&&on,"a saved or received pick survives migration");}
+        {string intro=S;bool on=true;NativeIntroRules.Migrate(ref intro,ref on);Check(intro==NativeIntroRules.Default&&!on,"archived: a saved or received pick migrates to the weapon's intro");}
         Check(NativeIntroRules.Pickable(S)&&NativeIntroRules.Entrance(S,"pistol")==S&&Array.IndexOf(NativeIntroRules.Entrances,S)<0&&NativeEntranceDirector.Directed(S),"every client stages the replicated id (the director), outside the public entrance list");
         Check(NativeIntroRules.Duration(S)==4.8&&NativeIntroRules.NameAt(S)==3.2&&NativeIntroRules.OverlayDuration(S)==4.8&&NativeIntroRules.IntroWeapon(S)==null&&NativeIntroRules.IntroSong(S)==null,"standard timing (4.8 s, name card 3.2 s), empty hands, no boss song");
         Check(NativeSoundKeys.Intro(S)=="intro.sheldon-intro"&&NativeSoundKeys.Find("intro.sheldon-intro",out var key)&&Math.Abs(key.Cap-4.8f)<1e-5f&&!key.Key.Contains("dev-"),"its music key (2D, 4.8 s; no dev- prefix)");
