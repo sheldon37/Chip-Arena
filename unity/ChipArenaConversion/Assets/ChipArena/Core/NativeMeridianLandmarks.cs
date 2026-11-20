@@ -177,8 +177,8 @@ namespace ChipArena.UnityConversion
             if (s.Contains("level 0") || s.Contains("level0") || s.Contains("backrooms")) return "level0";
             if (s.Contains("pool")) return "poolrooms";
             if (s.Contains("ward")) return "wardzero";
-            if (s.Contains("station")) return "station";
-            if (s.Contains("iron")) return "ironworks";
+            if (s.Contains("station") || s == "exp-transit") return "station";
+            if (s.Contains("iron") || s == "exp-foundry") return "ironworks";
             return null;
         }
 

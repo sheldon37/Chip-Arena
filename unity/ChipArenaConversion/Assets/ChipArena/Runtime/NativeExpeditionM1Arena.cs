@@ -49,13 +49,22 @@ namespace ChipArena.UnityConversion
             float lift=.04f+radius*(1f/hit.normal.y-1f);
             return physics.OverlapCapsule(at+Vector3.up*(radius+lift),at+Vector3.up*(height-radius+lift),radius,expeditionProbe,WorldMask,QueryTriggerInteraction.Ignore)==0;
         }
+        private MapNav probeGraph;
+        private NativeNavSearch probeSearch;
+        private Dictionary<string,MapNavNode> probeNodes;
         public bool ExpeditionReachable(V3 from,V3 to,float radius,float height)
         {
-            if(Map.nav==null)return false;var search=new NativeNavSearch(Map.nav);
+            if(Map.nav==null)return false;
+            if(!ReferenceEquals(probeGraph,Map.nav)){
+                PrepareNavigation();
+                probeGraph=Map.nav;probeSearch=new NativeNavSearch(navSearch);
+                probeNodes=navNodes;
+            }
+            var search=probeSearch;
             bool Clear(MapNavNode n){string key=radius+":"+height+":"+n.id;if(!expeditionNavClear.TryGetValue(key,out var ok))expeditionNavClear[key]=ok=ExpeditionSupported(n.pos-new V3(0,NativeLocomotionRules.HalfHeight,0),radius,height);return ok;}
-            var offset=new V3(0,NativeLocomotionRules.HalfHeight,0);var a=search.Nearest(from+offset,Clear);var b=search.Nearest(to+offset,Clear);
+            var offset=new V3(0,NativeLocomotionRules.HalfHeight,0);var a=search.NearestLocal(from+offset,Clear,4,int.MaxValue);var b=search.NearestLocal(to+offset,Clear,4,int.MaxValue);
             if(a==null||b==null||(a.pos-from-offset).Length>4||(b.pos-to-offset).Length>4)return false;
-            var nodes=Map.nav.nodes.ToDictionary(n=>n.id);var path=new List<string>();
+            var nodes=probeNodes;var path=new List<string>();
             bool Active(MapNavLink l)
             {
                 string key="link:"+radius+":"+height+":"+l.id;if(expeditionNavClear.TryGetValue(key,out var clear))return clear;

@@ -154,7 +154,7 @@ namespace ChipArena.UnityConversion
             public ExpeditionGeneratedWorld World(uint seed)
             {
                 var room=new ExpeditionDeploymentRoom("room","host",seed,"black-siren",Layout,Content);if(!room.Execute("host",0,ExpeditionDeploymentIntent.RollInstances))return null;
-                return ExpeditionRunBundle.Build(room.Ticket,Content,LayoutJson).World;
+                return NativeExpeditionGeneratedWorld.BuildGridFixture(room);
             }
         }
         /// <summary>Every view's census: [roll][eye][tier 0 High, 1 Low].</summary>

@@ -175,7 +175,7 @@ def bake(spec, seed):
 
 def main():
     lines = ["// Generated from docs/expedition/meridian-plans by tools/bake_meridian_walks.py.",
-             "#if UNITY_EDITOR || DEVELOPMENT_BUILD || ARENA_TESTS", "namespace ChipArena.UnityConversion", "{",
+              "namespace ChipArena.UnityConversion", "{",
              "    public sealed partial class NativeLayeredCityWalk", "    {",
              "        private MapBounds BuildStreetPlan(uint seed)", "        {", "            switch (seed)", "            {"]
     for slug, seed in PLANS:
@@ -184,7 +184,7 @@ def main():
               "            }","        }"]
     for slug,seed in PLANS:
         lines += [""] + bake(json.loads((SPECS/(slug+".json")).read_text()),seed)
-    (CORE/"NativeMeridianStreetPlans.cs").write_text("\n".join(lines+["    }","}","#endif",""]))
+    (CORE/"NativeMeridianStreetPlans.cs").write_text("\n".join(lines+["    }","}",""]))
 
 
 if __name__ == "__main__":
