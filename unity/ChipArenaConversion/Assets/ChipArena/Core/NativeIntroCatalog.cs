@@ -67,13 +67,13 @@ namespace ChipArena.UnityConversion
             //
             // ---- weapon intros: NativeIntroEntry.Weapon("<spec>", ...) ----
             //
-            // sword
+            NativeIntroEntry.Weapon("sword",NativeIntroSeveredDawn.Title,NativeIntroSeveredDawn.Total,NativeIntroSeveredDawn.CardAt,()=>new NativeIntroSeveredDawn(),"I3","A cut so fast it severs the dawn's light."),
             //
             // daggers
             //
             // shield
             //
-            // greatsword
+            NativeIntroEntry.Weapon("greatsword",NativeIntroFaultline.Title,NativeIntroFaultline.Total,NativeIntroFaultline.CardAt,()=>new NativeIntroFaultline(),"I3","The weight that cracks the ground: a plunging slam breaks the quarry floor."),
             //
             // pistol
             //

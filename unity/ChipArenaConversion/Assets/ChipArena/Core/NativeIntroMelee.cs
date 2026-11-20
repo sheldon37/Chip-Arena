@@ -99,6 +99,21 @@ namespace ChipArena.UnityConversion
         /// <summary>The set without the bank.</summary>
         protected abstract void Fallback(float t,INativeIntroSet set);
         public virtual void Card(float t,ref NativeIntroCardState card){card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.96f,.98f,1),Accent);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);}
+        /// <summary>
+        /// The final hero frame: a slow push in from a low three-quarter front (`side` +1 from the pilot's left, -1 its right), easing to
+        /// stillness, with the pilot off centre by `shift` m (+: the pilot on the frame's left third) so the name card sits in the clean
+        /// space beside it (NameBeside) rather than over the legs.
+        /// </summary>
+        protected void HeroFrame(float at,float side,float height,float distance,float fov,float shift,float blend=.5f)
+        {
+            float yaw=Facing+side*.42f;var dir=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));
+            var from=dir*(distance+.45f)+new Vector3(0,height-.25f,0);var to=dir*distance+new Vector3(0,height-.18f,0);
+            var look=new Vector3(0,height+.04f,0);var right=Vector3.Normalize(Vector3.Cross(look-to,Vector3.UnitY));
+            Rig.Dolly(at,from,to,look+right*shift,look+right*shift+new Vector3(0,.02f,0),fov+2,fov).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,blend);
+        }
+        /// <summary>The name card beside the pilot of a HeroFrame (+shift: on the right, -shift: on the left), a little smaller than the
+        /// default so a long name stays clear of the body.</summary>
+        protected static void NameBeside(ref NativeIntroCardState card,bool right){card.X=right?.71f:.29f;card.Y=.6f;card.Size=.064f;}
         public virtual void Lens(float t,out NativeIntroLens lens){Rig.Lens(this,t,Context.Reduced,out lens);}
         /// <summary>A flash level that is safe in Reduced effects (a pulse narrower than 1/6 s widened and dimmed there).</summary>
         protected float Flash(float t,float at,float attack,float decay,float gain=1)=>Context.Reduced?NativeEntranceMath.Pulse(t,at,Math.Max(attack,.08f),Math.Max(decay,.18f))*gain*.6f:NativeEntranceMath.Pulse(t,at,attack,decay)*gain;
@@ -111,6 +126,19 @@ namespace ChipArena.UnityConversion
         {
             if(Math.Abs(handsAt-t)<1e-4f){at=(hand==0?handR:handL).At;return true;}
             at=Anchor(hand==0?NativeEntranceAnchor.RightHand:NativeEntranceAnchor.LeftHand,t);return false;
+        }
+
+        // ---- the game rig in the game's own capture of a pack clip ----
+        private readonly float[] captureRow=new float[CapturedClip.Channels];
+        /// <summary>
+        /// Poses the keyed rig (the anchors, the Classic body) as the game's own capture of a pack clip (Core CapturedClips: a melee set's
+        /// idle, walk, cuts, block; `set` 0 sword, 1 daggers, 2 greatsword, 3 shield), the weapon hand on its captured grip. The model holds
+        /// its weapon the way it is held on the first frame its clip plays (the visual body's hold: the game hand against the model's), so an
+        /// intro whose model opens on the same pack clip as this capture holds it as the match does, where the two rigs play one clip too.
+        /// </summary>
+        protected void Captured(int set,int clip,float time,CapturedRig.Pose pose)
+        {
+            var c=CapturedClips.Sets[set][clip];float d=Math.Max(1e-3f,c.Duration);time%=d;if(time<0)time+=d;c.Sample(time,captureRow);CapturedRig.Sample(captureRow,set,pose);
         }
 
         // ---- this frame's camera (the rig at `t`, as Camera draws it), for streaks laid onto their head's camera plane ----

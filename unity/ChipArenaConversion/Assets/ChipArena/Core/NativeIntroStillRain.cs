@@ -70,9 +70,9 @@ namespace ChipArena.UnityConversion
                .Spline(FreezeAt,new[]{a,b,c,d},LineAt(1.4f)+new Vector3(0,.05f,0),LineAt(7.4f),36,31).Ease(NativeIntroEase.InOut)
                .Dolly(ResumeAt,V(-1.65f,1.25f,3.95f),V(-1.75f,1.3f,4.15f),V(1.3f,1.75f,-2.5f),V(1.5f,1.6f,-2.7f),45,44)
                .Dolly(SheatheAt,V(1.6f,1.15f,1.8f),V(1.3f,1.12f,1.52f),V(.1f,1.0f,.05f),V(.12f,1.02f,.05f),36,33)
-               .Dolly(ClickAt-.05f,V(.45f,.34f,3.05f),V(.38f,.38f,2.8f),V(0,.9f,0),V(0,.95f,0),40,38)
-               .Hero(StillAt,1,1.15f,3.1f,31).In(NativeIntroCut.Blend,.5f)
-               .Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
+               .Dolly(ClickAt-.05f,V(.45f,.34f,3.05f),V(.38f,.38f,2.8f),V(0,.9f,0),V(0,.95f,0),40,38);
+            HeroFrame(StillAt,1,1.15f,3.3f,31,.62f);
+            Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
         }
         public override string SetBank=>Bank;
 
@@ -280,7 +280,7 @@ namespace ChipArena.UnityConversion
         // ---- the name card: drawn out of a bright line, as the cut was ----
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.95f,.97f,1),Crimson*1.2f);card.Style=NativeIntroCardStyle.Wipe;card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
+            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.95f,.97f,1),Crimson*1.2f);card.Style=NativeIntroCardStyle.Wipe;NameBeside(ref card,true);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
         }
     }
 }
