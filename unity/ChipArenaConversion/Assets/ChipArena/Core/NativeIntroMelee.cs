@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
     /// by Sheathed), with the v2 contract on top: the camera rig and its speed ramps, the set from the bank with the void as its fallback,
     /// the name card, the lens, the cues. No pylon arena, no warp at Hit, no camera jolt but the rig's own moves.
     /// </summary>
-    public abstract class NativeIntroMeleeBlade:NativeBladeIntro,INativeIntroV2,INativeIntroHands
+    public abstract class NativeIntroMeleeBlade:NativeBladeIntro,INativeIntroV2,INativeIntroHands,INativeIntroHead
     {
         public readonly float IntroTotal,IntroNameAt;
         public NativeIntroContext Context{get;set;}
@@ -84,9 +84,11 @@ namespace ChipArena.UnityConversion
         public override float Clock(float age){if(!(age>0))return 0;return Ramps.Any?Ramps.Map(Math.Min(age,IntroTotal+1),IntroTotal+1):Math.Min(age,IntroTotal+1);}
         public override void Camera(float age,out NativeEntranceView view)
         {
-            float t=Clock(Math.Min(age,SettleAt));Rig.Evaluate(this,t,Context.Reduced,out view);
+            float t=Clock(Math.Min(age,SettleAt));Rig.Evaluate(this,t,Context.Reduced,out view);Frame(t,ref view);
             if(view.Eye.Y<NativeEntranceStage.FloorY+.06f)view.Eye.Y=NativeEntranceStage.FloorY+.06f;
         }
+        /// <summary>The rig's view at `t` moved where a shot frames the body as drawn (none by default); Camera and Look both take it.</summary>
+        protected virtual void Frame(float t,ref NativeEntranceView view){}
         public override Vector3 CameraJolt(float t)=>Vector3.Zero;
         /// <summary>Builds the anchor table on the first frame, under the opening black, rather than at the first beat that reads an anchor
         /// (it poses the whole intro once: a hitch mid-intro on a session's first play otherwise). Call from Lights.</summary>
@@ -107,11 +109,12 @@ namespace ChipArena.UnityConversion
         /// `angle` rad off its facing), the eye a little over the waist and the look under it, so the pilot stands whole in the upper four
         /// fifths of the frame (its feet at about 0.8 of the height) and the name card has the clean band below them (NameBelow).
         /// </summary>
-        protected void HeroFull(float at,float side,float distance,float fov,float angle=.4f,float blend=.5f)
+        protected void HeroFull(float at,float side,float distance,float fov,float angle=.4f,float blend=.5f,float lift=0)
         {
+            // (`lift`: eye and look raised together, for a weapon held high: the great sword's tip)
             float yaw=Facing+side*angle;var dir=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));
-            var from=dir*(distance+.5f)+new Vector3(0,.92f,0);var to=dir*distance+new Vector3(0,1.0f,0);
-            Rig.Dolly(at,from,to,new Vector3(0,.8f,0),new Vector3(0,.83f,0),fov+2,fov).Ease(NativeIntroEase.Out);if(blend>0)Rig.In(NativeIntroCut.Blend,blend);
+            var from=dir*(distance+.5f)+new Vector3(0,.92f+lift,0);var to=dir*distance+new Vector3(0,1.0f+lift,0);
+            Rig.Dolly(at,from,to,new Vector3(0,.8f+lift,0),new Vector3(0,.83f+lift,0),fov+2,fov).Ease(NativeIntroEase.Out);if(blend>0)Rig.In(NativeIntroCut.Blend,blend);
         }
         /// <summary>The name card in the band under the hero frame's feet (HeroFull), centred with its kicker and line.</summary>
         protected static void NameBelow(ref NativeIntroCardState card){card.X=.5f;card.Y=.9f;card.Size=.062f;}
@@ -127,6 +130,18 @@ namespace ChipArena.UnityConversion
         {
             if(Math.Abs(handsAt-t)<1e-4f){at=(hand==0?handR:handL).At;return true;}
             at=Anchor(hand==0?NativeEntranceAnchor.RightHand:NativeEntranceAnchor.LeftHand,t);return false;
+        }
+
+        // ---- the head as drawn (handed in with the hands) ----
+        /// <summary>The drawn head's joint is its pivot at the skull's base, about 0.16 m under the eyes (I5's measure): lifted along the head's up.</summary>
+        protected const float ModelHeadLift=.16f;
+        private Vector3 eyesAt;private float eyesSeen=-100;private bool eyesModel;
+        public void Head(float t,in NativeIntroHand head){eyesModel=head.Model;eyesAt=head.Model?head.At+Vector3.Transform(new Vector3(0,ModelHeadLift,0),head.Turn):head.At;eyesSeen=t;}
+        /// <summary>The eyes as drawn at `t` (the latest frame's within `within` s): false where no model was drawn, with the head handed in or
+        /// the keyed head anchor instead.</summary>
+        protected bool Eyes(float t,float within,out Vector3 at)
+        {
+            bool seen=Math.Abs(eyesSeen-t)<within;at=seen?eyesAt:Anchor(NativeEntranceAnchor.Head,t);return seen&&eyesModel;
         }
 
         // ---- the blades as drawn ----
@@ -159,13 +174,27 @@ namespace ChipArena.UnityConversion
             root=Vector3.Lerp(at,tip,.14f);return false;
         }
         protected Vector3 DrawnTip(float t,int hand){DrawnBlade(t,hand,out _,out var tip);return tip;}
+        /// <summary>The drawn wrist (0 the right) at `t`, the latest frame's within `within` s (for the camera, set before the hands come in):
+        /// false where no model was drawn.</summary>
+        protected bool DrawnHand(float t,int hand,float within,out Vector3 at)
+        {
+            var h=hand==0?handR:handL;at=h.At;return h.Model&&Math.Abs(handsAt-t)<within&&float.IsFinite(h.At.X);
+        }
+        /// <summary>A point fixed in the drawn hand's weapon frame (`local`, source frame, +z along the weapon) at `t`: false when no model
+        /// was drawn for `t` (within `within` s), the caller's own fallback then.</summary>
+        protected bool DrawnFrame(float t,int hand,Vector3 local,float within,out Vector3 at)
+        {
+            var h=hand==0?handR:handL;
+            if(h.Model&&Math.Abs(handsAt-t)<within&&float.IsFinite(h.At.X)){at=h.At+Vector3.Transform(local,h.Turn);return true;}
+            at=default;return false;
+        }
         /// <summary>
         /// The sweep behind the drawn blade over the last `life` s (from `from` on): its tip's path as a chain of lines (Catmull-Rom between
         /// the frames, so a fast cut's few frames still draw an arc), hot at the head, with the blade's afterimages between root and tip
         /// filling it as a sheet. Without a model the keyed tip's path (`until`: no keyed sample past it, where the model only fades into
         /// the next clip).
         /// </summary>
-        protected void BladeSweep(INativeEntranceFx fx,float t,int hand,float from,float life,Vector3 head,Vector3 tail,float width,float sheet,int seed,bool low,float until=1e6f)
+        protected void BladeSweep(INativeEntranceFx fx,float t,int hand,float from,float life,Vector3 head,Vector3 tail,float width,float sheet,int seed,bool low,float until=1e6f,float reach=.33f)
         {
             int n=0;
             if(drawnCount[hand]>1&&Math.Abs(drawnAt[hand*DrawnMax+drawnHead[hand]]-t)<1e-4f)
@@ -192,8 +221,8 @@ namespace ChipArena.UnityConversion
                     float u0=(float)k/steps,u1=(float)(k+1)/steps;var a=CatmullRom(p0,p1,p2,p3,u0);var b=CatmullRom(p0,p1,p2,p3,u1);if((a-b).LengthSquared()<1e-8f)continue;
                     float age=NativeEntranceMath.Lerp(sweepAge[j],sweepAge[j+1],u0),f=1-NativeEntranceMath.Clamp01(age/life),k2=f*f;
                     Line(fx,a,a-b,Vector3.Lerp(tail,head,f)*k2,width*(.35f+.65f*f),.2f,1-f,seed+j*8+k);
-                    // The sheet: the blade's afterimage from a third of the way up to the tip, faint and soft.
-                    if(sheet>0&&!low){var r=Vector3.Lerp(sweepRoot[j],sweepRoot[j+1],u0);var from3=Vector3.Lerp(r,a,.33f);var ax=a-from3;if(ax.LengthSquared()>1e-6f)Line(fx,a,ax,tail*(sheet*k2),width*2.6f,.1f,1-f,seed+j*8+4+k);}
+                    // The sheet: the blade's afterimage from `reach` of the way up to the tip, faint and soft.
+                    if(sheet>0&&!low){var r=Vector3.Lerp(sweepRoot[j],sweepRoot[j+1],u0);var from3=Vector3.Lerp(r,a,reach);var ax=a-from3;if(ax.LengthSquared()>1e-6f)Line(fx,a,ax,tail*(sheet*k2),width*2.6f,.1f,1-f,seed+j*8+4+k);}
                 }
             }
         }
@@ -216,7 +245,10 @@ namespace ChipArena.UnityConversion
 
         // ---- this frame's camera (the rig at `t`, as Camera draws it), for streaks laid onto their head's camera plane ----
         protected NativeEntranceView View;protected bool ViewSet;
-        protected void Look(float t){float settle=Clock(SettleAt);Rig.Evaluate(this,t<settle?t:settle,Context.Reduced,out View);ViewSet=true;}
+        /// <summary>How much of a soft puff of `size` m at `at` to draw this frame (Look first): none while the lens is inside it, all of it
+        /// once it is clear (smoke that drifts over the camera otherwise fills the frame).</summary>
+        protected float NearFade(Vector3 at,float size)=>ViewSet?NativeEntranceMath.Smooth((Vector3.Distance(at,View.Eye)-.55f*size)/Math.Max(.1f,size)):1;
+        protected void Look(float t){float settle=Clock(SettleAt),at=t<settle?t:settle;Rig.Evaluate(this,at,Context.Reduced,out View);Frame(at,ref View);ViewSet=true;}
         protected void Line(INativeEntranceFx fx,Vector3 head,Vector3 axis,Vector3 color,float width,float taper,float u,float seed)=>NativeIntroMelee.Line(fx,View,ViewSet,head,axis,color,width,taper,u,seed);
     }
 }

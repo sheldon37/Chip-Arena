@@ -25,16 +25,29 @@ namespace ChipArena.UnityConversion
         private static readonly Vector3 Fire=NativeEntranceFx.Hex(0xff8a2c),Hot=NativeEntranceFx.Hex(0xffd27a),Dusk=NativeEntranceFx.Hex(0xff9a5c),Steel=NativeEntranceFx.Hex(0x8cceff),
             Smoke=new Vector3(.12f,.1f,.1f),Earth=NativeEntranceFx.Hex(0x4a3a2c),Sky=NativeEntranceFx.Hex(0x2a1c22);
         public override string Spec=>"shield";
-        /// <summary>Where each bolt comes from (the ridge, source frame) and where it strikes the shield's face (in front of the chest).</summary>
+        /// <summary>Where each bolt comes from (the ridge, source frame) and where it strikes the shield's face: the face as drawn (FaceAt),
+        /// else this point in front of the chest (no model drawn: a checker, the Classic body).</summary>
         private static readonly Vector3 Face=new Vector3(0,1.2f,.62f);
+        /// <summary>The middle of the shield's face in its weapon frame, a little proud of it (the match's block socket spans y .05-.4 of
+        /// the frame, .25-.29 in front: Runtime NativeBlockFxPresentation).</summary>
+        private static readonly Vector3 FaceLocal=new Vector3(0,.22f,.32f);
+        /// <summary>The shield's face as drawn at `t` (`within`: the latest frame's, for the lights).</summary>
+        private Vector3 FaceAt(float t,float within=1e-4f)=>DrawnFrame(t,0,FaceLocal,within,out var at)?at:Face;
+        // Each hit's burst stays where the face was when the bolt struck (its sparks fly from there while the shield recoils).
+        private readonly Vector3[] hitFace=new Vector3[5];private readonly bool[] hitSeen=new bool[5];private float faceClock=-1;
+        private Vector3 HitFace(int i,float t)
+        {
+            if(t<faceClock-1e-4f)Array.Clear(hitSeen,0,hitSeen.Length);// (a clock that runs back starts over)
+            faceClock=t;if(hitSeen[i])return hitFace[i];var f=FaceAt(t);if(t>=Hits[i]){hitFace[i]=f;hitSeen[i]=true;}return f;
+        }
         private static Vector3 Origin(int i)=>new Vector3(-14+9*i+3*NativeEntranceMath.Signed(39001,i),9,72);
         private const float Flight=.72f;
         /// <summary>Near misses: earth and fire thrown up round the pilot (source frame) and when.</summary>
-        private static readonly Vector3[] Misses={new Vector3(2.3f,0,1.6f),new Vector3(-2.6f,0,.9f),new Vector3(.9f,0,3.2f)};
+        private static readonly Vector3[] Misses={new Vector3(2.6f,0,-.2f),new Vector3(1.2f,0,-3.0f),new Vector3(-2.3f,0,-1.9f)};
         private static readonly float[] MissAt={3.0f,3.72f,4.12f};
         private static readonly string[] debrisProps={"breach/debris-0","breach/debris-1","breach/debris-2","breach/debris-3"};
         /// <summary>Which near miss throws each rock (the nearest).</summary>
-        private static readonly int[] DebrisMiss={0,1,2,1};
+        private static readonly int[] DebrisMiss={0,2,0,2};
         private static readonly Vector2[] DebrisRest={new Vector2(-1.2f,1.55f),new Vector2(1.25f,1.85f),new Vector2(-1.15f,2.45f),new Vector2(1.2f,2.3f)};
 
         public NativeIntroHoldTheLine():base(NativeIntroCatalog.WeaponPrefix+"shield",Total,CardAt,Hits[0],0x8cceff)
@@ -44,8 +57,8 @@ namespace ChipArena.UnityConversion
             // The camera: wide and low from the field; the plant, low and close; over the shoulder through the breach as the ridge launches;
             // low in front with bolts streaking past the lens; from the side; the silence, pushing in; the bash, wide; the hero.
             Rig.Dolly(0,V(-2.4f,.72f,7.5f),V(-1.9f,.82f,6.2f),V(0,1.6f,-1),V(0,1.5f,-1),40,38)
-               .Dolly(PlantAt,V(2.3f,.5f,2.05f),V(2.1f,.55f,1.82f),V(0,.62f,.3f),V(0,.6f,.3f),38,36)
-               .Dolly(LaunchAt-.05f,V(.72f,1.85f,-1.4f),V(.68f,1.92f,-1.62f),V(0,3.2f,30),V(0,6.5f,40),46,44)
+               .Dolly(PlantAt,V(2.7f,.7f,2.7f),V(2.45f,.75f,2.4f),V(0,1.0f,.3f),V(0,.98f,.3f),40,38)
+               .Dolly(LaunchAt-.05f,V(1.05f,1.6f,-1.3f),V(1.0f,1.66f,-1.5f),V(-.4f,3.2f,30),V(-.4f,6.5f,40),46,44)
                .Dolly(Hits[0]-.2f,V(1.25f,.5f,3.65f),V(1.05f,.55f,3.3f),V(0,1.2f,0),V(0,1.2f,0),50,48).Handheld(.5f)
                .Dolly(Hits[2]-.08f,V(-3.2f,1.0f,.85f),V(-3.4f,1.1f,1.2f),V(0,1.15f,.3f),V(0,1.1f,.3f),44,42).Handheld(.4f)
                .Dolly(SilenceAt,V(.42f,1.3f,3.45f),V(.32f,1.3f,2.85f),V(0,1.25f,0),V(0,1.25f,0),36,34)
@@ -82,10 +95,10 @@ namespace ChipArena.UnityConversion
 
         // ---- the barrage ----
         /// <summary>Bolt `i`'s head at `t` (false: not in flight): launched Flight s before its hit, on an arc from the ridge to the shield.</summary>
-        private static bool Bolt(int i,float t,out Vector3 at,out Vector3 v)
+        private static bool Bolt(int i,float t,Vector3 face,out Vector3 at,out Vector3 v)
         {
             float s=t-(Hits[i]-Flight);at=v=Vector3.Zero;if(s<0||s>Flight)return false;float u=s/Flight;var o=Origin(i);
-            at=Vector3.Lerp(o,Face,u)+new Vector3(0,18*u*(1-u),0);v=(Face-o)/Flight+new Vector3(0,18*(1-2*u)/Flight,0);return true;
+            at=Vector3.Lerp(o,face,u)+new Vector3(0,18*u*(1-u),0);v=(face-o)/Flight+new Vector3(0,18*(1-2*u)/Flight,0);return true;
         }
         /// <summary>Debris rock `k` at `t`: at rest, then thrown by its near miss.</summary>
         private static void Debris(int k,float t,out Vector3 at,out Quaternion turn)
@@ -123,10 +136,10 @@ namespace ChipArena.UnityConversion
             float fl=Context.Reduced?1:.9f+.1f*(float)Math.Sin(t*7.7f);
             l.Add(U(1.75f,1.2f,-2.05f),Fire*(2.2f*fl),5);l.Add(U(-1.8f,1.2f,-2.0f),Fire*(2.2f*fl),5);
             // Each hit's flash on the shield's face, its heat after; the bash's.
-            float hit=0;for(int i=0;i<Hits.Length;i++)hit+=Flash(t,Hits[i],.01f,.12f);hit=Math.Min(1.4f,hit);
-            if(hit>.01f)l.Add(Face+new Vector3(0,0,.4f),(Hot*2+White)*(5*hit),7);
-            float heat=Heat(t);if(heat>.02f)l.Add(Face+new Vector3(0,0,.25f),Fire*(1.6f*heat),2.6f);
-            float bash=Flash(t,BashAt+.3f,.02f,.3f);if(bash>.01f)l.Add(Face+new Vector3(0,0,.6f),Steel*(2.2f*bash),5);
+            float hit=0;for(int i=0;i<Hits.Length;i++)hit+=Flash(t,Hits[i],.01f,.12f);hit=Math.Min(1.4f,hit);var face=FaceAt(t,.1f);
+            if(hit>.01f)l.Add(face+new Vector3(0,0,.4f),(Hot*2+White)*(5*hit),7);
+            float heat=Heat(t);if(heat>.02f)l.Add(face+new Vector3(0,0,.25f),Fire*(1.6f*heat),2.6f);
+            float bash=Flash(t,BashAt+.3f,.02f,.3f);if(bash>.01f)l.Add(face+new Vector3(0,0,.6f),Steel*(2.2f*bash),5);
             float name=NativeEntranceMath.Ramp(t,CardAt-.25f,CardAt+.35f);if(name>.01f)l.Add(new Vector3(-1.6f,2.0f,1.8f),Steel*(1.5f*name),8);
         }
 
@@ -141,7 +154,7 @@ namespace ChipArena.UnityConversion
                 float u=((t*.06f+i/(float)n)%1f);var p=new Vector3(-7+14*u,.6f+1.6f*NativeEntranceMath.Rand(39201,i),-.4f+4.5f*NativeEntranceMath.Rand(39203,i));
                 // The bash blows it back, away from the shield.
                 float blow=NativeEntranceMath.EaseOut(NativeEntranceMath.Clamp01((t-BashAt-.25f)/.8f));p+=new Vector3(0,.3f*blow,2.6f*blow*(1-Math.Abs(p.X)/8));
-                fx.Smoke(p,Smoke,.22f*thick,1.6f+.8f*NativeEntranceMath.Rand(39205,i),.5f,39210+i,floor);
+                float size=1.6f+.8f*NativeEntranceMath.Rand(39205,i);fx.Smoke(p,Smoke,.22f*thick*NearFade(p,size),size,.5f,39210+i,floor);
             }
             // Ash drifting down through the dusk light.
             for(int i=0,n=low?8:20;i<n;i++)
@@ -156,20 +169,20 @@ namespace ChipArena.UnityConversion
             // The bolts in flight: a burning head and a smoking tail, laid onto the camera's plane where long.
             for(int i=0;i<Hits.Length;i++)
             {
-                if(!Bolt(i,t,out var at,out var v))continue;var tail=v*.09f;
+                if(!Bolt(i,t,FaceAt(t),out var at,out var v))continue;var tail=v*.09f;
                 Line(fx,at,tail,Hot*2.4f,.03f,.3f,0,39500+i*2);fx.Glow(at,Fire*1.8f,0,.22f,1,0,39501+i*2);
                 for(int j=0;j<(low?2:5);j++){float a=.06f*(j+1);var p=at-v*a;fx.Smoke(p,Smoke*1.5f,.28f*(1-j/6f),.18f+.1f*j,j/6f,39600+i*8+j,floor);}
             }
             // Each hit: a white-hot burst on the face, sparks and burning splinters thrown back and out, a puff of smoke.
             for(int i=0;i<Hits.Length;i++)
             {
-                float a=t-Hits[i];if(a<0||a>1.2f)continue;
-                if(a<.15f)fx.Glow(Face+new Vector3(0,0,.12f),(White*2+Hot)*(2.2f*(1-a/.15f)),0,.35f+1.2f*a,1,a/.15f,39700+i);
-                NativeEntranceFx.Sparks(fx,t,Hits[i],Face+new Vector3(0,0,.1f),new Vector3(0,.3f,1),1.2f,low?10:24,6.5f,.7f,7,.6f,Hot*2.4f,Fire*1.6f,.012f,39710+i*40,q,floor);
-                if(a<.9f){float u=a/.9f;fx.Smoke(Face+new Vector3(.1f*(i%2==0?1:-1),.1f+.3f*u,.25f+.4f*u),Smoke*1.4f,.35f*(1-u),.3f+.6f*u,u,39900+i,floor);}
+                float a=t-Hits[i];if(a<0||a>1.2f)continue;var face=HitFace(i,t);
+                if(a<.15f)fx.Glow(face+new Vector3(0,0,.12f),(White*2+Hot)*(2.2f*(1-a/.15f)),0,.35f+1.2f*a,1,a/.15f,39700+i);
+                NativeEntranceFx.Sparks(fx,t,Hits[i],face+new Vector3(0,0,.1f),new Vector3(0,.3f,1),1.2f,low?10:24,6.5f,.7f,7,.6f,Hot*2.4f,Fire*1.6f,.012f,39710+i*40,q,floor);
+                if(a<.9f){float u=a/.9f;fx.Smoke(face+new Vector3(.1f*(i%2==0?1:-1),.1f+.3f*u,.25f+.4f*u),Smoke*1.4f,.35f*(1-u),.3f+.6f*u,u,39900+i,floor);}
             }
             // The shield's face glowing hot after the barrage, cooling.
-            float heat=Heat(t);if(heat>.02f)fx.Glow(Face+new Vector3(0,0,.08f),Fire*(.6f*heat),0,.45f,1,0,39950);
+            float heat=Heat(t);if(heat>.02f)fx.Glow(FaceAt(t)+new Vector3(0,0,.08f),Fire*(.6f*heat),0,.45f,1,0,39950);
             // Near misses: earth thrown up in clods (the blast itself is the game's own fire and smoke).
             for(int m=0;m<Misses.Length;m++)
             {

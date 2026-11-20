@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
                .Dolly(LeapAt-.15f,V(3.4f,.38f,1.7f),V(3.55f,.42f,1.95f),V(0,1.6f,0),V(0,1.2f,.1f),52,52)
                .Crane(SlamAt-.06f,V(-2.4f,1.0f,3.1f),V(-1.5f,1.5f,3.4f),5.2f,V(0,.35f,0),V(0,.1f,-.2f),50,60).Ease(NativeIntroEase.InOut)
                .Dolly(SlamAt+1.15f,V(.9f,9.6f,3.4f),V(.4f,9.1f,1.9f),V(0,0,-.8f),V(0,0,-.4f),58,54);// (on the blow's clock: the cracks' later start must not crowd it into the hero)
-            HeroFull(RiseAt+.3f,1,4.8f,33,.4f,0);// (a cut: from high over the ring a blend would plunge 8 m)
+            HeroFull(RiseAt+.3f,1,5.6f,33,.4f,0,.22f);// (back and up: the great sword held high stays in frame)// (a cut: from high over the ring a blend would plunge 8 m)
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
             Ramps.Ramp(SlamAt-.2f,.25f,.3f,.9f);
         }
@@ -90,7 +90,8 @@ namespace ChipArena.UnityConversion
             float spin=.25f*(h-.5f)*settle;turn=Quaternion.CreateFromAxisAngle(axis,-tilt*settle-tilt*.6f*bounce)*Quaternion.CreateFromAxisAngle(Vector3.UnitY,spin*.2f);
         }
         /// <summary>How hot the quarry's cracks and seam run at `t` (the glow sub-mesh's level: the seam, the faults and the light under the disc).</summary>
-        private float Heat(float t)=>.55f+.15f*(float)Math.Sin(t*1.7f)*(Context.Reduced?0:1)+2.6f*NativeEntranceMath.Pulse(t,SlamAt,.06f,.9f)+.9f*NativeEntranceMath.Ramp(t,SlamAt,SlamAt+.6f);
+        private float Heat(float t)=>(.55f+.15f*(float)Math.Sin(t*1.7f)*(Context.Reduced?0:1)+2.6f*NativeEntranceMath.Pulse(t,SlamAt,.06f,.9f)+.9f*NativeEntranceMath.Ramp(t,SlamAt,SlamAt+.6f))
+            *(1-.45f*NativeEntranceMath.Ramp(t,RiseAt+.2f,CardAt+.2f));// (cooling under the name: the seam ran as a bright bar through its band)
 
         // ---- the set ----
         protected override bool Scene(float t,INativeIntroSet set)

@@ -63,6 +63,14 @@ namespace ChipArena.UnityConversion
             base.Pose(t,pose,out root,out rotation);Moves(t,out int capture,out _,out float time);Captured(0,capture,time,pose);
         }
 
+        /// <summary>The visor shot frames the visor as drawn: the model's crouch carries its head lower than the capture's keyed head the shot
+        /// is authored on (the first captures framed the helmet's crown), so the shot moves by the gap between the two.</summary>
+        protected override void Frame(float t,ref NativeEntranceView view)
+        {
+            if(t<VisorAt||t>=CutAt-.03f||!Eyes(t,.1f,out var eyes))return;
+            var d=eyes-(Smoothed((int)NativeEntranceAnchor.Head,t)+new Vector3(0,.155f,.06f));view.Eye+=d;view.Look+=d;
+        }
+
         // ---- the light ----
         /// <summary>How much of the dawn falls through the cleft at `t`: full until the cut, the hall going dark after it, coming back under the name.</summary>
         private static float ShaftLevel(float t)=>t<CutAt?1:.22f+.78f*(1-NativeEntranceMath.Ramp(t,CutAt,CutAt+.9f))+.35f*NativeEntranceMath.Ramp(t,CardAt-.6f,CardAt+.6f);
@@ -117,7 +125,7 @@ namespace ChipArena.UnityConversion
             // Dust turning in the hall's dark.
             for(int i=0,n=low?6:14;i<n;i++){var p=new Vector3(NativeEntranceMath.Signed(37701,i)*4,.4f+3.5f*NativeEntranceMath.Rand(37703,i),NativeEntranceMath.Signed(37705,i)*5)+new Vector3((float)Math.Sin(t*.2f+i)*.2f,(float)Math.Sin(t*.15f+i*2)*.1f,0);fx.Glow(p,Dawn*.04f,0,.025f,0,0,37710+i);}
             // The cut: the blade's sweep, a white-teal arc along the tip's path, too fast to see but for its trail.
-            if(after>-.05f&&after<.35f)BladeSweep(fx,t,0,CutAt-.12f,.22f,White*1.6f+Teal,Gold,.022f,.45f,37800,low,FollowEnd);
+            if(after>-.05f&&after<.35f)BladeSweep(fx,t,0,CutAt-.12f,.22f,White*1.6f+Teal,Gold,.022f,.3f,37800,low,FollowEnd,.45f);
             if(after>=0&&after<.25f){var tip=DrawnTip(t,0);float g=Flash(t,CutAt,.01f,.08f);fx.Glow(tip,(White*2+Gold)*(1.4f*g),0,.25f,1,0,37850);}
             // The blade holds the light: a glow running up its edge, a ribbon of gold behind the backhand.
             float blade=BladeLight(t);
@@ -127,7 +135,7 @@ namespace ChipArena.UnityConversion
                 fx.Glow(Vector3.Lerp(hand,tip,.15f+.8f*run),Gold*(1.2f*blade),0,.09f,1,0,37900);fx.Glow(tip,Gold*(.8f*blade),0,.07f,1,0,37901);
                 Line(fx,tip,tip-hand,Gold*(.5f*blade),.018f,.5f,0,37902);
             }
-            if(t>=RibbonAt&&t<StanceAt+.5f)BladeSweep(fx,t,0,RibbonAt,.45f,White*.8f+Gold*1.2f,Gold*1.3f,.028f,.7f,38000,low,StanceAt);
+            if(t>=RibbonAt&&t<StanceAt+.5f)BladeSweep(fx,t,0,RibbonAt,.32f,White*.8f+Gold*1.2f,Gold*1.3f,.028f,.4f,38000,low,StanceAt,.55f);
             // Under the name: a glint along the blade.
             if(t>=CardAt-.1f&&t<CardAt+.6f){DrawnBlade(t,0,out var hand,out var tip);float g=NativeEntranceMath.Bump(t,CardAt-.1f,CardAt+.6f);
                 NativeEntranceFx.Glint(fx,Vector3.Lerp(hand,tip,NativeEntranceMath.Smooth((t-CardAt+.1f)/.7f)),(White+Gold)*(1.5f*g),.12f*g,Vector3.UnitX,Vector3.UnitY,38100);}

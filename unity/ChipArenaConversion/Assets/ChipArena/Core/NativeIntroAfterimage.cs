@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
             Rig.Dolly(0,V(-.6f,1.0f,4.6f),V(-.5f,1.05f,3.65f),V(0,1.3f,-1.8f),V(0,1.25f,-.3f),42,40)
                .Dolly(StopAt,V(-1.1f,1.0f,1.95f),V(-.9f,1.02f,1.62f),V(0,1.3f,0),V(0,1.28f,0),34,32)
                .Dolly(CutAAt-.1f,V(1.6f,3.6f,3.4f),V(1.3f,3.7f,3.0f),V(0,1.0f,-.4f),V(0,1.1f,-.6f),50,48)
-               .Dolly(CutCAt-.05f,V(2.1f,.45f,.9f),V(2.0f,.5f,1.4f),V(0,1.0f,0),V(0,1.05f,0),46,46).Handheld(.5f)
+               .Dolly(CutCAt-.05f,V(-1.5f,.45f,3.1f),V(-1.25f,.5f,2.7f),V(0,1.05f,0),V(0,1.1f,0),48,46).Handheld(.4f)
                .Dolly(ConvergeAt-.05f,V(.3f,.8f,3.2f),V(.25f,.85f,2.7f),V(0,1.1f,0),V(0,1.12f,0),38,36);
             HeroFull(StanceAt+.05f,1,4.4f,32,.35f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
@@ -94,20 +94,21 @@ namespace ChipArena.UnityConversion
             // Off its cord: it falls turning onto its side (the paper's middle under gravity, knocked down the lane), lands, hops once and
             // rolls a little further about its own axis to a stop. The turn is continuous throughout: hung, tumbling, lying, rolling.
             var hung=Hang(k,cut);var mid0=ring+Vector3.Transform(new Vector3(0,-cy,0),hung);
-            float side=k%2==0?1:-1,lane=k==3?-1:1,rad=Girth(k),rest=NativeEntranceStage.FloorY+rad,fall=(float)Math.Sqrt(2*Math.Max(.1f,mid0.Y-rest)/9.8f);
-            const float Knock=.6f,Brake=2,Spin=2.5f;
-            var lie=Quaternion.CreateFromAxisAngle(Vector3.UnitZ,1.45f*side);
+            // (knocked toward the nearer shopfront: the floor between the lens and the pilot stays clear for the name)
+            float xs=mid0.X<0?-1:1,rad=Girth(k),rest=NativeEntranceStage.FloorY+rad,fall=(float)Math.Sqrt(2*Math.Max(.1f,mid0.Y-rest)/9.8f);
+            const float Knock=.9f,Brake=2,Spin=2.5f;
+            var lie=Quaternion.CreateFromAxisAngle(Vector3.UnitX,1.45f);// (on its side, its axis along the lane)
             if(s<fall)
             {
                 float u=s/fall;turn=Quaternion.Slerp(hung,lie,NativeEntranceMath.Smooth(u))*Quaternion.CreateFromAxisAngle(Vector3.UnitY,Spin*u);
-                middle=mid0+new Vector3(0,-4.9f*s*s,lane*Knock*s);
+                middle=mid0+new Vector3(xs*Knock*s,-4.9f*s*s,0);
             }
             else
             {
                 float b=s-fall,run=Knock/Brake*(1-(float)Math.Exp(-Brake*b)),hop=Math.Max(0,1.0f*b-4.9f*b*b);
-                // (rolling, its own axis lying along x: the spin that carries it `run` m down the lane without sliding)
-                turn=lie*Quaternion.CreateFromAxisAngle(Vector3.UnitY,Spin-side*lane*run/rad);
-                middle=new Vector3(mid0.X,rest+hop,mid0.Z+lane*(Knock*fall+run));
+                // (rolling across the lane about its own axis, which lies along z: the spin that carries it `run` m without sliding)
+                turn=lie*Quaternion.CreateFromAxisAngle(Vector3.UnitY,Spin-xs*run/rad);
+                middle=new Vector3(mid0.X+xs*(Knock*fall+run),rest+hop,mid0.Z);
             }
             at=middle+Vector3.Transform(new Vector3(0,cy,0),turn);
         }
@@ -146,7 +147,7 @@ namespace ChipArena.UnityConversion
             if(cutting)
             {
                 float from=t<CutCAt?CutAAt:CutCAt,until=t<CutCAt?CutAAt+CutLength:CutCAt+CutLength-.05f;
-                BladeSweep(fx,t,0,from,.2f,Mint*1.6f,White,.014f,.35f,40600,low,until);BladeSweep(fx,t,1,from,.2f,Mint*1.6f,White,.014f,.35f,40640,low,until);
+                BladeSweep(fx,t,0,from,.2f,Mint*1.6f,White,.014f,.2f,40600,low,until,.5f);BladeSweep(fx,t,1,from,.2f,Mint*1.6f,White,.014f,.2f,40640,low,until,.5f);
                 if(o>.01f){Echo(fx,t,LagL,0,Side*(Spread*o),Teal*1.4f,Teal,.012f,40700,low);Echo(fx,t,LagR,0,-Side*(Spread*o),Magenta*1.4f,Magenta,.012f,40760,low);}
             }
             else if(o>.01f&&t>=CutAAt+.25f&&t<CutCAt+CutLength+LagR+.2f)
@@ -159,7 +160,13 @@ namespace ChipArena.UnityConversion
             {
                 float s=t-CutAt(k);if(s<-.05f||s>1.4f)continue;var r=Lanterns[k];var cord=U(r.X,r.Y-.05f,r.Z);
                 bool left=k==2;var from=Anchor(NativeEntranceAnchor.RightTip,t-(left?LagL:LagR))+(left?Side:-Side)*(Spread*o);
-                if(s>=-.05f&&s<.25f){float a=1-NativeEntranceMath.Clamp01(s/.25f);Line(fx,cord,cord-from,(left?Teal:Magenta)*(2*a),.02f,.5f,0,40800+k);}
+                if(s>=-.12f&&s<.2f)
+                {
+                    // (from the echo's tip a beat before the cut, through the cord at it and a little past, a .5 m stroke along its flight)
+                    float u=NativeEntranceMath.Clamp01((s+.12f)/.14f),fade=1-NativeEntranceMath.Ramp(s,.02f,.2f);var dir=cord-from;
+                    if(dir.LengthSquared()>1e-4f){dir=Vector3.Normalize(dir);var head=Vector3.Lerp(from,cord,u)+dir*(.35f*NativeEntranceMath.Ramp(s,0,.2f));
+                        Line(fx,head,dir*.5f,(left?Teal:Magenta)*(2.4f*fade),.03f,.6f,0,40800+k);fx.Glow(head,(left?Teal:Magenta)*(1.2f*fade),0,.12f,1,0,40810+k);}
+                }
                 if(s>=0&&s<1.2f){Lantern(k,CutAt(k),out _,out _,out var mid);NativeEntranceFx.Sparks(fx,t,CutAt(k),mid,Vector3.UnitY,1,low?4:10,1.6f,.6f,6,.5f,Lamp*2,Lamp,.008f,40820+k*20,q,floor);}
             }
             // The convergence: the echoes folding back into the body in a flash of both colours.

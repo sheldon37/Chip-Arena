@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
     /// The model plays the Frank Slash Pack's assassin and rogue clips (NativeBladeIntro); the keyed root carries it off the lintel.
     /// Presentation only: pure functions of the presentation clock.
     /// </summary>
-    public sealed class NativeIntroApex:NativeIntroMeleeBlade,INativeIntroHead
+    public sealed class NativeIntroApex:NativeIntroMeleeBlade
     {
         public const string Title="Apex";
         public const float Total=7.4f,CardAt=5.9f;
@@ -46,8 +46,8 @@ namespace ChipArena.UnityConversion
             var perchHead=Perch+new Vector3(0,.8f+NativeEntranceStage.FloorY,0);
             Rig.Dolly(0,V(1.9f,.55f,5.6f),V(1.25f,.62f,4.3f),V(0,2.4f,-3),V(.3f,2.95f,-3),40,36).Ease(NativeIntroEase.Linear).Handheld(.7f)
                .Crane(RevealAt,V(-1.8f,1.35f,1.0f),V(-1.05f,2.0f,-.6f),.35f,perchHead+V(0,-.1f,0),perchHead,33,27).Handheld(.35f)
-               .Dolly(CoilAt-.05f,perchHead+V(-.75f,.12f,1.3f),perchHead+V(-.7f,.1f,1.12f),perchHead+V(0,-.05f,0),perchHead+V(0,-.08f,0),25,23).Focus(0,0,.5f)
-               .Dolly(LeapAt-.06f,V(.35f,.42f,1.8f),V(.36f,.4f,1.82f),V(.5f,3.4f,-2.9f),V(.08f,.95f,-.25f),50,55).Ease(NativeIntroEase.InOut)
+               .Dolly(CoilAt-.05f,perchHead+V(-1.1f,.12f,1.9f),perchHead+V(-1.0f,.08f,1.7f),perchHead+V(0,-.2f,0),perchHead+V(0,-.24f,0),30,28).Focus(0,0,.5f)
+               .Dolly(LeapAt-.06f,V(.35f,.42f,1.8f),V(.36f,.4f,1.82f),V(0,.25f,0),V(0,-.1f,0),50,55).Follow(NativeEntranceAnchor.Chest,.04f).Ease(NativeIntroEase.InOut)
                .Dolly(LandAt-.02f,V(-2.7f,.45f,2.0f),V(-2.85f,.5f,2.2f),V(0,.55f,.35f),V(0,.62f,.3f),46,45);
             HeroFull(RiseAt+.05f,-1,4.4f,32,.35f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
@@ -79,12 +79,8 @@ namespace ChipArena.UnityConversion
         }
         public override float Fade(float t)=>t>=CoilAt-.02f&&t<CoilAt+.3f?.25f:t>=RiseAt-.02f&&t<RiseAt+.45f?.35f:.12f;
 
-        // ---- the head as drawn (for the eyes) ----
-        private Vector3 headAt;private float headSeen=-100;
-        /// <summary>The drawn head's joint is its pivot at the skull's base, about 0.16 m under the eyes (I5's measure): lifted along the head's up.</summary>
-        private const float ModelHeadLift=.16f;
-        public void Head(float t,in NativeIntroHand head){headAt=head.Model?head.At+Vector3.Transform(new Vector3(0,ModelHeadLift,0),head.Turn):head.At;headSeen=t;}
-        private Vector3 HeadAt(float t)=>Math.Abs(headSeen-t)<1e-4f?headAt:Anchor(NativeEntranceAnchor.Head,t);
+        // ---- the head as drawn (for the eyes: the base's Eyes) ----
+        private Vector3 HeadAt(float t){Eyes(t,1e-4f,out var at);return at;}
 
         // ---- the set ----
         protected override bool Scene(float t,INativeIntroSet set)

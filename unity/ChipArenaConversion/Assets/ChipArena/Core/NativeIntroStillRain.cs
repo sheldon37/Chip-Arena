@@ -66,8 +66,8 @@ namespace ChipArena.UnityConversion
             // (the glide ends short of the bamboo clump behind on the left, looking on to the stalks the cut takes)
             var a=LineAt(-1.4f)+Side*1.3f+new Vector3(0,.3f,0);var b=LineAt(.8f)+Side*1.4f+new Vector3(0,.28f,0);var c=LineAt(2.6f)+Side*1.35f+new Vector3(0,.2f,0);var d=LineAt(3.6f)+Side*1.3f+new Vector3(0,.15f,0);
             Rig.Dolly(0,V(-.55f,1.45f,6.2f),V(-.5f,1.42f,5.75f),V(.1f,1.15f,-1.5f),V(.1f,1.12f,-1.4f),40,38).Ease(NativeIntroEase.Linear)
-               .Dolly(DrawAt-.05f,V(-1.2f,.75f,3.1f),V(-1.0f,.8f,2.6f),V(0,1.0f,0),V(.05f,1.0f,0),40,36).Ease(NativeIntroEase.Out)
-               .Dolly(GrabAt-.08f,V(-2.25f,.82f,.2f),V(-2.0f,.86f,.15f),V(.05f,.92f,.2f),V(.25f,.95f,.2f),38,34).Focus(0,0,.4f)
+               .Dolly(DrawAt-.05f,V(.9f,3.2f,2.9f),V(.7f,2.6f,2.4f),V(0,.95f,0),V(0,.9f,0),40,36).Ease(NativeIntroEase.Out)
+               .Dolly(GrabAt-.08f,Grip+V(.35f,1.05f,.9f),Grip+V(.3f,.95f,.8f),Grip,Grip+V(0,.02f,0),34,30).Focus(0,0,.4f)
                .Hold(CutAt-.04f,V(-2.7f,.95f,1.9f),V(.35f,1.15f,-.25f),46)
                .Spline(FreezeAt,new[]{a,b,c,d},LineAt(1.4f)+new Vector3(0,.05f,0),LineAt(6.4f),36,31).Ease(NativeIntroEase.InOut)
                .Dolly(ResumeAt,V(-1.65f,1.25f,3.95f),V(-1.75f,1.3f,4.15f),V(1.3f,1.75f,-2.5f),V(1.5f,1.6f,-2.7f),45,44)
@@ -77,6 +77,15 @@ namespace ChipArena.UnityConversion
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
         }
         public override string SetBank=>Bank;
+        /// <summary>Where the grab shot is authored to look (the left hand at the saya, nominally); the shot follows the drawn hand (Frame).</summary>
+        private static readonly Vector3 Grip=new Vector3(.15f,.9f,.15f);
+        /// <summary>The iai stance turns the body well away from the keyed facing (the first captures filmed its back), so the grab shot centres
+        /// on the left hand as drawn, looking down onto it from in front and above.</summary>
+        protected override void Frame(float t,ref NativeEntranceView view)
+        {
+            if(t<GrabAt-.08f||t>=CutAt-.03f||!DrawnHand(t,1,.1f,out var hand))return;
+            var d=hand-Grip;view.Eye+=d;view.Look+=d;
+        }
 
         // ---- the model's clips (the Katana's set: NativeBladeMotion.KatanaExtra) ----
         public override bool Clip(float t,out string clip,out float time)
