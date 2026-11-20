@@ -97,6 +97,7 @@ namespace ChipArena.UnityConversion
         public void BindExpeditionCombat(ExpeditionDirector director,ExpeditionAreaLayout area,NativePveContent data)
         {
             Expedition=director;expeditionArea=area;boundMutators=director.Session.Run.Mutators;
+            director.Session.CacheWeights=data.offerWeights;
             director.Session.MachineReprint=RequestMachineRevive;
             director.Session.Installed=(account,chip,count)=>
             {

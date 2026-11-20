@@ -37,8 +37,13 @@ internal static class ExpeditionDirectorChecks
         Check(run.SetLoading(false),"resume fixture after load");
         Check(director.CanPurchase("host","cache"),"host range evidence");los=false;Check(!director.CanPurchase("host","cache"),"world occlusion refuses");los=true;
         director.Step();Check(writes==1,"initial checkpoint");session.Tick(.25);director.Step();Check(writes==1,"clock-only revision does not rewrite save");
-        session.Run.Credit("host","cash",100);Check(session.Purchase("host","cache").state==ExpeditionCommandState.Pending,"purchase through session");director.Step();var offer=run.Snapshot().chests[0];Check(!offer.sold&&offer.cooldown>run.Elapsed&&offer.generation!="0:cache:0","restock with fresh generation and persisted deadline");
+        session.Run.Credit("host","cash",run.Snapshot().chests.Single().price);Check(session.Purchase("host","cache").state==ExpeditionCommandState.Pending,"purchase through session");director.Step();var offer=run.Snapshot().chests[0];Check(!offer.sold&&offer.cooldown>run.Elapsed&&offer.generation!="0:cache:0","restock with fresh generation and persisted deadline");
         Check(session.Purchase("host","cache").state==ExpeditionCommandState.Refused,"restock cooldown enforced");
+        var resumed=ExpeditionSavepoint.Capture(run).Restore("host");
+        Check(resumed.Snapshot().chests.Single().tier==offer.tier&&resumed.Snapshot().cacheEconomyDraws==2,"savepoint retains stock tier and economy position");
+        var resumedAgain=new NativeExpedition(resumed.Snapshot());
+        Check(resumed.RestockChest("cache","next",resumed.Elapsed)&&resumedAgain.RestockChest("cache","next",resumedAgain.Elapsed)
+            &&resumed.Snapshot().chests.Single().tier==resumedAgain.Snapshot().chests.Single().tier,"restored host continues the same economy stream");
         Check(director.MachineEvidence("host","machine",2,true)?.Valid==false&&director.MachineEvidence("host","machine",3,true)?.Valid==true,"measured reprint channel");
         Check(director.MachineEvidence("host","machine",3,false)?.Valid==false,"interruption refuses reprint");
         fail=true;Check(!director.Checkpoint()&&director.SaveFailure!=null&&writes==1,"failed checkpoint keeps written savepoint");fail=false;

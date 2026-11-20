@@ -18,11 +18,49 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeExpeditionGeneratedWorld
     {
-        public const string Version="deployment-world-landing-4";
+        public const string Version="deployment-world-m3-5";
         /// <summary>Each instance's building behind its entrance frame, and the walls closing any street at the floor's edge.</summary>
         public const float HallHeight=18,EdgeHeight=6;
         public const string MapId="expedition-generated-city";
         private const float NavStep=2;
+        internal static V3 CacheForward(float yaw)
+        {
+            double angle=yaw*Math.PI/180;
+            return new V3((float)Math.Sin(angle),0,(float)Math.Cos(angle));
+        }
+        // The Hulk stands within the 2 m interaction radius, clear of the solid locker.
+        public static ExpeditionPoint CacheApproach(ExpeditionWorldAnchor a)
+        {
+            var f=CacheForward(a.yaw);
+            return new ExpeditionPoint{x=a.x+1.7f*f.x,y=a.y,z=a.z+1.7f*f.z,yaw=a.yaw};
+        }
+        // For a yawed overhead box, the shorter distance to an outside face is the overhang depth
+        // above the column axis. Supported lockers reserve an opening to the sky.
+        public static bool CacheColumnClear(ExpeditionWorldAnchor a,IEnumerable<ContentBlock> blocks)
+        {
+            foreach(var block in blocks)
+            {
+                if(block.pos.y-block.size.y/2<a.y+.62f)continue;
+                float dx=a.x-block.pos.x,dz=a.z-block.pos.z;
+                double angle=2*Math.Atan2(block.rotation.y,block.rotation.w),c=Math.Cos(angle),s=Math.Sin(angle);
+                double depthX=block.size.x/2-Math.Abs(dx*c-dz*s);
+                double depthZ=block.size.z/2-Math.Abs(dx*s+dz*c);
+                if(Math.Min(depthX,depthZ)>.3)return false;
+            }
+            return true;
+        }
+        public static ContentBlock CacheBlock(ExpeditionWorldAnchor a)
+        {
+            double half=a.yaw*Math.PI/360;
+            return new ContentBlock{id=a.id+"-block",role="static",material="metal",
+                pos=new V3(a.x,a.y+.31f,a.z),size=new V3(.92f,.62f,.58f),
+                rotation=new ContentRotation{y=(float)Math.Sin(half),w=(float)Math.Cos(half)}};
+        }
+        internal static ExpeditionInteractionLayout CacheInteraction(ExpeditionWorldAnchor a)
+        {
+            var f=CacheForward(a.yaw);
+            return new ExpeditionInteractionLayout{anchor=a.id,x=a.x+.9f*f.x,y=a.y,z=a.z+.9f*f.z,range=2};
+        }
         private static ExpeditionPoint Point(float x,float z,float yaw=0)=>new ExpeditionPoint{x=x,z=z,yaw=yaw};
         private static ExpeditionVolume Volume(float x,float z,float sx,float sz,float h=4)=>new ExpeditionVolume{x=x,z=z,y=h/2,sx=sx,sy=h,sz=sz};
         private static string I(int value)=>value.ToString(CultureInfo.InvariantCulture);
@@ -108,12 +146,34 @@ namespace ChipArena.UnityConversion
                 spawns.Add(new ExpeditionSpawnLayout{entry=new PveEntry{e=n,id="generated-spawn-"+I(n),kind="door",from=point,@exit=new PvePoint{x=x,z=z},clear=3,allowed=new[]{"shambler","runner","spitter","brute","hulk"}},allow=new[]{"shambler","runner","spitter","brute","hulk"}});
                 string ring=Math.Max(Math.Abs(x),Math.Abs(z))<55?"near":Math.Max(Math.Abs(x),Math.Abs(z))<85?"mid":"far";
                 zones.Add(new ExpeditionHubZone{Id="generated-zone-"+I(n),Ring=ring,Volume=Volume(x,z,9,9),Spawns=new[]{n}});
-                if(n%7==0)
-                {
-                    string id="exp-city:cache:"+I(n);
-                    anchors.Add(new ExpeditionWorldAnchor{id=id,area="exp-city",kind="chest",x=x+2,z=z});
-                    interactions.Add(new ExpeditionInteractionLayout{anchor=id,x=x+2,z=z,range=2.5f});
-                }
+            }
+            // The three hall forecourts reserve a clear apron on the street side of their facade.
+            // The north fence provides the neutral cache with a backstop outside the camp.
+            var cacheRng=new NativeExpeditionDeployment.Roller(state.worldSeed^0xca647u);
+            foreach(var door in doors)
+            {
+                var face=anchors.Single(a=>a.id==door.anchor);
+                var f=CacheForward(face.yaw);
+                var bays=new List<V3>();
+                foreach(int sign in new[]{-1,1})
+                    for(int index=0;index<9;index++)
+                    {
+                        float lateral=sign*(10+index*.5f);
+                        var at=new V3(face.x+f.z*lateral,0,face.z-f.x*lateral);
+                        if(spawns.All(spawn=>(spawn.entry.@exit.Position()-at).Length>=8)
+                            &&(at-new V3(door.join.x,0,door.join.z)).Length>=8+door.join.r)
+                            bays.Add(at);
+                    }
+                if(bays.Count==0)throw new InvalidOperationException("No clear facade bay at "+face.building);
+                var bay=bays[cacheRng.Index(bays.Count)];
+                AddCache(face.building,bay.x,bay.z,face.yaw);
+            }
+            AddCache("neutral",(cacheRng.Index(2)==0?-1:1)*(9+cacheRng.Index(24)*.5f),25.55f,0);
+            void AddCache(string slot,float x,float z,float yaw)
+            {
+                var anchor=new ExpeditionWorldAnchor{id="exp-city:cache:"+slot,area="exp-city",kind="chest",x=x,z=z,yaw=yaw};
+                if(!CacheColumnClear(anchor,blocks))throw new InvalidOperationException("Cache under an overhang: "+anchor.id);
+                anchors.Add(anchor);blocks.Add(CacheBlock(anchor));interactions.Add(CacheInteraction(anchor));
             }
             var map=new ContentMap{id=MapId,name="Generated Expedition",tag="Expedition",theme="expedition",ambience="",look="expedition-city",sky=2761800,floor=2894384,accent=16747084,unity=true,
                 bounds=new MapBounds{minX=-125,maxX=125,minZ=-95,maxZ=95,ceiling=40,killY=-8},blocks=blocks.ToArray(),
@@ -146,6 +206,16 @@ namespace ChipArena.UnityConversion
                 throw new ArgumentException("Generated roster does not match the authored layout.");
             layout.instances=(string[])world.Blueprint.instances.Clone();
             layout.areas=new[]{world.Area}.Concat(layout.instances.Select(layout.Area)).ToArray();
+            foreach(var area in layout.areas)
+                foreach(var chest in area.anchors.Where(a=>area.CacheCandidates.ContainsKey(a.id)))
+                {
+                    var candidates=area.CacheCandidates[chest.id];
+                    var rng=new NativeExpeditionDeployment.Roller(NativePveRandom.Hash(world.Blueprint.worldSeed,chest.id));
+                    var spot=candidates[rng.Index(candidates.Length)];
+                    chest.x=spot.x;chest.y=spot.y;chest.z=spot.z;chest.yaw=spot.yaw;
+                    int i=Array.FindIndex(area.interactions,it=>it.anchor==chest.id);
+                    area.interactions[i]=CacheInteraction(chest);
+                }
             layout.revision=Version;layout.compatibility=NativeMapRules.Revision(authoredJson+"\n"+world.Compatibility);
             return layout;
         }
@@ -160,7 +230,10 @@ namespace ChipArena.UnityConversion
             {
                 if(Math.Abs(block.pos.y+block.size.y/2-p.y)<=.01f&&Math.Abs(p.x-block.pos.x)+radius<=block.size.x/2&&Math.Abs(p.z-block.pos.z)+radius<=block.size.z/2)floor=true;
                 if(block.pos.y+block.size.y/2<=.01f||block.pos.y-block.size.y/2>=height)continue;
-                float dx=Math.Max(0,Math.Abs(p.x-block.pos.x)-block.size.x/2),dz=Math.Max(0,Math.Abs(p.z-block.pos.z)-block.size.z/2);
+                float bx=Math.Abs(p.x-block.pos.x),bz=Math.Abs(p.z-block.pos.z);
+                // Generated lockers are cardinal, including quarter turns on the east/west facades.
+                if(block.rotation!=null&&Math.Abs(2*block.rotation.y*block.rotation.w)>.5f)(bx,bz)=(bz,bx);
+                float dx=Math.Max(0,bx-block.size.x/2),dz=Math.Max(0,bz-block.size.z/2);
                 if(dx*dx+dz*dz<radius*radius)return false;
             }
             return floor;
@@ -231,7 +304,7 @@ namespace ChipArena.UnityConversion
             while(queue.Count>0)foreach(var id in adj[queue.Dequeue()])if(seen.Add(id))queue.Enqueue(id);
             if(seen.Count!=nodes.Count)throw new InvalidOperationException("Generated world has an isolated navigation pocket.");
             var points=a.slots.Concat(a.bossPoints).Concat(a.doors.SelectMany(d=>d.returns.Concat(new[]{d.approach,Point(d.join.x,d.join.z)})))
-                .Concat(a.interactions.Select(i=>Point(i.x,i.z))).Concat(a.spawns.Select(s=>Point(s.entry.@exit.x,s.entry.@exit.z)))
+                .Concat(a.anchors.Where(c=>c.kind=="chest").Select(CacheApproach)).Concat(a.spawns.Select(s=>Point(s.entry.@exit.x,s.entry.@exit.z)))
                 .Concat(world.Hub.Gates.SelectMany(g=>new[]{g.Inside,g.Outside}));
             foreach(var p in points)if(!Supported(m,p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight)||!seen.Contains(Near(p.Position)))
                 throw new InvalidOperationException("Generated world has an unsupported or unreachable gameplay point.");
@@ -243,7 +316,7 @@ namespace ChipArena.UnityConversion
             var text=new StringBuilder(Version).Append('\n').Append(ticket.compatibility).Append('\n').Append(world.Blueprint.worldSeed.ToString(CultureInfo.InvariantCulture));
             // Exact generated collision/nav receipt, independent of current culture and JSON/Unity serialization.
             void F(float v)=>text.Append('|').Append(v.ToString("R",CultureInfo.InvariantCulture));
-            foreach(var b in world.Map.blocks){text.Append('\n').Append(b.id).Append('|').Append(b.material);F(b.pos.x);F(b.pos.y);F(b.pos.z);F(b.size.x);F(b.size.y);F(b.size.z);}
+            foreach(var b in world.Map.blocks){text.Append('\n').Append(b.id).Append('|').Append(b.material);F(b.pos.x);F(b.pos.y);F(b.pos.z);F(b.size.x);F(b.size.y);F(b.size.z);F(b.rotation.y);F(b.rotation.w);}
             foreach(var n in world.Map.nav.nodes){text.Append('\n').Append(n.id);F(n.pos.x);F(n.pos.y);F(n.pos.z);}
             foreach(var l in world.Map.nav.links)text.Append('\n').Append(l.id).Append('|').Append(l.a).Append('|').Append(l.b);
             foreach(var d in world.Blueprint.districts)text.Append('\n').Append(d.instance).Append('|').Append(d.theme).Append('|').Append(d.side);

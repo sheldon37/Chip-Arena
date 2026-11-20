@@ -54,6 +54,11 @@ namespace ChipArena.UnityConversion
             Near(NativeExpeditionMutators.Money(new[]{"jackpot","friendly-fire","hulkamania"},"hulk"),12.15,"multiplicative money with additive payout");
             Near(NativeExpeditionMutators.Money(Array.Empty<string>(),"hulk"),1,"legacy money");
             Check(NativeExpeditionMutators.CachePrice(new[]{"windfall"},101)==51&&NativeExpeditionMutators.CachePrice(new[]{"broke"},100)==200,"cache price rounding");
+            foreach(var draw in new[]{(0d,"standard",100),(.59999,"standard",100),(.6,"rare",175),(.87999,"rare",175),(.88,"epic",275),(.97999,"epic",275),(.98,"legendary",400),(.99999,"legendary",400)})
+            {
+                var offer=ExpeditionChestOffer.Roll(draw.Item1,"cache","stock",Array.Empty<string>());
+                Check(offer.tier==draw.Item2&&offer.price==draw.Item3,"cache probability boundary and base price");
+            }
             Check(NativeExpeditionMutators.Cap(new[]{"swarm"},60)==72&&NativeExpeditionMutators.Cap(new[]{"hulkamania","swarm"},60)==6,"crowd cost bounds");
             Near(NativeExpeditionMutators.Interval(new[]{"hulkamania","swarm"}),2.5,"hulk interval wins");
             Check(NativeExpeditionMutators.Kind(new[]{"hulkamania"},"rigger")=="hulk"&&NativeExpeditionMutators.Kind(new[]{"sprinters"},"shambler")=="runner","spawn conversion");

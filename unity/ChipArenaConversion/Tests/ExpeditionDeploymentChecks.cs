@@ -132,7 +132,12 @@ namespace ChipArena.UnityConversion
             Check(generated.Hub.Routes.Length==3&&generated.Hub.Routes.All(r=>r.Path>=r.Straight),"street routes and measured distances");
             var composed=NativeExpeditionGeneratedWorld.ComposeLayout(generated,layoutJson,bundle.Backrooms==null?null:NativeBackroomsExpedition.Area(bundle.Backrooms),bundle.Poolrooms==null?null:NativePoolroomsExpedition.Area(bundle.Poolrooms));
             Check(composed.Area(composed.world).map==generated.Map.id&&composed.instances.SequenceEqual(room.Snapshot().instances),"generated manifest selects the rolled roster");
-            foreach(string id in composed.instances.Where(id=>id!=NativeBackroomsGenerator.AreaId&&id!=NativePoolroomsGenerator.AreaId))Check(Json(composed.Area(id))==Json(layout.Area(id)),"authored interior remains unchanged");
+            foreach(string id in composed.instances.Where(id=>id!=NativeBackroomsGenerator.AreaId&&id!=NativePoolroomsGenerator.AreaId)){
+                var area=composed.Area(id);
+                Check(Json(area.doors)==Json(layout.Area(id).doors)&&Json(area.spawns)==Json(layout.Area(id).spawns),"authored doors and encounters preserved");
+                foreach(var cache in area.anchors.Where(a=>a.kind=="chest"))
+                    Check(area.CacheCandidates[cache.id].Any(p=>p.x==cache.x&&p.y==cache.y&&p.z==cache.z&&p.yaw==cache.yaw),"cache uses an authored bay");
+            }
             var migratedWorld=NativeExpeditionGeneratedWorld.Build(ExpeditionDeploymentRoom.Restore(room.Ticket,"next",layout,content));
             Check(migratedWorld.Compatibility==generated.Compatibility,"host migration reconstructs identical map");
             var culture=System.Globalization.CultureInfo.CurrentCulture;
@@ -149,6 +154,18 @@ namespace ChipArena.UnityConversion
                 {
                     foreach(var point in door.returns.Concat(new[]{door.approach}))Check(ExpeditionLayoutChecks.Supported(world.Map,point.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight),"independent entrance collision probe");
                     for(int i=0;i<8;i++){double angle=i*Math.PI/4;Check(ExpeditionLayoutChecks.Supported(world.Map,new V3(door.join.x+3*(float)Math.Cos(angle),0,door.join.z+3*(float)Math.Sin(angle)),.45f,1.8f),"join circle collision probe");}
+                }
+                var caches=world.Area.anchors.Where(a=>a.kind=="chest").ToArray();
+                Check(caches.Length==4,"three district caches and one neutral cache");
+                foreach(var cache in caches)
+                {
+                    var pos=new V3(cache.x,cache.y,cache.z);
+                    Check(world.Area.spawns.All(s=>(s.entry.@exit.Position()-pos).Length>=8),"cache clear of spawn exits");
+                    Check(caches.All(other=>other==cache||(new V3(other.x,other.y,other.z)-pos).Length>=40),"40 m cache spacing");
+                    var block=world.Map.blocks.Single(b=>b.id==cache.id+"-block");
+                    Check(block.size.x==.92f&&block.size.y==.62f&&block.size.z==.58f,"solid cache dimensions");
+                    var point=world.Area.interactions.Single(it=>it.anchor==cache.id);
+                    Check(point.range==2&&Math.Abs((new V3(point.x,point.y,point.z)-pos).Length-.9)<.001,"cache reach");
                 }
                 Check(world.Map.blocks.Length<500&&world.Map.nav.nodes.Length<12000,"bounded generated map");
             }

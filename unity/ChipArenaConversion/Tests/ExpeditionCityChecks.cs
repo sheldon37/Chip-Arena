@@ -187,7 +187,7 @@ namespace ChipArena.UnityConversion
         {
             count=0;var o=new JsonSerializerOptions{IncludeFields=true};string R(string f)=>File.ReadAllText(Path.Combine(root,f));
             var m=Measure(root,true);var town=Town(root,o);string text=R("Assets/Conversion/Resources/ExpeditionLayout.json");var layout=NativeExpeditionLayout.Parse(text);var area=layout.Area(layout.world);var hub=ExpeditionHubLayout.Parse(text,area.id);
-            Check(m.Revision=="exp-layout-7"&&m.Width==240&&m.Depth==180,"exp-layout-7: the town is "+m.Width+" x "+m.Depth+" m ("+m.Area+" m2; exp-layout-6 "+BeforeArea+" m2)");
+            Check(m.Revision=="exp-layout-8"&&m.Width==240&&m.Depth==180,"exp-layout-8: the town is "+m.Width+" x "+m.Depth+" m ("+m.Area+" m2; exp-layout-6 "+BeforeArea+" m2)");
             // ---------------- reachability on the navigation ----------------
             var nav=new Nav(town.nav);var d0=nav.From(nav.Near(area.slots[0].x,area.slots[0].z),out _);
             Check(m.Reached==m.Nodes,"every one of the "+m.Nodes+" navigation nodes is reached from the sanctuary's first slot ("+m.Reached+")");
@@ -257,7 +257,7 @@ namespace ChipArena.UnityConversion
             // ---------------- the city in detail (the graphics pass) ----------------
             DetailChecks(root,town,layout,area,hub,kit,spots,m);
             var w=m.Doors["exp-ward-zero"];var bw=Before["exp-ward-zero"];
-            Console.WriteLine("PASS expedition city ("+count+" checks: exp-layout-7, "+m.Width+" x "+m.Depth+" m, "+m.Nodes+" navigation nodes all reached (exp-layout-6 "+BeforeNodes+"); slots to the Ward Zero circle "+bw.slotJoin.ToString("0.0")+" -> "+w.slotJoin.ToString("0.0")+" m (x"+(w.slotJoin/bw.slotJoin).ToString("0.00")+"), gate to circle "+bw.gateJoin.ToString("0.0")+" -> "+w.gateJoin.ToString("0.0")+" m (x"+(w.gateJoin/bw.gateJoin).ToString("0.00")+"), the station and the foundry alike; "
+            Console.WriteLine("PASS expedition city ("+count+" checks: exp-layout-8, "+m.Width+" x "+m.Depth+" m, "+m.Nodes+" navigation nodes all reached (exp-layout-6 "+BeforeNodes+"); slots to the Ward Zero circle "+bw.slotJoin.ToString("0.0")+" -> "+w.slotJoin.ToString("0.0")+" m (x"+(w.slotJoin/bw.slotJoin).ToString("0.00")+"), gate to circle "+bw.gateJoin.ToString("0.0")+" -> "+w.gateJoin.ToString("0.0")+" m (x"+(w.gateJoin/bw.gateJoin).ToString("0.00")+"), the station and the foundry alike; "
                 +hub.Zones.Length+" zones on reached floor; circles, doors and gates in bounds and clear; 0 shared planes in the grown geometry; kit drawn per frame at most "+m.View.Max()+" parts in "+m.ViewDraws.Max()+" draws, low tier "+m.ViewLow.Max()+" (exp-layout-6 "+BeforeView.Max()+" in 26, low "+BeforeViewLow.Max()+"); 0 bytes per frame)");
         }
 
@@ -269,7 +269,7 @@ namespace ChipArena.UnityConversion
         /// <summary>SHA-256 of the town map's entry in Resources/UnityMaps.json (its raw text: blocks, navigation, spawns, pilot
         /// columns, bounds) and of Resources/ExpeditionLayout.json (every area's records, the hub's). Shared d555363 + exp-layout-7 at
         /// 2a3819f (the base of the detail pass); re-measure only when the town's gameplay data changes on purpose.</summary>
-        internal const string BaseTownSha256="3890d697059696ab1b373f6e1ea212527798602f9eb4420d08847aa06dda31cd",BaseLayoutSha256="8a6229e0b461af0e8be0192c1a7823c4f3607aa53c55c793b3fcd15ae46c0ed5";
+        internal const string BaseTownSha256="3890d697059696ab1b373f6e1ea212527798602f9eb4420d08847aa06dda31cd",BaseLayoutSha256="8dba5e10d7a7402c008576d0a893054e7bc8fe2aae6b2047fb7237c93172fd25";
         internal static void AuthorityDigest(string root,out string town,out string layout)
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources",f));

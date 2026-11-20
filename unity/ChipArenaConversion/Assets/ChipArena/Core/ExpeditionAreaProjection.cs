@@ -21,7 +21,8 @@ namespace ChipArena.UnityConversion
             if(view==null||view.run!=ticket.run||view.epoch!=ticket.epoch||view.area!=ticket.area||view.viewer!=account||view.mine?.account!=account)
                 throw new InvalidOperationException("Area projection does not match recipient identity.");
             if(view.anchors.Any(a=>a.area!=ticket.area)||view.closures.Any(c=>c.area!=ticket.area)||view.bossArrivals.Any(a=>a.area!=ticket.area)||
-                view.chests.Any(c=>!view.anchors.Any(a=>a.id==c.id&&a.kind=="chest"))||
+                view.anchors.Any(a=>a.kind=="chest"&&!view.chests.Any(c=>c.id==a.id))||
+                view.chests.Any(c=>!ExpeditionChestOffer.ValidTier(c.tier)||!view.anchors.Any(a=>a.id==c.id&&a.kind=="chest"))||
                 view.loot.Any(r=>!r.id.StartsWith(view.loop+":"+ticket.area+":",StringComparison.Ordinal))||
                 view.dice.Any(d=>!d.boss.StartsWith(view.loop+":"+ticket.area+":",StringComparison.Ordinal)))
                 throw new InvalidOperationException("Cross-area public data refused.");

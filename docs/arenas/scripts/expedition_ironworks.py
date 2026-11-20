@@ -253,6 +253,13 @@ box('ingot-stack', -36.0, -34.0, -22.0, -19.5, 0, 1.2, material='metal', ch='o',
 # RECORDS: the exit door (anchor 0.6 m inside, interaction and closure on the inside, the approach, eight entries facing
 # into the works), three caches (chest kind), the boss points in the converter hall.
 ENTRIES_IN = [pt(x, 0, z, 270.0) for x in (47.0, 45.6) for z in (-2.6, -1.1, 1.1, 2.6)]
+# Run-seeded cache bays, (x, floor y, z, front yaw in degrees).
+CACHE_CANDIDATES = {
+    'exp-foundry:cache:0': [(40.165, 0.0, -7.5, 270), (36.64, 0.0, -6.5, 90)],
+    'exp-foundry:cache:1': [(-20.13, 6.0, 17.5, 270), (-20.13, 6.0, 15.5, 270)],
+    'exp-foundry:cache:2': [(-49.66, 0.0, -13.5, 90), (-43.66, 0.0, -32.5, 90)],
+}
+
 CACHES = [pt(38.6, 0, -6.4, 45.0), pt(6.5, L1, 24.2, 180.0), pt(-36.0, 0, -16.6, 180.0)]
 BOSS_POINTS = [pt(-35.0, 0, 0.0, 90.0), pt(-34.0, 0, 7.5, 90.0), pt(-34.0, 0, -7.5, 90.0)]
 # The direct converter shutter (owner decision 2026-10-16): a real instance gate filling the casting floor's west opening in
