@@ -81,7 +81,8 @@ namespace ChipArena.UnityConversion
         public static void Slab(int k,float t,out Vector3 at,out Quaternion turn)
         {
             var c=Slabs[k];var rest=U(c.X,0,c.Y);at=rest;turn=Quaternion.Identity;float d=new Vector2(rest.X,rest.Z).Length(),reach=SlamAt+d/9f,s=t-reach;if(s<=0)return;
-            float h=NativeEntranceMath.Rand(36001,k),tilt=k==0?.035f:.12f+.16f*h,lift=k==0?-.06f:.04f+.16f*h,jump=k==0?0:.18f+.22f*h*(1-d/6f);
+            // (the centre slab, where the pilot stands, only shudders: the feet stay on it)
+            float h=NativeEntranceMath.Rand(36001,k),tilt=k==0?0:.12f+.16f*h,lift=k==0?0:.04f+.16f*h,jump=k==0?.025f:.18f+.22f*h*(1-d/6f);
             // A jump on the wave, damped, settling on its new height and tilt.
             float settle=1-(float)Math.Exp(-7*s),bounce=(float)(Math.Exp(-5.5*s)*Math.Sin(Math.Min(s*14,3.1416)));
             at.Y+=lift*settle+jump*bounce;
