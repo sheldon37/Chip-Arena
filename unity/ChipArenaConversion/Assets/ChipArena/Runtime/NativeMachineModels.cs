@@ -38,6 +38,9 @@ namespace ChipArena.UnityConversion
             Add(NativeEntranceStageModels.PodId,NativeEntranceStageModels.Pod());Add(NativeEntranceStageModels.PodDoorId,NativeEntranceStageModels.PodDoor());
             // The hub's REVIVE-O-MATIC (Core/NativeReviveMachineModels.cs).
             ReviveMachineSkins(Add);
+            // The Civil Defence caches' CD-647 lockers, a body, a lid and a latch per tier (Core/NativeCacheLockerModels.cs; drawn by
+            // NativeCachePresentation.cs only where A2's solid chest block stands, or in the DEV preview).
+            foreach(var (id,mesh) in NativeCacheLockerModels.All())Add(id,mesh);
             // The dressing round the machines in the generated instances (Core/NativeInstanceMachineDress.cs).
             foreach(var (id,build,_) in NativeInstanceMachineDress.All)Add(id,build());
             // The Expedition drop pod and its door (Core/NativePodModels.cs; NativePodPresentation.cs tints its parts).

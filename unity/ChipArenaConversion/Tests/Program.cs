@@ -152,6 +152,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition-integration"){ExpeditionIntegrationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition"){ExpeditionChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-view"){ExpeditionChecks.Run();ExpeditionPresentationChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--cache-openings"){CacheOpeningChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-layout"){ExpeditionLayoutChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-dressing"){ExpeditionDressingChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--generated-districts"){GeneratedDistrictChecks.Run(ProjectRoot());return 0;}
@@ -302,7 +303,7 @@ internal static class Program
             CloudflareChecks.Run().GetAwaiter().GetResult();
             AnimationChecks.Run();
             string root=ProjectRoot();
-            ExpeditionPresentationChecks.Run(root);ExpeditionIntegrationChecks.Run(root);ExpeditionDirectorChecks.Run(root);ExpeditionStatesChecks.Run(root);ExpeditionLaserDoorChecks.Run(root);QuotaMarkChecks.Run(root);ExpeditionEndingChecks.Run(root);ExpeditionAcceptanceChecks.Run(root);ExpeditionPickChecks.Run(root);
+            ExpeditionPresentationChecks.Run(root);CacheOpeningChecks.Run(root);ExpeditionIntegrationChecks.Run(root);ExpeditionDirectorChecks.Run(root);ExpeditionStatesChecks.Run(root);ExpeditionLaserDoorChecks.Run(root);QuotaMarkChecks.Run(root);ExpeditionEndingChecks.Run(root);ExpeditionAcceptanceChecks.Run(root);ExpeditionPickChecks.Run(root);
             PveSpitterChecks.Run(root);NavSearchChecks.Run(root);WardSimulationChecks.Run(root);HulkBreachChecks.Run(root);InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
             ExpeditionStationVisualChecks.Run(root);ZombieLightChecks.Run(root);
