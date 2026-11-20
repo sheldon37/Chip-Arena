@@ -111,8 +111,9 @@ namespace ChipArena.UnityConversion
         /// is authored on (the first captures framed the helmet's crown), so the shot moves by the gap between the two.</summary>
         protected override void Frame(float t,ref NativeEntranceView view)
         {
-            if(t<VisorAt||t>=CutAt-.03f||!Eyes(t,.1f,out var eyes))return;
-            var d=eyes-(Smoothed((int)NativeEntranceAnchor.Head,t)+new Vector3(0,.155f,.06f));view.Eye+=d;view.Look+=d;
+            if(t<VisorAt||t>=CutAt-.03f||!EyesOffset(t,.1f,out var d))return;
+            // (the shot is authored on the keyed head: the eyes' offset moves it onto the drawn ones)
+            view.Eye+=d;view.Look+=d;
         }
 
         // ---- the light ----

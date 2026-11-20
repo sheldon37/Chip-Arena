@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
     /// by Sheathed), with the v2 contract on top: the camera rig and its speed ramps, the set from the bank with the void as its fallback,
     /// the name card, the lens, the cues. No pylon arena, no warp at Hit, no camera jolt but the rig's own moves.
     /// </summary>
-    public abstract class NativeIntroMeleeBlade:NativeBladeIntro,INativeIntroV2,INativeIntroHands,INativeIntroHead
+    public abstract class NativeIntroMeleeBlade:NativeBladeIntro,INativeIntroV2,INativeIntroHands
     {
         public readonly float IntroTotal,IntroNameAt;
         public NativeIntroContext Context{get;set;}
@@ -179,18 +179,6 @@ namespace ChipArena.UnityConversion
             at=Anchor(hand==0?NativeEntranceAnchor.RightHand:NativeEntranceAnchor.LeftHand,t);return false;
         }
 
-        // ---- the head as drawn (handed in with the hands) ----
-        /// <summary>The drawn head's joint is its pivot at the skull's base, about 0.16 m under the eyes (I5's measure): lifted along the head's up.</summary>
-        protected const float ModelHeadLift=.16f;
-        private Vector3 eyesAt;private float eyesSeen=-100;private bool eyesModel;
-        public void Head(float t,in NativeIntroHand head){eyesModel=head.Model;eyesAt=head.Model?head.At+Vector3.Transform(new Vector3(0,ModelHeadLift,0),head.Turn):head.At;eyesSeen=t;}
-        /// <summary>The eyes as drawn at `t` (the latest frame's within `within` s): false where no model was drawn, with the head handed in or
-        /// the keyed head anchor instead.</summary>
-        protected bool Eyes(float t,float within,out Vector3 at)
-        {
-            bool seen=Math.Abs(eyesSeen-t)<within;at=seen?eyesAt:Anchor(NativeEntranceAnchor.Head,t);return seen&&eyesModel;
-        }
-
         // ---- the blades as drawn ----
         // The model's hand carries its weapon on the hand joint's frame as the runtime hands it in (Runtime NativeVisualBodyPresentation:
         // VisualJointsOf takes each joint's frame on its bone once the hands are on the weapon frames, and the motion keeps the game pose's
@@ -205,7 +193,10 @@ namespace ChipArena.UnityConversion
             if(t<drawnClock-1e-4f)drawnCount[0]=drawnCount[1]=0;// (a clock that runs back, a replay, starts the trails over)
             drawnClock=t;
             if(!h.Model||!float.IsFinite(h.At.X)||!float.IsFinite(h.Turn.W)){drawnCount[hand]=0;return;}
-            float len=TipLength(hand==1);var axis=Vector3.Transform(hand==1?axisL:axisR,h.Turn);var root=h.At+axis*Math.Min(.18f,len*.2f);var tip=h.At+axis*len;
+            // (the weapon anchors as drawn, the framework's: the weapon frame's origin and its tip socket; else along the learnt axis)
+            float len=TipLength(hand==1);Vector3 root,tip;var gripAt=hand==1?NativeEntranceAnchor.LeftGrip:NativeEntranceAnchor.RightGrip;var tipAt=hand==1?NativeEntranceAnchor.LeftTip:NativeEntranceAnchor.RightTip;
+            if(IsDrawn(gripAt)&&IsDrawn(tipAt)){var g=Anchor(gripAt,t);tip=Anchor(tipAt,t);var d=tip-g;float l=d.Length();root=l>1e-4f?g+d*(Math.Min(.18f,l*.2f)/l):g;}
+            else{var axis=Vector3.Transform(hand==1?axisL:axisR,h.Turn);root=h.At+axis*Math.Min(.18f,len*.2f);tip=h.At+axis*len;}
             int c=drawnCount[hand],k=drawnHead[hand],o=hand*DrawnMax;
             if(c>0&&t-drawnAt[o+k]<1/240f){drawnRoot[o+k]=root;drawnTip[o+k]=tip;return;}
             k=(k+1)%DrawnMax;drawnRoot[o+k]=root;drawnTip[o+k]=tip;drawnAt[o+k]=t;drawnHead[hand]=k;drawnCount[hand]=Math.Min(DrawnMax,c+1);
@@ -314,7 +305,12 @@ namespace ChipArena.UnityConversion
         /// <summary>How much of a soft puff of `size` m at `at` to draw this frame (Look first): none while the lens is inside it, all of it
         /// once it is clear (smoke that drifts over the camera otherwise fills the frame).</summary>
         protected float NearFade(Vector3 at,float size)=>ViewSet?NativeEntranceMath.Smooth((Vector3.Distance(at,View.Eye)-.55f*size)/Math.Max(.1f,size)):1;
-        protected void Look(float t){float settle=Clock(SettleAt),at=t<settle?t:settle;Rig.Evaluate(this,at,Context.Reduced,out View);Frame(at,ref View);ViewSet=true;}
+        // The drawn eyes' offset from the keyed ones as last drawn (the camera reads the keyed rig, the runtime clears the drawn body before
+        // it: Frame takes this to put a shot on the drawn head).
+        private Vector3 eyesOffset;private float eyesSeenAt=-100;
+        protected bool EyesOffset(float t,float within,out Vector3 offset){offset=eyesOffset;return Math.Abs(eyesSeenAt-t)<within;}
+        protected void Look(float t){if(IsDrawn(NativeEntranceAnchor.Eyes)){eyesOffset=Anchor(NativeEntranceAnchor.Eyes,t)-KeyedAnchor(NativeEntranceAnchor.Eyes,t);eyesSeenAt=t;}
+            float settle=Clock(SettleAt),at=t<settle?t:settle;Rig.Evaluate(this,at,Context.Reduced,out View);Frame(at,ref View);ViewSet=true;}
         protected void Line(INativeEntranceFx fx,Vector3 head,Vector3 axis,Vector3 color,float width,float taper,float u,float seed)=>NativeIntroMelee.Line(fx,View,ViewSet,head,axis,color,width,taper,u,seed);
     }
 }

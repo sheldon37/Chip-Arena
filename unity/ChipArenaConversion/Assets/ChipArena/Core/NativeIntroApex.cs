@@ -127,7 +127,7 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- the head as drawn (for the eyes: the base's Eyes) ----
-        private Vector3 HeadAt(float t){Eyes(t,1e-4f,out var at);return at;}
+        private Vector3 HeadAt(float t)=>Anchor(NativeEntranceAnchor.Eyes,t);
 
         // ---- the set ----
         protected override bool Scene(float t,INativeIntroSet set)
