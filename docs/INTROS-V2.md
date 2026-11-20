@@ -14,7 +14,7 @@ Ownership (one writer per file):
 | Owner | Files |
 | --- | --- |
 | I0 (framework) | `Core/NativeIntroRules.cs`, `Core/NativeIntroCatalog.cs` (except your one registry line), `Core/NativeIntroV2.cs`, `Core/NativeIntroCamera.cs`, `Core/NativeIntroVoid.cs`, `Core/NativeIntroShowcase.cs`, `Runtime/NativeIntros.cs`, `Runtime/NativeIntroV2Presentation.cs`, `Runtime/NativeIntroCardScreen.cs`, `Runtime/NativeIntroAudio.cs`, the Locker's intro list, `Tests/IntroV2Checks.cs`, this file |
-| Each author | one Core file per intro or family (`Core/NativeIntro<Name>.cs`), its set script (`tools/intros/<name>_set.py`), its sound list (`docs/audio/intros/<id>.md` + its rows in the request queue), its own extra checks (`Tests/Intro<Name>Checks.cs`), and ONE line per intro in the registry |
+| Each author | one Core file per intro or family (`Core/NativeIntro<Name>.cs`), its set script (`tools/intros/<name>_set.py`), its sound rows (`docs/audio/intros/<author>.json`) and their contract lines on its slot in `Core/NativeIntroSoundKeys.cs`, its own extra checks (`Tests/Intro<Name>Checks.cs`), and ONE line per intro in the registry |
 
 ## 1. Registering an intro
 
@@ -25,7 +25,7 @@ comment lines between slots, so that two authors' lines never touch and merges s
 NativeIntroEntry.Weapon("sword","Edge of Dawn",8.2f,6.1f,()=>new NativeIntroSwordDawn(),"I3"),
 NativeIntroEntry.Generic("eclipse","Eclipse",7.6f,5.8f,()=>new NativeIntroEclipse(),"I2"),
 NativeIntroEntry.Default("Arrival",7.2f,5.4f,()=>new NativeIntroArrival(),"I2"),
-NativeIntroEntry.Dev("architect","DEV · Architect of Reality",9.4f,7.2f,()=>new NativeIntroArchitect(),"I5"),
+NativeIntroEntry.Dev("architect","DEV · Architect of Reality",9.4f,7.2f,()=>new NativeIntroArchitect(),"I1"),
 ```
 
 | Factory | Id | Who sees it | When it plays without a pick |
@@ -42,6 +42,9 @@ are what the match reads (`NativeIntroRules.Duration` / `NameAt`), so they must 
 name beat. The checks enforce this.
 
 - **Until a weapon's intro is registered**, that weapon's old signature still plays, so nothing breaks mid-night.
+- **Timing tests:** `Tests/ParityFollowupChecks.cs` ("Siren follows human intro") ticks a match with a human **pistol** seat and
+  expects the Siren's intro next, so the pistol's intro must end within 8.0 s. Run the full suite after registering: it
+  stops at the first failing check.
 - **The Siren** keeps its boss entrance. **The Top Dog** and **the Bombadier** keep theirs.
 - **A script must always be `Ready`.** If it uses a pack clip that may be missing, give it a procedural fallback pose.
   The runtime throws on a script that isn't Ready.
@@ -61,7 +64,9 @@ scrub must draw the same frame. Never allocate per frame.
 | `Context` (set by the runtime) | `Reduced` (Reduced effects), `Low` (Low graphics), `Quality` 0..1, `Name` (the live display name) |
 | `Pose(t, pose, out root, out rotation)` | The keyed rig pose (`Keys`/`Steps`, `NativeProceduralEntrance`): the anchors' source for the camera and effects, and the Classic body's pose. |
 | `Clip(t, out clip, out time)` / `Fade(t)` (`INativeIntroBody`; virtuals on `NativeIntroV2Script`) | The model body plays a motion-bank clip at its time (you retime it), fading in over `Fade` s; false: the model follows the keyed rig. One clip at a time (no upper-body layer tonight). A `NativeBladeIntro` keeps its own path. |
-| `Hands(t, right, left)` (`INativeIntroHands`, optional) | Called before `Props`, `Set` and `Effects` with each wrist as drawn (source frame; `Model` true when it is the model's bone). Measure your muzzle, staff head or blade tip offsets in the wrist frame in your Editor hold. |
+| `Hands(t, right, left)` (`INativeIntroHands`, optional) | Called before `Props`, `Set` and `Effects` with each wrist as drawn (source frame): the model's joint when the model is drawn (`Model` true), else the keyed hand anchor. For a gun Weapon intro (pistol, rifle, machine gun) the right hand also carries `HasMuzzle`, `Muzzle` and `Bore`: the drawn weapon's muzzle and barrel direction. For a staff head or a blade tip, measure your offsets in the wrist frame in your Editor hold. |
+| `Head(t, head)` (`INativeIntroHead`, optional) | The head as drawn, handed in with the hands: the model's head joint when the model is drawn, else the keyed head anchor. |
+| `Bow(t, out view)` (`INativeIntroBow`, optional, Bow intros) | The bow drawn as the match draws it (on the model's left hand, its string and its nocked arrow) from a `NativeBow.View` you give. Without it, the bow is carried with one arrow. |
 | `Camera(age, out view)` | `NativeIntroV2Script` evaluates `Rig` (section 4). Override it only if you must. |
 | `Lights(t, lights)` | The void rig (`NativeIntroVoid.Light`), then add your own: `l.Add(at, colour, distance)`, at most 8 points. |
 | `Props(t, props, quality)` | Primitive set pieces through the source models. The base draws no pylon arena. |
@@ -113,7 +118,7 @@ Rules (the checks enforce them):
 - **The fallback:**
   - Without the bank (CI, a build without the zip, `--ca-no-pack-banks`), or when `Scene` returns false, the base draws
     `Fallback(t, set)`. This is the dark lit void, `NativeIntroVoid`: a vast floor lost in the fog, a soft pool under
-    the pilot, a faint horizon glow, and a key, a rim and a cool fill.
+    the pilot, drifting motes (`NativeIntroVoid.Motes`), and a key, a rim and a cool fill.
   - Tint it to your intro with `VoidLook(t)`, or override `Fallback` with your own primitives.
   - Never draw the old block arena (`NativeEntranceStage.Arena`).
 
@@ -223,9 +228,10 @@ Every registered intro runs through the same checks automatically. You don't nee
 | determinism | two fresh scripts give the same pose, camera, lights, props, set calls, effects and card at sampled times, in any order (a scrub) |
 | allocation | no managed allocation per frame after warm-up (pose, camera, lights, props, set, effects, card, lens) |
 | budgets at peak | at most 600 FX calls a frame (the dev intro: 1000 High, 450 Low), 8 point lights, 120 primitives, 80 set pieces (the dev intro: 180 High, 90 Low), 400 batched copies (`NativeIntroSetLimits`) |
-| Reduced effects | the camera never shakes (two Reduced runs, the handheld off) and no light or glow channel flashes faster than 3 Hz |
+| Reduced effects | the camera never wobbles: outside cuts, the eye stays within 6 mm of a quadratic fit over ±4 frames, so no shake survives; and the summed light and glow never flash more than 3 times in any second |
 | streaks | every streak longer than 1 m lies on its head's camera plane (within 2°) |
 | cues | sorted, inside [0, Duration], each with a key, alt or clip, and each heard exactly once through `NativeEntranceCueClock` at 60 Hz and at a guest's 20 Hz steps |
+| sets | without a bank something is still drawn (the void or your primitives); with a fake bank that has every prop, your `Scene` stays inside the piece and batch budgets and allocates nothing |
 
 Put your own extra checks in your own `Tests/Intro<Name>Checks.cs`, and add one call in `Program.cs` on its own line.
 
@@ -241,9 +247,19 @@ adds the shorthand:
 Example, with the head-gib helpers (`take`, `on <sha>`, `cap`, `back`, `give`):
 
 ```bash
-cap sword-high "$(dense 0 8.5)" 4 weapon=sword map=arena bots=0 introcap=intro2-weapon-sword introq=high capdt=0,0.0333333
-cap sword-low  "$(dense 0 8.5 0.5)" 4 weapon=sword map=arena bots=0 introcap=intro2-weapon-sword introq=low capdt=0,0.0333333
+cap sword-high "$(dense 0 8.6)" 300 map=cybercity weapon=sword bots=0 idlebots=0 orbit=0 introcap=intro2-weapon-sword introq=high capdt=0,0.0333333
+cap sword-low  "$(dense 0 8.5 0.5)" 120 map=cybercity weapon=sword bots=0 idlebots=0 orbit=0 introcap=intro2-weapon-sword introq=low capdt=0,0.0333333
 ```
+
+The third argument is the run's limit in seconds of play: about 0.6 s of real time per captured frame, plus start-up.
+The frames are `t<N>_screen.png`, so a clip is
+`python -I <int>/clip.py OUT.mp4 --fps 30 --to <last frame> --pane "LABEL=DIR:_screen.png"`.
+
+- **Timing:** the intro starts at arena time 0, and at its `Duration` the next pilot's intro follows (even with
+  `bots=0` the match has a second seat).
+- **What it took:** the framework's own hold filmed the showcase in about 6 minutes at High (1/30 s) and 2 minutes at Low.
+- **The Locker:** add `dmhold=14` and `"locker=3:2;7:2"` (tab 2 is the Entrance tab). Without `dmhold` the panel can
+  miss the shot.
 
 **Editor relaunch** (owner: "Yes, relaunch it", for overnight only):
 - `F:/Chip Arena Development/scratch/intro-framework/tools/editor_relaunch.sh` starts the owner's Editor on its own

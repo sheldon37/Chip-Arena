@@ -106,7 +106,8 @@ namespace ChipArena.UnityConversion
             VisualIntroPose(introRig,actor,introNow,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);
             try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,introNow,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             // Crimson Moon: the saya at the hip, and the blade in it while the script has it sheathed (NativeBladePresentation.cs).
-            if(script is NativeKatanaIntro)KatanaSaya(introRig,actor,introNow,false,0,null,null,1);
+            // (and any v2 Katana intro's: Core NativeIntroCatalog; a NativeBladeIntro-based one sheathes by its Sheathed)
+            if(script is NativeKatanaIntro||script is INativeIntroV2&&NativeIntroCatalog.Find(style)?.Spec==NativeKatana.Spec)KatanaSaya(introRig,actor,introNow,false,0,null,null,1);
             // The blade classes' entrances: the blades where the model holds them, for their trails, drips and flung venom (Core NativeBladeIntro.Blade).
             if(script is NativeBladeIntro held)BladeIntroHeld(held,t,style,solid||script.Solid(t,CapturedRig.RHand)>.5f);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
@@ -213,6 +214,8 @@ namespace ChipArena.UnityConversion
         private void IntroWeapon(string style,float age)
         {
             if(style==NativeBowEntrance.Id&&entranceScript is NativeBowEntrance bow){BowIntro(bow,entranceTime);return;}
+            // Intros v2: a Bow intro's bow as the match draws it (Core INativeIntroBow), else carried with one arrow.
+            if(entranceScript is INativeIntroBow v2bow&&NativeIntroCatalog.Find(style)?.Spec==NativeBowWire.Spec){if(!v2bow.Bow(entranceTime,out var bv))bv=new NativeBow.View{Phase=NativeBow.Phase.Carry,Arrows=1};var bf=default(NativeBowPose.Frame);bf.Pull=bv.Pull;BowIntroDraw(bv,bf,entranceTime);return;}
             string model=IntroModel(NativeIntroRules.IntroWeapon(style));if(model==null)return;
             introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             if(introHand==null)introHand=b=>introRig.Bones[b].localToWorldMatrix*introGrip;

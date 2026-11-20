@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
             public void Batch(string prop,ReadOnlySpan<Vector3> at,ReadOnlySpan<Quaternion> rotation,float scale,Vector3 tint){int n=Math.Min(at.Length,rotation.Length);for(int i=0;i<n;i++)V(at[i]);Batched+=n;}
             public void Piece(WeaponShape shape,bool glow,Vector3 position,Quaternion rotation,Vector3 scale,Vector3 color){V(position);V(scale);V(color);Primitives++;}
             public bool Model(string id,Vector3 position,Quaternion rotation,float scale,Vector3 light){V(position);Models++;return false;}
-            public bool Has(string prop)=>false;
+            public bool Bank;public bool Has(string prop)=>Bank;
             public void Piece(string prop,Vector3 at,Quaternion rotation,float scale,Vector3 tint,Vector3 glow){V(at);Pieces++;}
             public void Primitive(WeaponShape shape,bool glow,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color){V(at);V(scale);V(color);Primitives++;}
         }
@@ -188,7 +188,15 @@ namespace ChipArena.UnityConversion
             // The card: shown from the name beat, gone by the end; the fallback set without a bank.
             var card=default(NativeIntroCardState);v2.Card(s.Clock(e.NameAt-.05f),ref card);bool early=card.Shown&&card.Age>.06f;card=default;v2.Card(s.Clock(e.NameAt+.5f),ref card);
             Check(!early&&card.Shown,n+": the name card arrives on the name beat");
-            props.Reset();props.Ready=false;v2.Set(s.Clock(e.NameAt),props);Check(props.Primitives>0||props.Pieces>0,n+": without its bank it still draws a set (the void or its own primitives)");
+            props.Reset();props.Ready=false;props.Bank=false;v2.Set(s.Clock(e.NameAt),props);Check(props.Primitives>0||props.Pieces>0,n+": without its bank it still draws a set (the void or its own primitives)");
+            // With a bank that has every prop: its Scene's pieces and batches inside the budgets, finite, deterministic, allocation-free.
+            if(v2.SetBank!=null)
+            {
+                var bank=new Props{Ready=true,Bank=true};int peak=0,peakBatch2=0;
+                for(int i=0;i<=e.Duration*30;i++){bank.Reset();v2.Context=new NativeIntroContext{Quality=1,Name="P"};v2.Set(s.Clock(i/30f),bank);peak=Math.Max(peak,bank.Pieces);peakBatch2=Math.Max(peakBatch2,bank.Batched);}
+                Check(peak<=(devKind?NativeIntroSetLimits.DevPieces:NativeIntroSetLimits.Pieces)&&peakBatch2<=NativeIntroSetLimits.Batch,n+": its bank set stays inside the budgets ("+peak+" pieces, "+peakBatch2+" batched)");
+                long b0=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<=e.Duration*30;i++){bank.Reset();v2.Set(s.Clock(i/30f+.01f),bank);}Check(GC.GetAllocatedBytesForCurrentThread()-b0<=256,n+": its bank set allocates nothing per frame");
+            }
         }
         /// <summary>The most upward crossings of a level's flash threshold (its mean plus half its peak swing) in any one second at 60 Hz.</summary>
         private static int Flashes(double[] v)
