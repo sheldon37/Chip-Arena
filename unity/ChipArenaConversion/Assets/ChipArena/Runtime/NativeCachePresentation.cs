@@ -134,8 +134,9 @@ namespace ChipArena.UnityConversion
                 case NativeCacheLockerModels.Lights:
                     if(f.StripHex==NativeCacheTiers.Red)return Lit(NativeCacheTiers.Red,f.StripGain);
                     return Lit(hex,s.Tier==NativeCacheTier.Epic?Mathf.Max(f.StripGain,.9f*f.Seams):Mathf.Max(f.StripGain,.35f));
-                case NativeCacheLockerModels.LampsA:return f.Lamps>0?Lit(f.LampHex[0],Mathf.Max(.15f,f.LampGain[0])):Color.white;
-                case NativeCacheLockerModels.LampsB:return f.Lamps>1?Lit(f.LampHex[1],Mathf.Max(.15f,f.LampGain[1])):Color.white;
+                // (a lamp the frame does not hold: the outgoing livery's extra lamps while it sweeps away, dark in its colour)
+                case NativeCacheLockerModels.LampsA:return f.Lamps>0?Lit(f.LampHex[0],Mathf.Max(.15f,f.LampGain[0])):Lit(hex,.15f);
+                case NativeCacheLockerModels.LampsB:return f.Lamps>1?Lit(f.LampHex[1],Mathf.Max(.15f,f.LampGain[1])):Lit(hex,.15f);
                 case -1:return Lit(hex,.25f+f.Inner);
                 default:return Color.white;
             }
