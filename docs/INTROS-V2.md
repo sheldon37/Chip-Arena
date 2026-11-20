@@ -42,6 +42,9 @@ are what the match reads (`NativeIntroRules.Duration` / `NameAt`), so they must 
 name beat. The checks enforce this.
 
 - **Until a weapon's intro is registered**, that weapon's old signature still plays, so nothing breaks mid-night.
+- **Timing tests:** `Tests/ParityFollowupChecks.cs` ("Siren follows human intro") ticks a match with a human **pistol** seat and
+  expects the Siren's intro next, so the pistol's intro must end within 8.0 s. Run the full suite after registering: it
+  stops at the first failing check.
 - **The Siren** keeps its boss entrance. **The Top Dog** and **the Bombadier** keep theirs.
 - **A script must always be `Ready`.** If it uses a pack clip that may be missing, give it a procedural fallback pose.
   The runtime throws on a script that isn't Ready.
