@@ -19,6 +19,8 @@ namespace ChipArena.UnityConversion
             finally{playingEntranceCue=false;}
             return true;
         }
+        /// <summary>The intro bed's playback time (s) while it plays, else -1 (muted, none, not started): what a v2 intro with a bed is drawn on.</summary>
+        public double IntroBedPlayback()=>introVoice!=null&&introVoice.clip!=null&&introVoice.isPlaying?introVoice.time:-1;
         /// <summary>One v2 cue: its generated key, else its existing bank key, else its built-in clip (null: silent).</summary>
         private void IntroCue(in NativeIntroCue c)
         {

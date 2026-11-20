@@ -524,6 +524,7 @@ namespace ChipArena.UnityConversion
             // Crescent Return's ring arm keyed by hand (Core NativeGlaiveMotion.Intro).
             if(a.Id==glaiveIntroActor&&glaiveIntroActor>=0)GlaiveIntro(body,rig,glaiveIntroClock);
             // The blade classes' entrances play the pack's clips on the model (Core NativeBladeIntros.Clip), through the arena's motion.
+            IntroV2Clip(body,rig,a);// Intros v2: a v2 intro's own model clip (Runtime NativeIntroV2Presentation.cs)
             if(a.Id==bladeIntroActor&&bladeIntroActor>=0&&bladeIntro!=null&&bladeIntro.Clip(bladeIntroClock,out var introClip,out var introTime)){NativeBladeMotion.IntroActor=a.Id;NativeBladeMotion.IntroClip=introClip;NativeBladeMotion.IntroTime=introTime;NativeBladeMotion.IntroFade=bladeIntro.Fade(bladeIntroClock);VisualMotionPose(body,rig,a,bladeIntroClock);NativeBladeMotion.IntroActor=-1;NativeBladeMotion.IntroFade=.12f;}
             VisualHandFit(body,rig,held);
             body.Moved=true;
