@@ -103,7 +103,7 @@ namespace ChipArena.UnityConversion
         public void ShotView(NativeEntranceScript script,int k,float t,bool reduced,out NativeEntranceView view,out float focus,out float aperture)
         {
             var s=shots[k];float stop=End(script,k);float u=Eased(s.Ease,(t-s.At)/Math.Max(1e-3f,stop-s.At));
-            Vector3 anchor=Vector3.Zero;if(s.Follow>=0){anchor=script.Smoothed(s.Follow,t);if(s.Lead!=0)anchor+=script.Velocity((NativeEntranceAnchor)s.Follow,t)*s.Lead;}
+            Vector3 anchor=Vector3.Zero;if(s.Follow>=0){anchor=script.Smoothed(s.Follow,t);if(s.Lead!=0)anchor+=script.KeyedVelocity((NativeEntranceAnchor)s.Follow,t)*s.Lead;}
             Vector3 eye;
             if(s.Orbit)
             {
@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
             ShotView(script,k,t,reduced,out view,out focus,out aperture);
             var s=shots[k];if(k==0||s.In==NativeIntroCut.Cut)return;float e=(t-s.At)/s.InTime;if(e>=1)return;
             ShotView(script,k-1,t,reduced,out var from,out float ff,out float fa);float w=NativeEntranceMath.Smoother(e);if(s.In==NativeIntroCut.Whip)w=NativeEntranceMath.Smoother(w);// (C2 at both ends: no jolt as a blend lands)
-            view=NativeEntranceCamera.Mix(from,view,w,script.Anchor(NativeEntranceAnchor.Chest,t));focus=NativeEntranceMath.Lerp(ff,focus,w);aperture=NativeEntranceMath.Lerp(fa,aperture,w);
+            view=NativeEntranceCamera.Mix(from,view,w,script.KeyedAnchor(NativeEntranceAnchor.Chest,t));focus=NativeEntranceMath.Lerp(ff,focus,w);aperture=NativeEntranceMath.Lerp(fa,aperture,w);
         }
         private static float Keyed(List<(float at,float amount)> keys,float t,float ease)
         {

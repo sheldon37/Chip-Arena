@@ -45,28 +45,102 @@ namespace ChipArena.UnityConversion
             NativeBladeMotion.IntroActor=a.Id;NativeBladeMotion.IntroClip=clip;NativeBladeMotion.IntroTime=time;NativeBladeMotion.IntroFade=introBody.Fade(introBodyClock);
             try{VisualMotionPose(body,rig,a,introBodyClock);}finally{NativeBladeMotion.IntroActor=-1;NativeBladeMotion.IntroFade=.12f;}
         }
-        /// <summary>The hands as drawn, in the source frame: the model's wrist joints (VisualJointFrame) when the model is drawn this
-        /// frame, else the keyed pose's hand anchors.</summary>
+        /// <summary>
+        /// The body as drawn, handed in before the lights, the set and the effects: the model-aware anchors (IntroV2Drawn), then the
+        /// optional hands and head (INativeIntroHands, INativeIntroHead). The hands are the model's wrist joints (VisualJointFrame) when the
+        /// model is drawn this frame, else the keyed pose's hand anchors; the head is the model's head as the Head anchor has it (its
+        /// centre, on the head's turn), else the keyed one.
+        /// </summary>
         private void IntroV2Hands(NativeEntranceScript script,float t)
         {
+            IntroV2Drawn(script,t);
             var hands=script as INativeIntroHands;var head=script as INativeIntroHead;if(hands==null&&head==null)return;bool model=introModel!=null&&introModelFrame==Time.frameCount;
             NativeIntroHand Hand(int j,NativeEntranceAnchor anchor)
             {
                 if(!model)return new NativeIntroHand{Model=false,At=script.Anchor(anchor,t),Turn=System.Numerics.Quaternion.Identity};
                 var m=VisualJointFrame(introModel,j);var p=(Vector3)m.GetColumn(3);var q=m.rotation;
-                return new NativeIntroHand{Model=true,At=new System.Numerics.Vector3(-p.x,p.y,p.z),Turn=new System.Numerics.Quaternion(q.x,-q.y,-q.z,q.w)};
+                // (the head's point: its centre on the model, where the Head anchor puts it; its turn the joint frame's, the keyed head's)
+                var at=j==CapturedRig.Head&&script.IsDrawn(NativeEntranceAnchor.Head)?script.Anchor(NativeEntranceAnchor.Head,t):new System.Numerics.Vector3(-p.x,p.y,p.z);
+                return new NativeIntroHand{Model=true,At=at,Turn=new System.Numerics.Quaternion(q.x,-q.y,-q.z,q.w)};
             }
             if(head!=null)head.Head(t,Hand(CapturedRig.Head,NativeEntranceAnchor.Head));if(hands==null)return;
             var right=Hand(CapturedRig.RHand,NativeEntranceAnchor.RightHand);var left=Hand(CapturedRig.LHand,NativeEntranceAnchor.LeftHand);
-            // A gun's muzzle and bore on the drawn weapon: its frame is the one the model's weapon is drawn on after the hand fit (the
-            // entrance's hand frame, introHand, as the match's muzzle flash reads it), the muzzle MuzzleZ along its +z.
-            var spec=NativeIntroCatalog.Find(script.Style)?.Spec;
-            if(model&&introHand!=null&&(spec=="pistol"||spec=="rifle"||spec=="machinegun"))
-            {
-                var w=introHand(CapturedRig.RHand);var mz=w.MultiplyPoint3x4(new Vector3(0,0,NativeWeaponDressing.MuzzleZ(spec)));var bore=w.MultiplyVector(Vector3.forward);
-                if(bore.sqrMagnitude>1e-8f){bore.Normalize();right.HasMuzzle=true;right.Muzzle=new System.Numerics.Vector3(-mz.x,mz.y,mz.z);right.Bore=new System.Numerics.Vector3(-bore.x,bore.y,bore.z);}
-            }
+            // A gun's muzzle and bore on the drawn weapon: the RightMuzzle anchor (the drawn skin's crown, as the match's flash leaves it) and
+            // the weapon frame's +z (IntroV2Drawn).
+            if(model&&introDrawnBore.sqrMagnitude>.5f&&script.IsDrawn(NativeEntranceAnchor.RightMuzzle)&&NativeWeaponDressing.Gun(NativeIntroCatalog.Find(script.Style)?.Spec))
+            {right.HasMuzzle=true;right.Muzzle=script.Anchor(NativeEntranceAnchor.RightMuzzle,t);right.Bore=new System.Numerics.Vector3(-introDrawnBore.x,introDrawnBore.y,introDrawnBore.z);}
             hands.Hands(t,right,left);
+        }
+        // ---- the model-aware anchors (docs/INTROS-V2.md "Anchors") ----
+        // Each frame a v2 intro's model is drawn, every anchor is handed to the script where the model has it (Core NativeEntranceScript.Drawn),
+        // so the authors' Anchor calls follow the drawn body: the pelvis, the chest (the torso's line half way up the chest), the head's centre,
+        // the eyes and the visor's front on the head bone (its frame: x across, y up, z ahead, the face gear's), the shoulders, elbows, wrists,
+        // palms, knees, ankles and toes (the balls of the feet); and, while its weapon is drawn, each weapon hand's grip (the weapon frame's
+        // origin, as the match's sweep reads it), tip and muzzle (Core NativeIntroWeapon's sockets on that frame; a gun's muzzle the drawn skin's
+        // crown, NativeMuzzleFx.Crown). Without the model (Classic, a hidden body) the script keeps its keyed anchors. Source frame (x
+        // mirrored). No rig reads here: the model's bones and the weapon frames the weapon draw already made.
+        private readonly System.Numerics.Vector3[] introDrawn=new System.Numerics.Vector3[(int)NativeEntranceAnchor.Count];private Vector3 introDrawnBore;
+        /// <summary>The frame IntroWeapon drew a v2 intro's weapon on, and whether through the bow's own draw (its frame: bowHand).</summary>
+        private int introWeaponAt=-1;private bool introWeaponBow;
+        // The head's points in the head bone's frame (Core NativeRobotHelm's: the shell's centre, the eyes behind the visor, the visor's glass;
+        // a face without the helmet has its front nearer).
+        private static readonly Vector3 HeadCentre=new Vector3(0,.07f,.033f),HeadEyes=new Vector3(0,.065f,.10f),HeadVisor=new Vector3(0,.065f,.165f),FaceVisor=new Vector3(0,.065f,.125f);
+        private VisualBody introPalmBody;private int introPalmL=-1,introPalmR=-1;
+        private void IntroV2Drawn(NativeEntranceScript script,float t)
+        {
+            script.Undrawn();introDrawnBore=Vector3.zero;if(!(script is INativeIntroV2))return;ulong mask=0;
+            VisualBody body=null;
+            if(introModel!=null&&introModelFrame==Time.frameCount&&visualBodies.TryGetValue(introModel,out var b)&&b.Root!=null&&b.Binding!=null&&b.PosedFrame==Time.frameCount)body=b;
+            if(body!=null)
+            {
+                var of=body.Binding.Rig.Of;var bones=body.Binding.Bones;
+                Transform J(int j){int v=j>=0&&j<of.Length?of[j]:-1;return v>=0&&v<bones.Length?bones[v]:null;}
+                void Put(NativeEntranceAnchor a,Vector3 p){introDrawn[(int)a]=new System.Numerics.Vector3(-p.x,p.y,p.z);mask|=1UL<<(int)a;}
+                var pelvis=J(CapturedRig.Pelvis);if(pelvis!=null)Put(NativeEntranceAnchor.Pelvis,pelvis.position);
+                var spine=J(CapturedRig.Spine);var neck=J(CapturedRig.Neck);if(spine!=null&&neck!=null)Put(NativeEntranceAnchor.Chest,(spine.position+neck.position)*.5f);
+                var head=J(CapturedRig.Head);
+                if(head!=null){Put(NativeEntranceAnchor.Head,head.TransformPoint(HeadCentre));Put(NativeEntranceAnchor.Eyes,head.TransformPoint(HeadEyes));Put(NativeEntranceAnchor.Visor,head.TransformPoint(body.Helm?HeadVisor:FaceVisor));}
+                if(introPalmBody!=body)
+                {
+                    introPalmBody=body;var names=body.Binding.Rig.Names;introPalmL=Array.IndexOf(names,"middle_01_l");introPalmR=Array.IndexOf(names,"middle_01_r");
+                }
+                for(int side=0;side<2;side++)
+                {
+                    bool left=side==0;var hand=J(left?CapturedRig.LHand:CapturedRig.RHand);int palm=left?introPalmL:introPalmR;
+                    if(hand!=null)
+                    {
+                        Put(left?NativeEntranceAnchor.LeftWrist:NativeEntranceAnchor.RightWrist,hand.position);
+                        Put(left?NativeEntranceAnchor.LeftHand:NativeEntranceAnchor.RightHand,palm>=0&&palm<bones.Length&&bones[palm]!=null?(hand.position+bones[palm].position)*.5f:hand.position);
+                    }
+                    var elbow=J(left?CapturedRig.LElbow:CapturedRig.RElbow);if(elbow!=null)Put(left?NativeEntranceAnchor.LeftElbow:NativeEntranceAnchor.RightElbow,elbow.position);
+                    var shoulder=J(left?CapturedRig.LArm:CapturedRig.RArm);if(shoulder!=null)Put(left?NativeEntranceAnchor.LeftShoulder:NativeEntranceAnchor.RightShoulder,shoulder.position);
+                    int hip=left?CapturedRig.LHip:CapturedRig.RHip;
+                    var knee=J(hip+1);if(knee!=null)Put(left?NativeEntranceAnchor.LeftKnee:NativeEntranceAnchor.RightKnee,knee.position);
+                    var ankle=J(hip+2);if(ankle!=null)Put(left?NativeEntranceAnchor.LeftFoot:NativeEntranceAnchor.RightFoot,ankle.position);
+                    var toe=J(hip+3);if(toe!=null)Put(left?NativeEntranceAnchor.LeftToe:NativeEntranceAnchor.RightToe,toe.position);
+                }
+                // The weapon, while it is drawn this frame: each hand's weapon frame as the weapon was drawn on it.
+                string spec=NativeIntroCatalog.Find(script.Style)?.Spec;
+                if(spec!=null&&introWeaponAt==Time.frameCount)
+                {
+                    bool standard=NativeWeaponSkins.Index(introSkins,spec)!=NativeWeaponSkins.PrototypeIndex;
+                    for(int side=0;side<2;side++)
+                    {
+                        bool left=side==0;if(!NativeIntroWeapon.Tip(spec,left,out var tip))continue;NativeIntroWeapon.Muzzle(spec,left,out var muzzle);
+                        int hb=left?CapturedRig.LHand:CapturedRig.RHand;Matrix4x4 w;
+                        if(introWeaponBow){if(!left)continue;w=bowHand;}
+                        else if(bladeIntro!=null)w=BladeIntroFrame(hb,introGrip);
+                        else if(introHand!=null)w=introHand(hb);else continue;
+                        // (a gun's flash leaves the drawn skin's crown, as the match's does)
+                        if(NativeWeaponDressing.Gun(spec))muzzle=new System.Numerics.Vector3(0,0,NativeMuzzleFx.Crown(spec,standard));
+                        Put(left?NativeEntranceAnchor.LeftGrip:NativeEntranceAnchor.RightGrip,w.MultiplyPoint3x4(Vector3.zero));
+                        Put(left?NativeEntranceAnchor.LeftTip:NativeEntranceAnchor.RightTip,w.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(tip))));
+                        Put(left?NativeEntranceAnchor.LeftMuzzle:NativeEntranceAnchor.RightMuzzle,w.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(muzzle))));
+                        if(!left){var bore=w.MultiplyVector(Vector3.forward);if(bore.sqrMagnitude>1e-8f)introDrawnBore=bore.normalized;}
+                    }
+                }
+            }
+            if(mask!=0)script.Drawn(t,introDrawn,mask);
         }
         /// <summary>The v2 set sink: bank pieces through Graphics.DrawMesh (stage lit), primitives through the entrance's props.</summary>
         private sealed class IntroSetDraw:INativeIntroSet
