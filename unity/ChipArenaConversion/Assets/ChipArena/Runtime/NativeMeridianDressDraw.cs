@@ -11,7 +11,9 @@ namespace ChipArena.UnityConversion
     /// (Resources/ChipArenaCityMeridian, from the Drive zip) it:
     ///  - combines the planned modules and the generated surfaces into 32 m chunks at load: every chunk's LOD1 at once, each
     ///    chunk's LOD0 on a worker when the eye comes within reach (High 38 m, Balanced 24 m; Low draws LOD1 only), released again
-    ///    past it; chunks past the fog's end plus 25 m are left out; ChipArena/StageLit, two materials shared by every chunk;
+    ///    past it; a 32 m cell's chunks switch together, on the cell's bounds, LOD0 once all of them have it (the surfaces' seams
+    ///    conform within a cell at one tier); chunks past the fog's end plus 25 m are left out; ChipArena/StageLit, two materials
+    ///    shared by every chunk;
     ///  - lights the night (R4, the owner's lamp rule): the nearest working lamps take the eight practical slots (three on Low),
     ///    every working lamp lays its pool on the floor and, near the eye, a wet streak toward it (camera-facing FX quads, about
     ///    sixty, inside the 2,800 budget), flickering lamps' heads draw apart with their glow per frame, the nearest bowls throw
@@ -34,6 +36,10 @@ namespace ChipArena.UnityConversion
         private readonly float[] slotPos=new float[NativeMapLooks.MaxLights*4],slotRgb=new float[NativeMapLooks.MaxLights*3];private readonly int[] nearest=new int[NativeMapLooks.MaxLights];
         private static readonly int GlowId=Shader.PropertyToID("_StageGlow");
         private NativeVolumetricBeams beams;private readonly NativeBeamList beamList=new NativeBeamList();private int building;
+        // a 32 m cell's chunks (DrawChunks cuts a heavy cell for the caps) switch between LOD0 and LOD1 together, on the cell's whole
+        // bounds, and LOD0 shows only once every one of them has its LOD0: the surfaces' seams conform within a cell at one tier
+        // (NativeMeridianDress.SeamTable), so two chunks of one cell never draw at two tiers
+        private Bounds[] cellBox;private float[] cellDist;private int[] cellWant,cellShown;private bool[] cellReady;
         /// <summary>Last frame: chunks drawn at LOD0 and LOD1, their triangles, lamps lit, pools and streaks drawn.</summary>
         public int NearChunks{get;private set;}public int FarChunks{get;private set;}public long Triangles{get;private set;}public int Pools{get;private set;}public int Streaks{get;private set;}
         public bool Ready=>plan!=null&&root!=null;
@@ -68,6 +74,9 @@ namespace ChipArena.UnityConversion
                     cd.Far=Renderer(cd.FarMesh,"chunk "+c+" far");chunks.Add(cd);
                 }
                 CombineMs=(float)watch.Elapsed.TotalMilliseconds;
+                int cells=plan.Nx*plan.Nz;cellBox=new Bounds[cells];cellDist=new float[cells];cellWant=new int[cells];cellShown=new int[cells];cellReady=new bool[cells];var boxed=new bool[cells];
+                foreach(var cd in chunks){int cell=units[cd.Index].Cell;if(boxed[cell])cellBox[cell].Encapsulate(cd.Box);else{cellBox[cell]=cd.Box;boxed[cell]=true;}}
+                for(int i=0;i<cells;i++)cellShown[i]=-1;
                 activeCovers=plan.Covers;activeMap=mapId;
                 Debug.Log(FormattableString.Invariant($"Meridian dress {mapId}: {plan.Placements.Count} modules, {plan.Quads.Count} surfaces, {plan.Lamps.Count} lamps ({plan.Unmounted} route points unmounted), {chunks.Count} chunks, {plan.Covers.Count} blocks covered; plan {PlanMs:F0} ms, LOD1 combine {CombineMs:F0} ms"));
                 return true;
@@ -96,22 +105,30 @@ namespace ChipArena.UnityConversion
             activeMap=mapId;activeCovers=plan.Covers;activeFrame=Time.frameCount;
             var tier=NativeAdvancedLighting.Tier;float reach=NativeMeridianDress.Reach(tier),far=NativeMeridianDress.Far(tier);
             int near=0,farN=0;long tris=0;
+            // each cell's wish (on its whole bounds), then its chunks' LOD0 builds: the cell draws LOD0 once all of them have it
             foreach(var c in chunks)
             {
-                float d=Mathf.Sqrt(c.Box.SqrDistance(e));int want=d<reach+(c.Shown==0?NativeMeridianDress.Hysteresis:0)?0:d<far?2:-1;
-                if(want==0&&c.NearMesh==null)
+                int cell=units[c.Index].Cell;float d=Mathf.Sqrt(cellBox[cell].SqrDistance(e));cellDist[cell]=d;
+                cellWant[cell]=d<reach+(cellShown[cell]==0?NativeMeridianDress.Hysteresis:0)?0:d<far?2:-1;cellReady[cell]=true;
+            }
+            foreach(var c in chunks)
+            {
+                int cell=units[c.Index].Cell;if(cellWant[cell]!=0||c.NearMesh!=null)continue;
+                if(c.Building==null&&building<2){building++;var u=units[c.Index];c.Building=Task.Run(()=>{var m=new NativeMeridianMesh();NativeMeridianDress.Combine(plan,u.Cell,0,bank,modules,u.Placements,u.Quads,m);return m;});}
+                if(c.Building!=null&&c.Building.IsCompleted)
                 {
-                    if(c.Building==null&&building<2){building++;var u=units[c.Index];c.Building=Task.Run(()=>{var m=new NativeMeridianMesh();NativeMeridianDress.Combine(plan,u.Cell,0,bank,modules,u.Placements,u.Quads,m);return m;});}
-                    if(c.Building!=null&&c.Building.IsCompleted)
-                    {
-                        building--;var task=c.Building;c.Building=null;
-                        if(task.Status==TaskStatus.RanToCompletion&&task.Result.Vertices>0){c.NearMesh=Upload(task.Result,"Meridian chunk "+c.Index+" near");c.NearTris=task.Result.Triangles;c.Near=Renderer(c.NearMesh,"chunk "+c.Index+" near");}
-                    }
-                    if(c.NearMesh==null)want=2;
+                    building--;var task=c.Building;c.Building=null;
+                    if(task.Status==TaskStatus.RanToCompletion&&task.Result.Vertices>0){c.NearMesh=Upload(task.Result,"Meridian chunk "+c.Index+" near");c.NearTris=task.Result.Triangles;c.Near=Renderer(c.NearMesh,"chunk "+c.Index+" near");}
                 }
-                else if(want!=0&&c.NearMesh!=null&&d>reach+30){Destroy(c.Near.gameObject);Destroy(c.NearMesh);c.Near=null;c.NearMesh=null;}
+                if(c.NearMesh==null)cellReady[cell]=false;
+            }
+            foreach(var c in chunks)
+            {
+                int cell=units[c.Index].Cell;int want=cellWant[cell];if(want==0&&!cellReady[cell])want=2;
+                if(want!=0&&c.NearMesh!=null&&cellDist[cell]>reach+30){Destroy(c.Near.gameObject);Destroy(c.NearMesh);c.Near=null;c.NearMesh=null;}
                 if(c.Shown!=want){if(c.Far!=null)c.Far.enabled=want==2;if(c.Near!=null)c.Near.enabled=want==0;c.Shown=want;}
                 if(want==0){near++;tris+=c.NearTris;}else if(want==2){farN++;tris+=c.FarTris;}
+                cellShown[cell]=want;
             }
             NearChunks=near;FarChunks=farN;Triangles=tris;
             Lights(e,cam,tier);

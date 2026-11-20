@@ -134,7 +134,7 @@ namespace ChipArena.UnityConversion
             {
                 var pl=plan.Placements[pi];if(pl.Dynamic||!modules.TryGetValue(pl.Key,out var props))continue;AddModule(bank,props[tier],pl.M,into,(pl.Paint?PaintLayers:0)+pl.Layer);
             }
-            if(quads!=null)foreach(int qi in quads)AddQuad(plan.Quads[qi],tier,into);
+            if(quads!=null){var seam=plan.Seams!=null?new Seam():null;foreach(int qi in quads){if(seam!=null)Fan(plan,qi,tier,seam,into);else AddQuad(plan.Quads[qi],tier,into);}}
         }
         /// <summary>The layers a piece of paint (road marks, puddles, ghost signs, plates, hatches) draws up over the surface it lies
         /// on (ChipArena/StageLit's layers: nearer the eye along its ray, so a mark 6 mm over the street never fights it).</summary>
@@ -217,7 +217,7 @@ namespace ChipArena.UnityConversion
             {
                 int n=0;
                 if(ps!=null&&bank!=null)foreach(int i in ps){var p=plan.Placements[i];if(!p.Dynamic&&modules.TryGetValue(p.Key,out var t))n+=PropTris(t[tier]);}
-                if(q!=null)foreach(int i in q)n+=QuadTriangles(plan.Quads[i],tier);
+                if(q!=null)foreach(int i in q)n+=QuadTriangles(plan,i,tier);
                 return n;
             }
             void Split(int cell,float x0,float z0,float size,List<int> ps,List<int> q)
@@ -234,11 +234,238 @@ namespace ChipArena.UnityConversion
             for(int c=0;c<plan.Nx*plan.Nz;c++)Split(c,plan.MinX+(c%plan.Nx)*ChunkSize,plan.MinZ+(c/plan.Nx)*ChunkSize,ChunkSize,pl[c],qs[c]);
             return units;
         }
-        /// <summary>A generated surface's triangles at a tier (as AddQuad cuts it).</summary>
+        /// <summary>A generated surface's triangles at a tier (as AddQuad cuts it, without its seams).</summary>
         public static int QuadTriangles(in Quad q,int tier)
         {
             bool flat=Math.Abs(q.N.y)>.5f;float cell=NativeMeridianSurfaces.Cell(tier,flat);
             int nu=Math.Max(1,Math.Min(48,(int)Math.Ceiling(q.U.Length/cell))),nv=Math.Max(1,Math.Min(48,(int)Math.Ceiling(q.V.Length/cell)));return 2*nu*nv;
+        }
+        /// <summary>A plan's surface's triangles at a tier, its seams' fans included (as <see cref="AddQuad(Plan,int,int,NativeMeridianMesh)"/>
+        /// makes it).</summary>
+        public static int QuadTriangles(Plan plan,int qi,int tier)=>plan.Seams?.Tris!=null?plan.Seams.Tris[qi*2+(tier==0?0:1)]:QuadTriangles(plan.Quads[qi],tier);
+
+        // ------------------------------------------------------------------------------------------------------------------
+        // Seams: no T-junctions between surfaces, at any mix of LODs
+        // ------------------------------------------------------------------------------------------------------------------
+        /// <summary>The surfaces' seams. Each surface is cut into its own grid of cells, so where two surfaces met, one's vertices lay
+        /// part-way along the other's edge (a T-junction): the rasterizer left pinholes there that the eye saw through, which the toon
+        /// outline drew as small dark crosses (the greybox under the dress hid them until it gave way on the live map, 2026-11-20).
+        /// Now every surface edge on an axis-aligned line takes the vertices its neighbours on that line put within it: on a stretch
+        /// covered only by surfaces of one 32 m cell, their cuts at the tier it draws (the drawer switches a cell's chunks between
+        /// LOD0 and LOD1 together); on a stretch where surfaces of two cells meet, both tiers' cuts of all of them, so the seam holds
+        /// at any mix of LODs. A cell whose side gains vertices is fanned from a corner whose sides gain none, else from its centre.
+        /// The surfaces' corners are snapped per axis to one canonical value (the coordinates the planner computed, merged within
+        /// <see cref="SeamTolerance"/>), so a vertex two surfaces share is bitwise the same on both sides. Built once per plan,
+        /// read-only after (the chunks combine on workers).</summary>
+        public sealed class SeamTable
+        {
+            /// <summary>Per axis: the corners' coordinate clusters, sorted (the first value of each cluster is its canonical value).</summary>
+            public readonly float[][] Lo=new float[3][],Hi=new float[3][];
+            /// <summary>An axis-aligned line (its axis and its two other coordinates' clusters) to the surface edges on it.</summary>
+            public readonly Dictionary<long,SeamLine> Lines=new Dictionary<long,SeamLine>();
+            /// <summary>Each surface's triangles at LOD0 and LOD1 (quad * 2 + 0 or 1), its seams' fans included.</summary>
+            public int[] Tris;
+        }
+        /// <summary>The surface edges on one line (quad * 4 + edge), by their low ends along it (canonical), and the longest of them: an
+        /// edge finds the others on its stretch by search.</summary>
+        public sealed class SeamLine{public int[] Edges;public float[] Low;public float Longest;}
+        /// <summary>Points closer than this (m) along a seam are one vertex.</summary>
+        public const float SeamTolerance=1e-4f;
+        private static readonly int[] SeamTiers={0,2};
+        private static float Axis(V3 v,int a)=>a==0?v.x:a==1?v.y:v.z;
+        /// <summary>A surface's edge k, in the winding's order: 0 O to O+U, 1 O+U to O+U+V, 2 O+U+V to O+V, 3 O+V to O.</summary>
+        public static void EdgeOf(in Quad q,int k,out V3 s,out V3 e)
+        {
+            var c1=q.O+q.U;var c2=c1+q.V;var c3=q.O+q.V;
+            s=k==0?q.O:k==1?c1:k==2?c2:c3;e=k==0?c1:k==1?c2:k==2?c3:q.O;
+        }
+        /// <summary>The axis an edge runs along, or -1 where it is not axis-aligned (a slope's side).</summary>
+        private static int AxisOf(V3 d)
+        {
+            float x=Math.Abs(d.x),y=Math.Abs(d.y),z=Math.Abs(d.z),l=Math.Max(x,Math.Max(y,z));if(l<1e-3f)return -1;
+            int a=x>=y&&x>=z?0:y>=z?1:2;float rest=a==0?y+z:a==1?x+z:x+y;return rest<=l*1e-4f?a:-1;
+        }
+        /// <summary>A surface's cells along edge k at a tier (as AddQuad cuts it).</summary>
+        private static int Cells(in Quad q,int k,int tier)
+        {
+            bool flat=Math.Abs(q.N.y)>.5f;float cell=NativeMeridianSurfaces.Cell(tier,flat);
+            return Math.Max(1,Math.Min(48,(int)Math.Ceiling(((k&1)==0?q.U.Length:q.V.Length)/cell)));
+        }
+        /// <summary>The cluster (index) holding a coordinate on an axis, or -1.</summary>
+        private static int Cluster(SeamTable t,int a,float x)
+        {
+            var lo=t.Lo[a];int i=0,j=lo.Length-1,best=-1;
+            while(i<=j){int m=(i+j)>>1;if(lo[m]<=x+1e-6f){best=m;i=m+1;}else j=m-1;}
+            return best>=0&&x<=t.Hi[a][best]+1e-6f?best:-1;
+        }
+        private static float Canon(SeamTable t,int a,float x){int c=Cluster(t,a,x);return c<0?x:t.Lo[a][c];}
+        private static long LineKey(SeamTable t,int a,V3 s)
+        {
+            int b=a==0?1:0,c=a==2?1:2;int i1=Cluster(t,b,Axis(s,b)),i2=Cluster(t,c,Axis(s,c));
+            return i1<0||i2<0?-1:(long)a|((long)i1<<2)|((long)i2<<33);
+        }
+        /// <summary>The seams of a plan's surfaces (see <see cref="SeamTable"/>).</summary>
+        public static SeamTable BuildSeams(Plan plan)
+        {
+            var t=new SeamTable();var qs=plan.Quads;
+            for(int a=0;a<3;a++)
+            {
+                var all=new List<float>(qs.Count*4);
+                foreach(var q in qs){for(int k=0;k<4;k++){EdgeOf(q,k,out var s,out _);all.Add(Axis(s,a));}}
+                all.Sort();var lo=new List<float>();var hi=new List<float>();
+                // chained: a corner within the tolerance of the cluster's last value joins it (two computations of one corner)
+                foreach(float x in all){if(lo.Count==0||x>hi[hi.Count-1]+SeamTolerance){lo.Add(x);hi.Add(x);}else hi[hi.Count-1]=x;}
+                t.Lo[a]=lo.ToArray();t.Hi[a]=hi.ToArray();
+            }
+            var lines=new Dictionary<long,List<int>>();
+            for(int q=0;q<qs.Count;q++)for(int k=0;k<4;k++)
+            {
+                EdgeOf(qs[q],k,out var s,out var e);int a=AxisOf(e-s);if(a<0)continue;long key=LineKey(t,a,s);if(key<0)continue;
+                if(!lines.TryGetValue(key,out var list))lines[key]=list=new List<int>(2);list.Add(q*4+k);
+            }
+            foreach(var kv in lines)
+            {
+                var list=kv.Value;int a=(int)(kv.Key&3);var low=new float[list.Count];float longest=0;
+                for(int i=0;i<list.Count;i++){EdgeOf(qs[list[i]>>2],list[i]&3,out var s,out var e);float sa=Canon(t,a,Axis(s,a)),ea=Canon(t,a,Axis(e,a));low[i]=Math.Min(sa,ea);longest=Math.Max(longest,Math.Abs(ea-sa));}
+                var edges=list.ToArray();Array.Sort(low,edges);t.Lines[kv.Key]=new SeamLine{Edges=edges,Low=low,Longest=longest};
+            }
+            plan.Seams=t;
+            var seam=new Seam();t.Tris=new int[qs.Count*2];
+            for(int q=0;q<qs.Count;q++)for(int ti=0;ti<2;ti++)t.Tris[q*2+ti]=Fan(plan,q,SeamTiers[ti],seam,null);
+            return t;
+        }
+        /// <summary>A surface's four edges at a tier: each seamed edge's points (world, in the edge's order) and where the surface's own
+        /// cell corners fall among them.</summary>
+        private sealed class Seam
+        {
+            public readonly List<V3>[] Points={new List<V3>(),new List<V3>(),new List<V3>(),new List<V3>()};
+            public readonly List<int>[] Own={new List<int>(),new List<int>(),new List<int>(),new List<int>()};
+            public readonly bool[] On=new bool[4];
+            public readonly List<(float x,bool corner)> Candidates=new List<(float,bool)>();
+            public readonly List<(float s,float e,float lo,float hi,int cell,int n0,int n2)> Near=new List<(float,float,float,float,int,int,int)>();
+            public readonly List<float> Ends=new List<float>();
+            public readonly List<float> Start=new List<float>(),End=new List<float>(),Rep=new List<float>();
+            public readonly List<int>[] Extra={new List<int>(),new List<int>(),new List<int>(),new List<int>()};
+            public readonly List<int> Poly=new List<int>(16);
+        }
+        /// <summary>Edge k of surface qi at a tier: false where it is on no seam (not axis-aligned, or alone on its line).</summary>
+        private static bool SeamEdge(Plan plan,int qi,int k,int tier,Seam into)
+        {
+            var t=plan.Seams;var pts=into.Points[k];var own=into.Own[k];pts.Clear();own.Clear();into.On[k]=false;
+            var q=plan.Quads[qi];EdgeOf(q,k,out var s,out var e);int a=AxisOf(e-s);if(a<0)return false;
+            long key=LineKey(t,a,s);if(key<0||!t.Lines.TryGetValue(key,out var line)||line.Edges.Length<2)return false;
+            float sa=Canon(t,a,Axis(s,a)),ea=Canon(t,a,Axis(e,a)),lo=Math.Min(sa,ea),hi=Math.Max(sa,ea);
+            var cand=into.Candidates;cand.Clear();
+            // an edge's vertices (a tier's cuts) between `from` and `to`: its ends are corners (canonical)
+            void Cuts(float ms0,float me0,int n,float from,float to){for(int i=0;i<=n;i++){float x=i==0?ms0:i==n?me0:ms0+(me0-ms0)*((float)i/n);if(x>=from-SeamTolerance&&x<=to+SeamTolerance)cand.Add((x,i==0||i==n));}}
+            // the surfaces on this edge's stretch of the line (itself among them)
+            var near=into.Near;near.Clear();
+            // the first edge whose low end could reach this stretch (none is longer than the line's longest)
+            int first=0,last=line.Low.Length-1;float from=lo-line.Longest-SeamTolerance;
+            while(first<=last){int mid=(first+last)>>1;if(line.Low[mid]<from)first=mid+1;else last=mid-1;}
+            for(int at=first;at<line.Edges.Length&&line.Low[at]<=hi+SeamTolerance;at++)
+            {
+                int m=line.Edges[at],qm=m>>2,km=m&3;var M=plan.Quads[qm];EdgeOf(M,km,out var ms,out var me);float msa=qm==qi?sa:Canon(t,a,Axis(ms,a)),mea=qm==qi?ea:Canon(t,a,Axis(me,a));
+                if(Math.Max(msa,mea)<lo-SeamTolerance||Math.Min(msa,mea)>hi+SeamTolerance)continue;
+                near.Add((msa,mea,Math.Min(msa,mea),Math.Max(msa,mea),M.Chunk,Cells(M,km,0),Cells(M,km,2)));
+            }
+            if(near.Count<2)return false;
+            // the stretch cut where any of them ends: on each piece, every surface covering it takes the others' cuts. The surfaces of
+            // one 32 m cell draw at one tier together (the drawer switches a cell's chunks together), so a piece covered from one cell
+            // takes this tier's cuts; a piece covered from two cells can meet at either tier, so it takes both tiers' cuts of all of them
+            // (each piece's choice is the same for every surface that covers it)
+            var ends=into.Ends;ends.Clear();ends.Add(lo);ends.Add(hi);
+            foreach(var n in near){if(n.lo>lo+SeamTolerance&&n.lo<hi-SeamTolerance)ends.Add(n.lo);if(n.hi>lo+SeamTolerance&&n.hi<hi-SeamTolerance)ends.Add(n.hi);}
+            ends.Sort();
+            for(int p=0;p+1<ends.Count;p++)
+            {
+                float c0=ends[p],c1=ends[p+1];if(c1-c0<=SeamTolerance)continue;float mid=(c0+c1)*.5f;bool mixed=false;int cell=-1;
+                foreach(var n in near){if(n.lo>mid||n.hi<mid)continue;if(cell<0)cell=n.cell;else if(n.cell!=cell)mixed=true;}
+                foreach(var n in near)
+                {
+                    if(n.lo>mid||n.hi<mid)continue;
+                    if(mixed||tier==0)Cuts(n.s,n.e,n.n0,c0,c1);
+                    if(mixed||tier!=0)Cuts(n.s,n.e,n.n2,c0,c1);
+                }
+            }
+            // one vertex per cluster of candidates: a corner's canonical value where the cluster holds one, else its least value
+            cand.Sort((p,r)=>p.x.CompareTo(r.x));var st=into.Start;var en=into.End;var rep=into.Rep;st.Clear();en.Clear();rep.Clear();bool corner=false;
+            foreach(var (x,isCorner) in cand)
+            {
+                if(st.Count==0||x>st[st.Count-1]+SeamTolerance){st.Add(x);en.Add(x);rep.Add(x);corner=isCorner;}
+                else{en[en.Count-1]=x;if(isCorner&&!corner){rep[rep.Count-1]=x;corner=true;}}
+            }
+            // the line's two other coordinates, canonical
+            int b=a==0?1:0,c=a==2?1:2;float fb=Canon(t,b,Axis(s,b)),fc=Canon(t,c,Axis(s,c));
+            V3 At(float x){var p=new V3();if(a==0)p.x=x;else if(a==1)p.y=x;else p.z=x;if(b==0)p.x=fb;else if(b==1)p.y=fb;else p.z=fb;if(c==0)p.x=fc;else if(c==1)p.y=fc;else p.z=fc;return p;}
+            bool up=ea>=sa;int count=rep.Count;
+            for(int r=0;r<count;r++)pts.Add(At(rep[up?r:count-1-r]));
+            int Find(float x){int i=0,j=st.Count-1,best=0;while(i<=j){int m=(i+j)>>1;if(st[m]<=x){best=m;i=m+1;}else j=m-1;}return up?best:count-1-best;}
+            int nOwn=Cells(q,k,tier);
+            for(int i=0;i<=nOwn;i++){float x=i==0?sa:i==nOwn?ea:sa+(ea-sa)*((float)i/nOwn);own.Add(Find(x));}
+            into.On[k]=true;return true;
+        }
+        /// <summary>A plan's surface into the mesh at a tier, its cells cut as <see cref="AddQuad(in Quad,int,NativeMeridianMesh)"/>
+        /// cuts them, its seams conforming (<see cref="SeamTable"/>).</summary>
+        public static void AddQuad(Plan plan,int qi,int tier,NativeMeridianMesh into)
+        {
+            if(plan.Seams==null){AddQuad(plan.Quads[qi],tier,into);return;}
+            Fan(plan,qi,tier,new Seam(),into);
+        }
+        /// <summary>Makes (into a mesh) or counts (`into` null) a surface's triangles with its seams.</summary>
+        private static int Fan(Plan plan,int qi,int tier,Seam seam,NativeMeridianMesh into)
+        {
+            var q=plan.Quads[qi];var f=NativeMeridianSurfaces.Fins[q.Fin];float lu=q.U.Length,lv=q.V.Length;bool flat=Math.Abs(q.N.y)>.5f;float cell=NativeMeridianSurfaces.Cell(tier,flat);
+            int nu=Math.Max(1,Math.Min(48,(int)Math.Ceiling(lu/cell))),nv=Math.Max(1,Math.Min(48,(int)Math.Ceiling(lv/cell)));
+            bool any=false;for(int k=0;k<4;k++)any|=SeamEdge(plan,qi,k,tier,seam);
+            // the extra vertices on a cell's side: edge k between its own corners m and m+1 (in the edge's order)
+            int Extra(int k,int m)=>seam.On[k]?Math.Max(0,seam.Own[k][m+1]-seam.Own[k][m]-1):0;
+            int ExtraOf(int i,int j)=>(j==0?Extra(0,i):0)+(i==nu-1?Extra(1,j):0)+(j==nv-1?Extra(2,nu-1-i):0)+(i==0?Extra(3,nv-1-j):0);
+            // the sides of cell (i, j) that gain vertices (bit 0 its bottom, 1 its right, 2 its top, 3 its left), and its fan's apex: a
+            // corner neither of whose sides gains any (0 its first, 1 second, 2 third, 3 fourth in the winding's order), else -1 its centre
+            int SidesOf(int i,int j)=>(j==0&&Extra(0,i)>0?1:0)|(i==nu-1&&Extra(1,j)>0?2:0)|(j==nv-1&&Extra(2,nu-1-i)>0?4:0)|(i==0&&Extra(3,nv-1-j)>0?8:0);
+            int Apex(int sides)=>(sides&9)==0?0:(sides&3)==0?1:(sides&6)==0?2:(sides&12)==0?3:-1;
+            if(into==null)
+            {
+                int n=2*nu*nv;if(!any)return n;
+                for(int j=0;j<nv;j++)for(int i=0;i<nu;i++){if(j!=0&&j!=nv-1&&i!=0&&i!=nu-1)continue;int x=ExtraOf(i,j);if(x>0)n+=(Apex(SidesOf(i,j))>=0?x:x+2);}
+                return n;
+            }
+            float kind=f.Detail+q.Layer/32f;
+            int Vertex(V3 p){int v=into.Reserve(1);into.P[v*3]=p.x;into.P[v*3+1]=p.y;into.P[v*3+2]=p.z;into.Bound(p.x,p.y,p.z);into.N[v*3]=q.N.x;into.N[v*3+1]=q.N.y;into.N[v*3+2]=q.N.z;
+                into.Uv0[v*2]=f.Smooth;into.Uv0[v*2+1]=f.Metal;into.Uv1[v*2]=kind;into.Uv1[v*2+1]=f.Param;NativeMeridianSurfaces.Colour(f,p,q.N,q.Floor,into.C,v*4);return v;}
+            // the grid: its boundary vertices where a seamed edge puts them (canonical), the rest as cut
+            V3 Grid(int i,int j)
+            {
+                if(j==0&&seam.On[0])return seam.Points[0][seam.Own[0][i]];
+                if(i==nu&&seam.On[1])return seam.Points[1][seam.Own[1][j]];
+                if(j==nv&&seam.On[2])return seam.Points[2][seam.Own[2][nu-i]];
+                if(i==0&&seam.On[3])return seam.Points[3][seam.Own[3][nv-j]];
+                return q.O+q.U*((float)i/nu)+q.V*((float)j/nv);
+            }
+            int at=into.Vertices;for(int j=0;j<=nv;j++)for(int i=0;i<=nu;i++)Vertex(Grid(i,j));
+            int G(int i,int j)=>at+i+j*(nu+1);
+            // the extra vertices, by edge and list position
+            var extra=seam.Extra;
+            for(int k=0;k<4;k++){var mark=extra[k];mark.Clear();if(!seam.On[k])continue;var pts=seam.Points[k];for(int r=0;r<pts.Count;r++)mark.Add(-1);foreach(int o in seam.Own[k])mark[o]=-2;
+                for(int r=0;r<mark.Count;r++)if(mark[r]==-1)mark[r]=Vertex(pts[r]);}
+            var poly=seam.Poly;
+            void Side(int k,int m){if(!seam.On[k])return;for(int r=seam.Own[k][m]+1;r<seam.Own[k][m+1];r++)poly.Add(extra[k][r]);}
+            // the bank's winding: (p1 - p0) x (p2 - p0) out of the face, as u x v is
+            for(int j=0;j<nv;j++)for(int i=0;i<nu;i++)
+            {
+                int a=G(i,j),b=G(i+1,j),c=G(i+1,j+1),d=G(i,j+1);
+                if(!any||(j!=0&&j!=nv-1&&i!=0&&i!=nu-1)||ExtraOf(i,j)==0){into.Solid.Add(a);into.Solid.Add(b);into.Solid.Add(c);into.Solid.Add(a);into.Solid.Add(c);into.Solid.Add(d);continue;}
+                // a cell whose side gains vertices: its polygon, round in the winding's order, fanned from a corner whose sides gain
+                // none (its triangles never lie flat along a side), else from its centre
+                poly.Clear();
+                int oa=poly.Count;poly.Add(a);if(j==0)Side(0,i);int ob=poly.Count;poly.Add(b);if(i==nu-1)Side(1,j);int oc=poly.Count;poly.Add(c);if(j==nv-1)Side(2,nu-1-i);int od=poly.Count;poly.Add(d);if(i==0)Side(3,nv-1-j);
+                int apex=Apex(SidesOf(i,j)),pc=poly.Count;
+                if(apex>=0){int o=apex==0?oa:apex==1?ob:apex==2?oc:od;for(int r=1;r<pc-1;r++){into.Solid.Add(poly[o]);into.Solid.Add(poly[(o+r)%pc]);into.Solid.Add(poly[(o+r+1)%pc]);}continue;}
+                var centre=(Grid(i,j)+Grid(i+1,j)+Grid(i+1,j+1)+Grid(i,j+1))*.25f;int ce=Vertex(centre);
+                for(int r=0;r<pc;r++){into.Solid.Add(ce);into.Solid.Add(poly[r]);into.Solid.Add(poly[(r+1)%pc]);}
+            }
+            return 0;
         }
         /// <summary>The tiers' reach (m, eye to a chunk's bounds): LOD0 within <see cref="FineReach"/> on High (a little nearer on
         /// Balanced), LOD1 beyond it out to the fog's end plus 25 m (bible 10.2; R4's far layer is D2's), the Low tier LOD1 only.</summary>

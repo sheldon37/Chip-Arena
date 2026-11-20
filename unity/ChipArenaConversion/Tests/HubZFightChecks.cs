@@ -117,15 +117,18 @@ namespace ChipArena.UnityConversion
                 var s=new Source{Kind="greybox",Name=b.id,Where="Runtime/NativeArenaDressing.cs Render (NativeBlockLit, no layer)"};
                 Box(s,b.pos+shift,new V3(b.size.x*.5f+gx,b.size.y*.5f+gy,b.size.z*.5f+gz),r.x,r.y,r.z,r.w,0);o.Add(s);
             }
-            var B=map.blocks;
+            var B=map.blocks;var surface=new NativeMeridianMesh();
             for(int i=0;i<dress.Quads.Count;i++)
             {
                 var q=dress.Quads[i];var c1=q.O+q.U+q.V;var lo=new V3(Math.Min(q.O.x,c1.x),Math.Min(q.O.y,c1.y),Math.Min(q.O.z,c1.z));var hi=new V3(Math.Max(q.O.x,c1.x),Math.Max(q.O.y,c1.y),Math.Max(q.O.z,c1.z));
                 foreach(var e in new[]{q.O+q.U,q.O+q.V}){lo=new V3(Math.Min(lo.x,e.x),Math.Min(lo.y,e.y),Math.Min(lo.z,e.z));hi=new V3(Math.Max(hi.x,e.x),Math.Max(hi.y,e.y),Math.Max(hi.z,e.z));}
                 if(!Near(lo,hi))continue;
                 var s=new Source{Kind="dress-surface",Name=FinName(q.Fin)+" on "+(q.Block>=0?B[q.Block].id:"a slope"),Where="Core/NativeMeridianDressPlan.cs (ChipArena/StageLit, layer "+q.Layer+")"};
-                // the bank's winding: (p1 - p0) x (p2 - p0) out of the face, as u x v is (NativeMeridianDress.AddQuad)
-                s.T.Add(q.O);s.T.Add(q.O+q.U);s.T.Add(q.O+q.U+q.V);s.T.Add(q.O);s.T.Add(q.O+q.U+q.V);s.T.Add(q.O+q.V);s.L.Add(q.Layer);s.L.Add(q.Layer);o.Add(s);
+                // as the drawer combines it (its cells and its seams, whose shared vertices are snapped: two computations of one edge
+                // a few micrometres apart are one line there)
+                NativeMeridianDress.Combine(dress,0,tier,null,null,null,new List<int>{i},surface);
+                for(int k=0;k+2<surface.Solid.Count;k+=3){for(int c=0;c<3;c++){int v=surface.Solid[k+c];s.T.Add(new V3(surface.P[v*3],surface.P[v*3+1],surface.P[v*3+2]));}s.L.Add(q.Layer);}
+                o.Add(s);
             }
             if(bank!=null)
             {

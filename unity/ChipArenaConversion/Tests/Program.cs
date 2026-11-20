@@ -62,6 +62,10 @@ internal static class Program
             if(args.Length==0||args.Length==1&&args[0]=="--hub-zfight")HubZFightChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--hub-zfight")return 0;
             if(args.Length==1&&args[0]=="--hub-zfight-probe"){HubZFightChecks.Probe(ProjectRoot());return 0;}
+            // The dress's seams: no T-junction pinholes at any LOD pair, the floor under the camp fence (the hub's follow-up).
+            if(args.Length==0||args.Length==1&&args[0]=="--dress-seams")DressSeamChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--dress-seams")return 0;
+            if(args.Length==1&&args[0]=="--dress-seams-probe"){DressSeamChecks.Probe(ProjectRoot());return 0;}
             if((args.Length==3||args.Length==4)&&args[0]=="--meridian-zfight"){MeridianDressChecks.ZFightExport(int.Parse(args[1]),args[2],args.Length==4&&args[3]=="parts");return 0;}
             if(args.Length==6&&args[0]=="--meridian-export"){MeridianDressChecks.Export(ProjectRoot(),int.Parse(args[1]),float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[4],System.Globalization.CultureInfo.InvariantCulture),args[5]);return 0;}
             if(args.Length==2&&args[0]=="--layered-walk-plans"){LayeredCityWalkPlans.Write(args[1]);return 0;}
