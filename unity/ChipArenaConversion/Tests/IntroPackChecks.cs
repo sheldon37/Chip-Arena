@@ -133,6 +133,20 @@ namespace ChipArena.UnityConversion
             // and the sampler is allocation-free between frames
             long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<2000;i++)clip.Sample(i*.0013f,true,joints,out _);
             Check(GC.GetAllocatedBytesForCurrentThread()-before==0,"sampling a pack clip allocates nothing");
+            // a Kept segment carries the root by its weight's sum (never back, its blend-out included) and leaves it there after it ends
+            var keep=NativeIntroPack.Local;var keepSpeed=clip.Speed;NativeIntroPack.Local=bank;clip.Speed=1;
+            try
+            {
+                var k=new NativeEntranceKeys();k.Key(0,NativeEntranceKeys.Stand()).Root(0,.88f,0,0);k.Key(3,NativeEntranceKeys.Stand()).Root(0,.88f,0,0);
+                k.FromPack("round-trip",1,2,0,1,true,NativeIntroPack.RootMode.Kept,NativeIntroPack.All,.2f,.2f);
+                var kp=new CapturedRig.Pose();float last=-1,at2=0,at3=0;bool back=false;
+                for(int i=0;i<=90;i++){NativeEntrancePose.Keyed(k,i/30f,kp,out var r,out _,ReadOnlySpan<float>.Empty);back|=r.Z<last-1e-4f;last=r.Z;if(i==60)at2=r.Z;if(i==90)at3=r.Z;}
+                Check(!back,"a Kept segment never carries the root back (its blend-out included)");
+                Check(Math.Abs(at3-.8f)<.02f&&Math.Abs(at3-at2)<1e-4f,"a Kept segment's travel is its weight's sum and stays after it ("+at3.ToString("0.000")+" m, want 0.8)");
+                // and without the bank the keys play as keyed
+                NativeIntroPack.Local=null;NativeEntrancePose.Keyed(k,1.5f,kp,out var none,out _,ReadOnlySpan<float>.Empty);Check(Math.Abs(none.Z)<1e-5f,"without the bank a segment does nothing");
+            }
+            finally{NativeIntroPack.Local=keep;clip.Speed=keepSpeed;}
             return worst;
         }
 

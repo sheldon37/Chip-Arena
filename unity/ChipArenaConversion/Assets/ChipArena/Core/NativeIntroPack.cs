@@ -35,7 +35,8 @@ namespace ChipArena.UnityConversion
         public const int All=Torso|Arms|Legs;
 
         /// <summary>Where the root goes while a segment plays: Path (the intro's: its keys or RootPath; travel at the clip's Speed for the
-        /// drawn feet to hold) or Kept (the clip's own travel: from the root at the segment's start, along the root's facing, at Speed).</summary>
+        /// drawn feet to hold) or Kept (the clip's own travel: from the root at the segment's start, along the root's facing, at Speed by
+        /// the segment's weight; the root stays where it took it after the segment ends).</summary>
         public enum RootMode:byte{Path,Kept}
 
         private const int Joints=22,Points=4,Stride=Joints*4+3+Points*3; // per frame: the joints' turns, the keyed body's offset, the drawn ankles and balls
@@ -133,6 +134,13 @@ namespace ChipArena.UnityConversion
             }
             /// <summary>The clip's time at intro time `t`.</summary>
             public float ClipTime(float t)=>Start+(t-From)*Speed;
+            /// <summary>The segment's weight summed over intro time from From to `t` (seconds at full weight; it stops growing at To): how far
+            /// a Kept segment has carried the root, over the clip's Speed.</summary>
+            public float Travelled(float t)
+            {
+                float end=Math.Min(t,To),span=end-From;if(span<=0)return 0;const int steps=32;float sum=0,dt=span/steps;
+                for(int i=0;i<steps;i++)sum+=Weight(From+(i+.5f)*dt);return sum*dt;
+            }
         }
 
         [ThreadStatic] private static Quaternion[] scratch;
@@ -152,6 +160,8 @@ namespace ChipArena.UnityConversion
             var joints=scratch??=new Quaternion[Joints];
             foreach(var s in k.Packs)
             {
+                // (a Kept segment's travel: the root carried on along the facing at the clip's Speed by its weight, and left there after it)
+                if(s.Root==RootMode.Kept&&t>s.From){var kc=s.Resolve();if(kc!=null)root+=Vector3.Transform(new Vector3(0,0,kc.Speed*s.Speed*s.Travelled(t)),rotation);}
                 float w=s.Weight(t);if(w<=0)continue;var c=s.Resolve();if(c==null)continue;
                 c.Sample(s.ClipTime(t),s.Loop,joints,out var body);
                 for(int j=1;j<Joints;j++)
@@ -160,16 +170,15 @@ namespace ChipArena.UnityConversion
                     pose.Rotation[j]=w>=.9999f?joints[j]:Quaternion.Normalize(Quaternion.Slerp(pose.Rotation[j],joints[j],w));
                 }
                 if((s.Mask&1<<Pelvis)!=0)pose.Position[Body]=Vector3.Lerp(pose.Position[Body],CapturedRig.Bones[Body].Position+body,w);
-                if(s.Root==RootMode.Kept)root+=Vector3.Transform(new Vector3(0,0,c.Speed*s.Speed*(t-s.From)*w),rotation);
                 if(s.Hold)HoldFeet(k,s,c,t,pose,root,rotation,rootAt,w);
             }
         }
-        /// <summary>The root and its turn at intro time `t` as NativeEntrancePose.Keyed makes them (and segment `s`'s own travel).</summary>
+        /// <summary>The root and its turn at intro time `t` as NativeEntrancePose.Keyed makes them (with every Kept segment's travel).</summary>
         private static void RootAt(NativeEntranceKeys k,Segment s,Clip c,float t,Func<float,Vector3,Vector3> rootAt,out Vector3 root,out Quaternion rotation)
         {
             root=new Vector3(k.At(NativeEntranceKeys.RootX,t),k.At(NativeEntranceKeys.RootY,t),k.At(NativeEntranceKeys.RootZ,t));if(rootAt!=null)root=rootAt(t,root);
             rotation=Quaternion.CreateFromYawPitchRoll(k.At(NativeEntranceKeys.Yaw,t),k.At(NativeEntranceKeys.Pitch,t),k.At(NativeEntranceKeys.Roll,t));
-            if(s.Root==RootMode.Kept)root+=Vector3.Transform(new Vector3(0,0,c.Speed*s.Speed*(t-s.From)*s.Weight(t)),rotation);
+            foreach(var o in k.Packs)if(o.Root==RootMode.Kept&&t>o.From){var oc=o.Resolve();if(oc!=null)root+=Vector3.Transform(new Vector3(0,0,oc.Speed*o.Speed*o.Travelled(t)),rotation);}
         }
         /// <summary>
         /// The drawn feet held where they came down: a foot the clip has on the floor is kept where it landed, against the intro's root (the
