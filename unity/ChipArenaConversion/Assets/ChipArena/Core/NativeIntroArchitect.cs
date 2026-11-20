@@ -170,7 +170,8 @@ namespace ChipArena.UnityConversion
             for(int i=-2;i<2;i++)for(int j=-2;j<2;j++){var at=new Vector3(i*PlateSize+PlateSize*.5f,Ground,j*PlateSize+PlateSize*.5f);o.Add(new Piece{Prop="old-plate",Wire="old-plate.wire",Kind=OldPlate,Rest=at,Centroid=new Vector3(0,-.06f,0),Size=2.8f});}
             for(int k=0;k<6;k++)o.Add(new Piece{Prop="old-dais-wedge",Wire="old-dais-wedge.wire",Kind=OldWedge,Rest=new Vector3(0,NativeEntranceStage.FloorY,0),Yaw=k*1.0471976f,Centroid=new Vector3(0,-.066f,1.5f),Size=1.6f});
             for(int i=0;i<12;i++){float a=(i+.5f)/12*6.2831853f;o.Add(new Piece{Prop="old-pylon",Wire="old-pylon.wire",Kind=OldPylon,Rest=Polar(PylonRing,a,Ground),Yaw=a,Centroid=new Vector3(0,1.8f,0),Size=1.9f});}
-            for(int k=0;k<4;k++){float a=(k*6+3)/24f*6.2831853f;o.Add(new Piece{Prop=SkyProps[k],Wire=SkyWires[k],Kind=OldSky,Rest=new Vector3(0,Ground,0),Centroid=Polar(25,a,6),Size=9});}
+            // (a skyline group is one mesh about the arena centre, modelled in Unity space: the middle of its towers, mirrored into the source frame)
+            for(int k=0;k<4;k++){float a=(k*6+3)/24f*6.2831853f;var mid=Polar(25,a,6);o.Add(new Piece{Prop=SkyProps[k],Wire=SkyWires[k],Kind=OldSky,Rest=new Vector3(0,Ground,0),Centroid=new Vector3(-mid.X,mid.Y,mid.Z),Size=9});}
             old=o.ToArray();
             for(int i=0;i<old.Length;i++)
             {

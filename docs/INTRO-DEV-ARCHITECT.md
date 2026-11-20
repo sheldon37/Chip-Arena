@@ -42,7 +42,7 @@ The beats below are the song's transients as measured from the file (5 ms envelo
 | 12.27, 12.50 | the dips | The hands close | The world trembles; the hands close and draw in. | (the close-up) |
 | 12.62 | **the drop** | **The world obeys** | Everything snaps into place at once, solid: a floating platform of obsidian, eight monoliths with gold capstones, the crown 13 m up, far spires rising. Light floods out along every seam and climbs the monoliths. The architect lands on the dais. | The hero frame, low and wide. |
 | 12.67–13.6 | the drop's sustain | The name | The live name is written into the sky above and behind, in light, a letter at a time, each traced by its own pen, flashing as it closes, its colour split and a slice of it slipping, both settling; on the card the same letters decode and lock. | A slow push and boom down. |
-| 13.9–15.3 | | Authority | A light sweeps the name; the crown turns; gold embers rise from the seams. | Settling to still. |
+| 13.9–15.3 | | Authority | A light sweeps the name; the crown turns; gold embers rise from the seams. | Settling to still: the architect centred between two monoliths, the sky's name 2 m above the head, the card in a clean band of the dais below the feet. |
 | 15.30–15.70 | the fade | | The song fades; the picture goes to black with it. | |
 
 ## The set (`ChipArenaIntroDev.bytes`, 5.0 MB; never committed)
