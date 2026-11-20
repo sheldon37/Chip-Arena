@@ -110,6 +110,22 @@ namespace ChipArena.UnityConversion
         {
             double a=(yawDegrees+180)*Math.PI/180;float c=(float)Math.Cos(a),s=(float)Math.Sin(a);wx=x*c+z*s;wz=-x*s+z*c;
         }
+        /// <summary>Streaks longer than this (m) are laid onto their head's camera plane (OntoHeadPlane).</summary>
+        public const float ExactStreak=1;
+        /// <summary>A long streak drawn exactly on its line (owner, 2026-11-19: "the beam from the legendary crate starts to move
+        /// away from the crate"). The shared streak lies in the camera's plane through its middle (NativeVfx.shader
+        /// VfxStreakOffset), so a long one's ends land off its line when the camera looks down or up: the 40 m pillar's foot slid
+        /// beside its locker as it rose. Here its tail (head - axis) moves along its camera ray onto the plane of the head,
+        /// clipped in front of the camera first (its taper scaled to the share kept), so the quad's ends project onto the true
+        /// head and tail and the head (a column's foot) keeps its depth, width and occlusion. eye and forward: the perspective
+        /// camera's. False (nothing changed) when the head is not in front of the camera.</summary>
+        public static bool OntoHeadPlane(float ex,float ey,float ez,float fx,float fy,float fz,float near,float hx,float hy,float hz,ref float ax,ref float ay,ref float az,ref float taper)
+        {
+            float tx=hx-ax,ty=hy-ay,tz=hz-az,zh=(hx-ex)*fx+(hy-ey)*fy+(hz-ez)*fz,zt=(tx-ex)*fx+(ty-ey)*fy+(tz-ez)*fz;
+            if(!(zh>near))return false;
+            if(zt<near){float keep=(zh-near)/(zh-zt);tx=hx-ax*keep;ty=hy-ay*keep;tz=hz-az*keep;zt=near;taper*=keep;}
+            float s=zh/zt;tx=ex+(tx-ex)*s;ty=ey+(ty-ey)*s;tz=ez+(tz-ez)*s;ax=hx-tx;ay=hy-ty;az=hz-tz;return true;
+        }
         /// <summary>A world offset from the anchor in the locker's frame (the inverse of ToWorld).</summary>
         public static void ToLocal(float yawDegrees,float wx,float wz,out float x,out float z)
         {

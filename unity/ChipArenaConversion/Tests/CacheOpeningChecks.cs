@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             count=0;
-            Adapter(root);Words();Beats();Ladder();FloorAndRings();Blooms();Pulses();Budget();Reduced();Determinism();Sounds();Locker();Clock();Hologram();Preview();NoAllocation();Sources(root);
+            Adapter(root);Words();Beats();Ladder();FloorAndRings();Blooms();Pulses();Budget();OnItsLine();Reduced();Determinism();Sounds();Locker();Clock();Hologram();Preview();NoAllocation();Sources(root);
             Console.WriteLine("PASS Cache openings ("+count+" checks; the locker's triangles a tier "+string.Join(", ",Tiers.Select(t=>NativeCacheLockerModels.Triangles(t)))+"; FX quads at peak "+string.Join(", ",Tiers.Select(t=>Peak(O(t))))+"; particles "+string.Join(", ",Tiers.Select(t=>O(t).ParticleCount))+")");
         }
 
@@ -186,6 +186,50 @@ namespace ChipArena.UnityConversion
             }
             Check(4*Peak(O(NativeCacheTier.Legendary))<2800/2,"four LEGENDARY openings at once use under half the frame's 2,800 FX quads");
             var f=new NativeCacheFrame();foreach(var t in Tiers){int m=0;foreach(var x in Times(0,4.8f,1/30f)){NativeCacheOpenFx.ForSale(f,t,x,false,false);m=Math.Max(m,f.Quads);}Check(m<=30,t+": for sale, "+m+" quads (the motes and the lamps)");}
+        }
+
+        // 8b. The column stands on its locker from every view (owner, 2026-11-19: the LEGENDARY beam "starts to move away from
+        // the crate"). The shared streak lies in the camera's plane through its middle (NativeVfx.shader VfxStreakOffset), so the
+        // presentation lays each long streak onto its head's camera plane (NativeCacheOpenFx.OntoHeadPlane). Emulated here at
+        // 1080p: the quad's ends land on the true foot and top (or the clip point in front of the camera, its taper scaled) and
+        // the line between them is the true line, from a watcher, the buyer, a far watcher and a camera below looking up.
+        // Uncorrected, the watcher's 40 m pillar's foot missed its locker by tens of pixels (the emulation must still see it).
+        private static void OnItsLine()
+        {
+            const float Px=935.3f,Near=.2f;
+            var views=new (string name,Vector3 eye,Vector3 at)[]{("a watcher 10 m off",new Vector3(-3,2.6f,-9.5f),new Vector3(.6f,1,0)),("the buyer within 3 m",new Vector3(.4f,2.4f,-4.2f),new Vector3(0,1.2f,0)),
+                ("a watcher 25 m off",new Vector3(-8,3,-24),new Vector3(0,4,0)),("a camera below, looking up",new Vector3(2,-6,-12),new Vector3(0,6,0))};
+            float before=0,after=0;int clipped=0,longOnes=0;
+            foreach(var tier in new[]{NativeCacheTier.Rare,NativeCacheTier.Epic,NativeCacheTier.Legendary})
+            {
+                var f=new NativeCacheFrame();O(tier).Frame(f,1.0f,false,false,0,0,0);
+                foreach(var (name,eye,at) in views)
+                {
+                    var fw=Vector3.Normalize(at-eye);var right=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,fw));var up=Vector3.Cross(fw,right);
+                    float Z(Vector3 p)=>Vector3.Dot(p-eye,fw);
+                    Vector2 P(Vector3 p){var d=p-eye;float z=Vector3.Dot(d,fw);return new Vector2(Vector3.Dot(d,right)/z*Px,Vector3.Dot(d,up)/z*Px);}
+                    // the shader's quad: its ends are the centre +- the axis in the camera's plane
+                    (Vector3 head,Vector3 tail) Quad(Vector3 h,Vector3 a){var c=h-a*.5f;var p=right*Vector3.Dot(a,right)+up*Vector3.Dot(a,up);return (c+p*.5f,c-p*.5f);}
+                    for(int k=0;k<f.StreakCount;k++)
+                    {
+                        var g=f.Streaks[k];NativeCacheOpenFx.ToWorld(0,g.X,g.Z,out float hx,out float hz);NativeCacheOpenFx.ToWorld(0,g.Ax,g.Az,out float ax,out float az);
+                        var head=new Vector3(hx,g.Y,hz);var axis=new Vector3(ax,g.Ay,az);var tail=head-axis;if(axis.Length()<=NativeCacheOpenFx.ExactStreak)continue;longOnes++;
+                        bool column=Math.Abs(g.Ax)<1e-4f&&Math.Abs(g.Az)<1e-4f&&axis.Length()>5;
+                        if(column&&name=="a watcher 10 m off"&&Z(head-axis*.5f)>Near&&Z(tail)>Near){var q=Quad(head,axis);before=Math.Max(before,(P(q.head)-P(head)).Length());}
+                        float bx=axis.X,by=axis.Y,bz=axis.Z,taper=g.Taper;
+                        Check(NativeCacheOpenFx.OntoHeadPlane(eye.X,eye.Y,eye.Z,fw.X,fw.Y,fw.Z,Near,head.X,head.Y,head.Z,ref bx,ref by,ref bz,ref taper),tier+", "+name+": the streak's head is in front of the camera");
+                        float zh=Z(head),zt=Z(tail),keep=zt<Near?(zh-Near)/(zh-zt):1;var end=head-axis*keep;if(keep<1)clipped++;
+                        var r=Quad(head,new Vector3(bx,by,bz));var mid=head-axis*(keep*.37f);
+                        var line=P(r.tail)-P(r.head);var off=P(mid)-P(r.head);float across=Math.Abs(line.X*off.Y-line.Y*off.X)/Math.Max(line.Length(),1e-4f);
+                        float miss=Math.Max(Math.Max((P(r.head)-P(head)).Length(),(P(r.tail)-P(end)).Length()),across);after=Math.Max(after,miss);
+                        Check(miss<.25f,tier+", "+name+": a "+axis.Length().ToString("0.0")+" m streak lands on its true line ("+miss.ToString("0.000")+" px off)");
+                        Check(Math.Abs(taper-g.Taper*keep)<1e-4f,tier+", "+name+": a clipped streak's taper is scaled to the share kept");
+                    }
+                }
+            }
+            Check(clipped>0,"the buyer's view clips the pillar in front of the camera (the clip is exercised)");
+            Check(before>10,"uncorrected, the watcher's pillar's foot misses its locker ("+before.ToString("0.0")+" px): the emulation sees the reported slide");
+            Console.WriteLine("PASS Cache columns on their line: "+longOnes+" long streaks in four views, at most "+after.ToString("0.000")+" px off (uncorrected, the 40 m pillar's foot missed its locker by "+before.ToString("0.0")+" px), "+clipped+" clipped in front of the camera");
         }
 
         // 9. Reduced effects (owner, 2026-11-19: "only the lid opening"): the lid swings, the lamps hold their colour; no column,

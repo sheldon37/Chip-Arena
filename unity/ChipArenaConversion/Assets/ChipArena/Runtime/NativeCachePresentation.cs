@@ -152,8 +152,14 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<f.GlowCount;k++){var g=f.Glows[k];vfx.Glow(World(s,g.X,g.Y,g.Z),Lit(g.Hex,g.Gain),g.Size,g.Bloom?NativeVfxDraw.CoreGlow:NativeVfxDraw.Mote,0,i*17+k);}
                 for(int k=0;k<f.StreakCount;k++)
                 {
-                    var g=f.Streaks[k];var axis=Axis(s,g.Ax,g.Ay,g.Az);
-                    vfx.Streak(World(s,g.X,g.Y,g.Z),axis,Lit(g.Hex,g.Gain),g.Width,.01f,1,g.Taper,0,i*31+k);
+                    var g=f.Streaks[k];var axis=Axis(s,g.Ax,g.Ay,g.Az);var head=World(s,g.X,g.Y,g.Z);float taper=g.Taper;
+                    // a long one (the columns, the crown's blades) laid onto its head's camera plane, so it stands on its line
+                    if(camera!=null&&!camera.orthographic&&axis.sqrMagnitude>NativeCacheOpenFx.ExactStreak*NativeCacheOpenFx.ExactStreak)
+                    {
+                        var eye=camera.transform.position;var fw=camera.transform.forward;float ax=axis.x,ay=axis.y,az=axis.z;
+                        if(NativeCacheOpenFx.OntoHeadPlane(eye.x,eye.y,eye.z,fw.x,fw.y,fw.z,Mathf.Max(.2f,camera.nearClipPlane*2),head.x,head.y,head.z,ref ax,ref ay,ref az,ref taper))axis=new Vector3(ax,ay,az);
+                    }
+                    vfx.Streak(head,axis,Lit(g.Hex,g.Gain),g.Width,.01f,1,taper,0,i*31+k);
                 }
                 for(int k=0;k<f.PuffCount;k++)
                 {
