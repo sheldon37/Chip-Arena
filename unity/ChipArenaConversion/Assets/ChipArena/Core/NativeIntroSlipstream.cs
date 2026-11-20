@@ -137,11 +137,11 @@ namespace ChipArena.UnityConversion
             // The departure board clattering over at the name (a few slow flickers, never faster than 3 Hz).
             float clatter=Swell(t,CardAt-.05f,.05f,.45f,.3f);float flap=Context.Reduced?1:1-.45f*clatter*(.5f+.5f*(float)Math.Cos((t-CardAt)*15));
             set.Piece("slipstream/board",Vector3.Zero,Still,1,White,Flap*(1.6f*flap));
-            // The train: the nose leading toward +x, two cars behind it; its windows lit.
+            // The train: the nose leading toward +x, the middle car the pilot rides, a second nose at the tail; its windows lit.
             float x=CarX(t);var turn=UYaw((float)Math.PI);
             set.Piece("slipstream/nose",new Vector3(x+Car,0,TrackZ),turn,1,White,White*1.7f);
             set.Piece("slipstream/car",new Vector3(x,0,TrackZ),turn,1,White,White*1.7f);
-            set.Piece("slipstream/car",new Vector3(x-Car,0,TrackZ),turn,1,White,White*1.7f);
+            set.Piece("slipstream/nose",new Vector3(x-Car,0,TrackZ),Still,1,White,White*1.7f);
             return true;
         }
         protected override void Fallback(float t,INativeIntroSet set)=>Plain(set,t,NativeEntranceFx.Hex(0x3a4450),Teal,.6f+1.2f*Flash(t,LandAt,.03f,.6f),Hall);
@@ -166,7 +166,7 @@ namespace ChipArena.UnityConversion
             float x=CarX(t);float near=1-NativeEntranceMath.Clamp01((Math.Abs(chest.X-Clamp(chest.X,x-Car*1.5f,x+Car*1.5f)))/8f);
             if(near>.01f)l.Add(new Vector3(Clamp(chest.X,x-Car*1.5f,x+Car*1.5f),1.6f,TrackZ+1.8f),Cool*(2.2f*near),5);
             l.Add(new Vector3(x+Car+9,1.0f,TrackZ),Head*3.5f,9);
-            l.Add(new Vector3(x-Car*1.5f-.5f,1.0f,TrackZ),Tail*2.2f,5);
+            l.Add(new Vector3(x-Car-9f,.8f,TrackZ),Tail*2.2f,5);
             // The slide's sparks lighting the pilot from below.
             float slide=NativeEntranceMath.Ramp(t,LandAt,LandAt+.05f)*(1-NativeEntranceMath.Ramp(t,StopAt-.25f,StopAt+.05f));
             if(slide>.01f)l.Add(Anchor(NativeEntranceAnchor.LeftHand,t)+new Vector3(0,.2f,0),Spark*(3.5f*slide),3.5f);
@@ -224,8 +224,8 @@ namespace ChipArena.UnityConversion
             {
                 float wake=NativeEntranceMath.Ramp(t,LandAt,LandAt+.4f)*(1-NativeEntranceMath.Ramp(t,4.8f,5.6f));
                 if(wake>.01f){int n=low?5:12;for(int i=0;i<n;i++){float u=((t*.9f+i/(float)n)%1f);var p=new Vector3(-12+24*NativeEntranceMath.Rand(23500,i)+6*u,floor+.15f+.6f*u,EdgeZ+.2f+.5f*NativeEntranceMath.Rand(23501,i));fx.Smoke(p,new Vector3(.55f,.56f,.6f),.16f*wake*(float)Math.Sin(Math.PI*u),.35f+.7f*u,u,23500+i,floor);}}
-                var tail=new Vector3(x-Car*1.5f-.05f,.95f,TrackZ);float far=1-NativeEntranceMath.Ramp(t,5.0f,5.8f);
-                if(t>LandAt&&far>.01f)for(int s=0;s<2;s++){var p=tail+new Vector3(0,0,s==0?-.8f:.8f);fx.Glow(p,Tail*(1.6f*far),0,.25f,1,0,23600+s);fx.Glow(p,Tail*(.5f*far),0,.9f,1,0,23602+s);}
+                var tail=new Vector3(x-Car-8.35f,.68f,TrackZ);float far=1-NativeEntranceMath.Ramp(t,5.0f,5.8f);
+                if(t>LandAt&&far>.01f)for(int s=0;s<2;s++){var p=tail+new Vector3(0,0,s==0?-.75f:.75f);fx.Glow(p,Tail*(1.6f*far),0,.25f,1,0,23600+s);fx.Glow(p,Tail*(.5f*far),0,.9f,1,0,23602+s);}
                 var nose=new Vector3(x+Car+8.45f,.65f,TrackZ);for(int s=0;s<2;s++)fx.Glow(nose+new Vector3(0,0,s==0?-.75f:.75f),Head*1.6f,0,.35f,1,0,23610+s);
             }
             // Dust in the hall's light after it has gone.
@@ -242,7 +242,7 @@ namespace ChipArena.UnityConversion
         // ---- the name card and the sound ----
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Slam;card.Glow=Teal*1.6f;
+            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Type;card.Glow=Teal*1.6f;
         }
         private static readonly NativeIntroCue[] cues=
         {

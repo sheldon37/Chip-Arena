@@ -270,7 +270,7 @@ namespace ChipArena.UnityConversion
         // ---- the name card and the sound ----
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Rise;card.Glow=Gold*1.4f;card.Ink=new Vector3(1,.97f,.92f);
+            base.Card(t,ref card);card.Style=NativeIntroCardStyle.Wipe;card.Glow=Gold*1.4f;card.Ink=new Vector3(1,.97f,.92f);
         }
         private static readonly NativeIntroCue[] cues=
         {

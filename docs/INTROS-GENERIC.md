@@ -20,15 +20,35 @@ the story, the set, the camera's language, the beats, the motion, the effects an
 
 ## Shared rules
 - **Timing:** 7.4-8.2 s each, the name beat between 5.6 and 6.4 s; the pilot holds a hero pose under the name.
-- **Weapon-agnostic:** no weapon in the hands; the pilot's weapon is not drawn during these intros.
-- **Body:** the model's motion bank clips (Unarmed, Armed walks, crouch, land, jump, roll, cast and boost clips), retimed to the
-  beats and layered in code (root path, spine, chest, head and arm offsets), as `NativeIntroMotion` layers the old weapon intros.
-- **Sets:** each one modelled in Blender 5.2.3 (headless, `tools/intros/generic_sets.py`), three tiers, into the local bank
-  `ChipArenaIntroGeneric.bytes` (never committed). Without the bank the intro plays in a dark lit void, never on blocks.
-- **Effects:** `NativeVfxDraw` (glows, streaks, smoke, fire); a streak longer than about 1 m is laid on its head's camera plane;
-  no ring outlines; nothing flashes faster than 3 Hz in Reduced effects and there is no camera shake there.
-- **Sound:** each intro has a cue timeline on its beats. New sounds are requested from ElevenLabs
-  (`docs/audio/sound-requests-intros-generic.json`); until they are imported each cue plays an existing sound that fits.
+- **Weapon-agnostic:** no weapon in the hands (the registry gives them no weapon spec, so nothing is drawn in them).
+- **Body:** keyed on the intro rig (`NativeEntranceKeys` and planned steps, as Top Dog and Last Warning are) and drawn on the model;
+  where a pack clip fits the beat the model plays it from the motion bank, retimed in code (`Clip`, docs/INTROS-V2.md section 2):
+  Flashbulb's stride is `Armed-Walk` at 1.33x and Slipstream's run along the roof `Unarmed-Sprint` at 1.45x. The keyed rig stays
+  the camera's and the effects' anchors and the Classic body's pose. No new pack clips were needed.
+- **Sets:** each modelled in Blender 5.2.3 (headless) by its own script (`tools/intros/generic_<set>.py`, run by
+  `tools/intros/generic_sets.py`, shapes from `generic_kit.py` on stagekit), two tiers (Fine, `/low`), into the local bank
+  `ChipArenaIntroGeneric.bytes` (6.4 MB; never committed). Every far piece (sky domes, peaks, clouds, canyon) lies inside the
+  game's 200 m far plane. Without the bank each intro draws its own plain fallback (a floor far wider than its fog, a soft pool,
+  a horizon glow) in its own light, never blocks.
+- **Effects:** `NativeVfxDraw` (glows, streaks, smoke); a streak longer than 1 m is laid on its head's camera plane
+  (`NativeIntroGenericScript.Line`); no ring outlines (shockwaves are dust, snow and steam); nothing flashes faster than 3 Hz in
+  Reduced effects and there is no camera shake there.
+- **Sound:** each intro has a cue timeline on its beats, every cue with an existing bank key and a built-in clip as stand-ins.
+  The generated sounds are requested in `docs/audio/intros/I2.json` (49 keys, 82 takes, 128 s of generation), their contract
+  lines in `Core/NativeIntroSoundKeys.cs`; the framework compiles every author's rows into the builder's queue.
+
+## Where it lives
+| Part | Files |
+| --- | --- |
+| The intros | `Core/NativeIntroGeneric.cs` (the shared base: the set's frame, long streaks, the plain fallback), `Core/NativeIntroCloudbreak.cs`, `NativeIntroWhiteout.cs`, `NativeIntroSlipstream.cs`, `NativeIntroWaygate.cs`, `NativeIntroFlashbulb.cs` |
+| Registry | `Core/NativeIntroCatalog.cs`: Cloudbreak on the default's slot (`intro2-default`), the other four on generic slots 1-4 (`intro2-whiteout`, `intro2-slipstream`, `intro2-waygate`, `intro2-flashbulb`) |
+| Sets | `tools/intros/generic_sets.py` and its modules; the bank's master copy in `F:/Chip Arena Development/scratch/intro-generic/bank/` |
+| Sound | `docs/audio/intros/I2.json`, `Core/NativeIntroSoundKeys.cs` (the I2 slot) |
+| Checks | `Tests/IntroGenericChecks.cs` (`CoreTests --intro-generic`), and the framework's `Tests/IntroV2Checks.cs` (`--intros-v2`) |
+
+To rebuild the bank: `blender --background --factory-startup --python unity/ChipArenaConversion/tools/intros/generic_sets.py --
+--out DIR [--preview DIR]` (about 25 s with occlusion), then copy `DIR/ChipArenaLocal/Resources/ChipArenaIntroGeneric.bytes`
+and its `.meta` into `Assets/LocalAssets/ChipArenaLocal/Resources/`.
 
 ## Cloudbreak (7.6 s, the name at 5.7 s)
 Dawn above the clouds. A summit pokes out of a sea of cloud; a relay mast blinks red on it. A white-hot point falls out of the sky
