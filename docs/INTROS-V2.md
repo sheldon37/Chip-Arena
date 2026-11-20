@@ -62,10 +62,11 @@ scrub must draw the same frame. Never allocate per frame.
 | Member | What it does |
 | --- | --- |
 | `Context` (set by the runtime) | `Reduced` (Reduced effects), `Low` (Low graphics), `Quality` 0..1, `Name` (the live display name) |
-| `Pose(t, pose, out root, out rotation)` | The keyed rig pose (`Keys`/`Steps`, `NativeProceduralEntrance`): the anchors' source for the camera and effects, and the Classic body's pose. |
-| `Clip(t, out clip, out time)` / `Fade(t)` (`INativeIntroBody`; virtuals on `NativeIntroV2Script`) | The model body plays a motion-bank clip at its time (you retime it), fading in over `Fade` s; false: the model follows the keyed rig. One clip at a time (no upper-body layer tonight). A `NativeBladeIntro` keeps its own path. |
-| `Hands(t, right, left)` (`INativeIntroHands`, optional) | Called before `Props`, `Set` and `Effects` with each wrist as drawn (source frame): the model's joint when the model is drawn (`Model` true), else the keyed hand anchor. For a gun Weapon intro (pistol, rifle, machine gun) the right hand also carries `HasMuzzle`, `Muzzle` and `Bore`: the drawn weapon's muzzle and barrel direction. For a staff head or a blade tip, measure your offsets in the wrist frame in your Editor hold. |
-| `Head(t, head)` (`INativeIntroHead`, optional) | The head as drawn, handed in with the hands: the model's head joint when the model is drawn, else the keyed head anchor. |
+| `Pose(t, pose, out root, out rotation)` | The keyed rig pose (`Keys`/`Steps`, `NativeProceduralEntrance`): the model's pose (bound joint for joint, section 2b), the camera's anchors, and the Classic body's pose. |
+| `Anchor(which, t)` | Where a point of the body is: **the drawn model's** while the model is drawn (section 2a), else the keyed rig's. Use it for every effect and light on the body or the weapon. |
+| `Clip(t, out clip, out time)` / `Fade(t)` (`INativeIntroBody`; virtuals on `NativeIntroV2Script`) | **Retired by the owner (2026-11-20: "we dont need the matches own annimation system ... they have unique animations"):** don't use it; key every beat. It still works (the model plays the clip through the match's motion), for old code only. |
+| `Hands(t, right, left)` (`INativeIntroHands`, optional) | Superseded by the anchors (`LeftWrist`, `RightGrip`, `RightMuzzle` …). Still called before `Lights`, `Props`, `Set` and `Effects` with each wrist as drawn (source frame): the model's wrist joint frame when the model is drawn (`Model` true), else the keyed hand anchor. For a gun Weapon intro the right hand also carries `HasMuzzle`, `Muzzle` (the `RightMuzzle` anchor: the drawn skin's crown) and `Bore`. |
+| `Head(t, head)` (`INativeIntroHead`, optional) | Superseded by the anchors (`Head`, `Eyes`, `Visor`). Still handed in with the hands: the head's centre as drawn (the `Head` anchor) and the head's turn when the model is drawn, else the keyed head anchor. (Before 2026-11-20 it was the keyed joint's frame carried by the model's head with the offset of the body's first frame; see section 2a's migration list.) |
 | `Bow(t, out view)` (`INativeIntroBow`, optional, Bow intros) | The bow drawn as the match draws it (on the model's left hand, its string and its nocked arrow) from a `NativeBow.View` you give. Without it, the bow is carried with one arrow. |
 | `Camera(age, out view)` | `NativeIntroV2Script` evaluates `Rig` (section 4). Override it only if you must. |
 | `Lights(t, lights)` | The void rig (`NativeIntroVoid.Light`), then add your own: `l.Add(at, colour, distance)`, at most 8 points. |
@@ -86,6 +87,64 @@ Rules (the checks enforce them):
   Otherwise its ends slide off their line.
 - **Frames:** source frame, +x the rig's left, y up. The pilot stands at the origin and ends facing
   `NativeProceduralEntrance.Facing` (-0.22 rad). The floor top is `NativeEntranceStage.FloorY`.
+
+## 2a. Anchors: effects on the body as drawn (I0c, 2026-11-20)
+
+Owner: "The effects dont line up with either the weapon, or body. ... Like slipstream, the slide effect is away from the foot."
+The keyed rig has the voxel pilot's proportions (a long torso, short legs, a big head); the model is taller with a shorter
+torso and longer legs. Standing, the keyed head anchor sits about 0.14 m under the model's eyes; in a deep bow (Whiteout's kneel)
+about 0.3 m from the drawn head. Feet, knees, hands and the weapon differ likewise. So **`Anchor(which, t)` is now model-aware:**
+
+- **Each frame** the model is drawn, the runtime hands the script the body as drawn (`NativeEntranceScript.SetDrawn`), after the
+  model and its weapon are posed and before `Lights`, `Props`, `Set` and `Effects`. From then until the frame ends, `Anchor`
+  returns the drawn point at the frame's own `t`.
+- **At any other time** (a trail's past samples, `Velocity`, a spark born earlier) it returns the keyed anchor carried by its
+  joint's keyed turn with the same offset, so a trail keeps its shape on the drawn body.
+- **Without the model** (the Classic body, a hidden body, the managed checks) `Anchor` is the keyed rig's, as before.
+  `KeyedAnchor(which, t)` always reads the keyed rig.
+- **The camera stays keyed:** the rig's `Follow`, `Lead` and blends read the keyed anchors, so framing never depends on the
+  drawn body and stays deterministic.
+
+| Anchor | Drawn (the model) | Keyed fallback |
+| --- | --- | --- |
+| `Pelvis` | the hips bone | the pelvis joint |
+| `Chest` | the torso's line half way up the chest (between `spine_02` and `neck_02`) | the chest joint + 0.1 m |
+| `Head` | the head's centre (the helmet shell's) | the voxel head's centre |
+| `Eyes` (new) | between the eyes | on the voxel head |
+| `Visor` (new) | the visor glass's front (0.165 m ahead of the head bone; 0.125 m without the helmet) | the voxel head's face |
+| `LeftShoulder`, `LeftElbow`, `LeftKnee`, `LeftFoot` (and right) | the model's joints (`LeftFoot` the ankle) | the keyed joints |
+| `LeftToe` (new, and right) | the ball of the foot | the keyed toe joint |
+| `LeftWrist` (new, and right) | the wrist | the keyed wrist |
+| `LeftHand` (and right) | the palm (wrist to the middle finger's knuckle) | the voxel fist |
+| `LeftGrip` (new, and right) | the weapon frame's origin, as the match's sweeps read it | the keyed wrist |
+| `LeftTip` (and right) | the weapon's far end on the drawn weapon frame: a blade's tip socket (`NativeWeaponDressing.BladeTip`, the blade classes' `NativeBladeView.Line`), a gun's or staff's muzzle | the keyed hand + `TipLength` (0.15 m) |
+| `LeftMuzzle` (new, and right) | where a shot or a cast leaves it: a gun's crown (`NativeMuzzleFx.Crown`, where the match's flash leaves the drawn skin), a staff's head, the bow's arrow line (`NativeIntroWeapon.Muzzle`) | the keyed wrist + that socket |
+
+- Weapon anchors are drawn only for a Weapon intro while its weapon is drawn that frame, on the hand(s) that hold it
+  (`NativeIntroWeapon.Holds`: a staff and the bow the left, the daggers and the Fangs both, the rest the right).
+- `WeaponBore(left, t)` gives the grip-to-muzzle direction (a gun's bore). `Aim(left, t)` (hand to tip) follows the drawn tip too.
+- `Root`, `Forward` and `Focus` are never drawn.
+
+**Remove your hand-tuned head and weapon offsets once you merge this** (they were measured against the keyed rig or the old
+`Head()` point, and now double up):
+
+| Author | Where | Replace with |
+| --- | --- | --- |
+| I1 | `NativeIntroArchitect.VisorAt` (`EyeUp`, `VisorFront` from the head anchor) | `Anchor(Visor, t)` (keep `EyeUp`/`VisorFront` only in the keyed camera's framing) |
+| I2 | `NativeIntroGeneric.HeadLift`; `NativeIntroWhiteout.Eyes()` (the drawn head + `HeadLift` along the neck) | `Anchor(Visor, t)` / `Anchor(Eyes, t)` |
+| I3 | `NativeIntroMelee.ModelHeadLift` in `Head()` (the eyes); `Record()`'s tip from `TipLength` along the wrist frame | `Anchor(Eyes, t)`; `Anchor(RightTip/LeftTip, t)` and `RightGrip`/`LeftGrip` |
+| I4 | `NativeIntroRanged.ModelHeadLift`; `NativeIntroSundown` (the blow at the mouth: the head + `ModelHeadLift` - 0.1) | `Anchor(Eyes, t)` lowered to the mouth; the gun's `Anchor(RightMuzzle, t)` and `WeaponBore(false, t)` |
+| I5 | `NativeIntroElemental.ModelHeadLift` and `HeadShift()` (the crown light, the crown, the eye) | `Anchor(Head/Eyes/Visor, t)`; the staff's `Anchor(LeftMuzzle, t)` |
+
+## 2b. The keyed pose on the model
+
+The model is posed from the keyed pose bone for bone (Core `NativeVisualRig`): each bone takes its game joint's turn since rest,
+so the drawn head, chest and pelvis face exactly as the keyed ones in every pose, however deep. `IntroV2Checks` holds every
+registered intro to it every 1/20 s on two skeletons (within 3°; today the worst is 0.03°). Whiteout's kneel bows the head 56°
+below the horizon: from a camera above the pilot's left shoulder its visor faces the snow and the band of glass reads as turned
+aside. What differs between the rig and the model is where things are, which the anchors (2a) carry. The feet are not planted
+on the model in an intro (the legs copy the keyed turns), so a kneeling knee or a sliding foot may sit a few centimetres off
+the floor: put floor effects at the anchor's `x`, `z` on the floor (`NativeEntranceStage.FloorY`), as Slipstream does.
 
 ## 3. Sets: the bank and its fallback
 
@@ -121,6 +180,27 @@ Rules (the checks enforce them):
     the pilot, drifting motes (`NativeIntroVoid.Motes`), and a key, a rim and a cool fill.
   - Tint it to your intro with `VoidLook(t)`, or override `Fallback` with your own primitives.
   - Never draw the old block arena (`NativeEntranceStage.Arena`).
+
+## 3a. Lighting: the intro owns its light (I0c, 2026-11-20)
+
+The same intro looked different by map (Still Tide's ice magenta in Cyber City, grey in Brickfall, teal in Polar): the arena's
+light reached the set and the pilot. Now, while a v2 intro draws, it owns its light (`Runtime NativeLighting.IntroOwn`, each
+frame after your `Lights`):
+
+- **Dark:** the arena's eight practical lights, its rim, its haze, its blast flashes and its light volume and scattering.
+- **Yours:** the ambient (your `Sky` and `Ground`, written to the ambient probe every frame, as `DriveProbe` did) and the fog
+  (`Fog`, `FogNear`, `FogFar`), as before.
+- **Your reflection** (new, `NativeEntranceLights`): what glossy set finishes and the pilot mirror, a small cubemap made from three
+  linear colours, `ReflectSky` above, `ReflectHorizon` level and `ReflectGround` below, at `ReflectIntensity` (default 1). A colour
+  you leave at zero takes your own: `Sky` above, `Fog` at the horizon, `Ground` below. Set them for a sky the ambient doesn't
+  carry (a sunset's warm horizon on wet stone, a white sky on ice).
+- **Given back exactly** when an older entrance draws next or the intro ends (`EndIntro`). The match never sees any of it: the
+  arena isn't drawn while an intro is.
+
+**Re-tune once:** every capture so far was in Cyber City, under its practical lights, haze and neon reflection. Expect your set
+a little darker and its gloss to mirror your own sky; check one capture on any map and adjust `Sky`/`Ground`, your lights or
+the `Reflect*` colours. Your own point lights (`l.Add`) still light the pilot and the primitives, not the bank's set pieces
+(`ChipArena/StageLit` reads the arena's practical slots, which are dark now): light the set with your directionals and ambient.
 
 ## 4. The camera rig (`Core/NativeIntroCamera.cs`)
 
@@ -232,6 +312,8 @@ Every registered intro runs through the same checks automatically. You don't nee
 | streaks | every streak longer than 1 m lies on its head's camera plane (within 2°) |
 | cues | sorted, inside [0, Duration], each with a key, alt or clip, and each heard exactly once through `NativeEntranceCueClock` at 60 Hz and at a guest's 20 Hz steps |
 | sets | without a bank something is still drawn (the void or your primitives); with a fake bank that has every prop, your `Scene` stays inside the piece and batch budgets and allocates nothing |
+| the pose on the model | your keyed pose, bound onto the model's skeleton (the measured and the synthetic one) every 1/20 s, keeps the drawn head, chest and pelvis facing within 3° of the keyed ones (section 2b) |
+| anchors (framework) | keyed until a body is handed in; then each handed anchor exactly where it was drawn at that frame's time and carried rigidly by its keyed joint at other times; `ClearDrawn` gives the keyed ones back; no allocation; the weapon sockets for all fifteen weapons; the reflection's defaults; the runtime's order (camera keyed, the drawn body before the lights, set and effects) |
 
 Put your own extra checks in your own `Tests/Intro<Name>Checks.cs`, and add one call in `Program.cs` on its own line.
 
@@ -268,8 +350,10 @@ The frames are `t<N>_screen.png`, so a clip is
 
 ## 9. Motion and hands
 
-- **Fair game:** clips already in the motion bank, layered and retimed in code (the `NativeIntroMotion` pattern;
-  `Core/NativeBladeIntros.cs` and `Core/NativeDevIntros.cs` pose the model from pack clips).
-- **New pack clips:** ask I0 in `intro-motion-requests.md` in the notes folder (the clip's pack, name and why). I0 does
-  at most one coordinated rebake overnight, and only if the bake tool does that safely. Never rebake the motion bank
-  yourself.
+- **Bespoke keyed animation only** (owner, 2026-11-20: "we dont need the matches own annimation system. Think like the top dog
+  and Bombardier ones, they have unique animations"): key every beat with `NativeEntranceKeys` (`Key`, `Root`, `J`, `Planted`,
+  `Drop`, `Spin`, `ImpactKey`, `PassKey`, `Steps`), as `Core/NativeTopDogIntro.cs` and `Core/NativeBombadierIntro.cs` do. Don't use
+  `Clip()` or motion-bank clips: they ran through the match's motion layers, which walked Flashbulb's legs sideways.
+- **The model follows your keys joint for joint** (section 2b); the effects follow the model (section 2a).
+- **The hands, the head and the weapon:** use the anchors (`LeftWrist`, `LeftHand`, `RightGrip`, `RightTip`, `RightMuzzle`,
+  `Head`, `Eyes`, `Visor` …). `Hands()` and `Head()` still work and hand in the same points.
