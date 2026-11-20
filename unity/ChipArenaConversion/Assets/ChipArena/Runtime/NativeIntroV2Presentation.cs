@@ -27,38 +27,54 @@ namespace ChipArena.UnityConversion
             introSet.Begin(v2.SetBank,LowGraphics,entranceProps);v2.Set(t,introSet);
         }
         // ---- the model's clip (INativeIntroBody) and the hands (INativeIntroHands) ----
-        private INativeIntroBody introBody;private int introBodyActor=-1;private float introBodyClock;
+        // (Model-native: the hands are the drawn model's joints, VisualJointFrame; without a model the keyed pose's anchors. No rig reads.)
+        private INativeIntroBody introBody;private int introBodyActor=-1,introV2Actor=-1,introModelFrame=-1;private float introBodyClock;private CapturedAnimation.Player introModel;
         /// <summary>Before the intro body is posed: a v2 intro's model clip for this frame, and a weapon intro's weapon in the model's hands.</summary>
         private void IntroV2BodyBegin(NativeEntranceScript script,Actor actor,string style,float t)
         {
-            if(!(script is INativeIntroV2)||actor==null)return;var spec=NativeIntroCatalog.Find(style)?.Spec;if(spec!=null)actor.SourceSpec=spec;
+            introModel=null;introV2Actor=-1;if(!(script is INativeIntroV2)||actor==null)return;introV2Actor=actor.Id;
+            var spec=NativeIntroCatalog.Find(style)?.Spec;if(spec!=null)actor.SourceSpec=spec;
             if(script is INativeIntroBody body&&!(script is NativeBladeIntro)){introBody=body;introBodyActor=actor.Id;introBodyClock=t;}
         }
-        /// <summary>The v2 intro's clip on the model, through the arena's motion as the blade entrances play theirs (VisualIntroPose).</summary>
+        /// <summary>From VisualIntroPose, on the drawn model: notes the v2 intro's model for its hands, and plays the intro's clip on it
+        /// through the arena's motion as the blade entrances play theirs.</summary>
         private void IntroV2Clip(VisualBody body,CapturedAnimation.Player rig,Actor a)
         {
-            if(introBody==null||introBodyActor<0||a==null||a.Id!=introBodyActor||!introBody.Clip(introBodyClock,out var clip,out float time)||clip==null)return;
+            if(a==null)return;if(a.Id==introV2Actor&&introV2Actor>=0){introModel=rig;introModelFrame=Time.frameCount;}
+            if(introBody==null||introBodyActor<0||a.Id!=introBodyActor||!introBody.Clip(introBodyClock,out var clip,out float time)||clip==null)return;
             NativeBladeMotion.IntroActor=a.Id;NativeBladeMotion.IntroClip=clip;NativeBladeMotion.IntroTime=time;NativeBladeMotion.IntroFade=introBody.Fade(introBodyClock);
             try{VisualMotionPose(body,rig,a,introBodyClock);}finally{NativeBladeMotion.IntroActor=-1;NativeBladeMotion.IntroFade=.12f;}
         }
-        /// <summary>The hands as drawn (the model's wrist bones when the model is drawn, else the keyed rig's), in the source frame.</summary>
+        /// <summary>The hands as drawn, in the source frame: the model's wrist joints (VisualJointFrame) when the model is drawn this
+        /// frame, else the keyed pose's hand anchors.</summary>
         private void IntroV2Hands(NativeEntranceScript script,float t)
         {
-            if(!(script is INativeIntroHands hands)||introRig==null)return;
-            NativeIntroHand Hand(int j)
+            if(!(script is INativeIntroHands hands))return;bool model=introModel!=null&&introModelFrame==Time.frameCount;
+            NativeIntroHand Hand(int j,NativeEntranceAnchor anchor)
             {
-                Transform bone=introRig.Bones[j];bool model=false;var held=VisualHolder(introRig);
-                if(held?.Binding?.Rig!=null&&held.Binding.Bones!=null){var of=held.Binding.Rig.Of;int v=j<of.Length?of[j]:-1;if(v>=0&&v<held.Binding.Bones.Length&&held.Binding.Bones[v]!=null){bone=held.Binding.Bones[v];model=true;}}
-                var p=bone.position;var q=bone.rotation;return new NativeIntroHand{Model=model,At=new System.Numerics.Vector3(-p.x,p.y,p.z),Turn=new System.Numerics.Quaternion(q.x,-q.y,-q.z,q.w)};
+                if(!model)return new NativeIntroHand{Model=false,At=script.Anchor(anchor,t),Turn=System.Numerics.Quaternion.Identity};
+                var m=VisualJointFrame(introModel,j);var p=(Vector3)m.GetColumn(3);var q=m.rotation;
+                return new NativeIntroHand{Model=true,At=new System.Numerics.Vector3(-p.x,p.y,p.z),Turn=new System.Numerics.Quaternion(q.x,-q.y,-q.z,q.w)};
             }
-            var right=Hand(CapturedRig.RHand);var left=Hand(CapturedRig.LHand);hands.Hands(t,right,left);
+            var right=Hand(CapturedRig.RHand,NativeEntranceAnchor.RightHand);var left=Hand(CapturedRig.LHand,NativeEntranceAnchor.LeftHand);
+            // A gun's muzzle and bore on the drawn weapon: its frame is the one the model's weapon is drawn on after the hand fit (the
+            // entrance's hand frame, introHand, as the match's muzzle flash reads it), the muzzle MuzzleZ along its +z.
+            var spec=NativeIntroCatalog.Find(script.Style)?.Spec;
+            if(model&&introHand!=null&&(spec=="pistol"||spec=="rifle"||spec=="machinegun"))
+            {
+                var w=introHand(CapturedRig.RHand);var mz=w.MultiplyPoint3x4(new Vector3(0,0,NativeWeaponDressing.MuzzleZ(spec)));var bore=w.MultiplyVector(Vector3.forward);
+                if(bore.sqrMagnitude>1e-8f){bore.Normalize();right.HasMuzzle=true;right.Muzzle=new System.Numerics.Vector3(-mz.x,mz.y,mz.z);right.Bore=new System.Numerics.Vector3(-bore.x,bore.y,bore.z);}
+            }
+            hands.Hands(t,right,left);
         }
         /// <summary>The v2 set sink: bank pieces through Graphics.DrawMesh (stage lit), primitives through the entrance's props.</summary>
         private sealed class IntroSetDraw:INativeIntroSet
         {
             private sealed class SetPiece{public Mesh Mesh;public Matrix4x4 Place;public int Subs;}
             private string bankName;private NativePackBank.Bank bank;private bool failed;private bool low;
-            private readonly Dictionary<string,SetPiece> pieces=new Dictionary<string,SetPiece>(StringComparer.Ordinal);
+            private readonly Dictionary<string,SetPiece> pieces=new Dictionary<string,SetPiece>(StringComparer.Ordinal);private readonly Dictionary<string,string> lowNames=new Dictionary<string,string>(StringComparer.Ordinal);
+            // (each prop's "<prop>/low" name made once, so the Low tier allocates nothing per frame)
+            private string Low(string prop){if(!lowNames.TryGetValue(prop,out var n)){n=prop+"/low";lowNames[prop]=n;}return n;}
             private Material solid,glow;private MaterialPropertyBlock block;private INativeEntranceProps props;
             private static readonly int GlowId=Shader.PropertyToID("_StageGlow"),TintId=Shader.PropertyToID("_StageTint"),GlowFlag=Shader.PropertyToID("_Glow");
             public bool Ready=>bank!=null&&solid!=null;
@@ -86,7 +102,7 @@ namespace ChipArena.UnityConversion
             public bool Has(string prop)=>Find(prop)!=null;
             public void Piece(string prop,System.Numerics.Vector3 at,System.Numerics.Quaternion rotation,float scale,System.Numerics.Vector3 tint,System.Numerics.Vector3 glowTint)
             {
-                if(!Ready)return;SetPiece p=null;if(low)p=Find(prop+"/low");p??=Find(prop);if(p==null)return;
+                if(!Ready||prop==null)return;SetPiece p=null;if(low)p=Find(Low(prop));p??=Find(prop);if(p==null)return;
                 var m=Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(at)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)),Vector3.one*scale)*p.Place;
                 block.Clear();bool tinted=tint.X!=1||tint.Y!=1||tint.Z!=1;if(tinted)block.SetVector(TintId,new Vector4(tint.X,tint.Y,tint.Z,0));block.SetVector(GlowId,new Vector4(glowTint.X,glowTint.Y,glowTint.Z,1));
                 for(int s=0;s<p.Subs;s++)Graphics.DrawMesh(p.Mesh,m,s==0?solid:glow,0,null,s,block,s==0?ShadowCastingMode.TwoSided:ShadowCastingMode.Off,true);
@@ -94,7 +110,7 @@ namespace ChipArena.UnityConversion
             private readonly Matrix4x4[] batch=new Matrix4x4[NativeIntroSetLimits.Batch];private int batched,batchFrame=-1;
             public void Batch(string prop,ReadOnlySpan<System.Numerics.Vector3> at,ReadOnlySpan<System.Numerics.Quaternion> rotation,float scale,System.Numerics.Vector3 tint)
             {
-                if(!Ready)return;if(batchFrame!=Time.frameCount){batchFrame=Time.frameCount;batched=0;}SetPiece p=null;if(low)p=Find(prop+"/low");p??=Find(prop);if(p==null)return;
+                if(!Ready)return;if(batchFrame!=Time.frameCount){batchFrame=Time.frameCount;batched=0;}if(prop==null)return;SetPiece p=null;if(low)p=Find(Low(prop));p??=Find(prop);if(p==null)return;
                 int n=Math.Min(Math.Min(at.Length,rotation.Length),NativeIntroSetLimits.Batch-batched);if(n<=0)return;
                 for(int i=0;i<n;i++)batch[i]=Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(at[i])),CapturedAnimation.Quat(CapturedRig.Mirror(rotation[i])),Vector3.one*scale)*p.Place;
                 batched+=n;block.Clear();bool tinted=tint.X!=1||tint.Y!=1||tint.Z!=1;if(tinted)block.SetVector(TintId,new Vector4(tint.X,tint.Y,tint.Z,0));

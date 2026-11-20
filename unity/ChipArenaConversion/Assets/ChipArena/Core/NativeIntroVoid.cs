@@ -15,13 +15,14 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The v2 fallback set (docs/INTROS-V2.md "Sets"): a dark lit void, never the old block arena. A vast floor that fades into the
-    /// fog, a soft pool of light under the pilot, a faint horizon glow and drifting motes for depth; a key, a rim and a cool fill.
+    /// fog, a soft pool of light under the pilot and drifting motes for depth (Motes); a key, a rim and a cool fill. (An unlit horizon
+    /// glow read as a hard band in the first capture: none.)
     /// Built from the source-model primitives every build has, so a build without the set banks still looks deliberate.
     /// Pure and allocation-free.
     /// </summary>
     public static class NativeIntroVoid
     {
-        public const int Pieces=6;
+        public const int Pieces=5;
         public static void Draw(INativeIntroSet set,float t,in NativeIntroVoidLook look)
         {
             float floor=NativeEntranceStage.FloorY;
@@ -33,8 +34,6 @@ namespace ChipArena.UnityConversion
             set.Primitive(WeaponShape.Sphere,true,new Vector3(0,floor+.002f,0),Quaternion.Identity,new Vector3(3.4f,.002f,3.4f),look.Pool*(.035f*look.PoolLevel*breathe));
             set.Primitive(WeaponShape.Sphere,true,new Vector3(0,floor+.003f,0),Quaternion.Identity,new Vector3(1.9f,.002f,1.9f),look.Pool*(.05f*look.PoolLevel*breathe));
             set.Primitive(WeaponShape.Sphere,true,new Vector3(0,floor+.004f,0),Quaternion.Identity,new Vector3(.9f,.002f,.9f),look.Pool*(.07f*look.PoolLevel*breathe));
-            // A faint horizon glow far behind (a flat, wide, dim slab of light in the fog: depth without a visible edge).
-            set.Primitive(WeaponShape.Sphere,true,new Vector3(0,1.2f,-26),Quaternion.Identity,new Vector3(40,3.5f,.2f),look.Rim*.025f);
         }
         /// <summary>The void's light: fog and background in the far colour, a low ambient, a soft key, a rim behind, a cool fill.</summary>
         public static void Light(NativeEntranceLights l,float t,in NativeIntroVoidLook look,Vector3 chest)

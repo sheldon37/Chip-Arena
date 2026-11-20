@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
     // Drawn by IntroCard for a registered v2 intro, in place of the plain card. Allocation-free per frame once a name's letters are cached.
     public sealed partial class ConversionGame
     {
-        private string cardNameKey;private string[] cardLetters=Array.Empty<string>();private float[] cardX=Array.Empty<float>(),cardW=Array.Empty<float>();private float cardSize=-1;
+        private string cardNameKey;private string[] cardLetters=Array.Empty<string>();private float[] cardX=Array.Empty<float>(),cardW=Array.Empty<float>(),cardBaseX=Array.Empty<float>(),cardBaseW=Array.Empty<float>();private float cardSize=-1,cardScale=-1,cardWidth;
         private string cardKickerSpec,cardKicker,cardLineRaw,cardLine;
         private static readonly float[] CardVignetteAt={0,.55f,1},CardVignetteAlpha={0,.25f,1};
         /// <summary>Draws the v2 card for `style` when it is a registered v2 intro; false otherwise (the caller draws its own).</summary>
@@ -57,7 +57,8 @@ namespace ChipArena.UnityConversion
             var seat=pilot.Seat;string name=v2.Context.Name??NativeCosmeticRules.Name(seat.name);
             float exit=Mathf.Clamp01(card.Exit),alpha=1-M.Bezier(.4f,0,1,1,exit);if(alpha<=.002f)return true;
             float size=Mathf.Clamp((card.Size>0?card.Size:.075f)*H,26,120);CardLetters(name,size);
-            float width=0;for(int i=0;i<cardW.Length;i++)width=Mathf.Max(width,cardX[i]+cardW[i]);float fit=W*.88f;if(width>fit){size*=fit/width;CardLetters(name,size);width=0;for(int i=0;i<cardW.Length;i++)width=Mathf.Max(width,cardX[i]+cardW[i]);}
+            // A name wider than the card fits by scale (the letters are measured once per name and size; no per-frame strings).
+            float width=cardWidth,fit=W*.88f,shrink=width>fit?fit/width:1;CardScale(shrink);size*=shrink;width*=shrink;
             float cx=(card.X>0?card.X:.5f)*W,cy=(card.Y>0?card.Y:.8f)*H-6*exit;float left=cx-width*.5f;var box=new Rect(left,cy-size*.6f,width,size*1.2f);
             var ink=Lin(card.Ink,alpha);var glow=Lin(card.Glow,.65f*alpha);
             var frame=new NativeIntroCardFrame(name,cardLetters,cardX,cardW,size,box,card,W,H,alpha,reduced);var effect=NativeIntroCardEffects.Find(card.Effect);
@@ -80,10 +81,12 @@ namespace ChipArena.UnityConversion
         /// <summary>The name's letters as cached strings with their left edges and widths at `size` (rebuilt when the name or size changes).</summary>
         private void CardLetters(string name,float size)
         {
-            if(name==cardNameKey&&Mathf.Abs(size-cardSize)<.01f)return;cardNameKey=name;cardSize=size;int n=name.Length;
-            if(cardLetters.Length!=n){cardLetters=new string[n];cardX=new float[n];cardW=new float[n];}
-            float x=0,gap=-.02f*size;for(int i=0;i<n;i++){cardLetters[i]=name[i].ToString();float w=name[i]==' '?.32f*size:U.Measure(cardLetters[i],size,true).x;cardX[i]=x;cardW[i]=w;x+=w+gap;}
+            if(name==cardNameKey&&Mathf.Abs(size-cardSize)<.01f)return;cardNameKey=name;cardSize=size;cardScale=-1;int n=name.Length;
+            if(cardLetters.Length!=n){cardLetters=new string[n];cardX=new float[n];cardW=new float[n];cardBaseX=new float[n];cardBaseW=new float[n];}
+            float x=0,gap=-.02f*size;cardWidth=0;for(int i=0;i<n;i++){cardLetters[i]=name[i].ToString();float w=name[i]==' '?.32f*size:U.Measure(cardLetters[i],size,true).x;cardBaseX[i]=x;cardBaseW[i]=w;cardWidth=Mathf.Max(cardWidth,x+w);x+=w+gap;}
         }
+        /// <summary>The letters' edges and widths at scale `k` of their measured size.</summary>
+        private void CardScale(float k){if(Mathf.Abs(k-cardScale)<1e-4f)return;cardScale=k;for(int i=0;i<cardBaseX.Length;i++){cardX[i]=cardBaseX[i]*k;cardW[i]=cardBaseW[i]*k;}}
         /// <summary>The plain name in the card's style.</summary>
         private void CardName(in NativeIntroCardState card,Rect box,float size,Color ink,Color glow,float alpha,bool reduced)
         {

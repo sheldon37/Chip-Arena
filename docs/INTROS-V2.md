@@ -61,7 +61,8 @@ scrub must draw the same frame. Never allocate per frame.
 | `Context` (set by the runtime) | `Reduced` (Reduced effects), `Low` (Low graphics), `Quality` 0..1, `Name` (the live display name) |
 | `Pose(t, pose, out root, out rotation)` | The keyed rig pose (`Keys`/`Steps`, `NativeProceduralEntrance`): the anchors' source for the camera and effects, and the Classic body's pose. |
 | `Clip(t, out clip, out time)` / `Fade(t)` (`INativeIntroBody`; virtuals on `NativeIntroV2Script`) | The model body plays a motion-bank clip at its time (you retime it), fading in over `Fade` s; false: the model follows the keyed rig. One clip at a time (no upper-body layer tonight). A `NativeBladeIntro` keeps its own path. |
-| `Hands(t, right, left)` (`INativeIntroHands`, optional) | Called before `Props`, `Set` and `Effects` with each wrist as drawn (source frame; `Model` true when it is the model's bone). Measure your muzzle, staff head or blade tip offsets in the wrist frame in your Editor hold. |
+| `Hands(t, right, left)` (`INativeIntroHands`, optional) | Called before `Props`, `Set` and `Effects` with each wrist as drawn (source frame): the model's joint when the model is drawn (`Model` true), else the keyed hand anchor. For a gun Weapon intro (pistol, rifle, machine gun) the right hand also carries `HasMuzzle`, `Muzzle` and `Bore`: the drawn weapon's muzzle and barrel direction. For a staff head or a blade tip, measure your offsets in the wrist frame in your Editor hold. |
+| `Bow(t, out view)` (`INativeIntroBow`, optional, Bow intros) | The bow drawn as the match draws it (on the model's left hand, its string and its nocked arrow) from a `NativeBow.View` you give. Without it, the bow is carried with one arrow. |
 | `Camera(age, out view)` | `NativeIntroV2Script` evaluates `Rig` (section 4). Override it only if you must. |
 | `Lights(t, lights)` | The void rig (`NativeIntroVoid.Light`), then add your own: `l.Add(at, colour, distance)`, at most 8 points. |
 | `Props(t, props, quality)` | Primitive set pieces through the source models. The base draws no pylon arena. |
@@ -113,7 +114,7 @@ Rules (the checks enforce them):
 - **The fallback:**
   - Without the bank (CI, a build without the zip, `--ca-no-pack-banks`), or when `Scene` returns false, the base draws
     `Fallback(t, set)`. This is the dark lit void, `NativeIntroVoid`: a vast floor lost in the fog, a soft pool under
-    the pilot, a faint horizon glow, and a key, a rim and a cool fill.
+    the pilot, drifting motes (`NativeIntroVoid.Motes`), and a key, a rim and a cool fill.
   - Tint it to your intro with `VoidLook(t)`, or override `Fallback` with your own primitives.
   - Never draw the old block arena (`NativeEntranceStage.Arena`).
 
@@ -199,14 +200,19 @@ that exists:
 
 So an intro sounds right before any generation: write `alt` and `clip` to fit, and check the sync in your capture.
 
-**Requesting generated sounds:** read section 6a, the generation status, before relying on it.
-- Add one row per cue to your own `docs/audio/intros/<id>.md` (key, prompt, seconds, loop no, gain).
-- The framework batches every author's rows into the request queue (`docs/audio/SOUND-REQUESTS.md` format) in one pass.
+**Requesting generated sounds:** follow `docs/audio/intros/README.md`.
+- Put your rows in your own `docs/audio/intros/<author>.json`, in the manifest's sound schema.
+- Add one contract line per key to `Core/NativeIntroSoundKeys.cs`, on your slot.
+- `tools/intros/compile_sound_requests.py` merges every author's rows into `docs/audio/sound-requests-intros.json` and
+  prints the approved builder job.
 - Never put a key or token anywhere in the repo or in logs.
 
 ### 6a. Generation status
 
-Written by I0 after checking the pipeline; see the DEV_LOG entry and `docs/audio/intros/README.md`.
+The builder queue is live on this PC (its DPAPI setup and receipts are there). It generates only inside a builder run,
+which the integrator pushes. So the intros' sounds are generated unattended tonight only if the compiled manifest, its
+contract keys and its queue job are merged before a builder push. Until then every cue plays its `alt` or `clip`. The
+details are in `docs/audio/intros/README.md`.
 
 ## 7. The managed checks (`Tests/IntroV2Checks.cs`)
 
@@ -218,7 +224,7 @@ Every registered intro runs through the same checks automatically. You don't nee
 | determinism | two fresh scripts give the same pose, camera, lights, props, set calls, effects and card at sampled times, in any order (a scrub) |
 | allocation | no managed allocation per frame after warm-up (pose, camera, lights, props, set, effects, card, lens) |
 | budgets at peak | at most 600 FX calls a frame (the dev intro: 1000 High, 450 Low), 8 point lights, 120 primitives, 80 set pieces (the dev intro: 180 High, 90 Low), 400 batched copies (`NativeIntroSetLimits`) |
-| Reduced effects | the camera never shakes (two Reduced runs, the handheld off) and no light or glow channel flashes faster than 3 Hz |
+| Reduced effects | the camera never wobbles: outside cuts, the eye stays within 6 mm of a quadratic fit over ±4 frames, so no shake survives; and the summed light and glow never flash more than 3 times in any second |
 | streaks | every streak longer than 1 m lies on its head's camera plane (within 2°) |
 | cues | sorted, inside [0, Duration], each with a key, alt or clip, and each heard exactly once through `NativeEntranceCueClock` at 60 Hz and at a guest's 20 Hz steps |
 

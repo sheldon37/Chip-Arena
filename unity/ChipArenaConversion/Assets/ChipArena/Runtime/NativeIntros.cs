@@ -33,7 +33,8 @@ namespace ChipArena.UnityConversion
             if(introClockArena!=arena||introClockStarted!=started||introClockSeat!=seat){introClock.Reset();introClockArena=arena;introClockStarted=started;introClockSeat=seat;}
             float age=IntroAge;
             // Intros v2: an intro with its own bed is drawn on that bed as this machine plays it (as the Siren's song), else on its age.
-            if(NativeIntroCatalog.Registered(IntroStyle)){double bed=nativeAudio.IntroBedPlayback();return (float)introClock.Sample(NativeIntroClock.Target(age,bed,bed>=0),Time.unscaledDeltaTime);}
+            if(NativeIntroCatalog.Registered(IntroStyle)){double bed=Time.captureDeltaTime>0?-1:nativeAudio.IntroBedPlayback();// (a fixed-step capture runs on its own clock, not the audio's)
+                return (float)introClock.Sample(NativeIntroClock.Target(age,bed,bed>=0),Time.unscaledDeltaTime);}
             return (float)introClock.Sample(NativeIntroClock.Target(age,nativeAudio.SongPlayback(NativeIntroRules.IntroSong(IntroStyle)),arena.IntroStartsBossSong),Time.unscaledDeltaTime);
         }
     }
@@ -118,7 +119,7 @@ namespace ChipArena.UnityConversion
             IntroV2Set(script,t,camera);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
             VisualBodiesShown();actor.AccentColor=keepAccent;actor.SourceSpec=keepSpec;dogIntroActor=-1;glaiveIntroActor=-1;bladeIntroActor=-1;bladeIntro=null;
-            introBodyActor=-1;introBody=null;
+            introBodyActor=-1;introBody=null;introV2Actor=-1;
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
             vfx?.Submit(camera);
         }
@@ -212,6 +213,8 @@ namespace ChipArena.UnityConversion
         private void IntroWeapon(string style,float age)
         {
             if(style==NativeBowEntrance.Id&&entranceScript is NativeBowEntrance bow){BowIntro(bow,entranceTime);return;}
+            // Intros v2: a Bow intro's bow as the match draws it (Core INativeIntroBow), else carried with one arrow.
+            if(entranceScript is INativeIntroBow v2bow&&NativeIntroCatalog.Find(style)?.Spec==NativeBowWire.Spec){if(!v2bow.Bow(entranceTime,out var bv))bv=new NativeBow.View{Phase=NativeBow.Phase.Carry,Arrows=1};var bf=default(NativeBowPose.Frame);bf.Pull=bv.Pull;BowIntroDraw(bv,bf,entranceTime);return;}
             string model=IntroModel(NativeIntroRules.IntroWeapon(style));if(model==null)return;
             introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             if(introHand==null)introHand=b=>introRig.Bones[b].localToWorldMatrix*introGrip;

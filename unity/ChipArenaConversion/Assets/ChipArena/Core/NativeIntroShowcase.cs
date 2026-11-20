@@ -44,11 +44,21 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(CardAt,"intro2.showcase.name","structure.thud","stone",.7f),
         };
         public override NativeIntroCue[] Cues=>cues;
+        private readonly Vector3[] shardAt=new Vector3[24];private readonly Quaternion[] shardTurn=new Quaternion[24];
+        /// <summary>The bank's set (tools: F:/Chip Arena Development/scratch/intro-framework/tools/showcase-bank, procedural, original):
+        /// the polished disc with its straight inlays lighting on the drop, five monoliths behind facing in, and shards lifting (Batch).</summary>
         protected override bool Scene(float t,INativeIntroSet set)
         {
             if(!set.Has("set/floor"))return false;
-            set.Piece("set/floor",Vector3.Zero,Quaternion.Identity,1,Vector3.One,Cold*(.4f+1.6f*Flash(t,DropAt,.04f,.6f)));
-            if(set.Has("set/monolith"))for(int i=0;i<5;i++){float a=Facing+3.1416f+(i-2)*.5f;set.Piece("set/monolith",new Vector3((float)Math.Sin(a)*7.5f,0,(float)Math.Cos(a)*7.5f),NativeEntranceMath.Yaw(a),1,Vector3.One,Cold*(.2f+.8f*NativeEntranceMath.Ramp(t,DropAt+i*.08f,DropAt+.4f+i*.08f)));}
+            set.Piece("set/floor",Vector3.Zero,Quaternion.Identity,1,Vector3.One,Cold*(.35f+1.4f*Flash(t,DropAt,.04f,.6f)));
+            // (a monolith's face is its mesh's +z: turned by a+pi it faces the pilot from its place on the circle)
+            if(set.Has("set/monolith"))for(int i=0;i<5;i++){float a=Facing+3.1416f+(i-2)*.5f;set.Piece("set/monolith",new Vector3((float)Math.Sin(a)*7.5f,0,(float)Math.Cos(a)*7.5f),NativeEntranceMath.Yaw(a+3.1416f),1,Vector3.One,Cold*(.15f+.85f*NativeEntranceMath.Ramp(t,DropAt+i*.08f,DropAt+.4f+i*.08f)));}
+            if(t>DropAt&&set.Has("set/shard"))
+            {
+                int n=Context.Low?10:24;
+                for(int i=0;i<n;i++){float a=i*.2618f+t*.6f,u=((t-DropAt)*.2f+i/24f)%1;shardAt[i]=new Vector3((float)Math.Sin(a)*(1.1f+.5f*u),.1f+2.6f*u,(float)Math.Cos(a)*(1.1f+.5f*u));shardTurn[i]=Quaternion.CreateFromYawPitchRoll(t*1.3f+i,t*.9f+i*.5f,0);}
+                set.Batch("set/shard",new ReadOnlySpan<Vector3>(shardAt,0,n),new ReadOnlySpan<Quaternion>(shardTurn,0,n),1,Vector3.One);
+            }
             return true;
         }
         protected override NativeIntroVoidLook VoidLook(float t){var v=NativeIntroVoidLook.Of(Cold);v.PoolLevel=.25f+.75f*NativeEntranceMath.Ramp(t,DropAt-.05f,DropAt+.3f)+.8f*Flash(t,DropAt,.03f,.5f);return v;}
