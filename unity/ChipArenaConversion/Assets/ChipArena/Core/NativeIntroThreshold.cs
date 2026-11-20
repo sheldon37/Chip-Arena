@@ -127,7 +127,8 @@ namespace ChipArena.UnityConversion
         public override void Lights(float t,NativeEntranceLights l)
         {
             l.Clear();l.DriveProbe=true;
-            var fog=NativeEntranceFx.Hex(0x7a5a72);l.Background=fog;l.Fog=fog;l.FogNear=32;l.FogFar=280;
+            // A warm dusty haze down the canyon (the sandstone read magenta under the old mauve fog and the arena's own light).
+            var fog=NativeEntranceFx.Hex(0x8f6a5e);l.Background=fog;l.Fog=fog;l.FogNear=32;l.FogFar=280;
             l.Sky=NativeEntranceFx.Hex(0x8a80b8,.42f);l.Ground=NativeEntranceFx.Hex(0xc08a60,.32f);
             l.Directional(U(-.86f,.22f,-.5f),Dusk*(.95f-.25f*NativeEntranceMath.Ramp(t,0,Total)));
             l.Directional(new Vector3(.4f,.7f,.6f),NativeEntranceFx.Hex(0x7a8cff,.25f));
