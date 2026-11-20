@@ -12,8 +12,16 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class ExpeditionChestOffer
     {
+        public string tier="standard";
+        public static bool ValidTier(string value)=>string.IsNullOrEmpty(value)||value=="standard"||value=="rare"||value=="epic"||value=="legendary";
+        public static ExpeditionChestOffer Roll(double roll,string id,string generation,string[] mutators)
+        {
+            string tier=roll<.60?"standard":roll<.88?"rare":roll<.98?"epic":"legendary";
+            int price=tier=="standard"?100:tier=="rare"?175:tier=="epic"?275:400;
+            return new ExpeditionChestOffer{id=id,generation=generation,tier=tier,price=NativeExpeditionMutators.CachePrice(mutators,price)};
+        }
         public string id, generation;public int price;public double cooldown;public bool sold;
-        public ExpeditionChestOffer Copy()=>(ExpeditionChestOffer)MemberwiseClone();
+        public ExpeditionChestOffer Copy(){var copy=(ExpeditionChestOffer)MemberwiseClone();if(string.IsNullOrEmpty(copy.tier))copy.tier="standard";return copy;}
     }
     /// <summary>Host scene supplies measured interaction evidence, never the guest command.</summary>
     public sealed class ExpeditionReprintEvidence
@@ -36,6 +44,7 @@ namespace ChipArena.UnityConversion
         public Func<ContentChip,bool> ChipFilter;public Func<string,string> AbilityLoadout;
         private readonly System.Collections.Generic.Dictionary<string,string[]> frozenOffers=new System.Collections.Generic.Dictionary<string,string[]>();
         public Action<string,string,int> Installed;
+        public PveWeights[] CacheWeights;
         public Func<string,string,bool> CanPurchase;
         public ExpeditionCommandResult Purchase(string account,string chest)
         {
@@ -92,8 +101,12 @@ namespace ChipArena.UnityConversion
             if(r.owner==null&&(CanClaim==null||!CanClaim(account,reward)))return null;
             string key=reward+":"+account;if(frozenOffers.TryGetValue(key,out var frozen))return frozen.Where(chip=>Eligible(account,chip)).ToArray();
             var random=new NativePveRandom(NativePveRandom.Hash(s.seed,s.run,key));
+            string row=null;
+            if(r.source=="chest"&&!r.id.Contains(NativeExpeditionPick.WardMachine))
+                row=string.IsNullOrEmpty(r.cacheTier)||r.cacheTier=="standard"?"common":r.cacheTier;
+            var weights=string.IsNullOrEmpty(row)?null:CacheWeights?.First(w=>w.id==row).weights.ToDictionary(w=>w.name,w=>w.value);
             var rolled=NativeContentRules.Offers(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count),random.Next,r.id.Contains("drop:rain-")?1:3,
-                c=>(ChipFilter==null||ChipFilter(c))&&(r.id.Contains("drop:rain-")?c.rarity=="common":!r.highQuality||c.rarity=="epic"||c.rarity=="legendary"||c.rarity=="unique"),abilityLoadout:AbilityLoadout?.Invoke(account)??"").ToArray();
+                c=>(ChipFilter==null||ChipFilter(c))&&(r.id.Contains("drop:rain-")?c.rarity=="common":!r.highQuality||c.rarity=="epic"||c.rarity=="legendary"||c.rarity=="mythic"||c.rarity=="unique"),weights,abilityLoadout:AbilityLoadout?.Invoke(account)??"").ToArray();
             // A boss's reward: rarely, one of that boss's own relics (docs/BOSS-CHIPS.md).
             if(r.source=="boss"){var boss=NativeBossChips.RewardBoss(r.id,Sources.Director?.Layout);var offered=rolled;rolled=NativeBossChips.Place(rolled,NativeBossChips.Drop(boss,chip=>!offered.Contains(chip)&&Eligible(account,chip),random.Next));}
             frozenOffers[key]=rolled;return (string[])rolled.Clone();
@@ -123,22 +136,41 @@ namespace ChipArena.UnityConversion
     {
         public static bool Valid(ExpeditionWorldAnchor[] anchors,ExpeditionChestOffer[] chests)=>!(anchors==null||chests==null||anchors.Length>ExpeditionValidation.MaxRecords||chests.Length>256||
                 anchors.Any(a=>a==null||!ExpeditionValidation.Id(a.id)||!ExpeditionValidation.Id(a.area)||!new[]{"reward","door","chest","machine"}.Contains(a.kind)||!ExpeditionValidation.Number(a.x)||!ExpeditionValidation.Number(a.y)||!ExpeditionValidation.Number(a.z)||!ExpeditionValidation.Number(a.yaw)||!string.IsNullOrEmpty(a.building)&&!ExpeditionValidation.Id(a.building))||
-                anchors.Select(a=>a.id).Distinct().Count()!=anchors.Length||chests.Where(c=>c!=null).Select(c=>c.id).Distinct().Count()!=chests.Length||chests.Any(c=>c==null||!ExpeditionValidation.Id(c.id)||!ExpeditionValidation.Id(c.generation)||c.price<1||!ExpeditionValidation.Number(c.cooldown)||c.cooldown<0||!anchors.Any(a=>a.id==c.id&&a.kind=="chest")));
+                anchors.Select(a=>a.id).Distinct().Count()!=anchors.Length||chests.Where(c=>c!=null).Select(c=>c.id).Distinct().Count()!=chests.Length||chests.Any(c=>c==null||!ExpeditionValidation.Id(c.id)||!ExpeditionValidation.Id(c.generation)||!ExpeditionChestOffer.ValidTier(c.tier)||c.price<1||!ExpeditionValidation.Number(c.cooldown)||c.cooldown<0||!anchors.Any(a=>a.id==c.id&&a.kind=="chest")));
     }
     public sealed partial class NativeExpedition
     {
+        private NativePveRandom CacheEconomy()=>new NativePveRandom(NativePveRandom.Hash(s.seed,s.run,"economy"),s.cacheEconomyDraws);
+
+        public bool SetWorld(ExpeditionWorldAnchor[] anchors)
+        {
+            if(!Mutable||anchors==null||anchors.Any(a=>a==null))return false;
+            var economy=CacheEconomy();
+            var chests=anchors.Where(a=>a.kind=="chest").Select(a=>ExpeditionChestOffer.Roll(
+                economy.Next(),a.id,s.loop+":"+a.id+":0",s.mutators)).ToArray();
+            if(!SetWorld(anchors,chests))return false;
+            s.cacheEconomyDraws+=(uint)chests.Length;
+            return true;
+        }
+        public bool RestockChest(string id,string generation,double availableAt)
+        {
+            var next=ExpeditionChestOffer.Roll(CacheEconomy().Next(),id,generation,s.mutators);
+            if(!RestockChest(id,generation,next.price,availableAt,next.tier))return false;
+            s.cacheEconomyDraws++;
+            return true;
+        }
         public bool SetWorld(ExpeditionWorldAnchor[] anchors,ExpeditionChestOffer[] chests)
         {
             if(!Mutable||!ExpeditionWorldRules.Valid(anchors,chests))return false;
             s.anchors=anchors.Select(a=>a.Copy()).ToArray();s.chests=chests.Select(c=>c.Copy()).ToArray();Changed();return true;
         }
         /// <summary>Scene supplies a fresh generation and authority-clock availability time. Never reuses a purchased generation.</summary>
-        public bool RestockChest(string chest,string generation,int price,double availableAt)
+        public bool RestockChest(string chest,string generation,int price,double availableAt,string tier="standard")
         {
             var offer=s.chests.FirstOrDefault(c=>c.id==chest);
-            if(!Mutable||offer==null||!Key(generation)||price<1||!ExpeditionValidation.Number(availableAt)||availableAt<s.elapsed||
+            if(!Mutable||offer==null||!ExpeditionChestOffer.ValidTier(tier)||!Key(generation)||price<1||!ExpeditionValidation.Number(availableAt)||availableAt<s.elapsed||
                 s.chests.Any(c=>c.generation==generation)||s.rewards.Any(r=>r.source=="chest"&&r.id.EndsWith(":chest:"+generation,StringComparison.Ordinal)))return false;
-            offer.generation=generation;offer.price=price;offer.cooldown=availableAt;offer.sold=false;Changed();return true;
+            offer.generation=generation;offer.price=price;offer.tier=tier;offer.cooldown=availableAt;offer.sold=false;Changed();return true;
         }
         public bool DropAt(string spawn,float x,float y,float z)
         {

@@ -94,43 +94,53 @@ def navigation(m):
     return dict(nodes=nodes, links=links)
 
 
-def generate(check=False):
+def generate(check=False, layout_only=False):
     resource = PROJECT / 'Assets/Conversion/Resources'
     manifest = json.loads((PROJECT/'Tests/expedition-live-layout.json').read_text())
-    maps = []
-    for area in manifest['areas']:
-        if area['map'] not in MAP_DRAFTS:
-            raise ValueError('Unknown Expedition map: '+area['map'])
-        name, _, _ = MAP_DRAFTS[area['map']]
-        suffix = 'activation' if area['map'] in ('expedition-transit','expedition-foundry') else 'draft'
-        m = copy.deepcopy(json.loads((PROJECT/f'Tests/expedition-{name}-{suffix}.json').read_text())['maps'][0])
-        if m['id'] != area['map']:
-            raise ValueError('Draft map ID mismatch: '+area['map'])
-        if block_hash(m) != area['blockHash']:
-            raise ValueError('Draft blockHash mismatch: '+m['id'])
-        m['nav'] = navigation(m)
-        maps.append(m)
-        print(f"{m['id']}: {len(m['nav']['nodes'])} nodes, {len(m['nav']['links'])} links")
-    content = json.loads((resource/'UnityMaps.json').read_text())
-    content['maps'] = [m for m in content['maps'] if m['id'] not in {x['id'] for x in maps}]
-    at = next(i for i, m in enumerate(content['maps']) if m['id'] == 'siren')+1
-    content['maps'][at:at] = maps
-    # Default navigation metadata is implicit in the schema. Keep the authored
-    # graph, coordinates and non-default gates; avoid megabytes of empty arrays.
-    for m in content['maps']:
-        for n in (m.get('nav') or {}).get('nodes', []):
-            if n.get('safe') is False: n.pop('safe')
-            if n.get('layer') == 0: n.pop('layer')
-        for link in (m.get('nav') or {}).get('links', []):
-            for key in ('requires', 'after', 'hazards'):
-                if link.get(key) == []: link.pop(key)
-            if link.get('kind') == 'walk': link.pop('kind')
-    outputs = {resource/'UnityMaps.json': json.dumps(content, separators=(',', ':'))+'\n',
-               resource/'ExpeditionLayout.json': (PROJECT/'Tests/expedition-live-layout.json').read_text()}
+    if layout_only:
+        shipped = json.loads((resource/'UnityMaps.json').read_text())
+        maps_by_id = {m['id']: m for m in shipped['maps']}
+        for area in manifest['areas']:
+            if block_hash(maps_by_id[area['map']]) != area['blockHash']:
+                raise ValueError('Shipped blockHash mismatch: '+area['map'])
+        outputs = {resource/'ExpeditionLayout.json': (PROJECT/'Tests/expedition-live-layout.json').read_text()}
+    else:
+        maps = []
+        for area in manifest['areas']:
+            if area['map'] not in MAP_DRAFTS:
+                raise ValueError('Unknown Expedition map: '+area['map'])
+            name, _, _ = MAP_DRAFTS[area['map']]
+            suffix = 'activation' if area['map'] in ('expedition-transit','expedition-foundry') else 'draft'
+            m = copy.deepcopy(json.loads((PROJECT/f'Tests/expedition-{name}-{suffix}.json').read_text())['maps'][0])
+            if m['id'] != area['map']:
+                raise ValueError('Draft map ID mismatch: '+area['map'])
+            if block_hash(m) != area['blockHash']:
+                raise ValueError('Draft blockHash mismatch: '+m['id'])
+            m['nav'] = navigation(m)
+            maps.append(m)
+            print(f"{m['id']}: {len(m['nav']['nodes'])} nodes, {len(m['nav']['links'])} links")
+        content = json.loads((resource/'UnityMaps.json').read_text())
+        content['maps'] = [m for m in content['maps'] if m['id'] not in {x['id'] for x in maps}]
+        at = next(i for i, m in enumerate(content['maps']) if m['id'] == 'siren')+1
+        content['maps'][at:at] = maps
+        # Default navigation metadata is implicit in the schema. Keep the authored
+        # graph, coordinates and non-default gates; avoid megabytes of empty arrays.
+        for m in content['maps']:
+            for n in (m.get('nav') or {}).get('nodes', []):
+                if n.get('safe') is False: n.pop('safe')
+                if n.get('layer') == 0: n.pop('layer')
+            for link in (m.get('nav') or {}).get('links', []):
+                for key in ('requires', 'after', 'hazards'):
+                    if link.get(key) == []: link.pop(key)
+                if link.get('kind') == 'walk': link.pop('kind')
+        outputs = {resource/'UnityMaps.json': json.dumps(content, separators=(',', ':'))+'\n',
+                   resource/'ExpeditionLayout.json': (PROJECT/'Tests/expedition-live-layout.json').read_text()}
     lockpath = PROJECT/'tools/asset-lock.json'
     lock = json.loads(lockpath.read_text())
     for name in ('UnityMaps.json', 'ExpeditionLayout.json', 'PveContent.json', 'MapLooks.json'):
         path = resource/name
+        if layout_only and path not in outputs:
+            continue
         raw = outputs[path].encode() if path in outputs else path.read_bytes()
         rel = 'Assets/Conversion/Resources/'+name
         entry = dict(path=rel, bytes=len(raw), gitBlob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest(),
@@ -152,4 +162,6 @@ def generate(check=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true')
-    generate(parser.parse_args().check)
+    parser.add_argument('--layout-only', action='store_true', help='Rebuild the manifest against the verified shipped geometry without rebaking navigation.')
+    args = parser.parse_args()
+    generate(args.check, args.layout_only)

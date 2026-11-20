@@ -51,7 +51,9 @@ namespace ChipArena.UnityConversion
 
         public readonly List<V3> RoofHatches = new List<V3>();
 
+        public ExpeditionWorldAnchor[] Caches { get; private set; } = Array.Empty<ExpeditionWorldAnchor>();
         public NativeLayeredCityWalk(Plan plan) : this(true, plan.Seed, plan) { }
+        public NativeLayeredCityWalk(Plan plan,uint worldSeed) : this(true,worldSeed,plan) { }
         public NativeLayeredCityWalk(bool large, uint seed) : this(large, seed, null) { }
         private NativeLayeredCityWalk(bool large, uint seed, Plan plan)
         {
@@ -66,7 +68,21 @@ namespace ChipArena.UnityConversion
 
             MapBounds bounds;
             if (plan != null)
+            {
                 bounds = BuildStreetPlan(plan.Seed);
+                // The Navigation's towpath roof meets the upper quay at grade. Pilots and Hulks can walk on from the bank.
+                if(plan.Seed==784)Box("towpath-store-roof",-30,-80,12,10,-.6f,0);
+                Caches=NativeCityLayout.CacheAnchors(plan,seed);
+                foreach(var cache in Caches)
+                {
+                    if(!NativeExpeditionGeneratedWorld.CacheColumnClear(cache,blocks))
+                        throw new InvalidOperationException("Meridian cache under an overhang: "+cache.id);
+                    blocks.Add(NativeExpeditionGeneratedWorld.CacheBlock(cache));
+                }
+                var roof=Caches[0];
+                var f=NativeExpeditionGeneratedWorld.CacheForward(roof.yaw);
+                Box("cache-roof-kerb",roof.x-.55f*f.x,roof.z-.55f*f.z,Math.Abs(f.x)<.5f?2:.35f,Math.Abs(f.x)<.5f?.35f:2,roof.y,roof.y+.25f);
+            }
             else
             {
                 Box("cut-ground", 0, 0, halfX * 2, halfZ * 2, Cut - 2, Cut, "foundation");

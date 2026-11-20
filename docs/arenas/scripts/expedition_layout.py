@@ -15,6 +15,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import expedition_city as city, expedition_ward_zero as ward
 from expedition_common import block_hash, id_ok
 
+# Run-seeded cache bays, (x, floor y, z, front yaw in degrees).
+CACHE_CANDIDATES = {
+    'exp-ward-zero:cache:0': [(-13.25, 0.0, -7.325, 180), (-15.66, 0.0, -9.25, 90)],
+    'exp-ward-zero:cache:1': [(24.75, 6.0, 26.91, 180), (26.75, 6.0, 26.91, 180)],
+}
+
 REVISION = 'exp-layout-3'     # bump when any generated record or map hash changes (the test pins this with the hashes)
 DRAFT_REVISION = 'exp-layout-4'   # the join circle draft (not live; saves pinned to exp-layout-3 would not resume on it)
 TESTS = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'unity', 'ChipArenaConversion', 'Tests'))

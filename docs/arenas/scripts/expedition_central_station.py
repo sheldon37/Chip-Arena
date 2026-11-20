@@ -242,6 +242,13 @@ breach_panel('concourse-w', -40.0, 10.6, 1); breach_panel('concourse-e', 40.0, 9
 # =====================================================================================================================
 # RECORDS. The exit door's anchor faces out (+z, yaw 0); an instance exit's interaction, approach and entries are inside.
 ENTRIES_IN = [pt(x, 0, z, 180.0) for z in (32.8, 31.4) for x in (-3.6, -2.1, 2.1, 3.6)]
+# Run-seeded cache bays, (x, floor y, z, front yaw in degrees).
+CACHE_CANDIDATES = {
+    'exp-transit:cache:0': [(-29.5, 0, 19.082, 180), (-29.5, 0, 12.623, 0)],
+    'exp-transit:cache:1': [(10.34, 0, 7.5, 90), (10.34, 0, 4.5, 90)],
+    'exp-transit:cache:2': [(31.5, -1.2, -31.66, 0), (29.5, -1.2, -31.66, 0)],
+}
+
 CACHES = [pt(-15.2, 0, 29.5, 90.0), pt(0.0, L1, 33.2, 180.0), pt(38.6, L1, -53.0, 270.0)]   # the ticket office, the station master, the signal box
 BOSS_POINTS = [pt(0, 0, 3.0, 0.0), pt(-12.0, 0, 6.5, 20.0), pt(12.0, 0, 6.5, 340.0)]       # the concourse under the departure board
 def door_record():
