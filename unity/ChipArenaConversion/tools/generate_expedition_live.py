@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Compose the approved three-instance live layout; historical draft fixtures stay reproducible."""
-import copy,json,math
+import copy,json,math,sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT.parents[1]/'docs/arenas/scripts'))
+from expedition_common import block_hash
 def load(name):return json.loads((ROOT/'Tests'/name).read_text())
 def manifest():
     live=load('expedition-layout-4-join-draft.json')
@@ -13,6 +15,10 @@ def manifest():
              (iron,next(a for a in foundry['areas'][0]['anchors'] if a.get('building')==iron['id']),next(d for d in foundry['areas'][0]['doors'] if d['anchor'].endswith(iron['id'])),iron['ironworks']['machines'],2)]
     for area,anchor,door,machines,turn in records:
         area=copy.deepcopy(area);door=copy.deepcopy(door)
+        if area['id']=='exp-foundry':
+            # The activated map widened the converter shutter after the historical layout draft.
+            area['gates'][0]['closure'].update(y=5,sx=11,sy=10)
+            area['blockHash']=block_hash(load('expedition-ironworks-activation.json')['maps'][0])
         def rotate(p):
             p=copy.deepcopy(p)
             for _ in range(turn):p['x'],p['z']=p['z'],-p['x']
@@ -43,7 +49,17 @@ def manifest():
     for route in hub['hub']['reserved']:
         route=copy.deepcopy(route);route['to']=route.pop('building');hub['hub']['routes'].append(route)
     hub['hub']['reserved']=[]
-    live['revision']='exp-layout-7'
+    # Read the declarative bays without executing the historical design generators.
+    import ast
+    scripts=ROOT.parents[1]/'docs/arenas/scripts'
+    for area,script in zip(live['areas'][1:],('expedition_layout','expedition_central_station','expedition_ironworks')):
+        module=ast.parse((scripts/(script+'.py')).read_text())
+        bays=next(ast.literal_eval(node.value) for node in module.body if isinstance(node,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='CACHE_CANDIDATES' for t in node.targets))
+        for anchor in area['anchors']:
+            if anchor['kind']=='chest':
+                anchor['candidates']=[dict(zip(('x','y','z','yaw'),point)) for point in bays.pop(anchor['id'])]
+        if bays: raise ValueError('Cache candidates have no matching anchor')
+    live['revision']='exp-layout-8'
     return live
 if __name__=='__main__':
     out=ROOT/'Tests/expedition-live-layout.json';out.write_text(json.dumps(manifest(),separators=(',',':'))+'\n');print(out)

@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class ExpeditionReward
     {
-        public string id, owner, source, selected;public bool claimed, consumed, highQuality;
+        public string id, owner, source, selected, cacheTier;public bool claimed, consumed, highQuality;
         public string[] offers=Array.Empty<string>();
         public ExpeditionReward Copy(){var r=(ExpeditionReward)MemberwiseClone();r.owner=string.IsNullOrEmpty(owner)?null:owner;r.selected=string.IsNullOrEmpty(selected)?null:selected;r.offers=(string[])offers.Clone();return r;}
     }
@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
     {
         public ExpeditionMachineRevive machineRevive;
         public int schema=1, loop, epoch=1;public long revision;
-        public uint seed;public string run, world, host, area;
+        public uint seed,cacheEconomyDraws;public string run, world, host, area;
         public ExpeditionPhase phase=ExpeditionPhase.Town;
         public double elapsed, exitAt=-1, extractAt=-1;
         public bool loading,xpDisabled;
@@ -120,7 +120,7 @@ namespace ChipArena.UnityConversion
             if(s.exitVotes.Length>0&&!s.instances.Any(i=>i.id==s.area&&i.cleared))return false;
             if(s.phase!=ExpeditionPhase.Town&&s.phase!=ExpeditionPhase.Victory&&(s.extractVotes.Length>0||s.extractAt>=0))return false;
             if((s.phase==ExpeditionPhase.Town||s.phase==ExpeditionPhase.Victory)&&s.area!=s.world)return false;
-            if(s.rewards.Any(r=>r==null||!Id(r.id)||!Id(r.source)||!string.IsNullOrEmpty(r.owner)&&!accounts.Contains(r.owner)||r.claimed&&string.IsNullOrEmpty(r.owner)||r.consumed&&!r.claimed||
+            if(s.rewards.Any(r=>r==null||!ExpeditionChestOffer.ValidTier(r.cacheTier)||!Id(r.id)||!Id(r.source)||!string.IsNullOrEmpty(r.owner)&&!accounts.Contains(r.owner)||r.claimed&&string.IsNullOrEmpty(r.owner)||r.consumed&&!r.claimed||
                 !Ids(r.offers,12)||!string.IsNullOrEmpty(r.selected)&&(!r.consumed||!r.offers.Contains(r.selected))||!r.claimed&&r.offers.Length>0)||s.rewards.Select(r=>r.id).Distinct().Count()!=s.rewards.Length)return false;
             if(s.dice.Any(d=>d==null||!Id(d.boss)||!Ids(d.eligible,8)||!Ids(d.winners,8)||d.rolls==null||d.rolls.Length!=d.eligible.Length||d.rolls.Any(r=>r<1||r>100)||d.each<0||d.each>256||
                 d.eligible.Any(a=>!accounts.Contains(a))||d.winners.Any(a=>!d.eligible.Contains(a)))||s.dice.Select(d=>d.boss).Distinct().Count()!=s.dice.Length)return false;

@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     {
         public readonly ExpeditionSession Session;public readonly ExpeditionLayout Layout;
         private readonly Func<string,V3?> position;private readonly Func<V3,V3,bool> visible;
-        private readonly int cachePrice,reprintCost;private readonly double restockSeconds;
+        private readonly int reprintCost;private readonly double restockSeconds;
         private string checkpointStamp;private double retryCheckpoint;
         public string SaveFailure{get;private set;}
         public ExpeditionDirector(ExpeditionSession session,ExpeditionLayout layout,Func<string,V3?> position,
@@ -17,10 +17,10 @@ namespace ChipArena.UnityConversion
             Session=session??throw new ArgumentNullException(nameof(session));Layout=layout??throw new ArgumentNullException(nameof(layout));
             this.position=position??throw new ArgumentNullException(nameof(position));this.visible=visible??throw new ArgumentNullException(nameof(visible));
             if(cachePrice<1||reprintCost<1||!ExpeditionValidation.Number(restockSeconds)||restockSeconds<1)throw new ArgumentException("Invalid Expedition economy tuning.");
-            cachePrice=NativeExpeditionMutators.CachePrice(session.Run.Mutators,cachePrice);
-            this.cachePrice=cachePrice;this.reprintCost=reprintCost;this.restockSeconds=restockSeconds*(session.Run.HasMutator("windfall")?.5:1);
+            this.reprintCost=reprintCost;this.restockSeconds=restockSeconds*(session.Run.HasMutator("windfall")?.5:1);
             var s=session.Run.Snapshot();if(s.world!=layout.world||!s.instances.Select(i=>i.id).OrderBy(i=>i).SequenceEqual(layout.instances.OrderBy(i=>i)))throw new ArgumentException("Run and layout differ.");
-            if(s.anchors.Length==0)session.SetWorld(layout.areas.SelectMany(a=>a.anchors).ToArray(),layout.areas.SelectMany(a=>a.anchors).Where(a=>a.kind=="chest").Select(a=>new ExpeditionChestOffer{id=a.id,generation=s.loop+":"+a.id+":0",price=cachePrice}).ToArray());
+            if(s.anchors.Length==0&&!session.Run.SetWorld(layout.areas.SelectMany(a=>a.anchors).ToArray()))
+                throw new ArgumentException("Invalid authored Expedition world or frozen run.");
             session.CanClaim=CanClaim;session.CanPurchase=CanPurchase;session.Sources.ReprintCost=_=>session.Run.HasMutator("second-wind")?0:reprintCost;InitializeState();if(layout.compatibility!=null)BindLayoutIdentity(layout.compatibility);
         }
         private bool Reach(string account,V3 point,double range)
@@ -66,7 +66,8 @@ namespace ChipArena.UnityConversion
             {bool safe=Sanctuary(member.account);if(safe!=member.safe)run.SetSafe(member.account,safe);}
             // The generation includes rule revision; every restock is unique across save/resume without a second journal.
             // Sold caches receive their next availability deadline immediately, then become purchasable on that clock.
-            foreach(var offer in s.chests.Where(c=>c.sold))run.RestockChest(offer.id,s.loop+":"+offer.id+":"+run.Snapshot().revision,cachePrice,run.Elapsed+restockSeconds);
+            foreach(var offer in s.chests.Where(c=>c.sold))
+                run.RestockChest(offer.id,s.loop+":"+offer.id+":"+run.Snapshot().revision,run.Elapsed+restockSeconds);
             s=run.Snapshot();bool safeParty=s.members.Where(m=>m.connected&&!m.extracted).All(m=>m.alive&&m.safe);
             if(!Session.FreshRun&&safeParty&&(s.phase==ExpeditionPhase.Town||s.phase==ExpeditionPhase.Victory)&&s.elapsed>=retryCheckpoint&&
                 Stamp(s)!=checkpointStamp)Checkpoint();

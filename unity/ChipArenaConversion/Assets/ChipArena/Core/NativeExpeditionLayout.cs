@@ -28,6 +28,7 @@ namespace ChipArena.UnityConversion
     {public PveEntry entry;public string[] allow;}
     [Serializable] public sealed class ExpeditionAreaLayout
     {
+        public readonly Dictionary<string,ExpeditionPoint[]> CacheCandidates=new Dictionary<string,ExpeditionPoint[]>();
         public PveMachine[] machines=Array.Empty<PveMachine>();
         public string id,role,map,spawnSource;public ExpeditionWorldAnchor[] anchors;public ExpeditionDoorLayout[] doors;
         public ExpeditionInteractionLayout[] interactions;public ExpeditionGateLayout[] gates;public ExpeditionSpawnLayout[] spawns;
@@ -144,6 +145,13 @@ namespace ChipArena.UnityConversion
                     for(int i=0;i<group.Length;i++)for(int j=0;j<i;j++)if((group[i].Position-group[j].Position).Length<1)throw new FormatException("Expedition layout: overlapping party slots.");
                 foreach(var p in area.bossPoints)Check(p.Position,routeRadius,routeHeight);
                 foreach(var machine in area.machines){Check(machine.front.Position(),.45f,1.8f);Check(machine.dispense.Position(),.45f,1.8f);if(!reachable(area.map,origin.Position,machine.front.Position(),.45f,1.8f))throw new FormatException("Expedition layout: unreachable machine "+machine.id);}
+                foreach(var cache in area.anchors.Where(a=>a.kind=="chest"&&(layout.revision==NativeExpeditionGeneratedWorld.Version&&area.CacheCandidates.ContainsKey(a.id)||map.blocks?.Any(b=>b.id==a.id+"-block")==true)))
+                {
+                    var at=NativeExpeditionGeneratedWorld.CacheApproach(cache).Position;
+                    Check(at,routeRadius,routeHeight);
+                    if(!reachable(area.map,origin.Position,at,routeRadius,routeHeight))
+                        throw new FormatException("Unreachable cache approach: "+cache.id);
+                }
                 foreach(var p in area.interactions)Check(new V3(p.x,p.y,p.z),.45f,1.8f);
                 foreach(var d in area.doors)Check(d.approach.Position,.45f,1.8f);
                 var spawns=ResolveSpawns(area,horde);
@@ -219,6 +227,14 @@ namespace ChipArena.UnityConversion
             {var q=Obj(v);var entry=Spawn(q);var allow=Items(q,"allow",Id,true);
                 if(allow.Length==0||allow.Length>16||allow.Distinct().Count()!=allow.Length||allow.Any(k=>!NativeHordeKinds.Known(k)||NativeHordeKinds.Resolve(k)<NativeHordeKinds.Count&&!NativeWardEntries.Allows(entry,k)))throw new FormatException("Expedition layout: invalid spawn allow list.");
                 return new ExpeditionSpawnLayout{entry=entry,allow=allow};}).ToArray();
+            foreach(var raw in List(Required(o,"anchors")))
+            {
+                var anchor=Obj(raw);
+                if(!anchor.ContainsKey("candidates"))continue;
+                var points=Items(anchor,"candidates",v=>Point(v));
+                if(Text(anchor,"kind")!="chest"||points.Length<2||points.Length>3)throw new FormatException("Invalid cache candidates.");
+                a.CacheCandidates.Add(Id(Text(anchor,"id")),points);
+            }
             return a;
         }
     }

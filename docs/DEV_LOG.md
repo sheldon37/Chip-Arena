@@ -1,3 +1,11 @@
+## 2026-11-19 — Astra: A2 Civil Defence cache rules
+
+Task branch `codex/a2-civil-defence` from shared `8790610c`, staged for the A1/A2 M3 release. Four seeded grid bays, two candidates per authored interior cache in exp-layout-8, and five seeded Meridian bays per candidate-3 plan including a walkable roof. The Navigation has a quay-level roof over the towpath. Restock advances the host economy stream and leaves all anchors in place. Tier and price survive save/handoff. An unopened purchase retains its weight row. Boss Epic+ now includes mythic.
+
+Claude's contract: use public `ExpeditionChestOffer.tier` (missing/empty reads standard), anchor yaw in degrees, and the actual map block named `anchor.id + "-block"`. It is 0.92 × 0.62 × 0.58 m centred 0.31 m above the floor anchor. Covered interior bays retain the hologram. A changed generation with a future cooldown is the R9 open moment. Buyer and offers stay private.
+
+Verified managed cache rules, projection, handoff, deployment and geometry, authored bay Hulk reach from the three entries, and pinned Unity reference compilation. Current and candidate maps use separate placement data. The Windows player, host/guest opening visuals and test Update publication remain with M3 integration. The same `deployment-world-m3-5` version is reserved for A1.
+
 ## 2026-11-19 — Astra: Meridian’s five approved street plans
 
 Task branch `codex/meridian-approved-streets` from shared `e0473dca`. Candidate 3 bakes the five JSON plans into the Developer walk. The 190 exit pairs pass at 2 m stations. The independent 2 m Hulk-radius surface graph reaches the north court and all three doors in every city. The shipped survey traces follow clear lines around posts and grade junctions. See `docs/MERIDIAN-B-WALK.md` for measured counts. The Windows acceptance path profiles changed geometry, and the Developer walk records rendered frame time and triangles. The art freeze awaits real per-tier view measurements and the owner walk.

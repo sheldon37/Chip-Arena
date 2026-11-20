@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
             if (candidate != null)
             {
                 var generation = Stopwatch.StartNew();
-                walk = Survey = new NativeLayeredCityWalk(candidate);
+                walk = Survey = new NativeLayeredCityWalk(candidate,Bundle.World.Blueprint.worldSeed);
                 PrepareSurveyWorld(Bundle.World, walk);
                 simulationContent = simulationContent.WithGeneratedMap(walk.Map);
                 CandidateGenerationMs = generation.Elapsed.TotalMilliseconds;
@@ -162,8 +162,8 @@ namespace ChipArena.UnityConversion
             var assigned = NativeCityLayout.DealHalls(world.Blueprint.worldSeed, world.Blueprint.instances);
             var doors = new System.Collections.Generic.List<ExpeditionDoorLayout>();
             var anchors = new System.Collections.Generic.List<ExpeditionWorldAnchor>();
-            var caches = new System.Collections.Generic.List<ExpeditionInteractionLayout>();
-            var cacheDraw = new SourceRandom(world.Blueprint.worldSeed ^ 0x896503dfu);
+            bool NearCache(V3 pos)=>walk.Caches.Any(cache=>
+                Math.Pow(pos.x-cache.x,2)+Math.Pow(pos.z-cache.z,2)<64);
             var spawnDraw = new SourceRandom(world.Blueprint.worldSeed ^ 0x902b43c1u);
             for (int side = 1; side < walk.Routes.Count; side++)
             {
@@ -187,15 +187,12 @@ namespace ChipArena.UnityConversion
                 doors.Add(new ExpeditionDoorLayout { anchor=id, approach=Spot(4,0), closure=Volume(Spot(0,0),8,.5f),
                     interact=Volume(Spot(2,0),5,5), join=new ExpeditionJoinCylinder { x=join.x,y=join.y,z=join.z,r=3,h=3 },
                     entries=Array.Empty<ExpeditionPoint>(), returns=Enumerable.Range(0,8).Select(i => Spot(6+i/4*2,i%4*2-3)).ToArray() });
-                var locker = Spot(13+(int)(cacheDraw.Next()*8), cacheDraw.Next()<.5 ? -9 : 9);
-                string chest = "exp-city:cache:" + side;
-                anchors.Add(new ExpeditionWorldAnchor { id=chest,area=area.id,kind="chest",x=locker.x,y=locker.y,z=locker.z });
-                caches.Add(new ExpeditionInteractionLayout { anchor=chest,x=locker.x,y=locker.y,z=locker.z,range=2.5f });
             }
+            anchors.AddRange(walk.Caches);
             area.doors = doors.ToArray();
             area.gates = Array.Empty<ExpeditionGateLayout>();
             area.anchors = anchors.ToArray();
-            area.interactions = caches.ToArray();
+            area.interactions = walk.Caches.Select(NativeExpeditionGeneratedWorld.CacheInteraction).ToArray();
             var spawnRows = new System.Collections.Generic.List<ExpeditionSpawnLayout>();
             var zones = new System.Collections.Generic.List<ExpeditionHubZone>();
             string[] kinds = { "shambler", "runner", "spitter", "brute", "hulk" };
@@ -211,6 +208,7 @@ namespace ChipArena.UnityConversion
                         var d = route.Points[j] - a;
                         if (remaining > d.Length) { remaining -= d.Length; continue; }
                         var pos = a + d * (remaining / d.Length);
+                        if(NearCache(pos))break;
                         int id = spawnRows.Count;
                         var point = new PvePoint { x=pos.x, y=pos.y, z=pos.z };
                         spawnRows.Add(new ExpeditionSpawnLayout { allow=kinds, entry=new PveEntry {
@@ -222,7 +220,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
             }
-            foreach (var roof in walk.RoofHatches)
+            foreach (var roof in walk.RoofHatches.Where(p=>!NearCache(p)))
             {
                 var zone = zones.OrderBy(z => (new V3(z.Volume.x,z.Volume.y,z.Volume.z)-roof).Length).First();
                 int id = spawnRows.Count;
