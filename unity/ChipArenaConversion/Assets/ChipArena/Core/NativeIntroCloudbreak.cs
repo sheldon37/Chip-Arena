@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
             // The camera, vertical: up past the mast at the dawn sky, the long-lens fall-follow, falling alongside, the touchdown low
             // and slowed, a low orbit through the rise, the hero frame.
             var e0=new Vector3(-.6f,.45f,3.6f);
-            Rig.Crane(0,e0,new Vector3(-.25f,.5f,3.1f),.15f,e0+Dir(.24f,-.97f,.73f)*30,new Vector3(-.25f,.5f,3.1f)+Dir(.18f,-.98f,.86f)*30,60,54).Ease(NativeIntroEase.InOut)
+            Rig.Crane(0,e0,new Vector3(-.25f,.5f,3.1f),.15f,e0+Dir(.24f,-.97f,.44f)*30,new Vector3(-.25f,.5f,3.1f)+Dir(.18f,-.98f,.76f)*30,58,54).Ease(NativeIntroEase.InOut)
                .Dolly(DiveAt,new Vector3(5.4f,1.0f,6.2f),new Vector3(5.1f,.95f,5.7f),Vector3.Zero,Vector3.Zero,21,27).Follow(NativeEntranceAnchor.Chest,.05f).Ease(NativeIntroEase.Linear)
                .Spline(2.2f,Alongside(2.2f,2.95f),Vector3.Zero,new Vector3(0,-.1f,0),44,50).Follow(NativeEntranceAnchor.Chest).Ease(NativeIntroEase.Linear)
                .Dolly(2.95f,new Vector3(-3.7f,.42f,4.5f),new Vector3(-3.35f,.5f,4.05f),new Vector3(0,1.7f,0),new Vector3(0,.75f,0),46,42).Ease(NativeIntroEase.Out)
