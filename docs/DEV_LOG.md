@@ -1,3 +1,318 @@
+## 2026-11-20 — Claude: the black wall behind the Arcades cache (fire escapes' stepped bases); cache walls checked (integrator's fix; presentation only)
+
+**Branch and status:** branch `claude/meridian-bleed`, fix commit `48d321ac` on top of `59392a95`. Pushed, not merged.
+
+### The cause
+The wall behind The Arcades' first cache is not a facade. It is the side of `fire-escape-3`: the greybox builds a fire escape's
+treads as solid steps down to the floor (here its steps rise to 12.9 m). The street dress drew those sides in black iron over
+their whole height, which read as a black slab, worst at night. The Arcades' second cache stands against `fire-escape-8` in
+the same way.
+
+The keep-outs did not cause it. `--bleed-cachewall` shows the same quads with and without them, and the street dress's facade
+modules never consult them.
+
+### What changed
+- **Fire escapes (`NativeMeridianDressPlan.cs`):** a fire escape's step sides now draw in the wall finish of the lot it stands
+  against (`EscapeHost`: the lot most of its blocks touch within 0.6 m; stock brick when it stands alone). A 0.3 m black iron
+  stringer runs along each step's top (`NativeMeridianDress.Stringer`). The treads, risers and landings keep the iron grating.
+  This applies to every fire escape on the five layouts, not only those by a cache. The lot finish is shared through
+  `LotBrick` and `LotWallFin`, and the lots' own finishes are unchanged.
+- **Keep-outs (`NativeCityBleedDress.cs`):** `CacheKeepOuts` adds each locker's own block as a core keep-out.
+  - The bleed's free-standing pieces, lamps and floor paint keep out of every keep-out (`KeptOut`).
+  - Flush wall art (6 cm proud or less, no lamp) keeps only off the locker itself, so a wall behind or beside a cache is still
+    dressed. The street dress's facade modules never consulted the keep-outs.
+- **Check:** `--bleed` checks the first wall within 0.9 m behind and beside each of the 25 caches. Each must be drawn by the
+  landmarks, a whole-block module, a facade module or a surface that is not black (the stringer excepted). That is 18 walls.
+  The check fails on the old finish, at The Arcades' first cache.
+- **Diagnostic:** `--bleed-cachewall LAYOUT EAST,SOUTH,WEST SEED` lists the wall behind and beside each cache and what each
+  dress draws there.
+
+### All 25 cache spots
+Only The Arcades' caches 1 and 2 stood against a black wall, both fire escapes.
+- 18 walls stand within 0.9 m of a locker: lot facades, The Stride's and The Yards' wagons, and the two fire escapes.
+- The other sides look onto open street or roof.
+- No cache wall is left to the greybox.
+
+### Checks
+- `--bleed`: pass. 11,077 pieces; the 18 cache walls are dressed and none is black.
+- `--meridian-dress` with `CHIPARENA_MERIDIAN_BANK`: pass (697,842 checks, up from 673,756: the stringer splits the sides).
+- `--layered-walk`: pass. `--landmark-reads`: pass.
+- Full CoreTests the relgen5 way (`expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = banks-next) at `48d321ac`: pass, 1078 groups, 0 failures, exit 0.
+- `tools/check_unity_compile.py` (6000.3.24f1): Input System, Player, Assembly-CSharp and Editor pass at `48d321ac`. `git diff --check`: clean.
+- The owner's Editor compiled `48d321ac` in the hold (Tundra success).
+- Not run: zfight (the new quads only split each side in its own plane), a Windows player build, multiplayer.
+
+### Captures (one Editor hold, 325 s)
+The three city banks were in Resources for both passes and out again afterwards. The capture block was removed, the Editor
+went back to `9319026b` (compiled), and the lock was given back.
+- **BEFORE:** `59392a95`. **AFTER:** `48d321ac`. Both at night, bleed on, High.
+- `F:/Chip Arena Development/scratch/meridian-bleed/look3/strip-caches-before-after.jpg`: all 25 caches from 4 m, by layout.
+- `F:/Chip Arena Development/scratch/meridian-bleed/look3/strip-arcades-cache.jpg`: The Arcades' first cache from 4 m, 6 m and 15 m, and its second cache from 6 m.
+- Stills in `look3/before` and `look3/after`.
+
+**Banks:** unchanged (the fix is code only; the city bank needs no rebuild).
+
+**Next:** the integrator reviews the stills and merges with relgen5.
+
+## 2026-11-19 — Claude: the Meridian look integrated on `claude/meridian-bleed`: the street dress, the landmarks and the bleed together, A2's caches kept clear, night captures (integrator's go; presentation only)
+
+**Branch and status:** branch `claude/meridian-bleed`, with `claude/meridian-dress` (`616d1a83`, which carries D2's `claude/meridian-landmarks`) and then shared `c6fbf8e8` merged in. Pushed, not merged. Docs merges kept every entry; the only code conflicts were the walk's hook lines and `Program.cs`, kept both ways (the bleed opens before the street dress, which plans with its contracts).
+
+### The three contracts (`docs/MERIDIAN-BLEED.md`, "Themed module variants"), set only while the bleed draws
+- **Themes:** `NativeMeridianDress.ThemeAt` reads the bleed. The street dress's drawer reads the city bank with the bleed bank's `key@theme` modules added (`NativeMeridianDress.WithVariants`), and the plain key draws where a theme has none.
+- **Lamps:** the street dress leaves out a plain lamp where `ReplacesLamps` holds and one of the bleed's own lamps stands within 14 m, so no street goes dark.
+- **Facades:** the street dress leaves out a facade bay only when nine points across it all lie under the bleed's skins (`Covers`), never leaving a hole. The threshold's skins now reach the wall's top.
+- **Layers:** the bleed draws nine layers up, over every layer the street dress uses.
+- **Check:** `--bleed` checks the street dress planned this way. It takes about 8,600 themed modules, no bay is left wholly under a skin, and 38 lamps go to the bleed's own.
+- **Toggle:** B (bleed off and on) now re-opens the walk, so the street dress re-plans.
+
+### A2's caches
+`NativeCityBleedDress.CacheKeepOuts` gives each locker's footprint with 15 cm around it, 2 m in front of it, and the roof kerb.
+- The bleed places nothing in a keep-out.
+- The street dress (`Input.KeepOut`) paints nothing there and hangs no flush or wall lamp there.
+- No dress or landmark covers a cache block or the kerb. `--bleed` checks all of this on the five layouts (25 caches).
+- The lockers stay greybox boxes in the walk: the CD-647 locker is not stood on them here.
+
+### From the review
+The Poolrooms' whole pool cells come in four versions, each with its own caustic threads, and the planner also turns them at random. The visible grid of X marks is gone.
+
+### Checks
+- `--bleed`: pass. 11,077 pieces over the five layouts, 76 draws. On the whole look: about 8,600 themed modules, 8 bays given
+  to the bleed, 13 partly under its skins (kept), 38 street lamps given to the bleed's own, and all 25 caches clear.
+- `--meridian-dress` with `CHIPARENA_MERIDIAN_BANK`: pass (673,756 checks). `--landmark-reads`: pass. `--layered-walk`: pass.
+- Full CoreTests the relgen5 way (`expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = banks-next) at `2fdcd21c`: pass, 1078 groups, 0 failures, exit 0.
+- `tools/check_unity_compile.py` (6000.3.24f1): Input System, Player, Assembly-CSharp and Editor pass at `2fdcd21c`. `git diff --check`: clean.
+- zfight on the whole look (the street dress's combined chunks, the landmarks' pieces, the uncovered boxes and the bleed; layouts
+  0, 2 and 3; tiers 0 and 2; all faces, then floors only): no coplanar pair with the bleed. The bleed draws nine layers up.
+- The owner's Editor compiled the branch at `2fdcd21c` in the hold (Tundra success).
+- Not run: a Windows player build, multiplayer, and the live expedition (the looks are on the Developer walk only).
+
+### Captures (one Editor hold)
+One Editor hold of 660 s under the lock, with the usual helpers. The three city banks went into Resources for the AFTER and out
+again, the local capture block was removed, the Editor went back to `9319026b` (compiled), and the lock was given back.
+- **BEFORE:** shared `c6fbf8e8`'s greybox. **AFTER:** this branch at `2fdcd21c`, the night look, bleed on, High.
+- **Clips:** 20 clips, 9 s each, 2.4 MB at most, in `F:/Chip Arena Development/scratch/meridian-bleed/look2/clips/`. For each layout (`L0` Crown Hill to `L4` The Yards):
+  - `L<n>-gate1.mp4` and `L<n>-gate2.mp4`: out of the east and south gates, 60 m.
+  - `L<n>-door1.mp4` and `L<n>-door2.mp4`: a dolly to the east and south doors, 170 m to 14 m.
+- **Strips** in `F:/Chip Arena Development/scratch/meridian-bleed/look2/`:
+  - `strip-doors-before-after.jpg`: the doors, before and after, at High.
+  - `strip-low-before-after.jpg`: the same at Low.
+  - `strip-high-low.jpg`: High against Low.
+  - `strip-court-caches.jpg`: the final court with City Hall's tower (60 m and 25 m) and three caches.
+- **Stills:** in `look2/before` and `look2/after`.
+
+### Banks (never committed; for the Drive zip)
+- `F:/Chip Arena Development/scratch/meridian-dress/bank/ChipArenaLocal/Resources/ChipArenaCityMeridian.bytes`: 3,403,541 bytes (D1).
+- `F:/Chip Arena Development/scratch/meridian-landmarks/bank/ChipArenaLocal/Resources/ChipArenaCityLandmarks.bytes`: 9,120,962 bytes (D2).
+- `F:/Chip Arena Development/scratch/meridian-bleed/bank/ChipArenaLocal/Resources/ChipArenaCityBleed.bytes`: 1,891,139 bytes (D3).
+
+Each has its `.meta` beside it. Together they come to about 14.4 MB, inside the 40 MB city budget.
+
+### For Astra: carrying the three looks onto the live run
+Behind the loading card, open the bleed first (with its contracts set), then the street dress (with `KeepOut`), then the landmarks. The calls and the block ids each one reads are in `docs/MERIDIAN-BLEED.md`, "Moving onto the live run".
+
+### Risks
+- **Partly skinned bays:** 13 bays across the five layouts are partly under the bleed's skins and keep their own module. The skins draw over them, nine layers up.
+- **Ceiling:** Level 0's wall-to-wall ceiling stands only where facing walls hold it, which is The Arcades' south approach.
+- **Not tested:** a Windows player build and multiplayer were not run.
+
+**Next:** the integrator reviews the clips, sends them to the owner, merges with relgen5, and packs the three banks into the Drive zip.
+
+## 2026-11-19 — Claude: Meridian's bleed near each instance door (owner request; presentation only)
+
+The owner, ready for the look: "I think were ready for your part of dressing the look now." The request this package answers: "streets are influenced by the instance that is generated (This should modify buildings, nearby enemies, etc.)". This is D3 of the three Meridian dressing agents: plan R3/R12 and W7 on `meridian-b-candidate-3`. See `docs/MERIDIAN-BLEED.md`.
+
+**Branch and status:** branch `claude/meridian-bleed` from shared `8790610c`. Pushed, not merged.
+
+### What changed
+- **The bands (`Core/NativeCityBleed.cs`):** each door's share at a place, measured along that door's route.
+  - The first 10 m off the route cost their own metres; each metre beyond costs 2.
+  - The minimum has a closed form, so the field is exact and continuous: at most 0.005 per 25 cm, against the plan's 0.08.
+  - The plan's band distances: threshold to 30 m, warp to 60, drift to 110, rumour to 160.
+  - `At`, `Band`, `Theme`, `ThemeAt` (for D1's planner) and `ReplacesLamps`.
+  - Kept small for Astra to own from A5a.
+- **The approach dressing:**
+  - `Core/NativeCityBleedDress.cs`, the plan: from the band's outer edge (165 m) to D2's door-front line (12 m). Floor paint, wall pieces, spans, Level 0's ceiling, lamps, rumour signs. Each instance's own materials at warp and threshold.
+  - `Runtime/NativeCityBleedDraw.cs`, the drawer: instanced StageLit two layers up, Low tier by distance or the low graphics tier, lamp glow (dead, flicker, turning) with floor pools, a sky glow over each door, and the fog and ambient drifting with the camera's share.
+- **The bank (`tools/stages/meridian_bleed.py`):**
+  - 61 scripted set pieces at LOD0 and LOD1.
+  - Each instance's drift skins for D1's planner: 4 shapes per theme, aliased to 73 of D1's module keys as `module/<key>@<theme>`.
+  - Every piece is checked against the Core envelope it is placed by.
+- **The walk:**
+  - `Runtime/NativeCityBleedWalk.cs`: the hooks and the door-deal picker. A row per door on the layout menu; N deals the next of five deals that put every instance behind every door; B turns the bleed off and on.
+  - `NativeLayeredCityWalkPreview.cs` gets one call line in each of OpenCityWalk, CloseCityWalk, the keys and the in-walk GUI, plus the menu's picker row. Its DealHalls literal becomes `WalkDeal(seed)`, which still calls DealHalls unchanged, and its menu box is 110 px taller.
+
+### Systems touched
+The Developer walk only (presentation). No collider, nav, horde graph, block, ramp, route, bake tool, rule or wire field.
+
+### Checks
+- `CoreTests --bleed` (BleedChecks): PASS. Five layouts with five deals each (every instance behind every door):
+  - 10,917 pieces, all inside the placement rules (0.25 m, 3.1 m, 3.3 m join keep-out, door fronts, paint 6 cm, paint never on paint);
+  - deterministic per seed and deal;
+  - worst seam 0.005 per 25 cm;
+  - lamps 20% dead and 11% flickering;
+  - at most 599 pieces a walk, 257 within 60 m of an eye, 46 draws.
+- `zfight.py` on three scenes (Crown Hill, The Arcades, The Yards), at tier 0, tier 2, `--floors` and `--with-tier 2`: no pair involves a bleed piece. The pairs reported are the greybox's own coplanar box faces (dress|dress), which are unchanged.
+- `tools/check_unity_compile.py`: PASS (all four assemblies). `git diff --check`: clean.
+- **Full CoreTests, run as relgen5 runs it:**
+  - On `e77d8349` the suite stopped at MapStyleChecks, with 714 groups passed (the bleed's groups among them). That pin is broken on shared itself: Astra's `a15e1183` rewrote the line it pins in `NativeArenaDressing.cs`.
+  - With that pin relaxed locally in the throwaway worktree only, on `f05f26ae`: exit 0, 1,072 groups.
+  - The final commit changes only the bleed's own floor choices since then. `--bleed` and `--layered-walk` pass on it.
+- **Captures:** in the Editor, through a local BoZo capture block (never committed). Two holds: about 6 min, then about 4 min after the review's look fixes.
+  - **What was captured:**
+    - BEFORE: shared `8790610c`'s greybox. AFTER: this branch `5f5a72ff` with its bank.
+    - The walk in at 25 m steps from 175 m to 25 m for Level 0, Ward Zero, City Ironworks and the Poolrooms.
+    - All five thresholds.
+    - 240-frame dollies from 170 m to 14 m for three of them.
+    - High against Low.
+    - The bleed turned off on the branch, which renders shared's greybox: 0.79-0.86 M triangles, against shared's 0.80-0.86 M.
+  - **Rendered triangles a view (Editor):** High up to 0.97 M dressed, against shared's 0.94 M at the same spot; the bleed adds up to about 0.11 M. Low 0.18-0.22 M. Both are well inside the owner's 2,177,224 and 821,492.
+  - **The first hold's mistake:** its capture block named a walk type that the Editor's resting commit (`9319026b`) does not have. The local tool failed to compile on the move back, at about 19:39. Claude took the lock again, removed the block and saw the tool compile (19:40). The block is now reflection-only and is removed before every move back.
+  - **Files:** clips and strips in `F:/Chip Arena Development/scratch/meridian-bleed/look/` (`clips/`, `strip-*.jpg`).
+
+### Animation impact
+None on hit timing, hitboxes, damage, cooldowns, movement or networking.
+
+### Voxel dependency
+None.
+
+### Bank
+`F:/Chip Arena Development/scratch/meridian-bleed/bank/ChipArenaLocal/Resources/ChipArenaCityBleed.bytes`: 1,820,244 bytes after the look-fix pass, with its .meta. Never committed. The integrator packs it into the Drive zip. A build without it draws today's greybox.
+
+### For D1 and the integrator, once `claude/meridian-dress` is on shared
+1. Assign `NativeMeridianDress.ThemeAt = p => walkBleed?.ThemeAt(p)` in OpenCityBleed, and null it in CloseCityBleed. This is D3's to do after merging shared in.
+2. D1's `has` and module table also read `ChipArenaCityBleed`, so `key@theme` resolves.
+3. D1 skips its plain lamps where `ReplacesLamps(p)` is true, and its facade modules where `NativeCityBleedDress.Covers(plan, point, normal)` is true. The bleed substitutes; it does not add.
+4. Refresh `VARIANT_KEYS` in `meridian_bleed.py` if D1's module families have changed.
+
+### For Astra
+- **Zombie outfits by spawn (W7):** the walk has no zombies, so this is not wired. For the live run, `ZombieModelOf` should take `NativeCityBleedDress.OutfitOf(NativeCityBleed.Theme(instance))` for the dominant door at the minion's spawn entry, at drift share or more. Cache it per id.
+- **Moving onto the live run:** build `new NativeCityBleed(doors)` from the run's route polylines and hall deal, and `NativeCityBleedDress.Build(map, bleed, streets, worldSeed)` with each leg's width and kind. Call `NativeCityBleedDraw.Open/Close` on the hub's open and leave. Keep the join circles 8 m out from each door.
+- **Determinism:** `NativeCityBleed` is float math. If spawns ever read it, Astra may want a fixed-point version.
+- **The MapStyleChecks pin above.**
+
+### Risks
+- Open approaches carry few pieces, because pieces need walls or floors to hang on. Crown Hill's east plateau and The Yards' west cutting are examples. Their bleed reads through the floor paint, the sky glow, the atmosphere and (after D1's merge) the module skins.
+- The atmosphere writes RenderSettings each frame while the walk is open. It hands back to any look that writes after it, and restores on close.
+- Not seen with D1's night look or D2's door fronts yet.
+
+### Look-fix pass (the integrator's review)
+- **Floor fields:** never a hard rectangle. 0.5 m sub-tiles, ragged edge and corner variants turned to face the gap, bits a cell beyond the rim, thinning through the warp's outer half; the threshold's rim is broken too. Whole cells are plain (an instanced cell repeats); the accents ride the ragged cells.
+- **Ward Zero's floor:** worn pale clinical vinyl in small tiles with scuffs, replacing the teal grid. Teal stays a band or a stripe. The bible's violet and cold flood are used for the light.
+- **The Station:** aged cream tile with grime, darker grout and the railway's maroon.
+- **The Poolrooms' pools:** a dark middle, shallower water toward a tiled rim, and caustic threads that shimmer (a per-instance glow, no new shader, cheap on Low).
+- **Level 0's ceiling:** rows carried wall to wall only where two facing walls hold them; nothing floats or dangles. On candidate 3 that is The Arcades' south approach. Elsewhere Level 0 gets a troffer every 6 m on its walls.
+- **Open approaches:** stains and cracks in each instance's paving, pendant lamps on cables up to 32 m between facing walls, wall lamps on lower walls (3.9 m brackets), and the bible's sky-glow colours. Nothing free-standing below 3.1 m.
+- **Checks:** `--bleed` PASS (11,025 pieces, 74 draws); `zfight.py` on the same three scenes and modes: no bleed pair; the compile gate PASS; `git diff --check` clean. Bank: 1,820,244 bytes. No captures in this pass.
+
+**Next:** the integrator reviews the clips; D3 wires ThemeAt after D1 merges; Astra takes the contracts above.
+## 2026-11-19 — Claude: the Meridian dress's fix pass on the integrator's review (D1; presentation only)
+
+Branch `claude/meridian-dress` (base shared `8790610c`; shared has since moved to `821d75c4`, which merges with only the usual DEV_LOG/PROJECT_STATE conflicts). D2's `origin/claude/meridian-landmarks` (`345657a4`) merged in as `1f059828` (both sides kept); the fix pass is `85e62d07` and `8dcebbfc`. Pushed, not merged; not released. No Editor capture this time (the integrator's call): D3 makes the night captures of the complete look.
+
+- **Overlap slivers.** A face of the dress in the plane of a face the greybox or the landmarks draw is left to them (`Solids.Shared`'s `always`); roof copings butt at the corners; the bank trims each shopfront to its 2.5 m bay (their consoles stood 2 cm into the neighbour's); the rest part by a few StageLit layers (ground storey 0, upper storeys 1, cornices 2 and on x-facing faces 3, a fill's tiles 0/1, what hangs on a wall 4; kept few, since the shader's offset grows with each); no cornice where a block stands against the face at the roof line (a landing in the cornice's top); the bank leaves out the clock's faces shut inside its drum (its two dial backs lay in one plane) and the fills' feet.
+- **LOD0 and LOD1 caps.** `NativeMeridianDress.DrawChunks` cuts a 32 m cell over the bible's caps (60,000 triangles at LOD0, 7,000 at LOD1, counted from the bank without combining) into quarters by each piece's place; the drawer, the budgets and the zfight export use those chunks. 9, 10, 27, 10 and 4 of the 285 cells are cut. Worst view draws rise by up to 66 (Arcades High 308 of 900).
+- **A lot's side.** A face in the plane of a lot's side is the lot's facade's (the Arcades' shopfronts lay on a blue-brick wall's face: 41 m² at LOD1 before).
+- **The landmarks.** The planner leaves `NativeMeridianLandmarks.FixedCovers(layout, map)` to D2: no module, surface, lamp, plate or paint on those blocks, and they are not in the dress's covers (the landmarks hide them while their bank draws). Lamps and plates also need their wall 0.4 m either side of the mount (one hung half into `hall-a-north` round a corner). Route points with no wall rise to 48-72 per layout (from 44-68).
+- **D2's kit.** D2's scripts imported `meridian_kit` from the board-3 sources folder (that path came first on `sys.path`), and it is a different file from the repo's `meridian_kit.py`: board 3's gates-caches pass-2 kit, not its city kit. Against the repo's city kit they would miss 21 helpers (`seg`, `rod`, `text_stroke`, `clock`, ...) and 59 finishes. That kit is now committed as `tools/stages/meridian_gates_kit.py` (unchanged but for a dead fallback path), and D2's `meridian_landmarks.py` and `meridian_lm_*.py` import it from `tools/stages` only. D2's bank rebuilt from it in this worktree with no sources folder (Blender 5.2.3, their `layouts.json`) is byte-identical to theirs (9,120,962 bytes). My city kit changed nothing D2 relies on.
+
+**Checks.**
+- `MeridianDressChecks --meridian-dress` with the bank: PASS, 673,570 checks (new: the landmarks' blocks left alone; every drawn chunk under both caps; counted triangles equal the combined meshes'). Heaviest chunk 59,890 triangles at LOD0 (The Navigation, the 32 m cell at (-120, 196)), 6,910 at LOD1.
+- zfight over all five layouts at LOD1 and LOD0, all faces and floors (`--meridian-zfight` writes the drawn chunks): a scratch `zfmine.py` that runs `tools/stages/zfight.py`'s own gather and measure with the greybox-only pairs skipped and adds the largest 2 m cell; `zfight.py` itself on Crown Hill (and the Navigation at LOD1 and on the floors) gave the same figures for the dress. The exact same-facing coplanar overlap of the dress (m², LOD1 / LOD0 all faces / LOD0 floors, then the largest 2 m cell at LOD0): Crown Hill 0.017 / 0.247 / 0.041, 1.9 dm²; The Navigation 0.015 / 0.197 / 0.034, 1.9 dm²; The Arcades 0.032 / 0.626 / 0.068, 2.1 dm²; The Stride 0.001 / 0.552 / 0.026, 1.9 dm²; The Yards 0.013 / 0.088 / 0.011, 1.1 dm² (before: 51-244 m² a layout). Floors closer than 30 mm but not exact: 0-2.7 m² (the Arcades). What is left is inside single modules (a shutter's and a shopfront's own faces, the oriel's) and ground bays touching round lot corners, each under 0.04 m². `zfight.py`'s own `dress|dress` (134 m²) is the greybox court walls against each other (D2's, hidden while their bank draws).
+- The Iron Bridge: the dress's parapets and surfaces, D2's arches and the greybox together within 20 m of the bridge: no exact overlap at LOD1 or LOD0, all faces or floors. D2's `meridian_landmarks_zfight.py` on The Navigation: 3.49 m² at LOD0, 3.88 m² at LOD1, none on the bridge (the Lock gates on the ramp treads, as D2 reported).
+- `LandmarkReadChecks --landmark-reads`: PASS (20 exits, 5 layouts x 11 deals).
+- Full CoreTests the relgen5 way (throwaway LF worktree, `expedition_path.patch`, `banks-next`) at `8dcebbfc`: 1070 PASS lines, exit 0 (and at `85e62d07`).
+- `tools/check_unity_compile.py` (6000.3.24f1): Input System, Player, Assembly-CSharp and Editor PASS. `git diff --check` clean; the pins check against `8790610c`: 0 broken.
+
+**Not run.** Editor captures and clips of the fixed dress (D3's hold); the Windows player six views with the bank; a Windows build.
+
+**Animation impact.** None: presentation only, no collider, route, nav, rule or wire change.
+
+**Voxel dependency.** None.
+
+**Risks.** The layers are a depth offset that grows with distance (layer 4 is about 0.5 m nearer at 175 m): a wall-hung lamp or plate far off may draw over something a few decimetres in front of it. The remainder (0.09-0.63 m² a layout at LOD0) is mostly inside the bank's own shopfront, shutter and oriel modules: a bank-side clean-up of those modules is the next step if it shows in D3's captures. Cut chunks add draws (still under half the budget).
+
+**Next.** D3 merges this branch, wires `ThemeAt`, the lamp skips (`ReplacesLamps`) and the facade skips (`Covers`), and makes the night captures of the complete look in one hold. The integrator packs the rebuilt bank (`F:/Chip Arena Development/scratch/meridian-dress/bank/ChipArenaLocal/Resources/ChipArenaCityMeridian.bytes`, 3,403,541 bytes, its .meta's GUID unchanged) into the Drive zip.
+
+## 2026-11-19 — Claude: Meridian's streets, night and lamps dressed over the five candidate-3 layouts (D1; owner report; presentation only)
+
+Branch `claude/meridian-dress` from shared `8790610c`. Owner, verbatim: "I think were ready for your part of dressing the look now." D1 of three (D2 landmarks `claude/meridian-landmarks`, D3 influence `claude/meridian-bleed`). Pushed, not merged; not released. Design, rules and the role table: `docs/expedition/MERIDIAN-DRESS.md`.
+
+- **The bank** (`tools/stages/meridian_bank.py` on `meridian_kit.py` and `meridian_buildings.py`, board 3's approved pass-2 kit ported unchanged but for its paths; `meridian_sheet.py` writes the dressing sheet `Core/NativeMeridianDressSheet.cs` from the plans' JSON): 130 modules at LOD0 and LOD1 (44,773 / 6,403 triangles in all). Facade bays for rows, villas, shops with their own trades' goods (ten), the market, tenements (barred flats, the lit entry, the stair column, polychrome bays), warehouses (loading doors, iron windows), civic bays; blind windows, ghost signs and rain streaks (board 3's fixes); cornices; the swan-neck, span-pendant and flush lamps (working, route, dead); the 6:47 bracket clock; the Civil Defence siren; street-name plates; SANCTUARY and the walked metres as road paint; puddles; roof hatches; iron and stone parapets; the market's cast-iron columns; goods vans; the Stride's arches. A module placed in the actor band is its hugging variant (every vertex 0.25 m in to 6 cm out of its face). `ChipArenaCityMeridian.bytes`, 3,587,717 bytes, in `F:/Chip Arena Development/scratch/meridian-dress/bank/ChipArenaLocal/Resources/` (never committed; for the Drive zip).
+- **The planner** (`Core/NativeMeridianDress*.cs`; pure, deterministic per layout, the run moving only which lamps are dead or flicker): every block role to modules and to surfaces generated on the colliders' own faces; the covered blocks; the lamps; the marks. `NativeMeridianDress.ThemeAt` for D3 (`Func<V3,string>`, null by default; `key@theme`, the plain key where the bank has no variant).
+- **The drawer** (`Runtime/NativeMeridianDressDraw.cs`): 32 m chunks; every LOD1 at load, LOD0 on a worker within 38 m (High) or 24 m (Balanced), Low LOD1 only; chunks past the fog's end plus 25 m left out. One call each in `OpenCityWalk`/`CloseCityWalk` (`Runtime/NativeMeridianDressWalk.cs`); one hide line in `NativeArenaDressing` for the walk's covered blocks. Without the bank nothing is made and the greybox draws (and keeps the town's dusk).
+- **The night:** `expedition-night` in `MapLooks.json`, written by `docs/arenas/scripts/expedition_city.py --maplooks` (R4 and the art bible 3.6), applied to the walk's map by the hook from `NativeMeridianDress.LookTable`'s one row once the dress is made. The live expedition keeps its look.
+- **The lamps** (the owner's rule): the plan's lamp points (about one every 12 m along each route) on the nearest wall (a swan-neck), a span wire or a flush mount in a low wall; the routes home are the protected circuit (warmer, never dead, 1 in 10 flickering), the side streets 1 in 5 dead and 1 in 10 flickering. The nearest lit lamps take the eight practical slots (three on Low) and light the art, the greybox, pilots and zombies (`ActorLights`); pools on the floor; wet streaks toward the eye (about 60 quads, none on Low); flickering heads drawn apart; High's soft beams (`NativeVolumetricBeams`). Toon Harbor heads and VLB: no Meridian bridge (the kit bank is not in the Editor), so our own fixtures and beams draw. Ward Zero and the Ironworks are untouched (no light-field change).
+
+**Systems.** New: the planner, the drawer, the sheet, the bank scripts, `MeridianDressChecks`. Touched: `NativeLayeredCityWalkPreview` (two call lines), `NativeArenaDressing` (one hide line), `MapLooks.json` (the night entry), `expedition_city.py` (the night look), `tools/asset-lock.json` (MapLooks.json's receipt).
+
+**Checks.**
+- `MeridianDressChecks` (`--meridian-dress`, in the full suite; 144,722 checks, 418,294 with `CHIPARENA_MERIDIAN_BANK`): the roles against the five specs, the sheet, determinism, the theme hook, the hugging rule, modules on their faces' planes, every seen face of a covered block drawn (99.5% of 1 m samples), the routes' keep-out, the lamp rule, the look's table and hooks; with the bank, every hugging module's vertices and the six standard views per layout. The dress's own worst view: High 211k-502k triangles and 236-242 draws, Low 94k-200k and 126-136 draws (the bible's environment share: 0.9 M / 900 High, 0.24 M / 450 Low). The heaviest LOD0 chunk is 68k-84k triangles (the bible's 60k cap per chunk: over).
+- Full CoreTests the relgen5 way (throwaway LF worktree, `expedition_path.patch`, `banks-next`): the final head `4e1744fc` 1069 groups, exit 0; `e4dfac1c` the same (the first run, at `0cdbef17`, found the night look's pins on `NativeLighting.Look` in WardZeroChecks; the night moved onto the walk's hook; the second found `"siren.wall"` read as an audio key by EffectsAudioChecks; renamed `cd.siren`).
+- `tools/check_unity_compile.py` (6000.3.24f1): Input System, Player, Assembly-CSharp and Editor pass. `git diff --check` clean.
+- `zfight.py` over all five layouts' combined chunks (`--meridian-zfight` writes its input), on the final code: the dress's own exact overlaps per layout 51-196 m² at LOD1 and 72-244 m² at LOD0 (all faces), 36-136 m² on the floors, no 2 m floor cell over 1.0 m²; mostly centimetre slivers where neighbouring bays' mouldings meet. Over the bible's "a few square decimetres": those seams remain. The greybox court walls (134 m², D2's) are not counted as the dress's. (A first pass found terrace and lid tops drawn twice along shared edges; exposure now runs on grids cut at the neighbours' edges.)
+- `GeneratedFrameChecks` pass (68 checks, unchanged: the live city is not dressed here).
+- Re-pinned on purpose: `AdvancedLightingChecks` (W1: expedition-night carries the advanced block), `tools/asset-lock.json` (W1: MapLooks.json's receipt), `MapStyleChecks` (the night is the eighteenth styled look and in the styled-maps list; and its pin of the dressing's draw line, failing on shared `8790610c` since Astra's survey mesh, now `Draw(StageForMap(s),...)`).
+
+**Captures and clips** (Editor under the lock: one hold 19:46-20:10, 23 min; a second short one, 20:31-20:33, for the night street (the first hold's spot stood inside a lot); the Editor back on its resting commit, the 14 stage banks and the motion bank unchanged; the bank in the Editor's Resources only during the AFTER runs). BEFORE is shared `8790610c` (the greybox at dusk), AFTER `0cdbef17` (the dress at night; the night was then moved onto the walk's hook and the siren's key renamed: the same pictures). Clips in `scratchpad/meridian-dress/look/clips/`: `1-crown-hill-gates.mp4` (north up the Hundred Steps, south to the quay), `2-the-navigation-gates.mp4` (west, south), `3-the-arcades-gates.mp4` (east through the covered market, west up onto the Leads), `4-the-stride-gates.mp4` (north under the viaduct, east along the viaduct's deck), `5-the-yards-gates.mp4` (east, south): BEFORE | AFTER side by side, real time, about 12 s, 1.8-2.4 MB. High against Low at the six standard views: `look/1-crown-hill-high-low.png` .. `5-the-yards-high-low.png`. A street at night: `6-night-streets-dead-and-flickering-lamps.mp4` (Crown Hill's quay lane with its dead lamps; the street below the court with a flickering one; real time). Stills in `look/stills/`.
+- **The walk's counters at the six standard views** (Editor, RTX 4090, the game view; `docs/MERIDIAN-B-WALK.md`'s Windows player figures were not rerun): mean frame 6.9-9.2 ms on both tiers; the dress's own triangles High 0.08-0.50 M, Low 0.06-0.19 M; the walk's peak counter High 0.78-4.05 M and Low 0.25-0.79 M, inflated by BoZo's own capture cameras (each still renders the scene again), so it is not the player's figure. Opening a layout: plan 0.2-0.5 s, LOD1 combine 0.1 s.
+- The BoZo tool got local options (never committed): `walk=`, `walkpos=`, `walkroute=` (the pilot walks a route out of its gate), `walkeye=` (fixed eyes), `walkstat=`. Its first patch named the walk's type, so it failed to compile on the Editor's resting commit `9319026b` (which predates the walk) when the hold went back at 20:10; the next holder was on `8790610c`, where it compiled; it was made reflection-only at 20:11 (checked by the pinned compile) and compiles on both.
+
+**Not run.** The Windows player's six views with the bank (`NativeMeridianBudget` / the load harness does not open the walk's dress); a Windows build; Toon Harbor heads (no kit bank in the Editor); the city light field (W1 v1, W10 v2); a 4-pilot, 88-zombie frame time with the dress.
+
+**Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking: no collider, route, nav, spawn or wire change; the walk only.
+
+**Voxel dependency.** None.
+
+**Risks.** The look is a first pass in Unity (the owner said "keep this dark night and judge it in Unity"): the moonlit faces read lighter than board 3. Route lamps have no wall at 44-68 of each layout's ~100 plan points (open edges, bridges, stairs): those stretches are dark until lamp posts exist. Every lot is drawn with a flat honest roof (no pitched roof without wedges). Chunks over the bible's 60k cap; small coplanar slivers at bay seams (zfight, above). The bank's 3.6 MB is well inside D1's 25 MB share.
+
+**For Astra (moving the run onto candidate-3; nothing built on your side).** Call `NativeMeridianDressDraw.Prepare(new NativeMeridianDress.Input{Map, Layout, Run, Routes, Hatches, Slots})` from the prewarm hook and drop it on leaving; keep the walk's block ids (the planner reads roles from them) and the routes' polylines, widths and kinds; read `NativeMeridianDress.LookTable` where the live map is lit (W1: `NativeLighting.Look`; WardZeroChecks:265 and WardLightingChecks:256 pin that line) and add the live map's id; add the dressing's hide line for the live map. Rules this dress needs: `lamp-` prop blocks at the plan's lamp points that have no wall, `shelter-`/`barrier-`/`clock-` blocks for free-standing furniture, rail blocks on fire escapes and stair drops, parapet blocks on walkable roofs, and ramp wedges under the lots the plans mark `pitched`.
+
+**Next.** The owner looks at the clips and sheets; the integrator merges D1 into shared (then D3 sets `ThemeAt`), packs the bank into the Drive zip, and reruns the Windows six views with the bank.
+
+## 2026-11-19 — Claude: Meridian's landmarks and doors: the 20 exit landmarks, City Hall's court, the five door fronts and the far layer (owner report; presentation only)
+
+Owner: "I think were ready for your part of dressing the look now". Branch `claude/meridian-landmarks` from shared `8790610c` (D2 of the three Meridian dressing agents; D1 `claude/meridian-dress` the streets, D3 `claude/meridian-bleed` the bleed). Implemented on the branch, pushed, not merged, not released.
+
+**What changed**
+- **Core `NativeMeridianLandmarks`** places every landmark from a layout's records only (blocks by id, the court's gateway and the three hall doors, the walk's deal), deterministic per layout and deal:
+  - **the 20 exit landmarks**, one per gate, each naming its exit by its shape and built in the world's frame on the blocks round it: the Hundred Steps' iron lantern arch and the Crown's stair head; the Belvedere Hotel's neon blade sign on the Promenade; the Chute's washing lines and pawnbroker's balls; a stone flying arch and iron struts across the Hill Cutting; the Iron Bridge's bowstring arches; the lock gates and lock-keeper's lamp on the Lock ramp; swan-neck lamps down the Low Causeway and its water gate; the mill's lucam over Mill Lane; the Galleria's glass fan and globes; the Shambles' gilded bull; the Undercroft's crypt lantern and portal; the Leads' lantern cupola; Arch Nought's clock; the deck stair's railway hoarding; the Vale winding wheel; the Rialto's marquee on the Valley Steps; the Signal Gantry's semaphores and signal box; the coaling tower; the footbridge's fretwork gable; the water tower on the High Yard;
+  - **the final court (NOCTIEL's)**: City Hall on its 54 x 24 x 19 m block (rusticated ground storey, white-gold stained glass, a giant order with the crest clock at 6:47, CITY HALL in 1.5 m letters), its tower on the 12 x 12 m block with four 6 m opal dials at 6:47 at 47 m and the belfry, cupola, copper dome, white-gold lantern, red light and sun vane above the block (over every layout's ceiling); the court's walls in black stone and white marble with white-gold lamps, and the gateway with falling feathers on the lintel and the portcullis drawn up;
+  - **the door fronts**: each dealt instance's front on its hall (Level 0's giant office door frame, EXIT box, drop ceiling and THRESHOLD MUTUAL; the Baths' mosaic sunburst, BATHS and glass-block pylons; Ward Zero's portal frame, beacons, floods, quarantine sheet and growth; Central Station's canopy, clock and departure board; the Ironworks' riveted board, whistle, caged lamps and jib crane), a door piece round the 10 x 9 m mouth with bays along the wings, the returns and the back, the roof, the mouth's lining, the 12 m apron as flat paint and the join circle's four corner marks outside its 3.3 m keep-out; the airlock leaves as rig pieces posed by `PoseOf` (the walk's mouths have no closure collider, so the walk draws them open, inside their wings);
+  - **the far layer**: each dealt instance's landmark beyond the Cordon on the camp's line through its door (THRESHOLD MUTUAL's flat-yellow window grid, MERIDIAN PUBLIC BATHS' lit vault and water tower, the Biocontainment slab's QUARANTINE banner and slow red beacon, Central Station's train shed and clock tower, the Ironworks' three burning stacks), and the WMRD 64.7 mast beyond the north-east Cordon.
+- **Runtime `NativeMeridianLandmarksDraw`** draws them from the local bank `ChipArenaCityLandmarks`: Fine within 38 m, Low beyond and on the Low tier, and past the distance where the look's fog would take more than 65% the far material (new `Resources/NativeMeridianFar.shader`, fog stopped at 65%, art bible 2.2), so the far layer reads through the night's fog. While it draws, the blocks it replaces (`Layout.Covers`) are left out of the dressing. Without the bank nothing is created and the greybox draws as before. One line each in `OpenCityWalk` and `CloseCityWalk`; every open rebuilds (a new layout or a new deal).
+- **The bank** is built by `tools/stages/meridian_landmarks.py` (Blender 5.2.3 headless; the Meridian kit `meridian_kit.py` from the durable board-3 sources, `--sources`), with `meridian_lm_*.py` for the exits, the court, the fronts and the far layer. It checks the art rules on every layout and hall (all five families on every hall): nothing below 3.1 m over its floor more than 0.25 m from a block (flat paint of 6 cm or less and art over the map's ceiling excepted), and no exposed face of a replaced block without art within 0.25 m. `tools/stages/meridian_landmarks_zfight.py` runs zfight.py's measure on the placed pieces with the greybox.
+
+**Checks**
+- New `LandmarkReadChecks` (`--landmark-reads`, in the full run): 20 exit landmarks, one per gate and all different; each reads from its own gate's eye at High (1080 lines) and Low (720) under the night fog (10-150 m, 10-100 m on Low) and the walk's look; read points never inside a block and either 3.1 m over their floor or on a block's face; City Hall's dial reads from the camp, 62 m tower, the court's blocks replaced; every dealt hall wears its instance's front, its bays, returns, back and lining spanning the hall exactly, the open leaves inside their wings; the far landmarks and the mast outside the map and reading from the camp; deterministic per layout and deal, a new deal moving only the fronts and the far layer. 5 layouts x 11 deals pass. `--meridian-landmarks-dump OUT.json` writes the layouts for the bank script.
+- The bank's own checks: free 0 and bare 0 on all five layouts with every family's front on every hall; every piece under its triangle cap (the script refuses a piece over the cap Core holds). The bank is 9,120,962 bytes (72 props), built in about 2.5 min.
+- zfight: `meridian_landmarks_zfight.py` (tier 0 with every family on every hall, and tier 2): 10.3 m2 and 7.9 m2 of same-facing coplanar overlap in all, none on a face a player sees. 3.4 m2 is the Lock's open gate leaves' backs on the ramp treads' side faces, both against the channel wall. The rest is under 1 m2 a place: the hall wings' seams on fire-escape landings (0.13 m2), 2 cm bay seams (0.004 m2), and 0.84 m2 where the Yards' Cordon tower `cordon-w-tower-250` cuts 2 m into hall-c's back at the mouth's edge (the greybox's overlap; reported to Astra).
+- Full CoreTests the relgen5 way (throwaway LF worktree, `expedition_path.patch`, `banks-next`): exit 0 on `f3bf7eb4`, 1069 PASS lines, `landmark reads` among them. As D3 reported, shared `8790610c` itself stops at MapStyleChecks (Astra's `a15e1183` rewrote the pinned `Draw(...)` line in NativeArenaDressing.cs; D1's branch re-pins it), so the run had D1's one-line re-pin applied in the throwaway worktree only, not committed here
+- `python tools/check_unity_compile.py` (6000.3.24f1): PASS (Unity.InputSystem, ChipArena.Player, Assembly-CSharp, Assembly-CSharp-Editor) on `f3bf7eb4`. `git diff --check` clean.
+- Triangles: each camp-gate view draws 54-65 k landmark triangles at High and 54-60 k at Low (all pieces, no culling), over the greybox's 1.01 M / 0.35 M: about 1.08 M / 0.41 M against the 2,177,224 / 821,492 budget, before the replaced blocks come out. Core holds the per-piece caps under the room left (1.17 M / 0.47 M) and 700 draws.
+
+**Captures.** One Editor hold (20:33-20:42, 561 s): the Editor on `f3bf7eb4`, the bank in and out again, BoZo's capture block put in and removed, the Editor back on `9319026b` with its two local changes untouched. Not committed; everything is under `F:/Chip Arena Development/scratch/meridian-landmarks/look/`:
+- Sheets per layout: `L<k>-gates.jpg` shows the four gates from the camp (greybox, landmarks at High, landmarks at Low). `L<k>-doors-far.jpg` shows the three fronts with their instances, the far layer from the camp, the gates with the deal, and the north route's dolly to City Hall's tower.
+- Stills are in `cap/`.
+- Clips are in `clips/L<k>-walk-<gate>.mp4`: 10 clips, each walking 40 m out of a gate at half speed, BEFORE (shared's greybox) and AFTER side by side, 8 s and 1.2-2.3 MB each.
+- Everything was drawn under the walk's own dusk look, not D1's night look.
+- The captures show two weak exits: the Arcades' east (the gilded bull) and south (the crypt lantern) read small from the camp, although both pass the 5 px check.
+
+**Not run.** A Windows player build; the landmarks under D1's night look (this branch draws them under the walk's own look today); the live run (it still uses the old city); multiplayer (nothing on the wire).
+
+**Animation impact.** None on hit timing, hitboxes, damage, cooldowns, movement or networking: no collider, rule or message; the airlock leaves are drawn only.
+
+**Voxel dependency.** None.
+
+**For Astra (when the live run moves onto candidate-3).**
+- Call `NativeMeridianLandmarks.Place(planSeed, map, doors, slots, airlockOpen)` (doors: the court's gateway point, then the three hall door points; slots: the deal as `DealHalls` returns it) and the drawer's `Build(layout, camera)` / `Release()`; keep the block ids the table reads: `hall-a/b/c` and their wings, `city-hall`, `city-hall-tower`, `court-wall-*`, `court-gate-*`, and each exit's hosts (`NativeMeridianLandmarks.ExitTable` and the bank script: e.g. `terrace-46/48/65`, `chute-tenement-w/e`, `terrace-21/39`, `iron-bridge-parapet-e`, `terrace-62/67`, `terrace-37/46`, `low-causeway`, `terrace-7/8`, `n-lid-1`, `arcade-n-roof`, `shambles-0/2`, `arcade-s-roof`, `undercroft-ramp-lid`, `terrace-32`, `viaduct-deck`, `terrace-41`, `signal-gantry`, `s-lid-4`, and the hero lots `lot-shelf-s-7`, `lock-cottage`, `mill`, `lot-vale-c-109`, `lot-mid-131`, `signal-box`, `coaling-tower`, `water-tower`). A moved block moves its landmark only after the bank is rebuilt.
+- The airlocks: pass the doors' open share to `PoseOf` if the halls get a closure collider (today the walk's mouths are open through the hall, so the leaves are drawn open).
+- Optional rule asks (none needed for the walk): blocks for City Hall's portico (six column bases), parapet blocks where a front's frontispiece should rise over a hall's chip-only roof (board 3's turret, vault and gable were moved to the far layer instead), and a closure collider at each mouth if the doors should be shut.
+
+**For D1 and D3.** D1's planner should leave `NativeMeridianLandmarks.FixedCovers(plan, map)` to the landmarks (the hero lots, the court and the halls); D3's approach ends where the door front's apron starts, 12 m in front of the hall face, and the families' ids are D3's theme ids.
+
+**Risks.** The bank is 9.1 MB, over this package's ~8 MB aim (the three city banks stay under 40 MB if D1's is under ~29 MB). The bank script imports board 3's `meridian_kit.py` from the durable sources folder (`--sources`, default `F:/Chip Arena Development/scratch/meridian/scratch-sources-2026-11-19`), which is not in the repository. A moved or resized host block needs a bank rebuild. The Iron Bridge's arches stand on the bridge D1 dresses (coordinate the parapet). Not drawn: City Hall's halo, the hotel's pitched roof (drawn flat), and board 3's turret, vault and gable (moved to the far layer: the halls' roofs are chip-only). The far shader and the fog cap have not been seen under D1's night look or in a player build. Nobody has reviewed the look yet.
+
 ## 2026-11-19 · Astra · Online Blind Pick lobby portraits
 
 On `codex/blind-lobby-portraits` from shared `eba02d3a`, occupied Blind Pick and Blind Pick All cards use the pilot’s cosmetics and an unarmed portrait while the roster masks weapon and abilities. Armed idles use arms crossed. Seated, sleeping and crossed poses keep their framing. The targeted suite passed 5,598 checks and all pinned Unity assembly compile gates passed. A live Windows host/guest visual check is pending. No combat or wire changes.

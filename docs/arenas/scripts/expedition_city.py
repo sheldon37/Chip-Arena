@@ -722,9 +722,9 @@ ADVANCED = {'gi': dict(on=True, occlusion=0.7, bounce=1.2, floor=0.4, cell=1.0, 
             'beams': dict(on=True, gain=1.3, dust=0.6, soft=2.0),
             'weather': dict(kind='rain', amount=0.45, wind=1.0, wet=0.6, puddles=0.5, lightning=0.8, interval=24, lightningColor=0xC8D4FF)}
 MAPLOOKS = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'unity', 'ChipArenaConversion', 'Assets', 'Conversion', 'Resources', 'MapLooks.json'))
-def look_text():
-    """The look as MapLooks.json writes its entries (one field per line, one light or block look per line)."""
-    L = look(); j = lambda x: json.dumps(x, separators=(',', ':'))
+def look_text(L=None):
+    """A look as MapLooks.json writes its entries (one field per line, one light or block look per line)."""
+    L = look() if L is None else L; j = lambda x: json.dumps(x, separators=(',', ':'))
     head = ',' .join(f'{j(k)}:{j(L[k])}' for k in ('id', 'look', 'farClip', 'background'))
     rows = [' {' + head + ',']
     for k in ('key', 'rim', 'ambient', 'fog', 'shadows', 'sky'): rows.append(f'   {j(k)}:{j(L[k])},')
@@ -736,20 +736,54 @@ def look_text():
     rows.append(f'   "advanced":{j(L["advanced"])},')
     groups = [','.join(f'{j(k)}:{j(L["toon"][k])}' for k in g) for g in TOON_GROUPS]
     rows.append('   "toon":{' + groups[0] + ','); rows += ['     ' + g + ',' for g in groups[1:-1]]; rows.append('     ' + groups[-1] + '}}')
-    return '\n'.join(rows)
+    return chr(10).join(rows)
+
+# =====================================================================================================================
+# THE NIGHT (MapLooks.json entry `expedition-night`; plan R4 and W1, the MERIDIAN art bible 3.6; the owner: "keep this dark
+# night and judge it in Unity"): Meridian has no day. The cold moon from the north-north-west at 38 degrees is the only shadow
+# caster, a teal rim holds the silhouettes, the ambient is about a tenth of the town's dusk, navy fog from 10 to 150 m, a low
+# cloud deck lit from below, rain at .35 and lightning every 40-60 s. The lamps carry the map: no fixed practical lights here
+# (Runtime NativeMeridianDressDraw gives the nearest street lamps the slots each frame, their pools and streaks). Presentation
+# resolves it by map id (NativeLighting.Look's table); the generator's look string stays `expedition-city`.
+NIGHT = 'expedition-night'
+NIGHT_TOON = dict(TOON, **{
+    'softness': 0.025, 'lightEdge': 0.16, 'lift': 0.28, 'points': 0.72, 'shade': dict(x=0.56, y=0.70, z=1.40), 'lit': dict(x=1.04, y=1.0, z=0.94),
+    'rimIntensity': 0.55, 'rimColor': 0x4CC9C6, 'detail': 0.35, 'occlusion': 0.42, 'occlusionHeight': 0.22, 'specular': 0.55, 'specularEdge': 0.965,
+    'line': 1.0, 'lineFadeStart': 30, 'lineFadeEnd': 90, 'lineColor': 0x1A1438, 'saturation': 1.14, 'contrast': 1.08,
+    'gradeShadow': dict(x=0.92, y=0.96, z=1.10), 'gradeLight': dict(x=1.04, y=1.0, z=0.95),
+    'clouds': 0.78, 'cloudLit': 0x46557F, 'cloudShade': 0x141A30, 'horizonBand': 0x2E3A66,
+    'key': dict(color=0x9DB4E8, intensity=0.32, elevation=38, bearing=340, **{'from': dict(x=0, y=0, z=0)}, shadows='soft', shadowStrength=0.8),
+    'rim': dict(color=0x4CC9C6, intensity=0.35, elevation=20, bearing=160, **{'from': dict(x=0, y=0, z=0)}, shadows='none', shadowStrength=1),
+    'ambient': dict(sky=0x1C2A4A, skyScale=0.22, equator=0x1A1C30, equatorScale=0.14, ground=0x0E0C14, groundScale=0.08),
+    'sky': dict(variant='night', horizon=0x18223F, zenith=0x060A1A, glow=0x2E3A66, disc=0xDCE6FF, cloud=0x46557F, discSize=0.045, halo=0.2, stars=0.3, crater=0.3,
+                cloudSpeed=0.3, elevation=38, bearing=340, dir=dict(x=0, y=0, z=0)),
+    'fogColor': 0x0F1526, 'fogStart': 10, 'background': 0x060A1A, 'hazeColor': 0x1A2238})
+NIGHT_ADVANCED = {'gi': dict(on=True, occlusion=0.7, bounce=1.0, floor=0.3, cell=1.0, actors=0.8),
+                  'scatter': dict(on=True, color=0x1A2238, density=0.014, height=0.0, falloff=6.0, max=0.2, key=0.15, phase=0.5, lights=0.6),
+                  'beams': dict(on=True, gain=1.2, dust=0.6, soft=2.0),
+                  'weather': dict(kind='rain', amount=0.35, wind=1.0, wet=0.7, puddles=0.5, lightning=0.6, interval=50, lightningColor=0xC8D4FF)}
+def night_look():
+    L = look(); n = NIGHT_TOON
+    L.update({'id': NIGHT, 'look': NIGHT, 'farClip': 420, 'background': 0x060A1A, 'key': n['key'], 'rim': n['rim'],
+              'ambient': n['ambient'], 'fog': dict(mode='linear', color=0x0F1526, skyLerp=0, start=10, end=150, density=0),
+              'shadows': dict(cascades=4, distance=60, fallbackCascades=2, fallbackDistance=45), 'sky': n['sky'],
+              'lights': [], 'blocks': dict(dressed=True, dust=0.04, haze=0.3, hazeTop=3.2, hazeColor=0x1A2238), 'advanced': NIGHT_ADVANCED, 'toon': NIGHT_TOON})
+    return L
 def write_maplooks(path=MAPLOOKS):
-    """Replace this map's entry in MapLooks.json's maps where it stands (the zone looks follow it since their activation), or
-    insert it as the last entry; every other byte stays as it is."""
-    text = open(path, encoding='utf-8').read(); entry = look_text(); start = text.find('\n {"id":"' + MAP + '",')
-    tail = '\n],\n"preview":['
-    if start >= 0:
-        end = text.index(tail, start); after = text.find('\n {"id":', start + 1, end)
-        text = text[:start] + '\n' + entry + (text[end:] if after < 0 else ',' + text[after:])
-    else:
-        end = text.index(tail); assert text[end - 2:end] == '}}', 'unexpected MapLooks.json layout'
-        text = text[:end] + ',\n' + entry + text[end:]
+    """Replace the town's entry and the night's (`expedition-night`) in MapLooks.json's maps where they stand (the zone looks
+    follow the town since their activation), or insert each as the last entry; every other byte stays as it is."""
+    text = open(path, encoding='utf-8').read()
+    for L in (look(), night_look()):
+        entry = look_text(L); start = text.find('\n {"id":"' + L['id'] + '",')
+        tail = '\n],\n"preview":['
+        if start >= 0:
+            end = text.index(tail, start); after = text.find('\n {"id":', start + 1, end)
+            text = text[:start] + '\n' + entry + (text[end:] if after < 0 else ',' + text[after:])
+        else:
+            end = text.index(tail); assert text[end - 2:end] == '}}', 'unexpected MapLooks.json layout'
+            text = text[:end] + ',\n' + entry + text[end:]
     json.loads(text)
-    with open(path, 'w', encoding='utf-8') as f: f.write(text)
+    with open(path, 'w', encoding='utf-8', newline='\n') as f: f.write(text)
 
 # =====================================================================================================================
 # CHECKS
@@ -1259,7 +1293,7 @@ if __name__ == '__main__':
     if a.look:
         with open(a.look, 'w') as f: json.dump(look(), f, indent=None, separators=(',', ':'), sort_keys=False)
         print('wrote', a.look)
-    if a.maplooks: write_maplooks(); print('wrote the', MAP, 'entry of', MAPLOOKS)
+    if a.maplooks: write_maplooks(); print('wrote the', MAP, 'and', NIGHT, 'entries of', MAPLOOKS)
     if a.png: plan(a.png, graphs); print('wrote', a.png)
     if a.join_png:
         ok_j, rep_j = join_checks(graphs); print('\n'.join(rep_j)); join_plan(a.join_png, graphs); print('wrote', a.join_png); ok &= ok_j
