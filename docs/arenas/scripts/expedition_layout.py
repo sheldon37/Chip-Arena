@@ -18,7 +18,7 @@ from expedition_common import block_hash, id_ok
 # Run-seeded cache bays, (x, floor y, z, front yaw in degrees).
 CACHE_CANDIDATES = {
     'exp-ward-zero:cache:0': [(-13.25, 0.0, -7.325, 180), (-15.66, 0.0, -9.25, 90)],
-    'exp-ward-zero:cache:1': [(24.75, 6.0, 26.91, 180), (26.75, 6.0, 26.91, 180)],
+    'exp-ward-zero:cache:1': [(24.75, 0.0, 25.26, 180), (26.75, 0.0, 25.26, 180)],
 }
 
 REVISION = 'exp-layout-3'     # bump when any generated record or map hash changes (the test pins this with the hashes)
