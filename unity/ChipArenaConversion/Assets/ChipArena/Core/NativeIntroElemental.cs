@@ -528,7 +528,10 @@ namespace ChipArena.UnityConversion
             turn=Quaternion.Normalize(NativeEntranceMath.Yaw(yaw)*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,-lean));
         }
         /// <summary>A point on half `left`'s crest (u 0..1 along it) at `t`.</summary>
-        private static Vector3 Crest(bool left,float t,float u,float height=4.72f,float reach=1.15f){Half(left,t,out var at,out var q);return at+Vector3.Transform(new Vector3((left?-1:1)*reach,height,HalfLength*u),q);}
+        private static Vector3 Crest(bool left,float t,float u,float height=4.72f,float reach=1.15f){Half(left,t,out var at,out var q);float e=Env(u);return at+Vector3.Transform(new Vector3((left?-1:1)*reach*(.75f+.25f*e),height*e,HalfLength*u),q);}
+        /// <summary>A half's height along its length (tools/intros/elemental_set.py wave_env): full where the halves meet (u 0), tapering
+        /// into the water over its outer third, so what rides the crest follows it down.</summary>
+        public static float Env(float u)=>(float)Math.Pow(Math.Max(0,Math.Sin(Math.PI/2*Math.Min(1,(1-u)/.32f))),.6f);
         /// <summary>How far the frost has spread from the tap (m).</summary>
         public static float Frost(float t)=>t<FreezeAt?0:18*NativeEntranceMath.EaseOut(NativeEntranceMath.Clamp01((t-FreezeAt)/.7f));
         protected override Vector3 Focus(float t,Vector3 chest)=>t<SweepAt?Mark+new Vector3(0,2.2f*Reared(t)+.8f,-1.4f*Reared(t)):chest;
