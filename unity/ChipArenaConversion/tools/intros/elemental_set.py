@@ -804,7 +804,7 @@ def wave_colours(bk, g):
     col = col + (foam - col) * f[:, None]
     lit = ~glow
     bk.colour[lit, :3] = np.round(np.clip(col[lit], 0, 1) * 255).astype(np.uint8)
-    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.62 * 255))
+    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.85 * 255))
     if glow.any():
         teal, cyan, white = np.array(sk.srgb(0x063a52)), np.array(sk.srgb(0x5edfff)), np.array(sk.srgb(0xdffcff))
         u = np.clip((y - 2.55) / 1.75, 0, 1) ** 1.3
@@ -828,7 +828,7 @@ def ice_colours(bk, g):
     white = np.array(sk.srgb(0xf2feff))
     c = c + (white - c) * (np.clip(rnd2 - .78, 0, 1) * 1.4)[:, None]
     bk.colour[lit, :3] = np.round(np.clip(c[lit], 0, 1) * 255).astype(np.uint8)
-    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.3 * 255))
+    bk.colour[lit, 3] = np.minimum(bk.colour[lit, 3], int(.85 * 255))
     # the faces toward the barrel glow: each facet its own cyan to near white, a little brighter or dimmer (light through the ice)
     fc = np.repeat(F_, S_)
     glass = np.array([sk.FINS[i].name == 'water-ice-glass' for i in fc], dtype=bool)
@@ -1369,14 +1369,14 @@ def bake(geos, ao, floors):
         if k in DARKENED:
             darken(out[k], geos[k], *DARKENED[k])
         if k.startswith('water/ice/'):
-            darken(out[k], geos[k], ('water-frost', 'water-ice'), .35)
+            darken(out[k], geos[k], ('water-frost', 'water-ice'), .85)
     return out
 
 
-# The sets whose ground takes less of the arena's reflection probe and ambient (both scale by the baked occlusion in
-# NativeStageLit): the storm's wet dark rock and the black obsidian. (finishes, occlusion at most)
-DARKENED = {'lightning/plateau': (('storm-slate', 'storm-slate-top', 'storm-scorch', 'storm-rock'), .42),
-            'darkness/plain': (('dark-obsidian', 'dark-obsidian-edge', 'dark-ash', 'dark-ash-dark'), .07)}
+# The sets whose ground takes a little less of the reflection and ambient (both scale by the baked occlusion in NativeStageLit;
+# since the intro owns its light, INTROS-V2 3a, that is the intro's own sky): the storm's wet rock, the obsidian.
+DARKENED = {'lightning/plateau': (('storm-slate', 'storm-slate-top', 'storm-scorch', 'storm-rock'), .85),
+            'darkness/plain': (('dark-obsidian', 'dark-obsidian-edge', 'dark-ash', 'dark-ash-dark'), .8)}
 
 
 def darken(bk, g, names, occ):

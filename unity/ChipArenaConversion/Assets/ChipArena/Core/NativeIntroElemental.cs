@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
     /// start), long streaks laid on their head's camera plane, the set's pieces by name (no strings built per frame).
     /// Presentation only: pure functions of the intro's presentation clock, allocation-free per frame.
     /// </summary>
-    public abstract class NativeIntroElementalScript:NativeIntroV2Script,INativeIntroHands,INativeIntroHead
+    public abstract class NativeIntroElementalScript:NativeIntroV2Script
     {
         public const string Bank="ChipArenaIntroElemental";
         /// <summary>The staff: its grip at the wrist, its heel and its head along the hand's +z (Core NativeWeaponModels.Magic).</summary>
@@ -56,47 +56,15 @@ namespace ChipArena.UnityConversion
             var shoulderR=root+Vector3.Transform(pose.WorldPosition[CapturedRig.RArm],rotation);var hold=grip+axis*StaffSupport;
             NativeEntrancePose.Reach(pose,root,rotation,false,hold,CapturedRig.Look(axis,shoulderR-hold),s);
         }
-        /// <summary>The staff's heel, grip and head at `t` (world, from the anchors: the staff as the rig holds it).</summary>
+        /// <summary>The staff's heel and head at `t` (world): the drawn staff's head (the framework's model-aware LeftMuzzle) and its bore,
+        /// the heel back along it; the keyed staff without the model.</summary>
         protected void Staff(float t,out Vector3 heel,out Vector3 head)
         {
-            head=Anchor(NativeEntranceAnchor.LeftTip,t);var hand=Anchor(NativeEntranceAnchor.LeftHand,t);var d=head-hand;float l=d.Length();
-            var axis=l>1e-4f?d/l:Vector3.UnitY;heel=head-axis*(StaffHead-StaffHeel);
-            // As drawn this frame: the rig's staff carried to where the model's wrist is (the model plays its own clips).
-            if(drawnModel&&Math.Abs(drawnAt-t)<1e-4f){var shift=drawnLeft-hand;if(shift.LengthSquared()<1){head+=shift;heel+=shift;}}
+            head=Anchor(NativeEntranceAnchor.LeftMuzzle,t);var axis=WeaponBore(true,t);heel=head-axis*(StaffHead-StaffHeel);
         }
-
-        // ---- the model's own motion: motion-bank clips over windows of the presentation clock (INativeIntroBody) ----
-        /// <summary>One window: the model plays `Name` from clip time From to To across [Start, End) (a loop wraps).</summary>
-        protected struct ClipWindow{public float Start,End,From,To,Fade;public string Name;}
-        /// <summary>The windows in time order: before the first the model follows the keyed rig, from it to the end it plays clips (a
-        /// clip is never left for the keys, which would pop).</summary>
-        protected ClipWindow[] Clips=Array.Empty<ClipWindow>();
-        protected static ClipWindow W(float start,float end,string name,float from,float to,float fade=.16f)=>new ClipWindow{Start=start,End=end,Name=name,From=from,To=to,Fade=fade};
-        protected const string Idle="2Hand-Staff-Idle~mirror";
-        public override bool Clip(float t,out string clip,out float time)
-        {
-            clip=null;time=0;var c=Clips;if(c.Length==0||t<c[0].Start)return false;
-            int k=0;for(int i=1;i<c.Length;i++)if(c[i].Start<=t)k=i;var w=c[k];
-            float u=NativeEntranceMath.Clamp01((t-w.Start)/Math.Max(1e-3f,w.End-w.Start));clip=w.Name;time=w.From+(w.To-w.From)*u;return true;
-        }
-        public override float Fade(float t){var c=Clips;if(c.Length==0)return .12f;int k=0;for(int i=1;i<c.Length;i++)if(c[i].Start<=t)k=i;return c[k].Fade;}
-        // ---- the hands as drawn (INativeIntroHands): this frame's left wrist, for the staff's effects ----
-        private Vector3 drawnLeft;private float drawnAt=-100;private bool drawnModel;
-        public void Hands(float t,in NativeIntroHand right,in NativeIntroHand left){drawnLeft=left.At;drawnModel=left.Model;drawnAt=t;}
-        // ---- the head as drawn (INativeIntroHead): the model's head joint this frame, for what sits on the head (a crown, an eye) ----
-        private Vector3 drawnHead;private float headAt=-100;private bool headModel;
-        public void Head(float t,in NativeIntroHand head){drawnHead=head.At;headModel=head.Model;headAt=t;}
-        /// <summary>How far the drawn head sits from the keyed rig's at `t` (the model plays its own clips): zero in a check, or
-        /// when the model is not drawn. The keyed head joint is the head anchor less its .165 m crown offset.</summary>
-        protected Vector3 HeadShift(float t)
-        {
-            if(!headModel||Math.Abs(headAt-t)>=1e-4f)return Vector3.Zero;var shift=drawnHead-(Anchor(NativeEntranceAnchor.Head,t)-new Vector3(0,.165f,0));
-            return shift.LengthSquared()<.36f?shift:Vector3.Zero;
-        }
-        /// <summary>How far the model's visor sits above the keyed eye line (m). The drawn head handed in is the game joint's frame,
-        /// which rides about 20 cm under the model's head bone (Runtime NativeVisualBodyPresentation.JointAt). Hold 2's frames put
-        /// the visor .15-.18 m above the keyed eye line, in the hero frame (7.0 s) and in the eye close-up (4.67 s).</summary>
-        protected const float ModelHeadLift=.16f;
+        /// <summary>The keyed camera's framing only: the model's visor stands this far above the keyed eye line (the camera reads the
+        /// keyed anchors; effects read the drawn ones, INTROS-V2 2a).</summary>
+        protected const float CameraEyeLift=.16f;
 
         // ---- effects helpers ----
         /// <summary>The camera at presentation time `t` (what the long streaks are laid against).</summary>
@@ -267,8 +235,11 @@ namespace ChipArena.UnityConversion
         public override void Lights(float t,NativeEntranceLights l)
         {
             base.Lights(t,l);l.FogNear=12;l.FogFar=62;var smoke=Vector3.Lerp(Hex(0x0b0504),Hex(0x2a0f07),.4f*Column(t)+.25f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt));l.Fog=smoke;l.Background=smoke;
-            l.Sky=Hex(0x5a2a1a,.06f+.22f*Column(t)+.1f*NativeEntranceMath.Ramp(t,EruptAt,CardAt));l.Ground=Hex(0x401408,.2f+.45f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt));
+            l.Sky=Hex(0x5a2a1a,.08f+.22f*Column(t)+.12f*NativeEntranceMath.Ramp(t,EruptAt,CardAt));l.Ground=Hex(0x5a1c0a,.3f+.6f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt));
             float col=Column(t),fl=Flicker(t,1.3f);
+            // (the set takes only directionals and the ambient: a warm key from the fire over the dais, strongest while the column roars)
+            l.Directional(new Vector3(0,1,0)+Fwd*.45f+Left*.2f,Hex(0xff9050,.18f+.25f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt)+.95f*col+.35f*NativeEntranceMath.Ramp(t,CrownAt,CardAt)));
+            l.ReflectSky=Hex(0x1a0a06);l.ReflectHorizon=Hex(0x5a2410,.8f);l.ReflectGround=Hex(0xff6c32,.35f);
             // the lava's glow from below: the rivers, the vent, the hearth
             l.Add(new Vector3(-6,.4f,-4),Ember*(1.4f+1.2f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt)),9);l.Add(new Vector3(6.5f,.4f,-2.5f),Ember*(1.2f+1.2f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt)),9);
             l.Add(new Vector3(0,FireFloorY+1.0f,HearthFront+.7f),Orange*(2.3f*(.85f+.15f*fl)),7.5f);
@@ -276,12 +247,12 @@ namespace ChipArena.UnityConversion
             // the column
             if(col>.01f){l.Add(Vent+new Vector3(0,2.0f,.4f),Flame0*(9*col*(.85f+.15f*fl)),11);l.Add(Vent+new Vector3(0,5.5f,0),Orange*(7*col),13);}
             // the crown
-            float crown=NativeEntranceMath.Ramp(t,CrownAt,CrownSet);if(crown>.01f)l.Add(Anchor(NativeEntranceAnchor.Head,t)+HeadShift(t)+new Vector3(0,ModelHeadLift+.3f,.12f),Flame0*(3.4f*crown*(.9f+.1f*fl)),4.5f);
+            float crown=NativeEntranceMath.Ramp(t,CrownAt,CrownSet);if(crown>.01f)l.Add(Anchor(NativeEntranceAnchor.Head,t)+new Vector3(0,.42f,.12f),Flame0*(3.4f*crown*(.9f+.1f*fl)),4.5f);
             // the slam's flash at the heel, and the hero's warm key with a cool fill for the hold
             float slam=Flash(t,SlamAt,.02f,.35f);if(slam>.01f){Staff(SlamAt,out var heel,out _);l.Add(heel+new Vector3(0,.3f,0),Flame0*(7*slam),6);}
             float hero=NativeEntranceMath.Ramp(t,CardAt-.6f,CardAt);if(hero>.01f){var c=Anchor(NativeEntranceAnchor.Chest,t);l.Add(c+L(1.4f,.6f,1.8f),Flame0*(2.4f*hero),6);l.Add(c+L(-2.2f,.4f,1.2f),Cool*(1.1f*hero),6);}
         }
-        protected override NativeIntroVoidLook VoidLook(float t){var v=NativeIntroVoidLook.Of(Orange);v.Far=Hex(0x0d0504);v.Floor=Hex(0x120a08);v.Pool=Ember;v.Key=.06f+.5f*NativeEntranceMath.Ramp(t,EruptAt,EruptAt+.5f);v.PoolLevel=.3f+1.5f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt);return v;}
+        protected override NativeIntroVoidLook VoidLook(float t){var v=NativeIntroVoidLook.Of(Orange);v.Far=Hex(0x0d0504);v.Floor=Hex(0x120a08);v.Pool=Ember;v.Key=.04f+.16f*NativeEntranceMath.Ramp(t,EruptAt,EruptAt+.5f);v.PoolLevel=.3f+1.5f*NativeEntranceMath.Ramp(t,CrackFrom,EruptAt);return v;}
         protected override bool Scene(float t,INativeIntroSet set)
         {
             if(!set.Has("fire/near"))return false;var one=Vector3.One;var q=Quaternion.Identity;
@@ -385,9 +356,9 @@ namespace ChipArena.UnityConversion
                 NativeEntranceFx.Embers(fx,t,WalkFrom,CrownAt,Anchor(NativeEntranceAnchor.Pelvis,t),.4f,Context.Low?8:16,1.1f,1.0f,Ember*1.8f,.03f,7950,q,1.5f);
             }
             // The crown: the column's fire spirals in round the pilot and gathers on its head: a hot ring at the brow (on the model's
-            // head: ModelHeadLift), flame tongues standing off it, uneven and curling, their tips flickering, embers lifting off them.
+            // drawn head), flame tongues standing off it, uneven and curling, their tips flickering, embers lifting off them.
             float gather=NativeEntranceMath.Ramp(t,CrownAt-.2f,CrownSet),crown=NativeEntranceMath.Ramp(t,CrownAt+.15f,CrownSet+.1f);
-            var brow=Anchor(NativeEntranceAnchor.Head,t)+HeadShift(t)+new Vector3(0,ModelHeadLift-.06f,0);var crownAt=brow+new Vector3(0,.14f,0);
+            var brow=Anchor(NativeEntranceAnchor.Head,t)+new Vector3(0,.05f,0);var crownAt=brow+new Vector3(0,.14f,0);
             if(t>CrownAt-.2f&&t<CrownSet+.3f)
             {
                 float fade=gather*(1-crown*.8f);
@@ -552,7 +523,9 @@ namespace ChipArena.UnityConversion
         public override string AccentAt(float t)=>t<FreezeAt?"#63e2ff":"#cff6ff";
         public override void Lights(float t,NativeEntranceLights l)
         {
-            base.Lights(t,l);l.FogNear=10;l.FogFar=48;var far=Hex(0x02080c);l.Fog=far;l.Background=far;l.Sky=Hex(0x4a6f8f,.3f);l.Ground=Hex(0x0e2a33,.35f);
+            base.Lights(t,l);l.FogNear=10;l.FogFar=48;var far=Hex(0x02080c);l.Fog=far;l.Background=far;l.Sky=Hex(0x4a6f8f,.42f);l.Ground=Hex(0x0e2a33,.4f);
+            l.Directional(Hall(0,RoseY,RoseZ)-Mark+new Vector3(0,4,0),Moon*(.55f+.25f*NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.6f)));
+            l.ReflectSky=Hex(0xbfe4ff,.7f);l.ReflectHorizon=Hex(0x1a5a70,.6f);l.ReflectGround=Hex(0x041014);
             l.Add(Hall(0,RoseY,RoseZ+1.5f),Moon*3.2f,18);
             for(int i=0;i<Skylights.Length;i++){var p=Hall(.6f,.3f,Skylights[i]-1.2f);l.Add(p+new Vector3(0,.4f,0),Moon*1.8f,6);}
             float rear=Reared(t)*(1-NativeEntranceMath.Ramp(t,FreezeAt,FreezeAt+.4f));if(rear>.01f)l.Add(Mark-Fwd*2.6f+new Vector3(0,3.2f,0),Cyan*(3.5f*rear),8);
@@ -643,7 +616,7 @@ namespace ChipArena.UnityConversion
             }
             // The ice settling: a shiver of frost off each wall's crest; the breath frosting at the hero hold.
             for(int h=0;h<2;h++)NativeEntranceFx.Sparks(fx,t,HoldFrom+.1f+.25f*h,Crest(h==0,t,.5f,4.4f,1.0f),new Vector3(0,-1,0),1.2f,Context.Low?6:12,1.2f,.9f,5,.8f,Ice*1.4f,Cyan,.008f,9800+h*20,q,floor);
-            if(t>=CardAt-.4f){var head=Anchor(NativeEntranceAnchor.Head,t)+HeadShift(t)-new Vector3(0,.08f,0);for(int i=0;i<3;i++){float u=((t-CardAt)*.42f+i/3f)%1;if(u<0)u+=1;fx.Smoke(head+Fwd*(.15f+.35f*u)+new Vector3(0,-.04f+.08f*u,0),Ice,.18f*(1-u),.08f+.2f*u,u,9850+i,floor);}}
+            if(t>=CardAt-.4f){var head=Anchor(NativeEntranceAnchor.Eyes,t)-new Vector3(0,.07f,0);for(int i=0;i<3;i++){float u=((t-CardAt)*.42f+i/3f)%1;if(u<0)u+=1;fx.Smoke(head+Fwd*(.15f+.35f*u)+new Vector3(0,-.04f+.08f*u,0),Ice,.18f*(1-u),.08f+.2f*u,u,9850+i,floor);}}
         }
     }
 
@@ -744,6 +717,8 @@ namespace ChipArena.UnityConversion
             base.Lights(t,l);float cloud=Cloud(t),strike=Flash(t,StrikeAt,.015f,.3f),call=Flash(t,CallStrike,.015f,.25f);
             l.FogNear=12;l.FogFar=70;var far=Vector3.Lerp(Hex(0x05070c),Hex(0x2a2f44),.6f*cloud+.8f*strike);l.Fog=far;l.Background=far;
             l.Sky=Storm*(.22f+.7f*cloud+1.4f*strike);l.Ground=Hex(0x101420,.3f);
+            l.Directional(new Vector3(-.3f,1,-.25f),Storm*(.14f+1.0f*cloud+2.2f*strike+1.3f*call));
+            l.ReflectSky=Storm*(.35f+1.2f*cloud+2.4f*strike+1.4f*call);l.ReflectHorizon=Hex(0x2a3044,.8f);l.ReflectGround=Hex(0x05070c);
             l.Add(new Vector3(-6,26,-14),Storm*(14*cloud),60);
             float charge=Charge(t);l.Add(Spire(0,4)+Spire(1,0)*.3f,Violet*(1.4f*charge),9);l.Add(Spire(4,4)+Spire(3,0)*.3f,Violet*(1.4f*charge),9);
             float eye=NativeEntranceMath.Ramp(t,GatherAt-.3f,StrikeAt)*(1-NativeEntranceMath.Ramp(t,StrikeAt,StrikeAt+.1f));if(eye>.01f)l.Add(new Vector3(0,16,0),Core*(3*eye),30);
@@ -899,7 +874,7 @@ namespace ChipArena.UnityConversion
                .Crane(EclipseFrom+.25f,L(.4f,7.6f,10.5f),L(.3f,5.6f,7.2f),-.6f,Void-new Vector3(0,1.25f,.6f),Void-new Vector3(0,1.15f,0),50,52).Ease(NativeIntroEase.InOut)
                .Dolly(TotalityAt-.05f,L(0,.3f,5.2f),L(0,.32f,4.8f),L(0,4.0f,-9),L(0,4.6f,-10),50,48)
                .Hold(OpenAt-.05f,L(0,1.3f,3.9f),OnLine(-1.0f,1.2f),38)
-               .Dolly(EyeAt-.12f,Fwd*1.32f+Left*.12f+new Vector3(0,1.42f+ModelHeadLift,0),Fwd*1.12f+Left*.1f+new Vector3(0,1.44f+ModelHeadLift,0),new Vector3(0,ModelHeadLift-.1f,0),new Vector3(0,ModelHeadLift-.1f,0),26,22).Follow(NativeEntranceAnchor.Head,0,1).Focus(0,0,.75f).Ease(NativeIntroEase.Out)
+               .Dolly(EyeAt-.12f,Fwd*1.32f+Left*.12f+new Vector3(0,1.42f+CameraEyeLift,0),Fwd*1.12f+Left*.1f+new Vector3(0,1.44f+CameraEyeLift,0),new Vector3(0,CameraEyeLift-.1f,0),new Vector3(0,CameraEyeLift-.1f,0),26,22).Follow(NativeEntranceAnchor.Head,0,1).Focus(0,0,.75f).Ease(NativeIntroEase.Out)
                .Dolly(WingsAt-.05f,L(0,.3f,3.9f),L(0,.28f,4.5f),L(0,1.95f,-1.5f),L(0,2.05f,-1.5f),44,42).In(NativeIntroCut.Cut,.1f)
                .Dolly(CardAt-.6f,L(0,.55f,6.2f),L(0,.6f,8.0f),L(0,1.4f,0),L(0,1.4f,0),40,40).In(NativeIntroCut.Blend,.45f).Ease(NativeIntroEase.Out)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.1f,0);
@@ -923,7 +898,7 @@ namespace ChipArena.UnityConversion
         protected override Vector3 Focus(float t,Vector3 chest)=>t<OpenAt?Void:chest;
         public override string AccentAt(float t)=>t<OpenAt?"#000000":t<EyeAt?"#2a0f40":"#af6eff";
         /// <summary>The visor's lit eye (the pilot's left), from the head anchor.</summary>
-        private Vector3 Eye(float t){var h=Anchor(NativeEntranceAnchor.Head,t)+HeadShift(t);return h+ForwardOf(t)*.22f+RightOf(t)*-.055f+new Vector3(0,ModelHeadLift-.11f,0);}
+        private Vector3 Eye(float t)=>Anchor(NativeEntranceAnchor.Visor,t)+ForwardOf(t)*.01f+RightOf(t)*-.055f;
         public static Vector3 Moon(float t){float e=Eclipse(t);return Sun+Fwd*2.5f+Left*(7.2f*(1-e))+new Vector3(0,1.8f*(1-e),0);}
         public override void Lights(float t,NativeEntranceLights l)
         {
@@ -931,6 +906,7 @@ namespace ChipArena.UnityConversion
             l.FogNear=16;l.FogFar=90;var far=Vector3.Lerp(Hex(0x15111c),Hex(0x020104),e);l.Fog=far;l.Background=far;
             l.Sky=Vector3.Lerp(Hex(0x6a5f86,.16f),Hex(0x1e1030,.06f),e);l.Ground=Vector3.Lerp(Hex(0x2a2232,.12f),Hex(0x080510,.06f),e);
             if(e<.98f)l.Directional(Sun-new Vector3(0,8,0),Dusk*(.8f*(1-e)));
+            l.ReflectSky=Vector3.Lerp(Hex(0x3a3048,.6f),Hex(0x0a0414),e);l.ReflectHorizon=Vector3.Lerp(Hex(0x5a4060,.5f),Rim*.45f,tot);l.ReflectGround=Hex(0x020104);
             if(tot>.01f)l.Add(-Fwd*5+new Vector3(0,3.6f,0),Rim*(5.5f*tot),12);
             l.Add(-Fwd*7.5f+new Vector3(0,.4f,0),Rim*(1.4f+2.6f*tot),15);
             float rise=VoidSize(t);if(rise>.01f)l.Add(Void+Fwd*.6f,Violet*(3*rise),5);
@@ -938,7 +914,7 @@ namespace ChipArena.UnityConversion
             float wings=NativeEntranceMath.Ramp(t,WingsAt,WingsAt+.3f)*(1-NativeEntranceMath.Ramp(t,SnapAt,SnapAt+.3f));if(wings>.01f){var c=Anchor(NativeEntranceAnchor.Chest,t);l.Add(c-Fwd*.8f+new Vector3(0,.4f,0),Rim*(3.5f*wings),5);}
             float hero=NativeEntranceMath.Ramp(t,CardAt-.6f,CardAt);if(hero>.01f){var c=Anchor(NativeEntranceAnchor.Chest,t);l.Add(c+Fwd*2.4f+new Vector3(0,.6f,0),Hex(0x8a7aa8,1.1f*hero),6);}
         }
-        protected override NativeIntroVoidLook VoidLook(float t){var v=NativeIntroVoidLook.Of(Violet);float e=Eclipse(t);v.Far=Vector3.Lerp(Hex(0x2a2433),Hex(0x030205),e);v.Floor=Vector3.Lerp(Hex(0x1a1620),Hex(0x050307),e);v.Pool=Violet;v.Key=.9f*(1-e)+.2f;v.PoolLevel=.5f;return v;}
+        protected override NativeIntroVoidLook VoidLook(float t){var v=NativeIntroVoidLook.Of(Violet);float e=Eclipse(t);v.Far=Vector3.Lerp(Hex(0x2a2433),Hex(0x030205),e);v.Floor=Vector3.Lerp(Hex(0x1a1620),Hex(0x050307),e);v.Pool=Violet;v.Key=.3f*(1-e)+.08f;v.PoolLevel=.5f;return v;}
         protected override bool Scene(float t,INativeIntroSet set)
         {
             if(!set.Has("darkness/plain"))return false;var one=Vector3.One;var q=Quaternion.Identity;
