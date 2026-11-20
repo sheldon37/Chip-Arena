@@ -40,6 +40,10 @@ Each is distinct in set, palette and camera:
   a clip to the keys (it would pop): Forgeborn walks out of the fire on keys and plays its casts from the crown on; Still Tide plays
   clips throughout and holds on its mark; Strike Point's crouch is keyed, its rise and summon are clips; Black Sun walks out of the
   void on keys and plays its summon and strike. The keyed rig is lowered to the clips' stance so the anchors sit on the model.
+- **The drawn head** (`INativeIntroHead`): the crown, the eye and the frost breath follow the drawn head joint (`HeadShift`). That
+  joint is the game joint's frame, which rides about 20 cm under the model's head bone. Hold 2's frames put the model's visor
+  .15-.18 m above the keyed eye line, so Black Sun's eye and its close-up are raised by `ModelHeadLift` (.16 m). The lift was set
+  after hold 2: its clips show the eye on the collar, and the raised eye has not been captured yet.
 - **Sets:** `tools/intros/elemental_set.py` (Blender 5.2.3 headless, the stage kit's geometry, finishes, AO and bank format),
   modelled in the intros' source frame and mirrored into the bank's Unity space at export (so the script and the scripts share
   their numbers; `IntroElementalChecks` reads them from the script). `<prop>` is the Fine tier, `<prop>/low` the Low tier. The bank

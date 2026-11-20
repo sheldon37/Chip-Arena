@@ -93,6 +93,10 @@ namespace ChipArena.UnityConversion
             if(!headModel||Math.Abs(headAt-t)>=1e-4f)return Vector3.Zero;var shift=drawnHead-(Anchor(NativeEntranceAnchor.Head,t)-new Vector3(0,.165f,0));
             return shift.LengthSquared()<.36f?shift:Vector3.Zero;
         }
+        /// <summary>How far the model's visor sits above the keyed eye line (m). The drawn head handed in is the game joint's frame,
+        /// which rides about 20 cm under the model's head bone (Runtime NativeVisualBodyPresentation.JointAt). Hold 2's frames put
+        /// the visor .15-.18 m above the keyed eye line, in the hero frame (7.0 s) and in the eye close-up (4.67 s).</summary>
+        protected const float ModelHeadLift=.16f;
 
         // ---- effects helpers ----
         /// <summary>The camera at presentation time `t` (what the long streaks are laid against).</summary>
@@ -811,7 +815,7 @@ namespace ChipArena.UnityConversion
                .Dolly(EclipseFrom+.25f,L(0,2.3f,10f),L(0,1.9f,4.6f),Void-new Vector3(0,.3f,0),Void-new Vector3(0,.25f,0),30,58).Ease(NativeIntroEase.Linear).In(NativeIntroCut.Blend,.4f)
                .Dolly(TotalityAt-.05f,L(0,.3f,5.2f),L(0,.32f,4.8f),L(0,4.0f,-9),L(0,4.6f,-10),50,48)
                .Hold(OpenAt-.05f,L(0,1.3f,3.9f),OnLine(-1.0f,1.2f),38)
-               .Dolly(EyeAt-.1f,Fwd*1.25f+Left*.12f+new Vector3(0,1.42f,0),Fwd*1.05f+Left*.1f+new Vector3(0,1.44f,0),new Vector3(0,-.1f,0),new Vector3(0,-.1f,0),28,24).Follow(NativeEntranceAnchor.Head,0,1).Focus(0,0,.7f)
+               .Dolly(EyeAt-.1f,Fwd*1.25f+Left*.12f+new Vector3(0,1.42f+ModelHeadLift,0),Fwd*1.05f+Left*.1f+new Vector3(0,1.44f+ModelHeadLift,0),new Vector3(0,ModelHeadLift-.1f,0),new Vector3(0,ModelHeadLift-.1f,0),28,24).Follow(NativeEntranceAnchor.Head,0,1).Focus(0,0,.7f)
                .Dolly(WingsAt-.05f,L(0,1.35f,2.2f),L(0,1.25f,4.4f),L(0,1.45f,0),L(0,1.3f,0),40,36).In(NativeIntroCut.Blend,.3f)
                .Dolly(CardAt-.3f,L(0,.85f,4.9f),L(0,.9f,4.5f),L(0,1.32f,0),L(0,1.36f,0),32,30).In(NativeIntroCut.Blend,.5f).Ease(NativeIntroEase.Out)
                .Bars(0,1).Bars(CardAt-.3f,.6f).Black(0,1).Black(.1f,0);
@@ -837,7 +841,7 @@ namespace ChipArena.UnityConversion
         protected override Vector3 Focus(float t,Vector3 chest)=>t<OpenAt?Void:chest;
         public override string AccentAt(float t)=>t<OpenAt?"#000000":t<EyeAt?"#2a0f40":"#af6eff";
         /// <summary>The visor's lit eye (the pilot's left), from the head anchor.</summary>
-        private Vector3 Eye(float t){var h=Anchor(NativeEntranceAnchor.Head,t)+HeadShift(t);return h+ForwardOf(t)*.22f+RightOf(t)*-.055f+new Vector3(0,-.11f,0);}
+        private Vector3 Eye(float t){var h=Anchor(NativeEntranceAnchor.Head,t)+HeadShift(t);return h+ForwardOf(t)*.22f+RightOf(t)*-.055f+new Vector3(0,ModelHeadLift-.11f,0);}
         public static Vector3 Moon(float t){float e=Eclipse(t);return Sun+Fwd*2.5f+Left*(7.2f*(1-e))+new Vector3(0,1.8f*(1-e),0);}
         public override void Lights(float t,NativeEntranceLights l)
         {
