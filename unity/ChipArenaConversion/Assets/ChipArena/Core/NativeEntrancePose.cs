@@ -28,6 +28,9 @@ namespace ChipArena.UnityConversion
         public static readonly int[] Bones={0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,19,20};
         private static int Slot(int bone){for(int i=0;i<Bones.Length;i++)if(Bones[i]==bone)return Joints+i*3;throw new ArgumentException("no keyed joint "+bone);}
         public float[] Times=new float[0],Values=new float[0];public uint Pass,Impact;private int count;
+        /// <summary>Planted legs as true hinges (NativeEntrancePose.HingedLeg): set on a v2 intro's keys by NativeProceduralEntrance.Keys,
+        /// so an intro that calls NativeEntrancePose.Keyed itself (Slipstream) gets them too.</summary>
+        public bool Hinged;
         private float[] current;
         /// <summary>Starts a key at `t` from `basis` (a full channel set, e.g. Stand), copying it.</summary>
         public NativeEntranceKeys Key(float t,float[] basis)
@@ -90,7 +93,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Keyed(NativeEntranceKeys k,float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation,ReadOnlySpan<float> stance,float idleFrom=3.2f,Func<float,Vector3,Vector3> rootAt=null,bool hinged=false)
         {
-            pose.Reset();
+            pose.Reset();hinged|=k.Hinged;
             root=new Vector3(k.At(NativeEntranceKeys.RootX,t),k.At(NativeEntranceKeys.RootY,t),k.At(NativeEntranceKeys.RootZ,t));if(rootAt!=null)root=rootAt(t,root);
             rotation=Quaternion.CreateFromYawPitchRoll(k.At(NativeEntranceKeys.Yaw,t),k.At(NativeEntranceKeys.Pitch,t),k.At(NativeEntranceKeys.Roll,t));
             pose.Position[CapturedRig.Body]=new Vector3(0,k.At(NativeEntranceKeys.BodyY,t),0);
@@ -117,10 +120,10 @@ namespace ChipArena.UnityConversion
             pose.Rotation[CapturedRig.Head]=pose.Rotation[CapturedRig.Head]*CapturedRig.Euler(-breath*.5f,.035f*(float)Math.Sin(w*.5f*lagged+.4f)*weight*NativeEntranceMath.Smooth(u/1.2f),-.02f*(float)Math.Sin(w*lagged)*weight);
         }
         /// <summary>Plants foot `left` at world (x, z) with heading `yaw` by leg IK, its ankle `lift` above where it stands on the
-        /// floor, blended with the posed leg by `weight`.</summary>
-        public static void PlantFoot(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,float x,float z,float yaw,float weight,float lift=0)
+        /// floor, blended with the posed leg by `weight`. `hinged`: the knee as a true hinge (a v2 intro passes true; HingedLeg).</summary>
+        public static void PlantFoot(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,float x,float z,float yaw,float weight,float lift=0,bool hinged=false)
         {
-            Span<float> stance=stackalloc float[8];int o=left?0:4;stance[o]=x;stance[o+1]=z;stance[o+2]=yaw;stance[o+3]=lift;Plant(pose,root,rotation,stance,left,weight);
+            Span<float> stance=stackalloc float[8];int o=left?0:4;stance[o]=x;stance[o+1]=z;stance[o+2]=yaw;stance[o+3]=lift;Plant(pose,root,rotation,stance,left,weight,hinged);
         }
         // Leg `left` onto its world stance (CapturedRig.Leg in the rig frame), blended with the keyed leg by `weight`.
         private static void Plant(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,ReadOnlySpan<float> stance,bool left,float weight,bool hinged=false)

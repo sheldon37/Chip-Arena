@@ -149,7 +149,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Every registered intro: the bone-for-bone mapping (checked), the limits (reported; failed only when `strict`).</summary>
         public static void Run(bool strict,bool printAll)
         {
-            count=0;var rig=ModelPoseChecks.Measured();int findings=0,intros=0;var worstMap=new float[Bones.Length];
+            count=0;var rig=ModelPoseChecks.Measured();int findings=0,intros=0;var worstMap=new float[Bones.Length];var failed=new List<string>();
             foreach(var e in NativeIntroCatalog.Entries)
             {
                 var m=Mapping(e,rig);intros++;
@@ -162,8 +162,9 @@ namespace ChipArena.UnityConversion
                 }
                 var l=Limits(e);findings+=l.Count;
                 if(printAll){Console.WriteLine("LIMITS "+e.Id+": "+(l.Count==0?"none":l.Count+" finding"+(l.Count==1?"":"s")));foreach(var f in l)Console.WriteLine("  "+f);}
-                if(strict)Check(l.Count==0,e.Id+": "+l.Count+" anatomical limit finding(s), the first: "+(l.Count>0?l[0].ToString():""));
+                if(l.Count>0&&failed.Count<40)failed.Add(e.Id+" ("+l.Count+")");
             }
+            if(strict)Check(findings==0,findings+" anatomical limit finding(s) in "+failed.Count+" intro(s): "+string.Join(", ",failed)+" (listed above)");
             Console.WriteLine("PASS intro poses: "+count+" checks ("+intros+" intros bone for bone on the model: worst "+string.Join(", ",Bones.Select((b,k)=>b.name+" "+worstMap[k].ToString("0")))+" deg); anatomical limits: "+findings+" finding(s)"+(strict?"":" reported (--intro-limits lists and fails them)"));
         }
     }
