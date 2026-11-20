@@ -503,7 +503,7 @@ def _clock(B):
         cb.dial(B, ff, .6, .6, .55)
 
 
-@module('siren.wall')
+@module('cd.siren')
 def _siren(B):
     """A Civil Defence siren on a wall bracket (bible 6.7), olive with an orange band, its two horns along the wall."""
     g, T = B.g, B.T

@@ -299,7 +299,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i+1<R.Points.Length;i++)
                 {
                     var a=R.Points[i];var e=R.Points[i+1]-a;float len=(float)Math.Sqrt(e.x*e.x+e.z*e.z);if(len<.01f)continue;
-                    if(s+len>=half){var p=a+e*((half-s)/len);if(Math.Abs(e.y)<.01f)PlateAt(b,p,new V3(e.x/len,0,e.z/len),"siren.wall",7.5f,5f);break;}
+                    if(s+len>=half){var p=a+e*((half-s)/len);if(Math.Abs(e.y)<.01f)PlateAt(b,p,new V3(e.x/len,0,e.z/len),"cd.siren",7.5f,5f);break;}
                     s+=len;
                 }
             }
