@@ -27,31 +27,36 @@ namespace ChipArena.UnityConversion
             introSet.Begin(v2.SetBank,LowGraphics,entranceProps);v2.Set(t,introSet);
         }
         // ---- the model's clip (INativeIntroBody) and the hands (INativeIntroHands) ----
-        private INativeIntroBody introBody;private int introBodyActor=-1;private float introBodyClock;
+        // (Model-native: the hands are the drawn model's joints, VisualJointFrame; without a model the keyed pose's anchors. No rig reads.)
+        private INativeIntroBody introBody;private int introBodyActor=-1,introV2Actor=-1,introModelFrame=-1;private float introBodyClock;private CapturedAnimation.Player introModel;
         /// <summary>Before the intro body is posed: a v2 intro's model clip for this frame, and a weapon intro's weapon in the model's hands.</summary>
         private void IntroV2BodyBegin(NativeEntranceScript script,Actor actor,string style,float t)
         {
-            if(!(script is INativeIntroV2)||actor==null)return;var spec=NativeIntroCatalog.Find(style)?.Spec;if(spec!=null)actor.SourceSpec=spec;
+            introModel=null;introV2Actor=-1;if(!(script is INativeIntroV2)||actor==null)return;introV2Actor=actor.Id;
+            var spec=NativeIntroCatalog.Find(style)?.Spec;if(spec!=null)actor.SourceSpec=spec;
             if(script is INativeIntroBody body&&!(script is NativeBladeIntro)){introBody=body;introBodyActor=actor.Id;introBodyClock=t;}
         }
-        /// <summary>The v2 intro's clip on the model, through the arena's motion as the blade entrances play theirs (VisualIntroPose).</summary>
+        /// <summary>From VisualIntroPose, on the drawn model: notes the v2 intro's model for its hands, and plays the intro's clip on it
+        /// through the arena's motion as the blade entrances play theirs.</summary>
         private void IntroV2Clip(VisualBody body,CapturedAnimation.Player rig,Actor a)
         {
-            if(introBody==null||introBodyActor<0||a==null||a.Id!=introBodyActor||!introBody.Clip(introBodyClock,out var clip,out float time)||clip==null)return;
+            if(a==null)return;if(a.Id==introV2Actor&&introV2Actor>=0){introModel=rig;introModelFrame=Time.frameCount;}
+            if(introBody==null||introBodyActor<0||a.Id!=introBodyActor||!introBody.Clip(introBodyClock,out var clip,out float time)||clip==null)return;
             NativeBladeMotion.IntroActor=a.Id;NativeBladeMotion.IntroClip=clip;NativeBladeMotion.IntroTime=time;NativeBladeMotion.IntroFade=introBody.Fade(introBodyClock);
             try{VisualMotionPose(body,rig,a,introBodyClock);}finally{NativeBladeMotion.IntroActor=-1;NativeBladeMotion.IntroFade=.12f;}
         }
-        /// <summary>The hands as drawn (the model's wrist bones when the model is drawn, else the keyed rig's), in the source frame.</summary>
+        /// <summary>The hands as drawn, in the source frame: the model's wrist joints (VisualJointFrame) when the model is drawn this
+        /// frame, else the keyed pose's hand anchors.</summary>
         private void IntroV2Hands(NativeEntranceScript script,float t)
         {
-            if(!(script is INativeIntroHands hands)||introRig==null)return;
-            NativeIntroHand Hand(int j)
+            if(!(script is INativeIntroHands hands))return;bool model=introModel!=null&&introModelFrame==Time.frameCount;
+            NativeIntroHand Hand(int j,NativeEntranceAnchor anchor)
             {
-                Transform bone=introRig.Bones[j];bool model=false;var held=VisualHolder(introRig);
-                if(held?.Binding?.Rig!=null&&held.Binding.Bones!=null){var of=held.Binding.Rig.Of;int v=j<of.Length?of[j]:-1;if(v>=0&&v<held.Binding.Bones.Length&&held.Binding.Bones[v]!=null){bone=held.Binding.Bones[v];model=true;}}
-                var p=bone.position;var q=bone.rotation;return new NativeIntroHand{Model=model,At=new System.Numerics.Vector3(-p.x,p.y,p.z),Turn=new System.Numerics.Quaternion(q.x,-q.y,-q.z,q.w)};
+                if(!model)return new NativeIntroHand{Model=false,At=script.Anchor(anchor,t),Turn=System.Numerics.Quaternion.Identity};
+                var m=VisualJointFrame(introModel,j);var p=(Vector3)m.GetColumn(3);var q=m.rotation;
+                return new NativeIntroHand{Model=true,At=new System.Numerics.Vector3(-p.x,p.y,p.z),Turn=new System.Numerics.Quaternion(q.x,-q.y,-q.z,q.w)};
             }
-            var right=Hand(CapturedRig.RHand);var left=Hand(CapturedRig.LHand);hands.Hands(t,right,left);
+            var right=Hand(CapturedRig.RHand,NativeEntranceAnchor.RightHand);var left=Hand(CapturedRig.LHand,NativeEntranceAnchor.LeftHand);hands.Hands(t,right,left);
         }
         /// <summary>The v2 set sink: bank pieces through Graphics.DrawMesh (stage lit), primitives through the entrance's props.</summary>
         private sealed class IntroSetDraw:INativeIntroSet
