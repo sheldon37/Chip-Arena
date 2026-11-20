@@ -24,8 +24,9 @@ the story, the set, the camera's language, the beats, the motion, the effects an
   never on the legs: each closing shot shows the whole figure above it (the crown near 0.2 of the height, the soles near 0.71,
   settled before the card arrives; `NativeIntroGenericScript.Closing`, a slow push in from a low front three-quarter). The
   kicker and the line stay centred (the runtime centres them whatever `card.X` says), so no intro moves the name sideways.
-- **The head:** the framework's head anchor is the head joint's pivot at the skull's base; anything placed at the eyes or framed
-  by them lifts `HeadLift` (0.16 m) along the neck (Whiteout's visor glow and its eye-level insert).
+- **The head:** the framework's head anchor is the head joint's pivot at the skull's base; anything placed at the eyes lifts
+  `HeadLift` (0.16 m) along the neck. Whiteout's visor rides the head as drawn (`INativeIntroHead`), since the model's kneel
+  carries its head off the keyed one (seen in the first captures); its insert is framed by the chest for the same reason.
 - **Weapon-agnostic:** no weapon in the hands (the registry gives them no weapon spec, so nothing is drawn in them).
 - **Body:** keyed on the intro rig (`NativeEntranceKeys` and planned steps, as Top Dog and Last Warning are) and drawn on the model;
   where a pack clip fits the beat the model plays it from the motion bank, retimed in code (`Clip`, docs/INTROS-V2.md section 2):
@@ -106,7 +107,7 @@ is melted ground: dark and wet at the heart, grey slush, a low rim of packed sno
 | --- | --- | --- |
 | 0.00 | White: snow driving across, backlit; a dim kneeling shape emerging from the fog, frosted white | telephoto, low, one slow push into the storm |
 | 1.40 | Its visor lights | (the push goes on) |
-| 2.00 | Heat lines glow up its suit, steam rises | close insert on the shoulder and visor (framed by the eyes) |
+| 2.00 | Heat lines glow up its suit, steam rises | close insert on the shoulders and visor, low (framed by the chest) |
 | 2.80 | The frost cracks and falls away; a burst of steam; the head lifts | (holds) |
 | 3.40 | It rises from the kneel, steam pouring off | a cut wider, tilting up with it |
 | 4.50 | It clenches a fist: the heat pulse (slow motion 0.42x for 0.3 s) | low and close |
@@ -115,7 +116,7 @@ is melted ground: dark and wet at the heart, grey slush, a low rim of packed sno
 
 **Motion:** keyed: the kneel (the left foot planted forward, the right knee down, the head bowed), the shudder, the rise through the
 knees with a step, the fist drawn in and the arms thrown open for the pulse, the hero hold. The frost coat is a pale ghost of the
-body until the crack.
+body until the crack. The visor's glow and light ride the model's head as drawn.
 
 ## Slipstream (7.4 s, the name at 5.6 s)
 Underground, at speed. The pilot rides crouched on the roof of a maglev racing through a tunnel, its light strips streaking past.
