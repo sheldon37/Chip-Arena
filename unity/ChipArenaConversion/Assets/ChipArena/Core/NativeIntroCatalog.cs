@@ -98,7 +98,7 @@ namespace ChipArena.UnityConversion
             //
             // fangs
             //
-            // ---- the dev intro: NativeIntroEntry.Dev("architect", ...) ----
+            NativeIntroEntry.Dev("architect","DEV · Architect of Reality",NativeIntroArchitect.Total,NativeIntroArchitect.CardAt,()=>new NativeIntroArchitect(),"I1","The arena dissolves into code and light, and you rebuild it around you. The world obeys."),
             //
         };
         // ======== end of the registry ========

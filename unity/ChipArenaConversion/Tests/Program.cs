@@ -8,6 +8,7 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--intro-architect"){IntroArchitectChecks.Run(ProjectRoot());if(args.Length==1)return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--instance-cache-routes")InstanceCacheRouteChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--instance-cache-routes")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--cache-startup")LandingFieldChecks.WorldSweep(ProjectRoot(),1817385654u,1971730609u);
