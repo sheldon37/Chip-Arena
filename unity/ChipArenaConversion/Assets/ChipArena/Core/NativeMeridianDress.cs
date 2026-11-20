@@ -41,6 +41,18 @@ namespace ChipArena.UnityConversion
         /// made. The live expedition's generated map keeps its look until the run moves onto candidate-3 (then its id joins the
         /// table, read where its map is lit: W1's NativeLighting.Look).</summary>
         public static readonly (string map,string look)[] LookTable={("expedition-city-walk-","expedition-night")};
+        /// <summary>Whether the arena dressing (Runtime NativeArenaDressing) leaves out, on this map, each block the dress drew in place
+        /// of this frame (Runtime NativeMeridianDressDraw.Hides, which holds only while the dress draws): the Developer walk's five
+        /// layouts (expedition-city-walk-&lt;plan seed&gt;) and the live run's generated map, which since PR #432 is one deal's street
+        /// plan with this dress over it. Drawn both ways, every dressed floor and wall lay twice in one plane (the hub's z-fighting,
+        /// owner 2026-11-20). The scale walks (-a, -b) and every other map keep their boxes.</summary>
+        public static bool HidesGreybox(string mapId)
+        {
+            const string walk="expedition-city-walk-";
+            if(mapId==null)return false;
+            if(mapId==NativeExpeditionGeneratedWorld.MapId)return true;
+            return mapId.StartsWith(walk,StringComparison.Ordinal)&&uint.TryParse(mapId.Substring(walk.Length),out _);
+        }
         /// <summary>The table's look for a map id (null: none), given whether the city bank is present (asked only on a match).</summary>
         public static string LookOf(string mapId,Func<bool> bank)
         {
