@@ -370,7 +370,7 @@ def stalk(g, T, base, height, r, lean, seed, top_leaves=True, f=F_BAMBOO, from_h
 def grove(g, T):
     """Bamboo behind the walls (both sides and behind the gate) and a clump inside on the right, round the cut stalks."""
     r = mk.rng(81)
-    count = (34, 20, 12)[T.i]
+    count = (28, 18, 12)[T.i]
     for k in range(count):
         side = (-1, 1)[k % 2]
         if k % 3 == 0:
@@ -472,9 +472,11 @@ def far(g, T):
         sk.box(g, px - w * .55, px + w * .55, y - 2.2, y, pz - w * .55, pz + w * .55, F_FAR, T, bevel=0, cell=0)
         roof(g, T, (px, y, pz), w, w, .9, 1.0, f=F_FAR, tiles=False, under=False, coarse=True)
     sk.cylinder(g, (px, 17.5, pz), (px, 22.5, pz), .12, F_FAR, 4)
-    for k in range((16, 10, 6)[T.i]):
-        a = -1.2 + 2.4 * k / 15
-        d = float(r.uniform(22, 34))
+    # the woods beyond: rounded crowns of dark trees (faceted masses on short trunks), not spires
+    for k in range((14, 9, 6)[T.i]):
+        a = -1.25 + 2.5 * k / 13
+        d = float(r.uniform(20, 32))
         x, z = math.sin(a) * d, -math.cos(a) * d
-        h = float(r.uniform(9, 16))
-        sk.lathe(g, [(float(r.uniform(1.6, 2.4)), 0), (.9, h * .6), (0, h)], (x, -.5, z), F_FAR, (6, 5, 4)[T.i], smooth=False)
+        h = float(r.uniform(5.5, 9.5))
+        sk.cylinder(g, (x, -.5, z), (x, h * .5, z), .35, F_FAR, 4, caps=False)
+        mk.rock(g, (x, h * .62, z), (float(r.uniform(2.2, 3.4)), h * .45, float(r.uniform(2.2, 3.2))), F_FAR, T, seed=600 + k, rough=.32, flat_bottom=False, level=1)
