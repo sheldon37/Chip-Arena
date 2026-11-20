@@ -150,7 +150,6 @@ namespace ChipArena.UnityConversion
             unchecked{return Hash((uint)(int)Math.Floor(p.x/size)*73856093u^(uint)(int)Math.Floor(p.z/size)*19349663u^(uint)(int)Math.Floor(p.y/size)*83492791u);}
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD || ARENA_TESTS
         /// <summary>The Developer walk's doors: slot i (0 the final court, then east, south and west) at the end of route i,
         /// facing out along its last leg (as the walk's load fixture places the door records).</summary>
         public static NativeCityBleed ForWalk(NativeLayeredCityWalk walk,IReadOnlyList<string> slots)
@@ -164,6 +163,5 @@ namespace ChipArena.UnityConversion
             }
             return new NativeCityBleed(doors);
         }
-#endif
     }
 }

@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private ExpeditionAreaLayout expeditionArea;
         private readonly Dictionary<string,BoxCollider> expeditionClosures=new Dictionary<string,BoxCollider>();
         private readonly Collider[] expeditionProbe=new Collider[32];
-        private readonly Dictionary<string,bool> expeditionNavClear=new Dictionary<string,bool>();
+        private readonly Dictionary<(float radius,float height,object element),bool> expeditionNavClear=new Dictionary<(float,float,object),bool>();
         private readonly HashSet<string> expeditionDeaths=new HashSet<string>();
         private int expeditionZoneWave;private string expeditionBoss;private int expeditionEconomySerial;private int expeditionSpawned;private float expeditionSpawnAt;
         public ExpeditionRunBundle GeneratedRun {get;set;}
@@ -47,29 +47,55 @@ namespace ChipArena.UnityConversion
             // A sphere resting on a slope needs radius / normal.y vertical clearance.
             // Flat-floor epsilon alone intersects steeper authored stairs, falsely disconnecting their navigation.
             float lift=.04f+radius*(1f/hit.normal.y-1f);
-            return physics.OverlapCapsule(at+Vector3.up*(radius+lift),at+Vector3.up*(height-radius+lift),radius,expeditionProbe,WorldMask,QueryTriggerInteraction.Ignore)==0;
+            bool Fits(float offset)=>physics.OverlapCapsule(at+Vector3.up*(radius+offset),at+Vector3.up*(height-radius+offset),radius,expeditionProbe,WorldMask,QueryTriggerInteraction.Ignore)==0;
+            if(Fits(lift))return true;
+            if(MapId!=NativeExpeditionGeneratedWorld.MapId)return false;
+            // At a landing the centre ray can hit the flat slab while the capsule's rim
+            // already rests on the neighbouring ramp. Measure that actual contact.
+            float allowance=radius*.2f;
+            var origin=at+Vector3.up*(radius+allowance+.15f);
+            if(!physics.SphereCast(origin,radius,Vector3.down,out var support,allowance+.25f,WorldMask,QueryTriggerInteraction.Ignore)||support.normal.y<.65f)return false;
+            float rise=origin.y-support.distance-radius-at.y;
+            return rise>=0&&rise<=allowance&&Fits(rise+.04f);
+        }
+        private MapNav probeGraph;
+        private NativeNavSearch probeSearch;
+        private Dictionary<string,MapNavNode> probeNodes;
+        internal void ReleaseExpeditionProbes()
+        {
+            expeditionNavClear.Clear();expeditionNavClear.TrimExcess();
+            probeGraph=null;probeSearch=null;probeNodes=null;
         }
         public bool ExpeditionReachable(V3 from,V3 to,float radius,float height)
         {
-            if(Map.nav==null)return false;var search=new NativeNavSearch(Map.nav);
-            bool Clear(MapNavNode n){string key=radius+":"+height+":"+n.id;if(!expeditionNavClear.TryGetValue(key,out var ok))expeditionNavClear[key]=ok=ExpeditionSupported(n.pos-new V3(0,NativeLocomotionRules.HalfHeight,0),radius,height);return ok;}
-            var offset=new V3(0,NativeLocomotionRules.HalfHeight,0);var a=search.Nearest(from+offset,Clear);var b=search.Nearest(to+offset,Clear);
+            if(Map.nav==null)return false;
+            if(!ReferenceEquals(probeGraph,Map.nav)){
+                PrepareNavigation();
+                probeGraph=Map.nav;probeSearch=new NativeNavSearch(navSearch);
+                probeNodes=navNodes;
+            }
+            var search=probeSearch;
+            bool Clear(MapNavNode n){var key=(radius,height,(object)n);if(!expeditionNavClear.TryGetValue(key,out var ok))expeditionNavClear[key]=ok=ExpeditionSupported(n.pos-new V3(0,NativeLocomotionRules.HalfHeight,0),radius,height);return ok;}
+            var offset=new V3(0,NativeLocomotionRules.HalfHeight,0);var a=search.NearestLocal(from+offset,Clear,4,int.MaxValue);var b=search.NearestLocal(to+offset,Clear,4,int.MaxValue);
             if(a==null||b==null||(a.pos-from-offset).Length>4||(b.pos-to-offset).Length>4)return false;
-            var nodes=Map.nav.nodes.ToDictionary(n=>n.id);var path=new List<string>();
+            var nodes=probeNodes;var path=new List<string>();
             bool Active(MapNavLink l)
             {
-                string key="link:"+radius+":"+height+":"+l.id;if(expeditionNavClear.TryGetValue(key,out var clear))return clear;
+                var key=(radius,height,(object)l);if(expeditionNavClear.TryGetValue(key,out var clear))return clear;
                 expeditionNavClear[key]=false;if(!Clear(nodes[l.a])||!Clear(nodes[l.b]))return false;
                 // Authored one-way drops intentionally leave the floor. Match the live authority's
                 // drop policy after validating both capsule endpoints; a straight floor/LOS probe
                 // through the ledge would reject the falling trajectory.
                 if(l.kind=="drop")return expeditionNavClear[key]=NavLinkEnabled(l);
                 var start=nodes[l.a].pos-offset;var end=nodes[l.b].pos-offset;int steps=Math.Max(1,(int)Math.Ceiling((end-start).Length/.4));
+                // On the 2 m Meridian lattice a grade of 1:2 can turn flat halfway
+                // across an edge. Its floor can be 0.25 m off the endpoint chord.
+                float floorTolerance=MapId==NativeExpeditionGeneratedWorld.MapId?.36f:.2f;
                 for(int i=1;i<steps;i++)
                 {
                     var sample=start+(end-start)*((float)i/steps);
                     // A link crosses a ramp/landing kink; its straight chord is not the floor.
-                    if(!PhysicsWorld.Raycast(Vec(sample)+Vector3.up*.2f,Vector3.down,out var ground,.4f,WorldMask,QueryTriggerInteraction.Ignore)||ground.normal.y<.65f||!ExpeditionSupported(Vec(ground.point),radius,height))return false;
+                    if(!PhysicsWorld.Raycast(Vec(sample)+Vector3.up*floorTolerance,Vector3.down,out var ground,2*floorTolerance,WorldMask,QueryTriggerInteraction.Ignore)||ground.normal.y<.65f||!ExpeditionSupported(Vec(ground.point),radius,height))return false;
                 }
                 return expeditionNavClear[key]=!SceneLinecast(Vec(start)+Vector3.up*(radius+.4f),Vec(end)+Vector3.up*(radius+.4f),WorldMask);
             }

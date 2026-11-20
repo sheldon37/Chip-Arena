@@ -28,6 +28,9 @@ namespace ChipArena.UnityConversion
         public static readonly int[] Bones={0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,19,20};
         private static int Slot(int bone){for(int i=0;i<Bones.Length;i++)if(Bones[i]==bone)return Joints+i*3;throw new ArgumentException("no keyed joint "+bone);}
         public float[] Times=new float[0],Values=new float[0];public uint Pass,Impact;private int count;
+        /// <summary>Planted legs as true hinges (NativeEntrancePose.HingedLeg): set on a v2 intro's keys by NativeProceduralEntrance.Keys,
+        /// so an intro that calls NativeEntrancePose.Keyed itself (Slipstream) gets them too.</summary>
+        public bool Hinged;
         private float[] current;
         /// <summary>Starts a key at `t` from `basis` (a full channel set, e.g. Stand), copying it.</summary>
         public NativeEntranceKeys Key(float t,float[] basis)
@@ -42,6 +45,20 @@ namespace ChipArena.UnityConversion
         public NativeEntranceKeys Planted(float weight){current[Row+PlantL]=weight;current[Row+PlantR]=weight;return this;}
         public NativeEntranceKeys Planted(float left,float right){current[Row+PlantL]=left;current[Row+PlantR]=right;return this;}
         public NativeEntranceKeys J(int bone,float x,float y=0,float z=0){int s=Row+Slot(bone);current[s]=x;current[s+1]=y;current[s+2]=z;return this;}
+        /// <summary>The keys' pack-clip segments (NativeIntroPack; docs/INTROS-V2.md 9d), in the order added: each plays over the keys.</summary>
+        public NativeIntroPack.Segment[] Packs=Array.Empty<NativeIntroPack.Segment>();
+        /// <summary>
+        /// Plays pack clip `clip` (the intros' motion bank, NativeIntroPack.Local) from intro time `from` to `to`, starting `start` seconds
+        /// into the clip at `speed` times its rate (`loop`: wrapped, else held at its ends): its joints in `mask` (NativeIntroPack.All,
+        /// Legs, Torso, Arms...) eased in over `blendIn` and out over `blendOut` from what the keys put there, the keyed body where the
+        /// clip's pelvis is (with the legs' mask), the planting let go while the clip's legs play. `root`: the intro's path (move it at the
+        /// clip's Speed for the drawn feet to hold) or the clip's own travel (Kept). Without the bank the keys play as keyed. The keys still
+        /// key the joints a segment leaves out (a weapon carry over a pack run: mask Legs | Torso).
+        /// </summary>
+        public NativeEntranceKeys FromPack(string clip,float from,float to,float start=0,float speed=1,bool loop=false,NativeIntroPack.RootMode root=NativeIntroPack.RootMode.Path,int mask=NativeIntroPack.All,float blendIn=.1f,float blendOut=.1f)
+        {
+            Array.Resize(ref Packs,Packs.Length+1);Packs[Packs.Length-1]=new NativeIntroPack.Segment(clip,from,to,start,speed,loop,root,mask,blendIn,blendOut);return this;
+        }
         public NativeEntranceKeys PassKey(){Pass|=1u<<(count-1);return this;}
         public NativeEntranceKeys ImpactKey(){Impact|=1u<<(count-1);return this;}
         /// <summary>The value of channel `c` at `t`.</summary>
@@ -88,12 +105,13 @@ namespace ChipArena.UnityConversion
         /// onto `stance` (per foot: ankle x, z, yaw and lift above the floor; world), so a crouch bends the knees
         /// instead of sinking the feet. A living hold (breath, weight shift, head drift) grows in from `idleFrom`.
         /// </summary>
-        public static void Keyed(NativeEntranceKeys k,float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation,ReadOnlySpan<float> stance,float idleFrom=3.2f,Func<float,Vector3,Vector3> rootAt=null)
+        public static void Keyed(NativeEntranceKeys k,float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation,ReadOnlySpan<float> stance,float idleFrom=3.2f,Func<float,Vector3,Vector3> rootAt=null,bool hinged=false,float drop=1)
         {
-            pose.Reset();
+            // (`drop`: the body drop's scale: 1/NativeIntroFeet.LegScale where the keys' drops are the drawn model's metres, ModelFeet)
+            pose.Reset();hinged|=k.Hinged;
             root=new Vector3(k.At(NativeEntranceKeys.RootX,t),k.At(NativeEntranceKeys.RootY,t),k.At(NativeEntranceKeys.RootZ,t));if(rootAt!=null)root=rootAt(t,root);
             rotation=Quaternion.CreateFromYawPitchRoll(k.At(NativeEntranceKeys.Yaw,t),k.At(NativeEntranceKeys.Pitch,t),k.At(NativeEntranceKeys.Roll,t));
-            pose.Position[CapturedRig.Body]=new Vector3(0,k.At(NativeEntranceKeys.BodyY,t),0);
+            pose.Position[CapturedRig.Body]=new Vector3(0,k.At(NativeEntranceKeys.BodyY,t)*drop,0);
             for(int j=0;j<NativeEntranceKeys.Bones.Length;j++)
             {
                 int c=NativeEntranceKeys.Joints+j*3,bone=NativeEntranceKeys.Bones[j];
@@ -102,8 +120,11 @@ namespace ChipArena.UnityConversion
                 pose.Rotation[bone]=CapturedRig.Euler(k.At(c,t-lag),k.At(c+1,t-lag),k.At(c+2,t-lag));
             }
             Idle(pose,t,idleFrom);
-            float left=NativeEntranceMath.Clamp01(k.At(NativeEntranceKeys.PlantL,t)),right=NativeEntranceMath.Clamp01(k.At(NativeEntranceKeys.PlantR,t));
-            if(stance.Length>=8){if(left>.001f)Plant(pose,root,rotation,stance,true,left);if(right>.001f)Plant(pose,root,rotation,stance,false,right);}
+            // (a pack segment's legs are the clip's: the planting lets go as it comes in; NativeIntroPack)
+            float pack=k.Packs.Length>0?1-NativeIntroPack.Weight(k,t,NativeIntroPack.Legs):1;
+            float left=NativeEntranceMath.Clamp01(k.At(NativeEntranceKeys.PlantL,t))*pack,right=NativeEntranceMath.Clamp01(k.At(NativeEntranceKeys.PlantR,t))*pack;
+            if(stance.Length>=8){if(left>.001f)Plant(pose,root,rotation,stance,true,left,hinged);if(right>.001f)Plant(pose,root,rotation,stance,false,right,hinged);}
+            if(k.Packs.Length>0)NativeIntroPack.Apply(k,t,pose,ref root,rotation,rootAt);
         }
         /// <summary>heroIdle (intro-curves.ts): a slow weight shift, breathing and a settling head, fading in over .6 s from `from`.</summary>
         public static void Idle(CapturedRig.Pose pose,float t,float from)
@@ -117,20 +138,42 @@ namespace ChipArena.UnityConversion
             pose.Rotation[CapturedRig.Head]=pose.Rotation[CapturedRig.Head]*CapturedRig.Euler(-breath*.5f,.035f*(float)Math.Sin(w*.5f*lagged+.4f)*weight*NativeEntranceMath.Smooth(u/1.2f),-.02f*(float)Math.Sin(w*lagged)*weight);
         }
         /// <summary>Plants foot `left` at world (x, z) with heading `yaw` by leg IK, its ankle `lift` above where it stands on the
-        /// floor, blended with the posed leg by `weight`.</summary>
-        public static void PlantFoot(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,float x,float z,float yaw,float weight,float lift=0)
+        /// floor, blended with the posed leg by `weight`. `hinged`: the knee as a true hinge (a v2 intro passes true; HingedLeg).</summary>
+        public static void PlantFoot(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,bool left,float x,float z,float yaw,float weight,float lift=0,bool hinged=false)
         {
-            Span<float> stance=stackalloc float[8];int o=left?0:4;stance[o]=x;stance[o+1]=z;stance[o+2]=yaw;stance[o+3]=lift;Plant(pose,root,rotation,stance,left,weight);
+            Span<float> stance=stackalloc float[8];int o=left?0:4;stance[o]=x;stance[o+1]=z;stance[o+2]=yaw;stance[o+3]=lift;Plant(pose,root,rotation,stance,left,weight,hinged);
         }
         // Leg `left` onto its world stance (CapturedRig.Leg in the rig frame), blended with the keyed leg by `weight`.
-        private static void Plant(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,ReadOnlySpan<float> stance,bool left,float weight)
+        private static void Plant(CapturedRig.Pose pose,Vector3 root,Quaternion rotation,ReadOnlySpan<float> stance,bool left,float weight,bool hinged=false)
         {
             var inv=Quaternion.Inverse(rotation);var f=Vector3.Transform(Vector3.UnitZ,rotation);float yaw=(float)Math.Atan2(f.X,f.Z);
             int hip=left?CapturedRig.LHip:CapturedRig.RHip,o=left?0:4;
             var keep0=pose.Rotation[hip];var keep1=pose.Rotation[hip+1];var keep2=pose.Rotation[hip+2];
             var world=new Vector3(stance[o],NativeEntranceStage.FloorY+Ankle+stance[o+3],stance[o+1]);var local=Vector3.Transform(world-root,inv);
-            CapturedRig.Leg(pose,left,local,stance[o+2]-yaw);
+            if(hinged)HingedLeg(pose,left,local,stance[o+2]-yaw);else CapturedRig.Leg(pose,left,local,stance[o+2]-yaw);
             if(weight<.999f){pose.Rotation[hip]=Quaternion.Slerp(keep0,pose.Rotation[hip],weight);pose.Rotation[hip+1]=Quaternion.Slerp(keep1,pose.Rotation[hip+1],weight);pose.Rotation[hip+2]=Quaternion.Slerp(keep2,pose.Rotation[hip+2],weight);}
+        }
+        /// <summary>
+        /// Leg `left` onto `target` (the rig frame) as a true hinge (intros v2; docs/INTROS-V2.md "Pose craft"): the knee points the way the
+        /// leg faces (the pelvis's front carried round with it), the thigh turned so the knee bends about its own x alone (positive: the shin
+        /// back), the foot at `yaw`. CapturedRig.Leg reaches the same joints with the shortest turns, which leave the knee bending about a slanted axis: on the
+        /// model, whose knee is a hinge, a planted leg then read as bent sideways (Whiteout's kneel, Slipstream's slide).
+        /// </summary>
+        public static void HingedLeg(CapturedRig.Pose p,bool left,Vector3 target,float yaw)
+        {
+            p.World();int hip=left?CapturedRig.LHip:CapturedRig.RHip,knee=hip+1,foot=hip+2,pelvis=CapturedRig.Pelvis;
+            var parent=p.WorldRotation[pelvis];var inverse=Quaternion.Inverse(parent);var delta=Vector3.Transform(target-p.WorldPosition[hip],inverse);
+            float reach=Math.Max(.10f,Math.Min(.497f,delta.Length()));var d=CapturedRig.Unit(delta,-CapturedRig.Y);
+            // The knee bends the way the leg faces: the pelvis's front carried round with the leg (forward under the hips, up for a foot out in
+            // front, down and forward for one behind), never inward across a lunge as the pelvis's front alone left it.
+            var pole=Vector3.Transform(CapturedRig.Z,CapturedRig.FromTo(-CapturedRig.Y,d));var bend=pole-d*Vector3.Dot(d,pole);
+            if(bend.LengthSquared()<1e-8f)bend=CapturedRig.Z-d*d.Z;if(bend.LengthSquared()<1e-8f)bend=CapturedRig.X-d*d.X;bend=Vector3.Normalize(bend);
+            const float thigh=.25f;float along=reach*.5f,height=(float)Math.Sqrt(Math.Max(0,thigh*thigh-along*along)),cos=along/thigh,sin=height/thigh;
+            Vector3 u=d*cos+bend*sin,z=bend*cos-d*sin,y=-u,x=Vector3.Cross(y,z);
+            p.Rotation[hip]=CapturedRig.Basis(x,y,z);
+            var fore=d*reach-u*thigh;
+            p.Rotation[knee]=CapturedRig.Rot(CapturedRig.X,(float)Math.Atan2(-Vector3.Dot(fore,z),Vector3.Dot(fore,u)));
+            p.Rotation[foot]=Quaternion.Inverse(parent*p.Rotation[hip]*p.Rotation[knee])*CapturedRig.Rot(CapturedRig.Y,yaw);
         }
         /// <summary>A planned foot step (world): the foot lifts at Lift, lands at Land on (X, Z) with heading Yaw; H is its lift height.</summary>
         public struct Step{public bool Left;public float Lift,Land,X,Z,Yaw,H;public Step(bool left,float lift,float land,float x,float z,float yaw,float h=.08f){Left=left;Lift=lift;Land=land;X=x;Z=z;Yaw=yaw;H=h;}}

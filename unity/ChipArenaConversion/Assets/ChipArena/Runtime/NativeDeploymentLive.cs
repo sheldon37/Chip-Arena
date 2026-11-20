@@ -13,8 +13,9 @@ namespace ChipArena.UnityConversion
         private readonly NativeDeployClock liveDeployClock=new NativeDeployClock();
         private readonly NativeDeployConsole.Party liveDeployParty=new NativeDeployConsole.Party();
         private readonly DeployPilot[] liveDeployPilots=new DeployPilot[NativeDeployPresentation.Pads];
+        private readonly int[] liveDeploySeats=new int[NativeDeployPresentation.Pads];
         private bool liveDeployShown;private float liveDeployFov,liveDeployNear;
-        private bool LiveDeployment=>arena==null&&DeploymentState!=null;
+        private bool LiveDeployment=>arena==null&&(deploymentRoom!=null||deploymentReceiver?.HasState==true);
         private bool LiveDeploymentBackdrop()
         {
             if(!LiveDeployment)
@@ -28,7 +29,7 @@ namespace ChipArena.UnityConversion
             liveDeployParty.Count=Math.Min(seats.Length,liveDeployPilots.Length);int mine=0;
             for(int i=0;i<liveDeployParty.Count;i++)
             {
-                var s=seats[i];liveDeployParty.Names[i]=s.name;liveDeployParty.Ready[i]=s.ready;if(server!=null&&s.id==networkId)mine=i;
+                var s=seats[i];liveDeploySeats[i]=s.id;liveDeployParty.Names[i]=s.name;liveDeployParty.Ready[i]=s.ready;if(server!=null&&s.id==networkId)mine=i;
                 liveDeployPilots[i]=new DeployPilot{Look=new RooftopPilot{Spec=s.spec,BodySkin=NativeBodySkins.Of(s.weaponSkins),Hat=s.hat,Body=s.bodyColor,Accent=s.accentColor,HatColor=s.hatColor,Skins=s.weaponSkins},Pose=s.lobbyPose,Outfit=s.look,Pod=s.pod};
             }
             viewModelCamera.enabled=false;

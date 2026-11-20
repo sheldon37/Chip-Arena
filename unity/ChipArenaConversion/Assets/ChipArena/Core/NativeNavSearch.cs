@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     public sealed class NativeNavSearch
     {
         private readonly MapNavNode[] nodes;
-        private readonly Dictionary<string,int> index=new Dictionary<string,int>();
+        private readonly Dictionary<string,int> index;
         private readonly struct Edge
         {
             public readonly MapNavLink Link;public readonly int Next;public readonly float Cost;
@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
             foreach(int i in nearestOrder)if(usable(nodes[i]))return nodes[i];return null;
         }
         private const float CellSize=4;
-        private readonly Dictionary<(int x,int y,int z),List<int>> cells=new Dictionary<(int,int,int),List<int>>();
+        private readonly Dictionary<(int x,int y,int z),List<int>> cells;
         private static int Cell(float coordinate)=>(int)Math.Floor(coordinate/CellSize);
         // Attach locally, never raycast the entire map when the origin is blocked or off-mesh.
         // Exact distance order within the radius; at most maxCandidates expensive predicates.
@@ -74,11 +74,23 @@ namespace ChipArena.UnityConversion
             }
             nearestOrder[slot]=value;
         }
-        public NativeNavSearch(MapNav graph)
+        // Each crowd flow needs independent search state, while topology and local lookup buckets are read-only.
+        public NativeNavSearch(NativeNavSearch source) : this(source.nodes)
         {
-            nodes=graph.nodes;int n=nodes.Length;edges=new List<Edge>[n];incoming=new List<Edge>[n];
+            index=source.index;cells=source.cells;edges=source.edges;incoming=source.incoming;
+        }
+        private NativeNavSearch(MapNavNode[] positions)
+        {
+            nodes=positions;int n=nodes.Length;
             nearestOrder=new int[n];nearestDistance=new float[n];nearestComparer=new NearestComparer(nearestDistance);
             distance=new float[n];estimate=new float[n];previous=new int[n];heap=new int[n];position=new int[n];closed=new bool[n];
+        }
+        public NativeNavSearch(MapNav graph) : this(graph.nodes)
+        {
+            int n=nodes.Length;
+            index=new Dictionary<string,int>(n);
+            cells=new Dictionary<(int,int,int),List<int>>();
+            edges=new List<Edge>[n];incoming=new List<Edge>[n];
             for(int i=0;i<n;i++){index.Add(nodes[i].id,i);edges[i]=new List<Edge>();incoming[i]=new List<Edge>();}
             for(int i=0;i<n;i++)
             {var p=nodes[i].pos;var key=(Cell(p.x),Cell(p.y),Cell(p.z));if(!cells.TryGetValue(key,out var list)){list=new List<int>();cells.Add(key,list);}list.Add(i);}

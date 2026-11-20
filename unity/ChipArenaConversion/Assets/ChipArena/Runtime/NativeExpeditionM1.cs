@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
             try
             {
                 LeaveLiveDeployment();EndPreview();ClearReplay();ResetExpeditionNetwork();arena?.Dispose();arena=null;match=null;expeditionDirector=null;expeditionError=null;
-                Time.timeScale=1;endFlow.Reset();presentation.ResetPresentation();
+                Physics.gravity=new Vector3(0,-23,0);Time.timeScale=1;endFlow.Reset();presentation.ResetPresentation();
                 var layoutText=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName)?.text;
                 expeditionM1Layout=deploymentBundle?.Layout??NativeExpeditionLayout.Parse(layoutText);
                 expeditionHorde=JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text);
@@ -38,9 +38,9 @@ namespace ChipArena.UnityConversion
                 foreach(var member in seats){member.team=0;member.chips.Clear();match.Seats.Add(member);}var seat=host;
                 networkEpoch++;inputSequence=0;
                 match.Seats.Add(new NativeSeat{id=900,name="TEST Expedition Siren",spec="siren",bot=true,team=1,AuthorityBoss=true});
-                arena=new NativeArena(content,match,expeditionM1Layout.Area(expeditionM1Layout.world).map){LocalId=1,GeneratedRun=deploymentBundle};
+                if(deploymentBundle==null)arena=new NativeArena(content,match,expeditionM1Layout.Area(expeditionM1Layout.world).map){LocalId=1,GeneratedRun=deploymentBundle};
                 if(!match.Start())throw new InvalidOperationException("Expedition arena could not start.");
-                expeditionM1Layout=arena.LoadExpeditionM1Layout(layoutText,expeditionHorde);
+                if(deploymentBundle==null)expeditionM1Layout=arena.LoadExpeditionM1Layout(layoutText,expeditionHorde);
                 // Three times the original 12-kill preview quota before each instance boss.
                 var run=NativeExpedition.Create("m1-"+Guid.NewGuid().ToString("N"),expeditionM1Layout.world,account.Access.AccountId,seat.spec,NativeMatch.NewSeed(),
                     expeditionM1Layout.instances.Select(id=>new ExpeditionInstance{id=id,target=36}).ToArray(),deploymentBundle?.Mutators);

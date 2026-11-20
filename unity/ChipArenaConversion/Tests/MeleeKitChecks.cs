@@ -54,6 +54,17 @@ internal static class MeleeKitChecks
         pending=NativePendingEffect.Remember(null,"a","overclock","hero-landing",allowed);
         Check(NativePendingEffect.Restore(pending,"a","hero-landing",allowed)=="overclock","failed native-aware save keeps local choice");
         Check(NativePendingEffect.Restore(pending,"a","overclock",allowed)=="overclock"&&pending[0].account==null,"acknowledged native save clears fallback");
+        foreach(string selected in new[]{"visor","picked","grid-rez","blackout"})
+        {
+            string original=selected=="visor"?"helm":selected=="picked"?"signature":"hero-landing";
+            var saved=NativePendingEffect.Remember(null,"pilot",selected,original,_=>true);
+            Check(NativePendingEffect.Restore(saved,"pilot",original,_=>true)==selected,"restore interrupted pilot save "+selected);
+            NativePendingEffect.Acknowledge(saved,"other",selected);
+            NativePendingEffect.Acknowledge(saved,"pilot",original);
+            Check(saved[0].account=="pilot","only matching account and stored pick confirm "+selected);
+            NativePendingEffect.Acknowledge(saved,"pilot",selected);
+            Check(NativePendingEffect.Restore(saved,"pilot",original,_=>true)==original,"later remote change wins "+selected);
+        }
         Console.WriteLine("PASS melee kit: eight ability/bot entries, combined budgets, chip telegraph floor, buffer/chain boundaries, authoritative steps, armour threshold, snapshot isolation/validation and account fallback migration");
     }
     private static void KunaiAim()

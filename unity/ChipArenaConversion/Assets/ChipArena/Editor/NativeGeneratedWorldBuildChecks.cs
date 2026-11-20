@@ -165,7 +165,7 @@ namespace ChipArena.UnityConversion.Editor
                     if(!arena.ExpeditionSupported(spawn.entry.@exit.Position(),.45f,1.8f))throw new Exception("Generated spawn native collision: "+spawn.entry.id);
                 foreach(var door in world.Area.doors)for(int i=0;i<8;i++)
                 {
-                    double angle=i*Math.PI/4;var p=new V3(door.join.x+door.join.r*(float)Math.Cos(angle),0,door.join.z+door.join.r*(float)Math.Sin(angle));
+                    double angle=i*Math.PI/4;var p=new V3(door.join.x+door.join.r*(float)Math.Cos(angle),door.join.y,door.join.z+door.join.r*(float)Math.Sin(angle));
                     if(!arena.ExpeditionSupported(p,.45f,1.8f))throw new Exception("Generated join circle native collision: "+door.anchor);
                 }
                 var loaded=arena.LoadExpeditionM1Layout(authored,JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));

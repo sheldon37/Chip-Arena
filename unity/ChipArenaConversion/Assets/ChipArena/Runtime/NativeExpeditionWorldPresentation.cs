@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -71,6 +72,7 @@ namespace ChipArena.UnityConversion
         private void ExpeditionWorldFrame()
         {
             // The doors, final gate and sanctuary, and the transfer screen's fade (NativeExpeditionStatesPresentation.cs).
+            ShowMeridian(arena?.MapId==NativeExpeditionGeneratedWorld.MapId ? deploymentBundle : null);
             ExpeditionStatesFrame();
             // The join circles' pads, sounds and model (NativeExpeditionJoinPresentation.cs), before the world pieces are built.
             ExpeditionJoinFrame();
@@ -81,6 +83,45 @@ namespace ChipArena.UnityConversion
             if(expeditionWorld==null&&!expeditionWorldFailed){expeditionWorld=NativeExpeditionWorldPresentation.Create();expeditionWorldFailed=expeditionWorld==null;}
             if(expeditionWorld!=null)expeditionWorld.Frame(LiveExpedition,cameraView.transform.position,Time.unscaledTime,prefs.reducedEffects,cacheClock);
             else{expeditionLabelWorld.Build(LiveExpedition);cacheClock.Stamp(expeditionLabelWorld.Pieces,prefs.reducedEffects);}
+        }
+        private ExpeditionGeneratedWorld dressedMeridian;
+        private NativeMeridianDressDraw liveStreets;
+        private NativeCityBleedDraw liveBleed;
+        private NativeMeridianLandmarksDraw liveLandmarks;
+
+        private void ShowMeridian(ExpeditionRunBundle bundle)
+        {
+            var world=bundle?.World;
+            if(ReferenceEquals(world,dressedMeridian))return;
+            if(liveStreets!=null)Destroy(liveStreets.gameObject);
+            if(liveLandmarks!=null){liveLandmarks.Release();Destroy(liveLandmarks.gameObject);}
+            if(liveBleed!=null)liveBleed.Close();
+            dressedMeridian=world;
+            if(world==null)return;
+            var city=world.City;
+            var plan=NativeCityLayout.Plans[bundle.Ticket.cityPlan];
+            uint seed=world.Blueprint.worldSeed;
+            var bleed=world.Bleed;
+            var dress=NativeCityBleedDress.ForWalk(city,bleed,seed);
+            liveBleed=NativeCityBleedDraw.Open(bleed,dress,city.Map,cameraView,()=>presentation!=null&&presentation.LowGraphics);
+            try
+            {
+                if(liveBleed!=null){
+                    NativeMeridianDress.ThemeAt=bleed.ThemeAt;
+                    NativeMeridianDress.LampsReplaced=p=>bleed.ReplacesLamps(p)&&NativeCityBleedDress.NearLamp(dress,p,14);
+                    NativeMeridianDress.FacadeCovered=(p,n)=>NativeCityBleedDress.Covers(dress,p,n);
+                }
+                liveStreets=new GameObject("Expedition streets").AddComponent<NativeMeridianDressDraw>();
+                liveStreets.Prepare(new NativeMeridianDress.Input{Map=city.Map,Layout=plan.Seed,Run=seed,
+                    Slots=world.HallSlots,Hatches=city.RoofHatches.ToArray(),KeepOut=NativeCityBleedDress.CacheKeepOuts(city.Caches,city.Map),
+                    Routes=city.Routes.Select(route=>new NativeMeridianDress.Route{Name=route.Name,Points=route.Points,Widths=route.Widths,Kinds=route.Kinds}).ToArray()},cameraView);
+            }
+            finally
+            {
+                NativeMeridianDress.ThemeAt=null;NativeMeridianDress.LampsReplaced=null;NativeMeridianDress.FacadeCovered=null;
+            }
+            liveLandmarks=new GameObject("Expedition landmarks").AddComponent<NativeMeridianLandmarksDraw>();
+            liveLandmarks.Build(NativeMeridianLandmarks.Place(plan.Seed,city.Map,city.Routes.Select(route=>route.Destination).ToArray(),world.HallSlots,1),cameraView);
         }
         private const int MaxLabelled=256;
         private static readonly int[] labelOrder=new int[MaxLabelled];private static readonly float[] labelDepth=new float[MaxLabelled],labelK=new float[MaxLabelled];

@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
         }
         public static ExpeditionRunBundle BossBattle(string boss,ConversionContent content,string authored)=>new ExpeditionRunBundle(boss,content,authored);
         public bool Matches(ExpeditionDeploymentTicket ticket)=>Ticket!=null&&ticket!=null&&ticket.schema==1&&ticket.revision==(long)ticket.instanceRolls+ticket.mutatorRolls+ticket.mutatorSkips+(ticket.deployed?1:0)&&ticket.mutatorRolls==Ticket.mutatorRolls&&ticket.mutatorSkips==Ticket.mutatorSkips&&ticket.mutatorsSkipped==Ticket.mutatorsSkipped&&ticket.station==Ticket.station&&
-            ticket.seed==Ticket.seed&&ticket.originHost==Ticket.originHost&&ticket.instanceRolls==Ticket.instanceRolls&&
+            ticket.cityPlan==Ticket.cityPlan&&ticket.seed==Ticket.seed&&ticket.originHost==Ticket.originHost&&ticket.instanceRolls==Ticket.instanceRolls&&
             ticket.compatibility==Ticket.compatibility&&(!ticket.deployed||ticket.generatedCompatibility==Identity);
     }
 }
