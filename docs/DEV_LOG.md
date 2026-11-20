@@ -1,3 +1,68 @@
+## 2026-11-20 — Claude: Belvedere Camp's survivors on the pilot model in the DEV preview (owner direction; presentation only)
+
+**Owner:** "For the people in the hub, We can use our player model. Of course, dress the NPC's appropriately~ I believe we have 'npc' animations, like crafting mecanim?"
+
+The owner then downloaded Explosive's Crafting Mecanim Animation Pack for it.
+
+**Branch:** `claude/camp`, on top of part 1, with `claude/intro-framework` `9bbf5845` merged in (NativeIntroPack: pack clips as keys). The implementation head is `9200b7d9`, after `82ecd6e3` (the survivors), `a715a540` (props, the kiosk hatches, the REVIVE-O-MATIC) and the ratchet pin. Pushed; not merged, not released.
+
+### What changed
+- **Who they are:** every post in the W5 plan (13, plus 5 rescued) has a role in Core `NativeCampSurvivors`. The nearest six within 30 m draw as the pilot model; the bank's rigid figures stay beyond that. Runtime `NativeCampSurvivorsDraw.cs` is compiled into Editor and development builds only and draws in the walk only. The figures now draw one by one, so a survivor on the model leaves its figure out.
+- **How they're dressed:** the zombies' dressing, made clean:
+  - pack pieces and Locker skin tones;
+  - human eyes (the zombies' blank `_ZombieEye` is turned off);
+  - garments: aprons for the cook, the Quartermaster and the welder; a lab coat and lanyard for Doc; coveralls for Sparks; scrubs for the nurse;
+  - parkas with beanies or caps for the lookouts and sentries;
+  - the radio operator's headset, from the camp bank.
+- **How they move:** pack clips from the camp's own CAIM bank, played as keyed poses and eased .45 s between beats.
+  - The bank (Resources/ChipArenaCampMotion) is local and never committed. It holds 27 clips, 1,230,604 bytes, baked by the local tool's intromotion request.
+  - **Benches:** Crafting Chair-Idle, Talk1, Drink (with a mug) and Eat (with a bowl). Their hips are lowered 8 cm onto the bench, with the feet held by hinge IK.
+  - **Kiosk:** Item-Hammer-Table (with a hammer), Use, Chisel, Idle-Bored1.
+  - **Sparks:** Item-Kneel-Idle and Kneel-Hammer.
+  - **Watch:** the RPG pack's Unarmed-Idle, Idle-Alert1, Idle-Injured1 and Stunned.
+  - **A rescue (U) or the new Y key:** Cheer1, Cheer2 or Wave1 from the standing civilians.
+- **Assets:** the 19 Crafting clips and the Crafter rig were copied into the Editor's git-ignored `LocalAssets/ExplosiveLLC/Crafting Mecanim Animation Pack`, under the lock. Nothing from the pack is committed.
+
+### Checks
+- **`CoreTests --camp` with `CHIPARENA_CAMP_BANK` and `CHIPARENA_CAMP_MOTION`:** pass, 162,295 checks. This covers:
+  - a role for every post;
+  - clean looks from the banks' own pieces, garments and gear;
+  - whole loops;
+  - the six-nearest pick and its slack;
+  - every role on the bank's clips: whole poses, the feet by the floor, a seated clip's feet held within 4 mm, no allocation per sample;
+  - the props in the bank.
+  Without the banks it runs 67,181 checks.
+- **Voxel ratchet:** it caught the new files. The runtime's gate is now V1's ModelBody predicate, and the pose's dependency is pinned with its note: `Core/NativeCampSurvivors.cs` author 4, `Runtime/NativeCampSurvivorsDraw.cs` author 1 (Tests/voxel-ratchet.txt).
+- **Voxel dependency:** the survivors sample their pack clips into the 22-joint pose that the model binding takes, as intros v2's pack keys do. V4 plays pack clips on the model directly.
+- **`tools/check_unity_compile.py --unity-root`** (no download) at `9200b7d9`: all four assemblies pass.
+- **Full CoreTests, the relgen5 way** at `9200b7d9`: 1,088 PASS lines, exit 0, in 1,115 s (the first run, at `a715a540`, stopped at the voxel ratchet: fixed above).
+- **`git diff --check`:** clean.
+
+### Captures
+**Editor holds:** two holds on the BoZo live recipe, each followed by the Editor back on `9319026b`, the stage and motion banks as released, and only the two camp banks taken out of Resources by name (Slipstream's `ChipArenaIntroMotion` untouched).
+- `82ecd6e3`: 413 s, lock released 17:21:56.
+- `a715a540`: 453 s, lock released 17:36:04.
+
+**Before the holds,** two short lock-held bakes (17 s and 26 s) put the clips into the camp's bank. There was no checkout move.
+
+**Files:** `F:/Chip Arena Development/scratch/camp/clips/` (local):
+- `survivors-sheet.jpg` and `survivors-0..8.jpg`: the mess ring, the kiosk, the infirmary, the radio shack, Sparks at the REVIVE-O-MATIC, the supply window, a sentry, the lookouts, the cook.
+- `3-survivors-mess-ring.mp4`: a push-in on the survivors round the brazier, 6.9 s. The second capture lost its last 18 dolly frames because the full suite ran beside it.
+
+**Fixed between the holds:**
+- The mug lay sideways in a resting hand. Props are now held only while in use, the fist seated on the handle, and rest by the post otherwise.
+- The welder stood behind the kiosk's wall. He now stands at the south hatch and the Quartermaster at the west hatch.
+- Sparks knelt at nothing. The REVIVE-O-MATIC now draws at its live spot.
+
+### Animation impact
+None on the game. No rule, timing, hitbox, damage, cooldown, movement or network change. The survivors are presentation, DEV preview only, and never replicated.
+
+### Risks
+- **Assets to ship:** the camp motion bank and the camp bank (now with props) must both go into the Drive zip. Without the motion bank, every survivor stays the rigid figure.
+- **Not seen in the Editor:** garment fit on these body shapes, and the props' seats in the fists, beyond the stills.
+- **Dependency:** the branch carries `claude/intro-framework`'s four unmerged pack commits.
+- **Live camp:** survivors are not live. A1 brings their structures; the live camp's survivors are a release with A1.
+
 ## 2026-11-20 — Claude: Belvedere Camp part 1: the hub's light and life on the fence and overhead, the W5 DEV preview, the A1 hand-off (owner report; presentation only)
 
 The owner: "the hub still seems really empty? I thought we were bringing more life to this and things." The integrator explained that W5 (the camp) was never built and needs Astra's structures. The owner then chose: "Yes, start the camp".
