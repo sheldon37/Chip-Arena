@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
             a.compatibility==b.compatibility&&a.deployed==b.deployed&&a.generatedCompatibility==b.generatedCompatibility;
         private bool PrepareDeploymentBundle(ExpeditionDeploymentTicket ticket)
         {
-            if(deploymentBundle?.Matches(ticket)==true){deploymentLocked|=ticket.deployed;return true;}
+            if(deploymentBundle?.Matches(ticket)==true){deploymentLocked|=ticket.deployed;if(ticket.deployed)previousCityPlan=ticket.cityPlan;return true;}
             if(deploymentLocked)throw new InvalidOperationException("Cannot replace a deployed world.");
             if(ticket==null)throw new ArgumentException("Missing deployment ticket.");
             if(!SameDeploymentTicket(deploymentRequested,ticket))
@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
             {
                 if(error!=null){deploymentBuildError=error.Message;networkStatus="Destination generation failed: "+error.Message;deploymentPendingDeploy=-1;deploymentPendingState=null;}
                 else if(bundle!=null&&bundle.Matches(deploymentRequested))
-                {deploymentBaseContent??=content;deploymentBundle=bundle;content=bundle.Content;deploymentLocked=deploymentRequested.deployed;if(networkStatus=="Preparing destinations…")networkStatus="Destinations ready.";}
+                {deploymentBaseContent??=content;deploymentBundle=bundle;content=bundle.Content;deploymentLocked=deploymentRequested.deployed;if(deploymentLocked)previousCityPlan=deploymentRequested.cityPlan;if(networkStatus=="Preparing destinations…")networkStatus="Destinations ready.";}
             }
             if(deploymentBundle==null)return;
             if(deploymentPendingState!=null&&deploymentBundle.Matches(deploymentPendingState.deployment))

@@ -68,6 +68,8 @@ namespace ChipArena.UnityConversion
             bool OpenApron(V3 foot)
             {
                 if(ready.TryGetValue(foot,out var result))return result;
+                if(Math.Max(Math.Abs(foot.x),Math.Abs(foot.z))<35||
+                    walk.Routes.Any(route=>(route.Destination-foot).Length<20))return ready[foot]=false;
                 bool floor=false;
                 foreach(var b in walk.Map.blocks){
 
@@ -130,15 +132,16 @@ namespace ChipArena.UnityConversion
                     e=id, id="meridian-roof-"+id, kind="drop", surface="roof", height=6.5f, from=new PvePoint{x=landing.x,y=landing.y+6.5f,z=landing.z}, @exit=point, clear=3, allowed=kinds } });
             }
             world.Hub.Zones = zones.ToArray();
-            var court = walk.Routes[0].Points.Last();
-            area.bossPoints = new[] { new ExpeditionPoint { x=court.x, y=court.y, z=court.z } };
-            var end=walk.Routes[0].Points;
-            var outward=(court-end[end.Length-2]).Normalized;
-            var barrier=court-outward*12;
-            float angle=(float)(Math.Atan2(outward.x,outward.z)*180/Math.PI);
+            // The surveyed north route ends under the City Hall gateway. Close the opening between
+            // the authored piers and place the finale trigger inside the walled yard.
+            var court=walk.Routes[0].Destination;
+            var lintel=walk.Map.blocks.Single(block=>block.id=="court-gate-lintel");
+            float gateHeight=lintel.pos.y-lintel.size.y/2-court.y;
             area.gates=new[]{new ExpeditionGateLayout{id="exp-city:final-gate",opens="final",
-                closure=new ExpeditionVolume{x=barrier.x,y=barrier.y+3,z=barrier.z,sx=12,sy=6,sz=.5f,yaw=angle}}};
-            area.bossTrigger=new ExpeditionVolume{x=court.x-outward.x*4,y=court.y+2,z=court.z-outward.z*4,sx=8,sy=4,sz=6,yaw=angle};
+                closure=new ExpeditionVolume{x=lintel.pos.x,y=court.y+gateHeight/2,z=lintel.pos.z,
+                    sx=lintel.size.x,sy=gateHeight,sz=.5f}}};
+            area.bossPoints=new[]{new ExpeditionPoint{x=court.x,y=court.y,z=lintel.pos.z+8,yaw=180}};
+            area.bossTrigger=new ExpeditionVolume{x=court.x,y=court.y+2,z=lintel.pos.z+8,sx=10,sy=4,sz=8};
             area.spawns = spawnRows.ToArray();
         }
 
