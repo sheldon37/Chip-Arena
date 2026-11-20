@@ -269,7 +269,9 @@ namespace ChipArena.UnityConversion
         /// <summary>SHA-256 of the town map's entry in Resources/UnityMaps.json (its raw text: blocks, navigation, spawns, pilot
         /// columns, bounds) and of Resources/ExpeditionLayout.json (every area's records, the hub's). Shared d555363 + exp-layout-7 at
         /// 2a3819f (the base of the detail pass); re-measure only when the town's gameplay data changes on purpose.</summary>
-        internal const string BaseTownSha256="3890d697059696ab1b373f6e1ea212527798602f9eb4420d08847aa06dda31cd",BaseLayoutSha256="8dba5e10d7a7402c008576d0a893054e7bc8fe2aae6b2047fb7237c93172fd25";
+        internal const string BaseTownSha256="3890d697059696ab1b373f6e1ea212527798602f9eb4420d08847aa06dda31cd",BaseLayoutSha256="be6a052699c0a8e623ccf6f12e8fa678438227d7849bc70a5f0e187e991525a2";
+        // (re-pinned on purpose, 2026-11-20: Astra's Ward Zero and Central Station cache route fix, PR #429 c792be16, moved the
+        // instances' authored cache candidates in ExpeditionLayout.json; the town map is unchanged)
         internal static void AuthorityDigest(string root,out string town,out string layout)
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources",f));
