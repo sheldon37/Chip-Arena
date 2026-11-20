@@ -299,20 +299,30 @@ def fire_set(T):
         pts += [(vx + math.cos(a0 + (a1 - a0) * i / arc) * r1, vz + math.sin(a0 + (a1 - a0) * i / arc) * r1) for i in range(arc + 1)]
         pts += [(vx + math.cos(a1) * r0, vz + math.sin(a1) * r0)]
         return ccw(pts)
-    # ---- the dais: rings of fitted wedge stones round the vent; their joints show the lava under them ----
-    arc = (3, 2, 1)[T.i]
-    for ring, (r0, r1, n, y0) in enumerate(((1.16, 2.06, 10, FLOOR), (2.1, 3.0, 16, FLOOR), (3.04, dr, 26, FLOOR - .05))):
-        for k in range(n):
-            gap = .022 if ring < 2 else .03
-            a0 = 2 * math.pi * k / n + gap / r1 + ring * .2
-            a1 = 2 * math.pi * (k + 1) / n - gap / r1 + ring * .2
-            y = y0 + .006 * S(ring, k, 1)
-            prism(near, wedge(r0, r1, a0, a1, arc), -.34, y, F['basalt'] if ring < 2 else F['crust'], F['basalt-top'],
-                  (S(ring, k, 2) * .006, S(ring, k, 3) * .006), chamfer=.022 if T.bevel else 0)
-    # the vent: a raised basalt lip, its throat going down into the fire
+    # ---- the dais: irregular fitted stones round the vent (no ring joints: the owner's standing rule); the lava under them shows
+    # in their cracks, its edge a jagged one where the caldera's columns meet it ----
+    for i, ((cx, cz), poly) in enumerate(hex_cells(dr + .4, (.62, .72, .85)[T.i], 37, centre=(vx, vz), jitter=.42)):
+        rv = math.hypot(cx - vx, cz - vz)
+        if rv < .95 or rv > dr + .15 - .2 * H(i, 41):
+            continue
+        q = shrink(poly, .022 + .016 * H(i, 42))
+        # (the throat stays open: a stone reaching over it is pulled back to its edge, unevenly)
+        q = [(vx + (x - vx) * max(1.0, (.74 + .1 * H(i, k, 47)) / max(.01, math.hypot(x - vx, z - vz))), vz + (z - vz) * max(1.0, (.74 + .1 * H(i, k, 47)) / max(.01, math.hypot(x - vx, z - vz)))) for k, (x, z) in enumerate(q)]
+        y = FLOOR - .03 * max(0.0, rv - 2.6) + .006 * S(i, 43)
+        prism(near, q, -.34, y, F['basalt'] if H(i, 44) > .35 else F['crust'], F['basalt-top'], (S(i, 45) * .008, S(i, 46) * .008), chamfer=.02 if T.bevel else 0)
+    # the vent: a throat going down into the fire, its rim broken (no clean circle: the owner's standing rule): a funnel of crust
+    # under the stones' edges, jagged rock lips leaning over it, some cracked hot
     sides = (28, 18, 12)[T.i]
-    sk.lathe(near, [(1.12, -.3), (1.12, FLOOR - .005), (1.02, FLOOR + .07), (.88, FLOOR + .1), (.78, FLOOR + .05), (.72, -.25), (.64, -.9)],
-             (vx, 0, vz), F['crust'], sides)
+    sk.lathe(near, [(1.0, FLOOR - .05), (.86, FLOOR - .07), (.74, -.25), (.64, -.9)], (vx, 0, vz), F['crust'], sides)
+    for k in range((20, 13, 8)[T.i]):
+        if H(k, 67) < .22:
+            continue
+        a = 2 * math.pi * (k + .6 * S(k, 61)) / (20, 13, 8)[T.i]
+        rr = .62 + .55 * H(k, 62)
+        rad = .08 + .24 * H(k, 63) ** 1.5
+        y = FLOOR - .04 + .07 * H(k, 64)
+        f = F['crust'] if H(k, 65) > .3 else F['basalt']
+        rock(near, (vx + math.cos(a) * rr, y, vz + math.sin(a) * rr), rad, f, T, 600 + k, squash=.35 + .45 * H(k, 66), sub=(2, 1, 1)[T.i])
     throat = Geo()
     sk.lathe(throat, [(.64, -.9), (.52, -1.7)], (vx, 0, vz), F['lava-hot'], sides, cap1=True)
     rigs['vent'] = throat
@@ -322,7 +332,7 @@ def fire_set(T):
             r = math.hypot(cx, cz)
             if r < rad0 or r >= rad1:
                 continue
-            if math.hypot(cx - vx, cz - vz) < dr + s * .35:
+            if math.hypot(cx - vx, cz - vz) < dr - .45:
                 continue
             if in_river(cx, cz, .2):
                 continue
@@ -338,7 +348,7 @@ def fire_set(T):
     # the lava under the cracks: rings Core lights in turn (rig/lava/k); the first is under the dais
     sides = (64, 40, 24)[T.i]
     lg = Geo()
-    ring_band(lg, -.08, 0, dr - .1, F['lava-hot'], sides, centre=(vx, vz))
+    ring_band(lg, -.08, 0, dr - .55, F['lava-hot'], sides, centre=(vx, vz))  # (its edge always under the dais's stones)
     rigs['lava/0'] = lg
     r_prev = 0.0
     for k, r in enumerate(FIRE_RINGS):
