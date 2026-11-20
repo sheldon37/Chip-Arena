@@ -275,7 +275,7 @@ namespace ChipArena.UnityConversion
             Check(s.OriginX<=b.minX&&s.OriginZ<=b.minZ&&s.OriginX+s.CellsX*NativeCityFxScene.Cell>=b.maxX&&s.OriginZ+s.CellsZ*NativeCityFxScene.Cell>=b.maxZ,"the fog's grid covers the generated map ("+s.OriginX+".."+(s.OriginX+s.CellsX*NativeCityFxScene.Cell)+" x "+s.OriginZ+".."+(s.OriginZ+s.CellsZ*NativeCityFxScene.Cell)+")");
             var floor=map.blocks.Single(x=>NativeExpeditionCityKit.Stem(x.id)=="gen-floor");Check(!NativeCityFxScene.BlocksFog(floor)&&map.blocks.Where(x=>x.id.Contains("-building-")).All(NativeCityFxScene.BlocksFog),"the floor keeps no fog out; the buildings do");
             // Every road cell takes fog but those under an instance's hall (the hall stands behind its entrance, over the road's end).
-            var halls=map.blocks.Where(x=>NativeExpeditionCityKit.Stem(x.id).StartsWith("bldg-hall:",StringComparison.Ordinal)).ToArray();
+            var halls=map.blocks.Where(x=>NativeExpeditionCityKit.Stem(x.id)?.StartsWith("bldg-hall:",StringComparison.Ordinal)==true).ToArray();
             bool UnderHall(double x,double z)=>halls.Any(h=>Math.Abs(x-h.pos.x)<=h.size.x/2+NativeCityFxScene.Cell&&Math.Abs(z-h.pos.z)<=h.size.z/2+NativeCityFxScene.Cell);
             int open=0,roads=0;var shut=new List<string>();
             foreach(var cell in c.World.Blueprint.cells){if(!cell.road||UnderHall(cell.x*10,cell.z*10))continue;roads++;if(s.OpenAt(cell.x*10,cell.z*10)>0)open++;else shut.Add(cell.x+":"+cell.z);}
@@ -375,7 +375,7 @@ namespace ChipArena.UnityConversion
             var old=townPicker.Candidates.Take(NativeLightVolume.MaxLights-NativeMapLooks.MaxLights).Where(l=>l.Kind!=255).Select(l=>new NativeVolumeLight(l.X,l.Y,l.Z,l.Range,l.R,l.G,l.B)).ToList();
             var fresh=new List<NativeVolumeLight>();NativeLightVolume.Pick(c.Lights.Candidates.Where(l=>l.Kind!=255).Select(l=>new NativeVolumeLight(l.X,l.Y,l.Z,l.Range,l.R,l.G,l.B)).ToList(),NativeLightVolume.MaxLights,fresh,0);
             Check(fresh.Count==NativeLightVolume.MaxLights&&fresh.Max(l=>l.X)>60&&fresh.Min(l=>l.Z)<-40&&fresh.Min(l=>l.X)<-60,"the generated city's 64 reach its east, west and south (x "+fresh.Min(l=>l.X).ToString("0")+".."+fresh.Max(l=>l.X).ToString("0")+", z from "+fresh.Min(l=>l.Z).ToString("0")+")");
-            var halls=map.blocks.Where(x=>NativeExpeditionCityKit.Stem(x.id).StartsWith("bldg-hall:",StringComparison.Ordinal)).ToArray();
+            var halls=map.blocks.Where(x=>NativeExpeditionCityKit.Stem(x.id)?.StartsWith("bldg-hall:",StringComparison.Ordinal)==true).ToArray();
             var streets=c.World.Blueprint.cells.Where(x=>x.road&&!halls.Any(h=>Math.Abs(x.x*10-h.pos.x)<=h.size.x/2&&Math.Abs(x.z*10-h.pos.z)<=h.size.z/2)).Select(x=>(x:x.x*10.0,z:x.z*10.0)).ToArray();
             double Reached(List<NativeVolumeLight> list,Func<double,double,bool> where){var cells=streets.Where(s=>where(s.x,s.z)).ToArray();return cells.Length==0?0:cells.Count(s=>list.Any(l=>(l.X-s.x)*(l.X-s.x)+(l.Z-s.z)*(l.Z-s.z)<l.Range*l.Range))/(double)cells.Length;}
             NativeLightVolume Bake(List<NativeVolumeLight> extra){var input=NativeLightVolume.From(map,c.Look,_=>0x8A9496,extra,1,12);input.KeyR=input.KeyG=input.KeyB=0;Array.Clear(input.Ambient,0,9);return NativeLightVolume.Build(input);}
