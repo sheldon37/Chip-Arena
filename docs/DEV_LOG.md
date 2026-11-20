@@ -12,8 +12,8 @@ each with its own story, modelled set, camera language, effects and cue timeline
   parts the storm over the outpost and the aurora.
 - **Slipstream** (`intro2-slipstream`, 7.4 s, name 5.6): riding a maglev's roof out of a tunnel into a station, a sprint, a leap and
   a sliding stop on the platform as the train pulls away.
-- **Waygate** (`intro2-waygate`, 8.2 s, name 6.4): an ancient ring gate in a canyon locks, opens on a vortex of light, and the pilot
-  floats out of it.
+- **Threshold** (`intro2-threshold`, 8.2 s, name 6.4; was Waygate): a seam of light splits two leaning standing stones in a canyon
+  and the pilot walks out through the slit.
 - **Flashbulb** (`intro2-flashbulb`, 7.8 s, name 6.0): a premiere's red carpet, three poses held for the photographers' flashes,
   the cover shot.
 - **The name** sits centred in a band under the feet (`card.Y` 0.855) over closing frames that show the whole figure above it
@@ -30,6 +30,26 @@ each with its own story, modelled set, camera language, effects and cue timeline
 - **Sound:** every cue has a filled one-shot bank stand-in and a built-in clip (the checks refuse a loop or an empty stand-in);
   49 generated keys requested in `docs/audio/intros/I2.json` (82 takes, 128 s), their contract lines in
   `Core/NativeIntroSoundKeys.cs`.
+
+**Review round (integrator and owner, 2026-11-20 morning):**
+- **Waygate became Threshold** (`intro2-threshold`): its ring gate, lamps lit round the ring and vortex read as a famous film's gate
+  (and the name is from a book series). Now two leaning standing stones meet in a cleft; a crack of light runs up the seam, the
+  stones grind apart, light and dust pour out of the slit and the pilot walks out through it; no circles, chevrons or vortex, the
+  plaza laid in a grid (no floor arcs). Its sound keys and requests were renamed and rewritten (48 keys in all now).
+- **Cloudbreak:** a square pad (a painted H, hazard-striped corners, edge lights, scuffs; no circles), and its cone peaks replaced
+  by three layers of ridged ranges fading into the dawn haze, with open cloud toward the sun.
+- **Own animation, no motion-bank clips** (owner: "think like the top dog and Bombardier ones"): Flashbulb's strut, Threshold's walk
+  out and Slipstream's sprint, gather, leap and reach into the slide are keyed (`NativeEntranceKeys`, two keys a step).
+- **Why Flashbulb's legs went sideways** (owner report): the walk's stance and steps were written in the hero facing's frame
+  (`Stance`/`Step` turn x and z by `Facing` about the mark), so 6 m up the carpet the planned feet sat 1.4 m to the side of the body
+  and the legs reached for them as the clip faded in and out; the clip itself (`Armed-Walk`) is the sword's guarded walk, hips
+  side-on, so its knees bent sideways at the lens; the strides (1.05 m) were beyond the keyed legs' reach (about .3 m either side of
+  the hips); the right foot never stepped onto the mark, so that leg stretched back under the poses and the cover; and the poses
+  turned the body up to 49 degrees over planted feet. All five fixed: world-frame walk steps, keyed strides of about .55 m (Flashbulb
+  cuts from the doorway to the pilot halfway down the carpet; Threshold's stones moved 1.3 m nearer the mark), both feet onto the
+  mark, the feet pivoting into each pose. Threshold had the same frame and stride faults.
+- **Whiteout's head turn** in deep poses is the framework's (I0c); this branch only softened the kneel's bow and made its close-up
+  frontal (the repro is at `a04711b5`).
 
 **Systems touched:** Core (`NativeIntroGeneric.cs` and one file per intro, my registry lines, my sound-key lines), Tests
 (`IntroGenericChecks.cs`, one line in `Program.cs`), `tools/intros/generic_*.py`, docs. No Runtime file, no rules, no wire, no saves.
