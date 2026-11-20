@@ -86,6 +86,7 @@ internal static class BleedChecks
         foreach(var (area,theme) in new[]{("exp-backrooms","level0"),("exp-poolrooms","poolrooms"),("exp-ward-zero","wardzero"),("exp-transit","station"),("exp-foundry","ironworks"),("Final court","final")})
             if(NativeCityBleed.Theme(area)!=theme)throw new Exception("Theme of "+area);
         if(NativeCityBleed.Theme("expedition-city")!=null)throw new Exception("A theme for no instance");
+        foreach(var t in themes)if(Array.IndexOf(NativeZombieLooks.Themes,NativeCityBleedDress.OutfitOf(t))<0)throw new Exception("No zombie outfit for "+t);
     }
 
     // The largest change of any door's share over a 25 cm step, at random places over every floor of the map.

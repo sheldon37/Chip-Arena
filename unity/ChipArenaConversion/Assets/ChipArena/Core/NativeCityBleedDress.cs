@@ -752,6 +752,11 @@ namespace ChipArena.UnityConversion
         public static bool Skin(string key)=>key=="level0.wallpaper"||key=="wardzero.growth"||key=="station.brick"||key=="ironworks.plate"||key=="wardzero.sheet"||
             key.EndsWith(".threshold",StringComparison.Ordinal)||key.EndsWith(".threshold.upper",StringComparison.Ordinal)||key.StartsWith("wardzero.cladding",StringComparison.Ordinal)||key.StartsWith("ironworks.furnace",StringComparison.Ordinal);
 
+        /// <summary>The zombie outfit theme (NativeZombieLooks.Themes) a bleed theme dresses its adds in, for W7's outfits by spawn
+        /// (Astra's contract in docs/MERIDIAN-BLEED.md): Level 0's office clothes, the Poolrooms' swimwear, Ward Zero's gowns, the
+        /// Station's suits, the Ironworks' coveralls; null for the final court and plain Meridian.</summary>
+        public static string OutfitOf(string theme)=>theme=="level0"?"office":theme=="poolrooms"?"pool":theme=="wardzero"?"ward":theme=="station"?"station":theme=="ironworks"?"foundry":null;
+
         /// <summary>The five instances a door can lead to, by the walk's names (the Developer walk's door-deal picker).</summary>
         public static readonly string[] Instances={"Level 0","The Poolrooms","Ward Zero","Central Station","City Ironworks"};
         /// <summary>The first run seed from `from` on whose hall deal (NativeCityLayout.DealHalls, unchanged) puts these three
