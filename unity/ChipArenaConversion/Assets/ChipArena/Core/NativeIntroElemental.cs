@@ -273,7 +273,7 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(EruptAt,"intro2.fire.erupt","blast.fire","explosion",.9f),
             new NativeIntroCue(EruptAt+.2f,"intro2.fire.column","field.fire","fire",.55f),
             new NativeIntroCue(WalkFrom+.5f,"intro2.fire.step","impact.stone","stone",.32f),
-            new NativeIntroCue(WalkFrom+.95f,"intro2.fire.step2","impact.stone","stone",.3f),
+            new NativeIntroCue(WalkFrom+.95f,"intro2.fire.step","impact.stone","stone",.3f),
             new NativeIntroCue(CrownAt,"intro2.fire.crown","magic.flame-lance","fire",.6f),
             new NativeIntroCue(SlamAt,"intro2.fire.slam","magic.fire.hit","explosion",.8f),
             new NativeIntroCue(CardAt,"intro2.fire.name","melee.greatsword.hit","metal",.45f),

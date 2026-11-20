@@ -90,6 +90,21 @@ namespace ChipArena.UnityConversion
             var vent=Tuple("FIRE_VENT");Check(Math.Abs(vent[0]-NativeIntroForgeborn.Vent.X)<.002f&&Math.Abs(vent[1]-NativeIntroForgeborn.Vent.Z)<.002f,"FIRE_VENT is Forgeborn's vent");
             var rings=Tuple("FIRE_RINGS");Check(rings.Length==NativeIntroForgeborn.Rings.Length,"FIRE_RINGS count");for(int i=0;i<rings.Length;i++)Check(Math.Abs(rings[i]-NativeIntroForgeborn.Rings[i])<1e-4f,"FIRE_RINGS "+i);
             var rivers=Tuple("FIRE_RIVERS");for(int i=0;i<rivers.Length;i++)Check(Math.Abs(rivers[i]-NativeIntroForgeborn.Rivers[i])<1e-4f,"FIRE_RIVERS "+i);
+            // "A, B = 1, 2" lines
+            float Named(string name){var m=Regex.Match(text,@"^([A-Z_, ]+)=\s*([-0-9., ]+)$",RegexOptions.Multiline);foreach(Match l in Regex.Matches(text,@"^([A-Z0-9_, ]+?)\s*=\s*([-0-9.]+(?:\s*,\s*[-0-9.]+)*)\s*(?:#.*)?$",RegexOptions.Multiline)){var names=l.Groups[1].Value.Split(',');var vals=l.Groups[2].Value.Split(',');for(int i=0;i<names.Length&&i<vals.Length;i++)if(names[i].Trim()==name)return float.Parse(vals[i].Trim(),CultureInfo.InvariantCulture);}Check(false,"set script "+name);return 0;}
+            void Same(float[] a,float[] b,string what){Check(a.Length==b.Length,what+" count");for(int i=0;i<a.Length;i++)Check(Math.Abs(a[i]-b[i])<1e-4f,what+" "+i);}
+            Check(Math.Abs(Named("FACING")-NativeProceduralEntrance.Facing)<1e-5f,"FACING is the hero facing");
+            Same(Tuple("WATER_SKYLIGHTS"),NativeIntroStillTide.Skylights,"WATER_SKYLIGHTS");Same(Tuple("WATER_ICE_RINGS"),NativeIntroStillTide.IceRings,"WATER_ICE_RINGS");
+            Same(Tuple("WATER_LEVEL"),new[]{NativeIntroStillTide.Shallow,NativeIntroStillTide.Tide},"WATER_LEVEL");Check(Math.Abs(Named("WATER_HALF")-NativeIntroStillTide.HalfLength)<1e-4f,"WATER_HALF");
+            Check(Math.Abs(Named("VAULT_TOP")-NativeIntroStillTide.VaultTop)<1e-4f&&Math.Abs(Named("ROSE_Z")-NativeIntroStillTide.RoseZ)<1e-4f&&Math.Abs(Named("ROSE_Y")-NativeIntroStillTide.RoseY)<1e-4f,"the hall's vault and rose");
+            Same(Tuple("SPIRE_BEARINGS"),NativeIntroStrikePoint.SpireBearings,"SPIRE_BEARINGS");Check(Math.Abs(Named("SPIRE_RING")-NativeIntroStrikePoint.SpireRing)<1e-4f&&Math.Abs(Named("SPIRE_TIP")-NativeIntroStrikePoint.SpireTip)<1e-4f,"the spires' ring and tips");
+            Same(Tuple("DARK_MONOLITHS"),NativeIntroBlackSun.Monoliths,"DARK_MONOLITHS");Check(Math.Abs(Named("DARK_RING")-NativeIntroBlackSun.MonolithRing)<1e-4f&&Math.Abs(Named("DARK_GATE_Z")-NativeIntroBlackSun.GateZ)<1e-4f,"the monoliths' ring and the gate");
+            // the props the scripts draw are the ones the script builds
+            var built=new HashSet<string>(StringComparer.Ordinal);foreach(Match m in Regex.Matches(text,@"'((?:fire|water|lightning|darkness)/[a-z/-]+)'"))built.Add(m.Groups[1].Value);
+            foreach(var s in Scripts()){var set=new Set{Bank=true};for(float t=0;t<=s.IntroTotal;t+=.1f)s.Set(t,set);foreach(var prop in set.Drawn){string rest=prop.Substring(prop.IndexOf('/')+1),numbered=Regex.Replace(prop,@"/\d+$","/%d"),restNumbered=Regex.Replace(rest,@"/\d+$","/%d");Check(built.Contains(prop)||text.Contains("'"+numbered+"'")||text.Contains("'"+rest+"'")||text.Contains("'"+restNumbered+"'"),s.Style+" draws "+prop+", which the set script builds");}}
+            // the cue keys are in the sound contract and requested in docs/audio/intros/I5.json
+            var rows=File.ReadAllText(Path.Combine(root,"..","..","docs","audio","intros","I5.json"));
+            foreach(var s in Scripts())foreach(var c in s.Cues){NativeIntroSoundKeys.Find(c.Key,out var def);Check(def.Key==c.Key,s.Style+" cue key "+c.Key+" in Core/NativeIntroSoundKeys.cs");Check(rows.Contains("\""+c.Key+"\""),s.Style+" cue key "+c.Key+" requested in docs/audio/intros/I5.json");}
         }
         /// <summary>`--intro-elemental-probe [id] [t...]`: the anchors (hands, the staff's tip, the head, the root) at sampled times.</summary>
         public static void Probe(string[] args)

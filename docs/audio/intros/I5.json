@@ -1,0 +1,476 @@
+{
+  "author": "I5",
+  "intros": [
+    "intro2-weapon-fire",
+    "intro2-weapon-water",
+    "intro2-weapon-lightning",
+    "intro2-weapon-darkness"
+  ],
+  "sounds": [
+    {
+      "key": "intro2.fire.rumble",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 1.8
+      },
+      "levelDb": -6,
+      "fadeOutMs": 250,
+      "prompt": "A deep volcanic rumble rising under the ground, slow thick lava bubbling and popping, low and heavy, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.fire.crack",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.9,
+        "max": 1.3
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "Hot rock cracking open in a fast rising sequence of splits and crackles racing closer, glowing stone bursting, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.fire.erupt",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.3,
+        "max": 2.0
+      },
+      "levelDb": 2,
+      "fadeOutMs": 300,
+      "prompt": "A huge column of fire erupting from the ground, a deep whoomph bursting into a powerful roar of flame, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.fire.column",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 2.0,
+        "max": 2.6
+      },
+      "levelDb": -6,
+      "fadeOutMs": 400,
+      "prompt": "A steady roaring pillar of flame, powerful and constant, crackling at its edges, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.fire.step",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.45
+      },
+      "levelDb": -10,
+      "fadeOutMs": 60,
+      "prompt": "One heavy boot step on hot stone with a small crackle of embers, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.fire.crown",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.1
+      },
+      "levelDb": -4,
+      "fadeOutMs": 200,
+      "prompt": "Flames swirling upward in a tight spiral and igniting into a crown, a whooshing spiral ending in a soft bright flare, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.fire.slam",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.2
+      },
+      "levelDb": 0,
+      "fadeOutMs": 200,
+      "prompt": "A staff striking stone hard, then fire rushing outward along cracks in the ground, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.fire.name",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 0.9,
+        "max": 1.4
+      },
+      "levelDb": -6,
+      "fadeOutMs": 400,
+      "prompt": "A single forge hammer ring on an anvil with a warm flare of fire behind it, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.water.drips",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -10,
+      "fadeOutMs": 300,
+      "prompt": "Slow single water drips falling into still water in a large stone hall, faint distant echo, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.water.rise",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -4,
+      "fadeOutMs": 300,
+      "prompt": "Deep water rising and surging through a stone hall, a swelling rush of water, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.water.rear",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.2
+      },
+      "levelDb": -2,
+      "fadeOutMs": 250,
+      "prompt": "A great wave drawing up and rearing high, a rising roar of water, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.water.part",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.6
+      },
+      "levelDb": 2,
+      "fadeOutMs": 300,
+      "prompt": "A huge wave crashing down and tearing in two around a point, heavy water splitting and rushing past both sides, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.water.freeze",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 0.9,
+        "max": 1.4
+      },
+      "levelDb": 0,
+      "fadeOutMs": 300,
+      "prompt": "Water freezing instantly, a crystalline crackle racing upward and ending in a bright glassy chime, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.water.settle",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.8
+      },
+      "levelDb": -8,
+      "fadeOutMs": 200,
+      "prompt": "Ice settling and creaking, a few small crystalline ticks, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.water.name",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 2.0
+      },
+      "levelDb": -6,
+      "fadeOutMs": 500,
+      "prompt": "A deep glass bell struck once over still water, a long soft shimmering tail, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.storm.bed",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 1.8,
+        "max": 2.5
+      },
+      "levelDb": -8,
+      "fadeOutMs": 400,
+      "prompt": "Heavy rain on stone with a distant rolling thunder, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.storm.charge",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.2
+      },
+      "levelDb": -4,
+      "fadeOutMs": 200,
+      "prompt": "A rising electric whine and crackle as static charge builds, buzzing and snapping, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.storm.gather",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.6
+      },
+      "levelDb": -4,
+      "fadeOutMs": 100,
+      "prompt": "A short sucking reverse hiss gathering into a single point, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.storm.strike",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.4
+      },
+      "levelDb": 4,
+      "fadeOutMs": 300,
+      "prompt": "A lightning strike right here, a blinding close thunder crack with a sharp electric snap, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.storm.after",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.6
+      },
+      "levelDb": -4,
+      "fadeOutMs": 400,
+      "prompt": "Sizzling crackling electricity fading and a rolling thunder after a strike, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.storm.crackle",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -8,
+      "fadeOutMs": 150,
+      "prompt": "Small electric arcs crawling and snapping over metal and stone, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.storm.call",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.1
+      },
+      "levelDb": 0,
+      "fadeOutMs": 250,
+      "prompt": "A lightning bolt striking a metal staff, then six quick electric snaps in a row, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.storm.name",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 2.0
+      },
+      "levelDb": -4,
+      "fadeOutMs": 500,
+      "prompt": "A long deep rolling thunder, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.void.wind",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "levelDb": -10,
+      "fadeOutMs": 300,
+      "prompt": "A thin cold wind blowing over an empty plain at dusk, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.void.pour",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 1.8
+      },
+      "levelDb": -4,
+      "fadeOutMs": 300,
+      "prompt": "A low draining rush, like dark liquid shadows pouring and sliding across glass toward a point, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.void.totality",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.6
+      },
+      "levelDb": -2,
+      "fadeOutMs": 500,
+      "prompt": "A deep wordless choral swell that cuts off into silence, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.void.emerge",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.0
+      },
+      "levelDb": -2,
+      "fadeOutMs": 200,
+      "prompt": "An inverse rush of air sucked into a point, then one soft footstep on glass, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.void.eye",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -6,
+      "fadeOutMs": 300,
+      "prompt": "A single high pure glass tone, cold and clear, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.void.wings",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 0.9
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "A heavy cloth-like whoosh opening wide, then a sharp snap back, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.void.snap",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.7
+      },
+      "levelDb": -2,
+      "fadeOutMs": 150,
+      "prompt": "A dark heavy thud of a staff on glass with a low reversed whoosh, isolated, no reverb, no music, no background noise"
+    },
+    {
+      "key": "intro2.void.name",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "space": "2d",
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.6
+      },
+      "levelDb": -6,
+      "fadeOutMs": 400,
+      "prompt": "A low struck metallic tone with a dark shimmering tail, isolated, no reverb, no music, no background noise"
+    }
+  ]
+}
