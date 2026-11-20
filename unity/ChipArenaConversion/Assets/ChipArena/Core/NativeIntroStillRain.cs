@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
                .Dolly(ResumeAt,V(-1.65f,1.25f,3.95f),V(-1.75f,1.3f,4.15f),V(1.3f,1.75f,-2.5f),V(1.5f,1.6f,-2.7f),45,44)
                .Dolly(SheatheAt,V(1.6f,1.15f,1.8f),V(1.3f,1.12f,1.52f),V(.1f,1.0f,.05f),V(.12f,1.02f,.05f),36,33)
                .Dolly(ClickAt-.05f,V(.45f,.34f,3.05f),V(.38f,.38f,2.8f),V(0,.9f,0),V(0,.95f,0),40,38);
-            HeroFrame(StillAt,1,1.15f,3.3f,31,.5f);
+            HeroFull(StillAt,1,4.6f,32,.42f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
         }
         public override string SetBank=>Bank;
@@ -266,23 +266,23 @@ namespace ChipArena.UnityConversion
         private static readonly NativeIntroCue[] cues=
         {
             new NativeIntroCue(0,"intro2.stillrain.rain","boss.noctiel.rain","water",.55f),
-            new NativeIntroCue(LightningAt+.55f,"intro2.stillrain.thunder","structure.rumble","explosion",.45f,.7f),
+            new NativeIntroCue(LightningAt+.55f,"intro2.stillrain.thunder","blast.quake","explosion",.35f,.6f),
             new NativeIntroCue(DrawAt,"intro2.stillrain.stance","move.step.stone","wood",.35f),
-            new NativeIntroCue(GrabAt,"intro2.stillrain.koiguchi","topdog.blade-click","metal",.55f,1.4f),
-            new NativeIntroCue(CutAt,"intro2.stillrain.cut","topdog.blade-cut","sword",.95f),
-            new NativeIntroCue(FreezeAt,"intro2.stillrain.still","topdog.blade-ring","install",.6f),
+            new NativeIntroCue(GrabAt,"intro2.stillrain.koiguchi","boss.noctiel.gauntlet","metal",.5f,1.3f),
+            new NativeIntroCue(CutAt,"intro2.stillrain.cut","boss.noctiel.slash","sword",.95f),
+            new NativeIntroCue(FreezeAt,"intro2.stillrain.still","boss.noctiel.slowdown","install",.6f),
             new NativeIntroCue(ResumeAt,"intro2.stillrain.resume","boss.noctiel.rain.lines","water",.6f),
             new NativeIntroCue(SlideAt+.05f,"intro2.stillrain.bamboo","break.wood","wood",.75f),
-            new NativeIntroCue(SheatheAt+.05f,"intro2.stillrain.slide","topdog.blade-draw","sword",.35f,.8f),
+            new NativeIntroCue(SheatheAt+.05f,"intro2.stillrain.slide","boss.noctiel.sword.pull","sword",.35f,1.2f),
             new NativeIntroCue(SlideAt+1.05f,"intro2.stillrain.fall","structure.land.timber","wood",.6f),
-            new NativeIntroCue(ClickAt,"intro2.stillrain.click","topdog.blade-sheathe","metal",.9f),
-            new NativeIntroCue(CardAt,"intro2.stillrain.name","topdog.blade-chime","install",.45f),
+            new NativeIntroCue(ClickAt,"intro2.stillrain.click","melee.block","metal",.6f,1.3f),
+            new NativeIntroCue(CardAt,"intro2.stillrain.name","boss.noctiel.hush.open","install",.4f),
         };
 
         // ---- the name card: drawn out of a bright line, as the cut was ----
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.95f,.97f,1),Crimson*1.2f);card.Style=NativeIntroCardStyle.Wipe;NameBeside(ref card,true);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
+            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.95f,.97f,1),Crimson*1.2f);card.Style=NativeIntroCardStyle.Wipe;NameBelow(ref card);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
         }
     }
 }

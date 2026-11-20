@@ -112,8 +112,22 @@ namespace ChipArena.UnityConversion
             Rig.Dolly(at,from,to,look+right*shift,look+right*shift+new Vector3(0,.02f,0),fov+2,fov).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,blend);
         }
         /// <summary>The name card beside the pilot of a HeroFrame (+shift: on the right, -shift: on the left), a little smaller than the
-        /// default so a long name stays clear of the body.</summary>
+        /// default so a long name stays clear of the body. (Unused while the card's kicker and line stay centred: Runtime
+        /// NativeIntroCardScreen draws them at the screen's centre whatever X is, so a name moved aside splits from them.)</summary>
         protected static void NameBeside(ref NativeIntroCardState card,bool right){card.X=right?.71f:.29f;card.Y=.6f;card.Size=.064f;}
+        /// <summary>
+        /// The final hero frame, full length: a slow push in from a three-quarter front (`side` +1 from the pilot's left, -1 its right,
+        /// `angle` rad off its facing), the eye a little over the waist and the look under it, so the pilot stands whole in the upper four
+        /// fifths of the frame (its feet at about 0.8 of the height) and the name card has the clean band below them (NameBelow).
+        /// </summary>
+        protected void HeroFull(float at,float side,float distance,float fov,float angle=.4f,float blend=.5f)
+        {
+            float yaw=Facing+side*angle;var dir=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));
+            var from=dir*(distance+.5f)+new Vector3(0,.92f,0);var to=dir*distance+new Vector3(0,1.0f,0);
+            Rig.Dolly(at,from,to,new Vector3(0,.8f,0),new Vector3(0,.83f,0),fov+2,fov).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,blend);
+        }
+        /// <summary>The name card in the band under the hero frame's feet (HeroFull), centred with its kicker and line.</summary>
+        protected static void NameBelow(ref NativeIntroCardState card){card.X=.5f;card.Y=.9f;card.Size=.062f;}
         public virtual void Lens(float t,out NativeIntroLens lens){Rig.Lens(this,t,Context.Reduced,out lens);}
         /// <summary>A flash level that is safe in Reduced effects (a pulse narrower than 1/6 s widened and dimmed there).</summary>
         protected float Flash(float t,float at,float attack,float decay,float gain=1)=>Context.Reduced?NativeEntranceMath.Pulse(t,at,Math.Max(attack,.08f),Math.Max(decay,.18f))*gain*.6f:NativeEntranceMath.Pulse(t,at,attack,decay)*gain;

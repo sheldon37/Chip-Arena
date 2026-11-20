@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
                .Dolly(LeapAt-.15f,V(3.4f,.38f,1.7f),V(3.55f,.42f,1.95f),V(0,1.6f,0),V(0,1.2f,.1f),52,52)
                .Crane(SlamAt-.06f,V(-2.4f,1.0f,3.1f),V(-1.5f,1.5f,3.4f),5.2f,V(0,.35f,0),V(0,.1f,-.2f),50,60).Ease(NativeIntroEase.InOut)
                .Dolly(SpreadAt+1.0f,V(.9f,9.6f,3.4f),V(.4f,9.1f,1.9f),V(0,0,-.8f),V(0,0,-.4f),58,54);
-            HeroFrame(RiseAt+.3f,1,1.2f,3.7f,34,-.55f);
+            HeroFull(RiseAt+.3f,1,4.8f,33,.4f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
             Ramps.Ramp(SlamAt-.2f,.25f,.3f,.9f);
         }
@@ -168,18 +168,18 @@ namespace ChipArena.UnityConversion
         public override NativeIntroCue[] Cues=>cues;
         private static readonly NativeIntroCue[] cues=
         {
-            new NativeIntroCue(0,"intro2.faultline.bed","field.fire","fire",.3f,.7f),
+            new NativeIntroCue(0,"intro2.faultline.bed",null,"fire",.25f,.7f),
             new NativeIntroCue(LeapAt,"intro2.faultline.leap","melee.greatsword.swing","greatsword",.8f,.85f),
             new NativeIntroCue(SlamAt,"intro2.faultline.slam","blast.quake","explosion",1f,.8f),
             new NativeIntroCue(SlamAt+.05f,"intro2.faultline.crack","structure.crack","stone",.9f),
-            new NativeIntroCue(SpreadAt+.25f,"intro2.faultline.rumble","structure.rumble","stone",.7f,.7f),
-            new NativeIntroCue(SpreadAt+.8f,"intro2.faultline.hiss","boss.ironworks.crust.crack","fire",.5f),
+            new NativeIntroCue(SpreadAt+.25f,"intro2.faultline.rumble","structure.debris","stone",.7f,.7f),
+            new NativeIntroCue(SpreadAt+.8f,"intro2.faultline.hiss","magic.fire.hit","fire",.4f,.7f),
             new NativeIntroCue(RiseAt,"intro2.faultline.lift","melee.greatsword.hit","metal",.4f,.8f),
-            new NativeIntroCue(CardAt,"intro2.faultline.name","boss.ironworks.slam.impact","greatsword",.45f,.9f),
+            new NativeIntroCue(CardAt,"intro2.faultline.name","structure.thud","greatsword",.45f,.9f),
         };
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(1,.97f,.92f),Ember*1.3f);card.Style=NativeIntroCardStyle.Slam;NameBeside(ref card,false);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
+            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(1,.97f,.92f),Ember*1.3f);card.Style=NativeIntroCardStyle.Slam;NameBelow(ref card);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
         }
     }
 }

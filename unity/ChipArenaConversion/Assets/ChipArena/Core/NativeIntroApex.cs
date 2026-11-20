@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
                .Dolly(CoilAt-.05f,perchHead+V(-.75f,.12f,1.3f),perchHead+V(-.7f,.1f,1.12f),perchHead+V(0,-.05f,0),perchHead+V(0,-.08f,0),25,23).Focus(0,0,.5f)
                .Dolly(LeapAt-.06f,V(.35f,.42f,1.8f),V(.36f,.4f,1.82f),V(.5f,3.4f,-2.9f),V(.08f,.95f,-.25f),50,55).Ease(NativeIntroEase.InOut)
                .Dolly(LandAt-.02f,V(-2.7f,.45f,2.0f),V(-2.85f,.5f,2.2f),V(0,.55f,.35f),V(0,.62f,.3f),46,45);
-            HeroFrame(RiseAt+.05f,-1,1.05f,3.2f,32,.45f);
+            HeroFull(RiseAt+.05f,-1,4.4f,32,.35f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
             Ramps.Ramp(LeapAt+.18f,.32f,.3f,.9f);
         }
@@ -180,17 +180,17 @@ namespace ChipArena.UnityConversion
         private static readonly NativeIntroCue[] cues=
         {
             new NativeIntroCue(0,"intro2.apex.night",null,"darkness",.3f,.6f),
-            new NativeIntroCue(EyesAt,"intro2.apex.hiss","siren.claw","darkness",.5f,1.2f),
-            new NativeIntroCue(CoilAt,"intro2.apex.coil","topdog.fang-cut","daggers",.45f,.85f),
-            new NativeIntroCue(LeapAt,"intro2.apex.leap","melee.daggers.swing","dash",.8f),
+            new NativeIntroCue(EyesAt,"intro2.apex.hiss","magic.darkness.hit","darkness",.5f,.6f),
+            new NativeIntroCue(CoilAt,"intro2.apex.coil","melee.daggers.swing","daggers",.3f,.8f),
+            new NativeIntroCue(LeapAt,"intro2.apex.leap","boss.noctiel.leap","dash",.7f),
             new NativeIntroCue(LandAt,"intro2.apex.strike","melee.daggers.hit","hit",1f),
             new NativeIntroCue(LandAt+.03f,"intro2.apex.venom","magic.water.hit","water",.7f,1.3f),
-            new NativeIntroCue(RiseAt+.05f,"intro2.apex.rise","topdog.blade-draw","daggers",.45f),
+            new NativeIntroCue(RiseAt+.05f,"intro2.apex.rise","boss.noctiel.sword.pull","daggers",.3f,1.4f),
             new NativeIntroCue(CardAt,"intro2.apex.name","magic.darkness.hit","poison-tick",.5f),
         };
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.94f,1,.9f),Venom*1.2f);card.Style=NativeIntroCardStyle.Rise;NameBeside(ref card,true);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
+            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.94f,1,.9f),Venom*1.2f);card.Style=NativeIntroCardStyle.Rise;NameBelow(ref card);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
         }
     }
 }

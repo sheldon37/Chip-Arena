@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
                .Dolly(Hits[2]-.08f,V(-3.2f,1.0f,.85f),V(-3.4f,1.1f,1.2f),V(0,1.15f,.3f),V(0,1.1f,.3f),44,42).Handheld(.4f)
                .Dolly(SilenceAt,V(.42f,1.3f,3.45f),V(.32f,1.3f,2.85f),V(0,1.25f,0),V(0,1.25f,0),36,34)
                .Dolly(BashAt-.05f,V(-1.0f,.6f,4.2f),V(-1.1f,.62f,4.5f),V(0,1.0f,.5f),V(0,1.0f,.6f),44,44);
-            HeroFrame(StanceAt-.25f,-1,1.2f,3.4f,33,-.5f);
+            HeroFull(StanceAt-.25f,-1,4.6f,32,.3f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
         }
         public override string SetBank=>Bank;
@@ -181,9 +181,9 @@ namespace ChipArena.UnityConversion
         public override NativeIntroCue[] Cues=>cues;
         private static readonly NativeIntroCue[] cues=
         {
-            new NativeIntroCue(0,"intro2.holdtheline.wind","field.fire","fire",.3f,.7f),
+            new NativeIntroCue(0,"intro2.holdtheline.wind",null,"fire",.25f,.7f),
             new NativeIntroCue(PlantAt+.3f,"intro2.holdtheline.plant","melee.shield.block","shield",.8f,.8f),
-            new NativeIntroCue(LaunchAt,"intro2.holdtheline.launch","gun.rocket.launch","explosion",.4f,.6f),
+            new NativeIntroCue(LaunchAt,"intro2.holdtheline.launch","structure.whoosh","explosion",.4f,.7f),
             new NativeIntroCue(2.75f,"intro2.holdtheline.hit","melee.shield.block","shield",.95f),
             new NativeIntroCue(3.0f,"intro2.holdtheline.miss","blast.fire","explosion",.7f),
             new NativeIntroCue(3.15f,"intro2.holdtheline.hit2","impact.metal","metal",.9f),
@@ -192,13 +192,13 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(3.9f,"intro2.holdtheline.hit4","impact.metal","metal",.9f,.85f),
             new NativeIntroCue(4.12f,"intro2.holdtheline.miss3","blast.debris","explosion",.6f),
             new NativeIntroCue(4.3f,"intro2.holdtheline.hit5","melee.shield.block","shield",1f,.8f),
-            new NativeIntroCue(SilenceAt+.15f,"intro2.holdtheline.hot","boss.ironworks.crust.crack","fire",.4f),
-            new NativeIntroCue(BashAt+.3f,"intro2.holdtheline.bash","melee.shield.bash","shield",1f),
+            new NativeIntroCue(SilenceAt+.15f,"intro2.holdtheline.hot","magic.fire.hit","fire",.3f,.6f),
+            new NativeIntroCue(BashAt+.3f,"intro2.holdtheline.bash","impact.metal","shield",1f,.7f),
             new NativeIntroCue(CardAt,"intro2.holdtheline.name","structure.thud","stone",.5f),
         };
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.96f,.98f,1),Steel*1.2f);card.Style=NativeIntroCardStyle.Slam;NameBeside(ref card,false);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
+            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.96f,.98f,1),Steel*1.2f);card.Style=NativeIntroCardStyle.Slam;NameBelow(ref card);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
         }
     }
 }

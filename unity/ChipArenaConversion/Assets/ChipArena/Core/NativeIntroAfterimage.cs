@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
                .Dolly(CutAAt-.1f,V(1.6f,3.6f,3.4f),V(1.3f,3.7f,3.0f),V(0,1.0f,-.4f),V(0,1.1f,-.6f),50,48)
                .Dolly(CutCAt-.05f,V(2.1f,.45f,.9f),V(2.0f,.5f,1.4f),V(0,1.0f,0),V(0,1.05f,0),46,46).Handheld(.5f)
                .Dolly(ConvergeAt-.05f,V(.3f,.8f,3.2f),V(.25f,.85f,2.7f),V(0,1.1f,0),V(0,1.12f,0),38,36);
-            HeroFrame(StanceAt+.05f,1,1.15f,3.2f,32,.5f);
+            HeroFull(StanceAt+.05f,1,4.4f,32,.35f);
             Rig.Bars(0,1).Bars(CardAt-.4f,.5f).Black(0,1).Black(.05f,0);
         }
         public override string SetBank=>Bank;
@@ -168,11 +168,11 @@ namespace ChipArena.UnityConversion
             new NativeIntroCue(CutAAt+HitA+LagL+.75f,"intro2.afterimage.lanterns","break.wood","wood",.6f,1.2f),
             new NativeIntroCue(CutCAt+HitC-.08f,"intro2.afterimage.cut2","melee.daggers.swing","daggers",.85f,.9f),
             new NativeIntroCue(ConvergeAt+.35f,"intro2.afterimage.join","magic.blink-strike","dash",.8f,.8f),
-            new NativeIntroCue(CardAt,"intro2.afterimage.name","topdog.fang-cut","daggers",.45f),
+            new NativeIntroCue(CardAt,"intro2.afterimage.name","melee.daggers.hit","daggers",.4f,1.3f),
         };
         public override void Card(float t,ref NativeIntroCardState card)
         {
-            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.95f,1,.98f),Mint*1.2f);card.Style=NativeIntroCardStyle.Rise;NameBeside(ref card,true);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
+            card=NativeIntroCardState.Default(t-IntroNameAt,new Vector3(.95f,1,.98f),Mint*1.2f);card.Style=NativeIntroCardStyle.Rise;NameBelow(ref card);card.Exit=NativeEntranceMath.Ramp(t,IntroTotal-.35f,IntroTotal);
         }
     }
 }
