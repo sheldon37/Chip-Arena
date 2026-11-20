@@ -57,9 +57,17 @@ surface is combined as the drawer combines it, at LOD0 and LOD1. It checks:
   112 → 123 (+10 to +26). The seam table is 21-48 ms of it; the LOD1 combine in parallel takes 8-18 ms, against 15-40 ms one
   by one. A second run while the Editor captured on the same PC: +12 to +111 ms (the parallel parts get fewer cores). The first
   pass (`0e9cf6d1`) had added 0.2-0.6 s here.
-- **The load in the Editor** (Mono, the drawer's own log line, `plan` + `LOD1 combine`): the first pass (`0e9cf6d1`) added
-  0.8 s on Crown Hill (372 + 118 ms → 947 + 347) and 1.2 s on The Arcades (682 + 229 → 1,524 + 580). This head's measure
-  follows in a short hold (the integrator's go).
+- **The load in the Editor** (Mono, the drawer's own log line, `plan` + `LOD1 combine`, once per run behind the loading card):
+  - The Arcades, one session: shared `5d54766c` 657 + 170 ms; this head (`fb6c7375`) 1,187 + 157 ms. That is **+0.52 s**.
+  - Crown Hill: this head 753 + 133 ms, against shared's 372 + 118 and 447 + 119 in the earlier holds. That is **+0.32 to
+    +0.40 s**.
+  - The first pass (`0e9cf6d1`) had added 0.8 s on Crown Hill and 1.2 s on The Arcades. The integrator's target was under
+    +0.3 s.
+  - The seam table takes about 0.5 s of the Arcades' plan here, against 50 ms in .NET. The LOD1 combine, now in parallel
+    batches, is a little faster than shared's, although each chunk takes about 1.7 times as long as before (offline, one by
+    one). Likely causes, not profiled in the Editor: the table's many small arrays per line (Mono's GC is slow to allocate and
+    makes allocating threads wait for each other), and the Editor's unoptimized code. A Windows player runs optimized code; it
+    was not measured.
 
 ### Checks
 - `--dress-seams`: pass (7,119 checks over 343,490 surfaces), with and without `CHIPARENA_MERIDIAN_BANK`. `--dress-seams-probe`:
@@ -72,6 +80,7 @@ surface is combined as the drawer combines it, at LOD0 and LOD1. It checks:
   `eb55cf0f`: 1,082 PASS lines, no FAIL, no exception, "35 managed-core checks passed", exit 0.
 - `tools/check_unity_compile.py` (6000.3.24f1, my own output folder) at `eb55cf0f`: Input System, Player, Assembly-CSharp and
   Editor pass. `git diff --check`: clean against shared.
+- The owner's Editor compiled `0e9cf6d1`, `5d54766c` and `fb6c7375` in the holds (Tundra success).
 - Not run: a Windows player build; multiplayer (a guest plans the same dress from the shared deal); Balanced and Low in the
   Editor.
 
@@ -86,6 +95,15 @@ One Editor hold of about 10 min (14:17:42 to 14:27:33) on `0e9cf6d1`, on the dea
   `seams-arcades-high-orbit.mp4`, `seams-crown-hub-graze.mp4`.
 - **What they show:** the floor's dark crosses and the dotted line along the camp fence's foot are gone at every eye.
 
+A second hold of 16 min (15:06:55 to 15:23:15), the load measure, at the integrator's go: The Arcades on shared `5d54766c`, then
+The Arcades and Crown Hill on `fb6c7375`, on the same deals and eyes, each run on a fresh domain. The banks were verified
+unchanged, the tool was put back, and the Editor went back to `9319026b` (compiled) before the lock was given back.
+- **Sheets:** `F:/Chip Arena Development/scratch/hub-zfight/look/final-sheet-crown-before-after.jpg` and
+  `final-sheet-arcades-before-after.jpg`, and `final-crops-crown-before-after.jpg` and `final-crops-arcades-before-after.jpg`.
+  Each shows shared (`4fd9dff4`) beside this head.
+- This head's frames match the first pass's: a mean difference of 0.01-0.11 levels in the hub, and up to 0.84 on The Arcades'
+  street, where a figure walks.
+
 ### Notes
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
 - **Voxel dependency:** none.
@@ -99,7 +117,10 @@ One Editor hold of about 10 min (14:17:42 to 14:27:33) on `0e9cf6d1`, on the dea
   - Each heavy cell's chunks now wait for each other's LOD0 before switching, so near a cell's edge LOD0 can arrive a few
     frames later.
   - The seam table and the LOD1 combine run on the thread pool; a PC with few cores gains less of the speed-up.
-- **Next:** the integrator reviews and merges.
+  - The Editor's load is 0.3-0.5 s more than shared's, over the integrator's 0.3 s target. Two next steps if it matters: rewrite
+    the seam sweep to allocate almost nothing, or plan the dress off the main thread during the loading card. Each needs one more
+    measure hold.
+- **Next:** the integrator decides on the Editor's load cost, then merges.
 
 ## 2026-11-20 — Claude: the live Meridian hub's z-fighting: the greybox gives way to the street dress on the live map, as on the walk (owner report; presentation only)
 
