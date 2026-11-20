@@ -43,6 +43,8 @@ def main():
     ap.add_argument('--no-ao', action='store_true')
     ap.add_argument('--only')
     args = ap.parse_args(argv)
+    if args.only and args.out:
+        raise SystemExit('--only with --out would replace the whole bank with a part of it: preview a part, write all five')
     keys = list(SETS) if not args.only else args.only.split(',')
     sb = sk.StageBank()
     sb.far_layers = False

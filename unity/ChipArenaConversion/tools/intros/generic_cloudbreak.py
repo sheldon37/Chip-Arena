@@ -12,7 +12,7 @@ import math
 
 import stagekit as sk
 from stagekit import Geo, _add, _sub, _norm, _cross
-from generic_kit import (PI, TAU, V, mul, lerp, M, place, noise2, polar_field, rockball, dome, disc, ribbed, lattice_tower, dish,
+from generic_kit import (PI, TAU, V, mul, lerp, M, place, noise2, polar_field, rockball, mound, hash01, dome, disc, ribbed, lattice_tower, dish,
                          flipped, sky_fn, mix_hex, Piece, smoothstep, ang_diff)
 
 CB_R = 3.9                       # the pad's vertex radius
@@ -260,8 +260,16 @@ def build(T):
     polar_field(clouds, (0, 0), 16, 176, 26 if fine else 10, 80 if fine else 30, ch, lambda x, y, z, n: F['cloud'], smooth=True, rpow=1.65)
     for i, (a, d, h, w) in enumerate(((-1.25, 140, 24, 26), (-2.1, 145, 30, 28), (-.55, 142, 20, 24), (2.4, 140, 16, 26), (-2.75, 130, 15, 20))):
         cx, cz = math.cos(a) * d, math.sin(a) * d
-        prof = [(w * .95, -24), (w * 1.05, -18), (w * .9, -24 + h * .45), (w * .7, -24 + h * .7), (w * .45, -24 + h * .88), (w * .18, -24 + h), (.5, -24 + h * 1.02)]
-        sk.lathe(clouds, prof, V(cx, 0, cz), F['cloud'], 16 if fine else 8, phase=i)
+        # a cumulus tower: puffs heaped on a wide base, smaller and higher toward its crown, leaning a little downwind
+        puffs = 9 if fine else 4
+        for k in range(puffs):
+            u = k / (puffs - 1)
+            r = w * (.62 - .38 * u) * (.85 + .3 * hash01('cu', i, k))
+            ang = TAU * hash01('ca', i, k)
+            off = w * .45 * (1 - u) * hash01('co', i, k)
+            px, pz = cx + math.cos(ang) * off + u * 4, cz + math.sin(ang) * off
+            py = -24 + h * (.15 + .75 * u) * (.9 + .2 * hash01('cy', i, k))
+            mound(clouds, V(px, py, pz), (r, r * .78, r), F['cloud'], 300 + i * 20 + k, 6 if fine else 4, 12 if fine else 7, .06, .35)
 
     # ---- the dawn sky and the sun ----
     sky = Geo()
