@@ -165,10 +165,10 @@ namespace ChipArena.UnityConversion
             int id=introActor;bool dog=NativeHotDog.Worn(VisualOutfitOf(id));introGhostGearBone??=_=>introGhostGear;
             void Part(string model,Matrix4x4 at){if(model==null)return;var ghost=sourceModels.EntranceGhost(model);if(ghost==null)return;introGhostGear=at;sourceModels.Queue(ghost,at,introGhostGearBone,null,0,null,tint,scan,opacity);}
             // the armour's plates on the ghost's own suit bones
-            int shown=SuitShown(id);var suit=shown!=0&&sourceModels.Has(NativeSourceModels.Suit)?sourceModels.EntranceGhost(NativeSourceModels.Suit):null;var rig=suit!=null?SuitRigOf(gb.Root):null;
-            if(rig!=null&&(shown&=rig.Found)!=0)
+            int shown=SuitShown(id);var suit=shown!=0&&sourceModels.Has(NativeSourceModels.Suit)?sourceModels.EntranceGhost(NativeSourceModels.Suit):null;var plates=suit!=null?SuitRigOf(gb.Root):null;
+            if(plates!=null&&(shown&=plates.Found)!=0)
             {
-                for(int i=0;i<suitMatrices.Length;i++)suitMatrices[i]=rig.Bones[i]!=null?rig.Bones[i].localToWorldMatrix*rig.Bind[i]:Matrix4x4.identity;
+                for(int i=0;i<suitMatrices.Length;i++)suitMatrices[i]=plates.Bones[i]!=null?plates.Bones[i].localToWorldMatrix*plates.Bind[i]:Matrix4x4.identity;
                 suitBone??=i=>suitMatrices[i];suitShown=shown;suitVisible??=b=>(suitShown>>b&1)!=0;sourceModels.Queue(suit,Matrix4x4.identity,suitBone,suitVisible,0,null,tint,scan,opacity);
             }
             // the face gear and the hat on the ghost's head
