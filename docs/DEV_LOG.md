@@ -89,10 +89,10 @@ The fixed sanctuary frame is the same on all five Meridian plans. The run's seed
   - the live camp's honesty against the bank's own triangles, including no face flat on the floor, on the fence's inner face or on its top (z-fighting);
   - light, sound and budgets: 49,886 Fine triangles.
   Without the bank it runs 62,832 checks.
-- Full CoreTests the relgen5 way (throwaway LF worktree, `expedition_path.patch`, `banks-next`) at `8bb85346`: 1,082 PASS lines, exit 0, in 1,054 s. That run includes camp, hub z-fight, transitions/loading and party loading.
+- Full CoreTests the relgen5 way (throwaway LF worktree, `expedition_path.patch`, `banks-next`) at `cfb027cf`, after merging shared `405eaf92`: 1,087 PASS lines, exit 0, in 1,046 s. At `8bb85346`: 1,082 PASS lines, exit 0, in 1,054 s. That run includes camp, hub z-fight, transitions/loading and party loading.
   - The earlier run at `1d73aae3` stopped at PartyLoadingChecks' cradle-UI line. That line comes from shared's #437 and is re-pinned by `b2dea632`, merged here. No camp file uses that panel.
   - The run before that found the new SourceWorld hook without a prewarm entry. The camp now builds behind the loading screen, through `PrewarmCamp`.
-- `tools/check_unity_compile.py --unity-root` (6000.3.24f1, no download) at `8bb85346`: Unity.InputSystem, ChipArena.Player, Assembly-CSharp and Assembly-CSharp-Editor pass. `e3ea9ff5` changes no C#.
+- `tools/check_unity_compile.py --unity-root` (6000.3.24f1, no download) at `8bb85346` and `cfb027cf`: Unity.InputSystem, ChipArena.Player, Assembly-CSharp and Assembly-CSharp-Editor pass.
 - `git diff --check`: clean.
 - **Editor (BoZo live recipe):** see Captures. There were no exceptions in the Editor log.
 - **Not run:**
