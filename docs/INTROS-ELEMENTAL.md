@@ -3,145 +3,134 @@
 Owner (2026-11-20, before sleeping): "I want to move the intros to a much higher quality standard, great animations and effects,
 non-block based background and designs, etc. With great camera work as well!" The four magic weapons' signatures are replaced
 by four new intros, each a summoning of its element with a story, a modelled set, an authored camera and a name beat. The old
-ones (Cinder Crown, Tidal Serpent, Thunderstep, Eventide Gate) are archived by the framework (`docs/INTROS-V2.md`), their code
-kept.
+ones (Cinder Crown, Tidal Serpent, Thunderstep, Eventide Gate) are archived by the framework (`docs/INTROS-V2.md`); their code
+stays in `Core/NativeEntranceWeapons.cs`.
 
-Author: Claude (I5), branch `claude/intro-elemental`. Presentation only: no rule, wire, save or timing change. The framework,
-its registry, the archive, the name card, the camera rig, the set bank loader and the sound plumbing are I0's
-(`claude/intro-framework`); this branch owns `Core/NativeElementalIntros.cs`, its checks, its set script
-`tools/intros/elemental_sets.py` and its sound list.
+Author: Claude (I5), branch `claude/intro-elemental`. Presentation only: no rule, wire, save or timing change. The framework (its
+registry, the archive, the name card, the camera rig, the set loader, the sound plumbing) is I0's. This branch owns
+`Core/NativeIntroElemental.cs`, `Tests/IntroElementalChecks.cs` (`--intro-elemental`), the set script
+`tools/intros/elemental_set.py`, the sound rows `docs/audio/intros/I5.json` and their lines on the I5 slot of
+`Core/NativeIntroSoundKeys.cs`, and one registry line per intro.
 
-| Weapon | Intro | Length | Name at | One line |
-| --- | --- | ---: | ---: | --- |
-| Fire | **Forgeborn** | 7.8 s | 6.0 s | In a caldera forge the cracks race in, a fire column erupts, the pilot walks out of it and its flame gathers into a crown. |
-| Water | **Still Tide** | 8.2 s | 6.4 s | In a moonlit flooded hall the tide rises into a wave over the pilot, parts round them at a sweep of the staff and freezes mid-curl. |
-| Lightning | **Strike Point** | 7.2 s | 5.5 s | On a storm summit the spires charge, the sky opens and the pilot arrives as the strike itself, then calls a second bolt into the staff. |
-| Darkness | **Black Sun** | 8.4 s | 6.6 s | On an obsidian plain the moon covers the sun, every shadow pours to the centre into a void, and the pilot steps out of it with one eye of light. |
+| Weapon | Id | Intro | Length | Name at | One line |
+| --- | --- | --- | ---: | ---: | --- |
+| Fire | `intro2-weapon-fire` | **Forgeborn** | 7.8 s | 6.0 s | In a caldera forge the cracks race in, a fire column erupts, the pilot walks out of it and its flame gathers into a crown. |
+| Water | `intro2-weapon-water` | **Still Tide** | 8.2 s | 6.4 s | In a moonlit drowned hall the tide rises into a wave behind the pilot, parts round it at a sweep of the staff and freezes mid-curl. |
+| Lightning | `intro2-weapon-lightning` | **Strike Point** | 7.2 s | 5.5 s | On a storm summit the spires charge, the sky opens and the pilot arrives as the strike itself, then calls a second bolt into the staff. |
+| Darkness | `intro2-weapon-darkness` | **Black Sun** | 8.4 s | 6.6 s | On an obsidian plain the moon covers the sun, every shadow pours to the centre into a void, and the pilot steps out of it with one eye of light. |
 
 Each is distinct in set, palette and camera:
 
-| | Set | Palette (game colours) | Camera language |
+| | Set (bank props) | Palette (game colours) | Camera language |
 | --- | --- | --- | --- |
-| Forgeborn | caldera forge: basalt plates, lava seams and rivers, basalt column clusters, a crater rim with lava falls, a half-buried forge arch | basalt black, the fire weapon's orange `#ff6c32`, the blasts' flame yellow, ember red; smoke brown sky | heavy and grounded: long lenses low to the floor, slow pushes, one great crane up the column and down onto the crown |
-| Still Tide | flooded hall: a drowned colonnade, arches, a ribbed vault with broken skylights, a rose window, still black water | the water weapon's cyan `#63e2ff`, foam `#eaffff`, deep `#2b8bd6`, moonlight `#a9c8ff`; teal-black | gliding: dollies at the water line, a bullet-time orbit inside the frozen moment, a rising pull-back between the frozen walls |
-| Strike Point | storm summit: a fractured slate plateau, six conductor spires with copper bands, a fulgurite crater, peaks through the cloud sea | the lightning weapon's violet `#c8aaff`, core `#f3ecff`; storm slate-blue | violent and vertical: looking straight up into the vortex, a top-down from the cloud down the bolt, wide and low at the strike, a fast orbit with a speed ramp |
-| Black Sun | eclipse plain: an obsidian floor, ash dunes, seven leaning monoliths with glyph seams, a great broken gate, far mesas | the darkness weapon's `#af6eff`, the void orb's rim `#c04dff` and lens `#d9a6ff`; lilac-grey dusk to black | still and symmetrical: centred frames, a dolly zoom as the eclipse completes, a locked-off frame for the void, an extreme close-up on the eye |
+| Forgeborn | caldera forge: basalt column tops with lava in the cracks (`fire/lava/0..5`, lit in turn), the vent (`fire/vent`), four lava rivers (`fire/river/k`) from two falls on the rim (`fire/falls`), organ-pipe column clusters, a half-ruined forge arch with hot joints (`fire/forge-seams`) and its hearth (`fire/hearth`), a crater rim of crags | basalt black, the fire weapon's orange `#ff6c32`, flame yellow, ember red; smoky red-brown fog | heavy and grounded: a macro along a seam, a crane up and back, low under the eruption, a crane up the column, the walk at the lens, an orbit framing the crown, wide and low for the slam |
+| Still Tide | drowned hall: colonnades, pointed arcades, clerestory lancets, a ribbed vault broken over two bays, a rose window, still water (`water/surface`, raised by the tide), the wave's two halves liquid (`water/wave/L,R`) and frozen (`water/frozen/L,R`), the frost's rings (`water/ice/0..4`) | the water weapon's cyan `#63e2ff`, foam `#eaffff`, deep `#2b8bd6`, moonlight `#a9c8ff`; teal-black | gliding: a dolly over the water, a rise with the tide, low under the rearing wave, front and low as it parts, an orbit through the frozen moment, a pull back between the walls |
+| Strike Point | storm summit: fractured slate, a cliff falling into a cloud sea, six conductor spires with copper bands, a coil and an iron spike (`lightning/spires`, their seams `lightning/seams/k`), a fulgurite crater (`lightning/crater`), peaks through the clouds | the lightning weapon's violet `#c8aaff`, core `#f3ecff`; storm slate-blue | violent and vertical: low and wide, straight up into the turning vortex, down from the cloud, the smash to the strike, a fast orbit, rising with it, wide between the spires |
+| Black Sun | eclipse plain: obsidian plates over a dim violet, ash dunes, six leaning monoliths with rune staves (`darkness/glyphs/k`), a broken gate framing the sun, far mesas, the moon disc (`darkness/moon`, slid over the sun) | the darkness weapon's `#af6eff`, the void orb's rim `#c04dff` and lens `#d9a6ff`; lilac dusk to black | still and symmetrical: centred through the gate, a dolly zoom as the shadows pour, low under the black sun, locked off for the void, a close-up on the eye, a slow pull back |
 
-## Rules every one keeps
+## How they are built
 
-- **Length and name:** 6-8.5 s each, the name on the live display name through I0's name card at `NameAt`, the hero frame held
-  still from the name to the end. The match's hold rules are unchanged.
-- **Effects:** rich but readable. Streaks over about 1 m (bolts, the corona's rays, the column's tongues, beams) are laid on their
-  head's camera plane (`NativeCacheOpenFx.OntoHeadPlane`). No ring outlines (no `WeaponShape.Ring`, no ring glow profile, no flat
-  discs or rings on the floor); a shockwave is puffs and streaks. In Reduced effects nothing flashes faster than 3 Hz (the
-  lightning's flickers and the eclipse's diamond flash are held to one slow swell), the camera never shakes, and every beat
-  still reads.
-- **Motion:** the model's own staff clips from the motion bank (`2Hand-Staff-*` casts, `Armed-Walk-Slow` under them), retimed and
-  layered in code; no new pack clip was needed.
-- **Sets:** scripted Blender into a local bank (`ChipArenaIntroElemental.bytes`, never committed). Without it each intro plays on
-  the framework's dark lit void with its own light, fog and effects; never the old block arena.
-- **Sound:** each intro has its own cue timeline on its beats (below). Generation is approved (ElevenLabs); until the clips are
-  in, every cue plays the existing sound named beside it.
+- **The base** (`NativeIntroElementalScript` on `NativeIntroV2Script`): the keyed rig (the anchors for the camera and effects,
+  the Classic pose) with the staff placed by arm IK on a keyed grip track (`StaffKey`, `Arms`); the model's own motion from the
+  motion bank over windows of the clock (`Clips`, `INativeIntroBody`); the drawn wrists (`INativeIntroHands`) carry the staff's
+  effects; `Beam` lays every streak over 1 m on its head's camera plane and skips one whose head is behind the lens; `Bolt` draws
+  a fractal bolt (a slow wander and a fine jitter on short segments, forks); `Star` is a glint whose rays are laid the same way.
+- **Motion:** only clips already in the motion bank, mirrored for the staff hand (no rebake): `2Hand-Staff-Idle~mirror`, the
+  `2Hand-Staff-Cast-L-Buff1/2`, `-AOE1/2`, `-Summon1/2` and `2Hand-Staff-Cast-Attack1` starts and ends. A model never goes back from
+  a clip to the keys (it would pop): Forgeborn walks out of the fire on keys and plays its casts from the crown on; Still Tide plays
+  clips throughout and holds on its mark; Strike Point's crouch is keyed, its rise and summon are clips; Black Sun walks out of the
+  void on keys and plays its summon and strike. The keyed rig is lowered to the clips' stance so the anchors sit on the model.
+- **Sets:** `tools/intros/elemental_set.py` (Blender 5.2.3 headless, the stage kit's geometry, finishes, AO and bank format),
+  modelled in the intros' source frame and mirrored into the bank's Unity space at export (so the script and the scripts share
+  their numbers; `IntroElementalChecks` reads them from the script). `<prop>` is the Fine tier, `<prop>/low` the Low tier. The bank
+  `ChipArenaIntroElemental.bytes` (about 6.1 MB, 125k vertices over both tiers) is local and never committed; without it every
+  intro plays on the framework's dark lit void in its own light, fog and effects.
+- **Gloss:** every set finish stays at smoothness .35 or less: the set reflects the arena's own probe, and Cyber City's magenta
+  neon showed on the water, the ice and the obsidian in the first captures.
 
 ## Forgeborn (fire)
 
-The forge of a dead volcano. Story: the caldera wakes, the forge's fire rises as a column, and the pilot is forged in it.
+The forge of a dead volcano. The caldera wakes, the forge's fire rises as a column, and the pilot is forged in it.
 
-| t (s) | Picture | Camera | Pilot | Sound |
+| t (s) | Beat | Camera | Pilot | Cue (key; fallback) |
 | ---: | --- | --- | --- | --- |
-| 0 | Dark caldera, embers rising; a lava seam's glow under a basalt plate | macro, 0.25 m off the floor, sliding along the seam toward the centre (30 mm-ish, FOV 30) | unseen | `fire.rumble` (low magma rumble) |
-| 1.1 | The seams crack open in sequence, racing in from the rim to the dais | crane up and back to reveal the caldera, the forge arch behind | unseen | `fire.crack` (rock cracking, rising) |
-| 2.15 | **Eruption**: a fire column 9 m high bursts from the dais vent, the whole caldera lit; slow-motion beat | low wide, looking up the column | a dark silhouette forms inside it | `fire.erupt` (a deep whoomph and roar) |
-| 2.9 | The column roars; flame tongues climb it; embers and heat haze | the great crane: from the feet up the column's length | silhouette clearer | `fire.column` (roaring flame bed) |
-| 3.5 | The pilot walks out of the fire, flame peeling off shoulders and arms, embers in its steps | front, medium, slow push in as it walks at the lens | `Armed-Walk-Slow` legs under the staff idle, two steps | `fire.step` x2 (stone footfalls) |
-| 4.7 | The column's fire spirals up and gathers above the head into a crown of flame tongues | orbit to a low three-quarter, the crown framed | `Cast-L-Buff1` (the staff raised) | `fire.crown` (a swirling whoosh igniting) |
-| 5.45 | The staff comes down on the dais: fire runs out along every seam | wide and low | `Cast-L-AOE1` (staff to the floor) | `fire.slam` (stone strike and fire rush) |
-| 6.0 | **Name**: hero under the burning crown, embers, the lava rivers bright | still hero frame, low, the arch behind | staff idle, head up | `fire.name` (a forge hammer ring and flare) |
+| 0 | Dark caldera lit by its lava, embers rising | macro, low along a seam toward the dais | unseen | `intro2.fire.rumble`; `boss.ironworks.arrive.rumble`, `stone` |
+| 1.0 | The cracks light in from the rim to the dais, sparks running down the seams | crane up and back | unseen | `intro2.fire.crack`; `boss.ironworks.crust.crack`, `stone` |
+| 2.15 | **Eruption** (speed ramp): a 9.5 m fire column with a white-hot core, sparks, the forge's joints flaring | low under it, then a crane up it | built in inside the fire | `intro2.fire.erupt`; `blast.fire`, `explosion` / `intro2.fire.column`; `field.fire`, `fire` |
+| 3.3 | It walks out of the fire, flame peeling off its shoulders and arms | front, pushing in at the lens | keyed walk, the staff upright at its side | `intro2.fire.step` (x2); `impact.stone`, `stone` |
+| 4.75 | The column spirals in and gathers into nine licks of flame round its head | orbit framing the crown | `Cast-L-Buff1` | `intro2.fire.crown`; `magic.flame-lance`, `fire` |
+| 5.45 | The staff comes down: fire runs out along the floor, the lava rings flare outward | wide and low | `Cast-L-AOE1` | `intro2.fire.slam`; `magic.fire.hit`, `explosion` |
+| 6.0 | **Name** (Rise): the hero under the burning crown | hero frame | staff idle | `intro2.fire.name`; `melee.greatsword.hit`, `metal` |
 
 ## Still Tide (water)
 
-A drowned hall under moonlight. Story: the sea comes in to drown the intruder, and the pilot stops it.
+A drowned hall under the moon. The sea comes in to drown the intruder, and the pilot stops it.
 
-| t (s) | Picture | Camera | Pilot | Sound |
+| t (s) | Beat | Camera | Pilot | Cue (key; fallback) |
 | ---: | --- | --- | --- | --- |
-| 0 | Still black water between the colonnades, moon shafts from the broken vault, drops falling | glide low over the water (0.35 m) down the hall toward a figure | staff idle, head bowed | `water.drips` (cave drips, echo) |
-| 1.4 | The tide rises: the water climbs the columns, a swell runs the hall | rising crane behind the pilot | staff idle | `water.rise` (a deep swelling surge) |
-| 2.2 | A wave rears up behind the pilot, 6 m, its lip curling | low, looking up past the pilot at the wave | `Cast-L-Buff2` (the staff raised) | `water.rear` (a wave drawing up, roaring) |
-| 2.9 | **The sweep**: the wave comes down and parts round the pilot in two curling walls; slow-motion beat | front and low, the walls splitting either side | `Cast-L-AOE2` (the staff swept) | `water.part` (a crash tearing in two) |
-| 3.7 | **Freeze**: the staff taps the water; frost races up both walls, they freeze mid-curl, the spray hangs as glints | bullet-time orbit, 200 degrees round the pilot between the still walls | `Cast-Attack1` (the tap) | `water.freeze` (a crystalline crackle and chime) |
-| 4.9 | The pilot walks out between the frozen walls, breath frosting | slow pull back ahead of it | `Armed-Walk-Slow`, two steps | `water.step` (wading steps) |
-| 6.4 | **Name**: framed between the two frozen waves in the moonlight, drops still hanging | still hero frame, centred | staff idle | `water.name` (a deep glass bell) |
+| 0 | Still water between the colonnades, moon shafts and sheens on the water, drips | glide low over the water | staff idle | `intro2.water.drips`; `boss.deepend.drip`, `water` |
+| 1.3 | The tide rises, foam along the colonnade's feet | rising with it | staff idle | `intro2.water.rise`; `boss.deepend.tide`, `water` |
+| 1.75 | The wave rears behind the pilot (its halves one wall), spray off the crest | low, looking up past it | `Cast-L-Buff2` | `intro2.water.rear`; `magic.tidal-wave`, `water` |
+| 2.95 | **The sweep** (ramp): the wave parts down its middle, its halves surging round either side | front and low | `Cast-L-AOE2` | `intro2.water.part`; `boss.deepend.wave`, `water` |
+| 3.75 | **Freeze** (ramp): frost races up both walls, they freeze mid-curl, the frost spreads over the water in rings, the spray hangs as glints | orbit through the stopped moment | `Cast-Attack1` (the tap) | `intro2.water.freeze`; `blast.frost`, `shield` |
+| 4.85 | The ice settles, frost shivering off the crests | pull back between the walls | staff idle | `intro2.water.settle`; `impact.glass`, `shield` |
+| 6.4 | **Name** (Wipe): between the two frozen waves, the breath frosting | centred hero frame | staff idle | `intro2.water.name`; `boss.noctiel.ripple`, `install` |
 
 ## Strike Point (lightning)
 
-A summit under a storm. Story: the storm has been waiting for a conductor; the pilot is the strike.
+A summit under a storm. The storm has been waiting for a conductor; the pilot is the strike.
 
-| t (s) | Picture | Camera | Pilot | Sound |
+| t (s) | Beat | Camera | Pilot | Cue (key; fallback) |
 | ---: | --- | --- | --- | --- |
-| 0 | Rain on the slate, the clouds lit from inside, the spires humming with St Elmo's fire | ground level, wide, tilting up to the spires | unseen | `storm.bed` (rain and distant thunder) |
-| 1.2 | Arcs leap spire to spire and crawl toward the centre; the cloud above turns into a vortex | straight up from the centre into the vortex, turning | unseen | `storm.charge` (rising electric whine) |
-| 2.2 | A bright point gathers at the vortex's eye | top-down from the cloud, the summit below | unseen | `storm.gather` (a sucking hiss) |
-| 2.45 | **Strike**: the bolt comes down with branching forks and is the pilot, landing in a crouch; slow-motion beat | smash down the bolt to wide and low at the strike | white-hot silhouette cooling into the body, `2Hand-Staff-Land` into the crouch | `storm.strike` (a thunder crack at the lens) |
-| 2.7 | The branches hang and die in the air, arcs run out over the stone, rain thrown out in a burst | fast orbit round the crouch, speed ramp | crouch hold | `storm.after` (sizzle and rolling thunder) |
-| 3.8 | It rises, arcs crawling over its limbs | low, close, rising with it | crouch to stand | `storm.crackle` (electric crackle) |
-| 4.3 | The staff up: a second bolt into its tip, then to every spire, which fire bolts back to the sky | wide, the spires round it | `Cast-L-Summon1` | `storm.call` (bolt, then six snaps) |
-| 5.5 | **Name**: hero with the staff crackling, rain, the storm behind | still hero frame, low | staff idle | `storm.name` (a deep rolling thunder) |
+| 0 | Rain on the slate, St Elmo's fire on the spires, the clouds lit from inside | low and wide, tilting up | unseen | `intro2.storm.bed`; `field.storm`, `lightning` |
+| 1.1 | Arcs leap spire to spire and crawl in over the stone; the cloud turns into a vortex | straight up into it, turning | unseen | `intro2.storm.charge`; `boss.station.arc`, `lightning` |
+| 2.0 | A point of light gathers in the vortex's eye | down from the cloud | unseen | `intro2.storm.gather`; `chip.vacuum`, `dash` |
+| 2.45 | **Strike** (ramp): the trunk and its branches come down and are the pilot, white-hot in a crouch (a lag-0 afterimage cooling), arcs run out over the stone | smash to wide and low, then a fast orbit | keyed crouch | `intro2.storm.strike`; `magic.lightning.hit`, `lightning` / `intro2.storm.after`; `blast.shock`, `explosion` |
+| 3.7 | It rises, arcs crawling on its limbs | low, rising with it | staff idle | `intro2.storm.crackle`; `magic.ball-lightning`, `electric-hook` |
+| 4.3 | The staff up: a bolt into its head, then to every spire, which fire back into the sky | wide between the spires | `Cast-L-Summon1` | `intro2.storm.call`; `magic.lightning.shot`, `electric-hook-hit` |
+| 5.5 | **Name** (Slam): the staff crackling, rain, the storm behind | hero frame | staff idle | `intro2.storm.name`; `blast.quake`, `explosion` |
+
+In Reduced effects the cloud's flashes are held .45 s apart and widened (`Flash`), the bolts re-shape every .42 s, and the
+strike's white-out is halved.
 
 ## Black Sun (darkness)
 
-An eclipse over a glass plain. Story: the light goes out, the dark comes to one place, and the pilot comes out of it.
+An eclipse over a glass plain. The light goes out, the dark comes to one place, and the pilot comes out of it.
 
-| t (s) | Picture | Camera | Pilot | Sound |
+| t (s) | Beat | Camera | Pilot | Cue (key; fallback) |
 | ---: | --- | --- | --- | --- |
-| 0 | Dusk on the obsidian plain, long monolith shadows, the sun framed in the broken gate, the moon's edge touching it | wide, symmetrical, through the gate, slow push | unseen | `void.wind` (thin cold wind) |
-| 1.3 | The eclipse: the moon slides over, the light drains; the shadows peel off the ground and pour toward the centre like ink | dolly zoom on the centre as the shadows pour in | unseen | `void.pour` (a low draining rush) |
-| 2.8 | **Totality**: the corona blooms round the black sun; the poured dark rises into a void at the centre | low, centred, the void and the black sun in one line | unseen | `void.totality` (a deep choral swell, then silence) |
-| 3.7 | The void opens; the pilot steps out of it, the dark running off its body | locked-off, front, the void filling the frame | `Armed-Walk-Slow` steps, the body revealed from the front | `void.emerge` (an inverse rush and a step) |
-| 4.5 | One eye of light ignites on the visor | extreme close-up on the eye | head up | `void.eye` (a single high glass tone) |
-| 5.0 | The staff up; the dark wraps round the shoulders like wings, then snaps back to the monoliths | slow pull back, centred | `Cast-L-Summon2` | `void.wings` (cloth-like whoosh, a snap) |
-| 6.6 | **Name**: centred under the black sun, rim lit, the eye shining | still hero frame, symmetrical | staff idle | `void.name` (a low struck tone) |
+| 0 | Dusk on the obsidian, the sun in the broken gate, the moon's edge touching it | centred through the gate | unseen | `intro2.void.wind`; `boss.noctiel.glide`, `darkness` |
+| 1.35 | The moon slides over, the light drains; every monolith's shadow peels off and pours in as ink | a dolly zoom on the centre | unseen | `intro2.void.pour`; `boss.noctiel.eclipse.pool`, `darkness` |
+| 2.8 | **Totality** (ramp): the corona's rays, the diamond; the poured dark rises into a void against a violet glare | low, centred, the void under the black sun | unseen | `intro2.void.totality`; `boss.noctiel.eclipse`, `darkness` |
+| 3.55 | It steps out of the void, built in as it crosses its face, the dark running off it | locked off | keyed walk, the staff at its side | `intro2.void.emerge`; `blast.implosion`, `dash` |
+| 4.55 | One eye of light on the visor | close on the head | head up | `intro2.void.eye`; `boss.noctiel.hush.open`, `install` |
+| 5.05 | The staff up, the dark spreading behind its shoulders in feathers edged with violet | slow pull back, centred | `Cast-L-Summon2` | `intro2.void.wings`; `boss.noctiel.wings.open`, `dash` |
+| 5.7 | The snap: the dark streaks back to the monoliths, their runes flare | | `Cast-Attack1` | `intro2.void.snap`; `magic.darkness.hit`, `darkness` |
+| 6.6 | **Name** (Assemble): centred under the black sun, the eye lit | centred hero frame | staff idle | `intro2.void.name`; `magic.singularity`, `darkness` |
 
 ## Sounds
 
-Generated with ElevenLabs where the batch runs (owner: "Attempt to generate them if possible, if not, use existing sounds and
-ensure things sync properly"); every cue has an existing fallback so the intros are never silent. Keys `intro.<element>.<cue>`.
+Every cue has an existing bank key and a built-in clip, so the intros are synced before anything is generated (the managed
+checks hear each cue once at 60 Hz and at a guest's 20 Hz). The 31 generated sounds are requested in
+`docs/audio/intros/I5.json` (category `boss`, two takes each, prompts ending "isolated, no reverb, no music, no background
+noise") with their keys on the I5 slot of `Core/NativeIntroSoundKeys.cs`; the framework compiles every author's rows into one
+queue job (`docs/audio/intros/README.md`). Generation runs only inside a builder run.
 
-| Key | Fallback (existing) | Prompt |
-| --- | --- | --- |
-| `intro.fire.rumble` | `boss.ironworks.arrive.rumble` | A deep volcanic rumble under the ground with slow lava bubbling, isolated, no music |
-| `intro.fire.crack` | `boss.ironworks.crust.crack` | Hot rock cracking open in a fast rising sequence, crackling and splitting, isolated, no music |
-| `intro.fire.erupt` | `blast.fire` | A huge column of fire erupting from the ground, a deep whoomph into a roar, isolated, no music |
-| `intro.fire.column` | `field.fire` | A roaring pillar of flame, steady and powerful, isolated, no music |
-| `intro.fire.step` | `boss.noctiel.step` | One heavy boot step on hot stone with a crackle of embers, isolated, dry, no music |
-| `intro.fire.crown` | `fire` (weapon) | Flames swirling upward and igniting into a crown, a whooshing spiral and a soft flare, isolated, no music |
-| `intro.fire.slam` | `boss.ironworks.slam.wave` | A staff striking stone and fire rushing out along cracks, isolated, no music |
-| `intro.fire.name` | `metal` | A single forge hammer ring on an anvil with a warm flare of fire, isolated, no music |
-| `intro.water.drips` | `boss.deepend.drip` | Slow water drips in a large stone hall, a faint echo, isolated, no music |
-| `intro.water.rise` | `boss.deepend.tide` | Deep water rising and surging through a stone hall, swelling, isolated, no music |
-| `intro.water.rear` | `boss.deepend.seiche.draw` | A great wave drawing up and rearing, a rising roar of water, isolated, no music |
-| `intro.water.part` | `boss.deepend.wave` | A huge wave crashing and tearing in two around a point, isolated, no music |
-| `intro.water.freeze` | `blast.frost` | Water freezing instantly, a crystalline crackle racing upward ending in a bright chime, isolated, no music |
-| `intro.water.step` | `water` (weapon) | Two wading steps through shallow water, isolated, no music |
-| `intro.water.name` | `boss.noctiel.ripple` | A deep glass bell struck once over still water, long soft tail, isolated, no music |
-| `intro.storm.bed` | `field.storm` | Heavy rain on stone with distant rolling thunder, isolated, no music |
-| `intro.storm.charge` | `boss.station.arc` | A rising electric whine and crackle as static builds, isolated, no music |
-| `intro.storm.gather` | `chip.vacuum` | A sucking reverse hiss gathering into a point, isolated, no music |
-| `intro.storm.strike` | `blast.shock` | A lightning strike right here, a blinding thunder crack, isolated, no music |
-| `intro.storm.after` | `blast.static` | Sizzling electricity and rolling thunder after a strike, isolated, no music |
-| `intro.storm.crackle` | `lightning` (weapon) | Electric arcs crawling and snapping over metal, isolated, no music |
-| `intro.storm.call` | `electric-hook-hit` | A lightning bolt into a staff then six quick electric snaps, isolated, no music |
-| `intro.storm.name` | `blast.quake` | A long deep rolling thunder, isolated, no music |
-| `intro.void.wind` | `boss.noctiel.glide` | A thin cold wind over an empty plain, isolated, no music |
-| `intro.void.pour` | `boss.noctiel.eclipse.pool` | A low draining rush, like shadows pouring away, isolated, no music |
-| `intro.void.totality` | `boss.noctiel.eclipse` | A deep wordless choral swell cut to silence, isolated, no music |
-| `intro.void.emerge` | `blast.implosion` | An inverse rush of air into a point and one soft footstep, isolated, no music |
-| `intro.void.eye` | `boss.noctiel.hush.open` | A single high glass tone, pure and cold, isolated, no music |
-| `intro.void.wings` | `boss.noctiel.wings.open` | A heavy cloth-like whoosh opening and a sharp snap back, isolated, no music |
-| `intro.void.name` | `darkness` (weapon) | A low struck metallic tone with a dark shimmer, isolated, no music |
+## Checks
+
+- The framework's `--intros-v2` (every registered intro): registry, determinism, no allocation, budgets, Reduced effects (no
+  shake, nothing faster than 3 Hz), the streak rule, the cues, the sets with and without a bank.
+- `--intro-elemental`: the set script's numbers are the scripts' (the vent, the rings, the rivers, the hall, the spires, the
+  monoliths, the facing); every prop drawn is one the script builds; each intro draws its set through a fake bank and the void
+  without one; 6-8.5 s; the cue keys are in the contract and requested; long streaks on their head's plane; FX peaks within 600
+  (300 Low); the model's clips are known staff clips, played from their first window to the end without returning to the keys;
+  the staff's anchors finite. `--intro-elemental-probe [id]` prints the anchors and the camera for tuning.
 
 ## Choices made overnight (owner asleep)
 
 - The four names (Forgeborn, Still Tide, Strike Point, Black Sun) are new; rename freely in the registry line.
-- Motion uses only clips already in the motion bank; nothing was rebaked.
-- The water's moving walls are set pieces of the bank lifted and cross-faded into their frozen form under the frost front (no
-  live fluid sim): it reads as a wave and stays within budget.
+- Still Tide holds on its mark instead of walking out between the walls: its model plays its staff clips throughout (no upper-body
+  layer tonight), and a clip never goes back to the keys.
+- The water's walls are set pieces of the bank lifted, swung and swapped for their frozen form under the frost front (no live fluid).
+- The magic sink's water puffs and the void orb's matte sphere are not on the entrance sink tonight; the water and the void use
+  lit puffs, streaks and glows.
