@@ -94,6 +94,16 @@ def build(T):
             place(g, bar, M((sx * 3.6, 0, z), yaw=PI / 2))
     # ---- the theatre's front: stone, pilasters with deco caps, setbacks, deep doors, the marquee ----
     zf = FB_FRONT
+
+    def pane(geo, x0, x1, y0, y1, z, normal, nx, ny):
+        """A glass pane in a grid of quads, so its colour can carry a sheen, a kick plate and the foyer's light (glass_fn)."""
+        for i in range(nx):
+            for j in range(ny):
+                a0, a1 = x0 + (x1 - x0) * i / nx, x0 + (x1 - x0) * (i + 1) / nx
+                b0, b1 = y0 + (y1 - y0) * j / ny, y0 + (y1 - y0) * (j + 1) / ny
+                q = (V(a0, b0, z), V(a1, b0, z), V(a1, b1, z), V(a0, b1, z))
+                geo.face(q if normal[2] > 0 else q[::-1], F['glass'], normal=normal)
+    gx, gy = (6, 12) if fine else (2, 4)
     g.face((V(-14, 0, zf), V(14, 0, zf), V(14, 14, zf), V(-14, 14, zf)), F['stone2'], normal=(0, 0, 1))
     # the entrance recess and its glass (the swinging pair's frame left open)
     glass = Geo()
@@ -102,10 +112,10 @@ def build(T):
         sk.box(g, x - .06, x + .06, 0, 3.0, zf + .05, zf + .12, F['gold'], None, .01, cell=0)
     sk.box(g, -4.2, 4.2, 2.9, 3.05, zf + .05, zf + .14, F['gold'], None, .01, cell=0)
     for x0 in (-2.95, 1.05):
-        glass.face((V(x0, .05, zf + .07), V(x0 + 1.9, .05, zf + .07), V(x0 + 1.9, 2.88, zf + .07), V(x0, 2.88, zf + .07)), F['glass'], normal=(0, 0, 1))
+        pane(glass, x0, x0 + 1.9, .05, 2.88, zf + .07, (0, 0, 1), gx, gy)
         sk.box(g, x0 + .9, x0 + 1.0, .05, 2.88, zf + .07, zf + .1, F['gold'], None, 0, cell=0)
     # the foyer's glow behind the swinging pair (seen when they open)
-    glass.face((V(-1.0, 0, zf - .6), V(1.0, 0, zf - .6), V(1.0, 2.95, zf - .6), V(-1.0, 2.95, zf - .6)), F['glass'], normal=(0, 0, 1))
+    pane(glass, -1.0, 1.0, 0, 2.95, zf - .6, (0, 0, 1), 8 if fine else 3, 12 if fine else 4)
     for sx in (-1, 1):
         g.face((V(sx * 1.0, 0, zf - .6), V(sx * 1.0, 0, zf + .05), V(sx * 1.0, 2.95, zf + .05), V(sx * 1.0, 2.95, zf - .6)), F['dark'], normal=(-sx, 0, 0))
     g.face((V(-1.0, 2.95, zf - .6), V(1.0, 2.95, zf - .6), V(1.0, 2.95, zf + .05), V(-1.0, 2.95, zf + .05)), F['dark'], normal=(0, -1, 0))
@@ -219,11 +229,29 @@ def build(T):
     # ---- the swinging door leaf (its hinge at the origin) ----
     leaf = Geo()
     sk.box(leaf, 0, .95, 0, 2.9, -.03, .03, F['gold'], None, .01, cell=0)
-    leaf.face((V(.08, .1, .032), V(.87, .1, .032), V(.87, 2.8, .032), V(.08, 2.8, .032)), F['glass'], normal=(0, 0, 1))
-    leaf.face((V(.08, .1, -.032), V(.87, .1, -.032), V(.87, 2.8, -.032), V(.08, 2.8, -.032)), F['glass'], normal=(0, 0, -1))
+    pane(leaf, .08, .87, .1, 2.8, .032, (0, 0, 1), 3 if fine else 1, 12 if fine else 4)
+    pane(leaf, .08, .87, .1, 2.8, -.032, (0, 0, -1), 3 if fine else 1, 12 if fine else 4)
     sk.cylinder(leaf, V(.82, .9, .04), V(.82, 2.0, .04), .025, F['brass'], 6)
     sky = Geo()
     dome(sky, 172, F['sky'], 10 if fine else 5, 32 if fine else 14, -16, 90)
+
+    def glass_fn(P):
+        """Lit glass: the foyer's warm light, brighter low (the floor's spill) and toward the middle of the entrance, a dark kick plate
+        and a mid-rail band, two soft diagonal sheens; the foyer itself (the plane behind the swinging pair) a chandelier's glow over
+        a warm stair-lit floor, darker at its sides."""
+        x, y, z = P[:, 0], P[:, 1], P[:, 2]
+        warm = mix_hex(0xffe7c2, 0xffb978, np.clip(y / 2.9, 0, 1))
+        b = .62 + .38 * np.clip(1 - y / 2.9, 0, 1) ** 1.5
+        b *= 1 - .28 * np.clip((np.abs(x) - 1.0) / 2.0, 0, 1)
+        b *= np.where(y < .32, .45, 1.0) * np.where((y > 1.0) & (y < 1.1), .55, 1.0)
+        sheen = .16 * np.clip(np.sin((x * 1.4 + y * .9) * 2.1), 0, 1) ** 6 + .1 * np.clip(np.sin((x * 1.4 + y * .9) * 5.3 + 1), 0, 1) ** 8
+        col = warm * b[:, None] + sheen[:, None]
+        foyer = z < FB_FRONT - .3
+        r = np.hypot(x / 1.0, (y - 2.45) / .55)
+        chand = np.clip(1 - r, 0, 1) ** 1.6
+        fb = .38 + .3 * np.clip(1 - y / 1.4, 0, 1) - .2 * np.clip(np.abs(x) - .55, 0, 1) / .45
+        fcol = mix_hex(0xffcf98, 0xfff4e0, chand) * np.clip(fb + .7 * chand, 0, 1)[:, None]
+        return np.clip(np.where(foyer[:, None], fcol, col), 0, 1)
 
     def sky_night(P):
         d = P / np.maximum(np.linalg.norm(P, axis=1, keepdims=True), 1e-9)
@@ -237,8 +265,8 @@ def build(T):
         Piece('flashbulb/bulbs3', bulbs[3], False),
         Piece('flashbulb/neon', neon, False),
         Piece('flashbulb/posters', posters, False, recolour=({F['poster1'], F['poster2']}, poster_fn)),
-        Piece('flashbulb/glass', glass, False),
-        Piece('flashbulb/leaf', leaf, False, (-50.0,), preview=[M((FB_DOORS[0], 0, FB_FRONT + .08), yaw=-.9), M((FB_DOORS[1], 0, FB_FRONT + .08), yaw=PI + .9)]),
+        Piece('flashbulb/glass', glass, False, recolour=({F['glass']}, glass_fn)),
+        Piece('flashbulb/leaf', leaf, False, (-50.0,), recolour=({F['glass']}, glass_fn), preview=[M((FB_DOORS[0], 0, FB_FRONT + .08), yaw=-.9), M((FB_DOORS[1], 0, FB_FRONT + .08), yaw=PI + .9)]),
         Piece('flashbulb/globes', globes, False),
         Piece('flashbulb/sky', sky, False, (-500.0,), recolour=({F['sky']}, sky_night)),
     ]
