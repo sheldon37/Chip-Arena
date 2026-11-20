@@ -1,3 +1,76 @@
+## 2026-11-20 — Claude (I2b): Slipstream's run, take-off and slide from the owner's Runner Action pack; Slipstream registered again (owner: "The run is very 'cartoon' like"; presentation only)
+
+**Branch and base:** `claude/intro-generic`, fast-forwarded to shared `139b40e4` (batch 1 shipped without Slipstream) and merged with
+the framework `claude/intro-framework` `9bbf5845` (I0d's pack clips as keys). Implementation commits `059dd1c8` and `89a64310`.
+Pushed, not merged;
+nothing released. As-built notes: `docs/INTROS-GENERIC.md` "Slipstream" (Motion).
+
+**What changed and why** (owner: "The run is very 'cartoon' like, can we make this more realistic? Could use the running pack I have"):
+Slipstream's sprint, take-off and slide now play the owner's BIPER Runner Action pack clips from the intros' local motion bank
+(`ChipArenaIntroMotion.bytes`, I0d's, never committed; `docs/INTROS-V2.md` 9d) over its own keys, which still play without the bank.
+- **The clips:** `Mvm_Dash` for the sprint (the root moving along the roof at the clip's 9.12 m/s, so the drawn feet hold; a footfall
+  every .27 s: the right at 1.8 s, the left, the right, the left planted for the take-off at 2.6 s), `Jmp_FrontAir_A_Start` for the
+  take-off (held on its airborne frame into the keyed leap), `Esc_Slide_All` for the slide (the right foot down on the landing, the leg
+  folding under, the left leg out in front; its feet slide with it, no hold) and the rise (held feet; the slide stops where the hero
+  stance puts the left foot, and the body rises over it onto the mark). `Jump_Down_A_Loop` (a fall with the arms up) was left out:
+  the keyed split leap reads better for a running leap. The crouch, the leap's flight and the hero beats stay keyed.
+- **The base** (`NativeIntroGenericScript`): the body is posed in the frame of what carries its feet (`Carried`; Slipstream's car until
+  the leap), so feet planted on the roof, and a clip's feet held where they came down (NativeIntroPack holds them against the root),
+  ride with the car; a pack clip's legs let go of the kneel and the heel roll; `Repin` puts the feet back on the keys' plan, the
+  height too, as a clip hands over to the keys. The other four intros draw byte-identically (their model dumps against `92b1c960`).
+- **Under the clips:** the keyed lean is the pelvis's, not the body's: `NativeIntroPack.Apply` plays joints 1-21 and leaves the keyed
+  body turn (B), so a keyed lean tilted the whole clip 20 degrees. The slide's right hand is keyed (in line with its forearm, the
+  fingertips dragging): the clip's, bent back flat on the floor, drew 116 degrees off its keyed turn, past the 110 IntroPoseChecks
+  allows a hand. The root rides 2 cm higher while the slide plays. The rise plays until the body is up over the left foot and holds that
+  frame as it eases into the keyed stand (the clip runs on into a stride, which mixed with the stand jolted the body and the camera:
+  the full suite caught the Reduced camera shaking 27 mm), and the orbit follows the chest without a lead. The tracking shot keeps
+  inside the tunnel's lining until it is out (the faster start reached the wall) and sits further ahead and level with the pilot (the
+  first take had its head out of frame at 1.7-1.8 s).
+- **Without the bank** (CI, a build without the local assets) the keys play the same beats: an accelerating sprint at the clip's stride,
+  a take-off off the left foot, a knee slide on the right knee with the left foot out in front and the right hand dragging, the right
+  foot planting under the rising body. The slide's sparks follow whatever is down (the folded knee, the boot out in front, the dragging
+  fingertips), so both read the same.
+- **Registered again:** its catalog line restored and `IntroGenericChecks`' hold-out removed.
+
+**Systems touched:** Core `NativeIntroGeneric.cs`, `NativeIntroSlipstream.cs`, `NativeIntroCatalog.cs` (Slipstream's line); Tests
+`IntroGenericChecks.cs` (`Roof`, `Clips`, both modes, the pack's arms bound as the runtime binds them); `docs/INTROS-GENERIC.md`. No
+framework file, no Runtime file, no rules, no wire, no saves.
+
+**Checks (actual, on `89a64310`; the docs commit after it changes no code and no check reads it):**
+- Full CoreTests the relgen5 way (LF throwaway worktree, `expedition_path.patch`, `CHIPARENA_STAGE_BANKS` = the integrator's
+  `banks-next`; the local motion bank found and loaded, as the game plays it): exit 0, 1087 PASS, 0 FAIL. Within it: generic intros
+  29,960 checks; intros v2 4,649; intro poses 484 (0 limit, feet or grip findings); intro pack 113. The same run on `059dd1c8` failed
+  the Reduced camera (27 mm in the rise), fixed in `89a64310`.
+- `--intro-limits`: 0 findings (485 checks). Unity compile check (`tools/check_unity_compile.py`, 6000.3.24f1, no download): all four
+  assemblies PASS. `git diff --check`: clean.
+- The other four generic intros' model dumps (`INTRO_GENERIC_MODEL`) are byte-identical to `92b1c960`'s.
+
+**Captures (local, never committed; `F:/Chip Arena Development/scratch/intro-generic/clips/`):**
+- Hold 3 on `059dd1c8` (12.2 min): the motion bank put in the Editor's `Resources` (131,257 bytes, sha256 df9bdad1; Unity made its
+  .meta) and left there; Slipstream at High and review views. Its review found the tracking shot too close in the tunnel (the head out
+  of frame at 1.7-1.8 s), and the BoZo `introeye` "s" view is the intro frame's side, a front view for a run along x. Superseded.
+- Hold 4 on `89a64310` (11.1 min): `Slipstream-high-b4.mp4` (real time, 7.2 s, 1.1 MB, trimmed: from the first frame clear of the
+  loading card to the last before the match), `Slipstream-side-b4-halfspeed.mp4` (the run 1.5-2.87 s and the slide 3.2-4.87 s seen
+  square from the hall side, half speed), `sheets/Slipstream-b4-strip.png`, `-run.png`, `-slide.png`, `-run-side.png`,
+  `-slide-side.png`. Reviewed: the sprint reads as a sprint (the lean, the knee drive, the arms, long flights); the helmet clear of the
+  tunnel's ceiling; in the slide nothing goes through the floor (the folded leg's knee and shin at the floor, the heel out in front, the
+  hand down behind with sparks); the feet on the roof are held to the car by the check (stills cannot show a slide).
+
+**Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (presentation; Slipstream's registered
+Duration 7.4 s and NameAt 5.6 s are unchanged).
+
+**Voxel dependency:** none added.
+
+**Risks and next step:**
+- The bank is local: the integrator packs `ChipArenaIntroMotion.bytes` (131,257 bytes, sha256 df9bdad1) into the Drive zip at its
+  release; without it Slipstream plays its keys. It now sits in the Editor's `Resources` (Unity made its .meta).
+- The clip timing is pinned by `IntroGenericChecks.Clips` (speed, stride, footfalls, the take-off plant, the slide's touchdown): a
+  rebaked bank with other timing fails there first.
+- For the framework (passed to the integrator for I0d): `Apply` leaves the keyed body turn under a pack segment, and
+  `IntroPoseChecks.Mapping` holds pack-played hands to their keyed turn; skipping pack-played joints there, as `Limits` does, would let
+  the slide's right hand be the clip's again.
+- Next: the integrator merges the branch and ships the bank with Slipstream.
+
 ## 2026-11-20 — Claude (I0d): intros v2: pack clips as keys from the intros' own motion bank (Slipstream's run), and the name card on bright sets (owner request; presentation only)
 
 Owner (2026-11-20, on Slipstream): "The run is very 'cartoon' like, can we make this more realistic? Could use the running pack I
