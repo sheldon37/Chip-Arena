@@ -1,5 +1,4 @@
 // Generated from docs/expedition/meridian-plans by tools/bake_meridian_walks.py.
-#if UNITY_EDITOR || DEVELOPMENT_BUILD || ARENA_TESTS
 namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeLayeredCityWalk
@@ -3790,4 +3789,3 @@ namespace ChipArena.UnityConversion
         }
     }
 }
-#endif

@@ -6,6 +6,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
+        private int previousCityPlan=-1;
         private ExpeditionDeploymentRoom deploymentRoom;
         private ExpeditionDeploymentReceiver deploymentReceiver;
         private ExpeditionLayout deploymentLayout;
@@ -20,7 +21,7 @@ namespace ChipArena.UnityConversion
         private int deploymentPendingDeploy=-1;
         private string deploymentBuildError;
         private static bool SameDeploymentTicket(ExpeditionDeploymentTicket a,ExpeditionDeploymentTicket b)=>a!=null&&b!=null&&
-            a.schema==b.schema&&a.station==b.station&&a.originHost==b.originHost&&a.expedition==b.expedition&&a.seed==b.seed&&a.revision==b.revision&&
+            a.cityPlan==b.cityPlan&&a.schema==b.schema&&a.station==b.station&&a.originHost==b.originHost&&a.expedition==b.expedition&&a.seed==b.seed&&a.revision==b.revision&&
             a.instanceRolls==b.instanceRolls&&a.mutatorRolls==b.mutatorRolls&&a.mutatorSkips==b.mutatorSkips&&a.mutatorsSkipped==b.mutatorsSkipped&&
             a.compatibility==b.compatibility&&a.deployed==b.deployed&&a.generatedCompatibility==b.generatedCompatibility;
         private bool PrepareDeploymentBundle(ExpeditionDeploymentTicket ticket)
@@ -69,6 +70,7 @@ namespace ChipArena.UnityConversion
             {
                 if(!PrepareDeploymentBundle(deploymentRoom.Ticket)){deploymentPendingDeploy=revision;networkStatus="Preparing destinations…";return true;}
                 if(!deploymentRoom.Execute(account?.Access?.AccountId,revision,ExpeditionDeploymentIntent.Deploy,true,deploymentBundle.Identity))return false;
+                previousCityPlan=deploymentRoom.Ticket.cityPlan;
                 PrepareDeploymentBundle(deploymentRoom.Ticket);BroadcastDeployment();deploymentLaunch=true;
                 liveDeployClock.Observe(deploymentRoom.Snapshot(),Time.unscaledTime);
                 deploymentTravelAt=Time.unscaledTime+NativeDeployPresentation.TravelAt;return true;
@@ -90,7 +92,7 @@ namespace ChipArena.UnityConversion
             try
             {
                 deploymentLayout=LoadDeploymentLayout();
-                deploymentRoom=new ExpeditionDeploymentRoom("deploy-"+Guid.NewGuid().ToString("N"),host.AccountId,NativeMatch.NewSeed(),expedition,deploymentLayout,content);
+                deploymentRoom=new ExpeditionDeploymentRoom("deploy-"+Guid.NewGuid().ToString("N"),host.AccountId,NativeMatch.NewSeed(),expedition,deploymentLayout,content,previousCityPlan);
                 LobbyBroadcast();return true;
             }
             catch(ArgumentException e){networkStatus=e.Message;return false;}

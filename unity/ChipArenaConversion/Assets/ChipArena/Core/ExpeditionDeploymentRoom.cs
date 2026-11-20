@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     // Small, versioned wire/handoff record. The blueprint is rebuilt locally and never trusted from a peer.
     [Serializable] public sealed class ExpeditionDeploymentTicket
     {
-        public int schema=1,revision,instanceRolls,mutatorRolls,mutatorSkips;public bool mutatorsSkipped;
+        public int cityPlan; public int schema=1,revision,instanceRolls,mutatorRolls,mutatorSkips;public bool mutatorsSkipped;
         public string station,originHost,expedition,compatibility,generatedCompatibility;
         public uint seed;public bool deployed;
         public ExpeditionDeploymentTicket Copy()=>(ExpeditionDeploymentTicket)MemberwiseClone();
@@ -20,6 +20,7 @@ namespace ChipArena.UnityConversion
         private readonly string expedition,compatibility,owner;
         private NativeExpeditionDeployment authority;
         private string generatedCompatibility;
+        private int cityPlan;
         public string Owner=>owner;
         public bool Deployed=>authority.Deployed;
         public ExpeditionDeploymentState Snapshot()=>authority.Snapshot();
@@ -28,14 +29,15 @@ namespace ChipArena.UnityConversion
             get
             {
                 var s=authority.Snapshot();
-                return new ExpeditionDeploymentTicket{station=s.station,originHost=s.host,seed=s.seed,
+                return new ExpeditionDeploymentTicket{cityPlan=cityPlan,station=s.station,originHost=s.host,seed=s.seed,
                     revision=s.revision,instanceRolls=s.instanceRolls,mutatorRolls=s.mutatorRolls,mutatorSkips=s.mutatorSkips,mutatorsSkipped=s.mutatorsSkipped,deployed=s.deployed,
                     expedition=expedition,compatibility=compatibility,generatedCompatibility=generatedCompatibility};
             }
         }
         public ExpeditionDeploymentRoom(string station,string host,uint seed,string selected,
-            ExpeditionLayout layout,ConversionContent content)
+            ExpeditionLayout layout,ConversionContent content,int previousPlan=-1)
         {
+            cityPlan=NativeCityLayout.Choose(seed,previousPlan);
             if(!ExpeditionValidation.Id(host))throw new ArgumentException("Authenticated host required.");
             owner=host;expedition=selected;catalog=Catalog(selected,layout,content);
             compatibility=Compatibility(selected,layout,content,catalog);
@@ -47,12 +49,12 @@ namespace ChipArena.UnityConversion
         {
             if(ticket==null)throw new ArgumentNullException(nameof(ticket));
             var room=new ExpeditionDeploymentRoom(ticket.station,newOwner,ticket.seed,ticket.expedition,layout,content);
-            if(ticket.compatibility!=room.compatibility||
+            if(ticket.cityPlan<0||ticket.cityPlan>=NativeCityLayout.Plans.Count||ticket.compatibility!=room.compatibility||
                ticket.deployed&&!Digest(ticket.generatedCompatibility)||
                !ticket.deployed&&!string.IsNullOrEmpty(ticket.generatedCompatibility))
                 throw new ArgumentException("Deployment content or generated map is incompatible.");
             room.authority=NativeExpeditionDeployment.Restore(ticket,room.catalog);
-            room.generatedCompatibility=ticket.generatedCompatibility;
+            room.cityPlan=ticket.cityPlan;room.generatedCompatibility=ticket.generatedCompatibility;
             return room;
         }
         public bool Execute(string authenticatedAccount,int expectedRevision,ExpeditionDeploymentIntent intent,
@@ -110,7 +112,7 @@ namespace ChipArena.UnityConversion
         {
             if(incoming==null)return false;
             if(ticket!=null&&(incoming.station!=ticket.station||incoming.originHost!=ticket.originHost||
-               incoming.seed!=ticket.seed||incoming.compatibility!=ticket.compatibility||incoming.revision<ticket.revision||
+               incoming.cityPlan!=ticket.cityPlan||incoming.seed!=ticket.seed||incoming.compatibility!=ticket.compatibility||incoming.revision<ticket.revision||
                incoming.instanceRolls<ticket.instanceRolls||incoming.mutatorRolls<ticket.mutatorRolls||incoming.mutatorSkips<ticket.mutatorSkips||ticket.deployed&&
                (incoming.revision!=ticket.revision||incoming.generatedCompatibility!=ticket.generatedCompatibility||!incoming.deployed)))return false;
             try

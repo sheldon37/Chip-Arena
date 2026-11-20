@@ -1,4 +1,3 @@
-#if UNITY_EDITOR || DEVELOPMENT_BUILD || ARENA_TESTS
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -354,4 +353,3 @@ namespace ChipArena.UnityConversion
         }
     }
 }
-#endif

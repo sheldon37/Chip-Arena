@@ -10,15 +10,18 @@ namespace ChipArena.UnityConversion
     // Construct once for a roll, before creating any PvE session. No resource/global content is mutated.
     public sealed class ExpeditionGeneratedWorld
     {
+        public NativeLayeredCityWalk City;
+        public NativeCityBleed Bleed;
+        public string[] HallSlots;
         public ContentMap Map;
         public ExpeditionAreaLayout Area;
         public ExpeditionHubLayout Hub;
         public ExpeditionDeploymentState Blueprint;
         public string Compatibility;
     }
-    public static class NativeExpeditionGeneratedWorld
+    public static partial class NativeExpeditionGeneratedWorld
     {
-        public const string Version="deployment-world-m3-5";
+        public const string Version="deployment-world-blockout-4";
         /// <summary>Each instance's building behind its entrance frame, and the walls closing any street at the floor's edge.</summary>
         public const float HallHeight=18,EdgeHeight=6;
         public const string MapId="expedition-generated-city";
@@ -74,123 +77,34 @@ namespace ChipArena.UnityConversion
             if(room==null)throw new ArgumentNullException(nameof(room));
             var state=room.Snapshot();
             if(!state.worldRolled)throw new InvalidOperationException("Roll instances before generating a world.");
-            var roads=new HashSet<string>(state.cells.Where(c=>c.road).Select(c=>Key(c.x,c.z)));
-            // A clear apron joins any seeded street to the four actual sanctuary gates.
-            for(int x=-3;x<=3;x++)for(int z=-3;z<=3;z++)roads.Add(Key(x,z));
-            // Final boss has its own northern court, independent of the three selected entrances.
-            for(int z=3;z<=8;z++)roads.Add(Key(0,z));
-            for(int x=-2;x<=2;x++)for(int z=6;z<=8;z++)roads.Add(Key(x,z));
-            foreach(var d in state.districts)
-                for(int x=d.x-1;x<=d.x+1;x++)for(int z=d.z-1;z<=d.z+1;z++)roads.Add(Key(x,z));
-            var blocks=new List<ContentBlock>{Block("floor",0,0,250,190,1,"foundation",-1)};
-            foreach(var c in state.cells.Where(c=>!roads.Contains(Key(c.x,c.z))))
-            {
-                // Filled blocks have no inaccessible alleys or unsupported visual floors. Tops are excluded from pilots.
-                int style=(int)((state.worldSeed+unchecked((uint)(c.x+12)*31+(uint)(c.z+9)*17))%4);
-                blocks.Add(Block("building-"+Key(c.x,c.z),c.x*10,c.z*10,10,10,8+style*2));
+            var plan=NativeCityLayout.Plans[room.Ticket.cityPlan];
+            var city=new NativeLayeredCityWalk(plan,state.worldSeed);
+            city.Map.id=MapId;
+            city.Map.tag="Expedition";
+            city.Map.look="expedition-night";
+            for(int i=0;i<8;i++){
+                var row=new MapSpawn{pos=new V3(i%4*2-3,1.1f,i/4*3-2)};
+                city.Map.spawns.ffa[i]=row;city.Map.spawns.teams[i/4].points[i%4]=row;
             }
+            city.Map.nav=NativeMeridianNavigation.Build(city.Map);
             var gates=new List<ExpeditionHubGate>();var fences=new List<ExpeditionHubFence>();
             foreach(var direction in new[]{(x:0,z:1,side:"north",yaw:0f),(x:1,z:0,side:"east",yaw:90f),(x:0,z:-1,side:"south",yaw:180f),(x:-1,z:0,side:"west",yaw:270f)})
             {
                 var d=direction;string id="generated-gate-"+d.side;var ids=new List<string>();
                 foreach(int sign in new[]{-1,1})
                 {
-                    var b=Block("fence-"+d.side+I(sign),d.x*25+d.z*15*sign,d.z*25-d.x*15*sign,d.x==0?20:.4f,d.x==0?.4f:20,3.2f,"metal");
-                    blocks.Add(b);ids.Add(b.id);fences.Add(new ExpeditionHubFence{Block=b.id,Kind="metal",Side=d.side,Gate=id});
+                    string block="camp-fence-"+gates.Count+"-"+sign;
+                    ids.Add(block);fences.Add(new ExpeditionHubFence{Block=block,Kind="metal",Side=d.side,Gate=id});
                 }
                 gates.Add(new ExpeditionHubGate{Id=id,Kind="metal",Motion="slide",Side=d.side,X=d.x*25,Z=d.z*25,Yaw=d.yaw,Width=10,Height=3.2f,
                     Closure=Volume(d.x*25,d.z*25,d.x==0?10:.4f,d.x==0?.4f:10,3.2f),
                     Interact=Volume(d.x*25,d.z*25,10,10),Sensor=Volume(d.x*25,d.z*25,12,12),Inside=Point(d.x*22,d.z*22),Outside=Point(d.x*28,d.z*28),Fence=ids.ToArray()});
             }
-            var anchors=new List<ExpeditionWorldAnchor>();var doors=new List<ExpeditionDoorLayout>();
-            foreach(var d in state.districts)
-            {
-                float x=d.x*10,z=d.z*10,ix=d.side=="east"?-1:d.side=="west"?1:0,iz=d.side=="south"?1:0;
-                float yaw=d.side=="east"?270:d.side=="west"?90:0;
-                string id="exp-city:door:"+d.instance;
-                anchors.Add(new ExpeditionWorldAnchor{id=id,area="exp-city",kind="door",building=d.instance,x=x,z=z,yaw=yaw});
-                foreach(int sign in new[]{-1,1})blocks.Add(Block("entrance-"+d.instance+I(sign),x+iz*4*sign,z-ix*4*sign,ix==0?2:1,ix==0?1:2,6,"metal"));
-                blocks.Add(Block("lintel-"+d.instance,x,z,ix==0?10:1,ix==0?1:10,1,"metal",6));
-                doors.Add(new ExpeditionDoorLayout{anchor=id,interact=Volume(x+ix*2,z+iz*2,5,5),closure=Volume(x,z,ix==0?6:1,ix==0?1:6),
-                    approach=Point(x+ix*4,z+iz*4,yaw),join=new ExpeditionJoinCylinder{x=x+ix*8,z=z+iz*8,r=3,h=3},entries=Array.Empty<ExpeditionPoint>(),
-                    returns=Enumerable.Range(0,8).Select(i=>Point(x+ix*(6+i/4*2)+iz*((i%4)*2-3),z+iz*(6+i/4*2)-ix*((i%4)*2-3),yaw)).ToArray()});
-                // The instance's building fills its forecourt's outer half to the floor's edge (owner playtest 2026-11-01: the frame
-                // stood alone and pilots walked round it off the floor). The frame is its doorway; its city half stays open.
-                float far=ix>0?-125:ix<0?125:-95,near=(ix!=0?x:z)-(ix+iz)*.5f,h0=Math.Min(far,near),h1=Math.Max(far,near);
-                blocks.Add(ix!=0?Block("hall-"+d.instance,(h0+h1)/2,z,h1-h0,30,HallHeight):Block("hall-"+d.instance,x,(h0+h1)/2,30,h1-h0,HallHeight));
-            }
-            // A wall where any other street meets the floor's edge (a seeded branch can reach it), outside the halls.
-            var halls=blocks.Where(b=>b.id.Contains("-hall-")).ToArray();
-            foreach(var key in roads.OrderBy(k=>k,StringComparer.Ordinal))
-            {
-                var c=key.Split(':');int cx=int.Parse(c[0],CultureInfo.InvariantCulture),cz=int.Parse(c[1],CultureInfo.InvariantCulture);
-                bool Covered(float px,float pz)=>halls.Any(b=>Math.Abs(px-b.pos.x)<b.size.x/2&&Math.Abs(pz-b.pos.z)<b.size.z/2);
-                if(Math.Abs(cx)==12&&!Covered(cx*10+Math.Sign(cx)*4.8f,cz*10))blocks.Add(Block("edge-"+key,cx*10+Math.Sign(cx)*4.8f,cz*10,.4f,10,EdgeHeight));
-                // Along x the corner cell's wall stops short of the one across its end.
-                if(Math.Abs(cz)==9&&!Covered(cx*10,cz*10+Math.Sign(cz)*4.8f)){float trim=Math.Abs(cx)==12?.4f:0;
-                    blocks.Add(Block("edge-z-"+key,cx*10-Math.Sign(cx)*trim/2,cz*10+Math.Sign(cz)*4.8f,10-trim,.4f,EdgeHeight));}
-            }
-            // A closed north court has one 10 m entrance. Its gate is controlled by the existing final-boss rules.
-            blocks.Add(Block("final-west",-25,70,.4f,30,6));blocks.Add(Block("final-east",25,70,.4f,30,6));
-            blocks.Add(Block("final-back",0,85,50,.4f,6));
-            blocks.Add(Block("final-front-west",-15,55,20,.4f,6));blocks.Add(Block("final-front-east",15,55,20,.4f,6));
-            var slots=NativeExpeditionHubPlan.LandingField(state.worldSeed);
-            var pvpSpawns=Enumerable.Range(0,8).Select(i=>Point(i%4*2-3,i/4*3-2)).ToArray();
-            var spawns=new List<ExpeditionSpawnLayout>();var zones=new List<ExpeditionHubZone>();var interactions=new List<ExpeditionInteractionLayout>();
-            // Use the seeded trunks (not the courts/apron) for encounters. Reserve door and final approaches.
-            foreach(var c in state.cells.Where(c=>c.road&&!c.sanctuary).OrderBy(c=>c.x).ThenBy(c=>c.z))
-            {
-                float x=c.x*10,z=c.z*10;
-                if(Math.Max(Math.Abs(x),Math.Abs(z))<40||z>=45||doors.Any(d=>(new V3(x,0,z)-d.approach.Position).Length<20))continue;
-                int n=spawns.Count;var point=new PvePoint{x=x,z=z};
-                spawns.Add(new ExpeditionSpawnLayout{entry=new PveEntry{e=n,id="generated-spawn-"+I(n),kind="door",from=point,@exit=new PvePoint{x=x,z=z},clear=3,allowed=new[]{"shambler","runner","spitter","brute","hulk"}},allow=new[]{"shambler","runner","spitter","brute","hulk"}});
-                string ring=Math.Max(Math.Abs(x),Math.Abs(z))<55?"near":Math.Max(Math.Abs(x),Math.Abs(z))<85?"mid":"far";
-                zones.Add(new ExpeditionHubZone{Id="generated-zone-"+I(n),Ring=ring,Volume=Volume(x,z,9,9),Spawns=new[]{n}});
-            }
-            // The three hall forecourts reserve a clear apron on the street side of their facade.
-            // The north fence provides the neutral cache with a backstop outside the camp.
-            var cacheRng=new NativeExpeditionDeployment.Roller(state.worldSeed^0xca647u);
-            foreach(var door in doors)
-            {
-                var face=anchors.Single(a=>a.id==door.anchor);
-                var f=CacheForward(face.yaw);
-                var bays=new List<V3>();
-                foreach(int sign in new[]{-1,1})
-                    for(int index=0;index<9;index++)
-                    {
-                        float lateral=sign*(10+index*.5f);
-                        var at=new V3(face.x+f.z*lateral,0,face.z-f.x*lateral);
-                        if(spawns.All(spawn=>(spawn.entry.@exit.Position()-at).Length>=8)
-                            &&(at-new V3(door.join.x,0,door.join.z)).Length>=8+door.join.r)
-                            bays.Add(at);
-                    }
-                if(bays.Count==0)throw new InvalidOperationException("No clear facade bay at "+face.building);
-                var bay=bays[cacheRng.Index(bays.Count)];
-                AddCache(face.building,bay.x,bay.z,face.yaw);
-            }
-            AddCache("neutral",(cacheRng.Index(2)==0?-1:1)*(9+cacheRng.Index(24)*.5f),25.55f,0);
-            void AddCache(string slot,float x,float z,float yaw)
-            {
-                var anchor=new ExpeditionWorldAnchor{id="exp-city:cache:"+slot,area="exp-city",kind="chest",x=x,z=z,yaw=yaw};
-                if(!CacheColumnClear(anchor,blocks))throw new InvalidOperationException("Cache under an overhang: "+anchor.id);
-                anchors.Add(anchor);blocks.Add(CacheBlock(anchor));interactions.Add(CacheInteraction(anchor));
-            }
-            var map=new ContentMap{id=MapId,name="Generated Expedition",tag="Expedition",theme="expedition",ambience="",look="expedition-city",sky=2761800,floor=2894384,accent=16747084,unity=true,
-                bounds=new MapBounds{minX=-125,maxX=125,minZ=-95,maxZ=95,ceiling=40,killY=-8},blocks=blocks.ToArray(),
-                spawns=new MapSpawns{ffa=pvpSpawns.Select(p=>new MapSpawn{pos=p.Position+new V3(0,1.1f,0),yaw=p.yaw}).ToArray(),
-                    teams=new[]{0,1}.Select(side=>new MapTeamSpawns{side=side,points=pvpSpawns.Skip(side*4).Take(4).Select(p=>new MapSpawn{pos=p.Position+new V3(0,1.1f,0)}).ToArray()}).ToArray()},
-                hazards=Array.Empty<MapHazard>(),ramps=Array.Empty<MapRamp>(),segments=Array.Empty<StructureDefinition>(),
-                pilotBlocks=blocks.Where(b=>b.id.Contains("-building-")||b.id.Contains("-hall-")||b.id.Contains("-edge-")).Select(b=>new MapPilotBlock{id=b.id+"-column",center=b.pos,size=new V3(b.size.x,40,b.size.z),bottom=0}).ToArray()};
-            var area=new ExpeditionAreaLayout{id="exp-city",role="world",map=MapId,anchors=anchors.ToArray(),doors=doors.ToArray(),interactions=interactions.ToArray(),
-                gates=new[]{new ExpeditionGateLayout{id="exp-city:final-gate",opens="final",closure=Volume(0,55,10,.4f,6)}},
-                slots=slots,sanctuary=new[]{Volume(0,0,49.6f,49.6f)},spawns=spawns.ToArray(),bossPoints=new[]{Point(0,72,180)},bossTrigger=Volume(0,66,40,18)};
-            map.nav=Navigation(map);
-            NativeMapRules.Validate(map);
-            var result=new ExpeditionGeneratedWorld{Map=map,Area=area,Blueprint=state,Hub=new ExpeditionHubLayout{Area=area.id,Fence=fences.ToArray(),Gates=gates.ToArray(),Zones=zones.ToArray()}};
-            // Generated street shape is exposed to the theme renderer, including the reserved courts and gate apron.
-            foreach(var c in result.Blueprint.cells)c.road=roads.Contains(Key(c.x,c.z));
-            Routes(result);
-            Validate(result);
+            var area=new ExpeditionAreaLayout{id="exp-city",role="world",map=MapId,slots=NativeExpeditionHubPlan.LandingField(state.worldSeed),
+                sanctuary=new[]{Volume(0,0,49.6f,49.6f)}};
+            var result=new ExpeditionGeneratedWorld{Area=area,Blueprint=state,Hub=new ExpeditionHubLayout{Area=area.id,Fence=fences.ToArray(),Gates=gates.ToArray()}};
+            PopulateMeridian(result,city);
+            NativeMapRules.Validate(result.Map);
             result.Compatibility=Digest(room.Ticket,result);
             return result;
         }
@@ -317,8 +231,10 @@ namespace ChipArena.UnityConversion
             // Exact generated collision/nav receipt, independent of current culture and JSON/Unity serialization.
             void F(float v)=>text.Append('|').Append(v.ToString("R",CultureInfo.InvariantCulture));
             foreach(var b in world.Map.blocks){text.Append('\n').Append(b.id).Append('|').Append(b.material);F(b.pos.x);F(b.pos.y);F(b.pos.z);F(b.size.x);F(b.size.y);F(b.size.z);F(b.rotation.y);F(b.rotation.w);}
-            foreach(var n in world.Map.nav.nodes){text.Append('\n').Append(n.id);F(n.pos.x);F(n.pos.y);F(n.pos.z);}
-            foreach(var l in world.Map.nav.links)text.Append('\n').Append(l.id).Append('|').Append(l.a).Append('|').Append(l.b);
+            text.Append('|').Append(NativeCityLayout.Version).Append('|').Append(I(ticket.cityPlan));
+            foreach(var ramp in world.Map.ramps){text.Append(ramp.id).Append('|').Append(ramp.kind);F(ramp.low.x);F(ramp.low.y);F(ramp.low.z);F(ramp.high.x);F(ramp.high.y);F(ramp.high.z);F(ramp.width);F(ramp.bottom);}
+            foreach(var n in world.Map.nav.nodes){text.Append('\n').Append(n.id);F(n.pos.x);F(n.pos.y);F(n.pos.z);text.Append('|').Append(I(n.layer));}
+            foreach(var l in world.Map.nav.links)text.Append('\n').Append(l.id).Append('|').Append(l.a).Append('|').Append(l.b).Append('|').Append(l.kind);
             foreach(var d in world.Blueprint.districts)text.Append('\n').Append(d.instance).Append('|').Append(d.theme).Append('|').Append(d.side);
             void P(ExpeditionPoint p){F(p.x);F(p.y);F(p.z);F(p.yaw);}
             void V(ExpeditionVolume v){F(v.x);F(v.y);F(v.z);F(v.sx);F(v.sy);F(v.sz);F(v.yaw);}
