@@ -478,9 +478,9 @@ namespace ChipArena.UnityConversion
             l.Sky=NativeEntranceFx.Hex(0x6f8fbf,(.18f+.2f*arena+.06f*drop)*(1-.55f*bodyMoment));l.Ground=NativeEntranceFx.Hex(0x0f1a26,.25f+.03f*drop);
             float strike=Flash(t,Strike,.004f,.35f);
             // the key: soft and cool, low after the drop (the black glass keeps its gloss, the architect its form); the crown's gold
-            // from above and behind, a rim
+            // from overhead, a top light (from behind and above, its sheen lit the whole near floor at the hero lens's grazing angle)
             l.Directional(new Vector3(2.5f,5,4),NativeEntranceFx.Hex(0xdfe8ff,.55f*arena+.16f*NativeEntranceMath.Ramp(t,Body,Body+.5f)*(1-drop)*(1-.55f*bodyMoment)+.22f*drop));
-            if(drop>0)l.Directional(new Vector3(-.6f,4,-3),Gold*(.5f*drop));
+            if(drop>0)l.Directional(new Vector3(-.1f,4,-.6f),Gold*(.45f*drop));
             // The strike: white at the centre, decaying to the thread of light that holds until the break.
             if(t<Break+.3f)l.Add(new Vector3(0,1.6f,0),Ice*(36*strike+2.5f*(1-NativeEntranceMath.Ramp(t,Break,Break+.3f))),14);
             // The old pylons' neon on the floor (two nearest the lens), out at the break.

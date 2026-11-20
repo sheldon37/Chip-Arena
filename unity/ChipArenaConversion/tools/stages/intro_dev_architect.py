@@ -123,8 +123,10 @@ def finishes():
         'window-cool': f('window-cool', 0x5a8cff, D.DETAIL_GLOW, glow=.6),
         'beacon': f('beacon', 0xff2a18, D.DETAIL_GLOW, glow=1.6),
         # the architect's: black glass-smooth obsidian (its gloss the lights' highlights: OCCLUDED), basalt, gold, and light
-        'obsidian': f('obsidian', 0x08090c, D.DETAIL_NONE, smooth=.66, metal=0.0, dirt=.04, wear=0.0),
-        'obsidian-dark': f('obsidian-dark', 0x040405, D.DETAIL_NONE, smooth=.72, metal=0.0, dirt=.04),
+        # (glass-smooth: at the hero lens's grazing angle a rougher finish spreads any light from above and behind into a grey band
+        # across the near floor, hold 2; this smooth, only a light's own mirror image shows)
+        'obsidian': f('obsidian', 0x08090c, D.DETAIL_NONE, smooth=.9, metal=0.0, dirt=.04, wear=0.0),
+        'obsidian-dark': f('obsidian-dark', 0x040405, D.DETAIL_NONE, smooth=.92, metal=0.0, dirt=.04),
         'basalt': f('basalt', 0x0c0d11, D.DETAIL_CARVED, smooth=.34, metal=.05, dirt=.2, wear=.08),
         'basalt-dark': f('basalt-dark', 0x07080b, D.DETAIL_CARVED, smooth=.28, dirt=.15),
         'gold': f('gold', 0xc9a253, D.DETAIL_BRASS, smooth=.78, metal=.95, dirt=.1, wear=.5),
