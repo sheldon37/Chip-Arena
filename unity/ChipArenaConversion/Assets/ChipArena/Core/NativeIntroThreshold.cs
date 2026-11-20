@@ -132,6 +132,9 @@ namespace ChipArena.UnityConversion
             l.Directional(U(-.86f,.22f,-.5f),Dusk*(.95f-.25f*NativeEntranceMath.Ramp(t,0,Total)));
             l.Directional(new Vector3(.4f,.7f,.6f),NativeEntranceFx.Hex(0x7a8cff,.25f));
             float seam=Seam(t),open=Part(t)/PartBy;
+            // The cleft's light on the set: the intro owns its light, and the stage material takes only directionals and the ambient
+            // (docs/INTROS-V2.md 3a), so the light pouring out of the slit is a warm directional from it, low over the plaza.
+            if(open+.3f*seam>.01f)l.Directional(new Vector3(0,.3f,-1),Gold*(.25f*seam+1.1f*open+.8f*Flash(t,OpenAt,.03f,.5f)));
             if(seam>.01f)l.Add(new Vector3(0,1.8f,SlitZ+.9f),Gold*(1.6f*seam+5*open+5*Flash(t,OpenAt,.03f,.5f)),6+8*open);
             if(t>=ThroughAt-.05f&&t<CloseAt+.5f){var chest=Anchor(NativeEntranceAnchor.Chest,t);l.Add(chest+new Vector3(0,.4f,-.6f),Light*(2.4f*Swell(t,ThroughAt-.05f,.2f,.9f,.8f)),3.5f);}
             if(t>=CardAt-.3f){float c=NativeEntranceMath.Ramp(t,CardAt-.3f,CardAt+.3f);var chest=Anchor(NativeEntranceAnchor.Chest,t);l.Add(chest+new Vector3(1.4f,.7f,1.8f),Dusk*(1.5f*c),6);}

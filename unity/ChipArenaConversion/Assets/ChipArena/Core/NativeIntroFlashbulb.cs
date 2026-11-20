@@ -164,7 +164,10 @@ namespace ChipArena.UnityConversion
             l.Directional(new Vector3(.3f,.8f,.6f),NativeEntranceFx.Hex(0x9aa8ff,.16f));
             float bulbs=0;for(int g=0;g<4;g++)bulbs+=Run(g,t)*.25f;
             l.Add(Marquee,Warm*(3.6f*bulbs),10);
-            float open=NativeEntranceMath.Ramp(t,DoorsAt,DoorsAt+.35f);if(open>.01f)l.Add(Foyer+new Vector3(0,0,1.4f),Warm*(4.2f*open),8);
+            float open=NativeEntranceMath.Ramp(t,DoorsAt,DoorsAt+.35f);
+            // The marquee's and the foyer's warm light down the carpet: the stage material takes only directionals and the ambient
+            // (docs/INTROS-V2.md 3a), so it is a directional from over the doors.
+            l.Directional(new Vector3(0,.55f,-1),Warm*(.18f+.3f*bulbs+.28f*open));if(open>.01f)l.Add(Foyer+new Vector3(0,0,1.4f),Warm*(4.2f*open),8);
             // The photographs' own flashes, from the lens; the photographers' along the barriers (the brightest two this frame).
             Look(t);for(int i=0;i<Photos.Length;i++){float f=Flash(t,Photos[i],.015f,.16f);if(f>.01f)l.Add(Eye+new Vector3(0,.3f,0),Flashc*(26*f),9);}
             int a=-1,b=-1;float la=0,lb=0;

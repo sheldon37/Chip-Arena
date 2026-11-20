@@ -160,8 +160,9 @@ namespace ChipArena.UnityConversion
         {
             l.Clear();l.DriveProbe=true;float hall=NativeEntranceMath.Ramp(t,BurstAt-.25f,BurstAt+.3f);
             var fog=Vector3.Lerp(NativeEntranceFx.Hex(0x05080c),NativeEntranceFx.Hex(0x1a2430),hall);l.Background=fog;l.Fog=fog;l.FogNear=Lerp(14,26,hall);l.FogFar=Lerp(90,150,hall);
-            l.Sky=NativeEntranceFx.Hex(0xcfe6ff,.2f+.3f*hall);l.Ground=NativeEntranceFx.Hex(0x6a7480,.15f+.2f*hall);
-            l.Directional(new Vector3(.1f,1,.25f),Cool*(.15f+.6f*hall));
+            // The hall's light on the set is the ambient and the directional (the stage material takes no point lights: docs/INTROS-V2.md 3a).
+            l.Sky=NativeEntranceFx.Hex(0xcfe6ff,.24f+.36f*hall);l.Ground=NativeEntranceFx.Hex(0x6a7480,.17f+.25f*hall);
+            l.Directional(new Vector3(.1f,1,.25f),Cool*(.2f+.75f*hall));
             var chest=Anchor(NativeEntranceAnchor.Chest,t);
             // In the tunnel: the strips sweeping past the pilot (steady in Reduced effects), the station's light ahead.
             if(hall<.99f)
