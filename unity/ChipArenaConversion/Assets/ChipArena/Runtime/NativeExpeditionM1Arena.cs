@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private ExpeditionAreaLayout expeditionArea;
         private readonly Dictionary<string,BoxCollider> expeditionClosures=new Dictionary<string,BoxCollider>();
         private readonly Collider[] expeditionProbe=new Collider[32];
-        private readonly Dictionary<string,bool> expeditionNavClear=new Dictionary<string,bool>();
+        private readonly Dictionary<(float radius,float height,object element),bool> expeditionNavClear=new Dictionary<(float,float,object),bool>();
         private readonly HashSet<string> expeditionDeaths=new HashSet<string>();
         private int expeditionZoneWave;private string expeditionBoss;private int expeditionEconomySerial;private int expeditionSpawned;private float expeditionSpawnAt;
         public ExpeditionRunBundle GeneratedRun {get;set;}
@@ -61,6 +61,11 @@ namespace ChipArena.UnityConversion
         private MapNav probeGraph;
         private NativeNavSearch probeSearch;
         private Dictionary<string,MapNavNode> probeNodes;
+        internal void ReleaseExpeditionProbes()
+        {
+            expeditionNavClear.Clear();expeditionNavClear.TrimExcess();
+            probeGraph=null;probeSearch=null;probeNodes=null;
+        }
         public bool ExpeditionReachable(V3 from,V3 to,float radius,float height)
         {
             if(Map.nav==null)return false;
@@ -70,13 +75,13 @@ namespace ChipArena.UnityConversion
                 probeNodes=navNodes;
             }
             var search=probeSearch;
-            bool Clear(MapNavNode n){string key=radius+":"+height+":"+n.id;if(!expeditionNavClear.TryGetValue(key,out var ok))expeditionNavClear[key]=ok=ExpeditionSupported(n.pos-new V3(0,NativeLocomotionRules.HalfHeight,0),radius,height);return ok;}
+            bool Clear(MapNavNode n){var key=(radius,height,(object)n);if(!expeditionNavClear.TryGetValue(key,out var ok))expeditionNavClear[key]=ok=ExpeditionSupported(n.pos-new V3(0,NativeLocomotionRules.HalfHeight,0),radius,height);return ok;}
             var offset=new V3(0,NativeLocomotionRules.HalfHeight,0);var a=search.NearestLocal(from+offset,Clear,4,int.MaxValue);var b=search.NearestLocal(to+offset,Clear,4,int.MaxValue);
             if(a==null||b==null||(a.pos-from-offset).Length>4||(b.pos-to-offset).Length>4)return false;
             var nodes=probeNodes;var path=new List<string>();
             bool Active(MapNavLink l)
             {
-                string key="link:"+radius+":"+height+":"+l.id;if(expeditionNavClear.TryGetValue(key,out var clear))return clear;
+                var key=(radius,height,(object)l);if(expeditionNavClear.TryGetValue(key,out var clear))return clear;
                 expeditionNavClear[key]=false;if(!Clear(nodes[l.a])||!Clear(nodes[l.b]))return false;
                 // Authored one-way drops intentionally leave the floor. Match the live authority's
                 // drop policy after validating both capsule endpoints; a straight floor/LOS probe

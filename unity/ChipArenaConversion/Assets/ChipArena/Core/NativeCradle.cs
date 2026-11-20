@@ -23,13 +23,14 @@ namespace ChipArena.UnityConversion
         public readonly bool[] You=new bool[Max];
         /// <summary>Each member's landing spot (the blueprint's metres, x east, z north; NaN unknown) for its streak on the map.</summary>
         public readonly Vector2[] Spots=new Vector2[Max];
+        public ExpeditionGeneratedWorld World;
         public int Count;
         /// <summary>This client's load (0..1): the altimeter's fall and the bar.</summary>
         public float Load;
         /// <summary>The hold line under the lamps (the roster's footer, or null).</summary>
         public string Hold;
         public int Ready=>Tally(Lamp.Ready);
-        public void Clear(){Count=0;Load=0;Hold=null;for(int i=0;i<Max;i++){Names[i]=null;You[i]=false;Progress[i]=-1;Spots[i]=new Vector2(float.NaN,float.NaN);}}
+        public void Clear(){World=null;Count=0;Load=0;Hold=null;for(int i=0;i<Max;i++){Names[i]=null;You[i]=false;Progress[i]=-1;Spots[i]=new Vector2(float.NaN,float.NaN);}}
         public void Add(string name,Lamp lamp,float progress,bool you)
         {
             if(Count>=Max)return;Names[Count]=name;Lamps[Count]=lamp;Progress[Count]=progress;You[Count]=you;Spots[Count]=new Vector2(float.NaN,float.NaN);Count++;
@@ -117,6 +118,34 @@ namespace ChipArena.UnityConversion
         /// <summary>A blueprint point (metres) on the map's 0..1 square (u east, v south: the texture drawn top down).</summary>
         public static Vector2 MapUv(float wx,float wz)=>new Vector2((wx+NativeDeployPresentation.WorldHalfX)/(2*NativeDeployPresentation.WorldHalfX),(NativeDeployPresentation.WorldHalfZ-wz)/(2*NativeDeployPresentation.WorldHalfZ));
 
+        public static Vector2 MapUv(float x,float z,MapBounds bounds)=>bounds==null?MapUv(x,z):
+            new Vector2((x-bounds.minX)/(bounds.maxX-bounds.minX),(bounds.maxZ-z)/(bounds.maxZ-bounds.minZ));
+
+        // Plot the actual navigation surface and mark the four authored street mouths.
+        public static int[] CityNightMap(ExpeditionGeneratedWorld world,int width,int height)
+        {
+            var pixels=new int[width*height];
+            Array.Fill(pixels,unchecked((int)0xff091323));
+            var bounds=world.Map.bounds;
+            void Plot(V3 point,int color,int radius)
+            {
+                var uv=MapUv(point.x,point.z,bounds);
+                int x=(int)Math.Round(uv.X*(width-1)),y=(int)Math.Round(uv.Y*(height-1));
+                for(int j=Math.Max(0,y-radius);j<=Math.Min(height-1,y+radius);j++)
+                    for(int i=Math.Max(0,x-radius);i<=Math.Min(width-1,x+radius);i++)
+                        if((i-x)*(i-x)+(j-y)*(j-y)<=radius*radius)pixels[j*width+i]=color;
+            }
+            foreach(var node in world.Map.nav.nodes)Plot(node.pos,unchecked((int)0xffad7636),0);
+            for(int i=0;i<world.City.Routes.Count;i++)
+            {
+                var route=world.City.Routes[i];
+                int color=0xe5354a;
+                foreach(var district in world.Blueprint.districts)
+                    if(world.HallSlots[i]==district.instance)color=NativeDeployPresentation.DestinationOf(district.instance,district.theme).Color;
+                Plot(route.Points[route.Points.Length-1],unchecked((int)0xff000000)|color,2);
+            }
+            return pixels;
+        }
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
         private static float Hash(int a,int b){unchecked{uint h=(uint)(a*374761393)^(uint)(b*668265263);h=(h^(h>>13))*1274126177u;h^=h>>16;return (h&0xffffff)/(float)0x1000000;}}
     }
