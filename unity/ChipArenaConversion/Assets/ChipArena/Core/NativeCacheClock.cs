@@ -150,25 +150,32 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeCachePreview
     {
-        public static bool On,Placed;
-        /// <summary>Where the row stands: its middle (world), the way its fronts face (degrees), and when it began (presentation s).</summary>
-        public static float X,Y,Z,Yaw;public static double Started;
+        public static bool On;
+        /// <summary>Where the row stands: its middle (world), the way its fronts face (degrees); when its first cycle begins (the
+        /// presentation clock, a whole number of periods, so every peer and capture can say which tier opens when; NaN: the row
+        /// is placed on the next frame, ahead of the camera).</summary>
+        public static float X,Y,Z,Yaw;public static double Start=double.NaN;
         public const float Period=9,SaleFor=2.5f,Spacing=2.2f;public const int Lockers=4;
         private static readonly string[] Ids={"dev-cache-0","dev-cache-1","dev-cache-2","dev-cache-3","dev-cache-hologram"};
-        public static void Place(float x,float y,float z,float yaw,double now){X=x;Y=y;Z=z;Yaw=yaw;Started=now;Placed=true;}
-        /// <summary>The cycle at `now` and the time into it.</summary>
-        public static int Cycle(double now,out float into){double a=Math.Max(0,now-Started);int c=(int)Math.Floor(a/Period);into=(float)(a-c*Period);return c;}
+        public static void Place(float x,float y,float z,float yaw,double now){X=x;Y=y;Z=z;Yaw=yaw;Start=Math.Ceiling(now/Period)*Period;}
+        /// <summary>The cycle at `now` (counted from the clock's zero: cycle c holds tier (i + c) % 4 on locker i, odd cycles the
+        /// buyer's view) and the time into it; before Start, the first cycle's start (for sale).</summary>
+        public static int Cycle(double now,out float into)
+        {
+            double a=double.IsNaN(Start)||now>=Start?now:Start;int c=(int)Math.Floor(a/Period);into=(float)(a-c*Period);if(!double.IsNaN(Start)&&now<Start)into=0;return c;
+        }
         /// <summary>Fills `into` with the row's caches at `now` (the four lockers, then the hologram at the row's end).</summary>
         public static void Fill(List<NativeCacheShow> into,List<NativeCacheShow> clicks,double now,double previous)
         {
-            int c=Cycle(now,out float t);bool buyer=c%2==1;Cycle(previous,out float before);bool clicked=before>t||previous<Started&&now>=Started;
+            int c=Cycle(now,out float t);bool buyer=c%2==1,started=!double.IsNaN(Start)&&now>=Start;Cycle(previous,out float before);
+            int cb=Cycle(previous,out _);bool clicked=started&&(cb!=c||previous<Start);
             for(int i=0;i<=Lockers;i++)
             {
                 bool hologram=i==Lockers;float off=(i-Lockers*.5f)*Spacing;NativeCacheOpenFx.ToWorld(Yaw,off,0,out float dx,out float dz);
                 var tier=hologram?NativeCacheTier.Standard:(NativeCacheTier)((i+c)%NativeCacheTiers.Count);var from=hologram?tier:(NativeCacheTier)((i+c+3)%NativeCacheTiers.Count);
                 uint seed=(uint)(c*8+i+1)*2654435761u;seed^=seed>>15;
                 var s=new NativeCacheShow{Id=Ids[i],X=X+dx,Y=Y,Z=Z+dz,Yaw=Yaw,Tier=tier,Next=tier,Locker=!hologram,Seed=seed,Sweep=float.NaN,SweepFrom=from};
-                if(t<SaleFor){s.State=NativeCacheState.ForSale;s.Sale=t;s.Short=i==1;if(t<NativeCacheClock.SweepSeconds&&c>0&&from!=tier)s.Sweep=t;}
+                if(!started||t<SaleFor){s.State=NativeCacheState.ForSale;s.Sale=t;s.Short=i==1;if(started&&t<NativeCacheClock.SweepSeconds&&from!=tier)s.Sweep=t;}
                 else{s.State=NativeCacheState.Opening;s.Since=t-SaleFor;s.Buyer=buyer;}
                 into.Add(s);if(clicked)clicks.Add(s);
             }

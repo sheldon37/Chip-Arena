@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
             var me=arena?.ViewPilot;presentation.CacheDockKnown=me!=null&&me.Hp>0;if(me!=null)presentation.CacheDock=me.Body.position+Vector3.up*.35f;
             if(NativeCachePreview.On&&arena!=null&&cameraView!=null&&!menu)
             {
-                double now=arena.Time;if(!NativeCachePreview.Placed)CachePreviewPlace(now);
+                double now=arena.Time;if(double.IsNaN(NativeCachePreview.Start))CachePreviewPlace(now);
                 cachePreviewShows.Clear();cachePreviewClicks.Clear();NativeCachePreview.Fill(cachePreviewShows,cachePreviewClicks,now,double.IsNaN(cachePreviewPrevious)?now:cachePreviewPrevious);cachePreviewPrevious=now;
                 presentation.CacheShows=cachePreviewShows;CacheSounds(cachePreviewShows,cachePreviewClicks);CachePreviewHologram(now);return;
             }
@@ -113,18 +113,20 @@ namespace ChipArena.UnityConversion
         private readonly ExpeditionView cachePreviewView=new ExpeditionView{run="dev-cache-preview",area="dev-cache",anchors=new[]{new ExpeditionWorldAnchor{id="dev-cache-hologram",area="dev-cache",kind="chest"}},
             chests=new[]{new ExpeditionChestOffer{id="dev-cache-hologram",generation="dev",price=100}}};
         private static readonly int[] CachePreviewPrices={100,175,275,400};
-        /// <summary>The DEV panel's toggle: the row stands 4.5 m ahead of the camera on the pilot's floor, its fronts toward you.</summary>
+        /// <summary>The DEV panel's toggle: the row stands 4.5 m ahead of you on your floor, its fronts toward you; its first cycle
+        /// begins at the next whole 9 s of the arena clock.</summary>
         private void CachePreviewToggle()
         {
-            NativeCachePreview.On=!NativeCachePreview.On;NativeCachePreview.Placed=false;cachePreviewPrevious=double.NaN;
+            NativeCachePreview.On=!NativeCachePreview.On;NativeCachePreview.Start=double.NaN;cachePreviewPrevious=double.NaN;
             DevSay(NativeCachePreview.On?"Cache openings preview · on (presentation only: the four lockers and the hologram cycle sale, opening and restock; odd cycles your view as the buyer)":"Cache openings preview · off",false);
         }
         private void CachePreviewPlace(double now)
         {
-            var f=cameraView.transform.forward;f.y=0;if(f.sqrMagnitude<1e-4f)f=Vector3.forward;f.Normalize();var me=arena.Local;
+            // ahead along the view's yaw (the pilot's input yaw: a capture's place= turns it), the row's fronts back toward you
+            var f=Quaternion.Euler(0,yaw,0)*Vector3.forward;var me=arena.Local;
             float floor=me!=null?me.Body.position.y-NativeLocomotionRules.HalfHeight-NativeLocomotionRules.Skin:cameraView.transform.position.y-1.6f;
-            var at=(me!=null?me.Body.position:cameraView.transform.position)+f*4.5f;float yaw=Mathf.Atan2(f.x,f.z)*Mathf.Rad2Deg+180;
-            NativeCachePreview.Place(at.x,floor,at.z,yaw,now);
+            var at=(me!=null?me.Body.position:cameraView.transform.position)+f*4.5f;float rowYaw=Mathf.Atan2(f.x,f.z)*Mathf.Rad2Deg+180;
+            NativeCachePreview.Place(at.x,floor,at.z,rowYaw,now);
         }
         // The hologram at the row's end through today's world pieces (its crate, its flare and its beacon column).
         private void CachePreviewHologram(double now)

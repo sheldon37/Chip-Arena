@@ -328,14 +328,18 @@ namespace ChipArena.UnityConversion
         // hologram beside them; for sale with the click and the livery sweep, then the openings; buyer and watcher by turns.
         private static void Preview()
         {
-            var items=new List<NativeCacheShow>();var clicks=new List<NativeCacheShow>();NativeCachePreview.Place(0,0,0,0,100);
+            var items=new List<NativeCacheShow>();var clicks=new List<NativeCacheShow>();NativeCachePreview.Place(0,0,0,0,100);double s0=NativeCachePreview.Start;
+            Check(s0==108&&s0%NativeCachePreview.Period==0,"the first cycle begins at the next whole period of the clock ("+s0+")");
             NativeCachePreview.Fill(items,clicks,100.5,100.4);
-            Check(items.Count==5&&items.Take(4).All(s=>s.Locker)&&!items[4].Locker&&items.Take(4).Select(s=>s.Tier).Distinct().Count()==4&&items.All(s=>s.State==NativeCacheState.ForSale),"four lockers of four tiers and the hologram, for sale");
+            Check(items.Count==5&&items.Take(4).All(s=>s.Locker)&&!items[4].Locker&&items.Take(4).Select(s=>s.Tier).Distinct().Count()==4&&items.All(s=>s.State==NativeCacheState.ForSale)&&clicks.Count==0,"four lockers of four tiers and the hologram, for sale until the first cycle");
             var seen=new HashSet<(int,NativeCacheTier)>();bool buyer=false,watcher=false;
-            for(int c=0;c<4;c++){items.Clear();clicks.Clear();NativeCachePreview.Fill(items,clicks,100+c*NativeCachePreview.Period+4,100+c*NativeCachePreview.Period+3.9);for(int i=0;i<4;i++){seen.Add((i,items[i].Tier));Check(items[i].State==NativeCacheState.Opening,"opening");if(items[i].Buyer)buyer=true;else watcher=true;}}
+            for(int c=0;c<4;c++){items.Clear();clicks.Clear();NativeCachePreview.Fill(items,clicks,s0+c*NativeCachePreview.Period+4,s0+c*NativeCachePreview.Period+3.9);for(int i=0;i<4;i++){seen.Add((i,items[i].Tier));Check(items[i].State==NativeCacheState.Opening,"opening");if(items[i].Buyer)buyer=true;else watcher=true;}}
             Check(seen.Count==16&&buyer&&watcher,"over four cycles each locker shows every tier, as buyer and watcher");
-            items.Clear();clicks.Clear();NativeCachePreview.Fill(items,clicks,100+NativeCachePreview.Period+.1,100+NativeCachePreview.Period-.1);
+            items.Clear();clicks.Clear();NativeCachePreview.Fill(items,clicks,s0+NativeCachePreview.Period+.1,s0+NativeCachePreview.Period-.1);
             Check(clicks.Count==5&&items.Take(4).All(s=>!float.IsNaN(s.Sweep)&&s.SweepFrom!=s.Tier),"each cycle restocks with a click and sweeps each locker's livery to its next tier");
+            items.Clear();NativeCachePreview.Fill(items,clicks,s0+2*NativeCachePreview.Period+NativeCachePreview.SaleFor+.4f,s0+2*NativeCachePreview.Period+NativeCachePreview.SaleFor+.3f);
+            Check(items[0].Tier==(NativeCacheTier)(((int)(s0/NativeCachePreview.Period)+2)%4)&&items.Take(4).All(s=>s.Buyer==(((int)(s0/NativeCachePreview.Period)+2)%2==1)),"which tier opens when is known from the clock alone (captures)");
+            NativeCachePreview.Start=double.NaN;
         }
 
         // 16. No allocation per frame: the clock, the frames and the J panel's words on a warmed set.
