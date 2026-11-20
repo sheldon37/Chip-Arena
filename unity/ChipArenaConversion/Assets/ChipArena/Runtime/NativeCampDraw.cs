@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Builds a run's camp: false without the bank or the shaders (nothing draws).</summary>
         public bool Open(uint seed,int plan,string[] deal,bool withPreview,int rescued)
         {
-            Release();if(failed)return false;PlanIndex=plan;
+            Release();if(failed)return false;PlanIndex=plan;var watch=System.Diagnostics.Stopwatch.StartNew();
             var bank=NativePackBanks.Bank(NativeCamp.Bank);if(bank==null)return false;
             try
             {
@@ -78,7 +78,7 @@ namespace ChipArena.UnityConversion
                 fx=new NativeCampFx(layout);fxDraw=new NativeFxDraw();
                 if(withPreview)BuildPreview(bank,seed,rescued);
                 HasPreview=withPreview;Rescued=rescued;
-                Debug.Log("Belvedere Camp: "+layout.Pieces.Count+" pieces, "+layout.Strands.Count+" strings, "+layout.Bulbs.Count+" bulbs, "+layout.Sails.Count+" sails"+(withPreview?", the DEV preview with "+preview.Count+" groups":""));
+                Debug.Log("Belvedere Camp: "+layout.Pieces.Count+" pieces, "+layout.Strands.Count+" strings, "+layout.Bulbs.Count+" bulbs, "+layout.Sails.Count+" sails"+(withPreview?", the DEV preview with "+preview.Count+" groups":"")+"; built in "+watch.ElapsedMilliseconds+" ms");
                 return true;
             }
             catch(Exception e){Debug.LogWarning("Belvedere Camp disabled: "+e.Message);Release();failed=true;return false;}
