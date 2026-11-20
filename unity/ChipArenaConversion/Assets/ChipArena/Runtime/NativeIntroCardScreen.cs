@@ -67,10 +67,11 @@ namespace ChipArena.UnityConversion
             effect?.Draw(frame,false);
             // The kicker above (the weapon) and the line below (the intro text), each easing in after the name.
             float k=M.Bezier(.16f,.84f,.24f,1,M.Progress(card.Age,.18f,.55f))*alpha;string kicker=card.Kicker??Kicker(seat.spec);
-            U.Text(new Rect(0,box.y-24+10*(1-k),W,16),kicker,12,U.A(Lin(card.Glow,1),k),TextAnchor.UpperCenter,bold:true,tracking:.34f,shadow:new Color(0,0,0,.7f*k));
-            if(team){float tk=M.Bezier(.16f,.84f,.24f,1,M.Progress(card.Age,.24f,.55f))*alpha;U.Text(new Rect(0,box.y-46+10*(1-tk),W,16),NativeMatch.TeamNames[TeamIndex(seat.team)].ToUpperInvariant()+" TEAM",12,U.A(TeamColor(seat.team),tk),TextAnchor.UpperCenter,bold:true,tracking:.14f);}
+            // (the kicker, the team and the line centre on the card's own x, so a card set beside the pilot keeps its lines with it)
+            U.Text(new Rect(cx-W*.5f,box.y-24+10*(1-k),W,16),kicker,12,U.A(Lin(card.Glow,1),k),TextAnchor.UpperCenter,bold:true,tracking:.34f,shadow:new Color(0,0,0,.7f*k));
+            if(team){float tk=M.Bezier(.16f,.84f,.24f,1,M.Progress(card.Age,.24f,.55f))*alpha;U.Text(new Rect(cx-W*.5f,box.y-46+10*(1-tk),W,16),NativeMatch.TeamNames[TeamIndex(seat.team)].ToUpperInvariant()+" TEAM",12,U.A(TeamColor(seat.team),tk),TextAnchor.UpperCenter,bold:true,tracking:.14f);}
             float l=M.Bezier(.16f,.84f,.24f,1,M.Progress(card.Age,.32f,.6f))*alpha;
-            U.Text(new Rect(0,box.yMax+6-8*(1-l),W,16),card.Line??IntroLine(seat.introText),12,U.A(U.Hex(0xb9bac4),l),TextAnchor.UpperCenter,tracking:.3f,blur:5*(1-l));
+            U.Text(new Rect(cx-W*.5f,box.yMax+6-8*(1-l),W,16),card.Line??IntroLine(seat.introText),12,U.A(U.Hex(0xb9bac4),l),TextAnchor.UpperCenter,tracking:.3f,blur:5*(1-l));
             return true;
         }
         private static Color Lin(System.Numerics.Vector3 c,float a)=>new Color(Mathf.LinearToGammaSpace(Mathf.Clamp01(c.X)),Mathf.LinearToGammaSpace(Mathf.Clamp01(c.Y)),Mathf.LinearToGammaSpace(Mathf.Clamp01(c.Z)),a);
