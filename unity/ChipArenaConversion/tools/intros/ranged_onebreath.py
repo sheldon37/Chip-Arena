@@ -418,6 +418,7 @@ def street(T):
     windows(g, rng, hx0, hx1, STREET_Y + 4, hy - 1.5, hz0, .4, floor=3.4, bay=1.9)
     # the tower behind us
     box(g, -12.0, 14.0, STREET_Y, 46.0, -46.0, -20.0, F['tower3'], T, 0, cell=0, skip=('-y',))
+    windows(g, rng, -12.0, 14.0, -8.0, 44.0, -20.0, .32, floor=3.4, bay=1.9, lift=.05, facing=1)
     return g
 
 

@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         public const float SkyPitch=50,SkySpeed=58;public const int Volley=24;
         private static readonly Vector3 Gold=NativeEntranceFx.Hex(0xffd88a),White=new Vector3(1,1,1),Moonlight=NativeEntranceFx.Hex(0x9ab8ff),Firefly=NativeEntranceFx.Hex(0xc8ff8a),Mist=NativeEntranceFx.Hex(0x8a9ab8);
         /// <summary>The moon (ranged_lightfall.py MOON: behind the pilot, up to the left), the six lanterns' fire boxes.</summary>
-        private static readonly Vector3 Moon=Vector3.Normalize(SDir(-.296f,.5f,-.814f));
+        private static readonly Vector3 Moon=Vector3.Normalize(SDir(.40f,.39f,-.83f));
         private static readonly Vector3[] Fires=BuildFires();
         private static Vector3[] BuildFires(){float[] deg={35,90,145,215,270,325};var f=new Vector3[6];for(int i=0;i<6;i++){float a=deg[i]*(float)Math.PI/180;f[i]=S((float)Math.Sin(a)*4.5f,-.45f+1.42f,(float)Math.Cos(a)*4.5f);}return f;}
         private static NativeBow.Read MakeRead(){var r=NativeBow.Read.None;r.Bow=true;r.Seed=11;r.ReleaseDraw=1;r.DrawAt=DrawFrom;r.DrawTime=Full-DrawFrom;return r;}

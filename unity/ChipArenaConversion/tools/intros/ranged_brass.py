@@ -203,26 +203,26 @@ def booth(g, T):
     g.face(((x - 1.0, 1.1, z + 1.41), (x + 1.0, 1.1, z + 1.41), (x + 1.0, 2.1, z + 1.41), (x - 1.0, 2.1, z + 1.41)), F['booth'], (0, 0, 1))
     g.face(((x + 1.41, 1.1, z - .9), (x + 1.41, 1.1, z + .9), (x + 1.41, 2.1, z + .9), (x + 1.41, 2.1, z - .9)), F['booth'], (1, 0, 0))
     # the back wall: precast panels with a band of lit windows high up, the gate's two steel posts
-    box(g, -22.0, 22.0, GROUND, 6.5, -18.4, -18.0, F['concrete'], T, 0, cell=2.5 if T.fine else 0)
-    for k in range(11):
-        xx = -20.0 + k * 4.0
-        box(g, xx - .12, xx + .12, GROUND, 6.6, -18.05, -17.9, F['trimsteel'], T, 0, cell=0)
+    box(g, -24.0, 24.0, GROUND, 6.5, -26.4, -26.0, F['concrete'], T, 0, cell=2.5 if T.fine else 0)
+    for k in range(12):
+        xx = -22.0 + k * 4.0
+        box(g, xx - .12, xx + .12, GROUND, 6.6, -26.05, -25.9, F['trimsteel'], T, 0, cell=0)
         if k % 3 != 1:
-            g.face(((xx + .6, 4.6, -17.95), (xx + 3.2, 4.6, -17.95), (xx + 3.2, 5.6, -17.95), (xx + .6, 5.6, -17.95)), F['winlit'], (0, 0, 1))
+            g.face(((xx + .6, 4.6, -25.95), (xx + 3.2, 4.6, -25.95), (xx + 3.2, 5.6, -25.95), (xx + .6, 5.6, -25.95)), F['winlit'], (0, 0, 1))
     for x2 in (2.0, 7.0):
-        box(g, x2 - .2, x2 + .2, GROUND, 3.2, -17.9, -17.5, F['hazk'], T, .02, cell=0)
+        box(g, x2 - .2, x2 + .2, GROUND, 3.2, -25.9, -25.5, F['hazk'], T, .02, cell=0)
 
 
 def yard(T):
     rng = np.random.default_rng(77)
     g = Geo()
-    rk.ground(g, -24.0, 24.0, -18.0, WALL_Z, GROUND, F['slab'], 1.5 if T.fine else 4.0)
+    rk.ground(g, -24.0, 24.0, -26.0, WALL_Z, GROUND, F['slab'], 1.5 if T.fine else 4.0)
     # expansion joints and painted lines
     if T.detail:
         for k in range(-4, 5):
             x = k * 5.0
-            g.face(((x - .02, GROUND + .003, -18), (x + .02, GROUND + .003, -18), (x + .02, GROUND + .003, WALL_Z), (x - .02, GROUND + .003, WALL_Z)), F['joint'], (0, 1, 0))
-        for k in range(-3, 6):
+            g.face(((x - .02, GROUND + .003, -26), (x + .02, GROUND + .003, -26), (x + .02, GROUND + .003, WALL_Z), (x - .02, GROUND + .003, WALL_Z)), F['joint'], (0, 1, 0))
+        for k in range(-4, 6):
             z = k * 5.0 - 3.0
             g.face(((-24, GROUND + .003, z - .02), (24, GROUND + .003, z - .02), (24, GROUND + .003, z + .02), (-24, GROUND + .003, z + .02)), F['joint'], (0, 1, 0))
     for (x0, x1, z0, z1) in ((-4.4, -4.25, 2.0, 10.6), (4.25, 4.4, 2.0, 10.6), (-4.4, 4.4, 10.45, 10.6)):
@@ -231,7 +231,9 @@ def yard(T):
     emplacement(g, T, rng)
     # containers down both sides, two high in places
     for (x, z, a, f, st) in ((-17.5, 4.0, 0.0, 'cont0', 0), (-17.5, 4.0, 0.0, 'cont1', 1), (-17.5, -2.4, 0.0, 'cont2', 0), (-14.6, 9.0, .1, 'cont3', 0),
-                             (17.8, 2.0, 0.0, 'cont1', 0), (17.8, 2.0, .02, 'cont2', 1), (17.8, -4.6, 0.0, 'cont0', 0), (15.0, -9.5, 1.45, 'cont3', 0)):
+                             (17.8, 2.0, 0.0, 'cont1', 0), (17.8, 2.0, .02, 'cont2', 1), (17.8, -4.6, 0.0, 'cont0', 0), (15.0, -9.5, 1.45, 'cont3', 0),
+                             # behind the pilot, under the hero frame's eye line: two stacks and a single, end on
+                             (-3.8, -13.0, 1.52, 'cont2', 0), (-3.8, -13.0, 1.55, 'cont0', 1), (3.6, -15.5, 1.6, 'cont3', 0), (3.6, -15.5, 1.57, 'cont1', 1), (10.0, -12.0, 1.4, 'cont0', 0)):
         container(g, x, z, a, F[f], T, st)
     for p in FLOODS[:2]:
         floodpole(g, p, T)

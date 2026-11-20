@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
                .Dolly(FireFrom-.02f,L(-.76f,1.56f,-1.46f),L(-.68f,1.5f,-1.3f),L(.6f,2.0f,12),L(-.6f,2.1f,12),42,40).Handheld(.9f).Focus(0,0,.15f)
                .Dolly(2.5f,L(-1.58f,1.16f,.75f),L(-1.46f,1.1f,.12f),L(-.3f,1.05f,.45f),L(-.32f,.88f,.2f),34,32).Focus(0,0,.55f)
                .Dolly(2.92f,L(-.92f,.12f,.58f),L(-.86f,.14f,.46f),L(-.16f,.95f,.15f),L(-.15f,1.0f,.12f),62,60).Focus(0,0,.4f)
-               .Dolly(3.45f,L(7.6f,2.1f,5.1f),L(7.25f,2.2f,5.55f),L(-.4f,1.5f,6.4f),L(-.6f,1.4f,6.0f),56,54).Handheld(.6f).Focus(0,0,.15f)
+               .Dolly(3.45f,L(7.6f,2.4f,3.0f),L(7.3f,2.5f,3.4f),L(0,1.4f,4.5f),L(-.2f,1.35f,4.2f),56,54).Handheld(.6f).Focus(0,0,.15f)
                .Dolly(Dry+.04f,L(.25f,1.32f,9.7f),L(.45f,1.26f,4.5f),L(0,1.25f,0),L(0,1.22f,0),40,36).Ease(NativeIntroEase.Out).Focus(0,0,.35f)
                .Dolly(Lower+.25f,L(1.58f,.62f,3.28f),L(1.26f,.66f,2.86f),L(0,1.08f,0),L(0,1.13f,0),35,31).Ease(NativeIntroEase.Out).In(NativeIntroCut.Blend,.5f).Focus(0,0,.45f)
                .Bars(0,1).Bars(CardAt-.35f,.55f).Black(0,1).Black(Flood1-.02f,.55f).Black(Flood2,0);

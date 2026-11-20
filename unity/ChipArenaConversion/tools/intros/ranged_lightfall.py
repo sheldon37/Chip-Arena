@@ -24,7 +24,7 @@ LANTERN_R = 4.5
 LANTERN_DEG = (35.0, 90.0, 145.0, 215.0, 270.0, 325.0)   # bearings from the pilot's front (+z), + toward +x
 LANTERN_FIRE_Y = FLOOR_Y + 1.42                          # the fire box's centre above the floor
 GATE_Z = 6.6
-MOON = (-.296, .5, -.814)   # behind the pilot, up to the left (the hero frame looks back at it)
+MOON = (.40, .39, -.83)   # behind the pilot, low over the trees (the hero frame looks back at it, over the pilot's head)
 
 
 def lantern_at(i):
@@ -209,7 +209,7 @@ def grove(T):
     gate(g, T)
     # the ring of old trees round the clearing (gaps at the gate's sight line to the moon and behind for the light)
     for k, (a, d, h, r) in enumerate(((-150, 12.5, 16, .9), (-115, 10.5, 18, 1.1), (-75, 12.0, 15, .85), (-40, 13.5, 17, 1.0), (45, 13.0, 16, 1.0), (80, 11.0, 18, 1.15),
-                                      (120, 12.5, 15, .9), (160, 11.5, 17, 1.0), (-180, 14.0, 19, 1.2), (20, 22.0, 20, 1.2), (-20, 24.0, 19, 1.1), (100, 20.0, 18, 1.0), (-95, 21.0, 18, 1.0))):
+                                      (120, 12.5, 15, .9), (132, 13.5, 17, 1.0), (-160, 15.0, 19, 1.2), (20, 22.0, 20, 1.2), (-20, 24.0, 19, 1.1), (100, 20.0, 18, 1.0), (-95, 21.0, 18, 1.0))):
         if not T.fine and k >= 10:
             break
         ar = math.radians(a)
