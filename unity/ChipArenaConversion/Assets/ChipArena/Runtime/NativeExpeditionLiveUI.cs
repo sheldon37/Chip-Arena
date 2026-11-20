@@ -60,6 +60,7 @@ namespace ChipArena.UnityConversion
         private void ExpeditionLiveSync()
         {
             var v=LiveExpedition;expeditionLiveView=v;expeditionLiveNow=Time.unscaledTime;
+            NativeCampDraw.Sync(v);
             if(v==null){if(expeditionLiveRun!=null){expeditionIntents.Clear();expeditionLiveDice.Reset(null);expeditionLiveRun=null;expeditionScreenOpen=false;expeditionVictoryLoop=-1;}ExpeditionQuotaSync(null);ExpeditionEndingSync(null);return;}
             if(v.run!=expeditionLiveRun){expeditionIntents.Clear();expeditionLiveDice.Reset(v);expeditionLiveRun=v.run;expeditionVictoryLoop=v.phase==ExpeditionPhase.Victory?v.loop:-1;}
             expeditionLiveDice.Watch(v,expeditionLiveNow);

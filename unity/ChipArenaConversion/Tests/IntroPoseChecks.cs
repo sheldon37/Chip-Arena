@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<=duration*30;i++)
             {
                 float t=s.Clock(i/30f);s.Pose(t,pose,out _,out _);pose.World();float relax=s is NativeIntroV2Script v2s?Math.Clamp(v2s.ArmsRelax(t),0,1):0;
-                NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=relax},false,false);
+                NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=relax,Exact=Packed(s,t,NativeIntroPack.Arms)},false,false);
                 for(int k=0;k<Bones.Length;k++)
                 {
                     var b=Bones[k];int v=rig.Of[b.joint];if(v<0)continue;var drawn=Quaternion.Normalize(st.World[v]*Quaternion.Inverse(rig.AlignedWorld[v]));var keyed=pose.WorldRotation[b.joint];
@@ -88,12 +88,21 @@ namespace ChipArena.UnityConversion
         /// <summary>The limits of script `s` (named `id`, `duration` s, holding weapon `spec` or none) every 1/30 s. A hand that holds or supports
         /// a weapon is read in that weapon's convention (Core NativeIntroGrip.Natural: a gun's, the bow's and the shield's frame lie a quarter
         /// turn from the hand, so a level aim is a straight wrist); a hand supports while the intro's grip (INativeIntroGrip) is over half on.</summary>
-        public static List<Finding> Limits(string id,NativeEntranceScript s,float duration,string spec)
+        /// <summary>How much of `mask` the script's pack segments play at `t` (NativeProceduralEntrance.PackWeight; 0 for any other script).</summary>
+        public static float Packed(NativeEntranceScript s,float t,int mask)=>s is NativeProceduralEntrance p?p.PackWeight(t,mask):0;
+        /// <summary>(`packed`: a joint a pack clip plays in full is the model's own motion, held to the clip on the model by IntroPackChecks
+        /// rather than to these keyed limits: the keyed wrist is the weapon's frame, which the binding eases, and the keyed rig's torso is
+        /// the voxel body's. False lists them too.)</summary>
+        public static List<Finding> Limits(string id,NativeEntranceScript s,float duration,string spec,bool packed=true)
         {
             var pose=new CapturedRig.Pose();var open=new Dictionary<string,Finding>();var done=new List<Finding>();
             int frame=0;var kind=NativeIntroGrip.Of(spec);var natural=new Quaternion[2];
+            bool clipLegs=false,clipTorso=false,clipLeft=false,clipRight=false;
             void Hit(float t,string joint,string what,float value,string unit)
             {
+                // (a joint a pack clip plays in full: held to the clip on the model instead)
+                bool leg=joint.EndsWith("knee",StringComparison.Ordinal)||joint.EndsWith("hip",StringComparison.Ordinal),torsoJoint=joint=="spine"||joint=="chest"||joint=="neck"||joint=="head";
+                if(leg?clipLegs:torsoJoint?clipTorso:joint.StartsWith("L ",StringComparison.Ordinal)?clipLeft:joint.StartsWith("R ",StringComparison.Ordinal)&&clipRight)return;
                 // (one finding per joint and fault over consecutive frames: its span and its worst)
                 string key=joint+"|"+what;
                 if(open.TryGetValue(key,out var f)&&frame-f.Last<=1){f.To=t;f.Last=frame;if(value>f.Worst){f.Worst=value;f.WorstAt=t;}open[key]=f;return;}
@@ -110,6 +119,8 @@ namespace ChipArena.UnityConversion
                     bool holds=spec!=null&&NativeIntroWeapon.Holds(spec,side==0),supports=kind!=NativeIntroGrip.Kind.None&&grip>.5f&&NativeIntroGrip.SupportLeft(kind)==(side==0);
                     natural[side]=holds?NativeIntroGrip.Natural(kind,false):supports?NativeIntroGrip.Natural(kind,true):Quaternion.Identity;
                 }
+                clipLegs=packed&&Packed(s,t,NativeIntroPack.Legs)>.99f;clipTorso=packed&&Packed(s,t,NativeIntroPack.Torso)>.99f;
+                clipLeft=packed&&Packed(s,t,NativeIntroPack.LeftArm)>.99f;clipRight=packed&&Packed(s,t,NativeIntroPack.RightArm)>.99f;
                 for(int side=0;side<2;side++)
                 {
                     bool left=side==0;string S=left?"L ":"R ";int arm=left?CapturedRig.LArm:CapturedRig.RArm,hip=left?CapturedRig.LHip:CapturedRig.RHip;float outward=left?1:-1;
@@ -179,7 +190,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<=frames;i++)
             {
                 t[i]=s.Clock(i/30f);s.Pose(t[i],pose,out var root,out var rot);pose.World();float relax=s is NativeIntroV2Script v2?Math.Clamp(v2.ArmsRelax(t[i]),0,1):0;
-                NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=relax},false,false);
+                NativeVisualRig.Pose(st,pose,new NativeVisualRig.Grasp{Relax=relax,Exact=Packed(s,t[i],NativeIntroPack.Arms)},false,false);
                 for(int b=0;b<FeetBones.Length;b++)p[i,b]=at[b]<0?new Vector3(0,1e3f,0):root+Vector3.Transform(st.Position[at[b]],rot);
             }
             for(int i=1;i<frames;i++)
@@ -213,7 +224,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<=duration*30;i++)
             {
                 float t=s.Clock(i/30f);s.Pose(t,pose,out _,out _);pose.World();if(!g.GripAt(t,out var at)||at.Weight<.999f){st=new NativeVisualRig.State(rig);continue;}
-                var grasp=new NativeVisualRig.Grasp();NativeIntroGrip.Grasp(spec,at,pose,ref grasp);NativeVisualRig.Pose(st,pose,grasp,false,false);
+                var grasp=new NativeVisualRig.Grasp{Exact=Packed(s,t,NativeIntroPack.Arms)};NativeIntroGrip.Grasp(spec,at,pose,ref grasp);NativeVisualRig.Pose(st,pose,grasp,false,false);
                 NativeIntroGrip.Model(k,spec,at.Along,at.Pull,pose,out var hold);var weapon=pose.WorldRotation[left?CapturedRig.RHand:CapturedRig.LHand];
                 var want=(left?st.RightAnchor:st.LeftAnchor)+Vector3.Transform(hold.Center-hold.Axis*st.SupportSlide,weapon);
                 var turn=Quaternion.Normalize(st.World[vh]*Quaternion.Inverse(rig.AlignedWorld[vh]));var fist=st.Position[vh]+Vector3.Transform(rig.FistCenter[side],turn);
@@ -228,6 +239,8 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Run(bool strict,bool printAll)
         {
+            // (the local intro motion bank, where there is one, so an intro's pack segments play here as in the game: IntroPackChecks)
+            bool pack=IntroPackChecks.LoadLocal(IntroPackChecks.Root(),out var packPath);if(printAll)Console.WriteLine(pack?"PACK bank "+packPath:"PACK no local intro motion bank");
             count=0;var rig=ModelPoseChecks.Measured();int findings=0,intros=0;var worstMap=new float[Bones.Length];var failed=new List<string>();float worstSlide=0,worstDeep=0;
             // (`armed`: a guide pose whose arms hold a weapon: they are solved onto it, by the hold and the grip, on the model as on the keyed rig,
             // so only the body, the neck, the head and the legs are held to the keyed turns there)

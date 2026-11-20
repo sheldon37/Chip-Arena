@@ -53,6 +53,23 @@ the buyer's flat `pve.buy` is unchanged. `cache.open.legendary` would carry High
 | `cache.embers` | 3 | 2 | 2 | 1.0-1.4 | (not played yet) | Soft tiny sparkles falling and fizzing like the tail of a sparkler, gentle and airy, isolated, no reverb, no music, no background noise |
 | `cache.restock` | 2 | 2 | 0.6 | 0.15-0.3 | `ui` | A small mechanical click and a soft relay clunk as a steel locker re-arms, isolated, dry close-mic recording, no reverb, no music, no background noise |
 
+## The camp's sound bed (2026-11-20, requested, not generated)
+
+Belvedere Camp's life (`docs/expedition/BELVEDERE-CAMP.md`, part 1; plan W12 "The camp") plays these keys from `Runtime/NativeCampAudio.cs`.
+None is in a manifest or the bank yet: until the owner's listening pass and their word on a batch (generation is paid; plan N5),
+each key plays its built-in synthesized placeholder (`Core/NativeCampSynth.cs`: original, deterministic, loops that close). The
+loops hold low-priority voices: every bed, and the two fires nearest the listener. All positional; nothing here is a combat,
+boss, hazard or enemy sound; each bank cap is its request's longest edited length. The four loops ask for a seamless loop
+(the importer cross-fades the seam as the placeholders do).
+
+| Key | Priority | Count | Generate (s) | Target (s) | Placeholder | Prompt |
+| --- | ---: | ---: | ---: | --- | --- | --- |
+| `camp.fire` | 1 | 2 | 6 | 4.0-6.0 (loop) | synth: a drum fire's roar, crackles and pops | A small wood fire burning in a steel oil drum outdoors at night, steady low roar with soft wood crackles and the odd pop, close but not intimate, seamless loop, no wind, no voices, no music, no background noise |
+| `camp.generator` | 1 | 1 | 6 | 4.0-6.0 (loop) | synth: a 30 Hz diesel hum with its load wobble | A small diesel generator running steadily behind a fence at a distance of a few metres, low engine hum with a light mechanical rattle, seamless loop, no voices, no music, no background noise |
+| `camp.radio` | 2 | 2 | 10 | 8.0-10.0 (loop) | synth: a lo-fi tune of its own under band-limited static | An old transistor radio on a camp loudspeaker playing a quiet melancholy instrumental tune, thin and lo-fi through a small horn speaker, soft static drifting in and out, seamless loop, no singing, no speech, no background noise |
+| `camp.murmur` | 2 | 2 | 10 | 8.0-10.0 (loop) | synth: six formant voices in phrases, no words | A few tired people talking quietly round a fire at night, low indistinct murmuring, no clear words, an occasional soft laugh, seamless loop, no music, no background noise |
+| `camp.lamp.click` | 3 | 2 | 0.5 | 0.08-0.2 | synth: a switch's tick and ring | A small metal toggle switch on an old desk lamp clicking on, a single dry click, isolated, dry close-mic recording, no reverb, no music, no background noise |
+
 ## Reviewed short takes
 
 The importer rejects a take shorter than its request's `targetSeconds.min` after trimming. A take reviewed and accepted shorter goes in `ACCEPTED_SHORT` in `tools/import_sound_requests.py`, keyed by the manifest's SHA-256 and the take's name, with the shortest edited length accepted for that take. Nothing else is relaxed; a take from another manifest version keeps its minimum. The list is in the importer itself, so the builder queue's import fingerprint changes whenever the list does, and the queue re-imports the cached originals without regenerating anything.

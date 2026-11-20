@@ -425,6 +425,43 @@
       ],
       "maxRequests": 3,
       "maxSeconds": 3.0
+    },
+    {
+      "id": "intros-v2-2026-11-20-v2a",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-intros.json",
+      "manifestSha256": "68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784",
+      "keys": [
+        "intro2.slipstream.stop",
+        "intro2.slipstream.chime",
+        "intro2.slipstream.board"
+      ],
+      "variants": [
+        1
+      ],
+      "maxRequests": 3,
+      "maxSeconds": 3.3
+    },
+    {
+      "id": "intros-v2-2026-11-20-v2b",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-intros.json",
+      "manifestSha256": "68c49c1246258f5412109802add0f07a344253716526ff7367e912059d5e9784",
+      "keys": [
+        "intro2.slipstream.rush",
+        "intro2.slipstream.burst",
+        "intro2.slipstream.run",
+        "intro2.slipstream.leap",
+        "intro2.slipstream.slide",
+        "intro2.slipstream.pass",
+        "intro2.slipstream.name"
+      ],
+      "variants": [
+        1,
+        2
+      ],
+      "maxRequests": 14,
+      "maxSeconds": 20.6
     }
   ]
 }

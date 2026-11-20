@@ -47,6 +47,8 @@ namespace ChipArena.UnityConversion
             if(PrepareCarillon(arena))built++;
             if(PrewarmSanctum(arena))built++;
             if(PrewarmPolar(arena))built++;
+            // Belvedere Camp (NativeCampDraw.cs): the live hub's camp combined before its first frame.
+            if(PrewarmCamp(arena))built++;
             // The kit bank's plan and the map's harbour yards (NativePackStage.cs; nothing without the bank or an entry).
             var pack=NativePackStage.Entry(id);if(map!=null&&pack!=null){NativePackStage.Plan(map);if(pack.yards!=null&&pack.yards.Length>0)(packYards??=new NativePackYards()).Prepare(map,id);built++;}
             EnsureHazardKit();
