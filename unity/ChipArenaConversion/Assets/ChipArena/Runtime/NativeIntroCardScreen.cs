@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
     {
         private static readonly Dictionary<string,Func<INativeIntroCardEffect>> makers=new Dictionary<string,Func<INativeIntroCardEffect>>(StringComparer.Ordinal)
         {
-            // ---- the dev intro's (its author): {"architect",()=>new NativeArchitectCard()}, ----
+            {NativeIntroArchitect.CardEffect,()=>new NativeArchitectCard()},
             //
         };
         private static readonly Dictionary<string,INativeIntroCardEffect> made=new Dictionary<string,INativeIntroCardEffect>(StringComparer.Ordinal);

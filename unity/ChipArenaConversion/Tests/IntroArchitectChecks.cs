@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
     {
         private static int count;private static void Check(bool ok,string what){if(!ok)throw new Exception("Architect intro: "+what);count++;}
         // High's and Low's peaks (the dev intro's own, asked of the framework; docs/INTRO-DEV-ARCHITECT.md "Budgets").
-        public const int FxHigh=1000,FxLow=450,PiecesHigh=180,PiecesLow=100,Lights=24;
+        public const int FxHigh=NativeIntroSetLimits.DevFx,FxLow=NativeIntroSetLimits.DevFxLow,PiecesHigh=NativeIntroSetLimits.DevPieces,PiecesLow=NativeIntroSetLimits.DevPiecesLow,Lights=8;
         private sealed class Sink:INativeEntranceFx,INativeIntroSet,INativeEntranceProps
         {
             public bool Has_=true,Ready_=true;public int Fx,Pieces,Prims,LongStreaks,OffPlane;public double Hash,GlowSum;public bool Broken;public float WorstAngle;
@@ -36,9 +36,10 @@ namespace ChipArena.UnityConversion
             public bool Ready=>Ready_;public bool Has(string prop)=>Has_;
             public void Piece(string prop,Vector3 at,Quaternion rotation,float scale,Vector3 tint,Vector3 glow){Pieces++;V(at);V(tint);V(glow);Hash+=scale+prop.Length;GlowSum+=glow.X+glow.Y+glow.Z;if(!(scale>=0)||!(scale<=1.0001f))Broken=true;}
             public void Primitive(WeaponShape shape,bool glow,Vector3 at,Quaternion rotation,Vector3 scale,Vector3 color){Prims++;V(at);V(color);}
+            public int Copies;public void Batch(string prop,ReadOnlySpan<Vector3> at,ReadOnlySpan<Quaternion> rotation,float scale,Vector3 tint){Copies+=at.Length;foreach(var p in at)V(p);}
             public bool Model(string id,Vector3 position,Quaternion rotation,float scale,Vector3 tint)=>false;
             public void Piece(WeaponShape shape,bool glow,Vector3 position,Quaternion rotation,Vector3 scale,Vector3 color){Prims++;V(position);}
-            public void Reset(){Fx=Pieces=Prims=0;Hash=0;GlowSum=0;}
+            public void Reset(){Fx=Pieces=Prims=Copies=0;Hash=0;GlowSum=0;}
         }
         private static NativeIntroArchitect Make(bool reduced,bool low,string name)
         {

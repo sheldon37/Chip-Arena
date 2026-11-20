@@ -313,9 +313,11 @@ namespace ChipArena.UnityConversion
             {
                 if(!NewPose(i,t,out var at,out var rot,out bool solid,out float wire,out float flash))continue;ref var p=ref neo[i];
                 if(p.Kind==Crown&&t>=Drop){var turn=YawQ(CrownTurn(t));at=Vector3.Transform(at,turn);rot=turn*rot;}
+                // (Low keeps the wireframe flight for the obelisks only: the rest fly as dark stone with their seams ablaze)
+                bool wired=!low||p.Kind==Obelisk;
                 if(solid)set.Piece(p.Prop,at,rot,1,Vector3.One,Settled(t,p.Kind)+Ice*(5*flash));
-                else if(low&&p.Kind==Tile)set.Piece(p.Prop,at,rot,1,new Vector3(.45f),Ice*(1.6f*wire));
-                if(wire>.01f&&!(low&&p.Kind==Tile))set.Piece(p.Wire,at,rot,1,Vector3.One,Ice*wire);
+                else if(!wired)set.Piece(p.Prop,at,rot,1,new Vector3(.45f),Ice*(1.6f*wire));
+                if(wire>.01f&&wired)set.Piece(p.Wire,at,rot,1,Vector3.One,Ice*wire);
             }
             if(t>=Gather)for(int i=0;i<spires.Length;i++){ref var p=ref spires[i];float g=.4f+.9f*NativeEntranceMath.Ramp(t,Drop-.3f,Drop+.4f)+2*Flash(t,Drop+.25f,.02f,.5f);set.Piece(p.Prop,SpireAt(i,t),YawQ(p.Yaw),1,Vector3.One,new Vector3(g,g,g));}
             return true;

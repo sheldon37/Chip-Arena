@@ -21,8 +21,8 @@ Frames (Unity space: metres, +y up; a piece's frame is where Core places it):
   old-tower-a/b/c    the tower's foot (its windows face -z)        dais             the round dais's top centre (its keel below)
   tile-1/2/3         the tile's top at its middle radius (the ring's centre at z = -rm; the tile toward +z)
   mono-base          the plinth's top centre (a shaft stands on it) mono-shaft-0..3 the segment's bottom centre
-  mono-cap           the capstone's bottom centre                  halo-arc         the arc's middle on its 10 m radius, at the
-                                                                                     section's centre (the axis at z = -10)
+  mono-cap           the capstone's bottom centre                  crown-arc        the arc's middle on its 11.5 m radius, at the
+                                                                                     section's centre (the axis at z = -11.5)
   spire-a/b/c        the foot                                      shard-a..d       the middle (about 1 m across)
   grid               the void's grid plane (y 0)
 """
@@ -55,7 +55,8 @@ SEAM = .04
 MONO_W = (1.10, 1.00, .90, .80, .70)
 MONO_SEG = 2.4
 CAP_H = 1.6
-HALO_R, HALO_ARCS, HALO_W, HALO_H, HALO_GAP = 10.0, 8, 1.1, .8, .3
+HALO_R, HALO_ARCS, HALO_W, HALO_H, HALO_GAP = 11.5, 8, 1.1, .8, .3
+CROWN_Y = 13.2
 
 FIN = {}
 
@@ -1012,7 +1013,7 @@ def layout(new=True):
         out.append(('mono-obelisk', x, FLOOR + .6, z, a))
     for i in range(HALO_ARCS):
         a = (i + .5) / HALO_ARCS * 2 * math.pi
-        out.append(('crown-arc', math.sin(a) * HALO_R, 15.0, math.cos(a) * HALO_R, a))
+        out.append(('crown-arc', math.sin(a) * HALO_R, CROWN_Y, math.cos(a) * HALO_R, a))
     for i in range(6):
         a = (i + .3 * hashf(5, i)) / 6 * 2 * math.pi + .4
         r = 48 + 22 * hashf(6, i)
